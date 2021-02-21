@@ -3,19 +3,20 @@ use std::fmt::{self, Write};
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct Dir {
-    shift: i32,
-    mask:  Bitboard  // mask for oppsoite edge(s)
+    pub index: usize,
+    pub shift: i32,
+    pub mask:  Bitboard  // mask for opposite edge(s)
 }
 
 impl Dir {
-    pub const N:  Self = Dir{ shift:  8, mask: Bitboard::RANK_8 };
-    pub const S:  Self = Dir{ shift: -8, mask: Bitboard::RANK_1 };
-    pub const E:  Self = Dir{ shift:  1, mask: Bitboard::FILE_H };
-    pub const W:  Self = Dir{ shift: -1, mask: Bitboard::FILE_A };
-    pub const NE: Self = Dir{ shift:  9, mask: Bitboard::RANK_8.or(Bitboard::FILE_H) };
-    pub const SE: Self = Dir{ shift: -7, mask: Bitboard::RANK_1.or(Bitboard::FILE_H) };
-    pub const SW: Self = Dir{ shift: -9, mask: Bitboard::RANK_1.or(Bitboard::FILE_A) };
-    pub const NW: Self = Dir{ shift:  7, mask: Bitboard::RANK_8.or(Bitboard::FILE_A) };
+    pub const N:  Self = Dir{ index: 0, shift:  8, mask: Bitboard::RANK_8 };
+    pub const S:  Self = Dir{ index: 1, shift: -8, mask: Bitboard::RANK_1 };
+    pub const E:  Self = Dir{ index: 2, shift:  1, mask: Bitboard::FILE_H };
+    pub const W:  Self = Dir{ index: 3, shift: -1, mask: Bitboard::FILE_A };
+    pub const NE: Self = Dir{ index: 4, shift:  9, mask: Bitboard::RANK_8.or(Bitboard::FILE_H) };
+    pub const SE: Self = Dir{ index: 5, shift: -7, mask: Bitboard::RANK_1.or(Bitboard::FILE_H) };
+    pub const SW: Self = Dir{ index: 6, shift: -9, mask: Bitboard::RANK_1.or(Bitboard::FILE_A) };
+    pub const NW: Self = Dir{ index: 7, shift:  7, mask: Bitboard::RANK_8.or(Bitboard::FILE_A) };
 
     pub const ALL: [Self; 8] = [ Self::N, Self::NE, Self::E, Self::SE, Self::S, Self::SW, Self::W, Self::NW ];
 
@@ -88,17 +89,38 @@ impl Bitboard {
         Bitboard::from_bits_truncate(self.bits.swap_bytes())
     }
 
+
+    // pub fn as_sq(self) -> usize {
+    //     // LSB
+    //     self.bits.trailing_zeros() as usize
+    // }
+
+
+    #[inline]
+    pub fn last_square(self) -> usize {
+        // MSB
+        let msb = self.bits.leading_zeros() as usize;
+        if msb < 64 { 63 - msb } else { 64 }
+    }
+
+    #[inline]
+    pub fn first_square(self) -> usize {
+        // LSB
+        self.bits.trailing_zeros() as usize
+    }
+
     #[inline]
     pub fn last(self) -> Self {
         // MSB
-        Bitboard::from_bits_truncate(1 << (63 - self.bits.leading_zeros()))
+        Bitboard::from_bits_truncate(1 << self.last_square())
     }
 
     #[inline]
     pub fn first(self) -> Self {
         // LSB
-        Bitboard::from_bits_truncate(1 << self.bits.trailing_zeros())
+        Bitboard::from_bits_truncate(1 << self.first_square())
     }
+
 }
 
 impl Iterator for Bitboard {
@@ -136,27 +158,49 @@ impl fmt::Display for Bitboard {
 
 #[cfg(test)]
 mod tests {
+
+    const a1b2: Bitboard = Bitboard::A1.or(Bitboard::B2);
+
     use super::*;
 
     #[test]
-    fn test() {
-        let a1b2 = Bitboard::A1 | Bitboard::B2;
+    fn test_bitwise() {
         assert!(a1b2.contains(Bitboard::A1));
         assert!(a1b2 & Bitboard::C1 == Bitboard::A1 - Bitboard::A1);
+        assert!(a1b2 - Bitboard::A1 == Bitboard::B2);
         assert!(!a1b2.is_empty());
         assert!(a1b2.intersects(Bitboard::B2));
         assert!(Bitboard::FILE_A.contains(Bitboard::A4));
         assert_eq!(Bitboard::FILE_A.len(), 8);
+    }
+
+    #[test]
+    fn test_froms() {
         assert_eq!(Bitboard::from_xy(4, 7), Bitboard::E8);
         assert_eq!(Bitboard::from_sq(63), Bitboard::H8);
         assert_eq!(Bitboard::from_sq(8), Bitboard::A2);
-        assert_eq!(a1b2.first(), Bitboard::A1);
-        assert_eq!(a1b2.last(), Bitboard::B2);
+    }
+
+    #[test]
+    fn test_firsts_and_lasts() {
+        assert_eq!(a1b2.first_square(), 0);
+        assert_eq!(a1b2.last_square(), 9);
+        assert_eq!(Bitboard::EMPTY.first_square(), 64);
+        assert_eq!(Bitboard::EMPTY.last_square(), 64);
+    }
+        // let result = std::panic::catch_unwind(|| Bitboard::EMPTY.as_sq() );
+        // assert!(result.is_err());  
+    
+    #[test]
+    fn test_shifts() {
         let a2b3 = a1b2.shift(&Dir::N);
         assert_eq!(a2b3, Bitboard::A2 | Bitboard::B3 );
         assert!(Bitboard::D8.shift(&Dir::N).is_empty() );
         assert_eq!(Bitboard::D8.shift(&Dir::E), Bitboard::E8 );
+    }
 
+    #[test]
+    fn test_formats() {
         assert_eq!(format!("{}", a1b2), ". . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. 1 . . . . . . \n1 . . . . . . . \n");
         assert_eq!(format!("{:?}", a1b2), "A1 | B2");
         assert_eq!(
@@ -176,11 +220,11 @@ mod tests {
 
 
     #[test]
-    fn test_direction() {
+    fn test_directions() {
         let dir = Dir::N;
         assert_eq!(dir.shift, 8);
         assert_eq!( Dir::ALL[0], Dir::N );
-        assert_eq!( format!("{:?}", Dir::N), "Dir { shift: 8, mask: A8 | B8 | C8 | D8 | E8 | F8 | G8 | H8 | RANK_8 }" );
+        assert_eq!( format!("{:?}", Dir::N), "Dir { index: 0, shift: 8, mask: A8 | B8 | C8 | D8 | E8 | F8 | G8 | H8 | RANK_8 }" );
     }
 }
     
