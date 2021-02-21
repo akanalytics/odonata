@@ -185,6 +185,7 @@ mod tests {
     fn test_firsts_and_lasts() {
         assert_eq!(a1b2.first_square(), 0);
         assert_eq!(a1b2.last_square(), 9);
+        assert_eq!((Bitboard::A1 | Bitboard::A2).last_square(), 8);
         assert_eq!(Bitboard::EMPTY.first_square(), 64);
         assert_eq!(Bitboard::EMPTY.last_square(), 64);
     }
@@ -208,14 +209,6 @@ mod tests {
             "A1 | A2 | A3 | A4 | A5 | A6 | A7 | A8 | FILE_A"
         );
         assert_eq!(format!("{:b}", a1b2), "1000000001");
-
-        println!("\n{}", Bitboard::FILE_B | Bitboard::RANK_7);
-        println!("\n{}", (Bitboard::FILE_B | Bitboard::RANK_7).swap_bytes());
-        let a = Bitboard::RANK_7;
-        for item in a {
-            print!("({:?})", item);
-        }
-        println!("{}", a);
     }
 
 
