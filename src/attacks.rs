@@ -198,36 +198,24 @@ mod tests {
         let attacks = classical.knight_attacks(Bitboard::C6.first_square());
         assert_eq!(attacks, a5|a7|b4|b8|d4|d8|e5|e7)
     }
-}
 
-//     #[test]
-//     fn test_pawn_pushes() {
-//         pawns_w = a2 + b3 + c2 + d7 + f5 + g4 + h4 + h5
-//         pawns_b = a4 + b4 + d3 + g5
-//         occupied = pawns_w + pawns_b
-//         ep_square = g6
-//         pawn_single_push = Region(bits=Attacks().by_pawns_single_push(pawns_w.bits, occupied.bits, pawns_b.bits, "w"))
-//         pawn_double_push = Region(bits=Attacks().by_pawns_double_push(pawns_w.bits, occupied.bits, pawns_b.bits, "w"))
-//         pawn_capture_e = Region(bits=Attacks().by_pawns_capture(pawns_w.bits, occupied.bits, pawns_b.bits, "w", True))
-//         pawn_capture_w = Region(bits=Attacks().by_pawns_capture(pawns_w.bits, occupied.bits, pawns_b.bits, "w", False))
-//         pawn_en_passant_e = Region(bits=Attacks().by_pawns_en_passant(pawns_w.bits, occupied.bits, pawns_b.bits, "w", ep_square.bits, True))
-//         pawn_en_passant_w = Region(bits=Attacks().by_pawns_en_passant(pawns_w.bits, occupied.bits, pawns_b.bits, "w", ep_square.bits, False))
-//         print( StringUtils.to_columns([
-//             "pawns_w\n" + pawns_w.grid,
-//             "pawns_b\n" + pawns_b.grid,
-//             "ep square\n" + ep_square.grid," ",
-//             "single p\n" + pawn_single_push.grid,
-//             "double p\n" + pawn_double_push.grid,
-//             "capture e\n" + pawn_capture_e.grid,
-//             "capture w\n" + pawn_capture_w.grid,
-//             "e/p east\n" + pawn_en_passant_e.grid,
-//             "e/p west\n" + pawn_en_passant_w.grid,
-//             ]) )
-//         assert pawn_single_push == a3 + c3 + d8 + f6 + h6
-//         assert pawn_double_push == c4
-//         assert pawn_capture_e == d3
-//         assert pawn_capture_w == a4 + g5
-//         assert pawn_en_passant_e == g6
-//         assert pawn_en_passant_w == g6
-//     }
-// }
+
+    #[test]
+    fn test_pawn_pushes() {
+        let classical = Classical::init();
+        let pawns_w = a2 | b3 | c2 | d7 | f5 | g4 | h4 | h5;
+        let pawns_b = a4 | b4 | d3 | g5;
+        let occupied = pawns_w | pawns_b;
+        let empty = !occupied;
+        let ep_square = g6;
+        let pawn_single_push = classical.pawn_pushes(occupied, pawns_w, &Color::WHITE);
+        // pawn_capture_e = Region(bits=Attacks().by_pawns_capture(pawns_w.bits, occupied.bits, pawns_b.bits, "w", True))
+        // pawn_capture_w = Region(bits=Attacks().by_pawns_capture(pawns_w.bits, occupied.bits, pawns_b.bits, "w", False))
+        // pawn_en_passant_e = Region(bits=Attacks().by_pawns_en_passant(pawns_w.bits, occupied.bits, pawns_b.bits, "w", ep_square.bits, True))
+        // pawn_en_passant_w = Region(bits=Attacks().by_pawns_en_passant(pawns_w.bits, occupied.bits, pawns_b.bits, "w", ep_square.bits, False))
+        let expect_single_push = a3 | c3 | d8 | f6 | h6;
+        let expect_double_push = c4;
+        assert_eq!(pawn_single_push, expect_single_push | expect_double_push)
+    }
+
+}
