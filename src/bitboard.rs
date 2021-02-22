@@ -1,6 +1,18 @@
 use std::fmt::{self, Write};
 
 
+pub struct Color {
+    pub is_white: bool,
+    pub pawn_move: Dir,
+    pub double_push_dest_rank: Bitboard,
+}
+
+impl Color {
+    pub const WHITE: Self = Color { is_white: true, pawn_move: Dir::N, double_push_dest_rank: Bitboard::RANK_4 };
+    pub const BLACK: Self = Color { is_white: false, pawn_move: Dir::S, double_push_dest_rank: Bitboard::RANK_5 };
+}
+
+
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct Dir {
     pub index: usize,
@@ -48,7 +60,10 @@ bitflags! {
     }
 }
 
+
 impl Bitboard {
+    const EDGES:Self = Self::FILE_A.or(Self::FILE_H).or(Self::RANK_1).or(Self::RANK_8);
+
     #[inline]
     pub fn from_xy(x: u32, y: u32) -> Bitboard {
         let bit = 1 << y * 8 + x;
@@ -162,23 +177,24 @@ mod tests {
     const a1b2: Bitboard = Bitboard::A1.or(Bitboard::B2);
 
     use super::*;
+    use crate::globals::constants::*;
 
     #[test]
     fn test_bitwise() {
-        assert!(a1b2.contains(Bitboard::A1));
-        assert!(a1b2 & Bitboard::C1 == Bitboard::A1 - Bitboard::A1);
-        assert!(a1b2 - Bitboard::A1 == Bitboard::B2);
+        assert!(a1b2.contains(a1));
+        assert!(a1b2 & c1 == a1 - a1);
+        assert!(a1b2 - a1 == b2);
         assert!(!a1b2.is_empty());
-        assert!(a1b2.intersects(Bitboard::B2));
-        assert!(Bitboard::FILE_A.contains(Bitboard::A4));
+        assert!(a1b2.intersects(b2));
+        assert!(Bitboard::FILE_A.contains(a4));
         assert_eq!(Bitboard::FILE_A.len(), 8);
     }
 
     #[test]
     fn test_froms() {
-        assert_eq!(Bitboard::from_xy(4, 7), Bitboard::E8);
-        assert_eq!(Bitboard::from_sq(63), Bitboard::H8);
-        assert_eq!(Bitboard::from_sq(8), Bitboard::A2);
+        assert_eq!(Bitboard::from_xy(4, 7), e8);
+        assert_eq!(Bitboard::from_sq(63), h8);
+        assert_eq!(Bitboard::from_sq(8), a2);
     }
 
     #[test]
@@ -208,6 +224,7 @@ mod tests {
             format!("{:?}", Bitboard::FILE_A),
             "A1 | A2 | A3 | A4 | A5 | A6 | A7 | A8 | FILE_A"
         );
+        assert_eq!(format!("{:?}", Bitboard::EDGES), "");
         assert_eq!(format!("{:b}", a1b2), "1000000001");
     }
 
