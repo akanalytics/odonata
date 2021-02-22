@@ -23,12 +23,8 @@ name = "benchmark"
 harness = false
 
 
-[[bin]]
-name = "flounder"
-path = "src/main.rs"
 
-
-# [lib]
-# name = "flouder"
-# path = "src/lib.rs"
+[lib]
+name = "flouder"
+path = "src/lib.rs"
 

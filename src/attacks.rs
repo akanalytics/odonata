@@ -1,4 +1,4 @@
-use crate::bitboard::{Bitboard, Dir};
+use crate::bitboard::{Bitboard, Dir, Color};
 // use lazy_static::lazy_static;
 
 pub trait SlidingAttacks {
@@ -22,7 +22,51 @@ pub trait SlidingAttacks {
         }
         bb
     }
+
+    fn pawn_pushes(&self, empty: Bitboard, pawns: Bitboard, color: &Color) -> Bitboard {
+        let single = pawns.shift(&color.pawn_move) & empty; 
+        single | (single.shift(&color.pawn_move) & empty & color.double_push_dest_rank)
+    }
 }
+
+
+// @Profiler
+// def by_pawns_single_and_double_push(self, pawns: BitBoard, empty: BitBoard, color: Color) -> Tuple[BitBoard, BitBoard]:
+//     att = pawns
+//     if color in "wW":
+//         single = (att << 8) & empty
+//         double_push_to_rank = regions.RANK_4.bits
+//         return single, (single << 8) & empty & double_push_to_rank
+//     else:
+//         single = (att >> 8) & empty
+//         double_push_to_rank = regions.RANK_5.bits
+//         return single, (single >> 8) & empty & double_push_to_rank
+
+
+// @Profiler
+// def by_pawns_capture_east_and_west(self, pawns: BitBoard, opponent: BitBoard, color: Color) -> Tuple[BitBoard,BitBoard]:
+//     att = pawns
+//     # captures
+//     if color == "w":
+//             captures_e = ((att & Attacks.NOT_H) << 9)
+//             captures_w = ((att & Attacks.NOT_A) << 7)
+//     else:
+//             captures_e = ((att & Attacks.NOT_H) >> 7)
+//             captures_w = ((att & Attacks.NOT_A) >> 9)
+
+//     return  (captures_e & opponent, captures_w & opponent)
+
+
+
+
+
+
+
+
+
+
+
+
 
 pub struct Classical {
     sliding_attacks: [[Bitboard; 8]; 64],
@@ -100,58 +144,90 @@ impl SlidingAttacks for Classical {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::globals::constants::*;
 
     #[test]
-    fn test() {
-        let c3 = Bitboard::C3;
+    fn test_rays() {
         let north = Classical::ray(&Dir::N, c3);
-        assert!(north.contains(Bitboard::C8));
+        assert_eq!(north, c4|c5|c6|c7|c8);
         assert_eq!(north.count(), 5);
 
-        assert_eq!(Classical::ray(&Dir::NE, c3), Bitboard::D4 | Bitboard::E5 | Bitboard::F6 | Bitboard::G7 | Bitboard::H8);
-        assert_eq!(Classical::ray(&Dir::SW, c3), Bitboard::A1 | Bitboard::B2);
-        assert_eq!(Classical::ray(&Dir::S, c3), Bitboard::C1 | Bitboard::C2);
-        assert_eq!(Classical::ray(&Dir::NW, c3), Bitboard::A5 | Bitboard::B4);
+        assert_eq!(Classical::ray(&Dir::NE, c3), d4|e5|f6|g7|h8);
+        assert_eq!(Classical::ray(&Dir::SW, c3), a1|b2);
+        assert_eq!(Classical::ray(&Dir::S, c3), c1|c2);
+        assert_eq!(Classical::ray(&Dir::NW, c3), a5|b4);
 
         let classical = Classical::init();
         let north = classical.sliding_attacks[16 + 2][Dir::N.index];
-        assert!(north.contains(Bitboard::C8));
+        assert!(north.contains(c8));
         assert_eq!(north.count(), 5);
     }
 
     #[test]
     fn test_rook_attacks() {
         let classical = Classical::init();
-        let occupied = Bitboard::A1 | Bitboard::A2 | Bitboard::A7 | Bitboard::C3 | Bitboard::C6;
+        let occupied = a1|a2|a7|c3|c6;
         let attacks = classical.rook_attacks(occupied, Bitboard::A6.first_square());
-        assert_eq!(attacks, (Bitboard::FILE_A - Bitboard::A1 - Bitboard::A6 - Bitboard::A8) | Bitboard::B6 | Bitboard::C6)
+        assert_eq!(attacks, (Bitboard::FILE_A - a1 - a6 - a8) | b6|c6)
     }
 
     #[test]
     fn test_bishop_attacks() {
         let classical = Classical::init();
-        let occupied = Bitboard::A1 | Bitboard::A2 | Bitboard::A7 | Bitboard::C3 | Bitboard::C6;
+        let occupied = a1|a2|a7|c3|c6;
         let attacks = classical.bishop_attacks(occupied, Bitboard::A6.first_square());
-        assert_eq!(attacks, Bitboard::F1 | Bitboard::E2 | Bitboard::D3 | Bitboard::C4 | Bitboard::B5 | Bitboard::B7 | Bitboard::C8)
+        assert_eq!(attacks, f1|e2|d3|c4|b5|b7|c8)
     }
 
     #[test]
     fn test_king_attacks() {
         let classical = Classical::init();
         let attacks = classical.king_attacks(Bitboard::A6.first_square());
-        assert_eq!(attacks, Bitboard::A5 | Bitboard::B5 | Bitboard::B6 | Bitboard::B7 | Bitboard::A7);
+        assert_eq!(attacks, a5|b5|b6|b7|a7);
 
         let attacks = classical.king_attacks(Bitboard::C6.first_square());
-        assert_eq!(attacks, Bitboard::B5 | Bitboard::C5 | Bitboard::D5 | Bitboard::B6 | Bitboard::D6 | Bitboard::B7 | Bitboard::C7 | Bitboard::D7)
+        assert_eq!(attacks, b5|c5|d5|b6|d6|b7|c7|d7)
     }
 
     #[test]
     fn test_knight_attacks() {
         let classical = Classical::init();
         let attacks = classical.knight_attacks(Bitboard::A1.first_square());
-        assert_eq!(attacks, Bitboard::B3 | Bitboard::C2);
+        assert_eq!(attacks, b3|c2);
 
         let attacks = classical.knight_attacks(Bitboard::C6.first_square());
-        assert_eq!(attacks, Bitboard::A5 | Bitboard::A7 | Bitboard::B4 | Bitboard::B8 | Bitboard::D4 | Bitboard::D8 | Bitboard::E5 | Bitboard::E7)
+        assert_eq!(attacks, a5|a7|b4|b8|d4|d8|e5|e7)
     }
 }
+
+//     #[test]
+//     fn test_pawn_pushes() {
+//         pawns_w = a2 + b3 + c2 + d7 + f5 + g4 + h4 + h5
+//         pawns_b = a4 + b4 + d3 + g5
+//         occupied = pawns_w + pawns_b
+//         ep_square = g6
+//         pawn_single_push = Region(bits=Attacks().by_pawns_single_push(pawns_w.bits, occupied.bits, pawns_b.bits, "w"))
+//         pawn_double_push = Region(bits=Attacks().by_pawns_double_push(pawns_w.bits, occupied.bits, pawns_b.bits, "w"))
+//         pawn_capture_e = Region(bits=Attacks().by_pawns_capture(pawns_w.bits, occupied.bits, pawns_b.bits, "w", True))
+//         pawn_capture_w = Region(bits=Attacks().by_pawns_capture(pawns_w.bits, occupied.bits, pawns_b.bits, "w", False))
+//         pawn_en_passant_e = Region(bits=Attacks().by_pawns_en_passant(pawns_w.bits, occupied.bits, pawns_b.bits, "w", ep_square.bits, True))
+//         pawn_en_passant_w = Region(bits=Attacks().by_pawns_en_passant(pawns_w.bits, occupied.bits, pawns_b.bits, "w", ep_square.bits, False))
+//         print( StringUtils.to_columns([
+//             "pawns_w\n" + pawns_w.grid,
+//             "pawns_b\n" + pawns_b.grid,
+//             "ep square\n" + ep_square.grid," ",
+//             "single p\n" + pawn_single_push.grid,
+//             "double p\n" + pawn_double_push.grid,
+//             "capture e\n" + pawn_capture_e.grid,
+//             "capture w\n" + pawn_capture_w.grid,
+//             "e/p east\n" + pawn_en_passant_e.grid,
+//             "e/p west\n" + pawn_en_passant_w.grid,
+//             ]) )
+//         assert pawn_single_push == a3 + c3 + d8 + f6 + h6
+//         assert pawn_double_push == c4
+//         assert pawn_capture_e == d3
+//         assert pawn_capture_w == a4 + g5
+//         assert pawn_en_passant_e == g6
+//         assert pawn_en_passant_w == g6
+//     }
+// }
