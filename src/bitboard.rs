@@ -10,12 +10,12 @@ pub struct Dir {
 
 impl Dir {
     pub const N:  Self = Dir{ index: 0, shift:  8, mask: Bitboard::RANK_8 };
-    pub const S:  Self = Dir{ index: 1, shift: -8, mask: Bitboard::RANK_1 };
+    pub const NE: Self = Dir{ index: 1, shift:  9, mask: Bitboard::RANK_8.or(Bitboard::FILE_H) };
     pub const E:  Self = Dir{ index: 2, shift:  1, mask: Bitboard::FILE_H };
-    pub const W:  Self = Dir{ index: 3, shift: -1, mask: Bitboard::FILE_A };
-    pub const NE: Self = Dir{ index: 4, shift:  9, mask: Bitboard::RANK_8.or(Bitboard::FILE_H) };
-    pub const SE: Self = Dir{ index: 5, shift: -7, mask: Bitboard::RANK_1.or(Bitboard::FILE_H) };
-    pub const SW: Self = Dir{ index: 6, shift: -9, mask: Bitboard::RANK_1.or(Bitboard::FILE_A) };
+    pub const SE: Self = Dir{ index: 3, shift: -7, mask: Bitboard::RANK_1.or(Bitboard::FILE_H) };
+    pub const S:  Self = Dir{ index: 4, shift: -8, mask: Bitboard::RANK_1 };
+    pub const SW: Self = Dir{ index: 5, shift: -9, mask: Bitboard::RANK_1.or(Bitboard::FILE_A) };
+    pub const W:  Self = Dir{ index: 6, shift: -1, mask: Bitboard::FILE_A };
     pub const NW: Self = Dir{ index: 7, shift:  7, mask: Bitboard::RANK_8.or(Bitboard::FILE_A) };
 
     pub const ALL: [Self; 8] = [ Self::N, Self::NE, Self::E, Self::SE, Self::S, Self::SW, Self::W, Self::NW ];
