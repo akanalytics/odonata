@@ -62,7 +62,7 @@ bitflags! {
 
 
 impl Bitboard {
-    const EDGES:Self = Self::FILE_A.or(Self::FILE_H).or(Self::RANK_1).or(Self::RANK_8);
+    // const EDGES:Self = Self::FILE_A.or(Self::FILE_H).or(Self::RANK_1).or(Self::RANK_8);
 
     #[inline]
     pub fn from_xy(x: u32, y: u32) -> Bitboard {

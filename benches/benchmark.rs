@@ -1,7 +1,7 @@
 use std::ops::BitOr;
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use flounder::bitboard::Bitboard;
+use flouder::bitboard::Bitboard;
 
 fn handcrafted_bit_manip(n: u64) -> bool {
     ((1 << n) | (1 << n)) & (1 << n) != 0

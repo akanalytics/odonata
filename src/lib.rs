@@ -1,8 +1,12 @@
 #[macro_use]
 extern crate bitflags;
-extern crate lazy_static;
+// extern crate lazy_static;
 
 
-mod bitboard;
+pub mod bitboard;
 mod attacks;
 mod globals;
+
+pub use crate::bitboard::{Bitboard, Color};
+
+pub use crate::attacks::{ClassicalBitboard};
