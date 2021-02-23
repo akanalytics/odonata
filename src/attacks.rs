@@ -1,4 +1,4 @@
-use crate::bitboard::{Bitboard, Dir, Color};
+use crate::bitboard::{Bitboard, Dir, Color, CastlingRights};
 // use lazy_static::lazy_static;
 
 pub trait BitboardAttacks {
@@ -23,38 +23,70 @@ pub trait BitboardAttacks {
         bb
     }
 
-    fn pawn_pushes(&self, empty: Bitboard, pawns: Bitboard, color: &Color) -> Bitboard {
+
+    #[inline]
+    fn pawn_pushes(&self, occupied: Bitboard, pawns: Bitboard, color: &Color) -> Bitboard {
+        let empty = !occupied;
         let single = pawns.shift(&color.pawn_move) & empty; 
         single | (single.shift(&color.pawn_move) & empty & color.double_push_dest_rank)
     }
+
+    #[inline]
+    fn pawn_attacks(&self, pawns: Bitboard, color: &Color) -> (Bitboard, Bitboard) {
+        (pawns.shift(&color.pawn_capture_east), pawns.shift(&color.pawn_capture_west))
+    }
+
+
+    fn pawn_en_passant_captures(&self, pawns: Bitboard, opponent: Bitboard, color: &Color, en_passant: Bitboard) -> (Bitboard, Bitboard) {
+        assert!(!en_passant.is_empty());
+        let (east, west) = self.pawn_attacks(pawns, color);
+
+        let enemy_pawn = en_passant.shift(&color.opposite().pawn_move);
+
+        // check enemy have occupied the square one beyond en passant square
+        if (enemy_pawn & opponent).is_empty() {
+            return (Bitboard::EMPTY, Bitboard::EMPTY);
+        }
+
+        return (east & en_passant, west & en_passant) 
+    }
+
+    // castling
+    // check castling rights (cheap)
+    // check king not in check
+    // side = +/-2
+    // check king+1 and king+2 for being clear on kings side
+    // check king-1, king-2, king-3 clear on queens
+    // check that king +/- 1 and king +/- 2 isnt in check
+    // addMove King +/- 2, add rook -2/+3
+    // castling rights
+
+    fn castling(&self, king: Bitboard, occupied: Bitboard, opponents: Bitboard, color: &Color, rights: &CastlingRights) -> Bitboard {
+        
+        let empty = !occupied;
+        let mut castlings = Bitboard::EMPTY;
+        if rights.intersects(color.castle_rights_king) && !color.kingside_castle_sqs.intersects(occupied) {
+            let king_moves = king | color.kingside_castle_sqs;
+            if self.attackers(king_moves, empty, opponents, color).is_empty() {
+                castlings = king.shift(&Dir::E).shift(&Dir::E);  
+            }
+        }
+        if rights.intersects(color.castle_rights_queen) && !color.queenside_castle_sqs.intersects(occupied) {
+            let king_moves = king | color.queenside_castle_sqs;
+            if self.attackers(king_moves, empty, opponents, color).is_empty() {
+                castlings = castlings | king.shift(&Dir::W).shift(&Dir::W); 
+            }
+        }
+        castlings
+    }
+
+
+    fn attackers(&self, target: Bitboard, empty: Bitboard, opponents: Bitboard, color: &Color) -> Bitboard {
+        Bitboard::EMPTY
+    }
+
+
 }
-
-
-// @Profiler
-// def by_pawns_single_and_double_push(self, pawns: BitBoard, empty: BitBoard, color: Color) -> Tuple[BitBoard, BitBoard]:
-//     att = pawns
-//     if color in "wW":
-//         single = (att << 8) & empty
-//         double_push_to_rank = regions.RANK_4.bits
-//         return single, (single << 8) & empty & double_push_to_rank
-//     else:
-//         single = (att >> 8) & empty
-//         double_push_to_rank = regions.RANK_5.bits
-//         return single, (single >> 8) & empty & double_push_to_rank
-
-
-// @Profiler
-// def by_pawns_capture_east_and_west(self, pawns: BitBoard, opponent: BitBoard, color: Color) -> Tuple[BitBoard,BitBoard]:
-//     att = pawns
-//     # captures
-//     if color == "w":
-//             captures_e = ((att & Attacks.NOT_H) << 9)
-//             captures_w = ((att & Attacks.NOT_A) << 7)
-//     else:
-//             captures_e = ((att & Attacks.NOT_H) >> 7)
-//             captures_w = ((att & Attacks.NOT_A) >> 9)
-
-//     return  (captures_e & opponent, captures_w & opponent)
 
 
 
@@ -203,21 +235,25 @@ mod tests {
 
 
     #[test]
-    fn test_pawn_pushes() {
+    fn test_pawns() {
         let classical = ClassicalBitboard::new();
         let pawns_w = a2 | b3 | c2 | d7 | f5 | g4 | h4 | h5;
-        let pawns_b = a4 | b4 | d3 | g5;
-        let occupied = pawns_w | pawns_b;
-        let empty = !occupied;
-        let ep_square = g6;
-        let pawn_single_push = classical.pawn_pushes(empty, pawns_w, &Color::WHITE);
-        // pawn_capture_e = Region(bits=Attacks().by_pawns_capture(pawns_w.bits, occupied.bits, pawns_b.bits, "w", True))
-        // pawn_capture_w = Region(bits=Attacks().by_pawns_capture(pawns_w.bits, occupied.bits, pawns_b.bits, "w", False))
-        // pawn_en_passant_e = Region(bits=Attacks().by_pawns_en_passant(pawns_w.bits, occupied.bits, pawns_b.bits, "w", ep_square.bits, True))
-        // pawn_en_passant_w = Region(bits=Attacks().by_pawns_en_passant(pawns_w.bits, occupied.bits, pawns_b.bits, "w", ep_square.bits, False))
+        let opponent = a4 | b4 | d3 | g5;
+        let occupied = pawns_w | opponent;
+
+        let pawn_single_push = classical.pawn_pushes(occupied, pawns_w, &Color::WHITE);
         let expect_single_push = a3 | c3 | d8 | f6 | h6;
         let expect_double_push = c4;
-        assert_eq!(pawn_single_push, expect_single_push | expect_double_push)
-    }
+        assert_eq!(pawn_single_push, expect_single_push | expect_double_push);
 
+        let (pawn_capture_e,pawn_capture_w) = classical.pawn_attacks(pawns_w, &Color::WHITE);
+        assert_eq!(pawn_capture_e & opponent, d3);
+
+        assert_eq!(pawn_capture_w  & opponent, a4 | g5);
+
+        let ep_square = g6;
+        let (pawn_en_passant_e, pawn_en_passant_w) = classical.pawn_en_passant_captures(pawns_w, opponent, &Color::WHITE, ep_square);
+        assert_eq!(pawn_en_passant_e, g6);
+        assert_eq!(pawn_en_passant_w, g6);
+    }
 }

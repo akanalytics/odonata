@@ -1,39 +1,120 @@
 use std::fmt::{self, Write};
 
-
 pub struct Color {
-    pub is_white: bool,
+    pub index: usize,
     pub pawn_move: Dir,
+    pub pawn_capture_east: Dir,
+    pub pawn_capture_west: Dir,
+    pub kingside_castle_sqs: Bitboard,
+    pub queenside_castle_sqs: Bitboard,
     pub double_push_dest_rank: Bitboard,
+    pub castle_rights_queen: CastlingRights,
+    pub castle_rights_king: CastlingRights,
 }
+
+
+bitflags! { 
+    pub struct CastlingRights: u8 {
+        const WHITE_KING = 1 << 0;
+        const WHITE_QUEEN = 1 << 1;
+        const BLACK_KING = 1 << 2;
+        const BLACK_QUEEN = 1 << 3;
+    }
+}
+
 
 impl Color {
-    pub const WHITE: Self = Color { is_white: true, pawn_move: Dir::N, double_push_dest_rank: Bitboard::RANK_4 };
-    pub const BLACK: Self = Color { is_white: false, pawn_move: Dir::S, double_push_dest_rank: Bitboard::RANK_5 };
+    pub const WHITE: Self = Color {
+        index: 0,
+        pawn_move: Dir::N,
+        pawn_capture_east: Dir::NE,
+        pawn_capture_west: Dir::NW,
+        kingside_castle_sqs: Bitboard::F1.or(Bitboard::G1), 
+        queenside_castle_sqs: Bitboard::D1.or(Bitboard::C1).or(Bitboard::B1), 
+        double_push_dest_rank: Bitboard::RANK_4,
+        castle_rights_queen: CastlingRights::WHITE_QUEEN,
+        castle_rights_king: CastlingRights::WHITE_KING,
+        };
+    pub const BLACK: Self = Color {
+        index: 1,
+        pawn_move: Dir::S,
+        pawn_capture_east: Dir::SE,
+        pawn_capture_west: Dir::SW,
+        kingside_castle_sqs: Bitboard::F8.or(Bitboard::G8), 
+        queenside_castle_sqs: Bitboard::D8.or(Bitboard::C8), 
+        double_push_dest_rank: Bitboard::RANK_5,
+        castle_rights_queen: CastlingRights::BLACK_QUEEN,
+        castle_rights_king: CastlingRights::BLACK_KING,
+    };
+
+    pub fn opposite(&self) -> &Color {
+        [&Color::BLACK, &Color::WHITE][self.index]
+    }
 }
+
+
 
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct Dir {
     pub index: usize,
     pub shift: i32,
-    pub mask:  Bitboard  // mask for opposite edge(s)
+    pub mask: Bitboard, // mask for opposite edge(s)
 }
 
 impl Dir {
-    pub const N:  Self = Dir{ index: 0, shift:  8, mask: Bitboard::RANK_8 };
-    pub const NE: Self = Dir{ index: 1, shift:  9, mask: Bitboard::RANK_8.or(Bitboard::FILE_H) };
-    pub const E:  Self = Dir{ index: 2, shift:  1, mask: Bitboard::FILE_H };
-    pub const SE: Self = Dir{ index: 3, shift: -7, mask: Bitboard::RANK_1.or(Bitboard::FILE_H) };
-    pub const S:  Self = Dir{ index: 4, shift: -8, mask: Bitboard::RANK_1 };
-    pub const SW: Self = Dir{ index: 5, shift: -9, mask: Bitboard::RANK_1.or(Bitboard::FILE_A) };
-    pub const W:  Self = Dir{ index: 6, shift: -1, mask: Bitboard::FILE_A };
-    pub const NW: Self = Dir{ index: 7, shift:  7, mask: Bitboard::RANK_8.or(Bitboard::FILE_A) };
+    pub const N: Self = Dir {
+        index: 0,
+        shift: 8,
+        mask: Bitboard::RANK_8,
+    };
+    pub const NE: Self = Dir {
+        index: 1,
+        shift: 9,
+        mask: Bitboard::RANK_8.or(Bitboard::FILE_H),
+    };
+    pub const E: Self = Dir {
+        index: 2,
+        shift: 1,
+        mask: Bitboard::FILE_H,
+    };
+    pub const SE: Self = Dir {
+        index: 3,
+        shift: -7,
+        mask: Bitboard::RANK_1.or(Bitboard::FILE_H),
+    };
+    pub const S: Self = Dir {
+        index: 4,
+        shift: -8,
+        mask: Bitboard::RANK_1,
+    };
+    pub const SW: Self = Dir {
+        index: 5,
+        shift: -9,
+        mask: Bitboard::RANK_1.or(Bitboard::FILE_A),
+    };
+    pub const W: Self = Dir {
+        index: 6,
+        shift: -1,
+        mask: Bitboard::FILE_A,
+    };
+    pub const NW: Self = Dir {
+        index: 7,
+        shift: 7,
+        mask: Bitboard::RANK_8.or(Bitboard::FILE_A),
+    };
 
-    pub const ALL: [Self; 8] = [ Self::N, Self::NE, Self::E, Self::SE, Self::S, Self::SW, Self::W, Self::NW ];
-
+    pub const ALL: [Self; 8] = [
+        Self::N,
+        Self::NE,
+        Self::E,
+        Self::SE,
+        Self::S,
+        Self::SW,
+        Self::W,
+        Self::NW,
+    ];
 }
-
 
 // generated from https://docs.google.com/spreadsheets/d/1TB2TKX04VsR10CLNLDIvrufm6wSJOttXOyPNKndU4N0/edit?usp=sharing
 bitflags! {
@@ -50,23 +131,22 @@ bitflags! {
 
         const FILE_A = Self::A1.bits | Self::A2.bits | Self::A3.bits | Self::A4.bits | Self::A5.bits | Self::A6.bits | Self::A7.bits | Self::A8.bits;
         const RANK_1 = Self::A1.bits | Self::B1.bits | Self::C1.bits | Self::D1.bits | Self::E1.bits | Self::F1.bits | Self::G1.bits | Self::H1.bits;
-        const FILE_B = Self::FILE_A.bits << 1; const RANK_2 = Self::RANK_1.bits << 1*8;
-        const FILE_C = Self::FILE_A.bits << 2; const RANK_3 = Self::RANK_1.bits << 2*8;
-        const FILE_D = Self::FILE_A.bits << 3; const RANK_4 = Self::RANK_1.bits << 3*8;
-        const FILE_E = Self::FILE_A.bits << 4; const RANK_5 = Self::RANK_1.bits << 4*8;
-        const FILE_F = Self::FILE_A.bits << 5; const RANK_6 = Self::RANK_1.bits << 5*8;
-        const FILE_G = Self::FILE_A.bits << 6; const RANK_7 = Self::RANK_1.bits << 6*8;
-        const FILE_H = Self::FILE_A.bits << 7; const RANK_8 = Self::RANK_1.bits << 7*8;
+        const FILE_B = Self::FILE_A.bits << 1; const RANK_2 = Self::RANK_1.bits << 8;
+        const FILE_C = Self::FILE_A.bits << 2; const RANK_3 = Self::RANK_1.bits << (2*8);
+        const FILE_D = Self::FILE_A.bits << 3; const RANK_4 = Self::RANK_1.bits << (3*8);
+        const FILE_E = Self::FILE_A.bits << 4; const RANK_5 = Self::RANK_1.bits << (4*8);
+        const FILE_F = Self::FILE_A.bits << 5; const RANK_6 = Self::RANK_1.bits << (5*8);
+        const FILE_G = Self::FILE_A.bits << 6; const RANK_7 = Self::RANK_1.bits << (6*8);
+        const FILE_H = Self::FILE_A.bits << 7; const RANK_8 = Self::RANK_1.bits << (7*8);
     }
 }
-
 
 impl Bitboard {
     // const EDGES:Self = Self::FILE_A.or(Self::FILE_H).or(Self::RANK_1).or(Self::RANK_8);
 
     #[inline]
     pub fn from_xy(x: u32, y: u32) -> Bitboard {
-        let bit = 1 << y * 8 + x;
+        let bit = 1 << (y * 8 + x);
         Bitboard::from_bits_truncate(bit)
     }
 
@@ -76,14 +156,12 @@ impl Bitboard {
         Bitboard::from_bits_truncate(bit)
     }
 
-
     #[inline]
     pub fn shift(self, dir: &Dir) -> Bitboard {
         let bb = self - dir.mask;
         if dir.shift > 0 {
             Bitboard::from_bits_truncate(bb.bits << dir.shift)
-        } 
-        else {
+        } else {
             Bitboard::from_bits_truncate(bb.bits >> -dir.shift)
         }
     }
@@ -104,18 +182,20 @@ impl Bitboard {
         Bitboard::from_bits_truncate(self.bits.swap_bytes())
     }
 
-
     // pub fn as_sq(self) -> usize {
     //     // LSB
     //     self.bits.trailing_zeros() as usize
     // }
 
-
     #[inline]
     pub fn last_square(self) -> usize {
         // MSB
         let msb = self.bits.leading_zeros() as usize;
-        if msb < 64 { 63 - msb } else { 64 }
+        if msb < 64 {
+            63 - msb
+        } else {
+            64
+        }
     }
 
     #[inline]
@@ -135,7 +215,6 @@ impl Bitboard {
         // LSB
         Bitboard::from_bits_truncate(1 << self.first_square())
     }
-
 }
 
 impl Iterator for Bitboard {
@@ -156,7 +235,7 @@ impl fmt::Display for Bitboard {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         for r in (0..8).rev() {
             for f in 0..8 {
-                let bit = 1 << r * 8 + f;
+                let bit = 1 << (r * 8 + f);
                 fmt.write_char(if self.contains(Bitboard::from_bits_truncate(bit)) {
                     '1'
                 } else {
@@ -206,15 +285,14 @@ mod tests {
         assert_eq!(Bitboard::EMPTY.first_square(), 64);
         assert_eq!(Bitboard::EMPTY.last_square(), 64);
     }
-        // let result = std::panic::catch_unwind(|| Bitboard::EMPTY.as_sq() );
-        // assert!(result.is_err());  
-    
+    // let result = std::panic::catch_unwind(|| Bitboard::EMPTY.as_sq() );
+    // assert!(result.is_err());
     #[test]
     fn test_shifts() {
         let a2b3 = a1b2.shift(&Dir::N);
-        assert_eq!(a2b3, Bitboard::A2 | Bitboard::B3 );
-        assert!(Bitboard::D8.shift(&Dir::N).is_empty() );
-        assert_eq!(Bitboard::D8.shift(&Dir::E), Bitboard::E8 );
+        assert_eq!(a2b3, Bitboard::A2 | Bitboard::B3);
+        assert!(Bitboard::D8.shift(&Dir::N).is_empty());
+        assert_eq!(Bitboard::D8.shift(&Dir::E), Bitboard::E8);
     }
 
     #[test]
@@ -229,13 +307,14 @@ mod tests {
         assert_eq!(format!("{:b}", a1b2), "1000000001");
     }
 
-
     #[test]
     fn test_directions() {
         let dir = Dir::N;
         assert_eq!(dir.shift, 8);
-        assert_eq!( Dir::ALL[0], Dir::N );
-        assert_eq!( format!("{:?}", Dir::N), "Dir { index: 0, shift: 8, mask: A8 | B8 | C8 | D8 | E8 | F8 | G8 | H8 | RANK_8 }" );
+        assert_eq!(Dir::ALL[0], Dir::N);
+        assert_eq!(
+            format!("{:?}", Dir::N),
+            "Dir { index: 0, shift: 8, mask: A8 | B8 | C8 | D8 | E8 | F8 | G8 | H8 | RANK_8 }"
+        );
     }
 }
-    
