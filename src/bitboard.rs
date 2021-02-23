@@ -23,6 +23,39 @@ bitflags! {
 }
 
 
+pub enum Piece {
+    PAWN = 0,
+    KNIGHT = 1,
+    BISHOP = 2,
+    ROOK = 3,
+    QUEEN = 4,
+    KING = 5,
+}
+
+impl Piece {
+    const ALL: [Piece; 6] = [Piece::PAWN, Piece::KNIGHT, Piece::BISHOP, Piece::ROOK, Piece::QUEEN, Piece::KING];
+}
+
+
+
+pub struct Bitboards {
+    bitboards: [Bitboard; Piece::ALL.len()], 
+    sides: [Bitboard; 2],
+}
+
+
+impl Bitboards {
+    pub fn bitboard(&self, c: &Color, p: Piece) -> Bitboard {
+        self.bitboards[p as usize] & self.sides[c.index]
+    }
+
+}
+
+
+
+
+
+
 impl Color {
     pub const WHITE: Self = Color {
         index: 0,

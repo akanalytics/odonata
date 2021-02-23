@@ -1,4 +1,4 @@
-use crate::bitboard::{Bitboard, Dir, Color, CastlingRights};
+use crate::bitboard::{Bitboard, Bitboards, Piece, Dir, Color, CastlingRights};
 // use lazy_static::lazy_static;
 
 pub trait BitboardAttacks {
@@ -61,19 +61,19 @@ pub trait BitboardAttacks {
     // addMove King +/- 2, add rook -2/+3
     // castling rights
 
-    fn castling(&self, king: Bitboard, occupied: Bitboard, opponents: Bitboard, color: &Color, rights: &CastlingRights) -> Bitboard {
+    fn castling(&self, king: Bitboard, occupied: Bitboard, pieces: &Bitboards, color: &Color, rights: &CastlingRights) -> Bitboard {
         
         let empty = !occupied;
         let mut castlings = Bitboard::EMPTY;
         if rights.intersects(color.castle_rights_king) && !color.kingside_castle_sqs.intersects(occupied) {
             let king_moves = king | color.kingside_castle_sqs;
-            if self.attackers(king_moves, empty, opponents, color).is_empty() {
+            if self.attacked_by(king_moves, empty, pieces, color).is_empty() {
                 castlings = king.shift(&Dir::E).shift(&Dir::E);  
             }
         }
         if rights.intersects(color.castle_rights_queen) && !color.queenside_castle_sqs.intersects(occupied) {
             let king_moves = king | color.queenside_castle_sqs;
-            if self.attackers(king_moves, empty, opponents, color).is_empty() {
+            if self.attacked_by(king_moves, empty, pieces, &color).is_empty() {
                 castlings = castlings | king.shift(&Dir::W).shift(&Dir::W); 
             }
         }
@@ -81,10 +81,32 @@ pub trait BitboardAttacks {
     }
 
 
-    fn attackers(&self, target: Bitboard, empty: Bitboard, opponents: Bitboard, color: &Color) -> Bitboard {
-        Bitboard::EMPTY
+
+    fn attacked_by(&self, target: Bitboard, empty: Bitboard, pieces: &Bitboards, target_color: &Color) -> Bitboard {
+        // for eachsq in target
+        
+        self.knight_attacks(sq) & pieces.bitboard(target_color.opposite(), Piece::KNIGHT);
+        self.king_attacks(sq) & pieces.bitboard(target_color.opposite(), Piece::KING);
+        self.bishop_attacks(sq) & (pieces.bitboard(target_color.opposite(), Piece::KING);
+        self.king_attacks(sq) & pieces.bitboard(target_color.opposite(), Piece::KING);
+        self.king_attacks(sq) & pieces.bitboard(target_color.opposite(), Piece::KING);
     }
 
+        // queens = bitboards[Pieces.QUEEN]
+        // bishops = bitboards[Pieces.BISHOP]
+        // rooks = bitboards[Pieces.ROOK]
+        // knights = bitboards[Pieces.KNIGHT]
+        // pawns = bitboards[Pieces.PAWN]
+        // kings = bitboards[Pieces.KING]
+
+        // attacks_from_officers = (bishop_attacks(bishops | queens, empty) |
+        //     rook_attacks(rooks | queens, empty) |
+        //     knight_attacks(knights) |
+        //     king_attacks(kings))
+
+        // moving_side = Side.opposing_side(target_color)
+        // attacks_from_pawns = self.pawn_attacks(pawns, moving_side)
+        // return (attacks_from_officers | attacks_from_pawns) & target
 
 }
 
