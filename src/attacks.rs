@@ -1,4 +1,6 @@
-use crate::bitboard::{Bitboard, Bitboards, Piece, Dir, Color, CastlingRights};
+use crate::bitboard::{Bitboard, Dir};
+use crate::board::Color;
+
 // use lazy_static::lazy_static;
 
 pub trait BitboardAttacks {
@@ -23,11 +25,10 @@ pub trait BitboardAttacks {
         bb
     }
 
-
     #[inline]
     fn pawn_pushes(&self, occupied: Bitboard, pawns: Bitboard, color: &Color) -> Bitboard {
         let empty = !occupied;
-        let single = pawns.shift(&color.pawn_move) & empty; 
+        let single = pawns.shift(&color.pawn_move) & empty;
         single | (single.shift(&color.pawn_move) & empty & color.double_push_dest_rank)
     }
 
@@ -36,8 +37,13 @@ pub trait BitboardAttacks {
         (pawns.shift(&color.pawn_capture_east), pawns.shift(&color.pawn_capture_west))
     }
 
-
-    fn pawn_en_passant_captures(&self, pawns: Bitboard, opponent: Bitboard, color: &Color, en_passant: Bitboard) -> (Bitboard, Bitboard) {
+    fn pawn_en_passant_captures(
+        &self,
+        pawns: Bitboard,
+        opponent: Bitboard,
+        color: &Color,
+        en_passant: Bitboard,
+    ) -> (Bitboard, Bitboard) {
         assert!(!en_passant.is_empty());
         let (east, west) = self.pawn_attacks(pawns, color);
 
@@ -48,79 +54,9 @@ pub trait BitboardAttacks {
             return (Bitboard::EMPTY, Bitboard::EMPTY);
         }
 
-        return (east & en_passant, west & en_passant) 
+        return (east & en_passant, west & en_passant);
     }
-
-    // castling
-    // check castling rights (cheap)
-    // check king not in check
-    // side = +/-2
-    // check king+1 and king+2 for being clear on kings side
-    // check king-1, king-2, king-3 clear on queens
-    // check that king +/- 1 and king +/- 2 isnt in check
-    // addMove King +/- 2, add rook -2/+3
-    // castling rights
-
-    fn castling(&self, king: Bitboard, occupied: Bitboard, pieces: &Bitboards, color: &Color, rights: &CastlingRights) -> Bitboard {
-        
-        let empty = !occupied;
-        let mut castlings = Bitboard::EMPTY;
-        if rights.intersects(color.castle_rights_king) && !color.kingside_castle_sqs.intersects(occupied) {
-            let king_moves = king | color.kingside_castle_sqs;
-            if self.attacked_by(king_moves, empty, pieces, color).is_empty() {
-                castlings = king.shift(&Dir::E).shift(&Dir::E);  
-            }
-        }
-        if rights.intersects(color.castle_rights_queen) && !color.queenside_castle_sqs.intersects(occupied) {
-            let king_moves = king | color.queenside_castle_sqs;
-            if self.attacked_by(king_moves, empty, pieces, &color).is_empty() {
-                castlings = castlings | king.shift(&Dir::W).shift(&Dir::W); 
-            }
-        }
-        castlings
-    }
-
-
-
-    fn attacked_by(&self, target: Bitboard, empty: Bitboard, pieces: &Bitboards, target_color: &Color) -> Bitboard {
-        // for eachsq in target
-        
-        self.knight_attacks(sq) & pieces.bitboard(target_color.opposite(), Piece::KNIGHT);
-        self.king_attacks(sq) & pieces.bitboard(target_color.opposite(), Piece::KING);
-        self.bishop_attacks(sq) & (pieces.bitboard(target_color.opposite(), Piece::KING);
-        self.king_attacks(sq) & pieces.bitboard(target_color.opposite(), Piece::KING);
-        self.king_attacks(sq) & pieces.bitboard(target_color.opposite(), Piece::KING);
-    }
-
-        // queens = bitboards[Pieces.QUEEN]
-        // bishops = bitboards[Pieces.BISHOP]
-        // rooks = bitboards[Pieces.ROOK]
-        // knights = bitboards[Pieces.KNIGHT]
-        // pawns = bitboards[Pieces.PAWN]
-        // kings = bitboards[Pieces.KING]
-
-        // attacks_from_officers = (bishop_attacks(bishops | queens, empty) |
-        //     rook_attacks(rooks | queens, empty) |
-        //     knight_attacks(knights) |
-        //     king_attacks(kings))
-
-        // moving_side = Side.opposing_side(target_color)
-        // attacks_from_pawns = self.pawn_attacks(pawns, moving_side)
-        // return (attacks_from_officers | attacks_from_pawns) & target
-
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 pub struct ClassicalBitboard {
     rays: [[Bitboard; 8]; 64],
@@ -144,7 +80,7 @@ impl ClassicalBitboard {
                 classical.king_moves[sq] |= bb.shift(dir);
 
                 // for example a night attack might be step N followed by step NE
-                let next_dir = &Dir::ALL[(dir.index+1) % 8];
+                let next_dir = &Dir::ALL[(dir.index + 1) % 8];
                 classical.knight_moves[sq] |= bb.shift(dir).shift(next_dir);
             }
         }
@@ -156,13 +92,9 @@ impl ClassicalBitboard {
         let blockers = attacks & occupied;
 
         if blockers.is_empty() {
-            return attacks
+            return attacks;
         }
-        let blocker_sq = if dir.shift > 0 {
-            blockers.first_square()
-        } else {
-            blockers.last_square()
-        };
+        let blocker_sq = if dir.shift > 0 { blockers.first_square() } else { blockers.last_square() };
         // println!("attcks::: dir:{}, from:sq:{} blockers: {:?} blocker_sq:{} \n",  dir.index, from_sq, blockers, blocker_sq);
         // println!("blockers:\n{} \nattacks:\n{} \n",blockers, attacks);
         // println!("minus\n{}\n", self.attacks[blocker_sq][dir.index]);
@@ -195,8 +127,6 @@ impl BitboardAttacks for ClassicalBitboard {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -205,56 +135,55 @@ mod tests {
     #[test]
     fn test_rays() {
         let north = ClassicalBitboard::ray(&Dir::N, c3);
-        assert_eq!(north, c4|c5|c6|c7|c8);
-        assert_eq!(north.count(), 5);
+        assert_eq!(north, c4 | c5 | c6 | c7 | c8);
+        assert_eq!(north.len(), 5);
 
-        assert_eq!(ClassicalBitboard::ray(&Dir::NE, c3), d4|e5|f6|g7|h8);
-        assert_eq!(ClassicalBitboard::ray(&Dir::SW, c3), a1|b2);
-        assert_eq!(ClassicalBitboard::ray(&Dir::S, c3), c1|c2);
-        assert_eq!(ClassicalBitboard::ray(&Dir::NW, c3), a5|b4);
+        assert_eq!(ClassicalBitboard::ray(&Dir::NE, c3), d4 | e5 | f6 | g7 | h8);
+        assert_eq!(ClassicalBitboard::ray(&Dir::SW, c3), a1 | b2);
+        assert_eq!(ClassicalBitboard::ray(&Dir::S, c3), c1 | c2);
+        assert_eq!(ClassicalBitboard::ray(&Dir::NW, c3), a5 | b4);
 
         let classical = ClassicalBitboard::new();
         let north = classical.rays[16 + 2][Dir::N.index];
         assert!(north.contains(c8));
-        assert_eq!(north.count(), 5);
+        assert_eq!(north.len(), 5);
     }
 
     #[test]
     fn test_rook_attacks() {
         let classical = ClassicalBitboard::new();
-        let occupied = a1|a2|a7|c3|c6;
+        let occupied = a1 | a2 | a7 | c3 | c6;
         let attacks = classical.rook_attacks(occupied, Bitboard::A6.first_square());
-        assert_eq!(attacks, (Bitboard::FILE_A - a1 - a6 - a8) | b6|c6)
+        assert_eq!(attacks, (Bitboard::FILE_A - a1 - a6 - a8) | b6 | c6)
     }
 
     #[test]
     fn test_bishop_attacks() {
         let classical = ClassicalBitboard::new();
-        let occupied = a1|a2|a7|c3|c6;
+        let occupied = a1 | a2 | a7 | c3 | c6;
         let attacks = classical.bishop_attacks(occupied, Bitboard::A6.first_square());
-        assert_eq!(attacks, f1|e2|d3|c4|b5|b7|c8)
+        assert_eq!(attacks, f1 | e2 | d3 | c4 | b5 | b7 | c8)
     }
 
     #[test]
     fn test_king_attacks() {
         let classical = ClassicalBitboard::new();
         let attacks = classical.king_attacks(Bitboard::A6.first_square());
-        assert_eq!(attacks, a5|b5|b6|b7|a7);
+        assert_eq!(attacks, a5 | b5 | b6 | b7 | a7);
 
         let attacks = classical.king_attacks(Bitboard::C6.first_square());
-        assert_eq!(attacks, b5|c5|d5|b6|d6|b7|c7|d7)
+        assert_eq!(attacks, b5 | c5 | d5 | b6 | d6 | b7 | c7 | d7)
     }
 
     #[test]
     fn test_knight_attacks() {
         let classical = ClassicalBitboard::new();
         let attacks = classical.knight_attacks(Bitboard::A1.first_square());
-        assert_eq!(attacks, b3|c2);
+        assert_eq!(attacks, b3 | c2);
 
         let attacks = classical.knight_attacks(Bitboard::C6.first_square());
-        assert_eq!(attacks, a5|a7|b4|b8|d4|d8|e5|e7)
+        assert_eq!(attacks, a5 | a7 | b4 | b8 | d4 | d8 | e5 | e7)
     }
-
 
     #[test]
     fn test_pawns() {
@@ -264,18 +193,18 @@ mod tests {
         let occupied = pawns_w | opponent;
 
         let pawn_single_push = classical.pawn_pushes(occupied, pawns_w, &Color::WHITE);
-        let expect_single_push = a3 | c3 | d8 | f6 | h6;
-        let expect_double_push = c4;
-        assert_eq!(pawn_single_push, expect_single_push | expect_double_push);
+        let single = a3 | c3 | d8 | f6 | h6;
+        let double = c4;
+        assert_eq!(pawn_single_push, single | double);
 
-        let (pawn_capture_e,pawn_capture_w) = classical.pawn_attacks(pawns_w, &Color::WHITE);
+        let (pawn_capture_e, pawn_capture_w) = classical.pawn_attacks(pawns_w, &Color::WHITE);
         assert_eq!(pawn_capture_e & opponent, d3);
 
-        assert_eq!(pawn_capture_w  & opponent, a4 | g5);
+        assert_eq!(pawn_capture_w & opponent, a4 | g5);
 
         let ep_square = g6;
-        let (pawn_en_passant_e, pawn_en_passant_w) = classical.pawn_en_passant_captures(pawns_w, opponent, &Color::WHITE, ep_square);
-        assert_eq!(pawn_en_passant_e, g6);
-        assert_eq!(pawn_en_passant_w, g6);
+        let (east, west) = classical.pawn_en_passant_captures(pawns_w, opponent, &Color::WHITE, ep_square);
+        assert_eq!(east, g6);
+        assert_eq!(west, g6);
     }
 }

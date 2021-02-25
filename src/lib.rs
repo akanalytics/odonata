@@ -6,7 +6,10 @@ extern crate bitflags;
 pub mod bitboard;
 mod attacks;
 mod globals;
+mod board;
+mod movegen;
 
-pub use crate::bitboard::{Bitboard, Color};
-
+pub use crate::bitboard::{Bitboard};
+pub use crate::board::{Board, Color};
 pub use crate::attacks::{ClassicalBitboard};
+pub use crate::movegen::{Move};

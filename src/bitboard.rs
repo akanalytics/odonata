@@ -1,93 +1,5 @@
 use std::fmt::{self, Write};
 
-pub struct Color {
-    pub index: usize,
-    pub pawn_move: Dir,
-    pub pawn_capture_east: Dir,
-    pub pawn_capture_west: Dir,
-    pub kingside_castle_sqs: Bitboard,
-    pub queenside_castle_sqs: Bitboard,
-    pub double_push_dest_rank: Bitboard,
-    pub castle_rights_queen: CastlingRights,
-    pub castle_rights_king: CastlingRights,
-}
-
-
-bitflags! { 
-    pub struct CastlingRights: u8 {
-        const WHITE_KING = 1 << 0;
-        const WHITE_QUEEN = 1 << 1;
-        const BLACK_KING = 1 << 2;
-        const BLACK_QUEEN = 1 << 3;
-    }
-}
-
-
-pub enum Piece {
-    PAWN = 0,
-    KNIGHT = 1,
-    BISHOP = 2,
-    ROOK = 3,
-    QUEEN = 4,
-    KING = 5,
-}
-
-impl Piece {
-    const ALL: [Piece; 6] = [Piece::PAWN, Piece::KNIGHT, Piece::BISHOP, Piece::ROOK, Piece::QUEEN, Piece::KING];
-}
-
-
-
-pub struct Bitboards {
-    bitboards: [Bitboard; Piece::ALL.len()], 
-    sides: [Bitboard; 2],
-}
-
-
-impl Bitboards {
-    pub fn bitboard(&self, c: &Color, p: Piece) -> Bitboard {
-        self.bitboards[p as usize] & self.sides[c.index]
-    }
-
-}
-
-
-
-
-
-
-impl Color {
-    pub const WHITE: Self = Color {
-        index: 0,
-        pawn_move: Dir::N,
-        pawn_capture_east: Dir::NE,
-        pawn_capture_west: Dir::NW,
-        kingside_castle_sqs: Bitboard::F1.or(Bitboard::G1), 
-        queenside_castle_sqs: Bitboard::D1.or(Bitboard::C1).or(Bitboard::B1), 
-        double_push_dest_rank: Bitboard::RANK_4,
-        castle_rights_queen: CastlingRights::WHITE_QUEEN,
-        castle_rights_king: CastlingRights::WHITE_KING,
-        };
-    pub const BLACK: Self = Color {
-        index: 1,
-        pawn_move: Dir::S,
-        pawn_capture_east: Dir::SE,
-        pawn_capture_west: Dir::SW,
-        kingside_castle_sqs: Bitboard::F8.or(Bitboard::G8), 
-        queenside_castle_sqs: Bitboard::D8.or(Bitboard::C8), 
-        double_push_dest_rank: Bitboard::RANK_5,
-        castle_rights_queen: CastlingRights::BLACK_QUEEN,
-        castle_rights_king: CastlingRights::BLACK_KING,
-    };
-
-    pub fn opposite(&self) -> &Color {
-        [&Color::BLACK, &Color::WHITE][self.index]
-    }
-}
-
-
-
-
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct Dir {
     pub index: usize,
@@ -96,57 +8,20 @@ pub struct Dir {
 }
 
 impl Dir {
-    pub const N: Self = Dir {
-        index: 0,
-        shift: 8,
-        mask: Bitboard::RANK_8,
-    };
-    pub const NE: Self = Dir {
-        index: 1,
-        shift: 9,
-        mask: Bitboard::RANK_8.or(Bitboard::FILE_H),
-    };
-    pub const E: Self = Dir {
-        index: 2,
-        shift: 1,
-        mask: Bitboard::FILE_H,
-    };
-    pub const SE: Self = Dir {
-        index: 3,
-        shift: -7,
-        mask: Bitboard::RANK_1.or(Bitboard::FILE_H),
-    };
-    pub const S: Self = Dir {
-        index: 4,
-        shift: -8,
-        mask: Bitboard::RANK_1,
-    };
-    pub const SW: Self = Dir {
-        index: 5,
-        shift: -9,
-        mask: Bitboard::RANK_1.or(Bitboard::FILE_A),
-    };
-    pub const W: Self = Dir {
-        index: 6,
-        shift: -1,
-        mask: Bitboard::FILE_A,
-    };
-    pub const NW: Self = Dir {
-        index: 7,
-        shift: 7,
-        mask: Bitboard::RANK_8.or(Bitboard::FILE_A),
-    };
+    pub const N: Self = Dir { index: 0, shift: 8, mask: Bitboard::RANK_8 };
+    pub const NE: Self = Dir { index: 1, shift: 9, mask: Bitboard::RANK_8.or(Bitboard::FILE_H) };
+    pub const E: Self = Dir { index: 2, shift: 1, mask: Bitboard::FILE_H };
+    pub const SE: Self = Dir { index: 3, shift: -7, mask: Bitboard::RANK_1.or(Bitboard::FILE_H) };
+    pub const S: Self = Dir { index: 4, shift: -8, mask: Bitboard::RANK_1 };
+    pub const SW: Self = Dir { index: 5, shift: -9, mask: Bitboard::RANK_1.or(Bitboard::FILE_A) };
+    pub const W: Self = Dir { index: 6, shift: -1, mask: Bitboard::FILE_A };
+    pub const NW: Self = Dir { index: 7, shift: 7, mask: Bitboard::RANK_8.or(Bitboard::FILE_A) };
 
-    pub const ALL: [Self; 8] = [
-        Self::N,
-        Self::NE,
-        Self::E,
-        Self::SE,
-        Self::S,
-        Self::SW,
-        Self::W,
-        Self::NW,
-    ];
+    pub const ALL: [Self; 8] = [Self::N, Self::NE, Self::E, Self::SE, Self::S, Self::SW, Self::W, Self::NW];
+
+    pub fn opposite(&self) -> &Dir {
+        &Self::ALL[(self.index + 4) % 8]
+    }
 }
 
 // generated from https://docs.google.com/spreadsheets/d/1TB2TKX04VsR10CLNLDIvrufm6wSJOttXOyPNKndU4N0/edit?usp=sharing
@@ -176,6 +51,7 @@ bitflags! {
 
 impl Bitboard {
     // const EDGES:Self = Self::FILE_A.or(Self::FILE_H).or(Self::RANK_1).or(Self::RANK_8);
+    pub const PROMO_RANKS: Self = Bitboard::RANK_1.or(Bitboard::RANK_8);
 
     #[inline]
     pub fn from_xy(x: u32, y: u32) -> Bitboard {
@@ -222,7 +98,6 @@ impl Bitboard {
 
     #[inline]
     pub fn last_square(self) -> usize {
-        // MSB
         let msb = self.bits.leading_zeros() as usize;
         if msb < 64 {
             63 - msb
@@ -239,28 +114,41 @@ impl Bitboard {
 
     #[inline]
     pub fn last(self) -> Self {
-        // MSB
-        Bitboard::from_bits_truncate(1 << self.last_square())
+        Bitboard::from_bits_truncate(1 << self.last_square())  // MSb
     }
 
     #[inline]
     pub fn first(self) -> Self {
-        // LSB
-        Bitboard::from_bits_truncate(1 << self.first_square())
+        Bitboard::from_bits_truncate(1 << self.first_square())  // LSb
+    }
+
+    #[inline]
+    pub fn iter(self) -> BitIterator {
+        BitIterator { bb: self }
     }
 }
 
-impl Iterator for Bitboard {
-    type Item = Self;
+pub struct BitIterator {
+    bb: Bitboard,
+}
+
+impl Iterator for BitIterator {
+    type Item = Bitboard;
+
     #[inline]
-    fn next(&mut self) -> Option<Self> {
-        if self.is_empty() {
+    fn next(&mut self) -> Option<Bitboard> {
+        if self.bb.is_empty() {
             None
         } else {
-            let sq = self.first();
-            *self ^= sq;
+            let sq = self.bb.first();
+            self.bb ^= sq;
             Some(sq)
         }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let bitcount = self.bb.len() as usize;
+        (bitcount, Some(bitcount))
     }
 }
 
@@ -269,11 +157,7 @@ impl fmt::Display for Bitboard {
         for r in (0..8).rev() {
             for f in 0..8 {
                 let bit = 1 << (r * 8 + f);
-                fmt.write_char(if self.contains(Bitboard::from_bits_truncate(bit)) {
-                    '1'
-                } else {
-                    '.'
-                })?;
+                fmt.write_char(if self.contains(Bitboard::from_bits_truncate(bit)) { '1' } else { '.' })?;
                 fmt.write_char(' ')?;
             }
             fmt.write_char('\n')?;
@@ -332,10 +216,7 @@ mod tests {
     fn test_formats() {
         assert_eq!(format!("{}", a1b2), ". . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. 1 . . . . . . \n1 . . . . . . . \n");
         assert_eq!(format!("{:?}", a1b2), "A1 | B2");
-        assert_eq!(
-            format!("{:?}", Bitboard::FILE_A),
-            "A1 | A2 | A3 | A4 | A5 | A6 | A7 | A8 | FILE_A"
-        );
+        assert_eq!(format!("{:?}", Bitboard::FILE_A), "A1 | A2 | A3 | A4 | A5 | A6 | A7 | A8 | FILE_A");
         // assert_eq!(format!("{:?}", Bitboard::EDGES), "");
         assert_eq!(format!("{:b}", a1b2), "1000000001");
     }
@@ -349,5 +230,25 @@ mod tests {
             format!("{:?}", Dir::N),
             "Dir { index: 0, shift: 8, mask: A8 | B8 | C8 | D8 | E8 | F8 | G8 | H8 | RANK_8 }"
         );
+    }
+
+    // #[test]
+    // fn test_iterator() {
+    //     let mut a1b1c1 = a1 | b1 | c1;
+    //     assert_eq!(a1b1c1.next(), Some(a1));
+    //     assert_eq!(a1b1c1.next(), Some(b1));
+    //     assert_eq!(a1b1c1.next(), Some(c1));
+    //     assert_eq!(a1b1c1.next(), None);
+    // }
+
+    #[test]
+    fn test_iterator() {
+        let a1b1c1 = a1 | b1 | c1;
+        let mut i = a1b1c1.iter();
+        assert_eq!(i.next(), Some(a1));
+        assert_eq!(i.next(), Some(b1));
+        assert_eq!(i.next(), Some(c1));
+        assert_eq!(i.next(), None);
+        assert_eq!(a1b1c1.iter().count(), 3);
     }
 }
