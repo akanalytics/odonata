@@ -261,12 +261,12 @@ impl BoardBuf {
             bb.remove(sq);
         } 
         // self.0.pieces(p).remove(sq);
-        self.0.pieces(p).insert(sq);
+        self.0.pieces[p.index()].insert(sq);
     }
 
     pub fn set_color_at(&mut self, sq: Bitboard, c: Color) {
         self.0.color(c.opposite()).remove(sq);
-        self.0.color(c).insert(sq);
+        self.0.colors[c.index].insert(sq);
     }
 
 
