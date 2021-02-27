@@ -53,6 +53,9 @@ impl Bitboard {
     // const EDGES:Self = Self::FILE_A.or(Self::FILE_H).or(Self::RANK_1).or(Self::RANK_8);
     pub const PROMO_RANKS: Self = Bitboard::RANK_1.or(Bitboard::RANK_8);
 
+
+    // insert, remove, set(true/false), toggle come for free
+
     #[inline]
     pub fn from_xy(x: u32, y: u32) -> Bitboard {
         let bit = 1 << (y * 8 + x);
