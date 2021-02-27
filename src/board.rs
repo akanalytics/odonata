@@ -1,6 +1,7 @@
 use crate::bitboard::{Bitboard, Dir};
 use crate::globals::*;
 use std::iter::*;
+use std::fmt::{self, Write};
 
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -292,7 +293,7 @@ impl BoardBuf {
     }
 
     pub fn set(&mut self, bb: Bitboard, pieces: &str) -> &mut Self {
-        assert!(pieces.len() == 1 || pieces.len() == bb.len() as usize);
+        assert!(pieces.len() == bb.len() as usize);
         for (sq, ch) in bb.iter().zip(pieces.chars()) {
             let p = Piece::from_char(ch);
             let c = Color::from_char(ch);
@@ -308,6 +309,17 @@ impl BoardBuf {
 }
 
 
+impl fmt::Display for Board {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let b = BoardBuf(*self);
+        for &r in Bitboard::RANKS.iter().rev() {
+            fmt.write_str(&b.get(r))?;
+            fmt.write_char('\n')?;
+        }
+        Ok(())
+    }
+    
+}
 
 
 // impl  std::ops::IndexMut<Bitboard> for Board {
@@ -349,7 +361,8 @@ mod tests {
 
         // assert_eq!(board[a1], 'R');
         let mut buf = BoardBuf::new();
-        buf.set(Bitboard::RANK_2, "P").set(a1|h1, "RR").set(b1|g1, "NN").set(c1|d1|e1|f1, "BQKB");
+        buf.set(Bitboard::RANK_2, "PPPPPPPP").set(a1|h1, "RR").set(b1|g1, "NN").set(c1|d1|e1|f1, "BQKB");
+        buf.set(Bitboard::RANK_7, "pppppppp").set(Bitboard::RANK_8, "rnbqkbnr");
         assert_eq!(buf.get(a1), "R");
         // let b = hashmap!{ a1+h1 => "R", b1+g1 => "N" };
         // let b = BoardBuf::new().rooks(a1|h1).knights(b1|g1).pawns(rank_2).set("RNBQKBNR", rank_1);
@@ -358,6 +371,7 @@ mod tests {
         // let b = BoardBuf::new().k(a1).K(h8).r(a2).R(c3);
         // let b = BoardBuf::new().set(a1=k, rank_2=p, );
         // todo!()
+        println!("{}", buf.as_board() )
 
     }
 }

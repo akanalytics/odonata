@@ -51,7 +51,8 @@ bitflags! {
 
 impl Bitboard {
     // const EDGES:Self = Self::FILE_A.or(Self::FILE_H).or(Self::RANK_1).or(Self::RANK_8);
-    pub const PROMO_RANKS: Self = Bitboard::RANK_1.or(Bitboard::RANK_8);
+    pub const PROMO_RANKS: Self = Self::RANK_1.or(Self::RANK_8);
+    pub const RANKS: [Self;8] = [Self::RANK_1, Self::RANK_2, Self::RANK_3, Self::RANK_4, Self::RANK_5, Self::RANK_6, Self::RANK_7, Self::RANK_8];
 
 
     // insert, remove, set(true/false), toggle come for free
