@@ -142,12 +142,12 @@ impl MoveGen {
     }
 
     fn attacked_by(&self, target: Bitboard, occ: Bitboard, board: &Board, c: &Color) -> Bitboard {
-        let pawns = board.pieces(c.opposite(), Piece::Pawn);
-        let knights = board.pieces(c.opposite(), Piece::Knight);
-        let kings = board.pieces(c.opposite(), Piece::King);
-        let rooks = board.pieces(c.opposite(), Piece::Rook);
-        let bishops = board.pieces(c.opposite(), Piece::Bishop);
-        let queens = board.pieces(c.opposite(), Piece::Queen);
+        let pawns = board.pawns() & board.them();
+        let knights = board.knights() & board.them();
+        let bishops = board.bishops() & board.them();
+        let rooks = board.rooks() & board.them();
+        let queens = board.queens() & board.them();
+        let kings = board.kings() & board.them();
 
         let (east, west) = self.attack_gen.pawn_attacks(target, c);
         let mut attackers = (east | west) & pawns;
