@@ -1,6 +1,6 @@
 use crate::attacks::{BitboardAttacks, ClassicalBitboard};
 use crate::bitboard::{Bitboard, Dir};
-use crate::board::{Board, CastlingRights, Color, Piece};
+use crate::board::{Board, BoardBuf, CastlingRights, Color, Piece};
 use Vec;
 
 #[derive(Debug)]
@@ -178,3 +178,26 @@ impl MoveGen {
     // attacks_from_pawns = self.pawn_attacks(pawns, moving_side)
     // return (attacks_from_officers | attacks_from_pawns) & target
 }
+
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::globals::constants::*;
+
+    #[test]
+    fn pseudo_legal_moves() {
+        let mg = MoveGen {
+            attack_gen: ClassicalBitboard::new(),
+        };
+        let mut moves: Vec<Move> = Vec::new();
+        let board = BoardBuf::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap().as_board();
+        mg.pseudo_legal_moves(&board, &mut moves);
+        println!("{}", board);
+        assert_eq!(format!("{:?}", moves), "vec![]");
+    }
+}
+ 

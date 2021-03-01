@@ -243,11 +243,12 @@ impl Board {
         Piece::None
     }
 
+
 }
 
 
 /// BoardBuf is a slow performing facade of convenience methods on board
-struct BoardBuf(Board);
+pub struct BoardBuf(Board);
 
 impl BoardBuf {
     pub fn new() -> BoardBuf {
