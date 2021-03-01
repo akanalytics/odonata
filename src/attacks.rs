@@ -153,7 +153,7 @@ mod tests {
     fn test_rook_attacks() {
         let classical = ClassicalBitboard::new();
         let occupied = a1 | a2 | a7 | c3 | c6;
-        let attacks = classical.rook_attacks(occupied, Bitboard::A6.first_square());
+        let attacks = classical.rook_attacks(occupied, a6.first_square());
         assert_eq!(attacks, (Bitboard::FILE_A - a1 - a6 - a8) | b6 | c6)
     }
 
@@ -161,27 +161,31 @@ mod tests {
     fn test_bishop_attacks() {
         let classical = ClassicalBitboard::new();
         let occupied = a1 | a2 | a7 | c3 | c6;
-        let attacks = classical.bishop_attacks(occupied, Bitboard::A6.first_square());
-        assert_eq!(attacks, f1 | e2 | d3 | c4 | b5 | b7 | c8)
+        let attacks = classical.bishop_attacks(occupied, a6.first_square());
+        assert_eq!(attacks, f1 | e2 | d3 | c4 | b5 | b7 | c8);
+
+        let occupied = b2;
+        let attacks = classical.bishop_attacks(occupied, c1.first_square());
+        assert_eq!(attacks, b2 | d2 | e3 | f4 | g5 | h6);
     }
 
     #[test]
     fn test_king_attacks() {
         let classical = ClassicalBitboard::new();
-        let attacks = classical.king_attacks(Bitboard::A6.first_square());
+        let attacks = classical.king_attacks(a6.first_square());
         assert_eq!(attacks, a5 | b5 | b6 | b7 | a7);
 
-        let attacks = classical.king_attacks(Bitboard::C6.first_square());
+        let attacks = classical.king_attacks(c6.first_square());
         assert_eq!(attacks, b5 | c5 | d5 | b6 | d6 | b7 | c7 | d7)
     }
 
     #[test]
     fn test_knight_attacks() {
         let classical = ClassicalBitboard::new();
-        let attacks = classical.knight_attacks(Bitboard::A1.first_square());
+        let attacks = classical.knight_attacks(a1.first_square());
         assert_eq!(attacks, b3 | c2);
 
-        let attacks = classical.knight_attacks(Bitboard::C6.first_square());
+        let attacks = classical.knight_attacks(c6.first_square());
         assert_eq!(attacks, a5 | a7 | b4 | b8 | d4 | d8 | e5 | e7)
     }
 

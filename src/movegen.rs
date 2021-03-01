@@ -11,7 +11,8 @@ pub enum Move {
     PawnCapture { dest: Bitboard, src: Bitboard, capture: Piece },
     Push { dest: Bitboard },
     Castle { dest: Bitboard },
-    Quiet { dest: Bitboard },
+    Quiet { dest: Bitboard, src: Bitboard, mover: Piece },
+    Capture { dest: Bitboard, src: Bitboard, mover: Piece, capture: Piece },
     Null(),
     Drop { dest: Bitboard, piece: Piece },
 }
@@ -24,11 +25,11 @@ impl MoveGen {
     // Vec::with_capacity(100).
     fn pseudo_legal_moves(&self, board: &Board, moves: &mut Vec<Move>) {
         let color = Color::WHITE;
-        let oppo = Bitboard::EMPTY; //self.board.w.bits
-        let prop = Bitboard::EMPTY;
-        let occupied = oppo | prop;
+        let them = board.them(); 
+        let us = board.us();
+        let occupied = us | them;
 
-        let pawns = Bitboard::EMPTY;
+        let pawns = board.pawns() & us;
 
         // non-promoted single-push pawns
         let pawn_push = self.attack_gen.pawn_pushes(occupied, pawns, &color);
@@ -42,32 +43,92 @@ impl MoveGen {
         }
         // pawn_captures
         let (pawn_captures_e, pawn_captures_w) = self.attack_gen.pawn_attacks(pawns, &color);
-        for dest in (pawn_captures_e & !Bitboard::PROMO_RANKS).iter() {
+        for dest in (pawn_captures_e & them & !Bitboard::PROMO_RANKS).iter() {
             let src = dest.shift(&color.pawn_capture_east.opposite());
             let capture = board.piece_at(dest);
             moves.push(Move::PawnCapture { dest, src, capture });
         }
-        for dest in (pawn_captures_w & !Bitboard::PROMO_RANKS).iter() {
+        for dest in (pawn_captures_w & them & !Bitboard::PROMO_RANKS).iter() {
             let src = dest.shift(&color.pawn_capture_west.opposite());
             let capture = board.piece_at(dest);
             moves.push(Move::PawnCapture { dest, src, capture });
         }
 
         // pawn capture-promos
-        for dest in (pawn_captures_e & Bitboard::PROMO_RANKS).iter() {
+        for dest in (pawn_captures_e & them & Bitboard::PROMO_RANKS).iter() {
             let src = dest.shift(&color.pawn_capture_east.opposite());
             let capture = board.piece_at(dest);
             for &promo in &[Piece::Queen, Piece::Knight, Piece::Rook, Piece::Bishop] {
                 moves.push(Move::PromoCapture { dest, src, promo, capture });
             }
         }
-        for dest in (pawn_captures_w & Bitboard::PROMO_RANKS).iter() {
+        for dest in (pawn_captures_w & them & Bitboard::PROMO_RANKS).iter() {
             let src = dest.shift(&color.pawn_capture_west.opposite());
             for &promo in &[Piece::Queen, Piece::Knight, Piece::Rook, Piece::Bishop] {
                 let capture = board.piece_at(dest);
                 moves.push(Move::PromoCapture { dest, src, promo, capture });
             }
         }
+    
+        // knights
+        for src in (board.knights() & us).iter() {
+            let attacks = self.attack_gen.knight_attacks(src.first_square()) & !us;
+            for dest in attacks.iter() {
+                if them.contains(dest) {
+                    moves.push(Move::Capture { dest, src, mover: Piece::Knight, capture: board.piece_at(dest) });
+                } else {
+                    moves.push(Move::Quiet { dest, src, mover: Piece::Knight });
+                }
+            }
+        }
+    
+        // sliders
+        for src in (board.bishops() & us).iter() {
+            let attacks = !us & self.attack_gen.bishop_attacks(occupied, src.first_square());
+            // println!("{}\n{}\n{}\n", src, attacks, occupied);
+            for dest in attacks.iter() {
+                if them.contains(dest) {
+                    moves.push(Move::Capture { dest, src, mover: Piece::Bishop, capture: board.piece_at(dest) });
+                } else {
+                    moves.push(Move::Quiet { dest, src, mover: Piece::Bishop });
+                }
+            }
+        }
+        for src in (board.rooks() & us).iter() {
+            let attacks = !us & self.attack_gen.rook_attacks(occupied, src.first_square());
+            // println!("{}\n{}\n{}\n", src, attacks, occupied);
+            for dest in attacks.iter() {
+                if them.contains(dest) {
+                    moves.push(Move::Capture { dest, src, mover: Piece::Rook, capture: board.piece_at(dest) });
+                } else {
+                    moves.push(Move::Quiet { dest, src, mover: Piece::Rook });
+                }
+            }
+        }
+        for src in (board.queens() & us).iter() {
+            let attacks = !us & (self.attack_gen.rook_attacks(occupied, src.first_square()) | self.attack_gen.bishop_attacks(occupied, src.first_square()));
+            // println!("{}\n{}\n{}\n", src, attacks, occupied);
+            for dest in attacks.iter() {
+                if them.contains(dest) {
+                    moves.push(Move::Capture { dest, src, mover: Piece::Queen, capture: board.piece_at(dest) });
+                } else {
+                    moves.push(Move::Quiet { dest, src, mover: Piece::Queen });
+                }
+            }
+        }
+        for src in (board.kings() & us).iter() {
+            let attacks = !us & self.attack_gen.king_attacks(src.first_square());
+            // println!("{}\n{}\n{}\n", src, attacks, occupied);
+            for dest in attacks.iter() {
+                if them.contains(dest) {
+                    moves.push(Move::Capture { dest, src, mover: Piece::King, capture: board.piece_at(dest) });
+                } else {
+                    moves.push(Move::Quiet { dest, src, mover: Piece::King });
+                }
+            }
+        }
+    
+    
     }
     // # pawn_captures e/p - cant be promos
     // if b.en_passant:
@@ -189,15 +250,20 @@ mod tests {
     use crate::globals::constants::*;
 
     #[test]
-    fn pseudo_legal_moves() {
+    fn pseudo_legal_moves() -> Result<(), String> {
         let mg = MoveGen {
             attack_gen: ClassicalBitboard::new(),
         };
         let mut moves: Vec<Move> = Vec::new();
-        let board = BoardBuf::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap().as_board();
+        let mut buf = BoardBuf::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap();
+        buf.set(a2, ".")?;
+        buf.set(d2, ".")?;
+        buf.set(d4, "P")?;
+        let board = buf.as_board();
         mg.pseudo_legal_moves(&board, &mut moves);
-        println!("{}", board);
-        assert_eq!(format!("{:?}", moves), "vec![]");
+        println!("{}\n{:#?}", board, moves);
+        //assert_eq!(format!("{:#?}", moves), "vec![]");
+        Ok(())
     }
 }
  

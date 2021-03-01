@@ -145,7 +145,7 @@ impl Iterator for BitIterator {
             None
         } else {
             let sq = self.bb.first();
-            self.bb ^= sq;
+            self.bb.remove(sq);
             Some(sq)
         }
     }

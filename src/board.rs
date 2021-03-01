@@ -304,6 +304,10 @@ impl BoardBuf {
             if p != Piece::None {
                 let c = Color::from_char(ch)?;
                 self.set_color_at(sq, c);
+            } else {
+                // FIXME: broken approach - null color??
+                self.0.colors[0].remove(sq);
+                self.0.colors[1].remove(sq);
             };
         }
         Ok(self)
@@ -334,7 +338,6 @@ impl BoardBuf {
         }
         Ok(bb)
     }
-
 }
 
 
@@ -458,6 +461,19 @@ mod tests {
         let buf = BoardBuf::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap();
         assert_eq!(buf.get(a1), "R");
         assert_eq!(buf.get(Bitboard::FILE_H), "RP....pr");
+        Ok(())
+    }
+
+    fn board_bitboards() -> Result<(),String> {
+        let board = BoardBuf::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap().as_board();
+        assert_eq!(board.color_us(), Color::WHITE);
+        assert_eq!(board.color_them(), Color::BLACK);
+        // assert_eq!(board.en_passant(), Bitboard::empty());
+        // assert_eq!(board.move_count(), 0);
+        assert_eq!(board.pawns() & board.us(), Bitboard::RANK_2);
+        assert_eq!(board.rooks() & board.them(), a8|h8);
+        assert_eq!(board.bishops() & board.us(), c1|f1);
+        assert_eq!(board.them(), Bitboard::RANK_7 | Bitboard::RANK_8 );
         Ok(())
     }
 }
