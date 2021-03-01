@@ -59,14 +59,14 @@ impl Color {
         [Color::BLACK, Color::WHITE][self.index]
     }
 
-    pub fn from_char(ch : char) -> Color {
+    pub fn from_char(ch : char) -> Result<Color, String> {
         if ch.is_lowercase() {
-            return Color::BLACK;
+            return Ok(Color::BLACK);
         }
         else if ch.is_uppercase() {
-            return Color::WHITE;
+            return Ok(Color::WHITE);
         }
-        panic!(format!("Cannot get color for char '{}'", ch))
+        Err(format!("Cannot get color for char '{}'", ch))
     }
 }
 
@@ -108,8 +108,8 @@ impl Piece {
     }
 
     #[inline]
-    pub fn from_char(ch: char) -> Piece {
-        match ch.to_ascii_uppercase() {
+    pub fn from_char(ch: char) -> Result<Piece, String> {
+        Ok(match ch.to_ascii_uppercase() {
             '.'|' ' => Piece::None,
             'P' => Piece::Pawn,
             'N' => Piece::Knight,
@@ -117,9 +117,8 @@ impl Piece {
             'R' => Piece::Rook,
             'Q' => Piece::Queen,
             'K' => Piece::King,
-            _ => panic!("")
-        }
-
+            _ => return Err(format!("Unknown piece '{}'", ch))
+        })
     }
 
     #[inline]
@@ -285,28 +284,102 @@ impl BoardBuf {
         let mut res = String::new();
         for sq in bb.iter() {
             let p = self.0.piece_at(sq);
-            let c = self.color_at(sq);
-            let ch = p.to_char(c);
+            let ch = match p {
+                Piece::None => p.to_upper_char(),
+                _ => p.to_char(self.color_at(sq)),
+            };
             res.push(ch);
         }
         res
     }
 
-    pub fn set(&mut self, bb: Bitboard, pieces: &str) -> &mut Self {
-        assert!(pieces.len() == bb.len() as usize);
-        for (sq, ch) in bb.iter().zip(pieces.chars()) {
-            let p = Piece::from_char(ch);
-            let c = Color::from_char(ch);
-            self.set_piece_at(sq, p);
-            self.set_color_at(sq, c);
+    pub fn set(&mut self, bb: Bitboard, pieces: &str) -> Result<&mut Self, String> {
+        if bb.len()!= pieces.chars().count() {
+            return Err(format!("Bitboard {} and pieces {} have different counts", bb, pieces));
         }
-        self
+        for (sq, ch) in bb.iter().zip(pieces.chars()) {
+            let p = Piece::from_char(ch)?;
+            self.set_piece_at(sq, p);
+            if p != Piece::None {
+                let c = Color::from_char(ch)?;
+                self.set_color_at(sq, c);
+            };
+        }
+        Ok(self)
     }
 
     pub fn as_board(&self) -> Board {
         self.0
     }
+
+
+
+
+
+    pub fn parse_fen(fen: &str) -> Result<Self, String> {
+        let mut bb = BoardBuf::new();
+        let mut words = fen.split_whitespace();
+        if let Some(part) = words.next() {
+            let mut pos = String::from(part);   
+            for i in 1..=8 {
+                pos = pos.replace(i.to_string().as_str(), " ".repeat(i).as_str());
+            }
+            // pos.retain(|ch| "pPRrNnBbQqKk ".contains(ch));
+            let r: Vec<&str> = pos.rsplit('/').collect();
+            if r.iter().any(|r| r.chars().count() != 8) || r.len() != 8 {
+                return Err(format!("Expected 8 ranks of 8 pieces in fen {}", fen));
+            }
+            bb.set( Bitboard::all(), &r.concat() )?;
+        }
+        Ok(bb)
+    }
+
 }
+
+
+
+
+        //     // assert 8
+        //     for r in ranks {
+        //         for ch in r.chars() {
+        //             match ch {
+        //                 ch in digit {
+        //                     add "." * digit
+        //                 }
+        //                 ch in valid Piece. add p
+        //             }
+
+        //         }
+        //     }
+        // } 
+        // else {
+        //     return Err("Fen string lacks position part.");
+        // }
+    //}
+    // sqs = ''
+    // valid_digits = "12345678"
+    // valid_pieces = "pnbrqkPNBRQK"
+    // ranks_8_to_1 = fen_part1.split('/')
+    // if len(ranks_8_to_1) != 8:
+    //     raise ValueError(f'Invalid FEN {fen_part1}: Expected 8 ranks in position part but found {len(ranks_8_to_1)}')
+    // for rank in ranks_8_to_1:
+    //     row = ''
+    //     for p in rank:
+    //         if p in valid_digits:
+    //             row += ' ' * int(p)
+    //         elif p in valid_pieces:
+    //             row += p
+    //         else:
+    //             raise ValueError(f'Invalid FEN {fen_part1} in row of "{rank}" unexpected "{p}"')
+    //     # weve captured all the pieces/squares in this row
+    //     if len(row) != 8:
+    //         raise ValueError(f'Invalid FEN {fen_part1} in row of "{rank}" expected 8 pieces but found {len(row)}')
+    //     sqs += row
+    // grid = "\n".join([sqs[r*8:r*8 + 8] for r in range(8)])
+    // return grid
+
+
+
 
 
 impl fmt::Display for Board {
@@ -318,8 +391,12 @@ impl fmt::Display for Board {
         }
         Ok(())
     }
-    
 }
+
+
+
+
+
 
 
 // impl  std::ops::IndexMut<Bitboard> for Board {
@@ -347,13 +424,14 @@ mod tests {
 
 
     #[test]
-    fn test_piece() {
+    fn piece() {
         assert_eq!(Piece::Pawn.to_upper_char(), 'P');
         assert_eq!(Piece::King.to_char(Some(Color::BLACK)), 'k');
+        assert_eq!(Piece::King.to_char(None), 'K');
     }
 
     #[test]
-    fn test_boardbuf() {
+    fn boardbuf() -> Result<(),String> {
         let board = Board::empty();
         assert_eq!(board.kings(), Bitboard::EMPTY);
         assert_eq!(board.us(), Bitboard::EMPTY);
@@ -361,8 +439,8 @@ mod tests {
 
         // assert_eq!(board[a1], 'R');
         let mut buf = BoardBuf::new();
-        buf.set(Bitboard::RANK_2, "PPPPPPPP").set(a1|h1, "RR").set(b1|g1, "NN").set(c1|d1|e1|f1, "BQKB");
-        buf.set(Bitboard::RANK_7, "pppppppp").set(Bitboard::RANK_8, "rnbqkbnr");
+        let x = buf.set(Bitboard::RANK_2, "PPPPPPPP")?.set(a1|h1, "RR")?.set(b1|g1, "NN")?.set(c1|d1|e1|f1, "BQKB")?;
+        buf.set(Bitboard::RANK_7, "pppppppp")?.set(Bitboard::RANK_8, "rnbqkbnr")?;
         assert_eq!(buf.get(a1), "R");
         // let b = hashmap!{ a1+h1 => "R", b1+g1 => "N" };
         // let b = BoardBuf::new().rooks(a1|h1).knights(b1|g1).pawns(rank_2).set("RNBQKBNR", rank_1);
@@ -371,7 +449,14 @@ mod tests {
         // let b = BoardBuf::new().k(a1).K(h8).r(a2).R(c3);
         // let b = BoardBuf::new().set(a1=k, rank_2=p, );
         // todo!()
-        println!("{}", buf.as_board() )
-
+        println!("{}", buf.as_board() );
+        assert!( BoardBuf::parse_fen("1/1/7/8/8/8/PPPPPPPP/RNBQKBNR").err().unwrap().starts_with("Expected 8"));
+        assert!( BoardBuf::parse_fen("8").err().unwrap().starts_with("Expected 8"));
+        assert!( BoardBuf::parse_fen("8/8").err().unwrap().starts_with("Expected 8"));
+        assert_eq!( BoardBuf::parse_fen("X7/8/8/8/8/8/8/8").err(), Some("Unknown piece 'X'".to_string()));
+        let buf = BoardBuf::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap();
+        assert_eq!(buf.get(a1), "R");
+        assert_eq!(buf.get(Bitboard::FILE_H), "RP....pr");
+        Ok(())
     }
 }

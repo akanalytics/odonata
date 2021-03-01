@@ -86,8 +86,8 @@ impl Bitboard {
     }
 
     #[inline]
-    pub fn len(self) -> u32 {
-        self.bits.count_ones()
+    pub fn len(self) -> usize {
+        self.bits.count_ones() as usize
     }
 
     #[inline]
@@ -187,8 +187,10 @@ mod tests {
         assert!(a1b2 - a1 == b2);
         assert!(!a1b2.is_empty());
         assert!(a1b2.intersects(b2));
+        assert_eq!(Bitboard::all(), !Bitboard::empty());
         assert!(Bitboard::FILE_A.contains(a4));
         assert_eq!(Bitboard::FILE_A.len(), 8);
+        assert_eq!(Bitboard::all().len(), 64);
     }
 
     #[test]
@@ -200,6 +202,8 @@ mod tests {
 
     #[test]
     fn test_firsts_and_lasts() {
+        assert_eq!(Bitboard::RANK_2.len(), 8);
+        assert_eq!(a1b2.len(), 2);
         assert_eq!(a1b2.first_square(), 0);
         assert_eq!(a1b2.last_square(), 9);
         assert_eq!((Bitboard::A1 | Bitboard::A2).last_square(), 8);
