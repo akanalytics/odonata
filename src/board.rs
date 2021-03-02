@@ -3,6 +3,8 @@ use crate::globals::*;
 use std::iter::*;
 use std::fmt::{self, Write};
 
+mod movegen;
+mod movemaker;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Color {
@@ -16,6 +18,7 @@ pub struct Color {
     pub double_push_dest_rank: Bitboard,
     pub castle_rights_queen: CastlingRights,
     pub castle_rights_king: CastlingRights,
+    pub back_rank: Bitboard,
 }
 
 bitflags! {
@@ -41,6 +44,7 @@ impl Color {
         double_push_dest_rank: Bitboard::RANK_4,
         castle_rights_queen: CastlingRights::WHITE_QUEEN,
         castle_rights_king: CastlingRights::WHITE_KING,
+        back_rank: Bitboard::RANK_1,
     };
     pub const BLACK: Self = Color {
         is_white: false,
@@ -53,6 +57,7 @@ impl Color {
         double_push_dest_rank: Bitboard::RANK_5,
         castle_rights_queen: CastlingRights::BLACK_QUEEN,
         castle_rights_king: CastlingRights::BLACK_KING,
+        back_rank: Bitboard::RANK_8,
     };
 
     pub fn opposite(&self) -> Color {
@@ -144,6 +149,23 @@ pub struct Board {
     fifty_clock: u16,
 }
 
+
+
+#[derive(Debug)]
+pub enum Move {
+    Promo { dest: Bitboard, src: Bitboard, promo: Piece },
+    PromoCapture { dest: Bitboard, src: Bitboard, promo: Piece, capture: Piece },
+    EnPassant { dest: Bitboard, src: Bitboard, capture_sq: Bitboard },
+    Push { dest: Bitboard, src: Bitboard },
+    Castle { king_dest: Bitboard, king_src: Bitboard, rook_dest: Bitboard, rook_src: Bitboard, right: CastlingRights },
+    Quiet { dest: Bitboard, src: Bitboard, mover: Piece },
+    Capture { dest: Bitboard, src: Bitboard, mover: Piece, capture: Piece },
+    Null(),
+    // DropAdd { dest: Bitboard, piece: Piece },
+    // DropRemove { dest: Bitboard, piece: Piece },
+}
+
+
 impl Board {
     pub fn empty() -> Board {
         Board {
@@ -156,6 +178,7 @@ impl Board {
             fifty_clock: 0,
         }
     }
+
     
     // pub fn new() -> Board {
     //     let board = Board {
@@ -177,6 +200,10 @@ impl Board {
     //     }
     //     (Piece::None, Color::BLACK)  
     // }
+
+    pub fn castling(&self) -> CastlingRights {
+        self.castling
+    }
 
     pub fn pieces(&self, p: Piece) -> Bitboard {
         self.pieces[p as usize]
