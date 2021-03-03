@@ -32,7 +32,7 @@ impl MoveGen {
             if !pawns.contains(from) {
                 // must have been double push
                 ep = from;
-                from = to.shift(&color.pawn_move.opposite());
+                from = from.shift(&color.pawn_move.opposite());
             }
             // let m = MoveEnum::Push { to, from };
             let m = Move { from, to, ep, mover: Piece::Pawn, ..Default::default() };
@@ -155,6 +155,7 @@ impl MoveGen {
     
         // castling
         // check castling rights (cheap)
+        // check there is a king (for testing board setups)
         // check king not in check
         // side = +/-2
         // check king+1 and king+2 for being clear on kings side
@@ -166,7 +167,7 @@ impl MoveGen {
         let rights = board.castling();
 
         let right = color.castle_rights_king;
-        if rights.contains(right) && !color.kingside_castle_sqs.intersects(occupied) {
+        if rights.contains(right) && !color.kingside_castle_sqs.intersects(occupied) & !king.is_empty() {
             let king_moves = king | color.kingside_castle_sqs;
             if self.attacked_by(king_moves, occupied, board, &color).is_empty() {
                 let rook_to = king.shift(&Dir::E);
@@ -179,7 +180,7 @@ impl MoveGen {
         }
 
         let right = color.castle_rights_queen;
-        if rights.contains(right) && !color.queenside_castle_sqs.intersects(occupied) {
+        if rights.contains(right) && !color.queenside_castle_sqs.intersects(occupied) & !king.is_empty() {
             let king_moves = king | color.queenside_castle_sqs;
             if self.attacked_by(king_moves, occupied, board, &color).is_empty() {
                 let rook_to = king.shift(&Dir::W);
@@ -232,45 +233,54 @@ mod tests {
     fn pseudo_legal_moves() -> Result<(), String> {
         let mg = MoveGen::new();
         let mut moves = MoveList::new();
-        let mut buf = BoardBuf::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap();
+        let mut buf = BoardBuf::parse_pieces("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap();
         buf.set(a2, ".")?;
         buf.set(d2, ".")?;
         buf.set(d4, "P")?;
         let board = buf.as_board();
         mg.pseudo_legal_moves(&board, &mut moves);
         assert_eq!(moves.len(), 32);
-        println!("{}\n{:#?}", board, moves);
+        // println!("{}\n{:#?}", board, moves);
         //assert_eq!(format!("{:#?}", moves), "vec![]");
         Ok(())
     }
 
     #[test]
-    fn test_pawns() {
+    fn pawn_moves() {
         let board = BoardBuf::parse_fen("8/8/8/8/8/8/P7/8 w - - id 'lone P'").unwrap().as_board();
-        let moves = board.pseudo_legal_moves();
+        let mut moves = board.pseudo_legal_moves();
+        println!("{}\n{:#?}", board, moves);
+        moves.sort_by_key(|m| m.to_string());
         assert_eq!(moves.len(), 2);
         assert_eq!(moves.to_string(), "a2a3, a2a4");
 
-//         b = Parser(cls).parse_board_epd("8/p7/8/8/8/8/8/8 b - - id 'lone P flipped'")
-//         self.assert_pseudo_legal_moves(b, ["a7a5","a7a6"])
+        let board = BoardBuf::parse_fen("8/p7/8/8/8/8/8/8 b - - id 'lone P flipped'").unwrap().as_board();
+        let mut moves = board.pseudo_legal_moves();
+        moves.sort_by_key(|m| m.to_string());
+        assert_eq!(moves.to_string(), "a7a5, a7a6");
 
-//         b = Parser(cls).parse_board_epd("8/8/8/8/8/p7/P7/8 w - - id "PP"')
-//         self.assert_pseudo_legal_moves(b, [])
+        let board = BoardBuf::parse_fen("8/8/8/8/8/p7/P7/8 w - - id PP").unwrap().as_board();
+        let moves = board.pseudo_legal_moves();
+        assert_eq!(moves.to_string(), "");
 
-//         b = Parser(cls).parse_board_epd("8/8/8/8/8/8/PPP5/8 w - - id "PPP"")
-//         self.assert_pseudo_legal_moves(b, ["a2a3", "a2a4", "b2b3", "b2b4", "c2c3", "c2c4"])
+        let board = BoardBuf::parse_fen("8/8/8/8/8/8/PPP5/8 w - - id PPP").unwrap().as_board();
+        let mut moves = board.pseudo_legal_moves();
+        moves.sort_by_key(|m| m.to_string());
+        assert_eq!(moves.to_string(), "a2a3, a2a4, b2b3, b2b4, c2c3, c2c4");
 
-//         b = Parser(cls).parse_board_epd("8/8/8/8/8/p1p5/1P6/8 w - - id "P capture white"")
-//         self.assert_pseudo_legal_moves(b, ["b2a3", "b2b3", "b2b4", "b2c3"])
+        let board = BoardBuf::parse_fen("8/8/8/8/8/p1p5/1P6/8 w - - id P 'capture white'").unwrap().as_board();
+        let mut moves = board.pseudo_legal_moves();
+        moves.sort_by_key(|m| m.to_string());
+        assert_eq!(moves.to_string(), "b2a3, b2b3, b2b4, b2c3");
 
-//         b = Parser(cls).parse_board_epd("8/1p6/P1P5/8/8/8/1P6/8 b - - id "P capture black"")
-//         self.assert_pseudo_legal_moves(b, ["b7a6", "b7b6", "b7b5", "b7c6"])
+        let board = BoardBuf::parse_fen("8/1p6/P1P5/8/8/8/1P6/8 b - - id 'P capture black'").unwrap().as_board();
+        let mut moves = board.pseudo_legal_moves();
+        moves.sort_by_key(|m| m.to_string());
+        assert_eq!(moves.to_string(), "b7a6, b7b5, b7b6, b7c6");
 
-//         b = Parser(cls).parse_board_epd("8/8/p6p/1N6/8/8/8/8 b - - id "PxN black"")
-//         self.assert_pseudo_legal_moves(b, ["a6a5", "a6b5", "h6h5"])
-// }
-
-
-
+        let board = BoardBuf::parse_fen("8/8/p6p/1N6/8/8/8/8 b - - id 'PxN black'").unwrap().as_board();
+        let mut moves = board.pseudo_legal_moves();
+        moves.sort_by_key(|m| m.to_string());
+        assert_eq!(moves.to_string(), "a6a5, a6b5, h6h5");
     }
 }

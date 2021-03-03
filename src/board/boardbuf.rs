@@ -72,7 +72,7 @@ impl BoardBuf {
             let p = Piece::from_char(ch)?;
             self.set_piece_at(sq, p);
             if p != Piece::None {
-                let c = Color::from_char(ch)?;
+                let c = Color::from_piece_char(ch)?;
                 self.set_color_at(sq, c);
             } else {
                 // FIXME: broken approach - null color??
@@ -95,24 +95,41 @@ impl BoardBuf {
 
 
 
-
-    pub fn parse_fen(fen: &str) -> Result<Self, String> {
+    /// Parses a FEN string to create a board. FEN format is detailed at https://en.wikipedia.org/wiki/Forsyth–Edwards_Notation
+    pub fn parse_pieces(fen: &str) -> Result<Self, String> {
         let mut bb = BoardBuf::new();
-        let mut words = fen.split_whitespace();
-        if let Some(part) = words.next() {
-            let mut pos = String::from(part);   
-            for i in 1..=8 {
-                pos = pos.replace(i.to_string().as_str(), " ".repeat(i).as_str());
-            }
-            // pos.retain(|ch| "pPRrNnBbQqKk ".contains(ch));
-            let r: Vec<&str> = pos.rsplit('/').collect();
-            if r.iter().any(|r| r.chars().count() != 8) || r.len() != 8 {
-                return Err(format!("Expected 8 ranks of 8 pieces in fen {}", fen));
-            }
-            bb.set( Bitboard::all(), &r.concat() )?;
+        let mut pos = String::from(fen);   
+        for i in 1..=8 {
+            pos = pos.replace(i.to_string().as_str(), " ".repeat(i).as_str());
         }
+        // pos.retain(|ch| "pPRrNnBbQqKk ".contains(ch));
+        let r: Vec<&str> = pos.rsplit('/').collect();
+        if r.iter().any(|r| r.chars().count() != 8) || r.len() != 8 {
+            return Err(format!("Expected 8 ranks of 8 pieces in fen {}", fen));
+        }
+        bb.set( Bitboard::all(), &r.concat() )?;
         Ok(bb)
     }
+
+    /// 0. Piece placement
+    /// 1. Active color
+    /// 2. Castling rights
+    /// 3. E/P square
+    /// 4. Half move clock
+    /// 5. Full move counter
+    pub fn parse_fen(fen: &str) -> Result<Self, String> {
+        let mut words = fen.split_whitespace().collect::<Vec<_>>();
+        if words.len() < 6 {
+            return Err(format!("Must specify at least 6 parts in epd/fen {}", fen));
+        }
+        let mut bb = Self::parse_pieces(words[0])?;
+        bb.board.turn = Color::parse(words[1])?;
+        //bb.board.castling = CastlingRights::parse(words[1].chars().next().unwrap())?;
+        Ok(bb)
+    }
+
+
+
 }
 
 

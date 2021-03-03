@@ -67,7 +67,15 @@ impl Color {
         [Color::BLACK, Color::WHITE][self.index]
     }
 
-    pub fn from_char(ch : char) -> Result<Color, String> {
+    pub fn parse(s: &str) -> Result<Color, String> {
+        match s {
+            "w" => Ok(Color::WHITE),
+            "b" => Ok(Color::BLACK),
+            _ => Err(format!("Invalid color: '{}'", s))
+        }
+    }
+
+    pub fn from_piece_char(ch : char) -> Result<Color, String> {
         if ch.is_lowercase() {
             return Ok(Color::BLACK);
         }
@@ -211,16 +219,23 @@ impl MoveList {
     pub fn new() -> Self {
         MoveList(Vec::with_capacity(250))  // TODO: capacity??
     }
-    pub fn push(&mut self, m: Move) {
-        self.0.push(m);
-    }
+}
 
-    pub fn len(&self) -> usize {
-        self.0.len()
+use std::ops::{Deref, DerefMut};
+
+impl Deref for MoveList {
+    type Target = Vec<Move>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
-
+impl DerefMut for MoveList {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
 
 
 impl fmt::Display for MoveList {
@@ -378,6 +393,16 @@ mod tests {
     use crate::globals::constants::*;
 
     #[test]
+    fn color() {
+        assert_eq!(Color::parse("w"), Ok(Color::WHITE));
+        assert_eq!(Color::parse("b"), Ok(Color::BLACK));
+        assert_eq!(Color::parse("B"), Err("Invalid color: 'B'".to_string()));
+        assert_eq!(Piece::King.to_char(Some(Color::BLACK)), 'k');
+        assert_eq!(Piece::King.to_char(None), 'K');
+
+    }
+
+    #[test]
     fn piece() {
         assert_eq!(Piece::Pawn.to_upper_char(), 'P');
         assert_eq!(Piece::King.to_char(Some(Color::BLACK)), 'k');
@@ -399,7 +424,7 @@ mod tests {
 
     #[test]
     fn board_bitboards() -> Result<(),String> {
-        let board = BoardBuf::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap().as_board();
+        let board = BoardBuf::parse_pieces("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap().as_board();
         assert_eq!(board.color_us(), Color::WHITE);
         assert_eq!(board.color_them(), Color::BLACK);
         // assert_eq!(board.en_passant(), Bitboard::empty());

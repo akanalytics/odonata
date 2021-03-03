@@ -39,12 +39,12 @@ impl Board {
         if m.mover == Piece::Pawn {
             board.fifty_clock = 0;
             // set en_passant flag
-            if m.ep != Bitboard::EMPTY {
-                // m.to.shift()
+            if ! m.ep.is_empty() {
+                // FIXME! m.to.shift()
             }
         } 
 
-        if m.ep != Bitboard::EMPTY {
+        if !m.ep.is_empty() {
             // ep capture is like capture but with capture piece on ep square not dest  
             board.fifty_clock = 0;
             board.pieces[m.capture.index()].remove(m.ep);
