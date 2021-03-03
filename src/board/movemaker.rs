@@ -1,5 +1,5 @@
 use crate::bitboard::{Bitboard, Dir};
-use crate::board::{Board, Move, BoardBuf, CastlingRights, Color, Piece};
+use crate::board::{Board, Move, CastlingRights, Color, Piece};
 
 
 
@@ -21,7 +21,7 @@ impl Board {
                 board.pieces[mover.index()] ^= fromToBits;
                 board.colors[self.turn.index] ^= fromToBits;
             },
-            Move::Push{ dest, src } => {
+            Move::Push { dest, src } => {
                 board.fifty_clock = 0;
                 let fromToBits = dest ^ src;
                 board.pieces[Piece::Pawn.index()] ^= fromToBits;
@@ -75,6 +75,8 @@ impl Board {
                 board.pieces[Piece::King.index()] ^= fromToBits;
                 board.colors[self.turn.index] ^= fromToBits;
             }
+ 
+
         }
         board
     }

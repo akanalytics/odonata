@@ -1,6 +1,6 @@
 use crate::attacks::{BitboardAttacks, ClassicalBitboard};
 use crate::bitboard::{Bitboard, Dir};
-use crate::board::{Board, Move, BoardBuf, CastlingRights, Color, Piece};
+use crate::board::{Board, Move, CastlingRights, Color, Piece};
 use Vec;
 
 
@@ -188,7 +188,7 @@ impl MoveGen {
 #[cfg(test)]
 mod tests {
     use super::*;
-
+    use crate::board::boardbuf::*;
     use crate::globals::constants::*;
 
     #[test]

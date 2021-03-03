@@ -16,3 +16,4 @@ Cargo.lock
 junk/**
 .vscode/*
 
+flounder.geany
