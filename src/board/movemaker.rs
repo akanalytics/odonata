@@ -1,4 +1,4 @@
-use crate::bitboard::{Bitboard, Dir};
+use crate::bitboard::{Bitboard};
 use crate::board::{Board, Move, CastlingRights, Color, Piece};
 
 
@@ -17,15 +17,15 @@ impl Board {
         match m {
             Move::Quiet{ dest, src, mover } => {
                 // clear one bit and set another for the move
-                let fromToBits = dest ^ src;
-                board.pieces[mover.index()] ^= fromToBits;
-                board.colors[self.turn.index] ^= fromToBits;
+                let from_to_bits = dest ^ src;
+                board.pieces[mover.index()] ^= from_to_bits;
+                board.colors[self.turn.index] ^= from_to_bits;
             },
             Move::Push { dest, src } => {
                 board.fifty_clock = 0;
-                let fromToBits = dest ^ src;
-                board.pieces[Piece::Pawn.index()] ^= fromToBits;
-                board.colors[self.turn.index] ^= fromToBits;
+                let from_to_bits = dest ^ src;
+                board.pieces[Piece::Pawn.index()] ^= from_to_bits;
+                board.colors[self.turn.index] ^= from_to_bits;
             }
             Move::Null() => {
             },
@@ -34,46 +34,46 @@ impl Board {
                 board.pieces[capture.index()].remove(dest);
                 board.colors[board.turn.index].remove(dest);
 
-                let fromToBits = dest ^ src;
-                board.pieces[mover.index()] ^= fromToBits;
-                board.colors[self.turn.index] ^= fromToBits;
+                let from_to_bits = dest ^ src;
+                board.pieces[mover.index()] ^= from_to_bits;
+                board.colors[self.turn.index] ^= from_to_bits;
             },
             Move::Promo { dest, src, promo } => {
                 board.fifty_clock = 0;
-                let fromToBits = dest ^ src;
+                let from_to_bits = dest ^ src;
                 board.pieces[Piece::Pawn.index()].remove(src);
                 board.pieces[promo.index()].insert(dest);
-                board.colors[self.turn.index] ^= fromToBits;
+                board.colors[self.turn.index] ^= from_to_bits;
             },
             Move::PromoCapture { dest, src, promo, capture } => {
                 board.fifty_clock = 0;
                 board.pieces[capture.index()].remove(dest);
                 board.colors[board.turn.index].remove(dest);
 
-                let fromToBits = dest ^ src;
+                let from_to_bits = dest ^ src;
                 board.pieces[Piece::Pawn.index()].remove(src);
                 board.pieces[promo.index()].insert(dest);
-                board.colors[self.turn.index] ^= fromToBits;
+                board.colors[self.turn.index] ^= from_to_bits;
             },
             Move::EnPassant { dest, src, capture_sq } => {
                 board.fifty_clock = 0;
                 board.pieces[Piece::Pawn.index()].remove(capture_sq);
                 board.colors[board.turn.index].remove(capture_sq);
 
-                let fromToBits = dest ^ src;
-                board.pieces[Piece::Pawn.index()] ^= fromToBits;
-                board.colors[self.turn.index] ^= fromToBits;
+                let from_to_bits = dest ^ src;
+                board.pieces[Piece::Pawn.index()] ^= from_to_bits;
+                board.colors[self.turn.index] ^= from_to_bits;
             }
             Move::Castle { king_dest, king_src, rook_dest, rook_src, right } => {
                 // NO reset of fifty clock. Move king then move rook.
                 board.castling.remove(right);
-                let fromToBits = king_dest ^ king_src;
-                board.pieces[Piece::King.index()] ^= fromToBits;
-                board.colors[self.turn.index] ^= fromToBits;
+                let from_to_bits = king_dest ^ king_src;
+                board.pieces[Piece::King.index()] ^= from_to_bits;
+                board.colors[self.turn.index] ^= from_to_bits;
 
-                let fromToBits = rook_dest ^ rook_src;
-                board.pieces[Piece::King.index()] ^= fromToBits;
-                board.colors[self.turn.index] ^= fromToBits;
+                let from_to_bits = rook_dest ^ rook_src;
+                board.pieces[Piece::King.index()] ^= from_to_bits;
+                board.colors[self.turn.index] ^= from_to_bits;
             }
  
 

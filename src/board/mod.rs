@@ -286,10 +286,6 @@ mod tests {
 
     use crate::globals::constants::*;
 
-    #[allow(non_upper_case_globals)]
-    const a1b2: Bitboard = Bitboard::A1.or(Bitboard::B2);
-
-
     #[test]
     fn piece() {
         assert_eq!(Piece::Pawn.to_upper_char(), 'P');

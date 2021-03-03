@@ -190,9 +190,12 @@ mod tests {
 
         // assert_eq!(board[a1], 'R');
         let mut buf = BoardBuf::new();
-        let x = buf.set(Bitboard::RANK_2, "PPPPPPPP")?.set(a1|h1, "RR")?.set(b1|g1, "NN")?.set(c1|d1|e1|f1, "BQKB")?;
-        buf.set(Bitboard::RANK_7, "pppppppp")?.set(Bitboard::RANK_8, "rnbqkbnr")?;
+        let board2 = buf.set(Bitboard::RANK_2, "PPPPPPPP")?.set(a1|h1, "RR")?.set(b1|g1, "NN")?.set(c1|d1|e1|f1, "BQKB")?.as_board();
+        let board1 = buf.set(Bitboard::RANK_7, "pppppppp")?.set(Bitboard::RANK_8, "rnbqkbnr")?.as_board();
         assert_eq!(buf.get(a1), "R");
+        let mut buf2 = BoardBuf(board2);
+        let board2 = buf2.set(Bitboard::RANK_7, "pppppppp")?.set(Bitboard::RANK_8, "rnbqkbnr")?.as_board();
+        assert_eq!(board1.to_string(), board2.to_string());
         // let b = hashmap!{ a1+h1 => "R", b1+g1 => "N" };
         // let b = BoardBuf::new().rooks(a1|h1).knights(b1|g1).pawns(rank_2).set("RNBQKBNR", rank_1);
         // let b = BoardBuf::new("rnbqkbnr/
