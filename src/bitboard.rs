@@ -26,6 +26,7 @@ impl Dir {
 
 // generated from https://docs.google.com/spreadsheets/d/1TB2TKX04VsR10CLNLDIvrufm6wSJOttXOyPNKndU4N0/edit?usp=sharing
 bitflags! {
+    #[derive(Default)]
     pub struct Bitboard: u64 {
         const EMPTY = 0;
         const A1 = 1 << 0; 	const B1 = 1 << 1; const	C1 = 1 << 2; const	D1 = 1 << 3; const	E1 = 1 << 4; const	F1 = 1 << 5; const	G1 = 1 << 6; const	H1 = 1 << 7; const
@@ -130,6 +131,17 @@ impl Bitboard {
     pub fn iter(self) -> BitIterator {
         BitIterator { bb: self }
     }
+
+    fn sq_as_uci(self) -> String {
+        let s = self.first_square();
+        let (x,y) = (s % 8, s / 8);
+        format!("{}{}", char::from(b'a' + x as u8) , char::from(b'1' + y as u8))
+    }
+
+    pub fn uci(self) -> String {
+        let strings: Vec<String> = self.iter().map(Self::sq_as_uci).collect();
+        strings.join("+")
+    }
 }
 
 pub struct BitIterator {
@@ -156,17 +168,18 @@ impl Iterator for BitIterator {
     }
 }
 
+
+
+
 impl fmt::Display for Bitboard {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         for r in (0..8).rev() {
             for f in 0..8 {
                 let bit = 1 << (r * 8 + f);
-                fmt.write_char(if self.contains(Bitboard::from_bits_truncate(bit)) { '1' } else { '.' })?;
-                fmt.write_char(' ')?;
+                fmt.write_str(if self.contains(Bitboard::from_bits_truncate(bit)) { "1 " } else { ". "})?;
             }
             fmt.write_char('\n')?;
         }
-
         Ok(())
     }
 }
@@ -222,6 +235,10 @@ mod tests {
 
     #[test]
     fn test_formats() {
+        assert_eq!(a1.sq_as_uci(), "a1");
+        assert_eq!(h1.sq_as_uci(), "h1");
+        assert_eq!(a8.sq_as_uci(), "a8");
+        assert_eq!(a1b2.uci(), "a1+b2");
         assert_eq!(format!("{}", a1b2), ". . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. 1 . . . . . . \n1 . . . . . . . \n");
         assert_eq!(format!("{:?}", a1b2), "A1 | B2");
         assert_eq!(format!("{:?}", Bitboard::FILE_A), "A1 | A2 | A3 | A4 | A5 | A6 | A7 | A8 | FILE_A");

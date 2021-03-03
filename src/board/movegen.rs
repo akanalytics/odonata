@@ -1,6 +1,6 @@
 use crate::attacks::{BitboardAttacks, ClassicalBitboard};
 use crate::bitboard::{Bitboard, Dir};
-use crate::board::{Board, Move, CastlingRights, Color, Piece};
+use crate::board::{Board, MoveEnum, Move, MoveList, CastlingRights, Color, Piece};
 use Vec;
 
 
@@ -10,8 +10,13 @@ pub struct MoveGen {
 
 impl MoveGen {
 
+    pub fn new() -> MoveGen {
+        MoveGen { attack_gen: ClassicalBitboard::new() }
+    }
+
+
     // Vec::with_capacity(100).
-    fn pseudo_legal_moves(&self, board: &Board, moves: &mut Vec<Move>) {
+    pub fn pseudo_legal_moves(&self, board: &Board, moves: &mut MoveList) {
         let color = board.color_us();
         let them = board.them();
         let us = board.us();
@@ -21,103 +26,128 @@ impl MoveGen {
 
         // non-promoted single-push pawns
         let pawn_push = self.attack_gen.pawn_pushes(occupied, pawns, &color);
-        for dest in (pawn_push & !Bitboard::PROMO_RANKS).iter() {
-            let src = dest.shift(&color.pawn_move.opposite());
-            let m = Move::Push { dest, src };
+        for to in (pawn_push & !Bitboard::PROMO_RANKS).iter() {
+            let mut from = to.shift(&color.pawn_move.opposite());
+            let mut ep = Bitboard::EMPTY;
+            if !pawns.contains(from) {
+                // must have been double push
+                ep = from;
+                from = to.shift(&color.pawn_move.opposite());
+            }
+            // let m = MoveEnum::Push { to, from };
+            let m = Move { from, to, ep, mover: Piece::Pawn, ..Default::default() };
             moves.push(m);
         }
         // pawn promos - only makes sense for single push
-        for dest in (pawn_push & Bitboard::PROMO_RANKS).iter() {
-            let src = dest.shift(&color.pawn_move.opposite());
+        for to in (pawn_push & Bitboard::PROMO_RANKS).iter() {
+            let from = to.shift(&color.pawn_move.opposite());
             // try and pre-sort promos by likely usefulness
             for &promo in &[Piece::Queen, Piece::Knight, Piece::Rook, Piece::Bishop] {
-                let m = Move::Promo { dest, src, promo };
+                let m = Move { from, to, promo, mover: Piece::Pawn, ..Default::default() };
+                // let m = MoveEnum::Promo { to, from, promo };
                 moves.push(m);
             }
         }
         // pawn_captures
         let (pawn_captures_e, pawn_captures_w) = self.attack_gen.pawn_attacks(pawns, &color);
-        for dest in (pawn_captures_e & them & !Bitboard::PROMO_RANKS).iter() {
-            let src = dest.shift(&color.pawn_capture_east.opposite());
-            let capture = board.piece_at(dest);
-            moves.push(Move::Capture { dest, src, mover: Piece::Pawn, capture });
+        
+        for to in (pawn_captures_e & them & !Bitboard::PROMO_RANKS).iter() {
+            let from = to.shift(&color.pawn_capture_east.opposite());
+            let capture = board.piece_at(to);
+            let m = Move { from, to, mover: Piece::Pawn, capture, ..Default::default() };
+            // MoveEnum::Capture { to, from, mover: Piece::Pawn, capture });
+            moves.push(m); 
         }
-        for dest in (pawn_captures_w & them & !Bitboard::PROMO_RANKS).iter() {
-            let src = dest.shift(&color.pawn_capture_west.opposite());
-            let capture = board.piece_at(dest);
-            moves.push(Move::Capture { dest, src, mover: Piece::Pawn, capture });
+        for to in (pawn_captures_w & them & !Bitboard::PROMO_RANKS).iter() {
+            let from = to.shift(&color.pawn_capture_west.opposite());
+            let capture = board.piece_at(to);
+            let m = Move { from, to, mover: Piece::Pawn, capture, ..Default::default() };
+            // MoveEnum::Capture { to, from, mover: Piece::Pawn, capture };
+            moves.push(m);
         }
 
         // pawn capture-promos
-        for dest in (pawn_captures_e & them & Bitboard::PROMO_RANKS).iter() {
-            let src = dest.shift(&color.pawn_capture_east.opposite());
-            let capture = board.piece_at(dest);
+        for to in (pawn_captures_e & them & Bitboard::PROMO_RANKS).iter() {
+            let from = to.shift(&color.pawn_capture_east.opposite());
+            let capture = board.piece_at(to);
             for &promo in &[Piece::Queen, Piece::Knight, Piece::Rook, Piece::Bishop] {
-                moves.push(Move::PromoCapture { dest, src, promo, capture });
+                // MoveEnum::PromoCapture { to, from, promo, capture });
+                let m = Move { from, to, mover: Piece::Pawn, capture, promo, ..Default::default() };
+                moves.push(m);
             }
         }
-        for dest in (pawn_captures_w & them & Bitboard::PROMO_RANKS).iter() {
-            let src = dest.shift(&color.pawn_capture_west.opposite());
+        for to in (pawn_captures_w & them & Bitboard::PROMO_RANKS).iter() {
+            let from = to.shift(&color.pawn_capture_west.opposite());
+            let capture = board.piece_at(to);
             for &promo in &[Piece::Queen, Piece::Knight, Piece::Rook, Piece::Bishop] {
-                let capture = board.piece_at(dest);
-                moves.push(Move::PromoCapture { dest, src, promo, capture });
+                // MoveEnum::PromoCapture { to, from, promo, capture });
+                let m = Move { from, to, mover: Piece::Pawn, capture, promo, ..Default::default() };
+                moves.push(m);
             }
         }
         // knights
-        for src in (board.knights() & us).iter() {
-            let attacks = self.attack_gen.knight_attacks(src.first_square()) & !us;
-            for dest in attacks.iter() {
-                if them.contains(dest) {
-                    moves.push(Move::Capture { dest, src, mover: Piece::Knight, capture: board.piece_at(dest) });
+        for from in (board.knights() & us).iter() {
+            let attacks = self.attack_gen.knight_attacks(from.first_square()) & !us;
+            for to in attacks.iter() {
+                if them.contains(to) {
+                    let m = Move { from, to, mover: Piece::Knight, capture: board.piece_at(to), ..Default::default() };
+                    // MoveEnum::Capture { to, from, mover: Piece::Knight, capture: board.piece_at(to) }
+                    moves.push(m);
                 } else {
-                    moves.push(Move::Quiet { dest, src, mover: Piece::Knight });
+                    let m = Move { from, to, mover: Piece::Knight, ..Default::default() };
+                    // MoveEnum::Quiet { to, from, mover: Piece::Knight }
+                    moves.push(m);
                 }
             }
         }
         // sliders
-        for src in (board.bishops() & us).iter() {
-            let attacks = !us & self.attack_gen.bishop_attacks(occupied, src.first_square());
-            // println!("{}\n{}\n{}\n", src, attacks, occupied);
-            for dest in attacks.iter() {
-                if them.contains(dest) {
-                    moves.push(Move::Capture { dest, src, mover: Piece::Bishop, capture: board.piece_at(dest) });
+        for from in (board.bishops() & us).iter() {
+            let attacks = !us & self.attack_gen.bishop_attacks(occupied, from.first_square());
+            // println!("{}\n{}\n{}\n", from, attacks, occupied);
+            for to in attacks.iter() {
+                if them.contains(to) {
+                    let m = Move { from, to, mover: Piece::Bishop, capture: board.piece_at(to), ..Default::default() };
+                    moves.push(m);
                 } else {
-                    moves.push(Move::Quiet { dest, src, mover: Piece::Bishop });
+                    let m = Move { from, to, mover: Piece::Bishop, ..Default::default() };
+                    moves.push(m);
                 }
             }
         }
-        for src in (board.rooks() & us).iter() {
-            let attacks = !us & self.attack_gen.rook_attacks(occupied, src.first_square());
-            for dest in attacks.iter() {
-                if them.contains(dest) {
-                    moves.push(Move::Capture { dest, src, mover: Piece::Rook, capture: board.piece_at(dest) });
+        for from in (board.rooks() & us).iter() {
+            let attacks = !us & self.attack_gen.rook_attacks(occupied, from.first_square());
+            for to in attacks.iter() {
+                if them.contains(to) {
+                    let m = Move { from, to, mover: Piece::Rook, capture: board.piece_at(to), ..Default::default() };
+                    moves.push(m);
                 } else {
-                    moves.push(Move::Quiet { dest, src, mover: Piece::Rook });
+                    let m = Move { from, to, mover: Piece::Rook, ..Default::default() };
+                    moves.push(m);
                 }
             }
         }
-        for src in (board.queens() & us).iter() {
+        for from in (board.queens() & us).iter() {
             let attacks = !us
-                & (self.attack_gen.rook_attacks(occupied, src.first_square())
-                    | self.attack_gen.bishop_attacks(occupied, src.first_square()));
-            for dest in attacks.iter() {
-                if them.contains(dest) {
-                    let m = Move::Capture { dest, src, mover: Piece::Queen, capture: board.piece_at(dest) };
+                & (self.attack_gen.rook_attacks(occupied, from.first_square())
+                    | self.attack_gen.bishop_attacks(occupied, from.first_square()));
+            for to in attacks.iter() {
+                if them.contains(to) {
+                    let m = Move { from, to, mover: Piece::Queen, capture: board.piece_at(to), ..Default::default() };
                     moves.push(m);
                 } else {
-                    let m = Move::Quiet { dest, src, mover: Piece::Queen };
+                    let m = Move { from, to, mover: Piece::Queen, ..Default::default() };
                     moves.push(m);
                 }
             }
         }
-        for src in (board.kings() & us).iter() {
-            let attacks = !us & self.attack_gen.king_attacks(src.first_square());
-            for dest in attacks.iter() {
-                if them.contains(dest) {
-                    let m = Move::Capture { dest, src, mover: Piece::King, capture: board.piece_at(dest) };
+        for from in (board.kings() & us).iter() {
+            let attacks = !us & self.attack_gen.king_attacks(from.first_square());
+            for to in attacks.iter() {
+                if them.contains(to) {
+                    let m = Move { from, to, mover: Piece::King, capture: board.piece_at(to), ..Default::default() };
                     moves.push(m);
                 } else {
-                    let m = Move::Quiet { dest, src, mover: Piece::King };
+                    let m = Move { from, to, mover: Piece::King, ..Default::default() };
                     moves.push(m);
                 }
             }
@@ -130,7 +160,7 @@ impl MoveGen {
         // check king+1 and king+2 for being clear on kings side
         // check king-1, king-2, king-3 clear on queens
         // check that king +/- 1 and king +/- 2 isnt in check
-        // addMove King +/- 2, add rook -2/+3
+        // addMoveEnum King +/- 2, add rook -2/+3
         // castling rights
         let king = board.kings() & us;
         let rights = board.castling();
@@ -139,11 +169,12 @@ impl MoveGen {
         if rights.contains(right) && !color.kingside_castle_sqs.intersects(occupied) {
             let king_moves = king | color.kingside_castle_sqs;
             if self.attacked_by(king_moves, occupied, board, &color).is_empty() {
-                let rook_dest = king.shift(&Dir::E);
-                let king_dest = rook_dest.shift(&Dir::E);
-                let rook_src = Bitboard::FILE_A & color.back_rank;
-                let m = Move::Castle { king_dest, king_src: king, rook_dest, rook_src, right };
-                moves.push(m)
+                let rook_to = king.shift(&Dir::E);
+                let king_to = rook_to.shift(&Dir::E);
+                // let rook_from = Bitboard::FILE_A & color.back_rank;
+                // let m = MoveEnum::Castle { king_dest, king_from: king, rook_dest, rook_from, right };
+                let m = Move { from: king, to:king_to, mover: Piece::King, is_castle: true, ..Default::default() };
+                moves.push(m);
             }
         }
 
@@ -151,11 +182,12 @@ impl MoveGen {
         if rights.contains(right) && !color.queenside_castle_sqs.intersects(occupied) {
             let king_moves = king | color.queenside_castle_sqs;
             if self.attacked_by(king_moves, occupied, board, &color).is_empty() {
-                let rook_dest = king.shift(&Dir::W);
-                let king_dest = rook_dest.shift(&Dir::W);
-                let rook_src = Bitboard::FILE_H & color.back_rank;
-                let m = Move::Castle { king_dest, king_src: king, rook_dest, rook_src, right };
-                moves.push(m)
+                let rook_to = king.shift(&Dir::W);
+                let king_to = rook_to.shift(&Dir::W);
+                // let rook_from = Bitboard::FILE_H & color.back_rank;
+                // let m = MoveEnum::Castle { king_dest, king_from: king, rook_dest, rook_from, right };
+                let m = Move { from: king, to:king_to, mover: Piece::King, is_castle: true, ..Default::default() };
+                moves.push(m);
             }
         }
     }
@@ -185,6 +217,11 @@ impl MoveGen {
     }
 }
 
+
+
+
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -193,16 +230,47 @@ mod tests {
 
     #[test]
     fn pseudo_legal_moves() -> Result<(), String> {
-        let mg = MoveGen { attack_gen: ClassicalBitboard::new() };
-        let mut moves: Vec<Move> = Vec::new();
+        let mg = MoveGen::new();
+        let mut moves = MoveList::new();
         let mut buf = BoardBuf::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap();
         buf.set(a2, ".")?;
         buf.set(d2, ".")?;
         buf.set(d4, "P")?;
         let board = buf.as_board();
         mg.pseudo_legal_moves(&board, &mut moves);
+        assert_eq!(moves.len(), 32);
         println!("{}\n{:#?}", board, moves);
         //assert_eq!(format!("{:#?}", moves), "vec![]");
         Ok(())
+    }
+
+    #[test]
+    fn test_pawns() {
+        let board = BoardBuf::parse_fen("8/8/8/8/8/8/P7/8 w - - id 'lone P'").unwrap().as_board();
+        let moves = board.pseudo_legal_moves();
+        assert_eq!(moves.len(), 2);
+        assert_eq!(moves.to_string(), "a2a3, a2a4");
+
+//         b = Parser(cls).parse_board_epd("8/p7/8/8/8/8/8/8 b - - id 'lone P flipped'")
+//         self.assert_pseudo_legal_moves(b, ["a7a5","a7a6"])
+
+//         b = Parser(cls).parse_board_epd("8/8/8/8/8/p7/P7/8 w - - id "PP"')
+//         self.assert_pseudo_legal_moves(b, [])
+
+//         b = Parser(cls).parse_board_epd("8/8/8/8/8/8/PPP5/8 w - - id "PPP"")
+//         self.assert_pseudo_legal_moves(b, ["a2a3", "a2a4", "b2b3", "b2b4", "c2c3", "c2c4"])
+
+//         b = Parser(cls).parse_board_epd("8/8/8/8/8/p1p5/1P6/8 w - - id "P capture white"")
+//         self.assert_pseudo_legal_moves(b, ["b2a3", "b2b3", "b2b4", "b2c3"])
+
+//         b = Parser(cls).parse_board_epd("8/1p6/P1P5/8/8/8/1P6/8 b - - id "P capture black"")
+//         self.assert_pseudo_legal_moves(b, ["b7a6", "b7b6", "b7b5", "b7c6"])
+
+//         b = Parser(cls).parse_board_epd("8/8/p6p/1N6/8/8/8/8 b - - id "PxN black"")
+//         self.assert_pseudo_legal_moves(b, ["a6a5", "a6b5", "h6h5"])
+// }
+
+
+
     }
 }

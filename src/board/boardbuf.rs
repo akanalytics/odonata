@@ -6,34 +6,46 @@ use crate::bitboard::Bitboard;
 
 
 /// BoardBuf is a slow performing facade of convenience methods on board
-pub struct BoardBuf(Board);
+pub struct BoardBuf {
+    board: Board,
+    temporary: String,
+}
 
 impl BoardBuf {
     pub fn new() -> BoardBuf {
-        BoardBuf(Board::empty())
+        BoardBuf{ 
+            board: Board::empty(),
+            temporary: String::new(),
+        }
     }
 
+    pub fn adopt(board: Board) -> BoardBuf {
+        BoardBuf{ 
+            board,
+            temporary: String::new(),
+        }
+    }
 
 
     pub fn set_piece_at(&mut self, sq: Bitboard, p: Piece) {
-        for bb in self.0.pieces.iter_mut() {
+        for bb in self.board.pieces.iter_mut() {
             bb.remove(sq);
         } 
         // self.0.pieces(p).remove(sq);
-        self.0.pieces[p.index()].insert(sq);
+        self.board.pieces[p.index()].insert(sq);
     }
 
     pub fn set_color_at(&mut self, sq: Bitboard, c: Color) {
-        self.0.color(c.opposite()).remove(sq);
-        self.0.colors[c.index].insert(sq);
+        self.board.color(c.opposite()).remove(sq);
+        self.board.colors[c.index].insert(sq);
     }
 
 
     pub fn color_at(&self, at: Bitboard) -> Option<Color> {
-        if self.0.colors[Color::WHITE.index].contains(at) {
+        if self.board.colors[Color::WHITE.index].contains(at) {
             return Some(Color::WHITE);
         }
-        else if self.0.colors[Color::BLACK.index].contains(at) {
+        else if self.board.colors[Color::BLACK.index].contains(at) {
             return Some(Color::BLACK);
         }
         None
@@ -42,7 +54,7 @@ impl BoardBuf {
     pub fn get(&self, bb: Bitboard) -> String {
         let mut res = String::new();
         for sq in bb.iter() {
-            let p = self.0.piece_at(sq);
+            let p = self.board.piece_at(sq);
             let ch = match p {
                 Piece::None => p.to_upper_char(),
                 _ => p.to_char(self.color_at(sq)),
@@ -64,15 +76,20 @@ impl BoardBuf {
                 self.set_color_at(sq, c);
             } else {
                 // FIXME: broken approach - null color??
-                self.0.colors[0].remove(sq);
-                self.0.colors[1].remove(sq);
+                self.board.colors[0].remove(sq);
+                self.board.colors[1].remove(sq);
             };
         }
         Ok(self)
     }
 
+
+
+
+
+    
     pub fn as_board(&self) -> Board {
-        self.0
+        self.board
     }
 
 
@@ -99,9 +116,28 @@ impl BoardBuf {
 }
 
 
+// impl std::ops::Index<Bitboard> for BoardBuf {
+//     type Output = str;
+//     fn index(&self, sq: Bitboard) -> &str {
+//         self.temporary = self.get(sq);
+//         &self.temporary
+//     }
+// }
+
+
+
+
+// impl  std::ops::IndexMut<Bitboard> for Board {
+//     type Output = char;
+//     fn index_mut(&mut self, index: Bitboard) -> &mut char {
+//     }
+// }
+
+
+
 impl fmt::Display for Board {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let b = BoardBuf(*self);
+        let b = BoardBuf::adopt(*self);
         for &r in Bitboard::RANKS.iter().rev() {
             fmt.write_str(&b.get(r))?;
             fmt.write_char('\n')?;
@@ -157,18 +193,6 @@ impl fmt::Display for Board {
 
 
 
-// impl  std::ops::IndexMut<Bitboard> for Board {
-//     type Output = char;
-//     fn index_mut(&mut self, index: Bitboard) -> &mut char {
-//     }
-// }
-
-// impl std::ops::Index<Bitboard> for Board {
-//     type Output = char;
-//     fn index(&self, sq: Bitboard) -> &char {
-//         self.piece_at(sq).to_upper_char()
-//     }
-// }
 
 
 #[cfg(test)]
@@ -193,7 +217,7 @@ mod tests {
         let board2 = buf.set(Bitboard::RANK_2, "PPPPPPPP")?.set(a1|h1, "RR")?.set(b1|g1, "NN")?.set(c1|d1|e1|f1, "BQKB")?.as_board();
         let board1 = buf.set(Bitboard::RANK_7, "pppppppp")?.set(Bitboard::RANK_8, "rnbqkbnr")?.as_board();
         assert_eq!(buf.get(a1), "R");
-        let mut buf2 = BoardBuf(board2);
+        let mut buf2 = BoardBuf::adopt(board2);
         let board2 = buf2.set(Bitboard::RANK_7, "pppppppp")?.set(Bitboard::RANK_8, "rnbqkbnr")?.as_board();
         assert_eq!(board1.to_string(), board2.to_string());
         // let b = hashmap!{ a1+h1 => "R", b1+g1 => "N" };

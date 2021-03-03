@@ -1,6 +1,9 @@
 use crate::bitboard::{Bitboard, Dir};
 use crate::globals::*;
 use std::iter::*;
+use std::slice::*;
+use std::fmt::{self, Write};
+use self::movegen::MoveGen;
 
 mod movegen;
 mod movemaker;
@@ -86,6 +89,10 @@ pub enum Piece {
     King = 6,
 }
 
+impl Default for Piece {
+    fn default() -> Self { Piece::None }
+}
+
 impl Piece {
     const ALL: [Piece; 6] = [Piece::Pawn, Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen, Piece::King];
 
@@ -151,8 +158,83 @@ pub struct Board {
 
 
 
+#[derive(Debug, Default)]
+pub struct Move {
+    from: Bitboard,
+    to: Bitboard,
+    ep: Bitboard,
+    promo: Piece,
+    capture: Piece,
+    mover: Piece,
+
+    is_castle: bool,
+    is_null: bool,
+    is_drop: bool,
+}
+
+
+impl Move {
+    pub fn is_promo(&self) -> bool {
+        self.promo != Piece::None
+    }
+
+    pub fn is_capture(&self) -> bool {
+        self.capture != Piece::None
+    }
+
+}
+
+
+impl fmt::Display for Move {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut res = String::new();
+        res.push_str(self.from.uci().as_str());
+        res.push_str(self.to.uci().as_str());
+        if self.is_promo() {
+            res.push(self.promo.to_char(Some(Color::BLACK)));
+        }
+        write!(f, "{}", res)
+    }
+}
+
+
+
+
+
+
+
+
+#[derive(Debug, Default)]
+pub struct MoveList(Vec<Move>);
+
+impl MoveList {
+    pub fn new() -> Self {
+        MoveList(Vec::with_capacity(250))  // TODO: capacity??
+    }
+    pub fn push(&mut self, m: Move) {
+        self.0.push(m);
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+
+
+
+impl fmt::Display for MoveList {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let strings: Vec<String> = self.0.iter().map(Move::to_string).collect();
+        fmt.write_str(&strings.join(", "))
+        // fmt.write_str(self.0.iter().fold(String::new(), |acc, m| acc + m.to_string().as_str()).as_str())
+    }
+}
+
+
+
 #[derive(Debug)]
-pub enum Move {
+pub enum MoveEnum {
     Promo { dest: Bitboard, src: Bitboard, promo: Piece },
     PromoCapture { dest: Bitboard, src: Bitboard, promo: Piece, capture: Piece },
     EnPassant { dest: Bitboard, src: Bitboard, capture_sq: Bitboard },
@@ -164,6 +246,7 @@ pub enum Move {
     // DropAdd { dest: Bitboard, piece: Piece },
     // DropRemove { dest: Bitboard, piece: Piece },
 }
+
 
 
 impl Board {
@@ -269,6 +352,14 @@ impl Board {
         }
         Piece::None
     }
+
+    pub fn pseudo_legal_moves(&self) -> MoveList {
+        let mut moves = MoveList::new();
+        MoveGen::new().pseudo_legal_moves(self, &mut moves);
+        moves
+    }
+
+
 }
 
 
@@ -291,6 +382,19 @@ mod tests {
         assert_eq!(Piece::Pawn.to_upper_char(), 'P');
         assert_eq!(Piece::King.to_char(Some(Color::BLACK)), 'k');
         assert_eq!(Piece::King.to_char(None), 'K');
+
+    }
+
+    #[test]
+    fn move_and_movelist() {
+        let move_a1b2 = Move { from:a1, to:b2, ..Default::default() };
+        let promo_a7a8 = Move { from:a7, to:a8, promo: Piece::Queen, ..Default::default() };
+        assert_eq!(move_a1b2.to_string(), "a1b2" );
+        assert_eq!(promo_a7a8.to_string(), "a7a8q" );
+        let mut moves = MoveList::new();
+        moves.push(move_a1b2);
+        moves.push(promo_a7a8);
+        assert_eq!(moves.to_string(), "a1b2, a7a8q");
     }
 
     #[test]
