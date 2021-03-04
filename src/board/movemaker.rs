@@ -210,11 +210,13 @@ mod tests {
     use crate::globals::constants::*;
 
     #[test]
-    fn test_make_move() {
-        let board = Catalog::starting_position();
-        let m = Move::parse("e2e4");
-        // board = board.make_move(m);
-        // assert_eq!(board.to_fen(), "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1");
+    fn test_make_move() -> Result<(), String> {
+        let mut board = Catalog::starting_position();
+        let mut m = Move::parse("e2e4")?;
+        m.mover = Piece::Pawn;
+        let board2 = board.make_move(m);
+        assert_eq!(board2.to_fen(), "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1");
+        Ok(())
     }
 }
     //     # test operators + and ==

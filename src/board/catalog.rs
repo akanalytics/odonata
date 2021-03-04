@@ -8,7 +8,7 @@ pub struct Catalog;
 
 impl Catalog {
 
-    pub const STARTING_POSITION_FEN: &'static str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 0";
+    pub const STARTING_POSITION_FEN: &'static str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
     pub fn starting_position() -> Board {
         BoardBuf::parse_fen(Self::STARTING_POSITION_FEN).unwrap().as_board()

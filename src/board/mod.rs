@@ -314,8 +314,8 @@ impl Board {
             castling: CastlingRights::ALL,
             en_passant: Bitboard::EMPTY,
             turn: Color::WHITE,
-            fullmove_count: 0,
             fifty_clock: 0,
+            fullmove_count: 1,
         }
     }
 
