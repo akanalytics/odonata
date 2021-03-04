@@ -218,6 +218,16 @@ impl Move {
         self.capture != Piece::None
     }
 
+    pub fn uci(&self) -> String {
+        let mut res = String::new();
+        res.push_str( &self.from.uci() );
+        res.push_str( &self.to.uci() );
+        if self.is_promo() {
+            res.push( self.promo.to_char(Some(Color::BLACK)));
+        }
+        res
+    }
+ 
     pub fn parse(s: &str) -> Result<Move, String> {
         let from = Bitboard::parse_square(s.take_slice(0..2))?;
         let to = Bitboard::parse_square(s.take_slice(2..4))?;
