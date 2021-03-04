@@ -1,11 +1,13 @@
-use crate::bitboard::{Bitboard, Dir};
-use std::iter::*;
-use std::fmt::{self, Write};
 use self::movegen::MoveGen;
+use crate::bitboard::{Bitboard, Dir};
+use crate::utils::StringUtils;
+use std::fmt::{self, Write};
+use std::iter::*;
 
+pub mod boardbuf;
+pub mod catalog;
 mod movegen;
 mod movemaker;
-pub mod boardbuf;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Color {
@@ -52,7 +54,6 @@ impl CastlingRights {
 
 impl fmt::Display for CastlingRights {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-
         if self.is_empty() {
             return write!(f, "{}", '-');
         }
@@ -71,9 +72,6 @@ impl fmt::Display for CastlingRights {
         Ok(())
     }
 }
-
-
-
 
 impl Color {
     pub const WHITE: Self = Color {
@@ -111,15 +109,14 @@ impl Color {
         match s {
             "w" => Ok(Color::WHITE),
             "b" => Ok(Color::BLACK),
-            _ => Err(format!("Invalid color: '{}'", s))
+            _ => Err(format!("Invalid color: '{}'", s)),
         }
     }
 
-    pub fn from_piece_char(ch : char) -> Result<Color, String> {
+    pub fn from_piece_char(ch: char) -> Result<Color, String> {
         if ch.is_lowercase() {
             return Ok(Color::BLACK);
-        }
-        else if ch.is_uppercase() {
+        } else if ch.is_uppercase() {
             return Ok(Color::WHITE);
         }
         Err(format!("Cannot get color for char '{}'", ch))
@@ -131,7 +128,6 @@ impl fmt::Display for Color {
         write!(f, "{}", ['w', 'b'][self.index])
     }
 }
-
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Piece {
@@ -145,7 +141,9 @@ pub enum Piece {
 }
 
 impl Default for Piece {
-    fn default() -> Self { Piece::None }
+    fn default() -> Self {
+        Piece::None
+    }
 }
 
 impl Piece {
@@ -153,9 +151,8 @@ impl Piece {
 
     #[inline]
     // pub fn to_upper_char(self) -> &char {
-    //     ".PNBRQK".as_bytes()[self as usize] as char 
+    //     ".PNBRQK".as_bytes()[self as usize] as char
     // }
-
     #[inline]
     pub fn index(&self) -> usize {
         *self as usize
@@ -177,14 +174,14 @@ impl Piece {
     #[inline]
     pub fn from_char(ch: char) -> Result<Piece, String> {
         Ok(match ch.to_ascii_uppercase() {
-            '.'|' ' => Piece::None,
+            '.' | ' ' => Piece::None,
             'P' => Piece::Pawn,
             'N' => Piece::Knight,
             'B' => Piece::Bishop,
             'R' => Piece::Rook,
             'Q' => Piece::Queen,
             'K' => Piece::King,
-            _ => return Err(format!("Unknown piece '{}'", ch))
+            _ => return Err(format!("Unknown piece '{}'", ch)),
         })
     }
 
@@ -192,26 +189,11 @@ impl Piece {
     pub fn to_char(&self, c: Option<Color>) -> char {
         match c {
             None => self.to_upper_char(),
-            Some(c) if c.is_white  => self.to_upper_char(),
+            Some(c) if c.is_white => self.to_upper_char(),
             Some(_) => self.to_upper_char().to_ascii_lowercase(),
         }
-    }    
+    }
 }
-
-
-
-#[derive(Copy, Clone)]
-pub struct Board {
-    pieces: [Bitboard; 7],
-    colors: [Bitboard; 2],
-    castling: CastlingRights,
-    en_passant: Bitboard,
-    turn: Color,
-    fifty_clock: u16,
-    fullmove_count: u16,
-}
-
-
 
 #[derive(Debug, Default)]
 pub struct Move {
@@ -227,7 +209,6 @@ pub struct Move {
     is_drop: bool,
 }
 
-
 impl Move {
     pub fn is_promo(&self) -> bool {
         self.promo != Piece::None
@@ -237,8 +218,18 @@ impl Move {
         self.capture != Piece::None
     }
 
+    pub fn parse(s: &str) -> Result<Move, String> {
+        let from = Bitboard::parse_square(s.take_slice(0..2))?;
+        let to = Bitboard::parse_square(s.take_slice(2..4))?;
+        let promo;
+        if let Some(ch) = s.take_char_at(4) {
+            promo = Piece::from_char(ch)?;
+        } else {
+            promo = Piece::None;
+        }
+        Ok(Move { to, from, promo, ..Default::default() })
+    }
 }
-
 
 impl fmt::Display for Move {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -252,19 +243,12 @@ impl fmt::Display for Move {
     }
 }
 
-
-
-
-
-
-
-
 #[derive(Debug, Default)]
 pub struct MoveList(Vec<Move>);
 
 impl MoveList {
     pub fn new() -> Self {
-        MoveList(Vec::with_capacity(250))  // TODO: capacity??
+        MoveList(Vec::with_capacity(250)) // TODO: capacity??
     }
 
     pub fn sort(&mut self) -> &mut Self {
@@ -289,7 +273,6 @@ impl DerefMut for MoveList {
     }
 }
 
-
 impl fmt::Display for MoveList {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let strings: Vec<String> = self.0.iter().map(Move::to_string).collect();
@@ -297,8 +280,6 @@ impl fmt::Display for MoveList {
         // fmt.write_str(self.0.iter().fold(String::new(), |acc, m| acc + m.to_string().as_str()).as_str())
     }
 }
-
-
 
 #[derive(Debug)]
 pub enum MoveEnum {
@@ -314,7 +295,16 @@ pub enum MoveEnum {
     // DropRemove { dest: Bitboard, piece: Piece },
 }
 
-
+#[derive(Copy, Clone)]
+pub struct Board {
+    pieces: [Bitboard; 7],
+    colors: [Bitboard; 2],
+    castling: CastlingRights,
+    en_passant: Bitboard,
+    turn: Color,
+    fifty_clock: u16,
+    fullmove_count: u16,
+}
 
 impl Board {
     pub fn empty() -> Board {
@@ -329,7 +319,6 @@ impl Board {
         }
     }
 
-    
     // pub fn new() -> Board {
     //     let board = Board {
     //         pieces: [Bitboard::EMPTY; 7],
@@ -339,8 +328,6 @@ impl Board {
     //     board
     // }
 
-
-
     // fn piece_and_color_at(&self, at: Bitboard) -> (Piece, Color) {
     //     for p in &Piece::ALL {
     //         if self.pieces[*p as usize].contains(at) {
@@ -348,7 +335,7 @@ impl Board {
     //             return (*p, c);
     //         }
     //     }
-    //     (Piece::None, Color::BLACK)  
+    //     (Piece::None, Color::BLACK)
     // }
 
     pub fn castling(&self) -> CastlingRights {
@@ -450,29 +437,18 @@ impl Board {
             fen = fen,
             turn = self.color_us(),
             castle = self.castling(),
-            ep = if self.en_passant().is_empty() { "-".to_string() } else  { self.en_passant().uci()},
+            ep = if self.en_passant().is_empty() { "-".to_string() } else { self.en_passant().uci() },
             fifty = self.fifty_halfmove_clock(),
             count = self.fullmove_counter()
         )
     }
-
-
-
 }
-
-
-
-
-
-
-
-
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::boardbuf::*;
-
+    use super::catalog::*;
+    use super::*;
     use crate::globals::constants::*;
 
     #[test]
@@ -482,7 +458,6 @@ mod tests {
         assert_eq!(Color::parse("B"), Err("Invalid color: 'B'".to_string()));
         assert_eq!(Piece::King.to_char(Some(Color::BLACK)), 'k');
         assert_eq!(Piece::King.to_char(None), 'K');
-
     }
 
     #[test]
@@ -490,45 +465,46 @@ mod tests {
         assert_eq!(Piece::Pawn.to_upper_char(), 'P');
         assert_eq!(Piece::King.to_char(Some(Color::BLACK)), 'k');
         assert_eq!(Piece::King.to_char(None), 'K');
-
     }
 
     #[test]
     fn move_and_movelist() {
-        let move_a1b2 = Move { from:a1, to:b2, ..Default::default() };
-        let promo_a7a8 = Move { from:a7, to:a8, promo: Piece::Queen, ..Default::default() };
-        assert_eq!(move_a1b2.to_string(), "a1b2" );
-        assert_eq!(promo_a7a8.to_string(), "a7a8q" );
+        let move_a1b2 = Move { from: a1, to: b2, ..Default::default() };
+        let promo_a7a8 = Move { from: a7, to: a8, promo: Piece::Queen, ..Default::default() };
+        assert_eq!(move_a1b2.to_string(), "a1b2");
+        assert_eq!(promo_a7a8.to_string(), "a7a8q");
         let mut moves = MoveList::new();
         moves.push(move_a1b2);
         moves.push(promo_a7a8);
         assert_eq!(moves.to_string(), "a1b2, a7a8q");
+
+        let move_e2e4 = Move::parse("e2e4").unwrap();
+        assert_eq!(move_e2e4.to_string(), "e2e4");
+
+        let move_e7e8 = Move::parse("e7e8p").unwrap();
+        assert_eq!(move_e7e8.to_string(), "e7e8p");
     }
 
     #[test]
     fn to_fen() {
-        for &fen in &[
-            "7k/8/8/8/8/8/8/7K b KQkq - 45 100",
-            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 0",
-            "8/8/8/8/8/8/8/B7 w - - 0 0",
-        ] {
+        for &fen in &["7k/8/8/8/8/8/8/7K b KQkq - 45 100", Catalog::STARTING_POSITION_FEN, "8/8/8/8/8/8/8/B7 w - - 0 0"]
+        {
             let b = BoardBuf::parse_fen(fen).unwrap().as_board();
             assert_eq!(fen, b.to_fen());
         }
     }
 
-
     #[test]
-    fn board_bitboards() -> Result<(),String> {
+    fn board_bitboards() -> Result<(), String> {
         let board = BoardBuf::parse_pieces("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap().as_board();
         assert_eq!(board.color_us(), Color::WHITE);
         assert_eq!(board.color_them(), Color::BLACK);
         // assert_eq!(board.en_passant(), Bitboard::empty());
         // assert_eq!(board.move_count(), 0);
         assert_eq!(board.pawns() & board.us(), Bitboard::RANK_2);
-        assert_eq!(board.rooks() & board.them(), a8|h8);
-        assert_eq!(board.bishops() & board.us(), c1|f1);
-        assert_eq!(board.them(), Bitboard::RANK_7 | Bitboard::RANK_8 );
+        assert_eq!(board.rooks() & board.them(), a8 | h8);
+        assert_eq!(board.bishops() & board.us(), c1 | f1);
+        assert_eq!(board.them(), Bitboard::RANK_7 | Bitboard::RANK_8);
         Ok(())
     }
 }

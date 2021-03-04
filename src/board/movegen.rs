@@ -1,7 +1,7 @@
 use crate::attacks::{BitboardAttacks, ClassicalBitboard};
 use crate::bitboard::{Bitboard, Dir};
-use crate::board::{Board, MoveEnum, Move, MoveList, CastlingRights, Color, Piece};
-
+use crate::board::{Board, CastlingRights, Color, Piece};
+use crate::board::{MoveEnum, Move, MoveList };
 
 pub struct MoveGen {
     attack_gen: ClassicalBitboard,

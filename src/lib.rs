@@ -6,6 +6,7 @@ extern crate bitflags;
 pub mod bitboard;
 mod attacks;
 mod globals;
+mod utils;
 pub mod board;
 
 pub use crate::bitboard::{Bitboard};

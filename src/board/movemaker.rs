@@ -1,7 +1,7 @@
 use crate::bitboard::{Bitboard};
-use crate::board::{Board, MoveEnum, Move, CastlingRights, Color, Piece};
+use crate::board::{Board, CastlingRights, Color, Piece};
 use crate::globals::constants::*;
-
+use crate::board::{MoveEnum, Move};
 
 
 // #[derive(Debug, Default)]
@@ -199,3 +199,76 @@ impl Board {
         board
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::board::boardbuf::*;
+    use crate::board::*;
+    use crate::board::catalog::*;
+    use crate::globals::constants::*;
+
+    #[test]
+    fn test_make_move() {
+        let board = Catalog::starting_position();
+        let m = Move::parse("e2e4");
+        // board = board.make_move(m);
+        // assert_eq!(board.to_fen(), "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1");
+    }
+}
+    //     # test operators + and ==
+    //     b2 = cls()
+    //     b2._init()
+    //     b2 = b2.clone().make_move(Parser().parse_move("e2e4"))
+    //     assert b2 == b
+    //     b = cls()
+    //     b._init()
+    //     b = b.clone().make_move(Move.parse('a2a4'))
+    //     assert b[a4] == 'P' and b[a2] == ''
+    // }
+/* 
+    fn test_try_move_promotion() {}
+        b = Parser().parse_board_epd("8/P7/8/8/8/8/7k/K7 w - - id 'promos #1'")
+        b = b.clone().make_move( Parser().parse_move('a7a8q'))
+        assert b[a8] == 'Q' and b[a7] == ''
+    }
+    @pytest.mark.parametrize("cls", [BoardOfBits])
+    fn test_castling_rights() {
+        epd = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1 id: 'castling1'"
+        b1 = Parser(cls).parse_board_epd(epd)
+        assert b1.castling_rights == "KQkq"
+
+        # rook takes rook, so both sides lose queens side castling grights
+        b2 = b1.clone().make_move(Move.parse('a1a8'))
+        assert b2.castling_rights == "Kk"
+    }
+
+    fn test_castling() {
+        epd = "r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq e3 0 1 id: 'castling1'"
+        # Kings side
+        b = Parser().parse_board_epd(epd)
+        b = BoardMailbox(b)
+        assert b.get_castling_side(Parser().parse_move('e1g1')) == "K"
+        b.try_move( Parser().parse_move('e1g1'))
+        b.try_move( Parser().parse_move('e8g8')) # casle kings side for w and then b
+        assert b.to_fen() == "r4rk1/pppppppp/8/8/8/8/PPPPPPPP/R4RK1 w - - 2 2"
+
+        # Queens side
+        b = Parser().parse_board_epd(epd)
+        b = BoardMailbox(b)
+        assert b.get_castling_side(Parser().parse_move('e1c1')) == "Q"
+        b.try_move( Parser().parse_move('e1c1'))
+        b.try_move( Parser().parse_move('e8c8')) # casle queens side for w and then b
+        assert b.to_fen() == "2kr3r/pppppppp/8/8/8/8/PPPPPPPP/2KR3R w - - 2 2"
+
+        # Queens side rook moves
+        b = Parser().parse_board_epd(epd)
+        b = BoardMailbox(b)
+        assert b.get_castling_side(Parser().parse_move('e1c1')) == "Q"
+        b.try_move( Parser().parse_move('a1b1'))
+        b.try_move( Parser().parse_move('a8b8')) # rook moves queens side for w and then b
+        assert b.to_fen() == "1r2k2r/pppppppp/8/8/8/8/PPPPPPPP/1R2K2R w Kk - 2 2"
+    }
+*/
+
