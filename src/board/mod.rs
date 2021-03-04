@@ -1,7 +1,5 @@
 use crate::bitboard::{Bitboard, Dir};
-use crate::globals::*;
 use std::iter::*;
-use std::slice::*;
 use std::fmt::{self, Write};
 use self::movegen::MoveGen;
 
@@ -218,6 +216,11 @@ pub struct MoveList(Vec<Move>);
 impl MoveList {
     pub fn new() -> Self {
         MoveList(Vec::with_capacity(250))  // TODO: capacity??
+    }
+
+    pub fn sort(&mut self) -> &mut Self {
+        self.0.sort_by_key(|m| m.to_string());
+        self
     }
 }
 

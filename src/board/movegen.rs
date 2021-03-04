@@ -1,7 +1,6 @@
 use crate::attacks::{BitboardAttacks, ClassicalBitboard};
 use crate::bitboard::{Bitboard, Dir};
 use crate::board::{Board, MoveEnum, Move, MoveList, CastlingRights, Color, Piece};
-use Vec;
 
 
 pub struct MoveGen {
@@ -250,37 +249,31 @@ mod tests {
         let board = BoardBuf::parse_fen("8/8/8/8/8/8/P7/8 w - - id 'lone P'").unwrap().as_board();
         let mut moves = board.pseudo_legal_moves();
         println!("{}\n{:#?}", board, moves);
-        moves.sort_by_key(|m| m.to_string());
         assert_eq!(moves.len(), 2);
-        assert_eq!(moves.to_string(), "a2a3, a2a4");
+        assert_eq!(moves.sort().to_string(), "a2a3, a2a4");
 
         let board = BoardBuf::parse_fen("8/p7/8/8/8/8/8/8 b - - id 'lone P flipped'").unwrap().as_board();
         let mut moves = board.pseudo_legal_moves();
-        moves.sort_by_key(|m| m.to_string());
-        assert_eq!(moves.to_string(), "a7a5, a7a6");
+        assert_eq!(moves.sort().to_string(), "a7a5, a7a6");
 
         let board = BoardBuf::parse_fen("8/8/8/8/8/p7/P7/8 w - - id PP").unwrap().as_board();
-        let moves = board.pseudo_legal_moves();
-        assert_eq!(moves.to_string(), "");
+        let mut moves = board.pseudo_legal_moves();
+        assert_eq!(moves.sort().to_string(), "");
 
         let board = BoardBuf::parse_fen("8/8/8/8/8/8/PPP5/8 w - - id PPP").unwrap().as_board();
         let mut moves = board.pseudo_legal_moves();
-        moves.sort_by_key(|m| m.to_string());
-        assert_eq!(moves.to_string(), "a2a3, a2a4, b2b3, b2b4, c2c3, c2c4");
+        assert_eq!(moves.sort().to_string(), "a2a3, a2a4, b2b3, b2b4, c2c3, c2c4");
 
         let board = BoardBuf::parse_fen("8/8/8/8/8/p1p5/1P6/8 w - - id P 'capture white'").unwrap().as_board();
         let mut moves = board.pseudo_legal_moves();
-        moves.sort_by_key(|m| m.to_string());
-        assert_eq!(moves.to_string(), "b2a3, b2b3, b2b4, b2c3");
+        assert_eq!(moves.sort().to_string(), "b2a3, b2b3, b2b4, b2c3");
 
         let board = BoardBuf::parse_fen("8/1p6/P1P5/8/8/8/1P6/8 b - - id 'P capture black'").unwrap().as_board();
         let mut moves = board.pseudo_legal_moves();
-        moves.sort_by_key(|m| m.to_string());
-        assert_eq!(moves.to_string(), "b7a6, b7b5, b7b6, b7c6");
+        assert_eq!(moves.sort().to_string(), "b7a6, b7b5, b7b6, b7c6");
 
         let board = BoardBuf::parse_fen("8/8/p6p/1N6/8/8/8/8 b - - id 'PxN black'").unwrap().as_board();
         let mut moves = board.pseudo_legal_moves();
-        moves.sort_by_key(|m| m.to_string());
-        assert_eq!(moves.to_string(), "a6a5, a6b5, h6h5");
+        assert_eq!(moves.sort().to_string(), "a6a5, a6b5, h6h5");
     }
 }
