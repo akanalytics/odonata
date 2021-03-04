@@ -154,22 +154,29 @@ mod tests {
         assert_eq!(board2.to_fen(), "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1");
         Ok(())
     }
+
+    fn test_try_move_promotion() {
+        let mut board = BoardBuf::parse_fen("8/P7/8/8/8/8/7k/K7 w - - id 'promos #1'").unwrap().as_board();
+        board = board.make_move( board.validate_uci_move("a7a8q").unwrap() );
+        assert_eq!( BoardBuf::adopt(board).get(a8), "Q");
+        assert_eq!( BoardBuf::adopt(board).get(a7), ".");
+    }
+
+    fn test_castling_rights() {
+        let epd = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1 id: 'castling1'";
+        let board = BoardBuf::parse_fen(epd).unwrap().as_board();
+        assert_eq!(board.castling().to_string(), "KQkq");
+
+        // rook takes rook, so both sides lose queens side castling grights
+        let board = board.make_move( board.validate_uci_move("a1a8").unwrap());
+        assert_eq!(board.castling().to_string(), "Kk" );
+    }
+
+ 
+
 }
-//     # test operators + and ==
-//     b2 = cls()
-//     b2._init()
-//     b2 = b2.clone().make_move(Parser().parse_move("e2e4"))
-//     assert b2 == b
-//     b = cls()
-//     b._init()
-//     b = b.clone().make_move(Move.parse('a2a4'))
-//     assert b[a4] == 'P' and b[a2] == ''
-// }
+
 /*
-    fn test_try_move_promotion() {}
-        b = Parser().parse_board_epd("8/P7/8/8/8/8/7k/K7 w - - id 'promos #1'")
-        b = b.clone().make_move( Parser().parse_move('a7a8q'))
-        assert b[a8] == 'Q' and b[a7] == ''
     }
     @pytest.mark.parametrize("cls", [BoardOfBits])
     fn test_castling_rights() {
