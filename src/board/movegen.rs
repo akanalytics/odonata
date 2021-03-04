@@ -332,9 +332,14 @@ mod tests {
 
         let board = BoardBuf::parse_fen("8/8/8/8/8/8/1B6/8 w - - 0 0 id 'B b2'").unwrap().as_board();
         assert_eq!(board.pseudo_legal_moves().sort().to_string(), "b2a1, b2a3, b2c1, b2c3, b2d4, b2e5, b2f6, b2g7, b2h8");
-
     }
 
+    fn moves_in_check() {
+        let board = BoardBuf::parse_fen("rnbqkbnr/pppp1ppp/4p3/3N4/8/8/PPPPPPPP/R1BQKBNR b KQkq - 1 2").unwrap().as_board();
+        assert!(board.en_passant().is_empty());
+        // FIXME! assert b1.validate_move(Move.parse('e8e7'))
+        // assert!(board.pseudo_legal_moves().contains(Move.parse("e8e7")));
+    }
 
 
 

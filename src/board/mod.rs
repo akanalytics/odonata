@@ -50,6 +50,29 @@ impl CastlingRights {
     }
 }
 
+impl fmt::Display for CastlingRights {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+
+        if self.is_empty() {
+            return write!(f, "{}", '-');
+        }
+        if self.contains(Self::WHITE_KING) {
+            write!(f, "{}", 'K')?
+        }
+        if self.contains(Self::WHITE_QUEEN) {
+            write!(f, "{}", 'Q')?
+        }
+        if self.contains(Self::BLACK_KING) {
+            write!(f, "{}", 'k')?
+        }
+        if self.contains(Self::BLACK_QUEEN) {
+            write!(f, "{}", 'q')?
+        }
+        Ok(())
+    }
+}
+
+
 
 
 impl Color {
@@ -102,6 +125,13 @@ impl Color {
         Err(format!("Cannot get color for char '{}'", ch))
     }
 }
+
+impl fmt::Display for Color {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", ['w', 'b'][self.index])
+    }
+}
+
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Piece {
@@ -408,6 +438,25 @@ impl Board {
         moves
     }
 
+    pub fn to_fen(&self) -> String {
+        let mut fen = self.to_string().trim_end().replace('\n', "/");
+
+        // replace continguous empties by a count
+        for i in (1..=8).rev() {
+            fen = fen.replace(".".repeat(i).as_str(), i.to_string().as_str());
+        }
+        format!(
+            "{fen} {turn} {castle} {ep} {fifty} {count}",
+            fen = fen,
+            turn = self.color_us(),
+            castle = self.castling(),
+            ep = if self.en_passant().is_empty() { "-".to_string() } else  { self.en_passant().uci()},
+            fifty = self.fifty_halfmove_clock(),
+            count = self.fullmove_counter()
+        )
+    }
+
+
 
 }
 
@@ -455,6 +504,19 @@ mod tests {
         moves.push(promo_a7a8);
         assert_eq!(moves.to_string(), "a1b2, a7a8q");
     }
+
+    #[test]
+    fn to_fen() {
+        for &fen in &[
+            "7k/8/8/8/8/8/8/7K b KQkq - 45 100",
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 0",
+            "8/8/8/8/8/8/8/B7 w - - 0 0",
+        ] {
+            let b = BoardBuf::parse_fen(fen).unwrap().as_board();
+            assert_eq!(fen, b.to_fen());
+        }
+    }
+
 
     #[test]
     fn board_bitboards() -> Result<(),String> {

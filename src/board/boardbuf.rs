@@ -112,6 +112,7 @@ impl BoardBuf {
             words[5].parse().map_err(|e| format!("Invalid fullmove count '{}' - {}", words[5], e))?;
         Ok(bb)
     }
+
 }
 
 // impl std::ops::Index<Bitboard> for BoardBuf {
@@ -221,4 +222,5 @@ mod tests {
         );
         Ok(())
     }
+
 }
