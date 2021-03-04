@@ -1,21 +1,20 @@
 use std::fmt::{self, Write};
 
-use super::{Board, Color, Piece};
+use super::{Board, CastlingRights, Color, Piece};
 use crate::bitboard::Bitboard;
 
 /// BoardBuf is a slow performing facade of convenience methods on board
 pub struct BoardBuf {
     board: Board,
-    temporary: String,
 }
 
 impl BoardBuf {
     pub fn new() -> BoardBuf {
-        BoardBuf { board: Board::empty(), temporary: String::new() }
+        BoardBuf { board: Board::empty() }
     }
 
     pub fn adopt(board: Board) -> BoardBuf {
-        BoardBuf { board, temporary: String::new() }
+        BoardBuf { board }
     }
 
     pub fn set_piece_at(&mut self, sq: Bitboard, p: Piece) {
@@ -105,7 +104,10 @@ impl BoardBuf {
         }
         let mut bb = Self::parse_pieces(words[0])?;
         bb.board.turn = Color::parse(words[1])?;
-        //bb.board.castling = CastlingRights::parse(words[1].chars().next().unwrap())?;
+        bb.board.castling = CastlingRights::parse(words[2])?;
+        //bb.board.en_passant = Bitboard::parse_square(words[3])?;
+        bb.board.fifty_clock = words[4].parse().map_err(|e| format!("Invalid halfmove clock '{}' - {}", words[4], e))?;
+        bb.board.fullmove_count = words[5].parse().map_err(|e| format!("Invalid fullmove count '{}' - {}", words[5], e))?;
         Ok(bb)
     }
 }
@@ -138,14 +140,21 @@ impl fmt::Display for Board {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     use crate::globals::constants::*;
 
-    #[allow(non_upper_case_globals)]
-    const a1b2: Bitboard = Bitboard::A1.or(Bitboard::B2);
+    //
+    // interface designs....
+    //
+    // let b = hashmap!{ a1+h1 => "R", b1+g1 => "N" };
+    // let b = BoardBuf::new().rooks(a1|h1).knights(b1|g1).pawns(rank_2).set("RNBQKBNR", rank_1);
+    // let b = BoardBuf::new("rnbqkbnr/
+    //     pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR");
+    // let b = BoardBuf::new().k(a1).K(h8).r(a2).R(c3);
+    // let b = BoardBuf::new().set(a1=k, rank_2=p, );
+    // todo!()
 
     #[test]
-    fn boardbuf() -> Result<(), String> {
+    fn boardbuf_sets() -> Result<(), String> {
         let board = Board::empty();
         assert_eq!(board.kings(), Bitboard::EMPTY);
         assert_eq!(board.us(), Bitboard::EMPTY);
@@ -164,22 +173,55 @@ mod tests {
         let mut buf2 = BoardBuf::adopt(board2);
         let board2 = buf2.set(Bitboard::RANK_7, "pppppppp")?.set(Bitboard::RANK_8, "rnbqkbnr")?.as_board();
         assert_eq!(board1.to_string(), board2.to_string());
-        // let b = hashmap!{ a1+h1 => "R", b1+g1 => "N" };
-        // let b = BoardBuf::new().rooks(a1|h1).knights(b1|g1).pawns(rank_2).set("RNBQKBNR", rank_1);
-        // let b = BoardBuf::new("rnbqkbnr/
-        //     pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR");
-        // let b = BoardBuf::new().k(a1).K(h8).r(a2).R(c3);
-        // let b = BoardBuf::new().set(a1=k, rank_2=p, );
-        // todo!()
         println!("{}", buf.as_board());
+        Ok(())
+    }
+
+    #[test]
+    fn parse_piece() -> Result<(), String> {
         let fen1 = "1/1/7/8/8/8/PPPPPPPP/RNBQKBNR";
-        assert_eq!(BoardBuf::parse_pieces(fen1).err(), Some("Expected 8 ranks of 8 pieces in fen 1/1/7/8/8/8/PPPPPPPP/RNBQKBNR".to_string()));
+        assert_eq!(
+            BoardBuf::parse_pieces(fen1).err(),
+            Some("Expected 8 ranks of 8 pieces in fen 1/1/7/8/8/8/PPPPPPPP/RNBQKBNR".into())
+        );
         assert!(BoardBuf::parse_pieces("8").err().unwrap().starts_with("Expected 8"));
         assert!(BoardBuf::parse_pieces("8/8").err().unwrap().starts_with("Expected 8"));
         assert_eq!(BoardBuf::parse_pieces("X7/8/8/8/8/8/8/8").err(), Some("Unknown piece 'X'".to_string()));
         let buf = BoardBuf::parse_pieces("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap();
         assert_eq!(buf.get(a1), "R");
         assert_eq!(buf.get(Bitboard::FILE_H), "RP....pr");
+        Ok(())
+    }
+
+
+    #[test]
+    fn parse_fen() -> Result<(), String> {
+        let b = BoardBuf::parse_fen("7k/8/8/8/8/8/8/7K b KQkq - 45 100")?.as_board();
+        assert_eq!(b.color_us(), Color::BLACK);
+        assert_eq!(b.fullmove_counter(), 100);
+        assert_eq!(b.fifty_halfmove_clock(), 45);
+        assert_eq!(b.castling(), CastlingRights::all());
+        Ok(())
+    }
+    
+    #[test]
+    fn parse_invalid_fen() -> Result<(), String> {
+        assert_eq!(
+            BoardBuf::parse_fen("7k/8/8/8/8/8/8/7K B Qkq - 45 100").err(),
+            Some("Invalid color: 'B'".into())
+        );
+        assert_eq!(
+            BoardBuf::parse_fen("7k/8/8/8/8/8/8/7K b XQkq - 45 100").err(),
+            Some("Invalid character 'X' in castling rights 'XQkq'".into())
+        );
+        assert_eq!(
+            BoardBuf::parse_fen("7k/8/8/8/8/8/8/7K b - - fifty 100").err(),
+            Some("Invalid halfmove clock 'fifty' - invalid digit found in string".into())
+        );
+        assert_eq!(
+            BoardBuf::parse_fen("7k/8/8/8/8/8/8/7K b - - 50 full").err(),
+            Some("Invalid fullmove count 'full' - invalid digit found in string".into())
+        );
         Ok(())
     }
 }

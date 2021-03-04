@@ -33,6 +33,25 @@ bitflags! {
     }
 }
 
+impl CastlingRights {
+    pub fn parse(s: &str) -> Result<CastlingRights, String> {
+        let mut castling = CastlingRights::NONE;
+        for ch in s.chars() {
+            match ch {
+                '-' => break,
+                'K' => castling |= CastlingRights::WHITE_KING,
+                'Q' => castling |= CastlingRights::WHITE_QUEEN,
+                'k' => castling |= CastlingRights::BLACK_KING,
+                'q' => castling |= CastlingRights::BLACK_QUEEN,
+                _ => return Err(format!("Invalid character '{}' in castling rights '{}'", ch, s)),
+            }
+        }
+        Ok(castling)
+    }
+}
+
+
+
 impl Color {
     pub const WHITE: Self = Color {
         is_white: true,
@@ -158,8 +177,8 @@ pub struct Board {
     castling: CastlingRights,
     en_passant: Bitboard,
     turn: Color,
-    move_count: u16,
     fifty_clock: u16,
+    fullmove_count: u16,
 }
 
 
@@ -275,7 +294,7 @@ impl Board {
             castling: CastlingRights::ALL,
             en_passant: Bitboard::EMPTY,
             turn: Color::WHITE,
-            move_count: 0,
+            fullmove_count: 0,
             fifty_clock: 0,
         }
     }
@@ -360,6 +379,14 @@ impl Board {
 
     pub fn us(&self) -> Bitboard {
         self.color(self.turn)
+    }
+
+    pub fn fifty_halfmove_clock(&self) -> u32 {
+        self.fifty_clock.into()
+    }
+
+    pub fn fullmove_counter(&self) -> u32 {
+        self.fullmove_count.into()
     }
 
     pub fn piece_at(&self, sq: Bitboard) -> Piece {
