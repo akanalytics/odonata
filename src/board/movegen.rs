@@ -64,6 +64,20 @@ impl MoveGen {
             // MoveEnum::Capture { to, from, mover: Piece::Pawn, capture };
             moves.push(m);
         }
+        // e/p pawn_captures
+        let ep = board.en_passant();
+        if ep.intersects(pawn_captures_e) {
+            let from = ep.shift(&color.pawn_capture_east.opposite());
+            let m = Move { from, to: ep, mover: Piece::Pawn, capture: Piece::Pawn, ep, ..Default::default() };
+            moves.push(m);
+        }
+        if ep.intersects(pawn_captures_w) {
+            let from = ep.shift(&color.pawn_capture_west.opposite());
+            let m = Move { from, to: ep, mover: Piece::Pawn, capture: Piece::Pawn, ep, ..Default::default() };
+            moves.push(m);
+        }
+
+
 
         // pawn capture-promos
         for to in (pawn_captures_e & them & Bitboard::PROMO_RANKS).iter() {
@@ -281,16 +295,15 @@ mod tests {
     #[test]
     fn pawn_en_passant() {
         let board = BoardBuf::parse_fen("8/8/8/pP6/8/8/8/8 w - a6 0 0 id en-passant-#1").unwrap().as_board();
-        // FIXME! assert b.en_passant == Square.parse("a6")
-        assert_eq!(board.pseudo_legal_moves().sort().to_string(), "b5b6, b5a6");
+        assert_eq!(board.en_passant(), a6);
+        assert_eq!(board.pseudo_legal_moves().sort().to_string(), "b5a6, b5b6");
         let board = BoardBuf::parse_fen("8/8/8/PpP5/8/8/8/8 w - b6 0 0 id 'en passant #2'").unwrap().as_board();
-        assert_eq!(board.pseudo_legal_moves().sort().to_string(), "a5a6, a5b6, c5c6, c5b6");
+        assert_eq!(board.pseudo_legal_moves().sort().to_string(), "a5a6, a5b6, c5b6, c5c6");
     }
 
     #[test]
     fn pawn_promotions() {
         let board = BoardBuf::parse_fen("8/P7/8/8/8/8/7k/K7 w - - 0 0 id 'promos #1'").unwrap().as_board();
-        // FIXME! println!("{:#?}", board.pseudo_legal_moves());
         assert_eq!(board.pseudo_legal_moves().sort().to_string(), "a1a2, a1b1, a1b2, a7a8b, a7a8n, a7a8q, a7a8r");
     }
 

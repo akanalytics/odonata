@@ -381,6 +381,10 @@ impl Board {
         self.color(self.turn)
     }
 
+    pub fn en_passant(&self) -> Bitboard {
+        self.en_passant
+    }
+
     pub fn fifty_halfmove_clock(&self) -> u32 {
         self.fifty_clock.into()
     }

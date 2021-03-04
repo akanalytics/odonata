@@ -54,6 +54,7 @@ impl Bitboard {
     // const EDGES:Self = Self::FILE_A.or(Self::FILE_H).or(Self::RANK_1).or(Self::RANK_8);
     pub const PROMO_RANKS: Self = Self::RANK_1.or(Self::RANK_8);
     pub const RANKS: [Self;8] = [Self::RANK_1, Self::RANK_2, Self::RANK_3, Self::RANK_4, Self::RANK_5, Self::RANK_6, Self::RANK_7, Self::RANK_8];
+    pub const FILES: [Self;8] = [Self::FILE_A, Self::FILE_B, Self::FILE_C, Self::FILE_D, Self::FILE_E, Self::FILE_F, Self::FILE_G, Self::FILE_H];
 
 
     // insert, remove, set(true/false), toggle come for free
@@ -142,6 +143,33 @@ impl Bitboard {
         let strings: Vec<String> = self.iter().map(Self::sq_as_uci).collect();
         strings.join("+")
     }
+
+
+    pub fn parse_rank(s: &str) -> Result<Bitboard, String> {
+        match s.chars().next() {
+            Some(ch) if ('1'..='8').contains(&ch) => Ok(Self::RANKS[ch as usize - b'1' as usize]),
+            _ =>  Err(format!("Invalid rank '{}'", s))
+        }
+    }
+
+    pub fn parse_file(s: &str) -> Result<Bitboard, String> {
+        match s.chars().next() {
+            Some(ch) if ('a'..='h').contains(&ch) => Ok(Self::FILES[ch as usize - b'a' as usize]),
+            _ =>  Err(format!("Invalid file '{}'", s))
+        }
+    }
+
+
+    pub fn parse_square(s: &str) -> Result<Bitboard, String> {
+        if s.len() != 2 {
+            return Err(format!("Invalid square '{}'", s));
+        }
+        let chars: Vec<&str> = s.split("").collect();
+        Ok(Self::parse_file(chars[1])? & Self::parse_rank(chars[2])?)
+        
+    }
+
+
 }
 
 pub struct BitIterator {
@@ -211,6 +239,28 @@ mod tests {
         assert_eq!(Bitboard::from_xy(4, 7), e8);
         assert_eq!(Bitboard::from_sq(63), h8);
         assert_eq!(Bitboard::from_sq(8), a2);
+    }
+
+    #[test]
+    fn test_parse() {
+        assert_eq!(Bitboard::parse_file("a").unwrap(), Bitboard::FILE_A);
+        assert_eq!(Bitboard::parse_file("h").unwrap(), Bitboard::FILE_H);
+        assert_eq!(Bitboard::parse_rank("1").unwrap(), Bitboard::RANK_1);
+        assert_eq!(Bitboard::parse_rank("8").unwrap(), Bitboard::RANK_8);
+        assert_eq!(Bitboard::parse_square("a1").unwrap(), a1);
+        assert_eq!(Bitboard::parse_square("a8").unwrap(), a8);
+        assert_eq!(Bitboard::parse_square("h8").unwrap(), h8);
+    }
+
+    #[test]
+    fn test_parse_fail() {
+        assert_eq!(Bitboard::parse_file("9").err(), Some("Invalid file '9'".into()));
+        assert_eq!(Bitboard::parse_file("").err(), Some("Invalid file ''".into()));
+        assert_eq!(Bitboard::parse_rank("a").err(), Some("Invalid rank 'a'".into()));
+        assert_eq!(Bitboard::parse_square("aa").err(), Some("Invalid rank 'a'".into()));
+        assert_eq!(Bitboard::parse_square("11").err(), Some("Invalid file '1'".into()));
+        assert_eq!(Bitboard::parse_square("").err(), Some("Invalid square ''".into()));
+        assert_eq!(Bitboard::parse_square("abc").err(), Some("Invalid square 'abc'".into()));
     }
 
     #[test]

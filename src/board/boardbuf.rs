@@ -105,9 +105,11 @@ impl BoardBuf {
         let mut bb = Self::parse_pieces(words[0])?;
         bb.board.turn = Color::parse(words[1])?;
         bb.board.castling = CastlingRights::parse(words[2])?;
-        //bb.board.en_passant = Bitboard::parse_square(words[3])?;
-        bb.board.fifty_clock = words[4].parse().map_err(|e| format!("Invalid halfmove clock '{}' - {}", words[4], e))?;
-        bb.board.fullmove_count = words[5].parse().map_err(|e| format!("Invalid fullmove count '{}' - {}", words[5], e))?;
+        bb.board.en_passant = if words[3] == "-" { Bitboard::EMPTY } else { Bitboard::parse_square(words[3])? };
+        bb.board.fifty_clock =
+            words[4].parse().map_err(|e| format!("Invalid halfmove clock '{}' - {}", words[4], e))?;
+        bb.board.fullmove_count =
+            words[5].parse().map_err(|e| format!("Invalid fullmove count '{}' - {}", words[5], e))?;
         Ok(bb)
     }
 }
@@ -186,13 +188,12 @@ mod tests {
         );
         assert!(BoardBuf::parse_pieces("8").err().unwrap().starts_with("Expected 8"));
         assert!(BoardBuf::parse_pieces("8/8").err().unwrap().starts_with("Expected 8"));
-        assert_eq!(BoardBuf::parse_pieces("X7/8/8/8/8/8/8/8").err(), Some("Unknown piece 'X'".to_string()));
+        assert_eq!(BoardBuf::parse_pieces("X7/8/8/8/8/8/8/8").err(), Some("Unknown piece 'X'".into()));
         let buf = BoardBuf::parse_pieces("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap();
         assert_eq!(buf.get(a1), "R");
         assert_eq!(buf.get(Bitboard::FILE_H), "RP....pr");
         Ok(())
     }
-
 
     #[test]
     fn parse_fen() -> Result<(), String> {
@@ -203,13 +204,9 @@ mod tests {
         assert_eq!(b.castling(), CastlingRights::all());
         Ok(())
     }
-    
     #[test]
     fn parse_invalid_fen() -> Result<(), String> {
-        assert_eq!(
-            BoardBuf::parse_fen("7k/8/8/8/8/8/8/7K B Qkq - 45 100").err(),
-            Some("Invalid color: 'B'".into())
-        );
+        assert_eq!(BoardBuf::parse_fen("7k/8/8/8/8/8/8/7K B Qkq - 45 100").err(), Some("Invalid color: 'B'".into()));
         assert_eq!(
             BoardBuf::parse_fen("7k/8/8/8/8/8/8/7K b XQkq - 45 100").err(),
             Some("Invalid character 'X' in castling rights 'XQkq'".into())
