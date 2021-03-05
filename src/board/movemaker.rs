@@ -155,14 +155,17 @@ mod tests {
         Ok(())
     }
 
+    #[test]
     fn test_try_move_promotion() {
-        let mut board = BoardBuf::parse_fen("8/P7/8/8/8/8/7k/K7 w - - id 'promos #1'").unwrap().as_board();
+        let mut board = BoardBuf::parse_fen("8/P7/8/8/8/8/7k/K7 w - - 0 0 id 'promos #1'").unwrap().as_board();
         board = board.make_move( board.validate_uci_move("a7a8q").unwrap() );
         assert_eq!( BoardBuf::adopt(board).get(a8), "Q");
         assert_eq!( BoardBuf::adopt(board).get(a7), ".");
     }
 
+    #[test]
     fn test_castling_rights() {
+        // check castling rights parsed-from and returned-in fen
         let epd = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1 id: 'castling1'";
         let board = BoardBuf::parse_fen(epd).unwrap().as_board();
         assert_eq!(board.castling().to_string(), "KQkq");
@@ -172,47 +175,26 @@ mod tests {
         assert_eq!(board.castling().to_string(), "Kk" );
     }
 
- 
-
-}
-
-/*
-    }
-    @pytest.mark.parametrize("cls", [BoardOfBits])
-    fn test_castling_rights() {
-        epd = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1 id: 'castling1'"
-        b1 = Parser(cls).parse_board_epd(epd)
-        assert b1.castling_rights == "KQkq"
-
-        # rook takes rook, so both sides lose queens side castling grights
-        b2 = b1.clone().make_move(Move.parse('a1a8'))
-        assert b2.castling_rights == "Kk"
-    }
-
+    #[test]
     fn test_castling() {
-        epd = "r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq e3 0 1 id: 'castling1'"
-        # Kings side
-        b = Parser().parse_board_epd(epd)
-        b = BoardMailbox(b)
-        assert b.get_castling_side(Parser().parse_move('e1g1')) == "K"
-        b.try_move( Parser().parse_move('e1g1'))
-        b.try_move( Parser().parse_move('e8g8')) # casle kings side for w and then b
-        assert b.to_fen() == "r4rk1/pppppppp/8/8/8/8/PPPPPPPP/R4RK1 w - - 2 2"
+        let epd = "r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq e3 0 1 id: 'castling1'";
+        let board = BoardBuf::parse_fen(epd).unwrap().as_board();
+        
+        // casle kings side for w and then b
+        let board = board.make_move( board.validate_uci_move("e1g1").unwrap());
+        let board = board.make_move( board.validate_uci_move("e8g8").unwrap());
+        assert_eq!(board.to_fen(), "r4rk1/pppppppp/8/8/8/8/PPPPPPPP/R4RK1 w - - 2 2");
 
-        # Queens side
-        b = Parser().parse_board_epd(epd)
-        b = BoardMailbox(b)
-        assert b.get_castling_side(Parser().parse_move('e1c1')) == "Q"
-        b.try_move( Parser().parse_move('e1c1'))
-        b.try_move( Parser().parse_move('e8c8')) # casle queens side for w and then b
-        assert b.to_fen() == "2kr3r/pppppppp/8/8/8/8/PPPPPPPP/2KR3R w - - 2 2"
+        // castle queens side
+        let board = BoardBuf::parse_fen(epd).unwrap().as_board();
+        let board = board.make_move( board.validate_uci_move("e1c1").unwrap());
+        let board = board.make_move( board.validate_uci_move("e8c8").unwrap());
+        assert_eq!(board.to_fen(), "2kr3r/pppppppp/8/8/8/8/PPPPPPPP/2KR3R w - - 2 2");
 
-        # Queens side rook moves
-        b = Parser().parse_board_epd(epd)
-        b = BoardMailbox(b)
-        assert b.get_castling_side(Parser().parse_move('e1c1')) == "Q"
-        b.try_move( Parser().parse_move('a1b1'))
-        b.try_move( Parser().parse_move('a8b8')) # rook moves queens side for w and then b
-        assert b.to_fen() == "1r2k2r/pppppppp/8/8/8/8/PPPPPPPP/1R2K2R w Kk - 2 2"
+        // rook moves queens side for w and then b, losing q-side castling rights
+        let board = BoardBuf::parse_fen(epd).unwrap().as_board();
+        let board = board.make_move( board.validate_uci_move("a1b1").unwrap());
+        let board = board.make_move( board.validate_uci_move("a8b8").unwrap());
+        assert_eq!(board.to_fen(), "1r2k2r/pppppppp/8/8/8/8/PPPPPPPP/1R2K2R w Kk - 2 2");
     }
-*/
+}
