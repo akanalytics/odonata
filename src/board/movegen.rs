@@ -14,6 +14,30 @@ impl MoveGen {
     }
 
 
+    pub fn is_in_check(&self, board: &Board, c: Color) -> bool {
+        let us = board.color(c);
+        let them = board.color(c.opposite());
+        let king = board.kings() & us;
+        let occ = us | them;
+        let king_color = c;
+        !self.attacked_by(king, occ, board, king_color.opposite()).is_empty()
+    }
+
+
+
+    pub fn is_legal_move(&self, board: &Board, m: &Move) -> bool {
+        
+        if m.is_castle || m.is_drop {
+            return true;
+        }
+
+        // first iteration - make the move and see if king in check
+    
+        true
+    }
+
+
+
     // Vec::with_capacity(100).
     pub fn pseudo_legal_moves(&self, board: &Board, moves: &mut MoveList) {
         let color = board.color_us();
@@ -182,7 +206,7 @@ impl MoveGen {
         let right = color.castle_rights_king;
         if rights.contains(right) && !color.kingside_castle_sqs.intersects(occupied) & !king.is_empty() {
             let king_moves = king | color.kingside_castle_sqs;
-            if self.attacked_by(king_moves, occupied, board, &color).is_empty() {
+            if self.attacked_by(king_moves, occupied, board, color.opposite()).is_empty() {
                 let rook_to = king.shift(&Dir::E);
                 let king_to = rook_to.shift(&Dir::E);
                 // let rook_from = Bitboard::FILE_A & color.back_rank;
@@ -195,7 +219,7 @@ impl MoveGen {
         let right = color.castle_rights_queen;
         if rights.contains(right) && !color.queenside_castle_sqs.intersects(occupied) & !king.is_empty() {
             let king_moves = king | color.queenside_castle_sqs;
-            if self.attacked_by(king_moves, occupied, board, &color).is_empty() {
+            if self.attacked_by(king_moves, occupied, board, color.opposite()).is_empty() {
                 let rook_to = king.shift(&Dir::W);
                 let king_to = rook_to.shift(&Dir::W);
                 // let rook_from = Bitboard::FILE_H & color.back_rank;
@@ -209,16 +233,16 @@ impl MoveGen {
 
 
 
-    fn attacked_by(&self, target: Bitboard, occ: Bitboard, board: &Board, c: &Color) -> Bitboard {
-        let pawns = board.pawns() & board.them();
-        let knights = board.knights() & board.them();
-        let bishops = board.bishops() & board.them();
-        let rooks = board.rooks() & board.them();
-        let queens = board.queens() & board.them();
-        let kings = board.kings() & board.them();
+    fn attacked_by(&self, target: Bitboard, occ: Bitboard, board: &Board, opponent: Color) -> Bitboard {
+        let pawns = board.pawns() & board.color(opponent);
+        let knights = board.knights() & board.color(opponent);
+        let bishops = board.bishops() & board.color(opponent);
+        let rooks = board.rooks() & board.color(opponent);
+        let queens = board.queens() & board.color(opponent);
+        let kings = board.kings() & board.color(opponent);
 
-        let (east, west) = self.attack_gen.pawn_attacks(target, c);
-        let mut attackers = (east | west) & pawns;
+        let (east, west) = self.attack_gen.pawn_attacks(pawns, &opponent);
+        let mut attackers = (east | west) & target;
 
         let sq = target.first_square();
 
@@ -227,6 +251,9 @@ impl MoveGen {
             | self.attack_gen.bishop_attacks(occ, sq) & (bishops | queens)
             | self.attack_gen.rook_attacks(occ, sq) & (rooks | queens);
         // TODO: en passant!!
+
+        debug!("opponent:{}\n{}target\n{}attackers\n{}", opponent, board, target, attackers);
+
         attackers
     }
 }
@@ -241,6 +268,13 @@ mod tests {
     use super::*;
     use crate::board::boardbuf::*;
     use crate::globals::constants::*;
+    extern crate env_logger;
+
+    fn init() {
+        // let _ = env_logger::builder().is_test(true).try_init();
+        env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    }
+
 
     #[test]
     fn pseudo_legal_moves() -> Result<(), String> {
@@ -334,6 +368,7 @@ mod tests {
         assert_eq!(board.pseudo_legal_moves().sort().to_string(), "b2a1, b2a3, b2c1, b2c3, b2d4, b2e5, b2f6, b2g7, b2h8");
     }
 
+    #[test]
     fn moves_in_check() {
         let board = BoardBuf::parse_fen("rnbqkbnr/pppp1ppp/4p3/3N4/8/8/PPPPPPPP/R1BQKBNR b KQkq - 1 2").unwrap().as_board();
         assert!(board.en_passant().is_empty());
@@ -343,4 +378,54 @@ mod tests {
 
 
 
+    // let _ = env_logger::init();
+    // info!("can log from the test too");
+
+    #[test]
+    fn test_is_in_check() {
+        init();
+        let fen = "r4r1k/p1ppqpb1/bn2pnp1/3PN2Q/1p2P3/2N4p/PPPBBPPP/2R1K2R b K - 3 2";
+        let board = BoardBuf::parse_fen(fen).unwrap().as_board();
+        assert_eq!( board.is_in_check(Color::BLACK), true);
+
+        let fen = "k7/8/8/8/8/8/7K/R7 w - - 0 0 id 'check #1'";
+        let board = BoardBuf::parse_fen(fen).unwrap().as_board();
+        assert_eq!( board.is_in_check(Color::BLACK), true, "\n{}", board);
+        assert_eq!( board.is_in_check(Color::WHITE), false);
+
+        let fen = "8/k2P3R/8/8/8/8/8/7K w - - 0 0 id 'pawn blocks rook #1'";
+        let board = BoardBuf::parse_fen(fen).unwrap().as_board();
+        assert_eq!( board.is_in_check(Color::BLACK), false);
+
+        let fen = "k7/8/8/8/8/8/7K/7B w - - 0 0 id 'check Bishop #2'";
+        let board = BoardBuf::parse_fen(fen).unwrap().as_board();
+        assert_eq!( board.is_in_check(Color::BLACK), true );
+
+        let fen = "k7/8/2p5/8/8/8/7K/7B w - - 0 0 id 'check blocked bishop #3'";
+        let board = BoardBuf::parse_fen(fen).unwrap().as_board();
+        assert_eq!( board.is_in_check(Color::BLACK), false);
+
+        let fen = "k7/7R/2p5/8/8/8/7K/7B w - - 0 0 id 'check blocked bishop #4'";
+        let board = BoardBuf::parse_fen(fen).unwrap().as_board();
+        assert_eq!( board.is_in_check(Color::BLACK), false);
+
+        let fen = "k7/8/8/8/8/8/7K/7Q w - - 0 0 id 'check Queen #1'";
+        let board = BoardBuf::parse_fen(fen).unwrap().as_board();
+        assert_eq!( board.is_in_check(Color::BLACK), true);
+
+        let fen = "k7/8/1N6/8/8/8/7K/8 w - - 0 0 id 'check N #5'";
+        let board = BoardBuf::parse_fen(fen).unwrap().as_board();
+        assert_eq!( board.is_in_check(Color::BLACK), true);
+
+        // pawn capture+promo attack
+        let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q2/PPPBBPpP/1R3K1R w kq - 0 2";
+        let board = BoardBuf::parse_fen(fen).unwrap().as_board();
+        assert_eq!( board.is_in_check(Color::WHITE), true, "\n{}", board);
+
+        // checks by king 
+        let fen = "8/8/8/8/8/8/1k6/K7 w - - 0 0 id 'check by king!'";
+        let board = BoardBuf::parse_fen(fen).unwrap().as_board();
+        assert_eq!( board.is_in_check(Color::WHITE), true);
+
+    }
 }

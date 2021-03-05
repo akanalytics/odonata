@@ -435,6 +435,10 @@ impl Board {
         moves
     }
 
+    pub fn is_in_check(&self, c: Color) -> bool {
+        MoveGen::new().is_in_check(self, c)
+    }
+
     pub fn to_fen(&self) -> String {
         let mut fen = self.to_string().trim_end().replace('\n', "/");
 
