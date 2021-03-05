@@ -2,6 +2,7 @@ use crate::attacks::{BitboardAttacks, ClassicalBitboard};
 use crate::bitboard::{Bitboard, Dir};
 use crate::board::{Board, CastlingRights, Color, Piece};
 use crate::board::{MoveEnum, Move, MoveList };
+use crate::board::movemaker::{MoveMaker};
 
 pub struct MoveGen {
     attack_gen: ClassicalBitboard,
@@ -31,9 +32,10 @@ impl MoveGen {
             return true;
         }
 
-        // first iteration - make the move and see if king in check
-    
-        true
+        // TODO: first iteration - make the move and see if king in check
+        let king_color = board.color_us(); 
+        let new_board = board.make_move(m);
+        !new_board.is_in_check(king_color)
     }
 
 
@@ -267,6 +269,7 @@ impl MoveGen {
 mod tests {
     use super::*;
     use crate::board::boardbuf::*;
+    use crate::board::movemaker::*;
     use crate::globals::constants::*;
     extern crate env_logger;
 
@@ -427,5 +430,20 @@ mod tests {
         let board = BoardBuf::parse_fen(fen).unwrap().as_board();
         assert_eq!( board.is_in_check(Color::WHITE), true);
 
+    }
+
+    #[test]
+    fn test_legal_move() -> Result<(),String> {
+        // https://lichess.org/editor/8/8/8/8/8/8/6r1/7K
+        let fen = "8/8/8/8/8/8/6r1/7K w - - 0 0 id 'rook+king'";
+        let board = BoardBuf::parse_fen(fen).unwrap().as_board();
+        assert_eq!( board.pseudo_legal_moves().sort().to_string(), "h1g1, h1g2, h1h2");
+        let mov_h1g1 = board.validate_uci_move("h1g1")?;
+        let mov_h1g2 = board.validate_uci_move("h1g2")?;
+        let mov_h1h2 = board.validate_uci_move("h1h2")?;
+        assert_eq!( board.is_legal_move(&mov_h1g1), false);
+        assert_eq!( board.is_legal_move(&mov_h1g2), true);
+        assert_eq!( board.is_legal_move(&mov_h1h2), false);
+        Ok(())
     }
 }

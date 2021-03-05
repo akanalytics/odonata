@@ -7,7 +7,7 @@ use std::iter::*;
 pub mod boardbuf;
 pub mod catalog;
 mod movegen;
-mod movemaker;
+pub mod movemaker;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Color {
@@ -438,6 +438,11 @@ impl Board {
     pub fn is_in_check(&self, c: Color) -> bool {
         MoveGen::new().is_in_check(self, c)
     }
+
+    pub fn is_legal_move(&self, mv: &Move) -> bool {
+        MoveGen::new().is_legal_move(self, mv)
+    }
+
 
     pub fn to_fen(&self) -> String {
         let mut fen = self.to_string().trim_end().replace('\n', "/");

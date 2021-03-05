@@ -3,21 +3,13 @@ use crate::board::{Board, CastlingRights, Color, Piece};
 use crate::board::{Move, MoveEnum};
 use crate::globals::constants::*;
 
-
-
-
-
-
-
-
-trait MoveValidator {
+pub trait MoveValidator {
     fn validate_uci_move(&self, mv: &str) -> Result<Move, String>;
     fn validate_san_move(&self, mv: &str) -> Result<Move, String>;
 }
 
-
 impl MoveValidator for Board {
-    fn validate_uci_move(&self, mv: &str ) -> Result<Move, String> {
+    fn validate_uci_move(&self, mv: &str) -> Result<Move, String> {
         // FIXME! *legal* moves
         let mut moves = self.pseudo_legal_moves();
         if let Some(pos) = moves.iter().position(|m| m.uci() == mv) {
@@ -26,23 +18,17 @@ impl MoveValidator for Board {
         Err(format!("Move {} is not legal", mv))
     }
 
-
     fn validate_san_move(&self, mv: &str) -> Result<Move, String> {
         Err("Not implemented".into())
     }
 }
 
-
-
-
-
-
-trait MoveMaker {
-    fn make_move(&self, m: Move) -> Board;
+pub trait MoveMaker {
+    fn make_move(&self, m: &Move) -> Board;
 }
 
 impl MoveMaker for Board {
-    fn make_move(&self, m: Move) -> Board {
+    fn make_move(&self, m: &Move) -> Board {
         let mut board = Board {
             en_passant: Bitboard::EMPTY,
             turn: self.turn.opposite(),
@@ -150,7 +136,7 @@ mod tests {
         let board = Catalog::starting_position();
         // let mut m = Move::parse("e2e4")?;
         let mov = board.validate_uci_move("e2e4")?;
-        let board2 = board.make_move(mov);
+        let board2 = board.make_move(&mov);
         assert_eq!(board2.to_fen(), "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1");
         Ok(())
     }
@@ -158,9 +144,9 @@ mod tests {
     #[test]
     fn test_try_move_promotion() {
         let mut board = BoardBuf::parse_fen("8/P7/8/8/8/8/7k/K7 w - - 0 0 id 'promos #1'").unwrap().as_board();
-        board = board.make_move( board.validate_uci_move("a7a8q").unwrap() );
-        assert_eq!( BoardBuf::adopt(board).get(a8), "Q");
-        assert_eq!( BoardBuf::adopt(board).get(a7), ".");
+        board = board.make_move(&board.validate_uci_move("a7a8q").unwrap());
+        assert_eq!(BoardBuf::adopt(board).get(a8), "Q");
+        assert_eq!(BoardBuf::adopt(board).get(a7), ".");
     }
 
     #[test]
@@ -171,30 +157,29 @@ mod tests {
         assert_eq!(board.castling().to_string(), "KQkq");
 
         // rook takes rook, so both sides lose queens side castling grights
-        let board = board.make_move( board.validate_uci_move("a1a8").unwrap());
-        assert_eq!(board.castling().to_string(), "Kk" );
+        let board = board.make_move(&board.validate_uci_move("a1a8").unwrap());
+        assert_eq!(board.castling().to_string(), "Kk");
     }
 
     #[test]
     fn test_castling() {
         let epd = "r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq e3 0 1 id: 'castling1'";
         let board = BoardBuf::parse_fen(epd).unwrap().as_board();
-        
         // casle kings side for w and then b
-        let board = board.make_move( board.validate_uci_move("e1g1").unwrap());
-        let board = board.make_move( board.validate_uci_move("e8g8").unwrap());
+        let board = board.make_move(&board.validate_uci_move("e1g1").unwrap());
+        let board = board.make_move(&board.validate_uci_move("e8g8").unwrap());
         assert_eq!(board.to_fen(), "r4rk1/pppppppp/8/8/8/8/PPPPPPPP/R4RK1 w - - 2 2");
 
         // castle queens side
         let board = BoardBuf::parse_fen(epd).unwrap().as_board();
-        let board = board.make_move( board.validate_uci_move("e1c1").unwrap());
-        let board = board.make_move( board.validate_uci_move("e8c8").unwrap());
+        let board = board.make_move(&board.validate_uci_move("e1c1").unwrap());
+        let board = board.make_move(&board.validate_uci_move("e8c8").unwrap());
         assert_eq!(board.to_fen(), "2kr3r/pppppppp/8/8/8/8/PPPPPPPP/2KR3R w - - 2 2");
 
         // rook moves queens side for w and then b, losing q-side castling rights
         let board = BoardBuf::parse_fen(epd).unwrap().as_board();
-        let board = board.make_move( board.validate_uci_move("a1b1").unwrap());
-        let board = board.make_move( board.validate_uci_move("a8b8").unwrap());
+        let board = board.make_move(&board.validate_uci_move("a1b1").unwrap());
+        let board = board.make_move(&board.validate_uci_move("a8b8").unwrap());
         assert_eq!(board.to_fen(), "1r2k2r/pppppppp/8/8/8/8/PPPPPPPP/1R2K2R w Kk - 2 2");
     }
 }
