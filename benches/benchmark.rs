@@ -1,6 +1,8 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use flouder::bitboard::*;
 use flouder::board::*;
+use flouder::board::movegen::perft;
+use flouder::board::catalog::*;
 
 fn bitwise_handcrafted(c: &mut Criterion) {
     c.bench_function("bitwise_handcrafted", |b| {
@@ -46,5 +48,17 @@ fn piece_to_char(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, bitwise_handcrafted, bitwise_bitflags, piece_to_upper_char, piece_to_char);
+fn benchmark_perft(c: &mut Criterion) {
+    c.bench_function("perft", |b| {
+        b.iter(|| {
+            let results = vec!{ 20, 400, 8902, 197281, 4865609 };
+            let board = Catalog::starting_position();
+            black_box(perft(&board, black_box(5)));
+        });
+    });
+}
+
+
+
+criterion_group!(benches, bitwise_handcrafted, bitwise_bitflags, piece_to_upper_char, piece_to_char,benchmark_perft);
 criterion_main!(benches);

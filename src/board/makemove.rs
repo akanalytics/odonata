@@ -3,25 +3,8 @@ use crate::board::{Board, CastlingRights, Color, Piece};
 use crate::board::{Move, MoveEnum};
 use crate::globals::constants::*;
 
-pub trait MoveValidator {
-    fn validate_uci_move(&self, mv: &str) -> Result<Move, String>;
-    fn validate_san_move(&self, mv: &str) -> Result<Move, String>;
-}
 
-impl MoveValidator for Board {
-    fn validate_uci_move(&self, mv: &str) -> Result<Move, String> {
-        // FIXME! *legal* moves
-        let mut moves = self.pseudo_legal_moves();
-        if let Some(pos) = moves.iter().position(|m| m.uci() == mv) {
-            return Ok(moves.remove(pos));
-        }
-        Err(format!("Move {} is not legal", mv))
-    }
 
-    fn validate_san_move(&self, mv: &str) -> Result<Move, String> {
-        Err("Not implemented".into())
-    }
-}
 
 pub trait MoveMaker {
     fn make_move(&self, m: &Move) -> Board;
@@ -129,6 +112,7 @@ mod tests {
     use crate::board::boardbuf::*;
     use crate::board::catalog::*;
     use crate::board::*;
+    use crate::board::movegen::*;
     use crate::globals::constants::*;
 
     #[test]

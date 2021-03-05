@@ -1,13 +1,12 @@
-use self::movegen::MoveGen;
 use crate::bitboard::{Bitboard, Dir};
 use crate::utils::StringUtils;
-use std::fmt::{self, Write};
+use std::fmt;
 use std::iter::*;
 
 pub mod boardbuf;
 pub mod catalog;
-mod movegen;
-pub mod movemaker;
+pub mod movegen;
+pub mod makemove;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Color {
@@ -429,20 +428,6 @@ impl Board {
         Piece::None
     }
 
-    pub fn pseudo_legal_moves(&self) -> MoveList {
-        let mut moves = MoveList::new();
-        MoveGen::new().pseudo_legal_moves(self, &mut moves);
-        moves
-    }
-
-    pub fn is_in_check(&self, c: Color) -> bool {
-        MoveGen::new().is_in_check(self, c)
-    }
-
-    pub fn is_legal_move(&self, mv: &Move) -> bool {
-        MoveGen::new().is_legal_move(self, mv)
-    }
-
 
     pub fn to_fen(&self) -> String {
         let mut fen = self.to_string().trim_end().replace('\n', "/");
@@ -462,6 +447,10 @@ impl Board {
         )
     }
 }
+
+
+
+
 
 #[cfg(test)]
 mod tests {

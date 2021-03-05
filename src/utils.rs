@@ -64,8 +64,7 @@ mod tests {
     #[test]
     fn string_utils() {
         let s = "abcdèfghij";
-        assert_eq!( s.take_char_at(50), None );
-        
+        assert_eq!(s.take_char_at(50), None);
         // All three statements should print:
         // "abcdè, abcdèfghij, dèfgh, dèfghij, g."
         let expected = "abcdè, abcdèfghij, dèfgh, dèfghij, g.";

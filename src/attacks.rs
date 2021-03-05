@@ -132,6 +132,12 @@ mod tests {
     use super::*;
     use crate::globals::constants::*;
 
+    fn init() {
+        env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    }
+
+
+
     #[test]
     fn test_rays() {
         let north = ClassicalBitboard::ray(&Dir::N, c3);
@@ -171,6 +177,7 @@ mod tests {
 
     #[test]
     fn test_king_attacks() {
+        init();
         let classical = ClassicalBitboard::new();
         let attacks = classical.king_attacks(a6.first_square());
         assert_eq!(attacks, a5 | b5 | b6 | b7 | a7);

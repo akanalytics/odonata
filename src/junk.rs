@@ -1,6 +1,28 @@
 
 
 
+    fn init() {
+        env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    }
+
+
+// macro_rules! log {
+//     ($msg:expr) => {
+//         LOGGER.with(|logger| {
+//             if let Some(logger) = logger.borrow().last() {
+//                 logger.log($msg)
+//             }
+//         })
+//     }
+// }
+
+// fn main() {
+//     log!("a");
+//     push_context(NetworkLogger, || {
+//         log!("b");
+//     });
+//     log!("c");
+// }
 
 //     pub fn make_move_enum(&self, m: MoveEnum) -> Board {
 //         let mut board = Board {
