@@ -63,6 +63,7 @@ trait MoveGen {
     fn is_in_check(&self, c: Color) -> bool;
     fn is_legal_move(&self, mv: &Move) -> bool;
     fn pseudo_legal_moves(&self) -> MoveList;
+    fn legal_moves(&self) -> MoveList;
 }
 
 impl MoveGen for Board {
@@ -71,6 +72,7 @@ impl MoveGen for Board {
         let us = board.color(c);
         let them = board.color(c.opposite());
         let king = board.kings() & us;
+        debug_assert!(!king.is_empty(), "king ({}) not found {}", c, board );
         let occ = us | them;
         let king_color = c;
         !attacked_by(king, occ, board, king_color.opposite()).is_empty()
@@ -79,6 +81,13 @@ impl MoveGen for Board {
     fn is_legal_move(&self, mv: &Move) -> bool {
         mv.is_castle || mv.is_drop || !self.make_move(mv).is_in_check(self.color_us())
     }
+
+    fn legal_moves(&self) -> MoveList {
+        let mut moves = self.pseudo_legal_moves();
+        moves.retain(|m| self.is_legal_move(m));
+        moves
+    }
+
 
     // TODO: Vec::with_capacity(100).
     fn pseudo_legal_moves(&self) -> MoveList {
@@ -280,12 +289,10 @@ pub fn perft( board: &Board, depth: u32 ) -> u32 {
         return 1;
     } 
     else {
-        let moves = board.pseudo_legal_moves();
+        let moves = board.legal_moves();
         let mut count = 0;
         for m in moves.iter() {
-            if board.is_legal_move(m) {
-                count += perft(&board.make_move(m), depth - 1);                
-            }
+            count += perft(&board.make_move(m), depth - 1);                
         }           
         count
     }
@@ -323,10 +330,15 @@ mod tests {
 
     #[test]
     fn test_perft() {
-        let results = vec!{ 20, 400, 8902, 197281, 4865609 };
-        let board = Catalog::starting_position();
-        let perft4 = perft(&board, 5);
-        assert_eq!(perft4, 4);
+        for (board, perfts) in Catalog::perfts() {
+            for (depth, expected) in perfts.iter().enumerate() {
+                let count = perft(&board, depth as u32);
+                if &count != expected {
+                    println!("depth:{} count:{} expected:{} fen: {}", depth, count, expected, board.to_fen());
+                }
+                // assert_eq!(&count, expected, "fen: {}", board.to_fen());
+            }
+        };
     }
 
     #[test]

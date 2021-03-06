@@ -43,6 +43,7 @@ impl MoveMaker for Board {
             board.pieces[m.capture.index()].remove(m.ep);
             board.colors[board.turn.index].remove(m.ep);
         } else if m.capture != Piece::None {
+            debug_assert!(m.capture != Piece::King, "king captured by move {} on board {}", m, board );
             board.fifty_clock = 0;
             board.pieces[m.capture.index()].remove(m.to);
             board.colors[board.turn.index].remove(m.to);
@@ -63,19 +64,19 @@ impl MoveMaker for Board {
             #[allow(non_upper_case_globals)]
             match m.to {
                 c1 => {
-                    debug_assert!(board.castling.contains(CastlingRights::WHITE_KING));
+                    debug_assert!(board.castling.contains(CastlingRights::WHITE_QUEEN));
                     rook_from_to = a1 | d1;
                 }
                 g1 => {
-                    debug_assert!(board.castling.contains(CastlingRights::WHITE_QUEEN));
+                    debug_assert!(board.castling.contains(CastlingRights::WHITE_KING));
                     rook_from_to = h1 | f1;
                 }
                 c8 => {
-                    debug_assert!(board.castling.contains(CastlingRights::BLACK_KING));
+                    debug_assert!(board.castling.contains(CastlingRights::BLACK_QUEEN));
                     rook_from_to = a8 | d8;
                 }
                 g8 => {
-                    debug_assert!(board.castling.contains(CastlingRights::BLACK_QUEEN));
+                    debug_assert!(board.castling.contains(CastlingRights::BLACK_KING));
                     rook_from_to = h8 | f8;
                 }
                 _ => panic!(format!("Castling move from square {}", m.to)),
