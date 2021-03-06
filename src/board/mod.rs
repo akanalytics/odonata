@@ -194,7 +194,7 @@ impl Piece {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Copy,Clone)]
 pub struct Move {
     from: Bitboard,
     to: Bitboard,
@@ -252,7 +252,7 @@ impl fmt::Display for Move {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct MoveList(Vec<Move>);
 
 impl MoveList {
@@ -304,7 +304,7 @@ pub enum MoveEnum {
     // DropRemove { dest: Bitboard, piece: Piece },
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct Board {
     pieces: [Bitboard; 7],
     colors: [Bitboard; 2],
@@ -313,6 +313,7 @@ pub struct Board {
     turn: Color,
     fifty_clock: u16,
     fullmove_count: u16,
+    moves: MoveList,
 }
 
 impl Board {
@@ -325,6 +326,7 @@ impl Board {
             turn: Color::WHITE,
             fifty_clock: 0,
             fullmove_count: 1,
+            moves: MoveList::new(),
         }
     }
 

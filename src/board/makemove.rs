@@ -12,13 +12,18 @@ pub trait MoveMaker {
 
 impl MoveMaker for Board {
     fn make_move(&self, m: &Move) -> Board {
+        // either we're moving to an empty square or its a capture
+        debug_assert!( ((self.white() | self.black()) & m.to).is_empty() || m.is_capture(), "Move-to sq must be empty or its a capture {} on board \n{}", m, self );
         let mut board = Board {
             en_passant: Bitboard::EMPTY,
             turn: self.turn.opposite(),
             fullmove_count: if self.turn == Color::BLACK { self.fullmove_count + 1 } else { self.fullmove_count },
             fifty_clock: self.fifty_clock + 1,
+            moves: self.moves.clone(),
             ..*self
         };
+
+        board.moves.push(*m);
 
         // clear one bit and set another for the move using xor
         let from_to_bits = m.from | m.to;
@@ -37,16 +42,20 @@ impl MoveMaker for Board {
             }
         }
 
-        if !m.ep.is_empty() {
-            // ep capture is like capture but with capture piece on ep square not dest
-            board.fifty_clock = 0;
-            board.pieces[m.capture.index()].remove(m.ep);
-            board.colors[board.turn.index].remove(m.ep);
-        } else if m.capture != Piece::None {
-            debug_assert!(m.capture != Piece::King, "king captured by move {} on board {}", m, board );
-            board.fifty_clock = 0;
-            board.pieces[m.capture.index()].remove(m.to);
-            board.colors[board.turn.index].remove(m.to);
+        if m.is_capture() {
+            if !m.ep.is_empty() {
+                // ep capture is like capture but with capture piece on ep square not dest
+                board.fifty_clock = 0;
+                board.pieces[m.capture.index()].remove(m.ep);
+                board.colors[board.turn.index].remove(m.ep);
+            }
+            else { 
+                // regular capture
+                debug_assert!(m.capture != Piece::King, "king captured by move {} on board \n{}", m, self );
+                board.fifty_clock = 0;
+                board.pieces[m.capture.index()].remove(m.to);
+                board.colors[board.turn.index].remove(m.to);
+            }
         }
 
         if m.promo != Piece::None {
@@ -130,7 +139,7 @@ mod tests {
     fn test_try_move_promotion() {
         let mut board = BoardBuf::parse_fen("8/P7/8/8/8/8/7k/K7 w - - 0 0 id 'promos #1'").unwrap().as_board();
         board = board.make_move(&board.validate_uci_move("a7a8q").unwrap());
-        assert_eq!(BoardBuf::adopt(board).get(a8), "Q");
+        assert_eq!(BoardBuf::adopt(board.clone()).get(a8), "Q");
         assert_eq!(BoardBuf::adopt(board).get(a7), ".");
     }
 

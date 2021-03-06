@@ -4,6 +4,7 @@ use super::{Board, CastlingRights, Color, Piece};
 use crate::bitboard::Bitboard;
 
 /// BoardBuf is a slow performing facade of convenience methods on board
+#[derive(Clone)]
 pub struct BoardBuf {
     board: Board,
 }
@@ -72,7 +73,7 @@ impl BoardBuf {
     }
 
     pub fn as_board(&self) -> Board {
-        self.board
+        self.board.clone()
     }
 
     /// Parses a FEN string to create a board. FEN format is detailed at https://en.wikipedia.org/wiki/Forsyth–Edwards_Notation
@@ -131,11 +132,12 @@ impl BoardBuf {
 
 impl fmt::Display for Board {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let b = BoardBuf::adopt(*self);
+        let b = BoardBuf::adopt(self.clone());
         for &r in Bitboard::RANKS.iter().rev() {
             fmt.write_str(&b.get(r))?;
             fmt.write_char('\n')?;
         }
+        write!(fmt, "fen: \nMoves: {}", self.moves);
         Ok(())
     }
 }

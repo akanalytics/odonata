@@ -59,7 +59,7 @@ impl MoveValidator for Board {
     }
 }
 
-trait MoveGen {
+pub trait MoveGen {
     fn is_in_check(&self, c: Color) -> bool;
     fn is_legal_move(&self, mv: &Move) -> bool;
     fn pseudo_legal_moves(&self) -> MoveList;

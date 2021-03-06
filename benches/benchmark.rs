@@ -1,9 +1,9 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use flouder::bitboard::*;
-use flouder::board::*;
-use flouder::board::movegen::*;
-use flouder::board::makemove::*;
 use flouder::board::catalog::*;
+use flouder::board::makemove::*;
+use flouder::board::movegen::*;
+use flouder::board::*;
 
 fn bitwise_handcrafted(c: &mut Criterion) {
     let n1 = 1u64 << 3;
@@ -12,7 +12,7 @@ fn bitwise_handcrafted(c: &mut Criterion) {
     c.bench_function("bitwise_handcrafted", |b| {
         b.iter(|| {
             let a = black_box(n1) | black_box(n2);
-            let b = a & black_box(n3) ;
+            let b = a & black_box(n3);
             black_box(b);
         });
     });
@@ -51,11 +51,14 @@ fn piece_to_char(c: &mut Criterion) {
 
 fn benchmark_perft(c: &mut Criterion) {
     let board = Catalog::starting_position();
-    c.bench_function("perft", |b| {
+    let mut group = c.benchmark_group("sample size 10");
+    group.sample_size(10);
+    group.bench_function("perft", |b| {
         b.iter(|| {
             black_box(perft(&board, black_box(5)));
         });
     });
+    group.finish();
 }
 
 fn make_move(c: &mut Criterion) {
@@ -64,13 +67,39 @@ fn make_move(c: &mut Criterion) {
     let mv2 = board.validate_uci_move("b1c3").unwrap();
     c.bench_function("makemove", |b| {
         b.iter(|| {
-            black_box(board.make_move( black_box(&mv1)));
-            black_box(board.make_move( black_box(&mv2)));
+            black_box(board.make_move(black_box(&mv1)));
+            black_box(board.make_move(black_box(&mv2)));
         });
     });
 }
 
+fn pseudo_legal_moves(c: &mut Criterion) {
+    let board = Catalog::starting_position();
+    c.bench_function("pseudo_legal_moves", |b| {
+        b.iter(|| {
+            black_box(black_box(&board).pseudo_legal_moves());
+        });
+    });
+}
 
+fn legal_moves(c: &mut Criterion) {
+    let board = Catalog::starting_position();
+    c.bench_function("legal_moves", |b| {
+        b.iter(|| {
+            black_box(black_box(&board).legal_moves());
+        });
+    });
+}
 
-criterion_group!(benches, bitwise_handcrafted, bitwise_bitflags, piece_to_upper_char, piece_to_char,benchmark_perft,make_move);
+criterion_group!(
+    benches,
+    bitwise_handcrafted,
+    bitwise_bitflags,
+    piece_to_upper_char,
+    piece_to_char,
+    benchmark_perft,
+    make_move,
+    legal_moves,
+    pseudo_legal_moves
+);
 criterion_main!(benches);
