@@ -1,6 +1,7 @@
 use crate::bitboard::{Bitboard, Dir};
 use crate::utils::StringUtils;
 use std::fmt;
+use crate::board::boardbuf::BoardBuf;
 use std::iter::*;
 
 pub mod boardbuf;
@@ -312,7 +313,7 @@ pub enum MoveEnum {
     // DropRemove { dest: Bitboard, piece: Piece },
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Board {
     pieces: [Bitboard; 7],
     colors: [Bitboard; 2],
@@ -440,7 +441,10 @@ impl Board {
 
 
     pub fn to_fen(&self) -> String {
-        let mut fen = self.to_string().trim_end().replace('\n', "/");
+        let b = BoardBuf::adopt(self.clone());
+        
+        let mut fen = Bitboard::RANKS.iter().rev().map(|&r|b.get(r)).collect::<Vec<String>>().join("/");
+
 
         // replace continguous empties by a count
         for i in (1..=8).rev() {

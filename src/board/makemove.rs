@@ -1,6 +1,6 @@
 use crate::bitboard::Bitboard;
+use crate::board::Move;
 use crate::board::{Board, CastlingRights, Color, Piece};
-use crate::board::{Move};
 use crate::globals::constants::*;
 
 pub trait MoveMaker {
@@ -12,9 +12,9 @@ impl MoveMaker for Board {
         // either we're moving to an empty square or its a capture
         debug_assert!(
             ((self.white() | self.black()) & m.to).is_empty() || m.is_capture(),
-            "Move-to sq must be empty or its a capture {} on board \n{}",
+            "Non-empty to:sq for non-capture {:?} board \n{} white \n{} black\n{}",
             m,
-            self
+            self, self.white(), self.black()
         );
         let mut board = Board {
             en_passant: Bitboard::EMPTY,
@@ -27,14 +27,10 @@ impl MoveMaker for Board {
 
         board.moves.push(*m);
 
-        // clear one bit and set another for the move using xor
-        let from_to_bits = m.from | m.to;
-        board.pieces[m.mover.index()] ^= from_to_bits;
-        board.colors[self.turn.index] ^= from_to_bits;
 
         if m.is_capture() {
             if m.is_ep_capture() {
-                // ep capture is like capture but with capture piece on ep square not dest
+                // ep capture is like capture but with capture piece on *ep* square not *dest*
                 board.fifty_clock = 0;
                 board.pieces[m.capture.index()].remove(m.ep);
                 board.colors[board.turn.index].remove(m.ep);
@@ -47,12 +43,15 @@ impl MoveMaker for Board {
             }
         }
 
+        // clear one bit and set another for the move using xor
+        let from_to_bits = m.from | m.to;
+        board.pieces[m.mover.index()] ^= from_to_bits;
+        board.colors[self.turn.index] ^= from_to_bits;
+
         if m.mover == Piece::Pawn {
             board.fifty_clock = 0;
             if m.is_pawn_double_push() {
                 board.en_passant = m.ep;
-            } else {
-                board.en_passant = Bitboard::EMPTY;
             }
         }
 
