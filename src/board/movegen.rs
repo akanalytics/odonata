@@ -1,10 +1,9 @@
 use crate::attacks::{BitboardAttacks, ClassicalBitboard};
 use crate::bitboard::{Bitboard, Dir};
 use crate::board::makemove::MoveMaker;
-use crate::board::{Board, CastlingRights, Color, Piece};
-use crate::board::{Move, MoveEnum, MoveList};
+use crate::board::{Board, Color, Piece};
+use crate::board::{Move, MoveList};
 use once_cell::sync::OnceCell;
-use std::sync::Mutex;
 
 fn global_classical_bitboard() -> &'static ClassicalBitboard {
     static INSTANCE: OnceCell<ClassicalBitboard> = OnceCell::new();
@@ -54,7 +53,7 @@ impl MoveValidator for Board {
         Err(format!("Move {} is not legal", mv))
     }
 
-    fn validate_san_move(&self, mv: &str) -> Result<Move, String> {
+    fn validate_san_move(&self, _mv: &str) -> Result<Move, String> {
         Err("Not implemented".into())
     }
 }
@@ -304,7 +303,6 @@ pub fn perft( board: &Board, depth: u32 ) -> u32 {
 mod tests {
     use super::*;
     use crate::board::boardbuf::*;
-    use crate::board::makemove::*;
     use crate::board::catalog::*;
     use crate::globals::constants::*;
     extern crate env_logger;

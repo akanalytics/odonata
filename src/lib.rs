@@ -5,7 +5,6 @@ extern crate bitflags;
 #[macro_use]
 extern crate log;
 
-#[macro_use]
 extern crate once_cell;
 
 

@@ -217,6 +217,14 @@ impl Move {
         self.capture != Piece::None
     }
 
+    pub fn is_ep_capture(&self) -> bool {
+        !self.ep.is_empty() && self.is_capture()
+    }
+
+    pub fn is_pawn_double_push(&self) -> bool {
+        !self.ep.is_empty() && !self.is_capture()
+    }
+
     pub fn uci(&self) -> String {
         let mut res = String::new();
         res.push_str( &self.from.uci() );

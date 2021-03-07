@@ -1,10 +1,7 @@
 use crate::bitboard::Bitboard;
 use crate::board::{Board, CastlingRights, Color, Piece};
-use crate::board::{Move, MoveEnum};
+use crate::board::{Move};
 use crate::globals::constants::*;
-
-
-
 
 pub trait MoveMaker {
     fn make_move(&self, m: &Move) -> Board;
@@ -13,7 +10,12 @@ pub trait MoveMaker {
 impl MoveMaker for Board {
     fn make_move(&self, m: &Move) -> Board {
         // either we're moving to an empty square or its a capture
-        debug_assert!( ((self.white() | self.black()) & m.to).is_empty() || m.is_capture(), "Move-to sq must be empty or its a capture {} on board \n{}", m, self );
+        debug_assert!(
+            ((self.white() | self.black()) & m.to).is_empty() || m.is_capture(),
+            "Move-to sq must be empty or its a capture {} on board \n{}",
+            m,
+            self
+        );
         let mut board = Board {
             en_passant: Bitboard::EMPTY,
             turn: self.turn.opposite(),
@@ -30,35 +32,31 @@ impl MoveMaker for Board {
         board.pieces[m.mover.index()] ^= from_to_bits;
         board.colors[self.turn.index] ^= from_to_bits;
 
-        if m.mover == Piece::Pawn {
-            board.fifty_clock = 0;
-            // ep + !capture means its a double push and set the en_passant square
-            if !m.ep.is_empty() {
-                if !m.is_capture() {
-                    board.en_passant = m.ep;
-                } else {
-                    board.en_passant = Bitboard::EMPTY;
-                }
-            }
-        }
-
         if m.is_capture() {
-            if !m.ep.is_empty() {
+            if m.is_ep_capture() {
                 // ep capture is like capture but with capture piece on ep square not dest
                 board.fifty_clock = 0;
                 board.pieces[m.capture.index()].remove(m.ep);
                 board.colors[board.turn.index].remove(m.ep);
-            }
-            else { 
+            } else {
                 // regular capture
-                debug_assert!(m.capture != Piece::King, "king captured by move {} on board \n{}", m, self );
+                debug_assert!(m.capture != Piece::King, "king captured by move {} on board \n{}", m, self);
                 board.fifty_clock = 0;
                 board.pieces[m.capture.index()].remove(m.to);
                 board.colors[board.turn.index].remove(m.to);
             }
         }
 
-        if m.promo != Piece::None {
+        if m.mover == Piece::Pawn {
+            board.fifty_clock = 0;
+            if m.is_pawn_double_push() {
+                board.en_passant = m.ep;
+            } else {
+                board.en_passant = Bitboard::EMPTY;
+            }
+        }
+
+        if m.is_promo() {
             // fifty clock handled by pawn move above;
             board.pieces[Piece::Pawn.index()].remove(m.to); // pawn has already moved
             board.pieces[m.promo.index()].insert(m.to);
@@ -121,9 +119,7 @@ mod tests {
     use super::*;
     use crate::board::boardbuf::*;
     use crate::board::catalog::*;
-    use crate::board::*;
     use crate::board::movegen::*;
-    use crate::globals::constants::*;
 
     #[test]
     fn test_make_move() -> Result<(), String> {

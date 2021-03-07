@@ -137,7 +137,7 @@ impl fmt::Display for Board {
             fmt.write_str(&b.get(r))?;
             fmt.write_char('\n')?;
         }
-        write!(fmt, "fen: \nMoves: {}", self.moves);
+        write!(fmt, "fen: \nMoves: {}", self.moves)?;
         Ok(())
     }
 }
