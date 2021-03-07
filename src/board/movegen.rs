@@ -13,7 +13,7 @@ fn global_classical_bitboard() -> &'static ClassicalBitboard {
     })
 }
 
-fn attacked_by(target: Bitboard, occ: Bitboard, board: &Board, opponent: Color) -> Bitboard {
+fn attacked_by(targets: Bitboard, occ: Bitboard, board: &Board, opponent: Color) -> Bitboard {
     let pawns = board.pawns() & board.color(opponent);
     let knights = board.knights() & board.color(opponent);
     let bishops = board.bishops() & board.color(opponent);
@@ -23,17 +23,17 @@ fn attacked_by(target: Bitboard, occ: Bitboard, board: &Board, opponent: Color) 
 
     let attack_gen = global_classical_bitboard();
     let (east, west) = attack_gen.pawn_attacks(pawns, &opponent);
-    let mut attackers = (east | west) & target;
+    let mut attackers = (east | west) & targets;
 
-    let sq = target.first_square();
-
-    attackers |= attack_gen.knight_attacks(sq) & knights
-        | attack_gen.king_attacks(sq) & kings
-        | attack_gen.bishop_attacks(occ, sq) & (bishops | queens)
-        | attack_gen.rook_attacks(occ, sq) & (rooks | queens);
-    // TODO: en passant!!
-
-    debug!("opponent:{}\n{}target\n{}attackers\n{}", opponent, board, target, attackers);
+    for each in targets.iter() {
+        let sq = each.first_square();
+        attackers |= attack_gen.knight_attacks(sq) & knights
+            | attack_gen.king_attacks(sq) & kings
+            | attack_gen.bishop_attacks(occ, sq) & (bishops | queens)
+            | attack_gen.rook_attacks(occ, sq) & (rooks | queens);
+        // TODO: en passant!!
+    }
+    debug!("opponent:{}\n{}target\n{}attackers\n{}", opponent, board, targets, attackers);
 
     attackers
 }
@@ -283,7 +283,7 @@ impl MoveGen for Board {
 }
 
 
-pub fn perft( board: &Board, depth: u32 ) -> u32 {
+pub fn perft( board: &Board, depth: u32) -> u32 {
     if depth == 0 {
         return 1;
     } 
@@ -291,7 +291,11 @@ pub fn perft( board: &Board, depth: u32 ) -> u32 {
         let moves = board.legal_moves();
         let mut count = 0;
         for m in moves.iter() {
-            count += perft(&board.make_move(m), depth - 1);                
+            let res = perft(&board.make_move(m), depth - 1);                
+            if depth == 1 {
+                println!("Move: {} perft: {}", m, res);
+            }
+            count += res;
         }           
         count
     }
@@ -327,12 +331,20 @@ mod tests {
 
 
     #[test]
+    fn test_tricky() {
+        let board = BoardBuf::parse_fen("r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1").unwrap().as_board();
+        let count = perft(&board, 2);
+    }
+
+
+    #[test]
     fn test_perft() {
         for (board, perfts) in Catalog::perfts() {
             for (depth, expected) in perfts.iter().enumerate() {
                 let count = perft(&board, depth as u32);
+                println!("depth:{} count:{} expected:{} fen: {}", depth, count, expected, board.to_fen());
                 if &count != expected {
-                    println!("depth:{} count:{} expected:{} fen: {}", depth, count, expected, board.to_fen());
+                    println!("******depth:{} count:{} expected:{} fen: {}", depth, count, expected, board.to_fen());
                 }
                 // assert_eq!(&count, expected, "fen: {}", board.to_fen());
             }
