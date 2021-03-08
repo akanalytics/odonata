@@ -7,14 +7,16 @@ extern crate log;
 
 extern crate once_cell;
 
-
-pub mod bitboard;
 mod attacks;
-mod globals;
-mod utils;
+pub mod bitboard;
 pub mod board;
+pub mod catalog;
+mod globals;
+pub mod types;
+mod utils;
 
-pub use crate::bitboard::{Bitboard};
-pub use crate::board::{Board, Move, Color};
+pub use crate::attacks::ClassicalBitboard;
+pub use crate::bitboard::Bitboard;
 pub use crate::board::boardbuf::BoardBuf;
-pub use crate::attacks::{ClassicalBitboard};
+pub use crate::board::{Board, Move};
+pub use crate::types::{Color, Piece};

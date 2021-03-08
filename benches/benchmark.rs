@@ -1,9 +1,10 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use flouder::bitboard::*;
-use flouder::board::catalog::*;
+use flouder::catalog::*;
 use flouder::board::makemove::*;
 use flouder::board::movegen::*;
 use flouder::board::*;
+use flouder::types::*;
 
 fn bitwise_handcrafted(c: &mut Criterion) {
     let n1 = 1u64 << 3;
@@ -49,11 +50,11 @@ fn piece_to_char(c: &mut Criterion) {
     });
 }
 
-fn benchmark_perft(c: &mut Criterion) {
+fn benchmark_perft5(c: &mut Criterion) {
     let board = Catalog::starting_position();
     let mut group = c.benchmark_group("sample size 10");
     group.sample_size(10);
-    group.bench_function("perft", |b| {
+    group.bench_function("perft5", |b| {
         b.iter(|| {
             black_box(perft(&board, black_box(5)));
         });
@@ -91,13 +92,14 @@ fn legal_moves(c: &mut Criterion) {
     });
 }
 
+
 criterion_group!(
     benches,
     bitwise_handcrafted,
     bitwise_bitflags,
     piece_to_upper_char,
     piece_to_char,
-    benchmark_perft,
+    benchmark_perft5,
     make_move,
     legal_moves,
     pseudo_legal_moves

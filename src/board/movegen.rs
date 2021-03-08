@@ -1,7 +1,8 @@
 use crate::attacks::{BitboardAttacks, ClassicalBitboard};
 use crate::bitboard::{Bitboard, Dir};
 use crate::board::makemove::MoveMaker;
-use crate::board::{Board, Color, Piece};
+use crate::board::{Board};
+use crate::types::{Color, Piece};
 use crate::board::{Move, MoveList};
 use once_cell::sync::OnceCell;
 
@@ -306,7 +307,7 @@ pub fn perft( board: &Board, depth: u32) -> u64 {
 mod tests {
     use super::*;
     use crate::board::boardbuf::*;
-    use crate::board::catalog::*;
+    use crate::catalog::*;
     use crate::board::*;
     use crate::globals::constants::*;
     extern crate env_logger;

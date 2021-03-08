@@ -25,6 +25,7 @@ impl Dir {
 }
 
 // generated from https://docs.google.com/spreadsheets/d/1TB2TKX04VsR10CLNLDIvrufm6wSJOttXOyPNKndU4N0/edit?usp=sharing
+#[rustfmt::skip]
 bitflags! {
     #[derive(Default)]
     pub struct Bitboard: u64 {

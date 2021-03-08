@@ -1,5 +1,5 @@
 use crate::bitboard::{Bitboard, Dir};
-use crate::board::Color;
+use crate::types::Color;
 
 // use lazy_static::lazy_static;
 

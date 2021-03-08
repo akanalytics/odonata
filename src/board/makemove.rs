@@ -1,6 +1,7 @@
 use crate::bitboard::Bitboard;
 use crate::board::Move;
-use crate::board::{Board, CastlingRights, Color, Piece};
+use crate::board::{Board};
+use crate::types::{Color, Piece, CastlingRights};
 use crate::globals::constants::*;
 
 pub trait MoveMaker {
@@ -117,7 +118,7 @@ impl MoveMaker for Board {
 mod tests {
     use super::*;
     use crate::board::boardbuf::*;
-    use crate::board::catalog::*;
+    use crate::catalog::*;
     use crate::board::movegen::*;
 
     #[test]

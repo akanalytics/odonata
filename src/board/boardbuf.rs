@@ -1,6 +1,7 @@
 use std::fmt::{self, Write};
 
-use super::{Board, CastlingRights, Color, Piece};
+use super::{Board};
+use crate::types::{CastlingRights, Color, Piece};
 use crate::bitboard::Bitboard;
 
 /// BoardBuf is a slow performing facade of convenience methods on board
