@@ -81,7 +81,7 @@ impl Color {
         pawn_capture_east: Dir::NE,
         pawn_capture_west: Dir::NW,
         kingside_castle_sqs: Bitboard::F1.or(Bitboard::G1),
-        queenside_castle_sqs: Bitboard::D1.or(Bitboard::C1).or(Bitboard::B1),
+        queenside_castle_sqs: Bitboard::D1.or(Bitboard::C1),
         double_push_dest_rank: Bitboard::RANK_4,
         castle_rights_queen: CastlingRights::WHITE_QUEEN,
         castle_rights_king: CastlingRights::WHITE_KING,

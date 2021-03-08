@@ -145,12 +145,14 @@ impl MoveGen for Board {
         let ep = board.en_passant();
         if ep.intersects(pawn_captures_e) {
             let from = ep.shift(&color.pawn_capture_east.opposite());
-            let m = Move { from, to: ep, mover: Piece::Pawn, capture: Piece::Pawn, ep, ..Default::default() };
+            let capture_square = ep.shift(&color.opposite().pawn_move);
+            let m = Move { from, to: ep, mover: Piece::Pawn, capture: Piece::Pawn, ep: capture_square, ..Default::default() };
             moves.push(m);
         }
         if ep.intersects(pawn_captures_w) {
             let from = ep.shift(&color.pawn_capture_west.opposite());
-            let m = Move { from, to: ep, mover: Piece::Pawn, capture: Piece::Pawn, ep, ..Default::default() };
+            let capture_square = ep.shift(&color.opposite().pawn_move);
+            let m = Move { from, to: ep, mover: Piece::Pawn, capture: Piece::Pawn, ep: capture_square, ..Default::default() };
             moves.push(m);
         }
 
@@ -254,7 +256,7 @@ impl MoveGen for Board {
         let rights = board.castling();
 
         let right = color.castle_rights_king;
-        if rights.contains(right) && !color.kingside_castle_sqs.intersects(occupied) & !king.is_empty() {
+        if rights.contains(right) && !color.kingside_castle_sqs.intersects(occupied) && !king.is_empty() {
             let king_moves = king | color.kingside_castle_sqs;
             if attacked_by(king_moves, occupied, board, color.opposite()).is_empty() {
                 let rook_to = king.shift(&Dir::E);
@@ -267,7 +269,7 @@ impl MoveGen for Board {
         }
 
         let right = color.castle_rights_queen;
-        if rights.contains(right) && !color.queenside_castle_sqs.intersects(occupied) & !king.is_empty() {
+        if rights.contains(right) && !color.queenside_castle_sqs.intersects(occupied) && !king.is_empty() {
             let king_moves = king | color.queenside_castle_sqs;
             if attacked_by(king_moves, occupied, board, color.opposite()).is_empty() {
                 let rook_to = king.shift(&Dir::W);
@@ -292,9 +294,9 @@ pub fn perft( board: &Board, depth: u32) -> u32 {
         let mut count = 0;
         for m in moves.iter() {
             let res = perft(&board.make_move(m), depth - 1);                
-            if depth == 1 {
-                println!("Move: {} perft: {}", m, res);
-            }
+            // if depth == 2 {
+            //     println!("Move: {} perft: {}", m, res);
+            // }
             count += res;
         }           
         count
@@ -308,6 +310,7 @@ mod tests {
     use super::*;
     use crate::board::boardbuf::*;
     use crate::board::catalog::*;
+    use crate::board::*;
     use crate::globals::constants::*;
     extern crate env_logger;
 
@@ -332,9 +335,25 @@ mod tests {
 
     #[test]
     fn test_tricky() {
-        let board = BoardBuf::parse_fen("r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1").unwrap().as_board();
-        let count = perft(&board, 2);
+        let board = BoardBuf::parse_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1").unwrap().as_board();
+        let mov = board.validate_uci_move("e2e4").unwrap();
+        let board2 = board.make_move(&mov);
+        assert_eq!(board2.to_fen(), "8/2p5/3p4/KP5r/1R2Pp1k/8/6P1/8 b - e3 0 1");
+        // // assert_eq!(board2.legal_moves().to_string(), "");
+        // let mov2 = board2.validate_uci_move("f4e3").unwrap();
+        // let board3 = board2.make_move(&mov2);
+        // assert_eq!(board3.to_fen(), "8/2p5/3p4/KP5r/1R5k/4p3/6P1/8 w - - 0 2");
+        // // assert_eq!(boar2.legal_moves().to_string(), "");
+
+        // // assert!( board.castling().contains(CastlingRights::WHITE_QUEEN) ); 
+    
+
+        
+        // let count = perft(&board, 2);
+        // println!("{}", count);
+        // assert_eq!(board2.legal_moves().to_string(), "");
     }
+  
 
 
     #[test]

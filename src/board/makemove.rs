@@ -131,6 +131,26 @@ mod tests {
     }
 
     #[test]
+    fn make_move_ep() -> Result<(), String> {
+        let board1 = Catalog::perfts()[2].0.clone();
+        
+        // double push - ep sq should be set
+        let mov1 = board1.validate_uci_move("e2e4")?;
+        let board2 = board1.make_move(&mov1);
+        assert_eq!(board2.to_fen(), "8/2p5/3p4/KP5r/1R2Pp1k/8/6P1/8 b - e3 0 1");
+        
+        // ep capture is valid but illegal as leaves king in check
+        let mov2 = board2.validate_uci_move("f4e3")?;
+        assert_eq!(mov2.ep, e4, "EP square for e/p capture move is square the captured piece is on");
+        println!("{:?}", mov2);
+        let is_false = board2.is_legal_move(&mov2);
+        assert_eq!(is_false, false);     
+        // let board3 = board2.make_move(&mov2);
+        // assert_eq!(board3.to_fen(), "8/2p5/3p4/KP5r/1R5k/4p3/6P1/8 w - - 0 2");
+        Ok(())
+    }
+
+    #[test]
     fn test_try_move_promotion() {
         let mut board = BoardBuf::parse_fen("8/P7/8/8/8/8/7k/K7 w - - 0 0 id 'promos #1'").unwrap().as_board();
         board = board.make_move(&board.validate_uci_move("a7a8q").unwrap());
