@@ -294,9 +294,6 @@ pub fn perft( board: &Board, depth: u32) -> u64 {
         let mut count = 0u64;
         for m in moves.iter() {
             let res = perft(&board.make_move(m), depth - 1);                
-            // if depth == 2 {
-            //     println!("Move: {} perft: {} fen {}", m, res, board.to_fen());
-            // }
             count += res;
         }           
         count
@@ -333,162 +330,14 @@ mod tests {
     }
 
 
-    #[test]
-    fn test_tricky() {
-        let board = BoardBuf::parse_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1").unwrap().as_board();
-        let board2 = BoardBuf::parse_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/5Q1p/PPPBBPPP/RN2K2R b KQkq - 1 1").unwrap().as_board();  // c3b1
-        let board3 = BoardBuf::parse_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/4P3/1p3Q1p/PPPBBPPP/RN2K2R w KQkq - 0 1").unwrap().as_board();  // c3b1
-        println!("{}", board3.legal_moves().sort().to_string() );
-        let count = perft(&board2, 2);
-        println!("{}", count);
-        // assert_eq!(board2.legal_moves().to_string(), "");
-    }
-        // let mov = board.validate_uci_move("e2e4").unwrap();
-        // let board2 = board.make_move(&mov);
-        // assert_eq!(board2.to_fen(), "8/2p5/3p4/KP5r/1R2Pp1k/8/6P1/8 b - e3 0 1");
-        // // assert_eq!(board2.legal_moves().to_string(), "");
-        // let mov2 = board2.validate_uci_move("f4e3").unwrap();
-        // let board3 = board2.make_move(&mov2);
-        // assert_eq!(board3.to_fen(), "8/2p5/3p4/KP5r/1R5k/4p3/6P1/8 w - - 0 2");
-        // // assert_eq!(boar2.legal_moves().to_string(), "");
-
-        // // assert!( board.castling().contains(CastlingRights::WHITE_QUEEN) ); 
-        // depth:3 count:97903 expected:97862 fen: r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1
-        // ******depth:3 count:97903 expected:97862 fen: r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1
-        // depth:4 count:4087391 expected:4085603 fen: r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1
-        // ******depth:4 count:4087391 expected:4085603 fen: r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1
-        // test board::movegen::tests::test_perft ... test board::movegen::tests::test_perft has been running for over 60 seconds
-        // depth:5 count:193902441 expected:119060324 fen: r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1
-        // ******depth:5 count:193902441 expected:119060324 fen: r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1
-
-        // [b1a3, b1c3, e1f1, e1d1, h1g1, h1f1, d2e3, d2f4, d2g5, d2h6,
-        //  d2c3, d2b4, d2a5, d2c1, e2d3, e2c4, e2b5, e2a6, e2f1, e2d1,
-        //   f3g4, f3h5, f3f4, f3f5, f3f6, f3g3, f3h3, f3e3, f3d3, f3c3,
-        //    f3b3, e5d7, e5f7, e5g6, e5c6, e5d3, e5g4, e5c4, a2a3, a2b3,
-        //     c2b3, c2c3, g2g3, g2h3, a2a4, c2c4, g2g4, d5d6, d5e6, e1g1]
-
-            /// PYTHON
-        // [a2a3, a2a4, a2b3, b1a3, b1c3, c2b3, c2c3, c2c4, d2a5, d2b4, 
-        // d2c1, d2c3, d2e3, d2f4, d2g5, d2h6, d5d6, d5e6, e1d1, e1f1,
-        //  e1g1, e2a6, e2b5, e2c4, e2d1, e2d3, e2f1, e5c4, e5c6, e5d3,
-        //   e5d7, e5f7, e5g4, e5g6, f3b3, f3c3, f3d3, f3e3, f3f4, f3f5,
-        //    f3f6, f3g3, f3g4, f3h3, f3h5, g2g3, g2g4, g2h3, h1f1, h1g1]
-
-            // a2a3, a2a4, a2b3, b1a3, b1c3, c2b3, c2c3, c2c4, d2a5, d2b4, 
-            // d2c1, d2c3, d2e3, d2f4, d2g5, d2h6, d5d6, d5e6, e1c1, e1d1,
-            //  e1f1, e1g1, e2a6, e2b5, e2c4, e2d1, e2d3, e2f1, e5c4, e5c6,
-            //   e5d3, e5d7, e5f7, e5g4, e5g6, f3b3, f3c3, f3d3, f3e3, f3f4, f3f5, f3f6, f3g3, f3g4, f3h3, f3h5, g2g3, g2g4, g2h3, h1f1, h1g1
-
-        // Perft:B(depth=2):Div: b4b3 50
-        // Div: g6g5 48
-        // Div: c7c6 50
-        // Div: d7d6 48
-        // Div: c7c5 50
-        // Div: h3g2 47
-        // Div: e6d5 48
-        // Div: b6a4 48
-        // Div: b6c4 46
-        // Div: b6d5 48
-        // Div: b6c8 49
-        // Div: f6e4 51
-        // Div: f6g4 48
-        // Div: f6d5 49
-        // Div: f6h5 50
-        // Div: f6h7 50
-        // Div: f6g8 50
-        // Div: a6e2 42
-        // Div: a6d3 44
-        // Div: a6c4 46
-        // Div: a6b5 48
-        // Div: a6b7 49
-        // Div: a6c8 49
-        // Div: g7h6 49
-        // Div: g7f8 49
-        // Div: a8b8 49
-        // Div: a8c8 49
-        // Div: a8d8 49
-        // Div: h8h4 49
-        // Div: h8h5 49
-        // Div: h8h6 49
-        // Div: h8h7 49
-        // Div: h8f8 49
-        // Div: h8g8 49
-        // Div: e7c5 49
-        // Div: e7d6 48
-        // Div: e7d8 49
-        // Div: e7f8 49
-        // Div: e8d8 49
-        // Div: e8f8 49
-        // Div: e8c8 49
-        // Div: e8g8 49
-        // result=2038 
-
-//         running 1 test
-// Move: a2a3 perft: 2186
-// Move: b2b3 perft: 1964
-// Move: g2g3 perft: 1882
-// Move: a2a4 perft: 2149
-// Move: g2g4 perft: 1843
-// Move: d5d6 perft: 1991
-// Move: g2h3 perft: 1970
-// Move: d5e6 perft: 2241
-// ****** Move: c3b1 perft: 2079
-// Move: c3d1 perft: 2040
-// Move: c3a4 perft: 2203
-// Move: c3b5 perft: 2138
-// Move: e5d3 perft: 1803
-// Move: e5c4 perft: 1880
-// Move: e5g4 perft: 1878
-// Move: e5c6 perft: 2027
-// Move: e5g6 perft: 1997
-// Move: e5d7 perft: 2124
-// Move: e5f7 perft: 2080
-// Move: d2c1 perft: 1963
-// Move: d2e3 perft: 2136
-// Move: d2f4 perft: 2000
-// Move: d2g5 perft: 2134
-// Move: d2h6 perft: 2019
-// Move: e2d1 perft: 1733
-// Move: e2f1 perft: 2060
-// Move: e2d3 perft: 2050
-// Move: e2c4 perft: 2082
-// Move: e2b5 perft: 2057
-// Move: e2a6 perft: 1907
-// Move: a1b1 perft: 1969
-// Move: a1c1 perft: 1968
-// Move: a1d1 perft: 1885
-// Move: h1f1 perft: 1929
-// Move: h1g1 perft: 2013
-// Move: f3d3 perft: 2005
-// Move: f3e3 perft: 2174
-// Move: f3g3 perft: 2214
-// Move: f3h3 perft: 2360
-// Move: f3f4 perft: 2132
-// Move: f3g4 perft: 2169
-// Move: f3f5 perft: 2396
-// Move: f3h5 perft: 2267
-// Move: f3f6 perft: 2111
-// Move: e1d1 perft: 1894
-// Move: e1f1 perft: 1855
-// Move: e1g1 perft: 2059
-// Move: e1c1 perft: 1887
-// 97903
-
-
-
-        
-
-  
-
 
     #[test]
     fn test_perft() {
         for (board, perfts) in Catalog::perfts() {
             for (depth, expected) in perfts.iter().enumerate() {
-                let count = perft(&board, depth as u32);
-                println!("depth:{} count:{} expected:{} fen: {}", depth, count, expected, board.to_fen());
-                if &count != expected {
-                    println!("******depth:{} count:{} expected:{} fen: {}", depth, count, expected, board.to_fen());
+                if depth <= 3 {
+                    let count = perft(&board, depth as u32);
+                    assert_eq!(&count, expected, "fen {} perft({})", board.to_fen(), depth);
                 }
                 // assert_eq!(&count, expected, "fen: {}", board.to_fen());
             }
