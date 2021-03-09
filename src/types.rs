@@ -3,6 +3,37 @@ use std::fmt;
 use std::iter::*;
 
 
+#[derive(Copy, Clone, Debug)]
+pub enum Col { BLACK = 0, WHITE = 1 }
+
+pub struct Chooser<T> {
+    pub black: T,
+    pub white: T,
+}
+
+// impl<T> Chooser<T> {
+#[inline]
+pub fn chooser_array<'a, T>(c: Col, white: &'a T, black: &'a T) -> &'a T {
+    [&white, &black][c as usize]
+}
+
+#[inline]
+pub fn chooser_wb<'a, T>(c: Col, white: &'a T, black: &'a T) -> &'a T {
+    match c {
+        Col::WHITE => { white }, 
+        Col::BLACK => { black }
+    }
+}
+
+
+
+#[inline]
+pub fn chooser_struct<'a, T>(c: Col, choices: &'a Chooser<&T>) -> &'a T {
+    return [&choices.white, &choices.black][c as usize];
+}
+
+
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Color {
     pub is_white: bool,
@@ -186,5 +217,45 @@ impl Piece {
             Some(c) if c.is_white => self.to_upper_char(),
             Some(_) => self.to_upper_char().to_ascii_lowercase(),
         }
+    }
+}
+
+
+
+
+#[cfg(test)]
+mod tests {
+    use crate::catalog::*;
+    use super::*;
+    use crate::globals::constants::*;
+
+    #[test]
+    fn color() {
+        assert_eq!(Color::parse("w"), Ok(Color::WHITE));
+        assert_eq!(Color::parse("b"), Ok(Color::BLACK));
+        assert_eq!(Color::parse("B"), Err("Invalid color: 'B'".to_string()));
+        assert_eq!(Piece::King.to_char(Some(Color::BLACK)), 'k');
+        assert_eq!(Piece::King.to_char(None), 'K');
+    }
+
+    #[test]
+    fn piece() {
+        assert_eq!(Piece::Pawn.to_upper_char(), 'P');
+        assert_eq!(Piece::King.to_char(Some(Color::BLACK)), 'k');
+        assert_eq!(Piece::King.to_char(None), 'K');
+    }
+
+    #[test]
+    fn choose() {
+        let c = Col::WHITE;
+        const choice: Chooser<&Bitboard> = Chooser { 
+            white: &Bitboard::RANK_4, 
+            black: &Bitboard::RANK_5,
+        };
+
+        let bb = chooser_array(c, &Bitboard::RANK_4, &Bitboard::RANK_5 );
+        assert_eq!(bb, &Bitboard::RANK_4);
+        let bb = chooser_wb(c, &Bitboard::RANK_4, &Bitboard::RANK_5 );
+        let bb = chooser_struct(c, &choice );
     }
 }

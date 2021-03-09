@@ -287,21 +287,7 @@ mod tests {
     use super::*;
     use crate::globals::constants::*;
 
-    #[test]
-    fn color() {
-        assert_eq!(Color::parse("w"), Ok(Color::WHITE));
-        assert_eq!(Color::parse("b"), Ok(Color::BLACK));
-        assert_eq!(Color::parse("B"), Err("Invalid color: 'B'".to_string()));
-        assert_eq!(Piece::King.to_char(Some(Color::BLACK)), 'k');
-        assert_eq!(Piece::King.to_char(None), 'K');
-    }
 
-    #[test]
-    fn piece() {
-        assert_eq!(Piece::Pawn.to_upper_char(), 'P');
-        assert_eq!(Piece::King.to_char(Some(Color::BLACK)), 'k');
-        assert_eq!(Piece::King.to_char(None), 'K');
-    }
 
     #[test]
     fn move_and_movelist() {

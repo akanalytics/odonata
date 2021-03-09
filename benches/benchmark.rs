@@ -93,6 +93,48 @@ fn legal_moves(c: &mut Criterion) {
 }
 
 
+fn bench_chooser_array(c: &mut Criterion) {
+    let white = Col::WHITE;
+    let black = Col::WHITE;
+    c.bench_function("chooser_array", |b| {
+        b.iter(|| {
+            let bb = black_box(chooser_array(black_box(white), &Bitboard::RANK_4, &Bitboard::RANK_5 ));
+            let bb = black_box(chooser_array(black_box(black), &Bitboard::RANK_4, &Bitboard::RANK_5 ));
+        });
+    });
+}
+
+fn bench_chooser_wb(c: &mut Criterion) {
+    let white = Col::WHITE;
+    let black = Col::WHITE;
+    c.bench_function("chooser_wb", |b| {
+        b.iter(|| {
+            let bb = black_box(chooser_wb(black_box(white), &Bitboard::RANK_4, &Bitboard::RANK_5 ));
+            let bb = black_box(chooser_wb(black_box(black), &Bitboard::RANK_4, &Bitboard::RANK_5 ));
+        });
+    });
+}
+
+fn bench_chooser_struct(c: &mut Criterion) {
+    let white = Col::WHITE;
+    let black = Col::WHITE;
+    const choice: Chooser<&Bitboard> = Chooser { 
+        white: &Bitboard::RANK_4, 
+        black: &Bitboard::RANK_5,
+    };
+    c.bench_function("chooser_struct", |b| {
+        b.iter(|| {
+            let bb = black_box(chooser_struct(black_box(white), &choice));
+            let bb = black_box(chooser_struct(black_box(black), &choice));
+        });
+    });
+}
+
+
+
+
+
+
 criterion_group!(
     benches,
     bitwise_handcrafted,
@@ -102,6 +144,9 @@ criterion_group!(
     benchmark_perft5,
     make_move,
     legal_moves,
-    pseudo_legal_moves
+    pseudo_legal_moves,
+    bench_chooser_struct,
+    bench_chooser_wb,
+    bench_chooser_array,
 );
 criterion_main!(benches);
