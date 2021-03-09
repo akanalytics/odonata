@@ -325,13 +325,12 @@ mod tests {
     use crate::globals::constants::*;
     extern crate env_logger;
 
-    fn init() {
+    fn _init() {
         env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
     }
 
     #[test]
     fn pseudo_legal_moves() -> Result<(), String> {
-        init();
         let mut buf = BoardBuf::parse_pieces("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap();
         buf.set(a2, ".")?;
         buf.set(d2, ".")?;

@@ -12,6 +12,7 @@ pub mod bitboard;
 pub mod board;
 pub mod catalog;
 mod globals;
+mod material;
 pub mod types;
 mod utils;
 

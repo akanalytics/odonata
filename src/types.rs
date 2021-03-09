@@ -138,39 +138,49 @@ pub enum Color { White = 0, Black = 1 }  // numbering as per CPW
 
 impl Color {
 
+    pub const ALL: [Color; 2] = [Color::White, Color::Black];
+        
     #[inline]
     pub fn index(self) -> usize {
         self as usize
     }
 
     #[inline]
+    pub fn chooser_wb<T>(self, white: T, black: T) -> T {
+        match self {
+            Color::White => { white }, 
+            Color::Black => { black }
+        }
+    }   
+
+    #[inline]
     pub fn pawn_move(self) -> Dir {
-        chooser_wb(self, Dir::N, Dir::S)
+        self.chooser_wb(Dir::N, Dir::S)
     }
 
     #[inline]
     pub fn double_push_dest_rank(self) -> Bitboard {
-        chooser_wb(self, Bitboard::RANK_4, Bitboard::RANK_5)
+        self.chooser_wb(Bitboard::RANK_4, Bitboard::RANK_5)
     }
 
     #[inline]
     pub fn pawn_capture_east(self) -> Dir {
-        chooser_wb(self, Dir::NE, Dir::SE)
+        self.chooser_wb(Dir::NE, Dir::SE)
     }
 
     #[inline]
     pub fn pawn_capture_west(self) -> Dir {
-        chooser_wb(self, Dir::NW, Dir::SW)
+        self.chooser_wb(Dir::NW, Dir::SW)
     } 
 
     #[inline]
     pub fn back_rank(self) -> Bitboard {
-        chooser_wb(self, Bitboard::RANK_1, Bitboard::RANK_8)
+        self.chooser_wb(Bitboard::RANK_1, Bitboard::RANK_8)
     }
 
     #[inline]
     pub fn opposite(self) -> Color {
-        chooser_wb(self, Color::Black, Color::White)
+        self.chooser_wb(Color::Black, Color::White)
     }
 
     pub fn parse(s: &str) -> Result<Color, String> {
