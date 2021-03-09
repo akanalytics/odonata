@@ -39,6 +39,7 @@ pub struct Score;
 // score config needs to be by colour and by MG/EG
 // option to have minimizing nodes use different config
 // what can we cache
+// pass in alpha beta so eval can short circuit
 // some human-like tweaks: aggresive/defensive, open/closed preference, test an opening, lay traps, complicate the position, 
 
 impl Score {

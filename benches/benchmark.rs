@@ -44,8 +44,8 @@ fn piece_to_upper_char(c: &mut Criterion) {
 fn piece_to_char(c: &mut Criterion) {
     c.bench_function("piece_to_char", |b| {
         b.iter(|| {
-            black_box(Piece::Pawn.to_char(Some(Color::WHITE)));
-            black_box(Piece::Knight.to_char(Some(Color::BLACK)));
+            black_box(Piece::Pawn.to_char(Some(Color::White)));
+            black_box(Piece::Knight.to_char(Some(Color::Black)));
         });
     });
 }
@@ -61,6 +61,7 @@ fn benchmark_perft5(c: &mut Criterion) {
     });
     group.finish();
 }
+
 
 fn make_move(c: &mut Criterion) {
     let board = Catalog::starting_position();
@@ -94,8 +95,8 @@ fn legal_moves(c: &mut Criterion) {
 
 
 fn bench_chooser_array(c: &mut Criterion) {
-    let white = Col::WHITE;
-    let black = Col::WHITE;
+    let white = Color::White;
+    let black = Color::Black;
     c.bench_function("chooser_array", |b| {
         b.iter(|| {
             let bb = black_box(chooser_array(black_box(white), &Bitboard::RANK_4, &Bitboard::RANK_5 ));
@@ -105,9 +106,9 @@ fn bench_chooser_array(c: &mut Criterion) {
 }
 
 fn bench_chooser_wb(c: &mut Criterion) {
-    let white = Col::WHITE;
-    let black = Col::WHITE;
-    c.bench_function("chooser_wb", |b| {
+    let white = Color::White;
+    let black = Color::Black;
+    c.bench_function("chooser_wb_ref", |b| {
         b.iter(|| {
             let bb = black_box(chooser_wb(black_box(white), &Bitboard::RANK_4, &Bitboard::RANK_5 ));
             let bb = black_box(chooser_wb(black_box(black), &Bitboard::RANK_4, &Bitboard::RANK_5 ));
@@ -116,8 +117,8 @@ fn bench_chooser_wb(c: &mut Criterion) {
 }
 
 fn bench_chooser_struct(c: &mut Criterion) {
-    let white = Col::WHITE;
-    let black = Col::WHITE;
+    let white = Color::White;
+    let black = Color::Black;
     const choice: Chooser<&Bitboard> = Chooser { 
         white: &Bitboard::RANK_4, 
         black: &Bitboard::RANK_5,

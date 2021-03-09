@@ -2,7 +2,7 @@ use crate::attacks::{BitboardAttacks, ClassicalBitboard};
 use crate::bitboard::{Bitboard, Dir};
 use crate::board::makemove::MoveMaker;
 use crate::board::{Board};
-use crate::types::{Color, Piece};
+use crate::types::{Color, Piece, CastlingRights};
 use crate::board::{Move, MoveList};
 use once_cell::sync::OnceCell;
 
@@ -105,12 +105,12 @@ impl MoveGen for Board {
         // non-promoted single-push pawns
         let pawn_push = attack_gen.pawn_pushes(occupied, pawns, &color);
         for to in (pawn_push & !Bitboard::PROMO_RANKS).iter() {
-            let mut from = to.shift(&color.pawn_move.opposite());
+            let mut from = to.shift(&color.pawn_move().opposite());
             let mut ep = Bitboard::EMPTY;
             if !pawns.contains(from) {
                 // must have been double push
                 ep = from;
-                from = from.shift(&color.pawn_move.opposite());
+                from = from.shift(&color.pawn_move().opposite());
             }
             // let m = MoveEnum::Push { to, from };
             let m = Move { from, to, ep, mover: Piece::Pawn, ..Default::default() };
@@ -118,7 +118,7 @@ impl MoveGen for Board {
         }
         // pawn promos - only makes sense for single push
         for to in (pawn_push & Bitboard::PROMO_RANKS).iter() {
-            let from = to.shift(&color.pawn_move.opposite());
+            let from = to.shift(&color.pawn_move().opposite());
             // try and pre-sort promos by likely usefulness
             for &promo in &[Piece::Queen, Piece::Knight, Piece::Rook, Piece::Bishop] {
                 let m = Move { from, to, promo, mover: Piece::Pawn, ..Default::default() };
@@ -129,14 +129,14 @@ impl MoveGen for Board {
         // pawn_captures
         let (pawn_captures_e, pawn_captures_w) = attack_gen.pawn_attacks(pawns, &color);
         for to in (pawn_captures_e & them & !Bitboard::PROMO_RANKS).iter() {
-            let from = to.shift(&color.pawn_capture_east.opposite());
+            let from = to.shift(&color.pawn_capture_east().opposite());
             let capture = board.piece_at(to);
             let m = Move { from, to, mover: Piece::Pawn, capture, ..Default::default() };
             // MoveEnum::Capture { to, from, mover: Piece::Pawn, capture });
             moves.push(m);
         }
         for to in (pawn_captures_w & them & !Bitboard::PROMO_RANKS).iter() {
-            let from = to.shift(&color.pawn_capture_west.opposite());
+            let from = to.shift(&color.pawn_capture_west().opposite());
             let capture = board.piece_at(to);
             let m = Move { from, to, mover: Piece::Pawn, capture, ..Default::default() };
             // MoveEnum::Capture { to, from, mover: Piece::Pawn, capture };
@@ -145,21 +145,21 @@ impl MoveGen for Board {
         // e/p pawn_captures
         let ep = board.en_passant();
         if ep.intersects(pawn_captures_e) {
-            let from = ep.shift(&color.pawn_capture_east.opposite());
-            let capture_square = ep.shift(&color.opposite().pawn_move);
+            let from = ep.shift(&color.pawn_capture_east().opposite());
+            let capture_square = ep.shift(&color.opposite().pawn_move());
             let m = Move { from, to: ep, mover: Piece::Pawn, capture: Piece::Pawn, ep: capture_square, ..Default::default() };
             moves.push(m);
         }
         if ep.intersects(pawn_captures_w) {
-            let from = ep.shift(&color.pawn_capture_west.opposite());
-            let capture_square = ep.shift(&color.opposite().pawn_move);
+            let from = ep.shift(&color.pawn_capture_west().opposite());
+            let capture_square = ep.shift(&color.opposite().pawn_move());
             let m = Move { from, to: ep, mover: Piece::Pawn, capture: Piece::Pawn, ep: capture_square, ..Default::default() };
             moves.push(m);
         }
 
         // pawn capture-promos
         for to in (pawn_captures_e & them & Bitboard::PROMO_RANKS).iter() {
-            let from = to.shift(&color.pawn_capture_east.opposite());
+            let from = to.shift(&color.pawn_capture_east().opposite());
             let capture = board.piece_at(to);
             for &promo in &[Piece::Queen, Piece::Knight, Piece::Rook, Piece::Bishop] {
                 // MoveEnum::PromoCapture { to, from, promo, capture });
@@ -168,7 +168,7 @@ impl MoveGen for Board {
             }
         }
         for to in (pawn_captures_w & them & Bitboard::PROMO_RANKS).iter() {
-            let from = to.shift(&color.pawn_capture_west.opposite());
+            let from = to.shift(&color.pawn_capture_west().opposite());
             let capture = board.piece_at(to);
             for &promo in &[Piece::Queen, Piece::Knight, Piece::Rook, Piece::Bishop] {
                 // MoveEnum::PromoCapture { to, from, promo, capture });
@@ -256,8 +256,7 @@ impl MoveGen for Board {
         let king = board.kings() & us;
         let rights = board.castling();
 
-        let right = color.castle_rights_king;
-        if rights.contains(right) && !color.kingside_castle_sqs.intersects(occupied) && !king.is_empty() {
+        if rights.has_king_side_right(color) && !CastlingRights::king_side_squares(color).intersects(occupied) && !king.is_empty() {
             let rook_to = king.shift(&Dir::E);
             let king_to = rook_to.shift(&Dir::E);
             let king_moves = king | rook_to | king_to;
@@ -269,8 +268,7 @@ impl MoveGen for Board {
             }
         }
 
-        let right = color.castle_rights_queen;
-        if rights.contains(right) && !color.queenside_castle_sqs.intersects(occupied) && !king.is_empty() {
+        if rights.has_queen_side_right(color) && !CastlingRights::queen_side_squares(color).intersects(occupied) && !king.is_empty() {
             let rook_to = king.shift(&Dir::W);
             let king_to = rook_to.shift(&Dir::W);
             let king_moves = king | rook_to | king_to;
@@ -446,46 +444,46 @@ mod tests {
     fn test_is_in_check() {
         let fen = "r4r1k/p1ppqpb1/bn2pnp1/3PN2Q/1p2P3/2N4p/PPPBBPPP/2R1K2R b K - 3 2";
         let board = BoardBuf::parse_fen(fen).unwrap().as_board();
-        assert_eq!(board.is_in_check(Color::BLACK), true);
+        assert_eq!(board.is_in_check(Color::Black), true);
 
         let fen = "k7/8/8/8/8/8/7K/R7 w - - 0 0 id 'check #1'";
         let board = BoardBuf::parse_fen(fen).unwrap().as_board();
-        assert_eq!(board.is_in_check(Color::BLACK), true, "\n{}", board);
-        assert_eq!(board.is_in_check(Color::WHITE), false);
+        assert_eq!(board.is_in_check(Color::Black), true, "\n{}", board);
+        assert_eq!(board.is_in_check(Color::White), false);
 
         let fen = "8/k2P3R/8/8/8/8/8/7K w - - 0 0 id 'pawn blocks rook #1'";
         let board = BoardBuf::parse_fen(fen).unwrap().as_board();
-        assert_eq!(board.is_in_check(Color::BLACK), false);
+        assert_eq!(board.is_in_check(Color::Black), false);
 
         let fen = "k7/8/8/8/8/8/7K/7B w - - 0 0 id 'check Bishop #2'";
         let board = BoardBuf::parse_fen(fen).unwrap().as_board();
-        assert_eq!(board.is_in_check(Color::BLACK), true);
+        assert_eq!(board.is_in_check(Color::Black), true);
 
         let fen = "k7/8/2p5/8/8/8/7K/7B w - - 0 0 id 'check blocked bishop #3'";
         let board = BoardBuf::parse_fen(fen).unwrap().as_board();
-        assert_eq!(board.is_in_check(Color::BLACK), false);
+        assert_eq!(board.is_in_check(Color::Black), false);
 
         let fen = "k7/7R/2p5/8/8/8/7K/7B w - - 0 0 id 'check blocked bishop #4'";
         let board = BoardBuf::parse_fen(fen).unwrap().as_board();
-        assert_eq!(board.is_in_check(Color::BLACK), false);
+        assert_eq!(board.is_in_check(Color::Black), false);
 
         let fen = "k7/8/8/8/8/8/7K/7Q w - - 0 0 id 'check Queen #1'";
         let board = BoardBuf::parse_fen(fen).unwrap().as_board();
-        assert_eq!(board.is_in_check(Color::BLACK), true);
+        assert_eq!(board.is_in_check(Color::Black), true);
 
         let fen = "k7/8/1N6/8/8/8/7K/8 w - - 0 0 id 'check N #5'";
         let board = BoardBuf::parse_fen(fen).unwrap().as_board();
-        assert_eq!(board.is_in_check(Color::BLACK), true);
+        assert_eq!(board.is_in_check(Color::Black), true);
 
         // pawn capture+promo attack
         let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q2/PPPBBPpP/1R3K1R w kq - 0 2";
         let board = BoardBuf::parse_fen(fen).unwrap().as_board();
-        assert_eq!(board.is_in_check(Color::WHITE), true, "\n{}", board);
+        assert_eq!(board.is_in_check(Color::White), true, "\n{}", board);
 
         // checks by king
         let fen = "8/8/8/8/8/8/1k6/K7 w - - 0 0 id 'check by king!'";
         let board = BoardBuf::parse_fen(fen).unwrap().as_board();
-        assert_eq!(board.is_in_check(Color::WHITE), true);
+        assert_eq!(board.is_in_check(Color::White), true);
     }
 
     #[test]
