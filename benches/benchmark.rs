@@ -1,9 +1,8 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use flouder::bitboard::*;
-use flouder::catalog::*;
 use flouder::board::makemove::*;
 use flouder::board::movegen::*;
-use flouder::board::*;
+use flouder::catalog::*;
 use flouder::types::*;
 
 fn bitwise_handcrafted(c: &mut Criterion) {
@@ -62,7 +61,6 @@ fn benchmark_perft5(c: &mut Criterion) {
     group.finish();
 }
 
-
 fn make_move(c: &mut Criterion) {
     let board = Catalog::starting_position();
     let mv1 = board.validate_uci_move("e2e4").unwrap();
@@ -93,14 +91,13 @@ fn legal_moves(c: &mut Criterion) {
     });
 }
 
-
 fn bench_chooser_array(c: &mut Criterion) {
     let white = Color::White;
     let black = Color::Black;
     c.bench_function("chooser_array", |b| {
         b.iter(|| {
-            let bb = black_box(chooser_array(black_box(white), &Bitboard::RANK_4, &Bitboard::RANK_5 ));
-            let bb = black_box(chooser_array(black_box(black), &Bitboard::RANK_4, &Bitboard::RANK_5 ));
+            black_box(chooser_array(black_box(white), &Bitboard::RANK_4, &Bitboard::RANK_5));
+            black_box(chooser_array(black_box(black), &Bitboard::RANK_4, &Bitboard::RANK_5));
         });
     });
 }
@@ -110,8 +107,8 @@ fn bench_chooser_wb(c: &mut Criterion) {
     let black = Color::Black;
     c.bench_function("chooser_wb_ref", |b| {
         b.iter(|| {
-            let bb = black_box(chooser_wb(black_box(white), &Bitboard::RANK_4, &Bitboard::RANK_5 ));
-            let bb = black_box(chooser_wb(black_box(black), &Bitboard::RANK_4, &Bitboard::RANK_5 ));
+            black_box(chooser_wb(black_box(white), &Bitboard::RANK_4, &Bitboard::RANK_5));
+            black_box(chooser_wb(black_box(black), &Bitboard::RANK_4, &Bitboard::RANK_5));
         });
     });
 }
@@ -119,22 +116,14 @@ fn bench_chooser_wb(c: &mut Criterion) {
 fn bench_chooser_struct(c: &mut Criterion) {
     let white = Color::White;
     let black = Color::Black;
-    const choice: Chooser<&Bitboard> = Chooser { 
-        white: &Bitboard::RANK_4, 
-        black: &Bitboard::RANK_5,
-    };
+    const CHOICE: Chooser<&Bitboard> = Chooser { white: &Bitboard::RANK_4, black: &Bitboard::RANK_5 };
     c.bench_function("chooser_struct", |b| {
         b.iter(|| {
-            let bb = black_box(chooser_struct(black_box(white), &choice));
-            let bb = black_box(chooser_struct(black_box(black), &choice));
+            black_box(chooser_struct(black_box(white), &CHOICE));
+            black_box(chooser_struct(black_box(black), &CHOICE));
         });
     });
 }
-
-
-
-
-
 
 criterion_group!(
     benches,

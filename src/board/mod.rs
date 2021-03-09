@@ -136,7 +136,7 @@ pub struct Board {
     turn: Color,
     fifty_clock: u16,
     fullmove_count: u16,
-    moves: MoveList,
+    // moves: MoveList,
 }
 
 impl Board {
@@ -149,7 +149,7 @@ impl Board {
             turn: Color::White,
             fifty_clock: 0,
             fullmove_count: 1,
-            moves: MoveList::new(),
+            // moves: MoveList::new(),
         }
     }
 

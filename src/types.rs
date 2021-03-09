@@ -269,9 +269,7 @@ impl Piece {
 
 #[cfg(test)]
 mod tests {
-    use crate::catalog::*;
     use super::*;
-    use crate::globals::constants::*;
 
     #[test]
     fn color() {
@@ -292,14 +290,14 @@ mod tests {
     #[test]
     fn choose() {
         let c = Color::White;
-        const choice: Chooser<&Bitboard> = Chooser { 
+        const CHOICE: Chooser<&Bitboard> = Chooser { 
             white: &Bitboard::RANK_4, 
             black: &Bitboard::RANK_5,
         };
 
         let bb = chooser_array(c, &Bitboard::RANK_4, &Bitboard::RANK_5 );
         assert_eq!(bb, &Bitboard::RANK_4);
-        let bb = chooser_wb(c, &Bitboard::RANK_4, &Bitboard::RANK_5 );
-        let bb = chooser_struct(c, &choice );
+        chooser_wb(c, &Bitboard::RANK_4, &Bitboard::RANK_5 );
+        chooser_struct(c, &CHOICE );
     }
 }

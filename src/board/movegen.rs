@@ -1,9 +1,9 @@
 use crate::attacks::{BitboardAttacks, ClassicalBitboard};
 use crate::bitboard::{Bitboard, Dir};
 use crate::board::makemove::MoveMaker;
-use crate::board::{Board};
-use crate::types::{Color, Piece, CastlingRights};
+use crate::board::Board;
 use crate::board::{Move, MoveList};
+use crate::types::{CastlingRights, Color, Piece};
 use once_cell::sync::OnceCell;
 
 fn global_classical_bitboard() -> &'static ClassicalBitboard {
@@ -72,7 +72,7 @@ impl MoveGen for Board {
         let us = board.color(c);
         let them = board.color(c.opposite());
         let king = board.kings() & us;
-        debug_assert!(!king.is_empty(), "king ({}) not found {}", c, board );
+        debug_assert!(!king.is_empty(), "king ({}) not found {}", c, board);
         let occ = us | them;
         let king_color = c;
         !attacked_by(king, occ, board, king_color.opposite()).is_empty()
@@ -87,7 +87,6 @@ impl MoveGen for Board {
         moves.retain(|m| self.is_legal_move(m));
         moves
     }
-
 
     // TODO: Vec::with_capacity(100).
     fn pseudo_legal_moves(&self) -> MoveList {
@@ -147,13 +146,27 @@ impl MoveGen for Board {
         if ep.intersects(pawn_captures_e) {
             let from = ep.shift(&color.pawn_capture_east().opposite());
             let capture_square = ep.shift(&color.opposite().pawn_move());
-            let m = Move { from, to: ep, mover: Piece::Pawn, capture: Piece::Pawn, ep: capture_square, ..Default::default() };
+            let m = Move {
+                from,
+                to: ep,
+                mover: Piece::Pawn,
+                capture: Piece::Pawn,
+                ep: capture_square,
+                ..Default::default()
+            };
             moves.push(m);
         }
         if ep.intersects(pawn_captures_w) {
             let from = ep.shift(&color.pawn_capture_west().opposite());
             let capture_square = ep.shift(&color.opposite().pawn_move());
-            let m = Move { from, to: ep, mover: Piece::Pawn, capture: Piece::Pawn, ep: capture_square, ..Default::default() };
+            let m = Move {
+                from,
+                to: ep,
+                mover: Piece::Pawn,
+                capture: Piece::Pawn,
+                ep: capture_square,
+                ..Default::default()
+            };
             moves.push(m);
         }
 
@@ -256,7 +269,10 @@ impl MoveGen for Board {
         let king = board.kings() & us;
         let rights = board.castling();
 
-        if rights.has_king_side_right(color) && !CastlingRights::king_side_squares(color).intersects(occupied) && !king.is_empty() {
+        if rights.has_king_side_right(color)
+            && !CastlingRights::king_side_squares(color).intersects(occupied)
+            && !king.is_empty()
+        {
             let rook_to = king.shift(&Dir::E);
             let king_to = rook_to.shift(&Dir::E);
             let king_moves = king | rook_to | king_to;
@@ -268,12 +284,15 @@ impl MoveGen for Board {
             }
         }
 
-        if rights.has_queen_side_right(color) && !CastlingRights::queen_side_squares(color).intersects(occupied) && !king.is_empty() {
+        if rights.has_queen_side_right(color)
+            && !CastlingRights::queen_side_squares(color).intersects(occupied)
+            && !king.is_empty()
+        {
             let rook_to = king.shift(&Dir::W);
             let king_to = rook_to.shift(&Dir::W);
             let king_moves = king | rook_to | king_to;
-                if attacked_by(king_moves, occupied, board, color.opposite()).is_empty() {
-                    // let rook_from = Bitboard::FILE_H & color.back_rank;
+            if attacked_by(king_moves, occupied, board, color.opposite()).is_empty() {
+                // let rook_from = Bitboard::FILE_H & color.back_rank;
                 // let m = MoveEnum::Castle { king_dest, king_from: king, rook_dest, rook_from, right };
                 let m = Move { from: king, to: king_to, mover: Piece::King, is_castle: true, ..Default::default() };
                 moves.push(m);
@@ -283,30 +302,26 @@ impl MoveGen for Board {
     }
 }
 
-
-pub fn perft( board: &Board, depth: u32) -> u64 {
+pub fn perft(board: &Board, depth: u32) -> u64 {
     if depth == 0 {
         return 1;
-    } 
-    else {
+    } else {
         let moves = board.legal_moves();
         let mut count = 0u64;
         for m in moves.iter() {
-            let res = perft(&board.make_move(m), depth - 1);                
+            let res = perft(&board.make_move(m), depth - 1);
             count += res;
-        }           
+        }
         count
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::board::boardbuf::*;
-    use crate::catalog::*;
     use crate::board::*;
+    use crate::catalog::*;
     use crate::globals::constants::*;
     extern crate env_logger;
 
@@ -316,6 +331,7 @@ mod tests {
 
     #[test]
     fn pseudo_legal_moves() -> Result<(), String> {
+        init();
         let mut buf = BoardBuf::parse_pieces("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap();
         buf.set(a2, ".")?;
         buf.set(d2, ".")?;
@@ -328,8 +344,6 @@ mod tests {
         Ok(())
     }
 
-
-
     #[test]
     fn test_perft() {
         for (board, perfts) in Catalog::perfts() {
@@ -340,7 +354,7 @@ mod tests {
                 }
                 // assert_eq!(&count, expected, "fen: {}", board.to_fen());
             }
-        };
+        }
     }
 
     #[test]
@@ -438,7 +452,6 @@ mod tests {
         // FIXME! assert b1.validate_move(Move.parse('e8e7'))
         // assert!(board.pseudo_legal_moves().contains(Move.parse("e8e7")));
     }
-
 
     #[test]
     fn test_is_in_check() {

@@ -1,8 +1,8 @@
 use crate::bitboard::Bitboard;
+use crate::board::Board;
 use crate::board::Move;
-use crate::board::{Board};
-use crate::types::{Color, Piece, CastlingRights};
 use crate::globals::constants::*;
+use crate::types::{CastlingRights, Color, Piece};
 
 pub trait MoveMaker {
     fn make_move(&self, m: &Move) -> Board;
@@ -15,19 +15,20 @@ impl MoveMaker for Board {
             ((self.white() | self.black()) & m.to).is_empty() || m.is_capture(),
             "Non-empty to:sq for non-capture {:?} board \n{} white \n{} black\n{}",
             m,
-            self, self.white(), self.black()
+            self,
+            self.white(),
+            self.black()
         );
         let mut board = Board {
             en_passant: Bitboard::EMPTY,
             turn: self.turn.opposite(),
             fullmove_count: if self.turn == Color::Black { self.fullmove_count + 1 } else { self.fullmove_count },
             fifty_clock: self.fifty_clock + 1,
-            moves: self.moves.clone(),
+            // moves: self.moves.clone(),
             ..*self
         };
 
-        board.moves.push(*m);
-
+        // board.moves.push(*m);
 
         if m.is_capture() {
             if m.is_ep_capture() {
@@ -118,8 +119,8 @@ impl MoveMaker for Board {
 mod tests {
     use super::*;
     use crate::board::boardbuf::*;
-    use crate::catalog::*;
     use crate::board::movegen::*;
+    use crate::catalog::*;
 
     #[test]
     fn test_make_move() -> Result<(), String> {
@@ -134,18 +135,16 @@ mod tests {
     #[test]
     fn make_move_ep() -> Result<(), String> {
         let board1 = Catalog::perfts()[2].0.clone();
-        
         // double push - ep sq should be set
         let mov1 = board1.validate_uci_move("e2e4")?;
         let board2 = board1.make_move(&mov1);
         assert_eq!(board2.to_fen(), "8/2p5/3p4/KP5r/1R2Pp1k/8/6P1/8 b - e3 0 1");
-        
         // ep capture is valid but illegal as leaves king in check
         let mov2 = board2.validate_uci_move("f4e3")?;
         assert_eq!(mov2.ep, e4, "EP square for e/p capture move is square the captured piece is on");
         println!("{:?}", mov2);
         let is_false = board2.is_legal_move(&mov2);
-        assert_eq!(is_false, false);     
+        assert_eq!(is_false, false);
         // let board3 = board2.make_move(&mov2);
         // assert_eq!(board3.to_fen(), "8/2p5/3p4/KP5r/1R5k/4p3/6P1/8 w - - 0 2");
         Ok(())
