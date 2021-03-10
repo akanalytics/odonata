@@ -38,13 +38,15 @@ use crate::types::{Piece, Color};
 #[derive(Copy, Clone, Default)]
 pub struct Score {
     total: i32,   // millipawns, +ve = white advantage
+    // outcome: 
 }
 
 // score config needs to be by colour and by MG/EG
 // option to have minimizing nodes use different config
 // what can we cache
-// pass in alpha beta so eval can short circuit
+// pass in alpha beta so eval can short circuit (lazy evaluation)
 // some human-like tweaks: aggresive/defensive, open/closed preference, test an opening, lay traps, complicate the position, 
+// consider odd / even parity and tempo
 
 impl Score {
 
@@ -57,11 +59,15 @@ impl Score {
         score
     }
 
+    pub fn total(&self) -> i32 {
+        self.total
+    }
 
     // always updated
     pub fn mobility(_board: &Board) -> Score {
        panic!("Not implmented");        
     }
+
 
 
     // piece positions, king safety, centre control

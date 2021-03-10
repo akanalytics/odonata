@@ -14,6 +14,7 @@ pub mod catalog;
 pub mod globals;
 pub mod eval;
 pub mod material;
+pub mod search;
 pub mod types;
 mod utils;
 
