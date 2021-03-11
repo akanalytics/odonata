@@ -24,19 +24,21 @@ impl BoardBuf {
             bb.remove(sq);
         }
         // self.0.pieces(p).remove(sq);
-        self.board.pieces[p.index()].insert(sq);
+        if p != Piece::None {
+            self.board.pieces[p.index()].insert(sq);
+        }
     }
 
     pub fn set_color_at(&mut self, sq: Bitboard, c: Color) {
         self.board.color(c.opposite()).remove(sq);
-        self.board.colors[c.index].insert(sq);
+        self.board.colors[c.index()].insert(sq);
     }
 
     pub fn color_at(&self, at: Bitboard) -> Option<Color> {
-        if self.board.colors[Color::WHITE.index].contains(at) {
-            return Some(Color::WHITE);
-        } else if self.board.colors[Color::BLACK.index].contains(at) {
-            return Some(Color::BLACK);
+        if self.board.colors[Color::White.index()].contains(at) {
+            return Some(Color::White);
+        } else if self.board.colors[Color::Black.index()].contains(at) {
+            return Some(Color::Black);
         }
         None
     }
@@ -138,7 +140,8 @@ impl fmt::Display for Board {
             fmt.write_str(&b.get(r))?;
             fmt.write_char('\n')?;
         }
-        write!(fmt, "fen: {} \nMoves: {}", self.to_fen(), self.moves)?;
+        write!(fmt, "fen: {} \n", self.to_fen())?;
+        // write!(fmt, "Moves: {}", self.moves)?;
         Ok(())
     }
 }
@@ -164,7 +167,7 @@ mod tests {
         let board = Board::empty();
         assert_eq!(board.kings(), Bitboard::EMPTY);
         assert_eq!(board.us(), Bitboard::EMPTY);
-        assert_eq!(board.color_us().is_white, true);
+        assert_eq!(board.color_us(), Color::White);
 
         // assert_eq!(board[a1], 'R');
         let mut buf = BoardBuf::new();
@@ -202,7 +205,7 @@ mod tests {
     #[test]
     fn parse_fen() -> Result<(), String> {
         let b = BoardBuf::parse_fen("7k/8/8/8/8/8/8/7K b KQkq - 45 100")?.as_board();
-        assert_eq!(b.color_us(), Color::BLACK);
+        assert_eq!(b.color_us(), Color::Black);
         assert_eq!(b.fullmove_counter(), 100);
         assert_eq!(b.fifty_halfmove_clock(), 45);
         assert_eq!(b.castling(), CastlingRights::all());

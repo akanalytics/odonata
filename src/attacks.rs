@@ -28,13 +28,13 @@ pub trait BitboardAttacks {
     #[inline]
     fn pawn_pushes(&self, occupied: Bitboard, pawns: Bitboard, color: &Color) -> Bitboard {
         let empty = !occupied;
-        let single = pawns.shift(&color.pawn_move) & empty;
-        single | (single.shift(&color.pawn_move) & empty & color.double_push_dest_rank)
+        let single = pawns.shift(&color.pawn_move()) & empty;
+        single | (single.shift(&color.pawn_move()) & empty & color.double_push_dest_rank())
     }
 
     #[inline]
     fn pawn_attacks(&self, pawns: Bitboard, color: &Color) -> (Bitboard, Bitboard) {
-        (pawns.shift(&color.pawn_capture_east), pawns.shift(&color.pawn_capture_west))
+        (pawns.shift(&color.pawn_capture_east()), pawns.shift(&color.pawn_capture_west()))
     }
 
     fn pawn_en_passant_captures(
@@ -47,7 +47,7 @@ pub trait BitboardAttacks {
         assert!(!en_passant.is_empty());
         let (east, west) = self.pawn_attacks(pawns, color);
 
-        let enemy_pawn = en_passant.shift(&color.opposite().pawn_move);
+        let enemy_pawn = en_passant.shift(&color.opposite().pawn_move());
 
         // check enemy have occupied the square one beyond en passant square
         if (enemy_pawn & opponent).is_empty() {
@@ -203,18 +203,18 @@ mod tests {
         let opponent = a4 | b4 | d3 | g5;
         let occupied = pawns_w | opponent;
 
-        let pawn_single_push = classical.pawn_pushes(occupied, pawns_w, &Color::WHITE);
+        let pawn_single_push = classical.pawn_pushes(occupied, pawns_w, &Color::White);
         let single = a3 | c3 | d8 | f6 | h6;
         let double = c4;
         assert_eq!(pawn_single_push, single | double);
 
-        let (pawn_capture_e, pawn_capture_w) = classical.pawn_attacks(pawns_w, &Color::WHITE);
+        let (pawn_capture_e, pawn_capture_w) = classical.pawn_attacks(pawns_w, &Color::White);
         assert_eq!(pawn_capture_e & opponent, d3);
 
         assert_eq!(pawn_capture_w & opponent, a4 | g5);
 
         let ep_square = g6;
-        let (east, west) = classical.pawn_en_passant_captures(pawns_w, opponent, &Color::WHITE, ep_square);
+        let (east, west) = classical.pawn_en_passant_captures(pawns_w, opponent, &Color::White, ep_square);
         assert_eq!(east, g6);
         assert_eq!(west, g6);
     }

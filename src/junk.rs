@@ -28,7 +28,7 @@
 //         let mut board = Board {
 //             en_passant: Bitboard::EMPTY,
 //             turn: self.turn.opposite(),
-//             fullmove_count: if self.turn == Color::BLACK { self.fullmove_count + 1 } else { self.fullmove_count },
+//             fullmove_count: if self.turn == Color::Black { self.fullmove_count + 1 } else { self.fullmove_count },
 //             fifty_clock: self.fifty_clock + 1,
 //             .. *self
 //         };

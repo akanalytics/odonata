@@ -45,7 +45,7 @@ impl Move {
         res.push_str( &self.from.uci() );
         res.push_str( &self.to.uci() );
         if self.is_promo() {
-            res.push( self.promo.to_char(Some(Color::BLACK)));
+            res.push( self.promo.to_char(Some(Color::Black)));
         }
         res
     }
@@ -69,7 +69,7 @@ impl fmt::Display for Move {
         res.push_str(self.from.uci().as_str());
         res.push_str(self.to.uci().as_str());
         if self.is_promo() {
-            res.push(self.promo.to_char(Some(Color::BLACK)));
+            res.push(self.promo.to_char(Some(Color::Black)));
         }
         write!(f, "{}", res)
     }
@@ -129,27 +129,27 @@ pub enum MoveEnum {
 
 #[derive(Clone, Debug)]
 pub struct Board {
-    pieces: [Bitboard; 7],
+    pieces: [Bitboard; Piece::ALL.len()],
     colors: [Bitboard; 2],
     castling: CastlingRights,
     en_passant: Bitboard,
     turn: Color,
     fifty_clock: u16,
     fullmove_count: u16,
-    moves: MoveList,
+    // moves: MoveList,
 }
 
 impl Board {
     pub fn empty() -> Board {
         Board {
-            pieces: [Bitboard::EMPTY; 7],
+            pieces: [Bitboard::EMPTY; Piece::ALL.len()],
             colors: [Bitboard::EMPTY; 2],
             castling: CastlingRights::ALL,
             en_passant: Bitboard::EMPTY,
-            turn: Color::WHITE,
+            turn: Color::White,
             fifty_clock: 0,
             fullmove_count: 1,
-            moves: MoveList::new(),
+            // moves: MoveList::new(),
         }
     }
 
@@ -165,11 +165,11 @@ impl Board {
     // fn piece_and_color_at(&self, at: Bitboard) -> (Piece, Color) {
     //     for p in &Piece::ALL {
     //         if self.pieces[*p as usize].contains(at) {
-    //             let c = if self.colors[Color::WHITE.index].contains(at) { Color::WHITE } else { Color::BLACK };
+    //             let c = if self.colors[Color::White.index].contains(at) { Color::White } else { Color::Black };
     //             return (*p, c);
     //         }
     //     }
-    //     (Piece::None, Color::BLACK)
+    //     (Piece::None, Color::Black)
     // }
 
     pub fn castling(&self) -> CastlingRights {
@@ -205,15 +205,15 @@ impl Board {
     }
 
     pub fn color(&self, c: Color) -> Bitboard {
-        self.colors[c.index]
+        self.colors[c.index()]
     }
 
     pub fn white(&self) -> Bitboard {
-        self.colors[Color::WHITE.index]
+        self.colors[Color::White.index()]
     }
 
     pub fn black(&self) -> Bitboard {
-        self.colors[Color::BLACK.index]
+        self.colors[Color::Black.index()]
     }
 
     pub fn color_us(&self) -> Color {
@@ -287,21 +287,7 @@ mod tests {
     use super::*;
     use crate::globals::constants::*;
 
-    #[test]
-    fn color() {
-        assert_eq!(Color::parse("w"), Ok(Color::WHITE));
-        assert_eq!(Color::parse("b"), Ok(Color::BLACK));
-        assert_eq!(Color::parse("B"), Err("Invalid color: 'B'".to_string()));
-        assert_eq!(Piece::King.to_char(Some(Color::BLACK)), 'k');
-        assert_eq!(Piece::King.to_char(None), 'K');
-    }
 
-    #[test]
-    fn piece() {
-        assert_eq!(Piece::Pawn.to_upper_char(), 'P');
-        assert_eq!(Piece::King.to_char(Some(Color::BLACK)), 'k');
-        assert_eq!(Piece::King.to_char(None), 'K');
-    }
 
     #[test]
     fn move_and_movelist() {
@@ -333,8 +319,8 @@ mod tests {
     #[test]
     fn board_bitboards() -> Result<(), String> {
         let board = BoardBuf::parse_pieces("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap().as_board();
-        assert_eq!(board.color_us(), Color::WHITE);
-        assert_eq!(board.color_them(), Color::BLACK);
+        assert_eq!(board.color_us(), Color::White);
+        assert_eq!(board.color_them(), Color::Black);
         // assert_eq!(board.en_passant(), Bitboard::empty());
         // assert_eq!(board.move_count(), 0);
         assert_eq!(board.pawns() & board.us(), Bitboard::RANK_2);

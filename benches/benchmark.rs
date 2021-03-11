@@ -1,9 +1,8 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use flouder::bitboard::*;
-use flouder::catalog::*;
 use flouder::board::makemove::*;
 use flouder::board::movegen::*;
-use flouder::board::*;
+use flouder::catalog::*;
 use flouder::types::*;
 
 fn bitwise_handcrafted(c: &mut Criterion) {
@@ -44,8 +43,8 @@ fn piece_to_upper_char(c: &mut Criterion) {
 fn piece_to_char(c: &mut Criterion) {
     c.bench_function("piece_to_char", |b| {
         b.iter(|| {
-            black_box(Piece::Pawn.to_char(Some(Color::WHITE)));
-            black_box(Piece::Knight.to_char(Some(Color::BLACK)));
+            black_box(Piece::Pawn.to_char(Some(Color::White)));
+            black_box(Piece::Knight.to_char(Some(Color::Black)));
         });
     });
 }
@@ -92,6 +91,39 @@ fn legal_moves(c: &mut Criterion) {
     });
 }
 
+fn bench_chooser_array(c: &mut Criterion) {
+    let white = Color::White;
+    let black = Color::Black;
+    c.bench_function("chooser_array", |b| {
+        b.iter(|| {
+            black_box(chooser_array(black_box(white), &Bitboard::RANK_4, &Bitboard::RANK_5));
+            black_box(chooser_array(black_box(black), &Bitboard::RANK_4, &Bitboard::RANK_5));
+        });
+    });
+}
+
+fn bench_chooser_wb(c: &mut Criterion) {
+    let white = Color::White;
+    let black = Color::Black;
+    c.bench_function("chooser_wb_ref", |b| {
+        b.iter(|| {
+            black_box(chooser_wb(black_box(white), &Bitboard::RANK_4, &Bitboard::RANK_5));
+            black_box(chooser_wb(black_box(black), &Bitboard::RANK_4, &Bitboard::RANK_5));
+        });
+    });
+}
+
+fn bench_chooser_struct(c: &mut Criterion) {
+    let white = Color::White;
+    let black = Color::Black;
+    const CHOICE: Chooser<&Bitboard> = Chooser { white: &Bitboard::RANK_4, black: &Bitboard::RANK_5 };
+    c.bench_function("chooser_struct", |b| {
+        b.iter(|| {
+            black_box(chooser_struct(black_box(white), &CHOICE));
+            black_box(chooser_struct(black_box(black), &CHOICE));
+        });
+    });
+}
 
 criterion_group!(
     benches,
@@ -102,6 +134,9 @@ criterion_group!(
     benchmark_perft5,
     make_move,
     legal_moves,
-    pseudo_legal_moves
+    pseudo_legal_moves,
+    bench_chooser_struct,
+    bench_chooser_wb,
+    bench_chooser_array,
 );
 criterion_main!(benches);

@@ -1,5 +1,6 @@
 use crate::board::boardbuf::BoardBuf;
 use crate::board::Board;
+use crate::bitboard::Bitboard;
 
 pub struct Catalog;
 
@@ -9,6 +10,16 @@ impl Catalog {
 
     pub fn starting_position() -> Board {
         BoardBuf::parse_fen(Self::STARTING_POSITION_FEN).unwrap().as_board()
+    }
+
+    pub fn white_starting_position() -> Board {
+        // FIXME: set calls
+        BoardBuf::parse_fen(Self::STARTING_POSITION_FEN).unwrap().set(Bitboard::RANK_7 | Bitboard::RANK_8, "................").unwrap().as_board()
+    }
+
+    pub fn black_starting_position() -> Board {
+        // FIXME: set calls
+        BoardBuf::parse_fen(Self::STARTING_POSITION_FEN).unwrap().set(Bitboard::RANK_1 | Bitboard::RANK_2, "................").unwrap().as_board()
     }
 
     // FIXME! awful structure

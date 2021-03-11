@@ -1,4 +1,6 @@
 use crate::board::{Board};
+use crate::material::{Material};
+use crate::types::{Piece, Color};
 
 
 
@@ -33,30 +35,53 @@ use crate::board::{Board};
 // default scores
 // position is by white/black as directional
 
-
-pub struct Score;
+#[derive(Copy, Clone, Default)]
+pub struct Score {
+    total: i32,   // millipawns, +ve = white advantage
+    // outcome: 
+}
 
 // score config needs to be by colour and by MG/EG
 // option to have minimizing nodes use different config
 // what can we cache
+// pass in alpha beta so eval can short circuit (lazy evaluation)
 // some human-like tweaks: aggresive/defensive, open/closed preference, test an opening, lay traps, complicate the position, 
+// consider odd / even parity and tempo
 
 impl Score {
-    
-    
-    total(&board: Board) -> Score; 
 
+    pub const MATERIAL_SCORES: [i32; Piece::ALL.len()] = [1000, 3250, 3500, 5000, 9000, 0 ]; 
+    
+    pub fn new(board: &Board) -> Score {
+        let mut score: Score = Default::default();
+        let mat = Material::count_from(board);
+        score.evaluate_material(&mat);
+        score
+    }
+
+    pub fn total(&self) -> i32 {
+        self.total
+    }
 
     // always updated
-    mobility(&board: Board) -> Score;
+    pub fn mobility(_board: &Board) -> Score {
+       panic!("Not implmented");        
+    }
+
 
 
     // piece positions, king safety, centre control
     // only updated for the colour thats moved - opponents(blockes) not relevant
-    position(&board: Board) -> Score;
+    pub fn position(_board: &Board) -> Score {
+        panic!("Not implmented");        
+    }
 
     // updated on capture & promo
-    material( /* material*/ ) -> Score;
+    pub fn evaluate_material(&mut self, mat: &Material) {
+        for &p in &Piece::ALL {
+            self.total += Self::MATERIAL_SCORES[p.index()] * (mat.counts(Color::White, p) - mat.counts(Color::Black, p));
+        }
+    }
 
     // static_exchangce_evaluation()
     // least_valuable_piece()
@@ -64,10 +89,36 @@ impl Score {
 
 
 
-pub trait Evaluation {
-
+pub trait Scorable {
+    fn evaluate(&self) -> Score;
 }
 
-impl Evaluation for Board {
+impl Scorable for Board {
+    fn evaluate(&self) -> Score {
+        Score::new(self)
+    }
+}
+
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::catalog::Catalog;
+
+
+    #[test]
+    fn score_material() {
+        let board = Catalog::starting_position();
+        assert_eq!(Score::new(&board).total, 0);
+
+        let starting_pos_score = 8 * 1000 + 2 * 3250 + 2 * 3500 + 2 * 5000 + 9000;
+        let board = Catalog::white_starting_position();
+        assert_eq!(Score::new(&board).total, starting_pos_score);
+
+        let board = Catalog::black_starting_position();
+        assert_eq!(Score::new(&board).total, -starting_pos_score);
+    }
 
 }

@@ -3,20 +3,49 @@ use std::fmt;
 use std::iter::*;
 
 
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Color {
-    pub is_white: bool,
-    pub index: usize,
-    pub pawn_move: Dir,
-    pub pawn_capture_east: Dir,
-    pub pawn_capture_west: Dir,
-    pub kingside_castle_sqs: Bitboard,
-    pub queenside_castle_sqs: Bitboard,
-    pub double_push_dest_rank: Bitboard,
-    pub castle_rights_queen: CastlingRights,
-    pub castle_rights_king: CastlingRights,
-    pub back_rank: Bitboard,
+
+
+pub struct Chooser<T> {
+    pub black: T,
+    pub white: T,
 }
+
+// impl<T> Chooser<T> {
+#[inline]
+pub fn chooser_array<'a, T>(c: Color, white: &'a T, black: &'a T) -> &'a T {
+    [&white, &black][c as usize]
+}
+
+#[inline]
+pub fn chooser_wb_ref<'a, T>(c: Color, white: &'a T, black: &'a T) -> &'a T {
+    match c {
+        Color::White => { white }, 
+        Color::Black => { black }
+    }
+}
+
+#[inline]
+pub fn chooser_wb<T>(c: Color, white: T, black: T) -> T {
+    match c {
+        Color::White => { white }, 
+        Color::Black => { black }
+    }
+}
+
+// pub fn chooser_wb<T>(c: Color, white: T, black: T) -> T {
+//     match c {
+//         Col::WHITE => { white }, 
+//         Col::BLACK => { black }
+//     }
+// }
+
+
+#[inline]
+pub fn chooser_struct<'a, T>(c: Color, choices: &'a Chooser<&T>) -> &'a T {
+    return [&choices.white, &choices.black][c as usize];
+}
+
+
 
 bitflags! {
     pub struct CastlingRights: u8 {
@@ -44,6 +73,37 @@ impl CastlingRights {
         }
         Ok(castling)
     }
+
+    pub fn has_king_side_right(self, c: Color) -> bool {
+        self.contains(chooser_wb(c, 
+            CastlingRights::WHITE_KING,
+            CastlingRights::BLACK_KING
+        ))
+    } 
+
+    pub fn has_queen_side_right(self, c: Color) -> bool {
+        self.contains(chooser_wb(c, 
+            CastlingRights::WHITE_QUEEN,
+            CastlingRights::BLACK_QUEEN
+        ))
+    } 
+
+    pub fn king_side_squares(c: Color) -> Bitboard {
+        chooser_wb(c, 
+            Bitboard::F1.or(Bitboard::G1),
+            Bitboard::F8.or(Bitboard::G8)
+        )
+    }
+
+    pub fn queen_side_squares(c: Color) -> Bitboard {
+        chooser_wb(c, 
+            Bitboard::D1.or(Bitboard::C1).or(Bitboard::B1),
+            Bitboard::D8.or(Bitboard::C8).or(Bitboard::B8)
+        )
+    }
+
+
+
 }
 
 impl fmt::Display for CastlingRights {
@@ -67,51 +127,75 @@ impl fmt::Display for CastlingRights {
     }
 }
 
-impl Color {
-    pub const WHITE: Self = Color {
-        is_white: true,
-        index: 0,
-        pawn_move: Dir::N,
-        pawn_capture_east: Dir::NE,
-        pawn_capture_west: Dir::NW,
-        kingside_castle_sqs: Bitboard::F1.or(Bitboard::G1),
-        queenside_castle_sqs: Bitboard::D1.or(Bitboard::C1).or(Bitboard::B1),
-        double_push_dest_rank: Bitboard::RANK_4,
-        castle_rights_queen: CastlingRights::WHITE_QUEEN,
-        castle_rights_king: CastlingRights::WHITE_KING,
-        back_rank: Bitboard::RANK_1,
-    };
-    pub const BLACK: Self = Color {
-        is_white: false,
-        index: 1,
-        pawn_move: Dir::S,
-        pawn_capture_east: Dir::SE,
-        pawn_capture_west: Dir::SW,
-        kingside_castle_sqs: Bitboard::F8.or(Bitboard::G8),
-        queenside_castle_sqs: Bitboard::D8.or(Bitboard::C8).or(Bitboard::B8),
-        double_push_dest_rank: Bitboard::RANK_5,
-        castle_rights_queen: CastlingRights::BLACK_QUEEN,
-        castle_rights_king: CastlingRights::BLACK_KING,
-        back_rank: Bitboard::RANK_8,
-    };
 
-    pub fn opposite(&self) -> Color {
-        [Color::BLACK, Color::WHITE][self.index]
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum Color { White = 0, Black = 1 }  // numbering as per CPW
+
+
+
+
+
+impl Color {
+
+    pub const ALL: [Color; 2] = [Color::White, Color::Black];
+        
+    #[inline]
+    pub fn index(self) -> usize {
+        self as usize
+    }
+
+    #[inline]
+    pub fn chooser_wb<T>(self, white: T, black: T) -> T {
+        match self {
+            Color::White => { white }, 
+            Color::Black => { black }
+        }
+    }   
+
+    #[inline]
+    pub fn pawn_move(self) -> Dir {
+        self.chooser_wb(Dir::N, Dir::S)
+    }
+
+    #[inline]
+    pub fn double_push_dest_rank(self) -> Bitboard {
+        self.chooser_wb(Bitboard::RANK_4, Bitboard::RANK_5)
+    }
+
+    #[inline]
+    pub fn pawn_capture_east(self) -> Dir {
+        self.chooser_wb(Dir::NE, Dir::SE)
+    }
+
+    #[inline]
+    pub fn pawn_capture_west(self) -> Dir {
+        self.chooser_wb(Dir::NW, Dir::SW)
+    } 
+
+    #[inline]
+    pub fn back_rank(self) -> Bitboard {
+        self.chooser_wb(Bitboard::RANK_1, Bitboard::RANK_8)
+    }
+
+    #[inline]
+    pub fn opposite(self) -> Color {
+        self.chooser_wb(Color::Black, Color::White)
     }
 
     pub fn parse(s: &str) -> Result<Color, String> {
         match s {
-            "w" => Ok(Color::WHITE),
-            "b" => Ok(Color::BLACK),
+            "w" => Ok(Color::White),
+            "b" => Ok(Color::Black),
             _ => Err(format!("Invalid color: '{}'", s)),
         }
     }
 
     pub fn from_piece_char(ch: char) -> Result<Color, String> {
         if ch.is_lowercase() {
-            return Ok(Color::BLACK);
+            return Ok(Color::Black);
         } else if ch.is_uppercase() {
-            return Ok(Color::WHITE);
+            return Ok(Color::White);
         }
         Err(format!("Cannot get color for char '{}'", ch))
     }
@@ -119,20 +203,21 @@ impl Color {
 
 impl fmt::Display for Color {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", ['w', 'b'][self.index])
+        write!(f, "{}", chooser_wb(*self, 'w', 'b'))
     }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Piece {
-    None = 0,
-    Pawn = 1,
-    Knight = 2,
-    Bishop = 3,
-    Rook = 4,
-    Queen = 5,
-    King = 6,
+    Pawn = 0,
+    Knight = 1,
+    Bishop = 2,
+    Rook = 3,
+    Queen = 4,
+    King = 5,
+    None = 6,
 }
+
 
 impl Default for Piece {
     fn default() -> Self {
@@ -183,8 +268,46 @@ impl Piece {
     pub fn to_char(&self, c: Option<Color>) -> char {
         match c {
             None => self.to_upper_char(),
-            Some(c) if c.is_white => self.to_upper_char(),
+            Some(c) if c == Color::White => self.to_upper_char(),
             Some(_) => self.to_upper_char().to_ascii_lowercase(),
         }
+    }
+}
+
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn color() {
+        assert_eq!(Color::parse("w"), Ok(Color::White));
+        assert_eq!(Color::parse("b"), Ok(Color::Black));
+        assert_eq!(Color::parse("B"), Err("Invalid color: 'B'".to_string()));
+        assert_eq!(Piece::King.to_char(Some(Color::Black)), 'k');
+        assert_eq!(Piece::King.to_char(None), 'K');
+    }
+
+    #[test]
+    fn piece() {
+        assert_eq!(Piece::Pawn.to_upper_char(), 'P');
+        assert_eq!(Piece::King.to_char(Some(Color::Black)), 'k');
+        assert_eq!(Piece::King.to_char(None), 'K');
+    }
+
+    #[test]
+    fn choose() {
+        let c = Color::White;
+        const CHOICE: Chooser<&Bitboard> = Chooser { 
+            white: &Bitboard::RANK_4, 
+            black: &Bitboard::RANK_5,
+        };
+
+        let bb = chooser_array(c, &Bitboard::RANK_4, &Bitboard::RANK_5 );
+        assert_eq!(bb, &Bitboard::RANK_4);
+        chooser_wb(c, &Bitboard::RANK_4, &Bitboard::RANK_5 );
+        chooser_struct(c, &CHOICE );
     }
 }
