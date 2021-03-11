@@ -2,6 +2,7 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use flouder::bitboard::*;
 use flouder::board::makemove::*;
 use flouder::board::movegen::*;
+use flouder::eval::*;
 use flouder::catalog::*;
 use flouder::types::*;
 
@@ -60,6 +61,23 @@ fn benchmark_perft5(c: &mut Criterion) {
     });
     group.finish();
 }
+
+fn benchmark_score(c: &mut Criterion) {
+    let mut group = c.benchmark_group("score");
+    group.bench_function("handcrafted", |b| {
+        b.iter(|| {
+            black_box( black_box(5) > black_box(4) );
+        });
+    });
+    group.bench_function("score enum", |b| {
+        b.iter(|| {
+            black_box( Score::Millipawns(black_box(5)) > Score::Millipawns(black_box(4)) );
+        });
+    });
+    group.finish();
+}
+
+
 
 fn make_move(c: &mut Criterion) {
     let board = Catalog::starting_position();
@@ -138,5 +156,6 @@ criterion_group!(
     bench_chooser_struct,
     bench_chooser_wb,
     bench_chooser_array,
+    benchmark_score
 );
 criterion_main!(benches);

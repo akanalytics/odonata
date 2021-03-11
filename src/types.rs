@@ -58,6 +58,12 @@ bitflags! {
     }
 }
 
+
+impl Default for CastlingRights {
+    fn default() -> Self { Self::NONE }
+}
+
+
 impl CastlingRights {
     pub fn parse(s: &str) -> Result<CastlingRights, String> {
         let mut castling = CastlingRights::NONE;
@@ -129,11 +135,13 @@ impl fmt::Display for CastlingRights {
 
 
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Color { White = 0, Black = 1 }  // numbering as per CPW
 
 
-
+impl Default for Color {
+    fn default() -> Self { Color::White }
+} 
 
 
 impl Color {
@@ -146,10 +154,10 @@ impl Color {
     }
 
     #[inline]
-    pub fn chooser_wb<T>(self, white: T, black: T) -> T {
+    pub fn chooser_wb<T>(self, white_thing: T, black_thing: T) -> T {
         match self {
-            Color::White => { white }, 
-            Color::Black => { black }
+            Color::White => { white_thing }, 
+            Color::Black => { black_thing }
         }
     }   
 

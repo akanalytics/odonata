@@ -127,7 +127,7 @@ pub enum MoveEnum {
     // DropRemove { dest: Bitboard, piece: Piece },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Board {
     pieces: [Bitboard; Piece::ALL.len()],
     colors: [Bitboard; 2],
@@ -140,16 +140,11 @@ pub struct Board {
 }
 
 impl Board {
+    /// white to move, no castling rights or en passant
     pub fn empty() -> Board {
         Board {
-            pieces: [Bitboard::EMPTY; Piece::ALL.len()],
-            colors: [Bitboard::EMPTY; 2],
-            castling: CastlingRights::ALL,
-            en_passant: Bitboard::EMPTY,
-            turn: Color::White,
-            fifty_clock: 0,
             fullmove_count: 1,
-            // moves: MoveList::new(),
+            .. Default::default()
         }
     }
 

@@ -99,3 +99,220 @@
 //         board
 //     }
 // }
+
+
+use crate::board::{Board, Move};
+use crate::board::makemove::MoveMaker;
+use crate::eval::{Scorable, Score};
+use crate::board::movegen::MoveGen;
+use std::cmp;
+
+// CPW
+//
+// Obligatory
+//   
+//   Futility pruning 
+//   Null move pruning
+//   Transposition Table
+//   Iterative Deepening
+//   Aspiration Windows
+//
+// Selectivity
+//   Quiescence Search
+//     static exchange evaluation < 0
+//     delta pruning
+//     standing pat
+
+//   Selectivity
+//   Mate Search
+//
+// Scout and Friends
+//   Scout
+//   NegaScout
+//   Principal Variation Search
+//
+// Alpha-Beta goes Best-First
+//   NegaC*
+//   MTD(f)
+//   Alpha-Beta Conspiracy Search
+//
+
+
+// taken from wikipedia
+//
+// function alphabeta(node, depth, α, β, maximizingPlayer) is
+//     if depth = 0 or node is a terminal node then
+//         return the heuristic value of node
+//     if maximizingPlayer then
+//         value := −∞
+//         for each child of node do
+//             value := max(value, alphabeta(child, depth − 1, α, β, FALSE))
+//             α := max(α, value)
+//             if α ≥ β then
+//                 break (* β cutoff *)
+//         return value
+//     else
+//         value := +∞
+//         for each child of node do
+//             value := min(value, alphabeta(child, depth − 1, α, β, TRUE))
+//             β := min(β, value)
+//             if β ≤ α then
+//                 break (* α cutoff *)
+//         return value
+//
+#[derive(Debug)]
+pub struct Node<'b> {
+    parent: Option<&'b Node<'b>>,
+    board: &'b Board,
+    ply: u32,
+    alpha: Score,
+    beta: Score,
+    score: Score,
+    best_move: Move,
+    // stats
+    // leaf
+    // pv
+}
+
+#[derive(Debug, Default)]
+pub struct Search {
+    max_depth: u32,
+    node_count: u64, 
+}
+
+
+impl Search {
+
+
+    #[inline]
+    pub fn is_maximizing(&self, node: &Node) -> bool {
+        node.ply % 2 == 0  // 0 ply looks at our moves - maximising
+    }
+
+    #[inline]
+    pub fn is_leaf(&self, node: &Node) -> bool {
+        node.ply == self.max_depth
+    }
+
+    #[inline]
+    pub fn new_child<'c>(&mut self, parent: &'c mut Node<'c>, _mv: &Move, board: &'c Board) -> Node<'c> {
+        let child = Node {
+            parent: Some(parent),
+            board, 
+            alpha: parent.alpha, 
+            beta: parent.beta, 
+            ply: parent.ply + 1, 
+            score: if self.is_maximizing(parent) { Score::PlusInfinity } else { Score::MinusInfinity },  // parent maximising => child isnt
+            best_move: Default::default()
+        };
+        debug_assert!(child.alpha < child.beta);
+        self.node_count += 1;
+        child
+    }
+
+
+    pub fn alphabeta<'c>(&mut self, node: &'c mut Node<'c>) {
+        if self.is_leaf(node) { 
+            node.score = node.board.evaluate().negate();
+            return;
+        }
+        for mv in node.board.legal_moves().iter() {
+            let board2 = node.board.make_move(mv);
+            let mut child = self.new_child(node, mv, &board2);
+            self.alphabeta(&mut child);
+            if child.score > Score::Millipawns(1000) {
+                // info!("Ply:{}  Move:{} score:{} bm:{} a:{} b:{}", child.ply, mv.uci(), child.score, self.best_move, self.alpha, self.beta);
+            }
+            let is_cut = self.process_child(&mv, &child);
+            if is_cut {
+                break
+            }
+        }
+        // end node
+    }
+    
+    
+    #[inline]
+    pub fn process_child(&self, mv: &Move, child: &Node) -> bool {
+        // let node = child.parent.unwrap();
+        if self.is_maximizing(&node) {
+            if child.score > node.score {
+                node.score = child.score;
+                node.best_move = *mv;  // FIXME: copy size?
+            } 
+            node.alpha = cmp::max(node.alpha, child.score);
+        } else {
+            if child.score < node.score {
+                node.score = child.score;
+                node.best_move = *mv;
+            } 
+            node.beta = cmp::min(node.beta, child.score);
+        }
+        node.alpha >= node.beta
+    }
+}
+
+
+
+// pub struct Search {
+//     // Eval
+//     // Search config
+//     // Time controls
+//     // Transposition table
+// }
+
+
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::catalog::*;
+    use crate::eval::*;
+    use crate::board::boardbuf::*;
+
+    fn init() {
+        env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    }
+
+
+    #[test]
+    fn test_node() {
+        init();
+        let board = &Catalog::starting_position();
+        let mut node = Node { parent: None, board, ply: 0, alpha: Score::MinusInfinity, beta: Score::PlusInfinity, score: Score::MinusInfinity, best_move: Default::default() };
+        let mut s = Search{ max_depth: 6, ..Default::default() };
+        s.alphabeta(&mut node);
+        assert_eq!( format!("{:?}", node), "");
+    }
+
+    #[test]
+    fn jons_chess_problem() {
+        init();
+        let board = &BoardBuf::parse_fen("2r2k2/5pp1/3p1b1p/2qPpP2/1p2B2P/pP3P2/2P1R3/2KRQ3 b - - 0 1").unwrap().as_board();
+        println!("{}", board);
+        let mut node = Node { parent: None,  board, ply: 0, alpha: Score::MinusInfinity, beta: Score::PlusInfinity, score: Score::MinusInfinity, best_move: Default::default() };
+        let mut s = Search{ max_depth: 9, ..Default::default() };
+        s.alphabeta(&mut node);
+        println!("AndyFish best move: {} with score (+ve for white): {}", node.best_move, node.score);
+        println!("Positions examined: {}", s.node_count);
+    }
+}
+
+
+// impl Search {
+
+//     pub fn new() -> Search {
+//         Search
+//     }
+
+
+
+
+//     pub fn abort(&mut self) {
+
+//     }
+
+// }
+
