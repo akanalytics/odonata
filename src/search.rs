@@ -4,6 +4,7 @@ use crate::board::{Board};
 use crate::movelist::{Move, MoveList};
 use crate::eval::{Scorable, Score};
 use std::cmp;
+use std::fmt;
 use crate::types::{Color};
 
 // CPW
@@ -71,8 +72,48 @@ pub struct Node<'b> {
 }
 
 
+const MAX_PLY: usize = 128;
 
 
+#[derive(Debug, Clone)]
+pub struct PvCollector {
+    matrix: Vec<Vec<Move>>,
+    ply: usize,
+}
+
+
+impl PvCollector {
+
+
+    pub fn new() -> PvCollector {
+        let mut pvc = PvCollector { matrix: vec![Vec::new(); MAX_PLY], ply: 0 }; 
+        for (r, row) in pvc.matrix.iter_mut().enumerate() {
+            row.resize_with(MAX_PLY - r, Move::new_null)
+            // row.extend( vec![Move::new(); r+1] );
+        }
+        pvc
+    }
+    pub fn set(&mut self, ply: usize, m: &Move ){
+        self.matrix[ply][0] = m.clone();
+        if self.ply <= ply {
+            self.ply = ply + 1;
+        }
+    }
+}
+
+
+impl fmt::Display for PvCollector {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for i in 0..self.ply {
+            write!(f, "{:>3}: ", i)?;
+            for j in 0 .. self.ply-i {
+                write!(f, "{:>6}", self.matrix[i][j].uci())?;
+            }
+            writeln!(f)?
+        }        
+        Ok(())
+    }
+}
 
 
 
@@ -200,6 +241,16 @@ mod tests {
 
     fn init() {
         env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    }
+
+    #[test]
+    fn test_pv_collector() {
+        let mut pvc = PvCollector::new();
+        pvc.set(0, &Move::parse("a2a3").unwrap());
+        pvc.set(1, &Move::parse("a1a4").unwrap());
+        // assert_eq!( format!("{:?}", pvc), "" );
+        println!("{}", pvc);
+        assert_eq!( format!("{}", pvc), "  0:   a2a3     -\n  1:   a1a4\n" );
     }
 
     #[test]

@@ -32,13 +32,14 @@ mod tests {
 
     #[test]
     fn sizes() {
-        assert_eq!(size_of::<Move>(), 32);
-        assert_eq!(size_of::<MoveList>(), 24);
+        assert_eq!(size_of::<Move>(), 32, "Move");
+        assert_eq!(size_of::<MoveList>(), 24, "MoveList");
         assert_eq!(size_of::<Piece>(), 1);
         assert_eq!(size_of::<Color>(), 1);
-        assert_eq!(size_of::<Bitboard>(), 8);
+        assert_eq!(size_of::<Bitboard>(), 8, "Bitboard");
         assert_eq!(size_of::<CastlingRights>(), 1);
-        assert_eq!(size_of::<Board>(), 80);
-        assert_eq!(size_of::<Node>(), 72);
+        assert_eq!(size_of::<Board>(), 80, "Board");
+        assert_eq!(size_of::<Score>(), 8, "Score");
+        assert_eq!(size_of::<Node>(), 72, "Node");
     }
 }

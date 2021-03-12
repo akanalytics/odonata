@@ -20,6 +20,13 @@ pub struct Move {
 }
 
 impl Move {
+    
+    
+    #[inline]
+    pub fn new_null() -> Move {
+        Move { is_null: true, ..Default::default() }
+    }
+
     #[inline]
     pub fn to(&self) -> Bitboard {
         self.to
@@ -33,6 +40,11 @@ impl Move {
     #[inline]
     pub fn ep(&self) -> Bitboard {
         self.ep
+    }
+
+    #[inline]
+    pub fn is_null(&self) -> bool {
+        self.is_null
     }
 
     #[inline]
@@ -81,6 +93,9 @@ impl Move {
     }
 
     pub fn uci(&self) -> String {
+        if self.is_null() {
+            return String::from('-');
+        }
         let mut res = String::new();
         res.push_str(&self.from.uci());
         res.push_str(&self.to.uci());
@@ -89,6 +104,7 @@ impl Move {
         }
         res
     }
+    
     pub fn parse(s: &str) -> Result<Move, String> {
         let from = Bitboard::parse_square(s.take_slice(0..2))?;
         let to = Bitboard::parse_square(s.take_slice(2..4))?;
@@ -104,13 +120,7 @@ impl Move {
 
 impl fmt::Display for Move {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut res = String::new();
-        res.push_str(self.from.uci().as_str());
-        res.push_str(self.to.uci().as_str());
-        if self.is_promo() {
-            res.push(self.promo.to_char(Some(Color::Black)));
-        }
-        write!(f, "{}", res)
+        write!(f, "{}", self.uci())
     }
 }
 
@@ -169,6 +179,8 @@ mod tests {
 
     #[test]
     fn move_and_movelist() {
+        assert_eq!(Move::new_null().to_string(), "-");
+
         let move_a1b2 = Move { from: a1, to: b2, ..Default::default() };
         let promo_a7a8 = Move { from: a7, to: a8, promo: Piece::Queen, ..Default::default() };
         assert_eq!(move_a1b2.to_string(), "a1b2");
