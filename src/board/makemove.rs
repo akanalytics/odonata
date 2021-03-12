@@ -1,6 +1,6 @@
 use crate::bitboard::Bitboard;
 use crate::board::Board;
-use crate::board::Move;
+use crate::movelist::Move;
 use crate::globals::constants::*;
 use crate::types::{CastlingRights, Color, Piece};
 
@@ -12,7 +12,7 @@ impl MoveMaker for Board {
     fn make_move(&self, m: &Move) -> Board {
         // either we're moving to an empty square or its a capture
         debug_assert!(
-            ((self.white() | self.black()) & m.to).is_empty() || m.is_capture(),
+            ((self.white() | self.black()) & m.to()).is_empty() || m.is_capture(),
             "Non-empty to:sq for non-capture {:?} board \n{} white \n{} black\n{}",
             m,
             self,
@@ -34,43 +34,43 @@ impl MoveMaker for Board {
             if m.is_ep_capture() {
                 // ep capture is like capture but with capture piece on *ep* square not *dest*
                 board.fifty_clock = 0;
-                board.pieces[m.capture.index()].remove(m.ep);
-                board.colors[board.turn.index()].remove(m.ep);
+                board.pieces[m.capture_piece().index()].remove(m.ep());
+                board.colors[board.turn.index()].remove(m.ep());
             } else {
                 // regular capture
-                debug_assert!(m.capture != Piece::King, "king captured by move {} on board \n{}", m, self);
+                debug_assert!(m.capture_piece() != Piece::King, "king captured by move {} on board \n{}", m, self);
                 board.fifty_clock = 0;
-                board.pieces[m.capture.index()].remove(m.to);
-                board.colors[board.turn.index()].remove(m.to);
+                board.pieces[m.capture_piece().index()].remove(m.to());
+                board.colors[board.turn.index()].remove(m.to());
             }
         }
 
         // clear one bit and set another for the move using xor
-        let from_to_bits = m.from | m.to;
-        board.pieces[m.mover.index()] ^= from_to_bits;
+        let from_to_bits = m.from() | m.to();
+        board.pieces[m.mover_piece().index()] ^= from_to_bits;
         board.colors[self.turn.index()] ^= from_to_bits;
 
-        if m.mover == Piece::Pawn {
+        if m.mover_piece() == Piece::Pawn {
             board.fifty_clock = 0;
             if m.is_pawn_double_push() {
-                board.en_passant = m.ep;
+                board.en_passant = m.ep();
             }
         }
 
         if m.is_promo() {
             // fifty clock handled by pawn move above;
-            board.pieces[Piece::Pawn.index()].remove(m.to); // pawn has already moved
-            board.pieces[m.promo.index()].insert(m.to);
+            board.pieces[Piece::Pawn.index()].remove(m.to()); // pawn has already moved
+            board.pieces[m.promo_piece().index()].insert(m.to());
         }
 
         // castling *moves*
-        if m.is_castle {
+        if m.is_castle() {
             // rules say no reset of fifty clock
             // king move already handled, castling rights handled below, just the rook move
             let rook_from_to;
 
             #[allow(non_upper_case_globals)]
-            match m.to {
+            match m.to() {
                 c1 => {
                     debug_assert!(board.castling.contains(CastlingRights::WHITE_QUEEN));
                     rook_from_to = a1 | d1;
@@ -87,7 +87,7 @@ impl MoveMaker for Board {
                     debug_assert!(board.castling.contains(CastlingRights::BLACK_KING));
                     rook_from_to = h8 | f8;
                 }
-                _ => panic!(format!("Castling move from square {}", m.to)),
+                _ => panic!(format!("Castling move from square {}", m.to())),
             }
             board.pieces[Piece::Rook.index()] ^= rook_from_to;
             board.colors[self.turn.index()] ^= rook_from_to;
@@ -97,18 +97,18 @@ impl MoveMaker for Board {
         //  if a piece moves TO (=capture) or FROM the rook squares - appropriate castling rights are lost
         //  if a piece moves FROM the kings squares, both castling rights are lost
         //  possible with a rook x rook capture that both sides lose castling rights
-        if m.from == e1 {
+        if m.from() == e1 {
             board.castling.remove(CastlingRights::WHITE_KING | CastlingRights::WHITE_QUEEN);
-        } else if m.from == a1 || m.to == a1 {
+        } else if m.from() == a1 || m.to() == a1 {
             board.castling.remove(CastlingRights::WHITE_QUEEN);
-        } else if m.from == h1 || m.to == h1 {
+        } else if m.from() == h1 || m.to() == h1 {
             board.castling.remove(CastlingRights::WHITE_KING);
         }
-        if m.from == e8 {
+        if m.from() == e8 {
             board.castling.remove(CastlingRights::BLACK_KING | CastlingRights::BLACK_QUEEN);
-        } else if m.from == a8 || m.to == a8 {
+        } else if m.from() == a8 || m.to() == a8 {
             board.castling.remove(CastlingRights::BLACK_QUEEN);
-        } else if m.from == h8 || m.to == h8 {
+        } else if m.from() == h8 || m.to() == h8 {
             board.castling.remove(CastlingRights::BLACK_KING);
         }
         board
@@ -141,12 +141,12 @@ mod tests {
         assert_eq!(board2.to_fen(), "8/2p5/3p4/KP5r/1R2Pp1k/8/6P1/8 b - e3 0 1");
         // ep capture is valid but illegal as leaves king in check
         let mov2 = board2.validate_uci_move("f4e3")?;
-        assert_eq!(mov2.ep, e4, "EP square for e/p capture move is square the captured piece is on");
+        assert_eq!(mov2.ep(), e4, "EP square for e/p capture move is square the captured piece is on");
         println!("{:?}", mov2);
         let is_false = board2.is_legal_move(&mov2);
         assert_eq!(is_false, false);
         // let board3 = board2.make_move(&mov2);
-        // assert_eq!(board3.to_fen(), "8/2p5/3p4/KP5r/1R5k/4p3/6P1/8 w - - 0 2");
+        // assert_eq!(board3..to_fen(), "8/2p5/3p4/KP5r/1R5k/4p3/6P1/8 w - - 0 2");
         Ok(())
     }
 

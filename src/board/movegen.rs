@@ -2,7 +2,7 @@ use crate::attacks::{BitboardAttacks, ClassicalBitboard};
 use crate::bitboard::{Bitboard, Dir};
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
-use crate::board::{Move, MoveList};
+use crate::movelist::{Move, MoveList};
 use crate::types::{CastlingRights, Color, Piece};
 use once_cell::sync::OnceCell;
 
@@ -49,7 +49,7 @@ impl MoveValidator for Board {
         // FIXME! *legal* moves
         let moves = self.pseudo_legal_moves();
         if let Some(pos) = moves.iter().position(|m| m.uci() == mv) {
-            return Ok(moves.0[pos]);
+            return Ok(moves[pos]);
         }
         Err(format!("Move {} is not legal", mv))
     }
@@ -79,7 +79,7 @@ impl MoveGen for Board {
     }
 
     fn is_legal_move(&self, mv: &Move) -> bool {
-        mv.is_castle || mv.is_drop || !self.make_move(mv).is_in_check(self.color_us())
+        mv.is_castle() || mv.is_drop() || !self.make_move(mv).is_in_check(self.color_us())
     }
 
     fn legal_moves(&self) -> MoveList {

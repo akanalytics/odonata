@@ -1,6 +1,7 @@
 use crate::board::makemove::MoveMaker;
 use crate::board::movegen::MoveGen;
-use crate::board::{Board, Move, MoveList};
+use crate::board::{Board};
+use crate::movelist::{Move, MoveList};
 use crate::eval::{Scorable, Score};
 use std::cmp;
 use crate::types::{Color};
@@ -67,7 +68,6 @@ pub struct Node<'b> {
     best_move: Move,
     // stats
     // leaf
-    pv: MoveList,
 }
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -81,6 +81,7 @@ pub struct Search {
     // output
     best_move: Option<Move>,
     score: Option<Score>,
+    //variations: Variations,
 }
 
 impl Search {
@@ -132,7 +133,6 @@ impl Search {
             ply: parent.ply + 1,
             score: if self.is_maximizing(parent) { Score::PlusInfinity } else { Score::MinusInfinity }, // parent maximising => child isnt
             best_move: Default::default(),
-            pv: 
         };
         debug_assert!(child.alpha < child.beta || self.minmax);
         self.node_count += 1;
@@ -210,7 +210,7 @@ mod tests {
 
     }
 
-    #[test]
+    #[test] #[ignore]
     fn jons_chess_problem() {
         init();
         let board = &BoardBuf::parse_fen("2r2k2/5pp1/3p1b1p/2qPpP2/1p2B2P/pP3P2/2P1R3/2KRQ3 b - - 0 1")
