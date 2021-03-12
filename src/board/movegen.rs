@@ -47,9 +47,9 @@ pub trait MoveValidator {
 impl MoveValidator for Board {
     fn validate_uci_move(&self, mv: &str) -> Result<Move, String> {
         // FIXME! *legal* moves
-        let mut moves = self.pseudo_legal_moves();
+        let moves = self.pseudo_legal_moves();
         if let Some(pos) = moves.iter().position(|m| m.uci() == mv) {
-            return Ok(moves.remove(pos));
+            return Ok(moves.0[pos]);
         }
         Err(format!("Move {} is not legal", mv))
     }

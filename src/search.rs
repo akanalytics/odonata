@@ -1,8 +1,9 @@
 use crate::board::makemove::MoveMaker;
 use crate::board::movegen::MoveGen;
-use crate::board::{Board, Move};
+use crate::board::{Board, Move, MoveList};
 use crate::eval::{Scorable, Score};
 use std::cmp;
+use crate::types::{Color};
 
 // CPW
 //
@@ -56,7 +57,7 @@ use std::cmp;
 //                 break (* α cutoff *)
 //         return value
 //
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub struct Node<'b> {
     board: &'b Board,
     ply: u32,
@@ -66,7 +67,7 @@ pub struct Node<'b> {
     best_move: Move,
     // stats
     // leaf
-    // pv
+    pv: MoveList,
 }
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -113,7 +114,8 @@ impl Search {
 
     #[inline]
     pub fn is_maximizing(&self, node: &Node) -> bool {
-        node.ply % 2 == 0 // 0 ply looks at our moves - maximising if white
+        // node.ply % 2 == 0 // 0 ply looks at our moves - maximising if white
+        node.board.color_us() == Color::White
     }
 
     #[inline]
@@ -130,6 +132,7 @@ impl Search {
             ply: parent.ply + 1,
             score: if self.is_maximizing(parent) { Score::PlusInfinity } else { Score::MinusInfinity }, // parent maximising => child isnt
             best_move: Default::default(),
+            pv: 
         };
         debug_assert!(child.alpha < child.beta || self.minmax);
         self.node_count += 1;
@@ -199,9 +202,15 @@ mod tests {
         let mut search = Search::new().depth(4).minmax(true);
         search.search(board);
         assert_eq!(search.node_count,  20 + 400 + 8902 + 197_281);
+
+        let board = &Catalog::starting_position();
+        let mut search = Search::new().depth(4).minmax(false);
+        search.search(board);
+        assert_eq!(search.node_count,  1756);
+
     }
 
-    // #[test]
+    #[test]
     fn jons_chess_problem() {
         init();
         let board = &BoardBuf::parse_fen("2r2k2/5pp1/3p1b1p/2qPpP2/1p2B2P/pP3P2/2P1R3/2KRQ3 b - - 0 1")

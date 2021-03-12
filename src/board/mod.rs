@@ -75,8 +75,13 @@ impl fmt::Display for Move {
     }
 }
 
-#[derive(Debug, Default, Clone)]
-pub struct MoveList(Vec<Move>);
+#[derive(Debug, Clone, Default)]
+pub struct MoveList(Vec::<Move>);
+// pub struct MoveList(ArrayVec::<[Move; 384]>);
+
+// impl Default for MoveList {
+//     fn default() -> MoveList { MoveList::new() }
+// }
 
 impl MoveList {
     pub fn new() -> Self {

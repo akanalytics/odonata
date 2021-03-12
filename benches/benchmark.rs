@@ -1,10 +1,10 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use flouder::bitboard::*;
-use flouder::board::makemove::*;
-use flouder::board::movegen::*;
-use flouder::eval::*;
-use flouder::catalog::*;
-use flouder::types::*;
+use flounder::bitboard::*;
+use flounder::board::makemove::*;
+use flounder::board::movegen::*;
+use flounder::eval::*;
+use flounder::catalog::*;
+use flounder::types::*;
 
 fn bitwise_handcrafted(c: &mut Criterion) {
     let n1 = 1u64 << 3;

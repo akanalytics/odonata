@@ -1,5 +1,5 @@
 [package]
-name = "AndyFish"
+name = "flounder"
 version = "0.1.0"
 authors = ["andy <andy@webcalculator.com>"]
 edition = "2018"
@@ -12,6 +12,7 @@ repository = "https://github.com/akanalytics/flounder"
 
 [dependencies]
 bitflags = "1.2"
+# arrayvec = "0.5.2"
 # lazy_static = "1.4.0"
 once_cell = "1.7.2"
 log = { version = "0.4", features = ["release_max_level_off"] }
@@ -28,6 +29,6 @@ harness = false
 
 
 [lib]
-name = "flouder"
+name = "flounder"
 path = "src/lib.rs"
 
