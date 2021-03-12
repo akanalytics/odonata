@@ -101,6 +101,22 @@
 // }
 
 
+// #[derive(Debug)]
+// pub enum MoveEnum {
+//     Promo { dest: Bitboard, src: Bitboard, promo: Piece },
+//     PromoCapture { dest: Bitboard, src: Bitboard, promo: Piece, capture: Piece },
+//     EnPassant { dest: Bitboard, src: Bitboard, capture_sq: Bitboard },
+//     Push { dest: Bitboard, src: Bitboard },
+//     Castle { king_dest: Bitboard, king_src: Bitboard, rook_dest: Bitboard, rook_src: Bitboard, right: CastlingRights },
+//     Quiet { dest: Bitboard, src: Bitboard, mover: Piece },
+//     Capture { dest: Bitboard, src: Bitboard, mover: Piece, capture: Piece },
+//     Null(),
+//     // DropAdd { dest: Bitboard, piece: Piece },
+//     // DropRemove { dest: Bitboard, piece: Piece },
+// }
+
+
+
 use crate::board::{Board, Move};
 use crate::board::makemove::MoveMaker;
 use crate::eval::{Scorable, Score};

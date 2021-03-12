@@ -12,3 +12,33 @@ pub mod constants {
     pub const a7 : Bitboard = Bitboard::A7; 	pub const b7 : Bitboard = Bitboard::B7; 	pub const c7 : Bitboard = Bitboard::C7; 	pub const d7 : Bitboard = Bitboard::D7; 	pub const e7 : Bitboard = Bitboard::E7; 	pub const f7 : Bitboard = Bitboard::F7; 	pub const g7 : Bitboard = Bitboard::G7; 	pub const h7 : Bitboard = Bitboard::H7; 
     pub const a8 : Bitboard = Bitboard::A8; 	pub const b8 : Bitboard = Bitboard::B8; 	pub const c8 : Bitboard = Bitboard::C8; 	pub const d8 : Bitboard = Bitboard::D8; 	pub const e8 : Bitboard = Bitboard::E8; 	pub const f8 : Bitboard = Bitboard::F8; 	pub const g8 : Bitboard = Bitboard::G8; 	pub const h8 : Bitboard = Bitboard::H8; 
 }    
+
+
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::board::boardbuf::*;
+    use crate::board::*;
+    use crate::bitboard::*;
+    use crate::movelist::*;
+    use crate::search::*;
+    use crate::catalog::*;
+    use crate::types::*;
+    use crate::eval::*;
+    use std::mem::size_of;
+
+    #[test]
+    fn sizes() {
+        assert_eq!(size_of::<Move>(), 32);
+        assert_eq!(size_of::<MoveList>(), 24);
+        assert_eq!(size_of::<Piece>(), 1);
+        assert_eq!(size_of::<Color>(), 1);
+        assert_eq!(size_of::<Bitboard>(), 8);
+        assert_eq!(size_of::<CastlingRights>(), 1);
+        assert_eq!(size_of::<Board>(), 80);
+        assert_eq!(size_of::<Node>(), 72);
+    }
+}

@@ -1,11 +1,11 @@
-use crate::bitboard::{Bitboard};
-use crate::types::{Piece, Color, CastlingRights};
-use std::fmt;
+use crate::bitboard::Bitboard;
+use crate::types::{CastlingRights, Color, Piece};
 use crate::utils::StringUtils;
-
+use std::fmt;
+use std::ops::{Deref, DerefMut};
 
 // FIXME: public methods
-#[derive(Debug, Default, Copy,Clone)]
+#[derive(Debug, Default, Copy, Clone)]
 pub struct Move {
     pub from: Bitboard,
     pub to: Bitboard,
@@ -82,14 +82,13 @@ impl Move {
 
     pub fn uci(&self) -> String {
         let mut res = String::new();
-        res.push_str( &self.from.uci() );
-        res.push_str( &self.to.uci() );
+        res.push_str(&self.from.uci());
+        res.push_str(&self.to.uci());
         if self.is_promo() {
-            res.push( self.promo.to_char(Some(Color::Black)));
+            res.push(self.promo.to_char(Some(Color::Black)));
         }
         res
     }
- 
     pub fn parse(s: &str) -> Result<Move, String> {
         let from = Bitboard::parse_square(s.take_slice(0..2))?;
         let to = Bitboard::parse_square(s.take_slice(2..4))?;
@@ -116,9 +115,9 @@ impl fmt::Display for Move {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct MoveList(Vec::<Move>);
-// pub struct MoveList(ArrayVec::<[Move; 384]>);
+pub struct MoveList(Vec<Move>);
 
+// pub struct MoveList(ArrayVec::<[Move; 384]>);
 // impl Default for MoveList {
 //     fn default() -> MoveList { MoveList::new() }
 // }
@@ -133,8 +132,6 @@ impl MoveList {
         self
     }
 }
-
-use std::ops::{Deref, DerefMut};
 
 impl Deref for MoveList {
     type Target = Vec<Move>;
@@ -158,30 +155,17 @@ impl fmt::Display for MoveList {
     }
 }
 
-#[derive(Debug)]
-pub enum MoveEnum {
-    Promo { dest: Bitboard, src: Bitboard, promo: Piece },
-    PromoCapture { dest: Bitboard, src: Bitboard, promo: Piece, capture: Piece },
-    EnPassant { dest: Bitboard, src: Bitboard, capture_sq: Bitboard },
-    Push { dest: Bitboard, src: Bitboard },
-    Castle { king_dest: Bitboard, king_src: Bitboard, rook_dest: Bitboard, rook_src: Bitboard, right: CastlingRights },
-    Quiet { dest: Bitboard, src: Bitboard, mover: Piece },
-    Capture { dest: Bitboard, src: Bitboard, mover: Piece, capture: Piece },
-    Null(),
-    // DropAdd { dest: Bitboard, piece: Piece },
-    // DropRemove { dest: Bitboard, piece: Piece },
-}
+
+
 
 
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::board::boardbuf::*;
     use crate::catalog::*;
-    use super::*;
     use crate::globals::constants::*;
-
-
 
     #[test]
     fn move_and_movelist() {
@@ -201,3 +185,8 @@ mod tests {
         assert_eq!(move_e7e8.to_string(), "e7e8p");
     }
 }
+
+
+
+
+
