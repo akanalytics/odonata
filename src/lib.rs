@@ -21,6 +21,7 @@ pub mod eval;
 pub mod material;
 pub mod movelist;
 pub mod search;
+pub mod outcome;
 pub mod types;
 mod utils;
 

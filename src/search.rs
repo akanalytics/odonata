@@ -79,6 +79,10 @@ pub struct PvTable {
     size: usize,
 }
 
+impl Default for PvTable {
+    fn default() -> Self { PvTable::new() }
+}
+
 impl PvTable {
     pub fn new() -> PvTable {
         let mut pvc = PvTable { matrix: vec![Vec::new(); MAX_PLY], size: 0 };
@@ -88,21 +92,27 @@ impl PvTable {
         }
         pvc
     }
-    pub fn set(&mut self, ply: usize, m: &Move) {
+    pub fn set(&mut self, ply: u32, m: &Move) {
+        let ply = ply as usize;
         self.matrix[ply][0] = m.clone();
         if self.size <= ply {
             self.size = ply + 1;
         }
     }
 
-    pub fn propagate_from(&mut self, from_ply: usize) {
+    pub fn propagate_from(&mut self, from_ply: u32) {
         // copy up one ply and accross one
         debug_assert!(from_ply > 0, "PV propagation from ply=0");
+        let from_ply = from_ply as usize;
         let (top, bottom) = self.matrix.split_at_mut(from_ply);
         let len = self.size - from_ply;
         let dst = &mut top[from_ply-1][1..=len];
         let src = &mut bottom[0][0..len];
         dst.clone_from_slice(src);
+
+        if from_ply == 1 {
+            println!("{}", self);
+        }
     }
 }
 
@@ -119,7 +129,7 @@ impl fmt::Display for PvTable {
     }
 }
 
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Search {
     max_depth: u32,
     minmax: bool,
@@ -128,6 +138,7 @@ pub struct Search {
     node_count: u64,
 
     // output
+    pv: PvTable,
     best_move: Option<Move>,
     score: Option<Score>,
     //variations: Variations,
@@ -140,12 +151,12 @@ impl Search {
 
     pub fn depth(&mut self, max_depth: u32) -> Self {
         self.max_depth = max_depth;
-        *self
+        self.clone()
     }
 
     pub fn minmax(&mut self, minmax: bool) -> Self {
         self.minmax = minmax;
-        *self
+        self.clone()
     }
 
     pub fn search(&mut self, board: &Board) {
@@ -208,18 +219,26 @@ impl Search {
         // end node
     }
     #[inline]
-    pub fn process_child(&self, mv: &Move, node: &mut Node, child: &Node) -> bool {
+    pub fn process_child(&mut self, mv: &Move, node: &mut Node, child: &Node) -> bool {
         if self.is_maximizing(&node) {
-            node.alpha = cmp::max(node.alpha, child.score);
             if child.score > node.score {
                 node.score = child.score;
                 node.best_move = *mv; // FIXME: copy size?
             }
+            if child.score > node.alpha { 
+                node.alpha = child.score;
+                self.pv.set(child.ply, mv);
+                self.pv.propagate_from(child.ply);
+            }
         } else {
-            node.beta = cmp::min(node.beta, child.score);
             if child.score < node.score {
                 node.score = child.score;
                 node.best_move = *mv;
+            }
+            if child.score < node.beta {
+                node.beta = child.score;
+                self.pv.set(child.ply, mv);
+                self.pv.propagate_from(child.ply);
             }
         }
         node.alpha >= node.beta && !self.minmax
@@ -249,6 +268,7 @@ mod tests {
         let mut pvc = PvTable::new();
         pvc.set(0, &Move::parse("a1h1").unwrap());
         pvc.set(1, &Move::parse("b1h1").unwrap());
+        assert_eq!(format!("{}", pvc), "  0:   a1h1     -\n  1:   b1h1\n");
         pvc.set(2, &Move::parse("c1h1").unwrap());
         println!("{}", pvc);
 
@@ -260,7 +280,6 @@ mod tests {
         println!("{}", pvc);
 
         // assert_eq!( format!("{:?}", pvc), "" );
-        assert_eq!(format!("{}", pvc), "  0:   a2a3     -\n  1:   a1a4\n");
     }
 
     #[test]

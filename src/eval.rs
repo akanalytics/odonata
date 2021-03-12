@@ -33,6 +33,33 @@ use std::fmt;
 // position is by white/black as directional
 
 
+
+
+// https://www.chessprogramming.org/Simplified_Evaluation_Function
+#[rustfmt::skip]
+const PAWN_PST: [i32; 64] = [
+0,  0,  0,  0,  0,  0,  0,  0,
+50, 50, 50, 50, 50, 50, 50, 50,
+10, 10, 20, 30, 30, 20, 10, 10,
+ 5,  5, 10, 25, 25, 10,  5,  5,
+ 0,  0,  0, 20, 20,  0,  0,  0,
+ 5, -5,-10,  0,  0,-10, -5,  5,
+ 5, 10, 10,-20,-20, 10, 10,  5,
+ 0,  0,  0,  0,  0,  0,  0,  0];
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 pub trait Scorable<Strategy> {
     fn evaluate(&self) -> Score;
 }
@@ -87,8 +114,11 @@ impl SimpleScorer {
     pub fn evaluate_board(board: &Board) -> Score {
         let mat = Material::count_from(board);
         let s = Self::evaluate_material(&mat);
+        let p = Self::evaluate_position(board);
         Score::Millipawns(s)
     }
+
+
 
 
     // always updated
@@ -98,8 +128,8 @@ impl SimpleScorer {
 
     // piece positions, king safety, centre control
     // only updated for the colour thats moved - opponents(blockes) not relevant
-    pub fn position(_board: &Board) -> Score {
-        panic!("Not implmented");
+    pub fn evaluate_position(board: &Board) -> i32 {
+
     }
 
     // updated on capture & promo
