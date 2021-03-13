@@ -1,7 +1,7 @@
 use crate::bitboard::{Bitboard};
 use crate::types::{Piece, Color, CastlingRights};
 use crate::utils::StringUtils;
-use std::fmt;
+use std::fmt::{self, Write};
 use crate::board::boardbuf::BoardBuf;
 use crate::movelist::{Move, MoveList};
 use std::iter::*;
@@ -11,7 +11,7 @@ pub mod movegen;
 pub mod makemove;
 
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct Board {
     pieces: [Bitboard; Piece::ALL.len()],
     colors: [Bitboard; 2],
@@ -25,31 +25,9 @@ pub struct Board {
 
 impl Board {
     /// white to move, no castling rights or en passant
-    pub fn empty() -> Board {
-        Board {
-            fullmove_count: 1,
-            .. Default::default()
+    pub fn new_empty() -> Board {
+            Default::default()
         }
-    }
-
-    // pub fn new() -> Board {
-    //     let board = Board {
-    //         pieces: [Bitboard::EMPTY; 7],
-    //         colors: [Bitboard::EMPTY; 2],
-    //         ..Board::empty()
-    //     };
-    //     board
-    // }
-
-    // fn piece_and_color_at(&self, at: Bitboard) -> (Piece, Color) {
-    //     for p in &Piece::ALL {
-    //         if self.pieces[*p as usize].contains(at) {
-    //             let c = if self.colors[Color::White.index].contains(at) { Color::White } else { Color::Black };
-    //             return (*p, c);
-    //         }
-    //     }
-    //     (Piece::None, Color::Black)
-    // }
 
     pub fn castling(&self) -> CastlingRights {
         self.castling
@@ -156,6 +134,33 @@ impl Board {
 }
 
 
+impl fmt::Display for Board {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let b = BoardBuf::adopt(self.clone());
+        for &r in Bitboard::RANKS.iter().rev() {
+            fmt.write_str(&b.get(r))?;
+            fmt.write_char('\n')?;
+        }
+        write!(fmt, "\nfen: {} \n", self.to_fen())?;
+        // write!(fmt, "Moves: {}", self.moves)?;
+        Ok(())
+    }
+}
+
+impl Default for Board {
+    fn default() -> Self {
+        Board {
+            pieces: Default::default(),
+            colors: Default::default(),
+            castling: Default::default(),
+            en_passant: Default::default(),
+            turn: Default::default(),
+            fifty_clock: Default::default(),
+            fullmove_count: 1
+            // moves: MoveList,
+        }        
+    }
+}
 
 
 

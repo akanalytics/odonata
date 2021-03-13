@@ -12,7 +12,7 @@ pub struct BoardBuf {
 
 impl BoardBuf {
     pub fn new() -> BoardBuf {
-        BoardBuf { board: Board::empty() }
+        BoardBuf { board: Board::new_empty() }
     }
 
     pub fn adopt(board: Board) -> BoardBuf {
@@ -133,18 +133,7 @@ impl BoardBuf {
 //     }
 // }
 
-impl fmt::Display for Board {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let b = BoardBuf::adopt(self.clone());
-        for &r in Bitboard::RANKS.iter().rev() {
-            fmt.write_str(&b.get(r))?;
-            fmt.write_char('\n')?;
-        }
-        write!(fmt, "\nfen: {} \n", self.to_fen())?;
-        // write!(fmt, "Moves: {}", self.moves)?;
-        Ok(())
-    }
-}
+
 
 #[cfg(test)]
 mod tests {
@@ -164,7 +153,7 @@ mod tests {
 
     #[test]
     fn boardbuf_sets() -> Result<(), String> {
-        let board = Board::empty();
+        let board = Board::new_empty();
         assert_eq!(board.kings(), Bitboard::EMPTY);
         assert_eq!(board.us(), Bitboard::EMPTY);
         assert_eq!(board.color_us(), Color::White);

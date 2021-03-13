@@ -59,9 +59,9 @@ use std::fmt;
 //                 break (* α cutoff *)
 //         return value
 //
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Node<'b> {
-    board: &'b Board,
+    board: &'b mut Board,
     ply: u32,
     alpha: Score,
     beta: Score,
@@ -70,6 +70,24 @@ pub struct Node<'b> {
     // stats
     // leaf
 }
+
+
+// impl<'b> Default for Node<'b>  {
+//     fn default() -> Self {
+//         Node {
+//             board: &Default::default(),
+//             ply: 0,
+//             alpha: Score::MinusInfinity,
+//             beta: Score::PlusInfinity,
+//             score: Score::MinusInfinity,
+//             best_move: Default::default(),
+//         }
+//     }
+// }
+
+
+
+
 
 const MAX_PLY: usize = 128;
 
@@ -159,9 +177,9 @@ impl Search {
         self.clone()
     }
 
-    pub fn search(&mut self, board: &Board) {
+    pub fn search(&mut self, mut board: Board) {
         let mut node = Node {
-            board,
+            board: &mut board,
             ply: 0,
             alpha: Score::MinusInfinity,
             beta: Score::PlusInfinity,
@@ -184,8 +202,31 @@ impl Search {
         node.ply == self.max_depth
     }
 
+
+    pub fn alphabeta(&mut self, node: &mut Node) {
+        if self.is_leaf(node) {
+            node.score = node.board.evaluate();
+            return;
+        }
+        for (i, mv) in node.board.legal_moves().iter().enumerate() {
+            let mut child_board = node.board.make_move(mv);
+            let mut child = self.new_child(mv, node, &mut child_board);
+            self.alphabeta(&mut child);
+            if child.ply == 1 {
+                println!("{}. {}: score: {}", i, mv, child.score);
+            }
+            let is_cut = self.process_child(&mv, node, &child);
+            if is_cut {
+                break;
+            }
+        }
+        // end node
+    }
+   
+
+
     #[inline]
-    pub fn new_child<'c>(&mut self, _mv: &Move, parent: &Node, board: &'c Board) -> Node<'c> {
+    pub fn new_child<'c>(&mut self, _mv: &Move, parent: &Node, board: &'c mut Board) -> Node<'c> {
         let child = Node {
             board,
             alpha: parent.alpha,
@@ -199,25 +240,6 @@ impl Search {
         child
     }
 
-    pub fn alphabeta(&mut self, node: &mut Node) {
-        if self.is_leaf(node) {
-            node.score = node.board.evaluate();
-            return;
-        }
-        for (i, mv) in node.board.legal_moves().iter().enumerate() {
-            let child_board = node.board.make_move(mv);
-            let mut child = self.new_child(mv, node, &child_board);
-            self.alphabeta(&mut child);
-            if node.ply == 0 {
-                println!("{}. {}: score: {}", i, mv, child.score);
-            }
-            let is_cut = self.process_child(&mv, node, &child);
-            if is_cut {
-                break;
-            }
-        }
-        // end node
-    }
     #[inline]
     pub fn process_child(&mut self, mv: &Move, node: &mut Node, child: &Node) -> bool {
         if self.is_maximizing(&node) {
@@ -285,22 +307,31 @@ mod tests {
     #[test]
     fn test_node() {
         // init();
-        let board = &Catalog::starting_position();
+        let board = Catalog::starting_position();
         let mut search = Search::new().depth(4).minmax(true);
         search.search(board);
         assert_eq!(search.node_count, 20 + 400 + 8902 + 197_281);
 
-        let board = &Catalog::starting_position();
+        let board = Catalog::starting_position();
         let mut search = Search::new().depth(4).minmax(false);
         search.search(board);
         assert_eq!(search.node_count, 1756);
+    }
+
+
+    #[test]
+    fn test_shallow() {
+        // init();
+        let board = Catalog::starting_position();
+        let mut search = Search::new().depth(1).minmax(true);
+        search.search(board);
     }
 
     #[test]
     #[ignore]
     fn jons_chess_problem() {
         init();
-        let board = &BoardBuf::parse_fen("2r2k2/5pp1/3p1b1p/2qPpP2/1p2B2P/pP3P2/2P1R3/2KRQ3 b - - 0 1")
+        let board = BoardBuf::parse_fen("2r2k2/5pp1/3p1b1p/2qPpP2/1p2B2P/pP3P2/2P1R3/2KRQ3 b - - 0 1")
             .unwrap()
             .as_board();
         println!("{}", board);

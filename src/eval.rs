@@ -114,7 +114,7 @@ impl SimpleScorer {
     pub fn evaluate_board(board: &Board) -> Score {
         let mat = Material::count_from(board);
         let s = Self::evaluate_material(&mat);
-        let p = Self::evaluate_position(board);
+        // let p = Self::evaluate_position(board);
         Score::Millipawns(s)
     }
 
@@ -129,7 +129,7 @@ impl SimpleScorer {
     // piece positions, king safety, centre control
     // only updated for the colour thats moved - opponents(blockes) not relevant
     pub fn evaluate_position(board: &Board) -> i32 {
-
+        panic!("Not implmented");
     }
 
     // updated on capture & promo
