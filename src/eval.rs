@@ -112,7 +112,7 @@ impl SimpleScorer {
     pub const MATERIAL_SCORES: [i32; Piece::ALL.len()] = [1000, 3250, 3500, 5000, 9000, 0];
 
     pub fn evaluate_board(board: &Board) -> Score {
-        let mat = Material::count_from(board);
+        let mat = Material::from_board(board);
         let s = Self::evaluate_material(&mat);
         // let p = Self::evaluate_position(board);
         Score::Millipawns(s)

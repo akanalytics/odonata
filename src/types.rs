@@ -293,6 +293,7 @@ mod tests {
     fn color() {
         assert_eq!(Color::parse("w"), Ok(Color::White));
         assert_eq!(Color::parse("b"), Ok(Color::Black));
+        assert_eq!(Color::from_piece_char('n'), Ok(Color::Black));
         assert_eq!(Color::parse("B"), Err("Invalid color: 'B'".to_string()));
         assert_eq!(Piece::King.to_char(Some(Color::Black)), 'k');
         assert_eq!(Piece::King.to_char(None), 'K');

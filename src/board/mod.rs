@@ -20,6 +20,9 @@ pub struct Board {
     turn: Color,
     fifty_clock: u16,
     fullmove_count: u16,
+    
+    // interior mutability (precludes copy trait)
+    
     // moves: MoveList,
 }
 

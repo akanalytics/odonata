@@ -1,3 +1,4 @@
+use flounder::search::Search;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use flounder::bitboard::*;
 use flounder::board::makemove::*;
@@ -5,6 +6,24 @@ use flounder::board::movegen::*;
 use flounder::eval::*;
 use flounder::catalog::*;
 use flounder::types::*;
+
+
+
+/*
+Bitboard 2.7ns (a|b)&c
+Chooser 1.7ns
+PieceToUpperChar 622ns
+Perft(5) 334ms
+Makemove 26.25ns
+legal_moves 966ns
+pseudo_legal_moves 300ns
+Score: 5 > 4  1ns
+Depth 5 minmax = 482ms
+Depth 5 alphabeta = 5.7ms
+
+
+*/
+
 
 fn bitwise_handcrafted(c: &mut Criterion) {
     let n1 = 1u64 << 3;
@@ -143,6 +162,30 @@ fn bench_chooser_struct(c: &mut Criterion) {
     });
 }
 
+
+
+fn benchmark_search(c: &mut Criterion) {
+    let mut group = c.benchmark_group("search");
+    group.sample_size(10);
+    group.bench_function("minmax(5)", |b| {
+        b.iter(|| {
+            let board = Catalog::starting_position();
+            let mut search = Search::new().depth(5).minmax(true);
+            black_box(search.search(board));
+        });
+    });
+    group.bench_function("alphabeta(5)", |b| {
+        b.iter(|| {
+            let board = Catalog::starting_position();
+            let mut search = Search::new().depth(5).minmax(false);
+            black_box(search.search(board));
+        });
+    });
+    group.finish();
+}
+
+
+
 criterion_group!(
     benches,
     bitwise_handcrafted,
@@ -156,6 +199,7 @@ criterion_group!(
     bench_chooser_struct,
     bench_chooser_wb,
     bench_chooser_array,
-    benchmark_score
+    benchmark_score,
+    benchmark_search
 );
 criterion_main!(benches);
