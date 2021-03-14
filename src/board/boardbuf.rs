@@ -25,19 +25,19 @@ impl BoardBuf {
         }
         // self.0.pieces(p).remove(sq);
         if p != Piece::None {
-            self.board.pieces[p.index()].insert(sq);
+            self.board.pieces[p].insert(sq);
         }
     }
 
     pub fn set_color_at(&mut self, sq: Bitboard, c: Color) {
         self.board.color(c.opposite()).remove(sq);
-        self.board.colors[c.index()].insert(sq);
+        self.board.colors[c].insert(sq);
     }
 
     pub fn color_at(&self, at: Bitboard) -> Option<Color> {
-        if self.board.colors[Color::White.index()].contains(at) {
+        if self.board.colors[Color::White].contains(at) {
             return Some(Color::White);
-        } else if self.board.colors[Color::Black.index()].contains(at) {
+        } else if self.board.colors[Color::Black].contains(at) {
             return Some(Color::Black);
         }
         None

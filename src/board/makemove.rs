@@ -34,21 +34,21 @@ impl MoveMaker for Board {
             if m.is_ep_capture() {
                 // ep capture is like capture but with capture piece on *ep* square not *dest*
                 board.fifty_clock = 0;
-                board.pieces[m.capture_piece().index()].remove(m.ep());
-                board.colors[board.turn.index()].remove(m.ep());
+                board.pieces[m.capture_piece()].remove(m.ep());
+                board.colors[board.turn].remove(m.ep());
             } else {
                 // regular capture
                 debug_assert!(m.capture_piece() != Piece::King, "king captured by move {} on board \n{}", m, self);
                 board.fifty_clock = 0;
-                board.pieces[m.capture_piece().index()].remove(m.to());
-                board.colors[board.turn.index()].remove(m.to());
+                board.pieces[m.capture_piece()].remove(m.to());
+                board.colors[board.turn].remove(m.to());
             }
         }
 
         // clear one bit and set another for the move using xor
         let from_to_bits = m.from() | m.to();
-        board.pieces[m.mover_piece().index()] ^= from_to_bits;
-        board.colors[self.turn.index()] ^= from_to_bits;
+        board.pieces[m.mover_piece()] ^= from_to_bits;
+        board.colors[self.turn] ^= from_to_bits;
 
         if m.mover_piece() == Piece::Pawn {
             board.fifty_clock = 0;
@@ -59,8 +59,8 @@ impl MoveMaker for Board {
 
         if m.is_promo() {
             // fifty clock handled by pawn move above;
-            board.pieces[Piece::Pawn.index()].remove(m.to()); // pawn has already moved
-            board.pieces[m.promo_piece().index()].insert(m.to());
+            board.pieces[Piece::Pawn].remove(m.to()); // pawn has already moved
+            board.pieces[m.promo_piece()].insert(m.to());
         }
 
         // castling *moves*
@@ -89,8 +89,8 @@ impl MoveMaker for Board {
                 }
                 _ => panic!(format!("Castling move from square {}", m.to())),
             }
-            board.pieces[Piece::Rook.index()] ^= rook_from_to;
-            board.colors[self.turn.index()] ^= rook_from_to;
+            board.pieces[Piece::Rook] ^= rook_from_to;
+            board.colors[self.turn] ^= rook_from_to;
         }
 
         // castling *rights*

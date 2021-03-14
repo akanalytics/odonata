@@ -4,6 +4,7 @@ use flounder::bitboard::*;
 use flounder::board::makemove::*;
 use flounder::board::movegen::*;
 use flounder::eval::*;
+use flounder::material::*;
 use flounder::catalog::*;
 use flounder::types::*;
 
@@ -20,7 +21,8 @@ pseudo_legal_moves 300ns
 Score: 5 > 4  1ns
 Depth 5 minmax = 482ms
 Depth 5 alphabeta = 5.7ms
-
+Array (int = 6.3, enum = 6.7)
+Material.is_insufficient 9.8ns
 
 */
 
@@ -131,7 +133,7 @@ fn legal_moves(c: &mut Criterion) {
 fn bench_chooser_array(c: &mut Criterion) {
     let white = Color::White;
     let black = Color::Black;
-    c.bench_function("chooser_array", |b| {
+    c.bench_function("chooser_arr", |b| {
         b.iter(|| {
             black_box(chooser_array(black_box(white), &Bitboard::RANK_4, &Bitboard::RANK_5));
             black_box(chooser_array(black_box(black), &Bitboard::RANK_4, &Bitboard::RANK_5));
@@ -162,6 +164,16 @@ fn bench_chooser_struct(c: &mut Criterion) {
     });
 }
 
+fn bench_insufficient_material(c: &mut Criterion) {
+    let m = Material::from_str("PPPBBRKQKppppppppnnbrrQK").unwrap();
+    let m = Material::from_str("KkBN").unwrap();
+    let m = Material::from_str("KkBb").unwrap();
+    c.bench_function("insufficient_material", |b| {
+        b.iter(|| {
+            black_box(black_box(m).is_insufficient_material());
+        });
+    });
+}
 
 
 fn benchmark_search(c: &mut Criterion) {
@@ -185,6 +197,31 @@ fn benchmark_search(c: &mut Criterion) {
 }
 
 
+fn benchmark_array(c: &mut Criterion) {
+    let mut group = c.benchmark_group("array");
+    let array = [1, 2];
+        group.bench_function("int_index", |b| {
+        b.iter(|| {
+            black_box(black_box(array)[black_box(0)]);
+            black_box(black_box(array)[black_box(1)]);
+            black_box(black_box(array)[black_box(0)]);
+            black_box(black_box(array)[black_box(1)]);
+        });
+    });
+    group.bench_function("enum_index", |b| {
+        b.iter(|| {
+            black_box(black_box(array)[black_box(Color::White)]);
+            black_box(black_box(array)[black_box(Color::Black)]);
+            black_box(black_box(array)[black_box(Color::White)]);
+            black_box(black_box(array)[black_box(Color::Black)]);
+        });
+    });
+    group.finish();
+}
+
+
+
+
 
 criterion_group!(
     benches,
@@ -200,6 +237,8 @@ criterion_group!(
     bench_chooser_wb,
     bench_chooser_array,
     benchmark_score,
-    benchmark_search
+    benchmark_search,
+    benchmark_array,
+    bench_insufficient_material
 );
 criterion_main!(benches);

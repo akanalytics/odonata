@@ -28,82 +28,102 @@ pub struct Board {
 
 impl Board {
     /// white to move, no castling rights or en passant
+    #[inline]
     pub fn new_empty() -> Board {
             Default::default()
         }
 
+    #[inline]
     pub fn castling(&self) -> CastlingRights {
         self.castling
     }
 
+    #[inline]
     pub fn pieces(&self, p: Piece) -> Bitboard {
         self.pieces[p as usize]
     }
 
+    #[inline]
     pub fn pawns(&self) -> Bitboard {
         self.pieces(Piece::Pawn)
     }
 
+    #[inline]
     pub fn knights(&self) -> Bitboard {
         self.pieces(Piece::Knight)
     }
 
+    #[inline]
     pub fn bishops(&self) -> Bitboard {
         self.pieces(Piece::Bishop)
     }
 
+    #[inline]
     pub fn rooks(&self) -> Bitboard {
         self.pieces(Piece::Rook)
     }
 
+    #[inline]
     pub fn queens(&self) -> Bitboard {
         self.pieces(Piece::Queen)
     }
 
+    #[inline]
     pub fn kings(&self) -> Bitboard {
         self.pieces(Piece::King)
     }
 
+    #[inline]
     pub fn color(&self, c: Color) -> Bitboard {
-        self.colors[c.index()]
+        self.colors[c]
     }
 
+    #[inline]
     pub fn white(&self) -> Bitboard {
-        self.colors[Color::White.index()]
+        self.colors[Color::White]
     }
 
+    #[inline]
     pub fn black(&self) -> Bitboard {
-        self.colors[Color::Black.index()]
+        self.colors[Color::Black]
     }
 
+    #[inline]
     pub fn color_us(&self) -> Color {
         self.turn
     }
 
+    #[inline]
     pub fn color_them(&self) -> Color {
         self.turn.opposite()
     }
 
+    #[inline]
     pub fn them(&self) -> Bitboard {
         self.color(self.turn.opposite())
     }
 
+    #[inline]
     pub fn us(&self) -> Bitboard {
         self.color(self.turn)
     }
 
+    #[inline]
     pub fn en_passant(&self) -> Bitboard {
         self.en_passant
     }
 
+    #[inline]
     pub fn fifty_halfmove_clock(&self) -> u32 {
         self.fifty_clock.into()
     }
 
+    #[inline]
     pub fn fullmove_counter(&self) -> u32 {
         self.fullmove_count.into()
     }
 
+    #[inline]
     pub fn piece_at(&self, sq: Bitboard) -> Piece {
         for &p in &Piece::ALL {
             if self.pieces(p).contains(sq) {
@@ -151,6 +171,7 @@ impl fmt::Display for Board {
 }
 
 impl Default for Board {
+    #[inline]
     fn default() -> Self {
         Board {
             pieces: Default::default(),

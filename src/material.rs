@@ -10,8 +10,8 @@ impl Material {
     pub fn from_board(board: &Board) -> Material {
         let mut m = Material { ..Default::default() };
         for &p in &Piece::ALL {
-            m.counts[Color::White.index()][p.index()] = (board.pieces(p) & board.white()).len() as i32;
-            m.counts[Color::Black.index()][p.index()] = (board.pieces(p) & board.black()).len() as i32;
+            m.counts[Color::White][p] = (board.pieces(p) & board.white()).len() as i32;
+            m.counts[Color::Black][p] = (board.pieces(p) & board.black()).len() as i32;
         }
         m
     }
@@ -22,7 +22,7 @@ impl Material {
         for ch in s.chars() {
             let p = Piece::from_char(ch)?;
             let c = Color::from_piece_char(ch)?;
-            m.counts[c.index()][p.index()] += 1;
+            m.counts[c][p] += 1;
         }
         Ok(m)
     }
@@ -30,7 +30,7 @@ impl Material {
 
     #[inline]
     pub fn counts(&self, c: Color, p: Piece) -> i32 {
-        self.counts[c.index()][p.index()]
+        self.counts[c][p]
     }
 
 
@@ -45,21 +45,21 @@ impl Material {
         //
         // k=0, n=1, b=2, p=r=q=3. Then every total <= 2 is draw covers 1-3
         // no attempt to check for dead fortress like positions
-        let n = self.counts[0][Piece::Knight.index()] + self.counts[1][Piece::Knight.index()];
-        let b = 2 * (self.counts[0][Piece::Bishop.index()] + self.counts[1][Piece::Bishop.index()]);
+        let n = self.counts[0][Piece::Knight] + self.counts[1][Piece::Knight];
+        let b = 2 * (self.counts[0][Piece::Bishop] + self.counts[1][Piece::Bishop]);
         let prq = 3
-            * (self.counts[0][Piece::Pawn.index()]
-                + self.counts[1][Piece::Pawn.index()]
-                + self.counts[0][Piece::Rook.index()]
-                + self.counts[1][Piece::Rook.index()]
-                + self.counts[0][Piece::Queen.index()]
-                + self.counts[1][Piece::Queen.index()]);
+            * (self.counts[0][Piece::Pawn]
+                + self.counts[1][Piece::Pawn]
+                + self.counts[0][Piece::Rook]
+                + self.counts[1][Piece::Rook]
+                + self.counts[0][Piece::Queen]
+                + self.counts[1][Piece::Queen]);
         if n + b + prq <= 2 {
             return true;
         }
         if prq == 0
-            && self.counts[0][Piece::Bishop.index()] == 1
-            && self.counts[1][Piece::Bishop.index()] == 1
+            && self.counts[0][Piece::Bishop] == 1
+            && self.counts[1][Piece::Bishop] == 1
         {
             return true; //case 4
         }

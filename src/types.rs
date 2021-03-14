@@ -139,7 +139,23 @@ impl fmt::Display for CastlingRights {
 pub enum Color { White = 0, Black = 1 }  // numbering as per CPW
 
 
+impl<T> std::ops::Index<Color> for [T] {
+    type Output = T;
+    #[inline]
+    fn index(&self, c: Color) -> &Self::Output {
+        &self[c.index()]
+    }
+}
+
+impl<T> std::ops::IndexMut<Color> for [T] {
+    #[inline]
+    fn index_mut(&mut self, c: Color) -> &mut Self::Output {
+        &mut self[c.index()]
+    }
+}
+
 impl Default for Color {
+    #[inline]
     fn default() -> Self { Color::White }
 } 
 
@@ -226,6 +242,22 @@ pub enum Piece {
     None = 6,
 }
 
+impl<T> std::ops::Index<Piece> for [T] {
+    type Output = T;
+    #[inline]
+    fn index(&self, p: Piece) -> &Self::Output {
+        &self[p.index()]
+    }
+}
+
+
+impl<T> std::ops::IndexMut<Piece> for [T] {
+    #[inline]
+    fn index_mut(&mut self, p: Piece) -> &mut Self::Output {
+        &mut self[p.index()]
+    }
+}
+
 
 impl Default for Piece {
     fn default() -> Self {
@@ -297,6 +329,9 @@ mod tests {
         assert_eq!(Color::parse("B"), Err("Invalid color: 'B'".to_string()));
         assert_eq!(Piece::King.to_char(Some(Color::Black)), 'k');
         assert_eq!(Piece::King.to_char(None), 'K');
+        let array = [1, 2];
+        assert_eq!(array[Color::White], 1);
+        assert_eq!(array[Color::Black], 2);
     }
 
     #[test]
