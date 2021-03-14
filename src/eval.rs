@@ -1,9 +1,8 @@
 use crate::board::Board;
 use crate::material::Material;
+use crate::outcome::{GameEnd, Outcome};
 use crate::types::{Color, Piece};
-use crate::outcome::{Outcome, GameEnd};
 use std::fmt;
-
 
 // eval1 = bl.scoring.material(p=300, b=400, n=700)
 // eval2 = bl.scoring.position(endgame)
@@ -33,10 +32,9 @@ use std::fmt;
 // default scores
 // position is by white/black as directional
 
-
-
-
 // https://www.chessprogramming.org/Simplified_Evaluation_Function
+const SQUARE_VALUES: [[i32; 64]; 6] = [PAWN_PST, KNIGHT_PST, BISHOP_PST, ROOK_PST, QUEEN_PST, KING_PST];
+
 #[rustfmt::skip]
 const PAWN_PST: [i32; 64] = [
 0,  0,  0,  0,  0,  0,  0,  0,
@@ -48,25 +46,77 @@ const PAWN_PST: [i32; 64] = [
  5, 10, 10,-20,-20, 10, 10,  5,
  0,  0,  0,  0,  0,  0,  0,  0];
 
+#[rustfmt::skip]
+const KNIGHT_PST: [i32; 64] = [
+ -50,-40,-30,-30,-30,-30,-40,-50,
+ -40,-20,  0,  0,  0,  0,-20,-40,
+ -30,  0, 10, 15, 15, 10,  0,-30,
+ -30,  5, 15, 20, 20, 15,  5,-30,
+ -30,  0, 15, 20, 20, 15,  0,-30,
+ -30,  5, 10, 15, 15, 10,  5,-30,
+ -40,-20,  0,  5,  5,  0,-20,-40,
+ -50,-40,-30,-30,-30,-30,-40,-50];
 
+#[rustfmt::skip]
+const BISHOP_PST: [i32; 64] = [
+-20,-10,-10,-10,-10,-10,-10,-20,
+-10,  0,  0,  0,  0,  0,  0,-10,
+-10,  0,  5, 10, 10,  5,  0,-10,
+-10,  5,  5, 10, 10,  5,  5,-10,
+-10,  0, 10, 10, 10, 10,  0,-10,
+-10, 10, 10, 10, 10, 10, 10,-10,
+-10,  5,  0,  0,  0,  0,  5,-10,
+-20,-10,-10,-10,-10,-10,-10,-20];
 
+#[rustfmt::skip]
+const ROOK_PST: [i32; 64] = [
+  0,  0,  0,  0,  0,  0,  0,  0,
+  5, 10, 10, 10, 10, 10, 10,  5,
+ -5,  0,  0,  0,  0,  0,  0, -5,
+ -5,  0,  0,  0,  0,  0,  0, -5,
+ -5,  0,  0,  0,  0,  0,  0, -5,
+ -5,  0,  0,  0,  0,  0,  0, -5,
+ -5,  0,  0,  0,  0,  0,  0, -5,
+  0,  0,  0,  5,  5,  0,  0,  0];
 
+#[rustfmt::skip]
+const QUEEN_PST: [i32; 64] = [
+-20,-10,-10, -5, -5,-10,-10,-20,
+-10,  0,  0,  0,  0,  0,  0,-10,
+-10,  0,  5,  5,  5,  5,  0,-10,
+ -5,  0,  5,  5,  5,  5,  0, -5,
+  0,  0,  5,  5,  5,  5,  0, -5,
+-10,  5,  5,  5,  5,  5,  0,-10,
+-10,  0,  5,  0,  0,  0,  0,-10,
+-20,-10,-10, -5, -5,-10,-10,-20];
 
+#[rustfmt::skip]
+const KING_PST: [i32; 64] = [
+-30,-40,-40,-50,-50,-40,-40,-30,
+-30,-40,-40,-50,-50,-40,-40,-30,
+-30,-40,-40,-50,-50,-40,-40,-30,
+-30,-40,-40,-50,-50,-40,-40,-30,
+-20,-30,-30,-40,-40,-30,-30,-20,
+-10,-20,-20,-20,-20,-20,-20,-10,
+ 20, 20,  0,  0,  0,  0, 20, 20,
+ 20, 30, 10,  0,  0, 10, 30, 20];
 
-
-
-
-
-
-
-
+#[rustfmt::skip]
+const KING_EG_PST: [i32; 64] = [
+-50,-40,-30,-20,-20,-30,-40,-50,
+-30,-20,-10,  0,  0,-10,-20,-30,
+-30,-10, 20, 30, 30, 20,-10,-30,
+-30,-10, 30, 40, 40, 30,-10,-30,
+-30,-10, 30, 40, 40, 30,-10,-30,
+-30,-10, 20, 30, 30, 20,-10,-30,
+-30,-30,  0,  0,  0,  0,-30,-30,
+-50,-30,-30,-30,-30,-30,-30,-50];
 
 pub trait Scorable<Strategy> {
     fn eval(&self) -> Score;
     fn eval_material(&self) -> Score;
-
+    fn eval_position(&self) -> Score;
 }
-
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Score {
@@ -78,7 +128,6 @@ pub enum Score {
 }
 
 impl Score {
-
     /// Outcome must be game ending else panic
     #[inline]
     pub fn from(o: Outcome) -> Score {
@@ -109,18 +158,12 @@ impl fmt::Display for Score {
     }
 }
 
-
-
-
-
-
 // score config needs to be by colour and by MG/EG
 // option to have minimizing nodes use different config
 // what can we cache
 // pass in alpha beta so eval can short circuit (lazy evaluation)
 // some human-like tweaks: aggresive/defensive, open/closed preference, test an opening, lay traps, complicate the position,
 // consider odd / even parity and tempo
-
 
 pub struct SimpleScorer;
 
@@ -139,17 +182,30 @@ impl SimpleScorer {
         Score::Millipawns(s)
     }
 
-
-
     // always updated
     pub fn evaluate_mobility(_board: &Board) -> Score {
         panic!("Not implmented");
     }
 
+    pub fn pst(p: Piece, sq: usize) -> i32 {
+        SQUARE_VALUES[p][sq]
+    }
+
     // piece positions, king safety, centre control
     // only updated for the colour thats moved - opponents(blockes) not relevant
-    pub fn evaluate_position(board: &Board) -> i32 {
-        panic!("Not implmented");
+    pub fn evaluate_position(board: &Board) -> Score {
+        let mut sum = 0_i32;
+        for &p in &Piece::ALL {
+            let w: i32 =
+                (board.pieces(p) & board.white()).iter().map(|bb| Self::pst(p, bb.first_square())).sum();
+            let b: i32 = (board.pieces(p) & board.black())
+                .swap_bytes()
+                .iter()
+                .map(|bb| Self::pst(p, bb.first_square()))
+                .sum();
+            sum += w - b;
+        }
+        Score::Millipawns(sum * 10)
     }
 
     // updated on capture & promo
@@ -166,7 +222,6 @@ impl SimpleScorer {
     // least_valuable_piece()
 }
 
-
 impl Scorable<SimpleScorer> for Board {
     fn eval(&self) -> Score {
         SimpleScorer::evaluate(self)
@@ -176,30 +231,29 @@ impl Scorable<SimpleScorer> for Board {
         let s = SimpleScorer::evaluate_material(&m);
         Score::Millipawns(s)
     }
+    fn eval_position(&self) -> Score {
+        SimpleScorer::evaluate_position(self)
+    }
 }
-
-
-
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::catalog::Catalog;
+    use crate::board::boardbuf::BoardBuf;
 
     #[test]
     fn score_material() {
-
-        assert_eq!( Score::Millipawns(1).negate(), Score::Millipawns(-1));
-        assert_eq!( Score::WhiteWin.negate(), Score::WhiteLoss);
-        assert_eq!( Score::WhiteLoss.negate(), Score::WhiteWin);
-        assert_eq!( Score::MinusInfinity.negate(), Score::PlusInfinity);
-        assert!( Score::MinusInfinity < Score::PlusInfinity);
-        assert!( Score::Millipawns(-5) < Score::Millipawns(5));
-        assert!( Score::Millipawns(5) < Score::WhiteWin);
-        assert!( Score::Millipawns(1000) > Score::Millipawns(0));
-        assert!( Score::WhiteWin < Score::PlusInfinity);
-        assert!( Score::WhiteWin == Score::WhiteWin);
-
+        assert_eq!(Score::Millipawns(1).negate(), Score::Millipawns(-1));
+        assert_eq!(Score::WhiteWin.negate(), Score::WhiteLoss);
+        assert_eq!(Score::WhiteLoss.negate(), Score::WhiteWin);
+        assert_eq!(Score::MinusInfinity.negate(), Score::PlusInfinity);
+        assert!(Score::MinusInfinity < Score::PlusInfinity);
+        assert!(Score::Millipawns(-5) < Score::Millipawns(5));
+        assert!(Score::Millipawns(5) < Score::WhiteWin);
+        assert!(Score::Millipawns(1000) > Score::Millipawns(0));
+        assert!(Score::WhiteWin < Score::PlusInfinity);
+        assert!(Score::WhiteWin == Score::WhiteWin);
 
         let board = Catalog::starting_position();
         assert_eq!(board.eval(), Score::Millipawns(0));
@@ -211,4 +265,12 @@ mod tests {
         let board = Catalog::black_starting_position();
         assert_eq!(board.eval_material(), Score::Millipawns(starting_pos_score).negate());
     }
+
+    #[test]
+    fn score_position() {
+        let bd = BoardBuf::parse_fen("8/P2p4/8/8/8/8/8/8 w - - 0 1").unwrap().as_board();
+        assert_eq!(bd.eval_position(), Score::Millipawns(10* (50--20)));
+    }
+
+
 }
