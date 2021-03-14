@@ -10,8 +10,8 @@ impl Material {
     pub fn from_board(board: &Board) -> Material {
         let mut m = Material { ..Default::default() };
         for &p in &Piece::ALL {
-            m.counts[Color::White][p] = (board.pieces(p) & board.white()).len() as i32;
-            m.counts[Color::Black][p] = (board.pieces(p) & board.black()).len() as i32;
+            m.counts[Color::White][p] = (board.pieces(p) & board.white()).popcount() as i32;
+            m.counts[Color::Black][p] = (board.pieces(p) & board.black()).popcount() as i32;
         }
         m
     }
@@ -34,7 +34,29 @@ impl Material {
     }
 
 
-
+    pub fn is_insufficient2(bd: &Board) -> bool {
+        // If both sides have any one of the following, and there are no pawns on the board:
+        // 1. A lone king
+        // 2. a king and bishop
+        // 3. a king and knight
+        // 4. K+B v K+B (same color Bs)
+        //
+        // queens, rooks or pawns => can still checkmate
+        if !(bd.pawns() | bd.rooks() | bd.queens()).is_empty() {
+            return false;
+        }
+        // can assume just bishops, knights and kinds now
+        let bishops_w = (bd.bishops() & bd.white()).popcount();
+        let bishops_b = (bd.bishops() & bd.black()).popcount();
+        let knights = bd.bishops().popcount();
+        if bishops_w + bishops_b + knights <= 1 {
+            return true; // cases 1, 2 & 3
+        }
+        if knights == 0 && bishops_w == 1 && bishops_b == 1 {
+            return true; // FIXME: color of bishop  case 4  
+        }        
+        false
+    }
 
     pub fn is_insufficient(&self) -> bool {
         // If both sides have any one of the following, and there are no pawns on the board:

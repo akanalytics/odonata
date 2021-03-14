@@ -19,12 +19,28 @@ Makemove 26.25ns
 legal_moves 966ns
 pseudo_legal_moves 300ns
 Score: 5 > 4  1ns
-Depth 5 minmax = 482ms
-Depth 5 alphabeta = 5.7ms
+
+search/minmax Depth 5  | search/alphabeta  Depth 5  
+initial         = 482ms    5.7ms
+game end logic  = 6.8s     48ms
+& early fin - no effect
+collect PV no effect
+
+12s (6.5s without game end test) - forgot to short circuit legal moves on leaf node
+
+
+search/alphabeta Depth 5  = 
+85 ms (48 ms without game end tests)
+
 Array (int = 6.3, enum = 6.7)
+
 Material.is_insufficient 9.8ns
 
-Jons_problem 180s -> 478s (looks at end of game)
+
+Jons_problem 
+180s (9ply)
+1 hr (10ply)
+478s (looks at end of game)
 
 */
 
@@ -167,14 +183,20 @@ fn bench_chooser_struct(c: &mut Criterion) {
 }
 
 fn bench_insufficient_material(c: &mut Criterion) {
-    let m = Material::from_str("PPPBBRKQKppppppppnnbrrQK").unwrap();
-    let m = Material::from_str("KkBN").unwrap();
-    let m = Material::from_str("KkBb").unwrap();
-    c.bench_function("insufficient_material", |b| {
+    let mut group = c.benchmark_group("insufficient");
+    let bd = &Catalog::starting_position();
+    let m = Material::from_board(bd);
+    group.bench_function("insufficient_material", |b| {
         b.iter(|| {
             black_box(black_box(m).is_insufficient());
         });
     });
+    group.bench_function("insufficient_material2", |b| {
+        b.iter(|| {
+            black_box(Material::is_insufficient2(black_box(bd)));
+        });
+    });
+    group.finish();
 }
 
 

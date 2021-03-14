@@ -57,7 +57,7 @@ impl BoardBuf {
     }
 
     pub fn set(&mut self, bb: Bitboard, pieces: &str) -> Result<&mut Self, String> {
-        if bb.len() != pieces.chars().count() {
+        if bb.popcount() != pieces.chars().count() {
             return Err(format!("Bitboard {} and pieces {} have different counts", bb, pieces));
         }
         for (sq, ch) in bb.iter().zip(pieces.chars()) {

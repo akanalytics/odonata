@@ -89,7 +89,7 @@ impl Bitboard {
     }
 
     #[inline]
-    pub fn len(self) -> usize {
+    pub fn popcount(self) -> usize {
         self.bits.count_ones() as usize
     }
 
@@ -192,7 +192,7 @@ impl Iterator for BitIterator {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let bitcount = self.bb.len() as usize;
+        let bitcount = self.bb.popcount() as usize;
         (bitcount, Some(bitcount))
     }
 }
@@ -231,8 +231,8 @@ mod tests {
         assert!(a1b2.intersects(b2));
         assert_eq!(Bitboard::all(), !Bitboard::empty());
         assert!(Bitboard::FILE_A.contains(a4));
-        assert_eq!(Bitboard::FILE_A.len(), 8);
-        assert_eq!(Bitboard::all().len(), 64);
+        assert_eq!(Bitboard::FILE_A.popcount(), 8);
+        assert_eq!(Bitboard::all().popcount(), 64);
     }
 
     #[test]
@@ -266,8 +266,8 @@ mod tests {
 
     #[test]
     fn test_firsts_and_lasts() {
-        assert_eq!(Bitboard::RANK_2.len(), 8);
-        assert_eq!(a1b2.len(), 2);
+        assert_eq!(Bitboard::RANK_2.popcount(), 8);
+        assert_eq!(a1b2.popcount(), 2);
         assert_eq!(a1b2.first_square(), 0);
         assert_eq!(a1b2.last_square(), 9);
         assert_eq!((Bitboard::A1 | Bitboard::A2).last_square(), 8);

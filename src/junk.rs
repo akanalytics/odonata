@@ -9,20 +9,7 @@
 
 
 insufficient_material
-        // // queens, rooks or pawns => can still checkmate
-        // if !(self.pawns() | self.rooks() | self.queens()).is_empty() {
-        //     return false;
-        // }
-        // // can assume just bishops, knights and kinds now
-        // let bishop_count_w = (self.bishops() & self.white()).len();
-        // let bishop_count_b = (self.bishops() & self.black()).len();
-        // let knight_count = self.bishops().len();
-        // if bishop_count_w + bishop_count_b + knight_count <= 1 {
-        //     return true; // cases 1, 2 & 3
-        // }
-        // if knight_count == 0 && bishop_count_w == 1 && bishop_count_b == 1 {
-        //     return true; // case 4
-        // }
+
 
 
 // macro_rules! log {

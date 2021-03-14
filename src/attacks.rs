@@ -142,7 +142,7 @@ mod tests {
     fn test_rays() {
         let north = ClassicalBitboard::ray(&Dir::N, c3);
         assert_eq!(north, c4 | c5 | c6 | c7 | c8);
-        assert_eq!(north.len(), 5);
+        assert_eq!(north.popcount(), 5);
 
         assert_eq!(ClassicalBitboard::ray(&Dir::NE, c3), d4 | e5 | f6 | g7 | h8);
         assert_eq!(ClassicalBitboard::ray(&Dir::SW, c3), a1 | b2);
@@ -152,7 +152,7 @@ mod tests {
         let classical = ClassicalBitboard::new();
         let north = classical.rays[16 + 2][Dir::N.index];
         assert!(north.contains(c8));
-        assert_eq!(north.len(), 5);
+        assert_eq!(north.popcount(), 5);
     }
 
     #[test]

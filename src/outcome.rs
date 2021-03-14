@@ -85,6 +85,13 @@ impl GameEnd for Board {
             return Outcome::DrawRule75;
         }
 
+        if Material::from_board(self).is_insufficient() {
+            return Outcome::DrawInsufficientMaterial;
+        }
+        if self.position_repitition_count() >= 5 {
+            return Outcome::DrawRepitition5;
+        }
+
         let legal_moves = self.legal_moves();
         let color_to_play = self.color_us();
         if legal_moves.len() == 0 {
@@ -94,12 +101,6 @@ impl GameEnd for Board {
             } else {
                 return Outcome::DrawStalemate;
             }
-        }
-        if Material::from_board(self).is_insufficient() {
-            return Outcome::DrawInsufficientMaterial;
-        }
-        if self.position_repitition_count() >= 5 {
-            return Outcome::DrawRepitition5;
         }
 
         Outcome::InProgress
