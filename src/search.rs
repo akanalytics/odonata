@@ -204,11 +204,12 @@ impl Search {
 
 
     pub fn alphabeta(&mut self, node: &mut Node) {
-        if self.is_leaf(node) {
+        let moves = node.board.legal_moves();
+        if moves.is_empty() || self.is_leaf(node) {
             node.score = node.board.eval();
             return;
         }
-        for (i, mv) in node.board.legal_moves().iter().enumerate() {
+        for (i, mv) in moves.iter().enumerate() {
             let mut child_board = node.board.make_move(mv);
             let mut child = self.new_child(mv, node, &mut child_board);
             self.alphabeta(&mut child);
@@ -334,7 +335,7 @@ mod tests {
             .unwrap()
             .as_board();
         println!("{}", board);
-        let mut search = Search::new().depth(9).minmax(false); //9
+        let mut search = Search::new().depth(10).minmax(false); //9
         search.search(board);
         println!(
             "AndyFish best move: {} with score (+ve for white): {}",

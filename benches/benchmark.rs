@@ -24,6 +24,8 @@ Depth 5 alphabeta = 5.7ms
 Array (int = 6.3, enum = 6.7)
 Material.is_insufficient 9.8ns
 
+Jons_problem 180s -> 478s (looks at end of game)
+
 */
 
 
