@@ -30,7 +30,8 @@ impl fmt::Display for Outcome {
 
 
 impl Outcome {
-    fn is_draw(self) -> bool {
+    #[inline]
+    pub fn is_draw(self) -> bool {
         match self {
             Self::InProgress
             | Self::WinWhite
@@ -41,16 +42,17 @@ impl Outcome {
         }
     }
 
-    fn winning_color(self) -> Option<Color> {
+    #[inline]
+    pub fn winning_color(self) -> Option<Color> {
         match self {
             Self::WinWhite | Self::WinOnTimeWhite => Some(Color::White),
-
             Self::WinBlack | Self::WinOnTimeBlack => Some(Color::Black),
             _ => None,
         }
     }
 
-    fn is_game_over(self) -> bool {
+    #[inline]
+    pub fn is_game_over(self) -> bool {
         self.is_draw() | self.winning_color().is_some()
     }
 }
@@ -93,7 +95,7 @@ impl GameEnd for Board {
                 return Outcome::DrawStalemate;
             }
         }
-        if Material::from_board(self).is_insufficient_material() {
+        if Material::from_board(self).is_insufficient() {
             return Outcome::DrawInsufficientMaterial;
         }
         if self.position_repitition_count() >= 5 {
@@ -103,6 +105,7 @@ impl GameEnd for Board {
         Outcome::InProgress
     }
 
+    
     fn position_repitition_count(&self) -> u32 {
         // FIXME
         2

@@ -1,6 +1,7 @@
 use crate::board::Board;
 use crate::material::Material;
 use crate::types::{Color, Piece};
+use crate::outcome::{Outcome, GameEnd};
 use std::fmt;
 
 
@@ -61,27 +62,42 @@ const PAWN_PST: [i32; 64] = [
 
 
 pub trait Scorable<Strategy> {
-    fn evaluate(&self) -> Score;
+    fn eval(&self) -> Score;
+    fn eval_material(&self) -> Score;
+
 }
 
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Score {
     MinusInfinity,
-    Loss,
+    WhiteLoss,
     Millipawns(i32),
-    Win,
+    WhiteWin,
     PlusInfinity,
 }
 
 impl Score {
+
+    /// Outcome must be game ending else panic
+    #[inline]
+    pub fn from(o: Outcome) -> Score {
+        if o.is_draw() {
+            return Score::Millipawns(0);
+        }
+        if let Some(c) = o.winning_color() {
+            return c.chooser_wb(Score::WhiteWin, Score::WhiteLoss);
+        }
+        panic!(format!("Tried to final score a non-final board outcome:{}", o));
+    }
+
     #[inline]
     pub fn negate(self) -> Score {
         match self {
             Self::MinusInfinity => Self::PlusInfinity,
-            Self::Loss => Self::Win,
+            Self::WhiteLoss => Self::WhiteWin,
             Self::Millipawns(s) => Self::Millipawns(-s),
-            Self::Win => Self::Loss,
+            Self::WhiteWin => Self::WhiteLoss,
             Self::PlusInfinity => Self::MinusInfinity,
         }
     }
@@ -111,7 +127,12 @@ pub struct SimpleScorer;
 impl SimpleScorer {
     pub const MATERIAL_SCORES: [i32; Piece::ALL.len()] = [1000, 3250, 3500, 5000, 9000, 0];
 
-    pub fn evaluate_board(board: &Board) -> Score {
+    pub fn evaluate(board: &Board) -> Score {
+        let outcome = board.outcome();
+        if outcome.is_game_over() {
+            return Score::from(outcome);
+        }
+
         let mat = Material::from_board(board);
         let s = Self::evaluate_material(&mat);
         // let p = Self::evaluate_position(board);
@@ -120,9 +141,8 @@ impl SimpleScorer {
 
 
 
-
     // always updated
-    pub fn mobility(_board: &Board) -> Score {
+    pub fn evaluate_mobility(_board: &Board) -> Score {
         panic!("Not implmented");
     }
 
@@ -148,8 +168,13 @@ impl SimpleScorer {
 
 
 impl Scorable<SimpleScorer> for Board {
-    fn evaluate(&self) -> Score {
-        SimpleScorer::evaluate_board(self)
+    fn eval(&self) -> Score {
+        SimpleScorer::evaluate(self)
+    }
+    fn eval_material(&self) -> Score {
+        let m = Material::from_board(self);
+        let s = SimpleScorer::evaluate_material(&m);
+        Score::Millipawns(s)
     }
 }
 
@@ -165,25 +190,25 @@ mod tests {
     fn score_material() {
 
         assert_eq!( Score::Millipawns(1).negate(), Score::Millipawns(-1));
-        assert_eq!( Score::Win.negate(), Score::Loss);
-        assert_eq!( Score::Loss.negate(), Score::Win);
+        assert_eq!( Score::WhiteWin.negate(), Score::WhiteLoss);
+        assert_eq!( Score::WhiteLoss.negate(), Score::WhiteWin);
         assert_eq!( Score::MinusInfinity.negate(), Score::PlusInfinity);
         assert!( Score::MinusInfinity < Score::PlusInfinity);
         assert!( Score::Millipawns(-5) < Score::Millipawns(5));
-        assert!( Score::Millipawns(5) < Score::Win);
+        assert!( Score::Millipawns(5) < Score::WhiteWin);
         assert!( Score::Millipawns(1000) > Score::Millipawns(0));
-        assert!( Score::Win < Score::PlusInfinity);
-        assert!( Score::Win == Score::Win);
+        assert!( Score::WhiteWin < Score::PlusInfinity);
+        assert!( Score::WhiteWin == Score::WhiteWin);
 
 
         let board = Catalog::starting_position();
-        assert_eq!(board.evaluate(), Score::Millipawns(0));
+        assert_eq!(board.eval(), Score::Millipawns(0));
 
         let starting_pos_score = 8 * 1000 + 2 * 3250 + 2 * 3500 + 2 * 5000 + 9000;
         let board = Catalog::white_starting_position();
-        assert_eq!(board.evaluate(), Score::Millipawns(starting_pos_score));
+        assert_eq!(board.eval_material(), Score::Millipawns(starting_pos_score));
 
         let board = Catalog::black_starting_position();
-        assert_eq!(board.evaluate(), Score::Millipawns(starting_pos_score).negate());
+        assert_eq!(board.eval_material(), Score::Millipawns(starting_pos_score).negate());
     }
 }

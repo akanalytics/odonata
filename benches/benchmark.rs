@@ -170,7 +170,7 @@ fn bench_insufficient_material(c: &mut Criterion) {
     let m = Material::from_str("KkBb").unwrap();
     c.bench_function("insufficient_material", |b| {
         b.iter(|| {
-            black_box(black_box(m).is_insufficient_material());
+            black_box(black_box(m).is_insufficient());
         });
     });
 }

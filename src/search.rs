@@ -128,9 +128,9 @@ impl PvTable {
         let src = &mut bottom[0][0..len];
         dst.clone_from_slice(src);
 
-        // if from_ply == 1 {
-        //     println!("{}", self);
-        // }
+        if from_ply == 1 {
+            println!("{}", self);
+        }
     }
 }
 
@@ -205,16 +205,16 @@ impl Search {
 
     pub fn alphabeta(&mut self, node: &mut Node) {
         if self.is_leaf(node) {
-            node.score = node.board.evaluate();
+            node.score = node.board.eval();
             return;
         }
         for (i, mv) in node.board.legal_moves().iter().enumerate() {
             let mut child_board = node.board.make_move(mv);
             let mut child = self.new_child(mv, node, &mut child_board);
             self.alphabeta(&mut child);
-            // if child.ply == 1 {
-            //     println!("{}. {}: score: {}", i, mv, child.score);
-            // }
+            if child.ply == 1 {
+                println!("{}. {}: score: {}", i, mv, child.score);
+            }
             let is_cut = self.process_child(&mv, node, &child);
             if is_cut {
                 break;
@@ -321,7 +321,6 @@ mod tests {
 
     #[test]
     fn test_shallow() {
-        // init();
         let board = Catalog::starting_position();
         let mut search = Search::new().depth(3).minmax(false);
         search.search(board);
@@ -335,7 +334,7 @@ mod tests {
             .unwrap()
             .as_board();
         println!("{}", board);
-        let mut search = Search::new().depth(9).minmax(false);
+        let mut search = Search::new().depth(9).minmax(false); //9
         search.search(board);
         println!(
             "AndyFish best move: {} with score (+ve for white): {}",

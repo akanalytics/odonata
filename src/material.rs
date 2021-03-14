@@ -36,7 +36,7 @@ impl Material {
 
 
 
-    pub fn is_insufficient_material(&self) -> bool {
+    pub fn is_insufficient(&self) -> bool {
         // If both sides have any one of the following, and there are no pawns on the board:
         // 1. A lone king
         // 2. a king and bishop
@@ -63,21 +63,6 @@ impl Material {
         {
             return true; //case 4
         }
-
-        // // queens, rooks or pawns => can still checkmate
-        // if !(self.pawns() | self.rooks() | self.queens()).is_empty() {
-        //     return false;
-        // }
-        // // can assume just bishops, knights and kinds now
-        // let bishop_count_w = (self.bishops() & self.white()).len();
-        // let bishop_count_b = (self.bishops() & self.black()).len();
-        // let knight_count = self.bishops().len();
-        // if bishop_count_w + bishop_count_b + knight_count <= 1 {
-        //     return true; // cases 1, 2 & 3
-        // }
-        // if knight_count == 0 && bishop_count_w == 1 && bishop_count_b == 1 {
-        //     return true; // case 4
-        // }
         false
     }
 }
@@ -100,7 +85,7 @@ mod tests {
         let mat3 = Material::from_str("KBk").unwrap();
         assert_ne!(mat2, mat3);
 
-        assert!(mat3.is_insufficient_material());
-        assert!(!mat2.is_insufficient_material());
+        assert!(mat3.is_insufficient());
+        assert!(!mat2.is_insufficient());
     }
 }
