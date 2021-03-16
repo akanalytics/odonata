@@ -119,7 +119,8 @@ pub struct Search {
     minmax: bool,
 
     // stats
-    node_count: u64,
+    interior_nodes: u64,
+    leaf_nodes: u64,  // FIXME and terminal 
 
     // output
     pv: PvTable,
@@ -149,6 +150,18 @@ impl Search {
     }
 }
 
+/// stats methods
+impl Search {
+    fn node_count(&self) -> u64 {
+        self.interior_nodes + self.leaf_nodes // root
+    }
+
+    fn branching_factor(&self) -> f64 {
+        self.leaf_nodes as f64 / self.interior_nodes as f64
+    }
+}
+
+
 impl Search {    
     pub fn search(&mut self, mut board: Board) {
         let mut node = Node::root(&mut board);
@@ -167,8 +180,11 @@ impl Search {
     pub fn alphabeta(&mut self, node: &mut Node) {
         if self.is_leaf(node) {
             node.score = node.board.eval();
+            self.leaf_nodes += 1;
             return;
-        }
+        } 
+        self.interior_nodes += 1;
+
         let moves = node.board.legal_moves();
         if moves.is_empty() {
             node.score = node.board.eval();
@@ -178,7 +194,6 @@ impl Search {
             let mut child_board = node.board.make_move(mv);
             let mut child = node.child(mv, &mut child_board);
             debug_assert!(child.alpha < child.beta || self.minmax);
-            self.node_count += 1;
             self.alphabeta(&mut child);
             // if child.ply == 1 {
             //     println!("{}. {}: score: {}", i, mv, child.score);
@@ -238,14 +253,16 @@ mod tests {
     fn test_node() {
         // init();
         let board = Catalog::starting_position();
-        let mut search = Search::new().depth(4).minmax(true);
+        let mut search = Search::new().depth(3).minmax(true);
         search.search(board);
-        assert_eq!(search.node_count, 20 + 400 + 8902 + 197_281);
+        assert_eq!(search.node_count(), 1 + 20 + 400 + 8902 /* + 197_281 */ );
+        assert_eq!(search.branching_factor().round() as u64, 21);
 
         let board = Catalog::starting_position();
         let mut search = Search::new().depth(4).minmax(false);
         search.search(board);
-        assert_eq!(search.node_count, 1756);
+        assert_eq!(search.node_count(), 1757);
+        assert_eq!(search.branching_factor().round() as u64 , 2);
     }
 
 
@@ -271,7 +288,7 @@ mod tests {
             search.pv.extract_pv(),
             search.score.unwrap()
         );
-        println!("Positions examined: {}", search.node_count);
+        println!("Positions examined: {}   bf:{}", search.node_count(), search.branching_factor() );
     }
 }
 

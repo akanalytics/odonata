@@ -347,7 +347,7 @@ mod tests {
     fn test_perft() {
         for (board, perfts) in Catalog::perfts() {
             for (depth, expected) in perfts.iter().enumerate() {
-                if depth <= 3 {
+                if depth <= 2 {
                     let count = perft(&board, depth as u32);
                     assert_eq!(&count, expected, "fen {} perft({})", board.to_fen(), depth);
                 }
