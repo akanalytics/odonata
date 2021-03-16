@@ -22,6 +22,7 @@ pub mod material;
 pub mod movelist;
 pub mod search;
 pub mod outcome;
+pub mod pvtable;
 pub mod types;
 mod utils;
 

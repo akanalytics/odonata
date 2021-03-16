@@ -141,6 +141,7 @@ impl MoveList {
         self.0.sort_by_key(|m| m.to_string());
         self
     }
+
 }
 
 impl Deref for MoveList {

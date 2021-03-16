@@ -93,6 +93,7 @@ impl Bitboard {
         self.bits.count_ones() as usize
     }
 
+    /// flip vertical
     #[inline]
     pub fn swap_bytes(self) -> Self {
         Bitboard::from_bits_truncate(self.bits.swap_bytes())
