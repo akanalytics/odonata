@@ -150,6 +150,7 @@ impl Search {
     }
 }
 
+
 /// stats methods
 impl Search {
     fn node_count(&self) -> u64 {
@@ -272,6 +273,17 @@ mod tests {
         let mut search = Search::new().depth(3).minmax(false);
         search.search(board);
     }
+
+
+    #[test]
+    fn test_mate_in_2() {
+        let bd = Catalog::mate_in_2()[0].clone();
+        let mut search = Search::new().depth(3).minmax(false); 
+        search.search(bd);
+        assert_eq!(search.pv.extract_pv().to_string(), "d5f6, g7f6, c4f7"); 
+        assert_eq!(search.score.unwrap(), Score::WhiteWin); 
+    }
+
 
     #[test]
     #[ignore]

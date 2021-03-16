@@ -35,6 +35,23 @@ impl Catalog {
             Board::parse_fen("K7/7r/8/8/8/8/8/1r5k w - - 0 1").unwrap().as_board(),
         ]
     }
+    pub fn mate_in_2() -> [Board;2] {
+        [
+            // http://wtharvey.com/m8n2.txt
+            // Henry Buckle vs NN, London, 1840
+            // 1. Nf6+ gxf6 2. Bxf7# 
+            Board::parse_fen("r2qkb1r/pp2nppp/3p4/2pNN1B1/2BnP3/3P4/PPP2PPP/R2bK2R w KQkq - 1 0").unwrap().as_board(),
+            
+            
+            // Alexander Areshchenko vs Sergei Zhigalko, Kiev, 6/6/2013
+            // 1... Nb3+ 2. axb3 Qa6#
+            Board::parse_fen("r3k2r/p3bpp1/2q1p1b1/1ppPP1B1/3n3P/5NR1/PP2NP2/K1QR4 b kq - 0 1").unwrap().as_board(),
+        ]
+    }
+
+
+
+
 
 
 
