@@ -335,7 +335,7 @@ mod tests {
     #[ignore]
     fn jons_chess_problem() {
         init();
-        let board = BoardBuf::parse_fen("2r2k2/5pp1/3p1b1p/2qPpP2/1p2B2P/pP3P2/2P1R3/2KRQ3 b - - 0 1")
+        let board = Board::parse_fen("2r2k2/5pp1/3p1b1p/2qPpP2/1p2B2P/pP3P2/2P1R3/2KRQ3 b - - 0 1")
             .unwrap()
             .as_board();
         println!("{}", board);

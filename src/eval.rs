@@ -196,14 +196,11 @@ impl SimpleScorer {
     pub fn evaluate_position(board: &Board) -> Score {
         let mut sum = 0_i32;
         for &p in &Piece::ALL {
-            let w: i32 =
-                (board.pieces(p) & board.white()).iter().map(|bb| Self::pst(p, bb.first_square())).sum();
-            let b: i32 = (board.pieces(p) & board.black())
-                .swap_bytes()
-                .iter()
-                .map(|bb| Self::pst(p, bb.first_square()))
-                .sum();
-            sum += w - b;
+            let w = (board.pieces(p) & board.white()).swap_bytes();
+            let b = board.pieces(p) & board.black();
+            let score_w: i32 = w.iter().map(|bb| Self::pst(p, bb.first_square())).sum();
+            let score_b: i32 = b.iter().map(|bb| Self::pst(p, bb.first_square())).sum();
+            sum += score_w - score_b;
         }
         Score::Millipawns(sum * 10)
     }
@@ -239,8 +236,8 @@ impl Scorable<SimpleScorer> for Board {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::catalog::Catalog;
     use crate::board::boardbuf::BoardBuf;
+    use crate::catalog::Catalog;
 
     #[test]
     fn score_material() {
@@ -268,9 +265,13 @@ mod tests {
 
     #[test]
     fn score_position() {
-        let bd = BoardBuf::parse_fen("8/P2p4/8/8/8/8/8/8 w - - 0 1").unwrap().as_board();
-        assert_eq!(bd.eval_position(), Score::Millipawns(10* (50--20)));
+        let bd = Board::parse_fen("8/P7/8/8/8/8/8/8 w - - 0 1").unwrap().as_board();
+        assert_eq!(bd.eval_position(), Score::Millipawns(10 * 50));
+        let bd = Board::parse_fen("8/4p3/8/8/8/8/8/8 w - - 0 1").unwrap().as_board();
+        assert_eq!(bd.eval_position(), Score::Millipawns(10 * --20));
+        let w = Catalog::white_starting_position();
+        assert_eq!(w.eval_position(), Score::Millipawns(-950)); // 950 = 2 * (5-0-40-10)-5-0
+        let b = Catalog::black_starting_position();
+        assert_eq!(w.eval_position(), b.eval_position().negate());
     }
-
-
 }
