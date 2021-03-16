@@ -22,6 +22,24 @@ impl Catalog {
         Board::parse_fen(Self::STARTING_POSITION_FEN).unwrap().set(Bitboard::RANK_1 | Bitboard::RANK_2, "................").unwrap().as_board()
     }
 
+
+    pub fn checkmates() -> [Board;2] {
+        [
+            Board::parse_fen("k7/Q7/K7/8/8/8/8/8 b - - 0 1").unwrap().as_board(),
+            Board::parse_fen("K7/7r/8/8/8/8/8/rr5k w - - 0 1").unwrap().as_board(),
+        ]
+    }
+    pub fn stalemates() -> [Board;2] {
+        [
+            Board::parse_fen("k7/8/1Q6/8/8/8/8/7K b - - 0 1").unwrap().as_board(),
+            Board::parse_fen("K7/7r/8/8/8/8/8/1r5k w - - 0 1").unwrap().as_board(),
+        ]
+    }
+
+
+
+
+
     // FIXME! awful structure
     pub fn perfts() -> Vec<(Board, Vec<u64>)> {
         let mut vec = Vec::new();
