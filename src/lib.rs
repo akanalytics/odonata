@@ -19,6 +19,7 @@ pub mod board;
 pub mod catalog;
 pub mod globals;
 pub mod eval;
+pub mod game;
 pub mod material;
 pub mod movelist;
 pub mod search;

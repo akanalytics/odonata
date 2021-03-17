@@ -115,8 +115,8 @@ impl Node<'_> {
 
 #[derive(Clone, Debug, Default)]
 pub struct Search {
-    max_depth: u32,
-    minmax: bool,
+    pub max_depth: u32,
+    pub minmax: bool,
     eval: SimpleScorer,
 
     // stats
@@ -124,7 +124,7 @@ pub struct Search {
     leaf_nodes: u64,  // FIXME and terminal 
 
     // output
-    pv: PvTable,
+    pub pv: PvTable,
     best_move: Option<Move>,
     score: Option<Score>,
 
