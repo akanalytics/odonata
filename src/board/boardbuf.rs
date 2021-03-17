@@ -5,48 +5,63 @@ use crate::types::{CastlingRights, Color, Piece};
 use crate::bitboard::Bitboard;
 
 /// BoardBuf is a slow performing facade of convenience methods on board
-#[derive(Clone)]
-pub struct BoardBuf {
-    board: Board,
+// #[derive(Clone)]
+// pub struct BoardBuf {
+//     board: Board,
+// }
+
+
+pub trait BoardBuf {
+    fn set_piece_at(&mut self, sq: Bitboard, p: Piece);
+    fn set_color_at(&mut self, sq: Bitboard, c: Color);
+    fn color_at(&self, at: Bitboard) -> Option<Color>;
+    fn get(&self, bb: Bitboard) -> String;
+    fn set(&mut self, bb: Bitboard, pieces: &str) -> Result<&mut Self, String>;
+    fn parse_pieces(fen: &str) -> Result<Board, String>;
+    fn parse_fen(fen: &str) -> Result<Board, String>;
+    fn as_board(&self) -> Board;  // FIXME
+    fn adopt(board: Board) -> Board; // FIXME
 }
 
-impl BoardBuf {
-    pub fn new() -> BoardBuf {
-        BoardBuf { board: Board::new_empty() }
+
+
+impl BoardBuf for Board {
+    // pub fn new_empty() -> BoardBuf {
+    //     BoardBuf { board: Board::new_empty() }
+    // }
+
+    fn adopt(board: Board) -> Board {
+        board
     }
 
-    pub fn adopt(board: Board) -> BoardBuf {
-        BoardBuf { board }
-    }
-
-    pub fn set_piece_at(&mut self, sq: Bitboard, p: Piece) {
-        for bb in self.board.pieces.iter_mut() {
+    fn set_piece_at(&mut self, sq: Bitboard, p: Piece) {
+        for bb in self.pieces.iter_mut() {
             bb.remove(sq);
         }
         // self.0.pieces(p).remove(sq);
         if p != Piece::None {
-            self.board.pieces[p].insert(sq);
+            self.pieces[p].insert(sq);
         }
     }
 
-    pub fn set_color_at(&mut self, sq: Bitboard, c: Color) {
-        self.board.color(c.opposite()).remove(sq);
-        self.board.colors[c].insert(sq);
+    fn set_color_at(&mut self, sq: Bitboard, c: Color) {
+        self.color(c.opposite()).remove(sq);
+        self.colors[c].insert(sq);
     }
 
-    pub fn color_at(&self, at: Bitboard) -> Option<Color> {
-        if self.board.colors[Color::White].contains(at) {
+    fn color_at(&self, at: Bitboard) -> Option<Color> {
+        if self.colors[Color::White].contains(at) {
             return Some(Color::White);
-        } else if self.board.colors[Color::Black].contains(at) {
+        } else if self.colors[Color::Black].contains(at) {
             return Some(Color::Black);
         }
         None
     }
 
-    pub fn get(&self, bb: Bitboard) -> String {
+    fn get(&self, bb: Bitboard) -> String {
         let mut res = String::new();
         for sq in bb.iter() {
-            let p = self.board.piece_at(sq);
+            let p = self.piece_at(sq);
             let ch = match p {
                 Piece::None => p.to_upper_char(),
                 _ => p.to_char(self.color_at(sq)),
@@ -56,7 +71,7 @@ impl BoardBuf {
         res
     }
 
-    pub fn set(&mut self, bb: Bitboard, pieces: &str) -> Result<&mut Self, String> {
+    fn set(&mut self, bb: Bitboard, pieces: &str) -> Result<&mut Self, String> {
         if bb.popcount() != pieces.chars().count() {
             return Err(format!("Bitboard {} and pieces {} have different counts", bb, pieces));
         }
@@ -68,20 +83,20 @@ impl BoardBuf {
                 self.set_color_at(sq, c);
             } else {
                 // FIXME: broken approach - null color??
-                self.board.colors[0].remove(sq);
-                self.board.colors[1].remove(sq);
+                self.colors[0].remove(sq);
+                self.colors[1].remove(sq);
             };
         }
         Ok(self)
     }
 
-    pub fn as_board(&self) -> Board {
-        self.board.clone()
+    fn as_board(&self) -> Board {
+        self.clone()
     }
 
     /// Parses a FEN string to create a board. FEN format is detailed at https://en.wikipedia.org/wiki/Forsyth–Edwards_Notation
-    pub fn parse_pieces(fen: &str) -> Result<Self, String> {
-        let mut bb = BoardBuf::new();
+    fn parse_pieces(fen: &str) -> Result<Self, String> {
+        let mut bb = Board::new_empty();
         let mut pos = String::from(fen);
         for i in 1..=8 {
             pos = pos.replace(i.to_string().as_str(), " ".repeat(i).as_str());
@@ -101,18 +116,18 @@ impl BoardBuf {
     /// 3. E/P square
     /// 4. Half move clock
     /// 5. Full move counter
-    pub fn parse_fen(fen: &str) -> Result<Self, String> {
+    fn parse_fen(fen: &str) -> Result<Self, String> {
         let words = fen.split_whitespace().collect::<Vec<_>>();
         if words.len() < 6 {
             return Err(format!("Must specify at least 6 parts in epd/fen {}", fen));
         }
         let mut bb = Self::parse_pieces(words[0])?;
-        bb.board.turn = Color::parse(words[1])?;
-        bb.board.castling = CastlingRights::parse(words[2])?;
-        bb.board.en_passant = if words[3] == "-" { Bitboard::EMPTY } else { Bitboard::parse_square(words[3])? };
-        bb.board.fifty_clock =
+        bb.turn = Color::parse(words[1])?;
+        bb.castling = CastlingRights::parse(words[2])?;
+        bb.en_passant = if words[3] == "-" { Bitboard::EMPTY } else { Bitboard::parse_square(words[3])? };
+        bb.fifty_clock =
             words[4].parse().map_err(|e| format!("Invalid halfmove clock '{}' - {}", words[4], e))?;
-        bb.board.fullmove_count =
+        bb.fullmove_count =
             words[5].parse().map_err(|e| format!("Invalid fullmove count '{}' - {}", words[5], e))?;
         Ok(bb)
     }
@@ -159,19 +174,20 @@ mod tests {
         assert_eq!(board.color_us(), Color::White);
 
         // assert_eq!(board[a1], 'R');
-        let mut buf = BoardBuf::new();
-        let board2 = buf
+        let mut board1 = Board::new_empty();
+        board1 = board1 
             .set(Bitboard::RANK_2, "PPPPPPPP")?
             .set(a1 | h1, "RR")?
             .set(b1 | g1, "NN")?
             .set(c1 | d1 | e1 | f1, "BQKB")?
             .as_board();
-        let board1 = buf.set(Bitboard::RANK_7, "pppppppp")?.set(Bitboard::RANK_8, "rnbqkbnr")?.as_board();
-        assert_eq!(buf.get(a1), "R");
-        let mut buf2 = BoardBuf::adopt(board2);
-        let board2 = buf2.set(Bitboard::RANK_7, "pppppppp")?.set(Bitboard::RANK_8, "rnbqkbnr")?.as_board();
-        assert_eq!(board1.to_string(), board2.to_string());
-        println!("{}", buf.as_board());
+        board1.set(Bitboard::RANK_7, "pppppppp")?.set(Bitboard::RANK_8, "rnbqkbnr")?.as_board();
+        assert_eq!(board1.get(a1), "R");
+        let str1 = board1.to_string();
+        let mut board2 = board1;
+        let board2 = board2.set(Bitboard::RANK_7, "pppppppp")?.set(Bitboard::RANK_8, "rnbqkbnr")?.as_board();
+        assert_eq!(str1, board2.to_string());
+        println!("{}", board2.as_board());
         Ok(())
     }
 
@@ -179,13 +195,13 @@ mod tests {
     fn parse_piece() -> Result<(), String> {
         let fen1 = "1/1/7/8/8/8/PPPPPPPP/RNBQKBNR";
         assert_eq!(
-            BoardBuf::parse_pieces(fen1).err(),
+            Board::parse_pieces(fen1).err(),
             Some("Expected 8 ranks of 8 pieces in fen 1/1/7/8/8/8/PPPPPPPP/RNBQKBNR".into())
         );
-        assert!(BoardBuf::parse_pieces("8").err().unwrap().starts_with("Expected 8"));
-        assert!(BoardBuf::parse_pieces("8/8").err().unwrap().starts_with("Expected 8"));
-        assert_eq!(BoardBuf::parse_pieces("X7/8/8/8/8/8/8/8").err(), Some("Unknown piece 'X'".into()));
-        let buf = BoardBuf::parse_pieces("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap();
+        assert!(Board::parse_pieces("8").err().unwrap().starts_with("Expected 8"));
+        assert!(Board::parse_pieces("8/8").err().unwrap().starts_with("Expected 8"));
+        assert_eq!(Board::parse_pieces("X7/8/8/8/8/8/8/8").err(), Some("Unknown piece 'X'".into()));
+        let buf = Board::parse_pieces("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap();
         assert_eq!(buf.get(a1), "R");
         assert_eq!(buf.get(Bitboard::FILE_H), "RP....pr");
         Ok(())
@@ -193,7 +209,7 @@ mod tests {
 
     #[test]
     fn parse_fen() -> Result<(), String> {
-        let b = BoardBuf::parse_fen("7k/8/8/8/8/8/8/7K b KQkq - 45 100")?.as_board();
+        let b = Board::parse_fen("7k/8/8/8/8/8/8/7K b KQkq - 45 100")?.as_board();
         assert_eq!(b.color_us(), Color::Black);
         assert_eq!(b.fullmove_counter(), 100);
         assert_eq!(b.fifty_halfmove_clock(), 45);
@@ -202,17 +218,17 @@ mod tests {
     }
     #[test]
     fn parse_invalid_fen() -> Result<(), String> {
-        assert_eq!(BoardBuf::parse_fen("7k/8/8/8/8/8/8/7K B Qkq - 45 100").err(), Some("Invalid color: 'B'".into()));
+        assert_eq!(Board::parse_fen("7k/8/8/8/8/8/8/7K B Qkq - 45 100").err(), Some("Invalid color: 'B'".into()));
         assert_eq!(
-            BoardBuf::parse_fen("7k/8/8/8/8/8/8/7K b XQkq - 45 100").err(),
+            Board::parse_fen("7k/8/8/8/8/8/8/7K b XQkq - 45 100").err(),
             Some("Invalid character 'X' in castling rights 'XQkq'".into())
         );
         assert_eq!(
-            BoardBuf::parse_fen("7k/8/8/8/8/8/8/7K b - - fifty 100").err(),
+            Board::parse_fen("7k/8/8/8/8/8/8/7K b - - fifty 100").err(),
             Some("Invalid halfmove clock 'fifty' - invalid digit found in string".into())
         );
         assert_eq!(
-            BoardBuf::parse_fen("7k/8/8/8/8/8/8/7K b - - 50 full").err(),
+            Board::parse_fen("7k/8/8/8/8/8/8/7K b - - 50 full").err(),
             Some("Invalid fullmove count 'full' - invalid digit found in string".into())
         );
         Ok(())

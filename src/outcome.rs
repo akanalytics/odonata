@@ -5,7 +5,7 @@ use crate::material::Material;
 use std::fmt;
 
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Outcome {
     InProgress,
     WinWhite,
@@ -149,5 +149,17 @@ mod tests {
         assert_eq!( Outcome::WinBlack.winning_color(), Some(Color::Black));
         assert_eq!( Outcome::WinBlack.winning_color(), Some(Color::Black));
         assert_eq!( Outcome::DrawRule50.winning_color(), None);
+    }
+
+    #[test]
+    fn test_checkmate() {
+        assert!( Catalog::checkmates()[0].outcome() == Outcome::WinWhite );
+        assert!( Catalog::checkmates()[1].outcome() == Outcome::WinBlack );
+    }
+
+    #[test]
+    fn test_stalemate() {
+        assert!( Catalog::stalemates()[0].outcome() == Outcome::DrawStalemate );
+        assert!( Catalog::stalemates()[1].outcome() == Outcome::DrawStalemate );
     }
 }
