@@ -206,14 +206,18 @@ fn benchmark_search(c: &mut Criterion) {
     group.bench_function("minmax(5)", |b| {
         b.iter(|| {
             let board = Catalog::starting_position();
-            let mut search = Search::new().depth(5).minmax(true);
+            let mut eval = SimpleScorer::default();
+            eval.position = false;
+            let mut search = Search::new().depth(5).minmax(true).eval(eval);
             black_box(search.search(board));
         });
     });
     group.bench_function("alphabeta(5)", |b| {
         b.iter(|| {
             let board = Catalog::starting_position();
-            let mut search = Search::new().depth(5).minmax(false);
+            let mut eval = SimpleScorer::default();
+            eval.position = false;
+            let mut search = Search::new().depth(5).minmax(false).eval(eval);
             black_box(search.search(board));
         });
     });
