@@ -135,7 +135,7 @@ impl Bitboard {
         BitIterator { bb: self }
     }
 
-    fn sq_as_uci(self) -> String {
+    pub fn sq_as_uci(self) -> String {
         let s = self.first_square();
         let (x,y) = (s % 8, s / 8);
         format!("{}{}", char::from(b'a' + x as u8) , char::from(b'1' + y as u8))

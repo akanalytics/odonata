@@ -10,6 +10,7 @@ extern crate log;
 
 extern crate once_cell;
 
+extern crate regex;
 
 
 mod attacks;
@@ -23,6 +24,7 @@ pub mod movelist;
 pub mod search;
 pub mod outcome;
 pub mod pvtable;
+pub mod parse;
 pub mod types;
 mod utils;
 

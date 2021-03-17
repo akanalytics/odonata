@@ -2,6 +2,7 @@ use crate::attacks::{BitboardAttacks, ClassicalBitboard};
 use crate::bitboard::{Bitboard, Dir};
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
+use crate::parse::Parse;
 use crate::movelist::{Move, MoveList};
 use crate::types::{CastlingRights, Color, Piece};
 use once_cell::sync::OnceCell;
@@ -54,8 +55,8 @@ impl MoveValidator for Board {
         Err(format!("Move {} is not legal", mv))
     }
 
-    fn validate_san_move(&self, _mv: &str) -> Result<Move, String> {
-        Err("Not implemented".into())
+    fn validate_san_move(&self, mv: &str) -> Result<Move, String> {
+            Parse::move_san(mv, self)
     }
 }
 
@@ -330,7 +331,7 @@ mod tests {
     }
 
     #[test]
-    fn pseudo_legal_moves() -> Result<(), String> {
+    fn test_pseudo_legal_moves() -> Result<(), String> {
         let mut buf = Board::parse_pieces("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap();
         buf.set(a2, ".")?;
         buf.set(d2, ".")?;
