@@ -113,9 +113,9 @@ const KING_EG_PST: [i32; 64] = [
 -50,-30,-30,-30,-30,-30,-30,-50];
 
 pub trait Scorable<Strategy> {
-    fn eval(&self) -> Score;
-    fn eval_material(&self) -> Score;
-    fn eval_position(&self) -> Score;
+    fn eval(&self, eval: &SimpleScorer) -> Score;
+    fn eval_material(&self, eval: &SimpleScorer) -> Score;
+    fn eval_position(&self, eval: &SimpleScorer) -> Score;
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
@@ -152,6 +152,19 @@ impl Score {
     }
 }
 
+impl std::ops::Add for Score {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        if let Score::Millipawns(s1) = self {
+            if let Score::Millipawns(s2) = other {
+                return Score::Millipawns(s1 + s2);
+            }
+        }
+        panic!("Can only add millipawns not {} + {}", self, other);
+    }
+}
+
 impl fmt::Display for Score {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
@@ -165,26 +178,51 @@ impl fmt::Display for Score {
 // some human-like tweaks: aggresive/defensive, open/closed preference, test an opening, lay traps, complicate the position,
 // consider odd / even parity and tempo
 
-pub struct SimpleScorer;
+#[derive(Clone, Debug)]
+pub struct SimpleScorer {
+    mobility: bool,
+    pub position: bool,
+    material: bool,
+}
+
+impl Default for SimpleScorer {
+    fn default() -> Self {
+        SimpleScorer { mobility: true, position: true, material: true }
+    }
+}
 
 impl SimpleScorer {
     pub const MATERIAL_SCORES: [i32; Piece::ALL.len()] = [1000, 3250, 3500, 5000, 9000, 0];
 
-    pub fn evaluate(board: &Board) -> Score {
-
-        // too expensive to check for checkmate, so we just quickly check some draw conditions
-        if let Some(outcome) = board.cursory_outcome() {
+    pub fn evaluate(&self, board: &Board) -> Score {
+        let outcome = board.outcome();
+        if outcome.is_game_over() {
             return Score::from(outcome);
         }
 
-        // let mat = Material::from_board(board);
-        // let s = Self::evaluate_material(&mat);
-        let s = Material::is_insufficient2(board);
-        Score::Millipawns(s)
+        let s = if self.material {
+            let mat = Material::from_board(board);
+            self.evaluate_material(&mat)
+        } else {
+            0
+        };
+        let p = if self.position { self.evaluate_position(board) } else { 0 };
+        Score::Millipawns(s + p)
     }
 
+    //     // too expensive to check for checkmate, so we just quickly check some draw conditions
+    //     if let Some(outcome) = board.cursory_outcome() {
+    //         return Score::from(outcome);
+    //     }
+
+    //     let mat = Material::from_board(board);
+    //     let s = Self::evaluate_material(&mat);
+    //     // let s = Material::is_insufficient2(board);
+    //     Score::Millipawns(s)
+    // }
+
     // always updated
-    pub fn evaluate_mobility(_board: &Board) -> Score {
+    pub fn evaluate_mobility(&self, _board: &Board) -> Score {
         panic!("Not implmented");
     }
 
@@ -194,7 +232,7 @@ impl SimpleScorer {
 
     // piece positions, king safety, centre control
     // only updated for the colour thats moved - opponents(blockes) not relevant
-    pub fn evaluate_position(board: &Board) -> Score {
+    pub fn evaluate_position(&self, board: &Board) -> i32 {
         let mut sum = 0_i32;
         for &p in &Piece::ALL {
             let w = (board.pieces(p) & board.white()).swap_bytes();
@@ -203,11 +241,11 @@ impl SimpleScorer {
             let score_b: i32 = b.iter().map(|bb| Self::pst(p, bb.first_square())).sum();
             sum += score_w - score_b;
         }
-        Score::Millipawns(sum * 10)
+        sum * 10
     }
 
     // updated on capture & promo
-    pub fn evaluate_material(mat: &Material) -> i32 {
+    pub fn evaluate_material(&self, mat: &Material) -> i32 {
         let mut total = 0_i32;
         for &p in &Piece::ALL {
             total += Self::MATERIAL_SCORES[p.index()]
@@ -221,16 +259,17 @@ impl SimpleScorer {
 }
 
 impl Scorable<SimpleScorer> for Board {
-    fn eval(&self) -> Score {
-        SimpleScorer::evaluate(self)
+    fn eval(&self, eval: &SimpleScorer) -> Score {
+        eval.evaluate(self)
     }
-    fn eval_material(&self) -> Score {
+    fn eval_material(&self, eval: &SimpleScorer) -> Score {
         let m = Material::from_board(self);
-        let s = SimpleScorer::evaluate_material(&m);
+        let s = eval.evaluate_material(&m);
         Score::Millipawns(s)
     }
-    fn eval_position(&self) -> Score {
-        SimpleScorer::evaluate_position(self)
+    fn eval_position(&self, eval: &SimpleScorer) -> Score {
+        let s = eval.evaluate_position(self);
+        Score::Millipawns(s)
     }
 }
 
@@ -254,25 +293,27 @@ mod tests {
         assert!(Score::WhiteWin == Score::WhiteWin);
 
         let board = Catalog::starting_position();
-        assert_eq!(board.eval(), Score::Millipawns(0));
+        let eval = &SimpleScorer::default();
+        assert_eq!(board.eval(eval), Score::Millipawns(0));
 
         let starting_pos_score = 8 * 1000 + 2 * 3250 + 2 * 3500 + 2 * 5000 + 9000;
         let board = Catalog::white_starting_position();
-        assert_eq!(board.eval_material(), Score::Millipawns(starting_pos_score));
+        assert_eq!(board.eval_material(eval), Score::Millipawns(starting_pos_score));
 
         let board = Catalog::black_starting_position();
-        assert_eq!(board.eval_material(), Score::Millipawns(starting_pos_score).negate());
+        assert_eq!(board.eval_material(eval), Score::Millipawns(starting_pos_score).negate());
     }
 
     #[test]
     fn score_position() {
+        let eval = &SimpleScorer::default();
         let bd = Board::parse_fen("8/P7/8/8/8/8/8/8 w - - 0 1").unwrap().as_board();
-        assert_eq!(bd.eval_position(), Score::Millipawns(10 * 50));
+        assert_eq!(bd.eval_position(eval), Score::Millipawns(10 * 50));
         let bd = Board::parse_fen("8/4p3/8/8/8/8/8/8 w - - 0 1").unwrap().as_board();
-        assert_eq!(bd.eval_position(), Score::Millipawns(10 * --20));
+        assert_eq!(bd.eval_position(eval), Score::Millipawns(10 * --20));
         let w = Catalog::white_starting_position();
-        assert_eq!(w.eval_position(), Score::Millipawns(-950)); // 950 = 2 * (5-0-40-10)-5-0
+        assert_eq!(w.eval_position(eval), Score::Millipawns(-950)); // 950 = 2 * (5-0-40-10)-5-0
         let b = Catalog::black_starting_position();
-        assert_eq!(w.eval_position(), b.eval_position().negate());
+        assert_eq!(w.eval_position(eval), b.eval_position(eval).negate());
     }
 }

@@ -45,7 +45,7 @@ impl Material {
         if !(bd.pawns() | bd.rooks() | bd.queens()).is_empty() {
             return false;
         }
-        // can assume just bishops, knights and kinds now
+        // can assume just bishops, knights and kings now
         let bishops_w = (bd.bishops() & bd.white()).popcount();
         let bishops_b = (bd.bishops() & bd.black()).popcount();
         let knights = bd.bishops().popcount();

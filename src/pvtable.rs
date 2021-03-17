@@ -83,17 +83,17 @@ mod tests {
     #[test]
     fn test_pv_table() {
         let mut pvc = PvTable::default();
-        pvc.set(0, &Move::parse("a1h1").unwrap());
-        pvc.set(1, &Move::parse("b1h1").unwrap());
+        pvc.set(0, &Move::parse_uci("a1h1").unwrap());
+        pvc.set(1, &Move::parse_uci("b1h1").unwrap());
         assert_eq!(format!("{}", pvc), "  0:   a1h1     -\n  1:   b1h1\n");
-        pvc.set(2, &Move::parse("c1h1").unwrap());
+        pvc.set(2, &Move::parse_uci("c1h1").unwrap());
         println!("{}", pvc);
 
         pvc.propagate_from(1);
         println!("{}", pvc);
 
         pvc.propagate_from(2);
-        pvc.set(2, &Move::parse("c1h2").unwrap());
+        pvc.set(2, &Move::parse_uci("c1h2").unwrap());
         println!("{}", pvc);
 
         // assert_eq!( format!("{:?}", pvc), "" );

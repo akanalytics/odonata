@@ -2,7 +2,7 @@ use crate::board::makemove::MoveMaker;
 use crate::board::movegen::MoveGen;
 use crate::board::Board;
 use crate::pvtable::PvTable;
-use crate::eval::{Scorable, Score};
+use crate::eval::{Scorable, Score, SimpleScorer};
 use crate::movelist::{Move, MoveList};
 use crate::types::Color;
 use std::cmp;
@@ -117,6 +117,7 @@ impl Node<'_> {
 pub struct Search {
     max_depth: u32,
     minmax: bool,
+    eval: SimpleScorer,
 
     // stats
     interior_nodes: u64,
@@ -146,6 +147,11 @@ impl Search {
 
     pub fn minmax(&mut self, minmax: bool) -> Self {
         self.minmax = minmax;
+        self.clone()
+    }
+
+    pub fn eval(&mut self, eval: SimpleScorer) -> Self {
+        self.eval = eval;
         self.clone()
     }
 }
@@ -180,7 +186,7 @@ impl Search {
 
     pub fn alphabeta(&mut self, node: &mut Node) {
         if self.is_leaf(node) {
-            node.score = node.board.eval();
+            node.score = node.board.eval(&self.eval);
             self.leaf_nodes += 1;
             return;
         } 
@@ -188,7 +194,7 @@ impl Search {
 
         let moves = node.board.legal_moves();
         if moves.is_empty() {
-            node.score = node.board.eval(); // FIXME evaluate with full checkmate logic
+            node.score = node.board.eval(&self.eval); // FIXME evaluate with full checkmate logic
             return;
         }
         for (_i, mv) in moves.iter().enumerate() {
@@ -254,13 +260,17 @@ mod tests {
     fn test_node() {
         // init();
         let board = Catalog::starting_position();
-        let mut search = Search::new().depth(3).minmax(true);
+        let mut eval = SimpleScorer::default();
+        eval.position = false;
+        let mut search = Search::new().depth(3).minmax(true).eval(eval);
         search.search(board);
         assert_eq!(search.node_count(), 1 + 20 + 400 + 8902 /* + 197_281 */ );
         assert_eq!(search.branching_factor().round() as u64, 21);
 
         let board = Catalog::starting_position();
-        let mut search = Search::new().depth(4).minmax(false);
+        let mut eval = SimpleScorer::default();
+        eval.position = false;
+        let mut search = Search::new().depth(4).minmax(false).eval(eval);
         search.search(board);
         assert_eq!(search.node_count(), 1757);
         assert_eq!(search.branching_factor().round() as u64 , 2);

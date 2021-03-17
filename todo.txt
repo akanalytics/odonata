@@ -1,0 +1,5 @@
+algebraic notation
+uci
+game/match
+image generation
+python interface

@@ -58,7 +58,7 @@ impl Outcome {
 }
 
 pub trait GameEnd {
-    fn cursory_outcome(&self) -> Outcome;
+    fn cursory_outcome(&self) -> Option<Outcome>;
     fn outcome(&self) -> Outcome;
     fn outcome_with_claim_draw(&self) -> Outcome;
     fn position_repitition_count(&self) -> u32;
@@ -84,7 +84,7 @@ impl GameEnd for Board {
     }
 
 
-    fn cursory_outcome(&self) -> Some(Outcome) {
+    fn cursory_outcome(&self) -> Option<Outcome> {
         // X InProgress = 0,
         // X WinWhite,
         // X WinBlack,
@@ -109,7 +109,7 @@ impl GameEnd for Board {
             return Some(Outcome::DrawInsufficientMaterial);
         }
         if self.position_repitition_count() >= 5 {
-            return (Outcome::DrawRepitition5);
+            return Some(Outcome::DrawRepitition5);
         }
         None
     }
