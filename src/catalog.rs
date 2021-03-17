@@ -60,6 +60,13 @@ impl Catalog {
     // FIXME! awful structure
     pub fn perfts() -> Vec<(Board, Vec<u64>)> {
         let mut vec = Vec::new();
+        // http://www.rocechess.ch/perft.html
+        vec.push((
+            Board::parse_fen("n1n5/PPPk4/8/8/8/8/4Kppp/5N1N b - - 0 1")
+                .unwrap()
+                .as_board(),
+            vec![1, 24, 496, 9_483, 182_838, 3_605_103, 71_179_139],
+        ));
         vec.push((
             Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
                 .unwrap()

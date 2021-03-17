@@ -6,6 +6,7 @@ use crate::parse::Parse;
 use crate::movelist::{Move, MoveList};
 use crate::types::{CastlingRights, Color, Piece};
 use once_cell::sync::OnceCell;
+use std::time::{Duration, Instant};
 
 fn global_classical_bitboard() -> &'static ClassicalBitboard {
     static INSTANCE: OnceCell<ClassicalBitboard> = OnceCell::new();
@@ -349,8 +350,10 @@ mod tests {
         for (board, perfts) in Catalog::perfts() {
             for (depth, expected) in perfts.iter().enumerate() {
                 if depth <= 2 {
+                    let now = Instant::now();
                     let count = perft(&board, depth as u32);
                     assert_eq!(&count, expected, "fen {} perft({})", board.to_fen(), depth);
+                    println!("perft({depth})={count} in {time} millis", depth=depth, count=count, time=now.elapsed().as_millis());
                 }
                 // assert_eq!(&count, expected, "fen: {}", board.to_fen());
             }
