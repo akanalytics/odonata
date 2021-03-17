@@ -58,13 +58,33 @@ impl Outcome {
 }
 
 pub trait GameEnd {
+    fn cursory_outcome(&self) -> Outcome;
     fn outcome(&self) -> Outcome;
     fn outcome_with_claim_draw(&self) -> Outcome;
     fn position_repitition_count(&self) -> u32;
 }
 
 impl GameEnd for Board {
+    
     fn outcome(&self) -> Outcome {
+        if let Some(outcome) = self.cursory_outcome() {
+            return outcome;
+        } 
+        let legal_moves = self.legal_moves();
+        let color_to_play = self.color_us();
+        if legal_moves.len() == 0 {
+            if self.is_in_check(color_to_play) {
+                // white to play and in check with no moves => black win
+                return color_to_play.chooser_wb(Outcome::WinBlack, Outcome::WinWhite);
+            } else {
+                return Outcome::DrawStalemate;
+            }
+        }
+        Outcome::InProgress
+    }
+
+
+    fn cursory_outcome(&self) -> Some(Outcome) {
         // X InProgress = 0,
         // X WinWhite,
         // X WinBlack,
@@ -78,32 +98,20 @@ impl GameEnd for Board {
         // DrawRule50,
         // X DrawRule75,
         if self.fifty_halfmove_clock() >= 75 {
-            return Outcome::DrawRule75;
+            return Some(Outcome::DrawRule75);
         }
 
         if self.fifty_halfmove_clock() >= 75 {
-            return Outcome::DrawRule75;
+            return Some(Outcome::DrawRule75);
         }
 
         if Material::from_board(self).is_insufficient() {
-            return Outcome::DrawInsufficientMaterial;
+            return Some(Outcome::DrawInsufficientMaterial);
         }
         if self.position_repitition_count() >= 5 {
-            return Outcome::DrawRepitition5;
+            return (Outcome::DrawRepitition5);
         }
-
-        let legal_moves = self.legal_moves();
-        let color_to_play = self.color_us();
-        if legal_moves.len() == 0 {
-            if self.is_in_check(color_to_play) {
-                // white to play and in check with no moves => black win
-                return color_to_play.chooser_wb(Outcome::WinBlack, Outcome::WinWhite);
-            } else {
-                return Outcome::DrawStalemate;
-            }
-        }
-
-        Outcome::InProgress
+        None
     }
 
     

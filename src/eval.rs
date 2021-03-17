@@ -128,14 +128,15 @@ impl SimpleScorer {
     pub const MATERIAL_SCORES: [i32; Piece::ALL.len()] = [1000, 3250, 3500, 5000, 9000, 0];
 
     pub fn evaluate(board: &Board) -> Score {
-        let outcome = board.outcome();
-        if outcome.is_game_over() {
+
+        // too expensive to check for checkmate, so we just quickly check some draw conditions
+        if let Some(outcome) = board.cursory_outcome() {
             return Score::from(outcome);
         }
 
-        let mat = Material::from_board(board);
-        let s = Self::evaluate_material(&mat);
-        // let p = Self::evaluate_position(board);
+        // let mat = Material::from_board(board);
+        // let s = Self::evaluate_material(&mat);
+        let s = Material::is_insufficient2(board);
         Score::Millipawns(s)
     }
 

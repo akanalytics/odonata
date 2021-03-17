@@ -210,7 +210,7 @@ impl Search {
         }
         let moves = node.board.legal_moves();
         if moves.is_empty() {
-            node.score = node.board.eval();
+            node.score = node.board.eval(); // FIXME evaluate with full checkmate logic
             return;
         }
         for (i, mv) in moves.iter().enumerate() {
