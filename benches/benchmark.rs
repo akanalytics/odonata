@@ -3,6 +3,7 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use flounder::bitboard::*;
 use flounder::board::makemove::*;
 use flounder::board::movegen::*;
+use flounder::movelist::*;
 use flounder::eval::*;
 use flounder::material::*;
 use flounder::catalog::*;

@@ -39,7 +39,7 @@ impl Parse {
         let re = Regex::new(
             r#"(?x)    # x flag to allow whitespace and comments
             ^
-            ([NBRQK])?      # piece - grp(1)
+            ([PNBRQK])?     # piece - grp(1)  Fix:18/3/21 allow P
             ([a-h])?        # src square file grp(2)
             ([1-8])?        # src square rank grp(3)
             (\-|x)?         # move or capture grp(4)
@@ -53,7 +53,7 @@ impl Parse {
         )
         .unwrap();
 
-        let caps = re.captures(&s).unwrap();
+        let caps = re.captures(&s).ok_or(format!("Unable to parse '{}' as an algebraic move", s))?;
         // if not match:
         //     raise ValueError(f"Move {orig} is invalid - wrong format")
 
@@ -103,9 +103,14 @@ impl Parse {
             if promo != "" && lm.promo_piece().to_char(Some(Color::Black)).to_string() != promo {
                 continue;
             }
+            // lm is castle but s isnt
             if lm.is_castle() && lm.castling_side().is_king_side() && s != "O-O"  
             ||
             lm.is_castle() && lm.castling_side().is_queen_side() && s != "O-O-O" {
+                continue;
+            }
+            // s is castle but lm isnt
+            if (s == "O-O" || s== "O-O-O") && !lm.is_castle() {
                 continue;
             }
             matching_moves.push(*lm);
@@ -163,6 +168,8 @@ mod tests {
         assert_eq!(mv.to_string(), uci);
         bd.make_move(&mv)
     }
+
+
     fn test_parse_pgn() {
         // [Event "Let\\'s Play!"]
         // [Site "Chess.com"]

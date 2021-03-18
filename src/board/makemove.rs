@@ -127,7 +127,7 @@ mod tests {
     fn test_make_move() -> Result<(), String> {
         let board = Catalog::starting_position();
         // let mut m = Move::parse("e2e4")?;
-        let mov = board.validate_uci_move("e2e4")?;
+        let mov = board.parse_uci_move("e2e4")?;
         let board2 = board.make_move(&mov);
         assert_eq!(board2.to_fen(), "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1");
         Ok(())
@@ -137,11 +137,11 @@ mod tests {
     fn make_move_ep() -> Result<(), String> {
         let board1 = Catalog::perft_cpw_number3().0.clone();
         // double push - ep sq should be set
-        let mov1 = board1.validate_uci_move("e2e4")?;
+        let mov1 = board1.parse_uci_move("e2e4")?;
         let board2 = board1.make_move(&mov1);
         assert_eq!(board2.to_fen(), "8/2p5/3p4/KP5r/1R2Pp1k/8/6P1/8 b - e3 0 1");
         // ep capture is not valid as leaves king in check
-        assert!(board2.validate_uci_move("f4e3").is_err());
+        assert!(board2.parse_uci_move("f4e3").is_err());
         // , e4, "EP square for e/p capture move is square the captured piece is on");
         Ok(())
     }
@@ -149,7 +149,7 @@ mod tests {
     #[test]
     fn test_try_move_promotion() {
         let mut board = Board::parse_fen("8/P7/8/8/8/8/7k/K7 w - - 0 0 id 'promos #1'").unwrap().as_board();
-        board = board.make_move(&board.validate_uci_move("a7a8q").unwrap());
+        board = board.make_move(&board.parse_uci_move("a7a8q").unwrap());
         assert_eq!(Board::adopt(board.clone()).get(a8), "Q");
         assert_eq!(Board::adopt(board).get(a7), ".");
     }
@@ -162,7 +162,7 @@ mod tests {
         assert_eq!(board.castling().to_string(), "KQkq");
 
         // rook takes rook, so both sides lose queens side castling grights
-        let board = board.make_move(&board.validate_uci_move("a1a8").unwrap());
+        let board = board.make_move(&board.parse_uci_move("a1a8").unwrap());
         assert_eq!(board.castling().to_string(), "Kk");
     }
 
@@ -171,20 +171,20 @@ mod tests {
         let epd = "r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq e3 0 1 id: 'castling1'";
         let board = Board::parse_fen(epd).unwrap().as_board();
         // casle kings side for w and then b
-        let board = board.make_move(&board.validate_uci_move("e1g1").unwrap());
-        let board = board.make_move(&board.validate_uci_move("e8g8").unwrap());
+        let board = board.make_move(&board.parse_uci_move("e1g1").unwrap());
+        let board = board.make_move(&board.parse_uci_move("e8g8").unwrap());
         assert_eq!(board.to_fen(), "r4rk1/pppppppp/8/8/8/8/PPPPPPPP/R4RK1 w - - 2 2");
 
         // castle queens side
         let board = Board::parse_fen(epd).unwrap().as_board();
-        let board = board.make_move(&board.validate_uci_move("e1c1").unwrap());
-        let board = board.make_move(&board.validate_uci_move("e8c8").unwrap());
+        let board = board.make_move(&board.parse_uci_move("e1c1").unwrap());
+        let board = board.make_move(&board.parse_uci_move("e8c8").unwrap());
         assert_eq!(board.to_fen(), "2kr3r/pppppppp/8/8/8/8/PPPPPPPP/2KR3R w - - 2 2");
 
         // rook moves queens side for w and then b, losing q-side castling rights
         let board = Board::parse_fen(epd).unwrap().as_board();
-        let board = board.make_move(&board.validate_uci_move("a1b1").unwrap());
-        let board = board.make_move(&board.validate_uci_move("a8b8").unwrap());
+        let board = board.make_move(&board.parse_uci_move("a1b1").unwrap());
+        let board = board.make_move(&board.parse_uci_move("a8b8").unwrap());
         assert_eq!(board.to_fen(), "1r2k2r/pppppppp/8/8/8/8/PPPPPPPP/1R2K2R w Kk - 2 2");
     }
 }

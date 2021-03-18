@@ -508,7 +508,7 @@ mod tests {
         let fen = "8/8/8/8/8/8/6r1/7K w - - 0 0 id 'rook+king'";
         let board = Board::parse_fen(fen).unwrap().as_board();
         assert_eq!(board.legal_moves().sort().to_string(), "h1g2");
-        let mov_h1g2 = board.validate_uci_move("h1g2")?;
+        let mov_h1g2 = board.parse_uci_move("h1g2")?;
         assert_eq!(board.is_legal_move(&mov_h1g2), true);
         Ok(())
     }

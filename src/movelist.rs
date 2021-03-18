@@ -6,6 +6,9 @@ use crate::utils::StringUtils;
 use std::fmt;
 use crate::parse::Parse;
 use std::ops::{Deref, DerefMut};
+use regex::Regex;
+use crate::board::makemove::MoveMaker;
+
 
 // FIXME: public methods
 #[derive(Debug, Default, Copy, Clone)]
@@ -196,42 +199,84 @@ impl fmt::Display for MoveList {
 
 
 pub trait MoveValidator {
-    fn validate_uci_move(&self, mv: &str) -> Result<Move, String>;
-    fn validate_uci_movelist(&self, moves: &str) -> Result<MoveList, String>;
-    fn validate_san_move(&self, mv: &str) -> Result<Move, String>;
-    fn validate_san_movelist(&self, moves: &str) -> Result<MoveList, String>;
+    fn parse_uci_move(&self, mv: &str) -> Result<Move, String>;
+    fn parse_uci_choices(&self, moves: &str) -> Result<MoveList, String>;
+    fn parse_uci_moves(&self, moves: &str) -> Result<MoveList, String>;
+
+    fn parse_san_move(&self, mv: &str) -> Result<Move, String>;
+    fn parse_san_choices(&self, moves: &str) -> Result<MoveList, String>;
+    fn parse_san_moves(&self, moves: &str) -> Result<MoveList, String>;
 }
 
 impl MoveValidator for Board {
-    fn validate_uci_move(&self, mv: &str) -> Result<Move, String> {
+    fn parse_uci_move(&self, mv: &str) -> Result<Move, String> {
         let moves = self.legal_moves();
         if let Some(pos) = moves.iter().position(|m| m.uci() == mv) {
             return Ok(moves[pos]);
         }
-        Err(format!("Move {} is not legal", mv))
+        Err(format!("Move {} is not legal for board {}", mv, self.to_fen()))
     }
 
-    fn validate_uci_movelist(&self, s: &str) -> Result<MoveList, String> {
+    fn parse_uci_choices(&self, s: &str) -> Result<MoveList, String> {
         let mut moves = MoveList::new();
         let s = s.replace(",", " ");
+        let s = strip_move_numbers(&s);
         for mv in s.split_ascii_whitespace() {
-            moves.push(self.validate_uci_move(mv)? );
+            moves.push(self.parse_uci_move(mv)? );
         }
         Ok(moves)
     }
 
-    fn validate_san_move(&self, mv: &str) -> Result<Move, String> {
+    fn parse_uci_moves(&self, s: &str) -> Result<MoveList, String> {
+        let mut board = self.clone();
+        let mut moves = MoveList::new();
+        let s = s.replace(",", " ");
+        let s = strip_move_numbers(&s);
+        for mv in s.split_ascii_whitespace() {
+            let mv = board.parse_uci_move(mv)?;
+            moves.push(mv);
+            board = board.make_move(&mv);
+        }
+        Ok(moves)
+    }
+
+    fn parse_san_move(&self, mv: &str) -> Result<Move, String> {
         Parse::move_san(mv, self)
     }
 
-    fn validate_san_movelist(&self, s: &str) -> Result<MoveList, String> {
+    fn parse_san_choices(&self, s: &str) -> Result<MoveList, String> {
         let mut moves = MoveList::new();
         let s = s.replace(",", " ");
+        let s = strip_move_numbers(&s);
         for mv in s.split_ascii_whitespace() {
-            moves.push(self.validate_san_move(mv)? );
+            moves.push(self.parse_san_move(mv)? );
         }
         Ok(moves)
     }
+
+    fn parse_san_moves(&self, s: &str) -> Result<MoveList, String> {
+        let mut board = self.clone();
+        let mut moves = MoveList::new();
+        let s = s.replace(",", " ");
+        let s = strip_move_numbers(&s);
+        for mv in s.split_ascii_whitespace() {
+            let mv = board.parse_san_move(mv)?;
+            moves.push(mv);
+            board = board.make_move(&mv);
+        }
+        Ok(moves)
+    }
+}
+
+fn strip_move_numbers(s: &str) -> String {
+    let re = Regex::new(
+        r#"(?x)         # x flag to allow whitespace and comments
+        (\d)+\.\s?      # digits a '.' and then whitespace
+        "#,
+    )
+    .unwrap();
+
+    re.replace_all(&s, "").to_string()
 }
 
 
@@ -241,25 +286,84 @@ impl MoveValidator for Board {
 mod tests {
     use super::*;
     use crate::globals::constants::*;
+    use crate::catalog::Catalog;
 
     #[test]
-    fn move_and_movelist() {
+    fn test_move() {
         assert_eq!(Move::new_null().to_string(), "-");
 
         let move_a1b2 = Move { from: a1, to: b2, ..Default::default() };
         let promo_a7a8 = Move { from: a7, to: a8, promo: Piece::Queen, ..Default::default() };
         assert_eq!(move_a1b2.to_string(), "a1b2");
         assert_eq!(promo_a7a8.to_string(), "a7a8q");
-        let mut moves = MoveList::new();
-        moves.push(move_a1b2);
-        moves.push(promo_a7a8);
-        assert_eq!(moves.to_string(), "a1b2, a7a8q");
 
         let move_e2e4 = Move::parse_uci("e2e4").unwrap();
         assert_eq!(move_e2e4.to_string(), "e2e4");
 
         let move_e7e8 = Move::parse_uci("e7e8p").unwrap();
         assert_eq!(move_e7e8.to_string(), "e7e8p");
+
+        let board = Catalog::starting_position();
+        assert_eq!(board.parse_san_move("Nc3").unwrap().to_string(), "b1c3");
+        assert_eq!(board.parse_san_move("c3").unwrap().to_string(), "c2c3");
+        assert_eq!(board.parse_san_move("c2c4").unwrap().to_string(), "c2c4");
+        assert_eq!(board.parse_san_move("c2-c4").unwrap().to_string(), "c2c4");
+        assert_eq!(board.parse_san_move("Pc4").unwrap().to_string(), "c2c4");
+        assert_eq!(board.parse_san_move("Pc2c4").unwrap().to_string(), "c2c4");
+    }
+
+    #[test]
+    fn test_movelist() {
+        let move_a1b2 = Move { from: a1, to: b2, ..Default::default() };
+        let promo_a7a8 = Move { from: a7, to: a8, promo: Piece::Queen, ..Default::default() };
+
+        let mut moves = MoveList::new();
+        moves.push(move_a1b2);
+        moves.push(promo_a7a8);
+        assert_eq!(moves.to_string(), "a1b2, a7a8q");
+
+        let s = strip_move_numbers("1. c1c2 c4c5 2. c6c7 3.");
+        assert_eq!(s, "c1c2 c4c5 c6c7 ");
+
+        let board = Catalog::starting_position();
+
+        let list = board.parse_uci_choices("a2a3, b2b3  c2c4  ").unwrap();
+        assert_eq!( list.to_string(), "a2a3, b2b3, c2c4");
+
+        let list = board.parse_uci_choices("1. a2a3, 2. b2b3  c2c4  ").unwrap();
+        assert_eq!( list.to_string(), "a2a3, b2b3, c2c4");
+
+        let list = board.parse_uci_moves("1. a2a3 h7h6 2. b2b3 h6h5").unwrap();
+        assert_eq!( list.to_string(), "a2a3, h7h6, b2b3, h6h5");
+
+
+        let list = board.parse_san_choices("Nc3, c3  Pc2c3").unwrap();
+        assert_eq!( list.to_string(), "b1c3, c2c3, c2c3");
+
+        let list = board.parse_san_moves(r"
+            1. d4 c6 2. Bf4 d6 3. Nd2 h6 
+            4. Ngf3 g5 5. Bg3 Qb6 6. Nc4 Qb4+ 
+
+            7. Nfd2 Be6 8. c3 Qb5 9. e3 Bxc4 
+            10. Nxc4 Qd5 11. Qf3 Qxf3 12. gxf3 Nd7 
+
+            13. h4 Bg7 14. e4 Ngf6 15. Bd3 Nh5 
+            16. hxg5 Nxg3 17. fxg3 hxg5 18. Rxh8+ Bxh8 
+
+            19. Kd2 O-O-O 20. Ne3 e6 21. Rh1 b5").unwrap();
+
+            let mut s = String::new();
+            s += "d2d4, c7c6, c1f4, d7d6, b1d2, h7h6, ";
+            s += "g1f3, g7g5, f4g3, d8b6, d2c4, b6b4, ";
+
+            s += "f3d2, c8e6, c2c3, b4b5, e2e3, e6c4, ";
+            s += "d2c4, b5d5, d1f3, d5f3, g2f3, b8d7, ";
+
+            s += "h2h4, f8g7, e3e4, g8f6, f1d3, f6h5, ";
+            s += "h4g5, h5g3, f2g3, h6g5, h1h8, g7h8, ";
+
+            s += "e1d2, e8c8, c4e3, e7e6, a1h1, b7b5";
+            assert_eq!( list.to_string(), s);
     }
 }
 
