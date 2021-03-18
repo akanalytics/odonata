@@ -2,11 +2,9 @@ use crate::attacks::{BitboardAttacks, ClassicalBitboard};
 use crate::bitboard::{Bitboard, Dir};
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
-use crate::parse::Parse;
 use crate::movelist::{Move, MoveList};
 use crate::types::{CastlingRights, Color, Piece};
 use once_cell::sync::OnceCell;
-use std::time::{Duration, Instant};
 
 fn global_classical_bitboard() -> &'static ClassicalBitboard {
     static INSTANCE: OnceCell<ClassicalBitboard> = OnceCell::new();
@@ -41,25 +39,6 @@ fn attacked_by(targets: Bitboard, occ: Bitboard, board: &Board, opponent: Color)
     attackers
 }
 
-pub trait MoveValidator {
-    fn validate_uci_move(&self, mv: &str) -> Result<Move, String>;
-    fn validate_san_move(&self, mv: &str) -> Result<Move, String>;
-}
-
-impl MoveValidator for Board {
-    fn validate_uci_move(&self, mv: &str) -> Result<Move, String> {
-        // FIXME! *legal* moves
-        let moves = self.pseudo_legal_moves();
-        if let Some(pos) = moves.iter().position(|m| m.uci() == mv) {
-            return Ok(moves[pos]);
-        }
-        Err(format!("Move {} is not legal", mv))
-    }
-
-    fn validate_san_move(&self, mv: &str) -> Result<Move, String> {
-            Parse::move_san(mv, self)
-    }
-}
 
 pub trait MoveGen {
     fn is_in_check(&self, c: Color) -> bool;
@@ -271,7 +250,8 @@ impl MoveGen for Board {
         let king = board.kings() & us;
         let rights = board.castling();
 
-        if rights.has_king_side_right(color)
+        let right = CastlingRights::king_side_right(color);
+        if rights.contains(right)
             && !CastlingRights::king_side_squares(color).intersects(occupied)
             && !king.is_empty()
         {
@@ -281,12 +261,13 @@ impl MoveGen for Board {
             if attacked_by(king_moves, occupied, board, color.opposite()).is_empty() {
                 // let rook_from = Bitboard::FILE_A & color.back_rank;
                 // let m = MoveEnum::Castle { king_dest, king_from: king, rook_dest, rook_from, right };
-                let m = Move { from: king, to: king_to, mover: Piece::King, is_castle: true, ..Default::default() };
+                let m = Move { from: king, to: king_to, mover: Piece::King, castle_side: right, ..Default::default() };
                 moves.push(m);
             }
         }
 
-        if rights.has_queen_side_right(color)
+        let right = CastlingRights::queen_side_right(color);
+        if rights.contains(right) 
             && !CastlingRights::queen_side_squares(color).intersects(occupied)
             && !king.is_empty()
         {
@@ -296,7 +277,7 @@ impl MoveGen for Board {
             if attacked_by(king_moves, occupied, board, color.opposite()).is_empty() {
                 // let rook_from = Bitboard::FILE_H & color.back_rank;
                 // let m = MoveEnum::Castle { king_dest, king_from: king, rook_dest, rook_from, right };
-                let m = Move { from: king, to: king_to, mover: Piece::King, is_castle: true, ..Default::default() };
+                let m = Move { from: king, to: king_to, mover: Piece::King, castle_side: right, ..Default::default() };
                 moves.push(m);
             }
         }
@@ -326,6 +307,8 @@ mod tests {
     use crate::catalog::*;
     use crate::globals::constants::*;
     extern crate env_logger;
+    use crate::movelist::MoveValidator;
+    use std::time::Instant;
 
     fn _init() {
         env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
@@ -348,11 +331,28 @@ mod tests {
     #[test]
     fn test_perft() {
         for (board, perfts) in Catalog::perfts() {
-            for (depth, expected) in perfts.iter().enumerate() {
+            for (depth, &expected) in perfts.iter().enumerate() {
                 if depth <= 2 {
                     let now = Instant::now();
                     let count = perft(&board, depth as u32);
-                    assert_eq!(&count, expected, "fen {} perft({})", board.to_fen(), depth);
+                    assert_eq!(count, expected, "fen {} perft({})", board.to_fen(), depth);
+                    println!("perft({depth})={count} in {time} millis", depth=depth, count=count, time=now.elapsed().as_millis());
+                }
+                // assert_eq!(&count, expected, "fen: {}", board.to_fen());
+            }
+        }
+    }
+
+    #[test]
+    #[ignore]
+    fn test_perft_slow() {
+        for (board, perfts) in Catalog::perfts() {
+            println!("\n{}", board.to_fen());
+            for (depth, &expected) in perfts.iter().enumerate() {
+                if expected < 1_000_000_000_u64 {
+                    let now = Instant::now();
+                    let count = perft(&board, depth as u32);
+                    assert_eq!(count, expected, "fen {} perft({})", board.to_fen(), depth);
                     println!("perft({depth})={count} in {time} millis", depth=depth, count=count, time=now.elapsed().as_millis());
                 }
                 // assert_eq!(&count, expected, "fen: {}", board.to_fen());
@@ -507,13 +507,9 @@ mod tests {
         // https://lichess.org/editor/8/8/8/8/8/8/6r1/7K
         let fen = "8/8/8/8/8/8/6r1/7K w - - 0 0 id 'rook+king'";
         let board = Board::parse_fen(fen).unwrap().as_board();
-        assert_eq!(board.pseudo_legal_moves().sort().to_string(), "h1g1, h1g2, h1h2");
-        let mov_h1g1 = board.validate_uci_move("h1g1")?;
+        assert_eq!(board.legal_moves().sort().to_string(), "h1g2");
         let mov_h1g2 = board.validate_uci_move("h1g2")?;
-        let mov_h1h2 = board.validate_uci_move("h1h2")?;
-        assert_eq!(board.is_legal_move(&mov_h1g1), false);
         assert_eq!(board.is_legal_move(&mov_h1g2), true);
-        assert_eq!(board.is_legal_move(&mov_h1h2), false);
         Ok(())
     }
 }

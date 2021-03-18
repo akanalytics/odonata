@@ -166,7 +166,7 @@ impl Bitboard {
         if s.len() != 2 {
             return Err(format!("Invalid square '{}'", s));
         }
-        let chars: Vec<&str> = s.split("").collect();
+        let chars: Vec<&str> = s.split("").collect();  // gives empty [0]
         Ok(Self::parse_file(chars[1])? & Self::parse_rank(chars[2])?)
         
     }

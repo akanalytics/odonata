@@ -70,29 +70,37 @@ impl CastlingRights {
         for ch in s.chars() {
             match ch {
                 '-' => break,
-                'K' => castling |= CastlingRights::WHITE_KING,
-                'Q' => castling |= CastlingRights::WHITE_QUEEN,
-                'k' => castling |= CastlingRights::BLACK_KING,
-                'q' => castling |= CastlingRights::BLACK_QUEEN,
+                'K' => castling |= Self::WHITE_KING,
+                'Q' => castling |= Self::WHITE_QUEEN,
+                'k' => castling |= Self::BLACK_KING,
+                'q' => castling |= Self::BLACK_QUEEN,
                 _ => return Err(format!("Invalid character '{}' in castling rights '{}'", ch, s)),
             }
         }
         Ok(castling)
     }
 
-    pub fn has_king_side_right(self, c: Color) -> bool {
-        self.contains(chooser_wb(c, 
-            CastlingRights::WHITE_KING,
-            CastlingRights::BLACK_KING
-        ))
+    pub fn king_side_right(c: Color) -> Self {
+        chooser_wb(c, 
+            Self::WHITE_KING,
+            Self::BLACK_KING
+        )
     } 
 
-    pub fn has_queen_side_right(self, c: Color) -> bool {
-        self.contains(chooser_wb(c, 
-            CastlingRights::WHITE_QUEEN,
-            CastlingRights::BLACK_QUEEN
-        ))
+    pub fn queen_side_right(c: Color) -> Self {
+        chooser_wb(c, 
+            Self::WHITE_QUEEN,
+            Self::BLACK_QUEEN
+        )
     } 
+
+    pub fn is_queen_side(&self) -> bool {
+        self.contains(Self::WHITE_QUEEN | Self::BLACK_QUEEN)        
+    }
+
+    pub fn is_king_side(&self) -> bool {
+        self.contains(Self::WHITE_KING | Self::BLACK_KING)        
+    }
 
     pub fn king_side_squares(c: Color) -> Bitboard {
         chooser_wb(c, 

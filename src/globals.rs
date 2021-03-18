@@ -19,13 +19,10 @@ pub mod constants {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::board::boardbuf::*;
     use crate::board::*;
     use crate::bitboard::*;
     use crate::movelist::*;
     use crate::search::*;
-    use crate::catalog::*;
     use crate::types::*;
     use crate::eval::*;
     use std::mem::size_of;

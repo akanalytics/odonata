@@ -3,10 +3,8 @@ use crate::board::movegen::MoveGen;
 use crate::board::Board;
 use crate::pvtable::PvTable;
 use crate::eval::{Scorable, Score, SimpleScorer};
-use crate::movelist::{Move, MoveList};
+use crate::movelist::{Move};
 use crate::types::Color;
-use std::cmp;
-use std::fmt;
 
 // CPW
 //
@@ -159,11 +157,11 @@ impl Search {
 
 /// stats methods
 impl Search {
-    fn node_count(&self) -> u64 {
+    pub fn node_count(&self) -> u64 {
         self.interior_nodes + self.leaf_nodes // root
     }
 
-    fn branching_factor(&self) -> f64 {
+    pub fn branching_factor(&self) -> f64 {
         self.leaf_nodes as f64 / self.interior_nodes as f64
     }
 }

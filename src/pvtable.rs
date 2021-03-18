@@ -76,9 +76,6 @@ impl fmt::Display for PvTable {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::board::boardbuf::*;
-    use crate::catalog::*;
-    use crate::eval::*;
 
     #[test]
     fn test_pv_table() {

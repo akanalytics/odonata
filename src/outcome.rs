@@ -136,7 +136,6 @@ impl GameEnd for Board {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::board::boardbuf::*;
     use crate::catalog::*;
 
 

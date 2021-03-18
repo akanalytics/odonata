@@ -120,7 +120,7 @@ mod tests {
     use super::*;
     use crate::board::*;
     use crate::board::boardbuf::BoardBuf;
-    use crate::board::movegen::*;
+    use crate::movelist::MoveValidator;
     use crate::catalog::*;
 
     #[test]
@@ -140,14 +140,9 @@ mod tests {
         let mov1 = board1.validate_uci_move("e2e4")?;
         let board2 = board1.make_move(&mov1);
         assert_eq!(board2.to_fen(), "8/2p5/3p4/KP5r/1R2Pp1k/8/6P1/8 b - e3 0 1");
-        // ep capture is valid but illegal as leaves king in check
-        let mov2 = board2.validate_uci_move("f4e3")?;
-        assert_eq!(mov2.ep(), e4, "EP square for e/p capture move is square the captured piece is on");
-        println!("{:?}", mov2);
-        let is_false = board2.is_legal_move(&mov2);
-        assert_eq!(is_false, false);
-        // let board3 = board2.make_move(&mov2);
-        // assert_eq!(board3..to_fen(), "8/2p5/3p4/KP5r/1R5k/4p3/6P1/8 w - - 0 2");
+        // ep capture is not valid as leaves king in check
+        assert!(board2.validate_uci_move("f4e3").is_err());
+        // , e4, "EP square for e/p capture move is square the captured piece is on");
         Ok(())
     }
 

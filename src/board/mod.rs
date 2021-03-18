@@ -1,9 +1,7 @@
 use crate::bitboard::{Bitboard};
 use crate::types::{Piece, Color, CastlingRights};
-use crate::utils::StringUtils;
 use std::fmt::{self, Write};
 use crate::board::boardbuf::BoardBuf;
-use crate::movelist::{Move, MoveList};
 use std::iter::*;
 
 pub mod boardbuf;

@@ -35,6 +35,7 @@ pub use crate::board::boardbuf::BoardBuf;
 pub use crate::board::{Board};
 pub use crate::types::{Color, Piece};
 pub use crate::movelist::{Move, MoveList};
+pub use crate::search::{Search};
 
 
 

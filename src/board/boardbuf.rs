@@ -1,4 +1,3 @@
-use std::fmt::{self, Write};
 
 use super::{Board};
 use crate::types::{CastlingRights, Color, Piece};

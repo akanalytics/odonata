@@ -1,12 +1,8 @@
 use crate::board::makemove::MoveMaker;
-use crate::board::movegen::MoveGen;
 use crate::board::Board;
 use crate::outcome::Outcome;
-use crate::pvtable::PvTable;
 use crate::search::Search;
-use crate::eval::{Scorable, Score};
 use crate::movelist::{Move, MoveList};
-use crate::types::Color;
 use crate::outcome::GameEnd;
 use std::fmt;
 
@@ -87,7 +83,6 @@ impl fmt::Display for Game {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::board::boardbuf::*;
     use crate::catalog::*;
     use crate::eval::*;
 

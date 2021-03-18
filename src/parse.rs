@@ -60,12 +60,7 @@ impl Parse {
         // parse checkmates
         let _checkmate = s.contains('#');
 
-        // parse castling
-        let castling = false;
-        if s == "O-O" || s == "O-O-O" {
-            // side = Pieces.to_colour("K" if s == 'O-O' else 'Q', self.board.turn)
-            //return self.check_legal_move(MoveGenerator.CASTLING_KING_MOVE[side], orig)
-        }
+
         let legal_moves = board.legal_moves();
         // caps.get(0).unwrap().as_str();
         let mut piece = caps.get(1).map_or("", |m| m.as_str());
@@ -75,7 +70,7 @@ impl Parse {
         let mut dst_square = caps.get(5).map_or("", |m| m.as_str()).to_string();
         let promo = caps.get(6).map_or("", |m| m.as_str());
         let _checks = caps.get(7).map_or("", |m| m.as_str());
-        println!("Parsed p={} f={} r={} to={}", piece, src_file, src_rank, dst_square);
+        // println!("Parsed p={} f={} r={} to={}", piece, src_file, src_rank, dst_square);
 
         // if one square is given, its the destination not the source
         if dst_square.is_empty() && !src_rank.is_empty() && !src_rank.is_empty() {
@@ -85,7 +80,7 @@ impl Parse {
         }
 
         // pawn prefixs are omiited
-        if piece == "" {
+        if piece == "" && !dst_square.is_empty() {
             piece = "P";
         }
 
@@ -108,6 +103,11 @@ impl Parse {
             if promo != "" && lm.promo_piece().to_char(Some(Color::Black)).to_string() != promo {
                 continue;
             }
+            if lm.is_castle() && lm.castling_side().is_king_side() && s != "O-O"  
+            ||
+            lm.is_castle() && lm.castling_side().is_queen_side() && s != "O-O-O" {
+                continue;
+            }
             matching_moves.push(*lm);
         }
         if matching_moves.is_empty() {
@@ -127,9 +127,8 @@ mod tests {
 
     use super::*;
     use crate::board::makemove::MoveMaker;
-    use crate::board::movegen::MoveValidator;
+    use crate::movelist::MoveValidator;
     use crate::catalog::Catalog;
-    use crate::globals::constants::*;
 
     #[test]
     fn test_parse_move() {

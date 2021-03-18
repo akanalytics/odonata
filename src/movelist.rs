@@ -1,8 +1,10 @@
 use crate::bitboard::Bitboard;
 use crate::board::Board;
+use crate::board::movegen::MoveGen;
 use crate::types::{CastlingRights, Color, Piece};
 use crate::utils::StringUtils;
 use std::fmt;
+use crate::parse::Parse;
 use std::ops::{Deref, DerefMut};
 
 // FIXME: public methods
@@ -15,9 +17,9 @@ pub struct Move {
     pub capture: Piece,
     pub mover: Piece,
 
-    pub is_castle: bool,
+    pub castle_side: CastlingRights,
     pub is_null: bool,
-    pub is_drop: bool,
+    pub is_drop: bool,  // used for board setup not variant play
 }
 
 impl Move {
@@ -75,7 +77,12 @@ impl Move {
 
     #[inline]
     pub fn is_castle(&self) -> bool {
-        self.is_castle
+        !self.castle_side.is_empty()
+    }
+
+    #[inline]
+    pub fn castling_side(&self) -> CastlingRights {
+        self.castle_side
     }
 
     #[inline]
@@ -156,14 +163,13 @@ pub struct MoveList(Vec<Move>);
 
 impl MoveList {
     pub fn new() -> Self {
-        MoveList(Vec::with_capacity(250)) // TODO: capacity??
+        Self(Vec::with_capacity(250)) // TODO: capacity??
     }
 
     pub fn sort(&mut self) -> &mut Self {
         self.0.sort_by_key(|m| m.to_string());
         self
     }
-
 }
 
 impl Deref for MoveList {
@@ -189,6 +195,44 @@ impl fmt::Display for MoveList {
 }
 
 
+pub trait MoveValidator {
+    fn validate_uci_move(&self, mv: &str) -> Result<Move, String>;
+    fn validate_uci_movelist(&self, moves: &str) -> Result<MoveList, String>;
+    fn validate_san_move(&self, mv: &str) -> Result<Move, String>;
+    fn validate_san_movelist(&self, moves: &str) -> Result<MoveList, String>;
+}
+
+impl MoveValidator for Board {
+    fn validate_uci_move(&self, mv: &str) -> Result<Move, String> {
+        let moves = self.legal_moves();
+        if let Some(pos) = moves.iter().position(|m| m.uci() == mv) {
+            return Ok(moves[pos]);
+        }
+        Err(format!("Move {} is not legal", mv))
+    }
+
+    fn validate_uci_movelist(&self, s: &str) -> Result<MoveList, String> {
+        let mut moves = MoveList::new();
+        let s = s.replace(",", " ");
+        for mv in s.split_ascii_whitespace() {
+            moves.push(self.validate_uci_move(mv)? );
+        }
+        Ok(moves)
+    }
+
+    fn validate_san_move(&self, mv: &str) -> Result<Move, String> {
+        Parse::move_san(mv, self)
+    }
+
+    fn validate_san_movelist(&self, s: &str) -> Result<MoveList, String> {
+        let mut moves = MoveList::new();
+        let s = s.replace(",", " ");
+        for mv in s.split_ascii_whitespace() {
+            moves.push(self.validate_san_move(mv)? );
+        }
+        Ok(moves)
+    }
+}
 
 
 
@@ -196,8 +240,6 @@ impl fmt::Display for MoveList {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::board::boardbuf::*;
-    use crate::catalog::*;
     use crate::globals::constants::*;
 
     #[test]
