@@ -121,8 +121,8 @@ fn benchmark_score(c: &mut Criterion) {
 
 fn make_move(c: &mut Criterion) {
     let board = Catalog::starting_position();
-    let mv1 = board.validate_uci_move("e2e4").unwrap();
-    let mv2 = board.validate_uci_move("b1c3").unwrap();
+    let mv1 = board.parse_uci_move("e2e4").unwrap();
+    let mv2 = board.parse_uci_move("b1c3").unwrap();
     c.bench_function("makemove", |b| {
         b.iter(|| {
             black_box(board.make_move(black_box(&mv1)));
