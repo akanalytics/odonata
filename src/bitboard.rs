@@ -135,10 +135,36 @@ impl Bitboard {
         BitIterator { bb: self }
     }
 
+
+    pub fn files(self) -> String {
+        let mut files: Vec<char> = self.iter().map(|bb| Self::sq_as_file(bb.first_square())).collect();
+        files.sort();
+        files.dedup();
+        files.iter().collect()
+    }
+
+    pub fn ranks(self) -> String {
+        let mut files: Vec<char> = self.iter().map(|bb| Self::sq_as_rank(bb.first_square())).collect();
+        files.sort();
+        files.dedup();
+        files.iter().collect()
+    }
+
+    pub fn sq_as_file(sq: usize) -> char {
+        let x = sq % 8;
+        char::from(b'a' + x as u8)
+    }
+
+    pub fn sq_as_rank(sq: usize) -> char {
+        let y = sq / 8;
+        char::from(b'1' + y as u8)
+    }
+
     pub fn sq_as_uci(self) -> String {
         let s = self.first_square();
-        let (x,y) = (s % 8, s / 8);
-        format!("{}{}", char::from(b'a' + x as u8) , char::from(b'1' + y as u8))
+        let f = Self::sq_as_file(s);
+        let r = Self::sq_as_rank(s);
+        format!("{}{}", f, r )
     }
 
     pub fn uci(self) -> String {
@@ -289,6 +315,15 @@ mod tests {
 
     #[test]
     fn test_formats() {
+        assert_eq!(a1.files(), "a");
+        assert_eq!((a1|b1|c1).files(), "abc");
+        assert_eq!(Bitboard::all().files(), "abcdefgh");
+
+        assert_eq!(a1.ranks(), "1");
+        assert_eq!((a1|b5|e5).ranks(), "15");
+        assert_eq!(Bitboard::all().ranks(), "12345678");
+
+
         assert_eq!(a1.sq_as_uci(), "a1");
         assert_eq!(h1.sq_as_uci(), "h1");
         assert_eq!(a8.sq_as_uci(), "a8");

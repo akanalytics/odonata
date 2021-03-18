@@ -206,6 +206,9 @@ pub trait MoveValidator {
     fn parse_san_move(&self, mv: &str) -> Result<Move, String>;
     fn parse_san_choices(&self, moves: &str) -> Result<MoveList, String>;
     fn parse_san_moves(&self, moves: &str) -> Result<MoveList, String>;
+
+    fn to_san(&self, mv: &Move) -> String;
+    fn to_san_moves(&self, moves: &MoveList) -> String;
 }
 
 impl MoveValidator for Board {
@@ -266,6 +269,68 @@ impl MoveValidator for Board {
         }
         Ok(moves)
     }
+
+    fn to_san(&self, mv: &Move) -> String {
+        if mv.is_castle() {
+            if mv.castling_side().is_king_side() { 
+                return String::from("O-O"); 
+            } else { 
+                return String::from("O-O-O"); 
+            } 
+        }       
+        
+        let mut s = String::new();
+        if mv.mover_piece() != Piece::Pawn {
+            s += &mv.mover_piece().to_upper_char().to_string();
+        }
+        // ambiguity resolution
+        let mut pieces = 0;
+        let mut file_pieces = 0;
+        let mut rank_pieces = 0;
+        for m in self.legal_moves().iter() {
+            if m.to() == mv.to() {
+                if m.mover_piece() == mv.mover_piece() {
+                    pieces += 1;
+                    if m.from().files() == mv.from().files() {
+                        file_pieces += 1;
+                    }
+                    if m.from().ranks() == mv.from().ranks() {
+                        rank_pieces += 1;
+                    }
+                }
+            }
+        }
+        if pieces > 1 {
+            // need to resolve ambiguity
+            if file_pieces == 1 {
+                s += &mv.from().files();
+            } else if rank_pieces == 1 {
+                s += &mv.from().ranks();
+            } else {
+                s += &mv.from().sq_as_uci();
+            }
+        }
+        
+        if mv.is_capture() {
+            s.push('x');
+        }
+        s += &mv.to().sq_as_uci();
+        if mv.is_ep_capture() {
+            s += " e.p.";
+        }
+        if mv.is_promo() {
+            s.push('=');
+            s.push(mv.promo_piece().to_upper_char());
+        }
+        // FIXME appemd + for check or mate
+        s
+    }
+
+    fn to_san_moves(&self, moves: &MoveList) -> String {
+        "No impl".to_string()
+    }
+
+
 }
 
 fn strip_move_numbers(s: &str) -> String {

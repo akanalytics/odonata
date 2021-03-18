@@ -88,6 +88,7 @@ mod tests {
 
     
     #[test]
+    #[ignore]
     fn test_game() {
         let mut eval_w = SimpleScorer::default();
         eval_w.position = true;
