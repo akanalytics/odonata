@@ -135,7 +135,7 @@ mod tests {
 
     #[test]
     fn make_move_ep() -> Result<(), String> {
-        let board1 = Catalog::perfts()[2].0.clone();
+        let board1 = Catalog::perft_cpw_number3().0.clone();
         // double push - ep sq should be set
         let mov1 = board1.validate_uci_move("e2e4")?;
         let board2 = board1.make_move(&mov1);

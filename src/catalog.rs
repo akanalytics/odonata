@@ -53,13 +53,34 @@ impl Catalog {
 
 
 
+    pub fn perft_kiwipete() -> (Board, Vec<u64>) {
 
+        // https://www.chessprogramming.org/Perft_Results
+        (
+            Board::parse_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
+                .unwrap()
+                .as_board(),
+            vec![1, 48, 2039, 97_862, 4_085_603, 193_690_690, 8_031_647_685],
+        )
+    }
+
+    pub fn perft_cpw_number3() -> (Board, Vec<u64>) {
+
+        // https://www.chessprogramming.org/Perft_Results
+        (
+        Board::parse_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1 id 'CPW PERFT#3'")
+            .unwrap()
+            .as_board(),
+        vec![1, 14, 191, 2812, 43_238, 674_624, 11_030_083, 178_633_661, 3_009_794_393],
+        )
+    }
 
 
 
     // FIXME! awful structure
     pub fn perfts() -> Vec<(Board, Vec<u64>)> {
         let mut vec = Vec::new();
+        vec.push(Self::perft_kiwipete());
         // http://www.rocechess.ch/perft.html
         vec.push((
             Board::parse_fen("n1n5/PPPk4/8/8/8/8/4Kppp/5N1N b - - 0 1")
@@ -67,18 +88,12 @@ impl Catalog {
                 .as_board(),
             vec![1, 24, 496, 9_483, 182_838, 3_605_103, 71_179_139],
         ));
+        // https://www.chessprogramming.org/Perft_Results
         vec.push((
             Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
                 .unwrap()
                 .as_board(),
             vec![1, 20, 400, 8902, 197_281, 4_865_609],
-        ));
-        // https://www.chessprogramming.org/Perft_Results
-        vec.push((
-            Board::parse_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
-                .unwrap()
-                .as_board(),
-            vec![1, 48, 2039, 97_862, 4_085_603, 193_690_690, 8_031_647_685],
         ));
         vec.push((
             Board::parse_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1 id 'CPW PERFT#3'")
@@ -86,6 +101,7 @@ impl Catalog {
                 .as_board(),
             vec![1, 14, 191, 2812, 43_238, 674_624, 11_030_083, 178_633_661, 3_009_794_393],
         ));
+        vec.push( Self::perft_cpw_number3());
         vec.push((
             Board::parse_fen("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1")
                 .unwrap()

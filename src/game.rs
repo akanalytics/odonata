@@ -96,12 +96,12 @@ mod tests {
     fn test_game() {
         let mut eval_w = SimpleScorer::default();
         eval_w.position = true;
-        let mut search_w = Search::new().depth(3).eval(eval_w);
+        let search_w = Search::new().depth(3).eval(eval_w);
         let white = search_w;
 
         let mut eval_b = SimpleScorer::default();
         eval_b.position = false;
-        let mut search_b = Search::new().depth(3).eval(eval_b);
+        let search_b = Search::new().depth(3).eval(eval_b);
         let black = search_b;
 
         let board = Catalog::starting_position();
