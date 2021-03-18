@@ -352,6 +352,8 @@ mod tests {
     use super::*;
     use crate::globals::constants::*;
     use crate::catalog::Catalog;
+    use crate::board::movegen::*;
+    use crate::board::boardbuf::*;
 
     #[test]
     fn test_move() {
@@ -405,7 +407,7 @@ mod tests {
         let list = board.parse_san_choices("Nc3, c3  Pc2c3").unwrap();
         assert_eq!( list.to_string(), "b1c3, c2c3, c2c3");
 
-        let list = board.parse_san_moves(r"
+        let san = r"
             1. d4 c6 2. Bf4 d6 3. Nd2 h6 
             4. Ngf3 g5 5. Bg3 Qb6 6. Nc4 Qb4+ 
 
@@ -415,9 +417,9 @@ mod tests {
             13. h4 Bg7 14. e4 Ngf6 15. Bd3 Nh5 
             16. hxg5 Nxg3 17. fxg3 hxg5 18. Rxh8+ Bxh8 
 
-            19. Kd2 O-O-O 20. Ne3 e6 21. Rh1 b5").unwrap();
+            19. Kd2 O-O-O 20. Ne3 e6 21. Rh1 b5";
 
-            let mut s = String::new();
+        let mut s = String::new();
             s += "d2d4, c7c6, c1f4, d7d6, b1d2, h7h6, ";
             s += "g1f3, g7g5, f4g3, d8b6, d2c4, b6b4, ";
 
@@ -428,7 +430,46 @@ mod tests {
             s += "h4g5, h5g3, f2g3, h6g5, h1h8, g7h8, ";
 
             s += "e1d2, e8c8, c4e3, e7e6, a1h1, b7b5";
-            assert_eq!( list.to_string(), s);
+            assert_eq!(board.parse_san_moves(san).unwrap().to_string(), s);
+    }
+
+    #[test]
+    fn test_to_san() {
+        let mut board = Catalog::starting_position();
+        let a2a3 = board.parse_uci_move("a2a3").unwrap();
+        let b1c3 = board.parse_uci_move("b1c3").unwrap();
+        assert_eq!(board.to_san(&a2a3), "a3");
+        assert_eq!(board.to_san(&b1c3), "Nc3");
+    
+        let board = board.set(d3, "p").unwrap();
+        let board = board.set(f3, "p").unwrap();
+        
+        let c2d3 = board.parse_uci_move("c2d3").unwrap();
+        assert_eq!(board.to_san(&c2d3), "cxd3");
+        
+        let e2d3 = board.parse_uci_move("e2d3").unwrap();
+        assert_eq!(board.to_san(&e2d3), "exd3");
+
+        let g1f3 = board.parse_uci_move("g1f3").unwrap();
+        assert_eq!(board.to_san(&g1f3), "Nxf3");
+
+        // knight ambiguity
+        let board = board.set(g5, "N").unwrap();
+        let g1f3 = board.parse_uci_move("g1f3").unwrap();
+        assert_eq!(board.to_san(&g1f3), "N1xf3");
+
+        // two knights same rank and file as g5
+        let board = board.set(e5, "N").unwrap();
+        let g1f3 = board.parse_uci_move("g5f3").unwrap();
+        assert_eq!(board.to_san(&g1f3), "Ng5xf3");
+
+        let board = board.set(Bitboard::RANK_8, "r..qk..r").unwrap();
+        // let board.set_turn()
+        let castle_k = board.parse_uci_move("e8g8").unwrap();
+        assert_eq!(board.to_san(&castle_k), "O-O");
+        let castle_q = board.parse_uci_move("e8c8").unwrap();
+        assert_eq!(board.to_san(&castle_k), "O-O-O");
+
     }
 }
 
