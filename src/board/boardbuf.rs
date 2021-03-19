@@ -11,6 +11,7 @@ use crate::bitboard::Bitboard;
 
 
 pub trait BoardBuf {
+    fn set_turn(&mut self, c: Color);
     fn set_piece_at(&mut self, sq: Bitboard, p: Piece);
     fn set_color_at(&mut self, sq: Bitboard, c: Color);
     fn color_at(&self, at: Bitboard) -> Option<Color>;
@@ -28,6 +29,10 @@ impl BoardBuf for Board {
     // pub fn new_empty() -> BoardBuf {
     //     BoardBuf { board: Board::new_empty() }
     // }
+
+    fn set_turn(&mut self, c: Color) {
+        self.turn = c;
+    }
 
     fn adopt(board: Board) -> Board {
         board

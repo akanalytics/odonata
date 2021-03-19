@@ -463,13 +463,13 @@ mod tests {
         let g1f3 = board.parse_uci_move("g5f3").unwrap();
         assert_eq!(board.to_san(&g1f3), "Ng5xf3");
 
-        let board = board.set(Bitboard::RANK_8, "r..qk..r").unwrap();
-        // let board.set_turn()
+        // remove some minor pieces to allow castling
+        let board = board.set(Bitboard::RANK_8, "r...k..r").unwrap();
+        board.set_turn(Color::Black);
         let castle_k = board.parse_uci_move("e8g8").unwrap();
         assert_eq!(board.to_san(&castle_k), "O-O");
         let castle_q = board.parse_uci_move("e8c8").unwrap();
-        assert_eq!(board.to_san(&castle_k), "O-O-O");
-
+        assert_eq!(board.to_san(&castle_q), "O-O-O");
     }
 }
 

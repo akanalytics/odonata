@@ -95,11 +95,11 @@ impl CastlingRights {
     } 
 
     pub fn is_queen_side(&self) -> bool {
-        self.contains(Self::WHITE_QUEEN | Self::BLACK_QUEEN)        
+        self.intersects(Self::WHITE_QUEEN | Self::BLACK_QUEEN)        
     }
 
     pub fn is_king_side(&self) -> bool {
-        self.contains(Self::WHITE_KING | Self::BLACK_KING)        
+        self.intersects(Self::WHITE_KING | Self::BLACK_KING)        
     }
 
     pub fn king_side_squares(c: Color) -> Bitboard {
