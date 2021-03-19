@@ -4,6 +4,8 @@ use crate::outcome::Outcome;
 use crate::search::Search;
 use crate::movelist::{Move, MoveList};
 use crate::outcome::GameEnd;
+use crate::catalog::Catalog;
+use crate::movelist::MoveValidator;
 use std::fmt;
 
 
@@ -29,6 +31,7 @@ impl Player for Search {
 pub struct Game {
     white: Search,
     black: Search,
+    starting_pos: Board,
     board: Board,
     moves: MoveList,
 }
@@ -40,10 +43,11 @@ pub struct Game {
 impl Game {
 
     pub fn new(white: Search, black: Search) -> Game {
-        Game { white, black, board: Board::default(), moves: MoveList::default() }
+        Game { white, black, board: Board::default(), starting_pos: Board::default(), moves: MoveList::default() }
     }
 
     pub fn set_board(&mut self, board: Board) -> Game {
+        self.starting_pos = board.clone();
         self.board = board;
         self.clone()
     }
@@ -80,9 +84,12 @@ impl fmt::Display for Game {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "[White \"{}\"]", self.white.name())?;
         writeln!(f, "[Black \"{}\"]", self.black.name())?;
-        writeln!(f, "[Result \"{}\"]", self.outcome())?;
-        writeln!(f, "moves \"{}\"", self.moves)?;
-        writeln!(f, "board\n \"{}\"", self.board)?;
+        writeln!(f, "[Result \"{}\"]", self.outcome().to_pgn())?;
+        if self.starting_pos != Catalog::starting_position() {
+            writeln!(f, "[FEN \"{}\"]", self.starting_pos.to_fen())?;
+            writeln!(f, "[SetUp \"1\"]")?;
+        }
+        writeln!(f, "{} {}", self.starting_pos.to_san_moves(&self.moves), self.board.outcome().to_pgn())?;
         Ok(())
     }
 }

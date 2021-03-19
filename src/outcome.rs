@@ -55,6 +55,19 @@ impl Outcome {
     pub fn is_game_over(self) -> bool {
         self.is_draw() | self.winning_color().is_some()
     }
+
+    pub fn to_pgn(self) -> String {
+        if self.is_draw() {
+            return String::from("1/2-1/2");
+        }
+        else if self.winning_color() == Some(Color::White) {
+            return String::from("1-0");
+        }
+        else if self.winning_color() == Some(Color::Black) {
+            return String::from("0-1");
+        }
+        String::from("*")
+    }
 }
 
 pub trait GameEnd {

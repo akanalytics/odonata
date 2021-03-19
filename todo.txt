@@ -1,7 +1,7 @@
 [X] parsing algebraic notation
 [x] game/match
-producing algebraic notation
-pgn export
+[x] producing algebraic notation
+[x] pgn export
 uci
 image generation
 python interface

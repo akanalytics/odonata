@@ -9,7 +9,7 @@ pub mod movegen;
 pub mod makemove;
 
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Board {
     pieces: [Bitboard; Piece::ALL.len()],
     colors: [Bitboard; 2],
