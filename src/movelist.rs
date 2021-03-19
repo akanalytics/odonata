@@ -131,25 +131,6 @@ impl Move {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 impl fmt::Display for Move {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.uci())
@@ -193,7 +174,6 @@ impl fmt::Display for MoveList {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let strings: Vec<String> = self.0.iter().map(Move::to_string).collect();
         fmt.write_str(&strings.join(", "))
-        // fmt.write_str(self.0.iter().fold(String::new(), |acc, m| acc + m.to_string().as_str()).as_str())
     }
 }
 
@@ -322,19 +302,33 @@ impl MoveValidator for Board {
             s.push('=');
             s.push(mv.promo_piece().to_upper_char());
         }
-        // FIXME appemd + for check or mate
+        if self.will_check(mv) {
+            s.push('+');
+        }
         s
     }
 
     fn to_san_moves(&self, moves: &MoveList) -> String {
-        let mut strings: Vec<String> = Vec::new();
+        let mut s = String::new();
         let mut board = self.clone();
-        for mv in moves.iter() {
-            // FIXMEis valid
-            strings.push(board.to_san(mv));
+        for (i, mv) in moves.iter().enumerate() {
+            debug_assert!(board.is_legal_move(mv));
+            if i % 2 == 0 {
+                if i != 0 {
+                    s += "\n";
+                }
+                s += &board.fullmove_counter().to_string();
+                s += ".";
+            }
+            if i == 0 && board.color_us() == Color::Black {
+                s += "..";
+            }
+            s += " ";
+            s += &board.to_san(mv);
+
             board = board.make_move(mv);
         }
-        strings.join(", ")
+        s
     }
 
 
@@ -438,7 +432,9 @@ mod tests {
 
             s += "e1d2, e8c8, c4e3, e7e6, a1h1, b7b5";
         assert_eq!(board.parse_san_moves(san)?.to_string(), s);
-        assert_eq!(board.to_san_moves(&board.parse_san_moves(san)?), "");
+        let s1: String = board.to_san_moves(&board.parse_san_moves(san)?).split_whitespace().collect();
+        let s2: String = san.split_whitespace().collect();
+        assert_eq!(s1, s2);
 
         let board = Board::parse_fen("rnbqkbnr/pp2ppp1/2pp3p/8/3P1B2/8/PPPNPPPP/R2QKBNR w KQkq - 0 4").unwrap();
         println!("{}", board.legal_moves());

@@ -43,18 +43,27 @@ impl Game {
         Game { white, black, board: Board::default(), moves: MoveList::default() }
     }
 
-    pub fn board(&mut self, board: Board) -> Game {
+    pub fn set_board(&mut self, board: Board) -> Game {
         self.board = board;
         self.clone()
     }
 
-    pub fn play(&mut self) {
-        while !self.board.outcome().is_game_over() {
+    pub fn play_move(&mut self) -> Move {
+        if !self.board.outcome().is_game_over() {
             let player = self.board.color_us().chooser_wb(&mut self.white, &mut self.black);
             let mv = player.choose_move(&self.board);
             self.moves.push(mv);
             println!("Move: {}", mv);
             self.board = self.board.make_move(&mv);
+            return mv;
+        }
+        return Move::new_null(); 
+    }
+
+
+    pub fn play(&mut self) {
+        while !self.board.outcome().is_game_over() {
+            self.play_move();
         }
     }
 
@@ -101,7 +110,7 @@ mod tests {
         let black = search_b;
 
         let board = Catalog::starting_position();
-        let mut game = Game::new(white, black).board(board);
+        let mut game = Game::new(white, black).set_board(board);
         game.play();
         println!("{}", game);
     }
