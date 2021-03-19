@@ -16,7 +16,7 @@ pub struct Board {
     en_passant: Bitboard,
     turn: Color,
     fifty_clock: u16,
-    halfmove_count: i32,
+    fullmove_counter: u16,
     // interior mutability (precludes copy trait)
     // moves: MoveList,
 }
@@ -115,20 +115,12 @@ impl Board {
 
     #[inline]
     pub fn fullmove_counter(&self) -> i32 {
-        self.halfmove_count as i32 / 2 + 1
+        self.fullmove_counter as i32
     }
 
     #[inline]
-    fn set_fullmove_counter(&mut self, fullmove_counter: i32, turn: Color) {
-        // 1w fmc -> 0 hmc
-        // 1b fmc -> 1 hmc
-        // 2w fmc -> 2 hmc
-        // 2b fmc -> 3 hmc
-        self.halfmove_count = turn.chooser_wb(fullmove_counter * 2 - 2, fullmove_counter * 2 - 1);
-    }
-    #[inline]
     pub fn ply(&self) -> i32 {
-        self.halfmove_count as i32
+        self.fullmove_counter() + self.color_us().chooser_wb(0, 1) as i32
     }
 
     #[inline]
@@ -185,7 +177,7 @@ impl Default for Board {
             en_passant: Default::default(),
             turn: Default::default(),
             fifty_clock: Default::default(),
-            halfmove_count: 0, 
+            fullmove_counter: 1, 
             // moves: MoveList,
         }
     }
