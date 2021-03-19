@@ -287,22 +287,22 @@ impl MoveValidator for Board {
         let mut pieces = 0;
         let mut file_pieces = 0;
         let mut rank_pieces = 0;
-        for m in self.legal_moves().iter() {
-            if m.to() == mv.to() {
-                if m.mover_piece() == mv.mover_piece() {
+        for lm in self.legal_moves().iter() {
+            if lm.to() == mv.to() {
+                if lm.mover_piece() == mv.mover_piece() {
                     pieces += 1;
-                    if m.from().files() == mv.from().files() {
+                    if lm.from().files() == mv.from().files() {
                         file_pieces += 1;
                     }
-                    if m.from().ranks() == mv.from().ranks() {
+                    if lm.from().ranks() == mv.from().ranks() {
                         rank_pieces += 1;
                     }
                 }
             }
         }
-        if pieces > 1 {
+        if pieces > 1 || (mv.mover_piece() == Piece::Pawn && mv.is_capture()) {
             // need to resolve ambiguity
-            if file_pieces == 1 {
+            if file_pieces == 1  {
                 s += &mv.from().files();
             } else if rank_pieces == 1 {
                 s += &mv.from().ranks();
@@ -327,7 +327,14 @@ impl MoveValidator for Board {
     }
 
     fn to_san_moves(&self, moves: &MoveList) -> String {
-        "No impl".to_string()
+        let mut strings: Vec<String> = Vec::new();
+        let mut board = self.clone();
+        for mv in moves.iter() {
+            // FIXMEis valid
+            strings.push(board.to_san(mv));
+            board = board.make_move(mv);
+        }
+        strings.join(", ")
     }
 
 
@@ -380,7 +387,7 @@ mod tests {
     }
 
     #[test]
-    fn test_movelist() {
+    fn test_movelist() -> Result<(), String> {
         let move_a1b2 = Move { from: a1, to: b2, ..Default::default() };
         let promo_a7a8 = Move { from: a7, to: a8, promo: Piece::Queen, ..Default::default() };
 
@@ -394,17 +401,17 @@ mod tests {
 
         let board = Catalog::starting_position();
 
-        let list = board.parse_uci_choices("a2a3, b2b3  c2c4  ").unwrap();
+        let list = board.parse_uci_choices("a2a3, b2b3  c2c4  ")?;
         assert_eq!( list.to_string(), "a2a3, b2b3, c2c4");
 
-        let list = board.parse_uci_choices("1. a2a3, 2. b2b3  c2c4  ").unwrap();
+        let list = board.parse_uci_choices("1. a2a3, 2. b2b3  c2c4  ")?;
         assert_eq!( list.to_string(), "a2a3, b2b3, c2c4");
 
-        let list = board.parse_uci_moves("1. a2a3 h7h6 2. b2b3 h6h5").unwrap();
+        let list = board.parse_uci_moves("1. a2a3 h7h6 2. b2b3 h6h5")?;
         assert_eq!( list.to_string(), "a2a3, h7h6, b2b3, h6h5");
 
 
-        let list = board.parse_san_choices("Nc3, c3  Pc2c3").unwrap();
+        let list = board.parse_san_choices("Nc3, c3  Pc2c3")?;
         assert_eq!( list.to_string(), "b1c3, c2c3, c2c3");
 
         let san = r"
@@ -430,7 +437,14 @@ mod tests {
             s += "h4g5, h5g3, f2g3, h6g5, h1h8, g7h8, ";
 
             s += "e1d2, e8c8, c4e3, e7e6, a1h1, b7b5";
-            assert_eq!(board.parse_san_moves(san).unwrap().to_string(), s);
+        assert_eq!(board.parse_san_moves(san)?.to_string(), s);
+        assert_eq!(board.to_san_moves(&board.parse_san_moves(san)?), "");
+
+        let board = Board::parse_fen("rnbqkbnr/pp2ppp1/2pp3p/8/3P1B2/8/PPPNPPPP/R2QKBNR w KQkq - 0 4").unwrap();
+        println!("{}", board.legal_moves());
+        let mv = board.parse_uci_move("g1f3")?;
+        assert_eq!(board.to_san(&mv), "Ngf3");
+        Ok(())
     }
 
     #[test]
