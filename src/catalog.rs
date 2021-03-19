@@ -49,7 +49,14 @@ impl Catalog {
         ]
     }
 
-
+    pub fn mate_in_3() -> [Board;1] {
+        [
+            // http://wtharvey.com/m8n3.txt
+            // William Evans vs Alexander MacDonnell, London, 1826
+            //1. Bb5+ c6 2. Qe6+ Qe7 3. Qxe7# 
+            Board::parse_fen("r3k2r/ppp2Npp/1b5n/4p2b/2B1P2q/BQP2P2/P5PP/RN5K w kq - 1 1").unwrap().as_board(),
+        ]
+    }
 
 
 

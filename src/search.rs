@@ -270,6 +270,7 @@ mod tests {
     use crate::board::boardbuf::*;
     use crate::catalog::*;
     use crate::eval::*;
+    use crate::movelist::MoveValidator;
 
     fn init() {
         env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
@@ -307,13 +308,22 @@ mod tests {
 
 
     #[test]
-    fn test_mate_in_2() {
+    fn test_mate_in_x() {
         let board = Catalog::mate_in_2()[0].clone();
         let mut search = Search::new().depth(3).minmax(false); 
         search.search(board);
         assert_eq!(search.pv.extract_pv().to_string(), "d5f6, g7f6, c4f7"); 
         assert_eq!(search.score.unwrap(), Score::WhiteWin{minus_ply:-3}); 
         println!("{}", search);
+
+        let board = Catalog::mate_in_3()[0].clone();
+        let mut search = Search::new().depth(5).minmax(false); 
+        search.search(board.clone());
+        let san = board.to_san_moves(&search.pv.extract_pv()).replace("\n", " ");
+        println!("{}", search);
+        assert_eq!(san, "1. Bb5+ c6 2. Qe6+ Qe7 3. Qxe7+"); 
+        assert_eq!(search.score.unwrap(), Score::WhiteWin{minus_ply:-3}); 
+
     }
 
 
