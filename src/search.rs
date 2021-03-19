@@ -5,6 +5,8 @@ use crate::pvtable::PvTable;
 use crate::eval::{Scorable, Score, SimpleScorer};
 use crate::movelist::{Move};
 use crate::types::Color;
+use std::time;
+use std::fmt;
 
 // CPW
 //
@@ -120,6 +122,7 @@ pub struct Search {
     // stats
     interior_nodes: u64,
     leaf_nodes: u64,  // FIXME and terminal 
+    elapsed: time::Duration,
 
     // output
     pub pv: PvTable,
@@ -154,6 +157,19 @@ impl Search {
     }
 }
 
+impl fmt::Display for Search {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "pv               :{}", self.pv.extract_pv())?;
+        writeln!(f, "score            :{}", self.score.unwrap())?;
+        writeln!(f, "node count       :{}", self.node_count())?;
+        writeln!(f, "interior nodes   :{}", self.interior_nodes)?;
+        writeln!(f, "leaf nodes       :{}", self.leaf_nodes)?;
+        writeln!(f, "branching factor :{:.02}", self.branching_factor())?;
+        writeln!(f, "elapsed (ms)     :{}", self.elapsed.as_millis())?;
+        writeln!(f, "nodes/sec (k)    :{}", self.knps())?;
+        Ok(())
+    }
+}
 
 /// stats methods
 impl Search {
@@ -164,15 +180,21 @@ impl Search {
     pub fn branching_factor(&self) -> f64 {
         self.leaf_nodes as f64 / self.interior_nodes as f64
     }
+
+    pub fn knps(&self) -> u128 {
+        self.node_count() as u128 / (1+self.elapsed.as_millis())
+    }
 }
 
 
 impl Search {    
     pub fn search(&mut self, mut board: Board) {
+        let start_time = time::Instant::now();
         let mut node = Node::root(&mut board);
         self.alphabeta(&mut node);
         self.best_move = Some(node.best_move);
         self.score = Some(node.score);
+        self.elapsed = start_time.elapsed();
     }
 
 
@@ -280,6 +302,7 @@ mod tests {
         let board = Catalog::starting_position();
         let mut search = Search::new().depth(3).minmax(false);
         search.search(board);
+        println!("{}", search);
     }
 
 
@@ -290,6 +313,7 @@ mod tests {
         search.search(board);
         assert_eq!(search.pv.extract_pv().to_string(), "d5f6, g7f6, c4f7"); 
         assert_eq!(search.score.unwrap(), Score::WhiteWin{minus_ply:-3}); 
+        println!("{}", search);
     }
 
 
@@ -305,12 +329,7 @@ mod tests {
         eval.position = false;
         let mut search = Search::new().depth(9).minmax(false).eval(eval); //9
         search.search(board);
-        println!(
-            "AndyFish best move: {} with score (+ve for white): {}",
-            search.pv.extract_pv(),
-            search.score.unwrap()
-        );
-        println!("Positions examined: {}   bf:{}", search.node_count(), search.branching_factor() );
+        println!("{}", search );
     }
 }
 
