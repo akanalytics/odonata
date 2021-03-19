@@ -1,13 +1,12 @@
-use crate::bitboard::{Bitboard};
-use crate::types::{Piece, Color, CastlingRights};
-use std::fmt::{self, Write};
+use crate::bitboard::Bitboard;
 use crate::board::boardbuf::BoardBuf;
+use crate::types::{CastlingRights, Color, Piece};
+use std::fmt::{self, Write};
 use std::iter::*;
 
 pub mod boardbuf;
-pub mod movegen;
 pub mod makemove;
-
+pub mod movegen;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Board {
@@ -17,10 +16,8 @@ pub struct Board {
     en_passant: Bitboard,
     turn: Color,
     fifty_clock: u16,
-    fullmove_count: u16,
-    
+    halfmove_count: i32,
     // interior mutability (precludes copy trait)
-    
     // moves: MoveList,
 }
 
@@ -28,8 +25,8 @@ impl Board {
     /// white to move, no castling rights or en passant
     #[inline]
     pub fn new_empty() -> Board {
-            Default::default()
-        }
+        Default::default()
+    }
 
     #[inline]
     pub fn castling(&self) -> CastlingRights {
@@ -112,13 +109,26 @@ impl Board {
     }
 
     #[inline]
-    pub fn fifty_halfmove_clock(&self) -> u32 {
+    pub fn fifty_halfmove_clock(&self) -> i32 {
         self.fifty_clock.into()
     }
 
     #[inline]
-    pub fn fullmove_counter(&self) -> u32 {
-        self.fullmove_count.into()
+    pub fn fullmove_counter(&self) -> i32 {
+        self.halfmove_count as i32 / 2 + 1
+    }
+
+    #[inline]
+    fn set_fullmove_counter(&mut self, fullmove_counter: i32, turn: Color) {
+        // 1w fmc -> 0 hmc
+        // 1b fmc -> 1 hmc
+        // 2w fmc -> 2 hmc
+        // 2b fmc -> 3 hmc
+        self.halfmove_count = turn.chooser_wb(fullmove_counter * 2 - 2, fullmove_counter * 2 - 1);
+    }
+    #[inline]
+    pub fn ply(&self) -> i32 {
+        self.halfmove_count as i32
     }
 
     #[inline]
@@ -131,12 +141,10 @@ impl Board {
         Piece::None
     }
 
-
     pub fn to_fen(&self) -> String {
         let b = Board::adopt(self.clone());
-        
-        let mut fen = Bitboard::RANKS.iter().rev().map(|&r|b.get(r)).collect::<Vec<String>>().join("/");
 
+        let mut fen = Bitboard::RANKS.iter().rev().map(|&r| b.get(r)).collect::<Vec<String>>().join("/");
 
         // replace continguous empties by a count
         for i in (1..=8).rev() {
@@ -153,7 +161,6 @@ impl Board {
         )
     }
 }
-
 
 impl fmt::Display for Board {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -178,27 +185,26 @@ impl Default for Board {
             en_passant: Default::default(),
             turn: Default::default(),
             fifty_clock: Default::default(),
-            fullmove_count: 1
+            halfmove_count: 0, 
             // moves: MoveList,
-        }        
+        }
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {
     use super::boardbuf::*;
-    use crate::catalog::*;
     use super::*;
+    use crate::catalog::*;
     use crate::globals::constants::*;
-
-
 
     #[test]
     fn to_fen() {
-        for &fen in &["7k/8/8/8/8/8/8/7K b KQkq - 45 100", Catalog::STARTING_POSITION_FEN, "8/8/8/8/8/8/8/B7 w - - 0 0"]
-        {
+        for &fen in &[
+            "7k/8/8/8/8/8/8/7K b KQkq - 45 100",
+            Catalog::STARTING_POSITION_FEN,
+            "8/8/8/8/8/8/8/B7 w - - 0 0",
+        ] {
             let b = Board::parse_fen(fen).unwrap().as_board();
             assert_eq!(fen, b.to_fen());
         }

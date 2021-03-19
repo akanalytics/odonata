@@ -40,7 +40,7 @@ impl Catalog {
             // http://wtharvey.com/m8n2.txt
             // Henry Buckle vs NN, London, 1840
             // 1. Nf6+ gxf6 2. Bxf7# 
-            Board::parse_fen("r2qkb1r/pp2nppp/3p4/2pNN1B1/2BnP3/3P4/PPP2PPP/R2bK2R w KQkq - 1 0").unwrap().as_board(),
+            Board::parse_fen("r2qkb1r/pp2nppp/3p4/2pNN1B1/2BnP3/3P4/PPP2PPP/R2bK2R w KQkq - 1 1").unwrap().as_board(),
             
             
             // Alexander Areshchenko vs Sergei Zhigalko, Kiev, 6/6/2013

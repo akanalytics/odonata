@@ -289,7 +289,7 @@ mod tests {
         let mut search = Search::new().depth(3).minmax(false); 
         search.search(board);
         assert_eq!(search.pv.extract_pv().to_string(), "d5f6, g7f6, c4f7"); 
-        assert_eq!(search.score.unwrap(), Score::WhiteWin); 
+        assert_eq!(search.score.unwrap(), Score::WhiteWin{minus_ply:-3}); 
     }
 
 

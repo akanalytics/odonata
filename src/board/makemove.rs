@@ -22,7 +22,7 @@ impl MoveMaker for Board {
         let mut board = Board {
             en_passant: Bitboard::EMPTY,
             turn: self.turn.opposite(),
-            fullmove_count: if self.turn == Color::Black { self.fullmove_count + 1 } else { self.fullmove_count },
+            halfmove_count: self.halfmove_count + 1,
             fifty_clock: self.fifty_clock + 1,
             // moves: self.moves.clone(),
             ..*self

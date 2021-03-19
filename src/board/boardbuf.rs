@@ -131,8 +131,9 @@ impl BoardBuf for Board {
         bb.en_passant = if words[3] == "-" { Bitboard::EMPTY } else { Bitboard::parse_square(words[3])? };
         bb.fifty_clock =
             words[4].parse().map_err(|e| format!("Invalid halfmove clock '{}' - {}", words[4], e))?;
-        bb.fullmove_count =
+        let fullmove_count =
             words[5].parse().map_err(|e| format!("Invalid fullmove count '{}' - {}", words[5], e))?;
+        bb.set_fullmove_counter(fullmove_count, bb.turn);
         Ok(bb)
     }
 
