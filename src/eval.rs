@@ -135,7 +135,7 @@ impl Score {
             return Score::Millipawns(0);
         }
         if let Some(c) = o.winning_color() {
-            return c.chooser_wb(Score::WhiteWin { minus_ply: -ply }, Score::WhiteLoss { ply: ply });
+            return c.chooser_wb(Score::WhiteWin { minus_ply: -ply }, Score::WhiteLoss { ply });
         }
         panic!(format!("Tried to final score a non-final board outcome:{}", o));
     }

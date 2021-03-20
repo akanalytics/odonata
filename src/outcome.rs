@@ -29,14 +29,10 @@ impl fmt::Display for Outcome {
 impl Outcome {
     #[inline]
     pub fn is_draw(self) -> bool {
-        match self {
-            Self::InProgress
-            | Self::WinWhite
-            | Self::WinBlack
-            | Self::WinOnTimeWhite
-            | Self::WinOnTimeBlack => false,
-            _ => true,
-        }
+        !matches!(
+            self,
+            Self::InProgress | Self::WinWhite | Self::WinBlack | Self::WinOnTimeWhite | Self::WinOnTimeBlack
+        )
     }
 
     #[inline]

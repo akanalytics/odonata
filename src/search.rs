@@ -74,7 +74,7 @@ pub struct Node<'b> {
 
 impl Node<'_> {
     #[inline]
-    fn root<'c>(board: &'c mut Board) -> Node<'c> {
+    fn root(board: &mut Board) -> Node {
         let score = if Self::is_maximizing(board) { Score::MinusInfinity } else { Score::PlusInfinity };
         Node {
             board,

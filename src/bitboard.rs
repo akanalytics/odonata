@@ -154,16 +154,16 @@ impl Bitboard {
 
     pub fn files(self) -> String {
         let mut files: Vec<char> = self.iter().map(|bb| Self::sq_as_file(bb.first_square())).collect();
-        files.sort();
+        files.sort_unstable();
         files.dedup();
         files.iter().collect()
     }
 
     pub fn ranks(self) -> String {
-        let mut files: Vec<char> = self.iter().map(|bb| Self::sq_as_rank(bb.first_square())).collect();
-        files.sort();
-        files.dedup();
-        files.iter().collect()
+        let mut ranks: Vec<char> = self.iter().map(|bb| Self::sq_as_rank(bb.first_square())).collect();
+        ranks.sort_unstable();
+        ranks.dedup();
+        ranks.iter().collect()
     }
 
     pub fn sq_as_file(sq: usize) -> char {

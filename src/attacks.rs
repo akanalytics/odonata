@@ -54,7 +54,7 @@ pub trait BitboardAttacks {
             return (Bitboard::EMPTY, Bitboard::EMPTY);
         }
 
-        return (east & en_passant, west & en_passant);
+        (east & en_passant, west & en_passant)
     }
 }
 
@@ -62,6 +62,12 @@ pub struct ClassicalBitboard {
     rays: [[Bitboard; 8]; 64],
     king_moves: [Bitboard; 64],
     knight_moves: [Bitboard; 64],
+}
+
+impl Default for ClassicalBitboard {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ClassicalBitboard {

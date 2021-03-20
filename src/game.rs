@@ -64,7 +64,7 @@ impl Game {
             self.board = self.board.make_move(&mv);
             return mv;
         }
-        return Move::new_null();
+        Move::new_null()
     }
 
     pub fn play(&mut self) {

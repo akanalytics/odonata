@@ -26,7 +26,7 @@ impl PvTable {
     }
     pub fn set(&mut self, ply: u32, m: &Move) {
         let ply = ply as usize;
-        self.matrix[ply][0] = m.clone();
+        self.matrix[ply][0] = *m;
         if self.size <= ply {
             self.size = ply + 1;
         }

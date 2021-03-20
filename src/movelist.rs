@@ -262,15 +262,13 @@ impl MoveValidator for Board {
         let mut file_pieces = 0;
         let mut rank_pieces = 0;
         for lm in self.legal_moves().iter() {
-            if lm.to() == mv.to() {
-                if lm.mover_piece() == mv.mover_piece() {
-                    pieces += 1;
-                    if lm.from().files() == mv.from().files() {
-                        file_pieces += 1;
-                    }
-                    if lm.from().ranks() == mv.from().ranks() {
-                        rank_pieces += 1;
-                    }
+            if lm.to() == mv.to() && lm.mover_piece() == mv.mover_piece() {
+                pieces += 1;
+                if lm.from().files() == mv.from().files() {
+                    file_pieces += 1;
+                }
+                if lm.from().ranks() == mv.from().ranks() {
+                    rank_pieces += 1;
                 }
             }
         }

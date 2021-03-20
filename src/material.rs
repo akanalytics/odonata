@@ -16,8 +16,8 @@ impl Material {
         m
     }
 
-    /// Material.from_str("PPPBNRQKppbbqk")
-    pub fn from_str(s: &str) -> Result<Material, String> {
+    /// Material.from_piece_str("PPPBNRQKppbbqk")
+    pub fn from_piece_str(s: &str) -> Result<Material, String> {
         let mut m: Material = Default::default();
         for ch in s.chars() {
             let p = Piece::from_char(ch)?;
@@ -96,10 +96,10 @@ mod tests {
         assert_eq!(mat1.counts(Color::White, Piece::King), 1);
         assert_eq!(mat1.counts(Color::White, Piece::Pawn), 8);
 
-        let mat2 = Material::from_str("PPPPPPPPNNBBRRQKppppppppnnbbrrqk").unwrap();
+        let mat2 = Material::from_piece_str("PPPPPPPPNNBBRRQKppppppppnnbbrrqk").unwrap();
         assert_eq!(mat1, mat2);
 
-        let mat3 = Material::from_str("KBk").unwrap();
+        let mat3 = Material::from_piece_str("KBk").unwrap();
         assert_ne!(mat2, mat3);
 
         assert!(mat3.is_insufficient());

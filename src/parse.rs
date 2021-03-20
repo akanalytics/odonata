@@ -79,7 +79,7 @@ impl Parse {
         }
 
         // pawn prefixs are omiited
-        if piece == "" && !dst_square.is_empty() {
+        if piece.is_empty() && !dst_square.is_empty() {
             piece = "P";
         }
 
@@ -87,19 +87,19 @@ impl Parse {
         // this is slow but easy to understand. Castling has already been dealt with
         let mut matching_moves = MoveList::new();
         for lm in legal_moves.iter() {
-            if dst_square != "" && lm.to() != Bitboard::parse_square(&dst_square)? {
+            if !dst_square.is_empty() && lm.to() != Bitboard::parse_square(&dst_square)? {
                 continue;
             }
-            if src_file != "" && lm.from().sq_as_uci().take_substring(0, 1) != src_file {
+            if !src_file.is_empty() && lm.from().sq_as_uci().take_substring(0, 1) != src_file {
                 continue;
             }
-            if src_rank != "" && lm.from().sq_as_uci().take_substring(1, 1) != src_rank {
+            if !src_rank.is_empty() && lm.from().sq_as_uci().take_substring(1, 1) != src_rank {
                 continue;
             }
-            if piece != "" && board.piece_at(lm.from()).to_upper_char().to_string() != piece {
+            if !piece.is_empty() && board.piece_at(lm.from()).to_upper_char().to_string() != piece {
                 continue;
             }
-            if promo != "" && lm.promo_piece().to_char(Some(Color::Black)).to_string() != promo {
+            if !promo.is_empty() && lm.promo_piece().to_char(Some(Color::Black)).to_string() != promo {
                 continue;
             }
             // lm is castle but s isnt

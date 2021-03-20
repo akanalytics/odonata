@@ -38,7 +38,7 @@ pub fn chooser_wb<T>(c: Color, white: T, black: T) -> T {
 
 #[inline]
 pub fn chooser_struct<'a, T>(c: Color, choices: &'a Chooser<&T>) -> &'a T {
-    return [&choices.white, &choices.black][c as usize];
+    [&choices.white, &choices.black][c as usize]
 }
 
 bitflags! {
@@ -106,19 +106,19 @@ impl CastlingRights {
 impl fmt::Display for CastlingRights {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.is_empty() {
-            return write!(f, "{}", '-');
+            return write!(f, "-");
         }
         if self.contains(Self::WHITE_KING) {
-            write!(f, "{}", 'K')?
+            write!(f, "K")?
         }
         if self.contains(Self::WHITE_QUEEN) {
-            write!(f, "{}", 'Q')?
+            write!(f, "Q")?
         }
         if self.contains(Self::BLACK_KING) {
-            write!(f, "{}", 'k')?
+            write!(f, "k")?
         }
         if self.contains(Self::BLACK_QUEEN) {
-            write!(f, "{}", 'q')?
+            write!(f, "q")?
         }
         Ok(())
     }

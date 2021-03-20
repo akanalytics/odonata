@@ -335,7 +335,7 @@ impl MoveGen for Board {
 
 pub fn perft(board: &Board, depth: u32) -> u64 {
     if depth == 0 {
-        return 1;
+        1
     } else {
         let moves = board.legal_moves();
         let mut count = 0u64;
