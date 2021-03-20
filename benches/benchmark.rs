@@ -1,13 +1,13 @@
-use flounder::search::Search;
+use cantor::search::Search;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use flounder::bitboard::*;
-use flounder::board::makemove::*;
-use flounder::board::movegen::*;
-use flounder::movelist::*;
-use flounder::eval::*;
-use flounder::material::*;
-use flounder::catalog::*;
-use flounder::types::*;
+use cantor::bitboard::*;
+use cantor::board::makemove::*;
+use cantor::board::movegen::*;
+use cantor::movelist::*;
+use cantor::eval::*;
+use cantor::material::*;
+use cantor::catalog::*;
+use cantor::types::*;
 
 
 

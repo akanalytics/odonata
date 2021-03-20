@@ -1,12 +1,12 @@
 [package]
-name = "flounder"
+name = "cantor"
 version = "0.1.0"
 authors = ["andy <andy@webcalculator.com>"]
 edition = "2018"
 description = """
 Chess
 """
-repository = "https://github.com/akanalytics/flounder"
+repository = "https://github.com/akanalytics/cantor"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -30,6 +30,6 @@ harness = false
 
 
 [lib]
-name = "flounder"
+name = "cantor"
 path = "src/lib.rs"
 
