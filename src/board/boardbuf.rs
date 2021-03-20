@@ -1,14 +1,12 @@
-
-use super::{Board};
-use crate::types::{CastlingRights, Color, Piece};
+use super::Board;
 use crate::bitboard::Bitboard;
+use crate::types::{CastlingRights, Color, Piece};
 
 /// BoardBuf is a slow performing facade of convenience methods on board
 // #[derive(Clone)]
 // pub struct BoardBuf {
 //     board: Board,
 // }
-
 
 pub trait BoardBuf {
     fn set_turn(&mut self, c: Color);
@@ -19,11 +17,9 @@ pub trait BoardBuf {
     fn set(&mut self, bb: Bitboard, pieces: &str) -> Result<&mut Self, String>;
     fn parse_pieces(fen: &str) -> Result<Board, String>;
     fn parse_fen(fen: &str) -> Result<Board, String>;
-    fn as_board(&self) -> Board;  // FIXME
+    fn as_board(&self) -> Board; // FIXME
     fn adopt(board: Board) -> Board; // FIXME
 }
-
-
 
 impl BoardBuf for Board {
     // pub fn new_empty() -> BoardBuf {
@@ -135,7 +131,6 @@ impl BoardBuf for Board {
             words[5].parse().map_err(|e| format!("Invalid fullmove count '{}' - {}", words[5], e))?;
         Ok(bb)
     }
-
 }
 
 // impl std::ops::Index<Bitboard> for BoardBuf {
@@ -151,8 +146,6 @@ impl BoardBuf for Board {
 //     fn index_mut(&mut self, index: Bitboard) -> &mut char {
 //     }
 // }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -179,7 +172,7 @@ mod tests {
 
         // assert_eq!(board[a1], 'R');
         let mut board1 = Board::new_empty();
-        board1 = board1 
+        board1 = board1
             .set(Bitboard::RANK_2, "PPPPPPPP")?
             .set(a1 | h1, "RR")?
             .set(b1 | g1, "NN")?
@@ -222,7 +215,10 @@ mod tests {
     }
     #[test]
     fn parse_invalid_fen() -> Result<(), String> {
-        assert_eq!(Board::parse_fen("7k/8/8/8/8/8/8/7K B Qkq - 45 100").err(), Some("Invalid color: 'B'".into()));
+        assert_eq!(
+            Board::parse_fen("7k/8/8/8/8/8/8/7K B Qkq - 45 100").err(),
+            Some("Invalid color: 'B'".into())
+        );
         assert_eq!(
             Board::parse_fen("7k/8/8/8/8/8/8/7K b XQkq - 45 100").err(),
             Some("Invalid character 'X' in castling rights 'XQkq'".into())
@@ -237,5 +233,4 @@ mod tests {
         );
         Ok(())
     }
-
 }

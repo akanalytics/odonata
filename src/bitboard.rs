@@ -54,9 +54,26 @@ bitflags! {
 impl Bitboard {
     // const EDGES:Self = Self::FILE_A.or(Self::FILE_H).or(Self::RANK_1).or(Self::RANK_8);
     pub const PROMO_RANKS: Self = Self::RANK_1.or(Self::RANK_8);
-    pub const RANKS: [Self;8] = [Self::RANK_1, Self::RANK_2, Self::RANK_3, Self::RANK_4, Self::RANK_5, Self::RANK_6, Self::RANK_7, Self::RANK_8];
-    pub const FILES: [Self;8] = [Self::FILE_A, Self::FILE_B, Self::FILE_C, Self::FILE_D, Self::FILE_E, Self::FILE_F, Self::FILE_G, Self::FILE_H];
-
+    pub const RANKS: [Self; 8] = [
+        Self::RANK_1,
+        Self::RANK_2,
+        Self::RANK_3,
+        Self::RANK_4,
+        Self::RANK_5,
+        Self::RANK_6,
+        Self::RANK_7,
+        Self::RANK_8,
+    ];
+    pub const FILES: [Self; 8] = [
+        Self::FILE_A,
+        Self::FILE_B,
+        Self::FILE_C,
+        Self::FILE_D,
+        Self::FILE_E,
+        Self::FILE_F,
+        Self::FILE_G,
+        Self::FILE_H,
+    ];
 
     // insert, remove, set(true/false), toggle come for free
 
@@ -122,19 +139,18 @@ impl Bitboard {
 
     #[inline]
     pub fn last(self) -> Self {
-        Bitboard::from_bits_truncate(1 << self.last_square())  // MSb
+        Bitboard::from_bits_truncate(1 << self.last_square()) // MSb
     }
 
     #[inline]
     pub fn first(self) -> Self {
-        Bitboard::from_bits_truncate(1 << self.first_square())  // LSb
+        Bitboard::from_bits_truncate(1 << self.first_square()) // LSb
     }
 
     #[inline]
     pub fn iter(self) -> BitIterator {
         BitIterator { bb: self }
     }
-
 
     pub fn files(self) -> String {
         let mut files: Vec<char> = self.iter().map(|bb| Self::sq_as_file(bb.first_square())).collect();
@@ -164,7 +180,7 @@ impl Bitboard {
         let s = self.first_square();
         let f = Self::sq_as_file(s);
         let r = Self::sq_as_rank(s);
-        format!("{}{}", f, r )
+        format!("{}{}", f, r)
     }
 
     pub fn uci(self) -> String {
@@ -172,32 +188,27 @@ impl Bitboard {
         strings.join("+")
     }
 
-
     pub fn parse_rank(s: &str) -> Result<Bitboard, String> {
         match s.chars().next() {
             Some(ch) if ('1'..='8').contains(&ch) => Ok(Self::RANKS[ch as usize - b'1' as usize]),
-            _ =>  Err(format!("Invalid rank '{}'", s))
+            _ => Err(format!("Invalid rank '{}'", s)),
         }
     }
 
     pub fn parse_file(s: &str) -> Result<Bitboard, String> {
         match s.chars().next() {
             Some(ch) if ('a'..='h').contains(&ch) => Ok(Self::FILES[ch as usize - b'a' as usize]),
-            _ =>  Err(format!("Invalid file '{}'", s))
+            _ => Err(format!("Invalid file '{}'", s)),
         }
     }
-
 
     pub fn parse_square(s: &str) -> Result<Bitboard, String> {
         if s.len() != 2 {
             return Err(format!("Invalid square '{}'", s));
         }
-        let chars: Vec<&str> = s.split("").collect();  // gives empty [0]
+        let chars: Vec<&str> = s.split("").collect(); // gives empty [0]
         Ok(Self::parse_file(chars[1])? & Self::parse_rank(chars[2])?)
-        
     }
-
-
 }
 
 pub struct BitIterator {
@@ -224,15 +235,12 @@ impl Iterator for BitIterator {
     }
 }
 
-
-
-
 impl fmt::Display for Bitboard {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         for r in (0..8).rev() {
             for f in 0..8 {
                 let bit = 1 << (r * 8 + f);
-                fmt.write_str(if self.contains(Bitboard::from_bits_truncate(bit)) { "1 " } else { ". "})?;
+                fmt.write_str(if self.contains(Bitboard::from_bits_truncate(bit)) { "1 " } else { ". " })?;
             }
             fmt.write_char('\n')?;
         }
@@ -316,13 +324,12 @@ mod tests {
     #[test]
     fn test_formats() {
         assert_eq!(a1.files(), "a");
-        assert_eq!((a1|b1|c1).files(), "abc");
+        assert_eq!((a1 | b1 | c1).files(), "abc");
         assert_eq!(Bitboard::all().files(), "abcdefgh");
 
         assert_eq!(a1.ranks(), "1");
-        assert_eq!((a1|b5|e5).ranks(), "15");
+        assert_eq!((a1 | b5 | e5).ranks(), "15");
         assert_eq!(Bitboard::all().ranks(), "12345678");
-
 
         assert_eq!(a1.sq_as_uci(), "a1");
         assert_eq!(h1.sq_as_uci(), "h1");

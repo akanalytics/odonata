@@ -27,12 +27,10 @@ impl Material {
         Ok(m)
     }
 
-
     #[inline]
     pub fn counts(&self, c: Color, p: Piece) -> i32 {
         self.counts[c][p]
     }
-
 
     pub fn is_insufficient2(bd: &Board) -> bool {
         // If both sides have any one of the following, and there are no pawns on the board:
@@ -53,8 +51,8 @@ impl Material {
             return true; // cases 1, 2 & 3
         }
         if knights == 0 && bishops_w == 1 && bishops_b == 1 {
-            return true; // FIXME: color of bishop  case 4  
-        }        
+            return true; // FIXME: color of bishop  case 4
+        }
         false
     }
 
@@ -79,10 +77,7 @@ impl Material {
         if n + b + prq <= 2 {
             return true;
         }
-        if prq == 0
-            && self.counts[0][Piece::Bishop] == 1
-            && self.counts[1][Piece::Bishop] == 1
-        {
+        if prq == 0 && self.counts[0][Piece::Bishop] == 1 && self.counts[1][Piece::Bishop] == 1 {
             return true; //case 4
         }
         false

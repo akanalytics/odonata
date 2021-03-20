@@ -1,14 +1,13 @@
 use crate::bitboard::Bitboard;
-use crate::board::Board;
+use crate::board::makemove::MoveMaker;
 use crate::board::movegen::MoveGen;
+use crate::board::Board;
+use crate::parse::Parse;
 use crate::types::{CastlingRights, Color, Piece};
 use crate::utils::StringUtils;
-use std::fmt;
-use crate::parse::Parse;
-use std::ops::{Deref, DerefMut};
 use regex::Regex;
-use crate::board::makemove::MoveMaker;
-
+use std::fmt;
+use std::ops::{Deref, DerefMut};
 
 // FIXME: public methods
 #[derive(Debug, Default, Copy, Clone)]
@@ -22,12 +21,10 @@ pub struct Move {
 
     pub castle_side: CastlingRights,
     pub is_null: bool,
-    pub is_drop: bool,  // used for board setup not variant play
+    pub is_drop: bool, // used for board setup not variant play
 }
 
 impl Move {
-    
-    
     #[inline]
     pub fn new_null() -> Move {
         Move { is_null: true, ..Default::default() }
@@ -115,7 +112,7 @@ impl Move {
         }
         res
     }
-    
+
     pub fn parse_uci(s: &str) -> Result<Move, String> {
         let from = Bitboard::parse_square(s.take_slice(0..2))?;
         let to = Bitboard::parse_square(s.take_slice(2..4))?;
@@ -128,8 +125,6 @@ impl Move {
         Ok(Move { to, from, promo, ..Default::default() })
     }
 }
-
-
 
 impl fmt::Display for Move {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -177,7 +172,6 @@ impl fmt::Display for MoveList {
     }
 }
 
-
 pub trait MoveValidator {
     fn parse_uci_move(&self, mv: &str) -> Result<Move, String>;
     fn parse_uci_choices(&self, moves: &str) -> Result<MoveList, String>;
@@ -205,7 +199,7 @@ impl MoveValidator for Board {
         let s = s.replace(",", " ");
         let s = strip_move_numbers(&s);
         for mv in s.split_ascii_whitespace() {
-            moves.push(self.parse_uci_move(mv)? );
+            moves.push(self.parse_uci_move(mv)?);
         }
         Ok(moves)
     }
@@ -232,7 +226,7 @@ impl MoveValidator for Board {
         let s = s.replace(",", " ");
         let s = strip_move_numbers(&s);
         for mv in s.split_ascii_whitespace() {
-            moves.push(self.parse_san_move(mv)? );
+            moves.push(self.parse_san_move(mv)?);
         }
         Ok(moves)
     }
@@ -252,13 +246,13 @@ impl MoveValidator for Board {
 
     fn to_san(&self, mv: &Move) -> String {
         if mv.is_castle() {
-            if mv.castling_side().is_king_side() { 
-                return String::from("O-O"); 
-            } else { 
-                return String::from("O-O-O"); 
-            } 
-        }       
-        
+            if mv.castling_side().is_king_side() {
+                return String::from("O-O");
+            } else {
+                return String::from("O-O-O");
+            }
+        }
+
         let mut s = String::new();
         if mv.mover_piece() != Piece::Pawn {
             s += &mv.mover_piece().to_upper_char().to_string();
@@ -282,7 +276,7 @@ impl MoveValidator for Board {
         }
         if pieces > 1 || (mv.mover_piece() == Piece::Pawn && mv.is_capture()) {
             // need to resolve ambiguity
-            if file_pieces == 1  {
+            if file_pieces == 1 {
                 s += &mv.from().files();
             } else if rank_pieces == 1 {
                 s += &mv.from().ranks();
@@ -290,7 +284,7 @@ impl MoveValidator for Board {
                 s += &mv.from().sq_as_uci();
             }
         }
-        
+
         if mv.is_capture() {
             s.push('x');
         }
@@ -330,8 +324,6 @@ impl MoveValidator for Board {
         }
         s
     }
-
-
 }
 
 fn strip_move_numbers(s: &str) -> String {
@@ -345,16 +337,13 @@ fn strip_move_numbers(s: &str) -> String {
     re.replace_all(&s, "").to_string()
 }
 
-
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::globals::constants::*;
-    use crate::catalog::Catalog;
-    use crate::board::movegen::*;
     use crate::board::boardbuf::*;
+    use crate::board::movegen::*;
+    use crate::catalog::Catalog;
+    use crate::globals::constants::*;
 
     #[test]
     fn test_move() {
@@ -396,17 +385,16 @@ mod tests {
         let board = Catalog::starting_position();
 
         let list = board.parse_uci_choices("a2a3, b2b3  c2c4  ")?;
-        assert_eq!( list.to_string(), "a2a3, b2b3, c2c4");
+        assert_eq!(list.to_string(), "a2a3, b2b3, c2c4");
 
         let list = board.parse_uci_choices("1. a2a3, 2. b2b3  c2c4  ")?;
-        assert_eq!( list.to_string(), "a2a3, b2b3, c2c4");
+        assert_eq!(list.to_string(), "a2a3, b2b3, c2c4");
 
         let list = board.parse_uci_moves("1. a2a3 h7h6 2. b2b3 h6h5")?;
-        assert_eq!( list.to_string(), "a2a3, h7h6, b2b3, h6h5");
-
+        assert_eq!(list.to_string(), "a2a3, h7h6, b2b3, h6h5");
 
         let list = board.parse_san_choices("Nc3, c3  Pc2c3")?;
-        assert_eq!( list.to_string(), "b1c3, c2c3, c2c3");
+        assert_eq!(list.to_string(), "b1c3, c2c3, c2c3");
 
         let san = r"
             1. d4 c6 2. Bf4 d6 3. Nd2 h6 
@@ -421,22 +409,23 @@ mod tests {
             19. Kd2 O-O-O 20. Ne3 e6 21. Rh1 b5";
 
         let mut s = String::new();
-            s += "d2d4, c7c6, c1f4, d7d6, b1d2, h7h6, ";
-            s += "g1f3, g7g5, f4g3, d8b6, d2c4, b6b4, ";
+        s += "d2d4, c7c6, c1f4, d7d6, b1d2, h7h6, ";
+        s += "g1f3, g7g5, f4g3, d8b6, d2c4, b6b4, ";
 
-            s += "f3d2, c8e6, c2c3, b4b5, e2e3, e6c4, ";
-            s += "d2c4, b5d5, d1f3, d5f3, g2f3, b8d7, ";
+        s += "f3d2, c8e6, c2c3, b4b5, e2e3, e6c4, ";
+        s += "d2c4, b5d5, d1f3, d5f3, g2f3, b8d7, ";
 
-            s += "h2h4, f8g7, e3e4, g8f6, f1d3, f6h5, ";
-            s += "h4g5, h5g3, f2g3, h6g5, h1h8, g7h8, ";
+        s += "h2h4, f8g7, e3e4, g8f6, f1d3, f6h5, ";
+        s += "h4g5, h5g3, f2g3, h6g5, h1h8, g7h8, ";
 
-            s += "e1d2, e8c8, c4e3, e7e6, a1h1, b7b5";
+        s += "e1d2, e8c8, c4e3, e7e6, a1h1, b7b5";
         assert_eq!(board.parse_san_moves(san)?.to_string(), s);
         let s1: String = board.to_san_moves(&board.parse_san_moves(san)?).split_whitespace().collect();
         let s2: String = san.split_whitespace().collect();
         assert_eq!(s1, s2);
 
-        let board = Board::parse_fen("rnbqkbnr/pp2ppp1/2pp3p/8/3P1B2/8/PPPNPPPP/R2QKBNR w KQkq - 0 4").unwrap();
+        let board =
+            Board::parse_fen("rnbqkbnr/pp2ppp1/2pp3p/8/3P1B2/8/PPPNPPPP/R2QKBNR w KQkq - 0 4").unwrap();
         println!("{}", board.legal_moves());
         let mv = board.parse_uci_move("g1f3")?;
         assert_eq!(board.to_san(&mv), "Ngf3");
@@ -450,13 +439,13 @@ mod tests {
         let b1c3 = board.parse_uci_move("b1c3").unwrap();
         assert_eq!(board.to_san(&a2a3), "a3");
         assert_eq!(board.to_san(&b1c3), "Nc3");
-    
+
         let board = board.set(d3, "p").unwrap();
         let board = board.set(f3, "p").unwrap();
-        
+
         let c2d3 = board.parse_uci_move("c2d3").unwrap();
         assert_eq!(board.to_san(&c2d3), "cxd3");
-        
+
         let e2d3 = board.parse_uci_move("e2d3").unwrap();
         assert_eq!(board.to_san(&e2d3), "exd3");
 
@@ -482,8 +471,3 @@ mod tests {
         assert_eq!(board.to_san(&castle_q), "O-O-O");
     }
 }
-
-
-
-
-

@@ -39,7 +39,6 @@ fn attacked_by(targets: Bitboard, occ: Bitboard, board: &Board, opponent: Color)
     attackers
 }
 
-
 pub trait MoveGen {
     fn is_in_check(&self, c: Color) -> bool;
     fn will_check(&self, mv: &Move) -> bool;
@@ -49,13 +48,11 @@ pub trait MoveGen {
 }
 
 impl MoveGen for Board {
-
     fn will_check(&self, mv: &Move) -> bool {
-        debug_assert!( self.is_legal_move(mv) );
+        debug_assert!(self.is_legal_move(mv));
         let their_king_color = self.color_them();
-        self.make_move(mv).is_in_check( their_king_color )
+        self.make_move(mv).is_in_check(their_king_color)
     }
-
 
     /// called with is_in_check( board.turn() ) to see if currently in check
     fn is_in_check(&self, king_color: Color) -> bool {
@@ -184,7 +181,13 @@ impl MoveGen for Board {
             let attacks = attack_gen.knight_attacks(from.first_square()) & !us;
             for to in attacks.iter() {
                 if them.contains(to) {
-                    let m = Move { from, to, mover: Piece::Knight, capture: board.piece_at(to), ..Default::default() };
+                    let m = Move {
+                        from,
+                        to,
+                        mover: Piece::Knight,
+                        capture: board.piece_at(to),
+                        ..Default::default()
+                    };
                     // MoveEnum::Capture { to, from, mover: Piece::Knight, capture: board.piece_at(to) }
                     moves.push(m);
                 } else {
@@ -200,7 +203,13 @@ impl MoveGen for Board {
             // println!("{}\n{}\n{}\n", from, attacks, occupied);
             for to in attacks.iter() {
                 if them.contains(to) {
-                    let m = Move { from, to, mover: Piece::Bishop, capture: board.piece_at(to), ..Default::default() };
+                    let m = Move {
+                        from,
+                        to,
+                        mover: Piece::Bishop,
+                        capture: board.piece_at(to),
+                        ..Default::default()
+                    };
                     moves.push(m);
                 } else {
                     let m = Move { from, to, mover: Piece::Bishop, ..Default::default() };
@@ -212,7 +221,13 @@ impl MoveGen for Board {
             let attacks = !us & attack_gen.rook_attacks(occupied, from.first_square());
             for to in attacks.iter() {
                 if them.contains(to) {
-                    let m = Move { from, to, mover: Piece::Rook, capture: board.piece_at(to), ..Default::default() };
+                    let m = Move {
+                        from,
+                        to,
+                        mover: Piece::Rook,
+                        capture: board.piece_at(to),
+                        ..Default::default()
+                    };
                     moves.push(m);
                 } else {
                     let m = Move { from, to, mover: Piece::Rook, ..Default::default() };
@@ -226,7 +241,13 @@ impl MoveGen for Board {
                     | attack_gen.bishop_attacks(occupied, from.first_square()));
             for to in attacks.iter() {
                 if them.contains(to) {
-                    let m = Move { from, to, mover: Piece::Queen, capture: board.piece_at(to), ..Default::default() };
+                    let m = Move {
+                        from,
+                        to,
+                        mover: Piece::Queen,
+                        capture: board.piece_at(to),
+                        ..Default::default()
+                    };
                     moves.push(m);
                 } else {
                     let m = Move { from, to, mover: Piece::Queen, ..Default::default() };
@@ -238,7 +259,13 @@ impl MoveGen for Board {
             let attacks = !us & attack_gen.king_attacks(from.first_square());
             for to in attacks.iter() {
                 if them.contains(to) {
-                    let m = Move { from, to, mover: Piece::King, capture: board.piece_at(to), ..Default::default() };
+                    let m = Move {
+                        from,
+                        to,
+                        mover: Piece::King,
+                        capture: board.piece_at(to),
+                        ..Default::default()
+                    };
                     moves.push(m);
                 } else {
                     let m = Move { from, to, mover: Piece::King, ..Default::default() };
@@ -270,13 +297,19 @@ impl MoveGen for Board {
             if attacked_by(king_moves, occupied, board, color.opposite()).is_empty() {
                 // let rook_from = Bitboard::FILE_A & color.back_rank;
                 // let m = MoveEnum::Castle { king_dest, king_from: king, rook_dest, rook_from, right };
-                let m = Move { from: king, to: king_to, mover: Piece::King, castle_side: right, ..Default::default() };
+                let m = Move {
+                    from: king,
+                    to: king_to,
+                    mover: Piece::King,
+                    castle_side: right,
+                    ..Default::default()
+                };
                 moves.push(m);
             }
         }
 
         let right = CastlingRights::queen_side_right(color);
-        if rights.contains(right) 
+        if rights.contains(right)
             && !CastlingRights::queen_side_squares(color).intersects(occupied)
             && !king.is_empty()
         {
@@ -286,7 +319,13 @@ impl MoveGen for Board {
             if attacked_by(king_moves, occupied, board, color.opposite()).is_empty() {
                 // let rook_from = Bitboard::FILE_H & color.back_rank;
                 // let m = MoveEnum::Castle { king_dest, king_from: king, rook_dest, rook_from, right };
-                let m = Move { from: king, to: king_to, mover: Piece::King, castle_side: right, ..Default::default() };
+                let m = Move {
+                    from: king,
+                    to: king_to,
+                    mover: Piece::King,
+                    castle_side: right,
+                    ..Default::default()
+                };
                 moves.push(m);
             }
         }
@@ -345,7 +384,12 @@ mod tests {
                     let now = Instant::now();
                     let count = perft(&board, depth as u32);
                     assert_eq!(count, expected, "fen {} perft({})", board.to_fen(), depth);
-                    println!("perft({depth})={count} in {time} millis", depth=depth, count=count, time=now.elapsed().as_millis());
+                    println!(
+                        "perft({depth})={count} in {time} millis",
+                        depth = depth,
+                        count = count,
+                        time = now.elapsed().as_millis()
+                    );
                 }
                 // assert_eq!(&count, expected, "fen: {}", board.to_fen());
             }
@@ -362,7 +406,12 @@ mod tests {
                     let now = Instant::now();
                     let count = perft(&board, depth as u32);
                     assert_eq!(count, expected, "fen {} perft({})", board.to_fen(), depth);
-                    println!("perft({depth})={count} in {time} millis", depth=depth, count=count, time=now.elapsed().as_millis());
+                    println!(
+                        "perft({depth})={count} in {time} millis",
+                        depth = depth,
+                        count = count,
+                        time = now.elapsed().as_millis()
+                    );
                 }
                 // assert_eq!(&count, expected, "fen: {}", board.to_fen());
             }
@@ -389,11 +438,13 @@ mod tests {
         let mut moves = board.pseudo_legal_moves();
         assert_eq!(moves.sort().to_string(), "a2a3, a2a4, b2b3, b2b4, c2c3, c2c4");
 
-        let board = Board::parse_fen("8/8/8/8/8/p1p5/1P6/8 w - - 0 0 id P 'capture white'").unwrap().as_board();
+        let board =
+            Board::parse_fen("8/8/8/8/8/p1p5/1P6/8 w - - 0 0 id P 'capture white'").unwrap().as_board();
         let mut moves = board.pseudo_legal_moves();
         assert_eq!(moves.sort().to_string(), "b2a3, b2b3, b2b4, b2c3");
 
-        let board = Board::parse_fen("8/1p6/P1P5/8/8/8/1P6/8 b - - 0 0 id 'P capture black'").unwrap().as_board();
+        let board =
+            Board::parse_fen("8/1p6/P1P5/8/8/8/1P6/8 b - - 0 0 id 'P capture black'").unwrap().as_board();
         let mut moves = board.pseudo_legal_moves();
         assert_eq!(moves.sort().to_string(), "b7a6, b7b5, b7b6, b7c6");
 
@@ -414,7 +465,10 @@ mod tests {
     #[test]
     fn pawn_promotions() {
         let board = Board::parse_fen("8/P7/8/8/8/8/7k/K7 w - - 0 0 id 'promos #1'").unwrap().as_board();
-        assert_eq!(board.pseudo_legal_moves().sort().to_string(), "a1a2, a1b1, a1b2, a7a8b, a7a8n, a7a8q, a7a8r");
+        assert_eq!(
+            board.pseudo_legal_moves().sort().to_string(),
+            "a1a2, a1b1, a1b2, a7a8b, a7a8n, a7a8q, a7a8r"
+        );
     }
 
     #[test]
@@ -425,13 +479,15 @@ mod tests {
             "a1a2, a1a3, a1a4, a1a5, a1a6, a1a7, a1a8, a1b1, a1c1, a1d1, a1e1, a1f1, a1g1, a1h1"
         );
 
-        let board = Board::parse_fen("8/p7/P7/8/8/8/8/R7 w - - 0 0 id 'R with P blocking'").unwrap().as_board();
+        let board =
+            Board::parse_fen("8/p7/P7/8/8/8/8/R7 w - - 0 0 id 'R with P blocking'").unwrap().as_board();
         assert_eq!(
             board.pseudo_legal_moves().sort().to_string(),
             "a1a2, a1a3, a1a4, a1a5, a1b1, a1c1, a1d1, a1e1, a1f1, a1g1, a1h1"
         );
 
-        let board = Board::parse_fen("8/p7/p7/8/8/8/8/R7 w - - 0 0 id 'R with p to capture'").unwrap().as_board();
+        let board =
+            Board::parse_fen("8/p7/p7/8/8/8/8/R7 w - - 0 0 id 'R with p to capture'").unwrap().as_board();
         assert_eq!(
             board.pseudo_legal_moves().sort().to_string(),
             "a1a2, a1a3, a1a4, a1a5, a1a6, a1b1, a1c1, a1d1, a1e1, a1f1, a1g1, a1h1"
@@ -441,7 +497,10 @@ mod tests {
     #[test]
     fn knight_moves() {
         let board = Board::parse_fen("8/8/8/3N4/8/8/8/8 w - - 0 0 id 'N d5'").unwrap().as_board();
-        assert_eq!(board.pseudo_legal_moves().sort().to_string(), "d5b4, d5b6, d5c3, d5c7, d5e3, d5e7, d5f4, d5f6");
+        assert_eq!(
+            board.pseudo_legal_moves().sort().to_string(),
+            "d5b4, d5b6, d5c3, d5c7, d5e3, d5e7, d5f4, d5f6"
+        );
     }
 
     #[test]
@@ -458,8 +517,9 @@ mod tests {
 
     #[test]
     fn moves_in_check() {
-        let board =
-            Board::parse_fen("rnbqkbnr/pppp1ppp/4p3/3N4/8/8/PPPPPPPP/R1BQKBNR b KQkq - 1 2").unwrap().as_board();
+        let board = Board::parse_fen("rnbqkbnr/pppp1ppp/4p3/3N4/8/8/PPPPPPPP/R1BQKBNR b KQkq - 1 2")
+            .unwrap()
+            .as_board();
         assert!(board.en_passant().is_empty());
         // FIXME! assert b1.validate_move(Move.parse('e8e7'))
         // assert!(board.pseudo_legal_moves().contains(Move.parse("e8e7")));

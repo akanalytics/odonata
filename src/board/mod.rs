@@ -177,7 +177,7 @@ impl Default for Board {
             en_passant: Default::default(),
             turn: Default::default(),
             fifty_clock: Default::default(),
-            fullmove_counter: 1, 
+            fullmove_counter: 1,
             // moves: MoveList,
         }
     }

@@ -11,10 +11,10 @@ pub struct Parse;
 impl Parse {
     pub fn move_san(s: &str, board: &Board) -> Result<Move, String> {
         let orig = s; // save original string
-        //  convert 0's to O's
-        //  Wikipedia:
-        //    Castling is indicated by the special notations 0-0 (for kingside castling) and 0-0-0 (queenside castling).
-        //    While the FIDE standard [5] is to use the digit zero (0-0 and 0-0-0), PGN uses the uppercase letter O (O-O and O-O-O).[6]
+                      //  convert 0's to O's
+                      //  Wikipedia:
+                      //    Castling is indicated by the special notations 0-0 (for kingside castling) and 0-0-0 (queenside castling).
+                      //    While the FIDE standard [5] is to use the digit zero (0-0 and 0-0-0), PGN uses the uppercase letter O (O-O and O-O-O).[6]
         let mut s = orig.replace("0", "O");
 
         // Checkmate at the completion of moves is represented by the symbol "#" in standard FIDE notation and PGN.
@@ -60,7 +60,6 @@ impl Parse {
         // parse checkmates
         let _checkmate = s.contains('#');
 
-
         let legal_moves = board.legal_moves();
         // caps.get(0).unwrap().as_str();
         let mut piece = caps.get(1).map_or("", |m| m.as_str());
@@ -104,13 +103,13 @@ impl Parse {
                 continue;
             }
             // lm is castle but s isnt
-            if lm.is_castle() && lm.castling_side().is_king_side() && s != "O-O"  
-            ||
-            lm.is_castle() && lm.castling_side().is_queen_side() && s != "O-O-O" {
+            if lm.is_castle() && lm.castling_side().is_king_side() && s != "O-O"
+                || lm.is_castle() && lm.castling_side().is_queen_side() && s != "O-O-O"
+            {
                 continue;
             }
             // s is castle but lm isnt
-            if (s == "O-O" || s== "O-O-O") && !lm.is_castle() {
+            if (s == "O-O" || s == "O-O-O") && !lm.is_castle() {
                 continue;
             }
             matching_moves.push(*lm);
@@ -132,8 +131,8 @@ mod tests {
 
     use super::*;
     use crate::board::makemove::MoveMaker;
-    use crate::movelist::MoveValidator;
     use crate::catalog::Catalog;
+    use crate::movelist::MoveValidator;
 
     #[test]
     fn test_parse_move() {
@@ -168,7 +167,6 @@ mod tests {
         assert_eq!(mv.to_string(), uci);
         bd.make_move(&mv)
     }
-
 
     fn test_parse_pgn() {
         // [Event "Let\\'s Play!"]

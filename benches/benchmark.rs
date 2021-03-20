@@ -1,15 +1,13 @@
-use cantor::search::Search;
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use cantor::bitboard::*;
 use cantor::board::makemove::*;
 use cantor::board::movegen::*;
-use cantor::movelist::*;
+use cantor::catalog::*;
 use cantor::eval::*;
 use cantor::material::*;
-use cantor::catalog::*;
+use cantor::movelist::*;
+use cantor::search::Search;
 use cantor::types::*;
-
-
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 /*
 Bitboard 2.7ns (a|b)&c
@@ -21,7 +19,7 @@ legal_moves 966ns
 pseudo_legal_moves 300ns
 Score: 5 > 4  1ns
 
-search/minmax Depth 5  | search/alphabeta  Depth 5  
+search/minmax Depth 5  | search/alphabeta  Depth 5
 initial         = 482ms    5.7ms
 game end logic  = 6.8s     48ms
 & early fin - no effect
@@ -30,7 +28,7 @@ collect PV no effect
 12s (6.5s without game end test) - forgot to short circuit legal moves on leaf node
 
 
-search/alphabeta Depth 5  = 
+search/alphabeta Depth 5  =
 85 ms (48 ms without game end tests)
 
 Array (int = 6.3, enum = 6.7)
@@ -38,13 +36,12 @@ Array (int = 6.3, enum = 6.7)
 Material.is_insufficient 9.8ns
 
 
-Jons_problem 
+Jons_problem
 180s (9ply)
 1 hr (10ply)
 478s (looks at end of game)
 
 */
-
 
 fn bitwise_handcrafted(c: &mut Criterion) {
     let n1 = 1u64 << 3;
@@ -106,18 +103,16 @@ fn benchmark_score(c: &mut Criterion) {
     let mut group = c.benchmark_group("score");
     group.bench_function("handcrafted", |b| {
         b.iter(|| {
-            black_box( black_box(5) > black_box(4) );
+            black_box(black_box(5) > black_box(4));
         });
     });
     group.bench_function("score enum", |b| {
         b.iter(|| {
-            black_box( Score::Millipawns(black_box(5)) > Score::Millipawns(black_box(4)) );
+            black_box(Score::Millipawns(black_box(5)) > Score::Millipawns(black_box(4)));
         });
     });
     group.finish();
 }
-
-
 
 fn make_move(c: &mut Criterion) {
     let board = Catalog::starting_position();
@@ -200,7 +195,6 @@ fn bench_insufficient_material(c: &mut Criterion) {
     group.finish();
 }
 
-
 fn benchmark_search(c: &mut Criterion) {
     let mut group = c.benchmark_group("search");
     group.sample_size(10);
@@ -225,11 +219,10 @@ fn benchmark_search(c: &mut Criterion) {
     group.finish();
 }
 
-
 fn benchmark_array(c: &mut Criterion) {
     let mut group = c.benchmark_group("array");
     let array = [1, 2];
-        group.bench_function("int_index", |b| {
+    group.bench_function("int_index", |b| {
         b.iter(|| {
             black_box(black_box(array)[black_box(0)]);
             black_box(black_box(array)[black_box(1)]);
@@ -247,10 +240,6 @@ fn benchmark_array(c: &mut Criterion) {
     });
     group.finish();
 }
-
-
-
-
 
 criterion_group!(
     benches,

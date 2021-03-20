@@ -85,8 +85,8 @@ impl Game {
 
 impl fmt::Display for Game {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//        writeln!(f, "[Date \"{}\"]", self.white.name())?;
-//        writeln!(f, "[Time \"{}\"]", self.white.name())?;
+        //        writeln!(f, "[Date \"{}\"]", self.white.name())?;
+        //        writeln!(f, "[Time \"{}\"]", self.white.name())?;
         writeln!(f, "[White \"{}\"]", self.white.name())?;
         writeln!(f, "[Black \"{}\"]", self.black.name())?;
         writeln!(f, "[Result \"{}\"]", self.outcome().to_pgn())?;

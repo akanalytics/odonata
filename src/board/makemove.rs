@@ -1,7 +1,7 @@
 use crate::bitboard::Bitboard;
 use crate::board::Board;
-use crate::movelist::Move;
 use crate::globals::constants::*;
+use crate::movelist::Move;
 use crate::types::{CastlingRights, Color, Piece};
 
 pub trait MoveMaker {
@@ -22,7 +22,7 @@ impl MoveMaker for Board {
         let mut board = Board {
             en_passant: Bitboard::EMPTY,
             turn: self.turn.opposite(),
-            fullmove_counter: self.fullmove_counter + self.turn.chooser_wb(0 ,1 ),
+            fullmove_counter: self.fullmove_counter + self.turn.chooser_wb(0, 1),
             fifty_clock: self.fifty_clock + 1,
             // moves: self.moves.clone(),
             ..*self
@@ -38,7 +38,12 @@ impl MoveMaker for Board {
                 board.colors[board.turn].remove(m.ep());
             } else {
                 // regular capture
-                debug_assert!(m.capture_piece() != Piece::King, "king captured by move {} on board \n{}", m, self);
+                debug_assert!(
+                    m.capture_piece() != Piece::King,
+                    "king captured by move {} on board \n{}",
+                    m,
+                    self
+                );
                 board.fifty_clock = 0;
                 board.pieces[m.capture_piece()].remove(m.to());
                 board.colors[board.turn].remove(m.to());
@@ -118,10 +123,10 @@ impl MoveMaker for Board {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::board::*;
     use crate::board::boardbuf::BoardBuf;
-    use crate::movelist::MoveValidator;
+    use crate::board::*;
     use crate::catalog::*;
+    use crate::movelist::MoveValidator;
 
     #[test]
     fn test_make_move() -> Result<(), String> {

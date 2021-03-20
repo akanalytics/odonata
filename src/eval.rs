@@ -121,9 +121,9 @@ pub trait Scorable<Strategy> {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Score {
     MinusInfinity,
-    WhiteLoss { ply: i32 },  // WhiteLoss(1) < WhiteLoss(5) 
+    WhiteLoss { ply: i32 }, // WhiteLoss(1) < WhiteLoss(5)
     Millipawns(i32),
-    WhiteWin{ minus_ply: i32 },  // // WhiteWin(-5) < WhiteWin(-1) 
+    WhiteWin { minus_ply: i32 }, // // WhiteWin(-5) < WhiteWin(-1)
     PlusInfinity,
 }
 
@@ -135,7 +135,7 @@ impl Score {
             return Score::Millipawns(0);
         }
         if let Some(c) = o.winning_color() {
-            return c.chooser_wb(Score::WhiteWin{minus_ply: -ply}, Score::WhiteLoss{ply: ply});
+            return c.chooser_wb(Score::WhiteWin { minus_ply: -ply }, Score::WhiteLoss { ply: ply });
         }
         panic!(format!("Tried to final score a non-final board outcome:{}", o));
     }
@@ -144,9 +144,9 @@ impl Score {
     pub fn negate(self) -> Score {
         match self {
             Self::MinusInfinity => Self::PlusInfinity,
-            Self::WhiteLoss { ply } => Self::WhiteWin{ minus_ply: -ply },
+            Self::WhiteLoss { ply } => Self::WhiteWin { minus_ply: -ply },
             Self::Millipawns(s) => Self::Millipawns(-s),
-            Self::WhiteWin{ minus_ply} => Self::WhiteLoss {ply: -minus_ply},
+            Self::WhiteWin { minus_ply } => Self::WhiteLoss { ply: -minus_ply },
             Self::PlusInfinity => Self::MinusInfinity,
         }
     }
@@ -282,15 +282,15 @@ mod tests {
     #[test]
     fn score_material() {
         assert_eq!(Score::Millipawns(1).negate(), Score::Millipawns(-1));
-        assert_eq!(Score::WhiteWin{minus_ply:-1}.negate(), Score::WhiteLoss{ply:1});
-        assert_eq!(Score::WhiteLoss{ply:1}.negate(), Score::WhiteWin{minus_ply:-1});
+        assert_eq!(Score::WhiteWin { minus_ply: -1 }.negate(), Score::WhiteLoss { ply: 1 });
+        assert_eq!(Score::WhiteLoss { ply: 1 }.negate(), Score::WhiteWin { minus_ply: -1 });
         assert_eq!(Score::MinusInfinity.negate(), Score::PlusInfinity);
         assert!(Score::MinusInfinity < Score::PlusInfinity);
         assert!(Score::Millipawns(-5) < Score::Millipawns(5));
-        assert!(Score::Millipawns(5) < Score::WhiteWin{minus_ply:0});
+        assert!(Score::Millipawns(5) < Score::WhiteWin { minus_ply: 0 });
         assert!(Score::Millipawns(1000) > Score::Millipawns(0));
-        assert!(Score::WhiteWin{minus_ply:1} < Score::PlusInfinity);
-        assert!(Score::WhiteWin{minus_ply:0} == Score::WhiteWin{minus_ply:0});
+        assert!(Score::WhiteWin { minus_ply: 1 } < Score::PlusInfinity);
+        assert!(Score::WhiteWin { minus_ply: 0 } == Score::WhiteWin { minus_ply: 0 });
 
         let board = Catalog::starting_position();
         let eval = &SimpleScorer::default();

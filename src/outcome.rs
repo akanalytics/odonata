@@ -1,9 +1,8 @@
 use crate::board::movegen::MoveGen;
 use crate::board::Board;
-use crate::types::Color;
 use crate::material::Material;
+use crate::types::Color;
 use std::fmt;
-
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Outcome {
@@ -21,13 +20,11 @@ pub enum Outcome {
     DrawRule75,
 }
 
-
 impl fmt::Display for Outcome {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
     }
 }
-
 
 impl Outcome {
     #[inline]
@@ -59,11 +56,9 @@ impl Outcome {
     pub fn to_pgn(self) -> String {
         if self.is_draw() {
             return String::from("1/2-1/2");
-        }
-        else if self.winning_color() == Some(Color::White) {
+        } else if self.winning_color() == Some(Color::White) {
             return String::from("1-0");
-        }
-        else if self.winning_color() == Some(Color::Black) {
+        } else if self.winning_color() == Some(Color::Black) {
             return String::from("0-1");
         }
         String::from("*")
@@ -78,11 +73,10 @@ pub trait GameEnd {
 }
 
 impl GameEnd for Board {
-    
     fn outcome(&self) -> Outcome {
         if let Some(outcome) = self.cursory_outcome() {
             return outcome;
-        } 
+        }
         let legal_moves = self.legal_moves();
         let color_to_play = self.color_us();
         if legal_moves.len() == 0 {
@@ -95,7 +89,6 @@ impl GameEnd for Board {
         }
         Outcome::InProgress
     }
-
 
     fn cursory_outcome(&self) -> Option<Outcome> {
         // X InProgress = 0,
@@ -127,7 +120,6 @@ impl GameEnd for Board {
         None
     }
 
-    
     fn position_repitition_count(&self) -> u32 {
         // FIXME
         2
@@ -142,36 +134,33 @@ impl GameEnd for Board {
         }
         Outcome::InProgress
     }
-
 }
-
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::catalog::*;
 
-
     #[test]
     fn test_outcome() {
-        assert_eq!( Outcome::InProgress.to_string(), "InProgress");
-        assert_eq!( format!("{}",Outcome::InProgress), "InProgress");
-        assert_eq!( format!("{}",Outcome::InProgress), "InProgress");
-        assert_eq!( Outcome::WinBlack.is_draw(), false);
-        assert_eq!( Outcome::WinBlack.winning_color(), Some(Color::Black));
-        assert_eq!( Outcome::WinBlack.winning_color(), Some(Color::Black));
-        assert_eq!( Outcome::DrawRule50.winning_color(), None);
+        assert_eq!(Outcome::InProgress.to_string(), "InProgress");
+        assert_eq!(format!("{}", Outcome::InProgress), "InProgress");
+        assert_eq!(format!("{}", Outcome::InProgress), "InProgress");
+        assert_eq!(Outcome::WinBlack.is_draw(), false);
+        assert_eq!(Outcome::WinBlack.winning_color(), Some(Color::Black));
+        assert_eq!(Outcome::WinBlack.winning_color(), Some(Color::Black));
+        assert_eq!(Outcome::DrawRule50.winning_color(), None);
     }
 
     #[test]
     fn test_checkmate() {
-        assert!( Catalog::checkmates()[0].outcome() == Outcome::WinWhite );
-        assert!( Catalog::checkmates()[1].outcome() == Outcome::WinBlack );
+        assert!(Catalog::checkmates()[0].outcome() == Outcome::WinWhite);
+        assert!(Catalog::checkmates()[1].outcome() == Outcome::WinBlack);
     }
 
     #[test]
     fn test_stalemate() {
-        assert!( Catalog::stalemates()[0].outcome() == Outcome::DrawStalemate );
-        assert!( Catalog::stalemates()[1].outcome() == Outcome::DrawStalemate );
+        assert!(Catalog::stalemates()[0].outcome() == Outcome::DrawStalemate);
+        assert!(Catalog::stalemates()[1].outcome() == Outcome::DrawStalemate);
     }
 }

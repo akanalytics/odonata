@@ -1,12 +1,12 @@
 use crate::board::makemove::MoveMaker;
 use crate::board::movegen::MoveGen;
 use crate::board::Board;
-use crate::pvtable::PvTable;
 use crate::eval::{Scorable, Score, SimpleScorer};
-use crate::movelist::{Move};
+use crate::movelist::Move;
+use crate::pvtable::PvTable;
 use crate::types::Color;
-use std::time;
 use std::fmt;
+use std::time;
 
 // CPW
 //
@@ -72,11 +72,10 @@ pub struct Node<'b> {
     // leaf
 }
 
-
 impl Node<'_> {
     #[inline]
     fn root<'c>(board: &'c mut Board) -> Node<'c> {
-        let score = if Self::is_maximizing(board) { Score::MinusInfinity } else { Score::PlusInfinity};
+        let score = if Self::is_maximizing(board) { Score::MinusInfinity } else { Score::PlusInfinity };
         Node {
             board,
             ply: 0,
@@ -89,7 +88,7 @@ impl Node<'_> {
 
     #[inline]
     pub fn child<'c>(&self, _mv: &Move, board: &'c mut Board) -> Node<'c> {
-        let score = if Self::is_maximizing(board) { Score::MinusInfinity } else { Score::PlusInfinity};
+        let score = if Self::is_maximizing(board) { Score::MinusInfinity } else { Score::PlusInfinity };
         Node {
             board,
             alpha: self.alpha,
@@ -105,13 +104,7 @@ impl Node<'_> {
         // node.ply % 2 == 0 // 0 ply looks at our moves - maximising if white
         board.color_us() == Color::White
     }
-    
-
 }
-
-
-
-
 
 #[derive(Clone, Debug, Default)]
 pub struct Search {
@@ -121,14 +114,13 @@ pub struct Search {
 
     // stats
     interior_nodes: u64,
-    leaf_nodes: u64,  // FIXME and terminal 
+    leaf_nodes: u64, // FIXME and terminal
     elapsed: time::Duration,
 
     // output
     pub pv: PvTable,
     best_move: Option<Move>,
     score: Option<Score>,
-
     // Eval
     // Search config
     // Time controls
@@ -182,12 +174,11 @@ impl Search {
     }
 
     pub fn knps(&self) -> u128 {
-        self.node_count() as u128 / (1+self.elapsed.as_millis())
+        self.node_count() as u128 / (1 + self.elapsed.as_millis())
     }
 }
 
-
-impl Search {    
+impl Search {
     pub fn search(&mut self, mut board: Board) {
         let start_time = time::Instant::now();
         let mut node = Node::root(&mut board);
@@ -197,19 +188,17 @@ impl Search {
         self.elapsed = start_time.elapsed();
     }
 
-
     #[inline]
     pub fn is_leaf(&self, node: &Node) -> bool {
         node.ply == self.max_depth
     }
-
 
     pub fn alphabeta(&mut self, node: &mut Node) {
         if self.is_leaf(node) {
             node.score = node.board.eval(&self.eval);
             self.leaf_nodes += 1;
             return;
-        } 
+        }
         self.interior_nodes += 1;
 
         let moves = node.board.legal_moves();
@@ -232,8 +221,6 @@ impl Search {
         }
         // end node
     }
-   
-
 
     #[inline]
     pub fn process_child(&mut self, mv: &Move, node: &mut Node, child: &Node) -> bool {
@@ -242,7 +229,7 @@ impl Search {
                 node.score = child.score;
                 node.best_move = *mv; // FIXME: copy size?
             }
-            if child.score > node.alpha { 
+            if child.score > node.alpha {
                 node.alpha = child.score;
                 self.pv.set(child.ply, mv);
                 self.pv.propagate_from(child.ply);
@@ -262,8 +249,6 @@ impl Search {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -276,7 +261,6 @@ mod tests {
         env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
     }
 
-    
     #[test]
     fn test_node() {
         // init();
@@ -285,7 +269,7 @@ mod tests {
         eval.position = false;
         let mut search = Search::new().depth(3).minmax(true).eval(eval);
         search.search(board);
-        assert_eq!(search.node_count(), 1 + 20 + 400 + 8902 /* + 197_281 */ );
+        assert_eq!(search.node_count(), 1 + 20 + 400 + 8902 /* + 197_281 */);
         assert_eq!(search.branching_factor().round() as u64, 21);
 
         let board = Catalog::starting_position();
@@ -294,9 +278,8 @@ mod tests {
         let mut search = Search::new().depth(4).minmax(false).eval(eval);
         search.search(board);
         assert_eq!(search.node_count(), 1757);
-        assert_eq!(search.branching_factor().round() as u64 , 2);
+        assert_eq!(search.branching_factor().round() as u64, 2);
     }
-
 
     #[test]
     fn test_shallow() {
@@ -306,14 +289,13 @@ mod tests {
         println!("{}", search);
     }
 
-
     #[test]
     fn test_mate_in_2() {
         let board = Catalog::mate_in_2()[0].clone();
-        let mut search = Search::new().depth(3).minmax(false); 
+        let mut search = Search::new().depth(3).minmax(false);
         search.search(board);
-        assert_eq!(search.pv.extract_pv().to_string(), "d5f6, g7f6, c4f7"); 
-        assert_eq!(search.score.unwrap(), Score::WhiteWin{minus_ply:-3}); 
+        assert_eq!(search.pv.extract_pv().to_string(), "d5f6, g7f6, c4f7");
+        assert_eq!(search.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
         println!("{}", search);
     }
 
@@ -321,14 +303,13 @@ mod tests {
     #[ignore]
     fn test_mate_in_3() {
         let board = Catalog::mate_in_3()[0].clone();
-        let mut search = Search::new().depth(5).minmax(false); 
+        let mut search = Search::new().depth(5).minmax(false);
         search.search(board.clone());
         let san = board.to_san_moves(&search.pv.extract_pv()).replace("\n", " ");
         println!("{}", search);
-        assert_eq!(san, "1. Bb5+ c6 2. Qe6+ Qe7 3. Qxe7+"); 
-        assert_eq!(search.score.unwrap(), Score::WhiteWin{minus_ply:-3}); 
+        assert_eq!(san, "1. Bb5+ c6 2. Qe6+ Qe7 3. Qxe7+");
+        assert_eq!(search.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
     }
-
 
     #[test]
     #[ignore]
@@ -342,8 +323,6 @@ mod tests {
         eval.position = false;
         let mut search = Search::new().depth(9).minmax(false).eval(eval); //9
         search.search(board);
-        println!("{}", search );
+        println!("{}", search);
     }
 }
-
-

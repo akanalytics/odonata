@@ -2,9 +2,6 @@ use crate::bitboard::{Bitboard, Dir};
 use std::fmt;
 use std::iter::*;
 
-
-
-
 pub struct Chooser<T> {
     pub black: T,
     pub white: T,
@@ -19,33 +16,30 @@ pub fn chooser_array<'a, T>(c: Color, white: &'a T, black: &'a T) -> &'a T {
 #[inline]
 pub fn chooser_wb_ref<'a, T>(c: Color, white: &'a T, black: &'a T) -> &'a T {
     match c {
-        Color::White => { white }, 
-        Color::Black => { black }
+        Color::White => white,
+        Color::Black => black,
     }
 }
 
 #[inline]
 pub fn chooser_wb<T>(c: Color, white: T, black: T) -> T {
     match c {
-        Color::White => { white }, 
-        Color::Black => { black }
+        Color::White => white,
+        Color::Black => black,
     }
 }
 
 // pub fn chooser_wb<T>(c: Color, white: T, black: T) -> T {
 //     match c {
-//         Col::WHITE => { white }, 
+//         Col::WHITE => { white },
 //         Col::BLACK => { black }
 //     }
 // }
-
 
 #[inline]
 pub fn chooser_struct<'a, T>(c: Color, choices: &'a Chooser<&T>) -> &'a T {
     return [&choices.white, &choices.black][c as usize];
 }
-
-
 
 bitflags! {
     pub struct CastlingRights: u8 {
@@ -58,11 +52,11 @@ bitflags! {
     }
 }
 
-
 impl Default for CastlingRights {
-    fn default() -> Self { Self::NONE }
+    fn default() -> Self {
+        Self::NONE
+    }
 }
-
 
 impl CastlingRights {
     pub fn parse(s: &str) -> Result<CastlingRights, String> {
@@ -81,43 +75,32 @@ impl CastlingRights {
     }
 
     pub fn king_side_right(c: Color) -> Self {
-        chooser_wb(c, 
-            Self::WHITE_KING,
-            Self::BLACK_KING
-        )
-    } 
+        chooser_wb(c, Self::WHITE_KING, Self::BLACK_KING)
+    }
 
     pub fn queen_side_right(c: Color) -> Self {
-        chooser_wb(c, 
-            Self::WHITE_QUEEN,
-            Self::BLACK_QUEEN
-        )
-    } 
+        chooser_wb(c, Self::WHITE_QUEEN, Self::BLACK_QUEEN)
+    }
 
     pub fn is_queen_side(&self) -> bool {
-        self.intersects(Self::WHITE_QUEEN | Self::BLACK_QUEEN)        
+        self.intersects(Self::WHITE_QUEEN | Self::BLACK_QUEEN)
     }
 
     pub fn is_king_side(&self) -> bool {
-        self.intersects(Self::WHITE_KING | Self::BLACK_KING)        
+        self.intersects(Self::WHITE_KING | Self::BLACK_KING)
     }
 
     pub fn king_side_squares(c: Color) -> Bitboard {
-        chooser_wb(c, 
-            Bitboard::F1.or(Bitboard::G1),
-            Bitboard::F8.or(Bitboard::G8)
-        )
+        chooser_wb(c, Bitboard::F1.or(Bitboard::G1), Bitboard::F8.or(Bitboard::G8))
     }
 
     pub fn queen_side_squares(c: Color) -> Bitboard {
-        chooser_wb(c, 
+        chooser_wb(
+            c,
             Bitboard::D1.or(Bitboard::C1).or(Bitboard::B1),
-            Bitboard::D8.or(Bitboard::C8).or(Bitboard::B8)
+            Bitboard::D8.or(Bitboard::C8).or(Bitboard::B8),
         )
     }
-
-
-
 }
 
 impl fmt::Display for CastlingRights {
@@ -141,11 +124,11 @@ impl fmt::Display for CastlingRights {
     }
 }
 
-
-
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
-pub enum Color { White = 0, Black = 1 }  // numbering as per CPW
-
+pub enum Color {
+    White = 0,
+    Black = 1,
+} // numbering as per CPW
 
 impl<T> std::ops::Index<Color> for [T] {
     type Output = T;
@@ -164,14 +147,14 @@ impl<T> std::ops::IndexMut<Color> for [T] {
 
 impl Default for Color {
     #[inline]
-    fn default() -> Self { Color::White }
-} 
-
+    fn default() -> Self {
+        Color::White
+    }
+}
 
 impl Color {
-
     pub const ALL: [Color; 2] = [Color::White, Color::Black];
-        
+
     #[inline]
     pub fn index(self) -> usize {
         self as usize
@@ -180,10 +163,10 @@ impl Color {
     #[inline]
     pub fn chooser_wb<T>(self, white_thing: T, black_thing: T) -> T {
         match self {
-            Color::White => { white_thing }, 
-            Color::Black => { black_thing }
+            Color::White => white_thing,
+            Color::Black => black_thing,
         }
-    }   
+    }
 
     #[inline]
     pub fn pawn_move(self) -> Dir {
@@ -203,7 +186,7 @@ impl Color {
     #[inline]
     pub fn pawn_capture_west(self) -> Dir {
         self.chooser_wb(Dir::NW, Dir::SW)
-    } 
+    }
 
     #[inline]
     pub fn back_rank(self) -> Bitboard {
@@ -258,14 +241,12 @@ impl<T> std::ops::Index<Piece> for [T] {
     }
 }
 
-
 impl<T> std::ops::IndexMut<Piece> for [T] {
     #[inline]
     fn index_mut(&mut self, p: Piece) -> &mut Self::Output {
         &mut self[p.index()]
     }
 }
-
 
 impl Default for Piece {
     fn default() -> Self {
@@ -274,7 +255,8 @@ impl Default for Piece {
 }
 
 impl Piece {
-    pub const ALL: [Piece; 6] = [Piece::Pawn, Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen, Piece::King];
+    pub const ALL: [Piece; 6] =
+        [Piece::Pawn, Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen, Piece::King];
 
     #[inline]
     // pub fn to_upper_char(self) -> &char {
@@ -322,9 +304,6 @@ impl Piece {
     }
 }
 
-
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -352,14 +331,11 @@ mod tests {
     #[test]
     fn choose() {
         let c = Color::White;
-        const CHOICE: Chooser<&Bitboard> = Chooser { 
-            white: &Bitboard::RANK_4, 
-            black: &Bitboard::RANK_5,
-        };
+        const CHOICE: Chooser<&Bitboard> = Chooser { white: &Bitboard::RANK_4, black: &Bitboard::RANK_5 };
 
-        let bb = chooser_array(c, &Bitboard::RANK_4, &Bitboard::RANK_5 );
+        let bb = chooser_array(c, &Bitboard::RANK_4, &Bitboard::RANK_5);
         assert_eq!(bb, &Bitboard::RANK_4);
-        chooser_wb(c, &Bitboard::RANK_4, &Bitboard::RANK_5 );
-        chooser_struct(c, &CHOICE );
+        chooser_wb(c, &Bitboard::RANK_4, &Bitboard::RANK_5);
+        chooser_struct(c, &CHOICE);
     }
 }

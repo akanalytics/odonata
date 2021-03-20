@@ -1,9 +1,7 @@
-use std::fmt;
 use crate::movelist::{Move, MoveList};
-
+use std::fmt;
 
 const MAX_PLY: usize = 128;
-
 
 #[derive(Debug, Clone)]
 pub struct PvTable {
@@ -12,7 +10,9 @@ pub struct PvTable {
 }
 
 impl Default for PvTable {
-    fn default() -> Self { PvTable::new(MAX_PLY) }
+    fn default() -> Self {
+        PvTable::new(MAX_PLY)
+    }
 }
 
 impl PvTable {
@@ -38,7 +38,7 @@ impl PvTable {
         let from_ply = from_ply as usize;
         let (top, bottom) = self.matrix.split_at_mut(from_ply);
         let len = self.size - from_ply;
-        let dst = &mut top[from_ply-1][1..=len];
+        let dst = &mut top[from_ply - 1][1..=len];
         let src = &mut bottom[0][0..len];
         dst.clone_from_slice(src);
 
@@ -52,10 +52,7 @@ impl PvTable {
         pv.extend(&self.matrix[0][1..self.size]);
         pv
     }
-
-
 }
-
 
 impl fmt::Display for PvTable {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -69,9 +66,6 @@ impl fmt::Display for PvTable {
         Ok(())
     }
 }
-
-
-
 
 #[cfg(test)]
 mod tests {
