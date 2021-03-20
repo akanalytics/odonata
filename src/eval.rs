@@ -307,12 +307,16 @@ mod tests {
     #[test]
     fn score_position() {
         let eval = &SimpleScorer::default();
+
         let bd = Board::parse_fen("8/P7/8/8/8/8/8/8 w - - 0 1").unwrap().as_board();
         assert_eq!(bd.eval_position(eval), Score::Millipawns(10 * 50));
+
         let bd = Board::parse_fen("8/4p3/8/8/8/8/8/8 w - - 0 1").unwrap().as_board();
         assert_eq!(bd.eval_position(eval), Score::Millipawns(10 * --20));
+
         let w = Catalog::white_starting_position();
         assert_eq!(w.eval_position(eval), Score::Millipawns(-950)); // 950 = 2 * (5-0-40-10)-5-0
+
         let b = Catalog::black_starting_position();
         assert_eq!(w.eval_position(eval), b.eval_position(eval).negate());
     }
