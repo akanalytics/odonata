@@ -180,6 +180,7 @@ impl Search {
 
 impl Search {
     pub fn search(&mut self, mut board: Board) {
+        debug_assert!(self.max_depth > 0);
         let start_time = time::Instant::now();
         let mut node = Node::root(&mut board);
         self.alphabeta(&mut node);

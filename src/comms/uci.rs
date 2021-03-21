@@ -74,7 +74,7 @@ impl Uci {
             "uci" => self.uci_unknown(&words),
             "isready" => self.uci_isready(),
             "debug" => self.uci_debug(&words[1..]),
-            "setoption" => self.uci_unknown(&words),
+            "setoption" => self.uci_setoption(&words[1..]),
             "register" => self.uci_unknown(&words),
             "ucinewgame" => self.uci_unknown(&words),
             "position" => self.uci_position(&words[1..]),
@@ -125,6 +125,7 @@ impl Uci {
     fn uci_version(&self) -> Result<(), String> {
         println!("id name {} v{}", Version::NAME, Version::VERSION);
         println!("id author {}", Version::AUTHORS);
+        println!("option name depth type spin default 7 min 1 max 10");
         println!("uciok");
         Ok(())
     }
@@ -163,12 +164,19 @@ impl Uci {
         }
     }
 
-    fn uci_go(&mut self, words: &[&str]) -> Result<(), String> {
+
+
+    fn uci_go(&mut self, _words: &[&str]) -> Result<(), String> {
+        self.search.depth(5);
         self.search.search(self.board.clone());
+        eprintln!("{}", self.search);
         println!("bestmove {}", self.search.pv.extract_pv()[0].uci());
         Ok(())
     }
- 
+
+    fn uci_setoption(&mut self, _words: &[&str]) -> Result<(), String> {
+    Ok(())
+    }
 }
 
 
@@ -217,12 +225,15 @@ mod tests {
         uci.run();
         assert_eq!(uci.board, Board::parse_fen("rnbqkbnr/1ppppppp/p7/8/8/P7/1PPPPPPP/RNBQKBNR w KQkq - 0 2").unwrap());
     }
+
+    #[test]
     fn test_uci_go() {
         let mut uci = Uci::new();
-        uci.preamble.push("position startpos move d2d4".into());
+        uci.preamble.push("position startpos moves d2d4".into());
         uci.preamble.push("go".into());
         uci.preamble.push("quit".into());
         uci.run();
+        println!("pvtable:\n{}", uci.search.pv);
         // assert_eq!(uci.board, Catalog::starting_position());
     }
 }
