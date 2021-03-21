@@ -138,22 +138,22 @@ impl Uci {
         Ok(())
     }
 
-    fn uci_position(&self, words: &[&str]) -> Result<(), String> {
+    fn uci_position(&mut self, words: &[&str]) -> Result<(), String> {
         match words.first().copied() {
             None => Err("Must specify a fen position or startpos".into()),
             Some("startpos") => {
                 self.board = Catalog::starting_position();
-                if words.get(1) != Some("moves") {
-                    Err("Token after startpos must be 'moves'".into())
+                if words.get(1) != Some(&"moves") {
+                    return Err("Token after startpos must be 'moves'".into());
                 }
                 for mv in words[2..].iter() {
                     let mv = self.board.parse_uci_move(mv)?;
-                    self.board.make_move(&mv);
+                    self.board = self.board.make_move(&mv);
                 }
                 Ok(())
             },
             _ => {
-                let fen = words[1..].join(" ");
+                let fen = words[0..].join(" ");
                 self.board = Board::parse_fen(&*fen)?;
                 Ok(())
             }
@@ -188,10 +188,24 @@ mod tests {
         uci.run();
     }
 
+    #[test]
     fn test_uci_position() {
         let mut uci = Uci::new();
         uci.preamble.push("position startpos".into());
-        uci.preamble.push("position startpos".into());
+        uci.preamble.push("quit".into());
         uci.run();
+        assert_eq!(uci.board, Catalog::starting_position());
+
+        let mut uci = Uci::new();
+        uci.preamble.push("position k7/8/8/8/8/8/8/7k w - - 0 2".into());
+        uci.preamble.push("quit".into());
+        uci.run();
+        assert_eq!(uci.board, Board::parse_fen("k7/8/8/8/8/8/8/7k w - - 0 2").unwrap());
+
+        let mut uci = Uci::new();
+        uci.preamble.push("position startpos moves a2a3 a7a6".into());
+        uci.preamble.push("quit".into());
+        uci.run();
+        assert_eq!(uci.board, Board::parse_fen("rnbqkbnr/1ppppppp/p7/8/8/P7/1PPPPPPP/RNBQKBNR w KQkq - 0 2").unwrap());
     }
 }

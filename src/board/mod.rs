@@ -8,7 +8,7 @@ pub mod boardbuf;
 pub mod makemove;
 pub mod movegen;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct Board {
     pieces: [Bitboard; Piece::ALL.len()],
     colors: [Bitboard; 2],
@@ -20,6 +20,17 @@ pub struct Board {
     // interior mutability (precludes copy trait)
     // moves: MoveList,
 }
+
+
+impl fmt::Debug for Board 
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Board")
+        .field("fen", &self.to_fen())
+        .finish()
+       }
+}
+
 
 impl Board {
     /// white to move, no castling rights or en passant

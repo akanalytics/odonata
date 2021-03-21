@@ -119,7 +119,7 @@ impl BoardBuf for Board {
     fn parse_fen(fen: &str) -> Result<Self, String> {
         let words = fen.split_whitespace().collect::<Vec<_>>();
         if words.len() < 6 {
-            return Err(format!("Must specify at least 6 parts in epd/fen {}", fen));
+            return Err(format!("Must specify at least 6 parts in epd/fen '{}'", fen));
         }
         let mut bb = Self::parse_pieces(words[0])?;
         bb.turn = Color::parse(words[1])?;
