@@ -1,5 +1,10 @@
 use crate::version::Version;
 use crate::perft::Perft;
+use crate::board::Board;
+use crate::board::boardbuf::BoardBuf;
+use crate::board::makemove::MoveMaker;
+use crate::movelist::MoveValidator;
+use crate::catalog::Catalog;
 use std::io::{self, Write, Stdout};
 
 //  see https://www.chessprogramming.org/CPW-Engine_com
@@ -29,6 +34,7 @@ use std::io::{self, Write, Stdout};
 pub struct Uci {
     preamble: Vec<String>,
     running: bool,
+    board: Board,    
 }
 
 impl Uci {
@@ -36,7 +42,8 @@ impl Uci {
     pub fn new() -> Uci {
         Uci {
             preamble: vec![String::from("version")],
-            running: false
+            running: false,
+            board: Board::default(),
         }
     }
 
@@ -60,13 +67,14 @@ impl Uci {
             return;
         }
 
-        match words[0] {
+        let res = match words[0] {
             "uci" => self.uci_unknown(&words),
             "isready" => self.uci_isready(),
             "debug" => self.uci_debug(&words[1..]),
             "setoption" => self.uci_unknown(&words),
             "register" => self.uci_unknown(&words),
             "ucinewgame" => self.uci_unknown(&words),
+            "position" => self.uci_position(&words[1..]),
             "go" => self.uci_unknown(&words),
             "stop" => self.uci_unknown(&words),
             "ponderhit" => self.uci_unknown(&words),
@@ -74,57 +82,84 @@ impl Uci {
 
             // extensions
             "version" => self.uci_version(),
-            "perft" => self.uci_unknown(&words),
+            "perft" => self.uci_perft(&words[1..]),
             "tune" => self.uci_unknown(&words),
             "display" => self.uci_unknown(&words),
             "eval" => self.uci_unknown(&words),
             "bench" => self.uci_unknown(&words),
             _ => self.uci_unknown(&words),
+        };
+        if let Err(s) = res {
+            println!("{}", s);
         }
         io::stdout().flush().ok();
      }
 
-    fn uci_unknown(&mut self, words: &[&str]) {
-        println!("unknown command {:?}", words);
+    fn uci_unknown(&mut self, words: &[&str]) -> Result<(), String> {
+        Err(format!("unknown command {:?}", words))
     }
 
-    fn uci_debug(&mut self, words: &[&str]) {
+    fn uci_debug(&mut self, words: &[&str]) -> Result<(), String>  {
         println!("command {:?}", words);
         match words.first().copied() {
             Some("on") => println!("--on"),
             Some("off") => println!("--off"),
-            _ => println!("unknown"),
+            _ => return Err("unknown debug option".into()),
         }
-    }
-
-    fn uci_isready(&mut self) {
-        println!("isready");
-    }
-
-    fn uci_quit(&mut self) {
-        self.running = false;
-    }
-
-    fn uci_version(&self) {
-        println!("id name {} v{}", Version::NAME, Version::VERSION);
-        println!("id author {}", Version::AUTHORS);
-        println!("uciok");
-    }
-
-    fn uci_perft(&self, words: &[&str]) -> Result<(), String> {
-        // let depth = words.first().expect("") {
-        //     Some(word) => {
-        //         if let Ok(depth) = word.parse::<u32>() {
-        //             for d in 1..=depth {
-        //                 println!("perft({}) = {}", d, Perft::perft(d));
-        //             }
-        //         }
-        //     }
-        //     _ => println!("unknown"),
-        // }
         Ok(())
     }
 
+    fn uci_isready(&mut self) -> Result<(), String>  {
+        println!("isready");
+        Ok(())
+    }
+
+    fn uci_quit(&mut self) -> Result<(), String> {
+        self.running = false;
+        Ok(())
+    }
+
+    fn uci_version(&self) -> Result<(), String> {
+        println!("id name {} v{}", Version::NAME, Version::VERSION);
+        println!("id author {}", Version::AUTHORS);
+        println!("uciok");
+        Ok(())
+    }
+
+    fn uci_perft(&self, words: &[&str]) -> Result<(), String> {
+        let depth = words.first().ok_or("Must specify a depth")?;
+        let depth = depth.parse::<u32>().or(
+            Err(format!("Depth {} must be numeric", depth))
+        )?;
+        let board = Catalog::starting_position();
+        for d in 1..=depth {
+            println!("perft({}) = {}", d, Perft::perft(&board, d));
+        }
+        Ok(())
+    }
+
+    fn uci_position(&self, words: &[&str]) -> Result<(), String> {
+        match words.first().copied() {
+            None => Err("Must specify a fen position or startpos".into()),
+            Some("startpos") => {
+                self.board = Catalog::starting_position();
+                if words.get(1) != Some("moves") {
+                    Err("Token after startpos must be 'moves'".into())
+                }
+                for mv in words[2..].iter() {
+                    let mv = self.board.parse_uci_move(mv)?;
+                    self.board.make_move(&mv);
+                }
+                Ok(())
+            },
+            _ => {
+                let fen = words[1..].join(" ");
+                self.board = Board::parse_fen(&*fen)?;
+                Ok(())
+            }
+        }
+    }
+ 
 }
 
 
@@ -142,6 +177,21 @@ mod tests {
         uci.preamble.push("debug off".into());
         uci.preamble.push("debug junk".into());
         uci.preamble.push("quit".into());
+        uci.run();
+    }
+
+    #[test]
+    fn test_uci_perft() {
+        let mut uci = Uci::new();
+        uci.preamble.push("perft 1".into());
+        uci.preamble.push("quit".into());
+        uci.run();
+    }
+
+    fn test_uci_position() {
+        let mut uci = Uci::new();
+        uci.preamble.push("position startpos".into());
+        uci.preamble.push("position startpos".into());
         uci.run();
     }
 }
