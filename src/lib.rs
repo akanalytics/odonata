@@ -25,6 +25,7 @@ pub mod parse;
 pub mod pvtable;
 pub mod search;
 pub mod types;
+pub mod comms;
 mod utils;
 
 pub use crate::attacks::ClassicalBitboard;
@@ -34,3 +35,4 @@ pub use crate::board::Board;
 pub use crate::movelist::{Move, MoveList};
 pub use crate::search::Search;
 pub use crate::types::{Color, Piece};
+pub use crate::comms::uci::Uci;
