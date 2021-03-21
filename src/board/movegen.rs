@@ -333,19 +333,7 @@ impl MoveGen for Board {
     }
 }
 
-pub fn perft(board: &Board, depth: u32) -> u64 {
-    if depth == 0 {
-        1
-    } else {
-        let moves = board.legal_moves();
-        let mut count = 0u64;
-        for m in moves.iter() {
-            let res = perft(&board.make_move(m), depth - 1);
-            count += res;
-        }
-        count
-    }
-}
+
 
 #[cfg(test)]
 mod tests {
@@ -356,7 +344,6 @@ mod tests {
     use crate::globals::constants::*;
     extern crate env_logger;
     use crate::movelist::MoveValidator;
-    use std::time::Instant;
 
     fn _init() {
         env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
@@ -376,47 +363,6 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn test_perft() {
-        for (board, perfts) in Catalog::perfts() {
-            for (depth, &expected) in perfts.iter().enumerate() {
-                if depth <= 2 {
-                    let now = Instant::now();
-                    let count = perft(&board, depth as u32);
-                    assert_eq!(count, expected, "fen {} perft({})", board.to_fen(), depth);
-                    println!(
-                        "perft({depth})={count} in {time} millis",
-                        depth = depth,
-                        count = count,
-                        time = now.elapsed().as_millis()
-                    );
-                }
-                // assert_eq!(&count, expected, "fen: {}", board.to_fen());
-            }
-        }
-    }
-
-    #[test]
-    #[ignore]
-    fn test_perft_slow() {
-        for (board, perfts) in Catalog::perfts() {
-            println!("\n{}", board.to_fen());
-            for (depth, &expected) in perfts.iter().enumerate() {
-                if expected < 1_000_000_000_u64 {
-                    let now = Instant::now();
-                    let count = perft(&board, depth as u32);
-                    assert_eq!(count, expected, "fen {} perft({})", board.to_fen(), depth);
-                    println!(
-                        "perft({depth})={count} in {time} millis",
-                        depth = depth,
-                        count = count,
-                        time = now.elapsed().as_millis()
-                    );
-                }
-                // assert_eq!(&count, expected, "fen: {}", board.to_fen());
-            }
-        }
-    }
 
     #[test]
     fn pawn_moves() {

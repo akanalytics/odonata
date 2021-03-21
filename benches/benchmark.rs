@@ -5,6 +5,7 @@ use cantor::catalog::*;
 use cantor::eval::*;
 use cantor::material::*;
 use cantor::movelist::*;
+use cantor::perft::Perft;
 use cantor::search::Search;
 use cantor::types::*;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
@@ -93,7 +94,7 @@ fn benchmark_perft5(c: &mut Criterion) {
     group.sample_size(10);
     group.bench_function("perft5", |b| {
         b.iter(|| {
-            black_box(perft(&board, black_box(5)));
+            black_box(Perft::perft(&board, black_box(5)));
         });
     });
     group.finish();
