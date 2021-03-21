@@ -5,6 +5,7 @@ use crate::board::boardbuf::BoardBuf;
 use crate::board::makemove::MoveMaker;
 use crate::movelist::MoveValidator;
 use crate::catalog::Catalog;
+use crate::search::Search;
 use std::io::{self, Write, Stdout};
 
 //  see https://www.chessprogramming.org/CPW-Engine_com
@@ -35,6 +36,7 @@ pub struct Uci {
     preamble: Vec<String>,
     running: bool,
     board: Board,    
+    search: Search,    
 }
 
 impl Uci {
@@ -44,6 +46,7 @@ impl Uci {
             preamble: vec![String::from("version")],
             running: false,
             board: Board::default(),
+            search: Search::default(),
         }
     }
 
@@ -75,7 +78,7 @@ impl Uci {
             "register" => self.uci_unknown(&words),
             "ucinewgame" => self.uci_unknown(&words),
             "position" => self.uci_position(&words[1..]),
-            "go" => self.uci_unknown(&words),
+            "go" => self.uci_go(&words[1..]),
             "stop" => self.uci_unknown(&words),
             "ponderhit" => self.uci_unknown(&words),
             "quit" => self.uci_quit(),
@@ -159,6 +162,12 @@ impl Uci {
             }
         }
     }
+
+    fn uci_go(&mut self, words: &[&str]) -> Result<(), String> {
+        self.search.search(self.board.clone());
+        println!("bestmove {}", self.search.pv.extract_pv()[0].uci());
+        Ok(())
+    }
  
 }
 
@@ -207,5 +216,13 @@ mod tests {
         uci.preamble.push("quit".into());
         uci.run();
         assert_eq!(uci.board, Board::parse_fen("rnbqkbnr/1ppppppp/p7/8/8/P7/1PPPPPPP/RNBQKBNR w KQkq - 0 2").unwrap());
+    }
+    fn test_uci_go() {
+        let mut uci = Uci::new();
+        uci.preamble.push("position startpos move d2d4".into());
+        uci.preamble.push("go".into());
+        uci.preamble.push("quit".into());
+        uci.run();
+        // assert_eq!(uci.board, Catalog::starting_position());
     }
 }

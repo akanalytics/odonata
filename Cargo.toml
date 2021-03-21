@@ -29,7 +29,4 @@ harness = false
 
 
 
-[lib]
-name = "cantor"
-path = "src/lib.rs"
 
