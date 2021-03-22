@@ -338,7 +338,6 @@ mod tests {
     use super::*;
     use crate::board::boardbuf::*;
     use crate::board::*;
-    use crate::catalog::*;
     use crate::globals::constants::*;
     extern crate env_logger;
     use crate::movelist::MoveValidator;

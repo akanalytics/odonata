@@ -132,7 +132,6 @@ mod tests {
     use super::*;
     use crate::board::makemove::MoveMaker;
     use crate::catalog::Catalog;
-    use crate::movelist::MoveValidator;
 
     #[test]
     fn test_parse_move() {
@@ -168,6 +167,7 @@ mod tests {
         bd.make_move(&mv)
     }
 
+    #[test]
     fn test_parse_pgn() {
         // [Event "Let\\'s Play!"]
         // [Site "Chess.com"]

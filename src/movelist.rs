@@ -339,7 +339,6 @@ fn strip_move_numbers(s: &str) -> String {
 mod tests {
     use super::*;
     use crate::board::boardbuf::*;
-    use crate::board::movegen::*;
     use crate::catalog::Catalog;
     use crate::globals::constants::*;
 

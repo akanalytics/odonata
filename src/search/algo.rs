@@ -5,11 +5,11 @@ use crate::eval::{Scorable, Score, SimpleScorer};
 use crate::movelist::Move;
 use crate::pvtable::PvTable;
 use crate::search::stats::Stats;
+use crate::search::clock::Clock;
 use crate::types::Color;
 use std::fmt;
-use std::sync::atomic::AtomicBool;
-use std::sync::Arc;
-use std::time;
+use std::thread;
+
 
 // CPW
 //
@@ -117,6 +117,7 @@ pub struct Algo {
     stats: Stats,
     pub pv: PvTable,
     score: Option<Score>,
+    clock: Clock,
     // Eval
     // Algo config
     // Time controls
@@ -165,14 +166,39 @@ impl Algo {
             depth = self.max_depth
         )
     }
-    pub fn search(&mut self, mut board: Board) {
+
+    pub fn search_async(&mut self, board: Board) {
         debug_assert!(self.max_depth > 0);
-        let start_time = time::Instant::now();
+        
+        const FOUR_MB : usize = 4 * 1024 * 1024;
+        let name = String::from("search");
+        let builder = thread::Builder::new().name(name).stack_size(FOUR_MB);
+        let mut algo = self.clone();
+        let _child = builder.spawn(move || { algo.search(board) }).unwrap();
+        
+
+        // let mut res = Vec::with_capacity(n);
+        // for child in children {
+        // res.push(child.join().unwrap());
+        // }
+
+        let algo = _child.join().unwrap();
+        self.stats = algo.stats;
+        self.pv = algo.pv;
+        self.score = algo.score;
+        self.clock = algo.clock;
+    }
+
+
+
+    pub fn search(&mut self, mut board: Board) -> Algo {
+        debug_assert!(self.max_depth > 0);
+        self.clock.start();
         let mut node = Node::root(&mut board);
         self.alphabeta(&mut node);
-        self.stats.elapsed = start_time.elapsed();
-        // self.best_move = Some(node.best_move);
+        self.stats.elapsed = self.clock.elapsed();
         self.score = Some(node.score);
+        self.clone()
     }
 
     pub fn stats(&self) -> Stats {
@@ -192,9 +218,13 @@ impl Algo {
         }
         self.stats.interior_nodes += 1;
 
+        // bailing here means the score is +/- inf and wont be used
+        if self.clock.time_up() {
+            return;
+        }
         let moves = node.board.legal_moves();
         if moves.is_empty() {
-            node.score = node.board.eval(&self.eval); // FIXME evaluate with full checkmate logic
+            node.score = node.board.eval(&self.eval); 
             return;
         }
         for (_i, mv) in moves.iter().enumerate() {
@@ -210,7 +240,6 @@ impl Algo {
                 break;
             }
         }
-        // end node
     }
 
     #[inline]
@@ -218,7 +247,6 @@ impl Algo {
         if Node::is_maximizing(node.board) {
             if child.score > node.score {
                 node.score = child.score;
-                // node.best_move = *mv; // FIXME: copy size?
             }
             if child.score > node.alpha {
                 node.alpha = child.score;
@@ -228,7 +256,6 @@ impl Algo {
         } else {
             if child.score < node.score {
                 node.score = child.score;
-                // node.best_move = *mv;
             }
             if child.score < node.beta {
                 node.beta = child.score;
@@ -294,10 +321,22 @@ mod tests {
 
     #[test]
     #[ignore]
-    fn test_mate_in_3() {
+    fn test_mate_in_3_sync() {
         let board = Catalog::mate_in_3()[0].clone();
         let mut search = Algo::new().depth(5).minmax(false);
         search.search(board.clone());
+        let san = board.to_san_moves(&search.pv.extract_pv()).replace("\n", " ");
+        println!("{}", search);
+        assert_eq!(san, "1. Bb5+ c6 2. Qe6+ Qe7 3. Qxe7+");
+        assert_eq!(search.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
+    }
+
+    #[test]
+    #[ignore]
+    fn test_mate_in_3_async() {
+        let board = Catalog::mate_in_3()[0].clone();
+        let mut search = Algo::new().depth(5).minmax(false);
+        search.search_async(board.clone());
         let san = board.to_san_moves(&search.pv.extract_pv()).replace("\n", " ");
         println!("{}", search);
         assert_eq!(san, "1. Bb5+ c6 2. Qe6+ Qe7 3. Qxe7+");

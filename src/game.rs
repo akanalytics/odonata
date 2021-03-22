@@ -102,7 +102,6 @@ impl fmt::Display for Game {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::catalog::*;
     use crate::eval::*;
 
     #[test]

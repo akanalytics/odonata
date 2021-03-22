@@ -2,7 +2,7 @@ use crate::bitboard::Bitboard;
 use crate::board::Board;
 use crate::globals::constants::*;
 use crate::movelist::Move;
-use crate::types::{CastlingRights, Color, Piece};
+use crate::types::{CastlingRights, Piece};
 
 pub trait MoveMaker {
     fn make_move(&self, m: &Move) -> Board;

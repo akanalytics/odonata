@@ -6,7 +6,7 @@ use crate::movelist::MoveValidator;
 use crate::perft::Perft;
 use crate::search::algo::Algo;
 use crate::version::Version;
-use std::io::{self, Stdout, Write};
+use std::io::{self, Write};
 
 //  see https://www.chessprogramming.org/CPW-Engine_com
 //
@@ -231,13 +231,14 @@ impl Uci {
 }
 
 struct Args {
-    line: String,
+    // FIXME:
+    // line: String,
     words: Vec<String>,
 }
 
 impl Args {
     pub fn parse(s: &str) -> Args {
-        Args { line: String::from(s), words: s.split_whitespace().map(|s| s.to_string()).collect() }
+        Args { /* line: String::from(s), */ words: s.split_whitespace().map(|s| s.to_string()).collect() }
     }
 
     pub fn contains(&self, s: &str) -> bool {

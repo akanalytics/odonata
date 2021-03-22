@@ -1,7 +1,6 @@
 use crate::board::makemove::MoveMaker;
 use crate::board::movegen::MoveGen;
 use crate::board::Board;
-use crate::catalog::Catalog;
 
 pub struct Perft;
 
@@ -25,6 +24,7 @@ impl Perft {
 mod tests {
     use super::*;
     use std::time::Instant;
+    use crate::catalog::Catalog;
 
     #[test]
     fn test_perft() {
