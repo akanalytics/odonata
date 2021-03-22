@@ -5,7 +5,7 @@ use crate::board::boardbuf::BoardBuf;
 use crate::board::makemove::MoveMaker;
 use crate::movelist::MoveValidator;
 use crate::catalog::Catalog;
-use crate::search::Search;
+use crate::search::algo::Algo;
 use std::io::{self, Write, Stdout};
 
 //  see https://www.chessprogramming.org/CPW-Engine_com
@@ -36,18 +36,20 @@ pub struct Uci {
     preamble: Vec<String>,
     running: bool,
     board: Board,    
-    search: Search,    
+    search: Algo,    
 }
 
 impl Uci {
 
     pub fn new() -> Uci {
-        Uci {
+        let mut uci = Uci {
             preamble: vec![String::from("version")],
             running: false,
             board: Board::default(),
-            search: Search::default(),
-        }
+            search: Algo::default(),
+        };
+        uci.search.depth(5);
+        uci
     }
 
 
@@ -71,7 +73,7 @@ impl Uci {
         }
 
         let res = match words[0] {
-            "uci" => self.uci_unknown(&words),
+            "uci" => self.uci_uci(),
             "isready" => self.uci_isready(),
             "debug" => self.uci_debug(&words[1..]),
             "setoption" => self.uci_setoption(&words[1..]),
@@ -87,7 +89,8 @@ impl Uci {
             "version" => self.uci_version(),
             "perft" => self.uci_perft(&words[1..]),
             "tune" => self.uci_unknown(&words),
-            "display" => self.uci_unknown(&words),
+            "display" => self.uci_display(),
+            "d" => self.uci_display(),
             "eval" => self.uci_unknown(&words),
             "bench" => self.uci_unknown(&words),
             _ => self.uci_unknown(&words),
@@ -109,6 +112,10 @@ impl Uci {
             Some("off") => println!("--off"),
             _ => return Err("unknown debug option".into()),
         }
+        Ok(())
+    }
+
+    fn uci_uci(&mut self) -> Result<(), String>  {
         Ok(())
     }
 
@@ -167,16 +174,50 @@ impl Uci {
 
 
     fn uci_go(&mut self, _words: &[&str]) -> Result<(), String> {
-        self.search.depth(5);
+    //     let params = Params::parse(words); 
+    //     if let Some(depth) = params.get_arg("depth") {
+    //     self.search.depth(depth);
+    // }       
+
         self.search.search(self.board.clone());
-        eprintln!("{}", self.search);
+        println!("{}", self.search);
         println!("bestmove {}", self.search.pv.extract_pv()[0].uci());
         Ok(())
     }
 
     fn uci_setoption(&mut self, _words: &[&str]) -> Result<(), String> {
-    Ok(())
+        Ok(())
     }
+
+    fn uci_display(&mut self) -> Result<(), String> {
+        println!("{}", self.board);
+        println!("{}", self.search);
+        Ok(())
+    }
+
+
+    fn uci_info(&mut self) -> Result<(), String> {
+
+    // eg "info depth 4 score cp -30 time 55 nodes 1292 nps 25606 pv d7d5 e2e3 e7e6 g1f3"
+        Ok(())
+    }
+
+
+}
+
+
+struct Params {
+    line: String,
+    words: Vec<String>,
+} 
+
+
+impl Params {
+    fn parse(s: &str) {
+
+    }
+
+
 }
 
 
@@ -229,6 +270,7 @@ mod tests {
     #[test]
     fn test_uci_go() {
         let mut uci = Uci::new();
+        uci.search.depth(3);
         uci.preamble.push("position startpos moves d2d4".into());
         uci.preamble.push("go".into());
         uci.preamble.push("quit".into());

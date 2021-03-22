@@ -74,7 +74,8 @@ mod tests {
     use crate::board::*;
     use crate::eval::*;
     use crate::movelist::*;
-    use crate::search::*;
+    use crate::search::algo::*;
+    use crate::search::stats::*;
     use crate::types::*;
     use std::mem::size_of;
 
@@ -89,5 +90,6 @@ mod tests {
         assert_eq!(size_of::<Board>(), 80, "Board");
         assert_eq!(size_of::<Score>(), 8, "Score");
         assert_eq!(size_of::<Node>(), 72, "Node");
+        assert_eq!(size_of::<Stats>(), 32, "Stats");
     }
 }

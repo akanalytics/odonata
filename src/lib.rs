@@ -35,7 +35,8 @@ pub use crate::bitboard::Bitboard;
 pub use crate::board::boardbuf::BoardBuf;
 pub use crate::board::Board;
 pub use crate::movelist::{Move, MoveList};
-pub use crate::search::Search;
+pub use crate::search::algo::Algo;
+pub use crate::search::stats::Stats;
 pub use crate::types::{Color, Piece};
 pub use crate::version::Version;
 

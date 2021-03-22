@@ -1,12 +1,15 @@
 use crate::board::makemove::MoveMaker;
 use crate::board::movegen::MoveGen;
 use crate::board::Board;
+use crate::search::stats::Stats;
 use crate::eval::{Scorable, Score, SimpleScorer};
 use crate::movelist::Move;
 use crate::pvtable::PvTable;
 use crate::types::Color;
 use std::fmt;
 use std::time;
+use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
 // CPW
 //
@@ -19,23 +22,23 @@ use std::time;
 //   Aspiration Windows
 //
 // Selectivity
-//   Quiescence Search
+//   Quiescence Algo
 //     static exchange evaluation < 0
 //     delta pruning
 //     standing pat
 
 //   Selectivity
-//   Mate Search
+//   Mate Algo
 //
 // Scout and Friends
 //   Scout
 //   NegaScout
-//   Principal Variation Search (=+30%?)
+//   Principal Variation Algo (=+30%?)
 //
 // Alpha-Beta goes Best-First
 //   NegaC*
 //   MTD(f)
-//   Alpha-Beta Conspiracy Search
+//   Alpha-Beta Conspiracy Algo
 //
 
 // taken from wikipedia
@@ -106,30 +109,38 @@ impl Node<'_> {
     }
 }
 
+
+
+
+
+
+
+
 #[derive(Clone, Debug, Default)]
-pub struct Search {
+pub struct Algo {
     pub max_depth: u32,
     pub minmax: bool,
     eval: SimpleScorer,
 
     // stats
-    interior_nodes: u64,
-    leaf_nodes: u64, // FIXME and terminal
-    elapsed: time::Duration,
+    stats: Stats,
 
     // output
     pub pv: PvTable,
     best_move: Option<Move>,
     score: Option<Score>,
+    
+    
+    
     // Eval
-    // Search config
+    // Algo config
     // Time controls
     // Transposition table
 }
 
 /// builder methods
-impl Search {
-    pub fn new() -> Search {
+impl Algo {
+    pub fn new() -> Algo {
         Default::default()
     }
 
@@ -149,36 +160,16 @@ impl Search {
     }
 }
 
-impl fmt::Display for Search {
+impl fmt::Display for Algo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "pv               :{}", self.pv.extract_pv())?;
         writeln!(f, "score            :{}", self.score.unwrap())?;
-        writeln!(f, "node count       :{}", self.node_count())?;
-        writeln!(f, "interior nodes   :{}", self.interior_nodes)?;
-        writeln!(f, "leaf nodes       :{}", self.leaf_nodes)?;
-        writeln!(f, "branching factor :{:.02}", self.branching_factor())?;
-        writeln!(f, "elapsed (ms)     :{}", self.elapsed.as_millis())?;
-        writeln!(f, "nodes/sec (k)    :{}", self.knps())?;
+        writeln!(f, "{}", self.stats())?;
         Ok(())
     }
 }
 
-/// stats methods
-impl Search {
-    pub fn node_count(&self) -> u64 {
-        self.interior_nodes + self.leaf_nodes // root
-    }
-
-    pub fn branching_factor(&self) -> f64 {
-        self.leaf_nodes as f64 / self.interior_nodes as f64
-    }
-
-    pub fn knps(&self) -> u128 {
-        self.node_count() as u128 / (1 + self.elapsed.as_millis())
-    }
-}
-
-impl Search {
+impl Algo {
     pub fn search(&mut self, mut board: Board) {
         debug_assert!(self.max_depth > 0);
         let start_time = time::Instant::now();
@@ -186,8 +177,17 @@ impl Search {
         self.alphabeta(&mut node);
         self.best_move = Some(node.best_move);
         self.score = Some(node.score);
-        self.elapsed = start_time.elapsed();
+        self.stats.elapsed = start_time.elapsed();
     }
+
+
+
+    pub fn stats(&self) -> Stats {
+        self.stats
+    }
+
+
+
 
     #[inline]
     pub fn is_leaf(&self, node: &Node) -> bool {
@@ -197,10 +197,10 @@ impl Search {
     pub fn alphabeta(&mut self, node: &mut Node) {
         if self.is_leaf(node) {
             node.score = node.board.eval(&self.eval);
-            self.leaf_nodes += 1;
+            self.stats.leaf_nodes += 1;
             return;
         }
-        self.interior_nodes += 1;
+        self.stats.interior_nodes += 1;
 
         let moves = node.board.legal_moves();
         if moves.is_empty() {
@@ -268,32 +268,34 @@ mod tests {
         let board = Catalog::starting_position();
         let mut eval = SimpleScorer::default();
         eval.position = false;
-        let mut search = Search::new().depth(3).minmax(true).eval(eval);
+        let mut search = Algo::new().depth(3).minmax(true).eval(eval);
         search.search(board);
-        assert_eq!(search.node_count(), 1 + 20 + 400 + 8902 /* + 197_281 */);
-        assert_eq!(search.branching_factor().round() as u64, 21);
+        assert_eq!(search.stats().total_nodes(), 1 + 20 + 400 + 8902 /* + 197_281 */);
+        assert_eq!(search.stats().branching_factor().round() as u64, 21);
 
         let board = Catalog::starting_position();
         let mut eval = SimpleScorer::default();
         eval.position = false;
-        let mut search = Search::new().depth(4).minmax(false).eval(eval);
+        let mut search = Algo::new().depth(4).minmax(false).eval(eval);
         search.search(board);
-        assert_eq!(search.node_count(), 1757);
-        assert_eq!(search.branching_factor().round() as u64, 2);
+        assert_eq!(search.stats().total_nodes(), 1757);
+        assert_eq!(search.stats().branching_factor().round() as u64, 2);
     }
 
     #[test]
-    fn test_shallow() {
-        let board = Catalog::starting_position();
-        let mut search = Search::new().depth(3).minmax(false);
+    fn test_black_opening() {
+        let mut board = Catalog::starting_position();
+        board.set_turn(Color::Black);
+        let mut search = Algo::new().depth(1).minmax(false);
         search.search(board);
         println!("{}", search);
+        assert_eq!(search.pv.extract_pv()[0].uci(), "d7d5");
     }
 
     #[test]
     fn test_mate_in_2() {
         let board = Catalog::mate_in_2()[0].clone();
-        let mut search = Search::new().depth(3).minmax(false);
+        let mut search = Algo::new().depth(3).minmax(false);
         search.search(board);
         assert_eq!(search.pv.extract_pv().to_string(), "d5f6, g7f6, c4f7");
         assert_eq!(search.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
@@ -304,7 +306,7 @@ mod tests {
     #[ignore]
     fn test_mate_in_3() {
         let board = Catalog::mate_in_3()[0].clone();
-        let mut search = Search::new().depth(5).minmax(false);
+        let mut search = Algo::new().depth(5).minmax(false);
         search.search(board.clone());
         let san = board.to_san_moves(&search.pv.extract_pv()).replace("\n", " ");
         println!("{}", search);
@@ -322,7 +324,7 @@ mod tests {
         println!("{}", board);
         let mut eval = SimpleScorer::default();
         eval.position = false;
-        let mut search = Search::new().depth(9).minmax(false).eval(eval); //9
+        let mut search = Algo::new().depth(9).minmax(false).eval(eval); //9
         search.search(board);
         println!("{}", search);
     }

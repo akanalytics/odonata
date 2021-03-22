@@ -5,7 +5,7 @@ use crate::movelist::MoveValidator;
 use crate::movelist::{Move, MoveList};
 use crate::outcome::GameEnd;
 use crate::outcome::Outcome;
-use crate::search::Search;
+use crate::search::algo::Algo;
 use std::fmt;
 use std::time;
 
@@ -14,9 +14,9 @@ trait Player {
     fn choose_move(&mut self, board: &Board) -> Move;
 }
 
-impl Player for Search {
+impl Player for Algo {
     fn name(&self) -> String {
-        format!("Search.max_depth({}).minmax({})", self.max_depth, self.minmax)
+        format!("Algo.max_depth({}).minmax({})", self.max_depth, self.minmax)
     }
 
     fn choose_move(&mut self, board: &Board) -> Move {
@@ -27,8 +27,8 @@ impl Player for Search {
 
 #[derive(Debug, Clone)]
 pub struct Game {
-    white: Search,
-    black: Search,
+    white: Algo,
+    black: Algo,
     starting_pos: Board,
     starting_time: time::Instant,
     ending_time: Option<time::Instant>,
@@ -37,7 +37,7 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(white: Search, black: Search) -> Game {
+    pub fn new(white: Algo, black: Algo) -> Game {
         Game {
             white,
             black,
@@ -110,12 +110,12 @@ mod tests {
     fn test_game() {
         let mut eval_w = SimpleScorer::default();
         eval_w.position = true;
-        let search_w = Search::new().depth(5).eval(eval_w);
+        let search_w = Algo::new().depth(5).eval(eval_w);
         let white = search_w;
 
         let mut eval_b = SimpleScorer::default();
         eval_b.position = false;
-        let search_b = Search::new().depth(5).eval(eval_b);
+        let search_b = Algo::new().depth(5).eval(eval_b);
         let black = search_b;
 
         let board = Catalog::starting_position();

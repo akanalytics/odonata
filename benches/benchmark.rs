@@ -6,7 +6,7 @@ use cantor::eval::*;
 use cantor::material::*;
 use cantor::movelist::*;
 use cantor::perft::Perft;
-use cantor::search::Search;
+use cantor::search::algo::Algo;
 use cantor::types::*;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
@@ -204,7 +204,7 @@ fn benchmark_search(c: &mut Criterion) {
             let board = Catalog::starting_position();
             let mut eval = SimpleScorer::default();
             eval.position = false;
-            let mut search = Search::new().depth(5).minmax(true).eval(eval);
+            let mut search = Algo::new().depth(5).minmax(true).eval(eval);
             black_box(search.search(board));
         });
     });
@@ -213,7 +213,7 @@ fn benchmark_search(c: &mut Criterion) {
             let board = Catalog::starting_position();
             let mut eval = SimpleScorer::default();
             eval.position = false;
-            let mut search = Search::new().depth(5).minmax(false).eval(eval);
+            let mut search = Algo::new().depth(5).minmax(false).eval(eval);
             black_box(search.search(board));
         });
     });
