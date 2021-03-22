@@ -1,4 +1,4 @@
-use cantor::comms::uci::Uci;
+use odonata::comms::uci::Uci;
 
 
 fn main() {

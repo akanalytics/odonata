@@ -1,13 +1,13 @@
-use cantor::bitboard::*;
-use cantor::board::makemove::*;
-use cantor::board::movegen::*;
-use cantor::catalog::*;
-use cantor::eval::*;
-use cantor::material::*;
-use cantor::movelist::*;
-use cantor::perft::Perft;
-use cantor::search::algo::Algo;
-use cantor::types::*;
+use odonata::bitboard::*;
+use odonata::board::makemove::*;
+use odonata::board::movegen::*;
+use odonata::catalog::*;
+use odonata::eval::*;
+use odonata::material::*;
+use odonata::movelist::*;
+use odonata::perft::Perft;
+use odonata::search::algo::Algo;
+use odonata::types::*;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 /*
