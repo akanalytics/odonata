@@ -21,16 +21,11 @@ pub struct Board {
     // moves: MoveList,
 }
 
-
-impl fmt::Debug for Board 
-{
+impl fmt::Debug for Board {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Board")
-        .field("fen", &self.to_fen())
-        .finish()
-       }
+        f.debug_struct("Board").field("fen", &self.to_fen()).finish()
+    }
 }
-
 
 impl Board {
     /// white to move, no castling rights or en passant

@@ -1,13 +1,11 @@
-use crate::board::Board;
-use crate::board::movegen::MoveGen;
-use crate::catalog::Catalog;
 use crate::board::makemove::MoveMaker;
+use crate::board::movegen::MoveGen;
+use crate::board::Board;
+use crate::catalog::Catalog;
 
 pub struct Perft;
 
-
 impl Perft {
-
     pub fn perft(board: &Board, depth: u32) -> u64 {
         if depth == 0 {
             1

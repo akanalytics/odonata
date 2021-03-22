@@ -333,8 +333,6 @@ impl MoveGen for Board {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -362,7 +360,6 @@ mod tests {
         //assert_eq!(format!("{:#?}", moves), "vec![]");
         Ok(())
     }
-
 
     #[test]
     fn pawn_moves() {

@@ -16,7 +16,7 @@ trait Player {
 
 impl Player for Algo {
     fn name(&self) -> String {
-        format!("Algo.max_depth({}).minmax({})", self.max_depth, self.minmax)
+        self.algo_description()
     }
 
     fn choose_move(&mut self, board: &Board) -> Move {

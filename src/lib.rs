@@ -15,6 +15,7 @@ mod attacks;
 pub mod bitboard;
 pub mod board;
 pub mod catalog;
+pub mod comms;
 pub mod eval;
 pub mod game;
 pub mod globals;
@@ -22,13 +23,12 @@ pub mod material;
 pub mod movelist;
 pub mod outcome;
 pub mod parse;
+pub mod perft;
 pub mod pvtable;
 pub mod search;
 pub mod types;
-pub mod perft;
-pub mod comms;
-pub mod version;
 mod utils;
+pub mod version;
 
 pub use crate::attacks::ClassicalBitboard;
 pub use crate::bitboard::Bitboard;
@@ -39,7 +39,3 @@ pub use crate::search::algo::Algo;
 pub use crate::search::stats::Stats;
 pub use crate::types::{Color, Piece};
 pub use crate::version::Version;
-
-
-
-

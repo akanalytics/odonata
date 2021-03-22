@@ -1,7 +1,6 @@
 use std::fmt;
 use std::time;
 
-
 #[derive(Copy, Clone, Debug, Default)]
 pub struct Stats {
     // nodes
@@ -12,9 +11,7 @@ pub struct Stats {
     // cuts
     pub alpha_cuts: u64,
     pub beta_cuts: u64,
-
 }
-
 
 impl Stats {
     pub fn new() -> Stats {
@@ -30,7 +27,7 @@ impl Stats {
     }
 
     pub fn leaf_nodes(&self) -> u64 {
-        self.leaf_nodes 
+        self.leaf_nodes
     }
 
     pub fn branching_factor(&self) -> f64 {
@@ -41,8 +38,6 @@ impl Stats {
         self.total_nodes() as u128 / (1 + self.elapsed.as_millis())
     }
 }
-
-
 
 impl fmt::Display for Stats {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

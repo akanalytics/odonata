@@ -1,2 +1,2 @@
-pub mod stats;
 pub mod algo;
+pub mod stats;

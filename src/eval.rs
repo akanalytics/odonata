@@ -315,13 +315,12 @@ mod tests {
         assert_eq!(bd.eval_position(eval), Score::Millipawns(10 * --35));
 
         let w = Catalog::white_starting_position();
-        assert_eq!(w.eval_position(eval), Score::Millipawns(-1250)); 
+        assert_eq!(w.eval_position(eval), Score::Millipawns(-1250));
 
         let b = Catalog::black_starting_position();
         assert_eq!(w.eval_position(eval), b.eval_position(eval).negate());
 
         let bd = Board::parse_fen("8/8/8/8/8/8/p7/8 b - - 0 1").unwrap().as_board();
         assert_eq!(bd.eval_position(eval), Score::Millipawns(10 * -50));
-
     }
 }

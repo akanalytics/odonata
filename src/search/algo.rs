@@ -1,15 +1,15 @@
 use crate::board::makemove::MoveMaker;
 use crate::board::movegen::MoveGen;
 use crate::board::Board;
-use crate::search::stats::Stats;
 use crate::eval::{Scorable, Score, SimpleScorer};
 use crate::movelist::Move;
 use crate::pvtable::PvTable;
+use crate::search::stats::Stats;
 use crate::types::Color;
 use std::fmt;
-use std::time;
-use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
+use std::time;
 
 // CPW
 //
@@ -109,29 +109,14 @@ impl Node<'_> {
     }
 }
 
-
-
-
-
-
-
-
 #[derive(Clone, Debug, Default)]
 pub struct Algo {
-    pub max_depth: u32,
-    pub minmax: bool,
+    max_depth: u32,
+    minmax: bool,
     eval: SimpleScorer,
-
-    // stats
     stats: Stats,
-
-    // output
     pub pv: PvTable,
-    best_move: Option<Move>,
     score: Option<Score>,
-    
-    
-    
     // Eval
     // Algo config
     // Time controls
@@ -163,6 +148,9 @@ impl Algo {
 impl fmt::Display for Algo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "pv               :{}", self.pv.extract_pv())?;
+        writeln!(f, "depth            :{}", self.max_depth)?;
+        writeln!(f, "minmax           :{}", self.minmax)?;
+        writeln!(f, "pv               :{}", self.pv.extract_pv())?;
         writeln!(f, "score            :{}", self.score.unwrap())?;
         writeln!(f, "{}", self.stats())?;
         Ok(())
@@ -170,24 +158,26 @@ impl fmt::Display for Algo {
 }
 
 impl Algo {
+    pub fn algo_description(&self) -> String {
+        format!(
+            "{algo} depth:{depth}",
+            algo = if self.minmax { "minmax" } else { "alphabeta" },
+            depth = self.max_depth
+        )
+    }
     pub fn search(&mut self, mut board: Board) {
         debug_assert!(self.max_depth > 0);
         let start_time = time::Instant::now();
         let mut node = Node::root(&mut board);
         self.alphabeta(&mut node);
-        self.best_move = Some(node.best_move);
-        self.score = Some(node.score);
         self.stats.elapsed = start_time.elapsed();
+        // self.best_move = Some(node.best_move);
+        self.score = Some(node.score);
     }
-
-
 
     pub fn stats(&self) -> Stats {
         self.stats
     }
-
-
-
 
     #[inline]
     pub fn is_leaf(&self, node: &Node) -> bool {
@@ -228,7 +218,7 @@ impl Algo {
         if Node::is_maximizing(node.board) {
             if child.score > node.score {
                 node.score = child.score;
-                node.best_move = *mv; // FIXME: copy size?
+                // node.best_move = *mv; // FIXME: copy size?
             }
             if child.score > node.alpha {
                 node.alpha = child.score;
@@ -238,7 +228,7 @@ impl Algo {
         } else {
             if child.score < node.score {
                 node.score = child.score;
-                node.best_move = *mv;
+                // node.best_move = *mv;
             }
             if child.score < node.beta {
                 node.beta = child.score;
