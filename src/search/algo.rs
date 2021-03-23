@@ -4,12 +4,13 @@ use crate::board::Board;
 use crate::eval::{Scorable, Score, SimpleScorer};
 use crate::movelist::Move;
 use crate::pvtable::PvTable;
-use crate::search::stats::Stats;
 use crate::search::clock::Clock;
+use crate::search::stats::Stats;
 use crate::types::Color;
 use std::fmt;
+use std::rc::Rc;
+use std::sync::Arc;
 use std::thread;
-
 
 // CPW
 //
@@ -109,6 +110,15 @@ impl Node<'_> {
     }
 }
 
+#[derive(Debug, Default)]
+struct AlgoThreadHandle(Option<thread::JoinHandle<Algo>>);
+
+impl Clone for AlgoThreadHandle {
+    fn clone(&self) -> Self {
+        Self(None)
+    }
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct Algo {
     max_depth: u32,
@@ -118,6 +128,8 @@ pub struct Algo {
     pub pv: PvTable,
     score: Option<Score>,
     clock: Clock,
+    // child_thread: Arc<Option<thread::JoinHandle<Algo>>>,
+    child_thread: AlgoThreadHandle,
     // Eval
     // Algo config
     // Time controls
@@ -149,11 +161,11 @@ impl Algo {
 impl fmt::Display for Algo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "pv               :{}", self.pv.extract_pv())?;
+        writeln!(f, "score            :{}", self.score.unwrap())?;
         writeln!(f, "depth            :{}", self.max_depth)?;
         writeln!(f, "minmax           :{}", self.minmax)?;
-        writeln!(f, "pv               :{}", self.pv.extract_pv())?;
-        writeln!(f, "score            :{}", self.score.unwrap())?;
-        writeln!(f, "{}", self.stats())?;
+        write!(f, "{}", self.clock)?;
+        write!(f, "{}", self.stats())?;
         Ok(())
     }
 }
@@ -169,35 +181,39 @@ impl Algo {
 
     pub fn search_async(&mut self, board: Board) {
         debug_assert!(self.max_depth > 0);
-        
-        const FOUR_MB : usize = 4 * 1024 * 1024;
+
+        const FOUR_MB: usize = 4 * 1024 * 1024;
         let name = String::from("search");
         let builder = thread::Builder::new().name(name).stack_size(FOUR_MB);
         let mut algo = self.clone();
-        let _child = builder.spawn(move || { algo.search(board) }).unwrap();
-        
+        self.child_thread = AlgoThreadHandle(Some(builder.spawn(move || algo.search(board)).unwrap()));
 
         // let mut res = Vec::with_capacity(n);
         // for child in children {
         // res.push(child.join().unwrap());
         // }
+    }
 
-        let algo = _child.join().unwrap();
+    pub fn search_async_stop(&mut self) {
+        self.clock.set_time_up();
+        let mut option_thread = self.child_thread.0.take();
+        let handle = option_thread.take().unwrap();
+        let algo = handle.join().unwrap();
         self.stats = algo.stats;
         self.pv = algo.pv;
         self.score = algo.score;
         self.clock = algo.clock;
     }
 
-
-
     pub fn search(&mut self, mut board: Board) -> Algo {
         debug_assert!(self.max_depth > 0);
         self.clock.start();
+        println!("start search\n{}", self.clock);
         let mut node = Node::root(&mut board);
         self.alphabeta(&mut node);
         self.stats.elapsed = self.clock.elapsed();
         self.score = Some(node.score);
+        println!("end start search\n{}", self.clock);
         self.clone()
     }
 
@@ -217,14 +233,14 @@ impl Algo {
             return;
         }
         self.stats.interior_nodes += 1;
-
         // bailing here means the score is +/- inf and wont be used
         if self.clock.time_up() {
             return;
         }
+
         let moves = node.board.legal_moves();
         if moves.is_empty() {
-            node.score = node.board.eval(&self.eval); 
+            node.score = node.board.eval(&self.eval);
             return;
         }
         for (_i, mv) in moves.iter().enumerate() {
@@ -232,9 +248,6 @@ impl Algo {
             let mut child = node.child(mv, &mut child_board);
             debug_assert!(child.alpha < child.beta || self.minmax);
             self.alphabeta(&mut child);
-            // if child.ply == 1 {
-            //     println!("{}. {}: score: {}", i, mv, child.score);
-            // }
             let is_cut = self.process_child(&mv, node, &child);
             if is_cut {
                 break;
@@ -274,6 +287,7 @@ mod tests {
     use crate::catalog::*;
     use crate::eval::*;
     use crate::movelist::MoveValidator;
+    use std::time;
 
     fn init() {
         env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
@@ -320,23 +334,38 @@ mod tests {
     }
 
     #[test]
+    fn test_mate_in_2_async() {
+        let board = Catalog::mate_in_2()[0].clone();
+        let mut algo = Algo::new().depth(3).minmax(true);
+        algo.search(board.clone());
+        let nodes = algo.stats().total_nodes();
+        let millis = time::Duration::from_millis(20);
+        thread::sleep(millis);
+
+        assert_eq!(nodes, 66234);
+        assert_eq!(algo.pv.extract_pv().to_string(), "d5f6, g7f6, c4f7");
+        assert_eq!(algo.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
+        println!("{}\n\nasync....", algo);
+
+        let mut algo2 = Algo::new().depth(3).minmax(true);
+        algo2.search_async(board.clone());
+        let millis = time::Duration::from_millis(200);
+        thread::sleep(millis);
+        algo2.search_async_stop();
+        println!("{}", algo2);
+        // println!("after stop clock:\n{}", algo.clock);
+        let nodes = algo2.stats().total_nodes();
+        assert_eq!(nodes, 66234);
+        assert_eq!(algo2.pv.extract_pv().to_string(), "d5f6, g7f6, c4f7");
+        assert_eq!(algo2.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
+    }
+
+    #[test]
     #[ignore]
     fn test_mate_in_3_sync() {
         let board = Catalog::mate_in_3()[0].clone();
         let mut search = Algo::new().depth(5).minmax(false);
         search.search(board.clone());
-        let san = board.to_san_moves(&search.pv.extract_pv()).replace("\n", " ");
-        println!("{}", search);
-        assert_eq!(san, "1. Bb5+ c6 2. Qe6+ Qe7 3. Qxe7+");
-        assert_eq!(search.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
-    }
-
-    #[test]
-    #[ignore]
-    fn test_mate_in_3_async() {
-        let board = Catalog::mate_in_3()[0].clone();
-        let mut search = Algo::new().depth(5).minmax(false);
-        search.search_async(board.clone());
         let san = board.to_san_moves(&search.pv.extract_pv()).replace("\n", " ");
         println!("{}", search);
         assert_eq!(san, "1. Bb5+ c6 2. Qe6+ Qe7 3. Qxe7+");
