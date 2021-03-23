@@ -113,7 +113,12 @@ impl Node<'_> {
 }
 
 // type AlgoSender = mpsc::Sender<String>;
-type Callback = Arc<Mutex<dyn FnMut(String) -> bool + Send + Sync>>;
+
+type Func = dyn FnMut(&Algo) + Send + Sync;
+type Callback = Arc<Mutex<Func>>;
+
+
+
 
 #[derive(Clone, Default)]
 pub struct Algo {
@@ -158,7 +163,7 @@ impl Algo {
     //pub fn add_callback(&mut self, callback: dyn FnMut(String) -> bool + Send + Sync) -> Self {
     //}
 
-    pub fn add_callback2(&mut self, callback: Callback) -> Self {
+    pub fn add_callback(&mut self, callback: Callback) -> Self {
         self.callback = Some(callback);
          self.clone()
      }
@@ -226,7 +231,7 @@ impl Algo {
     fn invoke_callback(&self) {
         if let Some(func) = &self.callback {
             let mut func = func.lock().unwrap();
-            let _b = func(format!("Callback {}", self.pv.extract_pv()));
+            func(self);
         }
     }
 
@@ -293,6 +298,7 @@ impl Algo {
             self.alphabeta(&mut child);
             let is_cut = self.process_child(&mv, node, &child);
             if is_cut {
+                self.stats.alpha_cuts += 1; 
                 break;
             }
         }
@@ -393,9 +399,9 @@ mod tests {
         println!("{}\n\nasync....", algo);
 
         let mut algo2 = Algo::new().depth(3).minmax(true);
-        let clos = |s| { println!("Prining... {}", s); true };
-        let am = Arc::new(Mutex::new(clos));
-        algo2.add_callback2( am );
+        let _clos = |algo :&Algo| { println!("Node count {}", algo.stats().total_nodes()); };
+        let am = Arc::new(Mutex::new(_clos));
+        algo2.add_callback( am );
         algo2.search_async(board.clone());
         let millis = time::Duration::from_millis(200);
         thread::sleep(millis);
@@ -406,6 +412,10 @@ mod tests {
         assert_eq!(nodes, 66234);
         assert_eq!(algo2.pv.extract_pv().to_string(), "d5f6, g7f6, c4f7");
         assert_eq!(algo2.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
+    }
+
+    fn cb(a:  &Algo) {
+        println!("{}", a);
     }
 
     #[test]
