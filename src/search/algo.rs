@@ -127,7 +127,7 @@ pub struct Algo {
     eval: SimpleScorer,
     stats: Stats,
     pub pv: PvTable,
-    score: Option<Score>,
+    pub score: Option<Score>,
     clock: Clock,
 
     callback: Option<Callback>,
@@ -145,17 +145,17 @@ impl Algo {
         Default::default()
     }
 
-    pub fn depth(&mut self, max_depth: u32) -> Self {
+    pub fn set_depth(&mut self, max_depth: u32) -> Self {
         self.max_depth = max_depth;
         self.clone()
     }
 
-    pub fn minmax(&mut self, minmax: bool) -> Self {
+    pub fn set_minmax(&mut self, minmax: bool) -> Self {
         self.minmax = minmax;
         self.clone()
     }
 
-    pub fn eval(&mut self, eval: SimpleScorer) -> Self {
+    pub fn set_eval(&mut self, eval: SimpleScorer) -> Self {
         self.eval = eval;
         self.clone()
     }
@@ -163,9 +163,9 @@ impl Algo {
     //pub fn add_callback(&mut self, callback: dyn FnMut(String) -> bool + Send + Sync) -> Self {
     //}
 
-    pub fn add_callback(&mut self, callback: Callback) -> Self {
+    pub fn set_callback(&mut self, callback: Callback) -> Self {
         self.callback = Some(callback);
-         self.clone()
+        self.clone()
      }
 }
 
@@ -250,10 +250,12 @@ impl Algo {
     pub fn search(&mut self, mut board: Board) -> Algo {
         debug_assert!(self.max_depth > 0);
         self.clock.start();
+        self.score = None;
         let mut node = Node::root(&mut board);
         self.alphabeta(&mut node);
-        self.stats.elapsed = self.clock.elapsed();
+        self.stats.recalculate_time_stats(self.clock.elapsed());
         self.score = Some(node.score);
+        self.invoke_callback();
         self.clone()
     }
 
@@ -265,9 +267,15 @@ impl Algo {
         )
     }
 
+    // FIXME recalculate time stats
     pub fn stats(&self) -> Stats {
         self.stats
     }
+
+    pub fn clock(&self) -> &Clock {
+        &self.clock
+    }
+
 
     #[inline]
     pub fn is_leaf(&self, node: &Node) -> bool {
@@ -350,7 +358,7 @@ mod tests {
         let board = Catalog::starting_position();
         let mut eval = SimpleScorer::default();
         eval.position = false;
-        let mut search = Algo::new().depth(3).minmax(true).eval(eval);
+        let mut search = Algo::new().set_depth(3).set_minmax(true).set_eval(eval);
         search.search(board);
         assert_eq!(search.stats().total_nodes(), 1 + 20 + 400 + 8902 /* + 197_281 */);
         assert_eq!(search.stats().branching_factor().round() as u64, 21);
@@ -358,7 +366,7 @@ mod tests {
         let board = Catalog::starting_position();
         let mut eval = SimpleScorer::default();
         eval.position = false;
-        let mut search = Algo::new().depth(4).minmax(false).eval(eval);
+        let mut search = Algo::new().set_depth(4).set_minmax(false).set_eval(eval);
         search.search(board);
         assert_eq!(search.stats().total_nodes(), 1757);
         assert_eq!(search.stats().branching_factor().round() as u64, 2);
@@ -368,7 +376,7 @@ mod tests {
     fn test_black_opening() {
         let mut board = Catalog::starting_position();
         board.set_turn(Color::Black);
-        let mut search = Algo::new().depth(1).minmax(false);
+        let mut search = Algo::new().set_depth(1).set_minmax(false);
         search.search(board);
         println!("{}", search);
         assert_eq!(search.pv.extract_pv()[0].uci(), "d7d5");
@@ -377,7 +385,7 @@ mod tests {
     #[test]
     fn test_mate_in_2() {
         let board = Catalog::mate_in_2()[0].clone();
-        let mut search = Algo::new().depth(3).minmax(false);
+        let mut search = Algo::new().set_depth(3).set_minmax(false);
         search.search(board);
         assert_eq!(search.pv.extract_pv().to_string(), "d5f6, g7f6, c4f7");
         assert_eq!(search.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
@@ -387,7 +395,7 @@ mod tests {
     #[test]
     fn test_mate_in_2_async() {
         let board = Catalog::mate_in_2()[0].clone();
-        let mut algo = Algo::new().depth(3).minmax(true);
+        let mut algo = Algo::new().set_depth(3).set_minmax(true);
         algo.search(board.clone());
         let nodes = algo.stats().total_nodes();
         let millis = time::Duration::from_millis(20);
@@ -398,10 +406,10 @@ mod tests {
         assert_eq!(algo.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
         println!("{}\n\nasync....", algo);
 
-        let mut algo2 = Algo::new().depth(3).minmax(true);
-        let _clos = |algo :&Algo| { println!("Node count {}", algo.stats().total_nodes()); };
+        let mut algo2 = Algo::new().set_depth(3).set_minmax(true);
+        let _clos = |algo :&Algo| { println!("nps {}", algo.stats().knps()); };
         let am = Arc::new(Mutex::new(_clos));
-        algo2.add_callback( am );
+        algo2.set_callback( am );
         algo2.search_async(board.clone());
         let millis = time::Duration::from_millis(200);
         thread::sleep(millis);
@@ -422,7 +430,7 @@ mod tests {
     #[ignore]
     fn test_mate_in_3_sync() {
         let board = Catalog::mate_in_3()[0].clone();
-        let mut search = Algo::new().depth(5).minmax(false);
+        let mut search = Algo::new().set_depth(5).set_minmax(false);
         search.search(board.clone());
         let san = board.to_san_moves(&search.pv.extract_pv()).replace("\n", " ");
         println!("{}", search);
@@ -440,7 +448,7 @@ mod tests {
         println!("{}", board);
         let mut eval = SimpleScorer::default();
         eval.position = false;
-        let mut search = Algo::new().depth(9).minmax(false).eval(eval); //9
+        let mut search = Algo::new().set_depth(9).set_minmax(false).set_eval(eval); //9
         search.search(board);
         println!("{}", search);
     }

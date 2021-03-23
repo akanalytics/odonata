@@ -15,7 +15,7 @@ mod tests {
     fn test_version() {
         assert_eq!(Version::VERSION.is_empty(), false);
         assert_eq!(Version::AUTHORS.is_empty(), false);
-        assert_eq!(Version::NAME, "odonata");
+        assert_eq!(Version::NAME, "odonate");
         assert_eq!(Version::HOMEPAGE.is_empty(), true);
         println!("{}", Version::AUTHORS);
     }

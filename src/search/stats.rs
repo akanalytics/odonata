@@ -18,6 +18,11 @@ impl Stats {
         Self::default()
     }
 
+    pub fn recalculate_time_stats(&mut self, elapsed: time::Duration) {
+        self.elapsed = elapsed;
+    }
+
+
     pub fn interior_nodes(&self) -> u64 {
         self.interior_nodes
     }

@@ -1,14 +1,14 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use odonata::bitboard::*;
-use odonata::board::makemove::*;
-use odonata::board::movegen::*;
-use odonata::catalog::*;
-use odonata::eval::*;
-use odonata::material::*;
-use odonata::movelist::*;
-use odonata::perft::Perft;
-use odonata::search::algo::Algo;
-use odonata::types::*;
+use odonate::bitboard::*;
+use odonate::board::makemove::*;
+use odonate::board::movegen::*;
+use odonate::catalog::*;
+use odonate::eval::*;
+use odonate::material::*;
+use odonate::movelist::*;
+use odonate::perft::Perft;
+use odonate::search::algo::Algo;
+use odonate::types::*;
 
 /*
 Bitboard 2.7ns (a|b)&c
@@ -204,7 +204,7 @@ fn benchmark_search(c: &mut Criterion) {
             let board = Catalog::starting_position();
             let mut eval = SimpleScorer::default();
             eval.position = false;
-            let mut search = Algo::new().depth(5).minmax(true).eval(eval);
+            let mut search = Algo::new().set_depth(5).set_minmax(true).set_eval(eval);
             black_box(search.search(board));
         });
     });
@@ -213,7 +213,7 @@ fn benchmark_search(c: &mut Criterion) {
             let board = Catalog::starting_position();
             let mut eval = SimpleScorer::default();
             eval.position = false;
-            let mut search = Algo::new().depth(5).minmax(false).eval(eval);
+            let mut search = Algo::new().set_depth(5).set_minmax(false).set_eval(eval);
             black_box(search.search(board));
         });
     });

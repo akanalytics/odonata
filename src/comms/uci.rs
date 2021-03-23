@@ -7,6 +7,9 @@ use crate::perft::Perft;
 use crate::search::algo::Algo;
 use crate::version::Version;
 use std::io::{self, Write};
+use std::sync::Arc;
+use std::sync::Mutex;
+
 
 //  see https://www.chessprogramming.org/CPW-Engine_com
 //
@@ -47,7 +50,9 @@ impl Uci {
             board: Board::default(),
             algo: Algo::default(),
         };
-        uci.algo.depth(5);
+        uci.algo.set_depth(5);
+        let callback = Arc::new(Mutex::new(Self::uci_info));
+        uci.algo.set_callback(callback);
         uci
     }
 
@@ -79,7 +84,7 @@ impl Uci {
             "ucinewgame" => self.uci_unknown(&words),
             "position" => self.uci_position(&words[1..]),
             "go" => self.uci_go(&Args::parse(&input)),
-            // "stop" => self.uci_unknown(&words),
+            "stop" => self.uci_stop(),
             // "ponderhit" => self.uci_unknown(&words),
             "quit" => self.uci_quit(),
 
@@ -206,11 +211,10 @@ impl Uci {
         let _searchmoves = args.string_after("searchmoves");
 
         if let Some(depth) = depth {
-            self.algo.depth(depth as u32);
+            self.algo.set_depth(depth as u32);
         }
-        self.algo.search(self.board.clone());
-        println!("{}", self.algo);
-        println!("bestmove {}", self.algo.pv.extract_pv()[0].uci());
+        self.algo.search_async(self.board.clone());
+        // println!("{}", self.algo);
         Ok(())
     }
 
@@ -224,10 +228,22 @@ impl Uci {
         Ok(())
     }
 
-    fn uci_info(&mut self) -> Result<(), String> {
-        // eg "info depth 4 score cp -30 time 55 nodes 1292 nps 25606 pv d7d5 e2e3 e7e6 g1f3"
+
+    fn uci_stop(&mut self) -> Result<(), String> {
+        self.algo.search_async_stop();
+        Self::uci_info(&self.algo);
         Ok(())
     }
+
+    fn uci_info(algo: &Algo) {
+        let mut stats = algo.stats();
+        stats.recalculate_time_stats(algo.clock().elapsed());
+        println!("info nodes {} nps {}", stats.total_nodes(), stats.knps()*1000);
+        if algo.score.is_some() {
+            println!("bestmove {}", algo.pv.extract_pv()[0].uci());
+        }
+    }
+
 }
 
 struct Args {
@@ -320,7 +336,7 @@ mod tests {
         uci.preamble.push("go depth 2".into());
         uci.preamble.push("quit".into());
         uci.run();
-        println!("pvtable:\n{}", uci.algo.pv);
+        // println!("pvtable:\n{}", uci.algo.pv);
         // assert_eq!(uci.board, Catalog::starting_position());
     }
 }
