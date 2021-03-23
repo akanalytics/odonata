@@ -10,6 +10,8 @@ use crate::types::Color;
 use std::fmt;
 use std::rc::Rc;
 use std::sync::Arc;
+use std::sync::Mutex;
+use std::sync::mpsc;
 use std::thread;
 
 // CPW
@@ -110,16 +112,10 @@ impl Node<'_> {
     }
 }
 
-#[derive(Debug, Default)]
-struct AlgoThreadHandle(Option<thread::JoinHandle<Algo>>);
+// type AlgoSender = mpsc::Sender<String>;
+type Callback = Arc<Mutex<dyn FnMut(String) -> bool + Send + Sync>>;
 
-impl Clone for AlgoThreadHandle {
-    fn clone(&self) -> Self {
-        Self(None)
-    }
-}
-
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Default)]
 pub struct Algo {
     max_depth: u32,
     minmax: bool,
@@ -128,6 +124,8 @@ pub struct Algo {
     pub pv: PvTable,
     score: Option<Score>,
     clock: Clock,
+
+    callback: Option<Callback>,
     // child_thread: Arc<Option<thread::JoinHandle<Algo>>>,
     child_thread: AlgoThreadHandle,
     // Eval
@@ -156,6 +154,30 @@ impl Algo {
         self.eval = eval;
         self.clone()
     }
+
+    //pub fn add_callback(&mut self, callback: dyn FnMut(String) -> bool + Send + Sync) -> Self {
+    //}
+
+    pub fn add_callback2(&mut self, callback: Callback) -> Self {
+        self.callback = Some(callback);
+         self.clone()
+     }
+}
+
+
+
+impl fmt::Debug for Algo  {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Algo")
+            .field("pv", &self.pv)
+            .field("score", &self.score)
+            .field("depth", &self.max_depth)
+            .field("minmax", &self.minmax)
+            .field("depth", &self.max_depth)
+            .field("stats", &self.stats)
+            .field("clock", &self.clock)
+            .finish()
+    }
 }
 
 impl fmt::Display for Algo {
@@ -164,22 +186,29 @@ impl fmt::Display for Algo {
         writeln!(f, "score            :{}", self.score.unwrap())?;
         writeln!(f, "depth            :{}", self.max_depth)?;
         writeln!(f, "minmax           :{}", self.minmax)?;
+        // writeln!(f, "callback         :{}", self.callback)?;
         write!(f, "{}", self.clock)?;
-        write!(f, "{}", self.stats())?;
+        write!(f, "{}", self.stats)?;
         Ok(())
     }
 }
 
-impl Algo {
-    pub fn algo_description(&self) -> String {
-        format!(
-            "{algo} depth:{depth}",
-            algo = if self.minmax { "minmax" } else { "alphabeta" },
-            depth = self.max_depth
-        )
-    }
 
-    pub fn search_async(&mut self, board: Board) {
+#[derive(Debug, Default)]
+struct AlgoThreadHandle(Option<thread::JoinHandle<Algo>>);
+
+impl Clone for AlgoThreadHandle {
+    fn clone(&self) -> Self {
+        Self(None)
+    }
+}
+
+
+
+impl Algo {
+    
+    
+    pub fn search_async(&mut self, board: Board)  {
         debug_assert!(self.max_depth > 0);
 
         const FOUR_MB: usize = 4 * 1024 * 1024;
@@ -193,6 +222,14 @@ impl Algo {
         // res.push(child.join().unwrap());
         // }
     }
+
+    fn invoke_callback(&self) {
+        if let Some(func) = &self.callback {
+            let mut func = func.lock().unwrap();
+            let _b = func(format!("Callback {}", self.pv.extract_pv()));
+        }
+    }
+
 
     pub fn search_async_stop(&mut self) {
         self.clock.set_time_up();
@@ -208,13 +245,19 @@ impl Algo {
     pub fn search(&mut self, mut board: Board) -> Algo {
         debug_assert!(self.max_depth > 0);
         self.clock.start();
-        println!("start search\n{}", self.clock);
         let mut node = Node::root(&mut board);
         self.alphabeta(&mut node);
         self.stats.elapsed = self.clock.elapsed();
         self.score = Some(node.score);
-        println!("end start search\n{}", self.clock);
         self.clone()
+    }
+
+    pub fn algo_description(&self) -> String {
+        format!(
+            "{algo} depth:{depth}",
+            algo = if self.minmax { "minmax" } else { "alphabeta" },
+            depth = self.max_depth
+        )
     }
 
     pub fn stats(&self) -> Stats {
@@ -265,6 +308,7 @@ impl Algo {
                 node.alpha = child.score;
                 self.pv.set(child.ply, mv);
                 self.pv.propagate_from(child.ply);
+                self.invoke_callback();
             }
         } else {
             if child.score < node.score {
@@ -274,6 +318,7 @@ impl Algo {
                 node.beta = child.score;
                 self.pv.set(child.ply, mv);
                 self.pv.propagate_from(child.ply);
+                self.invoke_callback();
             }
         }
         node.alpha >= node.beta && !self.minmax
@@ -348,6 +393,9 @@ mod tests {
         println!("{}\n\nasync....", algo);
 
         let mut algo2 = Algo::new().depth(3).minmax(true);
+        let clos = |s| { println!("Prining... {}", s); true };
+        let am = Arc::new(Mutex::new(clos));
+        algo2.add_callback2( am );
         algo2.search_async(board.clone());
         let millis = time::Duration::from_millis(200);
         thread::sleep(millis);

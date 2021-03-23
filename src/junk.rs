@@ -338,3 +338,106 @@ mod tests {
 
 // }
 
+
+
+
+
+#[derive(Clone, Debug, Default)]
+pub struct Algo {
+    max_depth: u32,
+    minmax: bool,
+    eval: SimpleScorer,
+    stats: Stats,
+    pub pv: PvTable,
+    score: Option<Score>,
+    clock: Clock,
+    // child_thread: Arc<Option<thread::JoinHandle<Algo>>>,
+    child_thread: AlgoThreadHandle,
+    // Eval
+    // Algo config
+    // Time controls
+    // Transposition table
+}
+
+/// builder methods
+impl Algo {
+    pub fn new() -> Algo {
+        Default::default()
+    }
+
+    pub fn depth(&mut self, max_depth: u32) -> Self {
+        self.max_depth = max_depth;
+        self.clone()
+    }
+
+    pub fn minmax(&mut self, minmax: bool) -> Self {
+        self.minmax = minmax;
+        self.clone()
+    }
+
+    pub fn eval(&mut self, eval: SimpleScorer) -> Self {
+        self.eval = eval;
+        self.clone()
+    }
+}
+
+impl fmt::Display for Algo {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "pv               :{}", self.pv.extract_pv())?;
+        writeln!(f, "score            :{}", self.score.unwrap())?;
+        writeln!(f, "depth            :{}", self.max_depth)?;
+        writeln!(f, "minmax           :{}", self.minmax)?;
+        write!(f, "{}", self.clock)?;
+        write!(f, "{}", self.stats())?;
+        Ok(())
+    }
+}
+
+
+#[derive(Debug, Default)]
+struct AlgoThreadHandle(Option<thread::JoinHandle<Algo>>);
+
+impl Clone for AlgoThreadHandle {
+    fn clone(&self) -> Self {
+        Self(None)
+    }
+}
+
+impl Algo {
+    pub fn search_async(&mut self, board: Board) {
+        debug_assert!(self.max_depth > 0);
+
+        const FOUR_MB: usize = 4 * 1024 * 1024;
+        let name = String::from("search");
+        let builder = thread::Builder::new().name(name).stack_size(FOUR_MB);
+        let mut algo = self.clone();
+        self.child_thread = AlgoThreadHandle(Some(builder.spawn(move || algo.search(board)).unwrap()));
+
+        // let mut res = Vec::with_capacity(n);
+        // for child in children {
+        // res.push(child.join().unwrap());
+        // }
+    }
+
+    pub fn search_async_stop(&mut self) {
+        self.clock.set_time_up();
+        let mut option_thread = self.child_thread.0.take();
+        let handle = option_thread.take().unwrap();
+        let algo = handle.join().unwrap();
+        self.stats = algo.stats;
+        self.pv = algo.pv;
+        self.score = algo.score;
+        self.clock = algo.clock;
+    }
+
+    pub fn search(&mut self, mut board: Board) -> Algo {
+        debug_assert!(self.max_depth > 0);
+        self.clock.start();
+        println!("start search\n{}", self.clock);
+        let mut node = Node::root(&mut board);
+        self.alphabeta(&mut node);
+        self.stats.elapsed = self.clock.elapsed();
+        self.score = Some(node.score);
+        println!("end start search\n{}", self.clock);
+        self.clone()
+    }
