@@ -1,54 +1,94 @@
-use std::sync::atomic;
-use std::sync::Arc;
-use std::time;
 use std::fmt;
+use std::time::{Duration, Instant};
 
 
-#[derive(Debug, Clone, Default)]
-pub struct Clock {
-    start_time: Option<time::Instant>,
-    kill: Arc<atomic::AtomicBool>,
-    clock_checks: u64,
-    was_killed: bool,
+
+
+
+use crate::types::Color;
+
+
+
+/// https://en.wikipedia.org/wiki/Chess_clock
+#[derive(Copy, Clone, Debug)]
+pub enum TimingMethod {
+    Depth(u32),         // uci "depth"
+    MoveTime(Duration), // uci "movetime"
+    NodeCount(u64),     // uci "nodes"
+    Infinite,           // uci "infinite"
+    MateIn(u32),        // uci "mate"
+    RemainingTime {    
+        our_color: Color,
+        wtime: Duration,
+        btime: Duration,
+        winc: Duration,
+        binc: Duration,
+        movestogo: u16,
+    },
+}
+
+impl Default for TimingMethod {
+    fn default() -> Self {
+        TimingMethod::MoveTime(Duration::from_secs(5))
+    }
 }
 
 
-impl Clock {
-    pub fn start(&mut self) {
-        self.start_time = Some(time::Instant::now());
-    }
-
-    /// will panic if clock not started
-    pub fn elapsed(&self) -> time::Duration {
-        self.start_time.unwrap().elapsed()
-    }
-
-    pub fn time_up(&mut self) -> bool {
-        // FIXME: using SeqCst until i think this through more
-        self.clock_checks += 1;
-        let time_up = self.kill.load(atomic::Ordering::SeqCst);
-        if time_up {
-            self.was_killed = true;
-        }
-        time_up
-    }
-
-    pub fn set_time_up(&mut self) {
-        // FIXME: using SeqCst until i think this through more
-        self.kill.store(true, atomic::Ordering::SeqCst);
-    }
 
 
+struct DurationNewType(Duration);
+
+fn format_duration(d: Duration) -> String {
+    DurationNewType(d).to_string()
 }
 
-impl fmt::Display for Clock {
+fn pluralize(n: u64) -> &'static str {
+    if n > 1 {
+        "s"
+    } else {
+        ""
+    }
+}
+
+// eg 2 days 15h 4m 3.003s
+impl fmt::Display for DurationNewType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "start time       :{:?}", self.start_time)?;
-        writeln!(f, "clock_checks     :{}", self.clock_checks)?;
-        writeln!(f, "kill             :{}", self.kill.load(atomic::Ordering::SeqCst))?;
-        writeln!(f, "was_killed       :{}", self.was_killed)?;
-        writeln!(f, "count            :{}", Arc::strong_count(&self.kill))?;
+        let days = self.0.as_secs() / (60 * 60 * 24);
+        let hours = self.0.as_secs() / (60 * 60) % 24;
+        let mins = self.0.as_secs() / 60;
+        let secs = self.0.as_secs_f32() - (60 * mins) as f32;
+        let mins = mins % 60;
+        if days > 0 {
+            write!(f, "{} day{} ", days, pluralize(days))?;
+        }
+        write!(f, "{}h {}m {:.3}s", hours, mins, secs)?;
         Ok(())
     }
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct Clock {
+    start_time: Option<Instant>,
+}
+
+impl Clock {
+    pub fn start(&mut self) {
+        self.start_time = Some(Instant::now());
+    }
+
+    /// will panic if clock not started
+    pub fn elapsed(&self) -> Duration {
+        self.start_time.unwrap().elapsed()
+    }
+}
+
+impl fmt::Display for Clock {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Some(t) = self.start_time {
+            writeln!(f, "since start time :{}", format_duration(t.elapsed()))?;
+        } else {
+            writeln!(f, "start time       :not set")?;
+        }
+        Ok(())
+    }
+}

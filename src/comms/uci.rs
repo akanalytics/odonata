@@ -9,6 +9,8 @@ use crate::version::Version;
 use std::io::{self, Write};
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::time::Duration;
+use crate::search::clock::TimingMethod;
 
 
 //  see https://www.chessprogramming.org/CPW-Engine_com
@@ -183,28 +185,59 @@ impl Uci {
         // 	likely to be misinterpreted by the GUI because the GUI expects the engine to ponder
         //  on the suggested move.
         let _ponder = args.contains("ponder");
+
+
         //  search x ply only
         let depth = args.int_after("depth");
+
         // white/black has x msec left on the clock
-        let _wtime = args.int_after("wtime");
-        let _btime = args.int_after("btime");
+        let wtime = args.int_after("wtime");
+        let btime = args.int_after("btime");
+
         // white & black increment per move in mseconds if x > 0 (fisher)
-        let _winc = args.int_after("winc");
-        let _binc = args.int_after("binc");
+        let winc = args.int_after("winc");
+        let binc = args.int_after("binc");
 
         // there are x moves to the next time control, this will only be sent if x > 0,
         // if you don't get this and get the wtime and btime it's sudden death
-        let _movestogo = args.int_after("movestogo");
+        let movestogo = args.int_after("movestogo");
         //search x nodes only
-        let _nodes = args.int_after("nodes");
+        let nodes = args.int_after("nodes");
         // search for a mate in x moves
-        let _mate = args.int_after("mate");
+        let mate = args.int_after("mate");
 
         // search for exactly x millis
-        let _movetime = args.int_after("movetime");
+        let movetime = args.int_after("movetime");
         // search until the "stop" command. Do not exit the search without being told so in this mode!
-        let _infinite = args.contains("infinite");
+        let infinite = args.contains("infinite");
 
+        let tm = if let Some(wtime) = wtime {
+            let btime = btime.unwrap_or(0) as u64;
+            let winc =  winc.unwrap_or(0) as u64;
+            let binc = binc.unwrap_or(0) as u64;
+            let movestogo = movestogo.unwrap_or(0) as u16;
+            TimingMethod::RemainingTime{
+                    our_color: self.board.color_us(),
+                    wtime: Duration::from_millis(wtime as u64),
+                    btime: Duration::from_millis(btime), 
+                    winc: Duration::from_millis(winc),
+                    binc: Duration::from_millis(binc),
+                    movestogo}
+        } else if infinite {
+            TimingMethod::Infinite
+        } else if let Some(depth) = depth {
+            TimingMethod::Depth(depth as u32)
+        } else if let Some(nodes) = nodes {
+            TimingMethod::NodeCount(nodes as u64)
+        } else if let Some(movetime) = movetime {
+            TimingMethod::MoveTime(Duration::from_millis(movetime as u64)) 
+        } else if let Some(mate) = mate {
+            TimingMethod::MateIn(mate as u32)
+        } else {
+            TimingMethod::default()
+        };
+
+        self.algo.set_timing_method(tm); 
         // restrict search to this moves only
         // Example: After "position startpos" and "go infinite searchmoves e2e4 d2d4"
         // the engine should only search the two moves e2e4 and d2d4 in the initial position
@@ -231,7 +264,7 @@ impl Uci {
 
     fn uci_stop(&mut self) -> Result<(), String> {
         self.algo.search_async_stop();
-        Self::uci_info(&self.algo);
+        // Self::uci_info(&self.algo);
         Ok(())
     }
 

@@ -4,7 +4,7 @@ use crate::board::Board;
 use crate::eval::{Scorable, Score, SimpleScorer};
 use crate::movelist::Move;
 use crate::pvtable::PvTable;
-use crate::search::clock::Clock;
+use crate::search::clock::{Clock, TimingMethod};
 use crate::search::stats::Stats;
 use crate::types::Color;
 use std::fmt;
@@ -13,6 +13,8 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::mpsc;
 use std::thread;
+use std::sync::atomic;
+
 
 // CPW
 //
@@ -129,10 +131,15 @@ pub struct Algo {
     pub pv: PvTable,
     pub score: Option<Score>,
     clock: Clock,
+    method: TimingMethod,
 
     callback: Option<Callback>,
     // child_thread: Arc<Option<thread::JoinHandle<Algo>>>,
     child_thread: AlgoThreadHandle,
+    kill: Arc<atomic::AtomicBool>,
+    clock_checks: u64,
+
+
     // Eval
     // Algo config
     // Time controls
@@ -158,6 +165,10 @@ impl Algo {
     pub fn set_eval(&mut self, eval: SimpleScorer) -> Self {
         self.eval = eval;
         self.clone()
+    }
+
+    pub fn set_timing_method(&mut self, tm: TimingMethod) {
+        self.method = tm;
     }
 
     //pub fn add_callback(&mut self, callback: dyn FnMut(String) -> bool + Send + Sync) -> Self {
@@ -191,6 +202,9 @@ impl fmt::Display for Algo {
         writeln!(f, "score            :{}", self.score.unwrap())?;
         writeln!(f, "depth            :{}", self.max_depth)?;
         writeln!(f, "minmax           :{}", self.minmax)?;
+        writeln!(f, "clock_checks     :{}", self.clock_checks)?;
+        writeln!(f, "kill             :{}", self.kill.load(atomic::Ordering::SeqCst))?;
+        writeln!(f, "count            :{}", Arc::strong_count(&self.kill))?;
         // writeln!(f, "callback         :{}", self.callback)?;
         write!(f, "{}", self.clock)?;
         write!(f, "{}", self.stats)?;
@@ -237,9 +251,11 @@ impl Algo {
 
 
     pub fn search_async_stop(&mut self) {
-        self.clock.set_time_up();
+        self.cancel();
         let mut option_thread = self.child_thread.0.take();
         let handle = option_thread.take().unwrap();
+
+        // wait for thread to cancel 
         let algo = handle.join().unwrap();
         self.stats = algo.stats;
         self.pv = algo.pv;
@@ -268,12 +284,48 @@ impl Algo {
     }
 
     // FIXME recalculate time stats
+    #[inline]
     pub fn stats(&self) -> Stats {
         self.stats
     }
 
+    #[inline]
     pub fn clock(&self) -> &Clock {
         &self.clock
+    }
+
+
+    fn cancelled(&mut self) -> bool {
+        let time_up = self.kill.load(atomic::Ordering::SeqCst);
+        time_up
+    }
+
+    pub fn time_up_or_cancelled(&mut self, ply: u32, nodes: u64) -> bool {
+        self.clock_checks += 1;
+        // only do this every 128th call to avoid expensive time computation
+        if self.clock_checks % 1024 != 0 {
+            return false;
+        }
+
+        if self.cancelled() {
+            return true;
+        }
+
+        match self.method {
+            TimingMethod::Depth(max_ply) => ply > max_ply,
+            TimingMethod::MoveTime(duration) => self.clock().elapsed() > duration,
+            TimingMethod::NodeCount(max_nodes) => nodes > max_nodes,
+            TimingMethod::Infinite => false,
+            TimingMethod::MateIn(_) => false,
+            TimingMethod::RemainingTime { our_color, wtime, btime, winc, binc, movestogo: _ } => {
+                let (time, _inc) = our_color.chooser_wb((wtime, winc), (btime, binc));
+                self.clock().elapsed() > time / 30
+            }
+        }
+    }
+
+    pub fn cancel(&mut self) {
+        self.kill.store(true, atomic::Ordering::SeqCst);
     }
 
 
@@ -290,7 +342,7 @@ impl Algo {
         }
         self.stats.interior_nodes += 1;
         // bailing here means the score is +/- inf and wont be used
-        if self.clock.time_up() {
+        if self.time_up_or_cancelled(node.ply, self.stats.total_nodes()) {
             return;
         }
 
@@ -306,36 +358,38 @@ impl Algo {
             self.alphabeta(&mut child);
             let is_cut = self.process_child(&mv, node, &child);
             if is_cut {
-                self.stats.alpha_cuts += 1; 
+                self.stats.cuts += 1; 
                 break;
             }
         }
     }
 
     #[inline]
-    pub fn process_child(&mut self, mv: &Move, node: &mut Node, child: &Node) -> bool {
-        if Node::is_maximizing(node.board) {
-            if child.score > node.score {
-                node.score = child.score;
+    pub fn process_child(&mut self, mv: &Move, parent: &mut Node, child: &Node) -> bool {
+        if Node::is_maximizing(parent.board) {
+            if child.score > parent.score {
+                parent.score = child.score;
             }
-            if child.score > node.alpha {
-                node.alpha = child.score;
+            if child.score > parent.alpha {
+                parent.alpha = child.score;
                 self.pv.set(child.ply, mv);
                 self.pv.propagate_from(child.ply);
-                self.invoke_callback();
+                self.stats.improvements += 1; 
+                // self.invoke_callback();
             }
         } else {
-            if child.score < node.score {
-                node.score = child.score;
+            if child.score < parent.score {
+                parent.score = child.score;
             }
-            if child.score < node.beta {
-                node.beta = child.score;
+            if child.score < parent.beta {
+                parent.beta = child.score;
                 self.pv.set(child.ply, mv);
                 self.pv.propagate_from(child.ply);
-                self.invoke_callback();
+                self.stats.improvements += 1; 
+                // self.invoke_callback();
             }
         }
-        node.alpha >= node.beta && !self.minmax
+        parent.alpha >= parent.beta && !self.minmax
     }
 }
 

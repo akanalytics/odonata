@@ -9,8 +9,8 @@ pub struct Stats {
     pub elapsed: time::Duration,
 
     // cuts
-    pub alpha_cuts: u64,
-    pub beta_cuts: u64,
+    pub improvements: u64,
+    pub cuts: u64,
 }
 
 impl Stats {
@@ -48,8 +48,8 @@ impl fmt::Display for Stats {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "elapsed (ms)     :{}", self.elapsed.as_millis())?;
         writeln!(f, "nodes/sec (k)    :{}", self.knps())?;
-        writeln!(f, "alpha_cuts       :{}", self.alpha_cuts)?;
-        writeln!(f, "beta_cuts        :{}", self.beta_cuts)?;
+        writeln!(f, "cuts             :{}", self.cuts)?;
+        writeln!(f, "improvements     :{}", self.improvements)?;
         writeln!(f, "node count       :{}", self.total_nodes())?;
         writeln!(f, "interior nodes   :{}", self.interior_nodes)?;
         writeln!(f, "leaf nodes       :{}", self.leaf_nodes())?;
