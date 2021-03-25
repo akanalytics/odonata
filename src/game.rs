@@ -6,7 +6,6 @@ use crate::movelist::{Move, MoveList};
 use crate::outcome::GameEnd;
 use crate::outcome::Outcome;
 use crate::search::algo::Algo;
-use crate::search::clock::TimingMethod;
 use std::fmt;
 use std::time;
 
@@ -104,6 +103,8 @@ impl fmt::Display for Game {
 mod tests {
     use super::*;
     use crate::eval::*;
+    use crate::search::clock::TimingMethod;
+
 
     #[test]
     #[ignore]

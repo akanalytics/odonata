@@ -8,7 +8,8 @@ pub struct Stats {
     pub leaf_nodes: u64, // FIXME and terminal
     pub elapsed: time::Duration,
 
-    // cuts
+    pub depth: u32,
+    pub seldepth: u32,
     pub improvements: u64,
     pub cuts: u64,
 }
@@ -49,6 +50,8 @@ impl fmt::Display for Stats {
         writeln!(f, "elapsed (ms)     :{}", self.elapsed.as_millis())?;
         writeln!(f, "nodes/sec (k)    :{}", self.knps())?;
         writeln!(f, "cuts             :{}", self.cuts)?;
+        writeln!(f, "deldepth         :{}", self.seldepth)?;
+        writeln!(f, "depth            :{}", self.depth)?;
         writeln!(f, "improvements     :{}", self.improvements)?;
         writeln!(f, "node count       :{}", self.total_nodes())?;
         writeln!(f, "interior nodes   :{}", self.interior_nodes)?;

@@ -10,10 +10,8 @@ use crate::movelist::MoveList;
 use crate::types::Color;
 use std::fmt;
 use std::ops::Range;
-use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::sync::mpsc;
 use std::thread;
 use std::sync::atomic;
 use crate::types::MAX_PLY;
@@ -142,6 +140,7 @@ pub struct Algo {
     eval: SimpleScorer,
     stats: Stats,
     pub pv: PvTable,
+    current_best: Option<Move>,
     best_move: Option<Move>,
     pub score: Option<Score>,
     clock: Clock,
@@ -163,7 +162,7 @@ pub struct Algo {
 /// builder methods
 impl Algo {
     pub fn new() -> Algo {
-        Default::default()
+        Algo::default()
     }
 
 
@@ -201,11 +200,14 @@ impl Algo {
 impl fmt::Debug for Algo  {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Algo")
-            .field("pv", &self.pv)
+            // .field("pv", &self.pv.extract_pv().)
             .field("score", &self.score)
-            .field("best_move", &self.best_move.unwrap_or(Move::new_null()))
+            .field("best_move", &self.best_move)
+            .field("current_best", &self.current_best)
             .field("depth", &self.max_depth)
             .field("minmax", &self.minmax)
+            .field("method", &self.method)
+            .field("eval", &self.eval)
             .field("iterative_deepening", &self.iterative_deepening)
             .field("depth", &self.max_depth)
             .field("range", &self.range)
@@ -220,6 +222,7 @@ impl fmt::Display for Algo {
         writeln!(f, "pv               :{}", self.pv.extract_pv())?;
         writeln!(f, "score            :{}", self.score.unwrap())?;
         writeln!(f, "best_move        :{}", self.best_move.unwrap_or(Move::new_null()))?;
+        writeln!(f, "current_best     :{}", self.current_best.unwrap_or(Move::new_null()))?;
         writeln!(f, "depth            :{}", self.max_depth)?;
         writeln!(f, "minmax           :{}", self.minmax)?;
         writeln!(f, "iter deepening   :{}", self.iterative_deepening)?;
@@ -254,6 +257,7 @@ impl Algo {
         let name = String::from("search");
         let builder = thread::Builder::new().name(name).stack_size(FOUR_MB);
         let mut algo = self.clone();
+        self.kill.store(false, atomic::Ordering::SeqCst);
         self.child_thread = AlgoThreadHandle(Some(builder.spawn(move || algo.search(board)).unwrap()));
 
         // let mut res = Vec::with_capacity(n);
@@ -272,21 +276,23 @@ impl Algo {
 
     pub fn search_async_stop(&mut self) {
         self.cancel();
-        let mut option_thread = self.child_thread.0.take();
-        let handle = option_thread.take().unwrap();
-
-        // wait for thread to cancel 
-        let algo = handle.join().unwrap();
-        self.stats = algo.stats;
-        self.pv = algo.pv;
-        self.score = algo.score;
-        self.clock = algo.clock;
+        let handle = self.child_thread.0.take();
+        if let Some(handle) = handle { 
+            // wait for thread to cancel 
+            let algo = handle.join().unwrap();
+            self.stats = algo.stats;
+            self.pv = algo.pv;
+            self.score = algo.score;
+            self.clock = algo.clock;
+        }
     }
 
     pub fn search(&mut self, mut board: Board) -> Algo {
         self.clock.start();
+        self.stats = Stats::default();
         self.score = None;
         self.best_move = None;
+        self.current_best = None;
         let mut node = Node::root(&mut board);
         self.range = if let TimingMethod::Depth(depth) = self.method {
             if self.iterative_deepening {
@@ -306,11 +312,12 @@ impl Algo {
             }
             self.alphabeta(&mut node);
             self.score = Some(node.score);
-            self.best_move = Some(self.pv.extract_pv()[0]);
+            self.current_best = Some(self.pv.extract_pv()[0]);
             self.invoke_callback();
         }
 
         self.stats.recalculate_time_stats(self.clock.elapsed());
+        self.best_move = self.current_best;
         self.invoke_callback();
         self.clone()
     }
@@ -345,6 +352,11 @@ impl Algo {
         &self.clock
     }
 
+    #[inline]
+    pub fn cancel(&mut self) {
+        self.kill.store(true, atomic::Ordering::SeqCst);
+    }
+
 
     #[inline]
     fn cancelled(&mut self) -> bool {
@@ -361,12 +373,12 @@ impl Algo {
         }
 
         // only do this every 128th call to avoid expensive time computation
-        if !force_check && self.clock_checks % 1024 != 0 {
+        if !force_check && self.clock_checks % 128 != 0 {
             return false;
         }
 
 
-        match self.method {
+        let time_up = match self.method {
             TimingMethod::Depth(max_ply) => ply > max_ply,
             TimingMethod::MoveTime(duration) => self.clock().elapsed() > duration,
             TimingMethod::NodeCount(max_nodes) => nodes > max_nodes,
@@ -374,15 +386,15 @@ impl Algo {
             TimingMethod::MateIn(_) => false,
             TimingMethod::RemainingTime { our_color, wtime, btime, winc, binc, movestogo: _ } => {
                 let (time, _inc) = our_color.chooser_wb((wtime, winc), (btime, binc));
-                self.clock().elapsed() > time / 30
+                self.clock().elapsed().as_millis() > time.as_millis() / 30
             }
+        };
+        if time_up {
+            self.cancel();
         }
+        time_up
     }
 
-    #[inline]
-    pub fn cancel(&mut self) {
-        self.kill.store(true, atomic::Ordering::SeqCst);
-    }
 
 
     #[inline]
@@ -393,8 +405,9 @@ impl Algo {
 
     fn order_moves(&self, node: &Node, movelist: &mut MoveList) {
         if node.is_root() {
-            if let Some(best_move) = self.best_move() {
-                if let Some(i) = movelist.iter().position(|mv| mv == &best_move) {
+            if let Some(current_best) = self.current_best {
+                if let Some(i) = movelist.iter().position(|mv| mv == &current_best) {
+                    // println!("Swapped moves on depth {}!", self.max_depth);
                     movelist.swap(0, i);
                 }
             }
@@ -403,12 +416,21 @@ impl Algo {
 
     pub fn alphabeta(&mut self, node: &mut Node) {
         debug_assert!(self.max_depth > 0);
+        if self.stats.total_nodes() % 1000000 == 0 {
+            self.invoke_callback();
+        }
+
         if self.is_leaf(node) {
             node.score = node.board.eval(&self.eval);
             self.stats.leaf_nodes += 1;
             return;
         }
         self.stats.interior_nodes += 1;
+        if self.max_depth > self.stats.seldepth {
+            self.stats.seldepth = self.max_depth;
+            self.stats.depth = self.max_depth;
+            self.invoke_callback();
+        }
         // bailing here means the score is +/- inf and wont be used
         if self.time_up_or_cancelled(node.ply, self.stats.total_nodes(), false) {
             return;
@@ -446,7 +468,9 @@ impl Algo {
                 self.pv.set(child.ply, mv);
                 self.pv.propagate_from(child.ply);
                 self.stats.improvements += 1; 
-                // self.invoke_callback();
+                if parent.is_root() {
+                    self.invoke_callback();
+                }
             }
         } else {
             if child.score < parent.score {
@@ -457,7 +481,9 @@ impl Algo {
                 self.pv.set(child.ply, mv);
                 self.pv.propagate_from(child.ply);
                 self.stats.improvements += 1; 
-                // self.invoke_callback();
+                if parent.is_root() {
+                    self.invoke_callback();
+                }
             }
         }
         parent.alpha >= parent.beta && !self.minmax

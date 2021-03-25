@@ -200,6 +200,14 @@ fn bench_insufficient_material(c: &mut Criterion) {
 fn benchmark_search(c: &mut Criterion) {
     let mut group = c.benchmark_group("search");
     group.sample_size(10);
+    group.bench_function("alphabeta(5)", |b| {
+        b.iter(|| {
+            let board = Catalog::starting_position();
+            let eval = SimpleScorer::new().set_position(false);
+            let mut search = Algo::new().set_timing_method(TimingMethod::Depth(5)).set_minmax(false).set_eval(eval);
+            black_box(search.search(board));
+        });
+    });
     group.bench_function("minmax(5)", |b| {
         b.iter(|| {
             let board = Catalog::starting_position();
@@ -208,12 +216,28 @@ fn benchmark_search(c: &mut Criterion) {
             black_box(search.search(board));
         });
     });
-    group.bench_function("alphabeta(5)", |b| {
+    group.finish();
+}
+
+fn benchmark_mate_in_2(c: &mut Criterion) {
+    let mut group = c.benchmark_group("mate2");
+    group.sample_size(20);
+    group.bench_function("mate_in_2_base", |b| {
         b.iter(|| {
-            let board = Catalog::starting_position();
+            let board = Catalog::mate_in_2()[0].clone();
             let eval = SimpleScorer::new().set_position(false);
-            let mut search = Algo::new().set_timing_method(TimingMethod::Depth(5)).set_minmax(false).set_eval(eval);
-            black_box(search.search(board));
+            let mut search = Algo::new().set_timing_method(TimingMethod::Depth(3)).set_minmax(false).set_eval(eval);
+            black_box(search.search(black_box(board)));
+            assert_eq!(search.pv.extract_pv().to_string(), "d5f6, g7f6, c4f7");
+        });
+    });
+    group.bench_function("mate_in_2", |b| {
+        b.iter(|| {
+            let board = Catalog::mate_in_2()[0].clone();
+            let eval = SimpleScorer::new().set_position(false);
+            let mut search = Algo::new().set_timing_method(TimingMethod::Depth(3)).set_minmax(false).set_eval(eval).set_iterative_deepening(true);
+            black_box(search.search(black_box(board)));
+            assert_eq!(search.pv.extract_pv().to_string(), "d5f6, g7f6, c4f7");
         });
     });
     group.finish();
@@ -257,6 +281,7 @@ criterion_group!(
     benchmark_score,
     benchmark_search,
     benchmark_array,
-    bench_insufficient_material
+    bench_insufficient_material,
+    benchmark_mate_in_2
 );
 criterion_main!(benches);

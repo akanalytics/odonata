@@ -42,18 +42,15 @@ pub struct Uci {
     running: bool,
     board: Board,
     algo: Algo,
+    debug: bool,
 }
 
 impl Uci {
     pub fn new() -> Uci {
-        let mut uci = Uci {
-            preamble: vec![String::from("version")],
-            running: false,
-            board: Board::default(),
-            algo: Algo::default(),
-        };
+        let mut uci = Uci::default();
         let callback = Arc::new(Mutex::new(Self::uci_info));
         uci.algo.set_callback(callback);
+        uci.algo.set_iterative_deepening(true);
         uci
     }
 
@@ -62,6 +59,7 @@ impl Uci {
         while self.running {
             self.readline_and_execute();
         }
+        println!("info string exiting...")
     }
 
     fn readline_and_execute(&mut self) {
@@ -81,26 +79,24 @@ impl Uci {
             "isready" => self.uci_isready(),
             "debug" => self.uci_debug(&words[1..]),
             "setoption" => self.uci_setoption(&words[1..]),
-            // "register" => self.uci_unknown(&words),
-            "ucinewgame" => self.uci_unknown(&words),
-            "position" => self.uci_position(&words[1..]),
+            "ucinewgame" => self.uci_newgame(),
+            "position" => self.uci_position(&Args::parse(&input)),
             "go" => self.uci_go(&Args::parse(&input)),
             "stop" => self.uci_stop(),
-            // "ponderhit" => self.uci_unknown(&words),
             "quit" => self.uci_quit(),
+            // "ponderhit" => self.uci_unknown(&words),
+            // "register" => self.uci_unknown(&words),
 
             // extensions
-            "version" => self.uci_version(),
             "perft" => self.uci_perft(&words[1..]),
+            "display" | "d" => self.uci_display(),
             // "tune" => self.uci_unknown(&words),
-            "display" => self.uci_display(),
-            "d" => self.uci_display(),
             // "eval" => self.uci_unknown(&words),
             // "bench" => self.uci_unknown(&words),
             _ => self.uci_unknown(&words),
         };
         if let Err(s) = res {
-            println!("{}", s);
+            println!("info string error '{}'", s);
         }
         io::stdout().flush().ok();
     }
@@ -110,30 +106,53 @@ impl Uci {
     }
 
     fn uci_debug(&mut self, words: &[&str]) -> Result<(), String> {
-        println!("command {:?}", words);
-        match words.first().copied() {
-            Some("on") => println!("--on"),
-            Some("off") => println!("--off"),
+        self.debug = match words.first().copied() {
+            Some("on") => { println!("info string debug on"); true },
+            Some("off") => { println!("info string debug off"); false },
             _ => return Err("unknown debug option".into()),
-        }
+        };
         Ok(())
     }
 
-    fn uci_uci(&mut self) -> Result<(), String> {
-        Ok(())
-    }
-
+    //
+    // * isready
+    //     this is used to synchronize the engine with the GUI. When the GUI has sent a command or
+    //     multiple commands that can take some time to complete,
+    //     this command can be used to wait for the engine to be ready again or
+    //     to ping the engine to find out if it is still alive.
+    //     E.g. this should be sent after setting the path to the tablebases as this can take some time.
+    //     This command is also required once before the engine is asked to do any search
+    //     to wait for the engine to finish initializing.
+    //     This command must always be answered with "readyok" and can be sent also when the engine is calculating
+    //     in which case the engine should also immediately answer with "readyok" without stopping the search.
+    // 
     fn uci_isready(&mut self) -> Result<(), String> {
-        println!("isready");
+        println!("readyok");
+        Ok(())
+    }
+
+    //
+    // * ucinewgame
+    //    this is sent to the engine when the next search (started with "position" and "go") will be from
+    //    a different game. This can be a new game the engine should play or a new game it should analyse but
+    //    also the next position from a testsuite with positions only.
+    //    If the GUI hasn't sent a "ucinewgame" before the first "position" command, the engine shouldn't
+    //    expect any further ucinewgame commands as the GUI is probably not supporting the ucinewgame command.
+    //    So the engine should not rely on this command even though all new GUIs should support it.
+    //    As the engine's reaction to "ucinewgame" can take some time the GUI should always send "isready"
+    //    after "ucinewgame" to wait for the engine to finish its operation.
+    //
+    fn uci_newgame(&mut self) -> Result<(), String> {
         Ok(())
     }
 
     fn uci_quit(&mut self) -> Result<(), String> {
+        println!("info string quitting...");
         self.running = false;
         Ok(())
     }
 
-    fn uci_version(&self) -> Result<(), String> {
+    fn uci_uci(&mut self) -> Result<(), String> {
         println!("id name {} v{}", Version::NAME, Version::VERSION);
         println!("id author {}", Version::AUTHORS);
         println!("option name depth type spin default 7 min 1 max 10");
@@ -146,30 +165,40 @@ impl Uci {
         let depth = depth.parse::<u32>().or(Err(format!("Depth {} must be numeric", depth)))?;
         let board = Catalog::starting_position();
         for d in 1..=depth {
-            println!("perft({}) = {}", d, Perft::perft(&board, d));
+            println!("info string perft({}) = {}", d, Perft::perft(&board, d));
         }
         Ok(())
     }
 
-    fn uci_position(&mut self, words: &[&str]) -> Result<(), String> {
-        match words.first().copied() {
-            None => Err("Must specify a fen position or startpos".into()),
-            Some("startpos") => {
+    fn uci_position(&mut self, arg: &Args) -> Result<(), String> {
+        let fen = arg.words.get(1);
+        let moves;
+        if let Some(fen) = fen {
+            if fen == "startpos" {
                 self.board = Catalog::starting_position();
-                if words.get(1) != Some(&"moves") {
-                    return Err("Token after startpos must be 'moves'".into());
+                moves = 2;
+            } else {
+                // expect pos, b/w, castling, ep and 2 x counts
+                let fen = arg.words.get(1..7);
+                if let Some(fen) = fen {
+                    self.board = Board::parse_fen(&fen.join(" "))?;
+                    moves = 7;
+                } else {
+                    return Err("Fen or parts of fen are missing".into());
                 }
-                for mv in words[2..].iter() {
+            }
+            if let Some(word) = arg.words.get(moves) {
+                if word != "moves" {
+                    return Err(format!("Token after startpos/fen must be 'moves' not '{}'", word));
+                }
+                for mv in arg.words[(moves+1)..].iter() {
                     let mv = self.board.parse_uci_move(mv)?;
                     self.board = self.board.make_move(&mv);
                 }
-                Ok(())
             }
-            _ => {
-                let fen = words[0..].join(" ");
-                self.board = Board::parse_fen(&*fen)?;
-                Ok(())
-            }
+            Ok(())
+        } else {
+            Err("Must specify a fen position or startpos".into())
         }
     }
 
@@ -183,7 +212,7 @@ impl Uci {
         // 	engine decides to ponder on a different move, it should not display any mainlines as they are
         // 	likely to be misinterpreted by the GUI because the GUI expects the engine to ponder
         //  on the suggested move.
-        let _ponder = args.contains("ponder");
+        let _ponder = args.contain("ponder");
 
 
         //  search x ply only
@@ -208,7 +237,7 @@ impl Uci {
         // search for exactly x millis
         let movetime = args.int_after("movetime");
         // search until the "stop" command. Do not exit the search without being told so in this mode!
-        let infinite = args.contains("infinite");
+        let infinite = args.contain("infinite");
 
         let tm = if let Some(wtime) = wtime {
             let btime = btime.unwrap_or(0) as u64;
@@ -241,8 +270,8 @@ impl Uci {
         // Example: After "position startpos" and "go infinite searchmoves e2e4 d2d4"
         // the engine should only search the two moves e2e4 and d2d4 in the initial position
         let _searchmoves = args.string_after("searchmoves");
+        self.debug(&format!("info string {:?}", self.algo));
         self.algo.search_async(self.board.clone());
-        // println!("{}", self.algo);
         Ok(())
     }
 
@@ -251,8 +280,8 @@ impl Uci {
     }
 
     fn uci_display(&mut self) -> Result<(), String> {
-        println!("{}", self.board);
-        println!("{}", self.algo);
+        self.debug(&format!("info string fen {}", self.board.to_fen()));
+        self.debug(&format!("info string {:?}", self.algo));
         Ok(())
     }
 
@@ -260,15 +289,66 @@ impl Uci {
     fn uci_stop(&mut self) -> Result<(), String> {
         self.algo.search_async_stop();
         // Self::uci_info(&self.algo);
+        self.debug("info string stopped");
         Ok(())
     }
 
+
+    // * depth 
+    // * seldepth 
+    //     selective search depth in plies,
+    //     if the engine sends seldepth there must also a "depth" be present in the same string.
+    // * time 
+    //     the time searched in ms, this should be sent together with the pv.
+    // * nodes 
+    //     x nodes searched, the engine should send this info regularly
+    // * pv  ... 
+    //     the best line found
+    // * multipv 
+    //     this for the multi pv mode.
+    //     for the best move/pv add "multipv 1" in the string when you send the pv.
+    //     in k-best mode always send all k variants in k strings together.
+    // * score
+    //     * cp 
+    //         the score from the engine's point of view in centipawns.
+    //     * mate 
+    //         mate in y moves, not plies.
+    //         If the engine is getting mated use negativ values for y.
+    //     * lowerbound
+    //       the score is just a lower bound.
+    //     * upperbound
+    //        the score is just an upper bound.
+    // * currmove 
+    //     currently searching this move
+    // * currmovenumber 
+    //     currently searching move number x, for the first move x should be 1 not 0.
+    // * hashfull 
+    //     the hash is x permill full, the engine should send this info regularly
+    // * nps 
+    //     x nodes per second searched, the engine should send this info regularly
+    // * tbhits 
+    //     x positions where found in the endgame table bases
+    // * cpuload 
+    //     the cpu usage of the engine is x permill.
+    // 
     fn uci_info(algo: &Algo) {
         let mut stats = algo.stats();
         stats.recalculate_time_stats(algo.clock().elapsed());
-        println!("info nodes {} nps {}", stats.total_nodes(), stats.knps()*1000);
-        if algo.score.is_some() {
-            println!("bestmove {}", algo.pv.extract_pv()[0].uci());
+        let moves = algo.pv.extract_pv().iter().map(|m| m.uci()).collect::<Vec<String>>().join(" ");
+        println!("info time {time} depth {depth} nodes {nodes} nps {nps} pv {pv}", 
+            time = stats.elapsed.as_millis(), 
+            depth = stats.depth, 
+            nodes = stats.total_nodes(), 
+            nps = stats.knps()*1000,
+            pv = moves);
+        if let Some(best_move) = algo.best_move() {
+            println!("bestmove {}", best_move.uci());
+        }
+    }
+
+    fn debug(&self, str: &str) {
+        if self.debug {
+            println!("info string {}", str);
         }
     }
 
@@ -277,7 +357,7 @@ impl Uci {
 struct Args {
     // FIXME:
     // line: String,
-    words: Vec<String>,
+    pub words: Vec<String>,
 }
 
 impl Args {
@@ -285,7 +365,7 @@ impl Args {
         Args { /* line: String::from(s), */ words: s.split_whitespace().map(|s| s.to_string()).collect() }
     }
 
-    pub fn contains(&self, s: &str) -> bool {
+    pub fn contain(&self, s: &str) -> bool {
         self.words.contains(&s.into())
     }
 
@@ -304,12 +384,13 @@ impl Args {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::thread;
 
     #[test]
     fn test_args() {
         let s = "go depth 3";
         let args = Args::parse(s);
-        assert!(args.contains("depth"));
+        assert!(args.contain("depth"));
         let s = args.string_after("depth");
         assert_eq!(s, Some(String::from("3")));
     }
@@ -336,7 +417,9 @@ mod tests {
     #[test]
     fn test_uci_position() {
         let mut uci = Uci::new();
+        uci.preamble.push("debug on".into());
         uci.preamble.push("position startpos".into());
+        uci.preamble.push("display".into());
         uci.preamble.push("quit".into());
         uci.run();
         assert_eq!(uci.board, Catalog::starting_position());
@@ -355,16 +438,38 @@ mod tests {
             uci.board,
             Board::parse_fen("rnbqkbnr/1ppppppp/p7/8/8/P7/1PPPPPPP/RNBQKBNR w KQkq - 0 2").unwrap()
         );
+
+        let mut uci = Uci::new();
+        uci.preamble.push("position rnbqkbnr/1ppppppp/p7/8/8/P7/1PPPPPPP/RNBQKBNR w KQkq - 0 1 moves h2h3 h7h6".into());
+        uci.preamble.push("quit".into());
+        uci.run();
+        assert_eq!(
+            uci.board,
+            Board::parse_fen("rnbqkbnr/1pppppp1/p6p/8/8/P6P/1PPPPPP1/RNBQKBNR w KQkq - 0 2").unwrap()
+        );
     }
 
     #[test]
-    fn test_uci_go() {
+    fn test_uci_go1() {
         let mut uci = Uci::new();
+        uci.preamble.push("debug on".into());
         uci.preamble.push("position startpos moves d2d4".into());
-        uci.preamble.push("go depth 2".into());
+        uci.preamble.push("go depth 1".into());
+        uci.preamble.push("quit".into());
+        uci.run();
+        thread::sleep(Duration::from_millis(600));
+    }
+
+    #[test]
+    fn test_uci_go2() {
+        let mut uci = Uci::new();
+        uci.preamble.push("debug on".into());
+        uci.preamble.push("position startpos moves d2d4".into());
+        uci.preamble.push("go wtime 10000 btime 10000".into());
         uci.preamble.push("quit".into());
         uci.run();
         // println!("pvtable:\n{}", uci.algo.pv);
         // assert_eq!(uci.board, Catalog::starting_position());
+        thread::sleep(Duration::from_millis(600));
     }
 }

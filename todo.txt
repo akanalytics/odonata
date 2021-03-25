@@ -2,7 +2,13 @@
 [x] game/match
 [x] producing algebraic notation
 [x] pgn export
-uci
+[x] uci
+iterative deepening
+    - found mate - skip deepening
+    - better carry forward of moves
+    - abandon if not time for another ply
+    - windowed search
+    
 image generation
 python interface
 

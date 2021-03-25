@@ -18,7 +18,7 @@ impl Default for PvTable {
 
 impl PvTable {
     pub fn new(max_ply: u32) -> PvTable {
-        let mut pvc = PvTable { matrix: vec![Vec::new(); max_ply as usize], size: 0 };
+        let mut pvc = PvTable { matrix: vec![Vec::new(); max_ply as usize], size: 0, };
         for (r, row) in pvc.matrix.iter_mut().enumerate() {
             row.resize_with(MAX_PLY as usize - r, Move::new_null)
             // row.extend( vec![Move::new(); r+1] );
@@ -49,9 +49,11 @@ impl PvTable {
     }
 
     pub fn extract_pv(&self) -> MoveList {
-        let mut pv = MoveList::new();
-        pv.extend(&self.matrix[0][1..self.size]);
-        pv
+        let mut res = MoveList::new();
+        if let Some(pv) = self.matrix[0].get(1..self.size) {
+            res.extend(pv);
+        }
+        res
     }
 }
 
