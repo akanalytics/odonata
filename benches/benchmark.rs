@@ -8,6 +8,7 @@ use odonate::material::*;
 use odonate::movelist::*;
 use odonate::perft::Perft;
 use odonate::search::algo::Algo;
+use odonate::search::clock::TimingMethod;
 use odonate::types::*;
 
 /*
@@ -202,18 +203,16 @@ fn benchmark_search(c: &mut Criterion) {
     group.bench_function("minmax(5)", |b| {
         b.iter(|| {
             let board = Catalog::starting_position();
-            let mut eval = SimpleScorer::default();
-            eval.position = false;
-            let mut search = Algo::new().set_depth(5).set_minmax(true).set_eval(eval);
+            let eval = SimpleScorer::new().set_position(false);
+            let mut search = Algo::new().set_timing_method(TimingMethod::Depth(5)).set_minmax(true).set_eval(eval);
             black_box(search.search(board));
         });
     });
     group.bench_function("alphabeta(5)", |b| {
         b.iter(|| {
             let board = Catalog::starting_position();
-            let mut eval = SimpleScorer::default();
-            eval.position = false;
-            let mut search = Algo::new().set_depth(5).set_minmax(false).set_eval(eval);
+            let eval = SimpleScorer::new().set_position(false);
+            let mut search = Algo::new().set_timing_method(TimingMethod::Depth(5)).set_minmax(false).set_eval(eval);
             black_box(search.search(board));
         });
     });

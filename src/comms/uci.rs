@@ -52,7 +52,6 @@ impl Uci {
             board: Board::default(),
             algo: Algo::default(),
         };
-        uci.algo.set_depth(5);
         let callback = Arc::new(Mutex::new(Self::uci_info));
         uci.algo.set_callback(callback);
         uci
@@ -242,10 +241,6 @@ impl Uci {
         // Example: After "position startpos" and "go infinite searchmoves e2e4 d2d4"
         // the engine should only search the two moves e2e4 and d2d4 in the initial position
         let _searchmoves = args.string_after("searchmoves");
-
-        if let Some(depth) = depth {
-            self.algo.set_depth(depth as u32);
-        }
         self.algo.search_async(self.board.clone());
         // println!("{}", self.algo);
         Ok(())

@@ -181,7 +181,7 @@ impl fmt::Display for Score {
 #[derive(Clone, Debug)]
 pub struct SimpleScorer {
     mobility: bool,
-    pub position: bool,
+    position: bool,
     material: bool,
 }
 
@@ -191,8 +191,23 @@ impl Default for SimpleScorer {
     }
 }
 
+// builder methods
+impl SimpleScorer {
+    pub fn new() -> SimpleScorer {
+        SimpleScorer::default()
+    }
+
+    pub fn set_position(&mut self, enabled: bool ) -> Self {
+        self.position = enabled;
+        self.clone()
+    }
+}
+
+
+
 impl SimpleScorer {
     pub const MATERIAL_SCORES: [i32; Piece::ALL.len()] = [1000, 3250, 3500, 5000, 9000, 0];
+
 
     pub fn evaluate(&self, board: &Board) -> Score {
         let outcome = board.outcome();
@@ -293,7 +308,7 @@ mod tests {
         assert!(Score::WhiteWin { minus_ply: 0 } == Score::WhiteWin { minus_ply: 0 });
 
         let board = Catalog::starting_position();
-        let eval = &SimpleScorer::default();
+        let eval = &SimpleScorer::new();
         assert_eq!(board.eval(eval), Score::Millipawns(0));
 
         let starting_pos_score = 8 * 1000 + 2 * 3250 + 2 * 3500 + 2 * 5000 + 9000;
@@ -306,7 +321,7 @@ mod tests {
 
     #[test]
     fn score_position() {
-        let eval = &SimpleScorer::default();
+        let eval = &SimpleScorer::new();
 
         let bd = Board::parse_fen("8/P7/8/8/8/8/8/8 w - - 0 1").unwrap().as_board();
         assert_eq!(bd.eval_position(eval), Score::Millipawns(10 * 50));

@@ -10,7 +10,7 @@ use std::fmt;
 use std::ops::{Deref, DerefMut};
 
 // FIXME: public methods
-#[derive(Debug, Default, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, PartialEq)]
 pub struct Move {
     pub from: Bitboard,
     pub to: Bitboard,

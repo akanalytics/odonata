@@ -6,6 +6,7 @@ use crate::movelist::{Move, MoveList};
 use crate::outcome::GameEnd;
 use crate::outcome::Outcome;
 use crate::search::algo::Algo;
+use crate::search::clock::TimingMethod;
 use std::fmt;
 use std::time;
 
@@ -107,14 +108,12 @@ mod tests {
     #[test]
     #[ignore]
     fn test_game() {
-        let mut eval_w = SimpleScorer::default();
-        eval_w.position = true;
-        let search_w = Algo::new().set_depth(5).set_eval(eval_w);
+        let eval_w = SimpleScorer::new().set_position(true);
+        let search_w = Algo::new().set_timing_method(TimingMethod::Depth(5)).set_eval(eval_w);
         let white = search_w;
 
-        let mut eval_b = SimpleScorer::default();
-        eval_b.position = false;
-        let search_b = Algo::new().set_depth(5).set_eval(eval_b);
+        let eval_b = SimpleScorer::new().set_position(false);
+        let search_b = Algo::new().set_timing_method(TimingMethod::Depth(5)).set_eval(eval_b);
         let black = search_b;
 
         let board = Catalog::starting_position();

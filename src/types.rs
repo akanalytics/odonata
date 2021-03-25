@@ -2,6 +2,10 @@ use crate::bitboard::{Bitboard, Dir};
 use std::fmt;
 use std::iter::*;
 
+
+
+pub const MAX_PLY: u32 = 128;
+
 pub struct Chooser<T> {
     pub black: T,
     pub white: T,

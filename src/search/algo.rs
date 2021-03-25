@@ -6,14 +6,18 @@ use crate::movelist::Move;
 use crate::pvtable::PvTable;
 use crate::search::clock::{Clock, TimingMethod};
 use crate::search::stats::Stats;
+use crate::movelist::MoveList;
 use crate::types::Color;
 use std::fmt;
+use std::ops::Range;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::mpsc;
 use std::thread;
 use std::sync::atomic;
+use crate::types::MAX_PLY;
+
 
 
 // CPW
@@ -112,6 +116,13 @@ impl Node<'_> {
         // node.ply % 2 == 0 // 0 ply looks at our moves - maximising if white
         board.color_us() == Color::White
     }
+
+    #[inline]
+    pub fn is_root(&self) -> bool {
+        self.ply == 0
+    }
+
+
 }
 
 // type AlgoSender = mpsc::Sender<String>;
@@ -125,10 +136,13 @@ type Callback = Arc<Mutex<Func>>;
 #[derive(Clone, Default)]
 pub struct Algo {
     max_depth: u32,
+    range: Range<u32>,
     minmax: bool,
+    iterative_deepening: bool,
     eval: SimpleScorer,
     stats: Stats,
     pub pv: PvTable,
+    best_move: Option<Move>,
     pub score: Option<Score>,
     clock: Clock,
     method: TimingMethod,
@@ -152,8 +166,9 @@ impl Algo {
         Default::default()
     }
 
-    pub fn set_depth(&mut self, max_depth: u32) -> Self {
-        self.max_depth = max_depth;
+
+    pub fn set_iterative_deepening(&mut self, enable: bool) -> Self {
+        self.iterative_deepening = enable;
         self.clone()
     }
 
@@ -167,8 +182,9 @@ impl Algo {
         self.clone()
     }
 
-    pub fn set_timing_method(&mut self, tm: TimingMethod) {
+    pub fn set_timing_method(&mut self, tm: TimingMethod) -> Self {
         self.method = tm;
+        self.clone()
     }
 
     //pub fn add_callback(&mut self, callback: dyn FnMut(String) -> bool + Send + Sync) -> Self {
@@ -187,9 +203,12 @@ impl fmt::Debug for Algo  {
         f.debug_struct("Algo")
             .field("pv", &self.pv)
             .field("score", &self.score)
+            .field("best_move", &self.best_move.unwrap_or(Move::new_null()))
             .field("depth", &self.max_depth)
             .field("minmax", &self.minmax)
+            .field("iterative_deepening", &self.iterative_deepening)
             .field("depth", &self.max_depth)
+            .field("range", &self.range)
             .field("stats", &self.stats)
             .field("clock", &self.clock)
             .finish()
@@ -200,8 +219,11 @@ impl fmt::Display for Algo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "pv               :{}", self.pv.extract_pv())?;
         writeln!(f, "score            :{}", self.score.unwrap())?;
+        writeln!(f, "best_move        :{}", self.best_move.unwrap_or(Move::new_null()))?;
         writeln!(f, "depth            :{}", self.max_depth)?;
         writeln!(f, "minmax           :{}", self.minmax)?;
+        writeln!(f, "iter deepening   :{}", self.iterative_deepening)?;
+        writeln!(f, "range            :{:?}", self.range)?;
         writeln!(f, "clock_checks     :{}", self.clock_checks)?;
         writeln!(f, "kill             :{}", self.kill.load(atomic::Ordering::SeqCst))?;
         writeln!(f, "count            :{}", Arc::strong_count(&self.kill))?;
@@ -228,8 +250,6 @@ impl Algo {
     
     
     pub fn search_async(&mut self, board: Board)  {
-        debug_assert!(self.max_depth > 0);
-
         const FOUR_MB: usize = 4 * 1024 * 1024;
         let name = String::from("search");
         let builder = thread::Builder::new().name(name).stack_size(FOUR_MB);
@@ -264,13 +284,33 @@ impl Algo {
     }
 
     pub fn search(&mut self, mut board: Board) -> Algo {
-        debug_assert!(self.max_depth > 0);
         self.clock.start();
         self.score = None;
+        self.best_move = None;
         let mut node = Node::root(&mut board);
-        self.alphabeta(&mut node);
+        self.range = if let TimingMethod::Depth(depth) = self.method {
+            if self.iterative_deepening {
+                1..depth+1
+            } else {
+                depth..depth+1
+            } 
+        } else {
+            // regardless of iterative deeping, we apply it if no explicit depth given
+            1..MAX_PLY
+        };
+
+        for depth in self.range.clone() {
+            self.set_iteration_depth(depth);
+            if self.time_up_or_cancelled(depth, self.stats().total_nodes(), true) {
+                break;
+            }
+            self.alphabeta(&mut node);
+            self.score = Some(node.score);
+            self.best_move = Some(self.pv.extract_pv()[0]);
+            self.invoke_callback();
+        }
+
         self.stats.recalculate_time_stats(self.clock.elapsed());
-        self.score = Some(node.score);
         self.invoke_callback();
         self.clone()
     }
@@ -283,11 +323,22 @@ impl Algo {
         )
     }
 
+
+    #[inline]
+    pub fn set_iteration_depth(&mut self, max_depth: u32) {
+        self.max_depth = max_depth;
+    }
+
     // FIXME recalculate time stats
     #[inline]
     pub fn stats(&self) -> Stats {
         self.stats
     }
+
+    pub fn best_move(&self) -> Option<Move> {
+        self.best_move             
+    }
+
 
     #[inline]
     pub fn clock(&self) -> &Clock {
@@ -295,21 +346,25 @@ impl Algo {
     }
 
 
+    #[inline]
     fn cancelled(&mut self) -> bool {
         let time_up = self.kill.load(atomic::Ordering::SeqCst);
         time_up
     }
 
-    pub fn time_up_or_cancelled(&mut self, ply: u32, nodes: u64) -> bool {
+    #[inline]
+    pub fn time_up_or_cancelled(&mut self, ply: u32, nodes: u64, force_check: bool) -> bool {
         self.clock_checks += 1;
-        // only do this every 128th call to avoid expensive time computation
-        if self.clock_checks % 1024 != 0 {
-            return false;
-        }
 
         if self.cancelled() {
             return true;
         }
+
+        // only do this every 128th call to avoid expensive time computation
+        if !force_check && self.clock_checks % 1024 != 0 {
+            return false;
+        }
+
 
         match self.method {
             TimingMethod::Depth(max_ply) => ply > max_ply,
@@ -324,6 +379,7 @@ impl Algo {
         }
     }
 
+    #[inline]
     pub fn cancel(&mut self) {
         self.kill.store(true, atomic::Ordering::SeqCst);
     }
@@ -334,7 +390,19 @@ impl Algo {
         node.ply == self.max_depth
     }
 
+
+    fn order_moves(&self, node: &Node, movelist: &mut MoveList) {
+        if node.is_root() {
+            if let Some(best_move) = self.best_move() {
+                if let Some(i) = movelist.iter().position(|mv| mv == &best_move) {
+                    movelist.swap(0, i);
+                }
+            }
+        }
+    }
+
     pub fn alphabeta(&mut self, node: &mut Node) {
+        debug_assert!(self.max_depth > 0);
         if self.is_leaf(node) {
             node.score = node.board.eval(&self.eval);
             self.stats.leaf_nodes += 1;
@@ -342,15 +410,18 @@ impl Algo {
         }
         self.stats.interior_nodes += 1;
         // bailing here means the score is +/- inf and wont be used
-        if self.time_up_or_cancelled(node.ply, self.stats.total_nodes()) {
+        if self.time_up_or_cancelled(node.ply, self.stats.total_nodes(), false) {
             return;
         }
 
-        let moves = node.board.legal_moves();
+        let mut moves = node.board.legal_moves();
         if moves.is_empty() {
             node.score = node.board.eval(&self.eval);
             return;
         }
+
+        self.order_moves(&node, &mut moves);
+
         for (_i, mv) in moves.iter().enumerate() {
             let mut child_board = node.board.make_move(mv);
             let mut child = node.child(mv, &mut child_board);
@@ -410,17 +481,15 @@ mod tests {
     fn test_node() {
         // init();
         let board = Catalog::starting_position();
-        let mut eval = SimpleScorer::default();
-        eval.position = false;
-        let mut search = Algo::new().set_depth(3).set_minmax(true).set_eval(eval);
+        let eval = SimpleScorer::new().set_position(false);
+        let mut search = Algo::new().set_timing_method(TimingMethod::Depth(3)).set_minmax(true).set_eval(eval);
         search.search(board);
         assert_eq!(search.stats().total_nodes(), 1 + 20 + 400 + 8902 /* + 197_281 */);
         assert_eq!(search.stats().branching_factor().round() as u64, 21);
 
         let board = Catalog::starting_position();
-        let mut eval = SimpleScorer::default();
-        eval.position = false;
-        let mut search = Algo::new().set_depth(4).set_minmax(false).set_eval(eval);
+        let eval = SimpleScorer::new().set_position(false);
+        let mut search = Algo::new().set_timing_method(TimingMethod::Depth(4)).set_minmax(false).set_eval(eval);
         search.search(board);
         assert_eq!(search.stats().total_nodes(), 1757);
         assert_eq!(search.stats().branching_factor().round() as u64, 2);
@@ -430,7 +499,7 @@ mod tests {
     fn test_black_opening() {
         let mut board = Catalog::starting_position();
         board.set_turn(Color::Black);
-        let mut search = Algo::new().set_depth(1).set_minmax(false);
+        let mut search = Algo::new().set_timing_method(TimingMethod::Depth(1)).set_minmax(false);
         search.search(board);
         println!("{}", search);
         assert_eq!(search.pv.extract_pv()[0].uci(), "d7d5");
@@ -439,7 +508,7 @@ mod tests {
     #[test]
     fn test_mate_in_2() {
         let board = Catalog::mate_in_2()[0].clone();
-        let mut search = Algo::new().set_depth(3).set_minmax(false);
+        let mut search = Algo::new().set_timing_method(TimingMethod::Depth(3)).set_minmax(false);
         search.search(board);
         assert_eq!(search.pv.extract_pv().to_string(), "d5f6, g7f6, c4f7");
         assert_eq!(search.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
@@ -449,7 +518,7 @@ mod tests {
     #[test]
     fn test_mate_in_2_async() {
         let board = Catalog::mate_in_2()[0].clone();
-        let mut algo = Algo::new().set_depth(3).set_minmax(true);
+        let mut algo = Algo::new().set_timing_method(TimingMethod::Depth(3)).set_minmax(true);
         algo.search(board.clone());
         let nodes = algo.stats().total_nodes();
         let millis = time::Duration::from_millis(20);
@@ -460,7 +529,7 @@ mod tests {
         assert_eq!(algo.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
         println!("{}\n\nasync....", algo);
 
-        let mut algo2 = Algo::new().set_depth(3).set_minmax(true);
+        let mut algo2 = Algo::new().set_timing_method(TimingMethod::Depth(3)).set_minmax(true);
         let _clos = |algo :&Algo| { println!("nps {}", algo.stats().knps()); };
         let am = Arc::new(Mutex::new(_clos));
         algo2.set_callback( am );
@@ -484,7 +553,7 @@ mod tests {
     #[ignore]
     fn test_mate_in_3_sync() {
         let board = Catalog::mate_in_3()[0].clone();
-        let mut search = Algo::new().set_depth(5).set_minmax(false);
+        let mut search = Algo::new().set_timing_method(TimingMethod::Depth(5)).set_minmax(false);
         search.search(board.clone());
         let san = board.to_san_moves(&search.pv.extract_pv()).replace("\n", " ");
         println!("{}", search);
@@ -500,9 +569,8 @@ mod tests {
             .unwrap()
             .as_board();
         println!("{}", board);
-        let mut eval = SimpleScorer::default();
-        eval.position = false;
-        let mut search = Algo::new().set_depth(9).set_minmax(false).set_eval(eval); //9
+        let eval = SimpleScorer::new().set_position(false);
+        let mut search = Algo::new().set_timing_method(TimingMethod::Depth(9)).set_minmax(false).set_eval(eval); //9
         search.search(board);
         println!("{}", search);
     }
