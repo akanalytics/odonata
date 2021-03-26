@@ -1,12 +1,12 @@
 [package]
-name = "odonate"
+name = "odonata"
 version = "0.1.0"
 authors = ["Andy Watkins", "Hector"]
 edition = "2018"
 description = """
 Chess
 """
-repository = "https://github.com/akanalytics/odonate"
+repository = "https://github.com/akanalytics/odonata"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

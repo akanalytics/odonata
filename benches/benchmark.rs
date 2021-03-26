@@ -1,15 +1,15 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use odonate::bitboard::*;
-use odonate::board::makemove::*;
-use odonate::board::movegen::*;
-use odonate::catalog::*;
-use odonate::eval::*;
-use odonate::material::*;
-use odonate::movelist::*;
-use odonate::perft::Perft;
-use odonate::search::algo::Algo;
-use odonate::search::clock::TimingMethod;
-use odonate::types::*;
+use odonata::bitboard::*;
+use odonata::board::makemove::*;
+use odonata::board::movegen::*;
+use odonata::catalog::*;
+use odonata::eval::*;
+use odonata::material::*;
+use odonata::movelist::*;
+use odonata::perft::Perft;
+use odonata::search::algo::Algo;
+use odonata::search::clock::TimingMethod;
+use odonata::types::*;
 
 /*
 Bitboard 2.7ns (a|b)&c

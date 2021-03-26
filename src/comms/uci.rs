@@ -59,7 +59,8 @@ impl Uci {
         while self.running {
             self.readline_and_execute();
         }
-        println!("info string exiting...")
+        println!("info string exiting...");
+        io::stdout().flush().ok();
     }
 
     fn readline_and_execute(&mut self) {
@@ -272,6 +273,7 @@ impl Uci {
         // Example: After "position startpos" and "go infinite searchmoves e2e4 d2d4"
         // the engine should only search the two moves e2e4 and d2d4 in the initial position
         let _searchmoves = args.string_after("searchmoves");
+        self.debug("starting search with configuration ...");
         self.debug(&format!("{}", self.algo));
         self.debug(&format!("{}", self.board));
         self.algo.search_async(self.board.clone());
@@ -283,7 +285,8 @@ impl Uci {
     }
 
     fn uci_display(&mut self) -> Result<(), String> {
-        self.debug(&format!("fen {}", self.board.to_fen()));
+        self.debug("display");
+        self.debug(&format!("{}", self.board));
         self.debug(&format!("{}", self.algo));
         Ok(())
     }
@@ -347,6 +350,7 @@ impl Uci {
         if let Some(best_move) = algo.best_move() {
             println!("bestmove {}", best_move.uci());
         }
+        io::stdout().flush().ok();
     }
 
     fn debug(&self, str: &str) {
