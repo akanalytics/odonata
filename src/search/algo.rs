@@ -209,6 +209,7 @@ impl fmt::Debug for Algo  {
             .field("method", &self.method)
             .field("eval", &self.eval)
             .field("iterative_deepening", &self.iterative_deepening)
+            .field("method", &self.method)
             .field("depth", &self.max_depth)
             .field("range", &self.range)
             .field("stats", &self.stats)
@@ -220,16 +221,17 @@ impl fmt::Debug for Algo  {
 impl fmt::Display for Algo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "pv               :{}", self.pv.extract_pv())?;
-        writeln!(f, "score            :{}", self.score.unwrap())?;
+        writeln!(f, "score            :{}", self.score.unwrap_or(Score::MinusInfinity))?;
         writeln!(f, "best_move        :{}", self.best_move.unwrap_or(Move::new_null()))?;
         writeln!(f, "current_best     :{}", self.current_best.unwrap_or(Move::new_null()))?;
         writeln!(f, "depth            :{}", self.max_depth)?;
         writeln!(f, "minmax           :{}", self.minmax)?;
         writeln!(f, "iter deepening   :{}", self.iterative_deepening)?;
+        writeln!(f, "timing method    :{:?}", self.method)?;
         writeln!(f, "range            :{:?}", self.range)?;
         writeln!(f, "clock_checks     :{}", self.clock_checks)?;
         writeln!(f, "kill             :{}", self.kill.load(atomic::Ordering::SeqCst))?;
-        writeln!(f, "count            :{}", Arc::strong_count(&self.kill))?;
+        writeln!(f, "kill ref counts  :{}", Arc::strong_count(&self.kill))?;
         // writeln!(f, "callback         :{}", self.callback)?;
         write!(f, "{}", self.clock)?;
         write!(f, "{}", self.stats)?;
@@ -274,26 +276,10 @@ impl Algo {
     }
 
 
-    pub fn search_async_stop(&mut self) {
-        self.cancel();
-        let handle = self.child_thread.0.take();
-        if let Some(handle) = handle { 
-            // wait for thread to cancel 
-            let algo = handle.join().unwrap();
-            self.stats = algo.stats;
-            self.pv = algo.pv;
-            self.score = algo.score;
-            self.clock = algo.clock;
-        }
-    }
-
     pub fn search(&mut self, mut board: Board) -> Algo {
         self.clock.start();
         self.stats = Stats::default();
-        self.score = None;
-        self.best_move = None;
         self.current_best = None;
-        let mut node = Node::root(&mut board);
         self.range = if let TimingMethod::Depth(depth) = self.method {
             if self.iterative_deepening {
                 1..depth+1
@@ -307,12 +293,18 @@ impl Algo {
 
         for depth in self.range.clone() {
             self.set_iteration_depth(depth);
+            self.score = None;
+            self.best_move = None;
+            self.pv = PvTable::new(MAX_PLY);
+            let mut root_node = Node::root(&mut board);
             if self.time_up_or_cancelled(depth, self.stats().total_nodes(), true) {
                 break;
             }
-            self.alphabeta(&mut node);
-            self.score = Some(node.score);
-            self.current_best = Some(self.pv.extract_pv()[0]);
+            self.alphabeta(&mut root_node);
+            if !self.cancelled() {
+                self.score = Some(root_node.score);
+                self.current_best = Some(self.pv.extract_pv()[0]);
+            }
             self.invoke_callback();
         }
 
@@ -352,6 +344,22 @@ impl Algo {
         &self.clock
     }
 
+
+    pub fn search_async_stop(&mut self) {
+        self.cancel();
+        let handle = self.child_thread.0.take();
+        if let Some(handle) = handle { 
+            // wait for thread to cancel 
+            let algo = handle.join().unwrap();
+            self.stats = algo.stats;
+            self.pv = algo.pv;
+            self.score = algo.score;
+            self.clock = algo.clock;
+        }
+    }
+
+
+
     #[inline]
     pub fn cancel(&mut self) {
         self.kill.store(true, atomic::Ordering::SeqCst);
@@ -367,6 +375,11 @@ impl Algo {
     #[inline]
     pub fn time_up_or_cancelled(&mut self, ply: u32, nodes: u64, force_check: bool) -> bool {
         self.clock_checks += 1;
+
+        // never cancel on ply=1, this way we always have a best move, and we detect mates
+        if self.max_depth == 1 {
+            return false;
+        }
 
         if self.cancelled() {
             return true;
@@ -497,6 +510,7 @@ mod tests {
     use crate::catalog::*;
     use crate::eval::*;
     use crate::movelist::MoveValidator;
+    use crate::comms::uci::Uci;
     use std::time;
 
     fn init() {
@@ -554,10 +568,14 @@ mod tests {
         assert_eq!(algo.pv.extract_pv().to_string(), "d5f6, g7f6, c4f7");
         assert_eq!(algo.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
         println!("{}\n\nasync....", algo);
+    }
 
+    #[test]
+    fn test_mate_in_2_async_stopped() {
+        let board = Catalog::mate_in_2()[0].clone();
         let mut algo2 = Algo::new().set_timing_method(TimingMethod::Depth(3)).set_minmax(true);
-        let _clos = |algo :&Algo| { println!("nps {}", algo.stats().knps()); };
-        let am = Arc::new(Mutex::new(_clos));
+        let clos = |algo :&Algo| { println!("nps {}", algo.stats().knps()); };
+        let am = Arc::new(Mutex::new(clos));
         algo2.set_callback( am );
         algo2.search_async(board.clone());
         let millis = time::Duration::from_millis(200);
@@ -566,13 +584,7 @@ mod tests {
         println!("{}", algo2);
         // println!("after stop clock:\n{}", algo.clock);
         let nodes = algo2.stats().total_nodes();
-        assert_eq!(nodes, 66234);
-        assert_eq!(algo2.pv.extract_pv().to_string(), "d5f6, g7f6, c4f7");
-        assert_eq!(algo2.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
-    }
-
-    fn cb(a:  &Algo) {
-        println!("{}", a);
+        assert!(nodes > 10 && nodes < 66234);
     }
 
     #[test]
@@ -597,6 +609,24 @@ mod tests {
         println!("{}", board);
         let eval = SimpleScorer::new().set_position(false);
         let mut search = Algo::new().set_timing_method(TimingMethod::Depth(9)).set_minmax(false).set_eval(eval); //9
+        search.search(board);
+        println!("{}", search);
+    }
+
+
+    #[test]
+    fn debug_arena_issue() {
+        let board = Board::parse_fen("r1bqkbnr/pppppppp/2n5/8/3P4/4P3/PPP2PPP/RNBQKBNR b KQkq - 0 2").unwrap();
+        let method = TimingMethod::RemainingTime{ 
+                wtime:time::Duration::from_millis(141516), 
+                btime:time::Duration::from_millis(127990),
+                winc: time::Duration::from_millis(12000), 
+                binc:time::Duration::from_millis(12000), 
+                movestogo:0, 
+                our_color: Color::Black };
+        let mut search = Algo::new().set_timing_method(method).set_minmax(false).set_iterative_deepening(true).set_callback(Arc::new(Mutex::new(Uci::uci_info)));
+        println!("{}", search);
+        println!("{}", board);
         search.search(board);
         println!("{}", search);
     }

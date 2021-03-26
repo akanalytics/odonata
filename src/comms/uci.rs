@@ -177,15 +177,17 @@ impl Uci {
             if fen == "startpos" {
                 self.board = Catalog::starting_position();
                 moves = 2;
-            } else {
+            } else if fen == "fen" {
                 // expect pos, b/w, castling, ep and 2 x counts
-                let fen = arg.words.get(1..7);
+                let fen = arg.words.get(2..8);
                 if let Some(fen) = fen {
                     self.board = Board::parse_fen(&fen.join(" "))?;
-                    moves = 7;
+                    moves = 8;
                 } else {
                     return Err("Fen or parts of fen are missing".into());
                 }
+            } else {
+                return Err("Must specify fen or startpos after position command".into());
             }
             if let Some(word) = arg.words.get(moves) {
                 if word != "moves" {
@@ -270,7 +272,8 @@ impl Uci {
         // Example: After "position startpos" and "go infinite searchmoves e2e4 d2d4"
         // the engine should only search the two moves e2e4 and d2d4 in the initial position
         let _searchmoves = args.string_after("searchmoves");
-        self.debug(&format!("info string {:?}", self.algo));
+        self.debug(&format!("{}", self.algo));
+        self.debug(&format!("{}", self.board));
         self.algo.search_async(self.board.clone());
         Ok(())
     }
@@ -280,8 +283,8 @@ impl Uci {
     }
 
     fn uci_display(&mut self) -> Result<(), String> {
-        self.debug(&format!("info string fen {}", self.board.to_fen()));
-        self.debug(&format!("info string {:?}", self.algo));
+        self.debug(&format!("fen {}", self.board.to_fen()));
+        self.debug(&format!("{}", self.algo));
         Ok(())
     }
 
@@ -289,7 +292,7 @@ impl Uci {
     fn uci_stop(&mut self) -> Result<(), String> {
         self.algo.search_async_stop();
         // Self::uci_info(&self.algo);
-        self.debug("info string stopped");
+        self.debug("stopped");
         Ok(())
     }
 
@@ -331,7 +334,7 @@ impl Uci {
     // * cpuload 
     //     the cpu usage of the engine is x permill.
     // 
-    fn uci_info(algo: &Algo) {
+    pub fn uci_info(algo: &Algo) {
         let mut stats = algo.stats();
         stats.recalculate_time_stats(algo.clock().elapsed());
         let moves = algo.pv.extract_pv().iter().map(|m| m.uci()).collect::<Vec<String>>().join(" ");
@@ -348,7 +351,8 @@ impl Uci {
 
     fn debug(&self, str: &str) {
         if self.debug {
-            println!("info string {}", str);
+            // replace "\n" with "info string "
+            println!("info string {}", str.replace("\n", "\ninfo string "));
         }
     }
 
@@ -425,7 +429,7 @@ mod tests {
         assert_eq!(uci.board, Catalog::starting_position());
 
         let mut uci = Uci::new();
-        uci.preamble.push("position k7/8/8/8/8/8/8/7k w - - 0 2".into());
+        uci.preamble.push("position fen k7/8/8/8/8/8/8/7k w - - 0 2".into());
         uci.preamble.push("quit".into());
         uci.run();
         assert_eq!(uci.board, Board::parse_fen("k7/8/8/8/8/8/8/7k w - - 0 2").unwrap());
@@ -440,7 +444,7 @@ mod tests {
         );
 
         let mut uci = Uci::new();
-        uci.preamble.push("position rnbqkbnr/1ppppppp/p7/8/8/P7/1PPPPPPP/RNBQKBNR w KQkq - 0 1 moves h2h3 h7h6".into());
+        uci.preamble.push("position fen rnbqkbnr/1ppppppp/p7/8/8/P7/1PPPPPPP/RNBQKBNR w KQkq - 0 1 moves h2h3 h7h6".into());
         uci.preamble.push("quit".into());
         uci.run();
         assert_eq!(
