@@ -10,7 +10,7 @@ use std::io::{self, Write};
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
-use crate::search::clock::TimingMethod;
+use crate::search::timecontrol::TimeControl;
 
 
 //  see https://www.chessprogramming.org/CPW-Engine_com
@@ -247,7 +247,7 @@ impl Uci {
             let winc =  winc.unwrap_or(0) as u64;
             let binc = binc.unwrap_or(0) as u64;
             let movestogo = movestogo.unwrap_or(0) as u16;
-            TimingMethod::RemainingTime{
+            TimeControl::RemainingTime{
                     our_color: self.board.color_us(),
                     wtime: Duration::from_millis(wtime as u64),
                     btime: Duration::from_millis(btime), 
@@ -255,17 +255,17 @@ impl Uci {
                     binc: Duration::from_millis(binc),
                     movestogo}
         } else if infinite {
-            TimingMethod::Infinite
+            TimeControl::Infinite
         } else if let Some(depth) = depth {
-            TimingMethod::Depth(depth as u32)
+            TimeControl::Depth(depth as u32)
         } else if let Some(nodes) = nodes {
-            TimingMethod::NodeCount(nodes as u64)
+            TimeControl::NodeCount(nodes as u64)
         } else if let Some(movetime) = movetime {
-            TimingMethod::MoveTime(Duration::from_millis(movetime as u64)) 
+            TimeControl::MoveTime(Duration::from_millis(movetime as u64)) 
         } else if let Some(mate) = mate {
-            TimingMethod::MateIn(mate as u32)
+            TimeControl::MateIn(mate as u32)
         } else {
-            TimingMethod::default()
+            TimeControl::default()
         };
 
         self.algo.set_timing_method(tm); 

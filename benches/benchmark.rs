@@ -8,7 +8,7 @@ use odonata::material::*;
 use odonata::movelist::*;
 use odonata::perft::Perft;
 use odonata::search::algo::Algo;
-use odonata::search::clock::TimingMethod;
+use odonata::search::timecontrol::TimeControl;
 use odonata::types::*;
 
 /*
@@ -204,7 +204,7 @@ fn benchmark_search(c: &mut Criterion) {
         b.iter(|| {
             let board = Catalog::starting_position();
             let eval = SimpleScorer::new().set_position(false);
-            let mut search = Algo::new().set_timing_method(TimingMethod::Depth(5)).set_minmax(false).set_eval(eval);
+            let mut search = Algo::new().set_timing_method(TimeControl::Depth(5)).set_minmax(false).set_eval(eval);
             black_box(search.search(board));
         });
     });
@@ -212,7 +212,7 @@ fn benchmark_search(c: &mut Criterion) {
         b.iter(|| {
             let board = Catalog::starting_position();
             let eval = SimpleScorer::new().set_position(false);
-            let mut search = Algo::new().set_timing_method(TimingMethod::Depth(5)).set_minmax(true).set_eval(eval);
+            let mut search = Algo::new().set_timing_method(TimeControl::Depth(5)).set_minmax(true).set_eval(eval);
             black_box(search.search(board));
         });
     });
@@ -226,7 +226,7 @@ fn benchmark_mate_in_2(c: &mut Criterion) {
         b.iter(|| {
             let board = Catalog::mate_in_2()[0].clone();
             let eval = SimpleScorer::new().set_position(false);
-            let mut search = Algo::new().set_timing_method(TimingMethod::Depth(3)).set_minmax(false).set_eval(eval);
+            let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(false).set_eval(eval);
             black_box(search.search(black_box(board)));
             assert_eq!(search.pv.extract_pv().to_string(), "d5f6, g7f6, c4f7");
         });
@@ -235,7 +235,7 @@ fn benchmark_mate_in_2(c: &mut Criterion) {
         b.iter(|| {
             let board = Catalog::mate_in_2()[0].clone();
             let eval = SimpleScorer::new().set_position(false);
-            let mut search = Algo::new().set_timing_method(TimingMethod::Depth(3)).set_minmax(false).set_eval(eval).set_iterative_deepening(true);
+            let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(false).set_eval(eval).set_iterative_deepening(true);
             black_box(search.search(black_box(board)));
             assert_eq!(search.pv.extract_pv().to_string(), "d5f6, g7f6, c4f7");
         });

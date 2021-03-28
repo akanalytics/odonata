@@ -4,7 +4,8 @@ use crate::board::Board;
 use crate::eval::{Scorable, Score, SimpleScorer};
 use crate::movelist::Move;
 use crate::pvtable::PvTable;
-use crate::search::clock::{Clock, TimingMethod};
+use crate::search::clock::{Clock};
+use crate::search::timecontrol::TimeControl;
 use crate::search::stats::Stats;
 use crate::movelist::MoveList;
 use crate::types::Color;
@@ -125,9 +126,6 @@ impl Node<'_> {
 
 // type AlgoSender = mpsc::Sender<String>;
 
-type Func = dyn FnMut(&Algo) + Send + Sync;
-type Callback = Arc<Mutex<Func>>;
-
 
 
 
@@ -144,11 +142,13 @@ pub struct Algo {
     best_move: Option<Move>,
     pub score: Option<Score>,
     clock: Clock,
-    method: TimingMethod,
+    method: TimeControl,
 
-    callback: Option<Callback>,
     // child_thread: Arc<Option<thread::JoinHandle<Algo>>>,
     child_thread: AlgoThreadHandle,
+
+    // task control
+    callback: Option<Callback>,
     kill: Arc<atomic::AtomicBool>,
     clock_checks: u64,
 
@@ -181,7 +181,7 @@ impl Algo {
         self.clone()
     }
 
-    pub fn set_timing_method(&mut self, tm: TimingMethod) -> Self {
+    pub fn set_timing_method(&mut self, tm: TimeControl) -> Self {
         self.method = tm;
         self.clone()
     }
@@ -251,9 +251,88 @@ impl Clone for AlgoThreadHandle {
 
 
 
+type Func = dyn FnMut(&Algo) + Send + Sync;
+type Callback = Arc<Mutex<Func>>;
+
+
+
+// type Callback2 = Arc<Mutex<Func>>;
+// type ProgressCallback = dyn FnMut(&CallbackData) + Send + Sync;
+
+
+
+// trait TaskControl {
+//     fn cancel(&mut self);
+//     fn invoke_callback(&self);
+// }
+
+
+type CB = dyn FnMut(&Stats) + Send + Sync;
+
+#[derive(Clone, Default)]
+struct TaskControl {
+    progress_callback: Option<Arc<Mutex<CB>>>,
+    kill_switch: Arc<atomic::AtomicBool>,
+    has_been_cancelled: bool,
+    clock_checks: u64,
+}
+
+
+impl TaskControl {
+
+    #[inline]
+    pub fn cancel(&mut self) {
+        self.kill_switch.store(true, atomic::Ordering::SeqCst);
+    }
+
+
+    #[inline]
+    fn is_cancelled(&mut self) -> bool {
+        if !self.has_been_cancelled {
+            self.has_been_cancelled = self.kill_switch.load(atomic::Ordering::SeqCst);
+        }
+        self.has_been_cancelled
+    }
+
+
+    fn invoke_callback(&self, stats: &Stats) {
+        if let Some(callback) = &self.progress_callback {
+            let mut callback = callback.lock().unwrap();
+            callback(stats);
+        }
+    }
+
+    fn register_callback(&mut self, callback: Box<CB>) {
+        self.progress_callback = Some(Arc::new(Mutex::new(callback)));
+        // let clos = |algo :&Algo| { println!("nps {}", algo.stats().knps()); };
+    }
+}
+
+
+
 impl Algo {
     
+    #[inline]
+    pub fn cancel(&mut self) {
+        self.kill.store(true, atomic::Ordering::SeqCst);
+    }
+
+
+    #[inline]
+    fn cancelled(&mut self) -> bool {
+        let time_up = self.kill.load(atomic::Ordering::SeqCst);
+        time_up
+    }
+
+
+    fn invoke_callback(&self) {
+        if let Some(func) = &self.callback {
+            let mut func = func.lock().unwrap();
+            func(self);
+        }
+    }
     
+
     pub fn search_async(&mut self, board: Board)  {
         const FOUR_MB: usize = 4 * 1024 * 1024;
         let name = String::from("search");
@@ -268,19 +347,14 @@ impl Algo {
         // }
     }
 
-    fn invoke_callback(&self) {
-        if let Some(func) = &self.callback {
-            let mut func = func.lock().unwrap();
-            func(self);
-        }
-    }
+
 
 
     pub fn search(&mut self, mut board: Board) -> Algo {
         self.clock.start();
         self.stats = Stats::default();
         self.current_best = None;
-        self.range = if let TimingMethod::Depth(depth) = self.method {
+        self.range = if let TimeControl::Depth(depth) = self.method {
             if self.iterative_deepening {
                 1..depth+1
             } else {
@@ -360,17 +434,6 @@ impl Algo {
 
 
 
-    #[inline]
-    pub fn cancel(&mut self) {
-        self.kill.store(true, atomic::Ordering::SeqCst);
-    }
-
-
-    #[inline]
-    fn cancelled(&mut self) -> bool {
-        let time_up = self.kill.load(atomic::Ordering::SeqCst);
-        time_up
-    }
 
     #[inline]
     pub fn time_up_or_cancelled(&mut self, ply: u32, nodes: u64, force_check: bool) -> bool {
@@ -391,24 +454,12 @@ impl Algo {
         }
 
 
-        let time_up = match self.method {
-            TimingMethod::Depth(max_ply) => ply > max_ply,
-            TimingMethod::MoveTime(duration) => self.clock().elapsed() > duration,
-            TimingMethod::NodeCount(max_nodes) => nodes > max_nodes,
-            TimingMethod::Infinite => false,
-            TimingMethod::MateIn(_) => false,
-            TimingMethod::RemainingTime { our_color, wtime, btime, winc, binc, movestogo: _ } => {
-                let (time, _inc) = our_color.chooser_wb((wtime, winc), (btime, binc));
-                self.clock().elapsed().as_millis() > time.as_millis() / 30
-            }
-        };
+        let time_up = self.method.is_time_up(ply, nodes, &self.clock().elapsed());
         if time_up {
             self.cancel();
         }
         time_up
     }
-
-
 
     #[inline]
     pub fn is_leaf(&self, node: &Node) -> bool {
@@ -522,14 +573,14 @@ mod tests {
         // init();
         let board = Catalog::starting_position();
         let eval = SimpleScorer::new().set_position(false);
-        let mut search = Algo::new().set_timing_method(TimingMethod::Depth(3)).set_minmax(true).set_eval(eval);
+        let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(true).set_eval(eval);
         search.search(board);
         assert_eq!(search.stats().total_nodes(), 1 + 20 + 400 + 8902 /* + 197_281 */);
         assert_eq!(search.stats().branching_factor().round() as u64, 21);
 
         let board = Catalog::starting_position();
         let eval = SimpleScorer::new().set_position(false);
-        let mut search = Algo::new().set_timing_method(TimingMethod::Depth(4)).set_minmax(false).set_eval(eval);
+        let mut search = Algo::new().set_timing_method(TimeControl::Depth(4)).set_minmax(false).set_eval(eval);
         search.search(board);
         assert_eq!(search.stats().total_nodes(), 1757);
         assert_eq!(search.stats().branching_factor().round() as u64, 2);
@@ -539,7 +590,7 @@ mod tests {
     fn test_black_opening() {
         let mut board = Catalog::starting_position();
         board.set_turn(Color::Black);
-        let mut search = Algo::new().set_timing_method(TimingMethod::Depth(1)).set_minmax(false);
+        let mut search = Algo::new().set_timing_method(TimeControl::Depth(1)).set_minmax(false);
         search.search(board);
         println!("{}", search);
         assert_eq!(search.pv.extract_pv()[0].uci(), "d7d5");
@@ -548,7 +599,7 @@ mod tests {
     #[test]
     fn test_mate_in_2() {
         let board = Catalog::mate_in_2()[0].clone();
-        let mut search = Algo::new().set_timing_method(TimingMethod::Depth(3)).set_minmax(false);
+        let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(false);
         search.search(board);
         assert_eq!(search.pv.extract_pv().to_string(), "d5f6, g7f6, c4f7");
         assert_eq!(search.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
@@ -558,7 +609,7 @@ mod tests {
     #[test]
     fn test_mate_in_2_async() {
         let board = Catalog::mate_in_2()[0].clone();
-        let mut algo = Algo::new().set_timing_method(TimingMethod::Depth(3)).set_minmax(true);
+        let mut algo = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(true);
         algo.search(board.clone());
         let nodes = algo.stats().total_nodes();
         let millis = time::Duration::from_millis(20);
@@ -573,7 +624,7 @@ mod tests {
     #[test]
     fn test_mate_in_2_async_stopped() {
         let board = Catalog::mate_in_2()[0].clone();
-        let mut algo2 = Algo::new().set_timing_method(TimingMethod::Depth(3)).set_minmax(true);
+        let mut algo2 = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(true);
         let clos = |algo :&Algo| { println!("nps {}", algo.stats().knps()); };
         let am = Arc::new(Mutex::new(clos));
         algo2.set_callback( am );
@@ -591,7 +642,7 @@ mod tests {
     #[ignore]
     fn test_mate_in_3_sync() {
         let board = Catalog::mate_in_3()[0].clone();
-        let mut search = Algo::new().set_timing_method(TimingMethod::Depth(5)).set_minmax(false);
+        let mut search = Algo::new().set_timing_method(TimeControl::Depth(5)).set_minmax(false);
         search.search(board.clone());
         let san = board.to_san_moves(&search.pv.extract_pv()).replace("\n", " ");
         println!("{}", search);
@@ -608,7 +659,7 @@ mod tests {
             .as_board();
         println!("{}", board);
         let eval = SimpleScorer::new().set_position(false);
-        let mut search = Algo::new().set_timing_method(TimingMethod::Depth(9)).set_minmax(false).set_eval(eval); //9
+        let mut search = Algo::new().set_timing_method(TimeControl::Depth(9)).set_minmax(false).set_eval(eval); //9
         search.search(board);
         println!("{}", search);
     }
@@ -617,7 +668,7 @@ mod tests {
     #[test]
     fn debug_arena_issue() {
         let board = Board::parse_fen("r1bqkbnr/pppppppp/2n5/8/3P4/4P3/PPP2PPP/RNBQKBNR b KQkq - 0 2").unwrap();
-        let method = TimingMethod::RemainingTime{ 
+        let method = TimeControl::RemainingTime{ 
                 wtime:time::Duration::from_millis(141516), 
                 btime:time::Duration::from_millis(127990),
                 winc: time::Duration::from_millis(12000), 
