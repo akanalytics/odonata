@@ -17,5 +17,5 @@ Odonata is running as a bot on Lichess. You can see her rankings and games here 
  
 
 ## Todo
-See [Todo][(.todo.md)
+See [Todo](/todo.md)
 
