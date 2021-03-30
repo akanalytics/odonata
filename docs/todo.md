@@ -1,4 +1,7 @@
-[X] parsing algebraic notation
+# Todo items
+
+
+[x] parsing algebraic notation
 [x] game/match
 [x] producing algebraic notation
 [x] pgn export
@@ -16,7 +19,9 @@ python interface
 
 
 
-======== Board =======
+# Python Interface
+
+The python interface is a work in progress. 
 
 
 
@@ -71,7 +76,7 @@ board.from_fen('pppp')
 board.end_game("kKR")
 board.wac("1")
 
-# use list things for game
+## Use list things for game
 board = game.at(34)
 board = game.end()
 board = game.start()
@@ -102,7 +107,7 @@ a3 in board.w.knights[0].moves
 board.move(a2, a4)
 print(board)
 
-==== Display ======
+## Display
 
 bl.display=color
 bl.display=coords
@@ -124,7 +129,7 @@ legal_moves = w.moves
 
 
 
-==== Eval =======
+## Eval 
 
 f1 = bl.eval.new()
 f1.material(p=300, b=400, n=700)
@@ -155,7 +160,7 @@ score1 = Score.max(score1 + score2)
 
 
 
-(endgame)
+## Endgame
 
 for m in legal_moves:
     f1.evaluate(m)
@@ -178,7 +183,7 @@ passed pawns 4     0     50
 total        -     -   1100
 '''
 
-===== Search ====
+## Search 
 
 
 scores = odo.search.alphabeta_multipv(board, f1)
@@ -223,7 +228,7 @@ analysis[pv[0]][pv[1]].nodes ??
 
 
 
-====== Catalog ==============
+## Catalog 
 
 board = positions_lib2.startpos()
 
