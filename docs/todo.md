@@ -111,6 +111,7 @@ print(board)
 ```
 ## Display
 
+```
 bl.display=color
 bl.display=coords
 bl.display.progress = True
@@ -128,11 +129,12 @@ print(board.w)
 checks_with_white_knights = w.knights.moves & b.king.knight_moves
 
 legal_moves = w.moves
-
+```
 
 
 ## Eval 
 
+```
 f1 = bl.eval.new()
 f1.material(p=300, b=400, n=700)
 f1.position(endgame)
@@ -159,11 +161,12 @@ score = f1.evaluate(board)
 score.total_score
 score3 = score1 + score2
 score1 = Score.max(score1 + score2)
-
+```
 
 
 ## Endgame
 
+```
 for m in legal_moves:
     f1.evaluate(m)
     f1.evaluate(board + m)
@@ -184,10 +187,11 @@ bishops      1     5   -400
 passed pawns 4     0     50
 total        -     -   1100
 '''
+```
 
 ## Search 
 
-
+```
 scores = odo.search.alphabeta_multipv(board, f1)
 
 scores.pvs[]
@@ -227,11 +231,12 @@ analysis.cut_nodes
 analysis.nodes_per_second
 analysis.pv
 analysis[pv[0]][pv[1]].nodes ??
-
+```
 
 
 ## Catalog 
 
+```
 board = positions_lib2.startpos()
 
 board = bc.positions.board_class = BlunderBoard
@@ -335,7 +340,7 @@ print(board.w)
 checks_with_white_knights = board.w.knights.moves & board.b.king.knight_moves
 
 legal_moves = w.moves
-
+```
 
 
 
