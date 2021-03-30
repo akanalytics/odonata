@@ -12,10 +12,12 @@ I started Decemeber 2020. Python and Rust are very different from Java, which I 
 Im aware that this is now yet another chess engine, with yet another set of Python bindings. In part this is because for me, the project was intended as a learning exercise. But if any library owners (either Rust or Python have the time to chat about how I can avoid duplication or rationize things please feel free).   
 
 
-# Lichess
+## Lichess
 Odonata is running as a bot on Lichess. You can see her rankings and games here [Lichess](https://lichess.org/@/odonata-bot) .
  
 
 ## Todo
 See [Todo](/docs/todo.md)
 
+## Credits
+A thanks to my sons - Freddie, Oscar and Hector - for assiatance with graphics, some design ideas and testing the engine play. 
