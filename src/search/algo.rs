@@ -7,14 +7,12 @@ use crate::pvtable::PvTable;
 use crate::search::clock::{Clock};
 use crate::search::timecontrol::TimeControl;
 use crate::search::stats::Stats;
+use crate::search::taskcontrol::TaskControl;
 use crate::movelist::MoveList;
 use crate::types::Color;
 use std::fmt;
 use std::ops::Range;
-use std::sync::Arc;
-use std::sync::Mutex;
 use std::thread;
-use std::sync::atomic;
 use crate::types::MAX_PLY;
 
 
@@ -148,7 +146,7 @@ pub struct Algo {
     child_thread: AlgoThreadHandle,
 
     clock_checks: u64,
-    task_control: TaskControl,
+    task_control: TaskControl<Stats>,
     // Eval
     // Algo config
     // Time controls
@@ -244,87 +242,13 @@ impl Clone for AlgoThreadHandle {
 
 
 
-type Func = dyn FnMut(&Algo) + Send + Sync;
-type Callback = Arc<Mutex<Func>>;
 
-
-
-// type Callback2 = Arc<Mutex<Func>>;
-// type ProgressCallback = dyn FnMut(&CallbackData) + Send + Sync;
-
-
-
-// trait TaskControl {
-//     fn cancel(&mut self);
-//     fn invoke_callback(&self);
-// }
-
-
-type CB = dyn FnMut(&Stats) + Send + Sync;
-
-#[derive(Clone, Default)]
-struct TaskControl {
-    progress_callback: Option<Arc<Mutex<CB>>>,
-    kill_switch: Arc<atomic::AtomicBool>,
-    has_been_cancelled: bool,
-    clock_checks: u64,
-}
-
-
-impl TaskControl {
-
-    #[inline]
-    pub fn cancel(&mut self) {
-        self.kill_switch.store(true, atomic::Ordering::SeqCst);
-    }
-
-    pub fn set_running(&mut self) {
-        self.has_been_cancelled = false;
-        self.kill_switch.store(false, atomic::Ordering::SeqCst);
-    }
-
-    #[inline]
-    fn is_cancelled(&mut self) -> bool {
-        if !self.has_been_cancelled {
-            self.has_been_cancelled = self.kill_switch.load(atomic::Ordering::SeqCst);
-        }
-        self.has_been_cancelled
-    }
-
-
-    fn invoke_callback(&self, stats: &Stats) {
-        if let Some(callback) = &self.progress_callback {
-            let mut callback = callback.lock().unwrap();
-            callback(stats);
-        }
-    }
-
-    fn register_callback(&mut self, callback:  impl FnMut(&Stats) + Send + Sync + 'static) {
-        self.progress_callback = Some(Arc::new(Mutex::new(callback)));
-        // let clos = |algo :&Algo| { println!("nps {}", algo.stats().knps()); };
-    }
-}
 
 
 
 impl Algo {
     
-    #[inline]
-    pub fn cancel(&mut self) {
-        self.task_control.cancel();
-    }
 
-
-    #[inline]
-    fn cancelled(&mut self) -> bool {
-        self.task_control.is_cancelled()
-    }
-
-
-    fn invoke_callback(&self) {
-        self.task_control.invoke_callback(&self.stats());
-    }
-    
     pub fn search_async(&mut self, board: Board)  {
         const FOUR_MB: usize = 4 * 1024 * 1024;
         let name = String::from("search");
@@ -367,16 +291,16 @@ impl Algo {
                 break;
             }
             self.alphabeta(&mut root_node);
-            if !self.cancelled() {
+            if !self.task_control.is_cancelled() {
                 self.score = Some(root_node.score);
                 self.current_best = Some(self.pv.extract_pv()[0]);
             }
-            self.invoke_callback();
+            self.task_control.invoke_callback(&self.stats);
         }
 
         self.stats.recalculate_time_stats(self.clock.elapsed());
         self.best_move = self.current_best;
-        self.invoke_callback();
+        self.task_control.invoke_callback(&self.stats);
         self.clone()
     }
 
@@ -412,7 +336,7 @@ impl Algo {
 
 
     pub fn search_async_stop(&mut self) {
-        self.cancel();
+        self.task_control.cancel();
         let handle = self.child_thread.0.take();
         if let Some(handle) = handle { 
             // wait for thread to cancel 
@@ -436,7 +360,7 @@ impl Algo {
             return false;
         }
 
-        if self.cancelled() {
+        if self.task_control.is_cancelled() {
             return true;
         }
 
@@ -448,7 +372,7 @@ impl Algo {
 
         let time_up = self.method.is_time_up(ply, nodes, &self.clock().elapsed());
         if time_up {
-            self.cancel();
+            self.task_control.cancel();
         }
         time_up
     }
@@ -473,7 +397,7 @@ impl Algo {
     pub fn alphabeta(&mut self, node: &mut Node) {
         debug_assert!(self.max_depth > 0);
         if self.stats.total_nodes() % 1000000 == 0 {
-            self.invoke_callback();
+            self.task_control.invoke_callback(&self.stats);
         }
 
         if self.is_leaf(node) {
@@ -485,7 +409,7 @@ impl Algo {
         if self.max_depth > self.stats.seldepth {
             self.stats.seldepth = self.max_depth;
             self.stats.depth = self.max_depth;
-            self.invoke_callback();
+            self.task_control.invoke_callback(&self.stats);
         }
         // bailing here means the score is +/- inf and wont be used
         if self.time_up_or_cancelled(node.ply, self.stats.total_nodes(), false) {
@@ -525,7 +449,7 @@ impl Algo {
                 self.pv.propagate_from(child.ply);
                 self.stats.improvements += 1; 
                 if parent.is_root() {
-                    self.invoke_callback();
+                    self.task_control.invoke_callback(&self.stats);
                 }
             }
         } else {
@@ -538,7 +462,7 @@ impl Algo {
                 self.pv.propagate_from(child.ply);
                 self.stats.improvements += 1; 
                 if parent.is_root() {
-                    self.invoke_callback();
+                    self.task_control.invoke_callback(&self.stats);
                 }
             }
         }
