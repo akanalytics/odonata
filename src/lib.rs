@@ -27,6 +27,7 @@ pub mod perft;
 pub mod pvtable;
 pub mod search;
 pub mod types;
+pub mod task;
 mod utils;
 pub mod version;
 

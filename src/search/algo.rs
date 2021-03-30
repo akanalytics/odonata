@@ -147,12 +147,8 @@ pub struct Algo {
     // child_thread: Arc<Option<thread::JoinHandle<Algo>>>,
     child_thread: AlgoThreadHandle,
 
-    // task control
-    callback: Option<Callback>,
-    kill: Arc<atomic::AtomicBool>,
     clock_checks: u64,
-
-
+    task_control: TaskControl,
     // Eval
     // Algo config
     // Time controls
@@ -186,13 +182,10 @@ impl Algo {
         self.clone()
     }
 
-    //pub fn add_callback(&mut self, callback: dyn FnMut(String) -> bool + Send + Sync) -> Self {
-    //}
-
-    pub fn set_callback(&mut self, callback: Callback) -> Self {
-        self.callback = Some(callback);
+    pub fn set_callback(&mut self, callback:  impl FnMut(&Stats) + Send + Sync + 'static) -> Self {
+        self.task_control.register_callback(callback);
         self.clone()
-     }
+    }
 }
 
 
@@ -230,8 +223,8 @@ impl fmt::Display for Algo {
         writeln!(f, "timing method    :{:?}", self.method)?;
         writeln!(f, "range            :{:?}", self.range)?;
         writeln!(f, "clock_checks     :{}", self.clock_checks)?;
-        writeln!(f, "kill             :{}", self.kill.load(atomic::Ordering::SeqCst))?;
-        writeln!(f, "kill ref counts  :{}", Arc::strong_count(&self.kill))?;
+        // writeln!(f, "kill             :{}", self.kill.load(atomic::Ordering::SeqCst))?;
+        // writeln!(f, "kill ref counts  :{}", Arc::strong_count(&self.kill))?;
         // writeln!(f, "callback         :{}", self.callback)?;
         write!(f, "{}", self.clock)?;
         write!(f, "{}", self.stats)?;
@@ -285,6 +278,10 @@ impl TaskControl {
         self.kill_switch.store(true, atomic::Ordering::SeqCst);
     }
 
+    pub fn set_running(&mut self) {
+        self.has_been_cancelled = false;
+        self.kill_switch.store(false, atomic::Ordering::SeqCst);
+    }
 
     #[inline]
     fn is_cancelled(&mut self) -> bool {
@@ -302,7 +299,7 @@ impl TaskControl {
         }
     }
 
-    fn register_callback(&mut self, callback: Box<CB>) {
+    fn register_callback(&mut self, callback:  impl FnMut(&Stats) + Send + Sync + 'static) {
         self.progress_callback = Some(Arc::new(Mutex::new(callback)));
         // let clos = |algo :&Algo| { println!("nps {}", algo.stats().knps()); };
     }
@@ -314,31 +311,26 @@ impl Algo {
     
     #[inline]
     pub fn cancel(&mut self) {
-        self.kill.store(true, atomic::Ordering::SeqCst);
+        self.task_control.cancel();
     }
 
 
     #[inline]
     fn cancelled(&mut self) -> bool {
-        let time_up = self.kill.load(atomic::Ordering::SeqCst);
-        time_up
+        self.task_control.is_cancelled()
     }
 
 
     fn invoke_callback(&self) {
-        if let Some(func) = &self.callback {
-            let mut func = func.lock().unwrap();
-            func(self);
-        }
+        self.task_control.invoke_callback(&self.stats());
     }
     
-
     pub fn search_async(&mut self, board: Board)  {
         const FOUR_MB: usize = 4 * 1024 * 1024;
         let name = String::from("search");
         let builder = thread::Builder::new().name(name).stack_size(FOUR_MB);
+        self.task_control.set_running(); 
         let mut algo = self.clone();
-        self.kill.store(false, atomic::Ordering::SeqCst);
         self.child_thread = AlgoThreadHandle(Some(builder.spawn(move || algo.search(board)).unwrap()));
 
         // let mut res = Vec::with_capacity(n);
@@ -625,9 +617,8 @@ mod tests {
     fn test_mate_in_2_async_stopped() {
         let board = Catalog::mate_in_2()[0].clone();
         let mut algo2 = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(true);
-        let clos = |algo :&Algo| { println!("nps {}", algo.stats().knps()); };
-        let am = Arc::new(Mutex::new(clos));
-        algo2.set_callback( am );
+        let closure = |stats :&Stats| { println!("nps {}", stats.knps()); };
+        algo2.set_callback( closure );
         algo2.search_async(board.clone());
         let millis = time::Duration::from_millis(200);
         thread::sleep(millis);
@@ -675,7 +666,7 @@ mod tests {
                 binc:time::Duration::from_millis(12000), 
                 movestogo:0, 
                 our_color: Color::Black };
-        let mut search = Algo::new().set_timing_method(method).set_minmax(false).set_iterative_deepening(true).set_callback(Arc::new(Mutex::new(Uci::uci_info)));
+        let mut search = Algo::new().set_timing_method(method).set_minmax(false).set_iterative_deepening(true).set_callback(Uci::uci_info);
         println!("{}", search);
         println!("{}", board);
         search.search(board);

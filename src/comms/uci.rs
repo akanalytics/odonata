@@ -5,6 +5,7 @@ use crate::catalog::Catalog;
 use crate::movelist::MoveValidator;
 use crate::perft::Perft;
 use crate::search::algo::Algo;
+use crate::search::stats::Stats;
 use crate::version::Version;
 use std::io::{self, Write};
 use std::sync::Arc;
@@ -48,8 +49,8 @@ pub struct Uci {
 impl Uci {
     pub fn new() -> Uci {
         let mut uci = Uci::default();
-        let callback = Arc::new(Mutex::new(Self::uci_info));
-        uci.algo.set_callback(callback);
+        // let callback = Arc::new(Mutex::new());
+        uci.algo.set_callback(Self::uci_info);
         uci.algo.set_iterative_deepening(true);
         uci
     }
@@ -337,19 +338,17 @@ impl Uci {
     // * cpuload 
     //     the cpu usage of the engine is x permill.
     // 
-    pub fn uci_info(algo: &Algo) {
-        let mut stats = algo.stats();
-        stats.recalculate_time_stats(algo.clock().elapsed());
-        let moves = algo.pv.extract_pv().iter().map(|m| m.uci()).collect::<Vec<String>>().join(" ");
+    pub fn uci_info(stats: &Stats) {
+        let moves = ""; //algo.pv.extract_pv().iter().map(|m| m.uci()).collect::<Vec<String>>().join(" ");
         println!("info time {time} depth {depth} nodes {nodes} nps {nps} pv {pv}", 
             time = stats.elapsed.as_millis(), 
             depth = stats.depth, 
             nodes = stats.total_nodes(), 
             nps = stats.knps()*1000,
             pv = moves);
-        if let Some(best_move) = algo.best_move() {
-            println!("bestmove {}", best_move.uci());
-        }
+        // if let Some(best_move) = algo.best_move() {
+        //     println!("bestmove {}", best_move.uci());
+        // }
         io::stdout().flush().ok();
     }
 
