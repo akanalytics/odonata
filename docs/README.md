@@ -41,6 +41,7 @@ The software licence is [License](../license.txt)
 Third party libraries used may have differing licenses. In particular... 
 
 Library | URL | License 
+----------- | ---- | -------
 Bitflags | https://crates.io/crates/bitflags | MIT https://choosealicense.com/licenses/mit/
 Once Cell | https://crates.io/crates/once_cell | MIT https://choosealicense.com/licenses/mit/
 Criterion | https://crates.io/crates/criterion | MIT https://choosealicense.com/licenses/mit/
