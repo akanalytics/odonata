@@ -1,20 +1,21 @@
 # Todo items
 
 
-[x] parsing algebraic notation
-[x] game/match
-[x] producing algebraic notation
-[x] pgn export
-[x] uci
-iterative deepening
-    - found mate - skip deepening
-    - better carry forward of moves
-    - abandon if not time for another ply
-    - windowed search
+- [x] parsing algebraic notation
+- [x] game/match
+- [x] lichess bot
+- [x] producing algebraic notation
+- [x] pgn export
+- [x] uci
+- [ ] iterative deepening
+  - [ ] found mate - skip deepening
+  - [ ] better carry forward of moves
+  - [ ] abandon if not time for another ply
+  - [ ] windowed search
     
-image generation
-python interface
-
+- [ ] image generation
+- [ ] python interface
+- [ ] discord bot
 
 
 
@@ -25,7 +26,7 @@ The python interface is a work in progress.
 
 
 
-board.move("a1a3").move("a3a4")
+```board.move("a1a3").move("a3a4")
 board['a1'] == "P"
 if 'p' in board['a']
 if 'R' in board['18']
@@ -107,6 +108,7 @@ a3 in board.w.knights[0].moves
 board.move(a2, a4)
 print(board)
 
+```
 ## Display
 
 bl.display=color
