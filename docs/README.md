@@ -9,7 +9,7 @@ My lockdown hobby was writing a chess engine, and learning Python and Rust in th
 
 I started Decemeber 2020. Python and Rust are very different from Java, which I had programmed maybe 10 years previous. Certainly my first efforts at Rust are not very clean, clever or idiomatic, but the code improves as I revist areas to build improvements.
 
-Im aware that this is now yet another chess engine, with yet another set of Python bindings. In part this is because for me, the project was intended as a learning exercise. But if any library owners (either Rust or Python have the time to chat about how I can avoid duplication or rationize things please feel free).   
+Im aware that this is now yet another chess engine, with yet another set of Python bindings. In part this is because for me, the project was intended as a learning exercise, but also there did not appear to be a Python native extension available. If any library owners, either Rust or Python, have the time to chat about how I can avoid duplication or rationize things in terms of Python chess extension modules in Rust, please email!   
 
 
 ## Lichess
@@ -21,3 +21,16 @@ See [Todo](/docs/todo.md)
 
 ## Credits
 A thanks to my sons - Freddie, Oscar and Hector - for assiatance with graphics, some design ideas and testing the engine play. 
+
+
+## Links
+There are some excellent chess engines, libraries  and documentation out there. Please take a look.
+
+Description | Link | Comment  
+----------- | ---- | -------
+Chess Programming Wiki | https://www.chessprogramming.org/ | Invaluable...
+Pure Python Chess Library | https://github.com/niklasf/python-chess |
+Fast chess move generation | https://github.com/jordanbray/chess |
+Shakmaty - Rust chess library | https://github.com/niklasf/shakmaty |
+Rust Chess engine | https://github.com/vinc/littlewing | For making me appreciate ASCII art...
+Chesss GUI for UCI engines | http://www.playwitharena.de/ |
