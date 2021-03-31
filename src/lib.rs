@@ -30,6 +30,7 @@ pub mod types;
 pub mod task;
 mod utils;
 pub mod version;
+pub mod config;
 
 pub use crate::attacks::ClassicalBitboard;
 pub use crate::bitboard::Bitboard;
@@ -40,3 +41,4 @@ pub use crate::search::algo::Algo;
 pub use crate::search::stats::Stats;
 pub use crate::types::{Color, Piece};
 pub use crate::version::Version;
+pub use crate::config::Config;
