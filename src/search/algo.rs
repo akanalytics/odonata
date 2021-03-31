@@ -7,6 +7,7 @@ use crate::pvtable::PvTable;
 use crate::search::clock::{Clock};
 use crate::search::timecontrol::TimeControl;
 use crate::search::stats::Stats;
+use crate::search::searchprogress::SearchProgress;
 use crate::search::taskcontrol::TaskControl;
 use crate::movelist::MoveList;
 use crate::types::Color;
@@ -139,14 +140,13 @@ pub struct Algo {
     current_best: Option<Move>,
     best_move: Option<Move>,
     pub score: Option<Score>,
-    clock: Clock,
     method: TimeControl,
 
     // child_thread: Arc<Option<thread::JoinHandle<Algo>>>,
     child_thread: AlgoThreadHandle,
 
     clock_checks: u64,
-    task_control: TaskControl<Stats>,
+    task_control: TaskControl<SearchProgress>,
     // Eval
     // Algo config
     // Time controls
@@ -180,7 +180,7 @@ impl Algo {
         self.clone()
     }
 
-    pub fn set_callback(&mut self, callback:  impl FnMut(&Stats) + Send + Sync + 'static) -> Self {
+    pub fn set_callback(&mut self, callback:  impl Fn(&SearchProgress) + Send + Sync + 'static) -> Self {
         self.task_control.register_callback(callback);
         self.clone()
     }
@@ -204,27 +204,25 @@ impl fmt::Debug for Algo  {
             .field("depth", &self.max_depth)
             .field("range", &self.range)
             .field("stats", &self.stats)
-            .field("clock", &self.clock)
             .finish()
     }
 }
 
 impl fmt::Display for Algo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "pv               :{}", self.pv.extract_pv())?;
-        writeln!(f, "score            :{}", self.score.unwrap_or(Score::MinusInfinity))?;
-        writeln!(f, "best_move        :{}", self.best_move.unwrap_or(Move::new_null()))?;
-        writeln!(f, "current_best     :{}", self.current_best.unwrap_or(Move::new_null()))?;
-        writeln!(f, "depth            :{}", self.max_depth)?;
-        writeln!(f, "minmax           :{}", self.minmax)?;
-        writeln!(f, "iter deepening   :{}", self.iterative_deepening)?;
-        writeln!(f, "timing method    :{:?}", self.method)?;
-        writeln!(f, "range            :{:?}", self.range)?;
-        writeln!(f, "clock_checks     :{}", self.clock_checks)?;
+        writeln!(f, "pv               : {}", self.pv.extract_pv())?;
+        writeln!(f, "score            : {}", self.score.unwrap_or(Score::MinusInfinity))?;
+        writeln!(f, "best_move        : {}", self.best_move.unwrap_or(Move::new_null()))?;
+        writeln!(f, "current_best     : {}", self.current_best.unwrap_or(Move::new_null()))?;
+        writeln!(f, "depth            : {}", self.max_depth)?;
+        writeln!(f, "minmax           : {}", self.minmax)?;
+        writeln!(f, "iter deepening   : {}", self.iterative_deepening)?;
+        writeln!(f, "timing method    : {:?}", self.method)?;
+        writeln!(f, "range            : {:?}", self.range)?;
+        writeln!(f, "clock_checks     : {}", self.clock_checks)?;
         // writeln!(f, "kill             :{}", self.kill.load(atomic::Ordering::SeqCst))?;
         // writeln!(f, "kill ref counts  :{}", Arc::strong_count(&self.kill))?;
         // writeln!(f, "callback         :{}", self.callback)?;
-        write!(f, "{}", self.clock)?;
         write!(f, "{}", self.stats)?;
         Ok(())
     }
@@ -267,7 +265,6 @@ impl Algo {
 
 
     pub fn search(&mut self, mut board: Board) -> Algo {
-        self.clock.start();
         self.stats = Stats::default();
         self.current_best = None;
         self.range = if let TimeControl::Depth(depth) = self.method {
@@ -290,17 +287,20 @@ impl Algo {
             if self.time_up_or_cancelled(depth, self.stats().total_nodes(), true) {
                 break;
             }
+            let mut sp = SearchProgress::from_stats(&self.stats());
             self.alphabeta(&mut root_node);
             if !self.task_control.is_cancelled() {
                 self.score = Some(root_node.score);
                 self.current_best = Some(self.pv.extract_pv()[0]);
+                sp.pv = Some(self.pv.extract_pv());
+                sp.score = self.score;
             }
-            self.task_control.invoke_callback(&self.stats);
+            self.task_control.invoke_callback(&sp);
         }
 
-        self.stats.recalculate_time_stats(self.clock.elapsed());
         self.best_move = self.current_best;
-        self.task_control.invoke_callback(&self.stats);
+        let sp = SearchProgress::from_best_move(self.best_move());
+        self.task_control.invoke_callback(&sp);
         self.clone()
     }
 
@@ -318,7 +318,6 @@ impl Algo {
         self.max_depth = max_depth;
     }
 
-    // FIXME recalculate time stats
     #[inline]
     pub fn stats(&self) -> Stats {
         self.stats
@@ -327,13 +326,6 @@ impl Algo {
     pub fn best_move(&self) -> Option<Move> {
         self.best_move             
     }
-
-
-    #[inline]
-    pub fn clock(&self) -> &Clock {
-        &self.clock
-    }
-
 
     pub fn search_async_stop(&mut self) {
         self.task_control.cancel();
@@ -344,7 +336,6 @@ impl Algo {
             self.stats = algo.stats;
             self.pv = algo.pv;
             self.score = algo.score;
-            self.clock = algo.clock;
         }
     }
 
@@ -370,7 +361,7 @@ impl Algo {
         }
 
 
-        let time_up = self.method.is_time_up(ply, nodes, &self.clock().elapsed());
+        let time_up = self.method.is_time_up(ply, nodes, &self.stats.clock.elapsed());
         if time_up {
             self.task_control.cancel();
         }
@@ -397,7 +388,8 @@ impl Algo {
     pub fn alphabeta(&mut self, node: &mut Node) {
         debug_assert!(self.max_depth > 0);
         if self.stats.total_nodes() % 1000000 == 0 {
-            self.task_control.invoke_callback(&self.stats);
+            let sp = SearchProgress::from_stats(&self.stats());
+            self.task_control.invoke_callback(&sp);
         }
 
         if self.is_leaf(node) {
@@ -409,7 +401,8 @@ impl Algo {
         if self.max_depth > self.stats.seldepth {
             self.stats.seldepth = self.max_depth;
             self.stats.depth = self.max_depth;
-            self.task_control.invoke_callback(&self.stats);
+            let sp = SearchProgress::from_stats(&self.stats());
+            self.task_control.invoke_callback(&sp);
         }
         // bailing here means the score is +/- inf and wont be used
         if self.time_up_or_cancelled(node.ply, self.stats.total_nodes(), false) {
@@ -449,7 +442,8 @@ impl Algo {
                 self.pv.propagate_from(child.ply);
                 self.stats.improvements += 1; 
                 if parent.is_root() {
-                    self.task_control.invoke_callback(&self.stats);
+                    let sp = SearchProgress::from_stats(&self.stats());
+                    self.task_control.invoke_callback(&sp);
                 }
             }
         } else {
@@ -462,7 +456,8 @@ impl Algo {
                 self.pv.propagate_from(child.ply);
                 self.stats.improvements += 1; 
                 if parent.is_root() {
-                    self.task_control.invoke_callback(&self.stats);
+                    let sp = SearchProgress::from_stats(&self.stats());
+                    self.task_control.invoke_callback(&sp);
                 }
             }
         }
@@ -541,7 +536,7 @@ mod tests {
     fn test_mate_in_2_async_stopped() {
         let board = Catalog::mate_in_2()[0].clone();
         let mut algo2 = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(true);
-        let closure = |stats :&Stats| { println!("nps {}", stats.knps()); };
+        let closure = |sp: &SearchProgress| { println!("nps {}", sp.time_millis.unwrap_or_default()) };
         algo2.set_callback( closure );
         algo2.search_async(board.clone());
         let millis = time::Duration::from_millis(200);

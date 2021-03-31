@@ -9,7 +9,7 @@ My lockdown hobby was writing a chess engine, and learning Python and Rust in th
 
 I started Decemeber 2020. Python and Rust are very different from Java, which I had programmed maybe 10 years previous. Certainly my first efforts at Rust are not very clean, clever or idiomatic, but the code improves as I revist areas to build improvements.
 
-Im aware that this is now yet another chess engine, with yet another set of Python bindings. In part this is because the project was intended as a learning exercise, but also there did not appear to be a Python native extension available. If any library owners, either Rust or Python, have or plan native extensions and want to chat about how I can avoid duplication or rationize things in terms of Python chess extension modules, please email!   
+I'm aware that this is now yet another chess engine, with yet another set of Python bindings. In part this is because the project was intended as a learning exercise, but also there did not appear to be a Python native extension available. If any library owners, either Rust or Python, have or plan native extensions and want to chat about how I can avoid duplication or rationize things in terms of Python chess extension modules, please email!   
 
 
 ## Lichess

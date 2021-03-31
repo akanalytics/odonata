@@ -35,29 +35,36 @@ impl fmt::Display for DurationNewType {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Copy, Clone)]
 pub struct Clock {
-    start_time: Option<Instant>,
+    start: Instant,
+}
+
+
+impl Default for Clock {
+    fn default() -> Self {
+        Clock{ start: Instant::now() }
+    }
 }
 
 impl Clock {
-    pub fn start(&mut self) {
-        self.start_time = Some(Instant::now());
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn restart(&mut self) {
+        self.start = Instant::now();
     }
 
     /// will panic if clock not started
     pub fn elapsed(&self) -> Duration {
-        self.start_time.unwrap().elapsed()
+        self.start.elapsed()
     }
 }
 
 impl fmt::Display for Clock {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Some(t) = self.start_time {
-            writeln!(f, "since start time :{}", format_duration(t.elapsed()))?;
-        } else {
-            writeln!(f, "start time       :not set")?;
-        }
+        write!(f, "{}", format_duration(self.start.elapsed()))?;
         Ok(())
     }
 }

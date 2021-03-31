@@ -4,14 +4,17 @@ use crate::board::Board;
 use crate::catalog::Catalog;
 use crate::movelist::MoveValidator;
 use crate::perft::Perft;
+use crate::eval::Score;
 use crate::search::algo::Algo;
 use crate::search::stats::Stats;
 use crate::version::Version;
 use std::io::{self, Write};
+use std::fmt;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
 use crate::search::timecontrol::TimeControl;
+use crate::search::searchprogress::SearchProgress;
 
 
 //  see https://www.chessprogramming.org/CPW-Engine_com
@@ -50,8 +53,8 @@ impl Uci {
     pub fn new() -> Uci {
         let mut uci = Uci::default();
         // let callback = Arc::new(Mutex::new());
-        uci.algo.set_callback(Self::uci_info);
         uci.algo.set_iterative_deepening(true);
+        uci.algo.set_callback(|sp| Self::uci_info(sp));
         uci
     }
 
@@ -338,17 +341,11 @@ impl Uci {
     // * cpuload 
     //     the cpu usage of the engine is x permill.
     // 
-    pub fn uci_info(stats: &Stats) {
-        let moves = ""; //algo.pv.extract_pv().iter().map(|m| m.uci()).collect::<Vec<String>>().join(" ");
-        println!("info time {time} depth {depth} nodes {nodes} nps {nps} pv {pv}", 
-            time = stats.elapsed.as_millis(), 
-            depth = stats.depth, 
-            nodes = stats.total_nodes(), 
-            nps = stats.knps()*1000,
-            pv = moves);
-        // if let Some(best_move) = algo.best_move() {
-        //     println!("bestmove {}", best_move.uci());
-        // }
+    pub fn uci_info(search_progress: &SearchProgress) {
+        println!("info {}", UciInfo(search_progress));
+        if let Some(bestmove) = search_progress.bestmove {
+            println!("bestmove {}", bestmove);
+        }
         io::stdout().flush().ok();
     }
 
@@ -360,6 +357,101 @@ impl Uci {
     }
 
 }
+
+
+// impl SearchProgress {
+//     depth: Option<u32>,
+//     seldepth: Option<u32>,
+//     time_millis: u64,
+//     pv: Option<String>
+//     nodes: u64 
+//     x multipv: Option<String>, 
+//     x score_in_cp: Option<u32>, 
+//     x score_mate_in: Option<i32>, 
+//     x score_lowerbound: Option<i32>, 
+//     x score_upperbound : Option<i32>,
+//     currmove : Option<String>,
+//     currmovenumber_from_1: Option<u32>,
+//     hashfull_per_mille: Option<u32>, 
+//     nps: Option<u64>, 
+//     tbhits: Option<u64>, 
+//     cpuload_per_mille: Option<u32>,
+//     best_move: Option<String>,
+//     additional_info: Option<String>,
+//     debug_info: Option<String>,
+// }
+
+struct UciInfo<'a>(&'a SearchProgress);
+
+impl SearchProgress {
+    fn as_uci(&self) -> UciInfo {
+        UciInfo(&*self)
+    }
+}
+
+impl<'a> fmt::Display for UciInfo<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Some(depth) = self.0.depth {
+            if let Some(seldepth) = self.0.seldepth {
+                write!(f, "seldepth {} ", seldepth)?;
+            }
+            write!(f, "depth {} ", depth)?;
+        }
+        if let Some(time_millis) = self.0.time_millis {
+            if let Some(pv) = &self.0.pv {
+                write!(f, "pv {} ", pv)?;
+            }
+            write!(f, "time {} ", time_millis)?;
+        }
+        if let Some(score) = self.0.score {
+            match score {
+                Score::Millipawns(mp) => write!(f, "cp {} ", mp / 10)?,    
+                // FIXME negate for engine loss
+                Score::WhiteWin{ minus_ply } => write!(f, "mate {} ", (-minus_ply + 1) / 2 )?,    
+                Score::WhiteLoss{ ply } => write!(f, "mate {} ", (ply + 1) / 2 )?,    
+                _ => {},
+            }
+        }
+        if let Some(nodes) = self.0.nodes {
+            write!(f, "nodes {} ", nodes)?;
+        }
+        if let Some(currmovenumber) = self.0.currmovenumber_from_1 {
+            write!(f, "currmovenumber {} ", currmovenumber)?;
+        }
+        if let Some(currmove) = self.0.currmove {
+            write!(f, "currmove {} ", currmove)?;
+        }
+        if let Some(hashfull) = self.0.hashfull_per_mille {
+            write!(f, "hashfull {} ", hashfull)?;
+        }
+        if let Some(nps) = self.0.nps {
+            write!(f, "nps {} ", nps)?;
+        }
+        if let Some(tbhits) = self.0.tbhits {
+            write!(f, "tbhits {} ", tbhits)?;
+        }
+        if let Some(cpuload) = self.0.cpuload_per_mille {
+            write!(f, "cpuload {} ", cpuload)?;
+        }
+        Ok(())
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 struct Args {
     // FIXME:
