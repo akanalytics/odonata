@@ -36,7 +36,7 @@ Rust Chess engine | https://github.com/vinc/littlewing | For making me appreciat
 Chesss GUI for UCI engines | http://www.playwitharena.de/ |
 
 ## Licence
-The software licence is [License](../license.txt) 
+The software licence is [AGPL-3](../license.txt) 
 
 Third party libraries used may have differing licenses. In particular... 
 

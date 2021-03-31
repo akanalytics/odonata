@@ -1,5 +1,4 @@
 use std::fmt;
-use std::time;
 use crate::search::clock::Clock;
 
 #[derive(Copy, Clone, Debug, Default)]

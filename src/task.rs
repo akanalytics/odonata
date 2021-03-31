@@ -49,7 +49,7 @@ impl<TCallbackData: Clone> CancellableTask<TCallbackData> {
     //  }
   
   
-    fn invoke_callback(&self, t: &TCallbackData) {
+    fn _invoke_callback(&self, t: &TCallbackData) {
         if let Some(func) = &self.callback {
             let mut func = func.lock().unwrap();
             func(t);

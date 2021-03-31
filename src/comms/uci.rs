@@ -6,12 +6,9 @@ use crate::movelist::MoveValidator;
 use crate::perft::Perft;
 use crate::eval::Score;
 use crate::search::algo::Algo;
-use crate::search::stats::Stats;
 use crate::version::Version;
 use std::io::{self, Write};
 use std::fmt;
-use std::sync::Arc;
-use std::sync::Mutex;
 use std::time::Duration;
 use crate::search::timecontrol::TimeControl;
 use crate::search::searchprogress::SearchProgress;
@@ -383,11 +380,11 @@ impl Uci {
 
 struct UciInfo<'a>(&'a SearchProgress);
 
-impl SearchProgress {
-    fn as_uci(&self) -> UciInfo {
-        UciInfo(&*self)
-    }
-}
+// impl SearchProgress {
+//     fn as_uci(&self) -> UciInfo {
+//         UciInfo(&*self)
+//     }
+// }
 
 impl<'a> fmt::Display for UciInfo<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -397,18 +394,12 @@ impl<'a> fmt::Display for UciInfo<'a> {
             }
             write!(f, "depth {} ", depth)?;
         }
-        if let Some(time_millis) = self.0.time_millis {
-            if let Some(pv) = &self.0.pv {
-                write!(f, "pv {} ", pv)?;
-            }
-            write!(f, "time {} ", time_millis)?;
-        }
         if let Some(score) = self.0.score {
             match score {
-                Score::Millipawns(mp) => write!(f, "cp {} ", mp / 10)?,    
+                Score::Millipawns(mp) => write!(f, "score cp {} ", mp / 10)?,    
                 // FIXME negate for engine loss
                 Score::WhiteWin{ minus_ply } => write!(f, "mate {} ", (-minus_ply + 1) / 2 )?,    
-                Score::WhiteLoss{ ply } => write!(f, "mate {} ", (ply + 1) / 2 )?,    
+                Score::WhiteLoss{ ply } => write!(f, "score mate {} ", (ply + 1) / 2 )?,    
                 _ => {},
             }
         }
@@ -432,6 +423,12 @@ impl<'a> fmt::Display for UciInfo<'a> {
         }
         if let Some(cpuload) = self.0.cpuload_per_mille {
             write!(f, "cpuload {} ", cpuload)?;
+        }
+        if let Some(time_millis) = self.0.time_millis {
+            write!(f, "time {} ", time_millis)?;
+            if let Some(pv) = &self.0.pv {
+                write!(f, "pv {} ", pv)?;
+            }
         }
         Ok(())
     }

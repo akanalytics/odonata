@@ -4,8 +4,7 @@ use crate::board::Board;
 use crate::eval::{Scorable, Score, SimpleScorer};
 use crate::movelist::Move;
 use crate::pvtable::PvTable;
-use crate::search::clock::{Clock};
-use crate::search::timecontrol::TimeControl;
+use crate::search::timecontrol::{TimeControl, MoveTimeEstimator};
 use crate::search::stats::Stats;
 use crate::search::searchprogress::SearchProgress;
 use crate::search::taskcontrol::TaskControl;
@@ -141,6 +140,7 @@ pub struct Algo {
     best_move: Option<Move>,
     pub score: Option<Score>,
     method: TimeControl,
+    move_time_estimator: MoveTimeEstimator,
 
     // child_thread: Arc<Option<thread::JoinHandle<Algo>>>,
     child_thread: AlgoThreadHandle,
@@ -177,6 +177,7 @@ impl Algo {
 
     pub fn set_timing_method(&mut self, tm: TimeControl) -> Self {
         self.method = tm;
+        self.move_time_estimator.time_control = tm;
         self.clone()
     }
 
@@ -201,6 +202,7 @@ impl fmt::Debug for Algo  {
             .field("eval", &self.eval)
             .field("iterative_deepening", &self.iterative_deepening)
             .field("method", &self.method)
+            .field("move_time_estimator", &self.move_time_estimator)
             .field("depth", &self.max_depth)
             .field("range", &self.range)
             .field("stats", &self.stats)
@@ -218,6 +220,7 @@ impl fmt::Display for Algo {
         writeln!(f, "minmax           : {}", self.minmax)?;
         writeln!(f, "iter deepening   : {}", self.iterative_deepening)?;
         writeln!(f, "timing method    : {:?}", self.method)?;
+        writeln!(f, "move time est    : {:?}", self.move_time_estimator)?;
         writeln!(f, "range            : {:?}", self.range)?;
         writeln!(f, "clock_checks     : {}", self.clock_checks)?;
         // writeln!(f, "kill             :{}", self.kill.load(atomic::Ordering::SeqCst))?;
@@ -284,14 +287,15 @@ impl Algo {
             self.best_move = None;
             self.pv = PvTable::new(MAX_PLY);
             let mut root_node = Node::root(&mut board);
-            if self.time_up_or_cancelled(depth, self.stats().total_nodes(), true) {
+            let mut sp = SearchProgress::from_stats(&self.stats());
+            if self.move_time_estimator.estimate_time_up_next_ply(&self.stats()) {
                 break;
             }
-            let mut sp = SearchProgress::from_stats(&self.stats());
             self.alphabeta(&mut root_node);
             if !self.task_control.is_cancelled() {
                 self.score = Some(root_node.score);
                 self.current_best = Some(self.pv.extract_pv()[0]);
+                sp = SearchProgress::from_stats(&self.stats());
                 sp.pv = Some(self.pv.extract_pv());
                 sp.score = self.score;
             }

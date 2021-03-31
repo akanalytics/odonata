@@ -37,6 +37,5 @@ impl<TTaskProgress> TaskControl<TTaskProgress> {
 
     pub fn register_callback(&mut self, callback: impl Fn(&TTaskProgress) + Send + Sync + 'static) {
         self.progress_callback = Some(Arc::new(Mutex::new(callback)));
-        // let clos = |algo :&Algo| { println!("nps {}", algo.stats().knps()); };
     }
 }

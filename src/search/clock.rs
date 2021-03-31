@@ -1,11 +1,10 @@
 use std::fmt;
 use std::time::{Duration, Instant};
-use crate::types::Color;
 
 
 
 
-struct DurationNewType(Duration);
+pub struct DurationNewType(pub Duration);
 
 fn format_duration(d: Duration) -> String {
     DurationNewType(d).to_string()

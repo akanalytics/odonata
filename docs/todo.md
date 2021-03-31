@@ -7,7 +7,7 @@
 - [x] producing algebraic notation
 - [x] pgn export
 - [x] uci
-- [ ] iterative deepening
+- [x] iterative deepening
   - [ ] found mate - skip deepening
   - [ ] better carry forward of moves
   - [ ] abandon if not time for another ply
