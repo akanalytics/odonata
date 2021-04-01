@@ -280,14 +280,14 @@ impl Algo {
             // regardless of iterative deeping, we apply it if no explicit depth given
             1..MAX_PLY
         };
+        self.best_move = None;
 
         for depth in self.range.clone() {
             self.set_iteration_depth(depth);
             self.score = None;
-            self.best_move = None;
             self.pv = PvTable::new(MAX_PLY);
             let mut root_node = Node::root(&mut board);
-            let mut sp = SearchProgress::from_stats(&self.stats());
+                let mut sp = SearchProgress::from_stats(&self.stats());
             if self.move_time_estimator.estimate_time_up_next_ply(&self.stats()) {
                 break;
             }
@@ -298,8 +298,11 @@ impl Algo {
                 sp = SearchProgress::from_stats(&self.stats());
                 sp.pv = Some(self.pv.extract_pv());
                 sp.score = self.score;
+                self.task_control.invoke_callback(&sp);
+            } else {
+                self.task_control.invoke_callback(&sp);
+                break;
             }
-            self.task_control.invoke_callback(&sp);
         }
 
         self.best_move = self.current_best;
@@ -382,7 +385,7 @@ impl Algo {
         if node.is_root() {
             if let Some(current_best) = self.current_best {
                 if let Some(i) = movelist.iter().position(|mv| mv == &current_best) {
-                    // println!("Swapped moves on depth {}!", self.max_depth);
+                    println!("Swapped move {} with position {} on depth {}!", current_best, i, self.max_depth);
                     movelist.swap(0, i);
                 }
             }
@@ -512,14 +515,26 @@ mod tests {
     }
 
     #[test]
-    fn test_mate_in_2() {
-        let board = Catalog::mate_in_2()[0].clone();
-        let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(false);
-        search.search(board);
-        assert_eq!(search.pv.extract_pv().to_string(), "d5f6, g7f6, c4f7");
-        assert_eq!(search.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
-        println!("{}", search);
+    fn test_mate_in_2_sync() {
+        for &id in &[false, true] {
+            let board = Catalog::mate_in_2()[0].clone();
+            let eval = SimpleScorer::new().set_position(false);
+            let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(false).set_eval(eval).set_iterative_deepening(id).set_callback(Uci::uci_info);
+            search.search(board);
+            assert_eq!(search.pv.extract_pv().to_string(), "d5f6, g7f6, c4f7");
+            assert_eq!(search.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
+            println!("{}", search);
+            if id { 
+                assert_eq!(search.stats().total_nodes(), 6945);
+            } else {
+                assert_eq!(search.stats().total_nodes(), 7749);
+            }
+        }
     }
+
+
+
+
 
     #[test]
     fn test_mate_in_2_async() {

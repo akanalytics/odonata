@@ -92,7 +92,7 @@ impl MoveMaker for Board {
                     debug_assert!(board.castling.contains(CastlingRights::BLACK_KING));
                     rook_from_to = h8 | f8;
                 }
-                _ => panic!(format!("Castling move from square {}", m.to())),
+                _ => panic!("Castling move from square {}", m.to()),
             }
             board.pieces[Piece::Rook] ^= rook_from_to;
             board.colors[self.turn] ^= rook_from_to;

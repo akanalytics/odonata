@@ -1,5 +1,12 @@
 use std::fmt;
+use std::sync::atomic::{AtomicI32, Ordering};
 
+
+// get
+// set
+// defaultmin
+// max
+// parse
 
 
 
@@ -25,7 +32,21 @@ impl fmt::Display for Setting {
     }
 }
 
+struct Count {
+        i: i64,
+        atom: AtomicI32,
+}
 
+
+const TOTAL : Count = Count { i: 0, atom: AtomicI32::new(5)  };
+
+impl Setting {
+    pub const fn new_int(name: &'static &str, default: i64, value: i64) -> Setting {
+        let i = Setting::Int {name, default, value, max:0, min: 0 };
+        // TOTAL.atom.store(10, Ordering::Relaxed);
+        i
+    }
+}
 
 
 
@@ -72,6 +93,10 @@ impl Config {
             int("eval.rook.value", 0, MAX, 500),
             int("eval.queen.value", 0, MAX, 900),
         ]}
+    }
+
+    pub fn set(&self, name: &str, value: &str) {
+        
     }
 }
 

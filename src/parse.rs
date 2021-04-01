@@ -154,13 +154,11 @@ mod tests {
         let mv = Parse::move_san(san, &bd);
         assert!(
             mv.is_ok(),
-            format!(
-                "\nmove : {}\nerror: {}\nmoves: {}\nboard: {}\n",
-                san,
-                mv.unwrap_err(),
-                bd.legal_moves(),
-                bd
-            )
+            "\nmove : {}\nerror: {}\nmoves: {}\nboard: {}\n",
+            san,
+            mv.unwrap_err(),
+            bd.legal_moves(),
+            bd
         );
         let mv = mv.unwrap();
         assert_eq!(mv.to_string(), uci);
