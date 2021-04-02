@@ -2,17 +2,17 @@ use crate::board::boardbuf::BoardBuf;
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::catalog::Catalog;
+use crate::config::{Config, Configurable, Setting};
+use crate::eval::Score;
 use crate::movelist::MoveValidator;
 use crate::perft::Perft;
-use crate::eval::Score;
 use crate::search::algo::Algo;
-use crate::version::Version;
-use std::io::{self, Write};
-use std::fmt;
-use std::time::Duration;
-use crate::search::timecontrol::TimeControl;
 use crate::search::searchprogress::SearchProgress;
-
+use crate::search::timecontrol::TimeControl;
+use crate::version::Version;
+use std::fmt;
+use std::io::{self, Write};
+use std::time::Duration;
 
 //  see https://www.chessprogramming.org/CPW-Engine_com
 //
@@ -46,10 +46,22 @@ pub struct Uci {
     debug: bool,
 }
 
+impl Configurable for Uci {
+    fn define(c: &mut Config) {
+        c.define_bool(Self::CONFIG_DEBUG, false);
+    }
+
+    fn configure(&mut self, c: &Config) {
+        self.debug = c.bool(Uci::CONFIG_DEBUG);
+    }
+}
+
 impl Uci {
+    const CONFIG_DEBUG: &'static str = "uci.debug";
+
     pub fn new() -> Uci {
         let mut uci = Uci::default();
-        // let callback = Arc::new(Mutex::new());
+        uci.configure(&Config::system());
         uci.algo.set_iterative_deepening(true);
         uci.algo.set_callback(|sp| Self::uci_info(sp));
         uci
@@ -57,6 +69,7 @@ impl Uci {
 
     pub fn run(&mut self) {
         self.running = true;
+        self.preamble.insert(0, "uci".to_string());
         while self.running {
             self.readline_and_execute();
         }
@@ -80,7 +93,7 @@ impl Uci {
             "uci" => self.uci_uci(),
             "isready" => self.uci_isready(),
             "debug" => self.uci_debug(&words[1..]),
-            "setoption" => self.uci_setoption(&words[1..]),
+            "setoption" => self.uci_setoption(&Args::parse(&input)),
             "ucinewgame" => self.uci_newgame(),
             "position" => self.uci_position(&Args::parse(&input)),
             "go" => self.uci_go(&Args::parse(&input)),
@@ -109,8 +122,14 @@ impl Uci {
 
     fn uci_debug(&mut self, words: &[&str]) -> Result<(), String> {
         self.debug = match words.first().copied() {
-            Some("on") => { println!("info string debug on"); true },
-            Some("off") => { println!("info string debug off"); false },
+            Some("on") => {
+                println!("info string debug on");
+                true
+            }
+            Some("off") => {
+                println!("info string debug off");
+                false
+            }
             _ => return Err("unknown debug option".into()),
         };
         Ok(())
@@ -127,7 +146,7 @@ impl Uci {
     //     to wait for the engine to finish initializing.
     //     This command must always be answered with "readyok" and can be sent also when the engine is calculating
     //     in which case the engine should also immediately answer with "readyok" without stopping the search.
-    // 
+    //
     fn uci_isready(&mut self) -> Result<(), String> {
         println!("readyok");
         Ok(())
@@ -157,7 +176,7 @@ impl Uci {
     fn uci_uci(&mut self) -> Result<(), String> {
         println!("id name {} v{}", Version::NAME, Version::VERSION);
         println!("id author {}", Version::AUTHORS);
-        println!("option name depth type spin default 7 min 1 max 10");
+        self.uci_show_options();
         println!("uciok");
         Ok(())
     }
@@ -195,7 +214,7 @@ impl Uci {
                 if word != "moves" {
                     return Err(format!("Token after startpos/fen must be 'moves' not '{}'", word));
                 }
-                for mv in arg.words[(moves+1)..].iter() {
+                for mv in arg.words[(moves + 1)..].iter() {
                     let mv = self.board.parse_uci_move(mv)?;
                     self.board = self.board.make_move(&mv);
                 }
@@ -217,7 +236,6 @@ impl Uci {
         // 	likely to be misinterpreted by the GUI because the GUI expects the engine to ponder
         //  on the suggested move.
         let _ponder = args.contain("ponder");
-
 
         //  search x ply only
         let depth = args.int_after("depth");
@@ -245,16 +263,17 @@ impl Uci {
 
         let tm = if let Some(wtime) = wtime {
             let btime = btime.unwrap_or(0) as u64;
-            let winc =  winc.unwrap_or(0) as u64;
+            let winc = winc.unwrap_or(0) as u64;
             let binc = binc.unwrap_or(0) as u64;
             let movestogo = movestogo.unwrap_or(0) as u16;
-            TimeControl::RemainingTime{
-                    our_color: self.board.color_us(),
-                    wtime: Duration::from_millis(wtime as u64),
-                    btime: Duration::from_millis(btime), 
-                    winc: Duration::from_millis(winc),
-                    binc: Duration::from_millis(binc),
-                    movestogo}
+            TimeControl::RemainingTime {
+                our_color: self.board.color_us(),
+                wtime: Duration::from_millis(wtime as u64),
+                btime: Duration::from_millis(btime),
+                winc: Duration::from_millis(winc),
+                binc: Duration::from_millis(binc),
+                movestogo,
+            }
         } else if infinite {
             TimeControl::Infinite
         } else if let Some(depth) = depth {
@@ -262,82 +281,160 @@ impl Uci {
         } else if let Some(nodes) = nodes {
             TimeControl::NodeCount(nodes as u64)
         } else if let Some(movetime) = movetime {
-            TimeControl::MoveTime(Duration::from_millis(movetime as u64)) 
+            TimeControl::MoveTime(Duration::from_millis(movetime as u64))
         } else if let Some(mate) = mate {
             TimeControl::MateIn(mate as u32)
         } else {
             TimeControl::default()
         };
 
-        self.algo.set_timing_method(tm); 
+        self.algo.set_timing_method(tm);
         // restrict search to this moves only
         // Example: After "position startpos" and "go infinite searchmoves e2e4 d2d4"
         // the engine should only search the two moves e2e4 and d2d4 in the initial position
         let _searchmoves = args.string_after("searchmoves");
-        self.debug("starting search with configuration ...");
-        self.debug(&format!("{}", self.algo));
-        self.debug(&format!("{}", self.board));
+        self.log_debug_message("starting search with configuration ...");
+        self.log_debug_message(&format!("{}", self.algo));
+        self.log_debug_message(&format!("{}", self.board));
         self.algo.search_async(self.board.clone());
         Ok(())
     }
 
-    fn uci_setoption(&mut self, _words: &[&str]) -> Result<(), String> {
+
+    // * setoption name  [value ]
+	// this is sent to the engine when the user wants to change the internal parameters
+	// of the engine. For the "button" type no value is needed.
+	// One string will be sent for each parameter and this will only be sent when the engine is waiting.
+	// The name of the option in  should not be case sensitive and can inludes spaces like also the value.
+	// The substrings "value" and "name" should be avoided in  and  to allow unambiguous parsing,
+	// for example do not use  = "draw value".
+	// Here are some strings for the example below:
+	//    "setoption name Nullmove value true\n"
+    //   "setoption name Selectivity value 3\n"
+	//    "setoption name Style value Risky\n"
+	//    "setoption name Clear Hash\n"
+	//    "setoption name NalimovPath value c:\chess\tb\4;c:\chess\tb\5\n"
+    //
+    fn uci_setoption(&mut self, args: &Args) -> Result<(), String> {
+        let name = args.string_after("name");
+        let value = args.string_after("value");
+        if let Some(name) = name {
+            if let Some(value) = value {
+                Config::system().get(&name).unwrap().parse(&value).unwrap();
+            }
+        }
+
         Ok(())
     }
+
+
+
+	// * type 
+	// 	The option has type t.
+	// 	There are 5 different types of options the engine can send
+	// 	* check
+	// 		a checkbox that can either be true or false
+	// 	* spin
+	// 		a spin wheel that can be an integer in a certain range
+	// 	* combo
+	// 		a combo box that can have different predefined strings as a value
+	// 	* button
+	// 		a button that can be pressed to send a command to the engine
+	// 	* string
+	// 		a text field that has a string as a value,
+	// 		an empty string has the value ""
+	// * default 
+	// 	the default value of this parameter is x
+	// * min 
+	// 	the minimum value of this parameter is x
+	// * max 
+	// 	the maximum value of this parameter is x
+	// * var 
+	// 	a predefined value of this parameter is x
+	// Example:
+    // Here are 5 strings for each of the 5 possible types of options
+	//    "option name Nullmove type check default true\n"
+    //   "option name Selectivity type spin default 2 min 0 max 4\n"
+	//    "option name Style type combo default Normal var Solid var Normal var Risky\n"
+	//    "option name NalimovPath type string default c:\\n"
+	//    "option name Clear Hash type button\n"
+    //
+    fn uci_show_options(&self) {
+        for (name, v) in Config::system().settings.iter() {
+            match v {
+                Setting::Bool { value: _, default } => {
+                    println!("option {} type check default {}", name, default)
+                }
+                Setting::String { value: _, default } => println!(
+                    "option {} type string default {}",
+                    name,
+                    if default.is_empty() { "\"\"" } else { default }
+                ),
+                Setting::Int { value: _, default, minmax } => println!(
+                    "option {} type spin default {} min {} max {}",
+                    name, default, minmax.0, minmax.1
+                ),
+                Setting::Combo { value: _, default, choices } => {
+                    print!("option {} type combo default {} ", name, choices[*default]);
+                    choices.iter().for_each(|v| print!("var {}", v));
+                    println!();
+                } 
+            }
+        }
+    }
+
 
     fn uci_display(&mut self) -> Result<(), String> {
-        self.debug("display");
-        self.debug(&format!("{}", self.board));
-        self.debug(&format!("{}", self.algo));
+        self.uci_info_string("display");
+        self.uci_info_string(&format!("{}", self.board));
+        self.uci_info_string(&format!("{}", self.algo));
         Ok(())
     }
-
 
     fn uci_stop(&mut self) -> Result<(), String> {
         self.algo.search_async_stop();
         // Self::uci_info(&self.algo);
-        self.debug("stopped");
+        self.uci_info_string("stopped");
         Ok(())
     }
 
-
-    // * depth 
-    // * seldepth 
+    // * depth
+    // * seldepth
     //     selective search depth in plies,
     //     if the engine sends seldepth there must also a "depth" be present in the same string.
-    // * time 
+    // * time
     //     the time searched in ms, this should be sent together with the pv.
-    // * nodes 
+    // * nodes
     //     x nodes searched, the engine should send this info regularly
-    // * pv  ... 
+    // * pv  ...
     //     the best line found
-    // * multipv 
+    // * multipv
     //     this for the multi pv mode.
     //     for the best move/pv add "multipv 1" in the string when you send the pv.
     //     in k-best mode always send all k variants in k strings together.
     // * score
-    //     * cp 
+    //     * cp
     //         the score from the engine's point of view in centipawns.
-    //     * mate 
+    //     * mate
     //         mate in y moves, not plies.
     //         If the engine is getting mated use negativ values for y.
     //     * lowerbound
     //       the score is just a lower bound.
     //     * upperbound
     //        the score is just an upper bound.
-    // * currmove 
+    // * currmove
     //     currently searching this move
-    // * currmovenumber 
+    // * currmovenumber
     //     currently searching move number x, for the first move x should be 1 not 0.
-    // * hashfull 
+    // * hashfull
     //     the hash is x permill full, the engine should send this info regularly
-    // * nps 
+    // * nps
     //     x nodes per second searched, the engine should send this info regularly
-    // * tbhits 
+    // * tbhits
     //     x positions where found in the endgame table bases
-    // * cpuload 
+    // * cpuload
     //     the cpu usage of the engine is x permill.
-    // 
+    //
     pub fn uci_info(search_progress: &SearchProgress) {
         println!("info {}", UciInfo(search_progress));
         if let Some(bestmove) = search_progress.bestmove {
@@ -346,32 +443,37 @@ impl Uci {
         io::stdout().flush().ok();
     }
 
-    fn debug(&self, str: &str) {
+    fn uci_info_string(&self, str: &str) {
         if self.debug {
             // replace "\n" with "info string "
             println!("info string {}", str.replace("\n", "\ninfo string "));
         }
     }
 
+    fn log_debug_message(&self, str: &str) {
+        if self.debug {
+            // replace "\n" with "info string "
+            println!("info string {}", str.replace("\n", "\ninfo string "));
+        }
+    }
 }
-
 
 // impl SearchProgress {
 //     depth: Option<u32>,
 //     seldepth: Option<u32>,
 //     time_millis: u64,
 //     pv: Option<String>
-//     nodes: u64 
-//     x multipv: Option<String>, 
-//     x score_in_cp: Option<u32>, 
-//     x score_mate_in: Option<i32>, 
-//     x score_lowerbound: Option<i32>, 
+//     nodes: u64
+//     x multipv: Option<String>,
+//     x score_in_cp: Option<u32>,
+//     x score_mate_in: Option<i32>,
+//     x score_lowerbound: Option<i32>,
 //     x score_upperbound : Option<i32>,
 //     currmove : Option<String>,
 //     currmovenumber_from_1: Option<u32>,
-//     hashfull_per_mille: Option<u32>, 
-//     nps: Option<u64>, 
-//     tbhits: Option<u64>, 
+//     hashfull_per_mille: Option<u32>,
+//     nps: Option<u64>,
+//     tbhits: Option<u64>,
 //     cpuload_per_mille: Option<u32>,
 //     best_move: Option<String>,
 //     additional_info: Option<String>,
@@ -396,11 +498,11 @@ impl<'a> fmt::Display for UciInfo<'a> {
         }
         if let Some(score) = self.0.score {
             match score {
-                Score::Millipawns(mp) => write!(f, "score cp {} ", mp / 10)?,    
+                Score::Millipawns(mp) => write!(f, "score cp {} ", mp / 10)?,
                 // FIXME negate for engine loss
-                Score::WhiteWin{ minus_ply } => write!(f, "mate {} ", (-minus_ply + 1) / 2 )?,    
-                Score::WhiteLoss{ ply } => write!(f, "score mate {} ", (ply + 1) / 2 )?,    
-                _ => {},
+                Score::WhiteWin { minus_ply } => write!(f, "mate {} ", (-minus_ply + 1) / 2)?,
+                Score::WhiteLoss { ply } => write!(f, "score mate {} ", (ply + 1) / 2)?,
+                _ => {}
             }
         }
         if let Some(nodes) = self.0.nodes {
@@ -434,22 +536,6 @@ impl<'a> fmt::Display for UciInfo<'a> {
     }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 struct Args {
     // FIXME:
     // line: String,
@@ -458,7 +544,7 @@ struct Args {
 
 impl Args {
     pub fn parse(s: &str) -> Args {
-        Args { /* line: String::from(s), */ words: s.split_whitespace().map(|s| s.to_string()).collect() }
+        Args { /* line: String::from(s), */ words: s.split_whitespace().map(|s| s.to_string()).collect(), }
     }
 
     pub fn contain(&self, s: &str) -> bool {
@@ -536,7 +622,9 @@ mod tests {
         );
 
         let mut uci = Uci::new();
-        uci.preamble.push("position fen rnbqkbnr/1ppppppp/p7/8/8/P7/1PPPPPPP/RNBQKBNR w KQkq - 0 1 moves h2h3 h7h6".into());
+        uci.preamble.push(
+            "position fen rnbqkbnr/1ppppppp/p7/8/8/P7/1PPPPPPP/RNBQKBNR w KQkq - 0 1 moves h2h3 h7h6".into(),
+        );
         uci.preamble.push("quit".into());
         uci.run();
         assert_eq!(

@@ -441,3 +441,215 @@ impl Algo {
         println!("end start search\n{}", self.clock);
         self.clone()
     }
+
+
+
+
+
+    
+// get
+// set
+// defaultmin
+// max
+// parse
+
+
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum Setting {
+    Int { name: &'static str, min: i64, max: i64, default: i64, value: i64 },
+    // Float { name: String, min: f32, max: f32, default: f32, value: f32 },
+    String { name: &'static str, values: &'static [&'static str], default: &'static str, value: &'static str },
+    //Boolean { name: String, default: bool, value: bool },
+}
+
+impl fmt::Display for Setting {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Setting::Int { name, min, max, default, value } => {
+                if f.alternate() {
+                    write!(f, "{:30} = {:<10} min = {:<10} max = {:<10} default = {:<10}", name, value, min, max, default)?;
+                } else {
+                    write!(f, "{}={}", name, value)?
+                }
+            }
+            _ => {},
+        }
+        Ok(())
+    }
+}
+
+
+use crate::eval::SimpleScorer;
+
+#[derive(Debug, Clone)]
+pub struct TypedSettingString(Box<Setting>);
+
+#[derive(Debug, Clone)]
+pub struct TypedSettingInt(Box<Setting>);
+
+
+impl TypedSettingInt {
+    fn value(&self) -> i64 {
+        match *self.0 {
+            Setting::Int{value, min:_, name:_, default:_,max:_} => value,
+            _ => panic!("Not an int"), 
+        }
+    }
+    fn set(&mut self, v: i64) {
+        match *self.0 {
+            Setting::Int{value:_, min, name, default,max} => *self.0 = Setting::Int{value:v, min, name, default,max},
+            _ => panic!("Not an int"), 
+        }
+    }
+}
+
+impl TypedSettingString {
+    fn value(&self) -> &str {
+        match *self.0 {
+            Setting::String{value, values:_, default:_, name:_} => value,
+            _ => panic!("Not a String"), 
+        }
+    }
+}
+
+pub trait Configurable {
+
+} 
+
+
+
+
+
+impl SimpleScorer {
+//    const eval_position_mobility: TypedSettingInt = TypedSettingInt(int("eval.pawn.value", 0, 10000, 100));
+    // const eval_bishop_mobility: TypedSettingInt = Config::int("eval.pawn.value", 0, 10000, 100);
+    // const eval_mode: TypedSettingString = Config::string("eval.mode", &["end-game", "mid-game"], "mid-game");
+
+    fn config_eval_mode() -> TypedSettingInt {
+        Config::int("eval.pawn.value", 0, 10000, 100)
+    }
+
+
+
+}
+
+
+
+
+#[derive(Clone, Debug)]
+pub struct Config {
+//     settings: Vec<Setting>,
+}
+
+
+
+impl Default for Config {
+    fn default() -> Self {
+        Config::new()
+    }
+}
+
+
+// fn global_classical_bitboard() -> &'static ClassicalBitboard {
+//     static INSTANCE: OnceCell<ClassicalBitboard> = OnceCell::new();
+//     INSTANCE.get_or_init(|| {
+//         debug!("Initilizing classical bitboard lookup tables");
+//         ClassicalBitboard::new()
+//     })
+
+
+impl fmt::Display for Config {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for s in Self::settings().lock().unwrap().values() {
+            if f.alternate() {
+                writeln!(f, "{:#}", s)?;
+            } else {
+                writeln!(f, "{}", s)?;
+            }
+        }
+        Ok(())
+    }
+}
+
+const fn int( name: &'static str, min: i64, max: i64, default: i64 ) -> Setting {
+    Setting::Int { name, min, max, default, value: default }
+} 
+
+
+
+impl Config {
+    pub fn new()-> Self {
+        const MAX:i64 = 100_000;
+        Config{}
+        // Config { settings: vec![
+        //     int("eval.pawn.value", 0, MAX, 100),
+        //     int("eval.knight.value", 0, MAX, 325),
+        //     int("eval.bishop.value", 0, MAX, 350),
+        //     int("eval.rook.value", 0, MAX, 500),
+        //     int("eval.queen.value", 0, MAX, 900),
+        // ]}
+    }
+
+    fn settings() -> &'static Mutex<HashMap<String,Box<Setting>>> {
+        static SETTINGS: Lazy<Mutex<HashMap<String,Box<Setting>>>> = Lazy::new(|| Mutex::new(HashMap::new()));
+        &*SETTINGS
+    }
+
+
+    pub fn int(name: &'static str, min: i64, max: i64, default: i64) -> TypedSettingInt {
+        let map = Self::settings().lock().unwrap();
+        let entry =  map.get(name);
+        if let Some(entry) = entry {
+            return TypedSettingInt(entry.clone());
+        }
+        let b = Box::new(Setting::Int{ name, default, value: default, max, min });
+        Self::settings().lock().unwrap().insert(String::from(name), b.clone());
+        TypedSettingInt(b)
+
+    }
+
+
+    pub fn string( name: &'static str, values: &'static [&'static str], default: &'static str) -> TypedSettingString {
+        let b = Box::new(Setting::String{ name, values, default, value: default });
+        Self::settings().lock().unwrap().insert(String::from(name), b.clone());
+        TypedSettingString(b)
+    }
+
+    // pub fn set(&self, name: &str, value: &str) {
+    //     let a = Setting::Int{ name: "", max: 0, min: 0, default: 0, value: 1 };     
+    //     println!("{}", a);   
+    // }
+}
+
+
+// eval.configure(&mut self, c: &Config) {
+//     self.position = c.evaluation_position.value;
+// }
+
+
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_config() {
+        let config = Config::new();
+        println!("config={}", config);
+        println!("\n");
+        println!("config#={:#}", config);
+        println!("end config#\n");
+
+        println!("config_eval_mode={:?}", SimpleScorer::config_eval_mode());
+        let a = SimpleScorer::config_eval_mode().value();
+        println!("a={}", a);
+        SimpleScorer::config_eval_mode().set(42);
+        println!("after: a={}", a);
+        println!("config#={:#}", config);
+
+
+    }
+}
