@@ -342,6 +342,20 @@ checks_with_white_knights = board.w.knights.moves & board.b.king.knight_moves
 legal_moves = w.moves
 ```
 
+## Config
+
+config = Config()
+print(config)
+>>> search.threads: default: 4            range: 1..100
+>>> search.algo:    default: alphabeta    choices: alphabeta|minmax|mdf
+config["search.threads"] = 5
+config["search.algo"] = "alphabeta"
+
+eval1 = od.eval.new()
+eval1.configure(config)
+analysis = algo.apply(board, eval1)
+
+
 
 
 

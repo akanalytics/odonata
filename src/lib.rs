@@ -42,3 +42,4 @@ pub use crate::search::stats::Stats;
 pub use crate::types::{Color, Piece};
 pub use crate::version::Version;
 pub use crate::config::Config;
+
