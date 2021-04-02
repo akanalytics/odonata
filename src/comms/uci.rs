@@ -473,7 +473,7 @@ mod tests {
     fn test_uci_setoption() {
         let mut uci = Uci::new();
         uci.preamble.push("setoption name eval.material.b value 700".into());
-        uci.preamble.push("setoption name eval.position false".into());
+        uci.preamble.push("setoption name eval.position value false".into());
         uci.preamble.push("quit".into());
         uci.run();
         assert_eq!(uci.algo.eval.material_scores[Piece::Bishop], 7000);

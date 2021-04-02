@@ -5,6 +5,9 @@ use crate::types::{Color, Piece};
 use std::fmt;
 use crate::config::{Config, Configurable};
 
+#[macro_use]
+use crate::log_debug;
+
 
 // eval1 = bl.scoring.material(p=300, b=400, n=700)
 // eval2 = bl.scoring.position(endgame)
@@ -209,7 +212,7 @@ impl Configurable for SimpleScorer {
     }
 
     fn configure(&mut self, c: &Config) {
-        debug!("eval.configure with {}", c);
+        log_debug!("eval.configure with {}", c);
         self.mobility = c.bool("eval.mobility").unwrap_or(self.mobility);
         self.position = c.bool("eval.position").unwrap_or(self.position);
         self.material = c.bool("eval.material").unwrap_or(self.material);
