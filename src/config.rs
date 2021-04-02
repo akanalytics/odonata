@@ -8,59 +8,8 @@ use std::sync::{Arc, Mutex};
 use std::str::FromStr;
 use std::error::Error;
 
-// get
-// set
-// defaultmin
-// max
-// parse
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum Setting {
-    Bool { default: bool, value: bool },
-    Int { default: i64, value: i64, minmax: (i64, i64) },
-    String { default: String, value: String },
-    Combo { default: usize, value: usize, choices: Vec<String> },
-}
-
-impl Setting {
-
-    // fn set_boo(&self, value: &str) {
-    //     Setting::Bool { &mut value, default:_ } => self.set_bool(s.parse()),
-    //     Setting::Int { value, default:_, minmax:_ } => self.value = i64::parse(s),
-    //     Setting::String { value, default:_ } => self.set( String::parse(s) ),
-    //     Setting::Combo { value, default:_, choices:_ } => self.set( String::parse(s) ),
-    // }
 
 
-    pub fn parse(&mut self, s: &str) -> Result<(), String> {
-        *self = match *self {
-            Setting::Bool { value:_, default } => Setting::Bool{ value: s.parse::<bool>().unwrap(), default },
-            Setting::Int { value:_, default, minmax } => Setting::Int{ value: s.parse::<i64>().unwrap(), default, minmax },
-            Setting::String { value:_, default } => Setting::String{ value: s.to_string(), default },
-            Setting::Combo { value:_, default, choices } => {
-                if let Some(pos) = choices.iter().position(|v| v == s) {
-                    Setting::Combo{ value:pos, default, choices }
-                } else {
-                    panic!("Could not find {} in {:?}", s, choices)
-                }
-            }
-        };
-        Ok(())
-    }
-}
-
-
-impl fmt::Display for Setting {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Setting::Bool { value, default: _ } => write!(f, "{}", value)?,
-            Setting::Int { value, default: _, minmax: _ } => write!(f, "{}", value)?,
-            Setting::String { value, default: _ } => write!(f, "{}", value)?,
-            _ => {}
-        }
-        Ok(())
-    }
-}
 
 pub trait Configurable {
     fn define() -> Config;
@@ -69,117 +18,135 @@ pub trait Configurable {
 
 
 
+impl Config {
+    pub fn new() -> Config {
+        Self::default()
+    }
+
+    pub fn insert(&mut self, k: &str, v: &str) {
+        self.settings.insert(k.to_string(), v.to_string());
+    }
+
+
+    pub fn bool(&self, name: &str) -> Option<bool> {
+        if let Some(v) = self.settings.get(name) {
+            return v.parse::<bool>().ok();
+        }
+        None
+    }
+
+    pub fn string(&self, name: &str) -> Option<String> {
+        self.settings.get(name).cloned()
+    }
+
+    pub fn int(&self, name: &str) -> Option<i64> {
+        if let Some(v) = self.settings.get(name) {
+            return v.parse::<i64>().ok();
+        }
+        None
+    }
+}
+
+
+//     pub fn system() -> &'static Config {
+//         static INSTANCE: OnceCell<Config> = OnceCell::new();
+//         INSTANCE.get_or_init(|| Config::default())
+//     }
+
+//     pub fn get(&mut self, name: &str) -> Option<&mut Setting> {
+//         self.settings.get_mut(name)
+//     }
+
+//     pub fn define_bool(&mut self, name: &str, default: bool) {
+//         self.settings.insert(name.to_string(), Setting::Bool { default, value: default });
+//     }
+
+//     pub fn define_string(&mut self, name: &str, default: &str) {
+//         self.settings.insert(
+//             name.to_string(),
+//             Setting::String { default: default.to_string(), value: default.to_string() },
+//         );
+//     }
+
+//     pub fn define_int(&mut self, name: &str, default: i64, min: i64, max: i64) {
+//         self.settings.insert(name.to_string(), Setting::Int { default, value: default, minmax: (min, max) });
+//     }
+
+// }
+
+
 #[derive(Clone, Debug)]
 pub struct Config {
-    pub settings: HashMap<String, Setting>,
+    pub settings: HashMap<String, String>,
 }
 
 impl fmt::Display for Config {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for (name, setting) in self.settings.iter() {
-            if f.alternate() {
-                match setting {
-                    Setting::Int { default, value, minmax } => writeln!(
-                        f,
-                        "{:<30} = {:<10} default = {:<10} min = {:<10} max = {:<10} ",
-                        name, value, default, minmax.0, minmax.1
-                    )?,
-                    Setting::Bool { default, value } => {
-                        write!(f, "{:<30} = {:<10} default = {:<10}", name, value, default)?
-                    }
-                    Setting::String { default, value } => {
-                        write!(f, "{:<30} = {:<10} default = {:<10}", name, value, default)?
-                    }
-                    Setting::Combo { default, value, choices  } => {
-                        write!(f, "{:<30} = {:<10} default = {:<10}", name, value, choices[*default])?
-                    }                   
-                }
-            } else {
-                writeln!(f, "{}={}", name, setting)?;
-            }
+        for (k,v) in self.settings.iter() {
+            writeln!(f,"{:<30} = {}", k,v )?
         }
         Ok(())
     }
 }
 
-// const fn int(min: i64, max: i64, default: i64) -> Setting {
-//     Setting::Int { min, max, default, value: default }
-// }
-
 impl Default for Config {
     fn default() -> Self {
-        let mut c = Config { settings: HashMap::new() };
-        const MAX: i64 = 100_000;
-        c.define_int("eval.pawn.value", 0, MAX, 100);
-        c.define_int("eval.knight.value", 0, MAX, 325);
-        c.define_int("eval.bishop.value", 0, MAX, 350);
-        c.define_int("eval.rook.value", 0, MAX, 500);
-        c.define_int("eval.queen.value", 0, MAX, 900);
-
-        crate::comms::uci::Uci::define(&mut c);
-        c
+        Config { settings: HashMap::new() }
     }
 }
 
-impl Config {
-    pub fn system() -> &'static Config {
-        static INSTANCE: OnceCell<Config> = OnceCell::new();
-        INSTANCE.get_or_init(|| Config::default())
-    }
 
-    pub fn get(&mut self, name: &str) -> Option<&mut Setting> {
-        self.settings.get_mut(name)
-    }
 
-    pub fn define_bool(&mut self, name: &str, default: bool) {
-        self.settings.insert(name.to_string(), Setting::Bool { default, value: default });
-    }
 
-    pub fn define_string(&mut self, name: &str, default: &str) {
-        self.settings.insert(
-            name.to_string(),
-            Setting::String { default: default.to_string(), value: default.to_string() },
-        );
-    }
-
-    pub fn define_int(&mut self, name: &str, default: i64, min: i64, max: i64) {
-        self.settings.insert(name.to_string(), Setting::Int { default, value: default, minmax: (min, max) });
-    }
-
-    pub fn bool(&self, name: &str) -> bool {
-        if let Setting::Bool { value, default: _ } = self.settings[name] {
-            return value;
-        }
-        panic!("Setting {} is wrong type, expected bool", self.settings[name]);
-    }
-
-    pub fn string(&self, name: &str) -> &String {
-        if let Setting::String { value, default: _ } = &self.settings[name] {
-            return value;
-        }
-        panic!("Setting {} is wrong type, expected string", self.settings[name]);
-    }
-
-    pub fn int(&mut self, name: &str) -> i64 {
-        if let Setting::Int { value, default: _, minmax: _ } = self.settings[name] {
-            return value;
-        }
-        panic!("Setting {} is wrong type, expected bool", self.settings[name]);
-    }
-}
-
-// eval.configure(&mut self, c: &Config) {
-//     self.position = c.evaluation_position.value;
-// }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    #[derive(Clone, Debug)]
+    struct TestStruct { integer: i64, string: String }
+    
+    impl Configurable for TestStruct {
+        
+        fn define() -> Config {
+            let mut c = Config::new();
+            c.insert("engine.wheels", "default=4 min=2 max=6");
+            c.insert("engine.color", "default=blue var=blue var=yellow var=red" );
+            c
+        }
+
+        
+        fn configure(&mut self, config: &Config) {
+
+            if let Some(i) = config.int("engine.wheels") {
+                self.integer = i;
+            }
+            if let Some(s) = config.string("engine.color") {
+                self.string = s;
+            }
+        }
+    
+    }
+
+
+
     #[test]
     fn test_config() {
-        let config = Config::default();
-        println!("config\n{}", config);
-        println!("config#\n{:#}", config);
+        let c1 = Config::default();
+        println!("c1\n{}", c1);
+
+        let cs2 = TestStruct::define();
+        println!("cs2\n{}", cs2);
+
+        let mut c3 = Config::new();
+        c3.insert("engine.wheels", "6");
+        c3.insert("engine.color", "red");
+        println!("c3\n{}", c3);
+        
+        let mut ts = TestStruct { integer:0, string: "cat".to_string() };
+        ts.configure(&c3);
+        assert_eq!(ts.integer, 6);
+        assert_eq!(ts.string, "red");
+
     }
 }

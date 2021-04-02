@@ -2,7 +2,7 @@ use crate::board::boardbuf::BoardBuf;
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::catalog::Catalog;
-use crate::config::{Config, Configurable, Setting};
+use crate::config::{Config, Configurable};
 use crate::eval::Score;
 use crate::movelist::MoveValidator;
 use crate::perft::Perft;
@@ -47,12 +47,16 @@ pub struct Uci {
 }
 
 impl Configurable for Uci {
-    fn define(c: &mut Config) {
-        c.define_bool(Self::CONFIG_DEBUG, false);
+    fn define() -> Config {
+        let mut c = Config::new();
+        c.insert(Uci::CONFIG_DEBUG, "type check default true");
+        c
     }
 
     fn configure(&mut self, c: &Config) {
-        self.debug = c.bool(Uci::CONFIG_DEBUG);
+        if let Some(b) = c.bool(Uci::CONFIG_DEBUG) {
+            self.debug = b;
+        }
     }
 }
 
@@ -61,7 +65,6 @@ impl Uci {
 
     pub fn new() -> Uci {
         let mut uci = Uci::default();
-        uci.configure(&Config::system());
         uci.algo.set_iterative_deepening(true);
         uci.algo.set_callback(|sp| Self::uci_info(sp));
         uci
@@ -318,11 +321,11 @@ impl Uci {
     fn uci_setoption(&mut self, args: &Args) -> Result<(), String> {
         let name = args.string_after("name");
         let value = args.string_after("value");
-        if let Some(name) = name {
-            if let Some(value) = value {
-                Config::system().get(&name).unwrap().parse(&value).unwrap();
-            }
-        }
+        // if let Some(name) = name {
+        //     if let Some(value) = value {
+        //         Config::system().get(&name).unwrap().parse(&value).unwrap();
+        //     }
+        // }
 
         Ok(())
     }
@@ -360,28 +363,33 @@ impl Uci {
 	//    "option name Clear Hash type button\n"
     //
     fn uci_show_options(&self) {
-        for (name, v) in Config::system().settings.iter() {
-            match v {
-                Setting::Bool { value: _, default } => {
-                    println!("option {} type check default {}", name, default)
-                }
-                Setting::String { value: _, default } => println!(
-                    "option {} type string default {}",
-                    name,
-                    if default.is_empty() { "\"\"" } else { default }
-                ),
-                Setting::Int { value: _, default, minmax } => println!(
-                    "option {} type spin default {} min {} max {}",
-                    name, default, minmax.0, minmax.1
-                ),
-                Setting::Combo { value: _, default, choices } => {
-                    print!("option {} type combo default {} ", name, choices[*default]);
-                    choices.iter().for_each(|v| print!("var {}", v));
-                    println!();
-                } 
-            }
+        for (name, value) in Self::define().settings.iter() {
+            println!("option {} {}", name, value);
         }
     }
+
+        // for (name, v) in Config::system().settings.iter() {
+        //     match v {
+        //         Setting::Bool { value: _, default } => {
+        //             println!("option {} type check default {}", name, default)
+        //         }
+        //         Setting::String { value: _, default } => println!(
+        //             "option {} type string default {}",
+        //             name,
+        //             if default.is_empty() { "\"\"" } else { default }
+        //         ),
+        //         Setting::Int { value: _, default, minmax } => println!(
+        //             "option {} type spin default {} min {} max {}",
+        //             name, default, minmax.0, minmax.1
+        //         ),
+        //         Setting::Combo { value: _, default, choices } => {
+        //             print!("option {} type combo default {} ", name, choices[*default]);
+        //             choices.iter().for_each(|v| print!("var {}", v));
+        //             println!();
+        //         } 
+        //     }
+        // }
+    
 
 
     fn uci_display(&mut self) -> Result<(), String> {
