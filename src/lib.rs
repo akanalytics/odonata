@@ -31,6 +31,7 @@ pub mod task;
 mod utils;
 pub mod version;
 pub mod config;
+pub mod logger;
 
 pub use crate::attacks::ClassicalBitboard;
 pub use crate::bitboard::Bitboard;

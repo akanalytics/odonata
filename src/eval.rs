@@ -3,6 +3,8 @@ use crate::material::Material;
 use crate::outcome::{GameEnd, Outcome};
 use crate::types::{Color, Piece};
 use std::fmt;
+use crate::config::{Config, Configurable};
+
 
 // eval1 = bl.scoring.material(p=300, b=400, n=700)
 // eval2 = bl.scoring.position(endgame)
@@ -178,23 +180,58 @@ impl fmt::Display for Score {
 // some human-like tweaks: aggresive/defensive, open/closed preference, test an opening, lay traps, complicate the position,
 // consider odd / even parity and tempo
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct SimpleScorer {
-    mobility: bool,
-    position: bool,
-    material: bool,
+    pub mobility: bool,
+    pub position: bool,
+    pub material: bool,
+    pub material_scores: [i32; Piece::ALL.len()],
 }
 
 impl Default for SimpleScorer {
     fn default() -> Self {
-        SimpleScorer { mobility: true, position: true, material: true }
+        SimpleScorer::new()
     }
 }
 
+impl Configurable for SimpleScorer {
+    fn define() -> Config {
+        let mut c = Config::new();
+        c.set("eval.mobility", "type check default true");
+        c.set("eval.position", "type check default true");
+        c.set("eval.material", "type check default true");
+        c.set("eval.material.p", "type spin default 100 min -10000 max 10000");
+        c.set("eval.material.n", "type spin default 325 min -10000 max 10000");
+        c.set("eval.material.b", "type spin default 350 min -10000 max 10000");
+        c.set("eval.material.r", "type spin default 500 min -10000 max 10000");
+        c.set("eval.material.q", "type spin default 900 min -10000 max 10000");
+        c
+    }
+
+    fn configure(&mut self, c: &Config) {
+        debug!("eval.configure with {}", c);
+        self.mobility = c.bool("eval.mobility").unwrap_or(self.mobility);
+        self.position = c.bool("eval.position").unwrap_or(self.position);
+        self.material = c.bool("eval.material").unwrap_or(self.material);
+        for p in &Piece::ALL {
+            let mut name = "eval.material.".to_string();
+            name.push(p.to_char(Some(Color::Black)));
+            if let Some(i) = c.int(&name) {
+                self.material_scores[*p] = 10 * i as i32;
+            }
+        }
+    }
+}
+
+
+
+
+
 // builder methods
 impl SimpleScorer {
-    pub fn new() -> SimpleScorer {
-        SimpleScorer::default()
+    pub fn new() -> Self {
+        const MATERIAL_SCORES: [i32; Piece::ALL.len()] = [1000, 3250, 3500, 5000, 9000, 0];
+        SimpleScorer { mobility: true, position: true, material: true, material_scores: MATERIAL_SCORES }
     }
 
     pub fn set_position(&mut self, enabled: bool ) -> Self {
@@ -206,8 +243,6 @@ impl SimpleScorer {
 
 
 impl SimpleScorer {
-    pub const MATERIAL_SCORES: [i32; Piece::ALL.len()] = [1000, 3250, 3500, 5000, 9000, 0];
-
 
     pub fn evaluate(&self, board: &Board) -> Score {
         let outcome = board.outcome();
@@ -263,7 +298,7 @@ impl SimpleScorer {
     pub fn evaluate_material(&self, mat: &Material) -> i32 {
         let mut total = 0_i32;
         for &p in &Piece::ALL {
-            total += Self::MATERIAL_SCORES[p.index()]
+            total += self.material_scores[p.index()]
                 * (mat.counts(Color::White, p) - mat.counts(Color::Black, p));
         }
         total
@@ -317,6 +352,18 @@ mod tests {
 
         let board = Catalog::black_starting_position();
         assert_eq!(board.eval_material(eval), Score::Millipawns(starting_pos_score).negate());
+    }
+
+
+    #[test]
+    fn eval_configure() {
+        let mut eval = SimpleScorer::new();
+        eval.configure(&Config::new().set("eval.material.b", "700"));
+        assert_eq!(eval.material_scores[Piece::Bishop], 7000);
+
+        let mut eval = SimpleScorer::new();
+        eval.configure(&Config::new().set("eval.position", "false"));
+        assert_eq!(eval.position, false);
     }
 
     #[test]

@@ -133,7 +133,7 @@ pub struct Algo {
     range: Range<u32>,
     minmax: bool,
     iterative_deepening: bool,
-    eval: SimpleScorer,
+    pub eval: SimpleScorer,
     stats: Stats,
     pub pv: PvTable,
     current_best: Option<Move>,

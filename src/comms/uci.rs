@@ -10,6 +10,7 @@ use crate::search::algo::Algo;
 use crate::search::searchprogress::SearchProgress;
 use crate::search::timecontrol::TimeControl;
 use crate::version::Version;
+use crate::eval::SimpleScorer;
 use std::fmt;
 use std::io::{self, Write};
 use std::time::Duration;
@@ -49,19 +50,18 @@ pub struct Uci {
 impl Configurable for Uci {
     fn define() -> Config {
         let mut c = Config::new();
-        c.insert(Uci::CONFIG_DEBUG, "type check default true");
+        c.set("uci.debug", "type check default true");
         c
     }
 
     fn configure(&mut self, c: &Config) {
-        if let Some(b) = c.bool(Uci::CONFIG_DEBUG) {
+        if let Some(b) = c.bool("uci.debug") {
             self.debug = b;
         }
     }
 }
 
 impl Uci {
-    const CONFIG_DEBUG: &'static str = "uci.debug";
 
     pub fn new() -> Uci {
         let mut uci = Uci::default();
@@ -91,7 +91,7 @@ impl Uci {
         if words.is_empty() {
             return;
         }
-
+        debug!("UCI GUI >>> Engine: {}", input);
         let res = match words[0] {
             "uci" => self.uci_uci(),
             "isready" => self.uci_isready(),
@@ -138,34 +138,11 @@ impl Uci {
         Ok(())
     }
 
-    //
-    // * isready
-    //     this is used to synchronize the engine with the GUI. When the GUI has sent a command or
-    //     multiple commands that can take some time to complete,
-    //     this command can be used to wait for the engine to be ready again or
-    //     to ping the engine to find out if it is still alive.
-    //     E.g. this should be sent after setting the path to the tablebases as this can take some time.
-    //     This command is also required once before the engine is asked to do any search
-    //     to wait for the engine to finish initializing.
-    //     This command must always be answered with "readyok" and can be sent also when the engine is calculating
-    //     in which case the engine should also immediately answer with "readyok" without stopping the search.
-    //
     fn uci_isready(&mut self) -> Result<(), String> {
         println!("readyok");
         Ok(())
     }
 
-    //
-    // * ucinewgame
-    //    this is sent to the engine when the next search (started with "position" and "go") will be from
-    //    a different game. This can be a new game the engine should play or a new game it should analyse but
-    //    also the next position from a testsuite with positions only.
-    //    If the GUI hasn't sent a "ucinewgame" before the first "position" command, the engine shouldn't
-    //    expect any further ucinewgame commands as the GUI is probably not supporting the ucinewgame command.
-    //    So the engine should not rely on this command even though all new GUIs should support it.
-    //    As the engine's reaction to "ucinewgame" can take some time the GUI should always send "isready"
-    //    after "ucinewgame" to wait for the engine to finish its operation.
-    //
     fn uci_newgame(&mut self) -> Result<(), String> {
         Ok(())
     }
@@ -229,15 +206,6 @@ impl Uci {
     }
 
     fn uci_go(&mut self, args: &Args) -> Result<(), String> {
-        //  start searching in pondering mode.
-        // 	Do not exit the search in ponder mode, even if it's mate!
-        // 	This means that the last move sent in in the position string is the ponder move.
-        // 	The engine can do what it wants to do, but after a "ponderhit" command
-        // 	it should execute the suggested move to ponder on. This means that the ponder move sent by
-        // 	the GUI can be interpreted as a recommendation about which move to ponder. However, if the
-        // 	engine decides to ponder on a different move, it should not display any mainlines as they are
-        // 	likely to be misinterpreted by the GUI because the GUI expects the engine to ponder
-        //  on the suggested move.
         let _ponder = args.contain("ponder");
 
         //  search x ply only
@@ -304,64 +272,21 @@ impl Uci {
     }
 
 
-    // * setoption name  [value ]
-	// this is sent to the engine when the user wants to change the internal parameters
-	// of the engine. For the "button" type no value is needed.
-	// One string will be sent for each parameter and this will only be sent when the engine is waiting.
-	// The name of the option in  should not be case sensitive and can inludes spaces like also the value.
-	// The substrings "value" and "name" should be avoided in  and  to allow unambiguous parsing,
-	// for example do not use  = "draw value".
-	// Here are some strings for the example below:
-	//    "setoption name Nullmove value true\n"
-    //   "setoption name Selectivity value 3\n"
-	//    "setoption name Style value Risky\n"
-	//    "setoption name Clear Hash\n"
-	//    "setoption name NalimovPath value c:\chess\tb\4;c:\chess\tb\5\n"
-    //
     fn uci_setoption(&mut self, args: &Args) -> Result<(), String> {
         let name = args.string_after("name");
         let value = args.string_after("value");
-        // if let Some(name) = name {
-        //     if let Some(value) = value {
-        //         Config::system().get(&name).unwrap().parse(&value).unwrap();
-        //     }
-        // }
+        if let Some(name) = name {
+            if let Some(value) = value {
+                let c = Config::new().set(&name, &value);
+                self.configure(&c);
+                self.algo.eval.configure(&c);
 
+            }
+        }
         Ok(())
     }
 
 
-
-	// * type 
-	// 	The option has type t.
-	// 	There are 5 different types of options the engine can send
-	// 	* check
-	// 		a checkbox that can either be true or false
-	// 	* spin
-	// 		a spin wheel that can be an integer in a certain range
-	// 	* combo
-	// 		a combo box that can have different predefined strings as a value
-	// 	* button
-	// 		a button that can be pressed to send a command to the engine
-	// 	* string
-	// 		a text field that has a string as a value,
-	// 		an empty string has the value ""
-	// * default 
-	// 	the default value of this parameter is x
-	// * min 
-	// 	the minimum value of this parameter is x
-	// * max 
-	// 	the maximum value of this parameter is x
-	// * var 
-	// 	a predefined value of this parameter is x
-	// Example:
-    // Here are 5 strings for each of the 5 possible types of options
-	//    "option name Nullmove type check default true\n"
-    //   "option name Selectivity type spin default 2 min 0 max 4\n"
-	//    "option name Style type combo default Normal var Solid var Normal var Risky\n"
-	//    "option name NalimovPath type string default c:\\n"
-	//    "option name Clear Hash type button\n"
-    //
     fn uci_show_options(&self) {
         for (name, value) in Self::define().settings.iter() {
             println!("option {} {}", name, value);
@@ -396,6 +321,7 @@ impl Uci {
         self.uci_info_string("display");
         self.uci_info_string(&format!("{}", self.board));
         self.uci_info_string(&format!("{}", self.algo));
+        self.uci_info_string(&format!("{:?}", self.algo.eval));
         Ok(())
     }
 
@@ -406,43 +332,6 @@ impl Uci {
         Ok(())
     }
 
-    // * depth
-    // * seldepth
-    //     selective search depth in plies,
-    //     if the engine sends seldepth there must also a "depth" be present in the same string.
-    // * time
-    //     the time searched in ms, this should be sent together with the pv.
-    // * nodes
-    //     x nodes searched, the engine should send this info regularly
-    // * pv  ...
-    //     the best line found
-    // * multipv
-    //     this for the multi pv mode.
-    //     for the best move/pv add "multipv 1" in the string when you send the pv.
-    //     in k-best mode always send all k variants in k strings together.
-    // * score
-    //     * cp
-    //         the score from the engine's point of view in centipawns.
-    //     * mate
-    //         mate in y moves, not plies.
-    //         If the engine is getting mated use negativ values for y.
-    //     * lowerbound
-    //       the score is just a lower bound.
-    //     * upperbound
-    //        the score is just an upper bound.
-    // * currmove
-    //     currently searching this move
-    // * currmovenumber
-    //     currently searching move number x, for the first move x should be 1 not 0.
-    // * hashfull
-    //     the hash is x permill full, the engine should send this info regularly
-    // * nps
-    //     x nodes per second searched, the engine should send this info regularly
-    // * tbhits
-    //     x positions where found in the endgame table bases
-    // * cpuload
-    //     the cpu usage of the engine is x permill.
-    //
     pub fn uci_info(search_progress: &SearchProgress) {
         println!("info {}", UciInfo(search_progress));
         if let Some(bestmove) = search_progress.bestmove {
@@ -466,35 +355,10 @@ impl Uci {
     }
 }
 
-// impl SearchProgress {
-//     depth: Option<u32>,
-//     seldepth: Option<u32>,
-//     time_millis: u64,
-//     pv: Option<String>
-//     nodes: u64
-//     x multipv: Option<String>,
-//     x score_in_cp: Option<u32>,
-//     x score_mate_in: Option<i32>,
-//     x score_lowerbound: Option<i32>,
-//     x score_upperbound : Option<i32>,
-//     currmove : Option<String>,
-//     currmovenumber_from_1: Option<u32>,
-//     hashfull_per_mille: Option<u32>,
-//     nps: Option<u64>,
-//     tbhits: Option<u64>,
-//     cpuload_per_mille: Option<u32>,
-//     best_move: Option<String>,
-//     additional_info: Option<String>,
-//     debug_info: Option<String>,
-// }
 
 struct UciInfo<'a>(&'a SearchProgress);
 
-// impl SearchProgress {
-//     fn as_uci(&self) -> UciInfo {
-//         UciInfo(&*self)
-//     }
-// }
+
 
 impl<'a> fmt::Display for UciInfo<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -575,6 +439,7 @@ impl Args {
 mod tests {
     use super::*;
     use std::thread;
+    use crate::types::Piece;
 
     #[test]
     fn test_args() {
@@ -602,6 +467,18 @@ mod tests {
         uci.preamble.push("perft 1".into());
         uci.preamble.push("quit".into());
         uci.run();
+    }
+
+    #[test]
+    fn test_uci_setoption() {
+        let mut uci = Uci::new();
+        uci.preamble.push("setoption name eval.material.b value 700".into());
+        uci.preamble.push("setoption name eval.position false".into());
+        uci.preamble.push("quit".into());
+        uci.run();
+        assert_eq!(uci.algo.eval.material_scores[Piece::Bishop], 7000);
+        assert_eq!(uci.algo.eval.material_scores[Piece::Pawn], 1000);
+        assert_eq!(uci.algo.eval.position, false);
     }
 
     #[test]

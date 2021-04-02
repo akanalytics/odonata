@@ -23,8 +23,9 @@ impl Config {
         Self::default()
     }
 
-    pub fn insert(&mut self, k: &str, v: &str) {
+    pub fn set(&mut self, k: &str, v: &str) -> Config {
         self.settings.insert(k.to_string(), v.to_string());
+        self.clone()
     }
 
 
@@ -110,8 +111,8 @@ mod tests {
         
         fn define() -> Config {
             let mut c = Config::new();
-            c.insert("engine.wheels", "default=4 min=2 max=6");
-            c.insert("engine.color", "default=blue var=blue var=yellow var=red" );
+            c.set("engine.wheels", "default=4 min=2 max=6");
+            c.set("engine.color", "default=blue var=blue var=yellow var=red" );
             c
         }
 
@@ -139,8 +140,8 @@ mod tests {
         println!("cs2\n{}", cs2);
 
         let mut c3 = Config::new();
-        c3.insert("engine.wheels", "6");
-        c3.insert("engine.color", "red");
+        c3.set("engine.wheels", "6");
+        c3.set("engine.color", "red");
         println!("c3\n{}", c3);
         
         let mut ts = TestStruct { integer:0, string: "cat".to_string() };
