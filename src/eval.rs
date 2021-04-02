@@ -198,8 +198,7 @@ impl Default for SimpleScorer {
 }
 
 impl Configurable for SimpleScorer {
-    fn define() -> Config {
-        let mut c = Config::new();
+    fn define(&self, c: &mut Config) {
         c.set("eval.mobility", "type check default true");
         c.set("eval.position", "type check default true");
         c.set("eval.material", "type check default true");
@@ -208,7 +207,6 @@ impl Configurable for SimpleScorer {
         c.set("eval.material.b", "type spin default 350 min -10000 max 10000");
         c.set("eval.material.r", "type spin default 500 min -10000 max 10000");
         c.set("eval.material.q", "type spin default 900 min -10000 max 10000");
-        c
     }
 
     fn configure(&mut self, c: &Config) {

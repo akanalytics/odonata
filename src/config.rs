@@ -12,7 +12,7 @@ use std::error::Error;
 
 
 pub trait Configurable {
-    fn define() -> Config;
+    fn define(&self, config: &mut Config);
     fn configure(&mut self, config: &Config);
 }
 
@@ -22,6 +22,7 @@ impl Config {
     pub fn new() -> Config {
         Self::default()
     }
+
 
     pub fn set(&mut self, k: &str, v: &str) -> Config {
         self.settings.insert(k.to_string(), v.to_string());
@@ -109,11 +110,9 @@ mod tests {
     
     impl Configurable for TestStruct {
         
-        fn define() -> Config {
-            let mut c = Config::new();
+        fn define(&self, c: &mut Config) {
             c.set("engine.wheels", "default=4 min=2 max=6");
             c.set("engine.color", "default=blue var=blue var=yellow var=red" );
-            c
         }
 
         
@@ -136,7 +135,9 @@ mod tests {
         let c1 = Config::default();
         println!("c1\n{}", c1);
 
-        let cs2 = TestStruct::define();
+        let mut cs2 = Config::new();
+        let mut ts = TestStruct { integer:0, string: "cat".to_string() };
+        ts.define(&mut cs2);
         println!("cs2\n{}", cs2);
 
         let mut c3 = Config::new();
@@ -144,7 +145,6 @@ mod tests {
         c3.set("engine.color", "red");
         println!("c3\n{}", c3);
         
-        let mut ts = TestStruct { integer:0, string: "cat".to_string() };
         ts.configure(&c3);
         assert_eq!(ts.integer, 6);
         assert_eq!(ts.string, "red");
