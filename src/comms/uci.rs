@@ -289,7 +289,7 @@ impl Uci {
     fn uci_show_options(&self) {
         let mut c = Config::new();
         self.define(&mut c);
-        for (name, value) in c.settings.iter() {
+        for (name, value) in c.iter() {
             println!("option name {} {}", name, value);
         }
     }

@@ -1,6 +1,7 @@
 use once_cell::sync::Lazy;
 use once_cell::sync::OnceCell;
 use std::collections::HashMap;
+use std::collections::hash_map::Iter;
 use std::error::Error;
 use std::fmt;
 use std::rc::Rc;
@@ -13,13 +14,22 @@ pub trait Configurable {
     fn configure(&mut self, config: &Config);
 }
 
+#[derive(Clone, Debug)]
+pub struct Config {
+    settings: HashMap<String, String>,
+    insertion_order: Vec<String>,
+}
+
+
 impl Config {
     pub fn new() -> Config {
         Self::default()
     }
 
     pub fn set(&mut self, k: &str, v: &str) -> Config {
-        self.settings.insert(k.to_string(), v.to_string());
+        if self.settings.insert(k.to_string(), v.to_string()).is_none() {
+            self.insertion_order.push(k.to_string());
+        }
         self.clone()
     }
 
@@ -28,6 +38,10 @@ impl Config {
             return v.parse::<bool>().ok();
         }
         None
+    }
+
+    pub fn iter<'a>(&'a self) -> Box<dyn Iterator<Item=(&String,&String)>  + 'a> {
+        Box::new(self.insertion_order.iter().map( move |k| (k, &self.settings[k])))
     }
 
     pub fn string(&self, name: &str) -> Option<String> {
@@ -42,14 +56,11 @@ impl Config {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct Config {
-    pub settings: HashMap<String, String>,
-}
+
 
 impl fmt::Display for Config {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for (k, v) in self.settings.iter() {
+        for (k, v) in self.iter() {
             writeln!(f, "{:<30} = {}", k, v)?
         }
         Ok(())
@@ -58,7 +69,7 @@ impl fmt::Display for Config {
 
 impl Default for Config {
     fn default() -> Self {
-        Config { settings: HashMap::new() }
+        Config { settings: HashMap::new(), insertion_order: Vec::new() }
     }
 }
 
@@ -73,8 +84,9 @@ mod tests {
     }
     impl Configurable for TestStruct {
         fn define(&self, c: &mut Config) {
-            c.set("engine.wheels", "default=4 min=2 max=6");
+            c.set("engine.wheels", "type spin default=4 min=2 max=6");
             c.set("engine.color", "default=blue var=blue var=yellow var=red");
+            c.set("engine.fast", "type check default=false");
         }
 
         fn configure(&mut self, config: &Config) {
@@ -96,6 +108,11 @@ mod tests {
         let mut ts = TestStruct { integer: 0, string: "cat".to_string() };
         ts.define(&mut cs2);
         println!("cs2\n{}", cs2);
+
+        // check the config iterators in insertion order
+        let vec: Vec<(&String,&String)> = cs2.iter().collect();
+        assert_eq!(vec[0].0, "engine.wheels");
+        assert_eq!(vec[1].0, "engine.color");
 
         let mut c3 = Config::new();
         c3.set("engine.wheels", "6");
