@@ -401,7 +401,7 @@ impl<'a> fmt::Display for UciInfo<'a> {
         if let Some(time_millis) = self.0.time_millis {
             write!(f, "time {} ", time_millis)?;
             if let Some(pv) = &self.0.pv {
-                write!(f, "pv {} ", pv)?;
+                write!(f, "pv {}", pv)?;
             }
         }
         Ok(())

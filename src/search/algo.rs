@@ -410,7 +410,7 @@ impl Algo {
         if node.is_root() {
             if let Some(current_best) = self.current_best {
                 if let Some(i) = movelist.iter().position(|mv| mv == &current_best) {
-                    println!("Swapped move {} with position {} on depth {}!", current_best, i, self.max_depth);
+                    // println!("Swapped move {} with position {} on depth {}!", current_best, i, self.max_depth);
                     movelist.swap(0, i);
                 }
             }
