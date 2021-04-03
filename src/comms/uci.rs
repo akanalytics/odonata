@@ -7,6 +7,7 @@ use crate::eval::Score;
 use crate::movelist::MoveValidator;
 use crate::perft::Perft;
 use crate::search::algo::Algo;
+use crate::movelist::Move;
 use crate::search::searchprogress::SearchProgress;
 use crate::search::timecontrol::TimeControl;
 use crate::version::Version;
@@ -401,7 +402,8 @@ impl<'a> fmt::Display for UciInfo<'a> {
         if let Some(time_millis) = self.0.time_millis {
             write!(f, "time {} ", time_millis)?;
             if let Some(pv) = &self.0.pv {
-                write!(f, "pv {}", pv)?;
+                let strings: Vec<String> = pv.iter().map(Move::to_string).collect();
+                write!(f, "pv {}", strings.join(" "))?;
             }
         }
         Ok(())
