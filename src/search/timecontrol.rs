@@ -59,7 +59,7 @@ impl TimeControl {
             TimeControl::MateIn(_) => false,
             TimeControl::RemainingTime { our_color, wtime, btime, winc, binc, movestogo: _ } => {
                 let (time, _inc) = our_color.chooser_wb((wtime, winc), (btime, binc));
-                *elapsed > *time / 30
+                *elapsed > *time / 22
             }
         };
         time_up
