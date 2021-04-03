@@ -50,7 +50,7 @@ pub struct Uci {
 impl Configurable for Uci {
     fn define(&self, c: &mut Config) {
         self.algo.eval.define(c);
-        c.set("uci.debug", "type check default true");
+        c.set("uci.debug", "type check default false");
     }
 
     fn configure(&mut self, c: &Config) {

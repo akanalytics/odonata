@@ -4,6 +4,8 @@ use crate::search::stats::Stats;
 use crate::types::Color;
 use std::fmt;
 use std::time::Duration;
+use crate::config::{Config, Configurable};
+use crate::log_debug;
 
 /// https://en.wikipedia.org/wiki/Time_control
 ///
@@ -70,6 +72,20 @@ pub struct MoveTimeEstimator {
     board: Board,
     percentage: u16, // 80% means estimate 80% of the time (optimistic)
     branching_factor: u16,
+}
+
+
+impl Configurable for MoveTimeEstimator {
+    fn define(&self, c: &mut Config) {
+        c.set("mte.est_percentage_of_actual", "type spin default 80 min 10 max 300");
+        c.set("mte.branching_factor", "type spin default 15 min 1 max 100");
+    }
+    
+    fn configure(&mut self, c: &Config) {
+        log_debug!("mte.configure with {}", c);
+        self.percentage = c.int("mte.est_percentage_of_actual").unwrap_or(self.percentage as i64) as u16;
+        self.branching_factor = c.int("mte.branching_factor").unwrap_or(self.branching_factor as i64) as u16;
+    }
 }
 
 impl Default for MoveTimeEstimator {

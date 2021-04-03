@@ -4,8 +4,6 @@ use crate::outcome::{GameEnd, Outcome};
 use crate::types::{Color, Piece};
 use std::fmt;
 use crate::config::{Config, Configurable};
-
-#[macro_use]
 use crate::log_debug;
 
 

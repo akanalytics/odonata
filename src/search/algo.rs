@@ -14,6 +14,8 @@ use std::fmt;
 use std::ops::Range;
 use std::thread;
 use crate::types::MAX_PLY;
+use crate::config::{Config, Configurable};
+use crate::log_debug;
 
 
 
@@ -189,6 +191,29 @@ impl Algo {
 
 
 
+
+
+impl Configurable for Algo {
+    fn define(&self, c: &mut Config) {
+        c.set("algo.minmax", "type check default false");
+        c.set("algo.ids", "type check default true");
+        self.eval.define(c);
+        self.move_time_estimator.define(c);
+    }
+    
+    fn configure(&mut self, c: &Config) {
+        log_debug!("algo.configure with {}", c);
+        self.minmax = c.bool("algo.minmax").unwrap_or(self.minmax);
+        self.iterative_deepening = c.bool("algo.ids").unwrap_or(self.iterative_deepening);
+        self.eval.configure(c);
+        self.move_time_estimator.configure(c);
+    }
+}
+        
+
+
+
+
 impl fmt::Debug for Algo  {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Algo")
@@ -219,8 +244,8 @@ impl fmt::Display for Algo {
         writeln!(f, "depth            : {}", self.max_depth)?;
         writeln!(f, "minmax           : {}", self.minmax)?;
         writeln!(f, "iter deepening   : {}", self.iterative_deepening)?;
-        writeln!(f, "timing method    : {:?}", self.method)?;
-        writeln!(f, "move time est    : {:?}", self.move_time_estimator)?;
+        writeln!(f, "timing method    : {}", self.method)?;
+        writeln!(f, "move time est    : {}", self.move_time_estimator)?;
         writeln!(f, "range            : {:?}", self.range)?;
         writeln!(f, "clock_checks     : {}", self.clock_checks)?;
         // writeln!(f, "kill             :{}", self.kill.load(atomic::Ordering::SeqCst))?;

@@ -7,10 +7,11 @@
 - [x] producing algebraic notation
 - [x] pgn export
 - [x] uci
+- [ ] improve stats collection
 - [x] iterative deepening
   - [ ] found mate - skip deepening
-  - [ ] better carry forward of moves
-  - [ ] abandon if not time for another ply
+  - [ ] better carry forward of moves 
+  - [x] abandon if not time for another ply
   - [ ] windowed search
     
 - [ ] image generation
