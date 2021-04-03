@@ -5,7 +5,7 @@ use crate::eval::{Scorable, Score, SimpleScorer};
 use crate::movelist::Move;
 use crate::pvtable::PvTable;
 use crate::search::timecontrol::{TimeControl, MoveTimeEstimator};
-use crate::search::stats::Stats;
+use crate::search::stats::SearchStats;
 use crate::search::searchprogress::SearchProgress;
 use crate::search::taskcontrol::TaskControl;
 use crate::movelist::MoveList;
@@ -136,12 +136,12 @@ pub struct Algo {
     minmax: bool,
     iterative_deepening: bool,
     pub eval: SimpleScorer,
-    stats: Stats,
+    search_stats: SearchStats,
     pub pv: PvTable,
     current_best: Option<Move>,
     best_move: Option<Move>,
     pub score: Option<Score>,
-    method: TimeControl,
+    time_control: TimeControl,
     move_time_estimator: MoveTimeEstimator,
 
     // child_thread: Arc<Option<thread::JoinHandle<Algo>>>,
@@ -178,7 +178,7 @@ impl Algo {
     }
 
     pub fn set_timing_method(&mut self, tm: TimeControl) -> Self {
-        self.method = tm;
+        self.time_control = tm;
         self.move_time_estimator.time_control = tm;
         self.clone()
     }
@@ -223,14 +223,13 @@ impl fmt::Debug for Algo  {
             .field("current_best", &self.current_best)
             .field("depth", &self.max_depth)
             .field("minmax", &self.minmax)
-            .field("method", &self.method)
+            .field("time_control", &self.time_control)
             .field("eval", &self.eval)
             .field("iterative_deepening", &self.iterative_deepening)
-            .field("method", &self.method)
             .field("move_time_estimator", &self.move_time_estimator)
             .field("depth", &self.max_depth)
             .field("range", &self.range)
-            .field("stats", &self.stats)
+            .field("search_stats", &self.search_stats)
             .finish()
     }
 }
@@ -244,14 +243,14 @@ impl fmt::Display for Algo {
         writeln!(f, "depth            : {}", self.max_depth)?;
         writeln!(f, "minmax           : {}", self.minmax)?;
         writeln!(f, "iter deepening   : {}", self.iterative_deepening)?;
-        writeln!(f, "timing method    : {}", self.method)?;
+        writeln!(f, "time control     : {}", self.time_control)?;
         writeln!(f, "move time est    : {}", self.move_time_estimator)?;
         writeln!(f, "range            : {:?}", self.range)?;
         writeln!(f, "clock_checks     : {}", self.clock_checks)?;
         // writeln!(f, "kill             :{}", self.kill.load(atomic::Ordering::SeqCst))?;
         // writeln!(f, "kill ref counts  :{}", Arc::strong_count(&self.kill))?;
         // writeln!(f, "callback         :{}", self.callback)?;
-        write!(f, "{}", self.stats)?;
+        write!(f, "{}", self.search_stats)?;
         Ok(())
     }
 }
@@ -293,9 +292,9 @@ impl Algo {
 
 
     pub fn search(&mut self, mut board: Board) -> Algo {
-        self.stats = Stats::default();
+        self.search_stats = SearchStats::new();
         self.current_best = None;
-        self.range = if let TimeControl::Depth(depth) = self.method {
+        self.range = if let TimeControl::Depth(depth) = self.time_control {
             if self.iterative_deepening {
                 1..depth+1
             } else {
@@ -303,7 +302,7 @@ impl Algo {
             } 
         } else {
             // regardless of iterative deeping, we apply it if no explicit depth given
-            1..MAX_PLY
+            1..MAX_PLY as u32
         };
         self.best_move = None;
 
@@ -312,15 +311,15 @@ impl Algo {
             self.score = None;
             self.pv = PvTable::new(MAX_PLY);
             let mut root_node = Node::root(&mut board);
-                let mut sp = SearchProgress::from_stats(&self.stats());
-            if self.move_time_estimator.estimate_time_up_next_ply(&self.stats()) {
+                let mut sp = SearchProgress::from_search_stats(&self.search_stats());
+            if self.move_time_estimator.estimate_time_up_next_ply(&self.search_stats()) {
                 break;
             }
             self.alphabeta(&mut root_node);
             if !self.task_control.is_cancelled() {
                 self.score = Some(root_node.score);
                 self.current_best = Some(self.pv.extract_pv()[0]);
-                sp = SearchProgress::from_stats(&self.stats());
+                sp = SearchProgress::from_search_stats(&self.search_stats());
                 sp.pv = Some(self.pv.extract_pv());
                 sp.score = self.score;
                 self.task_control.invoke_callback(&sp);
@@ -351,8 +350,8 @@ impl Algo {
     }
 
     #[inline]
-    pub fn stats(&self) -> Stats {
-        self.stats
+    pub fn search_stats(&self) -> &SearchStats {
+        &self.search_stats
     }
 
     pub fn best_move(&self) -> Option<Move> {
@@ -365,7 +364,7 @@ impl Algo {
         if let Some(handle) = handle { 
             // wait for thread to cancel 
             let algo = handle.join().unwrap();
-            self.stats = algo.stats;
+            self.search_stats = algo.search_stats;
             self.pv = algo.pv;
             self.score = algo.score;
         }
@@ -393,7 +392,7 @@ impl Algo {
         }
 
 
-        let time_up = self.method.is_time_up(ply, nodes, &self.stats.clock.elapsed());
+        let time_up = self.time_control.is_time_up(ply, nodes, &self.search_stats.clock.elapsed());
         if time_up {
             self.task_control.cancel();
         }
@@ -419,25 +418,24 @@ impl Algo {
 
     pub fn alphabeta(&mut self, node: &mut Node) {
         debug_assert!(self.max_depth > 0);
-        if self.stats.total_nodes() % 1000000 == 0 {
-            let sp = SearchProgress::from_stats(&self.stats());
+        if self.search_stats.total().nodes() % 1000000 == 0 {
+            let sp = SearchProgress::from_search_stats(&self.search_stats());
             self.task_control.invoke_callback(&sp);
         }
 
         if self.is_leaf(node) {
             node.score = node.board.eval(&self.eval);
-            self.stats.leaf_nodes += 1;
+            self.search_stats.inc_leaf_nodes(node.ply);
             return;
         }
-        self.stats.interior_nodes += 1;
-        if self.max_depth > self.stats.seldepth {
-            self.stats.seldepth = self.max_depth;
-            self.stats.depth = self.max_depth;
-            let sp = SearchProgress::from_stats(&self.stats());
-            self.task_control.invoke_callback(&sp);
-        }
+        self.search_stats.inc_interior_nodes(node.ply);
+        // // FIXME!!!!
+        // if self.max_depth > self.search_stats.selective_depth() {
+        //     let sp = SearchProgress::from_search_stats(&self.search_stats());
+        //     self.task_control.invoke_callback(&sp);
+        // }
         // bailing here means the score is +/- inf and wont be used
-        if self.time_up_or_cancelled(node.ply, self.stats.total_nodes(), false) {
+        if self.time_up_or_cancelled(node.ply, self.search_stats.total().nodes(), false) {
             return;
         }
 
@@ -456,7 +454,7 @@ impl Algo {
             self.alphabeta(&mut child);
             let is_cut = self.process_child(&mv, node, &child);
             if is_cut {
-                self.stats.cuts += 1; 
+                self.search_stats.inc_cuts(node.ply); 
                 break;
             }
         }
@@ -472,9 +470,9 @@ impl Algo {
                 parent.alpha = child.score;
                 self.pv.set(child.ply, mv);
                 self.pv.propagate_from(child.ply);
-                self.stats.improvements += 1; 
+                self.search_stats.inc_improvements(parent.ply); 
                 if parent.is_root() {
-                    let sp = SearchProgress::from_stats(&self.stats());
+                    let sp = SearchProgress::from_search_stats(&self.search_stats());
                     self.task_control.invoke_callback(&sp);
                 }
             }
@@ -486,9 +484,9 @@ impl Algo {
                 parent.beta = child.score;
                 self.pv.set(child.ply, mv);
                 self.pv.propagate_from(child.ply);
-                self.stats.improvements += 1; 
+                self.search_stats.inc_improvements(parent.ply); 
                 if parent.is_root() {
-                    let sp = SearchProgress::from_stats(&self.stats());
+                    let sp = SearchProgress::from_search_stats(&self.search_stats());
                     self.task_control.invoke_callback(&sp);
                 }
             }
@@ -518,15 +516,23 @@ mod tests {
         let eval = SimpleScorer::new().set_position(false);
         let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(true).set_eval(eval);
         search.search(board);
-        assert_eq!(search.stats().total_nodes(), 1 + 20 + 400 + 8902 /* + 197_281 */);
-        assert_eq!(search.stats().branching_factor().round() as u64, 21);
+        assert_eq!(search.search_stats().total().nodes(), 1 + 20 + 400 + 8902 /* + 197_281 */);
+        assert_eq!(search.search_stats().branching_factor().round() as u64, 21);
 
         let board = Catalog::starting_position();
         let eval = SimpleScorer::new().set_position(false);
         let mut search = Algo::new().set_timing_method(TimeControl::Depth(4)).set_minmax(false).set_eval(eval);
         search.search(board);
-        assert_eq!(search.stats().total_nodes(), 1757);
-        assert_eq!(search.stats().branching_factor().round() as u64, 2);
+        assert_eq!(search.search_stats().total().nodes(), 1757);
+        assert_eq!(search.search_stats().branching_factor().round() as u64, 2);
+    }
+
+    #[test]
+    fn test_display_algo() {
+        let algo = Algo::new().set_timing_method(TimeControl::Depth(1)).set_minmax(false);
+        println!("{}", algo);
+        println!("{:?}", algo);
+        println!("{:#?}", algo);
     }
 
     #[test]
@@ -546,14 +552,14 @@ mod tests {
             let eval = SimpleScorer::new().set_position(false);
             let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(false).set_eval(eval).set_iterative_deepening(id).set_callback(Uci::uci_info);
             search.search(board);
-            assert_eq!(search.pv.extract_pv().to_string(), "d5f6, g7f6, c4f7");
-            assert_eq!(search.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
             println!("{}", search);
             if id { 
-                assert_eq!(search.stats().total_nodes(), 6945);
+                assert_eq!(search.search_stats().total().nodes(), 6945);
             } else {
-                assert_eq!(search.stats().total_nodes(), 7749);
+                assert_eq!(search.search_stats().total().nodes(), 7749);
             }
+            assert_eq!(search.pv.extract_pv().to_string(), "d5f6, g7f6, c4f7");
+            assert_eq!(search.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
         }
     }
 
@@ -566,7 +572,7 @@ mod tests {
         let board = Catalog::mate_in_2()[0].clone();
         let mut algo = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(true);
         algo.search(board.clone());
-        let nodes = algo.stats().total_nodes();
+        let nodes = algo.search_stats().total().nodes();
         let millis = time::Duration::from_millis(20);
         thread::sleep(millis);
 
@@ -588,7 +594,7 @@ mod tests {
         algo2.search_async_stop();
         println!("{}", algo2);
         // println!("after stop clock:\n{}", algo.clock);
-        let nodes = algo2.stats().total_nodes();
+        let nodes = algo2.search_stats().total().nodes();
         assert!(nodes > 10 && nodes < 66234);
     }
 
@@ -622,14 +628,14 @@ mod tests {
     #[test]
     fn debug_arena_issue() {
         let board = Board::parse_fen("r1bqkbnr/pppppppp/2n5/8/3P4/4P3/PPP2PPP/RNBQKBNR b KQkq - 0 2").unwrap();
-        let method = TimeControl::RemainingTime{ 
+        let time_control = TimeControl::RemainingTime{ 
                 wtime:time::Duration::from_millis(141516), 
                 btime:time::Duration::from_millis(127990),
                 winc: time::Duration::from_millis(12000), 
                 binc:time::Duration::from_millis(12000), 
                 movestogo:0, 
                 our_color: Color::Black };
-        let mut search = Algo::new().set_timing_method(method).set_minmax(false).set_iterative_deepening(true).set_callback(Uci::uci_info);
+        let mut search = Algo::new().set_timing_method(time_control).set_minmax(false).set_iterative_deepening(true).set_callback(Uci::uci_info);
         println!("{}", search);
         println!("{}", board);
         search.search(board);

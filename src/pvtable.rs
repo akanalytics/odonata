@@ -17,10 +17,10 @@ impl Default for PvTable {
 }
 
 impl PvTable {
-    pub fn new(max_ply: u32) -> PvTable {
-        let mut pvc = PvTable { matrix: vec![Vec::new(); max_ply as usize], size: 0, };
+    pub fn new(max_ply: usize) -> PvTable {
+        let mut pvc = PvTable { matrix: vec![Vec::new(); max_ply], size: 0, };
         for (r, row) in pvc.matrix.iter_mut().enumerate() {
-            row.resize_with(MAX_PLY as usize - r, Move::new_null)
+            row.resize_with(MAX_PLY - r, Move::new_null)
             // row.extend( vec![Move::new(); r+1] );
         }
         pvc
