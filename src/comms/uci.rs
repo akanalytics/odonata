@@ -49,7 +49,7 @@ pub struct Uci {
 
 impl Configurable for Uci {
     fn define(&self, c: &mut Config) {
-        self.algo.eval.define(c);
+        self.algo.define(c);
         c.set("uci.debug", "type check default false");
     }
 
@@ -57,6 +57,7 @@ impl Configurable for Uci {
         if let Some(b) = c.bool("uci.debug") {
             self.debug = b;
         }
+        self.algo.configure(&c);
     }
 }
 
@@ -278,8 +279,6 @@ impl Uci {
             if let Some(value) = value {
                 let c = Config::new().set(&name, &value);
                 self.configure(&c);
-                self.algo.eval.configure(&c);
-
             }
         }
         Ok(())
