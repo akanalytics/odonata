@@ -8,12 +8,14 @@
 - [x] pgn export
 - [x] uci
 - [ ] improve stats collection
+- [ ] EPD format - catalog and test puzzles
 - [x] iterative deepening
+  - [x] abandon if not time for another ply
   - [ ] found mate - skip deepening
   - [ ] better carry forward of moves 
-  - [x] abandon if not time for another ply
   - [ ] windowed search
     
+- [ ] Q-search
 - [ ] image generation
 - [ ] python interface
 - [ ] discord bot
