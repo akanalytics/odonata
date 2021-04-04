@@ -1,5 +1,4 @@
-use log::{Record, Level, Metadata, logger};
-use std::fmt;
+use log::{Record, Level, Metadata};
 
 struct SimpleLogger;
 
@@ -81,19 +80,22 @@ macro_rules! log_debug {
 //     ($($arg: tt)*) => { }
 //}
 
-use log::{SetLoggerError, LevelFilter};
+use log::{LevelFilter};
 
 static LOGGER: SimpleLogger = SimpleLogger;
 
-pub fn init() -> Result<(), SetLoggerError> {
-    log::set_logger(&LOGGER)
-        .map(|()| log::set_max_level(LevelFilter::Debug))
-}
+// pub fn init() -> Result<(), SetLoggerError> {
+//     log::set_logger(&LOGGER)
+//         .map(|()| log::set_max_level(LevelFilter::Debug))
+// }
 
+pub fn init() {
+    log::set_logger(&LOGGER)
+        .map(|()| log::set_max_level(LevelFilter::Debug)).unwrap();
+}
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[test]
     fn test_logger() {

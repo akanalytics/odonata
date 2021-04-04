@@ -11,7 +11,6 @@ use crate::movelist::Move;
 use crate::search::searchprogress::SearchProgress;
 use crate::search::timecontrol::TimeControl;
 use crate::version::Version;
-use crate::eval::SimpleScorer;
 use std::fmt;
 use std::io::{self, Write};
 use std::time::Duration;
