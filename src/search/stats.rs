@@ -5,6 +5,8 @@ use std::fmt;
 #[derive(Clone, Debug)]
 pub struct SearchStats {
     pub clock: Clock,
+    pub abandoned: bool,
+    pub user_cancelled: bool,
     total: Stats,
     plies: Vec<Stats>,
 }
@@ -12,6 +14,8 @@ pub struct SearchStats {
 impl fmt::Display for SearchStats {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "clock            : {}", self.clock)?;
+        writeln!(f, "abandoned        : {}", self.abandoned)?;
+        writeln!(f, "user cancelled   : {}", self.user_cancelled)?;
         writeln!(f, "depth            : {}", self.depth())?;
         writeln!(f, "selective depth  : {}", self.selective_depth())?;
         writeln!(f, "nodes/sec (k)    : {}", self.total_knps())?;
@@ -24,7 +28,7 @@ impl fmt::Display for SearchStats {
         Stats::fmt_underline(f)?;
 
         for (i, p) in self.plies().iter().enumerate() {
-            write!(f, "{:<7}", i)?;
+            write!(f, "{:>3}    ", i)?;
             p.fmt_data(f)?;
         }
         write!(f, "{:<7}", "---")?;
@@ -46,6 +50,8 @@ impl SearchStats {
         SearchStats {
             clock: Clock::default(),
             total: Stats::default(),
+            user_cancelled: false,
+            abandoned: false,
             plies: std::iter::repeat(Stats::new()).take(MAX_PLY).collect(),
         }
     }
@@ -151,15 +157,20 @@ impl Stats {
         self.leaf_nodes
     }
 
+    pub fn cut_percentage(&self) -> f32 {
+        self.cuts as f32 / (0.0001 + self.nodes() as f32)
+    }
+
     fn fmt_header(f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "{node:>11} {interior:>11} {leaf:>11} {cut:>6} {improv:>6}",
+            "{node:>11} {interior:>11} {leaf:>11} {cut:>11} {improv:>11} {cut_perc:>6}",
             cut = "cuts",
             improv = "improv",
             node = "total nodes",
             interior = "interior",
             leaf = "leaf nodes",
+            cut_perc = "% cuts",
         )?;
         writeln!(f)
     }
@@ -167,12 +178,13 @@ impl Stats {
     fn fmt_underline(f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "{node:>11} {interior:>11} {leaf:>11} {cut:>6} {improv:>6}",
-            cut = "----",
-            improv = "------",
+            "{node:>11} {interior:>11} {leaf:>11} {cut:>11} {improv:>11} {cut_perc:>6} ",
+            cut = "-----------",
+            improv = "-----------",
             node = "-----------",
-            interior = "--------",
-            leaf = "----------",
+            interior = "-----------",
+            leaf = "-----------",
+            cut_perc = "------",
         )?;
         writeln!(f)
     }
@@ -180,12 +192,13 @@ impl Stats {
     fn fmt_data(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "{node:>11} {interior:>11} {leaf:>11} {cut:>6} {improv:>6}",
+            "{node:>11} {interior:>11} {leaf:>11} {cut:>11} {improv:>11} {cut_perc:>05.2}%",
             improv = self.improvements,
             node = self.nodes(),
             interior = self.interior_nodes,
             leaf = self.leaf_nodes(),
-            cut = self.cuts
+            cut = self.cuts,
+            cut_perc = self.cut_percentage()
         )?;
         writeln!(f)
     }
@@ -212,6 +225,7 @@ mod tests {
         let mut search = SearchStats::default();
         search.inc_leaf_nodes(2);
         search.inc_leaf_nodes(2);
+        search.inc_cuts(2);
         search.inc_interior_nodes(0);
         println!("{}", search);
     }

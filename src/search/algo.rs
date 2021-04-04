@@ -360,6 +360,7 @@ impl Algo {
 
     pub fn search_async_stop(&mut self) {
         self.task_control.cancel();
+        self.search_stats.user_cancelled = true;
         let handle = self.child_thread.0.take();
         if let Some(handle) = handle { 
             // wait for thread to cancel 
@@ -394,6 +395,7 @@ impl Algo {
 
         let time_up = self.time_control.is_time_up(ply, nodes, &self.search_stats.clock.elapsed());
         if time_up {
+            self.search_stats.abandoned = true;
             self.task_control.cancel();
         }
         time_up
