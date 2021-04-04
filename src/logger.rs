@@ -3,10 +3,13 @@ use log::{Record, Level, Metadata};
 struct SimpleLogger;
 
 impl log::Log for SimpleLogger {
+
+    #[inline]
     fn enabled(&self, metadata: &Metadata) -> bool {
         metadata.level() <= Level::Debug
     }
 
+    #[inline]
     fn log(&self, record: &Record) {
 
         if self.enabled(record.metadata()) {
@@ -14,6 +17,7 @@ impl log::Log for SimpleLogger {
         }
     }
 
+    #[inline]
     fn flush(&self) {}
 }
 
@@ -89,9 +93,10 @@ static LOGGER: SimpleLogger = SimpleLogger;
 //         .map(|()| log::set_max_level(LevelFilter::Debug))
 // }
 
+#[inline]
 pub fn init() {
     log::set_logger(&LOGGER)
-        .map(|()| log::set_max_level(LevelFilter::Debug)).unwrap();
+        .map(|()| log::set_max_level(LevelFilter::Debug)).unwrap_or(());
 }
 
 #[cfg(test)]

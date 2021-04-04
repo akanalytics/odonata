@@ -10,6 +10,7 @@ use crate::search::searchprogress::SearchProgress;
 use crate::search::taskcontrol::TaskControl;
 use crate::movelist::MoveList;
 use crate::types::Color;
+use crate::search::clock::Clock;
 use std::fmt;
 use std::ops::Range;
 use std::thread;
@@ -311,11 +312,13 @@ impl Algo {
             self.score = None;
             self.pv = PvTable::new(MAX_PLY);
             let mut root_node = Node::root(&mut board);
-                let mut sp = SearchProgress::from_search_stats(&self.search_stats());
+            let mut sp = SearchProgress::from_search_stats(&self.search_stats());
             if self.move_time_estimator.estimate_time_up_next_ply(&self.search_stats()) {
                 break;
             }
+            let clock = Clock::new();
             self.alphabeta(&mut root_node);
+            self.search_stats.set_ply_durations(depth, &clock.elapsed(), &clock.elapsed());
             if !self.task_control.is_cancelled() {
                 self.score = Some(root_node.score);
                 self.current_best = Some(self.pv.extract_pv()[0]);

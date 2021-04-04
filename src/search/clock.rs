@@ -6,9 +6,6 @@ use std::time::{Duration, Instant};
 
 pub struct DurationNewType(pub Duration);
 
-fn format_duration(d: Duration) -> String {
-    DurationNewType(d).to_string()
-}
 
 fn pluralize(n: u64) -> &'static str {
     if n > 1 {
@@ -59,11 +56,16 @@ impl Clock {
     pub fn elapsed(&self) -> Duration {
         self.start.elapsed()
     }
+
+    pub fn format_duration(d: Duration) -> String {
+        DurationNewType(d).to_string()
+    }
+
 }
 
 impl fmt::Display for Clock {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", format_duration(self.start.elapsed()))?;
+        write!(f, "{}", Self::format_duration(self.start.elapsed()))?;
         Ok(())
     }
 }
