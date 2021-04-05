@@ -2,6 +2,7 @@ use crate::search::clock::Clock;
 use crate::types::MAX_PLY;
 use std::fmt;
 use std::time::Duration;
+use crate::search::timecontrol::MoveTimeEstimator;
 
 #[derive(Clone, Debug)]
 pub struct SearchStats {
@@ -56,6 +57,11 @@ impl SearchStats {
             plies: std::iter::repeat(Stats::new()).take(MAX_PLY).collect(),
         }
     }
+    
+    pub fn clear_node_stats(&mut self) {
+        self.plies_mut().iter_mut().for_each(|s| s.clear_node_stats() );
+        self.total.clear_node_stats();
+    }
 
     #[inline]
     pub fn total(&self) -> &Stats {
@@ -65,6 +71,12 @@ impl SearchStats {
     #[inline]
     pub fn plies(&self) -> &[Stats] {
         &self.plies[0..self.depth() as usize]
+    }
+
+    #[inline]
+    pub fn plies_mut(&mut self) -> &mut [Stats] {
+        let d = self.depth() as usize;
+        &mut self.plies[0..d]
     }
 
     #[inline]
@@ -81,6 +93,15 @@ impl SearchStats {
     }
 
     #[inline]
+    pub fn record_time_estimate(&mut self, ply: u32, estimate: &Duration) {
+        self.plies[ply as usize].est_time = *estimate;
+    }
+
+    pub fn record_time_actual(&mut self, ply: u32, actual_duration: &Duration) {
+        self.plies[ply as usize].actual_time = *actual_duration;
+    }
+
+    #[inline]
     pub fn inc_leaf_nodes(&mut self, ply: u32) {
         self.total.leaf_nodes += 1;
         self.plies[ply as usize].leaf_nodes += 1;
@@ -92,10 +113,6 @@ impl SearchStats {
         self.plies[ply as usize].interior_nodes += 1;
     }
 
-    pub fn set_ply_durations(&mut self, ply: u32, est: &Duration, actual: &Duration ) {
-        self.plies[ply as usize].actual = *actual;
-        self.plies[ply as usize].est = *est;
-    }
 
     // #[inline]
     // pub fn inc_nodes(&mut self, ply: u32) {
@@ -143,13 +160,22 @@ pub struct Stats {
     pub leaf_nodes: u64, // FIXME and terminal
     pub improvements: u64,
     pub cuts: u64,
-    pub est: Duration,
-    pub actual: Duration,
+    pub est_time: Duration,
+    pub actual_time: Duration,
+    pub est_nodes: u64,
+    pub actual_nodes: u64,
 }
 
 impl Stats {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn clear_node_stats(&mut self) {
+        self.interior_nodes = 0;
+        self.leaf_nodes = 0;
+        self.improvements = 0;
+        self.cuts = 0;
     }
 
     #[inline]
@@ -174,15 +200,15 @@ impl Stats {
     fn fmt_header(f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "{node:>11} {interior:>11} {leaf:>11} {cut:>11} {improv:>11} {cut_perc:>6} {est:>10} {actual:>10}",
+            "{node:>11} {interior:>11} {leaf:>11} {cut:>11} {improv:>11} {cut_perc:>6} {est_time:>11} {actual_time:>11}",
             cut = "cuts",
             improv = "improv",
             node = "total nodes",
             interior = "interior",
             leaf = "leaf nodes",
-            cut_perc = "% cuts",
-            est = "est",
-            actual = "actual",
+            cut_perc = "cuts %",
+            est_time = "est_time",
+            actual_time = "actual_time",
         )?;
         writeln!(f)
     }
@@ -190,15 +216,15 @@ impl Stats {
     fn fmt_underline(f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "{node:>11} {interior:>11} {leaf:>11} {cut:>11} {improv:>11} {cut_perc:>6} {est:>10} {actual:>10}",
+            "{node:>11} {interior:>11} {leaf:>11} {cut:>11} {improv:>11} {cut_perc:>6} {est_time:>11} {actual_time:>11}",
             cut = "-----------",
             improv = "-----------",
             node = "-----------",
             interior = "-----------",
             leaf = "-----------",
             cut_perc = "------",
-            est = "---",
-            actual = "------",
+            est_time = "-----------",
+            actual_time = "-----------",
         )?;
         writeln!(f)
     }
@@ -206,15 +232,15 @@ impl Stats {
     fn fmt_data(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "{node:>11} {interior:>11} {leaf:>11} {cut:>11} {improv:>11} {cut_perc:>5}% {est:>10} {actual:>10}",
+            "{node:>11} {interior:>11} {leaf:>11} {cut:>11} {improv:>11} {cut_perc:>5}% {est_time:>11} {actual_time:>11}",
             improv = self.improvements,
             node = self.nodes(),
             interior = self.interior_nodes,
             leaf = self.leaf_nodes(),
             cut = self.cuts,
             cut_perc = self.cut_percentage(),
-            est = Clock::format_duration(self.est),
-            actual = Clock::format_duration(self.actual),
+            est_time = Clock::format_duration(self.est_time),
+            actual_time = Clock::format_duration(self.actual_time),
         )?;
         writeln!(f)
     }

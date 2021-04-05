@@ -369,6 +369,7 @@ impl<'a> fmt::Display for UciInfo<'a> {
             write!(f, "depth {} ", depth)?;
         }
         if let Some(score) = self.0.score {
+            // FIXME from engines point of view, not white's
             match score {
                 Score::Millipawns(mp) => write!(f, "score cp {} ", mp / 10)?,
                 // FIXME negate for engine loss

@@ -4,6 +4,7 @@ use crate::search::stats::SearchStats;
 use crate::types::Color;
 use std::fmt;
 use std::time::Duration;
+use crate::search::clock::Clock;
 use crate::config::{Config, Configurable};
 use crate::log_debug;
 
@@ -70,22 +71,22 @@ impl TimeControl {
 pub struct MoveTimeEstimator {
     pub time_control: TimeControl,
     board: Board,
-    percentage: u16, // 80% means estimate 80% of the time (optimistic)
     branching_factor: u16,
     moves_rem: u16,
+    pub allotted: Duration,
+    pub estimate_for_ply: u32,
+    pub time_estimate: Duration,
 }
 
 
 impl Configurable for MoveTimeEstimator {
     fn define(&self, c: &mut Config) {
-        c.set("mte.est_percentage_of_actual", "type spin default 80 min 10 max 300");
         c.set("mte.branching_factor", "type spin default 15 min 1 max 100");
         c.set("mte.moves_rem", "type spin default 20 min 1 max 100");
     }
     
     fn configure(&mut self, c: &Config) {
         log_debug!("mte.configure with {}", c);
-        self.percentage = c.int("mte.est_percentage_of_actual").unwrap_or(self.percentage as i64) as u16;
         self.branching_factor = c.int("mte.branching_factor").unwrap_or(self.branching_factor as i64) as u16;
         self.moves_rem = c.int("mte.moves_rem").unwrap_or(self.moves_rem as i64) as u16;
     }
@@ -95,10 +96,12 @@ impl Default for MoveTimeEstimator {
     fn default() -> Self {
         MoveTimeEstimator {
             branching_factor: 15,
-            percentage: 120,
             moves_rem: 20,
             board: Board::default(),
             time_control: TimeControl::default(),
+            allotted: Duration::default(),
+            estimate_for_ply: 0,
+            time_estimate: Duration::default(),
         }
     }
 }
@@ -107,27 +110,37 @@ impl fmt::Display for MoveTimeEstimator {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "time_control     : {}", self.time_control)?;
         writeln!(f, "board            : {}", self.board.to_fen())?;
-        writeln!(f, "percentage       : {}", self.percentage)?;
         writeln!(f, "branching factor : {}", self.branching_factor)?;
         writeln!(f, "const moves rem. : {}", self.moves_rem)?;
+        writeln!(f, "alloted for move : {}", Clock::format_duration(self.allotted))?;
+        writeln!(f, "estimate for ply : {}", self.estimate_for_ply)?;
+        writeln!(f, "time estimate    : {}", Clock::format_duration(self.time_estimate))?;
         Ok(())
     }
 }
 
 impl MoveTimeEstimator {
 
-    pub fn estimate_time_up_next_ply(&self, search_stats: &SearchStats) -> bool {
-        // we guess what the situation will look like at the end of next play
-        //FIXME  depth is wrong!!!!!
-        let forecast_depth = search_stats.depth();
-        let forecast_nodes =
-        search_stats.total().nodes() * self.branching_factor as u64 * self.percentage as u64 / 100;
-        let forecast_elapsed = search_stats.clock.elapsed() * self.branching_factor as u32 * self.percentage as u32 / 100;
-        self.time_control.is_time_up(forecast_depth, forecast_nodes, &forecast_elapsed)
+    pub fn calculate_etimates_for_ply(&mut self, ply: u32, search_stats: &SearchStats) {
+        debug_assert!(search_stats.depth() >= ply-1, "ensure we have enough stats");
+        let _forecast_depth = search_stats.depth();
+        self.time_estimate = search_stats.clock.elapsed() * self.branching_factor as u32;
+        if let TimeControl::RemainingTime { our_color, wtime, btime, winc, binc, movestogo: _ } = self.time_control {
+            let (time, _inc) = our_color.chooser_wb((wtime, winc), (btime, binc));
+            self.allotted = time / self.moves_rem as u32;
+        }
+    }
+
+    pub fn probable_timeout(&self, _search_stats: &SearchStats) -> bool {
+        match self.time_control {
+            TimeControl::RemainingTime { our_color, wtime, btime, winc, binc, movestogo: _ } => {
+                let (_time, _inc) = our_color.chooser_wb((wtime, winc), (btime, binc));
+                self.time_estimate > self.allotted
+            },
+            _ => false,
+        }
     }
 }
-
-
 
 
 #[cfg(test)]

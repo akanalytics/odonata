@@ -26,7 +26,13 @@ impl fmt::Display for DurationNewType {
         if days > 0 {
             write!(f, "{} day{} ", days, pluralize(days))?;
         }
-        write!(f, "{}h {}m {:.3}s", hours, mins, secs)?;
+        if hours > 0 {
+            write!(f, "{}h ", hours)?;
+        }
+        if mins > 0 {
+            write!(f, "{}m ", mins)?;
+        }
+        write!(f, "{:.3}s", secs)?;
         Ok(())
     }
 }

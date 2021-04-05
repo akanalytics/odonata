@@ -245,7 +245,7 @@ impl fmt::Display for Algo {
         writeln!(f, "minmax           : {}", self.minmax)?;
         writeln!(f, "iter deepening   : {}", self.iterative_deepening)?;
         writeln!(f, "time control     : {}", self.time_control)?;
-        writeln!(f, "move time est    : {}", self.move_time_estimator)?;
+        write!(f, "{}", self.move_time_estimator)?;
         writeln!(f, "range            : {:?}", self.range)?;
         writeln!(f, "clock_checks     : {}", self.clock_checks)?;
         // writeln!(f, "kill             :{}", self.kill.load(atomic::Ordering::SeqCst))?;
@@ -312,13 +312,17 @@ impl Algo {
             self.score = None;
             self.pv = PvTable::new(MAX_PLY);
             let mut root_node = Node::root(&mut board);
-            let mut sp = SearchProgress::from_search_stats(&self.search_stats());
-            if self.move_time_estimator.estimate_time_up_next_ply(&self.search_stats()) {
+            let stats = &mut self.search_stats;
+            let mut sp = SearchProgress::from_search_stats(stats);
+            self.move_time_estimator.calculate_etimates_for_ply(depth, stats);
+            stats.record_time_estimate(depth, &self.move_time_estimator.time_estimate);
+            if self.move_time_estimator.probable_timeout(stats) {
                 break;
             }
+            self.search_stats.clear_node_stats();
             let clock = Clock::new();
             self.alphabeta(&mut root_node);
-            self.search_stats.set_ply_durations(depth, &clock.elapsed(), &clock.elapsed());
+            self.search_stats.record_time_actual(depth, &clock.elapsed());
             if !self.task_control.is_cancelled() {
                 self.score = Some(root_node.score);
                 self.current_best = Some(self.pv.extract_pv()[0]);
@@ -423,7 +427,7 @@ impl Algo {
 
     pub fn alphabeta(&mut self, node: &mut Node) {
         debug_assert!(self.max_depth > 0);
-        if self.search_stats.total().nodes() % 1000000 == 0 {
+        if self.search_stats.total().nodes() % 1000000 == 0 && self.search_stats.total().nodes() != 0 {
             let sp = SearchProgress::from_search_stats(&self.search_stats());
             self.task_control.invoke_callback(&sp);
         }
