@@ -349,7 +349,7 @@ mod tests {
 
     #[test]
     fn test_pseudo_legal_moves() -> Result<(), String> {
-        let mut buf = Board::parse_pieces("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap();
+        let mut buf = Board::parse_piece_placement("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap();
         buf.set(a2, ".")?;
         buf.set(d2, ".")?;
         buf.set(d4, "P")?;

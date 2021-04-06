@@ -32,9 +32,11 @@ mod utils;
 pub mod version;
 pub mod config;
 pub mod logger;
+pub mod epd;
 
 pub use crate::attacks::ClassicalBitboard;
 pub use crate::bitboard::Bitboard;
+pub use crate::epd::Epd;
 pub use crate::board::boardbuf::BoardBuf;
 pub use crate::board::Board;
 pub use crate::movelist::{Move, MoveList};

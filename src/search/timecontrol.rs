@@ -121,8 +121,8 @@ impl fmt::Display for MoveTimeEstimator {
 
 impl MoveTimeEstimator {
 
-    pub fn calculate_etimates_for_ply(&mut self, ply: u32, search_stats: &SearchStats) {
-        debug_assert!(search_stats.depth() >= ply-1, "ensure we have enough stats");
+    pub fn calculate_etimates_for_ply(&mut self, _ply: u32, search_stats: &SearchStats) {
+        // debug_assert!(search_stats.depth() >= ply-1, "ensure we have enough stats");
         let _forecast_depth = search_stats.depth();
         self.time_estimate = search_stats.clock.elapsed() * self.branching_factor as u32;
         if let TimeControl::RemainingTime { our_color, wtime, btime, winc, binc, movestogo: _ } = self.time_control {

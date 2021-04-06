@@ -140,7 +140,7 @@ impl Board {
     }
 
     pub fn to_fen(&self) -> String {
-        let b = Board::adopt(self.clone());
+        let b = self.clone();
 
         let mut fen = Bitboard::RANKS.iter().rev().map(|&r| b.get(r)).collect::<Vec<String>>().join("/");
 
@@ -162,7 +162,7 @@ impl Board {
 
 impl fmt::Display for Board {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let b = Board::adopt(self.clone());
+        let b = self.clone();
         for &r in Bitboard::RANKS.iter().rev() {
             fmt.write_str(&b.get(r))?;
             fmt.write_char('\n')?;
@@ -210,7 +210,7 @@ mod tests {
 
     #[test]
     fn board_bitboards() -> Result<(), String> {
-        let board = Board::parse_pieces("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap().as_board();
+        let board = Board::parse_piece_placement("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap().as_board();
         assert_eq!(board.color_us(), Color::White);
         assert_eq!(board.color_them(), Color::Black);
         // assert_eq!(board.en_passant(), Bitboard::empty());

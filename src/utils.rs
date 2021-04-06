@@ -7,6 +7,9 @@ pub trait StringUtils {
     fn take_substring(&self, start: usize, len: usize) -> &str;
     fn take_slice(&self, range: impl RangeBounds<usize>) -> &str;
     fn take_char_at(&self, i: usize) -> Option<char>;
+    fn split_off_first_word(&self) -> (&str, &str);
+    fn trim_first_n_words(&self, n: u16) -> &str;
+
 }
 
 impl StringUtils for str {
@@ -56,11 +59,74 @@ impl StringUtils for str {
     fn take_char_at(&self, i: usize) -> Option<char> {
         self.chars().nth(i)
     }
+
+    fn split_off_first_word(&self) -> (&str, &str) {
+        let mut iter = self.trim_start().splitn(2, ' ');        
+        if let Some(word1) = iter.next() {
+            if let Some(word2) = iter.next() {
+                return (word1, word2.trim_start());
+            }
+            return (word1, "");
+        }
+        ("", "")
+    }
+
+    fn trim_first_n_words(&self, n: u16) -> &str {
+        let mut string = self;
+        for _ in 0..n {
+            let (_first, rest) = string.split_off_first_word();
+            string = rest;
+        }
+        string
+    }
+
 }
+
+
+
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_split_off_first_word() {
+        let (w1, w2) = "Mary had a little lambda".split_off_first_word();
+        assert_eq!( w1, "Mary" );
+        assert_eq!( w2, "had a little lambda" );
+
+        let (w1, w2) = "  Mary had a little lambda".split_off_first_word();
+        assert_eq!( w1, "Mary" );
+        assert_eq!( w2, "had a little lambda" );
+
+        let (w1, w2) = "Mary   had a little lambda".split_off_first_word();
+        assert_eq!( w1, "Mary" );
+        assert_eq!( w2, "had a little lambda" );
+
+        let (w1, w2) = "".split_off_first_word();
+        assert_eq!( w1, "" );
+        assert_eq!( w2, "" );
+
+        let (w1, w2) = "  ".split_off_first_word();
+        assert_eq!( w1, "" );
+        assert_eq!( w2, "" );
+    }
+
+
+    #[test]
+    fn test_trim_first_n_words() {
+        let rest = "Mary had a little lambda".trim_first_n_words(0);
+        assert_eq!(rest, "Mary had a little lambda");
+        let rest = "Mary had a little lambda".trim_first_n_words(1);
+        assert_eq!(rest, "had a little lambda");
+        let rest = "Mary had a little lambda".trim_first_n_words(5);
+        assert_eq!(rest, "");
+        let rest = "Mary had a little lambda".trim_first_n_words(50);
+        assert_eq!(rest, "");
+        let rest = "Mary had a little lambda   ".trim_first_n_words(5);
+        assert_eq!(rest, "");
+    }
+
     #[test]
     fn string_utils() {
         let s = "abcdèfghij";

@@ -563,7 +563,7 @@ mod tests {
             search.search(board);
             println!("{}", search);
             if id { 
-                assert_eq!(search.search_stats().total().nodes(), 6945);
+                assert_eq!(search.search_stats().total().nodes(), 6740);
             } else {
                 assert_eq!(search.search_stats().total().nodes(), 7749);
             }

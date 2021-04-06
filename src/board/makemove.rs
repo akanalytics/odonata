@@ -155,8 +155,8 @@ mod tests {
     fn test_try_move_promotion() {
         let mut board = Board::parse_fen("8/P7/8/8/8/8/7k/K7 w - - 0 0 id 'promos #1'").unwrap().as_board();
         board = board.make_move(&board.parse_uci_move("a7a8q").unwrap());
-        assert_eq!(Board::adopt(board.clone()).get(a8), "Q");
-        assert_eq!(Board::adopt(board).get(a7), ".");
+        assert_eq!(board.get(a8), "Q");
+        assert_eq!(board.get(a7), ".");
     }
 
     #[test]

@@ -115,10 +115,10 @@ impl Parse {
             matching_moves.push(*lm);
         }
         if matching_moves.is_empty() {
-            return Err(format!("Move {} is invalid - not a legal move", orig));
+            return Err(format!("Move {} is invalid - not a legal move for board {}", orig, board.to_fen()));
         }
         if matching_moves.len() > 1 {
-            return Err(format!("Move {} is ambiguous - moves {}", orig, matching_moves));
+            return Err(format!("Move {} is ambiguous - moves {} for board {}", orig, matching_moves, board.to_fen()));
         }
 
         // FIXME: warnings on non-captures, non-checkmates etc

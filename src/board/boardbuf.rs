@@ -10,15 +10,18 @@ use crate::types::{CastlingRights, Color, Piece};
 
 pub trait BoardBuf {
     fn set_turn(&mut self, c: Color);
+    fn set_castling(&mut self, cr: CastlingRights);
+    fn set_en_passant(&mut self, sq: Bitboard);
+    fn set_fifty_halfmove_clock(&mut self, hmvc: i32);
+    fn set_fullmove_counter(&mut self, fmvc: i32);
     fn set_piece_at(&mut self, sq: Bitboard, p: Piece);
     fn set_color_at(&mut self, sq: Bitboard, c: Color);
     fn color_at(&self, at: Bitboard) -> Option<Color>;
     fn get(&self, bb: Bitboard) -> String;
     fn set(&mut self, bb: Bitboard, pieces: &str) -> Result<&mut Self, String>;
-    fn parse_pieces(fen: &str) -> Result<Board, String>;
+    fn parse_piece_placement(fen: &str) -> Result<Board, String>;
     fn parse_fen(fen: &str) -> Result<Board, String>;
     fn as_board(&self) -> Board; // FIXME
-    fn adopt(board: Board) -> Board; // FIXME
 }
 
 impl BoardBuf for Board {
@@ -30,8 +33,20 @@ impl BoardBuf for Board {
         self.turn = c;
     }
 
-    fn adopt(board: Board) -> Board {
-        board
+    fn set_castling(&mut self, cr: CastlingRights) {
+        self.castling = cr;
+    }
+
+    fn set_en_passant(&mut self, sq: Bitboard) {
+        self.en_passant = sq;
+    }
+
+    fn set_fifty_halfmove_clock(&mut self, hmvc: i32) {
+        self.fifty_clock = hmvc as u16;
+    }
+
+    fn set_fullmove_counter(&mut self, fmvc: i32) {
+        self.fullmove_counter = fmvc as u16;
     }
 
     fn set_piece_at(&mut self, sq: Bitboard, p: Piece) {
@@ -95,7 +110,8 @@ impl BoardBuf for Board {
     }
 
     /// Parses a FEN string to create a board. FEN format is detailed at https://en.wikipedia.org/wiki/Forsyth–Edwards_Notation
-    fn parse_pieces(fen: &str) -> Result<Self, String> {
+    /// terminology of "piece placement data" from http://kirill-kryukov.com/chess/doc/fen.html
+    fn parse_piece_placement(fen: &str) -> Result<Self, String> {
         let mut bb = Board::new_empty();
         let mut pos = String::from(fen);
         for i in 1..=8 {
@@ -121,7 +137,7 @@ impl BoardBuf for Board {
         if words.len() < 6 {
             return Err(format!("Must specify at least 6 parts in epd/fen '{}'", fen));
         }
-        let mut bb = Self::parse_pieces(words[0])?;
+        let mut bb = Self::parse_piece_placement(words[0])?;
         bb.turn = Color::parse(words[1])?;
         bb.castling = CastlingRights::parse(words[2])?;
         bb.en_passant = if words[3] == "-" { Bitboard::EMPTY } else { Bitboard::parse_square(words[3])? };
@@ -192,13 +208,13 @@ mod tests {
     fn parse_piece() -> Result<(), String> {
         let fen1 = "1/1/7/8/8/8/PPPPPPPP/RNBQKBNR";
         assert_eq!(
-            Board::parse_pieces(fen1).err(),
+            Board::parse_piece_placement(fen1).err(),
             Some("Expected 8 ranks of 8 pieces in fen 1/1/7/8/8/8/PPPPPPPP/RNBQKBNR".into())
         );
-        assert!(Board::parse_pieces("8").err().unwrap().starts_with("Expected 8"));
-        assert!(Board::parse_pieces("8/8").err().unwrap().starts_with("Expected 8"));
-        assert_eq!(Board::parse_pieces("X7/8/8/8/8/8/8/8").err(), Some("Unknown piece 'X'".into()));
-        let buf = Board::parse_pieces("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap();
+        assert!(Board::parse_piece_placement("8").err().unwrap().starts_with("Expected 8"));
+        assert!(Board::parse_piece_placement("8/8").err().unwrap().starts_with("Expected 8"));
+        assert_eq!(Board::parse_piece_placement("X7/8/8/8/8/8/8/8").err(), Some("Unknown piece 'X'".into()));
+        let buf = Board::parse_piece_placement("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap();
         assert_eq!(buf.get(a1), "R");
         assert_eq!(buf.get(Bitboard::FILE_H), "RP....pr");
         Ok(())
