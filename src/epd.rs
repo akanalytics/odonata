@@ -35,7 +35,7 @@ use regex::Regex;
 #[derive(Clone, Default, Debug)]
 pub struct Epd { 
     board: Board,
-    attributes: HashMap<String,String>,
+    operations: HashMap<String,String>,
 }
 
     
@@ -55,7 +55,7 @@ impl Epd {
         }
         let mut pos = Epd { 
             board: Board::parse_piece_placement(words[0])?,
-            attributes: HashMap::new(),
+            operations: HashMap::new(),
         };
         pos.board.set_turn(Color::parse(words[1])?);
         pos.board.set_castling(CastlingRights::parse(words[2])?);
@@ -65,7 +65,7 @@ impl Epd {
             pos.board.set_en_passant(Bitboard::parse_square(words[3])?) 
         };
 
-        let mut _remaining;
+        let mut remaining = StringUtils::trim_first_n_words(epd, 4);
         if words.len() >= 6 {
             let hmvc = words[4].parse::<u16>();
             let fmvn = words[5].parse::<u16>();
@@ -73,16 +73,75 @@ impl Epd {
                 if let Ok(fmvn) = fmvn {
                     pos.board.set_fifty_halfmove_clock(hmvc as i32);
                     pos.board.set_fullmove_counter(fmvn as i32);
-                    _remaining = StringUtils::trim_first_n_words(epd, 6);
+                    remaining = StringUtils::trim_first_n_words(epd, 6);
                 }
             }
-            _remaining = StringUtils::trim_first_n_words(epd, 4);
-        }
+        } 
+        pos.operations = Self::parse_operations(remaining);
         Ok(pos)
     }
-}       
-        // // parse the attributes
-        // Regex re = Regex::new(r#"([^"]+|"(?:\\"|[^"])+");"#
+
+    fn parse_operations(operations_str: &str) -> HashMap<String,String> {
+        let mut map = HashMap::new();
+        let ops : Vec<&str> = Self::split_into_operations(operations_str);
+        for op in ops {
+            let words: Vec<&str> = Self::split_into_words(op);
+            debug_assert!(words.len() > 0, "no words parsing EPD operation '{}' from '{}'", op, operations_str);
+            map.insert(words[0].to_string(), words[1..].join(" ").to_string());
+        }
+        map
+    }
+
+
+    fn split_into_operations(s: &str) -> Vec<&str> {
+        let re = Regex::new(
+            r#"(?x)
+            ([^";]*  
+                " [^"]* "   # a quoted string (possibly containing ";")
+            [^";]*
+            );
+            |
+            ([^;"]+)        # an opcode and operand(s) without any quotes 
+            ;
+            "#
+        );        
+        // for cap in re.unwrap().captures_iter(s) {
+        //     println!("{:?}", cap, cap.get(1).or(cap(get(2))) );
+        // }
+        let vec = re.unwrap().
+            captures_iter(s).
+            map(|cap| cap.get(1).or(cap.get(2)).unwrap().as_str()).
+            collect();
+        vec
+    }
+
+    fn split_into_words(s: &str) -> Vec<&str> {
+        let re = Regex::new(
+            r#"(?x)
+            (?:
+                [^"\ ]*  
+                " ([^"]*) "    # a quoted string (possibly containing whitespace)
+                [^"\ ]*
+            )(?:$|\ )|
+            ([^\ "]+)        # an opcode/operand without any quotes 
+            (?:$|\ )"#
+        );        
+        // for cap in re.clone().unwrap().captures_iter(s) {
+        //      println!("{:?}", cap );
+        // }
+        let vec = re.unwrap().
+            captures_iter(s).
+            map(|cap| cap.get(1).or(cap.get(2)).unwrap().as_str()).
+            collect();
+        vec
+    }
+
+
+
+}        
+        
+
+
 
 
 impl Epd {
@@ -101,17 +160,19 @@ impl Epd {
         &mut self.board
     }
 
-    pub fn attributes(&self) -> HashMap<String,String> {
-        self.attributes.clone()
+    pub fn operations(&self) -> HashMap<String,String> {
+        self.operations.clone()
     }
     
     pub fn set_attribute(&mut self, key: &str, value: &str) {
-        self.attributes.insert(key.to_string(), value.to_string());
+        self.operations.insert(key.to_string(), value.to_string());
     }
 
     pub const ACD: &'static str = "acd";
     pub const BM: &'static str = "bm";
     pub const DM: &'static str = "dm";
+    pub const DRAW_REJECT: &'static str = "draw_reject";
+    pub const ID: &'static str = "id";
     pub const PV: &'static str = "pv";
 
     pub const ATTRIBUTES: &'static [&'static str] = &[
@@ -121,10 +182,10 @@ impl Epd {
     ];
 
 
-    // FIXME - other EPD attributes
+    // FIXME - other EPD operations
 
-    pub fn get(&self, key: &str) -> Result<&String, String> {
-        self.attributes.get(key).ok_or(format!("No attribute '{}'", key))
+    pub fn get(&self, key: &str) -> Result<&str, String> {
+        self.operations.get(key).map(|s:&String| s.as_str()).ok_or(format!("No attribute '{}'", key))
     }
 
     pub fn pv(&self) -> Result<MoveList, String> {
@@ -144,12 +205,22 @@ impl Epd {
         self.get(Self::DM)?.parse::<u32>().map_err(|e| e.to_string())
     }
 
+    pub fn id(&self) -> Result<&str, String> {
+        self.get(Self::ID)
+    }
+
+    pub fn draw_reject(&self) -> bool {
+        self.operations.get(Self::DRAW_REJECT).is_some()
+    }
+
     pub fn validate(&self) -> Result<(), String> {
         for &k in Self::ATTRIBUTES {
-            if let Some(_) = self.attributes().get(k) {
+            if let Some(_) = self.operations().get(k) {
                 match k {
                     Self::ACD => { self.acd()?; },
                     Self::BM => { self.bm()?; },
+                    Self::ID => { self.id()?; },
+                    Self::DRAW_REJECT => {},
                     Self::DM => { self.bm()?; },
                     Self::PV => { self.pv()?; },
                     _ => {}
@@ -163,61 +234,50 @@ impl Epd {
 
 
 
-
-
-
-
-
-fn split_on_regex(s: &str) -> Vec<&str> {
-    let re = Regex::new(
-        r#"(?x)
-        (
-            [^";]*
-            "
-            [^"]*
-            "
-            [^";]*
-        )
-        ;
-        
-        |
-        
-        ([^;"]+)
-        ;
-        "#
-          // |("[^"]*")
-        //   r#"(?x)
-        //   (?:
-        //   ([^"]*);
-        //   |
-        //   (?:"[^"]*");
-        //   )+
-        //   "#
-      
-    );        
-    // let splits: Vec<_> = re.unwrap().split(s).into_iter().collect();
-    for cap in re.unwrap().captures_iter(s) {
-        println!("{:?}", cap);
-    }
-    // let splits: Vec<_> = re.unwrap().captures_iter(s).map(|mat| mat.as_str()).collect();
-    vec![""]        
-}
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
 
     #[test]
-    fn test_split_on_regex() {
-        let vec = split_on_regex(r#"cat"he;llo";MAT;"tiny"; book  ; "test;;;;;;" ; ENDING;"#);
-        assert_eq!(vec, vec!["cat;", "MAT;"], "cat;mat;");
+    fn test_split_into_operations() {
+        let vec = Epd::split_into_operations(r#"cat"meo;w";"mouse";"toad;;;;;;" ;zebra;"#);
+        assert_eq!(vec, vec!["cat\"meo;w\"", "\"mouse\"", "\"toad;;;;;;\" ", "zebra"]);
+
+        let vec = Epd::split_into_operations(r#";cat;mouse;toad;;;;;;sheep;zebra"#);
+        assert_eq!(vec, vec!["cat", "mouse", "toad", "sheep"]);
+
+        // FIXME! OK, but not desirable (unmatched quote parsing)
+        let vec = Epd::split_into_operations(r#";ca"t;mouse;"#);
+        assert_eq!(vec, vec!["t", "mouse"]);
         // let vec = split_on_regex("cat;mat;sat;");
         // assert_eq!(vec, vec!["cat;", "mat;", "sat;"], "cat;mat;sat;");
         // let vec = split_on_regex("cat \"hello\";mat;sat;");
         // assert_eq!(vec, vec!["cat \"hello\";", "mat;", "sat;"], "cat;mat;sat;");
     }
+
+    #[test]
+    fn test_split_words() {
+        let vec = Epd::split_into_words(r#"bm e4"#);
+        assert_eq!(vec, vec!["bm", "e4"]);
+
+        let vec = Epd::split_into_words(r#"id "my name is bob""#);
+        assert_eq!(vec, vec!["id", "my name is bob"]);
+    }
+
+    #[test]
+    fn test_epd_parse() -> Result<(), String>{
+        let epd = Epd::parse("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 bm e4; acd 1000; id \"TEST_CASE.1\"; draw_reject;")?;
+        assert_eq!( epd.get("acd").ok(), Some("1000"));
+        assert_eq!( epd.get(Epd::BM).ok(), Some("e4"));
+        assert_eq!( epd.get("draw_reject").ok(), Some(""));
+        assert_eq!( epd.id().ok(), Some("TEST_CASE.1"));
+        let mut opcodes = epd.operations().keys().cloned().collect::<Vec::<_>>();
+        opcodes.sort();
+        assert_eq!( opcodes.iter().map(|s| s.as_str()).collect::<Vec::<_>>(), vec!["acd", "bm", "draw_reject", "id"]);
+        Ok(())
+    }
+
 
 
     #[test]
@@ -227,7 +287,7 @@ mod tests {
         epd.set_attribute(Epd::BM, "e4");
         assert_eq!(epd.bm().unwrap().to_string(), "e2e4");
 
-        let mut epd = Epd { board: Catalog::starting_position(), attributes: HashMap::default() };
+        let mut epd = Epd { board: Catalog::starting_position(), operations: HashMap::default() };
         epd.set_attribute(Epd::BM, "e4, c4, a4");
         epd.set_attribute(Epd::PV, "e4, e5, d3");
         assert_eq!(epd.bm().unwrap().to_string(), "e2e4, c2c4, a2a4");
@@ -240,7 +300,7 @@ mod tests {
 
 
 
-    // Custom attributes
+    // Custom operations
     // STS score
     // Perft
     // 
