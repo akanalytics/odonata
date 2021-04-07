@@ -303,7 +303,7 @@ mod tests {
             c1 'http://wtharvey.com/m8n2.txt';",
 
             "r3k2r/p3bpp1/2q1p1b1/1ppPP1B1/3n3P/5NR1/PP2NP2/K1QR4 b kq - 0 1
-            pv 1... Nb3+ 2. axb3 Qa6#;
+            pv 1. .. Nb3+ 2. axb3 Qa6#;
             c0 'Alexander Areshchenko vs Sergei Zhigalko, Kiev, 6/6/2013';"
         ];
         let epds = Epd::parse_many(strs)?;

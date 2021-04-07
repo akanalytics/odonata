@@ -43,21 +43,80 @@ impl Catalog {
             Board::parse_fen("K7/7r/8/8/8/8/8/1r5k w - - 0 1").unwrap().as_board(),
         ]
     }
-    pub fn mate_in_2() -> [Board; 2] {
-        [
-            // http://wtharvey.com/m8n2.txt
-            // Henry Buckle vs NN, London, 1840
-            // 1. Nf6+ gxf6 2. Bxf7#
-            Board::parse_fen("r2qkb1r/pp2nppp/3p4/2pNN1B1/2BnP3/3P4/PPP2PPP/R2bK2R w KQkq - 1 1")
-                .unwrap()
-                .as_board(),
-            // Alexander Areshchenko vs Sergei Zhigalko, Kiev, 6/6/2013
-            // 1... Nb3+ 2. axb3 Qa6#
-            Board::parse_fen("r3k2r/p3bpp1/2q1p1b1/1ppPP1B1/3n3P/5NR1/PP2NP2/K1QR4 b kq - 0 1")
-                .unwrap()
-                .as_board(),
-        ]
+    pub fn mate_in_2() -> Vec<Epd> {
+        // http://wtharvey.com/m8n2.txt
+        let strs = &[
+            "r2qkb1r/pp2nppp/3p4/2pNN1B1/2BnP3/3P4/PPP2PPP/R2bK2R w KQkq - 1 1
+            pv 1. Nf6+ gxf6 2. Bxf7#;
+            id 'Henry Buckle vs NN, London, 1840';",
+
+            "r3k2r/p3bpp1/2q1p1b1/1ppPP1B1/3n3P/5NR1/PP2NP2/K1QR4 b kq - 0 1
+            pv 1. .. Nb3+ 2. axb3 Qa6#;
+            id 'Alexander Areshchenko vs Sergei Zhigalko, Kiev, 6/6/2013';",
+
+            "4kb1r/p2n1ppp/4q3/4p1B1/4P3/1Q6/PPP2PPP/2KR4 w k - 1 0
+            id 'Paul Morphy vs Duke Isouard, Paris, 1858';
+            pv 1. Qb8+ Nxb8 2. Rd8#;",
+
+            "r1b2k1r/ppp1bppp/8/1B1Q4/5q2/2P5/PPP2PPP/R3R1K1 w - - 1 0
+            id 'Johannes Zukertort vs Adolf Anderssen, Breslau, 1865';
+            pv 1. Qd8+ Bxd8 2. Re8#;",
+
+            "5rkr/pp2Rp2/1b1p1Pb1/3P2Q1/2n3P1/2p5/P4P2/4R1K1 w - - 1 0
+            id 'Gustav Neumann vs Carl Mayet, Berlin, 1866';
+            pv 1. Qxg6+ fxg6 2. Rg7#;",
+
+            "1r1kr3/Nbppn1pp/1b6/8/6Q1/3B1P2/Pq3P1P/3RR1K1 w - - 1 0
+            id 'Joseph Blackburne vs Martin, England, 1876';
+            pv 1. Qxd7+ Kxd7 2. Bb5#;",
+
+            "5rk1/1p1q2bp/p2pN1p1/2pP2Bn/2P3P1/1P6/P4QKP/5R2 w - - 1 0
+            id 'Wilfried Paulsen vs Adolf Anderssen, Frankfurt, 1878';
+            pv 1. Qxf8+ Bxf8 2. Rxf8#;",
+
+            "r1nk3r/2b2ppp/p3b3/3NN3/Q2P3q/B2B4/P4PPP/4R1K1 w - - 1 0
+            id 'Joseph Blackburne vs Smith, Simul, 1882';
+            pv 1. Qd7+ Bxd7 2. Nxf7#;",
+
+            "r4br1/3b1kpp/1q1P4/1pp1RP1N/p7/6Q1/PPB3PP/2KR4 w - - 1 0
+            id 'Wilhelm Steinitz vs David Sands, New York, 1887';
+            pv 1. Qg6+ hxg6 2. fxg6;",
+
+            "r1b2k1r/ppppq3/5N1p/4P2Q/4PP2/1B6/PP5P/n2K2R1 w - - 1 0
+            id 'Wilhelm Steinitz vs Albert Hodges, New York, 1891';
+            pv 1. Qxh6+ Rxh6 2. Rg8# ;",
+
+            "6k1/pp4p1/2p5/2bp4/8/P5Pb/1P3rrP/2BRRN1K b - - 0 1
+            pv 1... Rg1+ 2. Kxg1 Rxf1#;
+            id 'James Mason vs Georg Marco, Leipzig, 1894';",
+            
+            "rnbqkbn1/ppppp3/7r/6pp/3P1p2/3BP1B1/PPP2PPP/RN1QK1NR w - - 1 0
+            pv 1. Qxh5+ Rxh5 2. Bg6#;
+            id 'Frank Teed vs Eugene Delmar, New York, 1896';",
+            
+            // blacks reply not forced
+            // "r2qrb2/p1pn1Qp1/1p4Nk/4PR2/3n4/7N/P5PP/R6K w - - 1 0
+            // pv 1. Ne7 Nxf5 2. Qg6#;
+            // id 'Wilhelm Steinitz vs Herbert Trenchard, Vienna, 1898';",
+            
+            "8/2r5/1k5p/1pp4P/8/K2P4/PR2QB2/2q5 b - - 0 1
+            pv 1... Qc3+ 2. Rb3 Ra7#;
+            id 'James Mason vs Emanuel Lasker, London, 1899';",
+        ];
+        Epd::parse_many(strs).unwrap()
     }
+                    // [
+        //     // http://wtharvey.com/m8n2.txt
+        //     // Henry Buckle vs NN, London, 1840
+        //     // 1. Nf6+ gxf6 2. Bxf7#
+        //     Board::parse_fen("r2qkb1r/pp2nppp/3p4/2pNN1B1/2BnP3/3P4/PPP2PPP/R2bK2R w KQkq - 1 1")
+        //         .unwrap()
+        //         .as_board(),
+        //     // Alexander Areshchenko vs Sergei Zhigalko, Kiev, 6/6/2013
+        //     // 1... Nb3+ 2. axb3 Qa6#
+        //     Board::parse_fen("r3k2r/p3bpp1/2q1p1b1/1ppPP1B1/3n3P/5NR1/PP2NP2/K1QR4 b kq - 0 1")
+        //         .unwrap()
+        //         .as_board(),
 
     pub fn mate_in_3() -> [Epd; 1] {
         [

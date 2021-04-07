@@ -555,19 +555,32 @@ mod tests {
     }
 
     #[test]
-    fn test_mate_in_2_sync() {
+    fn test_all_mate_in_2() {
+        let epds = Catalog::mate_in_2();
+        for pos in epds {
+            let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).set_callback(Uci::uci_info);
+            search.search(pos.board().clone());
+            println!("{}", search);
+            assert_eq!(search.pv.extract_pv().to_string(), pos.pv().unwrap().to_string(), "{}", pos.id().unwrap());
+            // FIXME assert_eq!(search.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
+        }
+    }
+
+
+    #[test]
+    fn test_mate_in_2_iid() {
         for &id in &[false, true] {
-            let board = Catalog::mate_in_2()[0].clone();
+            let epd = Catalog::mate_in_2()[0].clone();
             let eval = SimpleScorer::new().set_position(false);
             let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(false).set_eval(eval).set_iterative_deepening(id).set_callback(Uci::uci_info);
-            search.search(board);
+            search.search(epd.board().clone());
             println!("{}", search);
             if id { 
                 assert_eq!(search.search_stats().total().nodes(), 6740);
             } else {
                 assert_eq!(search.search_stats().total().nodes(), 7749);
             }
-            assert_eq!(search.pv.extract_pv().to_string(), "d5f6, g7f6, c4f7");
+            assert_eq!(search.pv.extract_pv(), epd.pv().unwrap());
             assert_eq!(search.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
         }
     }
@@ -578,26 +591,26 @@ mod tests {
 
     #[test]
     fn test_mate_in_2_async() {
-        let board = Catalog::mate_in_2()[0].clone();
+        let epd = Catalog::mate_in_2()[0].clone();
         let mut algo = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(true);
-        algo.search(board.clone());
+        algo.search(epd.board().clone());
         let nodes = algo.search_stats().total().nodes();
         let millis = time::Duration::from_millis(20);
         thread::sleep(millis);
 
         assert_eq!(nodes, 66234);
-        assert_eq!(algo.pv.extract_pv().to_string(), "d5f6, g7f6, c4f7");
+        assert_eq!(algo.pv.extract_pv(), epd.pv().unwrap());
         assert_eq!(algo.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
         println!("{}\n\nasync....", algo);
     }
 
     #[test]
     fn test_mate_in_2_async_stopped() {
-        let board = Catalog::mate_in_2()[0].clone();
+        let epd = Catalog::mate_in_2()[0].clone();
         let mut algo2 = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(true);
         let closure = |sp: &SearchProgress| { println!("nps {}", sp.time_millis.unwrap_or_default()) };
         algo2.set_callback( closure );
-        algo2.search_async(board.clone());
+        algo2.search_async(epd.board().clone());
         let millis = time::Duration::from_millis(200);
         thread::sleep(millis);
         algo2.search_async_stop();
