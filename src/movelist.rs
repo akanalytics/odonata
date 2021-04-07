@@ -132,7 +132,7 @@ impl fmt::Display for Move {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct MoveList(Vec<Move>);
 
 // pub struct MoveList(ArrayVec::<[Move; 384]>);
@@ -237,6 +237,7 @@ impl MoveValidator for Board {
         let s = s.replace(",", " ");
         let s = strip_move_numbers(&s);
         for mv in s.split_ascii_whitespace() {
+            
             let mv = board.parse_san_move(mv)?;
             moves.push(mv);
             board = board.make_move(&mv);
@@ -327,7 +328,7 @@ impl MoveValidator for Board {
 fn strip_move_numbers(s: &str) -> String {
     let re = Regex::new(
         r#"(?x)         # x flag to allow whitespace and comments
-        (\d)+\.\s?      # digits a '.' and then whitespace
+        (\d)+\.(\s)*(\.\.)?(\s)?      # digits a '.' and then whitespace and optionally ".."
         "#,
     )
     .unwrap();
@@ -376,6 +377,12 @@ mod tests {
         moves.push(promo_a7a8);
         assert_eq!(moves.to_string(), "a1b2, a7a8q");
 
+        let s = strip_move_numbers("1. .. c4c5 2. c6c7 3.");
+        assert_eq!(s, "c4c5 c6c7 ");
+
+        let s = strip_move_numbers("1... c4c5 2. c6c7 3.");
+        assert_eq!(s, "c4c5 c6c7 ");
+
         let s = strip_move_numbers("1. c1c2 c4c5 2. c6c7 3.");
         assert_eq!(s, "c1c2 c4c5 c6c7 ");
 
@@ -389,6 +396,12 @@ mod tests {
 
         let list = board.parse_uci_moves("1. a2a3 h7h6 2. b2b3 h6h5")?;
         assert_eq!(list.to_string(), "a2a3, h7h6, b2b3, h6h5");
+
+        let mv = board.parse_uci_move("a2a3")?;
+        let board2 = board.make_move(&mv);
+        let list = board2.parse_uci_moves("1. .. h7h6 2. b2b3 h6h5")?;
+
+        assert_eq!(list.to_string(), "h7h6, b2b3, h6h5");
 
         let list = board.parse_san_choices("Nc3, c3  Pc2c3")?;
         assert_eq!(list.to_string(), "b1c3, c2c3, c2c3");

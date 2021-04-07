@@ -609,14 +609,17 @@ mod tests {
 
     #[test]
     #[ignore]
-    fn test_mate_in_3_sync() {
-        let board = Catalog::mate_in_3()[0].clone();
+    fn test_mate_in_3_sync() -> Result<(), String> {
+        let epd = Catalog::mate_in_3()[0].clone();
+        let expected_pv = epd.pv()?;
         let mut search = Algo::new().set_timing_method(TimeControl::Depth(5)).set_minmax(false);
-        search.search(board.clone());
-        let san = board.to_san_moves(&search.pv.extract_pv()).replace("\n", " ");
+        search.search(epd.board().clone());
+        let san = epd.board().to_san_moves(&search.pv.extract_pv()).replace("\n", " ");
         println!("{}", search);
-        assert_eq!(san, "1. Bb5+ c6 2. Qe6+ Qe7 3. Qxe7+");
+        assert_eq!(san, epd.board().to_san_moves(&expected_pv).replace("\n", " "));
+        assert_eq!(search.pv.extract_pv(), expected_pv);
         assert_eq!(search.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
+        Ok(())
     }
 
     #[test]

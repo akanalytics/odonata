@@ -1,20 +1,19 @@
-use crate::board::makemove::MoveMaker;
-use crate::board::Board;
-use crate::types::{Color, CastlingRights};
 use crate::bitboard::Bitboard;
 use crate::board::boardbuf::BoardBuf;
-use crate::movelist::MoveValidator;
+use crate::board::makemove::MoveMaker;
+use crate::board::Board;
 use crate::catalog::Catalog;
+use crate::movelist::MoveValidator;
 use crate::movelist::{Move, MoveList};
 use crate::outcome::GameEnd;
 use crate::outcome::Outcome;
-use crate::utils::StringUtils;
 use crate::search::algo::Algo;
+use crate::types::{CastlingRights, Color};
+use crate::utils::StringUtils;
+use regex::Regex;
+use std::collections::HashMap;
 use std::fmt;
 use std::time;
-use std::collections::HashMap;
-use regex::Regex;
-
 
 // http://jchecs.free.fr/pdf/EPDSpecification.pdf
 
@@ -31,14 +30,12 @@ use regex::Regex;
 
 // http://www.talkchess.com/forum3/viewtopic.php?t=69640&start=20
 
-
 #[derive(Clone, Default, Debug)]
-pub struct Epd { 
+pub struct Epd {
     board: Board,
-    operations: HashMap<String,String>,
+    operations: HashMap<String, String>,
 }
 
-    
 /// builder methods
 impl Epd {
     /// 0. Piece placement
@@ -48,21 +45,17 @@ impl Epd {
     /// 4. Half move clock
     /// 5. Full move counter
     pub fn parse(epd: &str) -> Result<Self, String> {
-        
         let words = epd.split_whitespace().collect::<Vec<_>>();
         if words.len() < 4 {
             return Err(format!("Must specify at least 4 parts in EPD '{}'", epd));
         }
-        let mut pos = Epd { 
-            board: Board::parse_piece_placement(words[0])?,
-            operations: HashMap::new(),
-        };
+        let mut pos = Epd { board: Board::parse_piece_placement(words[0])?, operations: HashMap::new() };
         pos.board.set_turn(Color::parse(words[1])?);
         pos.board.set_castling(CastlingRights::parse(words[2])?);
-        if words[3] == "-" { 
-            pos.board.set_en_passant(Bitboard::EMPTY) 
-        } else { 
-            pos.board.set_en_passant(Bitboard::parse_square(words[3])?) 
+        if words[3] == "-" {
+            pos.board.set_en_passant(Bitboard::EMPTY)
+        } else {
+            pos.board.set_en_passant(Bitboard::parse_square(words[3])?)
         };
 
         let mut remaining = StringUtils::trim_first_n_words(epd, 4);
@@ -76,22 +69,26 @@ impl Epd {
                     remaining = StringUtils::trim_first_n_words(epd, 6);
                 }
             }
-        } 
+        }
         pos.operations = Self::parse_operations(remaining);
         Ok(pos)
     }
 
-    fn parse_operations(operations_str: &str) -> HashMap<String,String> {
+    fn parse_operations(operations_str: &str) -> HashMap<String, String> {
         let mut map = HashMap::new();
-        let ops : Vec<&str> = Self::split_into_operations(operations_str);
+        let ops: Vec<&str> = Self::split_into_operations(operations_str);
         for op in ops {
             let words: Vec<&str> = Self::split_into_words(op);
-            debug_assert!(words.len() > 0, "no words parsing EPD operation '{}' from '{}'", op, operations_str);
+            debug_assert!(
+                words.len() > 0,
+                "no words parsing EPD operation '{}' from '{}'",
+                op,
+                operations_str
+            );
             map.insert(words[0].to_string(), words[1..].join(" ").to_string());
         }
         map
     }
-
 
     fn split_into_operations(s: &str) -> Vec<&str> {
         let re = Regex::new(
@@ -101,17 +98,20 @@ impl Epd {
             [^";]*
             );
             |
-            ([^;"]+)        # an opcode and operand(s) without any quotes 
+            ([^';]*  
+                ' [^']* '   # a quoted string (possibly containing ";")
+            [^';]*
+            );
+            |
+            ([^;"']+)        # an opcode and operand(s) without any quotes 
             ;
-            "#
-        );        
+            "#,
+        );
         // for cap in re.unwrap().captures_iter(s) {
         //     println!("{:?}", cap, cap.get(1).or(cap(get(2))) );
         // }
-        let vec = re.unwrap().
-            captures_iter(s).
-            map(|cap| cap.get(1).or(cap.get(2)).unwrap().as_str()).
-            collect();
+        let vec =
+            re.unwrap().captures_iter(s).map(|cap| cap.get(1).or(cap.get(2)).or(cap.get(3)).unwrap().as_str()).collect();
         vec
     }
 
@@ -119,33 +119,41 @@ impl Epd {
         let re = Regex::new(
             r#"(?x)
             (?:
-                [^"\ ]*  
-                " ([^"]*) "    # a quoted string (possibly containing whitespace)
-                [^"\ ]*
-            )(?:$|\ )|
-            ([^\ "]+)        # an opcode/operand without any quotes 
-            (?:$|\ )"#
-        );        
+                [^"\s]*  
+                " ([^"]*) "    # a double quoted string (possibly containing whitespace)
+                [^"\s]*
+            )(?:$|\s)|
+            (?:
+                [^'\s]*  
+                ' ([^']*) '    # a single quoted string (possibly containing whitespace)
+                [^'\s]*
+            )(?:$|\s)
+            |
+            ([^\s"']+)        # an opcode/operand without any quotes 
+            (?:$|\s)"#,
+        );
         // for cap in re.clone().unwrap().captures_iter(s) {
         //      println!("{:?}", cap );
         // }
-        let vec = re.unwrap().
-            captures_iter(s).
-            map(|cap| cap.get(1).or(cap.get(2)).unwrap().as_str()).
-            collect();
+        let vec =
+            re.unwrap().captures_iter(s).map(|cap| cap.get(1).or(cap.get(2)).or(cap.get(3)).unwrap().as_str()).collect();
         vec
     }
 
-
-
-}        
-        
-
-
-
+    pub fn parse_many<I>(iter: I) -> Result<Vec<Epd>, String>
+    where
+        I: IntoIterator,
+        I::Item: AsRef<str>,
+    {
+        let mut vec = Vec::<Epd>::new();
+        for s in iter {
+            vec.push(Self::parse(s.as_ref())?);
+        }
+        Ok(vec)
+    }
+}
 
 impl Epd {
-
     pub const VERB_DATA_NORMALIZATION: &'static str = "pfdn";
     pub const VERB_GENERAL_ANALYSIS: &'static str = "pfga";
     pub const VERB_MATE_SEARCH: &'static str = "pfms";
@@ -155,15 +163,13 @@ impl Epd {
     pub fn board(&self) -> &Board {
         &self.board
     }
-    
     pub fn board_mut(&mut self) -> &mut Board {
         &mut self.board
     }
 
-    pub fn operations(&self) -> HashMap<String,String> {
+    pub fn operations(&self) -> HashMap<String, String> {
         self.operations.clone()
     }
-    
     pub fn set_attribute(&mut self, key: &str, value: &str) {
         self.operations.insert(key.to_string(), value.to_string());
     }
@@ -175,17 +181,12 @@ impl Epd {
     pub const ID: &'static str = "id";
     pub const PV: &'static str = "pv";
 
-    pub const ATTRIBUTES: &'static [&'static str] = &[
-        Self::ACD, 
-        Self::BM,
-        Self::PV,
-    ];
-
+    pub const ATTRIBUTES: &'static [&'static str] = &[Self::ACD, Self::BM, Self::PV];
 
     // FIXME - other EPD operations
 
     pub fn get(&self, key: &str) -> Result<&str, String> {
-        self.operations.get(key).map(|s:&String| s.as_str()).ok_or(format!("No attribute '{}'", key))
+        self.operations.get(key).map(|s: &String| s.as_str()).ok_or(format!("No attribute '{}'", key))
     }
 
     pub fn pv(&self) -> Result<MoveList, String> {
@@ -217,32 +218,41 @@ impl Epd {
         for &k in Self::ATTRIBUTES {
             if let Some(_) = self.operations().get(k) {
                 match k {
-                    Self::ACD => { self.acd()?; },
-                    Self::BM => { self.bm()?; },
-                    Self::ID => { self.id()?; },
-                    Self::DRAW_REJECT => {},
-                    Self::DM => { self.bm()?; },
-                    Self::PV => { self.pv()?; },
+                    Self::ACD => {
+                        self.acd()?;
+                    }
+                    Self::BM => {
+                        self.bm()?;
+                    }
+                    Self::ID => {
+                        self.id()?;
+                    }
+                    Self::DRAW_REJECT => {}
+                    Self::DM => {
+                        self.bm()?;
+                    }
+                    Self::PV => {
+                        self.pv()?;
+                    }
                     _ => {}
                 }
             }
-        
         }
         Ok(())
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
 
     #[test]
     fn test_split_into_operations() {
         let vec = Epd::split_into_operations(r#"cat"meo;w";"mouse";"toad;;;;;;" ;zebra;"#);
         assert_eq!(vec, vec!["cat\"meo;w\"", "\"mouse\"", "\"toad;;;;;;\" ", "zebra"]);
+
+        let vec = Epd::split_into_operations(r#"cat'meo;w';'mouse';'toad;;;;;;' ;zebra;"#);
+        assert_eq!(vec, vec!["cat\'meo;w\'", "\'mouse\'", "\'toad;;;;;;\' ", "zebra"]);
 
         let vec = Epd::split_into_operations(r#";cat;mouse;toad;;;;;;sheep;zebra"#);
         assert_eq!(vec, vec!["cat", "mouse", "toad", "sheep"]);
@@ -263,22 +273,45 @@ mod tests {
 
         let vec = Epd::split_into_words(r#"id "my name is bob""#);
         assert_eq!(vec, vec!["id", "my name is bob"]);
+
+        let vec = Epd::split_into_words(r#"id 'my name is bob'"#);
+        assert_eq!(vec, vec!["id", "my name is bob"]);
     }
 
     #[test]
-    fn test_epd_parse() -> Result<(), String>{
+    fn test_epd_parse() -> Result<(), String> {
         let epd = Epd::parse("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 bm e4; acd 1000; id \"TEST_CASE.1\"; draw_reject;")?;
-        assert_eq!( epd.get("acd").ok(), Some("1000"));
-        assert_eq!( epd.get(Epd::BM).ok(), Some("e4"));
-        assert_eq!( epd.get("draw_reject").ok(), Some(""));
-        assert_eq!( epd.id().ok(), Some("TEST_CASE.1"));
-        let mut opcodes = epd.operations().keys().cloned().collect::<Vec::<_>>();
+        assert_eq!(epd.get("acd").ok(), Some("1000"));
+        assert_eq!(epd.get(Epd::BM).ok(), Some("e4"));
+        assert_eq!(epd.get("draw_reject").ok(), Some(""));
+        assert_eq!(epd.id().ok(), Some("TEST_CASE.1"));
+        let mut opcodes = epd.operations().keys().cloned().collect::<Vec<_>>();
         opcodes.sort();
-        assert_eq!( opcodes.iter().map(|s| s.as_str()).collect::<Vec::<_>>(), vec!["acd", "bm", "draw_reject", "id"]);
+        assert_eq!(
+            opcodes.iter().map(|s| s.as_str()).collect::<Vec::<_>>(),
+            vec!["acd", "bm", "draw_reject", "id"]
+        );
         Ok(())
     }
 
+    #[test]
+    fn test_epd_parse_many() -> Result<(), String> {
+        let strs = &[
+            "r2qkb1r/pp2nppp/3p4/2pNN1B1/2BnP3/3P4/PPP2PPP/R2bK2R w KQkq - 1 1
+            pv 1. Nf6+ gxf6 2. Bxf7#;
+            c0 'Henry Buckle vs NN, London, 1840';
+            c1 'http://wtharvey.com/m8n2.txt';",
 
+            "r3k2r/p3bpp1/2q1p1b1/1ppPP1B1/3n3P/5NR1/PP2NP2/K1QR4 b kq - 0 1
+            pv 1... Nb3+ 2. axb3 Qa6#;
+            c0 'Alexander Areshchenko vs Sergei Zhigalko, Kiev, 6/6/2013';"
+        ];
+        let epds = Epd::parse_many(strs)?;
+        assert_eq!(epds.len(), 2);
+        assert_eq!(epds[0].pv()?.len(), 3);
+        assert_eq!(epds[1].pv()?.len(), 3);
+        Ok(())
+    }
 
     #[test]
     fn test_epd_basics() {
@@ -295,19 +328,12 @@ mod tests {
     }
 }
 
+// Custom operations
+// STS score
+// Perft
+//
 
-
-
-
-
-    // Custom operations
-    // STS score
-    // Perft
-    // 
-
-
-
-//     attribute: 
+//     attribute:
 
 //     // acd analysis count depth [3]
 //     acd: u32,
@@ -323,7 +349,6 @@ mod tests {
 
 //     // bm best move(s)
 //     bm: MoveList,
-    
 //     // c0 comment (primary, also c1 though c9)
 //     c: [String;10],
 
@@ -376,7 +401,6 @@ mod tests {
 //     rc: u16,
 
 //     // resign game resignation
-    
 //     // sm supplied move
 //     sm: Move,
 
