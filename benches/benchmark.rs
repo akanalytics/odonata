@@ -224,7 +224,7 @@ fn benchmark_mate_in_2(c: &mut Criterion) {
     group.sample_size(20);
     group.bench_function("mate_in_2_ab", |b| {
         b.iter(|| {
-            let board = Catalog::mate_in_2()[0].clone();
+            let board = Catalog::mate_in_2()[0].board().clone();
             let eval = SimpleScorer::new().set_position(false);
             let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(false).set_eval(eval).set_iterative_deepening(false);
             black_box(search.search(black_box(board)));
@@ -233,7 +233,7 @@ fn benchmark_mate_in_2(c: &mut Criterion) {
     });
     group.bench_function("mate_in_2_ab_iid", |b| {
         b.iter(|| {
-            let board = Catalog::mate_in_2()[0].clone();
+            let board = Catalog::mate_in_2()[0].board().clone();
             let eval = SimpleScorer::new().set_position(false);
             let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(false).set_eval(eval).set_iterative_deepening(true);
             black_box(search.search(black_box(board)));

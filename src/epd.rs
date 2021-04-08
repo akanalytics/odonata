@@ -146,8 +146,11 @@ impl Epd {
         I::Item: AsRef<str>,
     {
         let mut vec = Vec::<Epd>::new();
-        for s in iter {
-            vec.push(Self::parse(s.as_ref())?);
+        for item in iter {
+            let s = item.as_ref();
+            if !s.is_empty() {
+                vec.push(Self::parse(s)?);
+           }
         }
         Ok(vec)
     }
