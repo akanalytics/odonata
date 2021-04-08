@@ -2,7 +2,6 @@ use crate::search::clock::Clock;
 use crate::types::MAX_PLY;
 use std::fmt;
 use std::time::Duration;
-use crate::search::timecontrol::MoveTimeEstimator;
 
 #[derive(Clone, Debug)]
 pub struct SearchStats {

@@ -1,7 +1,7 @@
 use crate::bitboard::Bitboard;
 use crate::board::boardbuf::BoardBuf;
 use crate::board::Board;
-use crate::epd::Epd;
+use crate::position::Position;
 
 pub struct Catalog;
 
@@ -46,7 +46,8 @@ impl Catalog {
 
     // TESTSUITE http://www.utzingerk.com/test.htm
 
-    pub fn bratko_kopec() -> Vec<Epd> {
+    pub fn bratko_kopec() -> Vec<Position> {
+        // source: "Sanny: Some test positions for you" google groups
         let str = r#"
 1k1r4/pp1b1R2/3q2pp/4p3/2B5/4Q3/PPP2B2/2K5 b - - bm Qd1+; id "BK.01";
 3r1k2/4npp1/1ppr3p/p6P/P2PPPP1/1NR5/5K2/2R5 w - - bm d5; id "BK.02";
@@ -73,11 +74,11 @@ r4k2/pb2bp1r/1p1qp2p/3pNp2/3P1P2/2N3P1/PPP1Q2P/2KRR3 w - - bm g4; id "BK.20";
 r1bqk2r/pp2bppp/2p5/3pP3/P2Q1P2/2N1B3/1PP3PP/R4RK1 b kq - bm f6; id "BK.23";
 r2qnrnk/p2b2b1/1p1p2pp/2pPpp2/1PP1P3/PRNBB3/3QNPPP/5RK1 w - - bm f4; id "BK.24";
 "#;
-        let positions = Epd::parse_many(str.lines()).unwrap();
+        let positions = Position::parse_many_epd(str.lines()).unwrap();
         positions
     }
 
-    pub fn win_at_chess() -> Vec<Epd> {
+    pub fn win_at_chess() -> Vec<Position> {
         let str = r#"
 2rr3k/pp3pp1/1nnqbN1p/3pN3/2pP4/2P3Q1/PPB4P/R4RK1 w - - bm Qg6; id "WAC.001";
 8/7p/5k2/5p2/p1p2P2/Pr1pPK2/1P1R3P/8 b - - bm Rxb2; id "WAC.002";
@@ -380,12 +381,12 @@ r1b2rk1/p4ppp/1p1Qp3/4P2N/1P6/8/P3qPPP/3R1RK1 w - - bm Nf6+; id "WAC.288";
 1n2rr2/1pk3pp/pNn2p2/2N1p3/8/6P1/PP2PPKP/2RR4 w - - bm Nca4; id "WAC.299";
 b2b1r1k/3R1ppp/4qP2/4p1PQ/4P3/5B2/4N1K1/8 w - - bm g6; id "WAC.300";
 "#;
-        let positions = Epd::parse_many(str.lines()).unwrap();
+        let positions = Position::parse_many_epd(str.lines()).unwrap();
         positions
     }
 
 
-    pub fn mate_in_2() -> Vec<Epd> {
+    pub fn mate_in_2() -> Vec<Position> {
         // http://wtharvey.com/m8n2.txt
         let strs = &[
             "r2qkb1r/pp2nppp/3p4/2pNN1B1/2BnP3/3P4/PPP2PPP/R2bK2R w KQkq - 1 1
@@ -445,7 +446,7 @@ b2b1r1k/3R1ppp/4qP2/4p1PQ/4P3/5B2/4N1K1/8 w - - bm g6; id "WAC.300";
             pv 1... Qc3+ 2. Rb3 Ra7#;
             id 'James Mason vs Emanuel Lasker, London, 1899';",
         ];
-        Epd::parse_many(strs).unwrap()
+        Position::parse_many_epd(strs).unwrap()
     }
                     // [
         //     // http://wtharvey.com/m8n2.txt
@@ -460,12 +461,12 @@ b2b1r1k/3R1ppp/4qP2/4p1PQ/4P3/5B2/4N1K1/8 w - - bm g6; id "WAC.300";
         //         .unwrap()
         //         .as_board(),
 
-    pub fn mate_in_3() -> [Epd; 1] {
+    pub fn mate_in_3() -> [Position; 1] {
         [
             // http://wtharvey.com/m8n3.txt
             // William Evans vs Alexander MacDonnell, London, 1826
             //1. Bb5+ c6 2. Qe6+ Qe7 3. Qxe7#
-            Epd::parse(
+            Position::parse_epd(
                 "r3k2r/ppp2Npp/1b5n/4p2b/2B1P2q/BQP2P2/P5PP/RN5K w kq - 1 1 
                 dm 3; 
                 pv 1. Bb5+ c6 2. Qe6+ Qe7 3. Qxe7#; 

@@ -7,8 +7,8 @@
 - [x] producing algebraic notation
 - [x] pgn export
 - [x] uci
-- [ ] improve stats collection
-- [ ] EPD format - catalog and test puzzles
+- [x] improve stats collection
+- [x] EPD format - catalog and test puzzles
 - [x] iterative deepening
   - [x] abandon if not time for another ply
   - [ ] found mate - skip deepening
@@ -20,6 +20,27 @@
 - [ ] python interface
 - [ ] discord bot
 
+
+- EPD processing
+  - [ ] Pul from PGN quiet positions (no capture, promo or end or check)
+  - [ ] Process EPD files in bulk
+    - [ ] clean/validate
+    - [ ] evaluate
+    - [ ] is quiet or replace with  I replace every position with the leaf of their q-search
+    - [ ] material score (plus other operations eg check, draw, outcome, #legal moves, )
+    - [ ]  
+
+
+- Interface Rust + Python
+  - [ ] Search rename/refactor
+  - [ ] Have search return position
+  - [ ] add perft attribute
+  - [ ] how to handle stats/gird like attributes
+  - [ ] Have eval set position data
+  - [ ] 
+
+- Specific problems
+  - [ ] Under promotion - use Mark's extra attribute approach? 
 
 
 

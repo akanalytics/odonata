@@ -140,7 +140,7 @@ pub struct Algo {
     search_stats: SearchStats,
     pub pv: PvTable,
     current_best: Option<Move>,
-    best_move: Option<Move>,
+    pub best_move: Option<Move>,
     pub score: Option<Score>,
     time_control: TimeControl,
     move_time_estimator: MoveTimeEstimator,
@@ -295,6 +295,8 @@ impl Algo {
     pub fn search(&mut self, mut board: Board) -> Algo {
         self.search_stats = SearchStats::new();
         self.current_best = None;
+        self.clock_checks = 0;
+        self.task_control.set_running(); 
         self.range = if let TimeControl::Depth(depth) = self.time_control {
             if self.iterative_deepening {
                 1..depth+1

@@ -1,19 +1,13 @@
 use crate::bitboard::Bitboard;
 use crate::board::boardbuf::BoardBuf;
-use crate::board::makemove::MoveMaker;
 use crate::board::Board;
-use crate::catalog::Catalog;
+use crate::movelist::MoveList;
 use crate::movelist::MoveValidator;
-use crate::movelist::{Move, MoveList};
-use crate::outcome::GameEnd;
-use crate::outcome::Outcome;
-use crate::search::algo::Algo;
 use crate::types::{CastlingRights, Color};
 use crate::utils::StringUtils;
 use regex::Regex;
 use std::collections::HashMap;
 use std::fmt;
-use std::time;
 
 // http://jchecs.free.fr/pdf/EPDSpecification.pdf
 
@@ -31,25 +25,25 @@ use std::time;
 // http://www.talkchess.com/forum3/viewtopic.php?t=69640&start=20
 
 #[derive(Clone, Default, Debug)]
-pub struct Epd {
+pub struct Position {
     board: Board,
     operations: HashMap<String, String>,
 }
 
 /// builder methods
-impl Epd {
+impl Position {
     /// 0. Piece placement
     /// 1. Active color
     /// 2. Castling rights
     /// 3. E/P square
     /// 4. Half move clock
     /// 5. Full move counter
-    pub fn parse(epd: &str) -> Result<Self, String> {
+    pub fn parse_epd(epd: &str) -> Result<Self, String> {
         let words = epd.split_whitespace().collect::<Vec<_>>();
         if words.len() < 4 {
             return Err(format!("Must specify at least 4 parts in EPD '{}'", epd));
         }
-        let mut pos = Epd { board: Board::parse_piece_placement(words[0])?, operations: HashMap::new() };
+        let mut pos = Position { board: Board::parse_piece_placement(words[0])?, operations: HashMap::new() };
         pos.board.set_turn(Color::parse(words[1])?);
         pos.board.set_castling(CastlingRights::parse(words[2])?);
         if words[3] == "-" {
@@ -110,8 +104,11 @@ impl Epd {
         // for cap in re.unwrap().captures_iter(s) {
         //     println!("{:?}", cap, cap.get(1).or(cap(get(2))) );
         // }
-        let vec =
-            re.unwrap().captures_iter(s).map(|cap| cap.get(1).or(cap.get(2)).or(cap.get(3)).unwrap().as_str()).collect();
+        let vec = re
+            .unwrap()
+            .captures_iter(s)
+            .map(|cap| cap.get(1).or(cap.get(2)).or(cap.get(3)).unwrap().as_str())
+            .collect();
         vec
     }
 
@@ -135,28 +132,50 @@ impl Epd {
         // for cap in re.clone().unwrap().captures_iter(s) {
         //      println!("{:?}", cap );
         // }
-        let vec =
-            re.unwrap().captures_iter(s).map(|cap| cap.get(1).or(cap.get(2)).or(cap.get(3)).unwrap().as_str()).collect();
+        let vec = re
+            .unwrap()
+            .captures_iter(s)
+            .map(|cap| cap.get(1).or(cap.get(2)).or(cap.get(3)).unwrap().as_str())
+            .collect();
         vec
     }
 
-    pub fn parse_many<I>(iter: I) -> Result<Vec<Epd>, String>
+    pub fn parse_many_epd<I>(iter: I) -> Result<Vec<Position>, String>
     where
         I: IntoIterator,
         I::Item: AsRef<str>,
     {
-        let mut vec = Vec::<Epd>::new();
+        let mut vec = Vec::<Position>::new();
         for item in iter {
             let s = item.as_ref();
             if !s.is_empty() {
-                vec.push(Self::parse(s)?);
-           }
+                vec.push(Self::parse_epd(s)?);
+            }
         }
         Ok(vec)
     }
 }
 
-impl Epd {
+impl fmt::Display for Position {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.board().to_fen())?;
+        let ops = self.operations();
+        let mut entries = ops.iter().collect::<Vec<_>>();
+        entries.sort();
+        for (k, v) in entries {
+            if v.is_empty() {
+                write!(f, " {};", k)?;
+            } else if v.contains(char::is_whitespace) {
+                write!(f, " {} \"{}\";", k, v)?;
+            } else {
+                write!(f, " {} {};", k, v)?;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl Position {
     pub const VERB_DATA_NORMALIZATION: &'static str = "pfdn";
     pub const VERB_GENERAL_ANALYSIS: &'static str = "pfga";
     pub const VERB_MATE_SEARCH: &'static str = "pfms";
@@ -173,7 +192,7 @@ impl Epd {
     pub fn operations(&self) -> HashMap<String, String> {
         self.operations.clone()
     }
-    pub fn set_attribute(&mut self, key: &str, value: &str) {
+    pub fn set_operation(&mut self, key: &str, value: &str) {
         self.operations.insert(key.to_string(), value.to_string());
     }
 
@@ -248,20 +267,21 @@ impl Epd {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::catalog::Catalog;
 
     #[test]
     fn test_split_into_operations() {
-        let vec = Epd::split_into_operations(r#"cat"meo;w";"mouse";"toad;;;;;;" ;zebra;"#);
+        let vec = Position::split_into_operations(r#"cat"meo;w";"mouse";"toad;;;;;;" ;zebra;"#);
         assert_eq!(vec, vec!["cat\"meo;w\"", "\"mouse\"", "\"toad;;;;;;\" ", "zebra"]);
 
-        let vec = Epd::split_into_operations(r#"cat'meo;w';'mouse';'toad;;;;;;' ;zebra;"#);
+        let vec = Position::split_into_operations(r#"cat'meo;w';'mouse';'toad;;;;;;' ;zebra;"#);
         assert_eq!(vec, vec!["cat\'meo;w\'", "\'mouse\'", "\'toad;;;;;;\' ", "zebra"]);
 
-        let vec = Epd::split_into_operations(r#";cat;mouse;toad;;;;;;sheep;zebra"#);
+        let vec = Position::split_into_operations(r#";cat;mouse;toad;;;;;;sheep;zebra"#);
         assert_eq!(vec, vec!["cat", "mouse", "toad", "sheep"]);
 
         // FIXME! OK, but not desirable (unmatched quote parsing)
-        let vec = Epd::split_into_operations(r#";ca"t;mouse;"#);
+        let vec = Position::split_into_operations(r#";ca"t;mouse;"#);
         assert_eq!(vec, vec!["t", "mouse"]);
         // let vec = split_on_regex("cat;mat;sat;");
         // assert_eq!(vec, vec!["cat;", "mat;", "sat;"], "cat;mat;sat;");
@@ -271,29 +291,32 @@ mod tests {
 
     #[test]
     fn test_split_words() {
-        let vec = Epd::split_into_words(r#"bm e4"#);
+        let vec = Position::split_into_words(r#"bm e4"#);
         assert_eq!(vec, vec!["bm", "e4"]);
 
-        let vec = Epd::split_into_words(r#"id "my name is bob""#);
+        let vec = Position::split_into_words(r#"id "my name is bob""#);
         assert_eq!(vec, vec!["id", "my name is bob"]);
 
-        let vec = Epd::split_into_words(r#"id 'my name is bob'"#);
+        let vec = Position::split_into_words(r#"id 'my name is bob'"#);
         assert_eq!(vec, vec!["id", "my name is bob"]);
     }
 
     #[test]
     fn test_epd_parse() -> Result<(), String> {
-        let epd = Epd::parse("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 bm e4; acd 1000; id \"TEST_CASE.1\"; draw_reject;")?;
+        // operations already ASCII ordered
+        let str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 acd 1000; bm e4; draw_reject; id \"TEST CASE.1\";";
+        let epd = Position::parse_epd(str)?;
         assert_eq!(epd.get("acd").ok(), Some("1000"));
-        assert_eq!(epd.get(Epd::BM).ok(), Some("e4"));
+        assert_eq!(epd.get(Position::BM).ok(), Some("e4"));
         assert_eq!(epd.get("draw_reject").ok(), Some(""));
-        assert_eq!(epd.id().ok(), Some("TEST_CASE.1"));
+        assert_eq!(epd.id().ok(), Some("TEST CASE.1"));
         let mut opcodes = epd.operations().keys().cloned().collect::<Vec<_>>();
         opcodes.sort();
         assert_eq!(
             opcodes.iter().map(|s| s.as_str()).collect::<Vec::<_>>(),
             vec!["acd", "bm", "draw_reject", "id"]
         );
+        assert_eq!(epd.to_string(), str);
         Ok(())
     }
 
@@ -304,12 +327,11 @@ mod tests {
             pv 1. Nf6+ gxf6 2. Bxf7#;
             c0 'Henry Buckle vs NN, London, 1840';
             c1 'http://wtharvey.com/m8n2.txt';",
-
             "r3k2r/p3bpp1/2q1p1b1/1ppPP1B1/3n3P/5NR1/PP2NP2/K1QR4 b kq - 0 1
             pv 1. .. Nb3+ 2. axb3 Qa6#;
-            c0 'Alexander Areshchenko vs Sergei Zhigalko, Kiev, 6/6/2013';"
+            c0 'Alexander Areshchenko vs Sergei Zhigalko, Kiev, 6/6/2013';",
         ];
-        let epds = Epd::parse_many(strs)?;
+        let epds = Position::parse_many_epd(strs)?;
         assert_eq!(epds.len(), 2);
         assert_eq!(epds[0].pv()?.len(), 3);
         assert_eq!(epds[1].pv()?.len(), 3);
@@ -318,14 +340,14 @@ mod tests {
 
     #[test]
     fn test_epd_basics() {
-        let mut epd = Epd::default();
+        let mut epd = Position::default();
         *epd.board_mut() = Board::parse_fen(Catalog::STARTING_POSITION_FEN).unwrap();
-        epd.set_attribute(Epd::BM, "e4");
+        epd.set_operation(Position::BM, "e4");
         assert_eq!(epd.bm().unwrap().to_string(), "e2e4");
 
-        let mut epd = Epd { board: Catalog::starting_position(), operations: HashMap::default() };
-        epd.set_attribute(Epd::BM, "e4, c4, a4");
-        epd.set_attribute(Epd::PV, "e4, e5, d3");
+        let mut epd = Position { board: Catalog::starting_position(), operations: HashMap::default() };
+        epd.set_operation(Position::BM, "e4, c4, a4");
+        epd.set_operation(Position::PV, "e4, e5, d3");
         assert_eq!(epd.bm().unwrap().to_string(), "e2e4, c2c4, a2a4");
         assert_eq!(epd.pv().unwrap().to_string(), "e2e4, e7e5, d2d3");
     }

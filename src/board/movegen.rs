@@ -5,7 +5,6 @@ use crate::board::Board;
 use crate::movelist::{Move, MoveList};
 use crate::types::{CastlingRights, Color, Piece};
 use once_cell::sync::OnceCell;
-use crate::log_debug;
 
 fn global_classical_bitboard() -> &'static ClassicalBitboard {
     static INSTANCE: OnceCell<ClassicalBitboard> = OnceCell::new();
