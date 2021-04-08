@@ -6,6 +6,7 @@ use odonata::catalog::*;
 use odonata::eval::*;
 use odonata::material::*;
 use odonata::movelist::*;
+use odonata::pvtable::*;
 use odonata::perft::Perft;
 use odonata::search::algo::Algo;
 use odonata::search::timecontrol::TimeControl;
@@ -265,6 +266,64 @@ fn benchmark_array(c: &mut Criterion) {
     group.finish();
 }
 
+fn benchmark_eval(c: &mut Criterion) {
+    let mut group = c.benchmark_group("eval");
+    let ef = &SimpleScorer::new();
+    let ef_no_pos = &SimpleScorer::new().set_position(false);
+ 
+    let bd = Catalog::white_starting_position();
+    group.bench_function("material", |b| {
+        b.iter(|| {
+            black_box(bd.eval_material(black_box(ef)));
+            black_box(bd.eval_material(black_box(ef)));
+            black_box(bd.eval_material(black_box(ef)));
+            black_box(bd.eval_material(black_box(ef)));
+        });
+    });
+    group.bench_function("position", |b| {
+        b.iter(|| {
+            black_box(bd.eval_position(black_box(ef)));
+            black_box(bd.eval_position(black_box(ef)));
+            black_box(bd.eval_position(black_box(ef)));
+            black_box(bd.eval_position(black_box(ef)));
+        });
+    });
+    group.bench_function("all", |b| {
+        b.iter(|| {
+            black_box(bd.eval(black_box(ef)));
+            black_box(bd.eval(black_box(ef)));
+            black_box(bd.eval(black_box(ef)));
+            black_box(bd.eval(black_box(ef)));
+        });
+    });
+    group.bench_function("all_less_pos", |b| {
+        b.iter(|| {
+            black_box(bd.eval(black_box(ef_no_pos)));
+            black_box(bd.eval(black_box(ef_no_pos)));
+            black_box(bd.eval(black_box(ef_no_pos)));
+            black_box(bd.eval(black_box(ef_no_pos)));
+        });
+    });
+    group.finish();
+}
+
+fn bench_chooser_pvtable(c: &mut Criterion) {
+    let mut pv_table = PvTable::new(MAX_PLY);
+    c.bench_function("pv_table", |b| {
+        b.iter(|| {
+            for i in 1..7 {
+                pv_table.set(i, black_box(&Move::new_null()));
+                pv_table.propagate_from(i);
+
+            }
+        });
+    });
+}
+
+
+
+
+
 criterion_group!(
     benches,
     bitwise_handcrafted,
@@ -282,6 +341,8 @@ criterion_group!(
     benchmark_search,
     benchmark_array,
     bench_insufficient_material,
-    benchmark_mate_in_2
+    benchmark_mate_in_2,
+    benchmark_eval,
+    bench_chooser_pvtable
 );
 criterion_main!(benches);

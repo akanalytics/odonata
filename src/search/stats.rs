@@ -19,7 +19,8 @@ impl fmt::Display for SearchStats {
         writeln!(f, "user cancelled   : {}", self.user_cancelled)?;
         writeln!(f, "depth            : {}", self.depth())?;
         writeln!(f, "selective depth  : {}", self.selective_depth())?;
-        writeln!(f, "nodes/sec (k)    : {}", self.total_knps())?;
+        writeln!(f, "tot nodes/sec (k): {}", self.total_knps())?;
+        writeln!(f, "int nodes/sec (k): {}", self.interior_knps())?;
         writeln!(f, "branching factor : {:.02}", self.branching_factor())?;
         writeln!(f)?;
 
@@ -144,6 +145,11 @@ impl SearchStats {
     #[inline]
     pub fn total_knps(&self) -> u128 {
         self.total.nodes() as u128 / (1 + self.clock.elapsed().as_millis())
+    }
+
+    #[inline]
+    pub fn interior_knps(&self) -> u128 {
+        self.total.interior_nodes() as u128 / (1 + self.clock.elapsed().as_millis())
     }
 
     #[inline]

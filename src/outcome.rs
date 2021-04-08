@@ -46,7 +46,7 @@ impl Outcome {
 
     #[inline]
     pub fn is_game_over(self) -> bool {
-        self.is_draw() | self.winning_color().is_some()
+        self != Self::InProgress
     }
 
     pub fn to_pgn(self) -> String {

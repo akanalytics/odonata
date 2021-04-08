@@ -80,8 +80,6 @@ pub struct Node<'b> {
     beta: Score,
     score: Score,
     best_move: Move,
-    // stats
-    // leaf
 }
 
 impl Node<'_> {
@@ -144,15 +142,10 @@ pub struct Algo {
     pub score: Option<Score>,
     move_time_estimator: MoveTimeEstimator,
 
-    // child_thread: Arc<Option<thread::JoinHandle<Algo>>>,
     child_thread: AlgoThreadHandle,
 
     clock_checks: u64,
     task_control: TaskControl<SearchProgress>,
-    // Eval
-    // Algo config
-    // Time controls
-    // Transposition table
 }
 
 /// builder methods
@@ -388,14 +381,15 @@ impl Algo {
             return false;
         }
 
-        if self.task_control.is_cancelled() {
-            return true;
-        }
-
         // only do this every 128th call to avoid expensive time computation
         if !force_check && self.clock_checks % 128 != 0 {
             return false;
         }
+
+        if self.task_control.is_cancelled() {
+            return true;
+        }
+
 
 
         let time_up = self.move_time_estimator.is_time_up(ply, nodes, &self.search_stats.clock.elapsed());

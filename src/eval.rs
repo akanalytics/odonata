@@ -308,14 +308,18 @@ impl SimpleScorer {
 }
 
 impl Scorable<SimpleScorer> for Board {
+
+    #[inline]
     fn eval(&self, eval: &SimpleScorer) -> Score {
         eval.evaluate(self)
     }
+    #[inline]
     fn eval_material(&self, eval: &SimpleScorer) -> Score {
         let m = Material::from_board(self);
         let s = eval.evaluate_material(&m);
         Score::Millipawns(s)
     }
+    #[inline]
     fn eval_position(&self, eval: &SimpleScorer) -> Score {
         let s = eval.evaluate_position(self);
         Score::Millipawns(s)
