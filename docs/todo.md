@@ -22,6 +22,8 @@
 
 
 - EPD processing
+  - [ ] decide on eager or lazy validation
+  - [ ] decide on how to set stuff
   - [ ] Pul from PGN quiet positions (no capture, promo or end or check)
   - [ ] Process EPD files in bulk
     - [ ] clean/validate
@@ -40,8 +42,9 @@
   - [ ] 
 
 - Specific problems
+  - [ ] Sort out logging
   - [ ] Under promotion - use Mark's extra attribute approach? 
-
+  - [ ] Better draw detection
 
 
 # Python Interface
@@ -115,6 +118,14 @@ board.white.knight_moves
 
 board.white.moves
 
+board.perform(mv)
+board.try(mv)
+board.play(mv)
+board.play_move(mv)
+
+board.apply(mv)
+board.execute(mv)
+board.undo(mv)
 
 
 
@@ -156,10 +167,24 @@ legal_moves = w.moves
 ```
 
 
+
+
+
 ## Eval 
 
+evaluate a board, position, set of positions, and a tree of positions
+return a score, set of scores, explanation of score
+
+ef.eval(board)
+ef.eval(positions)
+ef.eval(positions)
+ef = functions.material.pawn(3).rook(5)
+ef.material.evaluate(board)
+ef.position.evaluate(board)
+ef.outcome.evaluate(board)
+
 ```
-f1 = bl.eval.new()
+f1 = odo.eval.new()
 f1.material(p=300, b=400, n=700)
 f1.position(endgame)
 f1.squares.midgame.pawns[RANK_7] = 50
@@ -167,14 +192,6 @@ f1.squares.endgame.knights[a1] = -40
 f1.squares.midgame.bishops[a1] = -40
 
 f1.squares.endgame.king[RANK_1] = [1, 20, 30, 40, 40, 30, 20, 1]
-
-
- 
-odo.positions.collection("wac")[1]
-odo.positions.starting_position()
-odo.positions.chess960.get(3)
-odo.positions.chess960.random()
-
 
 odo.eval.evaluate(board).total_score
 f1 = odo.eval.new()
@@ -216,6 +233,15 @@ total        -     -   1100
 ## Search 
 
 ```
+
+algo.search(board).best_move
+
+algo.search(board)
+algo.stats
+algo.analysis
+
+
+
 scores = odo.search.alphabeta_multipv(board, f1)
 
 scores.pvs[]
@@ -236,8 +262,18 @@ algo1.stop()
 algo1.stats.nodes
 algo1.stats.branching_factor
 
+for mv in board.moves
+   score = ef.eval(board + mv)
+   if score > best_score:
+    (best_mv, best_score) = mv, score
+return best_mv
 
+best_mv, best_score = board.search(minmax(1), ef)
 
+position.pv = ?
+position.bm = ?
+position.perf = ?
+position = algo.search(board)
 
 
 algo = bl.algo.minmax(ply=3, qiesense=True, max_depth=6)
@@ -261,6 +297,12 @@ analysis[pv[0]][pv[1]].nodes ??
 ## Catalog 
 
 ```
+odo.positions.collection("wac")[1]
+odo.positions.starting_position()
+odo.positions.chess960.get(3)
+odo.positions.chess960.random()
+
+
 board = positions_lib2.startpos()
 
 board = bc.positions.board_class = BlunderBoard

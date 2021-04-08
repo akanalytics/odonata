@@ -305,18 +305,18 @@ mod tests {
     fn test_epd_parse() -> Result<(), String> {
         // operations already ASCII ordered
         let str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 acd 1000; bm e4; draw_reject; id \"TEST CASE.1\";";
-        let epd = Position::parse_epd(str)?;
-        assert_eq!(epd.get("acd").ok(), Some("1000"));
-        assert_eq!(epd.get(Position::BM).ok(), Some("e4"));
-        assert_eq!(epd.get("draw_reject").ok(), Some(""));
-        assert_eq!(epd.id().ok(), Some("TEST CASE.1"));
-        let mut opcodes = epd.operations().keys().cloned().collect::<Vec<_>>();
+        let pos = Position::parse_epd(str)?;
+        assert_eq!(pos.get("acd").ok(), Some("1000"));
+        assert_eq!(pos.get(Position::BM).ok(), Some("e4"));
+        assert_eq!(pos.get("draw_reject").ok(), Some(""));
+        assert_eq!(pos.id().ok(), Some("TEST CASE.1"));
+        let mut opcodes = pos.operations().keys().cloned().collect::<Vec<_>>();
         opcodes.sort();
         assert_eq!(
             opcodes.iter().map(|s| s.as_str()).collect::<Vec::<_>>(),
             vec!["acd", "bm", "draw_reject", "id"]
         );
-        assert_eq!(epd.to_string(), str);
+        assert_eq!(pos.to_string(), str);
         Ok(())
     }
 
@@ -339,17 +339,17 @@ mod tests {
     }
 
     #[test]
-    fn test_epd_basics() {
-        let mut epd = Position::default();
-        *epd.board_mut() = Board::parse_fen(Catalog::STARTING_POSITION_FEN).unwrap();
-        epd.set_operation(Position::BM, "e4");
-        assert_eq!(epd.bm().unwrap().to_string(), "e2e4");
+    fn test_pos_basics() {
+        let mut pos = Position::default();
+        *pos.board_mut() = Board::parse_fen(Catalog::STARTING_POSITION_FEN).unwrap();
+        pos.set_operation(Position::BM, "e4");
+        assert_eq!(pos.bm().unwrap().to_string(), "e2e4");
 
-        let mut epd = Position { board: Catalog::starting_position(), operations: HashMap::default() };
-        epd.set_operation(Position::BM, "e4, c4, a4");
-        epd.set_operation(Position::PV, "e4, e5, d3");
-        assert_eq!(epd.bm().unwrap().to_string(), "e2e4, c2c4, a2a4");
-        assert_eq!(epd.pv().unwrap().to_string(), "e2e4, e7e5, d2d3");
+        let mut pos = Position { board: Catalog::starting_position(), operations: HashMap::default() };
+        pos.set_operation(Position::BM, "e4, c4, a4");
+        pos.set_operation(Position::PV, "e4, e5, d3");
+        assert_eq!(pos.bm().unwrap().to_string(), "e2e4, c2c4, a2a4");
+        assert_eq!(pos.pv().unwrap().to_string(), "e2e4, e7e5, d2d3");
     }
 }
 

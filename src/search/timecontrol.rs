@@ -51,20 +51,6 @@ impl Default for TimeControl {
 }
 
 impl TimeControl {
-    pub fn is_time_up(&self, ply: u32, nodes: u64, elapsed: &Duration) -> bool {
-        let time_up = match self {
-            TimeControl::Depth(max_ply) => ply > *max_ply,
-            TimeControl::MoveTime(duration) => elapsed > duration,
-            TimeControl::NodeCount(max_nodes) => nodes > *max_nodes,
-            TimeControl::Infinite => false,
-            TimeControl::MateIn(_) => false,
-            TimeControl::RemainingTime { our_color, wtime, btime, winc, binc, movestogo: _ } => {
-                let (time, _inc) = our_color.chooser_wb((wtime, winc), (btime, binc));
-                *elapsed > *time / 20
-            }
-        };
-        time_up
-    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -120,6 +106,20 @@ impl fmt::Display for MoveTimeEstimator {
 }
 
 impl MoveTimeEstimator {
+    pub fn is_time_up(&self, ply: u32, nodes: u64, elapsed: &Duration) -> bool {
+        let time_up = match self.time_control {
+            TimeControl::Depth(max_ply) => ply > max_ply,
+            TimeControl::MoveTime(duration) => *elapsed > duration,
+            TimeControl::NodeCount(max_nodes) => nodes > max_nodes,
+            TimeControl::Infinite => false,
+            TimeControl::MateIn(_) => false,
+            TimeControl::RemainingTime { our_color, wtime, btime, winc, binc, movestogo: _ } => {
+                let (time, _inc) = our_color.chooser_wb((wtime, winc), (btime, binc));
+                *elapsed > time / self.moves_rem as u32
+            }
+        };
+        time_up
+    }
 
     pub fn calculate_etimates_for_ply(&mut self, _ply: u32, search_stats: &SearchStats) {
         // debug_assert!(search_stats.depth() >= ply-1, "ensure we have enough stats");

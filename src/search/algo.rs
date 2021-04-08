@@ -142,7 +142,6 @@ pub struct Algo {
     current_best: Option<Move>,
     pub best_move: Option<Move>,
     pub score: Option<Score>,
-    time_control: TimeControl,
     move_time_estimator: MoveTimeEstimator,
 
     // child_thread: Arc<Option<thread::JoinHandle<Algo>>>,
@@ -179,7 +178,6 @@ impl Algo {
     }
 
     pub fn set_timing_method(&mut self, tm: TimeControl) -> Self {
-        self.time_control = tm;
         self.move_time_estimator.time_control = tm;
         self.clone()
     }
@@ -224,7 +222,6 @@ impl fmt::Debug for Algo  {
             .field("current_best", &self.current_best)
             .field("depth", &self.max_depth)
             .field("minmax", &self.minmax)
-            .field("time_control", &self.time_control)
             .field("eval", &self.eval)
             .field("iterative_deepening", &self.iterative_deepening)
             .field("move_time_estimator", &self.move_time_estimator)
@@ -244,7 +241,6 @@ impl fmt::Display for Algo {
         writeln!(f, "depth            : {}", self.max_depth)?;
         writeln!(f, "minmax           : {}", self.minmax)?;
         writeln!(f, "iter deepening   : {}", self.iterative_deepening)?;
-        writeln!(f, "time control     : {}", self.time_control)?;
         write!(f, "{}", self.move_time_estimator)?;
         writeln!(f, "range            : {:?}", self.range)?;
         writeln!(f, "clock_checks     : {}", self.clock_checks)?;
@@ -297,7 +293,7 @@ impl Algo {
         self.current_best = None;
         self.clock_checks = 0;
         self.task_control.set_running(); 
-        self.range = if let TimeControl::Depth(depth) = self.time_control {
+        self.range = if let TimeControl::Depth(depth) = self.move_time_estimator.time_control {
             if self.iterative_deepening {
                 1..depth+1
             } else {
@@ -402,7 +398,7 @@ impl Algo {
         }
 
 
-        let time_up = self.time_control.is_time_up(ply, nodes, &self.search_stats.clock.elapsed());
+        let time_up = self.move_time_estimator.is_time_up(ply, nodes, &self.search_stats.clock.elapsed());
         if time_up {
             self.search_stats.abandoned = true;
             self.task_control.cancel();
@@ -558,8 +554,8 @@ mod tests {
 
     #[test]
     fn test_all_mate_in_2() {
-        let epds = Catalog::mate_in_2();
-        for pos in epds {
+        let positions = Catalog::mate_in_2();
+        for pos in positions {
             let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).set_callback(Uci::uci_info);
             search.search(pos.board().clone());
             println!("{}", search);
@@ -568,21 +564,32 @@ mod tests {
         }
     }
 
+    // fn test_all_mate_in_2_mock() {
+    //     let positions = Catalog::mate_in_2();
+    //     for pos in positions {
+    //         let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).set_callback(Uci::uci_info);
+    //         pos.search(eval);
+    //         println!("{}", search);
+    //         assert_eq!(search.pv.extract_pv().to_string(), pos.pv().unwrap().to_string(), "{}", pos.id().unwrap());
+    //         // FIXME assert_eq!(search.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
+    //     }
+    // }
+
 
     #[test]
     fn test_mate_in_2_iid() {
         for &id in &[false, true] {
-            let epd = Catalog::mate_in_2()[0].clone();
+            let position = Catalog::mate_in_2()[0].clone();
             let eval = SimpleScorer::new().set_position(false);
             let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(false).set_eval(eval).set_iterative_deepening(id).set_callback(Uci::uci_info);
-            search.search(epd.board().clone());
+            search.search(position.board().clone());
             println!("{}", search);
             if id { 
                 assert_eq!(search.search_stats().total().nodes(), 6740);
             } else {
                 assert_eq!(search.search_stats().total().nodes(), 7749);
             }
-            assert_eq!(search.pv.extract_pv(), epd.pv().unwrap());
+            assert_eq!(search.pv.extract_pv(), position.pv().unwrap());
             assert_eq!(search.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
         }
     }
@@ -593,26 +600,26 @@ mod tests {
 
     #[test]
     fn test_mate_in_2_async() {
-        let epd = Catalog::mate_in_2()[0].clone();
+        let position = Catalog::mate_in_2()[0].clone();
         let mut algo = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(true);
-        algo.search(epd.board().clone());
+        algo.search(position.board().clone());
         let nodes = algo.search_stats().total().nodes();
         let millis = time::Duration::from_millis(20);
         thread::sleep(millis);
 
         assert_eq!(nodes, 66234);
-        assert_eq!(algo.pv.extract_pv(), epd.pv().unwrap());
+        assert_eq!(algo.pv.extract_pv(), position.pv().unwrap());
         assert_eq!(algo.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
         println!("{}\n\nasync....", algo);
     }
 
     #[test]
     fn test_mate_in_2_async_stopped() {
-        let epd = Catalog::mate_in_2()[0].clone();
+        let position = Catalog::mate_in_2()[0].clone();
         let mut algo2 = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(true);
         let closure = |sp: &SearchProgress| { println!("nps {}", sp.time_millis.unwrap_or_default()) };
         algo2.set_callback( closure );
-        algo2.search_async(epd.board().clone());
+        algo2.search_async(position.board().clone());
         let millis = time::Duration::from_millis(200);
         thread::sleep(millis);
         algo2.search_async_stop();
@@ -625,13 +632,13 @@ mod tests {
     #[test]
     #[ignore]
     fn test_mate_in_3_sync() -> Result<(), String> {
-        let epd = Catalog::mate_in_3()[0].clone();
-        let expected_pv = epd.pv()?;
+        let position = Catalog::mate_in_3()[0].clone();
+        let expected_pv = position.pv()?;
         let mut search = Algo::new().set_timing_method(TimeControl::Depth(5)).set_minmax(false);
-        search.search(epd.board().clone());
-        let san = epd.board().to_san_moves(&search.pv.extract_pv()).replace("\n", " ");
+        search.search(position.board().clone());
+        let san = position.board().to_san_moves(&search.pv.extract_pv()).replace("\n", " ");
         println!("{}", search);
-        assert_eq!(san, epd.board().to_san_moves(&expected_pv).replace("\n", " "));
+        assert_eq!(san, position.board().to_san_moves(&expected_pv).replace("\n", " "));
         assert_eq!(search.pv.extract_pv(), expected_pv);
         assert_eq!(search.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
         Ok(())
