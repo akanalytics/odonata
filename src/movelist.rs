@@ -140,6 +140,7 @@ pub struct MoveList(Vec<Move>);
 //     fn default() -> MoveList { MoveList::new() }
 // }
 
+
 impl MoveList {
     pub fn new() -> Self {
         Self(Vec::with_capacity(250)) // TODO: capacity??

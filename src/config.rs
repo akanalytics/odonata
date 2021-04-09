@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fmt;
 
 pub trait Configurable {
-    fn define(&self, config: &mut Config);
+    fn settings(&self, config: &mut Config);
     fn configure(&mut self, config: &Config);
 }
 
@@ -75,7 +75,7 @@ mod tests {
         string: String,
     }
     impl Configurable for TestStruct {
-        fn define(&self, c: &mut Config) {
+        fn settings(&self, c: &mut Config) {
             c.set("engine.wheels", "type spin default=4 min=2 max=6");
             c.set("engine.color", "default=blue var=blue var=yellow var=red");
             c.set("engine.fast", "type check default=false");
@@ -98,7 +98,7 @@ mod tests {
 
         let mut cs2 = Config::new();
         let mut ts = TestStruct { integer: 0, string: "cat".to_string() };
-        ts.define(&mut cs2);
+        ts.settings(&mut cs2);
         println!("cs2\n{}", cs2);
 
         // check the config iterators in insertion order

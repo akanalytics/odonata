@@ -48,8 +48,8 @@ pub struct Uci {
 }
 
 impl Configurable for Uci {
-    fn define(&self, c: &mut Config) {
-        self.algo.define(c);
+    fn settings(&self, c: &mut Config) {
+        self.algo.settings(c);
         c.set("uci.debug", "type check default false");
     }
 
@@ -287,7 +287,7 @@ impl Uci {
 
     fn uci_show_options(&self) {
         let mut c = Config::new();
-        self.define(&mut c);
+        self.settings(&mut c);
         for (name, value) in c.iter() {
             println!("option name {} {}", name, value);
         }

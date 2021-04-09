@@ -66,7 +66,7 @@ pub struct MoveTimeEstimator {
 
 
 impl Configurable for MoveTimeEstimator {
-    fn define(&self, c: &mut Config) {
+    fn settings(&self, c: &mut Config) {
         c.set("mte.branching_factor", "type spin default 15 min 1 max 100");
         c.set("mte.moves_rem", "type spin default 20 min 1 max 100");
     }

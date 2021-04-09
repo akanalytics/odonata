@@ -15,7 +15,9 @@
   - [ ] better carry forward of moves 
   - [ ] windowed search
     
+- [ ] flip vertical and test casezs
 - [ ] Q-search
+- [ ] Move orderer
 - [ ] image generation
 - [ ] python interface
 - [ ] discord bot
@@ -32,6 +34,10 @@
     - [ ] material score (plus other operations eg check, draw, outcome, #legal moves, )
     - [ ]  
 
+- UCI
+  - wdl as in  UCI_ShowWDL from Leela
+  - engine wrapper
+  
 
 - Interface Rust + Python
   - [ ] Search rename/refactor
@@ -261,6 +267,18 @@ score = algo1.search_async(board)
 algo1.stop()
 algo1.stats.nodes
 algo1.stats.branching_factor
+
+engine=uci_engine
+engine.settings
+engine.configure(props)
+engine.search(board)
+
+engine=algo as algo *is* am engine
+engine=human
+engine=random
+engine=opening_book(engine)
+engine=remote ?
+
 
 for mv in board.moves
    score = ef.eval(board + mv)

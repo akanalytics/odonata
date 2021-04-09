@@ -196,7 +196,7 @@ impl Default for SimpleScorer {
 }
 
 impl Configurable for SimpleScorer {
-    fn define(&self, c: &mut Config) {
+    fn settings(&self, c: &mut Config) {
         c.set("eval.mobility", "type check default true");
         c.set("eval.position", "type check default true");
         c.set("eval.material", "type check default true");

@@ -186,11 +186,11 @@ impl Algo {
 
 
 impl Configurable for Algo {
-    fn define(&self, c: &mut Config) {
+    fn settings(&self, c: &mut Config) {
         c.set("algo.minmax", "type check default false");
         c.set("algo.ids", "type check default true");
-        self.eval.define(c);
-        self.move_time_estimator.define(c);
+        self.eval.settings(c);
+        self.move_time_estimator.settings(c);
     }
     
     fn configure(&mut self, c: &Config) {
