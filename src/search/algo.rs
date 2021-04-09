@@ -6,6 +6,7 @@ use crate::movelist::Move;
 use crate::pvtable::PvTable;
 use crate::search::timecontrol::{TimeControl, MoveTimeEstimator};
 use crate::search::stats::SearchStats;
+use crate::search::quiescence::Quiescence;
 use crate::search::searchprogress::SearchProgress;
 use crate::search::taskcontrol::TaskControl;
 use crate::movelist::MoveList;
@@ -17,6 +18,7 @@ use std::thread;
 use crate::types::MAX_PLY;
 use crate::config::{Config, Configurable};
 use crate::log_debug;
+
 
 
 
@@ -146,6 +148,7 @@ pub struct Algo {
 
     clock_checks: u64,
     task_control: TaskControl<SearchProgress>,
+    qsearch: Quiescence,
 }
 
 /// builder methods
@@ -430,6 +433,7 @@ impl Algo {
             return;
         }
         self.search_stats.inc_interior_nodes(node.ply);
+
         // // FIXME!!!!
         // if self.max_depth > self.search_stats.selective_depth() {
         //     let sp = SearchProgress::from_search_stats(&self.search_stats());

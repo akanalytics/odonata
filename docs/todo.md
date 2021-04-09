@@ -15,6 +15,8 @@
   - [ ] better carry forward of moves 
   - [ ] windowed search
     
+
+- https://www.chessprogramming.org/Eigenmann_Rapid_Engine_Test    
 - [ ] flip vertical and test casezs
 - [ ] Q-search
 - [ ] Move orderer
@@ -51,6 +53,50 @@
   - [ ] Sort out logging
   - [ ] Under promotion - use Mark's extra attribute approach? 
   - [ ] Better draw detection
+
+
+
+
+# Rust 
+
+All algos have an "off"
+Writing methods are not mut and atomic/threadsafe
+
+Has a shared parent ref, so can access everything else
+
+
+Threads per ab-search. So spawn and die on every ply of IDS. Merge stats after each ply of IDS.
+Decide on new IDSlevel before respawing threads.
+Shared interior TT and node count.
+Shared killer moves.
+Seperate stats per thread.
+Seperate time limits/controls.
+Separate PV tables.
+
+
+
+
+
+Eval
+QSearch
+AlphaBeta
+NullMove
+MoveOrdering
+IDS
+PVS
+Stats
+Analysis/PV
+TranspositionTable
+KillerMoves
+TimeController/SearchLimit
+
+Threading
+Async
+
+
+
+
+
 
 
 # Python Interface
