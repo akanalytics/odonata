@@ -45,6 +45,7 @@ pub trait MoveGen {
     fn is_legal_move(&self, mv: &Move) -> bool;
     fn pseudo_legal_moves(&self) -> MoveList;
     fn legal_moves(&self) -> MoveList;
+    fn legal_capture_moves(&self) -> MoveList;
 }
 
 impl MoveGen for Board {
@@ -74,6 +75,13 @@ impl MoveGen for Board {
         moves.retain(|m| self.is_legal_move(m));
         moves
     }
+
+    fn legal_capture_moves(&self) -> MoveList {
+        let mut moves = self.legal_moves();
+        moves.retain(|m| m.is_capture());
+        moves
+    }
+
 
     // TODO: Vec::with_capacity(100).
     fn pseudo_legal_moves(&self) -> MoveList {

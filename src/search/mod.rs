@@ -6,3 +6,4 @@ pub mod taskcontrol;
 pub mod searchprogress;
 pub mod context;
 pub mod quiescence;
+pub mod alphabeta;

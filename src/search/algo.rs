@@ -76,12 +76,12 @@ use crate::log_debug;
 //
 #[derive(Debug)]
 pub struct Node<'b> {
-    board: &'b mut Board,
-    ply: u32,
-    alpha: Score,
-    beta: Score,
-    score: Score,
-    best_move: Move,
+    pub board: &'b mut Board,
+    pub ply: u32,
+    pub alpha: Score,
+    pub beta: Score,
+    pub score: Score,
+    pub best_move: Move,
 }
 
 impl Node<'_> {
@@ -134,10 +134,10 @@ impl Node<'_> {
 pub struct Algo {
     max_depth: u32,
     range: Range<u32>,
-    minmax: bool,
+    pub minmax: bool,
     iterative_deepening: bool,
     pub eval: SimpleScorer,
-    search_stats: SearchStats,
+    pub search_stats: SearchStats,
     pub pv: PvTable,
     current_best: Option<Move>,
     pub best_move: Option<Move>,
@@ -148,7 +148,7 @@ pub struct Algo {
 
     clock_checks: u64,
     task_control: TaskControl<SearchProgress>,
-    qsearch: Quiescence,
+    pub quiescence: Quiescence,
 }
 
 /// builder methods
@@ -194,6 +194,7 @@ impl Configurable for Algo {
         c.set("algo.ids", "type check default true");
         self.eval.settings(c);
         self.move_time_estimator.settings(c);
+        self.quiescence.settings(c);
     }
     
     fn configure(&mut self, c: &Config) {
@@ -202,6 +203,7 @@ impl Configurable for Algo {
         self.iterative_deepening = c.bool("algo.ids").unwrap_or(self.iterative_deepening);
         self.eval.configure(c);
         self.move_time_estimator.configure(c);
+        self.quiescence.configure(c);
     }
 }
         
@@ -224,6 +226,7 @@ impl fmt::Debug for Algo  {
             .field("depth", &self.max_depth)
             .field("range", &self.range)
             .field("search_stats", &self.search_stats)
+            .field("quiescence", &self.quiescence)
             .finish()
     }
 }
@@ -237,9 +240,11 @@ impl fmt::Display for Algo {
         writeln!(f, "depth            : {}", self.max_depth)?;
         writeln!(f, "minmax           : {}", self.minmax)?;
         writeln!(f, "iter deepening   : {}", self.iterative_deepening)?;
-        write!(f, "{}", self.move_time_estimator)?;
         writeln!(f, "range            : {:?}", self.range)?;
         writeln!(f, "clock_checks     : {}", self.clock_checks)?;
+        write!(f, "eval\n:{}", self.eval)?;
+        write!(f, "move time estimator\n{}", self.move_time_estimator)?;
+        write!(f, "quiescence\n{}", self.quiescence)?;
         // writeln!(f, "kill             :{}", self.kill.load(atomic::Ordering::SeqCst))?;
         // writeln!(f, "kill ref counts  :{}", Arc::strong_count(&self.kill))?;
         // writeln!(f, "callback         :{}", self.callback)?;
@@ -409,7 +414,7 @@ impl Algo {
     }
 
 
-    fn order_moves(&self, node: &Node, movelist: &mut MoveList) {
+    pub fn order_moves(&self, node: &Node, movelist: &mut MoveList) {
         if node.is_root() {
             if let Some(current_best) = self.current_best {
                 if let Some(i) = movelist.iter().position(|mv| mv == &current_best) {
@@ -428,8 +433,7 @@ impl Algo {
         }
 
         if self.is_leaf(node) {
-            node.score = node.board.eval(&self.eval);
-            self.search_stats.inc_leaf_nodes(node.ply);
+            self.quiescence_search(node);
             return;
         }
         self.search_stats.inc_interior_nodes(node.ply);

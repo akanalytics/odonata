@@ -223,19 +223,19 @@ fn benchmark_search(c: &mut Criterion) {
 fn benchmark_mate_in_2(c: &mut Criterion) {
     let mut group = c.benchmark_group("mate2");
     group.sample_size(20);
+    let board = Catalog::mate_in_2()[0].board().clone();
+    let eval = SimpleScorer::new().set_position(false);
     group.bench_function("mate_in_2_ab", |b| {
         b.iter(|| {
-            let board = Catalog::mate_in_2()[0].board().clone();
-            let eval = SimpleScorer::new().set_position(false);
             let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(false).set_eval(eval).set_iterative_deepening(false);
             black_box(search.search(black_box(board)));
             assert_eq!(search.pv.extract_pv().to_string(), "d5f6, g7f6, c4f7");
         });
     });
+    let board = Catalog::mate_in_2()[0].board().clone();
+    let eval = SimpleScorer::new().set_position(false);
     group.bench_function("mate_in_2_ab_iid", |b| {
         b.iter(|| {
-            let board = Catalog::mate_in_2()[0].board().clone();
-            let eval = SimpleScorer::new().set_position(false);
             let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(false).set_eval(eval).set_iterative_deepening(true);
             black_box(search.search(black_box(board)));
             assert_eq!(search.pv.extract_pv().to_string(), "d5f6, g7f6, c4f7");

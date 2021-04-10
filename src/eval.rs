@@ -131,9 +131,19 @@ pub enum Score {
 }
 
 impl Score {
+    #[inline]
+    pub fn cp(centipawn: i32) -> Score {
+        Score::Millipawns(centipawn * 10)
+    }
+
+    #[inline]
+    pub fn mp(millipawn: i32) -> Score {
+        Score::Millipawns(millipawn)
+    }
+
     /// Outcome must be game ending else panic
     #[inline]
-    pub fn from(o: Outcome, ply: i32) -> Score {
+    pub fn from_outcome(o: Outcome, ply: i32) -> Score {
         if o.is_draw() {
             return Score::Millipawns(0);
         }
@@ -158,6 +168,7 @@ impl Score {
 impl std::ops::Add for Score {
     type Output = Self;
 
+    #[inline]
     fn add(self, other: Self) -> Self {
         if let Score::Millipawns(s1) = self {
             if let Score::Millipawns(s2) = other {
@@ -167,6 +178,30 @@ impl std::ops::Add for Score {
         panic!("Can only add millipawns not {} + {}", self, other);
     }
 }
+
+impl std::ops::Sub for Score {
+    type Output = Self;
+
+    #[inline]
+    fn sub(self, other: Self) -> Self {
+        if let Score::Millipawns(s1) = self {
+            if let Score::Millipawns(s2) = other {
+                return Score::Millipawns(s1 - s2);
+            }
+        }
+        panic!("Can only add millipawns not {} + {}", self, other);
+    }
+}
+
+impl std::ops::Neg for Score {
+    type Output = Self;
+
+    #[inline]
+    fn neg(self) -> Self {
+        self.negate()
+    }
+}
+
 
 impl fmt::Display for Score {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -183,9 +218,9 @@ impl fmt::Display for Score {
 
 #[derive(Copy, Clone, Debug)]
 pub struct SimpleScorer {
-    pub mobility: bool,
-    pub position: bool,
     pub material: bool,
+    pub position: bool,
+    pub mobility: bool,
     pub material_scores: [i32; Piece::ALL.len()],
 }
 
@@ -223,6 +258,16 @@ impl Configurable for SimpleScorer {
 }
 
 
+impl fmt::Display for SimpleScorer {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "material         : {}", self.material)?;
+        writeln!(f, "position         : {}", self.position)?;
+        writeln!(f, "mobility         : {}", self.mobility)?;
+        writeln!(f, "material scores  : {:?}", self.material_scores)?;
+        Ok(())
+    }
+}
+
 
 
 
@@ -246,7 +291,7 @@ impl SimpleScorer {
     pub fn evaluate(&self, board: &Board) -> Score {
         let outcome = board.outcome();
         if outcome.is_game_over() {
-            return Score::from(outcome, board.ply());
+            return Score::from_outcome(outcome, board.ply());
         }
 
         let s = if self.material {

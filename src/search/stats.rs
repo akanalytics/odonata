@@ -113,6 +113,17 @@ impl SearchStats {
         self.plies[ply as usize].interior_nodes += 1;
     }
 
+    #[inline]
+    pub fn inc_q_leaf_nodes(&mut self, sel_ply: u32) {
+        self.total.q_leaf_nodes += 1;
+        self.plies[sel_ply as usize].q_leaf_nodes += 1;
+    }
+
+    #[inline]
+    pub fn inc_q_interior_nodes(&mut self, sel_ply: u32) {
+        self.total.q_interior_nodes += 1;
+        self.plies[sel_ply as usize].q_interior_nodes += 1;
+    }
 
     // #[inline]
     // pub fn inc_nodes(&mut self, ply: u32) {
@@ -165,10 +176,12 @@ pub struct Stats {
     pub leaf_nodes: u64, // FIXME and terminal
     pub improvements: u64,
     pub cuts: u64,
+
+    pub q_interior_nodes: u64,
+    pub q_leaf_nodes: u64, // FIXME and terminal
+
     pub est_time: Duration,
     pub actual_time: Duration,
-    pub est_nodes: u64,
-    pub actual_nodes: u64,
 }
 
 impl Stats {
@@ -198,6 +211,21 @@ impl Stats {
         self.leaf_nodes
     }
 
+    #[inline]
+    pub fn q_interior_nodes(&self) -> u64 {
+        self.q_interior_nodes
+    }
+
+    #[inline]
+    pub fn q_nodes(&self) -> u64 {
+        self.q_interior_nodes() + self.q_leaf_nodes() // root
+    }
+
+    #[inline]
+    pub fn q_leaf_nodes(&self) -> u64 {
+        self.q_leaf_nodes
+    }
+
     pub fn cut_percentage(&self) -> u64 {
         self.cuts * 100 / (1 + self.nodes())
     }
@@ -205,12 +233,15 @@ impl Stats {
     fn fmt_header(f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "{node:>11} {interior:>11} {leaf:>11} {cut:>11} {improv:>11} {cut_perc:>6} {est_time:>11} {actual_time:>11}",
+            "{node:>11} {interior:>11} {leaf:>11} {cut:>11} {improv:>11} {cut_perc:>6} {qnode:>11} {qinterior:>11} {qleaf:>11} {est_time:>11} {actual_time:>11}",
             cut = "cuts",
             improv = "improv",
             node = "total nodes",
             interior = "interior",
             leaf = "leaf nodes",
+            qnode = "q tot nodes",
+            qinterior = "q interior",
+            qleaf = "q leaf",
             cut_perc = "cuts %",
             est_time = "est_time",
             actual_time = "actual_time",
@@ -221,13 +252,16 @@ impl Stats {
     fn fmt_underline(f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "{node:>11} {interior:>11} {leaf:>11} {cut:>11} {improv:>11} {cut_perc:>6} {est_time:>11} {actual_time:>11}",
+            "{node:>11} {interior:>11} {leaf:>11} {cut:>11} {improv:>11} {cut_perc:>6} {qnode:>11} {qinterior:>11} {qleaf:>11} {est_time:>11} {actual_time:>11}",
             cut = "-----------",
             improv = "-----------",
             node = "-----------",
             interior = "-----------",
             leaf = "-----------",
             cut_perc = "------",
+            qnode = "-----------",
+            qinterior = "-----------",
+            qleaf = "-----------",
             est_time = "-----------",
             actual_time = "-----------",
         )?;
@@ -237,13 +271,16 @@ impl Stats {
     fn fmt_data(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "{node:>11} {interior:>11} {leaf:>11} {cut:>11} {improv:>11} {cut_perc:>5}% {est_time:>11} {actual_time:>11}",
+            "{node:>11} {interior:>11} {leaf:>11} {cut:>11} {improv:>11} {cut_perc:>5}% {qnode:>11} {qinterior:>11} {qleaf:>11} {est_time:>11} {actual_time:>11}",
             improv = self.improvements,
             node = self.nodes(),
             interior = self.interior_nodes,
             leaf = self.leaf_nodes(),
             cut = self.cuts,
             cut_perc = self.cut_percentage(),
+            qnode = self.q_nodes(),
+            qinterior = self.q_interior_nodes,
+            qleaf = self.q_leaf_nodes(),
             est_time = Clock::format_duration(self.est_time),
             actual_time = Clock::format_duration(self.actual_time),
         )?;
