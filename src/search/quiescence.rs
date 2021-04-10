@@ -34,7 +34,9 @@ impl Configurable for Quiescence {
         self.enabled = c.bool("quiescence.enabled").unwrap_or(self.enabled);
         self.see = c.bool("quiescence.see").unwrap_or(self.see);
         self.max_ply = c.int("quiescence.max_ply").unwrap_or(self.max_ply as i64) as u16;
-        self.coarse_delta_prune = Score::cp(c.int("quiescence.coarse_delta_prune_cp").unwrap_or(self.coarse_delta_prune_cp as i64) as i32);
+        if let Some(cp) = c.int("quiescence.coarse_delta_prune_cp") {
+            self.coarse_delta_prune = Score::cp(cp as i32);
+        }
     }
 }
 
