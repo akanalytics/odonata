@@ -62,7 +62,7 @@ impl Algo {
     }
 
 
-    fn order_from_prior_pv(moves: &mut MoveList, var: &MoveList, pv: &MoveList ) {
+    pub fn order_from_prior_pv(moves: &mut MoveList, var: &MoveList, pv: &MoveList ) {
         // println!( "{:>30} / [{:>30}] - {}",var.to_string(), pv.to_string(), moves  );
         if pv.len() == 0 {
             return
@@ -70,8 +70,8 @@ impl Algo {
         for (i, m) in var.iter().enumerate() {
             if *m != pv[i] {
                 let best = pv[i];
-                if let Some(i) = moves.iter().position(|mv| mv == &best) {
-                    moves.swap(0, i);
+                if let Some(j) = moves.iter().position(|mv| mv == &best) {
+                    moves.swap(0, j);
                 }
                 // println!( "{:>30} / [{:>30}] ==> {}",var.to_string(), pv.to_string(), moves  );
                 return;

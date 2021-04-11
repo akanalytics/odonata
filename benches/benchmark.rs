@@ -11,6 +11,7 @@ use odonata::perft::Perft;
 use odonata::search::algo::Algo;
 use odonata::search::timecontrol::TimeControl;
 use odonata::types::*;
+use odonata::globals::constants::*;
 
 /*
 Bitboard 2.7ns (a|b)&c
@@ -307,7 +308,7 @@ fn benchmark_eval(c: &mut Criterion) {
     group.finish();
 }
 
-fn bench_chooser_pvtable(c: &mut Criterion) {
+fn bench_pvtable(c: &mut Criterion) {
     let mut pv_table = PvTable::new(MAX_PLY);
     c.bench_function("pv_table", |b| {
         b.iter(|| {
@@ -320,29 +321,58 @@ fn bench_chooser_pvtable(c: &mut Criterion) {
     });
 }
 
+fn bench_moveordering(c: &mut Criterion) {
+    let a1a2 = Move { from: a1, to: a2, ..Default::default() };
+    let a1a3 = Move { from: a1, to: a3, ..Default::default() };
+    let a1a4 = Move { from: a1, to: a4, ..Default::default() };
+    let b1a2 = Move { from: b1, to: a2, ..Default::default() };
+    let b1a3 = Move { from: b1, to: a3, ..Default::default() };
+    let b1a4 = Move { from: b1, to: a4, ..Default::default() };
+    let c1c2 = Move { from: c1, to: c2, ..Default::default() };
+    let mut movelists = vec![MoveList::new(); 100];
+    for i in 0..100 {
+        movelists[i].extend([b1a2, b1a3, b1a4, a1a3, a1a4, a1a2].iter());
+    }
+
+    let mut pv = MoveList::new();
+    pv.extend([a1a2, a1a3, a1a4].iter());
+    let mut variation = MoveList::new();
+    variation.extend([a1a2, a1a3, c1c2].iter());
+    
+
+    c.bench_function("move_orderer", |b| {
+        b.iter(|| {
+            for i in 0..100 {
+                black_box(Algo::order_from_prior_pv(black_box(&mut movelists[i]), black_box(&variation), black_box(&pv) ));
+            }
+        });
+    });
+}
+
 
 
 
 
 criterion_group!(
     benches,
+    benchmark_mate_in_2,
+    benchmark_search,
+    benchmark_perft5,
+    benchmark_eval,
+    make_move,
+    legal_moves,
+    pseudo_legal_moves,
+    bench_moveordering,
     bitwise_handcrafted,
     bitwise_bitflags,
     piece_to_upper_char,
     piece_to_char,
-    benchmark_perft5,
-    make_move,
-    legal_moves,
-    pseudo_legal_moves,
     bench_chooser_struct,
     bench_chooser_wb,
     bench_chooser_array,
     benchmark_score,
-    benchmark_search,
     benchmark_array,
     bench_insufficient_material,
-    benchmark_mate_in_2,
-    benchmark_eval,
-    bench_chooser_pvtable
+    bench_pvtable
 );
 criterion_main!(benches);

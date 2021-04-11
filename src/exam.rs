@@ -54,13 +54,13 @@ mod tests {
     #[ignore]
     fn test_exam_bk() {
         let bk = Exam::take_exam("bratko kopec", Catalog::bratko_kopec());
-        assert_eq!(bk.score, 2);
+        assert!(bk.score >= 2);
     }
 
     #[test]
     #[ignore]
     fn test_exam_wac() {
         let bk = Exam::take_exam("win at chess", Catalog::win_at_chess());
-        assert_eq!(bk.score, 117);
+        assert!(bk.score >= 117);
     }
 }
