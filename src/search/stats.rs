@@ -239,7 +239,7 @@ impl Stats {
             node = "total nodes",
             interior = "interior",
             leaf = "leaf nodes",
-            qnode = "q tot nodes",
+            qnode = "q total",
             qinterior = "q interior",
             qleaf = "q leaf",
             cut_perc = "cuts %",

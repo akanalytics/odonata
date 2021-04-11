@@ -140,7 +140,6 @@ pub struct MoveList(Vec<Move>);
 //     fn default() -> MoveList { MoveList::new() }
 // }
 
-
 impl MoveList {
     pub fn new() -> Self {
         Self(Vec::with_capacity(250)) // TODO: capacity??
@@ -149,6 +148,17 @@ impl MoveList {
     pub fn sort(&mut self) -> &mut Self {
         self.0.sort_by_key(|m| m.to_string());
         self
+    }
+
+    #[inline]
+    pub fn set_last_move(&mut self, ply: u32, mv: &Move) {
+        let ply = ply as usize;
+        // root node is ply 0, so len==ply, so ply 1 gets stored in 0th element
+        if self.0.len() == ply && ply > 0 {
+            self[ply - 1] = *mv;
+        } else {
+            self.0.resize_with(ply, || *mv);
+        }
     }
 }
 
@@ -238,7 +248,6 @@ impl MoveValidator for Board {
         let s = s.replace(",", " ");
         let s = strip_move_numbers(&s);
         for mv in s.split_ascii_whitespace() {
-            
             let mv = board.parse_san_move(mv)?;
             moves.push(mv);
             board = board.make_move(&mv);
@@ -377,6 +386,23 @@ mod tests {
         moves.push(move_a1b2);
         moves.push(promo_a7a8);
         assert_eq!(moves.to_string(), "a1b2, a7a8q");
+
+        let mut moves = MoveList::new();
+        moves.set_last_move(1, &move_a1b2);
+        assert_eq!(moves.to_string(), "a1b2");
+        moves.set_last_move(1, &promo_a7a8);
+        assert_eq!(moves.to_string(), "a7a8q");
+
+        moves.set_last_move(0, &promo_a7a8);
+        assert_eq!(moves.to_string(), "");
+
+        moves.set_last_move(1, &move_a1b2);
+        moves.set_last_move(2, &promo_a7a8);
+        assert_eq!(moves.to_string(), "a1b2, a7a8q");
+
+        moves.set_last_move(0, &promo_a7a8);
+        moves.set_last_move(2, &move_a1b2);
+        assert_eq!(moves.to_string(), "a1b2, a1b2");
 
         let s = strip_move_numbers("1. .. c4c5 2. c6c7 3.");
         assert_eq!(s, "c4c5 c6c7 ");

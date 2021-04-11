@@ -21,7 +21,7 @@ impl Player for Algo {
 
     fn choose_move(&mut self, board: &Board) -> Move {
         self.search(board.clone());
-        self.pv.extract_pv()[0]
+        self.pv_table.extract_pv()[0]
     }
 }
 

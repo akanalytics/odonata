@@ -159,7 +159,7 @@ mod tests {
         search.quiescence.enabled = false;
         search.search(pos.board().clone());
         println!("{}", search);
-        assert_eq!(search.pv.extract_pv().to_string(), pos.pv().unwrap().to_string(), "{}", pos.id().unwrap());
+        assert_eq!(search.pv_table.extract_pv().to_string(), pos.pv().unwrap().to_string(), "{}", pos.id().unwrap());
         // FIXME assert_eq!(search.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
     }
 }

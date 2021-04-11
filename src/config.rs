@@ -40,6 +40,11 @@ impl Config {
         self.settings.get(name).cloned()
     }
 
+    pub fn combo(&self, name: &str) -> Option<String> {
+        self.settings.get(name).cloned()
+    }
+
+
     pub fn int(&self, name: &str) -> Option<i64> {
         if let Some(v) = self.settings.get(name) {
             return v.parse::<i64>().ok();
