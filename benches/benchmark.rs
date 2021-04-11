@@ -229,7 +229,7 @@ fn benchmark_mate_in_2(c: &mut Criterion) {
         b.iter(|| {
             let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(false).set_eval(eval).set_iterative_deepening(false);
             black_box(search.search(black_box(board)));
-            assert_eq!(search.pv.extract_pv().to_string(), "d5f6, g7f6, c4f7");
+            assert_eq!(search.pv_table.extract_pv().to_string(), "d5f6, g7f6, c4f7");
         });
     });
     let board = Catalog::mate_in_2()[0].board().clone();
@@ -238,7 +238,7 @@ fn benchmark_mate_in_2(c: &mut Criterion) {
         b.iter(|| {
             let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(false).set_eval(eval).set_iterative_deepening(true);
             black_box(search.search(black_box(board)));
-            assert_eq!(search.pv.extract_pv().to_string(), "d5f6, g7f6, c4f7");
+            assert_eq!(search.pv_table.extract_pv().to_string(), "d5f6, g7f6, c4f7");
         });
     });
     group.finish();
