@@ -5,7 +5,7 @@ use crate::board::movegen::MoveGen;
 use crate::log_debug;
 use std::fmt;
 use crate::board::Board;
-use crate::eval::{Scorable, Score, SimpleScorer};
+use crate::eval::{Scorable, Score};
 
 
 

@@ -158,7 +158,9 @@ pub struct Algo {
 /// builder methods
 impl Algo {
     pub fn new() -> Algo {
-        Algo::default()
+        let mut algo = Algo::default();
+        algo.iterative_deepening = true;
+        algo
     }
 
 
@@ -250,14 +252,14 @@ impl fmt::Display for Algo {
         writeln!(f, "iter deepening   : {}", self.iterative_deepening)?;
         writeln!(f, "range            : {:?}", self.range)?;
         writeln!(f, "clock_checks     : {}", self.clock_checks)?;
-        write!(f, "eval\n:{}", self.eval)?;
-        write!(f, "[move orderer]\n{}", self.move_orderer)?;
-        write!(f, "[move time estimator]\n{}", self.move_time_estimator)?;
-        write!(f, "[quiescence]\n{}", self.quiescence)?;
+        write!(f, "\n[eval]\n{}", self.eval)?;
+        write!(f, "\n[move orderer]\n{}", self.move_orderer)?;
+        write!(f, "\n[move time estimator]\n{}", self.move_time_estimator)?;
+        write!(f, "\n[quiescence]\n{}", self.quiescence)?;
         // writeln!(f, "kill             :{}", self.kill.load(atomic::Ordering::SeqCst))?;
         // writeln!(f, "kill ref counts  :{}", Arc::strong_count(&self.kill))?;
         // writeln!(f, "callback         :{}", self.callback)?;
-        write!(f, "{}", self.search_stats)?;
+        write!(f, "\n[stats]\n{}", self.search_stats)?;
         Ok(())
     }
 }
@@ -453,7 +455,10 @@ impl Algo {
             return;
         }
 
-        self.order_moves(&node, &mut moves);
+        let ordered = self.order_moves(&node, &mut moves);
+        if ordered {
+            self.search_stats.inc_custom_stat(node.ply);
+        }
 
         for (_i, mv) in moves.iter().enumerate() {
             let mut child_board = node.board.make_move(mv);

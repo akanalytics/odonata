@@ -1,5 +1,6 @@
 use crate::position::Position;
 use crate::search::algo::Algo;
+use crate::config::{Config, Configurable};
 use crate::search::timecontrol::TimeControl;
 use std::fmt;
 
@@ -24,16 +25,19 @@ impl Exam {
     }
 
     pub fn take_exam(name: &str, positions: Vec<Position>) -> Exam {
+        let c = Config::new(); //.set("move_orderer.prior_bm", "true").set("move_orderer.prior_pv", "false");
+        
         let mut exam = Exam { 
             name: String::from(name),
             positions,
-            algo: Algo::default().set_timing_method(TimeControl::NodeCount(1_000_000)),
+            algo: Algo::new().set_timing_method(TimeControl::NodeCount(1_000_000)),
             .. Exam::default()
         };
-       for (i, pos) in exam.positions.iter().enumerate() {
+        exam.algo.configure(&c);
+        for (i, pos) in exam.positions.iter().enumerate() {
             exam.out_of += 1;
             exam.algo.search(pos.board().clone());
-            // println!("Algo\n{}", exam.algo);
+            println!("Algo\n{}", exam.algo);
             // println!("Position {}", pos);
             if pos.bm().ok().unwrap().contains(&exam.algo.best_move.unwrap()) {
                 exam.score += 1;
