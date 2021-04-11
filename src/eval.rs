@@ -1,11 +1,10 @@
 use crate::board::Board;
+use crate::config::{Config, Configurable};
+use crate::log_debug;
 use crate::material::Material;
 use crate::outcome::{GameEnd, Outcome};
 use crate::types::{Color, Piece};
 use std::fmt;
-use crate::config::{Config, Configurable};
-use crate::log_debug;
-
 
 // eval1 = bl.scoring.material(p=300, b=400, n=700)
 // eval2 = bl.scoring.position(endgame)
@@ -125,7 +124,7 @@ pub trait Scorable<Strategy> {
 pub enum Score {
     MinusInfinity,
     WhiteLoss { ply: i32 }, // WhiteLoss(1) < WhiteLoss(5)
-    Millipawns(i32),
+    Centipawns(i32),
     WhiteWin { minus_ply: i32 }, // // WhiteWin(-5) < WhiteWin(-1)
     PlusInfinity,
 }
@@ -133,19 +132,14 @@ pub enum Score {
 impl Score {
     #[inline]
     pub fn cp(centipawn: i32) -> Score {
-        Score::Millipawns(centipawn * 10)
-    }
-
-    #[inline]
-    pub fn mp(millipawn: i32) -> Score {
-        Score::Millipawns(millipawn)
+        Score::Centipawns(centipawn)
     }
 
     /// Outcome must be game ending else panic
     #[inline]
     pub fn from_outcome(o: Outcome, ply: i32) -> Score {
         if o.is_draw() {
-            return Score::Millipawns(0);
+            return Score::Centipawns(0);
         }
         if let Some(c) = o.winning_color() {
             return c.chooser_wb(Score::WhiteWin { minus_ply: -ply }, Score::WhiteLoss { ply });
@@ -158,7 +152,7 @@ impl Score {
         match self {
             Self::MinusInfinity => Self::PlusInfinity,
             Self::WhiteLoss { ply } => Self::WhiteWin { minus_ply: -ply },
-            Self::Millipawns(s) => Self::Millipawns(-s),
+            Self::Centipawns(s) => Self::Centipawns(-s),
             Self::WhiteWin { minus_ply } => Self::WhiteLoss { ply: -minus_ply },
             Self::PlusInfinity => Self::MinusInfinity,
         }
@@ -170,12 +164,12 @@ impl std::ops::Add for Score {
 
     #[inline]
     fn add(self, other: Self) -> Self {
-        if let Score::Millipawns(s1) = self {
-            if let Score::Millipawns(s2) = other {
-                return Score::Millipawns(s1 + s2);
+        if let Score::Centipawns(s1) = self {
+            if let Score::Centipawns(s2) = other {
+                return Score::Centipawns(s1 + s2);
             }
         }
-        panic!("Can only add millipawns not {} + {}", self, other);
+        panic!("Can only add centipawns not {} + {}", self, other);
     }
 }
 
@@ -184,12 +178,12 @@ impl std::ops::Sub for Score {
 
     #[inline]
     fn sub(self, other: Self) -> Self {
-        if let Score::Millipawns(s1) = self {
-            if let Score::Millipawns(s2) = other {
-                return Score::Millipawns(s1 - s2);
+        if let Score::Centipawns(s1) = self {
+            if let Score::Centipawns(s2) = other {
+                return Score::Centipawns(s1 - s2);
             }
         }
-        panic!("Can only add millipawns not {} + {}", self, other);
+        panic!("Can only add centipawns not {} + {}", self, other);
     }
 }
 
@@ -201,7 +195,6 @@ impl std::ops::Neg for Score {
         self.negate()
     }
 }
-
 
 impl fmt::Display for Score {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -235,11 +228,11 @@ impl Configurable for SimpleScorer {
         c.set("eval.mobility", "type check default true");
         c.set("eval.position", "type check default true");
         c.set("eval.material", "type check default true");
-        c.set("eval.material.p", "type spin default 100 min -10000 max 10000");
-        c.set("eval.material.n", "type spin default 325 min -10000 max 10000");
-        c.set("eval.material.b", "type spin default 350 min -10000 max 10000");
-        c.set("eval.material.r", "type spin default 500 min -10000 max 10000");
-        c.set("eval.material.q", "type spin default 900 min -10000 max 10000");
+        c.set("eval.material.p", &("type spin min -10000 max 10000 default ".to_string() + &Piece::Pawn.centipawns().to_string()));
+        c.set("eval.material.n", &("type spin min -10000 max 10000 default ".to_string() + &Piece::Knight.centipawns().to_string()));
+        c.set("eval.material.b", &("type spin min -10000 max 10000 default ".to_string() + &Piece::Bishop.centipawns().to_string()));
+        c.set("eval.material.r", &("type spin min -10000 max 10000 default ".to_string() + &Piece::Rook.centipawns().to_string()));
+        c.set("eval.material.q", &("type spin min -10000 max 10000 default ".to_string() + &Piece::Queen.centipawns().to_string()));
     }
 
     fn configure(&mut self, c: &Config) {
@@ -251,12 +244,11 @@ impl Configurable for SimpleScorer {
             let mut name = "eval.material.".to_string();
             name.push(p.to_char(Some(Color::Black)));
             if let Some(i) = c.int(&name) {
-                self.material_scores[*p] = 10 * i as i32;
+                self.material_scores[*p] =  i as i32;
             }
         }
     }
 }
-
 
 impl fmt::Display for SimpleScorer {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -268,26 +260,27 @@ impl fmt::Display for SimpleScorer {
     }
 }
 
-
-
-
 // builder methods
 impl SimpleScorer {
     pub fn new() -> Self {
-        const MATERIAL_SCORES: [i32; Piece::ALL.len()] = [1000, 3250, 3500, 5000, 9000, 0];
+        const MATERIAL_SCORES: [i32; Piece::ALL.len()] = [
+            Piece::Pawn.centipawns(),
+            Piece::Knight.centipawns(),
+            Piece::Bishop.centipawns(),
+            Piece::Rook.centipawns(),
+            Piece::Queen.centipawns(),
+            0, // king
+        ];
         SimpleScorer { mobility: true, position: true, material: true, material_scores: MATERIAL_SCORES }
     }
 
-    pub fn set_position(&mut self, enabled: bool ) -> Self {
+    pub fn set_position(&mut self, enabled: bool) -> Self {
         self.position = enabled;
         self.clone()
     }
 }
 
-
-
 impl SimpleScorer {
-
     pub fn evaluate(&self, board: &Board) -> Score {
         let outcome = board.outcome();
         if outcome.is_game_over() {
@@ -301,7 +294,7 @@ impl SimpleScorer {
             0
         };
         let p = if self.position { self.evaluate_position(board) } else { 0 };
-        Score::Millipawns(s + p)
+        Score::Centipawns(s + p)
     }
 
     //     // too expensive to check for checkmate, so we just quickly check some draw conditions
@@ -312,7 +305,7 @@ impl SimpleScorer {
     //     let mat = Material::from_board(board);
     //     let s = Self::evaluate_material(&mat);
     //     // let s = Material::is_insufficient2(board);
-    //     Score::Millipawns(s)
+    //     Score::Centipawns(s)
     // }
 
     // always updated
@@ -335,15 +328,15 @@ impl SimpleScorer {
             let score_b: i32 = b.iter().map(|bb| Self::pst(p, bb.first_square())).sum();
             sum += score_w - score_b;
         }
-        sum * 10
+        sum
     }
 
     // updated on capture & promo
     pub fn evaluate_material(&self, mat: &Material) -> i32 {
         let mut total = 0_i32;
         for &p in &Piece::ALL {
-            total += self.material_scores[p.index()]
-                * (mat.counts(Color::White, p) - mat.counts(Color::Black, p));
+            total +=
+                self.material_scores[p.index()] * (mat.counts(Color::White, p) - mat.counts(Color::Black, p));
         }
         total
     }
@@ -353,7 +346,6 @@ impl SimpleScorer {
 }
 
 impl Scorable<SimpleScorer> for Board {
-
     #[inline]
     fn eval(&self, eval: &SimpleScorer) -> Score {
         eval.evaluate(self)
@@ -362,12 +354,12 @@ impl Scorable<SimpleScorer> for Board {
     fn eval_material(&self, eval: &SimpleScorer) -> Score {
         let m = Material::from_board(self);
         let s = eval.evaluate_material(&m);
-        Score::Millipawns(s)
+        Score::Centipawns(s)
     }
     #[inline]
     fn eval_position(&self, eval: &SimpleScorer) -> Score {
         let s = eval.evaluate_position(self);
-        Score::Millipawns(s)
+        Score::Centipawns(s)
     }
 }
 
@@ -379,35 +371,34 @@ mod tests {
 
     #[test]
     fn score_material() {
-        assert_eq!(Score::Millipawns(1).negate(), Score::Millipawns(-1));
+        assert_eq!(Score::Centipawns(1).negate(), Score::Centipawns(-1));
         assert_eq!(Score::WhiteWin { minus_ply: -1 }.negate(), Score::WhiteLoss { ply: 1 });
         assert_eq!(Score::WhiteLoss { ply: 1 }.negate(), Score::WhiteWin { minus_ply: -1 });
         assert_eq!(Score::MinusInfinity.negate(), Score::PlusInfinity);
         assert!(Score::MinusInfinity < Score::PlusInfinity);
-        assert!(Score::Millipawns(-5) < Score::Millipawns(5));
-        assert!(Score::Millipawns(5) < Score::WhiteWin { minus_ply: 0 });
-        assert!(Score::Millipawns(1000) > Score::Millipawns(0));
+        assert!(Score::Centipawns(-5) < Score::Centipawns(5));
+        assert!(Score::Centipawns(5) < Score::WhiteWin { minus_ply: 0 });
+        assert!(Score::Centipawns(100) > Score::Centipawns(0));
         assert!(Score::WhiteWin { minus_ply: 1 } < Score::PlusInfinity);
         assert!(Score::WhiteWin { minus_ply: 0 } == Score::WhiteWin { minus_ply: 0 });
 
         let board = Catalog::starting_position();
         let eval = &SimpleScorer::new();
-        assert_eq!(board.eval(eval), Score::Millipawns(0));
+        assert_eq!(board.eval(eval), Score::Centipawns(0));
 
-        let starting_pos_score = 8 * 1000 + 2 * 3250 + 2 * 3500 + 2 * 5000 + 9000;
+        let starting_pos_score = 8 * 100 + 2 * 325 + 2 * 350 + 2 * 500 + 900;
         let board = Catalog::white_starting_position();
-        assert_eq!(board.eval_material(eval), Score::Millipawns(starting_pos_score));
+        assert_eq!(board.eval_material(eval), Score::Centipawns(starting_pos_score));
 
         let board = Catalog::black_starting_position();
-        assert_eq!(board.eval_material(eval), Score::Millipawns(starting_pos_score).negate());
+        assert_eq!(board.eval_material(eval), Score::Centipawns(starting_pos_score).negate());
     }
-
 
     #[test]
     fn eval_configure() {
         let mut eval = SimpleScorer::new();
         eval.configure(&Config::new().set("eval.material.b", "700"));
-        assert_eq!(eval.material_scores[Piece::Bishop], 7000);
+        assert_eq!(eval.material_scores[Piece::Bishop], 700);
 
         let mut eval = SimpleScorer::new();
         eval.configure(&Config::new().set("eval.position", "false"));
@@ -419,18 +410,18 @@ mod tests {
         let eval = &SimpleScorer::new();
 
         let bd = Board::parse_fen("8/P7/8/8/8/8/8/8 w - - 0 1").unwrap().as_board();
-        assert_eq!(bd.eval_position(eval), Score::Millipawns(10 * 50));
+        assert_eq!(bd.eval_position(eval), Score::Centipawns(50));
 
         let bd = Board::parse_fen("8/4p3/8/8/8/8/8/8 w - - 0 1").unwrap().as_board();
-        assert_eq!(bd.eval_position(eval), Score::Millipawns(10 * --35));
+        assert_eq!(bd.eval_position(eval), Score::Centipawns(--35));
 
         let w = Catalog::white_starting_position();
-        assert_eq!(w.eval_position(eval), Score::Millipawns(-1250));
+        assert_eq!(w.eval_position(eval), Score::Centipawns(-125));
 
         let b = Catalog::black_starting_position();
         assert_eq!(w.eval_position(eval), b.eval_position(eval).negate());
 
         let bd = Board::parse_fen("8/8/8/8/8/8/p7/8 b - - 0 1").unwrap().as_board();
-        assert_eq!(bd.eval_position(eval), Score::Millipawns(10 * -50));
+        assert_eq!(bd.eval_position(eval), Score::Centipawns(-50));
     }
 }

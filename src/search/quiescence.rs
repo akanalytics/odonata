@@ -23,7 +23,7 @@ pub struct Quiescence {
 
 impl Configurable for Quiescence {
     fn settings(&self, c: &mut Config) {
-        c.set("quiescence.enabled", "type check default true");
+        c.set("quiescence.enabled", "type check default false");
         c.set("quiescence.see", "type check default true");
         c.set("quiescence.max_ply", "type spin default 15 min 0 max 100");
         c.set("quiescence.coarse_delta_prune_cp", "type spin default 900 min 0 max 10000");
@@ -156,7 +156,7 @@ mod tests {
     fn test_all_mate_in_2() {
         let pos = &Catalog::mate_in_2()[0];
         let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).set_callback(Uci::uci_info);
-        search.quiescence.enabled = true;
+        search.quiescence.enabled = false;
         search.search(pos.board().clone());
         println!("{}", search);
         assert_eq!(search.pv.extract_pv().to_string(), pos.pv().unwrap().to_string(), "{}", pos.id().unwrap());
@@ -171,7 +171,7 @@ mod tests {
     //         }
     //     }
 
-    //     Score::Millipawns(0)
+    //     Score::Centipawns(0)
     // }
 
         // {

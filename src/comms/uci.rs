@@ -371,7 +371,7 @@ impl<'a> fmt::Display for UciInfo<'a> {
         if let Some(score) = self.0.score {
             // FIXME from engines point of view, not white's
             match score {
-                Score::Millipawns(mp) => write!(f, "score cp {} ", mp / 10)?,
+                Score::Centipawns(cp) => write!(f, "score cp {} ", cp)?,
                 // FIXME negate for engine loss
                 Score::WhiteWin { minus_ply } => write!(f, "mate {} ", (-minus_ply + 1) / 2)?,
                 Score::WhiteLoss { ply } => write!(f, "score mate {} ", (ply + 1) / 2)?,
@@ -478,8 +478,8 @@ mod tests {
         uci.preamble.push("setoption name eval.position value false".into());
         uci.preamble.push("quit".into());
         uci.run();
-        assert_eq!(uci.algo.eval.material_scores[Piece::Bishop], 7000);
-        assert_eq!(uci.algo.eval.material_scores[Piece::Pawn], 1000);
+        assert_eq!(uci.algo.eval.material_scores[Piece::Bishop], 700);
+        assert_eq!(uci.algo.eval.material_scores[Piece::Pawn], 100);
         assert_eq!(uci.algo.eval.position, false);
     }
 

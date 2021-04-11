@@ -242,7 +242,7 @@ impl Search {
             let board2 = node.board.make_move(mv);
             let mut child = self.new_child(node, mv, &board2);
             self.alphabeta(&mut child);
-            if child.score > Score::Millipawns(1000) {
+            if child.score > Score::Centipawns(1000) {
                 // info!("Ply:{}  Move:{} score:{} bm:{} a:{} b:{}", child.ply, mv.uci(), child.score, self.best_move, self.alpha, self.beta);
             }
             let is_cut = self.process_child(&mv, &child);

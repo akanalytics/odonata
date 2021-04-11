@@ -284,6 +284,20 @@ impl Piece {
         }
     }
 
+    /// coarse value in centipawns
+    #[inline]
+    pub const fn centipawns(&self) -> i32 {
+        match self {
+            Piece::None => 0,
+            Piece::Pawn => 100,
+            Piece::Knight => 325,
+            Piece::Bishop => 350,
+            Piece::Rook => 500,
+            Piece::Queen => 900,
+            Piece::King => 10000,
+        }
+    }
+
     #[inline]
     pub fn from_char(ch: char) -> Result<Piece, String> {
         Ok(match ch.to_ascii_uppercase() {
