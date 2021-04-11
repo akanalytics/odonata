@@ -9,6 +9,7 @@ use crate::search::stats::SearchStats;
 use crate::search::quiescence::Quiescence;
 use crate::search::searchprogress::SearchProgress;
 use crate::search::taskcontrol::TaskControl;
+use crate::search::move_orderer::MoveOrderer;
 use crate::movelist::MoveList;
 use crate::types::Color;
 use crate::search::clock::Clock;
@@ -139,10 +140,11 @@ pub struct Algo {
     pub eval: SimpleScorer,
     pub search_stats: SearchStats,
     pub pv: PvTable,
-    current_best: Option<Move>,
+    pub current_best: Option<Move>,
     pub best_move: Option<Move>,
     pub score: Option<Score>,
     move_time_estimator: MoveTimeEstimator,
+    pub move_orderer: MoveOrderer,
 
     child_thread: AlgoThreadHandle,
 
@@ -194,6 +196,7 @@ impl Configurable for Algo {
         c.set("algo.ids", "type check default true");
         self.eval.settings(c);
         self.move_time_estimator.settings(c);
+        self.move_orderer.settings(c);
         self.quiescence.settings(c);
     }
     
@@ -202,6 +205,7 @@ impl Configurable for Algo {
         self.minmax = c.bool("algo.minmax").unwrap_or(self.minmax);
         self.iterative_deepening = c.bool("algo.ids").unwrap_or(self.iterative_deepening);
         self.eval.configure(c);
+        self.move_orderer.configure(c);
         self.move_time_estimator.configure(c);
         self.quiescence.configure(c);
     }
@@ -222,6 +226,7 @@ impl fmt::Debug for Algo  {
             .field("minmax", &self.minmax)
             .field("eval", &self.eval)
             .field("iterative_deepening", &self.iterative_deepening)
+            .field("move_orderer", &self.move_orderer)
             .field("move_time_estimator", &self.move_time_estimator)
             .field("depth", &self.max_depth)
             .field("range", &self.range)
@@ -243,6 +248,7 @@ impl fmt::Display for Algo {
         writeln!(f, "range            : {:?}", self.range)?;
         writeln!(f, "clock_checks     : {}", self.clock_checks)?;
         write!(f, "eval\n:{}", self.eval)?;
+        write!(f, "move orderer\n{}", self.move_orderer)?;
         write!(f, "move time estimator\n{}", self.move_time_estimator)?;
         write!(f, "quiescence\n{}", self.quiescence)?;
         // writeln!(f, "kill             :{}", self.kill.load(atomic::Ordering::SeqCst))?;
@@ -413,17 +419,6 @@ impl Algo {
         node.ply == self.max_depth
     }
 
-
-    pub fn order_moves(&self, node: &Node, movelist: &mut MoveList) {
-        if node.is_root() {
-            if let Some(current_best) = self.current_best {
-                if let Some(i) = movelist.iter().position(|mv| mv == &current_best) {
-                    // println!("Swapped move {} with position {} on depth {}!", current_best, i, self.max_depth);
-                    movelist.swap(0, i);
-                }
-            }
-        }
-    }
 
     pub fn alphabeta(&mut self, node: &mut Node) {
         debug_assert!(self.max_depth > 0);

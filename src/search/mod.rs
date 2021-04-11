@@ -7,3 +7,4 @@ pub mod searchprogress;
 pub mod context;
 pub mod quiescence;
 pub mod alphabeta;
+pub mod move_orderer;
