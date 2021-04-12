@@ -100,6 +100,15 @@ impl Move {
         !self.ep.is_empty() && !self.is_capture()
     }
 
+    pub fn mvv_lva_score(&self) -> i32 {
+        let mut score = self.capture.centipawns() * 10 - self.mover.centipawns() / 10;
+        if self.is_promo() {
+            score += self.promo.centipawns() * 10 - self.mover.centipawns() / 10;
+        }
+        score
+    }
+
+
     pub fn uci(&self) -> String {
         if self.is_null() {
             return String::from('-');

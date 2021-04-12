@@ -100,6 +100,12 @@ impl Algo {
         }
         return false;
     }
+
+
+    pub fn order_by_mvv_lva(moves: &mut MoveList) {
+        
+
+    }
 }
 
 #[cfg(test)]
