@@ -19,13 +19,16 @@ impl fmt::Display for Exam {
     }
 }
 
+use crate::comms::uci::Uci;
+
 impl Exam {
     pub fn percentage(&self) -> f32 {
         100.0 * self.score as f32 / self.out_of as f32
     }
 
     pub fn take_exam(name: &str, positions: Vec<Position>) -> Exam {
-        let c = Config::new(); //.set("move_orderer.prior_bm", "true").set("move_orderer.prior_pv", "false");
+        let c = Config::new();
+        //.set("move_orderer.prior_bm", "true").set("move_orderer.prior_pv", "false");
         
         let mut exam = Exam { 
             name: String::from(name),
@@ -34,10 +37,11 @@ impl Exam {
             .. Exam::default()
         };
         exam.algo.configure(&c);
+        // exam.algo.set_callback(Uci::uci_info);
         for (i, pos) in exam.positions.iter().enumerate() {
             exam.out_of += 1;
             exam.algo.search(pos.board().clone());
-            println!("Algo\n{}", exam.algo);
+            // println!("Algo\n{}", exam.algo);
             // println!("Position {}", pos);
             if pos.bm().ok().unwrap().contains(&exam.algo.best_move.unwrap()) {
                 exam.score += 1;

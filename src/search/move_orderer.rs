@@ -72,23 +72,12 @@ impl Algo {
         if pv.len() == 0 {
             return false;
         }
-        if var.len() == 0 {
-            if let Some(j) = moves.iter().position(|mv| mv == &pv[0]) {
-                moves.swap(0, j);
-                //println!("{:>30} / [{:>30}] ==> {}", var.to_string(), pv.to_string(), moves);
-                return true;
-            }
-            return false;
-        }
-        // pv and var both len >= 1 to get here
-
         if var.len() >= pv.len() { 
             return false;  // we're already exploring beyond what we have pv for
         }
 
-        let l = var.len() - 1;
-        if var[0..l] == pv[0..l] {
-            let best = pv[l];
+        if pv.starts_with(var) {
+            let best = pv[var.len()];
             if let Some(j) = moves.iter().position(|mv| mv == &best) {
                 moves.swap(0, j);
                 return true;
@@ -118,42 +107,67 @@ mod tests {
         let b1a4 = Move { from: b1, to: a4, ..Default::default() };
         let c1c2 = Move { from: c1, to: c2, ..Default::default() };
 
-        let mut moves = MoveList::new();
-        moves.extend([b1a2, b1a3, b1a4, a1a3, a1a4, a1a2].iter());
+        let mut moves_orig = MoveList::new();
+        moves_orig.extend([b1a2, b1a3, b1a4, a1a3, a1a4, a1a2].iter());
+        assert_eq!(moves_orig.to_string(), "b1a2, b1a3, b1a4, a1a3, a1a4, a1a2");
 
         let mut pv = MoveList::new();
         pv.extend([a1a2, a1a3, a1a4].iter());
 
         // if variation = empty, and pv = empty, no ordering
         let variation = MoveList::new();
+        let mut moves = moves_orig.clone();
         Algo::order_from_prior_pv(&mut moves, &variation, &variation);
         assert_eq!(moves.to_string(), "b1a2, b1a3, b1a4, a1a3, a1a4, a1a2");
 
         // if variation = empty, use pv[0] if it exists
         let mut variation = MoveList::new();
+        let mut moves = moves_orig.clone();
         Algo::order_from_prior_pv(&mut moves, &variation, &pv);
         assert_eq!(moves.to_string(), "a1a2, b1a3, b1a4, a1a3, a1a4, b1a2");
 
+        // variation strays from PV - no reordering
+        // pv = a1a2 a1a3 a1a4   var = a1a2 c1c2
+        let mut moves = moves_orig.clone();
         variation.extend([a1a2, c1c2].iter());
         Algo::order_from_prior_pv(&mut moves, &variation, &pv);
-        assert_eq!(moves.to_string(), "a1a3, b1a3, b1a4, a1a2, a1a4, b1a2");
+        assert_eq!(moves_orig.to_string(), "b1a2, b1a3, b1a4, a1a3, a1a4, a1a2");
 
+        // variation strays from PV - no reordering
+        // pv = a1a2 a1a3 a1a4   var = a1a2 a1a3 c1c2
         let mut variation = MoveList::new();
         variation.extend([a1a2, a1a3, c1c2].iter());
+        let mut moves = moves_orig.clone();
         Algo::order_from_prior_pv(&mut moves, &variation, &pv);
-        assert_eq!(moves.to_string(), "a1a4, b1a3, b1a4, a1a2, a1a3, b1a2");
+        assert_eq!(moves.to_string(), "b1a2, b1a3, b1a4, a1a3, a1a4, a1a2");
 
         // if variation = pv, no movelist ordering
-        let mut moves = MoveList::new();
-        moves.extend([b1a2, b1a3, b1a4, a1a3, a1a4, a1a2].iter());
+        let mut moves = moves_orig.clone();
         Algo::order_from_prior_pv(&mut moves, &pv, &pv);
-        assert_eq!(moves.to_string(), "b1a2, b1a3, b1a4, a1a3, a1a4, a1a2");
+
+        // variation is PV[0] - use PV[1]
+        // pv = a1a2 a1a3 a1a4   var = a1a2
+        let mut variation = MoveList::new();
+        variation.extend([a1a2].iter());
+        let mut moves = moves_orig.clone();
+        Algo::order_from_prior_pv(&mut moves, &variation, &pv);
+        assert_eq!(moves.to_string(), "a1a3, b1a3, b1a4, b1a2, a1a4, a1a2");
+
+        // variation is PV[0] and [1] - use PV[2]
+        // pv = a1a2 a1a3 a1a4   var = a1a2 a1a3
+        let mut moves = moves_orig.clone();
+        let mut variation = MoveList::new();
+        variation.extend([a1a2, a1a3].iter());
+        Algo::order_from_prior_pv(&mut moves, &variation, &pv);
+        assert_eq!(moves.to_string(), "a1a4, b1a3, b1a4, a1a3, b1a2, a1a2");
+
+
     }
 
     #[test]
     fn test_compare() {
         let position = &Catalog::mate_in_2()[0];
-        let mut algo = Algo::new().set_timing_method(TimeControl::Depth(5));
+        let mut algo = Algo::new().set_timing_method(TimeControl::Depth(3));
         algo.move_orderer.enabled = false;
         algo.move_orderer.prior_bm = false;
         algo.move_orderer.prior_pv = false;

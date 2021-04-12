@@ -34,6 +34,7 @@ pub mod config;
 pub mod logger;
 pub mod position;
 pub mod exam;
+pub mod stat;
 
 pub use crate::attacks::ClassicalBitboard;
 pub use crate::bitboard::Bitboard;

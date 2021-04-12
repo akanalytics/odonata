@@ -401,14 +401,15 @@ impl Algo {
             return false;
         }
 
+        if self.task_control.is_cancelled() {
+            return true;
+        }
+
         // only do this every 128th call to avoid expensive time computation
         if !force_check && self.clock_checks % 128 != 0 {
             return false;
         }
 
-        if self.task_control.is_cancelled() {
-            return true;
-        }
 
 
 
@@ -433,6 +434,10 @@ impl Algo {
             self.task_control.invoke_callback(&sp);
         }
 
+        if self.time_up_or_cancelled(node.ply, self.search_stats.total().nodes(), false) {
+            return;
+        }
+
         if self.is_leaf(node) {
             self.quiescence_search(node);
             return;
@@ -445,9 +450,6 @@ impl Algo {
         //     self.task_control.invoke_callback(&sp);
         // }
         // bailing here means the score is +/- inf and wont be used
-        if self.time_up_or_cancelled(node.ply, self.search_stats.total().nodes(), false) {
-            return;
-        }
 
         let mut moves = node.board.legal_moves();
         if moves.is_empty() {
@@ -593,7 +595,8 @@ mod tests {
             search.search(position.board().clone());
             println!("{}", search);
             if id { 
-                assert_eq!(search.search_stats().total().nodes(), 3560);
+                // assert_eq!(search.search_stats().total().nodes(), 3560);
+                assert_eq!(search.search_stats().total().nodes(), 6553);
                 // assert_eq!(search.search_stats().total().nodes(), 6740);
             } else {
                 assert_eq!(search.search_stats().total().nodes(), 7749);
