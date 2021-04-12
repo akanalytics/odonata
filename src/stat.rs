@@ -3,26 +3,36 @@ use std::fmt;
 use std::sync::atomic::{AtomicI64, Ordering};
 
 #[derive(Default, Debug)]
-struct Stat {
+pub struct Stat {
     name: String,
     counter: AtomicI64,
 }
 
 #[derive(Debug, Default)]
-struct PlyStat {
+pub struct PlyStat {
     name: String,
     values: Box<[AtomicI64]>,
 }
 
+impl Clone for PlyStat {
+    fn clone(&self) -> Self {
+        let ps = PlyStat::new(self.name());
+        for ply in 0..self.len() {
+            ps.set(ply as u32, self.get(ply as u32));
+        }
+        ps
+    }
+}
 
-struct ArrayStat<'a> (&'a [&'a Stat]);
+
+pub struct ArrayStat<'a> (&'a [&'a Stat]);
 
 impl fmt::Display for ArrayStat<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "{:<20} {:>11}", "name", "value")?;
         writeln!(f, "{:<20} {:>11}", "--------------------", "-----------")?;
         for s in self.0.iter() {
-            writeln!(f, "{:<20} {:>11}", s.name(), s.value())?;
+            writeln!(f, "{:<20} {:>11}", s.name(), s.get())?;
         }
         Ok(())
     }
@@ -41,7 +51,7 @@ impl Stat {
         self.counter.store(value, Ordering::Relaxed);
     }
 
-    pub fn value(&self) -> i64 {
+    pub fn get(&self) -> i64 {
         self.counter.load(Ordering::Relaxed)
     }
 
@@ -50,7 +60,7 @@ impl Stat {
     }
 }
 
-struct ArrayPlyStat<'a> (&'a [&'a PlyStat]);
+pub struct ArrayPlyStat<'a> (pub &'a [&'a PlyStat]);
 
 impl fmt::Display for ArrayPlyStat<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -70,7 +80,7 @@ impl PlyStat {
     }
 
     pub fn len(&self) -> usize {
-        if let Some(d) = (0..MAX_PLY).rposition(|ply| self.value(ply as u32) != 0) {
+        if let Some(d) = (0..MAX_PLY).rposition(|ply| self.get(ply as u32) != 0) {
             return 1 + d; // 1 off the end for all "size" types
         }
         0
@@ -96,7 +106,7 @@ impl PlyStat {
         self.values[ply as usize].store(value, Ordering::Relaxed);
     }
 
-    pub fn value(&self, ply: u32) -> i64 {
+    pub fn get(&self, ply: u32) -> i64 {
         self.values[ply as usize].load(Ordering::Relaxed)
     }
 
@@ -105,24 +115,27 @@ impl PlyStat {
     }
 
     fn fmt_header(f: &mut fmt::Formatter, stats: &[&PlyStat]) -> fmt::Result {
+        write!(f, "{:>3} ", "ply")?; 
         for s in stats.iter() {
-            write!(f, "{:>3} {:>14}", "ply", s.name(),)?;
+            write!(f, "{:>14}", s.name())?;
         }
         writeln!(f)?;
         Ok(())
     }
 
     fn fmt_underline(f: &mut fmt::Formatter, stats: &[&PlyStat]) -> fmt::Result {
+        write!(f, "{:>3} ", "---")?; 
         for _s in stats.iter() {
-            write!(f, "{:>3} {:>14}", "---", "-------------",)?;
+            write!(f, "{:>14}", "-------------")?;
         }
         writeln!(f)?;
         Ok(())
     }
 
     fn fmt_data(f: &mut fmt::Formatter, stats: &[&PlyStat], ply: u32) -> fmt::Result {
+        write!(f, "{:>3} ", ply)?; 
         for s in stats.iter() {
-            write!(f, "{:>3} {:>14}", ply, s.value(ply),)?;
+            write!(f, "{:>14}", s.get(ply),)?;
         }
         writeln!(f)?;
         Ok(())
@@ -150,5 +163,6 @@ mod tests {
         ps.add(5, 10);
         ps.add(2, 4);
         println!("{}", ArrayPlyStat(&[&ps]));
+        println!("{}", ArrayPlyStat(&[&ps.clone()]));
     }
 }

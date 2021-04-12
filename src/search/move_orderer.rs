@@ -2,13 +2,16 @@ use crate::config::{Config, Configurable};
 use crate::log_debug;
 use crate::movelist::MoveList;
 use crate::search::algo::{Algo, Node};
+use crate::stat::{PlyStat, ArrayPlyStat};
 use std::fmt;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct MoveOrderer {
-    pub enabled: bool,
-    pub prior_pv: bool,
-    pub prior_bm: bool,
+    enabled: bool,
+    prior_pv: bool,
+    prior_bm: bool,
+    count_pv: PlyStat,
+    count_bm: PlyStat,
 }
 
 impl Configurable for MoveOrderer {
@@ -31,7 +34,13 @@ impl MoveOrderer {
 
 impl Default for MoveOrderer {
     fn default() -> Self {
-        MoveOrderer { enabled: true, prior_pv: true, prior_bm: false }
+        MoveOrderer { 
+            enabled: true, 
+            prior_pv: true, 
+            prior_bm: false,
+            count_pv: PlyStat::new("order pv"),
+            count_bm: PlyStat::new("order bm"),
+        }
     }
 }
 
@@ -40,6 +49,7 @@ impl fmt::Display for MoveOrderer {
         writeln!(f, "enabled          : {}", self.enabled)?;
         writeln!(f, "prior pv         : {}", self.prior_pv)?;
         writeln!(f, "prior bm         : {}", self.prior_bm)?;
+        writeln!(f, "{}", ArrayPlyStat(&[&self.count_pv, &self.count_bm]))?;
         Ok(())
     }
 }
@@ -51,7 +61,9 @@ impl Algo {
         }
 
         if self.move_orderer.prior_pv {
-            return Self::order_from_prior_pv(movelist, &self.current_variation, &self.pv);
+            if Self::order_from_prior_pv(movelist, &self.current_variation, &self.pv) {
+                self.move_orderer.count_pv.add(node.ply, 1);
+            }
         }
         if self.move_orderer.prior_bm {
             if node.is_root() {
@@ -59,6 +71,7 @@ impl Algo {
                     if let Some(i) = movelist.iter().position(|mv| mv == &current_best) {
                         // println!("Swapped move {} with position {} on depth {}!", current_best, i, self.max_depth);
                         movelist.swap(0, i);
+                        self.move_orderer.count_bm.add(node.ply, 1);
                         return true;
                     }
                 }
