@@ -102,11 +102,10 @@ impl Algo {
     }
 
 
-    pub fn order_by_mvv_lva(moves: &mut MoveList) {
+    // pub fn order_by_mvv_lva(moves: &mut MoveList) {
         
-
-    }
 }
+    
 
 #[cfg(test)]
 mod tests {
