@@ -108,7 +108,6 @@ impl Move {
         score
     }
 
-
     pub fn uci(&self) -> String {
         if self.is_null() {
             return String::from('-');
@@ -515,5 +514,38 @@ mod tests {
         assert_eq!(board.to_san(&castle_k), "O-O");
         let castle_q = board.parse_uci_move("e8c8").unwrap();
         assert_eq!(board.to_san(&castle_q), "O-O-O");
+    }
+    #[test]
+    fn test_mvv_lva() {
+        let def = Move::default();
+        let pxq = Move { capture: Piece::Queen, mover: Piece::Pawn, ..def };
+        let pxr = Move { capture: Piece::Rook, mover: Piece::Pawn, ..def };
+        let pxb = Move { capture: Piece::Bishop, mover: Piece::Pawn, ..def };
+        let pxn = Move { capture: Piece::Knight, mover: Piece::Pawn, ..def };
+        let pxp = Move { capture: Piece::Pawn, mover: Piece::Pawn, ..def };
+
+        let qxp = Move { capture: Piece::Pawn, mover: Piece::Queen, ..def };
+        let qxn = Move { capture: Piece::Knight, mover: Piece::Queen, ..def };
+        let qxb = Move { capture: Piece::Bishop, mover: Piece::Queen, ..def };
+        let qxr = Move { capture: Piece::Knight, mover: Piece::Queen, ..def };
+        let qxq = Move { capture: Piece::Queen, mover: Piece::Queen, ..def };
+
+        let pxq_q = Move { capture: Piece::Queen, mover: Piece::Pawn, promo: Piece::Queen, ..def };
+        let p_q = Move { mover: Piece::Pawn, promo: Piece::Queen, ..def };
+
+        assert_eq!(pxq.mvv_lva_score(), 8990);
+        assert_eq!(pxr.mvv_lva_score(), 4990);
+        assert_eq!(pxb.mvv_lva_score(), 3490);
+        assert_eq!(pxn.mvv_lva_score(), 3240);
+        assert_eq!(pxp.mvv_lva_score(), 990);
+
+        assert_eq!(qxp.mvv_lva_score(), 910);
+        assert_eq!(qxn.mvv_lva_score(), 3160);
+        assert_eq!(qxb.mvv_lva_score(), 3410);
+        assert_eq!(qxr.mvv_lva_score(), 3160);
+        assert_eq!(qxq.mvv_lva_score(), 8910);
+
+        assert_eq!(pxq_q.mvv_lva_score(), 17980);
+        assert_eq!(p_q.mvv_lva_score(), 8980);
     }
 }
