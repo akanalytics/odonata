@@ -19,7 +19,6 @@ impl fmt::Display for Exam {
     }
 }
 
-use crate::comms::uci::Uci;
 
 impl Exam {
     pub fn percentage(&self) -> f32 {

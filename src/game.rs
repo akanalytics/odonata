@@ -6,6 +6,7 @@ use crate::movelist::{Move, MoveList};
 use crate::outcome::GameEnd;
 use crate::outcome::Outcome;
 use crate::search::algo::Algo;
+use crate::types::Color;
 use std::fmt;
 use std::time;
 
@@ -21,6 +22,7 @@ impl Player for Algo {
 
     fn choose_move(&mut self, board: &Board) -> Move {
         self.search(board.clone());
+        // println!("{}", self);
         self.pv_table.extract_pv()[0]
     }
 }
@@ -60,7 +62,12 @@ impl Game {
             let player = self.board.color_us().chooser_wb(&mut self.white, &mut self.black);
             let mv = player.choose_move(&self.board);
             self.moves.push(mv);
-            println!("{}. {}", self.board.fullmove_counter(), self.board.to_san(&mv));
+            println!(
+                "{}.{} {}",
+                self.board.fullmove_counter(),
+                if self.board.color_us() == Color::Black { ".. " } else { "" },
+                self.board.to_san(&mv)
+            );
             self.board = self.board.make_move(&mv);
             return mv;
         }
@@ -103,8 +110,9 @@ impl fmt::Display for Game {
 mod tests {
     use super::*;
     use crate::eval::*;
-    use crate::search::timecontrol::TimeControl;
-
+    use crate::board::boardbuf::*;
+    use crate::search::timecontrol::*;
+    use std::time::Duration;
 
     #[test]
     #[ignore]
@@ -121,5 +129,40 @@ mod tests {
         let mut game = Game::new(white, black).set_board(board);
         game.play();
         println!("{}", game);
+    }
+
+    // use crate::comms::uci::Uci;
+
+    #[test]
+    #[ignore]
+    fn test_competition() {
+        let tc = TimeControl::from_remaining_time(Duration::from_secs(60));
+        //let tc = TimeControl::Depth(3);
+        let mut white = Algo::new().set_timing_method(tc);
+        let mut black = Algo::new().set_timing_method(tc);
+        // white.set_callback(Uci::uci_info);
+
+        white.move_orderer.mvv_lva = true;
+        black.move_orderer.mvv_lva = false;
+        black.move_orderer.prior_pv = false;
+        black.move_orderer.prior_bm = true;
+        let board = Catalog::starting_position();
+        let mut game1 = Game::new(white.clone(), black.clone()).set_board(board);
+        let mut game2 = Game::new(black.clone(), white.clone()).set_board(board);
+        game1.play();
+        println!("\n{}", game1);
+        game2.play();
+        println!("\n{}", game2);
+    }
+
+    #[test]
+    fn test_bug1() {
+        let b = Board::parse_fen("1rk2qRr/8/B3P3/B4QN1/P4p2/2K1PP1P/P7/R2N4 b - - 0 38").unwrap();
+        let tc = TimeControl::MoveTime(Duration::from_secs(3));
+        let mut white = Algo::new().set_timing_method(tc);
+        let mut black = Algo::new().set_timing_method(tc);
+        white.move_orderer.mvv_lva = true;
+        black.move_orderer.mvv_lva = false;
+        black.search(b);
     }
 }

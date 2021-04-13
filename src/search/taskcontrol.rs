@@ -1,6 +1,7 @@
 use std::sync::atomic::{self, AtomicBool};
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::fmt;
 
 #[derive(Clone, Default)]
 pub struct TaskControl<TTaskProgress> {
@@ -8,6 +9,18 @@ pub struct TaskControl<TTaskProgress> {
     kill_switch: Arc<AtomicBool>,
     has_been_cancelled: bool,
 }
+
+
+
+impl<TTaskProgress> fmt::Display for TaskControl<TTaskProgress> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "kill switch      : {}", self.kill_switch.load(atomic::Ordering::SeqCst))?;
+        writeln!(f, "has bn cancelled : {}", self.has_been_cancelled)?;
+        writeln!(f, "progress_callback: {}", if self.progress_callback.is_some() { "set" } else { "not set" })?;
+        Ok(())
+    }
+}
+
 
 impl<TTaskProgress> TaskControl<TTaskProgress> {
     #[inline]

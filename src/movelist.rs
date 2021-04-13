@@ -100,8 +100,12 @@ impl Move {
         !self.ep.is_empty() && !self.is_capture()
     }
 
+    #[inline]
     pub fn mvv_lva_score(&self) -> i32 {
-        let mut score = self.capture.centipawns() * 10 - self.mover.centipawns() / 10;
+        let mut score = self.capture.centipawns() * 10;
+        if self.is_capture() {
+            score -= self.mover.centipawns() / 10;
+        }
         if self.is_promo() {
             score += self.promo.centipawns() * 10 - self.mover.centipawns() / 10;
         }

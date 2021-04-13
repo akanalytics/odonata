@@ -48,9 +48,21 @@ impl Default for TimeControl {
     fn default() -> Self {
         TimeControl::MoveTime(Duration::from_secs(5))
     }
+
 }
 
 impl TimeControl {
+    pub fn from_remaining_time(d: Duration) -> Self {
+        let zero = Duration::default();
+        TimeControl::RemainingTime{ 
+            our_color: Color::White, 
+            wtime: d, 
+            btime: d, 
+            winc: zero, 
+            binc: zero, 
+            movestogo: 0
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug)]

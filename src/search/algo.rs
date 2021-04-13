@@ -236,12 +236,14 @@ impl fmt::Display for Algo {
         writeln!(f, "clock_checks     : {}", self.clock_checks)?;
         write!(f, "\n[eval]\n{}", self.eval)?;
         write!(f, "\n[move orderer]\n{}", self.move_orderer)?;
+        write!(f, "\n[task control]\n{}", self.task_control)?;
         write!(f, "\n[move time estimator]\n{}", self.move_time_estimator)?;
         write!(f, "\n[quiescence]\n{}", self.quiescence)?;
         // writeln!(f, "kill             :{}", self.kill.load(atomic::Ordering::SeqCst))?;
         // writeln!(f, "kill ref counts  :{}", Arc::strong_count(&self.kill))?;
         // writeln!(f, "callback         :{}", self.callback)?;
         write!(f, "\n[stats]\n{}", self.search_stats)?;
+        write!(f, "\n[pvtable]\n{}", self.pv_table)?;
         Ok(())
     }
 }
@@ -289,8 +291,6 @@ impl Algo {
 
         for depth in self.range.clone() {
             self.set_iteration_depth(depth);
-            self.score = None;
-            self.pv_table = PvTable::new(MAX_PLY);
             let mut root_node = Node::root(&mut board);
             let stats = &mut self.search_stats;
             let mut sp = SearchProgress::from_search_stats(stats);
@@ -299,6 +299,8 @@ impl Algo {
             if self.move_time_estimator.probable_timeout(stats) {
                 break;
             }
+            self.score = None;
+            self.pv_table = PvTable::new(MAX_PLY);
             self.search_stats.clear_node_stats();
             let clock = Clock::new();
             self.alphabeta(&mut root_node);
@@ -306,6 +308,7 @@ impl Algo {
             if !self.task_control.is_cancelled() {
                 self.score = Some(root_node.score);
                 self.pv = self.pv_table.extract_pv();
+                self.pv_table = self.pv_table.clone();
                 self.current_best = Some(self.pv[0]);
                 sp = SearchProgress::from_search_stats(&self.search_stats());
                 sp.pv = Some(self.pv.clone());
@@ -532,6 +535,12 @@ mod tests {
             let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).set_callback(Uci::uci_info);
             search.search(pos.board().clone());
             println!("{}", search);
+            assert_eq!(
+                pos.board().to_san_moves(&search.pv_table.extract_pv()),
+                pos.board().to_san_moves(&pos.pv().unwrap()),
+                "{}",
+                pos.id().unwrap()
+            );
             assert_eq!(
                 search.pv_table.extract_pv().to_string(),
                 pos.pv().unwrap().to_string(),

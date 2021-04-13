@@ -1,15 +1,16 @@
 use crate::config::{Config, Configurable};
 use crate::log_debug;
-use crate::movelist::MoveList;
+use crate::movelist::{MoveList, Move};
 use crate::search::algo::{Algo, Node};
 use crate::stat::{PlyStat, ArrayPlyStat};
 use std::fmt;
 
 #[derive(Clone, Debug)]
 pub struct MoveOrderer {
-    enabled: bool,
-    prior_pv: bool,
-    prior_bm: bool,
+    pub enabled: bool,
+    pub prior_pv: bool,
+    pub prior_bm: bool,
+    pub mvv_lva: bool,
     count_pv: PlyStat,
     count_bm: PlyStat,
 }
@@ -19,12 +20,14 @@ impl Configurable for MoveOrderer {
         c.set("move_orderer.enabled", "type check default true");
         c.set("move_orderer.prior_pv", "type check default true");
         c.set("move_orderer.prior_bm", "type check default true");
+        c.set("move_orderer.mvv_lva", "type check default true");
     }
     fn configure(&mut self, c: &Config) {
         log_debug!("move_orderer.configure with {}", c);
         self.enabled = c.bool("move_orderer.enabled").unwrap_or(self.enabled);
         self.prior_bm = c.bool("move_orderer.prior_bm").unwrap_or(self.prior_bm);
         self.prior_pv = c.bool("move_orderer.prior_pv").unwrap_or(self.prior_pv);
+        self.mvv_lva = c.bool("move_orderer.mvv_lva").unwrap_or(self.mvv_lva);
     }
 }
 
@@ -38,6 +41,7 @@ impl Default for MoveOrderer {
             enabled: true, 
             prior_pv: true, 
             prior_bm: false,
+            mvv_lva: true,
             count_pv: PlyStat::new("order pv"),
             count_bm: PlyStat::new("order bm"),
         }
@@ -49,6 +53,7 @@ impl fmt::Display for MoveOrderer {
         writeln!(f, "enabled          : {}", self.enabled)?;
         writeln!(f, "prior pv         : {}", self.prior_pv)?;
         writeln!(f, "prior bm         : {}", self.prior_bm)?;
+        writeln!(f, "mvv_lva          : {}", self.mvv_lva)?;
         writeln!(f, "{}", ArrayPlyStat(&[&self.count_pv, &self.count_bm]))?;
         Ok(())
     }
@@ -59,6 +64,12 @@ impl Algo {
         if !self.move_orderer.enabled {
             return false;
         }
+
+        if self.move_orderer.mvv_lva {
+            movelist.sort_unstable_by_key(Move::mvv_lva_score);
+            movelist.reverse();
+        }
+
 
         if self.move_orderer.prior_pv {
             if Self::order_from_prior_pv(movelist, &self.current_variation, &self.pv) {

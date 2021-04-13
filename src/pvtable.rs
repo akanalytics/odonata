@@ -59,6 +59,7 @@ impl PvTable {
 
 impl fmt::Display for PvTable {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "size             : {}", self.size)?;
         for i in 0..self.size {
             write!(f, "{:>3}: ", i)?;
             for j in 0..self.size - i {
