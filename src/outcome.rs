@@ -1,7 +1,7 @@
 use crate::board::movegen::MoveGen;
 use crate::board::Board;
 use crate::material::Material;
-use crate::types::Color;
+use crate::types::{Color, ScoreWdl};
 use std::fmt;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -35,6 +35,16 @@ impl Outcome {
         )
     }
 
+    pub fn reversed(self) -> Outcome {
+        match self {
+            Self::WinWhite => Self::WinBlack,
+            Self::WinBlack => Self::WinWhite,
+            Self::WinOnTimeWhite => Self::WinOnTimeBlack,
+            Self::WinOnTimeBlack => Self::WinOnTimeWhite,
+            _ => self,
+        }
+    }
+
     #[inline]
     pub fn winning_color(self) -> Option<Color> {
         match self {
@@ -49,7 +59,18 @@ impl Outcome {
         self != Self::InProgress
     }
 
-    pub fn to_pgn(self) -> String {
+    pub fn as_wdl(self) -> ScoreWdl {
+        if self.is_draw() {
+            return ScoreWdl::new(0, 1, 0);
+        } else if self.winning_color() == Some(Color::White) {
+            return ScoreWdl::new(1, 0, 0);
+        } else if self.winning_color() == Some(Color::Black) {
+            return ScoreWdl::new(0, 0, 1);
+        }
+        ScoreWdl::new(0, 0, 0)
+    }
+
+    pub fn as_pgn(self) -> String {
         if self.is_draw() {
             return String::from("1/2-1/2");
         } else if self.winning_color() == Some(Color::White) {

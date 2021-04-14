@@ -2,8 +2,6 @@ use crate::bitboard::{Bitboard, Dir};
 use std::fmt;
 use std::iter::*;
 
-
-
 pub const MAX_PLY: usize = 128;
 
 pub struct Chooser<T> {
@@ -322,6 +320,65 @@ impl Piece {
     }
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Default, PartialOrd, Ord, Hash)]
+pub struct ScoreWdl {
+    pub w: i32,
+    pub d: i32,
+    pub l: i32,
+}
+
+impl fmt::Display for ScoreWdl {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "W: {}  D: {}  L: {}", self.w, self.d, self.l)
+    }
+}
+
+impl ScoreWdl {
+    pub fn new(w: i32, d: i32, l: i32) -> ScoreWdl {
+        ScoreWdl { w, d, l }
+    }
+}
+
+impl std::ops::SubAssign for ScoreWdl {
+    fn sub_assign(&mut self, o: Self) {
+        self.w -= o.w;
+        self.d -= o.d;
+        self.l -= o.l;
+    }
+}
+
+impl std::ops::Neg for ScoreWdl {
+    type Output = Self;
+    fn neg(self) -> Self {
+        let mut z = Self::default();
+        z -= self;
+        z
+    }
+}
+
+impl std::ops::AddAssign for ScoreWdl {
+    fn add_assign(&mut self, o: Self) {
+        *self -= -o;
+    }
+}
+
+impl std::ops::Add for ScoreWdl {
+    type Output = Self;
+    fn add(self, o: Self) -> Self {
+        let mut z = Self::default();
+        z += o;
+        z += self;
+        z
+    }
+}
+
+impl std::ops::Sub for ScoreWdl {
+    type Output = Self;
+    fn sub(self, o: Self) -> Self {
+        self + -o
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -344,6 +401,19 @@ mod tests {
         assert_eq!(Piece::Pawn.to_upper_char(), 'P');
         assert_eq!(Piece::King.to_char(Some(Color::Black)), 'k');
         assert_eq!(Piece::King.to_char(None), 'K');
+    }
+
+    #[test]
+    fn test_score_wdl() {
+        let mut wdl138 = ScoreWdl::new(1, 3, 8);
+        let wdl567 = ScoreWdl::new(5, 6, 7);
+        assert_eq!(wdl138 + wdl567, ScoreWdl::new(6, 9, 15));
+        assert_eq!(wdl138 - wdl567, ScoreWdl::new(-4, -3, 1));
+        wdl138 += ScoreWdl::new(100, 200, 300);
+        assert_eq!(wdl138, ScoreWdl::new(101, 203, 308));
+        wdl138 -= ScoreWdl::new(1, 3, 8);
+        assert_eq!(wdl138, ScoreWdl::new(100, 200, 300));
+        assert_eq!(-wdl138, ScoreWdl::new(-100, -200, -300));
     }
 
     #[test]

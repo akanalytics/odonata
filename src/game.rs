@@ -6,7 +6,7 @@ use crate::movelist::{Move, MoveList};
 use crate::outcome::GameEnd;
 use crate::outcome::Outcome;
 use crate::search::algo::Algo;
-use crate::types::Color;
+use crate::types::{CastlingRights,Color, ScoreWdl};
 use std::fmt;
 use std::time;
 
@@ -22,8 +22,11 @@ impl Player for Algo {
 
     fn choose_move(&mut self, board: &Board) -> Move {
         self.search(board.clone());
-        // println!("{}", self);
-        self.pv_table.extract_pv()[0]
+        let bm = self.pv_table.extract_pv()[0];
+        if bm == Move::new_null() {
+            println!("{}", self);
+        }
+        bm
     }
 }
 
@@ -36,6 +39,7 @@ pub struct Game {
     ending_time: Option<time::Instant>,
     board: Board,
     moves: MoveList,
+    outcome: Outcome,
 }
 
 impl Game {
@@ -48,6 +52,7 @@ impl Game {
             starting_time: time::Instant::now(),
             ending_time: None,
             moves: MoveList::default(),
+            outcome: Outcome::InProgress,
         }
     }
 
@@ -62,12 +67,12 @@ impl Game {
             let player = self.board.color_us().chooser_wb(&mut self.white, &mut self.black);
             let mv = player.choose_move(&self.board);
             self.moves.push(mv);
-            println!(
-                "{}.{} {}",
-                self.board.fullmove_counter(),
-                if self.board.color_us() == Color::Black { ".. " } else { "" },
-                self.board.to_san(&mv)
-            );
+            // println!(
+            //     "{}.{} {}",
+            //     self.board.fullmove_counter(),
+            //     if self.board.color_us() == Color::Black { ".. " } else { "" },
+            //     self.board.to_san(&mv)
+            // );
             self.board = self.board.make_move(&mv);
             return mv;
         }
@@ -96,12 +101,12 @@ impl fmt::Display for Game {
         //        writeln!(f, "[Time \"{}\"]", self.white.name())?;
         writeln!(f, "[White \"{}\"]", self.white.name())?;
         writeln!(f, "[Black \"{}\"]", self.black.name())?;
-        writeln!(f, "[Result \"{}\"]", self.outcome().to_pgn())?;
+        writeln!(f, "[Result \"{}\"]", self.outcome().as_pgn())?;
         if self.starting_pos != Catalog::starting_position() {
             writeln!(f, "[FEN \"{}\"]", self.starting_pos.to_fen())?;
             writeln!(f, "[SetUp \"1\"]")?;
         }
-        writeln!(f, "{} {}", self.starting_pos.to_san_moves(&self.moves), self.board.outcome().to_pgn())?;
+        writeln!(f, "{} {}", self.starting_pos.to_san_moves(&self.moves), self.board.outcome().as_pgn())?;
         Ok(())
     }
 }
@@ -136,7 +141,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_competition() {
-        let tc = TimeControl::from_remaining_time(Duration::from_secs(60));
+        let tc = TimeControl::from_remaining_time(Duration::from_millis(200));
         //let tc = TimeControl::Depth(3);
         let mut white = Algo::new().set_timing_method(tc);
         let mut black = Algo::new().set_timing_method(tc);
@@ -146,13 +151,21 @@ mod tests {
         black.move_orderer.mvv_lva = false;
         black.move_orderer.prior_pv = false;
         black.move_orderer.prior_bm = true;
-        let board = Catalog::starting_position();
-        let mut game1 = Game::new(white.clone(), black.clone()).set_board(board);
-        let mut game2 = Game::new(black.clone(), white.clone()).set_board(board);
-        game1.play();
-        println!("\n{}", game1);
-        game2.play();
-        println!("\n{}", game2);
+        
+        let mut score = ScoreWdl::default();
+        for id in 0..960 {
+            let mut b = *Catalog::chess960(id).board();
+            b.set_castling(CastlingRights::NONE);
+            let mut game1 = Game::new(white.clone(), black.clone()).set_board(b);
+            let mut game2 = Game::new(black.clone(), white.clone()).set_board(b);
+            game1.play();
+            // println!("\n{}", game1);
+            game2.play();
+            // println!("\n{}", game2);
+            score += game1.outcome().as_wdl() + game2.outcome().reversed().as_wdl();
+            println!("game: {} score {}", id+1, score);
+        }
+        println!("score {}", score);
     }
 
     #[test]

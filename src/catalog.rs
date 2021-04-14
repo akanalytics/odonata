@@ -4,8 +4,6 @@ use crate::board::Board;
 use crate::globals::constants::*;
 use crate::position::Position;
 use crate::types::CastlingRights;
-use std::collections::HashSet;
-use std::cmp::{max,min};
 
 pub struct Catalog;
 
@@ -624,6 +622,8 @@ b2b1r1k/3R1ppp/4qP2/4p1PQ/4P3/5B2/4N1K1/8 w - - bm g6; id "WAC.300";
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashSet;
+
 
     #[test]
     fn test_catalog_wac() {
