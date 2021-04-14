@@ -450,24 +450,10 @@ b2b1r1k/3R1ppp/4qP2/4p1PQ/4P3/5B2/4N1K1/8 w - - bm g6; id "WAC.300";
         ];
         Position::parse_many_epd(strs).unwrap()
     }
-                    // [
-        //     // http://wtharvey.com/m8n2.txt
-        //     // Henry Buckle vs NN, London, 1840
-        //     // 1. Nf6+ gxf6 2. Bxf7#
-        //     Board::parse_fen("r2qkb1r/pp2nppp/3p4/2pNN1B1/2BnP3/3P4/PPP2PPP/R2bK2R w KQkq - 1 1")
-        //         .unwrap()
-        //         .as_board(),
-        //     // Alexander Areshchenko vs Sergei Zhigalko, Kiev, 6/6/2013
-        //     // 1... Nb3+ 2. axb3 Qa6#
-        //     Board::parse_fen("r3k2r/p3bpp1/2q1p1b1/1ppPP1B1/3n3P/5NR1/PP2NP2/K1QR4 b kq - 0 1")
-        //         .unwrap()
-        //         .as_board(),
 
     pub fn mate_in_3() -> [Position; 1] {
         [
             // http://wtharvey.com/m8n3.txt
-            // William Evans vs Alexander MacDonnell, London, 1826
-            //1. Bb5+ c6 2. Qe6+ Qe7 3. Qxe7#
             Position::parse_epd(
                 "r3k2r/ppp2Npp/1b5n/4p2b/2B1P2q/BQP2P2/P5PP/RN5K w kq - 1 1 
                 dm 3; 

@@ -22,7 +22,7 @@ impl Player for Algo {
 
     fn choose_move(&mut self, board: &Board) -> Move {
         self.search(board.clone());
-        let bm = self.pv_table.extract_pv()[0];
+        let bm = self.pv()[0];
         if bm == Move::new_null() {
             println!("{}", self);
         }

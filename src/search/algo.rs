@@ -348,6 +348,10 @@ impl Algo {
         self.best_move
     }
 
+    pub fn pv(&self) -> &MoveList {
+        &self.pv
+    }
+
     pub fn search_async_stop(&mut self) {
         self.task_control.cancel();
         self.search_stats.user_cancelled = true;
@@ -525,7 +529,7 @@ mod tests {
         let mut search = Algo::new().set_timing_method(TimeControl::Depth(1)).set_minmax(false);
         search.search(board);
         println!("{}", search);
-        assert_eq!(search.pv_table.extract_pv()[0].uci(), "d7d5");
+        assert_eq!(search.pv()[0].uci(), "d7d5");
     }
 
     #[test]
@@ -536,13 +540,13 @@ mod tests {
             search.search(pos.board().clone());
             println!("{}", search);
             assert_eq!(
-                pos.board().to_san_moves(&search.pv_table.extract_pv()),
+                pos.board().to_san_moves(&search.pv()),
                 pos.board().to_san_moves(&pos.pv().unwrap()),
                 "{}",
                 pos.id().unwrap()
             );
             assert_eq!(
-                search.pv_table.extract_pv().to_string(),
+                search.pv().to_string(),
                 pos.pv().unwrap().to_string(),
                 "{}",
                 pos.id().unwrap()
