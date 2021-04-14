@@ -507,8 +507,8 @@ mod tests {
 
         let board = Catalog::starting_position();
         let eval = SimpleScorer::new().set_position(false);
-        let mut search =
-            Algo::new().set_timing_method(TimeControl::Depth(4)).set_minmax(false).set_eval(eval);
+        let mut search = Algo::new().set_timing_method(TimeControl::Depth(4)).set_minmax(false).set_eval(eval);
+        search.move_orderer.enabled = false;
         search.search(board);
         assert_eq!(search.search_stats().total().nodes(), 1757);
         assert_eq!(search.search_stats().branching_factor().round() as u64, 2);
@@ -527,6 +527,7 @@ mod tests {
         let mut board = Catalog::starting_position();
         board.set_turn(Color::Black);
         let mut search = Algo::new().set_timing_method(TimeControl::Depth(1)).set_minmax(false);
+        search.move_orderer.enabled = false;
         search.search(board);
         println!("{}", search);
         assert_eq!(search.pv()[0].uci(), "d7d5");
@@ -580,11 +581,13 @@ mod tests {
             search.search(position.board().clone());
             println!("{}", search);
             if id {
-                // assert_eq!(search.search_stats().total().nodes(), 3560);
-                assert_eq!(search.search_stats().total().nodes(), 6553);
+                assert_eq!(search.search_stats().total().nodes(), 2108);  // with ordering pv + mvvlva
+                // assert_eq!(search.search_stats().total().nodes(), 3560); 
+                // assert_eq!(search.search_stats().total().nodes(), 6553);  // with ordering pv
                 // assert_eq!(search.search_stats().total().nodes(), 6740);
             } else {
-                assert_eq!(search.search_stats().total().nodes(), 7749);
+                assert_eq!(search.search_stats().total().nodes(), 2108); // no ids no mvvlva
+                // assert_eq!(search.search_stats().total().nodes(), 7749); // no ids no mvvlva
             }
             assert_eq!(search.pv_table.extract_pv(), position.pv().unwrap());
             assert_eq!(search.score.unwrap(), Score::WhiteWin { minus_ply: -3 });

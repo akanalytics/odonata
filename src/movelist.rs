@@ -102,9 +102,9 @@ impl Move {
 
     #[inline]
     pub fn mvv_lva_score(&self) -> i32 {
-        let mut score = self.capture.centipawns() * 10;
+        let mut score = 0;
         if self.is_capture() {
-            score -= self.mover.centipawns() / 10;
+            score += self.capture.centipawns() * 10 - self.mover.centipawns() / 10;
         }
         if self.is_promo() {
             score += self.promo.centipawns() * 10 - self.mover.centipawns() / 10;
@@ -550,6 +550,6 @@ mod tests {
         assert_eq!(qxq.mvv_lva_score(), 8910);
 
         assert_eq!(pxq_q.mvv_lva_score(), 17980);
-        assert_eq!(p_q.mvv_lva_score(), 8980);
+        assert_eq!(p_q.mvv_lva_score(), 8990);
     }
 }

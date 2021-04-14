@@ -411,9 +411,11 @@ b2b1r1k/3R1ppp/4qP2/4p1PQ/4P3/5B2/4N1K1/8 w - - bm g6; id "WAC.300";
             id 'Gustav Neumann vs Carl Mayet, Berlin, 1866';
             pv 1. Qxg6+ fxg6 2. Rg7#;",
 
-            "1r1kr3/Nbppn1pp/1b6/8/6Q1/3B1P2/Pq3P1P/3RR1K1 w - - 1 0
-            id 'Joseph Blackburne vs Martin, England, 1876';
-            pv 1. Qxd7+ Kxd7 2. Bb5#;",
+            // multiple pv
+            // "1r1kr3/Nbppn1pp/1b6/8/6Q1/3B1P2/Pq3P1P/3RR1K1 w - - 1 0
+            // id 'Joseph Blackburne vs Martin, England, 1876';
+            // pv 1. Qxd7+ Kxd7 2. Bb5#;,
+            // pv0 1. Qxd7+ Kxd7 2. Bf5#;",
 
             "5rk1/1p1q2bp/p2pN1p1/2pP2Bn/2P3P1/1P6/P4QKP/5R2 w - - 1 0
             id 'Wilfried Paulsen vs Adolf Anderssen, Frankfurt, 1878';
