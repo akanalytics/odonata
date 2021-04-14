@@ -587,7 +587,7 @@ mod tests {
                 // assert_eq!(search.search_stats().total().nodes(), 6740);
             } else {
                 assert_eq!(search.search_stats().total().nodes(), 2108); // no ids no mvvlva
-                // assert_eq!(search.search_stats().total().nodes(), 7749); // no ids no mvvlva
+                assert_eq!(search.search_stats().total().nodes(), 7749); // no ids no mvvlva
             }
             assert_eq!(search.pv_table.extract_pv(), position.pv().unwrap());
             assert_eq!(search.score.unwrap(), Score::WhiteWin { minus_ply: -3 });

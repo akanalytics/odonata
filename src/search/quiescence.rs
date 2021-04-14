@@ -23,9 +23,9 @@ pub struct Quiescence {
 
 impl Configurable for Quiescence {
     fn settings(&self, c: &mut Config) {
-        c.set("quiescence.enabled", "type check default false");
+        c.set("quiescence.enabled", "type check default true");
         c.set("quiescence.see", "type check default true");
-        c.set("quiescence.max_ply", "type spin default 15 min 0 max 100");
+        c.set("quiescence.max_ply", "type spin default 10 min 0 max 100");
         c.set("quiescence.coarse_delta_prune_cp", "type spin default 900 min 0 max 10000");
     }
     
@@ -45,7 +45,7 @@ impl Default for Quiescence {
         Quiescence {
             enabled: false,
             see: true,
-            max_ply: 100,
+            max_ply: 10,
             coarse_delta_prune: Score::cp(900),
         }
     }

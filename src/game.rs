@@ -123,11 +123,11 @@ mod tests {
     #[ignore]
     fn test_game() {
         let eval_w = SimpleScorer::new().set_position(true);
-        let search_w = Algo::new().set_timing_method(TimeControl::Depth(5)).set_eval(eval_w);
+        let search_w = Algo::new().set_timing_method(TimeControl::Depth(2)).set_eval(eval_w);
         let white = search_w;
 
         let eval_b = SimpleScorer::new().set_position(false);
-        let search_b = Algo::new().set_timing_method(TimeControl::Depth(5)).set_eval(eval_b);
+        let search_b = Algo::new().set_timing_method(TimeControl::Depth(2)).set_eval(eval_b);
         let black = search_b;
 
         let board = Catalog::starting_position();
