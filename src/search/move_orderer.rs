@@ -1,7 +1,7 @@
 use crate::config::{Config, Configurable};
 use crate::log_debug;
 use crate::movelist::{MoveList, Move};
-use crate::search::algo::{Algo, Node};
+use crate::search::algo::{Algo};
 use crate::stat::{PlyStat, ArrayPlyStat};
 use std::fmt;
 
@@ -60,7 +60,7 @@ impl fmt::Display for MoveOrderer {
 }
 
 impl Algo {
-    pub fn order_moves(&self, node: &Node, movelist: &mut MoveList) -> bool{
+    pub fn order_moves(&self, ply: u32, movelist: &mut MoveList) -> bool{
         if !self.move_orderer.enabled {
             return false;
         }
@@ -73,16 +73,16 @@ impl Algo {
 
         if self.move_orderer.prior_pv {
             if Self::order_from_prior_pv(movelist, &self.current_variation, &self.pv) {
-                self.move_orderer.count_pv.add(node.ply, 1);
+                self.move_orderer.count_pv.add(ply, 1);
             }
         }
         if self.move_orderer.prior_bm {
-            if node.is_root() {
+            if ply == 0 {
                 if let Some(current_best) = self.current_best {
                     if let Some(i) = movelist.iter().position(|mv| mv == &current_best) {
                         // println!("Swapped move {} with position {} on depth {}!", current_best, i, self.max_depth);
                         movelist.swap(0, i);
-                        self.move_orderer.count_bm.add(node.ply, 1);
+                        self.move_orderer.count_bm.add(ply, 1);
                         return true;
                     }
                 }

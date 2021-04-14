@@ -21,10 +21,22 @@ pub struct Move {
 
     pub castle_side: CastlingRights,
     pub is_null: bool,
-    pub is_drop: bool, // used for board setup not variant play
 }
 
 impl Move {
+
+    pub const NULL_MOVE: Move = Move { 
+        from: Bitboard::EMPTY,
+        to: Bitboard::EMPTY,
+        ep: Bitboard::EMPTY,
+        promo: Piece::None,
+        capture: Piece::None,
+        mover: Piece::None,
+    
+        castle_side: CastlingRights::NONE,
+        is_null: true,
+    };
+    
     #[inline]
     pub fn new_null() -> Move {
         Move { is_null: true, ..Default::default() }
@@ -85,10 +97,6 @@ impl Move {
         self.castle_side
     }
 
-    #[inline]
-    pub fn is_drop(&self) -> bool {
-        self.is_drop
-    }
 
     #[inline]
     pub fn is_ep_capture(&self) -> bool {

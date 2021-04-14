@@ -109,7 +109,7 @@ mod tests {
         assert_eq!(size_of::<CastlingRights>(), 1);
         assert_eq!(size_of::<Board>(), 80, "Board");
         assert_eq!(size_of::<Score>(), 8, "Score");
-        assert_eq!(size_of::<Node>(), 72, "Node");
+        assert_eq!(size_of::<Node>(), 48, "Node");
         assert_eq!(size_of::<SearchStats>(), 136, "SearchStats");
         assert_eq!(size_of::<Stats>(), 88, "Stats");
     }

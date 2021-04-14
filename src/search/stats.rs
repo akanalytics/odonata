@@ -210,7 +210,7 @@ impl Stats {
 
     #[inline]
     pub fn nodes(&self) -> u64 {
-        self.interior_nodes() + self.leaf_nodes() // root
+        self.interior_nodes() + self.leaf_nodes() + self.q_interior_nodes() + self.q_leaf_nodes() // root
     }
 
     #[inline]

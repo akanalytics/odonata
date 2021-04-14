@@ -6,7 +6,6 @@ use crate::movelist::{Move, MoveList};
 use crate::outcome::GameEnd;
 use crate::outcome::Outcome;
 use crate::search::algo::Algo;
-use crate::types::{CastlingRights,Color, ScoreWdl};
 use std::fmt;
 use std::time;
 
@@ -118,6 +117,8 @@ mod tests {
     use crate::board::boardbuf::*;
     use crate::search::timecontrol::*;
     use std::time::Duration;
+    use crate::types::{CastlingRights,ScoreWdl};
+
 
     #[test]
     #[ignore]
@@ -141,16 +142,17 @@ mod tests {
     #[test]
     #[ignore]
     fn test_competition() {
-        let tc = TimeControl::from_remaining_time(Duration::from_millis(200));
+        let tc = TimeControl::from_remaining_time(Duration::from_millis(5200));
         //let tc = TimeControl::Depth(3);
         let mut white = Algo::new().set_timing_method(tc);
         let mut black = Algo::new().set_timing_method(tc);
         // white.set_callback(Uci::uci_info);
 
+        white.quiescence.enabled = true;
         white.move_orderer.mvv_lva = true;
-        black.move_orderer.mvv_lva = false;
-        black.move_orderer.prior_pv = false;
-        black.move_orderer.prior_bm = true;
+        black.move_orderer.mvv_lva = true;
+        black.move_orderer.prior_pv = true;
+        black.move_orderer.prior_bm = false;
         
         let mut score = ScoreWdl::default();
         for id in 0..960 {

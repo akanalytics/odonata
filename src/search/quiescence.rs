@@ -1,6 +1,8 @@
 use crate::config::{Config, Configurable};
 use crate::search::algo::{Algo,Node};
+use crate::search::searchprogress::SearchProgress;
 use crate::board::makemove::MoveMaker;
+use crate::bitboard::Bitboard;
 use crate::board::movegen::MoveGen;
 use crate::log_debug;
 use std::fmt;
@@ -11,7 +13,7 @@ use crate::eval::{Scorable, Score};
 
 #[derive(Copy, Clone, Debug)]
 pub struct Quiescence {
-    enabled: bool,
+    pub enabled: bool,
     see: bool,
     max_ply: u16,
     coarse_delta_prune: Score,
@@ -72,16 +74,16 @@ impl Algo {
 
     #[inline]
     pub fn quiescence_search(&mut self, node: &mut Node) {
-        if !self.quiescence.enabled {
+        if !self.quiescence.enabled || node.ply == 1 {
             self.evaluate_leaf(node);
             return;
         }
 
         // swap to negamax
         if Node::is_maximizing(node.board) {
-            node.score = self.qsearch(node.ply, node.board, node.alpha, node.beta);
+            node.score = self.qsearch(node.last_move.to, node.ply, node.board, node.alpha, node.beta);
         } else {
-            node.score = -self.qsearch(node.ply, node.board, -node.beta, -node.alpha);
+            node.score = -self.qsearch(node.last_move.to, node.ply, node.board, -node.beta, -node.alpha);
         }
     }
 
@@ -106,32 +108,55 @@ impl Algo {
     //     }
     //     return alpha;
     // }
-    fn qsearch(&mut self, ply: u32, board: &mut Board, mut alpha: Score, beta: Score) -> Score {
-        // let (mut alpha, mut beta) = (alpha, beta);
+    fn qsearch(&mut self, sq: Bitboard, ply: u32, board: &mut Board, mut alpha: Score, beta: Score) -> Score {
+
+        if self.search_stats.total().nodes() % 1000000 == 0 && self.search_stats.total().nodes() != 0 {
+            let sp = SearchProgress::from_search_stats(&self.search_stats());
+            // sp.depth = None;
+            self.task_control.invoke_callback(&sp);
+            println!("{}", self);
+        }
+
+        if self.time_up_or_cancelled(ply, self.search_stats.total().nodes(), true) {
+            return alpha;
+        }
+
 
         // this will handle mates too
         let standing_pat = board.eval(&self.eval);
-
+        // if standing_pat.is_mate() {
+        //     return standing_pat;
+        // }
         if standing_pat > alpha {
             if standing_pat >= beta {
+                self.search_stats.inc_q_leaf_nodes(ply);
                 return beta;
             }
             alpha = standing_pat;
         }
 
         // coarse delta pruning
-        
         if standing_pat < alpha - self.quiescence.coarse_delta_prune {
+            self.search_stats.inc_q_leaf_nodes(ply);
             return alpha;
         } 
 
 
-        let moves = board.legal_capture_moves();
-        // self.order_moves(&node, &mut moves);
+
+        let mut moves = board.legal_capture_moves();
+        moves.retain(|mv| mv.to() == sq );
+
+        if moves.len() == 0 {
+            self.search_stats.inc_q_leaf_nodes(ply);
+        } else {
+            self.search_stats.inc_q_interior_nodes(ply);
+        }
+
+        self.order_moves(ply, &mut moves);
 
         for (_i, mv) in moves.iter().enumerate() {
             let mut child_board = board.make_move(mv);
-            let score = self.qsearch(ply + 1, &mut child_board, beta.negate(), alpha.negate()).negate();
+            let score =  -self.qsearch(sq, ply + 1, &mut child_board, -beta, -alpha);
             if score > beta {
                 return beta;
             }
@@ -152,14 +177,15 @@ mod tests {
     use crate::search::timecontrol::*;
 
 
+    #[ignore]
     #[test]
-    fn test_all_mate_in_2() {
+    fn test_qsearch() {
         let pos = &Catalog::mate_in_2()[0];
-        let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).set_callback(Uci::uci_info);
-        search.quiescence.enabled = false;
+        let mut search = Algo::new().set_timing_method(TimeControl::NodeCount(1_000_000)).set_callback(Uci::uci_info);
+        search.quiescence.enabled = true;
         search.search(pos.board().clone());
         println!("{}", search);
-        assert_eq!(search.pv_table.extract_pv().to_string(), pos.pv().unwrap().to_string(), "{}", pos.id().unwrap());
+        assert_eq!(search.pv().to_string(), pos.pv().unwrap().to_string(), "{}", pos.id().unwrap());
         // FIXME assert_eq!(search.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
     }
 }

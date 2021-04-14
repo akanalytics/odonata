@@ -67,7 +67,7 @@ impl MoveGen for Board {
     }
 
     fn is_legal_move(&self, mv: &Move) -> bool {
-        mv.is_castle() || mv.is_drop() || !self.make_move(mv).is_in_check(self.color_us())
+        mv.is_castle() || !self.make_move(mv).is_in_check(self.color_us())
     }
 
     fn legal_moves(&self) -> MoveList {
@@ -78,7 +78,7 @@ impl MoveGen for Board {
 
     fn legal_capture_moves(&self) -> MoveList {
         let mut moves = self.legal_moves();
-        moves.retain(|m| m.is_capture());
+        moves.retain(|m| m.is_capture() || m.is_promo());
         moves
     }
 

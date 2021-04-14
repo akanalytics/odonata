@@ -147,6 +147,10 @@ impl Score {
         panic!("Tried to final score a non-final board outcome:{}", o);
     }
 
+    pub fn is_mate(&self) -> bool {
+        matches!(self, Self::WhiteLoss { ply: _ } | Self::WhiteWin { minus_ply: _ })
+    }
+
     #[inline]
     pub fn negate(self) -> Score {
         match self {
@@ -164,9 +168,11 @@ impl std::ops::Add for Score {
 
     #[inline]
     fn add(self, other: Self) -> Self {
-        if let Score::Centipawns(s1) = self {
-            if let Score::Centipawns(s2) = other {
+        if let Score::Centipawns(s2) = other {
+            if let Score::Centipawns(s1) = self {
                 return Score::Centipawns(s1 + s2);
+            } else {
+                return self; // if self is an infinite or mate then adding cp/mp makes no difference
             }
         }
         panic!("Can only add centipawns not {} + {}", self, other);
@@ -178,12 +184,14 @@ impl std::ops::Sub for Score {
 
     #[inline]
     fn sub(self, other: Self) -> Self {
-        if let Score::Centipawns(s1) = self {
-            if let Score::Centipawns(s2) = other {
+        if let Score::Centipawns(s2) = other {
+            if let Score::Centipawns(s1) = self {
                 return Score::Centipawns(s1 - s2);
+            } else {
+                return self; // if self is an infinite or mate then subtracting cp/mp makes no difference
             }
         }
-        panic!("Can only add centipawns not {} + {}", self, other);
+        panic!("Can only subtract centipawns not {} - {}", self, other);
     }
 }
 
@@ -228,11 +236,28 @@ impl Configurable for SimpleScorer {
         c.set("eval.mobility", "type check default true");
         c.set("eval.position", "type check default true");
         c.set("eval.material", "type check default true");
-        c.set("eval.material.p", &("type spin min -10000 max 10000 default ".to_string() + &Piece::Pawn.centipawns().to_string()));
-        c.set("eval.material.n", &("type spin min -10000 max 10000 default ".to_string() + &Piece::Knight.centipawns().to_string()));
-        c.set("eval.material.b", &("type spin min -10000 max 10000 default ".to_string() + &Piece::Bishop.centipawns().to_string()));
-        c.set("eval.material.r", &("type spin min -10000 max 10000 default ".to_string() + &Piece::Rook.centipawns().to_string()));
-        c.set("eval.material.q", &("type spin min -10000 max 10000 default ".to_string() + &Piece::Queen.centipawns().to_string()));
+        c.set(
+            "eval.material.p",
+            &("type spin min -10000 max 10000 default ".to_string() + &Piece::Pawn.centipawns().to_string()),
+        );
+        c.set(
+            "eval.material.n",
+            &("type spin min -10000 max 10000 default ".to_string()
+                + &Piece::Knight.centipawns().to_string()),
+        );
+        c.set(
+            "eval.material.b",
+            &("type spin min -10000 max 10000 default ".to_string()
+                + &Piece::Bishop.centipawns().to_string()),
+        );
+        c.set(
+            "eval.material.r",
+            &("type spin min -10000 max 10000 default ".to_string() + &Piece::Rook.centipawns().to_string()),
+        );
+        c.set(
+            "eval.material.q",
+            &("type spin min -10000 max 10000 default ".to_string() + &Piece::Queen.centipawns().to_string()),
+        );
     }
 
     fn configure(&mut self, c: &Config) {
@@ -244,7 +269,7 @@ impl Configurable for SimpleScorer {
             let mut name = "eval.material.".to_string();
             name.push(p.to_char(Some(Color::Black)));
             if let Some(i) = c.int(&name) {
-                self.material_scores[*p] =  i as i32;
+                self.material_scores[*p] = i as i32;
             }
         }
     }
