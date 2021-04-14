@@ -8,7 +8,7 @@ pub mod boardbuf;
 pub mod makemove;
 pub mod movegen;
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Board {
     pieces: [Bitboard; Piece::ALL.len()],
     colors: [Bitboard; 2],

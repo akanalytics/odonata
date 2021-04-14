@@ -32,6 +32,11 @@ pub struct Position {
 
 /// builder methods
 impl Position {
+    pub fn from_board(board: Board) -> Self {
+        Self { board, ..Self::default()}
+    }
+
+
     /// 0. Piece placement
     /// 1. Active color
     /// 2. Castling rights
@@ -192,8 +197,9 @@ impl Position {
     pub fn operations(&self) -> HashMap<String, String> {
         self.operations.clone()
     }
-    pub fn set_operation(&mut self, key: &str, value: &str) {
+    pub fn set_operation(&mut self, key: &str, value: &str) -> &mut Self {
         self.operations.insert(key.to_string(), value.to_string());
+        self
     }
 
     pub const ACD: &'static str = "acd";
@@ -231,6 +237,11 @@ impl Position {
     pub fn id(&self) -> Result<&str, String> {
         self.get(Self::ID)
     }
+
+    pub fn set_id(&mut self, id: &str) -> &mut Self {
+        self.set_operation(Self::ID, id)
+    }
+
 
     pub fn draw_reject(&self) -> bool {
         self.operations.get(Self::DRAW_REJECT).is_some()

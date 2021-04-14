@@ -1,7 +1,11 @@
 use crate::bitboard::Bitboard;
 use crate::board::boardbuf::BoardBuf;
 use crate::board::Board;
+use crate::globals::constants::*;
 use crate::position::Position;
+use crate::types::CastlingRights;
+use std::collections::HashSet;
+use std::cmp::{max,min};
 
 pub struct Catalog;
 
@@ -547,6 +551,72 @@ b2b1r1k/3R1ppp/4qP2/4p1PQ/4P3/5B2/4N1K1/8 w - - bm g6; id "WAC.300";
         ));
         vec
     }
+
+
+    // logic for chess960 starting positions
+    // http://www.russellcottrell.com/Chess/Chess960.htm
+    //
+    // Bw = n mod 4
+    // n = floor(n/4)
+    //  
+    // Bb = n mod 4
+    // n = floor(n/4)
+    //
+    // Q = n mod 6
+    // n = floor(n/6)
+    //  
+    // N2 = n + (3-N1)(4-N1)/2 - 5  where N1<N2, 0 <= N1 <= 3, 1 <= N2 <= 4
+    //
+    pub fn chess960(id: u32) -> Position {
+        let mut n = id as usize;
+        let bw = n % 4;
+        n = n / 4;
+
+        let bb = n % 4;
+        n = n / 4;
+
+        let q = n % 6;
+        n = n / 6;
+
+        let mut n1 = 0;
+        let mut n2;
+        loop {
+            n2 = n + (3-n1)*(4-n1)/2 -5;
+            if 1 <= n2 && n2 <= 4 && n1 < n2 {
+                break;
+            }
+            n1 += 1;  
+        }
+        // println!("chess960: n1, n2, bw, bb, q {} {} {} {} {}", n1, n2, bw, bb, q);
+        // now work out actual squares
+        let mut chars = vec!['.';8];
+        let bw = bw * 2 + 1;
+        let bb = bb * 2;
+        chars[bw] = 'B';
+        chars[bb] = 'B';
+        let q = (0..8).into_iter().filter(|&x| chars[x] == '.').nth(q).unwrap();
+        chars[q] = 'Q';
+        let n1 = (0..8).into_iter().filter(|&x| chars[x] == '.').nth(n1).unwrap();
+        let n2 = (0..8).into_iter().filter(|&x| chars[x] == '.').nth(n2).unwrap();
+        chars[n1] = 'N';
+        chars[n2] = 'N';
+        let r1 = (0..8).into_iter().position(|x| chars[x] == '.').unwrap();
+        chars[r1] = 'R';
+        let r2 = (0..8).into_iter().rposition(|x| chars[x] == '.').unwrap();
+        chars[r2] = 'R';
+        let k = (0..8).into_iter().position(|x| chars[x] == '.').unwrap();
+        chars[k] = 'K';
+        let mut b = Board::new_empty();
+        b.set(RANK_1, &chars.iter().collect::<String>()).unwrap();
+        b.set(RANK_2, "PPPPPPPP").unwrap();
+        b.set(RANK_7, "pppppppp").unwrap();
+        b.set(RANK_8, &chars.iter().collect::<String>().to_lowercase()).unwrap();
+        b.set_castling(CastlingRights::ALL);
+        let mut pos = Position::from_board(b);
+        pos.set_id(&format!("Chess960(SP{})", id));
+        pos
+    }
+
 }
 
 
@@ -568,4 +638,24 @@ mod tests {
         assert_eq!( epds.len(), 24);
         assert_eq!( epds[0].id().ok(), Some("BK.01"));
     }
+
+    #[test]
+    fn test_catalog_chess960() {
+        //  testing data https://www.mark-weeks.com/cfaa/chess960/c960strt.htm
+        let p = Catalog::chess960(518);
+        assert_eq!(p.board(), &Catalog::starting_position());
+        assert_eq!(Catalog::chess960(0).board().get(RANK_1), "BBQNNRKR");
+        assert_eq!(Catalog::chess960(1).board().get(RANK_1), "BQNBNRKR");
+        assert_eq!(Catalog::chess960(15).board().get(RANK_1), "QNNRKRBB");
+        assert_eq!(Catalog::chess960(959).board().get(RANK_1), "RKRNNQBB");
+        // check unique
+        let mut set = HashSet::new();
+        for id in 0..960 {
+            set.insert(*Catalog::chess960(id).board());
+        }
+        set.insert(Catalog::starting_position()); // add a duplicate
+        assert_eq!(set.len(), 960);
+    }
+
+
 }

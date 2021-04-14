@@ -66,6 +66,26 @@ pub mod constants {
     pub const f8: Bitboard = Bitboard::F8;
     pub const g8: Bitboard = Bitboard::G8;
     pub const h8: Bitboard = Bitboard::H8;
+
+    pub const FILE_A: Bitboard = Bitboard::FILE_A;
+    pub const FILE_B: Bitboard = Bitboard::FILE_B;
+    pub const FILE_C: Bitboard = Bitboard::FILE_C;
+    pub const FILE_D: Bitboard = Bitboard::FILE_D;
+    pub const FILE_E: Bitboard = Bitboard::FILE_E;
+    pub const FILE_F: Bitboard = Bitboard::FILE_F;
+    pub const FILE_G: Bitboard = Bitboard::FILE_G;
+    pub const FILE_H: Bitboard = Bitboard::FILE_H;
+    
+    pub const RANK_1: Bitboard = Bitboard::RANK_1;
+    pub const RANK_2: Bitboard = Bitboard::RANK_2;
+    pub const RANK_3: Bitboard = Bitboard::RANK_3;
+    pub const RANK_4: Bitboard = Bitboard::RANK_4;
+    pub const RANK_5: Bitboard = Bitboard::RANK_5;
+    pub const RANK_6: Bitboard = Bitboard::RANK_6;
+    pub const RANK_7: Bitboard = Bitboard::RANK_7;
+    pub const RANK_8: Bitboard = Bitboard::RANK_8;
+
+
 }
 
 #[cfg(test)]

@@ -128,7 +128,7 @@ impl fmt::Display for CastlingRights {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum Color {
     White = 0,
     Black = 1,
