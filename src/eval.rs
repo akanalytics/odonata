@@ -129,6 +129,12 @@ pub enum Score {
     PlusInfinity,
 }
 
+impl Default for Score {
+    fn default() -> Self { Self::MinusInfinity }
+}
+
+
+
 impl Score {
     #[inline]
     pub fn cp(centipawn: i32) -> Score {
@@ -401,6 +407,8 @@ mod tests {
         assert_eq!(Score::WhiteLoss { ply: 1 }.negate(), Score::WhiteWin { minus_ply: -1 });
         assert_eq!(Score::MinusInfinity.negate(), Score::PlusInfinity);
         assert!(Score::MinusInfinity < Score::PlusInfinity);
+        assert_eq!(Score::MinusInfinity.is_mate(), false);
+        assert_eq!(Score::WhiteWin { minus_ply: 1 }.is_mate(), true );
         assert!(Score::Centipawns(-5) < Score::Centipawns(5));
         assert!(Score::Centipawns(5) < Score::WhiteWin { minus_ply: 0 });
         assert!(Score::Centipawns(100) > Score::Centipawns(0));

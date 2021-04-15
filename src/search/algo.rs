@@ -126,23 +126,24 @@ impl Node<'_> {
 #[derive(Clone, Default)]
 pub struct Algo {
     max_depth: u32,
-    range: Range<u32>,
     pub minmax: bool,
     iterative_deepening: bool,
     pub eval: SimpleScorer,
+    pub task_control: TaskControl<SearchProgress>,
+    pub quiescence: Quiescence,
     pub search_stats: SearchStats,
+
+    range: Range<u32>,
     pub pv_table: PvTable,
     pub current_best: Option<Move>,
-    pub overall_best_move: Option<Move>,
-    pub score: Option<Score>,
+    pub overall_best_move: Move,
+    pub score: Score,
     move_time_estimator: MoveTimeEstimator,
     pub move_orderer: MoveOrderer,
 
     child_thread: AlgoThreadHandle,
 
     clock_checks: u64,
-    pub task_control: TaskControl<SearchProgress>,
-    pub quiescence: Quiescence,
     pub current_variation: MoveList,
     pub pv: MoveList,
 }
@@ -226,8 +227,8 @@ impl fmt::Debug for Algo {
 impl fmt::Display for Algo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "pv               : {}", self.pv)?;
-        writeln!(f, "score            : {}", self.score.unwrap_or(Score::MinusInfinity))?;
-        writeln!(f, "overall_best_move: {}", self.overall_best_move.unwrap_or(Move::new_null()))?;
+        writeln!(f, "score            : {}", self.score)?;
+        writeln!(f, "overall_best_move: {}", self.overall_best_move)?;
         writeln!(f, "current_best     : {}", self.current_best.unwrap_or(Move::new_null()))?;
         writeln!(f, "depth            : {}", self.max_depth)?;
         writeln!(f, "minmax           : {}", self.minmax)?;
@@ -275,6 +276,8 @@ impl Algo {
     pub fn search(&mut self, mut board: Board) -> Algo {
         self.search_stats = SearchStats::new();
         self.current_best = None;
+        self.overall_best_move = Move::NULL_MOVE;
+        self.score = Score::default();
         self.clock_checks = 0;
         self.task_control.set_running();
         self.range = if let TimeControl::Depth(depth) = self.move_time_estimator.time_control {
@@ -287,7 +290,6 @@ impl Algo {
             // regardless of iterative deeping, we apply it if no explicit depth given
             1..MAX_PLY as u32
         };
-        self.overall_best_move = None;
 
         for depth in self.range.clone() {
             self.set_iteration_depth(depth);
@@ -297,24 +299,26 @@ impl Algo {
             self.move_time_estimator.calculate_etimates_for_ply(depth, stats);
             stats.record_time_estimate(depth, &self.move_time_estimator.time_estimate);
             
-            if self.move_time_estimator.probable_timeout(stats) || root_node.score.is_mate() {
+            if self.score.is_mate() || self.move_time_estimator.probable_timeout(stats) {
                 break;
             }
-            self.score = None;
+            self.score = Score::default();
             self.pv_table = PvTable::new(MAX_PLY);
             self.search_stats.clear_node_stats();
             let clock = Clock::new();
             // println!("Iterative deepening... ply {}", depth);
+
             self.alphabeta(&mut root_node);
+            
             self.search_stats.record_time_actual(depth, &clock.elapsed());
             if !self.task_control.is_cancelled() {
-                self.score = Some(root_node.score);
+                self.score = root_node.score;
                 self.pv = self.pv_table.extract_pv();
                 self.pv_table = self.pv_table.clone();
                 self.current_best = Some(self.pv[0]);
                 sp = SearchProgress::from_search_stats(&self.search_stats());
                 sp.pv = Some(self.pv.clone());
-                sp.score = self.score;
+                sp.score = Some(self.score);
                 self.task_control.invoke_callback(&sp);
             } else {
                 self.task_control.invoke_callback(&sp);
@@ -322,8 +326,8 @@ impl Algo {
             }
         }
 
-        self.overall_best_move = self.current_best;
-        let sp = SearchProgress::from_best_move(self.overall_best_move());
+        self.overall_best_move = self.current_best.unwrap_or(Move::NULL_MOVE);
+        let sp = SearchProgress::from_best_move(Some(self.overall_best_move()));
         self.task_control.invoke_callback(&sp);
         self.clone()
     }
@@ -346,7 +350,7 @@ impl Algo {
         &self.search_stats
     }
 
-    pub fn overall_best_move(&self) -> Option<Move> {
+    pub fn overall_best_move(&self) -> Move {
         self.overall_best_move
     }
 
@@ -592,7 +596,7 @@ mod tests {
                 //assert_eq!(search.search_stats().total().nodes(), 7749); // no ids no mvvlva
             }
             assert_eq!(search.pv_table.extract_pv(), position.pv().unwrap());
-            assert_eq!(search.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
+            assert_eq!(search.score, Score::WhiteWin { minus_ply: -3 });
         }
     }
 
@@ -607,7 +611,7 @@ mod tests {
 
         assert_eq!(nodes, 66234);
         assert_eq!(algo.pv_table.extract_pv(), position.pv().unwrap());
-        assert_eq!(algo.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
+        assert_eq!(algo.score, Score::WhiteWin { minus_ply: -3 });
         println!("{}\n\nasync....", algo);
     }
 
@@ -638,7 +642,7 @@ mod tests {
         println!("{}", search);
         assert_eq!(san, position.board().to_san_moves(&expected_pv).replace("\n", " "));
         assert_eq!(search.pv_table.extract_pv(), expected_pv);
-        assert_eq!(search.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
+        assert_eq!(search.score, Score::WhiteWin { minus_ply: -3 });
         Ok(())
     }
 

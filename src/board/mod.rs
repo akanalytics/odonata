@@ -161,14 +161,22 @@ impl Board {
 }
 
 impl fmt::Display for Board {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let b = self.clone();
         for &r in Bitboard::RANKS.iter().rev() {
-            fmt.write_str(&b.get(r))?;
-            fmt.write_char('\n')?;
+            f.write_str(&b.get(r))?;
+            f.write_char('\n')?;
         }
-        write!(fmt, "\nfen: {} \n", self.to_fen())?;
+        write!(f, "\nfen: {} \n", self.to_fen())?;
         // write!(fmt, "Moves: {}", self.moves)?;
+        if f.alternate() {
+            writeln!(f, "White:\n{}\nBlack:\n{}\n", self.white(), self.black())?;
+            for &p in Piece::ALL.iter() {
+                writeln!( f, "Pieces: {}{}\n{}\n", p.to_upper_char(), p.to_upper_char().to_lowercase(), self.pieces(p))?;
+            }
+        }
+
+            
         Ok(())
     }
 }
@@ -205,6 +213,7 @@ mod tests {
         ] {
             let b = Board::parse_fen(fen).unwrap().as_board();
             assert_eq!(fen, b.to_fen());
+            println!("{:#}", b);
         }
     }
 

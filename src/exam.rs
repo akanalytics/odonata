@@ -42,7 +42,7 @@ impl Exam {
             exam.algo.search(pos.board().clone());
             // println!("Algo\n{}", exam.algo);
             // println!("Position {}", pos);
-            if pos.bm().ok().unwrap().contains(&exam.algo.overall_best_move.unwrap()) {
+            if pos.bm().ok().unwrap().contains(&exam.algo.overall_best_move) {
                 exam.score += 1;
             }
             println!("#{} score {}", i, exam)

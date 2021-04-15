@@ -8,6 +8,7 @@ use crate::log_debug;
 use std::fmt;
 use crate::board::Board;
 use crate::eval::{Scorable, Score};
+use crate::types::Color;
 
 
 
@@ -45,7 +46,7 @@ impl Configurable for Quiescence {
 impl Default for Quiescence {
     fn default() -> Self {
         Quiescence {
-            enabled: false,
+            enabled: true,
             see: true,
             max_ply: 10,
             coarse_delta_prune: Score::cp(900),
@@ -114,7 +115,6 @@ impl Algo {
             let sp = SearchProgress::from_search_stats(&self.search_stats());
             // sp.depth = None;
             self.task_control.invoke_callback(&sp);
-            println!("{}", self);
         }
 
         if self.time_up_or_cancelled(ply, self.search_stats.total().nodes(), true) {
@@ -123,7 +123,10 @@ impl Algo {
 
 
         // this will handle mates too
-        let standing_pat = board.eval(&self.eval);
+        let mut standing_pat = board.eval(&self.eval);
+        if board.color_us() == Color::Black {
+            standing_pat = - standing_pat;
+        }
         // if standing_pat.is_mate() {
         //     return standing_pat;
         // }
@@ -180,13 +183,15 @@ mod tests {
     #[ignore]
     #[test]
     fn test_qsearch() {
-        let pos = &Catalog::mate_in_2()[0];
-        let mut search = Algo::new().set_timing_method(TimeControl::NodeCount(1_000_000)).set_callback(Uci::uci_info);
-        search.quiescence.enabled = true;
-        search.search(pos.board().clone());
-        println!("{}", search);
-        assert_eq!(search.pv().to_string(), pos.pv().unwrap().to_string(), "{}", pos.id().unwrap());
-        // FIXME assert_eq!(search.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
+        for &qs in [false, true].iter() {
+            let pos = &Catalog::mate_in_2()[0];
+            let mut search = Algo::new().set_timing_method(TimeControl::NodeCount(1_000_000)).set_callback(Uci::uci_info);
+            search.quiescence.enabled = qs;
+            search.search(pos.board().clone());
+            println!("{}", search);
+            assert_eq!(search.pv().to_string(), pos.pv().unwrap().to_string(), "{}", pos.id().unwrap());
+            assert_eq!(search.score, Score::WhiteWin { minus_ply: -3 });
+        }
     }
 }
 

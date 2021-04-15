@@ -75,7 +75,7 @@ impl Bitboard {
         Self::FILE_H,
     ];
 
-    // insert, remove, set(true/false), toggle come for free
+    // insert, remove, set(true/false), toggle, all, and empty come for free
 
     #[inline]
     pub fn from_xy(x: u32, y: u32) -> Bitboard {

@@ -1,10 +1,12 @@
 use crate::board::makemove::MoveMaker;
+use crate::board::boardbuf::BoardBuf;
 use crate::board::Board;
 use crate::catalog::Catalog;
 use crate::movelist::MoveValidator;
 use crate::movelist::{Move, MoveList};
 use crate::outcome::GameEnd;
 use crate::outcome::Outcome;
+use crate::types::Color;
 use crate::search::algo::Algo;
 use std::fmt;
 use std::time;
@@ -22,8 +24,9 @@ impl Player for Algo {
     fn choose_move(&mut self, board: &Board) -> Move {
         self.search(board.clone());
         let bm = self.pv()[0];
+        // println!("{:#}", self.score);
         if bm == Move::new_null() {
-            println!("{}", self);
+            println!("{:#}", self);
         }
         bm
     }
@@ -63,15 +66,26 @@ impl Game {
 
     pub fn play_move(&mut self) -> Move {
         if !self.board.outcome().is_game_over() {
+            if let Err(e) = self.board.validate() {
+                println!("Error: {}", e);
+                println!("{:#}\n\nmoves: {}", self.board, self.moves());
+                panic!("Error on board");
+            };
+
             let player = self.board.color_us().chooser_wb(&mut self.white, &mut self.black);
             let mv = player.choose_move(&self.board);
             self.moves.push(mv);
-            // println!(
-            //     "{}.{} {}",
-            //     self.board.fullmove_counter(),
-            //     if self.board.color_us() == Color::Black { ".. " } else { "" },
-            //     self.board.to_san(&mv)
-            // );
+            
+            // FIXME
+            if 1 == 0 {
+                println!(
+                    "{}.{} {}   {}",
+                    self.board.fullmove_counter(),
+                    if self.board.color_us() == Color::Black { ".. " } else { "" },
+                    self.board.to_san(&mv),
+                    self.board.to_fen()
+                );
+            }
             self.board = self.board.make_move(&mv);
             return mv;
         }
@@ -114,7 +128,6 @@ impl fmt::Display for Game {
 mod tests {
     use super::*;
     use crate::eval::*;
-    use crate::board::boardbuf::*;
     use crate::search::timecontrol::*;
     use std::time::Duration;
     use crate::types::{CastlingRights,ScoreWdl};
@@ -142,7 +155,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_competition() {
-        let tc = TimeControl::from_remaining_time(Duration::from_millis(5200));
+        let tc = TimeControl::from_remaining_time(Duration::from_millis(200));
         //let tc = TimeControl::Depth(3);
         let mut white = Algo::new().set_timing_method(tc);
         let mut black = Algo::new().set_timing_method(tc);

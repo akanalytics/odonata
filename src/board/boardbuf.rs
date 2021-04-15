@@ -22,6 +22,8 @@ pub trait BoardBuf {
     fn parse_piece_placement(fen: &str) -> Result<Board, String>;
     fn parse_fen(fen: &str) -> Result<Board, String>;
     fn as_board(&self) -> Board; // FIXME
+    fn validate(&self) -> Result<(), String>;
+
 }
 
 impl BoardBuf for Board {
@@ -108,6 +110,28 @@ impl BoardBuf for Board {
     fn as_board(&self) -> Board {
         self.clone()
     }
+
+    fn validate(&self) -> Result<(), String> {
+        if self.black().intersects(self.white()) {
+            return Err(format!("Black {} and white {} are not disjoint", self.black(), self.white()));
+        }
+        let mut bb = Bitboard::all();
+        for &p in Piece::ALL.iter() {
+            bb &= self.pieces(p);
+        }
+        if !bb.is_empty() {
+            return Err(format!("Piece bitboards are not disjoint"));
+        }
+
+        // if self.fullmove_counter() < self.fifty_halfmove_clock() * 2 {
+        //     return Err(format!("Fullmove number (fmvn: {}) < twice half move clock (hmvc: {})", self.fullmove_counter(), self.fifty_halfmove_clock() ));
+        // }
+        Ok(())
+    }
+
+
+
+
 
     /// Parses a FEN string to create a board. FEN format is detailed at https://en.wikipedia.org/wiki/Forsyth–Edwards_Notation
     /// terminology of "piece placement data" from http://kirill-kryukov.com/chess/doc/fen.html
