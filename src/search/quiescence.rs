@@ -99,7 +99,7 @@ impl Algo {
             self.task_control.invoke_callback(&sp);
         }
 
-        if self.time_up_or_cancelled(ply, self.search_stats.total().nodes(), true) {
+        if self.time_up_or_cancelled(ply, false) {
             return alpha;
         }
 

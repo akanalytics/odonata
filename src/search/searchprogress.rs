@@ -1,5 +1,5 @@
 use crate::movelist::{Move, MoveList};
-use crate::search::stats::SearchStats;
+use crate::search::searchstats::SearchStats;
 use crate::eval::Score;
 
 /// essentially all the data needed for UCI info status updates or for a decent progress bar
@@ -34,7 +34,7 @@ impl SearchProgress {
             nps: Some(search_stats.total_knps() * 1000),
             depth: Some(search_stats.depth()),
             seldepth: Some(search_stats.selective_depth()),
-            time_millis: Some(search_stats.clock.elapsed().as_millis() as u64),
+            time_millis: Some(search_stats.elapsed(false).as_millis() as u64),
             ..Default::default()
         }
     }

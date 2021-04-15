@@ -1,20 +1,23 @@
-use crate::clock::Clock;
+use crate::clock::{Clock, DeterministicClock};
 use crate::types::MAX_PLY;
 use std::fmt;
 use std::time::Duration;
 
 #[derive(Clone, Debug)]
 pub struct SearchStats {
-    pub clock: Clock,
+    realtime_clock: Clock,
+    deterministic_clock: DeterministicClock,
+
     pub abandoned: bool,
     pub user_cancelled: bool,
-    total: Stats,
-    plies: Vec<Stats>,
+    total: NodeStats,
+    plies: Vec<NodeStats>,
 }
 
 impl fmt::Display for SearchStats {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "clock            : {}", self.clock)?;
+        writeln!(f, "clock (detmstic) : {}", Clock::format_duration(self.deterministic_clock.elapsed()))?;
+        writeln!(f, "clock (realtime) : {}", Clock::format_duration(self.realtime_clock.elapsed()))?;
         writeln!(f, "abandoned        : {}", self.abandoned)?;
         writeln!(f, "user cancelled   : {}", self.user_cancelled)?;
         writeln!(f, "depth            : {}", self.depth())?;
@@ -25,16 +28,16 @@ impl fmt::Display for SearchStats {
         writeln!(f)?;
 
         write!(f, "{:<7}", "Ply")?;
-        Stats::fmt_header(f)?;
+        NodeStats::fmt_header(f)?;
         write!(f, "{:<7}", "---")?;
-        Stats::fmt_underline(f)?;
+        NodeStats::fmt_underline(f)?;
 
         for (i, p) in self.plies().iter().enumerate() {
             write!(f, "{:>3}    ", i)?;
             p.fmt_data(f)?;
         }
         write!(f, "{:<7}", "---")?;
-        Stats::fmt_underline(f)?;
+        NodeStats::fmt_underline(f)?;
         write!(f, "{:<7}", "tot")?;
         self.total().fmt_data(f)?;
         Ok(())
@@ -50,30 +53,46 @@ impl Default for SearchStats {
 impl SearchStats {
     pub fn new() -> Self {
         SearchStats {
-            clock: Clock::default(),
-            total: Stats::default(),
+            realtime_clock: Clock::new(),
+            deterministic_clock: DeterministicClock::new(),
+            total: NodeStats::default(),
             user_cancelled: false,
             abandoned: false,
-            plies: std::iter::repeat(Stats::new()).take(MAX_PLY).collect(),
+            plies: std::iter::repeat(NodeStats::new()).take(MAX_PLY).collect(),
         }
     }
+
+    pub fn restart_clocks(&mut self) {
+        self.realtime_clock.restart();
+        self.deterministic_clock.restart();
+    }
+
+    pub fn elapsed(&self, deterministic: bool) -> Duration {
+        if deterministic {
+            self.deterministic_clock.elapsed()
+        } else {
+            self.realtime_clock.elapsed()
+        }
+    }
+
+
     pub fn clear_node_stats(&mut self) {
         self.plies_mut().iter_mut().for_each(|s| s.clear_node_stats());
         self.total.clear_node_stats();
     }
 
     #[inline]
-    pub fn total(&self) -> &Stats {
+    pub fn total(&self) -> &NodeStats {
         &self.total
     }
 
     #[inline]
-    pub fn plies(&self) -> &[Stats] {
+    pub fn plies(&self) -> &[NodeStats] {
         &self.plies[0..self.depth() as usize]
     }
 
     #[inline]
-    pub fn plies_mut(&mut self) -> &mut [Stats] {
+    pub fn plies_mut(&mut self) -> &mut [NodeStats] {
         let d = self.depth() as usize;
         &mut self.plies[0..d]
     }
@@ -96,8 +115,9 @@ impl SearchStats {
         self.plies[ply as usize].est_time = *estimate;
     }
 
-    pub fn record_time_actual(&mut self, ply: u32, actual_duration: &Duration) {
-        self.plies[ply as usize].actual_time = *actual_duration;
+    pub fn record_time_actual(&mut self, ply: u32) {
+        self.plies[ply as usize].real_time = self.realtime_clock.elapsed();
+        self.plies[ply as usize].deterministic_time = self.deterministic_clock.elapsed();
     }
 
     #[inline]
@@ -149,23 +169,23 @@ impl SearchStats {
     }
 
     #[inline]
-    pub fn stats_mut(&mut self, ply: u32) -> &mut Stats {
+    pub fn stats_mut(&mut self, ply: u32) -> &mut NodeStats {
         &mut self.plies[ply as usize]
     }
 
     #[inline]
-    pub fn stats(&self, ply: u32) -> &Stats {
+    pub fn stats(&self, ply: u32) -> &NodeStats {
         &self.plies[ply as usize]
     }
 
     #[inline]
     pub fn total_knps(&self) -> u128 {
-        self.total.nodes() as u128 / (1 + self.clock.elapsed().as_millis())
+        self.total.nodes() as u128 / (1 + self.realtime_clock.elapsed().as_millis())
     }
 
     #[inline]
     pub fn interior_knps(&self) -> u128 {
-        self.total.interior_nodes() as u128 / (1 + self.clock.elapsed().as_millis())
+        self.total.interior_nodes() as u128 / (1 + self.realtime_clock.elapsed().as_millis())
     }
 
     #[inline]
@@ -175,7 +195,7 @@ impl SearchStats {
 }
 
 #[derive(Copy, Clone, Debug, Default)]
-pub struct Stats {
+pub struct NodeStats {
     // nodes
     pub interior_nodes: u64,
     pub leaf_nodes: u64, // FIXME and terminal
@@ -186,12 +206,13 @@ pub struct Stats {
     pub q_leaf_nodes: u64, // FIXME and terminal
 
     pub est_time: Duration,
-    pub actual_time: Duration,
+    pub real_time: Duration,
+    pub deterministic_time: Duration,
 
     pub custom: u64,
 }
 
-impl Stats {
+impl NodeStats {
     pub fn new() -> Self {
         Self::default()
     }
@@ -249,12 +270,12 @@ macro_rules! header_format {
             "{node:>11} {interior:>11} {leaf:>11} ",
             "{cut:>11} {improv:>11} {cut_perc:>6} ",
             "{qnode:>11} {qinterior:>11} {qleaf:>11} ",
-            "{est_time:>11} {actual_time:>11} {custom:>11}"
+            "{est_time:>11} {real_time:>11} {deterministic_time:>11}"
         )
     };
 }
 
-impl Stats {
+impl NodeStats {
     fn fmt_header(f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -269,8 +290,8 @@ impl Stats {
             qleaf = "q leaf",
             cut_perc = "cuts %",
             est_time = "est_time",
-            actual_time = "actual_time",
-            custom = "custom",
+            real_time = "real_time",
+            deterministic_time = "determstic",
         )?;
         writeln!(f)
     }
@@ -289,8 +310,8 @@ impl Stats {
             qinterior = "-----------",
             qleaf = "-----------",
             est_time = "-----------",
-            actual_time = "-----------",
-            custom = "-----------",
+            real_time = "-----------",
+            deterministic_time = "-----------",
         )?;
         writeln!(f)
     }
@@ -309,14 +330,14 @@ impl Stats {
             qinterior = self.q_interior_nodes,
             qleaf = self.q_leaf_nodes(),
             est_time = Clock::format_duration(self.est_time),
-            actual_time = Clock::format_duration(self.actual_time),
-            custom = self.custom,
+            real_time = Clock::format_duration(self.real_time),
+            deterministic_time = Clock::format_duration(self.deterministic_time),
         )?;
         writeln!(f)
     }
 }
 
-impl fmt::Display for Stats {
+impl fmt::Display for NodeStats {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         Self::fmt_header(f)?;
         self.fmt_data(f)
@@ -329,7 +350,7 @@ mod tests {
 
     #[test]
     fn test_display_stats() {
-        let ply_stats = Stats::default();
+        let ply_stats = NodeStats::default();
         println!("{}", ply_stats);
         println!("{:?}", ply_stats);
         println!("{:#?}", ply_stats);

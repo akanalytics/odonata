@@ -73,7 +73,8 @@ impl DeterministicClock {
         let now = Self::new();
         let evals = now.eval_count - self.eval_count; 
         let legal_move_gens = now.legal_move_count - self.eval_count;
-        let nano_secs = 200 * evals + 900 * legal_move_gens; 
+        let nano_secs = 6 * 200 * evals + 900 * legal_move_gens;  // initial mutiplier = fudge factor 
+
         Duration::from_nanos(nano_secs as u64)
     }
 

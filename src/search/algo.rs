@@ -7,11 +7,10 @@ use crate::log_debug;
 use crate::movelist::Move;
 use crate::movelist::MoveList;
 use crate::pvtable::PvTable;
-use crate::clock::Clock;
 use crate::search::move_orderer::MoveOrderer;
 use crate::search::quiescence::Quiescence;
 use crate::search::searchprogress::SearchProgress;
-use crate::search::stats::SearchStats;
+use crate::search::searchstats::SearchStats;
 use crate::search::taskcontrol::TaskControl;
 use crate::search::node::Node;
 use crate::search::timecontrol::TimeControl;
@@ -90,7 +89,7 @@ pub struct Algo {
     pub current_best: Option<Move>,
     pub overall_best_move: Move,
     pub score: Score,
-    move_time_estimator: MoveTimeEstimator,
+    pub move_time_estimator: MoveTimeEstimator,
     pub move_orderer: MoveOrderer,
 
     child_thread: AlgoThreadHandle,
@@ -252,14 +251,16 @@ impl Algo {
             self.score = Score::default();
             self.pv_table = PvTable::new(MAX_PLY);
             self.search_stats.clear_node_stats();
-            let clock = Clock::new();
             // println!("Iterative deepening... ply {}", depth);
 
             self.alphabeta(&mut root_node);
             
-            self.search_stats.record_time_actual(depth, &clock.elapsed());
+
+            self.search_stats.record_time_actual(depth);
+
             if !self.task_control.is_cancelled() {
                 self.score = root_node.score;
+                println!("Score::::: {}", self.score);
                 self.pv = self.pv_table.extract_pv();
                 self.pv_table = self.pv_table.clone();
                 self.current_best = Some(self.pv[0]);
@@ -273,6 +274,10 @@ impl Algo {
             }
         }
 
+        if self.pv().len() == 0 {
+            println!("{}", self);
+            panic!("No PV");
+        }
         self.overall_best_move = self.pv()[0];
         let sp = SearchProgress::from_best_move(Some(self.overall_best_move()));
         self.task_control.invoke_callback(&sp);
@@ -319,7 +324,7 @@ impl Algo {
     }
 
     #[inline]
-    pub fn time_up_or_cancelled(&mut self, ply: u32, nodes: u64, force_check: bool) -> bool {
+    pub fn time_up_or_cancelled(&mut self, ply: u32, force_check: bool) -> bool {
         self.clock_checks += 1;
 
         // never cancel on ply=1, this way we always have a best move, and we detect mates
@@ -336,7 +341,7 @@ impl Algo {
             return false;
         }
 
-        let time_up = self.move_time_estimator.is_time_up(ply, nodes, &self.search_stats.clock.elapsed());
+        let time_up = self.move_time_estimator.is_time_up(ply, self.search_stats());
         if time_up {
             self.search_stats.abandoned = true;
             self.task_control.cancel();
@@ -356,7 +361,7 @@ impl Algo {
             self.task_control.invoke_callback(&sp);
         }
 
-        if self.time_up_or_cancelled(node.ply, self.search_stats.total().nodes(), false) {
+        if self.time_up_or_cancelled(node.ply, false) {
             return;
         }
 

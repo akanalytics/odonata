@@ -1,11 +1,7 @@
-use crate::board::Board;
 use crate::clock::DurationNewType;
-use crate::search::stats::SearchStats;
 use crate::types::Color;
 use std::fmt;
 use std::time::Duration;
-use crate::clock::Clock;
-use crate::config::{Config, Configurable};
 
 /// https://en.wikipedia.org/wiki/Time_control
 ///

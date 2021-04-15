@@ -155,8 +155,9 @@ mod tests {
 
     #[test]
     #[ignore]
-    fn test_competition() {
-        let tc = TimeControl::NodeCount(1_000);
+    fn competition() {
+        //let tc = TimeControl::NodeCount(1_000);
+        let tc = TimeControl::from_remaining_time(Duration::from_millis(160));
         //let tc = TimeControl::Depth(3);
         let mut white = Algo::new().set_timing_method(tc);
         let mut black = Algo::new().set_timing_method(tc);
@@ -164,7 +165,8 @@ mod tests {
 
         white.quiescence.enabled = true;
         white.move_orderer.mvv_lva = true;
-        // black.quiescence.enabled = false;
+        
+        black.quiescence.enabled = false;
         black.move_orderer.mvv_lva = true;
         black.move_orderer.prior_pv = true;
         black.move_orderer.prior_bm = false;
@@ -196,4 +198,22 @@ mod tests {
         black.move_orderer.mvv_lva = false;
         black.search(b);
     }
+
+    #[test]
+    fn test_bug2() {
+        let b1 = Board::parse_fen("bqnbr1kr/ppp2ppp/8/8/3n4/3NNB2/PPP2PPP/BQ2R1KR b - - 4 7").unwrap();
+        let tc = TimeControl::MoveTime(Duration::from_millis(140));
+        let mut white = Algo::new().set_timing_method(tc);
+        let mut black = Algo::new().set_timing_method(tc);
+        white.move_time_estimator.deterministic = true;
+        black.move_time_estimator.deterministic = true;
+        white.move_orderer.mvv_lva = true;
+        black.move_orderer.mvv_lva = false;
+        black.search(b1.clone());
+        println!("{}", black.overall_best_move);
+        let b2 = b1.make_move(&black.overall_best_move);
+        white.search(b2.clone());
+        println!("{}", white);
+    }
+
 }
