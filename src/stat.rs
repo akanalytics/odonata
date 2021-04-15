@@ -2,9 +2,11 @@ use crate::types::MAX_PLY;
 use std::fmt;
 use std::sync::atomic::{AtomicI64, Ordering};
 
+
+
 #[derive(Default, Debug)]
-pub struct Stat {
-    name: String,
+pub struct Stat<'a> {
+    name: &'a str,
     counter: AtomicI64,
 }
 
@@ -25,7 +27,7 @@ impl Clone for PlyStat {
 }
 
 
-pub struct ArrayStat<'a> (&'a [&'a Stat]);
+pub struct ArrayStat<'a> (pub &'a [&'a Stat<'a>]);
 
 impl fmt::Display for ArrayStat<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -38,23 +40,35 @@ impl fmt::Display for ArrayStat<'_> {
     }
 }
 
-impl Stat {
-    pub fn new(name: &str) -> Stat {
-        Stat { name: name.to_string(), ..Stat::default() }
+impl<'a> Stat<'a> {
+
+
+    
+    pub const fn new(name: &str) -> Stat {
+        Stat { name: name, counter: AtomicI64::new(0) }
     }
 
+    #[inline]
     pub fn add(&self, add: i64) {
         self.counter.fetch_add(add, Ordering::Relaxed);
     }
 
+    #[inline]
+    pub fn increment(&self) {
+        self.counter.fetch_add(1, Ordering::Relaxed);
+    }
+
+    #[inline]
     pub fn set(&self, value: i64) {
         self.counter.store(value, Ordering::Relaxed);
     }
 
+    #[inline]
     pub fn get(&self) -> i64 {
         self.counter.load(Ordering::Relaxed)
     }
 
+    #[inline]
     pub fn name(&self) -> &str {
         &self.name
     }

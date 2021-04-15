@@ -68,6 +68,7 @@ impl Game {
         if !self.board.outcome().is_game_over() {
             if let Err(e) = self.board.validate() {
                 println!("Error: {}", e);
+                println!("Starting position: {}", self.starting_pos.to_fen());
                 println!("{:#}\n\nmoves: {}", self.board, self.moves());
                 panic!("Error on board");
             };
@@ -155,7 +156,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_competition() {
-        let tc = TimeControl::from_remaining_time(Duration::from_millis(200));
+        let tc = TimeControl::NodeCount(1_000);
         //let tc = TimeControl::Depth(3);
         let mut white = Algo::new().set_timing_method(tc);
         let mut black = Algo::new().set_timing_method(tc);
@@ -163,13 +164,15 @@ mod tests {
 
         white.quiescence.enabled = true;
         white.move_orderer.mvv_lva = true;
+        // black.quiescence.enabled = false;
         black.move_orderer.mvv_lva = true;
         black.move_orderer.prior_pv = true;
         black.move_orderer.prior_bm = false;
         
         let mut score = ScoreWdl::default();
         for id in 0..960 {
-            let mut b = *Catalog::chess960(id).board();
+            let pos = Catalog::chess960(id);
+            let mut b = *pos.board();
             b.set_castling(CastlingRights::NONE);
             let mut game1 = Game::new(white.clone(), black.clone()).set_board(b);
             let mut game2 = Game::new(black.clone(), white.clone()).set_board(b);
@@ -178,7 +181,7 @@ mod tests {
             game2.play();
             // println!("\n{}", game2);
             score += game1.outcome().as_wdl() + game2.outcome().reversed().as_wdl();
-            println!("game: {} score {}", id+1, score);
+            println!("game: {} score {}", pos.id().unwrap(), score);
         }
         println!("score {}", score);
     }

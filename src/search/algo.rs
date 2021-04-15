@@ -7,14 +7,15 @@ use crate::log_debug;
 use crate::movelist::Move;
 use crate::movelist::MoveList;
 use crate::pvtable::PvTable;
-use crate::search::clock::Clock;
+use crate::clock::Clock;
 use crate::search::move_orderer::MoveOrderer;
 use crate::search::quiescence::Quiescence;
 use crate::search::searchprogress::SearchProgress;
 use crate::search::stats::SearchStats;
 use crate::search::taskcontrol::TaskControl;
-use crate::search::timecontrol::{MoveTimeEstimator, TimeControl};
-use crate::types::Color;
+use crate::search::node::Node;
+use crate::search::timecontrol::TimeControl;
+use crate::search::move_time_estimator::MoveTimeEstimator;
 use crate::types::MAX_PLY;
 use std::fmt;
 use std::ops::Range;
@@ -72,55 +73,6 @@ use std::thread;
 //                 break (* α cutoff *)
 //         return value
 //
-#[derive(Debug)]
-pub struct Node<'b> {
-    pub board: &'b mut Board,
-    pub ply: u32,
-    pub alpha: Score,
-    pub beta: Score,
-    pub score: Score,
-    pub last_move: &'b Move,
-}
-
-impl Node<'_> {
-    #[inline]
-    fn root(board: &mut Board) -> Node {
-        let score = if Self::is_maximizing(board) { Score::MinusInfinity } else { Score::PlusInfinity };
-        Node {
-            board,
-            ply: 0,
-            alpha: Score::MinusInfinity,
-            beta: Score::PlusInfinity,
-            score,
-            last_move: &Move::NULL_MOVE,
-        }
-    }
-
-    #[inline]
-    pub fn child<'c>(&self, mv: &'c Move, board: &'c mut Board) -> Node<'c> {
-        let score = if Self::is_maximizing(board) { Score::MinusInfinity } else { Score::PlusInfinity };
-        Node {
-            board,
-            alpha: self.alpha,
-            beta: self.beta,
-            ply: self.ply + 1,
-            score,
-            last_move: mv,
-        }
-    }
-
-    #[inline]
-    pub fn is_maximizing(board: &Board) -> bool {
-        // node.ply % 2 == 0 // 0 ply looks at our moves - maximising if white
-        board.color_us() == Color::White
-    }
-
-    #[inline]
-    pub fn is_root(&self) -> bool {
-        self.ply == 0
-    }
-}
-
 // type AlgoSender = mpsc::Sender<String>;
 
 #[derive(Clone, Default)]
@@ -266,11 +218,6 @@ impl Algo {
         self.task_control.set_running();
         let mut algo = self.clone();
         self.child_thread = AlgoThreadHandle(Some(builder.spawn(move || algo.search(board)).unwrap()));
-
-        // let mut res = Vec::with_capacity(n);
-        // for child in children {
-        // res.push(child.join().unwrap());
-        // }
     }
 
     pub fn search(&mut self, mut board: Board) -> Algo {
@@ -293,7 +240,7 @@ impl Algo {
 
         for depth in self.range.clone() {
             self.set_iteration_depth(depth);
-            let mut root_node = Node::root(&mut board);
+            let mut root_node = Node::new_root(&mut board);
             let stats = &mut self.search_stats;
             let mut sp = SearchProgress::from_search_stats(stats);
             self.move_time_estimator.calculate_etimates_for_ply(depth, stats);
@@ -326,7 +273,7 @@ impl Algo {
             }
         }
 
-        self.overall_best_move = self.current_best.unwrap_or(Move::NULL_MOVE);
+        self.overall_best_move = self.pv()[0];
         let sp = SearchProgress::from_best_move(Some(self.overall_best_move()));
         self.task_control.invoke_callback(&sp);
         self.clone()
@@ -439,7 +386,7 @@ impl Algo {
 
         for (_i, mv) in moves.iter().enumerate() {
             let mut child_board = node.board.make_move(mv);
-            let mut child = node.child(mv, &mut child_board);
+            let mut child = node.new_child(mv, &mut child_board);
             debug_assert!(child.alpha < child.beta || self.minmax);
             self.current_variation.set_last_move(child.ply, mv);
             self.alphabeta(&mut child);
@@ -492,6 +439,7 @@ mod tests {
     use super::*;
     use crate::board::boardbuf::*;
     use crate::catalog::*;
+    use crate::types::*;
     use crate::comms::uci::Uci;
     use crate::eval::*;
     use crate::movelist::MoveValidator;

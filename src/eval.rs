@@ -1,6 +1,7 @@
 use crate::board::Board;
 use crate::config::{Config, Configurable};
 use crate::log_debug;
+use crate::globals::counts;
 use crate::material::Material;
 use crate::outcome::{GameEnd, Outcome};
 use crate::types::{Color, Piece};
@@ -313,6 +314,7 @@ impl SimpleScorer {
 
 impl SimpleScorer {
     pub fn evaluate(&self, board: &Board) -> Score {
+        counts::EVAL_COUNT.increment();
         let outcome = board.outcome();
         if outcome.is_game_over() {
             return Score::from_outcome(outcome, board.ply());

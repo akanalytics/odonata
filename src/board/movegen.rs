@@ -2,6 +2,7 @@ use crate::attacks::{BitboardAttacks, ClassicalBitboard};
 use crate::bitboard::{Bitboard, Dir};
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
+use crate::globals::counts;
 use crate::movelist::{Move, MoveList};
 use crate::types::{CastlingRights, Color, Piece};
 use once_cell::sync::OnceCell;
@@ -71,6 +72,7 @@ impl MoveGen for Board {
     }
 
     fn legal_moves(&self) -> MoveList {
+        counts::LEGAL_MOVE_COUNT.increment();
         let mut moves = self.pseudo_legal_moves();
         moves.retain(|m| self.is_legal_move(m));
         moves
@@ -529,6 +531,7 @@ mod tests {
         assert_eq!(board.legal_moves().sort().to_string(), "h1g2");
         let mov_h1g2 = board.parse_uci_move("h1g2")?;
         assert_eq!(board.is_legal_move(&mov_h1g2), true);
+        println!("{}", counts::GLOBAL_COUNTS);
         Ok(())
     }
 }

@@ -113,7 +113,7 @@ impl BoardBuf for Board {
 
     fn validate(&self) -> Result<(), String> {
         if self.black().intersects(self.white()) {
-            return Err(format!("Black {} and white {} are not disjoint", self.black(), self.white()));
+            return Err(format!("White\n{}\n and black\n{}\n are not disjoint", self.white(), self.black()));
         }
         let mut bb = Bitboard::all();
         for &p in Piece::ALL.iter() {

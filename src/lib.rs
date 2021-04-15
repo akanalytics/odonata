@@ -14,6 +14,7 @@ extern crate regex;
 mod attacks;
 pub mod bitboard;
 pub mod board;
+pub mod clock;
 pub mod catalog;
 pub mod comms;
 pub mod eval;

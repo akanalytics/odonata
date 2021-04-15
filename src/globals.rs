@@ -75,7 +75,6 @@ pub mod constants {
     pub const FILE_F: Bitboard = Bitboard::FILE_F;
     pub const FILE_G: Bitboard = Bitboard::FILE_G;
     pub const FILE_H: Bitboard = Bitboard::FILE_H;
-    
     pub const RANK_1: Bitboard = Bitboard::RANK_1;
     pub const RANK_2: Bitboard = Bitboard::RANK_2;
     pub const RANK_3: Bitboard = Bitboard::RANK_3;
@@ -84,9 +83,17 @@ pub mod constants {
     pub const RANK_6: Bitboard = Bitboard::RANK_6;
     pub const RANK_7: Bitboard = Bitboard::RANK_7;
     pub const RANK_8: Bitboard = Bitboard::RANK_8;
-
-
 }
+
+pub mod counts {
+    use crate::stat::{ArrayStat, Stat};
+
+    pub static EVAL_COUNT: Stat = Stat::new("EVAL COUNT");
+    pub static LEGAL_MOVE_COUNT: Stat = Stat::new("LEGAL_MOVE COUNT");
+
+    pub static GLOBAL_COUNTS: ArrayStat = ArrayStat(&[&EVAL_COUNT, &LEGAL_MOVE_COUNT]);
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -94,7 +101,7 @@ mod tests {
     use crate::board::*;
     use crate::eval::*;
     use crate::movelist::*;
-    use crate::search::algo::*;
+    use crate::search::node::*;
     use crate::search::stats::*;
     use crate::types::*;
     use std::mem::size_of;

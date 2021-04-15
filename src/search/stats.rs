@@ -1,4 +1,4 @@
-use crate::search::clock::Clock;
+use crate::clock::Clock;
 use crate::types::MAX_PLY;
 use std::fmt;
 use std::time::Duration;
