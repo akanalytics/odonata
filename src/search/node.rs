@@ -7,7 +7,7 @@ use crate::movelist::Move;
 
 #[derive(Debug)]
 pub struct Node<'b> {
-    pub board: &'b mut Board,
+    pub board: &'b Board,
     pub ply: u32,
     pub alpha: Score,
     pub beta: Score,
@@ -17,7 +17,7 @@ pub struct Node<'b> {
 
 impl Node<'_> {
     #[inline]
-    pub fn new_root(board: &mut Board) -> Node {
+    pub fn new_root(board: &Board) -> Node {
         let score = if Self::is_maximizing(board) { Score::MinusInfinity } else { Score::PlusInfinity };
         Node {
             board,
@@ -30,7 +30,7 @@ impl Node<'_> {
     }
 
     #[inline]
-    pub fn new_child<'c>(&self, mv: &'c Move, board: &'c mut Board) -> Node<'c> {
+    pub fn new_child<'c>(&self, mv: &'c Move, board: &'c Board) -> Node<'c> {
         let score = if Self::is_maximizing(board) { Score::MinusInfinity } else { Score::PlusInfinity };
         Node {
             board,

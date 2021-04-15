@@ -9,3 +9,4 @@ pub mod quiescence;
 pub mod move_orderer;
 pub mod move_time_estimator;
 pub mod node;
+pub mod iterative_deepening;

@@ -46,7 +46,7 @@ pub struct Clock {
 
 // a clock that is deterministic based upon the count of various operations
 // not at all accurate - but useful for testing the timekeeping logic
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct DeterministicClock {
     legal_move_count: i64,
     eval_count: i64,

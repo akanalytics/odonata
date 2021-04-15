@@ -92,7 +92,7 @@ impl Algo {
     //     }
     //     return alpha;
     // }
-    fn qsearch(&mut self, sq: Bitboard, ply: u32, board: &mut Board, mut alpha: Score, beta: Score) -> Score {
+    fn qsearch(&mut self, sq: Bitboard, ply: u32, board: &Board, mut alpha: Score, beta: Score) -> Score {
         if self.search_stats.total().nodes() % 1000000 == 0 && self.search_stats.total().nodes() != 0 {
             let sp = SearchProgress::from_search_stats(&self.search_stats());
             // sp.depth = None;

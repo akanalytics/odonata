@@ -1,9 +1,11 @@
 use crate::clock::{Clock, DeterministicClock};
 use crate::types::MAX_PLY;
+use crate::eval::Score;
+use crate::movelist::MoveList;
 use std::fmt;
 use std::time::Duration;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct SearchStats {
     realtime_clock: Clock,
     deterministic_clock: DeterministicClock,
@@ -12,6 +14,11 @@ pub struct SearchStats {
     pub user_cancelled: bool,
     total: NodeStats,
     plies: Vec<NodeStats>,
+
+    pub pv: MoveList,
+    pub alpha: Score,
+    pub beta: Score,
+    pub score: Score,
 }
 
 impl fmt::Display for SearchStats {
@@ -44,22 +51,16 @@ impl fmt::Display for SearchStats {
     }
 }
 
-impl Default for SearchStats {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl SearchStats {
     pub fn new() -> Self {
         SearchStats {
-            realtime_clock: Clock::new(),
-            deterministic_clock: DeterministicClock::new(),
-            total: NodeStats::default(),
-            user_cancelled: false,
-            abandoned: false,
             plies: std::iter::repeat(NodeStats::new()).take(MAX_PLY).collect(),
+            ..Self::default()
         }
+    }
+
+    pub fn complete(&self) -> bool {
+        !self.abandoned
     }
 
     pub fn restart_clocks(&mut self) {

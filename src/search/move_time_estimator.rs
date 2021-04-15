@@ -21,7 +21,7 @@ pub struct MoveTimeEstimator {
 
 impl Configurable for MoveTimeEstimator {
     fn settings(&self, c: &mut Config) {
-        c.set("mte.branching_factor", "type spin default 15 min 1 max 100");
+        c.set("mte.branching_factor", "type spin default 12 min 1 max 100");
         c.set("mte.moves_rem", "type spin default 20 min 1 max 100");
         c.set("mte.deterministic", "type check default false");
     }
@@ -38,7 +38,7 @@ impl Configurable for MoveTimeEstimator {
 impl Default for MoveTimeEstimator {
     fn default() -> Self {
         MoveTimeEstimator {
-            branching_factor: 15,
+            branching_factor: 12,
             moves_rem: 20,
             board: Board::default(),
             time_control: TimeControl::default(),

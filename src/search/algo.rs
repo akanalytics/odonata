@@ -15,6 +15,7 @@ use crate::search::taskcontrol::TaskControl;
 use crate::search::node::Node;
 use crate::search::timecontrol::TimeControl;
 use crate::search::move_time_estimator::MoveTimeEstimator;
+use crate::search::iterative_deepening::IterativeDeepening;
 use crate::types::MAX_PLY;
 use std::fmt;
 use std::ops::Range;
@@ -79,12 +80,13 @@ pub struct Algo {
     max_depth: u32,
     pub minmax: bool,
     iterative_deepening: bool,
+    pub ids: IterativeDeepening,
     pub eval: SimpleScorer,
     pub task_control: TaskControl<SearchProgress>,
     pub quiescence: Quiescence,
     pub search_stats: SearchStats,
 
-    range: Range<u32>,
+    pub range: Range<u32>,
     pub pv_table: PvTable,
     pub current_best: Option<Move>,
     pub overall_best_move: Move,
@@ -141,6 +143,7 @@ impl Configurable for Algo {
         self.move_time_estimator.settings(c);
         self.move_orderer.settings(c);
         self.quiescence.settings(c);
+        self.ids.settings(c);
     }
     fn configure(&mut self, c: &Config) {
         log_debug!("algo.configure with {}", c);
@@ -150,6 +153,7 @@ impl Configurable for Algo {
         self.move_orderer.configure(c);
         self.move_time_estimator.configure(c);
         self.quiescence.configure(c);
+        self.ids.configure(c);
     }
 }
 
@@ -171,6 +175,7 @@ impl fmt::Debug for Algo {
             .field("range", &self.range)
             .field("search_stats", &self.search_stats)
             .field("quiescence", &self.quiescence)
+            .field("ids", &self.ids)
             .finish()
     }
 }
@@ -191,9 +196,7 @@ impl fmt::Display for Algo {
         write!(f, "\n[task control]\n{}", self.task_control)?;
         write!(f, "\n[move time estimator]\n{}", self.move_time_estimator)?;
         write!(f, "\n[quiescence]\n{}", self.quiescence)?;
-        // writeln!(f, "kill             :{}", self.kill.load(atomic::Ordering::SeqCst))?;
-        // writeln!(f, "kill ref counts  :{}", Arc::strong_count(&self.kill))?;
-        // writeln!(f, "callback         :{}", self.callback)?;
+        write!(f, "\n[iterative deepening]\n{}", self.ids)?;
         write!(f, "\n[stats]\n{}", self.search_stats)?;
         write!(f, "\n[pvtable]\n{}", self.pv_table)?;
         Ok(())
@@ -260,7 +263,6 @@ impl Algo {
 
             if !self.task_control.is_cancelled() {
                 self.score = root_node.score;
-                println!("Score::::: {}", self.score);
                 self.pv = self.pv_table.extract_pv();
                 self.pv_table = self.pv_table.clone();
                 self.current_best = Some(self.pv[0]);
