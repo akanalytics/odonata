@@ -8,6 +8,7 @@ use crate::outcome::GameEnd;
 use crate::outcome::Outcome;
 use crate::types::Color;
 use crate::search::algo::Algo;
+use crate::comms::uci::Uci;
 use std::fmt;
 use std::time;
 
@@ -22,8 +23,8 @@ impl Player for Algo {
     }
 
     fn choose_move(&mut self, board: &Board) -> Move {
-        self.search(board.clone());
-        let bm = self.pv()[0];
+        self.search2(board.clone());
+        let bm = self.overall_best_move();
         // println!("{:#}", self.score);
         if bm == Move::new_null() {
             println!("{:#}", self);
@@ -157,7 +158,7 @@ mod tests {
     #[ignore]
     fn competition() {
         //let tc = TimeControl::NodeCount(1_000);
-        let tc = TimeControl::from_remaining_time(Duration::from_millis(160));
+        let tc = TimeControl::from_remaining_time(Duration::from_millis(150));
         //let tc = TimeControl::Depth(3);
         let mut white = Algo::new().set_timing_method(tc);
         let mut black = Algo::new().set_timing_method(tc);

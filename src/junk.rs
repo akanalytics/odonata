@@ -224,7 +224,7 @@ impl Search {
             alpha: parent.alpha, 
             beta: parent.beta, 
             ply: parent.ply + 1, 
-            score: if self.is_maximizing(parent) { Score::PlusInfinity } else { Score::MinusInfinity },  // parent maximising => child isnt
+            score: if self.is_maximizing(parent) { Score::PlusInf } else { Score::MinusInf },  // parent maximising => child isnt
             best_move: Default::default()
         };
         debug_assert!(child.alpha < child.beta);
@@ -242,7 +242,7 @@ impl Search {
             let board2 = node.board.make_move(mv);
             let mut child = self.new_child(node, mv, &board2);
             self.alphabeta(&mut child);
-            if child.score > Score::Centipawns(1000) {
+            if child.score > Score::Cp(1000) {
                 // info!("Ply:{}  Move:{} score:{} bm:{} a:{} b:{}", child.ply, mv.uci(), child.score, self.best_move, self.alpha, self.beta);
             }
             let is_cut = self.process_child(&mv, &child);
@@ -303,7 +303,7 @@ mod tests {
     fn test_node() {
         init();
         let board = &Catalog::starting_position();
-        let mut node = Node { parent: None, board, ply: 0, alpha: Score::MinusInfinity, beta: Score::PlusInfinity, score: Score::MinusInfinity, best_move: Default::default() };
+        let mut node = Node { parent: None, board, ply: 0, alpha: Score::MinusInf, beta: Score::PlusInf, score: Score::MinusInf, best_move: Default::default() };
         let mut s = Search{ max_depth: 6, ..Default::default() };
         s.alphabeta(&mut node);
         assert_eq!( format!("{:?}", node), "");
@@ -314,7 +314,7 @@ mod tests {
         init();
         let board = &Board::parse_fen("2r2k2/5pp1/3p1b1p/2qPpP2/1p2B2P/pP3P2/2P1R3/2KRQ3 b - - 0 1").unwrap().as_board();
         println!("{}", board);
-        let mut node = Node { parent: None,  board, ply: 0, alpha: Score::MinusInfinity, beta: Score::PlusInfinity, score: Score::MinusInfinity, best_move: Default::default() };
+        let mut node = Node { parent: None,  board, ply: 0, alpha: Score::MinusInf, beta: Score::PlusInf, score: Score::MinusInf, best_move: Default::default() };
         let mut s = Search{ max_depth: 9, ..Default::default() };
         s.alphabeta(&mut node);
         println!("AndyFish best move: {} with score (+ve for white): {}", node.best_move, node.score);

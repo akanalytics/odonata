@@ -18,12 +18,12 @@ pub struct Node<'b> {
 impl Node<'_> {
     #[inline]
     pub fn new_root(board: &Board) -> Node {
-        let score = if Self::is_maximizing(board) { Score::MinusInfinity } else { Score::PlusInfinity };
+        let score = if Self::is_maximizing(board) { Score::MinusInf } else { Score::PlusInf };
         Node {
             board,
             ply: 0,
-            alpha: Score::MinusInfinity,
-            beta: Score::PlusInfinity,
+            alpha: Score::MinusInf,
+            beta: Score::PlusInf,
             score,
             last_move: &Move::NULL_MOVE,
         }
@@ -31,7 +31,7 @@ impl Node<'_> {
 
     #[inline]
     pub fn new_child<'c>(&self, mv: &'c Move, board: &'c Board) -> Node<'c> {
-        let score = if Self::is_maximizing(board) { Score::MinusInfinity } else { Score::PlusInfinity };
+        let score = if Self::is_maximizing(board) { Score::MinusInf } else { Score::PlusInf };
         Node {
             board,
             alpha: self.alpha,

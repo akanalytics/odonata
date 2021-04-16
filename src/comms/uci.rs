@@ -371,7 +371,7 @@ impl<'a> fmt::Display for UciInfo<'a> {
         if let Some(score) = self.0.score {
             // FIXME from engines point of view, not white's
             match score {
-                Score::Centipawns(cp) => write!(f, "score cp {} ", cp)?,
+                Score::Cp(cp) => write!(f, "score cp {} ", cp)?,
                 // FIXME negate for engine loss
                 Score::WhiteWin { minus_ply } => write!(f, "mate {} ", (-minus_ply + 1) / 2)?,
                 Score::WhiteLoss { ply } => write!(f, "score mate {} ", (ply + 1) / 2)?,

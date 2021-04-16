@@ -123,15 +123,15 @@ pub trait Scorable<Strategy> {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Score {
-    MinusInfinity,
+    MinusInf,
     WhiteLoss { ply: i32 }, // WhiteLoss(1) < WhiteLoss(5)
-    Centipawns(i32),
+    Cp(i32),
     WhiteWin { minus_ply: i32 }, // // WhiteWin(-5) < WhiteWin(-1)
-    PlusInfinity,
+    PlusInf,
 }
 
 impl Default for Score {
-    fn default() -> Self { Self::MinusInfinity }
+    fn default() -> Self { Self::MinusInf }
 }
 
 
@@ -139,14 +139,14 @@ impl Default for Score {
 impl Score {
     #[inline]
     pub fn cp(centipawn: i32) -> Score {
-        Score::Centipawns(centipawn)
+        Score::Cp(centipawn)
     }
 
     /// Outcome must be game ending else panic
     #[inline]
     pub fn from_outcome(o: Outcome, ply: i32) -> Score {
         if o.is_draw() {
-            return Score::Centipawns(0);
+            return Score::Cp(0);
         }
         if let Some(c) = o.winning_color() {
             return c.chooser_wb(Score::WhiteWin { minus_ply: -ply }, Score::WhiteLoss { ply });
@@ -161,11 +161,11 @@ impl Score {
     #[inline]
     pub fn negate(self) -> Score {
         match self {
-            Self::MinusInfinity => Self::PlusInfinity,
+            Self::MinusInf => Self::PlusInf,
             Self::WhiteLoss { ply } => Self::WhiteWin { minus_ply: -ply },
-            Self::Centipawns(s) => Self::Centipawns(-s),
+            Self::Cp(s) => Self::Cp(-s),
             Self::WhiteWin { minus_ply } => Self::WhiteLoss { ply: -minus_ply },
-            Self::PlusInfinity => Self::MinusInfinity,
+            Self::PlusInf => Self::MinusInf,
         }
     }
 }
@@ -175,9 +175,9 @@ impl std::ops::Add for Score {
 
     #[inline]
     fn add(self, other: Self) -> Self {
-        if let Score::Centipawns(s2) = other {
-            if let Score::Centipawns(s1) = self {
-                return Score::Centipawns(s1 + s2);
+        if let Score::Cp(s2) = other {
+            if let Score::Cp(s1) = self {
+                return Score::Cp(s1 + s2);
             } else {
                 return self; // if self is an infinite or mate then adding cp/mp makes no difference
             }
@@ -191,9 +191,9 @@ impl std::ops::Sub for Score {
 
     #[inline]
     fn sub(self, other: Self) -> Self {
-        if let Score::Centipawns(s2) = other {
-            if let Score::Centipawns(s1) = self {
-                return Score::Centipawns(s1 - s2);
+        if let Score::Cp(s2) = other {
+            if let Score::Cp(s1) = self {
+                return Score::Cp(s1 - s2);
             } else {
                 return self; // if self is an infinite or mate then subtracting cp/mp makes no difference
             }
@@ -327,7 +327,7 @@ impl SimpleScorer {
             0
         };
         let p = if self.position { self.evaluate_position(board) } else { 0 };
-        Score::Centipawns(s + p)
+        Score::Cp(s + p)
     }
 
     //     // too expensive to check for checkmate, so we just quickly check some draw conditions
@@ -338,7 +338,7 @@ impl SimpleScorer {
     //     let mat = Material::from_board(board);
     //     let s = Self::evaluate_material(&mat);
     //     // let s = Material::is_insufficient2(board);
-    //     Score::Centipawns(s)
+    //     Score::Cp(s)
     // }
 
     // always updated
@@ -387,12 +387,12 @@ impl Scorable<SimpleScorer> for Board {
     fn eval_material(&self, eval: &SimpleScorer) -> Score {
         let m = Material::from_board(self);
         let s = eval.evaluate_material(&m);
-        Score::Centipawns(s)
+        Score::Cp(s)
     }
     #[inline]
     fn eval_position(&self, eval: &SimpleScorer) -> Score {
         let s = eval.evaluate_position(self);
-        Score::Centipawns(s)
+        Score::Cp(s)
     }
 }
 
@@ -404,29 +404,29 @@ mod tests {
 
     #[test]
     fn score_material() {
-        assert_eq!(Score::Centipawns(1).negate(), Score::Centipawns(-1));
+        assert_eq!(Score::Cp(1).negate(), Score::Cp(-1));
         assert_eq!(Score::WhiteWin { minus_ply: -1 }.negate(), Score::WhiteLoss { ply: 1 });
         assert_eq!(Score::WhiteLoss { ply: 1 }.negate(), Score::WhiteWin { minus_ply: -1 });
-        assert_eq!(Score::MinusInfinity.negate(), Score::PlusInfinity);
-        assert!(Score::MinusInfinity < Score::PlusInfinity);
-        assert_eq!(Score::MinusInfinity.is_mate(), false);
+        assert_eq!(Score::MinusInf.negate(), Score::PlusInf);
+        assert!(Score::MinusInf < Score::PlusInf);
+        assert_eq!(Score::MinusInf.is_mate(), false);
         assert_eq!(Score::WhiteWin { minus_ply: 1 }.is_mate(), true );
-        assert!(Score::Centipawns(-5) < Score::Centipawns(5));
-        assert!(Score::Centipawns(5) < Score::WhiteWin { minus_ply: 0 });
-        assert!(Score::Centipawns(100) > Score::Centipawns(0));
-        assert!(Score::WhiteWin { minus_ply: 1 } < Score::PlusInfinity);
+        assert!(Score::Cp(-5) < Score::Cp(5));
+        assert!(Score::Cp(5) < Score::WhiteWin { minus_ply: 0 });
+        assert!(Score::Cp(100) > Score::Cp(0));
+        assert!(Score::WhiteWin { minus_ply: 1 } < Score::PlusInf);
         assert!(Score::WhiteWin { minus_ply: 0 } == Score::WhiteWin { minus_ply: 0 });
 
         let board = Catalog::starting_position();
         let eval = &SimpleScorer::new();
-        assert_eq!(board.eval(eval), Score::Centipawns(0));
+        assert_eq!(board.eval(eval), Score::Cp(0));
 
         let starting_pos_score = 8 * 100 + 2 * 325 + 2 * 350 + 2 * 500 + 900;
         let board = Catalog::white_starting_position();
-        assert_eq!(board.eval_material(eval), Score::Centipawns(starting_pos_score));
+        assert_eq!(board.eval_material(eval), Score::Cp(starting_pos_score));
 
         let board = Catalog::black_starting_position();
-        assert_eq!(board.eval_material(eval), Score::Centipawns(starting_pos_score).negate());
+        assert_eq!(board.eval_material(eval), Score::Cp(starting_pos_score).negate());
     }
 
     #[test]
@@ -445,18 +445,18 @@ mod tests {
         let eval = &SimpleScorer::new();
 
         let bd = Board::parse_fen("8/P7/8/8/8/8/8/8 w - - 0 1").unwrap().as_board();
-        assert_eq!(bd.eval_position(eval), Score::Centipawns(50));
+        assert_eq!(bd.eval_position(eval), Score::Cp(50));
 
         let bd = Board::parse_fen("8/4p3/8/8/8/8/8/8 w - - 0 1").unwrap().as_board();
-        assert_eq!(bd.eval_position(eval), Score::Centipawns(--35));
+        assert_eq!(bd.eval_position(eval), Score::Cp(--35));
 
         let w = Catalog::white_starting_position();
-        assert_eq!(w.eval_position(eval), Score::Centipawns(-125));
+        assert_eq!(w.eval_position(eval), Score::Cp(-125));
 
         let b = Catalog::black_starting_position();
         assert_eq!(w.eval_position(eval), b.eval_position(eval).negate());
 
         let bd = Board::parse_fen("8/8/8/8/8/8/p7/8 b - - 0 1").unwrap().as_board();
-        assert_eq!(bd.eval_position(eval), Score::Centipawns(-50));
+        assert_eq!(bd.eval_position(eval), Score::Cp(-50));
     }
 }

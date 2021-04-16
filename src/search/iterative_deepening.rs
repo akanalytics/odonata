@@ -3,7 +3,7 @@ use crate::board::Board;
 use crate::search::timecontrol::TimeControl;
 use crate::config::{Config, Configurable};
 use crate::search::node::Node;
-use crate::search::searchstats::SearchStats;
+use crate::search::searchstats::{SearchStats, NodeStats};
 use crate::search::searchprogress::SearchProgress;
 use crate::log_debug;
 use crate::types::MAX_PLY;
@@ -38,7 +38,21 @@ impl Default for IterativeDeepening {
 
 impl fmt::Display for IterativeDeepening {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "enabled          : {}", self.enabled)
+        writeln!(f, "enabled          : {}", self.enabled)?;
+        writeln!(f, "iterations       : {}", self.iterations.len())?;
+        write!(f, "{:>4} ", "stat")?;
+        NodeStats::fmt_header(f)?;
+        writeln!(f, " {:>8} {:>8} {:>8} {:>11}", "alpha", "beta", "score", "pv")?;
+
+        write!(f, "{:>4} ", "----")?;
+        NodeStats::fmt_underline(f)?;
+        writeln!(f, " {:>8} {:>8} {:>8} {:>11}", "--------", "--------", "--------", "-----------")?;
+        for iter in self.iterations.iter() {
+            write!(f, "{:>4} ", if iter.completed() { "OK"} else {"FAIL"})?;
+            iter.total().fmt_data(f)?;
+            writeln!(f, " {:>8} {:>8} {:>8} {:>11}", iter.alpha, iter.beta, iter.score, iter.pv())?;
+        }
+        Ok(())
     }
 }
 
@@ -58,36 +72,54 @@ impl IterativeDeepening {
             };
             range
     }
+
+    pub fn reset(&mut self) {
+        self.iterations.clear();
+    }
 }
 
 
 
 impl Algo {
 
-    pub fn search2(&mut self, board: &Board) {
+    pub fn search2(&mut self, board: Board) {
+        self.board = board;
+        self.ids.reset();
+        self.range = self.ids.calculate_range(&self.move_time_estimator.time_control);
         for depth in self.range.clone() {
             let mut root_node = Node::new_root(&board);
-            
+            self.max_depth = depth;
+            self.search_stats = SearchStats::new();
+
             self.alphabeta(&mut root_node);
             let results = self.search_stats().clone();
 
             self.move_time_estimator.calculate_etimates_for_ply(depth+1, &results);
             self.search_stats.record_time_estimate(depth+1, &self.move_time_estimator.time_estimate);
-            if !results.complete() || results.score.is_mate() || self.move_time_estimator.probable_timeout(&results) {
+            if !results.completed() || results.score.is_mate() || self.move_time_estimator.probable_timeout(&results) {
                 self.ids.iterations.push(results);
                 break;
             }
+            // println!("{}", self);
             self.ids.iterations.push(results);
         }
-        let i = self.ids.iterations.iter().rposition(|r| r.complete()).unwrap();
+
+        let i = self.ids.iterations.iter().rposition(|r| r.completed());
+        if i.is_none() {
+            println!("rpos!!!\n\n{}", self);
+        }
+        let i = i.unwrap();
         let results = &self.ids.iterations[i];
 
         // callback
         let mut sp = SearchProgress::from_search_stats(&results);
         sp.pv = Some(results.pv.clone());
+        self.overall_best_move = results.pv()[0];
         sp.score = Some(results.score);
         self.task_control.invoke_callback(&sp);
-    }
+        self.pv = results.pv().clone();
+        println!("search2***********\n{}", self);
+        }
 
 }
 // pub fn search(&mut self, mut board: Board) -> Algo {

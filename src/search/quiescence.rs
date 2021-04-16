@@ -180,7 +180,7 @@ mod tests {
 //         }
 //     }
 
-//     Score::Centipawns(0)
+//     Score::Cp(0)
 // }
 
 // {

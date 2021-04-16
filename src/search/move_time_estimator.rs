@@ -15,6 +15,7 @@ pub struct MoveTimeEstimator {
     branching_factor: u16,
     moves_rem: u16,
     pub time_estimate: Duration,
+    pub elapsed_used: Duration,
     pub deterministic: bool,
 }
 
@@ -43,6 +44,7 @@ impl Default for MoveTimeEstimator {
             board: Board::default(),
             time_control: TimeControl::default(),
             time_estimate: Duration::default(),
+            elapsed_used: Duration::default(),
             deterministic: false,
         }
     }
@@ -57,6 +59,7 @@ impl fmt::Display for MoveTimeEstimator {
         writeln!(f, "allotted for mv  : {}", Clock::format_duration(self.alloted_time_for_move()))?;
         writeln!(f, "time estimate    : {}", Clock::format_duration(self.time_estimate))?;
         writeln!(f, "deterministic    : {}", self.deterministic)?;
+        writeln!(f, "elapsed used     : {}", Clock::format_duration(self.elapsed_used))?;
         Ok(())
     }
 }
@@ -83,7 +86,8 @@ impl MoveTimeEstimator {
     pub fn calculate_etimates_for_ply(&mut self, _ply: u32, search_stats: &SearchStats) {
         // debug_assert!(search_stats.depth() >= ply-1, "ensure we have enough stats");
         let _forecast_depth = search_stats.depth();
-        self.time_estimate = search_stats.elapsed(self.deterministic) * self.branching_factor as u32;
+        self.elapsed_used = search_stats.elapsed(self.deterministic);
+        self.time_estimate = self.elapsed_used * self.branching_factor as u32;
         
     }
 

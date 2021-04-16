@@ -10,7 +10,7 @@ pub struct SearchStats {
     realtime_clock: Clock,
     deterministic_clock: DeterministicClock,
 
-    pub abandoned: bool,
+    pub completed: bool,
     pub user_cancelled: bool,
     total: NodeStats,
     plies: Vec<NodeStats>,
@@ -23,9 +23,13 @@ pub struct SearchStats {
 
 impl fmt::Display for SearchStats {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "pv               : {}", self.pv())?;
+        writeln!(f, "alpha            : {}", self.alpha)?;
+        writeln!(f, "beta             : {}", self.beta)?;
+        writeln!(f, "score            : {}", self.score)?;
         writeln!(f, "clock (detmstic) : {}", Clock::format_duration(self.deterministic_clock.elapsed()))?;
         writeln!(f, "clock (realtime) : {}", Clock::format_duration(self.realtime_clock.elapsed()))?;
-        writeln!(f, "abandoned        : {}", self.abandoned)?;
+        writeln!(f, "completed        : {}", self.completed())?;
         writeln!(f, "user cancelled   : {}", self.user_cancelled)?;
         writeln!(f, "depth            : {}", self.depth())?;
         writeln!(f, "selective depth  : {}", self.selective_depth())?;
@@ -36,17 +40,22 @@ impl fmt::Display for SearchStats {
 
         write!(f, "{:<7}", "Ply")?;
         NodeStats::fmt_header(f)?;
+        writeln!(f)?;
         write!(f, "{:<7}", "---")?;
         NodeStats::fmt_underline(f)?;
+        writeln!(f)?;
 
         for (i, p) in self.plies().iter().enumerate() {
             write!(f, "{:>3}    ", i)?;
             p.fmt_data(f)?;
+            writeln!(f)?;
         }
         write!(f, "{:<7}", "---")?;
         NodeStats::fmt_underline(f)?;
+        writeln!(f)?;
         write!(f, "{:<7}", "tot")?;
         self.total().fmt_data(f)?;
+        writeln!(f)?;
         Ok(())
     }
 }
@@ -59,8 +68,12 @@ impl SearchStats {
         }
     }
 
-    pub fn complete(&self) -> bool {
-        !self.abandoned
+    pub fn completed(&self) -> bool {
+        self.completed
+    }
+
+    pub fn pv(&self) -> &MoveList {
+        &self.pv
     }
 
     pub fn restart_clocks(&mut self) {
@@ -116,9 +129,12 @@ impl SearchStats {
         self.plies[ply as usize].est_time = *estimate;
     }
 
-    pub fn record_time_actual(&mut self, ply: u32) {
-        self.plies[ply as usize].real_time = self.realtime_clock.elapsed();
-        self.plies[ply as usize].deterministic_time = self.deterministic_clock.elapsed();
+    pub fn record_time_actual_and_completion_status(&mut self, ply: u32, completed: bool, pv: MoveList) {
+        let ply = ply as usize;
+        self.plies[ply].real_time = self.realtime_clock.elapsed();
+        self.plies[ply].deterministic_time = self.deterministic_clock.elapsed();
+        self.completed = completed;
+        self.pv = pv;
     }
 
     #[inline]
@@ -277,7 +293,7 @@ macro_rules! header_format {
 }
 
 impl NodeStats {
-    fn fmt_header(f: &mut fmt::Formatter) -> fmt::Result {
+    pub fn fmt_header(f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
             header_format!(),
@@ -293,11 +309,10 @@ impl NodeStats {
             est_time = "est_time",
             real_time = "real_time",
             deterministic_time = "determstic",
-        )?;
-        writeln!(f)
+        )
     }
 
-    fn fmt_underline(f: &mut fmt::Formatter) -> fmt::Result {
+    pub fn fmt_underline(f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
             header_format!(),
@@ -313,11 +328,10 @@ impl NodeStats {
             est_time = "-----------",
             real_time = "-----------",
             deterministic_time = "-----------",
-        )?;
-        writeln!(f)
+        )
     }
 
-    fn fmt_data(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    pub fn fmt_data(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
             header_format!(),
@@ -333,15 +347,16 @@ impl NodeStats {
             est_time = Clock::format_duration(self.est_time),
             real_time = Clock::format_duration(self.real_time),
             deterministic_time = Clock::format_duration(self.deterministic_time),
-        )?;
-        writeln!(f)
+        )
     }
 }
 
 impl fmt::Display for NodeStats {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         Self::fmt_header(f)?;
-        self.fmt_data(f)
+        writeln!(f)?;
+        self.fmt_data(f)?;
+        writeln!(f)
     }
 }
 

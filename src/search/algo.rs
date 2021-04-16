@@ -77,7 +77,8 @@ use std::thread;
 
 #[derive(Clone, Default)]
 pub struct Algo {
-    max_depth: u32,
+    pub board: Board,
+    pub max_depth: u32,
     pub minmax: bool,
     iterative_deepening: bool,
     pub ids: IterativeDeepening,
@@ -161,6 +162,7 @@ impl fmt::Debug for Algo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Algo")
             // .field("pv_table", &self.pv_table.extract_pv().)
+            .field("board", &self.board)
             .field("score", &self.score)
             .field("overall_best_move", &self.overall_best_move)
             .field("current_best", &self.current_best)
@@ -182,20 +184,21 @@ impl fmt::Debug for Algo {
 
 impl fmt::Display for Algo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "starting pos     : {}", self.board.to_fen())?;
         writeln!(f, "pv               : {}", self.pv)?;
-        writeln!(f, "score            : {}", self.score)?;
         writeln!(f, "overall_best_move: {}", self.overall_best_move)?;
-        writeln!(f, "current_best     : {}", self.current_best.unwrap_or(Move::new_null()))?;
+        writeln!(f, "score            : {}", self.score)?;
         writeln!(f, "depth            : {}", self.max_depth)?;
+        writeln!(f, "range            : {:?}", self.range)?;
+        writeln!(f, "current_best     : {}", self.current_best.unwrap_or(Move::new_null()))?;
         writeln!(f, "minmax           : {}", self.minmax)?;
         writeln!(f, "iter deepening   : {}", self.iterative_deepening)?;
-        writeln!(f, "range            : {:?}", self.range)?;
         writeln!(f, "clock_checks     : {}", self.clock_checks)?;
-        write!(f, "\n[eval]\n{}", self.eval)?;
-        write!(f, "\n[move orderer]\n{}", self.move_orderer)?;
         write!(f, "\n[task control]\n{}", self.task_control)?;
+        write!(f, "\n[move orderer]\n{}", self.move_orderer)?;
         write!(f, "\n[move time estimator]\n{}", self.move_time_estimator)?;
         write!(f, "\n[quiescence]\n{}", self.quiescence)?;
+        write!(f, "\n[eval]\n{}", self.eval)?;
         write!(f, "\n[iterative deepening]\n{}", self.ids)?;
         write!(f, "\n[stats]\n{}", self.search_stats)?;
         write!(f, "\n[pvtable]\n{}", self.pv_table)?;
@@ -219,10 +222,14 @@ impl Algo {
         let builder = thread::Builder::new().name(name).stack_size(FOUR_MB);
         self.task_control.set_running();
         let mut algo = self.clone();
-        self.child_thread = AlgoThreadHandle(Some(builder.spawn(move || algo.search(board)).unwrap()));
+        self.child_thread = AlgoThreadHandle(
+            Some(
+                builder.spawn(move || {algo.search(board); algo}).unwrap()
+            ));
     }
 
-    pub fn search(&mut self, mut board: Board) -> Algo {
+    pub fn search(&mut self, mut board: Board) {
+        self.board = board;
         self.search_stats = SearchStats::new();
         self.current_best = None;
         self.overall_best_move = Move::NULL_MOVE;
@@ -249,17 +256,12 @@ impl Algo {
             stats.record_time_estimate(depth, &self.move_time_estimator.time_estimate);
             
             if self.score.is_mate() || self.move_time_estimator.probable_timeout(stats) {
+                // println!("Mate or probable timeout!");
                 break;
             }
-            self.score = Score::default();
-            self.pv_table = PvTable::new(MAX_PLY);
-            self.search_stats.clear_node_stats();
             // println!("Iterative deepening... ply {}", depth);
 
             self.alphabeta(&mut root_node);
-            
-
-            self.search_stats.record_time_actual(depth);
 
             if !self.task_control.is_cancelled() {
                 self.score = root_node.score;
@@ -283,7 +285,6 @@ impl Algo {
         self.overall_best_move = self.pv()[0];
         let sp = SearchProgress::from_best_move(Some(self.overall_best_move()));
         self.task_control.invoke_callback(&sp);
-        self.clone()
     }
 
     pub fn algo_description(&self) -> String {
@@ -345,7 +346,7 @@ impl Algo {
 
         let time_up = self.move_time_estimator.is_time_up(ply, self.search_stats());
         if time_up {
-            self.search_stats.abandoned = true;
+            self.search_stats.completed = false;
             self.task_control.cancel();
         }
         time_up
@@ -356,7 +357,19 @@ impl Algo {
         node.ply == self.max_depth
     }
 
+
     pub fn alphabeta(&mut self, node: &mut Node) {
+        self.search_stats.clear_node_stats();
+        self.score = Score::default();
+        self.pv_table = PvTable::new(MAX_PLY);
+
+        self.alphabeta_recursive(node);
+
+        self.search_stats.record_time_actual_and_completion_status(self.max_depth, !self.task_control.is_cancelled(), self.pv_table.extract_pv());
+    }
+
+    
+    pub fn alphabeta_recursive(&mut self, node: &mut Node) {
         debug_assert!(self.max_depth > 0);
         if self.search_stats.total().nodes() % 1000000 == 0 && self.search_stats.total().nodes() != 0 {
             let sp = SearchProgress::from_search_stats(&self.search_stats());
@@ -396,7 +409,7 @@ impl Algo {
             let mut child = node.new_child(mv, &mut child_board);
             debug_assert!(child.alpha < child.beta || self.minmax);
             self.current_variation.set_last_move(child.ply, mv);
-            self.alphabeta(&mut child);
+            self.alphabeta_recursive(&mut child);
             let is_cut = self.process_child(&mv, node, &child);
             if is_cut {
                 self.search_stats.inc_cuts(node.ply);

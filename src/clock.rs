@@ -1,10 +1,6 @@
+use crate::globals::counts;
 use std::fmt;
 use std::time::{Duration, Instant};
-use crate::globals::counts;
-
-
-
-
 
 pub struct DurationNewType(pub Duration);
 
@@ -43,23 +39,25 @@ pub struct Clock {
     start: Instant,
 }
 
-
 // a clock that is deterministic based upon the count of various operations
 // not at all accurate - but useful for testing the timekeeping logic
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct DeterministicClock {
     legal_move_count: i64,
     eval_count: i64,
 }
 
+impl Default for DeterministicClock {
+    #[inline]
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl DeterministicClock {
     #[inline]
     pub fn new() -> Self {
-        Self {
-            legal_move_count: counts::EVAL_COUNT.get(),
-            eval_count : counts::EVAL_COUNT.get(),
-        }
+        Self { legal_move_count: counts::EVAL_COUNT.get(), eval_count: counts::EVAL_COUNT.get() }
     }
 
     #[inline]
@@ -71,13 +69,12 @@ impl DeterministicClock {
     #[inline]
     pub fn elapsed(&self) -> Duration {
         let now = Self::new();
-        let evals = now.eval_count - self.eval_count; 
+        let evals = now.eval_count - self.eval_count;
         let legal_move_gens = now.legal_move_count - self.eval_count;
-        let nano_secs = 6 * 200 * evals + 900 * legal_move_gens;  // initial mutiplier = fudge factor 
+        let nano_secs = 6 * 200 * evals + 900 * legal_move_gens; // initial mutiplier = fudge factor
 
         Duration::from_nanos(nano_secs as u64)
     }
-
 }
 
 impl fmt::Display for DeterministicClock {
@@ -85,8 +82,6 @@ impl fmt::Display for DeterministicClock {
         write!(f, "{}", Clock::format_duration(self.elapsed()))
     }
 }
-
-
 
 impl Default for Clock {
     fn default() -> Self {
@@ -118,4 +113,3 @@ impl Clock {
         DurationNewType(d).to_string()
     }
 }
-

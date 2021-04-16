@@ -112,7 +112,7 @@ fn benchmark_score(c: &mut Criterion) {
     });
     group.bench_function("score enum", |b| {
         b.iter(|| {
-            black_box(Score::Centipawns(black_box(5)) > Score::Centipawns(black_box(4)));
+            black_box(Score::Cp(black_box(5)) > Score::Cp(black_box(4)));
         });
     });
     group.finish();
