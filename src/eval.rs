@@ -6,6 +6,7 @@ use crate::material::Material;
 use crate::outcome::{GameEnd, Outcome};
 use crate::types::{Color, Piece};
 use std::fmt;
+use std::fmt::Write;
 
 // eval1 = bl.scoring.material(p=300, b=400, n=700)
 // eval2 = bl.scoring.position(endgame)
@@ -14,7 +15,7 @@ use std::fmt;
 //     bl.evaluate(m)
 //     bl.evaluate(board + m)
 //     score1 = eval1(board + m)
-//     print(score1)
+//     print(score1)::write_str
 // '''
 //         w     b  total
 // pawns   3     5   -200
@@ -213,7 +214,13 @@ impl std::ops::Neg for Score {
 
 impl fmt::Display for Score {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
+        match self {
+            Self::MinusInf => f.write_str("-inf"),
+            Self::WhiteLoss { ply } => write!(f, "WhiteWin({})", ply),
+            Self::Cp(cp) => write!(f, "{} cp", cp),
+            Self::WhiteWin { minus_ply } => write!(f, "WhiteLoss({})", -minus_ply),
+            Self::PlusInf => f.write_str("+inf"),
+        }
     }
 }
 
