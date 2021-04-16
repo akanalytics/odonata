@@ -72,19 +72,16 @@ impl Algo {
 
 
         if self.move_orderer.prior_pv {
-            if Self::order_from_prior_pv(movelist, &self.current_variation, &self.pv) {
+            if Self::order_from_prior_pv(movelist, &self.current_variation, self.pv()) {
                 self.move_orderer.count_pv.add(ply, 1);
             }
         }
         if self.move_orderer.prior_bm {
             if ply == 0 {
-                if let Some(current_best) = self.current_best {
-                    if let Some(i) = movelist.iter().position(|mv| mv == &current_best) {
-                        // println!("Swapped move {} with position {} on depth {}!", current_best, i, self.max_depth);
-                        movelist.swap(0, i);
-                        self.move_orderer.count_bm.add(ply, 1);
-                        return true;
-                    }
+                if let Some(i) = movelist.iter().position(|&mv| mv == self.bm()) {
+                    movelist.swap(0, i);
+                    self.move_orderer.count_bm.add(ply, 1);
+                    return true;
                 }
             }
         }
@@ -202,17 +199,24 @@ mod tests {
         algo.move_orderer.prior_pv = false;
         algo.search(position.board().clone());
         println!("{}", algo);
+        assert_eq!(algo.move_orderer.count_bm.get(0), 0);
+        assert_eq!(algo.move_orderer.count_pv.get(1), 0); 
 
         algo.move_orderer.enabled = true;
         algo.move_orderer.prior_bm = true;
         algo.move_orderer.prior_pv = false;
         algo.search(position.board().clone());
         println!("{}", algo);
+        assert_eq!(algo.move_orderer.count_bm.get(0), 2);
+        assert_eq!(algo.move_orderer.count_bm.get(1), 0); // bm only variation of lenght 1
 
         algo.move_orderer.prior_bm = false;
         algo.move_orderer.prior_pv = true;
         algo.search(position.board().clone());
         println!("{}", algo);
+        // 3 = pv[0] twice plus pv[0..1] used once
+        assert_eq!(algo.move_orderer.count_pv.get(0), 3); 
+        assert_eq!(algo.move_orderer.count_pv.get(1), 1);
 
     }
 }

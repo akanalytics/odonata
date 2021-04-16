@@ -1,11 +1,11 @@
 use crate::clock::{Clock, DeterministicClock};
-use crate::types::MAX_PLY;
 use crate::eval::Score;
 use crate::movelist::MoveList;
+use crate::types::MAX_PLY;
 use std::fmt;
 use std::time::Duration;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct SearchStats {
     realtime_clock: Clock,
     deterministic_clock: DeterministicClock,
@@ -38,7 +38,7 @@ impl fmt::Display for SearchStats {
         writeln!(f, "branching factor : {:.02}", self.branching_factor())?;
         writeln!(f)?;
 
-        write!(f, "{:<7}", "Ply")?;
+        write!(f, "{:<7}", "ply")?;
         NodeStats::fmt_header(f)?;
         writeln!(f)?;
         write!(f, "{:<7}", "---")?;
@@ -60,12 +60,28 @@ impl fmt::Display for SearchStats {
     }
 }
 
+impl Default for SearchStats {
+    fn default() -> Self {
+        Self {
+            realtime_clock: Clock::default(),
+            deterministic_clock: DeterministicClock::default(),
+
+            completed: false,
+            user_cancelled: false,
+            total: NodeStats::default(),
+            plies: std::iter::repeat(NodeStats::new()).take(MAX_PLY).collect(),
+
+            pv: MoveList::default(),
+            alpha: Score::default(),
+            beta: Score::default(),
+            score: Score::default(),
+        }
+    }
+}
+
 impl SearchStats {
     pub fn new() -> Self {
-        SearchStats {
-            plies: std::iter::repeat(NodeStats::new()).take(MAX_PLY).collect(),
-            ..Self::default()
-        }
+        Self::default()
     }
 
     pub fn completed(&self) -> bool {
@@ -89,10 +105,15 @@ impl SearchStats {
         }
     }
 
-
-    pub fn clear_node_stats(&mut self) {
+    pub fn reset_keeping_pv(&mut self) {
         self.plies_mut().iter_mut().for_each(|s| s.clear_node_stats());
         self.total.clear_node_stats();
+        self.alpha = Score::default();
+        self.beta = Score::default();
+        self.score = Score::default();
+        self.completed = false;
+        self.user_cancelled = false;
+        self.restart_clocks();
     }
 
     #[inline]
@@ -134,7 +155,9 @@ impl SearchStats {
         self.plies[ply].real_time = self.realtime_clock.elapsed();
         self.plies[ply].deterministic_time = self.deterministic_clock.elapsed();
         self.completed = completed;
-        self.pv = pv;
+        if completed {
+            self.pv = pv;
+        }
     }
 
     #[inline]
@@ -248,7 +271,8 @@ impl NodeStats {
 
     #[inline]
     pub fn nodes(&self) -> u64 {
-        self.interior_nodes() + self.leaf_nodes() + self.q_interior_nodes() + self.q_leaf_nodes() // root
+        self.interior_nodes() + self.leaf_nodes() + self.q_interior_nodes() + self.q_leaf_nodes()
+        // root
     }
 
     #[inline]
@@ -366,7 +390,7 @@ mod tests {
 
     #[test]
     fn test_display_stats() {
-        let ply_stats = NodeStats::default();
+        let ply_stats = NodeStats::new();
         println!("{}", ply_stats);
         println!("{:?}", ply_stats);
         println!("{:#?}", ply_stats);

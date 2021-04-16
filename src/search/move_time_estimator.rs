@@ -83,7 +83,7 @@ impl MoveTimeEstimator {
         time_up
     }
 
-    pub fn calculate_etimates_for_ply(&mut self, _ply: u32, search_stats: &SearchStats) {
+    pub fn calc_estimates_for_ply(&mut self, _ply: u32, search_stats: &SearchStats) {
         // debug_assert!(search_stats.depth() >= ply-1, "ensure we have enough stats");
         let _forecast_depth = search_stats.depth();
         self.elapsed_used = search_stats.elapsed(self.deterministic);
@@ -143,15 +143,15 @@ mod tests {
             .set_eval(eval)
             .set_iterative_deepening(true)
             .set_callback(Uci::uci_info);
-        search.move_time_estimator.deterministic = true;
+        search.mte.deterministic = true;
         search.search(position.board().clone());
         println!("{}", search);
         assert_eq!(search.search_stats().total().nodes(), 2108);  // with ordering pv + mvvlva
         // assert_eq!(search.search_stats().total().nodes(), 3560); 
         // assert_eq!(search.search_stats().total().nodes(), 6553);  // with ordering pv
         // assert_eq!(search.search_stats().total().nodes(), 6740);
-        assert_eq!(search.pv_table.extract_pv(), position.pv().unwrap());
-        assert_eq!(search.score, Score::WhiteWin { minus_ply: -3 });
+        assert_eq!(search.pv(), &position.pv().unwrap());
+        assert_eq!(search.score(), Score::WhiteWin { minus_ply: -3 });
     }
 }
 

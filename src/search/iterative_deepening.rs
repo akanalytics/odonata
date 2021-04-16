@@ -59,7 +59,7 @@ impl fmt::Display for IterativeDeepening {
 
 impl IterativeDeepening {
 
-    pub fn calculate_range(&self, tc: &TimeControl) -> Range<u32> {
+    pub fn calc_range(&self, tc: &TimeControl) -> Range<u32> {
         let range = if let TimeControl::Depth(depth) = *tc {
                 if self.enabled {
                     1..depth+1
@@ -82,26 +82,27 @@ impl IterativeDeepening {
 
 impl Algo {
 
-    pub fn search2(&mut self, board: Board) {
+    pub fn search(&mut self, board: Board) {
         self.board = board;
+        self.task_control.set_running();
         self.ids.reset();
-        self.range = self.ids.calculate_range(&self.move_time_estimator.time_control);
+        self.range = self.ids.calc_range(&self.mte.time_control);
         for depth in self.range.clone() {
+
             let mut root_node = Node::new_root(&board);
             self.max_depth = depth;
-            self.search_stats = SearchStats::new();
 
             self.alphabeta(&mut root_node);
-            let results = self.search_stats().clone();
+            let res = self.search_stats().clone();
 
-            self.move_time_estimator.calculate_etimates_for_ply(depth+1, &results);
-            self.search_stats.record_time_estimate(depth+1, &self.move_time_estimator.time_estimate);
-            if !results.completed() || results.score.is_mate() || self.move_time_estimator.probable_timeout(&results) {
-                self.ids.iterations.push(results);
+            self.mte.calc_estimates_for_ply(depth+1, &res);
+            self.search_stats.record_time_estimate(depth+1, &self.mte.time_estimate);
+            if !res.completed() || res.score.is_mate() || self.mte.probable_timeout(&res) {
+                self.ids.iterations.push(res);
                 break;
             }
             // println!("{}", self);
-            self.ids.iterations.push(results);
+            self.ids.iterations.push(res);
         }
 
         let i = self.ids.iterations.iter().rposition(|r| r.completed());
@@ -109,17 +110,15 @@ impl Algo {
             println!("rpos!!!\n\n{}", self);
         }
         let i = i.unwrap();
-        let results = &self.ids.iterations[i];
+        let res = &self.ids.iterations[i];
 
         // callback
-        let mut sp = SearchProgress::from_search_stats(&results);
-        sp.pv = Some(results.pv.clone());
-        self.overall_best_move = results.pv()[0];
-        sp.score = Some(results.score);
+        let mut sp = SearchProgress::from_search_stats(&res);
+        sp.pv = Some(res.pv.clone());
+        sp.score = Some(res.score);
         self.task_control.invoke_callback(&sp);
-        self.pv = results.pv().clone();
-        println!("search2***********\n{}", self);
-        }
+        // self.pv = res.pv().clone();
+    }
 
 }
 // pub fn search(&mut self, mut board: Board) -> Algo {
@@ -135,10 +134,10 @@ impl Algo {
 //         let mut root_node = Node::new_root(&mut board);
 //         let stats = &mut self.search_stats;
 //         let mut sp = SearchProgress::from_search_stats(stats);
-//         self.move_time_estimator.calculate_etimates_for_ply(depth, stats);
-//         stats.record_time_estimate(depth, &self.move_time_estimator.time_estimate);
+//         self.mte.calculate_etimates_for_ply(depth, stats);
+//         stats.record_time_estimate(depth, &self.mte.time_estimate);
         
-//         if self.score.is_mate() || self.move_time_estimator.probable_timeout(stats) {
+//         if self.score.is_mate() || self.mte.probable_timeout(stats) {
 //             break;
 //         }
 //         self.score = Score::default();

@@ -117,7 +117,7 @@ mod tests {
         assert_eq!(size_of::<Board>(), 80, "Board");
         assert_eq!(size_of::<Score>(), 8, "Score");
         assert_eq!(size_of::<Node>(), 48, "Node");
-        assert_eq!(size_of::<SearchStats>(), 152, "SearchStats");
-        assert_eq!(size_of::<NodeStats>(), 88, "NodeStats");
+        assert_eq!(size_of::<SearchStats>(), 216, "SearchStats");
+        assert_eq!(size_of::<NodeStats>(), 104, "NodeStats");
     }
 }

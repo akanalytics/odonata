@@ -23,8 +23,8 @@ impl Player for Algo {
     }
 
     fn choose_move(&mut self, board: &Board) -> Move {
-        self.search2(board.clone());
-        let bm = self.overall_best_move();
+        self.search(board.clone());
+        let bm = self.bm();
         // println!("{:#}", self.score);
         if bm == Move::new_null() {
             println!("{:#}", self);
@@ -166,9 +166,9 @@ mod tests {
 
         white.quiescence.enabled = true;
         white.move_orderer.mvv_lva = true;
-        white.move_time_estimator.deterministic = true;
+        white.mte.deterministic = true;
 
-        black.move_time_estimator.deterministic = true;
+        black.mte.deterministic = true;
 
         black.quiescence.enabled = false;
         black.move_orderer.mvv_lva = true;
@@ -210,13 +210,13 @@ mod tests {
         let tc = TimeControl::from_remaining_time(Duration::from_millis(6000));
         let mut white = Algo::new().set_timing_method(tc);
         let mut black = Algo::new().set_timing_method(tc);
-        white.move_time_estimator.deterministic = true;
-        black.move_time_estimator.deterministic = true;
+        white.mte.deterministic = true;
+        black.mte.deterministic = true;
         white.move_orderer.mvv_lva = true;
         black.move_orderer.mvv_lva = false;
         black.search(b1.clone());
-        println!("{}", black.overall_best_move);
-        let b2 = b1.make_move(&black.overall_best_move);
+        println!("{}", black.bm());
+        let b2 = b1.make_move(&black.bm());
         white.search(b2.clone());
         println!("{}", white);
     }

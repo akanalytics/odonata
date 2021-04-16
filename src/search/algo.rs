@@ -90,16 +90,14 @@ pub struct Algo {
     pub range: Range<u32>,
     pub pv_table: PvTable,
     pub current_best: Option<Move>,
-    pub overall_best_move: Move,
-    pub score: Score,
-    pub move_time_estimator: MoveTimeEstimator,
+    //pub score: Score,
+    pub mte: MoveTimeEstimator,
     pub move_orderer: MoveOrderer,
 
     child_thread: AlgoThreadHandle,
 
     clock_checks: u64,
     pub current_variation: MoveList,
-    pub pv: MoveList,
 }
 
 /// builder methods
@@ -126,7 +124,7 @@ impl Algo {
     }
 
     pub fn set_timing_method(&mut self, tm: TimeControl) -> Self {
-        self.move_time_estimator.time_control = tm;
+        self.mte.time_control = tm;
         self.clone()
     }
 
@@ -141,7 +139,7 @@ impl Configurable for Algo {
         c.set("algo.minmax", "type check default false");
         c.set("algo.ids", "type check default true");
         self.eval.settings(c);
-        self.move_time_estimator.settings(c);
+        self.mte.settings(c);
         self.move_orderer.settings(c);
         self.quiescence.settings(c);
         self.ids.settings(c);
@@ -152,7 +150,7 @@ impl Configurable for Algo {
         self.iterative_deepening = c.bool("algo.ids").unwrap_or(self.iterative_deepening);
         self.eval.configure(c);
         self.move_orderer.configure(c);
-        self.move_time_estimator.configure(c);
+        self.mte.configure(c);
         self.quiescence.configure(c);
         self.ids.configure(c);
     }
@@ -163,16 +161,14 @@ impl fmt::Debug for Algo {
         f.debug_struct("Algo")
             // .field("pv_table", &self.pv_table.extract_pv().)
             .field("board", &self.board)
-            .field("score", &self.score)
-            .field("overall_best_move", &self.overall_best_move)
             .field("current_best", &self.current_best)
-            .field("pv", &self.pv)
+            //.field("pv", &self.pv)
             .field("depth", &self.max_depth)
             .field("minmax", &self.minmax)
             .field("eval", &self.eval)
             .field("iterative_deepening", &self.iterative_deepening)
             .field("move_orderer", &self.move_orderer)
-            .field("move_time_estimator", &self.move_time_estimator)
+            .field("mte", &self.mte)
             .field("depth", &self.max_depth)
             .field("range", &self.range)
             .field("search_stats", &self.search_stats)
@@ -185,9 +181,9 @@ impl fmt::Debug for Algo {
 impl fmt::Display for Algo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "starting pos     : {}", self.board.to_fen())?;
-        writeln!(f, "pv               : {}", self.pv)?;
-        writeln!(f, "overall_best_move: {}", self.overall_best_move)?;
-        writeln!(f, "score            : {}", self.score)?;
+        //writeln!(f, "pv               : {}", self.pv())?;
+        writeln!(f, "bm               : {}", self.bm())?;
+        writeln!(f, "score            : {}", self.score())?;
         writeln!(f, "depth            : {}", self.max_depth)?;
         writeln!(f, "range            : {:?}", self.range)?;
         writeln!(f, "current_best     : {}", self.current_best.unwrap_or(Move::new_null()))?;
@@ -196,7 +192,7 @@ impl fmt::Display for Algo {
         writeln!(f, "clock_checks     : {}", self.clock_checks)?;
         write!(f, "\n[task control]\n{}", self.task_control)?;
         write!(f, "\n[move orderer]\n{}", self.move_orderer)?;
-        write!(f, "\n[move time estimator]\n{}", self.move_time_estimator)?;
+        write!(f, "\n[move time estimator]\n{}", self.mte)?;
         write!(f, "\n[quiescence]\n{}", self.quiescence)?;
         write!(f, "\n[eval]\n{}", self.eval)?;
         write!(f, "\n[iterative deepening]\n{}", self.ids)?;
@@ -228,64 +224,60 @@ impl Algo {
             ));
     }
 
-    pub fn search(&mut self, mut board: Board) {
-        self.board = board;
-        self.search_stats = SearchStats::new();
-        self.current_best = None;
-        self.overall_best_move = Move::NULL_MOVE;
-        self.score = Score::default();
-        self.clock_checks = 0;
-        self.task_control.set_running();
-        self.range = if let TimeControl::Depth(depth) = self.move_time_estimator.time_control {
-            if self.iterative_deepening {
-                1..depth + 1
-            } else {
-                depth..depth + 1
-            }
-        } else {
-            // regardless of iterative deeping, we apply it if no explicit depth given
-            1..MAX_PLY as u32
-        };
+    // pub fn search3(&mut self, mut board: Board) {
+    //     self.board = board;
+    //     self.search_stats = SearchStats::new();
+    //     self.current_best = None;
+    //     self.clock_checks = 0;
+    //     self.task_control.set_running();
+    //     self.range = if let TimeControl::Depth(depth) = self.mte.time_control {
+    //         if self.iterative_deepening {
+    //             1..depth + 1
+    //         } else {
+    //             depth..depth + 1
+    //         }
+    //     } else {
+    //         // regardless of iterative deeping, we apply it if no explicit depth given
+    //         1..MAX_PLY as u32
+    //     };
 
-        for depth in self.range.clone() {
-            self.set_iteration_depth(depth);
-            let mut root_node = Node::new_root(&mut board);
-            let stats = &mut self.search_stats;
-            let mut sp = SearchProgress::from_search_stats(stats);
-            self.move_time_estimator.calculate_etimates_for_ply(depth, stats);
-            stats.record_time_estimate(depth, &self.move_time_estimator.time_estimate);
+    //     for depth in self.range.clone() {
+    //         self.set_iteration_depth(depth);
+    //         let mut root_node = Node::new_root(&mut board);
+    //         let stats = &mut self.search_stats;
+    //         let mut sp = SearchProgress::from_search_stats(stats);
+    //         self.mte.calc_estimates_for_ply(depth, stats);
+    //         stats.record_time_estimate(depth, &self.mte.time_estimate);
             
-            if self.score.is_mate() || self.move_time_estimator.probable_timeout(stats) {
-                // println!("Mate or probable timeout!");
-                break;
-            }
-            // println!("Iterative deepening... ply {}", depth);
+    //         if self.score().is_mate() || self.mte.probable_timeout(stats) {
+    //             // println!("Mate or probable timeout!");
+    //             break;
+    //         }
+    //         // println!("Iterative deepening... ply {}", depth);
 
-            self.alphabeta(&mut root_node);
+    //         self.alphabeta(&mut root_node);
 
-            if !self.task_control.is_cancelled() {
-                self.score = root_node.score;
-                self.pv = self.pv_table.extract_pv();
-                self.pv_table = self.pv_table.clone();
-                self.current_best = Some(self.pv[0]);
-                sp = SearchProgress::from_search_stats(&self.search_stats());
-                sp.pv = Some(self.pv.clone());
-                sp.score = Some(self.score);
-                self.task_control.invoke_callback(&sp);
-            } else {
-                self.task_control.invoke_callback(&sp);
-                break;
-            }
-        }
+    //         if !self.task_control.is_cancelled() {
+    //             self.pv = self.pv_table.extract_pv();
+    //             self.pv_table = self.pv_table.clone();
+    //             self.current_best = Some(self.pv[0]);
+    //             sp = SearchProgress::from_search_stats(&self.search_stats());
+    //             sp.pv = Some(self.pv.clone());
+    //             sp.score = Some(self.score());
+    //             self.task_control.invoke_callback(&sp);
+    //         } else {
+    //             self.task_control.invoke_callback(&sp);
+    //             break;
+    //         }
+    //     }
 
-        if self.pv().len() == 0 {
-            println!("{}", self);
-            panic!("No PV");
-        }
-        self.overall_best_move = self.pv()[0];
-        let sp = SearchProgress::from_best_move(Some(self.overall_best_move()));
-        self.task_control.invoke_callback(&sp);
-    }
+    //     if self.pv().len() == 0 {
+    //         println!("{}", self);
+    //         panic!("No PV");
+    //     }
+    //     let sp = SearchProgress::from_best_move(Some(self.bm()));
+    //     self.task_control.invoke_callback(&sp);
+    // }
 
     pub fn algo_description(&self) -> String {
         format!(
@@ -305,12 +297,20 @@ impl Algo {
         &self.search_stats
     }
 
-    pub fn overall_best_move(&self) -> Move {
-        self.overall_best_move
+    pub fn bm(&self) -> Move {
+        if self.pv().len() > 0 { 
+            self.pv()[0]
+        } else {
+            Move::NULL_MOVE
+        }
+    }
+
+    pub fn score(&self) -> Score {
+        self.search_stats().score
     }
 
     pub fn pv(&self) -> &MoveList {
-        &self.pv
+        self.search_stats().pv()
     }
 
     pub fn search_async_stop(&mut self) {
@@ -322,7 +322,6 @@ impl Algo {
             let algo = handle.join().unwrap();
             self.search_stats = algo.search_stats;
             self.pv_table = algo.pv_table;
-            self.score = algo.score;
         }
     }
 
@@ -344,7 +343,7 @@ impl Algo {
             return false;
         }
 
-        let time_up = self.move_time_estimator.is_time_up(ply, self.search_stats());
+        let time_up = self.mte.is_time_up(ply, self.search_stats());
         if time_up {
             self.search_stats.completed = false;
             self.task_control.cancel();
@@ -359,12 +358,14 @@ impl Algo {
 
 
     pub fn alphabeta(&mut self, node: &mut Node) {
-        self.search_stats.clear_node_stats();
-        self.score = Score::default();
+        self.search_stats.reset_keeping_pv();
         self.pv_table = PvTable::new(MAX_PLY);
 
         self.alphabeta_recursive(node);
 
+        self.search_stats.alpha = node.alpha;
+        self.search_stats.beta = node.beta;
+        self.search_stats.score = node.score;
         self.search_stats.record_time_actual_and_completion_status(self.max_depth, !self.task_control.is_cancelled(), self.pv_table.extract_pv());
     }
 
@@ -564,7 +565,7 @@ mod tests {
                 //assert_eq!(search.search_stats().total().nodes(), 7749); // no ids no mvvlva
             }
             assert_eq!(search.pv_table.extract_pv(), position.pv().unwrap());
-            assert_eq!(search.score, Score::WhiteWin { minus_ply: -3 });
+            assert_eq!(search.score(), Score::WhiteWin { minus_ply: -3 });
         }
     }
 
@@ -579,7 +580,7 @@ mod tests {
 
         assert_eq!(nodes, 66234);
         assert_eq!(algo.pv_table.extract_pv(), position.pv().unwrap());
-        assert_eq!(algo.score, Score::WhiteWin { minus_ply: -3 });
+        assert_eq!(algo.score(), Score::WhiteWin { minus_ply: -3 });
         println!("{}\n\nasync....", algo);
     }
 
@@ -610,7 +611,7 @@ mod tests {
         println!("{}", search);
         assert_eq!(san, position.board().to_san_moves(&expected_pv).replace("\n", " "));
         assert_eq!(search.pv_table.extract_pv(), expected_pv);
-        assert_eq!(search.score, Score::WhiteWin { minus_ply: -3 });
+        assert_eq!(search.score(), Score::WhiteWin { minus_ply: -3 });
         Ok(())
     }
 

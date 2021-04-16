@@ -39,7 +39,7 @@ impl Configurable for Quiescence {
 
 impl Default for Quiescence {
     fn default() -> Self {
-        Quiescence { enabled: false, see: true, max_ply: 10, coarse_delta_prune: Score::cp(900) }
+        Quiescence { enabled: true, see: true, max_ply: 10, coarse_delta_prune: Score::cp(900) }
     }
 }
 
@@ -168,7 +168,7 @@ mod tests {
             search.search(pos.board().clone());
             println!("{}", search);
             assert_eq!(search.pv().to_string(), pos.pv().unwrap().to_string(), "{}", pos.id().unwrap());
-            assert_eq!(search.score, Score::WhiteWin { minus_ply: -3 });
+            assert_eq!(search.score(), Score::WhiteWin { minus_ply: -3 });
         }
     }
 }
