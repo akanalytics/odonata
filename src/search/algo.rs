@@ -494,10 +494,10 @@ mod tests {
         let mut search = Algo::new().set_timing_method(TimeControl::Depth(4)).set_minmax(false).set_eval(eval).build();
         search.move_orderer.enabled = false;
         search.search(board);
-        assert_eq!(search.search_stats().total().nodes(), 2339);  // qsearch
+        assert_eq!(search.search_stats().total().nodes(), 1833);  // qsearch
         // assert_eq!(search.search_stats().total().nodes(), 1757);
         println!("{}", search);
-        assert_eq!(search.search_stats().branching_factor().round() as u64, 2);
+        assert_eq!(search.search_stats().branching_factor().round() as u64, 1);
     }
 
     #[test]
@@ -567,13 +567,13 @@ mod tests {
             search.search(*position.board());
             println!("{}", search);
             if id {
-                assert_eq!(search.search_stats().total().nodes(), 2295);  // with sq q qsearch
+                assert_eq!(search.search_stats().total().nodes(), 2200);  // with sq q qsearch
                 // assert_eq!(search.search_stats().total().nodes(), 2108);  // with ordering pv + mvvlva
                 // assert_eq!(search.search_stats().total().nodes(), 3560); 
                 // assert_eq!(search.search_stats().total().nodes(), 6553);  // with ordering pv
                 // assert_eq!(search.search_stats().total().nodes(), 6740);
             } else {
-                assert_eq!(search.search_stats().total().nodes(), 2295); // with sq qsearch
+                assert_eq!(search.search_stats().total().nodes(), 2200); // with sq qsearch
                 // assert_eq!(search.search_stats().total().nodes(), 2108); // with  mvvlva
                 //assert_eq!(search.search_stats().total().nodes(), 7749); // no ids no mvvlva
             }
@@ -591,7 +591,7 @@ mod tests {
         let millis = time::Duration::from_millis(20);
         thread::sleep(millis);
 
-        assert_eq!(nodes, 79478);  // with sq based qsearch
+        assert_eq!(nodes, 77221);  // with sq based qsearch
         // assert_eq!(nodes, 66234);
         assert_eq!(algo.pv_table.extract_pv(), position.pv().unwrap());
         assert_eq!(algo.score(), Score::WhiteWin { minus_ply: -3 });
@@ -625,7 +625,7 @@ mod tests {
         println!("{}", search);
         assert_eq!(san, position.board().to_san_moves(&expected_pv).replace("\n", " "));
         assert_eq!(search.pv_table.extract_pv(), expected_pv);
-        assert_eq!(search.score(), Score::WhiteWin { minus_ply: -3 });
+        assert_eq!(search.score(), Score::WhiteWin { minus_ply: -4 });
         Ok(())
     }
 

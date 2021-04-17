@@ -1,6 +1,6 @@
+use crate::config::{Config, Configurable};
 use crate::position::Position;
 use crate::search::algo::Algo;
-use crate::config::{Config, Configurable};
 use crate::search::timecontrol::TimeControl;
 use std::fmt;
 
@@ -19,7 +19,6 @@ impl fmt::Display for Exam {
     }
 }
 
-
 impl Exam {
     pub fn percentage(&self) -> f32 {
         100.0 * self.score as f32 / self.out_of as f32
@@ -28,12 +27,12 @@ impl Exam {
     pub fn take_exam(name: &str, positions: Vec<Position>) -> Exam {
         let c = Config::new();
         //.set("move_orderer.prior_bm", "true").set("move_orderer.prior_pv", "false");
-        
-        let mut exam = Exam { 
+
+        let mut exam = Exam {
             name: String::from(name),
             positions,
             algo: Algo::new().set_timing_method(TimeControl::NodeCount(1_000_000)).clone(),
-            .. Exam::default()
+            ..Exam::default()
         };
         exam.algo.configure(&c);
         // exam.algo.set_callback(Uci::uci_info);
@@ -55,7 +54,6 @@ impl Exam {
 mod tests {
     use super::*;
     use crate::catalog::Catalog;
-
 
     #[test]
     #[ignore]

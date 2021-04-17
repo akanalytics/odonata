@@ -154,8 +154,7 @@ mod tests {
 
     // use crate::comms::uci::Uci;
 
-    #[ignore]
-    fn competition() {
+    fn _competition() {
         //let tc = TimeControl::NodeCount(1_000);
         let tc = TimeControl::from_remaining_time(Duration::from_millis(150));
         //let tc = TimeControl::Depth(3);

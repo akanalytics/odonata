@@ -36,6 +36,7 @@ impl fmt::Display for SearchStats {
         writeln!(f, "tot nodes/sec (k): {}", self.total_knps())?;
         writeln!(f, "int nodes/sec (k): {}", self.interior_knps())?;
         writeln!(f, "branching factor : {:.02}", self.branching_factor())?;
+        writeln!(f, "q branch factor  : {:.02}", self.q_branching_factor())?;
         writeln!(f)?;
 
         write!(f, "{:<7}", "ply")?;
@@ -230,7 +231,14 @@ impl SearchStats {
 
     #[inline]
     pub fn branching_factor(&self) -> f64 {
-        self.total().leaf_nodes() as f64 / (self.total().interior_nodes() + 1) as f64
+        let t = self.total();
+        (t.leaf_nodes() + t.q_leaf_nodes()) as f64 / (t.interior_nodes() + t.q_interior_nodes() + 1) as f64
+    }
+
+    #[inline]
+    pub fn q_branching_factor(&self) -> f64 {
+        let t = self.total();
+        (t.q_leaf_nodes as f64) / (t.q_interior_nodes() + 1) as f64
     }
 }
 
@@ -262,6 +270,8 @@ impl NodeStats {
         self.leaf_nodes = 0;
         self.improvements = 0;
         self.cuts = 0;
+        self.q_interior_nodes = 0;
+        self.q_leaf_nodes = 0;
     }
 
     #[inline]

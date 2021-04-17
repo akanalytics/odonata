@@ -81,6 +81,7 @@ impl IterativeDeepening {
 
 impl Algo {
     pub fn search(&mut self, board: Board) {
+        self.search_stats = SearchStats::new();
         self.board = board;
         self.task_control.set_running();
         self.ids.reset();

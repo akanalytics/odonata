@@ -207,16 +207,16 @@ mod tests {
         algo.move_orderer.prior_pv = false;
         algo.search(position.board().clone());
         println!("{}", algo);
-        // 3 is depth 1, plus depth 2, plus depth 3
-        assert_eq!(algo.move_orderer.count_bm.get(0), 3);
+        // 2 is depth 1, plus depth 2, 
+        assert_eq!(algo.move_orderer.count_bm.get(0), 2);
         assert_eq!(algo.move_orderer.count_bm.get(1), 0); // bm only variation of lenght 1
 
         algo.move_orderer.prior_bm = false;
         algo.move_orderer.prior_pv = true;
         algo.search(position.board().clone());
         println!("{}", algo);
-        // 3 = pv[0] twice plus pv[0..1] used once
-        assert_eq!(algo.move_orderer.count_pv.get(0), 3); 
+        // 2 = pv[0] plus pv[0..1] used once
+        assert_eq!(algo.move_orderer.count_pv.get(0), 2); 
         assert_eq!(algo.move_orderer.count_pv.get(1), 1);
 
     }

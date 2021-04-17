@@ -146,7 +146,7 @@ mod tests {
         search.mte.deterministic = true;
         search.search(position.board().clone());
         println!("{}", search);
-        assert_eq!(search.search_stats().total().nodes(), 2295);  // with qsearch
+        assert_eq!(search.search_stats().total().nodes(), 2200);  // with qsearch
         //assert_eq!(search.search_stats().total().nodes(), 2108);  // with ordering pv + mvvlva
         // assert_eq!(search.search_stats().total().nodes(), 3560); 
         // assert_eq!(search.search_stats().total().nodes(), 6553);  // with ordering pv
