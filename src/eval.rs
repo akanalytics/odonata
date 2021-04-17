@@ -6,7 +6,6 @@ use crate::material::Material;
 use crate::outcome::{GameEnd, Outcome};
 use crate::types::{Color, Piece};
 use std::fmt;
-use std::fmt::Write;
 
 // eval1 = bl.scoring.material(p=300, b=400, n=700)
 // eval2 = bl.scoring.position(endgame)
@@ -118,6 +117,7 @@ const _KING_EG_PST: [i32; 64] = [
 
 pub trait Scorable<Strategy> {
     fn eval(&self, eval: &SimpleScorer) -> Score;
+    fn eval_without_wdl(&self, eval: &SimpleScorer) -> Score;
     fn eval_material(&self, eval: &SimpleScorer) -> Score;
     fn eval_position(&self, eval: &SimpleScorer) -> Score;
 }
@@ -326,7 +326,10 @@ impl SimpleScorer {
         if outcome.is_game_over() {
             return Score::from_outcome(outcome, board.ply());
         }
+        self.evaluate_without_wdl(board)
+    }
 
+    pub fn evaluate_without_wdl(&self, board: &Board) -> Score {
         let s = if self.material {
             let mat = Material::from_board(board);
             self.evaluate_material(&mat)
@@ -387,9 +390,15 @@ impl SimpleScorer {
 
 impl Scorable<SimpleScorer> for Board {
     #[inline]
+    fn eval_without_wdl(&self, eval: &SimpleScorer) -> Score {
+        eval.evaluate_without_wdl(self)
+    }
+
+    #[inline]
     fn eval(&self, eval: &SimpleScorer) -> Score {
         eval.evaluate(self)
     }
+
     #[inline]
     fn eval_material(&self, eval: &SimpleScorer) -> Score {
         let m = Material::from_board(self);

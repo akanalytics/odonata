@@ -8,7 +8,7 @@ use crate::outcome::GameEnd;
 use crate::outcome::Outcome;
 use crate::types::Color;
 use crate::search::algo::Algo;
-use crate::comms::uci::Uci;
+// use crate::comms::uci::Uci;
 use std::fmt;
 use std::time;
 
@@ -139,11 +139,11 @@ mod tests {
     #[ignore]
     fn test_game() {
         let eval_w = SimpleScorer::new().set_position(true);
-        let search_w = Algo::new().set_timing_method(TimeControl::Depth(2)).set_eval(eval_w);
+        let search_w = Algo::new().set_timing_method(TimeControl::Depth(2)).set_eval(eval_w).build();
         let white = search_w;
 
         let eval_b = SimpleScorer::new().set_position(false);
-        let search_b = Algo::new().set_timing_method(TimeControl::Depth(2)).set_eval(eval_b);
+        let search_b = Algo::new().set_timing_method(TimeControl::Depth(2)).set_eval(eval_b).build();
         let black = search_b;
 
         let board = Catalog::starting_position();
@@ -154,14 +154,13 @@ mod tests {
 
     // use crate::comms::uci::Uci;
 
-    #[test]
     #[ignore]
     fn competition() {
         //let tc = TimeControl::NodeCount(1_000);
         let tc = TimeControl::from_remaining_time(Duration::from_millis(150));
         //let tc = TimeControl::Depth(3);
-        let mut white = Algo::new().set_timing_method(tc);
-        let mut black = Algo::new().set_timing_method(tc);
+        let mut white = Algo::new().set_timing_method(tc).build();
+        let mut black = Algo::new().set_timing_method(tc).build();
         // white.set_callback(Uci::uci_info);
 
         white.quiescence.enabled = true;
@@ -196,8 +195,8 @@ mod tests {
     fn test_bug1() {
         let b = Board::parse_fen("1rk2qRr/8/B3P3/B4QN1/P4p2/2K1PP1P/P7/R2N4 b - - 0 38").unwrap();
         let tc = TimeControl::MoveTime(Duration::from_secs(3));
-        let mut white = Algo::new().set_timing_method(tc);
-        let mut black = Algo::new().set_timing_method(tc);
+        let mut white = Algo::new().set_timing_method(tc).build();
+        let mut black = Algo::new().set_timing_method(tc).build();
         white.move_orderer.mvv_lva = true;
         black.move_orderer.mvv_lva = false;
         black.search(b);
@@ -208,8 +207,8 @@ mod tests {
         let b1 = Board::parse_fen("bqnbr1kr/ppp2ppp/8/8/3n4/3NNB2/PPP2PPP/BQ2R1KR b - - 4 7").unwrap();
         // let tc = TimeControl::MoveTime(Duration::from_millis(140));
         let tc = TimeControl::from_remaining_time(Duration::from_millis(6000));
-        let mut white = Algo::new().set_timing_method(tc);
-        let mut black = Algo::new().set_timing_method(tc);
+        let mut white = Algo::new().set_timing_method(tc).build();
+        let mut black = Algo::new().set_timing_method(tc).build();
         white.mte.deterministic = true;
         black.mte.deterministic = true;
         white.move_orderer.mvv_lva = true;

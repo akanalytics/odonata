@@ -32,7 +32,7 @@ impl Exam {
         let mut exam = Exam { 
             name: String::from(name),
             positions,
-            algo: Algo::new().set_timing_method(TimeControl::NodeCount(1_000_000)),
+            algo: Algo::new().set_timing_method(TimeControl::NodeCount(1_000_000)).clone(),
             .. Exam::default()
         };
         exam.algo.configure(&c);
@@ -67,7 +67,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_exam_wac() {
-        let bk = Exam::take_exam("win at chess", Catalog::win_at_chess());
-        assert!(bk.score >= 117);
+        let wac = Exam::take_exam("win at chess", Catalog::win_at_chess());
+        assert!(wac.score >= 117);
     }
 }

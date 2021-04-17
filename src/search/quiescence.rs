@@ -103,8 +103,14 @@ impl Algo {
             return alpha;
         }
 
-        // this will handle mates too
-        let mut standing_pat = board.eval(&self.eval);
+        // this will handle mates too at quiescent node
+        let mut standing_pat;
+        if ply == self.max_depth {
+            standing_pat = board.eval(&self.eval);
+        } else {
+            standing_pat = board.eval_without_wdl(&self.eval);
+        }
+
         if board.color_us() == Color::Black {
             standing_pat = -standing_pat;
         }
@@ -163,7 +169,7 @@ mod tests {
         for &qs in [false, true].iter() {
             let pos = &Catalog::mate_in_2()[0];
             let mut search =
-                Algo::new().set_timing_method(TimeControl::NodeCount(1_000_000)).set_callback(Uci::uci_info);
+                Algo::new().set_timing_method(TimeControl::NodeCount(1_000_000)).set_callback(Uci::uci_info).clone();
             search.quiescence.enabled = qs;
             search.search(pos.board().clone());
             println!("{}", search);

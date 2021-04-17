@@ -4,14 +4,14 @@ use odonata::board::makemove::*;
 use odonata::board::movegen::*;
 use odonata::catalog::*;
 use odonata::eval::*;
+use odonata::globals::constants::*;
 use odonata::material::*;
 use odonata::movelist::*;
-use odonata::pvtable::*;
 use odonata::perft::Perft;
+use odonata::pvtable::*;
 use odonata::search::algo::Algo;
 use odonata::search::timecontrol::TimeControl;
 use odonata::types::*;
-use odonata::globals::constants::*;
 
 /*
 Bitboard 2.7ns (a|b)&c
@@ -206,7 +206,8 @@ fn benchmark_search(c: &mut Criterion) {
         b.iter(|| {
             let board = Catalog::starting_position();
             let eval = SimpleScorer::new().set_position(false);
-            let mut search = Algo::new().set_timing_method(TimeControl::Depth(5)).set_minmax(false).set_eval(eval);
+            let mut search =
+                Algo::new().set_timing_method(TimeControl::Depth(5)).set_minmax(false).set_eval(eval).build();
             black_box(search.search(board));
         });
     });
@@ -214,7 +215,8 @@ fn benchmark_search(c: &mut Criterion) {
         b.iter(|| {
             let board = Catalog::starting_position();
             let eval = SimpleScorer::new().set_position(false);
-            let mut search = Algo::new().set_timing_method(TimeControl::Depth(5)).set_minmax(true).set_eval(eval);
+            let mut search =
+                Algo::new().set_timing_method(TimeControl::Depth(5)).set_minmax(true).set_eval(eval).set_qsearch(false).build();
             black_box(search.search(board));
         });
     });
@@ -228,7 +230,12 @@ fn benchmark_mate_in_2(c: &mut Criterion) {
     let eval = SimpleScorer::new().set_position(false);
     group.bench_function("mate_in_2_ab", |b| {
         b.iter(|| {
-            let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(false).set_eval(eval).set_iterative_deepening(false);
+            let mut search = Algo::new()
+                .set_timing_method(TimeControl::Depth(3))
+                .set_minmax(false)
+                .set_eval(eval)
+                .set_iterative_deepening(false)
+                .build();
             black_box(search.search(black_box(board)));
             assert_eq!(search.pv_table.extract_pv().to_string(), "d5f6, g7f6, c4f7");
         });
@@ -237,7 +244,12 @@ fn benchmark_mate_in_2(c: &mut Criterion) {
     let eval = SimpleScorer::new().set_position(false);
     group.bench_function("mate_in_2_ab_iid", |b| {
         b.iter(|| {
-            let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(false).set_eval(eval).set_iterative_deepening(true);
+            let mut search = Algo::new()
+                .set_timing_method(TimeControl::Depth(3))
+                .set_minmax(false)
+                .set_eval(eval)
+                .set_iterative_deepening(true)
+                .build();
             black_box(search.search(black_box(board)));
             assert_eq!(search.pv_table.extract_pv().to_string(), "d5f6, g7f6, c4f7");
         });
@@ -271,7 +283,6 @@ fn benchmark_eval(c: &mut Criterion) {
     let mut group = c.benchmark_group("eval");
     let ef = &SimpleScorer::new();
     let ef_no_pos = &SimpleScorer::new().set_position(false);
- 
     let bd = Catalog::white_starting_position();
     group.bench_function("material", |b| {
         b.iter(|| {
@@ -315,7 +326,6 @@ fn bench_pvtable(c: &mut Criterion) {
             for i in 1..7 {
                 pv_table.set(i, black_box(&Move::new_null()));
                 pv_table.propagate_from(i);
-
             }
         });
     });
@@ -338,20 +348,19 @@ fn bench_moveordering(c: &mut Criterion) {
     pv.extend([a1a2, a1a3, a1a4].iter());
     let mut variation = MoveList::new();
     variation.extend([a1a2, a1a3, c1c2].iter());
-    
 
     c.bench_function("move_orderer", |b| {
         b.iter(|| {
             for i in 0..100 {
-                black_box(Algo::order_from_prior_pv(black_box(&mut movelists[i]), black_box(&variation), black_box(&pv) ));
+                black_box(Algo::order_from_prior_pv(
+                    black_box(&mut movelists[i]),
+                    black_box(&variation),
+                    black_box(&pv),
+                ));
             }
         });
     });
 }
-
-
-
-
 
 criterion_group!(
     benches,

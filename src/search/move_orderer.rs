@@ -193,7 +193,7 @@ mod tests {
     #[test]
     fn test_compare() {
         let position = &Catalog::mate_in_2()[0];
-        let mut algo = Algo::new().set_timing_method(TimeControl::Depth(3));
+        let mut algo = Algo::new().set_timing_method(TimeControl::Depth(3)).set_qsearch(false).build();
         algo.move_orderer.enabled = false;
         algo.move_orderer.prior_bm = false;
         algo.move_orderer.prior_pv = false;
@@ -207,7 +207,8 @@ mod tests {
         algo.move_orderer.prior_pv = false;
         algo.search(position.board().clone());
         println!("{}", algo);
-        assert_eq!(algo.move_orderer.count_bm.get(0), 2);
+        // 3 is depth 1, plus depth 2, plus depth 3
+        assert_eq!(algo.move_orderer.count_bm.get(0), 3);
         assert_eq!(algo.move_orderer.count_bm.get(1), 0); // bm only variation of lenght 1
 
         algo.move_orderer.prior_bm = false;

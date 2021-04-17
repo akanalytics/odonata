@@ -66,11 +66,11 @@ impl fmt::Display for MoveTimeEstimator {
 
 impl MoveTimeEstimator {
 
-    pub fn is_time_up(&self, ply: u32, search_stats: &SearchStats) -> bool {
+    pub fn is_time_up(&self, _ply: u32, search_stats: &SearchStats) -> bool {
         let elapsed = search_stats.elapsed(self.deterministic);
 
         let time_up = match self.time_control {
-            TimeControl::Depth(max_ply) => false, // ply > max_ply,
+            TimeControl::Depth(_max_ply) => false, // ply > max_ply,  // dont cause an abort on last iteration
             TimeControl::MoveTime(duration) => elapsed > duration,
             TimeControl::NodeCount(max_nodes) => search_stats.total().nodes() > max_nodes,
             TimeControl::Infinite => false,
@@ -142,11 +142,12 @@ mod tests {
             .set_minmax(false)
             .set_eval(eval)
             .set_iterative_deepening(true)
-            .set_callback(Uci::uci_info);
+            .set_callback(Uci::uci_info).clone();
         search.mte.deterministic = true;
         search.search(position.board().clone());
         println!("{}", search);
-        assert_eq!(search.search_stats().total().nodes(), 2108);  // with ordering pv + mvvlva
+        assert_eq!(search.search_stats().total().nodes(), 2295);  // with qsearch
+        //assert_eq!(search.search_stats().total().nodes(), 2108);  // with ordering pv + mvvlva
         // assert_eq!(search.search_stats().total().nodes(), 3560); 
         // assert_eq!(search.search_stats().total().nodes(), 6553);  // with ordering pv
         // assert_eq!(search.search_stats().total().nodes(), 6740);
