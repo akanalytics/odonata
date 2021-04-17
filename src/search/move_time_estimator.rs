@@ -70,7 +70,7 @@ impl MoveTimeEstimator {
         let elapsed = search_stats.elapsed(self.deterministic);
 
         let time_up = match self.time_control {
-            TimeControl::Depth(max_ply) => ply > max_ply,
+            TimeControl::Depth(max_ply) => false, // ply > max_ply,
             TimeControl::MoveTime(duration) => elapsed > duration,
             TimeControl::NodeCount(max_nodes) => search_stats.total().nodes() > max_nodes,
             TimeControl::Infinite => false,

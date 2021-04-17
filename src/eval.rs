@@ -216,9 +216,9 @@ impl fmt::Display for Score {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::MinusInf => f.write_str("-inf"),
-            Self::WhiteLoss { ply } => write!(f, "WhiteWin({})", ply),
+            Self::WhiteLoss { ply } => write!(f, "win({})", ply),
             Self::Cp(cp) => write!(f, "{} cp", cp),
-            Self::WhiteWin { minus_ply } => write!(f, "WhiteLoss({})", -minus_ply),
+            Self::WhiteWin { minus_ply } => write!(f, "loss({})", -minus_ply),
             Self::PlusInf => f.write_str("+inf"),
         }
     }
