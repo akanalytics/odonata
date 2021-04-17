@@ -100,7 +100,11 @@ impl Algo {
                 break;
             }
             // println!("{}", self);
+            let mut sp = SearchProgress::from_search_stats(&res);
+            sp.pv = Some(res.pv.clone());
+            sp.score = Some(res.score);
             self.ids.iterations.push(res);
+            self.task_control.invoke_callback(&sp);
         }
 
         let i = self.ids.iterations.iter().rposition(|r| r.completed());
@@ -109,11 +113,13 @@ impl Algo {
         }
         let i = i.unwrap();
         let res = &self.ids.iterations[i];
-
+        
+        self.search_stats.pv = res.pv.clone();
+        self.search_stats.score = res.score;
+        self.search_stats.alpha = res.alpha;
+        self.search_stats.beta = res.beta;
         // callback
-        let mut sp = SearchProgress::from_search_stats(&res);
-        sp.pv = Some(res.pv.clone());
-        sp.score = Some(res.score);
+        let sp = SearchProgress::from_best_move(Some(self.bm()));
         self.task_control.invoke_callback(&sp);
         // self.pv = res.pv().clone();
     }
