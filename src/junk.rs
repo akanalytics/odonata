@@ -125,7 +125,7 @@ insufficient_material
 
 use crate::board::{Board, Move};
 use crate::board::makemove::MoveMaker;
-use crate::eval::{Scorable, Score};
+use crate::eval::eval::{Scorable, Score};
 use crate::board::movegen::MoveGen;
 use std::cmp;
 
@@ -291,7 +291,7 @@ impl Search {
 mod tests {
     use super::*;
     use crate::catalog::*;
-    use crate::eval::*;
+    use crate::eval::eval::*;
     use crate::board::boardbuf::*;
 
     fn init() {
@@ -480,7 +480,7 @@ impl fmt::Display for Setting {
 }
 
 
-use crate::eval::SimpleScorer;
+use crate::eval::eval::SimpleScorer;
 
 #[derive(Debug, Clone)]
 pub struct TypedSettingString(Box<Setting>);

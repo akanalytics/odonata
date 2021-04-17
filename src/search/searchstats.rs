@@ -1,5 +1,5 @@
 use crate::clock::{Clock, DeterministicClock};
-use crate::eval::Score;
+use crate::eval::score::Score;
 use crate::movelist::MoveList;
 use crate::types::MAX_PLY;
 use std::fmt;

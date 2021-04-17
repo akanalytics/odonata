@@ -129,7 +129,7 @@ impl fmt::Display for Game {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::eval::*;
+    use crate::eval::eval::*;
     use crate::search::timecontrol::*;
     use std::time::Duration;
     use crate::types::{CastlingRights,ScoreWdl};

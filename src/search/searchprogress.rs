@@ -1,6 +1,6 @@
 use crate::movelist::{Move, MoveList};
 use crate::search::searchstats::SearchStats;
-use crate::eval::Score;
+use crate::eval::score::Score;
 
 /// essentially all the data needed for UCI info status updates or for a decent progress bar
 #[derive(Clone, Default, Debug)]

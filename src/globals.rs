@@ -99,7 +99,7 @@ pub mod counts {
 mod tests {
     use crate::bitboard::*;
     use crate::board::*;
-    use crate::eval::*;
+    use crate::eval::score::*;
     use crate::movelist::*;
     use crate::search::node::*;
     use crate::search::searchstats::*;

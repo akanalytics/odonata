@@ -3,7 +3,7 @@ use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::catalog::Catalog;
 use crate::config::{Config, Configurable};
-use crate::eval::Score;
+use crate::eval::score::Score;
 use crate::movelist::MoveValidator;
 use crate::perft::Perft;
 use crate::search::algo::Algo;
@@ -292,30 +292,6 @@ impl Uci {
             println!("option name {} {}", name, value);
         }
     }
-
-        // for (name, v) in Config::system().settings.iter() {
-        //     match v {
-        //         Setting::Bool { value: _, default } => {
-        //             println!("option {} type check default {}", name, default)
-        //         }
-        //         Setting::String { value: _, default } => println!(
-        //             "option {} type string default {}",
-        //             name,
-        //             if default.is_empty() { "\"\"" } else { default }
-        //         ),
-        //         Setting::Int { value: _, default, minmax } => println!(
-        //             "option {} type spin default {} min {} max {}",
-        //             name, default, minmax.0, minmax.1
-        //         ),
-        //         Setting::Combo { value: _, default, choices } => {
-        //             print!("option {} type combo default {} ", name, choices[*default]);
-        //             choices.iter().for_each(|v| print!("var {}", v));
-        //             println!();
-        //         } 
-        //     }
-        // }
-    
-
 
     fn uci_display(&mut self) -> Result<(), String> {
         self.uci_info_string("display");

@@ -3,7 +3,8 @@ use crate::board::makemove::MoveMaker;
 use crate::board::movegen::MoveGen;
 use crate::board::Board;
 use crate::config::{Config, Configurable};
-use crate::eval::{Scorable, Score};
+use crate::eval::eval::Scorable;
+use crate::eval::score::Score;
 use crate::log_debug;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
@@ -168,8 +169,10 @@ mod tests {
     fn test_qsearch() {
         for &qs in [false, true].iter() {
             let pos = &Catalog::mate_in_2()[0];
-            let mut search =
-                Algo::new().set_timing_method(TimeControl::NodeCount(1_000_000)).set_callback(Uci::uci_info).clone();
+            let mut search = Algo::new()
+                .set_timing_method(TimeControl::NodeCount(1_000_000))
+                .set_callback(Uci::uci_info)
+                .clone();
             search.quiescence.enabled = qs;
             search.search(pos.board().clone());
             println!("{}", search);

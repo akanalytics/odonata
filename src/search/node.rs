@@ -1,4 +1,4 @@
-use crate::eval::Score;
+use crate::eval::score::Score;
 use crate::board::Board;
 use crate::types::Color;
 use crate::movelist::Move;

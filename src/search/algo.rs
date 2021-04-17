@@ -2,7 +2,8 @@ use crate::board::makemove::MoveMaker;
 use crate::board::movegen::MoveGen;
 use crate::board::Board;
 use crate::config::{Config, Configurable};
-use crate::eval::{Scorable, Score, SimpleScorer};
+use crate::eval::eval::{Scorable, SimpleScorer};
+use crate::eval::score::Score;
 use crate::log_debug;
 use crate::movelist::Move;
 use crate::movelist::MoveList;
@@ -471,7 +472,7 @@ mod tests {
     use crate::catalog::*;
     use crate::types::*;
     use crate::comms::uci::Uci;
-    use crate::eval::*;
+    use crate::eval::eval::*;
     use crate::movelist::MoveValidator;
     use std::time;
 

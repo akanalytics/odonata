@@ -5,7 +5,7 @@ use std::fmt;
 use crate::board::makemove::MoveMaker;
 use crate::board::movegen::MoveGen;
 use crate::board::Board;
-use crate::eval::{Scorable, Score, SimpleScorer};
+use crate::eval::eval::{Scorable, Score, SimpleScorer};
 use crate::movelist::Move;
 use crate::pvtable::PvTable;
 use crate::search::timecontrol::{TimeControl, MoveTimeEstimator};

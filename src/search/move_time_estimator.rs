@@ -123,7 +123,8 @@ mod tests {
     use crate::catalog::*;
     use crate::search::algo::*;
     use crate::comms::uci::*;
-    use crate::eval::*;
+    use crate::eval::eval::*;
+    use crate::eval::score::*;
 
     #[test]
     fn test_display_mte() {
