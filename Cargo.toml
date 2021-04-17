@@ -1,7 +1,8 @@
 [package]
 name = "odonata"
-version = "0.2.2"
-authors = ["Andy Watkins", "Hector"]
+version = "0.3.1"
+homepage = "https://github.com/akanalytics/odonata"
+authors = ["andy watkins"]
 edition = "2018"
 description = """
 Chess

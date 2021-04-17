@@ -1,6 +1,8 @@
-use odonata::comms::uci::Uci;
+use odonata::comms::console::Console;
 
 fn main() {
-    let mut uci = Uci::new();
-    uci.run();
+    Console::run();
 }
+    
+    
+    
