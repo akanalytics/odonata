@@ -39,7 +39,7 @@ mod tests {
         assert_eq!(Version::VERSION.is_empty(), false);
         assert_eq!(Version::AUTHORS.is_empty(), false);
         assert_eq!(Version::NAME, "odonata");
-        assert_eq!(Version::HOMEPAGE.is_empty(), true);
+        assert_eq!(Version::HOMEPAGE.is_empty(), false);
         println!("{}", Version::AUTHORS);
         println!("{}", Version::IMAGE);
         println!("{}", Version::VERSION);

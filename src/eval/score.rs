@@ -50,6 +50,21 @@ impl Score {
             Self::PlusInf => Self::MinusInf,
         }
     }
+
+    // https://www.chessprogramming.org/Pawn_Advantage,_Win_Percentage,_and_Elo
+    pub fn win_probability(&self) -> f32 {
+        match &self {
+            Self::MinusInf => 0.0,
+            Self::WhiteLoss { ply: _ } => 0.0,
+            Self::Cp(cp) => {
+                let k = 4_f32;
+                let w = 1.0 / (1.0 + 10_f32.powf(-cp as f32/k));
+                w
+            },
+            Self::WhiteWin { minus_ply: _ } => 1.0,
+            Self::PlusInf => 1.0,
+        }
+    }
 }
 
 impl std::ops::Add for Score {
@@ -111,3 +126,35 @@ impl fmt::Display for Score {
 // pass in alpha beta so eval can short circuit (lazy evaluation)
 // some human-like tweaks: aggresive/defensive, open/closed preference, test an opening, lay traps, complicate the position,
 // consider odd / even parity and tempo
+
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::board::boardbuf::BoardBuf;
+    use crate::catalog::Catalog;
+
+    #[test]
+    fn test_score() {
+        assert_eq!(Score::Cp(1).negate(), Score::Cp(-1));
+        assert_eq!(Score::WhiteWin { minus_ply: -1 }.negate(), Score::WhiteLoss { ply: 1 });
+        assert_eq!(Score::WhiteLoss { ply: 1 }.negate(), Score::WhiteWin { minus_ply: -1 });
+        assert_eq!(Score::MinusInf.negate(), Score::PlusInf);
+        assert!(Score::MinusInf < Score::PlusInf);
+        assert_eq!(Score::MinusInf.is_mate(), false);
+        assert_eq!(Score::WhiteWin { minus_ply: 1 }.is_mate(), true );
+        assert!(Score::Cp(-5) < Score::Cp(5));
+        assert!(Score::Cp(5) < Score::WhiteWin { minus_ply: 0 });
+        assert!(Score::Cp(100) > Score::Cp(0));
+        assert!(Score::WhiteWin { minus_ply: 1 } < Score::PlusInf);
+        assert!(Score::WhiteWin { minus_ply: 0 } == Score::WhiteWin { minus_ply: 0 });
+        assert!(Score::Cp(0).win_probability() > 0.499 );
+        assert!(Score::Cp(0).win_probability() < 0.501 );
+        assert!(Score::Cp(1000).win_probability() > 0.95 );
+        assert!(Score::Cp(-1000).win_probability() < 0.05 );
+        assert!(Score::MinusInf.win_probability() < 0.001 );
+
+    }
+}

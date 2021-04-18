@@ -310,21 +310,9 @@ mod tests {
     use crate::board::boardbuf::BoardBuf;
     use crate::catalog::Catalog;
 
+
     #[test]
     fn score_material() {
-        assert_eq!(Score::Cp(1).negate(), Score::Cp(-1));
-        assert_eq!(Score::WhiteWin { minus_ply: -1 }.negate(), Score::WhiteLoss { ply: 1 });
-        assert_eq!(Score::WhiteLoss { ply: 1 }.negate(), Score::WhiteWin { minus_ply: -1 });
-        assert_eq!(Score::MinusInf.negate(), Score::PlusInf);
-        assert!(Score::MinusInf < Score::PlusInf);
-        assert_eq!(Score::MinusInf.is_mate(), false);
-        assert_eq!(Score::WhiteWin { minus_ply: 1 }.is_mate(), true );
-        assert!(Score::Cp(-5) < Score::Cp(5));
-        assert!(Score::Cp(5) < Score::WhiteWin { minus_ply: 0 });
-        assert!(Score::Cp(100) > Score::Cp(0));
-        assert!(Score::WhiteWin { minus_ply: 1 } < Score::PlusInf);
-        assert!(Score::WhiteWin { minus_ply: 0 } == Score::WhiteWin { minus_ply: 0 });
-
         let board = Catalog::starting_position();
         let eval = &SimpleScorer::new();
         assert_eq!(board.eval(eval), Score::Cp(0));
