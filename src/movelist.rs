@@ -161,6 +161,9 @@ impl fmt::Display for Move {
             if self.is_castle() {
                 write!(f, " cs:{}", self.castling_side())?;
             }
+            if self.is_ep_capture() {
+                write!(f, " e/p cap")?;
+            }
         }
         Ok(())
     }

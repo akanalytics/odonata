@@ -1,12 +1,12 @@
+use crate::board::boardbuf::BoardBuf;
+use crate::board::makemove::MoveMaker;
+use crate::board::movegen::MoveGen;
+use crate::board::Board;
+use crate::globals::constants::*;
+use crate::movelist::Move;
+use crate::types::{CastlingRights, Color, Piece};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
-use crate::types::{Color, Piece, CastlingRights};
-use crate::board::Board;
-use crate::board::boardbuf::BoardBuf;
-use crate::board::movegen::MoveGen;
-use crate::board::makemove::MoveMaker;
-use crate::movelist::Move;
-use crate::globals::constants::*;
 use std::fmt;
 
 // CPW:
@@ -20,12 +20,11 @@ use std::fmt;
 #[derive(Debug, Eq, PartialEq)]
 pub struct Hasher {
     seed: u64,
-    piece_squares: [[[u64; 64]; 6]; 2],  // [colour][piece][square]
+    piece_squares: [[[u64; 64]; 6]; 2], // [colour][piece][square]
     side: u64,
     castling: [u64; 4],
     ep: [u64; 8],
 }
-
 
 impl fmt::Display for Hasher {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -35,7 +34,14 @@ impl fmt::Display for Hasher {
             for c in &Color::ALL {
                 for p in &Piece::ALL {
                     for sq in 0..64 {
-                        writeln!(f, "[{}][{}][{:2}] = {:x}", c, p, sq, self.piece_squares[c.index()][p.index()][sq])?;
+                        writeln!(
+                            f,
+                            "[{}][{}][{:2}] = {:x}",
+                            c,
+                            p,
+                            sq,
+                            self.piece_squares[c.index()][p.index()][sq]
+                        )?;
                     }
                 }
             }
@@ -60,16 +66,10 @@ impl fmt::Display for Hasher {
 impl Hasher {
     pub fn new(seed: u64) -> Self {
         let mut rng = ChaChaRng::seed_from_u64(seed);
-        let mut h = Hasher {
-            seed,
-            piece_squares: [[[0;64];6];2],
-            side: 0,
-            castling: [0;4],
-            ep: [0;8],
-        };
+        let mut h = Hasher { seed, piece_squares: [[[0; 64]; 6]; 2], side: 0, castling: [0; 4], ep: [0; 8] };
         // let i = rng.gen::<u64>();
-        
-        // fill seems fine to use "On big-endian platforms this performs 
+
+        // fill seems fine to use "On big-endian platforms this performs
         // byte-swapping to ensure portability of results from reproducible generators."
         for c in &Color::ALL {
             for p in &Piece::ALL {
@@ -91,20 +91,19 @@ impl Hasher {
         }
         if !b.en_passant().is_empty() {
             hash ^= self.ep[b.en_passant().last_square() & 7];
-        }    
+        }
         for p in Piece::ALL.iter() {
             for bb in b.pieces(*p).iter() {
                 let sq = bb.first_square();
                 if b.color(Color::White).contains(bb) {
                     hash ^= self.piece_squares[Color::White][p.index()][sq];
                 } else {
-                hash ^= self.piece_squares[Color::Black][p.index()][sq];
+                    hash ^= self.piece_squares[Color::Black][p.index()][sq];
                 }
             }
         }
         hash
     }
-
 
     pub fn hash_move(&self, m: &Move, pre_move: &Board) -> u64 {
         // either we're moving to an empty square or its a capture
@@ -118,15 +117,15 @@ impl Hasher {
         if m.is_capture() {
             if m.is_ep_capture() {
                 // ep capture is like capture but with capture piece on *ep* square not *dest*
-                hash ^=self.piece_squares[them][m.capture_piece()][m.ep().last_square()];
+                hash ^= self.piece_squares[them][m.capture_piece()][m.ep().last_square()];
             } else {
                 // regular capture
-                hash ^=self.piece_squares[them][m.capture_piece()][m.to().last_square()];
+                hash ^= self.piece_squares[them][m.capture_piece()][m.to().last_square()];
             }
         }
 
-        hash ^=self.piece_squares[us][m.mover_piece()][m.from().last_square()];
-        hash ^=self.piece_squares[us][m.mover_piece()][m.to().last_square()];
+        hash ^= self.piece_squares[us][m.mover_piece()][m.from().last_square()];
+        hash ^= self.piece_squares[us][m.mover_piece()][m.to().last_square()];
 
         if m.mover_piece() == Piece::Pawn && m.is_pawn_double_push() {
             debug_assert!(!m.ep().is_empty(), "e/p square must be set for pawn double push {:?}", m);
@@ -134,8 +133,8 @@ impl Hasher {
         }
 
         if m.is_promo() {
-            hash ^=self.piece_squares[us][Piece::Pawn][m.from().last_square()];
-            hash ^=self.piece_squares[us][m.promo_piece()][m.to().last_square()];
+            hash ^= self.piece_squares[us][Piece::Pawn][m.from().last_square()];
+            hash ^= self.piece_squares[us][m.promo_piece()][m.to().last_square()];
         }
 
         // castling *moves*
@@ -147,30 +146,28 @@ impl Hasher {
             match m.to() {
                 c1 => {
                     rook_from = a1;
-                    rook_to= d1;
+                    rook_to = d1;
                 }
                 g1 => {
                     rook_from = h1;
-                    rook_to =f1;
+                    rook_to = f1;
                 }
                 c8 => {
-                    rook_from=  a8;
-                    rook_to =d8;
+                    rook_from = a8;
+                    rook_to = d8;
                 }
                 g8 => {
-                    rook_from= h8;
-                    rook_to= f8;
+                    rook_from = h8;
+                    rook_to = f8;
                 }
                 _ => panic!("Castling move from square {}", m.to()),
             }
-            hash ^=self.piece_squares[us][Piece::Rook][rook_from.last_square()];
-            hash ^=self.piece_squares[us][Piece::Rook][rook_to.last_square()];
+            hash ^= self.piece_squares[us][Piece::Rook][rook_from.last_square()];
+            hash ^= self.piece_squares[us][Piece::Rook][rook_to.last_square()];
         }
         hash
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -182,7 +179,7 @@ mod tests {
         // println!("{:?}", Hasher::new(1));
         println!("{}", Hasher::new(1));
         println!("{:#}", Hasher::new(1));
-        assert_eq!( format!("{:x}",Hasher::new(1).ep[7]), "fc31329afb42f9a7");
+        assert_eq!(format!("{:x}", Hasher::new(1).ep[7]), "fc31329afb42f9a7");
     }
 
     #[test]
@@ -196,7 +193,7 @@ mod tests {
     fn test_hash_move() {
         let hasher = Hasher::new(1);
         let bd1 = Catalog::starting_position();
-        let moves = bd1.legal_moves(); 
+        let moves = bd1.legal_moves();
         let hash_bd1 = hasher.hash_board(&bd1);
         for mv in moves.iter() {
             let hash_mv = hasher.hash_move(mv, &bd1);
@@ -206,7 +203,6 @@ mod tests {
         }
         perft_with_hash(&bd1, 3, &hasher);
     }
-
 
     pub fn perft_with_hash(b: &Board, depth: u32, hasher: &Hasher) -> u64 {
         if depth == 0 {
@@ -221,7 +217,7 @@ mod tests {
                 let hash_mv = hasher.hash_move(m, &b);
                 let hash_bd2 = hasher.hash_board(&bd2);
                 println!("Move: {:#}", m);
-                assert_eq!(hash_bd1 ^ hash_mv, hash_bd2);
+                assert_eq!(hash_bd1 ^ hash_mv, hash_bd2, "board1:{:#}\nmv:{:#}\nboard2:{:#}", b, m, bd2);
                 let res = perft_with_hash(&bd2, depth - 1, hasher);
                 count += res;
             }
@@ -229,5 +225,4 @@ mod tests {
             count
         }
     }
-
 }
