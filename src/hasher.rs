@@ -90,7 +90,7 @@ impl Hasher {
             }
         }
         if !b.en_passant().is_empty() {
-            hash ^= self.ep[(b.en_passant().bits() & 7) as usize];
+            hash ^= self.ep[b.en_passant().last_square() & 7];
         }    
         for p in Piece::ALL.iter() {
             for bb in b.pieces(*p).iter() {
@@ -112,7 +112,7 @@ impl Hasher {
         let them = pre_move.color_them();
         let mut hash = self.side;
         if !pre_move.en_passant().is_empty() {
-            hash ^= self.ep[pre_move.en_passant().last_square()];
+            hash ^= self.ep[pre_move.en_passant().last_square() & 7];
         }
 
         if m.is_capture() {
@@ -126,10 +126,11 @@ impl Hasher {
         }
 
         hash ^=self.piece_squares[us][m.mover_piece()][m.from().last_square()];
-        hash ^=self.piece_squares[them][m.mover_piece()][m.to().last_square()];
+        hash ^=self.piece_squares[us][m.mover_piece()][m.to().last_square()];
 
         if m.mover_piece() == Piece::Pawn && m.is_pawn_double_push() {
-            hash ^= self.ep[(m.ep().bits() & 7) as usize];
+            debug_assert!(!m.ep().is_empty(), "e/p square must be set for pawn double push {:?}", m);
+            hash ^= self.ep[m.ep().last_square() & 7];
         }
 
         if m.is_promo() {
@@ -203,5 +204,30 @@ mod tests {
             println!("Move: {}", mv);
             assert_eq!(hash_bd1 ^ hash_mv, hash_bd2);
         }
+        perft_with_hash(&bd1, 3, &hasher);
     }
+
+
+    pub fn perft_with_hash(b: &Board, depth: u32, hasher: &Hasher) -> u64 {
+        if depth == 0 {
+            1
+        } else {
+            let moves = b.legal_moves();
+            let hash_bd1 = hasher.hash_board(b);
+            let mut count = 0u64;
+            println!("-->");
+            for m in moves.iter() {
+                let bd2 = b.make_move(m);
+                let hash_mv = hasher.hash_move(m, &b);
+                let hash_bd2 = hasher.hash_board(&bd2);
+                println!("Move: {:#}", m);
+                assert_eq!(hash_bd1 ^ hash_mv, hash_bd2);
+                let res = perft_with_hash(&bd2, depth - 1, hasher);
+                count += res;
+            }
+            println!("<--");
+            count
+        }
+    }
+
 }

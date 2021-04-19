@@ -148,7 +148,21 @@ impl Move {
 
 impl fmt::Display for Move {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.uci())
+        write!(f, "{}", self.uci())?;
+        if f.alternate() {
+            write!(f, " m:{}", self.mover_piece())?;
+
+            if !self.ep().is_empty() {
+                write!(f, " ep:{}", self.ep().uci())?;
+            }
+            if self.is_capture() {
+                write!(f, " c:{}", self.capture_piece())?;
+            }
+            if self.is_castle() {
+                write!(f, " cs:{}", self.castling_side())?;
+            }
+        }
+        Ok(())
     }
 }
 
