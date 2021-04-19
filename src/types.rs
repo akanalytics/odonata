@@ -74,7 +74,7 @@ impl CastlingRights {
             Self::WHITE_QUEEN => 1, 
             Self::BLACK_KING => 2, 
             Self::BLACK_QUEEN => 3,   
-            _ => 0,          
+            _ => panic!("Castling index called on {}", self),          
         } 
     }
 

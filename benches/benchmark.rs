@@ -13,6 +13,7 @@ use odonata::pvtable::*;
 use odonata::search::algo::Algo;
 use odonata::search::timecontrol::TimeControl;
 use odonata::types::*;
+use odonata::hasher::*;
 
 /*
 Bitboard 2.7ns (a|b)&c
@@ -127,6 +128,30 @@ fn make_move(c: &mut Criterion) {
         b.iter(|| {
             black_box(board.make_move(black_box(&mv1)));
             black_box(board.make_move(black_box(&mv2)));
+        });
+    });
+}
+
+
+fn hash_move(c: &mut Criterion) {
+    let board = Catalog::perft_cpw_number3().0;
+    let moves = board.legal_moves();
+    let hasher = Hasher::new(1);
+    c.bench_function("hash_move", |b| {
+        b.iter(|| {
+            for mv in moves.iter() {
+                black_box(hasher.hash_move(black_box(mv), black_box(&board)));
+            }
+        });
+    });
+}
+
+fn hash_board(c: &mut Criterion) {
+    let board = Catalog::starting_position();
+    let hasher = Hasher::new(1);
+    c.bench_function("hash_board", |b| {
+        b.iter(|| {
+            black_box(hasher.hash_board(black_box(&board)));
         });
     });
 }
@@ -370,6 +395,8 @@ criterion_group!(
     benchmark_perft5,
     benchmark_eval,
     make_move,
+    hash_move,
+    hash_board,
     legal_moves,
     pseudo_legal_moves,
     bench_moveordering,
