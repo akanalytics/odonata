@@ -71,7 +71,7 @@ impl MoveTimeEstimator {
 
         let time_up = match self.time_control {
             TimeControl::Depth(_max_ply) => false, // ply > max_ply,  // dont cause an abort on last iteration
-            TimeControl::MoveTime(duration) => elapsed > duration,
+            TimeControl::MoveTime(duration) => 10 * elapsed > duration * 9,
             TimeControl::NodeCount(max_nodes) => search_stats.total().nodes() > max_nodes,
             TimeControl::Infinite => false,
             TimeControl::MateIn(_) => false,
