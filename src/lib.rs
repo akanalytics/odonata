@@ -36,9 +36,11 @@ pub mod logger;
 pub mod position;
 pub mod exam;
 pub mod stat;
+pub mod hasher;
 
 pub use crate::attacks::ClassicalBitboard;
 pub use crate::bitboard::Bitboard;
+pub use crate::hasher::Hasher;
 pub use crate::position::Position;
 pub use crate::exam::Exam;
 pub use crate::board::boardbuf::BoardBuf;

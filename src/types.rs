@@ -61,6 +61,24 @@ impl Default for CastlingRights {
 }
 
 impl CastlingRights {
+
+    #[inline]
+    pub fn iter() -> &'static [Self] {
+        &[ Self::WHITE_KING, Self::WHITE_QUEEN, Self::BLACK_KING, Self::BLACK_QUEEN ]
+    }
+
+    #[inline]
+    pub fn index(&self) -> usize {
+        match *self {
+            Self::WHITE_KING => 0, 
+            Self::WHITE_QUEEN => 1, 
+            Self::BLACK_KING => 2, 
+            Self::BLACK_QUEEN => 3,   
+            _ => 0,          
+        } 
+    }
+
+
     pub fn parse(s: &str) -> Result<CastlingRights, String> {
         let mut castling = CastlingRights::NONE;
         for ch in s.chars() {
@@ -75,6 +93,11 @@ impl CastlingRights {
         }
         Ok(castling)
     }
+
+    // #[inline]
+    // pub fn has_rights(&self, cr: CastlingRights) -> bool {
+    //     self.contains(cr)
+    // }
 
     pub fn king_side_right(c: Color) -> Self {
         chooser_wb(c, Self::WHITE_KING, Self::BLACK_KING)
@@ -255,6 +278,13 @@ impl Default for Piece {
         Piece::None
     }
 }
+
+impl fmt::Display for Piece {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.to_upper_char().to_lowercase())
+    }
+}
+
 
 impl Piece {
     pub const ALL: [Piece; 6] =

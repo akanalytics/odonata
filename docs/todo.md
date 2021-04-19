@@ -12,7 +12,7 @@
 - [x] iterative deepening
   - [x] abandon if not time for another ply
   - [ ] found mate - skip deepening
-  - [ ] better carry forward of moves 
+  - [x] better carry forward of moves 
   - [ ] windowed search
     
 
@@ -36,6 +36,12 @@
     - [ ] material score (plus other operations eg check, draw, outcome, #legal moves, )
     - [ ]  
 
+- Lichess
+  - use https://berserk.readthedocs.io/en/master/
+  - challenege other bots
+  - record stats
+
+
 - UCI
   - wdl as in  UCI_ShowWDL from Leela
   - engine wrapper
@@ -44,7 +50,7 @@
 - Interface Rust + Python
   - [ ] Search rename/refactor
   - [ ] Have search return position
-  - [ ] add perft attribute
+  - [ ] add perft attribute. Elsewhere called D?
   - [ ] how to handle stats/gird like attributes
   - [ ] Have eval set position data
   - [ ] 
