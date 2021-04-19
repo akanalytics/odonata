@@ -510,10 +510,12 @@ mod tests {
     #[test]
     fn test_uci_go2() {
         let mut uci = Uci::new();
-        uci.preamble.push("debug on".into());
-        uci.preamble.push("position startpos moves d2d4".into());
-        uci.preamble.push("go wtime 10000 btime 10000".into());
-        uci.preamble.push("quit".into());
+        uci.preamble.push("debug off".to_string());
+        uci.preamble.push("position startpos moves d2d4".to_string());
+        uci.preamble.push("go wtime 10000 btime 10000".to_string());
+        uci.preamble.push("position startpos moves d2d4".to_string());
+        uci.preamble.push("go movetime 1000".to_string());
+        uci.preamble.push("quit".to_string());
         uci.run();
         // println!("pvtable:\n{}", uci.algo.pv);
         // assert_eq!(uci.board, Catalog::starting_position());
