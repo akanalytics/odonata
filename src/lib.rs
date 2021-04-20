@@ -37,6 +37,7 @@ pub mod position;
 pub mod exam;
 pub mod stat;
 pub mod hasher;
+pub mod repitition;
 
 pub use crate::attacks::ClassicalBitboard;
 pub use crate::bitboard::Bitboard;

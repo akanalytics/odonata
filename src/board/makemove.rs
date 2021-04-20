@@ -118,8 +118,7 @@ impl MoveMaker for Board {
             b.castling.remove(CastlingRights::BLACK_KING);
         }
 
-        // let move_hash = Hasher::default().hash_move(m, self);
-        let move_hash = Hasher::default().seed();
+        let move_hash = Hasher::default().hash_move(m, self);
         b.hash = self.hash ^ move_hash;
         debug_assert!(
             b.hash == Hasher::default().hash_board(&b),

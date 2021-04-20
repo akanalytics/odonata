@@ -1,7 +1,7 @@
 use crate::bitboard::Bitboard;
 use crate::board::boardbuf::BoardBuf;
 use crate::hasher::Hasher;
-use crate::types::{CastlingRights, Color, Piece};
+use crate::types::{CastlingRights, Color, Piece, Hash};
 use std::fmt::{self, Write};
 use std::iter::*;
 
@@ -18,7 +18,7 @@ pub struct Board {
     turn: Color,
     fifty_clock: u16,
     fullmove_number: u16,
-    hash: u64,
+    hash: Hash,
     // interior mutability (precludes copy trait)
     // moves: MoveList,
 }
@@ -43,7 +43,7 @@ impl Board {
 
 
     #[inline]
-    pub fn hash(&self) -> u64 {
+    pub fn hash(&self) -> Hash {
         self.hash
     }
 

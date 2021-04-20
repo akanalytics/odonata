@@ -1,11 +1,12 @@
 use crate::board::Board;
 use crate::globals::constants::*;
+use crate::globals::counts;
 use crate::movelist::Move;
-use crate::types::{CastlingRights, Color, Piece};
-use once_cell::sync::OnceCell;
+use crate::types::{CastlingRights, Color, Hash, Piece};
 use once_cell::sync::Lazy;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
+
 use std::fmt;
 
 // CPW:
@@ -59,19 +60,7 @@ impl fmt::Display for Hasher {
 
 // static INSTANCE: OnceCell<Hasher> = OnceCell::new();
 
-
-static HASHER: Lazy<Hasher> = Lazy::new(|| Hasher::new(3141592653589793) );
-
-// use std::cell::RefCell;
-// thread_local! {
-//     pub static HASHER: RefCell<Hasher> = RefCell::new(Hasher { seed: 3141592653589793, squares: [[[0; 64]; 6]; 2], side: 0, castling: [0; 4], ep: [0; 8] });
-// }
-// HASHER.with( |h| { move_hash = h.borrow().seed() });
-
-
-
-
-
+static HASHER: Lazy<Hasher> = Lazy::new(|| Hasher::new(3141592653589793));
 
 // https://docs.rs/rand/0.8.3/rand/rngs/struct.StdRng.html
 // For a secure reproducible generator, we recommend use of the rand_chacha crate directly.
@@ -105,10 +94,10 @@ impl Hasher {
     // doesnt impl Default as large to copy by value
     pub fn default() -> &'static Self {
         &HASHER
-        // INSTANCE.get_or_init(|| Self::new(3141592653589793))
     }
 
-    pub fn hash_board(&self, b: &Board) -> u64 {
+    pub fn hash_board(&self, b: &Board) -> Hash {
+        counts::BOARD_HASH_COUNT.increment();
         let mut hash = b.color_us().chooser_wb(0, self.side);
         for cr in CastlingRights::iter() {
             if b.castling().contains(*cr) {
@@ -131,7 +120,8 @@ impl Hasher {
         hash
     }
 
-    pub fn hash_move(&self, m: &Move, pre_move: &Board) -> u64 {
+    pub fn hash_move(&self, m: &Move, pre_move: &Board) -> Hash {
+        counts::MOVE_HASH_COUNT.increment();
         // either we're moving to an empty square or its a capture
         let us = pre_move.color_us();
         let them = pre_move.color_them();

@@ -4,6 +4,10 @@ use std::iter::*;
 
 pub const MAX_PLY: usize = 128;
 
+pub type Ply = usize;
+pub type Hash = u64;
+
+
 pub struct Chooser<T> {
     pub black: T,
     pub white: T,

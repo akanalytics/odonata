@@ -90,8 +90,10 @@ pub mod counts {
 
     pub static EVAL_COUNT: Stat = Stat::new("EVAL COUNT");
     pub static LEGAL_MOVE_COUNT: Stat = Stat::new("LEGAL_MOVE COUNT");
+    pub static MOVE_HASH_COUNT: Stat = Stat::new("MOVE HASH COUNT");
+    pub static BOARD_HASH_COUNT: Stat = Stat::new("BOARD HASH COUNT");
 
-    pub static GLOBAL_COUNTS: ArrayStat = ArrayStat(&[&EVAL_COUNT, &LEGAL_MOVE_COUNT]);
+    pub static GLOBAL_COUNTS: ArrayStat = ArrayStat(&[&EVAL_COUNT, &LEGAL_MOVE_COUNT, &MOVE_HASH_COUNT, &BOARD_HASH_COUNT]);
 }
 
 

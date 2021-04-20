@@ -534,6 +534,13 @@ impl SimpleScorer {
 
 }
 
+// use std::cell::RefCell;
+// thread_local! {
+//     pub static HASHER: RefCell<Hasher> = RefCell::new(Hasher { seed: 3141592653589793, squares: [[[0; 64]; 6]; 2], side: 0, castling: [0; 4], ep: [0; 8] });
+// }
+// HASHER.with( |h| { move_hash = h.borrow().seed() });
+
+// INSTANCE.get_or_init(|| Self::new(3141592653589793))
 
 
 
