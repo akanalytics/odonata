@@ -1,6 +1,7 @@
 use crate::bitboard::Bitboard;
 use crate::board::Board;
 use crate::globals::constants::*;
+use crate::hasher::Hasher;
 use crate::movelist::Move;
 use crate::types::{CastlingRights, Piece};
 
@@ -19,7 +20,7 @@ impl MoveMaker for Board {
             self.white(),
             self.black()
         );
-        let mut board = Board {
+        let mut b = Board {
             en_passant: Bitboard::EMPTY,
             turn: self.turn.opposite(),
             fullmove_number: self.fullmove_number + self.turn.chooser_wb(0, 1),
@@ -33,9 +34,9 @@ impl MoveMaker for Board {
         if m.is_capture() {
             if m.is_ep_capture() {
                 // ep capture is like capture but with capture piece on *ep* square not *dest*
-                board.fifty_clock = 0;
-                board.pieces[m.capture_piece()].remove(m.ep());
-                board.colors[board.turn].remove(m.ep());
+                b.fifty_clock = 0;
+                b.pieces[m.capture_piece()].remove(m.ep());
+                b.colors[b.turn].remove(m.ep());
             } else {
                 // regular capture
                 debug_assert!(
@@ -44,28 +45,28 @@ impl MoveMaker for Board {
                     m,
                     self
                 );
-                board.fifty_clock = 0;
-                board.pieces[m.capture_piece()].remove(m.to());
-                board.colors[board.turn].remove(m.to());
+                b.fifty_clock = 0;
+                b.pieces[m.capture_piece()].remove(m.to());
+                b.colors[b.turn].remove(m.to());
             }
         }
 
         // clear one bit and set another for the move using xor
         let from_to_bits = m.from() | m.to();
-        board.pieces[m.mover_piece()] ^= from_to_bits;
-        board.colors[self.turn] ^= from_to_bits;
+        b.pieces[m.mover_piece()] ^= from_to_bits;
+        b.colors[self.turn] ^= from_to_bits;
 
         if m.mover_piece() == Piece::Pawn {
-            board.fifty_clock = 0;
+            b.fifty_clock = 0;
             if m.is_pawn_double_push() {
-                board.en_passant = m.ep();
+                b.en_passant = m.ep();
             }
         }
 
         if m.is_promo() {
             // fifty clock handled by pawn move above;
-            board.pieces[Piece::Pawn].remove(m.to()); // pawn has already moved
-            board.pieces[m.promo_piece()].insert(m.to());
+            b.pieces[Piece::Pawn].remove(m.to()); // pawn has already moved
+            b.pieces[m.promo_piece()].insert(m.to());
         }
 
         // castling *moves*
@@ -77,25 +78,25 @@ impl MoveMaker for Board {
             #[allow(non_upper_case_globals)]
             match m.to() {
                 c1 => {
-                    debug_assert!(board.castling.contains(CastlingRights::WHITE_QUEEN));
+                    debug_assert!(b.castling.contains(CastlingRights::WHITE_QUEEN));
                     rook_from_to = a1 | d1;
                 }
                 g1 => {
-                    debug_assert!(board.castling.contains(CastlingRights::WHITE_KING));
+                    debug_assert!(b.castling.contains(CastlingRights::WHITE_KING));
                     rook_from_to = h1 | f1;
                 }
                 c8 => {
-                    debug_assert!(board.castling.contains(CastlingRights::BLACK_QUEEN));
+                    debug_assert!(b.castling.contains(CastlingRights::BLACK_QUEEN));
                     rook_from_to = a8 | d8;
                 }
                 g8 => {
-                    debug_assert!(board.castling.contains(CastlingRights::BLACK_KING));
+                    debug_assert!(b.castling.contains(CastlingRights::BLACK_KING));
                     rook_from_to = h8 | f8;
                 }
                 _ => panic!("Castling move from square {}", m.to()),
             }
-            board.pieces[Piece::Rook] ^= rook_from_to;
-            board.colors[self.turn] ^= rook_from_to;
+            b.pieces[Piece::Rook] ^= rook_from_to;
+            b.colors[self.turn] ^= rook_from_to;
         }
 
         // castling *rights*
@@ -103,20 +104,29 @@ impl MoveMaker for Board {
         //  if a piece moves FROM the kings squares, both castling rights are lost
         //  possible with a rook x rook capture that both sides lose castling rights
         if m.from() == e1 {
-            board.castling.remove(CastlingRights::WHITE_KING | CastlingRights::WHITE_QUEEN);
+            b.castling.remove(CastlingRights::WHITE_KING | CastlingRights::WHITE_QUEEN);
         } else if m.from() == a1 || m.to() == a1 {
-            board.castling.remove(CastlingRights::WHITE_QUEEN);
+            b.castling.remove(CastlingRights::WHITE_QUEEN);
         } else if m.from() == h1 || m.to() == h1 {
-            board.castling.remove(CastlingRights::WHITE_KING);
+            b.castling.remove(CastlingRights::WHITE_KING);
         }
         if m.from() == e8 {
-            board.castling.remove(CastlingRights::BLACK_KING | CastlingRights::BLACK_QUEEN);
+            b.castling.remove(CastlingRights::BLACK_KING | CastlingRights::BLACK_QUEEN);
         } else if m.from() == a8 || m.to() == a8 {
-            board.castling.remove(CastlingRights::BLACK_QUEEN);
+            b.castling.remove(CastlingRights::BLACK_QUEEN);
         } else if m.from() == h8 || m.to() == h8 {
-            board.castling.remove(CastlingRights::BLACK_KING);
+            b.castling.remove(CastlingRights::BLACK_KING);
         }
-        board
+        let move_hash = Hasher::default().hash_move(m, self);
+        b.hash = self.hash ^ move_hash;
+        debug_assert!(
+            b.hash == Hasher::default().hash_board(&b),
+            "make_move({}) inconsistent incremental hash {:x} (should be {:x}",
+            m, 
+            b.hash,
+            Hasher::default().hash_board(&b),
+        );
+        b
     }
 }
 
@@ -164,16 +174,18 @@ mod tests {
         // check castling rights parsed-from and returned-in fen
         let epd = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1 id: 'castling1'";
         let board = Board::parse_fen(epd).unwrap().as_board();
+        board.validate().unwrap();
         assert_eq!(board.castling().to_string(), "KQkq");
 
         // rook takes rook, so both sides lose queens side castling grights
-        let board = board.make_move(&board.parse_uci_move("a1a8").unwrap());
+        let mv = board.parse_uci_move("a1a8").unwrap();
+        let board = board.make_move(&mv);
         assert_eq!(board.castling().to_string(), "Kk");
     }
 
     #[test]
     fn test_castling() {
-        let epd = "r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq e3 0 1 id: 'castling1'";
+        let epd = "r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1 id: 'castling1'";
         let board = Board::parse_fen(epd).unwrap().as_board();
         // casle kings side for w and then b
         let board = board.make_move(&board.parse_uci_move("e1g1").unwrap());

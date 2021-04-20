@@ -1,12 +1,10 @@
-use crate::board::boardbuf::BoardBuf;
-use crate::board::makemove::MoveMaker;
-use crate::board::movegen::MoveGen;
 use crate::board::Board;
 use crate::globals::constants::*;
 use crate::movelist::Move;
 use crate::types::{CastlingRights, Color, Piece};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
+use once_cell::sync::OnceCell;
 use std::fmt;
 
 // CPW:
@@ -17,7 +15,8 @@ use std::fmt;
 //
 // https://web.archive.org/web/20071031100138/http://www.brucemo.com/compchess/programming/zobrist.htm
 //
-#[derive(Debug, Eq, PartialEq)]
+// chosen so hash of empty borad = 0
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Hasher {
     seed: u64,
     squares: [[[u64; 64]; 6]; 2], // [colour][piece][square]
@@ -57,6 +56,10 @@ impl fmt::Display for Hasher {
     }
 }
 
+
+
+
+
 // https://docs.rs/rand/0.8.3/rand/rngs/struct.StdRng.html
 // For a secure reproducible generator, we recommend use of the rand_chacha crate directly.
 // hence https://crates.io/crates/rand_chacha
@@ -81,6 +84,16 @@ impl Hasher {
         rng.fill(&mut h.ep);
         h
     }
+
+
+    // doesnt impl Default as large to copy by value
+    pub fn default() -> &'static Self {
+        static INSTANCE: OnceCell<Hasher> = OnceCell::new();
+        INSTANCE.get_or_init(|| {
+            Self::new(3141592653589793)
+        })
+    }
+
 
     pub fn hash_board(&self, b: &Board) -> u64 {
         let mut hash = b.color_us().chooser_wb(0, self.side);
@@ -193,6 +206,11 @@ impl Hasher {
 mod tests {
     use super::*;
     use crate::catalog::Catalog;
+    use crate::board::movegen::MoveGen;
+    use crate::board::makemove::MoveMaker;
+
+
+
 
     #[test]
     fn test_hasher_display() {
@@ -204,6 +222,10 @@ mod tests {
 
     #[test]
     fn test_hash_board() {
+        let hasher_def = Hasher::default();
+        let b = Board::default();
+        assert_eq!(hasher_def.hash_board(&b), 0);
+        
         let hasher1 = Hasher::new(1);
         let b = Catalog::starting_position();
         assert_eq!(format!("{:x}", hasher1.hash_board(&b)), "5deb2bf6a1e5765");
@@ -243,7 +265,6 @@ mod tests {
             // println!("Move: {} => {}", mv, hash_mv);
             assert_eq!(hash_bd1 ^ hash_mv, hash_bd2);
         }
-        perft_with_hash(&bd1, 4, &hasher);
     }
 
     #[test]

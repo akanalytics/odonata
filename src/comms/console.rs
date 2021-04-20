@@ -2,11 +2,11 @@ use crate::board::Board;
 use crate::comms::uci::Uci;
 use crate::search::algo::Algo;
 use crate::version::Version;
-use std::io::{self, Write};
+use std::io;
 
 pub struct Console {
-    board: Board,
-    algo: Algo,
+    _board: Board,
+    _algo: Algo,
 }
 
 impl Console {

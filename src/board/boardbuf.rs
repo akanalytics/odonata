@@ -1,5 +1,6 @@
 use super::Board;
 use crate::bitboard::Bitboard;
+use crate::hasher::Hasher;
 use crate::types::{CastlingRights, Color, Piece};
 
 /// BoardBuf is a slow performing facade of convenience methods on board
@@ -23,7 +24,6 @@ pub trait BoardBuf {
     fn parse_fen(fen: &str) -> Result<Board, String>;
     fn as_board(&self) -> Board; // FIXME
     fn validate(&self) -> Result<(), String>;
-
 }
 
 impl BoardBuf for Board {
@@ -33,22 +33,27 @@ impl BoardBuf for Board {
 
     fn set_turn(&mut self, c: Color) {
         self.turn = c;
+        self.calculate_internals();
     }
 
     fn set_castling(&mut self, cr: CastlingRights) {
         self.castling = cr;
+        self.calculate_internals();
     }
 
     fn set_en_passant(&mut self, sq: Bitboard) {
         self.en_passant = sq;
+        self.calculate_internals();
     }
 
     fn set_fifty_halfmove_clock(&mut self, hmvc: i32) {
         self.fifty_clock = hmvc as u16;
+        self.calculate_internals();
     }
 
     fn set_fullmove_number(&mut self, fmvc: i32) {
         self.fullmove_number = fmvc as u16;
+        self.calculate_internals();
     }
 
     fn set_piece_at(&mut self, sq: Bitboard, p: Piece) {
@@ -59,11 +64,13 @@ impl BoardBuf for Board {
         if p != Piece::None {
             self.pieces[p].insert(sq);
         }
+        self.calculate_internals();
     }
 
     fn set_color_at(&mut self, sq: Bitboard, c: Color) {
         self.color(c.opposite()).remove(sq);
         self.colors[c].insert(sq);
+        self.calculate_internals();
     }
 
     fn color_at(&self, at: Bitboard) -> Option<Color> {
@@ -104,6 +111,7 @@ impl BoardBuf for Board {
                 self.colors[1].remove(sq);
             };
         }
+        self.calculate_internals();
         Ok(self)
     }
 
@@ -126,6 +134,19 @@ impl BoardBuf for Board {
         // if self.fullmove_counter() < self.fifty_halfmove_clock() * 2 {
         //     return Err(format!("Fullmove number (fmvn: {}) < twice half move clock (hmvc: {})", self.fullmove_counter(), self.fifty_halfmove_clock() ));
         // }
+        let ep = self.en_passant();
+        if  !ep.is_empty() {
+            if !ep.intersects( Bitboard::RANK_3 | Bitboard::RANK_6 ) {
+                return Err(format!("En passant square must be rank 3 or 6 not {}", ep.sq_as_uci()));
+            }
+            let capture_square = ep.shift(&self.color_them().pawn_move());
+            if !(self.pawns() & self.them()).contains(capture_square) {
+                return Err(format!("En passant square of {} entails a pawn on square {}", ep.sq_as_uci(), capture_square.sq_as_uci()));
+            } 
+        }
+        if self.hash() != Hasher::default().hash_board(self) {
+            return Err(format!("Hash is incorrect"));
+        }
         Ok(())
     }
 
@@ -147,6 +168,7 @@ impl BoardBuf for Board {
             return Err(format!("Expected 8 ranks of 8 pieces in fen {}", fen));
         }
         bb.set(Bitboard::all(), &r.concat())?;
+        bb.calculate_internals();
         Ok(bb)
     }
 
@@ -169,6 +191,8 @@ impl BoardBuf for Board {
             words[4].parse().map_err(|e| format!("Invalid halfmove clock '{}' - {}", words[4], e))?;
         bb.fullmove_number =
             words[5].parse().map_err(|e| format!("Invalid fullmove count '{}' - {}", words[5], e))?;
+        bb.calculate_internals();
+        bb.validate()?;
         Ok(bb)
     }
 }

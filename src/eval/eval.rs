@@ -4,7 +4,7 @@ use crate::config::{Config, Configurable};
 use crate::log_debug;
 use crate::globals::counts;
 use crate::material::Material;
-use crate::outcome::{GameEnd, Outcome};
+use crate::outcome::GameEnd;
 use crate::types::{Color, Piece};
 use std::fmt;
 

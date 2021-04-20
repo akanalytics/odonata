@@ -133,8 +133,6 @@ impl fmt::Display for Score {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::board::boardbuf::BoardBuf;
-    use crate::catalog::Catalog;
 
     #[test]
     fn test_score() {

@@ -281,7 +281,7 @@ impl Default for Piece {
 
 impl fmt::Display for Piece {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.to_upper_char().to_lowercase())
+        write!(f, "{}", self.to_lower_char())
     }
 }
 
@@ -311,6 +311,12 @@ impl Piece {
             Piece::King => 'K',
         }
     }
+
+    #[inline]
+    pub fn to_lower_char(&self) -> char {
+        self.to_upper_char().to_ascii_lowercase()
+    }
+
 
     /// coarse value in centipawns
     #[inline]

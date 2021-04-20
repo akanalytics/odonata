@@ -1,5 +1,6 @@
 use crate::bitboard::Bitboard;
 use crate::board::boardbuf::BoardBuf;
+use crate::hasher::Hasher;
 use crate::types::{CastlingRights, Color, Piece};
 use std::fmt::{self, Write};
 use std::iter::*;
@@ -17,6 +18,7 @@ pub struct Board {
     turn: Color,
     fifty_clock: u16,
     fullmove_number: u16,
+    hash: u64,
     // interior mutability (precludes copy trait)
     // moves: MoveList,
 }
@@ -32,6 +34,16 @@ impl Board {
     #[inline]
     pub fn new_empty() -> Board {
         Default::default()
+    }
+
+    fn calculate_internals(&mut self) {
+        self.hash = Hasher::default().hash_board(self);
+    }
+
+
+    #[inline]
+    pub fn hash(&self) -> u64 {
+        self.hash
     }
 
     #[inline]
@@ -170,13 +182,19 @@ impl fmt::Display for Board {
         write!(f, "\nfen: {} \n", self.to_fen())?;
         // write!(fmt, "Moves: {}", self.moves)?;
         if f.alternate() {
+            writeln!(f, "Hash: {:x}", self.hash())?;
             writeln!(f, "White:\n{}\nBlack:\n{}\n", self.white(), self.black())?;
             for &p in Piece::ALL.iter() {
-                writeln!( f, "Pieces: {}{}\n{}\n", p.to_upper_char(), p.to_upper_char().to_lowercase(), self.pieces(p))?;
+                writeln!(
+                    f,
+                    "Pieces: {}{}\n{}\n",
+                    p.to_upper_char(),
+                    p.to_lower_char(),
+                    self.pieces(p)
+                )?;
             }
         }
 
-            
         Ok(())
     }
 }
@@ -184,7 +202,7 @@ impl fmt::Display for Board {
 impl Default for Board {
     #[inline]
     fn default() -> Self {
-        Board {
+        let mut b = Board {
             pieces: Default::default(),
             colors: Default::default(),
             castling: Default::default(),
@@ -192,8 +210,11 @@ impl Default for Board {
             turn: Default::default(),
             fifty_clock: Default::default(),
             fullmove_number: 1,
+            hash: 0, 
             // moves: MoveList,
-        }
+        };
+        b.hash = Hasher::default().hash_board(&b);
+        b
     }
 }
 
@@ -219,7 +240,8 @@ mod tests {
 
     #[test]
     fn board_bitboards() -> Result<(), String> {
-        let board = Board::parse_piece_placement("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap().as_board();
+        let board =
+            Board::parse_piece_placement("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap().as_board();
         assert_eq!(board.color_us(), Color::White);
         assert_eq!(board.color_them(), Color::Black);
         // assert_eq!(board.en_passant(), Bitboard::empty());

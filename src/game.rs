@@ -193,7 +193,7 @@ mod tests {
     #[test]
     fn test_bug1() {
         let b = Board::parse_fen("1rk2qRr/8/B3P3/B4QN1/P4p2/2K1PP1P/P7/R2N4 b - - 0 38").unwrap();
-        let tc = TimeControl::MoveTime(Duration::from_secs(3));
+        let tc = TimeControl::MoveTime(Duration::from_millis(100));
         let mut white = Algo::new().set_timing_method(tc).build();
         let mut black = Algo::new().set_timing_method(tc).build();
         white.move_orderer.mvv_lva = true;
@@ -205,7 +205,7 @@ mod tests {
     fn test_bug2() {
         let b1 = Board::parse_fen("bqnbr1kr/ppp2ppp/8/8/3n4/3NNB2/PPP2PPP/BQ2R1KR b - - 4 7").unwrap();
         // let tc = TimeControl::MoveTime(Duration::from_millis(140));
-        let tc = TimeControl::from_remaining_time(Duration::from_millis(6000));
+        let tc = TimeControl::from_remaining_time(Duration::from_millis(30));
         let mut white = Algo::new().set_timing_method(tc).build();
         let mut black = Algo::new().set_timing_method(tc).build();
         white.mte.deterministic = true;
