@@ -13,7 +13,7 @@ pub trait BoardBuf {
     fn set_castling(&mut self, cr: CastlingRights);
     fn set_en_passant(&mut self, sq: Bitboard);
     fn set_fifty_halfmove_clock(&mut self, hmvc: i32);
-    fn set_fullmove_counter(&mut self, fmvc: i32);
+    fn set_fullmove_number(&mut self, fmvc: i32);
     fn set_piece_at(&mut self, sq: Bitboard, p: Piece);
     fn set_color_at(&mut self, sq: Bitboard, c: Color);
     fn color_at(&self, at: Bitboard) -> Option<Color>;
@@ -47,8 +47,8 @@ impl BoardBuf for Board {
         self.fifty_clock = hmvc as u16;
     }
 
-    fn set_fullmove_counter(&mut self, fmvc: i32) {
-        self.fullmove_counter = fmvc as u16;
+    fn set_fullmove_number(&mut self, fmvc: i32) {
+        self.fullmove_number = fmvc as u16;
     }
 
     fn set_piece_at(&mut self, sq: Bitboard, p: Piece) {
@@ -167,7 +167,7 @@ impl BoardBuf for Board {
         bb.en_passant = if words[3] == "-" { Bitboard::EMPTY } else { Bitboard::parse_square(words[3])? };
         bb.fifty_clock =
             words[4].parse().map_err(|e| format!("Invalid halfmove clock '{}' - {}", words[4], e))?;
-        bb.fullmove_counter =
+        bb.fullmove_number =
             words[5].parse().map_err(|e| format!("Invalid fullmove count '{}' - {}", words[5], e))?;
         Ok(bb)
     }
@@ -248,7 +248,7 @@ mod tests {
     fn parse_fen() -> Result<(), String> {
         let b = Board::parse_fen("7k/8/8/8/8/8/8/7K b KQkq - 45 100")?.as_board();
         assert_eq!(b.color_us(), Color::Black);
-        assert_eq!(b.fullmove_counter(), 100);
+        assert_eq!(b.fullmove_number(), 100);
         assert_eq!(b.fifty_halfmove_clock(), 45);
         assert_eq!(b.castling(), CastlingRights::all());
         Ok(())

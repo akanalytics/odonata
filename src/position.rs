@@ -64,7 +64,7 @@ impl Position {
             if let Ok(hmvc) = hmvc {
                 if let Ok(fmvn) = fmvn {
                     pos.board.set_fifty_halfmove_clock(hmvc as i32);
-                    pos.board.set_fullmove_counter(fmvn as i32);
+                    pos.board.set_fullmove_number(fmvn as i32);
                     remaining = StringUtils::trim_first_n_words(epd, 6);
                 }
             }

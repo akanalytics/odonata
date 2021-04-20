@@ -357,7 +357,7 @@ impl MoveValidator for Board {
                 if i != 0 {
                     s += "\n";
                 }
-                s += &board.fullmove_counter().to_string();
+                s += &board.fullmove_number().to_string();
                 s += ".";
             }
             if i == 0 && board.color_us() == Color::Black {

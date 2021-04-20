@@ -82,7 +82,7 @@ impl Game {
             if 1 == 0 {
                 println!(
                     "{}.{} {}   {}",
-                    self.board.fullmove_counter(),
+                    self.board.fullmove_number(),
                     if self.board.color_us() == Color::Black { ".. " } else { "" },
                     self.board.to_san(&mv),
                     self.board.to_fen()
