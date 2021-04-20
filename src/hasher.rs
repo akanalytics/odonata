@@ -2,9 +2,10 @@ use crate::board::Board;
 use crate::globals::constants::*;
 use crate::movelist::Move;
 use crate::types::{CastlingRights, Color, Piece};
+use once_cell::sync::OnceCell;
+use once_cell::sync::Lazy;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
-use once_cell::sync::OnceCell;
 use std::fmt;
 
 // CPW:
@@ -16,7 +17,7 @@ use std::fmt;
 // https://web.archive.org/web/20071031100138/http://www.brucemo.com/compchess/programming/zobrist.htm
 //
 // chosen so hash of empty borad = 0
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Hasher {
     seed: u64,
     squares: [[[u64; 64]; 6]; 2], // [colour][piece][square]
@@ -56,6 +57,18 @@ impl fmt::Display for Hasher {
     }
 }
 
+// static INSTANCE: OnceCell<Hasher> = OnceCell::new();
+
+
+static HASHER: Lazy<Hasher> = Lazy::new(|| Hasher::new(3141592653589793) );
+
+// use std::cell::RefCell;
+// thread_local! {
+//     pub static HASHER: RefCell<Hasher> = RefCell::new(Hasher { seed: 3141592653589793, squares: [[[0; 64]; 6]; 2], side: 0, castling: [0; 4], ep: [0; 8] });
+// }
+// HASHER.with( |h| { move_hash = h.borrow().seed() });
+
+
 
 
 
@@ -85,15 +98,15 @@ impl Hasher {
         h
     }
 
+    pub fn seed(&self) -> u64 {
+        self.seed
+    }
 
     // doesnt impl Default as large to copy by value
     pub fn default() -> &'static Self {
-        static INSTANCE: OnceCell<Hasher> = OnceCell::new();
-        INSTANCE.get_or_init(|| {
-            Self::new(3141592653589793)
-        })
+        &HASHER
+        // INSTANCE.get_or_init(|| Self::new(3141592653589793))
     }
-
 
     pub fn hash_board(&self, b: &Board) -> u64 {
         let mut hash = b.color_us().chooser_wb(0, self.side);
@@ -179,22 +192,29 @@ impl Hasher {
             hash ^= self.squares[us][Piece::Rook][rook_to.last_square()];
         }
 
-
         // castling *rights*
         //  if a piece moves TO (=capture) or FROM the rook squares - appropriate castling rights are lost
         //  if a piece moves FROM the kings squares, both castling rights are lost
         //  possible with a rook x rook capture that both sides lose castling rights
-        if (m.from() == e1 || m.from() == a1 || m.to() == a1) && pre_move.castling().contains(CastlingRights::WHITE_QUEEN){
+        if (m.from() == e1 || m.from() == a1 || m.to() == a1)
+            && pre_move.castling().contains(CastlingRights::WHITE_QUEEN)
+        {
             hash ^= self.castling[CastlingRights::WHITE_QUEEN.index()];
         }
-        if (m.from() == e1 || m.from() == h1 || m.to() == h1) && pre_move.castling().contains(CastlingRights::WHITE_KING)  {
+        if (m.from() == e1 || m.from() == h1 || m.to() == h1)
+            && pre_move.castling().contains(CastlingRights::WHITE_KING)
+        {
             hash ^= self.castling[CastlingRights::WHITE_KING.index()];
         }
 
-        if (m.from() == e8 || m.from() == a8 || m.to() == a8) && pre_move.castling().contains(CastlingRights::BLACK_QUEEN) {
+        if (m.from() == e8 || m.from() == a8 || m.to() == a8)
+            && pre_move.castling().contains(CastlingRights::BLACK_QUEEN)
+        {
             hash ^= self.castling[CastlingRights::BLACK_QUEEN.index()];
         }
-        if (m.from() == e8 || m.from() == h8 || m.to() == h8) && pre_move.castling().contains(CastlingRights::BLACK_KING) {
+        if (m.from() == e8 || m.from() == h8 || m.to() == h8)
+            && pre_move.castling().contains(CastlingRights::BLACK_KING)
+        {
             hash ^= self.castling[CastlingRights::BLACK_KING.index()];
         }
 
@@ -205,12 +225,9 @@ impl Hasher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::catalog::Catalog;
-    use crate::board::movegen::MoveGen;
     use crate::board::makemove::MoveMaker;
-
-
-
+    use crate::board::movegen::MoveGen;
+    use crate::catalog::Catalog;
 
     #[test]
     fn test_hasher_display() {
@@ -225,7 +242,6 @@ mod tests {
         let hasher_def = Hasher::default();
         let b = Board::default();
         assert_eq!(hasher_def.hash_board(&b), 0);
-        
         let hasher1 = Hasher::new(1);
         let b = Catalog::starting_position();
         assert_eq!(format!("{:x}", hasher1.hash_board(&b)), "5deb2bf6a1e5765");
@@ -234,23 +250,24 @@ mod tests {
         let hasher2 = Hasher::new(1);
         assert_eq!(format!("{:x}", hasher2.hash_board(&b)), "5deb2bf6a1e5765");
 
-        // hash(ep=a7) 
-        assert_eq!( hasher1.ep[0], 15632562519469102039);
+        // hash(ep=a7)
+        assert_eq!(hasher1.ep[0], 15632562519469102039);
 
         // a1a2 hash
         assert_eq!(a1.last_square(), 0);
         assert_eq!(g1.last_square(), 6);
         assert_eq!(h3.last_square(), 23);
-        let hash_a1a2 = hasher1.squares[Color::White.index()][Piece::Rook.index()][0] ^ hasher1.squares[Color::White.index()][Piece::Rook.index()][8];
-        assert_eq!( hash_a1a2, 4947796874932763259);
-        assert_eq!( hash_a1a2 ^ hasher1.ep[0] ^ hasher1.side, 17278715166005629523);
+        let hash_a1a2 = hasher1.squares[Color::White.index()][Piece::Rook.index()][0]
+            ^ hasher1.squares[Color::White.index()][Piece::Rook.index()][8];
+        assert_eq!(hash_a1a2, 4947796874932763259);
+        assert_eq!(hash_a1a2 ^ hasher1.ep[0] ^ hasher1.side, 17278715166005629523);
 
-        
         // g1h3 hash
-        let hash_g1h3 = hasher1.squares[Color::White.index()][Piece::Knight.index()][6] ^ hasher1.squares[Color::White.index()][Piece::Knight.index()][23];
-        assert_eq!( hash_g1h3, 2343180499638894504);
-        assert_eq!( hash_g1h3 ^ hasher1.side, 5987230143978898519);
-        assert_eq!( hash_g1h3 ^ hasher1.ep[0] ^ hasher1.side, 10080444449497094016);
+        let hash_g1h3 = hasher1.squares[Color::White.index()][Piece::Knight.index()][6]
+            ^ hasher1.squares[Color::White.index()][Piece::Knight.index()][23];
+        assert_eq!(hash_g1h3, 2343180499638894504);
+        assert_eq!(hash_g1h3 ^ hasher1.side, 5987230143978898519);
+        assert_eq!(hash_g1h3 ^ hasher1.ep[0] ^ hasher1.side, 10080444449497094016);
     }
 
     #[test]

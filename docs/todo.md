@@ -1,5 +1,11 @@
 # Todo items
 
+- Optimization backlog
+  - default() and once_cell on Hasher
+  - make_move - and move x 2
+  - 
+
+
 
 - [x] parsing algebraic notation
 - [x] game/match
@@ -59,7 +65,10 @@
   - [ ] Sort out logging
   - [ ] Under promotion - use Mark's extra attribute approach? 
   - [ ] Better draw detection
+  - [ ] Mitochondria once_cell
 
+- admin
+  - [ ] kubernetes as suggested by Tom
 
 
 

@@ -36,6 +36,7 @@ impl Board {
         Default::default()
     }
 
+    #[inline]
     fn calculate_internals(&mut self) {
         self.hash = Hasher::default().hash_board(self);
     }
@@ -202,7 +203,7 @@ impl fmt::Display for Board {
 impl Default for Board {
     #[inline]
     fn default() -> Self {
-        let mut b = Board {
+        Board {
             pieces: Default::default(),
             colors: Default::default(),
             castling: Default::default(),
@@ -212,9 +213,8 @@ impl Default for Board {
             fullmove_number: 1,
             hash: 0, 
             // moves: MoveList,
-        };
-        b.hash = Hasher::default().hash_board(&b);
-        b
+        }
+        // b.hash = Hasher::default().hash_board(&b);
     }
 }
 

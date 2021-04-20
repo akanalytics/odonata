@@ -136,10 +136,11 @@ fn make_move(c: &mut Criterion) {
 fn hash_move(c: &mut Criterion) {
     let board = Catalog::perft_cpw_number3().0;
     let moves = board.legal_moves();
-    let hasher = Hasher::new(1);
+    //let hasher = Hasher::new(1);
     c.bench_function("hash_move", |b| {
         b.iter(|| {
             for mv in moves.iter() {
+                let hasher = black_box(Hasher::default());
                 black_box(hasher.hash_move(black_box(mv), black_box(&board)));
             }
         });
