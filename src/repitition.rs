@@ -35,7 +35,22 @@ impl fmt::Display for Repitition {
         Ok(())
     }
 }
-
+//
+// some use cases
+//
+// a. pos1, pos2, pos3 outside of search => draw, and search returns outcome of draw
+// b. pos1, pos2 [search] pos3 => score-of-draw inside search (no choice) - but don't return outcome as a draw
+// c. [search] pos1, pos2 => score-of-draw inside of search (probably dont want cycles) but don't return outcome as a draw
+// d. pos1 [search] pos2 => score-of-draw inside of search (probably dont want cycles) but don't return outcome as a draw
+//
+// a & b we must return draw score
+// c & d we can return draw score, but if time on out side, and losing, then maybe play it?
+//
+// so logic is
+// count 3 before search => outcome draw
+// count 3 return draw score
+// count 2 probably return draw score
+//
 impl Repitition {
     pub fn new() -> Self {
         Self::default()
@@ -92,7 +107,7 @@ mod tests {
         rep1.push(&knight_mv, &boards[5]);
         assert_eq!(rep1.count(&boards[4]), 1);
         assert_eq!(rep1.count(&boards[2]), 1);
-        assert_eq!(rep1.count(&boards[0]), 0);
+        assert_eq!(rep1.count(&boards[0]), 0);  // pawn move reset the count
 
         rep1.pop(); // 5
         rep1.pop(); // 4
