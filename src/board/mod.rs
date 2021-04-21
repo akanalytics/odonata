@@ -1,6 +1,7 @@
 use crate::bitboard::Bitboard;
 use crate::board::boardbuf::BoardBuf;
 use crate::hasher::Hasher;
+use std::cell::Cell;
 use crate::types::{CastlingRights, Color, Piece, Hash};
 use std::fmt::{self, Write};
 use std::iter::*;
@@ -9,7 +10,7 @@ pub mod boardbuf;
 pub mod makemove;
 pub mod movegen;
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Board {
     pieces: [Bitboard; Piece::ALL.len()],
     colors: [Bitboard; 2],
@@ -18,6 +19,7 @@ pub struct Board {
     turn: Color,
     fifty_clock: u16,
     fullmove_number: u16,
+    repetition_count: Cell<u16>,
     hash: Hash,
     // interior mutability (precludes copy trait)
     // moves: MoveList,
@@ -35,6 +37,15 @@ impl Board {
     pub fn new_empty() -> Board {
         Default::default()
     }
+
+    #[inline]
+    pub fn repetition_count(&self) -> u16 {
+        self.repetition_count.get()
+    } 
+
+    pub fn set_repetition_count(&self, count: u16) {
+        self.repetition_count.set(count);
+    } 
 
     #[inline]
     fn calculate_internals(&mut self) {
@@ -184,6 +195,7 @@ impl fmt::Display for Board {
         // write!(fmt, "Moves: {}", self.moves)?;
         if f.alternate() {
             writeln!(f, "Hash: {:x}", self.hash())?;
+            writeln!(f, "Rep count: {:x}", self.repetition_count())?;
             writeln!(f, "White:\n{}\nBlack:\n{}\n", self.white(), self.black())?;
             for &p in Piece::ALL.iter() {
                 writeln!(
@@ -211,6 +223,7 @@ impl Default for Board {
             turn: Default::default(),
             fifty_clock: Default::default(),
             fullmove_number: 1,
+            repetition_count: Cell::<u16>::new(0), 
             hash: 0, 
             // moves: MoveList,
         }

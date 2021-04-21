@@ -77,6 +77,8 @@ impl Game {
             let player = self.board.color_us().chooser_wb(&mut self.white, &mut self.black);
             let mv = player.choose_move(&self.board);
             self.moves.push(mv);
+            self.white.repetition.push(&mv, &self.board);
+            self.black.repetition.push(&mv, &self.board);
             
             // FIXME
             if 1 == 0 {
@@ -154,7 +156,9 @@ mod tests {
 
     // use crate::comms::uci::Uci;
 
-    fn _competition() {
+    #[test]
+    #[ignore]
+    fn competition() {
         //let tc = TimeControl::NodeCount(1_000);
         let tc = TimeControl::from_remaining_time(Duration::from_millis(150));
         //let tc = TimeControl::Depth(3);
@@ -185,7 +189,11 @@ mod tests {
             game2.play();
             // println!("\n{}", game2);
             score += game1.outcome().as_wdl() + game2.outcome().reversed().as_wdl();
-            println!("game: {} score {}", pos.id().unwrap(), score);
+            println!("game: {} score {}   outcome {} v {} ", pos.id().unwrap(), score, game1.outcome(), game2.outcome());
+            println!("G1{} {}\nG2 {} {}", game1.white.repetition, game1.white.repetition, game2.black.repetition, game2.black.repetition); 
+            // println!("board: \n{}\n", game1.board);
+            // println!("board: \n{}\n", game2.board);
+
         }
         println!("score {}", score);
     }
@@ -203,7 +211,7 @@ mod tests {
 
     #[test]
     fn test_bug2() {
-        let b1 = Board::parse_fen("bqnbr1kr/ppp2ppp/8/8/3n4/3NNB2/PPP2PPP/BQ2R1KR b - - 4 7").unwrap();
+        let mut b1 = Board::parse_fen("bqnbr1kr/ppp2ppp/8/8/3n4/3NNB2/PPP2PPP/BQ2R1KR b - - 4 7").unwrap();
         // let tc = TimeControl::MoveTime(Duration::from_millis(140));
         let tc = TimeControl::from_remaining_time(Duration::from_millis(30));
         let mut white = Algo::new().set_timing_method(tc).build();

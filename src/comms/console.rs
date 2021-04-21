@@ -39,6 +39,7 @@ impl Console {
                 }
             };
         }
+        println!("Exiting console...");
     }
 
     pub fn help() {

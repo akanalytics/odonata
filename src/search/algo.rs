@@ -4,6 +4,7 @@ use crate::board::Board;
 use crate::config::{Config, Configurable};
 use crate::eval::eval::{Scorable, SimpleScorer};
 use crate::eval::score::Score;
+use crate::globals::counts;
 use crate::log_debug;
 use crate::movelist::Move;
 use crate::movelist::MoveList;
@@ -14,6 +15,7 @@ use crate::search::searchprogress::SearchProgress;
 use crate::search::searchstats::SearchStats;
 use crate::search::taskcontrol::TaskControl;
 use crate::search::node::Node;
+use crate::repetition::Repetition;
 use crate::search::timecontrol::TimeControl;
 use crate::search::move_time_estimator::MoveTimeEstimator;
 use crate::search::iterative_deepening::IterativeDeepening;
@@ -94,6 +96,7 @@ pub struct Algo {
     //pub score: Score,
     pub mte: MoveTimeEstimator,
     pub move_orderer: MoveOrderer,
+    pub repetition: Repetition,
 
     child_thread: AlgoThreadHandle,
 
@@ -153,6 +156,7 @@ impl Configurable for Algo {
         self.move_orderer.settings(c);
         self.quiescence.settings(c);
         self.ids.settings(c);
+        self.repetition.settings(c);
     }
     fn configure(&mut self, c: &Config) {
         log_debug!("algo.configure with {}", c);
@@ -163,6 +167,7 @@ impl Configurable for Algo {
         self.mte.configure(c);
         self.quiescence.configure(c);
         self.ids.configure(c);
+        self.repetition.configure(c);
     }
 }
 
@@ -184,6 +189,7 @@ impl fmt::Debug for Algo {
             .field("search_stats", &self.search_stats)
             .field("quiescence", &self.quiescence)
             .field("ids", &self.ids)
+            .field("repetition", &self.repetition)
             .finish()
     }
 }
@@ -206,7 +212,9 @@ impl fmt::Display for Algo {
         write!(f, "\n[quiescence]\n{}", self.quiescence)?;
         write!(f, "\n[eval]\n{}", self.eval)?;
         write!(f, "\n[iterative deepening]\n{}", self.ids)?;
+        write!(f, "\n[repetition]\n{}", self.repetition)?;
         write!(f, "\n[stats]\n{}", self.search_stats)?;
+        write!(f, "\n[global counts]\n{}", counts::GLOBAL_COUNTS)?;
         write!(f, "\n[pvtable]\n{}", self.pv_table)?;
         Ok(())
     }
@@ -235,60 +243,6 @@ impl Algo {
             ));
     }
 
-    // pub fn search3(&mut self, mut board: Board) {
-    //     self.board = board;
-    //     self.search_stats = SearchStats::new();
-    //     self.current_best = None;
-    //     self.clock_checks = 0;
-    //     self.task_control.set_running();
-    //     self.range = if let TimeControl::Depth(depth) = self.mte.time_control {
-    //         if self.iterative_deepening {
-    //             1..depth + 1
-    //         } else {
-    //             depth..depth + 1
-    //         }
-    //     } else {
-    //         // regardless of iterative deeping, we apply it if no explicit depth given
-    //         1..MAX_PLY as u32
-    //     };
-
-    //     for depth in self.range.clone() {
-    //         self.set_iteration_depth(depth);
-    //         let mut root_node = Node::new_root(&mut board);
-    //         let stats = &mut self.search_stats;
-    //         let mut sp = SearchProgress::from_search_stats(stats);
-    //         self.mte.calc_estimates_for_ply(depth, stats);
-    //         stats.record_time_estimate(depth, &self.mte.time_estimate);
-            
-    //         if self.score().is_mate() || self.mte.probable_timeout(stats) {
-    //             // println!("Mate or probable timeout!");
-    //             break;
-    //         }
-    //         // println!("Iterative deepening... ply {}", depth);
-
-    //         self.alphabeta(&mut root_node);
-
-    //         if !self.task_control.is_cancelled() {
-    //             self.pv = self.pv_table.extract_pv();
-    //             self.pv_table = self.pv_table.clone();
-    //             self.current_best = Some(self.pv[0]);
-    //             sp = SearchProgress::from_search_stats(&self.search_stats());
-    //             sp.pv = Some(self.pv.clone());
-    //             sp.score = Some(self.score());
-    //             self.task_control.invoke_callback(&sp);
-    //         } else {
-    //             self.task_control.invoke_callback(&sp);
-    //             break;
-    //         }
-    //     }
-
-    //     if self.pv().len() == 0 {
-    //         println!("{}", self);
-    //         panic!("No PV");
-    //     }
-    //     let sp = SearchProgress::from_best_move(Some(self.bm()));
-    //     self.task_control.invoke_callback(&sp);
-    // }
 
     pub fn algo_description(&self) -> String {
         format!(
@@ -392,6 +346,12 @@ impl Algo {
             return;
         }
 
+        if node.board.repetition_count() >= 2 {
+            node.score = node.board.eval(&self.eval);
+            self.search_stats.inc_leaf_nodes(node.ply);
+            return;
+        }
+
         if self.is_leaf(node) {
             self.quiescence_search(node);
             return;
@@ -404,24 +364,29 @@ impl Algo {
         //     self.task_control.invoke_callback(&sp);
         // }
         // bailing here means the score is +/- inf and wont be used
+        // FIXME!
 
         let mut moves = node.board.legal_moves();
         if moves.is_empty() {
             node.score = node.board.eval(&self.eval);
+            self.search_stats.inc_leaf_nodes(node.ply);
             return;
         }
 
-        let ordered = self.order_moves(node.ply, &mut moves);
-        if ordered {
-            self.search_stats.inc_custom_stat(node.ply);
-        }
+        self.order_moves(node.ply, &mut moves);
 
         for (_i, mv) in moves.iter().enumerate() {
             let mut child_board = node.board.make_move(mv);
+            self.repetition.push(&mv, &child_board);
+            child_board.set_repetition_count(self.repetition.count(&child_board));
             let mut child = node.new_child(mv, &mut child_board);
             debug_assert!(child.alpha < child.beta || self.minmax);
             self.current_variation.set_last_move(child.ply, mv);
+
             self.alphabeta_recursive(&mut child);
+
+            node.board.undo_move(mv);
+            self.repetition.pop();
             let is_cut = self.process_child(&mv, node, &child);
             if is_cut {
                 self.search_stats.inc_cuts(node.ply);

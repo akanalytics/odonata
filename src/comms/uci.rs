@@ -164,14 +164,15 @@ impl Uci {
     fn uci_perft(&self, words: &[&str]) -> Result<(), String> {
         let depth = words.first().ok_or("Must specify a depth")?;
         let depth = depth.parse::<u32>().or(Err(format!("Depth {} must be numeric", depth)))?;
-        let board = Catalog::starting_position();
+        let mut board = Catalog::starting_position();
         for d in 1..=depth {
-            println!("info string perft({}) = {}", d, Perft::perft(&board, d));
+            println!("info string perft({}) = {}", d, Perft::perft(&mut board, d));
         }
         Ok(())
     }
 
     fn uci_position(&mut self, arg: &Args) -> Result<(), String> {
+        self.algo.repetition.clear();
         let fen = arg.words.get(1);
         let moves;
         if let Some(fen) = fen {
@@ -197,6 +198,7 @@ impl Uci {
                 for mv in arg.words[(moves + 1)..].iter() {
                     let mv = self.board.parse_uci_move(mv)?;
                     self.board = self.board.make_move(&mv);
+                    self.algo.repetition.push(&mv, &self.board);
                 }
             }
             Ok(())

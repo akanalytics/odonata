@@ -342,7 +342,7 @@ impl MoveValidator for Board {
             s.push('=');
             s.push(mv.promo_piece().to_upper_char());
         }
-        if self.will_check(mv) {
+        if self.will_check_them(mv) {
             s.push('+');
         }
         s

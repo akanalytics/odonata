@@ -13,8 +13,8 @@ pub enum Outcome {
     WinOnTimeBlack,
     DrawByAgreement,
     DrawStalemate,
-    DrawRepitition3,
-    DrawRepitition5,
+    DrawRepetition3,
+    DrawRepetition5,
     DrawInsufficientMaterial,
     DrawRule50,
     DrawRule75,
@@ -89,7 +89,7 @@ pub trait GameEnd {
 }
 
 
-// does not detect repitition counts
+// does not detect repetition counts
 impl GameEnd for Board {
     fn outcome(&self) -> Outcome {
         if let Some(outcome) = self.cursory_outcome() {
@@ -116,8 +116,8 @@ impl GameEnd for Board {
         // WinOnTimeBlack,
         // DrawByAgreement,
         // X DrawStalemate,
-        // DrawRepitition3,
-        // DrawRepitition5,
+        // DrawRepetition3,
+        // DrawRepetition5,
         // X DrawInsufficientMaterial,
         // DrawRule50,
         // X DrawRule75,
@@ -129,6 +129,12 @@ impl GameEnd for Board {
             return Some(Outcome::DrawRule75);
         }
 
+        if self.repetition_count() >= 5 {
+            return Some(Outcome::DrawRepetition5);
+        }
+        if self.repetition_count() >= 2 {
+            return Some(Outcome::DrawRepetition3);
+        }
         if Material::from_board(self).is_insufficient() {
             return Some(Outcome::DrawInsufficientMaterial);
         }

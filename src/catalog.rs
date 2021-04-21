@@ -639,9 +639,9 @@ mod tests {
         // check unique
         let mut set = HashSet::new();
         for id in 0..960 {
-            set.insert(Catalog::chess960(id).board().clone());
+            set.insert(Catalog::chess960(id).board().hash());
         }
-        set.insert(Catalog::starting_position()); // add a duplicate
+        set.insert(Catalog::starting_position().hash()); // add a duplicate
         assert_eq!(set.len(), 960);
     }
 

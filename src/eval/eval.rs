@@ -1,8 +1,8 @@
-use crate::eval::score::Score;
 use crate::board::Board;
 use crate::config::{Config, Configurable};
-use crate::log_debug;
+use crate::eval::score::Score;
 use crate::globals::counts;
+use crate::log_debug;
 use crate::material::Material;
 use crate::outcome::GameEnd;
 use crate::types::{Color, Piece};
@@ -128,6 +128,7 @@ pub struct SimpleScorer {
     pub material: bool,
     pub position: bool,
     pub mobility: bool,
+    pub contempt: i32,
     pub material_scores: [i32; Piece::ALL.len()],
 }
 
@@ -142,6 +143,7 @@ impl Configurable for SimpleScorer {
         c.set("eval.mobility", "type check default true");
         c.set("eval.position", "type check default true");
         c.set("eval.material", "type check default true");
+        c.set("eval.contempt", &format!("type spin min -10000 max 10000 default {}", self.contempt));
         c.set(
             "eval.material.p",
             &("type spin min -10000 max 10000 default ".to_string() + &Piece::Pawn.centipawns().to_string()),
@@ -171,6 +173,8 @@ impl Configurable for SimpleScorer {
         self.mobility = c.bool("eval.mobility").unwrap_or(self.mobility);
         self.position = c.bool("eval.position").unwrap_or(self.position);
         self.material = c.bool("eval.material").unwrap_or(self.material);
+        self.contempt = c.int("eval.contempt").unwrap_or(self.contempt as i64) as i32;
+
         for p in &Piece::ALL {
             let mut name = "eval.material.".to_string();
             name.push(p.to_char(Some(Color::Black)));
@@ -186,6 +190,7 @@ impl fmt::Display for SimpleScorer {
         writeln!(f, "material         : {}", self.material)?;
         writeln!(f, "position         : {}", self.position)?;
         writeln!(f, "mobility         : {}", self.mobility)?;
+        writeln!(f, "contempt         : {}", self.contempt)?;
         writeln!(f, "material scores  : {:?}", self.material_scores)?;
         Ok(())
     }
@@ -202,7 +207,13 @@ impl SimpleScorer {
             Piece::Queen.centipawns(),
             0, // king
         ];
-        SimpleScorer { mobility: true, position: true, material: true, material_scores: MATERIAL_SCORES }
+        SimpleScorer {
+            mobility: true,
+            position: true,
+            material: true,
+            contempt: 80,
+            material_scores: MATERIAL_SCORES,
+        }
     }
 
     pub fn set_position(&mut self, enabled: bool) -> Self {
@@ -309,7 +320,6 @@ mod tests {
     use super::*;
     use crate::board::boardbuf::BoardBuf;
     use crate::catalog::Catalog;
-
 
     #[test]
     fn score_material() {

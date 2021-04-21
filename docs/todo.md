@@ -94,7 +94,7 @@ Separate PV tables.
 
 things on board can be incrementally calculated on do / do&undo / never
 
-Repititions  do&undo
+Repetitions  do&undo
 Checkers     never
 Hash         do and sometimes undo
 Castling     do and sometimes undo

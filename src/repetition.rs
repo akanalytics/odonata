@@ -1,34 +1,34 @@
 use crate::board::Board;
 use crate::config::{Config, Configurable};
 use crate::log_debug;
-use crate::movelist::{Move, MoveValidator};
+use crate::movelist::{Move};
 use crate::types::{Hash, Piece};
 use std::fmt;
 
 #[derive(Clone, Debug)]
-pub struct Repitition {
+pub struct Repetition {
     enabled: bool,
     prior_positions: Vec<Hash>,
 }
 
-impl Configurable for Repitition {
+impl Configurable for Repetition {
     fn settings(&self, c: &mut Config) {
-        c.set("repitition.enabled", "type check default true");
+        c.set("repetition.enabled", "type check default true");
     }
 
     fn configure(&mut self, c: &Config) {
-        log_debug!("repitition.configure with {}", c);
+        log_debug!("repetition.configure with {}", c);
         self.enabled = c.bool("move_orderer.enabled").unwrap_or(self.enabled);
     }
 }
 
-impl Default for Repitition {
+impl Default for Repetition {
     fn default() -> Self {
         Self { enabled: true, prior_positions: Vec::new() }
     }
 }
 
-impl fmt::Display for Repitition {
+impl fmt::Display for Repetition {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "enabled          : {}", self.enabled)?;
         writeln!(f, "prior posn count : {}", self.prior_positions.len())?;
@@ -54,20 +54,27 @@ impl fmt::Display for Repitition {
 // count 2 probably return draw score
 //
 // reflect the counts -> Outcome in Eval (configurable) (and can test engine1 vs engine2)
-// have Game store a repitition so that Draws can be detected (nothing to do with search, no need to be optimised)
-// have Search store a repitition (needs to be fast)
+// have Game store a repetition so that Draws can be detected (nothing to do with search, no need to be optimised)
+// have Search store a repetition (needs to be fast)
 // (static) Eval can determine checkmate
 //
 //
-// dont have Board reference a repitition
+// dont have Board reference a repetition
 //
 
-impl Repitition {
+impl Repetition {
     pub fn new() -> Self {
         Self::default()
     }
 
+    pub fn clear(&mut self) {
+        self.prior_positions.clear();
+    }
+
     pub fn push(&mut self, mv: &Move, post_move: &Board) {
+        if !self.enabled {
+            return;
+        }
         if mv.is_capture() || mv.mover_piece() == Piece::Pawn {
             self.prior_positions.push(0);
         }
@@ -81,18 +88,24 @@ impl Repitition {
         }
     }
 
-    pub fn count(&self, b: &Board) -> usize {
+    pub fn count(&self, b: &Board) -> u16 {
+        if !self.enabled {
+            return 0;
+        }
         self.prior_positions
             .iter()
             .rev()
             .take_while(|&h| *h != 0)
-            .skip(1)
+            //.skip(1)
             .step_by(2)
             .filter(|&h| *h == b.hash())
-            .count()
+            .count() as u16
     }
 
     pub fn is_repeated(&self, b: &Board) -> bool {
+        if !self.enabled {
+            return false;
+        }
         self.prior_positions.iter().rev().take_while(|&h| *h != 0).step_by(2).any(|&h| h == b.hash())
     }
 }
@@ -101,12 +114,18 @@ impl Repitition {
 mod tests {
     use super::*;
     use crate::catalog::*;
+    use crate::board::makemove::*;
+    use crate::movelist::*;
+    use crate::comms::uci::Uci;
+    use crate::search::timecontrol::*;
+    use crate::search::algo::*;
+
 
     #[test]
-    fn test_repitition() {
+    fn test_repetition() {
         let boards: Vec<Board> =
             (0..20).into_iter().map(|i| Catalog::chess960(i)).map(|p| p.board().clone()).collect();
-        let mut rep1 = Repitition::new();
+        let mut rep1 = Repetition::new();
         let b = Catalog::starting_position();
         let knight_mv = b.parse_uci_move("b1c3").unwrap();
         let pawn_mv = b.parse_uci_move("a2a3").unwrap();
@@ -135,4 +154,26 @@ mod tests {
         rep1.push(&knight_mv, &boards[4]);
         assert_eq!(rep1.count(&boards[2]), 1);
     }
+
+    #[test]
+    fn test_rep_position() {
+        let mut b = Catalog::starting_position();
+        let mut algo = Algo::new().set_timing_method(TimeControl::Depth(5)).set_callback(Uci::uci_info).build();
+
+        let s = concat!("e2e4 b8c6 b1c3 g8f6 d2d4 d7d5 e4e5 f6e4 c3e4 d5e4 f1b5 c8d7 b5c6 d7c6 g1e2 e7e6 e1g1 ",
+        "f8b4 a2a3 b4a5 c1e3 e8g8 c2c4 f7f6 b2b4 a5b6 c4c5 f6e5 c5b6 e5d4 e2d4 a7b6 d4e6 d8d1 ",
+        "f1d1 f8f7 d1d8 a8d8 e6d8 f7f6 a1d1 f6f8 d8e6 f8c8 e3f4 c8a8 f4c7 a8a3 c7b6 a3d3 d1a1 ",
+        "h7h6 b6c7 d3d2 c7f4 d2b2 a1a8 g8h7 e6f8 h7g8");
+        algo.repetition.clear();
+        let mvs = b.parse_uci_moves(s).unwrap();
+        for mv in mvs.iter() {
+            b = b.make_move(&mv);
+            algo.repetition.push(&mv, &b);
+            println!("rep count = {} hash = {:x}", algo.repetition.count(&b), b.hash());
+        }
+
+        algo.search(&b);
+        println!("{}", algo);
+    }
+
 }

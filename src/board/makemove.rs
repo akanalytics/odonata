@@ -4,9 +4,11 @@ use crate::globals::constants::*;
 use crate::hasher::Hasher;
 use crate::movelist::Move;
 use crate::types::{CastlingRights, Piece};
+use std::cell::Cell;
 
 pub trait MoveMaker {
     fn make_move(&self, m: &Move) -> Board;
+    fn undo_move(&self, m: &Move);
 }
 
 impl MoveMaker for Board {
@@ -25,6 +27,7 @@ impl MoveMaker for Board {
             turn: self.turn.opposite(),
             fullmove_number: self.fullmove_number + self.turn.chooser_wb(0, 1),
             fifty_clock: self.fifty_clock + 1,
+            repetition_count: Cell::new(0),
             // moves: self.moves.clone(),
             ..*self
         };
@@ -128,6 +131,9 @@ impl MoveMaker for Board {
             Hasher::default().hash_board(&b),
         );
         b
+    }
+
+    fn undo_move(&self, _m: &Move) {
     }
 }
 

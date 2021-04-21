@@ -42,7 +42,7 @@ fn attacked_by(targets: Bitboard, occ: Bitboard, board: &Board, opponent: Color)
 
 pub trait MoveGen {
     fn is_in_check(&self, c: Color) -> bool;
-    fn will_check(&self, mv: &Move) -> bool;
+    fn will_check_them(&self, mv: &Move) -> bool;
     fn is_legal_move(&self, mv: &Move) -> bool;
     fn pseudo_legal_moves(&self) -> MoveList;
     fn legal_moves(&self) -> MoveList;
@@ -50,7 +50,7 @@ pub trait MoveGen {
 }
 
 impl MoveGen for Board {
-    fn will_check(&self, mv: &Move) -> bool {
+    fn will_check_them(&self, mv: &Move) -> bool {
         debug_assert!(self.is_legal_move(mv));
         let their_king_color = self.color_them();
         self.make_move(mv).is_in_check(their_king_color)

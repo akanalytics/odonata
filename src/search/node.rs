@@ -7,7 +7,7 @@ use crate::movelist::Move;
 
 #[derive(Debug)]
 pub struct Node<'b> {
-    pub board: &'b Board,
+    pub board: &'b mut Board,
     pub ply: u32,
     pub alpha: Score,
     pub beta: Score,

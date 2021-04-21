@@ -93,9 +93,9 @@ pub mod counts {
     pub static MOVE_HASH_COUNT: Stat = Stat::new("MOVE HASH COUNT");
     pub static BOARD_HASH_COUNT: Stat = Stat::new("BOARD HASH COUNT");
 
-    pub static GLOBAL_COUNTS: ArrayStat = ArrayStat(&[&EVAL_COUNT, &LEGAL_MOVE_COUNT, &MOVE_HASH_COUNT, &BOARD_HASH_COUNT]);
+    pub static GLOBAL_COUNTS: ArrayStat =
+        ArrayStat(&[&EVAL_COUNT, &LEGAL_MOVE_COUNT, &MOVE_HASH_COUNT, &BOARD_HASH_COUNT]);
 }
-
 
 #[cfg(test)]
 mod tests {

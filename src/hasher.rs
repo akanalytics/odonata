@@ -292,16 +292,17 @@ mod tests {
     }
 
     pub fn perft_with_hash(b: &Board, depth: u32, hasher: &Hasher) -> u64 {
+        let b = &mut b.clone();
         if depth == 0 {
             1
         } else {
             let moves = b.legal_moves();
-            let hash_bd1 = hasher.hash_board(b);
+            let hash_bd1 = hasher.hash_board(&b);
             let mut count = 0u64;
             // println!("-->");
             for m in moves.iter() {
                 let bd2 = b.make_move(m);
-                let hash_mv = hasher.hash_move(m, &b);
+                let hash_mv = hasher.hash_move(m, b);
                 let hash_bd2 = hasher.hash_board(&bd2);
                 // println!("Move: {:#} = {}", m, hash_mv);
                 assert_eq!(hash_bd1 ^ hash_mv, hash_bd2, "board1:{:#}\nmv:{:#}\nboard2:{:#}", b, m, bd2);

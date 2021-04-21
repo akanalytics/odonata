@@ -94,12 +94,12 @@ fn piece_to_char(c: &mut Criterion) {
 }
 
 fn benchmark_perft5(c: &mut Criterion) {
-    let board = Catalog::starting_position();
+    let mut board = Catalog::starting_position();
     let mut group = c.benchmark_group("sample size 10");
     group.sample_size(10);
     group.bench_function("perft5", |b| {
         b.iter(|| {
-            black_box(Perft::perft(&board, black_box(5)));
+            black_box(Perft::perft(&mut board, black_box(5)));
         });
     });
     group.finish();

@@ -60,9 +60,9 @@ impl fmt::Display for MoveOrderer {
 }
 
 impl Algo {
-    pub fn order_moves(&self, ply: u32, movelist: &mut MoveList) -> bool{
+    pub fn order_moves(&self, ply: u32, movelist: &mut MoveList){
         if !self.move_orderer.enabled {
-            return false;
+            return;
         }
 
         if self.move_orderer.mvv_lva {
@@ -81,11 +81,10 @@ impl Algo {
                 if let Some(i) = movelist.iter().position(|&mv| mv == self.bm()) {
                     movelist.swap(0, i);
                     self.move_orderer.count_bm.add(ply, 1);
-                    return true;
+                    return;
                 }
             }
         }
-        return false;
     }
 
     pub fn order_from_prior_pv(moves: &mut MoveList, var: &MoveList, pv: &MoveList) -> bool {
