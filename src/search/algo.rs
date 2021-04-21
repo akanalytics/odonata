@@ -222,15 +222,16 @@ impl Clone for AlgoThreadHandle {
 }
 
 impl Algo {
-    pub fn search_async(&mut self, board: Board) {
+    pub fn search_async(&mut self, board: &Board) {
         const FOUR_MB: usize = 4 * 1024 * 1024;
         let name = String::from("search");
         let builder = thread::Builder::new().name(name).stack_size(FOUR_MB);
         self.task_control.set_running();
         let mut algo = self.clone();
+        let board = board.clone();
         self.child_thread = AlgoThreadHandle(
             Some(
-                builder.spawn(move || {algo.search(board); algo}).unwrap()
+                builder.spawn(move || { algo.search(&board); algo}).unwrap()
             ));
     }
 
@@ -486,7 +487,7 @@ mod tests {
         let board = Catalog::starting_position();
         let eval = SimpleScorer::new().set_position(false);
         let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(true).set_eval(eval).set_qsearch(false).build();
-        search.search(board);
+        search.search(&board);
         assert_eq!(search.search_stats().total().nodes(), 1 + 20 + 400 + 8902 /* + 197_281 */);
         assert_eq!(search.search_stats().branching_factor().round() as u64, 21);
 
@@ -494,7 +495,7 @@ mod tests {
         let eval = SimpleScorer::new().set_position(false);
         let mut search = Algo::new().set_timing_method(TimeControl::Depth(4)).set_minmax(false).set_eval(eval).build();
         search.move_orderer.enabled = false;
-        search.search(board);
+        search.search(&board);
         assert_eq!(search.search_stats().total().nodes(), 1833);  // qsearch
         // assert_eq!(search.search_stats().total().nodes(), 1757);
         println!("{}", search);
@@ -515,7 +516,7 @@ mod tests {
         board.set_turn(Color::Black);
         let mut search = Algo::new().set_timing_method(TimeControl::Depth(1)).set_minmax(false).build();
         search.move_orderer.enabled = false;
-        search.search(board);
+        search.search(&board);
         println!("{}", search);
         assert_eq!(search.pv()[0].uci(), "d7d5");
     }
@@ -525,7 +526,7 @@ mod tests {
         let positions = Catalog::mate_in_2();
         for pos in positions {
             let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).set_callback(Uci::uci_info).build();
-            search.search(pos.board().clone());
+            search.search(pos.board());
             println!("{}", search);
             assert_eq!(
                 pos.board().to_san_moves(&search.pv()),
@@ -565,7 +566,7 @@ mod tests {
                 .set_eval(eval)
                 .set_iterative_deepening(id)
                 .set_callback(Uci::uci_info).build();
-            search.search(*position.board());
+            search.search(position.board());
             println!("{}", search);
             if id {
                 assert_eq!(search.search_stats().total().nodes(), 2200);  // with sq q qsearch
@@ -587,7 +588,7 @@ mod tests {
     fn test_mate_in_2_async() {
         let position = Catalog::mate_in_2()[0].clone();
         let mut algo = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(true).build();
-        algo.search(position.board().clone());
+        algo.search(position.board());
         let nodes = algo.search_stats().total().nodes();
         let millis = time::Duration::from_millis(20);
         thread::sleep(millis);
@@ -605,7 +606,7 @@ mod tests {
         let mut algo2 = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(true).build();
         let closure = |sp: &SearchProgress| println!("nps {}", sp.time_millis.unwrap_or_default());
         algo2.set_callback(closure);
-        algo2.search_async(position.board().clone());
+        algo2.search_async(position.board());
         let millis = time::Duration::from_millis(200);
         thread::sleep(millis);
         algo2.search_async_stop();
@@ -621,7 +622,7 @@ mod tests {
         let position = Catalog::mate_in_3()[0].clone();
         let expected_pv = position.pv()?;
         let mut search = Algo::new().set_timing_method(TimeControl::Depth(5)).set_minmax(false).build();
-        search.search(position.board().clone());
+        search.search(position.board());
         let san = position.board().to_san_moves(&search.pv_table.extract_pv()).replace("\n", " ");
         println!("{}", search);
         assert_eq!(san, position.board().to_san_moves(&expected_pv).replace("\n", " "));
@@ -641,7 +642,7 @@ mod tests {
         let eval = SimpleScorer::new().set_position(false);
         let mut search =
             Algo::new().set_timing_method(TimeControl::Depth(9)).set_minmax(false).set_eval(eval).build(); //9
-        search.search(board);
+        search.search(&board);
         println!("{}", search);
     }
 
@@ -664,7 +665,7 @@ mod tests {
             .set_callback(Uci::uci_info).build();
         println!("{}", search);
         println!("{}", board);
-        search.search(board);
+        search.search(&board);
         println!("{}", search);
     }
 }

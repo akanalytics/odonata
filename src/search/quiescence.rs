@@ -174,7 +174,7 @@ mod tests {
                 .set_callback(Uci::uci_info)
                 .clone();
             search.quiescence.enabled = qs;
-            search.search(pos.board().clone());
+            search.search(pos.board());
             println!("{}", search);
             assert_eq!(search.pv().to_string(), pos.pv().unwrap().to_string(), "{}", pos.id().unwrap());
             assert_eq!(search.score(), Score::WhiteWin { minus_ply: -3 });

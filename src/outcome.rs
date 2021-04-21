@@ -86,9 +86,10 @@ pub trait GameEnd {
     fn cursory_outcome(&self) -> Option<Outcome>;
     fn outcome(&self) -> Outcome;
     fn outcome_with_claim_draw(&self) -> Outcome;
-    fn position_repitition_count(&self) -> u32;
 }
 
+
+// does not detect repitition counts
 impl GameEnd for Board {
     fn outcome(&self) -> Outcome {
         if let Some(outcome) = self.cursory_outcome() {
@@ -131,23 +132,12 @@ impl GameEnd for Board {
         if Material::from_board(self).is_insufficient() {
             return Some(Outcome::DrawInsufficientMaterial);
         }
-        if self.position_repitition_count() >= 5 {
-            return Some(Outcome::DrawRepitition5);
-        }
         None
-    }
-
-    fn position_repitition_count(&self) -> u32 {
-        // FIXME
-        2
     }
 
     fn outcome_with_claim_draw(&self) -> Outcome {
         if self.fifty_halfmove_clock() >= 50 {
             return Outcome::DrawRule50;
-        }
-        if self.position_repitition_count() >= 3 {
-            return Outcome::DrawRepitition3;
         }
         Outcome::InProgress
     }

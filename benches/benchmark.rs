@@ -235,7 +235,7 @@ fn benchmark_search(c: &mut Criterion) {
             let eval = SimpleScorer::new().set_position(false);
             let mut search =
                 Algo::new().set_timing_method(TimeControl::Depth(5)).set_minmax(false).set_eval(eval).build();
-            black_box(search.search(board));
+            black_box(search.search(&board));
         });
     });
     group.bench_function("minmax(5)", |b| {
@@ -244,7 +244,7 @@ fn benchmark_search(c: &mut Criterion) {
             let eval = SimpleScorer::new().set_position(false);
             let mut search =
                 Algo::new().set_timing_method(TimeControl::Depth(5)).set_minmax(true).set_eval(eval).set_qsearch(false).build();
-            black_box(search.search(board));
+            black_box(search.search(&board));
         });
     });
     group.finish();
@@ -263,7 +263,7 @@ fn benchmark_mate_in_2(c: &mut Criterion) {
                 .set_eval(eval)
                 .set_iterative_deepening(false)
                 .build();
-            black_box(search.search(black_box(board)));
+            black_box(search.search(black_box(&board)));
             assert_eq!(search.pv_table.extract_pv().to_string(), "d5f6, g7f6, c4f7");
         });
     });
@@ -277,7 +277,7 @@ fn benchmark_mate_in_2(c: &mut Criterion) {
                 .set_eval(eval)
                 .set_iterative_deepening(true)
                 .build();
-            black_box(search.search(black_box(board)));
+            black_box(search.search(black_box(&board)));
             assert_eq!(search.pv_table.extract_pv().to_string(), "d5f6, g7f6, c4f7");
         });
     });

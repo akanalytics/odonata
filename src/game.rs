@@ -23,7 +23,7 @@ impl Player for Algo {
     }
 
     fn choose_move(&mut self, board: &Board) -> Move {
-        self.search(board.clone());
+        self.search(board);
         let bm = self.bm();
         // println!("{:#}", self.score);
         if bm == Move::new_null() {
@@ -59,9 +59,9 @@ impl Game {
         }
     }
 
-    pub fn set_board(&mut self, board: Board) -> Game {
+    pub fn set_board(&mut self, board: &Board) -> Game {
         self.starting_pos = board.clone();
-        self.board = board;
+        self.board = board.clone();
         self.clone()
     }
 
@@ -147,7 +147,7 @@ mod tests {
         let black = search_b;
 
         let board = Catalog::starting_position();
-        let mut game = Game::new(white, black).set_board(board);
+        let mut game = Game::new(white, black).set_board(&board);
         game.play();
         println!("{}", game);
     }
@@ -176,10 +176,10 @@ mod tests {
         let mut score = ScoreWdl::default();
         for id in 0..960 {
             let pos = Catalog::chess960(id);
-            let mut b = *pos.board();
+            let mut b = pos.board().clone();
             b.set_castling(CastlingRights::NONE);
-            let mut game1 = Game::new(white.clone(), black.clone()).set_board(b);
-            let mut game2 = Game::new(black.clone(), white.clone()).set_board(b);
+            let mut game1 = Game::new(white.clone(), black.clone()).set_board(&b);
+            let mut game2 = Game::new(black.clone(), white.clone()).set_board(&b);
             game1.play();
             // println!("\n{}", game1);
             game2.play();
@@ -198,7 +198,7 @@ mod tests {
         let mut black = Algo::new().set_timing_method(tc).build();
         white.move_orderer.mvv_lva = true;
         black.move_orderer.mvv_lva = false;
-        black.search(b);
+        black.search(&b);
     }
 
     #[test]
@@ -212,10 +212,10 @@ mod tests {
         black.mte.deterministic = true;
         white.move_orderer.mvv_lva = true;
         black.move_orderer.mvv_lva = false;
-        black.search(b1.clone());
+        black.search(&b1);
         println!("{}", black.bm());
         let b2 = b1.make_move(&black.bm());
-        white.search(b2.clone());
+        white.search(&b2);
         println!("{}", white);
     }
 

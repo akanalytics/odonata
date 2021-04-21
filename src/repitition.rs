@@ -35,6 +35,8 @@ impl fmt::Display for Repitition {
         Ok(())
     }
 }
+
+
 //
 // some use cases
 //
@@ -51,16 +53,25 @@ impl fmt::Display for Repitition {
 // count 3 return draw score
 // count 2 probably return draw score
 //
+// reflect the counts -> Outcome in Eval (configurable) (and can test engine1 vs engine2)
+// have Game store a repitition so that Draws can be detected (nothing to do with search, no need to be optimised)
+// have Search store a repitition (needs to be fast)
+// (static) Eval can determine checkmate
+//
+//
+// dont have Board reference a repitition
+//
+
 impl Repitition {
     pub fn new() -> Self {
         Self::default()
     }
 
-    pub fn push(&mut self, mv: &Move, b: &Board) {
+    pub fn push(&mut self, mv: &Move, post_move: &Board) {
         if mv.is_capture() || mv.mover_piece() == Piece::Pawn {
             self.prior_positions.push(0);
         }
-        self.prior_positions.push(b.hash());
+        self.prior_positions.push(post_move.hash());
     }
 
     pub fn pop(&mut self) {
@@ -94,7 +105,7 @@ mod tests {
     #[test]
     fn test_repitition() {
         let boards: Vec<Board> =
-            (0..20).into_iter().map(|i| Catalog::chess960(i)).map(|p| *p.board()).collect();
+            (0..20).into_iter().map(|i| Catalog::chess960(i)).map(|p| p.board().clone()).collect();
         let mut rep1 = Repitition::new();
         let b = Catalog::starting_position();
         let knight_mv = b.parse_uci_move("b1c3").unwrap();

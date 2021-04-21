@@ -3,6 +3,9 @@
 - Optimization backlog
   - default() and once_cell on Hasher
   - make_move - and move x 2
+  - count occurrences of different moves
+  - copymake vs undo move 
+  - bitmask of moves - bitboard - allows many sq comparisons or sqs class
   - 
 
 
@@ -87,6 +90,15 @@ Shared killer moves.
 Seperate stats per thread.
 Seperate time limits/controls.
 Separate PV tables.
+
+
+things on board can be incrementally calculated on do / do&undo / never
+
+Repititions  do&undo
+Checkers     never
+Hash         do and sometimes undo
+Castling     do and sometimes undo
+Legal moves  never
 
 
 

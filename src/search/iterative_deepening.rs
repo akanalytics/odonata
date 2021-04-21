@@ -80,17 +80,17 @@ impl IterativeDeepening {
 }
 
 impl Algo {
-    pub fn search(&mut self, board: Board) {
+    pub fn search(&mut self, board: &Board) {
         self.search_stats = SearchStats::new();
-        self.board = board;
+        self.board = board.clone();
         self.task_control.set_running();
         self.ids.reset();
         self.range = self.ids.calc_range(&self.mte.time_control);
         for depth in self.range.clone() {
-            let mut root_node = Node::new_root(&board);
+            //let mut root_node = Node::new_root(&mut self.board.clone());
             self.max_depth = depth;
 
-            self.alphabeta(&mut root_node);
+            self.alphabeta(&mut Node::new_root(&mut self.board.clone()));
             let res = self.search_stats().clone();
 
             self.mte.calc_estimates_for_ply(depth + 1, &res);

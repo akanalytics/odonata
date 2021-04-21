@@ -197,7 +197,7 @@ mod tests {
         algo.move_orderer.enabled = false;
         algo.move_orderer.prior_bm = false;
         algo.move_orderer.prior_pv = false;
-        algo.search(position.board().clone());
+        algo.search(position.board());
         println!("{}", algo);
         assert_eq!(algo.move_orderer.count_bm.get(0), 0);
         assert_eq!(algo.move_orderer.count_pv.get(1), 0); 
@@ -205,7 +205,7 @@ mod tests {
         algo.move_orderer.enabled = true;
         algo.move_orderer.prior_bm = true;
         algo.move_orderer.prior_pv = false;
-        algo.search(position.board().clone());
+        algo.search(position.board());
         println!("{}", algo);
         // 2 is depth 1, plus depth 2, 
         assert_eq!(algo.move_orderer.count_bm.get(0), 2);
@@ -213,7 +213,7 @@ mod tests {
 
         algo.move_orderer.prior_bm = false;
         algo.move_orderer.prior_pv = true;
-        algo.search(position.board().clone());
+        algo.search(position.board());
         println!("{}", algo);
         // 2 = pv[0] plus pv[0..1] used once
         assert_eq!(algo.move_orderer.count_pv.get(0), 2); 

@@ -38,7 +38,7 @@ impl Exam {
         // exam.algo.set_callback(Uci::uci_info);
         for (i, pos) in exam.positions.iter().enumerate() {
             exam.out_of += 1;
-            exam.algo.search(pos.board().clone());
+            exam.algo.search(pos.board());
             // println!("Algo\n{}", exam.algo);
             // println!("Position {}", pos);
             if pos.bm().ok().unwrap().contains(&exam.algo.bm()) {

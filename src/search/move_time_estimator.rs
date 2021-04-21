@@ -145,7 +145,7 @@ mod tests {
             .set_iterative_deepening(true)
             .set_callback(Uci::uci_info).clone();
         search.mte.deterministic = true;
-        search.search(position.board().clone());
+        search.search(position.board());
         println!("{}", search);
         assert_eq!(search.search_stats().total().nodes(), 2200);  // with qsearch
         //assert_eq!(search.search_stats().total().nodes(), 2108);  // with ordering pv + mvvlva

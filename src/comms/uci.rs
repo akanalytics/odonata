@@ -267,7 +267,7 @@ impl Uci {
         self.log_debug_message("starting search with configuration ...");
         self.log_debug_message(&format!("{}", self.algo));
         self.log_debug_message(&format!("{}", self.board));
-        self.algo.search_async(self.board.clone());
+        self.algo.search_async(&self.board);
         Ok(())
     }
 
