@@ -5,6 +5,7 @@ use crate::globals::counts;
 use crate::log_debug;
 use crate::material::Material;
 use crate::outcome::GameEnd;
+use crate::outcome::Outcome;
 use crate::types::{Color, Piece};
 use std::fmt;
 
@@ -143,7 +144,7 @@ impl Configurable for SimpleScorer {
         c.set("eval.mobility", "type check default true");
         c.set("eval.position", "type check default true");
         c.set("eval.material", "type check default true");
-        c.set("eval.contempt", &format!("type spin min -10000 max 10000 default {}", self.contempt));
+        c.set("eval.draw_score_contempt", &format!("type spin min -10000 max 10000 default {}", self.contempt));
         c.set(
             "eval.material.p",
             &("type spin min -10000 max 10000 default ".to_string() + &Piece::Pawn.centipawns().to_string()),
@@ -173,7 +174,7 @@ impl Configurable for SimpleScorer {
         self.mobility = c.bool("eval.mobility").unwrap_or(self.mobility);
         self.position = c.bool("eval.position").unwrap_or(self.position);
         self.material = c.bool("eval.material").unwrap_or(self.material);
-        self.contempt = c.int("eval.contempt").unwrap_or(self.contempt as i64) as i32;
+        self.contempt = c.int("eval.draw_score_contempt").unwrap_or(self.contempt as i64) as i32;
 
         for p in &Piece::ALL {
             let mut name = "eval.material.".to_string();
@@ -211,7 +212,7 @@ impl SimpleScorer {
             mobility: true,
             position: true,
             material: true,
-            contempt: 80,
+            contempt: -20,
             material_scores: MATERIAL_SCORES,
         }
     }
@@ -227,9 +228,27 @@ impl SimpleScorer {
         counts::EVAL_COUNT.increment();
         let outcome = board.outcome();
         if outcome.is_game_over() {
-            return Score::from_outcome(outcome, board.ply());
+            return self.score_from_outcome(outcome, board.color_us(), board.ply());
         }
         self.evaluate_without_wdl(board)
+    }
+
+    /// Outcome must be game ending else panic
+    #[inline]
+    pub fn score_from_outcome(&self, o: Outcome, us: Color, ply: i32) -> Score {
+        if o.is_draw() {
+            // draw score is +ve for playing a stronger opponent, neg for weaker
+            // board.color_us() == Color::White => maximising
+            // +ve contempt => +ve score => aim for draw => opponent stronger than us
+            // board.color_us() == Color::Black => minimising
+            // +ve contempt => -ve score => aim for draw => opponent stronger than us
+            let contempt = us.chooser_wb(self.contempt, -self.contempt); 
+            return Score::Cp(contempt);
+        }
+        if let Some(c) = o.winning_color() {
+            return c.chooser_wb(Score::WhiteWin { minus_ply: -ply }, Score::WhiteLoss { ply });
+        }
+        panic!("Tried to final score a non-final board outcome:{}", o);
     }
 
     pub fn evaluate_without_wdl(&self, board: &Board) -> Score {

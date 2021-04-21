@@ -1,4 +1,3 @@
-use crate::outcome::Outcome;
 use std::fmt;
 
 
@@ -24,17 +23,6 @@ impl Score {
         Score::Cp(centipawn)
     }
 
-    /// Outcome must be game ending else panic
-    #[inline]
-    pub fn from_outcome(o: Outcome, ply: i32) -> Score {
-        if o.is_draw() {
-            return Score::Cp(0);
-        }
-        if let Some(c) = o.winning_color() {
-            return c.chooser_wb(Score::WhiteWin { minus_ply: -ply }, Score::WhiteLoss { ply });
-        }
-        panic!("Tried to final score a non-final board outcome:{}", o);
-    }
 
     pub fn is_mate(&self) -> bool {
         matches!(self, Self::WhiteLoss { ply: _ } | Self::WhiteWin { minus_ply: _ })
