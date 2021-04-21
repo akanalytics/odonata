@@ -38,17 +38,17 @@ impl fmt::Display for IterativeDeepening {
         writeln!(f, "iterations       : {}", self.iterations.len())?;
         write!(f, "{:>4} ", "stat")?;
         NodeStats::fmt_header(f)?;
-        writeln!(f, " {:>8} {:>8} {:>8} {:>11}", "alpha", "beta", "score", "pv")?;
+        writeln!(f, " {:>8} {:>8} {:>8} {:<11}", "alpha", "beta", "score", "pv")?;
 
         write!(f, "{:>4} ", "----")?;
         NodeStats::fmt_underline(f)?;
-        writeln!(f, " {:>8} {:>8} {:>8} {:>11}", "--------", "--------", "--------", "-----------")?;
+        writeln!(f, " {:>8} {:>8} {:>8} {:<11}", "--------", "--------", "--------", "-----------")?;
         for iter in self.iterations.iter() {
             write!(f, "{:>4} ", if iter.completed() { "OK" } else { "FAIL" })?;
             iter.total().fmt_data(f)?;
             writeln!(
                 f,
-                " {:>8} {:>8} {:>8} {:>11}",
+                " {:>8} {:>8} {:>8} {:<11}",
                 iter.alpha.to_string(),
                 iter.beta.to_string(),
                 iter.score.to_string(),

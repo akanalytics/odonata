@@ -135,7 +135,10 @@ impl SearchStats {
 
     #[inline]
     pub fn depth(&self) -> u32 {
-        self.selective_depth()
+        if let Some(d) = self.plies.iter().rposition(|stats| stats.leaf_nodes() + stats.interior_nodes() != 0) {
+            return 1 + d as u32; // 1 off the end for all "size" types
+        }
+        0
     }
 
     #[inline]
