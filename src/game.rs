@@ -132,6 +132,7 @@ impl fmt::Display for Game {
 mod tests {
     use super::*;
     use crate::eval::eval::*;
+    use crate::material::*;
     use crate::search::timecontrol::*;
     use std::time::Duration;
     use crate::types::{CastlingRights,ScoreWdl};
@@ -190,9 +191,10 @@ mod tests {
             // println!("\n{}", game2);
             score += game1.outcome().as_wdl() + game2.outcome().reversed().as_wdl();
             println!("game: {} score {}   outcome {} v {} ", pos.id().unwrap(), score, game1.outcome(), game2.outcome());
-            println!("G1{} {}\nG2 {} {}", game1.white.repetition, game1.white.repetition, game2.black.repetition, game2.black.repetition); 
-            // println!("board: \n{}\n", game1.board);
-            // println!("board: \n{}\n", game2.board);
+            // println!("G1{} {}\nG2 {} {}", game1.white.repetition, game1.white.repetition, game2.black.repetition, game2.black.repetition); 
+            println!("G1:{}\nG2:{}", game1.board.material(), game2.board.material()); 
+            println!("pgn1: \n{}\n", game1);
+            println!("pgn2: \n{}\n", game2);
 
         }
         println!("score {}", score);

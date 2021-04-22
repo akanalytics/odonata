@@ -1,4 +1,5 @@
 use crate::bitboard::Bitboard;
+use crate::material::Material;
 use crate::board::boardbuf::BoardBuf;
 use crate::hasher::Hasher;
 use std::cell::Cell;
@@ -152,6 +153,12 @@ impl Board {
     pub fn ply(&self) -> i32 {
         self.fullmove_number() + self.color_us().chooser_wb(0, 1) as i32
     }
+
+    #[inline]
+    pub fn material(&self) -> Material {
+        Material::from_board(self)
+    }
+
 
     #[inline]
     pub fn piece_at(&self, sq: Bitboard) -> Piece {

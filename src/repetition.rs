@@ -171,7 +171,25 @@ mod tests {
             algo.repetition.push(&mv, &b);
             println!("rep count = {} hash = {:x}", algo.repetition.count(&b), b.hash());
         }
+    }
 
+    #[test]
+    fn test_rep_bug1() {
+
+        let s = concat!("e2e4 b8c6 b1c3 e7e5 g1f3 g8f6 d2d4 e5d4 f3d4 f8b4 c1g5 d8e7 f2f3 e8g8 ",
+        "d4c6 b4c3 b2c3 d7c6 d1d2 h7h6 g5e3 c8e6 f1d3 e7a3 e3f4 a3a5 c3c4 a5d2 e1d2 f8c8 d2c1 ",
+        "f6d7 c1b1 c6c5 f4e3 d7e5 f3f4 e5d3 c2d3 c8d8 b1c2 b7b6 h1d1 e6g4 d1d2 d8e8 a1e1 a8d8 ",
+        "f4f5 a7a6 h2h3 g4f5 e4f5 e8e5 d2f2 d8d6 f2f3 b6b5 c4b5 a6b5 e1c1 d6d8 c1h1 d8d7 h1d1 ",
+        "d7d5 g2g4 e5e8 c2b1 d5e5 e3f2 e8a8 f3e3 e5e3 f2e3 c5c4 e3f4 a8a3 d3c4 b5c4 f4c7 a3h3 ",
+        "d1c1 h6h5 c1c4 h3h1 b1b2 h1h4 c7e5 h4g4 c4c8 g8h7 c8c7 h7g8 c7c8");
+        let mut b = Catalog::starting_position();
+        let mut algo = Algo::new().set_timing_method(TimeControl::Depth(5)).set_callback(Uci::uci_info).build();
+        algo.repetition.clear();
+        let mvs = b.parse_uci_moves(s).unwrap();
+        for mv in mvs.iter() {
+            b = b.make_move(&mv);
+            algo.repetition.push(&mv, &b);
+        }
         algo.search(&b);
         println!("{}", algo);
     }

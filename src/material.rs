@@ -1,19 +1,53 @@
 use crate::board::Board;
 use crate::types::{Color, Piece};
+use std::cmp;
+use std::fmt;
 
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub struct Material {
     counts: [[i32; Piece::ALL.len()]; 2],
 }
 
+impl fmt::Display for Material {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for &c in &Color::ALL {
+            // write!(f, "{}: ", c)?;
+            for &p in Piece::ALL.iter().rev() {
+                    write!(f, "{}", p.to_char(Some(c)).to_string().repeat(self.counts(c,p) as usize))?;
+            }
+        }
+        Ok(())
+    }
+}
+
+
+impl cmp::PartialOrd for Material {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        if self == other {
+            return Some(cmp::Ordering::Equal);
+        }
+        if Piece::ALL.iter().zip(&Color::ALL).all(|(&p,&c)| self.counts(c,p) > other.counts(c,p)) {
+            return Some(cmp::Ordering::Greater);
+        }
+        if Piece::ALL.iter().zip(&Color::ALL).all(|(&p,&c)| self.counts(c,p) < other.counts(c,p)) {
+            return Some(cmp::Ordering::Less);
+        }
+        None
+    }
+}
+
 impl Material {
     pub fn from_board(board: &Board) -> Material {
-        let mut m = Material { ..Default::default() };
+        let mut m = Material { ..Self::default() };
         for &p in &Piece::ALL {
             m.counts[Color::White][p] = (board.pieces(p) & board.white()).popcount() as i32;
             m.counts[Color::Black][p] = (board.pieces(p) & board.black()).popcount() as i32;
         }
         m
+    }
+
+    pub fn new() -> Material {
+        Self::default()
     }
 
     /// Material.from_piece_str("PPPBNRQKppbbqk")
@@ -31,6 +65,39 @@ impl Material {
     pub fn counts(&self, c: Color, p: Piece) -> i32 {
         self.counts[c][p]
     }
+
+    pub fn white(&self) -> Material {
+        Material {
+            counts: [self.counts[Color::White], [0;Piece::ALL.len()]],
+        }
+    }
+
+    pub fn black(&self) -> Material {
+        Material {
+            counts: [[0;Piece::ALL.len()], self.counts[Color::Black] ],
+        }
+    }
+
+    pub fn color(&self, c: Color) -> Material {
+        c.chooser_wb(self.white(), self.black())
+    }
+
+    pub fn centipawns(&self) -> i32 {
+        Piece::ALL.iter().map(|&p| p.centipawns()*self.counts(Color::White, p) ).sum::<i32>() - 
+        Piece::ALL.iter().map(|&p| p.centipawns()*self.counts(Color::Black, p) ).sum::<i32>()
+    }
+
+    /// removes common material leaving only the advantage material
+    pub fn advantage(&self) -> Material {
+        let mut advantage = *self;
+        for &p in &Piece::ALL {
+            let common = cmp::min(advantage.counts[Color::White][p], advantage.counts[Color::Black][p]);
+            advantage.counts[Color::White][p] -= common;
+            advantage.counts[Color::Black][p] -= common;
+        }
+        advantage
+    }
+
 
     pub fn is_insufficient2(bd: &Board) -> bool {
         // If both sides have any one of the following, and there are no pawns on the board:
@@ -92,17 +159,67 @@ mod tests {
     #[test]
     fn counts() {
         let board = Catalog::starting_position();
-        let mat1 = Material::from_board(&board);
-        assert_eq!(mat1.counts(Color::White, Piece::King), 1);
-        assert_eq!(mat1.counts(Color::White, Piece::Pawn), 8);
+        let mat_full1 = Material::from_board(&board);
+        assert_eq!(mat_full1.counts(Color::White, Piece::King), 1);
+        assert_eq!(mat_full1.counts(Color::White, Piece::Pawn), 8);
 
-        let mat2 = Material::from_piece_str("PPPPPPPPNNBBRRQKppppppppnnbbrrqk").unwrap();
-        assert_eq!(mat1, mat2);
+        let mat_full2 = Material::from_piece_str("PPPPPPPPNNBBRRQKppppppppnnbbrrqk").unwrap();
+        assert_eq!(mat_full1, mat_full2);
 
-        let mat3 = Material::from_piece_str("KBk").unwrap();
-        assert_ne!(mat2, mat3);
+        #[allow(non_snake_case)]
+        let mat_KBk = Material::from_piece_str("KBk").unwrap();
+        assert_ne!(mat_full2, mat_KBk);
 
-        assert!(mat3.is_insufficient());
-        assert!(!mat2.is_insufficient());
+        assert!(mat_KBk.is_insufficient());
+        assert!(!mat_full2.is_insufficient());
+
+        let mat0 = Material::new();
+        // counts and comparisons
+        assert_eq!(mat0.counts(Color::White, Piece::Pawn), 0);
+        assert_ne!(mat0, mat_full1);
+        assert_eq!(mat0, mat0);
+        assert!(mat_full1 > mat0);
+        assert!(mat0 < mat_full1);
+        assert!(mat0 <= mat0);
+        assert!(mat_full2 != mat_KBk);
+
+        // mat3 is a subset of mat2
+        assert_eq!(mat_full2 < mat_KBk, false);
+        assert_eq!(mat_KBk < mat_full2, true);
+        assert_eq!(mat_full2 >= mat_KBk, true);
+        assert_eq!(mat_full2 <= mat_KBk, false);
+
+        // mat3 (KBk) and mat4 (Kkn) are not comparable (ordering is partial)
+        #[allow(non_snake_case)]
+        let mat_Kkn = Material::from_piece_str("Kkn").unwrap();
+        assert_eq!(mat_KBk < mat_Kkn, false);
+        assert_eq!(mat_KBk > mat_Kkn, false);
+        assert_eq!(mat_KBk <= mat_Kkn, false);
+        assert_eq!(mat_KBk >= mat_Kkn, false);
+
+        // to_string
+        assert_eq!(mat_KBk.to_string(), "KBk".to_string());
+        assert_eq!(mat_Kkn.to_string(), "Kkn".to_string());
+        assert_eq!(mat_full1.to_string(), "KQRRBBNNPPPPPPPPkqrrbbnnpppppppp".to_string());
+
+        assert_eq!(mat_Kkn.black().to_string(), "kn".to_string());
+        assert_eq!(mat_Kkn.white().to_string(), "K".to_string());
+        assert_eq!(mat_full1.white().black().to_string(), "".to_string()); // nothing is both colors!
+        assert_eq!(mat_Kkn.color(Color::White).to_string(), "K".to_string());
+        assert_eq!(mat_Kkn.color(Color::Black).to_string(), "kn".to_string());
+
+        // advantage
+        let mat_some = Material::from_piece_str("PPPPPNNBRKpppppppbbqk").unwrap();
+        assert_eq!(mat_Kkn.advantage().to_string(), "n".to_string());
+        assert_eq!(mat_full1.advantage().to_string(), "".to_string());  // evenly matched
+        assert_eq!(mat_some.advantage().to_string(), "RNNqbpp".to_string());
+
+        // centipawns
+        #[allow(non_snake_case)]
+        let mat_PPP = Material::from_piece_str("PPP").unwrap();
+        let mat_p = Material::from_piece_str("p").unwrap();
+        assert_eq!(mat_p.centipawns(), -100);
+        assert_eq!(mat_PPP.centipawns(), 300);
+        assert_eq!(mat_some.advantage().centipawns(), -300);  // R+N-Q = -75, N-b=-25, 2x-P=-200
     }
 }
