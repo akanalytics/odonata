@@ -5,29 +5,24 @@ use crate::movelist::MoveList;
 use crate::movelist::MoveValidator;
 use crate::types::{CastlingRights, Color};
 use crate::utils::StringUtils;
+use crate::tags::{Tags, Tag};
 use regex::Regex;
 use std::collections::HashMap;
 use std::fmt;
 
 // http://jchecs.free.fr/pdf/EPDSpecification.pdf
-
 // BRATKO https://www.stmintz.com/ccc/index.php?id=20631
-
 // https://sites.google.com/site/strategictestsuite/about-1
-
 // shredder test https://www.stmintz.com/ccc/index.php?id=137052
-
 // WAC https://opensource.apple.com/source/Chess/Chess-311/sjeng/tests/wac.epd.auto.html
 // http://www.talkchess.com/forum3/viewtopic.php?t=62576  WAC with scores
-
 // https://www.chessprogramming.org/Extended_Position_Description
-
 // http://www.talkchess.com/forum3/viewtopic.php?t=69640&start=20
 
 #[derive(Clone, Default, Debug)]
 pub struct Position {
     board: Board,
-    operations: HashMap<String, String>,
+    operations: Tags,
 }
 
 /// builder methods
@@ -48,7 +43,7 @@ impl Position {
         if words.len() < 4 {
             return Err(format!("Must specify at least 4 parts in EPD '{}'", epd));
         }
-        let mut pos = Position { board: Board::parse_piece_placement(words[0])?, operations: HashMap::new() };
+        let mut pos = Position { board: Board::parse_piece_placement(words[0])?, operations: Tags::new() };
         pos.board.set_turn(Color::parse(words[1])?);
         pos.board.set_castling(CastlingRights::parse(words[2])?);
         if words[3] == "-" {
@@ -69,7 +64,7 @@ impl Position {
                 }
             }
         }
-        pos.operations = Self::parse_operations(remaining);
+        pos.operations.set_all(&Self::parse_operations(remaining));
         Ok(pos)
     }
 
@@ -164,19 +159,7 @@ impl Position {
 impl fmt::Display for Position {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.board().to_fen())?;
-        let ops = self.operations();
-        let mut entries = ops.iter().collect::<Vec<_>>();
-        entries.sort();
-        for (k, v) in entries {
-            if v.is_empty() {
-                write!(f, " {};", k)?;
-            } else if v.contains(char::is_whitespace) {
-                write!(f, " {} \"{}\";", k, v)?;
-            } else {
-                write!(f, " {} {};", k, v)?;
-            }
-        }
-        Ok(())
+        self.operations.fmt(f)
     }
 }
 
@@ -194,11 +177,17 @@ impl Position {
         &mut self.board
     }
 
-    pub fn operations(&self) -> HashMap<String, String> {
-        self.operations.clone()
+    pub fn operations(&self) -> &HashMap<String, String> {
+        self.operations.tags()
     }
+
+    pub fn set(&mut self, tag: &Tag) -> &mut Self {
+        self.operations.set(tag);
+        self
+    }
+
     pub fn set_operation(&mut self, key: &str, value: &str) -> &mut Self {
-        self.operations.insert(key.to_string(), value.to_string());
+        self.operations.set_str(key, value);
         self
     }
 
@@ -214,7 +203,7 @@ impl Position {
     // FIXME - other EPD operations
 
     pub fn get(&self, key: &str) -> Result<&str, String> {
-        self.operations.get(key).map(|s: &String| s.as_str()).ok_or(format!("No attribute '{}'", key))
+        self.operations.tags().get(key).map(|s: &String| s.as_str()).ok_or(format!("No attribute '{}'", key))
     }
 
     pub fn pv(&self) -> Result<MoveList, String> {
@@ -244,7 +233,7 @@ impl Position {
 
 
     pub fn draw_reject(&self) -> bool {
-        self.operations.get(Self::DRAW_REJECT).is_some()
+        self.operations.tags().get(Self::DRAW_REJECT).is_some()
     }
 
     pub fn validate(&self) -> Result<(), String> {
@@ -356,7 +345,7 @@ mod tests {
         pos.set_operation(Position::BM, "e4");
         assert_eq!(pos.bm().unwrap().to_string(), "e2e4");
 
-        let mut pos = Position { board: Catalog::starting_position(), operations: HashMap::default() };
+        let mut pos = Position { board: Catalog::starting_position(), operations: Tags::default() };
         pos.set_operation(Position::BM, "e4, c4, a4");
         pos.set_operation(Position::PV, "e4, e5, d3");
         assert_eq!(pos.bm().unwrap().to_string(), "e2e4, c2c4, a2a4");

@@ -135,10 +135,12 @@ mod tests {
         rep1.push(&knight_mv, &boards[3]);
         rep1.push(&knight_mv, &boards[4]);
         rep1.push(&knight_mv, &boards[5]);
+        rep1.push(&knight_mv, &boards[6]);
         assert_eq!(rep1.count(&boards[4]), 1);
         assert_eq!(rep1.count(&boards[2]), 1);
         assert_eq!(rep1.count(&boards[0]), 0);  // pawn move reset the count
 
+        rep1.pop(); // 6
         rep1.pop(); // 5
         rep1.pop(); // 4
         rep1.pop(); // 3
@@ -147,6 +149,7 @@ mod tests {
         rep1.push(&knight_mv, &boards[3]);
         rep1.push(&knight_mv, &boards[4]);
         rep1.push(&knight_mv, &boards[5]);
+        rep1.push(&knight_mv, &boards[6]);
         assert_eq!(rep1.count(&boards[4]), 1);
         assert_eq!(rep1.count(&boards[2]), 1);
         assert_eq!(rep1.count(&boards[0]), 1); // no pawn move to reset the hmvc

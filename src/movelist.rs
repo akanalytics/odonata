@@ -187,6 +187,10 @@ impl MoveList {
         self
     }
 
+    pub fn uci(&self) -> String {
+        self.0.iter().map(|mv| mv.uci()).collect::<Vec<String>>().join(" ")
+    }
+
     #[inline]
     pub fn set_last_move(&mut self, ply: u32, mv: &Move) {
         let ply = ply as usize;

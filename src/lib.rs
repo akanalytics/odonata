@@ -29,6 +29,7 @@ pub mod pvtable;
 pub mod search;
 pub mod types;
 pub mod task;
+pub mod tags;
 mod utils;
 pub mod version;
 pub mod config;
@@ -52,4 +53,5 @@ pub use crate::search::searchstats::SearchStats;
 pub use crate::types::{Color, Piece};
 pub use crate::version::Version;
 pub use crate::config::Config;
+pub use crate::tags::Tags;
 

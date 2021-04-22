@@ -7,8 +7,10 @@ use crate::eval::score::Score;
 use crate::globals::counts;
 use crate::log_debug;
 use crate::movelist::Move;
+use crate::tags::Tag;
 use crate::movelist::MoveList;
 use crate::pvtable::PvTable;
+use crate::position::Position;
 use crate::search::move_orderer::MoveOrderer;
 use crate::search::quiescence::Quiescence;
 use crate::search::searchprogress::SearchProgress;
@@ -24,59 +26,8 @@ use std::fmt;
 use std::ops::Range;
 use std::thread;
 
-// CPW
-//
-// Obligatory
-//
-//   Futility pruning
-//   Null move pruning
-//   Transposition Table
-//   Iterative Deepening
-//   Aspiration Windows
-//
-// Selectivity
-//   Quiescence Algo
-//     static exchange evaluation < 0
-//     delta pruning
-//     standing pat
 
-//   Selectivity
-//   Mate Algo
-//
-// Scout and Friends
-//   Scout
-//   NegaScout
-//   Principal Variation Algo (=+30%?)
-//
-// Alpha-Beta goes Best-First
-//   NegaC*
-//   MTD(f)
-//   Alpha-Beta Conspiracy Algo
-//
 
-// taken from wikipedia
-//
-// function alphabeta(node, depth, α, β, maximizingPlayer) is
-//     if depth = 0 or node is a terminal node then
-//         return the heuristic value of node
-//     if maximizingPlayer then
-//         value := −∞
-//         for each child of node do
-//             value := max(value, alphabeta(child, depth − 1, α, β, FALSE))
-//             α := max(α, value)
-//             if α ≥ β then
-//                 break (* β cutoff *)
-//         return value
-//     else
-//         value := +∞
-//         for each child of node do
-//             value := min(value, alphabeta(child, depth − 1, α, β, TRUE))
-//             β := min(β, value)
-//             if β ≤ α then
-//                 break (* α cutoff *)
-//         return value
-//
-// type AlgoSender = mpsc::Sender<String>;
 
 #[derive(Clone, Default)]
 pub struct Algo {
@@ -260,6 +211,14 @@ impl Algo {
     #[inline]
     pub fn search_stats(&self) -> &SearchStats {
         &self.search_stats
+    }
+
+    pub fn results(&self) -> Position {
+        let mut pos = Position::from_board(self.board.clone());
+        pos.set(&Tag::BestMove(self.bm()));
+        pos.set(&Tag::Pv(self.pv().clone()));
+        pos.set(&Tag::CentipawnEvaluation(self.score()));
+        pos
     }
 
     pub fn bm(&self) -> Move {

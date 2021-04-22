@@ -1,12 +1,41 @@
 # Todo items
 
 - Optimization backlog
-  - default() and once_cell on Hasher
+  - [x] default() and once_cell on Hasher
   - make_move - and move x 2
   - count occurrences of different moves
   - copymake vs undo move 
   - bitmask of moves - bitboard - allows many sq comparisons or sqs class
   - 
+
+
+# CPW todo list
+
+- Obligatory
+  - Futility pruning
+  - Null move pruning
+  - Transposition Table
+  - [x] Iterative Deepening
+  - Aspiration Windows
+
+- Selectivity
+  - Quiescence Algo
+  - static exchange evaluation < 0
+  - delta pruning
+  - standing pat
+
+- Selectivity
+  - Mate Algo
+
+- Scout and Friends
+  - Scout
+  - NegaScout
+  - Principal Variation Algo (=+30%?)
+
+- Alpha-Beta goes Best-First
+  - NegaC*
+  - MTD(f)
+  - Alpha-Beta Conspiracy Algo
 
 
 
@@ -31,7 +60,7 @@
 - [ ] Move orderer
 - [ ] image generation
 - [ ] python interface
-- [ ] discord bot
+- [X] ~~discord bot~~ use Lichess instead
 
 
 - EPD processing
@@ -43,7 +72,6 @@
     - [ ] evaluate
     - [ ] is quiet or replace with  I replace every position with the leaf of their q-search
     - [ ] material score (plus other operations eg check, draw, outcome, #legal moves, )
-    - [ ]  
 
 - Lichess
   - use https://berserk.readthedocs.io/en/master/
@@ -68,10 +96,11 @@
   - [ ] Sort out logging
   - [ ] Under promotion - use Mark's extra attribute approach? 
   - [ ] Better draw detection
-  - [ ] Mitochondria once_cell
+  - [X] ~~Mitochondria once_cell~~ Used lazy from once_cell instead
 
 - admin
   - [ ] kubernetes as suggested by Tom
+  - [ ] AWS Lambdas suggested by Si
 
 
 
