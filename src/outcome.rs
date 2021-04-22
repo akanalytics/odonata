@@ -20,6 +20,12 @@ pub enum Outcome {
     DrawRule75,
 }
 
+impl Default for Outcome {
+    fn default() -> Self {
+        Self::InProgress
+    }
+}
+
 impl fmt::Display for Outcome {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)

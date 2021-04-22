@@ -1,12 +1,5 @@
-use crate::bitboard::Bitboard;
-use crate::board::boardbuf::BoardBuf;
-use crate::board::Board;
 use crate::movelist::{MoveList, Move};
-use crate::movelist::MoveValidator;
-use crate::types::{CastlingRights, Color};
-use crate::utils::StringUtils;
 use crate::eval::score::Score;
-use regex::Regex;
 use std::collections::HashMap;
 use std::fmt;
 use std::time::Duration;
@@ -28,7 +21,7 @@ use std::time::Duration;
 //     }
 // }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Tag {
     BestMove(Move),
     Pv(MoveList),
@@ -101,7 +94,7 @@ impl Tag {
 
 
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default,PartialEq, Eq)]
 pub struct Tags {
     tags: HashMap<String, String>,
 }
@@ -111,7 +104,7 @@ impl Tags {
         Tags::default()
     }
     
-    pub fn tags(&self) -> &HashMap<String, String> {
+    pub fn as_hash_map(&self) -> &HashMap<String, String> {
         &self.tags
     }
 
@@ -142,7 +135,7 @@ impl Tags {
 //
 impl fmt::Display for Tags {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let tags = self.tags();
+        let tags = self.as_hash_map();
         let mut entries = tags.iter().collect::<Vec<_>>();
         entries.sort();
         for (k, v) in entries {

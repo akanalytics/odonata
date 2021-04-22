@@ -22,7 +22,7 @@ use std::fmt;
 #[derive(Clone, Default, Debug)]
 pub struct Position {
     board: Board,
-    operations: Tags,
+    tags: Tags,
 }
 
 /// builder methods
@@ -43,7 +43,7 @@ impl Position {
         if words.len() < 4 {
             return Err(format!("Must specify at least 4 parts in EPD '{}'", epd));
         }
-        let mut pos = Position { board: Board::parse_piece_placement(words[0])?, operations: Tags::new() };
+        let mut pos = Position { board: Board::parse_piece_placement(words[0])?, tags: Tags::new() };
         pos.board.set_turn(Color::parse(words[1])?);
         pos.board.set_castling(CastlingRights::parse(words[2])?);
         if words[3] == "-" {
@@ -64,27 +64,27 @@ impl Position {
                 }
             }
         }
-        pos.operations.set_all(&Self::parse_operations(remaining));
+        pos.tags.set_all(&Self::parse_tags(remaining));
         Ok(pos)
     }
 
-    fn parse_operations(operations_str: &str) -> HashMap<String, String> {
+    fn parse_tags(tags_str: &str) -> HashMap<String, String> {
         let mut map = HashMap::new();
-        let ops: Vec<&str> = Self::split_into_operations(operations_str);
+        let ops: Vec<&str> = Self::split_into_tags(tags_str);
         for op in ops {
             let words: Vec<&str> = Self::split_into_words(op);
             debug_assert!(
                 words.len() > 0,
                 "no words parsing EPD operation '{}' from '{}'",
                 op,
-                operations_str
+                tags_str
             );
             map.insert(words[0].to_string(), words[1..].join(" ").to_string());
         }
         map
     }
 
-    fn split_into_operations(s: &str) -> Vec<&str> {
+    fn split_into_tags(s: &str) -> Vec<&str> {
         let re = Regex::new(
             r#"(?x)
             ([^";]*  
@@ -159,7 +159,7 @@ impl Position {
 impl fmt::Display for Position {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.board().to_fen())?;
-        self.operations.fmt(f)
+        self.tags.fmt(f)
     }
 }
 
@@ -177,17 +177,21 @@ impl Position {
         &mut self.board
     }
 
-    pub fn operations(&self) -> &HashMap<String, String> {
-        self.operations.tags()
+    pub fn as_hash_map(&self) -> &HashMap<String, String> {
+        self.tags.as_hash_map()
+    }
+
+    pub fn tags(&self) -> &Tags {
+        &self.tags
     }
 
     pub fn set(&mut self, tag: &Tag) -> &mut Self {
-        self.operations.set(tag);
+        self.tags.set(tag);
         self
     }
 
     pub fn set_operation(&mut self, key: &str, value: &str) -> &mut Self {
-        self.operations.set_str(key, value);
+        self.tags.set_str(key, value);
         self
     }
 
@@ -200,10 +204,10 @@ impl Position {
 
     pub const ATTRIBUTES: &'static [&'static str] = &[Self::ACD, Self::BM, Self::PV];
 
-    // FIXME - other EPD operations
+    // FIXME - other EPD tags
 
     pub fn get(&self, key: &str) -> Result<&str, String> {
-        self.operations.tags().get(key).map(|s: &String| s.as_str()).ok_or(format!("No attribute '{}'", key))
+        self.tags.as_hash_map().get(key).map(|s: &String| s.as_str()).ok_or(format!("No attribute '{}'", key))
     }
 
     pub fn pv(&self) -> Result<MoveList, String> {
@@ -233,12 +237,12 @@ impl Position {
 
 
     pub fn draw_reject(&self) -> bool {
-        self.operations.tags().get(Self::DRAW_REJECT).is_some()
+        self.tags.as_hash_map().get(Self::DRAW_REJECT).is_some()
     }
 
     pub fn validate(&self) -> Result<(), String> {
         for &k in Self::ATTRIBUTES {
-            if let Some(_) = self.operations().get(k) {
+            if let Some(_) = self.as_hash_map().get(k) {
                 match k {
                     Self::ACD => {
                         self.acd()?;
@@ -270,18 +274,18 @@ mod tests {
     use crate::catalog::Catalog;
 
     #[test]
-    fn test_split_into_operations() {
-        let vec = Position::split_into_operations(r#"cat"meo;w";"mouse";"toad;;;;;;" ;zebra;"#);
+    fn test_split_into_tags() {
+        let vec = Position::split_into_tags(r#"cat"meo;w";"mouse";"toad;;;;;;" ;zebra;"#);
         assert_eq!(vec, vec!["cat\"meo;w\"", "\"mouse\"", "\"toad;;;;;;\" ", "zebra"]);
 
-        let vec = Position::split_into_operations(r#"cat'meo;w';'mouse';'toad;;;;;;' ;zebra;"#);
+        let vec = Position::split_into_tags(r#"cat'meo;w';'mouse';'toad;;;;;;' ;zebra;"#);
         assert_eq!(vec, vec!["cat\'meo;w\'", "\'mouse\'", "\'toad;;;;;;\' ", "zebra"]);
 
-        let vec = Position::split_into_operations(r#";cat;mouse;toad;;;;;;sheep;zebra"#);
+        let vec = Position::split_into_tags(r#";cat;mouse;toad;;;;;;sheep;zebra"#);
         assert_eq!(vec, vec!["cat", "mouse", "toad", "sheep"]);
 
         // FIXME! OK, but not desirable (unmatched quote parsing)
-        let vec = Position::split_into_operations(r#";ca"t;mouse;"#);
+        let vec = Position::split_into_tags(r#";ca"t;mouse;"#);
         assert_eq!(vec, vec!["t", "mouse"]);
         // let vec = split_on_regex("cat;mat;sat;");
         // assert_eq!(vec, vec!["cat;", "mat;", "sat;"], "cat;mat;sat;");
@@ -303,14 +307,14 @@ mod tests {
 
     #[test]
     fn test_epd_parse() -> Result<(), String> {
-        // operations already ASCII ordered
+        // tags already ASCII ordered
         let str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 acd 1000; bm e4; draw_reject; id \"TEST CASE.1\";";
         let pos = Position::parse_epd(str)?;
         assert_eq!(pos.get("acd").ok(), Some("1000"));
         assert_eq!(pos.get(Position::BM).ok(), Some("e4"));
         assert_eq!(pos.get("draw_reject").ok(), Some(""));
         assert_eq!(pos.id().ok(), Some("TEST CASE.1"));
-        let mut opcodes = pos.operations().keys().cloned().collect::<Vec<_>>();
+        let mut opcodes = pos.as_hash_map().keys().cloned().collect::<Vec<_>>();
         opcodes.sort();
         assert_eq!(
             opcodes.iter().map(|s| s.as_str()).collect::<Vec::<_>>(),
@@ -345,7 +349,7 @@ mod tests {
         pos.set_operation(Position::BM, "e4");
         assert_eq!(pos.bm().unwrap().to_string(), "e2e4");
 
-        let mut pos = Position { board: Catalog::starting_position(), operations: Tags::default() };
+        let mut pos = Position { board: Catalog::starting_position(), tags: Tags::default() };
         pos.set_operation(Position::BM, "e4, c4, a4");
         pos.set_operation(Position::PV, "e4, e5, d3");
         assert_eq!(pos.bm().unwrap().to_string(), "e2e4, c2c4, a2a4");
@@ -353,7 +357,7 @@ mod tests {
     }
 }
 
-// Custom operations
+// Custom tags
 // STS score
 // Perft
 //

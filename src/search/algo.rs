@@ -218,6 +218,7 @@ impl Algo {
         pos.set(&Tag::BestMove(self.bm()));
         pos.set(&Tag::Pv(self.pv().clone()));
         pos.set(&Tag::CentipawnEvaluation(self.score()));
+        pos.set(&Tag::AnalysisCountDepth(self.search_stats().depth()));
         pos
     }
 
@@ -505,6 +506,7 @@ mod tests {
             }
             assert_eq!(search.pv_table.extract_pv(), position.pv().unwrap());
             assert_eq!(search.score(), Score::WhiteWin { minus_ply: -3 });
+            println!("{}", search.results());
         }
     }
 

@@ -169,36 +169,50 @@ impl fmt::Display for Move {
     }
 }
 
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct MoveList(Vec<Move>);
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MoveList {
+    moves: Vec<Move>,
+}
+
+
+
 
 // pub struct MoveList(ArrayVec::<[Move; 384]>);
 // impl Default for MoveList {
 //     fn default() -> MoveList { MoveList::new() }
 // }
 
+impl Default for MoveList {
+    fn default() -> Self {
+        Self {
+            moves: Vec::with_capacity(128),  
+        }
+    }
+}
+
+
 impl MoveList {
     pub fn new() -> Self {
-        Self(Vec::with_capacity(250)) // TODO: capacity??
+        Self::default()
     }
 
     pub fn sort(&mut self) -> &mut Self {
-        self.0.sort_by_key(|m| m.to_string());
+        self.moves.sort_by_key(|m| m.to_string());
         self
     }
 
     pub fn uci(&self) -> String {
-        self.0.iter().map(|mv| mv.uci()).collect::<Vec<String>>().join(" ")
+        self.moves.iter().map(|mv| mv.uci()).collect::<Vec<String>>().join(" ")
     }
 
     #[inline]
     pub fn set_last_move(&mut self, ply: u32, mv: &Move) {
         let ply = ply as usize;
         // root node is ply 0, so len==ply, so ply 1 gets stored in 0th element
-        if self.0.len() == ply && ply > 0 {
-            self[ply - 1] = *mv;
+        if self.moves.len() == ply && ply > 0 {
+            self.moves[ply - 1] = *mv;
         } else {
-            self.0.resize_with(ply, || *mv);
+            self.moves.resize_with(ply, || *mv);
         }
     }
 }
@@ -207,19 +221,19 @@ impl Deref for MoveList {
     type Target = Vec<Move>;
 
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &self.moves
     }
 }
 
 impl DerefMut for MoveList {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
+        &mut self.moves
     }
 }
 
 impl fmt::Display for MoveList {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let strings: Vec<String> = self.0.iter().map(Move::to_string).collect();
+        let strings: Vec<String> = self.moves.iter().map(Move::to_string).collect();
         fmt.write_str(&strings.join(", "))
     }
 }
