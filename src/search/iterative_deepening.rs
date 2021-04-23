@@ -6,7 +6,7 @@ use crate::search::node::Node;
 use crate::search::searchprogress::SearchProgress;
 use crate::search::searchstats::{NodeStats, SearchStats};
 use crate::search::timecontrol::TimeControl;
-use crate::types::MAX_PLY;
+use crate::types::{MAX_PLY, Ply};
 use std::fmt;
 use std::ops::Range;
 
@@ -60,7 +60,7 @@ impl fmt::Display for IterativeDeepening {
 }
 
 impl IterativeDeepening {
-    pub fn calc_range(&self, tc: &TimeControl) -> Range<u32> {
+    pub fn calc_range(&self, tc: &TimeControl) -> Range<Ply> {
         let range = if let TimeControl::Depth(depth) = *tc {
             if self.enabled {
                 1..depth + 1
@@ -69,7 +69,7 @@ impl IterativeDeepening {
             }
         } else {
             // regardless of iterative deeping, we apply it if no explicit depth given
-            1..(MAX_PLY as u32 -1)
+            1..(MAX_PLY -1)
         };
         range
     }

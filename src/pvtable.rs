@@ -1,5 +1,5 @@
 use crate::movelist::{Move, MoveList};
-use crate::types::MAX_PLY;
+use crate::types::{MAX_PLY, Ply};
 use std::fmt;
 
 
@@ -12,7 +12,7 @@ pub struct PvTable {
 
 impl Default for PvTable {
     fn default() -> Self {
-        PvTable::new(MAX_PLY)
+        PvTable::new(MAX_PLY as usize)
     }
 }
 
@@ -20,12 +20,12 @@ impl PvTable {
     pub fn new(max_ply: usize) -> PvTable {
         let mut pvc = PvTable { matrix: vec![Vec::new(); max_ply], size: 0, };
         for (r, row) in pvc.matrix.iter_mut().enumerate() {
-            row.resize_with(MAX_PLY - r, Move::new_null)
+            row.resize_with(MAX_PLY as usize - r as usize, Move::new_null)
             // row.extend( vec![Move::new(); r+1] );
         }
         pvc
     }
-    pub fn set(&mut self, ply: u32, m: &Move) {
+    pub fn set(&mut self, ply: Ply, m: &Move) {
         let ply = ply as usize;
         self.matrix[ply][0] = *m;
         if self.size <= ply {
@@ -33,7 +33,7 @@ impl PvTable {
         }
     }
 
-    pub fn propagate_from(&mut self, from_ply: u32) {
+    pub fn propagate_from(&mut self, from_ply: Ply) {
         // copy up one ply and accross one
         debug_assert!(from_ply > 0, "PV propagation from ply=0");
         let from_ply = from_ply as usize;

@@ -11,6 +11,7 @@ use crate::movelist::Move;
 use crate::search::searchprogress::SearchProgress;
 use crate::search::timecontrol::TimeControl;
 use crate::version::Version;
+use crate::types::{Ply};
 use std::fmt;
 use std::io::{self, Write};
 use std::time::Duration;
@@ -250,7 +251,7 @@ impl Uci {
         } else if infinite {
             TimeControl::Infinite
         } else if let Some(depth) = depth {
-            TimeControl::Depth(depth as u32)
+            TimeControl::Depth(depth as Ply)
         } else if let Some(nodes) = nodes {
             TimeControl::NodeCount(nodes as u64)
         } else if let Some(movetime) = movetime {

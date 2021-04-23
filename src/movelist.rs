@@ -3,7 +3,7 @@ use crate::board::makemove::MoveMaker;
 use crate::board::movegen::MoveGen;
 use crate::board::Board;
 use crate::parse::Parse;
-use crate::types::{CastlingRights, Color, Piece};
+use crate::types::{CastlingRights, Color, Piece, Ply};
 use crate::utils::StringUtils;
 use regex::Regex;
 use std::fmt;
@@ -206,7 +206,7 @@ impl MoveList {
     }
 
     #[inline]
-    pub fn set_last_move(&mut self, ply: u32, mv: &Move) {
+    pub fn set_last_move(&mut self, ply: Ply, mv: &Move) {
         let ply = ply as usize;
         // root node is ply 0, so len==ply, so ply 1 gets stored in 0th element
         if self.moves.len() == ply && ply > 0 {

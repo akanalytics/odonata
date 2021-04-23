@@ -5,6 +5,7 @@ use std::time::Duration;
 use crate::clock::Clock;
 use crate::search::timecontrol::TimeControl;
 use crate::config::{Config, Configurable};
+use crate::types::Ply;
 use crate::log_debug;
 
 
@@ -66,7 +67,7 @@ impl fmt::Display for MoveTimeEstimator {
 
 impl MoveTimeEstimator {
 
-    pub fn is_time_up(&self, _ply: u32, search_stats: &SearchStats) -> bool {
+    pub fn is_time_up(&self, _ply: Ply, search_stats: &SearchStats) -> bool {
         let elapsed = search_stats.elapsed(self.deterministic);
 
         let time_up = match self.time_control {
@@ -83,7 +84,7 @@ impl MoveTimeEstimator {
         time_up
     }
 
-    pub fn calc_estimates_for_ply(&mut self, _ply: u32, search_stats: &SearchStats) {
+    pub fn calc_estimates_for_ply(&mut self, _ply: Ply, search_stats: &SearchStats) {
         // debug_assert!(search_stats.depth() >= ply-1, "ensure we have enough stats");
         let _forecast_depth = search_stats.depth();
         self.elapsed_used = search_stats.elapsed(self.deterministic);

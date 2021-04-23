@@ -1,5 +1,5 @@
 use crate::clock::DurationNewType;
-use crate::types::Color;
+use crate::types::{Color, Ply};
 use std::fmt;
 use std::time::Duration;
 
@@ -7,7 +7,7 @@ use std::time::Duration;
 ///
 #[derive(Copy, Clone, Debug)]
 pub enum TimeControl {
-    Depth(u32),         // uci "depth"
+    Depth(Ply),         // uci "depth"
     MoveTime(Duration), // uci "movetime"
     NodeCount(u64),     // uci "nodes"
     Infinite,           // uci "infinite"

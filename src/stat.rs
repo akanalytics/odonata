@@ -1,7 +1,7 @@
 use crate::types::MAX_PLY;
 use std::fmt;
 use std::sync::atomic::{AtomicI64, Ordering};
-
+use crate::types::Ply;
 
 
 #[derive(Default, Debug)]
@@ -30,7 +30,7 @@ impl Clone for PlyStat {
     fn clone(&self) -> Self {
         let ps = PlyStat::new(self.name());
         for ply in 0..self.len() {
-            ps.set(ply as u32, self.get(ply as u32));
+            ps.set(ply as Ply, self.get(ply as Ply));
         }
         ps
     }
@@ -95,7 +95,7 @@ impl fmt::Display for ArrayPlyStat<'_> {
 
 impl PlyStat {
     pub fn new(name: &str) -> PlyStat {
-        let mut vec = Vec::with_capacity(MAX_PLY);
+        let mut vec = Vec::with_capacity(MAX_PLY as usize);
         (0..MAX_PLY).into_iter().for_each(|_| vec.push(AtomicI64::new(0)));
         Self { 
             name: name.to_string(), 
@@ -104,7 +104,7 @@ impl PlyStat {
     }
 
     pub fn len(&self) -> usize {
-        if let Some(d) = (0..MAX_PLY).rposition(|ply| self.get(ply as u32) != 0) {
+        if let Some(d) = (0..MAX_PLY as Ply).rposition(|ply| self.get(ply) != 0) {
             return 1 + d; // 1 off the end for all "size" types
         }
         0
@@ -115,22 +115,22 @@ impl PlyStat {
         let max_len = stats.iter().map(|ps| ps.len() ).max().unwrap();
         Self::fmt_header(f, stats)?;
         Self::fmt_underline(f, stats)?;
-        for p in 0..max_len {
-            Self::fmt_data(f, stats, p as u32)?;
+        for p in 0..max_len as Ply {
+            Self::fmt_data(f, stats, p)?;
         }
         Ok(())
     }
 
 
-    pub fn add(&self, ply: u32, add: i64) {
+    pub fn add(&self, ply: Ply, add: i64) {
         self.values[ply as usize].fetch_add(add, Ordering::Relaxed);
     }
 
-    pub fn set(&self, ply: u32, value: i64) {
+    pub fn set(&self, ply: Ply, value: i64) {
         self.values[ply as usize].store(value, Ordering::Relaxed);
     }
 
-    pub fn get(&self, ply: u32) -> i64 {
+    pub fn get(&self, ply: Ply) -> i64 {
         self.values[ply as usize].load(Ordering::Relaxed)
     }
 
@@ -156,7 +156,7 @@ impl PlyStat {
         Ok(())
     }
 
-    fn fmt_data(f: &mut fmt::Formatter, stats: &[&PlyStat], ply: u32) -> fmt::Result {
+    fn fmt_data(f: &mut fmt::Formatter, stats: &[&PlyStat], ply: Ply) -> fmt::Result {
         write!(f, "{:>3} ", ply)?; 
         for s in stats.iter() {
             write!(f, "{:>14}", s.get(ply),)?;

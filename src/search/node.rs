@@ -1,6 +1,6 @@
 use crate::eval::score::Score;
 use crate::board::Board;
-use crate::types::Color;
+use crate::types::{Color, Ply};
 use crate::movelist::Move;
 
 
@@ -8,7 +8,7 @@ use crate::movelist::Move;
 #[derive(Debug)]
 pub struct Node<'b> {
     pub board: &'b mut Board,
-    pub ply: u32,
+    pub ply: Ply,
     pub alpha: Score,
     pub beta: Score,
     pub score: Score,

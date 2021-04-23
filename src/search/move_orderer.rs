@@ -3,6 +3,7 @@ use crate::log_debug;
 use crate::movelist::{MoveList, Move};
 use crate::search::algo::{Algo};
 use crate::stat::{PlyStat, ArrayPlyStat};
+use crate::types::Ply;
 use std::fmt;
 
 #[derive(Clone, Debug)]
@@ -60,7 +61,7 @@ impl fmt::Display for MoveOrderer {
 }
 
 impl Algo {
-    pub fn order_moves(&self, ply: u32, movelist: &mut MoveList){
+    pub fn order_moves(&self, ply: Ply, movelist: &mut MoveList){
         if !self.move_orderer.enabled {
             return;
         }

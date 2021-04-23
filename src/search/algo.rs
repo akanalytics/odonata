@@ -21,7 +21,8 @@ use crate::repetition::Repetition;
 use crate::search::timecontrol::TimeControl;
 use crate::search::move_time_estimator::MoveTimeEstimator;
 use crate::search::iterative_deepening::IterativeDeepening;
-use crate::types::MAX_PLY;
+use crate::tt::{TranspositionTable, Entry, EntryType};
+use crate::types::{MAX_PLY, Ply};
 use std::fmt;
 use std::ops::Range;
 use std::thread;
@@ -32,7 +33,7 @@ use std::thread;
 #[derive(Clone, Default)]
 pub struct Algo {
     pub board: Board,
-    pub max_depth: u32,
+    pub max_depth: Ply,
     pub minmax: bool,
     iterative_deepening: bool,
     pub ids: IterativeDeepening,
@@ -41,13 +42,14 @@ pub struct Algo {
     pub quiescence: Quiescence,
     pub search_stats: SearchStats,
 
-    pub range: Range<u32>,
+    pub range: Range<Ply>,
     pub pv_table: PvTable,
     pub current_best: Option<Move>,
     //pub score: Score,
     pub mte: MoveTimeEstimator,
     pub move_orderer: MoveOrderer,
     pub repetition: Repetition,
+    pub tt: TranspositionTable,
 
     child_thread: AlgoThreadHandle,
 
@@ -108,6 +110,7 @@ impl Configurable for Algo {
         self.quiescence.settings(c);
         self.ids.settings(c);
         self.repetition.settings(c);
+        self.tt.settings(c);
     }
     fn configure(&mut self, c: &Config) {
         log_debug!("algo.configure with {}", c);
@@ -119,6 +122,7 @@ impl Configurable for Algo {
         self.quiescence.configure(c);
         self.ids.configure(c);
         self.repetition.configure(c);
+        self.tt.configure(c);
     }
 }
 
@@ -204,7 +208,7 @@ impl Algo {
     }
 
     #[inline]
-    pub fn set_iteration_depth(&mut self, max_depth: u32) {
+    pub fn set_iteration_depth(&mut self, max_depth: Ply) {
         self.max_depth = max_depth;
     }
 
@@ -251,7 +255,7 @@ impl Algo {
     }
 
     #[inline]
-    pub fn time_up_or_cancelled(&mut self, ply: u32, force_check: bool) -> bool {
+    pub fn time_up_or_cancelled(&mut self, ply: Ply, force_check: bool) -> bool {
         self.clock_checks += 1;
 
         // never cancel on ply=1, this way we always have a best move, and we detect mates
@@ -284,7 +288,7 @@ impl Algo {
 
     pub fn alphabeta(&mut self, node: &mut Node) {
         self.search_stats.reset_keeping_pv();
-        self.pv_table = PvTable::new(MAX_PLY);
+        self.pv_table = PvTable::new(MAX_PLY as usize);
 
         self.alphabeta_recursive(node);
 
@@ -350,6 +354,14 @@ impl Algo {
             let is_cut = self.process_child(&mv, node, &child);
             if is_cut {
                 self.search_stats.inc_cuts(node.ply);
+                let entry = Entry {
+                    hash: node.board.hash(),
+                    score: node.score,
+                    ply: node.ply,
+                    entry_type: EntryType::Beta,
+                    best_move: Move::NULL_MOVE,
+                };
+                self.tt.insert(entry);
                 break;
             }
         }

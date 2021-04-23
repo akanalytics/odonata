@@ -2,7 +2,7 @@ use crate::bitboard::{Bitboard, Dir};
 use std::fmt;
 use std::iter::*;
 
-pub const MAX_PLY: usize = 128;
+pub const MAX_PLY: Ply = 128;
 
 pub type Ply = i32;
 pub type Hash = u64;

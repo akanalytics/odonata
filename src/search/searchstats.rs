@@ -1,7 +1,7 @@
 use crate::clock::{Clock, DeterministicClock};
 use crate::eval::score::Score;
 use crate::movelist::MoveList;
-use crate::types::MAX_PLY;
+use crate::types::{MAX_PLY, Ply};
 use std::fmt;
 use std::time::Duration;
 
@@ -70,7 +70,7 @@ impl Default for SearchStats {
             completed: false,
             user_cancelled: false,
             total: NodeStats::default(),
-            plies: std::iter::repeat(NodeStats::new()).take(MAX_PLY).collect(),
+            plies: std::iter::repeat(NodeStats::new()).take(MAX_PLY as usize).collect(),
 
             pv: MoveList::default(),
             alpha: Score::default(),
@@ -150,11 +150,11 @@ impl SearchStats {
     }
 
     #[inline]
-    pub fn record_time_estimate(&mut self, ply: u32, estimate: &Duration) {
+    pub fn record_time_estimate(&mut self, ply: Ply, estimate: &Duration) {
         self.plies[ply as usize].est_time = *estimate;
     }
 
-    pub fn record_time_actual_and_completion_status(&mut self, ply: u32, completed: bool, pv: MoveList) {
+    pub fn record_time_actual_and_completion_status(&mut self, ply: Ply, completed: bool, pv: MoveList) {
         let ply = ply as usize;
         self.plies[ply].real_time = self.realtime_clock.elapsed();
         self.plies[ply].deterministic_time = self.deterministic_clock.elapsed();
@@ -165,31 +165,31 @@ impl SearchStats {
     }
 
     #[inline]
-    pub fn inc_custom_stat(&mut self, ply: u32) {
+    pub fn inc_custom_stat(&mut self, ply: Ply) {
         self.total.custom += 1;
         self.plies[ply as usize].custom += 1;
     }
 
     #[inline]
-    pub fn inc_leaf_nodes(&mut self, ply: u32) {
+    pub fn inc_leaf_nodes(&mut self, ply: Ply) {
         self.total.leaf_nodes += 1;
         self.plies[ply as usize].leaf_nodes += 1;
     }
 
     #[inline]
-    pub fn inc_interior_nodes(&mut self, ply: u32) {
+    pub fn inc_interior_nodes(&mut self, ply: Ply) {
         self.total.interior_nodes += 1;
         self.plies[ply as usize].interior_nodes += 1;
     }
 
     #[inline]
-    pub fn inc_q_leaf_nodes(&mut self, sel_ply: u32) {
+    pub fn inc_q_leaf_nodes(&mut self, sel_ply: Ply) {
         self.total.q_leaf_nodes += 1;
         self.plies[sel_ply as usize].q_leaf_nodes += 1;
     }
 
     #[inline]
-    pub fn inc_q_interior_nodes(&mut self, sel_ply: u32) {
+    pub fn inc_q_interior_nodes(&mut self, sel_ply: Ply) {
         self.total.q_interior_nodes += 1;
         self.plies[sel_ply as usize].q_interior_nodes += 1;
     }
@@ -201,19 +201,19 @@ impl SearchStats {
     // }
 
     #[inline]
-    pub fn inc_cuts(&mut self, ply: u32) {
+    pub fn inc_cuts(&mut self, ply: Ply) {
         self.total.cuts += 1;
         self.plies[ply as usize].cuts += 1;
     }
 
     #[inline]
-    pub fn inc_improvements(&mut self, ply: u32) {
+    pub fn inc_improvements(&mut self, ply: Ply) {
         self.total.improvements += 1;
         self.plies[ply as usize].improvements += 1;
     }
 
     #[inline]
-    pub fn stats_mut(&mut self, ply: u32) -> &mut NodeStats {
+    pub fn stats_mut(&mut self, ply: Ply) -> &mut NodeStats {
         &mut self.plies[ply as usize]
     }
 

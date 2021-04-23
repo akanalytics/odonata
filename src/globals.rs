@@ -123,6 +123,6 @@ mod tests {
         assert_eq!(size_of::<SearchStats>(), 216, "SearchStats");
         assert_eq!(size_of::<NodeStats>(), 104, "NodeStats");
         assert_eq!(size_of::<Entry>(), 56, "Entry");
-        assert_eq!(size_of::<TranspositionTable>(), 120, "TranspositionTable");
+        assert_eq!(size_of::<TranspositionTable>(), 136, "TranspositionTable");
     }
 }

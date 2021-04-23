@@ -9,7 +9,7 @@ use crate::log_debug;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
 use crate::search::searchprogress::SearchProgress;
-use crate::types::Color;
+use crate::types::{Color, Ply};
 use std::fmt;
 
 #[derive(Copy, Clone, Debug)]
@@ -93,7 +93,7 @@ impl Algo {
     //     }
     //     return alpha;
     // }
-    fn qsearch(&mut self, sq: Bitboard, ply: u32, board: &mut Board, mut alpha: Score, beta: Score) -> Score {
+    fn qsearch(&mut self, sq: Bitboard, ply: Ply, board: &mut Board, mut alpha: Score, beta: Score) -> Score {
         if self.search_stats.total().nodes() % 1000000 == 0 && self.search_stats.total().nodes() != 0 {
             let sp = SearchProgress::from_search_stats(&self.search_stats());
             self.task_control.invoke_callback(&sp);
