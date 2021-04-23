@@ -119,7 +119,7 @@ const _KING_EG_PST: [i32; 64] = [
 
 pub trait Scorable<Strategy> {
     fn eval(&self, eval: &SimpleScorer) -> Score;
-    fn eval_without_wdl(&self, eval: &SimpleScorer) -> Score;
+    fn eval_quiescence(&self, eval: &SimpleScorer) -> Score;
     fn eval_material(&self, eval: &SimpleScorer) -> Score;
     fn eval_position(&self, eval: &SimpleScorer) -> Score;
 }
@@ -130,6 +130,7 @@ pub struct SimpleScorer {
     pub position: bool,
     pub mobility: bool,
     pub contempt: i32,
+    pub tempo: i32,
     pub material_scores: [i32; Piece::ALL.len()],
 }
 
@@ -145,6 +146,7 @@ impl Configurable for SimpleScorer {
         c.set("eval.position", "type check default true");
         c.set("eval.material", "type check default true");
         c.set("eval.draw_score_contempt", &format!("type spin min -10000 max 10000 default {}", self.contempt));
+        c.set("eval.tempo", &format!("type spin min -1000 max 1000 default {}", self.tempo));
         c.set(
             "eval.material.p",
             &("type spin min -10000 max 10000 default ".to_string() + &Piece::Pawn.centipawns().to_string()),
@@ -175,6 +177,7 @@ impl Configurable for SimpleScorer {
         self.position = c.bool("eval.position").unwrap_or(self.position);
         self.material = c.bool("eval.material").unwrap_or(self.material);
         self.contempt = c.int("eval.draw_score_contempt").unwrap_or(self.contempt as i64) as i32;
+        self.tempo = c.int("eval.tempo").unwrap_or(self.tempo as i64) as i32;
 
         for p in &Piece::ALL {
             let mut name = "eval.material.".to_string();
@@ -192,6 +195,7 @@ impl fmt::Display for SimpleScorer {
         writeln!(f, "position         : {}", self.position)?;
         writeln!(f, "mobility         : {}", self.mobility)?;
         writeln!(f, "contempt         : {}", self.contempt)?;
+        writeln!(f, "tempo            : {}", self.tempo)?;
         writeln!(f, "material scores  : {:?}", self.material_scores)?;
         Ok(())
     }
@@ -213,6 +217,7 @@ impl SimpleScorer {
             position: true,
             material: true,
             contempt: -20,
+            tempo: 15,
             material_scores: MATERIAL_SCORES,
         }
     }
@@ -228,30 +233,26 @@ impl SimpleScorer {
         counts::EVAL_COUNT.increment();
         let outcome = board.outcome();
         if outcome.is_game_over() {
-            return self.score_from_outcome(outcome, board.color_us(), board.ply());
+            return Score::score_from_outcome(self.contempt, outcome, board.color_us(), board.total_halfmoves());
         }
         self.evaluate_without_wdl(board)
     }
 
-    /// Outcome must be game ending else panic
-    #[inline]
-    pub fn score_from_outcome(&self, o: Outcome, us: Color, ply: i32) -> Score {
-        if o.is_draw() {
-            // draw score is +ve for playing a stronger opponent, neg for weaker
-            // board.color_us() == Color::White => maximising
-            // +ve contempt => +ve score => aim for draw => opponent stronger than us
-            // board.color_us() == Color::Black => minimising
-            // +ve contempt => -ve score => aim for draw => opponent stronger than us
-            let contempt = us.chooser_wb(self.contempt, -self.contempt); 
-            return Score::Cp(contempt);
-        }
-        if let Some(c) = o.winning_color() {
-            return c.chooser_wb(Score::WhiteWin { minus_ply: -ply }, Score::WhiteLoss { ply });
-        }
-        panic!("Tried to final score a non-final board outcome:{}", o);
-    }
 
-    pub fn evaluate_without_wdl(&self, board: &Board) -> Score {
+    pub fn eval_quiescence(&self, board: &Board) -> Score {
+        counts::EVAL_COUNT.increment();
+        // we check for insufficient material and 50/75 move draws.
+        let outcome = board.draw_outcome();
+        if let Some(outcome) = outcome {
+            if outcome.is_game_over() {
+                return Score::score_from_outcome(self.contempt, outcome, board.color_us(), board.total_halfmoves());
+            }
+        }
+        self.evaluate_without_wdl(board)
+    }
+    
+    
+    fn evaluate_without_wdl(&self, board: &Board) -> Score {
         let s = if self.material {
             let mat = Material::from_board(board);
             self.evaluate_material(&mat)
@@ -259,7 +260,8 @@ impl SimpleScorer {
             0
         };
         let p = if self.position { self.evaluate_position(board) } else { 0 };
-        Score::Cp(s + p)
+        let t = Score::side_to_move_score(self.tempo, board.color_us());
+        Score::Cp(s + p) + t
     }
 
     //     // too expensive to check for checkmate, so we just quickly check some draw conditions
@@ -312,8 +314,8 @@ impl SimpleScorer {
 
 impl Scorable<SimpleScorer> for Board {
     #[inline]
-    fn eval_without_wdl(&self, eval: &SimpleScorer) -> Score {
-        eval.evaluate_without_wdl(self)
+    fn eval_quiescence(&self, eval: &SimpleScorer) -> Score {
+        eval.eval_quiescence(self)
     }
 
     #[inline]

@@ -341,10 +341,16 @@ struct UciInfo<'a>(&'a SearchProgress);
 impl<'a> fmt::Display for UciInfo<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Some(depth) = self.0.depth {
+            write!(f, "depth {} ", depth)?;
             if let Some(seldepth) = self.0.seldepth {
                 write!(f, "seldepth {} ", seldepth)?;
             }
-            write!(f, "depth {} ", depth)?;
+        }
+        if let Some(nodes) = self.0.nodes {
+            write!(f, "nodes {} ", nodes)?;
+        }
+        if let Some(nps) = self.0.nps {
+            write!(f, "nps {} ", nps)?;
         }
         if let Some(score) = self.0.score {
             // FIXME from engines point of view, not white's
@@ -356,9 +362,6 @@ impl<'a> fmt::Display for UciInfo<'a> {
                 _ => {}
             }
         }
-        if let Some(nodes) = self.0.nodes {
-            write!(f, "nodes {} ", nodes)?;
-        }
         if let Some(currmovenumber) = self.0.currmovenumber_from_1 {
             write!(f, "currmovenumber {} ", currmovenumber)?;
         }
@@ -367,9 +370,6 @@ impl<'a> fmt::Display for UciInfo<'a> {
         }
         if let Some(hashfull) = self.0.hashfull_per_mille {
             write!(f, "hashfull {} ", hashfull)?;
-        }
-        if let Some(nps) = self.0.nps {
-            write!(f, "nps {} ", nps)?;
         }
         if let Some(tbhits) = self.0.tbhits {
             write!(f, "tbhits {} ", tbhits)?;

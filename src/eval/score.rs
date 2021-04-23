@@ -1,4 +1,6 @@
 use std::fmt;
+use crate::types::{Color, Ply};
+use crate::outcome::Outcome;
 
 
 
@@ -23,6 +25,40 @@ impl Score {
         Score::Cp(centipawn)
     }
 
+    pub fn side_to_move_score(tempo: i32, us: Color) -> Score {
+        // axiom: were white
+        // white to move => advantage, black to move means white has a disadvantage
+        if us == Color::White {
+            Score::cp(tempo * 0)
+        } else {
+            Score::cp(-tempo * 0)
+        }
+    }
+
+
+    /// Outcome must be game ending else panic
+    #[inline]
+    pub fn score_from_outcome(contempt: i32, o: Outcome, us: Color, total_half_moves: Ply) -> Score {
+        if o.is_draw() {
+            // draw score is +ve for playing a stronger opponent (we want a draw), neg for weaker
+            //
+            //  Engine Col   |  search ply   |  value to searcher   | Score to white
+            //     W               0                   +ve               +ve
+            //     B               0                   +ve               -ve
+            //     W               1 (oppo B)          -ve               +ve (a bonus to white opponet) 
+            //     B               1 (oppo W)          -ve               -ve  
+            // board.color_us() == Color::White => maximising
+            // +ve contempt => +ve score => aim for draw => opponent stronger than us
+            // board.color_us() == Color::Black => minimising
+            // +ve contempt => -ve score => aim for draw => opponent stronger than us
+            let contempt = us.chooser_wb(contempt, -contempt); 
+            return Score::Cp(contempt);
+        }
+        if let Some(c) = o.winning_color() {
+            return c.chooser_wb(Score::WhiteWin { minus_ply: -total_half_moves }, Score::WhiteLoss { ply: total_half_moves });
+        }
+        panic!("Tried to final score a non-final board outcome:{}", o);
+    }
 
     pub fn is_mate(&self) -> bool {
         matches!(self, Self::WhiteLoss { ply: _ } | Self::WhiteWin { minus_ply: _ })

@@ -67,6 +67,9 @@ impl Game {
             let (m, tags) = match self.board.color_us() {
                 Color::White => {
                     white.search(&self.board);
+                    if self.board.fullmove_number() >= 57 {
+                        println!("{}", white);
+                    }
                     (white.bm(), white.results().tags().clone())
                 }
                 Color::Black => {
@@ -188,30 +191,37 @@ mod tests {
         white.quiescence.enabled = true;
         white.move_orderer.mvv_lva = true;
         white.mte.deterministic = true;
+        white.repetition.enabled = true;
 
         black.mte.deterministic = true;
-
         black.quiescence.enabled = false;
         black.move_orderer.mvv_lva = true;
-        black.move_orderer.prior_pv = true;
-        black.move_orderer.prior_bm = false;
+        black.repetition.enabled = true;
         
-        let mut score = ScoreWdl::default();
+        
+        println!("score as white {}", tournament(&mut white, &mut black));
+        println!("score as black {}", tournament(&mut black, &mut white));
+    }
+
+    fn tournament(white: &mut Algo, black: &mut Algo) -> ScoreWdl {
+        let mut score_wdl = ScoreWdl::default();
         for id in 0..960 {
             let pos = Catalog::chess960(id);
             let mut board = pos.board().clone();
             board.set_castling(CastlingRights::NONE);
             let mut gm = Game::new();
             gm.set_starting_pos(&board);
-            gm.play(&mut white, &mut black);
-            score += gm.outcome().as_wdl();
-            println!("pos: {} score {}   outcome {} ", pos.id().unwrap(), score, gm.outcome());
-            println!("mat:{}", gm.board.material());
+            gm.play(white, black);
+            score_wdl += gm.outcome().as_wdl();
+            print!("pos: {} score {}   outcome {:<15} ", pos.id().unwrap(), score_wdl, gm.outcome());
+            println!("mat.score:{:>4} mat:{}  ", gm.board.material().centipawns(), gm.board.material());
             // println!("pgn: \n{}\n", gm);
-
         }
-        println!("score {}", score);
+        score_wdl
     }
+
+
+
 
     #[test]
     fn test_bug1() {

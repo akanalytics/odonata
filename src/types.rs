@@ -4,7 +4,7 @@ use std::iter::*;
 
 pub const MAX_PLY: usize = 128;
 
-pub type Ply = usize;
+pub type Ply = i32;
 pub type Hash = u64;
 
 

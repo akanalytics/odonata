@@ -89,7 +89,7 @@ impl Outcome {
 }
 
 pub trait GameEnd {
-    fn cursory_outcome(&self) -> Option<Outcome>;
+    fn draw_outcome(&self) -> Option<Outcome>;
     fn outcome(&self) -> Outcome;
     fn outcome_with_claim_draw(&self) -> Outcome;
 }
@@ -98,7 +98,7 @@ pub trait GameEnd {
 // does not detect repetition counts
 impl GameEnd for Board {
     fn outcome(&self) -> Outcome {
-        if let Some(outcome) = self.cursory_outcome() {
+        if let Some(outcome) = self.draw_outcome() {
             return outcome;
         }
         let legal_moves = self.legal_moves();
@@ -114,7 +114,7 @@ impl GameEnd for Board {
         Outcome::InProgress
     }
 
-    fn cursory_outcome(&self) -> Option<Outcome> {
+    fn draw_outcome(&self) -> Option<Outcome> {
         // X InProgress = 0,
         // X WinWhite,
         // X WinBlack,
@@ -127,10 +127,6 @@ impl GameEnd for Board {
         // X DrawInsufficientMaterial,
         // DrawRule50,
         // X DrawRule75,
-        if self.fifty_halfmove_clock() >= 75 {
-            return Some(Outcome::DrawRule75);
-        }
-
         if self.fifty_halfmove_clock() >= 75 {
             return Some(Outcome::DrawRule75);
         }

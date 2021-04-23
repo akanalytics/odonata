@@ -8,6 +8,7 @@
   - bitmask of moves - bitboard - allows many sq comparisons or sqs class
   - avoid hash_move on is_check move
   - BoardBug set methods call hash_board
+  - stop IDS if nodes not increasing or max depth < depth>
 
 
 # CPW todo list

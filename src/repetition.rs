@@ -7,7 +7,7 @@ use std::fmt;
 
 #[derive(Clone, Debug)]
 pub struct Repetition {
-    enabled: bool,
+    pub enabled: bool,
     prior_positions: Vec<Hash>,
 }
 

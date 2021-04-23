@@ -69,7 +69,7 @@ impl IterativeDeepening {
             }
         } else {
             // regardless of iterative deeping, we apply it if no explicit depth given
-            1..(MAX_PLY as u32)
+            1..(MAX_PLY as u32 -1)
         };
         range
     }
@@ -99,7 +99,6 @@ impl Algo {
                 self.ids.iterations.push(res);
                 break;
             }
-            // println!("{}", self);
             let mut sp = SearchProgress::from_search_stats(&res);
             sp.pv = Some(res.pv.clone());
             sp.score = Some(res.score);

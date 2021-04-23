@@ -3,7 +3,7 @@ use crate::material::Material;
 use crate::board::boardbuf::BoardBuf;
 use crate::hasher::Hasher;
 use std::cell::Cell;
-use crate::types::{CastlingRights, Color, Piece, Hash};
+use crate::types::{CastlingRights, Color, Piece, Hash, Ply};
 use std::fmt::{self, Write};
 use std::iter::*;
 
@@ -150,8 +150,8 @@ impl Board {
     }
 
     #[inline]
-    pub fn ply(&self) -> i32 {
-        self.fullmove_number() + self.color_us().chooser_wb(0, 1) as i32
+    pub fn total_halfmoves(&self) -> Ply {
+        self.fullmove_number() as Ply + self.color_us().chooser_wb(0, 1)
     }
 
     #[inline]
