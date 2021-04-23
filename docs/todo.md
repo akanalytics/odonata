@@ -58,8 +58,8 @@
 
 - https://www.chessprogramming.org/Eigenmann_Rapid_Engine_Test    
 - [ ] flip vertical and test casezs
-- [ ] Q-search
-- [ ] Move orderer
+- [X] Q-search
+- [X] Move orderer
 - [ ] image generation
 - [ ] python interface
 - [X] ~~discord bot~~ use Lichess instead
@@ -97,7 +97,7 @@
 - Specific problems
   - [ ] Sort out logging
   - [ ] Under promotion - use Mark's extra attribute approach? 
-  - [ ] Better draw detection
+  - [X] Better draw detection
   - [X] ~~Mitochondria once_cell~~ Used lazy from once_cell instead
 
 - admin

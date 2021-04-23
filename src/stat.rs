@@ -10,6 +10,16 @@ pub struct Stat<'a> {
     counter: AtomicI64,
 }
 
+impl<'a> Clone for Stat<'a> {
+    fn clone(&self) -> Self {
+        Stat {
+            name: self.name,
+            counter: AtomicI64::new(self.counter.load(Ordering::Relaxed)),
+        }
+    }
+}
+
+
 #[derive(Debug, Default)]
 pub struct PlyStat {
     name: String,

@@ -106,6 +106,7 @@ mod tests {
     use crate::search::node::*;
     use crate::search::searchstats::*;
     use crate::types::*;
+    use crate::tt::*;
     use std::mem::size_of;
 
     #[test]
@@ -121,5 +122,7 @@ mod tests {
         assert_eq!(size_of::<Node>(), 48, "Node");
         assert_eq!(size_of::<SearchStats>(), 216, "SearchStats");
         assert_eq!(size_of::<NodeStats>(), 104, "NodeStats");
+        assert_eq!(size_of::<Entry>(), 56, "Entry");
+        assert_eq!(size_of::<TranspositionTable>(), 120, "TranspositionTable");
     }
 }
