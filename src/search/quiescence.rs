@@ -54,6 +54,7 @@ impl fmt::Display for Quiescence {
     }
 }
 
+
 impl Algo {
     #[inline]
     fn evaluate_leaf(&mut self, node: &mut Node) {
@@ -93,7 +94,12 @@ impl Algo {
     //     }
     //     return alpha;
     // }
-    fn qsearch(&mut self, sq: Bitboard, ply: Ply, board: &mut Board, mut alpha: Score, beta: Score) -> Score {
+    pub fn qsearch(&mut self, sq: Bitboard, ply: Ply, board: &mut Board, mut alpha: Score, beta: Score) -> Score {
+        // if !self.quiescence.enabled || ply == 1 {
+        //     self.search_stats.inc_leaf_nodes(ply);
+        //     return board.eval(&self.eval);
+        // }
+
         if self.search_stats.total().nodes() % 1000000 == 0 && self.search_stats.total().nodes() != 0 {
             let sp = SearchProgress::from_search_stats(&self.search_stats());
             self.task_control.invoke_callback(&sp);
@@ -229,3 +235,8 @@ mod tests {
 // if self.time_up_or_cancelled(node.ply, self.search_stats.total().nodes(), false) {
 //     return;
 // }
+
+
+
+
+// Hello from freddie

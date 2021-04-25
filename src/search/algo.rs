@@ -281,8 +281,8 @@ impl Algo {
     }
 
     #[inline]
-    pub fn is_leaf(&self, node: &Node) -> bool {
-        node.ply == self.max_depth
+    pub fn is_leaf(&self, ply: Ply) -> bool {
+        ply == self.max_depth
     }
 
 
@@ -290,11 +290,20 @@ impl Algo {
         self.search_stats.reset_keeping_pv();
         self.pv_table = PvTable::new(MAX_PLY as usize);
 
-        self.alphabeta_recursive(node);
+        if 1==1 {
+            self.alphabeta_recursive(node);
+            self.search_stats.score = node.score;
+        } else {
+            self.search_stats.score = self.alphabeta_recursive2(
+            node.board,
+            node.ply,
+            node.alpha,
+            node.beta,
+            &Move::NULL_MOVE );
+        }
 
-        self.search_stats.alpha = node.alpha;
-        self.search_stats.beta = node.beta;
-        self.search_stats.score = node.score;
+        // self.search_stats.alpha = node.alpha;
+        // self.search_stats.beta = node.beta;
         self.search_stats.record_time_actual_and_completion_status(self.max_depth, !self.task_control.is_cancelled(), self.pv_table.extract_pv());
     }
 
@@ -316,7 +325,7 @@ impl Algo {
             return;
         }
 
-        if self.is_leaf(node) {
+        if self.is_leaf(node.ply) {
             self.quiescence_search(node);
             return;
         }
@@ -339,6 +348,7 @@ impl Algo {
 
         self.order_moves(node.ply, &mut moves);
 
+        let original_score = node.score;
         for (_i, mv) in moves.iter().enumerate() {
             let mut child_board = node.board.make_move(mv);
             self.repetition.push(&mv, &child_board);
@@ -353,18 +363,20 @@ impl Algo {
             self.repetition.pop();
             let is_cut = self.process_child(&mv, node, &child);
             if is_cut {
-                self.search_stats.inc_cuts(node.ply);
-                let entry = Entry {
-                    hash: node.board.hash(),
-                    score: node.score,
-                    ply: node.ply,
-                    entry_type: EntryType::Beta,
-                    best_move: Move::NULL_MOVE,
-                };
-                self.tt.insert(entry);
                 break;
+                self.search_stats.inc_cuts(node.ply);
+                // let entry = Entry {
+                //     hash: node.board.hash(),`
+                //     score: node.score,
+                //     ply: node.ply,
+                //     entry_type: EntryType::LowerBound,
+                //     best_move: Move::NULL_MOVE,
+                // };
+                // self.tt.insert(entry);
+                // break;
             }
         }
+ 
         self.current_variation.set_last_move(node.ply, &Move::new_null());
     }
 

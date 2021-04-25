@@ -5,7 +5,7 @@ pub mod taskcontrol;
 pub mod searchprogress;
 // pub mod context;
 pub mod quiescence;
-// pub mod alphabeta;
+pub mod alphabeta;
 pub mod move_orderer;
 pub mod move_time_estimator;
 pub mod node;

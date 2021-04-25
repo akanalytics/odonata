@@ -9,9 +9,9 @@ use std::mem;
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd)]
 pub enum EntryType {
     Unused = 0,
-    Alpha = 1,
-    Beta = 2,
-    Exact = 3,
+    UpperBound = 1,   // All node, score = upperbound  
+    LowerBound = 2,   // Cut node, score = lowerbound
+    Exact = 3,  // PV node. score is exact
 }
 
 impl Default for EntryType {

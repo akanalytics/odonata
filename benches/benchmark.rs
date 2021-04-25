@@ -347,7 +347,7 @@ fn benchmark_eval(c: &mut Criterion) {
 }
 
 fn bench_pvtable(c: &mut Criterion) {
-    let mut pv_table = PvTable::new(MAX_PLY);
+    let mut pv_table = PvTable::new(MAX_PLY as usize);
     c.bench_function("pv_table", |b| {
         b.iter(|| {
             for i in 1..7 {

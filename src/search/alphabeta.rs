@@ -5,106 +5,105 @@ use std::fmt;
 use crate::board::makemove::MoveMaker;
 use crate::board::movegen::MoveGen;
 use crate::board::Board;
-use crate::eval::eval::{Scorable, Score, SimpleScorer};
+use crate::eval::eval::{Scorable, SimpleScorer};
+use crate::eval::score::Score;
 use crate::movelist::Move;
 use crate::pvtable::PvTable;
-use crate::search::timecontrol::{TimeControl, MoveTimeEstimator};
-use crate::search::stats::SearchStats;
+use crate::search::timecontrol::{TimeControl};
+use crate::search::move_time_estimator::MoveTimeEstimator;
+use crate::search::searchstats::SearchStats;
 use crate::search::quiescence::Quiescence;
+use crate::search::algo::Algo;
+use crate::search::searchprogress::SearchProgress;
+use crate::globals::counts;
+use crate::types::Ply;
 
 
-// taken from wikipedia
-//
-// function alphabeta(node, depth, α, β, maximizingPlayer) is
-//     if depth = 0 or node is a terminal node then
-//         return the heuristic value of node
-//     if maximizingPlayer then
-//         value := −∞
-//         for each child of node do
-//             value := max(value, alphabeta(child, depth − 1, α, β, FALSE))
-//             α := max(α, value)
-//             if α ≥ β then
-//                 break (* β cutoff *)
-//         return value
-//     else
-//         value := +∞
-//         for each child of node do
-//             value := min(value, alphabeta(child, depth − 1, α, β, TRUE))
-//             β := min(β, value)
-//             if β ≤ α then
-//                 break (* α cutoff *)
-//         return value
-//
-// type AlgoSender = mpsc::Sender<String>;
+pub struct AlphaBeta;
 
+impl Algo {
 
-
-// #[derive(Copy, Clone, Debug, Default)]
-// pub struct AlphaBeta {
-//     minimax: bool,
-// } 
-
-
-// // pub trait AlphaBeta {
-// //     pub fn alphabeta(board: &mut Board, int depth, alpha: Score, beta: Score) -> Score;
-// // }
-
-
-
-
-// impl Configurable for AlphaBeta {
-//     fn settings(&self, c: &mut Config) {
-//         c.set("alphabeta.minimax", "type check default false");
-//     }
-    
-//     fn configure(&mut self, c: &Config) {
-//         log_debug!("alphabeta.configure with {}", c);
-//         self.minimax = c.bool("alphabeta.minimax").unwrap_or(self.minimax);
-//     }
-// }
+    pub fn alphabeta_recursive2(&mut self,
+            board: &mut Board,
+            ply: Ply,
+            alpha: Score,
+            beta: Score,
+            last_move: &Move ) -> Score {
         
+        debug_assert!(self.max_depth > 0);
+        
+        if self.search_stats.total().nodes() % 1000000 == 0 && self.search_stats.total().nodes() != 0 {
+            let sp = SearchProgress::from_search_stats(&self.search_stats());
+            self.task_control.invoke_callback(&sp);
+        }
+
+        let mut score = Score::MinusInf;
+        let mut alpha = alpha;
+
+        if self.time_up_or_cancelled(ply, false) {
+            return score;
+        }
+
+        if board.repetition_count() >= 2 {
+            self.search_stats.inc_leaf_nodes(ply);
+            return board.eval(&self.eval);
+        }
+
+        if self.is_leaf(ply) {
+            return self.qsearch(last_move.to, ply, board, alpha, beta);
+        }
+        self.search_stats.inc_interior_nodes(ply);
+
+        // // FIXME!!!!
+        // if self.max_depth > self.search_stats.selective_depth() {
+        //     let sp = SearchProgress::from_search_stats(&self.search_stats());
+        //     self.task_control.invoke_callback(&sp);
+        // }
+        // bailing here means the score is +/- inf and wont be used
+        // FIXME!
+
+        let mut moves = board.legal_moves();
+        if moves.is_empty() {
+            self.search_stats.inc_leaf_nodes(ply);
+            return board.eval(&self.eval);
+        }
+
+        self.order_moves(ply, &mut moves);
+        let original_score = score;
+        for (_i, mv) in moves.iter().enumerate() {
+            let mut child_board = board.make_move(mv);
+            self.repetition.push(&mv, &child_board);
+            child_board.set_repetition_count(self.repetition.count(&child_board));            
+            
+            debug_assert!(alpha < beta || self.minmax);
+            self.current_variation.set_last_move(ply+1, mv);
+
+            let child_score = -self.alphabeta_recursive2(&mut child_board, ply+1, -beta, -alpha, &mv);
+
+            board.undo_move(mv);
+            self.repetition.pop();
+
+            if child_score > score {
+                score = child_score;
+            }
+            if child_score > alpha {
+                alpha = child_score;
+                self.pv_table.set(ply+1, mv);
+                self.pv_table.propagate_from(ply+1);
+                self.search_stats.inc_improvements(ply);
+                if ply == 0 {
+                    let sp = SearchProgress::from_search_stats(&self.search_stats());
+                    self.task_control.invoke_callback(&sp);
+                }
+            }
 
 
+            if alpha >= beta && !self.minmax {
+                break;
+            }
+        }
 
-
-// impl fmt::Display for AlphaBeta {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         writeln!(f, "minimax          : {}", self.minimax)
-//     }
-// }
-
-
-
-// impl Algo {
-
-//     pub fn alphabeta(depth: u32, alpha: Score, beta: Score) -> Score {
-
-//         if depth == 0 {}
-//             return board.eval(&self.eval);
-//         }
-//         self.search_stats.inc_leaf_nodes(node.ply);
-//         return;
-//         return Evaluate();
-
-//         GenerateLegalMoves();
-
-//         while (MovesLeft()) {
-
-//             MakeNextMove();
-
-//             val = -AlphaBeta(depth - 1, -beta, -alpha);
-
-//             UnmakeMove();
-
-//             if (val >= beta)
-
-//                 return beta;
-
-//             if (val > alpha)
-
-//                 alpha = val;
-
-//         }
-
-//         return alpha;
-// }
+        self.current_variation.set_last_move(ply, &Move::NULL_MOVE);
+        score
+    }
+}
