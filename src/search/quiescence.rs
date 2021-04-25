@@ -77,7 +77,15 @@ impl Algo {
         }
     }
 
-    // int Quiesce( int alpha, int beta ) {
+    pub fn qsearch2(&mut self, sq: Bitboard, ply: Ply, board: &mut Board, alpha: Score, beta: Score) -> Score {
+        if !self.quiescence.enabled || ply == 1 {
+            self.search_stats.inc_leaf_nodes(ply);
+            return Self::sigma(board) * board.eval(&self.eval);
+        }
+        return self.qsearch(sq, ply, board, alpha, beta);
+    }
+
+        // int Quiesce( int alpha, int beta ) {
     //     int stand_pat = Evaluate();
     //     if( stand_pat >= beta )
     //         return beta;

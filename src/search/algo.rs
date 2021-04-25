@@ -290,7 +290,7 @@ impl Algo {
         self.search_stats.reset_keeping_pv();
         self.pv_table = PvTable::new(MAX_PLY as usize);
 
-        if 1==1 {
+        if 1==0 {
             self.alphabeta_recursive(node);
             self.search_stats.score = node.score;
         } else {
@@ -363,8 +363,8 @@ impl Algo {
             self.repetition.pop();
             let is_cut = self.process_child(&mv, node, &child);
             if is_cut {
-                break;
                 self.search_stats.inc_cuts(node.ply);
+                break;
                 // let entry = Entry {
                 //     hash: node.board.hash(),`
                 //     score: node.score,
@@ -411,7 +411,7 @@ impl Algo {
                 }
             }
         }
-        parent.alpha >= parent.beta && !self.minmax
+        parent.alpha >= parent.beta && !self.minmax  
     }
 }
 

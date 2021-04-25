@@ -107,6 +107,18 @@ impl std::ops::Add for Score {
     }
 }
 
+impl std::ops::Mul<Score> for i32 {
+    type Output = Score;
+
+    #[inline]
+    fn mul(self, other: Score) -> Score {
+        match other {
+            Score::Cp(s) => Score::Cp( self * s),
+            _  => - other ,
+        }
+    }
+}
+
 impl std::ops::Sub for Score {
     type Output = Self;
 
@@ -170,6 +182,10 @@ mod tests {
         assert!(Score::Cp(-5) < Score::Cp(5));
         assert!(Score::Cp(5) < Score::WhiteWin { minus_ply: 0 });
         assert!(Score::Cp(100) > Score::Cp(0));
+        assert_eq!( 2* Score::Cp(100), Score::Cp(200));
+        assert_eq!( -2 * Score::Cp(200), Score::Cp(-400));
+        assert_eq!( -2 * Score::MinusInf , Score::PlusInf);
+        assert_eq!( -1 * Score::WhiteWin{ minus_ply: 2 } , Score::WhiteLoss{ply: -2});
         assert!(Score::WhiteWin { minus_ply: 1 } < Score::PlusInf);
         assert!(Score::WhiteWin { minus_ply: 0 } == Score::WhiteWin { minus_ply: 0 });
         assert!(Score::Cp(0).win_probability() > 0.499 );
