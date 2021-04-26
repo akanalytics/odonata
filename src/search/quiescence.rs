@@ -9,7 +9,7 @@ use crate::log_debug;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
 use crate::search::searchprogress::SearchProgress;
-use crate::types::{Color, Ply};
+use crate::types::{Ply};
 use std::fmt;
 
 #[derive(Copy, Clone, Debug)]

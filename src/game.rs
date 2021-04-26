@@ -22,8 +22,8 @@ pub struct Game {
     site: String,
     date: String,
     round: String,
-    white: String,
-    black: String,
+    name_w: String,
+    name_b: String,
     outcome: Outcome,
 }
 
@@ -53,33 +53,27 @@ impl Game {
 
     pub fn play(&mut self, white: &mut Algo, black: &mut Algo) {
         while !self.board.outcome().is_game_over() {
-            self.play_move(white, black);
+            let mv = self.choose_move(white, black);
+            white.repetition.push(&mv, &self.board);
+            black.repetition.push(&mv, &self.board);
         }
     }
 
 
-    pub fn play_move(&mut self, white: &mut Algo, black: &mut Algo) -> Move {
+    pub fn choose_move(&mut self, white: &mut Algo, black: &mut Algo) -> Move {
         if !self.board.outcome().is_game_over() {
             if let Err(e) = self.board.validate() {
                 panic!("Error on board {}", e);
             };
 
-            let (m, tags) = match self.board.color_us() {
-                Color::White => {
-                    white.search(&self.board);
-                    if self.board.fullmove_number() >= 57 {
-                        println!("{}", white);
-                    }
-                    (white.bm(), white.results().tags().clone())
-                }
-                Color::Black => {
-                    black.search(&self.board);
-                    (black.bm(), black.results().tags().clone())
-                }
-            };
+            let player = self.board.color_us().chooser_wb(white, black);            
+            player.search(&self.board);
+            let m = player.bm();
+            if m.is_null() {
+                println!("{}", player); 
+            }
+            let tags = player.results().tags().clone();
             self.record_move(m, tags);
-            white.repetition.push(&m, &self.board);
-            black.repetition.push(&m, &self.board);
             
             // FIXME
             if 1 == 0 {
@@ -130,8 +124,8 @@ impl fmt::Display for Game {
         writeln!(f, "[Site \"{}\"]", self.site)?;
         writeln!(f, "[Date \"{}\"]", self.date)?;
         writeln!(f, "[Round \"{}\"]", self.round)?;
-        writeln!(f, "[White \"{}\"]", self.white)?;
-        writeln!(f, "[Black \"{}\"]", self.black)?;
+        writeln!(f, "[White \"{}\"]", self.name_w)?;
+        writeln!(f, "[Black \"{}\"]", self.name_b)?;
         writeln!(f, "[Result \"{}\"]", self.outcome.as_pgn())?;
 
         // // optional tag pairs
@@ -190,13 +184,15 @@ mod tests {
 
         white.quiescence.enabled = true;
         white.move_orderer.mvv_lva = true;
-        white.mte.deterministic = true;
+        white.mte.deterministic = false;
         white.repetition.enabled = true;
+        white.tt.enabled = true;
 
-        black.mte.deterministic = true;
-        black.quiescence.enabled = false;
+        black.mte.deterministic = false;
+        black.quiescence.enabled = true;
         black.move_orderer.mvv_lva = true;
         black.repetition.enabled = true;
+        black.tt.enabled = false;
         
         
         println!("score as white {}", tournament(&mut white, &mut black));

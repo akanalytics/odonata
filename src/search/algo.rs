@@ -21,7 +21,7 @@ use crate::repetition::Repetition;
 use crate::search::timecontrol::TimeControl;
 use crate::search::move_time_estimator::MoveTimeEstimator;
 use crate::search::iterative_deepening::IterativeDeepening;
-use crate::tt::{TranspositionTable, Entry, EntryType};
+use crate::tt::{TranspositionTable};
 use crate::types::{MAX_PLY, Ply};
 use std::fmt;
 use std::ops::Range;
@@ -145,6 +145,7 @@ impl fmt::Debug for Algo {
             .field("quiescence", &self.quiescence)
             .field("ids", &self.ids)
             .field("repetition", &self.repetition)
+            .field("tt", &self.tt)
             .finish()
     }
 }
@@ -168,6 +169,7 @@ impl fmt::Display for Algo {
         write!(f, "\n[eval]\n{}", self.eval)?;
         write!(f, "\n[iterative deepening]\n{}", self.ids)?;
         write!(f, "\n[repetition]\n{}", self.repetition)?;
+        write!(f, "\n[tt]\n{}", self.tt)?;
         write!(f, "\n[stats]\n{}", self.search_stats)?;
         write!(f, "\n[global counts]\n{}", counts::GLOBAL_COUNTS)?;
         write!(f, "\n[pvtable]\n{}", self.pv_table)?;
@@ -369,7 +371,7 @@ impl Algo {
                 //     hash: node.board.hash(),`
                 //     score: node.score,
                 //     ply: node.ply,
-                //     entry_type: EntryType::LowerBound,
+                //     entry_type: NodeType::LowerBound,
                 //     best_move: Move::NULL_MOVE,
                 // };
                 // self.tt.insert(entry);
@@ -445,9 +447,9 @@ mod tests {
         let mut search = Algo::new().set_timing_method(TimeControl::Depth(4)).set_minmax(false).set_eval(eval).build();
         search.move_orderer.enabled = false;
         search.search(&board);
+        println!("{}", search);
         assert_eq!(search.search_stats().total().nodes(), 1833);  // qsearch
         // assert_eq!(search.search_stats().total().nodes(), 1757);
-        println!("{}", search);
         assert_eq!(search.search_stats().branching_factor().round() as u64, 1);
     }
 

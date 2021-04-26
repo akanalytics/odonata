@@ -54,7 +54,7 @@ impl Default for MoveTimeEstimator {
 impl fmt::Display for MoveTimeEstimator {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "time_control     : {}", self.time_control)?;
-        writeln!(f, "board            : {}", self.board.to_fen())?;
+        // writeln!(f, "board            : {}", self.board.to_fen())?;
         writeln!(f, "branching factor : {}", self.branching_factor)?;
         writeln!(f, "const moves rem. : {}", self.moves_rem)?;
         writeln!(f, "allotted for mv  : {}", Clock::format_duration(self.alloted_time_for_move()))?;
