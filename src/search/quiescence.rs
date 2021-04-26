@@ -118,18 +118,15 @@ impl Algo {
         }
 
         // this will handle mates and draws too at quiescent node
-        let mut standing_pat;
+        let standing_pat;
         if ply == self.max_depth {
-            standing_pat = board.eval(&self.eval);
+            standing_pat = Self::sigma(board) * board.eval(&self.eval);
         } else {
             // in quiescence a mate score might mean a queen sacrifice. But in reality
             // opponent would just play some other mode
-            standing_pat = board.eval_quiescence(&self.eval);
+            standing_pat = Self::sigma(board) * board.eval_quiescence(&self.eval);
         }
 
-        if board.color_us() == Color::Black {
-            standing_pat = -standing_pat;
-        }
         // if standing_pat.is_mate() {
         //     return standing_pat;
         // }

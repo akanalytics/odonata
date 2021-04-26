@@ -114,7 +114,9 @@ impl std::ops::Mul<Score> for i32 {
     fn mul(self, other: Score) -> Score {
         match other {
             Score::Cp(s) => Score::Cp( self * s),
-            _  => - other ,
+            _ if self > 0 => other ,
+            _ if self < 0 => -other ,
+            _  => Score::Cp(0),
         }
     }
 }
@@ -185,7 +187,11 @@ mod tests {
         assert_eq!( 2* Score::Cp(100), Score::Cp(200));
         assert_eq!( -2 * Score::Cp(200), Score::Cp(-400));
         assert_eq!( -2 * Score::MinusInf , Score::PlusInf);
+        assert_eq!( -2 * Score::PlusInf , Score::MinusInf);
+        assert_eq!( 1 * Score::PlusInf , Score::PlusInf);
         assert_eq!( -1 * Score::WhiteWin{ minus_ply: 2 } , Score::WhiteLoss{ply: -2});
+        assert_eq!( -3 * Score::WhiteWin{ minus_ply: 2 } , Score::WhiteLoss{ply: -2});
+        assert_eq!( 1 * Score::WhiteWin{ minus_ply: 2 } , Score::WhiteWin{minus_ply: 2});
         assert!(Score::WhiteWin { minus_ply: 1 } < Score::PlusInf);
         assert!(Score::WhiteWin { minus_ply: 0 } == Score::WhiteWin { minus_ply: 0 });
         assert!(Score::Cp(0).win_probability() > 0.499 );
