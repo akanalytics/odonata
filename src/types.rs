@@ -377,13 +377,17 @@ impl ScoreWdl {
     pub fn new(w: i32, d: i32, l: i32) -> ScoreWdl {
         ScoreWdl { w, d, l }
     }
+
+    // pub fn difference(s1: &ScoreWdl, s2: &ScoreWdl) -> ScoreWdl {
+    //     Self::new(s1.w - s2.w, s1.d + s2.d, s1.l-s2.l)
+    // }
 }
 
 impl std::ops::SubAssign for ScoreWdl {
     fn sub_assign(&mut self, o: Self) {
-        self.w -= o.w;
-        self.d -= o.d;
-        self.l -= o.l;
+        self.l += o.w;
+        self.d += o.d;
+        self.w += o.l;
     }
 }
 
@@ -448,12 +452,12 @@ mod tests {
         let mut wdl138 = ScoreWdl::new(1, 3, 8);
         let wdl567 = ScoreWdl::new(5, 6, 7);
         assert_eq!(wdl138 + wdl567, ScoreWdl::new(6, 9, 15));
-        assert_eq!(wdl138 - wdl567, ScoreWdl::new(-4, -3, 1));
+        assert_eq!(wdl138 - wdl567, ScoreWdl::new(8, 9, 13));
         wdl138 += ScoreWdl::new(100, 200, 300);
         assert_eq!(wdl138, ScoreWdl::new(101, 203, 308));
         wdl138 -= ScoreWdl::new(1, 3, 8);
-        assert_eq!(wdl138, ScoreWdl::new(100, 200, 300));
-        assert_eq!(-wdl138, ScoreWdl::new(-100, -200, -300));
+        assert_eq!(wdl138, ScoreWdl::new(109, 206, 309));
+        assert_eq!(-wdl138, ScoreWdl::new(309, 206, 109));
     }
 
     #[test]

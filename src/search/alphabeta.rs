@@ -36,10 +36,9 @@ impl Algo {
             self.task_control.invoke_callback(&sp);
         }
 
-        let mut score = Score::MinusInf;
 
         if self.time_up_or_cancelled(ply, false) {
-            return score;
+            return Score::MinusInf;
         }
 
         if board.repetition_count() >= 2 {
@@ -47,38 +46,55 @@ impl Algo {
             return Self::sigma(board) * board.eval(&self.eval); // will return a draw score
         }
 
+        let mut score = Score::MinusInf;
         let mut bm = Move::NULL_MOVE;
+        self.current_variation.set_last_move(ply, &Move::NULL_MOVE);
+        let mut node_type = NodeType::All;
 
         if self.tt.enabled() {
-            if let Some(entry) = self.tt.get(board.hash()) {
+            // FIXME avoid the cloned!
+            if let Some(entry) = self.tt.probe_by_board(board).cloned() {
                 let depth = self.max_depth - ply;
                 if entry.depth >= depth {
                     //println!("Entry:{:?}", entry);
                     // for bounded scores, we know iterating through the nodes might raise alpha, lower beta
                     // doing this now allows us potentuially to cut off without looking at the child nodes
                     match entry.node_type {
-                        NodeType::Exact => {
-                            score = entry.score;
-                            alpha = entry.score;
-                            beta = entry.score;
-                            bm = entry.bm;
+                        NodeType::Pv => {
+                            // previously this position raised alpha, but didnt trigger a cut
+                            // no point going through moves as we know what the max score is
+                            if entry.score > alpha {
+                                self.record_new_pv(ply, &entry.bm);
+                            }
+                            return entry.score
                         }
-                        NodeType::LowerBound => {
-                            alpha = cmp::max(alpha, entry.score);
-                            bm = entry.bm;
+                        NodeType::Cut => {
+                            // previously this position raised alpha (sufficiently to cause a cut).
+                            // not all child nodes were scored, so score is a lower bound
+                            if entry.score > alpha {
+                                self.record_new_pv(ply, &entry.bm);
+                                node_type = NodeType::Pv;
+                                alpha = entry.score; 
+                                if alpha >= beta {
+                                    // self.record_new_pv(ply, &bm);
+                                    return entry.score;
+                                }
+                                score = entry.score;
+                                bm = entry.bm; // might help with move ordering
+                            }
                         }
-                        NodeType::UpperBound => {
-                            beta = cmp::min(beta, entry.score);
-                            debug_assert!(alpha < beta);
+                        NodeType::All => {
+                            // previously this position didnt raise alpha, the score is an upper bound
+                            // if the score is still below alpha, this too is an ALL node
+                            if alpha >= entry.score {
+                                // self.record_new_pv(ply, &bm);
+                                return entry.score;
+                            }
+                            // beta = cmp::min(beta, entry.score);
                         }
                         NodeType::Unused => panic!("Node type Unused returned on tt probe"),
                     }
-                }
-            }
-            if alpha >= beta {
-                self.current_variation.set_last_move(ply, &Move::NULL_MOVE);
-                self.record_new_pv(ply, &bm);
-                return score;
+                 }
             }
         }
 
@@ -121,29 +137,32 @@ impl Algo {
             if child_score > alpha {
                 alpha = child_score;
                 bm = *mv;
+                node_type = NodeType::Pv;
                 self.record_new_pv(ply, &bm);
             }
 
             if alpha >= beta && !self.minmax {
+                node_type = NodeType::Cut;
                 break;
             }
         }
 
         if self.tt.enabled() {
-            let node_type;
             if score <= original_alpha {
-                node_type = NodeType::UpperBound
+                // node_type = NodeType::All
             } else if score >= beta {
-                node_type = NodeType::LowerBound;
+                // node_type = NodeType::Cut;
+                debug_assert!(!bm.is_null())
             } else {
-                node_type = NodeType::Exact;
+                // node_type = NodeType::Pv;
+                debug_assert!(!bm.is_null())
             }
             let entry = Entry {
                 hash: board.hash(),
                 score,
                 depth: self.max_depth - ply,
-                node_type: node_type,
-                bm, // not set for NodeType::UpperBound
+                node_type,
+                bm, // not set for NodeType::All
             };
             self.tt.insert(entry);
         }

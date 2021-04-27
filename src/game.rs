@@ -184,11 +184,11 @@ mod tests {
 
         white.quiescence.enabled = true;
         white.move_orderer.mvv_lva = true;
-        white.mte.deterministic = false;
+        white.mte.deterministic = true;
         white.repetition.enabled = true;
         white.tt.enabled = true;
 
-        black.mte.deterministic = false;
+        black.mte.deterministic = true;
         black.quiescence.enabled = true;
         black.move_orderer.mvv_lva = true;
         black.repetition.enabled = true;
@@ -205,12 +205,22 @@ mod tests {
             let pos = Catalog::chess960(id);
             let mut board = pos.board().clone();
             board.set_castling(CastlingRights::NONE);
-            let mut gm = Game::new();
-            gm.set_starting_pos(&board);
-            gm.play(white, black);
-            score_wdl += gm.outcome().as_wdl();
-            print!("pos: {} score {}   outcome {:<15} ", pos.id().unwrap(), score_wdl, gm.outcome());
-            println!("mat.score:{:>4} mat:{}  ", gm.board.material().centipawns(), gm.board.material());
+
+            let mut gm1 = Game::new();
+            gm1.set_starting_pos(&board);
+            gm1.play(white, black);
+
+            let mut gm2 = Game::new();
+            gm2.set_starting_pos(&board);
+            gm2.play(black, white);
+            score_wdl += gm1.outcome().as_wdl() - gm2.outcome().as_wdl();
+
+            print!("pos: {} score {}   {:<15} {:<15} ", pos.id().unwrap(), score_wdl, gm1.outcome(), gm2.outcome());
+            if gm1.outcome() == Outcome::DrawRule75 || gm2.outcome() == Outcome::DrawRule75 {
+                print!("mat.score:{:>4} mat:{}  ", gm1.board.material().centipawns(), gm1.board.material());
+                print!("mat.score:{:>4} mat:{}  ", gm2.board.material().centipawns(), gm2.board.material());
+            }
+            println!();
             // println!("pgn: \n{}\n", gm);
         }
         score_wdl

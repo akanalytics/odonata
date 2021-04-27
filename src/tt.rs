@@ -2,6 +2,7 @@ use crate::config::{Config, Configurable};
 use crate::eval::score::Score;
 use crate::log_debug;
 use crate::movelist::Move;
+use crate::board::Board;
 use crate::stat::{Stat, ArrayStat};
 use crate::types::{Hash, Ply};
 use std::mem;
@@ -10,9 +11,9 @@ use std::fmt;
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd)]
 pub enum NodeType {
     Unused = 0,
-    UpperBound = 1,   // All node, score = upperbound () 
-    LowerBound = 2,   // Cut node, score = lowerbound (we've not looked at all possible scores)
-    Exact = 3,  // PV node. score is exact
+    All = 1,   // All node, score = upperbound () 
+    Cut = 2,   // Cut node, score = lowerbound (we've not looked at all possible scores)
+    Pv = 3,  // PV node. score is exact
 }
 
 impl Default for NodeType {
@@ -30,12 +31,17 @@ pub struct Entry {
     pub bm: Move,
 }
 
+
+// FIXME Mates as score
 #[derive(Clone)]
 pub struct TranspositionTable {
     table: Vec<Entry>,
 
     pub enabled: bool,
-    capacity: usize,
+    pub capacity: usize,
+    pub hmvc_horizon: i32,
+
+
     hits: Stat<'static>,
     misses: Stat<'static>,
     collisions: Stat<'static>,
@@ -49,6 +55,7 @@ impl fmt::Debug for TranspositionTable {
             // .field("pv_table", &self.pv_table.extract_pv().)
             .field("enabled", &self.enabled)
             .field("capacity", &self.capacity)
+            .field("hmvc_horizon", &self.hmvc_horizon)
             .field("hits", &self.hits)
             .field("misses", &self.misses)
             .field("collisions", &self.collisions)
@@ -62,6 +69,9 @@ impl fmt::Display for TranspositionTable {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "enabled          : {}", self.enabled)?;
         writeln!(f, "capacity         : {}", self.capacity())?;
+        writeln!(f, "size in mb       : {}", self.size_in_mb())?;
+        writeln!(f, "entry size bytes : {}", mem::size_of::<Entry>())?;
+        writeln!(f, "hmvc horizon     : {}", self.hmvc_horizon)?;
         writeln!(f, "table            : {}", self.table.len())?;
         writeln!(f, "tt stats\n{}", ArrayStat(&[&self.hits, &self.misses, &self.collisions, &self.inserts]))?;
         Ok(())
@@ -74,7 +84,8 @@ impl Default for TranspositionTable {
         Self {
             table: vec![Entry::default(); 20_000],
             enabled: true,
-            capacity: 20_000,
+            capacity: 200_000,
+            hmvc_horizon: 35,
             hits: Stat::new("TT.HITS"),
             misses: Stat::new("TT.MISSES"),
             collisions: Stat::new("TT.COLLISIONS"),
@@ -86,12 +97,14 @@ impl Default for TranspositionTable {
 impl Configurable for TranspositionTable {
     fn settings(&self, c: &mut Config) {
         c.set("tt.enabled", "type check default true");
-        c.set("tt.capacity", "type spin default 10 min 0 max 200000");
+        c.set("tt.capacity", "type spin default 200000 min 0 max 1000000");
+        c.set("tt.hmvc_horizon", "type spin default 35 min 0 max 100");
     }
     fn configure(&mut self, c: &Config) {
         log_debug!("tt.configure with {}", c);
         self.enabled = c.bool("tt.enabled").unwrap_or(self.enabled);
         self.capacity = c.int("tt.capacity").unwrap_or(self.capacity as i64) as usize;
+        self.hmvc_horizon = c.int("tt.hmvc_horizon").unwrap_or(self.hmvc_horizon as i64) as i32;
     }
 }
 
@@ -106,12 +119,21 @@ impl TranspositionTable {
         // tt.table.resize(size, Entry::default());
     }
 
+    pub fn clear(&mut self) {
+        self.table = vec![Entry::default(); self.capacity()];
+        // tt.table.resize(size, Entry::default());
+    }
+
     pub fn enabled(&self) -> bool {
         self.enabled
     }
 
     pub fn capacity(&self) -> usize {
         self.capacity
+    }
+
+    pub fn size_in_mb(&self) -> usize {
+        self.capacity * mem::size_of::<Entry>()
     }
 
     pub fn index(&self, hash: Hash) -> usize {
@@ -132,9 +154,24 @@ impl TranspositionTable {
         }
     }
 
-    pub fn get(&self, hash: Hash) -> Option<&Entry> {
+    pub fn probe_by_board(&self, board: &Board) -> Option<&Entry> {
+        if !self.enabled {
+            return None;
+        }
+        if board.fifty_halfmove_clock() > self.hmvc_horizon {
+            None 
+        } else {
+            self.probe_by_hash(board.hash())
+        }
+    }
+    
+    
+    pub fn probe_by_hash(&self, hash: Hash) -> Option<&Entry> {
+        if !self.enabled {
+            return None
+        }
         let entry = &self.table[self.index(hash)];
-        if self.enabled && entry.node_type != NodeType::Unused {
+        if  entry.node_type != NodeType::Unused {
             if entry.hash == hash {
                 self.hits.increment();
                 return Some(entry);
@@ -144,7 +181,7 @@ impl TranspositionTable {
             }
         }
         self.misses.increment();
-        return None;
+        None
     }
 }
 
@@ -158,7 +195,7 @@ mod tests {
             hash: 123,
             score: Score::Cp(300),
             depth: 2,
-            node_type: NodeType::Exact,
+            node_type: NodeType::Pv,
             bm: Move::new_null(),
         };
 
@@ -166,7 +203,7 @@ mod tests {
             hash: 456,
             score: Score::Cp(200),
             depth: 3,
-            node_type: NodeType::Exact,
+            node_type: NodeType::Pv,
             bm: Move::new_null(),
         };
 
@@ -174,25 +211,27 @@ mod tests {
             hash: 456,
             score: Score::Cp(201),
             depth: 4,
-            node_type: NodeType::Exact,
+            node_type: NodeType::Pv,
             bm: Move::new_null(),
         };
 
         let mut tt = TranspositionTable::new_in_mb(10);
         assert_eq!(tt.capacity(), 178_571);
-        assert!(tt.get(123).is_none());
+        assert!(tt.probe_by_hash(123).is_none());
         tt.insert(entry123);
         tt.insert(entry456);
-        assert_eq!(tt.get(123), Some(&entry123));
-        assert_eq!(tt.get(124), None);
-        assert_eq!(tt.get(456), Some(&entry456));
+        assert_eq!(tt.probe_by_hash(123), Some(&entry123));
+        assert_eq!(tt.probe_by_hash(124), None);
+        assert_eq!(tt.probe_by_hash(456), Some(&entry456));
         tt.insert(entry456b);
-        assert_eq!(tt.get(456), Some(&entry456b));
+        assert_eq!(tt.probe_by_hash(456), Some(&entry456b));
 
         // insert fails due to ply, leaving 456b in place
         tt.insert(entry456);
-        assert_eq!(tt.get(456), Some(&entry456b));
+        assert_eq!(tt.probe_by_hash(456), Some(&entry456b));
         println!("{:?}", tt);
         println!("{}", tt);
+        tt.clear();
+        assert!(tt.probe_by_hash(123).is_none());
     }
 }

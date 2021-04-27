@@ -21,7 +21,7 @@ use crate::repetition::Repetition;
 use crate::search::timecontrol::TimeControl;
 use crate::search::move_time_estimator::MoveTimeEstimator;
 use crate::search::iterative_deepening::IterativeDeepening;
-use crate::tt::{TranspositionTable};
+use crate::tt::{TranspositionTable, Entry, NodeType};
 use crate::types::{MAX_PLY, Ply};
 use std::fmt;
 use std::ops::Range;
@@ -291,6 +291,7 @@ impl Algo {
     pub fn alphabeta(&mut self, node: &mut Node) {
         self.search_stats.reset_keeping_pv();
         self.pv_table = PvTable::new(MAX_PLY as usize);
+        self.tt.clear();
 
         if 1==0 {
             self.alphabeta_recursive(node);
