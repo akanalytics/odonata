@@ -148,6 +148,7 @@ impl TranspositionTable {
         let index = self.index(new.hash);
         let old = &mut self.table[index];
         if new.depth > old.depth || new.depth == old.depth && new.node_type > old.node_type {
+            assert!(new.score > Score::MinusInf);
             self.inserts.increment();
             *old = new;
             return;

@@ -52,15 +52,17 @@ impl Algo {
 
         // FIXME tt probe for leaves?
         if self.is_leaf(ply) {
-            return self.qsearch2(last_move, ply, board, alpha, beta);
+            let score = self.qsearch2(last_move, ply, board, alpha, beta);
+            assert!(self.task_control.is_cancelled() || score > Score::MinusInf);
+            return score;
         }
 
         if self.tt.enabled() {
             // FIXME avoid the cloned!
             if let Some(entry) = self.tt.probe_by_board(board).cloned() {
                 let depth = self.max_depth - ply;
-                self.search_stats.inc_tt_nodes(ply);
                 if entry.depth >= depth {
+                    self.search_stats.inc_tt_nodes(ply);
                     //println!("Entry:{:?}", entry);
                     // for bounded scores, we know iterating through the nodes might raise alpha, lower beta
                     // doing this now allows us potentuially to cut off without looking at the child nodes
@@ -99,7 +101,7 @@ impl Algo {
                         }
                         NodeType::Unused => panic!("Node type Unused returned on tt probe"),
                     }
-                 }
+                }
             }
         }
 
@@ -129,7 +131,10 @@ impl Algo {
             self.current_variation.set_last_move(ply + 1, mv);
 
             let child_score = -self.alphabeta_recursive2(&mut child_board, ply + 1, -beta, -alpha, &mv);
-
+            if self.task_control.is_cancelled() {
+                return Score::MinusInf;
+            }
+            assert!(child_score > Score::MinusInf);
             board.undo_move(mv);
             self.repetition.pop();
 

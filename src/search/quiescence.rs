@@ -89,11 +89,13 @@ impl Algo {
     }
 
     pub fn qsearch2(&mut self, mv: &Move, ply: Ply, board: &mut Board, alpha: Score, beta: Score) -> Score {
-        if !self.quiescence.enabled || ply == 1 || (!mv.is_capture() && self.quiescence.only_captures) {
+        if !self.quiescence.enabled || ply <= 1 || (!mv.is_capture() && self.quiescence.only_captures) {
             self.search_stats.inc_leaf_nodes(ply);
             return Self::sigma(board) * board.eval(&self.eval);
         }
-        self.qsearch(mv.to(), ply, board, alpha, beta)
+        let score = self.qsearch(mv.to(), ply, board, alpha, beta);
+        assert!(self.task_control.is_cancelled() || score > Score::MinusInf);
+        score
     }
 
     // int Quiesce( int alpha, int beta ) {

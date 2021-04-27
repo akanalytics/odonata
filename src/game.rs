@@ -69,6 +69,9 @@ impl Game {
             let player = self.board.color_us().chooser_wb(white, black);            
             player.search(&self.board);
             let m = player.bm();
+            if m.is_null {
+                println!("{}", player); 
+            }
             // if self.board.fullmove_number() == 50 {
             //     println!("{}", player); 
             // }
@@ -176,7 +179,7 @@ mod tests {
     #[ignore]
     fn competition() {
         //let tc = TimeControl::NodeCount(1_000);
-        let tc = TimeControl::from_remaining_time(Duration::from_millis(1450));
+        let tc = TimeControl::from_remaining_time(Duration::from_millis(2000));
         //let tc = TimeControl::Depth(3);
         let mut white = Algo::new().set_timing_method(tc).build();
         let mut black = Algo::new().set_timing_method(tc).build();
@@ -188,9 +191,8 @@ mod tests {
         black.mte.deterministic = false;
         black.tt.enabled = false;
         
-        
-        println!("score as white {}", tournament(&mut white, &mut black));
-        println!("score as black {}", tournament(&mut black, &mut white));
+        let wdl = tournament(&mut white, &mut black);
+        println!("score as white {}\nELO {}", wdl, wdl.elo_differnce() );
     }
 
     fn tournament(white: &mut Algo, black: &mut Algo) -> ScoreWdl {
@@ -239,19 +241,17 @@ mod tests {
 
     #[test]
     fn test_bug2() {
-        let b1 = Board::parse_fen("bqnbr1kr/ppp2ppp/8/8/3n4/3NNB2/PPP2PPP/BQ2R1KR b - - 4 7").unwrap();
+        let b1 = Board::parse_fen("1r3rbQ/p1p1kp2/4pn2/2Pp4/2n3p1/1P1N4/2P1PPPP/q2K1RBB w - - 0 23").unwrap();
         // let tc = TimeControl::MoveTime(Duration::from_millis(140));
-        let tc = TimeControl::from_remaining_time(Duration::from_millis(30));
+        let tc = TimeControl::from_remaining_time(Duration::from_millis(1750));
         let mut white = Algo::new().set_timing_method(tc).build();
         let mut black = Algo::new().set_timing_method(tc).build();
-        white.mte.deterministic = true;
-        black.mte.deterministic = true;
-        white.move_orderer.mvv_lva = true;
-        black.move_orderer.mvv_lva = false;
-        black.search(&b1);
-        println!("{}", black.bm());
-        let b2 = b1.make_move(&black.bm());
-        white.search(&b2);
+        white.search(&b1);
+        white.search(&b1);
+        white.search(&b1);
+        println!("{}", white.bm());
+        // let b2 = b1.make_move(&black.bm());
+        //white.search(&b2);
         println!("{}", white);
     }
 

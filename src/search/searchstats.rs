@@ -135,7 +135,7 @@ impl SearchStats {
 
 
     pub fn len(&self) -> usize {
-        if let Some(d) = self.plies.iter().rposition(|stats| stats.leaf_nodes() + stats.q_leaf_nodes() + stats.tt_nodes() != 0 ) { 
+        if let Some(d) = self.plies.iter().rposition(|stats| stats.nodes() + stats.q_tt_nodes() + stats.tt_nodes() != 0 ) { 
             return 1 + d;   // a usize is one-off-the-end
         }
         0
@@ -143,10 +143,7 @@ impl SearchStats {
 
     #[inline]
     pub fn selective_depth(&self) -> Ply {
-        if let Some(d) = self.plies.iter().rposition(|stats| stats.nodes() != 0) {
-            return d as Ply; 
-        }
-        0
+        self.len() as Ply
     }
 
     #[inline]
@@ -300,7 +297,7 @@ impl NodeStats {
 
     #[inline]
     pub fn nodes(&self) -> u64 {
-        self.interior_nodes() + self.leaf_nodes() + self.q_interior_nodes() + self.q_leaf_nodes() + self.q_tt_nodes() + self.tt_nodes()
+        self.interior_nodes() + self.leaf_nodes() + self.q_interior_nodes() + self.q_leaf_nodes()
         // root
     }
 
