@@ -39,6 +39,20 @@ use std::time::Duration;
 //  A nullmove from the Engine to the GUI should be send as 0000.
 //  Examples:  e2e4, e7e5, e1g1 (white short castling), e7e8q (for promotion)
 
+
+// PONDER ON
+//
+// GUI -> engine1: position startpos
+// GUI -> engine1: go wtime 100000 winc 1000 btime 100000 binc 1000
+// engine1 -> GUI: bestmove e2e4 ponder e7e6
+// GUI -> engine1: position startpos moves e2e4 e7e6
+// GUI -> engine1: go ponder wtime 98123 winc 1000 btime 100000 binc 1000
+// [user or other engine plays the expected e7e6 move]
+// GUI -> engine1: ponderhit
+// [engine keeps thinking]
+// engine1 -> GUI: bestmove d2d4 ponder d7d5
+
+
 #[derive(Debug, Default)]
 pub struct Uci {
     preamble: Vec<String>,
@@ -61,6 +75,8 @@ impl Configurable for Uci {
         self.algo.configure(&c);
     }
 }
+
+
 
 impl Uci {
 

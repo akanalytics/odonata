@@ -216,7 +216,7 @@ impl Algo {
         pos.set(&Tag::BestMove(self.bm()));
         pos.set(&Tag::Pv(self.pv().clone()));
         pos.set(&Tag::CentipawnEvaluation(self.score()));
-        pos.set(&Tag::AnalysisCountDepth(self.search_stats().depth()));
+        pos.set(&Tag::AnalysisCountDepth(self.search_stats().depth() as u32));
         pos
     }
 
@@ -591,24 +591,22 @@ mod tests {
     }
 
     #[test]
-    fn debug_arena_issue() {
-        let board =
-            Board::parse_fen("r1bqkbnr/pppppppp/2n5/8/3P4/4P3/PPP2PPP/RNBQKBNR b KQkq - 0 2").unwrap();
-        let time_control = TimeControl::RemainingTime {
-            wtime: time::Duration::from_millis(141516),
-            btime: time::Duration::from_millis(127990),
-            winc: time::Duration::from_millis(12000),
-            binc: time::Duration::from_millis(12000),
-            movestogo: 0,
-            our_color: Color::Black,
-        };
+    fn bug04() {
+        // depth 6 seldepth 9 nodes 75012 nps 211000 score cp -325 time 354 pv f2g1 a7a5 g1h2 f8g8 h2g1 f8g8
+        //let board =
+        //    Board::parse_fen("3r1k2/p4ppp/6b1/4r3/1pP5/1B5P/2P2KP1/1NR5 w - - 4 35").unwrap();
+        let board= Catalog::starting_position();
+        // let time_control = TimeControl::RemainingTime {
+        //     wtime: time::Duration::from_millis(141516),
+        //     btime: time::Duration::from_millis(127990),
+        //     winc: time::Duration::from_millis(12000),
+        //     binc: time::Duration::from_millis(12000),
+        //     movestogo: 0,
+        //     our_color: Color::Black,
+        // };
         let mut search = Algo::new()
-            .set_timing_method(time_control)
-            .set_minmax(false)
-            .set_iterative_deepening(true)
+            .set_timing_method(TimeControl::Depth(8))
             .set_callback(Uci::uci_info).build();
-        println!("{}", search);
-        println!("{}", board);
         search.search(&board);
         println!("{}", search);
     }

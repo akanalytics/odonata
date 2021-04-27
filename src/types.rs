@@ -378,6 +378,8 @@ impl ScoreWdl {
         ScoreWdl { w, d, l }
     }
 
+
+    
     // pub fn difference(s1: &ScoreWdl, s2: &ScoreWdl) -> ScoreWdl {
     //     Self::new(s1.w - s2.w, s1.d + s2.d, s1.l-s2.l)
     // }

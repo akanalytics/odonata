@@ -1,7 +1,6 @@
 use crate::board::makemove::MoveMaker;
 use crate::board::movegen::MoveGen;
 use crate::board::Board;
-use crate::config::{Config, Configurable};
 use crate::eval::eval::Scorable;
 use crate::eval::score::Score;
 use crate::movelist::Move;
@@ -10,7 +9,6 @@ use crate::search::searchprogress::SearchProgress;
 use crate::tt::{Entry, NodeType};
 use crate::types::{Color, Ply};
 use crate::outcome::GameEnd;
-use std::cmp;
 
 pub struct AlphaBeta;
 
@@ -52,11 +50,16 @@ impl Algo {
         self.current_variation.set_last_move(ply, &Move::NULL_MOVE);
         let mut node_type = NodeType::All;
 
+        // FIXME tt probe for leaves?
+        if self.is_leaf(ply) {
+            return self.qsearch2(last_move, ply, board, alpha, beta);
+        }
+
         if self.tt.enabled() {
             // FIXME avoid the cloned!
             if let Some(entry) = self.tt.probe_by_board(board).cloned() {
                 let depth = self.max_depth - ply;
-                self.search_stats.inc_tt_nodes(ply + entry.depth);
+                self.search_stats.inc_tt_nodes(ply);
                 if entry.depth >= depth {
                     //println!("Entry:{:?}", entry);
                     // for bounded scores, we know iterating through the nodes might raise alpha, lower beta
@@ -100,9 +103,6 @@ impl Algo {
             }
         }
 
-        if self.is_leaf(ply) {
-            return self.qsearch2(last_move.to, ply, board, alpha, beta);
-        }
         self.search_stats.inc_interior_nodes(ply);
 
         // // FIXME!!!!

@@ -6,15 +6,18 @@ use crate::config::{Config, Configurable};
 use crate::eval::eval::Scorable;
 use crate::eval::score::Score;
 use crate::log_debug;
+use crate::movelist::Move;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
 use crate::search::searchprogress::SearchProgress;
-use crate::types::{Ply};
+use crate::tt::{Entry, NodeType};
+use crate::types::Ply;
 use std::fmt;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Quiescence {
     pub enabled: bool,
+    pub only_captures: bool,
     see: bool,
     max_ply: u16,
     coarse_delta_prune: Score,
@@ -23,6 +26,7 @@ pub struct Quiescence {
 impl Configurable for Quiescence {
     fn settings(&self, c: &mut Config) {
         c.set("quiescence.enabled", "type check default true");
+        c.set("quiescence.only_captures", "type check default true");
         c.set("quiescence.see", "type check default true");
         c.set("quiescence.max_ply", "type spin default 10 min 0 max 100");
         c.set("quiescence.coarse_delta_prune_cp", "type spin default 900 min 0 max 10000");
@@ -30,6 +34,7 @@ impl Configurable for Quiescence {
     fn configure(&mut self, c: &Config) {
         log_debug!("quiescence.configure with {}", c);
         self.enabled = c.bool("quiescence.enabled").unwrap_or(self.enabled);
+        self.only_captures = c.bool("quiescence.only_captures").unwrap_or(self.only_captures);
         self.see = c.bool("quiescence.see").unwrap_or(self.see);
         self.max_ply = c.int("quiescence.max_ply").unwrap_or(self.max_ply as i64) as u16;
         if let Some(cp) = c.int("quiescence.coarse_delta_prune_cp") {
@@ -40,20 +45,26 @@ impl Configurable for Quiescence {
 
 impl Default for Quiescence {
     fn default() -> Self {
-        Quiescence { enabled: true, see: true, max_ply: 10, coarse_delta_prune: Score::cp(900) }
+        Quiescence {
+            enabled: true,
+            only_captures: false,
+            see: true,
+            max_ply: 10,
+            coarse_delta_prune: Score::cp(900),
+        }
     }
 }
 
 impl fmt::Display for Quiescence {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "enabled          : {}", self.enabled)?;
+        writeln!(f, "only captures    : {}", self.only_captures)?;
         writeln!(f, "see enabled      : {}", self.see)?;
         writeln!(f, "max_ply          : {}", self.max_ply)?;
         writeln!(f, "coarse_del_prune : {}", self.coarse_delta_prune)?;
         Ok(())
     }
 }
-
 
 impl Algo {
     #[inline]
@@ -77,15 +88,15 @@ impl Algo {
         }
     }
 
-    pub fn qsearch2(&mut self, sq: Bitboard, ply: Ply, board: &mut Board, alpha: Score, beta: Score) -> Score {
-        if !self.quiescence.enabled || ply == 1 {
+    pub fn qsearch2(&mut self, mv: &Move, ply: Ply, board: &mut Board, alpha: Score, beta: Score) -> Score {
+        if !self.quiescence.enabled || ply == 1 || (!mv.is_capture() && self.quiescence.only_captures) {
             self.search_stats.inc_leaf_nodes(ply);
             return Self::sigma(board) * board.eval(&self.eval);
         }
-        self.qsearch(sq, ply, board, alpha, beta)
+        self.qsearch(mv.to(), ply, board, alpha, beta)
     }
 
-        // int Quiesce( int alpha, int beta ) {
+    // int Quiesce( int alpha, int beta ) {
     //     int stand_pat = Evaluate();
     //     if( stand_pat >= beta )
     //         return beta;
@@ -102,7 +113,14 @@ impl Algo {
     //     }
     //     return alpha;
     // }
-    pub fn qsearch(&mut self, sq: Bitboard, ply: Ply, board: &mut Board, mut alpha: Score, beta: Score) -> Score {
+    pub fn qsearch(
+        &mut self,
+        sq: Bitboard,
+        ply: Ply,
+        board: &mut Board,
+        mut alpha: Score,
+        beta: Score,
+    ) -> Score {
         // if !self.quiescence.enabled || ply == 1  {
         //     self.search_stats.inc_leaf_nodes(ply);
         //     return board.eval(&self.eval);
@@ -144,6 +162,20 @@ impl Algo {
             return alpha;
         }
 
+        // let entry = self.tt.probe_by_board(board);
+        // if let Some(entry) = entry {
+        //     self.search_stats.inc_q_tt_nodes(ply);
+        //     return entry.score;
+        // } else {
+        //     let entry = Entry {
+        //         hash: board.hash(),
+        //         score: Score::cp(0),
+        //         depth: 0, //self.max_depth - ply,
+        //         node_type: NodeType::Pv,
+        //         bm: Move::NULL_MOVE,
+        //     };
+        //     self.tt.insert(entry);
+        // }
 
         let mut moves = board.legal_capture_moves();
         moves.retain(|mv| mv.to() == sq);
@@ -241,8 +273,5 @@ mod tests {
 // if self.time_up_or_cancelled(node.ply, self.search_stats.total().nodes(), false) {
 //     return;
 // }
-
-
-
 
 // Hello from freddie

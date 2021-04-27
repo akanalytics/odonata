@@ -57,7 +57,7 @@ impl Default for DeterministicClock {
 impl DeterministicClock {
     #[inline]
     pub fn new() -> Self {
-        Self { legal_move_count: counts::EVAL_COUNT.get(), eval_count: counts::EVAL_COUNT.get() }
+        Self { legal_move_count: counts::LEGAL_MOVE_COUNT.get(), eval_count: counts::EVAL_COUNT.get() }
     }
 
     #[inline]
@@ -70,7 +70,7 @@ impl DeterministicClock {
     pub fn elapsed(&self) -> Duration {
         let now = Self::new();
         let evals = now.eval_count - self.eval_count;
-        let legal_move_gens = now.legal_move_count - self.eval_count;
+        let legal_move_gens = now.legal_move_count - self.legal_move_count;
         let nano_secs = 6 * 200 * evals + 900 * legal_move_gens; // initial mutiplier = fudge factor
 
         Duration::from_nanos(nano_secs as u64)

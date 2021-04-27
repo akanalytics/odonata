@@ -7,6 +7,7 @@ use std::time::Duration;
 
 #[derive(Clone, Debug)]
 pub struct SearchStats {
+    pub depth: Ply, 
     realtime_clock: Clock,
     deterministic_clock: DeterministicClock,
 
@@ -16,22 +17,19 @@ pub struct SearchStats {
     plies: Vec<NodeStats>,
 
     pub pv: MoveList,
-    pub alpha: Score,
-    pub beta: Score,
     pub score: Score,
 }
 
 impl fmt::Display for SearchStats {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "depth            : {}", self.depth)?;
         writeln!(f, "pv               : {}", self.pv())?;
-        writeln!(f, "alpha            : {}", self.alpha)?;
-        writeln!(f, "beta             : {}", self.beta)?;
         writeln!(f, "score            : {}", self.score)?;
         writeln!(f, "clock (detmstic) : {}", Clock::format_duration(self.deterministic_clock.elapsed()))?;
         writeln!(f, "clock (realtime) : {}", Clock::format_duration(self.realtime_clock.elapsed()))?;
         writeln!(f, "completed        : {}", self.completed())?;
         writeln!(f, "user cancelled   : {}", self.user_cancelled)?;
-        writeln!(f, "depth            : {}", self.depth())?;
+        writeln!(f, "calc depth       : {}", self.depth())?;
         writeln!(f, "selective depth  : {}", self.selective_depth())?;
         writeln!(f, "tot nodes/sec (k): {}", self.total_knps())?;
         writeln!(f, "int nodes/sec (k): {}", self.interior_knps())?;
@@ -64,6 +62,7 @@ impl fmt::Display for SearchStats {
 impl Default for SearchStats {
     fn default() -> Self {
         Self {
+            depth: 0,
             realtime_clock: Clock::default(),
             deterministic_clock: DeterministicClock::default(),
 
@@ -73,8 +72,6 @@ impl Default for SearchStats {
             plies: std::iter::repeat(NodeStats::new()).take(MAX_PLY as usize).collect(),
 
             pv: MoveList::default(),
-            alpha: Score::default(),
-            beta: Score::default(),
             score: Score::default(),
         }
     }
@@ -109,8 +106,6 @@ impl SearchStats {
     pub fn reset_keeping_pv(&mut self) {
         self.plies_mut().iter_mut().for_each(|s| s.clear_node_stats());
         self.total.clear_node_stats();
-        self.alpha = Score::default();
-        self.beta = Score::default();
         self.score = Score::default();
         self.completed = false;
         self.user_cancelled = false;
@@ -124,27 +119,32 @@ impl SearchStats {
 
     #[inline]
     pub fn plies(&self) -> &[NodeStats] {
-        &self.plies[0..self.depth() as usize]
+        &self.plies[0..self.len()]
     }
 
     #[inline]
     pub fn plies_mut(&mut self) -> &mut [NodeStats] {
-        let d = self.depth() as usize;
-        &mut self.plies[0..d]
+        let len = self.len();
+        &mut self.plies[0..len]
     }
 
     #[inline]
-    pub fn depth(&self) -> u32 {
-        if let Some(d) = self.plies.iter().rposition(|stats| stats.leaf_nodes() + stats.interior_nodes() != 0) {
-            return 1 + d as u32; // 1 off the end for all "size" types
+    pub fn depth(&self) -> Ply {
+        self.depth
+    }
+
+
+    pub fn len(&self) -> usize {
+        if let Some(d) = self.plies.iter().rposition(|stats| stats.leaf_nodes() + stats.q_leaf_nodes() + stats.tt_nodes() != 0 ) { 
+            return 1 + d;   // a usize is one-off-the-end
         }
         0
     }
 
     #[inline]
-    pub fn selective_depth(&self) -> u32 {
+    pub fn selective_depth(&self) -> Ply {
         if let Some(d) = self.plies.iter().rposition(|stats| stats.nodes() != 0) {
-            return 1 + d as u32; // 1 off the end for all "size" types
+            return d as Ply; 
         }
         0
     }
@@ -197,6 +197,11 @@ impl SearchStats {
     #[inline]
     pub fn inc_tt_nodes(&mut self, sel_ply: Ply) {
         self.plies[sel_ply as usize].tt_nodes += 1;
+    }
+
+    #[inline]
+    pub fn inc_q_tt_nodes(&mut self, sel_ply: Ply) {
+        self.plies[sel_ply as usize].q_tt_nodes += 1;
     }
 
     // #[inline]
@@ -262,6 +267,7 @@ pub struct NodeStats {
     pub q_leaf_nodes: u64, // FIXME and terminal
 
     pub tt_nodes: u64,
+    pub q_tt_nodes: u64,
 
 
     pub est_time: Duration,
@@ -284,6 +290,7 @@ impl NodeStats {
         self.q_interior_nodes = 0;
         self.q_leaf_nodes = 0;
         self.tt_nodes = 0;
+        self.q_tt_nodes = 0;
     }
 
     #[inline]
@@ -293,7 +300,7 @@ impl NodeStats {
 
     #[inline]
     pub fn nodes(&self) -> u64 {
-        self.interior_nodes() + self.leaf_nodes() + self.q_interior_nodes() + self.q_leaf_nodes()
+        self.interior_nodes() + self.leaf_nodes() + self.q_interior_nodes() + self.q_leaf_nodes() + self.q_tt_nodes() + self.tt_nodes()
         // root
     }
 
@@ -327,6 +334,11 @@ impl NodeStats {
         self.tt_nodes
     }
 
+    #[inline]
+    pub fn q_tt_nodes(&self) -> u64 {
+        self.q_tt_nodes
+    }
+
     pub fn cut_percentage(&self) -> u64 {
         self.cuts * 100 / (1 + self.nodes())
     }
@@ -338,7 +350,7 @@ macro_rules! header_format {
             "{node:>11} {interior:>11} {leaf:>11} ",
             "{cut:>11} {improv:>11} {cut_perc:>6} ",
             "{qnode:>11} {qinterior:>11} {qleaf:>11} ",
-            "{ttnode:>11} ",
+            "{ttnode:>11} {qttnode:>11} ",
             "{est_time:>11} {real_time:>11} {deterministic_time:>11}"
         )
     };
@@ -358,6 +370,7 @@ impl NodeStats {
             qinterior = "q interior",
             qleaf = "q leaf",
             ttnode = "tt nodes",
+            qttnode = "q tt nodes",
             cut_perc = "cuts %",
             est_time = "est_time",
             real_time = "real_time",
@@ -379,6 +392,7 @@ impl NodeStats {
             qinterior = "-----------",
             qleaf = "-----------",
             ttnode = "-----------",
+            qttnode = "-----------",
             est_time = "-----------",
             real_time = "-----------",
             deterministic_time = "-----------",
@@ -399,6 +413,7 @@ impl NodeStats {
             qinterior = self.q_interior_nodes,
             qleaf = self.q_leaf_nodes(),
             ttnode = self.tt_nodes(),
+            qttnode = self.q_tt_nodes(),
             est_time = Clock::format_duration(self.est_time),
             real_time = Clock::format_duration(self.real_time),
             deterministic_time = Clock::format_duration(self.deterministic_time),

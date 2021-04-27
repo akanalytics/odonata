@@ -36,21 +36,19 @@ impl fmt::Display for IterativeDeepening {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "enabled          : {}", self.enabled)?;
         writeln!(f, "iterations       : {}", self.iterations.len())?;
-        write!(f, "{:>4} ", "stat")?;
+        write!(f, "{:>3} {:>4} ", "dep", "stat")?;
         NodeStats::fmt_header(f)?;
-        writeln!(f, " {:>8} {:>8} {:>8} {:<11}", "alpha", "beta", "score", "pv")?;
+        writeln!(f, " {:>8} {:<11}", "score", "pv")?;
 
-        write!(f, "{:>4} ", "----")?;
+        write!(f, "{:>3} {:>4} ", "---", "----")?;
         NodeStats::fmt_underline(f)?;
-        writeln!(f, " {:>8} {:>8} {:>8} {:<11}", "--------", "--------", "--------", "-----------")?;
+        writeln!(f, " {:>8} {:<11}", "--------", "-----------")?;
         for iter in self.iterations.iter() {
-            write!(f, "{:>4} ", if iter.completed() { "OK" } else { "FAIL" })?;
+            write!(f, "D{:<2} {:>4} ", iter.depth, if iter.completed() { "OK" } else { "FAIL" })?;
             iter.total().fmt_data(f)?;
             writeln!(
                 f,
-                " {:>8} {:>8} {:>8} {:<11}",
-                iter.alpha.to_string(),
-                iter.beta.to_string(),
+                " {:>8} {:<11}",
                 iter.score.to_string(),
                 iter.pv().to_string()
             )?;
@@ -89,6 +87,7 @@ impl Algo {
         for depth in self.range.clone() {
             //let mut root_node = Node::new_root(&mut self.board.clone());
             self.max_depth = depth;
+            self.search_stats.depth = depth;
 
             self.alphabeta(&mut Node::new_root(&mut self.board.clone()));
             let res = self.search_stats().clone();
@@ -115,8 +114,6 @@ impl Algo {
         
         self.search_stats.pv = res.pv.clone();
         self.search_stats.score = res.score;
-        self.search_stats.alpha = res.alpha;
-        self.search_stats.beta = res.beta;
         // callback
         let sp = SearchProgress::from_best_move(Some(self.bm()));
         self.task_control.invoke_callback(&sp);

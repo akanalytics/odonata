@@ -69,9 +69,9 @@ impl Game {
             let player = self.board.color_us().chooser_wb(white, black);            
             player.search(&self.board);
             let m = player.bm();
-            if self.board.fullmove_number() == 50 {
-                println!("{}", player); 
-            }
+            // if self.board.fullmove_number() == 50 {
+            //     println!("{}", player); 
+            // }
             let tags = player.results().tags().clone();
             self.record_move(m, tags);
             
@@ -176,22 +176,16 @@ mod tests {
     #[ignore]
     fn competition() {
         //let tc = TimeControl::NodeCount(1_000);
-        let tc = TimeControl::from_remaining_time(Duration::from_millis(150));
+        let tc = TimeControl::from_remaining_time(Duration::from_millis(1450));
         //let tc = TimeControl::Depth(3);
         let mut white = Algo::new().set_timing_method(tc).build();
         let mut black = Algo::new().set_timing_method(tc).build();
         // white.set_callback(Uci::uci_info);
 
-        white.quiescence.enabled = true;
-        white.move_orderer.mvv_lva = true;
-        white.mte.deterministic = true;
-        white.repetition.enabled = true;
+        white.mte.deterministic = false;
         white.tt.enabled = true;
 
-        black.mte.deterministic = true;
-        black.quiescence.enabled = true;
-        black.move_orderer.mvv_lva = true;
-        black.repetition.enabled = true;
+        black.mte.deterministic = false;
         black.tt.enabled = false;
         
         
@@ -206,10 +200,13 @@ mod tests {
             let mut board = pos.board().clone();
             board.set_castling(CastlingRights::NONE);
 
+            white.tt.clear();
+            black.tt.clear();
             let mut gm1 = Game::new();
             gm1.set_starting_pos(&board);
             gm1.play(white, black);
-
+            white.tt.clear();
+            black.tt.clear();
             let mut gm2 = Game::new();
             gm2.set_starting_pos(&board);
             gm2.play(black, white);
@@ -221,7 +218,7 @@ mod tests {
                 print!("mat.score:{:>4} mat:{}  ", gm2.board.material().centipawns(), gm2.board.material());
             }
             println!();
-            println!("pgn: \n{}\n", gm1);
+            // println!("pgn: \n{}\n", gm1);
         }
         score_wdl
     }

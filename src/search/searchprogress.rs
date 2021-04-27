@@ -1,12 +1,13 @@
+use crate::eval::score::Score;
 use crate::movelist::{Move, MoveList};
 use crate::search::searchstats::SearchStats;
-use crate::eval::score::Score;
+use crate::types::Ply;
 
 /// essentially all the data needed for UCI info status updates or for a decent progress bar
 #[derive(Clone, Default, Debug)]
 pub struct SearchProgress {
-    pub depth: Option<u32>,
-    pub seldepth: Option<u32>,
+    pub depth: Option<Ply>,
+    pub seldepth: Option<Ply>,
     pub time_millis: Option<u64>,
     pub pv: Option<MoveList>,
     pub nodes: Option<u64>,
