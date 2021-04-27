@@ -194,6 +194,11 @@ impl SearchStats {
         self.plies[sel_ply as usize].q_interior_nodes += 1;
     }
 
+    #[inline]
+    pub fn inc_tt_nodes(&mut self, sel_ply: Ply) {
+        self.plies[sel_ply as usize].tt_nodes += 1;
+    }
+
     // #[inline]
     // pub fn inc_nodes(&mut self, ply: u32) {
     //     self.total.interior_nodes += 1;
@@ -256,6 +261,9 @@ pub struct NodeStats {
     pub q_interior_nodes: u64,
     pub q_leaf_nodes: u64, // FIXME and terminal
 
+    pub tt_nodes: u64,
+
+
     pub est_time: Duration,
     pub real_time: Duration,
     pub deterministic_time: Duration,
@@ -275,6 +283,7 @@ impl NodeStats {
         self.cuts = 0;
         self.q_interior_nodes = 0;
         self.q_leaf_nodes = 0;
+        self.tt_nodes = 0;
     }
 
     #[inline]
@@ -313,6 +322,11 @@ impl NodeStats {
         self.q_leaf_nodes
     }
 
+    #[inline]
+    pub fn tt_nodes(&self) -> u64 {
+        self.tt_nodes
+    }
+
     pub fn cut_percentage(&self) -> u64 {
         self.cuts * 100 / (1 + self.nodes())
     }
@@ -324,6 +338,7 @@ macro_rules! header_format {
             "{node:>11} {interior:>11} {leaf:>11} ",
             "{cut:>11} {improv:>11} {cut_perc:>6} ",
             "{qnode:>11} {qinterior:>11} {qleaf:>11} ",
+            "{ttnode:>11} ",
             "{est_time:>11} {real_time:>11} {deterministic_time:>11}"
         )
     };
@@ -342,6 +357,7 @@ impl NodeStats {
             qnode = "q total",
             qinterior = "q interior",
             qleaf = "q leaf",
+            ttnode = "tt nodes",
             cut_perc = "cuts %",
             est_time = "est_time",
             real_time = "real_time",
@@ -362,6 +378,7 @@ impl NodeStats {
             qnode = "-----------",
             qinterior = "-----------",
             qleaf = "-----------",
+            ttnode = "-----------",
             est_time = "-----------",
             real_time = "-----------",
             deterministic_time = "-----------",
@@ -381,6 +398,7 @@ impl NodeStats {
             qnode = self.q_nodes(),
             qinterior = self.q_interior_nodes,
             qleaf = self.q_leaf_nodes(),
+            ttnode = self.tt_nodes(),
             est_time = Clock::format_duration(self.est_time),
             real_time = Clock::format_duration(self.real_time),
             deterministic_time = Clock::format_duration(self.deterministic_time),
@@ -411,6 +429,7 @@ mod tests {
         let mut search = SearchStats::default();
         search.inc_leaf_nodes(2);
         search.inc_leaf_nodes(2);
+        search.inc_tt_nodes(2);
         search.inc_cuts(2);
         search.inc_interior_nodes(0);
         println!("{}", search);

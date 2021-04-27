@@ -82,7 +82,7 @@ impl Algo {
             self.search_stats.inc_leaf_nodes(ply);
             return Self::sigma(board) * board.eval(&self.eval);
         }
-        return self.qsearch(sq, ply, board, alpha, beta);
+        self.qsearch(sq, ply, board, alpha, beta)
     }
 
         // int Quiesce( int alpha, int beta ) {
@@ -103,7 +103,7 @@ impl Algo {
     //     return alpha;
     // }
     pub fn qsearch(&mut self, sq: Bitboard, ply: Ply, board: &mut Board, mut alpha: Score, beta: Score) -> Score {
-        // if !self.quiescence.enabled || ply == 1 {
+        // if !self.quiescence.enabled || ply == 1  {
         //     self.search_stats.inc_leaf_nodes(ply);
         //     return board.eval(&self.eval);
         // }
@@ -117,13 +117,13 @@ impl Algo {
             return alpha;
         }
 
-        // this will handle mates and draws too at quiescent node
+        // this will handle mates too at quiescent node
         let standing_pat;
         if ply == self.max_depth {
             standing_pat = Self::sigma(board) * board.eval(&self.eval);
         } else {
             // in quiescence a mate score might mean a queen sacrifice. But in reality
-            // opponent would just play some other mode
+            // opponent would just play some other move
             standing_pat = Self::sigma(board) * board.eval_quiescence(&self.eval);
         }
 
@@ -143,6 +143,7 @@ impl Algo {
             self.search_stats.inc_q_leaf_nodes(ply);
             return alpha;
         }
+
 
         let mut moves = board.legal_capture_moves();
         moves.retain(|mv| mv.to() == sq);

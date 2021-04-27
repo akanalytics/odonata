@@ -127,6 +127,21 @@ impl Tags {
             self.tags.insert(k.clone(), v.clone());
         }
     }
+
+    pub fn to_pgn(&self) -> String {
+        let ce = self.get(&Tag::CentipawnEvaluation(Score::Cp(0)).key()).ok(); 
+        let acd = self.get(&Tag::AnalysisCountDepth(0).key()).ok(); 
+        if let Some(ce) = ce {
+            if let Some(acd) = acd {
+                let ce = ce.replace("cp", "").trim().parse::<i32>();
+                if let Ok(ce) = ce {
+                    return format!(" {{ {:.02}/{} }}", ce as f32/100., acd);
+                }
+            }
+        }
+        "".to_string()
+        // format!("{:?}", self)
+    }
 }
 
 

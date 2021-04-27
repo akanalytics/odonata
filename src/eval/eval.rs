@@ -5,7 +5,6 @@ use crate::globals::counts;
 use crate::log_debug;
 use crate::material::Material;
 use crate::outcome::GameEnd;
-use crate::outcome::Outcome;
 use crate::types::{Color, Piece};
 use std::fmt;
 

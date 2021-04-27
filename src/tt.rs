@@ -82,9 +82,9 @@ impl fmt::Display for TranspositionTable {
 impl Default for TranspositionTable {
     fn default() -> Self {
         Self {
-            table: vec![Entry::default(); 20_000],
+            table: vec![Entry::default(); 600_000],
             enabled: true,
-            capacity: 200_000,
+            capacity: 600_000,
             hmvc_horizon: 35,
             hits: Stat::new("TT.HITS"),
             misses: Stat::new("TT.MISSES"),
@@ -133,7 +133,7 @@ impl TranspositionTable {
     }
 
     pub fn size_in_mb(&self) -> usize {
-        self.capacity * mem::size_of::<Entry>()
+        self.capacity * mem::size_of::<Entry>() / 1_000_000
     }
 
     pub fn index(&self, hash: Hash) -> usize {

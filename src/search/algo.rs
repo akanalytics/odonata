@@ -21,7 +21,7 @@ use crate::repetition::Repetition;
 use crate::search::timecontrol::TimeControl;
 use crate::search::move_time_estimator::MoveTimeEstimator;
 use crate::search::iterative_deepening::IterativeDeepening;
-use crate::tt::{TranspositionTable, Entry, NodeType};
+use crate::tt::{TranspositionTable};
 use crate::types::{MAX_PLY, Ply};
 use std::fmt;
 use std::ops::Range;
@@ -201,14 +201,6 @@ impl Algo {
     }
 
 
-    pub fn algo_description(&self) -> String {
-        format!(
-            "{algo} depth:{depth}",
-            algo = if self.minmax { "minmax" } else { "alphabeta" },
-            depth = self.max_depth
-        )
-    }
-
     #[inline]
     pub fn set_iteration_depth(&mut self, max_depth: Ply) {
         self.max_depth = max_depth;
@@ -291,7 +283,7 @@ impl Algo {
     pub fn alphabeta(&mut self, node: &mut Node) {
         self.search_stats.reset_keeping_pv();
         self.pv_table = PvTable::new(MAX_PLY as usize);
-        self.tt.clear();
+//        self.tt.clear();
 
         if 1==0 {
             self.alphabeta_recursive(node);
@@ -351,7 +343,6 @@ impl Algo {
 
         self.order_moves(node.ply, &mut moves);
 
-        let original_score = node.score;
         for (_i, mv) in moves.iter().enumerate() {
             let mut child_board = node.board.make_move(mv);
             self.repetition.push(&mv, &child_board);
@@ -481,8 +472,8 @@ mod tests {
             search.search(pos.board());
             println!("{}", search);
             assert_eq!(
-                pos.board().to_san_moves(&search.pv()),
-                pos.board().to_san_moves(&pos.pv().unwrap()),
+                pos.board().to_san_moves(&search.pv(), None),
+                pos.board().to_san_moves(&pos.pv().unwrap(), None),
                 "{}",
                 pos.id().unwrap()
             );
@@ -576,9 +567,9 @@ mod tests {
         let expected_pv = position.pv()?;
         let mut search = Algo::new().set_timing_method(TimeControl::Depth(5)).set_minmax(false).build();
         search.search(position.board());
-        let san = position.board().to_san_moves(&search.pv_table.extract_pv()).replace("\n", " ");
+        let san = position.board().to_san_moves(&search.pv_table.extract_pv(), None).replace("\n", " ");
         println!("{}", search);
-        assert_eq!(san, position.board().to_san_moves(&expected_pv).replace("\n", " "));
+        assert_eq!(san, position.board().to_san_moves(&expected_pv, None).replace("\n", " "));
         assert_eq!(search.pv_table.extract_pv(), expected_pv);
         assert_eq!(search.score(), Score::WhiteWin { minus_ply: -4 });
         Ok(())

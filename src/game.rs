@@ -69,7 +69,7 @@ impl Game {
             let player = self.board.color_us().chooser_wb(white, black);            
             player.search(&self.board);
             let m = player.bm();
-            if m.is_null() {
+            if self.board.fullmove_number() == 50 {
                 println!("{}", player); 
             }
             let tags = player.results().tags().clone();
@@ -139,7 +139,7 @@ impl fmt::Display for Game {
             writeln!(f, "[FEN \"{}\"]", self.starting_pos.to_fen())?;
             writeln!(f, "[SetUp \"1\"]")?;
         }
-        writeln!(f, "{} {}", self.starting_pos.to_san_moves(&self.moves), self.outcome.as_pgn())?;
+        writeln!(f, "{} {}", self.starting_pos.to_san_moves(&self.moves, Some(&self.annotations)), self.outcome.as_pgn())?;
         Ok(())
     }
 }
@@ -221,7 +221,7 @@ mod tests {
                 print!("mat.score:{:>4} mat:{}  ", gm2.board.material().centipawns(), gm2.board.material());
             }
             println!();
-            // println!("pgn: \n{}\n", gm);
+            println!("pgn: \n{}\n", gm1);
         }
         score_wdl
     }

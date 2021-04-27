@@ -5,6 +5,7 @@ use crate::board::Board;
 use crate::parse::Parse;
 use crate::types::{CastlingRights, Color, Piece, Ply};
 use crate::utils::StringUtils;
+use crate::tags::Tags;
 use regex::Regex;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
@@ -248,7 +249,7 @@ pub trait MoveValidator {
     fn parse_san_moves(&self, moves: &str) -> Result<MoveList, String>;
 
     fn to_san(&self, mv: &Move) -> String;
-    fn to_san_moves(&self, moves: &MoveList) -> String;
+    fn to_san_moves(&self, moves: &MoveList, vec_tags: Option<&Vec<Tags>>) -> String;
 }
 
 impl MoveValidator for Board {
@@ -366,7 +367,7 @@ impl MoveValidator for Board {
         s
     }
 
-    fn to_san_moves(&self, moves: &MoveList) -> String {
+    fn to_san_moves(&self, moves: &MoveList, vec_tags: Option<&Vec<Tags>>) -> String {
         let mut s = String::new();
         let mut board = self.clone();
         for (i, mv) in moves.iter().enumerate() {
@@ -383,6 +384,10 @@ impl MoveValidator for Board {
             }
             s += " ";
             s += &board.to_san(mv);
+            if let Some(vec) = vec_tags {
+                let tags = &vec[i];
+                s += &tags.to_pgn();
+            } 
 
             board = board.make_move(mv);
         }
@@ -512,7 +517,7 @@ mod tests {
 
         s += "e1d2, e8c8, c4e3, e7e6, a1h1, b7b5";
         assert_eq!(board.parse_san_moves(san)?.to_string(), s);
-        let s1: String = board.to_san_moves(&board.parse_san_moves(san)?).split_whitespace().collect();
+        let s1: String = board.to_san_moves(&board.parse_san_moves(san)?, None).split_whitespace().collect();
         let s2: String = san.split_whitespace().collect();
         assert_eq!(s1, s2);
 

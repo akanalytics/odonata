@@ -9,6 +9,7 @@ use crate::search::algo::Algo;
 use crate::search::searchprogress::SearchProgress;
 use crate::tt::{Entry, NodeType};
 use crate::types::{Color, Ply};
+use crate::outcome::GameEnd;
 use std::cmp;
 
 pub struct AlphaBeta;
@@ -27,7 +28,7 @@ impl Algo {
         board: &mut Board,
         ply: Ply,
         mut alpha: Score,
-        mut beta: Score,
+        beta: Score,
         last_move: &Move,
     ) -> Score {
         debug_assert!(self.max_depth > 0);
@@ -41,7 +42,7 @@ impl Algo {
             return Score::MinusInf;
         }
 
-        if board.repetition_count() >= 2 {
+        if board.draw_outcome().is_some() {
             self.search_stats.inc_leaf_nodes(ply);
             return Self::sigma(board) * board.eval(&self.eval); // will return a draw score
         }
@@ -55,6 +56,7 @@ impl Algo {
             // FIXME avoid the cloned!
             if let Some(entry) = self.tt.probe_by_board(board).cloned() {
                 let depth = self.max_depth - ply;
+                self.search_stats.inc_tt_nodes(ply + entry.depth);
                 if entry.depth >= depth {
                     //println!("Entry:{:?}", entry);
                     // for bounded scores, we know iterating through the nodes might raise alpha, lower beta
