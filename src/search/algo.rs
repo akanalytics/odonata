@@ -1,4 +1,3 @@
-use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::config::{Config, Configurable};
 use crate::eval::eval::SimpleScorer;

@@ -1,10 +1,8 @@
 use crate::board::Board;
-use crate::board::boardbuf::BoardBuf;
 use crate::catalog::Catalog;
 use crate::material::Material;
-use std::cmp;
-use std::fmt;
 use once_cell::sync::Lazy;
+use std::cmp;
 
 // #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 
@@ -33,9 +31,8 @@ impl Board {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::board::makemove::MoveMaker;
-    use crate::board::movegen::MoveGen;
     use crate::catalog::Catalog;
+    use crate::board::boardbuf::BoardBuf;
 
     #[test]
     fn test_phase() -> Result<(), String> {

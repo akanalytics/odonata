@@ -1,13 +1,13 @@
+use crate::board::boardbuf::BoardBuf;
+use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::catalog::Catalog;
 use crate::movelist::MoveValidator;
 use crate::movelist::{Move, MoveList};
-use crate::tags::Tags;
-use crate::outcome::Outcome;
 use crate::outcome::GameEnd;
+use crate::outcome::Outcome;
 use crate::search::algo::Algo;
-use crate::board::boardbuf::BoardBuf;
-use crate::board::makemove::MoveMaker;
+use crate::tags::Tags;
 use crate::types::Color;
 use std::fmt;
 
@@ -26,8 +26,6 @@ pub struct Game {
     name_b: String,
     outcome: Outcome,
 }
-
-
 
 impl Game {
     pub fn new() -> Self {
@@ -59,25 +57,23 @@ impl Game {
         }
     }
 
-
     pub fn choose_move(&mut self, white: &mut Algo, black: &mut Algo) -> Move {
         if !self.board.outcome().is_game_over() {
             if let Err(e) = self.board.validate() {
                 panic!("Error on board {}", e);
             };
 
-            let player = self.board.color_us().chooser_wb(white, black);            
+            let player = self.board.color_us().chooser_wb(white, black);
             player.search(&self.board);
             let m = player.bm();
             if m.is_null {
-                println!("{}", player); 
+                println!("{}", player);
             }
             // if self.board.fullmove_number() == 50 {
-            //     println!("{}", player); 
+            //     println!("{}", player);
             // }
             let tags = player.results().tags().clone();
             self.record_move(m, tags);
-            
             // FIXME
             if 1 == 0 {
                 println!(
@@ -93,12 +89,8 @@ impl Game {
         Move::new_null()
     }
 
-
-
     // pub const MOVE_SORTS: &'static [&'static str] = &["Natural", "PV from Prior Iteration", "MVV/LVA"];
 }
-
-
 
 // [Event "GRENKE Chess Classic 2019"]
 // [Site "Karlsruhe/Baden Baden GER"]
@@ -121,7 +113,6 @@ impl Game {
 // [BlackACPL "141"]
 impl fmt::Display for Game {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        
         // seven tag roster
         writeln!(f, "[Event \"{}\"]", self.event)?;
         writeln!(f, "[Site \"{}\"]", self.site)?;
@@ -142,20 +133,27 @@ impl fmt::Display for Game {
             writeln!(f, "[FEN \"{}\"]", self.starting_pos.to_fen())?;
             writeln!(f, "[SetUp \"1\"]")?;
         }
-        writeln!(f, "{} {}", self.starting_pos.to_san_moves(&self.moves, Some(&self.annotations)), self.outcome.as_pgn())?;
+        let mut moves = self.starting_pos.to_san_moves(&self.moves, Some(&self.annotations));
+        if !f.alternate() {
+            moves = moves.replace("\n", " ");
+        }
+        writeln!(
+            f,
+            "{} {}",
+            moves,
+            self.outcome.as_pgn()
+        )?;
         Ok(())
     }
 }
-
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::eval::eval::*;
     use crate::search::timecontrol::*;
+    use crate::types::{CastlingRights, ScoreWdl};
     use std::time::Duration;
-    use crate::types::{CastlingRights,ScoreWdl};
-
 
     #[test]
     #[ignore]
@@ -179,7 +177,7 @@ mod tests {
     #[ignore]
     fn competition() {
         //let tc = TimeControl::NodeCount(1_000);
-        let tc = TimeControl::from_remaining_time(Duration::from_millis(2000));
+        let tc = TimeControl::from_remaining_time(Duration::from_millis(4000));
         //let tc = TimeControl::Depth(3);
         let mut white = Algo::new().set_timing_method(tc).build();
         let mut black = Algo::new().set_timing_method(tc).build();
@@ -187,16 +185,17 @@ mod tests {
 
         white.mte.deterministic = false;
         white.tt.enabled = true;
+        white.eval.phasing = true;
 
         black.mte.deterministic = false;
-        black.tt.enabled = false;
-        
+        black.tt.enabled = true;
+        black.eval.phasing = false;
         let wdl = tournament(&mut white, &mut black);
-        println!("score as white {}\nELO difference {:.02}", wdl, wdl.elo_differnce() );
+        println!("score as white {}\nELO difference {:.02}", wdl, wdl.elo_differnce());
     }
 
     fn tournament(white: &mut Algo, black: &mut Algo) -> ScoreWdl {
-        let mut score_wdl = ScoreWdl::default();
+        let mut wdl = ScoreWdl::default();
         for id in 0..960 {
             let pos = Catalog::chess960(id);
             let mut board = pos.board().clone();
@@ -205,28 +204,33 @@ mod tests {
             white.tt.clear();
             black.tt.clear();
             let mut gm1 = Game::new();
+            gm1.round = pos.id().unwrap().to_string() + " W";
             gm1.set_starting_pos(&board);
             gm1.play(white, black);
+            eprintln!("{}\n", gm1);
+
             white.tt.clear();
             black.tt.clear();
             let mut gm2 = Game::new();
+            gm2.round = pos.id().unwrap().to_string() + " B";
             gm2.set_starting_pos(&board);
             gm2.play(black, white);
-            score_wdl += gm1.outcome().as_wdl() - gm2.outcome().as_wdl();
+            eprintln!("{}\n", gm2);
 
-            print!("pos: {} score {}   {:<15} {:<15} ", pos.id().unwrap(), score_wdl, gm1.outcome(), gm2.outcome());
+            wdl += gm1.outcome().as_wdl() - gm2.outcome().as_wdl();
+
+            print!("pos: {} score {}   {:<15} {:<15} ", pos.id().unwrap(), wdl, gm1.outcome(), gm2.outcome());
             if gm1.outcome() == Outcome::DrawRule75 || gm2.outcome() == Outcome::DrawRule75 {
                 print!("mat.score:{:>4} mat:{}  ", gm1.board.material().centipawns(), gm1.board.material());
                 print!("mat.score:{:>4} mat:{}  ", gm2.board.material().centipawns(), gm2.board.material());
             }
             println!();
-            // println!("pgn: \n{}\n", gm1);
+            if (id+1) % 10 == 0 {
+                println!("score as white {}\nELO difference {:.02}", wdl, wdl.elo_differnce());
+            }
         }
-        score_wdl
+        wdl
     }
-
-
-
 
     #[test]
     fn test_bug1() {
@@ -254,5 +258,4 @@ mod tests {
         println!("{}", white);
         assert_eq!(white.bm().uci(), "d3c1");
     }
-
 }

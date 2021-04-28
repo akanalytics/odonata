@@ -37,6 +37,10 @@ pub trait BitboardAttacks {
         (pawns.shift(&color.pawn_capture_east()), pawns.shift(&color.pawn_capture_west()))
     }
 
+    // fn doubled_pawns(&self, pawns: Bitboard, color: &Color) -> Bitboard {
+    //     pawns.fill_north().shift(Dir::N) & pawns
+    // }
+
     fn pawn_en_passant_captures(
         &self,
         pawns: Bitboard,

@@ -10,7 +10,6 @@ use crate::movelist::Move;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
 use crate::search::searchprogress::SearchProgress;
-use crate::tt::{Entry, NodeType};
 use crate::types::Ply;
 use std::fmt;
 

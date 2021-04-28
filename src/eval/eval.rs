@@ -37,10 +37,13 @@ use std::fmt;
 // position is by white/black as directional
 
 // https://www.chessprogramming.org/Simplified_Evaluation_Function
-const SQUARE_VALUES: [[i32; 64]; 6] = [PAWN_PST, KNIGHT_PST, BISHOP_PST, ROOK_PST, QUEEN_PST, KING_PST];
+const SQUARE_VALUES_MG: [[i32; 64]; 6] =
+    [PAWN_PST_MG, KNIGHT_PST, BISHOP_PST, ROOK_PST, QUEEN_PST, KING_PST_MG];
+const SQUARE_VALUES_EG: [[i32; 64]; 6] =
+    [PAWN_PST_EG, KNIGHT_PST, BISHOP_PST, ROOK_PST, QUEEN_PST, KING_PST_EG];
 
 #[rustfmt::skip]
-const PAWN_PST: [i32; 64] = [
+const PAWN_PST_MG: [i32; 64] = [
 0,  0,  0,  0,  0,  0,  0,  0,
 50, 50, 50, 50, 50, 50, 50, 50,
 10, 10, 20, 30, 30, 20, 10, 10,
@@ -49,6 +52,17 @@ const PAWN_PST: [i32; 64] = [
  5, -5,-10,  0,  0,-10, -5,  5,
  5, 10, 10,-35,-35, 10, 10,  5,
  0,  0,  0,  0,  0,  0,  0,  0];
+
+#[rustfmt::skip]
+ const PAWN_PST_EG: [i32; 64] = [
+ 0,  0,  0,  0,  0,  0,  0,  0,
+ 50, 50, 50, 50, 50, 50, 50, 50,
+ 30, 30, 30, 30, 30, 30, 30, 30,
+ 20, 20, 20, 20, 20, 20, 20, 20,
+ 10, 10, 10, 10, 10, 10, 10, 10,
+  5,  5,  5,  5,  5,  5,  5,  5,
+  0,  0,  0,  0,  0,  0,  0,  0,
+  0,  0,  0,  0,  0,  0,  0,  0];
 
 #[rustfmt::skip]
 const KNIGHT_PST: [i32; 64] = [
@@ -95,7 +109,7 @@ const QUEEN_PST: [i32; 64] = [
 -20,-10,-10, -5, -5,-10,-10,-20];
 
 #[rustfmt::skip]
-const KING_PST: [i32; 64] = [
+const KING_PST_MG: [i32; 64] = [
 -30,-40,-40,-50,-50,-40,-40,-30,
 -30,-40,-40,-50,-50,-40,-40,-30,
 -30,-40,-40,-50,-50,-40,-40,-30,
@@ -106,7 +120,7 @@ const KING_PST: [i32; 64] = [
  20, 30, 10,  0,  0, 10, 30, 20];
 
 #[rustfmt::skip]
-const _KING_EG_PST: [i32; 64] = [
+const KING_PST_EG: [i32; 64] = [
 -50,-40,-30,-20,-20,-30,-40,-50,
 -30,-20,-10,  0,  0,-10,-20,-30,
 -30,-10, 20, 30, 30, 20,-10,-30,
@@ -128,6 +142,7 @@ pub struct SimpleScorer {
     pub material: bool,
     pub position: bool,
     pub mobility: bool,
+    pub phasing: bool,
     pub contempt: i32,
     pub tempo: i32,
     pub material_scores: [i32; Piece::ALL.len()],
@@ -144,7 +159,11 @@ impl Configurable for SimpleScorer {
         c.set("eval.mobility", "type check default true");
         c.set("eval.position", "type check default true");
         c.set("eval.material", "type check default true");
-        c.set("eval.draw_score_contempt", &format!("type spin min -10000 max 10000 default {}", self.contempt));
+        c.set("eval.phasing", "type check default true");
+        c.set(
+            "eval.draw_score_contempt",
+            &format!("type spin min -10000 max 10000 default {}", self.contempt),
+        );
         c.set("eval.tempo", &format!("type spin min -1000 max 1000 default {}", self.tempo));
         c.set(
             "eval.material.p",
@@ -175,6 +194,7 @@ impl Configurable for SimpleScorer {
         self.mobility = c.bool("eval.mobility").unwrap_or(self.mobility);
         self.position = c.bool("eval.position").unwrap_or(self.position);
         self.material = c.bool("eval.material").unwrap_or(self.material);
+        self.phasing = c.bool("eval.phasing").unwrap_or(self.phasing);
         self.contempt = c.int("eval.draw_score_contempt").unwrap_or(self.contempt as i64) as i32;
         self.tempo = c.int("eval.tempo").unwrap_or(self.tempo as i64) as i32;
 
@@ -193,6 +213,7 @@ impl fmt::Display for SimpleScorer {
         writeln!(f, "material         : {}", self.material)?;
         writeln!(f, "position         : {}", self.position)?;
         writeln!(f, "mobility         : {}", self.mobility)?;
+        writeln!(f, "phasing         : {}", self.phasing)?;
         writeln!(f, "contempt         : {}", self.contempt)?;
         writeln!(f, "tempo            : {}", self.tempo)?;
         writeln!(f, "material scores  : {:?}", self.material_scores)?;
@@ -215,7 +236,8 @@ impl SimpleScorer {
             mobility: true,
             position: true,
             material: true,
-            contempt: -20,
+            phasing: true,
+            contempt: -20, // typically -ve
             tempo: 15,
             material_scores: MATERIAL_SCORES,
         }
@@ -232,11 +254,15 @@ impl SimpleScorer {
         counts::EVAL_COUNT.increment();
         let outcome = board.outcome();
         if outcome.is_game_over() {
-            return Score::score_from_outcome(self.contempt, outcome, board.color_us(), board.total_halfmoves());
+            return Score::score_from_outcome(
+                self.contempt,
+                outcome,
+                board.color_us(),
+                board.total_halfmoves(),
+            );
         }
         self.evaluate_without_wdl(board)
     }
-
 
     pub fn eval_quiescence(&self, board: &Board) -> Score {
         counts::EVAL_COUNT.increment();
@@ -244,13 +270,16 @@ impl SimpleScorer {
         let outcome = board.draw_outcome();
         if let Some(outcome) = outcome {
             if outcome.is_game_over() {
-                return Score::score_from_outcome(self.contempt, outcome, board.color_us(), board.total_halfmoves());
+                return Score::score_from_outcome(
+                    self.contempt,
+                    outcome,
+                    board.color_us(),
+                    board.total_halfmoves(),
+                );
             }
         }
         self.evaluate_without_wdl(board)
     }
-    
-    
     fn evaluate_without_wdl(&self, board: &Board) -> Score {
         let s = if self.material {
             let mat = Material::from_board(board);
@@ -279,8 +308,12 @@ impl SimpleScorer {
         panic!("Not implmented");
     }
 
-    pub fn pst(p: Piece, sq: usize) -> i32 {
-        SQUARE_VALUES[p][sq]
+    pub fn pst_mg(p: Piece, sq: usize) -> i32 {
+        SQUARE_VALUES_MG[p][sq]
+    }
+
+    pub fn pst_eg(p: Piece, sq: usize) -> i32 {
+        SQUARE_VALUES_EG[p][sq]
     }
 
     // piece positions, king safety, centre control
@@ -290,9 +323,15 @@ impl SimpleScorer {
         for &p in &Piece::ALL {
             let w = (board.pieces(p) & board.white()).swap_bytes();
             let b = board.pieces(p) & board.black();
-            let score_w: i32 = w.iter().map(|bb| Self::pst(p, bb.first_square())).sum();
-            let score_b: i32 = b.iter().map(|bb| Self::pst(p, bb.first_square())).sum();
-            sum += score_w - score_b;
+
+            let w_mg: i32 = w.iter().map(|bb| Self::pst_mg(p, bb.first_square())).sum();
+            let b_mg: i32 = b.iter().map(|bb| Self::pst_mg(p, bb.first_square())).sum();
+
+            let w_eg: i32 = w.iter().map(|bb| Self::pst_eg(p, bb.first_square())).sum();
+            let b_eg: i32 = b.iter().map(|bb| Self::pst_eg(p, bb.first_square())).sum();
+            let eg_perc = if self.phasing { board.phase() } else { 0 };
+
+            sum += ((w_mg - b_mg) * (100 - eg_perc) + (w_eg - b_eg) * eg_perc) / 100;
         }
         sum
     }

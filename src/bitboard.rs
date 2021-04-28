@@ -109,6 +109,24 @@ impl Bitboard {
         }
     }
 
+
+    pub fn fill_north(self) -> Bitboard {
+        let mut bb = self;
+        bb |= Bitboard::from_bits_truncate(bb.bits << 32);
+        bb |= Bitboard::from_bits_truncate(bb.bits << 16);
+        bb |= Bitboard::from_bits_truncate(bb.bits << 8);
+        bb
+    }
+    
+    pub fn fill_south(self) -> Bitboard {
+        let mut bb = self;
+        bb |= Bitboard::from_bits_truncate(bb.bits >> 32);
+        bb |= Bitboard::from_bits_truncate(bb.bits >> 16);
+        bb |= Bitboard::from_bits_truncate(bb.bits >> 8);
+        bb
+    }
+
+
     // bitflags & doesnt seem to be declared const
     #[inline]
     pub const fn or(self, other: Bitboard) -> Bitboard {
@@ -274,6 +292,8 @@ mod tests {
         assert!(a1b2 - a1 == b2);
         assert!(!a1b2.is_empty());
         assert!(a1b2.intersects(b2));
+        assert_eq!(a1b2.fill_north(), (FILE_A | FILE_B) - b1);
+        assert_eq!(a1b2.fill_south(), a1b2 | b1);
         assert_eq!(Bitboard::all(), !Bitboard::empty());
         assert!(Bitboard::FILE_A.contains(a4));
         assert_eq!(Bitboard::FILE_A.popcount(), 8);
