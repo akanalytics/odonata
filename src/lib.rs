@@ -40,6 +40,7 @@ pub mod stat;
 pub mod hasher;
 pub mod repetition;
 pub mod tt;
+pub mod phase;
 
 pub use crate::attacks::ClassicalBitboard;
 pub use crate::bitboard::Bitboard;

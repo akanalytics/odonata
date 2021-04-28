@@ -543,8 +543,7 @@ mod tests {
         thread::sleep(millis);
 
         // with sq based qsearch
-        assert_eq!(nodes, 77221); 
-        
+        assert_eq!(nodes, 77221);
         // assert_eq!(nodes, 66234);
         assert_eq!(algo.pv_table.extract_pv(), position.pv().unwrap());
         assert_eq!(algo.score(), Score::WhiteWin { minus_ply: -3 });

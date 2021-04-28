@@ -5,6 +5,7 @@ use std::fmt;
 
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub struct Material {
+    // counts[color][piece] = #
     counts: [[i32; Piece::ALL.len()]; 2],
 }
 
@@ -64,6 +65,13 @@ impl Material {
     #[inline]
     pub fn counts(&self, c: Color, p: Piece) -> i32 {
         self.counts[c][p]
+    }
+
+    pub fn non_pawn(&self) -> Material {
+        let mut m = *self;
+        m.counts[Color::White][Piece::Pawn] = 0;
+        m.counts[Color::Black][Piece::Pawn] = 0;
+        m
     }
 
     pub fn white(&self) -> Material {
@@ -157,7 +165,7 @@ mod tests {
     use crate::catalog::Catalog;
 
     #[test]
-    fn counts() {
+    fn test_material() {
         let board = Catalog::starting_position();
         let mat_full1 = Material::from_board(&board);
         assert_eq!(mat_full1.counts(Color::White, Piece::King), 1);
@@ -221,5 +229,10 @@ mod tests {
         assert_eq!(mat_p.centipawns(), -100);
         assert_eq!(mat_PPP.centipawns(), 300);
         assert_eq!(mat_some.advantage().centipawns(), -300);  // R+N-Q = -75, N-b=-25, 2x-P=-200
+        let board = Catalog::starting_position();
+        assert_eq!(board.material().black().non_pawn().centipawns(), -13250);
+        assert_eq!(board.material().white().non_pawn().centipawns(), 13250);
+        assert_eq!(Material::from_piece_str("KkPPPPPppppp").unwrap().white().non_pawn().centipawns(), 10000);
+        assert_eq!(Material::from_piece_str("KkPPPPPppppp").unwrap().black().non_pawn().centipawns(), -10000);
     }
 }

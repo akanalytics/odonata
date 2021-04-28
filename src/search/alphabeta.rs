@@ -4,11 +4,11 @@ use crate::board::Board;
 use crate::eval::eval::Scorable;
 use crate::eval::score::Score;
 use crate::movelist::Move;
+use crate::outcome::GameEnd;
 use crate::search::algo::Algo;
 use crate::search::searchprogress::SearchProgress;
 use crate::tt::{Entry, NodeType};
 use crate::types::{Color, Ply};
-use crate::outcome::GameEnd;
 
 pub struct AlphaBeta;
 
@@ -34,7 +34,6 @@ impl Algo {
             let sp = SearchProgress::from_search_stats(&self.search_stats());
             self.task_control.invoke_callback(&sp);
         }
-
 
         if self.time_up_or_cancelled(ply, false) {
             return Score::MinusInf;
@@ -72,7 +71,7 @@ impl Algo {
                             if entry.score > alpha {
                                 self.record_new_pv(ply, &entry.bm, true);
                             }
-                            return entry.score
+                            return entry.score;
                         }
                         NodeType::Cut => {
                             // previously this position raised alpha (sufficiently to cause a cut).
@@ -80,7 +79,7 @@ impl Algo {
                             if entry.score > alpha {
                                 self.record_new_pv(ply, &entry.bm, true);
                                 node_type = NodeType::Pv;
-                                alpha = entry.score; 
+                                alpha = entry.score;
                                 if alpha >= beta {
                                     // self.record_new_pv(ply, &bm);
                                     return entry.score;
