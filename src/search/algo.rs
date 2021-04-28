@@ -1,34 +1,30 @@
 use crate::board::makemove::MoveMaker;
-use crate::board::movegen::MoveGen;
 use crate::board::Board;
 use crate::config::{Config, Configurable};
-use crate::eval::eval::{Scorable, SimpleScorer};
+use crate::eval::eval::SimpleScorer;
 use crate::eval::score::Score;
 use crate::globals::counts;
 use crate::log_debug;
 use crate::movelist::Move;
-use crate::tags::Tag;
 use crate::movelist::MoveList;
-use crate::pvtable::PvTable;
 use crate::position::Position;
+use crate::pvtable::PvTable;
+use crate::repetition::Repetition;
+use crate::search::iterative_deepening::IterativeDeepening;
 use crate::search::move_orderer::MoveOrderer;
+use crate::search::move_time_estimator::MoveTimeEstimator;
+use crate::search::node::Node;
 use crate::search::quiescence::Quiescence;
 use crate::search::searchprogress::SearchProgress;
 use crate::search::searchstats::SearchStats;
 use crate::search::taskcontrol::TaskControl;
-use crate::search::node::Node;
-use crate::repetition::Repetition;
 use crate::search::timecontrol::TimeControl;
-use crate::search::move_time_estimator::MoveTimeEstimator;
-use crate::search::iterative_deepening::IterativeDeepening;
-use crate::tt::{TranspositionTable};
-use crate::types::{MAX_PLY, Ply};
+use crate::tags::Tag;
+use crate::tt::TranspositionTable;
+use crate::types::{Ply, MAX_PLY};
 use std::fmt;
 use std::ops::Range;
 use std::thread;
-
-
-
 
 #[derive(Clone, Default)]
 pub struct Algo {
@@ -194,12 +190,15 @@ impl Algo {
         self.task_control.set_running();
         let mut algo = self.clone();
         let board = board.clone();
-        self.child_thread = AlgoThreadHandle(
-            Some(
-                builder.spawn(move || { algo.search(&board); algo}).unwrap()
-            ));
+        self.child_thread = AlgoThreadHandle(Some(
+            builder
+                .spawn(move || {
+                    algo.search(&board);
+                    algo
+                })
+                .unwrap(),
+        ));
     }
-
 
     #[inline]
     pub fn set_iteration_depth(&mut self, max_depth: Ply) {
@@ -221,7 +220,7 @@ impl Algo {
     }
 
     pub fn bm(&self) -> Move {
-        if self.pv().len() > 0 { 
+        if self.pv().len() > 0 {
             self.pv()[0]
         } else {
             Move::NULL_MOVE
@@ -279,134 +278,131 @@ impl Algo {
         ply == self.max_depth
     }
 
-
     pub fn alphabeta(&mut self, node: &mut Node) {
         self.search_stats.reset_keeping_pv();
         self.pv_table = PvTable::new(MAX_PLY as usize);
-//        self.tt.clear();
+        //        self.tt.clear();
 
-        if 1==0 {
-            self.alphabeta_recursive(node);
-            self.search_stats.score = node.score;
-        } else {
-            self.search_stats.score = self.alphabeta_recursive2(
-            node.board,
-            node.ply,
-            node.alpha,
-            node.beta,
-            &Move::NULL_MOVE );
-        }
+        // if 1==0 {
+        //     self.alphabeta_recursive(node);
+        //     self.search_stats.score = node.score;
+        // } else {
+        self.search_stats.score =
+            self.alphabeta_recursive2(node.board, node.ply, node.alpha, node.beta, &Move::NULL_MOVE);
+        // }
 
         // self.search_stats.alpha = node.alpha;
         // self.search_stats.beta = node.beta;
-        self.search_stats.record_time_actual_and_completion_status(self.max_depth, !self.task_control.is_cancelled(), self.pv_table.extract_pv());
+        self.search_stats.record_time_actual_and_completion_status(
+            self.max_depth,
+            !self.task_control.is_cancelled(),
+            self.pv_table.extract_pv(),
+        );
     }
 
-    
-    pub fn alphabeta_recursive(&mut self, node: &mut Node) {
-        debug_assert!(self.max_depth > 0);
-        if self.search_stats.total().nodes() % 1000000 == 0 && self.search_stats.total().nodes() != 0 {
-            let sp = SearchProgress::from_search_stats(&self.search_stats());
-            self.task_control.invoke_callback(&sp);
-        }
+    // pub fn alphabeta_recursive(&mut self, node: &mut Node) {
+    //     debug_assert!(self.max_depth > 0);
+    //     if self.search_stats.total().nodes() % 1000000 == 0 && self.search_stats.total().nodes() != 0 {
+    //         let sp = SearchProgress::from_search_stats(&self.search_stats());
+    //         self.task_control.invoke_callback(&sp);
+    //     }
 
-        if self.time_up_or_cancelled(node.ply, false) {
-            return;
-        }
+    //     if self.time_up_or_cancelled(node.ply, false) {
+    //         return;
+    //     }
 
-        if node.board.repetition_count() >= 2 {
-            node.score = node.board.eval(&self.eval);
-            self.search_stats.inc_leaf_nodes(node.ply);
-            return;
-        }
+    //     if node.board.repetition_count() >= 2 {
+    //         node.score = node.board.eval(&self.eval);
+    //         self.search_stats.inc_leaf_nodes(node.ply);
+    //         return;
+    //     }
 
-        if self.is_leaf(node.ply) {
-            self.quiescence_search(node);
-            return;
-        }
-        self.search_stats.inc_interior_nodes(node.ply);
+    //     if self.is_leaf(node.ply) {
+    //         self.quiescence_search(node);
+    //         return;
+    //     }
+    //     self.search_stats.inc_interior_nodes(node.ply);
 
-        // // FIXME!!!!
-        // if self.max_depth > self.search_stats.selective_depth() {
-        //     let sp = SearchProgress::from_search_stats(&self.search_stats());
-        //     self.task_control.invoke_callback(&sp);
-        // }
-        // bailing here means the score is +/- inf and wont be used
-        // FIXME!
+    //     // // FIXME!!!!
+    //     // if self.max_depth > self.search_stats.selective_depth() {
+    //     //     let sp = SearchProgress::from_search_stats(&self.search_stats());
+    //     //     self.task_control.invoke_callback(&sp);
+    //     // }
+    //     // bailing here means the score is +/- inf and wont be used
+    //     // FIXME!
 
-        let mut moves = node.board.legal_moves();
-        if moves.is_empty() {
-            node.score = node.board.eval(&self.eval);
-            self.search_stats.inc_leaf_nodes(node.ply);
-            return;
-        }
+    //     let mut moves = node.board.legal_moves();
+    //     if moves.is_empty() {
+    //         node.score = node.board.eval(&self.eval);
+    //         self.search_stats.inc_leaf_nodes(node.ply);
+    //         return;
+    //     }
 
-        self.order_moves(node.ply, &mut moves);
+    //     self.order_moves(node.ply, &mut moves);
 
-        for (_i, mv) in moves.iter().enumerate() {
-            let mut child_board = node.board.make_move(mv);
-            self.repetition.push(&mv, &child_board);
-            child_board.set_repetition_count(self.repetition.count(&child_board));
-            let mut child = node.new_child(mv, &mut child_board);
-            debug_assert!(child.alpha < child.beta || self.minmax);
-            self.current_variation.set_last_move(child.ply, mv);
+    //     for (_i, mv) in moves.iter().enumerate() {
+    //         let mut child_board = node.board.make_move(mv);
+    //         self.repetition.push(&mv, &child_board);
+    //         child_board.set_repetition_count(self.repetition.count(&child_board));
+    //         let mut child = node.new_child(mv, &mut child_board);
+    //         debug_assert!(child.alpha < child.beta || self.minmax);
+    //         self.current_variation.set_last_move(child.ply, mv);
 
-            self.alphabeta_recursive(&mut child);
+    //         self.alphabeta_recursive(&mut child);
 
-            node.board.undo_move(mv);
-            self.repetition.pop();
-            let is_cut = self.process_child(&mv, node, &child);
-            if is_cut {
-                self.search_stats.inc_cuts(node.ply);
-                break;
-                // let entry = Entry {
-                //     hash: node.board.hash(),`
-                //     score: node.score,
-                //     ply: node.ply,
-                //     entry_type: NodeType::LowerBound,
-                //     best_move: Move::NULL_MOVE,
-                // };
-                // self.tt.insert(entry);
-                // break;
-            }
-        }
- 
-        self.current_variation.set_last_move(node.ply, &Move::new_null());
-    }
+    //         node.board.undo_move(mv);
+    //         self.repetition.pop();
+    //         let is_cut = self.process_child(&mv, node, &child);
+    //         if is_cut {
+    //             self.search_stats.inc_cuts(node.ply);
+    //             break;
+    //             // let entry = Entry {
+    //             //     hash: node.board.hash(),`
+    //             //     score: node.score,
+    //             //     ply: node.ply,
+    //             //     entry_type: NodeType::LowerBound,
+    //             //     best_move: Move::NULL_MOVE,
+    //             // };
+    //             // self.tt.insert(entry);
+    //             // break;
+    //         }
+    //     }
+    //     self.current_variation.set_last_move(node.ply, &Move::new_null());
+    // }
 
-    #[inline]
-    pub fn process_child(&mut self, mv: &Move, parent: &mut Node, child: &Node) -> bool {
-        if Node::is_maximizing(parent.board) {
-            if child.score > parent.score {
-                parent.score = child.score;
-            }
-            if child.score > parent.alpha {
-                parent.alpha = child.score;
-                self.pv_table.set(child.ply, mv);
-                self.pv_table.propagate_from(child.ply);
-                self.search_stats.inc_improvements(parent.ply);
-                if parent.is_root() {
-                    let sp = SearchProgress::from_search_stats(&self.search_stats());
-                    self.task_control.invoke_callback(&sp);
-                }
-            }
-        } else {
-            if child.score < parent.score {
-                parent.score = child.score;
-            }
-            if child.score < parent.beta {
-                parent.beta = child.score;
-                self.pv_table.set(child.ply, mv);
-                self.pv_table.propagate_from(child.ply);
-                self.search_stats.inc_improvements(parent.ply);
-                if parent.is_root() {
-                    let sp = SearchProgress::from_search_stats(&self.search_stats());
-                    self.task_control.invoke_callback(&sp);
-                }
-            }
-        }
-        parent.alpha >= parent.beta && !self.minmax  
-    }
+    // #[inline]
+    // pub fn process_child(&mut self, mv: &Move, parent: &mut Node, child: &Node) -> bool {
+    //     if Node::is_maximizing(parent.board) {
+    //         if child.score > parent.score {
+    //             parent.score = child.score;
+    //         }
+    //         if child.score > parent.alpha {
+    //             parent.alpha = child.score;
+    //             self.pv_table.set(child.ply, mv);
+    //             self.pv_table.propagate_from(child.ply);
+    //             self.search_stats.inc_improvements(parent.ply);
+    //             if parent.is_root() {
+    //                 let sp = SearchProgress::from_search_stats(&self.search_stats());
+    //                 self.task_control.invoke_callback(&sp);
+    //             }
+    //         }
+    //     } else {
+    //         if child.score < parent.score {
+    //             parent.score = child.score;
+    //         }
+    //         if child.score < parent.beta {
+    //             parent.beta = child.score;
+    //             self.pv_table.set(child.ply, mv);
+    //             self.pv_table.propagate_from(child.ply);
+    //             self.search_stats.inc_improvements(parent.ply);
+    //             if parent.is_root() {
+    //                 let sp = SearchProgress::from_search_stats(&self.search_stats());
+    //                 self.task_control.invoke_callback(&sp);
+    //             }
+    //         }
+    //     }
+    //     parent.alpha >= parent.beta && !self.minmax
+    // }
 }
 
 #[cfg(test)]
@@ -414,10 +410,10 @@ mod tests {
     use super::*;
     use crate::board::boardbuf::*;
     use crate::catalog::*;
-    use crate::types::*;
     use crate::comms::uci::Uci;
     use crate::eval::eval::*;
     use crate::movelist::MoveValidator;
+    use crate::types::*;
     use std::time;
 
     fn init() {
@@ -429,18 +425,28 @@ mod tests {
         // init();
         let board = Catalog::starting_position();
         let eval = SimpleScorer::new().set_position(false);
-        let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(true).set_eval(eval).set_qsearch(false).build();
+        let mut search = Algo::new()
+            .set_timing_method(TimeControl::Depth(3))
+            .set_minmax(true)
+            .set_eval(eval)
+            .set_qsearch(false)
+            .build();
         search.search(&board);
         assert_eq!(search.search_stats().total().nodes(), 1 + 20 + 400 + 8902 /* + 197_281 */);
         assert_eq!(search.search_stats().branching_factor().round() as u64, 21);
 
         let board = Catalog::starting_position();
         let eval = SimpleScorer::new().set_position(false);
-        let mut search = Algo::new().set_timing_method(TimeControl::Depth(4)).set_minmax(false).set_eval(eval).build();
+        let mut search =
+            Algo::new().set_timing_method(TimeControl::Depth(4)).set_minmax(false).set_eval(eval).build();
         search.move_orderer.enabled = false;
         search.search(&board);
         println!("{}", search);
-        assert_eq!(search.search_stats().total().nodes(), 1833);  // qsearch
+        // added tt
+        assert_eq!(search.search_stats().total().nodes(), 1640);
+
+        // previous
+        // assert_eq!(search.search_stats().total().nodes(), 1833);  qsearch
         // assert_eq!(search.search_stats().total().nodes(), 1757);
         assert_eq!(search.search_stats().branching_factor().round() as u64, 1);
     }
@@ -468,7 +474,8 @@ mod tests {
     fn test_all_mate_in_2() {
         let positions = Catalog::mate_in_2();
         for pos in positions {
-            let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).set_callback(Uci::uci_info).build();
+            let mut search =
+                Algo::new().set_timing_method(TimeControl::Depth(3)).set_callback(Uci::uci_info).build();
             search.search(pos.board());
             println!("{}", search);
             assert_eq!(
@@ -477,12 +484,7 @@ mod tests {
                 "{}",
                 pos.id().unwrap()
             );
-            assert_eq!(
-                search.pv().to_string(),
-                pos.pv().unwrap().to_string(),
-                "{}",
-                pos.id().unwrap()
-            );
+            assert_eq!(search.pv().to_string(), pos.pv().unwrap().to_string(), "{}", pos.id().unwrap());
             // FIXME assert_eq!(search.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
         }
     }
@@ -508,19 +510,20 @@ mod tests {
                 .set_minmax(false)
                 .set_eval(eval)
                 .set_iterative_deepening(id)
-                .set_callback(Uci::uci_info).build();
+                .set_callback(Uci::uci_info)
+                .build();
             search.search(position.board());
             println!("{}", search);
             if id {
-                assert_eq!(search.search_stats().total().nodes(), 2200);  // with sq q qsearch
-                // assert_eq!(search.search_stats().total().nodes(), 2108);  // with ordering pv + mvvlva
-                // assert_eq!(search.search_stats().total().nodes(), 3560); 
-                // assert_eq!(search.search_stats().total().nodes(), 6553);  // with ordering pv
-                // assert_eq!(search.search_stats().total().nodes(), 6740);
+                assert_eq!(search.search_stats().total().nodes(), 2200); // with sq q qsearch
+                                                                         // assert_eq!(search.search_stats().total().nodes(), 2108);  // with ordering pv + mvvlva
+                                                                         // assert_eq!(search.search_stats().total().nodes(), 3560);
+                                                                         // assert_eq!(search.search_stats().total().nodes(), 6553);  // with ordering pv
+                                                                         // assert_eq!(search.search_stats().total().nodes(), 6740);
             } else {
                 assert_eq!(search.search_stats().total().nodes(), 2200); // with sq qsearch
-                // assert_eq!(search.search_stats().total().nodes(), 2108); // with  mvvlva
-                //assert_eq!(search.search_stats().total().nodes(), 7749); // no ids no mvvlva
+                                                                         // assert_eq!(search.search_stats().total().nodes(), 2108); // with  mvvlva
+                                                                         //assert_eq!(search.search_stats().total().nodes(), 7749); // no ids no mvvlva
             }
             assert_eq!(search.pv_table.extract_pv(), position.pv().unwrap());
             assert_eq!(search.score(), Score::WhiteWin { minus_ply: -3 });
@@ -529,6 +532,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_mate_in_2_async() {
         let position = Catalog::mate_in_2()[0].clone();
         let mut algo = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(true).build();
@@ -537,7 +541,9 @@ mod tests {
         let millis = time::Duration::from_millis(20);
         thread::sleep(millis);
 
-        assert_eq!(nodes, 77221);  // with sq based qsearch
+        // with sq based qsearch
+        assert_eq!(nodes, 77221); 
+        
         // assert_eq!(nodes, 66234);
         assert_eq!(algo.pv_table.extract_pv(), position.pv().unwrap());
         assert_eq!(algo.score(), Score::WhiteWin { minus_ply: -3 });
@@ -551,7 +557,7 @@ mod tests {
         let closure = |sp: &SearchProgress| println!("nps {}", sp.time_millis.unwrap_or_default());
         algo2.set_callback(closure);
         algo2.search_async(position.board());
-        let millis = time::Duration::from_millis(200);
+        let millis = time::Duration::from_millis(100);
         thread::sleep(millis);
         algo2.search_async_stop();
         println!("{}", algo2);
@@ -591,11 +597,12 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn bug04() {
         // depth 6 seldepth 9 nodes 75012 nps 211000 score cp -325 time 354 pv f2g1 a7a5 g1h2 f8g8 h2g1 f8g8
         //let board =
         //    Board::parse_fen("3r1k2/p4ppp/6b1/4r3/1pP5/1B5P/2P2KP1/1NR5 w - - 4 35").unwrap();
-        let board= Catalog::starting_position();
+        let board = Catalog::starting_position();
         // let time_control = TimeControl::RemainingTime {
         //     wtime: time::Duration::from_millis(141516),
         //     btime: time::Duration::from_millis(127990),
@@ -604,9 +611,8 @@ mod tests {
         //     movestogo: 0,
         //     our_color: Color::Black,
         // };
-        let mut search = Algo::new()
-            .set_timing_method(TimeControl::Depth(8))
-            .set_callback(Uci::uci_info).build();
+        let mut search =
+            Algo::new().set_timing_method(TimeControl::Depth(8)).set_callback(Uci::uci_info).build();
         search.search(&board);
         println!("{}", search);
     }

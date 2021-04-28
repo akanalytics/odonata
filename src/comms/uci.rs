@@ -52,7 +52,33 @@ use std::time::Duration;
 // [engine keeps thinking]
 // engine1 -> GUI: bestmove d2d4 ponder d7d5
 
+// Ponderhit example:
 
+// gui -> engine: position p1 [initial position]
+// gui -> engine: go wtime xxx btime yyy [engine starts searching]
+// ... time passes
+// gui <- engine: bestmove a2a3 ponder a7a6 [engine stops]
+// gui -> engine: position p1 moves a2a3 a7a6 [position after ponder move]
+// gui -> engine: go ponder wtime xxx btime yyy [engine starts searching]
+// ... time passes (engine does not stop searching until 'stop' or 'ponderhit' is received)
+// gui -> engine: ponderhit [engine may or may not continue searching depending on time management]
+// ... time passes (or not, engine is free to reply instantly)
+// gui <- engine: bestmove a3a4 ponder a6a5
+
+// Pondermiss example:
+
+// gui -> engine: position p1
+// gui -> engine: go wtime xxx btime yyy [engine starts searching]
+// ... time passes
+// gui <- engine: bestmove a2a3 ponder a7a6 [engine stops]
+// gui -> engine: position p1 moves a2a3 a7a6
+// gui -> engine: go ponder wtime xxx btime yyy [engine starts searching]
+// ... time passes (engine does not stop until 'stop' or 'ponderhit' is received)
+// gui -> engine: stop [engine stops searching]
+// gui <- engine: bestmove m1 ponder m2 [this is discarded by gui -]
+// gui -> engine: position p1 moves a2a3 b7b6... [- because engine2 played a different move]
+// gui -> engine: go...
+//
 #[derive(Debug, Default)]
 pub struct Uci {
     preamble: Vec<String>,

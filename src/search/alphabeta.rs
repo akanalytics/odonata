@@ -47,7 +47,6 @@ impl Algo {
 
         let mut score = Score::MinusInf;
         let mut bm = Move::NULL_MOVE;
-        self.current_variation.set_last_move(ply, &Move::NULL_MOVE);
         let mut node_type = NodeType::All;
 
         // FIXME tt probe for leaves?
@@ -71,7 +70,7 @@ impl Algo {
                             // previously this position raised alpha, but didnt trigger a cut
                             // no point going through moves as we know what the max score is
                             if entry.score > alpha {
-                                self.record_new_pv(ply, &entry.bm);
+                                self.record_new_pv(ply, &entry.bm, true);
                             }
                             return entry.score
                         }
@@ -79,7 +78,7 @@ impl Algo {
                             // previously this position raised alpha (sufficiently to cause a cut).
                             // not all child nodes were scored, so score is a lower bound
                             if entry.score > alpha {
-                                self.record_new_pv(ply, &entry.bm);
+                                self.record_new_pv(ply, &entry.bm, true);
                                 node_type = NodeType::Pv;
                                 alpha = entry.score; 
                                 if alpha >= beta {
@@ -145,7 +144,7 @@ impl Algo {
                 alpha = child_score;
                 bm = *mv;
                 node_type = NodeType::Pv;
-                self.record_new_pv(ply, &bm);
+                self.record_new_pv(ply, &bm, false);
             }
 
             if alpha >= beta && !self.minmax {
@@ -177,8 +176,8 @@ impl Algo {
         score
     }
 
-    fn record_new_pv(&mut self, ply: Ply, mv: &Move) {
-        self.pv_table.set(ply + 1, mv);
+    fn record_new_pv(&mut self, ply: Ply, mv: &Move, terminal_move: bool) {
+        self.pv_table.set(ply + 1, mv, terminal_move);
         self.pv_table.propagate_from(ply + 1);
         self.search_stats.inc_improvements(ply);
         if ply == 0 {

@@ -98,6 +98,7 @@ impl Algo {
                 self.ids.iterations.push(res);
                 break;
             }
+
             let mut sp = SearchProgress::from_search_stats(&res);
             sp.pv = Some(res.pv.clone());
             sp.score = Some(res.score);

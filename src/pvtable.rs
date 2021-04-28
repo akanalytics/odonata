@@ -16,6 +16,11 @@ impl Default for PvTable {
     }
 }
 
+// matrix[0][0..5]
+// matrix[1][0..4]
+// matrix[2][0..3]
+// ... pvs get copied up, extracted from matrix[0]
+// ... set ply sets m[ply][0]
 impl PvTable {
     pub fn new(max_ply: usize) -> PvTable {
         let mut pvc = PvTable { matrix: vec![Vec::new(); max_ply], size: 0, };
@@ -25,9 +30,12 @@ impl PvTable {
         }
         pvc
     }
-    pub fn set(&mut self, ply: Ply, m: &Move) {
+    pub fn set(&mut self, ply: Ply, m: &Move, terminal_move: bool) {
         let ply = ply as usize;
         self.matrix[ply][0] = *m;
+        if terminal_move {
+            self.matrix[ply][1..].fill(Move::NULL_MOVE);
+        }
         if self.size <= ply {
             self.size = ply + 1;
         }
@@ -51,7 +59,7 @@ impl PvTable {
     pub fn extract_pv(&self) -> MoveList {
         let mut res = MoveList::new();
         if let Some(pv) = self.matrix[0].get(1..self.size) {
-            res.extend(pv);
+            res.extend(pv.iter().take_while(|m| !m.is_null()));
         }
         res
     }
@@ -78,18 +86,45 @@ mod tests {
     #[test]
     fn test_pv_table() {
         let mut pvc = PvTable::default();
-        pvc.set(0, &Move::parse_uci("a1h1").unwrap());
-        pvc.set(1, &Move::parse_uci("b1h1").unwrap());
+        let a1h1 = Move::parse_uci("a1h1").unwrap();
+        let b1h1 = Move::parse_uci("b1h1").unwrap();
+        let c1h1 = Move::parse_uci("c1h1").unwrap();
+        pvc.set(0, &a1h1, false);
+        pvc.set(1, &b1h1, false);
         assert_eq!(format!("{}", pvc), "size             : 2\n  0:   a1h1     -\n  1:   b1h1\n");
-        pvc.set(2, &Move::parse_uci("c1h1").unwrap());
+        pvc.set(2, &c1h1, false);
         println!("{}", pvc);
 
         pvc.propagate_from(1);
         println!("{}", pvc);
+        assert_eq!(pvc.matrix[0][0], a1h1);
+        assert_eq!(pvc.matrix[0][1], b1h1);
+        assert_eq!(pvc.matrix[0][2], Move::NULL_MOVE);
 
+        assert_eq!(pvc.matrix[1][0], b1h1);
+        assert_eq!(pvc.matrix[2][0], c1h1);
+
+        let c1h2 = Move::parse_uci("c1h2").unwrap();
         pvc.propagate_from(2);
-        pvc.set(2, &Move::parse_uci("c1h2").unwrap());
+        pvc.set(2, &c1h2, false);
         println!("{}", pvc);
+        assert_eq!(pvc.matrix[0][0], a1h1);
+        assert_eq!(pvc.matrix[0][1], b1h1);
+        assert_eq!(pvc.matrix[0][2], Move::NULL_MOVE);
+
+        assert_eq!(pvc.matrix[1][0], b1h1);
+        assert_eq!(pvc.matrix[1][1], c1h1);
+
+        assert_eq!(pvc.matrix[2][0], c1h2);
+        pvc.propagate_from(1);
+        assert_eq!(pvc.extract_pv().len(), 2);
+
+        // set a truncated pv
+        pvc.set(1, &c1h2, true);
+        assert_eq!(pvc.matrix[1][0], c1h2);
+        assert_eq!(pvc.matrix[1][1], Move::NULL_MOVE);
+        pvc.propagate_from(1);
+        assert_eq!(pvc.extract_pv().len(), 1);
 
         // assert_eq!( format!("{:?}", pvc), "" );
     }

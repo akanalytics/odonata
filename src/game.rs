@@ -192,7 +192,7 @@ mod tests {
         black.tt.enabled = false;
         
         let wdl = tournament(&mut white, &mut black);
-        println!("score as white {}\nELO {}", wdl, wdl.elo_differnce() );
+        println!("score as white {}\nELO difference {:.02}", wdl, wdl.elo_differnce() );
     }
 
     fn tournament(white: &mut Algo, black: &mut Algo) -> ScoreWdl {
@@ -245,14 +245,14 @@ mod tests {
         // let tc = TimeControl::MoveTime(Duration::from_millis(140));
         let tc = TimeControl::from_remaining_time(Duration::from_millis(1750));
         let mut white = Algo::new().set_timing_method(tc).build();
-        let mut black = Algo::new().set_timing_method(tc).build();
+        let _black = Algo::new().set_timing_method(tc).build();
         white.search(&b1);
         white.search(&b1);
         white.search(&b1);
-        println!("{}", white.bm());
         // let b2 = b1.make_move(&black.bm());
         //white.search(&b2);
         println!("{}", white);
+        assert_eq!(white.bm().uci(), "d3c1");
     }
 
 }

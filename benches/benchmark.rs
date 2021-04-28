@@ -351,7 +351,7 @@ fn bench_pvtable(c: &mut Criterion) {
     c.bench_function("pv_table", |b| {
         b.iter(|| {
             for i in 1..7 {
-                pv_table.set(i, black_box(&Move::new_null()));
+                pv_table.set(i, black_box(&Move::new_null()), false);
                 pv_table.propagate_from(i);
             }
         });

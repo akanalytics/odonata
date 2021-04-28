@@ -14,6 +14,7 @@ pub struct MoveOrderer {
     pub mvv_lva: bool,
     count_pv: PlyStat,
     count_bm: PlyStat,
+    
 }
 
 impl Configurable for MoveOrderer {
@@ -191,9 +192,10 @@ mod tests {
     }
 
     #[test]
-    fn test_compare() {
+    fn test_ordering() {
         let position = &Catalog::mate_in_2()[0];
         let mut algo = Algo::new().set_timing_method(TimeControl::Depth(3)).set_qsearch(false).build();
+        algo.tt.enabled = false;
         algo.move_orderer.enabled = false;
         algo.move_orderer.prior_bm = false;
         algo.move_orderer.prior_pv = false;
@@ -211,8 +213,10 @@ mod tests {
         assert_eq!(algo.move_orderer.count_bm.get(0), 2);
         assert_eq!(algo.move_orderer.count_bm.get(1), 0); // bm only variation of lenght 1
 
+        algo.move_orderer.mvv_lva = false;
         algo.move_orderer.prior_bm = false;
         algo.move_orderer.prior_pv = true;
+        algo.tt.enabled = false;
         algo.search(position.board());
         println!("{}", algo);
         // 2 = pv[0] plus pv[0..1] used once
