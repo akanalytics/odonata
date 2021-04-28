@@ -71,6 +71,10 @@ impl Repetition {
         self.prior_positions.clear();
     }
 
+    pub fn prior_positions(&self) -> usize {
+        self.prior_positions.len()
+    }
+
     pub fn push(&mut self, mv: &Move, post_move: &Board) {
         if !self.enabled {
             return;

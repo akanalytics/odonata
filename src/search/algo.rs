@@ -527,6 +527,7 @@ mod tests {
             }
             assert_eq!(search.pv_table.extract_pv(), position.pv().unwrap());
             assert_eq!(search.score(), Score::WhiteWin { minus_ply: -3 });
+            assert_eq!(search.repetition.prior_positions(), 0);
             println!("{}", search.results());
         }
     }

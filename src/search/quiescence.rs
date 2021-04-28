@@ -123,10 +123,6 @@ impl Algo {
         mut alpha: Score,
         beta: Score,
     ) -> Score {
-        // if !self.quiescence.enabled || ply == 1  {
-        //     self.search_stats.inc_leaf_nodes(ply);
-        //     return board.eval(&self.eval);
-        // }
 
         if self.search_stats.total().nodes() % 1000000 == 0 && self.search_stats.total().nodes() != 0 {
             let sp = SearchProgress::from_search_stats(&self.search_stats());
@@ -164,21 +160,6 @@ impl Algo {
             return alpha;
         }
 
-        // let entry = self.tt.probe_by_board(board);
-        // if let Some(entry) = entry {
-        //     self.search_stats.inc_q_tt_nodes(ply);
-        //     return entry.score;
-        // } else {
-        //     let entry = Entry {
-        //         hash: board.hash(),
-        //         score: Score::cp(0),
-        //         depth: 0, //self.max_depth - ply,
-        //         node_type: NodeType::Pv,
-        //         bm: Move::NULL_MOVE,
-        //     };
-        //     self.tt.insert(entry);
-        // }
-
         let mut moves = board.legal_capture_moves();
         moves.retain(|mv| mv.to() == sq);
 
@@ -193,8 +174,9 @@ impl Algo {
         for (_i, mv) in moves.iter().enumerate() {
             let mut child_board = board.make_move(mv);
             let score = -self.qsearch(sq, ply + 1, &mut child_board, -beta, -alpha);
+            board.undo_move(mv);
             if score > beta {
-                return beta;
+                return score;
             }
             if score > alpha {
                 alpha = score;

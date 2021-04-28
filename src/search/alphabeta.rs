@@ -52,7 +52,7 @@ impl Algo {
         // FIXME tt probe for leaves?
         if self.is_leaf(ply) {
             let score = self.qsearch2(last_move, ply, board, alpha, beta);
-            assert!(self.task_control.is_cancelled() || score > Score::MinusInf);
+            debug_assert!(self.task_control.is_cancelled() || score > Score::MinusInf);
             return score;
         }
 
@@ -130,12 +130,12 @@ impl Algo {
             self.current_variation.set_last_move(ply + 1, mv);
 
             let child_score = -self.alphabeta_recursive2(&mut child_board, ply + 1, -beta, -alpha, &mv);
+            board.undo_move(mv);
+            self.repetition.pop();
             if self.task_control.is_cancelled() {
                 return Score::MinusInf;
             }
-            assert!(child_score > Score::MinusInf);
-            board.undo_move(mv);
-            self.repetition.pop();
+            debug_assert!(child_score > Score::MinusInf);
 
             if child_score > score {
                 score = child_score;
