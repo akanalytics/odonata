@@ -10,18 +10,17 @@ use std::cmp;
 pub struct Phase;
 
 
-static ALL_PIECES: Lazy<i32> = Lazy::new(|| 2 * Catalog::starting_position().material().white().non_pawn().centipawns());
-static KINGS: Lazy<i32> = Lazy::new(|| 2 * Material::from_piece_str("K").unwrap().centipawns());
+static ALL_PIECES: Lazy<i32> = Lazy::new(|| 2 * Catalog::starting_position().material().white().minors_and_majors().centipawns());
 
 impl Board {
     
     // pahse = % endgame, 0 is start, 100 is end game with just pawns
     pub fn phase(&self) -> i32 {
         let material = self.material();
-        let cp = cmp::min(*ALL_PIECES, material.white().non_pawn().centipawns() -  material.black().non_pawn().centipawns());
+        let cp = cmp::min(*ALL_PIECES, material.white().minors_and_majors().centipawns() -  material.black().minors_and_majors().centipawns());
 
         // KINGS <= cp <= ALL_PIECES
-        let percentage = (cp - *KINGS) * 100 / (*ALL_PIECES - *KINGS);
+        let percentage = cp * 100 / *ALL_PIECES;
         100-percentage
     }
 }
@@ -36,8 +35,7 @@ mod tests {
 
     #[test]
     fn test_phase() -> Result<(), String> {
-        assert_eq!( *ALL_PIECES, 26500);
-        assert_eq!( *KINGS, 20000);
+        assert_eq!( *ALL_PIECES, 6500);
         assert_eq!( Catalog::starting_position().phase(), 0);
         assert_eq!( Board::parse_fen("7k/8/8/8/8/8/8/7K b - - 45 100")?.phase(), 100);
         assert_eq!( Board::parse_fen("7k/pppppppp/8/8/8/8/PPPPPPPP/7K b - - 45 100")?.phase(), 100);

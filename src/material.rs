@@ -67,10 +67,12 @@ impl Material {
         self.counts[c][p]
     }
 
-    pub fn non_pawn(&self) -> Material {
+    pub fn minors_and_majors(&self) -> Material {
         let mut m = *self;
         m.counts[Color::White][Piece::Pawn] = 0;
         m.counts[Color::Black][Piece::Pawn] = 0;
+        m.counts[Color::White][Piece::King] = 0;
+        m.counts[Color::Black][Piece::King] = 0;
         m
     }
 
@@ -207,6 +209,7 @@ mod tests {
 
         // to_string
         assert_eq!(mat_KBk.to_string(), "KBk".to_string());
+        assert_eq!(mat_KBk.minors_and_majors().to_string(), "B".to_string());
         assert_eq!(mat_Kkn.to_string(), "Kkn".to_string());
         assert_eq!(mat_full1.to_string(), "KQRRBBNNPPPPPPPPkqrrbbnnpppppppp".to_string());
 
@@ -230,9 +233,9 @@ mod tests {
         assert_eq!(mat_PPP.centipawns(), 300);
         assert_eq!(mat_some.advantage().centipawns(), -300);  // R+N-Q = -75, N-b=-25, 2x-P=-200
         let board = Catalog::starting_position();
-        assert_eq!(board.material().black().non_pawn().centipawns(), -13250);
-        assert_eq!(board.material().white().non_pawn().centipawns(), 13250);
-        assert_eq!(Material::from_piece_str("KkPPPPPppppp").unwrap().white().non_pawn().centipawns(), 10000);
-        assert_eq!(Material::from_piece_str("KkPPPPPppppp").unwrap().black().non_pawn().centipawns(), -10000);
+        assert_eq!(board.material().black().minors_and_majors().centipawns(), -3250);
+        assert_eq!(board.material().white().minors_and_majors().centipawns(), 3250);
+        assert_eq!(Material::from_piece_str("KkPPPPPppppp").unwrap().white().minors_and_majors().centipawns(), 0);
+        assert_eq!(Material::from_piece_str("KkPPPPPppppp").unwrap().black().minors_and_majors().centipawns(), 0);
     }
 }

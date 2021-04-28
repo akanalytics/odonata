@@ -2,6 +2,8 @@ use crate::board::Board;
 use crate::config::{Config, Configurable};
 use crate::eval::score::Score;
 use crate::globals::counts;
+use crate::attacks::ClassicalBitboard;
+use crate::attacks::BitboardAttacks;
 use crate::log_debug;
 use crate::material::Material;
 use crate::outcome::GameEnd;
@@ -142,6 +144,7 @@ pub struct SimpleScorer {
     pub material: bool,
     pub position: bool,
     pub mobility: bool,
+    pub pawn_doubled: i32,
     pub phasing: bool,
     pub contempt: i32,
     pub tempo: i32,
@@ -160,6 +163,7 @@ impl Configurable for SimpleScorer {
         c.set("eval.position", "type check default true");
         c.set("eval.material", "type check default true");
         c.set("eval.phasing", "type check default true");
+        c.set("eval.pawn.doubled", &format!("type spin min -200 max 200 default {}", self.pawn_doubled));
         c.set(
             "eval.draw_score_contempt",
             &format!("type spin min -10000 max 10000 default {}", self.contempt),
@@ -195,6 +199,7 @@ impl Configurable for SimpleScorer {
         self.position = c.bool("eval.position").unwrap_or(self.position);
         self.material = c.bool("eval.material").unwrap_or(self.material);
         self.phasing = c.bool("eval.phasing").unwrap_or(self.phasing);
+        self.pawn_doubled = c.int("eval.pawn.doubled").unwrap_or(self.pawn_doubled as i64) as i32;
         self.contempt = c.int("eval.draw_score_contempt").unwrap_or(self.contempt as i64) as i32;
         self.tempo = c.int("eval.tempo").unwrap_or(self.tempo as i64) as i32;
 
@@ -213,7 +218,8 @@ impl fmt::Display for SimpleScorer {
         writeln!(f, "material         : {}", self.material)?;
         writeln!(f, "position         : {}", self.position)?;
         writeln!(f, "mobility         : {}", self.mobility)?;
-        writeln!(f, "phasing         : {}", self.phasing)?;
+        writeln!(f, "phasing          : {}", self.phasing)?;
+        writeln!(f, "pawn.doubled     : {}", self.pawn_doubled)?;
         writeln!(f, "contempt         : {}", self.contempt)?;
         writeln!(f, "tempo            : {}", self.tempo)?;
         writeln!(f, "material scores  : {:?}", self.material_scores)?;
@@ -237,6 +243,7 @@ impl SimpleScorer {
             position: true,
             material: true,
             phasing: true,
+            pawn_doubled: -10, 
             contempt: -20, // typically -ve
             tempo: 15,
             material_scores: MATERIAL_SCORES,
@@ -288,24 +295,16 @@ impl SimpleScorer {
             0
         };
         let p = if self.position { self.evaluate_position(board) } else { 0 };
+        let m = if self.mobility { self.evaluate_mobility(board) } else { 0 };
         let t = Score::side_to_move_score(self.tempo, board.color_us());
-        Score::Cp(s + p) + t
+        Score::Cp(s + p + m) + t
     }
 
-    //     // too expensive to check for checkmate, so we just quickly check some draw conditions
-    //     if let Some(outcome) = board.cursory_outcome() {
-    //         return Score::from(outcome);
-    //     }
-
-    //     let mat = Material::from_board(board);
-    //     let s = Self::evaluate_material(&mat);
-    //     // let s = Material::is_insufficient2(board);
-    //     Score::Cp(s)
-    // }
 
     // always updated
-    pub fn evaluate_mobility(&self, _board: &Board) -> Score {
-        panic!("Not implmented");
+    pub fn evaluate_mobility(&self, b: &Board) -> i32 {
+        let dp = ClassicalBitboard::doubled_pawns(b.white() & b.pawns()).popcount() - ClassicalBitboard::doubled_pawns(b.black() & b.pawns()).popcount();
+        return self.pawn_doubled * dp as i32;
     }
 
     pub fn pst_mg(p: Piece, sq: usize) -> i32 {
@@ -413,10 +412,11 @@ mod tests {
         assert_eq!(bd.eval_position(eval), Score::Cp(50));
 
         let bd = Board::parse_fen("8/4p3/8/8/8/8/8/8 w - - 0 1").unwrap().as_board();
-        assert_eq!(bd.eval_position(eval), Score::Cp(--35));
+        assert_eq!(bd.phase(), 100);
+        assert_eq!(bd.eval_position(eval), Score::Cp(0));
 
         let w = Catalog::white_starting_position();
-        assert_eq!(w.eval_position(eval), Score::Cp(-125));
+        assert_eq!(w.eval_position(eval), Score::Cp(-130));
 
         let b = Catalog::black_starting_position();
         assert_eq!(w.eval_position(eval), b.eval_position(eval).negate());

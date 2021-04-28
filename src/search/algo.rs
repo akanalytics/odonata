@@ -442,7 +442,7 @@ mod tests {
         search.search(&board);
         println!("{}", search);
         // added tt
-        assert_eq!(search.search_stats().total().nodes(), 1640);
+        assert_eq!(search.search_stats().total().nodes(), 1642);
 
         // previous
         // assert_eq!(search.search_stats().total().nodes(), 1833);  qsearch

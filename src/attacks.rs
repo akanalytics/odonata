@@ -37,9 +37,9 @@ pub trait BitboardAttacks {
         (pawns.shift(&color.pawn_capture_east()), pawns.shift(&color.pawn_capture_west()))
     }
 
-    // fn doubled_pawns(&self, pawns: Bitboard, color: &Color) -> Bitboard {
-    //     pawns.fill_north().shift(Dir::N) & pawns
-    // }
+    fn doubled_pawns(pawns: Bitboard ) -> Bitboard {
+        pawns.fill_north().shift(&Dir::N) & pawns
+    }
 
     fn pawn_en_passant_captures(
         &self,
@@ -225,5 +225,9 @@ mod tests {
         let (east, west) = classical.pawn_en_passant_captures(pawns_w, opponent, &Color::White, ep_square);
         assert_eq!(east, g6);
         assert_eq!(west, g6);
+
+        let pawns = b2 | b4 | c5 | c6 | d3 | d7 | h5;
+        assert_eq!(ClassicalBitboard::doubled_pawns(pawns), b4 | c6 | d7);
     }
+
 }

@@ -134,8 +134,8 @@ impl Bitboard {
     }
 
     #[inline]
-    pub fn popcount(self) -> usize {
-        self.bits.count_ones() as usize
+    pub fn popcount(self) -> i32 {
+        self.bits.count_ones() as i32
     }
 
     /// flip vertical
