@@ -121,6 +121,7 @@ impl Uci {
         }
         println!("info string exiting...");
         io::stdout().flush().ok();
+        info!("exiting...");
     }
 
     fn readline_and_execute(&mut self) {
@@ -201,6 +202,7 @@ impl Uci {
         println!("id author {}", Version::AUTHORS);
         self.uci_show_options();
         println!("uciok");
+        info!("odonata -> gui: uciok");
         Ok(())
     }
 
@@ -277,7 +279,7 @@ impl Uci {
         // search until the "stop" command. Do not exit the search without being told so in this mode!
         let infinite = args.contain("infinite");
 
-        let tm = if let Some(wtime) = wtime {
+        let tc = if let Some(wtime) = wtime {
             let btime = btime.unwrap_or(0) as u64;
             let winc = winc.unwrap_or(0) as u64;
             let binc = binc.unwrap_or(0) as u64;
@@ -304,7 +306,7 @@ impl Uci {
             TimeControl::default()
         };
 
-        self.algo.set_timing_method(tm);
+        self.algo.set_timing_method(tc);
         // restrict search to this moves only
         // Example: After "position startpos" and "go infinite searchmoves e2e4 d2d4"
         // the engine should only search the two moves e2e4 and d2d4 in the initial position
@@ -312,6 +314,7 @@ impl Uci {
         self.log_debug_message("starting search with configuration ...");
         self.log_debug_message(&format!("{}", self.algo));
         self.log_debug_message(&format!("{}", self.board));
+        info!("odonata: searching on tc {}", tc);
         self.algo.search_async(&self.board);
         Ok(())
     }
@@ -359,6 +362,7 @@ impl Uci {
             println!("bestmove {}", bestmove);
         }
         io::stdout().flush().ok();
+        info!("odonata -> gui: info {}", UciInfo(search_progress));
     }
 
     fn uci_info_string(&self, str: &str) {

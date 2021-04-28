@@ -104,7 +104,7 @@ mod tests {
 
     #[test]
     fn test_logger() {
-        println!("Printed!");
+        // println!("Printed!");
         // log!("debug: Hellow World!");
         debug!("debug: Hellow World!");
         info!("info: Hellow World!");
