@@ -15,6 +15,42 @@ fn global_classical_bitboard() -> &'static ClassicalBitboard {
     })
 }
 
+
+fn threats(board: &Board, opponent: Color) -> Bitboard {
+    let occ = board.black() | board.white();
+    let pawns = board.pawns() & board.color(opponent);
+    let knights = board.knights() & board.color(opponent);
+    let bishops = board.bishops() & board.color(opponent);
+    let rooks = board.rooks() & board.color(opponent);
+    let queens = board.queens() & board.color(opponent);
+    let kings = board.kings() & board.color(opponent);
+
+    let attack_gen = global_classical_bitboard();
+    let (east, west) = attack_gen.pawn_attacks(pawns, opponent);
+    let mut threats = east | west;
+
+    for each in knights.iter() {
+        let sq = each.first_square();
+        threats |= attack_gen.knight_attacks(sq);
+    }
+    for each in (bishops | queens).iter() {
+        let sq = each.first_square();
+        threats |= attack_gen.bishop_attacks(occ, sq);
+    }
+
+    for each in (rooks | queens).iter() {
+        let sq = each.first_square();
+        threats |= attack_gen.rook_attacks(occ, sq);
+    }
+
+    for each in kings.iter() {
+        let sq = each.first_square();
+        threats |= attack_gen.king_attacks(sq);
+    }
+    threats
+}
+
+// FIXME for pawns. Is target not those pawns attacking
 fn attacked_by(targets: Bitboard, occ: Bitboard, board: &Board, opponent: Color) -> Bitboard {
     let pawns = board.pawns() & board.color(opponent);
     let knights = board.knights() & board.color(opponent);
@@ -466,6 +502,15 @@ mod tests {
             "b2a1, b2a3, b2c1, b2c3, b2d4, b2e5, b2f6, b2g7, b2h8"
         );
     }
+
+    #[test]
+    fn test_threats() {
+        let board = Board::parse_fen("k5r1/3q1p2/4b2r/1n6/6pp/b2N3n/8/K1QR4 w - - 0 1").unwrap().as_board();
+        let bb = threats(&board, Color::Black);
+        println!("{}", !bb);
+        assert_eq!(!bb, a1 | b1 | d1 | e1 | f1 | h1 | c2 | d2 | e2 | g2 | h2 | e3 | a4 | e4 | a5 | e5 | a6 | b6 | h6 | g8);
+    }
+
 
     #[test]
     fn moves_in_check() {
