@@ -565,6 +565,7 @@ mod tests {
         assert!(nodes > 10 && nodes < 66234);
     }
 
+
     #[test]
     #[ignore]
     fn test_mate_in_3_sync() -> Result<(), String> {

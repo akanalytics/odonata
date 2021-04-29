@@ -1,0 +1,23 @@
+warning: unused import: `crate::material::Material`
+ --> src\phase.rs:3:5
+  |
+3 | use crate::material::Material;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: 1 warning emitted
+
+warning: unused import: `crate::material::Material`
+ --> src\phase.rs:3:5
+  |
+3 | use crate::material::Material;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: 1 warning emitted
+
+    Finished release [optimized] target(s) in 0.21s
+     Running target\release\deps\odonata-c5736b61d7b56102.exe
+     Running target\release\deps\odonata-432ab47d33f61b7b.exe
