@@ -9,7 +9,7 @@ fn main() {
     let board = Catalog::starting_position();
     let mut search =
         Algo::new().set_timing_method(TimeControl::move_time_secs(1)).build();
-    for _i in 0..30 {
+    for _i in 0..10 {
         search.search(&board);
         println!("{}", search.results());
     }
