@@ -1,12 +1,12 @@
 use crate::bitboard::Bitboard;
 use crate::board::makemove::MoveMaker;
-use crate::movelist::MoveList;
 use crate::board::Board;
 use crate::config::{Config, Configurable};
 use crate::eval::eval::Scorable;
 use crate::eval::score::Score;
 use crate::log_debug;
 use crate::movelist::Move;
+use crate::movelist::MoveList;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
 use crate::search::searchprogress::SearchProgress;
@@ -122,7 +122,6 @@ impl Algo {
         mut alpha: Score,
         beta: Score,
     ) -> Score {
-
         if self.search_stats.total().nodes() % 1000000 == 0 && self.search_stats.total().nodes() != 0 {
             let sp = SearchProgress::from_search_stats(&self.search_stats());
             self.task_control.invoke_callback(&sp);
@@ -159,8 +158,12 @@ impl Algo {
             return alpha;
         }
 
-        let mut moves = board.legal_capture_moves();
-        moves.retain(|mv| mv.to() == sq);
+        let mut moves = board.pseudo_legal_moves();
+        let mut moves: MoveList = moves
+            .iter()
+            .filter(|mv| mv.to() == sq && mv.is_capture() && board.is_legal_move(mv))
+            .cloned()
+            .collect();
 
         if moves.len() == 0 {
             self.search_stats.inc_q_leaf_nodes(ply);
