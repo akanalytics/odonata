@@ -1,6 +1,5 @@
 use crate::bitboard::Bitboard;
 use crate::board::makemove::MoveMaker;
-use crate::board::movegen::MoveGen;
 use crate::board::Board;
 use crate::parse::Parse;
 use crate::types::{CastlingRights, Color, Piece, Ply};
@@ -192,6 +191,16 @@ impl Default for MoveList {
 }
 
 
+impl std::iter::FromIterator<Move> for MoveList {
+    fn from_iter<I: IntoIterator<Item=Move>>(iter: I) -> Self {
+        let mut ml = MoveList::new();
+        for mv in iter {
+            ml.push(mv);
+        }
+        ml
+    }
+}
+
 impl MoveList {
     pub fn new() -> Self {
         Self::default()
@@ -217,6 +226,7 @@ impl MoveList {
         }
     }
 }
+
 
 impl Deref for MoveList {
     type Target = Vec<Move>;

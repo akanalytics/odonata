@@ -28,6 +28,7 @@ impl MoveMaker for Board {
             fullmove_number: self.fullmove_number + self.turn.chooser_wb(0, 1),
             fifty_clock: self.fifty_clock + 1,
             repetition_count: Cell::new(0),
+            threats_to: [Cell::<_>::new(Bitboard::EMPTY), Cell::<_>::new(Bitboard::EMPTY)],
             // moves: self.moves.clone(),
             ..*self
         };

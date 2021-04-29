@@ -216,7 +216,6 @@ impl Hasher {
 mod tests {
     use super::*;
     use crate::board::makemove::MoveMaker;
-    use crate::board::movegen::MoveGen;
     use crate::catalog::Catalog;
 
     #[test]

@@ -1,4 +1,3 @@
-use crate::board::movegen::MoveGen;
 use crate::board::Board;
 use crate::material::Material;
 use crate::types::{Color, ScoreWdl};
@@ -101,18 +100,20 @@ impl GameEnd for Board {
         if let Some(outcome) = self.draw_outcome() {
             return outcome;
         }
-        let legal_moves = self.legal_moves();
         let color_to_play = self.color_us();
-        if legal_moves.len() == 0 {
-            if self.is_in_check(color_to_play) {
+        if self.is_in_check(color_to_play) {
+            if !self.has_legal_moves() {
                 // white to play and in check with no moves => black win
                 return color_to_play.chooser_wb(Outcome::WinBlack, Outcome::WinWhite);
             } else {
-                return Outcome::DrawStalemate;
+                return Outcome::InProgress;
             }
+        } else if !self.has_legal_moves() {
+            return Outcome::DrawStalemate;
         }
-        Outcome::InProgress
+        return Outcome::InProgress;
     }
+
 
     fn draw_outcome(&self) -> Option<Outcome> {
         // X InProgress = 0,
@@ -169,13 +170,13 @@ mod tests {
 
     #[test]
     fn test_checkmate() {
-        assert!(Catalog::checkmates()[0].outcome() == Outcome::WinWhite);
-        assert!(Catalog::checkmates()[1].outcome() == Outcome::WinBlack);
+        assert_eq!(Catalog::checkmates()[0].outcome(), Outcome::WinWhite);
+        assert_eq!(Catalog::checkmates()[1].outcome(), Outcome::WinBlack);
     }
 
     #[test]
     fn test_stalemate() {
-        assert!(Catalog::stalemates()[0].outcome() == Outcome::DrawStalemate);
-        assert!(Catalog::stalemates()[1].outcome() == Outcome::DrawStalemate);
+        assert_eq!(Catalog::stalemates()[0].outcome(), Outcome::DrawStalemate);
+        assert_eq!(Catalog::stalemates()[1].outcome(), Outcome::DrawStalemate);
     }
 }

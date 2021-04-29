@@ -16,7 +16,8 @@ fn global_classical_bitboard() -> &'static ClassicalBitboard {
 }
 
 
-fn threats(board: &Board, opponent: Color) -> Bitboard {
+fn threats_to(board: &Board, us: Color) -> Bitboard {
+    let opponent = us.opposite();
     let occ = board.black() | board.white();
     let pawns = board.pawns() & board.color(opponent);
     let knights = board.knights() & board.color(opponent);
@@ -75,25 +76,45 @@ fn attacked_by(targets: Bitboard, occ: Bitboard, board: &Board, opponent: Color)
 
     attackers
 }
-
-pub trait MoveGen {
-    fn is_in_check(&self, c: Color) -> bool;
-    fn will_check_them(&self, mv: &Move) -> bool;
-    fn is_legal_move(&self, mv: &Move) -> bool;
-    fn pseudo_legal_moves(&self) -> MoveList;
-    fn legal_moves(&self) -> MoveList;
-    fn legal_capture_moves(&self) -> MoveList;
+trait MoveGen {
 }
 
-impl MoveGen for Board {
-    fn will_check_them(&self, mv: &Move) -> bool {
+    // fn is_in_check(&self, king_color: Color) -> bool;
+    // fn will_check_them(&self, mv: &Move) -> bool;
+    // fn is_legal_move(&self, mv: &Move) -> bool;
+    // fn pseudo_legal_moves(&self) -> MoveList;
+    // fn legal_moves(&self) -> impl Iterator<Item=Move>;
+    // fn legal_capture_moves(&self) -> MoveList;
+    // fn threats_to(&self, c: Color) -> Bitboard;
+
+
+impl Board {
+    pub fn will_check_them(&self, mv: &Move) -> bool {
         debug_assert!(self.is_legal_move(mv));
         let their_king_color = self.color_them();
         self.make_move(mv).is_in_check(their_king_color)
     }
 
+    pub fn threats_to(&self, c: Color) -> Bitboard {
+        let mut th = self.threats_to[c].get();
+        if th.is_empty() {
+            th = threats_to(self, c);
+            self.threats_to[c].set(th);
+        }
+        th
+    } 
+
+    pub fn has_legal_moves(&self) -> bool {
+        self.pseudo_legal_moves().iter().any(|m| self.is_legal_move(m))
+    }
+
+    // fn is_in_check(&self, c: Color) -> bool {
+    //     let king = self.kings() & self.color(c);
+    //     king.intersects(self.threats_to(c))
+    // }
+
     /// called with is_in_check( board.turn() ) to see if currently in check
-    fn is_in_check(&self, king_color: Color) -> bool {
+    pub fn is_in_check(&self, king_color: Color) -> bool {
         let board = &self;
         let us = board.color(king_color);
         let them = board.color(king_color.opposite());
@@ -103,18 +124,19 @@ impl MoveGen for Board {
         !attacked_by(our_king, occ, board, king_color.opposite()).is_empty()
     }
 
-    fn is_legal_move(&self, mv: &Move) -> bool {
+    pub fn is_legal_move(&self, mv: &Move) -> bool {
         mv.is_castle() || !self.make_move(mv).is_in_check(self.color_us())
     }
 
-    fn legal_moves(&self) -> MoveList {
+
+    pub fn legal_moves(&self) -> MoveList {
         counts::LEGAL_MOVE_COUNT.increment();
         let mut moves = self.pseudo_legal_moves();
         moves.retain(|m| self.is_legal_move(m));
         moves
     }
 
-    fn legal_capture_moves(&self) -> MoveList {
+    pub fn legal_capture_moves(&self) -> MoveList {
         let mut moves = self.legal_moves();
         moves.retain(|m| m.is_capture() || m.is_promo());
         moves
@@ -122,7 +144,7 @@ impl MoveGen for Board {
 
 
     // TODO: Vec::with_capacity(100).
-    fn pseudo_legal_moves(&self) -> MoveList {
+    pub fn pseudo_legal_moves(&self) -> MoveList {
         let board = &self;
         let mut moves = MoveList::new();
         let color = board.color_us();
@@ -506,7 +528,7 @@ mod tests {
     #[test]
     fn test_threats() {
         let board = Board::parse_fen("k5r1/3q1p2/4b2r/1n6/6pp/b2N3n/8/K1QR4 w - - 0 1").unwrap().as_board();
-        let bb = threats(&board, Color::Black);
+        let bb = threats_to(&board, Color::White);
         println!("{}", !bb);
         assert_eq!(!bb, a1 | b1 | d1 | e1 | f1 | h1 | c2 | d2 | e2 | g2 | h2 | e3 | a4 | e4 | a5 | e5 | a6 | b6 | h6 | g8);
     }
@@ -573,7 +595,7 @@ mod tests {
         // https://lichess.org/editor/8/8/8/8/8/8/6r1/7K
         let fen = "8/8/8/8/8/8/6r1/7K w - - 0 0 id 'rook+king'";
         let board = Board::parse_fen(fen).unwrap().as_board();
-        assert_eq!(board.legal_moves().sort().to_string(), "h1g2");
+        assert_eq!(board.legal_moves().sort().to_string(), "h1g2", "{:#}", board);
         let mov_h1g2 = board.parse_uci_move("h1g2")?;
         assert_eq!(board.is_legal_move(&mov_h1g2), true);
         println!("{}", counts::GLOBAL_COUNTS);

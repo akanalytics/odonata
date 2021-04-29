@@ -22,6 +22,7 @@ pub struct Board {
     fullmove_number: u16,
     repetition_count: Cell<u16>,
     hash: Hash,
+    threats_to: [Cell<Bitboard>; 2],
     // interior mutability (precludes copy trait)
     // moves: MoveList,
 }
@@ -213,6 +214,8 @@ impl fmt::Display for Board {
                     self.pieces(p)
                 )?;
             }
+            writeln!(f, "Threats to white:\n{}\n", self.threats_to[Color::White].get())?;
+            writeln!(f, "Threats to black:\n{}\n", self.threats_to[Color::White].get())?;
         }
 
         Ok(())
@@ -231,6 +234,7 @@ impl Default for Board {
             fifty_clock: Default::default(),
             fullmove_number: 1,
             repetition_count: Cell::<u16>::new(0), 
+            threats_to: [Cell::<_>::new(Bitboard::default()), Cell::<_>::new(Bitboard::default())],
             hash: 0, 
             // moves: MoveList,
         }

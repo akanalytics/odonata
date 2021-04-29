@@ -1,5 +1,4 @@
 use crate::board::makemove::MoveMaker;
-use crate::board::movegen::MoveGen;
 use crate::board::Board;
 
 pub struct Perft;

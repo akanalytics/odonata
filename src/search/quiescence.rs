@@ -1,6 +1,6 @@
 use crate::bitboard::Bitboard;
 use crate::board::makemove::MoveMaker;
-use crate::board::movegen::MoveGen;
+use crate::movelist::MoveList;
 use crate::board::Board;
 use crate::config::{Config, Configurable};
 use crate::eval::eval::Scorable;

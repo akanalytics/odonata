@@ -1,5 +1,5 @@
 use crate::board::makemove::MoveMaker;
-use crate::board::movegen::MoveGen;
+use crate::movelist::MoveList;
 use crate::board::Board;
 use crate::eval::eval::Scorable;
 use crate::eval::score::Score;
@@ -114,6 +114,7 @@ impl Algo {
         // FIXME!
 
         let mut moves = board.legal_moves();
+          
         if moves.is_empty() {
             self.search_stats.inc_leaf_nodes(ply);
             return Self::sigma(board) * board.eval(&self.eval);
