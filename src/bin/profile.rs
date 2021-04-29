@@ -11,10 +11,9 @@ fn main() {
         Algo::new().set_timing_method(TimeControl::move_time_secs(1)).build();
     for _i in 0..30 {
         search.search(&board);
-        println!("{}\n", search.results());
+        println!("{}", search.results());
     }
-    println!("{}\n", search.results());
-    println!("{}", search);
+    println!("\n\n{}\n", search);
     println!("Bye world!");
 }
 
