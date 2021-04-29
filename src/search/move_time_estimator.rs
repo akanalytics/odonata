@@ -1,6 +1,7 @@
 use crate::board::Board;
 use crate::search::searchstats::SearchStats;
 use std::fmt;
+use std::cmp;
 use std::time::Duration;
 use crate::clock::Clock;
 use crate::search::timecontrol::TimeControl;
@@ -14,6 +15,7 @@ pub struct MoveTimeEstimator {
     pub time_control: TimeControl,
     board: Board,
     branching_factor: u16,
+    perc_of_time_adv: u32,
     moves_rem: u16,
     pub time_estimate: Duration,
     pub elapsed_used: Duration,
@@ -25,6 +27,7 @@ impl Configurable for MoveTimeEstimator {
     fn settings(&self, c: &mut Config) {
         c.set("mte.branching_factor", "type spin default 12 min 1 max 100");
         c.set("mte.moves_rem", "type spin default 20 min 1 max 100");
+        c.set("mte.perc_of_time_adv", "type spin default 100 min 0 max 1000");
         c.set("mte.deterministic", "type check default false");
     }
     
@@ -32,6 +35,7 @@ impl Configurable for MoveTimeEstimator {
         log_debug!("mte.configure with {}", c);
         self.branching_factor = c.int("mte.branching_factor").unwrap_or(self.branching_factor as i64) as u16;
         self.moves_rem = c.int("mte.moves_rem").unwrap_or(self.moves_rem as i64) as u16;
+        self.perc_of_time_adv = c.int("mte.perc_of_time_adv").unwrap_or(self.perc_of_time_adv as i64) as u32;
         self.deterministic = c.bool("mte.deterministic").unwrap_or(self.deterministic);
 
     }
@@ -41,6 +45,7 @@ impl Default for MoveTimeEstimator {
     fn default() -> Self {
         MoveTimeEstimator {
             branching_factor: 12,
+            perc_of_time_adv: 100,
             moves_rem: 20,
             board: Board::default(),
             time_control: TimeControl::default(),
@@ -57,6 +62,7 @@ impl fmt::Display for MoveTimeEstimator {
         // writeln!(f, "board            : {}", self.board.to_fen())?;
         writeln!(f, "branching factor : {}", self.branching_factor)?;
         writeln!(f, "const moves rem. : {}", self.moves_rem)?;
+        writeln!(f, "% of time adv    : {}", self.perc_of_time_adv)?;
         writeln!(f, "allotted for mv  : {}", Clock::format_duration(self.alloted_time_for_move()))?;
         writeln!(f, "time estimate    : {}", Clock::format_duration(self.time_estimate))?;
         writeln!(f, "deterministic    : {}", self.deterministic)?;
@@ -76,9 +82,8 @@ impl MoveTimeEstimator {
             TimeControl::NodeCount(max_nodes) => search_stats.total().nodes() > max_nodes,
             TimeControl::Infinite => false,
             TimeControl::MateIn(_) => false,
-            TimeControl::RemainingTime { our_color, wtime, btime, winc, binc, movestogo: _ } => {
-                let (time, _inc) = our_color.chooser_wb((wtime, winc), (btime, binc));
-                elapsed > time / self.moves_rem as u32
+            TimeControl::RemainingTime { .. } => {
+                elapsed > self.alloted_time_for_move()
             }
         };
         time_up
@@ -111,8 +116,10 @@ impl MoveTimeEstimator {
             TimeControl::Infinite => zero,
             TimeControl::MateIn(_) => zero,
             TimeControl::RemainingTime { our_color, wtime, btime, winc, binc, movestogo: _ } => {
-                let (time, _inc) = our_color.chooser_wb((wtime, winc), (btime, binc));
-                time / self.moves_rem as u32
+                let (time_us, _inc) = our_color.chooser_wb((wtime, winc), (btime, binc));
+                let (time_them, _inc) = our_color.opposite().chooser_wb((wtime, winc), (btime, binc));
+                let time_adv = cmp::max(Duration::default(), time_us - time_them);
+                (time_us + time_adv * self.perc_of_time_adv / 100) / self.moves_rem as u32
             }
         }
     }
@@ -141,9 +148,7 @@ mod tests {
         let eval = SimpleScorer::new().set_position(false);
         let mut search = Algo::new()
             .set_timing_method(TimeControl::from_remaining_time(Duration::from_secs(3)))
-            .set_minmax(false)
             .set_eval(eval)
-            .set_iterative_deepening(true)
             .set_callback(Uci::uci_info).clone();
         search.mte.deterministic = true;
         search.search(position.board());
