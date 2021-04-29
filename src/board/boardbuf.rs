@@ -139,7 +139,7 @@ impl BoardBuf for Board {
             if !ep.intersects( Bitboard::RANK_3 | Bitboard::RANK_6 ) {
                 return Err(format!("En passant square must be rank 3 or 6 not {}", ep.sq_as_uci()));
             }
-            let capture_square = ep.shift(&self.color_them().pawn_move());
+            let capture_square = ep.shift(self.color_them().pawn_move());
             if !(self.pawns() & self.them()).contains(capture_square) {
                 return Err(format!("En passant square of {} entails a pawn on square {}", ep.sq_as_uci(), capture_square.sq_as_uci()));
             } 

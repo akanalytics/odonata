@@ -15,7 +15,7 @@ pub trait BitboardAttacks {
     // }
 
     // excludes the src square itself, but includes edge squares
-    fn ray(dir: &Dir, src: Bitboard) -> Bitboard {
+    fn ray(dir: Dir, src: Bitboard) -> Bitboard {
         let mut sq = src;
         let mut bb = Bitboard::EMPTY;
         while !sq.is_empty() {
@@ -28,37 +28,37 @@ pub trait BitboardAttacks {
     #[inline]
     fn pawn_pushes(&self, occupied: Bitboard, pawns: Bitboard, color: &Color) -> Bitboard {
         let empty = !occupied;
-        let single = pawns.shift(&color.pawn_move()) & empty;
-        single | (single.shift(&color.pawn_move()) & empty & color.double_push_dest_rank())
+        let single = pawns.shift(color.pawn_move()) & empty;
+        single | (single.shift(color.pawn_move()) & empty & color.double_push_dest_rank())
     }
 
     #[inline]
-    fn pawn_attacks(&self, pawns: Bitboard, color: &Color) -> (Bitboard, Bitboard) {
-        (pawns.shift(&color.pawn_capture_east()), pawns.shift(&color.pawn_capture_west()))
+    fn pawn_attacks(&self, pawns: Bitboard, c: Color) -> (Bitboard, Bitboard) {
+        (pawns.shift(c.pawn_capture_east()), pawns.shift(c.pawn_capture_west()))
     }
 
-    fn doubled_pawns(pawns: Bitboard ) -> Bitboard {
-        pawns.fill_north().shift(&Dir::N) & pawns
+    fn doubled_pawns(pawns: Bitboard) -> Bitboard {
+        pawns.fill_north().shift(Dir::N) & pawns
     }
 
-    fn pawn_en_passant_captures(
+    fn pawn_ep_captures(
         &self,
         pawns: Bitboard,
-        opponent: Bitboard,
-        color: &Color,
-        en_passant: Bitboard,
+        opp: Bitboard,
+        c: Color,
+        ep: Bitboard,
     ) -> (Bitboard, Bitboard) {
-        assert!(!en_passant.is_empty());
-        let (east, west) = self.pawn_attacks(pawns, color);
+        assert!(!ep.is_empty());
+        let (east, west) = self.pawn_attacks(pawns, c);
 
-        let enemy_pawn = en_passant.shift(&color.opposite().pawn_move());
+        let enemy_pawn = ep.shift(c.opposite().pawn_move());
 
         // check enemy have occupied the square one beyond en passant square
-        if (enemy_pawn & opponent).is_empty() {
+        if (enemy_pawn & opp).is_empty() {
             return (Bitboard::EMPTY, Bitboard::EMPTY);
         }
 
-        (east & en_passant, west & en_passant)
+        (east & ep, west & ep)
     }
 }
 
@@ -83,14 +83,14 @@ impl ClassicalBitboard {
             knight_moves: [Bitboard::EMPTY; 64],
         };
         for sq in 0..64_usize {
-            for dir in Dir::ALL.iter() {
+            for &dir in Dir::ALL.iter() {
                 let bb = Bitboard::from_sq(sq as u32);
                 let mask = Self::ray(dir, bb);
                 classical.rays[sq][dir.index] = mask;
                 classical.king_moves[sq] |= bb.shift(dir);
 
                 // for example a night attack might be step N followed by step NE
-                let next_dir = &Dir::ALL[(dir.index + 1) % 8];
+                let next_dir = Dir::ALL[(dir.index + 1) % 8];
                 classical.knight_moves[sq] |= bb.shift(dir).shift(next_dir);
             }
         }
@@ -148,14 +148,14 @@ mod tests {
 
     #[test]
     fn test_rays() {
-        let north = ClassicalBitboard::ray(&Dir::N, c3);
+        let north = ClassicalBitboard::ray(Dir::N, c3);
         assert_eq!(north, c4 | c5 | c6 | c7 | c8);
         assert_eq!(north.popcount(), 5);
 
-        assert_eq!(ClassicalBitboard::ray(&Dir::NE, c3), d4 | e5 | f6 | g7 | h8);
-        assert_eq!(ClassicalBitboard::ray(&Dir::SW, c3), a1 | b2);
-        assert_eq!(ClassicalBitboard::ray(&Dir::S, c3), c1 | c2);
-        assert_eq!(ClassicalBitboard::ray(&Dir::NW, c3), a5 | b4);
+        assert_eq!(ClassicalBitboard::ray(Dir::NE, c3), d4 | e5 | f6 | g7 | h8);
+        assert_eq!(ClassicalBitboard::ray(Dir::SW, c3), a1 | b2);
+        assert_eq!(ClassicalBitboard::ray(Dir::S, c3), c1 | c2);
+        assert_eq!(ClassicalBitboard::ray(Dir::NW, c3), a5 | b4);
 
         let classical = ClassicalBitboard::new();
         let north = classical.rays[16 + 2][Dir::N.index];
@@ -216,18 +216,17 @@ mod tests {
         let double = c4;
         assert_eq!(pawn_single_push, single | double);
 
-        let (pawn_capture_e, pawn_capture_w) = classical.pawn_attacks(pawns_w, &Color::White);
+        let (pawn_capture_e, pawn_capture_w) = classical.pawn_attacks(pawns_w, Color::White);
         assert_eq!(pawn_capture_e & opponent, d3);
 
         assert_eq!(pawn_capture_w & opponent, a4 | g5);
 
         let ep_square = g6;
-        let (east, west) = classical.pawn_en_passant_captures(pawns_w, opponent, &Color::White, ep_square);
+        let (east, west) = classical.pawn_ep_captures(pawns_w, opponent, Color::White, ep_square);
         assert_eq!(east, g6);
         assert_eq!(west, g6);
 
         let pawns = b2 | b4 | c5 | c6 | d3 | d7 | h5;
         assert_eq!(ClassicalBitboard::doubled_pawns(pawns), b4 | c6 | d7);
     }
-
 }

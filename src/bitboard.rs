@@ -19,8 +19,8 @@ impl Dir {
 
     pub const ALL: [Self; 8] = [Self::N, Self::NE, Self::E, Self::SE, Self::S, Self::SW, Self::W, Self::NW];
 
-    pub fn opposite(&self) -> &Dir {
-        &Self::ALL[(self.index + 4) % 8]
+    pub fn opposite(&self) -> Dir {
+        Self::ALL[(self.index + 4) % 8]
     }
 }
 
@@ -100,7 +100,7 @@ impl Bitboard {
     }
 
     #[inline]
-    pub fn shift(self, dir: &Dir) -> Bitboard {
+    pub fn shift(self, dir: Dir) -> Bitboard {
         let bb = self - dir.mask;
         if dir.shift > 0 {
             Bitboard::from_bits_truncate(bb.bits << dir.shift)
@@ -345,10 +345,10 @@ mod tests {
     // assert!(result.is_err());
     #[test]
     fn test_shifts() {
-        let a2b3 = a1b2.shift(&Dir::N);
+        let a2b3 = a1b2.shift(Dir::N);
         assert_eq!(a2b3, Bitboard::A2 | Bitboard::B3);
-        assert!(Bitboard::D8.shift(&Dir::N).is_empty());
-        assert_eq!(Bitboard::D8.shift(&Dir::E), Bitboard::E8);
+        assert!(Bitboard::D8.shift(Dir::N).is_empty());
+        assert_eq!(Bitboard::D8.shift(Dir::E), Bitboard::E8);
     }
 
     #[test]
