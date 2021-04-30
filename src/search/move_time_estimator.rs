@@ -1,14 +1,13 @@
 use crate::board::Board;
-use crate::search::searchstats::SearchStats;
-use std::fmt;
-use std::cmp;
-use std::time::Duration;
 use crate::clock::Clock;
-use crate::search::timecontrol::TimeControl;
 use crate::config::{Config, Configurable};
-use crate::types::Ply;
 use crate::log_debug;
-
+use crate::search::searchstats::SearchStats;
+use crate::search::timecontrol::TimeControl;
+use crate::types::Ply;
+use std::cmp;
+use std::fmt;
+use std::time::Duration;
 
 #[derive(Clone, Debug)]
 pub struct MoveTimeEstimator {
@@ -22,29 +21,33 @@ pub struct MoveTimeEstimator {
     pub deterministic: bool,
 }
 
-
 impl Configurable for MoveTimeEstimator {
     fn settings(&self, c: &mut Config) {
-        c.set("mte.branching_factor", "type spin default 12 min 1 max 100");
+        c.set("mte.branching_factor", "type spin default 10 min 1 max 100");
         c.set("mte.moves_rem", "type spin default 20 min 1 max 100");
-        c.set("mte.perc_of_time_adv", "type spin default 100 min 0 max 1000");
+        c.set(
+            "mte.perc_of_time_adv",
+            "type spin default 100 min 0 max 1000",
+        );
         c.set("mte.deterministic", "type check default false");
     }
-    
     fn configure(&mut self, c: &Config) {
         log_debug!("mte.configure with {}", c);
-        self.branching_factor = c.int("mte.branching_factor").unwrap_or(self.branching_factor as i64) as u16;
+        self.branching_factor = c
+            .int("mte.branching_factor")
+            .unwrap_or(self.branching_factor as i64) as u16;
         self.moves_rem = c.int("mte.moves_rem").unwrap_or(self.moves_rem as i64) as u16;
-        self.perc_of_time_adv = c.int("mte.perc_of_time_adv").unwrap_or(self.perc_of_time_adv as i64) as u32;
+        self.perc_of_time_adv = c
+            .int("mte.perc_of_time_adv")
+            .unwrap_or(self.perc_of_time_adv as i64) as u32;
         self.deterministic = c.bool("mte.deterministic").unwrap_or(self.deterministic);
-
     }
 }
 
 impl Default for MoveTimeEstimator {
     fn default() -> Self {
         MoveTimeEstimator {
-            branching_factor: 12,
+            branching_factor: 9,
             perc_of_time_adv: 100,
             moves_rem: 20,
             board: Board::default(),
@@ -63,16 +66,27 @@ impl fmt::Display for MoveTimeEstimator {
         writeln!(f, "branching factor : {}", self.branching_factor)?;
         writeln!(f, "const moves rem. : {}", self.moves_rem)?;
         writeln!(f, "% of time adv    : {}", self.perc_of_time_adv)?;
-        writeln!(f, "allotted for mv  : {}", Clock::format_duration(self.alloted_time_for_move()))?;
-        writeln!(f, "time estimate    : {}", Clock::format_duration(self.time_estimate))?;
+        writeln!(
+            f,
+            "allotted for mv  : {}",
+            Clock::format_duration(self.alloted_time_for_move())
+        )?;
+        writeln!(
+            f,
+            "time estimate    : {}",
+            Clock::format_duration(self.time_estimate)
+        )?;
         writeln!(f, "deterministic    : {}", self.deterministic)?;
-        writeln!(f, "elapsed used     : {}", Clock::format_duration(self.elapsed_used))?;
+        writeln!(
+            f,
+            "elapsed used     : {}",
+            Clock::format_duration(self.elapsed_used)
+        )?;
         Ok(())
     }
 }
 
 impl MoveTimeEstimator {
-
     pub fn is_time_up(&self, _ply: Ply, search_stats: &SearchStats) -> bool {
         let elapsed = search_stats.elapsed(self.deterministic);
 
@@ -82,9 +96,7 @@ impl MoveTimeEstimator {
             TimeControl::NodeCount(max_nodes) => search_stats.total().nodes() > max_nodes,
             TimeControl::Infinite => false,
             TimeControl::MateIn(_) => false,
-            TimeControl::RemainingTime { .. } => {
-                elapsed > self.alloted_time_for_move()
-            }
+            TimeControl::RemainingTime { .. } => elapsed > self.alloted_time_for_move(),
         };
         time_up
     }
@@ -94,15 +106,21 @@ impl MoveTimeEstimator {
         let _forecast_depth = search_stats.depth();
         self.elapsed_used = search_stats.elapsed(self.deterministic);
         self.time_estimate = self.elapsed_used * self.branching_factor as u32;
-        
     }
 
     pub fn probable_timeout(&self, _search_stats: &SearchStats) -> bool {
         match self.time_control {
-            TimeControl::RemainingTime { our_color, wtime, btime, winc, binc, movestogo: _ } => {
+            TimeControl::RemainingTime {
+                our_color,
+                wtime,
+                btime,
+                winc,
+                binc,
+                movestogo: _,
+            } => {
                 let (_time, _inc) = our_color.chooser_wb((wtime, winc), (btime, binc));
                 self.time_estimate > self.alloted_time_for_move()
-            },
+            }
             _ => false,
         }
     }
@@ -115,10 +133,23 @@ impl MoveTimeEstimator {
             TimeControl::NodeCount(_) => zero,
             TimeControl::Infinite => zero,
             TimeControl::MateIn(_) => zero,
-            TimeControl::RemainingTime { our_color, wtime, btime, winc, binc, movestogo: _ } => {
+            TimeControl::RemainingTime {
+                our_color,
+                wtime,
+                btime,
+                winc,
+                binc,
+                movestogo: _,
+            } => {
                 let (time_us, _inc) = our_color.chooser_wb((wtime, winc), (btime, binc));
-                let (time_them, _inc) = our_color.opposite().chooser_wb((wtime, winc), (btime, binc));
-                let time_adv = cmp::max(Duration::default(), time_us - time_them);
+                let (time_them, _inc) = our_color
+                    .opposite()
+                    .chooser_wb((wtime, winc), (btime, binc));
+                let time_adv = if time_us > time_them {
+                    time_us - time_them
+                } else {
+                    Duration::default()
+                };
                 (time_us + time_adv * self.perc_of_time_adv / 100) / self.moves_rem as u32
             }
         }
@@ -129,10 +160,10 @@ impl MoveTimeEstimator {
 mod tests {
     use super::*;
     use crate::catalog::*;
-    use crate::search::algo::*;
     use crate::comms::uci::*;
     use crate::eval::eval::*;
     use crate::eval::score::*;
+    use crate::search::algo::*;
 
     #[test]
     fn test_display_mte() {
@@ -149,17 +180,17 @@ mod tests {
         let mut search = Algo::new()
             .set_timing_method(TimeControl::from_remaining_time(Duration::from_secs(3)))
             .set_eval(eval)
-            .set_callback(Uci::uci_info).clone();
+            .set_callback(Uci::uci_info)
+            .clone();
         search.mte.deterministic = true;
         search.search(position.board());
         println!("{}", search);
-        assert_eq!(search.search_stats().total().nodes(), 2200);  // with qsearch
-        //assert_eq!(search.search_stats().total().nodes(), 2108);  // with ordering pv + mvvlva
-        // assert_eq!(search.search_stats().total().nodes(), 3560); 
-        // assert_eq!(search.search_stats().total().nodes(), 6553);  // with ordering pv
-        // assert_eq!(search.search_stats().total().nodes(), 6740);
+        assert_eq!(search.search_stats().total().nodes(), 2200); // with qsearch
+                                                                 //assert_eq!(search.search_stats().total().nodes(), 2108);  // with ordering pv + mvvlva
+                                                                 // assert_eq!(search.search_stats().total().nodes(), 3560);
+                                                                 // assert_eq!(search.search_stats().total().nodes(), 6553);  // with ordering pv
+                                                                 // assert_eq!(search.search_stats().total().nodes(), 6740);
         assert_eq!(search.pv(), &position.pv().unwrap());
         assert_eq!(search.score(), Score::WhiteWin { minus_ply: -3 });
     }
 }
-
