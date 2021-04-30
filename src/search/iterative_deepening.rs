@@ -9,6 +9,7 @@ use crate::search::timecontrol::TimeControl;
 use crate::types::{MAX_PLY, Ply};
 use std::fmt;
 use std::ops::Range;
+use crate::globals::counts;
 
 #[derive(Clone, Debug)]
 pub struct IterativeDeepening {
@@ -103,7 +104,7 @@ impl Algo {
             self.search_stats.record_time_estimate(depth + 1, &self.mte.time_estimate);
             self.ids.iterations.push(res.clone());
             if !res.completed() {
-                
+                counts::SEARCH_IDS_TIMEOUTS.increment();
                 break;
             }
             if self.mte.probable_timeout(&res) || res.score.is_mate() {
@@ -115,6 +116,7 @@ impl Algo {
             sp.pv = Some(res.pv.clone());
             sp.score = Some(res.score);
             self.task_control.invoke_callback(&sp);
+            counts::SEARCH_IDS_COMPLETES.increment();
         }
 
         let i = self.ids.iterations.iter().rposition(|r| r.completed());

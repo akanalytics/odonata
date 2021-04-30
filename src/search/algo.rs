@@ -237,9 +237,10 @@ impl Algo {
         if let Some(handle) = handle {
             // wait for thread to cancel
             let algo = handle.join().unwrap();
-            self.tt = algo.tt.clone();
-            self.search_stats = algo.search_stats;
-            self.pv_table = algo.pv_table;
+            *self = algo;
+            // self.tt = algo.tt.clone();
+            // self.search_stats = algo.search_stats;
+            // self.pv_table = algo.pv_table;
         }
     }
 
@@ -412,11 +413,17 @@ mod tests {
         let nodes = algo.search_stats().total().nodes();
 
         // with sq based qsearch
-        assert_eq!(nodes, 77064);
+        assert_eq!(nodes, 2248);
         // assert_eq!(nodes, 66234);
         assert_eq!(algo.pv_table.extract_pv(), position.pv().unwrap());
         assert_eq!(algo.score(), Score::WhiteWin { minus_ply: -3 });
-        println!("{}\n\nasync....", algo);
+
+        // search again using the tt
+        algo.search_async(position.board());
+        let millis = time::Duration::from_millis(150);
+        thread::sleep(millis);
+        algo.search_async_stop();
+        println!("{}\n\nasync #2....", algo);
     }
 
     #[test]
