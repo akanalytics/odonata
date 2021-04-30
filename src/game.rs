@@ -156,7 +156,6 @@ mod tests {
     use std::time::Duration;
 
     #[test]
-    #[ignore]
     fn test_game() {
         let eval_w = SimpleScorer::new().set_position(true);
         let mut white = Algo::new().set_timing_method(TimeControl::Depth(2)).set_eval(eval_w).build();
@@ -169,12 +168,13 @@ mod tests {
         game.set_starting_pos(&board);
         game.play(&mut white, &mut black);
         println!("{}", game);
+        assert_eq!(game.outcome().winning_color(), Some(Color::White));
     }
 
     // use crate::comms::uci::Uci;
 
-    #[test]
-    #[ignore]
+    // #[test]
+    // #[ignore]
     fn competition() {
         //let tc = TimeControl::NodeCount(1_000);
         let tc = TimeControl::from_remaining_time(Duration::from_millis(2000));

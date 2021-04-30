@@ -78,6 +78,13 @@ impl IterativeDeepening {
 }
 
 impl Algo {
+
+    #[inline]
+    pub fn set_iteration_depth(&mut self, max_depth: Ply) {
+        self.max_depth = max_depth;
+    }
+
+
     pub fn search(&mut self, board: &Board) {
         self.search_stats = SearchStats::new();
         self.board = board.clone();
@@ -94,15 +101,19 @@ impl Algo {
 
             self.mte.calc_estimates_for_ply(depth + 1, &res);
             self.search_stats.record_time_estimate(depth + 1, &self.mte.time_estimate);
-            if !res.completed() || res.score.is_mate() || self.mte.probable_timeout(&res) {
-                self.ids.iterations.push(res);
+            self.ids.iterations.push(res.clone());
+            if !res.completed() {
+                
                 break;
             }
+            if self.mte.probable_timeout(&res) || res.score.is_mate() {
+                break;
+            }
+
 
             let mut sp = SearchProgress::from_search_stats(&res);
             sp.pv = Some(res.pv.clone());
             sp.score = Some(res.score);
-            self.ids.iterations.push(res);
             self.task_control.invoke_callback(&sp);
         }
 

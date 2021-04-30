@@ -92,9 +92,17 @@ pub mod counts {
     pub static LEGAL_MOVE_COUNT: Stat = Stat::new("LEGAL_MOVE COUNT");
     pub static MOVE_HASH_COUNT: Stat = Stat::new("MOVE HASH COUNT");
     pub static BOARD_HASH_COUNT: Stat = Stat::new("BOARD HASH COUNT");
+    pub static SEARCH_IDS_COMPLETES: Stat = Stat::new("IDS COMPLETES");
+    pub static SEARCH_IDS_TIMEOUTS: Stat = Stat::new("IDS TIMEOUTS");
 
-    pub static GLOBAL_COUNTS: ArrayStat =
-        ArrayStat(&[&EVAL_COUNT, &LEGAL_MOVE_COUNT, &MOVE_HASH_COUNT, &BOARD_HASH_COUNT]);
+    pub static GLOBAL_COUNTS: ArrayStat = ArrayStat(&[
+        &EVAL_COUNT,
+        &LEGAL_MOVE_COUNT,
+        &MOVE_HASH_COUNT,
+        &BOARD_HASH_COUNT,
+        &SEARCH_IDS_COMPLETES,
+        &SEARCH_IDS_TIMEOUTS,
+    ]);
 }
 
 #[cfg(test)]
@@ -105,8 +113,8 @@ mod tests {
     use crate::movelist::*;
     use crate::search::node::*;
     use crate::search::searchstats::*;
-    use crate::types::*;
     use crate::tt::*;
+    use crate::types::*;
     use std::mem::size_of;
 
     #[test]

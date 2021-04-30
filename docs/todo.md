@@ -32,10 +32,10 @@
   - Aspiration Windows
 
 - Selectivity
-  - Quiescence Algo
+  - [x]Quiescence Algo
   - static exchange evaluation < 0
   - delta pruning
-  - standing pat
+  - [x]standing pat
 
 - Selectivity
   - Mate Algo

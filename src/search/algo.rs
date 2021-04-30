@@ -12,7 +12,6 @@ use crate::repetition::Repetition;
 use crate::search::iterative_deepening::IterativeDeepening;
 use crate::search::move_orderer::MoveOrderer;
 use crate::search::move_time_estimator::MoveTimeEstimator;
-use crate::search::node::Node;
 use crate::search::quiescence::Quiescence;
 use crate::search::searchprogress::SearchProgress;
 use crate::search::searchstats::SearchStats;
@@ -20,7 +19,7 @@ use crate::search::taskcontrol::TaskControl;
 use crate::search::timecontrol::TimeControl;
 use crate::tags::Tag;
 use crate::tt::TranspositionTable;
-use crate::types::{Ply, MAX_PLY};
+use crate::types::{Ply};
 use std::fmt;
 use std::ops::Range;
 use std::thread;
@@ -199,10 +198,6 @@ impl Algo {
         ));
     }
 
-    #[inline]
-    pub fn set_iteration_depth(&mut self, max_depth: Ply) {
-        self.max_depth = max_depth;
-    }
 
     #[inline]
     pub fn search_stats(&self) -> &SearchStats {
@@ -272,136 +267,7 @@ impl Algo {
         time_up
     }
 
-    #[inline]
-    pub fn is_leaf(&self, ply: Ply) -> bool {
-        ply == self.max_depth
-    }
 
-    pub fn alphabeta(&mut self, node: &mut Node) {
-        self.search_stats.reset_keeping_pv();
-        self.pv_table = PvTable::new(MAX_PLY as usize);
-        //        self.tt.clear();
-
-        // if 1==0 {
-        //     self.alphabeta_recursive(node);
-        //     self.search_stats.score = node.score;
-        // } else {
-        self.search_stats.score =
-            self.alphabeta_recursive2(node.board, node.ply, node.alpha, node.beta, &Move::NULL_MOVE);
-        // }
-
-        // self.search_stats.alpha = node.alpha;
-        // self.search_stats.beta = node.beta;
-        self.search_stats.record_time_actual_and_completion_status(
-            self.max_depth,
-            !self.task_control.is_cancelled(),
-            self.pv_table.extract_pv(),
-        );
-    }
-
-    // pub fn alphabeta_recursive(&mut self, node: &mut Node) {
-    //     debug_assert!(self.max_depth > 0);
-    //     if self.search_stats.total().nodes() % 1000000 == 0 && self.search_stats.total().nodes() != 0 {
-    //         let sp = SearchProgress::from_search_stats(&self.search_stats());
-    //         self.task_control.invoke_callback(&sp);
-    //     }
-
-    //     if self.time_up_or_cancelled(node.ply, false) {
-    //         return;
-    //     }
-
-    //     if node.board.repetition_count() >= 2 {
-    //         node.score = node.board.eval(&self.eval);
-    //         self.search_stats.inc_leaf_nodes(node.ply);
-    //         return;
-    //     }
-
-    //     if self.is_leaf(node.ply) {
-    //         self.quiescence_search(node);
-    //         return;
-    //     }
-    //     self.search_stats.inc_interior_nodes(node.ply);
-
-    //     // // FIXME!!!!
-    //     // if self.max_depth > self.search_stats.selective_depth() {
-    //     //     let sp = SearchProgress::from_search_stats(&self.search_stats());
-    //     //     self.task_control.invoke_callback(&sp);
-    //     // }
-    //     // bailing here means the score is +/- inf and wont be used
-    //     // FIXME!
-
-    //     let mut moves = node.board.legal_moves();
-    //     if moves.is_empty() {
-    //         node.score = node.board.eval(&self.eval);
-    //         self.search_stats.inc_leaf_nodes(node.ply);
-    //         return;
-    //     }
-
-    //     self.order_moves(node.ply, &mut moves);
-
-    //     for (_i, mv) in moves.iter().enumerate() {
-    //         let mut child_board = node.board.make_move(mv);
-    //         self.repetition.push(&mv, &child_board);
-    //         child_board.set_repetition_count(self.repetition.count(&child_board));
-    //         let mut child = node.new_child(mv, &mut child_board);
-    //         debug_assert!(child.alpha < child.beta || self.minmax);
-    //         self.current_variation.set_last_move(child.ply, mv);
-
-    //         self.alphabeta_recursive(&mut child);
-
-    //         node.board.undo_move(mv);
-    //         self.repetition.pop();
-    //         let is_cut = self.process_child(&mv, node, &child);
-    //         if is_cut {
-    //             self.search_stats.inc_cuts(node.ply);
-    //             break;
-    //             // let entry = Entry {
-    //             //     hash: node.board.hash(),`
-    //             //     score: node.score,
-    //             //     ply: node.ply,
-    //             //     entry_type: NodeType::LowerBound,
-    //             //     best_move: Move::NULL_MOVE,
-    //             // };
-    //             // self.tt.insert(entry);
-    //             // break;
-    //         }
-    //     }
-    //     self.current_variation.set_last_move(node.ply, &Move::new_null());
-    // }
-
-    // #[inline]
-    // pub fn process_child(&mut self, mv: &Move, parent: &mut Node, child: &Node) -> bool {
-    //     if Node::is_maximizing(parent.board) {
-    //         if child.score > parent.score {
-    //             parent.score = child.score;
-    //         }
-    //         if child.score > parent.alpha {
-    //             parent.alpha = child.score;
-    //             self.pv_table.set(child.ply, mv);
-    //             self.pv_table.propagate_from(child.ply);
-    //             self.search_stats.inc_improvements(parent.ply);
-    //             if parent.is_root() {
-    //                 let sp = SearchProgress::from_search_stats(&self.search_stats());
-    //                 self.task_control.invoke_callback(&sp);
-    //             }
-    //         }
-    //     } else {
-    //         if child.score < parent.score {
-    //             parent.score = child.score;
-    //         }
-    //         if child.score < parent.beta {
-    //             parent.beta = child.score;
-    //             self.pv_table.set(child.ply, mv);
-    //             self.pv_table.propagate_from(child.ply);
-    //             self.search_stats.inc_improvements(parent.ply);
-    //             if parent.is_root() {
-    //                 let sp = SearchProgress::from_search_stats(&self.search_stats());
-    //                 self.task_control.invoke_callback(&sp);
-    //             }
-    //         }
-    //     }
-    //     parent.alpha >= parent.beta && !self.minmax
-    // }
 }
 
 #[cfg(test)]
@@ -591,7 +457,7 @@ mod tests {
         println!("{}", board);
         let eval = SimpleScorer::new().set_position(false);
         let mut search =
-            Algo::new().set_timing_method(TimeControl::Depth(9)).set_minmax(false).set_eval(eval).build(); //9
+            Algo::new().set_timing_method(TimeControl::Depth(9)).set_eval(eval).build(); //9
         search.search(&board);
         println!("{}", search);
     }

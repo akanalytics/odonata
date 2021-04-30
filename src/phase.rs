@@ -1,6 +1,5 @@
 use crate::board::Board;
 use crate::catalog::Catalog;
-use crate::material::Material;
 use once_cell::sync::Lazy;
 use std::cmp;
 

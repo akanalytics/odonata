@@ -1,5 +1,4 @@
 use crate::board::makemove::MoveMaker;
-use crate::movelist::MoveList;
 use crate::board::Board;
 use crate::eval::eval::Scorable;
 use crate::eval::score::Score;
@@ -8,7 +7,11 @@ use crate::outcome::GameEnd;
 use crate::search::algo::Algo;
 use crate::search::searchprogress::SearchProgress;
 use crate::tt::{Entry, NodeType};
-use crate::types::{Color, Ply};
+use crate::types::{Color, Ply, MAX_PLY};
+use crate::pvtable::PvTable;
+use crate::search::node::Node;
+
+
 
 pub struct AlphaBeta;
 
@@ -20,6 +23,31 @@ impl Algo {
             -1
         }
     }
+
+    #[inline]
+    pub fn is_leaf(&self, ply: Ply) -> bool {
+        ply == self.max_depth
+    }
+
+
+
+    pub fn alphabeta(&mut self, node: &mut Node) {
+        self.search_stats.reset_keeping_pv();
+        self.pv_table = PvTable::new(MAX_PLY as usize);
+        self.search_stats.score =
+            self.alphabeta_recursive2(node.board, node.ply, node.alpha, node.beta, &Move::NULL_MOVE);
+
+        self.search_stats.record_time_actual_and_completion_status(
+            self.max_depth,
+            !self.task_control.is_cancelled(),
+            self.pv_table.extract_pv(),
+        );
+    }
+
+
+
+
+
 
     pub fn alphabeta_recursive2(
         &mut self,
