@@ -95,6 +95,8 @@ pub mod counts {
     pub static SEARCH_IDS_COMPLETES: Stat = Stat::new("IDS COMPLETES");
     pub static SEARCH_IDS_TIMEOUTS: Stat = Stat::new("IDS TIMEOUTS");
 
+
+    
     pub static GLOBAL_COUNTS: ArrayStat = ArrayStat(&[
         &EVAL_COUNT,
         &LEGAL_MOVE_COUNT,

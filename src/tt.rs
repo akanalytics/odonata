@@ -8,6 +8,23 @@ use crate::types::{Hash, Ply};
 use std::mem;
 use std::fmt;
 
+
+pub static HITS: Stat = Stat::new("HITS");
+pub static MISSES: Stat = Stat::new("MISSES");
+pub static COLLISIONS: Stat = Stat::new("COLLISIONS");
+pub static INSERTS: Stat = Stat::new("INSERTS");
+
+
+
+pub static TT_COUNTS: ArrayStat = ArrayStat(&[
+    &HITS,
+    &MISSES,
+    &COLLISIONS,
+    &INSERTS,
+]);
+
+
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd)]
 pub enum NodeType {
     Unused = 0,
@@ -40,12 +57,6 @@ pub struct TranspositionTable {
     pub enabled: bool,
     pub capacity: usize,
     pub hmvc_horizon: i32,
-
-
-    hits: Stat<'static>,
-    misses: Stat<'static>,
-    collisions: Stat<'static>,
-    inserts: Stat<'static>,
 }
 
 
@@ -56,10 +67,6 @@ impl fmt::Debug for TranspositionTable {
             .field("enabled", &self.enabled)
             .field("capacity", &self.capacity)
             .field("hmvc_horizon", &self.hmvc_horizon)
-            .field("hits", &self.hits)
-            .field("misses", &self.misses)
-            .field("collisions", &self.collisions)
-            .field("inserts", &self.inserts)
             .field("table", &self.table.len())  // dont show large table!
             .finish()
     }
@@ -73,7 +80,7 @@ impl fmt::Display for TranspositionTable {
         writeln!(f, "entry size bytes : {}", mem::size_of::<Entry>())?;
         writeln!(f, "hmvc horizon     : {}", self.hmvc_horizon)?;
         writeln!(f, "table            : {}", self.table.len())?;
-        writeln!(f, "tt stats\n{}", ArrayStat(&[&self.hits, &self.misses, &self.collisions, &self.inserts]))?;
+        writeln!(f, "tt stats\n{}", TT_COUNTS)?;
         Ok(())
     }
 }
@@ -86,10 +93,6 @@ impl Default for TranspositionTable {
             enabled: true,
             capacity: 600_000,
             hmvc_horizon: 35,
-            hits: Stat::new("TT.HITS"),
-            misses: Stat::new("TT.MISSES"),
-            collisions: Stat::new("TT.COLLISIONS"),
-            inserts: Stat::new("TT.INSERTS"),
         }
     }
 }
@@ -144,12 +147,11 @@ impl TranspositionTable {
         if !self.enabled {
             return;
         }
-        self.inserts.increment();
         let index = self.index(new.hash);
         let old = &mut self.table[index];
         if new.depth > old.depth || new.depth == old.depth && new.node_type > old.node_type {
             assert!(new.score > Score::MinusInf);
-            self.inserts.increment();
+            INSERTS.increment();
             *old = new;
             return;
         }
@@ -174,14 +176,14 @@ impl TranspositionTable {
         let entry = &self.table[self.index(hash)];
         if  entry.node_type != NodeType::Unused {
             if entry.hash == hash {
-                self.hits.increment();
+                HITS.increment();
                 return Some(entry);
             } else {
-                self.collisions.increment();
+                COLLISIONS.increment();
                 return None;
             }
         }
-        self.misses.increment();
+        MISSES.increment();
         None
     }
 }
