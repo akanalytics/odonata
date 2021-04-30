@@ -5,7 +5,6 @@ use crate::log_debug;
 use crate::search::searchstats::SearchStats;
 use crate::search::timecontrol::TimeControl;
 use crate::types::Ply;
-use std::cmp;
 use std::fmt;
 use std::time::Duration;
 
