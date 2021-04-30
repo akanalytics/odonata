@@ -187,6 +187,7 @@ impl Algo {
         let builder = thread::Builder::new().name(name).stack_size(FOUR_MB);
         self.task_control.set_running();
         let mut algo = self.clone();
+        self.tt.destroy();
         let board = board.clone();
         self.child_thread = AlgoThreadHandle(Some(
             builder
@@ -236,6 +237,7 @@ impl Algo {
         if let Some(handle) = handle {
             // wait for thread to cancel
             let algo = handle.join().unwrap();
+            self.tt = algo.tt.clone();
             self.search_stats = algo.search_stats;
             self.pv_table = algo.pv_table;
         }
@@ -398,17 +400,19 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
-    fn test_mate_in_2_async() {
+    fn test_async_sleep() {
         let position = Catalog::mate_in_2()[0].clone();
-        let mut algo = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(true).build();
-        algo.search(position.board());
-        let nodes = algo.search_stats().total().nodes();
-        let millis = time::Duration::from_millis(20);
+        let mut algo = Algo::new().set_timing_method(TimeControl::Depth(3)).build();
+        algo.search_async(position.board());
+        let millis = time::Duration::from_millis(500);
         thread::sleep(millis);
 
+        algo.search_async_stop();
+        println!("{}\n\nasync....", algo);
+        let nodes = algo.search_stats().total().nodes();
+
         // with sq based qsearch
-        assert_eq!(nodes, 77221);
+        assert_eq!(nodes, 77064);
         // assert_eq!(nodes, 66234);
         assert_eq!(algo.pv_table.extract_pv(), position.pv().unwrap());
         assert_eq!(algo.score(), Score::WhiteWin { minus_ply: -3 });

@@ -1,35 +1,37 @@
+use crate::board::Board;
 use crate::config::{Config, Configurable};
 use crate::eval::score::Score;
 use crate::log_debug;
 use crate::movelist::Move;
-use crate::board::Board;
-use crate::stat::{Stat, ArrayStat};
+use crate::stat::{ArrayStat, Stat};
 use crate::types::{Hash, Ply};
-use std::mem;
 use std::fmt;
-
+use std::mem;
+use std::sync::Arc;
 
 pub static HITS: Stat = Stat::new("HITS");
 pub static MISSES: Stat = Stat::new("MISSES");
 pub static COLLISIONS: Stat = Stat::new("COLLISIONS");
 pub static INSERTS: Stat = Stat::new("INSERTS");
-
-
+pub static DELETES: Stat = Stat::new("DELETES");
+pub static FAIL_PRIORITY: Stat = Stat::new("INS FAIL PRIORITY");
+pub static FAIL_OWNERSHIP: Stat = Stat::new("INS FAIL OWNER");
 
 pub static TT_COUNTS: ArrayStat = ArrayStat(&[
     &HITS,
     &MISSES,
     &COLLISIONS,
     &INSERTS,
+    &FAIL_PRIORITY,
+    &FAIL_OWNERSHIP,
+    &DELETES,
 ]);
-
-
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd)]
 pub enum NodeType {
     Unused = 0,
-    All = 1,   // All node, score = upperbound () 
-    Cut = 2,   // Cut node, score = lowerbound (we've not looked at all possible scores)
+    All = 1, // All node, score = upperbound ()
+    Cut = 2, // Cut node, score = lowerbound (we've not looked at all possible scores)
     Pv = 3,  // PV node. score is exact
 }
 
@@ -43,22 +45,20 @@ impl Default for NodeType {
 pub struct Entry {
     pub hash: Hash,
     pub score: Score,
-    pub depth: Ply,  // depth is depth to q/leaf
+    pub depth: Ply, // depth is depth to q/leaf
     pub node_type: NodeType,
     pub bm: Move,
 }
 
-
 // FIXME Mates as score
 #[derive(Clone)]
 pub struct TranspositionTable {
-    table: Vec<Entry>,
+    table: Arc<Vec<Entry>>,
 
     pub enabled: bool,
     pub capacity: usize,
     pub hmvc_horizon: i32,
 }
-
 
 impl fmt::Debug for TranspositionTable {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -67,7 +67,7 @@ impl fmt::Debug for TranspositionTable {
             .field("enabled", &self.enabled)
             .field("capacity", &self.capacity)
             .field("hmvc_horizon", &self.hmvc_horizon)
-            .field("table", &self.table.len())  // dont show large table!
+            .field("table", &self.table.len()) // dont show large table!
             .finish()
     }
 }
@@ -85,11 +85,10 @@ impl fmt::Display for TranspositionTable {
     }
 }
 
-
 impl Default for TranspositionTable {
     fn default() -> Self {
         Self {
-            table: vec![Entry::default(); 600_000],
+            table: Arc::new(vec![Entry::default(); 600_000]),
             enabled: true,
             capacity: 600_000,
             hmvc_horizon: 35,
@@ -118,12 +117,20 @@ impl TranspositionTable {
     }
 
     pub fn new(capacity: usize) -> Self {
-        TranspositionTable { table: vec![Entry::default(); capacity], capacity, ..Self::default() }
+        TranspositionTable {
+            table: Arc::new(vec![Entry::default(); capacity]),
+            capacity,
+            ..Self::default()
+        }
         // tt.table.resize(size, Entry::default());
     }
 
+    pub fn destroy(&mut self) {
+        Arc::make_mut(&mut self.table);
+    }
+
     pub fn clear(&mut self) {
-        self.table = vec![Entry::default(); self.capacity()];
+        self.table = Arc::new(vec![Entry::default(); self.capacity()]);
         // tt.table.resize(size, Entry::default());
     }
 
@@ -148,12 +155,35 @@ impl TranspositionTable {
             return;
         }
         let index = self.index(new.hash);
-        let old = &mut self.table[index];
-        if new.depth > old.depth || new.depth == old.depth && new.node_type > old.node_type {
-            assert!(new.score > Score::MinusInf);
-            INSERTS.increment();
-            *old = new;
+        let table = Arc::get_mut(&mut self.table);
+        if let Some(table) = table {
+            let old = &mut table[index];
+            if new.depth > old.depth || new.depth == old.depth && new.node_type > old.node_type {
+                assert!(new.score > Score::MinusInf);
+                INSERTS.increment();
+                *old = new;
+                return;
+            } else {
+                FAIL_PRIORITY.increment();
+            }
+        } else {
+            FAIL_OWNERSHIP.increment();
+        }
+    }
+
+    pub fn delete(&mut self, key: Hash) {
+        if !self.enabled {
             return;
+        }
+        let index = self.index(key);
+        let table = Arc::get_mut(&mut self.table);
+        if let Some(table) = table {
+            let old = &mut table[index];
+            DELETES.increment();
+            *old = Entry::default();
+            return;
+        } else {
+            FAIL_OWNERSHIP.increment();
         }
     }
 
@@ -162,19 +192,17 @@ impl TranspositionTable {
             return None;
         }
         if board.fifty_halfmove_clock() > self.hmvc_horizon {
-            None 
+            None
         } else {
             self.probe_by_hash(board.hash())
         }
     }
-    
-    
     pub fn probe_by_hash(&self, hash: Hash) -> Option<&Entry> {
         if !self.enabled {
-            return None
+            return None;
         }
         let entry = &self.table[self.index(hash)];
-        if  entry.node_type != NodeType::Unused {
+        if entry.node_type != NodeType::Unused {
             if entry.hash == hash {
                 HITS.increment();
                 return Some(entry);
@@ -192,34 +220,67 @@ impl TranspositionTable {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_tt() {
-        let entry123 = Entry {
+    fn entry123() -> Entry {
+        Entry {
             hash: 123,
             score: Score::Cp(300),
             depth: 2,
             node_type: NodeType::Pv,
             bm: Move::new_null(),
-        };
+        }
+    }
 
-        let entry456 = Entry {
+    fn entry456() -> Entry {
+        Entry {
             hash: 456,
             score: Score::Cp(200),
             depth: 3,
             node_type: NodeType::Pv,
             bm: Move::new_null(),
-        };
+        }
+    }
 
-        let entry456b = Entry {
+    fn entry456b() -> Entry {
+        Entry {
             hash: 456,
             score: Score::Cp(201),
             depth: 4,
             node_type: NodeType::Pv,
             bm: Move::new_null(),
-        };
+        }
+    }
 
-        let mut tt = TranspositionTable::new_in_mb(10);
+    #[test]
+    fn test_tt() {
+        let mut tt1 = TranspositionTable::new_in_mb(10);
+        manipulate(&mut tt1);
+
+        {
+            let mut tt2 = tt1.clone();
+            println!("Cloned tt1 -> tt2 ...{}", Arc::strong_count(&tt1.table));
+            tt2.insert(entry123());
+            tt2.insert(entry456());
+            println!("{:?}", tt2);
+            println!("{}", tt2);
+        }
+        println!("Dropped tt2 ...{}", Arc::strong_count(&tt1.table));
+        manipulate(&mut tt1);
+
+        let mut tt3 = tt1.clone();
+        tt1.destroy();
+        println!("Clone tt1 -> tt3 and destroy tt1 ...{}", Arc::strong_count(&tt3.table));
+        manipulate(&mut tt3);
+    }
+
+    fn manipulate(tt: &mut TranspositionTable) {
+        let entry123 = entry123();
+        let entry456 = entry456();
+        let entry456b = entry456b();
+
         assert_eq!(tt.capacity(), 178_571);
+        tt.delete(entry123.hash);
+        tt.delete(entry456.hash);
+        tt.delete(entry456b.hash);
         assert!(tt.probe_by_hash(123).is_none());
         tt.insert(entry123);
         tt.insert(entry456);
