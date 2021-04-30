@@ -21,7 +21,7 @@ use std::fmt;
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Hasher {
     seed: u64,
-    squares: [[[u64; 64]; 6]; 2], // [colour][piece][square]
+    squares: [[[u64; 64]; Piece::len()]; Color::len()], // [colour][piece][square]
     side: u64,
     castling: [u64; 4],
     ep: [u64; 8],
@@ -33,7 +33,7 @@ impl fmt::Display for Hasher {
         if f.alternate() {
             writeln!(f)?;
             for c in &Color::ALL {
-                for p in &Piece::ALL {
+                for p in &Piece::ALL_BAR_NONE {
                     for sq in 0..64 {
                         writeln!(
                             f,
@@ -71,13 +71,13 @@ static HASHER: Lazy<Hasher> = Lazy::new(|| Hasher::new(3141592653589793));
 impl Hasher {
     pub fn new(seed: u64) -> Self {
         let mut rng = ChaChaRng::seed_from_u64(seed);
-        let mut h = Hasher { seed, squares: [[[0; 64]; 6]; 2], side: 0, castling: [0; 4], ep: [0; 8] };
+        let mut h = Hasher { seed, squares: [[[0; 64]; Piece::len()]; Color::len()], side: 0, castling: [0; 4], ep: [0; 8] };
         // let i = rng.gen::<u64>();
 
         // fill seems fine to use "On big-endian platforms this performs
         // byte-swapping to ensure portability of results from reproducible generators."
         for c in &Color::ALL {
-            for p in &Piece::ALL {
+            for p in &Piece::ALL_BAR_NONE {
                 rng.fill(&mut h.squares[c.index()][p.index()]);
             }
         }
@@ -107,7 +107,7 @@ impl Hasher {
         if !b.en_passant().is_empty() {
             hash ^= self.ep[b.en_passant().last_square() & 7];
         }
-        for p in Piece::ALL.iter() {
+        for p in Piece::ALL_BAR_NONE.iter() {
             for bb in b.pieces(*p).iter() {
                 let sq = bb.first_square();
                 if b.color(Color::White).contains(bb) {

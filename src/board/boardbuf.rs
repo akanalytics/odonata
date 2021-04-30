@@ -124,7 +124,7 @@ impl BoardBuf for Board {
             return Err(format!("White\n{}\n and black\n{}\n are not disjoint", self.white(), self.black()));
         }
         let mut bb = Bitboard::all();
-        for &p in Piece::ALL.iter() {
+        for &p in Piece::ALL_BAR_NONE.iter() {
             bb &= self.pieces(p);
         }
         if !bb.is_empty() {

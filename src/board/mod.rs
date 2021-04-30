@@ -13,8 +13,8 @@ pub mod movegen;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Board {
-    pieces: [Bitboard; Piece::ALL.len()],
-    colors: [Bitboard; 2],
+    pieces: [Bitboard; Piece::len()],
+    colors: [Bitboard; Color::len()],
     castling: CastlingRights,
     en_passant: Bitboard,
     turn: Color,
@@ -22,7 +22,7 @@ pub struct Board {
     fullmove_number: u16,
     repetition_count: Cell<u16>,
     hash: Hash,
-    threats_to: [Cell<Bitboard>; 2],
+    threats_to: [Cell<Bitboard>; Color::len()],
     // interior mutability (precludes copy trait)
     // moves: MoveList,
 }
@@ -163,7 +163,7 @@ impl Board {
 
     #[inline]
     pub fn piece_at(&self, sq: Bitboard) -> Piece {
-        for &p in &Piece::ALL {
+        for &p in &Piece::ALL_BAR_NONE {
             if self.pieces(p).contains(sq) {
                 return p;
             }
@@ -205,7 +205,7 @@ impl fmt::Display for Board {
             writeln!(f, "Hash: {:x}", self.hash())?;
             writeln!(f, "Rep count: {:x}", self.repetition_count())?;
             writeln!(f, "White:\n{}\nBlack:\n{}\n", self.white(), self.black())?;
-            for &p in Piece::ALL.iter() {
+            for &p in Piece::ALL_BAR_NONE.iter() {
                 writeln!(
                     f,
                     "Pieces: {}{}\n{}\n",

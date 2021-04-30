@@ -1,6 +1,13 @@
 # Todo items
 
 - Optimization backlog
+  - tt aging
+  - tt eval caching
+  -  board phase
+  -  eval position cahing or incremental
+  -  20% has legal moves
+  -  indexing
+  -  
   - [x] default() and once_cell on Hasher
   - make_move - and move x 2
   - count occurrences of different moves

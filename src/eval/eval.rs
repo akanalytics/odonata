@@ -39,10 +39,10 @@ use std::fmt;
 // position is by white/black as directional
 
 // https://www.chessprogramming.org/Simplified_Evaluation_Function
-const SQUARE_VALUES_MG: [[i32; 64]; 6] =
-    [PAWN_PST_MG, KNIGHT_PST, BISHOP_PST, ROOK_PST, QUEEN_PST, KING_PST_MG];
-const SQUARE_VALUES_EG: [[i32; 64]; 6] =
-    [PAWN_PST_EG, KNIGHT_PST, BISHOP_PST, ROOK_PST, QUEEN_PST, KING_PST_EG];
+const SQUARE_VALUES_MG: [[i32; 64]; Piece::len()] =
+    [PAWN_PST_EG, PAWN_PST_MG, KNIGHT_PST, BISHOP_PST, ROOK_PST, QUEEN_PST, KING_PST_MG];
+const SQUARE_VALUES_EG: [[i32; 64]; Piece::len()] =
+    [PAWN_PST_EG, PAWN_PST_EG, KNIGHT_PST, BISHOP_PST, ROOK_PST, QUEEN_PST, KING_PST_EG];
 
 #[rustfmt::skip]
 const PAWN_PST_MG: [i32; 64] = [
@@ -148,7 +148,7 @@ pub struct SimpleScorer {
     pub phasing: bool,
     pub contempt: i32,
     pub tempo: i32,
-    pub material_scores: [i32; Piece::ALL.len()],
+    pub material_scores: [i32; Piece::len()],
 }
 
 impl Default for SimpleScorer {
@@ -203,7 +203,7 @@ impl Configurable for SimpleScorer {
         self.contempt = c.int("eval.draw_score_contempt").unwrap_or(self.contempt as i64) as i32;
         self.tempo = c.int("eval.tempo").unwrap_or(self.tempo as i64) as i32;
 
-        for p in &Piece::ALL {
+        for p in &Piece::ALL_BAR_NONE {
             let mut name = "eval.material.".to_string();
             name.push(p.to_char(Some(Color::Black)));
             if let Some(i) = c.int(&name) {
@@ -230,13 +230,14 @@ impl fmt::Display for SimpleScorer {
 // builder methods
 impl SimpleScorer {
     pub fn new() -> Self {
-        const MATERIAL_SCORES: [i32; Piece::ALL.len()] = [
+        const MATERIAL_SCORES: [i32; Piece::len()] = [
+            0, // None
             Piece::Pawn.centipawns(),
             Piece::Knight.centipawns(),
             Piece::Bishop.centipawns(),
             Piece::Rook.centipawns(),
             Piece::Queen.centipawns(),
-            0, // king
+            0, // king,
         ];
         SimpleScorer {
             mobility: true,
@@ -319,7 +320,7 @@ impl SimpleScorer {
     // only updated for the colour thats moved - opponents(blockes) not relevant
     pub fn eval_position(&self, board: &Board) -> i32 {
         let mut sum = 0_i32;
-        for &p in &Piece::ALL {
+        for &p in &Piece::ALL_BAR_NONE {
             let w = (board.pieces(p) & board.white()).swap_bytes();
             let b = board.pieces(p) & board.black();
 
@@ -338,7 +339,7 @@ impl SimpleScorer {
     // updated on capture & promo
     pub fn eval_material(&self, mat: &Material) -> i32 {
         let mut total = 0_i32;
-        for &p in &Piece::ALL {
+        for &p in &Piece::ALL_BAR_NONE {
             total +=
                 self.material_scores[p.index()] * (mat.counts(Color::White, p) - mat.counts(Color::Black, p));
         }

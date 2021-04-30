@@ -6,14 +6,14 @@ use std::fmt;
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub struct Material {
     // counts[color][piece] = #
-    counts: [[i32; Piece::ALL.len()]; 2],
+    counts: [[i32; Piece::len()]; Color::len()],
 }
 
 impl fmt::Display for Material {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for &c in &Color::ALL {
             // write!(f, "{}: ", c)?;
-            for &p in Piece::ALL.iter().rev() {
+            for &p in Piece::ALL_BAR_NONE.iter().rev() {
                     write!(f, "{}", p.to_char(Some(c)).to_string().repeat(self.counts(c,p) as usize))?;
             }
         }
@@ -27,10 +27,10 @@ impl cmp::PartialOrd for Material {
         if self == other {
             return Some(cmp::Ordering::Equal);
         }
-        if Piece::ALL.iter().zip(&Color::ALL).all(|(&p,&c)| self.counts(c,p) > other.counts(c,p)) {
+        if Piece::ALL_BAR_NONE.iter().zip(&Color::ALL).all(|(&p,&c)| self.counts(c,p) > other.counts(c,p)) {
             return Some(cmp::Ordering::Greater);
         }
-        if Piece::ALL.iter().zip(&Color::ALL).all(|(&p,&c)| self.counts(c,p) < other.counts(c,p)) {
+        if Piece::ALL_BAR_NONE.iter().zip(&Color::ALL).all(|(&p,&c)| self.counts(c,p) < other.counts(c,p)) {
             return Some(cmp::Ordering::Less);
         }
         None
@@ -40,7 +40,7 @@ impl cmp::PartialOrd for Material {
 impl Material {
     pub fn from_board(board: &Board) -> Material {
         let mut m = Material { ..Self::default() };
-        for &p in &Piece::ALL {
+        for &p in &Piece::ALL_BAR_NONE {
             m.counts[Color::White][p] = (board.pieces(p) & board.white()).popcount() as i32;
             m.counts[Color::Black][p] = (board.pieces(p) & board.black()).popcount() as i32;
         }
@@ -78,13 +78,13 @@ impl Material {
 
     pub fn white(&self) -> Material {
         Material {
-            counts: [self.counts[Color::White], [0;Piece::ALL.len()]],
+            counts: [self.counts[Color::White], [0;Piece::len()]],
         }
     }
 
     pub fn black(&self) -> Material {
         Material {
-            counts: [[0;Piece::ALL.len()], self.counts[Color::Black] ],
+            counts: [[0;Piece::len()], self.counts[Color::Black] ],
         }
     }
 
@@ -93,14 +93,14 @@ impl Material {
     }
 
     pub fn centipawns(&self) -> i32 {
-        Piece::ALL.iter().map(|&p| p.centipawns()*self.counts(Color::White, p) ).sum::<i32>() - 
-        Piece::ALL.iter().map(|&p| p.centipawns()*self.counts(Color::Black, p) ).sum::<i32>()
+        Piece::ALL_BAR_NONE.iter().map(|&p| p.centipawns()*self.counts(Color::White, p) ).sum::<i32>() - 
+        Piece::ALL_BAR_NONE.iter().map(|&p| p.centipawns()*self.counts(Color::Black, p) ).sum::<i32>()
     }
 
     /// removes common material leaving only the advantage material
     pub fn advantage(&self) -> Material {
         let mut advantage = *self;
-        for &p in &Piece::ALL {
+        for &p in &Piece::ALL_BAR_NONE {
             let common = cmp::min(advantage.counts[Color::White][p], advantage.counts[Color::Black][p]);
             advantage.counts[Color::White][p] -= common;
             advantage.counts[Color::Black][p] -= common;
@@ -142,19 +142,21 @@ impl Material {
         //
         // k=0, n=1, b=2, p=r=q=3. Then every total <= 2 is draw covers 1-3
         // no attempt to check for dead fortress like positions
-        let n = self.counts[0][Piece::Knight] + self.counts[1][Piece::Knight];
-        let b = 2 * (self.counts[0][Piece::Bishop] + self.counts[1][Piece::Bishop]);
+        let (w, b) = (Color::White, Color::Black);
+        let ni = self.counts(w, Piece::Knight) + self.counts(b, Piece::Knight);
+        let bi = 2 * (self.counts(w, Piece::Bishop) + self.counts(b, Piece::Bishop));
+
         let prq = 3
-            * (self.counts[0][Piece::Pawn]
-                + self.counts[1][Piece::Pawn]
-                + self.counts[0][Piece::Rook]
-                + self.counts[1][Piece::Rook]
-                + self.counts[0][Piece::Queen]
-                + self.counts[1][Piece::Queen]);
-        if n + b + prq <= 2 {
+            * (self.counts(w,Piece::Pawn)
+                + (self.counts(b, Piece::Pawn)
+                + self.counts(w,Piece::Rook)
+                + self.counts(b, Piece::Rook)
+                + self.counts(w,Piece::Queen)
+                + self.counts(b,Piece::Queen)));
+        if ni + bi + prq <= 2 {
             return true;
         }
-        if prq == 0 && self.counts[0][Piece::Bishop] == 1 && self.counts[1][Piece::Bishop] == 1 {
+        if prq == 0 && self.counts(w, Piece::Bishop) == 1 && self.counts(b, Piece::Bishop) == 1 {
             return true; //case 4
         }
         false

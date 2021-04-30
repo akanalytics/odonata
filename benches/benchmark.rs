@@ -289,18 +289,30 @@ fn benchmark_array(c: &mut Criterion) {
     let array = [1, 2];
     group.bench_function("int_index", |b| {
         b.iter(|| {
-            black_box(black_box(array)[black_box(0)]);
-            black_box(black_box(array)[black_box(1)]);
-            black_box(black_box(array)[black_box(0)]);
-            black_box(black_box(array)[black_box(1)]);
+            for c in &Color::ALL {
+                black_box(array[c.opposite().index()]);
+                black_box(array[c.index()]);
+                black_box(array[c.opposite().index()]);
+                black_box(array[c.index()]);
+            }
+            black_box(array[black_box(0)]);
+            black_box(array[black_box(1)]);
+            black_box(array[black_box(0)]);
+            black_box(array[black_box(1)]);
         });
     });
     group.bench_function("enum_index", |b| {
         b.iter(|| {
-            black_box(black_box(array)[black_box(Color::White)]);
-            black_box(black_box(array)[black_box(Color::Black)]);
-            black_box(black_box(array)[black_box(Color::White)]);
-            black_box(black_box(array)[black_box(Color::Black)]);
+            for c in &Color::ALL {
+                black_box(array[c.opposite()]);
+                black_box(array[c]);
+                black_box(array[c.opposite()]);
+                black_box(array[c]);
+            }
+            black_box(array[black_box(Color::White)]);
+            black_box(array[black_box(Color::Black)]);
+            black_box(array[black_box(Color::White)]);
+            black_box(array[black_box(Color::Black)]);
         });
     });
     group.finish();

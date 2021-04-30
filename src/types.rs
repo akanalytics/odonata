@@ -163,8 +163,22 @@ impl<T> std::ops::Index<Color> for [T] {
     type Output = T;
     #[inline]
     fn index(&self, c: Color) -> &Self::Output {
-        &self[c.index()]
-    }
+            // unsafe {
+            //     &self.get_unchecked(c.index())
+            // }
+            &self[(c.index())]
+        }
+}
+
+impl<T> std::ops::Index<&Color> for [T] {
+    type Output = T;
+    #[inline]
+    fn index(&self, c: &Color) -> &Self::Output {
+            // unsafe {
+            //     &self.get_unchecked(c.index())
+            // }
+            &self[(c.index())]
+        }
 }
 
 impl<T> std::ops::IndexMut<Color> for [T] {
@@ -184,13 +198,20 @@ impl Default for Color {
 impl Color {
     pub const ALL: [Color; 2] = [Color::White, Color::Black];
 
+
     #[inline]
-    pub fn index(self) -> usize {
-        self as usize
+    pub const fn len() -> usize {
+        Self::ALL.len()
+    }
+
+
+    #[inline]
+    pub fn index(&self) -> usize {
+        *self as usize
     }
 
     #[inline]
-    pub fn chooser_wb<T>(self, white_thing: T, black_thing: T) -> T {
+    pub fn chooser_wb<T>(&self, white_thing: T, black_thing: T) -> T {
         match self {
             Color::White => white_thing,
             Color::Black => black_thing,
@@ -198,32 +219,32 @@ impl Color {
     }
 
     #[inline]
-    pub fn pawn_move(self) -> Dir {
+    pub fn pawn_move(&self) -> Dir {
         self.chooser_wb(Dir::N, Dir::S)
     }
 
     #[inline]
-    pub fn double_push_dest_rank(self) -> Bitboard {
+    pub fn double_push_dest_rank(&self) -> Bitboard {
         self.chooser_wb(Bitboard::RANK_4, Bitboard::RANK_5)
     }
 
     #[inline]
-    pub fn pawn_capture_east(self) -> Dir {
+    pub fn pawn_capture_east(&self) -> Dir {
         self.chooser_wb(Dir::NE, Dir::SE)
     }
 
     #[inline]
-    pub fn pawn_capture_west(self) -> Dir {
+    pub fn pawn_capture_west(&self) -> Dir {
         self.chooser_wb(Dir::NW, Dir::SW)
     }
 
     #[inline]
-    pub fn back_rank(self) -> Bitboard {
+    pub fn back_rank(&self) -> Bitboard {
         self.chooser_wb(Bitboard::RANK_1, Bitboard::RANK_8)
     }
 
     #[inline]
-    pub fn opposite(self) -> Color {
+    pub fn opposite(&self) -> Color {
         self.chooser_wb(Color::Black, Color::White)
     }
 
@@ -253,13 +274,21 @@ impl fmt::Display for Color {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Piece {
-    Pawn = 0,
-    Knight = 1,
-    Bishop = 2,
-    Rook = 3,
-    Queen = 4,
-    King = 5,
-    None = 6,
+    None = 0,
+    Pawn,
+    Knight,
+    Bishop,
+    Rook,
+    Queen,
+    King,
+}
+
+impl<T> std::ops::Index<&Piece> for [T] {
+    type Output = T;
+    #[inline]
+    fn index(&self, p: &Piece) -> &Self::Output {
+        &self[p.index()]
+    }
 }
 
 impl<T> std::ops::Index<Piece> for [T] {
@@ -291,7 +320,10 @@ impl fmt::Display for Piece {
 
 
 impl Piece {
-    pub const ALL: [Piece; 6] =
+    pub const ALL: [Piece; 7] =
+        [Piece::None, Piece::Pawn, Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen, Piece::King];
+
+    pub const ALL_BAR_NONE: [Piece; 6] =
         [Piece::Pawn, Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen, Piece::King];
 
     #[inline]
@@ -301,6 +333,10 @@ impl Piece {
     #[inline]
     pub fn index(&self) -> usize {
         *self as usize
+    }
+
+    pub const fn len() -> usize {
+        Self::ALL.len()
     }
 
     #[inline]
