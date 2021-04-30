@@ -243,9 +243,16 @@ impl DerefMut for MoveList {
 }
 
 impl fmt::Display for MoveList {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let strings: Vec<String> = self.moves.iter().map(Move::to_string).collect();
-        fmt.write_str(&strings.join(", "))
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if f.alternate() {
+            for mv in self.iter() {
+                writeln!(f, "{:#}", mv)?;
+            }
+        } else {
+            let strings: Vec<String> = self.moves.iter().map(Move::to_string).collect();
+            f.write_str(&strings.join(", "))?
+        }
+        Ok(())
     }
 }
 

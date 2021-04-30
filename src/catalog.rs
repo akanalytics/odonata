@@ -46,8 +46,15 @@ impl Catalog {
         ]
     }
 
-    // TESTSUITE http://www.utzingerk.com/test.htm
+    pub fn move_ordering() -> Vec<Position> {
+        let str = r#"
+r3k2r/1P6/1N3P2/2Pp4/3QP2Q/5B2/8/R3K2R w KQkq d6 0 1 id "MO.01"; c0 "Promos";
+"#;
+        let positions = Position::parse_many_epd(str.lines()).unwrap();
+        positions
+    }
 
+    // TESTSUITE http://www.utzingerk.com/test.htm
     pub fn bratko_kopec() -> Vec<Position> {
         // source: "Sanny: Some test positions for you" google groups
         let str = r#"

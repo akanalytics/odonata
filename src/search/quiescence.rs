@@ -158,7 +158,7 @@ impl Algo {
             return alpha;
         }
 
-        let mut moves = board.pseudo_legal_moves();
+        let moves = board.pseudo_legal_moves();
         let mut moves: MoveList = moves
             .iter()
             .filter(|mv| mv.to() == sq && mv.is_capture() && board.is_legal_move(mv))
