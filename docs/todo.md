@@ -6,7 +6,7 @@
   -  board phase
   -  eval position cahing or incremental
   -  20% has legal moves
-  -  indexing
+  -  [x] indexing
   -  
   - [x] default() and once_cell on Hasher
   - make_move - and move x 2

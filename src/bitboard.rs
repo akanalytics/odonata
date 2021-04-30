@@ -152,17 +152,16 @@ impl Bitboard {
     #[inline]
     pub fn last_square(self) -> usize {
         let msb = self.bits.leading_zeros() as usize;
-        if msb < 64 {
-            63 - msb
-        } else {
-            panic!("last_square of 0");
-        }
+        debug_assert!(msb < 64);
+        63 - msb
     }
 
     #[inline]
     pub fn first_square(self) -> usize {
         // LSB
-        self.bits.trailing_zeros() as usize
+        let sq = self.bits.trailing_zeros() as usize;
+        debug_assert!(sq < 64);
+        sq
     }
 
     #[inline]

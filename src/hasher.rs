@@ -105,7 +105,7 @@ impl Hasher {
             }
         }
         if !b.en_passant().is_empty() {
-            hash ^= self.ep[b.en_passant().last_square() & 7];
+            hash ^= self.ep[b.en_passant().first_square() & 7];
         }
         for p in Piece::ALL_BAR_NONE.iter() {
             for bb in b.pieces(*p).iter() {
@@ -123,34 +123,34 @@ impl Hasher {
     pub fn hash_move(&self, m: &Move, pre_move: &Board) -> Hash {
         counts::MOVE_HASH_COUNT.increment();
         // either we're moving to an empty square or its a capture
-        let us = pre_move.color_us();
-        let them = pre_move.color_them();
+        let us = pre_move.color_us().index();
+        let them = pre_move.color_them().index();
         let mut hash = self.side;
         if !pre_move.en_passant().is_empty() {
-            hash ^= self.ep[pre_move.en_passant().last_square() & 7];
+            hash ^= self.ep[pre_move.en_passant().first_square() & 7];
         }
 
         if m.is_capture() {
             if m.is_ep_capture() {
                 // ep capture is like capture but with capture piece on *ep* square not *dest*
-                hash ^= self.squares[them][m.capture_piece()][m.ep().last_square()];
+                hash ^= self.squares[them][m.capture_piece().index()][m.ep().first_square()];
             } else {
                 // regular capture
-                hash ^= self.squares[them][m.capture_piece()][m.to().last_square()];
+                hash ^= self.squares[them][m.capture_piece().index()][m.to().first_square()];
             }
         }
 
-        hash ^= self.squares[us][m.mover_piece()][m.from().last_square()];
-        hash ^= self.squares[us][m.mover_piece()][m.to().last_square()];
+        hash ^= self.squares[us][m.mover_piece().index()][m.from().first_square()];
+        hash ^= self.squares[us][m.mover_piece().index()][m.to().first_square()];
 
         if m.mover_piece() == Piece::Pawn && m.is_pawn_double_push() {
             debug_assert!(!m.ep().is_empty(), "e/p square must be set for pawn double push {:?}", m);
-            hash ^= self.ep[m.ep().last_square() & 7];
+            hash ^= self.ep[m.ep().first_square() & 7];
         }
 
         if m.is_promo() {
-            hash ^= self.squares[us][Piece::Pawn][m.to().last_square()];
-            hash ^= self.squares[us][m.promo_piece()][m.to().last_square()];
+            hash ^= self.squares[us][Piece::Pawn][m.to().first_square()];
+            hash ^= self.squares[us][m.promo_piece()][m.to().first_square()];
         }
 
         // castling *moves*
@@ -178,8 +178,8 @@ impl Hasher {
                 }
                 _ => panic!("Castling move from square {}", m.to()),
             }
-            hash ^= self.squares[us][Piece::Rook][rook_from.last_square()];
-            hash ^= self.squares[us][Piece::Rook][rook_to.last_square()];
+            hash ^= self.squares[us][Piece::Rook][rook_from.first_square()];
+            hash ^= self.squares[us][Piece::Rook][rook_to.first_square()];
         }
 
         // castling *rights*
@@ -243,9 +243,9 @@ mod tests {
         assert_eq!(hasher1.ep[0], 15632562519469102039);
 
         // a1a2 hash
-        assert_eq!(a1.last_square(), 0);
-        assert_eq!(g1.last_square(), 6);
-        assert_eq!(h3.last_square(), 23);
+        assert_eq!(a1.first_square(), 0);
+        assert_eq!(g1.first_square(), 6);
+        assert_eq!(h3.first_square(), 23);
         let hash_a1a2 = hasher1.squares[Color::White.index()][Piece::Rook.index()][0]
             ^ hasher1.squares[Color::White.index()][Piece::Rook.index()][8];
         assert_eq!(hash_a1a2, 4947796874932763259);
