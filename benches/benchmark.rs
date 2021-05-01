@@ -1,7 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use odonata::bitboard::*;
 use odonata::board::makemove::*;
-use odonata::board::movegen::*;
 use odonata::catalog::*;
 use odonata::eval::eval::*;
 use odonata::eval::score::*;

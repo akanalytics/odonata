@@ -99,6 +99,7 @@ impl Algo {
                             if entry.score > alpha {
                                 self.record_new_pv(ply, &entry.bm, true);
                             }
+                            assert!(!entry.bm.is_null(), "Pv node at ply {} had null bm", ply); 
                             return entry.score;
                         }
                         NodeType::Cut => {
@@ -114,6 +115,7 @@ impl Algo {
                                 }
                                 score = entry.score;
                                 bm = entry.bm; // might help with move ordering
+                                assert!(!entry.bm.is_null(), "Cut node at ply {} had null bm", ply); 
                             }
                         }
                         NodeType::All => {

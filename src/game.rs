@@ -173,8 +173,8 @@ mod tests {
 
     // use crate::comms::uci::Uci;
 
-    // #[test]
-    // #[ignore]
+    //#[test]
+    //#[ignore]
     fn competition() {
         //let tc = TimeControl::NodeCount(1_000);
         let tc = TimeControl::from_remaining_time(Duration::from_millis(2000));
@@ -189,7 +189,6 @@ mod tests {
 
         black.mte.deterministic = true;
         black.tt.enabled = true;
-        black.eval.mobility = false;
         let wdl = tournament(&mut white, &mut black);
         println!("score as white {}\nELO difference {:.02}", wdl, wdl.elo_differnce());
     }

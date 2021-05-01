@@ -1,15 +1,16 @@
 use crate::clock::{Clock, DeterministicClock};
 use crate::eval::score::Score;
 use crate::movelist::MoveList;
-use crate::types::{MAX_PLY, Ply};
+use crate::types::{Ply, MAX_PLY};
 use std::fmt;
+use std::cmp;
 use std::time::Duration;
 
 #[derive(Clone, Debug)]
 pub struct SearchStats {
-    pub depth: Ply, 
-    realtime_clock: Clock,
-    deterministic_clock: DeterministicClock,
+    pub depth: Ply,
+    realtime: Clock,
+    deterministic: DeterministicClock,
 
     pub completed: bool,
     pub user_cancelled: bool,
@@ -20,13 +21,14 @@ pub struct SearchStats {
     pub score: Score,
 }
 
+#[rustfmt::skip]
 impl fmt::Display for SearchStats {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "depth            : {}", self.depth)?;
         writeln!(f, "pv               : {}", self.pv())?;
         writeln!(f, "score            : {}", self.score)?;
-        writeln!(f, "clock (detmstic) : {}", Clock::format_duration(self.deterministic_clock.elapsed()))?;
-        writeln!(f, "clock (realtime) : {}", Clock::format_duration(self.realtime_clock.elapsed()))?;
+        writeln!(f, "clock (detmstic) : {}", Clock::format(self.deterministic.elapsed()))?;
+        writeln!(f, "clock (realtime) : {}", Clock::format(self.realtime.elapsed()))?;
         writeln!(f, "completed        : {}", self.completed())?;
         writeln!(f, "user cancelled   : {}", self.user_cancelled)?;
         writeln!(f, "calc depth       : {}", self.depth())?;
@@ -63,14 +65,14 @@ impl Default for SearchStats {
     fn default() -> Self {
         Self {
             depth: 0,
-            realtime_clock: Clock::default(),
-            deterministic_clock: DeterministicClock::default(),
-
+            realtime: Clock::default(),
+            deterministic: DeterministicClock::default(),
             completed: false,
             user_cancelled: false,
             total: NodeStats::default(),
-            plies: std::iter::repeat(NodeStats::new()).take(MAX_PLY as usize).collect(),
-
+            plies: std::iter::repeat(NodeStats::new())
+                .take(MAX_PLY as usize)
+                .collect(),
             pv: MoveList::default(),
             score: Score::default(),
         }
@@ -91,15 +93,15 @@ impl SearchStats {
     }
 
     pub fn restart_clocks(&mut self) {
-        self.realtime_clock.restart();
-        self.deterministic_clock.restart();
+        self.realtime.restart();
+        self.deterministic.restart();
     }
 
     pub fn elapsed(&self, deterministic: bool) -> Duration {
         if deterministic {
-            self.deterministic_clock.elapsed()
+            self.deterministic.elapsed()
         } else {
-            self.realtime_clock.elapsed()
+            self.realtime.elapsed()
         }
     }
 
@@ -133,17 +135,20 @@ impl SearchStats {
         self.depth
     }
 
-
     pub fn len(&self) -> usize {
-        if let Some(d) = self.plies.iter().rposition(|stats| stats.nodes() + stats.q_tt_nodes() + stats.tt_nodes() != 0 ) { 
-            return 1 + d;   // a usize is one-off-the-end
+        if let Some(d) = self
+            .plies
+            .iter()
+            .rposition(|stats| stats.nodes() + stats.q_tt_nodes() + stats.tt_nodes() != 0)
+        {
+            return 1 + d; // a usize is one-off-the-end
         }
         0
     }
 
     #[inline]
     pub fn selective_depth(&self) -> Ply {
-        self.len() as Ply
+        cmp::max(self.len(), 1) as Ply - 1
     }
 
     #[inline]
@@ -153,8 +158,8 @@ impl SearchStats {
 
     pub fn record_time_actual_and_completion_status(&mut self, ply: Ply, completed: bool, pv: MoveList) {
         let ply = ply as usize;
-        self.plies[ply].real_time = self.realtime_clock.elapsed();
-        self.plies[ply].deterministic_time = self.deterministic_clock.elapsed();
+        self.plies[ply].real_time = self.realtime.elapsed();
+        self.plies[ply].deterministic_time = self.deterministic.elapsed();
         self.completed = completed;
         if completed {
             self.pv = pv;
@@ -231,12 +236,12 @@ impl SearchStats {
 
     #[inline]
     pub fn total_knps(&self) -> u128 {
-        self.total.nodes() as u128 / (1 + self.realtime_clock.elapsed().as_millis())
+        self.total.nodes() as u128 / (1 + self.realtime.elapsed().as_millis())
     }
 
     #[inline]
     pub fn interior_knps(&self) -> u128 {
-        self.total.interior_nodes() as u128 / (1 + self.realtime_clock.elapsed().as_millis())
+        self.total.interior_nodes() as u128 / (1 + self.realtime.elapsed().as_millis())
     }
 
     #[inline]
@@ -265,7 +270,6 @@ pub struct NodeStats {
 
     pub tt_nodes: u64,
     pub q_tt_nodes: u64,
-
 
     pub est_time: Duration,
     pub real_time: Duration,
@@ -411,9 +415,9 @@ impl NodeStats {
             qleaf = self.q_leaf_nodes(),
             ttnode = self.tt_nodes(),
             qttnode = self.q_tt_nodes(),
-            est_time = Clock::format_duration(self.est_time),
-            real_time = Clock::format_duration(self.real_time),
-            deterministic_time = Clock::format_duration(self.deterministic_time),
+            est_time = Clock::format(self.est_time),
+            real_time = Clock::format(self.real_time),
+            deterministic_time = Clock::format(self.deterministic_time),
         )
     }
 }

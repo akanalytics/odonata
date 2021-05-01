@@ -57,7 +57,10 @@ impl Default for DeterministicClock {
 impl DeterministicClock {
     #[inline]
     pub fn new() -> Self {
-        Self { legal_move_count: counts::LEGAL_MOVE_COUNT.get(), eval_count: counts::EVAL_COUNT.get() }
+        Self {
+            legal_move_count: counts::LEGAL_MOVE_COUNT.get(),
+            eval_count: counts::EVAL_COUNT.get(),
+        }
     }
 
     #[inline]
@@ -79,19 +82,21 @@ impl DeterministicClock {
 
 impl fmt::Display for DeterministicClock {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", Clock::format_duration(self.elapsed()))
+        write!(f, "{}", Clock::format(self.elapsed()))
     }
 }
 
 impl Default for Clock {
     fn default() -> Self {
-        Clock { start: Instant::now() }
+        Clock {
+            start: Instant::now(),
+        }
     }
 }
 
 impl fmt::Display for Clock {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", Self::format_duration(self.elapsed()))
+        write!(f, "{}", Self::format(self.elapsed()))
     }
 }
 
@@ -109,7 +114,7 @@ impl Clock {
         self.start.elapsed()
     }
 
-    pub fn format_duration(d: Duration) -> String {
+    pub fn format(d: Duration) -> String {
         DurationNewType(d).to_string()
     }
 }

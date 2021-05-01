@@ -18,8 +18,8 @@
   - stop IDS if nodes not increasing or max depth < depth>
 
 
-
-
+  - pgn tags [%eval 3.2,15] [%clk 2:34:56.890]
+  - export RUST_TEST_THREADS=1;
 
 
 # CPW todo list

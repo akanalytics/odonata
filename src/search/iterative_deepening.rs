@@ -1,15 +1,15 @@
 use crate::board::Board;
 use crate::config::{Config, Configurable};
+use crate::globals::counts;
 use crate::log_debug;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
 use crate::search::searchprogress::SearchProgress;
 use crate::search::searchstats::{NodeStats, SearchStats};
 use crate::search::timecontrol::TimeControl;
-use crate::types::{MAX_PLY, Ply};
+use crate::types::{Ply, MAX_PLY};
 use std::fmt;
 use std::ops::Range;
-use crate::globals::counts;
 
 #[derive(Clone, Debug)]
 pub struct IterativeDeepening {
@@ -29,7 +29,10 @@ impl Configurable for IterativeDeepening {
 
 impl Default for IterativeDeepening {
     fn default() -> Self {
-        Self { enabled: true, iterations: Vec::new() }
+        Self {
+            enabled: true,
+            iterations: Vec::new(),
+        }
     }
 }
 
@@ -45,14 +48,14 @@ impl fmt::Display for IterativeDeepening {
         NodeStats::fmt_underline(f)?;
         writeln!(f, " {:>8} {:<11}", "--------", "-----------")?;
         for iter in self.iterations.iter() {
-            write!(f, "D{:<2} {:>4} ", iter.depth, if iter.completed() { "OK" } else { "FAIL" })?;
-            iter.total().fmt_data(f)?;
-            writeln!(
+            write!(
                 f,
-                " {:>8} {:<11}",
-                iter.score.to_string(),
-                iter.pv().to_string()
+                "D{:<2} {:>4} ",
+                iter.depth,
+                if iter.completed() { "OK" } else { "FAIL" }
             )?;
+            iter.total().fmt_data(f)?;
+            writeln!(f, " {:>8} {:<11}", iter.score.to_string(), iter.pv().to_string())?;
         }
         Ok(())
     }
@@ -68,7 +71,7 @@ impl IterativeDeepening {
             }
         } else {
             // regardless of iterative deeping, we apply it if no explicit depth given
-            1..(MAX_PLY -1)
+            1..(MAX_PLY - 1)
         };
         range
     }
@@ -79,12 +82,10 @@ impl IterativeDeepening {
 }
 
 impl Algo {
-
     #[inline]
     pub fn set_iteration_depth(&mut self, max_depth: Ply) {
         self.max_depth = max_depth;
     }
-
 
     pub fn search(&mut self, board: &Board) {
         self.search_stats = SearchStats::new();
@@ -100,8 +101,9 @@ impl Algo {
             self.alphabeta(&mut Node::new_root(&mut self.board.clone()));
             let res = self.search_stats().clone();
 
-            self.mte.calc_estimates_for_ply(depth + 1, &res);
-            self.search_stats.record_time_estimate(depth + 1, &self.mte.time_estimate);
+            self.mte.estimate_ply(depth + 1, &res);
+            self.search_stats
+                .record_time_estimate(depth + 1, &self.mte.time_estimate);
             self.ids.iterations.push(res.clone());
             if !res.completed() {
                 counts::SEARCH_IDS_TIMEOUTS.increment();
@@ -110,7 +112,6 @@ impl Algo {
             if self.mte.probable_timeout(&res) || res.score.is_mate() {
                 break;
             }
-
 
             let mut sp = SearchProgress::from_search_stats(&res);
             sp.pv = Some(res.pv.clone());
@@ -125,12 +126,12 @@ impl Algo {
         }
         let i = i.unwrap();
         let res = &self.ids.iterations[i];
-        
         self.search_stats.pv = res.pv.clone();
         self.search_stats.score = res.score;
         // callback
         let sp = SearchProgress::from_best_move(Some(self.bm()));
         self.task_control.invoke_callback(&sp);
+        info!("{}", self);
         // self.pv = res.pv().clone();
     }
 }

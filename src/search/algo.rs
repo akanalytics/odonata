@@ -181,6 +181,12 @@ impl Clone for AlgoThreadHandle {
 }
 
 impl Algo {
+    pub fn start_new_game(&mut self) {
+        self.tt.clear();
+    }
+
+
+
     pub fn search_async(&mut self, board: &Board) {
         const FOUR_MB: usize = 4 * 1024 * 1024;
         let name = String::from("search");

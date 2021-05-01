@@ -24,10 +24,7 @@ impl Configurable for MoveTimeEstimator {
     fn settings(&self, c: &mut Config) {
         c.set("mte.branching_factor", "type spin default 10 min 1 max 100");
         c.set("mte.moves_rem", "type spin default 20 min 1 max 100");
-        c.set(
-            "mte.perc_of_time_adv",
-            "type spin default 100 min 0 max 1000",
-        );
+        c.set("mte.perc_of_time_adv", "type spin default 100 min 0 max 1000");
         c.set("mte.deterministic", "type check default false");
     }
     fn configure(&mut self, c: &Config) {
@@ -65,22 +62,10 @@ impl fmt::Display for MoveTimeEstimator {
         writeln!(f, "branching factor : {}", self.branching_factor)?;
         writeln!(f, "const moves rem. : {}", self.moves_rem)?;
         writeln!(f, "% of time adv    : {}", self.perc_of_time_adv)?;
-        writeln!(
-            f,
-            "allotted for mv  : {}",
-            Clock::format_duration(self.alloted_time_for_move())
-        )?;
-        writeln!(
-            f,
-            "time estimate    : {}",
-            Clock::format_duration(self.time_estimate)
-        )?;
+        writeln!(f, "allotted for mv  : {}", Clock::format(self.allotted()))?;
+        writeln!(f, "time estimate    : {}", Clock::format(self.time_estimate))?;
         writeln!(f, "deterministic    : {}", self.deterministic)?;
-        writeln!(
-            f,
-            "elapsed used     : {}",
-            Clock::format_duration(self.elapsed_used)
-        )?;
+        writeln!(f, "elapsed used     : {}", Clock::format(self.elapsed_used))?;
         Ok(())
     }
 }
@@ -95,12 +80,12 @@ impl MoveTimeEstimator {
             TimeControl::NodeCount(max_nodes) => search_stats.total().nodes() > max_nodes,
             TimeControl::Infinite => false,
             TimeControl::MateIn(_) => false,
-            TimeControl::RemainingTime { .. } => elapsed > self.alloted_time_for_move(),
+            TimeControl::RemainingTime { .. } => elapsed > self.allotted(),
         };
         time_up
     }
 
-    pub fn calc_estimates_for_ply(&mut self, _ply: Ply, search_stats: &SearchStats) {
+    pub fn estimate_ply(&mut self, _ply: Ply, search_stats: &SearchStats) {
         // debug_assert!(search_stats.depth() >= ply-1, "ensure we have enough stats");
         let _forecast_depth = search_stats.depth();
         self.elapsed_used = search_stats.elapsed(self.deterministic);
@@ -118,13 +103,13 @@ impl MoveTimeEstimator {
                 movestogo: _,
             } => {
                 let (_time, _inc) = our_color.chooser_wb((wtime, winc), (btime, binc));
-                self.time_estimate > self.alloted_time_for_move()
+                self.time_estimate > self.allotted()
             }
             _ => false,
         }
     }
 
-    fn alloted_time_for_move(&self) -> Duration {
+    fn allotted(&self) -> Duration {
         let zero = Duration::from_secs(0);
         match self.time_control {
             TimeControl::Depth(_) => zero,
@@ -141,9 +126,7 @@ impl MoveTimeEstimator {
                 movestogo: _,
             } => {
                 let (time_us, _inc) = our_color.chooser_wb((wtime, winc), (btime, binc));
-                let (time_them, _inc) = our_color
-                    .opposite()
-                    .chooser_wb((wtime, winc), (btime, binc));
+                let (time_them, _inc) = our_color.opposite().chooser_wb((wtime, winc), (btime, binc));
                 let time_adv = if time_us > time_them {
                     time_us - time_them
                 } else {

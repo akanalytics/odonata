@@ -4,14 +4,14 @@ use crate::board::Board;
 use crate::catalog::Catalog;
 use crate::config::{Config, Configurable};
 use crate::eval::score::Score;
+use crate::movelist::Move;
 use crate::movelist::MoveValidator;
 use crate::perft::Perft;
 use crate::search::algo::Algo;
-use crate::movelist::Move;
 use crate::search::searchprogress::SearchProgress;
 use crate::search::timecontrol::TimeControl;
+use crate::types::Ply;
 use crate::version::Version;
-use crate::types::{Ply};
 use std::fmt;
 use std::io::{self, Write};
 use std::time::Duration;
@@ -38,7 +38,6 @@ use std::time::Duration;
 //  The move format is in long algebraic notation.
 //  A nullmove from the Engine to the GUI should be send as 0000.
 //  Examples:  e2e4, e7e5, e1g1 (white short castling), e7e8q (for promotion)
-
 
 // PONDER ON
 //
@@ -102,10 +101,7 @@ impl Configurable for Uci {
     }
 }
 
-
-
 impl Uci {
-
     pub fn new() -> Uci {
         let mut uci = Uci::default();
         uci.algo.set_iterative_deepening(true);
@@ -188,12 +184,15 @@ impl Uci {
     }
 
     fn uci_newgame(&mut self) -> Result<(), String> {
+        // clear the transposition tables before the new game
+        self.algo.start_new_game();
         Ok(())
     }
 
     fn uci_quit(&mut self) -> Result<(), String> {
         println!("info string quitting...");
         self.running = false;
+        info!("{}", self.algo);
         Ok(())
     }
 
@@ -208,7 +207,9 @@ impl Uci {
 
     fn uci_perft(&self, words: &[&str]) -> Result<(), String> {
         let depth = words.first().ok_or("Must specify a depth")?;
-        let depth = depth.parse::<u32>().or(Err(format!("Depth {} must be numeric", depth)))?;
+        let depth = depth
+            .parse::<u32>()
+            .or(Err(format!("Depth {} must be numeric", depth)))?;
         let mut board = Catalog::starting_position();
         for d in 1..=depth {
             println!("info string perft({}) = {}", d, Perft::perft(&mut board, d));
@@ -319,7 +320,6 @@ impl Uci {
         Ok(())
     }
 
-
     fn uci_setoption(&mut self, args: &Args) -> Result<(), String> {
         let name = args.string_after("name");
         let value = args.string_after("value");
@@ -331,7 +331,6 @@ impl Uci {
         }
         Ok(())
     }
-
 
     fn uci_show_options(&self) {
         let mut c = Config::new();
@@ -380,10 +379,7 @@ impl Uci {
     }
 }
 
-
 struct UciInfo<'a>(&'a SearchProgress);
-
-
 
 impl<'a> fmt::Display for UciInfo<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -443,7 +439,9 @@ struct Args {
 
 impl Args {
     pub fn parse(s: &str) -> Args {
-        Args { /* line: String::from(s), */ words: s.split_whitespace().map(|s| s.to_string()).collect(), }
+        Args {
+            /* line: String::from(s), */ words: s.split_whitespace().map(|s| s.to_string()).collect(),
+        }
     }
 
     pub fn contain(&self, s: &str) -> bool {
@@ -465,8 +463,8 @@ impl Args {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::thread;
     use crate::types::Piece;
+    use std::thread;
 
     #[test]
     fn test_args() {
@@ -499,8 +497,10 @@ mod tests {
     #[test]
     fn test_uci_setoption() {
         let mut uci = Uci::new();
-        uci.preamble.push("setoption name eval.material.b value 700".into());
-        uci.preamble.push("setoption name eval.position value false".into());
+        uci.preamble
+            .push("setoption name eval.material.b value 700".into());
+        uci.preamble
+            .push("setoption name eval.position value false".into());
         uci.preamble.push("quit".into());
         uci.run();
         assert_eq!(uci.algo.eval.material_scores[Piece::Bishop], 700);
@@ -519,10 +519,14 @@ mod tests {
         assert_eq!(uci.board, Catalog::starting_position());
 
         let mut uci = Uci::new();
-        uci.preamble.push("position fen k7/8/8/8/8/8/8/7k w - - 0 2".into());
+        uci.preamble
+            .push("position fen k7/8/8/8/8/8/8/7k w - - 0 2".into());
         uci.preamble.push("quit".into());
         uci.run();
-        assert_eq!(uci.board, Board::parse_fen("k7/8/8/8/8/8/8/7k w - - 0 2").unwrap());
+        assert_eq!(
+            uci.board,
+            Board::parse_fen("k7/8/8/8/8/8/8/7k w - - 0 2").unwrap()
+        );
 
         let mut uci = Uci::new();
         uci.preamble.push("position startpos moves a2a3 a7a6".into());
