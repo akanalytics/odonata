@@ -109,7 +109,7 @@ impl Algo {
                 counts::SEARCH_IDS_TIMEOUTS.increment();
                 break;
             }
-            if self.mte.probable_timeout(&res) || res.score.is_mate() {
+            if self.mte.probable_timeout(&res)  {
                 break;
             }
 
@@ -118,6 +118,9 @@ impl Algo {
             sp.score = Some(res.score);
             self.task_control.invoke_callback(&sp);
             counts::SEARCH_IDS_COMPLETES.increment();
+            if res.score.is_mate() {
+                break;
+            }
         }
 
         let i = self.ids.iterations.iter().rposition(|r| r.completed());

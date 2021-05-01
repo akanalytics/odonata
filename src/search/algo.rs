@@ -39,6 +39,7 @@ pub struct Algo {
     pub range: Range<Ply>,
     pub pv_table: PvTable,
     pub current_best: Option<Move>,
+    pub analyse_mode: bool,  // tries to find full PV etc
     //pub score: Score,
     pub mte: MoveTimeEstimator,
     pub move_orderer: MoveOrderer,
@@ -98,6 +99,8 @@ impl Configurable for Algo {
     fn settings(&self, c: &mut Config) {
         c.set("algo.minmax", "type check default false");
         c.set("algo.ids", "type check default true");
+        c.set("reset", "type button");
+        c.set("UCI_AnalyseMode", "type check default false");
         self.eval.settings(c);
         self.mte.settings(c);
         self.move_orderer.settings(c);
@@ -108,6 +111,10 @@ impl Configurable for Algo {
     }
     fn configure(&mut self, c: &Config) {
         log_debug!("algo.configure with {}", c);
+        if c.string("reset").is_some() {
+            self.reset();
+        }
+        self.analyse_mode = c.bool("UCI_AnalyseMode").unwrap_or(self.analyse_mode);
         self.minmax = c.bool("algo.minmax").unwrap_or(self.minmax);
         self.iterative_deepening = c.bool("algo.ids").unwrap_or(self.iterative_deepening);
         self.eval.configure(c);
@@ -126,6 +133,7 @@ impl fmt::Debug for Algo {
             // .field("pv_table", &self.pv_table.extract_pv().)
             .field("board", &self.board)
             .field("current_best", &self.current_best)
+            .field("analyse_mode", &self.analyse_mode)
             //.field("pv", &self.pv)
             .field("depth", &self.max_depth)
             .field("minmax", &self.minmax)
@@ -150,6 +158,7 @@ impl fmt::Display for Algo {
         //writeln!(f, "pv               : {}", self.pv())?;
         writeln!(f, "bm               : {}", self.bm())?;
         writeln!(f, "score            : {}", self.score())?;
+        writeln!(f, "analyse mode     : {}", self.analyse_mode)?;
         writeln!(f, "depth            : {}", self.max_depth)?;
         writeln!(f, "range            : {:?}", self.range)?;
         writeln!(f, "current_best     : {}", self.current_best.unwrap_or(Move::new_null()))?;
@@ -181,7 +190,7 @@ impl Clone for AlgoThreadHandle {
 }
 
 impl Algo {
-    pub fn start_new_game(&mut self) {
+    pub fn reset(&mut self) {
         self.tt.clear();
     }
 

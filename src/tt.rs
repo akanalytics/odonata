@@ -57,6 +57,7 @@ pub struct TranspositionTable {
 
     pub enabled: bool,
     pub capacity: usize,
+    pub mb: i64,
     pub hmvc_horizon: i32,
 }
 
@@ -66,6 +67,7 @@ impl fmt::Debug for TranspositionTable {
             // .field("pv_table", &self.pv_table.extract_pv().)
             .field("enabled", &self.enabled)
             .field("capacity", &self.capacity)
+            .field("mb", &self.mb)
             .field("hmvc_horizon", &self.hmvc_horizon)
             .field("table", &self.table.len()) // dont show large table!
             .finish()
@@ -76,7 +78,7 @@ impl fmt::Display for TranspositionTable {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "enabled          : {}", self.capacity() > 0)?;
         writeln!(f, "capacity         : {}", self.capacity())?;
-        writeln!(f, "size in mb       : {}", Self::convert_capacity_to_mb(self.capacity()))?;
+        writeln!(f, "size in mb       : {}", self.mb)?;
         writeln!(f, "entry size bytes : {}", mem::size_of::<Entry>())?;
         writeln!(f, "hmvc horizon     : {}", self.hmvc_horizon)?;
         writeln!(f, "table            : {}", self.table.len())?;
@@ -89,13 +91,12 @@ impl fmt::Display for TranspositionTable {
     }
 }
 
-
-
 impl Default for TranspositionTable {
     fn default() -> Self {
         Self {
             table: Arc::new(vec![Entry::default(); Self::convert_mb_to_capacity(33)]),
             enabled: true,
+            mb: 33,
             capacity: Self::convert_mb_to_capacity(33),
             hmvc_horizon: 35,
         }
@@ -109,24 +110,24 @@ impl Configurable for TranspositionTable {
     }
     fn configure(&mut self, c: &Config) {
         log_debug!("tt.configure with {}", c);
-        let capacity = Self::convert_mb_to_capacity(c.int("Hash").unwrap_or(self.capacity as i64));
-        if capacity != self.capacity() {
+        self.mb = c.int("Hash").unwrap_or(self.mb);
+        let capacity = Self::convert_mb_to_capacity(self.mb);
+        if self.capacity() != capacity {
             self.capacity = capacity;
-            self.table = Arc::new(vec![Entry::default(); capacity]);
+            self.enabled = capacity > 0;
+            self.clear();
         }
         self.hmvc_horizon = c.int("tt.hmvc_horizon").unwrap_or(self.hmvc_horizon as i64) as i32;
     }
 }
 
-
-
 impl TranspositionTable {
-    pub const fn convert_mb_to_capacity( mb: i64) -> usize {
-        mb as usize * 1_000_000  / mem::size_of::<Entry>() 
+    pub const fn convert_mb_to_capacity(mb: i64) -> usize {
+        mb as usize * 1_000_000 / mem::size_of::<Entry>()
     }
 
-    pub const fn convert_capacity_to_mb( cap: usize) -> i64 {
-        (cap * mem::size_of::<Entry>()) as i64 / 1_000_000 
+    pub const fn convert_capacity_to_mb(cap: usize) -> i64 {
+        (cap * mem::size_of::<Entry>()) as i64 / 1_000_000
     }
 
     pub fn with_capacity(capacity: usize) -> Self {
@@ -147,10 +148,9 @@ impl TranspositionTable {
         // tt.table.resize(size, Entry::default());
     }
 
-    pub fn count_of(&self,  t: NodeType ) -> usize {
-        self.table.iter().filter( |e| e.node_type == t).count()
+    pub fn count_of(&self, t: NodeType) -> usize {
+        self.table.iter().filter(|e| e.node_type == t).count()
     }
-
 
     pub fn enabled(&self) -> bool {
         self.enabled
@@ -282,7 +282,10 @@ mod tests {
 
         let mut tt3 = tt1.clone();
         tt1.destroy();
-        println!("Clone tt1 -> tt3 and destroy tt1 ...{}", Arc::strong_count(&tt3.table));
+        println!(
+            "Clone tt1 -> tt3 and destroy tt1 ...{}",
+            Arc::strong_count(&tt3.table)
+        );
         manipulate(&mut tt3);
     }
 

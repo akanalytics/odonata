@@ -185,7 +185,7 @@ impl Uci {
 
     fn uci_newgame(&mut self) -> Result<(), String> {
         // clear the transposition tables before the new game
-        self.algo.start_new_game();
+        self.algo.reset();
         Ok(())
     }
 
@@ -322,7 +322,7 @@ impl Uci {
 
     fn uci_setoption(&mut self, args: &Args) -> Result<(), String> {
         let name = args.string_after("name");
-        let value = args.string_after("value");
+        let value = args.string_after("value").or(Some("".to_string()));
         if let Some(name) = name {
             if let Some(value) = value {
                 let c = Config::new().set(&name, &value);
@@ -473,6 +473,12 @@ mod tests {
         assert!(args.contain("depth"));
         let s = args.string_after("depth");
         assert_eq!(s, Some(String::from("3")));
+
+        let s = "option name reset";
+        let args = Args::parse(s);
+        assert!(args.contain("reset"));
+        let s = args.string_after("reset");
+        assert_eq!(s, None);
     }
 
     #[test]
