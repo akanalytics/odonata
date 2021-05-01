@@ -109,7 +109,11 @@ impl Configurable for TranspositionTable {
     }
     fn configure(&mut self, c: &Config) {
         log_debug!("tt.configure with {}", c);
-        self.capacity = Self::convert_mb_to_capacity(c.int("Hash").unwrap_or(self.capacity as i64));
+        let capacity = Self::convert_mb_to_capacity(c.int("Hash").unwrap_or(self.capacity as i64));
+        if capacity != self.capacity() {
+            self.capacity = capacity;
+            self.table = Arc::new(vec![Entry::default(); capacity]);
+        }
         self.hmvc_horizon = c.int("tt.hmvc_horizon").unwrap_or(self.hmvc_horizon as i64) as i32;
     }
 }
