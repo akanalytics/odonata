@@ -75,7 +75,7 @@ impl Game {
             let tags = player.results().tags().clone();
             self.record_move(m, tags);
             // FIXME
-            if 1 == 0 {
+            if 1 == 1 {
                 println!(
                     "{}.{} {}   {}",
                     self.board.fullmove_number(),
@@ -159,10 +159,10 @@ mod tests {
     #[ignore]
     fn test_game() {
         let eval_w = SimpleScorer::new().set_position(true);
-        let mut white = Algo::new().set_timing_method(TimeControl::Depth(2)).set_eval(eval_w).build();
+        let mut white = Algo::new().set_timing_method(TimeControl::Depth(6)).set_eval(eval_w).build();
 
         let eval_b = SimpleScorer::new().set_position(false);
-        let mut black = Algo::new().set_timing_method(TimeControl::Depth(2)).set_eval(eval_b).build();
+        let mut black = Algo::new().set_timing_method(TimeControl::Depth(6)).set_eval(eval_b).build();
 
         let board = Catalog::starting_position();
         let mut game = Game::new();
@@ -170,6 +170,7 @@ mod tests {
         game.play(&mut white, &mut black);
         println!("{}", game);
         assert_eq!(game.outcome().winning_color(), Some(Color::White));
+        assert_eq!(game.moves.len(), 47);
     }
 
     // use crate::comms::uci::Uci;
