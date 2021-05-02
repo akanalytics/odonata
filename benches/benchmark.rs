@@ -177,7 +177,6 @@ fn legal_moves(c: &mut Criterion) {
     });
 }
 
-
 fn bb_calcs(c: &mut Criterion) {
     let mut group = c.benchmark_group("bb_calcs");
     let bbs: Vec<Bitboard> = (0..64).into_iter().map(|sq| Bitboard::from_sq(sq)).collect();
@@ -198,14 +197,14 @@ fn bb_calcs(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             for _ in 0..n {
-                    black_box(black_box(Bitboard::from_sq(0)).first_square());
-                    black_box(black_box(Bitboard::from_sq(8)).first_square());
-                    black_box(black_box(Bitboard::from_sq(16)).first_square());
-                    black_box(black_box(Bitboard::from_sq(24)).first_square());
-                    black_box(black_box(Bitboard::from_sq(32)).first_square());
-                    black_box(black_box(Bitboard::from_sq(40)).first_square());
-                    black_box(black_box(Bitboard::from_sq(48)).first_square());
-                    black_box(black_box(Bitboard::from_sq(56)).first_square());
+                black_box(black_box(Bitboard::from_sq(0)).first_square());
+                black_box(black_box(Bitboard::from_sq(8)).first_square());
+                black_box(black_box(Bitboard::from_sq(16)).first_square());
+                black_box(black_box(Bitboard::from_sq(24)).first_square());
+                black_box(black_box(Bitboard::from_sq(32)).first_square());
+                black_box(black_box(Bitboard::from_sq(40)).first_square());
+                black_box(black_box(Bitboard::from_sq(48)).first_square());
+                black_box(black_box(Bitboard::from_sq(56)).first_square());
             }
             t.elapsed() / 8 as u32
         })
@@ -236,7 +235,6 @@ fn bb_calcs(c: &mut Criterion) {
 
     group.finish();
 }
-
 
 fn board_calcs(c: &mut Criterion) {
     let mut group = c.benchmark_group("board_calcs");
@@ -318,7 +316,6 @@ fn board_calcs(c: &mut Criterion) {
             t.elapsed() / positions.len() as u32
         })
     });
-
 
     group.bench_function("pseudo_legal_moves", |b| {
         b.iter_custom(|n| {
@@ -554,6 +551,7 @@ fn benchmark_search(c: &mut Criterion) {
                 .set_minmax(false)
                 .set_eval(eval)
                 .build();
+            search.reset();
             black_box(search.search(&board));
         });
     });
@@ -567,6 +565,7 @@ fn benchmark_search(c: &mut Criterion) {
                 .set_eval(eval)
                 .set_qsearch(false)
                 .build();
+            search.reset();
             black_box(search.search(&board));
         });
     });
@@ -586,6 +585,7 @@ fn benchmark_mate_in_2(c: &mut Criterion) {
                 .set_eval(eval)
                 .set_iterative_deepening(false)
                 .build();
+            search.reset();
             black_box(search.search(black_box(&board)));
             assert_eq!(search.pv_table.extract_pv().to_string(), "d5f6, g7f6, c4f7");
         });
@@ -600,6 +600,7 @@ fn benchmark_mate_in_2(c: &mut Criterion) {
                 .set_eval(eval)
                 .set_iterative_deepening(true)
                 .build();
+            search.reset();
             black_box(search.search(black_box(&board)));
             assert_eq!(search.pv_table.extract_pv().to_string(), "d5f6, g7f6, c4f7");
         });
@@ -754,12 +755,12 @@ fn bench_moveordering(c: &mut Criterion) {
 
 criterion_group!(
     benches,
-    bb_calcs,
-    board_calcs,
     benchmark_mate_in_2,
     benchmark_search,
     benchmark_perft5,
     benchmark_eval,
+    bb_calcs,
+    board_calcs,
     make_move,
     hash_move,
     hash_board,

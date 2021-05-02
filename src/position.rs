@@ -8,6 +8,8 @@ use crate::utils::StringUtils;
 use crate::tags::{Tags, Tag};
 use regex::Regex;
 use std::collections::HashMap;
+use once_cell::sync::Lazy;
+
 use std::fmt;
 
 // http://jchecs.free.fr/pdf/EPDSpecification.pdf
@@ -84,60 +86,22 @@ impl Position {
         map
     }
 
+
+
+
+
     fn split_into_tags(s: &str) -> Vec<&str> {
-        let re = Regex::new(
-            r#"(?x)
-            ([^";]*  
-                " [^"]* "   # a quoted string (possibly containing ";")
-            [^";]*
-            );
-            |
-            ([^';]*  
-                ' [^']* '   # a quoted string (possibly containing ";")
-            [^';]*
-            );
-            |
-            ([^;"']+)        # an opcode and operand(s) without any quotes 
-            ;
-            "#,
-        );
-        // for cap in re.unwrap().captures_iter(s) {
-        //     println!("{:?}", cap, cap.get(1).or(cap(get(2))) );
-        // }
-        let vec = re
-            .unwrap()
+        REGEX_SPLIT_TAGS
             .captures_iter(s)
             .map(|cap| cap.get(1).or(cap.get(2)).or(cap.get(3)).unwrap().as_str())
-            .collect();
-        vec
+            .collect()
     }
 
     fn split_into_words(s: &str) -> Vec<&str> {
-        let re = Regex::new(
-            r#"(?x)
-            (?:
-                [^"\s]*  
-                " ([^"]*) "    # a double quoted string (possibly containing whitespace)
-                [^"\s]*
-            )(?:$|\s)|
-            (?:
-                [^'\s]*  
-                ' ([^']*) '    # a single quoted string (possibly containing whitespace)
-                [^'\s]*
-            )(?:$|\s)
-            |
-            ([^\s"']+)        # an opcode/operand without any quotes 
-            (?:$|\s)"#,
-        );
-        // for cap in re.clone().unwrap().captures_iter(s) {
-        //      println!("{:?}", cap );
-        // }
-        let vec = re
-            .unwrap()
+        REGEX_SPLIT_WORDS
             .captures_iter(s)
             .map(|cap| cap.get(1).or(cap.get(2)).or(cap.get(3)).unwrap().as_str())
-            .collect();
-        vec
+            .collect()
     }
 
     pub fn parse_many_epd<I>(iter: I) -> Result<Vec<Position>, String>
@@ -155,6 +119,43 @@ impl Position {
         Ok(vec)
     }
 }
+
+
+static REGEX_SPLIT_TAGS: Lazy<Regex> = Lazy::new(|| Regex::new(
+    r#"(?x)
+    ([^";]*  
+        " [^"]* "   # a quoted string (possibly containing ";")
+    [^";]*
+    );
+    |
+    ([^';]*  
+        ' [^']* '   # a quoted string (possibly containing ";")
+    [^';]*
+    );
+    |
+    ([^;"']+)        # an opcode and operand(s) without any quotes 
+    ;
+    "#,
+).unwrap());
+
+static REGEX_SPLIT_WORDS: Lazy<Regex> = Lazy::new(|| Regex::new(
+    r#"(?x)
+    (?:
+        [^"\s]*  
+        " ([^"]*) "    # a double quoted string (possibly containing whitespace)
+        [^"\s]*
+    )(?:$|\s)|
+    (?:
+        [^'\s]*  
+        ' ([^']*) '    # a single quoted string (possibly containing whitespace)
+        [^'\s]*
+    )(?:$|\s)
+    |
+    ([^\s"']+)        # an opcode/operand without any quotes 
+    (?:$|\s)"#,
+).unwrap());
+
+
 
 impl fmt::Display for Position {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

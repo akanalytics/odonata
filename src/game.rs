@@ -156,6 +156,7 @@ mod tests {
     use std::time::Duration;
 
     #[test]
+    #[ignore]
     fn test_game() {
         let eval_w = SimpleScorer::new().set_position(true);
         let mut white = Algo::new().set_timing_method(TimeControl::Depth(2)).set_eval(eval_w).build();

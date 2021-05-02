@@ -4,8 +4,36 @@ use crate::movelist::{Move, MoveList};
 use crate::types::Color;
 use crate::utils::StringUtils;
 use regex::Regex;
-
+use once_cell::sync::Lazy;
 pub struct Parse;
+
+
+// regex from https://stackoverflow.com/questions/40007937/regex-help-for-chess-moves-san
+// /^([NBRQK])?([a-h])?([1-8])?(x)?([a-h][1-8])(=[NBRQK])?(\+|#)?$|^O-O(-O)?$/
+// which claims... 'This was unit tested against 2599 cases'
+//
+// change
+//   convert python  : $ to \Z
+//   allow "-"       : (\-|x)
+//   allow lc promos : [nbrqkNBRQK]
+//
+// r"^([NBRQK])?([a-h])?([1-8])?(\-|x)?([a-h][1-8])(=[NBRQ])?(\+|#)?\Z|^O-O(-O)?\Z"
+//
+static REGEX_SAN: Lazy<Regex> = Lazy::new(|| Regex::new(
+    r#"(?x)    # x flag to allow whitespace and comments
+    ^
+    ([PNBRQK])?     # piece - grp(1)  Fix:18/3/21 allow P
+    ([a-h])?        # src square file grp(2)
+    ([1-8])?        # src square rank grp(3)
+    (\-|x)?         # move or capture grp(4)
+    ([a-h][1-8])?   # square - both rank and file grp(5)
+    (=[NBRQ])?      # promo grp(6)
+    (\+|\#)?        # check or checkmate grp(7)
+    \z
+    |               # OR
+    ^O-O(-O)?\z     #   or castling king (or queens) side and eol
+    "#,
+).unwrap());
 
 impl Parse {
     pub fn move_san(s: &str, board: &Board) -> Result<Move, String> {
@@ -24,35 +52,7 @@ impl Parse {
         // strip whitespace
         s = s.replace(" ", "");
 
-        // regex from https://stackoverflow.com/questions/40007937/regex-help-for-chess-moves-san
-        // /^([NBRQK])?([a-h])?([1-8])?(x)?([a-h][1-8])(=[NBRQK])?(\+|#)?$|^O-O(-O)?$/
-        // which claims... 'This was unit tested against 2599 cases'
-        //
-        // change
-        //   convert python  : $ to \Z
-        //   allow "-"       : (\-|x)
-        //   allow lc promos : [nbrqkNBRQK]
-        //
-        // r"^([NBRQK])?([a-h])?([1-8])?(\-|x)?([a-h][1-8])(=[NBRQ])?(\+|#)?\Z|^O-O(-O)?\Z"
-        //
-        let re = Regex::new(
-            r#"(?x)    # x flag to allow whitespace and comments
-            ^
-            ([PNBRQK])?     # piece - grp(1)  Fix:18/3/21 allow P
-            ([a-h])?        # src square file grp(2)
-            ([1-8])?        # src square rank grp(3)
-            (\-|x)?         # move or capture grp(4)
-            ([a-h][1-8])?   # square - both rank and file grp(5)
-            (=[NBRQ])?      # promo grp(6)
-            (\+|\#)?        # check or checkmate grp(7)
-            \z
-            |               # OR
-            ^O-O(-O)?\z     #   or castling king (or queens) side and eol
-            "#,
-        )
-        .unwrap();
-
-        let caps = re.captures(&s).ok_or(format!("Unable to parse '{}' as an algebraic move", s))?;
+        let caps = REGEX_SAN.captures(&s).ok_or(format!("Unable to parse '{}' as an algebraic move", s))?;
         // if not match:
         //     raise ValueError(f"Move {orig} is invalid - wrong format")
 

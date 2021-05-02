@@ -8,6 +8,8 @@ use crate::tags::Tags;
 use regex::Regex;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
+use once_cell::sync::Lazy;
+
 
 // FIXME: public methods
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
@@ -412,15 +414,14 @@ impl MoveValidator for Board {
     }
 }
 
-fn strip_move_numbers(s: &str) -> String {
-    let re = Regex::new(
-        r#"(?x)         # x flag to allow whitespace and comments
-        (\d)+\.(\s)*(\.\.)?(\s)?      # digits a '.' and then whitespace and optionally ".."
-        "#,
-    )
-    .unwrap();
 
-    re.replace_all(&s, "").to_string()
+static REGEX_MOVE_NUMBERS: Lazy<Regex> = Lazy::new(|| Regex::new(
+    r#"(?x)         # x flag to allow whitespace and comments
+    (\d)+\.(\s)*(\.\.)?(\s)?      # digits a '.' and then whitespace and optionally ".."
+    "#,).unwrap());
+
+fn strip_move_numbers(s: &str) -> String {
+    REGEX_MOVE_NUMBERS.replace_all(&s, "").to_string()
 }
 
 #[cfg(test)]
