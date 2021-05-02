@@ -1,9 +1,9 @@
+use crate::attacks::BitboardAttacks;
+use crate::attacks::ClassicalBitboard;
 use crate::board::Board;
 use crate::config::{Config, Configurable};
 use crate::eval::score::Score;
 use crate::globals::counts;
-use crate::attacks::ClassicalBitboard;
-use crate::attacks::BitboardAttacks;
 use crate::log_debug;
 use crate::material::Material;
 use crate::outcome::GameEnd;
@@ -39,10 +39,24 @@ use std::fmt;
 // position is by white/black as directional
 
 // https://www.chessprogramming.org/Simplified_Evaluation_Function
-const SQUARE_VALUES_MG: [[i32; 64]; Piece::len()] =
-    [PAWN_PST_EG, PAWN_PST_MG, KNIGHT_PST, BISHOP_PST, ROOK_PST, QUEEN_PST, KING_PST_MG];
-const SQUARE_VALUES_EG: [[i32; 64]; Piece::len()] =
-    [PAWN_PST_EG, PAWN_PST_EG, KNIGHT_PST, BISHOP_PST, ROOK_PST, QUEEN_PST, KING_PST_EG];
+const SQUARE_VALUES_MG: [[i32; 64]; Piece::len()] = [
+    PAWN_PST_EG,
+    PAWN_PST_MG,
+    KNIGHT_PST,
+    BISHOP_PST,
+    ROOK_PST,
+    QUEEN_PST,
+    KING_PST_MG,
+];
+const SQUARE_VALUES_EG: [[i32; 64]; Piece::len()] = [
+    PAWN_PST_EG,
+    PAWN_PST_EG,
+    KNIGHT_PST,
+    BISHOP_PST,
+    ROOK_PST,
+    QUEEN_PST,
+    KING_PST_EG,
+];
 
 #[rustfmt::skip]
 const PAWN_PST_MG: [i32; 64] = [
@@ -164,13 +178,22 @@ impl Configurable for SimpleScorer {
         c.set("eval.position", "type check default true");
         c.set("eval.material", "type check default true");
         c.set("eval.phasing", "type check default true");
-        c.set("eval.pawn.doubled", &format!("type spin min -200 max 200 default {}", self.pawn_doubled));
-        c.set("eval.pawn.isolated", &format!("type spin min -200 max 200 default {}", self.pawn_isolated));
+        c.set(
+            "eval.pawn.doubled",
+            &format!("type spin min -200 max 200 default {}", self.pawn_doubled),
+        );
+        c.set(
+            "eval.pawn.isolated",
+            &format!("type spin min -200 max 200 default {}", self.pawn_isolated),
+        );
         c.set(
             "eval.draw_score_contempt",
             &format!("type spin min -10000 max 10000 default {}", self.contempt),
         );
-        c.set("eval.tempo", &format!("type spin min -1000 max 1000 default {}", self.tempo));
+        c.set(
+            "eval.tempo",
+            &format!("type spin min -1000 max 1000 default {}", self.tempo),
+        );
         c.set(
             "eval.material.p",
             &("type spin min -10000 max 10000 default ".to_string() + &Piece::Pawn.centipawns().to_string()),
@@ -248,8 +271,8 @@ impl SimpleScorer {
             position: true,
             material: true,
             phasing: true,
-            pawn_doubled: -10, 
-            pawn_isolated: -10, 
+            pawn_doubled: -10,
+            pawn_isolated: -10,
             contempt: -20, // typically -ve
             tempo: 15,
             material_scores: MATERIAL_SCORES,
@@ -300,17 +323,34 @@ impl SimpleScorer {
         } else {
             0
         };
-        let p = if self.position { self.eval_position(board) } else { 0 };
-        let m = if self.mobility { self.eval_mobility(board) } else { 0 };
+        let p = if self.position {
+            self.eval_position(board)
+        } else {
+            0
+        };
+        let m = if self.mobility {
+            self.eval_mobility(board)
+        } else {
+            0
+        };
         let t = Score::side_to_move_score(self.tempo, board.color_us());
         Score::Cp(s + p + m) + t
     }
 
-
     // always updated
     pub fn eval_mobility(&self, b: &Board) -> i32 {
-        let dp = ClassicalBitboard::doubled_pawns(b.white() & b.pawns()).popcount() - ClassicalBitboard::doubled_pawns(b.black() & b.pawns()).popcount();
-        return self.pawn_doubled * dp as i32;
+        let mut score = 0;
+        if self.pawn_doubled > 0 {
+            score += self.pawn_doubled
+                * (ClassicalBitboard::doubled_pawns(b.white() & b.pawns()).popcount()
+                    - ClassicalBitboard::doubled_pawns(b.black() & b.pawns()).popcount());
+        }
+        if self.pawn_isolated > 0 {
+            score += self.pawn_isolated
+                * (ClassicalBitboard::isolated_pawns(b.white() & b.pawns()).popcount()
+                    - ClassicalBitboard::isolated_pawns(b.black() & b.pawns()).popcount());
+        }
+        score
     }
 
     pub fn pst_mg(p: Piece, sq: usize) -> i32 {
@@ -417,7 +457,9 @@ mod tests {
         let bd = Board::parse_fen("8/P7/8/8/8/8/8/8 w - - 0 1").unwrap().as_board();
         assert_eq!(bd.eval_position(eval), Score::Cp(50));
 
-        let bd = Board::parse_fen("8/4p3/8/8/8/8/8/8 w - - 0 1").unwrap().as_board();
+        let bd = Board::parse_fen("8/4p3/8/8/8/8/8/8 w - - 0 1")
+            .unwrap()
+            .as_board();
         assert_eq!(bd.phase(), 100);
         assert_eq!(bd.eval_position(eval), Score::Cp(0));
 
@@ -435,16 +477,19 @@ mod tests {
     fn test_score_mobility() {
         let mut eval = SimpleScorer::new();
         eval.pawn_doubled = -1;
-        
         let b = Catalog::starting_position();
         assert_eq!(eval.eval_mobility(&b), 0);
 
         // 1xw 4xb doubled pawns
-        let b = Board::parse_fen("8/pppp4/pppp4/8/8/2P5/PPP5/8 b - - 0 1").unwrap().as_board();
+        let b = Board::parse_fen("8/pppp4/pppp4/8/8/2P5/PPP5/8 b - - 0 1")
+            .unwrap()
+            .as_board();
         assert_eq!(eval.eval_mobility(&b), 3);
 
         // 1xw 3xb doubled, 1xb tripled pawns
-        let b = Board::parse_fen("8/pppp4/ppp5/p7/8/2P5/PPP5/8 b - - 0 1").unwrap().as_board();
+        let b = Board::parse_fen("8/pppp4/ppp5/p7/8/2P5/PPP5/8 b - - 0 1")
+            .unwrap()
+            .as_board();
         assert_eq!(eval.eval_mobility(&b), 3);
     }
 }
