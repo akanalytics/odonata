@@ -1,10 +1,12 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::*;
 use odonata::bitboard::*;
 use odonata::board::makemove::*;
+use odonata::board::*;
 use odonata::catalog::*;
 use odonata::eval::eval::*;
 use odonata::eval::score::*;
 use odonata::globals::constants::*;
+use odonata::hasher::*;
 use odonata::material::*;
 use odonata::movelist::*;
 use odonata::perft::Perft;
@@ -12,7 +14,7 @@ use odonata::pvtable::*;
 use odonata::search::algo::Algo;
 use odonata::search::timecontrol::TimeControl;
 use odonata::types::*;
-use odonata::hasher::*;
+use std::time::Instant;
 
 /*
 Bitboard 2.7ns (a|b)&c
@@ -131,7 +133,6 @@ fn make_move(c: &mut Criterion) {
     });
 }
 
-
 fn hash_move(c: &mut Criterion) {
     let board = Catalog::perft_cpw_number3().0;
     let moves = board.legal_moves();
@@ -174,13 +175,136 @@ fn legal_moves(c: &mut Criterion) {
     });
 }
 
+fn board_calcs(c: &mut Criterion) {
+    let mut group = c.benchmark_group("board_calcs");
+    let positions = &Catalog::win_at_chess();
+    let bams: Vec<(&Board,Move)> = positions.iter().map(|p| (p.board(), p.bm().unwrap()[0])).collect();
+
+    group.bench_function("clone", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            for _ in 0..n {
+                for p in positions {
+                    black_box(p.board().clone());  
+                }
+            }
+            t.elapsed() / positions.len() as u32
+         })
+    });
+    group.bench_function("make_move + hash + clone", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            for _ in 0..n {
+                for bam in bams.iter() {
+                    black_box(bam.0.make_move(&bam.1));  
+                }
+            }
+            t.elapsed() / positions.len() as u32
+         })
+    });
+    group.bench_function("hash_move", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            for _ in 0..n {
+                for bam in bams.iter() {
+                    black_box(Hasher::default().hash_move(&bam.1, bam.0));  
+                }
+            }
+            t.elapsed() / positions.len() as u32
+         })
+    });
+    group.bench_function("hash_board", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            for _ in 0..n {
+                for bam in bams.iter() {
+                    black_box(Hasher::default().hash_board(bam.0));  
+                }
+            }
+            t.elapsed() / positions.len() as u32
+         })
+    });
+    group.bench_function("threats_to (memoise)", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            for _ in 0..n {
+                for bam in bams.iter() {
+                    black_box(bam.0.threats_to(Color::White));  
+                    black_box(bam.0.threats_to(Color::Black));  
+                }
+            }
+            t.elapsed() / 2  / positions.len() as u32
+         })
+    });
+    group.bench_function("threats_to + clone", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            for _ in 0..n {
+                for bam in bams.iter() {
+                    black_box(black_box(bam.0.clone()).threats_to(Color::White));  
+                    black_box(black_box(bam.0.clone()).threats_to(Color::Black));  
+                }
+            }
+            t.elapsed() / 2  / positions.len() as u32
+         })
+    });
+    group.finish();
+}
+    
+
+    // group.bench_function("clone", |b| {
+    //     b.iter_batched(|| positions, 
+    //         |pos| for p in pos {
+    //             black_box(black_box(p.board()).clone());  
+    //         } , 
+    //         BatchSize::SmallInput)
+    // });
+
+
+
+    // c.bench_function("clone", |b| {
+
+    //     b.iter_batched(|| data.clone(), 
+    //         |p| black_box(black_box(p.board()).clone()), 
+    //         BatchSize::SmallInput)
+
+    // });
+
+
+    // group.throughput(Throughput::Elements(positions.len() as u64));
+    // // BenchmarkId::from_parameter(p)
+    // group.bench_with_input(BenchmarkId::new("clone", "wac"), positions, |b, positions| {
+    //     b.iter(|| {
+    //         for p in positions {
+    //             black_box(black_box(p.board()).clone());
+    //         }
+    //     })
+    // });
+
+    // for p in positions {
+    //     group.bench_with_input(BenchmarkId::new("clone", p), p, |b, p| {
+    //         b.iter(|| {
+    //             black_box(black_box(p.board()).clone());
+    //         })
+    //     });
+    // }
+
+
 fn bench_chooser_array(c: &mut Criterion) {
     let white = Color::White;
     let black = Color::Black;
     c.bench_function("chooser_arr", |b| {
         b.iter(|| {
-            black_box(chooser_array(black_box(white), &Bitboard::RANK_4, &Bitboard::RANK_5));
-            black_box(chooser_array(black_box(black), &Bitboard::RANK_4, &Bitboard::RANK_5));
+            black_box(chooser_array(
+                black_box(white),
+                &Bitboard::RANK_4,
+                &Bitboard::RANK_5,
+            ));
+            black_box(chooser_array(
+                black_box(black),
+                &Bitboard::RANK_4,
+                &Bitboard::RANK_5,
+            ));
         });
     });
 }
@@ -199,7 +323,10 @@ fn bench_chooser_wb(c: &mut Criterion) {
 fn bench_chooser_struct(c: &mut Criterion) {
     let white = Color::White;
     let black = Color::Black;
-    const CHOICE: Chooser<&Bitboard> = Chooser { white: &Bitboard::RANK_4, black: &Bitboard::RANK_5 };
+    const CHOICE: Chooser<&Bitboard> = Chooser {
+        white: &Bitboard::RANK_4,
+        black: &Bitboard::RANK_5,
+    };
     c.bench_function("chooser_struct", |b| {
         b.iter(|| {
             black_box(chooser_struct(black_box(white), &CHOICE));
@@ -232,8 +359,11 @@ fn benchmark_search(c: &mut Criterion) {
         b.iter(|| {
             let board = Catalog::starting_position();
             let eval = SimpleScorer::new().set_position(false);
-            let mut search =
-                Algo::new().set_timing_method(TimeControl::Depth(5)).set_minmax(false).set_eval(eval).build();
+            let mut search = Algo::new()
+                .set_timing_method(TimeControl::Depth(5))
+                .set_minmax(false)
+                .set_eval(eval)
+                .build();
             black_box(search.search(&board));
         });
     });
@@ -241,8 +371,12 @@ fn benchmark_search(c: &mut Criterion) {
         b.iter(|| {
             let board = Catalog::starting_position();
             let eval = SimpleScorer::new().set_position(false);
-            let mut search =
-                Algo::new().set_timing_method(TimeControl::Depth(5)).set_minmax(true).set_eval(eval).set_qsearch(false).build();
+            let mut search = Algo::new()
+                .set_timing_method(TimeControl::Depth(5))
+                .set_minmax(true)
+                .set_eval(eval)
+                .set_qsearch(false)
+                .build();
             black_box(search.search(&board));
         });
     });
@@ -370,13 +504,41 @@ fn bench_pvtable(c: &mut Criterion) {
 }
 
 fn bench_moveordering(c: &mut Criterion) {
-    let a1a2 = Move { from: a1, to: a2, ..Default::default() };
-    let a1a3 = Move { from: a1, to: a3, ..Default::default() };
-    let a1a4 = Move { from: a1, to: a4, ..Default::default() };
-    let b1a2 = Move { from: b1, to: a2, ..Default::default() };
-    let b1a3 = Move { from: b1, to: a3, ..Default::default() };
-    let b1a4 = Move { from: b1, to: a4, ..Default::default() };
-    let c1c2 = Move { from: c1, to: c2, ..Default::default() };
+    let a1a2 = Move {
+        from: a1,
+        to: a2,
+        ..Default::default()
+    };
+    let a1a3 = Move {
+        from: a1,
+        to: a3,
+        ..Default::default()
+    };
+    let a1a4 = Move {
+        from: a1,
+        to: a4,
+        ..Default::default()
+    };
+    let b1a2 = Move {
+        from: b1,
+        to: a2,
+        ..Default::default()
+    };
+    let b1a3 = Move {
+        from: b1,
+        to: a3,
+        ..Default::default()
+    };
+    let b1a4 = Move {
+        from: b1,
+        to: a4,
+        ..Default::default()
+    };
+    let c1c2 = Move {
+        from: c1,
+        to: c2,
+        ..Default::default()
+    };
     let mut movelists = vec![MoveList::new(); 100];
     for i in 0..100 {
         movelists[i].extend([b1a2, b1a3, b1a4, a1a3, a1a4, a1a2].iter());
@@ -402,6 +564,7 @@ fn bench_moveordering(c: &mut Criterion) {
 
 criterion_group!(
     benches,
+    board_calcs,
     benchmark_mate_in_2,
     benchmark_search,
     benchmark_perft5,

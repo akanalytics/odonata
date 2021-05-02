@@ -173,11 +173,11 @@ mod tests {
 
     // use crate::comms::uci::Uci;
 
-    //#[test]
-    //#[ignore]
+    #[test]
+    #[ignore]
     fn competition() {
         //let tc = TimeControl::NodeCount(1_000);
-        let tc = TimeControl::from_remaining_time(Duration::from_millis(2000));
+        let tc = TimeControl::from_remaining_time(Duration::from_millis(1000));
         //let tc = TimeControl::Depth(3);
         let mut white = Algo::new().set_timing_method(tc).build();
         let mut black = Algo::new().set_timing_method(tc).build();
@@ -185,10 +185,12 @@ mod tests {
 
         white.mte.deterministic = true;
         white.tt.enabled = true;
-        black.eval.mobility = true;
+        white.eval.mobility = true;
 
         black.mte.deterministic = true;
         black.tt.enabled = true;
+        black.eval.mobility = false;
+
         let wdl = tournament(&mut white, &mut black);
         println!("score as white {}\nELO difference {:.02}", wdl, wdl.elo_differnce());
     }
@@ -200,8 +202,8 @@ mod tests {
             let mut board = pos.board().clone();
             board.set_castling(CastlingRights::NONE);
 
-            white.tt.clear();
-            black.tt.clear();
+            white.reset();
+            black.reset();
             let mut gm1 = Game::new();
             gm1.round = pos.id().unwrap().to_string() + " W";
             gm1.set_starting_pos(&board);

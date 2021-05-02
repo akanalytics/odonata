@@ -123,12 +123,14 @@ impl Board {
     }
 
     pub fn threats_to(&self, c: Color) -> Bitboard {
-        let mut th = self.threats_to[c].get();
-        if th.is_empty() {
-            th = threats_to(self, c);
-            self.threats_to[c].set(th);
-        }
+        let th = threats_to(self, c);
         th
+        // let mut th = self.threats_to[c].get();
+        // if th.is_empty() {
+        //     th = threats_to(self, c);
+        //     self.threats_to[c].set(th);
+        // }
+        // th
     } 
 
     pub fn has_legal_moves(&self) -> bool {
