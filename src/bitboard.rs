@@ -94,7 +94,7 @@ impl Bitboard {
     }
 
     #[inline]
-    pub fn from_sq(index: u32) -> Bitboard {
+    pub const fn from_sq(index: u32) -> Bitboard {
         let bit = 1 << index;
         Bitboard::from_bits_truncate(bit)
     }
@@ -139,13 +139,13 @@ impl Bitboard {
     }
 
     #[inline]
-    pub fn popcount(self) -> i32 {
+    pub const fn popcount(self) -> i32 {
         self.bits.count_ones() as i32
     }
 
     /// flip vertical
     #[inline]
-    pub fn swap_bytes(self) -> Self {
+    pub const fn swap_bytes(self) -> Self {
         Bitboard::from_bits_truncate(self.bits.swap_bytes())
     }
 

@@ -177,6 +177,67 @@ fn legal_moves(c: &mut Criterion) {
     });
 }
 
+
+fn bb_calcs(c: &mut Criterion) {
+    let mut group = c.benchmark_group("bb_calcs");
+    let bbs: Vec<Bitboard> = (0..64).into_iter().map(|sq| Bitboard::from_sq(sq)).collect();
+
+    group.bench_function("first_square", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            for _ in 0..n {
+                for bb in bbs.iter() {
+                    black_box(black_box(bb).first_square());
+                }
+            }
+            t.elapsed() / 64 as u32
+        })
+    });
+
+    group.bench_function("first_squareX", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            for _ in 0..n {
+                    black_box(black_box(Bitboard::from_sq(0)).first_square());
+                    black_box(black_box(Bitboard::from_sq(8)).first_square());
+                    black_box(black_box(Bitboard::from_sq(16)).first_square());
+                    black_box(black_box(Bitboard::from_sq(24)).first_square());
+                    black_box(black_box(Bitboard::from_sq(32)).first_square());
+                    black_box(black_box(Bitboard::from_sq(40)).first_square());
+                    black_box(black_box(Bitboard::from_sq(48)).first_square());
+                    black_box(black_box(Bitboard::from_sq(56)).first_square());
+            }
+            t.elapsed() / 8 as u32
+        })
+    });
+
+    group.bench_function("last_square", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            for _ in 0..n {
+                for bb in bbs.iter() {
+                    black_box(black_box(bb).last_square());
+                }
+            }
+            t.elapsed() / 64 as u32
+        })
+    });
+    group.bench_function("popcount", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            for _ in 0..n {
+                for bb in bbs.iter() {
+                    black_box(black_box(bb).popcount());
+                }
+            }
+            t.elapsed() / 64 as u32
+        })
+    });
+
+    group.finish();
+}
+
+
 fn board_calcs(c: &mut Criterion) {
     let mut group = c.benchmark_group("board_calcs");
     let positions = &Catalog::win_at_chess();
@@ -693,6 +754,7 @@ fn bench_moveordering(c: &mut Criterion) {
 
 criterion_group!(
     benches,
+    bb_calcs,
     board_calcs,
     benchmark_mate_in_2,
     benchmark_search,
