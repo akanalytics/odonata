@@ -16,7 +16,7 @@ fn global_classical_bitboard() -> &'static ClassicalBitboard {
 }
 
 
-fn threats_to(board: &Board, us: Color) -> Bitboard {
+pub fn threats_to(board: &Board, us: Color) -> Bitboard {
     let opponent = us.opposite();
     let occ = board.black() | board.white();
     let pawns = board.pawns() & board.color(opponent);
@@ -123,14 +123,12 @@ impl Board {
     }
 
     pub fn threats_to(&self, c: Color) -> Bitboard {
-        let th = threats_to(self, c);
+        let mut th = self.threats_to[c].get();
+        if th.is_empty() {
+            th = threats_to(self, c);
+            self.threats_to[c].set(th);
+        }
         th
-        // let mut th = self.threats_to[c].get();
-        // if th.is_empty() {
-        //     th = threats_to(self, c);
-        //     self.threats_to[c].set(th);
-        // }
-        // th
     } 
 
     pub fn has_legal_moves(&self) -> bool {

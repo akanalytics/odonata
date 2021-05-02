@@ -1,6 +1,7 @@
 use criterion::*;
 use odonata::bitboard::*;
 use odonata::board::makemove::*;
+use odonata::board::movegen::*;
 use odonata::board::*;
 use odonata::catalog::*;
 use odonata::eval::eval::*;
@@ -9,6 +10,7 @@ use odonata::globals::constants::*;
 use odonata::hasher::*;
 use odonata::material::*;
 use odonata::movelist::*;
+use odonata::outcome::*;
 use odonata::perft::Perft;
 use odonata::pvtable::*;
 use odonata::search::algo::Algo;
@@ -178,117 +180,244 @@ fn legal_moves(c: &mut Criterion) {
 fn board_calcs(c: &mut Criterion) {
     let mut group = c.benchmark_group("board_calcs");
     let positions = &Catalog::win_at_chess();
-    let bams: Vec<(&Board,Move)> = positions.iter().map(|p| (p.board(), p.bm().unwrap()[0])).collect();
 
     group.bench_function("clone", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
             for _ in 0..n {
                 for p in positions {
-                    black_box(p.board().clone());  
+                    black_box(p.board().clone());
                 }
             }
             t.elapsed() / positions.len() as u32
-         })
+        })
     });
+
+    group.bench_function("draw_outcome", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            for _ in 0..n {
+                for p in positions {
+                    black_box(p.board().draw_outcome());
+                }
+            }
+            t.elapsed() / positions.len() as u32
+        })
+    });
+
+    group.bench_function("legal_moves", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            for _ in 0..n {
+                for p in positions {
+                    black_box(p.board().legal_moves());
+                }
+            }
+            t.elapsed() / positions.len() as u32
+        })
+    });
+
+    group.bench_function("has_legal_moves", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            for _ in 0..n {
+                for p in positions {
+                    black_box(p.board().has_legal_moves());
+                }
+            }
+            t.elapsed() / positions.len() as u32
+        })
+    });
+
+    group.bench_function("is_in_check", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            for _ in 0..n {
+                for p in positions {
+                    black_box(p.board().is_in_check(Color::White));
+                    black_box(p.board().is_in_check(Color::Black));
+                }
+            }
+            t.elapsed() / 2 / positions.len() as u32
+        })
+    });
+
+    let bams: Vec<(Board, Move)> = positions
+        .iter()
+        .map(|p| (p.board().clone(), p.bm().unwrap()[0]))
+        .collect();
+    group.bench_function("will_check_them", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            for _ in 0..n {
+                for bam in bams.iter() {
+                    black_box(bam.0.will_check_them(&bam.1));
+                }
+            }
+            t.elapsed() / positions.len() as u32
+        })
+    });
+
+
+    group.bench_function("pseudo_legal_moves", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            for _ in 0..n {
+                for p in positions {
+                    black_box(p.board().pseudo_legal_moves());
+                }
+            }
+            t.elapsed() / positions.len() as u32
+        })
+    });
+
+    let bams: Vec<(Board, Move)> = positions
+        .iter()
+        .map(|p| (p.board().clone(), p.bm().unwrap()[0]))
+        .collect();
     group.bench_function("make_move + hash + clone", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
             for _ in 0..n {
                 for bam in bams.iter() {
-                    black_box(bam.0.make_move(&bam.1));  
+                    black_box(bam.0.make_move(&bam.1));
                 }
             }
             t.elapsed() / positions.len() as u32
-         })
+        })
     });
+
+    let bams: Vec<(Board, Move)> = positions
+        .iter()
+        .map(|p| (p.board().clone(), p.bm().unwrap()[0]))
+        .collect();
     group.bench_function("hash_move", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
             for _ in 0..n {
                 for bam in bams.iter() {
-                    black_box(Hasher::default().hash_move(&bam.1, bam.0));  
+                    black_box(Hasher::default().hash_move(&bam.1, &bam.0));
                 }
             }
             t.elapsed() / positions.len() as u32
-         })
+        })
     });
+    let bams: Vec<(Board, Move)> = positions
+        .iter()
+        .map(|p| (p.board().clone(), p.bm().unwrap()[0]))
+        .collect();
     group.bench_function("hash_board", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
             for _ in 0..n {
                 for bam in bams.iter() {
-                    black_box(Hasher::default().hash_board(bam.0));  
+                    black_box(Hasher::default().hash_board(&bam.0));
                 }
             }
             t.elapsed() / positions.len() as u32
-         })
+        })
     });
-    group.bench_function("threats_to (memoise)", |b| {
+    let bams: Vec<(Board, Move)> = positions
+        .iter()
+        .map(|p| (p.board().clone(), p.bm().unwrap()[0]))
+        .collect();
+    group.bench_function("threats_to raw", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
             for _ in 0..n {
                 for bam in bams.iter() {
-                    black_box(bam.0.threats_to(Color::White));  
-                    black_box(bam.0.threats_to(Color::Black));  
+                    black_box(threats_to(black_box(&bam.0), Color::White));
+                    black_box(threats_to(black_box(&bam.0), Color::Black));
                 }
             }
-            t.elapsed() / 2  / positions.len() as u32
-         })
+            t.elapsed() / 2 / positions.len() as u32
+        })
     });
+    group.bench_function("threats_to (memoise)", |b| {
+        let bams: Vec<(Board, Move)> = positions
+            .iter()
+            .map(|p| (p.board().clone(), p.bm().unwrap()[0]))
+            .collect();
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            for _ in 0..n {
+                for bam in bams.iter() {
+                    black_box(&bam.0.threats_to(Color::White));
+                    black_box(&bam.0.threats_to(Color::Black));
+                }
+            }
+            t.elapsed() / 2 / positions.len() as u32
+        })
+    });
+    let bams: Vec<(Board, Move)> = positions
+        .iter()
+        .map(|p| (p.board().clone(), p.bm().unwrap()[0]))
+        .collect();
     group.bench_function("threats_to + clone", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
             for _ in 0..n {
                 for bam in bams.iter() {
-                    black_box(black_box(bam.0.clone()).threats_to(Color::White));  
-                    black_box(black_box(bam.0.clone()).threats_to(Color::Black));  
+                    black_box(&bam.0.clone().threats_to(Color::White));
+                    black_box(&bam.0.clone().threats_to(Color::Black));
                 }
             }
-            t.elapsed() / 2  / positions.len() as u32
-         })
+            t.elapsed() / 2 / positions.len() as u32
+        })
     });
     group.finish();
-}
-    
-
-    // group.bench_function("clone", |b| {
-    //     b.iter_batched(|| positions, 
-    //         |pos| for p in pos {
-    //             black_box(black_box(p.board()).clone());  
-    //         } , 
-    //         BatchSize::SmallInput)
-    // });
-
-
-
-    // c.bench_function("clone", |b| {
-
-    //     b.iter_batched(|| data.clone(), 
-    //         |p| black_box(black_box(p.board()).clone()), 
-    //         BatchSize::SmallInput)
-
-    // });
-
-
-    // group.throughput(Throughput::Elements(positions.len() as u64));
-    // // BenchmarkId::from_parameter(p)
-    // group.bench_with_input(BenchmarkId::new("clone", "wac"), positions, |b, positions| {
-    //     b.iter(|| {
-    //         for p in positions {
-    //             black_box(black_box(p.board()).clone());
+    // let blms: Vec<(MoveList)> = positions
+    //     .iter()
+    //     .map(|p| (p.board().legal_moves()))
+    //     .collect();
+    // group.bench_function("move ordering", |b| {
+    //     b.iter_custom(|n| {
+    //         let t = Instant::now();
+    //         for _ in 0..n {
+    //             for blm in blms.iter() {
+    //                 black_box(&bam.clone().(Color::White));
+    //                 black_box(&bam.0.clone().threats_to(Color::Black));
+    //             }
     //         }
+    //         t.elapsed() / 2 / positions.len() as u32
     //     })
     // });
+    // group.finish();
+}
 
-    // for p in positions {
-    //     group.bench_with_input(BenchmarkId::new("clone", p), p, |b, p| {
-    //         b.iter(|| {
-    //             black_box(black_box(p.board()).clone());
-    //         })
-    //     });
-    // }
+// group.bench_function("clone", |b| {
+//     b.iter_batched(|| positions,
+//         |pos| for p in pos {
+//             black_box(black_box(p.board()).clone());
+//         } ,
+//         BatchSize::SmallInput)
+// });
 
+// c.bench_function("clone", |b| {
+
+//     b.iter_batched(|| data.clone(),
+//         |p| black_box(black_box(p.board()).clone()),
+//         BatchSize::SmallInput)
+
+// });
+
+// group.throughput(Throughput::Elements(positions.len() as u64));
+// // BenchmarkId::from_parameter(p)
+// group.bench_with_input(BenchmarkId::new("clone", "wac"), positions, |b, positions| {
+//     b.iter(|| {
+//         for p in positions {
+//             black_box(black_box(p.board()).clone());
+//         }
+//     })
+// });
+
+// for p in positions {
+//     group.bench_with_input(BenchmarkId::new("clone", p), p, |b, p| {
+//         b.iter(|| {
+//             black_box(black_box(p.board()).clone());
+//         })
+//     });
+// }
 
 fn bench_chooser_array(c: &mut Criterion) {
     let white = Color::White;
