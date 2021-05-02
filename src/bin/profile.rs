@@ -8,9 +8,10 @@ fn main() {
     let board = Catalog::starting_position();
     let mut search =
         Algo::new().set_timing_method(TimeControl::move_time_secs(1)).build();
-    for _i in 0..10 {
+    for _i in 0..3 {
         search.search(&board);
         println!("{}", search.results());
+        search.reset();
     }
     println!("\n\n{}\n", search);
     println!("Bye world!");

@@ -145,6 +145,7 @@ pub struct SimpleScorer {
     pub position: bool,
     pub mobility: bool,
     pub pawn_doubled: i32,
+    pub pawn_isolated: i32,
     pub phasing: bool,
     pub contempt: i32,
     pub tempo: i32,
@@ -164,6 +165,7 @@ impl Configurable for SimpleScorer {
         c.set("eval.material", "type check default true");
         c.set("eval.phasing", "type check default true");
         c.set("eval.pawn.doubled", &format!("type spin min -200 max 200 default {}", self.pawn_doubled));
+        c.set("eval.pawn.isolated", &format!("type spin min -200 max 200 default {}", self.pawn_isolated));
         c.set(
             "eval.draw_score_contempt",
             &format!("type spin min -10000 max 10000 default {}", self.contempt),
@@ -200,6 +202,7 @@ impl Configurable for SimpleScorer {
         self.material = c.bool("eval.material").unwrap_or(self.material);
         self.phasing = c.bool("eval.phasing").unwrap_or(self.phasing);
         self.pawn_doubled = c.int("eval.pawn.doubled").unwrap_or(self.pawn_doubled as i64) as i32;
+        self.pawn_isolated = c.int("eval.pawn.isolated").unwrap_or(self.pawn_isolated as i64) as i32;
         self.contempt = c.int("eval.draw_score_contempt").unwrap_or(self.contempt as i64) as i32;
         self.tempo = c.int("eval.tempo").unwrap_or(self.tempo as i64) as i32;
 
@@ -220,6 +223,7 @@ impl fmt::Display for SimpleScorer {
         writeln!(f, "mobility         : {}", self.mobility)?;
         writeln!(f, "phasing          : {}", self.phasing)?;
         writeln!(f, "pawn.doubled     : {}", self.pawn_doubled)?;
+        writeln!(f, "pawn.isolated     : {}", self.pawn_isolated)?;
         writeln!(f, "contempt         : {}", self.contempt)?;
         writeln!(f, "tempo            : {}", self.tempo)?;
         writeln!(f, "material scores  : {:?}", self.material_scores)?;
@@ -245,6 +249,7 @@ impl SimpleScorer {
             material: true,
             phasing: true,
             pawn_doubled: -10, 
+            pawn_isolated: -10, 
             contempt: -20, // typically -ve
             tempo: 15,
             material_scores: MATERIAL_SCORES,

@@ -43,9 +43,24 @@ pub trait BitboardAttacks {
         targets.shift(opp.pawn_capture_east()) | targets.shift(opp.pawn_capture_west())
     }
 
+    // tripled too (basically every pawn with a pawn south of it)
     fn doubled_pawns(pawns: Bitboard) -> Bitboard {
         pawns.fill_north().shift(Dir::N) & pawns
     }
+
+    fn open_files(pawns: Bitboard) -> Bitboard {
+        !pawns.fill_south().fill_north()
+    }
+
+    fn isolated_pawns(pawns: Bitboard) -> Bitboard {
+        let closed = !Self::open_files(pawns);
+        
+        // non-isolated pawns have a closed (wt their color) file next to them on one side
+        let non_isolated = pawns & closed.shift(Dir::E) | pawns & closed.shift(Dir::W);
+        pawns - non_isolated
+    }
+
+
 
     fn pawn_ep_captures(
         &self,
@@ -234,5 +249,10 @@ mod tests {
 
         let pawns = b2 | b4 | c5 | c6 | d3 | d7 | h5;
         assert_eq!(ClassicalBitboard::doubled_pawns(pawns), b4 | c6 | d7);
+
+        assert_eq!(ClassicalBitboard::open_files(pawns), FILE_A | FILE_E | FILE_F | FILE_G );
+        assert_eq!(ClassicalBitboard::isolated_pawns(pawns), h5 );
+        assert_eq!(ClassicalBitboard::isolated_pawns(opponent), d3 | g5 );
+
     }
 }
