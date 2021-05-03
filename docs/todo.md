@@ -1,5 +1,9 @@
 # Todo items
 
+
+- Bug fixes
+  - Cancel soon after thread start
+
 - Optimization backlog
   - tt aging
   - tt eval caching

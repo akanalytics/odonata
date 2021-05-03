@@ -70,7 +70,7 @@ impl Algo {
     pub fn qsearch2(&mut self, mv: &Move, ply: Ply, board: &mut Board, alpha: Score, beta: Score) -> Score {
         if !self.qsearch.enabled || ply <= 1 || (!mv.is_capture() && self.qsearch.only_captures) {
             self.search_stats.inc_leaf_nodes(ply);
-            return Self::sigma(board) * board.eval(&self.eval);
+            return board.eval(&self.eval);
         }
         let score = self.qsearch(mv.to(), ply, board, alpha, beta);
         assert!(self.task_control.is_cancelled() || score > Score::MinusInf);
@@ -105,11 +105,11 @@ impl Algo {
         // this will handle mates too at quiescent node
         let standing_pat;
         if ply == self.max_depth {
-            standing_pat = Self::sigma(board) * board.eval(&self.eval);
+            standing_pat = board.eval(&self.eval);
         } else {
             // in qsearch a mate score might mean a queen sacrifice. But in reality
             // opponent would just play some other move
-            standing_pat = Self::sigma(board) * board.eval_qsearch(&self.eval);
+            standing_pat = board.eval_qsearch(&self.eval);
         }
 
         // if standing_pat.is_mate() {

@@ -191,8 +191,10 @@ impl Uci {
 
     fn uci_quit(&mut self) -> Result<(), String> {
         println!("info string quitting...");
+        self.algo.search_async_stop();
+        println!("info string stopped...");
         self.running = false;
-        info!("{}", self.algo);
+        // info!("{}", self.algo);
         Ok(())
     }
 
@@ -485,7 +487,7 @@ mod tests {
     fn test_uci() {
         let mut uci = Uci::new();
         uci.preamble.push("isready".into());
-        uci.preamble.push("debug on".into());
+        // uci.preamble.push("debug on".into());
         uci.preamble.push("debug off".into());
         uci.preamble.push("debug junk".into());
         uci.preamble.push("quit".into());
@@ -517,7 +519,7 @@ mod tests {
     #[test]
     fn test_uci_position() {
         let mut uci = Uci::new();
-        uci.preamble.push("debug on".into());
+        //uci.preamble.push("debug on".into());
         uci.preamble.push("position startpos".into());
         uci.preamble.push("display".into());
         uci.preamble.push("quit".into());
@@ -558,7 +560,7 @@ mod tests {
     #[test]
     fn test_uci_go1() {
         let mut uci = Uci::new();
-        uci.preamble.push("debug on".into());
+        // uci.preamble.push("debug on".into());
         uci.preamble.push("position startpos moves d2d4".into());
         uci.preamble.push("go depth 1".into());
         uci.preamble.push("quit".into());

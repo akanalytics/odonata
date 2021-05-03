@@ -16,13 +16,6 @@ use crate::search::node::Node;
 pub struct AlphaBeta;
 
 impl Algo {
-    pub fn sigma(b: &Board) -> i32 {
-        if b.color_us() == Color::White {
-            1
-        } else {
-            -1
-        }
-    }
 
     #[inline]
     pub fn is_leaf(&self, ply: Ply) -> bool {
@@ -69,7 +62,7 @@ impl Algo {
 
         if board.draw_outcome().is_some() {
             self.search_stats.inc_leaf_nodes(ply);
-            return Self::sigma(board) * board.eval(&self.eval); // will return a draw score
+            return board.eval(&self.eval); // will return a draw score
         }
 
         let mut score = Score::MinusInf;
@@ -147,7 +140,7 @@ impl Algo {
           
         if moves.is_empty() {
             self.search_stats.inc_leaf_nodes(ply);
-            return Self::sigma(board) * board.eval(&self.eval);
+            return board.eval(&self.eval);
         }
 
         self.order_moves(ply, &mut moves);

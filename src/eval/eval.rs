@@ -166,6 +166,7 @@ pub static EVAL_COUNTS: ArrayStat = ArrayStat(&[
 
 
 pub trait Scorable<Strategy> {
+    fn signum(&self) -> i32;
     fn eval(&self, eval: &SimpleScorer) -> Score;
     fn eval_qsearch(&self, eval: &SimpleScorer) -> Score;
     fn eval_material(&self, eval: &SimpleScorer) -> Score;
@@ -418,16 +419,25 @@ impl SimpleScorer {
 }
 
 impl Scorable<SimpleScorer> for Board {
+
+    fn signum(&self) -> i32 {
+        if self.color_us() == Color::White {
+            1
+        } else {
+            -1
+        }
+    }
+
     #[inline]
     fn eval_qsearch(&self, eval: &SimpleScorer) -> Score {
         QUIESCENCE.increment();
-        eval.w_eval_qsearch(self)
+        self.signum() * eval.w_eval_qsearch(self)
     }
 
     #[inline]
     fn eval(&self, eval: &SimpleScorer) -> Score {
         ALL.increment();
-        eval.w_evaluate(self)
+        self.signum() * eval.w_evaluate(self)
     }
 
     #[inline]
@@ -435,18 +445,18 @@ impl Scorable<SimpleScorer> for Board {
         MATERIAL.increment();
         let m = Material::from_board(self);
         let s = eval.w_eval_material(&m);
-        Score::Cp(s)
+        Score::Cp(self.signum() * s)
     }
     #[inline]
     fn eval_position(&self, eval: &SimpleScorer) -> Score {
         POSITION.increment();
         let s = eval.w_eval_position(self);
-        Score::Cp(s)
+        Score::Cp(self.signum() * s)
     }
     fn eval_mobility(&self, eval: &SimpleScorer) -> Score {
         MOBILITY.increment();
         let s = eval.w_eval_mobility(self);
-        Score::Cp(s)
+        Score::Cp(self.signum() * s)
     }
 }
 
@@ -500,8 +510,9 @@ mod tests {
         let b = Catalog::black_starting_position();
         assert_eq!(w.eval_position(eval), b.eval_position(eval).negate());
 
+        // from blacks perspective to negate
         let bd = Board::parse_fen("8/8/8/8/8/8/p7/8 b - - 0 1").unwrap().as_board();
-        assert_eq!(bd.eval_position(eval), Score::Cp(-50));
+        assert_eq!(bd.eval_position(eval), -Score::Cp(-50));
     }
 
     #[test]
