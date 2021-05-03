@@ -22,7 +22,7 @@ impl Configurable for IterativeDeepening {
         c.set("ids.enabled", "type check default true");
     }
     fn configure(&mut self, c: &Config) {
-        log_debug!("quiescence.configure with {}", c);
+        log_debug!("qsearch.configure with {}", c);
         self.enabled = c.bool("ids.enabled").unwrap_or(self.enabled);
     }
 }

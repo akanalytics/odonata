@@ -12,7 +12,7 @@ use crate::repetition::Repetition;
 use crate::search::iterative_deepening::IterativeDeepening;
 use crate::search::move_orderer::MoveOrderer;
 use crate::search::move_time_estimator::MoveTimeEstimator;
-use crate::search::quiescence::Quiescence;
+use crate::search::qsearch::Quiescence;
 use crate::search::searchprogress::SearchProgress;
 use crate::search::searchstats::SearchStats;
 use crate::search::taskcontrol::TaskControl;
@@ -33,7 +33,7 @@ pub struct Algo {
     pub ids: IterativeDeepening,
     pub eval: SimpleScorer,
     pub task_control: TaskControl<SearchProgress>,
-    pub quiescence: Quiescence,
+    pub qsearch: Quiescence,
     pub search_stats: SearchStats,
 
     pub range: Range<Ply>,
@@ -61,7 +61,7 @@ impl Algo {
     }
 
     pub fn set_qsearch(&mut self, enable: bool) -> &mut Self {
-        self.quiescence.enabled = enable;
+        self.qsearch.enabled = enable;
         self
     }
 
@@ -104,7 +104,7 @@ impl Configurable for Algo {
         self.eval.settings(c);
         self.mte.settings(c);
         self.move_orderer.settings(c);
-        self.quiescence.settings(c);
+        self.qsearch.settings(c);
         self.ids.settings(c);
         self.repetition.settings(c);
         self.tt.settings(c);
@@ -120,7 +120,7 @@ impl Configurable for Algo {
         self.eval.configure(c);
         self.move_orderer.configure(c);
         self.mte.configure(c);
-        self.quiescence.configure(c);
+        self.qsearch.configure(c);
         self.ids.configure(c);
         self.repetition.configure(c);
         self.tt.configure(c);
@@ -144,7 +144,7 @@ impl fmt::Debug for Algo {
             .field("depth", &self.max_depth)
             .field("range", &self.range)
             .field("search_stats", &self.search_stats)
-            .field("quiescence", &self.quiescence)
+            .field("qsearch", &self.qsearch)
             .field("ids", &self.ids)
             .field("repetition", &self.repetition)
             .field("tt", &self.tt)
@@ -168,7 +168,7 @@ impl fmt::Display for Algo {
         write!(f, "\n[task control]\n{}", self.task_control)?;
         write!(f, "\n[move orderer]\n{}", self.move_orderer)?;
         write!(f, "\n[move time estimator]\n{}", self.mte)?;
-        write!(f, "\n[quiescence]\n{}", self.quiescence)?;
+        write!(f, "\n[qsearch]\n{}", self.qsearch)?;
         write!(f, "\n[eval]\n{}", self.eval)?;
         write!(f, "\n[iterative deepening]\n{}", self.ids)?;
         write!(f, "\n[repetition]\n{}", self.repetition)?;

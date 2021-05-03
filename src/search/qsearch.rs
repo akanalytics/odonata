@@ -24,19 +24,19 @@ pub struct Quiescence {
 
 impl Configurable for Quiescence {
     fn settings(&self, c: &mut Config) {
-        c.set("quiescence.enabled", "type check default true");
-        c.set("quiescence.only_captures", "type check default true");
-        c.set("quiescence.see", "type check default true");
-        c.set("quiescence.max_ply", "type spin default 10 min 0 max 100");
-        c.set("quiescence.coarse_delta_prune_cp", "type spin default 900 min 0 max 10000");
+        c.set("qsearch.enabled", "type check default true");
+        c.set("qsearch.only_captures", "type check default true");
+        c.set("qsearch.see", "type check default true");
+        c.set("qsearch.max_ply", "type spin default 10 min 0 max 100");
+        c.set("qsearch.coarse_delta_prune_cp", "type spin default 900 min 0 max 10000");
     }
     fn configure(&mut self, c: &Config) {
-        log_debug!("quiescence.configure with {}", c);
-        self.enabled = c.bool("quiescence.enabled").unwrap_or(self.enabled);
-        self.only_captures = c.bool("quiescence.only_captures").unwrap_or(self.only_captures);
-        self.see = c.bool("quiescence.see").unwrap_or(self.see);
-        self.max_ply = c.int("quiescence.max_ply").unwrap_or(self.max_ply as i64) as u16;
-        if let Some(cp) = c.int("quiescence.coarse_delta_prune_cp") {
+        log_debug!("qsearch.configure with {}", c);
+        self.enabled = c.bool("qsearch.enabled").unwrap_or(self.enabled);
+        self.only_captures = c.bool("qsearch.only_captures").unwrap_or(self.only_captures);
+        self.see = c.bool("qsearch.see").unwrap_or(self.see);
+        self.max_ply = c.int("qsearch.max_ply").unwrap_or(self.max_ply as i64) as u16;
+        if let Some(cp) = c.int("qsearch.coarse_delta_prune_cp") {
             self.coarse_delta_prune = Score::cp(cp as i32);
         }
     }
@@ -72,23 +72,23 @@ impl Algo {
         self.search_stats.inc_leaf_nodes(node.ply);
     }
 
-    #[inline]
-    pub fn quiescence_search(&mut self, node: &mut Node) {
-        if !self.quiescence.enabled || node.ply == 1 {
-            self.evaluate_leaf(node);
-            return;
-        }
+    // #[inline]
+    // pub fn qsearch_search(&mut self, node: &mut Node) {
+    //     if !self.qsearch.enabled || node.ply == 1 {
+    //         self.evaluate_leaf(node);
+    //         return;
+    //     }
 
-        // swap to negamax
-        if Node::is_maximizing(node.board) {
-            node.score = self.qsearch(node.last_move.to, node.ply, node.board, node.alpha, node.beta);
-        } else {
-            node.score = -self.qsearch(node.last_move.to, node.ply, node.board, -node.beta, -node.alpha);
-        }
-    }
+    //     // swap to negamax
+    //     if Node::is_maximizing(node.board) {
+    //         node.score = self.qsearch(node.last_move.to, node.ply, node.board, node.alpha, node.beta);
+    //     } else {
+    //         node.score = -self.qsearch(node.last_move.to, node.ply, node.board, -node.beta, -node.alpha);
+    //     }
+    // }
 
     pub fn qsearch2(&mut self, mv: &Move, ply: Ply, board: &mut Board, alpha: Score, beta: Score) -> Score {
-        if !self.quiescence.enabled || ply <= 1 || (!mv.is_capture() && self.quiescence.only_captures) {
+        if !self.qsearch.enabled || ply <= 1 || (!mv.is_capture() && self.qsearch.only_captures) {
             self.search_stats.inc_leaf_nodes(ply);
             return Self::sigma(board) * board.eval(&self.eval);
         }
@@ -136,9 +136,9 @@ impl Algo {
         if ply == self.max_depth {
             standing_pat = Self::sigma(board) * board.eval(&self.eval);
         } else {
-            // in quiescence a mate score might mean a queen sacrifice. But in reality
+            // in qsearch a mate score might mean a queen sacrifice. But in reality
             // opponent would just play some other move
-            standing_pat = Self::sigma(board) * board.eval_quiescence(&self.eval);
+            standing_pat = Self::sigma(board) * board.eval_qsearch(&self.eval);
         }
 
         // if standing_pat.is_mate() {
@@ -153,7 +153,7 @@ impl Algo {
         }
 
         // coarse delta pruning
-        if standing_pat < alpha - self.quiescence.coarse_delta_prune {
+        if standing_pat < alpha - self.qsearch.coarse_delta_prune {
             self.search_stats.inc_q_leaf_nodes(ply);
             return alpha;
         }
@@ -173,9 +173,9 @@ impl Algo {
 
         self.order_moves(ply, &mut moves);
 
-        for (_i, mv) in moves.iter().enumerate() {
-            let mut child_board = board.make_move(mv);
-            let score = -self.qsearch(sq, ply + 1, &mut child_board, -beta, -alpha);
+        for mv in moves.iter() {
+            let mut child = board.make_move(mv);
+            let score = -self.qsearch(sq, ply + 1, &mut child, -beta, -alpha);
             board.undo_move(mv);
             if score > beta {
                 return score;
@@ -204,7 +204,7 @@ mod tests {
                 .set_timing_method(TimeControl::NodeCount(1_000_000))
                 .set_callback(Uci::uci_info)
                 .clone();
-            search.quiescence.enabled = qs;
+            search.qsearch.enabled = qs;
             search.search(pos.board());
             println!("{}", search);
             assert_eq!(search.pv().to_string(), pos.pv().unwrap().to_string(), "{}", pos.id().unwrap());

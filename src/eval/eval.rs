@@ -166,7 +166,7 @@ pub static EVAL_COUNTS: ArrayStat = ArrayStat(&[
 
 pub trait Scorable<Strategy> {
     fn eval(&self, eval: &SimpleScorer) -> Score;
-    fn eval_quiescence(&self, eval: &SimpleScorer) -> Score;
+    fn eval_qsearch(&self, eval: &SimpleScorer) -> Score;
     fn eval_material(&self, eval: &SimpleScorer) -> Score;
     fn eval_position(&self, eval: &SimpleScorer) -> Score;
     fn eval_mobility(&self, eval: &SimpleScorer) -> Score;
@@ -321,7 +321,7 @@ impl SimpleScorer {
         self.eval_without_wdl(board)
     }
 
-    pub fn eval_quiescence(&self, board: &Board) -> Score {
+    pub fn eval_qsearch(&self, board: &Board) -> Score {
         counts::EVAL_COUNT.increment();
         // we check for insufficient material and 50/75 move draws.
         let outcome = board.draw_outcome();
@@ -418,27 +418,32 @@ impl SimpleScorer {
 
 impl Scorable<SimpleScorer> for Board {
     #[inline]
-    fn eval_quiescence(&self, eval: &SimpleScorer) -> Score {
-        eval.eval_quiescence(self)
+    fn eval_qsearch(&self, eval: &SimpleScorer) -> Score {
+        QUIESCENCE.increment();
+        eval.eval_qsearch(self)
     }
 
     #[inline]
     fn eval(&self, eval: &SimpleScorer) -> Score {
+        ALL.increment();
         eval.evaluate(self)
     }
 
     #[inline]
     fn eval_material(&self, eval: &SimpleScorer) -> Score {
+        MATERIAL.increment();
         let m = Material::from_board(self);
         let s = eval.eval_material(&m);
         Score::Cp(s)
     }
     #[inline]
     fn eval_position(&self, eval: &SimpleScorer) -> Score {
+        POSITION.increment();
         let s = eval.eval_position(self);
         Score::Cp(s)
     }
     fn eval_mobility(&self, eval: &SimpleScorer) -> Score {
+        MOBILITY.increment();
         let s = eval.eval_mobility(self);
         Score::Cp(s)
     }
