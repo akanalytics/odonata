@@ -157,33 +157,33 @@ impl Bitboard {
     #[inline]
     pub fn square(self) -> Square {
         debug_assert_eq!(self.popcount(), 1, "Attempt to convert bb {} to a square", self);
-        Square(self)
+        Square::from_bb(self)
     }
 
 
     #[inline]
-    pub fn last_square(self) -> usize {
-        let msb = self.bits.leading_zeros() as usize;
+    pub fn last_square(self) -> Square {
+        let msb = self.bits.leading_zeros();
         debug_assert!(msb < 64);
-        63 - msb
+        Square::from_u32(63 - msb) 
     }
 
     #[inline]
-    pub fn first_square(self) -> usize {
+    pub fn first_square(self) -> Square {
         // LSB
-        let sq = self.bits.trailing_zeros() as usize;
+        let sq = self.bits.trailing_zeros();
         debug_assert!(sq < 64);
-        sq
+        Square::from_u32(sq) 
     }
 
     #[inline]
     pub fn last(self) -> Self {
-        Bitboard::from_bits_truncate(1 << self.last_square()) // MSb
+        Bitboard::from_bits_truncate(1 << self.last_square().index()) // MSb
     }
 
     #[inline]
     pub fn first(self) -> Self {
-        Bitboard::from_bits_truncate(1 << self.first_square()) // LSb
+        Bitboard::from_bits_truncate(1 << self.first_square().index()) // LSb
     }
 
     #[inline]
@@ -205,13 +205,13 @@ impl Bitboard {
         ranks.iter().collect()
     }
 
-    pub fn sq_as_file(sq: usize) -> char {
-        let x = sq % 8;
+    pub fn sq_as_file(sq: Square) -> char {
+        let x = sq.index() % 8;
         char::from(b'a' + x as u8)
     }
 
-    pub fn sq_as_rank(sq: usize) -> char {
-        let y = sq / 8;
+    pub fn sq_as_rank(sq: Square) -> char {
+        let y = sq.index() / 8;
         char::from(b'1' + y as u8)
     }
 
@@ -288,19 +288,29 @@ impl fmt::Display for Bitboard {
 }
 
 #[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
-pub struct Square (Bitboard);
+pub struct Square (Bitboard, u8);
+
+// Bitboard::from_bits_truncate(1 << i)
 
 impl Square {
+    pub fn from_u8(i : u8) -> Square {
+        Square(Bitboard::EMPTY,i)
+    }
+
+    pub fn from_u32(i : u32) -> Square {
+        Square(Bitboard::EMPTY,i as u8)
+    }
+
     pub fn from_bb(bb: Bitboard) -> Square {
-        Square(bb)
+        Square(bb, 0)
     }
 
     pub fn as_bb(&self) -> Bitboard {
-        self.0
+        if self.0 != Bitboard::EMPTY { self.0 } else {Bitboard::from_bits_truncate(1 << self.1)}
     }
 
     pub fn index(&self) -> usize {
-        self.0.first_square()
+        if self.0 != Bitboard::EMPTY { self.0.bits.trailing_zeros() as usize } else { self.1 as usize }
     }
 }
 
@@ -365,9 +375,9 @@ mod tests {
     fn test_firsts_and_lasts() {
         assert_eq!(Bitboard::RANK_2.popcount(), 8);
         assert_eq!(a1b2.popcount(), 2);
-        assert_eq!(a1b2.first_square(), 0);
-        assert_eq!(a1b2.last_square(), 9);
-        assert_eq!((Bitboard::A1 | Bitboard::A2).last_square(), 8);
+        assert_eq!(a1b2.first_square().index(), 0);
+        assert_eq!(a1b2.last_square().index(), 9);
+        assert_eq!((Bitboard::A1 | Bitboard::A2).last_square().index(), 8);
         // FIXME!
         // assert_eq!(Bitboard::EMPTY.first_square(), 64);
         // assert_eq!(Bitboard::EMPTY.last_square(), 64);

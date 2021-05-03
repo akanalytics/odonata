@@ -64,7 +64,7 @@ impl Material {
 
     #[inline]
     pub fn counts(&self, c: Color, p: Piece) -> i32 {
-        self.counts[c][p]
+        self.counts[c.index()][p.index()]
     }
 
     pub fn minors_and_majors(&self) -> Material {

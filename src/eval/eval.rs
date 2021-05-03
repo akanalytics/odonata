@@ -1,5 +1,6 @@
 use crate::attacks::BitboardAttacks;
 use crate::attacks::ClassicalBitboard;
+use crate::bitboard::Square;
 use crate::board::Board;
 use crate::config::{Config, Configurable};
 use crate::eval::score::Score;
@@ -374,12 +375,12 @@ impl SimpleScorer {
         score
     }
 
-    pub fn pst_mg(p: Piece, sq: usize) -> i32 {
-        SQUARE_VALUES_MG[p][sq]
+    pub fn pst_mg(p: Piece, sq: Square) -> i32 {
+        SQUARE_VALUES_MG[p][sq.index()]
     }
 
-    pub fn pst_eg(p: Piece, sq: usize) -> i32 {
-        SQUARE_VALUES_EG[p][sq]
+    pub fn pst_eg(p: Piece, sq: Square) -> i32 {
+        SQUARE_VALUES_EG[p][sq.index()]
     }
 
     // piece positions, king safety, centre control

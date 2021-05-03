@@ -131,7 +131,7 @@ impl ClassicalBitboard {
         // println!("blockers:\n{} \nattacks:\n{} \n",blockers, attacks);
         // println!("minus\n{}\n", self.attacks[blocker_sq][dir.index]);
         // remove attacks from blocker sq and beyond
-        attacks - self.rays[blocker_sq][dir.index]
+        attacks - self.rays[blocker_sq.index()][dir.index]
     }
 }
 

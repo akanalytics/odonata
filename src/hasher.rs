@@ -2,6 +2,7 @@ use crate::board::Board;
 use crate::globals::constants::*;
 use crate::globals::counts;
 use crate::movelist::Move;
+use crate::bitboard::Square;
 use crate::types::{CastlingRights, Color, Hash, Piece};
 use once_cell::sync::Lazy;
 use rand::{Rng, SeedableRng};
@@ -96,9 +97,9 @@ impl Hasher {
         &HASHER
     }
 
-    fn get(&self, c: Color, p: Piece, sq: usize) -> &Hash {
+    fn get(&self, c: Color, p: Piece, sq: Square) -> &Hash {
         unsafe {
-            self.squares[c.index()][p.index()].get_unchecked(sq)
+            self.squares[c.index()][p.index()].get_unchecked(sq.index())
         }
     }
 
@@ -111,7 +112,7 @@ impl Hasher {
             }
         }
         if !b.en_passant().is_empty() {
-            hash ^= self.ep[b.en_passant().first_square() & 7];
+            hash ^= self.ep[b.en_passant().first_square().index() & 7];
         }
         for &p in &Piece::ALL_BAR_NONE {
             for bb in b.pieces(p).iter() {
@@ -133,7 +134,7 @@ impl Hasher {
         let them = pre_move.color_them();
         let mut hash = self.side;
         if !pre_move.en_passant().is_empty() {
-            hash ^= self.ep[pre_move.en_passant().first_square() & 7];
+            hash ^= self.ep[pre_move.en_passant().first_square().index() & 7];
         }
 
         if m.is_capture() {
@@ -151,7 +152,7 @@ impl Hasher {
 
         if m.mover_piece() == Piece::Pawn && m.is_pawn_double_push() {
             debug_assert!(!m.ep().is_empty(), "e/p square must be set for pawn double push {:?}", m);
-            hash ^= self.ep[m.ep().first_square() & 7];
+            hash ^= self.ep[m.ep().first_square().index() & 7];
         }
 
         if m.is_promo() {
@@ -248,9 +249,9 @@ mod tests {
         assert_eq!(hasher1.ep[0], 15632562519469102039);
 
         // a1a2 hash
-        assert_eq!(a1.first_square(), 0);
-        assert_eq!(g1.first_square(), 6);
-        assert_eq!(h3.first_square(), 23);
+        assert_eq!(a1.first_square().index(), 0);
+        assert_eq!(g1.first_square().index(), 6);
+        assert_eq!(h3.first_square().index(), 23);
         let hash_a1a2 = hasher1.squares[Color::White.index()][Piece::Rook.index()][0]
             ^ hasher1.squares[Color::White.index()][Piece::Rook.index()][8];
         assert_eq!(hash_a1a2, 4947796874932763259);
