@@ -16,6 +16,7 @@ use odonata::pvtable::*;
 use odonata::search::algo::Algo;
 use odonata::search::timecontrol::TimeControl;
 use odonata::types::*;
+use odonata::utils::*;
 use std::time::Instant;
 
 /*
@@ -243,11 +244,9 @@ fn board_calcs(c: &mut Criterion) {
     group.bench_function("clone", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
-            for _ in 0..n {
-                for p in positions {
-                    black_box(p.board().clone());
-                }
-            }
+            positions.iter().cycle_n(n).for_each(|p| {
+                black_box(p.board().clone());
+            });
             t.elapsed() / positions.len() as u32
         })
     });
@@ -255,11 +254,9 @@ fn board_calcs(c: &mut Criterion) {
     group.bench_function("draw_outcome", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
-            for _ in 0..n {
-                for p in positions {
-                    black_box(p.board().draw_outcome());
-                }
-            }
+            positions.iter().cycle_n(n).for_each(|p| {
+                black_box(p.board().draw_outcome());
+            });
             t.elapsed() / positions.len() as u32
         })
     });
@@ -267,11 +264,9 @@ fn board_calcs(c: &mut Criterion) {
     group.bench_function("legal_moves", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
-            for _ in 0..n {
-                for p in positions {
-                    black_box(p.board().legal_moves());
-                }
-            }
+            positions.iter().cycle_n(n).for_each(|p| {
+                black_box(p.board().legal_moves());
+            });
             t.elapsed() / positions.len() as u32
         })
     });
@@ -279,11 +274,9 @@ fn board_calcs(c: &mut Criterion) {
     group.bench_function("has_legal_moves", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
-            for _ in 0..n {
-                for p in positions {
-                    black_box(p.board().has_legal_moves());
-                }
-            }
+            positions.iter().cycle_n(n).for_each(|p| {
+                black_box(p.board().has_legal_moves());
+            });
             t.elapsed() / positions.len() as u32
         })
     });
@@ -291,12 +284,10 @@ fn board_calcs(c: &mut Criterion) {
     group.bench_function("is_in_check", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
-            for _ in 0..n {
-                for p in positions {
-                    black_box(p.board().is_in_check(Color::White));
-                    black_box(p.board().is_in_check(Color::Black));
-                }
-            }
+            positions.iter().cycle_n(n).for_each(|p| {
+                black_box(p.board().is_in_check(Color::White));
+                black_box(p.board().is_in_check(Color::Black));
+            });
             t.elapsed() / 2 / positions.len() as u32
         })
     });
@@ -308,11 +299,9 @@ fn board_calcs(c: &mut Criterion) {
     group.bench_function("will_check_them", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
-            for _ in 0..n {
-                for bam in bams.iter() {
-                    black_box(bam.0.will_check_them(&bam.1));
-                }
-            }
+            bams.iter().cycle_n(n).for_each(|bam| {
+                black_box(bam.0.will_check_them(&bam.1));
+            });
             t.elapsed() / positions.len() as u32
         })
     });
@@ -320,11 +309,9 @@ fn board_calcs(c: &mut Criterion) {
     group.bench_function("pseudo_legal_moves", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
-            for _ in 0..n {
-                for p in positions {
-                    black_box(p.board().pseudo_legal_moves());
-                }
-            }
+            positions.iter().cycle_n(n).for_each(|p| {
+                black_box(p.board().pseudo_legal_moves());
+            });
             t.elapsed() / positions.len() as u32
         })
     });
@@ -336,11 +323,9 @@ fn board_calcs(c: &mut Criterion) {
     group.bench_function("make_move + hash + clone", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
-            for _ in 0..n {
-                for bam in bams.iter() {
-                    black_box(bam.0.make_move(&bam.1));
-                }
-            }
+            bams.iter().cycle_n(n).for_each(|bam| {
+                black_box(bam.0.make_move(&bam.1));
+            });
             t.elapsed() / positions.len() as u32
         })
     });
@@ -352,11 +337,9 @@ fn board_calcs(c: &mut Criterion) {
     group.bench_function("hash_move", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
-            for _ in 0..n {
-                for bam in bams.iter() {
-                    black_box(Hasher::default().hash_move(&bam.1, &bam.0));
-                }
-            }
+            bams.iter().cycle_n(n).for_each(|bam| {
+                black_box(Hasher::default().hash_move(&bam.1, &bam.0));
+            });
             t.elapsed() / positions.len() as u32
         })
     });
@@ -367,11 +350,9 @@ fn board_calcs(c: &mut Criterion) {
     group.bench_function("hash_board", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
-            for _ in 0..n {
-                for bam in bams.iter() {
-                    black_box(Hasher::default().hash_board(&bam.0));
-                }
-            }
+            bams.iter().cycle_n(n).for_each(|bam| {
+                black_box(Hasher::default().hash_board(&bam.0));
+            });
             t.elapsed() / positions.len() as u32
         })
     });
@@ -382,12 +363,10 @@ fn board_calcs(c: &mut Criterion) {
     group.bench_function("threats_to raw", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
-            for _ in 0..n {
-                for bam in bams.iter() {
-                    black_box(threats_to(black_box(&bam.0), Color::White));
-                    black_box(threats_to(black_box(&bam.0), Color::Black));
-                }
-            }
+            bams.iter().cycle_n(n).for_each(|bam| {
+                black_box(threats_to(black_box(&bam.0), Color::White));
+                black_box(threats_to(black_box(&bam.0), Color::Black));
+            });
             t.elapsed() / 2 / positions.len() as u32
         })
     });
@@ -398,12 +377,10 @@ fn board_calcs(c: &mut Criterion) {
             .collect();
         b.iter_custom(|n| {
             let t = Instant::now();
-            for _ in 0..n {
-                for bam in bams.iter() {
-                    black_box(&bam.0.threats_to(Color::White));
-                    black_box(&bam.0.threats_to(Color::Black));
-                }
-            }
+            bams.iter().cycle_n(n).for_each(|bam| {
+                black_box(&bam.0.threats_to(Color::White));
+                black_box(&bam.0.threats_to(Color::Black));
+            });
             t.elapsed() / 2 / positions.len() as u32
         })
     });
@@ -414,68 +391,77 @@ fn board_calcs(c: &mut Criterion) {
     group.bench_function("threats_to + clone", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
-            for _ in 0..n {
-                for bam in bams.iter() {
-                    black_box(&bam.0.clone().threats_to(Color::White));
-                    black_box(&bam.0.clone().threats_to(Color::Black));
-                }
-            }
+            bams.iter().cycle_n(n).for_each(|bam| {
+                black_box(&bam.0.clone().threats_to(Color::White));
+                black_box(&bam.0.clone().threats_to(Color::Black));
+            });
             t.elapsed() / 2 / positions.len() as u32
         })
     });
     group.finish();
-    // let blms: Vec<(MoveList)> = positions
-    //     .iter()
-    //     .map(|p| (p.board().legal_moves()))
-    //     .collect();
-    // group.bench_function("move ordering", |b| {
-    //     b.iter_custom(|n| {
-    //         let t = Instant::now();
-    //         for _ in 0..n {
-    //             for blm in blms.iter() {
-    //                 black_box(&bam.clone().(Color::White));
-    //                 black_box(&bam.0.clone().threats_to(Color::Black));
-    //             }
-    //         }
-    //         t.elapsed() / 2 / positions.len() as u32
-    //     })
-    // });
-    // group.finish();
 }
 
-// group.bench_function("clone", |b| {
-//     b.iter_batched(|| positions,
-//         |pos| for p in pos {
-//             black_box(black_box(p.board()).clone());
-//         } ,
-//         BatchSize::SmallInput)
-// });
-
-// c.bench_function("clone", |b| {
-
-//     b.iter_batched(|| data.clone(),
-//         |p| black_box(black_box(p.board()).clone()),
-//         BatchSize::SmallInput)
-
-// });
-
-// group.throughput(Throughput::Elements(positions.len() as u64));
-// // BenchmarkId::from_parameter(p)
-// group.bench_with_input(BenchmarkId::new("clone", "wac"), positions, |b, positions| {
-//     b.iter(|| {
-//         for p in positions {
-//             black_box(black_box(p.board()).clone());
-//         }
-//     })
-// });
-
-// for p in positions {
-//     group.bench_with_input(BenchmarkId::new("clone", p), p, |b, p| {
-//         b.iter(|| {
-//             black_box(black_box(p.board()).clone());
-//         })
-//     });
-// }
+fn benchmark_eval(c: &mut Criterion) {
+    let mut group = c.benchmark_group("eval");
+    let positions = &Catalog::win_at_chess();
+    let ef = &SimpleScorer::new();
+    let ef_no_pos = &SimpleScorer::new().set_position(false);
+    group.bench_function("material", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            positions.iter().cycle_n(n).for_each(|p| {
+                black_box(p.board().eval_material(black_box(ef)));
+            });
+            t.elapsed() / positions.len() as u32
+        })
+    });
+    group.bench_function("position", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            positions.iter().cycle_n(n).for_each(|p| {
+                black_box(p.board().eval_position(black_box(ef)));
+            });
+            t.elapsed() / positions.len() as u32
+        })
+    });
+    group.bench_function("mobility", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            positions.iter().cycle_n(n).for_each(|p| {
+                black_box(p.board().eval_mobility(black_box(ef)));
+            });
+            t.elapsed() / positions.len() as u32
+        })
+    });
+    group.bench_function("all", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            positions.iter().cycle_n(n).for_each(|p| {
+                black_box(p.board().eval(black_box(ef)));
+            });
+            t.elapsed() / positions.len() as u32
+        })
+    });
+    group.bench_function("quiescence", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            positions.iter().cycle_n(n).for_each(|p| {
+                black_box(p.board().eval_quiescence(black_box(ef)));
+            });
+            t.elapsed() / positions.len() as u32
+        })
+    });
+    group.bench_function("all_less_pos", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            positions.iter().cycle_n(n).for_each(|p| {
+                black_box(p.board().eval(black_box(ef_no_pos)));
+            });
+            t.elapsed() / positions.len() as u32
+        })
+    });
+    group.finish();
+}
 
 fn bench_chooser_array(c: &mut Criterion) {
     let white = Color::White;
@@ -637,46 +623,6 @@ fn benchmark_array(c: &mut Criterion) {
             black_box(array[black_box(Color::Black)]);
             black_box(array[black_box(Color::White)]);
             black_box(array[black_box(Color::Black)]);
-        });
-    });
-    group.finish();
-}
-
-fn benchmark_eval(c: &mut Criterion) {
-    let mut group = c.benchmark_group("eval");
-    let ef = &SimpleScorer::new();
-    let ef_no_pos = &SimpleScorer::new().set_position(false);
-    let bd = Catalog::white_starting_position();
-    group.bench_function("material", |b| {
-        b.iter(|| {
-            black_box(bd.eval_material(black_box(ef)));
-            black_box(bd.eval_material(black_box(ef)));
-            black_box(bd.eval_material(black_box(ef)));
-            black_box(bd.eval_material(black_box(ef)));
-        });
-    });
-    group.bench_function("position", |b| {
-        b.iter(|| {
-            black_box(bd.eval_position(black_box(ef)));
-            black_box(bd.eval_position(black_box(ef)));
-            black_box(bd.eval_position(black_box(ef)));
-            black_box(bd.eval_position(black_box(ef)));
-        });
-    });
-    group.bench_function("all", |b| {
-        b.iter(|| {
-            black_box(bd.eval(black_box(ef)));
-            black_box(bd.eval(black_box(ef)));
-            black_box(bd.eval(black_box(ef)));
-            black_box(bd.eval(black_box(ef)));
-        });
-    });
-    group.bench_function("all_less_pos", |b| {
-        b.iter(|| {
-            black_box(bd.eval(black_box(ef_no_pos)));
-            black_box(bd.eval(black_box(ef_no_pos)));
-            black_box(bd.eval(black_box(ef_no_pos)));
-            black_box(bd.eval(black_box(ef_no_pos)));
         });
     });
     group.finish();

@@ -142,13 +142,18 @@ impl Board {
 
     /// called with is_in_check( board.turn() ) to see if currently in check
     pub fn is_in_check(&self, king_color: Color) -> bool {
+        let them = self.color(king_color.opposite());
+        self.checkers(king_color).intersects(them)
+    }
+
+    pub fn checkers(&self, king_color: Color) -> Bitboard {
         let board = &self;
         let us = board.color(king_color);
         let them = board.color(king_color.opposite());
         let our_king = board.kings() & us;
         debug_assert!(!our_king.is_empty(), "king ({}) not found {}", king_color, board);
         let occ = us | them;
-        attacked_by(our_king, occ, board).intersects(them)
+        attacked_by(our_king, occ, board)
     }
 
     pub fn is_legal_move(&self, mv: &Move) -> bool {

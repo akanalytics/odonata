@@ -1,5 +1,60 @@
 use std::ops::{Bound, RangeBounds};
 
+
+
+//
+// https://stackoverflow.com/questions/59413614/cycle-a-rust-iterator-a-given-number-of-times
+//
+pub trait Itermisc: std::iter::Iterator {
+    fn cycle_n(self, n: u64) -> CycleN<Self>
+    where
+        Self: Clone,
+    {
+        CycleN::new(self, n)
+    }
+}
+
+impl<T: ?Sized> Itermisc for T where T: std::iter::Iterator {}
+
+pub struct CycleN<I> {
+    orig: I,
+    iter: I,
+    tick: u64,
+}
+impl<I: Clone> CycleN<I> {
+    pub fn new(iter: I, n: u64) -> CycleN<I> {
+        CycleN {
+            orig: iter.clone(),
+            iter,
+            tick: n,
+        }
+    }
+}
+
+impl<I> Iterator for CycleN<I>
+where
+    I: Clone + Iterator,
+{
+    type Item = <I as Iterator>::Item;
+
+    #[inline]
+    fn next(&mut self) -> Option<<I as Iterator>::Item> {
+        match self.iter.next() {
+            None if self.tick > 0 => {
+                self.tick -= 1;
+                self.iter = self.orig.clone();
+                self.iter.next()
+            }
+            y => y,
+        }
+    }
+}
+
+
+
+
+
+
 //
 // https://users.rust-lang.org/t/how-to-get-a-substring-of-a-string/1351/9
 //

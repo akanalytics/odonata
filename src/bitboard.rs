@@ -155,6 +155,13 @@ impl Bitboard {
     // }
 
     #[inline]
+    pub fn square(self) -> Square {
+        debug_assert_eq!(self.popcount(), 1, "Attempt to convert bb {} to a square", self);
+        Square(self)
+    }
+
+
+    #[inline]
     pub fn last_square(self) -> usize {
         let msb = self.bits.leading_zeros() as usize;
         debug_assert!(msb < 64);
@@ -279,6 +286,26 @@ impl fmt::Display for Bitboard {
         Ok(())
     }
 }
+
+
+pub struct Square (Bitboard);
+
+impl Square {
+    pub fn from_bb(bb: Bitboard) -> Square {
+        Square(bb)
+    }
+
+    pub fn as_bb(&self) -> Bitboard {
+        self.0
+    }
+
+    pub fn index(&self) -> usize {
+        self.0.first_square()
+    }
+}
+
+
+
 
 #[cfg(test)]
 mod tests {

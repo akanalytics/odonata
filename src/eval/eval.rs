@@ -8,6 +8,8 @@ use crate::log_debug;
 use crate::material::Material;
 use crate::outcome::GameEnd;
 use crate::types::{Color, Piece};
+use crate::stat::{ArrayStat, Stat};
+
 use std::fmt;
 
 // eval1 = bl.scoring.material(p=300, b=400, n=700)
@@ -146,11 +148,28 @@ const KING_PST_EG: [i32; 64] = [
 -30,-30,  0,  0,  0,  0,-30,-30,
 -50,-30,-30,-30,-30,-30,-30,-50];
 
+
+pub static ALL: Stat = Stat::new("ALL");
+pub static QUIESCENCE: Stat = Stat::new("QUIESCENCE");
+pub static MATERIAL: Stat = Stat::new("MATERIAL");
+pub static POSITION: Stat = Stat::new("POSITION");
+pub static MOBILITY: Stat = Stat::new("MOBILITY");
+
+pub static EVAL_COUNTS: ArrayStat = ArrayStat(&[
+    &ALL,
+    &QUIESCENCE,
+    &MATERIAL,
+    &POSITION,
+    &MOBILITY,
+]);
+
+
 pub trait Scorable<Strategy> {
     fn eval(&self, eval: &SimpleScorer) -> Score;
     fn eval_quiescence(&self, eval: &SimpleScorer) -> Score;
     fn eval_material(&self, eval: &SimpleScorer) -> Score;
     fn eval_position(&self, eval: &SimpleScorer) -> Score;
+    fn eval_mobility(&self, eval: &SimpleScorer) -> Score;
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -250,6 +269,8 @@ impl fmt::Display for SimpleScorer {
         writeln!(f, "contempt         : {}", self.contempt)?;
         writeln!(f, "tempo            : {}", self.tempo)?;
         writeln!(f, "material scores  : {:?}", self.material_scores)?;
+        writeln!(f, "eval stats\n{}", EVAL_COUNTS)?;
+
         Ok(())
     }
 }
@@ -415,6 +436,10 @@ impl Scorable<SimpleScorer> for Board {
     #[inline]
     fn eval_position(&self, eval: &SimpleScorer) -> Score {
         let s = eval.eval_position(self);
+        Score::Cp(s)
+    }
+    fn eval_mobility(&self, eval: &SimpleScorer) -> Score {
+        let s = eval.eval_mobility(self);
         Score::Cp(s)
     }
 }

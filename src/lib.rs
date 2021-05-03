@@ -30,7 +30,7 @@ pub mod search;
 pub mod types;
 pub mod task;
 pub mod tags;
-mod utils;
+pub mod utils;
 pub mod version;
 pub mod config;
 pub mod logger;
