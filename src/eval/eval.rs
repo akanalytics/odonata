@@ -340,12 +340,12 @@ impl SimpleScorer {
     // always updated
     pub fn eval_mobility(&self, b: &Board) -> i32 {
         let mut score = 0;
-        if self.pawn_doubled > 0 {
+        if self.pawn_doubled != 0 {
             score += self.pawn_doubled
                 * (ClassicalBitboard::doubled_pawns(b.white() & b.pawns()).popcount()
                     - ClassicalBitboard::doubled_pawns(b.black() & b.pawns()).popcount());
         }
-        if self.pawn_isolated > 0 {
+        if self.pawn_isolated != 0 {
             score += self.pawn_isolated
                 * (ClassicalBitboard::isolated_pawns(b.white() & b.pawns()).popcount()
                     - ClassicalBitboard::isolated_pawns(b.black() & b.pawns()).popcount());
@@ -477,19 +477,33 @@ mod tests {
     fn test_score_mobility() {
         let mut eval = SimpleScorer::new();
         eval.pawn_doubled = -1;
+        eval.pawn_isolated = 0;
         let b = Catalog::starting_position();
         assert_eq!(eval.eval_mobility(&b), 0);
 
-        // 1xw 4xb doubled pawns
-        let b = Board::parse_fen("8/pppp4/pppp4/8/8/2P5/PPP5/8 b - - 0 1")
+        // 1xw 4xb doubled pawns, 1xw 2xb isolated pawns
+        let b = Board::parse_fen("8/pppp1p1p/pppp4/8/8/2P5/PPP4P/8 b - - 0 1")
             .unwrap()
             .as_board();
+        eval.pawn_doubled = -1;
+        eval.pawn_isolated = 0;
         assert_eq!(eval.eval_mobility(&b), 3);
 
-        // 1xw 3xb doubled, 1xb tripled pawns
-        let b = Board::parse_fen("8/pppp4/ppp5/p7/8/2P5/PPP5/8 b - - 0 1")
+        eval.pawn_doubled = 0;
+        eval.pawn_isolated = -1;
+        assert_eq!(eval.eval_mobility(&b), 1);
+
+        // 1xw (-1) 3xb doubled (+3), 1xb (+1) tripled pawns  2xw 1xb isolated
+        let b = Board::parse_fen("8/pppp3p/ppp5/p7/8/2P5/PPP1P1P1/8 b - - 0 1")
             .unwrap()
             .as_board();
-        assert_eq!(eval.eval_mobility(&b), 3);
+
+            eval.pawn_doubled = -1;
+            eval.pawn_isolated = 0;
+            assert_eq!(eval.eval_mobility(&b), 3);
+
+            eval.pawn_doubled = 0;
+            eval.pawn_isolated = -1;
+            assert_eq!(eval.eval_mobility(&b), -1);
     }
 }

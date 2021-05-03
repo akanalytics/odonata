@@ -75,7 +75,7 @@ impl Game {
             let tags = player.results().tags().clone();
             self.record_move(m, tags);
             // FIXME
-            if 1 == 1 {
+            if 1 == 0 {
                 println!(
                     "{}.{} {}   {}",
                     self.board.fullmove_number(),
@@ -188,10 +188,12 @@ mod tests {
         white.mte.deterministic = true;
         white.tt.enabled = true;
         white.eval.mobility = true;
+        white.eval.pawn_isolated = -5;
 
         black.mte.deterministic = true;
         black.tt.enabled = true;
-        black.eval.mobility = false;
+        black.eval.mobility = true;
+        black.eval.pawn_isolated = 0;
 
         let wdl = tournament(&mut white, &mut black);
         println!("score as white {}\nELO difference {:.02}", wdl, wdl.elo_differnce());
