@@ -134,7 +134,7 @@ impl Algo {
         // callback
         let sp = SearchProgress::from_best_move(Some(self.bm()));
         self.task_control.invoke_callback(&sp);
-        info!("{}", self);
+        // info!("{}", self);
         // self.pv = res.pv().clone();
     }
 }

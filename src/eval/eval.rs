@@ -308,7 +308,7 @@ impl SimpleScorer {
 }
 
 impl SimpleScorer {
-    pub fn evaluate(&self, board: &Board) -> Score {
+    pub fn w_evaluate(&self, board: &Board) -> Score {
         counts::EVAL_COUNT.increment();
         let outcome = board.outcome();
         if outcome.is_game_over() {
@@ -319,10 +319,10 @@ impl SimpleScorer {
                 board.total_halfmoves(),
             );
         }
-        self.eval_without_wdl(board)
+        self.w_eval_without_wdl(board)
     }
 
-    pub fn eval_qsearch(&self, board: &Board) -> Score {
+    pub fn w_eval_qsearch(&self, board: &Board) -> Score {
         counts::EVAL_COUNT.increment();
         // we check for insufficient material and 50/75 move draws.
         let outcome = board.draw_outcome();
@@ -336,22 +336,22 @@ impl SimpleScorer {
                 );
             }
         }
-        self.eval_without_wdl(board)
+        self.w_eval_without_wdl(board)
     }
-    fn eval_without_wdl(&self, board: &Board) -> Score {
+    fn w_eval_without_wdl(&self, board: &Board) -> Score {
         let s = if self.material {
             let mat = Material::from_board(board);
-            self.eval_material(&mat)
+            self.w_eval_material(&mat)
         } else {
             0
         };
         let p = if self.position {
-            self.eval_position(board)
+            self.w_eval_position(board)
         } else {
             0
         };
         let m = if self.mobility {
-            self.eval_mobility(board)
+            self.w_eval_mobility(board)
         } else {
             0
         };
@@ -360,7 +360,7 @@ impl SimpleScorer {
     }
 
     // always updated
-    pub fn eval_mobility(&self, b: &Board) -> i32 {
+    pub fn w_eval_mobility(&self, b: &Board) -> i32 {
         let mut score = 0;
         if self.pawn_doubled != 0 {
             score += self.pawn_doubled
@@ -385,7 +385,7 @@ impl SimpleScorer {
 
     // piece positions, king safety, centre control
     // only updated for the colour thats moved - opponents(blockes) not relevant
-    pub fn eval_position(&self, board: &Board) -> i32 {
+    pub fn w_eval_position(&self, board: &Board) -> i32 {
         let mut sum = 0_i32;
         for &p in &Piece::ALL_BAR_NONE {
             let w = (board.pieces(p) & board.white()).swap_bytes();
@@ -404,7 +404,7 @@ impl SimpleScorer {
     }
 
     // updated on capture & promo
-    pub fn eval_material(&self, mat: &Material) -> i32 {
+    pub fn w_eval_material(&self, mat: &Material) -> i32 {
         let mut total = 0_i32;
         for &p in &Piece::ALL_BAR_NONE {
             total +=
@@ -421,31 +421,31 @@ impl Scorable<SimpleScorer> for Board {
     #[inline]
     fn eval_qsearch(&self, eval: &SimpleScorer) -> Score {
         QUIESCENCE.increment();
-        eval.eval_qsearch(self)
+        eval.w_eval_qsearch(self)
     }
 
     #[inline]
     fn eval(&self, eval: &SimpleScorer) -> Score {
         ALL.increment();
-        eval.evaluate(self)
+        eval.w_evaluate(self)
     }
 
     #[inline]
     fn eval_material(&self, eval: &SimpleScorer) -> Score {
         MATERIAL.increment();
         let m = Material::from_board(self);
-        let s = eval.eval_material(&m);
+        let s = eval.w_eval_material(&m);
         Score::Cp(s)
     }
     #[inline]
     fn eval_position(&self, eval: &SimpleScorer) -> Score {
         POSITION.increment();
-        let s = eval.eval_position(self);
+        let s = eval.w_eval_position(self);
         Score::Cp(s)
     }
     fn eval_mobility(&self, eval: &SimpleScorer) -> Score {
         MOBILITY.increment();
-        let s = eval.eval_mobility(self);
+        let s = eval.w_eval_mobility(self);
         Score::Cp(s)
     }
 }
@@ -510,7 +510,7 @@ mod tests {
         eval.pawn_doubled = -1;
         eval.pawn_isolated = 0;
         let b = Catalog::starting_position();
-        assert_eq!(eval.eval_mobility(&b), 0);
+        assert_eq!(eval.w_eval_mobility(&b), 0);
 
         // 1xw 4xb doubled pawns, 1xw 2xb isolated pawns
         let b = Board::parse_fen("8/pppp1p1p/pppp4/8/8/2P5/PPP4P/8 b - - 0 1")
@@ -518,11 +518,11 @@ mod tests {
             .as_board();
         eval.pawn_doubled = -1;
         eval.pawn_isolated = 0;
-        assert_eq!(eval.eval_mobility(&b), 3);
+        assert_eq!(eval.w_eval_mobility(&b), 3);
 
         eval.pawn_doubled = 0;
         eval.pawn_isolated = -1;
-        assert_eq!(eval.eval_mobility(&b), 1);
+        assert_eq!(eval.w_eval_mobility(&b), 1);
 
         // 1xw (-1) 3xb doubled (+3), 1xb (+1) tripled pawns  2xw 1xb isolated
         let b = Board::parse_fen("8/pppp3p/ppp5/p7/8/2P5/PPP1P1P1/8 b - - 0 1")
@@ -531,10 +531,10 @@ mod tests {
 
             eval.pawn_doubled = -1;
             eval.pawn_isolated = 0;
-            assert_eq!(eval.eval_mobility(&b), 3);
+            assert_eq!(eval.w_eval_mobility(&b), 3);
 
             eval.pawn_doubled = 0;
             eval.pawn_isolated = -1;
-            assert_eq!(eval.eval_mobility(&b), -1);
+            assert_eq!(eval.w_eval_mobility(&b), -1);
     }
 }
