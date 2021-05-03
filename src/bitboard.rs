@@ -287,7 +287,7 @@ impl fmt::Display for Bitboard {
     }
 }
 
-
+#[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Square (Bitboard);
 
 impl Square {

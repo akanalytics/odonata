@@ -31,21 +31,21 @@ pub fn threats_to(board: &Board, us: Color) -> Bitboard {
     let mut threats = east | west;
 
     for each in knights.iter() {
-        let sq = each.first_square();
+        let sq = each.square();
         threats |= attack_gen.knight_attacks(sq);
     }
     for each in (bishops | queens).iter() {
-        let sq = each.first_square();
+        let sq = each.square();
         threats |= attack_gen.bishop_attacks(occ, sq);
     }
 
     for each in (rooks | queens).iter() {
-        let sq = each.first_square();
+        let sq = each.square();
         threats |= attack_gen.rook_attacks(occ, sq);
     }
 
     for each in kings.iter() {
-        let sq = each.first_square();
+        let sq = each.square();
         threats |= attack_gen.king_attacks(sq);
     }
     threats
@@ -65,7 +65,7 @@ fn attacked_by(targets: Bitboard, occ: Bitboard, board: &Board) -> Bitboard {
     let mut attackers = white | black;
 
     for each in targets.iter() {
-        let sq = each.first_square();
+        let sq = each.square();
         attackers |= attack_gen.knight_attacks(sq) & knights
             | attack_gen.king_attacks(sq) & kings
             | attack_gen.bishop_attacks(occ, sq) & (bishops | queens)
@@ -278,7 +278,8 @@ impl Board {
         }
         // knights
         for from in (board.knights() & us).iter() {
-            let attacks = attack_gen.knight_attacks(from.first_square()) & !us;
+            let from_sq = from.square();
+            let attacks = attack_gen.knight_attacks(from_sq) & !us;
             for to in attacks.iter() {
                 if them.contains(to) {
                     let m = Move {
@@ -299,7 +300,8 @@ impl Board {
         }
         // sliders
         for from in (board.bishops() & us).iter() {
-            let attacks = !us & attack_gen.bishop_attacks(occupied, from.first_square());
+            let from_sq = from.square();
+            let attacks = !us & attack_gen.bishop_attacks(occupied, from_sq);
             // println!("{}\n{}\n{}\n", from, attacks, occupied);
             for to in attacks.iter() {
                 if them.contains(to) {
@@ -318,7 +320,8 @@ impl Board {
             }
         }
         for from in (board.rooks() & us).iter() {
-            let attacks = !us & attack_gen.rook_attacks(occupied, from.first_square());
+            let from_sq = from.square();
+            let attacks = !us & attack_gen.rook_attacks(occupied, from_sq);
             for to in attacks.iter() {
                 if them.contains(to) {
                     let m = Move {
@@ -336,9 +339,10 @@ impl Board {
             }
         }
         for from in (board.queens() & us).iter() {
+            let from_sq = from.square();
             let attacks = !us
-                & (attack_gen.rook_attacks(occupied, from.first_square())
-                    | attack_gen.bishop_attacks(occupied, from.first_square()));
+                & (attack_gen.rook_attacks(occupied, from_sq)
+                    | attack_gen.bishop_attacks(occupied, from_sq));
             for to in attacks.iter() {
                 if them.contains(to) {
                     let m = Move {
@@ -356,7 +360,8 @@ impl Board {
             }
         }
         for from in (board.kings() & us).iter() {
-            let attacks = !us & attack_gen.king_attacks(from.first_square());
+            let from_sq = from.square();
+            let attacks = !us & attack_gen.king_attacks(from_sq);
             for to in attacks.iter() {
                 if them.contains(to) {
                     let m = Move {

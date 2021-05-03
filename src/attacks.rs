@@ -1,14 +1,14 @@
-use crate::bitboard::{Bitboard, Dir};
+use crate::bitboard::{Bitboard, Square, Dir};
 use crate::types::Color;
 
 // use lazy_static::lazy_static;
 
 pub trait BitboardAttacks {
     // fn new() -> Self;
-    fn bishop_attacks(&self, occupied: Bitboard, from_sq: usize) -> Bitboard;
-    fn rook_attacks(&self, occupied: Bitboard, from_sq: usize) -> Bitboard;
-    fn knight_attacks(&self, from_sq: usize) -> Bitboard;
-    fn king_attacks(&self, from_sq: usize) -> Bitboard;
+    fn bishop_attacks(&self, occupied: Bitboard, from: Square) -> Bitboard;
+    fn rook_attacks(&self, occupied: Bitboard, from: Square) -> Bitboard;
+    fn knight_attacks(&self, from: Square) -> Bitboard;
+    fn king_attacks(&self, from: Square) -> Bitboard;
 
     // fn step_is_on_board(dir: Direction, sq: i32) -> bool {
     //     false
@@ -119,8 +119,8 @@ impl ClassicalBitboard {
         classical
     }
 
-    fn sliding_attacks(&self, occupied: Bitboard, from_sq: usize, dir: &Dir) -> Bitboard {
-        let attacks = self.rays[from_sq][dir.index];
+    fn sliding_attacks(&self, occupied: Bitboard, from: Square, dir: &Dir) -> Bitboard {
+        let attacks = self.rays[from.index()][dir.index];
         let blockers = attacks & occupied;
 
         if blockers.is_empty() {
@@ -136,26 +136,26 @@ impl ClassicalBitboard {
 }
 
 impl BitboardAttacks for ClassicalBitboard {
-    fn rook_attacks(&self, occ: Bitboard, from_sq: usize) -> Bitboard {
-        self.sliding_attacks(occ, from_sq, &Dir::N)
-            | self.sliding_attacks(occ, from_sq, &Dir::E)
-            | self.sliding_attacks(occ, from_sq, &Dir::S)
-            | self.sliding_attacks(occ, from_sq, &Dir::W)
+    fn rook_attacks(&self, occ: Bitboard, from: Square) -> Bitboard {
+        self.sliding_attacks(occ, from, &Dir::N)
+            | self.sliding_attacks(occ, from, &Dir::E)
+            | self.sliding_attacks(occ, from, &Dir::S)
+            | self.sliding_attacks(occ, from, &Dir::W)
     }
 
-    fn bishop_attacks(&self, occ: Bitboard, from_sq: usize) -> Bitboard {
-        self.sliding_attacks(occ, from_sq, &Dir::NE)
-            | self.sliding_attacks(occ, from_sq, &Dir::SE)
-            | self.sliding_attacks(occ, from_sq, &Dir::SW)
-            | self.sliding_attacks(occ, from_sq, &Dir::NW)
+    fn bishop_attacks(&self, occ: Bitboard, from: Square) -> Bitboard {
+        self.sliding_attacks(occ, from, &Dir::NE)
+            | self.sliding_attacks(occ, from, &Dir::SE)
+            | self.sliding_attacks(occ, from, &Dir::SW)
+            | self.sliding_attacks(occ, from, &Dir::NW)
     }
 
-    fn king_attacks(&self, from_sq: usize) -> Bitboard {
-        self.king_moves[from_sq]
+    fn king_attacks(&self, from: Square) -> Bitboard {
+        self.king_moves[from.index()]
     }
 
-    fn knight_attacks(&self, from_sq: usize) -> Bitboard {
-        self.knight_moves[from_sq]
+    fn knight_attacks(&self, from: Square) -> Bitboard {
+        self.knight_moves[from.index()]
     }
 }
 
@@ -189,7 +189,7 @@ mod tests {
     fn test_rook_attacks() {
         let classical = ClassicalBitboard::new();
         let occupied = a1 | a2 | a7 | c3 | c6;
-        let attacks = classical.rook_attacks(occupied, a6.first_square());
+        let attacks = classical.rook_attacks(occupied, a6.square());
         assert_eq!(attacks, (Bitboard::FILE_A - a1 - a6 - a8) | b6 | c6)
     }
 
@@ -197,11 +197,11 @@ mod tests {
     fn test_bishop_attacks() {
         let classical = ClassicalBitboard::new();
         let occupied = a1 | a2 | a7 | c3 | c6;
-        let attacks = classical.bishop_attacks(occupied, a6.first_square());
+        let attacks = classical.bishop_attacks(occupied, a6.square());
         assert_eq!(attacks, f1 | e2 | d3 | c4 | b5 | b7 | c8);
 
         let occupied = b2;
-        let attacks = classical.bishop_attacks(occupied, c1.first_square());
+        let attacks = classical.bishop_attacks(occupied, c1.square());
         assert_eq!(attacks, b2 | d2 | e3 | f4 | g5 | h6);
     }
 
@@ -209,20 +209,20 @@ mod tests {
     fn test_king_attacks() {
         init();
         let classical = ClassicalBitboard::new();
-        let attacks = classical.king_attacks(a6.first_square());
+        let attacks = classical.king_attacks(a6.square());
         assert_eq!(attacks, a5 | b5 | b6 | b7 | a7);
 
-        let attacks = classical.king_attacks(c6.first_square());
+        let attacks = classical.king_attacks(c6.square());
         assert_eq!(attacks, b5 | c5 | d5 | b6 | d6 | b7 | c7 | d7)
     }
 
     #[test]
     fn test_knight_attacks() {
         let classical = ClassicalBitboard::new();
-        let attacks = classical.knight_attacks(a1.first_square());
+        let attacks = classical.knight_attacks(a1.square());
         assert_eq!(attacks, b3 | c2);
 
-        let attacks = classical.knight_attacks(c6.first_square());
+        let attacks = classical.knight_attacks(c6.square());
         assert_eq!(attacks, a5 | a7 | b4 | b8 | d4 | d8 | e5 | e7)
     }
 
