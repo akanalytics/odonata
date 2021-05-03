@@ -12,7 +12,7 @@ use crate::repetition::Repetition;
 use crate::search::iterative_deepening::IterativeDeepening;
 use crate::search::move_orderer::MoveOrderer;
 use crate::search::move_time_estimator::MoveTimeEstimator;
-use crate::search::qsearch::Quiescence;
+use crate::search::qsearch::QSearch;
 use crate::search::searchprogress::SearchProgress;
 use crate::search::searchstats::SearchStats;
 use crate::search::taskcontrol::TaskControl;
@@ -33,7 +33,7 @@ pub struct Algo {
     pub ids: IterativeDeepening,
     pub eval: SimpleScorer,
     pub task_control: TaskControl<SearchProgress>,
-    pub qsearch: Quiescence,
+    pub qsearch: QSearch,
     pub search_stats: SearchStats,
 
     pub range: Range<Ply>,

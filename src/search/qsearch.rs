@@ -14,7 +14,7 @@ use crate::types::Ply;
 use std::fmt;
 
 #[derive(Copy, Clone, Debug)]
-pub struct Quiescence {
+pub struct QSearch {
     pub enabled: bool,
     pub only_captures: bool,
     see: bool,
@@ -22,7 +22,7 @@ pub struct Quiescence {
     coarse_delta_prune: Score,
 }
 
-impl Configurable for Quiescence {
+impl Configurable for QSearch {
     fn settings(&self, c: &mut Config) {
         c.set("qsearch.enabled", "type check default true");
         c.set("qsearch.only_captures", "type check default true");
@@ -42,9 +42,9 @@ impl Configurable for Quiescence {
     }
 }
 
-impl Default for Quiescence {
+impl Default for QSearch {
     fn default() -> Self {
-        Quiescence {
+        QSearch {
             enabled: true,
             only_captures: false,
             see: true,
@@ -54,7 +54,7 @@ impl Default for Quiescence {
     }
 }
 
-impl fmt::Display for Quiescence {
+impl fmt::Display for QSearch {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "enabled          : {}", self.enabled)?;
         writeln!(f, "only captures    : {}", self.only_captures)?;
