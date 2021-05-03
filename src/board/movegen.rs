@@ -277,36 +277,32 @@ impl Board {
             }
         }
         // knights
-        for from in (board.knights() & us).iter() {
-            let from_sq = from.square();
+        for from_sq in (board.knights() & us).squares() {
             let attacks = attack_gen.knight_attacks(from_sq) & !us;
             for to in attacks.iter() {
                 if them.contains(to) {
                     let m = Move {
-                        from,
+                        from: from_sq.as_bb(),
                         to,
                         mover: Piece::Knight,
                         capture: board.piece_at(to),
                         ..Default::default()
                     };
-                    // MoveEnum::Capture { to, from, mover: Piece::Knight, capture: board.piece_at(to) }
                     moves.push(m);
                 } else {
-                    let m = Move { from, to, mover: Piece::Knight, ..Default::default() };
-                    // MoveEnum::Quiet { to, from, mover: Piece::Knight }
+                    let m = Move { from:from_sq.as_bb(), to, mover: Piece::Knight, ..Default::default() };
                     moves.push(m);
                 }
             }
         }
         // sliders
-        for from in (board.bishops() & us).iter() {
-            let from_sq = from.square();
+        for from_sq in (board.bishops() & us).squares() {
             let attacks = !us & attack_gen.bishop_attacks(occupied, from_sq);
             // println!("{}\n{}\n{}\n", from, attacks, occupied);
             for to in attacks.iter() {
                 if them.contains(to) {
                     let m = Move {
-                        from,
+                        from: from_sq.as_bb(),
                         to,
                         mover: Piece::Bishop,
                         capture: board.piece_at(to),
@@ -314,18 +310,17 @@ impl Board {
                     };
                     moves.push(m);
                 } else {
-                    let m = Move { from, to, mover: Piece::Bishop, ..Default::default() };
+                    let m = Move { from: from_sq.as_bb(), to, mover: Piece::Bishop, ..Default::default() };
                     moves.push(m);
                 }
             }
         }
-        for from in (board.rooks() & us).iter() {
-            let from_sq = from.square();
+        for from_sq in (board.rooks() & us).squares() {
             let attacks = !us & attack_gen.rook_attacks(occupied, from_sq);
             for to in attacks.iter() {
                 if them.contains(to) {
                     let m = Move {
-                        from,
+                        from: from_sq.as_bb(),
                         to,
                         mover: Piece::Rook,
                         capture: board.piece_at(to),
@@ -333,20 +328,19 @@ impl Board {
                     };
                     moves.push(m);
                 } else {
-                    let m = Move { from, to, mover: Piece::Rook, ..Default::default() };
+                    let m = Move { from: from_sq.as_bb(), to, mover: Piece::Rook, ..Default::default() };
                     moves.push(m);
                 }
             }
         }
-        for from in (board.queens() & us).iter() {
-            let from_sq = from.square();
+        for from_sq in (board.queens() & us).squares() {
             let attacks = !us
                 & (attack_gen.rook_attacks(occupied, from_sq)
                     | attack_gen.bishop_attacks(occupied, from_sq));
             for to in attacks.iter() {
                 if them.contains(to) {
                     let m = Move {
-                        from,
+                        from: from_sq.as_bb(),
                         to,
                         mover: Piece::Queen,
                         capture: board.piece_at(to),
@@ -354,18 +348,17 @@ impl Board {
                     };
                     moves.push(m);
                 } else {
-                    let m = Move { from, to, mover: Piece::Queen, ..Default::default() };
+                    let m = Move { from: from_sq.as_bb(), to, mover: Piece::Queen, ..Default::default() };
                     moves.push(m);
                 }
             }
         }
-        for from in (board.kings() & us).iter() {
-            let from_sq = from.square();
+        for from_sq in (board.kings() & us).squares() {
             let attacks = !us & attack_gen.king_attacks(from_sq);
             for to in attacks.iter() {
                 if them.contains(to) {
                     let m = Move {
-                        from,
+                        from: from_sq.as_bb(),
                         to,
                         mover: Piece::King,
                         capture: board.piece_at(to),
@@ -373,7 +366,7 @@ impl Board {
                     };
                     moves.push(m);
                 } else {
-                    let m = Move { from, to, mover: Piece::King, ..Default::default() };
+                    let m = Move { from: from_sq.as_bb(), to, mover: Piece::King, ..Default::default() };
                     moves.push(m);
                 }
             }

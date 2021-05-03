@@ -8,7 +8,6 @@ use crate::log_debug;
 use crate::movelist::Move;
 use crate::movelist::MoveList;
 use crate::search::algo::Algo;
-use crate::search::node::Node;
 use crate::search::searchprogress::SearchProgress;
 use crate::types::Ply;
 use std::fmt;
@@ -66,26 +65,7 @@ impl fmt::Display for QSearch {
 }
 
 impl Algo {
-    #[inline]
-    fn evaluate_leaf(&mut self, node: &mut Node) {
-        node.score = node.board.eval(&self.eval);
-        self.search_stats.inc_leaf_nodes(node.ply);
-    }
 
-    // #[inline]
-    // pub fn qsearch_search(&mut self, node: &mut Node) {
-    //     if !self.qsearch.enabled || node.ply == 1 {
-    //         self.evaluate_leaf(node);
-    //         return;
-    //     }
-
-    //     // swap to negamax
-    //     if Node::is_maximizing(node.board) {
-    //         node.score = self.qsearch(node.last_move.to, node.ply, node.board, node.alpha, node.beta);
-    //     } else {
-    //         node.score = -self.qsearch(node.last_move.to, node.ply, node.board, -node.beta, -node.alpha);
-    //     }
-    // }
 
     pub fn qsearch2(&mut self, mv: &Move, ply: Ply, board: &mut Board, alpha: Score, beta: Score) -> Score {
         if !self.qsearch.enabled || ply <= 1 || (!mv.is_capture() && self.qsearch.only_captures) {
@@ -97,23 +77,14 @@ impl Algo {
         score
     }
 
-    // int Quiesce( int alpha, int beta ) {
-    //     int stand_pat = Evaluate();
-    //     if( stand_pat >= beta )
-    //         return beta;
-    //     if( alpha < stand_pat )
-    //         alpha = stand_pat;
-    //     until( every_capture_has_been_examined )  {
-    //         MakeCapture();
-    //         score = -Quiesce( -beta, -alpha );
-    //         TakeBackMove();
-    //         if( score >= beta )
-    //             return beta;
-    //         if( score > alpha )
-    //            alpha = score;
-    //     }
-    //     return alpha;
-    // }
+
+
+
+
+
+
+
+
     pub fn qsearch(
         &mut self,
         sq: Bitboard,
