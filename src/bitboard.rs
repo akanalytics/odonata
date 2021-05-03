@@ -157,7 +157,7 @@ impl Bitboard {
     #[inline]
     pub fn square(self) -> Square {
         debug_assert_eq!(self.popcount(), 1, "Attempt to convert bb {} to a square", self);
-        Square::from_bb(self)
+        self.first_square()
     }
 
 
@@ -189,6 +189,11 @@ impl Bitboard {
     #[inline]
     pub fn iter(self) -> BitIterator {
         BitIterator { bb: self }
+    }
+
+    #[inline]
+    pub fn squares(self) -> Squares {
+        Squares { bb: self }
     }
 
     pub fn files(self) -> String {
@@ -274,6 +279,33 @@ impl Iterator for BitIterator {
     }
 }
 
+pub struct Squares {
+    bb: Bitboard,
+}
+
+impl Iterator for Squares {
+    type Item = Square;
+
+    #[inline]
+    fn next(&mut self) -> Option<Square> {
+        if self.bb.is_empty() {
+            None
+        } else {
+            let sq = self.bb.bits.trailing_zeros();
+            self.bb.bits ^= 1 << sq;
+            Some(Square::from_u32(sq))
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let bitcount = self.bb.popcount() as usize;
+        (bitcount, Some(bitcount))
+    }
+}
+
+
+
+
 impl fmt::Display for Bitboard {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         for r in (0..8).rev() {
@@ -288,29 +320,29 @@ impl fmt::Display for Bitboard {
 }
 
 #[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
-pub struct Square (Bitboard, u8);
+pub struct Square (u8);
 
 // Bitboard::from_bits_truncate(1 << i)
 
 impl Square {
     pub fn from_u8(i : u8) -> Square {
-        Square(Bitboard::EMPTY,i)
+        Square(i)
     }
 
     pub fn from_u32(i : u32) -> Square {
-        Square(Bitboard::EMPTY,i as u8)
+        Square(i as u8)
     }
 
     pub fn from_bb(bb: Bitboard) -> Square {
-        Square(bb, 0)
+        bb.square()
     }
 
     pub fn as_bb(&self) -> Bitboard {
-        if self.0 != Bitboard::EMPTY { self.0 } else {Bitboard::from_bits_truncate(1 << self.1)}
+        Bitboard::from_bits_truncate(1 << self.0)
     }
 
     pub fn index(&self) -> usize {
-        if self.0 != Bitboard::EMPTY { self.0.bits.trailing_zeros() as usize } else { self.1 as usize }
+        self.0 as usize
     }
 }
 
@@ -434,13 +466,20 @@ mod tests {
     // }
 
     #[test]
-    fn test_iterator() {
-        let a1b1c1 = a1 | b1 | c1;
+    fn test_iterators() {
+        let a1b1c1 = a1 | c1 | g5;
         let mut i = a1b1c1.iter();
         assert_eq!(i.next(), Some(a1));
-        assert_eq!(i.next(), Some(b1));
         assert_eq!(i.next(), Some(c1));
+        assert_eq!(i.next(), Some(g5));
         assert_eq!(i.next(), None);
         assert_eq!(a1b1c1.iter().count(), 3);
+
+        let mut sqs = a1b1c1.squares();
+        assert_eq!(sqs.next(), Some(a1.square()));
+        assert_eq!(sqs.next(), Some(c1.square()));
+        assert_eq!(sqs.next(), Some(g5.square()));
+        assert_eq!(sqs.next(), None);
+        assert_eq!(a1b1c1.squares().count(), 3);
     }
 }
