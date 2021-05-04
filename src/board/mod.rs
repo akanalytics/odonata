@@ -171,6 +171,15 @@ impl Board {
         Piece::None
     }
 
+    pub fn least_valuable_piece(&self, region: Bitboard) -> Bitboard {
+        for &p in &Piece::ALL_BAR_NONE {
+            if self.pieces(p).intersects(region) {
+                return self.pieces(p) & region.first();
+            }
+        }
+        Bitboard::EMPTY
+    }
+
     pub fn to_fen(&self) -> String {
         let b = self.clone();
 

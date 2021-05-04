@@ -8,7 +8,6 @@ use crate::log_debug;
 use crate::movelist::Move;
 use crate::movelist::MoveList;
 use crate::search::algo::Algo;
-use crate::search::searchprogress::SearchProgress;
 use crate::types::Ply;
 use std::fmt;
 
@@ -48,7 +47,7 @@ impl Default for QSearch {
             only_captures: false,
             see: true,
             max_ply: 10,
-            coarse_delta_prune: Score::cp(900),
+            coarse_delta_prune: Score::cp(1000),
         }
     }
 }
@@ -79,8 +78,86 @@ impl Algo {
 
 
 
+    pub fn qsearch_ext(
+        &mut self,
+        mut sq: Bitboard,
+        ply: Ply,
+        board: &mut Board,
+        mut alpha: Score,
+        beta: Score,
+    ) -> Score {
+        self.report_progress();
+    
 
+        let in_check = board.is_in_check(board.color_us());
+        let standing_pat;
+        if in_check {
+            standing_pat = alpha;
+        } else {
+            standing_pat = board.eval(&self.eval);
+        }
+        if standing_pat > alpha {
+            if standing_pat >= beta {
+                self.search_stats.inc_q_leaf_nodes(ply);
+                return beta;
+            }
+            alpha = standing_pat;
+        }
 
+   
+        let gain_needed = alpha - standing_pat;
+
+        // coarse delta pruning - if were > queen down already, no way to make it up (regardless of in check)
+        if gain_needed > self.qsearch.coarse_delta_prune {
+            self.search_stats.inc_q_leaf_nodes(ply);
+            return alpha;
+        }
+   
+
+        // need to add checking moves on ply 0
+        let moves = board.pseudo_legal_moves();
+        let mut moves: MoveList = moves
+            .iter()
+            .filter(|mv| mv.to() == sq && mv.is_capture() && board.is_legal_move(mv))
+            .cloned()
+            .collect();
+
+        // check evasions + e/p (wrong see) + mandat recaptures always applied
+        // In order to
+        // correct SEE errors due to pinned and overloaded pieces,
+        // at least one mandatory recapture is always tried at the
+        // destination squares of previous moves.) For all other
+        // moves, a static exchange evaluation is performed to
+        // decide if the move should be tried.
+        self.order_moves(ply, &mut moves);
+        for mv in moves.iter() {
+            if !in_check && !mv.is_ep_capture() && mv.to().disjoint(sq) {
+                let score = board.eval_move_see(&self.eval, &mv);
+                let losing = false;
+                if score < Score::Cp(0) || score == Score::Cp(0) && (losing || ply > 2 + self.max_depth) {
+                    continue;
+                } 
+            }
+            
+            let mut child = board.make_move(&mv);
+            // delta prune on the move
+            if !child.is_in_check(child.color_us()) && board.eval_move_material(&self.eval, &mv) < gain_needed {
+                board.undo_move(mv);
+                continue;
+            }
+            let score = -self.qsearch_ext(sq ^ mv.to(), ply + 1, &mut child, -beta, -alpha);
+            board.undo_move(mv);
+            if score > beta {
+                return score;
+            }
+            if score > alpha {
+                alpha = score;
+            }
+            // don't see_evaluate the hot square again
+            sq -= mv.to();
+        }
+    alpha
+}
 
 
 
@@ -93,10 +170,7 @@ impl Algo {
         mut alpha: Score,
         beta: Score,
     ) -> Score {
-        if self.search_stats.total().nodes() % 1000000 == 0 && self.search_stats.total().nodes() != 0 {
-            let sp = SearchProgress::from_search_stats(&self.search_stats());
-            self.task_control.invoke_callback(&sp);
-        }
+        self.report_progress();
 
         if self.time_up_or_cancelled(ply, false) {
             return alpha;

@@ -7,7 +7,7 @@ use crate::outcome::GameEnd;
 use crate::search::algo::Algo;
 use crate::search::searchprogress::SearchProgress;
 use crate::tt::{Entry, NodeType};
-use crate::types::{Color, Ply, MAX_PLY};
+use crate::types::{Ply, MAX_PLY};
 use crate::pvtable::PvTable;
 use crate::search::node::Node;
 

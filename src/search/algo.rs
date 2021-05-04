@@ -194,7 +194,12 @@ impl Algo {
         self.tt.clear();
     }
 
-
+    pub fn report_progress(&self) {
+        if self.search_stats.total().nodes() % 1000000 == 0 && self.search_stats.total().nodes() != 0 {
+            let sp = SearchProgress::from_search_stats(&self.search_stats());
+            self.task_control.invoke_callback(&sp);
+        }
+    }
 
     pub fn search_async(&mut self, board: &Board) {
         const FOUR_MB: usize = 4 * 1024 * 1024;

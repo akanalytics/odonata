@@ -116,6 +116,11 @@ trait MoveGen {
 
 
 impl Board {
+
+    pub fn attacked_by(&self, targets: Bitboard) -> Bitboard {
+        attacked_by(targets, self.black() | self.white(), self )
+    }
+
     pub fn will_check_them(&self, mv: &Move) -> bool {
         debug_assert!(self.is_legal_move(mv));
         let their_king_color = self.color_them();

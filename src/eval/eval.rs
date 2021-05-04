@@ -7,6 +7,7 @@ use crate::eval::score::Score;
 use crate::globals::counts;
 use crate::log_debug;
 use crate::material::Material;
+use crate::movelist::Move;
 use crate::outcome::GameEnd;
 use crate::types::{Color, Piece};
 use crate::stat::{ArrayStat, Stat};
@@ -155,6 +156,7 @@ pub static QUIESCENCE: Stat = Stat::new("QUIESCENCE");
 pub static MATERIAL: Stat = Stat::new("MATERIAL");
 pub static POSITION: Stat = Stat::new("POSITION");
 pub static MOBILITY: Stat = Stat::new("MOBILITY");
+pub static SEE: Stat = Stat::new("SEE");
 
 pub static EVAL_COUNTS: ArrayStat = ArrayStat(&[
     &ALL,
@@ -162,11 +164,16 @@ pub static EVAL_COUNTS: ArrayStat = ArrayStat(&[
     &MATERIAL,
     &POSITION,
     &MOBILITY,
+    &SEE,
 ]);
 
 
 pub trait Scorable<Strategy> {
     fn signum(&self) -> i32;
+
+    fn eval_move_see(&self, eval: &SimpleScorer, mv: &Move, ) -> Score;
+    fn eval_move_material(&self, eval: &SimpleScorer, mv: &Move) -> Score;
+
     fn eval(&self, eval: &SimpleScorer) -> Score;
     fn eval_qsearch(&self, eval: &SimpleScorer) -> Score;
     fn eval_material(&self, eval: &SimpleScorer) -> Score;
@@ -414,8 +421,19 @@ impl SimpleScorer {
         total
     }
 
-    // static_exchangce_evaluation()
-    // least_valuable_piece()
+    pub fn eval_move_material(&self, mv: &Move) -> i32 {
+        let mut score = 0;
+        if mv.is_capture() {
+            score += self.material_scores[mv.capture_piece().index()];
+        }
+        if mv.is_promo() {
+            score += self.material_scores[mv.promo_piece().index()];
+        }
+        score
+    }
+
+
+
 }
 
 impl Scorable<SimpleScorer> for Board {
@@ -432,6 +450,18 @@ impl Scorable<SimpleScorer> for Board {
     fn eval_qsearch(&self, eval: &SimpleScorer) -> Score {
         QUIESCENCE.increment();
         self.signum() * eval.w_eval_qsearch(self)
+    }
+
+    #[inline]
+    fn eval_move_see(&self, eval: &SimpleScorer, mv: &Move) -> Score {
+        SEE.increment();
+        Score::Cp(eval.eval_move_see(self, &mv))
+    }
+
+    #[inline]
+    fn eval_move_material(&self, eval: &SimpleScorer, mv: &Move) -> Score {
+        SEE.increment();
+        Score::Cp(eval.eval_move_material(&mv))
     }
 
     #[inline]
