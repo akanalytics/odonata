@@ -1,8 +1,17 @@
 # Todo items
 
 
+[ ] Aging tt
+[ ] Pawn chains fixed 
+[ ] PV extraction
+[ ] Null move pruning
+
+
 - Bug fixes
   - Cancel soon after thread start
+  - Occasional PV screwup
+  - stop IDS if nodes not increasing or max depth < depth>
+
 
 - Optimization backlog
   - tt aging
@@ -19,7 +28,6 @@
   - bitmask of moves - bitboard - allows many sq comparisons or sqs class
   - avoid hash_move on is_check move
   - BoardBug set methods call hash_board
-  - stop IDS if nodes not increasing or max depth < depth>
 
 
   - pgn tags [%eval 3.2,15] [%clk 2:34:56.890]
@@ -31,15 +39,15 @@
 - Obligatory
   - Futility pruning
   - Null move pruning
-  - Transposition Table
+  - [x] Transposition Table
   - [x] Iterative Deepening
   - Aspiration Windows
 
 - Selectivity
-  - [x]Quiescence Algo
-  - static exchange evaluation < 0
+  - [x] Quiescence Algo
+  - [x] static exchange evaluation < 0
   - delta pruning
-  - [x]standing pat
+  - [x] standing pat
 
 - Selectivity
   - Mate Algo
