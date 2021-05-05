@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::movelist::Move;
-use crate::eval::eval::SimpleScorer;
+use crate::eval::eval::{SimpleScorer, Tracer};
 use std::cmp;
 
 impl SimpleScorer {
@@ -16,11 +16,11 @@ impl SimpleScorer {
         let mut attacker_color = board.color_us();
         let mut attackers = board.attacked_by(mv.to());  // will include the current 'mv' attacker
         gain[0] = self.material_scores[mv.capture_piece()];
-        while !attackers.is_empty() {
+        while !(attackers & board.color(attacker_color)).is_empty() {
             let mover = board.piece_at(from);
             d += 1; 
             gain[d]  = self.material_scores[mover.index()] - gain[d-1]; // what you are taking less what opp has
-            eprintln!("{}\n{}: mover: {} from: {:?} for spec gain {:?}\n{}",board.to_fen(), d, mover, from, gain, attackers);
+            // eprintln!("{}\n{}: mover: {} from: {:?} for spec gain {:?}\n{}",board.to_fen(), d, mover, from, gain, attackers);
             // if cmp::max(-gain[d-1], gain[d]) < 0 {
             //     break; // safely prune as from here on its zero
             // } 
@@ -32,6 +32,9 @@ impl SimpleScorer {
             //     attadef |= considerXrays(occ, ..);
             attacker_color = attacker_color.opposite();
             from = board.least_valuable_piece(attackers & board.color(attacker_color));
+            if d > 30 {
+                eprintln!("{} {}", mv, board.to_fen());
+            }
         } 
        
 
@@ -45,6 +48,13 @@ impl SimpleScorer {
         while d >= 2 {
             gain[d-2] = -cmp::max(-gain[d-2], gain[d-1]);
             d -= 1;
+        }
+        if self.tracer.is_some() {
+            Tracer::record(&self.tracer, &format!(
+                "score: see[{:>4}] :fen:{} ",
+                gain[0],
+                board.to_fen()
+            ));
         }
         gain[0]
     }
@@ -79,5 +89,9 @@ mod tests {
         let b = Board::parse_fen("7k/8/8/8/1q6/p7/2N5/R6K w - - 0 1").unwrap();  //RN v pq
         let mv = b.parse_uci_move("a1a3").unwrap();
         assert_eq!(eval.eval_move_see(&b, &mv), 100);  // +p  = +100 (retake by queen doesnt occur)
+
+        let b = Board::parse_fen("bb3rkr/pp2nppp/4pn2/2qp4/2P5/3RNN2/PP2PPPP/BBQ3KR w - - 0 8").unwrap();  // bug
+        let mv = b.parse_uci_move("c4d5").unwrap();
+        assert_eq!(eval.eval_move_see(&b, &mv), 0);  // 
     }
 }

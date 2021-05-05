@@ -71,7 +71,7 @@ impl Algo {
 
         // FIXME tt probe for leaves?
         if self.is_leaf(ply) {
-            let score = self.qsearch2(last_move, ply, board, alpha, beta);
+            let score = self.qsearch(last_move, ply, board, alpha, beta);
             debug_assert!(self.task_control.is_cancelled() || score > Score::MinusInf);
             return score;
         }

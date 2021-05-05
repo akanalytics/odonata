@@ -179,7 +179,7 @@ mod tests {
     #[ignore]
     fn competition() {
         //let tc = TimeControl::NodeCount(1_000);
-        let tc = TimeControl::from_remaining_time(Duration::from_millis(1000));
+        let tc = TimeControl::from_remaining_time(Duration::from_millis(500));
         //let tc = TimeControl::Depth(3);
         let mut white = Algo::new().set_timing_method(tc).build();
         let mut black = Algo::new().set_timing_method(tc).build();
@@ -188,12 +188,14 @@ mod tests {
         white.mte.deterministic = true;
         white.tt.enabled = true;
         white.eval.mobility = true;
-        white.eval.pawn_isolated = -5;
+        white.qsearch.see = true;
+        // white.eval.pawn_isolated = -5;
 
         black.mte.deterministic = true;
         black.tt.enabled = true;
         black.eval.mobility = true;
-        black.eval.pawn_isolated = 0;
+        black.qsearch.see = false;
+        //black.eval.pawn_isolated = 0;
 
         let wdl = tournament(&mut white, &mut black);
         println!("score as white {}\nELO difference {:.02}", wdl, wdl.elo_differnce());

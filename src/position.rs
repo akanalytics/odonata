@@ -1,7 +1,7 @@
 use crate::bitboard::Bitboard;
 use crate::board::boardbuf::BoardBuf;
 use crate::board::Board;
-use crate::movelist::MoveList;
+use crate::movelist::{MoveList, Move};
 use crate::movelist::MoveValidator;
 use crate::types::{CastlingRights, Color};
 use crate::utils::StringUtils;
@@ -198,7 +198,9 @@ impl Position {
 
     pub const ACD: &'static str = "acd";
     pub const BM: &'static str = "bm";
+    pub const SM: &'static str = "sm";
     pub const DM: &'static str = "dm";
+    pub const CE: &'static str = "ce";
     pub const DRAW_REJECT: &'static str = "draw_reject";
     pub const ID: &'static str = "id";
     pub const PV: &'static str = "pv";
@@ -217,6 +219,14 @@ impl Position {
 
     pub fn bm(&self) -> Result<MoveList, String> {
         self.board.parse_san_choices(self.get(Self::BM)?)
+    }
+
+    pub fn sm(&self) -> Result<Move, String> {
+        self.board.parse_san_move(self.get(Self::SM)?)
+    }
+
+    pub fn ce(&self) -> Result<i32, String> {
+        self.get(Self::CE)?.parse::<i32>().map_err(|e| e.to_string())
     }
 
     // acd analysis count depth [3]

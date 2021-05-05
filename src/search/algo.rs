@@ -433,7 +433,7 @@ mod tests {
         let nodes = algo.search_stats().total().nodes();
 
         // with sq based qsearch
-        assert_eq!(nodes, 2248);
+        assert_eq!(nodes, 2274);  // from 2248 (due to iterator ordering on bits)
         // assert_eq!(nodes, 66234);
         assert_eq!(algo.pv_table.extract_pv(), position.pv().unwrap());
         assert_eq!(algo.score(), Score::WhiteWin { minus_ply: -3 });

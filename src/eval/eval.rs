@@ -9,8 +9,8 @@ use crate::log_debug;
 use crate::material::Material;
 use crate::movelist::Move;
 use crate::outcome::GameEnd;
-use crate::types::{Color, Piece};
 use crate::stat::{ArrayStat, Stat};
+use crate::types::{Color, Piece};
 
 use std::fmt;
 
@@ -150,7 +150,6 @@ const KING_PST_EG: [i32; 64] = [
 -30,-30,  0,  0,  0,  0,-30,-30,
 -50,-30,-30,-30,-30,-30,-30,-50];
 
-
 pub static ALL: Stat = Stat::new("ALL");
 pub static QUIESCENCE: Stat = Stat::new("QUIESCENCE");
 pub static MATERIAL: Stat = Stat::new("MATERIAL");
@@ -158,20 +157,38 @@ pub static POSITION: Stat = Stat::new("POSITION");
 pub static MOBILITY: Stat = Stat::new("MOBILITY");
 pub static SEE: Stat = Stat::new("SEE");
 
-pub static EVAL_COUNTS: ArrayStat = ArrayStat(&[
-    &ALL,
-    &QUIESCENCE,
-    &MATERIAL,
-    &POSITION,
-    &MOBILITY,
-    &SEE,
-]);
+pub static EVAL_COUNTS: ArrayStat = ArrayStat(&[&ALL, &QUIESCENCE, &MATERIAL, &POSITION, &MOBILITY, &SEE]);
 
+use std::cell::RefCell;
+
+#[derive(Clone)]
+pub struct Tracer(RefCell<Vec<String>>);
+
+impl Tracer {
+    pub fn on() -> Option<Self> {
+        Some(Tracer(RefCell::new(vec![])))
+    }
+
+    pub fn record(t: &Option<Tracer>, str: &str) {
+
+        let t = t.as_ref();
+        let s = t.unwrap();
+        let u = &s.0;
+        let mut v = u.borrow_mut();
+        v.push(str.to_string());
+    }
+}
+
+impl fmt::Debug for Tracer {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Tracer").field("0", &self.0).finish()
+    }
+}
 
 pub trait Scorable<Strategy> {
     fn signum(&self) -> i32;
 
-    fn eval_move_see(&self, eval: &SimpleScorer, mv: &Move, ) -> Score;
+    fn eval_move_see(&self, eval: &SimpleScorer, mv: &Move) -> Score;
     fn eval_move_material(&self, eval: &SimpleScorer, mv: &Move) -> Score;
 
     fn eval(&self, eval: &SimpleScorer) -> Score;
@@ -181,11 +198,12 @@ pub trait Scorable<Strategy> {
     fn eval_mobility(&self, eval: &SimpleScorer) -> Score;
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct SimpleScorer {
     pub material: bool,
     pub position: bool,
     pub mobility: bool,
+    pub tracer: Option<Tracer>,
     pub pawn_doubled: i32,
     pub pawn_isolated: i32,
     pub phasing: bool,
@@ -284,22 +302,24 @@ impl fmt::Display for SimpleScorer {
     }
 }
 
+const MATERIAL_SCORES: [i32; Piece::len()] = [
+    0, // None
+    Piece::Pawn.centipawns(),
+    Piece::Knight.centipawns(),
+    Piece::Bishop.centipawns(),
+    Piece::Rook.centipawns(),
+    Piece::Queen.centipawns(),
+    0, // king,
+];
+
 // builder methods
 impl SimpleScorer {
     pub fn new() -> Self {
-        const MATERIAL_SCORES: [i32; Piece::len()] = [
-            0, // None
-            Piece::Pawn.centipawns(),
-            Piece::Knight.centipawns(),
-            Piece::Bishop.centipawns(),
-            Piece::Rook.centipawns(),
-            Piece::Queen.centipawns(),
-            0, // king,
-        ];
         SimpleScorer {
             mobility: true,
             position: true,
             material: true,
+            tracer: None,
             phasing: true,
             pawn_doubled: -10,
             pawn_isolated: -10,
@@ -327,7 +347,7 @@ impl SimpleScorer {
                 board.total_halfmoves(),
             );
         }
-        self.w_eval_without_wdl(board)
+    self.w_eval_without_wdl(board)
     }
 
     pub fn w_eval_qsearch(&self, board: &Board) -> Score {
@@ -347,24 +367,34 @@ impl SimpleScorer {
         self.w_eval_without_wdl(board)
     }
     fn w_eval_without_wdl(&self, board: &Board) -> Score {
-        let s = if self.material {
+        let ma = if self.material {
             let mat = Material::from_board(board);
             self.w_eval_material(&mat)
         } else {
             0
         };
-        let p = if self.position {
+        let po = if self.position {
             self.w_eval_position(board)
         } else {
             0
         };
-        let m = if self.mobility {
+        let mo = if self.mobility {
             self.w_eval_mobility(board)
         } else {
             0
         };
-        let t = Score::side_to_move_score(self.tempo, board.color_us());
-        Score::Cp(s + p + m) + t
+        let te = Score::side_to_move_score(self.tempo, board.color_us());
+        if self.tracer.is_some() {
+            Tracer::record(&self.tracer, &format!(
+                "score: ma[{:>4}] po[{:>4}] mo[{:>4}] te[{:>4}] :fen:{} ",
+                ma,
+                po,
+                mo,
+                te, 
+                board.to_fen()
+            ));
+        }
+        Score::Cp(ma + po + mo) + te
     }
 
     // always updated
@@ -431,13 +461,9 @@ impl SimpleScorer {
         }
         score
     }
-
-
-
 }
 
 impl Scorable<SimpleScorer> for Board {
-
     fn signum(&self) -> i32 {
         if self.color_us() == Color::White {
             1
@@ -570,12 +596,12 @@ mod tests {
             .unwrap()
             .as_board();
 
-            eval.pawn_doubled = -1;
-            eval.pawn_isolated = 0;
-            assert_eq!(eval.w_eval_mobility(&b), 3);
+        eval.pawn_doubled = -1;
+        eval.pawn_isolated = 0;
+        assert_eq!(eval.w_eval_mobility(&b), 3);
 
-            eval.pawn_doubled = 0;
-            eval.pawn_isolated = -1;
-            assert_eq!(eval.w_eval_mobility(&b), -1);
+        eval.pawn_doubled = 0;
+        eval.pawn_isolated = -1;
+        assert_eq!(eval.w_eval_mobility(&b), -1);
     }
 }

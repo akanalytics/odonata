@@ -163,6 +163,7 @@ impl Board {
 
     #[inline]
     pub fn piece_at(&self, sq: Bitboard) -> Piece {
+        debug_assert!(sq != Bitboard::EMPTY);
         for &p in &Piece::ALL_BAR_NONE {
             if self.pieces(p).contains(sq) {
                 return p;
@@ -174,7 +175,7 @@ impl Board {
     pub fn least_valuable_piece(&self, region: Bitboard) -> Bitboard {
         for &p in &Piece::ALL_BAR_NONE {
             if self.pieces(p).intersects(region) {
-                return self.pieces(p) & region.first();
+                return (self.pieces(p) & region).first();
             }
         }
         Bitboard::EMPTY
