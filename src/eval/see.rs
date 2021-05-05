@@ -66,8 +66,6 @@ impl SimpleScorer {
 mod tests {
     use super::*;
     use crate::board::boardbuf::BoardBuf;
-    use crate::catalog::Catalog;
-    use crate::globals::constants::*;
     use crate::movelist::MoveValidator;
 
     #[test]

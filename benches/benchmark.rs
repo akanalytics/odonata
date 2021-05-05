@@ -568,7 +568,7 @@ fn benchmark_mate_in_2(c: &mut Criterion) {
             let mut search = Algo::new()
                 .set_timing_method(TimeControl::Depth(3))
                 .set_minmax(false)
-                .set_eval(eval)
+                .set_eval(eval.clone())
                 .set_iterative_deepening(false)
                 .build();
             search.reset();
@@ -583,7 +583,7 @@ fn benchmark_mate_in_2(c: &mut Criterion) {
             let mut search = Algo::new()
                 .set_timing_method(TimeControl::Depth(3))
                 .set_minmax(false)
-                .set_eval(eval)
+                .set_eval(eval.clone())
                 .set_iterative_deepening(true)
                 .build();
             search.reset();

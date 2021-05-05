@@ -156,8 +156,9 @@ pub static MATERIAL: Stat = Stat::new("MATERIAL");
 pub static POSITION: Stat = Stat::new("POSITION");
 pub static MOBILITY: Stat = Stat::new("MOBILITY");
 pub static SEE: Stat = Stat::new("SEE");
+pub static MOVE: Stat = Stat::new("MOVE");
 
-pub static EVAL_COUNTS: ArrayStat = ArrayStat(&[&ALL, &QUIESCENCE, &MATERIAL, &POSITION, &MOBILITY, &SEE]);
+pub static EVAL_COUNTS: ArrayStat = ArrayStat(&[&ALL, &QUIESCENCE, &MATERIAL, &POSITION, &MOBILITY, &SEE, &MOVE]);
 
 use std::cell::RefCell;
 
@@ -486,7 +487,7 @@ impl Scorable<SimpleScorer> for Board {
 
     #[inline]
     fn eval_move_material(&self, eval: &SimpleScorer, mv: &Move) -> Score {
-        SEE.increment();
+        MOVE.increment();
         Score::Cp(eval.eval_move_material(&mv))
     }
 

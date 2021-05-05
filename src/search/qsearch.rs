@@ -9,7 +9,6 @@ use crate::movelist::Move;
 use crate::movelist::MoveList;
 use crate::search::algo::Algo;
 use crate::types::Ply;
-use std::cmp;
 use std::fmt;
 
 #[derive(Copy, Clone, Debug)]
