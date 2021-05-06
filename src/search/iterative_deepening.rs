@@ -92,6 +92,7 @@ impl Algo {
         self.board = board.clone();
         self.task_control.set_running();
         self.ids.reset();
+        self.tt.next_generation();
         self.range = self.ids.calc_range(&self.mte.time_control);
         for depth in self.range.clone() {
             //let mut root_node = Node::new_root(&mut self.board.clone());

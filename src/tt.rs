@@ -50,11 +50,19 @@ pub struct Entry {
     pub bm: Move,
 }
 
+#[derive(Copy, Clone, Default, Debug)]
+struct StoredEntry {
+    entry: Entry,
+    age: i16,
+}
+
 // FIXME Mates as score
 #[derive(Clone)]
 pub struct TranspositionTable {
-    table: Arc<Vec<Entry>>,
+    table: Arc<Vec<StoredEntry>>,
 
+    pub aging: bool,
+    pub current_age: i16,
     pub enabled: bool,
     pub capacity: usize,
     pub mb: i64,
@@ -69,6 +77,8 @@ impl fmt::Debug for TranspositionTable {
             .field("capacity", &self.capacity)
             .field("mb", &self.mb)
             .field("hmvc_horizon", &self.hmvc_horizon)
+            .field("aging", &self.aging)
+            .field("current_age", &self.current_age)
             .field("table", &self.table.len()) // dont show large table!
             .finish()
     }
@@ -80,12 +90,24 @@ impl fmt::Display for TranspositionTable {
         writeln!(f, "capacity         : {}", self.capacity())?;
         writeln!(f, "size in mb       : {}", self.mb)?;
         writeln!(f, "entry size bytes : {}", mem::size_of::<Entry>())?;
+        writeln!(f, "aging            : {}", self.aging)?;
         writeln!(f, "hmvc horizon     : {}", self.hmvc_horizon)?;
         writeln!(f, "table            : {}", self.table.len())?;
         writeln!(f, "entry: pv        : {}", self.count_of(NodeType::Pv))?;
         writeln!(f, "entry: cut       : {}", self.count_of(NodeType::Cut))?;
         writeln!(f, "entry: all       : {}", self.count_of(NodeType::All))?;
         writeln!(f, "entry: unused    : {}", self.count_of(NodeType::Unused))?;
+        writeln!(f, "ages (cur)       : {}", self.count_of_age(self.current_age))?;
+        writeln!(
+            f,
+            "ages (cur-1)     : {}",
+            self.count_of_age(self.current_age - 1)
+        )?;
+        writeln!(
+            f,
+            "ages (cur-2)     : {}",
+            self.count_of_age(self.current_age - 2)
+        )?;
         writeln!(f, "tt stats\n{}", TT_COUNTS)?;
         Ok(())
     }
@@ -94,9 +116,11 @@ impl fmt::Display for TranspositionTable {
 impl Default for TranspositionTable {
     fn default() -> Self {
         Self {
-            table: Arc::new(vec![Entry::default(); Self::convert_mb_to_capacity(33)]),
+            table: Arc::new(vec![StoredEntry::default(); Self::convert_mb_to_capacity(33)]),
             enabled: true,
             mb: 33,
+            aging: true,
+            current_age: 2, // to allow us to count back 2
             capacity: Self::convert_mb_to_capacity(33),
             hmvc_horizon: 35,
         }
@@ -105,11 +129,13 @@ impl Default for TranspositionTable {
 
 impl Configurable for TranspositionTable {
     fn settings(&self, c: &mut Config) {
+        c.set("tt.aging", "type check default true");
         c.set("Hash", "type spin default 33 min 0 max 4000");
         c.set("tt.hmvc_horizon", "type spin default 35 min 0 max 100");
     }
     fn configure(&mut self, c: &Config) {
         log_debug!("tt.configure with {}", c);
+        self.aging = c.bool("tt.aging").unwrap_or(self.aging);
         self.mb = c.int("Hash").unwrap_or(self.mb);
         let capacity = Self::convert_mb_to_capacity(self.mb);
         if self.capacity() != capacity {
@@ -132,7 +158,7 @@ impl TranspositionTable {
 
     pub fn with_capacity(capacity: usize) -> Self {
         TranspositionTable {
-            table: Arc::new(vec![Entry::default(); capacity]),
+            table: Arc::new(vec![StoredEntry::default(); capacity]),
             capacity,
             ..Self::default()
         }
@@ -143,13 +169,23 @@ impl TranspositionTable {
         Arc::make_mut(&mut self.table);
     }
 
+    pub fn next_generation(&mut self) {
+        if self.aging {
+            self.current_age += 1;
+        }
+    }
+
     pub fn clear(&mut self) {
-        self.table = Arc::new(vec![Entry::default(); self.capacity()]);
+        self.table = Arc::new(vec![StoredEntry::default(); self.capacity()]);
         // tt.table.resize(size, Entry::default());
     }
 
     pub fn count_of(&self, t: NodeType) -> usize {
-        self.table.iter().filter(|e| e.node_type == t).count()
+        self.table.iter().filter(|e| e.entry.node_type == t).count()
+    }
+
+    pub fn count_of_age(&self, age: i16) -> usize {
+        self.table.iter().filter(|e| e.age == age).count()
     }
 
     pub fn enabled(&self) -> bool {
@@ -168,14 +204,22 @@ impl TranspositionTable {
         if !self.enabled {
             return;
         }
+        let new_stored_entry = StoredEntry {
+            entry: new,
+            age: self.current_age,
+        };
         let index = self.index(new.hash);
         let table = Arc::get_mut(&mut self.table);
         if let Some(table) = table {
             let old = &mut table[index];
-            if new.depth > old.depth || new.depth == old.depth && new.node_type > old.node_type {
+            if self.current_age > old.age
+                || self.current_age == old.age
+                    && (new.depth > old.entry.depth
+                        || new.depth == old.entry.depth && new.node_type > old.entry.node_type)
+            {
                 assert!(new.score > Score::MinusInf);
                 INSERTS.increment();
-                *old = new;
+                *old = new_stored_entry;
                 return;
             } else {
                 FAIL_PRIORITY.increment();
@@ -194,7 +238,7 @@ impl TranspositionTable {
         if let Some(table) = table {
             let old = &mut table[index];
             DELETES.increment();
-            *old = Entry::default();
+            *old = StoredEntry::default();
             return;
         } else {
             FAIL_OWNERSHIP.increment();
@@ -211,15 +255,16 @@ impl TranspositionTable {
             self.probe_by_hash(board.hash())
         }
     }
+
     pub fn probe_by_hash(&self, hash: Hash) -> Option<&Entry> {
         if !self.enabled {
             return None;
         }
-        let entry = &self.table[self.index(hash)];
-        if entry.node_type != NodeType::Unused {
-            if entry.hash == hash {
+        let stored = &self.table[self.index(hash)];
+        if stored.entry.node_type != NodeType::Unused {
+            if stored.entry.hash == hash {
                 HITS.increment();
-                return Some(entry);
+                return Some(&stored.entry);
             } else {
                 COLLISIONS.increment();
                 return None;
@@ -310,6 +355,12 @@ mod tests {
         // insert fails due to ply, leaving 456b in place
         tt.insert(entry456);
         assert_eq!(tt.probe_by_hash(456), Some(&entry456b));
+
+        // insert succeeds due to age
+        tt.next_generation();
+        tt.insert(entry456);
+        assert_eq!(tt.probe_by_hash(456), Some(&entry456));
+
         println!("{:?}", tt);
         println!("{}", tt);
         tt.clear();

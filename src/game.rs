@@ -202,18 +202,20 @@ mod tests {
         white.mte.deterministic = true;
         white.tt.enabled = true;
         white.eval.mobility = true;
-        white.eval.pawn_isolated = -10;
+        white.tt.aging = true;
 
         black.mte.deterministic = true;
         black.tt.enabled = true;
         black.eval.mobility = true;
-        black.eval.pawn_isolated = 0;
+        black.tt.aging = false;
 
         let wdl = tournament(&mut white, &mut black);
         println!(
-            "score as white {}\nELO difference {:.02}",
+            "WHITE\n{}\nBLACK\n{}\nscore as white {}\nELO difference {:.02}",
+            white,
+            black,
             wdl,
-            wdl.elo_differnce()
+            wdl.elo_differnce(),
         );
     }
 
