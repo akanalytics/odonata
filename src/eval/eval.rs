@@ -158,7 +158,8 @@ pub static MOBILITY: Stat = Stat::new("MOBILITY");
 pub static SEE: Stat = Stat::new("SEE");
 pub static MOVE: Stat = Stat::new("MOVE");
 
-pub static EVAL_COUNTS: ArrayStat = ArrayStat(&[&ALL, &QUIESCENCE, &MATERIAL, &POSITION, &MOBILITY, &SEE, &MOVE]);
+pub static EVAL_COUNTS: ArrayStat =
+    ArrayStat(&[&ALL, &QUIESCENCE, &MATERIAL, &POSITION, &MOBILITY, &SEE, &MOVE]);
 
 use std::cell::RefCell;
 
@@ -171,7 +172,6 @@ impl Tracer {
     }
 
     pub fn record(t: &Option<Tracer>, str: &str) {
-
         let t = t.as_ref();
         let s = t.unwrap();
         let u = &s.0;
@@ -348,7 +348,7 @@ impl SimpleScorer {
                 board.total_halfmoves(),
             );
         }
-    self.w_eval_without_wdl(board)
+        self.w_eval_without_wdl(board)
     }
 
     pub fn w_eval_qsearch(&self, board: &Board) -> Score {
@@ -386,14 +386,17 @@ impl SimpleScorer {
         };
         let te = Score::side_to_move_score(self.tempo, board.color_us());
         if self.tracer.is_some() {
-            Tracer::record(&self.tracer, &format!(
-                "score: ma[{:>4}] po[{:>4}] mo[{:>4}] te[{:>4}] :fen:{} ",
-                ma,
-                po,
-                mo,
-                te, 
-                board.to_fen()
-            ));
+            Tracer::record(
+                &self.tracer,
+                &format!(
+                    "score: ma[{:>4}] po[{:>4}] mo[{:>4}] te[{:>4}] :fen:{} ",
+                    ma,
+                    po,
+                    mo,
+                    te,
+                    board.to_fen()
+                ),
+            );
         }
         Score::Cp(ma + po + mo) + te
     }
@@ -444,12 +447,19 @@ impl SimpleScorer {
 
     // updated on capture & promo
     pub fn w_eval_material(&self, mat: &Material) -> i32 {
-        let mut total = 0_i32;
-        for &p in &Piece::ALL_BAR_NONE {
-            total +=
-                self.material_scores[p.index()] * (mat.counts(Color::White, p) - mat.counts(Color::Black, p));
-        }
-        total
+        Piece::ALL_BAR_NONE
+            .iter()
+            .map(|&p| {
+                self.material_scores[p.index()] * (mat.counts(Color::White, p) - mat.counts(Color::Black, p))
+            })
+            .sum()
+        // let mut total = 0_i32;
+        // }
+        // for &p in &Piece::ALL_BAR_NONE {
+        //     total +=
+        //         self.material_scores[p.index()] * (mat.counts(Color::White, p) - mat.counts(Color::Black, p));
+        // }
+        // total
     }
 
     pub fn eval_move_material(&self, mv: &Move) -> i32 {
@@ -466,11 +476,7 @@ impl SimpleScorer {
 
 impl Scorable<SimpleScorer> for Board {
     fn signum(&self) -> i32 {
-        if self.color_us() == Color::White {
-            1
-        } else {
-            -1
-        }
+        self.color_us().chooser_wb(1, -1)
     }
 
     #[inline]

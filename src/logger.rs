@@ -96,7 +96,7 @@ static LOGGER: SimpleLogger = SimpleLogger;
 #[inline]
 pub fn init() {
     log::set_logger(&LOGGER)
-        .map(|()| log::set_max_level(LevelFilter::Debug)).unwrap_or(());
+        .map(|()| log::set_max_level(LevelFilter::Warn)).unwrap_or(());
 }
 
 #[cfg(test)]

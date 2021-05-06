@@ -14,23 +14,34 @@ impl fmt::Display for Material {
         for &c in &Color::ALL {
             // write!(f, "{}: ", c)?;
             for &p in Piece::ALL_BAR_NONE.iter().rev() {
-                    write!(f, "{}", p.to_char(Some(c)).to_string().repeat(self.counts(c,p) as usize))?;
+                write!(
+                    f,
+                    "{}",
+                    p.to_char(Some(c)).to_string().repeat(self.counts(c, p) as usize)
+                )?;
             }
         }
         Ok(())
     }
 }
 
-
 impl cmp::PartialOrd for Material {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         if self == other {
             return Some(cmp::Ordering::Equal);
         }
-        if Piece::ALL_BAR_NONE.iter().zip(&Color::ALL).all(|(&p,&c)| self.counts(c,p) > other.counts(c,p)) {
+        if Piece::ALL_BAR_NONE
+            .iter()
+            .zip(&Color::ALL)
+            .all(|(&p, &c)| self.counts(c, p) > other.counts(c, p))
+        {
             return Some(cmp::Ordering::Greater);
         }
-        if Piece::ALL_BAR_NONE.iter().zip(&Color::ALL).all(|(&p,&c)| self.counts(c,p) < other.counts(c,p)) {
+        if Piece::ALL_BAR_NONE
+            .iter()
+            .zip(&Color::ALL)
+            .all(|(&p, &c)| self.counts(c, p) < other.counts(c, p))
+        {
             return Some(cmp::Ordering::Less);
         }
         None
@@ -78,13 +89,13 @@ impl Material {
 
     pub fn white(&self) -> Material {
         Material {
-            counts: [self.counts[Color::White], [0;Piece::len()]],
+            counts: [self.counts[Color::White], [0; Piece::len()]],
         }
     }
 
     pub fn black(&self) -> Material {
         Material {
-            counts: [[0;Piece::len()], self.counts[Color::Black] ],
+            counts: [[0; Piece::len()], self.counts[Color::Black]],
         }
     }
 
@@ -93,7 +104,13 @@ impl Material {
     }
 
     pub fn centipawns(&self) -> i32 {
-        Piece::ALL_BAR_NONE.iter().map(|&p| p.centipawns()*self.counts(Color::White, p) ).sum::<i32>() - 
+        // Piece::ALL_BAR_NONE
+        //     .iter()
+        //     .map(|&p| {
+        //         p.centipawns() * self.counts(Color::White, p) - p.centipawns() * self.counts(Color::Black, p)
+        //     })
+        //     .sum::<i32>()
+        Piece::ALL_BAR_NONE.iter().map(|&p| p.centipawns()*self.counts(Color::White, p) ).sum::<i32>() -
         Piece::ALL_BAR_NONE.iter().map(|&p| p.centipawns()*self.counts(Color::Black, p) ).sum::<i32>()
     }
 
@@ -101,13 +118,15 @@ impl Material {
     pub fn advantage(&self) -> Material {
         let mut advantage = *self;
         for &p in &Piece::ALL_BAR_NONE {
-            let common = cmp::min(advantage.counts[Color::White][p], advantage.counts[Color::Black][p]);
+            let common = cmp::min(
+                advantage.counts[Color::White][p],
+                advantage.counts[Color::Black][p],
+            );
             advantage.counts[Color::White][p] -= common;
             advantage.counts[Color::Black][p] -= common;
         }
         advantage
     }
-
 
     pub fn is_insufficient2(bd: &Board) -> bool {
         // If both sides have any one of the following, and there are no pawns on the board:
@@ -147,12 +166,12 @@ impl Material {
         let bi = 2 * (self.counts(w, Piece::Bishop) + self.counts(b, Piece::Bishop));
 
         let prq = 3
-            * (self.counts(w,Piece::Pawn)
+            * (self.counts(w, Piece::Pawn)
                 + (self.counts(b, Piece::Pawn)
-                + self.counts(w,Piece::Rook)
-                + self.counts(b, Piece::Rook)
-                + self.counts(w,Piece::Queen)
-                + self.counts(b,Piece::Queen)));
+                    + self.counts(w, Piece::Rook)
+                    + self.counts(b, Piece::Rook)
+                    + self.counts(w, Piece::Queen)
+                    + self.counts(b, Piece::Queen)));
         if ni + bi + prq <= 2 {
             return true;
         }
@@ -213,7 +232,10 @@ mod tests {
         assert_eq!(mat_KBk.to_string(), "KBk".to_string());
         assert_eq!(mat_KBk.minors_and_majors().to_string(), "B".to_string());
         assert_eq!(mat_Kkn.to_string(), "Kkn".to_string());
-        assert_eq!(mat_full1.to_string(), "KQRRBBNNPPPPPPPPkqrrbbnnpppppppp".to_string());
+        assert_eq!(
+            mat_full1.to_string(),
+            "KQRRBBNNPPPPPPPPkqrrbbnnpppppppp".to_string()
+        );
 
         assert_eq!(mat_Kkn.black().to_string(), "kn".to_string());
         assert_eq!(mat_Kkn.white().to_string(), "K".to_string());
@@ -224,7 +246,7 @@ mod tests {
         // advantage
         let mat_some = Material::from_piece_str("PPPPPNNBRKpppppppbbqk").unwrap();
         assert_eq!(mat_Kkn.advantage().to_string(), "n".to_string());
-        assert_eq!(mat_full1.advantage().to_string(), "".to_string());  // evenly matched
+        assert_eq!(mat_full1.advantage().to_string(), "".to_string()); // evenly matched
         assert_eq!(mat_some.advantage().to_string(), "RNNqbpp".to_string());
 
         // centipawns
@@ -233,11 +255,25 @@ mod tests {
         let mat_p = Material::from_piece_str("p").unwrap();
         assert_eq!(mat_p.centipawns(), -100);
         assert_eq!(mat_PPP.centipawns(), 300);
-        assert_eq!(mat_some.advantage().centipawns(), -300);  // R+N-Q = -75, N-b=-25, 2x-P=-200
+        assert_eq!(mat_some.advantage().centipawns(), -300); // R+N-Q = -75, N-b=-25, 2x-P=-200
         let board = Catalog::starting_position();
         assert_eq!(board.material().black().minors_and_majors().centipawns(), -3250);
         assert_eq!(board.material().white().minors_and_majors().centipawns(), 3250);
-        assert_eq!(Material::from_piece_str("KkPPPPPppppp").unwrap().white().minors_and_majors().centipawns(), 0);
-        assert_eq!(Material::from_piece_str("KkPPPPPppppp").unwrap().black().minors_and_majors().centipawns(), 0);
+        assert_eq!(
+            Material::from_piece_str("KkPPPPPppppp")
+                .unwrap()
+                .white()
+                .minors_and_majors()
+                .centipawns(),
+            0
+        );
+        assert_eq!(
+            Material::from_piece_str("KkPPPPPppppp")
+                .unwrap()
+                .black()
+                .minors_and_majors()
+                .centipawns(),
+            0
+        );
     }
 }

@@ -19,7 +19,7 @@ use crate::search::taskcontrol::TaskControl;
 use crate::search::timecontrol::TimeControl;
 use crate::tags::Tag;
 use crate::tt::TranspositionTable;
-use crate::types::{Ply};
+use crate::types::Ply;
 use std::fmt;
 use std::ops::Range;
 use std::thread;
@@ -39,7 +39,7 @@ pub struct Algo {
     pub range: Range<Ply>,
     pub pv_table: PvTable,
     pub current_best: Option<Move>,
-    pub analyse_mode: bool,  // tries to find full PV etc
+    pub analyse_mode: bool, // tries to find full PV etc
     //pub score: Score,
     pub mte: MoveTimeEstimator,
     pub move_orderer: MoveOrderer,
@@ -161,7 +161,11 @@ impl fmt::Display for Algo {
         writeln!(f, "analyse mode     : {}", self.analyse_mode)?;
         writeln!(f, "depth            : {}", self.max_depth)?;
         writeln!(f, "range            : {:?}", self.range)?;
-        writeln!(f, "current_best     : {}", self.current_best.unwrap_or(Move::new_null()))?;
+        writeln!(
+            f,
+            "current_best     : {}",
+            self.current_best.unwrap_or(Move::new_null())
+        )?;
         writeln!(f, "minmax           : {}", self.minmax)?;
         writeln!(f, "iter deepening   : {}", self.iterative_deepening)?;
         writeln!(f, "clock_checks     : {}", self.clock_checks)?;
@@ -218,7 +222,6 @@ impl Algo {
                 .unwrap(),
         ));
     }
-
 
     #[inline]
     pub fn search_stats(&self) -> &SearchStats {
@@ -289,8 +292,6 @@ impl Algo {
         }
         time_up
     }
-
-
 }
 
 #[cfg(test)]
@@ -305,7 +306,7 @@ mod tests {
     use std::time;
 
     fn init() {
-        env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+        // env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
     }
 
     #[test]
@@ -320,28 +321,37 @@ mod tests {
             .set_qsearch(false)
             .build();
         search.search(&board);
-        assert_eq!(search.search_stats().total().nodes(), 1 + 20 + 400 + 8902 /* + 197_281 */);
+        assert_eq!(
+            search.search_stats().total().nodes(),
+            1 + 20 + 400 + 8902 /* + 197_281 */
+        );
         assert_eq!(search.search_stats().branching_factor().round() as u64, 21);
 
         let board = Catalog::starting_position();
         let eval = SimpleScorer::new().set_position(false);
-        let mut search =
-            Algo::new().set_timing_method(TimeControl::Depth(4)).set_minmax(false).set_eval(eval).build();
+        let mut search = Algo::new()
+            .set_timing_method(TimeControl::Depth(4))
+            .set_minmax(false)
+            .set_eval(eval)
+            .build();
         search.move_orderer.enabled = false;
         search.search(&board);
         println!("{}", search);
-        // added tt
-        assert_eq!(search.search_stats().total().nodes(), 1642);
+        assert_eq!(search.search_stats().total().nodes(), 1480); // gen qsearch
 
         // previous
-        // assert_eq!(search.search_stats().total().nodes(), 1833);  qsearch
+        // assert_eq!(search.search_stats().total().nodes(), 1642); added tt
+        // assert_eq!(search.search_stats().total().nodes(), 1833); qsearch sq
         // assert_eq!(search.search_stats().total().nodes(), 1757);
         assert_eq!(search.search_stats().branching_factor().round() as u64, 1);
     }
 
     #[test]
     fn test_display_algo() {
-        let algo = Algo::new().set_timing_method(TimeControl::Depth(1)).set_minmax(false).build();
+        let algo = Algo::new()
+            .set_timing_method(TimeControl::Depth(1))
+            .set_minmax(false)
+            .build();
         println!("{}", algo);
         println!("{:?}", algo);
         println!("{:#?}", algo);
@@ -351,7 +361,10 @@ mod tests {
     fn test_black_opening() {
         let mut board = Catalog::starting_position();
         board.set_turn(Color::Black);
-        let mut search = Algo::new().set_timing_method(TimeControl::Depth(1)).set_minmax(false).build();
+        let mut search = Algo::new()
+            .set_timing_method(TimeControl::Depth(1))
+            .set_minmax(false)
+            .build();
         search.move_orderer.enabled = false;
         search.search(&board);
         println!("{}", search);
@@ -362,8 +375,10 @@ mod tests {
     fn test_all_mate_in_2() {
         let positions = Catalog::mate_in_2();
         for pos in positions {
-            let mut search =
-                Algo::new().set_timing_method(TimeControl::Depth(3)).set_callback(Uci::uci_info).build();
+            let mut search = Algo::new()
+                .set_timing_method(TimeControl::Depth(3))
+                .set_callback(Uci::uci_info)
+                .build();
             search.search(pos.board());
             println!("{}", search);
             assert_eq!(
@@ -372,7 +387,12 @@ mod tests {
                 "{}",
                 pos.id().unwrap()
             );
-            assert_eq!(search.pv().to_string(), pos.pv().unwrap().to_string(), "{}", pos.id().unwrap());
+            assert_eq!(
+                search.pv().to_string(),
+                pos.pv().unwrap().to_string(),
+                "{}",
+                pos.id().unwrap()
+            );
             // FIXME assert_eq!(search.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
         }
     }
@@ -403,7 +423,8 @@ mod tests {
             search.search(position.board());
             println!("{}", search);
             if id {
-                assert_eq!(search.search_stats().total().nodes(), 2200); // with sq q qsearch
+                assert_eq!(search.search_stats().total().nodes(), 3888); // with gen qsearch
+                                                                         // with sq q qsearch
                                                                          // assert_eq!(search.search_stats().total().nodes(), 2108);  // with ordering pv + mvvlva
                                                                          // assert_eq!(search.search_stats().total().nodes(), 3560);
                                                                          // assert_eq!(search.search_stats().total().nodes(), 6553);  // with ordering pv
@@ -425,17 +446,20 @@ mod tests {
         let position = Catalog::mate_in_2()[0].clone();
         let mut algo = Algo::new().set_timing_method(TimeControl::Depth(3)).build();
         algo.search_async(position.board());
-        let millis = time::Duration::from_millis(500);
+        let millis = time::Duration::from_millis(5500);
         thread::sleep(millis);
 
         algo.search_async_stop();
         println!("{}\n\nasync....", algo);
         let nodes = algo.search_stats().total().nodes();
 
-        // with sq based qsearch
-        assert_eq!(nodes, 2274);  // from 2248 (due to iterator ordering on bits)
+        // with gen qsearch
+        assert_eq!(nodes, 5197); 
+        
+        // assert_eq!(nodes, 2274); // with sq based qsearch
+        // assert_eq!(nodes, 2274); // from 2248 (due to iterator ordering on bits)
         // assert_eq!(nodes, 66234);
-        assert_eq!(algo.pv_table.extract_pv(), position.pv().unwrap());
+        assert_eq!(algo.pv_table.extract_pv().uci(), position.pv().unwrap().uci());
         assert_eq!(algo.score(), Score::WhiteWin { minus_ply: -3 });
 
         // search again using the tt
@@ -449,7 +473,10 @@ mod tests {
     #[test]
     fn test_mate_in_2_async_stopped() {
         let position = Catalog::mate_in_2()[0].clone();
-        let mut algo2 = Algo::new().set_timing_method(TimeControl::Depth(3)).set_minmax(true).build();
+        let mut algo2 = Algo::new()
+            .set_timing_method(TimeControl::Depth(3))
+            .set_minmax(true)
+            .build();
         let closure = |sp: &SearchProgress| println!("nps {}", sp.time_millis.unwrap_or_default());
         algo2.set_callback(closure);
         algo2.search_async(position.board());
@@ -462,17 +489,28 @@ mod tests {
         assert!(nodes > 10 && nodes < 66234);
     }
 
-
     #[test]
     #[ignore]
     fn test_mate_in_3_sync() -> Result<(), String> {
         let position = Catalog::mate_in_3()[0].clone();
         let expected_pv = position.pv()?;
-        let mut search = Algo::new().set_timing_method(TimeControl::Depth(5)).set_minmax(false).build();
+        let mut search = Algo::new()
+            .set_timing_method(TimeControl::Depth(5))
+            .set_minmax(false)
+            .build();
         search.search(position.board());
-        let san = position.board().to_san_moves(&search.pv_table.extract_pv(), None).replace("\n", " ");
+        let san = position
+            .board()
+            .to_san_moves(&search.pv_table.extract_pv(), None)
+            .replace("\n", " ");
         println!("{}", search);
-        assert_eq!(san, position.board().to_san_moves(&expected_pv, None).replace("\n", " "));
+        assert_eq!(
+            san,
+            position
+                .board()
+                .to_san_moves(&expected_pv, None)
+                .replace("\n", " ")
+        );
         assert_eq!(search.pv_table.extract_pv(), expected_pv);
         assert_eq!(search.score(), Score::WhiteWin { minus_ply: -4 });
         Ok(())
@@ -487,8 +525,10 @@ mod tests {
             .as_board();
         println!("{}", board);
         let eval = SimpleScorer::new().set_position(false);
-        let mut search =
-            Algo::new().set_timing_method(TimeControl::Depth(9)).set_eval(eval).build(); //9
+        let mut search = Algo::new()
+            .set_timing_method(TimeControl::Depth(9))
+            .set_eval(eval)
+            .build(); //9
         search.search(&board);
         println!("{}", search);
     }
@@ -508,8 +548,10 @@ mod tests {
         //     movestogo: 0,
         //     our_color: Color::Black,
         // };
-        let mut search =
-            Algo::new().set_timing_method(TimeControl::Depth(8)).set_callback(Uci::uci_info).build();
+        let mut search = Algo::new()
+            .set_timing_method(TimeControl::Depth(8))
+            .set_callback(Uci::uci_info)
+            .build();
         search.search(&board);
         println!("{}", search);
     }

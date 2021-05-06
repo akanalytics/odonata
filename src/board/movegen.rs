@@ -446,7 +446,7 @@ mod tests {
     use crate::movelist::MoveValidator;
 
     fn _init() {
-        env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+        // env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
     }
 
     #[test]
