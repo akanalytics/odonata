@@ -181,6 +181,7 @@ pub struct SimpleScorer {
     pub mobility: bool,
     pub pawn_doubled: i32,
     pub pawn_isolated: i32,
+    pub rook_open_file: i32,
     pub phasing: bool,
     pub contempt: i32,
     pub tempo: i32,
@@ -199,6 +200,10 @@ impl Configurable for SimpleScorer {
         c.set("eval.position", "type check default true");
         c.set("eval.material", "type check default true");
         c.set("eval.phasing", "type check default true");
+        c.set(
+            "eval.rook.open_file",
+            &format!("type spin min -200 max 200 default {}", self.rook_open_file),
+        );
         c.set(
             "eval.pawn.doubled",
             &format!("type spin min -200 max 200 default {}", self.pawn_doubled),
@@ -247,6 +252,7 @@ impl Configurable for SimpleScorer {
         self.phasing = c.bool("eval.phasing").unwrap_or(self.phasing);
         self.pawn_doubled = c.int("eval.pawn.doubled").unwrap_or(self.pawn_doubled as i64) as i32;
         self.pawn_isolated = c.int("eval.pawn.isolated").unwrap_or(self.pawn_isolated as i64) as i32;
+        self.rook_open_file = c.int("eval.rook.open_file").unwrap_or(self.rook_open_file as i64) as i32;
         self.contempt = c.int("eval.draw_score_contempt").unwrap_or(self.contempt as i64) as i32;
         self.tempo = c.int("eval.tempo").unwrap_or(self.tempo as i64) as i32;
 
@@ -268,6 +274,7 @@ impl fmt::Display for SimpleScorer {
         writeln!(f, "phasing          : {}", self.phasing)?;
         writeln!(f, "pawn.doubled     : {}", self.pawn_doubled)?;
         writeln!(f, "pawn.isolated     : {}", self.pawn_isolated)?;
+        writeln!(f, "rook.open_file    : {}", self.rook_open_file)?;
         writeln!(f, "contempt         : {}", self.contempt)?;
         writeln!(f, "tempo            : {}", self.tempo)?;
         writeln!(f, "material scores  : {:?}", self.material_scores)?;
@@ -297,6 +304,7 @@ impl SimpleScorer {
             phasing: true,
             pawn_doubled: -10,
             pawn_isolated: -10,
+            rook_open_file: 20,
             contempt: -20, // typically -ve
             tempo: 15,
             material_scores: MATERIAL_SCORES,
@@ -373,6 +381,13 @@ impl SimpleScorer {
             score += self.pawn_isolated
                 * (ClassicalBitboard::isolated_pawns(b.white() & b.pawns()).popcount()
                     - ClassicalBitboard::isolated_pawns(b.black() & b.pawns()).popcount());
+        }
+
+        if self.rook_open_file != 0 {
+            let open_files = ClassicalBitboard::open_files(b.pawns());
+            score += self.rook_open_file
+            * ((b.rooks() & b.white() & open_files).popcount() - 
+            (b.rooks() & b.black() & open_files).popcount())
         }
         score
     }

@@ -7,8 +7,8 @@ use crate::stat::{ArrayStat, Stat};
 use crate::types::{Hash, Ply};
 use std::fmt;
 use std::mem;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicI16, Ordering};
+use std::sync::Arc;
 
 pub static HITS: Stat = Stat::new("HITS");
 pub static MISSES: Stat = Stat::new("MISSES");
@@ -57,7 +57,6 @@ struct StoredEntry {
     age: AtomicI16,
 }
 
-
 impl Clone for StoredEntry {
     fn clone(&self) -> Self {
         Self {
@@ -66,7 +65,6 @@ impl Clone for StoredEntry {
         }
     }
 }
-
 
 // FIXME Mates as score
 #[derive(Clone)]
@@ -197,7 +195,10 @@ impl TranspositionTable {
     }
 
     pub fn count_of_age(&self, age: i16) -> usize {
-        self.table.iter().filter(|e| e.age.load(Ordering::Relaxed) == age).count()
+        self.table
+            .iter()
+            .filter(|e| e.age.load(Ordering::Relaxed) == age)
+            .count()
     }
 
     pub fn enabled(&self) -> bool {
@@ -224,7 +225,7 @@ impl TranspositionTable {
         let table = Arc::get_mut(&mut self.table);
         if let Some(table) = table {
             let old = &mut table[index];
-            let old_age = old.age.load(Ordering::Relaxed); 
+            let old_age = old.age.load(Ordering::Relaxed);
             if self.current_age > old_age
                 || self.current_age == old_age
                     && (new.depth > old.entry.depth

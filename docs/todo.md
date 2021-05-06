@@ -1,7 +1,7 @@
 # Todo items
 
 
-[ ] Aging tt
+[X] Aging tt
 [ ] Pawn chains fixed 
 [ ] PV extraction
 [ ] Null move pruning
