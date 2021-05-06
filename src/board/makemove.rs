@@ -28,7 +28,8 @@ impl MoveMaker for Board {
             fullmove_number: self.fullmove_number + self.turn.chooser_wb(0, 1),
             fifty_clock: self.fifty_clock + 1,
             repetition_count: Cell::new(0),
-            threats_to: [Cell::<_>::new(Bitboard::EMPTY), Cell::<_>::new(Bitboard::EMPTY)],
+            threats_to: [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())],
+            checkers_of: [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())],
             // moves: self.moves.clone(),
             ..*self
         };
@@ -196,6 +197,9 @@ mod tests {
         let epd = "r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1 id: 'castling1'";
         let board = Board::parse_fen(epd).unwrap().as_board();
         // casle kings side for w and then b
+        assert!(!board.is_in_check(board.color_us()));
+        assert!(board.checkers_of(board.color_us()).is_empty());
+        assert_eq!(board.legal_moves().len(), 16+5+2+2); // 16P, 5R, 2K, OO, OOO 
         let board = board.make_move(&board.parse_uci_move("e1g1").unwrap());
         let board = board.make_move(&board.parse_uci_move("e8g8").unwrap());
         assert_eq!(board.to_fen(), "r4rk1/pppppppp/8/8/8/8/PPPPPPPP/R4RK1 w - - 2 2");

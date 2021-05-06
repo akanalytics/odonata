@@ -23,6 +23,7 @@ pub struct Board {
     repetition_count: Cell<u16>,
     hash: Hash,
     threats_to: [Cell<Bitboard>; Color::len()],
+    checkers_of: [Cell<Bitboard>; Color::len()],
     // interior mutability (precludes copy trait)
     // moves: MoveList,
 }
@@ -68,6 +69,16 @@ impl Board {
     #[inline]
     pub fn pieces(&self, p: Piece) -> Bitboard {
         self.pieces[p as usize]
+    }
+
+    #[inline]
+    pub fn line_pieces(&self) -> Bitboard {
+        self.rooks() | self.bishops() | self.queens()
+    }
+
+    #[inline]
+    pub fn non_line_pieces(&self) -> Bitboard {
+        self.pawns() | self.knights() | self.kings()
     }
 
     #[inline]
@@ -224,8 +235,10 @@ impl fmt::Display for Board {
                     self.pieces(p)
                 )?;
             }
+            writeln!(f, "Checkers of white:\n{}\n", self.checkers_of[Color::White].get())?;
+            writeln!(f, "Checkers of black:\n{}\n", self.checkers_of[Color::Black].get())?;
             writeln!(f, "Threats to white:\n{}\n", self.threats_to[Color::White].get())?;
-            writeln!(f, "Threats to black:\n{}\n", self.threats_to[Color::White].get())?;
+            writeln!(f, "Threats to black:\n{}\n", self.threats_to[Color::Black].get())?;
         }
 
         Ok(())
@@ -244,7 +257,8 @@ impl Default for Board {
             fifty_clock: Default::default(),
             fullmove_number: 1,
             repetition_count: Cell::<u16>::new(0), 
-            threats_to: [Cell::<_>::new(Bitboard::default()), Cell::<_>::new(Bitboard::default())],
+            threats_to: [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())],
+            checkers_of: [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())],
             hash: 0, 
             // moves: MoveList,
         }

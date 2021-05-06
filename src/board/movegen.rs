@@ -52,6 +52,9 @@ pub fn threats_to(board: &Board, us: Color) -> Bitboard {
 }
 
 fn attacked_by(targets: Bitboard, occ: Bitboard, board: &Board) -> Bitboard {
+    if targets.is_empty() {
+        return Bitboard::empty();
+    }
     let pawns = board.pawns();
     let knights = board.knights();
     let bishops = board.bishops();
@@ -115,6 +118,16 @@ trait MoveGen {
     // fn threats_to(&self, c: Color) -> Bitboard;
 
 
+// no king on board => no attackers
+pub fn calc_checkers_of(board: &Board, king_color: Color) -> Bitboard {
+    let us = board.color(king_color);
+    let them = board.color(king_color.opposite());
+    let our_king = board.kings() & us;
+    // debug_assert!(!our_king.is_empty(), "king ({}) not found {}", king_color, board);
+    let occ = us | them;
+    attacked_by(our_king, occ, board) & them
+}
+
 impl Board {
 
     pub fn attacked_by(&self, targets: Bitboard) -> Bitboard {
@@ -127,9 +140,19 @@ impl Board {
         self.make_move(mv).is_in_check(their_king_color)
     }
 
+    pub fn checkers_of(&self, king_color: Color) -> Bitboard {
+        let mut ch = self.checkers_of[king_color].get();
+        if ch == Bitboard::niche() {
+            ch = calc_checkers_of(self, king_color);
+            self.checkers_of[king_color].set(ch);
+        }
+        ch
+    } 
+
+
     pub fn threats_to(&self, c: Color) -> Bitboard {
         let mut th = self.threats_to[c].get();
-        if th.is_empty() {
+        if th == Bitboard::niche(){
             th = threats_to(self, c);
             self.threats_to[c].set(th);
         }
@@ -148,17 +171,7 @@ impl Board {
     /// called with is_in_check( board.turn() ) to see if currently in check
     pub fn is_in_check(&self, king_color: Color) -> bool {
         let them = self.color(king_color.opposite());
-        self.checkers(king_color).intersects(them)
-    }
-
-    pub fn checkers(&self, king_color: Color) -> Bitboard {
-        let board = &self;
-        let us = board.color(king_color);
-        let them = board.color(king_color.opposite());
-        let our_king = board.kings() & us;
-        debug_assert!(!our_king.is_empty(), "king ({}) not found {}", king_color, board);
-        let occ = us | them;
-        attacked_by(our_king, occ, board)
+        self.checkers_of(king_color).intersects(them)
     }
 
     pub fn is_legal_move(&self, mv: &Move) -> bool {
@@ -180,8 +193,40 @@ impl Board {
     }
 
 
+    fn king_pseudo_legals_to(&self, to: Bitboard, moves: &mut MoveList) {
+        let attack_gen = global_classical_bitboard();
+        let board = &self;
+        for from_sq in (board.kings() & board.us()).squares() {
+            let attacks = !board.us() & attack_gen.king_attacks(from_sq) & to;
+            for to in attacks.iter() {
+                if board.them().contains(to) {
+                    let m = Move {
+                        from: from_sq.as_bb(),
+                        to,
+                        mover: Piece::King,
+                        capture: board.piece_at(to),
+                        ..Default::default()
+                    };
+                    moves.push(m);
+                } else {
+                    let m = Move { from: from_sq.as_bb(), to, mover: Piece::King, ..Default::default() };
+                    moves.push(m);
+                }
+            }
+        }
+    }
+
+
+
     // TODO: Vec::with_capacity(100).
     pub fn pseudo_legal_moves(&self) -> MoveList {
+        if self.checkers_of(self.color_us()).popcount() > 1 {
+            // double check - must move king
+            let mut moves = MoveList::new();
+            self.king_pseudo_legals_to(Bitboard::all(), &mut moves);
+            return moves;
+        }
+
         let board = &self;
         let mut moves = MoveList::new();
         let color = board.color_us();
@@ -358,24 +403,7 @@ impl Board {
                 }
             }
         }
-        for from_sq in (board.kings() & us).squares() {
-            let attacks = !us & attack_gen.king_attacks(from_sq);
-            for to in attacks.iter() {
-                if them.contains(to) {
-                    let m = Move {
-                        from: from_sq.as_bb(),
-                        to,
-                        mover: Piece::King,
-                        capture: board.piece_at(to),
-                        ..Default::default()
-                    };
-                    moves.push(m);
-                } else {
-                    let m = Move { from: from_sq.as_bb(), to, mover: Piece::King, ..Default::default() };
-                    moves.push(m);
-                }
-            }
-        }
+        self.king_pseudo_legals_to(Bitboard::all(), &mut moves);
         // castling
         // check castling rights (cheap)
         // check there is a king (for testing board setups)

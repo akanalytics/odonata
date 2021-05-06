@@ -79,8 +79,8 @@ impl Bitboard {
     // remove, 
     // set, 
     // toggle, 
-    // all, 
-    // empty, 
+    // all(), 
+    // empty(), 
     // is_all, 
     // is_empty, 
     // intersects, 
@@ -98,6 +98,13 @@ impl Bitboard {
         let bit = 1 << index;
         Bitboard::from_bits_truncate(bit)
     }
+
+    // a niche value that never occurs "in real life"
+    #[inline]
+    pub const fn niche() -> Bitboard {
+        Bitboard::all()
+    }
+
 
     #[inline]
     pub fn disjoint(self, other: Bitboard) -> bool {
