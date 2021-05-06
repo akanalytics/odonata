@@ -765,6 +765,9 @@ impl fmt::Debug for TranspositionTable {
     }
 }
 
+
+
+
 impl fmt::Display for TranspositionTable {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "enabled          : {}", self.enabled)?;
@@ -898,5 +901,33 @@ mod tests {
         assert_eq!(tt.get(456), &entry456b);
         println!("{:?}", tt);
         println!("{}", tt);
+    }
+}
+
+
+
+
+use std::cell::RefCell;
+
+#[derive(Clone)]
+pub struct Tracer(RefCell<Vec<String>>);
+
+impl Tracer {
+    pub fn on() -> Option<Self> {
+        Some(Tracer(RefCell::new(vec![])))
+    }
+
+    pub fn record(t: &Option<Tracer>, str: &str) {
+        let t = t.as_ref();
+        let s = t.unwrap();
+        let u = &s.0;
+        let mut v = u.borrow_mut();
+        v.push(str.to_string());
+    }
+}
+
+impl fmt::Debug for Tracer {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Tracer").field("0", &self.0).finish()
     }
 }

@@ -372,45 +372,6 @@ mod tests {
     }
 
     #[test]
-    fn test_all_mate_in_2() {
-        let positions = Catalog::mate_in_2();
-        for pos in positions {
-            let mut search = Algo::new()
-                .set_timing_method(TimeControl::Depth(3))
-                .set_callback(Uci::uci_info)
-                .build();
-            search.search(pos.board());
-            println!("{}", search);
-            assert_eq!(
-                pos.board().to_san_moves(&search.pv(), None),
-                pos.board().to_san_moves(&pos.pv().unwrap(), None),
-                "{}",
-                pos.id().unwrap()
-            );
-            assert_eq!(
-                search.pv().to_string(),
-                pos.pv().unwrap().to_string(),
-                "{}",
-                pos.id().unwrap()
-            );
-            assert_eq!(search.score(), Score::WhiteWin { minus_ply: -3 });
-
-            // FIXME assert_eq!(search.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
-        }
-    }
-
-    // fn test_all_mate_in_2_mock() {
-    //     let positions = Catalog::mate_in_2();
-    //     for pos in positions {
-    //         let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).set_callback(Uci::uci_info);
-    //         pos.search(eval);
-    //         println!("{}", search);
-    //         assert_eq!(search.pv_table.extract_pv().to_string(), pos.pv_table().unwrap().to_string(), "{}", pos.id().unwrap());
-    //         // FIXME assert_eq!(search.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
-    //     }
-    // }
-
-    #[test]
     fn test_mate_in_2_ids() {
         for &id in &[true, false] {
             let position = Catalog::mate_in_2()[0].clone();
@@ -425,14 +386,17 @@ mod tests {
             search.search(position.board());
             println!("{}", search);
             if id {
-                assert_eq!(search.search_stats().total().nodes(), 3888); // with gen qsearch
-                                                                         // with sq q qsearch
-                                                                         // assert_eq!(search.search_stats().total().nodes(), 2108);  // with ordering pv + mvvlva
-                                                                         // assert_eq!(search.search_stats().total().nodes(), 3560);
-                                                                         // assert_eq!(search.search_stats().total().nodes(), 6553);  // with ordering pv
-                                                                         // assert_eq!(search.search_stats().total().nodes(), 6740);
+                assert_eq!(search.search_stats().total().nodes(), 3885); // with gen qsearch
+
+                // with sq q qsearch
+                // assert_eq!(search.search_stats().total().nodes(), 2108);  // with ordering pv + mvvlva
+                // assert_eq!(search.search_stats().total().nodes(), 3560);
+                // assert_eq!(search.search_stats().total().nodes(), 6553);  // with ordering pv
+                // assert_eq!(search.search_stats().total().nodes(), 6740);
             } else {
-                assert_eq!(search.search_stats().total().nodes(), 2200); // with sq qsearch
+                assert_eq!(search.search_stats().total().nodes(), 3885); // with sq qsearch
+
+                                                                         // assert_eq!(search.search_stats().total().nodes(), 2200); // with sq qsearch
                                                                          // assert_eq!(search.search_stats().total().nodes(), 2108); // with  mvvlva
                                                                          //assert_eq!(search.search_stats().total().nodes(), 7749); // no ids no mvvlva
             }
@@ -456,8 +420,9 @@ mod tests {
         let nodes = algo.search_stats().total().nodes();
 
         // with gen qsearch
-        assert_eq!(nodes, 5197); 
+        assert_eq!(nodes, 5086);
         
+        // assert_eq!(nodes, 5197);  // wrong halfmove counts in mate score
         // assert_eq!(nodes, 2274); // with sq based qsearch
         // assert_eq!(nodes, 2274); // from 2248 (due to iterator ordering on bits)
         // assert_eq!(nodes, 66234);
@@ -489,32 +454,6 @@ mod tests {
         // println!("after stop clock:\n{}", algo.clock);
         let nodes = algo2.search_stats().total().nodes();
         assert!(nodes > 10 && nodes < 66234);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_mate_in_3_sync() -> Result<(), String> {
-        let position = Catalog::mate_in_3()[0].clone();
-        let expected_pv = position.pv()?;
-        let mut search = Algo::new()
-            .set_timing_method(TimeControl::Depth(5))
-            .build();
-        search.search(position.board());
-        let san = position
-            .board()
-            .to_san_moves(&search.pv_table.extract_pv(), None)
-            .replace("\n", " ");
-        println!("{}", search);
-        assert_eq!(
-            san,
-            position
-                .board()
-                .to_san_moves(&expected_pv, None)
-                .replace("\n", " ")
-        );
-        assert_eq!(search.pv_table.extract_pv(), expected_pv);
-        assert_eq!(search.score(), Score::WhiteWin { minus_ply: -4 });
-        Ok(())
     }
 
     #[test]

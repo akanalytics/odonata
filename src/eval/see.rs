@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::movelist::Move;
-use crate::eval::eval::{SimpleScorer, Tracer};
+use crate::eval::eval::SimpleScorer;
 use std::cmp;
 
 impl SimpleScorer {
@@ -48,13 +48,6 @@ impl SimpleScorer {
         while d >= 2 {
             gain[d-2] = -cmp::max(-gain[d-2], gain[d-1]);
             d -= 1;
-        }
-        if self.tracer.is_some() {
-            Tracer::record(&self.tracer, &format!(
-                "score: see[{:>4}] :fen:{} ",
-                gain[0],
-                board.to_fen()
-            ));
         }
         gain[0]
     }

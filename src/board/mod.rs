@@ -163,7 +163,7 @@ impl Board {
 
     #[inline]
     pub fn total_halfmoves(&self) -> Ply {
-        self.fullmove_number() as Ply + self.color_us().chooser_wb(0, 1)
+        2 * self.fullmove_number() as Ply + self.color_us().chooser_wb(0, 1) - 2
     }
 
     #[inline]

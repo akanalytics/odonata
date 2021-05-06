@@ -506,7 +506,7 @@ mod tests {
     fn test_uci_setoption() {
         let mut uci = Uci::new();
         uci.preamble
-            .push("setoption name eval.material.b value 700".into());
+            .push("setoption name eval.b value 700".into());
         uci.preamble
             .push("setoption name eval.position value false".into());
         uci.preamble.push("quit".into());

@@ -161,50 +161,24 @@ pub static MOVE: Stat = Stat::new("MOVE");
 pub static EVAL_COUNTS: ArrayStat =
     ArrayStat(&[&ALL, &QUIESCENCE, &MATERIAL, &POSITION, &MOBILITY, &SEE, &MOVE]);
 
-use std::cell::RefCell;
+// pub trait Scorable<Strategy> {
+//     fn signum(&self) -> i32;
 
-#[derive(Clone)]
-pub struct Tracer(RefCell<Vec<String>>);
+//     fn eval_move_see(&self, eval: &SimpleScorer, mv: &Move) -> Score;
+//     fn eval_move_material(&self, eval: &SimpleScorer, mv: &Move) -> Score;
 
-impl Tracer {
-    pub fn on() -> Option<Self> {
-        Some(Tracer(RefCell::new(vec![])))
-    }
-
-    pub fn record(t: &Option<Tracer>, str: &str) {
-        let t = t.as_ref();
-        let s = t.unwrap();
-        let u = &s.0;
-        let mut v = u.borrow_mut();
-        v.push(str.to_string());
-    }
-}
-
-impl fmt::Debug for Tracer {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Tracer").field("0", &self.0).finish()
-    }
-}
-
-pub trait Scorable<Strategy> {
-    fn signum(&self) -> i32;
-
-    fn eval_move_see(&self, eval: &SimpleScorer, mv: &Move) -> Score;
-    fn eval_move_material(&self, eval: &SimpleScorer, mv: &Move) -> Score;
-
-    fn eval(&self, eval: &SimpleScorer) -> Score;
-    fn eval_qsearch(&self, eval: &SimpleScorer) -> Score;
-    fn eval_material(&self, eval: &SimpleScorer) -> Score;
-    fn eval_position(&self, eval: &SimpleScorer) -> Score;
-    fn eval_mobility(&self, eval: &SimpleScorer) -> Score;
-}
+//     fn eval(&self, eval: &SimpleScorer) -> Score;
+//     fn eval_qsearch(&self, eval: &SimpleScorer) -> Score;
+//     fn eval_material(&self, eval: &SimpleScorer) -> Score;
+//     fn eval_position(&self, eval: &SimpleScorer) -> Score;
+//     fn eval_mobility(&self, eval: &SimpleScorer) -> Score;
+// }
 
 #[derive(Clone, Debug)]
 pub struct SimpleScorer {
     pub material: bool,
     pub position: bool,
     pub mobility: bool,
-    pub tracer: Option<Tracer>,
     pub pawn_doubled: i32,
     pub pawn_isolated: i32,
     pub phasing: bool,
@@ -242,25 +216,25 @@ impl Configurable for SimpleScorer {
             &format!("type spin min -1000 max 1000 default {}", self.tempo),
         );
         c.set(
-            "eval.material.p",
+            "eval.p",
             &("type spin min -10000 max 10000 default ".to_string() + &Piece::Pawn.centipawns().to_string()),
         );
         c.set(
-            "eval.material.n",
+            "eval.n",
             &("type spin min -10000 max 10000 default ".to_string()
                 + &Piece::Knight.centipawns().to_string()),
         );
         c.set(
-            "eval.material.b",
+            "eval.b",
             &("type spin min -10000 max 10000 default ".to_string()
                 + &Piece::Bishop.centipawns().to_string()),
         );
         c.set(
-            "eval.material.r",
+            "eval.r",
             &("type spin min -10000 max 10000 default ".to_string() + &Piece::Rook.centipawns().to_string()),
         );
         c.set(
-            "eval.material.q",
+            "eval.q",
             &("type spin min -10000 max 10000 default ".to_string() + &Piece::Queen.centipawns().to_string()),
         );
     }
@@ -277,7 +251,7 @@ impl Configurable for SimpleScorer {
         self.tempo = c.int("eval.tempo").unwrap_or(self.tempo as i64) as i32;
 
         for p in &Piece::ALL_BAR_NONE {
-            let mut name = "eval.material.".to_string();
+            let mut name = "eval.".to_string();
             name.push(p.to_char(Some(Color::Black)));
             if let Some(i) = c.int(&name) {
                 self.material_scores[*p] = i as i32;
@@ -320,7 +294,6 @@ impl SimpleScorer {
             mobility: true,
             position: true,
             material: true,
-            tracer: None,
             phasing: true,
             pawn_doubled: -10,
             pawn_isolated: -10,
@@ -385,19 +358,6 @@ impl SimpleScorer {
             0
         };
         let te = Score::side_to_move_score(self.tempo, board.color_us());
-        if self.tracer.is_some() {
-            Tracer::record(
-                &self.tracer,
-                &format!(
-                    "score: ma[{:>4}] po[{:>4}] mo[{:>4}] te[{:>4}] :fen:{} ",
-                    ma,
-                    po,
-                    mo,
-                    te,
-                    board.to_fen()
-                ),
-            );
-        }
         Score::Cp(ma + po + mo) + te
     }
 
@@ -474,49 +434,49 @@ impl SimpleScorer {
     }
 }
 
-impl Scorable<SimpleScorer> for Board {
+impl Board {
     fn signum(&self) -> i32 {
         self.color_us().chooser_wb(1, -1)
     }
 
     #[inline]
-    fn eval_qsearch(&self, eval: &SimpleScorer) -> Score {
+    pub fn eval_qsearch(&self, eval: &SimpleScorer) -> Score {
         QUIESCENCE.increment();
         self.signum() * eval.w_eval_qsearch(self)
     }
 
     #[inline]
-    fn eval_move_see(&self, eval: &SimpleScorer, mv: &Move) -> Score {
+    pub fn eval_move_see(&self, eval: &SimpleScorer, mv: &Move) -> Score {
         SEE.increment();
         Score::Cp(eval.eval_move_see(self, &mv))
     }
 
     #[inline]
-    fn eval_move_material(&self, eval: &SimpleScorer, mv: &Move) -> Score {
+    pub fn eval_move_material(&self, eval: &SimpleScorer, mv: &Move) -> Score {
         MOVE.increment();
         Score::Cp(eval.eval_move_material(&mv))
     }
 
     #[inline]
-    fn eval(&self, eval: &SimpleScorer) -> Score {
+    pub fn eval(&self, eval: &SimpleScorer) -> Score {
         ALL.increment();
         self.signum() * eval.w_evaluate(self)
     }
 
     #[inline]
-    fn eval_material(&self, eval: &SimpleScorer) -> Score {
+    pub fn eval_material(&self, eval: &SimpleScorer) -> Score {
         MATERIAL.increment();
         let m = Material::from_board(self);
         let s = eval.w_eval_material(&m);
         Score::Cp(self.signum() * s)
     }
     #[inline]
-    fn eval_position(&self, eval: &SimpleScorer) -> Score {
+    pub fn eval_position(&self, eval: &SimpleScorer) -> Score {
         POSITION.increment();
         let s = eval.w_eval_position(self);
         Score::Cp(self.signum() * s)
     }
-    fn eval_mobility(&self, eval: &SimpleScorer) -> Score {
+    pub fn eval_mobility(&self, eval: &SimpleScorer) -> Score {
         MOBILITY.increment();
         let s = eval.w_eval_mobility(self);
         Score::Cp(self.signum() * s)
@@ -546,7 +506,7 @@ mod tests {
     #[test]
     fn test_eval_configure() {
         let mut eval = SimpleScorer::new();
-        eval.configure(&Config::new().set("eval.material.b", "700"));
+        eval.configure(&Config::new().set("eval.b", "700"));
         assert_eq!(eval.material_scores[Piece::Bishop], 700);
 
         let mut eval = SimpleScorer::new();

@@ -1,6 +1,5 @@
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
-use crate::eval::eval::Scorable;
 use crate::eval::score::Score;
 use crate::movelist::Move;
 use crate::outcome::GameEnd;
@@ -13,6 +12,9 @@ use crate::types::{Ply, MAX_PLY};
 
 pub struct AlphaBeta;
 
+// terminology
+// ply is moves made. so ply 3 means w-> b-> w-> after which we score position
+// 
 impl Algo {
     #[inline]
     pub fn is_leaf(&self, ply: Ply) -> bool {
@@ -40,11 +42,9 @@ impl Algo {
         beta: Score,
         last_move: &Move,
     ) -> Score {
+       
         debug_assert!(self.max_depth > 0);
-        if self.search_stats.total().nodes() % 1000000 == 0 && self.search_stats.total().nodes() != 0 {
-            let sp = SearchProgress::from_search_stats(&self.search_stats());
-            self.task_control.invoke_callback(&sp);
-        }
+        self.report_progress();
 
         if self.time_up_or_cancelled(ply, false) {
             return Score::MinusInf;
@@ -202,18 +202,12 @@ impl Algo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::board::boardbuf::*;
     use crate::catalog::*;
     use crate::comms::uci::Uci;
     use crate::eval::eval::*;
     use crate::movelist::MoveValidator;
     use crate::search::timecontrol::*;
-    use crate::types::*;
-    use std::time;
 
-    fn init() {
-        // env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
-    }
 
     #[test]
     fn test_2_mates() -> Result<(), String> {
@@ -223,19 +217,34 @@ mod tests {
                 .set_timing_method(TimeControl::Depth(3))
                 .set_callback(Uci::uci_info)
                 .build();
-            search.qsearch.see = false;
-            search.tt.enabled = true;
+            search.qsearch.see = true;
+            search.tt.enabled = false;
             search.search(pos.board());
             println!("{}", search);
+            assert_eq!(search.pv().to_string(), pos.pv()?.to_string(), "#{} {}", i, pos);
             assert_eq!(
-                pos.board().to_san_moves(&search.pv(), None),
-                pos.board().to_san_moves(&pos.pv()?, None),
-                "{}",
-                pos.id()?
+                search.score(),
+                Score::WhiteWin { minus_ply: -3 - pos.board().total_halfmoves() },
+                "#{} {}",
+                i,
+                pos
             );
-            assert_eq!(search.pv().to_string(), pos.pv()?.to_string(), "{}", pos.id()?);
-            assert_eq!(search.score(), Score::WhiteWin { minus_ply: -3 }, "#{} {}", i, pos);
         }
+        Ok(())
+    }
+
+    #[test]
+    #[ignore]
+    fn test_mate_in_3_sync() -> Result<(), String> {
+        let position = Catalog::mate_in_3()[0].clone();
+        let expected_pv = position.pv()?;
+        let mut search = Algo::new().set_timing_method(TimeControl::Depth(5)).build();
+        search.tt.enabled = false;
+        search.qsearch.see = true;
+        search.search(position.board());
+        println!("{}", search);
+        assert_eq!(search.pv_table.extract_pv(), expected_pv);
+        assert_eq!(search.score(), Score::WhiteWin { minus_ply: -4 });
         Ok(())
     }
 }

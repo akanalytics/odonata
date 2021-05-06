@@ -2,7 +2,6 @@ use crate::bitboard::Bitboard;
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::config::{Config, Configurable};
-use crate::eval::eval::Scorable;
 use crate::eval::score::Score;
 use crate::log_debug;
 use crate::movelist::Move;
@@ -67,6 +66,11 @@ impl fmt::Display for QSearch {
 }
 
 impl Algo {
+
+    // if the move resulted in checkmate, we should return a mate score
+    // if the move results in a position which after quiese, is potentially a mate,
+    // we should not return a mate score, as only captures have been considered, 
+    // and a mate score might cut a genuine mate score elsewhere
     pub fn qsearch(&mut self, mv: &Move, ply: Ply, board: &mut Board, alpha: Score, beta: Score) -> Score {
         if !self.qsearch.enabled || ply <= 1 || (!mv.is_capture() && self.qsearch.only_captures) {
             self.search_stats.inc_leaf_nodes(ply);
@@ -95,13 +99,13 @@ impl Algo {
         let standing_pat;
         if ply == self.max_depth {
             standing_pat = board.eval(&self.eval);
-            // println!("eval_ {}", standing_pat);
+            if standing_pat.is_mate() {
+                return standing_pat;
+            }
         } else if in_check {
             standing_pat = alpha;
-            // println!("eval_alpha qsearc {}", standing_pat);
         } else {
             standing_pat = board.eval_qsearch(&self.eval);
-            // println!("eval_ qsearc {}", standing_pat);
         }
         if standing_pat > alpha {
             if standing_pat >= beta {
@@ -198,7 +202,7 @@ impl Algo {
 
         // this will handle mates too at quiescent node
         let standing_pat;
-        if ply == self.max_depth {
+        if self.is_leaf(ply) {
             standing_pat = board.eval(&self.eval);
         } else {
             // in qsearch a mate score might mean a queen sacrifice. But in reality
@@ -241,6 +245,7 @@ impl Algo {
         for mv in moves.iter() {
             let mut child = board.make_move(mv);
             let score = -self.qsearch_sq(sq, ply + 1, &mut child, -beta, -alpha);
+            debug_assert!(!score.is_mate());  // no mate scores except on leaf ply
             board.undo_move(mv);
             if score > beta {
                 return score;
@@ -287,7 +292,6 @@ mod tests {
         eval.mobility = false;
         eval.position = false;
         eval.material = true;
-        eval.tracer = Tracer::on();
 
         let pos = Position::parse_epd("7k/8/8/8/8/p7/8/R6K w - - 0 1 sm Ra3; ce 100;")?; //RN v pq
         let (alpha, beta) = (Score::MinusInf, Score::PlusInf);
@@ -315,7 +319,6 @@ mod tests {
 
 
         let score = search_see.qsearch(&pos.sm()?, 3, &mut pos.board().clone(), alpha, beta);
-        println!("{:#?}", search_see.eval.tracer);
         if let Score::Cp(ce) = score {
             assert_eq!(ce - static_eval, pos.ce()?, "see");
         } else {

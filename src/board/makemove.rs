@@ -152,8 +152,20 @@ mod tests {
         let board = Catalog::starting_position();
         // let mut m = Move::parse("e2e4")?;
         let mov = board.parse_uci_move("e2e4")?;
-        let board2 = board.make_move(&mov);
-        assert_eq!(board2.to_fen(), "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1");
+        assert_eq!(board.total_halfmoves(), 0);
+
+        let board = board.make_move(&mov);
+        assert_eq!(board.to_fen(), "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1");
+        assert_eq!(board.total_halfmoves(), 1);
+
+        let board = board.make_move(&board.parse_uci_move("a7a6").unwrap());
+        assert_eq!(board.total_halfmoves(), 2);
+
+        let board = board.make_move(&board.parse_uci_move("e4e5").unwrap());
+        assert_eq!(board.total_halfmoves(), 3);
+
+        let board = board.make_move(&board.parse_uci_move("a6a5").unwrap());
+        assert_eq!(board.total_halfmoves(), 4);
         Ok(())
     }
 
@@ -199,11 +211,16 @@ mod tests {
         // casle kings side for w and then b
         assert!(!board.is_in_check(board.color_us()));
         assert!(board.checkers_of(board.color_us()).is_empty());
+        assert_eq!(board.total_halfmoves(), 0);
         assert_eq!(board.legal_moves().len(), 16+5+2+2); // 16P, 5R, 2K, OO, OOO 
+
         let board = board.make_move(&board.parse_uci_move("e1g1").unwrap());
+        assert_eq!(board.total_halfmoves(), 1);
+
         let board = board.make_move(&board.parse_uci_move("e8g8").unwrap());
         assert_eq!(board.to_fen(), "r4rk1/pppppppp/8/8/8/8/PPPPPPPP/R4RK1 w - - 2 2");
-
+        assert_eq!(board.total_halfmoves(), 2);
+        
         // castle queens side
         let board = Board::parse_fen(epd).unwrap().as_board();
         let board = board.make_move(&board.parse_uci_move("e1c1").unwrap());
