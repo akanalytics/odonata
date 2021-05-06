@@ -175,7 +175,7 @@ impl Board {
     }
 
     pub fn is_legal_move(&self, mv: &Move) -> bool {
-        mv.is_castle() || !self.make_move(mv).is_in_check(self.color_us())
+        mv.is_known_legal() || !self.make_move(mv).is_in_check(self.color_us())
     }
 
 
@@ -433,6 +433,7 @@ impl Board {
                     to: king_to,
                     mover: Piece::King,
                     castle_side: right,
+                    is_known_legal: true,
                     ..Default::default()
                 };
                 moves.push(m);
@@ -455,6 +456,7 @@ impl Board {
                     to: king_to,
                     mover: Piece::King,
                     castle_side: right,
+                    is_known_legal: true,
                     ..Default::default()
                 };
                 moves.push(m);

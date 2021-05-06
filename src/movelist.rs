@@ -22,6 +22,7 @@ pub struct Move {
     pub mover: Piece,
 
     pub castle_side: CastlingRights,
+    pub is_known_legal: bool,
     pub is_null: bool,
 }
 
@@ -36,6 +37,7 @@ impl Move {
         mover: Piece::None,
     
         castle_side: CastlingRights::NONE,
+        is_known_legal: false,
         is_null: true,
     };
     
@@ -57,6 +59,11 @@ impl Move {
     #[inline]
     pub fn ep(&self) -> Bitboard {
         self.ep
+    }
+
+    #[inline]
+    pub fn is_known_legal(&self) -> bool {
+        self.is_known_legal
     }
 
     #[inline]
