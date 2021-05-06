@@ -221,7 +221,7 @@ mod tests {
 
     fn tournament(white: &mut Algo, black: &mut Algo) -> ScoreWdl {
         let mut wdl = ScoreWdl::default();
-        for id in 0..960 {
+        for id in 0..10 {
             let pos = Catalog::chess960(id);
             let mut board = pos.board().clone();
             board.set_castling(CastlingRights::NONE);

@@ -8,6 +8,7 @@ use crate::types::{Hash, Ply};
 use std::fmt;
 use std::mem;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicI16, Ordering};
 
 pub static HITS: Stat = Stat::new("HITS");
 pub static MISSES: Stat = Stat::new("MISSES");
@@ -50,11 +51,22 @@ pub struct Entry {
     pub bm: Move,
 }
 
-#[derive(Copy, Clone, Default, Debug)]
+#[derive(Default, Debug)]
 struct StoredEntry {
     entry: Entry,
-    age: i16,
+    age: AtomicI16,
 }
+
+
+impl Clone for StoredEntry {
+    fn clone(&self) -> Self {
+        Self {
+            entry: self.entry,
+            age: AtomicI16::new(self.age.load(Ordering::Relaxed)),
+        }
+    }
+}
+
 
 // FIXME Mates as score
 #[derive(Clone)]
@@ -185,7 +197,7 @@ impl TranspositionTable {
     }
 
     pub fn count_of_age(&self, age: i16) -> usize {
-        self.table.iter().filter(|e| e.age == age).count()
+        self.table.iter().filter(|e| e.age.load(Ordering::Relaxed) == age).count()
     }
 
     pub fn enabled(&self) -> bool {
@@ -206,14 +218,15 @@ impl TranspositionTable {
         }
         let new_stored_entry = StoredEntry {
             entry: new,
-            age: self.current_age,
+            age: AtomicI16::new(self.current_age),
         };
         let index = self.index(new.hash);
         let table = Arc::get_mut(&mut self.table);
         if let Some(table) = table {
             let old = &mut table[index];
-            if self.current_age > old.age
-                || self.current_age == old.age
+            let old_age = old.age.load(Ordering::Relaxed); 
+            if self.current_age > old_age
+                || self.current_age == old_age
                     && (new.depth > old.entry.depth
                         || new.depth == old.entry.depth && new.node_type > old.entry.node_type)
             {
@@ -245,7 +258,7 @@ impl TranspositionTable {
         }
     }
 
-    pub fn probe_by_board(&self, board: &Board) -> Option<&Entry> {
+    pub fn probe_by_board(&mut self, board: &Board) -> Option<&Entry> {
         if !self.enabled {
             return None;
         }
@@ -256,7 +269,7 @@ impl TranspositionTable {
         }
     }
 
-    pub fn probe_by_hash(&self, hash: Hash) -> Option<&Entry> {
+    pub fn probe_by_hash(&mut self, hash: Hash) -> Option<&Entry> {
         if !self.enabled {
             return None;
         }
@@ -264,6 +277,7 @@ impl TranspositionTable {
         if stored.entry.node_type != NodeType::Unused {
             if stored.entry.hash == hash {
                 HITS.increment();
+                stored.age.store(self.current_age, Ordering::Relaxed); // freshen the age on access
                 return Some(&stored.entry);
             } else {
                 COLLISIONS.increment();
