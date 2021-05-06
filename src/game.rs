@@ -10,8 +10,9 @@ use crate::search::algo::Algo;
 use crate::tags::Tags;
 use crate::types::Color;
 use std::fmt;
+use std::rc::Rc;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Default)]
 pub struct Game {
     starting_pos: Board,
     board: Board,
@@ -25,6 +26,7 @@ pub struct Game {
     name_w: String,
     name_b: String,
     outcome: Outcome,
+    callback: Option<Rc<dyn Fn(&Game, &Move)>>,
 }
 
 impl Game {
@@ -35,6 +37,11 @@ impl Game {
     pub fn set_starting_pos(&mut self, board: &Board) -> &mut Self {
         self.starting_pos = board.clone();
         self.board = board.clone();
+        self
+    }
+
+    pub fn set_callback(&mut self, callback: impl Fn(&Game, &Move) + 'static) -> &mut Self {
+        self.callback = Some(Rc::new(callback));
         self
     }
 
@@ -57,6 +64,19 @@ impl Game {
         }
     }
 
+    pub fn print_move(&self, mv: &Move) {
+        println!(
+            "{:>2}.{:<8}  {}",
+            self.board.fullmove_number(),
+            if self.board.color_us() == Color::Black {
+                ".. ".to_string()
+            } else {
+                "".to_string()
+            } + &self.board.to_san(&mv),
+            self.board.to_fen()
+        );
+    }
+
     pub fn choose_move(&mut self, white: &mut Algo, black: &mut Algo) -> Move {
         if !self.board.outcome().is_game_over() {
             if let Err(e) = self.board.validate() {
@@ -66,23 +86,10 @@ impl Game {
             let player = self.board.color_us().chooser_wb(white, black);
             player.search(&self.board);
             let m = player.bm();
-            if m.is_null {
-                println!("{}", player);
-            }
-            // if self.board.fullmove_number() == 50 {
-            //     println!("{}", player);
-            // }
             let tags = player.results().tags().clone();
             self.record_move(m, tags);
-            // FIXME
-            if 1 == 0 {
-                println!(
-                    "{}.{} {}   {}",
-                    self.board.fullmove_number(),
-                    if self.board.color_us() == Color::Black { ".. " } else { "" },
-                    self.board.to_san(&m),
-                    self.board.to_fen()
-                );
+            if let Some(cb) = &self.callback {
+                cb(self, &m);
             }
             return m;
         }
@@ -133,16 +140,13 @@ impl fmt::Display for Game {
             writeln!(f, "[FEN \"{}\"]", self.starting_pos.to_fen())?;
             writeln!(f, "[SetUp \"1\"]")?;
         }
-        let mut moves = self.starting_pos.to_san_moves(&self.moves, Some(&self.annotations));
+        let mut moves = self
+            .starting_pos
+            .to_san_moves(&self.moves, Some(&self.annotations));
         if !f.alternate() {
             moves = moves.replace("\n", " ");
         }
-        writeln!(
-            f,
-            "{} {}",
-            moves,
-            self.outcome.as_pgn()
-        )?;
+        writeln!(f, "{} {}", moves, self.outcome.as_pgn())?;
         Ok(())
     }
 }
@@ -157,18 +161,28 @@ mod tests {
 
     #[test]
     #[ignore]
-    fn test_game() {
-        let eval_w = SimpleScorer::new().set_position(true);
-        let mut white = Algo::new().set_timing_method(TimeControl::Depth(6)).set_eval(eval_w).build();
+    fn single_game() {
+        let eval_w = SimpleScorer::new();
+        let mut white = Algo::new()
+            .set_timing_method(TimeControl::Depth(6))
+            .set_eval(eval_w)
+            .build();
 
-        let eval_b = SimpleScorer::new().set_position(false);
-        let mut black = Algo::new().set_timing_method(TimeControl::Depth(6)).set_eval(eval_b).build();
+        let mut eval_b = SimpleScorer::new();
+        eval_b.mobility = false;
+        let mut black = Algo::new()
+            .set_timing_method(TimeControl::Depth(6))
+            .set_eval(eval_b)
+            .build();
 
         let board = Catalog::starting_position();
         let mut game = Game::new();
         game.set_starting_pos(&board);
+        let callback = |gm: &Game, mv: &Move| gm.print_move(mv);
+        game.set_callback(callback);
         game.play(&mut white, &mut black);
         println!("{}", game);
+        println!("{}", white);
         assert_eq!(game.outcome().winning_color(), Some(Color::White));
         assert_eq!(game.moves.len(), 47);
     }
@@ -177,7 +191,7 @@ mod tests {
 
     #[test]
     #[ignore]
-    fn competition() {
+    fn games() {
         //let tc = TimeControl::NodeCount(1_000);
         let tc = TimeControl::from_remaining_time(Duration::from_millis(2000));
         //let tc = TimeControl::Depth(3);
@@ -196,7 +210,11 @@ mod tests {
         black.eval.pawn_isolated = 0;
 
         let wdl = tournament(&mut white, &mut black);
-        println!("score as white {}\nELO difference {:.02}", wdl, wdl.elo_differnce());
+        println!(
+            "score as white {}\nELO difference {:.02}",
+            wdl,
+            wdl.elo_differnce()
+        );
     }
 
     fn tournament(white: &mut Algo, black: &mut Algo) -> ScoreWdl {
@@ -214,8 +232,8 @@ mod tests {
             gm1.play(white, black);
             eprintln!("{}\n", gm1);
 
-            white.tt.clear();
-            black.tt.clear();
+            white.reset();
+            black.reset();
             let mut gm2 = Game::new();
             gm2.round = pos.id().unwrap().to_string() + " B";
             gm2.set_starting_pos(&board);
@@ -224,14 +242,32 @@ mod tests {
 
             wdl += gm1.outcome().as_wdl() - gm2.outcome().as_wdl();
 
-            print!("pos: {} score {}   {:<15} {:<15} ", pos.id().unwrap(), wdl, gm1.outcome(), gm2.outcome());
+            print!(
+                "pos: {} score {}   {:<15} {:<15} ",
+                pos.id().unwrap(),
+                wdl,
+                gm1.outcome(),
+                gm2.outcome()
+            );
             if gm1.outcome() == Outcome::DrawRule75 || gm2.outcome() == Outcome::DrawRule75 {
-                print!("mat.score:{:>4} mat:{}  ", gm1.board.material().centipawns(), gm1.board.material());
-                print!("mat.score:{:>4} mat:{}  ", gm2.board.material().centipawns(), gm2.board.material());
+                print!(
+                    "mat.score:{:>4} mat:{}  ",
+                    gm1.board.material().centipawns(),
+                    gm1.board.material()
+                );
+                print!(
+                    "mat.score:{:>4} mat:{}  ",
+                    gm2.board.material().centipawns(),
+                    gm2.board.material()
+                );
             }
             println!();
-            if (id+1) % 10 == 0 {
-                println!("score as white {}\nELO difference {:.02}", wdl, wdl.elo_differnce());
+            if (id + 1) % 10 == 0 {
+                println!(
+                    "score as white {}\nELO difference {:.02}",
+                    wdl,
+                    wdl.elo_differnce()
+                );
             }
         }
         wdl

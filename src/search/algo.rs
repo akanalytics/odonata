@@ -393,6 +393,8 @@ mod tests {
                 "{}",
                 pos.id().unwrap()
             );
+            assert_eq!(search.score(), Score::WhiteWin { minus_ply: -3 });
+
             // FIXME assert_eq!(search.score.unwrap(), Score::WhiteWin { minus_ply: -3 });
         }
     }
@@ -496,7 +498,6 @@ mod tests {
         let expected_pv = position.pv()?;
         let mut search = Algo::new()
             .set_timing_method(TimeControl::Depth(5))
-            .set_minmax(false)
             .build();
         search.search(position.board());
         let san = position

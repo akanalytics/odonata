@@ -4,31 +4,26 @@ use crate::eval::eval::Scorable;
 use crate::eval::score::Score;
 use crate::movelist::Move;
 use crate::outcome::GameEnd;
+use crate::pvtable::PvTable;
 use crate::search::algo::Algo;
+use crate::search::node::Node;
 use crate::search::searchprogress::SearchProgress;
 use crate::tt::{Entry, NodeType};
 use crate::types::{Ply, MAX_PLY};
-use crate::pvtable::PvTable;
-use crate::search::node::Node;
-
-
 
 pub struct AlphaBeta;
 
 impl Algo {
-
     #[inline]
     pub fn is_leaf(&self, ply: Ply) -> bool {
         ply == self.max_depth
     }
 
-
-
     pub fn alphabeta(&mut self, node: &mut Node) {
         self.search_stats.reset_keeping_pv();
         self.pv_table = PvTable::new(MAX_PLY as usize);
         self.search_stats.score =
-            self.alphabeta_recursive2(node.board, node.ply, node.alpha, node.beta, &Move::NULL_MOVE);
+            self.alphabeta_recursive(node.board, node.ply, node.alpha, node.beta, &Move::NULL_MOVE);
 
         self.search_stats.record_time_actual_and_completion_status(
             self.max_depth,
@@ -37,12 +32,7 @@ impl Algo {
         );
     }
 
-
-
-
-
-
-    pub fn alphabeta_recursive2(
+    pub fn alphabeta_recursive(
         &mut self,
         board: &mut Board,
         ply: Ply,
@@ -92,7 +82,7 @@ impl Algo {
                             if entry.score > alpha {
                                 self.record_new_pv(ply, &entry.bm, true);
                             }
-                            assert!(!entry.bm.is_null(), "Pv node at ply {} had null bm", ply); 
+                            assert!(!entry.bm.is_null(), "Pv node at ply {} had null bm", ply);
                             return entry.score;
                         }
                         NodeType::Cut => {
@@ -108,7 +98,7 @@ impl Algo {
                                 }
                                 score = entry.score;
                                 bm = entry.bm; // might help with move ordering
-                                assert!(!entry.bm.is_null(), "Cut node at ply {} had null bm", ply); 
+                                assert!(!entry.bm.is_null(), "Cut node at ply {} had null bm", ply);
                             }
                         }
                         NodeType::All => {
@@ -137,7 +127,6 @@ impl Algo {
         // FIXME!
 
         let mut moves = board.legal_moves();
-          
         if moves.is_empty() {
             self.search_stats.inc_leaf_nodes(ply);
             return board.eval(&self.eval);
@@ -152,7 +141,7 @@ impl Algo {
             debug_assert!(alpha < beta || self.minmax);
             self.current_variation.set_last_move(ply + 1, mv);
 
-            let child_score = -self.alphabeta_recursive2(&mut child_board, ply + 1, -beta, -alpha, &mv);
+            let child_score = -self.alphabeta_recursive(&mut child_board, ply + 1, -beta, -alpha, &mv);
             board.undo_move(mv);
             self.repetition.pop();
             if self.task_control.is_cancelled() {
@@ -207,5 +196,46 @@ impl Algo {
             let sp = SearchProgress::from_search_stats(&self.search_stats());
             self.task_control.invoke_callback(&sp);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::board::boardbuf::*;
+    use crate::catalog::*;
+    use crate::comms::uci::Uci;
+    use crate::eval::eval::*;
+    use crate::movelist::MoveValidator;
+    use crate::search::timecontrol::*;
+    use crate::types::*;
+    use std::time;
+
+    fn init() {
+        // env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    }
+
+    #[test]
+    fn test_2_mates() -> Result<(), String> {
+        let positions = Catalog::mate_in_2();
+        for (i, pos) in positions.iter().enumerate() {
+            let mut search = Algo::new()
+                .set_timing_method(TimeControl::Depth(3))
+                .set_callback(Uci::uci_info)
+                .build();
+            search.qsearch.see = false;
+            search.tt.enabled = true;
+            search.search(pos.board());
+            println!("{}", search);
+            assert_eq!(
+                pos.board().to_san_moves(&search.pv(), None),
+                pos.board().to_san_moves(&pos.pv()?, None),
+                "{}",
+                pos.id()?
+            );
+            assert_eq!(search.pv().to_string(), pos.pv()?.to_string(), "{}", pos.id()?);
+            assert_eq!(search.score(), Score::WhiteWin { minus_ply: -3 }, "#{} {}", i, pos);
+        }
+        Ok(())
     }
 }
