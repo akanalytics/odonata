@@ -74,7 +74,7 @@ impl Algo {
     pub fn qsearch(&mut self, mv: &Move, ply: Ply, board: &mut Board, alpha: Score, beta: Score) -> Score {
         if !self.qsearch.enabled || ply <= 1 || (!mv.is_capture() && self.qsearch.only_captures) {
             self.search_stats.inc_leaf_nodes(ply);
-            return board.eval(&self.eval);
+            return board.eval(&mut self.eval);
         }
         let score = if self.qsearch.see {
             self.qsearch_see(Bitboard::EMPTY, ply, board, alpha, beta)
@@ -98,7 +98,7 @@ impl Algo {
         let in_check = board.is_in_check(board.color_us());
         let standing_pat;
         if ply == self.max_depth {
-            standing_pat = board.eval(&self.eval);
+            standing_pat = board.eval(&mut self.eval);
             if standing_pat.is_mate() {
                 return standing_pat;
             }
@@ -203,7 +203,7 @@ impl Algo {
         // this will handle mates too at quiescent node
         let standing_pat;
         if self.is_leaf(ply) {
-            standing_pat = board.eval(&self.eval);
+            standing_pat = board.eval(&mut self.eval);
         } else {
             // in qsearch a mate score might mean a queen sacrifice. But in reality
             // opponent would just play some other move
@@ -296,7 +296,7 @@ mod tests {
         let pos = Position::parse_epd("7k/8/8/8/8/p7/8/R6K w - - 0 1 sm Ra3; ce 100;")?; //RN v pq
         let (alpha, beta) = (Score::MinusInf, Score::PlusInf);
 
-        let static_eval = match pos.board().eval(&eval) {
+        let static_eval = match pos.board().eval(&mut eval) {
             Score::Cp(cp) => cp,
             _ => 0,
         };

@@ -26,7 +26,6 @@ impl Exam {
 
     pub fn take_exam(name: &str, positions: Vec<Position>) -> Exam {
         let c = Config::new();
-        //.set("move_orderer.prior_bm", "true").set("move_orderer.prior_pv", "false");
 
         let mut exam = Exam {
             name: String::from(name),
@@ -39,6 +38,10 @@ impl Exam {
         for (i, pos) in exam.positions.iter().enumerate() {
             exam.out_of += 1;
             exam.algo.tt.clear();
+            //exam.algo.tt.aging = false;
+            exam.algo.eval.cache.clear();
+            // exam.algo.eval.rook_open_file = 0;
+            //exam.algo.eval.cache.enabled = true;
             exam.algo.search(pos.board());
             // println!("Algo\n{}", exam.algo);
             // println!("Position {}", pos);

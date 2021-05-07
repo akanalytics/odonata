@@ -5,12 +5,12 @@ use crate::types::Ply;
 
 
 #[derive(Default, Debug)]
-pub struct Stat<'a> {
-    name: &'a str,
+pub struct Stat {
+    name: &'static str,
     counter: AtomicI64,
 }
 
-impl<'a> Clone for Stat<'a> {
+impl Clone for Stat {
     fn clone(&self) -> Self {
         Stat {
             name: self.name,
@@ -37,7 +37,7 @@ impl Clone for PlyStat {
 }
 
 
-pub struct ArrayStat<'a> (pub &'a [&'a Stat<'a>]);
+pub struct ArrayStat<'a> (pub &'a [&'a Stat]);
 
 impl fmt::Display for ArrayStat<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -50,11 +50,11 @@ impl fmt::Display for ArrayStat<'_> {
     }
 }
 
-impl<'a> Stat<'a> {
+impl Stat {
 
 
     
-    pub const fn new(name: &str) -> Stat {
+    pub const fn new(name: &'static str) -> Stat {
         Stat { name: name, counter: AtomicI64::new(0) }
     }
 

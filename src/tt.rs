@@ -10,23 +10,23 @@ use std::mem;
 use std::sync::atomic::{AtomicI16, Ordering};
 use std::sync::Arc;
 
-pub static HITS: Stat = Stat::new("HITS");
-pub static MISSES: Stat = Stat::new("MISSES");
-pub static COLLISIONS: Stat = Stat::new("COLLISIONS");
-pub static INSERTS: Stat = Stat::new("INSERTS");
-pub static DELETES: Stat = Stat::new("DELETES");
-pub static FAIL_PRIORITY: Stat = Stat::new("INS FAIL PRIORITY");
-pub static FAIL_OWNERSHIP: Stat = Stat::new("INS FAIL OWNER");
+// pub static HITS: Stat = Stat::new("HITS");
+// pub static MISSES: Stat = Stat::new("MISSES");
+// pub static COLLISIONS: Stat = Stat::new("COLLISIONS");
+// pub static INSERTS: Stat = Stat::new("INSERTS");
+// pub static DELETES: Stat = Stat::new("DELETES");
+// pub static FAIL_PRIORITY: Stat = Stat::new("INS FAIL PRIORITY");
+// pub static FAIL_OWNERSHIP: Stat = Stat::new("INS FAIL OWNER");
 
-pub static TT_COUNTS: ArrayStat = ArrayStat(&[
-    &HITS,
-    &MISSES,
-    &COLLISIONS,
-    &INSERTS,
-    &FAIL_PRIORITY,
-    &FAIL_OWNERSHIP,
-    &DELETES,
-]);
+// pub static TT_COUNTS: ArrayStat = ArrayStat(&[
+//     &HITS,
+//     &MISSES,
+//     &COLLISIONS,
+//     &INSERTS,
+//     &FAIL_PRIORITY,
+//     &FAIL_OWNERSHIP,
+//     &DELETES,
+// ]);
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd)]
 pub enum NodeType {
@@ -44,15 +44,17 @@ impl Default for NodeType {
 
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub struct Entry {
-    pub hash: Hash,
     pub score: Score,
     pub depth: Ply, // depth is depth to q/leaf
     pub node_type: NodeType,
     pub bm: Move,
 }
 
+
+
 #[derive(Default, Debug)]
 struct StoredEntry {
+    hash: Hash,
     entry: Entry,
     age: AtomicI16,
 }
@@ -61,6 +63,7 @@ impl Clone for StoredEntry {
     fn clone(&self) -> Self {
         Self {
             entry: self.entry,
+            hash: self.hash,
             age: AtomicI16::new(self.age.load(Ordering::Relaxed)),
         }
     }
@@ -77,7 +80,14 @@ pub struct TranspositionTable {
     pub capacity: usize,
     pub mb: i64,
     pub hmvc_horizon: i32,
-}
+    pub hits: Stat,
+    pub misses: Stat,
+    pub collisions: Stat,
+    pub inserts: Stat,
+    pub deletes: Stat,
+    pub fail_priority: Stat,
+    pub fail_ownership: Stat,
+    }
 
 impl fmt::Debug for TranspositionTable {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -96,29 +106,34 @@ impl fmt::Debug for TranspositionTable {
 
 impl fmt::Display for TranspositionTable {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "enabled          : {}", self.capacity() > 0)?;
+        writeln!(f, "enabled          : {}", self.enabled)?;
         writeln!(f, "capacity         : {}", self.capacity())?;
         writeln!(f, "size in mb       : {}", self.mb)?;
         writeln!(f, "entry size bytes : {}", mem::size_of::<Entry>())?;
         writeln!(f, "aging            : {}", self.aging)?;
+        writeln!(f, "current age      : {}", self.current_age)?;
         writeln!(f, "hmvc horizon     : {}", self.hmvc_horizon)?;
         writeln!(f, "table            : {}", self.table.len())?;
         writeln!(f, "entry: pv        : {}", self.count_of(NodeType::Pv))?;
         writeln!(f, "entry: cut       : {}", self.count_of(NodeType::Cut))?;
         writeln!(f, "entry: all       : {}", self.count_of(NodeType::All))?;
         writeln!(f, "entry: unused    : {}", self.count_of(NodeType::Unused))?;
-        writeln!(f, "ages (cur)       : {}", self.count_of_age(self.current_age))?;
-        writeln!(
-            f,
-            "ages (cur-1)     : {}",
-            self.count_of_age(self.current_age - 1)
-        )?;
-        writeln!(
-            f,
-            "ages (cur-2)     : {}",
-            self.count_of_age(self.current_age - 2)
-        )?;
-        writeln!(f, "tt stats\n{}", TT_COUNTS)?;
+        let tot = self.hits.get() + self.misses.get() + self.collisions.get();
+        writeln!(f, "% hits           : {}", 100 * self.hits.get() / tot )?;
+        writeln!(f, "% misses         : {}", 100 * self.misses.get() / tot )?;
+        writeln!(f, "% collisions     : {}", 100 * self.collisions.get() / tot )?;
+        for i in 0..10 {
+            writeln!(f, "ages (cur-{})     : {}", i, self.count_of_age(self.current_age-i))?;
+        }
+        writeln!(f, "tt stats\n{}", ArrayStat(&[
+            &self.hits,
+            &self.misses,
+            &self.collisions,
+            &self.inserts,
+            &self.fail_priority,
+            &self.fail_ownership,
+            &self.deletes,
+        ]))?;
         Ok(())
     }
 }
@@ -126,13 +141,20 @@ impl fmt::Display for TranspositionTable {
 impl Default for TranspositionTable {
     fn default() -> Self {
         Self {
-            table: Arc::new(vec![StoredEntry::default(); Self::convert_mb_to_capacity(33)]),
+            table: Arc::new(vec![StoredEntry::default(); Self::convert_mb_to_capacity(66)]),
             enabled: true,
-            mb: 33,
+            mb: 66,
             aging: true,
-            current_age: 2, // to allow us to count back 2
-            capacity: Self::convert_mb_to_capacity(33),
+            current_age: 10, // to allow us to look back
+            capacity: Self::convert_mb_to_capacity(66),
             hmvc_horizon: 35,
+            hits: Stat::new("HITS"),
+            misses: Stat::new("MISSES"),
+            collisions: Stat::new("COLLISIONS"),
+            inserts: Stat::new("INSERTS"),
+            deletes: Stat::new("DELETES"),
+            fail_priority: Stat::new("INS FAIL PRIORITY"),
+            fail_ownership: Stat::new("INS FAIL OWNER"),            
         }
     }
 }
@@ -213,12 +235,13 @@ impl TranspositionTable {
         hash as usize % self.capacity()
     }
 
-    pub fn insert(&mut self, new: Entry) {
+    pub fn store(&mut self, hash: Hash, entry: Entry) {
         if !self.enabled {
             return;
         }
-        let new_stored_entry = StoredEntry {
-            entry: new,
+        let new = StoredEntry {
+            entry,
+            hash,
             age: AtomicI16::new(self.current_age),
         };
         let index = self.index(new.hash);
@@ -228,18 +251,18 @@ impl TranspositionTable {
             let old_age = old.age.load(Ordering::Relaxed);
             if self.current_age > old_age
                 || self.current_age == old_age
-                    && (new.depth > old.entry.depth
-                        || new.depth == old.entry.depth && new.node_type > old.entry.node_type)
+                    && (new.entry.depth > old.entry.depth
+                        || new.entry.depth == old.entry.depth && new.entry.node_type >= old.entry.node_type)
             {
-                assert!(new.score > Score::MinusInf);
-                INSERTS.increment();
-                *old = new_stored_entry;
+                assert!(new.entry.score > Score::MinusInf);
+                self.inserts.increment();
+                *old = new;
                 return;
             } else {
-                FAIL_PRIORITY.increment();
+                self.fail_priority.increment();
             }
         } else {
-            FAIL_OWNERSHIP.increment();
+            self.fail_ownership.increment();
         }
     }
 
@@ -251,15 +274,15 @@ impl TranspositionTable {
         let table = Arc::get_mut(&mut self.table);
         if let Some(table) = table {
             let old = &mut table[index];
-            DELETES.increment();
+            self.deletes.increment();
             *old = StoredEntry::default();
             return;
         } else {
-            FAIL_OWNERSHIP.increment();
+            self.fail_ownership.increment();
         }
     }
 
-    pub fn probe_by_board(&mut self, board: &Board) -> Option<&Entry> {
+    pub fn probe_by_board(&self, board: &Board) -> Option<&Entry> {
         if !self.enabled {
             return None;
         }
@@ -270,22 +293,22 @@ impl TranspositionTable {
         }
     }
 
-    pub fn probe_by_hash(&mut self, hash: Hash) -> Option<&Entry> {
+    pub fn probe_by_hash(&self, hash: Hash) -> Option<&Entry> {
         if !self.enabled {
             return None;
         }
         let stored = &self.table[self.index(hash)];
         if stored.entry.node_type != NodeType::Unused {
-            if stored.entry.hash == hash {
-                HITS.increment();
+            if stored.hash == hash {
+                self.hits.increment();
                 stored.age.store(self.current_age, Ordering::Relaxed); // freshen the age on access
                 return Some(&stored.entry);
             } else {
-                COLLISIONS.increment();
+                self.collisions.increment();
                 return None;
             }
         }
-        MISSES.increment();
+        self.misses.increment();
         None
     }
 }
@@ -293,10 +316,12 @@ impl TranspositionTable {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::catalog::*;
+    use crate::search::algo::*;
+    use crate::search::timecontrol::*;
 
     fn entry123() -> Entry {
         Entry {
-            hash: 123,
             score: Score::Cp(300),
             depth: 2,
             node_type: NodeType::Pv,
@@ -306,7 +331,6 @@ mod tests {
 
     fn entry456() -> Entry {
         Entry {
-            hash: 456,
             score: Score::Cp(200),
             depth: 3,
             node_type: NodeType::Pv,
@@ -316,7 +340,6 @@ mod tests {
 
     fn entry456b() -> Entry {
         Entry {
-            hash: 456,
             score: Score::Cp(201),
             depth: 4,
             node_type: NodeType::Pv,
@@ -332,8 +355,8 @@ mod tests {
         {
             let mut tt2 = tt1.clone();
             println!("Cloned tt1 -> tt2 ...{}", Arc::strong_count(&tt1.table));
-            tt2.insert(entry123());
-            tt2.insert(entry456());
+            tt2.store(123, entry123());
+            tt2.store(456, entry456());
             println!("{:?}", tt2);
             println!("{}", tt2);
         }
@@ -355,25 +378,25 @@ mod tests {
         let entry456b = entry456b();
 
         assert_eq!(tt.capacity(), 178_571);
-        tt.delete(entry123.hash);
-        tt.delete(entry456.hash);
-        tt.delete(entry456b.hash);
+        tt.delete(123);
+        tt.delete(456);
+        tt.delete(456);
         assert!(tt.probe_by_hash(123).is_none());
-        tt.insert(entry123);
-        tt.insert(entry456);
+        tt.store(123, entry123);
+        tt.store(456, entry456);
         assert_eq!(tt.probe_by_hash(123), Some(&entry123));
         assert_eq!(tt.probe_by_hash(124), None);
         assert_eq!(tt.probe_by_hash(456), Some(&entry456));
-        tt.insert(entry456b);
+        tt.store(456, entry456b);
         assert_eq!(tt.probe_by_hash(456), Some(&entry456b));
 
-        // insert fails due to ply, leaving 456b in place
-        tt.insert(entry456);
+        // store fails due to ply, leaving 456b in place
+        tt.store(456, entry456);
         assert_eq!(tt.probe_by_hash(456), Some(&entry456b));
 
-        // insert succeeds due to age
+        // store succeeds due to age
         tt.next_generation();
-        tt.insert(entry456);
+        tt.store(456, entry456);
         assert_eq!(tt.probe_by_hash(456), Some(&entry456));
 
         println!("{:?}", tt);
@@ -381,4 +404,16 @@ mod tests {
         tt.clear();
         assert!(tt.probe_by_hash(123).is_none());
     }
+
+    #[test]
+    fn tt_real_life() {
+        //let mut tt1 = TranspositionTable::with_capacity(TranspositionTable::convert_mb_to_capacity(10));
+        let pos = &Catalog::bratko_kopec()[0];
+        println!("{:#}", pos);
+        let mut algo = Algo::new().set_timing_method(TimeControl::Depth(4)).build();
+        algo.search(pos.board());
+        println!("TT\n{}\nEVAL\n{}\n", algo.tt, algo.eval.cache);
+    }
+
+
 }

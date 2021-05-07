@@ -14,7 +14,7 @@
 
 
 - Optimization backlog
-  - tt aging
+  - [x] tt aging
   - tt eval caching
   -  board phase
   -  eval position cahing or incremental

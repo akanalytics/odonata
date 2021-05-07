@@ -52,7 +52,7 @@ impl Algo {
 
         if board.draw_outcome().is_some() {
             self.search_stats.inc_leaf_nodes(ply);
-            return board.eval(&self.eval); // will return a draw score
+            return board.eval(&mut self.eval); // will return a draw score
         }
 
         let mut score = Score::MinusInf;
@@ -129,7 +129,7 @@ impl Algo {
         let mut moves = board.legal_moves();
         if moves.is_empty() {
             self.search_stats.inc_leaf_nodes(ply);
-            return board.eval(&self.eval);
+            return board.eval(&mut self.eval);
         }
 
         self.order_moves(ply, &mut moves);
@@ -176,13 +176,12 @@ impl Algo {
                 debug_assert!(!bm.is_null())
             }
             let entry = Entry {
-                hash: board.hash(),
                 score,
                 depth: self.max_depth - ply,
                 node_type,
                 bm, // not set for NodeType::All
             };
-            self.tt.insert(entry);
+            self.tt.store(board.hash(), entry);
         }
         self.current_variation.set_last_move(ply, &Move::NULL_MOVE);
         score

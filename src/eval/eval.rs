@@ -10,6 +10,7 @@ use crate::material::Material;
 use crate::movelist::Move;
 use crate::outcome::GameEnd;
 use crate::stat::{ArrayStat, Stat};
+use crate::tt::{Entry, NodeType, TranspositionTable};
 use crate::types::{Color, Piece};
 
 use std::fmt;
@@ -186,6 +187,7 @@ pub struct SimpleScorer {
     pub contempt: i32,
     pub tempo: i32,
     pub material_scores: [i32; Piece::len()],
+    pub cache: TranspositionTable,
 }
 
 impl Default for SimpleScorer {
@@ -279,6 +281,7 @@ impl fmt::Display for SimpleScorer {
         writeln!(f, "tempo            : {}", self.tempo)?;
         writeln!(f, "material scores  : {:?}", self.material_scores)?;
         writeln!(f, "eval stats\n{}", EVAL_COUNTS)?;
+        writeln!(f, "cache\n{}", self.cache)?;
 
         Ok(())
     }
@@ -308,6 +311,7 @@ impl SimpleScorer {
             contempt: -20, // typically -ve
             tempo: 15,
             material_scores: MATERIAL_SCORES,
+            cache: TranspositionTable::default(),
         }
     }
 
@@ -318,18 +322,25 @@ impl SimpleScorer {
 }
 
 impl SimpleScorer {
-    pub fn w_evaluate(&self, board: &Board) -> Score {
+    pub fn w_evaluate(&mut self, board: &Board) -> Score {
         counts::EVAL_COUNT.increment();
-        let outcome = board.outcome();
-        if outcome.is_game_over() {
-            return Score::score_from_outcome(
-                self.contempt,
-                outcome,
-                board.color_us(),
-                board.total_halfmoves(),
-            );
+        if let Some(entry) = self.cache.probe_by_board(board) {
+            return entry.score;
         }
-        self.w_eval_without_wdl(board)
+        let outcome = board.outcome();
+        let score = if outcome.is_game_over() {
+            Score::score_from_outcome(self.contempt, outcome, board.color_us(), board.total_halfmoves())
+        } else {
+            self.w_eval_without_wdl(board)
+        };
+        let entry = Entry {
+            score,
+            depth: 0,
+            node_type: NodeType::Pv,
+            bm: Move::NULL_MOVE, // not set for NodeType::All
+        };
+        self.cache.store(board.hash(), entry);
+        score
     }
 
     pub fn w_eval_qsearch(&self, board: &Board) -> Score {
@@ -348,6 +359,7 @@ impl SimpleScorer {
         }
         self.w_eval_without_wdl(board)
     }
+
     fn w_eval_without_wdl(&self, board: &Board) -> Score {
         let ma = if self.material {
             let mat = Material::from_board(board);
@@ -386,8 +398,8 @@ impl SimpleScorer {
         if self.rook_open_file != 0 {
             let open_files = ClassicalBitboard::open_files(b.pawns());
             score += self.rook_open_file
-            * ((b.rooks() & b.white() & open_files).popcount() - 
-            (b.rooks() & b.black() & open_files).popcount())
+                * ((b.rooks() & b.white() & open_files).popcount()
+                    - (b.rooks() & b.black() & open_files).popcount())
         }
         score
     }
@@ -473,7 +485,7 @@ impl Board {
     }
 
     #[inline]
-    pub fn eval(&self, eval: &SimpleScorer) -> Score {
+    pub fn eval(&self, eval: &mut SimpleScorer) -> Score {
         ALL.increment();
         self.signum() * eval.w_evaluate(self)
     }
@@ -507,7 +519,7 @@ mod tests {
     #[test]
     fn test_score_material() {
         let board = Catalog::starting_position();
-        let eval = &SimpleScorer::new();
+        let eval = &mut SimpleScorer::new();
         assert_eq!(board.eval(eval), Score::Cp(0));
 
         let starting_pos_score = 8 * 100 + 2 * 325 + 2 * 350 + 2 * 500 + 900;

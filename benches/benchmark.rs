@@ -13,11 +13,14 @@ use odonata::movelist::*;
 use odonata::outcome::*;
 use odonata::perft::Perft;
 use odonata::pvtable::*;
+use odonata::tt::{TranspositionTable, Entry, NodeType};
 use odonata::search::algo::Algo;
 use odonata::search::timecontrol::TimeControl;
 use odonata::types::*;
 use odonata::utils::*;
 use std::time::Instant;
+use std::sync::atomic::{AtomicU64, Ordering};
+
 
 /*
 Bitboard 2.7ns (a|b)&c
@@ -306,6 +309,33 @@ fn board_calcs(c: &mut Criterion) {
         })
     });
 
+    let mut tt = TranspositionTable::with_capacity(300_000);
+    group.bench_function("tt_probe", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            positions.iter().cycle_n(n).for_each(|p| {
+                black_box(tt.probe_by_board(p.board()));
+            });
+            t.elapsed() / positions.len() as u32
+        })
+    });
+
+    group.bench_function("tt_store", |b| {
+        let entry = Entry {
+            score : Score::Cp(100),
+            depth: 1,
+            node_type: NodeType::Pv,
+            bm: Move::NULL_MOVE,            
+        };
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            positions.iter().cycle_n(n).for_each(|p| {
+                black_box(tt.store(p.board().hash(), entry));
+            });
+            t.elapsed() / positions.len() as u32
+        })
+    });
+
     group.bench_function("pseudo_legal_moves", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
@@ -404,8 +434,8 @@ fn board_calcs(c: &mut Criterion) {
 fn benchmark_eval(c: &mut Criterion) {
     let mut group = c.benchmark_group("eval");
     let positions = &Catalog::win_at_chess();
-    let ef = &SimpleScorer::new();
-    let ef_no_pos = &SimpleScorer::new().set_position(false);
+    let ef = &mut SimpleScorer::new();
+    let ef_no_pos = &mut SimpleScorer::new().set_position(false);
     group.bench_function("material", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
@@ -640,6 +670,71 @@ fn bench_pvtable(c: &mut Criterion) {
     });
 }
 
+use rand::thread_rng;
+use rand::seq::SliceRandom;
+
+
+fn bench_shared_mem(c: &mut Criterion) {
+    let mut group = c.benchmark_group("shared_mem");
+
+    //let atomic_array: Vec<AtomicU64> = vec![];
+    // let atomic = AtomicU64::new(0);
+
+    const N :usize = 200_000;
+    let mut vec = Vec::with_capacity(N);
+    (0..N).into_iter().for_each(|i| vec.push(AtomicU64::new(i as u64)));
+    let atomic_array = vec.into_boxed_slice();
+    
+    let mut rng = thread_rng();
+    let mut shuf : Vec<usize> = (0..N).map(|i| i).collect();
+    shuf.shuffle(&mut rng);
+    
+    
+    group.bench_function("atomic_u64_relaxed", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            (0..100_000).cycle_n(n).for_each(|i| {
+                black_box(atomic_array[black_box(shuf[i as usize])].store(black_box(1), Ordering::Relaxed));
+                black_box(atomic_array[black_box(shuf[N-1-i as usize])].load(Ordering::Relaxed));
+            });
+            t.elapsed() / (2 * 100_000) as u32
+        });
+    });
+    group.finish();
+}
+
+
+fn cache_eval(c: &mut Criterion) {
+    let mut group = c.benchmark_group("cache_eval");
+    group.sample_size(10);
+
+    let positions = &Catalog::bratko_kopec()[..3];
+    group.bench_function("cache_eval_on", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            positions.iter().cycle_n(n).for_each(|p| {
+                let mut algo = Algo::new().set_timing_method(TimeControl::Depth(4)).build();
+                algo.search(p.board());
+            });
+            t.elapsed() / positions.len() as u32
+        });
+    });
+    group.bench_function("cache_eval_off", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            positions.iter().cycle_n(n).for_each(|p| {
+                let mut algo = Algo::new().set_timing_method(TimeControl::Depth(4)).build();
+                algo.eval.cache.enabled = false;
+                algo.search(p.board());
+            });
+            t.elapsed() / positions.len() as u32
+        });
+    });
+    group.finish();
+}
+
+
+
 fn bench_moveordering(c: &mut Criterion) {
     let a1a2 = Move {
         from: a1,
@@ -701,6 +796,7 @@ fn bench_moveordering(c: &mut Criterion) {
 
 criterion_group!(
     benches,
+    bench_shared_mem,
     benchmark_mate_in_2,
     benchmark_search,
     benchmark_perft5,
@@ -723,6 +819,7 @@ criterion_group!(
     benchmark_score,
     benchmark_array,
     bench_insufficient_material,
-    bench_pvtable
+    bench_pvtable,
+    cache_eval
 );
 criterion_main!(benches);

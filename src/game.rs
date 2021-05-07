@@ -202,14 +202,16 @@ mod tests {
         white.mte.deterministic = true;
         white.tt.enabled = true;
         white.eval.mobility = true;
-        white.eval.rook_open_file = 20;
-        //white.tt.aging = true;
+        // white.eval.rook_open_file = 20;
+        white.eval.cache.enabled = true;
+        white.tt.aging = true;
 
         black.mte.deterministic = true;
         black.tt.enabled = true;
         black.eval.mobility = true;
-        black.eval.rook_open_file = 0;
-        //black.tt.aging = false;
+        black.eval.cache.enabled = false;
+        //black.eval.rook_open_file = 0;
+        black.tt.aging = true;
 
         let wdl = tournament(&mut white, &mut black);
         println!(
@@ -223,7 +225,7 @@ mod tests {
 
     fn tournament(white: &mut Algo, black: &mut Algo) -> ScoreWdl {
         let mut wdl = ScoreWdl::default();
-        for id in 0..960 {
+        for id in 0..1 {
             let pos = Catalog::chess960(id);
             let mut board = pos.board().clone();
             board.set_castling(CastlingRights::NONE);
