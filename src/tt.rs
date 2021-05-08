@@ -283,6 +283,7 @@ impl TranspositionTable {
             }
         } else {
             self.fail_ownership.increment();
+            panic!();
         }
     }
 
@@ -299,6 +300,7 @@ impl TranspositionTable {
             return;
         } else {
             self.fail_ownership.increment();
+            panic!();
         }
     }
 

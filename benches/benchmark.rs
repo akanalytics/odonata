@@ -567,7 +567,7 @@ fn benchmark_search(c: &mut Criterion) {
                 .set_minmax(false)
                 .set_eval(eval)
                 .build();
-            search.reset();
+            search.new_game();
             black_box(search.search(&board));
         });
     });
@@ -581,7 +581,7 @@ fn benchmark_search(c: &mut Criterion) {
                 .set_eval(eval)
                 .set_qsearch(false)
                 .build();
-            search.reset();
+            search.new_game();
             black_box(search.search(&board));
         });
     });
@@ -601,7 +601,7 @@ fn benchmark_mate_in_2(c: &mut Criterion) {
                 .set_eval(eval.clone())
                 .set_iterative_deepening(false)
                 .build();
-            search.reset();
+            search.new_game();
             black_box(search.search(black_box(&board)));
             assert_eq!(search.pv_table.extract_pv().to_string(), "d5f6, g7f6, c4f7");
         });
@@ -616,7 +616,7 @@ fn benchmark_mate_in_2(c: &mut Criterion) {
                 .set_eval(eval.clone())
                 .set_iterative_deepening(true)
                 .build();
-            search.reset();
+            search.new_game();
             black_box(search.search(black_box(&board)));
             assert_eq!(search.pv_table.extract_pv().to_string(), "d5f6, g7f6, c4f7");
         });

@@ -206,8 +206,8 @@ mod tests {
         new.tt.aging = true;
 
         old.mte.deterministic = true;
-        old.eval.cache_eval = false;
-        old.eval.cache_qeval = false;
+        old.eval.cache_eval = true;
+        old.eval.cache_qeval = true;
         //old.eval.rook_open_file = 0;
         old.tt.aging = true;
 
@@ -227,8 +227,8 @@ mod tests {
             let mut board = pos.board().clone();
             board.set_castling(CastlingRights::NONE);
 
-            new.reset();
-            old.reset();
+            new.new_game();
+            old.new_game();
             let mut gm1 = Game::new();
             gm1.round = pos.id().unwrap().to_string() + " W";
             gm1.set_starting_pos(&board);
@@ -238,8 +238,8 @@ mod tests {
                 println!("Last white play for **NEW**\n{}", new);
             }
 
-            new.reset();
-            old.reset();
+            new.new_game();
+            old.new_game();
             let mut gm2 = Game::new();
             gm2.round = pos.id().unwrap().to_string() + " B";
             gm2.set_starting_pos(&board);

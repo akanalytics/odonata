@@ -184,8 +184,8 @@ impl Uci {
     }
 
     fn uci_newgame(&mut self) -> Result<(), String> {
-        // clear the transposition tables before the new game
-        self.algo.reset();
+        // clear the transposition tables/eval caches and repetition counts before the new game
+        self.algo.new_game();
         Ok(())
     }
 

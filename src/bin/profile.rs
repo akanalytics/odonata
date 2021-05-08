@@ -11,7 +11,7 @@ fn main() {
     for _i in 0..3 {
         search.search(&board);
         println!("{}", search.results());
-        search.reset();
+        search.new_game();
     }
     println!("\n\n{}\n", search);
     println!("Bye world!");
