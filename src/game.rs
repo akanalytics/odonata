@@ -193,21 +193,24 @@ mod tests {
     #[ignore]
     fn games() {
         //let tc = TimeControl::NodeCount(1_000);
-        let tc = TimeControl::from_remaining_time(Duration::from_millis(1000));
+        let tc = TimeControl::from_remaining_time(Duration::from_millis(3000));
         // let tc = TimeControl::Depth(3);
         let mut new = Algo::new().set_timing_method(tc).build();
         let mut old = Algo::new().set_timing_method(tc).build();
         // new.set_callback(Uci::uci_info);
 
-        new.mte.deterministic = true;
+        new.mte.deterministic = false;
         // new.eval.rook_open_file = 20;
+        new.eval.cache_eval = true;
+        new.eval.cache.capacity = 1000;
+        new.eval.qcache.capacity = 1000;
         new.eval.cache_eval = true;
         new.eval.cache_qeval = true;
         new.tt.aging = true;
 
-        old.mte.deterministic = true;
-        old.eval.cache_eval = true;
-        old.eval.cache_qeval = true;
+        old.mte.deterministic = false;
+        old.eval.cache_eval = false;
+        old.eval.cache_qeval = false;
         //old.eval.rook_open_file = 0;
         old.tt.aging = true;
 
