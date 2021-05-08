@@ -88,7 +88,10 @@ pub mod constants {
 pub mod counts {
     use crate::stat::{ArrayStat, Stat};
 
+    pub static EVAL_CACHE_COUNT: Stat = Stat::new("EVAL CACHE COUNT");
     pub static EVAL_COUNT: Stat = Stat::new("EVAL COUNT");
+    pub static QEVAL_CACHE_COUNT: Stat = Stat::new("QEVAL CACHE COUNT");
+    pub static QEVAL_COUNT: Stat = Stat::new("QEVAL COUNT");
     pub static LEGAL_MOVE_COUNT: Stat = Stat::new("LEGAL_MOVE COUNT");
     pub static MOVE_HASH_COUNT: Stat = Stat::new("MOVE HASH COUNT");
     pub static BOARD_HASH_COUNT: Stat = Stat::new("BOARD HASH COUNT");
@@ -98,7 +101,10 @@ pub mod counts {
 
     
     pub static GLOBAL_COUNTS: ArrayStat = ArrayStat(&[
+        &EVAL_CACHE_COUNT,
+        &QEVAL_CACHE_COUNT,
         &EVAL_COUNT,
+        &QEVAL_COUNT,
         &LEGAL_MOVE_COUNT,
         &MOVE_HASH_COUNT,
         &BOARD_HASH_COUNT,

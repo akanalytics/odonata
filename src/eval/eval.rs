@@ -188,6 +188,9 @@ pub struct SimpleScorer {
     pub tempo: i32,
     pub material_scores: [i32; Piece::len()],
     pub cache: TranspositionTable,
+    pub qcache: TranspositionTable,
+    pub cache_eval: bool,
+    pub cache_qeval: bool,
 }
 
 impl Default for SimpleScorer {
@@ -198,6 +201,8 @@ impl Default for SimpleScorer {
 
 impl Configurable for SimpleScorer {
     fn settings(&self, c: &mut Config) {
+        c.set("eval.cache.eval", "type check default true");
+        c.set("eval.cache.qeval", "type check default true");
         c.set("eval.mobility", "type check default true");
         c.set("eval.position", "type check default true");
         c.set("eval.material", "type check default true");
@@ -248,6 +253,8 @@ impl Configurable for SimpleScorer {
 
     fn configure(&mut self, c: &Config) {
         log_debug!("eval.configure with {}", c);
+        self.cache_eval = c.bool("eval.cache.eval").unwrap_or(self.cache_eval);
+        self.cache_qeval = c.bool("eval.cache.qeval").unwrap_or(self.cache_qeval);
         self.mobility = c.bool("eval.mobility").unwrap_or(self.mobility);
         self.position = c.bool("eval.position").unwrap_or(self.position);
         self.material = c.bool("eval.material").unwrap_or(self.material);
@@ -270,6 +277,8 @@ impl Configurable for SimpleScorer {
 
 impl fmt::Display for SimpleScorer {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "cache eval       : {}", self.cache_eval)?;
+        writeln!(f, "cache qeval      : {}", self.cache_qeval)?;
         writeln!(f, "material         : {}", self.material)?;
         writeln!(f, "position         : {}", self.position)?;
         writeln!(f, "mobility         : {}", self.mobility)?;
@@ -282,6 +291,7 @@ impl fmt::Display for SimpleScorer {
         writeln!(f, "material scores  : {:?}", self.material_scores)?;
         writeln!(f, "eval stats\n{}", EVAL_COUNTS)?;
         writeln!(f, "cache\n{}", self.cache)?;
+        writeln!(f, "qcache\n{}", self.qcache)?;
 
         Ok(())
     }
@@ -301,6 +311,8 @@ const MATERIAL_SCORES: [i32; Piece::len()] = [
 impl SimpleScorer {
     pub fn new() -> Self {
         SimpleScorer {
+            cache_eval: true,
+            cache_qeval: true,
             mobility: true,
             position: true,
             material: true,
@@ -312,6 +324,7 @@ impl SimpleScorer {
             tempo: 15,
             material_scores: MATERIAL_SCORES,
             cache: TranspositionTable::default(),
+            qcache: TranspositionTable::default(),
         }
     }
 
@@ -323,44 +336,70 @@ impl SimpleScorer {
 
 impl SimpleScorer {
     pub fn w_evaluate(&mut self, board: &Board) -> Score {
+        // if self.cache_eval {
+        //     if let Some(entry) = self.cache.probe_by_board(board) {
+        //         counts::EVAL_CACHE_COUNT.increment();
+        //         return entry.score;
+        //     }
+        // }
         counts::EVAL_COUNT.increment();
-        if let Some(entry) = self.cache.probe_by_board(board) {
-            return entry.score;
-        }
         let outcome = board.outcome();
         let score = if outcome.is_game_over() {
             Score::score_from_outcome(self.contempt, outcome, board.color_us(), board.total_halfmoves())
         } else {
             self.w_eval_without_wdl(board)
         };
-        let entry = Entry {
-            score,
-            depth: 0,
-            node_type: NodeType::Pv,
-            bm: Move::NULL_MOVE, // not set for NodeType::All
-        };
-        self.cache.store(board.hash(), entry);
+        // if self.cache_eval && board.fifty_halfmove_clock() < self.cache.hmvc_horizon {
+        //     let entry = Entry {
+        //         score,
+        //         depth: 0,
+        //         node_type: NodeType::Pv,
+        //         bm: Move::NULL_MOVE, // not set for NodeType::All
+        //     };
+        //     self.cache.store(board.hash(), entry);
+        // }
         score
     }
 
-    pub fn w_eval_qsearch(&self, board: &Board) -> Score {
-        counts::EVAL_COUNT.increment();
+    pub fn w_eval_qsearch(&mut self, board: &Board) -> Score {
+        // if self.cache_qeval {
+        //     if let Some(entry) = self.qcache.probe_by_board(board) {
+        //         counts::QEVAL_CACHE_COUNT.increment();
+        //         return entry.score;
+        //     }
+        // }
+        counts::QEVAL_COUNT.increment();
         // we check for insufficient material and 50/75 move draws.
         let outcome = board.draw_outcome();
-        if let Some(outcome) = outcome {
+        let score = if let Some(outcome) = outcome {
             if outcome.is_game_over() {
-                return Score::score_from_outcome(
-                    self.contempt,
-                    outcome,
-                    board.color_us(),
-                    board.total_halfmoves(),
-                );
+                return Score::score_from_outcome(self.contempt, outcome, board.color_us(), board.total_halfmoves());
+            } else {
+                self.w_eval_without_wdl(board)
             }
-        }
-        self.w_eval_without_wdl(board)
+        } else {
+            self.w_eval_without_wdl(board)
+        };
+        // if self.cache_qeval  && !score.is_mate() && board.fifty_halfmove_clock() < self.qcache.hmvc_horizon {
+        //     let entry = Entry {
+        //         score,
+        //         depth: 0,
+        //         node_type: NodeType::Pv,
+        //         bm: Move::NULL_MOVE, // not set for NodeType::All
+        //     };
+        //     self.qcache.store(board.hash(), entry);
+        // }
+        score
     }
 
-    fn w_eval_without_wdl(&self, board: &Board) -> Score {
+    fn w_eval_without_wdl(&mut self, board: &Board) -> Score {
+        // if self.cache_eval {
+        //     if let Some(entry) = self.cache.probe_by_board(board) {
+        //         counts::EVAL_CACHE_COUNT.increment();
+        //         return entry.score;
+        //     }
+        // }        
+
         let ma = if self.material {
             let mat = Material::from_board(board);
             self.w_eval_material(&mat)
@@ -378,7 +417,24 @@ impl SimpleScorer {
             0
         };
         let te = Score::side_to_move_score(self.tempo, board.color_us());
-        Score::Cp(ma + po + mo) + te
+        let score = Score::Cp(ma + po + mo) + te;
+        
+        if self.cache_eval {
+            if let Some(entry) = self.cache.probe_by_board(board) {
+                counts::EVAL_CACHE_COUNT.increment();
+                assert!(entry.score == score, "unmatched score for board {:#}", board);
+            }
+        }        
+        if self.cache_eval && board.fifty_halfmove_clock() <= self.qcache.hmvc_horizon {
+            let entry = Entry {
+                score,
+                depth: 0,
+                node_type: NodeType::Pv,
+                bm: Move::NULL_MOVE, // not set for NodeType::All
+            };
+            self.cache.store(board.hash(), entry);
+        }
+        score
     }
 
     // always updated
@@ -467,7 +523,7 @@ impl Board {
     }
 
     #[inline]
-    pub fn eval_qsearch(&self, eval: &SimpleScorer) -> Score {
+    pub fn eval_qsearch(&self, eval: &mut SimpleScorer) -> Score {
         QUIESCENCE.increment();
         self.signum() * eval.w_eval_qsearch(self)
     }

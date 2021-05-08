@@ -2,6 +2,7 @@
 
 
 [X] Aging tt
+[ ] outcome cache on eval. Qsearch eval cache and tt?
 [ ] Pawn chains fixed 
 [ ] PV extraction
 [ ] Null move pruning

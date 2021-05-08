@@ -11,9 +11,11 @@ pub struct MoveOrderer {
     pub enabled: bool,
     pub prior_pv: bool,
     pub prior_bm: bool,
+    pub tt_bm: bool,
     pub mvv_lva: bool,
     count_pv: PlyStat,
     count_bm: PlyStat,
+    count_tt_bm: PlyStat,
     
 }
 
@@ -21,7 +23,8 @@ impl Configurable for MoveOrderer {
     fn settings(&self, c: &mut Config) {
         c.set("move_orderer.enabled", "type check default true");
         c.set("move_orderer.prior_pv", "type check default true");
-        c.set("move_orderer.prior_bm", "type check default true");
+        c.set("move_orderer.prior_bm", "type check default false");
+        c.set("move_orderer.tt_bm", "type check default true");
         c.set("move_orderer.mvv_lva", "type check default true");
     }
     fn configure(&mut self, c: &Config) {
@@ -29,6 +32,7 @@ impl Configurable for MoveOrderer {
         self.enabled = c.bool("move_orderer.enabled").unwrap_or(self.enabled);
         self.prior_bm = c.bool("move_orderer.prior_bm").unwrap_or(self.prior_bm);
         self.prior_pv = c.bool("move_orderer.prior_pv").unwrap_or(self.prior_pv);
+        self.tt_bm = c.bool("move_orderer.tt_bm").unwrap_or(self.tt_bm);
         self.mvv_lva = c.bool("move_orderer.mvv_lva").unwrap_or(self.mvv_lva);
     }
 }
@@ -43,9 +47,11 @@ impl Default for MoveOrderer {
             enabled: true, 
             prior_pv: true, 
             prior_bm: false,
+            tt_bm: true,
             mvv_lva: true,
             count_pv: PlyStat::new("order pv"),
             count_bm: PlyStat::new("order bm"),
+            count_tt_bm: PlyStat::new("order tt bm"),
         }
     }
 }
@@ -55,14 +61,15 @@ impl fmt::Display for MoveOrderer {
         writeln!(f, "enabled          : {}", self.enabled)?;
         writeln!(f, "prior pv         : {}", self.prior_pv)?;
         writeln!(f, "prior bm         : {}", self.prior_bm)?;
+        writeln!(f, "tt bm            : {}", self.tt_bm)?;
         writeln!(f, "mvv_lva          : {}", self.mvv_lva)?;
-        writeln!(f, "{}", ArrayPlyStat(&[&self.count_pv, &self.count_bm]))?;
+        writeln!(f, "{}", ArrayPlyStat(&[&self.count_pv, &self.count_bm, &self.count_tt_bm]))?;
         Ok(())
     }
 }
 
 impl Algo {
-    pub fn order_moves(&self, ply: Ply, movelist: &mut MoveList){
+    pub fn order_moves(&self, ply: Ply, movelist: &mut MoveList, tt_mv: &Option<Move>){
         if !self.move_orderer.enabled {
             return;
         }
@@ -83,6 +90,15 @@ impl Algo {
                 if let Some(i) = movelist.iter().position(|&mv| mv == self.bm()) {
                     movelist.swap(0, i);
                     self.move_orderer.count_bm.add(ply, 1);
+                    return;
+                }
+            }
+        }
+        if self.move_orderer.tt_bm {
+            if let Some(tt_bm) = tt_mv  {
+                if let Some(i) = movelist.iter().position(|&mv| mv == *tt_bm) {
+                    movelist.swap(0, i);
+                    self.move_orderer.count_tt_bm.add(ply, 1);
                     return;
                 }
             }
@@ -196,7 +212,7 @@ mod tests {
     fn test_ordering_mvv_lva() {
         let board = Catalog::perft_kiwipete().0;
         let mut moves = board.legal_moves();
-        Algo::new().order_moves(0, &mut moves);
+        Algo::new().order_moves(0, &mut moves, &None);
         assert_eq!(moves[0].uci(), "e2a6");  // b x b
         assert_eq!(moves[1].uci(), "f3f6");  // q x n
         assert_eq!(moves[2].uci(), "g2h3");  // p x p
@@ -206,7 +222,7 @@ mod tests {
         let positions = Catalog::move_ordering();
         for (i,pos) in positions.iter().enumerate() {
             let mut moves = pos.board().legal_moves();
-            Algo::new().order_moves(0, &mut moves);
+            Algo::new().order_moves(0, &mut moves, &None);
             println!("{}\n{:#}", pos, moves);
             if i == 0 {
                 assert_eq!(moves[0].uci(), "b7a8q"); // p x r = Q)

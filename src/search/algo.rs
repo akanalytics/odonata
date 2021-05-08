@@ -196,6 +196,8 @@ impl Clone for AlgoThreadHandle {
 impl Algo {
     pub fn reset(&mut self) {
         self.tt.clear();
+        self.eval.cache.clear();
+        self.eval.qcache.clear();
     }
 
     pub fn report_progress(&self) {

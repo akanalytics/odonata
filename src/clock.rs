@@ -45,6 +45,7 @@ pub struct Clock {
 pub struct DeterministicClock {
     legal_move_count: i64,
     eval_count: i64,
+    qeval_count: i64,
 }
 
 impl Default for DeterministicClock {
@@ -60,6 +61,7 @@ impl DeterministicClock {
         Self {
             legal_move_count: counts::LEGAL_MOVE_COUNT.get(),
             eval_count: counts::EVAL_COUNT.get(),
+            qeval_count: counts::QEVAL_COUNT.get(),
         }
     }
 
@@ -73,8 +75,9 @@ impl DeterministicClock {
     pub fn elapsed(&self) -> Duration {
         let now = Self::new();
         let evals = now.eval_count - self.eval_count;
+        let qevals = now.qeval_count - self.qeval_count;
         let legal_move_gens = now.legal_move_count - self.legal_move_count;
-        let nano_secs = 6 * 200 * evals + 900 * legal_move_gens; // initial mutiplier = fudge factor
+        let nano_secs = 6 * 200 * (evals + qevals) + 900 * legal_move_gens; // initial mutiplier = fudge factor
 
         Duration::from_nanos(nano_secs as u64)
     }

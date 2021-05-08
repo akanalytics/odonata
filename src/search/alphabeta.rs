@@ -57,6 +57,7 @@ impl Algo {
 
         let mut score = Score::MinusInf;
         let mut bm = Move::NULL_MOVE;
+        let mut tt_mv: Option<Move> = None;
         let mut node_type = NodeType::All;
 
         // FIXME tt probe for leaves?
@@ -66,52 +67,48 @@ impl Algo {
             return score;
         }
 
-        if self.tt.enabled() {
-            // FIXME avoid the cloned!
-            if let Some(entry) = self.tt.probe_by_board(board).cloned() {
-                let depth = self.max_depth - ply;
-                if entry.depth >= depth {
-                    self.search_stats.inc_tt_nodes(ply);
-                    //println!("Entry:{:?}", entry);
-                    // for bounded scores, we know iterating through the nodes might raise alpha, lower beta
-                    // doing this now allows us potentuially to cut off without looking at the child nodes
-                    match entry.node_type {
-                        NodeType::Pv => {
-                            // previously this position raised alpha, but didnt trigger a cut
-                            // no point going through moves as we know what the max score is
-                            if entry.score > alpha {
-                                self.record_new_pv(ply, &entry.bm, true);
-                            }
-                            assert!(!entry.bm.is_null(), "Pv node at ply {} had null bm", ply);
-                            return entry.score;
+        // FIXME avoid the cloned!
+        if let Some(entry) = self.tt.probe_by_board(board).cloned() {
+            let depth = self.max_depth - ply;
+            if entry.depth >= depth {
+                self.search_stats.inc_tt_nodes(ply);
+                //println!("Entry:{:?}", entry);
+                // for bounded scores, we know iterating through the nodes might raise alpha, lower beta
+                // doing this now allows us potentuially to cut off without looking at the child nodes
+                match entry.node_type {
+                    NodeType::Pv => {
+                        // previously this position raised alpha, but didnt trigger a cut
+                        // no point going through moves as we know what the max score is
+                        if entry.score > alpha {
+                            self.record_new_pv(ply, &entry.bm, true);
                         }
-                        NodeType::Cut => {
-                            // previously this position raised alpha (sufficiently to cause a cut).
-                            // not all child nodes were scored, so score is a lower bound
-                            if entry.score > alpha {
-                                self.record_new_pv(ply, &entry.bm, true);
-                                node_type = NodeType::Pv;
-                                alpha = entry.score;
-                                if alpha >= beta {
-                                    // self.record_new_pv(ply, &bm);
-                                    return entry.score;
-                                }
-                                score = entry.score;
-                                bm = entry.bm; // might help with move ordering
-                                assert!(!entry.bm.is_null(), "Cut node at ply {} had null bm", ply);
-                            }
-                        }
-                        NodeType::All => {
-                            // previously this position didnt raise alpha, the score is an upper bound
-                            // if the score is still below alpha, this too is an ALL node
-                            if alpha >= entry.score {
+                        debug_assert!(!entry.bm.is_null());
+                        return entry.score;
+                    }
+                    NodeType::Cut => {
+                        // previously this position raised alpha (sufficiently to cause a cut).
+                        // not all child nodes were scored, so score is a lower bound
+                        if entry.score > alpha {
+                            self.record_new_pv(ply, &entry.bm, true);
+                            node_type = NodeType::Pv;
+                            alpha = entry.score;
+                            if alpha >= beta {
                                 // self.record_new_pv(ply, &bm);
                                 return entry.score;
                             }
-                            // beta = cmp::min(beta, entry.score);
+                            score = entry.score;
+                            tt_mv = Some(entry.bm); // might help with move ordering
+                            debug_assert!(!entry.bm.is_null());
                         }
-                        NodeType::Unused => panic!("Node type Unused returned on tt probe"),
                     }
+                    NodeType::All => {
+                        // previously this position didnt raise alpha, the score is an upper bound
+                        // if the score is still below alpha, this too is an ALL node
+                        if alpha >= entry.score {
+                            return entry.score;
+                        }
+                    }
+                    NodeType::Unused => panic!(),
                 }
             }
         }
@@ -132,7 +129,7 @@ impl Algo {
             return board.eval(&mut self.eval);
         }
 
-        self.order_moves(ply, &mut moves);
+        self.order_moves(ply, &mut moves, &tt_mv);
         let original_alpha = alpha;
         for (_i, mv) in moves.iter().enumerate() {
             let mut child_board = board.make_move(mv);

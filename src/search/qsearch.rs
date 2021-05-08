@@ -105,7 +105,7 @@ impl Algo {
         } else if in_check {
             standing_pat = alpha;
         } else {
-            standing_pat = board.eval_qsearch(&self.eval);
+            standing_pat = board.eval_qsearch(&mut self.eval);
         }
         if standing_pat > alpha {
             if standing_pat >= beta {
@@ -145,7 +145,7 @@ impl Algo {
         } else {
             self.search_stats.inc_q_interior_nodes(ply);
         }
-        self.order_moves(ply, &mut moves);
+        self.order_moves(ply, &mut moves, &None);
         for mv in moves.iter() {
             // FIXME! skip illegal moves
             if !in_check && !mv.is_ep_capture() && mv.to().disjoint(sq) {
@@ -207,7 +207,7 @@ impl Algo {
         } else {
             // in qsearch a mate score might mean a queen sacrifice. But in reality
             // opponent would just play some other move
-            standing_pat = board.eval_qsearch(&self.eval);
+            standing_pat = board.eval_qsearch(&mut self.eval);
         }
 
         // if standing_pat.is_mate() {
@@ -240,7 +240,7 @@ impl Algo {
             self.search_stats.inc_q_interior_nodes(ply);
         }
 
-        self.order_moves(ply, &mut moves);
+        self.order_moves(ply, &mut moves, &None);
 
         for mv in moves.iter() {
             let mut child = board.make_move(mv);

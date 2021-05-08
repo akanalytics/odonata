@@ -183,6 +183,7 @@ impl Board {
         Piece::None
     }
 
+    #[inline]
     pub fn least_valuable_piece(&self, region: Bitboard) -> Bitboard {
         for &p in &Piece::ALL_BAR_NONE {
             if self.pieces(p).intersects(region) {

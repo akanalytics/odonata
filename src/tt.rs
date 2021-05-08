@@ -5,6 +5,7 @@ use crate::log_debug;
 use crate::movelist::Move;
 use crate::stat::{ArrayStat, Stat};
 use crate::types::{Hash, Ply};
+use std::cmp;
 use std::fmt;
 use std::mem;
 use std::sync::atomic::{AtomicI16, Ordering};
@@ -50,8 +51,6 @@ pub struct Entry {
     pub bm: Move,
 }
 
-
-
 #[derive(Default, Debug)]
 struct StoredEntry {
     hash: Hash,
@@ -83,11 +82,12 @@ pub struct TranspositionTable {
     pub hits: Stat,
     pub misses: Stat,
     pub collisions: Stat,
+    pub exclusions: Stat,
     pub inserts: Stat,
     pub deletes: Stat,
     pub fail_priority: Stat,
     pub fail_ownership: Stat,
-    }
+}
 
 impl fmt::Debug for TranspositionTable {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -118,22 +118,36 @@ impl fmt::Display for TranspositionTable {
         writeln!(f, "entry: cut       : {}", self.count_of(NodeType::Cut))?;
         writeln!(f, "entry: all       : {}", self.count_of(NodeType::All))?;
         writeln!(f, "entry: unused    : {}", self.count_of(NodeType::Unused))?;
-        let tot = self.hits.get() + self.misses.get() + self.collisions.get();
-        writeln!(f, "% hits           : {}", 100 * self.hits.get() / tot )?;
-        writeln!(f, "% misses         : {}", 100 * self.misses.get() / tot )?;
-        writeln!(f, "% collisions     : {}", 100 * self.collisions.get() / tot )?;
+        let tot = cmp::max(
+            1,
+            self.hits.get() + self.misses.get() + self.collisions.get() + self.exclusions.get(),
+        );
+        writeln!(f, "% hits           : {}", 100 * self.hits.get() / tot)?;
+        writeln!(f, "% misses         : {}", 100 * self.misses.get() / tot)?;
+        writeln!(f, "% collisions     : {}", 100 * self.collisions.get() / tot)?;
+        writeln!(f, "% exclusions     : {}", 100 * self.exclusions.get() / tot)?;
         for i in 0..10 {
-            writeln!(f, "ages (cur-{})     : {}", i, self.count_of_age(self.current_age-i))?;
+            writeln!(
+                f,
+                "ages (cur-{})     : {}",
+                i,
+                self.count_of_age(self.current_age - i)
+            )?;
         }
-        writeln!(f, "tt stats\n{}", ArrayStat(&[
-            &self.hits,
-            &self.misses,
-            &self.collisions,
-            &self.inserts,
-            &self.fail_priority,
-            &self.fail_ownership,
-            &self.deletes,
-        ]))?;
+        writeln!(
+            f,
+            "tt stats\n{}",
+            ArrayStat(&[
+                &self.hits,
+                &self.misses,
+                &self.collisions,
+                &self.exclusions,
+                &self.inserts,
+                &self.fail_priority,
+                &self.fail_ownership,
+                &self.deletes,
+            ])
+        )?;
         Ok(())
     }
 }
@@ -147,14 +161,15 @@ impl Default for TranspositionTable {
             aging: true,
             current_age: 10, // to allow us to look back
             capacity: Self::convert_mb_to_capacity(66),
-            hmvc_horizon: 35,
-            hits: Stat::new("HITS"),
-            misses: Stat::new("MISSES"),
-            collisions: Stat::new("COLLISIONS"),
-            inserts: Stat::new("INSERTS"),
-            deletes: Stat::new("DELETES"),
-            fail_priority: Stat::new("INS FAIL PRIORITY"),
-            fail_ownership: Stat::new("INS FAIL OWNER"),            
+            hmvc_horizon: 5,
+            hits: Stat::new("hits"),
+            misses: Stat::new("misses"),
+            collisions: Stat::new("collisions"),
+            exclusions: Stat::new("exclusions"),
+            inserts: Stat::new("inserts"),
+            deletes: Stat::new("deletes"),
+            fail_priority: Stat::new("ins fail priority"),
+            fail_ownership: Stat::new("ins fail owner"),
         }
     }
 }
@@ -208,8 +223,13 @@ impl TranspositionTable {
     }
 
     pub fn clear(&mut self) {
-        self.table = Arc::new(vec![StoredEntry::default(); self.capacity()]);
-        // tt.table.resize(size, Entry::default());
+        let table = Arc::get_mut(&mut self.table);
+        if let Some(table) = table {
+            table.iter_mut().for_each(|e| *e = StoredEntry::default());
+            self.current_age = 10;
+        } else {
+            panic!("Unable to clear cache");
+        }
     }
 
     pub fn count_of(&self, t: NodeType) -> usize {
@@ -287,13 +307,14 @@ impl TranspositionTable {
             return None;
         }
         if board.fifty_halfmove_clock() > self.hmvc_horizon {
+            self.exclusions.increment();
             None
         } else {
             self.probe_by_hash(board.hash())
         }
     }
 
-    pub fn probe_by_hash(&self, hash: Hash) -> Option<&Entry> {
+    fn probe_by_hash(&self, hash: Hash) -> Option<&Entry> {
         if !self.enabled {
             return None;
         }
@@ -414,6 +435,4 @@ mod tests {
         algo.search(pos.board());
         println!("TT\n{}\nEVAL\n{}\n", algo.tt, algo.eval.cache);
     }
-
-
 }

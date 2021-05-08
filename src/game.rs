@@ -184,7 +184,7 @@ mod tests {
         println!("{}", game);
         println!("{}", white);
         assert_eq!(game.outcome().winning_color(), Some(Color::White));
-        assert_eq!(game.moves.len(), 47);
+        assert_eq!(game.moves.len(), 247);
     }
 
     // use crate::comms::uci::Uci;
@@ -193,58 +193,61 @@ mod tests {
     #[ignore]
     fn games() {
         //let tc = TimeControl::NodeCount(1_000);
-        let tc = TimeControl::from_remaining_time(Duration::from_millis(2000));
-        //let tc = TimeControl::Depth(3);
-        let mut white = Algo::new().set_timing_method(tc).build();
-        let mut black = Algo::new().set_timing_method(tc).build();
-        // white.set_callback(Uci::uci_info);
+        let tc = TimeControl::from_remaining_time(Duration::from_millis(1000));
+        // let tc = TimeControl::Depth(3);
+        let mut new = Algo::new().set_timing_method(tc).build();
+        let mut old = Algo::new().set_timing_method(tc).build();
+        // new.set_callback(Uci::uci_info);
 
-        white.mte.deterministic = true;
-        white.tt.enabled = true;
-        white.eval.mobility = true;
-        // white.eval.rook_open_file = 20;
-        white.eval.cache.enabled = true;
-        white.tt.aging = true;
+        new.mte.deterministic = true;
+        // new.eval.rook_open_file = 20;
+        new.eval.cache_eval = true;
+        new.eval.cache_qeval = true;
+        new.tt.aging = true;
 
-        black.mte.deterministic = true;
-        black.tt.enabled = true;
-        black.eval.mobility = true;
-        black.eval.cache.enabled = false;
-        //black.eval.rook_open_file = 0;
-        black.tt.aging = true;
+        old.mte.deterministic = true;
+        old.eval.cache_eval = false;
+        old.eval.cache_qeval = false;
+        //old.eval.rook_open_file = 0;
+        old.tt.aging = true;
 
-        let wdl = tournament(&mut white, &mut black);
+        let wdl = tournament(&mut new, &mut old);
         println!(
-            "WHITE\n{}\nBLACK\n{}\nscore as white {}\nELO difference {:.02}",
-            white,
-            black,
+            "\nscore as new {}\nELO difference {:.02}",
             wdl,
             wdl.elo_differnce(),
         );
     }
 
-    fn tournament(white: &mut Algo, black: &mut Algo) -> ScoreWdl {
+    fn tournament(new: &mut Algo, old: &mut Algo) -> ScoreWdl {
         let mut wdl = ScoreWdl::default();
-        for id in 0..1 {
+        const N: u32 = 960;
+        for id in 0..N {
             let pos = Catalog::chess960(id);
             let mut board = pos.board().clone();
             board.set_castling(CastlingRights::NONE);
 
-            white.reset();
-            black.reset();
+            new.reset();
+            old.reset();
             let mut gm1 = Game::new();
             gm1.round = pos.id().unwrap().to_string() + " W";
             gm1.set_starting_pos(&board);
-            gm1.play(white, black);
+            gm1.play(new, old);
             eprintln!("{}\n", gm1);
+            if id == N - 1 {
+                println!("Last white play for **NEW**\n{}", new);
+            }
 
-            white.reset();
-            black.reset();
+            new.reset();
+            old.reset();
             let mut gm2 = Game::new();
             gm2.round = pos.id().unwrap().to_string() + " B";
             gm2.set_starting_pos(&board);
-            gm2.play(black, white);
+            gm2.play(old, new);
             eprintln!("{}\n", gm2);
+            if id == N - 1 {
+                println!("Last white play for **OLD**\n{}", old);
+            }
 
             wdl += gm1.outcome().as_wdl() - gm2.outcome().as_wdl();
 
@@ -270,7 +273,7 @@ mod tests {
             println!();
             if (id + 1) % 10 == 0 {
                 println!(
-                    "score as white {}\nELO difference {:.02}",
+                    "score as new {}\nELO difference {:.02}",
                     wdl,
                     wdl.elo_differnce()
                 );

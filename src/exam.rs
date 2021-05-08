@@ -2,6 +2,7 @@ use crate::config::{Config, Configurable};
 use crate::position::Position;
 use crate::search::algo::Algo;
 use crate::search::timecontrol::TimeControl;
+use crate::globals::counts::GLOBAL_COUNTS;
 use std::fmt;
 
 #[derive(Clone, Default, Debug)]
@@ -63,7 +64,8 @@ mod tests {
     #[ignore]
     fn test_exam_bk() {
         let bk = Exam::take_exam("bratko kopec", Catalog::bratko_kopec());
-        assert!(bk.score >= 2);
+        assert!(bk.score >= 8);
+        println!("{}", bk.algo);
     }
 
     #[test]
@@ -71,5 +73,6 @@ mod tests {
     fn test_exam_wac() {
         let wac = Exam::take_exam("win at chess", Catalog::win_at_chess());
         assert!(wac.score >= 117);
+        println!("{}", wac.algo);
     }
 }
