@@ -7,7 +7,7 @@ use crate::movelist::{Move, MoveList};
 use crate::types::{CastlingRights, Color, Piece};
 use once_cell::sync::OnceCell;
 
-fn global_classical_bitboard() -> &'static ClassicalBitboard {
+pub fn global_classical_bitboard() -> &'static ClassicalBitboard {
     static INSTANCE: OnceCell<ClassicalBitboard> = OnceCell::new();
     INSTANCE.get_or_init(|| {
         debug!("Initilizing classical bitboard lookup tables");

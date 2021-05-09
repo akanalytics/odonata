@@ -10,6 +10,8 @@ pub trait BitboardAttacks {
     fn knight_attacks(&self, from: Square) -> Bitboard;
     fn king_attacks(&self, from: Square) -> Bitboard;
 
+    // fn attacks<Piece>(&self, occupied: Bitboard, from: Square) -> Bitboard;
+
     // fn step_is_on_board(dir: Direction, sq: i32) -> bool {
     //     false
     // }
@@ -136,6 +138,8 @@ impl ClassicalBitboard {
 }
 
 impl BitboardAttacks for ClassicalBitboard {
+
+
     fn rook_attacks(&self, occ: Bitboard, from: Square) -> Bitboard {
         self.sliding_attacks(occ, from, &Dir::N)
             | self.sliding_attacks(occ, from, &Dir::E)
@@ -158,6 +162,10 @@ impl BitboardAttacks for ClassicalBitboard {
         self.knight_moves[from.index()]
     }
 }
+
+
+
+
 
 #[cfg(test)]
 mod tests {

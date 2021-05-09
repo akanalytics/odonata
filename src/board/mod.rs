@@ -10,6 +10,7 @@ use std::iter::*;
 pub mod boardbuf;
 pub mod makemove;
 pub mod movegen;
+pub mod rules;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Board {
