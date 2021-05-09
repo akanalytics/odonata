@@ -2,14 +2,99 @@ use crate::bitboard::Bitboard;
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::parse::Parse;
+use crate::tags::Tags;
 use crate::types::{CastlingRights, Color, Piece, Ply};
 use crate::utils::StringUtils;
-use crate::tags::Tags;
+use once_cell::sync::Lazy;
 use regex::Regex;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
-use once_cell::sync::Lazy;
 
+#[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
+pub struct MoveExt {
+    pub p1: Piece,
+    pub f1: Bitboard,
+    pub t1: Bitboard,
+
+    // them
+    pub p2: Piece,
+    pub f2: Bitboard,
+
+    // us
+    pub p3: Piece,
+    pub t3: Bitboard,
+
+    pub p4: Piece,
+    pub f4: Bitboard,
+
+    pub castle: CastlingRights,
+}
+
+impl MoveExt {
+    pub fn new_quiet(p: Piece, from: Bitboard, to: Bitboard) -> MoveExt {
+        MoveExt {
+            p1: p,
+            f1: from,
+            t1: to,
+            .. MoveExt::default()
+        }
+    }
+
+    pub fn new_capture(p: Piece, from: Bitboard, to: Bitboard, captured: Piece) -> MoveExt {
+        MoveExt {
+            p1: p,
+            f1: from,
+            t1: to,
+            p2: captured,
+            f2: to,
+            .. MoveExt::default()
+        }
+    }
+    pub fn new_ep_capture(p: Piece, from: Bitboard, to: Bitboard, captured: Piece, captured_sq: Bitboard) -> MoveExt {
+        MoveExt {
+            p1: p,
+            f1: from,
+            t1: to,
+            p2: captured,
+            f2: captured_sq,
+            .. MoveExt::default()
+        }
+    }
+    pub fn new_promo(from: Bitboard, to: Bitboard, promoted_to: Piece) -> MoveExt {
+        MoveExt {
+            p1: Piece::Pawn,
+            f1: from,
+            p3: promoted_to,
+            t3: to,
+            .. MoveExt::default()
+        }
+    }
+    pub fn new_promo_capture(from: Bitboard, to: Bitboard, promoted_to: Piece, captured: Piece) -> MoveExt {
+        MoveExt {
+            p1: Piece::Pawn,
+            f1: from,
+            p2: captured,
+            f2: to,
+            p3: promoted_to,
+            t3: to,
+            .. MoveExt::default()
+        }
+    }
+    pub fn new_castle(king_from: Bitboard, king_to: Bitboard, rook_from: Bitboard, rook_to: Bitboard) -> MoveExt {
+        MoveExt {
+            p1: Piece::King,
+            f1: king_from,
+            t1: king_to,
+            p3: Piece::Rook,
+            t3: rook_to,
+            p4: Piece::Rook,
+            f4: rook_from,
+            .. MoveExt::default()
+        }
+    }
+
+
+}
 
 // FIXME: public methods
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
@@ -26,24 +111,39 @@ pub struct Move {
     pub is_null: bool,
 }
 
-impl Move {
+// piece
+// from
+// to
+// pice2
+// from2
+// to2
+//
+// promo/capture
+//
+// P from
+// Q-to
+// cap-from
+//
+// Promo/capture
 
-    pub const NULL_MOVE: Move = Move { 
+impl Move {
+    pub const NULL_MOVE: Move = Move {
         from: Bitboard::EMPTY,
         to: Bitboard::EMPTY,
         ep: Bitboard::EMPTY,
         promo: Piece::None,
         capture: Piece::None,
         mover: Piece::None,
-    
         castle_side: CastlingRights::NONE,
         is_known_legal: false,
         is_null: true,
     };
-    
     #[inline]
     pub fn new_null() -> Move {
-        Move { is_null: true, ..Default::default() }
+        Move {
+            is_null: true,
+            ..Default::default()
+        }
     }
 
     #[inline]
@@ -106,7 +206,6 @@ impl Move {
         self.castle_side
     }
 
-
     #[inline]
     pub fn is_ep_capture(&self) -> bool {
         !self.ep.is_empty() && self.is_capture()
@@ -128,7 +227,6 @@ impl Move {
         }
         score
     }
-
 
     pub fn uci(&self) -> String {
         if self.is_null() {
@@ -152,7 +250,12 @@ impl Move {
         } else {
             promo = Piece::None;
         }
-        Ok(Move { to, from, promo, ..Default::default() })
+        Ok(Move {
+            to,
+            from,
+            promo,
+            ..Default::default()
+        })
     }
 }
 
@@ -184,9 +287,6 @@ pub struct MoveList {
     moves: Vec<Move>,
 }
 
-
-
-
 // pub struct MoveList(ArrayVec::<[Move; 384]>);
 // impl Default for MoveList {
 //     fn default() -> MoveList { MoveList::new() }
@@ -195,14 +295,13 @@ pub struct MoveList {
 impl Default for MoveList {
     fn default() -> Self {
         Self {
-            moves: Vec::with_capacity(128),  
+            moves: Vec::with_capacity(128),
         }
     }
 }
 
-
 impl std::iter::FromIterator<Move> for MoveList {
-    fn from_iter<I: IntoIterator<Item=Move>>(iter: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = Move>>(iter: I) -> Self {
         let mut ml = MoveList::new();
         for mv in iter {
             ml.push(mv);
@@ -222,7 +321,11 @@ impl MoveList {
     }
 
     pub fn uci(&self) -> String {
-        self.moves.iter().map(|mv| mv.uci()).collect::<Vec<String>>().join(" ")
+        self.moves
+            .iter()
+            .map(|mv| mv.uci())
+            .collect::<Vec<String>>()
+            .join(" ")
     }
 
     #[inline]
@@ -236,7 +339,6 @@ impl MoveList {
         }
     }
 }
-
 
 impl Deref for MoveList {
     type Target = Vec<Move>;
@@ -414,7 +516,7 @@ impl MoveValidator for Board {
             if let Some(vec) = vec_tags {
                 let tags = &vec[i];
                 s += &tags.to_pgn();
-            } 
+            }
 
             board = board.make_move(mv);
         }
@@ -422,11 +524,14 @@ impl MoveValidator for Board {
     }
 }
 
-
-static REGEX_MOVE_NUMBERS: Lazy<Regex> = Lazy::new(|| Regex::new(
-    r#"(?x)         # x flag to allow whitespace and comments
+static REGEX_MOVE_NUMBERS: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r#"(?x)         # x flag to allow whitespace and comments
     (\d)+\.(\s)*(\.\.)?(\s)?      # digits a '.' and then whitespace and optionally ".."
-    "#,).unwrap());
+    "#,
+    )
+    .unwrap()
+});
 
 fn strip_move_numbers(s: &str) -> String {
     REGEX_MOVE_NUMBERS.replace_all(&s, "").to_string()
@@ -443,8 +548,17 @@ mod tests {
     fn test_move() {
         assert_eq!(Move::new_null().to_string(), "-");
 
-        let move_a1b2 = Move { from: a1, to: b2, ..Default::default() };
-        let promo_a7a8 = Move { from: a7, to: a8, promo: Piece::Queen, ..Default::default() };
+        let move_a1b2 = Move {
+            from: a1,
+            to: b2,
+            ..Default::default()
+        };
+        let promo_a7a8 = Move {
+            from: a7,
+            to: a8,
+            promo: Piece::Queen,
+            ..Default::default()
+        };
         assert_eq!(move_a1b2.to_string(), "a1b2");
         assert_eq!(promo_a7a8.to_string(), "a7a8q");
 
@@ -465,8 +579,17 @@ mod tests {
 
     #[test]
     fn test_movelist() -> Result<(), String> {
-        let move_a1b2 = Move { from: a1, to: b2, ..Default::default() };
-        let promo_a7a8 = Move { from: a7, to: a8, promo: Piece::Queen, ..Default::default() };
+        let move_a1b2 = Move {
+            from: a1,
+            to: b2,
+            ..Default::default()
+        };
+        let promo_a7a8 = Move {
+            from: a7,
+            to: a8,
+            promo: Piece::Queen,
+            ..Default::default()
+        };
 
         let mut moves = MoveList::new();
         moves.push(move_a1b2);
@@ -543,7 +666,10 @@ mod tests {
 
         s += "e1d2, e8c8, c4e3, e7e6, a1h1, b7b5";
         assert_eq!(board.parse_san_moves(san)?.to_string(), s);
-        let s1: String = board.to_san_moves(&board.parse_san_moves(san)?, None).split_whitespace().collect();
+        let s1: String = board
+            .to_san_moves(&board.parse_san_moves(san)?, None)
+            .split_whitespace()
+            .collect();
         let s2: String = san.split_whitespace().collect();
         assert_eq!(s1, s2);
 
@@ -596,20 +722,69 @@ mod tests {
     #[test]
     fn test_mvv_lva() {
         let def = Move::default();
-        let pxq = Move { capture: Piece::Queen, mover: Piece::Pawn, ..def };
-        let pxr = Move { capture: Piece::Rook, mover: Piece::Pawn, ..def };
-        let pxb = Move { capture: Piece::Bishop, mover: Piece::Pawn, ..def };
-        let pxn = Move { capture: Piece::Knight, mover: Piece::Pawn, ..def };
-        let pxp = Move { capture: Piece::Pawn, mover: Piece::Pawn, ..def };
+        let pxq = Move {
+            capture: Piece::Queen,
+            mover: Piece::Pawn,
+            ..def
+        };
+        let pxr = Move {
+            capture: Piece::Rook,
+            mover: Piece::Pawn,
+            ..def
+        };
+        let pxb = Move {
+            capture: Piece::Bishop,
+            mover: Piece::Pawn,
+            ..def
+        };
+        let pxn = Move {
+            capture: Piece::Knight,
+            mover: Piece::Pawn,
+            ..def
+        };
+        let pxp = Move {
+            capture: Piece::Pawn,
+            mover: Piece::Pawn,
+            ..def
+        };
 
-        let qxp = Move { capture: Piece::Pawn, mover: Piece::Queen, ..def };
-        let qxn = Move { capture: Piece::Knight, mover: Piece::Queen, ..def };
-        let qxb = Move { capture: Piece::Bishop, mover: Piece::Queen, ..def };
-        let qxr = Move { capture: Piece::Knight, mover: Piece::Queen, ..def };
-        let qxq = Move { capture: Piece::Queen, mover: Piece::Queen, ..def };
+        let qxp = Move {
+            capture: Piece::Pawn,
+            mover: Piece::Queen,
+            ..def
+        };
+        let qxn = Move {
+            capture: Piece::Knight,
+            mover: Piece::Queen,
+            ..def
+        };
+        let qxb = Move {
+            capture: Piece::Bishop,
+            mover: Piece::Queen,
+            ..def
+        };
+        let qxr = Move {
+            capture: Piece::Knight,
+            mover: Piece::Queen,
+            ..def
+        };
+        let qxq = Move {
+            capture: Piece::Queen,
+            mover: Piece::Queen,
+            ..def
+        };
 
-        let pxq_q = Move { capture: Piece::Queen, mover: Piece::Pawn, promo: Piece::Queen, ..def };
-        let p_q = Move { mover: Piece::Pawn, promo: Piece::Queen, ..def };
+        let pxq_q = Move {
+            capture: Piece::Queen,
+            mover: Piece::Pawn,
+            promo: Piece::Queen,
+            ..def
+        };
+        let p_q = Move {
+            mover: Piece::Pawn,
+            promo: Piece::Queen,
+            ..def
+        };
 
         assert_eq!(pxq.mvv_lva_score(), 8990);
         assert_eq!(pxr.mvv_lva_score(), 4990);

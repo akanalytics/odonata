@@ -2,16 +2,63 @@ use crate::bitboard::Bitboard;
 use crate::board::Board;
 use crate::globals::constants::*;
 use crate::hasher::Hasher;
-use crate::movelist::Move;
+use crate::movelist::{Move, MoveExt};
 use crate::types::{CastlingRights, Piece};
 use std::cell::Cell;
 
 pub trait MoveMaker {
+    fn make_move_ext(&mut self, mv: &MoveExt);
+    fn undo_move_ext(&mut self, mv: &MoveExt);
+
     fn make_move(&self, m: &Move) -> Board;
     fn undo_move(&self, m: &Move);
 }
 
 impl MoveMaker for Board {
+
+
+    fn make_move_ext(&mut self, mv: &MoveExt) {
+        let them = self.turn.opposite();
+        self.pieces[mv.p1.index()] ^= mv.f1 ^ mv.t1;
+        self.pieces[mv.p2.index()] ^= mv.f2;
+        self.pieces[mv.p3.index()] ^= mv.t3;
+        self.pieces[mv.p4.index()] ^= mv.f4;
+        self.threats_to[0].set(Bitboard::niche());
+        self.threats_to[1].set(Bitboard::niche());
+        self.checkers_of[0].set(Bitboard::niche());
+        self.checkers_of[1].set(Bitboard::niche());
+        self.repetition_count.set(0);
+
+        self.fifty_clock += 1;
+        self.colors[self.turn] ^= mv.f1 ^ mv.t1 ^ mv.t3 ^ mv.f4;
+        self.colors[them] ^= mv.f2;
+        
+        self.castling &= mv.castle;
+
+        self.fullmove_number += self.turn.chooser_wb(0, 1);
+        self.turn = them;
+
+        //self.hash ^= Hasher::default().hash_move(mv, self);
+        debug_assert!(
+            self.hash == Hasher::default().hash_board(self),
+            "make_move_ext({:?}) inconsistent incremental hash {:x} (should be {:x}",
+            mv, 
+            self.hash,
+            Hasher::default().hash_board(self),
+        );
+
+    }
+
+    fn undo_move_ext(&mut self, mv: &MoveExt) {
+        // *self.pieces_mut(mv.p1) ^= mv.f1 ^ mv.t1;
+        // *self.pieces_mut(mv.p2) ^= mv.f2;
+        // *self.pieces_mut(mv.p3) ^= mv.t3;
+        // self.turn = self.turn.opposite();
+    }
+
+
+
+
     fn make_move(&self, m: &Move) -> Board {
         // either we're moving to an empty square or its a capture
         debug_assert!(

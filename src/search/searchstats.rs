@@ -8,6 +8,7 @@ use std::time::Duration;
 
 #[derive(Clone, Debug)]
 pub struct SearchStats {
+
     pub depth: Ply,
     realtime: Clock,
     deterministic: DeterministicClock,

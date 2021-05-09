@@ -71,6 +71,11 @@ impl Board {
         self.pieces[p as usize]
     }
 
+    // #[inline]
+    // pub fn pieces_mut(&mut self, p: Piece) -> &mut Bitboard {
+    //     &self.pieces[p as usize]
+    // }
+
     #[inline]
     pub fn line_pieces(&self) -> Bitboard {
         self.rooks() | self.bishops() | self.queens()

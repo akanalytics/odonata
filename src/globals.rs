@@ -136,9 +136,9 @@ mod tests {
         assert_eq!(size_of::<Board>(), 128, "Board");
         assert_eq!(size_of::<Score>(), 8, "Score");
         assert_eq!(size_of::<Node>(), 48, "Node");
-        assert_eq!(size_of::<SearchStats>(), 216, "SearchStats");
+        assert_eq!(size_of::<SearchStats>(), 224, "SearchStats");
         assert_eq!(size_of::<NodeStats>(), 120, "NodeStats");
-        assert_eq!(size_of::<Entry>(), 56, "Entry");
-        assert_eq!(size_of::<TranspositionTable>(), 32, "TranspositionTable");
+        assert_eq!(size_of::<Entry>(), 48, "Entry");
+        assert_eq!(size_of::<TranspositionTable>(), 224, "TranspositionTable");
     }
 }

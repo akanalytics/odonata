@@ -187,8 +187,8 @@ pub struct SimpleScorer {
     pub contempt: i32,
     pub tempo: i32,
     pub material_scores: [i32; Piece::len()],
-    pub cache: TranspositionTable,
-    pub qcache: TranspositionTable,
+    // pub cache: TranspositionTable,
+    // pub qcache: TranspositionTable,
     pub cache_eval: bool,
     pub cache_qeval: bool,
 }
@@ -290,8 +290,8 @@ impl fmt::Display for SimpleScorer {
         writeln!(f, "tempo            : {}", self.tempo)?;
         writeln!(f, "material scores  : {:?}", self.material_scores)?;
         writeln!(f, "eval stats\n{}", EVAL_COUNTS)?;
-        writeln!(f, "cache\n{}", self.cache)?;
-        writeln!(f, "qcache\n{}", self.qcache)?;
+        // writeln!(f, "cache\n{}", self.cache)?;
+        // writeln!(f, "qcache\n{}", self.qcache)?;
 
         Ok(())
     }
@@ -323,8 +323,8 @@ impl SimpleScorer {
             contempt: -20, // typically -ve
             tempo: 15,
             material_scores: MATERIAL_SCORES,
-            cache: TranspositionTable::default(),
-            qcache: TranspositionTable::default(),
+            // cache: TranspositionTable::default(),
+            // qcache: TranspositionTable::default(),
         }
     }
 
@@ -363,12 +363,12 @@ impl SimpleScorer {
     }
 
     fn w_eval_without_wdl(&mut self, board: &Board) -> Score {
-        if self.cache_eval {
-            if let Some(entry) = self.cache.probe_by_board(board) {
-                counts::EVAL_CACHE_COUNT.increment();
-                return entry.score;
-            }
-        }        
+        // if self.cache_eval {
+        //     if let Some(entry) = self.cache.probe_by_board(board) {
+        //         counts::EVAL_CACHE_COUNT.increment();
+        //         return entry.score;
+        //     }
+        // }        
 
         let ma = if self.material {
             let mat = Material::from_board(board);
@@ -395,15 +395,15 @@ impl SimpleScorer {
         //         assert!(entry.score == score, "unmatched score for board {:#}", board);
         //     }
         // }        
-        if self.cache_eval && board.fifty_halfmove_clock() <= self.qcache.hmvc_horizon {
-            let entry = Entry {
-                score,
-                depth: 0,
-                node_type: NodeType::Pv,
-                bm: Move::NULL_MOVE, // not set for NodeType::All
-            };
-            self.cache.store(board.hash(), entry);
-        }
+        // if self.cache_eval && board.fifty_halfmove_clock() <= self.qcache.hmvc_horizon {
+        //     let entry = Entry {
+        //         score,
+        //         depth: 0,
+        //         node_type: NodeType::Pv,
+        //         bm: Move::NULL_MOVE, // not set for NodeType::All
+        //     };
+        //     self.cache.store(board.hash(), entry);
+        // }
         score
     }
 

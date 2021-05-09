@@ -198,8 +198,8 @@ impl Algo {
     pub fn new_game(&mut self) {
         self.repetition.clear();
         self.tt.clear();
-        self.eval.cache.clear();
-        self.eval.qcache.clear();
+        // self.eval.cache.clear();
+        // self.eval.qcache.clear();
         self.clock_checks = 0;
     }
 
@@ -425,7 +425,7 @@ mod tests {
         let nodes = algo.search_stats().total().nodes();
 
         // with gen qsearch
-        assert_eq!(nodes, 5086);
+        assert_eq!(nodes, 5096);
         
         // assert_eq!(nodes, 5197);  // wrong halfmove counts in mate score
         // assert_eq!(nodes, 2274); // with sq based qsearch

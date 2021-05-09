@@ -202,8 +202,8 @@ mod tests {
         new.mte.deterministic = false;
         // new.eval.rook_open_file = 20;
         new.eval.cache_eval = true;
-        new.eval.cache.capacity = 1000;
-        new.eval.qcache.capacity = 1000;
+        // new.eval.cache.capacity = 1000;
+        // new.eval.qcache.capacity = 1000;
         new.eval.cache_eval = true;
         new.eval.cache_qeval = true;
         new.tt.aging = true;

@@ -38,9 +38,9 @@ impl Exam {
         // exam.algo.set_callback(Uci::uci_info);
         for (i, pos) in exam.positions.iter().enumerate() {
             exam.out_of += 1;
-            exam.algo.tt.clear();
+            exam.algo.new_game();
             //exam.algo.tt.aging = false;
-            exam.algo.eval.cache.clear();
+            // exam.algo.eval.cache.clear();
             // exam.algo.eval.rook_open_file = 0;
             //exam.algo.eval.cache.enabled = true;
             exam.algo.search(pos.board());

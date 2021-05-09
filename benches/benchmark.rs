@@ -724,7 +724,7 @@ fn cache_eval(c: &mut Criterion) {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|p| {
                 let mut algo = Algo::new().set_timing_method(TimeControl::Depth(4)).build();
-                algo.eval.cache.enabled = false;
+                //algo.eval.cache.enabled = false;
                 algo.search(p.board());
             });
             t.elapsed() / positions.len() as u32
