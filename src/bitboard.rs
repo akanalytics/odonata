@@ -141,8 +141,8 @@ impl Bitboard {
 
     // bitflags & doesnt seem to be declared const
     #[inline]
-    pub const fn or(self, other: Bitboard) -> Bitboard {
-        Bitboard::from_bits_truncate(self.bits | other.bits)
+    pub const fn or(self, other: Self) -> Self {
+        Self::from_bits_truncate(self.bits | other.bits)
     }
 
     #[inline]
@@ -194,12 +194,12 @@ impl Bitboard {
     }
 
     #[inline]
-    pub fn iter(self) -> BitIterator {
+    pub const fn iter(self) -> BitIterator {
         BitIterator { bb: self }
     }
 
     #[inline]
-    pub fn squares(self) -> Squares {
+    pub const fn squares(self) -> Squares {
         Squares { bb: self }
     }
 
@@ -280,6 +280,7 @@ impl Iterator for BitIterator {
         }
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let bitcount = self.bb.popcount() as usize;
         (bitcount, Some(bitcount))
@@ -304,6 +305,7 @@ impl Iterator for Squares {
         }
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let bitcount = self.bb.popcount() as usize;
         (bitcount, Some(bitcount))
@@ -332,23 +334,28 @@ pub struct Square (u8);
 // Bitboard::from_bits_truncate(1 << i)
 
 impl Square {
-    pub fn from_u8(i : u8) -> Square {
+    #[inline]
+    pub const fn from_u8(i : u8) -> Square {
         Square(i)
     }
 
-    pub fn from_u32(i : u32) -> Square {
+    #[inline]
+    pub const fn from_u32(i : u32) -> Square {
         Square(i as u8)
     }
 
+    #[inline]
     pub fn from_bb(bb: Bitboard) -> Square {
         bb.square()
     }
 
-    pub fn as_bb(&self) -> Bitboard {
+    #[inline]
+    pub const fn as_bb(&self) -> Bitboard {
         Bitboard::from_bits_truncate(1 << self.0)
     }
 
-    pub fn index(&self) -> usize {
+    #[inline]
+    pub const fn index(&self) -> usize {
         self.0 as usize
     }
 }

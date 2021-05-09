@@ -460,7 +460,7 @@ impl SimpleScorer {
 
     // updated on capture & promo
     pub fn w_eval_material(&self, mat: &Material) -> i32 {
-        Piece::ALL_BAR_NONE
+        Piece::ALL_BAR_KING
             .iter()
             .map(|&p| {
                 self.material_scores[p.index()] * (mat.counts(Color::White, p) - mat.counts(Color::Black, p))

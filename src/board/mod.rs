@@ -123,6 +123,11 @@ impl Board {
     }
 
     #[inline]
+    pub fn occupied(&self) -> Bitboard {
+        self.black() | self.white()
+    }
+
+    #[inline]
     pub fn white(&self) -> Bitboard {
         self.colors[Color::White]
     }

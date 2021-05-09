@@ -51,7 +51,7 @@ pub fn threats_to(board: &Board, us: Color) -> Bitboard {
     threats
 }
 
-fn attacked_by(targets: Bitboard, occ: Bitboard, board: &Board) -> Bitboard {
+pub fn attacked_by(targets: Bitboard, occ: Bitboard, board: &Board) -> Bitboard {
     if targets.is_empty() {
         return Bitboard::empty();
     }

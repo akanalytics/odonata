@@ -83,7 +83,11 @@ impl Game {
                 panic!("Error on board {}", e);
             };
 
-            let player = self.board.color_us().chooser_wb(white, black);
+            let player = if self.board.color_us() == Color::White {
+                white
+            } else {
+                black
+            };
             player.search(&self.board);
             let m = player.bm();
             let tags = player.results().tags().clone();
@@ -275,11 +279,7 @@ mod tests {
             }
             println!();
             if (id + 1) % 10 == 0 {
-                println!(
-                    "score as new {}\nELO difference {:.02}",
-                    wdl,
-                    wdl.elo_differnce()
-                );
+                println!("score as new {}\nELO difference {:.02}", wdl, wdl.elo_differnce());
             }
         }
         wdl

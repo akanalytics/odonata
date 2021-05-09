@@ -1,5 +1,5 @@
 use crate::bitboard::{Bitboard, Square, Dir};
-use crate::types::Color;
+use crate::types::{Color, Piece};
 
 // use lazy_static::lazy_static;
 
@@ -9,6 +9,17 @@ pub trait BitboardAttacks {
     fn rook_attacks(&self, occupied: Bitboard, from: Square) -> Bitboard;
     fn knight_attacks(&self, from: Square) -> Bitboard;
     fn king_attacks(&self, from: Square) -> Bitboard;
+
+    fn attacks(&self, p: Piece, occ: Bitboard, from: Square) -> Bitboard {
+        match p {
+            Piece::Bishop => self.bishop_attacks(occ, from),
+            Piece::Rook => self.rook_attacks(occ, from),
+            Piece::Queen => self.rook_attacks(occ, from) | self.bishop_attacks(occ, from),
+            Piece::King => self.king_attacks(from),
+            Piece::Knight => self.knight_attacks(from),
+            _ => panic!(),
+        }
+    }
 
     // fn attacks<Piece>(&self, occupied: Bitboard, from: Square) -> Bitboard;
 

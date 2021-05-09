@@ -52,12 +52,13 @@ impl Material {
     pub fn from_board(board: &Board) -> Material {
         let mut m = Material { ..Self::default() };
         for &p in &Piece::ALL_BAR_NONE {
-            m.counts[Color::White][p] = (board.pieces(p) & board.white()).popcount() as i32;
-            m.counts[Color::Black][p] = (board.pieces(p) & board.black()).popcount() as i32;
+            m.counts[Color::White.index()][p.index()] = (board.pieces(p) & board.white()).popcount() as i32;
+            m.counts[Color::Black.index()][p.index()] = (board.pieces(p) & board.black()).popcount() as i32;
         }
         m
     }
 
+    #[inline]
     pub fn new() -> Material {
         Self::default()
     }
@@ -74,44 +75,47 @@ impl Material {
     }
 
     #[inline]
-    pub fn counts(&self, c: Color, p: Piece) -> i32 {
+    pub const fn counts(&self, c: Color, p: Piece) -> i32 {
         self.counts[c.index()][p.index()]
     }
 
-    pub fn minors_and_majors(&self) -> Material {
+    #[inline]
+    pub const fn minors_and_majors(&self) -> Material {
         let mut m = *self;
-        m.counts[Color::White][Piece::Pawn] = 0;
-        m.counts[Color::Black][Piece::Pawn] = 0;
-        m.counts[Color::White][Piece::King] = 0;
-        m.counts[Color::Black][Piece::King] = 0;
+        m.counts[Color::White.index()][Piece::Pawn.index()] = 0;
+        m.counts[Color::Black.index()][Piece::Pawn.index()] = 0;
+        m.counts[Color::White.index()][Piece::King.index()] = 0;
+        m.counts[Color::Black.index()][Piece::King.index()] = 0;
         m
     }
 
-    pub fn white(&self) -> Material {
+    #[inline]
+    pub const fn white(&self) -> Material {
         Material {
-            counts: [self.counts[Color::White], [0; Piece::len()]],
+            counts: [self.counts[Color::White.index()], [0; Piece::len()]],
         }
     }
 
-    pub fn black(&self) -> Material {
+    #[inline]
+    pub const fn black(&self) -> Material {
         Material {
-            counts: [[0; Piece::len()], self.counts[Color::Black]],
+            counts: [[0; Piece::len()], self.counts[Color::Black.index()]],
         }
     }
 
+    #[inline]
     pub fn color(&self, c: Color) -> Material {
         c.chooser_wb(self.white(), self.black())
     }
 
+    #[inline]
     pub fn centipawns(&self) -> i32 {
-        // Piece::ALL_BAR_NONE
-        //     .iter()
-        //     .map(|&p| {
-        //         p.centipawns() * self.counts(Color::White, p) - p.centipawns() * self.counts(Color::Black, p)
-        //     })
-        //     .sum::<i32>()
-        Piece::ALL_BAR_NONE.iter().map(|&p| p.centipawns()*self.counts(Color::White, p) ).sum::<i32>() -
-        Piece::ALL_BAR_NONE.iter().map(|&p| p.centipawns()*self.counts(Color::Black, p) ).sum::<i32>()
+        Piece::ALL_BAR_KING
+            .iter()
+            .map(|&p|
+                p.centipawns() * (self.counts(Color::White, p) - self.counts(Color::Black, p))
+            )
+            .sum::<i32>()
     }
 
     /// removes common material leaving only the advantage material

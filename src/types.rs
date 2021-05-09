@@ -103,27 +103,40 @@ impl CastlingRights {
     //     self.contains(cr)
     // }
 
-    pub fn king_side_right(c: Color) -> Self {
+    #[inline]
+    pub  fn king_side_right(c: Color) -> Self {
         chooser_wb(c, Self::WHITE_KING, Self::BLACK_KING)
     }
 
-    pub fn queen_side_right(c: Color) -> Self {
+    #[inline]
+    pub  fn queen_side_right(c: Color) -> Self {
         chooser_wb(c, Self::WHITE_QUEEN, Self::BLACK_QUEEN)
     }
 
-    pub fn is_queen_side(&self) -> bool {
-        self.intersects(Self::WHITE_QUEEN | Self::BLACK_QUEEN)
+    // bitflags & doesnt seem to be declared const
+    #[inline]
+    pub const fn or(self, other: Self) -> Self {
+        Self::from_bits_truncate(self.bits | other.bits)
     }
 
-    pub fn is_king_side(&self) -> bool {
-        self.intersects(Self::WHITE_KING | Self::BLACK_KING)
+
+    #[inline]
+    pub const fn is_queen_side(&self) -> bool {
+        self.intersects(Self::WHITE_QUEEN.or(Self::BLACK_QUEEN))
     }
 
-    pub fn king_side_squares(c: Color) -> Bitboard {
+    #[inline]
+    pub const fn is_king_side(&self) -> bool {
+        self.intersects(Self::WHITE_KING.or(Self::BLACK_KING))
+    }
+
+    #[inline]
+    pub  fn king_side_squares(c: Color) -> Bitboard {
         chooser_wb(c, Bitboard::F1.or(Bitboard::G1), Bitboard::F8.or(Bitboard::G8))
     }
 
-    pub fn queen_side_squares(c: Color) -> Bitboard {
+    #[inline]
+    pub  fn queen_side_squares(c: Color) -> Bitboard {
         chooser_wb(
             c,
             Bitboard::D1.or(Bitboard::C1).or(Bitboard::B1),
@@ -206,12 +219,12 @@ impl Color {
 
 
     #[inline]
-    pub fn index(&self) -> usize {
+    pub const fn index(&self) -> usize {
         *self as usize
     }
 
     #[inline]
-    pub fn chooser_wb<T>(&self, white_thing: T, black_thing: T) -> T {
+    pub  fn chooser_wb<T:Copy>(&self, white_thing: T, black_thing: T) -> T {
         match self {
             Color::White => white_thing,
             Color::Black => black_thing,
@@ -219,32 +232,32 @@ impl Color {
     }
 
     #[inline]
-    pub fn pawn_move(&self) -> Dir {
+    pub  fn pawn_move(&self) -> Dir {
         self.chooser_wb(Dir::N, Dir::S)
     }
 
     #[inline]
-    pub fn double_push_dest_rank(&self) -> Bitboard {
+    pub  fn double_push_dest_rank(&self) -> Bitboard {
         self.chooser_wb(Bitboard::RANK_4, Bitboard::RANK_5)
     }
 
     #[inline]
-    pub fn pawn_capture_east(&self) -> Dir {
+    pub  fn pawn_capture_east(&self) -> Dir {
         self.chooser_wb(Dir::NE, Dir::SE)
     }
 
     #[inline]
-    pub fn pawn_capture_west(&self) -> Dir {
+    pub  fn pawn_capture_west(&self) -> Dir {
         self.chooser_wb(Dir::NW, Dir::SW)
     }
 
     #[inline]
-    pub fn back_rank(&self) -> Bitboard {
+    pub  fn back_rank(&self) -> Bitboard {
         self.chooser_wb(Bitboard::RANK_1, Bitboard::RANK_8)
     }
 
     #[inline]
-    pub fn opposite(&self) -> Color {
+    pub  fn opposite(&self) -> Color {
         self.chooser_wb(Color::Black, Color::White)
     }
 
@@ -326,15 +339,18 @@ impl Piece {
     pub const ALL_BAR_NONE: [Piece; 6] =
         [Piece::Pawn, Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen, Piece::King];
 
-    #[inline]
-    // pub fn to_upper_char(self) -> &char {
+    pub const ALL_BAR_KING: [Piece; 5] =
+    [Piece::Pawn, Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen];
+
+        // pub fn to_upper_char(self) -> &char {
     //     ".PNBRQK".as_bytes()[self as usize] as char
     // }
     #[inline]
-    pub fn index(&self) -> usize {
+    pub const fn index(&self) -> usize {
         *self as usize
     }
 
+    #[inline]
     pub const fn len() -> usize {
         Self::ALL.len()
     }

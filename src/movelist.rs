@@ -36,7 +36,7 @@ impl MoveExt {
             p1: p,
             f1: from,
             t1: to,
-            .. MoveExt::default()
+            ..MoveExt::default()
         }
     }
 
@@ -47,17 +47,23 @@ impl MoveExt {
             t1: to,
             p2: captured,
             f2: to,
-            .. MoveExt::default()
+            ..MoveExt::default()
         }
     }
-    pub fn new_ep_capture(p: Piece, from: Bitboard, to: Bitboard, captured: Piece, captured_sq: Bitboard) -> MoveExt {
+    pub fn new_ep_capture(
+        p: Piece,
+        from: Bitboard,
+        to: Bitboard,
+        captured: Piece,
+        captured_sq: Bitboard,
+    ) -> MoveExt {
         MoveExt {
             p1: p,
             f1: from,
             t1: to,
             p2: captured,
             f2: captured_sq,
-            .. MoveExt::default()
+            ..MoveExt::default()
         }
     }
     pub fn new_promo(from: Bitboard, to: Bitboard, promoted_to: Piece) -> MoveExt {
@@ -66,7 +72,7 @@ impl MoveExt {
             f1: from,
             p3: promoted_to,
             t3: to,
-            .. MoveExt::default()
+            ..MoveExt::default()
         }
     }
     pub fn new_promo_capture(from: Bitboard, to: Bitboard, promoted_to: Piece, captured: Piece) -> MoveExt {
@@ -77,10 +83,16 @@ impl MoveExt {
             f2: to,
             p3: promoted_to,
             t3: to,
-            .. MoveExt::default()
+            ..MoveExt::default()
         }
     }
-    pub fn new_castle(king_from: Bitboard, king_to: Bitboard, rook_from: Bitboard, rook_to: Bitboard) -> MoveExt {
+    pub fn new_castle(
+        king_from: Bitboard,
+        king_to: Bitboard,
+        rook_from: Bitboard,
+        rook_to: Bitboard,
+        castle: CastlingRights,
+    ) -> MoveExt {
         MoveExt {
             p1: Piece::King,
             f1: king_from,
@@ -89,11 +101,9 @@ impl MoveExt {
             t3: rook_to,
             p4: Piece::Rook,
             f4: rook_from,
-            .. MoveExt::default()
+            ..MoveExt::default()
         }
     }
-
-
 }
 
 // FIXME: public methods
