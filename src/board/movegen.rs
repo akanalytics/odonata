@@ -1,4 +1,5 @@
-use crate::bitboard::attacks::{BitboardAttacks, ClassicalBitboard};
+use crate::bitboard::attacks::{BitboardAttacks};
+use crate::bitboard::bb_classical::ClassicalBitboard;
 use crate::bitboard::bitboard::{Bitboard, Dir};
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;

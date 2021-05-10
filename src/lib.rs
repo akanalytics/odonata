@@ -41,7 +41,6 @@ pub mod types;
 pub mod utils;
 pub mod version;
 
-pub use crate::bitboard::attacks::ClassicalBitboard;
 pub use crate::bitboard::bitboard::Bitboard;
 pub use crate::board::boardbuf::BoardBuf;
 pub use crate::board::Board;

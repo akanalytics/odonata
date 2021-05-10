@@ -1,6 +1,7 @@
 use crate::bitboard::attacks::{BitboardAttacks};
 use crate::bitboard::bitboard::{Bitboard, Dir};
 use crate::board::movegen::{attacked_by, global_classical_bitboard};
+use crate::bitboard::bb_classical::ClassicalBitboard;
 use crate::board::Board;
 use crate::globals::counts;
 use crate::movelist::{Move, MoveExt, MoveList, MoveListExt};
@@ -42,7 +43,7 @@ impl Rules {
         let occ = b.occupied();
 
         for from_sq in (b.pieces(p) & us).squares() {
-            let attacks = attack_gen.attacks(p, occ, from_sq) & !us;
+            let attacks = attack_gen.non_pawn_attacks(p, occ, from_sq) & !us;
             moves.extend(attacks.iter().map(|to| {
                 if them.contains(to) {
                     MoveExt::new_capture(p, from_sq.as_bb(), to, b.piece_at(to))

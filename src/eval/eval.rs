@@ -1,5 +1,5 @@
 use crate::bitboard::attacks::BitboardAttacks;
-use crate::bitboard::attacks::ClassicalBitboard;
+use crate::bitboard::bb_classical::ClassicalBitboard;
 use crate::bitboard::bitboard::Square;
 use crate::board::Board;
 use crate::config::{Config, Configurable};
