@@ -1,7 +1,7 @@
 #[allow(non_upper_case_globals)]
 #[allow(dead_code)]
 pub mod constants {
-    use crate::bitboard::Bitboard;
+    use crate::bitboard::bitboard::Bitboard;
     pub const a1: Bitboard = Bitboard::A1;
     pub const b1: Bitboard = Bitboard::B1;
     pub const c1: Bitboard = Bitboard::C1;
@@ -115,11 +115,11 @@ pub mod counts {
 
 #[cfg(test)]
 mod tests {
-    use crate::bitboard::*;
+    use crate::bitboard::bitboard::*;
     use crate::board::*;
     use crate::eval::score::*;
     use crate::movelist::*;
-    use crate::castling::*;
+    use crate::bitboard::castling::*;
     use crate::search::node::*;
     use crate::search::searchstats::*;
     use crate::tt::*;

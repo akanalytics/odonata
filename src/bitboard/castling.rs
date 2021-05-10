@@ -1,4 +1,4 @@
-use crate::bitboard::{Bitboard, Dir};
+use crate::bitboard::bitboard::Bitboard;
 use crate::types::Color;
 use std::fmt;
 use std::iter::*;
@@ -103,12 +103,7 @@ impl CastlingRights {
 
     #[inline]
     pub const fn rook_and_king_squares() -> Bitboard {
-        Bitboard::A1.or(
-            Bitboard::A8.or(
-                Bitboard::H1.or(
-                    Bitboard::H8.or(
-                        Bitboard::E1.or(
-                            Bitboard::E8)))))
+        Bitboard::A1.or(Bitboard::A8.or(Bitboard::H1.or(Bitboard::H8.or(Bitboard::E1.or(Bitboard::E8)))))
     }
 
     #[inline]
@@ -117,7 +112,7 @@ impl CastlingRights {
             if squares_changed.intersects(Bitboard::FILE_E) {
                 if squares_changed.intersects(Bitboard::E1) {
                     *self -= Self::WHITE_KING.or(Self::WHITE_QUEEN);
-                } 
+                }
                 if squares_changed.intersects(Bitboard::E8) {
                     *self -= Self::BLACK_KING.or(Self::BLACK_QUEEN);
                 }
@@ -137,7 +132,6 @@ impl CastlingRights {
                 if squares_changed.intersects(Bitboard::H8) {
                     *self -= Self::BLACK_KING;
                 }
-
             }
         }
     }

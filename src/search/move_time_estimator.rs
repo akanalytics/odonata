@@ -144,7 +144,6 @@ mod tests {
     use crate::catalog::*;
     use crate::comms::uci::*;
     use crate::eval::eval::*;
-    use crate::eval::score::*;
     use crate::search::algo::*;
 
     #[test]

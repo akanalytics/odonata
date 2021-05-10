@@ -1,5 +1,5 @@
 use criterion::*;
-use odonata::bitboard::*;
+use odonata::bitboard::bitboard::*;
 use odonata::board::makemove::*;
 use odonata::board::movegen::*;
 use odonata::board::*;

@@ -1,6 +1,6 @@
-use crate::bitboard::Square;
+use crate::bitboard::bitboard::Square;
 use crate::board::Board;
-use crate::castling::CastlingRights;
+use crate::bitboard::castling::CastlingRights;
 use crate::globals::constants::*;
 use crate::globals::counts;
 use crate::movelist::Move;

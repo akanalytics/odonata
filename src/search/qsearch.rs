@@ -1,4 +1,4 @@
-use crate::bitboard::Bitboard;
+use crate::bitboard::bitboard::Bitboard;
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::config::{Config, Configurable};

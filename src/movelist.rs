@@ -1,10 +1,10 @@
-use crate::bitboard::Bitboard;
+use crate::bitboard::bitboard::Bitboard;
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::parse::Parse;
 use crate::tags::Tags;
 use crate::types::{Color, Piece, Ply};
-use crate::castling::CastlingRights;
+use crate::bitboard::castling::CastlingRights;
 use crate::utils::StringUtils;
 use once_cell::sync::Lazy;
 use regex::Regex;

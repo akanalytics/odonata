@@ -1,13 +1,11 @@
-use crate::attacks::{BitboardAttacks, ClassicalBitboard};
-use crate::bitboard::{Bitboard, Dir};
-use crate::board::makemove::MoveMaker;
+use crate::bitboard::attacks::{BitboardAttacks};
+use crate::bitboard::bitboard::{Bitboard, Dir};
 use crate::board::movegen::{attacked_by, global_classical_bitboard};
 use crate::board::Board;
 use crate::globals::counts;
 use crate::movelist::{Move, MoveExt, MoveList, MoveListExt};
 use crate::types::{Color, Piece};
-use crate::castling::CastlingRights;
-use once_cell::sync::OnceCell;
+use crate::bitboard::castling::CastlingRights;
 
 pub struct Rules;
 

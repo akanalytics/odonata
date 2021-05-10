@@ -200,8 +200,6 @@ mod tests {
     use super::*;
     use crate::catalog::*;
     use crate::comms::uci::Uci;
-    use crate::eval::eval::*;
-    use crate::movelist::MoveValidator;
     use crate::search::timecontrol::*;
 
 

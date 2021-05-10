@@ -1,6 +1,6 @@
-use crate::attacks::BitboardAttacks;
-use crate::attacks::ClassicalBitboard;
-use crate::bitboard::Square;
+use crate::bitboard::attacks::BitboardAttacks;
+use crate::bitboard::attacks::ClassicalBitboard;
+use crate::bitboard::bitboard::Square;
 use crate::board::Board;
 use crate::config::{Config, Configurable};
 use crate::eval::score::Score;
@@ -10,7 +10,6 @@ use crate::material::Material;
 use crate::movelist::Move;
 use crate::outcome::GameEnd;
 use crate::stat::{ArrayStat, Stat};
-use crate::tt::{Entry, NodeType, TranspositionTable};
 use crate::types::{Color, Piece};
 
 use std::fmt;

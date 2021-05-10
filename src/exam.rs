@@ -2,7 +2,6 @@ use crate::config::{Config, Configurable};
 use crate::position::Position;
 use crate::search::algo::Algo;
 use crate::search::timecontrol::TimeControl;
-use crate::globals::counts::GLOBAL_COUNTS;
 use std::fmt;
 
 #[derive(Clone, Default, Debug)]

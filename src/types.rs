@@ -1,6 +1,5 @@
-use crate::bitboard::{Bitboard, Dir};
+use crate::bitboard::bitboard::{Bitboard, Dir};
 use std::fmt;
-use std::iter::*;
 
 pub const MAX_PLY: Ply = 128;
 

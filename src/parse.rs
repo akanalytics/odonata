@@ -1,4 +1,4 @@
-use crate::bitboard::Bitboard;
+use crate::bitboard::bitboard::Bitboard;
 use crate::board::Board;
 use crate::movelist::{Move, MoveList};
 use crate::types::Color;

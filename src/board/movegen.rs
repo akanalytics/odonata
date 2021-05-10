@@ -1,11 +1,11 @@
-use crate::attacks::{BitboardAttacks, ClassicalBitboard};
-use crate::bitboard::{Bitboard, Dir};
+use crate::bitboard::attacks::{BitboardAttacks, ClassicalBitboard};
+use crate::bitboard::bitboard::{Bitboard, Dir};
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::globals::counts;
 use crate::movelist::{Move, MoveExt, MoveList, MoveListExt};
 use crate::types::{Color, Piece};
-use crate::castling::CastlingRights;
+use crate::bitboard::castling::CastlingRights;
 use once_cell::sync::OnceCell;
 
 pub fn global_classical_bitboard() -> &'static ClassicalBitboard {

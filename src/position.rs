@@ -1,10 +1,10 @@
-use crate::bitboard::Bitboard;
+use crate::bitboard::bitboard::Bitboard;
 use crate::board::boardbuf::BoardBuf;
 use crate::board::Board;
 use crate::movelist::{MoveList, Move};
 use crate::movelist::MoveValidator;
 use crate::types::{Color};
-use crate::castling::CastlingRights;
+use crate::bitboard::castling::CastlingRights;
 use crate::utils::StringUtils;
 use crate::tags::{Tags, Tag};
 use regex::Regex;

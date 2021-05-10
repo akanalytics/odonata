@@ -306,7 +306,6 @@ mod tests {
     use crate::catalog::*;
     use crate::comms::uci::Uci;
     use crate::eval::eval::*;
-    use crate::movelist::MoveValidator;
     use crate::types::*;
     use std::time;
 

@@ -1,4 +1,4 @@
-use crate::bitboard::{Bitboard, Square, Dir};
+use crate::bitboard::bitboard::{Bitboard, Square, Dir};
 use crate::types::{Color, Piece};
 
 // use lazy_static::lazy_static;

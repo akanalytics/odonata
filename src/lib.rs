@@ -11,10 +11,8 @@ extern crate once_cell;
 
 extern crate regex;
 
-mod attacks;
 pub mod bitboard;
 pub mod board;
-pub mod castling;
 pub mod catalog;
 pub mod clock;
 pub mod comms;
@@ -43,8 +41,8 @@ pub mod types;
 pub mod utils;
 pub mod version;
 
-pub use crate::attacks::ClassicalBitboard;
-pub use crate::bitboard::Bitboard;
+pub use crate::bitboard::attacks::ClassicalBitboard;
+pub use crate::bitboard::bitboard::Bitboard;
 pub use crate::board::boardbuf::BoardBuf;
 pub use crate::board::Board;
 pub use crate::config::Config;

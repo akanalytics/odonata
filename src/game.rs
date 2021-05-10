@@ -162,7 +162,7 @@ mod tests {
     use crate::search::timecontrol::*;
     use crate::types::{ScoreWdl};
     use std::time::Duration;
-    use crate::castling::CastlingRights;
+    use crate::bitboard::castling::CastlingRights;
 
     #[test]
     #[ignore]

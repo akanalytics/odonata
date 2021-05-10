@@ -1,10 +1,10 @@
-use crate::bitboard::Bitboard;
+use crate::bitboard::bitboard::Bitboard;
 use crate::material::Material;
 use crate::board::boardbuf::BoardBuf;
 use crate::hasher::Hasher;
 use std::cell::Cell;
 use crate::types::{Color, Piece, Hash, Ply};
-use crate::castling::CastlingRights;
+use crate::bitboard::castling::CastlingRights;
 use std::fmt::{self, Write};
 use std::iter::*;
 

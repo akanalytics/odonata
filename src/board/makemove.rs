@@ -1,10 +1,10 @@
-use crate::bitboard::Bitboard;
+use crate::bitboard::bitboard::Bitboard;
 use crate::board::Board;
 use crate::globals::constants::*;
 use crate::hasher::Hasher;
 use crate::movelist::{Move, MoveExt};
 use crate::types::{Piece};
-use crate::castling::CastlingRights;
+use crate::bitboard::castling::CastlingRights;
 
 use std::cell::Cell;
 
