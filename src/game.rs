@@ -160,8 +160,9 @@ mod tests {
     use super::*;
     use crate::eval::eval::*;
     use crate::search::timecontrol::*;
-    use crate::types::{CastlingRights, ScoreWdl};
+    use crate::types::{ScoreWdl};
     use std::time::Duration;
+    use crate::castling::CastlingRights;
 
     #[test]
     #[ignore]

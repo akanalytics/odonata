@@ -8,16 +8,57 @@ pub struct Dir {
 }
 
 impl Dir {
-    pub const N: Self = Dir { index: 0, shift: 8, mask: Bitboard::RANK_8 };
-    pub const NE: Self = Dir { index: 1, shift: 9, mask: Bitboard::RANK_8.or(Bitboard::FILE_H) };
-    pub const E: Self = Dir { index: 2, shift: 1, mask: Bitboard::FILE_H };
-    pub const SE: Self = Dir { index: 3, shift: -7, mask: Bitboard::RANK_1.or(Bitboard::FILE_H) };
-    pub const S: Self = Dir { index: 4, shift: -8, mask: Bitboard::RANK_1 };
-    pub const SW: Self = Dir { index: 5, shift: -9, mask: Bitboard::RANK_1.or(Bitboard::FILE_A) };
-    pub const W: Self = Dir { index: 6, shift: -1, mask: Bitboard::FILE_A };
-    pub const NW: Self = Dir { index: 7, shift: 7, mask: Bitboard::RANK_8.or(Bitboard::FILE_A) };
+    pub const N: Self = Dir {
+        index: 0,
+        shift: 8,
+        mask: Bitboard::RANK_8,
+    };
+    pub const NE: Self = Dir {
+        index: 1,
+        shift: 9,
+        mask: Bitboard::RANK_8.or(Bitboard::FILE_H),
+    };
+    pub const E: Self = Dir {
+        index: 2,
+        shift: 1,
+        mask: Bitboard::FILE_H,
+    };
+    pub const SE: Self = Dir {
+        index: 3,
+        shift: -7,
+        mask: Bitboard::RANK_1.or(Bitboard::FILE_H),
+    };
+    pub const S: Self = Dir {
+        index: 4,
+        shift: -8,
+        mask: Bitboard::RANK_1,
+    };
+    pub const SW: Self = Dir {
+        index: 5,
+        shift: -9,
+        mask: Bitboard::RANK_1.or(Bitboard::FILE_A),
+    };
+    pub const W: Self = Dir {
+        index: 6,
+        shift: -1,
+        mask: Bitboard::FILE_A,
+    };
+    pub const NW: Self = Dir {
+        index: 7,
+        shift: 7,
+        mask: Bitboard::RANK_8.or(Bitboard::FILE_A),
+    };
 
-    pub const ALL: [Self; 8] = [Self::N, Self::NE, Self::E, Self::SE, Self::S, Self::SW, Self::W, Self::NW];
+    pub const ALL: [Self; 8] = [
+        Self::N,
+        Self::NE,
+        Self::E,
+        Self::SE,
+        Self::S,
+        Self::SW,
+        Self::W,
+        Self::NW,
+    ];
 
     pub fn opposite(&self) -> Dir {
         Self::ALL[(self.index + 4) % 8]
@@ -75,16 +116,17 @@ impl Bitboard {
         Self::FILE_H,
     ];
 
-    // insert, 
-    // remove, 
-    // set, 
-    // toggle, 
-    // all(), 
-    // empty(), 
-    // is_all, 
-    // is_empty, 
-    // intersects, 
-    // contains 
+
+    // insert,
+    // remove,
+    // set,
+    // toggle,
+    // all(),
+    // empty(),
+    // is_all,
+    // is_empty,
+    // intersects,
+    // contains
     // ... come for free
 
     #[inline]
@@ -105,7 +147,6 @@ impl Bitboard {
         Bitboard::all()
     }
 
-
     #[inline]
     pub fn disjoint(self, other: Bitboard) -> bool {
         (self & other).is_empty()
@@ -121,7 +162,6 @@ impl Bitboard {
         }
     }
 
-
     pub fn fill_north(self) -> Bitboard {
         let mut bb = self;
         bb |= Bitboard::from_bits_truncate(bb.bits << 32);
@@ -129,7 +169,6 @@ impl Bitboard {
         bb |= Bitboard::from_bits_truncate(bb.bits << 8);
         bb
     }
-    
     pub fn fill_south(self) -> Bitboard {
         let mut bb = self;
         bb |= Bitboard::from_bits_truncate(bb.bits >> 32);
@@ -137,7 +176,6 @@ impl Bitboard {
         bb |= Bitboard::from_bits_truncate(bb.bits >> 8);
         bb
     }
-
 
     // bitflags & doesnt seem to be declared const
     #[inline]
@@ -167,12 +205,11 @@ impl Bitboard {
         self.first_square()
     }
 
-
     #[inline]
     pub fn last_square(self) -> Square {
         let msb = self.bits.leading_zeros();
         debug_assert!(msb < 64);
-        Square::from_u32(63 - msb) 
+        Square::from_u32(63 - msb)
     }
 
     #[inline]
@@ -180,7 +217,7 @@ impl Bitboard {
         // LSB
         let sq = self.bits.trailing_zeros();
         debug_assert!(sq < 64);
-        Square::from_u32(sq) 
+        Square::from_u32(sq)
     }
 
     #[inline]
@@ -204,14 +241,20 @@ impl Bitboard {
     }
 
     pub fn files(self) -> String {
-        let mut files: Vec<char> = self.iter().map(|bb| Self::sq_as_file(bb.first_square())).collect();
+        let mut files: Vec<char> = self
+            .iter()
+            .map(|bb| Self::sq_as_file(bb.first_square()))
+            .collect();
         files.sort_unstable();
         files.dedup();
         files.iter().collect()
     }
 
     pub fn ranks(self) -> String {
-        let mut ranks: Vec<char> = self.iter().map(|bb| Self::sq_as_rank(bb.first_square())).collect();
+        let mut ranks: Vec<char> = self
+            .iter()
+            .map(|bb| Self::sq_as_rank(bb.first_square()))
+            .collect();
         ranks.sort_unstable();
         ranks.dedup();
         ranks.iter().collect()
@@ -312,15 +355,16 @@ impl Iterator for Squares {
     }
 }
 
-
-
-
 impl fmt::Display for Bitboard {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         for r in (0..8).rev() {
             for f in 0..8 {
                 let bit = 1 << (r * 8 + f);
-                fmt.write_str(if self.contains(Bitboard::from_bits_truncate(bit)) { "1 " } else { ". " })?;
+                fmt.write_str(if self.contains(Bitboard::from_bits_truncate(bit)) {
+                    "1 "
+                } else {
+                    ". "
+                })?;
             }
             fmt.write_char('\n')?;
         }
@@ -329,18 +373,18 @@ impl fmt::Display for Bitboard {
 }
 
 #[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
-pub struct Square (u8);
+pub struct Square(u8);
 
 // Bitboard::from_bits_truncate(1 << i)
 
 impl Square {
     #[inline]
-    pub const fn from_u8(i : u8) -> Square {
+    pub const fn from_u8(i: u8) -> Square {
         Square(i)
     }
 
     #[inline]
-    pub const fn from_u32(i : u32) -> Square {
+    pub const fn from_u32(i: u32) -> Square {
         Square(i as u8)
     }
 
@@ -359,9 +403,6 @@ impl Square {
         self.0 as usize
     }
 }
-
-
-
 
 #[cfg(test)]
 mod tests {
@@ -385,7 +426,10 @@ mod tests {
         assert!(Bitboard::FILE_A.contains(a4));
         assert_eq!(Bitboard::FILE_A.popcount(), 8);
         assert_eq!(Bitboard::all().popcount(), 64);
-        assert_eq!((Bitboard::FILE_A | Bitboard::RANK_1).swap_bytes(), (Bitboard::FILE_A | Bitboard::RANK_8));
+        assert_eq!(
+            (Bitboard::FILE_A | Bitboard::RANK_1).swap_bytes(),
+            (Bitboard::FILE_A | Bitboard::RANK_8)
+        );
     }
 
     #[test]
@@ -411,10 +455,19 @@ mod tests {
         assert_eq!(Bitboard::parse_file("9").err(), Some("Invalid file '9'".into()));
         assert_eq!(Bitboard::parse_file("").err(), Some("Invalid file ''".into()));
         assert_eq!(Bitboard::parse_rank("a").err(), Some("Invalid rank 'a'".into()));
-        assert_eq!(Bitboard::parse_square("aa").err(), Some("Invalid rank 'a'".into()));
-        assert_eq!(Bitboard::parse_square("11").err(), Some("Invalid file '1'".into()));
+        assert_eq!(
+            Bitboard::parse_square("aa").err(),
+            Some("Invalid rank 'a'".into())
+        );
+        assert_eq!(
+            Bitboard::parse_square("11").err(),
+            Some("Invalid file '1'".into())
+        );
         assert_eq!(Bitboard::parse_square("").err(), Some("Invalid square ''".into()));
-        assert_eq!(Bitboard::parse_square("abc").err(), Some("Invalid square 'abc'".into()));
+        assert_eq!(
+            Bitboard::parse_square("abc").err(),
+            Some("Invalid square 'abc'".into())
+        );
     }
 
     #[test]
@@ -454,7 +507,10 @@ mod tests {
         assert_eq!(a1b2.uci(), "a1+b2");
         assert_eq!(format!("{}", a1b2), ". . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. 1 . . . . . . \n1 . . . . . . . \n");
         assert_eq!(format!("{:?}", a1b2), "A1 | B2");
-        assert_eq!(format!("{:?}", Bitboard::FILE_A), "A1 | A2 | A3 | A4 | A5 | A6 | A7 | A8 | FILE_A");
+        assert_eq!(
+            format!("{:?}", Bitboard::FILE_A),
+            "A1 | A2 | A3 | A4 | A5 | A6 | A7 | A8 | FILE_A"
+        );
         // assert_eq!(format!("{:?}", Bitboard::EDGES), "");
         assert_eq!(format!("{:b}", a1b2), "1000000001");
     }

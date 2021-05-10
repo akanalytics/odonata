@@ -3,7 +3,8 @@ use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::parse::Parse;
 use crate::tags::Tags;
-use crate::types::{CastlingRights, Color, Piece, Ply};
+use crate::types::{Color, Piece, Ply};
+use crate::castling::CastlingRights;
 use crate::utils::StringUtils;
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -28,6 +29,7 @@ pub struct MoveExt {
     pub f4: Bitboard,
 
     pub castle: CastlingRights,
+    pub ep_square: Bitboard,
 }
 
 impl MoveExt {
@@ -36,6 +38,16 @@ impl MoveExt {
             p1: p,
             f1: from,
             t1: to,
+            ..MoveExt::default()
+        }
+    }
+
+    pub fn new_double_push(from: Bitboard, to: Bitboard, ep_square: Bitboard) -> MoveExt {
+        MoveExt {
+            p1: Piece::Pawn,
+            f1: from,
+            t1: to,
+            ep_square,
             ..MoveExt::default()
         }
     }
@@ -51,17 +63,15 @@ impl MoveExt {
         }
     }
     pub fn new_ep_capture(
-        p: Piece,
         from: Bitboard,
         to: Bitboard,
-        captured: Piece,
         captured_sq: Bitboard,
     ) -> MoveExt {
         MoveExt {
-            p1: p,
+            p1: Piece::Pawn,
             f1: from,
             t1: to,
-            p2: captured,
+            p2: Piece::Pawn,
             f2: captured_sq,
             ..MoveExt::default()
         }
@@ -91,7 +101,7 @@ impl MoveExt {
         king_to: Bitboard,
         rook_from: Bitboard,
         rook_to: Bitboard,
-        castle: CastlingRights,
+        _castle: CastlingRights,
     ) -> MoveExt {
         MoveExt {
             p1: Piece::King,
@@ -103,6 +113,46 @@ impl MoveExt {
             f4: rook_from,
             ..MoveExt::default()
         }
+    }
+
+    // pub fn as_move(&self) {
+    //     if p2 == Piece::None && p3 == Piece::None && p4 == Piece::None {
+            
+    //     }
+
+    // }
+}
+
+
+impl fmt::Display for MoveExt {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.uci())?;
+        Ok(())
+    }
+}
+
+
+impl MoveExt {
+    pub fn is_promo(&self) -> bool {
+        self.p1 == Piece::Pawn && self.p3 != Piece::None
+    }
+
+    pub fn is_capture(&self) -> bool {
+        self.p2 != Piece::None
+    }
+
+    pub fn uci(&self) -> String {
+        // if self.is_null() {
+        //     return String::from('-');
+        // }
+        let mut res = String::new();
+        res.push_str(&self.f1.uci());
+        res.push_str(&self.t1.uci());
+        if self.is_promo() {
+            res.push_str(&self.t3.uci());
+            res.push(self.p3.to_char(Some(Color::Black)));
+        }
+        res
     }
 }
 
@@ -291,6 +341,100 @@ impl fmt::Display for Move {
         Ok(())
     }
 }
+
+
+
+
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MoveListExt {
+    pub moves: Vec<MoveExt>,
+}
+
+// pub struct MoveListExt(ArrayVec::<[Move; 384]>);
+// impl Default for MoveListExt {
+//     fn default() -> MoveListExt { MoveListExt::new() }
+// }
+
+impl Default for MoveListExt {
+    fn default() -> Self {
+        Self {
+            moves: Vec::with_capacity(128),
+        }
+    }
+}
+
+impl std::iter::FromIterator<MoveExt> for MoveListExt {
+    fn from_iter<I: IntoIterator<Item = MoveExt>>(iter: I) -> Self {
+        let mut ml = MoveListExt::new();
+        for mv in iter {
+            ml.push(mv);
+        }
+        ml
+    }
+}
+
+impl MoveListExt {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn sort(&mut self) -> &mut Self {
+        self.moves.sort_by_key(|m| m.to_string());
+        self
+    }
+
+    pub fn uci(&self) -> String {
+        self.moves
+            .iter()
+            .map(|mv| mv.uci())
+            .collect::<Vec<String>>()
+            .join(" ")
+    }
+
+    #[inline]
+    pub fn set_last_move(&mut self, ply: Ply, mv: &MoveExt) {
+        let ply = ply as usize;
+        // root node is ply 0, so len==ply, so ply 1 gets stored in 0th element
+        if self.moves.len() == ply && ply > 0 {
+            self.moves[ply - 1] = *mv;
+        } else {
+            self.moves.resize_with(ply, || *mv);
+        }
+    }
+}
+
+impl Deref for MoveListExt {
+    type Target = Vec<MoveExt>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.moves
+    }
+}
+
+impl DerefMut for MoveListExt {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.moves
+    }
+}
+
+impl fmt::Display for MoveListExt {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if f.alternate() {
+            for mv in self.iter() {
+                writeln!(f, "{:#}", mv)?;
+            }
+        } else {
+            let strings: Vec<String> = self.moves.iter().map(MoveExt::to_string).collect();
+            f.write_str(&strings.join(", "))?
+        }
+        Ok(())
+    }
+}
+
+
+
+
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MoveList {

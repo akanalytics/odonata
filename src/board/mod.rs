@@ -3,7 +3,8 @@ use crate::material::Material;
 use crate::board::boardbuf::BoardBuf;
 use crate::hasher::Hasher;
 use std::cell::Cell;
-use crate::types::{CastlingRights, Color, Piece, Hash, Ply};
+use crate::types::{Color, Piece, Hash, Ply};
+use crate::castling::CastlingRights;
 use std::fmt::{self, Write};
 use std::iter::*;
 
@@ -28,6 +29,7 @@ pub struct Board {
     // interior mutability (precludes copy trait)
     // moves: MoveList,
 }
+
 
 impl fmt::Debug for Board {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -263,7 +265,7 @@ impl Default for Board {
         Board {
             pieces: Default::default(),
             colors: Default::default(),
-            castling: Default::default(),
+            castling: CastlingRights::NONE,
             en_passant: Default::default(),
             turn: Default::default(),
             fifty_clock: Default::default(),

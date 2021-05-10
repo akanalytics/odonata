@@ -6,6 +6,8 @@
 [ ] Pawn chains fixed 
 [ ] PV extraction
 [ ] Null move pruning
+[ ] Fix board ==
+[ ] E/P when not relelvant and tt
 
 
 - Bug fixes

@@ -1,9 +1,10 @@
+use crate::bitboard::Square;
 use crate::board::Board;
+use crate::castling::CastlingRights;
 use crate::globals::constants::*;
 use crate::globals::counts;
 use crate::movelist::Move;
-use crate::bitboard::Square;
-use crate::types::{CastlingRights, Color, Hash, Piece};
+use crate::types::{Color, Hash, Piece};
 use once_cell::sync::Lazy;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
@@ -72,7 +73,13 @@ static HASHER: Lazy<Hasher> = Lazy::new(|| Hasher::new(3141592653589793));
 impl Hasher {
     pub fn new(seed: u64) -> Self {
         let mut rng = ChaChaRng::seed_from_u64(seed);
-        let mut h = Hasher { seed, squares: [[[0; 64]; Piece::len()]; Color::len()], side: 0, castling: [0; 4], ep: [0; 8] };
+        let mut h = Hasher {
+            seed,
+            squares: [[[0; 64]; Piece::len()]; Color::len()],
+            side: 0,
+            castling: [0; 4],
+            ep: [0; 8],
+        };
         // let i = rng.gen::<u64>();
 
         // fill seems fine to use "On big-endian platforms this performs
@@ -98,9 +105,7 @@ impl Hasher {
     }
 
     fn get(&self, c: Color, p: Piece, sq: Square) -> &Hash {
-        unsafe {
-            self.squares[c.index()][p.index()].get_unchecked(sq.index())
-        }
+        unsafe { self.squares[c.index()][p.index()].get_unchecked(sq.index()) }
     }
 
     pub fn hash_board(&self, b: &Board) -> Hash {
@@ -151,7 +156,11 @@ impl Hasher {
         hash ^= self.get(us, m.mover_piece(), m.to().first_square());
 
         if m.mover_piece() == Piece::Pawn && m.is_pawn_double_push() {
-            debug_assert!(!m.ep().is_empty(), "e/p square must be set for pawn double push {:?}", m);
+            debug_assert!(
+                !m.ep().is_empty(),
+                "e/p square must be set for pawn double push {:?}",
+                m
+            );
             hash ^= self.ep[m.ep().first_square().index() & 7];
         }
 
@@ -186,33 +195,35 @@ impl Hasher {
                 _ => panic!("Castling move from square {}", m.to()),
             }
             hash ^= self.get(us, Piece::Rook, rook_from.first_square());
-            hash ^= self.get(us, Piece::Rook,rook_to.first_square());
+            hash ^= self.get(us, Piece::Rook, rook_to.first_square());
         }
 
         // castling *rights*
         //  if a piece moves TO (=capture) or FROM the rook squares - appropriate castling rights are lost
         //  if a piece moves FROM the kings squares, both castling rights are lost
         //  possible with a rook x rook capture that both sides lose castling rights
-        if (m.from() == e1 || m.from() == a1 || m.to() == a1)
-            && pre_move.castling().contains(CastlingRights::WHITE_QUEEN)
-        {
-            hash ^= self.castling[CastlingRights::WHITE_QUEEN.index()];
-        }
-        if (m.from() == e1 || m.from() == h1 || m.to() == h1)
-            && pre_move.castling().contains(CastlingRights::WHITE_KING)
-        {
-            hash ^= self.castling[CastlingRights::WHITE_KING.index()];
-        }
+        if (m.from() | m.to()).intersects(CastlingRights::rook_and_king_squares()) {
+            if (m.from() == e1 || m.from() == a1 || m.to() == a1)
+                && pre_move.castling().contains(CastlingRights::WHITE_QUEEN)
+            {
+                hash ^= self.castling[CastlingRights::WHITE_QUEEN.index()];
+            }
+            if (m.from() == e1 || m.from() == h1 || m.to() == h1)
+                && pre_move.castling().contains(CastlingRights::WHITE_KING)
+            {
+                hash ^= self.castling[CastlingRights::WHITE_KING.index()];
+            }
 
-        if (m.from() == e8 || m.from() == a8 || m.to() == a8)
-            && pre_move.castling().contains(CastlingRights::BLACK_QUEEN)
-        {
-            hash ^= self.castling[CastlingRights::BLACK_QUEEN.index()];
-        }
-        if (m.from() == e8 || m.from() == h8 || m.to() == h8)
-            && pre_move.castling().contains(CastlingRights::BLACK_KING)
-        {
-            hash ^= self.castling[CastlingRights::BLACK_KING.index()];
+            if (m.from() == e8 || m.from() == a8 || m.to() == a8)
+                && pre_move.castling().contains(CastlingRights::BLACK_QUEEN)
+            {
+                hash ^= self.castling[CastlingRights::BLACK_QUEEN.index()];
+            }
+            if (m.from() == e8 || m.from() == h8 || m.to() == h8)
+                && pre_move.castling().contains(CastlingRights::BLACK_KING)
+            {
+                hash ^= self.castling[CastlingRights::BLACK_KING.index()];
+            }
         }
         hash
     }
@@ -310,7 +321,14 @@ mod tests {
                 let hash_mv = hasher.hash_move(m, b);
                 let hash_bd2 = hasher.hash_board(&bd2);
                 // println!("Move: {:#} = {}", m, hash_mv);
-                assert_eq!(hash_bd1 ^ hash_mv, hash_bd2, "board1:{:#}\nmv:{:#}\nboard2:{:#}", b, m, bd2);
+                assert_eq!(
+                    hash_bd1 ^ hash_mv,
+                    hash_bd2,
+                    "board1:{:#}\nmv:{:#}\nboard2:{:#}",
+                    b,
+                    m,
+                    bd2
+                );
                 let res = perft_with_hash(&bd2, depth - 1, hasher);
                 count += res;
             }

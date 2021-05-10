@@ -3,7 +3,9 @@ use crate::board::Board;
 use crate::globals::constants::*;
 use crate::hasher::Hasher;
 use crate::movelist::{Move, MoveExt};
-use crate::types::{CastlingRights, Piece};
+use crate::types::{Piece};
+use crate::castling::CastlingRights;
+
 use std::cell::Cell;
 
 pub trait MoveMaker {
@@ -30,26 +32,31 @@ impl MoveMaker for Board {
         self.repetition_count.set(0);
 
         self.fifty_clock += 1;
+        if mv.p1 == Piece::Pawn || mv.is_capture() {
+            self.fifty_clock = 0;
+        }
         self.colors[self.turn] ^= mv.f1 ^ mv.t1 ^ mv.t3 ^ mv.f4;
         self.colors[them] ^= mv.f2;
         
-        self.castling &= mv.castle;
+        // self.castling ^= mv.castle;
+
+        // self.castling -= Bitboard::ROOK_AND_KING_SQS & (mv.f1 | mv.t3);
 
         self.fullmove_number += self.turn.chooser_wb(0, 1);
         self.turn = them;
 
         //self.hash ^= Hasher::default().hash_move(mv, self);
-        debug_assert!(
-            self.hash == Hasher::default().hash_board(self),
-            "make_move_ext({:?}) inconsistent incremental hash {:x} (should be {:x}",
-            mv, 
-            self.hash,
-            Hasher::default().hash_board(self),
-        );
+        // debug_assert!(
+        //     self.hash == Hasher::default().hash_board(self),
+        //     "make_move_ext({:?}) inconsistent incremental hash {:x} (should be {:x}",
+        //     mv, 
+        //     self.hash,
+        //     Hasher::default().hash_board(self),
+        // );
 
     }
 
-    fn undo_move_ext(&mut self, mv: &MoveExt) {
+    fn undo_move_ext(&mut self, _mv: &MoveExt) {
         // *self.pieces_mut(mv.p1) ^= mv.f1 ^ mv.t1;
         // *self.pieces_mut(mv.p2) ^= mv.f2;
         // *self.pieces_mut(mv.p3) ^= mv.t3;
@@ -155,27 +162,32 @@ impl MoveMaker for Board {
         //  if a piece moves TO (=capture) or FROM the rook squares - appropriate castling rights are lost
         //  if a piece moves FROM the kings squares, both castling rights are lost
         //  possible with a rook x rook capture that both sides lose castling rights
-        if m.from() == e1 {
-            b.castling.remove(CastlingRights::WHITE_KING | CastlingRights::WHITE_QUEEN);
-        } else if m.from() == a1 || m.to() == a1 {
-            b.castling.remove(CastlingRights::WHITE_QUEEN);
-        } else if m.from() == h1 || m.to() == h1 {
-            b.castling.remove(CastlingRights::WHITE_KING);
-        }
-        if m.from() == e8 {
-            b.castling.remove(CastlingRights::BLACK_KING | CastlingRights::BLACK_QUEEN);
-        } else if m.from() == a8 || m.to() == a8 {
-            b.castling.remove(CastlingRights::BLACK_QUEEN);
-        } else if m.from() == h8 || m.to() == h8 {
-            b.castling.remove(CastlingRights::BLACK_KING);
-        }
+        let squares_changing = m.to() | m.from();
+        b.castling.adjust( squares_changing);
+
+        // if m.from() == e1 {
+        //     b.castling.remove(CastlingRights::WHITE_KING | CastlingRights::WHITE_QUEEN);
+        // } else if m.from() == a1 || m.to() == a1 {
+        //     b.castling.remove(CastlingRights::WHITE_QUEEN);
+        // } else if m.from() == h1 || m.to() == h1 {
+        //     b.castling.remove(CastlingRights::WHITE_KING);
+        // }
+        // if m.from() == e8 {
+        //     b.castling.remove(CastlingRights::BLACK_KING | CastlingRights::BLACK_QUEEN);
+        // } else if m.from() == a8 || m.to() == a8 {
+        //     b.castling.remove(CastlingRights::BLACK_QUEEN);
+        // } else if m.from() == h8 || m.to() == h8 {
+        //     b.castling.remove(CastlingRights::BLACK_KING);
+        // }
 
         let move_hash = Hasher::default().hash_move(m, self);
         b.hash = self.hash ^ move_hash;
         debug_assert!(
             b.hash == Hasher::default().hash_board(&b),
-            "make_move({}) inconsistent incremental hash {:x} (should be {:x}",
+            "\n{}.make_move({}) = \n{} inconsistent incremental hash {:x} (should be {:x}",
+            self,
             m, 
+            b,
             b.hash,
             Hasher::default().hash_board(&b),
         );

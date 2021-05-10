@@ -119,6 +119,7 @@ mod tests {
     use crate::board::*;
     use crate::eval::score::*;
     use crate::movelist::*;
+    use crate::castling::*;
     use crate::search::node::*;
     use crate::search::searchstats::*;
     use crate::tt::*;

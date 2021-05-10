@@ -1,7 +1,9 @@
 use super::Board;
 use crate::bitboard::Bitboard;
 use crate::hasher::Hasher;
-use crate::types::{CastlingRights, Color, Piece};
+use crate::types::{Color, Piece};
+use crate::castling::CastlingRights;
+
 
 /// BoardBuf is a slow performing facade of convenience methods on board
 // #[derive(Clone)]
