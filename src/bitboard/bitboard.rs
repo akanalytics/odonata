@@ -162,6 +162,19 @@ impl Bitboard {
         }
     }
 
+    // excludes the src square itself, but includes edge squares
+    pub fn ray(&self, dir: Dir) -> Bitboard {
+        let mut sqs = *self;
+        let mut bb = Bitboard::EMPTY;
+        while !sqs.is_empty() {
+            sqs = sqs.shift(dir);
+            bb |= sqs;
+        }
+        bb
+    }
+
+
+    // faster than ray
     pub fn fill_north(self) -> Bitboard {
         let mut bb = self;
         bb |= Bitboard::from_bits_truncate(bb.bits << 32);
@@ -169,6 +182,7 @@ impl Bitboard {
         bb |= Bitboard::from_bits_truncate(bb.bits << 8);
         bb
     }
+
     pub fn fill_south(self) -> Bitboard {
         let mut bb = self;
         bb |= Bitboard::from_bits_truncate(bb.bits >> 32);
@@ -177,6 +191,18 @@ impl Bitboard {
         bb
     }
 
+    pub fn file_flood(self) -> Bitboard {
+        self.fill_north() | self.fill_south() | self
+    }
+
+    pub fn diag_flood(self) -> Bitboard {
+        self.ray(Dir::NE) | self.ray(Dir::SW) | self
+    }
+
+    pub fn anti_diag_flood(self) -> Bitboard {
+        self.ray(Dir::NW) | self.ray(Dir::SE) | self
+    }
+    
     // bitflags & doesnt seem to be declared const
     #[inline]
     pub const fn or(self, other: Self) -> Self {
@@ -240,41 +266,39 @@ impl Bitboard {
         Squares { bb: self }
     }
 
-    pub fn files(self) -> String {
+    pub fn files_string(self) -> String {
         let mut files: Vec<char> = self
             .iter()
-            .map(|bb| Self::sq_as_file(bb.first_square()))
+            .map(|bb| bb.first_square().file())
             .collect();
         files.sort_unstable();
         files.dedup();
         files.iter().collect()
     }
 
-    pub fn ranks(self) -> String {
+    pub fn ranks_string(self) -> String {
         let mut ranks: Vec<char> = self
             .iter()
-            .map(|bb| Self::sq_as_rank(bb.first_square()))
+            .map(|bb| bb.first_square().rank())
             .collect();
         ranks.sort_unstable();
         ranks.dedup();
         ranks.iter().collect()
     }
 
-    pub fn sq_as_file(sq: Square) -> char {
-        let x = sq.index() % 8;
-        char::from(b'a' + x as u8)
-    }
+    // pub fn sq_as_file(sq: Square) -> char {
+    //     let x = sq.index() % 8;
+    //     char::from(b'a' + x as u8)
+    // }
 
-    pub fn sq_as_rank(sq: Square) -> char {
-        let y = sq.index() / 8;
-        char::from(b'1' + y as u8)
-    }
+    // pub fn sq_as_rank(sq: Square) -> char {
+    //     let y = sq.index() / 8;
+    //     char::from(b'1' + y as u8)
+    // }
 
     pub fn sq_as_uci(self) -> String {
         let s = self.first_square();
-        let f = Self::sq_as_file(s);
-        let r = Self::sq_as_rank(s);
-        format!("{}{}", f, r)
+        format!("{}{}", s.file(), s.rank())
     }
 
     pub fn uci(self) -> String {
@@ -398,6 +422,26 @@ impl Square {
         Bitboard::from_bits_truncate(1 << self.0)
     }
 
+    pub fn file(&self) -> char {
+        let x = self.0 % 8;
+        char::from(b'a' + x as u8)
+    }
+
+    pub fn rank(&self) -> char {
+        let y = self.0 / 8;
+        char::from(b'1' + y as u8)
+    }
+
+    #[inline]
+    pub const fn rank_index(&self) -> u8 {
+        self.0 / 8
+    }
+
+    #[inline]
+    pub const fn file_index(&self) -> u8 {
+        self.0 % 8
+    }
+
     #[inline]
     pub const fn index(&self) -> usize {
         self.0 as usize
@@ -414,14 +458,22 @@ mod tests {
     use crate::globals::constants::*;
 
     #[test]
+    fn test_square() {
+        assert_eq!(a1.first_square(), Square(0));
+        assert_eq!(a1.first_square().rank_index(), 0);
+        assert_eq!(b1.first_square().file_index(), 1);
+        assert_eq!(c7.first_square().index(), 6 * 8 + 2);
+        assert_eq!(c7.first_square().rank_index(), 6);
+        assert_eq!(c7.first_square().file_index(), 2);
+    }
+
+    #[test]
     fn test_bitwise() {
         assert!(a1b2.contains(a1));
         assert!(a1b2 & c1 == a1 - a1);
         assert!(a1b2 - a1 == b2);
         assert!(!a1b2.is_empty());
         assert!(a1b2.intersects(b2));
-        assert_eq!(a1b2.fill_north(), (FILE_A | FILE_B) - b1);
-        assert_eq!(a1b2.fill_south(), a1b2 | b1);
         assert_eq!(Bitboard::all(), !Bitboard::empty());
         assert!(Bitboard::FILE_A.contains(a4));
         assert_eq!(Bitboard::FILE_A.popcount(), 8);
@@ -431,6 +483,19 @@ mod tests {
             (Bitboard::FILE_A | Bitboard::RANK_8)
         );
     }
+
+    #[test]
+    fn test_floods_and_fills() {
+        assert_eq!(a1b2.fill_north(), (FILE_A | FILE_B) - b1);
+        assert_eq!(a1b2.fill_south(), a1b2 | b1);
+        assert_eq!(a1b2.file_flood(), FILE_A | FILE_B);
+        let main_diag = a1 | b2 | c3 | d4 | e5 | f6 | g7 | h8;
+        assert_eq!(a1b2.diag_flood(), main_diag );
+        assert_eq!(main_diag.file_flood(), Bitboard::all() );
+        assert_eq!(a1b2.anti_diag_flood(), a1 | b2 | a3 | c1 );
+    }
+
+
 
     #[test]
     fn test_froms() {
@@ -493,13 +558,13 @@ mod tests {
 
     #[test]
     fn test_formats() {
-        assert_eq!(a1.files(), "a");
-        assert_eq!((a1 | b1 | c1).files(), "abc");
-        assert_eq!(Bitboard::all().files(), "abcdefgh");
+        assert_eq!(a1.files_string(), "a");
+        assert_eq!((a1 | b1 | c1).files_string(), "abc");
+        assert_eq!(Bitboard::all().files_string(), "abcdefgh");
 
-        assert_eq!(a1.ranks(), "1");
-        assert_eq!((a1 | b5 | e5).ranks(), "15");
-        assert_eq!(Bitboard::all().ranks(), "12345678");
+        assert_eq!(a1.ranks_string(), "1");
+        assert_eq!((a1 | b5 | e5).ranks_string(), "15");
+        assert_eq!(Bitboard::all().ranks_string(), "12345678");
 
         assert_eq!(a1.sq_as_uci(), "a1");
         assert_eq!(h1.sq_as_uci(), "h1");

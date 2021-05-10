@@ -99,7 +99,7 @@ impl Hasher {
         self.seed
     }
 
-    // doesnt impl Default as large to copy by value
+    // doesnt impl Default as too large to copy by value
     pub fn default() -> &'static Self {
         &HASHER
     }

@@ -614,10 +614,10 @@ impl MoveValidator for Board {
         for lm in self.legal_moves().iter() {
             if lm.to() == mv.to() && lm.mover_piece() == mv.mover_piece() {
                 pieces += 1;
-                if lm.from().files() == mv.from().files() {
+                if lm.from().files_string() == mv.from().files_string() {
                     file_pieces += 1;
                 }
-                if lm.from().ranks() == mv.from().ranks() {
+                if lm.from().ranks_string() == mv.from().ranks_string() {
                     rank_pieces += 1;
                 }
             }
@@ -625,9 +625,9 @@ impl MoveValidator for Board {
         if pieces > 1 || (mv.mover_piece() == Piece::Pawn && mv.is_capture()) {
             // need to resolve ambiguity
             if file_pieces == 1 {
-                s += &mv.from().files();
+                s += &mv.from().files_string();
             } else if rank_pieces == 1 {
-                s += &mv.from().ranks();
+                s += &mv.from().ranks_string();
             } else {
                 s += &mv.from().sq_as_uci();
             }

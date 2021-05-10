@@ -2,6 +2,10 @@ use crate::bitboard::bitboard::{Bitboard, Square, Dir};
 use crate::types::{Color, Piece};
 use crate::bitboard::attacks::BitboardAttacks;
 
+
+
+// inspired by https://www.chessprogramming.org/Hiding_the_Implementation
+//
 pub struct ClassicalBitboard {
     rays: [[Bitboard; 8]; 64],
     king_moves: [Bitboard; 64],
@@ -25,7 +29,7 @@ impl ClassicalBitboard {
         for sq in 0..64_usize {
             for &dir in Dir::ALL.iter() {
                 let bb = Bitboard::from_sq(sq as u32);
-                let mask = Self::ray(dir, bb);
+                let mask = bb.ray(dir);
                 classical.rays[sq][dir.index] = mask;
                 classical.king_moves[sq] |= bb.shift(dir);
 
@@ -85,14 +89,14 @@ mod tests {
     use crate::globals::constants::*;
 
     fn test_rays() {
-        let north = ClassicalBitboard::ray(Dir::N, c3);
+        let north = c3.ray(Dir::N);
         assert_eq!(north, c4 | c5 | c6 | c7 | c8);
         assert_eq!(north.popcount(), 5);
 
-        assert_eq!(ClassicalBitboard::ray(Dir::NE, c3), d4 | e5 | f6 | g7 | h8);
-        assert_eq!(ClassicalBitboard::ray(Dir::SW, c3), a1 | b2);
-        assert_eq!(ClassicalBitboard::ray(Dir::S, c3), c1 | c2);
-        assert_eq!(ClassicalBitboard::ray(Dir::NW, c3), a5 | b4);
+        assert_eq!(c3.ray(Dir::NE), d4 | e5 | f6 | g7 | h8);
+        assert_eq!(c3.ray(Dir::SW), a1 | b2);
+        assert_eq!(c3.ray(Dir::S), c1 | c2);
+        assert_eq!(c3.ray(Dir::NW), a5 | b4);
 
         let classical = ClassicalBitboard::new();
         let north = classical.rays[16 + 2][Dir::N.index];

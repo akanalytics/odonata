@@ -27,16 +27,6 @@ pub trait BitboardAttacks {
     //     false
     // }
 
-    // excludes the src square itself, but includes edge squares
-    fn ray(dir: Dir, src: Bitboard) -> Bitboard {
-        let mut sq = src;
-        let mut bb = Bitboard::EMPTY;
-        while !sq.is_empty() {
-            sq = sq.shift(dir);
-            bb |= sq;
-        }
-        bb
-    }
 
     #[inline]
     fn pawn_pushes(&self, occupied: Bitboard, pawns: Bitboard, color: &Color) -> Bitboard {
