@@ -76,7 +76,6 @@ pub struct TranspositionTable {
     pub aging: bool,
     pub current_age: i16,
     pub enabled: bool,
-    pub capacity: usize,
     pub mb: i64,
     pub hmvc_horizon: i32,
     pub hits: Stat,
@@ -94,7 +93,6 @@ impl fmt::Debug for TranspositionTable {
         f.debug_struct("TranspositionTable")
             // .field("pv_table", &self.pv_table.extract_pv().)
             .field("enabled", &self.enabled)
-            .field("capacity", &self.capacity)
             .field("mb", &self.mb)
             .field("hmvc_horizon", &self.hmvc_horizon)
             .field("aging", &self.aging)
@@ -107,7 +105,7 @@ impl fmt::Debug for TranspositionTable {
 impl fmt::Display for TranspositionTable {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "enabled          : {}", self.enabled)?;
-        writeln!(f, "capacity         : {}", self.capacity())?;
+        writeln!(f, "capacity         : {}", self.table.capacity())?;
         writeln!(f, "size in mb       : {}", self.mb)?;
         writeln!(f, "entry size bytes : {}", mem::size_of::<Entry>())?;
         writeln!(f, "aging            : {}", self.aging)?;
@@ -155,12 +153,11 @@ impl fmt::Display for TranspositionTable {
 impl Default for TranspositionTable {
     fn default() -> Self {
         Self {
-            table: Arc::new(vec![StoredEntry::default(); Self::convert_mb_to_capacity(8)]),
+            table: Arc::new(vec![StoredEntry::default(); 0]),
             enabled: true,
             mb: 8,
             aging: true,
             current_age: 10, // to allow us to look back
-            capacity: Self::convert_mb_to_capacity(8),
             hmvc_horizon: 5,
             hits: Stat::new("hits"),
             misses: Stat::new("misses"),
@@ -184,12 +181,7 @@ impl Configurable for TranspositionTable {
         log_debug!("tt.configure with {}", c);
         self.aging = c.bool("tt.aging").unwrap_or(self.aging);
         self.mb = c.int("Hash").unwrap_or(self.mb);
-        let capacity = Self::convert_mb_to_capacity(self.mb);
-        if self.capacity() != capacity {
-            self.capacity = capacity;
-            self.enabled = capacity > 0;
-            self.clear();
-        }
+        // table is resized on next clear / generation
         self.hmvc_horizon = c.int("tt.hmvc_horizon").unwrap_or(self.hmvc_horizon as i64) as i32;
     }
 }
@@ -203,26 +195,33 @@ impl TranspositionTable {
         (cap * mem::size_of::<Entry>()) as i64 / 1_000_000
     }
 
-    pub fn with_capacity(capacity: usize) -> Self {
-        TranspositionTable {
-            table: Arc::new(vec![StoredEntry::default(); capacity]),
-            capacity,
-            ..Self::default()
-        }
-        // tt.table.resize(size, Entry::default());
-    }
-
     pub fn destroy(&mut self) {
         Arc::make_mut(&mut self.table);
     }
 
     pub fn next_generation(&mut self) {
-        if self.aging {
-            self.current_age += 1;
+        if self.requires_resize() {
+            self.clear_and_resize();
+        } else {
+            if self.aging {
+                self.current_age += 1;
+            }
         }
     }
 
-    pub fn clear(&mut self) {
+    pub fn requires_resize(&self) -> bool {
+        let capacity = Self::convert_mb_to_capacity(self.mb);
+        self.table.capacity() != capacity
+    }
+
+
+    pub fn clear_and_resize(&mut self) {
+        if self.requires_resize() {
+            let capacity = Self::convert_mb_to_capacity(self.mb);
+            self.table = Arc::new(vec![StoredEntry::default(); capacity]);
+            self.current_age = 10;
+            return;
+        } 
         let table = Arc::get_mut(&mut self.table);
         if let Some(table) = table {
             table.iter_mut().for_each(|e| *e = StoredEntry::default());
@@ -243,20 +242,23 @@ impl TranspositionTable {
             .count()
     }
 
+    #[inline]
     pub fn enabled(&self) -> bool {
         self.enabled
     }
 
+    #[inline]
     pub fn capacity(&self) -> usize {
-        self.capacity
+        self.table.capacity()
     }
 
+    #[inline]
     pub fn index(&self, hash: Hash) -> usize {
         hash as usize % self.capacity()
     }
 
     pub fn store(&mut self, hash: Hash, entry: Entry) {
-        if !self.enabled {
+        if !self.enabled || self.capacity() == 0 {
             return;
         }
         let new = StoredEntry {
@@ -288,7 +290,7 @@ impl TranspositionTable {
     }
 
     pub fn delete(&mut self, key: Hash) {
-        if !self.enabled {
+        if !self.enabled || self.capacity() == 0 {
             return;
         }
         let index = self.index(key);
@@ -305,7 +307,7 @@ impl TranspositionTable {
     }
 
     pub fn probe_by_board(&self, board: &Board) -> Option<&Entry> {
-        if !self.enabled {
+        if !self.enabled || self.capacity() == 0 {
             return None;
         }
         if board.fifty_halfmove_clock() > self.hmvc_horizon {
@@ -317,7 +319,7 @@ impl TranspositionTable {
     }
 
     fn probe_by_hash(&self, hash: Hash) -> Option<&Entry> {
-        if !self.enabled {
+        if !self.enabled || self.capacity() == 0 {
             return None;
         }
         let stored = &self.table[self.index(hash)];

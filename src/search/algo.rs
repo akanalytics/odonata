@@ -197,7 +197,7 @@ impl Algo {
     // clears evaluation and transposition caches as well as repetition counts 
     pub fn new_game(&mut self) {
         self.repetition.clear();
-        self.tt.clear();
+        self.tt.clear_and_resize();
         // self.eval.cache.clear();
         // self.eval.qcache.clear();
         self.clock_checks = 0;
