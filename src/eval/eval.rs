@@ -1,5 +1,4 @@
-use crate::bitboard::attacks::BitboardAttacks;
-use crate::bitboard::bb_classical::ClassicalBitboard;
+use crate::bitboard::attacks::{BitboardAttacks, BitboardDefault};
 use crate::bitboard::bitboard::Square;
 use crate::board::Board;
 use crate::config::{Config, Configurable};
@@ -411,17 +410,17 @@ impl SimpleScorer {
         let mut score = 0;
         if self.pawn_doubled != 0 {
             score += self.pawn_doubled
-                * (ClassicalBitboard::doubled_pawns(b.white() & b.pawns()).popcount()
-                    - ClassicalBitboard::doubled_pawns(b.black() & b.pawns()).popcount());
+                * (BitboardDefault::doubled_pawns(b.white() & b.pawns()).popcount()
+                    - BitboardDefault::doubled_pawns(b.black() & b.pawns()).popcount());
         }
         if self.pawn_isolated != 0 {
             score += self.pawn_isolated
-                * (ClassicalBitboard::isolated_pawns(b.white() & b.pawns()).popcount()
-                    - ClassicalBitboard::isolated_pawns(b.black() & b.pawns()).popcount());
+                * (BitboardDefault::isolated_pawns(b.white() & b.pawns()).popcount()
+                    - BitboardDefault::isolated_pawns(b.black() & b.pawns()).popcount());
         }
 
         if self.rook_open_file != 0 {
-            let open_files = ClassicalBitboard::open_files(b.pawns());
+            let open_files = BitboardDefault::open_files(b.pawns());
             score += self.rook_open_file
                 * ((b.rooks() & b.white() & open_files).popcount()
                     - (b.rooks() & b.black() & open_files).popcount())

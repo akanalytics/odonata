@@ -1,7 +1,6 @@
 use crate::bitboard::attacks::{BitboardAttacks, BitboardDefault};
 use crate::bitboard::bitboard::{Bitboard, Dir};
 use crate::board::movegen::{attacked_by};
-use crate::bitboard::bb_classical::ClassicalBitboard;
 use crate::board::Board;
 use crate::globals::counts;
 use crate::movelist::{Move, MoveExt, MoveList, MoveListExt};

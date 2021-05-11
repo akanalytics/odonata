@@ -1,5 +1,4 @@
 use crate::bitboard::attacks::{BitboardAttacks, BitboardDefault};
-use crate::bitboard::bb_classical::ClassicalBitboard;
 use crate::bitboard::bitboard::{Bitboard, Dir};
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
@@ -20,7 +19,7 @@ pub fn threats_to(board: &Board, us: Color) -> Bitboard {
     let queens = board.queens() & board.color(opponent);
     let kings = board.kings() & board.color(opponent);
 
-    let attack_gen = ClassicalBitboard::default();
+    let attack_gen = BitboardDefault::default();
     let (east, west) = attack_gen.pawn_attacks(pawns, opponent);
     let mut threats = east | west;
 
@@ -56,7 +55,7 @@ pub fn attacked_by(targets: Bitboard, occ: Bitboard, board: &Board) -> Bitboard 
     let queens = board.queens();
     let kings = board.kings();
 
-    let attack_gen = ClassicalBitboard::default();
+    let attack_gen = BitboardDefault::default();
     let white = attack_gen.pawn_attackers(targets, Color::White) & pawns & board.white();
     let black = attack_gen.pawn_attackers(targets, Color::Black) & pawns & board.black();
     let mut attackers = white | black;
