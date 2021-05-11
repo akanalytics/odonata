@@ -20,7 +20,7 @@ use odonata::types::*;
 use odonata::utils::*;
 use std::time::Instant;
 use std::sync::atomic::{AtomicU64, Ordering};
-use odonata::bitboard::attacks::{BitboardAttacks, BitboardDefault};
+use odonata::bitboard::attacks::{BitboardAttacks};
 use odonata::bitboard::bb_classical::ClassicalBitboard;
 use odonata::bitboard::bb_hyperbola::Hyperbola;
 
@@ -313,7 +313,7 @@ fn board_calcs(c: &mut Criterion) {
         })
     });
 
-    let mut tt = TranspositionTable::with_capacity(300_000);
+    let mut tt = TranspositionTable::new_with_mb(10);
     group.bench_function("tt_probe", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();

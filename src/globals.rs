@@ -140,6 +140,6 @@ mod tests {
         assert_eq!(size_of::<SearchStats>(), 224, "SearchStats");
         assert_eq!(size_of::<NodeStats>(), 120, "NodeStats");
         assert_eq!(size_of::<Entry>(), 48, "Entry");
-        assert_eq!(size_of::<TranspositionTable>(), 224, "TranspositionTable");
+        assert_eq!(size_of::<TranspositionTable>(), 216, "TranspositionTable");
     }
 }

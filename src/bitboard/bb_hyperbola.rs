@@ -46,7 +46,7 @@ impl Hyperbola {
             //     s.as_bb().file_flood()
             // );
         });
-        for occupancy_bits in 0..63 {
+        for occupancy_bits in 0..64 {
             let occ_incl_rook = Bitboard::from_bits_truncate(occupancy_bits).shift(Dir::E);
             for rook_sq in Bitboard::RANK_1.squares() {
                 let occ = occ_incl_rook.exclude(rook_sq);
@@ -185,6 +185,12 @@ mod tests {
         let att2 = line_pieces.squares().map(|sq| hq.rook_attacks(occ, sq));
         assert!(att1.eq(att2));
 
+
+        let occ = b1 | c1 | d1 | e1 | f1 | g1;
+        let att1: Vec<_> = a1.squares().map(|sq| cb.rook_attacks(occ, sq)).collect();
+        let att2: Vec<_> = a1.squares().map(|sq| hq.rook_attacks(occ, sq)).collect();
+        assert_eq!(att1, att2);
+
         for sq in Bitboard::all().squares() {
             let occ = b5 | f3 | g4 | h4;
             assert_eq!(
@@ -213,8 +219,8 @@ mod tests {
                     assert_eq!(
                         hq.rook_attacks(occ, sq),
                         cb.rook_attacks(occ, sq),
-                        "square {:?}",
-                        sq.as_bb()
+                        "square {:?} occ f:{:?} r:{:?}",
+                        sq.as_bb(), f, r
                     );
                 }
             }

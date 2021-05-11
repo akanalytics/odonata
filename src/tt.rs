@@ -152,22 +152,7 @@ impl fmt::Display for TranspositionTable {
 
 impl Default for TranspositionTable {
     fn default() -> Self {
-        Self {
-            table: Arc::new(vec![StoredEntry::default(); 0]),
-            enabled: true,
-            mb: 8,
-            aging: true,
-            current_age: 10, // to allow us to look back
-            hmvc_horizon: 5,
-            hits: Stat::new("hits"),
-            misses: Stat::new("misses"),
-            collisions: Stat::new("collisions"),
-            exclusions: Stat::new("exclusions"),
-            inserts: Stat::new("inserts"),
-            deletes: Stat::new("deletes"),
-            fail_priority: Stat::new("ins fail priority"),
-            fail_ownership: Stat::new("ins fail owner"),
-        }
+        Self::new_with_mb(8)
     }
 }
 
@@ -193,6 +178,25 @@ impl TranspositionTable {
 
     pub const fn convert_capacity_to_mb(cap: usize) -> i64 {
         (cap * mem::size_of::<Entry>()) as i64 / 1_000_000
+    }
+
+    pub fn new_with_mb(mb: usize) -> Self {
+        Self {
+            table: Arc::new(vec![StoredEntry::default(); 0]),
+            enabled: true,
+            mb: mb as i64,
+            aging: true,
+            current_age: 10, // to allow us to look back
+            hmvc_horizon: 5,
+            hits: Stat::new("hits"),
+            misses: Stat::new("misses"),
+            collisions: Stat::new("collisions"),
+            exclusions: Stat::new("exclusions"),
+            inserts: Stat::new("inserts"),
+            deletes: Stat::new("deletes"),
+            fail_priority: Stat::new("ins fail priority"),
+            fail_ownership: Stat::new("ins fail owner"),
+        }
     }
 
     pub fn destroy(&mut self) {
@@ -374,7 +378,8 @@ mod tests {
 
     #[test]
     fn test_tt() {
-        let mut tt1 = TranspositionTable::with_capacity(TranspositionTable::convert_mb_to_capacity(10));
+        let mut tt1 = TranspositionTable::new_with_mb(10);
+        tt1.clear_and_resize();
         manipulate(&mut tt1);
 
         // triggers failed ownership panic
@@ -427,7 +432,7 @@ mod tests {
 
         println!("{:?}", tt);
         println!("{}", tt);
-        tt.clear();
+        tt.clear_and_resize();
         assert!(tt.probe_by_hash(123).is_none());
     }
 
