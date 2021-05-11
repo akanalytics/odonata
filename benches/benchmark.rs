@@ -20,6 +20,10 @@ use odonata::types::*;
 use odonata::utils::*;
 use std::time::Instant;
 use std::sync::atomic::{AtomicU64, Ordering};
+use odonata::bitboard::attacks::{BitboardAttacks, BitboardDefault};
+use odonata::bitboard::bb_classical::ClassicalBitboard;
+use odonata::bitboard::bb_hyperbola::Hyperbola;
+
 
 
 /*
@@ -493,6 +497,94 @@ fn benchmark_eval(c: &mut Criterion) {
     group.finish();
 }
 
+
+fn benchmark_attacks(c: &mut Criterion) {
+    let mut group = c.benchmark_group("attacks");
+    let positions = &Catalog::win_at_chess();
+    let cb = ClassicalBitboard::default();
+    let hq = Hyperbola::default();
+
+    group.bench_function("classical.bishop", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            let mut count = 0;
+            positions.iter().cycle_n(n).for_each(|p| {
+                count  += p.board().bishops().popcount();
+                let occ = p.board().black() | p.board().white();
+                black_box(p.board().bishops().squares().map(|b| cb.bishop_attacks(occ, b).popcount() as i32).sum::<i32>());
+            });
+            t.elapsed() / (count as u32 / n as u32)
+        })
+    });
+
+    group.bench_function("classical.rook", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            let mut count = 0;
+            positions.iter().cycle_n(n).for_each(|p| {
+                count  += p.board().rooks().popcount();
+                let occ = p.board().black() | p.board().white();
+                black_box(p.board().rooks().squares().map(|b| cb.rook_attacks(occ, b).popcount() as i32).sum::<i32>());
+            });
+            t.elapsed() / (count as u32 / n as u32)
+        })
+    });
+
+    group.bench_function("classical.knight", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            let mut count = 0;
+            positions.iter().cycle_n(n).for_each(|p| {
+                count  += p.board().knights().popcount();
+                let _occ = p.board().black() | p.board().white();
+                black_box(p.board().knights().squares().map(|b| cb.knight_attacks(b).popcount() as i32).sum::<i32>());
+            });
+            t.elapsed() / (count as u32 / n as u32)  
+        })
+    });
+
+    group.bench_function("hyperbola.bishop", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            let mut count = 0;
+            positions.iter().cycle_n(n).for_each(|p| {
+                count  += p.board().bishops().popcount();
+                let occ = p.board().black() | p.board().white();
+                black_box(p.board().bishops().squares().map(|b| hq.bishop_attacks(occ, b).popcount() as i32).sum::<i32>());
+            });
+            t.elapsed() / (count as u32 / n as u32)
+        })
+    });
+
+    group.bench_function("hyperbola.rook", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            let mut count = 0;
+            positions.iter().cycle_n(n).for_each(|p| {
+                count  += p.board().rooks().popcount();
+                let occ = p.board().black() | p.board().white();
+                black_box(p.board().rooks().squares().map(|b| hq.rook_attacks(occ, b).popcount() as i32).sum::<i32>());
+            });
+            t.elapsed() / (count as u32 / n as u32)
+        })
+    });
+
+    group.bench_function("hyperbola.knight", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            let mut count = 0;
+            positions.iter().cycle_n(n).for_each(|p| {
+                count  += p.board().knights().popcount();
+                let _occ = p.board().black() | p.board().white();
+                black_box(p.board().knights().squares().map(|b| hq.knight_attacks(b).popcount() as i32).sum::<i32>());
+            });
+            t.elapsed() / (count as u32 / n as u32)
+        })
+    });
+    group.finish();
+}
+
+
 fn bench_chooser_array(c: &mut Criterion) {
     let white = Color::White;
     let black = Color::Black;
@@ -803,6 +895,7 @@ criterion_group!(
     benchmark_eval,
     bb_calcs,
     board_calcs,
+    benchmark_attacks,
     make_move,
     hash_move,
     hash_board,

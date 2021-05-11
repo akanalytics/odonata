@@ -4,7 +4,7 @@ use crate::bitboard::bb_classical::ClassicalBitboard;
 use crate::bitboard::bb_hyperbola::Hyperbola;
 
 
-pub type BitboardDefault = ClassicalBitboard;
+pub type BitboardDefault = Hyperbola;
 
 pub trait BitboardAttacks {
 

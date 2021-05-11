@@ -230,10 +230,15 @@ impl Bitboard {
         Bitboard::from_bits_truncate(self.bits.wrapping_sub(other.bits))
     }
 
-    // pub fn as_sq(self) -> usize {
-    //     // LSB
-    //     self.bits.trailing_zeros() as usize
-    // }
+    #[inline]
+    pub fn exclude(self, sq: Square) -> Bitboard {
+        self - sq.as_bb()
+    }
+
+    #[inline]
+    pub fn include(self, sq: Square) -> Bitboard {
+        self | sq.as_bb()
+    }
 
     #[inline]
     pub fn square(self) -> Square {
@@ -287,14 +292,14 @@ impl Bitboard {
     }
 
     pub fn files_string(self) -> String {
-        let mut files: Vec<char> = self.iter().map(|bb| bb.first_square().file()).collect();
+        let mut files: Vec<char> = self.iter().map(|bb| bb.first_square().file_char()).collect();
         files.sort_unstable();
         files.dedup();
         files.iter().collect()
     }
 
     pub fn ranks_string(self) -> String {
-        let mut ranks: Vec<char> = self.iter().map(|bb| bb.first_square().rank()).collect();
+        let mut ranks: Vec<char> = self.iter().map(|bb| bb.first_square().rank_char()).collect();
         ranks.sort_unstable();
         ranks.dedup();
         ranks.iter().collect()
@@ -312,7 +317,7 @@ impl Bitboard {
 
     pub fn sq_as_uci(self) -> String {
         let s = self.first_square();
-        format!("{}{}", s.file(), s.rank())
+        format!("{}{}", s.file_char(), s.rank_char())
     }
 
     pub fn uci(self) -> String {
@@ -478,15 +483,37 @@ impl Square {
     }
 
     #[inline]
-    pub fn file(self) -> char {
+    pub fn file_char(self) -> char {
         let x = self.0 % 8;
         char::from(b'a' + x as u8)
     }
 
     #[inline]
-    pub fn rank(self) -> char {
+    pub fn rank_char(self) -> char {
         let y = self.0 / 8;
         char::from(b'1' + y as u8)
+    }
+
+    #[inline]
+    pub fn file(self) -> Bitboard {
+        Bitboard::FILES[self.file_index()]
+    }
+
+    #[inline]
+    pub fn rank(self) -> Bitboard {
+        Bitboard::RANKS[self.file_index()]
+    }
+
+    #[inline]
+    pub fn diag(self) -> Bitboard {
+        // FIXME: slow
+        self.as_bb().diag_flood()
+    }
+
+    #[inline]
+    pub fn anti_diag(self) -> Bitboard {
+        // FIXME: slow
+        self.as_bb().anti_diag_flood()
     }
 
     /// flip vertical - https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating

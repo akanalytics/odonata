@@ -43,6 +43,7 @@ impl ClassicalBitboard {
     }
 
     // doesnt impl Default as too large to copy by value
+    #[inline]
     pub fn default() -> &'static Self {
         &STATIC_INSTANCE
     }
@@ -68,6 +69,7 @@ impl ClassicalBitboard {
 impl BitboardAttacks for ClassicalBitboard {
 
 
+    #[inline]
     fn rook_attacks(&self, occ: Bitboard, from: Square) -> Bitboard {
         self.sliding_attacks(occ, from, &Dir::N)
             | self.sliding_attacks(occ, from, &Dir::E)
@@ -75,6 +77,7 @@ impl BitboardAttacks for ClassicalBitboard {
             | self.sliding_attacks(occ, from, &Dir::W)
     }
 
+    #[inline]
     fn bishop_attacks(&self, occ: Bitboard, from: Square) -> Bitboard {
         self.sliding_attacks(occ, from, &Dir::NE)
             | self.sliding_attacks(occ, from, &Dir::SE)
@@ -82,10 +85,12 @@ impl BitboardAttacks for ClassicalBitboard {
             | self.sliding_attacks(occ, from, &Dir::NW)
     }
 
+    #[inline]
     fn king_attacks(&self, from: Square) -> Bitboard {
         self.king_moves[from.index()]
     }
 
+    #[inline]
     fn knight_attacks(&self, from: Square) -> Bitboard {
         self.knight_moves[from.index()]
     }

@@ -1,12 +1,9 @@
 use crate::bitboard::attacks::BitboardAttacks;
-use crate::bitboard::bitboard::{Bitboard, Dir, Square};
 use crate::bitboard::bb_classical::ClassicalBitboard;
+use crate::bitboard::bitboard::{Bitboard, Dir, Square};
 use once_cell::sync::Lazy;
 
-
 static STATIC_INSTANCE: Lazy<Hyperbola> = Lazy::new(|| Hyperbola::new());
-
-
 
 enum MaskType {
     Diag = 0,
@@ -37,9 +34,9 @@ impl Hyperbola {
         };
 
         Bitboard::all().squares().for_each(|s| {
-            me.mask[s.index()].diag = s.as_bb().diag_flood();
-            me.mask[s.index()].anti_diag = s.as_bb().anti_diag_flood();
-            me.mask[s.index()].file = s.as_bb().file_flood();
+            me.mask[s.index()].diag = s.as_bb().diag_flood().exclude(s);
+            me.mask[s.index()].anti_diag = s.as_bb().anti_diag_flood().exclude(s);
+            me.mask[s.index()].file = s.as_bb().file_flood().exclude(s);
             // println!(
             //     "#{}\n{}\n{}\n{}\n{}",
             //     s.index(),
@@ -52,7 +49,7 @@ impl Hyperbola {
         for occupancy_bits in 0..63 {
             let occ_incl_rook = Bitboard::from_bits_truncate(occupancy_bits).shift(Dir::E);
             for rook_sq in Bitboard::RANK_1.squares() {
-                let occ = occ_incl_rook - rook_sq.as_bb();
+                let occ = occ_incl_rook.exclude(rook_sq);
 
                 let east_of_rook = rook_sq.as_bb().ray(Dir::E);
                 let blockers = east_of_rook & occ;
@@ -86,11 +83,10 @@ impl Hyperbola {
     }
 
     // doesnt impl Default as too large to copy by value
+    #[inline]
     pub fn default() -> &'static Self {
         &STATIC_INSTANCE
     }
-
-
 
     #[inline]
     fn hyperbola(&self, occ: Bitboard, sq: Square, mask: Bitboard) -> Bitboard {
@@ -100,8 +96,6 @@ impl Hyperbola {
         let reverse = r.wrapping_sub(sq.flip_vertical().as_bb()).flip_vertical();
         (forward ^ reverse) & mask
     }
-
-
 
     // using_reverse_bits
     //
@@ -178,18 +172,63 @@ mod tests {
     }
 
     #[test]
-    fn test_vs_classical() {
-        let cl = ClassicalBitboard::default();
+    fn test_vs_classical_quick() {
+        let cb = ClassicalBitboard::default();
         let hq = Hyperbola::default();
         let occ = a3 | b5 | f3 | g4 | h4;
-        let line_pieces = a1 | d5| h8;
-        let att1 = line_pieces.squares().map(|sq| cl.bishop_attacks(occ,sq));
-        let att2 = line_pieces.squares().map(|sq| hq.bishop_attacks(occ,sq));
+        let line_pieces = a1 | d5 | h8 | a5 | b3 | b8;
+        let att1 = line_pieces.squares().map(|sq| cb.bishop_attacks(occ, sq));
+        let att2 = line_pieces.squares().map(|sq| hq.bishop_attacks(occ, sq));
         assert!(att1.eq(att2));
 
-        let att1 = line_pieces.squares().map(|sq| cl.rook_attacks(occ,sq));
-        let att2 = line_pieces.squares().map(|sq| hq.rook_attacks(occ,sq));
+        let att1 = line_pieces.squares().map(|sq| cb.rook_attacks(occ, sq));
+        let att2 = line_pieces.squares().map(|sq| hq.rook_attacks(occ, sq));
         assert!(att1.eq(att2));
 
+        for sq in Bitboard::all().squares() {
+            let occ = b5 | f3 | g4 | h4;
+            assert_eq!(
+                hq.bishop_attacks(occ, sq),
+                cb.bishop_attacks(occ, sq),
+                "square {:?}",
+                sq.as_bb()
+            );
+            assert_eq!(
+                hq.rook_attacks(occ, sq),
+                cb.rook_attacks(occ, sq),
+                "square {:?}",
+                sq.as_bb()
+            );
+        }
+    }
+
+    #[test]
+    fn test_vs_classical_slow() {
+        let cb = ClassicalBitboard::default();
+        let hq = Hyperbola::default();
+        for sq in Bitboard::all().squares() {
+            for f in sq.file().power_set_iter() {
+                for r in sq.rank().power_set_iter() {
+                    let occ = f | r;
+                    assert_eq!(
+                        hq.rook_attacks(occ, sq),
+                        cb.rook_attacks(occ, sq),
+                        "square {:?}",
+                        sq.as_bb()
+                    );
+                }
+            }
+            for d in sq.diag().power_set_iter() {
+                for ad in sq.anti_diag().power_set_iter() {
+                    let occ = d | ad;
+                    assert_eq!(
+                        hq.bishop_attacks(occ, sq),
+                        cb.bishop_attacks(occ, sq),
+                        "square {:?}",
+                        sq.as_bb()
+                    );
+                }
+            }
+        }
     }
 }
