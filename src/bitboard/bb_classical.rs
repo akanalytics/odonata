@@ -1,6 +1,8 @@
 use crate::bitboard::bitboard::{Bitboard, Square, Dir};
 use crate::types::{Color, Piece};
 use crate::bitboard::attacks::BitboardAttacks;
+use once_cell::sync::Lazy;
+
 
 
 
@@ -12,11 +14,10 @@ pub struct ClassicalBitboard {
     knight_moves: [Bitboard; 64],
 }
 
-impl Default for ClassicalBitboard {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+static STATIC_INSTANCE: Lazy<ClassicalBitboard> = Lazy::new(|| ClassicalBitboard::new());
+
+
+
 
 impl ClassicalBitboard {
     pub fn new() -> ClassicalBitboard {
@@ -40,6 +41,13 @@ impl ClassicalBitboard {
         }
         classical
     }
+
+    // doesnt impl Default as too large to copy by value
+    pub fn default() -> &'static Self {
+        &STATIC_INSTANCE
+    }
+
+
 
     fn sliding_attacks(&self, occupied: Bitboard, from: Square, dir: &Dir) -> Bitboard {
         let attacks = self.rays[from.index()][dir.index];
@@ -89,18 +97,54 @@ mod tests {
     use crate::globals::constants::*;
 
     fn test_rays() {
-        let north = c3.ray(Dir::N);
-        assert_eq!(north, c4 | c5 | c6 | c7 | c8);
-        assert_eq!(north.popcount(), 5);
-
-        assert_eq!(c3.ray(Dir::NE), d4 | e5 | f6 | g7 | h8);
-        assert_eq!(c3.ray(Dir::SW), a1 | b2);
-        assert_eq!(c3.ray(Dir::S), c1 | c2);
-        assert_eq!(c3.ray(Dir::NW), a5 | b4);
-
         let classical = ClassicalBitboard::new();
         let north = classical.rays[16 + 2][Dir::N.index];
         assert!(north.contains(c8));
         assert_eq!(north.popcount(), 5);
+    }
+
+    fn init() {
+        // env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    }
+
+    #[test]
+    fn test_rook_attacks() {
+        let classical = ClassicalBitboard::new();
+        let occupied = a1 | a2 | a7 | c3 | c6;
+        let attacks = classical.rook_attacks(occupied, a6.square());
+        assert_eq!(attacks, (Bitboard::FILE_A - a1 - a6 - a8) | b6 | c6)
+    }
+
+    #[test]
+    fn test_bishop_attacks() {
+        let classical = ClassicalBitboard::new();
+        let occupied = a1 | a2 | a7 | c3 | c6;
+        let attacks = classical.bishop_attacks(occupied, a6.square());
+        assert_eq!(attacks, f1 | e2 | d3 | c4 | b5 | b7 | c8);
+
+        let occupied = b2;
+        let attacks = classical.bishop_attacks(occupied, c1.square());
+        assert_eq!(attacks, b2 | d2 | e3 | f4 | g5 | h6);
+    }
+
+    #[test]
+    fn test_king_attacks() {
+        init();
+        let classical = ClassicalBitboard::new();
+        let attacks = classical.king_attacks(a6.square());
+        assert_eq!(attacks, a5 | b5 | b6 | b7 | a7);
+
+        let attacks = classical.king_attacks(c6.square());
+        assert_eq!(attacks, b5 | c5 | d5 | b6 | d6 | b7 | c7 | d7)
+    }
+
+    #[test]
+    fn test_knight_attacks() {
+        let classical = ClassicalBitboard::new();
+        let attacks = classical.knight_attacks(a1.square());
+        assert_eq!(attacks, b3 | c2);
+
+        let attacks = classical.knight_attacks(c6.square());
+        assert_eq!(attacks, a5 | a7 | b4 | b8 | d4 | d8 | e5 | e7)
     }
 }

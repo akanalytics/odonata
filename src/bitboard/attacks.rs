@@ -1,9 +1,14 @@
 use crate::bitboard::bitboard::{Bitboard, Square, Dir};
 use crate::types::{Color, Piece};
+use crate::bitboard::bb_classical::ClassicalBitboard;
+use crate::bitboard::bb_hyperbola::Hyperbola;
 
-// use lazy_static::lazy_static;
+
+pub type BitboardDefault = ClassicalBitboard;
 
 pub trait BitboardAttacks {
+
+
     // fn new() -> Self;
     fn bishop_attacks(&self, occupied: Bitboard, from: Square) -> Bitboard;
     fn rook_attacks(&self, occupied: Bitboard, from: Square) -> Bitboard;
@@ -20,13 +25,6 @@ pub trait BitboardAttacks {
             _ => panic!(),
         }
     }
-
-    // fn attacks<Piece>(&self, occupied: Bitboard, from: Square) -> Bitboard;
-
-    // fn step_is_on_board(dir: Direction, sq: i32) -> bool {
-    //     false
-    // }
-
 
     #[inline]
     fn pawn_pushes(&self, occupied: Bitboard, pawns: Bitboard, color: &Color) -> Bitboard {
@@ -101,52 +99,11 @@ mod tests {
         // env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
     }
 
-    #[test]
-  
-    #[test]
-    fn test_rook_attacks() {
-        let classical = ClassicalBitboard::new();
-        let occupied = a1 | a2 | a7 | c3 | c6;
-        let attacks = classical.rook_attacks(occupied, a6.square());
-        assert_eq!(attacks, (Bitboard::FILE_A - a1 - a6 - a8) | b6 | c6)
-    }
-
-    #[test]
-    fn test_bishop_attacks() {
-        let classical = ClassicalBitboard::new();
-        let occupied = a1 | a2 | a7 | c3 | c6;
-        let attacks = classical.bishop_attacks(occupied, a6.square());
-        assert_eq!(attacks, f1 | e2 | d3 | c4 | b5 | b7 | c8);
-
-        let occupied = b2;
-        let attacks = classical.bishop_attacks(occupied, c1.square());
-        assert_eq!(attacks, b2 | d2 | e3 | f4 | g5 | h6);
-    }
-
-    #[test]
-    fn test_king_attacks() {
-        init();
-        let classical = ClassicalBitboard::new();
-        let attacks = classical.king_attacks(a6.square());
-        assert_eq!(attacks, a5 | b5 | b6 | b7 | a7);
-
-        let attacks = classical.king_attacks(c6.square());
-        assert_eq!(attacks, b5 | c5 | d5 | b6 | d6 | b7 | c7 | d7)
-    }
-
-    #[test]
-    fn test_knight_attacks() {
-        let classical = ClassicalBitboard::new();
-        let attacks = classical.knight_attacks(a1.square());
-        assert_eq!(attacks, b3 | c2);
-
-        let attacks = classical.knight_attacks(c6.square());
-        assert_eq!(attacks, a5 | a7 | b4 | b8 | d4 | d8 | e5 | e7)
-    }
+ 
 
     #[test]
     fn test_pawns() {
-        let classical = ClassicalBitboard::new();
+        let classical = BitboardDefault::default();
         let pawns_w = a2 | b3 | c2 | d7 | f5 | g4 | h4 | h5;
         let opponent = a4 | b4 | d3 | g5;
         let occupied = pawns_w | opponent;
@@ -167,11 +124,11 @@ mod tests {
         assert_eq!(west, g6);
 
         let pawns = b2 | b4 | c5 | c6 | d3 | d7 | h5;
-        assert_eq!(ClassicalBitboard::doubled_pawns(pawns), b4 | c6 | d7);
+        assert_eq!(BitboardDefault::doubled_pawns(pawns), b4 | c6 | d7);
 
-        assert_eq!(ClassicalBitboard::open_files(pawns), FILE_A | FILE_E | FILE_F | FILE_G );
-        assert_eq!(ClassicalBitboard::isolated_pawns(pawns), h5 );
-        assert_eq!(ClassicalBitboard::isolated_pawns(opponent), d3 | g5 );
+        assert_eq!(BitboardDefault::open_files(pawns), FILE_A | FILE_E | FILE_F | FILE_G );
+        assert_eq!(BitboardDefault::isolated_pawns(pawns), h5 );
+        assert_eq!(BitboardDefault::isolated_pawns(opponent), d3 | g5 );
 
     }
 }

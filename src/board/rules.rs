@@ -1,6 +1,6 @@
-use crate::bitboard::attacks::{BitboardAttacks};
+use crate::bitboard::attacks::{BitboardAttacks, BitboardDefault};
 use crate::bitboard::bitboard::{Bitboard, Dir};
-use crate::board::movegen::{attacked_by, global_classical_bitboard};
+use crate::board::movegen::{attacked_by};
 use crate::bitboard::bb_classical::ClassicalBitboard;
 use crate::board::Board;
 use crate::globals::counts;
@@ -37,7 +37,7 @@ impl Rules {
     }
 
     pub fn non_pawn(p: Piece, b: &Board, moves: &mut Vec<MoveExt>) {
-        let attack_gen = global_classical_bitboard();
+        let attack_gen = BitboardDefault::default();
         let them = b.them();
         let us = b.us();
         let occ = b.occupied();
@@ -91,7 +91,7 @@ impl Rules {
     }
 
     pub fn pawn_promos(b: &Board, moves: &mut Vec<MoveExt>) {
-        let attack_gen = global_classical_bitboard();
+        let attack_gen = BitboardDefault::default();
         let c = b.color_us();
         let occ = b.occupied();
         let us = b.us();
@@ -131,7 +131,7 @@ impl Rules {
 
     pub fn pawn_push(b: &Board, moves: &mut Vec<MoveExt>) {
         // non-promoted single-push pawns
-        let attack_gen = global_classical_bitboard();
+        let attack_gen = BitboardDefault::default();
         let c = b.color_us();
         let occ = b.occupied();
         let us = b.us();
@@ -155,7 +155,7 @@ impl Rules {
 
 
     pub fn pawn_capture_promos(b: &Board, moves: &mut Vec<MoveExt>) {
-        let attack_gen = global_classical_bitboard();
+        let attack_gen = BitboardDefault::default();
         let c = b.color_us();
         let us = b.us();
         let them = b.them();
@@ -191,7 +191,7 @@ impl Rules {
     }
 
     pub fn pawn_captures_incl_promo(b: &Board, moves: &mut Vec<MoveExt>) {
-        let attack_gen = global_classical_bitboard();
+        let attack_gen = BitboardDefault::default();
         let c = b.color_us();
         let us = b.us();
         let them = b.them();

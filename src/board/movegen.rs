@@ -1,4 +1,4 @@
-use crate::bitboard::attacks::{BitboardAttacks};
+use crate::bitboard::attacks::{BitboardAttacks, BitboardDefault};
 use crate::bitboard::bb_classical::ClassicalBitboard;
 use crate::bitboard::bitboard::{Bitboard, Dir};
 use crate::board::makemove::MoveMaker;
@@ -9,13 +9,6 @@ use crate::types::{Color, Piece};
 use crate::bitboard::castling::CastlingRights;
 use once_cell::sync::OnceCell;
 
-pub fn global_classical_bitboard() -> &'static ClassicalBitboard {
-    static INSTANCE: OnceCell<ClassicalBitboard> = OnceCell::new();
-    INSTANCE.get_or_init(|| {
-        debug!("Initilizing classical bitboard lookup tables");
-        ClassicalBitboard::new()
-    })
-}
 
 pub fn threats_to(board: &Board, us: Color) -> Bitboard {
     let opponent = us.opposite();
@@ -27,7 +20,7 @@ pub fn threats_to(board: &Board, us: Color) -> Bitboard {
     let queens = board.queens() & board.color(opponent);
     let kings = board.kings() & board.color(opponent);
 
-    let attack_gen = global_classical_bitboard();
+    let attack_gen = ClassicalBitboard::default();
     let (east, west) = attack_gen.pawn_attacks(pawns, opponent);
     let mut threats = east | west;
 
@@ -63,7 +56,7 @@ pub fn attacked_by(targets: Bitboard, occ: Bitboard, board: &Board) -> Bitboard 
     let queens = board.queens();
     let kings = board.kings();
 
-    let attack_gen = global_classical_bitboard();
+    let attack_gen = ClassicalBitboard::default();
     let white = attack_gen.pawn_attackers(targets, Color::White) & pawns & board.white();
     let black = attack_gen.pawn_attackers(targets, Color::Black) & pawns & board.black();
     let mut attackers = white | black;
@@ -200,7 +193,7 @@ impl Board {
     }
 
     fn king_pseudo_legals_to(&self, to: Bitboard, moves: &mut MoveList) {
-        let attack_gen = global_classical_bitboard();
+        let attack_gen = BitboardDefault::default();
         let board = &self;
         for from_sq in (board.kings() & board.us()).squares() {
             let attacks = !board.us() & attack_gen.king_attacks(from_sq) & to;
@@ -245,7 +238,7 @@ impl Board {
 
         let pawns = board.pawns() & us;
 
-        let attack_gen = global_classical_bitboard();
+        let attack_gen = BitboardDefault::default();
 
         // non-promoted single-push pawns
         let pawn_push = attack_gen.pawn_pushes(occupied, pawns, &color);

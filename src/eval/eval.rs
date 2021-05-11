@@ -442,7 +442,7 @@ impl SimpleScorer {
     pub fn w_eval_position(&self, board: &Board) -> i32 {
         let mut sum = 0_i32;
         for &p in &Piece::ALL_BAR_NONE {
-            let w = (board.pieces(p) & board.white()).swap_bytes();
+            let w = (board.pieces(p) & board.white()).flip_vertical();
             let b = board.pieces(p) & board.black();
 
             let w_mg: i32 = w.iter().map(|bb| Self::pst_mg(p, bb.first_square())).sum();

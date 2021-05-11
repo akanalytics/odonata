@@ -116,7 +116,6 @@ impl Bitboard {
         Self::FILE_H,
     ];
 
-
     // insert,
     // remove,
     // set,
@@ -162,7 +161,7 @@ impl Bitboard {
         }
     }
 
-    // excludes the src square itself, but includes edge squares
+    // excludes the src squares itself, but includes edge squares
     pub fn ray(&self, dir: Dir) -> Bitboard {
         let mut sqs = *self;
         let mut bb = Bitboard::EMPTY;
@@ -173,8 +172,7 @@ impl Bitboard {
         bb
     }
 
-
-    // faster than ray
+    // faster than ray - works on empty set
     pub fn fill_north(self) -> Bitboard {
         let mut bb = self;
         bb |= Bitboard::from_bits_truncate(bb.bits << 32);
@@ -202,11 +200,16 @@ impl Bitboard {
     pub fn anti_diag_flood(self) -> Bitboard {
         self.ray(Dir::NW) | self.ray(Dir::SE) | self
     }
-    
     // bitflags & doesnt seem to be declared const
     #[inline]
     pub const fn or(self, other: Self) -> Self {
         Self::from_bits_truncate(self.bits | other.bits)
+    }
+
+    // bitflags & doesnt seem to be declared const
+    #[inline]
+    pub const fn xor(self, other: Self) -> Self {
+        Self::from_bits_truncate(self.bits ^ other.bits)
     }
 
     #[inline]
@@ -214,10 +217,17 @@ impl Bitboard {
         self.bits.count_ones() as i32
     }
 
-    /// flip vertical
+    /// flip vertical - https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating
+    /// named flip_vertical rather than swap_bytes to match square ^ 56
     #[inline]
-    pub const fn swap_bytes(self) -> Self {
+    pub const fn flip_vertical(self) -> Self {
         Bitboard::from_bits_truncate(self.bits.swap_bytes())
+    }
+
+    // 
+    #[inline]
+    pub const fn wrapping_sub(self, other: Bitboard) -> Self {
+        Bitboard::from_bits_truncate(self.bits.wrapping_sub(other.bits))
     }
 
     // pub fn as_sq(self) -> usize {
@@ -233,6 +243,7 @@ impl Bitboard {
 
     #[inline]
     pub fn last_square(self) -> Square {
+        debug_assert!(!self.is_empty(), "bb.last_square on empty");
         let msb = self.bits.leading_zeros();
         debug_assert!(msb < 64);
         Square::from_u32(63 - msb)
@@ -240,6 +251,7 @@ impl Bitboard {
 
     #[inline]
     pub fn first_square(self) -> Square {
+        debug_assert!(!self.is_empty(), "bb.first_square on empty");
         // LSB
         let sq = self.bits.trailing_zeros();
         debug_assert!(sq < 64);
@@ -248,11 +260,13 @@ impl Bitboard {
 
     #[inline]
     pub fn last(self) -> Self {
+        debug_assert!(!self.is_empty(), "bb.last on empty");
         Bitboard::from_bits_truncate(1 << self.last_square().index()) // MSb
     }
 
     #[inline]
     pub fn first(self) -> Self {
+        debug_assert!(!self.is_empty(), "bb.first on empty");
         Bitboard::from_bits_truncate(1 << self.first_square().index()) // LSb
     }
 
@@ -266,21 +280,21 @@ impl Bitboard {
         Squares { bb: self }
     }
 
+    // carry rippler from https://www.chessprogramming.org/Traversing_Subsets_of_a_Set
+    #[inline]
+    pub const fn power_set_iter(self) -> PowerSetIterator {
+        PowerSetIterator::new(self)
+    }
+
     pub fn files_string(self) -> String {
-        let mut files: Vec<char> = self
-            .iter()
-            .map(|bb| bb.first_square().file())
-            .collect();
+        let mut files: Vec<char> = self.iter().map(|bb| bb.first_square().file()).collect();
         files.sort_unstable();
         files.dedup();
         files.iter().collect()
     }
 
     pub fn ranks_string(self) -> String {
-        let mut ranks: Vec<char> = self
-            .iter()
-            .map(|bb| bb.first_square().rank())
-            .collect();
+        let mut ranks: Vec<char> = self.iter().map(|bb| bb.first_square().rank()).collect();
         ranks.sort_unstable();
         ranks.dedup();
         ranks.iter().collect()
@@ -329,6 +343,46 @@ impl Bitboard {
     }
 }
 
+// https://www.chessprogramming.org/Traversing_Subsets_of_a_Set
+#[derive(Copy, Clone, Debug)]
+pub struct PowerSetIterator {
+    d: Bitboard, // we're iterating subsets of d
+    n: Bitboard, // next subset
+    completed: bool,
+}
+
+impl PowerSetIterator {
+    const fn new(d: Bitboard) -> Self {
+        Self {
+            n: Bitboard::EMPTY,
+            d,
+            completed: false,
+        }
+    }
+}
+
+impl Iterator for PowerSetIterator {
+    type Item = Bitboard;
+
+    #[inline]
+    fn next(&mut self) -> Option<Bitboard> {
+        if self.completed {
+            return None;
+        }
+        let last = self.n;
+        self.n = Bitboard::from_bits_truncate(self.n.bits().wrapping_sub(self.d.bits())) & self.d;
+        self.completed = self.n.is_empty();
+        Some(last)
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let n = 1 << self.d.popcount() as usize;
+        (n, Some(n))
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
 pub struct BitIterator {
     bb: Bitboard,
 }
@@ -354,6 +408,7 @@ impl Iterator for BitIterator {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
 pub struct Squares {
     bb: Bitboard,
 }
@@ -418,32 +473,41 @@ impl Square {
     }
 
     #[inline]
-    pub const fn as_bb(&self) -> Bitboard {
+    pub const fn as_bb(self) -> Bitboard {
         Bitboard::from_bits_truncate(1 << self.0)
     }
 
-    pub fn file(&self) -> char {
+    #[inline]
+    pub fn file(self) -> char {
         let x = self.0 % 8;
         char::from(b'a' + x as u8)
     }
 
-    pub fn rank(&self) -> char {
+    #[inline]
+    pub fn rank(self) -> char {
         let y = self.0 / 8;
         char::from(b'1' + y as u8)
     }
 
+    /// flip vertical - https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating
     #[inline]
-    pub const fn rank_index(&self) -> u8 {
-        self.0 / 8
+    pub const fn flip_vertical(self) -> Square {
+        Square( self.0 ^ 56 )
+    }
+
+
+    #[inline]
+    pub const fn rank_index(self) -> usize {
+        (self.0 / 8) as usize
     }
 
     #[inline]
-    pub const fn file_index(&self) -> u8 {
-        self.0 % 8
+    pub const fn file_index(self) -> usize {
+        (self.0 % 8) as usize
     }
 
     #[inline]
-    pub const fn index(&self) -> usize {
+    pub const fn index(self) -> usize {
         self.0 as usize
     }
 }
@@ -479,9 +543,20 @@ mod tests {
         assert_eq!(Bitboard::FILE_A.popcount(), 8);
         assert_eq!(Bitboard::all().popcount(), 64);
         assert_eq!(
-            (Bitboard::FILE_A | Bitboard::RANK_1).swap_bytes(),
+            (Bitboard::FILE_A | Bitboard::RANK_1).flip_vertical(),
             (Bitboard::FILE_A | Bitboard::RANK_8)
         );
+    }
+
+    fn test_rays() {
+        let north = c3.ray(Dir::N);
+        assert_eq!(north, c4 | c5 | c6 | c7 | c8);
+        assert_eq!(north.popcount(), 5);
+
+        assert_eq!(c3.ray(Dir::NE), d4 | e5 | f6 | g7 | h8);
+        assert_eq!(c3.ray(Dir::SW), a1 | b2);
+        assert_eq!(c3.ray(Dir::S), c1 | c2);
+        assert_eq!(c3.ray(Dir::NW), a5 | b4);
     }
 
     #[test]
@@ -490,12 +565,10 @@ mod tests {
         assert_eq!(a1b2.fill_south(), a1b2 | b1);
         assert_eq!(a1b2.file_flood(), FILE_A | FILE_B);
         let main_diag = a1 | b2 | c3 | d4 | e5 | f6 | g7 | h8;
-        assert_eq!(a1b2.diag_flood(), main_diag );
-        assert_eq!(main_diag.file_flood(), Bitboard::all() );
-        assert_eq!(a1b2.anti_diag_flood(), a1 | b2 | a3 | c1 );
+        assert_eq!(a1b2.diag_flood(), main_diag);
+        assert_eq!(main_diag.file_flood(), Bitboard::all());
+        assert_eq!(a1b2.anti_diag_flood(), a1 | b2 | a3 | c1);
     }
-
-
 
     #[test]
     fn test_froms() {
@@ -591,30 +664,39 @@ mod tests {
         );
     }
 
-    // #[test]
-    // fn test_iterator() {
-    //     let mut a1b1c1 = a1 | b1 | c1;
-    //     assert_eq!(a1b1c1.next(), Some(a1));
-    //     assert_eq!(a1b1c1.next(), Some(b1));
-    //     assert_eq!(a1b1c1.next(), Some(c1));
-    //     assert_eq!(a1b1c1.next(), None);
-    // }
-
     #[test]
     fn test_iterators() {
-        let a1b1c1 = a1 | c1 | g5;
-        let mut i = a1b1c1.iter();
+        let a1b1g5 = a1 | c1 | g5;
+        let mut i = a1b1g5.iter();
         assert_eq!(i.next(), Some(a1));
         assert_eq!(i.next(), Some(c1));
         assert_eq!(i.next(), Some(g5));
         assert_eq!(i.next(), None);
-        assert_eq!(a1b1c1.iter().count(), 3);
+        assert_eq!(a1b1g5.iter().count(), 3);
 
-        let mut sqs = a1b1c1.squares();
+        let mut sqs = a1b1g5.squares();
         assert_eq!(sqs.next(), Some(a1.square()));
         assert_eq!(sqs.next(), Some(c1.square()));
         assert_eq!(sqs.next(), Some(g5.square()));
         assert_eq!(sqs.next(), None);
-        assert_eq!(a1b1c1.squares().count(), 3);
+        assert_eq!(a1b1g5.squares().count(), 3);
+
+        let power_sets = a1b1g5.power_set_iter();
+        power_sets.clone().for_each(|bb| println!("{:?}", bb));
+        assert_eq!(power_sets.clone().reduce(|a, b| a | b), Some(a1b1g5));
+        assert_eq!(power_sets.clone().count(), 1 << 3);
+        assert_eq!(power_sets.clone().max(), Some(a1b1g5));
+
+        let power_sets = Bitboard::FILE_A.power_set_iter();
+        assert_eq!(power_sets.clone().count(), 1 << 8);
+        assert_eq!(
+            power_sets.clone().fold(Bitboard::EMPTY, |acc, bb| acc | bb),
+            Bitboard::FILE_A
+        );
+        assert_eq!(
+            power_sets.clone().filter(|bb| bb.popcount() == 2).count(),
+            7 * 8 / 2
+        );
+        assert_eq!(power_sets.clone().filter(|bb| bb.popcount() == 7).count(), 8);
     }
 }

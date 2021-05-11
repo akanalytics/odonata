@@ -8,6 +8,7 @@
 [ ] Null move pruning
 [ ] Fix board ==
 [ ] E/P when not relelvant and tt
+[ ] Prime the startup on uci with a search
 
 
 - Bug fixes
