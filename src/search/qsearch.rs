@@ -14,16 +14,20 @@ use std::fmt;
 pub struct QSearch {
     pub enabled: bool,
     pub only_captures: bool,
+    pub promos: bool,
     pub see: bool,
+    pub see_cutoff: i64,
     max_ply: u16,
-    coarse_delta_prune: Score,
+    pub coarse_delta_prune: Score,
 }
 
 impl Configurable for QSearch {
     fn settings(&self, c: &mut Config) {
         c.set("qsearch.enabled", "type check default true");
         c.set("qsearch.only_captures", "type check default true");
+        c.set("qsearch.promos", "type check default true");
         c.set("qsearch.see", "type check default true");
+        c.set("qsearch.see.cutoff", "type spin default 0 min -5000 max 5000");
         c.set("qsearch.max_ply", "type spin default 10 min 0 max 100");
         c.set(
             "qsearch.coarse_delta_prune_cp",
@@ -34,7 +38,9 @@ impl Configurable for QSearch {
         log_debug!("qsearch.configure with {}", c);
         self.enabled = c.bool("qsearch.enabled").unwrap_or(self.enabled);
         self.only_captures = c.bool("qsearch.only_captures").unwrap_or(self.only_captures);
+        self.promos = c.bool("qsearch.promos").unwrap_or(self.promos);
         self.see = c.bool("qsearch.see").unwrap_or(self.see);
+        self.see_cutoff = c.int("qsearch.see.cutoff").unwrap_or(self.see_cutoff);
         self.max_ply = c.int("qsearch.max_ply").unwrap_or(self.max_ply as i64) as u16;
         if let Some(cp) = c.int("qsearch.coarse_delta_prune_cp") {
             self.coarse_delta_prune = Score::cp(cp as i32);
@@ -48,6 +54,8 @@ impl Default for QSearch {
             enabled: true,
             only_captures: false,
             see: true,
+            see_cutoff: 0,
+            promos: true,
             max_ply: 10,
             coarse_delta_prune: Score::cp(1000),
         }
@@ -59,6 +67,8 @@ impl fmt::Display for QSearch {
         writeln!(f, "enabled          : {}", self.enabled)?;
         writeln!(f, "only captures    : {}", self.only_captures)?;
         writeln!(f, "see enabled      : {}", self.see)?;
+        writeln!(f, "promos           : {}", self.promos)?;
+        writeln!(f, "see cutoff       : {}", self.see_cutoff)?;
         writeln!(f, "max_ply          : {}", self.max_ply)?;
         writeln!(f, "coarse_del_prune : {}", self.coarse_delta_prune)?;
         Ok(())
@@ -66,10 +76,9 @@ impl fmt::Display for QSearch {
 }
 
 impl Algo {
-
     // if the move resulted in checkmate, we should return a mate score
     // if the move results in a position which after quiese, is potentially a mate,
-    // we should not return a mate score, as only captures have been considered, 
+    // we should not return a mate score, as only captures have been considered,
     // and a mate score might cut a genuine mate score elsewhere
     pub fn qsearch(&mut self, mv: &Move, ply: Ply, board: &mut Board, alpha: Score, beta: Score) -> Score {
         if !self.qsearch.enabled || ply <= 1 || (!mv.is_capture() && self.qsearch.only_captures) {
@@ -136,7 +145,10 @@ impl Algo {
         let moves = board.pseudo_legal_moves();
         let mut moves: MoveList = moves
             .iter()
-            .filter(|mv| (mv.is_capture() || in_check) && board.is_legal_move(mv))
+            .filter(|mv| {
+                (mv.is_capture() || (mv.is_promo() & self.qsearch.promos) || in_check)
+                    && board.is_legal_move(mv)
+            })
             .cloned()
             .collect();
 
@@ -152,13 +164,15 @@ impl Algo {
                 let score = board.eval_move_see(&self.eval, &mv);
                 let losing = false;
                 // allow 8 matched attackers
-                if score < Score::Cp(0) || score == Score::Cp(0) && (losing || ply > 8 + self.max_depth) {
+                let bar = self.qsearch.see_cutoff as i32;
+                if score < Score::Cp(bar) || score == Score::Cp(bar) && (losing || ply < 8 + self.max_depth) {
                     continue;
                 }
             }
             let mut child = board.make_move(&mv);
             // delta prune on the move - FIXME - think about delta prune when checks
-            if !in_check && !child.is_in_check(child.color_us())
+            if !in_check
+                && !child.is_in_check(child.color_us())
                 && board.eval_move_material(&self.eval, &mv) + standing_pat <= alpha
             {
                 board.undo_move(mv);
@@ -186,76 +200,6 @@ impl Algo {
         alpha
     }
 
-    pub fn qsearch_sq(
-        &mut self,
-        sq: Bitboard,
-        ply: Ply,
-        board: &mut Board,
-        mut alpha: Score,
-        beta: Score,
-    ) -> Score {
-        self.report_progress();
-
-        if self.time_up_or_cancelled(ply, false) {
-            return alpha;
-        }
-
-        // this will handle mates too at quiescent node
-        let standing_pat;
-        if self.is_leaf(ply) {
-            standing_pat = board.eval(&mut self.eval);
-        } else {
-            // in qsearch a mate score might mean a queen sacrifice. But in reality
-            // opponent would just play some other move
-            standing_pat = board.eval_qsearch(&mut self.eval);
-        }
-
-        // if standing_pat.is_mate() {
-        //     return standing_pat;
-        // }
-        if standing_pat > alpha {
-            if standing_pat >= beta {
-                self.search_stats.inc_q_leaf_nodes(ply);
-                return beta;
-            }
-            alpha = standing_pat;
-        }
-
-        // coarse delta pruning
-        if standing_pat < alpha - self.qsearch.coarse_delta_prune {
-            self.search_stats.inc_q_leaf_nodes(ply);
-            return alpha;
-        }
-
-        let moves = board.pseudo_legal_moves();
-        let mut moves: MoveList = moves
-            .iter()
-            .filter(|mv| mv.to() == sq && mv.is_capture() && board.is_legal_move(mv))
-            .cloned()
-            .collect();
-
-        if moves.len() == 0 {
-            self.search_stats.inc_q_leaf_nodes(ply);
-        } else {
-            self.search_stats.inc_q_interior_nodes(ply);
-        }
-
-        self.order_moves(ply, &mut moves, &None);
-
-        for mv in moves.iter() {
-            let mut child = board.make_move(mv);
-            let score = -self.qsearch_sq(sq, ply + 1, &mut child, -beta, -alpha);
-            debug_assert!(!score.is_mate());  // no mate scores except on leaf ply
-            board.undo_move(mv);
-            if score > beta {
-                return score;
-            }
-            if score > alpha {
-                alpha = score;
-            }
-        }
-        alpha
-    }
 }
 
 #[cfg(test)]
@@ -308,15 +252,12 @@ mod tests {
         search_sq.qsearch.see = false;
         search_sq.max_depth = 3;
 
-
         let mut search_see = Algo::new()
             .set_timing_method(TimeControl::NodeCount(1_000_000))
             .set_eval(eval.clone())
             .build();
         search_see.qsearch.see = true;
         search_see.max_depth = 3;
-
-
 
         let score = search_see.qsearch(&pos.sm()?, 3, &mut pos.board().clone(), alpha, beta);
         if let Score::Cp(ce) = score {
@@ -327,7 +268,7 @@ mod tests {
 
         let score = search_sq.qsearch(&pos.sm()?, 3, &mut pos.board().clone(), alpha, beta);
         if let Score::Cp(ce) = score {
-            assert_eq!(ce- static_eval, 100, "sq");
+            assert_eq!(ce - static_eval, 100, "sq");
         } else {
             panic!("sq score was {} not a cp score", score);
         }

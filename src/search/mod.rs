@@ -5,6 +5,7 @@ pub mod taskcontrol;
 pub mod searchprogress;
 // pub mod context;
 pub mod qsearch;
+pub mod qsearch_sq;
 pub mod alphabeta;
 pub mod move_orderer;
 pub mod move_time_estimator;

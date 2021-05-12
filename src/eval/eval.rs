@@ -75,7 +75,7 @@ const PAWN_PST_MG: [i32; 64] = [
 #[rustfmt::skip]
  const PAWN_PST_EG: [i32; 64] = [
  0,  0,  0,  0,  0,  0,  0,  0,
- 50, 50, 50, 50, 50, 50, 50, 50,
+ 70, 70, 70, 70, 70, 70, 70, 70,
  30, 30, 30, 30, 30, 30, 30, 30,
  20, 20, 20, 20, 20, 20, 20, 20,
  10, 10, 10, 10, 10, 10, 10, 10,
@@ -428,12 +428,14 @@ impl SimpleScorer {
         score
     }
 
+    #[inline]
     pub fn pst_mg(p: Piece, sq: Square) -> i32 {
-        SQUARE_VALUES_MG[p][sq.index()]
+        SQUARE_VALUES_MG[p.index()][sq.index()]
     }
 
+    #[inline]
     pub fn pst_eg(p: Piece, sq: Square) -> i32 {
-        SQUARE_VALUES_EG[p][sq.index()]
+        SQUARE_VALUES_EG[p.index()][sq.index()]
     }
 
     // piece positions, king safety, centre control
@@ -486,6 +488,7 @@ impl SimpleScorer {
 }
 
 impl Board {
+    #[inline]
     fn signum(&self) -> i32 {
         self.color_us().chooser_wb(1, -1)
     }
