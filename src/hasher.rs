@@ -100,12 +100,20 @@ impl Hasher {
     }
 
     // doesnt impl Default as too large to copy by value
+    #[inline]
     pub fn default() -> &'static Self {
         &HASHER
     }
 
-    fn get(&self, c: Color, p: Piece, sq: Square) -> &Hash {
-        unsafe { self.squares[c.index()][p.index()].get_unchecked(sq.index()) }
+    // makes no difference
+    // #[inline]
+    // fn get(&self, c: Color, p: Piece, sq: Square) -> Hash {
+    //     unsafe { *self.squares.get_unchecked(c.index()).get_unchecked(p.index()).get_unchecked(sq.index()) }
+    // }
+
+    #[inline]
+    fn get(&self, c: Color, p: Piece, sq: Square) -> Hash {
+        self.squares[c.index()][p.index()][sq.index()]
     }
 
     pub fn hash_board(&self, b: &Board) -> Hash {
@@ -163,11 +171,11 @@ impl Hasher {
             );
             hash ^= self.ep[m.ep().first_square().index() & 7];
         }
-
         if m.is_promo() {
             hash ^= self.get(us, Piece::Pawn, m.to().first_square());
             hash ^= self.get(us, m.promo_piece(), m.to().first_square());
         }
+
 
         // castling *moves*
         if m.is_castle() {
