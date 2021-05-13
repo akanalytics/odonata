@@ -359,7 +359,7 @@ pub struct MoveListExt {
 impl Default for MoveListExt {
     fn default() -> Self {
         Self {
-            moves: Vec::with_capacity(128),
+            moves: Vec::with_capacity(50),
         }
     }
 }
@@ -447,9 +447,10 @@ pub struct MoveList {
 // }
 
 impl Default for MoveList {
+    #[inline]
     fn default() -> Self {
         Self {
-            moves: Vec::with_capacity(128),
+            moves: Vec::with_capacity(50),
         }
     }
 }
@@ -465,6 +466,7 @@ impl std::iter::FromIterator<Move> for MoveList {
 }
 
 impl MoveList {
+    #[inline]
     pub fn new() -> Self {
         Self::default()
     }
@@ -497,12 +499,14 @@ impl MoveList {
 impl Deref for MoveList {
     type Target = Vec<Move>;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.moves
     }
 }
 
 impl DerefMut for MoveList {
+    #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.moves
     }

@@ -116,6 +116,9 @@ pub mod counts {
 #[cfg(test)]
 mod tests {
     use crate::bitboard::bitboard::*;
+    use crate::bitboard::bb_classical::*;
+    use crate::bitboard::bb_hyperbola::*;
+    use crate::hasher::*;
     use crate::board::*;
     use crate::eval::score::*;
     use crate::movelist::*;
@@ -141,5 +144,8 @@ mod tests {
         assert_eq!(size_of::<NodeStats>(), 120, "NodeStats");
         assert_eq!(size_of::<Entry>(), 48, "Entry");
         assert_eq!(size_of::<TranspositionTable>(), 216, "TranspositionTable");
+        assert_eq!(size_of::<ClassicalBitboard>(), 5120, "ClassicalBitboard");
+        assert_eq!(size_of::<Hyperbola>(), 5632, "Hyperbola");
+        assert_eq!(size_of::<Hasher>(), 7280, "Hasher");
     }
 }
