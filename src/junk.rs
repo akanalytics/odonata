@@ -931,3 +931,94 @@ impl fmt::Debug for Tracer {
         f.debug_struct("Tracer").field("0", &self.0).finish()
     }
 }
+
+
+
+
+
+
+
+impl MoveExt {
+    pub fn new_quiet(p: Piece, from: Bitboard, to: Bitboard) -> Move {
+        Move {
+            from,
+            to,
+            mover: p,
+            ..Default::default()
+        }
+    }
+
+    pub fn new_double_push(from: Bitboard, to: Bitboard, ep_square: Bitboard) -> Move {
+        Move {
+            from,
+            to,
+            ep: ep_square,
+            mover: Piece::Pawn,
+            ..Default::default()
+        }
+    }
+
+    pub fn new_capture(p: Piece, from: Bitboard, to: Bitboard, captured: Piece) -> Move {
+        Move {
+            from,
+            to,
+            mover: p,
+            capture: captured,
+            ..Default::default()
+        }
+    }
+    pub fn new_ep_capture(
+        from: Bitboard,
+        to: Bitboard,
+        captured_sq: Bitboard,
+    ) -> Move {
+        Move {
+            from,
+            to,
+            mover: Piece::Pawn,
+            capture: Piece::Pawn,
+            ep: captured_sq,
+            ..Default::default()
+        }
+    }
+    pub fn new_promo(from: Bitboard, to: Bitboard, promo: Piece) -> Move {
+        Move {
+            from,
+            to,
+            promo,
+            mover: Piece::Pawn,
+            ..Default::default()
+        }
+    }
+    pub fn new_promo_capture(from: Bitboard, to: Bitboard, promo: Piece, capture: Piece) -> Move {
+        Move {
+            from,
+            to,
+            mover: Piece::Pawn,
+            capture,
+            promo,
+            ..Default::default()
+        }
+    }
+    pub fn new_castle(
+        king_from: Bitboard,
+        king_to: Bitboard,
+        rook_from: Bitboard,
+        rook_to: Bitboard,
+        castle: CastlingRights,
+    ) -> Move {
+
+        Move {
+            from: king_from,
+            to: king_to,
+            mover: Piece::King,
+            castle_side: castle,
+            // p3: Piece::Rook,
+            // t3: rook_to,
+            // p4: Piece::Rook,
+            // f4: rook_from,
+            is_known_legal: true,
+            ..Default::default()
+        }
+    }
+

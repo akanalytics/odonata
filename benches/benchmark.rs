@@ -314,6 +314,7 @@ fn board_calcs(c: &mut Criterion) {
     });
 
     let mut tt = TranspositionTable::new_with_mb(10);
+    tt.clear_and_resize();
     group.bench_function("tt_probe", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();

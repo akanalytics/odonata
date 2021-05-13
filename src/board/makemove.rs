@@ -39,8 +39,12 @@ impl MoveMaker for Board {
         self.colors[them] ^= mv.f2;
         
         // self.castling ^= mv.castle;
+        let squares_changing = mv.f1 ^ mv.t1 ^ mv.t3 ^ mv.f4;
+        self.castling.adjust( squares_changing);
 
         // self.castling -= Bitboard::ROOK_AND_KING_SQS & (mv.f1 | mv.t3);
+
+        self.en_passant = mv.ep_square;
 
         self.fullmove_number += self.turn.chooser_wb(0, 1);
         self.turn = them;
@@ -94,8 +98,8 @@ impl MoveMaker for Board {
             if m.is_ep_capture() {
                 // ep capture is like capture but with capture piece on *ep* square not *dest*
                 b.fifty_clock = 0;
-                b.pieces[m.capture_piece()].remove(m.ep());
-                b.colors[b.turn].remove(m.ep());
+                b.pieces[m.capture_piece().index()].remove(m.ep());
+                b.colors[b.turn.index()].remove(m.ep());
             } else {
                 // regular capture
                 debug_assert!(
@@ -105,15 +109,15 @@ impl MoveMaker for Board {
                     self
                 );
                 b.fifty_clock = 0;
-                b.pieces[m.capture_piece()].remove(m.to());
-                b.colors[b.turn].remove(m.to());
+                b.pieces[m.capture_piece().index()].remove(m.to());
+                b.colors[b.turn.index()].remove(m.to());
             }
         }
 
         // clear one bit and set another for the move using xor
         let from_to_bits = m.from() | m.to();
-        b.pieces[m.mover_piece()] ^= from_to_bits;
-        b.colors[self.turn] ^= from_to_bits;
+        b.pieces[m.mover_piece().index()] ^= from_to_bits;
+        b.colors[self.turn.index()] ^= from_to_bits;
 
         if m.mover_piece() == Piece::Pawn {
             b.fifty_clock = 0;
@@ -124,8 +128,8 @@ impl MoveMaker for Board {
 
         if m.is_promo() {
             // fifty clock handled by pawn move above;
-            b.pieces[Piece::Pawn].remove(m.to()); // pawn has already moved
-            b.pieces[m.promo_piece()].insert(m.to());
+            b.pieces[Piece::Pawn.index()].remove(m.to()); // pawn has already moved
+            b.pieces[m.promo_piece().index()].insert(m.to());
         }
 
         // castling *moves*
@@ -164,21 +168,6 @@ impl MoveMaker for Board {
         //  possible with a rook x rook capture that both sides lose castling rights
         let squares_changing = m.to() | m.from();
         b.castling.adjust( squares_changing);
-
-        // if m.from() == e1 {
-        //     b.castling.remove(CastlingRights::WHITE_KING | CastlingRights::WHITE_QUEEN);
-        // } else if m.from() == a1 || m.to() == a1 {
-        //     b.castling.remove(CastlingRights::WHITE_QUEEN);
-        // } else if m.from() == h1 || m.to() == h1 {
-        //     b.castling.remove(CastlingRights::WHITE_KING);
-        // }
-        // if m.from() == e8 {
-        //     b.castling.remove(CastlingRights::BLACK_KING | CastlingRights::BLACK_QUEEN);
-        // } else if m.from() == a8 || m.to() == a8 {
-        //     b.castling.remove(CastlingRights::BLACK_QUEEN);
-        // } else if m.from() == h8 || m.to() == h8 {
-        //     b.castling.remove(CastlingRights::BLACK_KING);
-        // }
 
         let move_hash = Hasher::default().hash_move(m, self);
         b.hash = self.hash ^ move_hash;

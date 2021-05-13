@@ -33,85 +33,97 @@ pub struct MoveExt {
 }
 
 impl MoveExt {
-    pub fn new_quiet(p: Piece, from: Bitboard, to: Bitboard) -> MoveExt {
-        MoveExt {
-            p1: p,
-            f1: from,
-            t1: to,
-            ..MoveExt::default()
+    #[inline]
+    pub fn new_quiet(p: Piece, from: Bitboard, to: Bitboard) -> Move {
+        Move {
+            from,
+            to,
+            mover: p,
+            ..Default::default()
         }
     }
 
-    pub fn new_double_push(from: Bitboard, to: Bitboard, ep_square: Bitboard) -> MoveExt {
-        MoveExt {
-            p1: Piece::Pawn,
-            f1: from,
-            t1: to,
-            ep_square,
-            ..MoveExt::default()
+    #[inline]
+    pub fn new_double_push(from: Bitboard, to: Bitboard, ep_square: Bitboard) -> Move {
+        Move {
+            from,
+            to,
+            ep: ep_square,
+            mover: Piece::Pawn,
+            ..Default::default()
         }
     }
 
-    pub fn new_capture(p: Piece, from: Bitboard, to: Bitboard, captured: Piece) -> MoveExt {
-        MoveExt {
-            p1: p,
-            f1: from,
-            t1: to,
-            p2: captured,
-            f2: to,
-            ..MoveExt::default()
+    #[inline]
+    pub fn new_capture(p: Piece, from: Bitboard, to: Bitboard, captured: Piece) -> Move {
+        Move {
+            from,
+            to,
+            mover: p,
+            capture: captured,
+            ..Default::default()
         }
     }
+
+    #[inline]
     pub fn new_ep_capture(
         from: Bitboard,
         to: Bitboard,
         captured_sq: Bitboard,
-    ) -> MoveExt {
-        MoveExt {
-            p1: Piece::Pawn,
-            f1: from,
-            t1: to,
-            p2: Piece::Pawn,
-            f2: captured_sq,
-            ..MoveExt::default()
+    ) -> Move {
+        Move {
+            from,
+            to,
+            mover: Piece::Pawn,
+            capture: Piece::Pawn,
+            ep: captured_sq,
+            ..Default::default()
         }
     }
-    pub fn new_promo(from: Bitboard, to: Bitboard, promoted_to: Piece) -> MoveExt {
-        MoveExt {
-            p1: Piece::Pawn,
-            f1: from,
-            p3: promoted_to,
-            t3: to,
-            ..MoveExt::default()
+
+    #[inline]
+    pub fn new_promo(from: Bitboard, to: Bitboard, promo: Piece) -> Move {
+        Move {
+            from,
+            to,
+            promo,
+            mover: Piece::Pawn,
+            ..Default::default()
         }
     }
-    pub fn new_promo_capture(from: Bitboard, to: Bitboard, promoted_to: Piece, captured: Piece) -> MoveExt {
-        MoveExt {
-            p1: Piece::Pawn,
-            f1: from,
-            p2: captured,
-            f2: to,
-            p3: promoted_to,
-            t3: to,
-            ..MoveExt::default()
+
+    #[inline]
+    pub fn new_promo_capture(from: Bitboard, to: Bitboard, promo: Piece, capture: Piece) -> Move {
+        Move {
+            from,
+            to,
+            mover: Piece::Pawn,
+            capture,
+            promo,
+            ..Default::default()
         }
     }
+
+    #[inline]
     pub fn new_castle(
         king_from: Bitboard,
         king_to: Bitboard,
-        rook_from: Bitboard,
-        rook_to: Bitboard,
-        _castle: CastlingRights,
-    ) -> MoveExt {
-        MoveExt {
-            p1: Piece::King,
-            f1: king_from,
-            t1: king_to,
-            p3: Piece::Rook,
-            t3: rook_to,
-            p4: Piece::Rook,
-            f4: rook_from,
-            ..MoveExt::default()
+        _rook_from: Bitboard,
+        _rook_to: Bitboard,
+        castle: CastlingRights,
+    ) -> Move {
+
+        Move {
+            from: king_from,
+            to: king_to,
+            mover: Piece::King,
+            castle_side: castle,
+            // p3: Piece::Rook,
+            // t3: rook_to,
+            // p4: Piece::Rook,
+            // f4: rook_from,
+            is_known_legal: true,
+            ..Default::default()
         }
     }
 

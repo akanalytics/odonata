@@ -2,39 +2,32 @@ use crate::bitboard::attacks::{BitboardAttacks, BitboardDefault};
 use crate::bitboard::bitboard::{Bitboard, Dir};
 use crate::board::movegen::{attacked_by};
 use crate::board::Board;
-use crate::movelist::{MoveExt, MoveListExt};
+use crate::movelist::{MoveExt, MoveList};
 use crate::types::{Piece};
 use crate::bitboard::castling::CastlingRights;
 
 pub struct Rules;
 
 
-impl Board {
-    pub fn pseudo_legal_moves_ext(&self) -> MoveListExt {
-        Rules::pseudo_legal_moves_ext(self)
-    }
-}
-
 
 impl Rules {
 
-    pub fn pseudo_legal_moves_ext(b: &Board) -> MoveListExt {
-        let mut moves = MoveListExt::new();
-        let vec = &mut moves.moves;
-        Rules::pawn_push(b, vec);
-        Rules::pawn_promos(b, vec);
-        Rules::pawn_captures_incl_promo(b, vec);
-        Rules::pawn_capture_promos(b, vec);
-        Rules::non_pawn(Piece::Knight, b, vec);
-        Rules::non_pawn(Piece::Bishop, b, vec);
-        Rules::non_pawn(Piece::Rook, b, vec);
-        Rules::non_pawn(Piece::Queen,b,  vec);
-        Rules::non_pawn(Piece::King, b, vec);
-        Rules::castles(b, vec);
+    pub fn pseudo_legal_moves_ext(b: &Board) -> MoveList {
+        let mut moves = MoveList::new();
+        Rules::pawn_push(b, &mut moves);
+        Rules::pawn_promos(b, &mut moves);
+        Rules::pawn_captures_incl_promo(b, &mut moves);
+        // Rules::pawn_capture_promos(b, &mut moves);
+        Rules::non_pawn(Piece::Knight, b, &mut moves);
+        Rules::non_pawn(Piece::Bishop, b, &mut moves);
+        Rules::non_pawn(Piece::Rook, b, &mut moves);
+        Rules::non_pawn(Piece::Queen,b,  &mut moves);
+        Rules::non_pawn(Piece::King, b, &mut moves);
+        Rules::castles(b, &mut moves);
         moves
     }
 
-    pub fn non_pawn(p: Piece, b: &Board, moves: &mut Vec<MoveExt>) {
+    pub fn non_pawn(p: Piece, b: &Board, moves: &mut MoveList) {
         let attack_gen = BitboardDefault::default();
         let them = b.them();
         let us = b.us();
@@ -52,7 +45,7 @@ impl Rules {
         }
     }
 
-    pub fn castles(b: &Board, moves: &mut Vec<MoveExt>) {
+    pub fn castles(b: &Board, moves: &mut MoveList) {
         let c = b.color_us();
         let them = b.them();
         let us = b.us();
@@ -88,7 +81,7 @@ impl Rules {
         }
     }
 
-    pub fn pawn_promos(b: &Board, moves: &mut Vec<MoveExt>) {
+    pub fn pawn_promos(b: &Board, moves: &mut MoveList) {
         let attack_gen = BitboardDefault::default();
         let c = b.color_us();
         let occ = b.occupied();
@@ -127,7 +120,7 @@ impl Rules {
 
 
 
-    pub fn pawn_push(b: &Board, moves: &mut Vec<MoveExt>) {
+    pub fn pawn_push(b: &Board, moves: &mut MoveList) {
         // non-promoted single-push pawns
         let attack_gen = BitboardDefault::default();
         let c = b.color_us();
@@ -152,7 +145,43 @@ impl Rules {
     }
 
 
-    pub fn pawn_capture_promos(b: &Board, moves: &mut Vec<MoveExt>) {
+    // pub fn pawn_capture_promos(b: &Board, moves: &mut MoveList) {
+    //     let attack_gen = BitboardDefault::default();
+    //     let c = b.color_us();
+    //     let us = b.us();
+    //     let them = b.them();
+    //     let pawns = b.pawns() & us;
+
+    //     let (pawn_captures_e, pawn_captures_w) = attack_gen.pawn_attacks(pawns, c);
+    //     for to in (pawn_captures_e & them).iter() {
+    //         let from = to.shift(c.pawn_capture_east().opposite());
+    //         let captured = b.piece_at(to);
+    //         if Bitboard::PROMO_RANKS.contains(to) {
+    //             moves.extend( [Piece::Queen, Piece::Knight, Piece::Rook, Piece::Bishop].iter().map(|&p|
+    //                 MoveExt::new_promo_capture(from, to, p, captured)
+    //             ));
+    //         }
+    //         else {
+    //             // let m = MoveExt::new_capture(Piece::Pawn, from, to, captured);
+    //             // moves.push(m);
+    //         }
+    //     }
+    //     for to in (pawn_captures_w & them).iter() {
+    //         let from = to.shift(c.pawn_capture_west().opposite());
+    //         let captured = b.piece_at(to);
+    //         if Bitboard::PROMO_RANKS.contains(to) {
+    //             moves.extend( [Piece::Queen, Piece::Knight, Piece::Rook, Piece::Bishop].iter().map(|&p|
+    //                 MoveExt::new_promo_capture(from, to, p, captured)
+    //             ));
+    //         }
+    //         else {
+    //             // let m = MoveExt::new_capture(Piece::Pawn, from, to, captured);
+    //             // moves.push(m);
+    //         }
+    //     }
+    // }
+
+    pub fn pawn_captures_incl_promo(b: &Board, moves: &mut MoveList) {
         let attack_gen = BitboardDefault::default();
         let c = b.color_us();
         let us = b.us();
@@ -167,42 +196,6 @@ impl Rules {
                 moves.extend( [Piece::Queen, Piece::Knight, Piece::Rook, Piece::Bishop].iter().map(|&p|
                     MoveExt::new_promo_capture(from, to, p, captured)
                 ));
-            }
-            else {
-                // let m = MoveExt::new_capture(Piece::Pawn, from, to, captured);
-                // moves.push(m);
-            }
-        }
-        for to in (pawn_captures_w & them).iter() {
-            let from = to.shift(c.pawn_capture_west().opposite());
-            let captured = b.piece_at(to);
-            if Bitboard::PROMO_RANKS.contains(to) {
-                moves.extend( [Piece::Queen, Piece::Knight, Piece::Rook, Piece::Bishop].iter().map(|&p|
-                    MoveExt::new_promo_capture(from, to, p, captured)
-                ));
-            }
-            else {
-                // let m = MoveExt::new_capture(Piece::Pawn, from, to, captured);
-                // moves.push(m);
-            }
-        }
-    }
-
-    pub fn pawn_captures_incl_promo(b: &Board, moves: &mut Vec<MoveExt>) {
-        let attack_gen = BitboardDefault::default();
-        let c = b.color_us();
-        let us = b.us();
-        let them = b.them();
-        let pawns = b.pawns() & us;
-
-        let (pawn_captures_e, pawn_captures_w) = attack_gen.pawn_attacks(pawns, c);
-        for to in (pawn_captures_e & them).iter() {
-            let from = to.shift(c.pawn_capture_east().opposite());
-            let captured = b.piece_at(to);
-            if Bitboard::PROMO_RANKS.contains(to) {
-                // moves.extend( [Piece::Queen, Piece::Knight, Piece::Rook, Piece::Bishop].iter().map(|&p|
-                //     MoveExt::new_promo_capture(from, to, p, captured)
-                // ));
             }
             else {
                 let m = MoveExt::new_capture(Piece::Pawn, from, to, captured);
@@ -213,9 +206,9 @@ impl Rules {
             let from = to.shift(c.pawn_capture_west().opposite());
             let captured = b.piece_at(to);
             if Bitboard::PROMO_RANKS.contains(to) {
-                // moves.extend( [Piece::Queen, Piece::Knight, Piece::Rook, Piece::Bishop].iter().map(|&p|
-                //     MoveExt::new_promo_capture(from, to, p, captured)
-                // ));
+                moves.extend( [Piece::Queen, Piece::Knight, Piece::Rook, Piece::Bishop].iter().map(|&p|
+                    MoveExt::new_promo_capture(from, to, p, captured)
+                ));
             }
             else {
                 let m = MoveExt::new_capture(Piece::Pawn, from, to, captured);

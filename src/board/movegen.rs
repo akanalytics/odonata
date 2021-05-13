@@ -1,9 +1,10 @@
 use crate::bitboard::attacks::{BitboardAttacks, BitboardDefault};
 use crate::bitboard::bitboard::{Bitboard, Dir};
 use crate::board::makemove::MoveMaker;
+use crate::board::rules::Rules;
 use crate::board::Board;
 use crate::globals::counts;
-use crate::movelist::{Move, MoveExt, MoveList, MoveListExt};
+use crate::movelist::{Move, MoveList};
 use crate::types::{Color, Piece};
 use crate::bitboard::castling::CastlingRights;
 
@@ -164,11 +165,11 @@ impl Board {
         mv.is_known_legal() || !self.make_move(mv).is_in_check(self.color_us())
     }
 
-    pub fn is_legal_move_ext(&self, mv: &MoveExt) -> bool {
-        let mut board = self.clone();
-        board.make_move_ext(mv);
-        board.is_in_check(self.color_us())
-    }
+    // pub fn is_legal_move_ext(&self, mv: &MoveExt) -> bool {
+    //     let mut board = self.clone();
+    //     board.make_move_ext(mv);
+    //     !board.is_in_check(self.color_us())
+    // }
 
     pub fn legal_moves(&self) -> MoveList {
         counts::LEGAL_MOVE_COUNT.increment();
@@ -177,12 +178,12 @@ impl Board {
         moves
     }
 
-    pub fn legal_moves_ext(&self) -> MoveListExt {
-        counts::LEGAL_MOVE_COUNT.increment();
-        let mut moves = self.pseudo_legal_moves_ext();
-        moves.retain(|m| self.is_legal_move_ext(m));
-        moves
-    }
+    // pub fn legal_moves_ext(&self) -> MoveList {
+    //     counts::LEGAL_MOVE_COUNT.increment();
+    //     let mut moves = self.pseudo_legal_moves_ext();
+    //     moves.retain(|m| self.is_legal_move(m));
+    //     moves
+    // }
 
     pub fn legal_capture_moves(&self) -> MoveList {
         let mut moves = self.legal_moves();
@@ -218,8 +219,16 @@ impl Board {
         }
     }
 
-    // TODO: Vec::with_capacity(100).
+
+    #[inline]
     pub fn pseudo_legal_moves(&self) -> MoveList {
+        Rules::pseudo_legal_moves_ext(self)
+    }
+    
+    
+
+    // TODO: Vec::with_capacity(100).
+    pub fn xxx_pseudo_legal_moves(&self) -> MoveList {
         if self.checkers_of(self.color_us()).popcount() > 1 {
             // double check - must move king
             let mut moves = MoveList::new();
@@ -589,8 +598,6 @@ mod tests {
             .as_board();
         let mut moves = board.pseudo_legal_moves();
         assert_eq!(moves.sort().to_string(), "b7a6, b7b5, b7b6, b7c6");
-        let mut moves = board.pseudo_legal_moves_ext();
-        assert_eq!(moves.sort().to_string(), "b7a6, b7b5, b7b6, b7c6");
 
         let board = Board::parse_fen("8/8/p6p/1N6/8/8/8/8 b - - 0 0 id 'PxN black'")
             .unwrap()
@@ -613,10 +620,6 @@ mod tests {
             board.pseudo_legal_moves().sort().to_string(),
             "a5a6, a5b6, c5b6, c5c6"
         );
-        assert_eq!(
-            board.pseudo_legal_moves_ext().sort().to_string(),
-            "a5a6, a5b6, c5b6, c5c6"
-        );
     }
 
     #[test]
@@ -626,10 +629,6 @@ mod tests {
             .as_board();
         assert_eq!(
             board.pseudo_legal_moves().sort().to_string(),
-            "a1a2, a1b1, a1b2, a7a8b, a7a8n, a7a8q, a7a8r"
-        );
-        assert_eq!(
-            board.pseudo_legal_moves_ext().sort().to_string(),
             "a1a2, a1b1, a1b2, a7a8b, a7a8n, a7a8q, a7a8r"
         );
     }
@@ -659,10 +658,6 @@ mod tests {
             board.pseudo_legal_moves().sort().to_string(),
             "a1a2, a1a3, a1a4, a1a5, a1a6, a1b1, a1c1, a1d1, a1e1, a1f1, a1g1, a1h1"
         );
-        assert_eq!(
-            board.pseudo_legal_moves_ext().sort().to_string(),
-            "a1a2, a1a3, a1a4, a1a5, a1a6, a1b1, a1c1, a1d1, a1e1, a1f1, a1g1, a1h1"
-        );
     }
 
     #[test]
@@ -672,10 +667,6 @@ mod tests {
             .as_board();
         assert_eq!(
             board.pseudo_legal_moves().sort().to_string(),
-            "d5b4, d5b6, d5c3, d5c7, d5e3, d5e7, d5f4, d5f6"
-        );
-        assert_eq!(
-            board.pseudo_legal_moves_ext().sort().to_string(),
             "d5b4, d5b6, d5c3, d5c7, d5e3, d5e7, d5f4, d5f6"
         );
     }
@@ -695,10 +686,6 @@ mod tests {
             .as_board();
         assert_eq!(
             board.pseudo_legal_moves().sort().to_string(),
-            "b2a1, b2a3, b2c1, b2c3, b2d4, b2e5, b2f6, b2g7, b2h8"
-        );
-        assert_eq!(
-            board.pseudo_legal_moves_ext().sort().to_string(),
             "b2a1, b2a3, b2c1, b2c3, b2d4, b2e5, b2f6, b2g7, b2h8"
         );
     }
