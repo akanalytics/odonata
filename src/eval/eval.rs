@@ -589,7 +589,7 @@ mod tests {
 
         // from blacks perspective to negate
         let bd = Board::parse_fen("8/8/8/8/8/8/p7/8 b - - 0 1").unwrap().as_board();
-        assert_eq!(bd.eval_position(eval), -Score::Cp(-50));
+        assert_eq!(bd.eval_position(eval), -Score::Cp(-70));
     }
 
     #[test]
