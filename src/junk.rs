@@ -1022,3 +1022,160 @@ impl MoveExt {
         }
     }
 
+
+
+    #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
+pub struct MoveExt {
+    pub p1: Piece,
+    pub f1: Bitboard,
+    pub t1: Bitboard,
+
+    // them
+    pub p2: Piece,
+    pub f2: Bitboard,
+
+    // us
+    pub p3: Piece,
+    pub t3: Bitboard,
+
+    pub p4: Piece,
+    pub f4: Bitboard,
+
+    pub castle: CastlingRights,
+    pub ep_square: Bitboard,
+}
+
+impl MoveExt {
+    #[inline]
+    pub fn new_quiet(p: Piece, from: Bitboard, to: Bitboard) -> Move {
+        Move {
+            from,
+            to,
+            mover: p,
+            ..Default::default()
+        }
+    }
+
+    #[inline]
+    pub fn new_double_push(from: Bitboard, to: Bitboard, ep_square: Bitboard) -> Move {
+        Move {
+            from,
+            to,
+            ep: ep_square,
+            mover: Piece::Pawn,
+            ..Default::default()
+        }
+    }
+
+    #[inline]
+    pub fn new_capture(p: Piece, from: Bitboard, to: Bitboard, captured: Piece) -> Move {
+        Move {
+            from,
+            to,
+            mover: p,
+            capture: captured,
+            ..Default::default()
+        }
+    }
+
+    #[inline]
+    pub fn new_ep_capture(
+        from: Bitboard,
+        to: Bitboard,
+        captured_sq: Bitboard,
+    ) -> Move {
+        Move {
+            from,
+            to,
+            mover: Piece::Pawn,
+            capture: Piece::Pawn,
+            ep: captured_sq,
+            ..Default::default()
+        }
+    }
+
+    #[inline]
+    pub fn new_promo(from: Bitboard, to: Bitboard, promo: Piece) -> Move {
+        Move {
+            from,
+            to,
+            promo,
+            mover: Piece::Pawn,
+            ..Default::default()
+        }
+    }
+
+    #[inline]
+    pub fn new_promo_capture(from: Bitboard, to: Bitboard, promo: Piece, capture: Piece) -> Move {
+        Move {
+            from,
+            to,
+            mover: Piece::Pawn,
+            capture,
+            promo,
+            ..Default::default()
+        }
+    }
+
+    #[inline]
+    pub fn new_castle(
+        king_from: Bitboard,
+        king_to: Bitboard,
+        _rook_from: Bitboard,
+        _rook_to: Bitboard,
+        castle: CastlingRights,
+    ) -> Move {
+
+        Move {
+            from: king_from,
+            to: king_to,
+            mover: Piece::King,
+            castle_side: castle,
+            // p3: Piece::Rook,
+            // t3: rook_to,
+            // p4: Piece::Rook,
+            // f4: rook_from,
+            is_known_legal: true,
+            ..Default::default()
+        }
+    }
+
+    // pub fn as_move(&self) {
+    //     if p2 == Piece::None && p3 == Piece::None && p4 == Piece::None {
+            
+    //     }
+
+    // }
+}
+
+impl fmt::Display for MoveExt {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.uci())?;
+        Ok(())
+    }
+}
+
+
+impl MoveExt {
+    pub fn is_promo(&self) -> bool {
+        self.p1 == Piece::Pawn && self.p3 != Piece::None
+    }
+
+    pub fn is_capture(&self) -> bool {
+        self.p2 != Piece::None
+    }
+
+    pub fn uci(&self) -> String {
+        // if self.is_null() {
+        //     return String::from('-');
+        // }
+        let mut res = String::new();
+        res.push_str(&self.f1.uci());
+        res.push_str(&self.t1.uci());
+        if self.is_promo() {
+            res.push_str(&self.t3.uci());
+            res.push(self.p3.to_char(Some(Color::Black)));
+        }
+        res
+    }
+}

@@ -2,7 +2,7 @@ use crate::bitboard::attacks::{BitboardAttacks, BitboardDefault};
 use crate::bitboard::bitboard::{Bitboard, Dir};
 use crate::board::movegen::{attacked_by};
 use crate::board::Board;
-use crate::movelist::{MoveExt, MoveList};
+use crate::movelist::{Move, MoveList};
 use crate::types::{Piece};
 use crate::bitboard::castling::CastlingRights;
 
@@ -35,11 +35,11 @@ impl Rules {
 
         for from_sq in (b.pieces(p) & us).squares() {
             let attacks = attack_gen.non_pawn_attacks(p, occ, from_sq) & !us;
-            moves.extend(attacks.iter().map(|to| {
-                if them.contains(to) {
-                    MoveExt::new_capture(p, from_sq.as_bb(), to, b.piece_at(to))
+            moves.extend(attacks.squares().map(|to| {
+                if to.is_in(them) {
+                    Move::new_capture(p, from_sq, to, b.piece_at(to.as_bb()))
                 } else {
-                    MoveExt::new_quiet(p, from_sq.as_bb(), to)
+                    Move::new_quiet(p, from_sq, to)
                 }
             }))
         }
@@ -51,6 +51,11 @@ impl Rules {
         let us = b.us();
         let occ = b.occupied();
         let king = b.kings() & us;
+        if king.is_empty() {
+            // allow no kings
+            return;
+        }
+        let king_sq = king.square();
         let rights = b.castling();
 
         let right = CastlingRights::king_side_right(c);
@@ -60,7 +65,7 @@ impl Rules {
             let king_to = rook_to.shift(Dir::E);
             let king_moves = king | rook_to | king_to;
             if attacked_by(king_moves, occ, b).disjoint(them) {
-                let m = MoveExt::new_castle(king, king_to, king_to.shift(Dir::E), rook_to, right);
+                let m = Move::new_castle(king_sq, king_to.square(), king_to.square().shift(Dir::E), rook_to.square(), right);
                 moves.push(m);
             }
         }
@@ -74,8 +79,9 @@ impl Rules {
             let king_to = rook_to.shift(Dir::W);
             let king_moves = king | rook_to | king_to;
             if attacked_by(king_moves, occ, b).disjoint(them) {
+                let king_to = king_to.square();
                 let rook_from = king_to.shift(Dir::W).shift(Dir::W);
-                let m = MoveExt::new_castle(king, king_to, rook_from, rook_to, right);
+                let m = Move::new_castle(king_sq, king_to, rook_from, rook_to.square(), right);
                 moves.push(m);
             }
         }
@@ -87,11 +93,11 @@ impl Rules {
         let occ = b.occupied();
         let us = b.us();
         let pawn_push = attack_gen.pawn_pushes(occ, b.pawns() & us, &c);
-        for to in (pawn_push & Bitboard::PROMO_RANKS).iter() {
+        for to in (pawn_push & Bitboard::PROMO_RANKS).squares() {
             let from = to.shift(c.pawn_move().opposite());
             // try and pre-sort promos by likely usefulness
             moves.extend( [Piece::Queen, Piece::Knight, Piece::Rook, Piece::Bishop].iter().map(|&p|
-                MoveExt::new_promo(from, to, p)
+                Move::new_promo(from, to, p)
             ));
         }
     }
@@ -128,16 +134,16 @@ impl Rules {
         let us = b.us();
         let pawns = b.pawns() & us;
         let pawn_push = attack_gen.pawn_pushes(occ, pawns, &c);
-        for to in (pawn_push & !Bitboard::PROMO_RANKS).iter() {
+        for to in (pawn_push & !Bitboard::PROMO_RANKS).squares() {
             let behind = to.shift(c.pawn_move().opposite());
-            if !pawns.contains(behind) {
+            if !behind.is_in(pawns) {
                 // must have been double push
                 let ep = behind;
                 let from = behind.shift(c.pawn_move().opposite());
-                let m = MoveExt::new_double_push(from, to, ep);
+                let m = Move::new_double_push(from, to, ep);
                 moves.push(m);
             } else {
-                let m = MoveExt::new_quiet(Piece::Pawn, behind, to);
+                let m = Move::new_quiet(Piece::Pawn, behind, to);
                 // FIXME!!!! // { from, to, ep, mover: Piece::Pawn, ..Default::default() };
                 moves.push(m);
             }
@@ -189,50 +195,53 @@ impl Rules {
         let pawns = b.pawns() & us;
 
         let (pawn_captures_e, pawn_captures_w) = attack_gen.pawn_attacks(pawns, c);
-        for to in (pawn_captures_e & them).iter() {
+        for to in (pawn_captures_e & them).squares() {
             let from = to.shift(c.pawn_capture_east().opposite());
-            let captured = b.piece_at(to);
-            if Bitboard::PROMO_RANKS.contains(to) {
+            let captured = b.piece_at(to.as_bb());
+            if to.is_in(Bitboard::PROMO_RANKS) {
                 moves.extend( [Piece::Queen, Piece::Knight, Piece::Rook, Piece::Bishop].iter().map(|&p|
-                    MoveExt::new_promo_capture(from, to, p, captured)
+                    Move::new_promo_capture(from, to, p, captured)
                 ));
             }
             else {
-                let m = MoveExt::new_capture(Piece::Pawn, from, to, captured);
+                let m = Move::new_capture(Piece::Pawn, from, to, captured);
                 moves.push(m);
             }
         }
-        for to in (pawn_captures_w & them).iter() {
+        for to in (pawn_captures_w & them).squares() {
             let from = to.shift(c.pawn_capture_west().opposite());
-            let captured = b.piece_at(to);
-            if Bitboard::PROMO_RANKS.contains(to) {
+            let captured = b.piece_at(to.as_bb());
+            if to.is_in(Bitboard::PROMO_RANKS) {
                 moves.extend( [Piece::Queen, Piece::Knight, Piece::Rook, Piece::Bishop].iter().map(|&p|
-                    MoveExt::new_promo_capture(from, to, p, captured)
+                    Move::new_promo_capture(from, to, p, captured)
                 ));
             }
             else {
-                let m = MoveExt::new_capture(Piece::Pawn, from, to, captured);
+                let m = Move::new_capture(Piece::Pawn, from, to, captured);
                 moves.push(m);
             }
         }
         // e/p pawn_captures
         let ep = b.en_passant();
-        if ep.intersects(pawn_captures_e) {
-            let from = ep.shift(c.pawn_capture_east().opposite());
-            let capture_square = ep.shift(c.opposite().pawn_move());
-            let m =MoveExt::new_ep_capture(from, ep, capture_square);
-            moves.push(m);
-        }
-        if ep.intersects(pawn_captures_w) {
-            let from = ep.shift(c.pawn_capture_west().opposite());
-            let capture_square = ep.shift(c.opposite().pawn_move());
-            let m =MoveExt::new_ep_capture(from, ep, capture_square);
-            moves.push(m);
+        if !ep.is_empty() {
+            let ep = ep.square();
+            if ep.is_in(pawn_captures_e) {
+                let from = ep.shift(c.pawn_capture_east().opposite());
+                let capture_square = ep.shift(c.opposite().pawn_move());
+                let m =Move::new_ep_capture(from, ep, capture_square);
+                moves.push(m);
+            }
+            if ep.is_in(pawn_captures_w) {
+                let from = ep.shift(c.pawn_capture_west().opposite());
+                let capture_square = ep.shift(c.opposite().pawn_move());
+                let m =Move::new_ep_capture(from, ep, capture_square);
+                moves.push(m);
+            }
+
         }
     }
-
 }
 
 
 
-    // }
+  

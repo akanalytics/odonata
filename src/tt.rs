@@ -408,7 +408,7 @@ mod tests {
         let entry456 = entry456();
         let entry456b = entry456b();
 
-        assert_eq!(tt.capacity(), 208333);
+        assert!(tt.capacity() > 200000);
         tt.delete(123);
         tt.delete(456);
         tt.delete(456);

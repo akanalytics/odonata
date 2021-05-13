@@ -142,13 +142,13 @@ mod tests {
 
     #[test]
     fn test_prior_pv() {
-        let a1a2 = Move { from: a1, to: a2, ..Default::default() };
-        let a1a3 = Move { from: a1, to: a3, ..Default::default() };
-        let a1a4 = Move { from: a1, to: a4, ..Default::default() };
-        let b1a2 = Move { from: b1, to: a2, ..Default::default() };
-        let b1a3 = Move { from: b1, to: a3, ..Default::default() };
-        let b1a4 = Move { from: b1, to: a4, ..Default::default() };
-        let c1c2 = Move { from: c1, to: c2, ..Default::default() };
+        let a1a2 = Move { from: a1.square(), to: a2.square(), ..Default::default() };
+        let a1a3 = Move { from: a1.square(), to: a3.square(), ..Default::default() };
+        let a1a4 = Move { from: a1.square(), to: a4.square(), ..Default::default() };
+        let b1a2 = Move { from: b1.square(), to: a2.square(), ..Default::default() };
+        let b1a3 = Move { from: b1.square(), to: a3.square(), ..Default::default() };
+        let b1a4 = Move { from: b1.square(), to: a4.square(), ..Default::default() };
+        let c1c2 = Move { from: c1.square(), to: c2.square(), ..Default::default() };
 
         let mut moves_orig = MoveList::new();
         moves_orig.extend([b1a2, b1a3, b1a4, a1a3, a1a4, a1a2].iter());

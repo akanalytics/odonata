@@ -147,33 +147,33 @@ impl Hasher {
         let them = pre_move.color_them();
         let mut hash = self.side;
         if !pre_move.en_passant().is_empty() {
-            hash ^= self.ep[pre_move.en_passant().first_square().index() & 7];
+            hash ^= self.ep[pre_move.en_passant().first_square().file_index()];
         }
 
         if m.is_capture() {
             if m.is_ep_capture() {
                 // ep capture is like capture but with capture piece on *ep* square not *dest*
-                hash ^= self.get(them, m.capture_piece(), m.ep().first_square());
+                hash ^= self.get(them, m.capture_piece(), m.ep());
             } else {
                 // regular capture
-                hash ^= self.get(them, m.capture_piece(), m.to().first_square());
+                hash ^= self.get(them, m.capture_piece(), m.to());
             }
         }
 
-        hash ^= self.get(us, m.mover_piece(), m.from().first_square());
-        hash ^= self.get(us, m.mover_piece(), m.to().first_square());
+        hash ^= self.get(us, m.mover_piece(), m.from());
+        hash ^= self.get(us, m.mover_piece(), m.to());
 
         if m.mover_piece() == Piece::Pawn && m.is_pawn_double_push() {
             debug_assert!(
-                !m.ep().is_empty(),
+                !m.ep().is_null(),
                 "e/p square must be set for pawn double push {:?}",
                 m
             );
-            hash ^= self.ep[m.ep().first_square().index() & 7];
+            hash ^= self.ep[m.ep().file_index()];
         }
         if m.is_promo() {
-            hash ^= self.get(us, Piece::Pawn, m.to().first_square());
-            hash ^= self.get(us, m.promo_piece(), m.to().first_square());
+            hash ^= self.get(us, Piece::Pawn, m.to());
+            hash ^= self.get(us, m.promo_piece(), m.to());
         }
 
 
@@ -183,51 +183,51 @@ impl Hasher {
             let rook_to;
 
             #[allow(non_upper_case_globals)]
-            match m.to() {
+            match m.to().as_bb() {
                 c1 => {
-                    rook_from = a1;
-                    rook_to = d1;
+                    rook_from = a1.square();
+                    rook_to = d1.square();
                 }
                 g1 => {
-                    rook_from = h1;
-                    rook_to = f1;
+                    rook_from = h1.square();
+                    rook_to = f1.square();
                 }
                 c8 => {
-                    rook_from = a8;
-                    rook_to = d8;
+                    rook_from = a8.square();
+                    rook_to = d8.square();
                 }
                 g8 => {
-                    rook_from = h8;
-                    rook_to = f8;
+                    rook_from = h8.square();
+                    rook_to = f8.square();
                 }
-                _ => panic!("Castling move from square {}", m.to()),
+                _ => panic!("Castling move from square {}", m.to().as_bb()),
             }
-            hash ^= self.get(us, Piece::Rook, rook_from.first_square());
-            hash ^= self.get(us, Piece::Rook, rook_to.first_square());
+            hash ^= self.get(us, Piece::Rook, rook_from);
+            hash ^= self.get(us, Piece::Rook, rook_to);
         }
 
         // castling *rights*
         //  if a piece moves TO (=capture) or FROM the rook squares - appropriate castling rights are lost
         //  if a piece moves FROM the kings squares, both castling rights are lost
         //  possible with a rook x rook capture that both sides lose castling rights
-        if (m.from() | m.to()).intersects(CastlingRights::rook_and_king_squares()) {
-            if (m.from() == e1 || m.from() == a1 || m.to() == a1)
+        if (m.from().as_bb() | m.to().as_bb()).intersects(CastlingRights::rook_and_king_squares()) {
+            if (m.from() == e1.square() || m.from() == a1.square() || m.to() == a1.square())
                 && pre_move.castling().contains(CastlingRights::WHITE_QUEEN)
             {
                 hash ^= self.castling[CastlingRights::WHITE_QUEEN.index()];
             }
-            if (m.from() == e1 || m.from() == h1 || m.to() == h1)
+            if (m.from() == e1.square() || m.from() == h1.square() || m.to() == h1.square())
                 && pre_move.castling().contains(CastlingRights::WHITE_KING)
             {
                 hash ^= self.castling[CastlingRights::WHITE_KING.index()];
             }
 
-            if (m.from() == e8 || m.from() == a8 || m.to() == a8)
+            if (m.from() == e8.square() || m.from() == a8.square() || m.to() == a8.square())
                 && pre_move.castling().contains(CastlingRights::BLACK_QUEEN)
             {
                 hash ^= self.castling[CastlingRights::BLACK_QUEEN.index()];
             }
-            if (m.from() == e8 || m.from() == h8 || m.to() == h8)
+            if (m.from() == e8.square() || m.from() == h8.square() || m.to() == h8.square())
                 && pre_move.castling().contains(CastlingRights::BLACK_KING)
             {
                 hash ^= self.castling[CastlingRights::BLACK_KING.index()];

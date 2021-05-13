@@ -160,7 +160,7 @@ impl Algo {
         self.order_moves(ply, &mut moves, &None);
         for mv in moves.iter() {
             // FIXME! skip illegal moves
-            if !in_check && !mv.is_ep_capture() && mv.to().disjoint(sq) {
+            if !in_check && !mv.is_ep_capture() && mv.to().as_bb().disjoint(sq) {
                 let score = board.eval_move_see(&self.eval, &mv);
                 let losing = false;
                 // allow 8 matched attackers
@@ -178,7 +178,7 @@ impl Algo {
                 board.undo_move(mv);
                 continue;
             }
-            let score = -self.qsearch_see(sq ^ mv.to(), ply + 1, &mut child, -beta, -alpha);
+            let score = -self.qsearch_see(sq ^ mv.to().as_bb(), ply + 1, &mut child, -beta, -alpha);
             board.undo_move(mv);
             if score > beta {
                 return score;
@@ -187,7 +187,7 @@ impl Algo {
                 alpha = score;
             }
             // don't see_evaluate the hot square again
-            sq -= mv.to();
+            sq -= mv.to().as_bb();
         }
 
         // bound the score

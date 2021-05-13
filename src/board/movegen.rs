@@ -196,19 +196,19 @@ impl Board {
         let board = &self;
         for from_sq in (board.kings() & board.us()).squares() {
             let attacks = !board.us() & attack_gen.king_attacks(from_sq) & to;
-            for to in attacks.iter() {
-                if board.them().contains(to) {
+            for to in attacks.squares() {
+                if to.is_in(board.them()) {
                     let m = Move {
-                        from: from_sq.as_bb(),
+                        from: from_sq,
                         to,
                         mover: Piece::King,
-                        capture: board.piece_at(to),
+                        capture: board.piece_at(to.as_bb()),
                         ..Default::default()
                     };
                     moves.push(m);
                 } else {
                     let m = Move {
-                        from: from_sq.as_bb(),
+                        from: from_sq,
                         to,
                         mover: Piece::King,
                         ..Default::default()
@@ -234,308 +234,310 @@ impl Board {
     
 
     // TODO: Vec::with_capacity(100).
-    pub fn xxx_pseudo_legal_moves(&self) -> MoveList {
-        // if self.checkers_of(self.color_us()).popcount() > 1 {
-        //     // double check - must move king
-        //     let mut moves = MoveList::new();
-        //     self.king_pseudo_legals_to(Bitboard::all(), &mut moves);
-        //     return moves;
-        // }
+    // pub fn xxx_pseudo_legal_moves(&self) -> MoveList {
+    //     // if self.checkers_of(self.color_us()).popcount() > 1 {
+    //     //     // double check - must move king
+    //     //     let mut moves = MoveList::new();
+    //     //     self.king_pseudo_legals_to(Bitboard::all(), &mut moves);
+    //     //     return moves;
+    //     // }
 
-        let board = &self;
-        let mut moves = MoveList::new();
-        let color = board.color_us();
-        let them = board.them();
-        let us = board.us();
-        let occupied = us | them;
+    //     let board = &self;
+    //     let mut moves = MoveList::new();
+    //     let color = board.color_us();
+    //     let them = board.them();
+    //     let us = board.us();
+    //     let occupied = us | them;
 
-        let pawns = board.pawns() & us;
+    //     let pawns = board.pawns() & us;
 
-        let attack_gen = BitboardDefault::default();
+    //     let attack_gen = BitboardDefault::default();
 
-        // non-promoted single-push pawns
-        let pawn_push = attack_gen.pawn_pushes(occupied, pawns, &color);
-        for to in (pawn_push & !Bitboard::PROMO_RANKS).iter() {
-            let mut from = to.shift(color.pawn_move().opposite());
-            let mut ep = Bitboard::EMPTY;
-            if !pawns.contains(from) {
-                // must have been double push
-                ep = from;
-                from = from.shift(color.pawn_move().opposite());
-            }
-            // let m = MoveEnum::Push { to, from };
-            let m = Move {
-                from,
-                to,
-                ep,
-                mover: Piece::Pawn,
-                ..Default::default()
-            };
-            moves.push(m);
-        }
-        // pawn promos - only makes sense for single push
-        for to in (pawn_push & Bitboard::PROMO_RANKS).iter() {
-            let from = to.shift(color.pawn_move().opposite());
-            // try and pre-sort promos by likely usefulness
-            for &promo in &[Piece::Queen, Piece::Knight, Piece::Rook, Piece::Bishop] {
-                let m = Move {
-                    from,
-                    to,
-                    promo,
-                    mover: Piece::Pawn,
-                    ..Default::default()
-                };
-                // let m = MoveEnum::Promo { to, from, promo };
-                moves.push(m);
-            }
-        }
-        // pawn_captures
-        let (pawn_captures_e, pawn_captures_w) = attack_gen.pawn_attacks(pawns, color);
-        for to in (pawn_captures_e & them & !Bitboard::PROMO_RANKS).iter() {
-            let from = to.shift(color.pawn_capture_east().opposite());
-            let capture = board.piece_at(to);
-            let m = Move {
-                from,
-                to,
-                mover: Piece::Pawn,
-                capture,
-                ..Default::default()
-            };
-            // MoveEnum::Capture { to, from, mover: Piece::Pawn, capture });
-            moves.push(m);
-        }
-        for to in (pawn_captures_w & them & !Bitboard::PROMO_RANKS).iter() {
-            let from = to.shift(color.pawn_capture_west().opposite());
-            let capture = board.piece_at(to);
-            let m = Move {
-                from,
-                to,
-                mover: Piece::Pawn,
-                capture,
-                ..Default::default()
-            };
-            // MoveEnum::Capture { to, from, mover: Piece::Pawn, capture };
-            moves.push(m);
-        }
-        // e/p pawn_captures
-        let ep = board.en_passant();
-        if ep.intersects(pawn_captures_e) {
-            let from = ep.shift(color.pawn_capture_east().opposite());
-            let capture_square = ep.shift(color.opposite().pawn_move());
-            let m = Move {
-                from,
-                to: ep,
-                mover: Piece::Pawn,
-                capture: Piece::Pawn,
-                ep: capture_square,
-                ..Default::default()
-            };
-            moves.push(m);
-        }
-        if ep.intersects(pawn_captures_w) {
-            let from = ep.shift(color.pawn_capture_west().opposite());
-            let capture_square = ep.shift(color.opposite().pawn_move());
-            let m = Move {
-                from,
-                to: ep,
-                mover: Piece::Pawn,
-                capture: Piece::Pawn,
-                ep: capture_square,
-                ..Default::default()
-            };
-            moves.push(m);
-        }
+    //     // non-promoted single-push pawns
+    //     let pawn_push = attack_gen.pawn_pushes(occupied, pawns, &color);
+    //     for to in (pawn_push & !Bitboard::PROMO_RANKS).squares() {
+    //         let mut from = to.shift(color.pawn_move().opposite());
+    //         let mut ep = Bitboard::EMPTY;
+    //         if !pawns.contains(from) {
+    //             // must have been double push
+    //             ep = from;
+    //             from = from.shift(color.pawn_move().opposite());
+    //         }
+    //         // let m = MoveEnum::Push { to, from };
+    //         let m = Move {
+    //             from,
+    //             to,
+    //             ep,
+    //             mover: Piece::Pawn,
+    //             ..Default::default()
+    //         };
+    //         moves.push(m);
+    //     }
+    //     // pawn promos - only makes sense for single push
+    //     for to in (pawn_push & Bitboard::PROMO_RANKS).squares() {
+    //         let from = to.shift(color.pawn_move().opposite());
+    //         // try and pre-sort promos by likely usefulness
+    //         for &promo in &[Piece::Queen, Piece::Knight, Piece::Rook, Piece::Bishop] {
+    //             let m = Move {
+    //                 from,
+    //                 to,
+    //                 promo,
+    //                 mover: Piece::Pawn,
+    //                 ..Default::default()
+    //             };
+    //             // let m = MoveEnum::Promo { to, from, promo };
+    //             moves.push(m);
+    //         }
+    //     }
+    //     // pawn_captures
+    //     let (pawn_captures_e, pawn_captures_w) = attack_gen.pawn_attacks(pawns, color);
+    //     for to in (pawn_captures_e & them & !Bitboard::PROMO_RANKS).iter() {
+    //         let from = to.shift(color.pawn_capture_east().opposite());
+    //         let capture = board.piece_at(to);
+    //         let m = Move {
+    //             from,
+    //             to,
+    //             mover: Piece::Pawn,
+    //             capture,
+    //             ..Default::default()
+    //         };
+    //         // MoveEnum::Capture { to, from, mover: Piece::Pawn, capture });
+    //         moves.push(m);
+    //     }
+    //     for to in (pawn_captures_w & them & !Bitboard::PROMO_RANKS).iter() {
+    //         let from = to.shift(color.pawn_capture_west().opposite());
+    //         let capture = board.piece_at(to);
+    //         let m = Move {
+    //             from,
+    //             to,
+    //             mover: Piece::Pawn,
+    //             capture,
+    //             ..Default::default()
+    //         };
+    //         // MoveEnum::Capture { to, from, mover: Piece::Pawn, capture };
+    //         moves.push(m);
+    //     }
+    //     // e/p pawn_captures
+    //     let ep = board.en_passant();
+    //     if ep.intersects(pawn_captures_e) {
+    //         let from = ep.shift(color.pawn_capture_east().opposite());
+    //         let capture_square = ep.shift(color.opposite().pawn_move());
+    //         let m = Move {
+    //             from,
+    //             to: ep,
+    //             mover: Piece::Pawn,
+    //             capture: Piece::Pawn,
+    //             ep: capture_square,
+    //             ..Default::default()
+    //         };
+    //         moves.push(m);
+    //     }
+    //     if ep.intersects(pawn_captures_w) {
+    //         let from = ep.shift(color.pawn_capture_west().opposite());
+    //         let capture_square = ep.shift(color.opposite().pawn_move());
+    //         let m = Move {
+    //             from,
+    //             to: ep,
+    //             mover: Piece::Pawn,
+    //             capture: Piece::Pawn,
+    //             ep: capture_square,
+    //             ..Default::default()
+    //         };
+    //         moves.push(m);
+    //     }
 
-        // pawn capture-promos
-        for to in (pawn_captures_e & them & Bitboard::PROMO_RANKS).iter() {
-            let from = to.shift(color.pawn_capture_east().opposite());
-            let capture = board.piece_at(to);
-            for &promo in &[Piece::Queen, Piece::Knight, Piece::Rook, Piece::Bishop] {
-                // MoveEnum::PromoCapture { to, from, promo, capture });
-                let m = Move {
-                    from,
-                    to,
-                    mover: Piece::Pawn,
-                    capture,
-                    promo,
-                    ..Default::default()
-                };
-                moves.push(m);
-            }
-        }
-        for to in (pawn_captures_w & them & Bitboard::PROMO_RANKS).iter() {
-            let from = to.shift(color.pawn_capture_west().opposite());
-            let capture = board.piece_at(to);
-            for &promo in &[Piece::Queen, Piece::Knight, Piece::Rook, Piece::Bishop] {
-                // MoveEnum::PromoCapture { to, from, promo, capture });
-                let m = Move {
-                    from,
-                    to,
-                    mover: Piece::Pawn,
-                    capture,
-                    promo,
-                    ..Default::default()
-                };
-                moves.push(m);
-            }
-        }
-        // knights
-        for from_sq in (board.knights() & us).squares() {
-            let attacks = attack_gen.knight_attacks(from_sq) & !us;
-            for to in attacks.iter() {
-                if them.contains(to) {
-                    let m = Move {
-                        from: from_sq.as_bb(),
-                        to,
-                        mover: Piece::Knight,
-                        capture: board.piece_at(to),
-                        ..Default::default()
-                    };
-                    moves.push(m);
-                } else {
-                    let m = Move {
-                        from: from_sq.as_bb(),
-                        to,
-                        mover: Piece::Knight,
-                        ..Default::default()
-                    };
-                    moves.push(m);
-                }
-            }
-        }
-        // sliders
-        for from_sq in (board.bishops() & us).squares() {
-            let attacks = !us & attack_gen.bishop_attacks(occupied, from_sq);
-            // println!("{}\n{}\n{}\n", from, attacks, occupied);
-            for to in attacks.iter() {
-                if them.contains(to) {
-                    let m = Move {
-                        from: from_sq.as_bb(),
-                        to,
-                        mover: Piece::Bishop,
-                        capture: board.piece_at(to),
-                        ..Default::default()
-                    };
-                    moves.push(m);
-                } else {
-                    let m = Move {
-                        from: from_sq.as_bb(),
-                        to,
-                        mover: Piece::Bishop,
-                        ..Default::default()
-                    };
-                    moves.push(m);
-                }
-            }
-        }
-        for from_sq in (board.rooks() & us).squares() {
-            let attacks = !us & attack_gen.rook_attacks(occupied, from_sq);
-            for to in attacks.iter() {
-                if them.contains(to) {
-                    let m = Move {
-                        from: from_sq.as_bb(),
-                        to,
-                        mover: Piece::Rook,
-                        capture: board.piece_at(to),
-                        ..Default::default()
-                    };
-                    moves.push(m);
-                } else {
-                    let m = Move {
-                        from: from_sq.as_bb(),
-                        to,
-                        mover: Piece::Rook,
-                        ..Default::default()
-                    };
-                    moves.push(m);
-                }
-            }
-        }
-        for from_sq in (board.queens() & us).squares() {
-            let attacks = !us
-                & (attack_gen.rook_attacks(occupied, from_sq) | attack_gen.bishop_attacks(occupied, from_sq));
-            for to in attacks.iter() {
-                if them.contains(to) {
-                    let m = Move {
-                        from: from_sq.as_bb(),
-                        to,
-                        mover: Piece::Queen,
-                        capture: board.piece_at(to),
-                        ..Default::default()
-                    };
-                    moves.push(m);
-                } else {
-                    let m = Move {
-                        from: from_sq.as_bb(),
-                        to,
-                        mover: Piece::Queen,
-                        ..Default::default()
-                    };
-                    moves.push(m);
-                }
-            }
-        }
-        self.king_pseudo_legals_to(Bitboard::all(), &mut moves);
-        // castling
-        // check castling rights (cheap)
-        // check there is a king (for testing board setups)
-        // check king not in check
-        // side = +/-2
-        // check king+1 and king+2 for being clear on kings side
-        // check king-1, king-2, king-3 clear on queens
-        // check that king +/- 1 and king +/- 2 isnt in check
-        // addMoveEnum King +/- 2, add rook -2/+3
-        // castling rights
-        let king = board.kings() & us;
-        let rights = board.castling();
+    //     // pawn capture-promos
+    //     for to in (pawn_captures_e & them & Bitboard::PROMO_RANKS).squares() {
+    //         let from = to.shift(color.pawn_capture_east().opposite());
+    //         let capture = board.piece_at(to);
+    //         for &promo in &[Piece::Queen, Piece::Knight, Piece::Rook, Piece::Bishop] {
+    //             // MoveEnum::PromoCapture { to, from, promo, capture });
+    //             let m = Move {
+    //                 from,
+    //                 to,
+    //                 mover: Piece::Pawn,
+    //                 capture,
+    //                 promo,
+    //                 ..Default::default()
+    //             };
+    //             moves.push(m);
+    //         }
+    //     }
+    //     for to in (pawn_captures_w & them & Bitboard::PROMO_RANKS).squares() {
+    //         let from = to.shift(color.pawn_capture_west().opposite());
+    //         let capture = board.piece_at(to);
+    //         for &promo in &[Piece::Queen, Piece::Knight, Piece::Rook, Piece::Bishop] {
+    //             // MoveEnum::PromoCapture { to, from, promo, capture });
+    //             let m = Move {
+    //                 from,
+    //                 to,
+    //                 mover: Piece::Pawn,
+    //                 capture,
+    //                 promo,
+    //                 ..Default::default()
+    //             };
+    //             moves.push(m);
+    //         }
+    //     }
+    //     // knights
+    //     for from_sq in (board.knights() & us).squares() {
+    //         let attacks = attack_gen.knight_attacks(from_sq) & !us;
+    //         for to in attacks.iter() {
+    //             if them.contains(to) {
+    //                 let m = Move {
+    //                     from: from_sq,
+    //                     to,
+    //                     mover: Piece::Knight,
+    //                     capture: board.piece_at(to),
+    //                     ..Default::default()
+    //                 };
+    //                 moves.push(m);
+    //             } else {
+    //                 let m = Move {
+    //                     from: from_sq,
+    //                     to,
+    //                     mover: Piece::Knight,
+    //                     ..Default::default()
+    //                 };
+    //                 moves.push(m);
+    //             }
+    //         }
+    //     }
+    //     // sliders
+    //     for from_sq in (board.bishops() & us).squares() {
+    //         let attacks = !us & attack_gen.bishop_attacks(occupied, from_sq);
+    //         // println!("{}\n{}\n{}\n", from, attacks, occupied);
+    //         for to in attacks.iter() {
+    //             if them.contains(to) {
+    //                 let m = Move {
+    //                     from: from_sq,
+    //                     to,
+    //                     mover: Piece::Bishop,
+    //                     capture: board.piece_at(to),
+    //                     ..Default::default()
+    //                 };
+    //                 moves.push(m);
+    //             } else {
+    //                 let m = Move {
+    //                     from: from_sq,
+    //                     to,
+    //                     mover: Piece::Bishop,
+    //                     ..Default::default()
+    //                 };
+    //                 moves.push(m);
+    //             }
+    //         }
+    //     }
+    //     for from_sq in (board.rooks() & us).squares() {
+    //         let attacks = !us & attack_gen.rook_attacks(occupied, from_sq);
+    //         for to in attacks.squares() {
+    //             if them.contains(to) {
+    //                 let m = Move {
+    //                     from: from_sq,
+    //                     to,
+    //                     mover: Piece::Rook,
+    //                     capture: board.piece_at(to),
+    //                     ..Default::default()
+    //                 };
+    //                 moves.push(m);
+    //             } else {
+    //                 let m = Move {
+    //                     from: from_sq,
+    //                     to,
+    //                     mover: Piece::Rook,
+    //                     ..Default::default()
+    //                 };
+    //                 moves.push(m);
+    //             }
+    //         }
+    //     }
+    //     for from_sq in (board.queens() & us).squares() {
+    //         let attacks = !us
+    //             & (attack_gen.rook_attacks(occupied, from_sq) | attack_gen.bishop_attacks(occupied, from_sq));
+    //         for to in attacks.iter() {
+    //             if them.contains(to) {
+    //                 let m = Move {
+    //                     from: from_sq,
+    //                     to,
+    //                     mover: Piece::Queen,
+    //                     capture: board.piece_at(to),
+    //                     ..Default::default()
+    //                 };
+    //                 moves.push(m);
+    //             } else {
+    //                 let m = Move {
+    //                     from: from_sq,
+    //                     to,
+    //                     mover: Piece::Queen,
+    //                     ..Default::default()
+    //                 };
+    //                 moves.push(m);
+    //             }
+    //         }
+    //     }
+    //     self.king_pseudo_legals_to(Bitboard::all(), &mut moves);
+    //     // castling
+    //     // check castling rights (cheap)
+    //     // check there is a king (for testing board setups)
+    //     // check king not in check
+    //     // side = +/-2
+    //     // check king+1 and king+2 for being clear on kings side
+    //     // check king-1, king-2, king-3 clear on queens
+    //     // check that king +/- 1 and king +/- 2 isnt in check
+    //     // addMoveEnum King +/- 2, add rook -2/+3
+    //     // castling rights
+    //     let king = board.kings() & us;
+    //     let rights = board.castling();
 
-        let right = CastlingRights::king_side_right(color);
-        if rights.contains(right)
-            && !CastlingRights::king_side_squares(color).intersects(occupied)
-            && !king.is_empty()
-        {
-            let rook_to = king.shift(Dir::E);
-            let king_to = rook_to.shift(Dir::E);
-            let king_moves = king | rook_to | king_to;
-            if attacked_by(king_moves, occupied, board).disjoint(them) {
-                // let rook_from = Bitboard::FILE_A & color.back_rank;
-                // let m = MoveEnum::Castle { king_dest, king_from: king, rook_dest, rook_from, right };
-                let m = Move {
-                    from: king,
-                    to: king_to,
-                    mover: Piece::King,
-                    castle_side: right,
-                    is_known_legal: true,
-                    ..Default::default()
-                };
-                moves.push(m);
-            }
-        }
+    //     let right = CastlingRights::king_side_right(color);
+    //     if rights.contains(right)
+    //         && !CastlingRights::king_side_squares(color).intersects(occupied)
+    //         && !king.is_empty()
+    //     {
+    //         let king_sq = king.first_square();
+    //         let rook_to = king.shift(Dir::E);
+    //         let king_to = rook_to.shift(Dir::E);
+    //         let king_moves = king | rook_to | king_to;
+    //         if attacked_by(king_moves, occupied, board).disjoint(them) {
+    //             // let rook_from = Bitboard::FILE_A & color.back_rank;
+    //             // let m = MoveEnum::Castle { king_dest, king_from: king, rook_dest, rook_from, right };
+    //             let m = Move {
+    //                 from: king_sq,
+    //                 to: king_to.square(),
+    //                 mover: Piece::King,
+    //                 castle_side: right,
+    //                 is_known_legal: true,
+    //                 ..Default::default()
+    //             };
+    //             moves.push(m);
+    //         }
+    //     }
 
-        let right = CastlingRights::queen_side_right(color);
-        if rights.contains(right)
-            && !CastlingRights::queen_side_squares(color).intersects(occupied)
-            && !king.is_empty()
-        {
-            let rook_to = king.shift(Dir::W);
-            let king_to = rook_to.shift(Dir::W);
-            let king_moves = king | rook_to | king_to;
-            if attacked_by(king_moves, occupied, board).disjoint(them) {
-                // let rook_from = Bitboard::FILE_H & color.back_rank;
-                // let m = MoveEnum::Castle { king_dest, king_from: king, rook_dest, rook_from, right };
-                let m = Move {
-                    from: king,
-                    to: king_to,
-                    mover: Piece::King,
-                    castle_side: right,
-                    is_known_legal: true,
-                    ..Default::default()
-                };
-                moves.push(m);
-            }
-        }
-        moves
-    }
+    //     let right = CastlingRights::queen_side_right(color);
+    //     if rights.contains(right)
+    //         && !CastlingRights::queen_side_squares(color).intersects(occupied)
+    //         && !king.is_empty()
+    //     {
+    //         let king_sq = king.first_square();
+    //         let rook_to = king.shift(Dir::W);
+    //         let king_to = rook_to.shift(Dir::W);
+    //         let king_moves = king | rook_to | king_to;
+    //         if attacked_by(king_moves, occupied, board).disjoint(them) {
+    //             // let rook_from = Bitboard::FILE_H & color.back_rank;
+    //             // let m = MoveEnum::Castle { king_dest, king_from: king, rook_dest, rook_from, right };
+    //             let m = Move {
+    //                 from: king_sq,
+    //                 to: king_to.square(),
+    //                 mover: Piece::King,
+    //                 castle_side: right,
+    //                 is_known_legal: true,
+    //                 ..Default::default()
+    //             };
+    //             moves.push(m);
+    //         }
+    //     }
+    //     moves
+    // }
 }
 
 #[cfg(test)]

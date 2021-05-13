@@ -86,16 +86,16 @@ impl Parse {
         // this is slow but easy to understand. Castling has already been dealt with
         let mut matching_moves = MoveList::new();
         for lm in legal_moves.iter() {
-            if !dst_square.is_empty() && lm.to() != Bitboard::parse_square(&dst_square)? {
+            if !dst_square.is_empty() && lm.to() != Bitboard::parse_square(&dst_square)?.square() {
                 continue;
             }
-            if !src_file.is_empty() && lm.from().sq_as_uci().take_substring(0, 1) != src_file {
+            if !src_file.is_empty() && lm.from().uci().take_substring(0, 1) != src_file {
                 continue;
             }
-            if !src_rank.is_empty() && lm.from().sq_as_uci().take_substring(1, 1) != src_rank {
+            if !src_rank.is_empty() && lm.from().uci().take_substring(1, 1) != src_rank {
                 continue;
             }
-            if !piece.is_empty() && board.piece_at(lm.from()).to_upper_char().to_string() != piece {
+            if !piece.is_empty() && board.piece_at(lm.from().as_bb()).to_upper_char().to_string() != piece {
                 continue;
             }
             if !promo.is_empty() && lm.promo_piece().to_char(Some(Color::Black)).to_string() != promo {

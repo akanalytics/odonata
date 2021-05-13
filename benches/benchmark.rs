@@ -830,38 +830,38 @@ fn cache_eval(c: &mut Criterion) {
 
 fn bench_moveordering(c: &mut Criterion) {
     let a1a2 = Move {
-        from: a1,
-        to: a2,
+        from: a1.square(),
+        to: a2.square(),
         ..Default::default()
     };
     let a1a3 = Move {
-        from: a1,
-        to: a3,
+        from: a1.square(),
+        to: a3.square(),
         ..Default::default()
     };
     let a1a4 = Move {
-        from: a1,
-        to: a4,
+        from: a1.square(),
+        to: a4.square(),
         ..Default::default()
     };
     let b1a2 = Move {
-        from: b1,
-        to: a2,
+        from: b1.square(),
+        to: a2.square(),
         ..Default::default()
     };
     let b1a3 = Move {
-        from: b1,
-        to: a3,
+        from: b1.square(),
+        to: a3.square(),
         ..Default::default()
     };
     let b1a4 = Move {
-        from: b1,
-        to: a4,
+        from: b1.square(),
+        to: a4.square(),
         ..Default::default()
     };
     let c1c2 = Move {
-        from: c1,
-        to: c2,
+        from: c1.square(),
+        to: c2.square(),
         ..Default::default()
     };
     let mut movelists = vec![MoveList::new(); 100];

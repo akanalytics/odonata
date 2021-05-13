@@ -161,6 +161,7 @@ impl Bitboard {
         }
     }
 
+
     // excludes the src squares itself, but includes edge squares
     pub fn ray(&self, dir: Dir) -> Bitboard {
         let mut sqs = *self;
@@ -241,9 +242,11 @@ impl Bitboard {
     }
 
     #[inline]
-    pub fn square(self) -> Square {
-        debug_assert_eq!(self.popcount(), 1, "Attempt to convert bb {} to a square", self);
-        self.first_square()
+    pub const fn square(self) -> Square {
+        // debug_assert_eq!(self.popcount(), 1, "Attempt to convert bb {} to a square", self);
+        let sq = self.bits.trailing_zeros();
+        // debug_assert!(sq < 64);
+        Square::from_u32(sq)
     }
 
     #[inline]
@@ -459,12 +462,25 @@ impl fmt::Display for Bitboard {
 #[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Square(u8);
 
+
+impl Default for Square {
+    fn default() -> Self {
+        Self::null()
+    }
+}
+
 // Bitboard::from_bits_truncate(1 << i)
 
 impl Square {
     #[inline]
-    pub const fn from_u8(i: u8) -> Square {
+    pub fn from_u8(i: u8) -> Square {
+        debug_assert!(i <= 64);
         Square(i)
+    }
+
+    #[inline]
+    pub const fn null() -> Square {
+        Square(64u8)
     }
 
     #[inline]
@@ -483,6 +499,24 @@ impl Square {
     }
 
     #[inline]
+    pub fn is_in(self, bb: Bitboard) -> bool {
+        self.as_bb().intersects(bb)
+    }
+
+    #[inline]
+    pub const fn is_null(self) -> bool {
+        self.0 == 64u8
+    }
+
+    #[inline]
+    pub fn shift(self, dir: Dir) -> Square {
+        debug_assert!(self.0 as i32 + dir.shift >=0 && self.0 as i32 + dir.shift < 64 );
+        Square((self.0 as i32 + dir.shift) as u8)
+    }
+
+
+
+    #[inline]
     pub fn file_char(self) -> char {
         let x = self.0 % 8;
         char::from(b'a' + x as u8)
@@ -493,6 +527,12 @@ impl Square {
         let y = self.0 / 8;
         char::from(b'1' + y as u8)
     }
+
+    pub fn uci(self) -> String {
+        format!("{}{}", self.file_char(), self.rank_char())
+    }
+
+
 
     #[inline]
     pub fn file(self) -> Bitboard {
@@ -538,6 +578,14 @@ impl Square {
         self.0 as usize
     }
 }
+
+impl fmt::Display for Square {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.uci())
+    }
+}
+
+
 
 #[cfg(test)]
 mod tests {

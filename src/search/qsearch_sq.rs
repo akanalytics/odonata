@@ -1,4 +1,4 @@
-use crate::bitboard::bitboard::Bitboard;
+use crate::bitboard::bitboard::{Bitboard, Square};
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::eval::score::Score;
@@ -13,7 +13,7 @@ impl Algo {
 
     pub fn qsearch_sq(
         &mut self,
-        sq: Bitboard,
+        sq: Square,
         ply: Ply,
         board: &mut Board,
         mut alpha: Score,

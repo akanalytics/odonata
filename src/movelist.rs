@@ -1,4 +1,4 @@
-use crate::bitboard::bitboard::Bitboard;
+use crate::bitboard::bitboard::{Bitboard, Square};
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::parse::Parse;
@@ -11,169 +11,15 @@ use regex::Regex;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
 
-#[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
-pub struct MoveExt {
-    pub p1: Piece,
-    pub f1: Bitboard,
-    pub t1: Bitboard,
-
-    // them
-    pub p2: Piece,
-    pub f2: Bitboard,
-
-    // us
-    pub p3: Piece,
-    pub t3: Bitboard,
-
-    pub p4: Piece,
-    pub f4: Bitboard,
-
-    pub castle: CastlingRights,
-    pub ep_square: Bitboard,
-}
-
-impl MoveExt {
-    #[inline]
-    pub fn new_quiet(p: Piece, from: Bitboard, to: Bitboard) -> Move {
-        Move {
-            from,
-            to,
-            mover: p,
-            ..Default::default()
-        }
-    }
-
-    #[inline]
-    pub fn new_double_push(from: Bitboard, to: Bitboard, ep_square: Bitboard) -> Move {
-        Move {
-            from,
-            to,
-            ep: ep_square,
-            mover: Piece::Pawn,
-            ..Default::default()
-        }
-    }
-
-    #[inline]
-    pub fn new_capture(p: Piece, from: Bitboard, to: Bitboard, captured: Piece) -> Move {
-        Move {
-            from,
-            to,
-            mover: p,
-            capture: captured,
-            ..Default::default()
-        }
-    }
-
-    #[inline]
-    pub fn new_ep_capture(
-        from: Bitboard,
-        to: Bitboard,
-        captured_sq: Bitboard,
-    ) -> Move {
-        Move {
-            from,
-            to,
-            mover: Piece::Pawn,
-            capture: Piece::Pawn,
-            ep: captured_sq,
-            ..Default::default()
-        }
-    }
-
-    #[inline]
-    pub fn new_promo(from: Bitboard, to: Bitboard, promo: Piece) -> Move {
-        Move {
-            from,
-            to,
-            promo,
-            mover: Piece::Pawn,
-            ..Default::default()
-        }
-    }
-
-    #[inline]
-    pub fn new_promo_capture(from: Bitboard, to: Bitboard, promo: Piece, capture: Piece) -> Move {
-        Move {
-            from,
-            to,
-            mover: Piece::Pawn,
-            capture,
-            promo,
-            ..Default::default()
-        }
-    }
-
-    #[inline]
-    pub fn new_castle(
-        king_from: Bitboard,
-        king_to: Bitboard,
-        _rook_from: Bitboard,
-        _rook_to: Bitboard,
-        castle: CastlingRights,
-    ) -> Move {
-
-        Move {
-            from: king_from,
-            to: king_to,
-            mover: Piece::King,
-            castle_side: castle,
-            // p3: Piece::Rook,
-            // t3: rook_to,
-            // p4: Piece::Rook,
-            // f4: rook_from,
-            is_known_legal: true,
-            ..Default::default()
-        }
-    }
-
-    // pub fn as_move(&self) {
-    //     if p2 == Piece::None && p3 == Piece::None && p4 == Piece::None {
-            
-    //     }
-
-    // }
-}
 
 
-impl fmt::Display for MoveExt {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.uci())?;
-        Ok(())
-    }
-}
-
-
-impl MoveExt {
-    pub fn is_promo(&self) -> bool {
-        self.p1 == Piece::Pawn && self.p3 != Piece::None
-    }
-
-    pub fn is_capture(&self) -> bool {
-        self.p2 != Piece::None
-    }
-
-    pub fn uci(&self) -> String {
-        // if self.is_null() {
-        //     return String::from('-');
-        // }
-        let mut res = String::new();
-        res.push_str(&self.f1.uci());
-        res.push_str(&self.t1.uci());
-        if self.is_promo() {
-            res.push_str(&self.t3.uci());
-            res.push(self.p3.to_char(Some(Color::Black)));
-        }
-        res
-    }
-}
 
 // FIXME: public methods
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
 pub struct Move {
-    pub from: Bitboard,
-    pub to: Bitboard,
-    pub ep: Bitboard,
+    pub from: Square,
+    pub to: Square,
+    pub ep: Square,
     pub promo: Piece,
     pub capture: Piece,
     pub mover: Piece,
@@ -200,9 +46,9 @@ pub struct Move {
 
 impl Move {
     pub const NULL_MOVE: Move = Move {
-        from: Bitboard::EMPTY,
-        to: Bitboard::EMPTY,
-        ep: Bitboard::EMPTY,
+        from: Square::null(),
+        to: Square::null(),
+        ep: Square::null(),
         promo: Piece::None,
         capture: Piece::None,
         mover: Piece::None,
@@ -219,17 +65,17 @@ impl Move {
     }
 
     #[inline]
-    pub fn to(&self) -> Bitboard {
+    pub fn to(&self) -> Square {
         self.to
     }
 
     #[inline]
-    pub fn from(&self) -> Bitboard {
+    pub fn from(&self) -> Square {
         self.from
     }
 
     #[inline]
-    pub fn ep(&self) -> Bitboard {
+    pub fn ep(&self) -> Square {
         self.ep
     }
 
@@ -280,13 +126,109 @@ impl Move {
 
     #[inline]
     pub fn is_ep_capture(&self) -> bool {
-        !self.ep.is_empty() && self.is_capture()
+        !self.ep.is_null() && self.is_capture()
     }
 
     #[inline]
     pub fn is_pawn_double_push(&self) -> bool {
-        !self.ep.is_empty() && !self.is_capture()
+        !self.ep.is_null() && !self.is_capture()
     }
+
+    #[inline]
+    pub fn new_quiet(p: Piece, from: Square, to: Square) -> Move {
+        Move {
+            from,
+            to,
+            mover: p,
+            ..Default::default()
+        }
+    }
+
+    #[inline]
+    pub fn new_double_push(from: Square, to: Square, ep_square: Square) -> Move {
+        Move {
+            from,
+            to,
+            ep: ep_square,
+            mover: Piece::Pawn,
+            ..Default::default()
+        }
+    }
+
+    #[inline]
+    pub fn new_capture(p: Piece, from: Square, to: Square, captured: Piece) -> Move {
+        Move {
+            from,
+            to,
+            mover: p,
+            capture: captured,
+            ..Default::default()
+        }
+    }
+
+    #[inline]
+    pub fn new_ep_capture(
+        from: Square,
+        to: Square,
+        captured_sq: Square,
+    ) -> Move {
+        Move {
+            from,
+            to,
+            mover: Piece::Pawn,
+            capture: Piece::Pawn,
+            ep: captured_sq,
+            ..Default::default()
+        }
+    }
+
+    #[inline]
+    pub fn new_promo(from: Square, to: Square, promo: Piece) -> Move {
+        Move {
+            from,
+            to,
+            promo,
+            mover: Piece::Pawn,
+            ..Default::default()
+        }
+    }
+
+    #[inline]
+    pub fn new_promo_capture(from: Square, to: Square, promo: Piece, capture: Piece) -> Move {
+        Move {
+            from,
+            to,
+            mover: Piece::Pawn,
+            capture,
+            promo,
+            ..Default::default()
+        }
+    }
+
+    #[inline]
+    pub fn new_castle(
+        king_from: Square,
+        king_to: Square,
+        _rook_from: Square,
+        _rook_to: Square,
+        castle: CastlingRights,
+    ) -> Move {
+
+        Move {
+            from: king_from,
+            to: king_to,
+            mover: Piece::King,
+            castle_side: castle,
+            // p3: Piece::Rook,
+            // t3: rook_to,
+            // p4: Piece::Rook,
+            // f4: rook_from,
+            is_known_legal: true,
+            ..Default::default()
+        }
+    }
+
+
 
     #[inline]
     pub fn mvv_lva_score(&self) -> i32 {
@@ -323,8 +265,8 @@ impl Move {
             promo = Piece::None;
         }
         Ok(Move {
-            to,
-            from,
+            to: to.square(),
+            from: from.square(),
             promo,
             ..Default::default()
         })
@@ -337,7 +279,7 @@ impl fmt::Display for Move {
         if f.alternate() {
             write!(f, " m:{}", self.mover_piece())?;
 
-            if !self.ep().is_empty() {
+            if !self.ep().is_null() {
                 write!(f, " ep:{}", self.ep().uci())?;
             }
             if self.is_capture() {
@@ -354,95 +296,6 @@ impl fmt::Display for Move {
     }
 }
 
-
-
-
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MoveListExt {
-    pub moves: Vec<MoveExt>,
-}
-
-// pub struct MoveListExt(ArrayVec::<[Move; 384]>);
-// impl Default for MoveListExt {
-//     fn default() -> MoveListExt { MoveListExt::new() }
-// }
-
-impl Default for MoveListExt {
-    fn default() -> Self {
-        Self {
-            moves: Vec::with_capacity(50),
-        }
-    }
-}
-
-impl std::iter::FromIterator<MoveExt> for MoveListExt {
-    fn from_iter<I: IntoIterator<Item = MoveExt>>(iter: I) -> Self {
-        let mut ml = MoveListExt::new();
-        for mv in iter {
-            ml.push(mv);
-        }
-        ml
-    }
-}
-
-impl MoveListExt {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn sort(&mut self) -> &mut Self {
-        self.moves.sort_by_key(|m| m.to_string());
-        self
-    }
-
-    pub fn uci(&self) -> String {
-        self.moves
-            .iter()
-            .map(|mv| mv.uci())
-            .collect::<Vec<String>>()
-            .join(" ")
-    }
-
-    #[inline]
-    pub fn set_last_move(&mut self, ply: Ply, mv: &MoveExt) {
-        let ply = ply as usize;
-        // root node is ply 0, so len==ply, so ply 1 gets stored in 0th element
-        if self.moves.len() == ply && ply > 0 {
-            self.moves[ply - 1] = *mv;
-        } else {
-            self.moves.resize_with(ply, || *mv);
-        }
-    }
-}
-
-impl Deref for MoveListExt {
-    type Target = Vec<MoveExt>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.moves
-    }
-}
-
-impl DerefMut for MoveListExt {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.moves
-    }
-}
-
-impl fmt::Display for MoveListExt {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if f.alternate() {
-            for mv in self.iter() {
-                writeln!(f, "{:#}", mv)?;
-            }
-        } else {
-            let strings: Vec<String> = self.moves.iter().map(MoveExt::to_string).collect();
-            f.write_str(&strings.join(", "))?
-        }
-        Ok(())
-    }
-}
 
 
 
@@ -630,10 +483,10 @@ impl MoveValidator for Board {
         for lm in self.legal_moves().iter() {
             if lm.to() == mv.to() && lm.mover_piece() == mv.mover_piece() {
                 pieces += 1;
-                if lm.from().files_string() == mv.from().files_string() {
+                if lm.from().file_char() == mv.from().file_char() {
                     file_pieces += 1;
                 }
-                if lm.from().ranks_string() == mv.from().ranks_string() {
+                if lm.from().rank_char() == mv.from().rank_char() {
                     rank_pieces += 1;
                 }
             }
@@ -641,18 +494,18 @@ impl MoveValidator for Board {
         if pieces > 1 || (mv.mover_piece() == Piece::Pawn && mv.is_capture()) {
             // need to resolve ambiguity
             if file_pieces == 1 {
-                s += &mv.from().files_string();
+                s.push(mv.from().file_char());
             } else if rank_pieces == 1 {
-                s += &mv.from().ranks_string();
+                s.push(mv.from().rank_char());
             } else {
-                s += &mv.from().sq_as_uci();
+                s += &mv.from().uci();
             }
         }
 
         if mv.is_capture() {
             s.push('x');
         }
-        s += &mv.to().sq_as_uci();
+        s += &mv.to().uci();
         if mv.is_ep_capture() {
             s += " e.p.";
         }
@@ -719,13 +572,13 @@ mod tests {
         assert_eq!(Move::new_null().to_string(), "-");
 
         let move_a1b2 = Move {
-            from: a1,
-            to: b2,
+            from: a1.square(),
+            to: b2.square(),
             ..Default::default()
         };
         let promo_a7a8 = Move {
-            from: a7,
-            to: a8,
+            from: a7.square(),
+            to: a8.square(),
             promo: Piece::Queen,
             ..Default::default()
         };
@@ -750,13 +603,13 @@ mod tests {
     #[test]
     fn test_movelist() -> Result<(), String> {
         let move_a1b2 = Move {
-            from: a1,
-            to: b2,
+            from: a1.square(),
+            to: b2.square(),
             ..Default::default()
         };
         let promo_a7a8 = Move {
-            from: a7,
-            to: a8,
+            from: a7.square(),
+            to: a8.square(),
             promo: Piece::Queen,
             ..Default::default()
         };

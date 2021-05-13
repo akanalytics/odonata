@@ -11,10 +11,10 @@ impl SimpleScorer {
         let mut gain: [i32;32] = [0;32]; 
         let mut d = 0;
         //let mayXray = board.pawns() | board.bishops() | board.rooks() | board.queens();
-        let mut from = mv.from();
+        let mut from = mv.from().as_bb();
         let mut occ = board.black() | board.white();
         let mut attacker_color = board.color_us();
-        let mut attackers = board.attacked_by(mv.to());  // will include the current 'mv' attacker
+        let mut attackers = board.attacked_by(mv.to().as_bb());  // will include the current 'mv' attacker
         gain[0] = self.material_scores[mv.capture_piece()];
         while !(attackers & board.color(attacker_color)).is_empty() {
             let mover = board.piece_at(from);

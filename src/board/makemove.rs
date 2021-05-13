@@ -2,16 +2,13 @@ use crate::bitboard::bitboard::Bitboard;
 use crate::board::Board;
 use crate::globals::constants::*;
 use crate::hasher::Hasher;
-use crate::movelist::{Move, MoveExt};
+use crate::movelist::{Move};
 use crate::types::{Piece};
 use crate::bitboard::castling::CastlingRights;
 
 use std::cell::Cell;
 
 pub trait MoveMaker {
-    fn make_move_ext(&mut self, mv: &MoveExt);
-    fn undo_move_ext(&mut self, mv: &MoveExt);
-
     fn make_move(&self, m: &Move) -> Board;
     fn undo_move(&self, m: &Move);
 }
@@ -19,53 +16,53 @@ pub trait MoveMaker {
 impl MoveMaker for Board {
 
 
-    fn make_move_ext(&mut self, mv: &MoveExt) {
-        let them = self.turn.opposite();
-        self.pieces[mv.p1.index()] ^= mv.f1 ^ mv.t1;
-        self.pieces[mv.p2.index()] ^= mv.f2;
-        self.pieces[mv.p3.index()] ^= mv.t3;
-        self.pieces[mv.p4.index()] ^= mv.f4;
-        self.threats_to[0].set(Bitboard::niche());
-        self.threats_to[1].set(Bitboard::niche());
-        self.checkers_of[0].set(Bitboard::niche());
-        self.checkers_of[1].set(Bitboard::niche());
-        self.repetition_count.set(0);
+    // fn make_move_ext(&mut self, mv: &MoveExt) {
+    //     let them = self.turn.opposite();
+    //     self.pieces[mv.p1.index()] ^= mv.f1 ^ mv.t1;
+    //     self.pieces[mv.p2.index()] ^= mv.f2;
+    //     self.pieces[mv.p3.index()] ^= mv.t3;
+    //     self.pieces[mv.p4.index()] ^= mv.f4;
+    //     self.threats_to[0].set(Bitboard::niche());
+    //     self.threats_to[1].set(Bitboard::niche());
+    //     self.checkers_of[0].set(Bitboard::niche());
+    //     self.checkers_of[1].set(Bitboard::niche());
+    //     self.repetition_count.set(0);
 
-        self.fifty_clock += 1;
-        if mv.p1 == Piece::Pawn || mv.is_capture() {
-            self.fifty_clock = 0;
-        }
-        self.colors[self.turn] ^= mv.f1 ^ mv.t1 ^ mv.t3 ^ mv.f4;
-        self.colors[them] ^= mv.f2;
+    //     self.fifty_clock += 1;
+    //     if mv.p1 == Piece::Pawn || mv.is_capture() {
+    //         self.fifty_clock = 0;
+    //     }
+    //     self.colors[self.turn] ^= mv.f1 ^ mv.t1 ^ mv.t3 ^ mv.f4;
+    //     self.colors[them] ^= mv.f2;
         
-        // self.castling ^= mv.castle;
-        let squares_changing = mv.f1 ^ mv.t1 ^ mv.t3 ^ mv.f4;
-        self.castling.adjust( squares_changing);
+    //     // self.castling ^= mv.castle;
+    //     let squares_changing = mv.f1 ^ mv.t1 ^ mv.t3 ^ mv.f4;
+    //     self.castling.adjust( squares_changing);
 
-        // self.castling -= Bitboard::ROOK_AND_KING_SQS & (mv.f1 | mv.t3);
+    //     // self.castling -= Bitboard::ROOK_AND_KING_SQS & (mv.f1 | mv.t3);
 
-        self.en_passant = mv.ep_square;
+    //     self.en_passant = mv.ep_square;
 
-        self.fullmove_number += self.turn.chooser_wb(0, 1);
-        self.turn = them;
+    //     self.fullmove_number += self.turn.chooser_wb(0, 1);
+    //     self.turn = them;
 
-        //self.hash ^= Hasher::default().hash_move(mv, self);
-        // debug_assert!(
-        //     self.hash == Hasher::default().hash_board(self),
-        //     "make_move_ext({:?}) inconsistent incremental hash {:x} (should be {:x}",
-        //     mv, 
-        //     self.hash,
-        //     Hasher::default().hash_board(self),
-        // );
+    //     //self.hash ^= Hasher::default().hash_move(mv, self);
+    //     // debug_assert!(
+    //     //     self.hash == Hasher::default().hash_board(self),
+    //     //     "make_move_ext({:?}) inconsistent incremental hash {:x} (should be {:x}",
+    //     //     mv, 
+    //     //     self.hash,
+    //     //     Hasher::default().hash_board(self),
+    //     // );
 
-    }
+    // }
 
-    fn undo_move_ext(&mut self, _mv: &MoveExt) {
-        // *self.pieces_mut(mv.p1) ^= mv.f1 ^ mv.t1;
-        // *self.pieces_mut(mv.p2) ^= mv.f2;
-        // *self.pieces_mut(mv.p3) ^= mv.t3;
-        // self.turn = self.turn.opposite();
-    }
+    // fn undo_move_ext(&mut self, _mv: &MoveExt) {
+    //     // *self.pieces_mut(mv.p1) ^= mv.f1 ^ mv.t1;
+    //     // *self.pieces_mut(mv.p2) ^= mv.f2;
+    //     // *self.pieces_mut(mv.p3) ^= mv.t3;
+    //     // self.turn = self.turn.opposite();
+    // }
 
 
 
@@ -73,7 +70,7 @@ impl MoveMaker for Board {
     fn make_move(&self, m: &Move) -> Board {
         // either we're moving to an empty square or its a capture
         debug_assert!(
-            ((self.white() | self.black()) & m.to()).is_empty() || m.is_capture(),
+            ((self.white() | self.black()) & m.to().as_bb()).is_empty() || m.is_capture(),
             "Non-empty to:sq for non-capture {:?} board \n{} white \n{} black\n{}",
             m,
             self,
@@ -98,8 +95,8 @@ impl MoveMaker for Board {
             if m.is_ep_capture() {
                 // ep capture is like capture but with capture piece on *ep* square not *dest*
                 b.fifty_clock = 0;
-                b.pieces[m.capture_piece().index()].remove(m.ep());
-                b.colors[b.turn.index()].remove(m.ep());
+                b.pieces[m.capture_piece().index()].remove(m.ep().as_bb());
+                b.colors[b.turn.index()].remove(m.ep().as_bb());
             } else {
                 // regular capture
                 debug_assert!(
@@ -109,27 +106,27 @@ impl MoveMaker for Board {
                     self
                 );
                 b.fifty_clock = 0;
-                b.pieces[m.capture_piece().index()].remove(m.to());
-                b.colors[b.turn.index()].remove(m.to());
+                b.pieces[m.capture_piece().index()].remove(m.to().as_bb());
+                b.colors[b.turn.index()].remove(m.to().as_bb());
             }
         }
 
         // clear one bit and set another for the move using xor
-        let from_to_bits = m.from() | m.to();
+        let from_to_bits = m.from().as_bb() | m.to().as_bb();
         b.pieces[m.mover_piece().index()] ^= from_to_bits;
         b.colors[self.turn.index()] ^= from_to_bits;
 
         if m.mover_piece() == Piece::Pawn {
             b.fifty_clock = 0;
             if m.is_pawn_double_push() {
-                b.en_passant = m.ep();
+                b.en_passant = m.ep().as_bb();
             }
         }
 
         if m.is_promo() {
             // fifty clock handled by pawn move above;
-            b.pieces[Piece::Pawn.index()].remove(m.to()); // pawn has already moved
-            b.pieces[m.promo_piece().index()].insert(m.to());
+            b.pieces[Piece::Pawn.index()].remove(m.to().as_bb()); // pawn has already moved
+            b.pieces[m.promo_piece().index()].insert(m.to().as_bb());
         }
 
         // castling *moves*
@@ -139,7 +136,7 @@ impl MoveMaker for Board {
             let rook_from_to;
 
             #[allow(non_upper_case_globals)]
-            match m.to() {
+            match m.to().as_bb() {
                 c1 => {
                     debug_assert!(b.castling.contains(CastlingRights::WHITE_QUEEN));
                     rook_from_to = a1 | d1;
@@ -158,7 +155,7 @@ impl MoveMaker for Board {
                 }
                 _ => panic!("Castling move from square {}", m.to()),
             }
-            b.pieces[Piece::Rook] ^= rook_from_to;
+            b.pieces[Piece::Rook.index()] ^= rook_from_to;
             b.colors[self.turn] ^= rook_from_to;
         }
 
@@ -166,7 +163,7 @@ impl MoveMaker for Board {
         //  if a piece moves TO (=capture) or FROM the rook squares - appropriate castling rights are lost
         //  if a piece moves FROM the kings squares, both castling rights are lost
         //  possible with a rook x rook capture that both sides lose castling rights
-        let squares_changing = m.to() | m.from();
+        let squares_changing = m.to().as_bb() | m.from().as_bb();
         b.castling.adjust( squares_changing);
 
         let move_hash = Hasher::default().hash_move(m, self);
