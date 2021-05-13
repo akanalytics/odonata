@@ -152,6 +152,12 @@ impl Bitboard {
     }
 
     #[inline]
+    pub fn any(self) -> bool {
+        !self.is_empty()
+    }
+
+
+    #[inline]
     pub fn shift(self, dir: Dir) -> Bitboard {
         let bb = self - dir.mask;
         if dir.shift > 0 {

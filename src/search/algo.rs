@@ -457,7 +457,7 @@ mod tests {
         let closure = |sp: &SearchProgress| println!("nps {}", sp.time_millis.unwrap_or_default());
         algo2.set_callback(closure);
         algo2.search_async(position.board());
-        let millis = time::Duration::from_millis(100);
+        let millis = time::Duration::from_millis(200);
         thread::sleep(millis);
         algo2.search_async_stop();
         println!("{}", algo2);

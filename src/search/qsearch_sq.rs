@@ -1,4 +1,4 @@
-use crate::bitboard::bitboard::{Bitboard, Square};
+use crate::bitboard::bitboard::{Square};
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::eval::score::Score;

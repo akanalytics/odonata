@@ -223,11 +223,14 @@ impl Move {
             // t3: rook_to,
             // p4: Piece::Rook,
             // f4: rook_from,
-            is_known_legal: true,
             ..Default::default()
         }
     }
 
+    pub fn set_legal(&mut self) -> Self {
+        self.is_known_legal = true;
+        *self
+    }
 
 
     #[inline]

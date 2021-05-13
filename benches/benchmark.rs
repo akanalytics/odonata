@@ -399,8 +399,8 @@ fn board_calcs(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             bams.iter().cycle_n(n).for_each(|bam| {
-                black_box(threats_to(black_box(&bam.0), Color::White));
-                black_box(threats_to(black_box(&bam.0), Color::Black));
+                black_box(threats_to(black_box(&bam.0), Color::White, bam.0.occupied()));
+                black_box(threats_to(black_box(&bam.0), Color::Black, bam.0.occupied()));
             });
             t.elapsed() / 2 / positions.len() as u32
         })

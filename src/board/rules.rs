@@ -1,6 +1,6 @@
 use crate::bitboard::attacks::{BitboardAttacks, BitboardDefault};
 use crate::bitboard::bitboard::{Bitboard, Dir};
-use crate::board::movegen::{attacked_by};
+use crate::board::movegen::{attacked_by, threats_to};
 use crate::board::Board;
 use crate::movelist::{Move, MoveList};
 use crate::types::{Piece};
@@ -12,20 +12,49 @@ pub struct Rules;
 
 impl Rules {
 
-    pub fn pseudo_legal_moves_ext(b: &Board) -> MoveList {
-        let mut moves = MoveList::new();
-        Rules::pawn_captures_incl_promo(b, &mut moves);
-        Rules::pawn_promos(b, &mut moves);
-        Rules::pawn_push(b, &mut moves);
-        // Rules::pawn_capture_promos(b, &mut moves);
-        Rules::non_pawn(Piece::Knight, b, &mut moves);
-        Rules::non_pawn(Piece::Bishop, b, &mut moves);
-        Rules::non_pawn(Piece::Rook, b, &mut moves);
-        Rules::non_pawn(Piece::Queen,b,  &mut moves);
-        Rules::non_pawn(Piece::King, b, &mut moves);
-        Rules::castles(b, &mut moves);
-        moves
+
+    // pub fn x(b: &Board) {
+    //     let mut capture_mask = Bitboard::all();
+    //     let mut push_mask    = Bitboard::all();
+        
+    //     let checkers = b.checkers_of(b.color_us());
+
+    //     if checkers.popcount() == 1 {
+    //         // if ony one checker, we can evade check by capturing it
+    //         capture_mask = checkers;
+        
+    //         // If the piece giving check is a slider, we can evade check by blocking it
+    //         if board.line_pieces().intersects(checkers) {
+    //             push_mask = opponent_slider_rays_to_square(king_square, board);
+    //         } else {
+    //             // if the piece is not a slider, we can only evade check by capturing
+    //             push_mask = Bitboard::EMPTY; 
+    //         }
+    //     }        
+    // }
+
+
+    pub fn king_legal(b: &Board, moves: &mut MoveList) {
+        let attack_gen = BitboardDefault::default();
+        let them = b.them();
+        let us = b.us();
+        let occ = b.occupied();
+        let our_kings = b.kings() & us;
+        let king_danger = threats_to(b, b.color_us(), occ - our_kings );
+        
+        if !our_kings.is_empty() {
+            let king_sq = (b.kings() & us).square();
+            let attacks = attack_gen.non_pawn_attacks(Piece::King, occ, king_sq) & !us - king_danger;
+            moves.extend(attacks.squares().map(|to| {
+                if to.is_in(them) {
+                    Move::new_capture(Piece::King, king_sq, to, b.piece_at(to.as_bb())).set_legal()
+                } else {
+                    Move::new_quiet(Piece::King, king_sq, to).set_legal()
+                }
+            }))
+        }
     }
+
 
     pub fn non_pawn(p: Piece, b: &Board, moves: &mut MoveList) {
         let attack_gen = BitboardDefault::default();
@@ -65,7 +94,7 @@ impl Rules {
             let king_to = rook_to.shift(Dir::E);
             let king_moves = king | rook_to | king_to;
             if attacked_by(king_moves, occ, b).disjoint(them) {
-                let m = Move::new_castle(king_sq, king_to.square(), king_to.square().shift(Dir::E), rook_to.square(), right);
+                let m = Move::new_castle(king_sq, king_to.square(), king_to.square().shift(Dir::E), rook_to.square(), right).set_legal();
                 moves.push(m);
             }
         }
@@ -81,7 +110,7 @@ impl Rules {
             if attacked_by(king_moves, occ, b).disjoint(them) {
                 let king_to = king_to.square();
                 let rook_from = king_to.shift(Dir::W).shift(Dir::W);
-                let m = Move::new_castle(king_sq, king_to, rook_from, rook_to.square(), right);
+                let m = Move::new_castle(king_sq, king_to, rook_from, rook_to.square(), right).set_legal();
                 moves.push(m);
             }
         }
@@ -245,3 +274,24 @@ impl Rules {
 
 
   
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::board::boardbuf::*;
+    use crate::board::*;
+
+
+    #[test]
+    fn test_king_legal() {
+        let b = Board::parse_piece_placement("rk6/8/8/8/8/8/8/1K6").unwrap();
+        let mut moves = MoveList::new();
+        Rules::king_legal(&b, &mut moves);
+        assert_eq!(moves.sort().to_string(), "b1b2, b1c1, b1c2");
+        
+        let b = Board::parse_piece_placement("rk6/8/8/8/8/8/K7/8").unwrap();
+        let mut moves = MoveList::new();
+        Rules::king_legal(&b, &mut moves);
+        // xray prevents a2a1
+        assert_eq!(moves.sort().to_string(), "a2b1, a2b2, a2b3");
+    }
+}
