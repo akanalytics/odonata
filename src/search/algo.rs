@@ -341,7 +341,7 @@ mod tests {
         search.move_orderer.enabled = false;
         search.search(&board);
         println!("{}", search);
-        assert_eq!(search.search_stats().total().nodes(), 1416); // pawn promo
+        assert_eq!(search.search_stats().total().nodes(), 1404); // pawn promo
 
         // previous
         // assert_eq!(search.search_stats().total().nodes(), 1480); // gen qsearch

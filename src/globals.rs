@@ -131,7 +131,7 @@ mod tests {
 
     #[test]
     fn sizes() {
-        assert_eq!(size_of::<Move>(), 32, "Move");
+        assert_eq!(size_of::<Move>(), 9, "Move");
         assert_eq!(size_of::<MoveList>(), 24, "MoveList");
         assert_eq!(size_of::<Piece>(), 1);
         assert_eq!(size_of::<Color>(), 1);
@@ -142,7 +142,7 @@ mod tests {
         assert_eq!(size_of::<Node>(), 48, "Node");
         assert_eq!(size_of::<SearchStats>(), 224, "SearchStats");
         assert_eq!(size_of::<NodeStats>(), 120, "NodeStats");
-        assert_eq!(size_of::<Entry>(), 48, "Entry");
+        assert_eq!(size_of::<Entry>(), 24, "Entry");
         assert_eq!(size_of::<TranspositionTable>(), 216, "TranspositionTable");
         assert_eq!(size_of::<ClassicalBitboard>(), 5120, "ClassicalBitboard");
         assert_eq!(size_of::<Hyperbola>(), 5632, "Hyperbola");

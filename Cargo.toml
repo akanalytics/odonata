@@ -31,14 +31,16 @@ name = "benchmark"
 harness = false
 
 [profile.release]
-debug = true
-lto = true
-codegen-units = 1
+#lto = true
+#codegen-units = 1
 debug = true
 opt-level = 3
 
-[target.'cfg(any(windows, unix))']
-rustflags = ["-C target-cpu=native"]
+# RUSTFLAGS="-C target-cpu=native" cargo bench
+
+# in .cargo/config.toml
+# rustflags = ["-C target-cpu=native"]
 
 # rustc --print cfg
 # rustc -C target-cpu=native --print cfg
+
