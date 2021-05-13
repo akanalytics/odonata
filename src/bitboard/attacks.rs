@@ -92,12 +92,11 @@ pub trait BitboardAttacks {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bitboard::bb_classical::*;
     use crate::globals::constants::*;
 
-    fn init() {
-        // env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
-    }
+    // fn init() {
+    //     // env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    // }
 
  
 

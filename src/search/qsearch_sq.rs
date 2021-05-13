@@ -1,14 +1,10 @@
 use crate::bitboard::bitboard::Bitboard;
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
-use crate::config::{Config, Configurable};
 use crate::eval::score::Score;
-use crate::log_debug;
-use crate::movelist::Move;
 use crate::movelist::MoveList;
 use crate::search::algo::Algo;
 use crate::types::Ply;
-use std::fmt;
 
 
 

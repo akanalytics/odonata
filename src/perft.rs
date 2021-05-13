@@ -20,6 +20,23 @@ impl Perft {
         }
     }
 
+
+    pub fn perft_ext(board: &mut Board, depth: u32) -> u64 {
+        if depth == 0 {
+            1
+        } else {
+            let moves = board.legal_moves_ext();
+            let mut count = 0u64;
+            for m in moves.iter() {
+                let mut child = board.clone();
+                child.make_move_ext(m);
+                let res = Self::perft(&mut child, depth - 1);
+                count += res;
+            }
+            count
+        }
+    }
+
     pub fn perft_compare(board: &mut Board, depth: u32) -> u64 {
         if depth == 0 {
             1
@@ -69,7 +86,7 @@ mod tests {
     fn test_perft() {
         for (mut board, perfts) in Catalog::perfts() {
             for (depth, &expected) in perfts.iter().enumerate() {
-                if depth <= 2 {
+                if depth <= 6 {
                     let now = Instant::now();
                     let count = Perft::perft(&mut board, depth as u32);
                     assert_eq!(count, expected, "fen {} perft({})", board.to_fen(), depth);
@@ -87,12 +104,12 @@ mod tests {
 
     #[test]
     #[ignore]
-    fn test_perft_compare() {
+    fn test_compare_perft() {
         for (mut board, perfts) in Catalog::perfts() {
             for (depth, &_expected) in perfts.iter().enumerate() {
                 if depth <= 2 {
                     let _now = Instant::now();
-                    let _count = Perft::perft(&mut board, depth as u32);
+                    let _count = Perft::perft_compare(&mut board, depth as u32);
                 }
             }
         }
@@ -100,7 +117,7 @@ mod tests {
 
     #[test]
     #[ignore]
-    fn test_perft_slow() {
+    fn test_slow_perft() {
         for (mut board, perfts) in Catalog::perfts() {
             println!("\n{}", board.to_fen());
             for (depth, &expected) in perfts.iter().enumerate() {

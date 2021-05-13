@@ -2,9 +2,8 @@ use crate::bitboard::attacks::{BitboardAttacks, BitboardDefault};
 use crate::bitboard::bitboard::{Bitboard, Dir};
 use crate::board::movegen::{attacked_by};
 use crate::board::Board;
-use crate::globals::counts;
-use crate::movelist::{Move, MoveExt, MoveList, MoveListExt};
-use crate::types::{Color, Piece};
+use crate::movelist::{MoveExt, MoveListExt};
+use crate::types::{Piece};
 use crate::bitboard::castling::CastlingRights;
 
 pub struct Rules;

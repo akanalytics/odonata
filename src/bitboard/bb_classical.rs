@@ -1,5 +1,4 @@
 use crate::bitboard::bitboard::{Bitboard, Square, Dir};
-use crate::types::{Color, Piece};
 use crate::bitboard::attacks::BitboardAttacks;
 use once_cell::sync::Lazy;
 
@@ -101,6 +100,7 @@ mod tests {
     use super::*;
     use crate::globals::constants::*;
 
+    #[test]
     fn test_rays() {
         let classical = ClassicalBitboard::new();
         let north = classical.rays[16 + 2][Dir::N.index];

@@ -6,7 +6,6 @@ use crate::globals::counts;
 use crate::movelist::{Move, MoveExt, MoveList, MoveListExt};
 use crate::types::{Color, Piece};
 use crate::bitboard::castling::CastlingRights;
-use once_cell::sync::OnceCell;
 
 
 pub fn threats_to(board: &Board, us: Color) -> Bitboard {

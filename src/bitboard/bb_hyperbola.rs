@@ -5,12 +5,12 @@ use once_cell::sync::Lazy;
 
 static STATIC_INSTANCE: Lazy<Hyperbola> = Lazy::new(|| Hyperbola::new());
 
-enum MaskType {
-    Diag = 0,
-    AntiDiag = 1,
-    File = 2,
-    Rank = 3,
-}
+// enum MaskType {
+//     Diag = 0,
+//     AntiDiag = 1,
+//     File = 2,
+//     Rank = 3,
+// }
 
 #[derive(Copy, Clone, Debug, Default)]
 struct HyperbolaMask {
@@ -110,7 +110,7 @@ impl Hyperbola {
     //
     #[inline]
     fn rank_hyperbola(&self, occ: Bitboard, sq: Square) -> Bitboard {
-        const FILES_BCDEFG: Bitboard = Bitboard::all().xor(Bitboard::FILE_A.or(Bitboard::FILE_H));
+        // const FILES_BCDEFG: Bitboard = Bitboard::all().xor(Bitboard::FILE_A.or(Bitboard::FILE_H));
         let file = sq.file_index();
         let rank = sq.rank_index() * 8;
         let occupied = (occ.bits() >> rank) & (63 << 1); // 63 << 1 is middle 6 bits

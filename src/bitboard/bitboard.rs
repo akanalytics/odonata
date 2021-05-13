@@ -575,6 +575,7 @@ mod tests {
         );
     }
 
+    #[test]
     fn test_rays() {
         let north = c3.ray(Dir::N);
         assert_eq!(north, c4 | c5 | c6 | c7 | c8);
