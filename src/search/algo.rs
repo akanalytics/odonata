@@ -194,7 +194,7 @@ impl Clone for AlgoThreadHandle {
 }
 
 impl Algo {
-    // clears evaluation and transposition caches as well as repetition counts 
+    // clears evaluation and transposition caches as well as repetition counts
     pub fn new_game(&mut self) {
         self.repetition.clear();
         self.tt.clear_and_resize();
@@ -341,9 +341,10 @@ mod tests {
         search.move_orderer.enabled = false;
         search.search(&board);
         println!("{}", search);
-        assert_eq!(search.search_stats().total().nodes(), 1480); // gen qsearch
+        assert_eq!(search.search_stats().total().nodes(), 1416); // pawn promo
 
         // previous
+        // assert_eq!(search.search_stats().total().nodes(), 1480); // gen qsearch
         // assert_eq!(search.search_stats().total().nodes(), 1642); added tt
         // assert_eq!(search.search_stats().total().nodes(), 1833); qsearch sq
         // assert_eq!(search.search_stats().total().nodes(), 1757);
@@ -390,19 +391,23 @@ mod tests {
             search.search(position.board());
             println!("{}", search);
             if id {
-                assert_eq!(search.search_stats().total().nodes(), 3885); // with gen qsearch
+                assert_eq!(search.search_stats().total().nodes(), 3456); // with pawn promo
 
-                // with sq q qsearch
-                // assert_eq!(search.search_stats().total().nodes(), 2108);  // with ordering pv + mvvlva
-                // assert_eq!(search.search_stats().total().nodes(), 3560);
-                // assert_eq!(search.search_stats().total().nodes(), 6553);  // with ordering pv
-                // assert_eq!(search.search_stats().total().nodes(), 6740);
+            // previous
+            // assert_eq!(search.search_stats().total().nodes(), 3885); // with gen qsearch
+            // with sq q qsearch
+            // assert_eq!(search.search_stats().total().nodes(), 2108);  // with ordering pv + mvvlva
+            // assert_eq!(search.search_stats().total().nodes(), 3560);
+            // assert_eq!(search.search_stats().total().nodes(), 6553);  // with ordering pv
+            // assert_eq!(search.search_stats().total().nodes(), 6740);
             } else {
-                assert_eq!(search.search_stats().total().nodes(), 3885); // with sq qsearch
+                assert_eq!(search.search_stats().total().nodes(), 3456); // with pawn promos
 
-                                                                         // assert_eq!(search.search_stats().total().nodes(), 2200); // with sq qsearch
-                                                                         // assert_eq!(search.search_stats().total().nodes(), 2108); // with  mvvlva
-                                                                         //assert_eq!(search.search_stats().total().nodes(), 7749); // no ids no mvvlva
+                // previous
+                // assert_eq!(search.search_stats().total().nodes(), 3885); // with sq qsearch
+                // assert_eq!(search.search_stats().total().nodes(), 2200); // with sq qsearch
+                // assert_eq!(search.search_stats().total().nodes(), 2108); // with  mvvlva
+                //assert_eq!(search.search_stats().total().nodes(), 7749); // no ids no mvvlva
             }
             assert_eq!(search.pv_table.extract_pv(), position.pv().unwrap());
             assert_eq!(search.score(), Score::WhiteWin { minus_ply: -3 });
@@ -424,12 +429,13 @@ mod tests {
         let nodes = algo.search_stats().total().nodes();
 
         // with gen qsearch
-        assert_eq!(nodes, 5096);
-        
-        // assert_eq!(nodes, 5197);  // wrong halfmove counts in mate score
-        // assert_eq!(nodes, 2274); // with sq based qsearch
-        // assert_eq!(nodes, 2274); // from 2248 (due to iterator ordering on bits)
-        // assert_eq!(nodes, 66234);
+        assert_eq!(nodes, 4586); // pawn promo
+                                 // previous
+                                 // assert_eq!(nodes, 5096);  // gen qsearch
+                                 // assert_eq!(nodes, 5197);  // wrong halfmove counts in mate score
+                                 // assert_eq!(nodes, 2274); // with sq based qsearch
+                                 // assert_eq!(nodes, 2274); // from 2248 (due to iterator ordering on bits)
+                                 // assert_eq!(nodes, 66234);
         assert_eq!(algo.pv_table.extract_pv().uci(), position.pv().unwrap().uci());
         assert_eq!(algo.score(), Score::WhiteWin { minus_ply: -3 });
 
