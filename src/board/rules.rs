@@ -14,9 +14,9 @@ impl Rules {
 
     pub fn pseudo_legal_moves_ext(b: &Board) -> MoveList {
         let mut moves = MoveList::new();
-        Rules::pawn_push(b, &mut moves);
-        Rules::pawn_promos(b, &mut moves);
         Rules::pawn_captures_incl_promo(b, &mut moves);
+        Rules::pawn_promos(b, &mut moves);
+        Rules::pawn_push(b, &mut moves);
         // Rules::pawn_capture_promos(b, &mut moves);
         Rules::non_pawn(Piece::Knight, b, &mut moves);
         Rules::non_pawn(Piece::Bishop, b, &mut moves);

@@ -71,7 +71,7 @@ impl Board {
 
     #[inline]
     pub fn pieces(&self, p: Piece) -> Bitboard {
-        self.pieces[p as usize]
+        self.pieces[p.index()]
     }
 
     // #[inline]
@@ -121,7 +121,7 @@ impl Board {
 
     #[inline]
     pub fn color(&self, c: Color) -> Bitboard {
-        self.colors[c]
+        self.colors[c.index()]
     }
 
     #[inline]
@@ -131,12 +131,12 @@ impl Board {
 
     #[inline]
     pub fn white(&self) -> Bitboard {
-        self.colors[Color::White]
+        self.colors[Color::White.index()]
     }
 
     #[inline]
     pub fn black(&self) -> Bitboard {
-        self.colors[Color::Black]
+        self.colors[Color::Black.index()]
     }
 
     #[inline]

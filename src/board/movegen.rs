@@ -222,6 +222,12 @@ impl Board {
 
     #[inline]
     pub fn pseudo_legal_moves(&self) -> MoveList {
+        // if self.checkers_of(self.color_us()).popcount() > 1 {
+        //     // double check - must move king
+        //     let mut moves = MoveList::new();
+        //     Rules::non_pawn(Piece::King, self, &mut moves);
+        //     return moves;
+        // }
         Rules::pseudo_legal_moves_ext(self)
     }
     
@@ -229,12 +235,12 @@ impl Board {
 
     // TODO: Vec::with_capacity(100).
     pub fn xxx_pseudo_legal_moves(&self) -> MoveList {
-        if self.checkers_of(self.color_us()).popcount() > 1 {
-            // double check - must move king
-            let mut moves = MoveList::new();
-            self.king_pseudo_legals_to(Bitboard::all(), &mut moves);
-            return moves;
-        }
+        // if self.checkers_of(self.color_us()).popcount() > 1 {
+        //     // double check - must move king
+        //     let mut moves = MoveList::new();
+        //     self.king_pseudo_legals_to(Bitboard::all(), &mut moves);
+        //     return moves;
+        // }
 
         let board = &self;
         let mut moves = MoveList::new();
