@@ -88,6 +88,7 @@ impl Algo {
                     NodeType::Cut => {
                         // previously this position raised alpha (sufficiently to cause a cut).
                         // not all child nodes were scored, so score is a lower bound
+                        // FIXME: probably dont set alpha just the hinted mv and re-search the node
                         if entry.score > alpha {
                             self.record_new_pv(ply, &entry.bm, true);
                             node_type = NodeType::Pv;
@@ -97,6 +98,7 @@ impl Algo {
                                 return entry.score;
                             }
                             score = entry.score;
+                            bm = entry.bm;
                             tt_mv = Some(entry.bm); // might help with move ordering
                             debug_assert!(!entry.bm.is_null());
                         }
@@ -153,6 +155,8 @@ impl Algo {
                 alpha = child_score;
                 bm = *mv;
                 node_type = NodeType::Pv;
+                debug_assert!(!bm.is_null(), "bm is null at {} mv {}", board, mv );
+
                 self.record_new_pv(ply, &bm, false);
             }
 

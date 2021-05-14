@@ -91,12 +91,17 @@ impl Configurable for Uci {
     fn settings(&self, c: &mut Config) {
         self.algo.settings(c);
         c.set("uci.debug", "type check default false");
+        c.set("Clear Hash", "type button");
     }
 
     fn configure(&mut self, c: &Config) {
         if let Some(b) = c.bool("uci.debug") {
             self.debug = b;
         }
+        if c.string("clear_cache").is_some() || c.string("Clear Hash").is_some(){
+            let _res = self.uci_newgame();
+        }
+
         self.algo.configure(&c);
     }
 }

@@ -12,12 +12,13 @@ use std::time::Duration;
 pub struct MoveTimeEstimator {
     pub time_control: TimeControl,
     board: Board,
-    branching_factor: u16,
+    pub branching_factor: u16,
     perc_of_time_adv: u32,
     moves_rem: u16,
     pub time_estimate: Duration,
     pub elapsed_used: Duration,
     pub deterministic: bool,
+    pub nodestime: i64,
 }
 
 impl Configurable for MoveTimeEstimator {
@@ -25,6 +26,7 @@ impl Configurable for MoveTimeEstimator {
         c.set("mte.branching_factor", "type spin default 10 min 1 max 100");
         c.set("mte.moves_rem", "type spin default 20 min 1 max 100");
         c.set("mte.perc_of_time_adv", "type spin default 100 min 0 max 1000");
+        c.set("nodestime", "type spin default 0 min 0 max 50000");
         c.set("mte.deterministic", "type check default false");
     }
     fn configure(&mut self, c: &Config) {
@@ -37,6 +39,7 @@ impl Configurable for MoveTimeEstimator {
             .int("mte.perc_of_time_adv")
             .unwrap_or(self.perc_of_time_adv as i64) as u32;
         self.deterministic = c.bool("mte.deterministic").unwrap_or(self.deterministic);
+        self.nodestime = c.int("nodestime").unwrap_or(self.nodestime);
     }
 }
 
@@ -51,6 +54,7 @@ impl Default for MoveTimeEstimator {
             time_estimate: Duration::default(),
             elapsed_used: Duration::default(),
             deterministic: false,
+            nodestime: 0,
         }
     }
 }
@@ -65,6 +69,7 @@ impl fmt::Display for MoveTimeEstimator {
         writeln!(f, "allotted for mv  : {}", Clock::format(self.allotted()))?;
         writeln!(f, "time estimate    : {}", Clock::format(self.time_estimate))?;
         writeln!(f, "deterministic    : {}", self.deterministic)?;
+        writeln!(f, "nodestime        : {}", self.nodestime)?;
         writeln!(f, "elapsed used     : {}", Clock::format(self.elapsed_used))?;
         Ok(())
     }

@@ -2,13 +2,20 @@
 
 
 [X] Aging tt
+[ ] REWORK NODE LOGIC. Esp when to write PV and IDS
+[ ] PV extraction
 [ ] outcome cache on eval. Qsearch eval cache and tt?
 [ ] Pawn chains fixed 
-[ ] PV extraction
 [ ] Null move pruning
 [ ] Fix board ==
 [ ] E/P when not relelvant and tt
 [ ] Prime the startup on uci with a search
+[ ] forks after qsearch http://macechess.blogspot.com/2010/11/horizon-effect.htm
+
+UCI
+[ ] multi PV
+[ ] Searchmoves in UCI
+[ ] CLear hash
 
 
 - Bug fixes

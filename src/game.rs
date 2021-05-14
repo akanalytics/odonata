@@ -206,19 +206,19 @@ mod tests {
 
 
         new.mte.deterministic = true;
-        new.qsearch.see_cutoff = 0;
-        new.qsearch.promos = true;
         // new.eval.rook_open_file = 20;
         // new.eval.cache_eval = true;
         // // new.eval.cache.capacity = 1000;
         // // new.eval.qcache.capacity = 1000;
         // new.eval.cache_eval = true;
         // new.eval.cache_qeval = true;
+        new.mte.branching_factor = 5;  // cause more failed plys
+        new.ids.part_ply = true;
         // new.tt.aging = true;
 
         old.mte.deterministic = true;
-        old.qsearch.see_cutoff = 0;
-        new.qsearch.promos = false;
+        old.mte.branching_factor = 5;  // cause more failed plys
+        old.ids.part_ply = false;
         // old.eval.cache_eval = false;
         // old.eval.cache_qeval = false;
         // //old.eval.rook_open_file = 0;

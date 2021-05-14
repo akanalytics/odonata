@@ -13,17 +13,20 @@ use std::ops::Range;
 
 #[derive(Clone, Debug)]
 pub struct IterativeDeepening {
-    enabled: bool,
+    pub enabled: bool,
+    pub part_ply: bool,
     iterations: Vec<SearchStats>,
 }
 
 impl Configurable for IterativeDeepening {
     fn settings(&self, c: &mut Config) {
         c.set("ids.enabled", "type check default true");
+        c.set("ids.part_ply", "type check default true");
     }
     fn configure(&mut self, c: &Config) {
         log_debug!("qsearch.configure with {}", c);
         self.enabled = c.bool("ids.enabled").unwrap_or(self.enabled);
+        self.part_ply = c.bool("ids.part_ply").unwrap_or(self.part_ply);
     }
 }
 
@@ -31,6 +34,7 @@ impl Default for IterativeDeepening {
     fn default() -> Self {
         Self {
             enabled: true,
+            part_ply: true,
             iterations: Vec::new(),
         }
     }
@@ -39,6 +43,7 @@ impl Default for IterativeDeepening {
 impl fmt::Display for IterativeDeepening {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "enabled          : {}", self.enabled)?;
+        writeln!(f, "part_ply         : {}", self.part_ply)?;
         writeln!(f, "iterations       : {}", self.iterations.len())?;
         write!(f, "{:>3} {:>4} ", "dep", "stat")?;
         NodeStats::fmt_header(f)?;
@@ -126,6 +131,7 @@ impl Algo {
         }
 
         let i = self.ids.iterations.iter().rposition(|r| r.completed());
+        let last = self.ids.iterations.last().unwrap();
         if i.is_none() {
             println!("rpos!!!\n\n{}", self);
         }
@@ -133,6 +139,12 @@ impl Algo {
         let res = &self.ids.iterations[i];
         self.search_stats.pv = res.pv.clone();
         self.search_stats.score = res.score;
+
+        // && last.score > res.score
+        if self.ids.part_ply  {
+            self.search_stats.pv = last.pv.clone();
+            self.search_stats.score = last.score;
+        }
         // callback
         let sp = SearchProgress::from_best_move(Some(self.bm()));
         self.task_control.invoke_callback(&sp);

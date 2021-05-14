@@ -24,6 +24,19 @@ impl Catalog {
     }
 
 
+    pub fn qsearch() -> Vec<Position> {
+        let strs = &[
+            "
+            r4rk1/pp2qppp/2nbbn2/3Np3/2B1P3/P4N1P/1P1B1PP1/R2QR1K1 b - - 6 16
+            am Nxd5;
+            bm Qd8;
+            id 'https://lichess.org/q5XvkApk/black#31';",
+        ];
+        Position::parse_many_epd(strs).unwrap()
+    }
+
+     
+
     pub fn white_starting_position() -> Board {
         // FIXME: set calls
         Board::parse_fen(Self::STARTING_POSITION_FEN)

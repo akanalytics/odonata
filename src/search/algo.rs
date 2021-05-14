@@ -99,7 +99,6 @@ impl Configurable for Algo {
     fn settings(&self, c: &mut Config) {
         c.set("algo.minmax", "type check default false");
         c.set("algo.ids", "type check default true");
-        c.set("clear_cache", "type button");
         c.set("UCI_AnalyseMode", "type check default false");
         self.eval.settings(c);
         self.mte.settings(c);
@@ -111,9 +110,6 @@ impl Configurable for Algo {
     }
     fn configure(&mut self, c: &Config) {
         log_debug!("algo.configure with {}", c);
-        if c.string("clear_cache").is_some() {
-            self.new_game();
-        }
         self.analyse_mode = c.bool("UCI_AnalyseMode").unwrap_or(self.analyse_mode);
         self.minmax = c.bool("algo.minmax").unwrap_or(self.minmax);
         self.iterative_deepening = c.bool("algo.ids").unwrap_or(self.iterative_deepening);

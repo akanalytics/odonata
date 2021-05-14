@@ -281,6 +281,8 @@ impl TranspositionTable {
                         || new.entry.depth == old.entry.depth && new.entry.node_type >= old.entry.node_type)
             {
                 debug_assert!(new.entry.score > Score::MinusInf);
+                debug_assert!(new.entry.node_type != NodeType::Pv || !new.entry.bm.is_null(), "bm is null at {:?} mv {:?}", new.entry.node_type, new.entry.bm );
+
                 self.inserts.increment();
                 *old = new;
                 return;
