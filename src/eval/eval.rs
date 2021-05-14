@@ -10,6 +10,7 @@ use crate::movelist::Move;
 use crate::outcome::GameEnd;
 use crate::stat::{ArrayStat, Stat};
 use crate::types::{Color, Piece};
+use crate::eval::weight::{Weight};
 
 use std::fmt;
 
@@ -189,6 +190,8 @@ pub struct SimpleScorer {
     // pub qcache: TranspositionTable,
     pub cache_eval: bool,
     pub cache_qeval: bool,
+    pst: [[Weight; 64]; Piece::len()],
+
 }
 
 impl Default for SimpleScorer {
@@ -323,7 +326,19 @@ impl SimpleScorer {
             material_scores: MATERIAL_SCORES,
             // cache: TranspositionTable::default(),
             // qcache: TranspositionTable::default(),
+            pst: Self::calculate_pst(),
         }
+    }
+
+
+    fn calculate_pst() -> [[Weight; 64]; Piece::len()] {
+        let mut pst = [[Weight::default(); 64]; Piece::len()];
+        for p in &Piece::ALL_BAR_NONE {
+            for sq in Square::all() {
+                pst[p.index()][sq] = Weight::new(SQUARE_VALUES_MG[p][sq], SQUARE_VALUES_EG[p][sq]);
+            }
+        }
+        pst
     }
 
     pub fn set_position(&mut self, enabled: bool) -> Self {
@@ -428,35 +443,59 @@ impl SimpleScorer {
         score
     }
 
+    // P(osition) S(quare) T(able)
     #[inline]
-    pub fn pst_mg(p: Piece, sq: Square) -> i32 {
-        SQUARE_VALUES_MG[p.index()][sq.index()]
+    pub fn pst(&self, p: Piece, sq: Square) -> Weight {
+        self.pst[p.index()][sq.index()]
     }
 
-    #[inline]
-    pub fn pst_eg(p: Piece, sq: Square) -> i32 {
-        SQUARE_VALUES_EG[p.index()][sq.index()]
-    }
+    // #[inline]
+    // pub fn pst_mg(p: Piece, sq: Square) -> i32 {
+    //     SQUARE_VALUES_MG[p.index()][sq.index()]
+    // }
+
+    // #[inline]
+    // pub fn pst_eg(p: Piece, sq: Square) -> i32 {
+    //     SQUARE_VALUES_EG[p.index()][sq.index()]
+    // }
 
     // piece positions, king safety, centre control
     // only updated for the colour thats moved - opponents(blockes) not relevant
     pub fn w_eval_position(&self, board: &Board) -> i32 {
         let mut sum = 0_i32;
+        let phase = if self.phasing { board.phase() } else { 0 };
         for &p in &Piece::ALL_BAR_NONE {
             let w = (board.pieces(p) & board.white()).flip_vertical();
             let b = board.pieces(p) & board.black();
 
-            let w_mg: i32 = w.iter().map(|bb| Self::pst_mg(p, bb.first_square())).sum();
-            let b_mg: i32 = b.iter().map(|bb| Self::pst_mg(p, bb.first_square())).sum();
+            let w = w.squares().map(|sq| self.pst(p, sq)).sum::<Weight>();
+            let b = b.squares().map(|sq| self.pst(p, sq)).sum::<Weight>();
 
-            let w_eg: i32 = w.iter().map(|bb| Self::pst_eg(p, bb.first_square())).sum();
-            let b_eg: i32 = b.iter().map(|bb| Self::pst_eg(p, bb.first_square())).sum();
-            let eg_perc = if self.phasing { board.phase() } else { 0 };
 
-            sum += ((w_mg - b_mg) * (100 - eg_perc) + (w_eg - b_eg) * eg_perc) / 100;
+            sum += (w - b).interpolate(phase);
         }
         sum
     }
+
+    // // piece positions, king safety, centre control
+    // // only updated for the colour thats moved - opponents(blockes) not relevant
+    // pub fn w_eval_position_old(&self, board: &Board) -> i32 {
+    //     let mut sum = 0_i32;
+    //     for &p in &Piece::ALL_BAR_NONE {
+    //         let w = (board.pieces(p) & board.white()).flip_vertical();
+    //         let b = board.pieces(p) & board.black();
+
+    //         let w_mg: i32 = w.iter().map(|bb| Self::pst_mg(p, bb.first_square())).sum();
+    //         let b_mg: i32 = b.iter().map(|bb| Self::pst_mg(p, bb.first_square())).sum();
+
+    //         let w_eg: i32 = w.iter().map(|bb| Self::pst_eg(p, bb.first_square())).sum();
+    //         let b_eg: i32 = b.iter().map(|bb| Self::pst_eg(p, bb.first_square())).sum();
+    //         let eg_perc = if self.phasing { board.phase() } else { 0 };
+
+    //         sum += ((w_mg - b_mg) * (100 - eg_perc) + (w_eg - b_eg) * eg_perc) / 100;
+    //     }
+    //     sum
+    // }
 
     // updated on capture & promo
     pub fn w_eval_material(&self, mat: &Material) -> i32 {

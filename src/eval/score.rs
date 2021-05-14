@@ -14,6 +14,7 @@ pub enum Score {
 }
 
 impl Default for Score {
+    #[inline]
     fn default() -> Self { Self::MinusInf }
 }
 

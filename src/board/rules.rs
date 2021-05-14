@@ -121,7 +121,7 @@ impl Rules {
         let c = b.color_us();
         let occ = b.occupied();
         let us = b.us();
-        let pawn_push = attack_gen.pawn_pushes(occ, b.pawns() & us, &c);
+        let pawn_push = attack_gen.pawn_pushes(occ, b.pawns() & us, c);
         for to in (pawn_push & Bitboard::PROMO_RANKS).squares() {
             let from = to.shift(c.pawn_move().opposite());
             // try and pre-sort promos by likely usefulness
@@ -162,7 +162,7 @@ impl Rules {
         let occ = b.occupied();
         let us = b.us();
         let pawns = b.pawns() & us;
-        let pawn_push = attack_gen.pawn_pushes(occ, pawns, &c);
+        let pawn_push = attack_gen.pawn_pushes(occ, pawns, c);
         for to in (pawn_push & !Bitboard::PROMO_RANKS).squares() {
             let behind = to.shift(c.pawn_move().opposite());
             if !behind.is_in(pawns) {

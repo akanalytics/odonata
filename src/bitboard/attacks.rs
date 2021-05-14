@@ -27,7 +27,7 @@ pub trait BitboardAttacks {
     }
 
     #[inline]
-    fn pawn_pushes(&self, occupied: Bitboard, pawns: Bitboard, color: &Color) -> Bitboard {
+    fn pawn_pushes(&self, occupied: Bitboard, pawns: Bitboard, color: Color) -> Bitboard {
         let empty = !occupied;
         let single = pawns.shift(color.pawn_move()) & empty;
         single | (single.shift(color.pawn_move()) & empty & color.double_push_dest_rank())
@@ -107,7 +107,7 @@ mod tests {
         let opponent = a4 | b4 | d3 | g5;
         let occupied = pawns_w | opponent;
 
-        let pawn_single_push = classical.pawn_pushes(occupied, pawns_w, &Color::White);
+        let pawn_single_push = classical.pawn_pushes(occupied, pawns_w, Color::White);
         let single = a3 | c3 | d8 | f6 | h6;
         let double = c4;
         assert_eq!(pawn_single_push, single | double);

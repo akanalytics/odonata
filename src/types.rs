@@ -202,6 +202,7 @@ impl<T> std::ops::IndexMut<Piece> for [T] {
 }
 
 impl Default for Piece {
+    #[inline]
     fn default() -> Self {
         Piece::None
     }

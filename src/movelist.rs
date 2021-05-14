@@ -227,6 +227,7 @@ impl Move {
         }
     }
 
+    #[inline]
     pub fn set_legal(&mut self) -> Self {
         self.is_known_legal = true;
         *self

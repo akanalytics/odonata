@@ -470,6 +470,7 @@ pub struct Square(u8);
 
 
 impl Default for Square {
+    #[inline]
     fn default() -> Self {
         Self::null()
     }
@@ -488,6 +489,12 @@ impl Square {
     pub const fn null() -> Square {
         Square(64u8)
     }
+
+    #[inline]
+    pub const fn all() -> Squares {
+        Bitboard::all().squares()
+    }
+
 
     #[inline]
     pub const fn from_u32(i: u32) -> Square {
@@ -590,6 +597,25 @@ impl fmt::Display for Square {
         write!(f, "{}", self.uci())
     }
 }
+
+
+
+impl<T> std::ops::Index<Square> for [T] {
+    type Output = T;
+    #[inline]
+    fn index(&self, s: Square) -> &Self::Output {
+        &self[s.index()]
+    }
+}
+
+impl<T> std::ops::IndexMut<Square> for [T] {
+    #[inline]
+    fn index_mut(&mut self, s: Square) -> &mut Self::Output {
+        &mut self[s.index()]
+    }
+}
+
+
 
 
 

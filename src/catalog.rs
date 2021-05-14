@@ -15,6 +15,15 @@ impl Catalog {
         Board::parse_fen(Self::STARTING_POSITION_FEN).unwrap().as_board()
     }
 
+    pub fn test_position() -> Position {
+        let epd = r#"3r2k1/6p1/1p1q3p/1Q1prp1P/Pp6/1Pp1P3/2PnBPP1/3RR1K1 w - - 0 29 
+        bm Qd3;
+        id 'https://lichess.org/IieZFrPE#56'
+        "#;
+        Position::parse_epd(epd).unwrap()
+    }
+
+
     pub fn white_starting_position() -> Board {
         // FIXME: set calls
         Board::parse_fen(Self::STARTING_POSITION_FEN)

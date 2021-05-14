@@ -8,7 +8,7 @@ impl SimpleScorer {
     // a rusty version of https://www.chessprogramming.org/SEE_-_The_Swap_Algorithm
     //
     pub fn eval_move_see(&self, board: &Board, mv: &Move) -> i32 {
-        let mut gain: [i32;32] = [0;32]; 
+        let mut gain: [i32;40] = [0;40]; 
         let mut d = 0;
         //let mayXray = board.pawns() | board.bishops() | board.rooks() | board.queens();
         let mut from = mv.from().as_bb();
@@ -32,8 +32,9 @@ impl SimpleScorer {
             //     attadef |= considerXrays(occ, ..);
             attacker_color = attacker_color.opposite();
             from = board.least_valuable_piece(attackers & board.color(attacker_color));
-            if d > 30 {
+            if d > 38 {
                 eprintln!("{} {}", mv, board.to_fen());
+                break;
             }
         } 
        
