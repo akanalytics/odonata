@@ -34,8 +34,8 @@ pub trait BitboardAttacks {
     }
 
     #[inline]
-    fn pawn_attacks(&self, pawns: Bitboard, c: Color) -> (Bitboard, Bitboard) {
-        (pawns.shift(c.pawn_capture_east()), pawns.shift(c.pawn_capture_west()))
+    fn pawn_attacks(&self, pawns: Bitboard, pawn: Color) -> (Bitboard, Bitboard) {
+        (pawns.shift(pawn.pawn_capture_east()), pawns.shift(pawn.pawn_capture_west()))
     }
 
     fn pawn_attackers(&self, targets: Bitboard, pawn_color: Color) -> Bitboard {

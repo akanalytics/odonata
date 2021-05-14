@@ -347,7 +347,9 @@ impl TranspositionTable {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::bitboard::*;
     use crate::catalog::*;
+    use crate::globals::constants::*;
     use crate::search::algo::*;
     use crate::search::timecontrol::*;
 
@@ -356,7 +358,11 @@ mod tests {
             score: Score::Cp(300),
             depth: 2,
             node_type: NodeType::Pv,
-            bm: Move::new_null(),
+            bm: Move {
+                to: a1.square(),
+                from: a2.square(),
+                ..Move::default()
+            },
         }
     }
 
@@ -365,7 +371,11 @@ mod tests {
             score: Score::Cp(200),
             depth: 3,
             node_type: NodeType::Pv,
-            bm: Move::new_null(),
+            bm: Move {
+                to: a1.square(),
+                from: a2.square(),
+                ..Move::default()
+            },
         }
     }
 
@@ -374,7 +384,11 @@ mod tests {
             score: Score::Cp(201),
             depth: 4,
             node_type: NodeType::Pv,
-            bm: Move::new_null(),
+            bm: Move {
+                to: a1.square(),
+                from: a2.square(),
+                ..Move::default()
+            },
         }
     }
 

@@ -165,7 +165,7 @@ impl Algo {
                 let losing = false;
                 // allow 8 matched attackers
                 let bar = self.qsearch.see_cutoff as i32;
-                if score < Score::Cp(bar) || score == Score::Cp(bar) && (losing || ply < 8 + self.max_depth) {
+                if score < Score::Cp(bar) || score == Score::Cp(bar) && (losing || ply < 2 + self.max_depth) {
                     continue;
                 }
             }
