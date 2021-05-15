@@ -8,6 +8,7 @@
 [ ] Pawn chains fixed 
 [ ] Null move pruning
 [ ] Fix board ==
+[ ] Non linear piece mobility
 [ ] E/P when not relelvant and tt
 [ ] Prime the startup on uci with a search
 [ ] forks after qsearch http://macechess.blogspot.com/2010/11/horizon-effect.htm

@@ -302,7 +302,7 @@ impl NodeStats {
 
     #[inline]
     pub fn nodes(&self) -> u64 {
-        self.interior_nodes() + self.leaf_nodes() + self.q_interior_nodes() + self.q_leaf_nodes()
+        self.interior_nodes() + self.leaf_nodes() + self.q_interior_nodes() + self.q_leaf_nodes() + self.tt_nodes()
         // root
     }
 
@@ -349,10 +349,10 @@ impl NodeStats {
 macro_rules! header_format {
     () => {
         concat!(
-            "{node:>11} {interior:>11} {leaf:>11} ",
+            "{node:>11} {interior:>11} {leaf:>11} {ttnode:>11} ",
             "{cut:>11} {improv:>11} {cut_perc:>6} ",
             "{qnode:>11} {qinterior:>11} {qleaf:>11} ",
-            "{ttnode:>11} {qttnode:>11} ",
+            "{qttnode:>11} ",
             "{est_time:>11} {real_time:>11} {deterministic_time:>11}"
         )
     };
@@ -363,15 +363,15 @@ impl NodeStats {
         write!(
             f,
             header_format!(),
-            cut = "cuts",
-            improv = "improv",
-            node = "total nodes",
-            interior = "interior",
+            cut = "beta cuts",
+            improv = "pv",
+            node = "total =",
+            interior = "[interior",
             leaf = "leaf nodes",
+            ttnode = "tt nodes]",
             qnode = "q total",
             qinterior = "q interior",
             qleaf = "q leaf",
-            ttnode = "tt nodes",
             qttnode = "q tt nodes",
             cut_perc = "cuts %",
             est_time = "est_time",
@@ -389,11 +389,11 @@ impl NodeStats {
             node = "-----------",
             interior = "-----------",
             leaf = "-----------",
+            ttnode = "-----------",
             cut_perc = "------",
             qnode = "-----------",
             qinterior = "-----------",
             qleaf = "-----------",
-            ttnode = "-----------",
             qttnode = "-----------",
             est_time = "-----------",
             real_time = "-----------",
@@ -410,11 +410,11 @@ impl NodeStats {
             node = self.nodes(),
             interior = self.interior_nodes,
             leaf = self.leaf_nodes(),
+            ttnode = self.tt_nodes(),
             cut_perc = self.cut_percentage(),
             qnode = self.q_nodes(),
             qinterior = self.q_interior_nodes,
             qleaf = self.q_leaf_nodes(),
-            ttnode = self.tt_nodes(),
             qttnode = self.q_tt_nodes(),
             est_time = Clock::format(self.est_time),
             real_time = Clock::format(self.real_time),

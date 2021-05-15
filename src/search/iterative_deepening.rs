@@ -92,10 +92,9 @@ impl Algo {
         self.max_depth = max_depth;
     }
 
-    pub fn search(&mut self, board: &Board) {
+    pub fn search_iteratively(&mut self, board: &Board) {
         self.search_stats = SearchStats::new();
         self.board = board.clone();
-        self.task_control.set_running();
         self.ids.reset();
         self.tt.next_generation();
         // self.eval.cache.next_generation();
@@ -132,13 +131,12 @@ impl Algo {
 
         let i = self.ids.iterations.iter().rposition(|r| r.completed());
         let last = self.ids.iterations.last().unwrap();
-        if i.is_none() {
-            println!("rpos!!!\n\n{}", self);
+        if i.is_some() {
+            let i = i.unwrap();
+            let res = &self.ids.iterations[i];
+            self.search_stats.pv = res.pv.clone();
+            self.search_stats.score = res.score;
         }
-        let i = i.unwrap();
-        let res = &self.ids.iterations[i];
-        self.search_stats.pv = res.pv.clone();
-        self.search_stats.score = res.score;
 
         // && last.score > res.score
         if self.ids.part_ply  {

@@ -94,6 +94,7 @@ impl Algo {
                             node_type = NodeType::Pv;
                             alpha = entry.score;
                             if alpha >= beta {
+                                self.search_stats.inc_cuts(ply);
                                 // self.record_new_pv(ply, &bm);
                                 return entry.score;
                             }
@@ -157,7 +158,6 @@ impl Algo {
                 node_type = NodeType::Pv;
                 debug_assert!(!bm.is_null(), "bm is null at {} mv {}", board, mv );
 
-                self.record_new_pv(ply, &bm, false);
             }
 
             if alpha >= beta && !self.minmax {
@@ -166,16 +166,18 @@ impl Algo {
             }
         }
 
+        if score <= original_alpha {
+            // node_type = NodeType::All
+        } else if score >= beta {
+            // node_type = NodeType::Cut;
+            self.search_stats.inc_cuts(ply);
+            debug_assert!(!bm.is_null())
+        } else {
+            self.record_new_pv(ply, &bm, false);
+            // node_type = NodeType::Pv;
+            debug_assert!(!bm.is_null())
+        }
         if self.tt.enabled() {
-            if score <= original_alpha {
-                // node_type = NodeType::All
-            } else if score >= beta {
-                // node_type = NodeType::Cut;
-                debug_assert!(!bm.is_null())
-            } else {
-                // node_type = NodeType::Pv;
-                debug_assert!(!bm.is_null())
-            }
             let entry = Entry {
                 score,
                 depth: self.max_depth - ply,

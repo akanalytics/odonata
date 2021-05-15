@@ -30,7 +30,8 @@ impl Exam {
         let mut exam = Exam {
             name: String::from(name),
             positions,
-            algo: Algo::new().set_timing_method(TimeControl::NodeCount(1_000_000)).clone(),
+            algo: Algo::new().set_timing_method(TimeControl::move_time_secs(3)).clone(),
+            // algo: Algo::new().set_timing_method(TimeControl::NodeCount(1_000_000)).clone(),
             ..Exam::default()
         };
         exam.algo.configure(&c);
@@ -38,13 +39,7 @@ impl Exam {
         for (i, pos) in exam.positions.iter().enumerate() {
             exam.out_of += 1;
             exam.algo.new_game();
-            //exam.algo.tt.aging = false;
-            // exam.algo.eval.cache.clear();
-            // exam.algo.eval.rook_open_file = 0;
-            //exam.algo.eval.cache.enabled = true;
             exam.algo.search(pos.board());
-            // println!("Algo\n{}", exam.algo);
-            // println!("Position {}", pos);
             if pos.bm().ok().unwrap().contains(&exam.algo.bm()) {
                 exam.score += 1;
             }
@@ -62,16 +57,24 @@ mod tests {
     #[test]
     #[ignore]
     fn test_exam_bk() {
-        let bk = Exam::take_exam("bratko kopec", Catalog::bratko_kopec());
-        assert!(bk.score >= 8);
-        println!("{}", bk.algo);
+        let ex = Exam::take_exam("bratko kopec", Catalog::bratko_kopec());
+        assert!(ex.score >= 8);
+        println!("{}", ex.algo);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exam_iq() {
+        let ex = Exam::take_exam("IQ(182)", Catalog::iq());
+        assert!(ex.score >= 8);
+        println!("{}", ex.algo);
     }
 
     #[test]
     #[ignore]
     fn test_exam_wac() {
-        let wac = Exam::take_exam("win at chess", Catalog::win_at_chess());
-        assert!(wac.score >= 117);
-        println!("{}", wac.algo);
+        let ex = Exam::take_exam("win at chess", Catalog::win_at_chess());
+        assert!(ex.score >= 117);
+        println!("{}", ex.algo);
     }
 }

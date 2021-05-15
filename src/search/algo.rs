@@ -29,7 +29,6 @@ pub struct Algo {
     pub board: Board,
     pub max_depth: Ply,
     pub minmax: bool,
-    iterative_deepening: bool,
     pub ids: IterativeDeepening,
     pub eval: SimpleScorer,
     pub task_control: TaskControl<SearchProgress>,
@@ -55,9 +54,7 @@ pub struct Algo {
 /// builder methods
 impl Algo {
     pub fn new() -> Algo {
-        let mut algo = Algo::default();
-        algo.iterative_deepening = true;
-        algo
+        Algo::default()
     }
 
     pub fn set_qsearch(&mut self, enable: bool) -> &mut Self {
@@ -65,8 +62,8 @@ impl Algo {
         self
     }
 
-    pub fn set_iterative_deepening(&mut self, enable: bool) -> &mut Self {
-        self.iterative_deepening = enable;
+    pub fn set_iterative_deepening(&mut self, enabled: bool) -> &mut Self {
+        self.ids.enabled = enabled;
         self
     }
 
@@ -112,7 +109,6 @@ impl Configurable for Algo {
         log_debug!("algo.configure with {}", c);
         self.analyse_mode = c.bool("UCI_AnalyseMode").unwrap_or(self.analyse_mode);
         self.minmax = c.bool("algo.minmax").unwrap_or(self.minmax);
-        self.iterative_deepening = c.bool("algo.ids").unwrap_or(self.iterative_deepening);
         self.eval.configure(c);
         self.move_orderer.configure(c);
         self.mte.configure(c);
@@ -134,7 +130,6 @@ impl fmt::Debug for Algo {
             .field("depth", &self.max_depth)
             .field("minmax", &self.minmax)
             .field("eval", &self.eval)
-            .field("iterative_deepening", &self.iterative_deepening)
             .field("move_orderer", &self.move_orderer)
             .field("mte", &self.mte)
             .field("depth", &self.max_depth)
@@ -163,7 +158,6 @@ impl fmt::Display for Algo {
             self.current_best.unwrap_or(Move::new_null())
         )?;
         writeln!(f, "minmax           : {}", self.minmax)?;
-        writeln!(f, "iter deepening   : {}", self.iterative_deepening)?;
         writeln!(f, "clock_checks     : {}", self.clock_checks)?;
         write!(f, "\n[task control]\n{}", self.task_control)?;
         write!(f, "\n[move orderer]\n{}", self.move_orderer)?;
@@ -206,18 +200,23 @@ impl Algo {
         }
     }
 
+    pub fn search(&mut self, board: &Board) {
+        self.task_control.set_running();
+        self.search_iteratively(&board);
+    }
+
     pub fn search_async(&mut self, board: &Board) {
+        self.task_control.set_running();
         const FOUR_MB: usize = 4 * 1024 * 1024;
         let name = String::from("search");
         let builder = thread::Builder::new().name(name).stack_size(FOUR_MB);
-        self.task_control.set_running();
         let mut algo = self.clone();
         self.tt.destroy();
         let board = board.clone();
         self.child_thread = AlgoThreadHandle(Some(
             builder
                 .spawn(move || {
-                    algo.search(&board);
+                    algo.search_iteratively(&board);
                     algo
                 })
                 .unwrap(),
@@ -328,7 +327,8 @@ mod tests {
         assert_eq!(search.search_stats().branching_factor().round() as u64, 21);
 
         let board = Catalog::starting_position();
-        let eval = SimpleScorer::new().set_position(false);
+        let mut eval = SimpleScorer::new().set_position(false);
+        eval.mobility = false;
         let mut search = Algo::new()
             .set_timing_method(TimeControl::Depth(4))
             .set_minmax(false)
@@ -337,9 +337,10 @@ mod tests {
         search.move_orderer.enabled = false;
         search.search(&board);
         println!("{}", search);
-        assert_eq!(search.search_stats().total().nodes(), 1404); // pawn promo
+        assert_eq!(search.search_stats().total().nodes(), 1401); // piece mob (disabled)
 
         // previous
+        // assert_eq!(search.search_stats().total().nodes(), 1404); // pawn promo
         // assert_eq!(search.search_stats().total().nodes(), 1480); // gen qsearch
         // assert_eq!(search.search_stats().total().nodes(), 1642); added tt
         // assert_eq!(search.search_stats().total().nodes(), 1833); qsearch sq
@@ -369,7 +370,7 @@ mod tests {
         search.move_orderer.enabled = false;
         search.search(&board);
         println!("{}", search);
-        assert_eq!(search.pv()[0].uci(), "d7d5");
+        assert_eq!(search.pv()[0].uci(), "e7e5");
     }
 
     #[test]
@@ -387,9 +388,10 @@ mod tests {
             search.search(position.board());
             println!("{}", search);
             if id {
-                assert_eq!(search.search_stats().total().nodes(), 3456); // with pawn promo
+                assert_eq!(search.search_stats().total().nodes(), 3877); // with piece mob
 
             // previous
+            // assert_eq!(search.search_stats().total().nodes(), 3456); // with pawn promo
             // assert_eq!(search.search_stats().total().nodes(), 3885); // with gen qsearch
             // with sq q qsearch
             // assert_eq!(search.search_stats().total().nodes(), 2108);  // with ordering pv + mvvlva
@@ -397,9 +399,10 @@ mod tests {
             // assert_eq!(search.search_stats().total().nodes(), 6553);  // with ordering pv
             // assert_eq!(search.search_stats().total().nodes(), 6740);
             } else {
-                assert_eq!(search.search_stats().total().nodes(), 3456); // with pawn promos
+                assert_eq!(search.search_stats().total().nodes(), 4791); // with piece mob
 
                 // previous
+                // assert_eq!(search.search_stats().total().nodes(), 3456); // with pawn promos
                 // assert_eq!(search.search_stats().total().nodes(), 3885); // with sq qsearch
                 // assert_eq!(search.search_stats().total().nodes(), 2200); // with sq qsearch
                 // assert_eq!(search.search_stats().total().nodes(), 2108); // with  mvvlva
@@ -425,13 +428,15 @@ mod tests {
         let nodes = algo.search_stats().total().nodes();
 
         // with gen qsearch
-        assert_eq!(nodes, 4586); // pawn promo
-                                 // previous
-                                 // assert_eq!(nodes, 5096);  // gen qsearch
-                                 // assert_eq!(nodes, 5197);  // wrong halfmove counts in mate score
-                                 // assert_eq!(nodes, 2274); // with sq based qsearch
-                                 // assert_eq!(nodes, 2274); // from 2248 (due to iterator ordering on bits)
-                                 // assert_eq!(nodes, 66234);
+        assert_eq!(nodes, 3914); // piece mob
+
+        // previous
+        // assert_eq!(nodes, 4586); // pawn promo
+        // assert_eq!(nodes, 5096);  // gen qsearch
+        // assert_eq!(nodes, 5197);  // wrong halfmove counts in mate score
+        // assert_eq!(nodes, 2274); // with sq based qsearch
+        // assert_eq!(nodes, 2274); // from 2248 (due to iterator ordering on bits)
+        // assert_eq!(nodes, 66234);
         assert_eq!(algo.pv_table.extract_pv().uci(), position.pv().unwrap().uci());
         assert_eq!(algo.score(), Score::WhiteWin { minus_ply: -3 });
 

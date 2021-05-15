@@ -347,7 +347,6 @@ impl TranspositionTable {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bitboard::*;
     use crate::catalog::*;
     use crate::globals::constants::*;
     use crate::search::algo::*;
