@@ -170,7 +170,7 @@ impl Bitboard {
 
 
     // excludes the src squares themselves, but includes edge squares
-    pub fn ray(&self, dir: Dir) -> Bitboard {
+    pub fn rays(&self, dir: Dir) -> Bitboard {
         let mut sqs = *self;
         let mut bb = Bitboard::EMPTY;
         while !sqs.is_empty() {
@@ -203,11 +203,11 @@ impl Bitboard {
     }
 
     pub fn diag_flood(self) -> Bitboard {
-        self.ray(Dir::NE) | self.ray(Dir::SW) | self
+        self.rays(Dir::NE) | self.rays(Dir::SW) | self
     }
 
     pub fn anti_diag_flood(self) -> Bitboard {
-        self.ray(Dir::NW) | self.ray(Dir::SE) | self
+        self.rays(Dir::NW) | self.rays(Dir::SE) | self
     }
     // bitflags & doesnt seem to be declared const
     #[inline]
@@ -583,10 +583,10 @@ impl Square {
     pub fn bounding_rectangle(s1: Square, s2: Square) -> Bitboard {
         let first = cmp::min(s1, s2); 
         let last = cmp::max(s1, s2); 
-        let south = first.rank().ray(Dir::S);
-        let north = last.rank().ray(Dir::N);
-        let west = (!((first.as_bb() | last.as_bb()).file_flood().ray(Dir::E))).shift(Dir::W);
-        let east = (!((first.as_bb() | last.as_bb()).file_flood().ray(Dir::W))).shift(Dir::E);
+        let south = first.rank().rays(Dir::S);
+        let north = last.rank().rays(Dir::N);
+        let west = (!((first.as_bb() | last.as_bb()).file_flood().rays(Dir::E))).shift(Dir::W);
+        let east = (!((first.as_bb() | last.as_bb()).file_flood().rays(Dir::W))).shift(Dir::E);
         Bitboard::all() - north - south - east - west
     }
 
@@ -700,14 +700,14 @@ mod tests {
 
     #[test]
     fn test_rays() {
-        let north = c3.ray(Dir::N);
+        let north = c3.rays(Dir::N);
         assert_eq!(north, c4 | c5 | c6 | c7 | c8);
         assert_eq!(north.popcount(), 5);
 
-        assert_eq!(c3.ray(Dir::NE), d4 | e5 | f6 | g7 | h8);
-        assert_eq!(c3.ray(Dir::SW), a1 | b2);
-        assert_eq!(c3.ray(Dir::S), c1 | c2);
-        assert_eq!(c3.ray(Dir::NW), a5 | b4);
+        assert_eq!(c3.rays(Dir::NE), d4 | e5 | f6 | g7 | h8);
+        assert_eq!(c3.rays(Dir::SW), a1 | b2);
+        assert_eq!(c3.rays(Dir::S), c1 | c2);
+        assert_eq!(c3.rays(Dir::NW), a5 | b4);
     }
 
     #[test]
@@ -724,7 +724,7 @@ mod tests {
     #[test]
     fn test_bounding_rectangle() {
         assert_eq!(cmp::min(a1.square(), b2.square()), a1.square());
-        assert_eq!(Bitboard::all() - b2.square().rank().ray(Dir::N), RANK_1 | RANK_2);
+        assert_eq!(Bitboard::all() - b2.square().rank().rays(Dir::N), RANK_1 | RANK_2);
         assert_eq!(Square::bounding_rectangle(a1.square(), b2.square()), a1 | a2 | b1 | b2);
         assert_eq!(Square::bounding_rectangle(b2.square(), a1.square()), a1 | a2 | b1 | b2);
         assert_eq!(Square::bounding_rectangle(a1.square(), a1.square()), a1);

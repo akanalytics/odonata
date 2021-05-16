@@ -29,7 +29,7 @@ impl ClassicalBitboard {
         for sq in 0..64_usize {
             for &dir in Dir::ALL.iter() {
                 let bb = Bitboard::from_sq(sq as u32);
-                let mask = bb.ray(dir);
+                let mask = bb.rays(dir);
                 classical.rays[sq][dir.index] = mask;
                 classical.king_moves[sq] |= bb.shift(dir);
 

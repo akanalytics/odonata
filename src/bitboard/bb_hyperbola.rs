@@ -58,20 +58,20 @@ impl Hyperbola {
             for rook_sq in Bitboard::RANK_1.squares() {
                 let occ = occ_incl_rook.exclude(rook_sq);
 
-                let east_of_rook = rook_sq.as_bb().ray(Dir::E);
+                let east_of_rook = rook_sq.as_bb().rays(Dir::E);
                 let blockers = east_of_rook & occ;
                 let east_att = if blockers.is_empty() {
                     east_of_rook
                 } else {
-                    east_of_rook - blockers.first().ray(Dir::E)
+                    east_of_rook - blockers.first().rays(Dir::E)
                 };
 
-                let west_of_rook = rook_sq.as_bb().ray(Dir::W);
+                let west_of_rook = rook_sq.as_bb().rays(Dir::W);
                 let blockers = west_of_rook & occ;
                 let west_att = if blockers.is_empty() {
                     west_of_rook
                 } else {
-                    west_of_rook - blockers.last().ray(Dir::W)
+                    west_of_rook - blockers.last().rays(Dir::W)
                 };
                 // println!(
                 //     "{:>2} occ:{:08b} r:{:08b} er:{:08b} wr:{:08b} ea:{:08b} wa:{:08b} ",
@@ -144,6 +144,7 @@ impl Hyperbola {
 
 impl BitboardAttacks for Hyperbola {
 
+    // inclusive of end points
     #[inline]
     fn between(&self, s1: Square, s2: Square) -> Bitboard {
         self.between[s1.index()][s2.index()]

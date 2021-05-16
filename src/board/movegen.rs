@@ -20,7 +20,7 @@ pub fn pinned(b: &Board, us: Color, occ: Bitboard ) -> Bitboard {
     let xray_checkers = threats_to(b, us, Bitboard::EMPTY);
     let mut pinned =  Bitboard::empty();
     for c in xray_checkers.squares() {
-        let ray = BitboardDefault::default().between(c, king_sq);
+        let ray = BitboardDefault::default().strictly_between(c, king_sq);
         if (ray & color_us).popcount() == 1 {
             pinned |= ray & color_us;
         }

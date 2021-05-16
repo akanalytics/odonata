@@ -27,6 +27,13 @@ pub trait BitboardAttacks {
         }
     }
 
+
+    #[inline]
+    fn strictly_between(&self, s1: Square, s2: Square) -> Bitboard {
+        self.between(s1,s2).exclude(s1).exclude(s2)
+    }
+
+
     #[inline]
     fn pawn_pushes(&self, occupied: Bitboard, pawns: Bitboard, color: Color) -> Bitboard {
         let empty = !occupied;
@@ -103,23 +110,23 @@ mod tests {
 
     #[test]
     fn test_pawns() {
-        let classical = BitboardDefault::default();
+        let bb = BitboardDefault::default();
         let pawns_w = a2 | b3 | c2 | d7 | f5 | g4 | h4 | h5;
         let opponent = a4 | b4 | d3 | g5;
         let occupied = pawns_w | opponent;
 
-        let pawn_single_push = classical.pawn_pushes(occupied, pawns_w, Color::White);
+        let pawn_single_push = bb.pawn_pushes(occupied, pawns_w, Color::White);
         let single = a3 | c3 | d8 | f6 | h6;
         let double = c4;
         assert_eq!(pawn_single_push, single | double);
 
-        let (pawn_capture_e, pawn_capture_w) = classical.pawn_attacks(pawns_w, Color::White);
+        let (pawn_capture_e, pawn_capture_w) = bb.pawn_attacks(pawns_w, Color::White);
         assert_eq!(pawn_capture_e & opponent, d3);
 
         assert_eq!(pawn_capture_w & opponent, a4 | g5);
 
         let ep_square = g6;
-        let (east, west) = classical.pawn_ep_captures(pawns_w, opponent, Color::White, ep_square);
+        let (east, west) = bb.pawn_ep_captures(pawns_w, opponent, Color::White, ep_square);
         assert_eq!(east, g6);
         assert_eq!(west, g6);
 
@@ -131,4 +138,21 @@ mod tests {
         assert_eq!(BitboardDefault::isolated_pawns(opponent), d3 | g5 );
 
     }
+
+    #[test]
+    fn test_between() {
+        let bb = BitboardDefault::default();
+        assert_eq!(bb.between(a1.square(), a3.square()), a1|a2|a3);
+        assert_eq!(bb.between(a3.square(), a1.square()), a1|a2|a3);
+        assert_eq!(bb.between(a1.square(), a8.square()), FILE_A);
+        assert_eq!(bb.between(a1.square(), a1.square()), a1);
+        assert_eq!(bb.between(a1.square(), b2.square()), a1 | b2);
+
+        assert_eq!(bb.strictly_between(a1.square(), a3.square()), a2);
+        assert_eq!(bb.strictly_between(a3.square(), a1.square()), a2);
+        assert_eq!(bb.strictly_between(a1.square(), a8.square()), FILE_A - a1 - a8);
+        assert_eq!(bb.strictly_between(a1.square(), a1.square()), Bitboard::empty());
+        assert_eq!(bb.strictly_between(a1.square(), b2.square()), Bitboard::empty());
+    }
+
 }
