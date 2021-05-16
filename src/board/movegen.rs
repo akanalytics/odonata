@@ -8,6 +8,25 @@ use crate::movelist::{Move, MoveList};
 use crate::types::{Color, Piece};
 
 
+
+pub fn pinned(b: &Board, us: Color, occ: Bitboard ) -> Bitboard {
+    let kings = b.kings() & b.color(us);
+    if kings.is_ empty() { 
+        return Bitboard.empty()
+    };
+
+    let xray_checkers = threats_to(b, us, Bitboard::EMPTY);
+    let pinned =  Bitboard::empty();
+    for c in xray_checkers.squares() {
+        let ray = ray(c, king);
+        if (ray & us).popcount() == 1 {
+            pinned |= ray & us;
+        }
+    }
+    pinned
+}
+
+
 pub fn threats_to(board: &Board, us: Color, occ: Bitboard) -> Bitboard {
     let opponent = us.opposite();
     let pawns = board.pawns() & board.color(opponent);

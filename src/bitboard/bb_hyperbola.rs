@@ -24,6 +24,7 @@ struct HyperbolaMask {
 pub struct Hyperbola {
     mask: [HyperbolaMask; 64],
     rank_attacks: [[Bitboard; 8]; 64], // for perm of 6 bit-occupancy (64) and for each rook square (8)
+    rays: [[Bitboard; 64]; 64],
 }
 
 impl Hyperbola {
@@ -31,6 +32,7 @@ impl Hyperbola {
         let mut me = Self {
             mask: [HyperbolaMask::default(); 64],
             rank_attacks: [[Bitboard::EMPTY; 8]; 64],
+            rays: [[Bitboard::EMPTY; 64]; 64],
         };
 
         Bitboard::all().squares().for_each(|s| {

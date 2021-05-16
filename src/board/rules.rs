@@ -34,6 +34,7 @@ impl Rules {
     // }
 
 
+
     pub fn king_legal(b: &Board, moves: &mut MoveList) {
         let attack_gen = BitboardDefault::default();
         let them = b.them();
