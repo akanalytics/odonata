@@ -10,6 +10,7 @@ pub trait BitboardAttacks {
 
 
     // fn new() -> Self;
+    fn between(&self, s1:Square, s2: Square) -> Bitboard;
     fn bishop_attacks(&self, occupied: Bitboard, from: Square) -> Bitboard;
     fn rook_attacks(&self, occupied: Bitboard, from: Square) -> Bitboard;
     fn knight_attacks(&self, from: Square) -> Bitboard;

@@ -24,7 +24,7 @@ struct HyperbolaMask {
 pub struct Hyperbola {
     mask: [HyperbolaMask; 64],
     rank_attacks: [[Bitboard; 8]; 64], // for perm of 6 bit-occupancy (64) and for each rook square (8)
-    rays: [[Bitboard; 64]; 64],
+    between: [[Bitboard; 64]; 64],
 }
 
 impl Hyperbola {
@@ -32,22 +32,27 @@ impl Hyperbola {
         let mut me = Self {
             mask: [HyperbolaMask::default(); 64],
             rank_attacks: [[Bitboard::EMPTY; 8]; 64],
-            rays: [[Bitboard::EMPTY; 64]; 64],
+            between: [[Bitboard::EMPTY; 64]; 64],
         };
 
-        Bitboard::all().squares().for_each(|s| {
-            me.mask[s.index()].diag = s.as_bb().diag_flood().exclude(s);
-            me.mask[s.index()].anti_diag = s.as_bb().anti_diag_flood().exclude(s);
-            me.mask[s.index()].file = s.as_bb().file_flood().exclude(s);
-            // println!(
-            //     "#{}\n{}\n{}\n{}\n{}",
-            //     s.index(),
-            //     s.as_bb(),
-            //     s.as_bb().diag_flood(),
-            //     s.as_bb().anti_diag_flood(),
-            //     s.as_bb().file_flood()
-            // );
-        });
+        Self::pop_mask(&mut me.mask);
+        Self::pop_rank_attacks(&mut me.rank_attacks);
+        Self::pop_between(&mut me.between);
+        me
+    }
+
+
+    fn pop_between(between: &mut [[Bitboard; 64]; 64]) {
+        for s1 in Bitboard::all().squares() {
+            for s2 in Bitboard::all().squares() {
+                between[s1][s2] = Square::line_through(s1, s2) & Square::bounding_rectangle(s1, s2);
+
+            }
+        }
+    }
+
+
+    fn pop_rank_attacks(rank_attacks: &mut [[Bitboard; 8]; 64]) {
         for occupancy_bits in 0..64 {
             let occ_incl_rook = Bitboard::from_bits_truncate(occupancy_bits).shift(Dir::E);
             for rook_sq in Bitboard::RANK_1.squares() {
@@ -78,11 +83,27 @@ impl Hyperbola {
                 //     east_att,
                 //     west_att
                 // );
-                me.rank_attacks[occupancy_bits as usize][rook_sq.file_index()] = east_att | west_att;
+                rank_attacks[occupancy_bits as usize][rook_sq.file_index()] = east_att | west_att;
             }
         }
-        me
     }
+
+    fn pop_mask(mask: &mut [HyperbolaMask; 64]) {
+        Bitboard::all().squares().for_each(|s| {
+            mask[s.index()].diag = s.as_bb().diag_flood().exclude(s);
+            mask[s.index()].anti_diag = s.as_bb().anti_diag_flood().exclude(s);
+            mask[s.index()].file = s.as_bb().file_flood().exclude(s);
+            // println!(
+            //     "#{}\n{}\n{}\n{}\n{}",
+            //     s.index(),
+            //     s.as_bb(),
+            //     s.as_bb().diag_flood(),
+            //     s.as_bb().anti_diag_flood(),
+            //     s.as_bb().file_flood()
+            // );
+        });
+    }
+
 
     // doesnt impl Default as too large to copy by value
     #[inline]
@@ -122,6 +143,13 @@ impl Hyperbola {
 }
 
 impl BitboardAttacks for Hyperbola {
+
+    #[inline]
+    fn between(&self, s1: Square, s2: Square) -> Bitboard {
+        self.between[s1.index()][s2.index()]
+    }
+
+
     #[inline]
     fn rook_attacks(&self, occ: Bitboard, from: Square) -> Bitboard {
         self.hyperbola(occ, from, self.mask[from.index()].file) | self.rank_hyperbola(occ, from)

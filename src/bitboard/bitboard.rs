@@ -1,4 +1,5 @@
 use std::fmt::{self, Write};
+use std::cmp;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct Dir {
@@ -168,7 +169,7 @@ impl Bitboard {
     }
 
 
-    // excludes the src squares itself, but includes edge squares
+    // excludes the src squares themselves, but includes edge squares
     pub fn ray(&self, dir: Dir) -> Bitboard {
         let mut sqs = *self;
         let mut bb = Bitboard::EMPTY;
@@ -179,7 +180,7 @@ impl Bitboard {
         bb
     }
 
-    // faster than ray - works on empty set
+    // inclusive, faster than ray - works on empty set
     pub fn fill_north(self) -> Bitboard {
         let mut bb = self;
         bb |= Bitboard::from_bits_truncate(bb.bits << 32);
@@ -188,6 +189,7 @@ impl Bitboard {
         bb
     }
 
+    // all points south inclusive - works on empty set
     pub fn fill_south(self) -> Bitboard {
         let mut bb = self;
         bb |= Bitboard::from_bits_truncate(bb.bits >> 32);
@@ -237,6 +239,12 @@ impl Bitboard {
         Bitboard::from_bits_truncate(self.bits.wrapping_sub(other.bits))
     }
 
+    // #[inline]
+    // pub fn includes(self, sq: Square) -> bool {
+    //     self.intersects(sq.as_bb())
+    // }
+
+
     #[inline]
     pub fn exclude(self, sq: Square) -> Bitboard {
         self - sq.as_bb()
@@ -283,6 +291,8 @@ impl Bitboard {
         debug_assert!(!self.is_empty(), "bb.first on empty");
         Bitboard::from_bits_truncate(1 << self.first_square().index()) // LSb
     }
+
+
 
     #[inline]
     pub const fn iter(self) -> BitIterator {
@@ -554,7 +564,7 @@ impl Square {
 
     #[inline]
     pub fn rank(self) -> Bitboard {
-        Bitboard::RANKS[self.file_index()]
+        Bitboard::RANKS[self.rank_index()]
     }
 
     #[inline]
@@ -568,6 +578,39 @@ impl Square {
         // FIXME: slow
         self.as_bb().anti_diag_flood()
     }
+
+    // smallest rectangle containing both squares 
+    pub fn bounding_rectangle(s1: Square, s2: Square) -> Bitboard {
+        let first = cmp::min(s1, s2); 
+        let last = cmp::max(s1, s2); 
+        let south = first.rank().ray(Dir::S);
+        let north = last.rank().ray(Dir::N);
+        let west = (!((first.as_bb() | last.as_bb()).file_flood().ray(Dir::E))).shift(Dir::W);
+        let east = (!((first.as_bb() | last.as_bb()).file_flood().ray(Dir::W))).shift(Dir::E);
+        Bitboard::all() - north - south - east - west
+    }
+
+    // returns empty if not on same line. For s1 == s2, returns just the single square
+    pub fn line_through(s1: Square, s2: Square) -> Bitboard {
+        if s1 == s2 {
+            s1.as_bb()
+        } else 
+        if s2.is_in(s1.file()) {
+            s1.file()
+        } else
+        if s2.is_in(s1.rank()) {
+            s1.rank()
+        } else 
+        if s2.is_in(s1.diag()) {
+            s1.diag()
+        } else
+        if s2.is_in(s1.anti_diag()) {
+            s1.anti_diag()
+        } else {
+            Bitboard::empty()
+        }
+    }
+
 
     /// flip vertical - https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating
     #[inline]
@@ -676,6 +719,32 @@ mod tests {
         assert_eq!(a1b2.diag_flood(), main_diag);
         assert_eq!(main_diag.file_flood(), Bitboard::all());
         assert_eq!(a1b2.anti_diag_flood(), a1 | b2 | a3 | c1);
+    }
+
+    #[test]
+    fn test_bounding_rectangle() {
+        assert_eq!(cmp::min(a1.square(), b2.square()), a1.square());
+        assert_eq!(Bitboard::all() - b2.square().rank().ray(Dir::N), RANK_1 | RANK_2);
+        assert_eq!(Square::bounding_rectangle(a1.square(), b2.square()), a1 | a2 | b1 | b2);
+        assert_eq!(Square::bounding_rectangle(b2.square(), a1.square()), a1 | a2 | b1 | b2);
+        assert_eq!(Square::bounding_rectangle(a1.square(), a1.square()), a1);
+        assert_eq!(Square::bounding_rectangle(c3.square(), c3.square()), c3);
+        assert_eq!(Square::bounding_rectangle(a1.square(), h8.square()), Bitboard::all());
+        assert_eq!(Square::bounding_rectangle(b2.square(), b5.square()), b2| b3| b4| b5);
+        assert_eq!(Square::bounding_rectangle(b5.square(), b2.square()), b2| b3| b4| b5);
+        assert_eq!(Square::bounding_rectangle(c5.square(), e5.square()), c5| d5| e5);
+        assert_eq!(Square::bounding_rectangle(e5.square(), c5.square()), c5| d5| e5);
+    }
+
+
+    #[test]
+    fn test_line_though() {
+        assert_eq!(Square::line_through(b6.square(), b8.square()), FILE_B);
+        assert_eq!(Square::line_through(b5.square(), d5.square()), RANK_5);
+        assert_eq!(Square::line_through(a2.square(), b1.square()), a2 | b1);
+        assert_eq!(Square::line_through(f1.square(), g2.square()), f1|g2|h3);
+        assert_eq!(Square::line_through(f1.square(), f1.square()), f1);
+        assert_eq!(Square::line_through(f1.square(), g3.square()), Bitboard::empty());
     }
 
     #[test]

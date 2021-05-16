@@ -67,6 +67,9 @@ impl ClassicalBitboard {
 
 impl BitboardAttacks for ClassicalBitboard {
 
+    fn between(&self, s1:Square, s2: Square) -> Bitboard {
+        Square::line_through(s1, s2) & Square::bounding_rectangle(s1, s2)
+    }
 
     #[inline]
     fn rook_attacks(&self, occ: Bitboard, from: Square) -> Bitboard {

@@ -10,17 +10,19 @@ use crate::types::{Color, Piece};
 
 
 pub fn pinned(b: &Board, us: Color, occ: Bitboard ) -> Bitboard {
+    let color_us = b.color(us);
     let kings = b.kings() & b.color(us);
-    if kings.is_ empty() { 
-        return Bitboard.empty()
+    if kings.is_empty() { 
+        return Bitboard::empty()
     };
+    let king_sq = kings.square();
 
     let xray_checkers = threats_to(b, us, Bitboard::EMPTY);
-    let pinned =  Bitboard::empty();
+    let mut pinned =  Bitboard::empty();
     for c in xray_checkers.squares() {
-        let ray = ray(c, king);
-        if (ray & us).popcount() == 1 {
-            pinned |= ray & us;
+        let ray = BitboardDefault::default().between(c, king_sq);
+        if (ray & color_us).popcount() == 1 {
+            pinned |= ray & color_us;
         }
     }
     pinned
