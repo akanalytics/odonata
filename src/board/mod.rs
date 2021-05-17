@@ -11,6 +11,7 @@ use std::iter::*;
 pub mod boardbuf;
 pub mod makemove;
 pub mod movegen;
+pub mod boardcalcs;
 pub mod rules;
 
 #[derive(Clone, PartialEq, Eq)]
@@ -26,6 +27,7 @@ pub struct Board {
     hash: Hash,
     threats_to: [Cell<Bitboard>; Color::len()],
     checkers_of: [Cell<Bitboard>; Color::len()],
+    pinned: Cell<Bitboard>,
     // interior mutability (precludes copy trait)
     // moves: MoveList,
 }
@@ -229,6 +231,7 @@ impl Board {
 
 impl fmt::Display for Board {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_char('\n')?;
         let b = self.clone();
         for &r in Bitboard::RANKS.iter().rev() {
             f.write_str(&b.get(r))?;
@@ -249,6 +252,7 @@ impl fmt::Display for Board {
                     self.pieces(p)
                 )?;
             }
+            writeln!(f, "Pinned:\n{}\n", self.pinned.get())?;
             writeln!(f, "Checkers of white:\n{}\n", self.checkers_of[Color::White].get())?;
             writeln!(f, "Checkers of black:\n{}\n", self.checkers_of[Color::Black].get())?;
             writeln!(f, "Threats to white:\n{}\n", self.threats_to[Color::White].get())?;
@@ -273,6 +277,7 @@ impl Default for Board {
             repetition_count: Cell::<u16>::new(0), 
             threats_to: [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())],
             checkers_of: [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())],
+            pinned: Cell::<_>::new(Bitboard::niche()),
             hash: 0, 
             // moves: MoveList,
         }

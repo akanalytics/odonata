@@ -215,12 +215,13 @@ mod tests {
         // new.mte.branching_factor = 5;  // cause more failed plys
         // new.ids.part_ply = true;
         // new.tt.aging = true;
-        old.eval.undefended_sq = 3;  // was 3
-        old.eval.undefended_piece = 20;
+        // old.eval.undefended_sq = 3;  // was 3
+        old.eval.trapped_piece = -40;
 
         old.mte.deterministic = true;
-        old.eval.undefended_sq = 3;
+        old.eval.undefended_sq = 0;
         old.eval.undefended_piece = 0;
+        old.eval.trapped_piece = 0;
         // old.mte.branching_factor = 5;  // cause more failed plys
         // old.ids.part_ply = false;
         // old.eval.cache_eval = false;

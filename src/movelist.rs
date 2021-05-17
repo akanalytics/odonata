@@ -269,8 +269,8 @@ impl Move {
             promo = Piece::None;
         }
         Ok(Move {
-            to: to.square(),
-            from: from.square(),
+            to ,
+            from ,
             promo,
             ..Default::default()
         })

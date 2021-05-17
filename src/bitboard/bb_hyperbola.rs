@@ -25,6 +25,7 @@ pub struct Hyperbola {
     mask: [HyperbolaMask; 64],
     rank_attacks: [[Bitboard; 8]; 64], // for perm of 6 bit-occupancy (64) and for each rook square (8)
     between: [[Bitboard; 64]; 64],
+    line: [[Bitboard; 64]; 64],
 }
 
 impl Hyperbola {
@@ -33,11 +34,13 @@ impl Hyperbola {
             mask: [HyperbolaMask::default(); 64],
             rank_attacks: [[Bitboard::EMPTY; 8]; 64],
             between: [[Bitboard::EMPTY; 64]; 64],
+            line: [[Bitboard::EMPTY; 64]; 64],
         };
 
         Self::pop_mask(&mut me.mask);
         Self::pop_rank_attacks(&mut me.rank_attacks);
         Self::pop_between(&mut me.between);
+        Self::pop_line(&mut me.line);
         me
     }
 
@@ -45,12 +48,20 @@ impl Hyperbola {
     fn pop_between(between: &mut [[Bitboard; 64]; 64]) {
         for s1 in Bitboard::all().squares() {
             for s2 in Bitboard::all().squares() {
-                between[s1][s2] = Square::line_through(s1, s2) & Square::bounding_rectangle(s1, s2);
+                between[s1][s2] = Square::calc_line_through(s1, s2) & Square::bounding_rectangle(s1, s2);
 
             }
         }
     }
 
+    fn pop_line(line: &mut [[Bitboard; 64]; 64]) {
+        for s1 in Bitboard::all().squares() {
+            for s2 in Bitboard::all().squares() {
+                line[s1][s2] = Square::calc_line_through(s1, s2);
+
+            }
+        }
+    }
 
     fn pop_rank_attacks(rank_attacks: &mut [[Bitboard; 8]; 64]) {
         for occupancy_bits in 0..64 {
@@ -150,6 +161,10 @@ impl BitboardAttacks for Hyperbola {
         self.between[s1.index()][s2.index()]
     }
 
+    #[inline]
+    fn line_through(&self, s1: Square, s2: Square) -> Bitboard {
+        self.line[s1.index()][s2.index()]
+    }
 
     #[inline]
     fn rook_attacks(&self, occ: Bitboard, from: Square) -> Bitboard {

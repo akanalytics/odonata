@@ -68,6 +68,16 @@ impl Catalog {
         ]
     }
 
+    pub fn pins() ->  Vec<Position> {
+        let str = r#"
+k6b/8/n4N2/8/Rr1K1P1b/2R5/8/q7 w - - 0 1 id "PIN.01"; c0 "Pins"; Sq c3 f6;
+k2r4/8/3B4/3B4/3KQr2/5n2/8/8 w - - 0 1 id "PIN.02"; c0 "Pins"; Sq e4;
+"#;
+        let positions = Position::parse_many_epd(str.lines()).unwrap();
+        positions
+    }
+
+
     pub fn move_ordering() -> Vec<Position> {
         let str = r#"
 r3k2r/1P6/1N3P2/2Pp4/3QP2Q/5B2/8/R3K2R w KQkq d6 0 1 id "MO.01"; c0 "Promos";

@@ -52,7 +52,7 @@ impl Position {
         if words[3] == "-" {
             pos.board.set_en_passant(Bitboard::EMPTY)
         } else {
-            pos.board.set_en_passant(Bitboard::parse_square(words[3])?)
+            pos.board.set_en_passant(Bitboard::parse_square(words[3])?.as_bb())
         };
 
         let mut remaining = StringUtils::trim_first_n_words(epd, 4);
@@ -200,6 +200,7 @@ impl Position {
     pub const ACD: &'static str = "acd";
     pub const BM: &'static str = "bm";
     pub const SM: &'static str = "sm";
+    pub const SQ: &'static str = "Sq";
     pub const DM: &'static str = "dm";
     pub const CE: &'static str = "ce";
     pub const DRAW_REJECT: &'static str = "draw_reject";
@@ -224,6 +225,10 @@ impl Position {
 
     pub fn sm(&self) -> Result<Move, String> {
         self.board.parse_san_move(self.get(Self::SM)?)
+    }
+
+    pub fn sq(&self) -> Result<Bitboard, String> {
+        Bitboard::parse_squares(self.get(Self::SQ)?)
     }
 
     pub fn ce(&self) -> Result<i32, String> {
@@ -265,9 +270,13 @@ impl Position {
                     Self::ID => {
                         self.id()?;
                     }
-                    Self::DRAW_REJECT => {}
+                    Self::DRAW_REJECT => {
+                    }
                     Self::DM => {
                         self.bm()?;
+                    }
+                    Self::SQ => {
+                        self.sq()?;
                     }
                     Self::PV => {
                         self.pv()?;
@@ -284,6 +293,7 @@ impl Position {
 mod tests {
     use super::*;
     use crate::catalog::Catalog;
+    use crate::globals::constants::*;
 
     #[test]
     fn test_split_into_tags() {
@@ -367,6 +377,17 @@ mod tests {
         assert_eq!(pos.bm().unwrap().to_string(), "e2e4, c2c4, a2a4");
         assert_eq!(pos.pv().unwrap().to_string(), "e2e4, e7e5, d2d3");
     }
+
+    #[test]
+    fn test_pos_custom() {
+        let mut pos = Position::default();
+        *pos.board_mut() = Board::parse_fen(Catalog::STARTING_POSITION_FEN).unwrap();
+        pos.set_operation(Position::SQ, "e4 e5 e6");
+        assert_eq!(pos.sq().unwrap(), e4|e5|e6);
+
+        pos.set_operation(Position::SQ, "");
+        assert_eq!(pos.sq().unwrap(), Bitboard::empty());
+    }
 }
 
 // Custom tags
@@ -390,6 +411,7 @@ mod tests {
 
 //     // bm best move(s)
 //     bm: MoveList,
+//
 //     // c0 comment (primary, also c1 though c9)
 //     c: [String;10],
 
@@ -444,6 +466,12 @@ mod tests {
 //     // resign game resignation
 //     // sm supplied move
 //     sm: Move,
+    
+//     Custom (Andy added!)
+//     squares. A series of squares in uci format. 
+//     Useful for identifying attackers, pinned pieces etc
+//     Sq: Squares,
+
 
 //     // tcgs telecommunication game selector
 //     // tcri telecommunication receiver identification

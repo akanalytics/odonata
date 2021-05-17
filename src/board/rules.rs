@@ -1,6 +1,6 @@
 use crate::bitboard::attacks::{BitboardAttacks, BitboardDefault};
-use crate::bitboard::bitboard::{Bitboard, Dir};
-use crate::board::movegen::{attacked_by, threats_to};
+use crate::bitboard::bitboard::{Bitboard, Dir, Square};
+use crate::board::boardcalcs::BoardCalcs;
 use crate::board::Board;
 use crate::movelist::{Move, MoveList};
 use crate::types::{Piece};
@@ -41,11 +41,11 @@ impl Rules {
         let us = b.us();
         let occ = b.occupied();
         let our_kings = b.kings() & us;
-        let king_danger = threats_to(b, b.color_us(), occ - our_kings );
+        let king_danger = BoardCalcs::threats_to(b, b.color_us(), occ - our_kings );
         
         if !our_kings.is_empty() {
             let king_sq = (b.kings() & us).square();
-            let attacks = attack_gen.non_pawn_attacks(Piece::King, occ, king_sq) & !us - king_danger;
+            let attacks = attack_gen.non_pawn_attacks(b.color_us(), Piece::King, us, them, king_sq) & !us - king_danger;
             moves.extend(attacks.squares().map(|to| {
                 if to.is_in(them) {
                     Move::new_capture(Piece::King, king_sq, to, b.piece_at(to.as_bb())).set_legal()
@@ -56,22 +56,69 @@ impl Rules {
         }
     }
 
-
-    pub fn non_pawn(p: Piece, b: &Board, moves: &mut MoveList) {
-        let attack_gen = BitboardDefault::default();
+    pub fn legal_for(p: Piece, b: &Board, moves: &mut MoveList) {
+        let us = b.us();
         let them = b.them();
+        let our_kings = b.kings() & us;
+        if our_kings.is_empty() {
+            return Self::non_pawn(p, b, moves);
+        }
+        let checkers = b.checkers_of(b.color_us());
+        if checkers.popcount() >= 2 {
+            return; // only king moves
+        } 
+        
+        let the_checker = checkers.square();
+        let king_sq = our_kings.square();
+        let gen = BitboardDefault::default();
+        let occ = b.occupied();
+        if  checkers.popcount() == 1 {
+            // Captr checker -> pseudos-capture-sq & piece not pinned & (checker)  			            
+            // Block checker -> pseudos-to & piece not pinned & (xrays to checker excl)  			
+            let blocking = gen.between(king_sq, the_checker);
+            for fr in (b.pieces(p) & us & !b.pinned()).squares() {
+                let attacks = blocking & gen.non_pawn_attacks(b.color_us(), p, us, them, fr) & !us;
+                Self::add_moves(attacks, p, fr, b, moves);
+            }
+            return;
+        } else {
+            // not in check
+            for fr in (b.pieces(p) & us).squares() {
+                let attacks = gen.non_pawn_attacks(b.color_us(),p, us, them, fr) & !us;
+                if !fr.is_in(b.pinned()) {
+                    // all non pinned pieces 
+                    Self::add_moves(attacks, p, fr, b, moves);
+                } else {
+                    // Pinned -> psuedo-to in ray along king and pinner incl                
+                    let blocking = gen.line_through(fr, king_sq);
+                    // will exlude knights anyway
+                    Self::add_moves(attacks & blocking, p, fr, b, moves);
+                }
+            }
+        }
+    }
+
+    #[inline]
+    fn add_moves(dests: Bitboard,  p: Piece, fr: Square, b: &Board, moves: &mut MoveList ) {
+        moves.extend(dests.squares().map(|to| {
+            if to.is_in(b.them()) {
+                Move::new_capture(p, fr, to, b.piece_at(to.as_bb()))
+            } else {
+                Move::new_quiet(p, fr, to)
+            }
+        }))
+    }
+
+
+
+    pub fn non_pawn(p: Piece, b: &Board, moves: &mut MoveList ) {
+        let attack_gen = BitboardDefault::default();
         let us = b.us();
         let occ = b.occupied();
 
-        for from_sq in (b.pieces(p) & us).squares() {
-            let attacks = attack_gen.non_pawn_attacks(p, occ, from_sq) & !us;
-            moves.extend(attacks.squares().map(|to| {
-                if to.is_in(them) {
-                    Move::new_capture(p, from_sq, to, b.piece_at(to.as_bb()))
-                } else {
-                    Move::new_quiet(p, from_sq, to)
-                }
-            }))
+        for fr in (b.pieces(p) & us).squares() {
+            let attacks = attack_gen.non_pawn_attacks(b.color_us(),p, b.us(), b.them(), fr) & !us;
+            Self::add_moves(attacks, p, fr, b, moves);
         }
     }
 
@@ -94,7 +141,7 @@ impl Rules {
             let rook_to = king.shift(Dir::E);
             let king_to = rook_to.shift(Dir::E);
             let king_moves = king | rook_to | king_to;
-            if attacked_by(king_moves, occ, b).disjoint(them) {
+            if BoardCalcs::attacked_by(king_moves, occ, b).disjoint(them) {
                 let m = Move::new_castle(king_sq, king_to.square(), king_to.square().shift(Dir::E), rook_to.square(), right).set_legal();
                 moves.push(m);
             }
@@ -108,7 +155,7 @@ impl Rules {
             let rook_to = king.shift(Dir::W);
             let king_to = rook_to.shift(Dir::W);
             let king_moves = king | rook_to | king_to;
-            if attacked_by(king_moves, occ, b).disjoint(them) {
+            if BoardCalcs::attacked_by(king_moves, occ, b).disjoint(them) {
                 let king_to = king_to.square();
                 let rook_from = king_to.shift(Dir::W).shift(Dir::W);
                 let m = Move::new_castle(king_sq, king_to, rook_from, rook_to.square(), right).set_legal();
@@ -131,28 +178,6 @@ impl Rules {
             ));
         }
     }
-
-
-    //     // pawn capture-promos
-    //     for to in (pawn_captures_e & them & Bitboard::PROMO_RANKS).iter() {
-    //         let from = to.shift(color.pawn_capture_east().opposite());
-    //         let capture = board.piece_at(to);
-    //         for &promo in &[Piece::Queen, Piece::Knight, Piece::Rook, Piece::Bishop] {
-    //             // MoveEnum::PromoCapture { to, from, promo, capture });
-    //             let m = Move { from, to, mover: Piece::Pawn, capture, promo, ..Default::default() };
-    //             moves.push(m);
-    //         }
-    //     }
-    //     for to in (pawn_captures_w & them & Bitboard::PROMO_RANKS).iter() {
-    //         let from = to.shift(color.pawn_capture_west().opposite());
-    //         let capture = board.piece_at(to);
-    //         for &promo in &[Piece::Queen, Piece::Knight, Piece::Rook, Piece::Bishop] {
-    //             // MoveEnum::PromoCapture { to, from, promo, capture });
-    //             let m = Move { from, to, mover: Piece::Pawn, capture, promo, ..Default::default() };
-    //             moves.push(m);
-    //         }
-    //     }
-
 
 
 
@@ -181,41 +206,6 @@ impl Rules {
     }
 
 
-    // pub fn pawn_capture_promos(b: &Board, moves: &mut MoveList) {
-    //     let attack_gen = BitboardDefault::default();
-    //     let c = b.color_us();
-    //     let us = b.us();
-    //     let them = b.them();
-    //     let pawns = b.pawns() & us;
-
-    //     let (pawn_captures_e, pawn_captures_w) = attack_gen.pawn_attacks(pawns, c);
-    //     for to in (pawn_captures_e & them).iter() {
-    //         let from = to.shift(c.pawn_capture_east().opposite());
-    //         let captured = b.piece_at(to);
-    //         if Bitboard::PROMO_RANKS.contains(to) {
-    //             moves.extend( [Piece::Queen, Piece::Knight, Piece::Rook, Piece::Bishop].iter().map(|&p|
-    //                 MoveExt::new_promo_capture(from, to, p, captured)
-    //             ));
-    //         }
-    //         else {
-    //             // let m = MoveExt::new_capture(Piece::Pawn, from, to, captured);
-    //             // moves.push(m);
-    //         }
-    //     }
-    //     for to in (pawn_captures_w & them).iter() {
-    //         let from = to.shift(c.pawn_capture_west().opposite());
-    //         let captured = b.piece_at(to);
-    //         if Bitboard::PROMO_RANKS.contains(to) {
-    //             moves.extend( [Piece::Queen, Piece::Knight, Piece::Rook, Piece::Bishop].iter().map(|&p|
-    //                 MoveExt::new_promo_capture(from, to, p, captured)
-    //             ));
-    //         }
-    //         else {
-    //             // let m = MoveExt::new_capture(Piece::Pawn, from, to, captured);
-    //             // moves.push(m);
-    //         }
-    //     }
-    // }
 
     pub fn pawn_captures_incl_promo(b: &Board, moves: &mut MoveList) {
         let attack_gen = BitboardDefault::default();

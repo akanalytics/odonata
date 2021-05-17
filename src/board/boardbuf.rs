@@ -188,7 +188,7 @@ impl BoardBuf for Board {
         let mut bb = Self::parse_piece_placement(words[0])?;
         bb.turn = Color::parse(words[1])?;
         bb.castling = CastlingRights::parse(words[2])?;
-        bb.en_passant = if words[3] == "-" { Bitboard::EMPTY } else { Bitboard::parse_square(words[3])? };
+        bb.en_passant = if words[3] == "-" { Bitboard::EMPTY } else { Bitboard::parse_square(words[3])?.as_bb() };
         bb.fifty_clock =
             words[4].parse().map_err(|e| format!("Invalid halfmove clock '{}' - {}", words[4], e))?;
         bb.fullmove_number =

@@ -1,7 +1,8 @@
 use criterion::*;
 use odonata::bitboard::bitboard::*;
 use odonata::board::makemove::*;
-use odonata::board::movegen::*;
+use odonata::bitboard::attacks::*;
+use odonata::board::boardcalcs::*;
 use odonata::board::*;
 use odonata::catalog::*;
 use odonata::eval::eval::*;
@@ -25,6 +26,40 @@ use odonata::bitboard::bb_classical::ClassicalBitboard;
 use odonata::bitboard::bb_hyperbola::Hyperbola;
 
 
+
+
+
+criterion_group!(
+    benches,
+    bench_shared_mem,
+    benchmark_mate_in_2,
+    benchmark_search,
+    benchmark_perft5,
+    benchmark_eval,
+    bb_calcs,
+    sq_calcs,
+    board_calcs,
+    benchmark_attacks,
+    make_move,
+    hash_move,
+    hash_board,
+    legal_moves,
+    pseudo_legal_moves,
+    bench_moveordering,
+    bitwise_handcrafted,
+    bitwise_bitflags,
+    piece_to_upper_char,
+    piece_to_char,
+    bench_chooser_struct,
+    bench_chooser_wb,
+    bench_chooser_array,
+    benchmark_score,
+    benchmark_array,
+    bench_insufficient_material,
+    bench_pvtable,
+    cache_eval
+);
+criterion_main!(benches);
 
 /*
 Bitboard 2.7ns (a|b)&c
@@ -185,6 +220,57 @@ fn legal_moves(c: &mut Criterion) {
     });
 }
 
+
+fn sq_calcs(c: &mut Criterion) {
+    let mut group = c.benchmark_group("sq_calcs");
+    // let bbs: Vec<Bitboard> = (0..64).into_iter().map(|sq| Bitboard::from_sq(sq)).collect();
+
+    group.bench_function("between", |b| {
+        let bb = BitboardDefault::default();
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            for _ in 0..n {
+                for s1 in Bitboard::all().squares() {
+                black_box(Bitboard::all().squares()
+                    .map( |s2|
+                    black_box(bb.between(s1, s2)))
+                    .count());
+                }
+            }
+            t.elapsed() / (64 * 64) as u32
+        });
+    });
+    group.bench_function("line_through", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            for _ in 0..n {
+                for s1 in Bitboard::all().squares() {
+                    black_box(Bitboard::all().squares()
+                    .map( |s2|
+                        black_box(Square::calc_line_through(s1, s2)))
+                        .count());
+                }
+            }
+            t.elapsed() / (64 * 64) as u32
+        });
+    });
+    group.bench_function("bounding_rectangle", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            for _ in 0..n {
+                for s1 in Bitboard::all().squares() {
+                    black_box(Bitboard::all().squares()
+                    .map( |s2|
+                        black_box(Square::bounding_rectangle(s1, s2)))
+                        .count());
+                }
+            }
+            t.elapsed() / (64 * 64) as u32
+        });
+    });
+    group.finish();
+}
+
 fn bb_calcs(c: &mut Criterion) {
     let mut group = c.benchmark_group("bb_calcs");
     let bbs: Vec<Bitboard> = (0..64).into_iter().map(|sq| Bitboard::from_sq(sq)).collect();
@@ -200,6 +286,7 @@ fn bb_calcs(c: &mut Criterion) {
             t.elapsed() / 64 as u32
         })
     });
+
 
     group.bench_function("first_squareX", |b| {
         b.iter_custom(|n| {
@@ -399,8 +486,8 @@ fn board_calcs(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             bams.iter().cycle_n(n).for_each(|bam| {
-                black_box(threats_to(black_box(&bam.0), Color::White, bam.0.occupied()));
-                black_box(threats_to(black_box(&bam.0), Color::Black, bam.0.occupied()));
+                black_box(BoardCalcs::threats_to(black_box(&bam.0), Color::White, bam.0.occupied()));
+                black_box(BoardCalcs::threats_to(black_box(&bam.0), Color::Black, bam.0.occupied()));
             });
             t.elapsed() / 2 / positions.len() as u32
         })
@@ -887,33 +974,4 @@ fn bench_moveordering(c: &mut Criterion) {
     });
 }
 
-criterion_group!(
-    benches,
-    bench_shared_mem,
-    benchmark_mate_in_2,
-    benchmark_search,
-    benchmark_perft5,
-    benchmark_eval,
-    bb_calcs,
-    board_calcs,
-    benchmark_attacks,
-    make_move,
-    hash_move,
-    hash_board,
-    legal_moves,
-    pseudo_legal_moves,
-    bench_moveordering,
-    bitwise_handcrafted,
-    bitwise_bitflags,
-    piece_to_upper_char,
-    piece_to_char,
-    bench_chooser_struct,
-    bench_chooser_wb,
-    bench_chooser_array,
-    benchmark_score,
-    benchmark_array,
-    bench_insufficient_material,
-    bench_pvtable,
-    cache_eval
-);
-criterion_main!(benches);
+

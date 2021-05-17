@@ -30,8 +30,8 @@ impl Exam {
         let mut exam = Exam {
             name: String::from(name),
             positions,
-            algo: Algo::new().set_timing_method(TimeControl::move_time_secs(3)).clone(),
-            // algo: Algo::new().set_timing_method(TimeControl::NodeCount(1_000_000)).clone(),
+            // algo: Algo::new().set_timing_method(TimeControl::move_time_secs(3)).clone(),
+            algo: Algo::new().set_timing_method(TimeControl::NodeCount(1_000_000)).clone(),
             ..Exam::default()
         };
         exam.algo.configure(&c);

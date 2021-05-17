@@ -358,12 +358,23 @@ impl Bitboard {
         }
     }
 
-    pub fn parse_square(s: &str) -> Result<Bitboard, String> {
+    pub fn parse_squares(s: &str) -> Result<Bitboard, String> {
+        let s = s.replace(",", " ");
+        let mut bb = Bitboard::empty();
+        for sq_str in s.split_ascii_whitespace() {
+            let sq = Self::parse_square(sq_str)?;
+            bb |= sq.as_bb()
+        }
+        Ok(bb)
+    }
+
+    pub fn parse_square(s: &str) -> Result<Square, String> {
         if s.len() != 2 {
             return Err(format!("Invalid square '{}'", s));
         }
         let chars: Vec<&str> = s.split("").collect(); // gives empty [0]
-        Ok(Self::parse_file(chars[1])? & Self::parse_rank(chars[2])?)
+        let bb = Self::parse_file(chars[1])? & Self::parse_rank(chars[2])?;
+        Ok(bb.square())
     }
 }
 
@@ -591,7 +602,7 @@ impl Square {
     }
 
     // returns empty if not on same line. For s1 == s2, returns just the single square
-    pub fn line_through(s1: Square, s2: Square) -> Bitboard {
+    pub fn calc_line_through(s1: Square, s2: Square) -> Bitboard {
         if s1 == s2 {
             s1.as_bb()
         } else 
@@ -739,12 +750,12 @@ mod tests {
 
     #[test]
     fn test_line_though() {
-        assert_eq!(Square::line_through(b6.square(), b8.square()), FILE_B);
-        assert_eq!(Square::line_through(b5.square(), d5.square()), RANK_5);
-        assert_eq!(Square::line_through(a2.square(), b1.square()), a2 | b1);
-        assert_eq!(Square::line_through(f1.square(), g2.square()), f1|g2|h3);
-        assert_eq!(Square::line_through(f1.square(), f1.square()), f1);
-        assert_eq!(Square::line_through(f1.square(), g3.square()), Bitboard::empty());
+        assert_eq!(Square::calc_line_through(b6.square(), b8.square()), FILE_B);
+        assert_eq!(Square::calc_line_through(b5.square(), d5.square()), RANK_5);
+        assert_eq!(Square::calc_line_through(a2.square(), b1.square()), a2 | b1);
+        assert_eq!(Square::calc_line_through(f1.square(), g2.square()), f1|g2|h3);
+        assert_eq!(Square::calc_line_through(f1.square(), f1.square()), f1);
+        assert_eq!(Square::calc_line_through(f1.square(), g3.square()), Bitboard::empty());
     }
 
     #[test]
@@ -760,9 +771,13 @@ mod tests {
         assert_eq!(Bitboard::parse_file("h").unwrap(), Bitboard::FILE_H);
         assert_eq!(Bitboard::parse_rank("1").unwrap(), Bitboard::RANK_1);
         assert_eq!(Bitboard::parse_rank("8").unwrap(), Bitboard::RANK_8);
-        assert_eq!(Bitboard::parse_square("a1").unwrap(), a1);
-        assert_eq!(Bitboard::parse_square("a8").unwrap(), a8);
-        assert_eq!(Bitboard::parse_square("h8").unwrap(), h8);
+        assert_eq!(Bitboard::parse_square("a1").unwrap(), a1.square());
+        assert_eq!(Bitboard::parse_square("a8").unwrap(), a8.square());
+        assert_eq!(Bitboard::parse_square("h8").unwrap(), h8.square());
+
+        assert_eq!(Bitboard::parse_squares("h8 h1").unwrap(), h8|h1);
+        assert_eq!(Bitboard::parse_squares("a1, a2,a3  ").unwrap(), a1|a2|a3);
+        assert_eq!(Bitboard::parse_squares("").unwrap(), Bitboard::empty());
     }
 
     #[test]

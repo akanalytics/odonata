@@ -181,6 +181,7 @@ pub struct SimpleScorer {
     pub mobility: bool,
     pub undefended_sq: i32,
     pub undefended_piece: i32,
+    pub trapped_piece: i32,
     pub pawn_doubled: i32,
     pub pawn_isolated: i32,
     pub rook_open_file: i32,
@@ -224,6 +225,10 @@ impl Configurable for SimpleScorer {
         c.set(
             "eval.mobility.undef_piece",
             &format!("type spin min -200 max 200 default {}", self.undefended_piece),
+        );
+        c.set(
+            "eval.mobility.trapped_piece",
+            &format!("type spin min -200 max 200 default {}", self.trapped_piece),
         );
         c.set(
             "eval.pawn.isolated",
@@ -270,6 +275,7 @@ impl Configurable for SimpleScorer {
         self.material = c.bool("eval.material").unwrap_or(self.material);
         self.phasing = c.bool("eval.phasing").unwrap_or(self.phasing);
         self.undefended_piece = c.int("eval.mobility.undef_piece").unwrap_or(self.undefended_piece as i64) as i32;
+        self.trapped_piece = c.int("eval.mobility.trapped_piece").unwrap_or(self.trapped_piece as i64) as i32;
         self.undefended_sq = c.int("eval.mobility.undef_sq").unwrap_or(self.undefended_sq as i64) as i32;
         self.pawn_doubled = c.int("eval.pawn.doubled").unwrap_or(self.pawn_doubled as i64) as i32;
         self.pawn_isolated = c.int("eval.pawn.isolated").unwrap_or(self.pawn_isolated as i64) as i32;
@@ -297,6 +303,7 @@ impl fmt::Display for SimpleScorer {
         writeln!(f, "phasing          : {}", self.phasing)?;
         writeln!(f, "undefended_piece : {}", self.undefended_piece)?;
         writeln!(f, "undefended_sq    : {}", self.undefended_sq)?;
+        writeln!(f, "trapped_peice    : {}", self.trapped_piece)?;
         writeln!(f, "pawn.doubled     : {}", self.pawn_doubled)?;
         writeln!(f, "pawn.isolated    : {}", self.pawn_isolated)?;
         writeln!(f, "rook.open_file   : {}", self.rook_open_file)?;
@@ -333,6 +340,7 @@ impl SimpleScorer {
             phasing: true,
             undefended_piece: 15,
             undefended_sq: 3,
+            trapped_piece: -40,
             pawn_doubled: -10,
             pawn_isolated: -10,
             rook_open_file: 20,
@@ -477,7 +485,9 @@ impl SimpleScorer {
             let pw = b.pawns() & oc;
             let (pae, paw) = bb.pawn_attacks(pw, c.opposite());
             let pa = pae | paw;
-            let attacks = bb.non_pawn_attacks(p, occ, sq) - pa;
+            let enemy_us = b.them(); 
+            let enemy_them = b.us();
+            let attacks = bb.non_pawn_attacks(c.opposite(), p, enemy_us, enemy_them, sq) - pa;
             // squares we can move to not attacked by pawns plus attacking pieces greater than us
             let bi = b.bishops() & oc;
             let ni = b.knights() & oc;
@@ -494,6 +504,13 @@ impl SimpleScorer {
                 Piece::Bishop => (attacks & oc - us - bi - q).popcount(),
                 _ => 0,
             };
+            // trapped piece
+            if empties + non_pawn_defended == 1 {
+                score += self.trapped_piece / 2;
+            }
+            if empties + non_pawn_defended == 0 {
+                score += self.trapped_piece;
+            }
             score += empties * self.undefended_sq + non_pawn_defended * self.undefended_piece;
         }
         score

@@ -11,18 +11,20 @@ pub trait BitboardAttacks {
 
     // fn new() -> Self;
     fn between(&self, s1:Square, s2: Square) -> Bitboard;
+    fn line_through(&self, s1:Square, s2: Square) -> Bitboard;
     fn bishop_attacks(&self, occupied: Bitboard, from: Square) -> Bitboard;
     fn rook_attacks(&self, occupied: Bitboard, from: Square) -> Bitboard;
     fn knight_attacks(&self, from: Square) -> Bitboard;
     fn king_attacks(&self, from: Square) -> Bitboard;
 
-    fn non_pawn_attacks(&self, p: Piece, occ: Bitboard, from: Square) -> Bitboard {
+    fn non_pawn_attacks(&self, c: Color, p: Piece, us: Bitboard, them: Bitboard, from: Square) -> Bitboard {
         match p {
-            Piece::Bishop => self.bishop_attacks(occ, from),
-            Piece::Rook => self.rook_attacks(occ, from),
-            Piece::Queen => self.rook_attacks(occ, from) | self.bishop_attacks(occ, from),
+            Piece::Bishop => self.bishop_attacks(us|them, from),
+            Piece::Rook => self.rook_attacks(us|them, from),
+            Piece::Queen => self.rook_attacks(us|them, from) | self.bishop_attacks(us|them, from),
             Piece::King => self.king_attacks(from),
             Piece::Knight => self.knight_attacks(from),
+            Piece::Pawn => Self::pawn_attacks_ext(c, us, them, from),
             _ => panic!(),
         }
     }
@@ -33,6 +35,15 @@ pub trait BitboardAttacks {
         self.between(s1,s2).exclude(s1).exclude(s2)
     }
 
+    #[inline]
+    fn pawn_attacks_ext(c: Color, us: Bitboard, them: Bitboard,  fr: Square) -> Bitboard {
+        let pawn = fr.as_bb();
+        let empty = !(us| them);
+        let single = pawn.shift(c.pawn_move()) & empty;
+        let double = single.shift(c.pawn_move()) & empty & c.double_push_dest_rank();
+        let capture = them & (pawn.shift(c.pawn_capture_east()) | pawn.shift(c.pawn_capture_west()));
+        single | double | capture
+    }
 
     #[inline]
     fn pawn_pushes(&self, occupied: Bitboard, pawns: Bitboard, color: Color) -> Bitboard {

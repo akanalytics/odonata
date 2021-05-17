@@ -85,6 +85,7 @@ impl MoveMaker for Board {
             repetition_count: Cell::new(0),
             threats_to: [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())],
             checkers_of: [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())],
+            pinned: Cell::<_>::new(Bitboard::niche()),
             // moves: self.moves.clone(),
             ..*self
         };

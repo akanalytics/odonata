@@ -3,118 +3,12 @@ use crate::bitboard::bitboard::{Bitboard};
 use crate::board::makemove::MoveMaker;
 use crate::board::rules::Rules;
 use crate::board::Board;
+use crate::board::boardcalcs::BoardCalcs;
 use crate::globals::counts;
 use crate::movelist::{Move, MoveList};
 use crate::types::{Color, Piece};
 
 
-
-pub fn pinned(b: &Board, us: Color, occ: Bitboard ) -> Bitboard {
-    let color_us = b.color(us);
-    let kings = b.kings() & b.color(us);
-    if kings.is_empty() { 
-        return Bitboard::empty()
-    };
-    let king_sq = kings.square();
-
-    let xray_checkers = threats_to(b, us, Bitboard::EMPTY);
-    let mut pinned =  Bitboard::empty();
-    for c in xray_checkers.squares() {
-        let ray = BitboardDefault::default().strictly_between(c, king_sq);
-        if (ray & color_us).popcount() == 1 {
-            pinned |= ray & color_us;
-        }
-    }
-    pinned
-}
-
-
-pub fn threats_to(board: &Board, us: Color, occ: Bitboard) -> Bitboard {
-    let opponent = us.opposite();
-    let pawns = board.pawns() & board.color(opponent);
-    let knights = board.knights() & board.color(opponent);
-    let bishops = board.bishops() & board.color(opponent);
-    let rooks = board.rooks() & board.color(opponent);
-    let queens = board.queens() & board.color(opponent);
-    let kings = board.kings() & board.color(opponent);
-
-    let attack_gen = BitboardDefault::default();
-    let (east, west) = attack_gen.pawn_attacks(pawns, opponent);
-    let mut threats = east | west;
-
-    for each in knights.iter() {
-        let sq = each.square();
-        threats |= attack_gen.knight_attacks(sq);
-    }
-    for each in (bishops | queens).iter() {
-        let sq = each.square();
-        threats |= attack_gen.bishop_attacks(occ, sq);
-    }
-
-    for each in (rooks | queens).iter() {
-        let sq = each.square();
-        threats |= attack_gen.rook_attacks(occ, sq);
-    }
-
-    for each in kings.iter() {
-        let sq = each.square();
-        threats |= attack_gen.king_attacks(sq);
-    }
-    threats
-}
-
-pub fn attacked_by(targets: Bitboard, occ: Bitboard, board: &Board) -> Bitboard {
-    if targets.is_empty() {
-        return Bitboard::empty();
-    }
-    let pawns = board.pawns();
-    let knights = board.knights();
-    let bishops = board.bishops();
-    let rooks = board.rooks();
-    let queens = board.queens();
-    let kings = board.kings();
-
-    let attack_gen = BitboardDefault::default();
-    let white = attack_gen.pawn_attackers(targets, Color::White) & pawns & board.white();
-    let black = attack_gen.pawn_attackers(targets, Color::Black) & pawns & board.black();
-    let mut attackers = white | black;
-
-    for each in targets.iter() {
-        let sq = each.square();
-        attackers |= attack_gen.knight_attacks(sq) & knights
-            | attack_gen.king_attacks(sq) & kings
-            | attack_gen.bishop_attacks(occ, sq) & (bishops | queens)
-            | attack_gen.rook_attacks(occ, sq) & (rooks | queens);
-    }
-    debug!("{}target\n{}attackers\n{}", board, targets, attackers);
-
-    attackers
-}
-
-// fn attacked_by_colorX(targets: Bitboard, occ: Bitboard, board: &Board, opponent: Color) -> Bitboard {
-//     let pawns = board.pawns() & board.color(opponent);
-//     let knights = board.knights() & board.color(opponent);
-//     let bishops = board.bishops() & board.color(opponent);
-//     let rooks = board.rooks() & board.color(opponent);
-//     let queens = board.queens() & board.color(opponent);
-//     let kings = board.kings() & board.color(opponent);
-
-//     let attack_gen = global_classical_bitboard();
-//     let (east, west) = attack_gen.pawn_attacks(pawns, opponent);
-//     let mut attackers = (east | west) & targets;
-
-//     for each in targets.iter() {
-//         let sq = each.first_square();
-//         attackers |= attack_gen.knight_attacks(sq) & knights
-//             | attack_gen.king_attacks(sq) & kings
-//             | attack_gen.bishop_attacks(occ, sq) & (bishops | queens)
-//             | attack_gen.rook_attacks(occ, sq) & (rooks | queens);
-//         // TODO: en passant!!
-//     }
-//     debug!("opponent:{}\n{}target\n{}attackers\n{}", opponent, board, targets, attackers);
-
-//     attackers
-// }
 
 trait MoveGen {}
 
@@ -126,19 +20,19 @@ trait MoveGen {}
 // fn legal_capture_moves(&self) -> MoveList;
 // fn threats_to(&self, c: Color) -> Bitboard;
 
-// no king on board => no attackers
-pub fn calc_checkers_of(board: &Board, king_color: Color) -> Bitboard {
-    let us = board.color(king_color);
-    let them = board.color(king_color.opposite());
-    let our_king = board.kings() & us;
-    // debug_assert!(!our_king.is_empty(), "king ({}) not found {}", king_color, board);
-    let occ = us | them;
-    attacked_by(our_king, occ, board) & them
-}
 
 impl Board {
     pub fn attacked_by(&self, targets: Bitboard) -> Bitboard {
-        attacked_by(targets, self.black() | self.white(), self)
+        BoardCalcs::attacked_by(targets, self.black() | self.white(), self)
+    }
+
+    pub fn pinned(&self) -> Bitboard {
+        let mut pi = self.pinned.get();
+        if pi == Bitboard::niche() {
+            pi = BoardCalcs::pinned(self, self.color_us());
+            self.pinned.set(pi);
+        }
+        pi
     }
 
     pub fn will_check_them(&self, mv: &Move) -> bool {
@@ -150,7 +44,7 @@ impl Board {
     pub fn checkers_of(&self, king_color: Color) -> Bitboard {
         let mut ch = self.checkers_of[king_color].get();
         if ch == Bitboard::niche() {
-            ch = calc_checkers_of(self, king_color);
+            ch = BoardCalcs::checkers_of(self, king_color);
             self.checkers_of[king_color].set(ch);
         }
         ch
@@ -159,7 +53,7 @@ impl Board {
     pub fn threats_to(&self, c: Color) -> Bitboard {
         let mut th = self.threats_to[c].get();
         if th == Bitboard::niche() {
-            th = threats_to(self, c, self.occupied());
+            th = BoardCalcs::threats_to(self, c, self.occupied());
             self.threats_to[c].set(th);
         }
         th
@@ -246,18 +140,19 @@ impl Board {
         let mut moves = MoveList::new();
 
         let b = self;
-        Rules::pawn_captures_incl_promo(b, &mut moves);
-        Rules::pawn_promos(b, &mut moves);
-        Rules::pawn_push(b, &mut moves);
+        // Rules::pawn_captures_incl_promo(b, &mut moves);
+        // Rules::pawn_promos(b, &mut moves);
+        // Rules::pawn_push(b, &mut moves);
         // Rules::pawn_capture_promos(b, &mut moves);
-        Rules::non_pawn(Piece::Knight, b, &mut moves);
-        Rules::non_pawn(Piece::Bishop, b, &mut moves);
-        Rules::non_pawn(Piece::Rook, b, &mut moves);
-        Rules::non_pawn(Piece::Queen,b,  &mut moves);
+        Rules::legal_for(Piece::Knight, b, &mut moves);
+        Rules::legal_for(Piece::Bishop, b, &mut moves);
+        Rules::legal_for(Piece::Rook, b, &mut moves);
+        Rules::legal_for(Piece::Queen,b,  &mut moves);
+        Rules::legal_for(Piece::Pawn,b,  &mut moves);
         // Rules::non_pawn(Piece::King,b,  &mut moves);
         Rules::king_legal(b, &mut moves);
         Rules::castles(b, &mut moves);
-        moves.retain(|m| self.is_legal_move(m));
+        // moves.retain(|m| self.is_legal_move(m));
         moves
     }
 
@@ -474,29 +369,6 @@ mod tests {
             board.pseudo_legal_moves().sort().to_string(),
             "b2a1, b2a3, b2c1, b2c3, b2d4, b2e5, b2f6, b2g7, b2h8"
         );
-    }
-
-    #[test]
-    fn test_threats() {
-        let board = Board::parse_fen("k5r1/3q1p2/4b2r/1n6/6pp/b2N3n/8/K1QR4 w - - 0 1")
-            .unwrap()
-            .as_board();
-        let bb = threats_to(&board, Color::White, board.occupied());
-        println!("{}", !bb);
-        assert_eq!(
-            !bb,
-            a1 | b1 | d1 | e1 | f1 | h1 | c2 | d2 | e2 | g2 | h2 | e3 | a4 | e4 | a5 | e5 | a6 | b6 | h6 | g8
-        );
-    }
-
-    #[test]
-    fn test_attacked_by() {
-        let board = Board::parse_fen("5Q2/8/7p/4P1p1/8/3NK1P1/8/8 w - - 0 1")
-            .unwrap()
-            .as_board();
-        let bb = attacked_by(f4, board.white() | board.black(), &board);
-        println!("{}", bb);
-        assert_eq!(bb, g3 | g5 | e3 | d3 | f8);
     }
 
     #[test]
