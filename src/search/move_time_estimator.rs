@@ -171,7 +171,7 @@ mod tests {
         search.mte.deterministic = true;
         search.search(position.board());
         println!("{}", search);
-        assert_eq!(search.search_stats().total().nodes(), 3877); // with piece mobility
+        assert_eq!(search.search_stats().total().nodes(), 3968); // with piece mobility
         
         // previous
         // assert_eq!(search.search_stats().total().nodes(), 3456); // with gen qsearch

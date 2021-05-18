@@ -337,7 +337,7 @@ mod tests {
         search.move_orderer.enabled = false;
         search.search(&board);
         println!("{}", search);
-        assert_eq!(search.search_stats().total().nodes(), 1401); // piece mob (disabled)
+        assert_eq!(search.search_stats().total().nodes(), 1397); // piece mob (disabled)
 
         // previous
         // assert_eq!(search.search_stats().total().nodes(), 1404); // pawn promo
@@ -388,7 +388,7 @@ mod tests {
             search.search(position.board());
             println!("{}", search);
             if id {
-                assert_eq!(search.search_stats().total().nodes(), 3877); // with piece mob
+                assert_eq!(search.search_stats().total().nodes(), 3968); // with piece mob
 
             // previous
             // assert_eq!(search.search_stats().total().nodes(), 3456); // with pawn promo
@@ -399,7 +399,7 @@ mod tests {
             // assert_eq!(search.search_stats().total().nodes(), 6553);  // with ordering pv
             // assert_eq!(search.search_stats().total().nodes(), 6740);
             } else {
-                assert_eq!(search.search_stats().total().nodes(), 4791); // with piece mob
+                assert_eq!(search.search_stats().total().nodes(), 5032); // with piece mob
 
                 // previous
                 // assert_eq!(search.search_stats().total().nodes(), 3456); // with pawn promos
@@ -428,7 +428,7 @@ mod tests {
         let nodes = algo.search_stats().total().nodes();
 
         // with gen qsearch
-        assert_eq!(nodes, 3914); // piece mob
+        assert_eq!(nodes, 4181); // piece mob
 
         // previous
         // assert_eq!(nodes, 4586); // pawn promo
