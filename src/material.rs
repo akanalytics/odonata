@@ -52,8 +52,8 @@ impl Material {
     pub fn from_board(board: &Board) -> Material {
         let mut m = Material { ..Self::default() };
         for &p in &Piece::ALL_BAR_NONE {
-            m.counts[Color::White.index()][p.index()] = (board.pieces(p) & board.white()).popcount() as i32;
-            m.counts[Color::Black.index()][p.index()] = (board.pieces(p) & board.black()).popcount() as i32;
+            m.counts[Color::White][p] = (board.pieces(p) & board.white()).popcount() as i32;
+            m.counts[Color::Black][p] = (board.pieces(p) & board.black()).popcount() as i32;
         }
         m
     }
@@ -75,31 +75,31 @@ impl Material {
     }
 
     #[inline]
-    pub const fn counts(&self, c: Color, p: Piece) -> i32 {
-        self.counts[c.index()][p.index()]
+    pub fn counts(&self, c: Color, p: Piece) -> i32 {
+        self.counts[c][p] as i32
     }
 
     #[inline]
-    pub const fn minors_and_majors(&self) -> Material {
+    pub fn minors_and_majors(&self) -> Material {
         let mut m = *self;
-        m.counts[Color::White.index()][Piece::Pawn.index()] = 0;
-        m.counts[Color::Black.index()][Piece::Pawn.index()] = 0;
-        m.counts[Color::White.index()][Piece::King.index()] = 0;
-        m.counts[Color::Black.index()][Piece::King.index()] = 0;
+        m.counts[Color::White][Piece::Pawn] = 0;
+        m.counts[Color::Black][Piece::Pawn] = 0;
+        m.counts[Color::White][Piece::King] = 0;
+        m.counts[Color::Black][Piece::King] = 0;
         m
     }
 
     #[inline]
-    pub const fn white(&self) -> Material {
+    pub fn white(&self) -> Material {
         Material {
-            counts: [self.counts[Color::White.index()], [0; Piece::len()]],
+            counts: [self.counts[Color::White], [0; Piece::len()]],
         }
     }
 
     #[inline]
-    pub const fn black(&self) -> Material {
+    pub fn black(&self) -> Material {
         Material {
-            counts: [[0; Piece::len()], self.counts[Color::Black.index()]],
+            counts: [[0; Piece::len()], self.counts[Color::Black]],
         }
     }
 

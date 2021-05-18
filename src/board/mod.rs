@@ -72,7 +72,7 @@ impl Board {
     }
 
     #[inline]
-    pub fn pieces(&self, p: Piece) -> Bitboard {
+    pub const fn pieces(&self, p: Piece) -> Bitboard {
         self.pieces[p.index()]
     }
 

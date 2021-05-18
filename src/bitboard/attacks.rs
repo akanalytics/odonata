@@ -29,7 +29,6 @@ pub trait BitboardAttacks {
         }
     }
 
-
     #[inline]
     fn strictly_between(&self, s1: Square, s2: Square) -> Bitboard {
         self.between(s1,s2).exclude(s1).exclude(s2)
@@ -39,8 +38,8 @@ pub trait BitboardAttacks {
     fn pawn_attacks_ext(c: Color, us: Bitboard, them: Bitboard,  fr: Square) -> Bitboard {
         let pawn = fr.as_bb();
         let empty = !(us| them);
-        let single = pawn.shift(c.pawn_move()) & empty;
-        let double = single.shift(c.pawn_move()) & empty & c.double_push_dest_rank();
+        let single = pawn.shift(c.forward()) & empty;
+        let double = single.shift(c.forward()) & empty & c.double_push_dest_rank();
         let capture = them & (pawn.shift(c.pawn_capture_east()) | pawn.shift(c.pawn_capture_west()));
         single | double | capture
     }
@@ -48,8 +47,8 @@ pub trait BitboardAttacks {
     #[inline]
     fn pawn_pushes(&self, occupied: Bitboard, pawns: Bitboard, color: Color) -> Bitboard {
         let empty = !occupied;
-        let single = pawns.shift(color.pawn_move()) & empty;
-        single | (single.shift(color.pawn_move()) & empty & color.double_push_dest_rank())
+        let single = pawns.shift(color.forward()) & empty;
+        single | (single.shift(color.forward()) & empty & color.double_push_dest_rank())
     }
 
     #[inline]
@@ -93,7 +92,7 @@ pub trait BitboardAttacks {
         assert!(!ep.is_empty());
         let (east, west) = self.pawn_attacks(pawns, c);
 
-        let enemy_pawn = ep.shift(c.opposite().pawn_move());
+        let enemy_pawn = ep.shift(c.opposite().forward());
 
         // check enemy have occupied the square one beyond en passant square
         if (enemy_pawn & opp).is_empty() {

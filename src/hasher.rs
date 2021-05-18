@@ -113,14 +113,14 @@ impl Hasher {
 
     #[inline]
     fn get(&self, c: Color, p: Piece, sq: Square) -> Hash {
-        self.squares[c.index()][p.index()][sq.index()]
+        self.squares[c][p][sq]
     }
 
     pub fn hash_board(&self, b: &Board) -> Hash {
         counts::BOARD_HASH_COUNT.increment();
         let mut hash = b.color_us().chooser_wb(0, self.side);
-        for cr in CastlingRights::iter() {
-            if b.castling().contains(*cr) {
+        for &cr in CastlingRights::iter() {
+            if b.castling().contains(cr) {
                 hash ^= self.castling[cr.index()];
             }
         }
@@ -153,15 +153,15 @@ impl Hasher {
         if m.is_capture() {
             if m.is_ep_capture() {
                 // ep capture is like capture but with capture piece on *ep* square not *dest*
-                hash ^= self.get(them, m.capture_piece(), m.ep());
+                hash ^= self.squares[them][m.capture_piece()][m.ep()];
             } else {
                 // regular capture
-                hash ^= self.get(them, m.capture_piece(), m.to());
+                hash ^= self.squares[them][m.capture_piece()][m.to()];
             }
         }
 
-        hash ^= self.get(us, m.mover_piece(), m.from());
-        hash ^= self.get(us, m.mover_piece(), m.to());
+        hash ^= self.squares[us][m.mover_piece()][m.from()];
+        hash ^= self.squares[us][m.mover_piece()][m.to()];
 
         if m.mover_piece() == Piece::Pawn && m.is_pawn_double_push() {
             debug_assert!(

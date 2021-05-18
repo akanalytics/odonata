@@ -77,6 +77,39 @@ k2r4/8/3B4/3B4/3KQr2/5n2/8/8 w - - 0 1 id "PIN.02"; c0 "Pins"; Sq e4;
         positions
     }
 
+    // given in UCI format so that we dont need a working "legal moves" to parse
+    pub fn moves() ->  Vec<Position> {
+        let str = r#"
+8/8/p7/8/8/P7/8/8 w - - 0 1 id "LEGAL.01"; c0 "Pawn push (w)"; c1 "a3a4";
+8/8/p7/8/8/P7/8/8 b - - 0 1 id "LEGAL.02"; c0 "Pawn push (b)"; c1 "a6a5";
+8/p7/8/8/8/8/P7/8 w - - 0 1 id "LEGAL.03"; c0 "Pawn double push (w)"; c1 "a2a3 a2a4";
+8/p7/8/8/8/8/P7/8 b - - 0 1 id "LEGAL.04"; c0 "Pawn double push (b)"; c1 "a7a6 a7a5";
+8/8/8/8/8/1p6/B7/8 w - - 0 1 id "LEGAL.05"; c0 "Bishop"; c1 "a2b3 a2b1";
+8/8/8/8/8/1p6/1Rp5/8 w - - 0 1 id "LEGAL.06"; c0 "Rook"; c1 "b2a2 b2b3 b2b1 b2c2";
+8/8/8/8/8/1pp5/1Q1p4/8 w - - 0 1 id "LEGAL.07"; c0 "Queen"; c1 "b2a2 b2a1 b2a3 b2b3 b2b1 b2c3 b2c2 b2c1 b2d2";
+k7/8/8/8/8/8/8/K7 w - - 0 1 id "LEGAL.08"; c0 "King"; c1 "a1a2 a1b1 a1b2";
+8/8/8/8/8/8/2k5/K7 w - - 0 1 id "LEGAL.09"; c0 "King and king check"; c1 "a1a2";
+k7/8/8/8/8/8/7r/K7 w - - 0 1 id "LEGAL.10"; c0 "King and rook check"; c1 "a1b1";
+k7/8/8/8/8/8/r7/K7 w - - 0 1 id "LEGAL.11"; c0 "King and take rook checker"; c1 "a1a2 a1b1";
+8/8/8/8/8/1k6/r7/K7 w - - 0 1 id "LEGAL.12"; c0 "King and cannot take rook checker"; c1 "a1b1";
+4kr1r/8/8/3pP3/8/8/r7/6K1 w k d6 0 1 id "LEGAL.13"; c0 "Pawn ep"; c1 "e5d6 e5e6";
+rk6/8/8/8/N7/1pp5/8/K7 w - - 0 1 id "LEGAL.20"; c0 "Pinned knight"; c1 "a1b1";
+rk6/8/8/8/B7/1pp5/8/K7 w - - 0 1 id "LEGAL.21"; c0 "Pinned bishop"; c1 "a1b1";
+rk6/8/8/8/8/Rpp5/8/K7 w - - 0 1 id "LEGAL.22"; c0 "Pinned rook"; c1 "a1b1 a3a2 a3a4 a3a5 a3a6 a3a7 a3a8";
+rk6/8/8/8/8/Qpp5/8/K7 w - - 0 1 id "LEGAL.23"; c0 "Pinned queen"; c1 "a1b1 a3a2 a3a4 a3a5 a3a6 a3a7 a3a8";
+rrk5/8/8/8/8/P7/8/K7 w - - 0 1 id "LEGAL.24"; c0 "Pinned pawn"; c1 "a1a2 a3a4";
+rk6/8/8/8/2Q5/8/8/K6r w - - 0 1 id "LEGAL.30"; c0 "Double check"; c1 "a1b2";
+rk6/8/8/8/2Q5/8/7r/K6r w - - 0 1 id "LEGAL.31"; c0 "Checkmate"; c1 "";
+8/8/8/8/r7/1P6/7r/K1k5 w - - 0 1 id "LEGAL.40"; c0 "Pawn capture rook checker"; c1 "b3a4";
+8/8/8/8/8/kn6/2P4r/K7 w - - 0 1 id "LEGAL.41"; c0 "Pawn capture knight checker"; c1 "a1b1 c2b3";
+1k6/8/8/8/8/1n6/PP6/K7 w - - 0 1 id "LEGAL.42"; c0 "Pawn capture knight checker #2"; c1 "a1b1 a2b3";
+r3k2r/p3bpp1/2q1p1b1/1ppPP1B1/7P/1n3NR1/PP2NP2/K1QR4 w kq - 1 2 id "LEGAL.42"; c0 "Pawn capture knight checker #3"; c1 "a2b3";
+1r5k/8/7r/K1pP3r/7r/8/8/8 w - c6 0 1 id "LEGAL.50"; c0 "Pawn pinned ep"; c1 "d5d6";
+1r5k/8/7r/K1pP1p1r/7r/8/8/8 w - c6 0 1 id "LEGAL.50"; c0 "Pawn not pinned ep"; c1 "d5d6 d5c6";
+"#;
+        let positions = Position::parse_many_epd(str.lines()).unwrap();
+        positions
+    }
 
     pub fn move_ordering() -> Vec<Position> {
         let str = r#"

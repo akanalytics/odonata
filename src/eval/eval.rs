@@ -355,9 +355,9 @@ impl SimpleScorer {
 
     fn calculate_pst() -> [[Weight; 64]; Piece::len()] {
         let mut pst = [[Weight::default(); 64]; Piece::len()];
-        for p in &Piece::ALL_BAR_NONE {
+        for &p in &Piece::ALL_BAR_NONE {
             for sq in Square::all() {
-                pst[p.index()][sq] = Weight::new(SQUARE_VALUES_MG[p][sq], SQUARE_VALUES_EG[p][sq]);
+                pst[p][sq] = Weight::new(SQUARE_VALUES_MG[p][sq], SQUARE_VALUES_EG[p][sq]);
             }
         }
         pst
@@ -478,7 +478,6 @@ impl SimpleScorer {
         for sq in ((b.knights() | b.bishops() | b.rooks() | b.queens()) & b.color(c)).squares() {
             let bb = BitboardDefault::default();
             let p = b.piece_at(sq.as_bb());
-            let occ = b.occupied();
             let oc = b.color(c.opposite());
 
             // non-pawn-defended empty or oppoent sq
@@ -519,7 +518,7 @@ impl SimpleScorer {
     // P(osition) S(quare) T(able)
     #[inline]
     pub fn pst(&self, p: Piece, sq: Square) -> Weight {
-        self.pst[p.index()][sq.index()]
+        self.pst[p][sq]
     }
 
     // #[inline]
@@ -574,7 +573,7 @@ impl SimpleScorer {
         Piece::ALL_BAR_KING
             .iter()
             .map(|&p| {
-                self.material_scores[p.index()] * (mat.counts(Color::White, p) - mat.counts(Color::Black, p))
+                self.material_scores[p] * (mat.counts(Color::White, p) - mat.counts(Color::Black, p))
             })
             .sum()
         // let mut total = 0_i32;
@@ -589,10 +588,10 @@ impl SimpleScorer {
     pub fn eval_move_material(&self, mv: &Move) -> i32 {
         let mut score = 0;
         if mv.is_capture() {
-            score += self.material_scores[mv.capture_piece().index()];
+            score += self.material_scores[mv.capture_piece()];
         }
         if mv.is_promo() {
-            score += self.material_scores[mv.promo_piece().index()];
+            score += self.material_scores[mv.promo_piece()];
         }
         score
     }

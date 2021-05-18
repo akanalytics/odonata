@@ -30,11 +30,11 @@ impl ClassicalBitboard {
             for &dir in Dir::ALL.iter() {
                 let bb = Bitboard::from_sq(sq as u32);
                 let mask = bb.rays(dir);
-                classical.rays[sq][dir.index] = mask;
+                classical.rays[sq][dir] = mask;
                 classical.king_moves[sq] |= bb.shift(dir);
 
                 // for example a night attack might be step N followed by step NE
-                let next_dir = Dir::ALL[(dir.index + 1) % 8];
+                let next_dir = dir.rotate_clockwise();
                 classical.knight_moves[sq] |= bb.shift(dir).shift(next_dir);
             }
         }
@@ -48,9 +48,9 @@ impl ClassicalBitboard {
     }
 
 
-
-    fn sliding_attacks(&self, occupied: Bitboard, from: Square, dir: &Dir) -> Bitboard {
-        let attacks = self.rays[from.index()][dir.index];
+    #[inline]
+    fn sliding_attacks(&self, occupied: Bitboard, from: Square, dir: Dir) -> Bitboard {
+        let attacks = self.rays[from][dir];
         let blockers = attacks & occupied;
 
         if blockers.is_empty() {
@@ -61,44 +61,47 @@ impl ClassicalBitboard {
         // println!("blockers:\n{} \nattacks:\n{} \n",blockers, attacks);
         // println!("minus\n{}\n", self.attacks[blocker_sq][dir.index]);
         // remove attacks from blocker sq and beyond
-        attacks - self.rays[blocker_sq.index()][dir.index]
+        attacks - self.rays[blocker_sq][dir]
     }
 }
 
 impl BitboardAttacks for ClassicalBitboard {
 
+    
+    #[inline]
     fn between(&self, s1:Square, s2: Square) -> Bitboard {
         Square::calc_line_through(s1, s2) & Square::bounding_rectangle(s1, s2)
     }
 
+    #[inline]
     fn line_through(&self, s1:Square, s2: Square) -> Bitboard {
         Square::calc_line_through(s1, s2)
     }
 
     #[inline]
     fn rook_attacks(&self, occ: Bitboard, from: Square) -> Bitboard {
-        self.sliding_attacks(occ, from, &Dir::N)
-            | self.sliding_attacks(occ, from, &Dir::E)
-            | self.sliding_attacks(occ, from, &Dir::S)
-            | self.sliding_attacks(occ, from, &Dir::W)
+        self.sliding_attacks(occ, from, Dir::N)
+            | self.sliding_attacks(occ, from, Dir::E)
+            | self.sliding_attacks(occ, from, Dir::S)
+            | self.sliding_attacks(occ, from, Dir::W)
     }
 
     #[inline]
     fn bishop_attacks(&self, occ: Bitboard, from: Square) -> Bitboard {
-        self.sliding_attacks(occ, from, &Dir::NE)
-            | self.sliding_attacks(occ, from, &Dir::SE)
-            | self.sliding_attacks(occ, from, &Dir::SW)
-            | self.sliding_attacks(occ, from, &Dir::NW)
+        self.sliding_attacks(occ, from, Dir::NE)
+            | self.sliding_attacks(occ, from, Dir::SE)
+            | self.sliding_attacks(occ, from, Dir::SW)
+            | self.sliding_attacks(occ, from, Dir::NW)
     }
 
     #[inline]
     fn king_attacks(&self, from: Square) -> Bitboard {
-        self.king_moves[from.index()]
+        self.king_moves[from]
     }
 
     #[inline]
     fn knight_attacks(&self, from: Square) -> Bitboard {
-        self.knight_moves[from.index()]
+        self.knight_moves[from]
     }
 }
 
@@ -110,7 +113,7 @@ mod tests {
     #[test]
     fn test_rays() {
         let classical = ClassicalBitboard::new();
-        let north = classical.rays[16 + 2][Dir::N.index];
+        let north = classical.rays[16 + 2][Dir::N.index()];
         assert!(north.contains(c8));
         assert_eq!(north.popcount(), 5);
     }

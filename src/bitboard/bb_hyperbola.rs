@@ -127,6 +127,7 @@ impl Hyperbola {
         let o = occ & mask;
         let r = o.flip_vertical();
         let forward = o.wrapping_sub(sq.as_bb());
+        // let reverse = r.wrapping_sub(sq.as_bb().flip_vertical()).flip_vertical();
         let reverse = r.wrapping_sub(sq.flip_vertical().as_bb()).flip_vertical();
         (forward ^ reverse) & mask
     }
@@ -158,23 +159,23 @@ impl BitboardAttacks for Hyperbola {
     // inclusive of end points
     #[inline]
     fn between(&self, s1: Square, s2: Square) -> Bitboard {
-        self.between[s1.index()][s2.index()]
+        self.between[s1][s2]
     }
 
     #[inline]
     fn line_through(&self, s1: Square, s2: Square) -> Bitboard {
-        self.line[s1.index()][s2.index()]
+        self.line[s1][s2]
     }
 
     #[inline]
     fn rook_attacks(&self, occ: Bitboard, from: Square) -> Bitboard {
-        self.hyperbola(occ, from, self.mask[from.index()].file) | self.rank_hyperbola(occ, from)
+        self.hyperbola(occ, from, self.mask[from].file) | self.rank_hyperbola(occ, from)
     }
 
     #[inline]
     fn bishop_attacks(&self, occ: Bitboard, from: Square) -> Bitboard {
-        self.hyperbola(occ, from, self.mask[from.index()].diag)
-            | self.hyperbola(occ, from, self.mask[from.index()].anti_diag)
+        self.hyperbola(occ, from, self.mask[from].diag)
+            | self.hyperbola(occ, from, self.mask[from].anti_diag)
     }
 
     #[inline]

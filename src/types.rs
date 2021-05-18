@@ -61,20 +61,20 @@ impl<T> std::ops::Index<Color> for [T] {
             // unsafe {
             //     &self.get_unchecked(c.index())
             // }
-            &self[(c.index())]
+            unsafe { &self.get_unchecked(c.index()) }
         }
 }
 
-impl<T> std::ops::Index<&Color> for [T] {
-    type Output = T;
-    #[inline]
-    fn index(&self, c: &Color) -> &Self::Output {
-            // unsafe {
-            //     &self.get_unchecked(c.index())
-            // }
-            &self[(c.index())]
-        }
-}
+// impl<T> std::ops::Index<&Color> for [T] {
+//     type Output = T;
+//     #[inline]
+//     fn index(&self, c: &Color) -> &Self::Output {
+//             // unsafe {
+//             //     &self.get_unchecked(c.index())
+//             // }
+//             &self[(c.index())]
+//         }
+// }
 
 impl<T> std::ops::IndexMut<Color> for [T] {
     #[inline]
@@ -101,12 +101,12 @@ impl Color {
 
 
     #[inline]
-    pub const fn index(&self) -> usize {
-        *self as usize
+    pub const fn index(self) -> usize {
+        self as usize
     }
 
     #[inline]
-    pub  fn chooser_wb<T:Copy>(&self, white_thing: T, black_thing: T) -> T {
+    pub  fn chooser_wb<T:Copy>(self, white_thing: T, black_thing: T) -> T {
         match self {
             Color::White => white_thing,
             Color::Black => black_thing,
@@ -114,32 +114,36 @@ impl Color {
     }
 
     #[inline]
-    pub  fn pawn_move(&self) -> Dir {
+    pub fn forward(self) -> Dir {
         self.chooser_wb(Dir::N, Dir::S)
     }
 
+    pub fn backward(self) -> Dir {
+        self.chooser_wb(Dir::S, Dir::N)
+    }
+
     #[inline]
-    pub  fn double_push_dest_rank(&self) -> Bitboard {
+    pub  fn double_push_dest_rank(self) -> Bitboard {
         self.chooser_wb(Bitboard::RANK_4, Bitboard::RANK_5)
     }
 
     #[inline]
-    pub  fn pawn_capture_east(&self) -> Dir {
+    pub  fn pawn_capture_east(self) -> Dir {
         self.chooser_wb(Dir::NE, Dir::SE)
     }
 
     #[inline]
-    pub  fn pawn_capture_west(&self) -> Dir {
+    pub  fn pawn_capture_west(self) -> Dir {
         self.chooser_wb(Dir::NW, Dir::SW)
     }
 
     #[inline]
-    pub  fn back_rank(&self) -> Bitboard {
+    pub  fn back_rank(self) -> Bitboard {
         self.chooser_wb(Bitboard::RANK_1, Bitboard::RANK_8)
     }
 
     #[inline]
-    pub  fn opposite(&self) -> Color {
+    pub  fn opposite(self) -> Color {
         self.chooser_wb(Color::Black, Color::White)
     }
 
@@ -178,19 +182,24 @@ pub enum Piece {
     King,
 }
 
-impl<T> std::ops::Index<&Piece> for [T] {
-    type Output = T;
-    #[inline]
-    fn index(&self, p: &Piece) -> &Self::Output {
-        &self[p.index()]
-    }
-}
+// impl<T> std::ops::Index<&Piece> for [T] {
+//     type Output = T;
+//     #[inline]
+//     fn index(&self, p: &Piece) -> &Self::Output {
+//         &self[p.index()]
+//     }
+// }
+
+
+
+
+
 
 impl<T> std::ops::Index<Piece> for [T] {
     type Output = T;
     #[inline]
     fn index(&self, p: Piece) -> &Self::Output {
-        &self[p.index()]
+        unsafe { &self.get_unchecked(p.index()) }
     }
 }
 

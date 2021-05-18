@@ -823,7 +823,7 @@ fn benchmark_array(c: &mut Criterion) {
     });
     group.bench_function("enum_index", |b| {
         b.iter(|| {
-            for c in &Color::ALL {
+            for &c in &Color::ALL {
                 black_box(array[c.opposite()]);
                 black_box(array[c]);
                 black_box(array[c.opposite()]);

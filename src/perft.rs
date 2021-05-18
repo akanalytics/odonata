@@ -10,7 +10,14 @@ impl Perft {
         if depth == 0 {
             1
         } else {
-            let moves = board.legal_moves();
+            let mut moves = board.legal_moves();
+
+            let mut moves2 = board.legal_moves2();
+            if moves.len() != moves2.len() {
+                moves.sort();
+                moves2.sort();
+                assert_eq!(moves.uci(), moves2.uci(), "{:#}", board);
+            }
             let mut count = 0u64;
             for m in moves.iter() {
                 let res = Self::perft(&mut board.make_move(m), depth - 1);

@@ -3,8 +3,8 @@ use std::cmp;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct Dir {
-    pub index: usize,
-    pub shift: i32,
+    pub index: u8,
+    pub shift: i8,
     pub mask: Bitboard, // mask for opposite edge(s)
 }
 
@@ -61,10 +61,43 @@ impl Dir {
         Self::NW,
     ];
 
-    pub fn opposite(&self) -> Dir {
-        Self::ALL[(self.index + 4) % 8]
+    #[inline]
+    pub const fn index(self) -> usize {
+        self.index as usize
+    }
+
+
+    #[inline]
+    pub const fn rotate_clockwise(self) -> Dir {
+        Dir::ALL[(self.index() + 1) % 8]
+    }
+
+    #[inline]
+    pub const fn opposite(self) -> Dir {
+        Self::ALL[(self.index() + 4) % 8]
     }
 }
+
+
+impl<T> std::ops::Index<Dir> for [T] {
+    type Output = T;
+    #[inline]
+    fn index(&self, d: Dir) -> &Self::Output {
+            unsafe { &self.get_unchecked(d.index()) }
+        }
+}
+
+
+impl<T> std::ops::IndexMut<Dir> for [T] {
+    #[inline]
+    fn index_mut(&mut self, d: Dir) -> &mut Self::Output {
+        &mut self[d.index()]
+    }
+}
+
+
+
+
 
 // generated from https://docs.google.com/spreadsheets/d/1TB2TKX04VsR10CLNLDIvrufm6wSJOttXOyPNKndU4N0/edit?usp=sharing
 #[rustfmt::skip]
@@ -153,7 +186,7 @@ impl Bitboard {
     }
 
     #[inline]
-    pub fn any(self) -> bool {
+    pub const fn any(self) -> bool {
         !self.is_empty()
     }
 
@@ -533,7 +566,7 @@ impl Square {
     }
 
     #[inline]
-    pub fn is_in(self, bb: Bitboard) -> bool {
+    pub const fn is_in(self, bb: Bitboard) -> bool {
         self.as_bb().intersects(bb)
     }
 
@@ -544,8 +577,8 @@ impl Square {
 
     #[inline]
     pub fn shift(self, dir: Dir) -> Square {
-        debug_assert!(self.0 as i32 + dir.shift >=0 && self.0 as i32 + dir.shift < 64 );
-        Square((self.0 as i32 + dir.shift) as u8)
+        debug_assert!(self.0 as i8  + dir.shift >=0 && self.0 as i8  + dir.shift < 64 );
+        Square((self.0 as i8  + dir.shift) as u8)
     }
 
 
@@ -658,7 +691,8 @@ impl<T> std::ops::Index<Square> for [T] {
     type Output = T;
     #[inline]
     fn index(&self, s: Square) -> &Self::Output {
-        &self[s.index()]
+        unsafe { &self.get_unchecked(s.index()) }
+        // &self[s.index()]
     }
 }
 

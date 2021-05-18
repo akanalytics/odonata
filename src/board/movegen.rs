@@ -1,14 +1,12 @@
 use crate::bitboard::attacks::{BitboardAttacks, BitboardDefault};
-use crate::bitboard::bitboard::{Bitboard};
+use crate::bitboard::bitboard::Bitboard;
+use crate::board::boardcalcs::BoardCalcs;
 use crate::board::makemove::MoveMaker;
 use crate::board::rules::Rules;
 use crate::board::Board;
-use crate::board::boardcalcs::BoardCalcs;
 use crate::globals::counts;
 use crate::movelist::{Move, MoveList};
 use crate::types::{Color, Piece};
-
-
 
 trait MoveGen {}
 
@@ -19,7 +17,6 @@ trait MoveGen {}
 // fn legal_moves(&self) -> impl Iterator<Item=Move>;
 // fn legal_capture_moves(&self) -> MoveList;
 // fn threats_to(&self, c: Color) -> Bitboard;
-
 
 impl Board {
     pub fn attacked_by(&self, targets: Bitboard) -> Bitboard {
@@ -60,7 +57,10 @@ impl Board {
     }
 
     pub fn has_legal_moves(&self) -> bool {
-        self.pseudo_legal_moves().iter().rev().any(|m| self.is_legal_move(m))
+        self.pseudo_legal_moves()
+            .iter()
+            .rev()
+            .any(|m| self.is_legal_move(m))
     }
 
     // fn is_in_check(&self, c: Color) -> bool {
@@ -74,7 +74,6 @@ impl Board {
         self.checkers_of(king_color).intersects(them)
     }
 
-
     // the move is pseudo legal
     pub fn is_legal_move(&self, mv: &Move) -> bool {
         if mv.is_known_legal() {
@@ -84,14 +83,14 @@ impl Board {
         let mut us = self.us();
         let kings = self.kings() & us;
         if kings.is_empty() {
-            return true;  // a test position without king on the board - we allow
+            return true; // a test position without king on the board - we allow
         }
         let sq = kings.square();
-        
-        // idea - lightweight make_move - no hash - just enough to check rays of sliders 
+
+        // idea - lightweight make_move - no hash - just enough to check rays of sliders
         let mut them = self.them();
         let from_to_bits = mv.from().as_bb() | mv.to().as_bb();
-        us ^= from_to_bits;  // wont be a king move so sq still valid
+        us ^= from_to_bits; // wont be a king move so sq still valid
 
         if mv.is_capture() {
             if mv.is_ep_capture() {
@@ -100,63 +99,74 @@ impl Board {
             } else {
                 // regular capture
                 them.remove(mv.to().as_bb());
-            }   
+            }
         }
-        // in (rough) order of computation cost / likelyhood - this code from "attacked_by" 
-        // their pieces wont have moved, but they may have been taken 
+        // in (rough) order of computation cost / likelyhood - this code from "attacked_by"
+        // their pieces wont have moved, but they may have been taken
 
         let attack_gen = BitboardDefault::default();
         let occ = us | them;
         if (attack_gen.rook_attacks(occ, sq) & (self.rooks() | self.queens()) & them).any() {
             return false;
-        }        
+        }
 
         // for knight attacks, we must have been in check already
         // not true since 13/5/21
-        // XX you cant have a discovered knight check, 
+        // XX you cant have a discovered knight check,
         // XX so the move needs to be a capture
         if (attack_gen.knight_attacks(sq) & self.knights() & them).any() {
             return false;
         }
 
-        if (attack_gen.bishop_attacks(occ, sq) & (self.bishops() | self.queens() ) & them).any() {
+        if (attack_gen.bishop_attacks(occ, sq) & (self.bishops() | self.queens()) & them).any() {
             return false;
         }
         // not since 13/5. We do need to check, and hence do so
-        // WRONG: no need to check enemy king or pawn, as we are looking for discovered checks  
+        // WRONG: no need to check enemy king or pawn, as we are looking for discovered checks
         if (attack_gen.pawn_attackers(kings, self.color_them()) & self.pawns() & them).any() {
-             return false;
+            return false;
         }
 
         true
     }
 
-
-
-
-
     pub fn legal_moves(&self) -> MoveList {
         counts::LEGAL_MOVE_COUNT.increment();
         let mut moves = MoveList::new();
-
-        let b = self;
-        // Rules::pawn_captures_incl_promo(b, &mut moves);
-        // Rules::pawn_promos(b, &mut moves);
-        // Rules::pawn_push(b, &mut moves);
-        // Rules::pawn_capture_promos(b, &mut moves);
-        Rules::legal_for(Piece::Knight, b, &mut moves);
-        Rules::legal_for(Piece::Bishop, b, &mut moves);
-        Rules::legal_for(Piece::Rook, b, &mut moves);
-        Rules::legal_for(Piece::Queen,b,  &mut moves);
-        Rules::legal_for(Piece::Pawn,b,  &mut moves);
-        // Rules::non_pawn(Piece::King,b,  &mut moves);
-        Rules::king_legal(b, &mut moves);
-        Rules::castles(b, &mut moves);
-        // moves.retain(|m| self.is_legal_move(m));
+        if true {
+            Rules::legals_for(self, &mut moves);
+        } else {
+            let b = self;
+            Rules::pawn_captures_incl_promo(b, &mut moves);
+            Rules::pawn_promos(b, &mut moves);
+            Rules::pawn_push(b, &mut moves);
+            Rules::non_pawn(Piece::Knight, b, &mut moves);
+            Rules::non_pawn(Piece::Bishop, b, &mut moves);
+            Rules::non_pawn(Piece::Rook, b, &mut moves);
+            Rules::non_pawn(Piece::Queen, b, &mut moves);
+            Rules::king_legal(b, &mut moves);
+            Rules::castles(b, &mut moves);
+            moves.retain(|m| self.is_legal_move(m));
+        }
         moves
     }
+    pub fn legal_moves2(&self) -> MoveList {
+        counts::LEGAL_MOVE_COUNT.increment();
+        let mut moves = MoveList::new();
+        let b = self;
+        Rules::pawn_captures_incl_promo(b, &mut moves);
+        Rules::pawn_promos(b, &mut moves);
+        Rules::pawn_push(b, &mut moves);
+        Rules::non_pawn(Piece::Knight, b, &mut moves);
+        Rules::non_pawn(Piece::Bishop, b, &mut moves);
+        Rules::non_pawn(Piece::Rook, b, &mut moves);
+        Rules::non_pawn(Piece::Queen, b, &mut moves);
 
-
+        Rules::king_legal(b, &mut moves);
+        Rules::castles(b, &mut moves);
+        moves.retain(|m| self.is_legal_move(m));
+        moves
+    }
 
     pub fn legal_capture_moves(&self) -> MoveList {
         let mut moves = self.legal_moves();
@@ -192,22 +202,9 @@ impl Board {
     //     }
     // }
 
-
     pub fn pseudo_legal_moves(&self) -> MoveList {
         let mut moves = MoveList::new();
-
-        let b = self;
-        Rules::pawn_captures_incl_promo(b, &mut moves);
-        Rules::pawn_promos(b, &mut moves);
-        Rules::pawn_push(b, &mut moves);
-        // Rules::pawn_capture_promos(b, &mut moves);
-        Rules::non_pawn(Piece::Knight, b, &mut moves);
-        Rules::non_pawn(Piece::Bishop, b, &mut moves);
-        Rules::non_pawn(Piece::Rook, b, &mut moves);
-        Rules::non_pawn(Piece::Queen,b,  &mut moves);
-        // Rules::non_pawn(Piece::King,b,  &mut moves);
-        Rules::king_legal(b, &mut moves);
-        Rules::castles(b, &mut moves);
+        Rules::pseudo_legals(self, &mut moves);
         moves
     }
 }
@@ -441,5 +438,32 @@ mod tests {
             assert_eq!(b.legal_moves().to_string(), "".to_string(), "{}", b.to_fen());
         }
         Ok(())
+    }
+
+    #[test]
+    fn test_catalog_moves() {
+        let positions = Catalog::moves();
+        for pos in positions {
+            let mut lm: Vec<String> = pos
+                .board()
+                .legal_moves()
+                .uci()
+                .split_ascii_whitespace()
+                .map(str::to_string)
+                .collect();
+            lm.sort();
+            let lm = lm.join(" ");
+
+            let mut expected: Vec<String> = pos
+                .get("c1")
+                .unwrap()
+                .split_ascii_whitespace()
+                .map(str::to_string)
+                .collect();
+            expected.sort();
+            let expected = expected.join(" ");
+
+            assert_eq!(lm, expected, "{} {:#}", pos, pos.board());
+        }
     }
 }

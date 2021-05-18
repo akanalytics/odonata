@@ -1,10 +1,7 @@
 use crate::bitboard::attacks::{BitboardAttacks, BitboardDefault};
 use crate::bitboard::bitboard::Bitboard;
-use crate::board::rules::Rules;
 use crate::board::Board;
-use crate::globals::counts;
-
-use crate::types::{Color, Piece};
+use crate::types::Color;
 
 pub struct BoardCalcs;
 
@@ -21,6 +18,7 @@ impl BoardCalcs {
 
     pub fn pinned(b: &Board, us: Color) -> Bitboard {
         let color_us = b.color(us);
+        let color_them = b.color(us.opposite());
         let kings = b.kings() & b.color(us);
         if kings.is_empty() {
             return Bitboard::empty();
@@ -31,7 +29,7 @@ impl BoardCalcs {
         let mut pinned = Bitboard::empty();
         for ch in xray_checkers.squares() {
             let ray = BitboardDefault::default().strictly_between(ch, king_sq);
-            if (ray & color_us).popcount() == 1 {
+            if (ray & color_us).popcount() == 1 && ray.disjoint(color_them) {
                 pinned |= ray & color_us;
             }
         }
@@ -156,7 +154,6 @@ mod tests {
         println!("{}", bb);
         assert_eq!(bb, g3 | g5 | e3 | d3 | f8);
     }
-
 
     #[test]
     fn test_pinned() {

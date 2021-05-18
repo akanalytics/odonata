@@ -212,12 +212,14 @@ mod tests {
     fn test_ordering_mvv_lva() {
         let board = Catalog::perft_kiwipete().0;
         let mut moves = board.legal_moves();
+        moves.sort(); // alphabetical first
         Algo::new().order_moves(0, &mut moves, &None);
+        println!("{:#}", moves);
         assert_eq!(moves[0].uci(), "e2a6");  // b x b
         assert_eq!(moves[1].uci(), "f3f6");  // q x n
-        assert_eq!(moves[2].uci(), "g2h3");  // p x p
+        assert_eq!(moves[2].uci(), "d5e6");  // p x p
+        assert_eq!(moves[3].uci(), "g2h3");  // p x p
         assert_eq!(moves[7].uci(), "f3h3");  // q x p
-        println!("{:#}", moves);
 
         let positions = Catalog::move_ordering();
         for (i,pos) in positions.iter().enumerate() {
