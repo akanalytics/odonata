@@ -7,10 +7,12 @@ pub struct Perft;
 
 impl Perft {
     pub fn perft(board: &mut Board, depth: u32) -> u64 {
+        let moves = board.legal_moves();
         if depth == 0 {
             1
+        } else if depth == 1 {
+            return moves.len() as u64;
         } else {
-            let moves = board.legal_moves();
             let mut count = 0u64;
             for m in moves.iter() {
                 let res = Self::perft(&mut board.make_move(m), depth - 1);
