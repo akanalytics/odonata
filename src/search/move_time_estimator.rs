@@ -130,14 +130,14 @@ impl MoveTimeEstimator {
                 binc,
                 movestogo: _,
             } => {
-                let (time_us, _inc) = our_color.chooser_wb((wtime, winc), (btime, binc));
+                let (time_us, inc) = our_color.chooser_wb((wtime, winc), (btime, binc));
                 let (time_them, _inc) = our_color.opposite().chooser_wb((wtime, winc), (btime, binc));
                 let time_adv = if time_us > time_them {
                     time_us - time_them
                 } else {
                     Duration::default()
                 };
-                (time_us + time_adv * self.perc_of_time_adv / 100) / self.moves_rem as u32
+                (time_us + time_adv * self.perc_of_time_adv / 100) / self.moves_rem as u32 + inc
             }
         }
     }
