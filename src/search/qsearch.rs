@@ -142,12 +142,11 @@ impl Algo {
         // }
 
         // need to add checking moves on ply 0
-        let moves = board.pseudo_legal_moves();
+        let moves = board.legal_moves();
         let mut moves: MoveList = moves
             .iter()
             .filter(|mv| {
-                (mv.is_capture() || (mv.is_promo() & self.qsearch.promos) || in_check)
-                    && board.is_legal_move(mv)
+                mv.is_capture() || (mv.is_promo() & self.qsearch.promos) || in_check
             })
             .cloned()
             .collect();

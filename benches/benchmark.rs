@@ -738,31 +738,26 @@ fn bench_insufficient_material(c: &mut Criterion) {
 fn benchmark_search(c: &mut Criterion) {
     let mut group = c.benchmark_group("search");
     group.sample_size(10);
-    group.bench_function("alphabeta(5)", |b| {
+    group.bench_function("starting(5)", |b| {
         b.iter(|| {
             let board = Catalog::starting_position();
-            let eval = SimpleScorer::new().set_position(false);
+            // let eval = SimpleScorer::new().set_position();
             let mut search = Algo::new()
                 .set_timing_method(TimeControl::Depth(5))
-                .set_minmax(false)
-                .set_eval(eval)
                 .build();
             search.new_game();
             black_box(search.search(&board));
         });
     });
-    group.bench_function("minmax(5)", |b| {
+    group.bench_function("test(5)", |b| {
         b.iter(|| {
-            let board = Catalog::starting_position();
-            let eval = SimpleScorer::new().set_position(false);
+            let pos = Catalog::test_position();
+            // let eval = SimpleScorer::new().set_position(false);
             let mut search = Algo::new()
                 .set_timing_method(TimeControl::Depth(5))
-                .set_minmax(true)
-                .set_eval(eval)
-                .set_qsearch(false)
                 .build();
             search.new_game();
-            black_box(search.search(&board));
+            black_box(search.search(pos.board()));
         });
     });
     group.finish();

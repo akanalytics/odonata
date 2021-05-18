@@ -751,16 +751,16 @@ b2b1r1k/3R1ppp/4qP2/4p1PQ/4P3/5B2/4N1K1/8 w - - bm g6; id "WAC.300";
     // FIXME! awful structure
     pub fn perfts() -> Vec<(Board, Vec<u64>)> {
         let mut vec = Vec::new();
+        // https://www.chessprogramming.org/Perft_Results
+        vec.push((
+            Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap().as_board(),
+            vec![1, 20, 400, 8902, 197_281, 4_865_609],
+        ));
         vec.push(Self::perft_kiwipete());
         // http://www.rocechess.ch/perft.html
         vec.push((
             Board::parse_fen("n1n5/PPPk4/8/8/8/8/4Kppp/5N1N b - - 0 1").unwrap().as_board(),
             vec![1, 24, 496, 9_483, 182_838, 3_605_103, 71_179_139],
-        ));
-        // https://www.chessprogramming.org/Perft_Results
-        vec.push((
-            Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap().as_board(),
-            vec![1, 20, 400, 8902, 197_281, 4_865_609],
         ));
         vec.push((
             Board::parse_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1 id 'CPW PERFT#3'")
