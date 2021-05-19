@@ -200,7 +200,8 @@ impl TranspositionTable {
     }
 
     pub fn destroy(&mut self) {
-        Arc::make_mut(&mut self.table);
+        self.table = Arc::new(vec![StoredEntry::default(); 0]);
+        // Arc::make_mut(&mut self.table);
     }
 
     pub fn next_generation(&mut self) {

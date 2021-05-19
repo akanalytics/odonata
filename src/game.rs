@@ -4,7 +4,6 @@ use crate::board::Board;
 use crate::catalog::Catalog;
 use crate::movelist::MoveValidator;
 use crate::movelist::{Move, MoveList};
-use crate::outcome::GameEnd;
 use crate::outcome::Outcome;
 use crate::search::algo::Algo;
 use crate::tags::Tags;
@@ -198,14 +197,15 @@ mod tests {
     #[ignore]
     fn games() {
         //let tc = TimeControl::NodeCount(1_000);
-        let tc = TimeControl::from_remaining_time(Duration::from_millis(3000));
+        // let tc = TimeControl::from_remaining_time(Duration::from_millis(3000));
         // let tc = TimeControl::Depth(3);
+        let tc = TimeControl::move_time_secs(2);
         let mut new = Algo::new().set_timing_method(tc).build();
         let mut old = Algo::new().set_timing_method(tc).build();
         // new.set_callback(Uci::uci_info);
 
 
-        new.mte.deterministic = true;
+        new.mte.deterministic = false;
         // new.eval.rook_open_file = 20;
         // new.eval.cache_eval = true;
         // // new.eval.cache.capacity = 1000;
@@ -216,11 +216,11 @@ mod tests {
         // new.ids.part_ply = true;
         // new.tt.aging = true;
         // old.eval.undefended_sq = 3;  // was 3
-        old.eval.trapped_piece = -40;
+        new.eval.trapped_piece = -10;
 
-        old.mte.deterministic = true;
-        old.eval.undefended_sq = 0;
-        old.eval.undefended_piece = 0;
+        old.mte.deterministic = false;
+        // old.eval.undefended_sq = 0;
+        // old.eval.undefended_piece = 0;
         old.eval.trapped_piece = 0;
         // old.mte.branching_factor = 5;  // cause more failed plys
         // old.ids.part_ply = false;

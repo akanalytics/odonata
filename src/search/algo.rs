@@ -146,7 +146,9 @@ impl fmt::Debug for Algo {
 impl fmt::Display for Algo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "starting pos     : {}", self.board.to_fen())?;
-        //writeln!(f, "pv               : {}", self.pv())?;
+        writeln!(f, "material         : {}", self.board.material())?;
+        writeln!(f, "phase            : {} %", self.board.phase())?;
+        writeln!(f, "static eval      : {}", self.board.eval_position(&self.eval))?;
         writeln!(f, "bm               : {}", self.bm())?;
         writeln!(f, "score            : {}", self.score())?;
         writeln!(f, "analyse mode     : {}", self.analyse_mode)?;
@@ -202,7 +204,8 @@ impl Algo {
 
     pub fn search(&mut self, board: &Board) {
         self.task_control.set_running();
-        self.search_iteratively(&board);
+        self.board = board.clone();
+        self.search_iteratively();
     }
 
     pub fn search_async(&mut self, board: &Board) {
@@ -210,17 +213,19 @@ impl Algo {
         const FOUR_MB: usize = 4 * 1024 * 1024;
         let name = String::from("search");
         let builder = thread::Builder::new().name(name).stack_size(FOUR_MB);
+        self.board = board.clone();
         let mut algo = self.clone();
-        self.tt.destroy();
-        let board = board.clone();
+        // destroy/release this threads copy of the tt.
+        self.tt.destroy();  
         self.child_thread = AlgoThreadHandle(Some(
             builder
                 .spawn(move || {
-                    algo.search_iteratively(&board);
+                    algo.search_iteratively();
                     algo
                 })
                 .unwrap(),
         ));
+        
     }
 
     #[inline]

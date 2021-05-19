@@ -98,7 +98,7 @@ impl Configurable for Uci {
         if let Some(b) = c.bool("uci.debug") {
             self.debug = b;
         }
-        if c.string("clear_cache").is_some() || c.string("Clear Hash").is_some(){
+        if c.string("clear_cache").is_some() || c.string("Clear Hash").is_some() {
             let _res = self.uci_newgame();
         }
 
@@ -109,7 +109,7 @@ impl Configurable for Uci {
 impl Uci {
     pub fn new() -> Uci {
         let mut uci = Uci::default();
-        uci.algo.set_iterative_deepening(true);
+        uci.board = Catalog::starting_position();
         uci.algo.set_callback(|sp| Self::uci_info(sp));
         uci
     }
@@ -153,6 +153,7 @@ impl Uci {
             // extensions
             "perft" => self.uci_perft(&words[1..]),
             "display" | "d" => self.uci_display(),
+            "board" | "b" => self.uci_board(),
             // "tune" => self.uci_unknown(&words),
             // "eval" => self.uci_unknown(&words),
             // "bench" => self.uci_unknown(&words),
@@ -212,7 +213,8 @@ impl Uci {
         Ok(())
     }
 
-    fn uci_perft(&self, words: &[&str]) -> Result<(), String> {
+    fn uci_perft(&mut self, words: &[&str]) -> Result<(), String> {
+        self.algo.search_async_stop();
         let depth = words.first().ok_or("Must specify a depth")?;
         let depth = depth
             .parse::<u32>()
@@ -225,6 +227,7 @@ impl Uci {
     }
 
     fn uci_position(&mut self, arg: &Args) -> Result<(), String> {
+        self.algo.search_async_stop();
         self.algo.repetition.clear();
         let fen = arg.words.get(1);
         let moves;
@@ -322,7 +325,7 @@ impl Uci {
         self.log_debug_message("starting search with configuration ...");
         self.log_debug_message(&format!("{}", self.algo));
         self.log_debug_message(&format!("{}", self.board));
-        info!("odonata: searching on tc {}", tc);
+        info!("odonata: searching {} on tc {}", self.board.to_fen(), tc);
         self.algo.search_async(&self.board);
         Ok(())
     }
@@ -348,10 +351,19 @@ impl Uci {
     }
 
     fn uci_display(&mut self) -> Result<(), String> {
+        self.algo.search_async_stop();
         self.uci_info_string("display");
         self.uci_info_string(&format!("{}", self.board));
         self.uci_info_string(&format!("{}", self.algo));
-        self.uci_info_string(&format!("{:?}", self.algo.eval));
+        Ok(())
+    }
+
+    fn uci_board(&mut self) -> Result<(), String> {
+        self.algo.search_async_stop();
+        self.uci_info_string("board");
+        self.uci_info_string(&format!("{}", self.board));
+        self.uci_info_string(&format!("outcome {}", self.board.outcome()));
+        self.uci_info_string(&format!("legal moves:{}", self.board.legal_moves().uci()));
         Ok(())
     }
 
@@ -372,10 +384,7 @@ impl Uci {
     }
 
     fn uci_info_string(&self, str: &str) {
-        if self.debug {
-            // replace "\n" with "info string "
-            println!("info string {}", str.replace("\n", "\ninfo string "));
-        }
+        println!("info string {}", str.replace("\n", "\ninfo string "));
     }
 
     fn log_debug_message(&self, str: &str) {
@@ -510,8 +519,7 @@ mod tests {
     #[test]
     fn test_uci_setoption() {
         let mut uci = Uci::new();
-        uci.preamble
-            .push("setoption name eval.b value 700".into());
+        uci.preamble.push("setoption name eval.b value 700".into());
         uci.preamble
             .push("setoption name eval.position value false".into());
         uci.preamble.push("quit".into());

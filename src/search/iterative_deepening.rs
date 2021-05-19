@@ -1,4 +1,3 @@
-use crate::board::Board;
 use crate::config::{Config, Configurable};
 use crate::globals::counts;
 use crate::log_debug;
@@ -92,9 +91,8 @@ impl Algo {
         self.max_depth = max_depth;
     }
 
-    pub fn search_iteratively(&mut self, board: &Board) {
+    pub fn search_iteratively(&mut self) {
         self.search_stats = SearchStats::new();
-        self.board = board.clone();
         self.ids.reset();
         self.tt.next_generation();
         // self.eval.cache.next_generation();

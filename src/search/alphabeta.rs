@@ -2,7 +2,6 @@ use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::eval::score::Score;
 use crate::movelist::Move;
-use crate::outcome::GameEnd;
 use crate::pvtable::PvTable;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
@@ -133,7 +132,6 @@ impl Algo {
         }
 
         self.order_moves(ply, &mut moves, &tt_mv);
-        let original_alpha = alpha;
         for (_i, mv) in moves.iter().enumerate() {
             let mut child_board = board.make_move(mv);
             self.repetition.push(&mv, &child_board);
@@ -149,6 +147,7 @@ impl Algo {
             }
             debug_assert!(child_score > Score::MinusInf);
 
+            // println!("move {} score {} alpha {} beta {}", mv, score, alpha, beta);
             if child_score > score {
                 score = child_score;
             }
@@ -166,15 +165,13 @@ impl Algo {
             }
         }
 
-        if score <= original_alpha {
-            // node_type = NodeType::All
-        } else if score >= beta {
-            // node_type = NodeType::Cut;
+        if node_type == NodeType::All {
+        } else if node_type == NodeType::Cut {
             self.search_stats.inc_cuts(ply);
             debug_assert!(!bm.is_null())
         } else {
-            self.record_new_pv(ply, &bm, false);
             // node_type = NodeType::Pv;
+            self.record_new_pv(ply, &bm, false);
             debug_assert!(!bm.is_null())
         }
         if self.tt.enabled() {

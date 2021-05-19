@@ -74,7 +74,7 @@ impl Board {
         self.checkers_of(king_color).intersects(them)
     }
 
-    // the move is pseudo legal
+    // the move is pseudo legal - king moves and castles are assumed already legal
     pub fn is_legal_move(&self, mv: &Move) -> bool {
         if mv.is_known_legal() {
             return true;
@@ -103,6 +103,7 @@ impl Board {
         }
         // in (rough) order of computation cost / likelyhood - this code from "attacked_by"
         // their pieces wont have moved, but they may have been taken
+        // we rely on self.pieces & them NOT being affected by our move other than by capture
 
         let attack_gen = BitboardDefault::default();
         let occ = us | them;
@@ -110,10 +111,6 @@ impl Board {
             return false;
         }
 
-        // for knight attacks, we must have been in check already
-        // not true since 13/5/21
-        // XX you cant have a discovered knight check,
-        // XX so the move needs to be a capture
         if (attack_gen.knight_attacks(sq) & self.knights() & them).any() {
             return false;
         }
@@ -121,8 +118,7 @@ impl Board {
         if (attack_gen.bishop_attacks(occ, sq) & (self.bishops() | self.queens()) & them).any() {
             return false;
         }
-        // not since 13/5. We do need to check, and hence do so
-        // WRONG: no need to check enemy king or pawn, as we are looking for discovered checks
+
         if (attack_gen.pawn_attackers(kings, self.color_them()) & self.pawns() & them).any() {
             return false;
         }
@@ -437,6 +433,13 @@ mod tests {
         for b in Catalog::stalemates().iter() {
             assert_eq!(b.legal_moves().to_string(), "".to_string(), "{}", b.to_fen());
         }
+
+        let board = Catalog::starting_position();
+        let mv = board.parse_uci_move("e2e3").unwrap();
+        assert!( board.is_legal_move(&mv), "{:?}", mv);
+
+
+
         Ok(())
     }
 
