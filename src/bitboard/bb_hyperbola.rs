@@ -84,16 +84,6 @@ impl Hyperbola {
                 } else {
                     west_of_rook - blockers.last().rays(Dir::W)
                 };
-                // println!(
-                //     "{:>2} occ:{:08b} r:{:08b} er:{:08b} wr:{:08b} ea:{:08b} wa:{:08b} ",
-                //     occupancy_bits,
-                //     occ,
-                //     rook_sq.as_bb(),
-                //     east_of_rook,
-                //     west_of_rook,
-                //     east_att,
-                //     west_att
-                // );
                 rank_attacks[occupancy_bits as usize][rook_sq.file_index()] = east_att | west_att;
             }
         }
@@ -104,14 +94,6 @@ impl Hyperbola {
             mask[s.index()].diag = s.as_bb().diag_flood().exclude(s);
             mask[s.index()].anti_diag = s.as_bb().anti_diag_flood().exclude(s);
             mask[s.index()].file = s.as_bb().file_flood().exclude(s);
-            // println!(
-            //     "#{}\n{}\n{}\n{}\n{}",
-            //     s.index(),
-            //     s.as_bb(),
-            //     s.as_bb().diag_flood(),
-            //     s.as_bb().anti_diag_flood(),
-            //     s.as_bb().file_flood()
-            // );
         });
     }
 
