@@ -1,14 +1,15 @@
 # Todo items
+[ ] PV extraction
+[ ] Killer moves
 
 
 [X] Aging tt
 [ ] REWORK NODE LOGIC. Esp when to write PV and IDS
-[ ] PV extraction
 [ ] outcome cache on eval. Qsearch eval cache and tt?
 [ ] Pawn chains fixed 
 [ ] Null move pruning
 [ ] Fix board ==
-[ ] Non linear piece mobility
+[X] Non linear piece mobility
 [ ] E/P when not relelvant and tt
 [ ] Prime the startup on uci with a search
 [ ] forks after qsearch http://macechess.blogspot.com/2010/11/horizon-effect.htm
@@ -16,12 +17,12 @@
 UCI
 [ ] multi PV
 [ ] Searchmoves in UCI
-[ ] CLear hash
+[X] CLear hash
 
 
 - Bug fixes
-  - Cancel soon after thread start
-  - Occasional PV screwup
+  - [X] Cancel soon after thread start
+  - [X] Occasional PV screwup
   - stop IDS if nodes not increasing or max depth < depth>
 
 
@@ -30,7 +31,7 @@ UCI
   - tt eval caching
   -  board phase
   -  eval position cahing or incremental
-  -  20% has legal moves
+  -  [X] 20% has legal moves
   -  [x] indexing
   -  
   - [x] default() and once_cell on Hasher
