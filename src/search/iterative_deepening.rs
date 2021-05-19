@@ -103,7 +103,7 @@ impl Algo {
             self.search_stats.depth = depth;
 
             self.alphabeta(&mut Node::new_root(&mut self.board.clone()));
-            let res = self.search_stats().clone();
+            let mut res = self.search_stats().clone();
 
             self.mte.estimate_ply(depth + 1, &res);
             self.search_stats
@@ -119,6 +119,12 @@ impl Algo {
 
             let mut sp = SearchProgress::from_search_stats(&res);
             sp.pv = Some(res.pv.clone());
+            if !self.board.is_legal_variation(&res.pv) {             
+                debug_assert!(false, "Unable to fetch valid pv {} on board {}\n{}", res.pv.clone(), self.board, self);
+                res.pv.truncate(1);
+                sp.pv = Some(res.pv.clone());
+            }
+    
 
             sp.score = Some(res.score);
             self.task_control.invoke_callback(&sp);
@@ -141,10 +147,6 @@ impl Algo {
         if self.ids.part_ply  {
             self.search_stats.pv = last.pv.clone();
             self.search_stats.score = last.score;
-        }
-        if !self.board.is_legal_variation(&self.search_stats().pv) {             
-            debug_assert!(false, "Unable to fetch valid pv {} on board {}\n{}", &self.search_stats().pv, self.board, self);
-            self.search_stats.pv.truncate(1);
         }
 
         // callback
