@@ -8,7 +8,6 @@ use crate::globals::counts;
 use crate::log_debug;
 use crate::material::Material;
 use crate::movelist::Move;
-use crate::outcome::GameEnd;
 use crate::stat::{ArrayStat, Stat};
 use crate::types::{Color, Piece};
 
@@ -65,12 +64,12 @@ const SQUARE_VALUES_EG: [[i32; 64]; Piece::len()] = [
 #[rustfmt::skip]
 const PAWN_PST_MG: [i32; 64] = [
 0,  0,  0,  0,  0,  0,  0,  0,
-50, 50, 50, 50, 50, 50, 50, 50,
-10, 10, 20, 30, 30, 20, 10, 10,
- 5,  5, 10, 25, 25, 10,  5,  5,
- 0,  0,  0, 20, 20,  0,  0,  0,
- 5, -5,-10,  0,  0,-10, -5,  5,
- 5, 10, 10,-35,-35, 10, 10,  5,
+40, 40, 40, 40, 40, 40, 40, 40,
+ 5,  5,  5,  5,  5,  5,  5,  5,
+ 5,  5,  5, 10, 10,  5,  5,  5,
+ -9, 0,  0, 20, 20, -5,  -5, -9,
+ -5,-5, -9,  0,  0, -9, -5, -5,
+ 9, 15, 15,-35,-35, 15, 15,  10,
  0,  0,  0,  0,  0,  0,  0,  0];
 
 #[rustfmt::skip]
@@ -115,7 +114,7 @@ const ROOK_PST: [i32; 64] = [
  -5,  0,  0,  0,  0,  0,  0, -5,
  -5,  0,  0,  0,  0,  0,  0, -5,
  -5,  0,  0,  0,  0,  0,  0, -5,
-  0,  0,  3,  7,  7,  0,  0,  0];
+  0,  0,  3,  7,  7,  5, 0,  0];
 
 #[rustfmt::skip]
 const QUEEN_PST: [i32; 64] = [
@@ -136,8 +135,8 @@ const KING_PST_MG: [i32; 64] = [
 -30,-40,-40,-50,-50,-40,-40,-30,
 -20,-30,-30,-40,-40,-30,-30,-20,
 -10,-20,-20,-20,-20,-20,-20,-10,
- 20, 20,  0,  0,  0,  0, 20, 20,
- 20, 30, 10,  0,  0, 10, 30, 20];
+  0,  0,  0,  0,  0,  0,  0,  0,
+ 20, 30, 15,  0,  0,  5, 30, 10];
 
 #[rustfmt::skip]
 const KING_PST_EG: [i32; 64] = [
@@ -179,6 +178,7 @@ pub struct SimpleScorer {
     pub material: bool,
     pub position: bool,
     pub mobility: bool,
+    pub mobility_phase_disable: u8,
     pub undefended_sq: i32,
     pub undefended_piece: i32,
     pub trapped_piece: i32,
@@ -210,6 +210,10 @@ impl Configurable for SimpleScorer {
         c.set("eval.position", "type check default true");
         c.set("eval.material", "type check default true");
         c.set("eval.phasing", "type check default true");
+        c.set(
+            "eval.mobility.phase_disable",
+            &format!("type spin min 0 max 101 default {}", self.mobility_phase_disable),
+        );
         c.set(
             "eval.rook.open_file",
             &format!("type spin min -200 max 200 default {}", self.rook_open_file),
@@ -271,6 +275,7 @@ impl Configurable for SimpleScorer {
         self.cache_eval = c.bool("eval.cache.eval").unwrap_or(self.cache_eval);
         self.cache_qeval = c.bool("eval.cache.qeval").unwrap_or(self.cache_qeval);
         self.mobility = c.bool("eval.mobility").unwrap_or(self.mobility);
+        self.mobility_phase_disable = c.int("eval.mobility.phase_disable").unwrap_or(self.mobility_phase_disable as i64) as u8;
         self.position = c.bool("eval.position").unwrap_or(self.position);
         self.material = c.bool("eval.material").unwrap_or(self.material);
         self.phasing = c.bool("eval.phasing").unwrap_or(self.phasing);
@@ -300,6 +305,7 @@ impl fmt::Display for SimpleScorer {
         writeln!(f, "material         : {}", self.material)?;
         writeln!(f, "position         : {}", self.position)?;
         writeln!(f, "mobility         : {}", self.mobility)?;
+        writeln!(f, "mob.phase_disable: {}", self.mobility_phase_disable)?;
         writeln!(f, "phasing          : {}", self.phasing)?;
         writeln!(f, "undefended_piece : {}", self.undefended_piece)?;
         writeln!(f, "undefended_sq    : {}", self.undefended_sq)?;
@@ -338,9 +344,10 @@ impl SimpleScorer {
             position: true,
             material: true,
             phasing: true,
-            undefended_piece: 15,
-            undefended_sq: 3,
-            trapped_piece: -40,
+            mobility_phase_disable: 70,
+            undefended_piece: 5,
+            undefended_sq: 2,
+            trapped_piece: -5,
             pawn_doubled: -10,
             pawn_isolated: -10,
             rook_open_file: 20,
@@ -449,6 +456,9 @@ impl SimpleScorer {
     // always updated
     pub fn w_eval_mobility(&self, b: &Board) -> i32 {
         let mut score = 0;
+        if b.phase() > self.mobility_phase_disable as i32 {
+            return 0;
+        }
         if self.pawn_doubled != 0 {
             score += self.pawn_doubled
                 * (BitboardDefault::doubled_pawns(b.white() & b.pawns()).popcount()
@@ -470,37 +480,38 @@ impl SimpleScorer {
             score += self.piece_mobility(&b, Color::White);
             score -= self.piece_mobility(&b, Color::Black);
         }
+        score = Weight::new(score, score/10).interpolate(b.phase());
         score
     }
 
-    pub fn piece_mobility(&self, b: &Board, c: Color) -> i32 {
+    pub fn piece_mobility(&self, b: &Board, our: Color) -> i32 {
+        let us = b.color(our);
         let mut score = 0;
-        for sq in ((b.knights() | b.bishops() | b.rooks() | b.queens()) & b.color(c)).squares() {
-            let bb = BitboardDefault::default();
+        let their = our.opposite();
+        let them = b.color(their);
+        let occ = them | us;
+        let bb = BitboardDefault::default();
+        let their_p = b.pawns() & them;
+        let (pe, pw) = bb.pawn_attacks(their_p, their);
+        let pa = pe | pw;
+        let bi = b.bishops() & them;
+        let ni = b.knights() & them;
+        let r = b.rooks() & them;
+        let q = b.queens() & them;
+
+        for sq in ((b.knights() | b.bishops() | b.rooks() | b.queens()) & us).squares() {
             let p = b.piece_at(sq.as_bb());
-            let oc = b.color(c.opposite());
 
             // non-pawn-defended empty or oppoent sq
-            let pw = b.pawns() & oc;
-            let (pae, paw) = bb.pawn_attacks(pw, c.opposite());
-            let pa = pae | paw;
-            let enemy_us = b.them(); 
-            let enemy_them = b.us();
-            let attacks = bb.non_pawn_attacks(c.opposite(), p, enemy_us, enemy_them, sq) - pa;
-            // squares we can move to not attacked by pawns plus attacking pieces greater than us
-            let bi = b.bishops() & oc;
-            let ni = b.knights() & oc;
-            let us = b.color(c);
-            let r = b.rooks() & oc;
-            let q = b.queens() & oc;
-            let empties = (attacks - b.occupied()).popcount();
+            let our_attacks = bb.non_pawn_attacks(our, p, us, them, sq) - pa;
+            let empties = (our_attacks - b.occupied()).popcount();
 
             // those attacks on enemy that arent pawn defended and cant attack back
             let non_pawn_defended = match p {
-                Piece::Queen => (attacks & oc - us - q - r - bi).popcount(),
-                Piece::Rook => (attacks & oc - us - r).popcount(),
-                Piece::Knight => (attacks & oc - us - ni).popcount(),
-                Piece::Bishop => (attacks & oc - us - bi - q).popcount(),
+                Piece::Queen => (our_attacks & occ - q - r - bi).popcount(),
+                Piece::Rook => (our_attacks & occ  - r).popcount(),
+                Piece::Knight => (our_attacks & occ  - ni).popcount(),
+                Piece::Bishop => (our_attacks & occ  - bi - q).popcount(),
                 _ => 0,
             };
             // trapped piece
