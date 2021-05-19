@@ -171,19 +171,6 @@ mod tests {
         search.mte.deterministic = true;
         search.search(position.board());
         println!("{}", search);
-        assert_eq!(search.search_stats().total().nodes(), 3968); // with piece mobility
-        
-        // previous
-        // assert_eq!(search.search_stats().total().nodes(), 3456); // with gen qsearch
-
-        // assert_eq!(search.search_stats().total().nodes(), 2200); // with qsearch
-        //assert_eq!(search.search_stats().total().nodes(), 2108);  // with ordering pv + mvvlva
-        // assert_eq!(search.search_stats().total().nodes(), 3560);
-        // assert_eq!(search.search_stats().total().nodes(), 6553);  // with ordering pv
-        // assert_eq!(search.search_stats().total().nodes(), 6740);
-        
-        // TEST STOPS BEFORE FINDING MATE
-        // assert_eq!(search.pv().uci(), position.pv().unwrap().uci());
-        // assert_eq!(search.score(), Score::WhiteWin { minus_ply: -3 });
+        assert!(search.search_stats().total().nodes() < 4100);
     }
 }

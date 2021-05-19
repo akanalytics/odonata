@@ -476,11 +476,12 @@ impl SimpleScorer {
                 * ((b.rooks() & b.white() & open_files).popcount()
                     - (b.rooks() & b.black() & open_files).popcount())
         }
+        let mut piece_mobility = 0;
         if self.undefended_sq > 0 || self.undefended_sq > 0 {
-            score += self.piece_mobility(&b, Color::White);
-            score -= self.piece_mobility(&b, Color::Black);
+            piece_mobility += self.piece_mobility(&b, Color::White);
+            piece_mobility -= self.piece_mobility(&b, Color::Black);
         }
-        score = Weight::new(score, score/10).interpolate(b.phase());
+        score += Weight::new(piece_mobility, piece_mobility/10).interpolate(b.phase());
         score
     }
 
@@ -703,7 +704,7 @@ mod tests {
         assert_eq!(bd.eval_position(eval), Score::Cp(0));
 
         let w = Catalog::white_starting_position();
-        assert_eq!(w.eval_position(eval), Score::Cp(-130));
+        assert_eq!(w.eval_position(eval), Score::Cp(-116));
 
         let b = Catalog::black_starting_position();
         assert_eq!(w.eval_position(eval), b.eval_position(eval).negate());
@@ -718,6 +719,7 @@ mod tests {
         let mut eval = SimpleScorer::new();
         eval.pawn_doubled = -1;
         eval.pawn_isolated = 0;
+        eval.mobility_phase_disable = 101;
         let b = Catalog::starting_position();
         assert_eq!(eval.w_eval_mobility(&b), 0);
 

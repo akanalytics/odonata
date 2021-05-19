@@ -7,9 +7,13 @@ use std::iter;
 //                         change: [-51.630% -50.540% -49.410%] (p = 0.00 < 0.05)
 //                         Performance has improved.
 
+
+
 // essntially models the score bonus for s=start or e=end of game
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct Weight(i32, i32);
+
+
 
 impl Weight {
     #[inline]

@@ -119,6 +119,7 @@ impl Algo {
 
             let mut sp = SearchProgress::from_search_stats(&res);
             sp.pv = Some(res.pv.clone());
+
             sp.score = Some(res.score);
             self.task_control.invoke_callback(&sp);
             counts::SEARCH_IDS_COMPLETES.increment();
@@ -141,6 +142,11 @@ impl Algo {
             self.search_stats.pv = last.pv.clone();
             self.search_stats.score = last.score;
         }
+        if !self.board.is_legal_variation(&self.search_stats().pv) {             
+            debug_assert!(false, "Unable to fetch valid pv {} on board {}\n{}", &self.search_stats().pv, self.board, self);
+            self.search_stats.pv.truncate(1);
+        }
+
         // callback
         let sp = SearchProgress::from_best_move(Some(self.bm()));
         self.task_control.invoke_callback(&sp);

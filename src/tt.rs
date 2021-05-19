@@ -1,8 +1,9 @@
 use crate::board::Board;
+use crate::board::makemove::MoveMaker;
 use crate::config::{Config, Configurable};
 use crate::eval::score::Score;
 use crate::log_debug;
-use crate::movelist::Move;
+use crate::movelist::{Move, MoveList};
 use crate::stat::{ArrayStat, Stat};
 use crate::types::{Hash, Ply};
 use std::cmp;
@@ -321,7 +322,9 @@ impl TranspositionTable {
             self.exclusions.increment();
             None
         } else {
-            self.probe_by_hash(board.hash())
+            let entry = self.probe_by_hash(board.hash());
+            debug_assert!(entry.is_none() || entry.unwrap().bm.is_null() || board.is_legal_move(&entry.unwrap().bm));
+            entry
         }
     }
 
@@ -343,7 +346,35 @@ impl TranspositionTable {
         self.misses.increment();
         None
     }
+
+    // non recursive
+    pub fn extract_pv(&self, first: &Move, b: &Board) -> MoveList {
+        let mut board = b.clone();
+        let mut moves = MoveList::new();
+        board = board.make_move(&first);
+        moves.push(*first);
+        while moves.len() < 50 {
+            let entry = self.probe_by_board(b);
+            if let Some(entry) = entry {
+                if entry.node_type == NodeType::Pv {
+                    let mv = entry.bm;
+                    if !mv.is_null() && board.is_valid_move(&mv) && board.is_legal_move(&mv) {
+                        board = board.make_move(&mv);
+                        moves.push(mv);
+                        continue;
+                    } else {
+                        debug_assert!(false, "Invalid move {} in tt for board position {}", mv, board.to_fen());
+                        error!("Invalid move {} in tt for board position {}", mv, board.to_fen());
+                        return moves;
+                    }
+                }
+            } 
+            break;
+        }
+    moves
+    }
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -352,17 +383,16 @@ mod tests {
     use crate::globals::constants::*;
     use crate::search::algo::*;
     use crate::search::timecontrol::*;
+    use crate::types::*;
 
     fn entry123() -> Entry {
         Entry {
             score: Score::Cp(300),
             depth: 2,
             node_type: NodeType::Pv,
-            bm: Move {
-                to: a1.square(),
-                from: a2.square(),
-                ..Move::default()
-            },
+            bm: Move::new_quiet(Piece::Pawn,
+                b7.square(),
+                b6.square())
         }
     }
 
@@ -371,11 +401,9 @@ mod tests {
             score: Score::Cp(200),
             depth: 3,
             node_type: NodeType::Pv,
-            bm: Move {
-                to: a1.square(),
-                from: a2.square(),
-                ..Move::default()
-            },
+            bm: Move::new_quiet(Piece::Pawn,
+                a2.square(),
+                a3.square())
         }
     }
 
@@ -396,6 +424,12 @@ mod tests {
     fn test_tt() {
         let mut tt1 = TranspositionTable::new_with_mb(10);
         tt1.clear_and_resize();
+        
+        let board = Catalog::starting_position();
+        let first = Move::new_quiet(Piece::Pawn, e2.square(), e4.square());
+        let moves = tt1.extract_pv(&first, &board);
+        assert_eq!(moves.uci(), "e2e4");
+        
         manipulate(&mut tt1);
 
         // triggers failed ownership panic

@@ -94,7 +94,6 @@ impl Algo {
                             alpha = entry.score;
                             if alpha >= beta {
                                 self.search_stats.inc_cuts(ply);
-                                // self.record_new_pv(ply, &bm);
                                 return entry.score;
                             }
                             score = entry.score;
@@ -117,13 +116,6 @@ impl Algo {
 
         self.search_stats.inc_interior_nodes(ply);
 
-        // // FIXME!!!!
-        // if self.max_depth > self.search_stats.selective_depth() {
-        //     let sp = SearchProgress::from_search_stats(&self.search_stats());
-        //     self.task_control.invoke_callback(&sp);
-        // }
-        // bailing here means the score is +/- inf and wont be used
-        // FIXME!
 
         let mut moves = board.legal_moves();
         if moves.is_empty() {
@@ -155,6 +147,7 @@ impl Algo {
                 alpha = child_score;
                 bm = *mv;
                 node_type = NodeType::Pv;
+                self.record_new_pv(ply, &bm, false);
                 debug_assert!(!bm.is_null(), "bm is null at {} mv {}", board, mv );
 
             }
@@ -166,13 +159,15 @@ impl Algo {
         }
 
         if node_type == NodeType::All {
+            // nothing
         } else if node_type == NodeType::Cut {
             self.search_stats.inc_cuts(ply);
             debug_assert!(!bm.is_null())
-        } else {
-            // node_type = NodeType::Pv;
-            self.record_new_pv(ply, &bm, false);
+        } else if node_type == NodeType::Pv {
+            // self.record_new_pv(ply, &bm, false);
             debug_assert!(!bm.is_null())
+        } else {
+            panic!("Node type {:?} ", node_type);
         }
         if self.tt.enabled() {
             let entry = Entry {
@@ -195,6 +190,7 @@ impl Algo {
             let sp = SearchProgress::from_search_stats(&self.search_stats());
             self.task_control.invoke_callback(&sp);
         }
+        
     }
 }
 

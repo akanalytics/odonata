@@ -74,6 +74,61 @@ impl Board {
         self.checkers_of(king_color).intersects(them)
     }
 
+    pub fn is_valid_move(&self, m: &Move) -> bool {
+        if !m.from().is_in(self.us()) {
+            return false;
+        }
+        if m.mover_piece() != self.piece_at(m.from().as_bb()) {
+            return false;
+        }
+        if !m.is_capture() {
+            if m.to().is_in(self.occupied()) {
+                return false;
+            }
+            if m.capture_piece() != Piece::None {
+                return false;
+            }
+        }
+        if m.is_capture() {
+            if !m.is_ep_capture() {
+                if !m.to().is_in(self.them()) {
+                    return false;
+                }
+            } else {
+                if !m.ep().is_in(self.them() & self.pawns()) {
+                    return false;
+                }
+            }
+        }
+        if m.is_promo() {
+            if !m.to().as_bb().intersects(Bitboard::PROMO_RANKS) {
+                // TODO! exact promo rank for white/black
+                return false;
+            }
+            let pp = m.promo_piece();
+            if pp != Piece::Queen && pp != Piece::Rook && pp != Piece::Bishop && pp != Piece::Knight {
+                return false;
+            }
+        }
+
+        // FIXME! Piece moves using strictly between
+        true
+    }
+
+
+    pub fn is_legal_variation(&self, moves: &[Move]) -> bool {
+        if let Some(m) = moves.first() {
+            if !self.is_valid_move(&m) || !self.is_legal_move(&m) {
+                return false;
+            }
+            return self.make_move(m).is_legal_variation(&moves[1..]); 
+        } else {
+            true
+        }
+    }
+
+
+
     // the move is pseudo legal - king moves and castles are assumed already legal
     pub fn is_legal_move(&self, mv: &Move) -> bool {
         if mv.is_known_legal() {
@@ -169,34 +224,6 @@ impl Board {
         moves.retain(|m| m.is_capture() || m.is_promo());
         moves
     }
-
-    // fn king_pseudo_legals_to(&self, to: Bitboard, moves: &mut MoveList) {
-    //     let attack_gen = BitboardDefault::default();
-    //     let board = &self;
-    //     for from_sq in (board.kings() & board.us()).squares() {
-    //         let attacks = !board.us() & attack_gen.king_attacks(from_sq) & to;
-    //         for to in attacks.squares() {
-    //             if to.is_in(board.them()) {
-    //                 let m = Move {
-    //                     from: from_sq,
-    //                     to,
-    //                     mover: Piece::King,
-    //                     capture: board.piece_at(to.as_bb()),
-    //                     ..Default::default()
-    //                 };
-    //                 moves.push(m);
-    //             } else {
-    //                 let m = Move {
-    //                     from: from_sq,
-    //                     to,
-    //                     mover: Piece::King,
-    //                     ..Default::default()
-    //                 };
-    //                 moves.push(m);
-    //             }
-    //         }
-    //     }
-    // }
 
     pub fn pseudo_legal_moves(&self) -> MoveList {
         let mut moves = MoveList::new();
@@ -436,11 +463,52 @@ mod tests {
 
         let board = Catalog::starting_position();
         let mv = board.parse_uci_move("e2e3").unwrap();
-        assert!( board.is_legal_move(&mv), "{:?}", mv);
-
-
-
+        assert!(board.is_legal_move(&mv), "{:?}", mv);
         Ok(())
+    }
+
+
+    #[test]
+    fn test_legal_variation() -> Result<(), String> {
+        let b = Catalog::starting_position();
+        let bd2 = Catalog::test_position();
+        let mvs = b.parse_uci_moves("a2a3 e7e6 b2b4")?; 
+        assert_eq!(b.is_legal_variation(&mvs), true);
+        assert_eq!(bd2.board().is_legal_variation(&mvs), false);
+        Ok(())
+    }
+
+    #[test]
+    fn test_is_valid_move() {
+        let board = Catalog::starting_position();
+        assert_eq!(
+            board.is_valid_move(&Move::new_quiet(Piece::Pawn, a2.square(), a3.square())),
+            true
+        );
+        assert_eq!(
+            board.is_valid_move(&Move::new_quiet(Piece::Bishop, a2.square(), a3.square())),
+            false
+        );
+        assert_eq!(
+            board.is_valid_move(&Move::new_quiet(Piece::Pawn, a7.square(), a6.square())),
+            false
+        );
+        assert_eq!(
+            board.is_valid_move(&Move::new_quiet(Piece::Pawn, a7.square(), a6.square())),
+            false
+        );
+        assert_eq!(
+            board.is_valid_move(&Move::new_capture(
+                Piece::Pawn,
+                a2.square(),
+                a3.square(),
+                Piece::Pawn
+            )),
+            false
+        );
+        for mv in board.legal_moves().iter() {
+            assert!(board.is_legal_move(mv));
+        }
     }
 
     #[test]

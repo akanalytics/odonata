@@ -1,4 +1,5 @@
 use crate::movelist::{Move, MoveList};
+use crate::board::Board;
 use crate::types::{MAX_PLY, Ply};
 use std::fmt;
 
@@ -31,14 +32,15 @@ impl PvTable {
         pvc
     }
     pub fn set(&mut self, ply: Ply, m: &Move, terminal_move: bool) {
-        let ply = ply as usize;
-        self.matrix[ply][0] = *m;
+        let p = ply as usize;
+        self.matrix[p][0] = *m;
         if terminal_move {
-            self.matrix[ply][1..].fill(Move::NULL_MOVE);
+            self.matrix[p][1..].fill(Move::NULL_MOVE);
         }
-        if self.size <= ply {
-            self.size = ply + 1;
+        if self.size <= p {
+            self.size = p + 1;
         }
+        // debug_assert!(b.is_none() || b.unwrap().is_legal_variation(&self.extract_pv_for(ply)), "Board: {} pv: {} mv:{} ply:{}\n{}", b.unwrap().to_fen(), &self.extract_pv_for(ply), m, ply, self );
     }
 
     pub fn propagate_from(&mut self, from_ply: Ply) {
@@ -56,12 +58,18 @@ impl PvTable {
         // }
     }
 
-    pub fn extract_pv(&self) -> MoveList {
+    pub fn extract_pv_for(&self, ply: Ply) -> MoveList {
         let mut res = MoveList::new();
-        if let Some(pv) = self.matrix[0].get(1..self.size) {
+        if let Some(pv) = self.matrix[ply as usize].get(1..self.size) {
             res.extend(pv.iter().take_while(|m| !m.is_null()));
         }
         res
+    }
+
+
+
+    pub fn extract_pv(&self) -> MoveList {
+        self.extract_pv_for(0)
     }
 }
 
