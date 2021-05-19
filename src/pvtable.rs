@@ -1,5 +1,4 @@
 use crate::movelist::{Move, MoveList};
-use crate::board::Board;
 use crate::types::{MAX_PLY, Ply};
 use std::fmt;
 
