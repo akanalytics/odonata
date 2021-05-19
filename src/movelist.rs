@@ -527,7 +527,7 @@ impl MoveValidator for Board {
         let mut s = String::new();
         let mut board = self.clone();
         for (i, mv) in moves.iter().enumerate() {
-            debug_assert!(board.is_legal_move(mv));
+            debug_assert!(board.is_legal_move(mv), "mv {} is illegal for board {}", mv, board.to_fen() );
             if i % 2 == 0 {
                 if i != 0 {
                     s += "\n";
