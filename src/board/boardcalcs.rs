@@ -29,7 +29,7 @@ impl BoardCalcs {
         let mut pinned = Bitboard::empty();
         for ch in xray_checkers.squares() {
             let ray = BitboardDefault::default().strictly_between(ch, king_sq);
-            if (ray & color_us).popcount() == 1 && ray.disjoint(color_them) {
+            if ray.disjoint(color_them) && (ray & color_us).popcount() == 1  {
                 pinned |= ray & color_us;
             }
         }
