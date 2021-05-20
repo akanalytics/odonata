@@ -13,6 +13,9 @@ Cargo.lock
 *.epd
 *.pgn
 
+# executables
+*.exe 
+
 # Added by cargo
 
 /target
