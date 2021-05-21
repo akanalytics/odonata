@@ -224,7 +224,6 @@ impl TranspositionTable {
     }
 
     pub fn clear_and_resize(&mut self) {
-        println!("tt cleared");
         if self.requires_resize() {
             let capacity = Self::convert_mb_to_capacity(self.mb);
             self.table = Arc::new(vec![StoredEntry::default(); capacity]);
@@ -270,9 +269,6 @@ impl TranspositionTable {
         if !self.enabled || self.capacity() == 0 {
             return;
         }
-        if hash == 11190882286957599045 {
-            println!("START {} in {:?} getting saved", entry.bm, entry);
-        }
         let new = StoredEntry {
             entry,
             hash,
@@ -283,13 +279,10 @@ impl TranspositionTable {
         if let Some(table) = table {
             let old = &mut table[index];
             let old_age = old.age.load(Ordering::Relaxed);
-            if hash == 11190882286957599045 {
-                println!("GETTINGSAVED {} in \nnew {:?}\nnew age {}\n old {:?}\ngetting saved old age {}", entry.bm, entry, self.current_age,old, old_age);
-            }
                 // if self.current_age > old_age
                 // || self.current_age == old_age
-                //     && (new.entry.depth > old.entry.depth
-                //         || new.entry.depth == old.entry.depth && new.entry.node_type >= old.entry.node_type)
+                //     && (new.entry.draft > old.entry.draft
+                //         || new.entry.draft == old.entry.draft && new.entry.node_type >= old.entry.node_type)
                 if self.current_age > old_age
                 || self.current_age == old_age
                     && (new.entry.node_type > old.entry.node_type
@@ -298,9 +291,6 @@ impl TranspositionTable {
                 if new.hash != old.hash && self.current_age == old_age && old.entry.node_type == NodeType::Pv {
                     self.pv_overwrites.increment();
                 }
-                if (old.entry.node_type != NodeType::Unused && old_age >= self.current_age && new.hash != old.hash) || old.hash == 11190882286957599045 {
-                    println!("{} gets overwritten hash lost {}", old.entry.bm, old.hash);
-                }
                 debug_assert!(new.entry.score > Score::MinusInf);
                 debug_assert!(
                     new.entry.node_type != NodeType::Pv || !new.entry.bm.is_null(),
@@ -308,9 +298,6 @@ impl TranspositionTable {
                     new.entry.node_type,
                     new.entry.bm
                 );
-                if hash == 11190882286957599045 {
-                    println!("ISSAVED {} in {:?} ***IS**** saved", entry.bm, entry);
-                }
         
                 self.inserts.increment();
                 *old = new;
@@ -406,7 +393,7 @@ impl TranspositionTable {
                     }
                 }
             }
-            println!("Unablr to find hash {} after move {}", board.hash(), mv) ;
+            // println!("Unable to find hash {} after move {}", board.hash(), mv) ;
             break;
         }
         moves
