@@ -68,8 +68,8 @@ impl Algo {
 
         // FIXME avoid the cloned!
         if let Some(entry) = self.tt.probe_by_board(board).cloned() {
-            let depth = self.max_depth - ply;
-            if entry.depth >= depth {
+            let draft = self.max_depth - ply;
+            if entry.draft >= draft {
                 self.search_stats.inc_tt_nodes(ply);
                 //println!("Entry:{:?}", entry);
                 // for bounded scores, we know iterating through the nodes might raise alpha, lower beta
@@ -172,7 +172,7 @@ impl Algo {
         if self.tt.enabled() {
             let entry = Entry {
                 score,
-                depth: self.max_depth - ply,
+                draft: self.max_depth - ply,
                 node_type,
                 bm, // not set for NodeType::All
             };

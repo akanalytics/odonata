@@ -36,6 +36,7 @@ harness = false
 debug = true
 opt-level = 3
 
+
 # RUSTFLAGS="-C target-cpu=native" cargo bench
 
 # in .cargo/config.toml

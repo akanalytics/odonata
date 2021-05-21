@@ -1,5 +1,5 @@
-use crate::board::Board;
 use crate::board::makemove::MoveMaker;
+use crate::board::Board;
 use crate::config::{Config, Configurable};
 use crate::eval::score::Score;
 use crate::log_debug;
@@ -47,7 +47,7 @@ impl Default for NodeType {
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub struct Entry {
     pub score: Score,
-    pub depth: Ply, // depth is depth to q/leaf
+    pub draft: Ply, // draft is plies to q/leaf
     pub node_type: NodeType,
     pub bm: Move,
 }
@@ -84,6 +84,7 @@ pub struct TranspositionTable {
     pub collisions: Stat,
     pub exclusions: Stat,
     pub inserts: Stat,
+    pub pv_overwrites: Stat,
     pub deletes: Stat,
     pub fail_priority: Stat,
     pub fail_ownership: Stat,
@@ -142,6 +143,7 @@ impl fmt::Display for TranspositionTable {
                 &self.collisions,
                 &self.exclusions,
                 &self.inserts,
+                &self.pv_overwrites,
                 &self.fail_priority,
                 &self.fail_ownership,
                 &self.deletes,
@@ -194,6 +196,7 @@ impl TranspositionTable {
             collisions: Stat::new("collisions"),
             exclusions: Stat::new("exclusions"),
             inserts: Stat::new("inserts"),
+            pv_overwrites: Stat::new("pv overwrites"),
             deletes: Stat::new("deletes"),
             fail_priority: Stat::new("ins fail priority"),
             fail_ownership: Stat::new("ins fail owner"),
@@ -220,14 +223,14 @@ impl TranspositionTable {
         self.table.capacity() != capacity
     }
 
-
     pub fn clear_and_resize(&mut self) {
+        println!("tt cleared");
         if self.requires_resize() {
             let capacity = Self::convert_mb_to_capacity(self.mb);
             self.table = Arc::new(vec![StoredEntry::default(); capacity]);
             self.current_age = 10;
             return;
-        } 
+        }
         let table = Arc::get_mut(&mut self.table);
         if let Some(table) = table {
             table.iter_mut().for_each(|e| *e = StoredEntry::default());
@@ -267,6 +270,9 @@ impl TranspositionTable {
         if !self.enabled || self.capacity() == 0 {
             return;
         }
+        if hash == 11190882286957599045 {
+            println!("START {} in {:?} getting saved", entry.bm, entry);
+        }
         let new = StoredEntry {
             entry,
             hash,
@@ -277,14 +283,35 @@ impl TranspositionTable {
         if let Some(table) = table {
             let old = &mut table[index];
             let old_age = old.age.load(Ordering::Relaxed);
-            if self.current_age > old_age
+            if hash == 11190882286957599045 {
+                println!("GETTINGSAVED {} in \nnew {:?}\nnew age {}\n old {:?}\ngetting saved old age {}", entry.bm, entry, self.current_age,old, old_age);
+            }
+                // if self.current_age > old_age
+                // || self.current_age == old_age
+                //     && (new.entry.depth > old.entry.depth
+                //         || new.entry.depth == old.entry.depth && new.entry.node_type >= old.entry.node_type)
+                if self.current_age > old_age
                 || self.current_age == old_age
-                    && (new.entry.depth > old.entry.depth
-                        || new.entry.depth == old.entry.depth && new.entry.node_type >= old.entry.node_type)
-            {
+                    && (new.entry.node_type > old.entry.node_type
+                        || new.entry.node_type == old.entry.node_type && new.entry.draft >= old.entry.draft)
+                    {
+                if new.hash != old.hash && self.current_age == old_age && old.entry.node_type == NodeType::Pv {
+                    self.pv_overwrites.increment();
+                }
+                if (old.entry.node_type != NodeType::Unused && old_age >= self.current_age && new.hash != old.hash) || old.hash == 11190882286957599045 {
+                    println!("{} gets overwritten hash lost {}", old.entry.bm, old.hash);
+                }
                 debug_assert!(new.entry.score > Score::MinusInf);
-                debug_assert!(new.entry.node_type != NodeType::Pv || !new.entry.bm.is_null(), "bm is null at {:?} mv {:?}", new.entry.node_type, new.entry.bm );
-
+                debug_assert!(
+                    new.entry.node_type != NodeType::Pv || !new.entry.bm.is_null(),
+                    "bm is null at {:?} mv {:?}",
+                    new.entry.node_type,
+                    new.entry.bm
+                );
+                if hash == 11190882286957599045 {
+                    println!("ISSAVED {} in {:?} ***IS**** saved", entry.bm, entry);
+                }
+        
                 self.inserts.increment();
                 *old = new;
                 return;
@@ -323,7 +350,9 @@ impl TranspositionTable {
             None
         } else {
             let entry = self.probe_by_hash(board.hash());
-            debug_assert!(entry.is_none() || entry.unwrap().bm.is_null() || board.is_legal_move(&entry.unwrap().bm));
+            debug_assert!(
+                entry.is_none() || entry.unwrap().bm.is_null() || board.is_legal_move(&entry.unwrap().bm)
+            );
             entry
         }
     }
@@ -353,28 +382,36 @@ impl TranspositionTable {
         let mut moves = MoveList::new();
         board = board.make_move(&first);
         moves.push(*first);
+        let mut mv = first;
         while moves.len() < 50 {
-            let entry = self.probe_by_board(b);
+            let entry = self.probe_by_board(&board);
             if let Some(entry) = entry {
-                if entry.node_type == NodeType::Pv {
-                    let mv = entry.bm;
+                if true || entry.node_type == NodeType::Pv {
+                    mv = &entry.bm;
                     if !mv.is_null() && board.is_valid_move(&mv) && board.is_legal_move(&mv) {
                         board = board.make_move(&mv);
-                        moves.push(mv);
+                        moves.push(*mv);
                         continue;
                     } else {
-                        debug_assert!(false, "Invalid move {} in tt for board position {}", mv, board.to_fen());
+                        debug_assert!(
+                            false,
+                            "Invalid move {} in tt for board position {} moves {} from starting {}",
+                            mv,
+                            board.to_fen(),
+                            moves,
+                            b.to_fen()
+                        );
                         error!("Invalid move {} in tt for board position {}", mv, board.to_fen());
                         return moves;
                     }
                 }
-            } 
+            }
+            println!("Unablr to find hash {} after move {}", board.hash(), mv) ;
             break;
         }
-    moves
+        moves
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -388,29 +425,25 @@ mod tests {
     fn entry123() -> Entry {
         Entry {
             score: Score::Cp(300),
-            depth: 2,
+            draft: 2,
             node_type: NodeType::Pv,
-            bm: Move::new_quiet(Piece::Pawn,
-                b7.square(),
-                b6.square())
+            bm: Move::new_quiet(Piece::Pawn, b7.square(), b6.square()),
         }
     }
 
     fn entry456() -> Entry {
         Entry {
             score: Score::Cp(200),
-            depth: 3,
+            draft: 3,
             node_type: NodeType::Pv,
-            bm: Move::new_quiet(Piece::Pawn,
-                a2.square(),
-                a3.square())
+            bm: Move::new_quiet(Piece::Pawn, a2.square(), a3.square()),
         }
     }
 
     fn entry456b() -> Entry {
         Entry {
             score: Score::Cp(201),
-            depth: 4,
+            draft: 4,
             node_type: NodeType::Pv,
             bm: Move {
                 to: a1.square(),
@@ -424,12 +457,10 @@ mod tests {
     fn test_tt() {
         let mut tt1 = TranspositionTable::new_with_mb(10);
         tt1.clear_and_resize();
-        
         let board = Catalog::starting_position();
         let first = Move::new_quiet(Piece::Pawn, e2.square(), e4.square());
         let moves = tt1.extract_pv(&first, &board);
         assert_eq!(moves.uci(), "e2e4");
-        
         manipulate(&mut tt1);
 
         // triggers failed ownership panic
@@ -489,10 +520,14 @@ mod tests {
     #[test]
     fn tt_real_life() {
         //let mut tt1 = TranspositionTable::with_capacity(TranspositionTable::convert_mb_to_capacity(10));
-        let pos = &Catalog::bratko_kopec()[0];
-        println!("{:#}", pos);
         let mut algo = Algo::new().set_timing_method(TimeControl::Depth(4)).build();
-        algo.search(pos.board());
+        for pos in Catalog::bratko_kopec().iter() {
+            algo.new_game();
+            algo.search(pos.board());
+            let pv = algo.tt.extract_pv(&algo.bm(), pos.board());
+            assert_eq!(algo.pv(), &pv, "{} != {}\n{}", algo.pv(), pv, algo);
+            println!(">>>>>> {}", pv);
+        }
         //println!("TT\n{}\nEVAL\n{}\n", algo.tt, algo.eval.cache);
     }
 }

@@ -31,7 +31,7 @@ UCI
   - tt eval caching
   -  board phase
   -  eval position cahing or incremental
-  -  [X] 20% has legal moves
+  -  [x] 20% has legal moves
   -  [x] indexing
   -  
   - [x] default() and once_cell on Hasher

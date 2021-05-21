@@ -11,7 +11,6 @@ use odonata::globals::constants::*;
 use odonata::hasher::*;
 use odonata::material::*;
 use odonata::movelist::*;
-use odonata::outcome::*;
 use odonata::perft::Perft;
 use odonata::pvtable::*;
 use odonata::tt::{TranspositionTable, Entry, NodeType};
@@ -415,7 +414,7 @@ fn board_calcs(c: &mut Criterion) {
     group.bench_function("tt_store", |b| {
         let entry = Entry {
             score : Score::Cp(100),
-            depth: 1,
+            draft: 1,
             node_type: NodeType::Pv,
             bm: Move::NULL_MOVE,            
         };
