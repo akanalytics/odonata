@@ -285,13 +285,13 @@ class Odonata:
         self.depth = str(depth_value)
 
 
-    def get_odonata_major_version(self):
-        """Returns Odonata engine major version.
-        Returns:
-            Current odonata major version
-        """
+    # def get_odonata_major_version(self):
+    #     """Returns Odonata engine major version.
+    #     Returns:
+    #         Current odonata major version
+    #     """
 
-        return self._odonata_major_version
+    #     return self._odonata_major_version
 
     def __del__(self) -> None:
         self._put("quit")

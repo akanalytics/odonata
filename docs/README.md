@@ -36,9 +36,8 @@ Rust Chess engine | https://github.com/vinc/littlewing | For making me appreciat
 Chesss GUI for UCI engines | http://www.playwitharena.de/ |
 
 ## Licence
-The software licence is [AGPL-3](../license.txt) 
+The software licence is [AGPL-3](../license.txt), though libraies used are MIT licensed. Trial or experimental versions may lag in terms of source code publication.
 
-Third party libraries used may have differing licenses. In particular... 
 
 Library | URL | License 
 ----------- | ---- | -------
@@ -46,5 +45,5 @@ Bitflags | https://crates.io/crates/bitflags | MIT https://choosealicense.com/li
 Once Cell | https://crates.io/crates/once_cell | MIT https://choosealicense.com/licenses/mit/
 Criterion | https://crates.io/crates/criterion | MIT https://choosealicense.com/licenses/mit/
 Env_Logger | https://crates.io/crates/env_logger | MIT https://choosealicense.com/licenses/mit/
-
+Stockfish | https://github.com/zhelyabuzhsky/stockfish | MIT https://choosealicense.com/licenses/mit/ 
 

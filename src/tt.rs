@@ -77,6 +77,7 @@ pub struct TranspositionTable {
     pub aging: bool,
     pub current_age: i16,
     pub enabled: bool,
+    pub use_tt_for_pv: bool,
     pub mb: i64,
     pub hmvc_horizon: i32,
     pub hits: Stat,
@@ -95,6 +96,7 @@ impl fmt::Debug for TranspositionTable {
         f.debug_struct("TranspositionTable")
             // .field("pv_table", &self.pv_table.extract_pv().)
             .field("enabled", &self.enabled)
+            .field("use_tt_for_pv", &self.use_tt_for_pv)
             .field("mb", &self.mb)
             .field("hmvc_horizon", &self.hmvc_horizon)
             .field("aging", &self.aging)
@@ -107,6 +109,7 @@ impl fmt::Debug for TranspositionTable {
 impl fmt::Display for TranspositionTable {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "enabled          : {}", self.enabled)?;
+        writeln!(f, "use tt for pv    : {}", self.use_tt_for_pv)?;
         writeln!(f, "capacity         : {}", self.table.capacity())?;
         writeln!(f, "size in mb       : {}", self.mb)?;
         writeln!(f, "entry size bytes : {}", mem::size_of::<Entry>())?;
@@ -118,10 +121,8 @@ impl fmt::Display for TranspositionTable {
         writeln!(f, "entry: cut       : {}", self.count_of(NodeType::Cut))?;
         writeln!(f, "entry: all       : {}", self.count_of(NodeType::All))?;
         writeln!(f, "entry: unused    : {}", self.count_of(NodeType::Unused))?;
-        let tot = cmp::max(
-            1,
-            self.hits.get() + self.misses.get() + self.collisions.get() + self.exclusions.get(),
-        );
+        let tot = self.hits.get() + self.misses.get() + self.collisions.get() + self.exclusions.get();
+        let tot = cmp::max(1, tot);
         writeln!(f, "% hits           : {}", 100 * self.hits.get() / tot)?;
         writeln!(f, "% misses         : {}", 100 * self.misses.get() / tot)?;
         writeln!(f, "% collisions     : {}", 100 * self.collisions.get() / tot)?;
@@ -162,12 +163,14 @@ impl Default for TranspositionTable {
 impl Configurable for TranspositionTable {
     fn settings(&self, c: &mut Config) {
         c.set("tt.aging", "type check default true");
+        c.set("tt.use_tt_for_pv", "type check default true");
         c.set("Hash", "type spin default 33 min 0 max 4000");
         c.set("tt.hmvc_horizon", "type spin default 35 min 0 max 100");
     }
     fn configure(&mut self, c: &Config) {
         log_debug!("tt.configure with {}", c);
         self.aging = c.bool("tt.aging").unwrap_or(self.aging);
+        self.use_tt_for_pv = c.bool("tt.use_tt_for_pv").unwrap_or(self.use_tt_for_pv);
         self.mb = c.int("Hash").unwrap_or(self.mb);
         // table is resized on next clear / generation
         self.hmvc_horizon = c.int("tt.hmvc_horizon").unwrap_or(self.hmvc_horizon as i64) as i32;
@@ -187,10 +190,11 @@ impl TranspositionTable {
         Self {
             table: Arc::new(vec![StoredEntry::default(); 0]),
             enabled: true,
+            use_tt_for_pv: true,
             mb: mb as i64,
             aging: true,
             current_age: 10, // to allow us to look back
-            hmvc_horizon: 5,
+            hmvc_horizon: 42,
             hits: Stat::new("hits"),
             misses: Stat::new("misses"),
             collisions: Stat::new("collisions"),
@@ -279,16 +283,17 @@ impl TranspositionTable {
         if let Some(table) = table {
             let old = &mut table[index];
             let old_age = old.age.load(Ordering::Relaxed);
-                // if self.current_age > old_age
-                // || self.current_age == old_age
-                //     && (new.entry.draft > old.entry.draft
-                //         || new.entry.draft == old.entry.draft && new.entry.node_type >= old.entry.node_type)
-                if self.current_age > old_age
+            // if self.current_age > old_age
+            // || self.current_age == old_age
+            //     && (new.entry.draft > old.entry.draft
+            //         || new.entry.draft == old.entry.draft && new.entry.node_type >= old.entry.node_type)
+            if self.current_age > old_age
                 || self.current_age == old_age
                     && (new.entry.node_type > old.entry.node_type
                         || new.entry.node_type == old.entry.node_type && new.entry.draft >= old.entry.draft)
-                    {
-                if new.hash != old.hash && self.current_age == old_age && old.entry.node_type == NodeType::Pv {
+            {
+                if new.hash != old.hash && self.current_age == old_age && old.entry.node_type == NodeType::Pv
+                {
                     self.pv_overwrites.increment();
                 }
                 debug_assert!(new.entry.score > Score::MinusInf);
@@ -298,7 +303,6 @@ impl TranspositionTable {
                     new.entry.node_type,
                     new.entry.bm
                 );
-        
                 self.inserts.increment();
                 *old = new;
                 return;
@@ -364,16 +368,16 @@ impl TranspositionTable {
     }
 
     // non recursive
-    pub fn extract_pv(&self, first: &Move, b: &Board) -> MoveList {
+    pub fn extract_pv(&self, b: &Board) -> MoveList {
         let mut board = b.clone();
         let mut moves = MoveList::new();
-        board = board.make_move(&first);
-        moves.push(*first);
-        let mut mv = first;
+        // board = board.make_move(&first);
+        // moves.push(*first);
+        let mut mv;
         while moves.len() < 50 {
             let entry = self.probe_by_board(&board);
             if let Some(entry) = entry {
-                if true || entry.node_type == NodeType::Pv {
+                if entry.node_type == NodeType::Pv {
                     mv = &entry.bm;
                     if !mv.is_null() && board.is_valid_move(&mv) && board.is_legal_move(&mv) {
                         board = board.make_move(&mv);
@@ -408,6 +412,7 @@ mod tests {
     use crate::search::algo::*;
     use crate::search::timecontrol::*;
     use crate::types::*;
+    use crate::comms::uci::*;
 
     fn entry123() -> Entry {
         Entry {
@@ -445,8 +450,8 @@ mod tests {
         let mut tt1 = TranspositionTable::new_with_mb(10);
         tt1.clear_and_resize();
         let board = Catalog::starting_position();
-        let first = Move::new_quiet(Piece::Pawn, e2.square(), e4.square());
-        let moves = tt1.extract_pv(&first, &board);
+        // let first = Move::new_quiet(Piece::Pawn, e2.square(), e4.square());
+        let moves = tt1.extract_pv(&board);
         assert_eq!(moves.uci(), "e2e4");
         manipulate(&mut tt1);
 
@@ -505,16 +510,40 @@ mod tests {
     }
 
     #[test]
-    fn tt_real_life() {
-        //let mut tt1 = TranspositionTable::with_capacity(TranspositionTable::convert_mb_to_capacity(10));
-        let mut algo = Algo::new().set_timing_method(TimeControl::Depth(4)).build();
+    #[ignore]
+    fn tt_end_games() -> Result<(), String> {
+        // //let mut tt1 = TranspositionTable::with_capacity(TranspositionTable::convert_mb_to_capacity(10));
+        let mut algo = Algo::new();
+        algo.tt.mb = 512;
+        // use simple evaluation as we look at great depth
+        algo.eval.position = false;
+        algo.eval.mobility = false;
+        algo.set_callback(Uci::uci_info);
+        algo.set_timing_method(TimeControl::Depth(33));
+        algo.new_game();
+        for pos in Catalog::end_games().iter() {
+            algo.new_game();
+            algo.search(pos.board());
+            assert_eq!(algo.bm().uci(), pos.bm()?.uci(), "{}\n{}", pos, algo);
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn tt_test_pv_extraction() -> Result<(), String> {
+        let mut algo = Algo::new();
+        let d = 2;
+        algo.set_timing_method(TimeControl::Depth(d));
         for pos in Catalog::bratko_kopec().iter() {
             algo.new_game();
             algo.search(pos.board());
-            let pv = algo.tt.extract_pv(&algo.bm(), pos.board());
-            assert_eq!(algo.pv(), &pv, "{} != {}\n{}", algo.pv(), pv, algo);
+//            let pv = algo.tt.extract_pv(&algo.bm(), pos.board());
+            let pv = algo.tt.extract_pv(pos.board());
+            assert_eq!(algo.pv().len(), d as usize, "{} {}\n{}", algo.pv(), pv, algo);
+            assert_eq!(pv.len(), d as usize, "{} {}\n{}", algo.pv(), pv, algo);
+            // assert_eq!(algo.bm().uci(), pos.bm()?.uci());
             println!(">>>>>> {}", pv);
         }
-        //println!("TT\n{}\nEVAL\n{}\n", algo.tt, algo.eval.cache);
+        Ok(())
     }
 }

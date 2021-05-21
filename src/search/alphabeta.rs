@@ -26,10 +26,15 @@ impl Algo {
         self.search_stats.score =
             self.alphabeta_recursive(node.board, node.ply, node.alpha, node.beta, &Move::NULL_MOVE);
 
+        let pv = if self.tt.use_tt_for_pv {
+            self.tt.extract_pv(node.board)
+        } else {
+            self.pv_table.extract_pv()            
+        };
         self.search_stats.record_time_actual_and_completion_status(
             self.max_depth,
             !self.task_control.is_cancelled(),
-            self.pv_table.extract_pv(),
+            pv,
         );
     }
 

@@ -68,6 +68,18 @@ impl Catalog {
         ]
     }
 
+    pub fn end_games() -> Vec<Position> {
+        // http://wtharvey.com/m8n2.txt
+        let strs = &[
+            // https://www.stmintz.com/ccc/index.php?id=14581
+            "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1
+            bm Kb1;
+            dm 32;
+            id 'Lasker-Reichhelm Position Fine#70';",
+        ];
+        Position::parse_many_epd(strs).unwrap()
+    }
+
     pub fn pins() ->  Vec<Position> {
         let str = r#"
 k6b/8/n4N2/8/Rr1K1P1b/2R5/8/q7 w - - 0 1 id "PIN.01"; c0 "Pins"; Sq c3 f6;
