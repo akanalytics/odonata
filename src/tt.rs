@@ -393,8 +393,12 @@ impl TranspositionTable {
                             b.to_fen()
                         );
                         error!("Invalid move {} in tt for board position {}", mv, board.to_fen());
+                        println!("Invalid move {} in tt for board position {}", mv, board.to_fen());
                         return moves;
                     }
+                }
+                if moves.len() == 0 {
+                    println!("root node is {:?}", entry.node_type);
                 }
             }
             // println!("Unable to find hash {} after move {}", board.hash(), mv) ;
@@ -450,9 +454,8 @@ mod tests {
         let mut tt1 = TranspositionTable::new_with_mb(10);
         tt1.clear_and_resize();
         let board = Catalog::starting_position();
-        // let first = Move::new_quiet(Piece::Pawn, e2.square(), e4.square());
         let moves = tt1.extract_pv(&board);
-        assert_eq!(moves.uci(), "e2e4");
+        assert_eq!(moves.uci(), "");
         manipulate(&mut tt1);
 
         // triggers failed ownership panic
@@ -514,9 +517,9 @@ mod tests {
     fn tt_end_games() -> Result<(), String> {
         // //let mut tt1 = TranspositionTable::with_capacity(TranspositionTable::convert_mb_to_capacity(10));
         let mut algo = Algo::new();
-        algo.tt.mb = 512;
+        algo.tt.mb = 128;
         // use simple evaluation as we look at great depth
-        algo.eval.position = false;
+        algo.eval.position = true;
         algo.eval.mobility = false;
         algo.set_callback(Uci::uci_info);
         algo.set_timing_method(TimeControl::Depth(33));

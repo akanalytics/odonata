@@ -370,14 +370,15 @@ impl Uci {
     fn uci_stop(&mut self) -> Result<(), String> {
         self.algo.search_async_stop();
         // Self::uci_info(&self.algo);
-        self.uci_info_string("stopped");
+        // self.uci_info_string("stopped");
+        println!("bestmove {}", self.algo.bm().uci());
         Ok(())
     }
 
     pub fn uci_info(search_progress: &SearchProgress) {
         println!("info {}", UciInfo(search_progress));
         if let Some(bestmove) = search_progress.bestmove {
-            println!("bestmove {}", bestmove);
+            println!("bestmove {}", bestmove.uci());
         }
         io::stdout().flush().ok();
         info!("odonata -> gui: info {}", UciInfo(search_progress));

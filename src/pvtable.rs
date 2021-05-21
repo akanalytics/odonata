@@ -98,7 +98,7 @@ mod tests {
         let c1h1 = Move::parse_uci("c1h1").unwrap();
         pvc.set(0, &a1h1, false);
         pvc.set(1, &b1h1, false);
-        assert_eq!(format!("{}", pvc), "size             : 2\n  0:   a1h1     -\n  1:   b1h1\n");
+        assert_eq!(format!("{}", pvc), "size             : 2\n  0:   a1h1  0000\n  1:   b1h1\n");
         pvc.set(2, &c1h1, false);
         println!("{}", pvc);
 

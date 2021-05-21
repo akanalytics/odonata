@@ -258,7 +258,7 @@ impl Algo {
         self.search_stats().pv()
     }
 
-    pub fn search_async_stop(&mut self) {
+    pub fn search_async_stop(&mut self) -> bool {
         self.task_control.cancel();
         self.search_stats.user_cancelled = true;
         let handle = self.child_thread.0.take();
@@ -266,6 +266,9 @@ impl Algo {
             // wait for thread to cancel
             let algo = handle.join().unwrap();
             *self = algo;
+            return false;
+        } else {
+            return true;
             // self.tt = algo.tt.clone();
             // self.search_stats = algo.search_stats;
             // self.pv_table = algo.pv_table;

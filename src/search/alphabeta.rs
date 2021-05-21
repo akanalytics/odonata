@@ -110,7 +110,7 @@ impl Algo {
                     NodeType::All => {
                         // previously this position didnt raise alpha, the score is an upper bound
                         // if the score is still below alpha, this too is an ALL node
-                        if alpha >= entry.score {
+                        if entry.score <= alpha {
                             return entry.score;
                         }
                     }
@@ -216,7 +216,7 @@ mod tests {
                 .set_callback(Uci::uci_info)
                 .build();
             search.qsearch.see = true;
-            search.tt.enabled = false;
+            // search.tt.enabled = false;
             search.search(pos.board());
             println!("{}", search);
             assert_eq!(search.pv().to_string(), pos.pv()?.to_string(), "#{} {}", i, pos);

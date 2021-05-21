@@ -248,7 +248,7 @@ impl Move {
 
     pub fn uci(&self) -> String {
         if self.is_null() {
-            return String::from('-');
+            return String::from("0000");
         }
         let mut res = String::new();
         res.push_str(&self.from.uci());
@@ -573,7 +573,7 @@ mod tests {
 
     #[test]
     fn test_move() {
-        assert_eq!(Move::new_null().to_string(), "-");
+        assert_eq!(Move::new_null().to_string(), "0000");
 
         let move_a1b2 = Move {
             from: a1.square(),

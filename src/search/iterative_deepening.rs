@@ -148,11 +148,8 @@ impl Algo {
             self.search_stats.pv = last.pv.clone();
             self.search_stats.score = last.score;
         }
-
-        // callback
+        self.search_stats.pv.truncate(self.max_depth as usize);
         let sp = SearchProgress::from_best_move(Some(self.bm()));
         self.task_control.invoke_callback(&sp);
-        // info!("{}", self);
-        // self.pv = res.pv().clone();
     }
 }
