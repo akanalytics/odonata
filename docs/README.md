@@ -19,6 +19,9 @@ Odonata is running as a bot on Lichess. You can see her rankings and games here 
 ## Todo
 See [Todo](/docs/todo.md)
 
+## Changelog
+See [Changelog](/docs/changelog.md)
+
 ## Credits
 A thanks to my sons - Freddie, Oscar and Hector - for assistance with graphics, some design ideas and testing the engine play. 
 

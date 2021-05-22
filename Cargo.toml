@@ -1,6 +1,6 @@
 [package]
 name = "odonata"
-version = "0.3.13"
+version = "0.3.14"
 homepage = "https://github.com/akanalytics/odonata"
 authors = ["andy watkins"]
 edition = "2018"
@@ -12,6 +12,7 @@ repository = "https://github.com/akanalytics/odonata"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+clap = "2.33"
 bitflags = "1.2"
 arrayvec = "0.7"
 # lazy_static = "1.4"

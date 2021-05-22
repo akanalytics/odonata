@@ -24,7 +24,7 @@ impl Console {
                     uci.run();
                     break;
                 }
-                Some(&"exit") => {
+                Some(&"quit") => {
                     break;
                 }
                 Some(&"splash") => {
@@ -48,7 +48,7 @@ impl Console {
         println!("{} version {} by {}", Version::NAME, Version::VERSION, Version::AUTHORS);
         println!();
         println!("{:<10} {}", "uci", "enter uci protocol mode");
-        println!("{:<10} {}", "exit", "exit the program");
+        println!("{:<10} {}", "quit", "quit the program");
         println!("{:<10} {}", "splash", "splash screen");
         println!("{:<10} {}", "help", "display (this) help");
         println!();
