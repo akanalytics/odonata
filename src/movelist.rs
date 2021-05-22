@@ -7,7 +7,7 @@ use crate::types::{Color, Piece, Ply};
 use crate::bitboard::castling::CastlingRights;
 use crate::utils::StringUtils;
 use once_cell::sync::Lazy;
-use arrayvec::ArrayVec;
+// use arrayvec::ArrayVec;
 use regex::Regex;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
