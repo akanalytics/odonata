@@ -545,6 +545,11 @@ impl Square {
     }
 
     #[inline]
+    pub const fn len() -> usize {
+        64
+    }
+
+    #[inline]
     pub const fn all() -> Squares {
         Bitboard::all().squares()
     }

@@ -23,9 +23,9 @@ use std::fmt;
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Hasher {
     seed: u64,
-    squares: [[[u64; 64]; Piece::len()]; Color::len()], // [colour][piece][square]
+    squares: [[[u64; Square::len()]; Piece::len()]; Color::len()], // [colour][piece][square]
     side: u64,
-    castling: [u64; 4],
+    castling: [u64; CastlingRights::len()],
     ep: [u64; 8],
 }
 
@@ -75,9 +75,9 @@ impl Hasher {
         let mut rng = ChaChaRng::seed_from_u64(seed);
         let mut h = Hasher {
             seed,
-            squares: [[[0; 64]; Piece::len()]; Color::len()],
+            squares: [[[0; Square::len()]; Piece::len()]; Color::len()],
             side: 0,
-            castling: [0; 4],
+            castling: [0; CastlingRights::len()],
             ep: [0; 8],
         };
         // let i = rng.gen::<u64>();
@@ -91,6 +91,7 @@ impl Hasher {
         }
         h.side = rng.gen();
         rng.fill(&mut h.castling);
+        // h.castling[CastlingRights::NONE] = 0;
         rng.fill(&mut h.ep);
         h
     }
@@ -119,11 +120,14 @@ impl Hasher {
     pub fn hash_board(&self, b: &Board) -> Hash {
         counts::BOARD_HASH_COUNT.increment();
         let mut hash = b.color_us().chooser_wb(0, self.side);
+        // hash ^= self.castling[b.castling()];
+
         for &cr in CastlingRights::iter() {
             if b.castling().contains(cr) {
                 hash ^= self.castling[cr.index()];
             }
         }
+
         if !b.en_passant().is_empty() {
             hash ^= self.ep[b.en_passant().first_square().index() & 7];
         }
@@ -210,27 +214,28 @@ impl Hasher {
         //  if a piece moves TO (=capture) or FROM the rook squares - appropriate castling rights are lost
         //  if a piece moves FROM the kings squares, both castling rights are lost
         //  possible with a rook x rook capture that both sides lose castling rights
+        // hash ^= self.castling[m.castling_side()];
         if (m.from().as_bb() | m.to().as_bb()).intersects(CastlingRights::rook_and_king_squares()) {
             if (m.from() == e1.square() || m.from() == a1.square() || m.to() == a1.square())
                 && pre_move.castling().contains(CastlingRights::WHITE_QUEEN)
             {
-                hash ^= self.castling[CastlingRights::WHITE_QUEEN.index()];
+                hash ^= self.castling[CastlingRights::WHITE_QUEEN];
             }
             if (m.from() == e1.square() || m.from() == h1.square() || m.to() == h1.square())
                 && pre_move.castling().contains(CastlingRights::WHITE_KING)
             {
-                hash ^= self.castling[CastlingRights::WHITE_KING.index()];
+                hash ^= self.castling[CastlingRights::WHITE_KING];
             }
 
             if (m.from() == e8.square() || m.from() == a8.square() || m.to() == a8.square())
                 && pre_move.castling().contains(CastlingRights::BLACK_QUEEN)
             {
-                hash ^= self.castling[CastlingRights::BLACK_QUEEN.index()];
+                hash ^= self.castling[CastlingRights::BLACK_QUEEN];
             }
             if (m.from() == e8.square() || m.from() == h8.square() || m.to() == h8.square())
                 && pre_move.castling().contains(CastlingRights::BLACK_KING)
             {
-                hash ^= self.castling[CastlingRights::BLACK_KING.index()];
+                hash ^= self.castling[CastlingRights::BLACK_KING];
             }
         }
         hash

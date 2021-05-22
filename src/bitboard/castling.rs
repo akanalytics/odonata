@@ -15,10 +15,28 @@ bitflags! {
 }
 
 impl Default for CastlingRights {
+    #[inline]
     fn default() -> Self {
         Self::NONE
     }
 }
+
+
+impl<T> std::ops::Index<CastlingRights> for [T] {
+    type Output = T;
+    #[inline]
+    fn index(&self, cr: CastlingRights) -> &Self::Output {
+        unsafe { &self.get_unchecked(cr.index()) }
+    }
+}
+
+impl<T> std::ops::IndexMut<CastlingRights> for [T] {
+    #[inline]
+    fn index_mut(&mut self, cr: CastlingRights) -> &mut Self::Output {
+        &mut self[cr.index()]
+    }
+}
+
 
 impl CastlingRights {
     #[inline]
@@ -30,6 +48,18 @@ impl CastlingRights {
             Self::BLACK_QUEEN,
         ]
     }
+
+    #[inline]
+    pub const fn len() -> usize {
+        4
+    }
+
+
+    // #[inline]
+    // pub fn index(&self) -> usize {
+    //     self.bits() as usize
+    // }
+
 
     #[inline]
     pub fn index(&self) -> usize {

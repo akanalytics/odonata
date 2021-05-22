@@ -166,6 +166,7 @@ impl MoveMaker for Board {
         //  possible with a rook x rook capture that both sides lose castling rights
         let squares_changing = m.to().as_bb() | m.from().as_bb();
         b.castling.adjust( squares_changing);
+        // b.castling ^= m.castling_side();
 
         let move_hash = Hasher::default().hash_move(m, self);
         b.hash = self.hash ^ move_hash;
