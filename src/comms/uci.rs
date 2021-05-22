@@ -5,6 +5,7 @@ use crate::catalog::Catalog;
 use crate::config::{Config, Configurable};
 use crate::eval::score::Score;
 use crate::movelist::Move;
+use crate::clock::Clock;
 use crate::movelist::MoveValidator;
 use crate::perft::Perft;
 use crate::search::algo::Algo;
@@ -14,7 +15,7 @@ use crate::types::Ply;
 use crate::version::Version;
 use std::fmt;
 use std::io::{self, Write};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 //  see https://www.chessprogramming.org/CPW-Engine_com
 //
@@ -221,7 +222,9 @@ impl Uci {
             .or(Err(format!("Depth {} must be numeric", depth)))?;
         let mut board = Catalog::starting_position();
         for d in 1..=depth {
-            println!("info string perft({}) = {}", d, Perft::perft(&mut board, d));
+            let t = Instant::now();
+            let p = Perft::perft(&mut board, d);
+            println!("info string perft({}) = {:<12} in {}", d, p, Clock::format(t.elapsed()));
         }
         Ok(())
     }
