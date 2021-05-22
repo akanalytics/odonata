@@ -60,7 +60,10 @@ impl PvTable {
     pub fn extract_pv_for(&self, ply: Ply) -> MoveList {
         let mut res = MoveList::new();
         if let Some(pv) = self.matrix[ply as usize].get(1..self.size) {
-            res.extend(pv.iter().take_while(|m| !m.is_null()));
+            // res.extend(pv.iter().take_while(|m| !m.is_null()));
+            for mv in pv.iter().take_while(|m| !m.is_null()) {
+                res.push(*mv)
+            }
         }
         res
     }

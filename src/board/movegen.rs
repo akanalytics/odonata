@@ -181,26 +181,21 @@ impl Board {
         true
     }
 
+    #[inline]
+    pub fn legal_moves_into(&self, moves: &mut MoveList) {
+        counts::LEGAL_MOVE_COUNT.increment();
+        Rules::legals_for(self, moves);
+    }
+
+
+    #[inline]
     pub fn legal_moves(&self) -> MoveList {
         counts::LEGAL_MOVE_COUNT.increment();
         let mut moves = MoveList::new();
-        if true {
-            Rules::legals_for(self, &mut moves);
-        } else {
-            let b = self;
-            Rules::pawn_captures_incl_promo(b, &mut moves);
-            Rules::pawn_promos(b, &mut moves);
-            Rules::pawn_push(b, &mut moves);
-            Rules::non_pawn(Piece::Knight, b, &mut moves);
-            Rules::non_pawn(Piece::Bishop, b, &mut moves);
-            Rules::non_pawn(Piece::Rook, b, &mut moves);
-            Rules::non_pawn(Piece::Queen, b, &mut moves);
-            Rules::king_legal(b, &mut moves);
-            Rules::castles(b, &mut moves);
-            moves.retain(|m| self.is_legal_move(m));
-        }
+        Rules::legals_for(self, &mut moves);
         moves
     }
+
     pub fn legal_moves2(&self) -> MoveList {
         counts::LEGAL_MOVE_COUNT.increment();
         let mut moves = MoveList::new();

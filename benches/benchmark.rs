@@ -947,13 +947,13 @@ fn bench_moveordering(c: &mut Criterion) {
     };
     let mut movelists = vec![MoveList::new(); 100];
     for i in 0..100 {
-        movelists[i].extend([b1a2, b1a3, b1a4, a1a3, a1a4, a1a2].iter());
+        movelists[i].extend(vec![b1a2, b1a3, b1a4, a1a3, a1a4, a1a2]);
     }
 
     let mut pv = MoveList::new();
-    pv.extend([a1a2, a1a3, a1a4].iter());
+    pv.extend(vec![a1a2, a1a3, a1a4]);
     let mut variation = MoveList::new();
-    variation.extend([a1a2, a1a3, c1c2].iter());
+    variation.extend(vec![a1a2, a1a3, c1c2]);
 
     c.bench_function("move_orderer", |b| {
         b.iter(|| {

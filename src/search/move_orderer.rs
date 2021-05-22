@@ -151,11 +151,11 @@ mod tests {
         let c1c2 = Move { from: c1.square(), to: c2.square(), ..Default::default() };
 
         let mut moves_orig = MoveList::new();
-        moves_orig.extend([b1a2, b1a3, b1a4, a1a3, a1a4, a1a2].iter());
+        moves_orig.extend(vec![b1a2, b1a3, b1a4, a1a3, a1a4, a1a2]);
         assert_eq!(moves_orig.to_string(), "b1a2, b1a3, b1a4, a1a3, a1a4, a1a2");
 
         let mut pv = MoveList::new();
-        pv.extend([a1a2, a1a3, a1a4].iter());
+        pv.extend(vec![a1a2, a1a3, a1a4]);
 
         // if variation = empty, and pv = empty, no ordering
         let variation = MoveList::new();
@@ -172,14 +172,14 @@ mod tests {
         // variation strays from PV - no reordering
         // pv = a1a2 a1a3 a1a4   var = a1a2 c1c2
         let mut moves = moves_orig.clone();
-        variation.extend([a1a2, c1c2].iter());
+        variation.extend(vec![a1a2, c1c2]);
         Algo::order_from_prior_pv(&mut moves, &variation, &pv);
         assert_eq!(moves_orig.to_string(), "b1a2, b1a3, b1a4, a1a3, a1a4, a1a2");
 
         // variation strays from PV - no reordering
         // pv = a1a2 a1a3 a1a4   var = a1a2 a1a3 c1c2
         let mut variation = MoveList::new();
-        variation.extend([a1a2, a1a3, c1c2].iter());
+        variation.extend(vec![a1a2, a1a3, c1c2]);
         let mut moves = moves_orig.clone();
         Algo::order_from_prior_pv(&mut moves, &variation, &pv);
         assert_eq!(moves.to_string(), "b1a2, b1a3, b1a4, a1a3, a1a4, a1a2");
@@ -191,7 +191,7 @@ mod tests {
         // variation is PV[0] - use PV[1]
         // pv = a1a2 a1a3 a1a4   var = a1a2
         let mut variation = MoveList::new();
-        variation.extend([a1a2].iter());
+        variation.extend(vec![a1a2]);
         let mut moves = moves_orig.clone();
         Algo::order_from_prior_pv(&mut moves, &variation, &pv);
         assert_eq!(moves.to_string(), "a1a3, b1a3, b1a4, b1a2, a1a4, a1a2");
@@ -200,7 +200,7 @@ mod tests {
         // pv = a1a2 a1a3 a1a4   var = a1a2 a1a3
         let mut moves = moves_orig.clone();
         let mut variation = MoveList::new();
-        variation.extend([a1a2, a1a3].iter());
+        variation.extend(vec![a1a2, a1a3]);
         Algo::order_from_prior_pv(&mut moves, &variation, &pv);
         assert_eq!(moves.to_string(), "a1a4, b1a3, b1a4, a1a3, b1a2, a1a2");
 

@@ -7,6 +7,7 @@ use crate::types::{Color, Piece, Ply};
 use crate::bitboard::castling::CastlingRights;
 use crate::utils::StringUtils;
 use once_cell::sync::Lazy;
+use arrayvec::ArrayVec;
 use regex::Regex;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
@@ -140,7 +141,7 @@ impl Move {
             from,
             to,
             mover: p,
-            ..Default::default()
+            ..Self::default()
         }
     }
 
@@ -151,7 +152,7 @@ impl Move {
             to,
             ep: ep_square,
             mover: Piece::Pawn,
-            ..Default::default()
+            ..Self::default()
         }
     }
 
@@ -162,7 +163,7 @@ impl Move {
             to,
             mover: p,
             capture: captured,
-            ..Default::default()
+            ..Self::default()
         }
     }
 
@@ -178,7 +179,7 @@ impl Move {
             mover: Piece::Pawn,
             capture: Piece::Pawn,
             ep: captured_sq,
-            ..Default::default()
+            ..Self::default()
         }
     }
 
@@ -302,6 +303,8 @@ impl fmt::Display for Move {
 
 
 
+// moves: ArrayVec<Move,128>,
+// moves: ArrayVec::new(),
 
 
 
@@ -319,12 +322,13 @@ impl Default for MoveList {
     #[inline]
     fn default() -> Self {
         Self {
-            moves: Vec::with_capacity(50),
+            moves: Vec::with_capacity(60),
         }
     }
 }
 
 impl std::iter::FromIterator<Move> for MoveList {
+    #[inline]
     fn from_iter<I: IntoIterator<Item = Move>>(iter: I) -> Self {
         let mut ml = MoveList::new();
         for mv in iter {
@@ -340,6 +344,7 @@ impl MoveList {
         Self::default()
     }
 
+    #[inline]
     pub fn sort(&mut self) -> &mut Self {
         self.moves.sort_by_key(|m| m.to_string());
         self
@@ -359,8 +364,15 @@ impl MoveList {
         // root node is ply 0, so len==ply, so ply 1 gets stored in 0th element
         if self.moves.len() == ply && ply > 0 {
             self.moves[ply - 1] = *mv;
+        } else if ply < self.moves.len() {
+            self.moves.truncate(ply);
         } else {
-            self.moves.resize_with(ply, || *mv);
+            debug_assert!(ply > self.moves.len(), "Assert {} > {}", ply, self.moves.len() );
+            let len = ply - self.moves.len();
+            for _ in 0..len {
+                self.moves.push(*mv);
+            }
+            //self.moves.resize_with(ply, || *mv);
         }
     }
 }

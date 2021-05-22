@@ -13,7 +13,7 @@ repository = "https://github.com/akanalytics/odonata"
 
 [dependencies]
 bitflags = "1.2"
-# arrayvec = "0.5"
+arrayvec = "0.7"
 # lazy_static = "1.4"
 once_cell = "1.7"
 regex = "1.4"
