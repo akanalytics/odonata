@@ -1,7 +1,8 @@
-use clap::{App, Arg, SubCommand};
+use clap::{App, Arg};
 use env_logger;
 use odonata::comms::console::Console;
 use odonata::comms::uci::Uci;
+use odonata::comms::bench::Bench;
 use odonata::version::Version;
 
 // pub const VERSION: &'static str = env!("CARGO_PKG_VERSION");
@@ -10,7 +11,7 @@ use odonata::version::Version;
 // pub const HOMEPAGE: &'static str = env!("CARGO_PKG_HOMEPAGE");
 // pub const IMAGE: &'static str = r##"
 
-fn main() {
+fn main() -> Result<(), std::num::ParseIntError> {
     let matches = App::new(Version::NAME)
         .version(Version::VERSION)
         .author(Version::AUTHORS)
@@ -48,8 +49,10 @@ fn main() {
     if matches.is_present("uci") {
         Uci::new().run();
     } if let Some(depth) = matches.value_of("perft") {
-        println!("Depth {}", depth);
+        let depth = depth.parse::<u32>()?;
+        Bench::perft(depth);
     } else {
         Console::run();
     }
+    Ok(())
 }
