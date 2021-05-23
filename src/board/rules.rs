@@ -42,25 +42,28 @@ impl Rules {
     }
 
     pub fn king_legal(b: &Board, moves: &mut MoveList) {
+        let us = b.us();
+        let our_kings = b.kings() & us;
+        if our_kings.is_empty() {
+            return;
+        }
         let attack_gen = BitboardDefault::default();
         let them = b.them();
-        let us = b.us();
         let occ = b.occupied();
         let our_kings = b.kings() & us;
+        let king_sq = (b.kings() & us).square();
+        let king_att = attack_gen.king_attacks(king_sq);
         let king_danger = BoardCalcs::threats_to(b, b.color_us(), occ - our_kings);
-        if !our_kings.is_empty() {
-            let king_sq = (b.kings() & us).square();
-            // let attacks =
-            //     attack_gen.non_pawn_attacks(b.color_us(), Piece::King, us, them, king_sq) & !us - king_danger;
-            let attacks = attack_gen.king_attacks(king_sq) & !us - king_danger;
-            moves.extend(attacks.squares().map(|to| {
-                if to.is_in(them) {
-                    Move::new_capture(Piece::King, king_sq, to, b.piece_at(to.as_bb())).set_legal()
-                } else {
-                    Move::new_quiet(Piece::King, king_sq, to).set_legal()
-                }
-            }))
-        }
+        // let attacks =
+        //     attack_gen.non_pawn_attacks(b.color_us(), Piece::King, us, them, king_sq) & !us - king_danger;
+        let attacks = king_att & !us - king_danger;
+        moves.extend(attacks.squares().map(|to| {
+            if to.is_in(them) {
+                Move::new_capture(Piece::King, king_sq, to, b.piece_at(to.as_bb())).set_legal()
+            } else {
+                Move::new_quiet(Piece::King, king_sq, to).set_legal()
+            }
+        }))
     }
 
     // // e/p pawn_captures
@@ -130,7 +133,7 @@ impl Rules {
         }
     }
 
-    fn add_moves_en_passant(b: &Board, moves: &mut MoveList) {
+    pub fn add_moves_en_passant(b: &Board, moves: &mut MoveList) {
         if b.en_passant().is_empty() {
             return;
         }
@@ -256,7 +259,7 @@ impl Rules {
         let rights = b.castling();
 
         let right = CastlingRights::king_side_right(c);
-        if rights.contains(right) && !CastlingRights::king_side_squares(c).intersects(occ) && !king.is_empty()
+        if rights.contains(right) && !CastlingRights::king_side_squares(c).intersects(occ) 
         {
             let rook_to = king.shift(Dir::E);
             let king_to = rook_to.shift(Dir::E);
@@ -277,7 +280,6 @@ impl Rules {
         let right = CastlingRights::queen_side_right(c);
         if rights.contains(right)
             && !CastlingRights::queen_side_squares(c).intersects(occ)
-            && !king.is_empty()
         {
             let rook_to = king.shift(Dir::W);
             let king_to = rook_to.shift(Dir::W);

@@ -5,6 +5,7 @@ use crate::search::algo::Algo;
 use crate::search::timecontrol::TimeControl;
 // use env_logger;
 use std::time::{Instant};
+use crate::globals::counts;
 
 pub struct Bench;
 
@@ -16,6 +17,8 @@ impl Bench {
             let p = Perft::perft(&mut board, d);
             println!("perft({}) = {:<12} in {}", d, p, Clock::format(t.elapsed()));
         }
+        println!("\nstatistics\n{}", counts::GLOBAL_COUNTS);
+
     }
 
     pub fn search() {

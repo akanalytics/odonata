@@ -1,8 +1,12 @@
 use criterion::*;
-use odonata::bitboard::bitboard::*;
-use odonata::board::makemove::*;
+use odonata::bitboard::attacks::BitboardAttacks;
 use odonata::bitboard::attacks::*;
+use odonata::bitboard::bb_classical::ClassicalBitboard;
+use odonata::bitboard::bb_hyperbola::Hyperbola;
+use odonata::bitboard::bitboard::*;
 use odonata::board::boardcalcs::*;
+use odonata::board::makemove::*;
+use odonata::board::rules::*;
 use odonata::board::*;
 use odonata::catalog::*;
 use odonata::eval::eval::*;
@@ -13,20 +17,13 @@ use odonata::material::*;
 use odonata::movelist::*;
 use odonata::perft::Perft;
 use odonata::pvtable::*;
-use odonata::tt::{TranspositionTable, Entry, NodeType};
 use odonata::search::algo::Algo;
 use odonata::search::timecontrol::TimeControl;
+use odonata::tt::{Entry, NodeType, TranspositionTable};
 use odonata::types::*;
 use odonata::utils::*;
-use std::time::Instant;
 use std::sync::atomic::{AtomicU64, Ordering};
-use odonata::bitboard::attacks::{BitboardAttacks};
-use odonata::bitboard::bb_classical::ClassicalBitboard;
-use odonata::bitboard::bb_hyperbola::Hyperbola;
-
-
-
-
+use std::time::Instant;
 
 criterion_group!(
     benches,
@@ -219,7 +216,6 @@ fn legal_moves(c: &mut Criterion) {
     });
 }
 
-
 fn sq_calcs(c: &mut Criterion) {
     let mut group = c.benchmark_group("sq_calcs");
     // let bbs: Vec<Bitboard> = (0..64).into_iter().map(|sq| Bitboard::from_sq(sq)).collect();
@@ -230,10 +226,12 @@ fn sq_calcs(c: &mut Criterion) {
             let t = Instant::now();
             for _ in 0..n {
                 for s1 in Bitboard::all().squares() {
-                black_box(Bitboard::all().squares()
-                    .map( |s2|
-                    black_box(bb.between(s1, s2)))
-                    .count());
+                    black_box(
+                        Bitboard::all()
+                            .squares()
+                            .map(|s2| black_box(bb.between(s1, s2)))
+                            .count(),
+                    );
                 }
             }
             t.elapsed() / (64 * 64) as u32
@@ -244,10 +242,12 @@ fn sq_calcs(c: &mut Criterion) {
             let t = Instant::now();
             for _ in 0..n {
                 for s1 in Bitboard::all().squares() {
-                    black_box(Bitboard::all().squares()
-                    .map( |s2|
-                        black_box(Square::calc_line_through(s1, s2)))
-                        .count());
+                    black_box(
+                        Bitboard::all()
+                            .squares()
+                            .map(|s2| black_box(Square::calc_line_through(s1, s2)))
+                            .count(),
+                    );
                 }
             }
             t.elapsed() / (64 * 64) as u32
@@ -258,10 +258,12 @@ fn sq_calcs(c: &mut Criterion) {
             let t = Instant::now();
             for _ in 0..n {
                 for s1 in Bitboard::all().squares() {
-                    black_box(Bitboard::all().squares()
-                    .map( |s2|
-                        black_box(Square::bounding_rectangle(s1, s2)))
-                        .count());
+                    black_box(
+                        Bitboard::all()
+                            .squares()
+                            .map(|s2| black_box(Square::bounding_rectangle(s1, s2)))
+                            .count(),
+                    );
                 }
             }
             t.elapsed() / (64 * 64) as u32
@@ -285,7 +287,6 @@ fn bb_calcs(c: &mut Criterion) {
             t.elapsed() / 64 as u32
         })
     });
-
 
     group.bench_function("first_squareX", |b| {
         b.iter_custom(|n| {
@@ -413,10 +414,10 @@ fn board_calcs(c: &mut Criterion) {
 
     group.bench_function("tt_store", |b| {
         let entry = Entry {
-            score : Score::Cp(100),
+            score: Score::Cp(100),
             draft: 1,
             node_type: NodeType::Pv,
-            bm: Move::NULL_MOVE,            
+            bm: Move::NULL_MOVE,
         };
         b.iter_custom(|n| {
             let t = Instant::now();
@@ -485,8 +486,16 @@ fn board_calcs(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             bams.iter().cycle_n(n).for_each(|bam| {
-                black_box(BoardCalcs::threats_to(black_box(&bam.0), Color::White, bam.0.occupied()));
-                black_box(BoardCalcs::threats_to(black_box(&bam.0), Color::Black, bam.0.occupied()));
+                black_box(BoardCalcs::threats_to(
+                    black_box(&bam.0),
+                    Color::White,
+                    bam.0.occupied(),
+                ));
+                black_box(BoardCalcs::threats_to(
+                    black_box(&bam.0),
+                    Color::Black,
+                    bam.0.occupied(),
+                ));
             });
             t.elapsed() / 2 / positions.len() as u32
         })
@@ -584,21 +593,82 @@ fn benchmark_eval(c: &mut Criterion) {
     group.finish();
 }
 
-
 fn benchmark_attacks(c: &mut Criterion) {
     let mut group = c.benchmark_group("attacks");
     let positions = &Catalog::win_at_chess();
     let cb = ClassicalBitboard::default();
     let hq = Hyperbola::default();
 
+    group.bench_function("rules.king_legal", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            let mut list = MoveList::new();
+            let mut count = 0;
+            positions.iter().cycle_n(n).for_each(|p| {
+                count += 1;
+                let b = p.board().clone(); // caching
+                black_box(Rules::king_legal(&b, &mut list));
+                list.truncate(0);
+            });
+            t.elapsed() / (count as u32 / n as u32)
+        })
+    });
+
+    group.bench_function("rules.castles", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            let mut list = MoveList::new();
+            let mut count = 0;
+            positions.iter().cycle_n(n).for_each(|p| {
+                count += 1;
+                let b = p.board().clone(); // caching
+                black_box(Rules::castles(&b, &mut list));
+                list.truncate(0);
+            });
+            t.elapsed() / (count as u32 / n as u32)
+        })
+    });
+
+    group.bench_function("boardcalcs.pinned", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            let mut count = 0;
+            positions.iter().cycle_n(n).for_each(|p| {
+                count += 2;
+                black_box(BoardCalcs::pinned(p.board(), Color::White));
+                black_box(BoardCalcs::pinned(p.board(), Color::Black));
+            });
+            t.elapsed() / (count as u32 / n as u32)
+        })
+    });
+
+    group.bench_function("boardcalcs.checkers_of", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            let mut count = 0;
+            positions.iter().cycle_n(n).for_each(|p| {
+                count += 2;
+                black_box(BoardCalcs::checkers_of(p.board(), Color::White));
+                black_box(BoardCalcs::checkers_of(p.board(), Color::Black));
+            });
+            t.elapsed() / (count as u32 / n as u32)
+        })
+    });
+
     group.bench_function("classical.bishop", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
             let mut count = 0;
             positions.iter().cycle_n(n).for_each(|p| {
-                count  += p.board().bishops().popcount();
+                count += p.board().bishops().popcount();
                 let occ = p.board().black() | p.board().white();
-                black_box(p.board().bishops().squares().map(|b| cb.bishop_attacks(occ, b).popcount() as i32).sum::<i32>());
+                black_box(
+                    p.board()
+                        .bishops()
+                        .squares()
+                        .map(|b| cb.bishop_attacks(occ, b).popcount() as i32)
+                        .sum::<i32>(),
+                );
             });
             t.elapsed() / (count as u32 / n as u32)
         })
@@ -609,9 +679,15 @@ fn benchmark_attacks(c: &mut Criterion) {
             let t = Instant::now();
             let mut count = 0;
             positions.iter().cycle_n(n).for_each(|p| {
-                count  += p.board().rooks().popcount();
+                count += p.board().rooks().popcount();
                 let occ = p.board().black() | p.board().white();
-                black_box(p.board().rooks().squares().map(|b| cb.rook_attacks(occ, b).popcount() as i32).sum::<i32>());
+                black_box(
+                    p.board()
+                        .rooks()
+                        .squares()
+                        .map(|b| cb.rook_attacks(occ, b).popcount() as i32)
+                        .sum::<i32>(),
+                );
             });
             t.elapsed() / (count as u32 / n as u32)
         })
@@ -622,11 +698,17 @@ fn benchmark_attacks(c: &mut Criterion) {
             let t = Instant::now();
             let mut count = 0;
             positions.iter().cycle_n(n).for_each(|p| {
-                count  += p.board().knights().popcount();
+                count += p.board().knights().popcount();
                 let _occ = p.board().black() | p.board().white();
-                black_box(p.board().knights().squares().map(|b| cb.knight_attacks(b).popcount() as i32).sum::<i32>());
+                black_box(
+                    p.board()
+                        .knights()
+                        .squares()
+                        .map(|b| cb.knight_attacks(b).popcount() as i32)
+                        .sum::<i32>(),
+                );
             });
-            t.elapsed() / (count as u32 / n as u32)  
+            t.elapsed() / (count as u32 / n as u32)
         })
     });
 
@@ -635,9 +717,15 @@ fn benchmark_attacks(c: &mut Criterion) {
             let t = Instant::now();
             let mut count = 0;
             positions.iter().cycle_n(n).for_each(|p| {
-                count  += p.board().bishops().popcount();
+                count += p.board().bishops().popcount();
                 let occ = p.board().black() | p.board().white();
-                black_box(p.board().bishops().squares().map(|b| hq.bishop_attacks(occ, b).popcount() as i32).sum::<i32>());
+                black_box(
+                    p.board()
+                        .bishops()
+                        .squares()
+                        .map(|b| hq.bishop_attacks(occ, b).popcount() as i32)
+                        .sum::<i32>(),
+                );
             });
             t.elapsed() / (count as u32 / n as u32)
         })
@@ -648,9 +736,78 @@ fn benchmark_attacks(c: &mut Criterion) {
             let t = Instant::now();
             let mut count = 0;
             positions.iter().cycle_n(n).for_each(|p| {
-                count  += p.board().rooks().popcount();
+                count += p.board().rooks().popcount();
                 let occ = p.board().black() | p.board().white();
-                black_box(p.board().rooks().squares().map(|b| hq.rook_attacks(occ, b).popcount() as i32).sum::<i32>());
+                black_box(
+                    p.board()
+                        .rooks()
+                        .squares()
+                        .map(|b| hq.rook_attacks(occ, b).popcount() as i32)
+                        .sum::<i32>(),
+                );
+            });
+            t.elapsed() / (count as u32 / n as u32)
+        })
+    });
+
+    group.bench_function("hyperbola.queen", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            let mut count = 0;
+            positions.iter().cycle_n(n).for_each(|p| {
+                count += p.board().queens().popcount();
+                let occ = p.board().black() | p.board().white();
+                black_box(
+                    p.board()
+                        .rooks()
+                        .squares()
+                        .map(|b| (hq.rook_attacks(occ, b) | hq.rook_attacks(occ, b)).popcount() as i32)
+                        .sum::<i32>(),
+                );
+            });
+            t.elapsed() / (count as u32 / n as u32)
+        })
+    });
+
+    group.bench_function("hyperbola.king", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            let mut count = 0;
+            positions.iter().cycle_n(n).for_each(|p| {
+                count += p.board().kings().popcount();
+                black_box(
+                    p.board()
+                        .kings()
+                        .squares()
+                        .map(|b| hq.king_attacks(b).popcount() as i32)
+                        .sum::<i32>(),
+                );
+            });
+            t.elapsed() / (count as u32 / n as u32)
+        })
+    });
+
+    group.bench_function("hyperbola.pawn", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            let mut count = 0;
+            positions.iter().cycle_n(n).for_each(|p| {
+                let pawns = p.board().pawns() & p.board().us();
+                count += pawns.popcount();
+                black_box(
+                    pawns
+                        .squares()
+                        .map(|s| {
+                            Hyperbola::pawn_attacks_ext(
+                                p.board().color_us(),
+                                p.board().us(),
+                                p.board().them(),
+                                s,
+                            )
+                            .popcount() as i32
+                        })
+                        .sum::<i32>(),
+                );
             });
             t.elapsed() / (count as u32 / n as u32)
         })
@@ -661,16 +818,21 @@ fn benchmark_attacks(c: &mut Criterion) {
             let t = Instant::now();
             let mut count = 0;
             positions.iter().cycle_n(n).for_each(|p| {
-                count  += p.board().knights().popcount();
+                count += p.board().knights().popcount();
                 let _occ = p.board().black() | p.board().white();
-                black_box(p.board().knights().squares().map(|b| hq.knight_attacks(b).popcount() as i32).sum::<i32>());
+                black_box(
+                    p.board()
+                        .knights()
+                        .squares()
+                        .map(|b| hq.knight_attacks(b).popcount() as i32)
+                        .sum::<i32>(),
+                );
             });
             t.elapsed() / (count as u32 / n as u32)
         })
     });
     group.finish();
 }
-
 
 fn bench_chooser_array(c: &mut Criterion) {
     let white = Color::White;
@@ -741,9 +903,7 @@ fn benchmark_search(c: &mut Criterion) {
         b.iter(|| {
             let board = Catalog::starting_position();
             // let eval = SimpleScorer::new().set_position();
-            let mut search = Algo::new()
-                .set_timing_method(TimeControl::Depth(5))
-                .build();
+            let mut search = Algo::new().set_timing_method(TimeControl::Depth(5)).build();
             search.new_game();
             black_box(search.search(&board));
         });
@@ -752,9 +912,7 @@ fn benchmark_search(c: &mut Criterion) {
         b.iter(|| {
             let pos = Catalog::test_position();
             // let eval = SimpleScorer::new().set_position(false);
-            let mut search = Algo::new()
-                .set_timing_method(TimeControl::Depth(5))
-                .build();
+            let mut search = Algo::new().set_timing_method(TimeControl::Depth(5)).build();
             search.new_game();
             black_box(search.search(pos.board()));
         });
@@ -844,9 +1002,8 @@ fn bench_pvtable(c: &mut Criterion) {
     });
 }
 
-use rand::thread_rng;
 use rand::seq::SliceRandom;
-
+use rand::thread_rng;
 
 fn bench_shared_mem(c: &mut Criterion) {
     let mut group = c.benchmark_group("shared_mem");
@@ -854,29 +1011,27 @@ fn bench_shared_mem(c: &mut Criterion) {
     //let atomic_array: Vec<AtomicU64> = vec![];
     // let atomic = AtomicU64::new(0);
 
-    const N :usize = 200_000;
+    const N: usize = 200_000;
     let mut vec = Vec::with_capacity(N);
-    (0..N).into_iter().for_each(|i| vec.push(AtomicU64::new(i as u64)));
+    (0..N)
+        .into_iter()
+        .for_each(|i| vec.push(AtomicU64::new(i as u64)));
     let atomic_array = vec.into_boxed_slice();
-    
     let mut rng = thread_rng();
-    let mut shuf : Vec<usize> = (0..N).map(|i| i).collect();
+    let mut shuf: Vec<usize> = (0..N).map(|i| i).collect();
     shuf.shuffle(&mut rng);
-    
-    
     group.bench_function("atomic_u64_relaxed", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
             (0..100_000).cycle_n(n).for_each(|i| {
                 black_box(atomic_array[black_box(shuf[i as usize])].store(black_box(1), Ordering::Relaxed));
-                black_box(atomic_array[black_box(shuf[N-1-i as usize])].load(Ordering::Relaxed));
+                black_box(atomic_array[black_box(shuf[N - 1 - i as usize])].load(Ordering::Relaxed));
             });
             t.elapsed() / (2 * 100_000) as u32
         });
     });
     group.finish();
 }
-
 
 fn cache_eval(c: &mut Criterion) {
     let mut group = c.benchmark_group("cache_eval");
@@ -906,8 +1061,6 @@ fn cache_eval(c: &mut Criterion) {
     });
     group.finish();
 }
-
-
 
 fn bench_moveordering(c: &mut Criterion) {
     let a1a2 = Move {
@@ -967,5 +1120,3 @@ fn bench_moveordering(c: &mut Criterion) {
         });
     });
 }
-
-

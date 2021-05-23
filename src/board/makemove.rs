@@ -8,6 +8,10 @@ use crate::bitboard::castling::CastlingRights;
 
 use std::cell::Cell;
 
+
+
+
+
 pub trait MoveMaker {
     fn make_move(&self, m: &Move) -> Board;
     fn undo_move(&self, m: &Move);
