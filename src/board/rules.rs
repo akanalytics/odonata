@@ -50,8 +50,9 @@ impl Rules {
         let king_danger = BoardCalcs::threats_to(b, b.color_us(), occ - our_kings);
         if !our_kings.is_empty() {
             let king_sq = (b.kings() & us).square();
-            let attacks =
-                attack_gen.non_pawn_attacks(b.color_us(), Piece::King, us, them, king_sq) & !us - king_danger;
+            // let attacks =
+            //     attack_gen.non_pawn_attacks(b.color_us(), Piece::King, us, them, king_sq) & !us - king_danger;
+            let attacks = attack_gen.king_attacks(king_sq) & !us - king_danger;
             moves.extend(attacks.squares().map(|to| {
                 if to.is_in(them) {
                     Move::new_capture(Piece::King, king_sq, to, b.piece_at(to.as_bb())).set_legal()
@@ -192,6 +193,7 @@ impl Rules {
         }
     }
 
+    #[inline]
     fn add_moves_pawn_promo(dests: Bitboard, fr: Square, b: &Board, moves: &mut MoveList) {
         for to in dests.squares() {
             if to.is_in(b.them()) {
@@ -210,6 +212,7 @@ impl Rules {
         }
     }
 
+    #[inline]
     fn add_moves_pawn(dests: Bitboard, fr: Square, b: &Board, moves: &mut MoveList) {
         let p = Piece::Pawn;
         for to in dests.squares() {

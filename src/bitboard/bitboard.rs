@@ -1,5 +1,6 @@
-use std::fmt::{self, Write};
 use std::cmp;
+use std::fmt::{self, Write};
+use std::ops;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct Dir {
@@ -66,7 +67,6 @@ impl Dir {
         self.index as usize
     }
 
-
     #[inline]
     pub const fn rotate_clockwise(self) -> Dir {
         Dir::ALL[(self.index() + 1) % 8]
@@ -78,15 +78,13 @@ impl Dir {
     }
 }
 
-
 impl<T> std::ops::Index<Dir> for [T] {
     type Output = T;
     #[inline]
     fn index(&self, d: Dir) -> &Self::Output {
-            unsafe { &self.get_unchecked(d.index()) }
-        }
+        unsafe { &self.get_unchecked(d.index()) }
+    }
 }
-
 
 impl<T> std::ops::IndexMut<Dir> for [T] {
     #[inline]
@@ -95,34 +93,223 @@ impl<T> std::ops::IndexMut<Dir> for [T] {
     }
 }
 
+#[derive(Copy, Clone, Default, PartialOrd, PartialEq, Ord, Eq, Hash)]
+pub struct Bitboard(u64);
+
+impl Bitboard {
+    pub const EMPTY: Bitboard = Bitboard(0);
+    pub const A1: Bitboard = Bitboard(1 << 0);
+    pub const B1: Bitboard = Bitboard(1 << 1);
+    pub const C1: Bitboard = Bitboard(1 << 2);
+    pub const D1: Bitboard = Bitboard(1 << 3);
+    pub const E1: Bitboard = Bitboard(1 << 4);
+    pub const F1: Bitboard = Bitboard(1 << 5);
+    pub const G1: Bitboard = Bitboard(1 << 6);
+    pub const H1: Bitboard = Bitboard(1 << 7);
+    pub const A2: Bitboard = Bitboard(1 << 8);
+    pub const B2: Bitboard = Bitboard(1 << 9);
+    pub const C2: Bitboard = Bitboard(1 << 10);
+    pub const D2: Bitboard = Bitboard(1 << 11);
+    pub const E2: Bitboard = Bitboard(1 << 12);
+    pub const F2: Bitboard = Bitboard(1 << 13);
+    pub const G2: Bitboard = Bitboard(1 << 14);
+    pub const H2: Bitboard = Bitboard(1 << 15);
+    pub const A3: Bitboard = Bitboard(1 << 16);
+    pub const B3: Bitboard = Bitboard(1 << 17);
+    pub const C3: Bitboard = Bitboard(1 << 18);
+    pub const D3: Bitboard = Bitboard(1 << 19);
+    pub const E3: Bitboard = Bitboard(1 << 20);
+    pub const F3: Bitboard = Bitboard(1 << 21);
+    pub const G3: Bitboard = Bitboard(1 << 22);
+    pub const H3: Bitboard = Bitboard(1 << 23);
+    pub const A4: Bitboard = Bitboard(1 << 24);
+    pub const B4: Bitboard = Bitboard(1 << 25);
+    pub const C4: Bitboard = Bitboard(1 << 26);
+    pub const D4: Bitboard = Bitboard(1 << 27);
+    pub const E4: Bitboard = Bitboard(1 << 28);
+    pub const F4: Bitboard = Bitboard(1 << 29);
+    pub const G4: Bitboard = Bitboard(1 << 30);
+    pub const H4: Bitboard = Bitboard(1 << 31);
+    pub const A5: Bitboard = Bitboard(1 << 32);
+    pub const B5: Bitboard = Bitboard(1 << 33);
+    pub const C5: Bitboard = Bitboard(1 << 34);
+    pub const D5: Bitboard = Bitboard(1 << 35);
+    pub const E5: Bitboard = Bitboard(1 << 36);
+    pub const F5: Bitboard = Bitboard(1 << 37);
+    pub const G5: Bitboard = Bitboard(1 << 38);
+    pub const H5: Bitboard = Bitboard(1 << 39);
+    pub const A6: Bitboard = Bitboard(1 << 40);
+    pub const B6: Bitboard = Bitboard(1 << 41);
+    pub const C6: Bitboard = Bitboard(1 << 42);
+    pub const D6: Bitboard = Bitboard(1 << 43);
+    pub const E6: Bitboard = Bitboard(1 << 44);
+    pub const F6: Bitboard = Bitboard(1 << 45);
+    pub const G6: Bitboard = Bitboard(1 << 46);
+    pub const H6: Bitboard = Bitboard(1 << 47);
+    pub const A7: Bitboard = Bitboard(1 << 48);
+    pub const B7: Bitboard = Bitboard(1 << 49);
+    pub const C7: Bitboard = Bitboard(1 << 50);
+    pub const D7: Bitboard = Bitboard(1 << 51);
+    pub const E7: Bitboard = Bitboard(1 << 52);
+    pub const F7: Bitboard = Bitboard(1 << 53);
+    pub const G7: Bitboard = Bitboard(1 << 54);
+    pub const H7: Bitboard = Bitboard(1 << 55);
+    pub const A8: Bitboard = Bitboard(1 << 56);
+    pub const B8: Bitboard = Bitboard(1 << 57);
+    pub const C8: Bitboard = Bitboard(1 << 58);
+    pub const D8: Bitboard = Bitboard(1 << 59);
+    pub const E8: Bitboard = Bitboard(1 << 60);
+    pub const F8: Bitboard = Bitboard(1 << 61);
+    pub const G8: Bitboard = Bitboard(1 << 62);
+    pub const H8: Bitboard = Bitboard(1 << 63);
+
+    pub const FILE_A: Bitboard = Bitboard(
+        Self::A1.bits()
+            | Self::A2.bits()
+            | Self::A3.bits()
+            | Self::A4.bits()
+            | Self::A5.bits()
+            | Self::A6.bits()
+            | Self::A7.bits()
+            | Self::A8.bits(),
+    );
+    pub const RANK_1: Bitboard = Bitboard(
+        Self::A1.bits()
+            | Self::B1.bits()
+            | Self::C1.bits()
+            | Self::D1.bits()
+            | Self::E1.bits()
+            | Self::F1.bits()
+            | Self::G1.bits()
+            | Self::H1.bits(),
+    );
+    pub const FILE_B: Bitboard = Bitboard(Self::FILE_A.bits() << 1);
+    pub const RANK_2: Bitboard = Bitboard(Self::RANK_1.bits() << 8);
+    pub const FILE_C: Bitboard = Bitboard(Self::FILE_A.bits() << 2);
+    pub const RANK_3: Bitboard = Bitboard(Self::RANK_1.bits() << (2 * 8));
+    pub const FILE_D: Bitboard = Bitboard(Self::FILE_A.bits() << 3);
+    pub const RANK_4: Bitboard = Bitboard(Self::RANK_1.bits() << (3 * 8));
+    pub const FILE_E: Bitboard = Bitboard(Self::FILE_A.bits() << 4);
+    pub const RANK_5: Bitboard = Bitboard(Self::RANK_1.bits() << (4 * 8));
+    pub const FILE_F: Bitboard = Bitboard(Self::FILE_A.bits() << 5);
+    pub const RANK_6: Bitboard = Bitboard(Self::RANK_1.bits() << (5 * 8));
+    pub const FILE_G: Bitboard = Bitboard(Self::FILE_A.bits() << 6);
+    pub const RANK_7: Bitboard = Bitboard(Self::RANK_1.bits() << (6 * 8));
+    pub const FILE_H: Bitboard = Bitboard(Self::FILE_A.bits() << 7);
+    pub const RANK_8: Bitboard = Bitboard(Self::RANK_1.bits() << (7 * 8));
+}
+
+
+impl fmt::Binary for Bitboard {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:b}", self.0)
+    }
+}
+
+
+impl fmt::Debug for Bitboard {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut elements = Vec::new();
+        for e in Square::all() {
+            if e.is_in(*self) {
+                elements.push(e.to_string().to_ascii_uppercase());
+            }
+        }
+        for (i, &e) in Self::FILES.iter().enumerate() {
+            if self.contains(e) {
+                elements.push(format!("FILE_{}", char::from(b'A' + i as u8)));
+            }
+        }
+        for (i, &e) in Self::RANKS.iter().enumerate() {
+            if self.contains(e) {
+                elements.push(format!("RANK_{}", i+1));
+            }
+        }
+        write!(f,"{}", elements.join(" | "))
+    }
+}
 
 
 
+impl ops::Shl<u8> for Bitboard {
+    type Output = Bitboard;
 
-// generated from https://docs.google.com/spreadsheets/d/1TB2TKX04VsR10CLNLDIvrufm6wSJOttXOyPNKndU4N0/edit?usp=sharing
-#[rustfmt::skip]
-bitflags! {
-    #[derive(Default)]
-    pub struct Bitboard: u64 {
-        const EMPTY = 0;
-        const A1 = 1 << 0; 	const B1 = 1 << 1; const	C1 = 1 << 2; const	D1 = 1 << 3; const	E1 = 1 << 4; const	F1 = 1 << 5; const	G1 = 1 << 6; const	H1 = 1 << 7; const
-        A2 = 1 << 8; const	B2 = 1 << 9; const	C2 = 1 << 10; const	D2 = 1 << 11; const	E2 = 1 << 12; const	F2 = 1 << 13; const	G2 = 1 << 14; const	H2 = 1 << 15; const
-        A3 = 1 << 16; const	B3 = 1 << 17; const	C3 = 1 << 18; const	D3 = 1 << 19; const	E3 = 1 << 20; const	F3 = 1 << 21; const	G3 = 1 << 22; const	H3 = 1 << 23; const
-        A4 = 1 << 24; const	B4 = 1 << 25; const	C4 = 1 << 26; const	D4 = 1 << 27; const	E4 = 1 << 28; const	F4 = 1 << 29; const	G4 = 1 << 30; const	H4 = 1 << 31; const
-        A5 = 1 << 32; const	B5 = 1 << 33; const	C5 = 1 << 34; const	D5 = 1 << 35; const	E5 = 1 << 36; const	F5 = 1 << 37; const	G5 = 1 << 38; const	H5 = 1 << 39; const
-        A6 = 1 << 40; const	B6 = 1 << 41; const	C6 = 1 << 42; const	D6 = 1 << 43; const	E6 = 1 << 44; const	F6 = 1 << 45; const	G6 = 1 << 46; const	H6 = 1 << 47; const
-        A7 = 1 << 48; const	B7 = 1 << 49; const	C7 = 1 << 50; const	D7 = 1 << 51; const	E7 = 1 << 52; const	F7 = 1 << 53; const	G7 = 1 << 54; const	H7 = 1 << 55; const
-        A8 = 1 << 56; const	B8 = 1 << 57; const	C8 = 1 << 58; const	D8 = 1 << 59; const	E8 = 1 << 60; const	F8 = 1 << 61; const	G8 = 1 << 62; const	H8 = 1 << 63;
+    #[inline]
+    fn shl(self, s: u8) -> Bitboard {
+        Bitboard(self.0 << s)
+    }
+}
 
-        const FILE_A = Self::A1.bits | Self::A2.bits | Self::A3.bits | Self::A4.bits | Self::A5.bits | Self::A6.bits | Self::A7.bits | Self::A8.bits;
-        const RANK_1 = Self::A1.bits | Self::B1.bits | Self::C1.bits | Self::D1.bits | Self::E1.bits | Self::F1.bits | Self::G1.bits | Self::H1.bits;
-        const FILE_B = Self::FILE_A.bits << 1; const RANK_2 = Self::RANK_1.bits << 8;
-        const FILE_C = Self::FILE_A.bits << 2; const RANK_3 = Self::RANK_1.bits << (2*8);
-        const FILE_D = Self::FILE_A.bits << 3; const RANK_4 = Self::RANK_1.bits << (3*8);
-        const FILE_E = Self::FILE_A.bits << 4; const RANK_5 = Self::RANK_1.bits << (4*8);
-        const FILE_F = Self::FILE_A.bits << 5; const RANK_6 = Self::RANK_1.bits << (5*8);
-        const FILE_G = Self::FILE_A.bits << 6; const RANK_7 = Self::RANK_1.bits << (6*8);
-        const FILE_H = Self::FILE_A.bits << 7; const RANK_8 = Self::RANK_1.bits << (7*8);
+impl ops::BitOr for Bitboard {
+    type Output = Bitboard;
+
+    #[inline]
+    fn bitor(self, o: Bitboard) -> Bitboard {
+        Bitboard(self.0 | o.0)
+    }
+}
+
+impl ops::BitOrAssign for Bitboard {
+    #[inline]
+    fn bitor_assign(&mut self, o: Bitboard) {
+        self.0 |= o.0;
+    }
+}
+
+impl ops::Not for Bitboard {
+    type Output = Bitboard;
+
+    #[inline]
+    fn not(self) -> Bitboard {
+        Bitboard(!self.0)
+    }
+}
+
+impl ops::BitAnd for Bitboard {
+    type Output = Bitboard;
+
+    #[inline]
+    fn bitand(self, o: Bitboard) -> Bitboard {
+        Bitboard(self.0 & o.0)
+    }
+}
+
+impl ops::BitAndAssign for Bitboard {
+    #[inline]
+    fn bitand_assign(&mut self, o: Bitboard) {
+        self.0 &= o.0;
+    }
+}
+
+impl ops::BitXor for Bitboard {
+    type Output = Bitboard;
+
+    #[inline]
+    fn bitxor(self, o: Bitboard) -> Bitboard {
+        Bitboard(self.0 ^ o.0)
+    }
+}
+
+impl ops::Sub for Bitboard {
+    type Output = Bitboard;
+
+    #[inline]
+    fn sub(self, o: Bitboard) -> Bitboard {
+        Bitboard(self.0 & (Bitboard::all().0 ^ o.0))
+    }
+}
+
+impl ops::SubAssign for Bitboard {
+    #[inline]
+    fn sub_assign(&mut self, o: Bitboard) {
+        *self &= Bitboard::all() ^ o
+    }
+}
+
+impl ops::BitXorAssign for Bitboard {
+    #[inline]
+    fn bitxor_assign(&mut self, o: Bitboard) {
+        self.0 ^= o.0;
     }
 }
 
@@ -150,28 +337,71 @@ impl Bitboard {
         Self::FILE_H,
     ];
 
+    #[inline]
+    pub const fn all() -> Bitboard {
+        Bitboard(u64::MAX)
+    }
+
+    #[inline]
+    pub const fn bits(self) -> u64 {
+        self.0
+    }
+
+    #[inline]
+    pub const fn is_all(self) -> bool {
+        self.0 == Self::all().0
+    }
+
+    #[inline]
+    pub const fn empty() -> Bitboard {
+        Bitboard::EMPTY
+    }
+
+    #[inline]
+    pub fn insert(&mut self, o: Bitboard) {
+        *self |= o;
+    }
+
+    #[inline]
+    pub fn remove(&mut self, o: Bitboard) {
+        *self -= o;
+    }
+
+    #[inline]
+    pub const fn is_empty(self) -> bool {
+        self.0 == Self::EMPTY.0
+    }
+
+    #[inline]
+    pub const fn intersects(self, o: Bitboard) -> bool {
+        self.0 & o.0 != 0
+    }
+
+    #[inline]
+    pub const fn contains(self, o: Bitboard) -> bool {
+        self.0 & o.0 == o.0
+    }
+
     // insert,
     // remove,
     // set,
     // toggle,
-    // all(),
-    // empty(),
-    // is_all,
-    // is_empty,
-    // intersects,
-    // contains
-    // ... come for free
 
     #[inline]
-    pub fn from_xy(x: u32, y: u32) -> Bitboard {
+    pub const fn from_xy(x: u32, y: u32) -> Bitboard {
         let bit = 1 << (y * 8 + x);
-        Bitboard::from_bits_truncate(bit)
+        Bitboard(bit)
     }
 
     #[inline]
     pub const fn from_sq(index: u32) -> Bitboard {
         let bit = 1 << index;
-        Bitboard::from_bits_truncate(bit)
+        Bitboard(bit)
+    }
+
+    #[inline]
+    pub const fn from_u64(bits: u64) -> Bitboard {
+        Bitboard(bits)
     }
 
     // a niche value that never occurs "in real life"
@@ -181,30 +411,29 @@ impl Bitboard {
     }
 
     #[inline]
-    pub fn disjoint(self, other: Bitboard) -> bool {
-        (self & other).is_empty()
+    pub const fn disjoint(self, other: Bitboard) -> bool {
+        (self.0 & other.0) == 0
     }
 
     #[inline]
     pub const fn any(self) -> bool {
-        !self.is_empty()
+        self.0 != 0
     }
 
-
     #[inline]
-    pub fn shift(self, dir: Dir) -> Bitboard {
-        let bb = self - dir.mask;
+    pub const fn shift(self, dir: Dir) -> Bitboard {
+        let bb = self.sub(dir.mask);
         if dir.shift > 0 {
-            Bitboard::from_bits_truncate(bb.bits << dir.shift)
+            Bitboard(bb.0 << dir.shift)
         } else {
-            Bitboard::from_bits_truncate(bb.bits >> -dir.shift)
+            Bitboard(bb.0 >> -dir.shift)
         }
     }
 
-
     // excludes the src squares themselves, but includes edge squares
-    pub fn rays(&self, dir: Dir) -> Bitboard {
-        let mut sqs = *self;
+    #[inline]
+    pub fn rays(self, dir: Dir) -> Bitboard {
+        let mut sqs = self;
         let mut bb = Bitboard::EMPTY;
         while !sqs.is_empty() {
             sqs = sqs.shift(dir);
@@ -214,62 +443,77 @@ impl Bitboard {
     }
 
     // inclusive, faster than ray - works on empty set
+    #[inline]
     pub fn fill_north(self) -> Bitboard {
         let mut bb = self;
-        bb |= Bitboard::from_bits_truncate(bb.bits << 32);
-        bb |= Bitboard::from_bits_truncate(bb.bits << 16);
-        bb |= Bitboard::from_bits_truncate(bb.bits << 8);
+        bb |= Bitboard(bb.0 << 32);
+        bb |= Bitboard(bb.0 << 16);
+        bb |= Bitboard(bb.0 << 8);
         bb
+        // let bb32 = self.0 | self.0 << 32;
+        // let bb16 = bb32 | bb32 << 16;
+        // let bb8 = bb16 | bb16 << 8;
+        // Bitboard(bb8)
     }
 
     // all points south inclusive - works on empty set
+    #[inline]
     pub fn fill_south(self) -> Bitboard {
         let mut bb = self;
-        bb |= Bitboard::from_bits_truncate(bb.bits >> 32);
-        bb |= Bitboard::from_bits_truncate(bb.bits >> 16);
-        bb |= Bitboard::from_bits_truncate(bb.bits >> 8);
+        bb |= Bitboard(bb.0 >> 32);
+        bb |= Bitboard(bb.0 >> 16);
+        bb |= Bitboard(bb.0 >> 8);
         bb
     }
 
+    #[inline]
     pub fn file_flood(self) -> Bitboard {
         self.fill_north() | self.fill_south() | self
     }
 
+    #[inline]
     pub fn diag_flood(self) -> Bitboard {
         self.rays(Dir::NE) | self.rays(Dir::SW) | self
     }
 
+    #[inline]
     pub fn anti_diag_flood(self) -> Bitboard {
         self.rays(Dir::NW) | self.rays(Dir::SE) | self
     }
     // bitflags & doesnt seem to be declared const
     #[inline]
     pub const fn or(self, other: Self) -> Self {
-        Self::from_bits_truncate(self.bits | other.bits)
+        Self(self.0 | other.0)
     }
 
     // bitflags & doesnt seem to be declared const
     #[inline]
     pub const fn xor(self, other: Self) -> Self {
-        Self::from_bits_truncate(self.bits ^ other.bits)
+        Self(self.0 ^ other.0)
+    }
+
+    // bitflags & doesnt seem to be declared const
+    #[inline]
+    pub const fn sub(self, other: Self) -> Self {
+        Bitboard(self.0 & (Self::all().bits() ^ other.bits()))
     }
 
     #[inline]
     pub const fn popcount(self) -> i32 {
-        self.bits.count_ones() as i32
+        self.0.count_ones() as i32
     }
 
     /// flip vertical - https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating
     /// named flip_vertical rather than swap_bytes to match square ^ 56
     #[inline]
     pub const fn flip_vertical(self) -> Self {
-        Bitboard::from_bits_truncate(self.bits.swap_bytes())
+        Bitboard(self.0.swap_bytes())
     }
 
-    // 
+    //
     #[inline]
     pub const fn wrapping_sub(self, other: Bitboard) -> Self {
-        Bitboard::from_bits_truncate(self.bits.wrapping_sub(other.bits))
+        Bitboard(self.0.wrapping_sub(other.0))
     }
 
     // #[inline]
@@ -277,21 +521,20 @@ impl Bitboard {
     //     self.intersects(sq.as_bb())
     // }
 
-
     #[inline]
-    pub fn exclude(self, sq: Square) -> Bitboard {
-        self - sq.as_bb()
+    pub const fn exclude(self, sq: Square) -> Bitboard {
+        self.sub(sq.as_bb())
     }
 
     #[inline]
-    pub fn include(self, sq: Square) -> Bitboard {
-        self | sq.as_bb()
+    pub const fn include(self, sq: Square) -> Bitboard {
+        self.or(sq.as_bb())
     }
 
     #[inline]
     pub const fn square(self) -> Square {
         // debug_assert_eq!(self.popcount(), 1, "Attempt to convert bb {} to a square", self);
-        let sq = self.bits.trailing_zeros();
+        let sq = self.0.trailing_zeros();
         // debug_assert!(sq < 64);
         Square::from_u32(sq)
     }
@@ -299,7 +542,7 @@ impl Bitboard {
     #[inline]
     pub fn last_square(self) -> Square {
         debug_assert!(!self.is_empty(), "bb.last_square on empty");
-        let msb = self.bits.leading_zeros();
+        let msb = self.0.leading_zeros();
         debug_assert!(msb < 64);
         Square::from_u32(63 - msb)
     }
@@ -308,7 +551,7 @@ impl Bitboard {
     pub fn first_square(self) -> Square {
         debug_assert!(!self.is_empty(), "bb.first_square on empty");
         // LSB
-        let sq = self.bits.trailing_zeros();
+        let sq = self.0.trailing_zeros();
         debug_assert!(sq < 64);
         Square::from_u32(sq)
     }
@@ -316,16 +559,14 @@ impl Bitboard {
     #[inline]
     pub fn last(self) -> Self {
         debug_assert!(!self.is_empty(), "bb.last on empty");
-        Bitboard::from_bits_truncate(1 << self.last_square().index()) // MSb
+        Bitboard(1 << self.last_square().index()) // MSb
     }
 
     #[inline]
     pub fn first(self) -> Self {
         debug_assert!(!self.is_empty(), "bb.first on empty");
-        Bitboard::from_bits_truncate(1 << self.first_square().index()) // LSb
+        Bitboard(1 << self.first_square().index()) // LSb
     }
-
-
 
     #[inline]
     pub const fn iter(self) -> BitIterator {
@@ -356,16 +597,6 @@ impl Bitboard {
         ranks.dedup();
         ranks.iter().collect()
     }
-
-    // pub fn sq_as_file(sq: Square) -> char {
-    //     let x = sq.index() % 8;
-    //     char::from(b'a' + x as u8)
-    // }
-
-    // pub fn sq_as_rank(sq: Square) -> char {
-    //     let y = sq.index() / 8;
-    //     char::from(b'1' + y as u8)
-    // }
 
     pub fn sq_as_uci(self) -> String {
         let s = self.first_square();
@@ -438,7 +669,7 @@ impl Iterator for PowerSetIterator {
             return None;
         }
         let last = self.n;
-        self.n = Bitboard::from_bits_truncate(self.n.bits().wrapping_sub(self.d.bits())) & self.d;
+        self.n = Bitboard(self.n.0.wrapping_sub(self.d.0)) & self.d;
         self.completed = self.n.is_empty();
         Some(last)
     }
@@ -489,8 +720,8 @@ impl Iterator for Squares {
         if self.bb.is_empty() {
             None
         } else {
-            let sq = self.bb.bits.trailing_zeros();
-            self.bb.bits ^= 1 << sq;
+            let sq = self.bb.0.trailing_zeros();
+            self.bb.0 ^= 1 << sq;
             Some(Square::from_u32(sq))
         }
     }
@@ -507,11 +738,7 @@ impl fmt::Display for Bitboard {
         for r in (0..8).rev() {
             for f in 0..8 {
                 let bit = 1 << (r * 8 + f);
-                fmt.write_str(if self.contains(Bitboard::from_bits_truncate(bit)) {
-                    "1 "
-                } else {
-                    ". "
-                })?;
+                fmt.write_str(if self.contains(Bitboard(bit)) { "1 " } else { ". " })?;
             }
             fmt.write_char('\n')?;
         }
@@ -521,7 +748,6 @@ impl fmt::Display for Bitboard {
 
 #[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Square(u8);
-
 
 impl Default for Square {
     #[inline]
@@ -554,7 +780,6 @@ impl Square {
         Bitboard::all().squares()
     }
 
-
     #[inline]
     pub const fn from_u32(i: u32) -> Square {
         Square(i as u8)
@@ -567,7 +792,7 @@ impl Square {
 
     #[inline]
     pub const fn as_bb(self) -> Bitboard {
-        Bitboard::from_bits_truncate(1 << self.0)
+        Bitboard(1 << self.0)
     }
 
     #[inline]
@@ -582,11 +807,9 @@ impl Square {
 
     #[inline]
     pub fn shift(self, dir: Dir) -> Square {
-        debug_assert!(self.0 as i8  + dir.shift >=0 && self.0 as i8  + dir.shift < 64 );
-        Square((self.0 as i8  + dir.shift) as u8)
+        debug_assert!(self.0 as i8 + dir.shift >= 0 && self.0 as i8 + dir.shift < 64);
+        Square((self.0 as i8 + dir.shift) as u8)
     }
-
-
 
     #[inline]
     pub fn file_char(self) -> char {
@@ -603,8 +826,6 @@ impl Square {
     pub fn uci(self) -> String {
         format!("{}{}", self.file_char(), self.rank_char())
     }
-
-
 
     #[inline]
     pub fn file(self) -> Bitboard {
@@ -628,10 +849,10 @@ impl Square {
         self.as_bb().anti_diag_flood()
     }
 
-    // smallest rectangle containing both squares 
+    // smallest rectangle containing both squares
     pub fn bounding_rectangle(s1: Square, s2: Square) -> Bitboard {
-        let first = cmp::min(s1, s2); 
-        let last = cmp::max(s1, s2); 
+        let first = cmp::min(s1, s2);
+        let last = cmp::max(s1, s2);
         let south = first.rank().rays(Dir::S);
         let north = last.rank().rays(Dir::N);
         let west = (!((first.as_bb() | last.as_bb()).file_flood().rays(Dir::E))).shift(Dir::W);
@@ -643,30 +864,24 @@ impl Square {
     pub fn calc_line_through(s1: Square, s2: Square) -> Bitboard {
         if s1 == s2 {
             s1.as_bb()
-        } else 
-        if s2.is_in(s1.file()) {
+        } else if s2.is_in(s1.file()) {
             s1.file()
-        } else
-        if s2.is_in(s1.rank()) {
+        } else if s2.is_in(s1.rank()) {
             s1.rank()
-        } else 
-        if s2.is_in(s1.diag()) {
+        } else if s2.is_in(s1.diag()) {
             s1.diag()
-        } else
-        if s2.is_in(s1.anti_diag()) {
+        } else if s2.is_in(s1.anti_diag()) {
             s1.anti_diag()
         } else {
             Bitboard::empty()
         }
     }
 
-
     /// flip vertical - https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating
     #[inline]
     pub const fn flip_vertical(self) -> Square {
-        Square( self.0 ^ 56 )
+        Square(self.0 ^ 56)
     }
-
 
     #[inline]
     pub const fn rank_index(self) -> usize {
@@ -690,8 +905,6 @@ impl fmt::Display for Square {
     }
 }
 
-
-
 impl<T> std::ops::Index<Square> for [T] {
     type Output = T;
     #[inline]
@@ -707,10 +920,6 @@ impl<T> std::ops::IndexMut<Square> for [T] {
         &mut self[s.index()]
     }
 }
-
-
-
-
 
 #[cfg(test)]
 mod tests {
@@ -729,6 +938,9 @@ mod tests {
         assert_eq!(c7.first_square().index(), 6 * 8 + 2);
         assert_eq!(c7.first_square().rank_index(), 6);
         assert_eq!(c7.first_square().file_index(), 2);
+        assert_eq!(Square::all().count(), 64);
+        assert_eq!(Square::all().next(), Some(Square(0)));
+        assert_eq!(!Bitboard::all(), Bitboard::empty());
     }
 
     #[test]
@@ -775,26 +987,43 @@ mod tests {
     fn test_bounding_rectangle() {
         assert_eq!(cmp::min(a1.square(), b2.square()), a1.square());
         assert_eq!(Bitboard::all() - b2.square().rank().rays(Dir::N), RANK_1 | RANK_2);
-        assert_eq!(Square::bounding_rectangle(a1.square(), b2.square()), a1 | a2 | b1 | b2);
-        assert_eq!(Square::bounding_rectangle(b2.square(), a1.square()), a1 | a2 | b1 | b2);
+        assert_eq!(
+            Square::bounding_rectangle(a1.square(), b2.square()),
+            a1 | a2 | b1 | b2
+        );
+        assert_eq!(
+            Square::bounding_rectangle(b2.square(), a1.square()),
+            a1 | a2 | b1 | b2
+        );
         assert_eq!(Square::bounding_rectangle(a1.square(), a1.square()), a1);
         assert_eq!(Square::bounding_rectangle(c3.square(), c3.square()), c3);
-        assert_eq!(Square::bounding_rectangle(a1.square(), h8.square()), Bitboard::all());
-        assert_eq!(Square::bounding_rectangle(b2.square(), b5.square()), b2| b3| b4| b5);
-        assert_eq!(Square::bounding_rectangle(b5.square(), b2.square()), b2| b3| b4| b5);
-        assert_eq!(Square::bounding_rectangle(c5.square(), e5.square()), c5| d5| e5);
-        assert_eq!(Square::bounding_rectangle(e5.square(), c5.square()), c5| d5| e5);
+        assert_eq!(
+            Square::bounding_rectangle(a1.square(), h8.square()),
+            Bitboard::all()
+        );
+        assert_eq!(
+            Square::bounding_rectangle(b2.square(), b5.square()),
+            b2 | b3 | b4 | b5
+        );
+        assert_eq!(
+            Square::bounding_rectangle(b5.square(), b2.square()),
+            b2 | b3 | b4 | b5
+        );
+        assert_eq!(Square::bounding_rectangle(c5.square(), e5.square()), c5 | d5 | e5);
+        assert_eq!(Square::bounding_rectangle(e5.square(), c5.square()), c5 | d5 | e5);
     }
-
 
     #[test]
     fn test_line_though() {
         assert_eq!(Square::calc_line_through(b6.square(), b8.square()), FILE_B);
         assert_eq!(Square::calc_line_through(b5.square(), d5.square()), RANK_5);
         assert_eq!(Square::calc_line_through(a2.square(), b1.square()), a2 | b1);
-        assert_eq!(Square::calc_line_through(f1.square(), g2.square()), f1|g2|h3);
+        assert_eq!(Square::calc_line_through(f1.square(), g2.square()), f1 | g2 | h3);
         assert_eq!(Square::calc_line_through(f1.square(), f1.square()), f1);
-        assert_eq!(Square::calc_line_through(f1.square(), g3.square()), Bitboard::empty());
+        assert_eq!(
+            Square::calc_line_through(f1.square(), g3.square()),
+            Bitboard::empty()
+        );
     }
 
     #[test]
@@ -814,8 +1043,8 @@ mod tests {
         assert_eq!(Bitboard::parse_square("a8").unwrap(), a8.square());
         assert_eq!(Bitboard::parse_square("h8").unwrap(), h8.square());
 
-        assert_eq!(Bitboard::parse_squares("h8 h1").unwrap(), h8|h1);
-        assert_eq!(Bitboard::parse_squares("a1, a2,a3  ").unwrap(), a1|a2|a3);
+        assert_eq!(Bitboard::parse_squares("h8 h1").unwrap(), h8 | h1);
+        assert_eq!(Bitboard::parse_squares("a1, a2,a3  ").unwrap(), a1 | a2 | a3);
         assert_eq!(Bitboard::parse_squares("").unwrap(), Bitboard::empty());
     }
 

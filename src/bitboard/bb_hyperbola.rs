@@ -65,7 +65,7 @@ impl Hyperbola {
 
     fn pop_rank_attacks(rank_attacks: &mut [[Bitboard; 8]; 64]) {
         for occupancy_bits in 0..64 {
-            let occ_incl_rook = Bitboard::from_bits_truncate(occupancy_bits).shift(Dir::E);
+            let occ_incl_rook = Bitboard::from_u64(occupancy_bits).shift(Dir::E);
             for rook_sq in Bitboard::RANK_1.squares() {
                 let occ = occ_incl_rook.exclude(rook_sq);
 
@@ -132,7 +132,7 @@ impl Hyperbola {
         let rank = sq.rank_index() * 8;
         let occupied = (occ.bits() >> rank) & (63 << 1); // 63 << 1 is middle 6 bits
         let attacks = self.rank_attacks[occupied as usize >> 1][file]; // occupied >> 1 is now range 0-63
-        Bitboard::from_bits_truncate((attacks.bits()) << rank)
+        Bitboard::from_u64((attacks.bits()) << rank)    
     }
 }
 

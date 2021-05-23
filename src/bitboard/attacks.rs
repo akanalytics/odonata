@@ -17,6 +17,7 @@ pub trait BitboardAttacks {
     fn knight_attacks(&self, from: Square) -> Bitboard;
     fn king_attacks(&self, from: Square) -> Bitboard;
 
+    #[inline]
     fn non_pawn_attacks(&self, c: Color, p: Piece, us: Bitboard, them: Bitboard, from: Square) -> Bitboard {
         match p {
             Piece::Bishop => self.bishop_attacks(us|them, from),
