@@ -3,7 +3,7 @@ use crate::clock::Clock;
 use crate::perft::Perft;
 use crate::search::algo::Algo;
 use crate::search::timecontrol::TimeControl;
-use env_logger;
+// use env_logger;
 use std::time::{Instant};
 
 pub struct Bench;

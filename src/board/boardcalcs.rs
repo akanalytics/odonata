@@ -7,6 +7,7 @@ pub struct BoardCalcs;
 
 impl BoardCalcs {
     // no king on board => no attackers
+    #[inline]
     pub fn checkers_of(board: &Board, king_color: Color) -> Bitboard {
         let us = board.color(king_color);
         let them = board.color(king_color.opposite());
@@ -16,6 +17,7 @@ impl BoardCalcs {
         Self::attacked_by(our_king, occ, board) & them
     }
 
+    #[inline]
     pub fn pinned(b: &Board, us: Color) -> Bitboard {
         let color_us = b.color(us);
         let color_them = b.color(us.opposite());
@@ -36,6 +38,7 @@ impl BoardCalcs {
         pinned
     }
 
+    #[inline]
     pub fn threats_to(board: &Board, us: Color, occ: Bitboard) -> Bitboard {
         let opponent = us.opposite();
         let pawns = board.pawns() & board.color(opponent);
@@ -49,22 +52,22 @@ impl BoardCalcs {
         let (east, west) = attack_gen.pawn_attacks(pawns, opponent);
         let mut threats = east | west;
 
-        for each in knights.iter() {
-            let sq = each.square();
+        for p in knights.iter() {
+            let sq = p.square();
             threats |= attack_gen.knight_attacks(sq);
         }
-        for each in (bishops | queens).iter() {
-            let sq = each.square();
+        for p in (bishops | queens).iter() {
+            let sq = p.square();
             threats |= attack_gen.bishop_attacks(occ, sq);
         }
 
-        for each in (rooks | queens).iter() {
-            let sq = each.square();
+        for p in (rooks | queens).iter() {
+            let sq = p.square();
             threats |= attack_gen.rook_attacks(occ, sq);
         }
 
-        for each in kings.iter() {
-            let sq = each.square();
+        for p in kings.iter() {
+            let sq = p.square();
             threats |= attack_gen.king_attacks(sq);
         }
         threats
