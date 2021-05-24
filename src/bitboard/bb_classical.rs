@@ -1,4 +1,5 @@
-use crate::bitboard::bitboard::{Bitboard, Square, Dir};
+use crate::bitboard::bitboard::{Bitboard, Dir};
+use crate::bitboard::square::Square;
 use crate::bitboard::attacks::BitboardAttacks;
 use once_cell::sync::Lazy;
 
@@ -28,7 +29,7 @@ impl ClassicalBitboard {
         };
         for sq in 0..64_usize {
             for &dir in Dir::ALL.iter() {
-                let bb = Bitboard::from_sq(sq as u32);
+                let bb = Bitboard::from_sq(sq as u8);
                 let mask = bb.rays(dir);
                 classical.rays[sq][dir] = mask;
                 classical.king_moves[sq] |= bb.shift(dir);

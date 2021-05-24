@@ -4,6 +4,7 @@ use odonata::bitboard::attacks::*;
 use odonata::bitboard::bb_classical::ClassicalBitboard;
 use odonata::bitboard::bb_hyperbola::Hyperbola;
 use odonata::bitboard::bitboard::*;
+use odonata::bitboard::square::*;
 use odonata::board::boardcalcs::*;
 use odonata::board::makemove::*;
 use odonata::board::rules::*;

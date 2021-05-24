@@ -1,5 +1,6 @@
 use crate::bitboard::attacks::{BitboardAttacks, BitboardDefault};
-use crate::bitboard::bitboard::{Bitboard, Dir, Square};
+use crate::bitboard::bitboard::{Bitboard, Dir};
+use crate::bitboard::square::Square;
 use crate::bitboard::castling::CastlingRights;
 use crate::board::boardcalcs::BoardCalcs;
 use crate::board::Board;

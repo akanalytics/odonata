@@ -1,6 +1,7 @@
 use crate::bitboard::attacks::BitboardAttacks;
 use crate::bitboard::bb_classical::ClassicalBitboard;
-use crate::bitboard::bitboard::{Bitboard, Dir, Square};
+use crate::bitboard::bitboard::{Bitboard, Dir};
+use crate::bitboard::square::Square;
 use once_cell::sync::Lazy;
 
 static STATIC_INSTANCE: Lazy<Hyperbola> = Lazy::new(|| Hyperbola::new());

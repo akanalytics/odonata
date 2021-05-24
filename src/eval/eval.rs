@@ -1,5 +1,5 @@
 use crate::bitboard::attacks::{BitboardAttacks, BitboardDefault};
-use crate::bitboard::bitboard::Square;
+use crate::bitboard::square::Square;
 use crate::board::Board;
 use crate::config::{Config, Configurable};
 use crate::eval::score::Score;

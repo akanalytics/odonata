@@ -1,4 +1,5 @@
-use crate::bitboard::bitboard::{Bitboard, Square, Dir};
+use crate::bitboard::bitboard::{Bitboard, Dir};
+use crate::bitboard::square::Square;
 use crate::types::{Color, Piece};
 // use crate::bitboard::bb_classical::ClassicalBitboard;
 use crate::bitboard::bb_hyperbola::Hyperbola;

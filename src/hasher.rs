@@ -1,4 +1,4 @@
-use crate::bitboard::bitboard::Square;
+use crate::bitboard::square::Square;
 use crate::board::Board;
 use crate::bitboard::castling::CastlingRights;
 use crate::globals::constants::*;

@@ -1,19 +1,17 @@
-use crate::bitboard::bitboard::{Bitboard, Square};
+use crate::bitboard::bitboard::Bitboard;
+use crate::bitboard::castling::CastlingRights;
+use crate::bitboard::square::Square;
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::parse::Parse;
 use crate::tags::Tags;
 use crate::types::{Color, Piece, Ply};
-use crate::bitboard::castling::CastlingRights;
 use crate::utils::StringUtils;
 use once_cell::sync::Lazy;
 // use arrayvec::ArrayVec;
 use regex::Regex;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
-
-
-
 
 // FIXME: public methods
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
@@ -168,11 +166,7 @@ impl Move {
     }
 
     #[inline]
-    pub fn new_ep_capture(
-        from: Square,
-        to: Square,
-        captured_sq: Square,
-    ) -> Move {
+    pub fn new_ep_capture(from: Square, to: Square, captured_sq: Square) -> Move {
         Move {
             from,
             to,
@@ -214,7 +208,6 @@ impl Move {
         _rook_to: Square,
         castle: CastlingRights,
     ) -> Move {
-
         Move {
             from: king_from,
             to: king_to,
@@ -233,7 +226,6 @@ impl Move {
         self.is_known_legal = true;
         *self
     }
-
 
     #[inline]
     pub fn mvv_lva_score(&self) -> i32 {
@@ -270,8 +262,8 @@ impl Move {
             promo = Piece::None;
         }
         Ok(Move {
-            to ,
-            from ,
+            to,
+            from,
             promo,
             ..Default::default()
         })
@@ -301,11 +293,8 @@ impl fmt::Display for Move {
     }
 }
 
-
-
 // moves: ArrayVec<Move,128>,
 // moves: ArrayVec::new(),
-
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Variation {
@@ -335,7 +324,6 @@ impl Variation {
             .join(" ")
     }
 
-
     #[inline]
     pub fn set_last_move(&mut self, ply: Ply, mv: &Move) {
         let ply = ply as usize;
@@ -345,7 +333,7 @@ impl Variation {
         } else if ply < self.moves.len() {
             self.moves.truncate(ply);
         } else {
-            debug_assert!(ply > self.moves.len(), "Assert {} > {}", ply, self.moves.len() );
+            debug_assert!(ply > self.moves.len(), "Assert {} > {}", ply, self.moves.len());
             let len = ply - self.moves.len();
             for _ in 0..len {
                 self.moves.push(*mv);
@@ -353,9 +341,7 @@ impl Variation {
             //self.moves.resize_with(ply, || *mv);
         }
     }
-
 }
-
 
 impl Deref for Variation {
     type Target = Vec<Move>;
@@ -387,9 +373,6 @@ impl fmt::Display for Variation {
     }
 }
 
-
-
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MoveList {
     moves: Vec<Move>,
@@ -420,9 +403,6 @@ impl std::iter::FromIterator<Move> for MoveList {
     }
 }
 
-
-
-
 impl MoveList {
     #[inline]
     pub fn new() -> Self {
@@ -442,7 +422,6 @@ impl MoveList {
             .collect::<Vec<String>>()
             .join(" ")
     }
-
 }
 
 impl Deref for MoveList {
@@ -607,7 +586,12 @@ impl MoveValidator for Board {
         let mut s = String::new();
         let mut board = self.clone();
         for (i, mv) in moves.iter().enumerate() {
-            debug_assert!(board.is_legal_move(mv), "mv {} is illegal for board {}", mv, board.to_fen() );
+            debug_assert!(
+                board.is_legal_move(mv),
+                "mv {} is illegal for board {}",
+                mv,
+                board.to_fen()
+            );
             if i % 2 == 0 {
                 if i != 0 {
                     s += "\n";
