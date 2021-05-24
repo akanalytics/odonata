@@ -77,7 +77,7 @@ class Odonata:
 
     def _start_new_game(self) -> None:
         self._put("ucinewgame")
-        self._is_ready()
+        self.is_ready()
         self.info = ""
 
     def _put(self, command: str) -> None:
@@ -98,9 +98,9 @@ class Odonata:
 
     def _set_option(self, name: str, value: Any) -> None:
         self._put(f"setoption name {name} value {value}")
-        self._is_ready()
+        self.is_ready()
 
-    def _is_ready(self) -> None:
+    def is_ready(self) -> None:
         self._put("isready")
         while True:
             if self._read_line() == "readyok":
@@ -192,7 +192,7 @@ class Odonata:
         Returns:
             None
         """
-        self._start_new_game()
+        # self._start_new_game()
         self._put(f"position fen {fen_position}")
 
     def get_best_move(self) -> Optional[str]:
@@ -298,10 +298,21 @@ class Odonata:
         self.odonata.kill()
 
 
+from time import perf_counter
+
 def main():
     print("Starting...\n")
     odo = Odonata("odonata-0.3.12.exe")
+    
     odo.set_fen_position("kr6/p7/8/8/8/8/P7/5BRK w - - 0 31")
+    elapsed = perf_counter()
+    print("set fen")
+    for _ in range(20000):
+        odo.is_ready()
+    elapsed = perf_counter() - elapsed
+    print("Elapsed:", elapsed) 
+    
+    print("set fen done")
     print(odo.get_board_visual())
     
     print("best move", odo.get_best_move())
