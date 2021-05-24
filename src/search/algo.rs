@@ -5,7 +5,7 @@ use crate::eval::score::Score;
 use crate::globals::counts;
 use crate::log_debug;
 use crate::movelist::Move;
-use crate::movelist::MoveList;
+use crate::movelist::{Variation};
 use crate::position::Position;
 use crate::pvtable::PvTable;
 use crate::repetition::Repetition;
@@ -48,7 +48,7 @@ pub struct Algo {
     child_thread: AlgoThreadHandle,
 
     clock_checks: u64,
-    pub current_variation: MoveList,
+    pub current_variation: Variation,
 }
 
 /// builder methods
@@ -254,7 +254,7 @@ impl Algo {
         self.search_stats().score
     }
 
-    pub fn pv(&self) -> &MoveList {
+    pub fn pv(&self) -> &Variation {
         self.search_stats().pv()
     }
 

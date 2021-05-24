@@ -1103,9 +1103,9 @@ fn bench_moveordering(c: &mut Criterion) {
         movelists[i].extend(vec![b1a2, b1a3, b1a4, a1a3, a1a4, a1a2]);
     }
 
-    let mut pv = MoveList::new();
+    let mut pv = Variation::new();
     pv.extend(vec![a1a2, a1a3, a1a4]);
-    let mut variation = MoveList::new();
+    let mut variation = Variation::new();
     variation.extend(vec![a1a2, a1a3, c1c2]);
 
     c.bench_function("move_orderer", |b| {

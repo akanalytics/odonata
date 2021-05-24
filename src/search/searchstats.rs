@@ -1,6 +1,6 @@
 use crate::clock::{Clock, DeterministicClock};
 use crate::eval::score::Score;
-use crate::movelist::MoveList;
+use crate::movelist::Variation;
 use crate::types::{Ply, MAX_PLY};
 use std::fmt;
 use std::cmp;
@@ -18,7 +18,7 @@ pub struct SearchStats {
     total: NodeStats,
     plies: Vec<NodeStats>,
 
-    pub pv: MoveList,
+    pub pv: Variation,
     pub score: Score,
 }
 
@@ -74,7 +74,7 @@ impl Default for SearchStats {
             plies: std::iter::repeat(NodeStats::new())
                 .take(MAX_PLY as usize)
                 .collect(),
-            pv: MoveList::default(),
+            pv: Variation::default(),
             score: Score::default(),
         }
     }
@@ -89,7 +89,7 @@ impl SearchStats {
         self.completed
     }
 
-    pub fn pv(&self) -> &MoveList {
+    pub fn pv(&self) -> &Variation {
         &self.pv
     }
 
@@ -157,7 +157,7 @@ impl SearchStats {
         self.plies[ply as usize].est_time = *estimate;
     }
 
-    pub fn record_time_actual_and_completion_status(&mut self, ply: Ply, completed: bool, pv: MoveList) {
+    pub fn record_time_actual_and_completion_status(&mut self, ply: Ply, completed: bool, pv: Variation) {
         let ply = ply as usize;
         self.plies[ply].real_time = self.realtime.elapsed();
         self.plies[ply].deterministic_time = self.deterministic.elapsed();

@@ -307,6 +307,88 @@ impl fmt::Display for Move {
 // moves: ArrayVec::new(),
 
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Variation {
+    moves: Vec<Move>,
+}
+
+impl Default for Variation {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            moves: Vec::with_capacity(60),
+        }
+    }
+}
+
+impl Variation {
+    #[inline]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn uci(&self) -> String {
+        self.moves
+            .iter()
+            .map(|mv| mv.uci())
+            .collect::<Vec<String>>()
+            .join(" ")
+    }
+
+
+    #[inline]
+    pub fn set_last_move(&mut self, ply: Ply, mv: &Move) {
+        let ply = ply as usize;
+        // root node is ply 0, so len==ply, so ply 1 gets stored in 0th element
+        if self.moves.len() == ply && ply > 0 {
+            self.moves[ply - 1] = *mv;
+        } else if ply < self.moves.len() {
+            self.moves.truncate(ply);
+        } else {
+            debug_assert!(ply > self.moves.len(), "Assert {} > {}", ply, self.moves.len() );
+            let len = ply - self.moves.len();
+            for _ in 0..len {
+                self.moves.push(*mv);
+            }
+            //self.moves.resize_with(ply, || *mv);
+        }
+    }
+
+}
+
+
+impl Deref for Variation {
+    type Target = Vec<Move>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.moves
+    }
+}
+
+impl DerefMut for Variation {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.moves
+    }
+}
+
+impl fmt::Display for Variation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if f.alternate() {
+            for mv in self.iter() {
+                writeln!(f, "{:#}", mv)?;
+            }
+        } else {
+            let strings: Vec<String> = self.moves.iter().map(Move::to_string).collect();
+            f.write_str(&strings.join(", "))?
+        }
+        Ok(())
+    }
+}
+
+
+
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MoveList {
@@ -338,6 +420,9 @@ impl std::iter::FromIterator<Move> for MoveList {
     }
 }
 
+
+
+
 impl MoveList {
     #[inline]
     pub fn new() -> Self {
@@ -358,23 +443,6 @@ impl MoveList {
             .join(" ")
     }
 
-    #[inline]
-    pub fn set_last_move(&mut self, ply: Ply, mv: &Move) {
-        let ply = ply as usize;
-        // root node is ply 0, so len==ply, so ply 1 gets stored in 0th element
-        if self.moves.len() == ply && ply > 0 {
-            self.moves[ply - 1] = *mv;
-        } else if ply < self.moves.len() {
-            self.moves.truncate(ply);
-        } else {
-            debug_assert!(ply > self.moves.len(), "Assert {} > {}", ply, self.moves.len() );
-            let len = ply - self.moves.len();
-            for _ in 0..len {
-                self.moves.push(*mv);
-            }
-            //self.moves.resize_with(ply, || *mv);
-        }
-    }
 }
 
 impl Deref for MoveList {
@@ -410,14 +478,14 @@ impl fmt::Display for MoveList {
 pub trait MoveValidator {
     fn parse_uci_move(&self, mv: &str) -> Result<Move, String>;
     fn parse_uci_choices(&self, moves: &str) -> Result<MoveList, String>;
-    fn parse_uci_moves(&self, moves: &str) -> Result<MoveList, String>;
+    fn parse_uci_moves(&self, moves: &str) -> Result<Variation, String>;
 
     fn parse_san_move(&self, mv: &str) -> Result<Move, String>;
     fn parse_san_choices(&self, moves: &str) -> Result<MoveList, String>;
-    fn parse_san_moves(&self, moves: &str) -> Result<MoveList, String>;
+    fn parse_san_moves(&self, moves: &str) -> Result<Variation, String>;
 
     fn to_san(&self, mv: &Move) -> String;
-    fn to_san_moves(&self, moves: &MoveList, vec_tags: Option<&Vec<Tags>>) -> String;
+    fn to_san_moves(&self, moves: &Variation, vec_tags: Option<&Vec<Tags>>) -> String;
 }
 
 impl MoveValidator for Board {
@@ -439,9 +507,9 @@ impl MoveValidator for Board {
         Ok(moves)
     }
 
-    fn parse_uci_moves(&self, s: &str) -> Result<MoveList, String> {
+    fn parse_uci_moves(&self, s: &str) -> Result<Variation, String> {
         let mut board = self.clone();
-        let mut moves = MoveList::new();
+        let mut moves = Variation::new();
         let s = s.replace(",", " ");
         let s = strip_move_numbers(&s);
         for mv in s.split_ascii_whitespace() {
@@ -466,9 +534,9 @@ impl MoveValidator for Board {
         Ok(moves)
     }
 
-    fn parse_san_moves(&self, s: &str) -> Result<MoveList, String> {
+    fn parse_san_moves(&self, s: &str) -> Result<Variation, String> {
         let mut board = self.clone();
-        let mut moves = MoveList::new();
+        let mut moves = Variation::new();
         let s = s.replace(",", " ");
         let s = strip_move_numbers(&s);
         for mv in s.split_ascii_whitespace() {
@@ -535,7 +603,7 @@ impl MoveValidator for Board {
         s
     }
 
-    fn to_san_moves(&self, moves: &MoveList, vec_tags: Option<&Vec<Tags>>) -> String {
+    fn to_san_moves(&self, moves: &Variation, vec_tags: Option<&Vec<Tags>>) -> String {
         let mut s = String::new();
         let mut board = self.clone();
         for (i, mv) in moves.iter().enumerate() {
@@ -635,7 +703,7 @@ mod tests {
         moves.push(promo_a7a8);
         assert_eq!(moves.to_string(), "a1b2, a7a8q");
 
-        let mut moves = MoveList::new();
+        let mut moves = Variation::new();
         moves.set_last_move(1, &move_a1b2);
         assert_eq!(moves.to_string(), "a1b2");
         moves.set_last_move(1, &promo_a7a8);

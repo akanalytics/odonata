@@ -1,4 +1,4 @@
-use crate::movelist::{MoveList, Move};
+use crate::movelist::{Variation, Move};
 use crate::eval::score::Score;
 use std::collections::HashMap;
 use std::fmt;
@@ -24,7 +24,7 @@ use std::time::Duration;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Tag {
     BestMove(Move),
-    Pv(MoveList),
+    Pv(Variation),
     Id(String),
     AnalysisCountDepth(u32),
     AnalysisCountSeconds(u32),
@@ -71,7 +71,7 @@ impl Tag {
     pub fn value(&self) -> String {
         match &self {
             Tag::BestMove(mv) => mv.uci(),
-            Tag::Pv(movelist) => movelist.uci(),
+            Tag::Pv(variation) => variation.uci(),
             Tag::Id(s) => format!("{}", s),
             Tag::AnalysisCountDepth(n) => format!("{}", n),
             Tag::AnalysisCountSeconds(n) => format!("{}", n),

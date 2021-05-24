@@ -3,7 +3,7 @@ use crate::board::Board;
 use crate::config::{Config, Configurable};
 use crate::eval::score::Score;
 use crate::log_debug;
-use crate::movelist::{Move, MoveList};
+use crate::movelist::{Move, Variation};
 use crate::stat::{ArrayStat, Stat};
 use crate::types::{Hash, Ply};
 use std::cmp;
@@ -368,9 +368,9 @@ impl TranspositionTable {
     }
 
     // non recursive
-    pub fn extract_pv(&self, b: &Board) -> MoveList {
+    pub fn extract_pv(&self, b: &Board) -> Variation {
         let mut board = b.clone();
-        let mut moves = MoveList::new();
+        let mut moves = Variation::new();
         // board = board.make_move(&first);
         // moves.push(*first);
         let mut mv;

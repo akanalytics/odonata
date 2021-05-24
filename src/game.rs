@@ -3,7 +3,7 @@ use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::catalog::Catalog;
 use crate::movelist::MoveValidator;
-use crate::movelist::{Move, MoveList};
+use crate::movelist::{Move, Variation};
 use crate::outcome::Outcome;
 use crate::search::algo::Algo;
 use crate::tags::Tags;
@@ -16,7 +16,7 @@ pub struct Game {
     starting_pos: Board,
     board: Board,
     tags: Tags,
-    moves: MoveList,
+    moves: Variation,
     annotations: Vec<Tags>,
     event: String,
     site: String,

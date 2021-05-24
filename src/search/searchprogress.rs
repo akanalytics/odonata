@@ -1,5 +1,5 @@
 use crate::eval::score::Score;
-use crate::movelist::{Move, MoveList};
+use crate::movelist::{Move, Variation};
 use crate::search::searchstats::SearchStats;
 use crate::types::Ply;
 
@@ -9,7 +9,7 @@ pub struct SearchProgress {
     pub depth: Option<Ply>,
     pub seldepth: Option<Ply>,
     pub time_millis: Option<u64>,
-    pub pv: Option<MoveList>,
+    pub pv: Option<Variation>,
     pub nodes: Option<u64>,
     pub multipv: Option<String>,
     pub score: Option<Score>,

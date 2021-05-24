@@ -1,4 +1,4 @@
-use crate::movelist::{Move, MoveList};
+use crate::movelist::{Move, Variation};
 use crate::types::{MAX_PLY, Ply};
 use std::fmt;
 
@@ -57,8 +57,8 @@ impl PvTable {
         // }
     }
 
-    pub fn extract_pv_for(&self, ply: Ply) -> MoveList {
-        let mut res = MoveList::new();
+    pub fn extract_pv_for(&self, ply: Ply) -> Variation {
+        let mut res = Variation::new();
         if let Some(pv) = self.matrix[ply as usize].get(1..self.size) {
             // res.extend(pv.iter().take_while(|m| !m.is_null()));
             for mv in pv.iter().take_while(|m| !m.is_null()) {
@@ -70,7 +70,7 @@ impl PvTable {
 
 
 
-    pub fn extract_pv(&self) -> MoveList {
+    pub fn extract_pv(&self) -> Variation {
         self.extract_pv_for(0)
     }
 }

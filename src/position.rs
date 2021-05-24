@@ -1,7 +1,7 @@
 use crate::bitboard::bitboard::Bitboard;
 use crate::board::boardbuf::BoardBuf;
 use crate::board::Board;
-use crate::movelist::{MoveList, Move};
+use crate::movelist::{MoveList, Move, Variation};
 use crate::movelist::MoveValidator;
 use crate::types::{Color};
 use crate::bitboard::castling::CastlingRights;
@@ -215,7 +215,7 @@ impl Position {
         self.tags.as_hash_map().get(key).map(|s: &String| s.as_str()).ok_or(format!("No attribute '{}'", key))
     }
 
-    pub fn pv(&self) -> Result<MoveList, String> {
+    pub fn pv(&self) -> Result<Variation, String> {
         self.board.parse_san_moves(self.get(Self::PV)?)
     }
 
