@@ -14,6 +14,8 @@ pub mod movegen;
 pub mod boardcalcs;
 pub mod rules;
 
+
+
 #[derive(Clone, PartialEq, Eq)]
 pub struct Board {
     pieces: [Bitboard; Piece::len()],
@@ -28,6 +30,7 @@ pub struct Board {
     threats_to: [Cell<Bitboard>; Color::len()],
     checkers_of: [Cell<Bitboard>; Color::len()],
     pinned: Cell<Bitboard>,
+    // material: Cell<Material>,
     // interior mutability (precludes copy trait)
     // moves: MoveList,
 }
@@ -58,7 +61,11 @@ impl Board {
     #[inline]
     fn calculate_internals(&mut self) {
         self.hash = Hasher::default().hash_board(self);
-    }
+        // self.material.set(Material::niche());
+        self.pinned.set(Bitboard::niche());
+        self.threats_to = [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())];
+        self.checkers_of = [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())];
+}
 
 
     #[inline]
@@ -183,6 +190,12 @@ impl Board {
 
     #[inline]
     pub fn material(&self) -> Material {
+        // let mut mat = self.material.get();
+        // if mat == Material::niche() {
+        // mat = Material::from_board(self);
+        //     self.material.set(mat);
+        // }
+        // mat
         Material::from_board(self)
     }
 
@@ -278,6 +291,7 @@ impl Default for Board {
             threats_to: [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())],
             checkers_of: [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())],
             pinned: Cell::<_>::new(Bitboard::niche()),
+            // material: Cell::<_>::new(Material::niche()),
             hash: 0, 
             // moves: MoveList,
         }

@@ -1,5 +1,6 @@
 use crate::board::Board;
 use crate::catalog::Catalog;
+// use crate::types::{Color, Piece};
 use once_cell::sync::Lazy;
 use std::cmp;
 
@@ -16,14 +17,21 @@ static ALL_PIECES: Lazy<i32> = Lazy::new(|| {
 });
 
 impl Board {
-    // pahse = % endgame, 0 is start, 100 is end game with just pawns
+    // phase = % endgame, 0 is start, 100 is end game with just pawns
     pub fn phase(&self) -> i32 {
-        let material = self.material();
+        let m = self.material();
+
         let cp = cmp::min(
             *ALL_PIECES,
-            material.white().minors_and_majors().centipawns()
-                - material.black().minors_and_majors().centipawns(),
+            m.white().minors_and_majors().centipawns() - m.black().minors_and_majors().centipawns(),
         );
+
+        // let mut cp = 0;
+        // for &p in &[Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen] {
+        //     cp += m.counts(Color::White, p) * p.centipawns();
+        //     cp += m.counts(Color::Black, p) * p.centipawns();
+        // }
+        // let cp = cmp::min(*ALL_PIECES, cp);  // unlikely but can promote without losing a piece
 
         // KINGS <= cp <= ALL_PIECES
         let percentage = cp * 100 / *ALL_PIECES;

@@ -9,6 +9,10 @@ use crate::bitboard::castling::CastlingRights;
 use std::cell::Cell;
 
 
+// pub trait MoveDelta {
+//     fn make_move(&mut self, mv: &Move);
+//     fn undo_move(&mut self, mv: &Move);
+// }
 
 
 
@@ -81,6 +85,7 @@ impl MoveMaker for Board {
             self.white(),
             self.black()
         );
+
         let mut b = Board {
             en_passant: Bitboard::EMPTY,
             turn: self.turn.opposite(),
@@ -90,6 +95,7 @@ impl MoveMaker for Board {
             threats_to: [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())],
             checkers_of: [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())],
             pinned: Cell::<_>::new(Bitboard::niche()),
+            // material: Cell::<_>::new(self.material()),
             // moves: self.moves.clone(),
             ..*self
         };
@@ -174,15 +180,28 @@ impl MoveMaker for Board {
 
         let move_hash = Hasher::default().hash_move(m, self);
         b.hash = self.hash ^ move_hash;
+
         debug_assert!(
             b.hash == Hasher::default().hash_board(&b),
-            "\n{}.make_move({}) = \n{} inconsistent incremental hash {:x} (should be {:x}",
+            "\n{}.make_move({}) = \n{} inconsistent incremental hash {:x} (should be {:x})",
             self,
             m, 
             b,
             b.hash,
             Hasher::default().hash_board(&b),
         );
+
+        // b.material.get_mut().make_move(self.color_us(), m);
+        // debug_assert!(
+        //     b.material() == Material::from_board(&b),
+        //     "\n{}.make_move({}) = \n{} inconsistent incremental material {} (should be {})",
+        //     self, 
+        //     m, 
+        //     b,
+        //     b.material(),
+        //     Material::from_board(&b),
+        // );
+        
         b
     }
 

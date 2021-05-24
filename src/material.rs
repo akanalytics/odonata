@@ -1,4 +1,5 @@
 use crate::board::Board;
+use crate::movelist::Move;
 use crate::types::{Color, Piece};
 use std::cmp;
 use std::fmt;
@@ -48,6 +49,10 @@ impl cmp::PartialOrd for Material {
     }
 }
 
+
+
+
+
 impl Material {
     pub fn from_board(board: &Board) -> Material {
         let mut m = Material { ..Self::default() };
@@ -76,8 +81,13 @@ impl Material {
 
     #[inline]
     pub fn counts(&self, c: Color, p: Piece) -> i32 {
-        self.counts[c][p] as i32
+        self.counts[c][p]
     }
+
+    // #[inline]
+    // pub fn counts_mut(&mut self, c: Color, p: Piece) -> &mut i32 {
+    //     &mut self.counts[c][p]
+    // }
 
     #[inline]
     pub fn minors_and_majors(&self) -> Material {
@@ -185,6 +195,26 @@ impl Material {
         false
     }
 }
+
+
+impl Material {
+    #[inline]
+    pub fn niche() -> Material {
+        Self::default()
+    }
+
+    pub fn make_move(&mut self, c: Color, m: &Move) {
+        if m.is_promo() {
+            self.counts[c][Piece::Pawn] -= 1;
+            self.counts[c][m.promo_piece()] += 1;
+        }
+        if m.is_capture() {
+            self.counts[c.opposite()][m.capture_piece()] -= 1;
+        }
+    }
+}
+
+
 
 #[cfg(test)]
 mod tests {

@@ -558,8 +558,8 @@ mod tests {
         uci.preamble.push("quit".into());
         uci.run();
         assert_eq!(
-            uci.board,
-            Board::parse_fen("rnbqkbnr/1ppppppp/p7/8/8/P7/1PPPPPPP/RNBQKBNR w KQkq - 0 2").unwrap()
+            uci.board.to_fen(),
+            Board::parse_fen("rnbqkbnr/1ppppppp/p7/8/8/P7/1PPPPPPP/RNBQKBNR w KQkq - 0 2").unwrap().to_fen()
         );
 
         let mut uci = Uci::new();
@@ -569,8 +569,8 @@ mod tests {
         uci.preamble.push("quit".into());
         uci.run();
         assert_eq!(
-            uci.board,
-            Board::parse_fen("rnbqkbnr/1pppppp1/p6p/8/8/P6P/1PPPPPP1/RNBQKBNR w KQkq - 0 2").unwrap()
+            uci.board.to_fen(),
+            Board::parse_fen("rnbqkbnr/1pppppp1/p6p/8/8/P6P/1PPPPPP1/RNBQKBNR w KQkq - 0 2").unwrap().to_fen()
         );
     }
 
