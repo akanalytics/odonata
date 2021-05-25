@@ -23,7 +23,7 @@ See [Todo](/docs/todo.md)
 See [Changelog](/docs/changelog.md)
 
 ## Credits
-A thanks to my sons - Freddie, Oscar and Hector - for assistance with graphics, some design ideas and testing the engine play. 
+- A thanks to my sons - Freddie, Oscar and Hector - for assistance with graphics, some design ideas and testing the engine play; and Gabor Szots of the CCRL team for arranging blitz competitive testing.
 
 
 ## Links
@@ -37,8 +37,9 @@ Fast chess move generation | https://github.com/jordanbray/chess |
 Shakmaty - Rust chess library | https://github.com/niklasf/shakmaty |
 Rust Chess engine | https://github.com/vinc/littlewing | For making me appreciate ASCII art...
 Chesss GUI for UCI engines | http://www.playwitharena.de/ |
+CCRL - Computer Chess Ratings Lists | https://www.computerchess.org.uk/ccrl/404/ |
 
-## Licence
+## License
 The software licence is [AGPL-3](../license.txt), though libraies used are MIT licensed. Trial or experimental versions may lag in terms of source code publication.
 
 
