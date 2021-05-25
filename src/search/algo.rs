@@ -5,11 +5,12 @@ use crate::eval::score::Score;
 use crate::globals::counts;
 use crate::log_debug;
 use crate::movelist::Move;
-use crate::movelist::{Variation};
+use crate::movelist::Variation;
 use crate::position::Position;
 use crate::pvtable::PvTable;
 use crate::repetition::Repetition;
 use crate::search::iterative_deepening::IterativeDeepening;
+use crate::search::killers::Killers;
 use crate::search::move_orderer::MoveOrderer;
 use crate::search::move_time_estimator::MoveTimeEstimator;
 use crate::search::qsearch::QSearch;
@@ -44,6 +45,7 @@ pub struct Algo {
     pub move_orderer: MoveOrderer,
     pub repetition: Repetition,
     pub tt: TranspositionTable,
+    pub killers: Killers,
 
     child_thread: AlgoThreadHandle,
 
@@ -104,6 +106,7 @@ impl Configurable for Algo {
         self.ids.settings(c);
         self.repetition.settings(c);
         self.tt.settings(c);
+        self.killers.settings(c);
     }
     fn configure(&mut self, c: &Config) {
         log_debug!("algo.configure with {}", c);
@@ -116,6 +119,7 @@ impl Configurable for Algo {
         self.ids.configure(c);
         self.repetition.configure(c);
         self.tt.configure(c);
+        self.killers.configure(c);
     }
 }
 
@@ -139,6 +143,7 @@ impl fmt::Debug for Algo {
             .field("ids", &self.ids)
             .field("repetition", &self.repetition)
             .field("tt", &self.tt)
+            .field("killers", &self.killers)
             .finish()
     }
 }
@@ -169,6 +174,7 @@ impl fmt::Display for Algo {
         write!(f, "\n[iterative deepening]\n{}", self.ids)?;
         write!(f, "\n[repetition]\n{}", self.repetition)?;
         write!(f, "\n[tt]\n{}", self.tt)?;
+        write!(f, "\n[killers]\n{}", self.killers)?;
         write!(f, "\n[stats]\n{}", self.search_stats)?;
         write!(f, "\n[global counts]\n{}", counts::GLOBAL_COUNTS)?;
         write!(f, "\n[pvtable]\n{}", self.pv_table)?;
@@ -216,7 +222,7 @@ impl Algo {
         self.board = board.clone();
         let mut algo = self.clone();
         // destroy/release this threads copy of the tt.
-        self.tt.destroy();  
+        self.tt.destroy();
         self.child_thread = AlgoThreadHandle(Some(
             builder
                 .spawn(move || {
@@ -225,7 +231,6 @@ impl Algo {
                 })
                 .unwrap(),
         ));
-        
     }
 
     #[inline]
@@ -336,8 +341,6 @@ mod tests {
         println!("{}", search);
     }
 
-
-
     #[test]
     fn test_node() {
         let board = Catalog::starting_position();
@@ -377,9 +380,7 @@ mod tests {
     fn test_black_opening() {
         let mut board = Catalog::starting_position();
         board.set_turn(Color::Black);
-        let mut search = Algo::new()
-            .set_timing_method(TimeControl::Depth(1))
-            .build();
+        let mut search = Algo::new().set_timing_method(TimeControl::Depth(1)).build();
         search.move_orderer.enabled = false;
         search.search(&board);
         println!("{}", search);
@@ -412,7 +413,7 @@ mod tests {
             // assert_eq!(search.search_stats().total().nodes(), 6553);  // with ordering pv
             // assert_eq!(search.search_stats().total().nodes(), 6740);
             } else {
-                assert!(search.search_stats().total().nodes()< 5232); // with piece mob
+                assert!(search.search_stats().total().nodes() < 5232); // with piece mob
 
                 // previous
                 // assert_eq!(search.search_stats().total().nodes(), 3456); // with pawn promos
@@ -441,7 +442,7 @@ mod tests {
         let nodes = algo.search_stats().total().nodes();
 
         // with gen qsearch
-        assert!(nodes <  6000); // piece mob
+        assert!(nodes < 6000); // piece mob
 
         // previous
         // assert_eq!(nodes, 4586); // pawn promo

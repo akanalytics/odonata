@@ -33,9 +33,10 @@ use std::sync::Arc;
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd)]
 pub enum NodeType {
     Unused = 0,
-    All = 1, // All node, score = upperbound ()
-    Cut = 2, // Cut node, score = lowerbound (we've not looked at all possible scores)
-    Pv = 3,  // PV node. score is exact
+    Terminal = 1, // no legal moves from this node
+    All = 2, // All node, score = upperbound ()
+    Cut = 3, // Cut node, score = lowerbound (we've not looked at all possible scores)
+    Pv = 4,  // PV node. score is exact
 }
 
 impl Default for NodeType {
@@ -273,6 +274,8 @@ impl TranspositionTable {
         if !self.enabled || self.capacity() == 0 {
             return;
         }
+        debug_assert!(entry.node_type != NodeType::Terminal, "Cannot store terminal nodes in tt");
+        debug_assert!(entry.node_type != NodeType::Unused, "Cannot store unsed nodes in tt");
         let new = StoredEntry {
             entry,
             hash,
@@ -379,7 +382,7 @@ impl TranspositionTable {
             if let Some(entry) = entry {
                 if entry.node_type == NodeType::Pv {
                     mv = &entry.bm;
-                    if !mv.is_null() && board.is_valid_move(&mv) && board.is_legal_move(&mv) {
+                    if !mv.is_null() && board.is_pseudo_legal_move(&mv) && board.is_legal_move(&mv) {
                         board = board.make_move(&mv);
                         moves.push(*mv);
                         continue;

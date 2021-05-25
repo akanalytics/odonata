@@ -3,6 +3,8 @@
 [ ] Config. Like debug. Pass in &ref for defaults, naming etc
 [ ] Killer moves
 [ ] Rust "template specialization"
+[ ] Analyses WAC.259 q search which explodes to 50m posn 
+  - r1bq1rk1/ppp2ppp/2np4/2bN1PN1/2B1P3/3p4/PPP2nPP/R1BQ1K1R w - - 0 1
 
 
 [X] Aging tt

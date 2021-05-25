@@ -60,7 +60,7 @@ impl Board {
         self.pseudo_legal_moves()
             .iter()
             .rev()
-            .any(|m| self.is_legal_move(m))
+            .any(|m| m.is_known_legal() || self.is_legal_move(m))
     }
 
     // fn is_in_check(&self, c: Color) -> bool {
@@ -74,7 +74,7 @@ impl Board {
         self.checkers_of(king_color).intersects(them)
     }
 
-    pub fn is_valid_move(&self, m: &Move) -> bool {
+    pub fn is_pseudo_legal_move(&self, m: &Move) -> bool {
         if !m.from().is_in(self.us()) {
             return false;
         }
@@ -94,7 +94,11 @@ impl Board {
                 if !m.to().is_in(self.them()) {
                     return false;
                 }
-            } else {
+                if m.capture_piece() != self.piece_at(m.to().as_bb()) {
+                    // FIXME! allow capture of another type of piece? 
+                    return false;
+                }
+                } else {
                 if !m.ep().is_in(self.them() & self.pawns()) {
                     return false;
                 }
@@ -111,41 +115,48 @@ impl Board {
             }
         }
 
-        // FIXME! Piece moves using strictly between
+        if m.mover_piece().is_line_piece() {
+            if (BitboardDefault::default().strictly_between(m.from(), m.to()) & self.occupied()).any() {
+                return false;
+            }
+        }
+        if m.mover_piece() == Piece::Pawn {
+            if (BitboardDefault::default().strictly_between(m.from(), m.to()) & self.occupied()).any() {
+                return false;
+            }
+        }
         true
     }
 
-
     pub fn is_legal_variation(&self, moves: &[Move]) -> bool {
         if let Some(m) = moves.first() {
-            if !self.is_valid_move(&m) || !self.is_legal_move(&m) {
+            if !self.is_pseudo_legal_move(&m) || !self.is_legal_move(&m) {
                 return false;
             }
-            return self.make_move(m).is_legal_variation(&moves[1..]); 
+            return self.make_move(m).is_legal_variation(&moves[1..]);
         } else {
             true
         }
     }
 
-
-
-    // the move is pseudo legal - king moves and castles are assumed already legal
+    // the move is pseudo legal 
     pub fn is_legal_move(&self, mv: &Move) -> bool {
-        if mv.is_known_legal() {
-            return true;
-        }
         // castling and kings moves already done above
         let mut us = self.us();
-        let kings = self.kings() & us;
+        let mut kings = self.kings() & us;
         if kings.is_empty() {
             return true; // a test position without king on the board - we allow
         }
-        let sq = kings.square();
 
-        // idea - lightweight make_move - no hash - just enough to check rays of sliders
+        // idea - lightweight make_move - no hash - just enough to check rays of sliders etc
         let mut them = self.them();
         let from_to_bits = mv.from().as_bb() | mv.to().as_bb();
-        us ^= from_to_bits; // wont be a king move so sq still valid
+        us ^= from_to_bits; 
+
+        if mv.mover_piece() == Piece::King {
+            kings ^= from_to_bits;
+        }
+        let sq = kings.square();
 
         if mv.is_capture() {
             if mv.is_ep_capture() {
@@ -178,6 +189,12 @@ impl Board {
             return false;
         }
 
+        if (attack_gen.king_attacks(sq) & self.kings() & them).any() {
+            return false;
+        }
+
+        // FIXME! need to check castling
+
         true
     }
 
@@ -186,7 +203,6 @@ impl Board {
         counts::LEGAL_MOVE_COUNT.increment();
         Rules::legals_for(self, moves);
     }
-
 
     #[inline]
     pub fn legal_moves(&self) -> MoveList {
@@ -462,12 +478,11 @@ mod tests {
         Ok(())
     }
 
-
     #[test]
     fn test_legal_variation() -> Result<(), String> {
         let b = Catalog::starting_position();
         let bd2 = Catalog::test_position();
-        let mvs = b.parse_uci_moves("a2a3 e7e6 b2b4")?; 
+        let mvs = b.parse_uci_moves("a2a3 e7e6 b2b4")?;
         assert_eq!(b.is_legal_variation(&mvs), true);
         assert_eq!(bd2.board().is_legal_variation(&mvs), false);
         Ok(())
@@ -475,34 +490,34 @@ mod tests {
 
     #[test]
     fn test_is_valid_move() {
-        let board = Catalog::starting_position();
+        let b = Catalog::starting_position();
+        let a2sq = a2.square();
+        let a3sq = a3.square();
+        let a6sq = a6.square();
+        let a7sq = a7.square();
         assert_eq!(
-            board.is_valid_move(&Move::new_quiet(Piece::Pawn, a2.square(), a3.square())),
+            b.is_pseudo_legal_move(&Move::new_quiet(Piece::Pawn, a2sq, a3sq)),
             true
         );
         assert_eq!(
-            board.is_valid_move(&Move::new_quiet(Piece::Bishop, a2.square(), a3.square())),
+            b.is_pseudo_legal_move(&Move::new_quiet(Piece::Bishop, a2sq, a3sq)),
             false
         );
         assert_eq!(
-            board.is_valid_move(&Move::new_quiet(Piece::Pawn, a7.square(), a6.square())),
+            b.is_pseudo_legal_move(&Move::new_quiet(Piece::Pawn, a7sq, a6sq)),
             false
         );
         assert_eq!(
-            board.is_valid_move(&Move::new_quiet(Piece::Pawn, a7.square(), a6.square())),
+            b.is_pseudo_legal_move(&Move::new_quiet(Piece::Pawn, a7sq, a6sq)),
             false
         );
         assert_eq!(
-            board.is_valid_move(&Move::new_capture(
-                Piece::Pawn,
-                a2.square(),
-                a3.square(),
-                Piece::Pawn
-            )),
+            b.is_pseudo_legal_move(&Move::new_capture(Piece::Pawn, a2sq, a3sq, Piece::Pawn)),
             false
         );
-        for mv in board.legal_moves().iter() {
-            assert!(board.is_legal_move(mv));
+        for mv in b.legal_moves().iter() {
+            assert!(b.is_legal_move(mv));
+            assert!(b.is_pseudo_legal_move(mv));
         }
     }
 

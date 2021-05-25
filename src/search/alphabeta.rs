@@ -13,7 +13,7 @@ pub struct AlphaBeta;
 
 // terminology
 // ply is moves made. so ply 3 means w-> b-> w-> after which we score position
-// 
+//
 impl Algo {
     #[inline]
     pub fn is_leaf(&self, ply: Ply) -> bool {
@@ -29,7 +29,7 @@ impl Algo {
         let pv = if self.tt.use_tt_for_pv {
             self.tt.extract_pv(node.board)
         } else {
-            self.pv_table.extract_pv()            
+            self.pv_table.extract_pv()
         };
         self.search_stats.record_time_actual_and_completion_status(
             self.max_depth,
@@ -46,7 +46,6 @@ impl Algo {
         beta: Score,
         last_move: &Move,
     ) -> Score {
-       
         debug_assert!(self.max_depth > 0);
         self.report_progress();
 
@@ -61,7 +60,7 @@ impl Algo {
 
         let mut score = Score::MinusInf;
         let mut bm = Move::NULL_MOVE;
-        let mut tt_mv: Option<Move> = None;
+        // let mut tt_mv: Option<Move> = None;
         let mut node_type = NodeType::All;
 
         // FIXME tt probe for leaves?
@@ -103,7 +102,7 @@ impl Algo {
                             }
                             score = entry.score;
                             bm = entry.bm;
-                            tt_mv = Some(entry.bm); // might help with move ordering
+                            // tt_mv = Some(entry.bm); // might help with move ordering
                             debug_assert!(!entry.bm.is_null());
                         }
                     }
@@ -114,30 +113,36 @@ impl Algo {
                             return entry.score;
                         }
                     }
-                    NodeType::Unused => panic!(),
+                    NodeType::Unused | NodeType::Terminal => unreachable!(),
                 }
             }
         }
 
         self.search_stats.inc_interior_nodes(ply);
 
+        // let mut moves = board.legal_moves();
 
-        let mut moves = board.legal_moves();
-        if moves.is_empty() {
-            self.search_stats.inc_leaf_nodes(ply);
-            return board.eval(&mut self.eval);
-        }
+        // FIXME: Some(tt_mv)
+        self.generate_moves(ply, board);
 
-        self.order_moves(ply, &mut moves, &tt_mv);
-        for (_i, mv) in moves.iter().enumerate() {
-            let mut child_board = board.make_move(mv);
+        // self.order_moves(ply, &mut moves, &tt_mv);
+        let mut count = 0; 
+        loop {
+            let mv = self.get_next_move(ply, board);
+            if mv.is_none() {
+                break;
+            }
+            let mv = mv.unwrap();
+            count += 1;
+
+            let mut child_board = board.make_move(&mv);
             self.repetition.push(&mv, &child_board);
             child_board.set_repetition_count(self.repetition.count(&child_board));
             debug_assert!(alpha < beta || self.minmax);
-            self.current_variation.set_last_move(ply + 1, mv);
+            self.current_variation.set_last_move(ply + 1, &mv);
 
             let child_score = -self.alphabeta_recursive(&mut child_board, ply + 1, -beta, -alpha, &mv);
-            board.undo_move(mv);
+            board.undo_move(&mv);
             self.repetition.pop();
             if self.task_control.is_cancelled() {
                 return Score::MinusInf;
@@ -150,20 +155,24 @@ impl Algo {
             }
             if child_score > alpha {
                 alpha = child_score;
-                bm = *mv;
+                bm = mv;
                 node_type = NodeType::Pv;
                 self.record_new_pv(ply, &bm, false);
-                debug_assert!(!bm.is_null(), "bm is null at {} mv {}", board, mv );
-
+                debug_assert!(!bm.is_null(), "bm is null at {} mv {}", board, mv);
             }
 
             if alpha >= beta && !self.minmax {
                 node_type = NodeType::Cut;
+                self.killers.store(ply, &mv);
                 break;
             }
         }
 
-        if node_type == NodeType::All {
+        if count == 0 {
+            // node_type = NodeType::Terminal;
+            self.search_stats.inc_leaf_nodes(ply);
+            return board.eval(&mut self.eval);
+        } else if node_type == NodeType::All {
             // nothing
         } else if node_type == NodeType::Cut {
             self.search_stats.inc_cuts(ply);
@@ -174,6 +183,9 @@ impl Algo {
         } else {
             panic!("Node type {:?} ", node_type);
         }
+ 
+
+
         if self.tt.enabled() {
             let entry = Entry {
                 score,
@@ -195,7 +207,6 @@ impl Algo {
             let sp = SearchProgress::from_search_stats(&self.search_stats());
             self.task_control.invoke_callback(&sp);
         }
-        
     }
 }
 
@@ -205,7 +216,6 @@ mod tests {
     use crate::catalog::*;
     use crate::comms::uci::Uci;
     use crate::search::timecontrol::*;
-
 
     #[test]
     fn test_2_mates() -> Result<(), String> {
@@ -222,7 +232,9 @@ mod tests {
             assert_eq!(search.pv().to_string(), pos.pv()?.to_string(), "#{} {}", i, pos);
             assert_eq!(
                 search.score(),
-                Score::WhiteWin { minus_ply: -3 - pos.board().total_halfmoves() },
+                Score::WhiteWin {
+                    minus_ply: -3 - pos.board().total_halfmoves()
+                },
                 "#{} {}",
                 i,
                 pos
