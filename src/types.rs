@@ -247,6 +247,13 @@ impl Piece {
         Self::ALL.len()
     }
 
+    pub fn is_line_piece(&self) -> bool {
+        match self {
+            Piece::Bishop| Piece::Rook| Piece::Queen => true,
+            _ => false,
+        }
+    }
+
     #[inline]
     pub fn to_upper_char(&self) -> char {
         match self {
