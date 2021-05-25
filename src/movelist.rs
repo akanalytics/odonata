@@ -415,6 +415,10 @@ impl MoveList {
         self
     }
 
+    pub fn contains(&self, m: &Move) -> bool {
+        self.moves.contains(m)
+    }
+
     pub fn uci(&self) -> String {
         self.moves
             .iter()
@@ -684,7 +688,10 @@ mod tests {
 
         let mut moves = MoveList::new();
         moves.push(move_a1b2);
+        assert_eq!(moves.contains(&promo_a7a8), false);
         moves.push(promo_a7a8);
+        assert_eq!(moves.contains(&move_a1b2), true);
+
         assert_eq!(moves.to_string(), "a1b2, a7a8q");
 
         let mut moves = Variation::new();
