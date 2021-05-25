@@ -1,6 +1,8 @@
 # Todo items
 [ ] PV extraction
+[ ] Config. Like debug. Pass in &ref for defaults, naming etc
 [ ] Killer moves
+[ ] Rust "template specialization"
 
 
 [X] Aging tt
