@@ -691,7 +691,7 @@ impl Iterator for BitIterator {
             None
         } else {
             let sq = self.bb.first();
-            self.bb.remove(sq);
+            self.bb ^= sq;
             Some(sq)
         }
     }
