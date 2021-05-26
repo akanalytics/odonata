@@ -20,14 +20,14 @@ impl Algo {
         ply == self.max_depth
     }
 
-    pub fn alphabeta(&mut self, node: &mut Node) {
+    pub fn run_alphabeta(&mut self, board: &mut Board, node: &mut Node) {
         self.search_stats.reset_keeping_pv();
         self.pv_table = PvTable::new(MAX_PLY as usize);
         self.search_stats.score =
-            self.alphabeta_recursive(node.board, node.ply, node.alpha, node.beta, &Move::NULL_MOVE);
+            self.alphabeta_recursive(board, node.ply, node.alpha, node.beta, &Move::NULL_MOVE);
 
         let pv = if self.tt.use_tt_for_pv {
-            self.tt.extract_pv(node.board)
+            self.tt.extract_pv(board)
         } else {
             self.pv_table.extract_pv()
         };
@@ -55,7 +55,7 @@ impl Algo {
 
         if board.draw_outcome().is_some() {
             self.search_stats.inc_leaf_nodes(ply);
-            return board.eval(&mut self.eval); // will return a draw score
+            return board.eval(&mut self.eval, &Node{ ply, alpha, beta }); // will return a draw score
         }
 
         let mut score = Score::MinusInf;
@@ -171,7 +171,7 @@ impl Algo {
         if count == 0 {
             // node_type = NodeType::Terminal;
             self.search_stats.inc_leaf_nodes(ply);
-            return board.eval(&mut self.eval);
+            return board.eval(&mut self.eval, &Node{ ply, alpha, beta});
         } else if node_type == NodeType::All {
             // nothing
         } else if node_type == NodeType::Cut {

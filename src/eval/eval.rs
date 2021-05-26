@@ -1,6 +1,7 @@
 use crate::bitboard::attacks::{BitboardAttacks, BitboardDefault};
 use crate::bitboard::square::Square;
 use crate::board::Board;
+use crate::search::node::Node;
 use crate::config::{Config, Component};
 use crate::eval::score::Score;
 use crate::eval::weight::Weight;
@@ -384,7 +385,7 @@ impl SimpleScorer {
 }
 
 impl SimpleScorer {
-    pub fn w_evaluate(&mut self, board: &Board) -> Score {
+    pub fn w_evaluate(&mut self, board: &Board, node: &Node) -> Score {
         counts::EVAL_COUNT.increment();
         let outcome = board.outcome();
         let score = if outcome.is_game_over() {
@@ -395,7 +396,7 @@ impl SimpleScorer {
         score
     }
 
-    pub fn w_eval_qsearch(&mut self, board: &Board) -> Score {
+    pub fn w_eval_qsearch(&mut self, board: &Board, node:&Node) -> Score {
         counts::QEVAL_COUNT.increment();
         // we check for insufficient material and 50/75 move draws.
         let outcome = board.draw_outcome();
@@ -623,9 +624,9 @@ impl Board {
     }
 
     #[inline]
-    pub fn eval_qsearch(&self, eval: &mut SimpleScorer) -> Score {
+    pub fn eval_qsearch(&self, eval: &mut SimpleScorer, nd: &Node) -> Score {
         QUIESCENCE.increment();
-        self.signum() * eval.w_eval_qsearch(self)
+        self.signum() * eval.w_eval_qsearch(self, nd)
     }
 
     #[inline]
@@ -641,9 +642,9 @@ impl Board {
     }
 
     #[inline]
-    pub fn eval(&self, eval: &mut SimpleScorer) -> Score {
+    pub fn eval(&self, eval: &mut SimpleScorer, nd: &Node) -> Score {
         ALL.increment();
-        self.signum() * eval.w_evaluate(self)
+        self.signum() * eval.w_evaluate(self, nd)
     }
 
     #[inline]
@@ -676,7 +677,7 @@ mod tests {
     fn test_score_material() {
         let board = Catalog::starting_position();
         let eval = &mut SimpleScorer::new();
-        assert_eq!(board.eval(eval), Score::Cp(0));
+        assert_eq!(board.eval(eval, &Node::root()), Score::Cp(0));
 
         let starting_pos_score = 8 * 100 + 2 * 325 + 2 * 350 + 2 * 500 + 900;
         let board = Catalog::white_starting_position();

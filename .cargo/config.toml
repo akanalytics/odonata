@@ -5,3 +5,6 @@ linux-perf-report = "perf report"
 linux-perf-run = "perf record -e task-clock,cycles,instructions,cache-references,cache-misses --call-graph dwarf -F 99  ./target/release/odonata --perft 5"
 # chown andy.andy ./tmp/perf.data
 
+fg5 = "cargo flamegraph --bench benchmark perft5 --bench"
+
+

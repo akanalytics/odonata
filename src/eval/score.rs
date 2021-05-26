@@ -26,6 +26,32 @@ impl Score {
         Score::Cp(centipawn)
     }
 
+
+    // * score
+	// 	* cp 
+	// 		the score from the engine's point of view in centipawns.
+	// 	* mate 
+	// 		mate in y moves, not plies.
+	// 		If the engine is getting mated use negativ values for y.
+	// 	* lowerbound
+	//       the score is just a lower bound.
+	// 	* upperbound
+	// 	   the score is just an upper bound.
+    pub fn uci(self, c: Color) -> String {
+        let score = match c {
+            Color::White => self,
+            Color::Black => self.negate() ,
+        };
+        // we assume we are now from white's point of view
+        match score {
+            Self::MinusInf => "cp -9999".to_string(),
+            Self::WhiteLoss { ply } => format!("mate {}", ply),
+            Self::Cp(cp) => format!("cp {}", cp),
+            Self::WhiteWin { minus_ply } => format!("mate {}", -minus_ply),
+            Self::PlusInf => "cp 9999".to_string(),
+        }
+    }
+
     pub fn side_to_move_score(tempo: i32, us: Color) -> Score {
         // axiom: were white
         // white to move => advantage, black to move means white has a disadvantage

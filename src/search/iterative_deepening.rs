@@ -109,7 +109,7 @@ impl Algo {
             self.max_depth = depth;
             self.search_stats.depth = depth;
 
-            self.alphabeta(&mut Node::new_root(&mut self.board.clone()));
+            self.run_alphabeta(&mut self.board.clone(), &mut Node::root());
             let mut res = self.search_stats().clone();
 
             self.mte.estimate_ply(depth + 1, &res);

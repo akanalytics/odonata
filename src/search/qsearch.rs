@@ -1,12 +1,13 @@
 use crate::bitboard::bitboard::Bitboard;
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
-use crate::config::{Config, Component};
+use crate::config::{Component, Config};
 use crate::eval::score::Score;
 use crate::log_debug;
 use crate::movelist::Move;
 use crate::movelist::MoveList;
 use crate::search::algo::Algo;
+use crate::search::node::Node;
 use crate::types::Ply;
 use std::fmt;
 
@@ -46,12 +47,9 @@ impl Component for QSearch {
             self.coarse_delta_prune = Score::cp(cp as i32);
         }
     }
-    fn new_game(&mut self) {
-    }
+    fn new_game(&mut self) {}
 
-    fn new_search(&mut self) {
-    }
-
+    fn new_search(&mut self) {}
 }
 
 impl Default for QSearch {
@@ -89,7 +87,7 @@ impl Algo {
     pub fn qsearch(&mut self, mv: &Move, ply: Ply, board: &mut Board, alpha: Score, beta: Score) -> Score {
         if !self.qsearch.enabled || ply <= 1 || (!mv.is_capture() && self.qsearch.only_captures) {
             self.search_stats.inc_leaf_nodes(ply);
-            return board.eval(&mut self.eval);
+            return board.eval(&mut self.eval, &Node { ply, alpha, beta });
         }
         let score = if self.qsearch.see {
             self.qsearch_see(Bitboard::EMPTY, ply, board, alpha, beta)
@@ -113,14 +111,14 @@ impl Algo {
         let in_check = board.is_in_check(board.color_us());
         let standing_pat;
         if ply == self.max_depth {
-            standing_pat = board.eval(&mut self.eval);
+            standing_pat = board.eval(&mut self.eval, &Node { ply, alpha, beta });
             if standing_pat.is_mate() {
                 return standing_pat;
             }
         } else if in_check {
             standing_pat = alpha;
         } else {
-            standing_pat = board.eval_qsearch(&mut self.eval);
+            standing_pat = board.eval_qsearch(&mut self.eval, &Node { ply, alpha, beta });
         }
         if standing_pat > alpha {
             if standing_pat >= beta {
@@ -151,9 +149,7 @@ impl Algo {
         let moves = board.legal_moves();
         let mut moves: MoveList = moves
             .iter()
-            .filter(|mv| {
-                mv.is_capture() || (mv.is_promo() & self.qsearch.promos) || in_check
-            })
+            .filter(|mv| mv.is_capture() || (mv.is_promo() & self.qsearch.promos) || in_check)
             .cloned()
             .collect();
 
@@ -204,7 +200,6 @@ impl Algo {
         }
         alpha
     }
-
 }
 
 #[cfg(test)]
@@ -245,7 +240,7 @@ mod tests {
         let pos = Position::parse_epd("7k/8/8/8/8/p7/8/R6K w - - 0 1 sm Ra3; ce 100;")?; //RN v pq
         let (alpha, beta) = (Score::MinusInf, Score::PlusInf);
 
-        let static_eval = match pos.board().eval(&mut eval) {
+        let static_eval = match pos.board().eval(&mut eval, &Node { ply: 0, alpha, beta }) {
             Score::Cp(cp) => cp,
             _ => 0,
         };

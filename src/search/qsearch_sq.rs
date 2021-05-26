@@ -4,6 +4,7 @@ use crate::board::Board;
 use crate::eval::score::Score;
 use crate::movelist::MoveList;
 use crate::search::algo::Algo;
+use crate::search::node::Node;
 use crate::types::Ply;
 
 
@@ -28,11 +29,11 @@ impl Algo {
         // this will handle mates too at quiescent node
         let standing_pat;
         if self.is_leaf(ply) {
-            standing_pat = board.eval(&mut self.eval);
+            standing_pat = board.eval(&mut self.eval, &Node {ply, alpha, beta});
         } else {
             // in qsearch a mate score might mean a queen sacrifice. But in reality
             // opponent would just play some other move
-            standing_pat = board.eval_qsearch(&mut self.eval);
+            standing_pat = board.eval_qsearch(&mut self.eval, &Node {ply, alpha, beta});
         }
 
         // if standing_pat.is_mate() {
