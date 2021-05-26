@@ -450,7 +450,7 @@ impl SimpleScorer {
         //     }
         // }
         // if self.cache_eval && board.fifty_halfmove_clock() <= self.qcache.hmvc_horizon {
-        //     let entry = Entry {
+        //     let entry = TtNode {
         //         score,
         //         depth: 0,
         //         node_type: NodeType::Pv,

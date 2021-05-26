@@ -6,7 +6,7 @@ use crate::pvtable::PvTable;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
 use crate::search::searchprogress::SearchProgress;
-use crate::tt::{Entry, NodeType};
+use crate::tt::{TtNode, NodeType};
 use crate::types::{Ply, MAX_PLY};
 
 pub struct AlphaBeta;
@@ -75,7 +75,7 @@ impl Algo {
             let draft = self.max_depth - ply;
             if entry.draft >= draft {
                 self.search_stats.inc_tt_nodes(ply);
-                //println!("Entry:{:?}", entry);
+                //println!("TtNode:{:?}", entry);
                 // for bounded scores, we know iterating through the nodes might raise alpha, lower beta
                 // doing this now allows us potentuially to cut off without looking at the child nodes
                 match entry.node_type {
@@ -85,7 +85,6 @@ impl Algo {
                         if entry.score > alpha {
                             self.record_new_pv(ply, &entry.bm, true);
                         }
-                        debug_assert!(!entry.bm.is_null());
                         return entry.score;
                     }
                     NodeType::Cut => {
@@ -103,7 +102,6 @@ impl Algo {
                             score = entry.score;
                             bm = entry.bm;
                             // tt_mv = Some(entry.bm); // might help with move ordering
-                            debug_assert!(!entry.bm.is_null());
                         }
                     }
                     NodeType::All => {
@@ -185,7 +183,7 @@ impl Algo {
         }
 
         if self.tt.enabled() {
-            let entry = Entry {
+            let entry = TtNode {
                 score,
                 draft: self.max_depth - ply,
                 node_type,

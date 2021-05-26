@@ -691,7 +691,7 @@ use std::mem;
 // }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum Entry {
+pub enum TtNode {
     Unused,
     AllNodeUpperBound {
         hash: Hash,
@@ -713,26 +713,26 @@ pub enum Entry {
     },
 }
 
-impl Entry {
+impl TtNode {
     pub fn hash(&self) -> Option<Hash> {
         match self {
-            Entry::Unused => None,
-            Entry::PvNodeExact { hash, .. }
-            | Entry::CutNodeLowerBound { hash, .. }
-            | Entry::AllNodeUpperBound { hash, .. } => Some(*hash),
+            TtNode::Unused => None,
+            TtNode::PvNodeExact { hash, .. }
+            | TtNode::CutNodeLowerBound { hash, .. }
+            | TtNode::AllNodeUpperBound { hash, .. } => Some(*hash),
         }
     }
     pub fn depth(&self) -> Ply {
         match self {
-            Entry::Unused => 0,
-            Entry::PvNodeExact { depth, .. }
-            | Entry::CutNodeLowerBound { depth, .. }
-            | Entry::AllNodeUpperBound { depth, .. } => *depth,
+            TtNode::Unused => 0,
+            TtNode::PvNodeExact { depth, .. }
+            | TtNode::CutNodeLowerBound { depth, .. }
+            | TtNode::AllNodeUpperBound { depth, .. } => *depth,
         }
     }
 }
 
-impl Default for Entry {
+impl Default for TtNode {
     fn default() -> Self {
         Self::Unused
     }
@@ -740,7 +740,7 @@ impl Default for Entry {
 
 #[derive(Clone)]
 pub struct TranspositionTable {
-    table: Vec<Entry>,
+    table: Vec<TtNode>,
 
     pub enabled: bool,
     capacity: usize,
@@ -781,7 +781,7 @@ impl fmt::Display for TranspositionTable {
 impl Default for TranspositionTable {
     fn default() -> Self {
         Self {
-            table: vec![Entry::default(); 100_000],
+            table: vec![TtNode::default(); 100_000],
             enabled: false,
             capacity: 100_000,
             hits: Stat::new("TT.HITS"),
@@ -806,13 +806,13 @@ impl Component for TranspositionTable {
 
 impl TranspositionTable {
     pub fn new_in_mb(mb: usize) -> Self {
-        let entries = 1_000_000 * mb / mem::size_of::<Entry>();
+        let entries = 1_000_000 * mb / mem::size_of::<TtNode>();
         Self::new(entries)
     }
 
     pub fn new(capacity: usize) -> Self {
-        TranspositionTable { table: vec![Entry::default(); capacity], capacity, ..Self::default() }
-        // tt.table.resize(size, Entry::default());
+        TranspositionTable { table: vec![TtNode::default(); capacity], capacity, ..Self::default() }
+        // tt.table.resize(size, TtNode::default());
     }
 
     pub fn enabled(&self) -> bool {
@@ -827,16 +827,16 @@ impl TranspositionTable {
         hash as usize % self.capacity()
     }
 
-    pub fn insert(&mut self, new: &Entry) {
+    pub fn insert(&mut self, new: &TtNode) {
         if !self.enabled {
             return;
         }
         self.inserts.increment();
         match new {
-            Entry::Unused => return,
-            Entry::PvNodeExact { hash, depth, .. }
-            | Entry::CutNodeLowerBound { hash, depth, .. }
-            | Entry::AllNodeUpperBound { hash, depth, .. } => {
+            TtNode::Unused => return,
+            TtNode::PvNodeExact { hash, depth, .. }
+            | TtNode::CutNodeLowerBound { hash, depth, .. }
+            | TtNode::AllNodeUpperBound { hash, depth, .. } => {
                 let i = self.index(*hash);
                 let old = &mut self.table[i];
                 // FIXME!
@@ -848,22 +848,22 @@ impl TranspositionTable {
         self.inserts.increment();
     }
 
-    pub fn get(&self, h: Hash) -> &Entry {
+    pub fn get(&self, h: Hash) -> &TtNode {
         let entry = &self.table[self.index(h)];
         match entry {
-            Entry::Unused => {
+            TtNode::Unused => {
                 self.misses.increment();
                 entry
             }
-            Entry::PvNodeExact { hash, .. }
-            | Entry::CutNodeLowerBound { hash, .. }
-            | Entry::AllNodeUpperBound { hash, .. } => {
+            TtNode::PvNodeExact { hash, .. }
+            | TtNode::CutNodeLowerBound { hash, .. }
+            | TtNode::AllNodeUpperBound { hash, .. } => {
                 if h == *hash {
                     self.hits.increment();
                     entry
                 } else {
                     self.collisions.increment();
-                    &Entry::Unused
+                    &TtNode::Unused
                 }
             }
         }
@@ -877,21 +877,21 @@ mod tests {
     #[test]
     fn test_tt() {
         let entry123 =
-            Entry::PvNodeExact { hash: 123, score: Score::Cp(300), depth: 2, bm: Move::new_null() };
+            TtNode::PvNodeExact { hash: 123, score: Score::Cp(300), depth: 2, bm: Move::new_null() };
 
         let entry456 =
-            Entry::PvNodeExact { hash: 456, score: Score::Cp(200), depth: 3, bm: Move::new_null() };
+            TtNode::PvNodeExact { hash: 456, score: Score::Cp(200), depth: 3, bm: Move::new_null() };
 
         let entry456b =
-            Entry::PvNodeExact { hash: 456, score: Score::Cp(201), depth: 4, bm: Move::new_null() };
+            TtNode::PvNodeExact { hash: 456, score: Score::Cp(201), depth: 4, bm: Move::new_null() };
 
         let mut tt = TranspositionTable::new_in_mb(10);
         assert_eq!(tt.capacity(), 178_571);
-        assert!(*tt.get(123) == Entry::Unused);
+        assert!(*tt.get(123) == TtNode::Unused);
         tt.insert(&entry123);
         tt.insert(&entry456);
         assert_eq!(tt.get(123), &entry123);
-        assert_eq!(tt.get(124), &Entry::Unused);
+        assert_eq!(tt.get(124), &TtNode::Unused);
         assert_eq!(tt.get(456), &entry456);
         tt.insert(&entry456b);
         assert_eq!(tt.get(456), &entry456b);

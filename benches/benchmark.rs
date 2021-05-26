@@ -22,7 +22,7 @@ use odonata::pvtable::*;
 use odonata::search::algo::Algo;
 use odonata::search::node::Node;
 use odonata::search::timecontrol::TimeControl;
-use odonata::tt::{Entry, NodeType, TranspositionTable};
+use odonata::tt::{TtNode, NodeType, TranspositionTable};
 use odonata::types::*;
 use odonata::utils::*;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -416,7 +416,7 @@ fn board_calcs(c: &mut Criterion) {
     });
 
     group.bench_function("tt_store", |b| {
-        let entry = Entry {
+        let entry = TtNode {
             score: Score::Cp(100),
             draft: 1,
             node_type: NodeType::Pv,

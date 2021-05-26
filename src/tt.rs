@@ -46,7 +46,7 @@ impl Default for NodeType {
 }
 
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
-pub struct Entry {
+pub struct TtNode {
     pub score: Score,
     pub draft: Ply, // draft is plies to q/leaf
     pub node_type: NodeType,
@@ -54,15 +54,15 @@ pub struct Entry {
 }
 
 #[derive(Default, Debug)]
-struct StoredEntry {
+struct Element {
     hash: Hash,
-    entry: Entry,
+    entry: TtNode,
     age: AtomicI16,
 }
 
-impl Clone for StoredEntry {
+impl Clone for Element {
     fn clone(&self) -> Self {
-        Self {
+        Element {
             entry: self.entry,
             hash: self.hash,
             age: AtomicI16::new(self.age.load(Ordering::Relaxed)),
@@ -73,7 +73,7 @@ impl Clone for StoredEntry {
 // FIXME Mates as score
 #[derive(Clone)]
 pub struct TranspositionTable {
-    table: Arc<Vec<StoredEntry>>,
+    table: Arc<Vec<Element>>,
 
     pub aging: bool,
     pub current_age: i16,
@@ -113,7 +113,7 @@ impl fmt::Display for TranspositionTable {
         writeln!(f, "use tt for pv    : {}", self.use_tt_for_pv)?;
         writeln!(f, "capacity         : {}", self.table.capacity())?;
         writeln!(f, "size in mb       : {}", self.mb)?;
-        writeln!(f, "entry size bytes : {}", mem::size_of::<Entry>())?;
+        writeln!(f, "entry size bytes : {}", mem::size_of::<TtNode>())?;
         writeln!(f, "aging            : {}", self.aging)?;
         writeln!(f, "current age      : {}", self.current_age)?;
         writeln!(f, "hmvc horizon     : {}", self.hmvc_horizon)?;
@@ -180,13 +180,13 @@ impl Component for TranspositionTable {
     fn new_game(&mut self) {
         if self.requires_resize() {
             let capacity = Self::convert_mb_to_capacity(self.mb);
-            self.table = Arc::new(vec![StoredEntry::default(); capacity]);
+            self.table = Arc::new(vec![Element::default(); capacity]);
             self.current_age = 10;
             return;
         }
         let table = Arc::get_mut(&mut self.table);
         if let Some(table) = table {
-            table.iter_mut().for_each(|e| *e = StoredEntry::default());
+            table.iter_mut().for_each(|e| *e = Element::default());
             self.current_age = 10;
         } else {
             panic!("Unable to clear cache");
@@ -200,16 +200,16 @@ impl Component for TranspositionTable {
 
 impl TranspositionTable {
     pub const fn convert_mb_to_capacity(mb: i64) -> usize {
-        mb as usize * 1_000_000 / mem::size_of::<Entry>()
+        mb as usize * 1_000_000 / mem::size_of::<TtNode>()
     }
 
     pub const fn convert_capacity_to_mb(cap: usize) -> i64 {
-        (cap * mem::size_of::<Entry>()) as i64 / 1_000_000
+        (cap * mem::size_of::<TtNode>()) as i64 / 1_000_000
     }
 
     pub fn new_with_mb(mb: usize) -> Self {
         Self {
-            table: Arc::new(vec![StoredEntry::default(); 0]),
+            table: Arc::new(vec![Element::default(); 0]),
             enabled: true,
             use_tt_for_pv: true,
             mb: mb as i64,
@@ -229,7 +229,7 @@ impl TranspositionTable {
     }
 
     pub fn destroy(&mut self) {
-        self.table = Arc::new(vec![StoredEntry::default(); 0]);
+        self.table = Arc::new(vec![Element::default(); 0]);
         // Arc::make_mut(&mut self.table);
     }
 
@@ -276,13 +276,13 @@ impl TranspositionTable {
         hash as usize % self.capacity()
     }
 
-    pub fn store(&mut self, hash: Hash, entry: Entry) {
+    pub fn store(&mut self, hash: Hash, entry: TtNode) {
         if !self.enabled || self.capacity() == 0 {
             return;
         }
         debug_assert!(entry.node_type != NodeType::Terminal, "Cannot store terminal nodes in tt");
         debug_assert!(entry.node_type != NodeType::Unused, "Cannot store unsed nodes in tt");
-        let new = StoredEntry {
+        let new = Element {
             entry,
             hash,
             age: AtomicI16::new(self.current_age),
@@ -333,7 +333,7 @@ impl TranspositionTable {
         if let Some(table) = table {
             let old = &mut table[index];
             self.deletes.increment();
-            *old = StoredEntry::default();
+            *old = Element::default();
             return;
         } else {
             self.fail_ownership.increment();
@@ -341,7 +341,7 @@ impl TranspositionTable {
         }
     }
 
-    pub fn probe_by_board(&self, board: &Board) -> Option<&Entry> {
+    pub fn probe_by_board(&self, board: &Board) -> Option<&TtNode> {
         if !self.enabled || self.capacity() == 0 {
             return None;
         }
@@ -357,7 +357,7 @@ impl TranspositionTable {
         }
     }
 
-    fn probe_by_hash(&self, hash: Hash) -> Option<&Entry> {
+    fn probe_by_hash(&self, hash: Hash) -> Option<&TtNode> {
         if !self.enabled || self.capacity() == 0 {
             return None;
         }
@@ -427,8 +427,8 @@ mod tests {
     use crate::types::*;
     use crate::comms::uci::*;
 
-    fn entry123() -> Entry {
-        Entry {
+    fn entry123() -> TtNode {
+        TtNode {
             score: Score::Cp(300),
             draft: 2,
             node_type: NodeType::Pv,
@@ -436,8 +436,8 @@ mod tests {
         }
     }
 
-    fn entry456() -> Entry {
-        Entry {
+    fn entry456() -> TtNode {
+        TtNode {
             score: Score::Cp(200),
             draft: 3,
             node_type: NodeType::Pv,
@@ -445,8 +445,8 @@ mod tests {
         }
     }
 
-    fn entry456b() -> Entry {
-        Entry {
+    fn entry456b() -> TtNode {
+        TtNode {
             score: Score::Cp(201),
             draft: 4,
             node_type: NodeType::Pv,
