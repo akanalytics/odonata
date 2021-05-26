@@ -24,6 +24,7 @@ junk/**
 .vscode/*
 
 # profiling output
-perf.data
+perf.data*
+flamegraph.svg*
 
 odonata.geany
