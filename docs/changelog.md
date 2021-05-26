@@ -3,6 +3,7 @@
 
 
 ## 0.3.15
+= Bug fix: illegal moves made when cut node stored at root of tt
 - UCI centi-pawn scoring pov finally fixed (from egine pov not white's)
 - UCI mate in X reporting also finally fixed
 - Some temporary changes to facilitate killer move investigations, and move ordering

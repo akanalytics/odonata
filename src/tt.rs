@@ -386,7 +386,10 @@ impl TranspositionTable {
         while moves.len() < 50 {
             let entry = self.probe_by_board(&board);
             if let Some(entry) = entry {
-                if entry.node_type == NodeType::Pv {
+                // we need to be careful, the root node could be written as a Cut node of equal depth
+                // and although opponent shouldn't have let us get there, they did!  
+                // FIXED!
+                if entry.node_type == NodeType::Pv || entry.node_type == NodeType::Cut {
                     mv = &entry.bm;
                     if !mv.is_null() && board.is_pseudo_legal_move(&mv) && board.is_legal_move(&mv) {
                         board = board.make_move(&mv);

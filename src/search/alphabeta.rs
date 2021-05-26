@@ -6,7 +6,7 @@ use crate::pvtable::PvTable;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
 use crate::search::searchprogress::SearchProgress;
-use crate::tt::{TtNode, NodeType};
+use crate::tt::{NodeType, TtNode};
 use crate::types::{Ply, MAX_PLY};
 
 pub struct AlphaBeta;
@@ -60,19 +60,16 @@ impl Algo {
 
         let mut score = Score::MinusInf;
         let mut bm = Move::NULL_MOVE;
-        // let mut tt_mv: Option<Move> = None;
-        let mut node_type = NodeType::All;
+        let mut nt = NodeType::All;
 
-        // FIXME tt probe for leaves?
         if self.is_leaf(ply) {
-            let score = self.qsearch(last_move, ply, board, alpha, beta);
-            debug_assert!(self.task_control.is_cancelled() || score > Score::MinusInf);
-            return score;
+            return self.qsearch(last_move, ply, board, alpha, beta);
         }
 
-        // FIXME avoid the cloned!
+        
         if let Some(entry) = self.tt.probe_by_board(board).cloned() {
             let draft = self.max_depth - ply;
+            
             if entry.draft >= draft {
                 self.search_stats.inc_tt_nodes(ply);
                 //println!("TtNode:{:?}", entry);
@@ -93,10 +90,11 @@ impl Algo {
                         // FIXME: probably dont set alpha just the hinted mv and re-search the node
                         if entry.score > alpha {
                             self.record_new_pv(ply, &entry.bm, true);
-                            node_type = NodeType::Pv;
+                            nt = NodeType::Pv;
                             alpha = entry.score;
                             if alpha >= beta {
                                 self.search_stats.inc_cuts(ply);
+                                self.tt.store(board.hash(), entry);
                                 return entry.score;
                             }
                             score = entry.score;
@@ -117,8 +115,6 @@ impl Algo {
         }
 
         self.search_stats.inc_interior_nodes(ply);
-
-        // let mut moves = board.legal_moves();
 
         // FIXME: Some(tt_mv)
         self.generate_moves(ply, board);
@@ -145,7 +141,6 @@ impl Algo {
             if self.task_control.is_cancelled() {
                 return Score::MinusInf;
             }
-            debug_assert!(child_score > Score::MinusInf);
 
             // println!("move {} score {} alpha {} beta {}", mv, score, alpha, beta);
             if child_score > score {
@@ -154,43 +149,40 @@ impl Algo {
             if child_score > alpha {
                 alpha = child_score;
                 bm = mv;
-                node_type = NodeType::Pv;
+                nt = NodeType::Pv;
                 self.record_new_pv(ply, &bm, false);
-                debug_assert!(!bm.is_null(), "bm is null at {} mv {}", board, mv);
             }
 
             if alpha >= beta && !self.minmax {
-                node_type = NodeType::Cut;
+                nt = NodeType::Cut;
                 self.killers.store(ply, &mv);
                 break;
             }
         }
 
         if count == 0 {
-            // node_type = NodeType::Terminal;
+            // nt = NodeType::Terminal;
             self.search_stats.inc_leaf_nodes(ply);
             return board.eval(&mut self.eval, &Node { ply, alpha, beta });
-        } else if node_type == NodeType::All {
+        } else if nt == NodeType::All {
             // nothing
-        } else if node_type == NodeType::Cut {
+        } else if nt == NodeType::Cut {
             self.search_stats.inc_cuts(ply);
             debug_assert!(!bm.is_null())
-        } else if node_type == NodeType::Pv {
+        } else if nt == NodeType::Pv {
             // self.record_new_pv(ply, &bm, false);
             debug_assert!(!bm.is_null())
         } else {
-            panic!("Node type {:?} ", node_type);
+            panic!("Node type {:?} ", nt);
         }
 
-        if self.tt.enabled() {
-            let entry = TtNode {
-                score,
-                draft: self.max_depth - ply,
-                node_type,
-                bm, // not set for NodeType::All
-            };
-            self.tt.store(board.hash(), entry);
-        }
+        let entry = TtNode {
+            score,
+            draft: self.max_depth - ply,
+            node_type: nt,
+            bm, // not set for NodeType::All
+        };
+        self.tt.store(board.hash(), entry);
         self.current_variation.set_last_move(ply, &Move::NULL_MOVE);
         score
     }
@@ -238,9 +230,7 @@ mod tests {
     fn test_mate_in_3_sync() -> Result<(), String> {
         let positions = Catalog::mate_in_3();
         for (i, pos) in positions.iter().enumerate() {
-            let mut search = Algo::new()
-                .set_timing_method(TimeControl::Depth(5))
-                .build();
+            let mut search = Algo::new().set_timing_method(TimeControl::Depth(5)).build();
             search.tt.enabled = false;
             search.qsearch.see = true;
             let expected_pv = pos.pv()?;
