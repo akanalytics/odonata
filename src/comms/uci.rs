@@ -3,7 +3,6 @@ use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::catalog::Catalog;
 use crate::config::{Config, Component};
-use crate::eval::score::Score;
 use crate::movelist::Move;
 use crate::clock::Clock;
 use crate::movelist::MoveValidator;
