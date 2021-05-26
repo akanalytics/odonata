@@ -25,6 +25,6 @@ junk/**
 
 # profiling output
 perf.data*
-flamegraph.svg*
+flamegraph*.svg
 
 odonata.geany
