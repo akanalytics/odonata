@@ -166,9 +166,14 @@ impl fmt::Display for Square {
 impl<T> std::ops::Index<Square> for [T] {
     type Output = T;
     #[inline]
-    fn index(&self, s: Square) -> &Self::Output {
-        unsafe { &self.get_unchecked(s.index()) }
-        // &self[s.index()]
+    fn index(&self, i: Square) -> &Self::Output {
+        #[cfg(feature="unchecked_indexing")]  
+          unsafe {
+            &self.get_unchecked(i.index())
+        }
+
+        #[cfg(not(feature="unchecked_indexing"))]
+        &self[(i.index())]
     }
 }
 
@@ -201,6 +206,15 @@ mod tests {
         assert_eq!(Square::all().count(), 64);
         assert_eq!(Square::all().next(), Some(Square(0)));
         assert_eq!(!Bitboard::all(), Bitboard::empty());
+    }
+
+
+    #[test]
+    #[ignore]
+    fn test_out_of_bounds() {
+        let array: [u32;64] = [0;64];
+        assert_eq!(array[Square(63)], 0);
+        assert_eq!(array[Square(64)], 0);
     }
 
     #[test]

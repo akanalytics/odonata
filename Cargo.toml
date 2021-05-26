@@ -1,12 +1,14 @@
 [package]
 name = "odonata"
-version = "0.3.14"
+version = "0.3.15"
+license = "GPL-3.0+"
 homepage = "https://github.com/akanalytics/odonata"
-authors = ["andy watkins"]
+authors = ["andy watkins <andy@webcalculator.com>"]
 edition = "2018"
 description = """
-Chess
+A simple UCI compliant chess engine
 """
+keywords = ["chess"]
 repository = "https://github.com/akanalytics/odonata"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -15,13 +17,13 @@ repository = "https://github.com/akanalytics/odonata"
 clap = "2.33"
 bitflags = "1.2"
 arrayvec = "0.7"
-# lazy_static = "1.4"
 once_cell = "1.7"
 regex = "1.4"
 rand = "0.8.3"
 rand_chacha = "0.3.0"
 env_logger = "0.8" 
 log = { version = "0.4", features = ["release_max_level_info"] }
+# lazy_static = "1.4"
 
 [dev-dependencies]
 criterion = "0.3"
@@ -37,6 +39,10 @@ harness = false
 debug = true
 opt-level = 3
 
+
+[features]
+unchecked_indexing = []
+fast = ["unchecked_indexing"]
 
 # RUSTFLAGS="-C target-cpu=native" cargo bench
 

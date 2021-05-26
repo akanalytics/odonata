@@ -106,12 +106,6 @@ impl Hasher {
         &HASHER
     }
 
-    // makes no difference
-    // #[inline]
-    // fn get(&self, c: Color, p: Piece, sq: Square) -> Hash {
-    //     unsafe { *self.squares.get_unchecked(c.index()).get_unchecked(p.index()).get_unchecked(sq.index()) }
-    // }
-
     #[inline]
     fn get(&self, c: Color, p: Piece, sq: Square) -> Hash {
         self.squares[c][p][sq]

@@ -199,19 +199,7 @@ impl BoardBuf for Board {
     }
 }
 
-// impl std::ops::Index<Bitboard> for BoardBuf {
-//     type Output = str;
-//     fn index(&self, sq: Bitboard) -> &str {
-//         self.temporary = self.get(sq);
-//         &self.temporary
-//     }
-// }
 
-// impl  std::ops::IndexMut<Bitboard> for Board {
-//     type Output = char;
-//     fn index_mut(&mut self, index: Bitboard) -> &mut char {
-//     }
-// }
 
 #[cfg(test)]
 mod tests {

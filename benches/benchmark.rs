@@ -29,10 +29,9 @@ use std::time::Instant;
 
 criterion_group!(
     benches,
-    bench_shared_mem,
-    benchmark_mate_in_2,
     benchmark_search,
     benchmark_perft5,
+    benchmark_mate_in_2,
     benchmark_eval,
     bb_calcs,
     sq_calcs,
@@ -55,7 +54,8 @@ criterion_group!(
     benchmark_array,
     bench_insufficient_material,
     bench_pvtable,
-    cache_eval
+    cache_eval,
+    bench_shared_mem,
 );
 criterion_main!(benches);
 
@@ -901,15 +901,6 @@ fn bench_insufficient_material(c: &mut Criterion) {
 fn benchmark_search(c: &mut Criterion) {
     let mut group = c.benchmark_group("search");
     group.sample_size(10);
-    group.bench_function("starting(5)", |b| {
-        b.iter(|| {
-            let board = Catalog::starting_position();
-            // let eval = SimpleScorer::new().set_position();
-            let mut search = Algo::new().set_timing_method(TimeControl::Depth(5)).build();
-            search.new_game();
-            black_box(search.search(&board));
-        });
-    });
     group.bench_function("test(5)", |b| {
         b.iter(|| {
             let pos = Catalog::test_position();
@@ -919,6 +910,15 @@ fn benchmark_search(c: &mut Criterion) {
             black_box(search.search(pos.board()));
         });
     });
+    group.bench_function("starting(5)", |b| {
+        b.iter(|| {
+            let board = Catalog::starting_position();
+            // let eval = SimpleScorer::new().set_position();
+            let mut search = Algo::new().set_timing_method(TimeControl::Depth(5)).build();
+            search.new_game();
+            black_box(search.search(&board));
+        });
+    });
     group.finish();
 }
 
@@ -926,13 +926,10 @@ fn benchmark_mate_in_2(c: &mut Criterion) {
     let mut group = c.benchmark_group("mate2");
     group.sample_size(20);
     let board = Catalog::mate_in_2()[0].board().clone();
-    let eval = SimpleScorer::new().set_position(false);
     group.bench_function("mate_in_2_ab", |b| {
         b.iter(|| {
             let mut search = Algo::new()
                 .set_timing_method(TimeControl::Depth(3))
-                .set_minmax(false)
-                .set_eval(eval.clone())
                 .set_iterative_deepening(false)
                 .build();
             search.new_game();
@@ -941,13 +938,10 @@ fn benchmark_mate_in_2(c: &mut Criterion) {
         });
     });
     let board = Catalog::mate_in_2()[0].board().clone();
-    let eval = SimpleScorer::new().set_position(false);
-    group.bench_function("mate_in_2_ab_iid", |b| {
+    group.bench_function("mate_in_2_ab_ids", |b| {
         b.iter(|| {
             let mut search = Algo::new()
                 .set_timing_method(TimeControl::Depth(3))
-                .set_minmax(false)
-                .set_eval(eval.clone())
                 .set_iterative_deepening(true)
                 .build();
             search.new_game();

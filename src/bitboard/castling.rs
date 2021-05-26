@@ -22,12 +22,17 @@ impl Default for CastlingRights {
 }
 
 
+
 impl<T> std::ops::Index<CastlingRights> for [T] {
     type Output = T;
     #[inline]
-    fn index(&self, cr: CastlingRights) -> &Self::Output {
-        unsafe { &self.get_unchecked(cr.index()) }
-    }
+    fn index(&self, i: CastlingRights) -> &Self::Output {
+            #[cfg(feature="unchecked_indexing")]
+            unsafe { &self.get_unchecked(i.index()) }
+
+            #[cfg(not(feature="unchecked_indexing"))]
+            &self[(i.index())]
+        }
 }
 
 impl<T> std::ops::IndexMut<CastlingRights> for [T] {

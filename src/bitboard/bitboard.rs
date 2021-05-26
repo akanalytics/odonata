@@ -81,8 +81,14 @@ impl Dir {
 impl<T> std::ops::Index<Dir> for [T] {
     type Output = T;
     #[inline]
-    fn index(&self, d: Dir) -> &Self::Output {
-        unsafe { &self.get_unchecked(d.index()) }
+    fn index(&self, i: Dir) -> &Self::Output {
+        #[cfg(feature="unchecked_indexing")]
+        unsafe {
+            &self.get_unchecked(i.index())
+        }
+
+        #[cfg(not(feature="unchecked_indexing"))]
+        &self[(i.index())]
     }
 }
 
@@ -716,7 +722,6 @@ impl fmt::Display for Bitboard {
     }
 }
 
-
 #[derive(Copy, Clone, Debug)]
 pub struct Squares {
     bb: Bitboard,
@@ -742,8 +747,6 @@ impl Iterator for Squares {
         (bitcount, Some(bitcount))
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {

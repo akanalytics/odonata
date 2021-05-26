@@ -6,7 +6,6 @@ pub const MAX_PLY: Ply = 128;
 pub type Ply = i32;
 pub type Hash = u64;
 
-
 pub struct Chooser<T> {
     pub black: T,
     pub white: T,
@@ -46,8 +45,6 @@ pub fn chooser_struct<'a, T>(c: Color, choices: &'a Chooser<&T>) -> &'a T {
     [&choices.white, &choices.black][c as usize]
 }
 
-
-
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum Color {
     White = 0,
@@ -57,24 +54,16 @@ pub enum Color {
 impl<T> std::ops::Index<Color> for [T] {
     type Output = T;
     #[inline]
-    fn index(&self, c: Color) -> &Self::Output {
-            // unsafe {
-            //     &self.get_unchecked(c.index())
-            // }
-            unsafe { &self.get_unchecked(c.index()) }
+    fn index(&self, i: Color) -> &Self::Output {
+        #[cfg(feature="unchecked_indexing")]  
+        unsafe {
+            &self.get_unchecked(i.index())
         }
-}
 
-// impl<T> std::ops::Index<&Color> for [T] {
-//     type Output = T;
-//     #[inline]
-//     fn index(&self, c: &Color) -> &Self::Output {
-//             // unsafe {
-//             //     &self.get_unchecked(c.index())
-//             // }
-//             &self[(c.index())]
-//         }
-// }
+        #[cfg(not(feature="unchecked_indexing"))]
+        &self[(i.index())]
+    }
+}
 
 impl<T> std::ops::IndexMut<Color> for [T] {
     #[inline]
@@ -93,12 +82,10 @@ impl Default for Color {
 impl Color {
     pub const ALL: [Color; 2] = [Color::White, Color::Black];
 
-
     #[inline]
     pub const fn len() -> usize {
         Self::ALL.len()
     }
-
 
     #[inline]
     pub const fn index(self) -> usize {
@@ -106,7 +93,7 @@ impl Color {
     }
 
     #[inline]
-    pub  fn chooser_wb<T:Copy>(self, white_thing: T, black_thing: T) -> T {
+    pub fn chooser_wb<T: Copy>(self, white_thing: T, black_thing: T) -> T {
         match self {
             Color::White => white_thing,
             Color::Black => black_thing,
@@ -124,27 +111,27 @@ impl Color {
     }
 
     #[inline]
-    pub  fn double_push_dest_rank(self) -> Bitboard {
+    pub fn double_push_dest_rank(self) -> Bitboard {
         self.chooser_wb(Bitboard::RANK_4, Bitboard::RANK_5)
     }
 
     #[inline]
-    pub  fn pawn_capture_east(self) -> Dir {
+    pub fn pawn_capture_east(self) -> Dir {
         self.chooser_wb(Dir::NE, Dir::SE)
     }
 
     #[inline]
-    pub  fn pawn_capture_west(self) -> Dir {
+    pub fn pawn_capture_west(self) -> Dir {
         self.chooser_wb(Dir::NW, Dir::SW)
     }
 
     #[inline]
-    pub  fn back_rank(self) -> Bitboard {
+    pub fn back_rank(self) -> Bitboard {
         self.chooser_wb(Bitboard::RANK_1, Bitboard::RANK_8)
     }
 
     #[inline]
-    pub  fn opposite(self) -> Color {
+    pub fn opposite(self) -> Color {
         self.chooser_wb(Color::Black, Color::White)
     }
 
@@ -183,24 +170,17 @@ pub enum Piece {
     King,
 }
 
-// impl<T> std::ops::Index<&Piece> for [T] {
-//     type Output = T;
-//     #[inline]
-//     fn index(&self, p: &Piece) -> &Self::Output {
-//         &self[p.index()]
-//     }
-// }
-
-
-
-
-
-
 impl<T> std::ops::Index<Piece> for [T] {
     type Output = T;
     #[inline]
-    fn index(&self, p: Piece) -> &Self::Output {
-        unsafe { &self.get_unchecked(p.index()) }
+    fn index(&self, i: Piece) -> &Self::Output {
+        #[cfg(feature="unchecked_indexing")]
+        unsafe {
+            &self.get_unchecked(i.index())
+        }
+
+        #[cfg(not(feature="unchecked_indexing"))]
+        &self[(i.index())]
     }
 }
 
@@ -224,18 +204,35 @@ impl fmt::Display for Piece {
     }
 }
 
-
 impl Piece {
-    pub const ALL: [Piece; 7] =
-        [Piece::None, Piece::Pawn, Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen, Piece::King];
+    pub const ALL: [Piece; 7] = [
+        Piece::None,
+        Piece::Pawn,
+        Piece::Knight,
+        Piece::Bishop,
+        Piece::Rook,
+        Piece::Queen,
+        Piece::King,
+    ];
 
-    pub const ALL_BAR_NONE: [Piece; 6] =
-        [Piece::Pawn, Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen, Piece::King];
+    pub const ALL_BAR_NONE: [Piece; 6] = [
+        Piece::Pawn,
+        Piece::Knight,
+        Piece::Bishop,
+        Piece::Rook,
+        Piece::Queen,
+        Piece::King,
+    ];
 
-    pub const ALL_BAR_KING: [Piece; 5] =
-    [Piece::Pawn, Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen];
+    pub const ALL_BAR_KING: [Piece; 5] = [
+        Piece::Pawn,
+        Piece::Knight,
+        Piece::Bishop,
+        Piece::Rook,
+        Piece::Queen,
+    ];
 
-        // pub fn to_upper_char(self) -> &char {
+    // pub fn to_upper_char(self) -> &char {
     //     ".PNBRQK".as_bytes()[self as usize] as char
     // }
     #[inline]
@@ -250,7 +247,7 @@ impl Piece {
 
     pub fn is_line_piece(&self) -> bool {
         match self {
-            Piece::Bishop| Piece::Rook| Piece::Queen => true,
+            Piece::Bishop | Piece::Rook | Piece::Queen => true,
             _ => false,
         }
     }
@@ -272,7 +269,6 @@ impl Piece {
     pub fn to_lower_char(&self) -> char {
         self.to_upper_char().to_ascii_lowercase()
     }
-
 
     /// coarse value in centipawns
     #[inline]
@@ -331,12 +327,11 @@ impl ScoreWdl {
     }
 
     pub fn elo_differnce(&self) -> f32 {
-        let score = self.w as f32 + self.d as f32 / 2.0;        
+        let score = self.w as f32 + self.d as f32 / 2.0;
         let total = self.w as f32 + self.d as f32 + self.l as f32;
         let percentage = score / total;
         -400.0 * f32::ln(1.0 / percentage - 1.0) / f32::ln(10.0)
     }
-    
     // pub fn difference(s1: &ScoreWdl, s2: &ScoreWdl) -> ScoreWdl {
     //     Self::new(s1.w - s2.w, s1.d + s2.d, s1.l-s2.l)
     // }
@@ -419,13 +414,19 @@ mod tests {
         assert_eq!(-wdl138, ScoreWdl::new(309, 206, 109));
 
         // checked by https://www.3dkingdoms.com/chess/elo.htm
-        assert_eq!(format!("{:.02}", ScoreWdl::new(217, 77, 184).elo_differnce()), "24.02");
+        assert_eq!(
+            format!("{:.02}", ScoreWdl::new(217, 77, 184).elo_differnce()),
+            "24.02"
+        );
     }
 
     #[test]
     fn choose() {
         let c = Color::White;
-        const CHOICE: Chooser<&Bitboard> = Chooser { white: &Bitboard::RANK_4, black: &Bitboard::RANK_5 };
+        const CHOICE: Chooser<&Bitboard> = Chooser {
+            white: &Bitboard::RANK_4,
+            black: &Bitboard::RANK_5,
+        };
 
         let bb = chooser_array(c, &Bitboard::RANK_4, &Bitboard::RANK_5);
         assert_eq!(bb, &Bitboard::RANK_4);
