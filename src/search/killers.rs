@@ -2,7 +2,6 @@ use crate::board::Board;
 use crate::config::{Config, Component};
 use crate::log_debug;
 use crate::movelist::{Move, MoveList};
-use crate::stat::{ArrayPlyStat, PlyStat};
 use crate::types::Ply;
 use crate::types::MAX_PLY;
 use crate::board::boardbuf::BoardBuf;

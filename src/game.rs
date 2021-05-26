@@ -1,5 +1,4 @@
 use crate::board::boardbuf::BoardBuf;
-use crate::config::Component;
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::catalog::Catalog;
@@ -163,6 +162,8 @@ mod tests {
     use crate::types::{ScoreWdl};
     use std::time::Duration;
     use crate::bitboard::castling::CastlingRights;
+    use crate::config::Component;
+
 
     #[test]
     #[ignore]
