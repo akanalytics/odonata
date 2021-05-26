@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::config::{Config, Configurable};
+use crate::config::{Config, Component};
 use crate::log_debug;
 use crate::movelist::{Move, MoveList, Variation};
 use crate::search::algo::Algo;
@@ -22,7 +22,7 @@ pub struct MoveOrderer {
     picker: Stack<MovePicker>,
 }
 
-impl Configurable for MoveOrderer {
+impl Component for MoveOrderer {
     fn settings(&self, c: &mut Config) {
         c.set("move_orderer.enabled", "type check default true");
         c.set("move_orderer.prior_pv", "type check default true");
@@ -39,6 +39,15 @@ impl Configurable for MoveOrderer {
         self.mvv_lva = c.bool("move_orderer.mvv_lva").unwrap_or(self.mvv_lva);
         self.order = c.string("move_orderer.order").unwrap_or(self.order.clone());
     }
+
+    fn new_game(&mut self) {
+        self.picker.clear();
+    }
+
+    fn new_search(&mut self) {
+        self.picker.clear();
+    }
+
 }
 
 impl MoveOrderer {

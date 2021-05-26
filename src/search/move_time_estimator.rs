@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::clock::Clock;
-use crate::config::{Config, Configurable};
+use crate::config::{Config, Component};
 use crate::log_debug;
 use crate::search::searchstats::SearchStats;
 use crate::search::timecontrol::TimeControl;
@@ -21,7 +21,7 @@ pub struct MoveTimeEstimator {
     pub nodestime: i64,
 }
 
-impl Configurable for MoveTimeEstimator {
+impl Component for MoveTimeEstimator {
     fn settings(&self, c: &mut Config) {
         c.set("mte.branching_factor", "type spin default 10 min 1 max 100");
         c.set("mte.moves_rem", "type spin default 20 min 1 max 100");
@@ -40,6 +40,12 @@ impl Configurable for MoveTimeEstimator {
             .unwrap_or(self.perc_of_time_adv as i64) as u32;
         self.deterministic = c.bool("mte.deterministic").unwrap_or(self.deterministic);
         self.nodestime = c.int("nodestime").unwrap_or(self.nodestime);
+    }
+
+    fn new_game(&mut self) {
+    }
+
+    fn new_search(&mut self) {
     }
 }
 
@@ -171,6 +177,6 @@ mod tests {
         search.mte.deterministic = true;
         search.search(position.board());
         println!("{}", search);
-        assert!(search.search_stats().total().nodes() < 4100);
+        assert!(search.search_stats().total().nodes() < 4800);
     }
 }

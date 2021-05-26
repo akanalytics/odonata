@@ -1,7 +1,7 @@
 use crate::bitboard::bitboard::Bitboard;
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
-use crate::config::{Config, Configurable};
+use crate::config::{Config, Component};
 use crate::eval::score::Score;
 use crate::log_debug;
 use crate::movelist::Move;
@@ -21,7 +21,7 @@ pub struct QSearch {
     pub coarse_delta_prune: Score,
 }
 
-impl Configurable for QSearch {
+impl Component for QSearch {
     fn settings(&self, c: &mut Config) {
         c.set("qsearch.enabled", "type check default true");
         c.set("qsearch.only_captures", "type check default true");
@@ -46,6 +46,12 @@ impl Configurable for QSearch {
             self.coarse_delta_prune = Score::cp(cp as i32);
         }
     }
+    fn new_game(&mut self) {
+    }
+
+    fn new_search(&mut self) {
+    }
+
 }
 
 impl Default for QSearch {

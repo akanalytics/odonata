@@ -513,7 +513,7 @@ impl TypedSettingString {
     }
 }
 
-pub trait Configurable {
+pub trait Component {
 
 } 
 
@@ -667,7 +667,7 @@ mod tests {
 OLDTT
 
 
-use crate::config::{Config, Configurable};
+use crate::config::{Config, Component};
 use crate::eval::score::Score;
 use crate::log_debug;
 use crate::movelist::Move;
@@ -792,7 +792,7 @@ impl Default for TranspositionTable {
     }
 }
 
-impl Configurable for TranspositionTable {
+impl Component for TranspositionTable {
     fn settings(&self, c: &mut Config) {
         c.set("tt.enabled", "type check default true");
         c.set("tt.capacity", "type spin default 10 min 0 max 200000");

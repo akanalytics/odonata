@@ -1,4 +1,4 @@
-use crate::types::{Ply,MAX_PLY};
+use crate::types::{Ply, MAX_PLY};
 use std::fmt;
 use std::ops;
 
@@ -8,16 +8,22 @@ pub struct Stack<T> {
     size: usize,
 }
 
-
-impl<T> Stack<T> {
-
+impl<T> Stack<T>
+where
+    T: Default,
+    T: Clone,
+{
+    pub fn clear(&mut self) {
+        self.items.fill(T::default());
+        self.size = 0;
+    }
 }
 
-
-
-
 impl<T> Default for Stack<T>
-where T: Default, T:Clone {
+where
+    T: Default,
+    T: Clone,
+{
     fn default() -> Self {
         Stack {
             items: vec![T::default(); MAX_PLY as usize],
@@ -26,13 +32,13 @@ where T: Default, T:Clone {
     }
 }
 
-
-
 impl<T> fmt::Display for Stack<T>
-where T: fmt::Display {
+where
+    T: fmt::Display,
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for t in &self.items[0..self.size] {
-            t.fmt(f)?            
+            t.fmt(f)?
         }
         Ok(())
     }
@@ -46,7 +52,6 @@ impl<T> ops::Index<Ply> for Stack<T> {
     }
 }
 
-
 impl<T> ops::IndexMut<Ply> for Stack<T> {
     fn index_mut(&mut self, ply: Ply) -> &mut Self::Output {
         let ply = ply as usize;
@@ -56,8 +61,3 @@ impl<T> ops::IndexMut<Ply> for Stack<T> {
         &mut self.items[ply]
     }
 }
-    
-
-
-
-

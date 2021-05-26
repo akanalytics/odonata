@@ -1,5 +1,6 @@
 # Todo items
-[ ] PV extraction
+[ ] PV extraction  <--- BUGGGGGG
+[ ] Branching factor bug
 [ ] Config. Like debug. Pass in &ref for defaults, naming etc
 [ ] Killer moves
 [ ] Rust "template specialization"

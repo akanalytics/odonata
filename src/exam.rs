@@ -1,4 +1,4 @@
-use crate::config::{Config, Configurable};
+use crate::config::{Config, Component};
 use crate::position::Position;
 use crate::search::algo::Algo;
 use crate::search::timecontrol::TimeControl;

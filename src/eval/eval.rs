@@ -1,7 +1,7 @@
 use crate::bitboard::attacks::{BitboardAttacks, BitboardDefault};
 use crate::bitboard::square::Square;
 use crate::board::Board;
-use crate::config::{Config, Configurable};
+use crate::config::{Config, Component};
 use crate::eval::score::Score;
 use crate::eval::weight::Weight;
 use crate::globals::counts;
@@ -202,7 +202,7 @@ impl Default for SimpleScorer {
     }
 }
 
-impl Configurable for SimpleScorer {
+impl Component for SimpleScorer {
     fn settings(&self, c: &mut Config) {
         c.set("eval.cache.eval", "type check default true");
         c.set("eval.cache.qeval", "type check default true");
@@ -296,6 +296,13 @@ impl Configurable for SimpleScorer {
             }
         }
     }
+
+    fn new_game(&mut self) {
+    }
+
+    fn new_search(&mut self) {
+    }
+
 }
 
 impl fmt::Display for SimpleScorer {

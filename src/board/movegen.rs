@@ -19,10 +19,12 @@ trait MoveGen {}
 // fn threats_to(&self, c: Color) -> Bitboard;
 
 impl Board {
+    #[inline]
     pub fn attacked_by(&self, targets: Bitboard) -> Bitboard {
-        BoardCalcs::attacked_by(targets, self.black() | self.white(), self)
+        BoardCalcs::attacked_by(targets, self.occupied(), self)
     }
 
+    #[inline]
     pub fn pinned(&self) -> Bitboard {
         let mut pi = self.pinned.get();
         if pi == Bitboard::niche() {
@@ -38,6 +40,7 @@ impl Board {
         self.make_move(mv).is_in_check(their_king_color)
     }
 
+    #[inline]
     pub fn checkers_of(&self, king_color: Color) -> Bitboard {
         let mut ch = self.checkers_of[king_color].get();
         if ch == Bitboard::niche() {
@@ -47,6 +50,7 @@ impl Board {
         ch
     }
 
+    #[inline]
     pub fn threats_to(&self, c: Color) -> Bitboard {
         let mut th = self.threats_to[c].get();
         if th == Bitboard::niche() {

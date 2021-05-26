@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::config::{Config, Configurable};
+use crate::config::{Config, Component};
 use crate::log_debug;
 use crate::movelist::{Move, MoveList};
 use crate::stat::{ArrayPlyStat, PlyStat};
@@ -12,10 +12,9 @@ use std::fmt;
 pub struct Killers {
     enabled: bool,
     killers: Vec<[Move; 2]>,
-    dummy: PlyStat,
 }
 
-impl Configurable for Killers {
+impl Component for Killers {
     fn settings(&self, c: &mut Config) {
         c.set("killers.enabled", "type check default true");
     }
@@ -23,6 +22,14 @@ impl Configurable for Killers {
         log_debug!("killers.configure with {}", c);
         self.enabled = c.bool("killers.enabled").unwrap_or(self.enabled);
     }
+    fn new_game(&mut self) {
+        self.new_search();
+    }
+
+    fn new_search(&mut self) {
+        self.killers.fill([Move::new_null(); 2]);
+    }
+
 }
 
 impl Default for Killers {
@@ -30,7 +37,6 @@ impl Default for Killers {
         Killers {
             enabled: true,
             killers: vec![[Move::new_null(); 2]; MAX_PLY as usize],
-            dummy: PlyStat::new("dummy"),
         }
     }
 }
@@ -38,7 +44,7 @@ impl Default for Killers {
 impl fmt::Display for Killers {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "enabled          : {}", self.enabled)?;
-        writeln!(f, "{}", ArrayPlyStat(&[&self.dummy,]))?;
+        // writeln!(f, "{}", ArrayPlyStat(&[&self.dummy,]))?;
         Ok(())
     }
 }

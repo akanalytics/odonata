@@ -118,6 +118,7 @@ impl Color {
         self.chooser_wb(Dir::N, Dir::S)
     }
 
+    #[inline]
     pub fn backward(self) -> Dir {
         self.chooser_wb(Dir::S, Dir::N)
     }

@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 use std::fmt;
 
-pub trait Configurable {
+pub trait Component {
     fn settings(&self, config: &mut Config);
     fn configure(&mut self, config: &Config);
+    fn new_game(&mut self);
+    fn new_search(&mut self);
 }
 
 #[derive(Clone, Debug)]
@@ -11,7 +13,6 @@ pub struct Config {
     settings: HashMap<String, String>,
     insertion_order: Vec<String>,
 }
-
 
 impl Config {
     pub fn new() -> Config {
@@ -32,8 +33,8 @@ impl Config {
         None
     }
 
-    pub fn iter<'a>(&'a self) -> Box<dyn Iterator<Item=(&String,&String)>  + 'a> {
-        Box::new(self.insertion_order.iter().map( move |k| (k, &self.settings[k])))
+    pub fn iter<'a>(&'a self) -> Box<dyn Iterator<Item = (&String, &String)> + 'a> {
+        Box::new(self.insertion_order.iter().map(move |k| (k, &self.settings[k])))
     }
 
     pub fn string(&self, name: &str) -> Option<String> {
@@ -44,7 +45,6 @@ impl Config {
         self.settings.get(name).cloned()
     }
 
-
     pub fn int(&self, name: &str) -> Option<i64> {
         if let Some(v) = self.settings.get(name) {
             return v.parse::<i64>().ok();
@@ -52,8 +52,6 @@ impl Config {
         None
     }
 }
-
-
 
 impl fmt::Display for Config {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -66,7 +64,10 @@ impl fmt::Display for Config {
 
 impl Default for Config {
     fn default() -> Self {
-        Config { settings: HashMap::new(), insertion_order: Vec::new() }
+        Config {
+            settings: HashMap::new(),
+            insertion_order: Vec::new(),
+        }
     }
 }
 
@@ -79,7 +80,7 @@ mod tests {
         integer: i64,
         string: String,
     }
-    impl Configurable for TestStruct {
+    impl Component for TestStruct {
         fn settings(&self, c: &mut Config) {
             c.set("engine.wheels", "type spin default=4 min=2 max=6");
             c.set("engine.color", "default=blue var=blue var=yellow var=red");
@@ -94,6 +95,10 @@ mod tests {
                 self.string = s;
             }
         }
+
+        fn new_game(&mut self) {}
+
+        fn new_search(&mut self) {}
     }
 
     #[test]
@@ -102,12 +107,15 @@ mod tests {
         println!("c1\n{}", c1);
 
         let mut cs2 = Config::new();
-        let mut ts = TestStruct { integer: 0, string: "cat".to_string() };
+        let mut ts = TestStruct {
+            integer: 0,
+            string: "cat".to_string(),
+        };
         ts.settings(&mut cs2);
         println!("cs2\n{}", cs2);
 
         // check the config iterators in insertion order
-        let vec: Vec<(&String,&String)> = cs2.iter().collect();
+        let vec: Vec<(&String, &String)> = cs2.iter().collect();
         assert_eq!(vec[0].0, "engine.wheels");
         assert_eq!(vec[1].0, "engine.color");
 

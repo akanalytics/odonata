@@ -58,6 +58,7 @@ pub trait BitboardAttacks {
         (pawns.shift(pawn.pawn_capture_east()), pawns.shift(pawn.pawn_capture_west()))
     }
 
+    #[inline]
     fn pawn_attackers(&self, targets: Bitboard, pawn_color: Color) -> Bitboard {
         // white east attack = black west attacker. hence w/b reversal
         let opp = pawn_color.opposite();
@@ -65,14 +66,17 @@ pub trait BitboardAttacks {
     }
 
     // tripled too (basically every pawn with a pawn south of it)
+    #[inline]
     fn doubled_pawns(pawns: Bitboard) -> Bitboard {
         pawns.fill_north().shift(Dir::N) & pawns
     }
 
+    #[inline]
     fn open_files(pawns: Bitboard) -> Bitboard {
         !pawns.fill_south().fill_north()
     }
 
+    #[inline]
     fn isolated_pawns(pawns: Bitboard) -> Bitboard {
         let closed = !Self::open_files(pawns);
         

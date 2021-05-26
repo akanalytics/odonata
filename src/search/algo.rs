@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::config::{Config, Configurable};
+use crate::config::{Config, Component};
 use crate::eval::eval::SimpleScorer;
 use crate::eval::score::Score;
 use crate::globals::counts;
@@ -94,7 +94,7 @@ impl Algo {
     }
 }
 
-impl Configurable for Algo {
+impl Component for Algo {
     fn settings(&self, c: &mut Config) {
         c.set("algo.minmax", "type check default false");
         c.set("algo.ids", "type check default true");
@@ -121,6 +121,36 @@ impl Configurable for Algo {
         self.tt.configure(c);
         self.killers.configure(c);
     }
+
+    // clears evaluation and transposition caches as well as repetition counts
+    fn new_game(&mut self) {
+        self.clock_checks = 0;
+
+        self.eval.new_game();
+        self.move_orderer.new_game();
+        self.mte.new_game();
+        self.qsearch.new_game();
+        self.ids.new_game();
+        self.repetition.new_game();
+        self.tt.new_game();
+        self.killers.new_game();
+    }
+
+    fn new_search(&mut self) {
+        self.search_stats = SearchStats::new();
+
+        self.eval.new_search();
+        self.move_orderer.new_search();
+        self.mte.new_search();
+        self.qsearch.new_search();
+        self.ids.new_search();
+        self.repetition.new_search();
+        self.tt.new_search();
+        self.killers.new_search();
+
+
+    }    
+
 }
 
 impl fmt::Debug for Algo {
@@ -192,14 +222,7 @@ impl Clone for AlgoThreadHandle {
 }
 
 impl Algo {
-    // clears evaluation and transposition caches as well as repetition counts
-    pub fn new_game(&mut self) {
-        self.repetition.clear();
-        self.tt.clear_and_resize();
-        // self.eval.cache.clear();
-        // self.eval.qcache.clear();
-        self.clock_checks = 0;
-    }
+
 
     pub fn report_progress(&self) {
         if self.search_stats.total().nodes() % 5_000_000 == 0 && self.search_stats.total().nodes() != 0 {
@@ -354,7 +377,7 @@ mod tests {
         search.move_orderer.enabled = false;
         search.search(&board);
         println!("{}", search);
-        assert_eq!(search.search_stats().total().nodes(), 1397); // piece mob (disabled)
+        assert_eq!(search.search_stats().total().nodes(), 1326); // piece mob (disabled)
 
         // previous
         // assert_eq!(search.search_stats().total().nodes(), 1404); // pawn promo
@@ -362,7 +385,7 @@ mod tests {
         // assert_eq!(search.search_stats().total().nodes(), 1642); added tt
         // assert_eq!(search.search_stats().total().nodes(), 1833); qsearch sq
         // assert_eq!(search.search_stats().total().nodes(), 1757);
-        assert_eq!(search.search_stats().branching_factor().round() as u64, 1);
+        assert_eq!(search.search_stats().branching_factor().round() as u64, 2);
     }
 
     #[test]
@@ -402,7 +425,7 @@ mod tests {
             search.search(position.board());
             println!("{}", search);
             if id {
-                assert!(search.search_stats().total().nodes() < 4100); // with piece mob
+                assert!(search.search_stats().total().nodes() < 4800); // with piece mob
 
             // previous
             // assert_eq!(search.search_stats().total().nodes(), 3456); // with pawn promo

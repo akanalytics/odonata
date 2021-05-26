@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::config::{Config, Configurable};
+use crate::config::{Config, Component};
 use crate::log_debug;
 use crate::movelist::{Move};
 use crate::types::{Hash, Piece};
@@ -11,7 +11,7 @@ pub struct Repetition {
     prior_positions: Vec<Hash>,
 }
 
-impl Configurable for Repetition {
+impl Component for Repetition {
     fn settings(&self, c: &mut Config) {
         c.set("repetition.enabled", "type check default true");
     }
@@ -20,6 +20,15 @@ impl Configurable for Repetition {
         log_debug!("repetition.configure with {}", c);
         self.enabled = c.bool("move_orderer.enabled").unwrap_or(self.enabled);
     }
+    
+    fn new_game(&mut self) {
+        self.prior_positions.clear();
+    }
+
+    // FIXME!
+    fn new_search(&mut self) {
+    }
+
 }
 
 impl Default for Repetition {
@@ -67,9 +76,7 @@ impl Repetition {
         Self::default()
     }
 
-    pub fn clear(&mut self) {
-        self.prior_positions.clear();
-    }
+
 
     pub fn prior_positions(&self) -> usize {
         self.prior_positions.len()
@@ -171,7 +178,7 @@ mod tests {
         "f8b4 a2a3 b4a5 c1e3 e8g8 c2c4 f7f6 b2b4 a5b6 c4c5 f6e5 c5b6 e5d4 e2d4 a7b6 d4e6 d8d1 ",
         "f1d1 f8f7 d1d8 a8d8 e6d8 f7f6 a1d1 f6f8 d8e6 f8c8 e3f4 c8a8 f4c7 a8a3 c7b6 a3d3 d1a1 ",
         "h7h6 b6c7 d3d2 c7f4 d2b2 a1a8 g8h7 e6f8 h7g8");
-        algo.repetition.clear();
+        algo.repetition.new_game();
         let mvs = b.parse_uci_moves(s).unwrap();
         for mv in mvs.iter() {
             b = b.make_move(&mv);
@@ -191,7 +198,7 @@ mod tests {
         "d1c1 h6h5 c1c4 h3h1 b1b2 h1h4 c7e5 h4g4 c4c8 g8h7 c8c7 h7g8 c7c8");
         let mut b = Catalog::starting_position();
         let mut algo = Algo::new().set_timing_method(TimeControl::Depth(5)).set_callback(Uci::uci_info).build();
-        algo.repetition.clear();
+        algo.repetition.new_game();
         let mvs = b.parse_uci_moves(s).unwrap();
         for mv in mvs.iter() {
             b = b.make_move(&mv);

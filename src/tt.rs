@@ -1,6 +1,6 @@
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
-use crate::config::{Config, Configurable};
+use crate::config::{Config, Component};
 use crate::eval::score::Score;
 use crate::log_debug;
 use crate::movelist::{Move, Variation};
@@ -161,7 +161,7 @@ impl Default for TranspositionTable {
     }
 }
 
-impl Configurable for TranspositionTable {
+impl Component for TranspositionTable {
     fn settings(&self, c: &mut Config) {
         c.set("tt.aging", "type check default true");
         c.set("tt.use_tt_for_pv", "type check default true");
@@ -176,6 +176,26 @@ impl Configurable for TranspositionTable {
         // table is resized on next clear / generation
         self.hmvc_horizon = c.int("tt.hmvc_horizon").unwrap_or(self.hmvc_horizon as i64) as i32;
     }
+
+    fn new_game(&mut self) {
+        if self.requires_resize() {
+            let capacity = Self::convert_mb_to_capacity(self.mb);
+            self.table = Arc::new(vec![StoredEntry::default(); capacity]);
+            self.current_age = 10;
+            return;
+        }
+        let table = Arc::get_mut(&mut self.table);
+        if let Some(table) = table {
+            table.iter_mut().for_each(|e| *e = StoredEntry::default());
+            self.current_age = 10;
+        } else {
+            panic!("Unable to clear cache");
+        }
+    }
+
+    fn new_search(&mut self) {
+        self.next_generation();
+    }    
 }
 
 impl TranspositionTable {
@@ -215,7 +235,7 @@ impl TranspositionTable {
 
     pub fn next_generation(&mut self) {
         if self.requires_resize() {
-            self.clear_and_resize();
+            self.new_game();
         } else {
             if self.aging {
                 self.current_age += 1;
@@ -228,21 +248,7 @@ impl TranspositionTable {
         self.table.capacity() != capacity
     }
 
-    pub fn clear_and_resize(&mut self) {
-        if self.requires_resize() {
-            let capacity = Self::convert_mb_to_capacity(self.mb);
-            self.table = Arc::new(vec![StoredEntry::default(); capacity]);
-            self.current_age = 10;
-            return;
-        }
-        let table = Arc::get_mut(&mut self.table);
-        if let Some(table) = table {
-            table.iter_mut().for_each(|e| *e = StoredEntry::default());
-            self.current_age = 10;
-        } else {
-            panic!("Unable to clear cache");
-        }
-    }
+
 
     pub fn count_of(&self, t: NodeType) -> usize {
         self.table.iter().filter(|e| e.entry.node_type == t).count()
@@ -455,7 +461,7 @@ mod tests {
     #[test]
     fn test_tt() {
         let mut tt1 = TranspositionTable::new_with_mb(10);
-        tt1.clear_and_resize();
+        tt1.new_game();
         let board = Catalog::starting_position();
         let moves = tt1.extract_pv(&board);
         assert_eq!(moves.uci(), "");
@@ -511,7 +517,7 @@ mod tests {
 
         println!("{:?}", tt);
         println!("{}", tt);
-        tt.clear_and_resize();
+        tt.new_game();
         assert!(tt.probe_by_hash(123).is_none());
     }
 

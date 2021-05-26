@@ -1,4 +1,4 @@
-use crate::config::{Config, Configurable};
+use crate::config::{Config, Component};
 use crate::globals::counts;
 use crate::log_debug;
 use crate::search::algo::Algo;
@@ -17,7 +17,7 @@ pub struct IterativeDeepening {
     iterations: Vec<SearchStats>,
 }
 
-impl Configurable for IterativeDeepening {
+impl Component for IterativeDeepening {
     fn settings(&self, c: &mut Config) {
         c.set("ids.enabled", "type check default true");
         c.set("ids.part_ply", "type check default true");
@@ -26,6 +26,14 @@ impl Configurable for IterativeDeepening {
         log_debug!("qsearch.configure with {}", c);
         self.enabled = c.bool("ids.enabled").unwrap_or(self.enabled);
         self.part_ply = c.bool("ids.part_ply").unwrap_or(self.part_ply);
+    }
+    fn new_game(&mut self) {
+        self.new_search();
+    }
+
+    fn new_search(&mut self) {
+        self.iterations.clear();
+        // self.tt.next_generation();
     }
 }
 
@@ -80,9 +88,7 @@ impl IterativeDeepening {
         range
     }
 
-    pub fn reset(&mut self) {
-        self.iterations.clear();
-    }
+
 }
 
 impl Algo {
@@ -92,9 +98,10 @@ impl Algo {
     }
 
     pub fn search_iteratively(&mut self) {
-        self.search_stats = SearchStats::new();
-        self.ids.reset();
-        self.tt.next_generation();
+        self.new_search();
+
+        //self.ids.reset();
+        // self.tt.next_generation();
         // self.eval.cache.next_generation();
         self.range = self.ids.calc_range(&self.mte.time_control);
         for depth in self.range.clone() {

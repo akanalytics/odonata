@@ -2,7 +2,7 @@ use crate::board::boardbuf::BoardBuf;
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::catalog::Catalog;
-use crate::config::{Config, Configurable};
+use crate::config::{Config, Component};
 use crate::eval::score::Score;
 use crate::movelist::Move;
 use crate::clock::Clock;
@@ -88,7 +88,7 @@ pub struct Uci {
     debug: bool,
 }
 
-impl Configurable for Uci {
+impl Component for Uci {
     fn settings(&self, c: &mut Config) {
         self.algo.settings(c);
         c.set("uci.debug", "type check default false");
@@ -105,6 +105,13 @@ impl Configurable for Uci {
 
         self.algo.configure(&c);
     }
+
+    fn new_game(&mut self) {
+        self.algo.new_game();
+    }
+
+    fn new_search(&mut self) {
+    }    
 }
 
 impl Uci {
@@ -192,7 +199,7 @@ impl Uci {
 
     fn uci_newgame(&mut self) -> Result<(), String> {
         // clear the transposition tables/eval caches and repetition counts before the new game
-        self.algo.new_game();
+        self.new_game();
         Ok(())
     }
 
@@ -231,7 +238,7 @@ impl Uci {
 
     fn uci_position(&mut self, arg: &Args) -> Result<(), String> {
         self.algo.search_async_stop();
-        self.algo.repetition.clear();
+        self.algo.repetition.new_game();
         let fen = arg.words.get(1);
         let moves;
         if let Some(fen) = fen {

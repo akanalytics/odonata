@@ -1,6 +1,7 @@
 use crate::catalog::*;
 use crate::clock::Clock;
 use crate::perft::Perft;
+use crate::config::Component;
 use crate::search::algo::Algo;
 use crate::search::timecontrol::TimeControl;
 // use env_logger;
