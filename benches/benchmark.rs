@@ -139,7 +139,7 @@ fn piece_to_char(c: &mut Criterion) {
 
 fn benchmark_perft5(c: &mut Criterion) {
     let mut board = Catalog::starting_position();
-    let mut group = c.benchmark_group("sample size 10");
+    let mut group = c.benchmark_group("perft");
     group.sample_size(10);
     group.bench_function("perft5", |b| {
         b.iter(|| {
