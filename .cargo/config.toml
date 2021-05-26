@@ -1,1 +1,7 @@
 # rustflags = ["-C target-cpu=native"]
+[alias]
+linux-perf-report = "perf report" 
+#perf perf record -e task-clock,cycles,instructions,cache-references,cache-misses --call-graph dwarf -F 99 --output=perf.data  ./target/release/odonata --perft 5
+linux-perf-run = "perf record -e task-clock,cycles,instructions,cache-references,cache-misses --call-graph dwarf -F 99  ./target/release/odonata --perft 5"
+# chown andy.andy ./tmp/perf.data
+

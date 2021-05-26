@@ -23,4 +23,7 @@ Cargo.lock
 junk/**
 .vscode/*
 
+# profiling output
+perf.data
+
 odonata.geany
