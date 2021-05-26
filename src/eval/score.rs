@@ -1,8 +1,6 @@
-use std::fmt;
-use crate::types::{Color, Ply};
 use crate::outcome::Outcome;
-
-
+use crate::types::{Color, Ply};
+use std::fmt;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Score {
@@ -15,10 +13,10 @@ pub enum Score {
 
 impl Default for Score {
     #[inline]
-    fn default() -> Self { Self::MinusInf }
+    fn default() -> Self {
+        Self::MinusInf
+    }
 }
-
-
 
 impl Score {
     #[inline]
@@ -26,28 +24,27 @@ impl Score {
         Score::Cp(centipawn)
     }
 
-
     // * score
-	// 	* cp 
-	// 		the score from the engine's point of view in centipawns.
-	// 	* mate 
-	// 		mate in y moves, not plies.
-	// 		If the engine is getting mated use negativ values for y.
-	// 	* lowerbound
-	//       the score is just a lower bound.
-	// 	* upperbound
-	// 	   the score is just an upper bound.
-    pub fn uci(self, c: Color) -> String {
-        let score = match c {
+    // 	* cp
+    // 		the score from the engine's point of view in centipawns.
+    // 	* mate
+    // 		mate in y moves, not plies.
+    // 		If the engine is getting mated use negativ values for y.
+    // 	* lowerbound
+    //       the score is just a lower bound.
+    // 	* upperbound
+    // 	   the score is just an upper bound.
+    pub fn uci(self, pov: Color) -> String {
+        let score = match pov {
             Color::White => self,
-            Color::Black => self.negate() ,
+            Color::Black => self.negate(),
         };
         // we assume we are now from white's point of view
         match score {
             Self::MinusInf => "cp -9999".to_string(),
-            Self::WhiteLoss { ply } => format!("mate {}", ply),
+            Self::WhiteLoss { ply: _ } => format!("mate {}", -score.mate_in().unwrap()),
             Self::Cp(cp) => format!("cp {}", cp),
-            Self::WhiteWin { minus_ply } => format!("mate {}", -minus_ply),
+            Self::WhiteWin { minus_ply: _ } => format!("mate {}", score.mate_in().unwrap()),
             Self::PlusInf => "cp 9999".to_string(),
         }
     }
@@ -62,7 +59,6 @@ impl Score {
         }
     }
 
-
     /// Outcome must be game ending else panic
     #[inline]
     pub fn score_from_outcome(contempt: i32, o: Outcome, us: Color, total_half_moves: Ply) -> Score {
@@ -72,19 +68,38 @@ impl Score {
             //  Engine Col   |  search ply   |  value to searcher   | Score to white
             //     W               0                   +ve               +ve
             //     B               0                   +ve               -ve
-            //     W               1 (oppo B)          -ve               +ve (a bonus to white opponet) 
-            //     B               1 (oppo W)          -ve               -ve  
+            //     W               1 (oppo B)          -ve               +ve (a bonus to white opponet)
+            //     B               1 (oppo W)          -ve               -ve
             // board.color_us() == Color::White => maximising
             // +ve contempt => +ve score => aim for draw => opponent stronger than us
             // board.color_us() == Color::Black => minimising
             // +ve contempt => -ve score => aim for draw => opponent stronger than us
-            let contempt = us.chooser_wb(contempt, -contempt); 
+            let contempt = us.chooser_wb(contempt, -contempt);
             return Score::Cp(contempt);
         }
         if let Some(c) = o.winning_color() {
-            return c.chooser_wb(Score::WhiteWin { minus_ply: -total_half_moves }, Score::WhiteLoss { ply: total_half_moves });
+            return c.chooser_wb(
+                Score::WhiteWin {
+                    minus_ply: -total_half_moves,
+                },
+                Score::WhiteLoss {
+                    ply: total_half_moves,
+                },
+            );
         }
         panic!("Tried to final score a non-final board outcome:{}", o);
+    }
+
+    // engine -> oppo -> engine -> 3 plys == mate in 2
+    // engine -> oppo -> 2 plys == mated in 1
+    // engine -> oppo -> engine -> opp  4 plys == mated in 2
+    // engine -> oppo -> engine -> opp -> eng  5 plys == mated in 3
+    pub fn mate_in(&self) -> Option<Ply> {
+        match self {
+            Self::WhiteLoss { ply } => Some((*ply + 1) / 2),
+            Self::WhiteWin { minus_ply } => Some((-*minus_ply + 1) / 2),
+            _ => None,
+        }
     }
 
     pub fn is_mate(&self) -> bool {
@@ -109,9 +124,9 @@ impl Score {
             Self::WhiteLoss { ply: _ } => 0.0,
             Self::Cp(cp) => {
                 let k = 4_f32;
-                let w = 1.0 / (1.0 + 10_f32.powf(-cp as f32/k));
+                let w = 1.0 / (1.0 + 10_f32.powf(-cp as f32 / k));
                 w
-            },
+            }
             Self::WhiteWin { minus_ply: _ } => 1.0,
             Self::PlusInf => 1.0,
         }
@@ -140,10 +155,10 @@ impl std::ops::Mul<Score> for i32 {
     #[inline]
     fn mul(self, other: Score) -> Score {
         match other {
-            Score::Cp(s) => Score::Cp( self * s),
-            _ if self > 0 => other ,
-            _ if self < 0 => -other ,
-            _  => Score::Cp(0),
+            Score::Cp(s) => Score::Cp(self * s),
+            _ if self > 0 => other,
+            _ if self < 0 => -other,
+            _ => Score::Cp(0),
         }
     }
 }
@@ -192,9 +207,6 @@ impl fmt::Display for Score {
 // some human-like tweaks: aggresive/defensive, open/closed preference, test an opening, lay traps, complicate the position,
 // consider odd / even parity and tempo
 
-
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -202,30 +214,44 @@ mod tests {
     #[test]
     fn test_score() {
         assert_eq!(Score::Cp(1).negate(), Score::Cp(-1));
-        assert_eq!(Score::WhiteWin { minus_ply: -1 }.negate(), Score::WhiteLoss { ply: 1 });
-        assert_eq!(Score::WhiteLoss { ply: 1 }.negate(), Score::WhiteWin { minus_ply: -1 });
+        assert_eq!(
+            Score::WhiteWin { minus_ply: -1 }.negate(),
+            Score::WhiteLoss { ply: 1 }
+        );
+        assert_eq!(
+            Score::WhiteLoss { ply: 1 }.negate(),
+            Score::WhiteWin { minus_ply: -1 }
+        );
         assert_eq!(Score::MinusInf.negate(), Score::PlusInf);
         assert!(Score::MinusInf < Score::PlusInf);
         assert_eq!(Score::MinusInf.is_mate(), false);
-        assert_eq!(Score::WhiteWin { minus_ply: 1 }.is_mate(), true );
+        assert_eq!(Score::WhiteWin { minus_ply: 1 }.is_mate(), true);
         assert!(Score::Cp(-5) < Score::Cp(5));
         assert!(Score::Cp(5) < Score::WhiteWin { minus_ply: 0 });
         assert!(Score::Cp(100) > Score::Cp(0));
-        assert_eq!( 2* Score::Cp(100), Score::Cp(200));
-        assert_eq!( -2 * Score::Cp(200), Score::Cp(-400));
-        assert_eq!( -2 * Score::MinusInf , Score::PlusInf);
-        assert_eq!( -2 * Score::PlusInf , Score::MinusInf);
-        assert_eq!( 1 * Score::PlusInf , Score::PlusInf);
-        assert_eq!( -1 * Score::WhiteWin{ minus_ply: 2 } , Score::WhiteLoss{ply: -2});
-        assert_eq!( -3 * Score::WhiteWin{ minus_ply: 2 } , Score::WhiteLoss{ply: -2});
-        assert_eq!( 1 * Score::WhiteWin{ minus_ply: 2 } , Score::WhiteWin{minus_ply: 2});
+        assert_eq!(2 * Score::Cp(100), Score::Cp(200));
+        assert_eq!(-2 * Score::Cp(200), Score::Cp(-400));
+        assert_eq!(-2 * Score::MinusInf, Score::PlusInf);
+        assert_eq!(-2 * Score::PlusInf, Score::MinusInf);
+        assert_eq!(1 * Score::PlusInf, Score::PlusInf);
+        assert_eq!(
+            -1 * Score::WhiteWin { minus_ply: 2 },
+            Score::WhiteLoss { ply: -2 }
+        );
+        assert_eq!(
+            -3 * Score::WhiteWin { minus_ply: 2 },
+            Score::WhiteLoss { ply: -2 }
+        );
+        assert_eq!(
+            1 * Score::WhiteWin { minus_ply: 2 },
+            Score::WhiteWin { minus_ply: 2 }
+        );
         assert!(Score::WhiteWin { minus_ply: 1 } < Score::PlusInf);
         assert!(Score::WhiteWin { minus_ply: 0 } == Score::WhiteWin { minus_ply: 0 });
-        assert!(Score::Cp(0).win_probability() > 0.499 );
-        assert!(Score::Cp(0).win_probability() < 0.501 );
-        assert!(Score::Cp(1000).win_probability() > 0.95 );
-        assert!(Score::Cp(-1000).win_probability() < 0.05 );
-        assert!(Score::MinusInf.win_probability() < 0.001 );
-
+        assert!(Score::Cp(0).win_probability() > 0.499);
+        assert!(Score::Cp(0).win_probability() < 0.501);
+        assert!(Score::Cp(1000).win_probability() > 0.95);
+        assert!(Score::Cp(-1000).win_probability() < 0.05);
+        assert!(Score::MinusInf.win_probability() < 0.001);
     }
 }

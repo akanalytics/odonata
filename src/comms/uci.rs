@@ -423,14 +423,7 @@ impl<'a> fmt::Display for UciInfo<'a> {
             write!(f, "nps {} ", nps)?;
         }
         if let Some(score) = self.0.score {
-            // FIXME from engines point of view, not white's
-            match score {
-                Score::Cp(cp) => write!(f, "score cp {} ", cp)?,
-                // FIXME negate for engine loss
-                Score::WhiteWin { minus_ply } => write!(f, "mate {} ", (-minus_ply + 1) / 2)?,
-                Score::WhiteLoss { ply } => write!(f, "score mate {} ", (ply + 1) / 2)?,
-                _ => {}
-            }
+            write!(f, "score {}", score.uci(self.0.pov))?;
         }
         if let Some(currmovenumber) = self.0.currmovenumber_from_1 {
             write!(f, "currmovenumber {} ", currmovenumber)?;

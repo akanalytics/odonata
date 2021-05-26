@@ -389,14 +389,14 @@ impl SimpleScorer {
         counts::EVAL_COUNT.increment();
         let outcome = board.outcome();
         let score = if outcome.is_game_over() {
-            Score::score_from_outcome(self.contempt, outcome, board.color_us(), board.total_halfmoves())
+            Score::score_from_outcome(self.contempt, outcome, board.color_us(), node.ply)
         } else {
             self.w_eval_without_wdl(board)
         };
         score
     }
 
-    pub fn w_eval_qsearch(&mut self, board: &Board, node:&Node) -> Score {
+    pub fn w_eval_qsearch(&mut self, board: &Board, node :&Node) -> Score {
         counts::QEVAL_COUNT.increment();
         // we check for insufficient material and 50/75 move draws.
         let outcome = board.draw_outcome();
@@ -406,7 +406,7 @@ impl SimpleScorer {
                     self.contempt,
                     outcome,
                     board.color_us(),
-                    board.total_halfmoves(),
+                    node.ply,
                 );
             } else {
                 self.w_eval_without_wdl(board)

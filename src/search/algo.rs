@@ -226,7 +226,7 @@ impl Algo {
 
     pub fn report_progress(&self) {
         if self.search_stats.total().nodes() % 5_000_000 == 0 && self.search_stats.total().nodes() != 0 {
-            let sp = SearchProgress::from_search_stats(&self.search_stats());
+            let sp = SearchProgress::from_search_stats(&self.search_stats(), self.board.color_us());
             self.task_control.invoke_callback(&sp);
         }
     }

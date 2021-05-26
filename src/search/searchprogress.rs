@@ -2,10 +2,12 @@ use crate::eval::score::Score;
 use crate::movelist::{Move, Variation};
 use crate::search::searchstats::SearchStats;
 use crate::types::Ply;
+use crate::types::Color;
 
 /// essentially all the data needed for UCI info status updates or for a decent progress bar
 #[derive(Clone, Default, Debug)]
 pub struct SearchProgress {
+    pub pov: Color,
     pub depth: Option<Ply>,
     pub seldepth: Option<Ply>,
     pub time_millis: Option<u64>,
@@ -26,11 +28,12 @@ pub struct SearchProgress {
 }
 
 impl SearchProgress {
-    pub fn from_best_move(best: Option<Move>) -> Self {
-        SearchProgress { bestmove: best, ..Default::default() }
+    pub fn from_best_move(best: Option<Move>, pov: Color) -> Self {
+        SearchProgress { bestmove: best, pov, ..Default::default() }
     }
-    pub fn from_search_stats(search_stats: &SearchStats) -> Self {
+    pub fn from_search_stats(search_stats: &SearchStats, pov: Color ) -> Self {
         SearchProgress {
+            pov,
             nodes: Some(search_stats.total().nodes()),
             nps: Some(search_stats.total_knps() * 1000),
             depth: Some(search_stats.depth()),

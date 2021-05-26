@@ -124,7 +124,7 @@ impl Algo {
                 break;
             }
 
-            let mut sp = SearchProgress::from_search_stats(&res);
+            let mut sp = SearchProgress::from_search_stats(&res, self.board.color_us());
             sp.pv = Some(res.pv.clone());
             if !self.board.is_legal_variation(&res.pv) {             
                 debug_assert!(false, "Unable to fetch valid pv {} on board {}\n{}", res.pv.clone(), self.board, self);
@@ -156,7 +156,7 @@ impl Algo {
             self.search_stats.score = last.score;
         }
         self.search_stats.pv.truncate(self.max_depth as usize);
-        let sp = SearchProgress::from_best_move(Some(self.bm()));
+        let sp = SearchProgress::from_best_move(Some(self.bm()), self.board.color_us());
         self.task_control.invoke_callback(&sp);
     }
 }

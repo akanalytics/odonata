@@ -55,7 +55,7 @@ impl Algo {
 
         if board.draw_outcome().is_some() {
             self.search_stats.inc_leaf_nodes(ply);
-            return board.eval(&mut self.eval, &Node{ ply, alpha, beta }); // will return a draw score
+            return board.eval(&mut self.eval, &Node { ply, alpha, beta }); // will return a draw score
         }
 
         let mut score = Score::MinusInf;
@@ -126,7 +126,7 @@ impl Algo {
         self.generate_moves(ply, board);
 
         // self.order_moves(ply, &mut moves, &tt_mv);
-        let mut count = 0; 
+        let mut count = 0;
         loop {
             let mv = self.get_next_move(ply, board);
             if mv.is_none() {
@@ -171,7 +171,7 @@ impl Algo {
         if count == 0 {
             // node_type = NodeType::Terminal;
             self.search_stats.inc_leaf_nodes(ply);
-            return board.eval(&mut self.eval, &Node{ ply, alpha, beta});
+            return board.eval(&mut self.eval, &Node { ply, alpha, beta });
         } else if node_type == NodeType::All {
             // nothing
         } else if node_type == NodeType::Cut {
@@ -183,8 +183,6 @@ impl Algo {
         } else {
             panic!("Node type {:?} ", node_type);
         }
- 
-
 
         if self.tt.enabled() {
             let entry = Entry {
@@ -204,7 +202,7 @@ impl Algo {
         self.pv_table.propagate_from(ply + 1);
         self.search_stats.inc_improvements(ply);
         if ply == 0 {
-            let sp = SearchProgress::from_search_stats(&self.search_stats());
+            let sp = SearchProgress::from_search_stats(&self.search_stats(), self.board.color_us());
             self.task_control.invoke_callback(&sp);
         }
     }
@@ -228,17 +226,11 @@ mod tests {
             search.qsearch.see = true;
             // search.tt.enabled = false;
             search.search(pos.board());
-            println!("{}", search);
+            // println!("{}", search);
             assert_eq!(search.pv().to_string(), pos.pv()?.to_string(), "#{} {}", i, pos);
-            assert_eq!(
-                search.score(),
-                Score::WhiteWin {
-                    minus_ply: -3 - pos.board().total_halfmoves()
-                },
-                "#{} {}",
-                i,
-                pos
-            );
+            assert_eq!(search.score().is_mate(), true);
+            println!("Mate in {}", search.score().mate_in().unwrap());
+            assert_eq!(search.score().mate_in(), Some(2), "#{} {}", i, pos);
         }
         Ok(())
     }
@@ -246,15 +238,20 @@ mod tests {
     #[test]
     #[ignore]
     fn test_mate_in_3_sync() -> Result<(), String> {
-        let position = Catalog::mate_in_3()[0].clone();
-        let expected_pv = position.pv()?;
-        let mut search = Algo::new().set_timing_method(TimeControl::Depth(5)).build();
-        search.tt.enabled = false;
-        search.qsearch.see = true;
-        search.search(position.board());
-        println!("{}", search);
-        assert_eq!(search.pv_table.extract_pv(), expected_pv);
-        assert_eq!(search.score(), Score::WhiteWin { minus_ply: -4 });
+        let positions = Catalog::mate_in_3();
+        for (i, pos) in positions.iter().enumerate() {
+            let mut search = Algo::new()
+                .set_timing_method(TimeControl::Depth(5))
+                .build();
+            search.tt.enabled = false;
+            search.qsearch.see = true;
+            let expected_pv = pos.pv()?;
+            search.search(pos.board());
+            // println!("{}", search);
+            assert_eq!(search.pv_table.extract_pv(), expected_pv, "#{} {}", i, pos);
+            println!("Mate in {}", search.score().mate_in().unwrap());
+            assert_eq!(search.score().mate_in(), Some(3), "#{} {}", i, pos);
+        }
         Ok(())
     }
 }
