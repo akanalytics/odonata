@@ -1055,6 +1055,7 @@ def main():
     test.test_odonata()
 
     b = Board()
+    fen = "r1k5/8/8/8/8/8/8/R6K w - - 0 10"
     print(f'''
 
 board as a FEN string {b.to_fen()}    
@@ -1064,18 +1065,25 @@ board as a grid
 {b.grid}    
 
 knight squares {b.knights}
-    
-white knigt squares {b.knights & b.w}
+
+white squares (as a grid) 
+
+{b.w.grid}
+
+white knight squares {b.knights & b.w}
     
 as a grid 
 
 {(b.knights & b.w).grid}
 
 how many white pawns {len(b.pawns & b.w)}
+
+parse "{fen}" and show as a grid
+
+{Board.parse_fen(fen).grid}
+
+
     ''')
-
-
-
 
 
 
