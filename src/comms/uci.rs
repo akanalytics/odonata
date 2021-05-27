@@ -8,6 +8,9 @@ use crate::clock::Clock;
 use crate::movelist::MoveValidator;
 use crate::perft::Perft;
 use crate::search::algo::Algo;
+use crate::search::node::Node;
+use crate::eval::eval::SimpleScorer;
+use crate::repetition::Repetition;
 use crate::search::searchprogress::SearchProgress;
 use crate::search::timecontrol::TimeControl;
 use crate::types::Ply;
@@ -158,6 +161,11 @@ impl Uci {
             // "register" => self.uci_unknown(&words),
 
             // extensions
+            "ext:legal_moves" => self.ext_uci_legal_moves(&Args::parse(&input)),
+            "ext:make_moves" => self.ext_uci_make_moves(&Args::parse(&input)),
+            "ext:version" => self.ext_uci_version(&Args::parse(&input)),
+            "ext:static_eval" => self.ext_uci_static_eval(&Args::parse(&input)),
+
             "perft" => self.uci_perft(&words[1..]),
             "display" | "d" => self.uci_display(),
             "board" | "b" => self.uci_board(),
@@ -235,20 +243,54 @@ impl Uci {
         Ok(())
     }
 
+    fn ext_uci_static_eval(&mut self, arg: &Args) -> Result<(), String> {
+        let mut b = Board::new_empty();
+        Self::parse_fen(arg, &mut b, None)?;
+        let mut eval = SimpleScorer::new();
+        let score = b.eval(&mut eval, &Node::root());
+        println!("result:{}", score);
+        Ok(())
+    }
+
+    fn ext_uci_version(&mut self, arg: &Args) -> Result<(), String> {
+        println!("result:{}", Version::VERSION);
+        Ok(())
+    }
+
+    fn ext_uci_make_moves(&mut self, arg: &Args) -> Result<(), String> {
+        let mut b = Board::new_empty();
+        Self::parse_fen(arg, &mut b, None)?;
+        println!("result:{}", b.to_fen());
+        Ok(())
+    }
+
+
+    fn ext_uci_legal_moves(&mut self, arg: &Args) -> Result<(), String> {
+        let mut b = Board::new_empty();
+        Self::parse_fen(arg, &mut b, None)?;
+        let moves = b.legal_moves();
+        println!("result:{}", moves.uci());
+        Ok(())
+    }
+
     fn uci_position(&mut self, arg: &Args) -> Result<(), String> {
         self.algo.search_async_stop();
         self.algo.repetition.new_game();
-        let fen = arg.words.get(1);
+        Self::parse_fen(arg, &mut self.board, Some(&mut self.algo.repetition))
+    }
+
+    fn parse_fen(arg: &Args, b: &mut Board, rep: Option<&mut Repetition>) -> Result<(), String> {
         let moves;
+        let fen = arg.words.get(1);
         if let Some(fen) = fen {
             if fen == "startpos" {
-                self.board = Catalog::starting_position();
+                *b = Catalog::starting_position();
                 moves = 2;
             } else if fen == "fen" {
                 // expect pos, b/w, castling, ep and 2 x counts
                 let fen = arg.words.get(2..8);
                 if let Some(fen) = fen {
-                    self.board = Board::parse_fen(&fen.join(" "))?;
+                    *b = Board::parse_fen(&fen.join(" "))?;
                     moves = 8;
                 } else {
                     return Err("Fen or parts of fen are missing".into());
@@ -260,10 +302,18 @@ impl Uci {
                 if word != "moves" {
                     return Err(format!("Token after startpos/fen must be 'moves' not '{}'", word));
                 }
-                for mv in arg.words[(moves + 1)..].iter() {
-                    let mv = self.board.parse_uci_move(mv)?;
-                    self.board = self.board.make_move(&mv);
-                    self.algo.repetition.push(&mv, &self.board);
+                // FIXME! Problem with Option of mut ref
+                if let Some(inner) = rep {
+                    for mv in arg.words[(moves + 1)..].iter() {
+                        let mv = b.parse_uci_move(mv)?;
+                        *b = b.make_move(&mv);
+                        inner.push(&mv, b);
+                    }
+                } else {
+                    for mv in arg.words[(moves + 1)..].iter() {
+                        let mv = b.parse_uci_move(mv)?;
+                        *b = b.make_move(&mv);
+                    }
                 }
             }
             Ok(())

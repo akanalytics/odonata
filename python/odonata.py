@@ -534,7 +534,7 @@ class Board():
         return Bitboard(bits=self._pieces[Pieces.PAWN])
 
     def moves(self) -> List[Move]:
-        return []  # MoveGenBB().legal_moves(self)
+        return Odonata.instance().legal_moves(self).split()
 
     def pseudo_legal_moves(self) -> List[Move]:
         return []  # MoveGenBB().pseudo_legal_moves(self)
@@ -557,7 +557,9 @@ class Board():
     def move_number(self) -> int:
         return self._move_count
 
-#     def make_move(self, m: Move) -> Board:
+    def make_move(self, m: Move) -> Board:
+        return Odonata.instance().make_move(self, m)
+
 #         # b = BoardOfBits()
 #         # assert Clock.capture_as("Board.make_move: board ctor")
 #         # b._init()
@@ -792,12 +794,47 @@ class Board():
             return Square.parse(fen_en_passant)
 
 
+
+class Eval:
+    def __init__(self) -> None:
+
+        # these member variables dont have any effect yet!
+        self.material = True
+        self.position = True
+        self.mobility = True
+        self.pawn = 100
+        self.knight = 325
+        self.bishop = 350
+        self.rook = 500
+        self.queen = 900
+
+    def static_eval(self, b: Board) -> str:
+        return Odonata.instance().static_eval(b)
+
+    # def quiescent_eval(self, b: Board) -> int:
+    #     return 0
+
+
+
+
 DEFAULT_ODONATA_PARAMS = {
     "Hash": 16,
 }
 
 
+
 class Odonata:
+
+    _instance: Optional[Odonata] = None
+
+    @classmethod
+    def instance(cls, path: str = '', debug: bool = False ):
+        if cls._instance is None:
+            cls._instance = cls.__new__(cls)
+            cls._instance.__init__(path, debug)
+            # Put more initialization here maybe
+        return cls._instance
+
 
     def __init__(self, path: str = '', debug: bool = False ) -> None:
         self.process: Optional[subprocess.Popen] = None
@@ -869,6 +906,22 @@ class Odonata:
         self._put(f"setoption name {name} value {value}")
         self.is_ready()
 
+    # can be mate etc not just cp
+    def static_eval(self, b: Board) -> str:
+        req = f"ext:static_eval fen {b.to_fen()}"
+        return self._command(req, res = "result:")
+
+    def make_move(self, b: Board, m: Move) -> Board:
+        req = f"ext:make_moves fen {b.to_fen()} moves {m}"
+        return Board.parse_fen(self._command(req, res = "result:"))
+
+    def legal_moves(self, b: Board) -> str:
+        req = f"ext:legal_moves fen {b.to_fen()}"
+        return self._command(req, res = "result:")
+
+    def version(self) -> str:
+        req = f"ext:version"
+        return self._command(req, res = "result:")
 
     def get_best_move(self, b: Board, depth: Optional[int] = None, millis: Optional[int] = None ) -> Optional[str]:
         """Returns best move with current position on the board in uci notation or None if it's a mate."""
@@ -892,13 +945,15 @@ class Odonata:
     def _command(self, req, res) -> str:
         self._put(req)
         last_text: str = ""
-        while True:
+        for _ in range(200):
             text = self._read_line()
-            splitted_text = text.split(" ")
-            if splitted_text[0] == res:
+            if text.startswith(res):
                 self.info = last_text
-                return splitted_text[1]
+                return text[len(res):].strip()
+            if "error" in text:
+                raise ValueError(f"Received {text} from command {req}")
             last_text = text
+        raise ValueError(f"Gave up waiting for '{res}'' after command '{req}'")
     
     def __del__(self) -> None:
         if self.process:
@@ -1013,6 +1068,9 @@ class Test:
         b._init()
         assert b.to_fen() == "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
+        # allow parsing uncompressed FEN string
+        assert b == Board.parse_fen("rnbqkbnr/pppppppp/8/8/8/11111111/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+
         b = Board()
         b._init()
         b = b.clone()
@@ -1047,6 +1105,77 @@ class Test:
 
 
 
+
+
+def demo_1():
+    # first call to instance() sets the path for future uses of "instance"
+    # it will reuse the existing (kept running) instance until shutdown
+    odo = Odonata.instance(path='', debug=False)
+    odo.is_ready()
+    b = Board.parse_fen("r1k5/8/8/8/8/8/7P/R6K w - - 0 10")
+    eval = Eval()
+
+    print(f'''
+Odonata version 
+{Odonata.instance().version()}    
+
+board as a FEN string 
+{b.to_fen()}    
+
+legal moves
+{b.moves()}
+
+static evaluation
+{eval.static_eval(b)}    
+
+make move h2h4
+{b.make_move('h2h4').grid}    
+
+''')
+
+def demo_2():
+    b = Board()
+    fen = "r1k5/8/8/8/8/8/8/R6K w - - 0 10"
+    print(f'''
+board as a FEN string 
+{b.to_fen()}    
+
+board as a grid 
+{b.grid}    
+
+knight squares 
+{b.knights}
+
+white squares (as a grid) 
+{b.w.grid}
+
+white knight squares 
+{b.knights & b.w}
+    
+as a grid 
+{(b.knights & b.w).grid}
+
+how many white pawns
+{len(b.pawns & b.w)}
+
+pawns on "file C" 
+{(b.pawns & B.FILE_C).grid}
+
+edges of the board
+{(B.FILE_A | B.FILE_H | B.RANK_1 | B.RANK_8).grid}
+
+everything but the edges of the board
+{(~(B.FILE_A | B.FILE_H | B.RANK_1 | B.RANK_8)).grid}
+
+parse "{fen}" and show as a grid
+{Board.parse_fen(fen).grid}
+
+
+    ''')
+
+
+
+
 def main():
     test = Test()
     test.test_square()
@@ -1054,36 +1183,10 @@ def main():
     test.test_board()
     test.test_odonata()
 
-    b = Board()
-    fen = "r1k5/8/8/8/8/8/8/R6K w - - 0 10"
-    print(f'''
-
-board as a FEN string {b.to_fen()}    
-
-board as a grid 
-
-{b.grid}    
-
-knight squares {b.knights}
-
-white squares (as a grid) 
-
-{b.w.grid}
-
-white knight squares {b.knights & b.w}
-    
-as a grid 
-
-{(b.knights & b.w).grid}
-
-how many white pawns {len(b.pawns & b.w)}
-
-parse "{fen}" and show as a grid
-
-{Board.parse_fen(fen).grid}
+    demo_1()
+    demo_2()
 
 
-    ''')
 
 
 
