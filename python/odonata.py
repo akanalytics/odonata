@@ -7,6 +7,7 @@ import logging
 from textwrap import wrap
 import subprocess
 import os
+from time import perf_counter
 
 
 logger = logging.getLogger()
@@ -1286,6 +1287,16 @@ prin var : {" ".join(algo.pv())}
         print(f"Move: {move}\nPosition\n{b.grid}\n")
 
 
+def demo_4():
+    b = Board()
+    print(b.grid)
+    start = perf_counter()
+    N = 1_000
+    for _ in range(N):
+        legals = b.moves()
+
+    elapsed = perf_counter() - start
+    print(f"Calculating legal moves for {N} positions\nElapsed = {elapsed} or {int(N/elapsed)} calls/sec")
 
 
 def main():
@@ -1299,6 +1310,7 @@ def main():
     # demo_1()
     # demo_2()
     demo_3()
+    demo_4()
 
 
 
