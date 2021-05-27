@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from __future__ import annotations
-from typing import Any, MutableSet, Iterator, Optional
+from typing import Any, MutableSet, Iterator, Optional, Dict
 from typing import List, Iterable
 import logging
 from textwrap import wrap
@@ -818,12 +818,35 @@ class Algo:
     def __init__(self, depth: Optional[int] = None, millis: Optional[int] = 1000) -> None:
         self.millis = millis
         self.depth = depth
+        self.results = {}
     
     # can return None when no moves available (or found in time) 
     def search(self, b: Board) -> Optional[Move]:
-        return Odonata.instance().get_best_move(b, self.depth, self.millis)
-        
+        odo = Odonata.instance()
+        bm = odo.get_best_move(b, self.depth, self.millis)
+        self.results = odo.parse_search_results()
+        return bm
 
+    def nps(self) -> int:
+        return int(self.results[-1]['nps'])
+
+    def nodes(self) -> int:
+        return int(self.results[-1]['nodes'])
+
+    def pv(self) -> List[Move]:
+        return self.results[-1]['pv']
+
+    def max_depth(self) -> int:
+        return int(self.results[-1]['depth'])
+
+    def seldepth(self) -> int:
+        return int(self.results[-1]['seldepth'])
+
+    def centipawns(self) -> int:
+        return int(self.results[-1].get('centipawns') or '0')
+
+    def mate_in(self) -> Optional[str]:
+        return self.results[-1].get('mate')
 
 # best not to use this class directly
 class Odonata:
@@ -868,7 +891,7 @@ class Odonata:
 
 
         # self.depth = str(depth)
-        self.info: str = ""
+        self.infos: List[str] = []
 
         # if parameters is None:
         #     parameters = {}
@@ -890,7 +913,7 @@ class Odonata:
     def _start_new_game(self) -> None:
         self._put("ucinewgame")
         self.is_ready()
-        self.info = ""
+        self.infos = []
 
     def _put(self, command: str) -> None:
         if not self.process.stdin:
@@ -951,16 +974,35 @@ class Odonata:
     def _command(self, req, res) -> str:
         self._put(req)
         last_text: str = ""
+        self.infos = []
         for _ in range(200):
             text = self._read_line()
+            self.infos.append(last_text)
             if text.startswith(res):
-                self.info = last_text
                 return text[len(res):].strip()
             if "error" in text:
                 raise ValueError(f"Received {text} from command {req}")
             last_text = text
         raise ValueError(f"Gave up waiting for '{res}'' after command '{req}'")
     
+
+    # info depth 10 seldepth 11 nodes 19349 nps 257000 score cp 529 time 74 pv a1a8 h8h7 a8a6 h7g7 
+    def parse_search_results(self) -> List[Dict]:
+        results = []
+        for record in self.infos:
+            if " pv " in record:
+                d = {}
+                words = record.split()
+                for (i, word) in enumerate(words):
+                    if word in ['depth', 'seldepth', 'nodes', 'nps', 'time', 'cp', 'mate', 'pv']:
+                        if word == 'pv':
+                            d[word] = words[i+1:]
+                        else:
+                            d[word] = words[i+1]
+                results.append(d)
+        return results
+
+
     def __del__(self) -> None:
         if self.process:
             self._put("quit")
@@ -1114,7 +1156,7 @@ class Test:
 
 
     def test_odonata(self):
-        odo = Odonata()
+        odo = Odonata(debug=True)
         odo.is_ready()
         board = Board.parse_fen("r6k/8/8/8/8/8/8/R6K w - - 0 30")
         bm = odo.get_best_move(board, millis=200)
@@ -1213,22 +1255,50 @@ parse "{fen}" and show as a grid
 
 
 def demo_3():
-    b = Board()
-    fen = "r1k5/8/8/8/8/8/8/R6K w - - 0 10"
+    fen = "r1k5/8/8/2K5/8/8/8/R6R w - - 0 10"
+    b = Board.parse_fen(fen)
+    algo = Algo(depth = 6)
+    bm = algo.search(b)
+    print(f'''
+
+board as a FEN string 
+{b.to_fen()}    
+
+board as a grid 
+{b.grid}    
+
+best move
+{bm}
+
+max_depth: {algo.max_depth()}
+seldepth : {algo.seldepth()}
+nodes    : {algo.nodes()}
+nodes/sec: {algo.nps()}
+score    : {algo.centipawns()}
+mate in  : {algo.mate_in()}
+prin var : {" ".join(algo.pv())}  
+
+''')
+
+    # lets play out the pv
+    for move in algo.pv():
+        b = b.make_move(move)
+        print(f"Move: {move}\nPosition\n{b.grid}\n")
 
 
 
 
 def main():
-    test = Test()
-    test.test_square()
-    test.test_bitboard()
-    test.test_moves()
-    test.test_board()
-    test.test_odonata()
+    # test = Test()
+    # test.test_square()
+    # test.test_bitboard()
+    # test.test_moves()
+    # test.test_board()
+    # test.test_odonata()
 
-    demo_1()
-    demo_2()
+    # demo_1()
+    # demo_2()
+    demo_3()
 
 
 
