@@ -14,7 +14,9 @@ I'm aware that this is now yet another chess engine, with yet another set of Pyt
 
 ## Lichess
 Odonata is running as a bot on Lichess. You can see her rankings and games here [Lichess](https://lichess.org/@/odonata-bot) .
- 
+
+## Python interface
+Odonata has a baby python interface, based on the Stockfish interface by Ilya Zhelyabuzhsky. Take a look [Python](/docs/python.md). The interface will sure evolve, and hopefully migrate to a Python extension.
 
 ## Todo
 See [Todo](/docs/todo.md)
@@ -31,13 +33,14 @@ There are some excellent chess engines, libraries  and documentation out there. 
 
 Description | Link | Comment  
 ----------- | ---- | -------
-Chess Programming Wiki | https://www.chessprogramming.org/ | Invaluable...
-Pure Python Chess Library | https://github.com/niklasf/python-chess |
-Fast chess move generation | https://github.com/jordanbray/chess |
-Shakmaty - Rust chess library | https://github.com/niklasf/shakmaty |
+Chess Programming Wiki | https://www.chessprogramming.org/ | Invaluable.
+Pure Python Chess Library | https://github.com/niklasf/python-chess | Expertly crafted. 
+Fast chess move generation | https://github.com/jordanbray/chess | Fast!
+Shakmaty - Rust chess library | https://github.com/niklasf/shakmaty | Looks powerful in terms of variants
 Rust Chess engine | https://github.com/vinc/littlewing | For making me appreciate ASCII art...
-Chesss GUI for UCI engines | http://www.playwitharena.de/ |
-CCRL - Computer Chess Ratings Lists | https://www.computerchess.org.uk/ccrl/404/ |
+Chesss GUI for UCI engines | http://www.playwitharena.de/ | Have grown to love
+CCRL - Computer Chess Ratings Lists | https://www.computerchess.org.uk/ccrl/404/ | Fascinating
+Stockfish python interface | https://pypi.org/project/stockfish/ | By Ilya Zhelyabuzhsky. Sweet.
 
 ## License
 The software licence is [AGPL-3](../license.txt), though libraies used are MIT licensed. Trial or experimental versions may lag in terms of source code publication.

@@ -1,9 +1,12 @@
 # Changelog
 
-
+## 0.3.16
+- Python 'interface' - really just some extensions to uci
+- Python sample code
+-  
 
 ## 0.3.15
-= Bug fix: illegal moves made when cut node stored at root of tt
+- Bug fix: illegal moves made when cut node stored at root of tt
 - UCI centi-pawn scoring pov finally fixed (from egine pov not white's)
 - UCI mate in X reporting also finally fixed
 - Some temporary changes to facilitate killer move investigations, and move ordering
@@ -13,6 +16,6 @@
 - Added clap library for command line 
 
 ## 0.3.13
-- pull pv from transposition table
+- Pull pv from transposition table
 - 
 

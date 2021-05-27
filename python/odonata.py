@@ -1259,8 +1259,7 @@ parse "{fen}" and show as a grid
 
 
 def demo_3():
-    fen = "r1k5/8/8/2K5/8/8/8/R6R w - - 0 10"
-    b = Board.parse_fen(fen)
+    b = Board.parse_fen("r1k5/8/8/2K5/8/8/8/R6R w - - 0 10")
     algo = Algo(depth = 6)
     bm = algo.search(b)
     print(f'''
