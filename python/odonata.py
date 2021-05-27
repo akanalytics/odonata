@@ -241,15 +241,13 @@ Move = str
 class Moves:
 
     @staticmethod
-    def validate(m: str) -> bool:
+    def parse(m: str) -> tuple[Square, Square, Piece]:
         assert len(m) in [4, 5]
-        if m == "Null":
-            return True
         src = Square.parse(m[:2])
         dst = Square.parse(m[2:4])
         promo = m[4:]
         assert promo in 'nbrq', "promotion should be one of 'n, b, r or q'"
-        return True
+        return (src, dst, promo)
 
 
 # Inherited Set methods and clear, pop, remove, __ior__, __iand__, __ixor__, and __isub__
@@ -816,11 +814,15 @@ class Eval:
     #     return 0
 
 
-
-
-
-
-
+class Algo:
+    def __init__(self, depth: Optional[int] = None, millis: Optional[int] = 1000) -> None:
+        self.millis = millis
+        self.depth = depth
+    
+    # can return None when no moves available (or found in time) 
+    def search(self, b: Board) -> Optional[Move]:
+        return Odonata.instance().get_best_move(b, self.depth, self.millis)
+        
 
 
 # best not to use this class directly
@@ -1052,6 +1054,19 @@ class Test:
         all = not_b1
         assert len(all) == 64
 
+    def test_moves(self):
+        src, dest, promo = Moves.parse("c2c4")
+        assert src.file() == "c" 
+        assert src.rank() == "2" 
+        assert dest.rank() == "4" 
+        assert src.index_x == 2 # a=0, b=1, c=2 
+        assert src.index_y == 1 # rank1=0, rnk2=1
+        assert promo == ''
+
+        src, dest, promo = Moves.parse("c7c8q")
+        assert promo == "q"
+
+
     def test_board(self):
         board = Board()
         board._init()
@@ -1123,8 +1138,10 @@ def demo_1():
 Odonata version 
 {Odonata.instance().version()}    
 
-board as a FEN string 
+board as a FEN string and grid
 {b.to_fen()}    
+
+{b.grid}    
 
 legal moves
 {b.moves()}
@@ -1132,20 +1149,27 @@ legal moves
 static evaluation
 {eval.static_eval(b)}    
 
-checkmate by white
+white checkmates black 
 {eval.static_eval(Board.parse_fen("k6Q/8/K7/8/8/8/8/8 b - - 0 1"))}    
 
-checkmate by black
+black checkmates white
 {eval.static_eval(Board.parse_fen("K6q/8/k7/8/8/8/8/8 w - - 0 1"))}    
 
 stalemate isnt working yet!
 {eval.static_eval(Board.parse_fen("k7/1R6/K7/8/8/8/8/8 b - - 0 1"))}    
 legal moves are {Board.parse_fen("k7/1R6/K7/8/8/8/8/8 b - - 0 1").moves()}
 
+best move is...
+{Algo(depth=6).search(b)}
+
+
 make move h2h4
 {b.make_move('h2h4').grid}    
 
 ''')
+
+
+
 
 def demo_2():
     b = Board()
@@ -1157,22 +1181,22 @@ board as a FEN string
 board as a grid 
 {b.grid}    
 
-knight squares 
+knight squares bitboard
 {b.knights}
 
-white squares (as a grid) 
+white squares (as bitboard grid) 
 {b.w.grid}
 
-white knight squares 
+white knight squares bitboard
 {b.knights & b.w}
     
-as a grid 
+as a bitboard grid 
 {(b.knights & b.w).grid}
 
-how many white pawns
+count how many white pawns
 {len(b.pawns & b.w)}
 
-pawns on "file C" 
+pawns on "file C" as a bitboard grid 
 {(b.pawns & B.FILE_C).grid}
 
 edges of the board
@@ -1188,12 +1212,18 @@ parse "{fen}" and show as a grid
     ''')
 
 
+def demo_3():
+    b = Board()
+    fen = "r1k5/8/8/8/8/8/8/R6K w - - 0 10"
+
+
 
 
 def main():
     test = Test()
     test.test_square()
     test.test_bitboard()
+    test.test_moves()
     test.test_board()
     test.test_odonata()
 
