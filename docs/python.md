@@ -1,5 +1,5 @@
 ## Overview
-The python 'interface' is only an extended UCI interface. Lots of FEN parsing to-and-fro, and as a result it's slower than the pure python implmentaion I first built. The Python code is a copy of an early project and carries lots of python bitboard baggage, no longer needed now the logic is in rust.
+The python 'interface' is only an extended UCI interface. Lots of FEN parsing to-and-fro, and as a result it's slower than the pure python implementation I first built. The Python code is a copy of an early project and carries lots of python bitboard baggage, no longer needed now the logic is in rust.
 Copy the odonata binary into you working directory, or alternatively supply a path in a call to Odonata.instance(path) at program start...
 
 The below demonstates a mate-in-3 alpha-beta search, and playing out the principal variation to show the checkmate.
