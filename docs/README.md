@@ -16,7 +16,7 @@ I'm aware that this is now yet another chess engine, with yet another set of Pyt
 Odonata is running as a bot on Lichess. You can see her rankings and games here [Lichess](https://lichess.org/@/odonata-bot) .
 
 ## Python interface
-Odonata has a baby python interface, based on the Stockfish interface by Ilya Zhelyabuzhsky. Take a look [Python](/docs/python.md). The interface will sure evolve, and hopefully migrate to a Python extension.
+Odonata has a baby python interface, based on the Stockfish interface by Ilya Zhelyabuzhsky. Take a look at [Python](/docs/python.md). The interface will sure evolve, and hopefully migrate to a Python extension.
 
 ## Todo
 See [Todo](/docs/todo.md)
