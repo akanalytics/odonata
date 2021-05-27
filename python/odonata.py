@@ -808,6 +808,7 @@ class Eval:
         self.rook = 500
         self.queen = 900
 
+    # should detect stalemates and checks as well
     def static_eval(self, b: Board) -> str:
         return Odonata.instance().static_eval(b)
 
@@ -817,12 +818,12 @@ class Eval:
 
 
 
-DEFAULT_ODONATA_PARAMS = {
-    "Hash": 16,
-}
 
 
 
+
+
+# best not to use this class directly
 class Odonata:
 
     _instance: Optional[Odonata] = None
@@ -835,6 +836,9 @@ class Odonata:
             # Put more initialization here maybe
         return cls._instance
 
+    DEFAULT_ODONATA_PARAMS = {
+        "Hash": 16,
+    }
 
     def __init__(self, path: str = '', debug: bool = False ) -> None:
         self.process: Optional[subprocess.Popen] = None
@@ -1127,6 +1131,16 @@ legal moves
 
 static evaluation
 {eval.static_eval(b)}    
+
+checkmate by white
+{eval.static_eval(Board.parse_fen("k6Q/8/K7/8/8/8/8/8 b - - 0 1"))}    
+
+checkmate by black
+{eval.static_eval(Board.parse_fen("K6q/8/k7/8/8/8/8/8 w - - 0 1"))}    
+
+stalemate isnt working yet!
+{eval.static_eval(Board.parse_fen("k7/1R6/K7/8/8/8/8/8 b - - 0 1"))}    
+legal moves are {Board.parse_fen("k7/1R6/K7/8/8/8/8/8 b - - 0 1").moves()}
 
 make move h2h4
 {b.make_move('h2h4').grid}    
