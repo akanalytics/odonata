@@ -831,6 +831,9 @@ class Algo:
     def nps(self) -> int:
         return int(self.results[-1]['nps'])
 
+    def time(self) -> int:
+        return int(self.results[-1]['time'])
+
     def nodes(self) -> int:
         return int(self.results[-1]['nodes'])
 
@@ -1157,7 +1160,7 @@ class Test:
 
 
     def test_odonata(self):
-        odo = Odonata(debug=True)
+        odo = Odonata(debug=False)
         odo.is_ready()
         board = Board.parse_fen("r6k/8/8/8/8/8/8/R6K w - - 0 30")
         bm = odo.get_best_move(board, millis=200)
@@ -1275,6 +1278,7 @@ max_depth: {algo.max_depth()}
 seldepth : {algo.seldepth()}
 nodes    : {algo.nodes()}
 nodes/sec: {algo.nps()}
+time (ms): {algo.time()}
 score    : {algo.centipawns()}
 mate in  : {algo.mate_in()}
 prin var : {" ".join(algo.pv())}  
@@ -1282,9 +1286,9 @@ prin var : {" ".join(algo.pv())}
 ''')
 
     # lets play out the pv
-    for move in algo.pv():
+    for i, move in enumerate(algo.pv()):
         b = b.make_move(move)
-        print(f"Move: {move}\nPosition\n{b.grid}\n")
+        print(f"Move #{i+1}: {move}\nPosition\n{b.grid}\n")
 
 
 def demo_4():
@@ -1296,20 +1300,27 @@ def demo_4():
         legals = b.moves()
 
     elapsed = perf_counter() - start
-    print(f"Calculating legal moves for {N} positions\nElapsed = {elapsed} or {int(N/elapsed)} calls/sec")
+    print(f"\n\nCalculating legal moves for {N} positions\nElapsed = {elapsed} or {int(N/elapsed)} calls/sec")
 
 
 def main():
-    # test = Test()
-    # test.test_square()
-    # test.test_bitboard()
-    # test.test_moves()
-    # test.test_board()
-    # test.test_odonata()
+    test = Test()
+    test.test_square()
+    test.test_bitboard()
+    test.test_moves()
+    test.test_board()
+    test.test_odonata()
 
-    # demo_1()
-    # demo_2()
+    print("\n\nDemo 1\n======")
+    demo_1()
+
+    print("\n\nDemo 2\n======")
+    demo_2()
+
+    print("\n\nDemo 3\n======")
     demo_3()
+
+    print("\n\nDemo 4\n======")
     demo_4()
 
 
