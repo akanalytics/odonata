@@ -252,7 +252,7 @@ impl Uci {
         Ok(())
     }
 
-    fn ext_uci_version(&mut self, arg: &Args) -> Result<(), String> {
+    fn ext_uci_version(&mut self, _arg: &Args) -> Result<(), String> {
         println!("result:{}", Version::VERSION);
         Ok(())
     }
