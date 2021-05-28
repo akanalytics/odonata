@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from __future__ import annotations
-from typing import Any, MutableSet, Iterator, Optional, Dict
+from typing import Any, MutableSet, Iterator, Optional, Dict, Callable
 from typing import List, Iterable
 import logging
 from textwrap import wrap
@@ -884,6 +884,7 @@ class Odonata:
         self.debug: bool = debug
         self.process = subprocess.Popen(
             path,
+            #bufsize=10000,
             universal_newlines=True,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE
@@ -942,19 +943,19 @@ class Odonata:
     # can be mate etc not just cp
     def static_eval(self, b: Board) -> str:
         req = f"ext:static_eval fen {b.to_fen()}"
-        return self._command(req, res = "result:")
+        return self.exec_command(req, res = "result:")
 
     def make_move(self, b: Board, m: Move) -> Board:
         req = f"ext:make_moves fen {b.to_fen()} moves {m}"
-        return Board.parse_fen(self._command(req, res = "result:"))
+        return Board.parse_fen(self.exec_command(req, res = "result:"))
 
     def legal_moves(self, b: Board) -> str:
         req = f"ext:legal_moves fen {b.to_fen()}"
-        return self._command(req, res = "result:")
+        return self.exec_command(req, res = "result:")
 
     def version(self) -> str:
         req = f"ext:version"
-        return self._command(req, res = "result:")
+        return self.exec_command(req, res = "result:")
 
     def get_best_move(self, b: Board, depth: Optional[int] = None, millis: Optional[int] = None ) -> Optional[str]:
         """Returns best move with current position on the board in uci notation or None if it's a mate."""
@@ -966,7 +967,7 @@ class Odonata:
         if millis:
             req = f"go movetime {millis}"    
 
-        result = self._command(req, res = "bestmove")
+        result = self.exec_command(req, res = "bestmove")
         return None if result == "0000" else result
 
     def is_ready(self) -> None:
@@ -975,7 +976,7 @@ class Odonata:
             if self._read_line() == "readyok":
                 return
 
-    def _command(self, req, res) -> str:
+    def exec_command(self, req, res) -> str:
         self._put(req)
         last_text: str = ""
         self.infos = []
@@ -1115,13 +1116,17 @@ class Test:
 
     def test_board(self):
         board = Board()
-        board._init()
+
+        # piece_on fetches the board one square at a time
         assert board.piece_on(Square.of(1)) == 'N'
         assert board.piece_on(Square.of(63)) == 'r'
+        
+        # square brackets with a bitboard fetches an entire board area
         assert board[B.a1] == 'R'
         assert board[B.h1] == 'R'
         assert set(board[B.a1 + B.a2 + B.a3]) == set("RP")
         assert set(board[B.RANK_1]) == set("RRBBNNQK")
+
         # print(f"{board!r}")
         # print(Stringer().pretty_print(board))
 
@@ -1130,17 +1135,16 @@ class Test:
         # assert f"{board:g}" == board.to_grid() + "\nwhite to move"
 
         b = Board()
-        b._init()
         assert b.to_fen() == "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
-        # allow parsing uncompressed FEN string
-        assert b == Board.parse_fen("rnbqkbnr/pppppppp/8/8/8/11111111/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+        # allow parsing uncompressed FEN string - maybe easier to produce from a "matrix type" representation
+        assert b == Board.parse_fen("rnbqkbnr/pppppppp/11111111/11111111/11111111/11111111/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 
         b = Board()
-        b._init()
         b = b.clone()
         assert b.to_fen() == "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
+        # placing and removing pieces from the board
         c = Board.parse_fen(b.to_fen())
         assert b == c
         c.remove(S.a1)
@@ -1290,16 +1294,35 @@ prin var : {" ".join(algo.pv())}
         print(f"Move #{i+1}: {move}\nPosition\n{b.grid}\n")
 
 
+
+def calc_calls_per_second(function: Callable) -> int:
+    start = perf_counter()
+    N = 1_000
+    for _ in range(N):
+        function()
+    elapsed = perf_counter() - start
+    return (N * 1000) // int(elapsed * 1000)
+
+
 def demo_4():
     b = Board()
     print(b.grid)
     start = perf_counter()
     N = 1_000
     for _ in range(N):
-        legals = b.moves()
+        _ = b.moves()
 
     elapsed = perf_counter() - start
     print(f"\n\nCalculating legal moves for {N} positions\nElapsed = {elapsed} or {int(N/elapsed)} calls/sec")
+
+    odo = Odonata()
+    b = Board.parse_fen("r1k5/8/8/8/8/8/7P/R6K w - - 0 10")
+    def legals(): b.moves()
+    def legals_hardcoded_fen(): odo.exec_command(req="ext:legal_moves fen r1k5/8/8/8/8/8/7P/R6K w - - 0 10", res="result:")
+
+    print("\nCalculate calls per second using a hardcoded fen string.\nTypically 80% of the time is fen generation!")
+    print("legals               calls/sec:", calc_calls_per_second(legals))
+    print("legals_hardcoded_fen calls/sec:", calc_calls_per_second(legals_hardcoded_fen))
 
 
 def main():
