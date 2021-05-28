@@ -60,7 +60,7 @@ class Bitwise:
 Color = str  # Literal["w", "b"]
 
 
-class Sides:
+class Colors:
     """
     using CPW convention of white = 0, black = 1
     """
@@ -470,7 +470,7 @@ class Board():
         self.remove(s)
         if p != ' ':
             self._pieces[Pieces.to_index(p.lower())] |= s.bit()
-            self._colors[Sides.to_index(Pieces.colour(p))] |= s.bit()
+            self._colors[Colors.to_index(Pieces.colour(p))] |= s.bit()
 
     def __repr__(self) -> str:
         return f"Board({self._pieces}, {self._colors})"
@@ -480,11 +480,11 @@ class Board():
 
     @property
     def w(self) -> Bitboard:
-        return Bitboard(bits=self._colors[Sides.to_index("w")])
+        return Bitboard(bits=self._colors[Colors.to_index("w")])
 
     @property
     def b(self) -> Bitboard:
-        return Bitboard(bits=self._colors[Sides.to_index("b")])
+        return Bitboard(bits=self._colors[Colors.to_index("b")])
 
     @property
     def turn(self) -> Color:
