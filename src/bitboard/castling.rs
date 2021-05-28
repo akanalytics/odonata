@@ -142,33 +142,35 @@ impl CastlingRights {
     }
 
     #[inline]
-    pub fn adjust(&mut self, squares_changed: Bitboard) {
+    pub fn rights_lost(squares_changed: Bitboard) -> CastlingRights {
+        let mut loss = CastlingRights::NONE;
         if squares_changed.intersects(Self::rook_and_king_squares()) {
             if squares_changed.intersects(Bitboard::FILE_E) {
                 if squares_changed.intersects(Bitboard::E1) {
-                    *self -= Self::WHITE_KING.or(Self::WHITE_QUEEN);
+                    loss |= Self::WHITE_KING.or(Self::WHITE_QUEEN);
                 }
                 if squares_changed.intersects(Bitboard::E8) {
-                    *self -= Self::BLACK_KING.or(Self::BLACK_QUEEN);
+                    loss |= Self::BLACK_KING.or(Self::BLACK_QUEEN);
                 }
             }
             if squares_changed.intersects(Bitboard::FILE_A) {
                 if squares_changed.intersects(Bitboard::A1) {
-                    *self -= Self::WHITE_QUEEN;
+                    loss |= Self::WHITE_QUEEN;
                 }
                 if squares_changed.intersects(Bitboard::A8) {
-                    *self -= Self::BLACK_QUEEN;
+                    loss |= Self::BLACK_QUEEN;
                 }
             }
             if squares_changed.intersects(Bitboard::FILE_H) {
                 if squares_changed.intersects(Bitboard::H1) {
-                    *self -= Self::WHITE_KING;
+                    loss |= Self::WHITE_KING;
                 }
                 if squares_changed.intersects(Bitboard::H8) {
-                    *self -= Self::BLACK_KING;
+                    loss |= Self::BLACK_KING;
                 }
             }
         }
+        loss
     }
 }
 

@@ -177,29 +177,7 @@ impl Hasher {
 
         // castling *moves*
         if m.is_castle() {
-            let rook_from;
-            let rook_to;
-
-            #[allow(non_upper_case_globals)]
-            match m.to().as_bb() {
-                c1 => {
-                    rook_from = a1.square();
-                    rook_to = d1.square();
-                }
-                g1 => {
-                    rook_from = h1.square();
-                    rook_to = f1.square();
-                }
-                c8 => {
-                    rook_from = a8.square();
-                    rook_to = d8.square();
-                }
-                g8 => {
-                    rook_from = h8.square();
-                    rook_to = f8.square();
-                }
-                _ => panic!("Castling move from square {}", m.to().as_bb()),
-            }
+            let (rook_from, rook_to) = m.rook_move_from_to();
             hash ^= self.get(us, Piece::Rook, rook_from);
             hash ^= self.get(us, Piece::Rook, rook_to);
         }

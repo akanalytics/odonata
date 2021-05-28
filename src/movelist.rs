@@ -3,6 +3,7 @@ use crate::bitboard::castling::CastlingRights;
 use crate::bitboard::square::Square;
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
+use crate::globals::constants::*;
 use crate::parse::Parse;
 use crate::tags::Tags;
 use crate::types::{Color, Piece, Ply};
@@ -64,27 +65,27 @@ impl Move {
     }
 
     #[inline]
-    pub fn to(&self) -> Square {
+    pub const fn to(&self) -> Square {
         self.to
     }
 
     #[inline]
-    pub fn from(&self) -> Square {
+    pub  const fn from(&self) -> Square {
         self.from
     }
 
     #[inline]
-    pub fn ep(&self) -> Square {
+    pub  const fn ep(&self) -> Square {
         self.ep
     }
 
     #[inline]
-    pub fn is_known_legal(&self) -> bool {
+    pub  const fn is_known_legal(&self) -> bool {
         self.is_known_legal
     }
 
     #[inline]
-    pub fn is_null(&self) -> bool {
+    pub  const fn is_null(&self) -> bool {
         self.is_null
     }
 
@@ -94,17 +95,17 @@ impl Move {
     }
 
     #[inline]
-    pub fn promo_piece(&self) -> Piece {
+    pub  const fn promo_piece(&self) -> Piece {
         self.promo
     }
 
     #[inline]
-    pub fn capture_piece(&self) -> Piece {
+    pub  const fn capture_piece(&self) -> Piece {
         self.capture
     }
 
     #[inline]
-    pub fn mover_piece(&self) -> Piece {
+    pub  const fn mover_piece(&self) -> Piece {
         self.mover
     }
 
@@ -114,22 +115,22 @@ impl Move {
     }
 
     #[inline]
-    pub fn is_castle(&self) -> bool {
+    pub  const fn is_castle(&self) -> bool {
         !self.castle_side.is_empty()
     }
 
     #[inline]
-    pub fn castling_side(&self) -> CastlingRights {
+    pub  const fn castling_side(&self) -> CastlingRights {
         self.castle_side
     }
 
     #[inline]
-    pub fn is_ep_capture(&self) -> bool {
+    pub  fn is_ep_capture(&self) -> bool {
         !self.ep.is_null() && self.is_capture()
     }
 
     #[inline]
-    pub fn is_pawn_double_push(&self) -> bool {
+    pub  fn is_pawn_double_push(&self) -> bool {
         !self.ep.is_null() && !self.is_capture()
     }
 
@@ -141,6 +142,24 @@ impl Move {
             mover: p,
             ..Self::default()
         }
+    }
+
+    #[inline]
+    pub const fn rook_move_from_to(&self) -> (Square, Square) {
+        #[allow(non_upper_case_globals)]
+        match self.to().as_bb() {
+            c1 => (a1.square(), d1.square()),
+            g1 => (h1.square(), f1.square()),
+            c8 => (a8.square(), d8.square()),
+            g8 => (h8.square(), f8.square()),
+            _ => (Square::null(), Square::null()),
+        }
+    }
+
+    #[inline]
+    pub fn castling_rights_lost(&self) -> CastlingRights {
+        let squares_changing = self.to().as_bb() | self.from().as_bb();
+        CastlingRights::rights_lost(squares_changing)
     }
 
     #[inline]
@@ -637,7 +656,6 @@ mod tests {
     use super::*;
     use crate::board::boardbuf::*;
     use crate::catalog::Catalog;
-    use crate::globals::constants::*;
 
     #[test]
     fn test_move() {

@@ -1,10 +1,8 @@
 use crate::bitboard::bitboard::Bitboard;
 use crate::board::Board;
-use crate::globals::constants::*;
 use crate::hasher::Hasher;
 use crate::movelist::{Move};
 use crate::types::{Piece};
-use crate::bitboard::castling::CastlingRights;
 
 use std::cell::Cell;
 
@@ -103,11 +101,11 @@ impl MoveMaker for Board {
         // board.moves.push(*m);
 
         if m.is_capture() {
+            b.fifty_clock = 0;
             if m.is_ep_capture() {
                 // ep capture is like capture but with capture piece on *ep* square not *dest*
-                b.fifty_clock = 0;
-                b.pieces[m.capture_piece().index()].remove(m.ep().as_bb());
-                b.colors[b.turn.index()].remove(m.ep().as_bb());
+                b.pieces[m.capture_piece()].remove(m.ep().as_bb());
+                b.colors[b.turn].remove(m.ep().as_bb());
             } else {
                 // regular capture
                 debug_assert!(
@@ -116,16 +114,15 @@ impl MoveMaker for Board {
                     m,
                     self
                 );
-                b.fifty_clock = 0;
-                b.pieces[m.capture_piece().index()].remove(m.to().as_bb());
-                b.colors[b.turn.index()].remove(m.to().as_bb());
+                b.pieces[m.capture_piece()].remove(m.to().as_bb());
+                b.colors[b.turn].remove(m.to().as_bb());
             }
         }
 
         // clear one bit and set another for the move using xor
         let from_to_bits = m.from().as_bb() | m.to().as_bb();
-        b.pieces[m.mover_piece().index()] ^= from_to_bits;
-        b.colors[self.turn.index()] ^= from_to_bits;
+        b.pieces[m.mover_piece()] ^= from_to_bits;
+        b.colors[self.turn] ^= from_to_bits;
 
         if m.mover_piece() == Piece::Pawn {
             b.fifty_clock = 0;
@@ -136,37 +133,18 @@ impl MoveMaker for Board {
 
         if m.is_promo() {
             // fifty clock handled by pawn move above;
-            b.pieces[Piece::Pawn.index()].remove(m.to().as_bb()); // pawn has already moved
-            b.pieces[m.promo_piece().index()].insert(m.to().as_bb());
+            b.pieces[Piece::Pawn].remove(m.to().as_bb()); // pawn has already moved
+            b.pieces[m.promo_piece()].insert(m.to().as_bb());
         }
 
         // castling *moves*
         if m.is_castle() {
             // rules say no reset of fifty clock
             // king move already handled, castling rights handled below, just the rook move
-            let rook_from_to;
 
-            #[allow(non_upper_case_globals)]
-            match m.to().as_bb() {
-                c1 => {
-                    debug_assert!(b.castling.contains(CastlingRights::WHITE_QUEEN));
-                    rook_from_to = a1 | d1;
-                }
-                g1 => {
-                    debug_assert!(b.castling.contains(CastlingRights::WHITE_KING));
-                    rook_from_to = h1 | f1;
-                }
-                c8 => {
-                    debug_assert!(b.castling.contains(CastlingRights::BLACK_QUEEN));
-                    rook_from_to = a8 | d8;
-                }
-                g8 => {
-                    debug_assert!(b.castling.contains(CastlingRights::BLACK_KING));
-                    rook_from_to = h8 | f8;
-                }
-                _ => panic!("Castling move from square {}", m.to()),
-            }
-            b.pieces[Piece::Rook.index()] ^= rook_from_to;
+            let (rook_from, rook_to) = m.rook_move_from_to();
+            let rook_from_to = rook_from.as_bb() ^ rook_to.as_bb();
+            b.pieces[Piece::Rook] ^= rook_from_to;
             b.colors[self.turn] ^= rook_from_to;
         }
 
@@ -174,8 +152,7 @@ impl MoveMaker for Board {
         //  if a piece moves TO (=capture) or FROM the rook squares - appropriate castling rights are lost
         //  if a piece moves FROM the kings squares, both castling rights are lost
         //  possible with a rook x rook capture that both sides lose castling rights
-        let squares_changing = m.to().as_bb() | m.from().as_bb();
-        b.castling.adjust( squares_changing);
+        b.castling -= m.castling_rights_lost();
         // b.castling ^= m.castling_side();
 
         let move_hash = Hasher::default().hash_move(m, self);
@@ -216,6 +193,8 @@ mod tests {
     use crate::board::*;
     use crate::catalog::*;
     use crate::movelist::MoveValidator;
+    use crate::globals::constants::*;
+
 
     #[test]
     fn test_make_move() -> Result<(), String> {
