@@ -82,7 +82,11 @@ impl Square {
     }
 
     pub fn uci(self) -> String {
-        format!("{}{}", self.file_char(), self.rank_char())
+        if self.is_null() {
+            "-".to_string()
+        } else {
+            format!("{}{}", self.file_char(), self.rank_char())
+        }
     }
 
     #[inline]

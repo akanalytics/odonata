@@ -1,7 +1,7 @@
 use crate::bitboard::bitboard::Bitboard;
 use crate::board::Board;
 use crate::hasher::Hasher;
-use crate::movelist::{Move};
+use crate::movelist::{Move, Variation};
 use crate::types::{Piece};
 
 use std::cell::Cell;
@@ -16,6 +16,7 @@ use std::cell::Cell;
 
 pub trait MoveMaker {
     fn make_move(&self, m: &Move) -> Board;
+    fn make_moves(&self, m: &Variation) -> Board;
     fn undo_move(&self, m: &Move);
 }
 
@@ -70,6 +71,14 @@ impl MoveMaker for Board {
     //     // self.turn = self.turn.opposite();
     // }
 
+
+    fn make_moves(&self, moves: &Variation) -> Board {
+        let mut b = self.clone(); 
+        for mv in moves.iter() {
+            b = b.make_move(&mv);
+        }
+        b
+    }
 
 
 

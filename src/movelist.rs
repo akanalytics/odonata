@@ -70,22 +70,33 @@ impl Move {
     }
 
     #[inline]
-    pub  const fn from(&self) -> Square {
+    pub const fn from(&self) -> Square {
         self.from
     }
 
     #[inline]
-    pub  const fn ep(&self) -> Square {
+    pub const fn ep(&self) -> Square {
         self.ep
     }
 
     #[inline]
-    pub  const fn is_known_legal(&self) -> bool {
+    pub fn capture_square(&self) -> Square {
+        if self.is_ep_capture() {
+            self.ep()
+        } else if self.is_capture() {
+            self.to()
+        } else {
+            Square::null()
+        }
+    }
+
+    #[inline]
+    pub const fn is_known_legal(&self) -> bool {
         self.is_known_legal
     }
 
     #[inline]
-    pub  const fn is_null(&self) -> bool {
+    pub const fn is_null(&self) -> bool {
         self.is_null
     }
 
@@ -95,17 +106,17 @@ impl Move {
     }
 
     #[inline]
-    pub  const fn promo_piece(&self) -> Piece {
+    pub const fn promo_piece(&self) -> Piece {
         self.promo
     }
 
     #[inline]
-    pub  const fn capture_piece(&self) -> Piece {
+    pub const fn capture_piece(&self) -> Piece {
         self.capture
     }
 
     #[inline]
-    pub  const fn mover_piece(&self) -> Piece {
+    pub const fn mover_piece(&self) -> Piece {
         self.mover
     }
 
@@ -115,22 +126,22 @@ impl Move {
     }
 
     #[inline]
-    pub  const fn is_castle(&self) -> bool {
+    pub const fn is_castle(&self) -> bool {
         !self.castle_side.is_empty()
     }
 
     #[inline]
-    pub  const fn castling_side(&self) -> CastlingRights {
+    pub const fn castling_side(&self) -> CastlingRights {
         self.castle_side
     }
 
     #[inline]
-    pub  fn is_ep_capture(&self) -> bool {
+    pub fn is_ep_capture(&self) -> bool {
         !self.ep.is_null() && self.is_capture()
     }
 
     #[inline]
-    pub  fn is_pawn_double_push(&self) -> bool {
+    pub fn is_pawn_double_push(&self) -> bool {
         !self.ep.is_null() && !self.is_capture()
     }
 
@@ -141,6 +152,16 @@ impl Move {
             to,
             mover: p,
             ..Self::default()
+        }
+    }
+
+    #[inline]
+    pub fn rook_move(&self) -> Move {
+        if self.is_castle() {
+            let (from, to) = self.rook_move_from_to();
+            Move::new_quiet(Piece::Rook, from, to)
+        } else {
+            Move::NULL_MOVE
         }
     }
 

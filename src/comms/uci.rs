@@ -5,12 +5,11 @@ use crate::catalog::Catalog;
 use crate::config::{Config, Component};
 use crate::movelist::Move;
 use crate::clock::Clock;
-use crate::movelist::MoveValidator;
+use crate::movelist::{MoveValidator, Variation};
 use crate::perft::Perft;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
 use crate::eval::eval::SimpleScorer;
-use crate::repetition::Repetition;
 use crate::search::searchprogress::SearchProgress;
 use crate::search::timecontrol::TimeControl;
 use crate::types::Ply;
@@ -165,6 +164,7 @@ impl Uci {
             "ext:make_moves" => self.ext_uci_make_moves(&Args::parse(&input)),
             "ext:version" => self.ext_uci_version(&Args::parse(&input)),
             "ext:static_eval" => self.ext_uci_static_eval(&Args::parse(&input)),
+            "ext:move_attributes" => self.ext_uci_move_attributes(&Args::parse(&input)),
 
             "perft" => self.uci_perft(&words[1..]),
             "display" | "d" => self.uci_display(),
@@ -242,10 +242,32 @@ impl Uci {
         }
         Ok(())
     }
+    // ['from', 'to', 'capture', 'ep', 'legal', 'pseudo_legal', 'san', 'rook_move', 'is_ep', 'is_castle']:
+    fn ext_uci_move_attributes(&mut self, arg: &Args) -> Result<(), String> {
+        let mut b = Board::new_empty();
+        Self::parse_fen(arg, &mut b)?;
+        let var = Self::parse_variation(arg, &b)?;
+        if let Some(mv) = var.first() {
+            println!("result:from {from} to {to} capture {capture} ep {ep} san {san} rook_move {rook_move} is_ep {is_ep} is_castle {is_castle}", 
+                from=mv.from().uci(), 
+                to=mv.to().uci(), 
+                capture=mv.capture_square().uci(), 
+                ep=mv.ep().uci(), 
+                // pseudo_legal=b.is_pseudo_legal_move(&mv),
+                // legal=b.is_legal_move(&mv),
+                san=b.to_san(&mv),
+                rook_move=mv.rook_move().uci(),
+                is_ep=mv.is_ep_capture(),
+                is_castle=mv.is_castle());
+        } else {
+            return Err("Empty variation. Move not specificed".into());
+        }
+        Ok(())
+    }
 
     fn ext_uci_static_eval(&mut self, arg: &Args) -> Result<(), String> {
         let mut b = Board::new_empty();
-        Self::parse_fen(arg, &mut b, None)?;
+        Self::parse_fen(arg, &mut b)?;
         let mut eval = SimpleScorer::new();
         let score = b.eval(&mut eval, &Node::root());
         println!("result:{}", score);
@@ -259,15 +281,16 @@ impl Uci {
 
     fn ext_uci_make_moves(&mut self, arg: &Args) -> Result<(), String> {
         let mut b = Board::new_empty();
-        Self::parse_fen(arg, &mut b, None)?;
-        println!("result:{}", b.to_fen());
+        Self::parse_fen(arg, &mut b)?;
+        let var = Self::parse_variation(arg, &b)?;
+        println!("result:{}", b.make_moves(&var).to_fen());
         Ok(())
     }
 
 
     fn ext_uci_legal_moves(&mut self, arg: &Args) -> Result<(), String> {
         let mut b = Board::new_empty();
-        Self::parse_fen(arg, &mut b, None)?;
+        Self::parse_fen(arg, &mut b)?;
         let moves = b.legal_moves();
         println!("result:{}", moves.uci());
         Ok(())
@@ -276,51 +299,60 @@ impl Uci {
     fn uci_position(&mut self, arg: &Args) -> Result<(), String> {
         self.algo.search_async_stop();
         self.algo.repetition.new_game();
-        Self::parse_fen(arg, &mut self.board, Some(&mut self.algo.repetition))
+        Self::parse_fen(arg, &mut self.board)?;
+        let moves = Self::parse_variation(arg, &self.board)?;
+        self.algo.repetition.push_variation(&moves, &self.board);
+        self.board = self.board.make_moves(&moves);
+        Ok(())
     }
 
-    fn parse_fen(arg: &Args, b: &mut Board, rep: Option<&mut Repetition>) -> Result<(), String> {
-        let moves;
+    fn parse_fen(arg: &Args, b: &mut Board) -> Result<(), String> {
         let fen = arg.words.get(1);
         if let Some(fen) = fen {
             if fen == "startpos" {
                 *b = Catalog::starting_position();
-                moves = 2;
             } else if fen == "fen" {
                 // expect pos, b/w, castling, ep and 2 x counts
                 let fen = arg.words.get(2..8);
                 if let Some(fen) = fen {
                     *b = Board::parse_fen(&fen.join(" "))?;
-                    moves = 8;
                 } else {
                     return Err("Fen or parts of fen are missing".into());
                 }
             } else {
                 return Err("Must specify fen or startpos after position command".into());
             }
-            if let Some(word) = arg.words.get(moves) {
-                if word != "moves" {
-                    return Err(format!("Token after startpos/fen must be 'moves' not '{}'", word));
-                }
-                // FIXME! Problem with Option of mut ref
-                if let Some(inner) = rep {
-                    for mv in arg.words[(moves + 1)..].iter() {
-                        let mv = b.parse_uci_move(mv)?;
-                        *b = b.make_move(&mv);
-                        inner.push(&mv, b);
-                    }
-                } else {
-                    for mv in arg.words[(moves + 1)..].iter() {
-                        let mv = b.parse_uci_move(mv)?;
-                        *b = b.make_move(&mv);
-                    }
-                }
-            }
-            Ok(())
         } else {
-            Err("Must specify a fen position or startpos".into())
+            return Err("Must specify a fen position or startpos".into())
         }
+        Ok(())
     }
+
+    fn parse_variation(args: &Args, board: &Board) -> Result<Variation, String> {
+        let mut variation = Variation::new();
+        let index = args.index_of("moves");
+        let mut b = board.clone();
+        if let Some(index) = index {
+            for mv in args.words[(index + 1)..].iter() {
+                let mv = b.parse_uci_move(&mv)?;
+                b = b.make_move(&mv);
+                variation.push(mv)
+            }
+        }
+        Ok(variation)
+    }
+
+    // fn parse_movelist(args: &Args, b: &mut Board) -> Result<MoveList, String> {
+    //     let mut movelist = MoveList::new();
+    //     let index = args.index_of("moves");
+    //     if let Some(index) = index {
+    //         for mv in args.words[(index + 1)..].iter() {
+    //             let mv = b.parse_uci_move(mv)?;
+    //             movelist.push(mv)
+    //         }
+    //     }
+    //     Ok(movelist)
+    // }
 
     fn uci_go(&mut self, args: &Args) -> Result<(), String> {
         let _ponder = args.contain("ponder");
@@ -515,6 +547,10 @@ impl Args {
 
     pub fn contain(&self, s: &str) -> bool {
         self.words.contains(&s.into())
+    }
+
+    pub fn index_of(&self, s: &str) -> Option<usize> {
+        self.words.iter().position(|x| x == s)
     }
 
     /// if then n-th word is 's' then return the (n+1)th word  

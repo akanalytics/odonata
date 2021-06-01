@@ -165,8 +165,8 @@ mod tests {
 
     #[test]
     fn test_checkmate() {
-        assert_eq!(Catalog::checkmates()[0].outcome(), Outcome::WinWhite);
-        assert_eq!(Catalog::checkmates()[1].outcome(), Outcome::WinBlack);
+        assert_eq!(Catalog::checkmates()[0].board().outcome(), Outcome::WinWhite);
+        assert_eq!(Catalog::checkmates()[1].board().outcome(), Outcome::WinBlack);
     }
 
     #[test]

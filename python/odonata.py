@@ -157,6 +157,17 @@ class Square:
         self.bitmap = 1 << i
 
     @staticmethod
+    def try_parse(sq: str) -> Optional[Square]:
+        """ 
+        We use 00 (one half of the uci '0000' null move) or '-' the FEN null ep square to return None
+        """
+        if sq in ['-', '00']:
+            return None
+        if len(sq) != 2 or sq[0].lower() not in 'abcdefgh' or sq[1] not in '12345678':
+            return None
+        return Square.parse(sq)
+
+    @staticmethod
     def parse(sq: str) -> Square:
         if len(sq) != 2 or sq[0].lower() not in 'abcdefgh' or sq[1] not in '12345678':
             raise ValueError(f'The square "{sq}" is not valid')
@@ -242,13 +253,29 @@ Move = str
 class Moves:
 
     @staticmethod
-    def parse(m: str) -> tuple[Square, Square, Piece]:
+    def parse(m: Move) -> tuple[Square, Square, Piece]:
         assert len(m) in [4, 5]
         src = Square.parse(m[:2])
         dst = Square.parse(m[2:4])
         promo = m[4:]
         assert promo in 'nbrq', "promotion should be one of 'n, b, r or q'"
         return (src, dst, promo)
+
+    @staticmethod
+    def move_attributes(b: Board, m: Move) -> Dict:
+        """
+        Returns dict of 
+            'from_sq'     : Square
+            'to_sq'       : Square
+            'capture_sq'  : Square # not the same as to for en passant
+            'san'         : str    # standard algebraic notation such as Qxb3! or O-O-O
+            'legal'       : bool   # other fields may be empty/None if the move is illegal
+            'rook_move'   : Move   # for castling might be a1d1 for example
+            'pseudo_legal': bool   # other fields may be empty/None if the move is not fully legal
+            'ep'          : bool   # is en passant pawn capture
+            'ep_sqaure'   : Square # is the en passant square if a double pawn push
+        """
+        return Odonata.instance().move_attributes(b, m)
 
 
 # Inherited Set methods and clear, pop, remove, __ior__, __iand__, __ixor__, and __isub__
@@ -535,6 +562,16 @@ class Board():
     def moves(self) -> List[Move]:
         return Odonata.instance().legal_moves(self).split()
 
+    def attacks_from(self, sq: Square) -> List[Square]:
+        attacks = []
+        moves = self.moves()
+        for mv in moves:
+            src, dest, _promo = Moves.parse(mv)
+            if src == sq:
+                attacks.append(dest)
+        return attacks
+
+
     def pseudo_legal_moves(self) -> List[Move]:
         return []  # MoveGenBB().pseudo_legal_moves(self)
 
@@ -681,7 +718,6 @@ class Board():
 #         self._turn = Sides.opposite(self.turn)
 #         return self
 
-
     def __hash__(self) -> int:
         return self._hash
 
@@ -793,7 +829,6 @@ class Board():
             return Square.parse(fen_en_passant)
 
 
-
 class Eval:
     def __init__(self) -> None:
 
@@ -820,8 +855,8 @@ class Algo:
         self.millis = millis
         self.depth = depth
         self.results = {}
-    
-    # can return None when no moves available (or found in time) 
+
+    # can return None when no moves available (or found in time)
     def search(self, b: Board) -> Optional[Move]:
         odo = Odonata.instance()
         bm = odo.get_best_move(b, self.depth, self.millis)
@@ -853,12 +888,14 @@ class Algo:
         return self.results[-1].get('mate')
 
 # best not to use this class directly
+
+
 class Odonata:
 
     _instance: Optional[Odonata] = None
 
     @classmethod
-    def instance(cls, path: str = '', debug: bool = False ):
+    def instance(cls, path: str = '', debug: bool = False):
         if cls._instance is None:
             cls._instance = cls.__new__(cls)
             cls._instance.__init__(path, debug)
@@ -869,11 +906,12 @@ class Odonata:
         "Hash": 16,
     }
 
-    def __init__(self, path: str = '', debug: bool = False ) -> None:
+    def __init__(self, path: str = '', debug: bool = False) -> None:
         self.process: Optional[subprocess.Popen] = None
         if not path:
             # try and look for Odonata executable
-            files = ["./odonata.exe", "./odonata", "./target/release/odonata.exe", "./target/release/odonata" ]
+            files = ["./odonata.exe", "./odonata",
+                     "./target/release/odonata.exe", "./target/release/odonata"]
             for f in files:
                 if os.path.isfile(f):
                     path = f
@@ -884,7 +922,7 @@ class Odonata:
         self.debug: bool = debug
         self.process = subprocess.Popen(
             path,
-            #bufsize=10000,
+            # bufsize=10000,
             universal_newlines=True,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE
@@ -893,7 +931,6 @@ class Odonata:
         self._start_new_game()
 
         # self._odonata_major_version: int = int(self._read_line().split(" ")[1])
-
 
         # self.depth = str(depth)
         self.infos: List[str] = []
@@ -906,7 +943,6 @@ class Odonata:
         #     self._set_option(name, value)
 
         self._start_new_game()
-
 
     # def get_parameters(self) -> dict:
     #     """Returns current board position.
@@ -943,21 +979,21 @@ class Odonata:
     # can be mate etc not just cp
     def static_eval(self, b: Board) -> str:
         req = f"ext:static_eval fen {b.to_fen()}"
-        return self.exec_command(req, res = "result:")
+        return self.exec_command(req, res="result:")
 
     def make_move(self, b: Board, m: Move) -> Board:
         req = f"ext:make_moves fen {b.to_fen()} moves {m}"
-        return Board.parse_fen(self.exec_command(req, res = "result:"))
+        return Board.parse_fen(self.exec_command(req, res="result:"))
 
     def legal_moves(self, b: Board) -> str:
         req = f"ext:legal_moves fen {b.to_fen()}"
-        return self.exec_command(req, res = "result:")
+        return self.exec_command(req, res="result:")
 
     def version(self) -> str:
         req = f"ext:version"
-        return self.exec_command(req, res = "result:")
+        return self.exec_command(req, res="result:")
 
-    def get_best_move(self, b: Board, depth: Optional[int] = None, millis: Optional[int] = None ) -> Optional[str]:
+    def get_best_move(self, b: Board, depth: Optional[int] = None, millis: Optional[int] = None) -> Optional[str]:
         """Returns best move with current position on the board in uci notation or None if it's a mate."""
 
         self._put(f"position fen {b.to_fen()}")
@@ -965,10 +1001,42 @@ class Odonata:
         if depth:
             req = f"go depth {depth}"
         if millis:
-            req = f"go movetime {millis}"    
+            req = f"go movetime {millis}"
 
-        result = self.exec_command(req, res = "bestmove")
+        result = self.exec_command(req, res="bestmove")
         return None if result == "0000" else result
+
+    def move_attributes(self, b: Board, m: Move) -> Dict:
+        """
+        Returns dict of 
+            'from'        : Square
+            'to'          : Square
+            'capture'     : Square # not the same as to for en passant
+            'ep'          : Square # is the en passant square if a double pawn push
+            'san'         : str    # standard algebraic notation such as Qxb3! or O-O-O
+            'rook_move'   : Move   # for castling might be a1d1 for example
+            'is_ep'       : bool   # is en passant pawn capture
+            'is_castle'   : bool   # is castling move
+        """
+        req = f"ext:move_attributes fen {b.to_fen()} moves {m}"
+        record = self.exec_command(req, res="result:")
+
+        # TODO! parse result
+        words = record.split()
+        d = {}
+        for (i, word) in enumerate(words):
+            if word in ['from', 'to', 'capture', 'ep', 'san', 'rook_move', 'is_ep', 'is_castle']:
+                if word in ['legal', 'pseudo_legal', "is_ep", "is_castle"]:
+                    attr = words[i+1] == "true"
+                elif word in ['from', 'to', 'eq', 'capture']:
+                    attr = Square.try_parse(words[i+1])
+                # moves are just strings in python
+                # elif word in ['rook_move']:
+                #     attr = Moves.parse(words[i+1])
+                else:
+                    attr = words[i+1]
+                d[word] = attr
+        return d
 
     def is_ready(self) -> None:
         self._put("isready")
@@ -989,9 +1057,9 @@ class Odonata:
                 raise ValueError(f"Received {text} from command {req}")
             last_text = text
         raise ValueError(f"Gave up waiting for '{res}'' after command '{req}'")
-    
 
-    # info depth 10 seldepth 11 nodes 19349 nps 257000 score cp 529 time 74 pv a1a8 h8h7 a8a6 h7g7 
+    # info depth 10 seldepth 11 nodes 19349 nps 257000 score cp 529 time 74 pv a1a8 h8h7 a8a6 h7g7
+
     def parse_search_results(self) -> List[Dict]:
         results = []
         for record in self.infos:
@@ -1006,7 +1074,6 @@ class Odonata:
                             d[word] = words[i+1]
                 results.append(d)
         return results
-
 
     def __del__(self) -> None:
         if self.process:
@@ -1103,15 +1170,31 @@ class Test:
 
     def test_moves(self):
         src, dest, promo = Moves.parse("c2c4")
-        assert src.file() == "c" 
-        assert src.rank() == "2" 
-        assert dest.rank() == "4" 
-        assert src.index_x == 2 # a=0, b=1, c=2 
-        assert src.index_y == 1 # rank1=0, rnk2=1
+        assert src.file() == "c"
+        assert src.rank() == "2"
+        assert dest.rank() == "4"
+        assert src.index_x == 2  # a=0, b=1, c=2
+        assert src.index_y == 1  # rank1=0, rnk2=1
         assert promo == ''
 
         src, dest, promo = Moves.parse("c7c8q")
         assert promo == "q"
+
+        # Odonata.instance().debug = True
+        b = Board()
+        attr = Moves.move_attributes(b, 'e2e4')
+        assert attr['to'] == Square.parse("e4")
+        assert str(attr['from']) == "e2"
+        assert str(attr['ep']) == "e3"
+        assert attr['capture'] == None
+        assert attr['san'] == "e4"
+        assert attr['rook_move'] == "0000"
+        assert attr['is_ep'] == False
+        assert attr['is_castle'] == False
+
+        b = Board()
+        assert len(b.moves()) == 20
+        assert b.attacks_from(Square.parse("e2")) == [Square.parse("e3"), Square.parse("e4")]
 
 
     def test_board(self):
@@ -1120,7 +1203,7 @@ class Test:
         # piece_on fetches the board one square at a time
         assert board.piece_on(Square.of(1)) == 'N'
         assert board.piece_on(Square.of(63)) == 'r'
-        
+
         # square brackets with a bitboard fetches an entire board area
         assert board[B.a1] == 'R'
         assert board[B.h1] == 'R'
@@ -1138,7 +1221,8 @@ class Test:
         assert b.to_fen() == "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
         # allow parsing uncompressed FEN string - maybe easier to produce from a "matrix type" representation
-        assert b == Board.parse_fen("rnbqkbnr/pppppppp/11111111/11111111/11111111/11111111/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+        assert b == Board.parse_fen(
+            "rnbqkbnr/pppppppp/11111111/11111111/11111111/11111111/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 
         b = Board()
         b = b.clone()
@@ -1162,18 +1246,12 @@ class Test:
         # assert f[g8] == 'k'
         # assert str(b) == str(ColourFlipper().flip_board(ColourFlipper().flip_board(b)))
 
-
     def test_odonata(self):
         odo = Odonata(debug=False)
         odo.is_ready()
         board = Board.parse_fen("r6k/8/8/8/8/8/8/R6K w - - 0 30")
         bm = odo.get_best_move(board, millis=200)
         assert bm == "a1a8"
-
-
-
-
-
 
 
 def demo_1():
@@ -1196,6 +1274,12 @@ board as a FEN string and grid
 legal moves
 {b.moves()}
 
+attack squares from king on h1
+{b.attacks_from(Square.parse("h1"))}
+
+attack squares from rook on a1
+{b.attacks_from(Square.parse("a1"))}
+
 static evaluation
 {eval.static_eval(b)}    
 
@@ -1212,13 +1296,15 @@ legal moves are {Board.parse_fen("k7/1R6/K7/8/8/8/8/8 b - - 0 1").moves()}
 best move is...
 {Algo(depth=6).search(b)}
 
+move attributes for h2h4
+{Moves.move_attributes(b, "h2h4")}
 
 make move h2h4
 {b.make_move('h2h4').grid}    
 
+
+
 ''')
-
-
 
 
 def demo_2():
@@ -1264,7 +1350,7 @@ parse "{fen}" and show as a grid
 
 def demo_3():
     b = Board.parse_fen("r1k5/8/8/2K5/8/8/8/R6R w - - 0 10")
-    algo = Algo(depth = 6)
+    algo = Algo(depth=6)
     bm = algo.search(b)
     print(f'''
 
@@ -1294,7 +1380,6 @@ prin var : {" ".join(algo.pv())}
         print(f"Move #{i+1}: {move}\nPosition\n{b.grid}\n")
 
 
-
 def calc_calls_per_second(function: Callable) -> int:
     start = perf_counter()
     N = 1_000
@@ -1313,16 +1398,19 @@ def demo_4():
         _ = b.moves()
 
     elapsed = perf_counter() - start
-    print(f"\n\nCalculating legal moves for {N} positions\nElapsed = {elapsed} or {int(N/elapsed)} calls/sec")
+    print(
+        f"\n\nCalculating legal moves for {N} positions\nElapsed = {elapsed} or {int(N/elapsed)} calls/sec")
 
     odo = Odonata()
     b = Board.parse_fen("r1k5/8/8/8/8/8/7P/R6K w - - 0 10")
     def legals(): b.moves()
-    def legals_hardcoded_fen(): odo.exec_command(req="ext:legal_moves fen r1k5/8/8/8/8/8/7P/R6K w - - 0 10", res="result:")
+    def legals_hardcoded_fen(): odo.exec_command(
+        req="ext:legal_moves fen r1k5/8/8/8/8/8/7P/R6K w - - 0 10", res="result:")
 
     print("\nCalculate calls per second using a hardcoded fen string.\nTypically 80% of the time is fen generation!")
     print("legals               calls/sec:", calc_calls_per_second(legals))
-    print("legals_hardcoded_fen calls/sec:", calc_calls_per_second(legals_hardcoded_fen))
+    print("legals_hardcoded_fen calls/sec:",
+          calc_calls_per_second(legals_hardcoded_fen))
 
 
 def main():
@@ -1344,9 +1432,6 @@ def main():
 
     print("\n\nDemo 4\n======")
     demo_4()
-
-
-
 
 
 if __name__ == "__main__":

@@ -14,7 +14,7 @@ pub struct SearchProgress {
     pub pv: Option<Variation>,
     pub nodes: Option<u64>,
     pub multipv: Option<String>,
-    pub score: Option<Score>,
+    pub score: Option<Score>, 
     pub currmove: Option<Move>,
     pub currmovenumber_from_1: Option<u32>,
     pub hashfull_per_mille: Option<u32>,

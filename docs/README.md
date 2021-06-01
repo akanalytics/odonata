@@ -43,7 +43,7 @@ CCRL - Computer Chess Ratings Lists | https://www.computerchess.org.uk/ccrl/404/
 Stockfish python interface | https://pypi.org/project/stockfish/ | By Ilya Zhelyabuzhsky. Sweet.
 
 ## License
-The software licence is [AGPL-3](../license.txt), though libraies used are MIT licensed. Trial or experimental versions may lag in terms of source code publication.
+The software licence is [AGPL-3](../license.txt), though libraries used are MIT licensed. Trial or experimental versions may lag in terms of source code publication.
 
 
 Library | URL | License 

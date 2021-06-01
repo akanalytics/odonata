@@ -1,8 +1,9 @@
 use crate::board::Board;
 use crate::config::{Config, Component};
 use crate::log_debug;
-use crate::movelist::{Move};
+use crate::movelist::{Move, Variation};
 use crate::types::{Hash, Piece};
+use crate::board::makemove::MoveMaker;
 use std::fmt;
 
 #[derive(Clone, Debug)]
@@ -92,6 +93,21 @@ impl Repetition {
         self.prior_positions.push(post_move.hash());
     }
 
+    pub fn push_variation(&mut self, moves: &Variation, pre: &Board) {
+        if !self.enabled {
+            return;
+        }
+
+        let mut b = pre.clone();
+        for mv in moves.iter() {
+            if mv.is_capture() || mv.mover_piece() == Piece::Pawn {
+                self.prior_positions.push(0);
+            }
+            b = b.make_move(mv);
+            self.prior_positions.push(pre.hash());
+        }
+    }
+
     pub fn pop(&mut self) {
         self.prior_positions.pop();
         if self.prior_positions.last() == Some(&0) {
@@ -125,7 +141,6 @@ impl Repetition {
 mod tests {
     use super::*;
     use crate::catalog::*;
-    use crate::board::makemove::*;
     use crate::movelist::*;
     use crate::comms::uci::Uci;
     use crate::search::timecontrol::*;

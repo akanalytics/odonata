@@ -1,9 +1,13 @@
 # Changelog
 
+## 0.3.17 (to be release)
+- Python: added move_attributes and attacks_from
+- added mate_in_4 tests
+- make_moves taking a variation 
+
 ## 0.3.16 (internal release)
 - Python 'interface' - really just some extensions to uci
 - Python sample code
--  
 
 ## 0.3.15
 - Bug fix: illegal moves made when cut node stored at root of tt

@@ -227,12 +227,11 @@ mod tests {
 
     #[test]
     #[ignore]
-    fn test_mate_in_3_sync() -> Result<(), String> {
+    fn test_mate_in_3() -> Result<(), String> {
         let positions = Catalog::mate_in_3();
         for (i, pos) in positions.iter().enumerate() {
             let mut search = Algo::new().set_timing_method(TimeControl::Depth(5)).build();
             search.tt.enabled = false;
-            search.qsearch.see = true;
             let expected_pv = pos.pv()?;
             search.search(pos.board());
             // println!("{}", search);
@@ -242,4 +241,23 @@ mod tests {
         }
         Ok(())
     }
-}
+
+    #[test]
+    #[ignore]
+    fn test_mate_in_4() -> Result<(), String> {
+        let positions = Catalog::mate_in_4();
+        for (i, pos) in positions.iter().enumerate() {
+            let mut search = Algo::new().set_timing_method(TimeControl::Depth(7)).build();
+            search.tt.enabled = false;
+            search.search(pos.board());
+            // println!("{}", search);
+            if pos.get("pv").is_ok() {
+                let expected_pv = pos.pv()?;
+                assert_eq!(search.pv_table.extract_pv().to_string(), expected_pv.to_string(), "#{} {}", i, pos);
+            }
+            println!("Mate in {}", search.score().mate_in().unwrap());
+            assert_eq!(search.score().mate_in(), Some(4), "#{} {}", i, pos);
+        }
+        Ok(())
+    }
+}   

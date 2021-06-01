@@ -55,12 +55,15 @@ impl Catalog {
             .as_board()
     }
 
-    pub fn checkmates() -> [Board; 2] {
-        [
-            Board::parse_fen("k7/Q7/K7/8/8/8/8/8 b - - 0 1").unwrap().as_board(),
-            Board::parse_fen("K7/7r/8/8/8/8/8/rr5k w - - 0 1").unwrap().as_board(),
-        ]
+    pub fn checkmates() -> Vec<Position> {
+        let str = r#"
+k7/Q7/K7/8/8/8/8/8 b - - 0 1
+K7/7r/8/8/8/8/8/rr5k w - - 0 1
+"#;
+        let positions = Position::parse_many_epd(str.lines()).unwrap();
+        positions
     }
+
     pub fn stalemates() -> [Board; 2] {
         [
             Board::parse_fen("k7/8/1Q6/8/8/8/8/7K b - - 0 1").unwrap().as_board(),
@@ -739,6 +742,16 @@ b2b1r1k/3R1ppp/4qP2/4p1PQ/4P3/5B2/4N1K1/8 w - - bm g6; id "WAC.300";
             .unwrap(),
         ]
     }
+
+
+    pub fn mate_in_4() -> Vec<Position> {
+        let str = r#"
+2k5/7Q/8/8/8/3K4/8/8 w - - 3 1 id 'KQ vs k'; dm 4;             
+"#;
+        let positions = Position::parse_many_epd(str.lines()).unwrap();
+        positions
+    }
+
 
     pub fn perft_kiwipete() -> (Board, Vec<u64>) {
         // https://www.chessprogramming.org/Perft_Results

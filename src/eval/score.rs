@@ -24,6 +24,14 @@ impl Score {
         Score::Cp(centipawn)
     }
 
+    pub fn to_root_score(&self, _current_depth: Ply) -> Score {
+        // if current_depth % 2 == 1 {
+        //     self.negate()
+        // } else {
+            *self
+        // }
+    }
+
     // * score
     // 	* cp
     // 		the score from the engine's point of view in centipawns.
@@ -34,17 +42,18 @@ impl Score {
     //       the score is just a lower bound.
     // 	* upperbound
     // 	   the score is just an upper bound.
-    pub fn uci(self, pov: Color) -> String {
-        let score = match pov {
-            Color::White => self,
-            Color::Black => self.negate(),
-        };
-        // we assume we are now from white's point of view
-        match score {
+    pub fn uci(self, _pov: Color) -> String {
+        // let score = match pov {
+        //     Color::White => self,
+        //     Color::Black => self.negate(),
+        // };
+
+        // we assume we are now from engines's point of view
+        match self {
             Self::MinusInf => "cp -9999".to_string(),
-            Self::WhiteLoss { ply: _ } => format!("mate {}", -score.mate_in().unwrap()),
+            Self::WhiteLoss { ply: _ } => format!("mate {}", -self.mate_in().unwrap()),
             Self::Cp(cp) => format!("cp {}", cp),
-            Self::WhiteWin { minus_ply: _ } => format!("mate {}", score.mate_in().unwrap()),
+            Self::WhiteWin { minus_ply: _ } => format!("mate {}", self.mate_in().unwrap()),
             Self::PlusInf => "cp 9999".to_string(),
         }
     }

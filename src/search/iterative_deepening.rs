@@ -129,11 +129,13 @@ impl Algo {
             if !self.board.is_legal_variation(&res.pv) {             
                 debug_assert!(false, "Unable to fetch valid pv {} on board {}\n{}", res.pv.clone(), self.board, self);
                 res.pv.truncate(1);
-                sp.pv = Some(res.pv.clone());
+                let mut pv = res.pv.clone();
+                pv.truncate(res.depth() as usize);
+                sp.pv = Some(pv);
             }
     
 
-            sp.score = Some(res.score);
+            sp.score = Some(res.score.to_root_score(res.depth));
             self.task_control.invoke_callback(&sp);
             counts::SEARCH_IDS_COMPLETES.increment();
             if res.score.is_mate() {
@@ -153,7 +155,7 @@ impl Algo {
         // && last.score > res.score
         if self.ids.part_ply  {
             self.search_stats.pv = last.pv.clone();
-            self.search_stats.score = last.score;
+            self.search_stats.score = last.score.to_root_score(last.depth);
         }
         self.search_stats.pv.truncate(self.max_depth as usize);
         let sp = SearchProgress::from_best_move(Some(self.bm()), self.board.color_us());
