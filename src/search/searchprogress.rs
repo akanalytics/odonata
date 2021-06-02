@@ -1,5 +1,6 @@
 use crate::eval::score::Score;
-use crate::movelist::{Move, Variation};
+use crate::mv::Move;
+use crate::variation::Variation;
 use crate::search::searchstats::SearchStats;
 use crate::types::Ply;
 use crate::types::Color;

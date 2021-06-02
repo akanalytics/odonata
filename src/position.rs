@@ -1,7 +1,10 @@
 use crate::bitboard::bitboard::Bitboard;
 use crate::board::boardbuf::BoardBuf;
 use crate::board::Board;
-use crate::movelist::{MoveList, Move, Variation};
+use crate::mv::{Move};
+use crate::variation::{Variation};
+
+use crate::movelist::{MoveList};
 use crate::movelist::MoveValidator;
 use crate::types::{Color};
 use crate::bitboard::castling::CastlingRights;

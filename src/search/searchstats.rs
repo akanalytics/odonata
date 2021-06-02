@@ -1,6 +1,6 @@
 use crate::clock::{Clock, DeterministicClock};
 use crate::eval::score::Score;
-use crate::movelist::Variation;
+use crate::variation::Variation;
 use crate::types::{Ply, MAX_PLY};
 use std::fmt;
 use std::cmp;

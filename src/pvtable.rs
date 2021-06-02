@@ -1,4 +1,6 @@
-use crate::movelist::{Move, Variation};
+use crate::mv::{Move};
+use crate::variation::{Variation};
+
 use crate::types::{MAX_PLY, Ply};
 use std::fmt;
 

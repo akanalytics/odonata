@@ -3,7 +3,7 @@ use crate::board::Board;
 use crate::bitboard::castling::CastlingRights;
 use crate::globals::constants::*;
 use crate::globals::counts;
-use crate::movelist::Move;
+use crate::mv::Move;
 use crate::types::{Color, Hash, Piece};
 use once_cell::sync::Lazy;
 use rand::{Rng, SeedableRng};

@@ -1,4 +1,5 @@
-use crate::movelist::{Variation, Move};
+use crate::mv::{Move};
+use crate::variation::Variation;
 use crate::eval::score::Score;
 use std::collections::HashMap;
 use std::fmt;

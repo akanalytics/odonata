@@ -1217,3 +1217,326 @@ pub fn has_legal_moves(&self) -> bool {
 //     let king = self.kings() & self.color(c);
 //     king.intersects(self.threats_to(c))
 // }
+
+
+
+
+
+
+// moves: ArrayVec<Move,128>,
+// moves: ArrayVec::new(),
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MoveList {
+    moves: ArrayVec<Move, MAX_LEGAL_MOVES>,
+}
+
+// pub struct MoveList(ArrayVec::<[Move; 384]>);
+// impl Default for MoveList {
+//     fn default() -> MoveList { MoveList::new() }
+// }
+
+impl Default for MoveList {
+    #[inline]
+    fn default() -> Self {
+        // Self {
+        //     moves: Move::Vec::with_capacity(60),
+        // }
+        Self {
+            moves: ArrayVec::new(),
+        }
+    }
+}
+
+
+impl std::iter::FromIterator<Move> for MoveList {
+    #[inline]
+    fn from_iter<I: IntoIterator<Item = Move>>(iter: I) -> Self {
+        let mut ml = MoveList::new();
+        for mv in iter {
+            ml.push(mv);
+        }
+        ml
+    }
+}
+
+impl MoveList {
+    #[inline]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    #[inline]
+    pub fn sort(&mut self) -> &mut Self {
+        self.moves.sort_by_key(|m| m.to_string());
+        self
+    }
+
+    #[inline]
+    pub fn contains(&self, m: &Move) -> bool {
+        self.moves.contains(m)
+    }
+
+    #[inline]
+    pub fn iter(&self) -> std::slice::Iter<'_, Move> {
+        //    pub fn iter(&self) -> impl Iterator<Item = &Move> {
+        self.moves.iter()
+    }
+
+    #[inline]
+    pub fn push(&mut self, mv: Move) {
+        debug_assert!(self.size < 150);
+        unsafe {
+            *self.moves.push_unchecked(mv);
+        }
+    }
+
+    #[inline]
+    pub fn clear(&mut self) {
+        self.moves.clear();
+    }
+
+    #[inline]
+    pub fn swap(&mut self, i: usize, j: usize) {
+        self.moves.swap(i, j);
+    }
+
+    #[inline]
+    pub fn retain<F>(&mut self, f: F)
+    where
+        F: FnMut(&Move) -> bool,
+    {
+        self.moves.retain(f);
+    }
+
+    #[inline]
+    pub fn sort_unstable_by_key<K, F>(&mut self, f: F)
+    where
+        F: FnMut(&Move) -> K,
+        K: Ord,
+    {
+        self.moves.sort_unstable_by_key(f)
+    }
+
+    #[inline]
+    pub fn reverse(&mut self) {
+        self.moves.reverse();
+    }
+
+    #[inline]
+    pub fn extend<T: IntoIterator<Item = Move>>(&mut self, iter: T) {
+        for m in iter {
+            self.push(m);
+        }
+    }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.moves.len()
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.moves.is_empty()
+    }
+
+    pub fn uci(&self) -> String {
+        self.iter().map(|mv| mv.uci()).collect::<Vec<String>>().join(" ")
+    }
+}
+
+impl std::ops::Index<usize> for MoveList {
+    type Output = Move;
+
+    #[inline]
+    fn index(&self, i: usize) -> &Self::Output {
+        debug_assert!(i < self.size);
+        &(self.moves[..self.size])[i]
+    }
+}
+
+impl fmt::Display for MoveList {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if f.alternate() {
+            for mv in self.iter() {
+                writeln!(f, "{:#}", mv)?;
+            }
+        } else {
+            let strings: Vec<String> = self.iter().map(Move::to_string).collect();
+            f.write_str(&strings.join(", "))?
+        }
+        Ok(())
+    }
+}
+
+
+
+
+
+MOVELIST ARRAY BASED
+
+
+
+
+// moves: ArrayVec<Move,128>,
+// moves: ArrayVec::new(),
+#[derive(Debug, PartialEq, Eq)]
+pub struct MoveList {
+    moves: [Move; MAX_LEGAL_MOVES],
+    size: usize,
+}
+
+// pub struct MoveList(ArrayVec::<[Move; 384]>);
+// impl Default for MoveList {
+//     fn default() -> MoveList { MoveList::new() }
+// }
+
+impl Default for MoveList {
+    #[inline]
+    fn default() -> Self {
+        // Self {
+        //     moves: Move::Vec::with_capacity(60),
+        // }
+        Self {
+            moves: unsafe { std::mem::MaybeUninit::uninit().assume_init() },
+            size: 0,
+        }
+    }
+}
+
+impl Clone for MoveList {
+    fn clone(&self) -> Self {
+        let mut cl = MoveList::default();
+        for &mv in self.iter() {
+            cl.push(mv);
+        }
+        cl
+    }
+}
+
+impl std::iter::FromIterator<Move> for MoveList {
+    #[inline]
+    fn from_iter<I: IntoIterator<Item = Move>>(iter: I) -> Self {
+        let mut ml = MoveList::new();
+        for mv in iter {
+            ml.push(mv);
+        }
+        ml
+    }
+}
+
+impl MoveList {
+    #[inline]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    #[inline]
+    pub fn sort(&mut self) -> &mut Self {
+        self.moves[..self.size].sort_by_key(|m| m.to_string());
+        self
+    }
+
+    #[inline]
+    pub fn contains(&self, m: &Move) -> bool {
+        self.moves[..self.size].contains(m)
+    }
+
+    #[inline]
+    pub fn iter(&self) -> std::slice::Iter<'_, Move> {
+        //    pub fn iter(&self) -> impl Iterator<Item = &Move> {
+        (self.moves[..self.size]).iter()
+    }
+
+    #[inline]
+    pub fn push(&mut self, mv: Move) {
+        debug_assert!(self.size < 150);
+        unsafe {
+            *self.moves.get_unchecked_mut(self.size) = mv;
+        }
+        self.size += 1;
+    }
+
+    #[inline]
+    pub fn clear(&mut self) {
+        // self.moves.clear();
+        self.size = 0;
+    }
+
+    #[inline]
+    pub fn swap(&mut self, i: usize, j: usize) {
+        self.moves[..self.size].swap(i, j);
+    }
+
+    #[inline]
+    pub fn retain<F>(&mut self, f: F)
+    where
+        F: FnMut(&Move) -> bool,
+    {
+        let mut v = Vec::<Move>::new();
+        v.extend(self.iter());
+        v.retain(f);
+        for i in 0..v.len() {
+            self.moves[i] = v[i];
+        }
+        self.size = v.len();
+    }
+
+    #[inline]
+    pub fn sort_unstable_by_key<K, F>(&mut self, f: F)
+    where
+        F: FnMut(&Move) -> K,
+        K: Ord,
+    {
+        self.moves[..self.size].sort_unstable_by_key(f)
+    }
+
+    #[inline]
+    pub fn reverse(&mut self) {
+        self.moves[..self.size].reverse();
+    }
+
+    #[inline]
+    pub fn extend<T: IntoIterator<Item = Move>>(&mut self, iter: T) {
+        for m in iter {
+            self.push(m);
+        }
+    }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.size
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    pub fn uci(&self) -> String {
+        self.iter().map(|mv| mv.uci()).collect::<Vec<String>>().join(" ")
+    }
+}
+
+impl std::ops::Index<usize> for MoveList {
+    type Output = Move;
+
+    #[inline]
+    fn index(&self, i: usize) -> &Self::Output {
+        debug_assert!(i < self.size);
+        &(self.moves[..self.size])[i]
+    }
+}
+
+impl fmt::Display for MoveList {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if f.alternate() {
+            for mv in self.iter() {
+                writeln!(f, "{:#}", mv)?;
+            }
+        } else {
+            let strings: Vec<String> = self.iter().map(Move::to_string).collect();
+            f.write_str(&strings.join(", "))?
+        }
+        Ok(())
+    }
+}

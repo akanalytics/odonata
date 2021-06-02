@@ -122,6 +122,8 @@ mod tests {
     use crate::board::*;
     use crate::eval::score::*;
     use crate::movelist::*;
+    use crate::mv::*;
+    use crate::variation::*;
     use crate::bitboard::castling::*;
     use crate::search::node::*;
     use crate::search::searchstats::*;
@@ -133,6 +135,7 @@ mod tests {
     fn sizes() {
         assert_eq!(size_of::<Move>(), 9, "Move");
         assert_eq!(size_of::<MoveList>(), 24, "MoveList");
+        assert_eq!(size_of::<Variation>(), 24, "Variation");
         assert_eq!(size_of::<Piece>(), 1);
         assert_eq!(size_of::<Color>(), 1);
         assert_eq!(size_of::<Bitboard>(), 8, "Bitboard");

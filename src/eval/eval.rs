@@ -8,7 +8,7 @@ use crate::eval::weight::Weight;
 use crate::globals::counts;
 use crate::log_debug;
 use crate::material::Material;
-use crate::movelist::Move;
+use crate::mv::Move;
 use crate::stat::{ArrayStat, Stat};
 use crate::types::{Color, Piece};
 

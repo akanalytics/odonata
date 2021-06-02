@@ -1,7 +1,8 @@
 use crate::board::Board;
 use crate::config::{Config, Component};
 use crate::log_debug;
-use crate::movelist::{Move, Variation};
+use crate::mv::{Move};
+use crate::variation::Variation;
 use crate::types::{Hash, Piece};
 use crate::board::makemove::MoveMaker;
 use std::fmt;

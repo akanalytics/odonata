@@ -1,7 +1,8 @@
 use crate::bitboard::bitboard::Bitboard;
 use crate::board::Board;
 use crate::hasher::Hasher;
-use crate::movelist::{Move, Variation};
+use crate::mv::Move;
+use crate::variation::Variation;
 use crate::types::{Piece};
 
 use std::cell::Cell;

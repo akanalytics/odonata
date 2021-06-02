@@ -4,7 +4,7 @@ use crate::board::Board;
 use crate::config::{Component, Config};
 use crate::eval::score::Score;
 use crate::log_debug;
-use crate::movelist::Move;
+use crate::mv::Move;
 use crate::movelist::MoveList;
 use crate::search::algo::Algo;
 use crate::search::node::Node;

@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::movelist::Move;
+use crate::mv::Move;
 use crate::eval::eval::SimpleScorer;
 use std::cmp;
 

@@ -1,7 +1,7 @@
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::eval::score::Score;
-use crate::movelist::Move;
+use crate::mv::Move;
 use crate::pvtable::PvTable;
 use crate::search::algo::Algo;
 use crate::search::node::Node;

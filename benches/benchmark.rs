@@ -17,6 +17,8 @@ use odonata::globals::constants::*;
 use odonata::hasher::*;
 use odonata::material::*;
 use odonata::movelist::*;
+use odonata::mv::*;
+use odonata::variation::*;
 use odonata::perft::Perft;
 use odonata::pvtable::*;
 use odonata::search::algo::Algo;

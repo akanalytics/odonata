@@ -4,7 +4,8 @@ use crate::bitboard::square::Square;
 use crate::bitboard::castling::CastlingRights;
 use crate::board::boardcalcs::BoardCalcs;
 use crate::board::Board;
-use crate::movelist::{Move, MoveList};
+use crate::mv::{Move};
+use crate::movelist::MoveList;
 use crate::types::Piece;
 
 pub struct Rules;
@@ -40,13 +41,13 @@ impl Rules {
         let king_att = attack_gen.king_attacks(king_sq);
         let king_danger = BoardCalcs::threats_to(b, b.color_us(), occ - our_kings);
         let attacks = king_att & !us - king_danger;
-        moves.extend(attacks.squares().map(|to| {
+        for to in attacks.squares() {
             if to.is_in(them) {
-                Move::new_capture(Piece::King, king_sq, to, b.piece_at(to.as_bb())).set_legal()
+                moves.push(Move::new_capture(Piece::King, king_sq, to, b.piece_at(to.as_bb())).set_legal())
             } else {
-                Move::new_quiet(Piece::King, king_sq, to).set_legal()
+                moves.push(Move::new_quiet(Piece::King, king_sq, to).set_legal())
             }
-        }))
+        }
     }
 
 

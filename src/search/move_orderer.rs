@@ -1,7 +1,9 @@
 use crate::board::Board;
 use crate::config::{Config, Component};
 use crate::log_debug;
-use crate::movelist::{Move, MoveList, Variation};
+use crate::movelist::MoveList;
+use crate::variation::Variation;
+use crate::mv::Move;
 use crate::search::algo::Algo;
 use crate::search::stack::Stack;
 use crate::stat::{ArrayPlyStat, PlyStat};
@@ -107,7 +109,8 @@ impl Algo {
         }
         if self.move_orderer.prior_bm {
             if ply == 0 {
-                if let Some(i) = movelist.iter().position(|&mv| mv == self.bm()) {
+                let i = movelist.iter().position(|&mv| mv == self.bm());
+                if let Some(i) = i {
                     movelist.swap(0, i);
                     self.move_orderer.count_bm.add(ply, 1);
                     return;
@@ -116,7 +119,8 @@ impl Algo {
         }
         if self.move_orderer.tt_bm {
             if let Some(tt_bm) = tt_mv {
-                if let Some(i) = movelist.iter().position(|&mv| mv == *tt_bm) {
+                let i = movelist.iter().position(|&mv| mv == *tt_bm);
+                if let Some(i) = i {
                     movelist.swap(0, i);
                     self.move_orderer.count_tt_bm.add(ply, 1);
                     return;
@@ -136,7 +140,8 @@ impl Algo {
 
         if pv.starts_with(var) {
             let best = pv[var.len()];
-            if let Some(j) = moves.iter().position(|mv| mv == &best) {
+            let j = moves.iter().position(|mv| mv == &best);
+            if let Some(j) = j {
                 moves.swap(0, j);
                 return true;
             }

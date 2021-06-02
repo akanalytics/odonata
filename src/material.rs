@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::movelist::Move;
+use crate::mv::Move;
 use crate::types::{Color, Piece};
 use std::cmp;
 use std::fmt;

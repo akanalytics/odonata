@@ -5,7 +5,8 @@ use crate::board::makemove::MoveMaker;
 use crate::board::rules::Rules;
 use crate::board::Board;
 use crate::globals::counts;
-use crate::movelist::{Move, MoveList};
+use crate::mv::{Move};
+use crate::movelist::MoveList;
 use crate::types::{Color, Piece};
 
 trait MoveGen {}
