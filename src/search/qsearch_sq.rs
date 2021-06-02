@@ -53,14 +53,14 @@ impl Algo {
             return alpha;
         }
 
-        let moves = board.pseudo_legal_moves();
+        let moves = board.legal_capture_moves();
         let mut moves: MoveList = moves
             .iter()
-            .filter(|mv| mv.to() == sq && mv.is_capture() && board.is_legal_move(mv))
+            .filter(|mv| mv.to() == sq)
             .cloned()
             .collect();
 
-        if moves.len() == 0 {
+        if moves.is_empty() {
             self.search_stats.inc_q_leaf_nodes(ply);
         } else {
             self.search_stats.inc_q_interior_nodes(ply);

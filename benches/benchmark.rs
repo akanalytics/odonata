@@ -42,7 +42,6 @@ criterion_group!(
     hash_move,
     hash_board,
     legal_moves,
-    pseudo_legal_moves,
     bench_moveordering,
     bitwise_handcrafted,
     bitwise_bitflags,
@@ -201,15 +200,6 @@ fn hash_board(c: &mut Criterion) {
     });
 }
 
-fn pseudo_legal_moves(c: &mut Criterion) {
-    let board = Catalog::starting_position();
-    c.bench_function("pseudo_legal_moves", |b| {
-        b.iter(|| {
-            black_box(black_box(&board).pseudo_legal_moves());
-        });
-    });
-}
-
 fn legal_moves(c: &mut Criterion) {
     let board = Catalog::starting_position();
     c.bench_function("legal_moves", |b| {
@@ -359,10 +349,12 @@ fn board_calcs(c: &mut Criterion) {
     });
 
     group.bench_function("legal_moves", |b| {
+        let mut ml = MoveList::new(); 
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|p| {
-                black_box(p.board().legal_moves());
+                black_box(p.board().legal_moves_into(&mut ml));
+                ml.clear();
             });
             t.elapsed() / positions.len() as u32
         })
@@ -426,16 +418,6 @@ fn board_calcs(c: &mut Criterion) {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|p| {
                 black_box(tt.store(p.board().hash(), entry));
-            });
-            t.elapsed() / positions.len() as u32
-        })
-    });
-
-    group.bench_function("pseudo_legal_moves", |b| {
-        b.iter_custom(|n| {
-            let t = Instant::now();
-            positions.iter().cycle_n(n).for_each(|p| {
-                black_box(p.board().pseudo_legal_moves());
             });
             t.elapsed() / positions.len() as u32
         })
@@ -611,7 +593,7 @@ fn benchmark_attacks(c: &mut Criterion) {
                 count += 1;
                 let b = p.board().clone(); // caching
                 black_box(Rules::king_legal(&b, &mut list));
-                list.truncate(0);
+                list.clear();
             });
             t.elapsed() / (count as u32 / n as u32)
         })
@@ -626,7 +608,7 @@ fn benchmark_attacks(c: &mut Criterion) {
                 count += 1;
                 let b = p.board().clone(); // caching
                 black_box(Rules::castles(&b, &mut list));
-                list.truncate(0);
+                list.clear();
             });
             t.elapsed() / (count as u32 / n as u32)
         })

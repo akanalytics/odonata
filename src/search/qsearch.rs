@@ -153,7 +153,7 @@ impl Algo {
             .cloned()
             .collect();
 
-        if moves.len() == 0 {
+        if moves.is_empty() {
             self.search_stats.inc_q_leaf_nodes(ply);
         } else {
             self.search_stats.inc_q_interior_nodes(ply);

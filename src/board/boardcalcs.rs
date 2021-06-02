@@ -19,12 +19,12 @@ impl BoardCalcs {
 
     #[inline]
     pub fn pinned(b: &Board, us: Color) -> Bitboard {
-        let color_us = b.color(us);
-        let color_them = b.color(us.opposite());
         let kings = b.kings() & b.color(us);
         if kings.is_empty() {
             return Bitboard::empty();
         };
+        let color_us = b.color(us);
+        let color_them = b.color(us.opposite());
         let king_sq = kings.square();
 
         let xray_checkers = Self::attacked_by(kings, Bitboard::EMPTY, b) & b.them();

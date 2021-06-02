@@ -46,7 +46,7 @@ UCI
   - count occurrences of different moves
   - copymake vs undo move 
   - bitmask of moves - bitboard - allows many sq comparisons or sqs class
-  - avoid hash_move on is_check move
+  - [x] avoid hash_move on is_check move
   - BoardBug set methods call hash_board
 
 

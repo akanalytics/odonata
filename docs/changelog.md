@@ -4,6 +4,8 @@
 - Python: added move_attributes and attacks_from
 - added mate_in_4 tests
 - make_moves taking a variation 
+- removed pseudo_legal_move logic
+- replace MoveList vec with array 
 
 ## 0.3.16 (internal release)
 - Python 'interface' - really just some extensions to uci

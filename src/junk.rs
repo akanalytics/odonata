@@ -1179,3 +1179,41 @@ impl MoveExt {
         res
     }
 }
+
+pub fn legal_moves2(&self) -> MoveList {
+    counts::LEGAL_MOVE_COUNT.increment();
+    let mut moves = MoveList::new();
+    let b = self;
+    Rules::pawn_captures_incl_promo(b, &mut moves);
+    Rules::pawn_promos(b, &mut moves);
+    Rules::pawn_push(b, &mut moves);
+    Rules::non_pawn(Piece::Knight, b, &mut moves);
+    Rules::non_pawn(Piece::Bishop, b, &mut moves);
+    Rules::non_pawn(Piece::Rook, b, &mut moves);
+    Rules::non_pawn(Piece::Queen, b, &mut moves);
+
+    Rules::king_legal(b, &mut moves);
+    Rules::castles(b, &mut moves);
+    moves.retain(|m| self.is_legal_move(m));
+    moves
+}
+
+
+pub fn pseudo_legal_moves(&self) -> MoveList {
+    let mut moves = MoveList::new();
+    Rules::pseudo_legals(self, &mut moves);
+    moves
+}
+
+
+pub fn has_legal_moves(&self) -> bool {
+    self.pseudo_legal_moves()
+        .iter()
+        .rev()
+        .any(|m| m.is_known_legal() || self.is_legal_move(m))
+}
+
+// fn is_in_check(&self, c: Color) -> bool {
+//     let king = self.kings() & self.color(c);
+//     king.intersects(self.threats_to(c))
+// }

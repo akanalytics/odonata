@@ -95,7 +95,8 @@ impl Algo {
         }
 
         if self.move_orderer.mvv_lva {
-            movelist.sort_unstable_by_key(Move::mvv_lva_score);
+            // movelist.sort_unstable_by_key(|m| -m.mvv_lva_score() );
+            movelist.sort_unstable_by_key(Move::mvv_lva_score );
             movelist.reverse();
         }
 

@@ -9,7 +9,7 @@ use crate::tags::Tags;
 use crate::types::{Color, Piece, Ply};
 use crate::utils::StringUtils;
 use once_cell::sync::Lazy;
-// use arrayvec::ArrayVec;
+use arrayvec::ArrayVec;
 use regex::Regex;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
@@ -333,8 +333,7 @@ impl fmt::Display for Move {
     }
 }
 
-// moves: ArrayVec<Move,128>,
-// moves: ArrayVec::new(),
+
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Variation {
@@ -413,9 +412,24 @@ impl fmt::Display for Variation {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+
+
+
+
+
+
+
+
+
+
+
+
+// moves: ArrayVec<Move,128>,
+// moves: ArrayVec::new(),
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MoveList {
-    moves: Vec<Move>,
+    moves: ArrayVec<Move,128>, // [Move;120],
+    size: usize,
 }
 
 // pub struct MoveList(ArrayVec::<[Move; 384]>);
@@ -426,11 +440,25 @@ pub struct MoveList {
 impl Default for MoveList {
     #[inline]
     fn default() -> Self {
+        // Self {
+        //     moves: Move::Vec::with_capacity(60),
+        // }
         Self {
-            moves: Vec::with_capacity(60),
+            moves: ArrayVec::new(), // [Move::new_null(); 120], // unsafe { std::mem::MaybeUninit::uninit().assume_init() },
+            size: 0,
         }
     }
 }
+
+// impl Clone for MoveList {
+//     fn clone(&self) -> Self {
+//         let mut cl = MoveList::default();
+//         for &mv in self.iter() {
+//             cl.push(mv);
+//         }
+//         cl
+//     }
+// }
 
 impl std::iter::FromIterator<Move> for MoveList {
     #[inline]
@@ -451,36 +479,100 @@ impl MoveList {
 
     #[inline]
     pub fn sort(&mut self) -> &mut Self {
-        self.moves.sort_by_key(|m| m.to_string());
+        self.moves[..self.size].sort_by_key(|m| m.to_string());
         self
     }
 
+    #[inline]
     pub fn contains(&self, m: &Move) -> bool {
-        self.moves.contains(m)
+        self.moves[..self.size].contains(m)
+    }
+
+    #[inline]
+    pub fn iter(&self) -> std::slice::Iter<'_, Move> {
+        //    pub fn iter(&self) -> impl Iterator<Item = &Move> {
+        (self.moves[..self.size]).iter()
+    }
+
+    #[inline]
+    pub fn push(&mut self, mv: Move) {
+        debug_assert!( self.size < 150);
+        self.moves.push(mv);
+        // self.moves[self.size] = mv;
+        self.size += 1;
+    }
+
+    #[inline]
+    pub fn clear(&mut self) {
+        self.moves.clear();
+        self.size = 0;
+    }
+
+    #[inline]
+    pub fn swap(&mut self, i: usize, j: usize) {
+        self.moves[..self.size].swap(i, j);
+    }
+
+    #[inline]
+    pub fn retain<F>(&mut self, f: F)
+    where
+        F: FnMut(&Move) -> bool,
+    {
+        let mut v = Vec::<Move>::new();
+        v.extend(self.iter());
+        v.retain(f);
+        for i in 0..v.len() {
+            self.moves[i] = v[i];
+        }
+        self.size = v.len();
+    }
+
+    #[inline]
+    pub fn sort_unstable_by_key<K, F>(&mut self, f: F)
+    where
+        F: FnMut(&Move) -> K,
+        K: Ord,
+    {
+        self.moves[..self.size].sort_unstable_by_key(f)
+    }
+
+    #[inline]
+    pub fn reverse(&mut self) {
+        self.moves[..self.size].reverse();
+    }
+
+    #[inline]
+    pub fn extend<T: IntoIterator<Item = Move>>(&mut self, iter: T) {
+        for m in iter {
+            self.push(m);
+        }
+    }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.size
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     pub fn uci(&self) -> String {
-        self.moves
-            .iter()
+        self.iter()
             .map(|mv| mv.uci())
             .collect::<Vec<String>>()
             .join(" ")
     }
 }
 
-impl Deref for MoveList {
-    type Target = Vec<Move>;
+impl std::ops::Index<usize> for MoveList {
+    type Output = Move;
 
     #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.moves
-    }
-}
-
-impl DerefMut for MoveList {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.moves
+    fn index(&self, i: usize) -> &Self::Output {
+        debug_assert!(i < self.size);
+        &(self.moves[..self.size])[i]
     }
 }
 
@@ -491,12 +583,20 @@ impl fmt::Display for MoveList {
                 writeln!(f, "{:#}", mv)?;
             }
         } else {
-            let strings: Vec<String> = self.moves.iter().map(Move::to_string).collect();
+            let strings: Vec<String> = self.iter().map(Move::to_string).collect();
             f.write_str(&strings.join(", "))?
         }
         Ok(())
     }
 }
+
+
+
+
+
+
+
+
 
 pub trait MoveValidator {
     fn parse_uci_move(&self, mv: &str) -> Result<Move, String>;
@@ -514,8 +614,10 @@ pub trait MoveValidator {
 impl MoveValidator for Board {
     fn parse_uci_move(&self, mv: &str) -> Result<Move, String> {
         let moves = self.legal_moves();
-        if let Some(pos) = moves.iter().position(|m| m.uci() == mv) {
-            return Ok(moves[pos]);
+        for &m in moves.iter() {
+            if m.uci() == mv {
+                return Ok(m);
+            }
         }
         Err(format!("Move {} is not legal for board {}", mv, self.to_fen()))
     }
@@ -726,8 +828,14 @@ mod tests {
         };
 
         let mut moves = MoveList::new();
+        assert_eq!(moves.iter().count(), 0);
         moves.push(move_a1b2);
         assert_eq!(moves.contains(&promo_a7a8), false);
+        moves.reverse();
+        assert_eq!(moves.iter().count(), 1);
+
+
+
         moves.push(promo_a7a8);
         assert_eq!(moves.contains(&move_a1b2), true);
 
