@@ -48,9 +48,10 @@ The software licence is [AGPL-3](../license.txt), though libraries used are MIT 
 
 Library | URL | License 
 ----------- | ---- | -------
-Bitflags | https://crates.io/crates/bitflags | MIT https://choosealicense.com/licenses/mit/
-Once Cell | https://crates.io/crates/once_cell | MIT https://choosealicense.com/licenses/mit/
-Criterion | https://crates.io/crates/criterion | MIT https://choosealicense.com/licenses/mit/
-Env_Logger | https://crates.io/crates/env_logger | MIT https://choosealicense.com/licenses/mit/
-Stockfish | https://github.com/zhelyabuzhsky/stockfish | MIT https://choosealicense.com/licenses/mit/ 
+Bitflags | https://crates.io/crates/bitflags | MIT https://choosealicense.com/licenses/mit/ | 
+Once Cell | https://crates.io/crates/once_cell | MIT https://choosealicense.com/licenses/mit/ |
+Criterion | https://crates.io/crates/criterion | MIT https://choosealicense.com/licenses/mit/ |
+Env_Logger | https://crates.io/crates/env_logger | MIT https://choosealicense.com/licenses/mit/ |
+Stockfish | https://github.com/zhelyabuzhsky/stockfish | MIT https://choosealicense.com/licenses/mit/ | This isn't THE stockfish. 
+Hoarfrost | https://github.com/Ravenslofty/Hoarfrost | | MIT https://choosealicense.com/licenses/mit/ | Used for magic bitboard benchmarking
 

@@ -4,6 +4,7 @@ use odonata::config::Component;
 use odonata::bitboard::attacks::*;
 use odonata::bitboard::bb_classical::ClassicalBitboard;
 use odonata::bitboard::bb_hyperbola::Hyperbola;
+use odonata::bitboard::bb_magic::*;
 use odonata::bitboard::bitboard::*;
 use odonata::bitboard::square::*;
 use odonata::board::boardcalcs::*;
@@ -585,6 +586,7 @@ fn benchmark_attacks(c: &mut Criterion) {
     let positions = &Catalog::win_at_chess();
     let cb = ClassicalBitboard::default();
     let hq = Hyperbola::default();
+    let mg = Magic::default();
 
     group.bench_function("rules.king_legal", |b| {
         b.iter_custom(|n| {
@@ -818,6 +820,66 @@ fn benchmark_attacks(c: &mut Criterion) {
             t.elapsed() / (count as u32 / n as u32)
         })
     });
+
+    group.bench_function("magic.bishop", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            let mut count = 0;
+            positions.iter().cycle_n(n).for_each(|p| {
+                count += p.board().bishops().popcount();
+                let occ = p.board().black() | p.board().white();
+                black_box(
+                    p.board()
+                        .bishops()
+                        .squares()
+                        .map(|b| mg.bishop_attacks(occ, b).popcount() as i32)
+                        .sum::<i32>(),
+                );
+            });
+            t.elapsed() / (count as u32 / n as u32)
+        })
+    });
+
+    group.bench_function("magic.rook", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            let mut count = 0;
+            positions.iter().cycle_n(n).for_each(|p| {
+                count += p.board().rooks().popcount();
+                let occ = p.board().black() | p.board().white();
+                black_box(
+                    p.board()
+                        .rooks()
+                        .squares()
+                        .map(|b| mg.rook_attacks(occ, b).popcount() as i32)
+                        .sum::<i32>(),
+                );
+            });
+            t.elapsed() / (count as u32 / n as u32)
+        })
+    });
+
+    group.bench_function("magic.queen", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            let mut count = 0;
+            positions.iter().cycle_n(n).for_each(|p| {
+                count += p.board().queens().popcount();
+                let occ = p.board().black() | p.board().white();
+                black_box(
+                    p.board()
+                        .rooks()
+                        .squares()
+                        .map(|b| (mg.rook_attacks(occ, b) | hq.rook_attacks(occ, b)).popcount() as i32)
+                        .sum::<i32>(),
+                );
+            });
+            t.elapsed() / (count as u32 / n as u32)
+        })
+    });
+
+
+
     group.finish();
 }
 

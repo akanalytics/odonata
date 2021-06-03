@@ -6,6 +6,7 @@
 - make_moves taking a variation 
 - removed pseudo_legal_move logic
 - replace MoveList vec with array 
+- added magic bitboards for benchmarking (and completeness). Not my own code. Just a rust "port" of C++.
 
 ## 0.3.16 (internal release)
 - Python 'interface' - really just some extensions to uci
