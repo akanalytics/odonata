@@ -116,6 +116,18 @@ impl Score {
     }
 
     #[inline]
+    pub fn bound(self, lower: Score, upper: Score) -> Score {
+        if self < lower {
+            lower
+        }
+        else if self > upper {
+            upper}
+        else {
+            self
+        }
+    }
+
+    #[inline]
     pub fn negate(self) -> Score {
         match self {
             Self::MinusInf => Self::PlusInf,

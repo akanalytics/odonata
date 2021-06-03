@@ -4,8 +4,8 @@ use crate::board::Board;
 use crate::config::{Component, Config};
 use crate::eval::score::Score;
 use crate::log_debug;
-use crate::mv::Move;
 use crate::movelist::MoveList;
+use crate::mv::Move;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
 use crate::types::Ply;
@@ -191,14 +191,7 @@ impl Algo {
             sq -= mv.to().as_bb();
         }
 
-        // bound the score
-        if alpha < Score::Cp(-10000) {
-            return Score::Cp(-10000);
-        }
-        if alpha > Score::Cp(10000) {
-            return Score::Cp(10000);
-        }
-        alpha
+        alpha.bound(Score::Cp(-10000), Score::Cp(10000))
     }
 }
 
