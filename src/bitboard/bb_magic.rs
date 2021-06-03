@@ -25,20 +25,20 @@
 // Using the code kindly provided by Volker Annuss:
 // http://www.talkchess.com/forum/viewtopic.php?topic_view=threads&p=670709&t=60065
 
-
 //
 //
-// This implementation a direct Rust "port" of C++ magics at  https://github.com/Ravenslofty/Hoarfrost which is a 
-// nearly direct copy of a talkchess discussion from 
+// This implementation a direct Rust "port" of C++ magics at  https://github.com/Ravenslofty/Hoarfrost which is a
+// nearly direct copy of a talkchess discussion from
 // http://www.talkchess.com/forum/viewtopic.php?topic_view=threads&p=670709&t=60065 by Volker Annuss.
 // Licensed as MIT
 //
 // I've not made any effort to port this to idiomatic Rust. Its here only for benchmarking purposes.
 //
 
-
 #![allow(non_upper_case_globals)]
 
+use crate::bitboard::attacks::BitboardAttacks;
+use crate::bitboard::bb_hyperbola::Hyperbola;
 use crate::bitboard::bitboard::Bitboard;
 use crate::bitboard::square::Square;
 use once_cell::sync::Lazy;
@@ -48,7 +48,7 @@ static STATIC_INSTANCE: Lazy<Box<Magic>> = Lazy::new(|| Magic::new());
 #[allow(non_snake_case)]
 #[derive(Debug)]
 pub struct Magic {
-    MagicTable: [u64; 89524], 
+    MagicTable: [u64; 89524],
     PawnMask: [[u64; 64]; 2],
     KnightMask: [u64; 64],
     BishopMask: [u64; 64],
@@ -163,6 +163,46 @@ const RookOffset: [usize; 64] = [
 const WHITE: i32 = 0;
 const BLACK: i32 = 1;
 
+impl BitboardAttacks for Magic {
+    // inclusive of end points
+    #[inline]
+    fn between(&self, s1: Square, s2: Square) -> Bitboard {
+        Hyperbola::default().between(s1, s2)
+    }
+
+    #[inline]
+    fn line_through(&self, s1: Square, s2: Square) -> Bitboard {
+        Hyperbola::default().line_through(s1, s2)
+    }
+
+    #[inline]
+    fn knight_attacks(&self, sq: Square) -> Bitboard {
+        Bitboard::from_u64(self.KnightMask[sq])
+    }
+
+    #[inline]
+    fn bishop_attacks(&self, occ: Bitboard, sq: Square) -> Bitboard {
+        let occ = occ.bits();
+        let bits = self.MagicTable[(BISHOP_OFFSET[sq]
+            + (((occ & self.BishopMask[sq]).wrapping_mul(BISHOP_MAGIC[sq])) >> 55) as usize)];
+        Bitboard::from_u64(bits)
+    }
+
+    #[inline]
+    fn rook_attacks(&self, occ: Bitboard, sq: Square) -> Bitboard {
+        let occ = occ.bits();
+        // debug_assert!(sq >= 0 && sq <= 63);
+        let bits = self.MagicTable
+            [(RookOffset[sq] + (((occ & self.RookMask[sq]).wrapping_mul(ROOK_MAGIC[sq])) >> 52) as usize)];
+        Bitboard::from_u64(bits)
+    }
+
+    #[inline]
+    fn king_attacks(&self, sq: Square) -> Bitboard {
+        Bitboard::from_u64(self.KingMask[sq])
+    }
+}
+
 impl Magic {
     // doesnt impl Default as too large to copy by value
     #[inline]
@@ -170,48 +210,20 @@ impl Magic {
         &STATIC_INSTANCE
     }
 
-    #[inline]
-    pub fn pawn_attacks(&self, side: i32, sq: i32) -> u64 {
-        debug_assert!(sq >= 0 && sq <= 63);
-        debug_assert!(side == WHITE || side == BLACK);
-        return self.PawnMask[side as usize][sq as usize];
-    }
+    // #[inline]
+    // pub fn pawn_attacks(&self, side: i32, sq: i32) -> u64 {
+    //     debug_assert!(sq >= 0 && sq <= 63);
+    //     debug_assert!(side == WHITE || side == BLACK);
+    //     return self.PawnMask[side as usize][sq as usize];
+    // }
 
-    #[inline]
-    pub fn knight_attacks(&self, sq: i32) -> u64 {
-        debug_assert!(sq >= 0 && sq <= 63);
-        return self.KnightMask[sq as usize];
-    }
+    // #[inline]
+    // fn queen_attacks(&self, occ: Bitboard, sq: Square) -> Bitboard {
+    //     // debug_assert!(sq >= 0 && sq <= 63);
+    //     return self.rook_attacks(occ, sq) | self.bishop_attacks(occ, sq);
+    // }
 
-    #[inline]
-    pub fn bishop_attacks(&self, occ: Bitboard, sq: Square) -> Bitboard {
-        // debug_assert!(sq >= 0 && sq <= 63);
-        let occ = occ.bits();
-        let bits = self.MagicTable
-            [(BISHOP_OFFSET[sq] + (((occ & self.BishopMask[sq]).wrapping_mul(BISHOP_MAGIC[sq])) >> 55) as usize)];
-        Bitboard::from_u64(bits)
-    }
 
-    #[inline]
-    pub fn rook_attacks(&self, occ: Bitboard, sq: Square) -> Bitboard {
-        let occ = occ.bits();
-        // debug_assert!(sq >= 0 && sq <= 63);
-        let bits =
-            self.MagicTable[(RookOffset[sq] + (((occ & self.RookMask[sq]).wrapping_mul(ROOK_MAGIC[sq])) >> 52) as usize)];
-        Bitboard::from_u64(bits)
-    }
-
-    #[inline]
-    pub fn queen_attacks(&self, occ: Bitboard, sq: Square) -> Bitboard {
-        // debug_assert!(sq >= 0 && sq <= 63);
-        return self.rook_attacks(occ, sq) | self.bishop_attacks(occ, sq);
-    }
-
-    #[inline]
-    pub fn king_attacks(&self, sq: i32) -> u64 {
-        debug_assert!(sq >= 0 && sq <= 63);
-        return self.KingMask[sq as usize];
-    }
 
     // Steffan Westcott's innovation.
     #[inline]
@@ -432,8 +444,8 @@ impl Magic {
             magic.RookMask[sq] = Self::calc_rook_mask(sq as i32);
 
             loop {
-                let i = RookOffset[sq]
-                    + (((b & magic.RookMask[sq]).wrapping_mul(ROOK_MAGIC[sq])) >> 52) as usize;
+                let i =
+                    RookOffset[sq] + (((b & magic.RookMask[sq]).wrapping_mul(ROOK_MAGIC[sq])) >> 52) as usize;
                 magic.MagicTable[i] = Self::calc_rook_attacks(sq as i32, b);
                 b = Self::snoob(magic.RookMask[sq], b);
                 if b == 0 {
@@ -522,7 +534,6 @@ mod tests {
         }
     }
 
-
     #[test]
     fn test_magic_vs_classical_slow() {
         let cb = ClassicalBitboard::default();
@@ -535,7 +546,9 @@ mod tests {
                         mg.rook_attacks(occ, sq),
                         cb.rook_attacks(occ, sq),
                         "square {:?} occ f:{:?} r:{:?}",
-                        sq.as_bb(), f, r
+                        sq.as_bb(),
+                        f,
+                        r
                     );
                 }
             }
@@ -553,5 +566,3 @@ mod tests {
         }
     }
 }
-
-

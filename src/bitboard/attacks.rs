@@ -3,6 +3,7 @@ use crate::bitboard::square::Square;
 use crate::types::{Color, Piece};
 // use crate::bitboard::bb_classical::ClassicalBitboard;
 use crate::bitboard::bb_hyperbola::Hyperbola;
+// use crate::bitboard::bb_magic::Magic;
 
 
 pub type BitboardDefault = Hyperbola;
