@@ -11,6 +11,7 @@ use std::time::Duration;
 #[derive(Clone, Debug)]
 pub struct MoveTimeEstimator {
     pub time_control: TimeControl,
+    pondering: bool,
     board: Board,
     pub branching_factor: u16,
     perc_of_time_adv: u32,
@@ -57,6 +58,7 @@ impl Default for MoveTimeEstimator {
             moves_rem: 20,
             board: Board::default(),
             time_control: TimeControl::default(),
+            pondering: false,
             time_estimate: Duration::default(),
             elapsed_used: Duration::default(),
             deterministic: false,
@@ -68,6 +70,7 @@ impl Default for MoveTimeEstimator {
 impl fmt::Display for MoveTimeEstimator {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "time_control     : {}", self.time_control)?;
+        writeln!(f, "pondering        : {}", self.pondering)?;
         // writeln!(f, "board            : {}", self.board.to_fen())?;
         writeln!(f, "branching factor : {}", self.branching_factor)?;
         writeln!(f, "const moves rem. : {}", self.moves_rem)?;
@@ -91,10 +94,16 @@ impl MoveTimeEstimator {
             TimeControl::NodeCount(max_nodes) => search_stats.total().nodes() > max_nodes,
             TimeControl::Infinite => false,
             TimeControl::MateIn(_) => false,
-            TimeControl::RemainingTime { .. } => elapsed > self.allotted(),
+            TimeControl::RemainingTime { .. } => elapsed > self.allotted() && !self.pondering,
         };
         time_up
     }
+
+    // turning pondering off will kick in the existing time controls
+    pub fn set_ponder(&mut self, pondering: bool) {
+        self.pondering = pondering;
+    }
+
 
     pub fn estimate_ply(&mut self, _ply: Ply, search_stats: &SearchStats) {
         // debug_assert!(search_stats.depth() >= ply-1, "ensure we have enough stats");
@@ -114,7 +123,7 @@ impl MoveTimeEstimator {
                 movestogo: _,
             } => {
                 let (_time, _inc) = our_color.chooser_wb((wtime, winc), (btime, binc));
-                self.time_estimate > self.allotted()
+                self.time_estimate > self.allotted() && !self.pondering
             }
             _ => false,
         }

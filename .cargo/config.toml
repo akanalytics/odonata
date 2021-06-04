@@ -6,5 +6,5 @@ linux-perf-run = "perf record -e task-clock,cycles,instructions,cache-references
 # chown andy.andy ./tmp/perf.data
 
 fg5 = "cargo flamegraph --bench benchmark perft5 --bench"
-
+cmd1 ="cargo bench hyperbola -- --profile-time 3"
 

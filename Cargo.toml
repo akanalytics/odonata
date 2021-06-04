@@ -24,6 +24,7 @@ rand_chacha = "0.3.0"
 env_logger = "0.8" 
 log = { version = "0.4", features = ["release_max_level_info"] }
 # lazy_static = "1.4"
+# crossbeam = "0.8.1"
 
 [dev-dependencies]
 criterion = "0.3"
@@ -43,6 +44,9 @@ debug = true
 opt-level = 3
 debug = true  # allow profiling of the  main executable 
 
+[lib]
+# bug in criterion<->cargo interaction https://bheisler.github.io/criterion.rs/book/faq.html
+bench = false
 
 [features]
 unchecked_indexing = []

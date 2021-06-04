@@ -11,6 +11,7 @@ extern crate log;
 extern crate once_cell;
 
 extern crate regex;
+// extern crate crossbeam;
 
 pub mod bitboard;
 pub mod board;

@@ -157,7 +157,7 @@ impl Uci {
             "go" => self.uci_go(&Args::parse(&input)),
             "stop" => self.uci_stop(),
             "quit" => self.uci_quit(),
-            // "ponderhit" => self.uci_unknown(&words),
+            "ponderhit" => self.uci_ponder_hit(),
             // "register" => self.uci_unknown(&words),
 
             // extensions
@@ -356,7 +356,7 @@ impl Uci {
     // }
 
     fn uci_go(&mut self, args: &Args) -> Result<(), String> {
-        let _ponder = args.contain("ponder");
+        let ponder = args.contain("ponder");
 
         //  search x ply only
         let depth = args.int_after("depth");
@@ -410,6 +410,7 @@ impl Uci {
         };
 
         self.algo.set_timing_method(tc);
+        self.algo.mte.set_ponder(ponder);
         // restrict search to this moves only
         // Example: After "position startpos" and "go infinite searchmoves e2e4 d2d4"
         // the engine should only search the two moves e2e4 and d2d4 in the initial position
@@ -461,16 +462,19 @@ impl Uci {
 
     fn uci_stop(&mut self) -> Result<(), String> {
         self.algo.search_async_stop();
-        // Self::uci_info(&self.algo);
-        // self.uci_info_string("stopped");
-        println!("bestmove {}", self.algo.bm().uci());
+        Self::print_bm_and_ponder(&self.algo.bm(), &self.algo.pv() );
+        Ok(())
+    }
+
+    fn uci_ponder_hit(&mut self) -> Result<(), String> {
+        // self.algo.search_async_ponder_hit();
         Ok(())
     }
 
     pub fn uci_info(search_progress: &SearchProgress) {
         println!("info {}", UciInfo(search_progress));
-        if let Some(bestmove) = search_progress.bestmove {
-            println!("bestmove {}", bestmove.uci());
+        if let Some(bm) = search_progress.bestmove {
+            Self::print_bm_and_ponder(&bm, &search_progress.pv.as_ref().unwrap_or(&Variation::default()) );
         }
         io::stdout().flush().ok();
         info!("odonata -> gui: info {}", UciInfo(search_progress));
@@ -478,6 +482,15 @@ impl Uci {
 
     fn uci_info_string(&self, str: &str) {
         println!("info string {}", str.replace("\n", "\ninfo string "));
+    }
+
+    fn print_bm_and_ponder(bm: &Move, var: &Variation) {
+        print!("bestmove {}", bm.uci());
+        if var.len() > 1 {
+            println!(" ponder {}", var[1].uci());
+        } else {
+            println!();
+        }
     }
 
     fn log_debug_message(&self, str: &str) {
