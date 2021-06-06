@@ -40,7 +40,21 @@ pub enum NodeType {
     Pv = 4,  // PV node. score is exact
 }
 
+impl fmt::Display for NodeType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", match self {
+            NodeType::Unused => "UN",
+            NodeType::Terminal => "TE",
+            NodeType::All => "AU",
+            NodeType::Cut => "CL",
+            NodeType::Pv => "PV",
+        })
+    }
+}
+
+
 impl Default for NodeType {
+    #[inline]
     fn default() -> Self {
         Self::Unused
     }
@@ -54,6 +68,17 @@ pub struct TtNode {
     pub bm: Move,
 }
 
+
+impl fmt::Display for TtNode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if f.alternate() {
+            write!(f, "{:>6} {:>10} {:>3} {:>2}", self.bm.uci(), self.score.to_string(), self.draft, self.node_type)
+        } else {
+            write!(f, "{} scoring {} draft {} type {}", self.bm.uci(), self.score, self.draft, self.node_type)
+        }
+    }
+}
+
 #[derive(Default, Debug)]
 struct Element {
     hash: Hash,
@@ -62,6 +87,8 @@ struct Element {
 }
 
 impl Clone for Element {
+    
+    #[inline]
     fn clone(&self) -> Self {
         Element {
             entry: self.entry,
@@ -204,6 +231,16 @@ impl TranspositionTable {
         mb as usize * 1_000_000 / mem::size_of::<TtNode>()
     }
 
+    pub fn fmt_nodes(&self, f: &mut fmt::Formatter, b: &Board) -> fmt::Result {
+        let nodes = self.extract_nodes(b);
+        for n in nodes {
+            writeln!(f, "{:#}", n)?
+        }
+        Ok(())
+    }
+        
+
+
     pub const fn convert_capacity_to_mb(cap: usize) -> i64 {
         (cap * mem::size_of::<TtNode>()) as i64 / 1_000_000
     }
@@ -292,7 +329,7 @@ impl TranspositionTable {
         let table = Arc::get_mut(&mut self.table);
         if let Some(table) = table {
             let old = &mut table[index];
-            let old_age = old.age.load(Ordering::Relaxed);
+            let old_age = old.age.load(Ordering::SeqCst);
             // if self.current_age > old_age
             // || self.current_age == old_age
             //     && (new.entry.draft > old.entry.draft
@@ -377,14 +414,24 @@ impl TranspositionTable {
         None
     }
 
+
+
+    pub fn extract_pv_and_score(&self, b: &Board) -> (Variation, Option<Score>) {
+        let mut var = Variation::new();
+        let nodes = self.extract_nodes(b);
+        nodes.iter().for_each(|n| var.push(n.bm));
+        let score = nodes.first().map(|n| n.score);
+        (var, score) 
+    }
+
     // non recursive
-    pub fn extract_pv(&self, b: &Board) -> Variation {
+    fn extract_nodes(&self, b: &Board) -> Vec<TtNode> {
         let mut board = b.clone();
-        let mut moves = Variation::new();
+        let mut nodes = Vec::new();
         // board = board.make_move(&first);
         // moves.push(*first);
         let mut mv;
-        while moves.len() < 50 {
+        while nodes.len() < 50 {
             let entry = self.probe_by_board(&board);
             if let Some(entry) = entry {
                 // we need to be careful, the root node could be written as a Cut node of equal depth
@@ -394,30 +441,29 @@ impl TranspositionTable {
                     mv = &entry.bm;
                     if !mv.is_null() && board.is_pseudo_legal_move(&mv) && board.is_legal_move(&mv) {
                         board = board.make_move(&mv);
-                        moves.push(*mv);
+                        nodes.push(*entry);
                         continue;
                     } else {
                         debug_assert!(
                             false,
-                            "Invalid move {} in tt for board position {} moves {} from starting {}",
+                            "Invalid move {} in tt for board position {} from starting {}",
                             mv,
                             board.to_fen(),
-                            moves,
                             b.to_fen()
                         );
                         error!("Invalid move {} in tt for board position {}", mv, board.to_fen());
                         println!("Invalid move {} in tt for board position {}", mv, board.to_fen());
-                        return moves;
+                        return nodes;
                     }
                 }
-                if moves.len() == 0 {
+                if nodes.len() == 0 {
                     println!("root node is {:?}", entry.node_type);
                 }
             }
             // println!("Unable to find hash {} after move {}", board.hash(), mv) ;
             break;
         }
-        moves
+        nodes
     }
 }
 
@@ -467,7 +513,7 @@ mod tests {
         let mut tt1 = TranspositionTable::new_with_mb(10);
         tt1.new_game();
         let board = Catalog::starting_position();
-        let moves = tt1.extract_pv(&board);
+        let moves = tt1.extract_pv_and_score(&board).0;
         assert_eq!(moves.uci(), "");
         manipulate(&mut tt1);
 
@@ -554,7 +600,7 @@ mod tests {
             algo.new_game();
             algo.search(pos.board());
 //            let pv = algo.tt.extract_pv(&algo.bm(), pos.board());
-            let pv = algo.tt.extract_pv(pos.board());
+            let pv = algo.tt.extract_pv_and_score(pos.board()).0;
             assert_eq!(algo.pv().len(), d as usize, "{} {}\n{}", algo.pv(), pv, algo);
             assert_eq!(pv.len(), d as usize, "{} {}\n{}", algo.pv(), pv, algo);
             // assert_eq!(algo.bm().uci(), pos.bm()?.uci());

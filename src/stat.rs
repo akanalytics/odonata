@@ -65,6 +65,7 @@ impl Stat {
 
     #[inline]
     pub fn increment(&self) {
+        #[cfg(not(feature="no_metrics"))]    
         self.counter.fetch_add(1, Ordering::Relaxed);
     }
 

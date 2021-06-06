@@ -26,10 +26,10 @@ impl Algo {
         self.search_stats.score =
             self.alphabeta_recursive(board, node.ply, node.alpha, node.beta, &Move::NULL_MOVE);
 
-        let pv = if self.tt.use_tt_for_pv {
-            self.tt.extract_pv(board)
+        let (pv, _score) = if self.tt.use_tt_for_pv {
+            self.tt.extract_pv_and_score(board)
         } else {
-            self.pv_table.extract_pv()
+            (self.pv_table.extract_pv(), Some(Score::default()))
         };
         self.search_stats.record_time_actual_and_completion_status(
             self.max_depth,
@@ -192,7 +192,7 @@ impl Algo {
         self.pv_table.propagate_from(ply + 1);
         self.search_stats.inc_improvements(ply);
         if ply == 0 {
-            let sp = SearchProgress::from_search_stats(&self.search_stats(), self.board.color_us());
+            let sp = SearchProgress::from_stats(&self.search_stats(), self.board.color_us());
             self.task_control.invoke_callback(&sp);
         }
     }

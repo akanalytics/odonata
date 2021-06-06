@@ -49,8 +49,9 @@ debug = true  # allow profiling of the  main executable
 bench = false
 
 [features]
+remove_metrics = []
 unchecked_indexing = []
-fast = ["unchecked_indexing"]
+fast = ["unchecked_indexing", "remove_metrics"]
 
 # RUSTFLAGS="-C target-cpu=native" cargo bench
 

@@ -179,6 +179,7 @@ pub struct SimpleScorer {
     pub material: bool,
     pub position: bool,
     pub mobility: bool,
+    pub min_depth_mob: u8,
     pub mobility_phase_disable: u8,
     pub undefended_sq: i32,
     pub undefended_piece: i32,
@@ -211,6 +212,10 @@ impl Component for SimpleScorer {
         c.set("eval.position", "type check default true");
         c.set("eval.material", "type check default true");
         c.set("eval.phasing", "type check default true");
+        c.set(
+            "eval.mobility.min_depth",
+            &format!("type spin min 0 max 101 default {}", self.min_depth_mob),
+        );
         c.set(
             "eval.mobility.phase_disable",
             &format!("type spin min 0 max 101 default {}", self.mobility_phase_disable),
@@ -277,6 +282,7 @@ impl Component for SimpleScorer {
         self.cache_qeval = c.bool("eval.cache.qeval").unwrap_or(self.cache_qeval);
         self.mobility = c.bool("eval.mobility").unwrap_or(self.mobility);
         self.mobility_phase_disable = c.int("eval.mobility.phase_disable").unwrap_or(self.mobility_phase_disable as i64) as u8;
+        self.min_depth_mob = c.int("eval.mobility.min_depth").unwrap_or(self.min_depth_mob as i64) as u8;
         self.position = c.bool("eval.position").unwrap_or(self.position);
         self.material = c.bool("eval.material").unwrap_or(self.material);
         self.phasing = c.bool("eval.phasing").unwrap_or(self.phasing);
@@ -314,6 +320,7 @@ impl fmt::Display for SimpleScorer {
         writeln!(f, "position         : {}", self.position)?;
         writeln!(f, "mobility         : {}", self.mobility)?;
         writeln!(f, "mob.phase_disable: {}", self.mobility_phase_disable)?;
+        writeln!(f, "mob.min_depth:     {}", self.min_depth_mob)?;
         writeln!(f, "phasing          : {}", self.phasing)?;
         writeln!(f, "undefended_piece : {}", self.undefended_piece)?;
         writeln!(f, "undefended_sq    : {}", self.undefended_sq)?;
@@ -353,6 +360,7 @@ impl SimpleScorer {
             material: true,
             phasing: true,
             mobility_phase_disable: 70,
+            min_depth_mob: 6,
             undefended_piece: 5,
             undefended_sq: 2,
             trapped_piece: -5,
@@ -391,7 +399,7 @@ impl SimpleScorer {
         let score = if outcome.is_game_over() {
             Score::score_from_outcome(self.contempt, outcome, board.color_us(), node.ply)
         } else {
-            self.w_eval_without_wdl(board)
+            self.w_eval_without_wdl(board, node)
         };
         score
     }
@@ -409,15 +417,15 @@ impl SimpleScorer {
                     node.ply,
                 );
             } else {
-                self.w_eval_without_wdl(board)
+                self.w_eval_without_wdl(board, node)
             }
         } else {
-            self.w_eval_without_wdl(board)
+            self.w_eval_without_wdl(board, node)
         };
         score
     }
 
-    fn w_eval_without_wdl(&mut self, board: &Board) -> Score {
+    fn w_eval_without_wdl(&mut self, board: &Board, node: &Node) -> Score {
         // if self.cache_eval {
         //     if let Some(entry) = self.cache.probe_by_board(board) {
         //         counts::EVAL_CACHE_COUNT.increment();
@@ -436,7 +444,7 @@ impl SimpleScorer {
         } else {
             0
         };
-        let mo = if self.mobility {
+        let mo = if self.mobility && node.ply >= self.min_depth_mob as i32 {
             self.w_eval_mobility(board)
         } else {
             0

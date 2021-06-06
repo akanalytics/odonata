@@ -1,14 +1,18 @@
 # Changelog
 
-## 0.3.17 (to be release)
+## 0.3.17 (to be released)
+- pondering 
+- fixed bug with pv lenght on uci info
 - Python: added move_attributes and attacks_from
 - added mate_in_4 tests
 - make_moves taking a variation 
 - removed pseudo_legal_move logic
 - replace MoveList vec with array 
 - added magic bitboards for benchmarking (and completeness). Not my own code. Just a rust "port" of C++.
+- cargo features to enable release-like configs
+- disable piece mobility for low plys 
 
-## 0.3.16 (internal release)
+## 0.3.16 (internal release only)
 - Python 'interface' - really just some extensions to uci
 - Python sample code
 

@@ -18,6 +18,8 @@ use crate::version::Version;
 use std::fmt;
 use std::io::{self, Write};
 use std::time::{Duration, Instant};
+use std::thread;
+
 
 //  see https://www.chessprogramming.org/CPW-Engine_com
 //
@@ -166,7 +168,7 @@ impl Uci {
             "ext:version" => self.ext_uci_version(&Args::parse(&input)),
             "ext:static_eval" => self.ext_uci_static_eval(&Args::parse(&input)),
             "ext:move_attributes" => self.ext_uci_move_attributes(&Args::parse(&input)),
-
+            "sleep" => self.uci_sleep(&words[1..]),
             "perft" => self.uci_perft(&words[1..]),
             "display" | "d" => self.uci_display(),
             "board" | "b" => self.uci_board(),
@@ -229,6 +231,16 @@ impl Uci {
         Ok(())
     }
 
+    fn uci_sleep(&mut self, words: &[&str]) -> Result<(), String> {
+        let time = words.first().ok_or("Must specify a sleep time")?;
+        let time = time
+            .parse::<u64>()
+            .or(Err(format!("Sleep time {} must be numeric", time)))?;
+        let millis = Duration::from_millis(time);
+        thread::sleep(millis);
+        Ok(())
+    }
+
     fn uci_perft(&mut self, words: &[&str]) -> Result<(), String> {
         self.algo.search_async_stop();
         let depth = words.first().ok_or("Must specify a depth")?;
@@ -243,6 +255,7 @@ impl Uci {
         }
         Ok(())
     }
+
     // ['from', 'to', 'capture', 'ep', 'legal', 'pseudo_legal', 'san', 'rook_move', 'is_ep', 'is_castle']:
     fn ext_uci_move_attributes(&mut self, arg: &Args) -> Result<(), String> {
         let mut b = Board::new_empty();
@@ -410,7 +423,7 @@ impl Uci {
         };
 
         self.algo.set_timing_method(tc);
-        self.algo.mte.set_ponder(ponder);
+        self.algo.mte.set_shared_ponder(ponder);
         // restrict search to this moves only
         // Example: After "position startpos" and "go infinite searchmoves e2e4 d2d4"
         // the engine should only search the two moves e2e4 and d2d4 in the initial position
@@ -462,12 +475,12 @@ impl Uci {
 
     fn uci_stop(&mut self) -> Result<(), String> {
         self.algo.search_async_stop();
-        Self::print_bm_and_ponder(&self.algo.bm(), &self.algo.pv() );
+        // Self::print_bm_and_ponder(&self.algo.bm(), &self.algo.pv() );
         Ok(())
     }
 
     fn uci_ponder_hit(&mut self) -> Result<(), String> {
-        // self.algo.search_async_ponder_hit();
+        self.algo.ponder_hit();
         Ok(())
     }
 
@@ -687,15 +700,32 @@ mod tests {
     #[test]
     fn test_uci_go2() {
         let mut uci = Uci::new();
-        uci.preamble.push("debug off".to_string());
+        uci.preamble.push("debug on".to_string());
         uci.preamble.push("position startpos moves d2d4".to_string());
         uci.preamble.push("go wtime 10000 btime 10000".to_string());
+        uci.preamble.push("sleep 1100".to_string());
+        uci.preamble.push("ucinewgame".to_string());
         uci.preamble.push("position startpos moves d2d4".to_string());
-        uci.preamble.push("go movetime 1000".to_string());
+        uci.preamble.push("go movetime 300".to_string());
+        uci.preamble.push("sleep 500".to_string());
         uci.preamble.push("quit".to_string());
         uci.run();
         // println!("pvtable:\n{}", uci.algo.pv);
         // assert_eq!(uci.board, Catalog::starting_position());
-        thread::sleep(Duration::from_millis(600));
     }
+
+    #[test]
+    fn test_ponder() {
+        let mut uci = Uci::new();
+        uci.preamble.push("debug on".to_string());
+        uci.preamble.push("position startpos".to_string());
+        uci.preamble.push("go ponder movetime 1000".to_string());
+        uci.preamble.push("sleep 300".to_string());
+        uci.preamble.push("ponderhit".to_string());
+        uci.preamble.push("sleep 1100".to_string());
+        uci.preamble.push("quit".to_string());
+        uci.run();
+        println!("\n{}", uci.algo);
+    }
+
 }

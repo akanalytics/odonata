@@ -205,9 +205,11 @@ fn hash_board(c: &mut Criterion) {
 
 fn legal_moves(c: &mut Criterion) {
     let board = Catalog::starting_position();
-    c.bench_function("legal_moves", |b| {
+    let mut ml = MoveList::new(); 
+    c.bench_function("legal_moves_into", |b| {
         b.iter(|| {
-            black_box(black_box(&board).legal_moves());
+            black_box(black_box(&board).legal_moves_into(&mut ml));
+            ml.clear();
         });
     });
 }

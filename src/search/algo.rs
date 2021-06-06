@@ -25,6 +25,10 @@ use std::fmt;
 use std::ops::Range;
 use std::thread;
 
+
+
+
+
 #[derive(Clone, Default)]
 pub struct Algo {
     pub board: Board,
@@ -204,6 +208,8 @@ impl fmt::Display for Algo {
         write!(f, "\n[iterative deepening]\n{}", self.ids)?;
         write!(f, "\n[repetition]\n{}", self.repetition)?;
         write!(f, "\n[tt]\n{}", self.tt)?;
+        writeln!(f, "tt nodes")?;
+        self.tt.fmt_nodes(f, &self.board)?;
         write!(f, "\n[killers]\n{}", self.killers)?;
         write!(f, "\n[stats]\n{}", self.search_stats)?;
         write!(f, "\n[global counts]\n{}", counts::GLOBAL_COUNTS)?;
@@ -226,7 +232,7 @@ impl Algo {
 
     pub fn report_progress(&self) {
         if self.search_stats.total().nodes() % 5_000_000 == 0 && self.search_stats.total().nodes() != 0 {
-            let sp = SearchProgress::from_search_stats(&self.search_stats(), self.board.color_us());
+            let sp = SearchProgress::from_stats(&self.search_stats(), self.board.color_us());
             self.task_control.invoke_callback(&sp);
         }
     }
@@ -286,6 +292,14 @@ impl Algo {
         self.search_stats().pv()
     }
 
+
+    pub fn ponder_hit(&mut self) {
+        self.mte.set_shared_ponder(false);
+        
+        self.search_stats.restart_clocks();
+    }
+
+
     pub fn search_async_stop(&mut self) -> bool {
         self.task_control.cancel();
         self.search_stats.user_cancelled = true;
@@ -313,6 +327,7 @@ impl Algo {
         }
 
         if self.task_control.is_cancelled() {
+            println!("Is cancelled");
             return true;
         }
 

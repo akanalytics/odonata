@@ -124,13 +124,14 @@ impl Algo {
                 break;
             }
 
-            let mut sp = SearchProgress::from_search_stats(&res, self.board.color_us());
-            sp.pv = Some(res.pv.clone());
+            let mut sp = SearchProgress::from_stats(&res, self.board.color_us());
+            let mut pv = res.pv.clone();
+            pv.truncate(depth as usize);
+            sp.pv = Some(pv);
             if !self.board.is_legal_variation(&res.pv) {             
                 debug_assert!(false, "Unable to fetch valid pv {} on board {}\n{}", res.pv.clone(), self.board, self);
                 res.pv.truncate(1);
-                let mut pv = res.pv.clone();
-                pv.truncate(res.depth() as usize);
+                let pv = res.pv.clone();
                 sp.pv = Some(pv);
             }
     
@@ -155,10 +156,11 @@ impl Algo {
         // && last.score > res.score
         if self.ids.part_ply  {
             self.search_stats.pv = last.pv.clone();
-            self.search_stats.score = last.score.to_root_score(last.depth);
+            self.search_stats.score = self.tt.extract_pv_and_score(&self.board).1.unwrap_or_default();
         }
         self.search_stats.pv.truncate(self.max_depth as usize);
-        let sp = SearchProgress::from_best_move(Some(self.bm()), self.board.color_us());
+        let sp = SearchProgress::from_best_move(Some(self.bm()), self.board.color_us(), &self.search_stats);
         self.task_control.invoke_callback(&sp);
+        // println!("\n\n\n=====Search completed=====\n {}", self);
     }
 }

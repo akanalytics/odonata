@@ -9,3 +9,10 @@ cargo flamegraph --bench benchmark perft5 --bench
 cargo bench hyperbola -- --profile-time 3
 
 export RUSTFLAGS="-Ctarget-cpu=native"; cargo b --release
+
+# build with a feature
+cargo build --features fast 
+
+# show compilation options
+rustc --print cfg
+rustc -C target-cpu=native --print cfg
