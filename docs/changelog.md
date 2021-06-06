@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.17 (to be released)
+## 0.3.17
 - pondering 
 - fixed bug with pv lenght on uci info
 - Python: added move_attributes and attacks_from
