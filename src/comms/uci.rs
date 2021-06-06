@@ -96,6 +96,7 @@ impl Component for Uci {
     fn settings(&self, c: &mut Config) {
         self.algo.settings(c);
         c.set("uci.debug", "type check default false");
+        c.set("Ponder", "type check default false");
         c.set("Clear Hash", "type button");
     }
 
