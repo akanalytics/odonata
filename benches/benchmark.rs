@@ -406,7 +406,7 @@ fn board_calcs(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|p| {
-                black_box(tt.probe_by_board(p.board()));
+                black_box(tt.probe_by_board(p.board(), 4, 0));
             });
             t.elapsed() / positions.len() as u32
         })

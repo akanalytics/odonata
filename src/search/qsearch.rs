@@ -191,7 +191,7 @@ impl Algo {
             sq -= mv.to().as_bb();
         }
 
-        alpha.bound(Score::Cp(-10000), Score::Cp(10000))
+        alpha.clamp(Score::Cp(-10000), Score::Cp(10000))
     }
 }
 
@@ -230,7 +230,8 @@ mod tests {
         eval.position = false;
         eval.material = true;
 
-        let pos = Position::parse_epd("7k/8/8/8/8/p7/8/R6K w - - 0 1 sm Ra3; ce 100;")?; //RN v pq
+        // white gains a pawn after quiese
+        let pos = Position::parse_epd("7k/8/8/8/8/p7/8/R6K w - - 0 1 sm Ra3; ce 100;")?; 
         let (alpha, beta) = (Score::MinusInf, Score::PlusInf);
 
         let static_eval = match pos.board().eval(&mut eval, &Node { ply: 0, alpha, beta }) {

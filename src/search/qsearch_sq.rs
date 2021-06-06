@@ -55,7 +55,7 @@ impl Algo {
 
         let mut moves = MoveList::new();
         board.legal_moves_into(&mut moves);
-        moves.retain(|mv| mv.to() == sq && mv.is_capture() && mv.is_promo() );
+        moves.retain(|mv| mv.to() == sq && (mv.is_capture() || mv.is_promo()) );
 
         if moves.is_empty() {
             self.search_stats.inc_q_leaf_nodes(ply);

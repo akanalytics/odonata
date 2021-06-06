@@ -66,8 +66,8 @@ const SQUARE_VALUES_EG: [[i32; 64]; Piece::len()] = [
 const PAWN_PST_MG: [i32; 64] = [
 0,  0,  0,  0,  0,  0,  0,  0,
 40, 40, 40, 40, 40, 40, 40, 40,
- 5,  5,  5,  5,  5,  5,  5,  5,
- 5,  5,  5, 10, 10,  5,  5,  5,
+ 10, 10, 10, 10, 10, 10, 10, 10,
+  5,  5,  5, 10, 10,  5,  5,  5,
  -9, 0,  0, 20, 20, -5,  -5, -9,
  -5,-5, -9,  0,  0, -9, -5, -5,
  9, 15, 15,-35,-35, 15, 15,  10,
@@ -76,8 +76,8 @@ const PAWN_PST_MG: [i32; 64] = [
 #[rustfmt::skip]
  const PAWN_PST_EG: [i32; 64] = [
  0,  0,  0,  0,  0,  0,  0,  0,
- 70, 70, 70, 70, 70, 70, 70, 70,
- 30, 30, 30, 30, 30, 30, 30, 30,
+ 60, 60, 60, 60, 60, 60, 60, 60,
+ 40, 40, 40, 40, 40, 40, 40, 40,
  20, 20, 20, 20, 20, 20, 20, 20,
  10, 10, 10, 10, 10, 10, 10, 10,
   5,  5,  5,  5,  5,  5,  5,  5,
@@ -361,13 +361,13 @@ impl SimpleScorer {
             phasing: true,
             mobility_phase_disable: 70,
             min_depth_mob: 6,
-            undefended_piece: 5,
-            undefended_sq: 2,
-            trapped_piece: -5,
+            undefended_piece: 6,
+            undefended_sq: 3,
+            trapped_piece: -7,
             pawn_doubled: -10,
             pawn_isolated: -10,
             rook_open_file: 20,
-            contempt: -20, // typically -ve
+            contempt: -30, // typically -ve
             tempo: 15,
             material_scores: MATERIAL_SCORES,
             // cache: TranspositionTable::default(),
@@ -711,7 +711,7 @@ mod tests {
         let eval = &SimpleScorer::new();
 
         let bd = Board::parse_fen("8/P7/8/8/8/8/8/8 w - - 0 1").unwrap().as_board();
-        assert_eq!(bd.eval_position(eval), Score::Cp(70));
+        assert_eq!(bd.eval_position(eval), Score::Cp(60));
 
         let bd = Board::parse_fen("8/4p3/8/8/8/8/8/8 w - - 0 1")
             .unwrap()
@@ -727,7 +727,7 @@ mod tests {
 
         // from blacks perspective to negate
         let bd = Board::parse_fen("8/8/8/8/8/8/p7/8 b - - 0 1").unwrap().as_board();
-        assert_eq!(bd.eval_position(eval), -Score::Cp(-70));
+        assert_eq!(bd.eval_position(eval), -Score::Cp(-60));
     }
 
     #[test]

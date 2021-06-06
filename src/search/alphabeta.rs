@@ -67,50 +67,47 @@ impl Algo {
         }
 
         
-        if let Some(entry) = self.tt.probe_by_board(board).cloned() {
-            let draft = self.max_depth - ply;
-            
-            if entry.draft >= draft {
-                self.search_stats.inc_tt_nodes(ply);
-                //println!("TtNode:{:?}", entry);
-                // for bounded scores, we know iterating through the nodes might raise alpha, lower beta
-                // doing this now allows us potentuially to cut off without looking at the child nodes
-                match entry.node_type {
-                    NodeType::Pv => {
-                        // previously this position raised alpha, but didnt trigger a cut
-                        // no point going through moves as we know what the max score is
-                        if entry.score > alpha {
-                            self.record_new_pv(ply, &entry.bm, true);
-                        }
-                        return entry.score;
+        let draft = self.max_depth - ply;
+        if let Some(entry) = self.tt.probe_by_board(board, ply, draft).cloned() {
+            self.search_stats.inc_tt_nodes(ply);
+            //println!("TtNode:{:?}", entry);
+            // for bounded scores, we know iterating through the nodes might raise alpha, lower beta
+            // doing this now allows us potentuially to cut off without looking at the child nodes
+            match entry.node_type {
+                NodeType::Pv => {
+                    // previously this position raised alpha, but didnt trigger a cut
+                    // no point going through moves as we know what the max score is
+                    if entry.score > alpha {
+                        self.record_new_pv(ply, &entry.bm, true);
                     }
-                    NodeType::Cut => {
-                        // previously this position raised alpha (sufficiently to cause a cut).
-                        // not all child nodes were scored, so score is a lower bound
-                        // FIXME: probably dont set alpha just the hinted mv and re-search the node
-                        if entry.score > alpha {
-                            self.record_new_pv(ply, &entry.bm, true);
-                            nt = NodeType::Pv;
-                            alpha = entry.score;
-                            if alpha >= beta {
-                                self.search_stats.inc_cuts(ply);
-                                self.tt.store(board.hash(), entry);
-                                return entry.score;
-                            }
-                            score = entry.score;
-                            bm = entry.bm;
-                            // tt_mv = Some(entry.bm); // might help with move ordering
-                        }
-                    }
-                    NodeType::All => {
-                        // previously this position didnt raise alpha, the score is an upper bound
-                        // if the score is still below alpha, this too is an ALL node
-                        if entry.score <= alpha {
+                    return entry.score;
+                }
+                NodeType::Cut => {
+                    // previously this position raised alpha (sufficiently to cause a cut).
+                    // not all child nodes were scored, so score is a lower bound
+                    // FIXME: probably dont set alpha just the hinted mv and re-search the node
+                    if entry.score > alpha {
+                        self.record_new_pv(ply, &entry.bm, true);
+                        nt = NodeType::Pv;
+                        alpha = entry.score;
+                        if alpha >= beta {
+                            self.search_stats.inc_cuts(ply);
+                            self.tt.store(board.hash(), entry);
                             return entry.score;
                         }
+                        score = entry.score;
+                        bm = entry.bm;
+                        // tt_mv = Some(entry.bm); // might help with move ordering
                     }
-                    NodeType::Unused | NodeType::Terminal => unreachable!(),
                 }
+                NodeType::All => {
+                    // previously this position didnt raise alpha, the score is an upper bound
+                    // if the score is still below alpha, this too is an ALL node
+                    if entry.score <= alpha {
+                        return entry.score;
+                    }
+                }
+                NodeType::Unused | NodeType::Terminal => unreachable!(),
             }
         }
 

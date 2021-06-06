@@ -134,7 +134,7 @@ mod tests {
     #[test]
     fn sizes() {
         assert_eq!(size_of::<Move>(), 9, "Move");
-        assert_eq!(size_of::<MoveList>(), 24, "MoveList");
+        assert_eq!(size_of::<MoveList>(), 1156, "MoveList");
         assert_eq!(size_of::<Variation>(), 24, "Variation");
         assert_eq!(size_of::<Piece>(), 1);
         assert_eq!(size_of::<Color>(), 1);

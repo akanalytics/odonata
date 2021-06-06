@@ -392,15 +392,15 @@ mod tests {
         search.move_orderer.enabled = false;
         search.search(&board);
         println!("{}", search);
-        assert_eq!(search.search_stats().total().nodes(), 1326); // piece mob (disabled)
-
+        assert_eq!(search.search_stats().total().nodes(), 1516); // rejigged pawn PST
         // previous
+        // assert_eq!(search.search_stats().total().nodes(), 1326); // piece mob (disabled)
         // assert_eq!(search.search_stats().total().nodes(), 1404); // pawn promo
         // assert_eq!(search.search_stats().total().nodes(), 1480); // gen qsearch
         // assert_eq!(search.search_stats().total().nodes(), 1642); added tt
         // assert_eq!(search.search_stats().total().nodes(), 1833); qsearch sq
         // assert_eq!(search.search_stats().total().nodes(), 1757);
-        assert_eq!(search.search_stats().branching_factor().round() as u64, 2);
+        assert_eq!((search.search_stats().branching_factor() * 10.0).round() as u64, 15);
     }
 
     #[test]
@@ -422,7 +422,7 @@ mod tests {
         search.move_orderer.enabled = false;
         search.search(&board);
         println!("{}", search);
-        assert_eq!(search.pv()[0].uci(), "b8c6");
+        assert_eq!(search.pv()[0].uci(), "d7d5");
     }
 
     #[test]

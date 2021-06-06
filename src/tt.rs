@@ -109,6 +109,7 @@ pub struct TranspositionTable {
     pub use_tt_for_pv: bool,
     pub mb: i64,
     pub hmvc_horizon: i32,
+    pub min_ply: Ply,
     pub hits: Stat,
     pub misses: Stat,
     pub collisions: Stat,
@@ -145,6 +146,7 @@ impl fmt::Display for TranspositionTable {
         writeln!(f, "aging            : {}", self.aging)?;
         writeln!(f, "current age      : {}", self.current_age)?;
         writeln!(f, "hmvc horizon     : {}", self.hmvc_horizon)?;
+        writeln!(f, "min ply          : {}", self.min_ply)?;
         writeln!(f, "table            : {}", self.table.len())?;
         writeln!(f, "entry: pv        : {}", self.count_of(NodeType::Pv))?;
         writeln!(f, "entry: cut       : {}", self.count_of(NodeType::Cut))?;
@@ -195,6 +197,7 @@ impl Component for TranspositionTable {
         c.set("tt.use_tt_for_pv", "type check default true");
         c.set("Hash", "type spin default 33 min 0 max 4000");
         c.set("tt.hmvc_horizon", "type spin default 35 min 0 max 100");
+        c.set("tt.min_ply", "type spin default 35 min 0 max 100");
     }
     fn configure(&mut self, c: &Config) {
         log_debug!("tt.configure with {}", c);
@@ -203,6 +206,7 @@ impl Component for TranspositionTable {
         self.mb = c.int("Hash").unwrap_or(self.mb);
         // table is resized on next clear / generation
         self.hmvc_horizon = c.int("tt.hmvc_horizon").unwrap_or(self.hmvc_horizon as i64) as i32;
+        self.min_ply = c.int("tt.min_ply").unwrap_or(self.min_ply as i64) as Ply;
     }
 
     fn new_game(&mut self) {
@@ -254,6 +258,7 @@ impl TranspositionTable {
             aging: true,
             current_age: 10, // to allow us to look back
             hmvc_horizon: 42,
+            min_ply: 4,
             hits: Stat::new("hits"),
             misses: Stat::new("misses"),
             collisions: Stat::new("collisions"),
@@ -379,8 +384,8 @@ impl TranspositionTable {
         }
     }
 
-    pub fn probe_by_board(&self, board: &Board) -> Option<&TtNode> {
-        if !self.enabled || self.capacity() == 0 {
+    pub fn probe_by_board(&self, board: &Board, ply: Ply, draft: Ply) -> Option<&TtNode> {
+        if !self.enabled || self.capacity() == 0 || ply < self.min_ply {
             return None;
         }
         if board.fifty_halfmove_clock() > self.hmvc_horizon {
@@ -388,9 +393,12 @@ impl TranspositionTable {
             None
         } else {
             let entry = self.probe_by_hash(board.hash());
-            debug_assert!(
-                entry.is_none() || entry.unwrap().bm.is_null() || board.is_legal_move(&entry.unwrap().bm)
-            );
+            if let Some(entry) = entry {
+                if entry.draft < draft {
+                    return None; 
+                }
+                debug_assert!(entry.bm.is_null() || board.is_legal_move(&entry.bm));
+            }
             entry
         }
     }
@@ -432,7 +440,8 @@ impl TranspositionTable {
         // moves.push(*first);
         let mut mv;
         while nodes.len() < 50 {
-            let entry = self.probe_by_board(&board);
+            // probe by hash to avoid all the board filters (ply etc)
+            let entry = self.probe_by_hash(board.hash());
             if let Some(entry) = entry {
                 // we need to be careful, the root node could be written as a Cut node of equal depth
                 // and although opponent shouldn't have let us get there, they did!  

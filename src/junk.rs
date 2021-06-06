@@ -12,22 +12,7 @@ insufficient_material
 
 
 
-// macro_rules! log {
-//     ($msg:expr) => {
-//         LOGGER.with(|logger| {
-//             if let Some(logger) = logger.borrow().last() {
-//                 logger.log($msg)
-//             }
-//         })
-//     }
-// }
 
-// fn main() {
-//     log!("a");
-//     push_context(NetworkLogger, || {
-//         log!("b");
-//     });
-//     log!("c");
 // }
 
 //     pub fn make_move_enum(&self, m: MoveEnum) -> Board {
@@ -1540,3 +1525,16 @@ impl fmt::Display for MoveList {
         Ok(())
     }
 }
+
+
+
+impl Ord for Score {
+    fn cmp(&self, other: &Score) -> cmp::Ordering {
+        if let Score::Cp(_s1) = self {
+            if let Score::Cp(_s2) = other {
+                return PartialOrd::partial_cmp(&self.win_probability(), &other.win_probability()).unwrap();
+            }
+        } 
+        PartialOrd::partial_cmp(self, other).unwrap()
+    }
+}  

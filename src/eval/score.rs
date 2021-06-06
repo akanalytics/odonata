@@ -2,7 +2,7 @@ use crate::outcome::Outcome;
 use crate::types::{Color, Ply};
 use std::fmt;
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 pub enum Score {
     MinusInf,
     WhiteLoss { ply: i32 }, // WhiteLoss(1) < WhiteLoss(5)
@@ -10,6 +10,7 @@ pub enum Score {
     WhiteWin { minus_ply: i32 }, // // WhiteWin(-5) < WhiteWin(-1)
     PlusInf,
 }
+
 
 impl Default for Score {
     #[inline]
@@ -115,17 +116,6 @@ impl Score {
         matches!(self, Self::WhiteLoss { ply: _ } | Self::WhiteWin { minus_ply: _ })
     }
 
-    #[inline]
-    pub fn bound(self, lower: Score, upper: Score) -> Score {
-        if self < lower {
-            lower
-        }
-        else if self > upper {
-            upper}
-        else {
-            self
-        }
-    }
 
     #[inline]
     pub fn negate(self) -> Score {
