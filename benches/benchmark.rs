@@ -872,7 +872,7 @@ fn benchmark_attacks(c: &mut Criterion) {
                     p.board()
                         .rooks()
                         .squares()
-                        .map(|b| (mg.rook_attacks(occ, b) | hq.rook_attacks(occ, b)).popcount() as i32)
+                        .map(|b| (mg.rook_attacks(occ, b) | mg.bishop_attacks(occ, b)).popcount() as i32)
                         .sum::<i32>(),
                 );
             });
