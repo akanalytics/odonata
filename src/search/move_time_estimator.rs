@@ -1,7 +1,7 @@
 use crate::board::Board;
 use crate::clock::Clock;
 use crate::config::{Config, Component};
-use crate::log_debug;
+use crate::{debug, logger::LogInit};
 use crate::search::searchstats::SearchStats;
 use crate::search::timecontrol::TimeControl;
 use crate::types::Ply;
@@ -34,7 +34,7 @@ impl Component for MoveTimeEstimator {
         c.set("mte.deterministic", "type check default false");
     }
     fn configure(&mut self, c: &Config) {
-        log_debug!("mte.configure with {}", c);
+        debug!("mte.configure with {}", c);
         self.branching_factor = c
             .int("mte.branching_factor")
             .unwrap_or(self.branching_factor as i64) as u16;

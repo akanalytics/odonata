@@ -6,7 +6,7 @@ use crate::config::{Config, Component};
 use crate::eval::score::Score;
 use crate::eval::weight::Weight;
 use crate::globals::counts;
-use crate::log_debug;
+use crate::{debug, logger::LogInit};
 use crate::material::Material;
 use crate::mv::Move;
 use crate::stat::{ArrayStat, Stat};
@@ -277,7 +277,7 @@ impl Component for SimpleScorer {
     }
 
     fn configure(&mut self, c: &Config) {
-        log_debug!("eval.configure with {}", c);
+        debug!("eval.configure with {}", c);
         self.cache_eval = c.bool("eval.cache.eval").unwrap_or(self.cache_eval);
         self.cache_qeval = c.bool("eval.cache.qeval").unwrap_or(self.cache_qeval);
         self.mobility = c.bool("eval.mobility").unwrap_or(self.mobility);

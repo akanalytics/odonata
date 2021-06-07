@@ -28,6 +28,8 @@ use odonata::search::timecontrol::TimeControl;
 use odonata::tt::{TtNode, NodeType, TranspositionTable};
 use odonata::types::*;
 use odonata::utils::*;
+use odonata::debug;
+use odonata::logger::LogInit;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
@@ -50,6 +52,7 @@ criterion_group!(
     bitwise_bitflags,
     piece_to_upper_char,
     piece_to_char,
+    bench_logging,
     bench_chooser_struct,
     bench_chooser_wb,
     bench_chooser_array,
@@ -884,6 +887,16 @@ fn benchmark_attacks(c: &mut Criterion) {
 
     group.finish();
 }
+
+
+fn bench_logging(c: &mut Criterion) {
+    c.bench_function("logging", |b| {
+        b.iter(|| {
+            black_box(debug!("The cat sat on the mat and counted {} {} {}", 1,2,black_box(3)));
+        });
+    });
+}
+
 
 fn bench_chooser_array(c: &mut Criterion) {
     let white = Color::White;

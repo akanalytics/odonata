@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::config::{Config, Component};
-use crate::log_debug;
+use crate::{debug, logger::LogInit};
 use crate::mv::{Move};
 use crate::variation::Variation;
 use crate::types::{Hash, Piece};
@@ -19,7 +19,7 @@ impl Component for Repetition {
     }
 
     fn configure(&mut self, c: &Config) {
-        log_debug!("repetition.configure with {}", c);
+        debug!("repetition.configure with {}", c);
         self.enabled = c.bool("move_orderer.enabled").unwrap_or(self.enabled);
     }
     

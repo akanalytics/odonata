@@ -3,7 +3,7 @@ use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::config::{Component, Config};
 use crate::eval::score::Score;
-use crate::log_debug;
+use crate::{debug, logger::LogInit};
 use crate::movelist::MoveList;
 use crate::mv::Move;
 use crate::search::algo::Algo;
@@ -36,7 +36,7 @@ impl Component for QSearch {
         );
     }
     fn configure(&mut self, c: &Config) {
-        log_debug!("qsearch.configure with {}", c);
+        debug!("qsearch.configure with {}", c);
         self.enabled = c.bool("qsearch.enabled").unwrap_or(self.enabled);
         self.only_captures = c.bool("qsearch.only_captures").unwrap_or(self.only_captures);
         self.promos = c.bool("qsearch.promos").unwrap_or(self.promos);

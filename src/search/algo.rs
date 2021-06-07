@@ -3,7 +3,7 @@ use crate::config::{Config, Component};
 use crate::eval::eval::SimpleScorer;
 use crate::eval::score::Score;
 use crate::globals::counts;
-use crate::log_debug;
+use crate::{debug, logger::LogInit};
 use crate::mv::Move;
 use crate::variation::Variation;
 use crate::position::Position;
@@ -113,7 +113,7 @@ impl Component for Algo {
         self.killers.settings(c);
     }
     fn configure(&mut self, c: &Config) {
-        log_debug!("algo.configure with {}", c);
+        debug!("algo.configure with {}", c);
         self.analyse_mode = c.bool("UCI_AnalyseMode").unwrap_or(self.analyse_mode);
         self.minmax = c.bool("algo.minmax").unwrap_or(self.minmax);
         self.eval.configure(c);

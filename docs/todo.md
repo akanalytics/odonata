@@ -1,7 +1,8 @@
 # Todo items
-[ ] Logging
+[X] Logging
+[ ] x-ray in see algorithm
 [ ] Local caching
-[ ] Gamne / pgn export
+[ ] Game / pgn export
 [ ] Branching factor bug
 [ ] Killer moves
 [ ] Rust "template specialization" / branching

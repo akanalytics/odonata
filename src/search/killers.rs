@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::config::{Config, Component};
-use crate::log_debug;
+use crate::{debug, logger::LogInit};
 use crate::mv::Move;
 use crate::movelist::MoveList;
 use crate::types::Ply;
@@ -19,7 +19,7 @@ impl Component for Killers {
         c.set("killers.enabled", "type check default true");
     }
     fn configure(&mut self, c: &Config) {
-        log_debug!("killers.configure with {}", c);
+        debug!("killers.configure with {}", c);
         self.enabled = c.bool("killers.enabled").unwrap_or(self.enabled);
     }
     fn new_game(&mut self) {

@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::config::{Config, Component};
-use crate::log_debug;
+use crate::{debug, logger::LogInit};
 use crate::movelist::MoveList;
 use crate::variation::Variation;
 use crate::mv::Move;
@@ -33,7 +33,7 @@ impl Component for MoveOrderer {
         c.set("move_orderer.mvv_lva", "type check default true");
     }
     fn configure(&mut self, c: &Config) {
-        log_debug!("move_orderer.configure with {}", c);
+        debug!("move_orderer.configure with {}", c);
         self.enabled = c.bool("move_orderer.enabled").unwrap_or(self.enabled);
         self.prior_bm = c.bool("move_orderer.prior_bm").unwrap_or(self.prior_bm);
         self.prior_pv = c.bool("move_orderer.prior_pv").unwrap_or(self.prior_pv);

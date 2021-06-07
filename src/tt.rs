@@ -2,7 +2,7 @@ use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::config::{Config, Component};
 use crate::eval::score::Score;
-use crate::log_debug;
+use crate::{debug, logger::LogInit};
 use crate::mv::{Move};
 use crate::variation::Variation;
 use crate::stat::{ArrayStat, Stat};
@@ -200,7 +200,7 @@ impl Component for TranspositionTable {
         c.set("tt.min_ply", "type spin default 35 min 0 max 100");
     }
     fn configure(&mut self, c: &Config) {
-        log_debug!("tt.configure with {}", c);
+        debug!("tt.configure with {}", c);
         self.aging = c.bool("tt.aging").unwrap_or(self.aging);
         self.use_tt_for_pv = c.bool("tt.use_tt_for_pv").unwrap_or(self.use_tt_for_pv);
         self.mb = c.int("Hash").unwrap_or(self.mb);

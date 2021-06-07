@@ -1,113 +1,85 @@
-use log::{Record, Level, Metadata};
+use env_logger::{Builder, Env};
+use once_cell::sync::Lazy;
 
-struct SimpleLogger;
 
-impl log::Log for SimpleLogger {
+// the logging macros are a bit crufty. to use them in unit tests we check initialization on every use.
+// this means redefining the debug!/info!/warn! etc macros.
+// ideally i'd like to use crate::logger::LogInit in the macro to avoid and includes of "impl" details but
+// this doesnt seem to work for benchmark executable. 
+// Logging is also slow(ish), so not in any really tight loops
+// Benchmarking logging: Warming up for 3.0000 sInitilaized logging
+// logging                 time:   [1.8780 ns 1.8884 ns 1.8994 ns]
 
+pub struct LogInit;
+
+impl LogInit {
     #[inline]
-    fn enabled(&self, metadata: &Metadata) -> bool {
-        metadata.level() <= Level::Debug
+    pub fn bootstrap() -> Self {
+        let mut builder = Builder::from_env(Env::default().default_filter_or("warn"));
+        builder.init();
+        LogInit {}
     }
 
-    #[inline]
-    fn log(&self, record: &Record) {
-
-        if self.enabled(record.metadata()) {
-            eprintln!("{} - {}", record.level(), record.args());
-        }
+    pub fn check_init() {
+        Lazy::force(&LOGGER);
     }
-
-    #[inline]
-    fn flush(&self) {}
 }
 
-// macro_rules! debug {
-//     ($($arg:tt)*) => (if cfg!(debug_assertions) { log!(::log::DEBUG, $($arg)*) })
-// }
+static LOGGER: Lazy<LogInit> = Lazy::new(|| LogInit::bootstrap());
 
 #[macro_export]
 macro_rules! log_debug {
-    (target: $target:expr, $($arg:tt)*) => (
-        {crate::logger::init(); log!(target: $target, log::Level::Debug, $($arg)*)};
-    );
+    // (target: $target:expr, $($arg:tt)*) => (
+    //     {crate::logger::init(); log!(target: $target, log::Level::Debug, $($arg)*)};
+    // );
     ($($arg:tt)*) => (
-        {crate::logger::init(); log!(log::Level::Debug, $($arg)*)};
+        {crate::logger::LogInit::check_init(); log::log!(log::Level::Debug, $($arg)*)};
+    )
+}
+
+#[macro_export]
+macro_rules! debug {
+    ($($arg:tt)*) => (
+        {LogInit::check_init(); log::log!(log::Level::Debug, $($arg)*)};
+    )
+}
+
+#[macro_export]
+macro_rules! info {
+    ($($arg:tt)*) => (
+        {LogInit::check_init(); log::log!(log::Level::Info, $($arg)*)};
+    )
+}
+
+#[macro_export]
+macro_rules! warn {
+    ($($arg:tt)*) => (
+        {LogInit::check_init(); log::log!(log::Level::Warn, $($arg)*)};
+    )
+}
+
+#[macro_export]
+macro_rules! error {
+    ($($arg:tt)*) => (
+        {LogInit::check_init(); log::log!(log::Level::Error, $($arg)*)};
     )
 }
 
 
 
-// macro_rules! log {
-//     (target: $target:expr, $lvl:expr, $($arg:tt)+) => ({
-//         let lvl = $lvl;
-//             andy_log(
-//                 __log_format_args!($($arg)+),
-//                 lvl,
-//                 &($target, __log_module_path!(), __log_file!(), __log_line!()),
-//             );
-//     });
-//     ($lvl:expr, $($arg:tt)+) => (log!(target: __log_module_path!(), $lvl, $($arg)+))
-// }
-
-
-
-// // WARNING: this is not part of the crate's public API and is subject to change at any time
-// #[doc(hidden)]
-// pub fn andy_log(
-//     args: fmt::Arguments,
-//     level: Level,
-//     &(target, module_path, file, line): &(&str, &'static str, &'static str, u32),
-// ) {
-//     println!("Hello andy");
-//     init();
-//     logger().log(
-//         &Record::builder()
-//             .args(args)
-//             .level(level)
-//             .target(target)
-//             .module_path_static(Some(module_path))
-//             .file_static(Some(file))
-//             .line(Some(line))
-//             .build(),
-//     );
-// }
-
-
-
-// #[cfg(not(feature = "slim"))]
-// macro_rules! debug {
-//     ($($arg: tt)*) => { debug!($($arg)*) }
-// }
-
-// #[cfg(feature = "slim")]
-// macro_rules! debug {
-//     ($($arg: tt)*) => { }
-//}
-
-use log::{LevelFilter};
-
-static LOGGER: SimpleLogger = SimpleLogger;
-
-// pub fn init() -> Result<(), SetLoggerError> {
-//     log::set_logger(&LOGGER)
-//         .map(|()| log::set_max_level(LevelFilter::Debug))
-// }
-
-#[inline]
-pub fn init() {
-    log::set_logger(&LOGGER)
-        .map(|()| log::set_max_level(LevelFilter::Warn)).unwrap_or(());
-}
-
 #[cfg(test)]
 mod tests {
 
+    use super::*;
+
     #[test]
     fn test_logger() {
-        // println!("Printed!");
-        // log!("debug: Hellow World!");
-        debug!("debug: Hellow World!");
-        info!("info: Hellow World!");
-        error!("error: Hellow World!");
+        // log::set_max_level(log::LevelFilter::Info);
+        debug!("debug: Hellow world!");
+        info!("info: Hellow world!");
+        warn!("warn: Hellow world!");
+        error!("error: Hellow world!");
+        // log::set_max_level(log::LevelFilter::Trace);
+        debug!("debug: Debug enabled!");
     }
 }
