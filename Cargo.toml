@@ -11,6 +11,9 @@ A simple UCI compliant chess engine
 keywords = ["chess"]
 repository = "https://github.com/akanalytics/odonata"
 
+# for built dependency
+build = "build.rs"  
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -29,6 +32,9 @@ log = { version = "0.4", features = ["release_max_level_info"] }
 [dev-dependencies]
 criterion = "0.3"
 
+
+[build-dependencies]
+built = "0.5"
 
 [[bench]]
 name = "benchmark"

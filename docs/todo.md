@@ -1,22 +1,17 @@
 # Todo items
-[ ] PV extraction  <--- BUGGGGGG
+[ ] Logging
+[ ] Local caching
+[ ] Gamne / pgn export
 [ ] Branching factor bug
-[ ] Config. Like debug. Pass in &ref for defaults, naming etc
 [ ] Killer moves
-[ ] Rust "template specialization"
-[ ] Draw repeats with TT
+[ ] Rust "template specialization" / branching
 [ ] Analyses WAC.259 q search which explodes to 50m posn 
   - r1bq1rk1/ppp2ppp/2np4/2bN1PN1/2B1P3/3p4/PPP2nPP/R1BQ1K1R w - - 0 1
-- 
-
-
-[X] Aging tt
 [ ] REWORK NODE LOGIC. Esp when to write PV and IDS
 [ ] outcome cache on eval. Qsearch eval cache and tt?
 [ ] Pawn chains fixed 
 [ ] Null move pruning
 [ ] Fix board ==
-[X] Non linear piece mobility
 [ ] E/P when not relelvant and tt
 [ ] Prime the startup on uci with a search
 [ ] forks after qsearch http://macechess.blogspot.com/2010/11/horizon-effect.htm
@@ -24,12 +19,21 @@
 UCI
 [ ] multi PV
 [ ] Searchmoves in UCI
-[X] CLear hash
+[ ] Clear hash
+
+
+# Done
+[X] PV extraction  
+[X] Non linear piece mobility
+[X] Draw repeats with TT
+[X] Config. Like debug. Pass in &ref for defaults, naming etc
+[X] Cancel soon after thread start
+[X] Occasional PV screwup
+[X] Aging tt
+
 
 
 - Bug fixes
-  - [X] Cancel soon after thread start
-  - [X] Occasional PV screwup
   - stop IDS if nodes not increasing or max depth < depth>
 
 

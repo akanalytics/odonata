@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.3.18 (not yet released)
+- added splash with compiler features / optimizations
+
 ## 0.3.17
 - pondering 
 - fixed bug with pv lenght on uci info

@@ -9,6 +9,14 @@ pub struct Console {
     _algo: Algo,
 }
 
+
+// see https://docs.rs/built/0.5.1/built/
+pub mod built_info {
+    // The file has been placed there by the build script.
+    include!(concat!(env!("OUT_DIR"), "/built.rs"));
+ }
+
+
 impl Console {
     pub fn run() {
         Self::help();
@@ -47,6 +55,9 @@ impl Console {
     pub fn help() {
         println!("{} version {} by {}", Version::NAME, Version::VERSION, Version::AUTHORS);
         println!();
+        Self::small_splash();
+        println!();
+        println!("Commands...");
         println!("{:<10} {}", "uci", "enter uci protocol mode");
         println!("{:<10} {}", "quit", "quit the program");
         println!("{:<10} {}", "splash", "splash screen");
@@ -60,5 +71,13 @@ impl Console {
         println!("{}", Version::IMAGE);
         println!("please see {} for updates,\nreleases and license details.", Version::HOMEPAGE);
         println!();
+    }
+
+    pub fn small_splash() {
+        println!("target       : {}", built_info::TARGET);
+        println!("profile      : {}", built_info::PROFILE);
+        println!("optimization : {}",   built_info::OPT_LEVEL);
+        println!("rustc        : {}", built_info::RUSTC_VERSION);
+        println!("features     : {}",  built_info::FEATURES_STR);
     }
 }
