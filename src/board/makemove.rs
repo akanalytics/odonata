@@ -15,6 +15,10 @@ use std::cell::Cell;
 
 
 
+
+
+
+
 pub trait MoveMaker {
     fn make_move(&self, m: &Move) -> Board;
     fn make_moves(&self, m: &Variation) -> Board;
@@ -202,7 +206,7 @@ mod tests {
     use crate::board::boardbuf::BoardBuf;
     use crate::board::*;
     use crate::catalog::*;
-    use crate::movelist::MoveValidator;
+    // use crate::movelist::MoveValidator;
     use crate::globals::constants::*;
 
 

@@ -38,6 +38,13 @@ macro_rules! log_debug {
 }
 
 #[macro_export]
+macro_rules! trace {
+    ($($arg:tt)*) => (
+        {LogInit::check_init(); log::log!(log::Level::Trace, $($arg)*)};
+    )
+}
+
+#[macro_export]
 macro_rules! debug {
     ($($arg:tt)*) => (
         {LogInit::check_init(); log::log!(log::Level::Debug, $($arg)*)};
@@ -75,10 +82,11 @@ mod tests {
     #[test]
     fn test_logger() {
         // log::set_max_level(log::LevelFilter::Info);
+        trace!("trace: Hellow world!");
         debug!("debug: Hellow world!");
         info!("info: Hellow world!");
         warn!("warn: Hellow world!");
-        error!("error: Hellow world!");
+        // error!("error: Hellow world!");
         // log::set_max_level(log::LevelFilter::Trace);
         debug!("debug: Debug enabled!");
     }

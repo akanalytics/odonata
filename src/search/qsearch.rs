@@ -3,7 +3,7 @@ use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::config::{Component, Config};
 use crate::eval::score::Score;
-use crate::{debug, logger::LogInit};
+use crate::{debug, trace, logger::LogInit};
 use crate::movelist::MoveList;
 use crate::mv::Move;
 use crate::search::algo::Algo;
@@ -16,6 +16,7 @@ pub struct QSearch {
     pub enabled: bool,
     pub only_captures: bool,
     pub promos: bool,
+    pub ignore_see_fails: bool,
     pub see: bool,
     pub see_cutoff: i64,
     max_ply: u16,
@@ -29,6 +30,7 @@ impl Component for QSearch {
         c.set("qsearch.promos", "type check default true");
         c.set("qsearch.see", "type check default true");
         c.set("qsearch.see.cutoff", "type spin default 0 min -5000 max 5000");
+        c.set("qsearch.see.ignore_fails", "type check default true");
         c.set("qsearch.max_ply", "type spin default 10 min 0 max 100");
         c.set(
             "qsearch.coarse_delta_prune_cp",
@@ -42,6 +44,7 @@ impl Component for QSearch {
         self.promos = c.bool("qsearch.promos").unwrap_or(self.promos);
         self.see = c.bool("qsearch.see").unwrap_or(self.see);
         self.see_cutoff = c.int("qsearch.see.cutoff").unwrap_or(self.see_cutoff);
+        self.ignore_see_fails = c.bool("qsearch.see.ignore_fails").unwrap_or(self.ignore_see_fails);
         self.max_ply = c.int("qsearch.max_ply").unwrap_or(self.max_ply as i64) as u16;
         if let Some(cp) = c.int("qsearch.coarse_delta_prune_cp") {
             self.coarse_delta_prune = Score::cp(cp as i32);
@@ -58,6 +61,7 @@ impl Default for QSearch {
             enabled: true,
             only_captures: false,
             see: true,
+            ignore_see_fails: true,
             see_cutoff: 0,
             promos: true,
             max_ply: 10,
@@ -71,6 +75,7 @@ impl fmt::Display for QSearch {
         writeln!(f, "enabled          : {}", self.enabled)?;
         writeln!(f, "only captures    : {}", self.only_captures)?;
         writeln!(f, "see enabled      : {}", self.see)?;
+        writeln!(f, "ignore see fails : {}", self.ignore_see_fails)?;
         writeln!(f, "promos           : {}", self.promos)?;
         writeln!(f, "see cutoff       : {}", self.see_cutoff)?;
         writeln!(f, "max_ply          : {}", self.max_ply)?;
@@ -100,7 +105,7 @@ impl Algo {
 
     pub fn qsearch_see(
         &mut self,
-        mut sq: Bitboard,
+        mut recaptures: Bitboard,
         ply: Ply,
         board: &mut Board,
         mut alpha: Score,
@@ -112,6 +117,7 @@ impl Algo {
         let standing_pat;
         if ply == self.max_depth {
             standing_pat = board.eval(&mut self.eval, &Node { ply, alpha, beta });
+            trace!("{}", board.debug() + "Standing pat (eval)" + standing_pat);
             if standing_pat.is_mate() {
                 return standing_pat;
             }
@@ -119,10 +125,12 @@ impl Algo {
             standing_pat = alpha;
         } else {
             standing_pat = board.eval_qsearch(&mut self.eval, &Node { ply, alpha, beta });
+            trace!("{}", board.debug() + "Standing pat (eval_qsearch)" + standing_pat);
         }
         if standing_pat > alpha {
             if standing_pat >= beta {
                 self.search_stats.inc_q_leaf_nodes(ply);
+                trace!("{}", board.debug() + ply + "fail high - standing pat" + standing_pat + "cmp" + beta);
                 return beta;
             }
             alpha = standing_pat;
@@ -161,36 +169,51 @@ impl Algo {
         self.order_moves(ply, &mut moves, &None);
         for mv in moves.iter() {
             // FIXME! skip illegal moves
-            if !in_check && !mv.is_ep_capture() && mv.to().as_bb().disjoint(sq) {
+            trace!("{}", board.debug() + "examining move" + mv + "using" + Node { ply, alpha, beta} );
+            if !in_check && !mv.is_ep_capture() && mv.to().as_bb().disjoint(recaptures) {
                 let score = board.eval_move_see(&self.eval, &mv);
-                let losing = false;
+                let winning = false;
                 // allow 8 matched attackers
                 let bar = self.qsearch.see_cutoff as i32;
-                if score < Score::Cp(bar) || score == Score::Cp(bar) && (losing || ply < 2 + self.max_depth) {
-                    continue;
+                if score < Score::Cp(bar) || score == Score::Cp(bar) && (winning || ply <= self.max_depth + 1) {
+                    trace!("{}", board.debug() + "see score bad" + score + "cmp" + Score::Cp(bar) + "for" + mv  );
+                    if self.qsearch.ignore_see_fails {
+                        continue; 
+                    } else {
+                        continue;  // FIXME? Add to a bad move list
+                    }
+                } else {
+                    trace!("{}", board.debug() + "see score good" + score + "cmp" + Score::Cp(bar) + "for" + mv  );
                 }
             }
             let mut child = board.make_move(&mv);
             // delta prune on the move - FIXME - think about delta prune when checks
             if !in_check
-                && !child.is_in_check(child.color_us())
                 && board.eval_move_material(&self.eval, &mv) + standing_pat <= alpha
+                && !child.is_in_check(child.color_us())  // = will_check_them
             {
                 board.undo_move(mv);
                 continue;
             }
-            let score = -self.qsearch_see(sq ^ mv.to().as_bb(), ply + 1, &mut child, -beta, -alpha);
+            // mark the square so the recapture is considered
+            trace!("{}", board.debug() + ply + "iterating on " + mv);
+            let score = -self.qsearch_see(recaptures ^ mv.to().as_bb(), ply + 1, &mut child, -beta, -alpha);
             board.undo_move(mv);
             if score > beta {
+                trace!("{}", board.debug() + ply + score + "fails high" + beta + mv);
                 return score;
             }
             if score > alpha {
+                trace!("{}", board.debug() + ply + score + "raises alpha" + alpha + mv);
                 alpha = score;
             }
             // don't see_evaluate the hot square again
-            sq -= mv.to().as_bb();
+            recaptures -= mv.to().as_bb();
         }
 
+        // we should not return a mate score, as only captures have been considered,
+        // and a mate score might cut a genuine mate score elsewhere
+        trace!("{}", board.debug() + ply + "returns with score of" + alpha);
         alpha.clamp(Score::Cp(-10000), Score::Cp(10000))
     }
 }
@@ -222,6 +245,28 @@ mod tests {
         }
         Ok(())
     }
+
+    #[test]
+    fn test_qsearch_examples() -> Result<(), String> {
+        trace!("test_qsearch_examples");
+        let pos = &Catalog::quiese()[1];
+        let mut b = pos.board().color_flip();
+        trace!("board {}", b.to_fen());
+        let mut eval = SimpleScorer::new();
+        eval.position = false;
+        eval.mobility = false;
+        eval.phasing = false;
+        let node = Node::root();
+        let static_eval = b.eval(&mut eval, &node);
+
+        let mut algo = Algo::new().set_timing_method(TimeControl::Depth(0)).set_eval(eval).build();
+        let quiese_eval = algo.qsearch_see(Bitboard::EMPTY, node.ply, &mut b, node.alpha, node.beta);
+
+        println!("{}", algo);
+        trace!("static: {}  quiese: {}", static_eval, quiese_eval);
+        Ok(())
+    }
+
 
     #[test]
     fn test_see_vs_sq() -> Result<(), String> {

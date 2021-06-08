@@ -5,7 +5,7 @@ use crate::mv::{Move};
 use crate::variation::{Variation};
 
 use crate::movelist::{MoveList};
-use crate::movelist::MoveValidator;
+// use crate::movelist::MoveValidator;
 use crate::types::{Color};
 use crate::bitboard::castling::CastlingRights;
 use crate::utils::StringUtils;

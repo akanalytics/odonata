@@ -221,6 +221,21 @@ impl Board {
         Bitboard::EMPTY
     }
 
+
+    // https://www.chessprogramming.org/Color_Flipping
+    pub fn color_flip(&self) -> Board {
+        let mut b = self.clone();
+        b.colors = [self.colors[1].flip_vertical(), self.colors[0].flip_vertical()];
+        b.pieces.iter_mut().for_each(|bb| *bb = bb.flip_vertical() );
+        b.turn = self.turn.opposite();
+        b.en_passant = self.en_passant().flip_vertical();
+        b.castling = self.castling.color_flip();
+        b.calculate_internals();
+        debug_assert!(b.validate().is_ok());
+        b
+    }
+    
+
     pub fn to_fen(&self) -> String {
         let b = self.clone();
 
@@ -305,6 +320,21 @@ mod tests {
     use super::*;
     use crate::catalog::*;
     use crate::globals::constants::*;
+
+
+    #[test]
+    fn test_color_flip() {
+        let board1 = Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap().as_board();
+        let board2 = Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1").unwrap().as_board();
+        assert_eq!(board1.color_flip().to_fen(), board2.to_fen(), "{:#}\n{:#}", board1.color_flip(), board2);
+        assert_eq!(board2.color_flip().to_fen(), board1.to_fen());
+    
+
+        let board1 = Board::parse_fen("rnb1k2r/pp3ppp/4p3/3pB3/2pPn3/2P1PN2/q1P1QPPP/2KR1B1R b kq - 1 11").unwrap();
+        let board2 = Board::parse_fen("2kr1b1r/Q1p1qppp/2p1pn2/2PpN3/3Pb3/4P3/PP3PPP/RNB1K2R w KQ - 1 11").unwrap();
+        assert_eq!(board1.color_flip().to_fen(), board2.to_fen(), "{:#}\n{:#}", board1.color_flip(), board2);
+        assert_eq!(board2.color_flip().to_fen(), board1.to_fen());
+    }
 
     #[test]
     fn to_fen() {

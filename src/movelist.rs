@@ -321,21 +321,21 @@ impl fmt::Display for MoveList {
     }
 }
 
-pub trait MoveValidator {
-    fn parse_uci_move(&self, mv: &str) -> Result<Move, String>;
-    fn parse_uci_choices(&self, moves: &str) -> Result<MoveList, String>;
-    fn parse_uci_moves(&self, moves: &str) -> Result<Variation, String>;
+// pub trait MoveValidator {
+//     fn parse_uci_move(&self, mv: &str) -> Result<Move, String>;
+//     fn parse_uci_choices(&self, moves: &str) -> Result<MoveList, String>;
+//     fn parse_uci_moves(&self, moves: &str) -> Result<Variation, String>;
 
-    fn parse_san_move(&self, mv: &str) -> Result<Move, String>;
-    fn parse_san_choices(&self, moves: &str) -> Result<MoveList, String>;
-    fn parse_san_moves(&self, moves: &str) -> Result<Variation, String>;
+//     fn parse_san_move(&self, mv: &str) -> Result<Move, String>;
+//     fn parse_san_choices(&self, moves: &str) -> Result<MoveList, String>;
+//     fn parse_san_moves(&self, moves: &str) -> Result<Variation, String>;
 
-    fn to_san(&self, mv: &Move) -> String;
-    fn to_san_moves(&self, moves: &Variation, vec_tags: Option<&Vec<Tags>>) -> String;
-}
+//     fn to_san(&self, mv: &Move) -> String;
+//     fn to_san_moves(&self, moves: &Variation, vec_tags: Option<&Vec<Tags>>) -> String;
+// }
 
-impl MoveValidator for Board {
-    fn parse_uci_move(&self, mv: &str) -> Result<Move, String> {
+impl Board {
+    pub fn parse_uci_move(&self, mv: &str) -> Result<Move, String> {
         let moves = self.legal_moves();
         for &m in moves.iter() {
             if m.uci() == mv {
@@ -345,7 +345,7 @@ impl MoveValidator for Board {
         Err(format!("Move {} is not legal for board {}", mv, self.to_fen()))
     }
 
-    fn parse_uci_choices(&self, s: &str) -> Result<MoveList, String> {
+    pub fn parse_uci_choices(&self, s: &str) -> Result<MoveList, String> {
         let mut moves = MoveList::new();
         let s = s.replace(",", " ");
         let s = strip_move_numbers(&s);
@@ -355,7 +355,7 @@ impl MoveValidator for Board {
         Ok(moves)
     }
 
-    fn parse_uci_moves(&self, s: &str) -> Result<Variation, String> {
+    pub fn parse_uci_moves(&self, s: &str) -> Result<Variation, String> {
         let mut board = self.clone();
         let mut moves = Variation::new();
         let s = s.replace(",", " ");
@@ -368,11 +368,11 @@ impl MoveValidator for Board {
         Ok(moves)
     }
 
-    fn parse_san_move(&self, mv: &str) -> Result<Move, String> {
+    pub fn parse_san_move(&self, mv: &str) -> Result<Move, String> {
         Parse::move_san(mv, self)
     }
 
-    fn parse_san_choices(&self, s: &str) -> Result<MoveList, String> {
+    pub fn parse_san_choices(&self, s: &str) -> Result<MoveList, String> {
         let mut moves = MoveList::new();
         let s = s.replace(",", " ");
         let s = strip_move_numbers(&s);
@@ -382,7 +382,7 @@ impl MoveValidator for Board {
         Ok(moves)
     }
 
-    fn parse_san_moves(&self, s: &str) -> Result<Variation, String> {
+    pub fn parse_san_moves(&self, s: &str) -> Result<Variation, String> {
         let mut board = self.clone();
         let mut moves = Variation::new();
         let s = s.replace(",", " ");
@@ -395,7 +395,7 @@ impl MoveValidator for Board {
         Ok(moves)
     }
 
-    fn to_san(&self, mv: &Move) -> String {
+    pub fn to_san(&self, mv: &Move) -> String {
         if mv.is_castle() {
             if mv.castling_side().is_king_side() {
                 return String::from("O-O");
@@ -451,7 +451,7 @@ impl MoveValidator for Board {
         s
     }
 
-    fn to_san_moves(&self, moves: &Variation, vec_tags: Option<&Vec<Tags>>) -> String {
+    pub fn to_san_moves(&self, moves: &Variation, vec_tags: Option<&Vec<Tags>>) -> String {
         let mut s = String::new();
         let mut board = self.clone();
         for (i, mv) in moves.iter().enumerate() {

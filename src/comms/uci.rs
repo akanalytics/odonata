@@ -5,7 +5,7 @@ use crate::catalog::Catalog;
 use crate::config::{Config, Component};
 use crate::mv::Move;
 use crate::clock::Clock;
-use crate::movelist::MoveValidator;
+// use crate::movelist::MoveValidator;
 use crate::variation::Variation;
 use crate::perft::Perft;
 use crate::search::algo::Algo;
@@ -18,6 +18,7 @@ use crate::version::Version;
 use std::fmt;
 use std::io::{self, Write};
 use std::time::{Duration, Instant};
+use crate::logger::LogInit;
 use std::thread;
 
 

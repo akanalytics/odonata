@@ -60,7 +60,7 @@ impl SimpleScorer {
 mod tests {
     use super::*;
     use crate::board::boardbuf::BoardBuf;
-    use crate::movelist::MoveValidator;
+    // use crate::movelist::MoveValidator;
 
     #[test]
     fn test_see() {

@@ -192,6 +192,7 @@ mod tests {
         search.mte.deterministic = true;
         search.search(position.board());
         println!("{}", search);
-        assert!(search.search_stats().total().nodes() < 4800);
+        assert!(search.search_stats().total().nodes() < 4900, "nodes {}", search.search_stats().total().nodes());
+        assert!(search.search_stats().total().nodes() > 4300, "nodes {}", search.search_stats().total().nodes());
     }
 }

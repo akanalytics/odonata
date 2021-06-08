@@ -2,7 +2,7 @@ use crate::board::boardbuf::BoardBuf;
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::catalog::Catalog;
-use crate::movelist::MoveValidator;
+// use crate::movelist::MoveValidator;
 use crate::mv::{Move};
 use crate::variation::Variation;
 use crate::outcome::Outcome;

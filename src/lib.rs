@@ -5,21 +5,30 @@
 extern crate bitflags;
 // extern crate lazy_static;
 
-#[macro_use]
-extern crate log;
+// #[macro_use]
+// extern crate log;
 
 extern crate once_cell;
 
 extern crate regex;
 // extern crate crossbeam;
 
+
+#[macro_use]
 pub mod logger;
+
+pub use crate::logger::LogInit;
+
+
+
+// pub mod logger;
 pub mod bitboard;
 pub mod board;
 pub mod catalog;
 pub mod clock;
 pub mod comms;
 pub mod config;
+pub mod debug;
 pub mod eval;
 pub mod exam;
 pub mod game;
@@ -56,6 +65,6 @@ pub use crate::position::Position;
 pub use crate::search::algo::Algo;
 pub use crate::search::searchstats::SearchStats;
 pub use crate::tags::Tags;
-pub use crate::logger::LogInit;
+// pub use crate::logger::LogInit;
 pub use crate::types::{Color, Piece};
 pub use crate::version::Version;

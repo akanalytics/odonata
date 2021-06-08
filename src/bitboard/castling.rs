@@ -172,6 +172,24 @@ impl CastlingRights {
         }
         loss
     }
+
+    #[inline]
+    pub fn color_flip(&self) -> CastlingRights {
+        let mut cr = Self::NONE;
+        if self.contains(Self::BLACK_KING) {
+            cr |= Self::WHITE_KING;
+        }
+        if self.contains(Self::BLACK_QUEEN) {
+            cr |= Self::WHITE_QUEEN;
+        }
+        if self.contains(Self::WHITE_KING) {
+            cr |= Self::BLACK_KING;
+        }
+        if self.contains(Self::WHITE_QUEEN) {
+            cr |= Self::BLACK_QUEEN;
+        }
+        cr
+    }
 }
 
 impl fmt::Display for CastlingRights {

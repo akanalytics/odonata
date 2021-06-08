@@ -226,7 +226,7 @@ mod tests {
     use crate::catalog::*;
     use crate::globals::constants::*;
     extern crate env_logger;
-    use crate::movelist::MoveValidator;
+    // use crate::movelist::MoveValidator;
 
     fn _init() {
         // env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();

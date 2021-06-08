@@ -334,7 +334,7 @@ mod tests {
     use super::*;
     use crate::board::boardbuf::*;
     use crate::catalog::Catalog;
-    use crate::movelist::MoveValidator;
+    // use crate::movelist::MoveValidator;
 
     #[test]
     fn test_move() {

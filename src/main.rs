@@ -1,5 +1,4 @@
 use clap::{App, Arg};
-use env_logger;
 use odonata::comms::console::Console;
 use odonata::comms::uci::Uci;
 use odonata::comms::bench::Bench;
@@ -17,12 +16,12 @@ fn main() -> Result<(), std::num::ParseIntError> {
         .version(Version::VERSION)
         .author(Version::AUTHORS)
         .about(Version::HOMEPAGE)
-        .arg(
-            Arg::with_name("v")
-                .short("v")
-                .multiple(true)
-                .help("sets the level of logging verbosity: eg -vv or -vvv"),
-        )
+        // .arg(
+        //     Arg::with_name("v")
+        //         .short("v")
+        //         .multiple(true)
+        //         .help("sets the level of logging verbosity: eg -vv or -vvv"),
+        // )
         .arg(Arg::with_name("uci")
             .help("enter uci mode without waiting for 'uci' on stdin")
             .short("u")
@@ -37,15 +36,15 @@ fn main() -> Result<(), std::num::ParseIntError> {
 
     // Vary the output based on how many times the user used the "verbose" flag
     // (i.e. 'myprog -v -v -v' or 'myprog -vvv' vs 'myprog -v'
-    let log_level = match matches.occurrences_of("v") {
-        0 => "error",
-        1 => "warn",
-        2 => "info",
-        3 => "debug",
-        4 | _ => "trace",
-    };
+    // let log_level = match matches.occurrences_of("v") {
+    //     0 => "error",
+    //     1 => "warn",
+    //     2 => "info",
+    //     3 => "debug",
+    //     4 | _ => "trace",
+    // };
 
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(log_level)).init();
+    // env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(log_level)).init();
 
     if matches.is_present("uci") {
         Uci::new().run();

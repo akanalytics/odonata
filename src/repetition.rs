@@ -142,7 +142,6 @@ impl Repetition {
 mod tests {
     use super::*;
     use crate::catalog::*;
-    use crate::movelist::*;
     use crate::comms::uci::Uci;
     use crate::search::timecontrol::*;
     use crate::search::algo::*;

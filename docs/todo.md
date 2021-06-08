@@ -1,5 +1,6 @@
 # Todo items
 [X] Logging
+[ ] Fix logging via switches
 [ ] x-ray in see algorithm
 [ ] Local caching
 [ ] Game / pgn export
