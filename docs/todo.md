@@ -1,37 +1,63 @@
 # Todo items
-[X] Logging
-[ ] Fix logging via switches
-[ ] x-ray in see algorithm
-[ ] Local caching
-[ ] Game / pgn export
-[ ] Branching factor bug
-[ ] Killer moves
-[ ] Rust "template specialization" / branching
-[ ] Analyses WAC.259 q search which explodes to 50m posn 
-  - r1bq1rk1/ppp2ppp/2np4/2bN1PN1/2B1P3/3p4/PPP2nPP/R1BQ1K1R w - - 0 1
-[ ] REWORK NODE LOGIC. Esp when to write PV and IDS
-[ ] outcome cache on eval. Qsearch eval cache and tt?
-[ ] Pawn chains fixed 
-[ ] Null move pruning
-[ ] Fix board ==
-[ ] E/P when not relelvant and tt
-[ ] Prime the startup on uci with a search
-[ ] forks after qsearch http://macechess.blogspot.com/2010/11/horizon-effect.htm
 
-UCI
-[ ] multi PV
-[ ] Searchmoves in UCI
-[ ] Clear hash
+## General
+- [ ] x-ray in see algorithm
+- [ ]  tt table. 
+  - use xor'ing trck for duplicates (https://binarydebt.wordpress.com/2013/09/29/lockless-transposition-tables/). 
+  - check legalality on probe.
+  - pluggable replacement strats
+  - packed structs  like https://docs.rs/packed_struct/0.5.0/packed_struct/ (mv=16, node=2, score=14 [16384], draft=8, generation=8 ) leaving 16 bits for hash? Prob not enough. So basically needs to be Atomic128s or brace of Atomic64s
+  - leaves enough room to pack extra collision detection or bucket fields. 
+- [ ] "Local" caching
+- [ ] Game / pgn export
+- [ ] Branching factor bug
+- [ ] Killer moves
+- [ ] Rust "template specialization" / branching
+- [ ] Analyses WAC.259 q search which explodes to 50m posn 
+  - r1bq1rk1/ppp2ppp/2np4/2bN1PN1/2B1P3/3p4/PPP2nPP/R1BQ1K1R w - - 0 1
+- [ ] REWORK NODE LOGIC. Esp when to write PV and IDS
+- [ ] outcome cache on eval. Qsearch eval cache and tt?
+- [ ] Pawn chains fixed 
+- [ ] Null move pruning
+- [ ] Fix board ==
+- [ ] E/P when not relelvant and tt
+- [ ] Prime the startup on uci with a search
+
+
+## Todo multi-threading
+- [ ] Task control to potentially use channels rather than atomics (stop/ponderhit so far)
+- [ ] "Stats" shared class to be split up into components
+- [ ] Aggregate class to collect stats from all thread local components
+- [ ] Thread Pool - not needed in first instance
+- [ ] tt -lets mutex it first before the atomic refactoring above (some already atomic)
+- [ ] Pad the read-only data (lookup tables) so CPU cached without fear of neighbouring write (tiny mem I recall)
+- [ ] Command line or num_cpus (default?) switch for threading
+- [ ] Overall design. Pull TaskControl outside of Algo. Engine = Algo+Task control = threaded algorithm. Test code stays (largely)as is. 
+
+## UCI
+- [ ] multi PV
+- [ ] Searchmoves in UCI
+- [ ] Clear hash
+- [ ] wdl as in  UCI_ShowWDL from Leela
+- [ ] engine wrapper
+
+## Lichess
+- [ ] use https://berserk.readthedocs.io/en/master/
+- [ ] challenege other bots
+- [ ] record stats
+
 
 
 # Done
-[X] PV extraction  
-[X] Non linear piece mobility
-[X] Draw repeats with TT
-[X] Config. Like debug. Pass in &ref for defaults, naming etc
-[X] Cancel soon after thread start
-[X] Occasional PV screwup
-[X] Aging tt
+- [X] Logging
+- [X] Fix logging via switches
+- [X] PV extraction  
+- [X] Non linear piece mobility
+- [X] Draw repeats with TT
+- [X] Config. Like debug. Pass in &ref for defaults, naming etc
+- [X] Cancel soon after thread start
+- [X] Occasional PV screwup
+- [X] Aging tt
 
 
 
@@ -124,15 +150,7 @@ UCI
     - [ ] is quiet or replace with  I replace every position with the leaf of their q-search
     - [ ] material score (plus other operations eg check, draw, outcome, #legal moves, )
 
-- Lichess
-  - use https://berserk.readthedocs.io/en/master/
-  - challenege other bots
-  - record stats
 
-
-- UCI
-  - wdl as in  UCI_ShowWDL from Leela
-  - engine wrapper
   
 
 - Interface Rust + Python
