@@ -1,11 +1,9 @@
 use crate::board::Board;
-use crate::config::{Config, Component};
+use crate::config::{Component, Config};
 use crate::eval::eval::SimpleScorer;
 use crate::eval::score::Score;
 use crate::globals::counts;
-use crate::{debug, logger::LogInit};
 use crate::mv::Move;
-use crate::variation::Variation;
 use crate::position::Position;
 use crate::pvtable::PvTable;
 use crate::repetition::Repetition;
@@ -21,12 +19,60 @@ use crate::search::timecontrol::TimeControl;
 use crate::tags::Tag;
 use crate::tt::TranspositionTable;
 use crate::types::Ply;
+use crate::variation::Variation;
+use crate::{debug, logger::LogInit};
 use std::fmt;
 use std::ops::Range;
-use std::thread;
+use std::thread::{self, JoinHandle};
 
+#[derive(Debug)]
+pub struct Engine {
+    algo: Algo,
+    thread_count: u8,
+    threads: Vec<JoinHandle<Algo>>,
+}
 
+impl Engine {
+    pub fn new() -> Self {
+        Engine {
+            algo: Algo::default(),
+            thread_count: 2,
+            threads: vec![],
+        }
+    }
 
+    pub fn search_async(&mut self, b: &Board) {
+        for t in 0..self.thread_count {
+            const FOUR_MB: usize = 4 * 1024 * 1024;
+            let builder = thread::Builder::new()
+                .name(format!("search {}", t))
+                .stack_size(FOUR_MB);
+            self.algo.board = b.clone();
+            let mut algo = self.algo.clone();
+            self.threads.push(
+                builder
+                    .spawn(move || {
+                        algo.search_iteratively();
+                        algo
+                    })
+                    .unwrap(),
+            );
+        }
+    }
+
+    pub fn search_async_stop(&mut self) {
+        self.algo.task_control.cancel();
+        self.algo.search_stats.user_cancelled = true;
+        self.wait();
+    }
+
+    pub fn wait(&mut self) {
+        for t in self.threads.drain(..) {
+            let algo = t.join().unwrap();
+            debug!("Thread returned {}", algo);  // t.thread().name().unwrap(), 
+        }
+    }
+}
 
 
 #[derive(Clone, Default)]
@@ -40,7 +86,6 @@ pub struct Algo {
     pub qsearch: QSearch,
     pub search_stats: SearchStats,
 
-    pub range: Range<Ply>,
     pub pv_table: PvTable,
     pub current_best: Option<Move>,
     pub analyse_mode: bool, // tries to find full PV etc
@@ -151,10 +196,7 @@ impl Component for Algo {
         self.repetition.new_search();
         self.tt.new_search();
         self.killers.new_search();
-
-
-    }    
-
+    }
 }
 
 impl fmt::Debug for Algo {
@@ -171,7 +213,6 @@ impl fmt::Debug for Algo {
             .field("move_orderer", &self.move_orderer)
             .field("mte", &self.mte)
             .field("depth", &self.max_depth)
-            .field("range", &self.range)
             .field("search_stats", &self.search_stats)
             .field("qsearch", &self.qsearch)
             .field("ids", &self.ids)
@@ -192,7 +233,6 @@ impl fmt::Display for Algo {
         writeln!(f, "score            : {}", self.score())?;
         writeln!(f, "analyse mode     : {}", self.analyse_mode)?;
         writeln!(f, "depth            : {}", self.max_depth)?;
-        writeln!(f, "range            : {:?}", self.range)?;
         writeln!(
             f,
             "current_best     : {}",
@@ -228,8 +268,6 @@ impl Clone for AlgoThreadHandle {
 }
 
 impl Algo {
-
-
     pub fn report_progress(&self) {
         if self.search_stats.total().nodes() % 5_000_000 == 0 && self.search_stats.total().nodes() != 0 {
             let sp = SearchProgress::from_stats(&self.search_stats(), self.board.color_us());
@@ -292,13 +330,11 @@ impl Algo {
         self.search_stats().pv()
     }
 
-
     pub fn ponder_hit(&mut self) {
         self.mte.set_shared_ponder(false);
-        
+
         self.search_stats.restart_clocks();
     }
-
 
     pub fn search_async_stop(&mut self) -> bool {
         self.task_control.cancel();
@@ -355,13 +391,22 @@ mod tests {
     use crate::types::*;
     use std::time;
 
-    fn init() {
-        // env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+
+
+    #[test]
+    fn test_threading() {
+        let mut eng = Engine::new();
+        let b = Catalog::starting_position();
+        eng.search_async(&b);
+        eng.wait();
+
+        // mut search = Algo::new()
+        //     .set_timing_method(TimeControl::Depth(4))
+
     }
 
     #[test]
     fn test_minmax() {
-        // init();
         let board = Catalog::starting_position();
         let eval = SimpleScorer::new().set_position(false);
         let mut search = Algo::new()
@@ -393,14 +438,17 @@ mod tests {
         search.search(&board);
         println!("{}", search);
         assert_eq!(search.search_stats().total().nodes(), 1516); // rejigged pawn PST
-        // previous
-        // assert_eq!(search.search_stats().total().nodes(), 1326); // piece mob (disabled)
-        // assert_eq!(search.search_stats().total().nodes(), 1404); // pawn promo
-        // assert_eq!(search.search_stats().total().nodes(), 1480); // gen qsearch
-        // assert_eq!(search.search_stats().total().nodes(), 1642); added tt
-        // assert_eq!(search.search_stats().total().nodes(), 1833); qsearch sq
-        // assert_eq!(search.search_stats().total().nodes(), 1757);
-        assert_eq!((search.search_stats().branching_factor() * 10.0).round() as u64, 15);
+                                                                 // previous
+                                                                 // assert_eq!(search.search_stats().total().nodes(), 1326); // piece mob (disabled)
+                                                                 // assert_eq!(search.search_stats().total().nodes(), 1404); // pawn promo
+                                                                 // assert_eq!(search.search_stats().total().nodes(), 1480); // gen qsearch
+                                                                 // assert_eq!(search.search_stats().total().nodes(), 1642); added tt
+                                                                 // assert_eq!(search.search_stats().total().nodes(), 1833); qsearch sq
+                                                                 // assert_eq!(search.search_stats().total().nodes(), 1757);
+        assert_eq!(
+            (search.search_stats().branching_factor() * 10.0).round() as u64,
+            15
+        );
     }
 
     #[test]
@@ -522,7 +570,6 @@ mod tests {
     #[test]
     #[ignore]
     fn jons_chess_problem() {
-        init();
         let board = Board::parse_fen("2r2k2/5pp1/3p1b1p/2qPpP2/1p2B2P/pP3P2/2P1R3/2KRQ3 b - - 0 1")
             .unwrap()
             .as_board();

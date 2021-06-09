@@ -92,19 +92,12 @@ impl IterativeDeepening {
 }
 
 impl Algo {
-    #[inline]
-    pub fn set_iteration_depth(&mut self, max_depth: Ply) {
-        self.max_depth = max_depth;
-    }
 
     pub fn search_iteratively(&mut self) {
         self.new_search();
 
-        //self.ids.reset();
-        // self.tt.next_generation();
-        // self.eval.cache.next_generation();
-        self.range = self.ids.calc_range(&self.mte.time_control);
-        for depth in self.range.clone() {
+
+        for depth in self.ids.calc_range(&self.mte.time_control) {
             //let mut root_node = Node::new_root(&mut self.board.clone());
             self.max_depth = depth;
             self.search_stats.depth = depth;
