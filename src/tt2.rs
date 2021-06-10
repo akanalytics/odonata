@@ -78,6 +78,7 @@ impl fmt::Display for TtNode {
     }
 }
 
+
 #[derive(Default, Debug)]
 struct Element {
     hash: Hash,
@@ -98,7 +99,7 @@ impl Clone for Element {
 
 // FIXME Mates as score
 #[derive(Clone)]
-pub struct TranspositionTable {
+pub struct TranspositionTable2 {
     table: Arc<Mutex<Vec<Element>>>,
 
     pub aging: bool,

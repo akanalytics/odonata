@@ -20,9 +20,8 @@ use crate::tags::Tag;
 use crate::tt::TranspositionTable;
 use crate::types::Ply;
 use crate::variation::Variation;
-use crate::{debug, logger::LogInit};
+use crate::{debug, info, logger::LogInit};
 use std::fmt;
-use std::ops::Range;
 use std::thread::{self, JoinHandle};
 
 #[derive(Debug)]
@@ -42,21 +41,26 @@ impl Engine {
     }
 
     pub fn search_async(&mut self, b: &Board) {
-        for t in 0..self.thread_count {
-            const FOUR_MB: usize = 4 * 1024 * 1024;
+        self.algo.new_game();
+        debug!("resize?? {}", self.algo.tt.requires_resize());
+        for i in 0..self.thread_count {
             let builder = thread::Builder::new()
-                .name(format!("search {}", t))
-                .stack_size(FOUR_MB);
+                .name(format!("search {}", i))
+                .stack_size(4_000_000);
             self.algo.board = b.clone();
             let mut algo = self.algo.clone();
-            self.threads.push(
-                builder
-                    .spawn(move || {
-                        algo.search_iteratively();
-                        algo
-                    })
-                    .unwrap(),
-            );
+            if i == 1 {
+                algo.move_orderer.order = "SICQE".to_string();
+            } else if i == 2 {
+                algo.move_orderer.order = "SIKCQE".to_string();
+            }
+            let cl = move || {
+                algo.search_iteratively();
+                println!( "thread {} {}", thread::current().name().unwrap(), algo.bm());
+                algo
+            };
+            self.threads.push(builder.spawn(cl).unwrap());
+            // thread::sleep(Duration::from_millis(5000));
         }
     }
 
@@ -69,11 +73,11 @@ impl Engine {
     pub fn wait(&mut self) {
         for t in self.threads.drain(..) {
             let algo = t.join().unwrap();
-            debug!("Thread returned {}", algo);  // t.thread().name().unwrap(), 
+            self.algo.task_control.cancel();            
+            info!("Thread returned {}", algo); // t.thread().name().unwrap(),
         }
     }
 }
-
 
 #[derive(Clone, Default)]
 pub struct Algo {
@@ -245,13 +249,13 @@ impl fmt::Display for Algo {
         write!(f, "\n[move time estimator]\n{}", self.mte)?;
         write!(f, "\n[qsearch]\n{}", self.qsearch)?;
         write!(f, "\n[eval]\n{}", self.eval)?;
-        write!(f, "\n[iterative deepening]\n{}", self.ids)?;
         write!(f, "\n[repetition]\n{}", self.repetition)?;
         write!(f, "\n[tt]\n{}", self.tt)?;
         writeln!(f, "tt nodes")?;
         self.tt.fmt_nodes(f, &self.board)?;
         write!(f, "\n[killers]\n{}", self.killers)?;
         write!(f, "\n[stats]\n{}", self.search_stats)?;
+        write!(f, "\n[iterative deepening]\n{}", self.ids)?;
         write!(f, "\n[global counts]\n{}", counts::GLOBAL_COUNTS)?;
         write!(f, "\n[pvtable]\n{}", self.pv_table)?;
         Ok(())
@@ -363,7 +367,6 @@ impl Algo {
         }
 
         if self.task_control.is_cancelled() {
-            println!("Is cancelled");
             return true;
         }
 
@@ -389,20 +392,28 @@ mod tests {
     use crate::comms::uci::Uci;
     use crate::eval::eval::*;
     use crate::types::*;
+    use crate::clock::Clock;
     use std::time;
-
-
 
     #[test]
     fn test_threading() {
-        let mut eng = Engine::new();
-        let b = Catalog::starting_position();
-        eng.search_async(&b);
-        eng.wait();
+        for i in 1..=4 {
+            let mut eng = Engine::new();
+            eng.algo.set_timing_method(TimeControl::Depth(7));
+            // eng.algo.tt.enabled = false;
+
+            let b = Catalog::test_position().board().clone();
+            eng.thread_count = i;
+            let start = time::Instant::now();
+            eng.search_async(&b);
+            eng.wait();
+            println!("Time with {} threads: {}", i, Clock::format(time::Instant::now() - start));
+        }
+
+        
 
         // mut search = Algo::new()
         //     .set_timing_method(TimeControl::Depth(4))
-
     }
 
     #[test]

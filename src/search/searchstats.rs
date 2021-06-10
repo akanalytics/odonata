@@ -199,11 +199,13 @@ impl SearchStats {
 
     #[inline]
     pub fn inc_tt_nodes(&mut self, sel_ply: Ply) {
+        self.total.tt_nodes += 1;
         self.plies[sel_ply as usize].tt_nodes += 1;
     }
 
     #[inline]
     pub fn inc_q_tt_nodes(&mut self, sel_ply: Ply) {
+        self.total.q_tt_nodes += 1;
         self.plies[sel_ply as usize].q_tt_nodes += 1;
     }
 

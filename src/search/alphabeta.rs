@@ -68,7 +68,7 @@ impl Algo {
 
         
         let draft = self.max_depth - ply;
-        if let Some(entry) = self.tt.probe_by_board(board, ply, draft).cloned() {
+        if let Some(entry) = self.tt.probe_by_board(board, ply, draft) {
             self.search_stats.inc_tt_nodes(ply);
             //println!("TtNode:{:?}", entry);
             // for bounded scores, we know iterating through the nodes might raise alpha, lower beta
@@ -135,7 +135,7 @@ impl Algo {
             let child_score = -self.alphabeta_recursive(&mut child_board, ply + 1, -beta, -alpha, &mv);
             board.undo_move(&mv);
             self.repetition.pop();
-            if self.task_control.is_cancelled() {
+            if ply > 1 && self.task_control.is_cancelled() {
                 return Score::MinusInf;
             }
 
