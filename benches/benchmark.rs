@@ -461,6 +461,27 @@ fn board_calcs(c: &mut Criterion) {
         })
     });
 
+    group.bench_function("is_pseudo_legal_move", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            bams.iter().cycle_n(n).for_each(|bam| {
+                black_box(bam.0.is_pseudo_legal_move(&bam.1));
+            });
+            t.elapsed() / positions.len() as u32
+        })
+    });
+
+    
+    group.bench_function("is_legal_move", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            bams.iter().cycle_n(n).for_each(|bam| {
+                black_box(bam.0.is_legal_move(&bam.1));
+            });
+            t.elapsed() / positions.len() as u32
+        })
+    });
+
     let bams: Vec<(Board, Move)> = positions
         .iter()
         .map(|p| (p.board().clone(), p.bm().unwrap()[0]))

@@ -215,11 +215,11 @@ impl SharedTable {
     }
 
     store(&self, hash: Hash) {
-        
+
     }
 
     clear(&mut self) {
-        
+        self.vec.iter.for_each(|e| e.store(0, Ordering::Relaxed))   
     }
 
 }
