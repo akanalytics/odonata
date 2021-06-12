@@ -5,7 +5,6 @@ use crate::types::{Color, Piece};
 use crate::bitboard::bb_hyperbola::Hyperbola;
 // use crate::bitboard::bb_magic::Magic;
 
-
 pub type BitboardDefault = Hyperbola;
 
 pub trait BitboardAttacks {
@@ -36,6 +35,15 @@ pub trait BitboardAttacks {
     fn strictly_between(&self, s1: Square, s2: Square) -> Bitboard {
         self.between(s1,s2).exclude(s1).exclude(s2)
     }
+
+    // king moves - see https://www.chessprogramming.org/Distance
+    fn chebyshev_distance(&self, s1:Square, s2: Square) -> u32 {
+        i32::max(
+            i32::abs(s1.rank_index() as i32 - s2.rank_index() as i32), 
+            i32::abs(s1.file_index() as i32- s2.file_index() as i32)
+        ) as u32 
+    }
+
 
     #[inline]
     fn pawn_attacks_ext(c: Color, us: Bitboard, them: Bitboard,  fr: Square) -> Bitboard {

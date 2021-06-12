@@ -399,7 +399,7 @@ mod tests {
     fn test_threading() {
         for i in 1..=4 {
             let mut eng = Engine::new();
-            eng.algo.set_timing_method(TimeControl::Depth(7));
+            eng.algo.set_timing_method(TimeControl::Depth(4));
             // eng.algo.tt.enabled = false;
 
             let b = Catalog::test_position().board().clone();
@@ -520,7 +520,7 @@ mod tests {
                 //assert_eq!(search.search_stats().total().nodes(), 7749); // no ids no mvvlva
             }
             assert_eq!(search.pv_table.extract_pv(), position.pv().unwrap());
-            assert_eq!(search.score(), Score::WhiteWin { minus_ply: -3 });
+            assert_eq!(search.score(), Score::white_win(3));
             assert_eq!(search.repetition.prior_positions(), 0);
             println!("{}", search.results());
         }
@@ -549,7 +549,7 @@ mod tests {
         // assert_eq!(nodes, 2274); // from 2248 (due to iterator ordering on bits)
         // assert_eq!(nodes, 66234);
         assert_eq!(algo.pv_table.extract_pv().uci(), position.pv().unwrap().uci());
-        assert_eq!(algo.score(), Score::WhiteWin { minus_ply: -3 });
+        assert_eq!(algo.score(), Score::white_win(3));
 
         // search again using the tt
         algo.search_async(position.board());

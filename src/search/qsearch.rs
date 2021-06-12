@@ -47,7 +47,7 @@ impl Component for QSearch {
         self.ignore_see_fails = c.bool("qsearch.see.ignore_fails").unwrap_or(self.ignore_see_fails);
         self.max_ply = c.int("qsearch.max_ply").unwrap_or(self.max_ply as i64) as u16;
         if let Some(cp) = c.int("qsearch.coarse_delta_prune_cp") {
-            self.coarse_delta_prune = Score::cp(cp as i32);
+            self.coarse_delta_prune = Score::from_cp(cp as i16);
         }
     }
     fn new_game(&mut self) {}
@@ -65,7 +65,7 @@ impl Default for QSearch {
             see_cutoff: 0,
             promos: true,
             max_ply: 10,
-            coarse_delta_prune: Score::cp(1000),
+            coarse_delta_prune: Score::from_cp(1000),
         }
     }
 }
@@ -241,7 +241,7 @@ mod tests {
             search.search(pos.board());
             println!("{}", search);
             assert_eq!(search.pv().to_string(), pos.pv()?.to_string(), "{}", pos.id()?);
-            assert_eq!(search.score(), Score::WhiteWin { minus_ply: -3 });
+            assert_eq!(search.score(), Score::white_win(3));
         }
         Ok(())
     }
@@ -279,10 +279,7 @@ mod tests {
         let pos = Position::parse_epd("7k/8/8/8/8/p7/8/R6K w - - 0 1 sm Ra3; ce 100;")?; 
         let (alpha, beta) = (Score::MinusInf, Score::PlusInf);
 
-        let static_eval = match pos.board().eval(&mut eval, &Node { ply: 0, alpha, beta }) {
-            Score::Cp(cp) => cp,
-            _ => 0,
-        };
+        let static_eval = pos.board().eval(&mut eval, &Node { ply: 0, alpha, beta }).cp().unwrap_or(0);
 
         let mut search_sq = Algo::new()
             .set_timing_method(TimeControl::NodeCount(1_000_000))
@@ -298,18 +295,19 @@ mod tests {
         search_see.qsearch.see = true;
         search_see.max_depth = 3;
 
-        let score = search_see.qsearch(&pos.sm()?, 3, &mut pos.board().clone(), alpha, beta);
-        if let Score::Cp(ce) = score {
-            assert_eq!(ce - static_eval, pos.ce()?, "see");
-        } else {
-            panic!("see score was {} not a cp score", score);
-        }
 
         let score = search_sq.qsearch(&pos.sm()?, 3, &mut pos.board().clone(), alpha, beta);
-        if let Score::Cp(ce) = score {
+        if let Some(ce) = score.cp() {
             assert_eq!(ce - static_eval, 100, "sq");
         } else {
             panic!("sq score was {} not a cp score", score);
+        }
+
+        let score = search_see.qsearch(&pos.sm()?, 3, &mut pos.board().clone(), alpha, beta);
+        if let Some(ce) = score.cp() {
+            assert_eq!(ce - static_eval, pos.ce()? as i16, "see");
+        } else {
+            panic!("see score was {} not a cp score", score);
         }
 
         Ok(())

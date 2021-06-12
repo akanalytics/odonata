@@ -1,5 +1,6 @@
 use crate::bitboard::bitboard::Bitboard;
 use crate::types::Color;
+use crate::bitboard::square::Square;
 use std::fmt;
 use std::iter::*;
 
@@ -21,18 +22,18 @@ impl Default for CastlingRights {
     }
 }
 
-
-
 impl<T> std::ops::Index<CastlingRights> for [T] {
     type Output = T;
     #[inline]
     fn index(&self, i: CastlingRights) -> &Self::Output {
-            #[cfg(feature="unchecked_indexing")]
-            unsafe { &self.get_unchecked(i.index()) }
-
-            #[cfg(not(feature="unchecked_indexing"))]
-            &self[(i.index())]
+        #[cfg(feature = "unchecked_indexing")]
+        unsafe {
+            &self.get_unchecked(i.index())
         }
+
+        #[cfg(not(feature = "unchecked_indexing"))]
+        &self[(i.index())]
+    }
 }
 
 impl<T> std::ops::IndexMut<CastlingRights> for [T] {
@@ -41,7 +42,6 @@ impl<T> std::ops::IndexMut<CastlingRights> for [T] {
         &mut self[cr.index()]
     }
 }
-
 
 impl CastlingRights {
     #[inline]
@@ -59,12 +59,10 @@ impl CastlingRights {
         4
     }
 
-
     // #[inline]
     // pub fn index(&self) -> usize {
     //     self.bits() as usize
     // }
-
 
     #[inline]
     pub fn index(&self) -> usize {
@@ -139,6 +137,19 @@ impl CastlingRights {
     #[inline]
     pub const fn rook_and_king_squares() -> Bitboard {
         Bitboard::A1.or(Bitboard::A8.or(Bitboard::H1.or(Bitboard::H8.or(Bitboard::E1.or(Bitboard::E8)))))
+    }
+
+    #[inline]
+    pub fn from_king_move(to: Square) -> CastlingRights {
+        match to.as_bb() {
+            Bitboard::G1 => CastlingRights::WHITE_QUEEN,
+            Bitboard::C1 => CastlingRights::WHITE_KING,
+            Bitboard::G8 => CastlingRights::BLACK_QUEEN,
+            Bitboard::C8 => CastlingRights::BLACK_KING,
+            _ => {
+                unreachable!("king move-to for castling");
+            }
+        }
     }
 
     #[inline]

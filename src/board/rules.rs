@@ -112,38 +112,38 @@ impl Rules {
             return;
         }
         let ct = b.color_them();
-        let ep = b.en_passant();
-        let capture_sq = ep.shift(ct.forward());
+        let to = b.en_passant();
+        let capture_sq = to.shift(ct.forward());
         let checkers = b.checkers_of(b.color_us());
         if checkers.popcount() == 1 {
             // any non-pinned pawn can capture the checker
             if capture_sq == checkers {
-                let fr_e = ep.shift(ct.pawn_capture_west());
+                let fr_e = to.shift(ct.pawn_capture_west());
                 if (fr_e & b.pawns() & b.us() & !b.pinned()).any() {
                     moves.push(Move::new_ep_capture(
                         fr_e.square(),
-                        ep.square(),
+                        to.square(),
                         capture_sq.square(),
                     ));
                 }
-                let fr_w = ep.shift(ct.pawn_capture_east());
+                let fr_w = to.shift(ct.pawn_capture_east());
                 if (fr_w & b.pawns() & b.us() & !b.pinned()).any() {
                     moves.push(Move::new_ep_capture(
                         fr_w.square(),
-                        ep.square(),
+                        to.square(),
                         capture_sq.square(),
                     ));
                 }
             }
         } else if checkers.popcount() == 0 {
-            let fr_e = ep.shift(ct.pawn_capture_west());
-            let fr_w = ep.shift(ct.pawn_capture_east());
+            let fr_e = to.shift(ct.pawn_capture_west());
+            let fr_w = to.shift(ct.pawn_capture_east());
             for fr in ((fr_e | fr_w) & b.pawns() & b.us()).squares() {
                 if fr.is_in(b.pinned()) {
                     continue;
                 }
                 // special case: will removing the capture piece AND moving the pawn result in check
-                let m = Move::new_ep_capture(fr, ep.square(), capture_sq.square());
+                let m = Move::new_ep_capture(fr, to.square(), capture_sq.square());
                 if b.is_legal_move(&m) {
                     moves.push(m);
                 }
@@ -165,7 +165,9 @@ impl Rules {
             if Bitboard::PROMO_RANKS.contains(dests) {
                 Self::add_moves_pawn_promo(dests, fr, b, moves);
             } else {
-                Self::add_moves_pawn(dests, fr, b, moves);
+                for to in dests.squares() {
+                    moves.push( Move::new_pawn_move(fr, to, b));
+                }
             }
         }
     }
@@ -185,27 +187,6 @@ impl Rules {
                 moves.push(Move::new_promo(fr, to, Piece::Knight));
                 moves.push(Move::new_promo(fr, to, Piece::Rook));
                 moves.push(Move::new_promo(fr, to, Piece::Bishop));
-            }
-        }
-    }
-
-    #[inline]
-    fn add_moves_pawn(dests: Bitboard, fr: Square, b: &Board, moves: &mut MoveList) {
-        let p = Piece::Pawn;
-        for to in dests.squares() {
-            if to.is_in(b.them()) {
-                let cap = b.piece_at(to.as_bb());
-                moves.push(Move::new_capture(p, fr, to, cap));
-            } else {
-                // its a push
-                let behind = to.shift(b.color_us().backward());
-                let ep = behind;
-                if behind.as_bb().disjoint(b.pawns()) {
-                    // no one behind us => double push
-                    moves.push(Move::new_double_push(fr, to, ep));
-                } else {
-                    moves.push(Move::new_quiet(p, fr, to));
-                }
             }
         }
     }
@@ -242,8 +223,8 @@ impl Rules {
                 let m = Move::new_castle(
                     king_sq,
                     king_to.square(),
-                    king_to.square().shift(Dir::E),
-                    rook_to.square(),
+                    // king_to.square().shift(Dir::E),
+                    // rook_to.square(),
                     right,
                 )
                 .set_legal();
@@ -260,8 +241,13 @@ impl Rules {
             let king_moves = king | rook_to | king_to;
             if BoardCalcs::attacked_by(king_moves, occ, b).disjoint(them) {
                 let king_to = king_to.square();
-                let rook_from = king_to.shift(Dir::W).shift(Dir::W);
-                let m = Move::new_castle(king_sq, king_to, rook_from, rook_to.square(), right).set_legal();
+                // let rook_from = king_to.shift(Dir::W).shift(Dir::W);
+                let m = Move::new_castle(
+                    king_sq, 
+                    king_to, 
+                    // rook_from, 
+                    // rook_to.square(), 
+                    right).set_legal();
                 moves.push(m);
             }
         }

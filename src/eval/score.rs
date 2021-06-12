@@ -1,14 +1,205 @@
 use crate::outcome::Outcome;
-use crate::types::{Color, Ply};
+use crate::types::{Color, Ply, MAX_PLY};
 use std::fmt;
 
+
+
+
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
-pub enum Score {
-    MinusInf,
-    WhiteLoss { ply: i32 }, // WhiteLoss(1) < WhiteLoss(5)
-    Cp(i32),
-    WhiteWin { minus_ply: i32 }, // // WhiteWin(-5) < WhiteWin(-1)
-    PlusInf,
+pub struct Score {
+    cp: i16,
+}    
+
+
+// WHITE LOSS IN 0<=N< MAX_PLY   is  -Self::INF + 1 + N
+// WHITE WIN IN 0<=N< MAX_PLY   is  i16::MAX -1 - N
+// MIN + 1 + MAX_PLY and i16::MAX -1 - MAX_PLY
+impl Score {
+    // note MAX = 32767 but MIN = -32768. So we use -MAX
+    pub const MinusInf : Score = Score { cp: -i16::MAX };
+    pub const PlusInf : Score = Score { cp: i16::MAX };
+
+    pub const INF : i16 = i16::MAX;
+
+    #[inline]
+    pub fn from_cp(centipawn: i16) -> Score {
+        Score { cp: centipawn }
+    }
+
+    #[inline]
+    pub fn Cp(centipawn: i32) -> Score {
+        Score { cp: centipawn as i16 }
+    }
+
+    #[inline]
+    pub fn cp(self) -> Option<i16> {
+        if self.is_numeric() {
+            Some(self.cp)
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    pub fn is_numeric(&self) -> bool {
+        self.cp >= -Self::INF + 1 + MAX_PLY as i16 && self.cp <= i16::MAX - 1 - MAX_PLY as i16 
+    }
+
+
+    #[inline]
+    pub fn white_win(ply: Ply) -> Score {
+        Score { 
+            cp: i16::MAX -1 - ply as i16
+        }
+    }
+
+    #[inline]
+    pub fn white_loss(ply: Ply) -> Score {
+        Score { 
+            cp: -Self::INF +1 + ply as i16
+         }
+    }
+
+    #[inline]
+    pub fn to_root_score(&self, _current_depth: Ply) -> Score {
+        *self
+    }
+
+    #[inline]
+    pub fn is_mate(&self) -> bool {
+        if self.cp == -Self::INF || self.cp == Self::INF || self.is_numeric() {
+            false
+        } else {
+            true
+        }
+    }
+
+    #[inline]
+    fn ply_loss(&self) -> Ply {
+        (self.cp + Self::INF-1) as Ply
+    }
+
+    #[inline]
+    fn ply_win(&self) -> Ply {
+        (i16::MAX-1 - self.cp) as Ply
+    }
+
+    // engine -> oppo -> engine -> 3 plys == mate in 2
+    // engine -> oppo -> 2 plys == mated in 1
+    // engine -> oppo -> engine -> opp  4 plys == mated in 2
+    // engine -> oppo -> engine -> opp -> eng  5 plys == mated in 3
+    #[inline]
+    pub fn mate_in(&self) -> Option<Ply> {
+        if !self.is_mate() {
+            None
+        } else if self.cp < 0 {
+            Some((self.ply_loss() +1) / 2)
+        } else {
+            Some((self.ply_win()+1) / 2 )
+        }
+    }
+
+    // * score
+    // 	* cp
+    // 		the score from the engine's point of view in centipawns.
+    // 	* mate
+    // 		mate in y moves, not plies.
+    // 		If the engine is getting mated use negativ values for y.
+    // 	* lowerbound
+    //       the score is just a lower bound.
+    // 	* upperbound
+    // 	   the score is just an upper bound.
+    pub fn uci(self, _pov: Color) -> String {
+        // we assume we are now from engines's point of view
+        if self.cp == -Self::INF {
+            "cp -9999".to_string()
+        } else if self.cp == i16::MAX {
+             "cp 9999".to_string()
+        } else if self.is_numeric() {
+            format!("cp {}", self.cp)
+        } else if self.cp < 0 {
+            format!("mate {}", -self.mate_in().unwrap())
+        } else {
+            format!("mate {}", self.mate_in().unwrap())
+        }
+    }
+
+
+
+
+    pub fn side_to_move_score(tempo: i32, us: Color) -> Score {
+        // axiom: were white
+        // white to move => advantage, black to move means white has a disadvantage
+        if us == Color::White {
+            Score::from_cp(tempo as i16 * 0)
+        } else {
+            Score::from_cp(-tempo as i16 * 0)
+        }
+    }
+
+
+
+
+    /// Outcome must be game ending else panic
+    #[inline]
+    pub fn score_from_outcome(contempt: i32, o: Outcome, us: Color, total_half_moves: Ply) -> Score {
+        if o.is_draw() {
+            // draw score is +ve for playing a stronger opponent (we want a draw), neg for weaker
+            //
+            //  Engine Col   |  search ply   |  value to searcher   | Score to white
+            //     W               0                   +ve               +ve
+            //     B               0                   +ve               -ve
+            //     W               1 (oppo B)          -ve               +ve (a bonus to white opponet)
+            //     B               1 (oppo W)          -ve               -ve
+            // board.color_us() == Color::White => maximising
+            // +ve contempt => +ve score => aim for draw => opponent stronger than us
+            // board.color_us() == Color::Black => minimising
+            // +ve contempt => -ve score => aim for draw => opponent stronger than us
+            let contempt = us.chooser_wb(contempt, -contempt);
+            return Score::Cp(contempt);
+        }
+        if let Some(c) = o.winning_color() {
+            return c.chooser_wb(
+                Score::white_win(total_half_moves), 
+                Score::white_loss(total_half_moves)
+            );
+        }
+        panic!("Tried to final score a non-final board outcome:{}", o);
+    }
+
+
+
+    #[inline]
+    pub fn negate(self) -> Score {
+        Score { cp: -self.cp }
+    }
+
+
+    // #[inline]
+    // pub fn negate(self) -> Score {
+    //     match self {
+    //         Self::MinusInf => Self::PlusInf,
+    //         -Self::INF+1.. -Self::INF+1+MAX_PLY => Self::white_win(self.ply_loss()),
+    //         i16::MAX-1-MAX_PLY .. i16::MAX-1=> Self::white_loss(self.ply_win()),,
+    //         Self::PlusInf => Self::MinusInf,
+    //         _ => Self::cp(-self.cp),
+    //     }
+    // }
+
+    // https://www.chessprogramming.org/Pawn_Advantage,_Win_Percentage,_and_Elo
+    pub fn win_probability(self) -> f32 {
+        if self.is_numeric() {
+            let k = 4_f32;
+            let w = 1.0 / (1.0 + 10_f32.powf(-self.cp as f32 / k));
+            w
+        } else if self.cp > 0 {
+            1.0 
+        }
+        else {
+            0.0
+        }      
+    }
 }
 
 
@@ -19,13 +210,121 @@ impl Default for Score {
     }
 }
 
-impl Score {
+impl std::ops::Add for Score {
+    type Output = Self;
+
     #[inline]
-    pub fn cp(centipawn: i32) -> Score {
-        Score::Cp(centipawn)
+    fn add(self, other: Self) -> Self {
+        if let Some(s2) = other.cp() {
+            if let Some(s1) = self.cp() {
+                return Score::from_cp(s1 + s2);
+            } else {
+                return self; // if self is an infinite or mate then adding cp/mp makes no difference
+            }
+        }
+        panic!("Can only add centipawns not {} + {}", self, other);
+    }
+}
+
+impl std::ops::Mul<Score> for i32 {
+    type Output = Score;
+
+    #[inline]
+    fn mul(self, other: Score) -> Score {
+        if other.is_numeric() {
+            Score::from_cp(self as i16 * other.cp)
+        } else if self > 0 {
+            other
+        } else if self < 0 {
+            other.negate()
+        } else {
+            Score::from_cp(0)
+        }
+    }
+}
+
+impl std::ops::Sub for Score {
+    type Output = Self;
+
+    #[inline]
+    fn sub(self, other: Self) -> Self {
+        if let Some(s2) = other.cp() {
+            if let Some(s1) = self.cp() {
+                return Score::from_cp(s1 - s2);
+            } else {
+                return self; // if self is an infinite or mate then subtracting cp/mp makes no difference
+            }
+        }
+        panic!("Can only subtract centipawns not {} - {}", self, other);
+    }
+}
+
+impl std::ops::Neg for Score {
+    type Output = Self;
+
+    #[inline]
+    fn neg(self) -> Self {
+        self.negate()
+    }
+}
+
+impl fmt::Display for Score {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.is_numeric() {
+            write!(f, "{} cp", self.cp)
+        } else if self.cp == -Self::INF {
+            f.write_str("-inf")
+        } else if self.cp == i16::MAX {
+            f.write_str("+inf")
+        } else if self.cp < 0 {
+            write!(f, "loss({})", self.ply_loss())
+        } else {
+            write!(f, "win({})", self.ply_win())
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+pub enum Score2 {
+    MinusInf,
+    WhiteLoss { ply: i32 }, // WhiteLoss(1) < WhiteLoss(5)
+    Cp(i32),
+    WhiteWin { minus_ply: i32 }, // // WhiteWin(-5) < WhiteWin(-1)
+    PlusInf,
+}
+
+
+impl Default for Score2 {
+    #[inline]
+    fn default() -> Self {
+        Self::MinusInf
+    }
+}
+
+impl Score2 {
+    #[inline]
+    pub fn cp(centipawn: i32) -> Score2 {
+        Score2::Cp(centipawn)
     }
 
-    pub fn to_root_score(&self, _current_depth: Ply) -> Score {
+    pub fn to_root_score(&self, _current_depth: Ply) -> Score2 {
         // if current_depth % 2 == 1 {
         //     self.negate()
         // } else {
@@ -59,23 +358,23 @@ impl Score {
         }
     }
 
-    pub fn side_to_move_score(tempo: i32, us: Color) -> Score {
+    pub fn side_to_move_score(tempo: i32, us: Color) -> Score2 {
         // axiom: were white
         // white to move => advantage, black to move means white has a disadvantage
         if us == Color::White {
-            Score::cp(tempo * 0)
+            Score2::cp(tempo * 0)
         } else {
-            Score::cp(-tempo * 0)
+            Score2::cp(-tempo * 0)
         }
     }
 
     /// Outcome must be game ending else panic
     #[inline]
-    pub fn score_from_outcome(contempt: i32, o: Outcome, us: Color, total_half_moves: Ply) -> Score {
+    pub fn score_from_outcome(contempt: i32, o: Outcome, us: Color, total_half_moves: Ply) -> Score2 {
         if o.is_draw() {
             // draw score is +ve for playing a stronger opponent (we want a draw), neg for weaker
             //
-            //  Engine Col   |  search ply   |  value to searcher   | Score to white
+            //  Engine Col   |  search ply   |  value to searcher   | Score2 to white
             //     W               0                   +ve               +ve
             //     B               0                   +ve               -ve
             //     W               1 (oppo B)          -ve               +ve (a bonus to white opponet)
@@ -85,14 +384,14 @@ impl Score {
             // board.color_us() == Color::Black => minimising
             // +ve contempt => -ve score => aim for draw => opponent stronger than us
             let contempt = us.chooser_wb(contempt, -contempt);
-            return Score::Cp(contempt);
+            return Score2::Cp(contempt);
         }
         if let Some(c) = o.winning_color() {
             return c.chooser_wb(
-                Score::WhiteWin {
+                Score2::WhiteWin {
                     minus_ply: -total_half_moves,
                 },
-                Score::WhiteLoss {
+                Score2::WhiteLoss {
                     ply: total_half_moves,
                 },
             );
@@ -118,7 +417,7 @@ impl Score {
 
 
     #[inline]
-    pub fn negate(self) -> Score {
+    pub fn negate(self) -> Score2 {
         match self {
             Self::MinusInf => Self::PlusInf,
             Self::WhiteLoss { ply } => Self::WhiteWin { minus_ply: -ply },
@@ -144,14 +443,14 @@ impl Score {
     }
 }
 
-impl std::ops::Add for Score {
+impl std::ops::Add for Score2 {
     type Output = Self;
 
     #[inline]
     fn add(self, other: Self) -> Self {
-        if let Score::Cp(s2) = other {
-            if let Score::Cp(s1) = self {
-                return Score::Cp(s1 + s2);
+        if let Score2::Cp(s2) = other {
+            if let Score2::Cp(s1) = self {
+                return Score2::Cp(s1 + s2);
             } else {
                 return self; // if self is an infinite or mate then adding cp/mp makes no difference
             }
@@ -160,28 +459,28 @@ impl std::ops::Add for Score {
     }
 }
 
-impl std::ops::Mul<Score> for i32 {
-    type Output = Score;
+impl std::ops::Mul<Score2> for i32 {
+    type Output = Score2;
 
     #[inline]
-    fn mul(self, other: Score) -> Score {
+    fn mul(self, other: Score2) -> Score2 {
         match other {
-            Score::Cp(s) => Score::Cp(self * s),
+            Score2::Cp(s) => Score2::Cp(self * s),
             _ if self > 0 => other,
             _ if self < 0 => -other,
-            _ => Score::Cp(0),
+            _ => Score2::Cp(0),
         }
     }
 }
 
-impl std::ops::Sub for Score {
+impl std::ops::Sub for Score2 {
     type Output = Self;
 
     #[inline]
     fn sub(self, other: Self) -> Self {
-        if let Score::Cp(s2) = other {
-            if let Score::Cp(s1) = self {
-                return Score::Cp(s1 - s2);
+        if let Score2::Cp(s2) = other {
+            if let Score2::Cp(s1) = self {
+                return Score2::Cp(s1 - s2);
             } else {
                 return self; // if self is an infinite or mate then subtracting cp/mp makes no difference
             }
@@ -190,7 +489,7 @@ impl std::ops::Sub for Score {
     }
 }
 
-impl std::ops::Neg for Score {
+impl std::ops::Neg for Score2 {
     type Output = Self;
 
     #[inline]
@@ -199,7 +498,7 @@ impl std::ops::Neg for Score {
     }
 }
 
-impl fmt::Display for Score {
+impl fmt::Display for Score2 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::MinusInf => f.write_str("-inf"),
@@ -226,39 +525,71 @@ mod tests {
     fn test_score() {
         assert_eq!(Score::Cp(1).negate(), Score::Cp(-1));
         assert_eq!(
-            Score::WhiteWin { minus_ply: -1 }.negate(),
-            Score::WhiteLoss { ply: 1 }
+            Score::white_win(1).negate(),
+            Score::white_loss(1)
         );
         assert_eq!(
-            Score::WhiteLoss { ply: 1 }.negate(),
-            Score::WhiteWin { minus_ply: -1 }
+            Score::white_win(0).negate(),
+            Score::white_loss(0)
+        );
+        assert_eq!(Score::white_win(0).is_mate(), true);
+        assert_eq!(Score::white_loss(0).is_mate(), true);
+        assert_eq!(Score::MinusInf.is_mate(), false);
+        assert_eq!(Score::PlusInf.is_mate(), false);
+        assert_eq!(Score::Cp(123).is_mate(), false);
+        assert_eq!(
+            Score::white_loss(1).negate(),
+            Score::white_win(1)
         );
         assert_eq!(Score::MinusInf.negate(), Score::PlusInf);
+        assert_eq!(-Score::MinusInf, Score::PlusInf);
+        assert_eq!(Score::MinusInf, -Score::PlusInf);
+        assert_eq!(--Score::MinusInf, Score::MinusInf);
+        assert_eq!(Score::MinusInf.is_numeric(), false);
+        assert_eq!(Score::PlusInf.is_numeric(), false);
+        assert_eq!(Score::white_win(0).is_numeric(), false);
+        assert_eq!(Score::white_loss(0).is_numeric(), false);
+        assert_eq!(Score::white_loss(60).is_numeric(), false);
+        assert_eq!(Score::white_win(60).is_numeric(), false);
+        assert_eq!(Score::white_win(6) > Score::white_win(7), true);
+        assert_eq!(Score::white_win(3) < Score::white_win(1), true);
         assert!(Score::MinusInf < Score::PlusInf);
         assert_eq!(Score::MinusInf.is_mate(), false);
-        assert_eq!(Score::WhiteWin { minus_ply: 1 }.is_mate(), true);
+        assert_eq!(Score::white_win(1).is_mate(), true);
         assert!(Score::Cp(-5) < Score::Cp(5));
-        assert!(Score::Cp(5) < Score::WhiteWin { minus_ply: 0 });
+        assert!(Score::Cp(5) < Score::white_win(0));
         assert!(Score::Cp(100) > Score::Cp(0));
+
+        // addition
+        assert_eq!(Score::Cp(100) + Score::Cp(150), Score::Cp(250));
+        assert_eq!(Score::MinusInf + Score::Cp(150), Score::MinusInf);
+        assert_eq!(Score::white_win(1) + Score::Cp(150), Score::white_win(1));
+
+        // subtraction
+        assert_eq!(Score::Cp(100) - Score::Cp(150), Score::Cp(-50));
+        assert_eq!(Score::MinusInf - Score::Cp(150), Score::MinusInf);
+        assert_eq!(Score::white_win(1) - Score::Cp(150), Score::white_win(1));
+
         assert_eq!(2 * Score::Cp(100), Score::Cp(200));
         assert_eq!(-2 * Score::Cp(200), Score::Cp(-400));
         assert_eq!(-2 * Score::MinusInf, Score::PlusInf);
         assert_eq!(-2 * Score::PlusInf, Score::MinusInf);
         assert_eq!(1 * Score::PlusInf, Score::PlusInf);
         assert_eq!(
-            -1 * Score::WhiteWin { minus_ply: 2 },
-            Score::WhiteLoss { ply: -2 }
+            -1 * Score::white_win(2),
+            Score::white_loss(2)
+        );
+        // changes sign bit not magnitude
+        assert_eq!(
+            -3 * Score::white_win(2),
+            Score::white_loss(2)
         );
         assert_eq!(
-            -3 * Score::WhiteWin { minus_ply: 2 },
-            Score::WhiteLoss { ply: -2 }
+            1 * Score::white_win(2),
+            Score::white_win(2)
         );
-        assert_eq!(
-            1 * Score::WhiteWin { minus_ply: 2 },
-            Score::WhiteWin { minus_ply: 2 }
-        );
-        assert!(Score::WhiteWin { minus_ply: 1 } < Score::PlusInf);
-        assert!(Score::WhiteWin { minus_ply: 0 } == Score::WhiteWin { minus_ply: 0 });
+        assert!(Score::white_win( 1 ) < Score::PlusInf);
+        assert!(Score::white_win( 0 ) == Score::white_win( 0 ));
         assert!(Score::Cp(0).win_probability() > 0.499);
         assert!(Score::Cp(0).win_probability() < 0.501);
         assert!(Score::Cp(1000).win_probability() > 0.95);

@@ -141,12 +141,12 @@ mod tests {
         assert_eq!(size_of::<Bitboard>(), 8, "Bitboard");
         assert_eq!(size_of::<CastlingRights>(), 1);
         assert_eq!(size_of::<Board>(), 136, "Board");
-        assert_eq!(size_of::<Score>(), 8, "Score");
-        assert_eq!(size_of::<Node>(), 20, "Node");
-        assert_eq!(size_of::<SearchStats>(), 224, "SearchStats");
+        assert_eq!(size_of::<Score>(), 2, "Score");
+        assert_eq!(size_of::<Node>(), 8, "Node");
+        assert_eq!(size_of::<SearchStats>(), 216, "SearchStats");
         assert_eq!(size_of::<NodeStats>(), 120, "NodeStats");
-        assert_eq!(size_of::<TtNode>(), 24, "TtNode");
-        assert_eq!(size_of::<TranspositionTable>(), 248, "TranspositionTable");
+        assert_eq!(size_of::<TtNode>(), 16, "TtNode");
+        assert_eq!(size_of::<TranspositionTable>(), 256, "TranspositionTable");
         assert_eq!(size_of::<ClassicalBitboard>(), 5120, "ClassicalBitboard");
         assert_eq!(size_of::<Hyperbola>(), 71168, "Hyperbola");
         assert_eq!(size_of::<Hasher>(), 7280, "Hasher");

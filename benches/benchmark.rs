@@ -1,6 +1,5 @@
 use criterion::*;
 use odonata::bitboard::attacks::BitboardAttacks;
-use odonata::config::Component;
 use odonata::bitboard::attacks::*;
 use odonata::bitboard::bb_classical::ClassicalBitboard;
 use odonata::bitboard::bb_hyperbola::Hyperbola;
@@ -12,24 +11,25 @@ use odonata::board::makemove::*;
 use odonata::board::rules::*;
 use odonata::board::*;
 use odonata::catalog::*;
+use odonata::config::Component;
+use odonata::debug;
 use odonata::eval::eval::*;
 use odonata::eval::score::*;
 use odonata::globals::constants::*;
 use odonata::hasher::*;
+use odonata::logger::LogInit;
 use odonata::material::*;
 use odonata::movelist::*;
 use odonata::mv::*;
-use odonata::variation::*;
 use odonata::perft::Perft;
 use odonata::pvtable::*;
 use odonata::search::algo::Algo;
 use odonata::search::node::Node;
 use odonata::search::timecontrol::TimeControl;
-use odonata::tt::{TtNode, NodeType, TranspositionTable};
+use odonata::tt::{NodeType, TranspositionTable, TtNode};
 use odonata::types::*;
 use odonata::utils::*;
-use odonata::debug;
-use odonata::logger::LogInit;
+use odonata::variation::*;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
@@ -208,7 +208,7 @@ fn hash_board(c: &mut Criterion) {
 
 fn legal_moves(c: &mut Criterion) {
     let board = Catalog::starting_position();
-    let mut ml = MoveList::new(); 
+    let mut ml = MoveList::new();
     c.bench_function("legal_moves_into", |b| {
         b.iter(|| {
             black_box(black_box(&board).legal_moves_into(&mut ml));
@@ -357,7 +357,7 @@ fn board_calcs(c: &mut Criterion) {
     });
 
     group.bench_function("legal_moves", |b| {
-        let mut ml = MoveList::new(); 
+        let mut ml = MoveList::new();
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|p| {
@@ -694,13 +694,9 @@ fn benchmark_attacks(c: &mut Criterion) {
             positions.iter().cycle_n(n).for_each(|p| {
                 count += p.board().knights().popcount();
                 let _occ = p.board().black() | p.board().white();
-                black_box(
-                    p.board()
-                        .knights()
-                        .squares()
-                        .map(|b| cb.knight_attacks(b).popcount() as i32)
-                        .sum::<i32>(),
-                );
+                black_box(p.board().knights().squares().for_each(|b| {
+                    cb.knight_attacks(b);
+                }));
             });
             t.elapsed() / (count as u32 / n as u32)
         })
@@ -713,13 +709,9 @@ fn benchmark_attacks(c: &mut Criterion) {
             positions.iter().cycle_n(n).for_each(|p| {
                 count += p.board().bishops().popcount();
                 let occ = p.board().black() | p.board().white();
-                black_box(
-                    p.board()
-                        .bishops()
-                        .squares()
-                        .map(|b| hq.bishop_attacks(occ, b).popcount() as i32)
-                        .sum::<i32>(),
-                );
+                black_box(p.board().bishops().squares().for_each(|b| {
+                    hq.bishop_attacks(occ, b);
+                }));
             });
             t.elapsed() / (count as u32 / n as u32)
         })
@@ -732,13 +724,9 @@ fn benchmark_attacks(c: &mut Criterion) {
             positions.iter().cycle_n(n).for_each(|p| {
                 count += p.board().rooks().popcount();
                 let occ = p.board().black() | p.board().white();
-                black_box(
-                    p.board()
-                        .rooks()
-                        .squares()
-                        .map(|b| hq.rook_attacks(occ, b).popcount() as i32)
-                        .sum::<i32>(),
-                );
+                black_box(p.board().rooks().squares().for_each(|b| {
+                    hq.rook_attacks(occ, b).popcount();
+                }));
             });
             t.elapsed() / (count as u32 / n as u32)
         })
@@ -751,13 +739,9 @@ fn benchmark_attacks(c: &mut Criterion) {
             positions.iter().cycle_n(n).for_each(|p| {
                 count += p.board().queens().popcount();
                 let occ = p.board().black() | p.board().white();
-                black_box(
-                    p.board()
-                        .rooks()
-                        .squares()
-                        .map(|b| (hq.rook_attacks(occ, b) | hq.rook_attacks(occ, b)).popcount() as i32)
-                        .sum::<i32>(),
-                );
+                black_box(p.board().rooks().squares().for_each(|b| {
+                    let _ = hq.rook_attacks(occ, b) | hq.rook_attacks(occ, b);
+                }));
             });
             t.elapsed() / (count as u32 / n as u32)
         })
@@ -769,13 +753,9 @@ fn benchmark_attacks(c: &mut Criterion) {
             let mut count = 0;
             positions.iter().cycle_n(n).for_each(|p| {
                 count += p.board().kings().popcount();
-                black_box(
-                    p.board()
-                        .kings()
-                        .squares()
-                        .map(|b| hq.king_attacks(b).popcount() as i32)
-                        .sum::<i32>(),
-                );
+                black_box(p.board().kings().squares().for_each(|b| {
+                    hq.king_attacks(b);
+                }));
             });
             t.elapsed() / (count as u32 / n as u32)
         })
@@ -788,20 +768,9 @@ fn benchmark_attacks(c: &mut Criterion) {
             positions.iter().cycle_n(n).for_each(|p| {
                 let pawns = p.board().pawns() & p.board().us();
                 count += pawns.popcount();
-                black_box(
-                    pawns
-                        .squares()
-                        .map(|s| {
-                            Hyperbola::pawn_attacks_ext(
-                                p.board().color_us(),
-                                p.board().us(),
-                                p.board().them(),
-                                s,
-                            )
-                            .popcount() as i32
-                        })
-                        .sum::<i32>(),
-                );
+                black_box(pawns.squares().for_each(|s| {
+                    Hyperbola::pawn_attacks_ext(p.board().color_us(), p.board().us(), p.board().them(), s);
+                }));
             });
             t.elapsed() / (count as u32 / n as u32)
         })
@@ -814,13 +783,9 @@ fn benchmark_attacks(c: &mut Criterion) {
             positions.iter().cycle_n(n).for_each(|p| {
                 count += p.board().knights().popcount();
                 let _occ = p.board().black() | p.board().white();
-                black_box(
-                    p.board()
-                        .knights()
-                        .squares()
-                        .map(|b| hq.knight_attacks(b).popcount() as i32)
-                        .sum::<i32>(),
-                );
+                black_box(p.board().knights().squares().for_each(|b| {
+                    hq.knight_attacks(b);
+                }));
             });
             t.elapsed() / (count as u32 / n as u32)
         })
@@ -833,13 +798,9 @@ fn benchmark_attacks(c: &mut Criterion) {
             positions.iter().cycle_n(n).for_each(|p| {
                 count += p.board().bishops().popcount();
                 let occ = p.board().black() | p.board().white();
-                black_box(
-                    p.board()
-                        .bishops()
-                        .squares()
-                        .map(|b| mg.bishop_attacks(occ, b).popcount() as i32)
-                        .sum::<i32>(),
-                );
+                black_box(p.board().bishops().squares().for_each(|b| {
+                    mg.bishop_attacks(occ, b);
+                }));
             });
             t.elapsed() / (count as u32 / n as u32)
         })
@@ -852,13 +813,9 @@ fn benchmark_attacks(c: &mut Criterion) {
             positions.iter().cycle_n(n).for_each(|p| {
                 count += p.board().rooks().popcount();
                 let occ = p.board().black() | p.board().white();
-                black_box(
-                    p.board()
-                        .rooks()
-                        .squares()
-                        .map(|b| mg.rook_attacks(occ, b).popcount() as i32)
-                        .sum::<i32>(),
-                );
+                black_box(p.board().rooks().squares().for_each(|b| {
+                    mg.rook_attacks(occ, b);
+                }));
             });
             t.elapsed() / (count as u32 / n as u32)
         })
@@ -871,32 +828,29 @@ fn benchmark_attacks(c: &mut Criterion) {
             positions.iter().cycle_n(n).for_each(|p| {
                 count += p.board().queens().popcount();
                 let occ = p.board().black() | p.board().white();
-                black_box(
-                    p.board()
-                        .rooks()
-                        .squares()
-                        .map(|b| (mg.rook_attacks(occ, b) | mg.bishop_attacks(occ, b)).popcount() as i32)
-                        .sum::<i32>(),
-                );
+                black_box(p.board().rooks().squares().for_each(|b| {
+                    let _ = mg.rook_attacks(occ, b) | mg.bishop_attacks(occ, b);
+                }));
             });
             t.elapsed() / (count as u32 / n as u32)
         })
     });
 
-
-
     group.finish();
 }
-
 
 fn bench_logging(c: &mut Criterion) {
     c.bench_function("logging", |b| {
         b.iter(|| {
-            black_box(debug!("The cat sat on the mat and counted {} {} {}", 1,2,black_box(3)));
+            black_box(debug!(
+                "The cat sat on the mat and counted {} {} {}",
+                1,
+                2,
+                black_box(3)
+            ));
         });
     });
 }
-
 
 fn bench_chooser_array(c: &mut Criterion) {
     let white = Color::White;

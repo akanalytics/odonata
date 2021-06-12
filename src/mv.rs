@@ -4,6 +4,7 @@ use crate::bitboard::square::Square;
 use crate::globals::constants::*;
 use crate::types::{Color, Piece};
 use crate::utils::StringUtils;
+use crate::board::Board;
 // use arrayvec::ArrayVec;
 use std::fmt;
 
@@ -176,6 +177,27 @@ impl Move {
         CastlingRights::rights_lost(squares_changing)
     }
 
+
+
+    #[inline]
+    pub fn new_pawn_move(from: Square, to: Square, b: &Board) -> Move {
+        if to.is_in(b.them()) {
+            let cap = b.piece_at(to.as_bb());
+            Move::new_capture(Piece::Pawn, from, to, cap)
+        } else {
+            // its a push
+            let behind = to.shift(b.color_us().backward());
+            let ep = behind;
+            if behind.as_bb().disjoint(b.pawns()) {
+                // no one behind us => double push
+                Move::new_double_push(from, to, ep)
+            } else {
+                Move::new_quiet(Piece::Pawn, from, to) 
+            }
+        }
+    }
+
+
     #[inline]
     pub fn new_double_push(from: Square, to: Square, ep_square: Square) -> Move {
         Move {
@@ -237,8 +259,6 @@ impl Move {
     pub fn new_castle(
         king_from: Square,
         king_to: Square,
-        _rook_from: Square,
-        _rook_to: Square,
         castle: CastlingRights,
     ) -> Move {
         Move {

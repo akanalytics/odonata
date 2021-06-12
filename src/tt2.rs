@@ -10,17 +10,17 @@ use crate::{debug, info, logger::LogInit};
 use std::cmp;
 use std::fmt;
 use std::mem;
-use std::sync::atomic::{AtomicI16, Ordering};
+use std::sync::atomic::{AtomicI16, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::sync::Mutex;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd)]
 pub enum NodeType {
     Unused = 0,
-    Terminal = 1, // no legal moves from this node
-    All = 2,      // All node, score = upperbound ()
-    Cut = 3,      // Cut node, score = lowerbound (we've not looked at all possible scores)
-    Pv = 4,       // PV node. score is exact
+    All = 1,      // All node, score = upperbound ()
+    Cut = 2,      // Cut node, score = lowerbound (we've not looked at all possible scores)
+    Pv = 3,       // PV node. score is exact
+    Terminal = 4, // no legal moves from this node
 }
 
 impl fmt::Display for NodeType {
@@ -54,6 +54,106 @@ pub struct TtNode {
     pub bm: Move,
 }
 
+
+
+impl Move {
+    pub fn pack_12bits(&self) -> U64 {
+        let bits = self.from().index() << 0;  // 0-63 bits 0-5
+        let mut to = self.to(); 
+        if self.is_promo() {
+            // the rank of to-sq pawn promo can be deduced from from-sq, 
+            // so we use ot to store the promo piece
+            let file = to.file_index();
+            let rank = self.promo_piece().index();
+            to = Square::from_xy(file, rank);
+        }
+        bits |= self.to().index() << 6;  // 0-63 bits 6-11
+        bits
+    }
+
+    pub fn unpack_12bits(bits: U64, b: &Board) -> Move {
+        let triple = unpack_12bits_part1(bits, b);
+        Move::from_triple(triple.0, triple.1, triple.2, b)
+    }
+
+    pub fn Move::from_triple(from: Square, to: Square, promo: Piece, b: &Board) -> Option<Move>
+        let capture = b.piece_at(to.as_bb());
+        let mover = b.piece_at(from.as_bb()); 
+        if mover == Piece::King && BitboardDefault::instance().chebyshev_distance(from, to) > 1 {
+            Move::new_castle(from, to, castle: CastlingRights::from_king_move(to))
+        } else if capture.is_none() {
+            if mover != Pawn {
+                Move::new_quiet(mover, from, to)
+            } else if promo == Piece::None {
+                Move::new_pawn_move(from, to, b)   // incl double push
+             else {
+                Move::new_promo(from, to, promo)
+             }
+        } else {
+            if moves != Piece::Pawn {
+                Move::new_capture(mover, from, to, capture)
+            } else {
+                if to == b.en_passant() {
+                    let capture_sq = to.shift(b.color_them().forward());
+                    Move::new_ep_capture(from, to, capture_sq)
+                }
+            } else {
+                Move::new_promo_capture(from, to, promo, capture)
+            }
+        }
+    }
+
+    pub fn unpack_12bits_part1(bits: U64, b: &Board) -> (Square, Square, Piece) {
+        let from = Square::from_index(bits & 63);
+        let mut to = Square::from_index((bits >> 6) & 63);
+        let mover = b.piece_at(from.as_bb()); 
+        if from.as_bb().intersects(
+            b.pawns() & (
+                BitBoard::RANK_7 & b.white() 
+                | 
+                Bitboard::RANK_2 & b.black())) {
+            // its a pawn promo
+            let file = to.file_index();
+            let promo = Piece::from_index(to.rank());
+            let rank = if from.rank_index() == 6 { 7 } else { 0 };  // 6->7 and 1->0   
+            to = Square::from_xy(file, rank);
+        }
+        return (from, to, promo)
+    }
+
+}
+
+
+impl TtNode {
+    const HIGH26: u64 = (1 << 26 ) -1 >> (64-26);
+
+    pub fn pack(hash: Hash, node, TTNode) -> U64 {
+        debug_assert( node.node_type != NodeType::Terminal);
+        let bits = (node.draft as u8) << 0;         // bits 0-7  
+        bits |= (node.node_type as u16 & 3) << 8;   // bits 8 and 9
+        bits |= (node.bm.pack_12bits()) << 10;  // bits 10-21
+        bits |= (node.score.pack_16bits())  << 22;   // bits 22-37 
+        bits |= hash & HIGH26;                       // bits 38-63 
+        bits;
+    }
+
+    pub fn unpack(mut bits: U64, b: &Board, hash: Hash) -> Option<Self> {
+        let draft = bits & 255;
+        let node_type = (bits >> 8) & 3;
+        let bm = Move::unpack_12bits((bits >> 10));
+        let score = Score::unpack_10bits((bits >> 22) & ((2<<11) -1))
+        let part_hash = bits & HIGH26;
+        if hash & HIGH26 == part_hash {
+            TtNode { draft, node_type, bm, score }
+        } else {
+            None
+        }
+    }
+
+
+
+
+
 impl fmt::Display for TtNode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if f.alternate() {
@@ -79,6 +179,62 @@ impl fmt::Display for TtNode {
 }
 
 
+
+
+#[derive(Default, Clone)]
+pub struct SharedTable {
+    vec Vec<AtomicU64>,
+
+    pub capacity: usize,
+    pub buckets: usize,
+
+    pub hits: Stat,
+    pub misses: Stat,
+    pub collisions: Stat,
+    pub exclusions: Stat,
+    pub inserts: Stat,
+    pub pv_overwrites: Stat,
+    pub deletes: Stat,
+    pub fail_priority: Stat,
+    pub fail_ownership: Stat,
+}
+
+
+
+
+
+
+
+impl SharedTable {
+    pub fn new_with_capacity(capacity: usize) -> SharedTable {
+        SharedTable::default()
+    } 
+
+    probe(&self, hash: Hash) {
+
+    }
+
+    store(&self, hash: Hash) {
+        
+    }
+
+    clear(&mut self) {
+        
+    }
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
 #[derive(Default, Debug)]
 struct Element {
     hash: Hash,
@@ -97,19 +253,20 @@ impl Clone for Element {
     }
 }
 
+
 // FIXME Mates as score
 #[derive(Clone)]
 pub struct TranspositionTable2 {
-    table: Arc<Mutex<Vec<Element>>>,
+    table: Arc<SharedTable>,
 
     pub aging: bool,
     pub current_age: i16,
     pub enabled: bool,
     pub use_tt_for_pv: bool,
     pub mb: i64,
-    pub capacity: usize,
     pub hmvc_horizon: i32,
     pub min_ply: Ply,
+
     pub hits: Stat,
     pub misses: Stat,
     pub collisions: Stat,

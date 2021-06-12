@@ -185,7 +185,7 @@ mod tests {
         let position = Catalog::mate_in_2()[0].clone();
         let eval = SimpleScorer::new().set_position(false);
         let mut search = Algo::new()
-            .set_timing_method(TimeControl::from_remaining_time(Duration::from_secs(15)))
+            .set_timing_method(TimeControl::from_remaining_time(Duration::from_secs(20)))
             .set_eval(eval)
             .set_callback(Uci::uci_info)
             .clone();
@@ -194,5 +194,6 @@ mod tests {
         println!("{}", search);
         assert!(search.search_stats().total().nodes() < 4900, "nodes {}", search.search_stats().total().nodes());
         assert!(search.search_stats().total().nodes() > 4300, "nodes {}", search.search_stats().total().nodes());
+        assert_eq!(search.score().mate_in(), Some(2));
     }
 }
