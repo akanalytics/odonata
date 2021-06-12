@@ -235,6 +235,7 @@ mod tests {
 
     #[test]
     #[ignore]
+    #[should_panic]
     fn test_out_of_bounds() {
         let array: [u32;64] = [0;64];
         assert_eq!(array[Square(63)], 0);
