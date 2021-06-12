@@ -6,7 +6,7 @@ use crate::variation::{Variation};
 
 use crate::movelist::{MoveList};
 // use crate::movelist::MoveValidator;
-use crate::types::{Color};
+use crate::types::{Color, Ply};
 use crate::bitboard::castling::CastlingRights;
 use crate::utils::StringUtils;
 use crate::tags::{Tags, Tag};
@@ -239,8 +239,8 @@ impl Position {
     }
 
     // acd analysis count depth [3]
-    pub fn acd(&self) -> Result<u32, String> {
-        self.get(Self::ACD)?.parse::<u32>().map_err(|e| e.to_string())
+    pub fn acd(&self) -> Result<Ply, String> {
+        self.get(Self::ACD)?.parse::<Ply>().map_err(|e| e.to_string())
     }
 
     pub fn dm(&self) -> Result<u32, String> {

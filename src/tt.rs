@@ -605,10 +605,10 @@ mod tests {
         algo.eval.position = true;
         algo.eval.mobility = false;
         algo.set_callback(Uci::uci_info);
-        algo.set_timing_method(TimeControl::Depth(33));
-        algo.new_game();
         for pos in Catalog::end_games().iter() {
+            algo.set_timing_method(TimeControl::Depth(pos.acd()?));
             algo.new_game();
+                algo.new_game();
             algo.search(pos.board());
             assert_eq!(algo.bm().uci(), pos.bm()?.uci(), "{}\n{}", pos, algo);
         }

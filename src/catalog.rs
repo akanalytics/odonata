@@ -68,6 +68,7 @@ K7/7r/8/8/8/8/8/rr5k w - - 0 1
             "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1
             bm Kb1;
             dm 32;
+            acd 23;
             id 'Lasker-Reichhelm Position Fine#70';",
         ];
         Position::parse_many_epd(strs).unwrap()
