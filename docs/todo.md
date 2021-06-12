@@ -2,6 +2,7 @@
 
 ## General
 - [ ] x-ray in see algorithm
+- [ ] Board/Position/Game refactor
 - [ ]  tt table. 
   - use xor'ing trck for duplicates (https://binarydebt.wordpress.com/2013/09/29/lockless-transposition-tables/). 
   - check legalality on probe.
