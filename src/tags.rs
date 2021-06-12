@@ -130,7 +130,7 @@ impl Tags {
     }
 
     pub fn to_pgn(&self) -> String {
-        let ce = self.get(&Tag::CentipawnEvaluation(Score::Cp(0)).key()).ok(); 
+        let ce = self.get(&Tag::CentipawnEvaluation(Score::from_cp(0)).key()).ok(); 
         let acd = self.get(&Tag::AnalysisCountDepth(0).key()).ok(); 
         if let Some(ce) = ce {
             if let Some(acd) = acd {

@@ -450,7 +450,7 @@ impl SimpleScorer {
             0
         };
         let te = Score::side_to_move_score(self.tempo, board.color_us());
-        let score = Score::Cp(ma + po + mo) + te;
+        let score = Score::from_cp(ma + po + mo) + te;
         // if self.cache_eval {
         //     if let Some(entry) = self.cache.probe_by_board(board) {
         //         counts::EVAL_CACHE_COUNT.increment();
@@ -640,13 +640,13 @@ impl Board {
     #[inline]
     pub fn eval_move_see(&self, eval: &SimpleScorer, mv: &Move) -> Score {
         SEE.increment();
-        Score::Cp(eval.eval_move_see(self, &mv))
+        Score::from_cp(eval.eval_move_see(self, &mv))
     }
 
     #[inline]
     pub fn eval_move_material(&self, eval: &SimpleScorer, mv: &Move) -> Score {
         MOVE.increment();
-        Score::Cp(eval.eval_move_material(&mv))
+        Score::from_cp(eval.eval_move_material(&mv))
     }
 
     #[inline]
@@ -660,18 +660,18 @@ impl Board {
         MATERIAL.increment();
         let m = Material::from_board(self);
         let s = eval.w_eval_material(&m);
-        Score::Cp(self.signum() * s)
+        Score::from_cp(self.signum() * s)
     }
     #[inline]
     pub fn eval_position(&self, eval: &SimpleScorer) -> Score {
         POSITION.increment();
         let s = eval.w_eval_position(self);
-        Score::Cp(self.signum() * s)
+        Score::from_cp(self.signum() * s)
     }
     pub fn eval_mobility(&self, eval: &SimpleScorer) -> Score {
         MOBILITY.increment();
         let s = eval.w_eval_mobility(self);
-        Score::Cp(self.signum() * s)
+        Score::from_cp(self.signum() * s)
     }
 }
 
@@ -685,14 +685,14 @@ mod tests {
     fn test_score_material() {
         let board = Catalog::starting_position();
         let eval = &mut SimpleScorer::new();
-        assert_eq!(board.eval(eval, &Node::root()), Score::Cp(0));
+        assert_eq!(board.eval(eval, &Node::root()), Score::from_cp(0));
 
         let starting_pos_score = 8 * 100 + 2 * 325 + 2 * 350 + 2 * 500 + 900;
         let board = Catalog::white_starting_position();
-        assert_eq!(board.eval_material(eval), Score::Cp(starting_pos_score));
+        assert_eq!(board.eval_material(eval), Score::from_cp(starting_pos_score));
 
         let board = Catalog::black_starting_position();
-        assert_eq!(board.eval_material(eval), Score::Cp(starting_pos_score).negate());
+        assert_eq!(board.eval_material(eval), Score::from_cp(starting_pos_score).negate());
     }
 
     #[test]
@@ -711,23 +711,23 @@ mod tests {
         let eval = &SimpleScorer::new();
 
         let bd = Board::parse_fen("8/P7/8/8/8/8/8/8 w - - 0 1").unwrap().as_board();
-        assert_eq!(bd.eval_position(eval), Score::Cp(60));
+        assert_eq!(bd.eval_position(eval), Score::from_cp(60));
 
         let bd = Board::parse_fen("8/4p3/8/8/8/8/8/8 w - - 0 1")
             .unwrap()
             .as_board();
         assert_eq!(bd.phase(), 100);
-        assert_eq!(bd.eval_position(eval), Score::Cp(0));
+        assert_eq!(bd.eval_position(eval), Score::from_cp(0));
 
         let w = Catalog::white_starting_position();
-        assert_eq!(w.eval_position(eval), Score::Cp(-116));
+        assert_eq!(w.eval_position(eval), Score::from_cp(-116));
 
         let b = Catalog::black_starting_position();
         assert_eq!(w.eval_position(eval), b.eval_position(eval).negate());
 
         // from blacks perspective to negate
         let bd = Board::parse_fen("8/8/8/8/8/8/p7/8 b - - 0 1").unwrap().as_board();
-        assert_eq!(bd.eval_position(eval), -Score::Cp(-60));
+        assert_eq!(bd.eval_position(eval), -Score::from_cp(-60));
     }
 
     #[test]

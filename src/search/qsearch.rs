@@ -47,7 +47,7 @@ impl Component for QSearch {
         self.ignore_see_fails = c.bool("qsearch.see.ignore_fails").unwrap_or(self.ignore_see_fails);
         self.max_ply = c.int("qsearch.max_ply").unwrap_or(self.max_ply as i64) as u16;
         if let Some(cp) = c.int("qsearch.coarse_delta_prune_cp") {
-            self.coarse_delta_prune = Score::from_cp(cp as i16);
+            self.coarse_delta_prune = Score::from_cp(cp as i32);
         }
     }
     fn new_game(&mut self) {}
@@ -99,7 +99,7 @@ impl Algo {
         } else {
             self.qsearch_sq(mv.to(), ply, board, alpha, beta)
         };
-        assert!(self.task_control.is_cancelled() || score > Score::MinusInf);
+        assert!(self.task_control.is_cancelled() || score > -Score::INFINITY);
         score
     }
 
@@ -137,10 +137,10 @@ impl Algo {
         }
 
         // let gain_needed = alpha - standing_pat;
-        //if standing_pat < Score::Cp(-10000)
-        //     || alpha < Score::Cp(-10000)
-        //     || alpha > Score::Cp(10000)
-        //     || standing_pat > Score::Cp(10000)
+        //if standing_pat < Score::from_cp(-10000)
+        //     || alpha < Score::from_cp(-10000)
+        //     || alpha > Score::from_cp(10000)
+        //     || standing_pat > Score::from_cp(10000)
         // {
         //     Score::MinusInf
         // } else {
@@ -175,15 +175,15 @@ impl Algo {
                 let winning = false;
                 // allow 8 matched attackers
                 let bar = self.qsearch.see_cutoff as i32;
-                if score < Score::Cp(bar) || score == Score::Cp(bar) && (winning || ply <= self.max_depth + 1) {
-                    trace!("{}", board.debug() + "see score bad" + score + "cmp" + Score::Cp(bar) + "for" + mv  );
+                if score < Score::from_cp(bar) || score == Score::from_cp(bar) && (winning || ply <= self.max_depth + 1) {
+                    trace!("{}", board.debug() + "see score bad" + score + "cmp" + Score::from_cp(bar) + "for" + mv  );
                     if self.qsearch.ignore_see_fails {
                         continue; 
                     } else {
                         continue;  // FIXME? Add to a bad move list
                     }
                 } else {
-                    trace!("{}", board.debug() + "see score good" + score + "cmp" + Score::Cp(bar) + "for" + mv  );
+                    trace!("{}", board.debug() + "see score good" + score + "cmp" + Score::from_cp(bar) + "for" + mv  );
                 }
             }
             let mut child = board.make_move(&mv);
@@ -214,7 +214,7 @@ impl Algo {
         // we should not return a mate score, as only captures have been considered,
         // and a mate score might cut a genuine mate score elsewhere
         trace!("{}", board.debug() + ply + "returns with score of" + alpha);
-        alpha.clamp(Score::Cp(-10000), Score::Cp(10000))
+        alpha.clamp(Score::from_cp(-10000), Score::from_cp(10000))
     }
 }
 
@@ -277,7 +277,7 @@ mod tests {
 
         // white gains a pawn after quiese
         let pos = Position::parse_epd("7k/8/8/8/8/p7/8/R6K w - - 0 1 sm Ra3; ce 100;")?; 
-        let (alpha, beta) = (Score::MinusInf, Score::PlusInf);
+        let (alpha, beta) = (-Score::INFINITY, Score::INFINITY);
 
         let static_eval = pos.board().eval(&mut eval, &Node { ply: 0, alpha, beta }).cp().unwrap_or(0);
 

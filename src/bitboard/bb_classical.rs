@@ -70,8 +70,8 @@ impl BitboardAttacks for ClassicalBitboard {
 
     
     #[inline]
-    fn between(&self, s1:Square, s2: Square) -> Bitboard {
-        Square::calc_line_through(s1, s2) & Square::bounding_rectangle(s1, s2)
+    fn strictly_between(&self, s1: Square, s2: Square) -> Bitboard {
+        Square::calc_strictly_between(s1, s2)
     }
 
     #[inline]

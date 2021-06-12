@@ -16,8 +16,8 @@ impl Node {
     pub fn root() -> Node {
         Node {
             ply: 0,
-            alpha: Score::MinusInf,
-            beta: Score::PlusInf,
+            alpha: -Score::INFINITY,
+            beta: Score::INFINITY,
         }
     }
 

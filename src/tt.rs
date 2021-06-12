@@ -327,7 +327,8 @@ impl TranspositionTable {
     }
 
     pub fn store(&mut self, hash: Hash, entry: TtNode) {
-        if !self.enabled || self.capacity() == 0 {
+        // always store in the tt even if disabled, so that PV can be recoved
+        if self.capacity() == 0 {
             return;
         }
         debug_assert!(
@@ -360,7 +361,7 @@ impl TranspositionTable {
             {
                 self.pv_overwrites.increment();
             }
-            debug_assert!(new.entry.score > Score::MinusInf);
+            debug_assert!(new.entry.score > -Score::INFINITY);
             debug_assert!(
                 new.entry.node_type != NodeType::Pv || !new.entry.bm.is_null(),
                 "bm is null at {:?} mv {:?}",
@@ -500,7 +501,7 @@ mod tests {
 
     fn entry123() -> TtNode {
         TtNode {
-            score: Score::Cp(300),
+            score: Score::from_cp(300),
             draft: 2,
             node_type: NodeType::Pv,
             bm: Move::new_quiet(Piece::Pawn, b7.square(), b6.square()),
@@ -509,7 +510,7 @@ mod tests {
 
     fn entry456() -> TtNode {
         TtNode {
-            score: Score::Cp(200),
+            score: Score::from_cp(200),
             draft: 3,
             node_type: NodeType::Pv,
             bm: Move::new_quiet(Piece::Pawn, a2.square(), a3.square()),
@@ -518,7 +519,7 @@ mod tests {
 
     fn entry456b() -> TtNode {
         TtNode {
-            score: Score::Cp(201),
+            score: Score::from_cp(201),
             draft: 4,
             node_type: NodeType::Pv,
             bm: Move {

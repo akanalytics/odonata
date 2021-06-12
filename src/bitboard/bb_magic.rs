@@ -166,8 +166,8 @@ const BLACK: i32 = 1;
 impl BitboardAttacks for Magic {
     // inclusive of end points
     #[inline]
-    fn between(&self, s1: Square, s2: Square) -> Bitboard {
-        Hyperbola::default().between(s1, s2)
+    fn strictly_between(&self, s1: Square, s2: Square) -> Bitboard {
+        Hyperbola::default().strictly_between(s1, s2)
     }
 
     #[inline]

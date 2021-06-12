@@ -11,7 +11,7 @@ pub trait BitboardAttacks {
 
 
     // fn new() -> Self;
-    fn between(&self, s1:Square, s2: Square) -> Bitboard;
+    fn strictly_between(&self, s1:Square, s2: Square) -> Bitboard;
     fn line_through(&self, s1:Square, s2: Square) -> Bitboard;
     fn bishop_attacks(&self, occupied: Bitboard, from: Square) -> Bitboard;
     fn rook_attacks(&self, occupied: Bitboard, from: Square) -> Bitboard;
@@ -32,8 +32,8 @@ pub trait BitboardAttacks {
     }
 
     #[inline]
-    fn strictly_between(&self, s1: Square, s2: Square) -> Bitboard {
-        self.between(s1,s2).exclude(s1).exclude(s2)
+    fn between(&self, s1: Square, s2: Square) -> Bitboard {
+        self.strictly_between(s1,s2).include(s1).include(s2)
     }
 
     // king moves - see https://www.chessprogramming.org/Distance

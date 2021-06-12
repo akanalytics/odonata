@@ -227,7 +227,7 @@ impl Search {
             let board2 = node.board.make_move(mv);
             let mut child = self.new_child(node, mv, &board2);
             self.alphabeta(&mut child);
-            if child.score > Score::Cp(1000) {
+            if child.score > Score::from_cp(1000) {
                 // info!("Ply:{}  Move:{} score:{} bm:{} a:{} b:{}", child.ply, mv.uci(), child.score, self.best_move, self.alpha, self.beta);
             }
             let is_cut = self.process_child(&mv, &child);
@@ -862,13 +862,13 @@ mod tests {
     #[test]
     fn test_tt() {
         let entry123 =
-            TtNode::PvNodeExact { hash: 123, score: Score::Cp(300), depth: 2, bm: Move::new_null() };
+            TtNode::PvNodeExact { hash: 123, score: Score::from_cp(300), depth: 2, bm: Move::new_null() };
 
         let entry456 =
-            TtNode::PvNodeExact { hash: 456, score: Score::Cp(200), depth: 3, bm: Move::new_null() };
+            TtNode::PvNodeExact { hash: 456, score: Score::from_cp(200), depth: 3, bm: Move::new_null() };
 
         let entry456b =
-            TtNode::PvNodeExact { hash: 456, score: Score::Cp(201), depth: 4, bm: Move::new_null() };
+            TtNode::PvNodeExact { hash: 456, score: Score::from_cp(201), depth: 4, bm: Move::new_null() };
 
         let mut tt = TranspositionTable::new_in_mb(10);
         assert_eq!(tt.capacity(), 178_571);
@@ -1530,8 +1530,8 @@ impl fmt::Display for MoveList {
 
 impl Ord for Score {
     fn cmp(&self, other: &Score) -> cmp::Ordering {
-        if let Score::Cp(_s1) = self {
-            if let Score::Cp(_s2) = other {
+        if let Score::from_cp(_s1) = self {
+            if let Score::from_cp(_s2) = other {
                 return PartialOrd::partial_cmp(&self.win_probability(), &other.win_probability()).unwrap();
             }
         } 

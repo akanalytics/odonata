@@ -164,7 +164,7 @@ fn benchmark_score(c: &mut Criterion) {
     });
     group.bench_function("score enum", |b| {
         b.iter(|| {
-            black_box(Score::Cp(black_box(5)) > Score::Cp(black_box(4)));
+            black_box(Score::from_cp(black_box(5)) > Score::from_cp(black_box(4)));
         });
     });
     group.finish();
@@ -238,7 +238,7 @@ fn sq_calcs(c: &mut Criterion) {
             t.elapsed() / (64 * 64) as u32
         });
     });
-    group.bench_function("line_through", |b| {
+    group.bench_function("calc_line_through", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
             for _ in 0..n {
@@ -263,6 +263,22 @@ fn sq_calcs(c: &mut Criterion) {
                         Bitboard::all()
                             .squares()
                             .map(|s2| black_box(Square::bounding_rectangle(s1, s2)))
+                            .count(),
+                    );
+                }
+            }
+            t.elapsed() / (64 * 64) as u32
+        });
+    });
+    group.bench_function("calc_chebyshev_distance", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            for _ in 0..n {
+                for s1 in Bitboard::all().squares() {
+                    black_box(
+                        Bitboard::all()
+                            .squares()
+                            .map(|s2| black_box(Square::calc_chebyshev_distance(s1, s2)))
                             .count(),
                     );
                 }
@@ -417,7 +433,7 @@ fn board_calcs(c: &mut Criterion) {
 
     group.bench_function("tt_store", |b| {
         let entry = TtNode {
-            score: Score::Cp(100),
+            score: Score::from_cp(100),
             draft: 1,
             node_type: NodeType::Pv,
             bm: Move::NULL_MOVE,

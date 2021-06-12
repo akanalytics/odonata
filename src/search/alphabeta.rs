@@ -50,7 +50,7 @@ impl Algo {
         self.report_progress();
 
         if self.time_up_or_cancelled(ply, false) {
-            return Score::MinusInf;
+            return -Score::INFINITY;
         }
 
         if board.draw_outcome().is_some() {
@@ -58,7 +58,7 @@ impl Algo {
             return board.eval(&mut self.eval, &Node { ply, alpha, beta }); // will return a draw score
         }
 
-        let mut score = Score::MinusInf;
+        let mut score = -Score::INFINITY;
         let mut bm = Move::NULL_MOVE;
         let mut nt = NodeType::All;
 
@@ -136,7 +136,7 @@ impl Algo {
             board.undo_move(&mv);
             self.repetition.pop();
             if ply > 1 && self.task_control.is_cancelled() {
-                return Score::MinusInf;
+                return -Score::INFINITY;
             }
 
             // println!("move {} score {} alpha {} beta {}", mv, score, alpha, beta);
@@ -228,13 +228,12 @@ mod tests {
         let positions = Catalog::mate_in_3();
         for (i, pos) in positions.iter().enumerate() {
             let mut search = Algo::new().set_timing_method(TimeControl::Depth(5)).build();
-            search.tt.enabled = false;
             let expected_pv = pos.pv()?;
             search.search(pos.board());
-            // println!("{}", search);
-            assert_eq!(search.pv_table.extract_pv(), expected_pv, "#{} {}", i, pos);
-            println!("Mate in {}", search.score().mate_in().unwrap());
+            println!("{}", search);
+
             assert_eq!(search.score().mate_in(), Some(3), "#{} {}", i, pos);
+            assert_eq!(search.pv_table.extract_pv(), expected_pv, "#{} {}", i, pos);
         }
         Ok(())
     }
@@ -245,7 +244,6 @@ mod tests {
         let positions = Catalog::mate_in_4();
         for (i, pos) in positions.iter().enumerate() {
             let mut search = Algo::new().set_timing_method(TimeControl::Depth(7)).build();
-            search.tt.enabled = false;
             search.search(pos.board());
             // println!("{}", search);
             if pos.get("pv").is_ok() {

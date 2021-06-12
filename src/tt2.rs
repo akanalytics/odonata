@@ -658,7 +658,7 @@ mod tests {
 
     fn entry123() -> TtNode {
         TtNode {
-            score: Score::Cp(300),
+            score: Score::from_cp(300),
             draft: 2,
             node_type: NodeType::Pv,
             bm: Move::new_quiet(Piece::Pawn, b7.square(), b6.square()),
@@ -667,7 +667,7 @@ mod tests {
 
     fn entry456() -> TtNode {
         TtNode {
-            score: Score::Cp(200),
+            score: Score::from_cp(200),
             draft: 3,
             node_type: NodeType::Pv,
             bm: Move::new_quiet(Piece::Pawn, a2.square(), a3.square()),
@@ -676,7 +676,7 @@ mod tests {
 
     fn entry456b() -> TtNode {
         TtNode {
-            score: Score::Cp(201),
+            score: Score::from_cp(201),
             draft: 4,
             node_type: NodeType::Pv,
             bm: Move {

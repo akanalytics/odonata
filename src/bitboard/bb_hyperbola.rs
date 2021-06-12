@@ -25,7 +25,7 @@ struct HyperbolaMask {
 pub struct Hyperbola {
     mask: [HyperbolaMask; 64],
     rank_attacks: [[Bitboard; 8]; 64], // for perm of 6 bit-occupancy (64) and for each rook square (8)
-    between: [[Bitboard; 64]; 64],
+    strictly_between: [[Bitboard; 64]; 64],
     line: [[Bitboard; 64]; 64],
 }
 
@@ -34,23 +34,22 @@ impl Hyperbola {
         let mut me = Self {
             mask: [HyperbolaMask::default(); 64],
             rank_attacks: [[Bitboard::EMPTY; 8]; 64],
-            between: [[Bitboard::EMPTY; 64]; 64],
+            strictly_between: [[Bitboard::EMPTY; 64]; 64],
             line: [[Bitboard::EMPTY; 64]; 64],
         };
 
         Self::pop_mask(&mut me.mask);
         Self::pop_rank_attacks(&mut me.rank_attacks);
-        Self::pop_between(&mut me.between);
+        Self::pop_strictly_between(&mut me.strictly_between);
         Self::pop_line(&mut me.line);
         me
     }
 
 
-    fn pop_between(between: &mut [[Bitboard; 64]; 64]) {
+    fn pop_strictly_between(strictly_between: &mut [[Bitboard; 64]; 64]) {
         for s1 in Bitboard::all().squares() {
             for s2 in Bitboard::all().squares() {
-                between[s1][s2] = Square::calc_line_through(s1, s2) & Square::bounding_rectangle(s1, s2);
-
+                strictly_between[s1][s2] = Square::calc_strictly_between(s1, s2);
             }
         }
     }
@@ -141,8 +140,8 @@ impl BitboardAttacks for Hyperbola {
 
     // inclusive of end points
     #[inline]
-    fn between(&self, s1: Square, s2: Square) -> Bitboard {
-        self.between[s1][s2]
+    fn strictly_between(&self, s1: Square, s2: Square) -> Bitboard {
+        self.strictly_between[s1][s2]
     }
 
     #[inline]
@@ -264,6 +263,12 @@ mod tests {
                         sq.as_bb()
                     );
                 }
+            }
+        }
+        for s1 in Bitboard::all().squares() {
+            for s2 in Bitboard::all().squares() {
+                assert_eq!(hq.strictly_between(s1, s2), cb.strictly_between(s1, s2));
+                assert_eq!(hq.line_through(s1, s2), cb.line_through(s1, s2));
             }
         }
     }

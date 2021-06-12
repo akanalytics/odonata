@@ -122,6 +122,17 @@ impl Square {
         Bitboard::all() - north - south - east - west
     }
 
+    #[inline]
+    pub fn calc_between(s1: Square, s2: Square) -> Bitboard {
+        Square::calc_line_through(s1, s2) & Square::bounding_rectangle(s1, s2)
+    }
+
+    #[inline]
+    pub fn calc_strictly_between(s1: Square, s2: Square) -> Bitboard {
+        let between = Square::calc_line_through(s1, s2) & Square::bounding_rectangle(s1, s2);
+        between.exclude(s1).exclude(s2)
+    }
+
     // returns empty if not on same line. For s1 == s2, returns just the single square
     pub fn calc_line_through(s1: Square, s2: Square) -> Bitboard {
         if s1 == s2 {
@@ -138,6 +149,15 @@ impl Square {
             Bitboard::empty()
         }
     }
+
+    // king moves - see https://www.chessprogramming.org/Distance
+    pub fn calc_chebyshev_distance(s1:Square, s2: Square) -> u32 {
+        i32::max(
+            i32::abs(s1.rank_index() as i32 - s2.rank_index() as i32), 
+            i32::abs(s1.file_index() as i32- s2.file_index() as i32)
+        ) as u32 
+    }
+
 
     /// flip vertical - https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating
     #[inline]
@@ -264,5 +284,15 @@ mod tests {
         );
     }
 
+    #[test]
+    fn test_betweens() {
+        assert_eq!(Square::calc_between(b6.square(), b6.square()), b6);
+        assert_eq!(Square::calc_strictly_between(b6.square(), b6.square()), Bitboard::empty());
 
+        assert_eq!(Square::calc_between(b6.square(), b8.square()), b6 | b7 | b8);
+        assert_eq!(Square::calc_strictly_between(b6.square(), b8.square()), b7);
+
+        assert_eq!(Square::calc_between(f1.square(), h3.square()), f1 | g2 | h3);
+        assert_eq!(Square::calc_strictly_between(f1.square(), h3.square()), g2);
+    }
 }

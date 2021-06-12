@@ -17,20 +17,22 @@ pub struct Score {
 // MIN + 1 + MAX_PLY and i16::MAX -1 - MAX_PLY
 impl Score {
     // note MAX = 32767 but MIN = -32768. So we use -MAX
-    pub const MinusInf : Score = Score { cp: -i16::MAX };
-    pub const PlusInf : Score = Score { cp: i16::MAX };
+    // pub const MINUS_INF : Score = Score { cp: -i16::MAX };
+    pub const INFINITY : Score = Score { cp: i16::MAX };
 
-    pub const INF : i16 = i16::MAX;
-
-    #[inline]
-    pub fn from_cp(centipawn: i16) -> Score {
-        Score { cp: centipawn }
-    }
+    const INF : i16 = i16::MAX;
 
     #[inline]
-    pub fn Cp(centipawn: i32) -> Score {
+    pub fn from_cp(centipawn: i32) -> Score {
+        debug_assert!( centipawn.clamp(-Self::INF as i32, Self::INF as i32) == centipawn );
         Score { cp: centipawn as i16 }
+        // Score { cp: centipawn.clamp(-Self::INF as i32, Self::INF as i32) as i16 }  // adds 4% to eval
     }
+
+    // #[inline]
+    // pub fn Cp(centipawn: i32) -> Score {
+    //     Score { cp: centipawn as i16 }
+    // }
 
     #[inline]
     pub fn cp(self) -> Option<i16> {
@@ -132,9 +134,9 @@ impl Score {
         // axiom: were white
         // white to move => advantage, black to move means white has a disadvantage
         if us == Color::White {
-            Score::from_cp(tempo as i16 * 0)
+            Score::from_cp(tempo * 0)
         } else {
-            Score::from_cp(-tempo as i16 * 0)
+            Score::from_cp(-tempo * 0)
         }
     }
 
@@ -157,7 +159,7 @@ impl Score {
             // board.color_us() == Color::Black => minimising
             // +ve contempt => -ve score => aim for draw => opponent stronger than us
             let contempt = us.chooser_wb(contempt, -contempt);
-            return Score::Cp(contempt);
+            return Score::from_cp(contempt);
         }
         if let Some(c) = o.winning_color() {
             return c.chooser_wb(
@@ -206,7 +208,7 @@ impl Score {
 impl Default for Score {
     #[inline]
     fn default() -> Self {
-        Self::MinusInf
+        -Self::INFINITY
     }
 }
 
@@ -217,7 +219,7 @@ impl std::ops::Add for Score {
     fn add(self, other: Self) -> Self {
         if let Some(s2) = other.cp() {
             if let Some(s1) = self.cp() {
-                return Score::from_cp(s1 + s2);
+                return Score::from_cp(s1 as i32 + s2 as i32);
             } else {
                 return self; // if self is an infinite or mate then adding cp/mp makes no difference
             }
@@ -232,7 +234,7 @@ impl std::ops::Mul<Score> for i32 {
     #[inline]
     fn mul(self, other: Score) -> Score {
         if other.is_numeric() {
-            Score::from_cp(self as i16 * other.cp)
+            Score::from_cp(self * other.cp as i32)
         } else if self > 0 {
             other
         } else if self < 0 {
@@ -250,7 +252,7 @@ impl std::ops::Sub for Score {
     fn sub(self, other: Self) -> Self {
         if let Some(s2) = other.cp() {
             if let Some(s1) = self.cp() {
-                return Score::from_cp(s1 - s2);
+                return Score::from_cp(s1 as i32 - s2 as i32);
             } else {
                 return self; // if self is an infinite or mate then subtracting cp/mp makes no difference
             }
@@ -523,7 +525,7 @@ mod tests {
 
     #[test]
     fn test_score() {
-        assert_eq!(Score::Cp(1).negate(), Score::Cp(-1));
+        assert_eq!(Score::from_cp(1).negate(), Score::from_cp(-1));
         assert_eq!(
             Score::white_win(1).negate(),
             Score::white_loss(1)
@@ -534,47 +536,47 @@ mod tests {
         );
         assert_eq!(Score::white_win(0).is_mate(), true);
         assert_eq!(Score::white_loss(0).is_mate(), true);
-        assert_eq!(Score::MinusInf.is_mate(), false);
-        assert_eq!(Score::PlusInf.is_mate(), false);
-        assert_eq!(Score::Cp(123).is_mate(), false);
+        assert_eq!((-Score::INFINITY).is_mate(), false);
+        assert_eq!(Score::INFINITY.is_mate(), false);
+        assert_eq!(Score::from_cp(123).is_mate(), false);
         assert_eq!(
             Score::white_loss(1).negate(),
             Score::white_win(1)
         );
-        assert_eq!(Score::MinusInf.negate(), Score::PlusInf);
-        assert_eq!(-Score::MinusInf, Score::PlusInf);
-        assert_eq!(Score::MinusInf, -Score::PlusInf);
-        assert_eq!(--Score::MinusInf, Score::MinusInf);
-        assert_eq!(Score::MinusInf.is_numeric(), false);
-        assert_eq!(Score::PlusInf.is_numeric(), false);
+        assert_eq!((-Score::INFINITY).negate(), Score::INFINITY);
+        assert_eq!(-(-Score::INFINITY), Score::INFINITY);
+        assert_eq!((-Score::INFINITY), -Score::INFINITY);
+        assert_eq!(--(-Score::INFINITY), (-Score::INFINITY));
+        assert_eq!((-Score::INFINITY).is_numeric(), false);
+        assert_eq!(Score::INFINITY.is_numeric(), false);
         assert_eq!(Score::white_win(0).is_numeric(), false);
         assert_eq!(Score::white_loss(0).is_numeric(), false);
         assert_eq!(Score::white_loss(60).is_numeric(), false);
         assert_eq!(Score::white_win(60).is_numeric(), false);
         assert_eq!(Score::white_win(6) > Score::white_win(7), true);
         assert_eq!(Score::white_win(3) < Score::white_win(1), true);
-        assert!(Score::MinusInf < Score::PlusInf);
-        assert_eq!(Score::MinusInf.is_mate(), false);
+        assert!((-Score::INFINITY) < Score::INFINITY);
+        assert_eq!((-Score::INFINITY).is_mate(), false);
         assert_eq!(Score::white_win(1).is_mate(), true);
-        assert!(Score::Cp(-5) < Score::Cp(5));
-        assert!(Score::Cp(5) < Score::white_win(0));
-        assert!(Score::Cp(100) > Score::Cp(0));
+        assert!(Score::from_cp(-5) < Score::from_cp(5));
+        assert!(Score::from_cp(5) < Score::white_win(0));
+        assert!(Score::from_cp(100) > Score::from_cp(0));
 
         // addition
-        assert_eq!(Score::Cp(100) + Score::Cp(150), Score::Cp(250));
-        assert_eq!(Score::MinusInf + Score::Cp(150), Score::MinusInf);
-        assert_eq!(Score::white_win(1) + Score::Cp(150), Score::white_win(1));
+        assert_eq!(Score::from_cp(100) + Score::from_cp(150), Score::from_cp(250));
+        assert_eq!((-Score::INFINITY) + Score::from_cp(150), (-Score::INFINITY));
+        assert_eq!(Score::white_win(1) + Score::from_cp(150), Score::white_win(1));
 
         // subtraction
-        assert_eq!(Score::Cp(100) - Score::Cp(150), Score::Cp(-50));
-        assert_eq!(Score::MinusInf - Score::Cp(150), Score::MinusInf);
-        assert_eq!(Score::white_win(1) - Score::Cp(150), Score::white_win(1));
+        assert_eq!(Score::from_cp(100) - Score::from_cp(150), Score::from_cp(-50));
+        assert_eq!((-Score::INFINITY) - Score::from_cp(150), (-Score::INFINITY));
+        assert_eq!(Score::white_win(1) - Score::from_cp(150), Score::white_win(1));
 
-        assert_eq!(2 * Score::Cp(100), Score::Cp(200));
-        assert_eq!(-2 * Score::Cp(200), Score::Cp(-400));
-        assert_eq!(-2 * Score::MinusInf, Score::PlusInf);
-        assert_eq!(-2 * Score::PlusInf, Score::MinusInf);
-        assert_eq!(1 * Score::PlusInf, Score::PlusInf);
+        assert_eq!(2 * Score::from_cp(100), Score::from_cp(200));
+        assert_eq!(-2 * Score::from_cp(200), Score::from_cp(-400));
+        assert_eq!(-2 * (-Score::INFINITY), Score::INFINITY);
+        assert_eq!(-2 * Score::INFINITY, (-Score::INFINITY));
+        assert_eq!(1 * Score::INFINITY, Score::INFINITY);
         assert_eq!(
             -1 * Score::white_win(2),
             Score::white_loss(2)
@@ -588,12 +590,12 @@ mod tests {
             1 * Score::white_win(2),
             Score::white_win(2)
         );
-        assert!(Score::white_win( 1 ) < Score::PlusInf);
+        assert!(Score::white_win( 1 ) < Score::INFINITY);
         assert!(Score::white_win( 0 ) == Score::white_win( 0 ));
-        assert!(Score::Cp(0).win_probability() > 0.499);
-        assert!(Score::Cp(0).win_probability() < 0.501);
-        assert!(Score::Cp(1000).win_probability() > 0.95);
-        assert!(Score::Cp(-1000).win_probability() < 0.05);
-        assert!(Score::MinusInf.win_probability() < 0.001);
+        assert!(Score::from_cp(0).win_probability() > 0.499);
+        assert!(Score::from_cp(0).win_probability() < 0.501);
+        assert!(Score::from_cp(1000).win_probability() > 0.95);
+        assert!(Score::from_cp(-1000).win_probability() < 0.05);
+        assert!((-Score::INFINITY).win_probability() < 0.001);
     }
 }
