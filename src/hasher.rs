@@ -62,9 +62,49 @@ impl fmt::Display for Hasher {
 
 // static INSTANCE: OnceCell<Hasher> = OnceCell::new();
 
-// static HASHER: Lazy<Hasher> = Lazy::new(|| Hasher::new(3141592653589793));
+static STATIC_INSTANCE: Lazy<Box<Hasher>> = Lazy::new(|| Hasher::new(3141592653589793));
 
-static mut STATIC_INSTANCE: *const Hasher = std::ptr::null();
+impl Hasher {
+    // // doesnt impl Default as too large to copy by value
+    #[inline]
+    pub fn default() -> &'static Self {
+        &STATIC_INSTANCE
+    }
+}
+
+
+
+// fn init_module() {
+//     Hasher::init();
+// }
+
+// static mut STATIC_INSTANCE: *const Hasher = std::ptr::null();
+
+// //
+// impl Hasher {
+
+//     pub fn init() {
+//         let me = Self::new(3141592653589793);
+//         unsafe {
+//             // leak the value, so it will never be dropped or freed
+//             STATIC_INSTANCE = Box::leak(me) as *const Self;
+//         }
+//     }
+    
+
+//     // // doesnt impl Default as too large to copy by value
+//     #[inline]
+//     pub fn default() -> &'static Self {
+//         unsafe {
+//             &*STATIC_INSTANCE
+//         }
+//     }
+// }
+
+
+
+
+
 
 // https://docs.rs/rand/0.8.3/rand/rngs/struct.StdRng.html
 // For a secure reproducible generator, we recommend use of the rand_chacha crate directly.
@@ -74,35 +114,9 @@ static mut STATIC_INSTANCE: *const Hasher = std::ptr::null();
 //
 impl Hasher {
 
-    pub fn init() {
-        let me = Box::new(Self::new(3141592653589793));
-        unsafe {
-            // leak the value, so it will never be dropped or freed
-            STATIC_INSTANCE = Box::leak(me) as *const Self;
-        }
-    }
-    
-    // doesnt impl Default as too large to copy by value
-    // #[inline]
-    // pub fn default() -> &'static Self {
-    //     &STATIC_INSTANCE
-    // }
-
-    #[inline]
-    pub fn default() -> &'static Self {
-        unsafe {
-            &*STATIC_INSTANCE
-        }
-    }
-
-    // // doesnt impl Default as too large to copy by value
-    // #[inline]
-    // pub fn default() -> &'static Self {
-    //     &HASHER
-    // }
 
 
-    pub fn new(seed: u64) -> Self {
+    pub fn new(seed: u64) -> Box<Self> {
         let mut rng = ChaChaRng::seed_from_u64(seed);
         let mut h = Hasher {
             seed,
@@ -124,7 +138,7 @@ impl Hasher {
         rng.fill(&mut h.castling);
         // h.castling[CastlingRights::NONE] = 0;
         rng.fill(&mut h.ep);
-        h
+        Box::new(h)
     }
 
     pub fn seed(&self) -> u64 {

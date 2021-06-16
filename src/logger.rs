@@ -34,8 +34,8 @@ macro_rules! log_debug {
     // );
     ($($arg:tt)*) => (
         {
-            //crate::logger::LogInit::check_init(); 
-            //log::log!(log::Level::Debug, $($arg)*)
+            crate::logger::LogInit::check_init(); 
+            log::log!(log::Level::Debug, $($arg)*)
         };
     )
 }
@@ -44,8 +44,8 @@ macro_rules! log_debug {
 macro_rules! trace {
     ($($arg:tt)*) => (
         {
-            //LogInit::check_init(); 
-            //log::log!(log::Level::Trace, $($arg)*)
+            LogInit::check_init(); 
+            log::log!(log::Level::Trace, $($arg)*)
         };
     )
 }
@@ -54,8 +54,8 @@ macro_rules! trace {
 macro_rules! debug {
     ($($arg:tt)*) => (
         {
-            //LogInit::check_init(); 
-            //log::log!(log::Level::Debug, $($arg)*)
+            LogInit::check_init(); 
+            log::log!(log::Level::Debug, $($arg)*)
         };
     )
 }
@@ -63,21 +63,30 @@ macro_rules! debug {
 #[macro_export]
 macro_rules! info {
     ($($arg:tt)*) => (
-        {LogInit::check_init(); log::log!(log::Level::Info, $($arg)*)};
+        {
+            LogInit::check_init(); 
+            log::log!(log::Level::Info, $($arg)*)
+        };
     )
 }
 
 #[macro_export]
 macro_rules! warn {
     ($($arg:tt)*) => (
-        {LogInit::check_init(); log::log!(log::Level::Warn, $($arg)*)};
+        {
+            LogInit::check_init(); 
+            log::log!(log::Level::Warn, $($arg)*)
+        };
     )
 }
 
 #[macro_export]
 macro_rules! error {
     ($($arg:tt)*) => (
-        {LogInit::check_init(); log::log!(log::Level::Error, $($arg)*)};
+        {
+            LogInit::check_init(); 
+            log::log!(log::Level::Error, $($arg)*)
+        };
     )
 }
 

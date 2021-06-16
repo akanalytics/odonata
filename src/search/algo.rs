@@ -48,7 +48,7 @@ impl Engine {
         for i in 0..self.thread_count {
             let builder = thread::Builder::new()
                 .name(format!("S{}", i))
-                .stack_size(200_000);
+                .stack_size(500_000);
             self.algo.board = b.clone();
             let mut algo = self.algo.clone();
             if !self.shared_tt {
@@ -420,8 +420,6 @@ mod tests {
 
     #[test]
     fn test_threading() {
-        Hyperbola::init();
-        Hasher::init();
         for i in 1..=12 {
             for &shared in &[true] {
                 let mut eng = Engine::new();

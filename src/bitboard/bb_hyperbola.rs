@@ -3,17 +3,38 @@ use crate::bitboard::bitboard::{Bitboard, Dir};
 use crate::bitboard::square::Square;
 use once_cell::sync::Lazy;
 
-// static STATIC_INSTANCE: Lazy<Hyperbola> = Lazy::new(|| Hyperbola::new());
 
-static mut STATIC_INSTANCE: *const Hyperbola = std::ptr::null();
-// static mut STATIC_INSTANCE: Hyperbola = Hyperbola::new();
-
-// enum MaskType {
-//     Diag = 0,
-//     AntiDiag = 1,
-//     File = 2,
-//     Rank = 3,
+// #[ctor]
+// fn init_module() {
+//     Hyperbola::init();
 // }
+
+static STATIC_INSTANCE: Lazy<Box<Hyperbola>> = Lazy::new(|| Hyperbola::new());
+
+// static mut STATIC_INSTANCE: *const Hyperbola = std::ptr::null();
+// impl Hyperbola {
+//         pub fn init() {
+//         let me = Self::new();
+//         unsafe {
+//             // leak the value, so it will never be dropped or freed
+//             STATIC_INSTANCE = Box::leak(me) as *const Self;
+//         }
+//     }
+
+//     // doesnt impl Default as too large to copy by value
+//     #[inline]
+//     pub fn default() -> &'static Self {
+//         unsdafe {
+//             &*STATIC_INSTANCE
+//         }
+//     }
+    
+// }
+
+
+
+
+
 
 #[derive(Copy, Clone, Debug, Default)]
 struct HyperbolaMask {
@@ -35,30 +56,17 @@ pub struct Hyperbola {
 
 impl Hyperbola {
 
-    pub fn init() {
-        let hyperbola = Hyperbola::new();
-        unsafe {
-            // leak the value, so it will never be dropped or freed
-            STATIC_INSTANCE = Box::leak(hyperbola) as *const Hyperbola;
-        }
-    }
+
     
     // doesnt impl Default as too large to copy by value
-    // #[inline]
-    // pub fn default() -> &'static Self {
-    //     &STATIC_INSTANCE
-    // }
-
     #[inline]
     pub fn default() -> &'static Self {
-        unsafe {
-            &*STATIC_INSTANCE
-        }
+        &STATIC_INSTANCE
     }
 
 
     fn new() -> Box<Self> {
-        let mut me = Self {
+        let mut me = Box::new(Self {
             mask: [ HyperbolaMask {
                 diag: Bitboard::EMPTY,
                 anti_diag: Bitboard::EMPTY,
@@ -69,7 +77,7 @@ impl Hyperbola {
             rank_attacks: [[Bitboard::EMPTY; 8]; 64],
             strictly_between: [[Bitboard::EMPTY; 64]; 64],
             line: [[Bitboard::EMPTY; 64]; 64],
-        };
+        });
 
         Self::pop_mask(&mut me.mask);
         Self::pop_rank_attacks(&mut me.rank_attacks);
@@ -77,7 +85,7 @@ impl Hyperbola {
         Self::pop_king_moves(&mut me.king_moves);
         Self::pop_knight_moves(&mut me.knight_moves);
         Self::pop_line(&mut me.line);
-        Box::new(me)
+        me
     }
 
     fn pop_king_moves(king_moves: &mut [Bitboard; 64]) {

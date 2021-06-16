@@ -11,6 +11,63 @@
 insufficient_material
 
 
+// static STATIC_INSTANCE: Lazy<Hyperbola> = Lazy::new(|| Hyperbola::new());
+
+
+
+static mut STATIC_INSTANCE: *const Hyperbola = std::ptr::null();
+
+
+#[ctor]
+fn init_module() {
+    Hyperbola::init();
+}
+
+
+#[derive(Copy, Clone, Debug, Default)]
+struct HyperbolaMask {
+    diag: Bitboard,
+    anti_diag: Bitboard,
+    file: Bitboard,
+    // rank: Bitboard,
+}
+
+#[derive(Clone, Debug)]
+pub struct Hyperbola {
+    mask: [HyperbolaMask; 64],
+    rank_attacks: [[Bitboard; 8]; 64], // for perm of 6 bit-occupancy (64) and for each rook square (8)
+    king_moves: [Bitboard; 64],
+    knight_moves: [Bitboard; 64],
+    strictly_between: [[Bitboard; 64]; 64],
+    line: [[Bitboard; 64]; 64],
+}
+
+impl Hyperbola {
+
+    pub fn init() {
+        let hyperbola = Hyperbola::new();
+        unsafe {
+            // leak the value, so it will never be dropped or freed
+            STATIC_INSTANCE = Box::leak(hyperbola) as *const Hyperbola;
+        }
+    }
+    
+    // doesnt impl Default as too large to copy by value
+    // #[inline]
+    // pub fn default() -> &'static Self {
+    //     &STATIC_INSTANCE
+    // }
+
+    #[inline]
+    pub fn default() -> &'static Self {
+        unsafe {
+            &*STATIC_INSTANCE
+        }
+    }
+
+
+    fn new() -> Box<Self> {
+        let mut me = Self {
 
 
 // }

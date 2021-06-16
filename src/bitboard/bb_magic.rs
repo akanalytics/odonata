@@ -43,7 +43,43 @@ use crate::bitboard::bitboard::Bitboard;
 use crate::bitboard::square::Square;
 use once_cell::sync::Lazy;
 
+
+// fn init_module() {
+//     Magic::init();
+// }
+
+// static mut STATIC_INSTANCE: *const Magic = std::ptr::null();
+
+// impl Magic {
+//     // doesnt impl Default as too large to copy by value
+//     #[inline]
+//     pub fn default() -> &'static Self {
+//         unsafe {
+//             &*STATIC_INSTANCE
+//         }
+//     }
+
+//     pub fn init() {
+//         let me = Self::new();
+//         unsafe {
+//             // leak the value, so it will never be dropped or freed
+//             STATIC_INSTANCE = Box::leak(me) as *const Self;
+//         }
+//     }
+// }
+
+
 static STATIC_INSTANCE: Lazy<Box<Magic>> = Lazy::new(|| Magic::new());
+
+impl Magic {
+        
+    // doesnt impl Default as too large to copy by value
+    #[inline]
+    pub fn default() -> &'static Self {
+        &STATIC_INSTANCE
+    }
+
+}
 
 #[allow(non_snake_case)]
 #[derive(Debug)]
@@ -204,11 +240,7 @@ impl BitboardAttacks for Magic {
 }
 
 impl Magic {
-    // doesnt impl Default as too large to copy by value
-    #[inline]
-    pub fn default() -> &'static Self {
-        &STATIC_INSTANCE
-    }
+
 
     // #[inline]
     // pub fn pawn_attacks(&self, side: i32, sq: i32) -> u64 {
@@ -391,6 +423,7 @@ impl Magic {
     //     printf("\n");
     //     return;
     // }
+
 
     fn new() -> Box<Magic> {
         let mut magic = Box::new(Magic {

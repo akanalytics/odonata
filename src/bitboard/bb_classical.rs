@@ -14,19 +14,51 @@ pub struct ClassicalBitboard {
     knight_moves: [Bitboard; 64],
 }
 
+// #[ctor]
+// fn init_module() {
+//     ClassicalBitboard::init();
+// }
+
+// static mut STATIC_INSTANCE: *const ClassicalBitboard = std::ptr::null();
+
+// impl ClassicalBitboard {
+//     pub fn init() {
+//         let me = Self::new();
+//         unsafe {
+//             // leak the value, so it will never be dropped or freed
+//             STATIC_INSTANCE = Box::leak(me) as *const Self;
+//         }
+//     }
+
+//     // doesnt impl Default as too large to copy by value
+//     #[inline]
+//     pub fn default() -> &'static Self {
+//         unsafe {
+//             &*STATIC_INSTANCE
+//         }
+//     }
+// }
+
 static STATIC_INSTANCE: Lazy<Box<ClassicalBitboard>> = Lazy::new(|| ClassicalBitboard::new());
 
 
+impl ClassicalBitboard {
 
+    // doesnt impl Default as too large to copy by value
+    #[inline]
+    pub fn default() -> &'static Self {
+            &STATIC_INSTANCE
+    }
+}
 
 impl ClassicalBitboard {
     pub fn new() -> Box<ClassicalBitboard> {
         // let mut attacks = [[Bitboard::EMPTY; 8]; 64];
-        let mut classical = ClassicalBitboard {
+        let mut classical = Box::new(ClassicalBitboard {
             rays: [[Bitboard::EMPTY; 8]; 64],
             king_moves: [Bitboard::EMPTY; 64],
             knight_moves: [Bitboard::EMPTY; 64],
-        };
+        });
         for sq in 0..64_usize {
             for &dir in Dir::ALL.iter() {
                 let bb = Bitboard::from_sq(sq as u8);
@@ -39,14 +71,9 @@ impl ClassicalBitboard {
                 classical.knight_moves[sq] |= bb.shift(dir).shift(next_dir);
             }
         }
-        Box::new(classical)
+        classical
     }
 
-    // doesnt impl Default as too large to copy by value
-    #[inline]
-    pub fn default() -> &'static Self {
-        &STATIC_INSTANCE
-    }
 
 
     #[inline]
