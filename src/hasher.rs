@@ -62,7 +62,9 @@ impl fmt::Display for Hasher {
 
 // static INSTANCE: OnceCell<Hasher> = OnceCell::new();
 
-static HASHER: Lazy<Hasher> = Lazy::new(|| Hasher::new(3141592653589793));
+// static HASHER: Lazy<Hasher> = Lazy::new(|| Hasher::new(3141592653589793));
+
+static mut STATIC_INSTANCE: *const Hasher = std::ptr::null();
 
 // https://docs.rs/rand/0.8.3/rand/rngs/struct.StdRng.html
 // For a secure reproducible generator, we recommend use of the rand_chacha crate directly.
@@ -71,6 +73,35 @@ static HASHER: Lazy<Hasher> = Lazy::new(|| Hasher::new(3141592653589793));
 // I think the motivation is to ensure cross platform reproducibility - which I want
 //
 impl Hasher {
+
+    pub fn init() {
+        let me = Box::new(Self::new(3141592653589793));
+        unsafe {
+            // leak the value, so it will never be dropped or freed
+            STATIC_INSTANCE = Box::leak(me) as *const Self;
+        }
+    }
+    
+    // doesnt impl Default as too large to copy by value
+    // #[inline]
+    // pub fn default() -> &'static Self {
+    //     &STATIC_INSTANCE
+    // }
+
+    #[inline]
+    pub fn default() -> &'static Self {
+        unsafe {
+            &*STATIC_INSTANCE
+        }
+    }
+
+    // // doesnt impl Default as too large to copy by value
+    // #[inline]
+    // pub fn default() -> &'static Self {
+    //     &HASHER
+    // }
+
+
     pub fn new(seed: u64) -> Self {
         let mut rng = ChaChaRng::seed_from_u64(seed);
         let mut h = Hasher {
@@ -100,11 +131,6 @@ impl Hasher {
         self.seed
     }
 
-    // doesnt impl Default as too large to copy by value
-    #[inline]
-    pub fn default() -> &'static Self {
-        &HASHER
-    }
 
     #[inline]
     fn get(&self, c: Color, p: Piece, sq: Square) -> Hash {

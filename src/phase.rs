@@ -8,13 +8,15 @@ use std::cmp;
 
 pub struct Phase;
 
-static ALL_PIECES: Lazy<i32> = Lazy::new(|| {
-    2 * Catalog::starting_position()
-        .material()
-        .white()
-        .minors_and_majors()
-        .centipawns()
-});
+static ALL_PIECES: i32 = 6500;
+
+// static ALL_PIECES: Lazy<i32> = Lazy::new(|| {
+//     2 * Catalog::starting_position()
+//         .material()
+//         .white()
+//         .minors_and_majors()
+//         .centipawns()
+// });
 
 impl Board {
     // phase = % endgame, 0 is start, 100 is end game with just pawns
@@ -22,7 +24,7 @@ impl Board {
         let m = self.material();
 
         let cp = cmp::min(
-            *ALL_PIECES,
+            ALL_PIECES,
             m.white().minors_and_majors().centipawns() - m.black().minors_and_majors().centipawns(),
         );
 
@@ -34,7 +36,7 @@ impl Board {
         // let cp = cmp::min(*ALL_PIECES, cp);  // unlikely but can promote without losing a piece
 
         // KINGS <= cp <= ALL_PIECES
-        let percentage = cp * 100 / *ALL_PIECES;
+        let percentage = cp * 100 / ALL_PIECES;
         100 - percentage
     }
 }
@@ -47,7 +49,7 @@ mod tests {
 
     #[test]
     fn test_phase() -> Result<(), String> {
-        assert_eq!(*ALL_PIECES, 6500);
+        assert_eq!(ALL_PIECES, 6500);
         assert_eq!(Catalog::starting_position().phase(), 0);
         assert_eq!(Board::parse_fen("7k/8/8/8/8/8/8/7K b - - 45 100")?.phase(), 100);
         assert_eq!(

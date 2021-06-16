@@ -33,21 +33,30 @@ macro_rules! log_debug {
     //     {crate::logger::init(); log!(target: $target, log::Level::Debug, $($arg)*)};
     // );
     ($($arg:tt)*) => (
-        {crate::logger::LogInit::check_init(); log::log!(log::Level::Debug, $($arg)*)};
+        {
+            //crate::logger::LogInit::check_init(); 
+            //log::log!(log::Level::Debug, $($arg)*)
+        };
     )
 }
 
 #[macro_export]
 macro_rules! trace {
     ($($arg:tt)*) => (
-        {LogInit::check_init(); log::log!(log::Level::Trace, $($arg)*)};
+        {
+            //LogInit::check_init(); 
+            //log::log!(log::Level::Trace, $($arg)*)
+        };
     )
 }
 
 #[macro_export]
 macro_rules! debug {
     ($($arg:tt)*) => (
-        {LogInit::check_init(); log::log!(log::Level::Debug, $($arg)*)};
+        {
+            //LogInit::check_init(); 
+            //log::log!(log::Level::Debug, $($arg)*)
+        };
     )
 }
 

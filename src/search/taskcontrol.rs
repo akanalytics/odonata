@@ -14,7 +14,7 @@ pub struct TaskControl<TTaskProgress> {
 
 impl<TTaskProgress> fmt::Display for TaskControl<TTaskProgress> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "kill switch      : {}", self.kill_switch.load(atomic::Ordering::SeqCst))?;
+        writeln!(f, "kill switch      : {}", self.kill_switch.load(atomic::Ordering::Relaxed))?;
         // writeln!(f, "has bn cancelled : {}", self.has_been_cancelled)?;
         writeln!(f, "progress_callback: {}", if self.progress_callback.is_some() { "set" } else { "not set" })?;
         Ok(())
@@ -25,18 +25,18 @@ impl<TTaskProgress> fmt::Display for TaskControl<TTaskProgress> {
 impl<TTaskProgress> TaskControl<TTaskProgress> {
     #[inline]
     pub fn cancel(&mut self) {
-        self.kill_switch.store(true, atomic::Ordering::SeqCst);
+        self.kill_switch.store(true, atomic::Ordering::Relaxed);
     }
 
     pub fn set_running(&mut self) {
         // self.has_been_cancelled = false;
-        self.kill_switch.store(false, atomic::Ordering::SeqCst);
+        self.kill_switch.store(false, atomic::Ordering::Relaxed);
     }
 
     #[inline]
     pub fn is_cancelled(&mut self) -> bool {
         //if !self.has_been_cancelled {
-        self.kill_switch.load(atomic::Ordering::SeqCst)
+        self.kill_switch.load(atomic::Ordering::Relaxed)
         //}
         // self.has_been_cancelled
     }

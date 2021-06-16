@@ -1,16 +1,16 @@
-use crate::board::makemove::MoveMaker;
-use crate::board::Board;
-use crate::bitboard::square::Square;
 use crate::bitboard::attacks::{BitboardAttacks, BitboardDefault};
 use crate::bitboard::bitboard::Bitboard;
+use crate::bitboard::castling::CastlingRights;
+use crate::bitboard::square::Square;
+use crate::board::makemove::MoveMaker;
+use crate::board::Board;
 use crate::config::{Component, Config};
 use crate::eval::score::Score;
 use crate::mv::Move;
 use crate::stat::{ArrayStat, Stat};
-use crate::types::{Hash, Ply, Piece};
-use crate::bitboard::castling::CastlingRights;
+use crate::types::{Hash, Piece, Ply};
 use crate::variation::Variation;
-use crate::{debug, info, trace, logger::LogInit};
+use crate::{debug, info, logger::LogInit, trace};
 use std::cmp;
 use std::fmt;
 use std::mem;
@@ -26,7 +26,6 @@ pub enum NodeType {
     Terminal = 4, // no legal moves from this node
 }
 
-
 impl NodeType {
     fn unpack_2bits(bits: u64) -> NodeType {
         match bits {
@@ -34,8 +33,8 @@ impl NodeType {
             1 => Self::All,
             2 => Self::Cut,
             3 => Self::Pv,
-            _ => unreachable!()
-        }    
+            _ => unreachable!(),
+        }
     }
 }
 
@@ -70,58 +69,54 @@ pub struct TtNode {
     pub bm: Move,
 }
 
-
-
 impl Score {
     pub fn pack_16bits(&self) -> u64 {
         let bytes = self.as_i16().to_le_bytes();
-        u64::from_le_bytes([bytes[0],bytes[1],0,0,0,0,0,0] )
+        u64::from_le_bytes([bytes[0], bytes[1], 0, 0, 0, 0, 0, 0])
     }
 
     pub fn unpack_16bits(bits: u64) -> Score {
         let bytes = bits.to_le_bytes();
-        let int = i16::from_le_bytes([bytes[0],bytes[1]]);
+        let int = i16::from_le_bytes([bytes[0], bytes[1]]);
         Score::from_cp(int as i32)
     }
-
 }
 
 impl Move {
-
     pub fn pack_20bits(&self) -> u64 {
-        let mut bits = (self.from().index() as u64) << 0;  // 0-63 bits 0-5
-        let mut to = self.to(); 
+        let mut bits = (self.from().index() as u64) << 0; // 0-63 bits 0-5
+        let mut to = self.to();
         if self.is_promo() {
-            // the rank of to-sq pawn promo can be deduced from from-sq, 
+            // the rank of to-sq pawn promo can be deduced from from-sq,
             // so we use ot to store the promo piece
             let file = to.file_index();
             let rank = self.promo_piece().index();
             to = Square::from_xy(file as u32, rank as u32);
         }
-        bits |= (to.index() as u64) << 6;  // 0-63 bits 6-11
+        bits |= (to.index() as u64) << 6; // 0-63 bits 6-11
         let capture = self.capture_piece();
         let mover = self.mover_piece();
-        bits |= (capture.index() as u64 & 7) << 12;  //bits 12-14
-        bits |= (mover.index() as u64 & 7) << 15;  // bits 15-17
+        bits |= (capture.index() as u64 & 7) << 12; //bits 12-14
+        bits |= (mover.index() as u64 & 7) << 15; // bits 15-17
         bits |= (self.is_pawn_double_push() as u64 & 1) << 18;
         bits |= (self.is_ep_capture() as u64 & 1) << 19;
         bits
     }
 
     pub fn unpack_20bits(bits: u64) -> Move {
-        let capture = Piece::from_index( (bits >> 12) as usize & 7);
-        let mover = Piece::from_index( (bits >> 15) as usize & 7); 
-        let is_pawn_double_push = (bits>> 18) & 1 == 1;
+        let capture = Piece::from_index((bits >> 12) as usize & 7);
+        let mover = Piece::from_index((bits >> 15) as usize & 7);
+        let is_pawn_double_push = (bits >> 18) & 1 == 1;
         let is_ep_capture = (bits >> 19) & 1 == 1;
 
-        let from = Square::from_u32(bits as u32 & 63 );
+        let from = Square::from_u32(bits as u32 & 63);
         let mut to = Square::from_u32((bits >> 6) as u32 & 63);
         let mut promo = Piece::None;
         if mover == Piece::Pawn && to.as_bb().intersects(Bitboard::RANK_8 | Bitboard::RANK_1) {
             // its a pawn promo
             let file = to.file_index();
             promo = Piece::from_index(to.rank_index());
-            let rank = if from.rank_index() == 6 { 7 } else { 0 };  // 6->7 and 1->0   
+            let rank = if from.rank_index() == 6 { 7 } else { 0 }; // 6->7 and 1->0
             to = Square::from_xy(file as u32, rank);
         }
 
@@ -152,26 +147,23 @@ impl Move {
         }
     }
 }
-    // pub fn unpack_12bits_part1(bits: U64, b: &Board) -> (Square, Square, Piece) {
-    //     let from = Square::from_index(bits & 63);
-    //     let mut to = Square::from_index((bits >> 6) & 63);
-    //     let mover = b.piece_at(from.as_bb()); 
-    //     if from.as_bb().intersects(
-    //         b.pawns() & (
-    //             BitBoard::RANK_7 & b.white() 
-    //             | 
-    //             Bitboard::RANK_2 & b.black())) {
-    //         // its a pawn promo
-    //         let file = to.file_index();
-    //         let promo = Piece::from_index(to.rank());
-    //         let rank = if from.rank_index() == 6 { 7 } else { 0 };  // 6->7 and 1->0   
-    //         to = Square::from_xy(file, rank);
-    //     }
-    //     return (from, to, promo)
-    // }
-
-
-
+// pub fn unpack_12bits_part1(bits: U64, b: &Board) -> (Square, Square, Piece) {
+//     let from = Square::from_index(bits & 63);
+//     let mut to = Square::from_index((bits >> 6) & 63);
+//     let mover = b.piece_at(from.as_bb());
+//     if from.as_bb().intersects(
+//         b.pawns() & (
+//             BitBoard::RANK_7 & b.white()
+//             |
+//             Bitboard::RANK_2 & b.black())) {
+//         // its a pawn promo
+//         let file = to.file_index();
+//         let promo = Piece::from_index(to.rank());
+//         let rank = if from.rank_index() == 6 { 7 } else { 0 };  // 6->7 and 1->0
+//         to = Square::from_xy(file, rank);
+//     }
+//     return (from, to, promo)
+// }
 
 impl TtNode {
     // const HIGH26: u64 = (1 << 26 ) -1 >> (64-26);
@@ -179,10 +171,10 @@ impl TtNode {
     // pub fn pack(hash: Hash, node: &TTNode) -> u64 {
     //     debug_assert!( node.node_type != NodeType::Terminal);
     //     // age in bits 0-7
-    //     let bits = (node.draft as u8) << 8;         // bits 8-15  
+    //     let bits = (node.draft as u8) << 8;         // bits 8-15
     //     bits |= (node.node_type as u16 & 3) << 16;   // bits 16 and 17
     //     bits |= (node.bm.pack_12bits()) << 18;  // bits 18-29
-    //     bits |= (node.score.pack_16bits())  << 30;   // bits 30-45 
+    //     bits |= (node.score.pack_16bits())  << 30;   // bits 30-45
     //     bits;
     // }
 
@@ -195,25 +187,31 @@ impl TtNode {
     // }
 
     pub fn pack(node: &TtNode, age: u8) -> u64 {
-        debug_assert!( node.node_type != NodeType::Terminal);
+        debug_assert!(node.node_type != NodeType::Terminal);
         let mut bits = age as u64; // age in bits 0-7
-        bits |= ((node.draft & 255) as u64) << 8;         // bits 8-15  
-        bits |= (node.node_type as u64 & 3) << 16;   // bits 16 and 17
-        bits |= (node.score.pack_16bits())  << 18;   // bits 18-33 
-        bits |= (node.bm.pack_20bits()) << 34;  // bits 34+
+        bits |= ((node.draft & 255) as u64) << 8; // bits 8-15
+        bits |= (node.node_type as u64 & 3) << 16; // bits 16 and 17
+        bits |= (node.score.pack_16bits()) << 18; // bits 18-33
+        bits |= (node.bm.pack_20bits()) << 34; // bits 34+
         bits
     }
 
     pub fn unpack(bits: u64) -> (TtNode, u8) {
         let draft = (bits >> 8) & 255;
         let node_type = NodeType::unpack_2bits((bits >> 16) & 3);
-        let score = Score::unpack_16bits((bits >> 18) & ((2<<16) -1));
+        let score = Score::unpack_16bits((bits >> 18) & ((2 << 16) - 1));
         let bm = Move::unpack_20bits(bits >> 34);
-        (TtNode { draft: draft as i32, node_type, bm, score }, (bits&255) as u8)
+        (
+            TtNode {
+                draft: draft as i32,
+                node_type,
+                bm,
+                score,
+            },
+            (bits & 255) as u8,
+        )
     }
 }
-
-
 
 impl fmt::Display for TtNode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -239,9 +237,6 @@ impl fmt::Display for TtNode {
     }
 }
 
-
-
-
 #[derive(Default)]
 pub struct SharedTable {
     vec: Vec<AtomicU64>,
@@ -249,7 +244,6 @@ pub struct SharedTable {
     capacity: usize,
     mask: usize,
     // buckets: usize,
-
     pub hits: Stat,
     pub misses: Stat,
     pub collisions: Stat,
@@ -261,28 +255,26 @@ pub struct SharedTable {
     pub fail_ownership: Stat,
 }
 
-
-
-
-
-
 // Design copied straight from https://binarydebt.wordpress.com/2013/09/29/lockless-transposition-tables/
-// with adjustments for bit-sizing of items 
+// with adjustments for bit-sizing of items
 impl SharedTable {
-
-
     pub fn new_with_capacity(capacity: usize) -> SharedTable {
         let capacity = capacity.next_power_of_two();
         let mut st = SharedTable {
             capacity,
-            mask: (capacity - 1) << 1, 
+            mask: (capacity - 1) << 1,
             vec: Vec::new(),
-            .. SharedTable::default()
+            ..SharedTable::default()
         };
-        st.vec.resize_with(2*capacity, || AtomicU64::new(0));
-        debug!("New transposition table with capacity {} mask {:x} len {:x}", st.capacity, st.mask, st.vec.len());
+        st.vec.resize_with(2 * capacity, || AtomicU64::new(0));
+        debug!(
+            "New transposition table with capacity {} mask {:x} len {:x}",
+            st.capacity,
+            st.mask,
+            st.vec.len()
+        );
         st
-    } 
+    }
 
     fn capacity(&self) -> usize {
         self.capacity
@@ -296,14 +288,14 @@ impl SharedTable {
     fn probe(&self, h: Hash) -> (Hash, u64) {
         let xor_hash = self.vec[self.index(h)].load(Ordering::Relaxed);
         let data = self.vec[self.index(h) + 1].load(Ordering::Relaxed);
-        trace!("load {:x} {:x} from position {}",xor_hash, data, self.index(h) );
+        trace!("load {:x} {:x} from position {}", xor_hash, data, self.index(h));
         let hash = xor_hash ^ data;
-        (hash, data) 
+        (hash, data)
     }
 
     fn store(&self, h: Hash, data: u64) {
         let xor_hash = h ^ data;
-        trace!("store {:x} {:x} in position {}",xor_hash, data, self.index(h) );
+        trace!("store {:x} {:x} in position {}", xor_hash, data, self.index(h));
         self.vec[self.index(h)].store(xor_hash, Ordering::Relaxed);
         self.vec[self.index(h) + 1].store(data, Ordering::Relaxed);
     }
@@ -314,23 +306,9 @@ impl SharedTable {
     }
 
     fn clear(&self) {
-        self.vec.iter().for_each(|e| e.store(0, Ordering::Relaxed))   
+        self.vec.iter().for_each(|e| e.store(0, Ordering::Relaxed))
     }
-
-
-
 }
-
-
-
-
-
-
-
-
-
-
-
 
 // #[derive(Default, Debug)]
 // struct Element {
@@ -349,7 +327,6 @@ impl SharedTable {
 //         }
 //     }
 // }
-
 
 // FIXME Mates as score
 #[derive(Clone)]
@@ -440,7 +417,7 @@ impl fmt::Display for TranspositionTable2 {
 
 impl Default for TranspositionTable2 {
     fn default() -> Self {
-        Self::new_with_mb(8)
+        Self::new_with_mb(1)
     }
 }
 
@@ -491,14 +468,14 @@ impl TranspositionTable2 {
         Ok(())
     }
 
-    pub const fn convert_capacity_to_mb(cap: usize) -> i64 {
-        (cap * mem::size_of::<TtNode>()) as i64 / 1_000_000
+    pub const fn convert_capacity_to_mb(cap: usize) -> usize {
+        (cap * mem::size_of::<TtNode>()) as usize / 1_000_000
     }
 
-    pub fn new_with_mb(mb: usize) -> Self {
+    pub fn new_with_mb(mb: i64) -> Self {
         info!("tt new with mb {}", mb);
         Self {
-            table: Arc::new(SharedTable::new_with_capacity(0)),
+            table: Arc::new(SharedTable::new_with_capacity(Self::convert_mb_to_capacity(mb))),
             enabled: true,
             use_tt_for_pv: true,
             mb: mb as i64,
@@ -518,22 +495,22 @@ impl TranspositionTable2 {
         }
     }
 
-    pub fn destroy(&mut self) {
-        info!("tt destroyed");
-        self.table = Arc::new(SharedTable::new_with_capacity(0));
-        // self.capacity = 0;
-        // Arc::make_mut(&mut self.table);
-    }
+    // pub fn destroy(&mut self) {
+    //     info!("tt destroyed");
+    //     self.table = Arc::new(SharedTable::new_with_capacity(0));
+    //     // self.capacity = 0;
+    //     // Arc::make_mut(&mut self.table);
+    // }
 
     pub fn next_generation(&mut self) {
         // if self.requires_resize() {
         //     info!("Resizing tt");
         //     self.new_game();
         // } else {
-            if self.aging {
-                self.current_age += 1;
-                info!("aging tt to age {}", self.current_age);
-            }
+        if self.aging {
+            self.current_age += 1;
+            info!("aging tt to age {}", self.current_age);
+        }
         // }
     }
 
@@ -556,9 +533,9 @@ impl TranspositionTable2 {
     pub fn count_of_age(&self, _age: u8) -> usize {
         0
         //     self.table.lock().unwrap()
-    //         .iter()
-    //         .filter(|e| e.age.load(Ordering::Relaxed) == age)
-    //         .count()
+        //         .iter()
+        //         .filter(|e| e.age.load(Ordering::Relaxed) == age)
+        //         .count()
     }
 
     #[inline]
@@ -571,17 +548,13 @@ impl TranspositionTable2 {
         self.table.capacity()
     }
 
-
-
-
-
     #[inline]
     // pub fn index(&self, hash: Hash) -> usize {
     //     hash as usize % self.capacity()
     // }
 
     pub fn store(&mut self, h: Hash, new_node: TtNode) {
-        if !self.enabled || self.capacity() == 0 {
+        if !self.enabled && new_node.node_type != NodeType::Pv || self.capacity() == 0 {
             return;
         }
         debug_assert!(
@@ -599,7 +572,7 @@ impl TranspositionTable2 {
             self.inserts.increment();
             let new_data = TtNode::pack(&new_node, self.current_age);
             self.table.store(h, new_data);
-            return
+            return;
         }
 
         let (old_node, old_age) = TtNode::unpack(data);
@@ -610,11 +583,10 @@ impl TranspositionTable2 {
         if self.current_age > old_age
             || self.current_age == old_age
                 && (new_node.node_type > old_node.node_type
-                    || new_node.node_type == old_node.node_type && new_node.draft >= old_node.draft)
+                    || new_node.node_type == old_node.node_type && new_node.draft > old_node.draft)
         {
-            // new.hash != old.hash && 
-            if self.current_age == old_age && old_node.node_type == NodeType::Pv
-            {
+            // new.hash != old.hash &&
+            if self.current_age == old_age && old_node.node_type == NodeType::Pv {
                 self.pv_overwrites.increment();
             }
             debug_assert!(new_node.score > -Score::INFINITY);
@@ -664,11 +636,11 @@ impl TranspositionTable2 {
 
     fn probe_by_hash(&self, h: Hash) -> Option<TtNode> {
         // debug!("Probe by hash");
-        if !self.enabled || self.capacity() == 0 {
-            return None;
-        }
+        // if !self.enabled || self.capacity() == 0 {
+        //     return None;
+        // }
         let (hash, data) = self.table.probe(h);
-        if hash ==0 && data == 0 {
+        if hash == 0 && data == 0 {
             self.misses.increment();
             return None;
         }
@@ -800,11 +772,11 @@ mod tests {
         manipulate(&mut tt1);
 
         let mut tt3 = tt1.clone();
-        tt1.destroy();
-        println!(
-            "Clone tt1 -> tt3 and destroy tt1 ...{}",
-            Arc::strong_count(&tt3.table)
-        );
+        // tt1.destroy();
+        // println!(
+        //     "Clone tt1 -> tt3 and destroy tt1 ...{}",
+        //     Arc::strong_count(&tt3.table)
+        // );
         manipulate(&mut tt3);
     }
 

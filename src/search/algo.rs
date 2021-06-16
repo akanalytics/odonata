@@ -48,11 +48,12 @@ impl Engine {
         for i in 0..self.thread_count {
             let builder = thread::Builder::new()
                 .name(format!("S{}", i))
-                .stack_size(4_000_000);
+                .stack_size(200_000);
             self.algo.board = b.clone();
             let mut algo = self.algo.clone();
             if !self.shared_tt {
-                algo.tt = TranspositionTable2::new_with_mb(self.algo.tt.mb as usize);
+                algo.tt = TranspositionTable2::new_with_mb(self.algo.tt.mb);
+                algo.tt.enabled = self.algo.tt.enabled;
             }
             // if i == 1 {
             //     algo.move_orderer.order = "SICQE".to_string();
@@ -312,7 +313,7 @@ impl Algo {
         self.board = board.clone();
         let mut algo = self.clone();
         // destroy/release this threads copy of the tt.
-        self.tt.destroy();
+        // self.tt.destroy();
         self.child_thread = AlgoThreadHandle(Some(
             builder
                 .spawn(move || {
@@ -407,19 +408,24 @@ impl Algo {
 mod tests {
     use super::*;
     use crate::board::boardbuf::*;
+    use crate::bitboard::bb_hyperbola::Hyperbola;
     use crate::catalog::*;
     use crate::clock::Clock;
     use crate::comms::uci::Uci;
     use crate::eval::eval::*;
     use crate::types::*;
+    use crate::hasher::Hasher;
     use std::time;
 
     #[test]
     fn test_threading() {
-        for i in 1..=1 {
-            for &shared in &[false, true] {
+        Hyperbola::init();
+        Hasher::init();
+        for i in 1..=12 {
+            for &shared in &[false] {
                 let mut eng = Engine::new();
-                eng.algo.set_timing_method(TimeControl::Depth(6));
+                eng.algo.set_timing_method(TimeControl::Depth(8));
+                eng.algo.tt.enabled = false;
                 eng.shared_tt = shared;
                 eng.thread_count = i;
 

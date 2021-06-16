@@ -14,13 +14,13 @@ pub struct ClassicalBitboard {
     knight_moves: [Bitboard; 64],
 }
 
-static STATIC_INSTANCE: Lazy<ClassicalBitboard> = Lazy::new(|| ClassicalBitboard::new());
+static STATIC_INSTANCE: Lazy<Box<ClassicalBitboard>> = Lazy::new(|| ClassicalBitboard::new());
 
 
 
 
 impl ClassicalBitboard {
-    pub fn new() -> ClassicalBitboard {
+    pub fn new() -> Box<ClassicalBitboard> {
         // let mut attacks = [[Bitboard::EMPTY; 8]; 64];
         let mut classical = ClassicalBitboard {
             rays: [[Bitboard::EMPTY; 8]; 64],
@@ -39,7 +39,7 @@ impl ClassicalBitboard {
                 classical.knight_moves[sq] |= bb.shift(dir).shift(next_dir);
             }
         }
-        classical
+        Box::new(classical)
     }
 
     // doesnt impl Default as too large to copy by value

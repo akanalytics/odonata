@@ -1,10 +1,12 @@
 use crate::bitboard::attacks::BitboardAttacks;
-use crate::bitboard::bb_classical::ClassicalBitboard;
 use crate::bitboard::bitboard::{Bitboard, Dir};
 use crate::bitboard::square::Square;
 use once_cell::sync::Lazy;
 
-static STATIC_INSTANCE: Lazy<Hyperbola> = Lazy::new(|| Hyperbola::new());
+// static STATIC_INSTANCE: Lazy<Hyperbola> = Lazy::new(|| Hyperbola::new());
+
+static mut STATIC_INSTANCE: *const Hyperbola = std::ptr::null();
+// static mut STATIC_INSTANCE: Hyperbola = Hyperbola::new();
 
 // enum MaskType {
 //     Diag = 0,
@@ -25,14 +27,45 @@ struct HyperbolaMask {
 pub struct Hyperbola {
     mask: [HyperbolaMask; 64],
     rank_attacks: [[Bitboard; 8]; 64], // for perm of 6 bit-occupancy (64) and for each rook square (8)
+    king_moves: [Bitboard; 64],
+    knight_moves: [Bitboard; 64],
     strictly_between: [[Bitboard; 64]; 64],
     line: [[Bitboard; 64]; 64],
 }
 
 impl Hyperbola {
-    fn new() -> Self {
+
+    pub fn init() {
+        let hyperbola = Hyperbola::new();
+        unsafe {
+            // leak the value, so it will never be dropped or freed
+            STATIC_INSTANCE = Box::leak(hyperbola) as *const Hyperbola;
+        }
+    }
+    
+    // doesnt impl Default as too large to copy by value
+    // #[inline]
+    // pub fn default() -> &'static Self {
+    //     &STATIC_INSTANCE
+    // }
+
+    #[inline]
+    pub fn default() -> &'static Self {
+        unsafe {
+            &*STATIC_INSTANCE
+        }
+    }
+
+
+    fn new() -> Box<Self> {
         let mut me = Self {
-            mask: [HyperbolaMask::default(); 64],
+            mask: [ HyperbolaMask {
+                diag: Bitboard::EMPTY,
+                anti_diag: Bitboard::EMPTY,
+                file:  Bitboard::EMPTY,
+            } ; 64],
+            king_moves: [Bitboard::EMPTY; 64],
+            knight_moves: [Bitboard::EMPTY; 64],
             rank_attacks: [[Bitboard::EMPTY; 8]; 64],
             strictly_between: [[Bitboard::EMPTY; 64]; 64],
             line: [[Bitboard::EMPTY; 64]; 64],
@@ -41,10 +74,31 @@ impl Hyperbola {
         Self::pop_mask(&mut me.mask);
         Self::pop_rank_attacks(&mut me.rank_attacks);
         Self::pop_strictly_between(&mut me.strictly_between);
+        Self::pop_king_moves(&mut me.king_moves);
+        Self::pop_knight_moves(&mut me.knight_moves);
         Self::pop_line(&mut me.line);
-        me
+        Box::new(me)
     }
 
+    fn pop_king_moves(king_moves: &mut [Bitboard; 64]) {
+        for sq in 0..64_usize {
+            for &dir in Dir::ALL.iter() {
+                let bb = Bitboard::from_sq(sq as u8);
+                king_moves[sq] |= bb.shift(dir);
+            }
+        }
+    }
+
+    fn pop_knight_moves(knight_moves: &mut [Bitboard; 64]) {
+        for sq in 0..64_usize {
+            for &dir in Dir::ALL.iter() {
+                let bb = Bitboard::from_sq(sq as u8);
+                // for example a night attack might be step N followed by step NE
+                let next_dir = dir.rotate_clockwise();
+                knight_moves[sq] |= bb.shift(dir).shift(next_dir);
+            }
+        }
+    }
 
     fn pop_strictly_between(strictly_between: &mut [[Bitboard; 64]; 64]) {
         for s1 in Bitboard::all().squares() {
@@ -98,11 +152,8 @@ impl Hyperbola {
     }
 
 
-    // doesnt impl Default as too large to copy by value
-    #[inline]
-    pub fn default() -> &'static Self {
-        &STATIC_INSTANCE
-    }
+
+
 
     #[inline]
     fn hyperbola(&self, occ: Bitboard, sq: Square, mask: Bitboard) -> Bitboard {
@@ -162,12 +213,12 @@ impl BitboardAttacks for Hyperbola {
 
     #[inline]
     fn king_attacks(&self, from: Square) -> Bitboard {
-        ClassicalBitboard::default().king_attacks(from)
+        self.king_moves[from]
     }
 
     #[inline]
     fn knight_attacks(&self, from: Square) -> Bitboard {
-        ClassicalBitboard::default().knight_attacks(from)
+        self.knight_moves[from]
     }
 }
 
@@ -175,6 +226,7 @@ impl BitboardAttacks for Hyperbola {
 mod tests {
     use super::*;
     use crate::globals::constants::*;
+    use crate::bitboard::bb_classical::ClassicalBitboard;
 
     #[test]
     fn test_rook_attacks() {
