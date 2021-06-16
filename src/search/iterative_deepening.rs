@@ -101,6 +101,7 @@ impl Algo {
             //let mut root_node = Node::new_root(&mut self.board.clone());
             self.max_depth = depth;
             self.search_stats.depth = depth;
+            self.eval.depth = depth;
 
             self.run_alphabeta(&mut self.board.clone(), &mut Node::root());
             let mut res = self.search_stats().clone();

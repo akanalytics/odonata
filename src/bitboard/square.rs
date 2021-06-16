@@ -24,6 +24,13 @@ impl Square {
     }
 
     #[inline]
+    pub const fn from_xy(x: u32, y: u32) -> Square {
+        Square::from_u32((y << 3) | x)
+    }
+
+
+
+    #[inline]
     pub const fn null() -> Square {
         Square(64u8)
     }

@@ -242,6 +242,11 @@ impl Piece {
     }
 
     #[inline]
+    pub const fn from_index(i: usize) -> Piece {
+        Self::ALL[i]
+    }
+
+    #[inline]
     pub const fn len() -> usize {
         Self::ALL.len()
     }

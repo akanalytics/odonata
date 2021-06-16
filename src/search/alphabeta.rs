@@ -6,7 +6,7 @@ use crate::pvtable::PvTable;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
 use crate::search::searchprogress::SearchProgress;
-use crate::tt::{NodeType, TtNode};
+use crate::tt2::{NodeType, TtNode};
 use crate::types::{Ply, MAX_PLY};
 
 pub struct AlphaBeta;

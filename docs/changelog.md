@@ -2,6 +2,9 @@
 
 ## 0.3.18 (not yet released)
 - added splash with compiler features / optimizations
+- multi-threading
+- lockless transposition table
+- 
 
 ## 0.3.17
 - pondering 

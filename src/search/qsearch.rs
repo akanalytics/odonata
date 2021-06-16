@@ -63,7 +63,7 @@ impl Default for QSearch {
             see: true,
             ignore_see_fails: true,
             see_cutoff: 0,
-            promos: true,
+            promos: false,
             max_ply: 10,
             coarse_delta_prune: Score::from_cp(1000),
         }

@@ -17,7 +17,7 @@ use crate::search::searchstats::SearchStats;
 use crate::search::taskcontrol::TaskControl;
 use crate::search::timecontrol::TimeControl;
 use crate::tags::Tag;
-use crate::tt::TranspositionTable;
+use crate::tt2::TranspositionTable2;
 use crate::types::Ply;
 use crate::variation::Variation;
 use crate::{debug, info, logger::LogInit};
@@ -26,6 +26,7 @@ use std::thread::{self, JoinHandle};
 
 #[derive(Debug)]
 pub struct Engine {
+    pub shared_tt: bool,
     algo: Algo,
     thread_count: u8,
     threads: Vec<JoinHandle<Algo>>,
@@ -34,6 +35,7 @@ pub struct Engine {
 impl Engine {
     pub fn new() -> Self {
         Engine {
+            shared_tt: true,
             algo: Algo::default(),
             thread_count: 2,
             threads: vec![],
@@ -45,22 +47,25 @@ impl Engine {
         debug!("resize?? {}", self.algo.tt.requires_resize());
         for i in 0..self.thread_count {
             let builder = thread::Builder::new()
-                .name(format!("search {}", i))
+                .name(format!("S{}", i))
                 .stack_size(4_000_000);
             self.algo.board = b.clone();
             let mut algo = self.algo.clone();
-            if i == 1 {
-                algo.move_orderer.order = "SICQE".to_string();
-            } else if i == 2 {
-                algo.move_orderer.order = "SIKCQE".to_string();
+            if !self.shared_tt {
+                algo.tt = TranspositionTable2::new_with_mb(self.algo.tt.mb as usize);
             }
+            // if i == 1 {
+            //     algo.move_orderer.order = "SICQE".to_string();
+            // } else if i == 2 {
+            //     algo.move_orderer.order = "SIKCQE".to_string();
+            // }
             let cl = move || {
                 algo.search_iteratively();
-                println!( "thread {} {}", thread::current().name().unwrap(), algo.bm());
                 algo
             };
             self.threads.push(builder.spawn(cl).unwrap());
             // thread::sleep(Duration::from_millis(5000));
+            // spawn a thread to
         }
     }
 
@@ -71,11 +76,25 @@ impl Engine {
     }
 
     pub fn wait(&mut self) {
-        for t in self.threads.drain(..) {
+        let mut nps = 0;
+        let mut nodes = 0;
+        for (i, t) in self.threads.drain(..).enumerate() {
             let algo = t.join().unwrap();
-            self.algo.task_control.cancel();            
+            self.algo.task_control.cancel();
             info!("Thread returned {}", algo); // t.thread().name().unwrap(),
+            println!(
+                "thread {:>3} {:>5} {:>8} {:<35} {:>10} {:>10}",
+                i, // thread::current().name().unwrap(),
+                algo.bm().to_string(),
+                algo.score().to_string(),
+                algo.pv().to_string(),
+                algo.search_stats.total().nodes(),
+                algo.search_stats.total_knps()
+            );
+            nps += algo.search_stats.total_knps();
+            nodes += algo.search_stats.total().nodes();
         }
+        println!("{:>3} {:>5} {:>8} {:>35}   nodes{:>10}  tot {:>5}", "", "", "", "", nodes, nps);
     }
 }
 
@@ -97,7 +116,7 @@ pub struct Algo {
     pub mte: MoveTimeEstimator,
     pub move_orderer: MoveOrderer,
     pub repetition: Repetition,
-    pub tt: TranspositionTable,
+    pub tt: TranspositionTable2,
     pub killers: Killers,
 
     child_thread: AlgoThreadHandle,
@@ -389,31 +408,33 @@ mod tests {
     use super::*;
     use crate::board::boardbuf::*;
     use crate::catalog::*;
+    use crate::clock::Clock;
     use crate::comms::uci::Uci;
     use crate::eval::eval::*;
     use crate::types::*;
-    use crate::clock::Clock;
     use std::time;
 
     #[test]
     fn test_threading() {
-        for i in 1..=4 {
-            let mut eng = Engine::new();
-            eng.algo.set_timing_method(TimeControl::Depth(4));
-            // eng.algo.tt.enabled = false;
+        for i in 1..=1 {
+            for &shared in &[false, true] {
+                let mut eng = Engine::new();
+                eng.algo.set_timing_method(TimeControl::Depth(6));
+                eng.shared_tt = shared;
+                eng.thread_count = i;
 
-            let b = Catalog::test_position().board().clone();
-            eng.thread_count = i;
-            let start = time::Instant::now();
-            eng.search_async(&b);
-            eng.wait();
-            println!("Time with {} threads: {}", i, Clock::format(time::Instant::now() - start));
+                let b = Catalog::test_position().board().clone();
+                let start = time::Instant::now();
+                eng.search_async(&b);
+                eng.wait();
+                println!(
+                    "Time with {} threads (shared:{}): {}\n\n\n",
+                    i,
+                    shared,
+                    Clock::format(time::Instant::now() - start)
+                );
+            }
         }
-
-        
-
-        // mut search = Algo::new()
-        //     .set_timing_method(TimeControl::Depth(4))
     }
 
     #[test]

@@ -10,7 +10,7 @@ use crate::{debug, logger::LogInit};
 use crate::material::Material;
 use crate::mv::Move;
 use crate::stat::{ArrayStat, Stat};
-use crate::types::{Color, Piece};
+use crate::types::{Color, Piece, Ply};
 
 use std::fmt;
 
@@ -196,6 +196,7 @@ pub struct SimpleScorer {
     pub cache_eval: bool,
     pub cache_qeval: bool,
     pst: [[Weight; 64]; Piece::len()],
+    pub depth: Ply,
 }
 
 impl Default for SimpleScorer {
@@ -360,7 +361,7 @@ impl SimpleScorer {
             material: true,
             phasing: true,
             mobility_phase_disable: 70,
-            min_depth_mob: 6,
+            min_depth_mob: 9,
             undefended_piece: 6,
             undefended_sq: 3,
             trapped_piece: -7,
@@ -373,6 +374,7 @@ impl SimpleScorer {
             // cache: TranspositionTable::default(),
             // qcache: TranspositionTable::default(),
             pst: Self::calculate_pst(),
+            depth: 0,
         }
     }
 
@@ -425,7 +427,7 @@ impl SimpleScorer {
         score
     }
 
-    fn w_eval_without_wdl(&mut self, board: &Board, node: &Node) -> Score {
+    fn w_eval_without_wdl(&mut self, board: &Board, _node: &Node) -> Score {
         // if self.cache_eval {
         //     if let Some(entry) = self.cache.probe_by_board(board) {
         //         counts::EVAL_CACHE_COUNT.increment();
@@ -444,7 +446,7 @@ impl SimpleScorer {
         } else {
             0
         };
-        let mo = if self.mobility && node.ply >= self.min_depth_mob as i32 {
+        let mo = if self.mobility && self.depth >= self.min_depth_mob as i32 {
             self.w_eval_mobility(board)
         } else {
             0
