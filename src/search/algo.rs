@@ -422,10 +422,10 @@ mod tests {
         Hyperbola::init();
         Hasher::init();
         for i in 1..=12 {
-            for &shared in &[false] {
+            for &shared in &[true] {
                 let mut eng = Engine::new();
-                eng.algo.set_timing_method(TimeControl::Depth(8));
-                eng.algo.tt.enabled = false;
+                eng.algo.set_timing_method(TimeControl::Depth(7));
+                eng.algo.tt.enabled = true;
                 eng.shared_tt = shared;
                 eng.thread_count = i;
 
