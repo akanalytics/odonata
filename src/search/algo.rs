@@ -55,11 +55,12 @@ impl Engine {
                 algo.tt = TranspositionTable2::new_with_mb(self.algo.tt.mb);
                 algo.tt.enabled = self.algo.tt.enabled;
             }
-            // if i == 1 {
-            //     algo.move_orderer.order = "SICQE".to_string();
-            // } else if i == 2 {
-            //     algo.move_orderer.order = "SIKCQE".to_string();
-            // }
+            if i == 1 {
+                algo.move_orderer.order = "SICQE".to_string();
+                algo.max_depth += 1;
+            } else if i == 2 {
+                algo.move_orderer.order = "SIKCQE".to_string();
+            }
             let cl = move || {
                 algo.search_iteratively();
                 algo

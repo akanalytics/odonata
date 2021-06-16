@@ -417,7 +417,7 @@ impl fmt::Display for TranspositionTable2 {
 
 impl Default for TranspositionTable2 {
     fn default() -> Self {
-        Self::new_with_mb(1)
+        Self::new_with_mb(8)
     }
 }
 
