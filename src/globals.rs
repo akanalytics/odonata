@@ -118,6 +118,7 @@ mod tests {
     use crate::bitboard::bitboard::*;
     use crate::bitboard::bb_classical::*;
     use crate::bitboard::bb_hyperbola::*;
+    use crate::bitboard::bb_magic::*;
     use crate::hasher::*;
     use crate::board::*;
     use crate::eval::score::*;
@@ -133,8 +134,8 @@ mod tests {
 
     #[test]
     fn sizes() {
-        assert_eq!(size_of::<Move>(), 9, "Move");
-        assert_eq!(size_of::<MoveList>(), 1156, "MoveList");
+        assert_eq!(size_of::<Move>(), 8, "Move");
+        assert_eq!(size_of::<MoveList>(), 1028, "MoveList");
         assert_eq!(size_of::<Variation>(), 24, "Variation");
         assert_eq!(size_of::<Piece>(), 1);
         assert_eq!(size_of::<Color>(), 1);
@@ -148,7 +149,8 @@ mod tests {
         assert_eq!(size_of::<TtNode>(), 16, "TtNode");
         assert_eq!(size_of::<TranspositionTable>(), 256, "TranspositionTable");
         assert_eq!(size_of::<ClassicalBitboard>(), 5120, "ClassicalBitboard");
-        assert_eq!(size_of::<Hyperbola>(), 71168, "Hyperbola");
+        assert_eq!(size_of::<Hyperbola>(), 72192, "Hyperbola");
+        assert_eq!(size_of::<Magic>(), 71168, "Magic");
         assert_eq!(size_of::<Hasher>(), 7280, "Hasher");
     }
 }

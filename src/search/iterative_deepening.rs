@@ -8,7 +8,6 @@ use crate::search::searchstats::{NodeStats, SearchStats};
 use crate::search::timecontrol::TimeControl;
 use crate::types::{Ply, MAX_PLY};
 use std::fmt;
-use std::ops::Range;
 
 #[derive(Clone, Debug)]
 pub struct IterativeDeepening {
@@ -83,21 +82,21 @@ impl fmt::Display for IterativeDeepening {
 }
 
 impl IterativeDeepening {
-    pub fn calc_range(&self, tc: &TimeControl) -> Range<Ply> {
-        let range = if let TimeControl::Depth(depth) = *tc {
+    pub fn calc_range(&mut self, tc: &TimeControl) {
+        if let TimeControl::Depth(depth) = *tc {
             if self.enabled {
-                1..depth + 1
+                self.start_ply = 1;
+                self.end_ply = depth + 1;
             } else {
-                depth..depth + 1
+                self.start_ply = depth;
+                self.end_ply = depth + 1;
             }
         } else {
             // regardless of iterative deeping, we apply it if no explicit depth given
-            1..(MAX_PLY - 1)
+            self.start_ply = 1;
+            self.end_ply = MAX_PLY - 1;
         };
-        range
     }
-
-
 }
 
 impl Algo {
@@ -105,7 +104,6 @@ impl Algo {
     pub fn search_iteratively(&mut self) {
         self.new_search();
         self.ids.calc_range(&self.mte.time_control);
-
 
         for depth in (self.ids.start_ply..self.ids.end_ply).step_by(self.ids.step_size as usize) {
             //let mut root_node = Node::new_root(&mut self.board.clone());

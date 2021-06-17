@@ -143,8 +143,8 @@ impl CastlingRights {
     pub fn from_king_move(to: Square) -> CastlingRights {
         match to.as_bb() {
             Bitboard::G1 => CastlingRights::WHITE_QUEEN,
-            Bitboard::C1 => CastlingRights::WHITE_KING,
-            Bitboard::G8 => CastlingRights::BLACK_QUEEN,
+            Bitboard::C1 => CastlingRights::WHITE_QUEEN,
+            Bitboard::G8 => CastlingRights::BLACK_KING,
             Bitboard::C8 => CastlingRights::BLACK_KING,
             _ => {
                 unreachable!("king move-to for castling");

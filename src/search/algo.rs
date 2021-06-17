@@ -59,6 +59,9 @@ impl Engine {
             if i >= 1  {
                 algo.max_depth += 1;
             } 
+            if i == 1  {
+                algo.ids.step_size = 2;
+            } 
                 // algo.move_orderer.order = "SICKQE".to_string();
             // else if i == 2 {
             //     //algo.move_orderer.order = "SIKCQE".to_string();
@@ -87,7 +90,7 @@ impl Engine {
             self.algo.task_control.cancel();
             info!("Thread returned {}", algo); // t.thread().name().unwrap(),
             println!(
-                "thread {:>3} {:>5} {:>8} {:<35} {:>10} {:>10}",
+                "thread {:>3} {:>5} {:>8} {:<43} {:>10} {:>10}",
                 i, // thread::current().name().unwrap(),
                 algo.bm().to_string(),
                 algo.score().to_string(),
@@ -98,7 +101,8 @@ impl Engine {
             nps += algo.search_stats.total_knps();
             nodes += algo.search_stats.total().nodes();
         }
-        println!("{:>3} {:>5} {:>8} {:>35}   nodes{:>10}  tot {:>5}", "", "", "", "", nodes, nps);
+        println!("{:>3} {:>5} {:>8} {:>43}        {:>10}      {:>5}", "", "", "", "", "---------", "-----");
+        println!("{:>3} {:>5} {:>8} {:>43}   nodes{:>10}  nps {:>5}", "", "", "", "", nodes, nps);
     }
 }
 
@@ -411,16 +415,15 @@ impl Algo {
 mod tests {
     use super::*;
     use crate::board::boardbuf::*;
-    use crate::bitboard::bb_hyperbola::Hyperbola;
     use crate::catalog::*;
     use crate::clock::Clock;
     use crate::comms::uci::Uci;
     use crate::eval::eval::*;
     use crate::types::*;
-    use crate::hasher::Hasher;
     use std::time;
 
     #[test]
+    #[ignore]
     fn test_threading() {
         for i in 1..=12 {
             for &shared in &[true] {
