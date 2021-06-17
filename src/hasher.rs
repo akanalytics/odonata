@@ -8,6 +8,7 @@ use crate::types::{Color, Hash, Piece};
 use once_cell::sync::Lazy;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
+use static_init::{dynamic};
 
 use std::fmt;
 
@@ -62,7 +63,10 @@ impl fmt::Display for Hasher {
 
 // static INSTANCE: OnceCell<Hasher> = OnceCell::new();
 
-static STATIC_INSTANCE: Lazy<Box<Hasher>> = Lazy::new(|| Hasher::new(3141592653589793));
+// static STATIC_INSTANCE: Lazy<Box<Hasher>> = Lazy::new(|| Hasher::new(3141592653589793));
+
+#[dynamic]
+static STATIC_INSTANCE: Box<Hasher> = Hasher::new(3141592653589793);
 
 impl Hasher {
     // // doesnt impl Default as too large to copy by value

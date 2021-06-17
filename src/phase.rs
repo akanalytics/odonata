@@ -3,6 +3,7 @@ use crate::catalog::Catalog;
 // use crate::types::{Color, Piece};
 use once_cell::sync::Lazy;
 use std::cmp;
+use static_init::{dynamic};
 
 // #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 
@@ -10,13 +11,12 @@ pub struct Phase;
 
 static ALL_PIECES: i32 = 6500;
 
-// static ALL_PIECES: Lazy<i32> = Lazy::new(|| {
-//     2 * Catalog::starting_position()
+// #[dynamic]
+// static ALL_PIECES: i32 = 2 * Catalog::starting_position()
 //         .material()
 //         .white()
 //         .minors_and_majors()
-//         .centipawns()
-// });
+//         .centipawns();
 
 impl Board {
     // phase = % endgame, 0 is start, 100 is end game with just pawns

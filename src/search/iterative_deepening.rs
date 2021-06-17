@@ -14,6 +14,9 @@ use std::ops::Range;
 pub struct IterativeDeepening {
     pub enabled: bool,
     pub part_ply: bool,
+    pub step_size: Ply,
+    pub start_ply: Ply,
+    pub end_ply: Ply,
     iterations: Vec<SearchStats>,
 }
 
@@ -42,6 +45,9 @@ impl Default for IterativeDeepening {
         Self {
             enabled: true,
             part_ply: true,
+            step_size: 1,
+            start_ply: 1,
+            end_ply: MAX_PLY - 1,
             iterations: Vec::new(),
         }
     }
@@ -51,6 +57,9 @@ impl fmt::Display for IterativeDeepening {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "enabled          : {}", self.enabled)?;
         writeln!(f, "part_ply         : {}", self.part_ply)?;
+        writeln!(f, "step_size        : {}", self.step_size)?;
+        writeln!(f, "start_ply        : {}", self.start_ply)?;
+        writeln!(f, "end_ply          : {}", self.end_ply)?;
         writeln!(f, "iterations       : {}", self.iterations.len())?;
         write!(f, "{:>3} {:>4} ", "dep", "stat")?;
         NodeStats::fmt_header(f)?;
@@ -95,9 +104,10 @@ impl Algo {
 
     pub fn search_iteratively(&mut self) {
         self.new_search();
+        self.ids.calc_range(&self.mte.time_control);
 
 
-        for depth in self.ids.calc_range(&self.mte.time_control) {
+        for depth in (self.ids.start_ply..self.ids.end_ply).step_by(self.ids.step_size as usize) {
             //let mut root_node = Node::new_root(&mut self.board.clone());
             self.max_depth = depth;
             self.search_stats.depth = depth;

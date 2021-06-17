@@ -84,15 +84,19 @@ impl Score {
 
 impl Move {
     pub fn pack_20bits(&self) -> u64 {
-        let mut bits = (self.from().index() as u64) << 0; // 0-63 bits 0-5
-        let mut to = self.to();
-        if self.is_promo() {
-            // the rank of to-sq pawn promo can be deduced from from-sq,
-            // so we use ot to store the promo piece
-            let file = to.file_index();
-            let rank = self.promo_piece().index();
-            to = Square::from_xy(file as u32, rank as u32);
+        if self.is_null() {
+            return 0;
         }
+        let to = self.to();
+        let mut from = self.from();
+        if self.is_promo() {
+            // the rank of to-sq pawn promo can be deduced from the to-sq,
+            // so we use from-rank as a store the promo piece
+            let file = from.file_index();
+            let rank = self.promo_piece().index();
+            from = Square::from_xy(file as u32, rank as u32);
+        }
+        let mut bits = (from.index() as u64) << 0; // 0-63 bits 0-5
         bits |= (to.index() as u64) << 6; // 0-63 bits 6-11
         let capture = self.capture_piece();
         let mover = self.mover_piece();
@@ -104,20 +108,23 @@ impl Move {
     }
 
     pub fn unpack_20bits(bits: u64) -> Move {
+        if bits == 0 {
+            return Move::NULL_MOVE;
+        }
         let capture = Piece::from_index((bits >> 12) as usize & 7);
         let mover = Piece::from_index((bits >> 15) as usize & 7);
         let is_pawn_double_push = (bits >> 18) & 1 == 1;
         let is_ep_capture = (bits >> 19) & 1 == 1;
 
-        let from = Square::from_u32(bits as u32 & 63);
-        let mut to = Square::from_u32((bits >> 6) as u32 & 63);
+        let mut from = Square::from_u32(bits as u32 & 63);
+        let to = Square::from_u32((bits >> 6) as u32 & 63);
         let mut promo = Piece::None;
         if mover == Piece::Pawn && to.as_bb().intersects(Bitboard::RANK_8 | Bitboard::RANK_1) {
-            // its a pawn promo
-            let file = to.file_index();
-            promo = Piece::from_index(to.rank_index());
-            let rank = if from.rank_index() == 6 { 7 } else { 0 }; // 6->7 and 1->0
-            to = Square::from_xy(file as u32, rank);
+            // its a pawn promo, from encodes the promo-piece
+            let file = from.file_index();
+            promo = Piece::from_index(from.rank_index());
+            let rank = if to.rank_index() == 7 { 6 } else { 1 }; // 7->6 and 0->1
+            from = Square::from_xy(file as u32, rank);
         }
 
         if mover == Piece::King && BitboardDefault::default().chebyshev_distance(from, to) > 1 {
@@ -344,6 +351,7 @@ pub struct TranspositionTable2 {
     pub hits: Stat,
     pub misses: Stat,
     pub collisions: Stat,
+    pub bad_hash: Stat,
     pub exclusions: Stat,
     pub inserts: Stat,
     pub pv_overwrites: Stat,
@@ -404,6 +412,7 @@ impl fmt::Display for TranspositionTable2 {
                 &self.misses,
                 &self.collisions,
                 &self.exclusions,
+                &self.bad_hash,
                 &self.inserts,
                 &self.pv_overwrites,
                 &self.fail_priority,
@@ -417,7 +426,7 @@ impl fmt::Display for TranspositionTable2 {
 
 impl Default for TranspositionTable2 {
     fn default() -> Self {
-        Self::new_with_mb(8)
+        Self::new_with_mb(64)
     }
 }
 
@@ -487,6 +496,7 @@ impl TranspositionTable2 {
             misses: Stat::new("misses"),
             collisions: Stat::new("collisions"),
             exclusions: Stat::new("exclusions"),
+            bad_hash: Stat::new("bad_hash"),
             inserts: Stat::new("inserts"),
             pv_overwrites: Stat::new("pv overwrites"),
             deletes: Stat::new("deletes"),
@@ -571,6 +581,8 @@ impl TranspositionTable2 {
         if hash != h {
             self.inserts.increment();
             let new_data = TtNode::pack(&new_node, self.current_age);
+            let unpacked = TtNode::unpack(new_data).0;
+            assert!(unpacked == new_node, "{:?} {:?}", unpacked, new_node);
             self.table.store(h, new_data);
             return;
         }
@@ -598,6 +610,7 @@ impl TranspositionTable2 {
             );
             self.inserts.increment();
             let new_data = TtNode::pack(&new_node, self.current_age);
+
             self.table.store(h, new_data);
             return;
         } else {
@@ -628,7 +641,11 @@ impl TranspositionTable2 {
                 if tt_node.draft < draft {
                     return None;
                 }
-                debug_assert!(tt_node.bm.is_null() || board.is_legal_move(&tt_node.bm));
+                if !tt_node.bm.is_null() && !board.is_legal_move(&tt_node.bm) {
+                    self.bad_hash.increment();
+                    return None;
+                }
+                debug_assert!(tt_node.bm.is_null() || board.is_legal_move(&tt_node.bm), "{} {}", board.to_fen(), tt_node.bm.uci() );
             }
             tt_node
         }

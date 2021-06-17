@@ -42,8 +42,9 @@ use crate::bitboard::bb_hyperbola::Hyperbola;
 use crate::bitboard::bitboard::Bitboard;
 use crate::bitboard::square::Square;
 use once_cell::sync::Lazy;
+use static_init::{dynamic};
 
-
+// #[ctor]
 // fn init_module() {
 //     Magic::init();
 // }
@@ -70,6 +71,9 @@ use once_cell::sync::Lazy;
 
 
 static STATIC_INSTANCE: Lazy<Box<Magic>> = Lazy::new(|| Magic::new());
+
+// #[dynamic]
+// static STATIC_INSTANCE: Box<Magic> = Magic::new();
 
 impl Magic {
         

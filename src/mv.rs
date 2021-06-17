@@ -19,7 +19,6 @@ pub struct Move {
     pub mover: Piece,
 
     pub castle_side: CastlingRights,
-    pub is_known_legal: bool,
     pub is_null: bool,
 }
 
@@ -47,7 +46,6 @@ impl Move {
         capture: Piece::None,
         mover: Piece::None,
         castle_side: CastlingRights::NONE,
-        is_known_legal: false,
         is_null: true,
     };
     #[inline]
@@ -82,11 +80,6 @@ impl Move {
         } else {
             Square::null()
         }
-    }
-
-    #[inline]
-    pub const fn is_known_legal(&self) -> bool {
-        self.is_known_legal
     }
 
     #[inline]
@@ -272,12 +265,6 @@ impl Move {
             // f4: rook_from,
             ..Default::default()
         }
-    }
-
-    #[inline]
-    pub fn set_legal(&mut self) -> Self {
-        self.is_known_legal = true;
-        *self
     }
 
     #[inline]

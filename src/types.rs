@@ -405,6 +405,9 @@ mod tests {
         assert_eq!(Piece::Pawn.to_upper_char(), 'P');
         assert_eq!(Piece::King.to_char(Some(Color::Black)), 'k');
         assert_eq!(Piece::King.to_char(None), 'K');
+        for i in 0..7 {
+            assert_eq!(Piece::from_index(i).index(), i);
+        }
     }
 
     #[test]

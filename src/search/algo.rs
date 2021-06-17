@@ -28,7 +28,7 @@ use std::thread::{self, JoinHandle};
 pub struct Engine {
     pub shared_tt: bool,
     algo: Algo,
-    thread_count: u8,
+    thread_count: u32,
     threads: Vec<JoinHandle<Algo>>,
 }
 
@@ -48,19 +48,21 @@ impl Engine {
         for i in 0..self.thread_count {
             let builder = thread::Builder::new()
                 .name(format!("S{}", i))
-                .stack_size(500_000);
+                .stack_size(800_000);
             self.algo.board = b.clone();
             let mut algo = self.algo.clone();
             if !self.shared_tt {
                 algo.tt = TranspositionTable2::new_with_mb(self.algo.tt.mb);
                 algo.tt.enabled = self.algo.tt.enabled;
             }
-            if i == 1 {
-                algo.move_orderer.order = "SICQE".to_string();
+            algo.move_orderer.thread = i;
+            if i >= 1  {
                 algo.max_depth += 1;
-            } else if i == 2 {
-                algo.move_orderer.order = "SIKCQE".to_string();
-            }
+            } 
+                // algo.move_orderer.order = "SICKQE".to_string();
+            // else if i == 2 {
+            //     //algo.move_orderer.order = "SIKCQE".to_string();
+            // }
             let cl = move || {
                 algo.search_iteratively();
                 algo
@@ -438,6 +440,7 @@ mod tests {
                     shared,
                     Clock::format(time::Instant::now() - start)
                 );
+                // println!("\ntt\n{}", eng.algo.tt);
             }
         }
     }

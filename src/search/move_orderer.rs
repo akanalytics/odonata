@@ -18,6 +18,7 @@ pub struct MoveOrderer {
     pub tt_bm: bool,
     pub mvv_lva: bool,
     pub order: String,
+    pub thread: u32,
     count_pv: PlyStat,
     count_bm: PlyStat,
     count_tt_bm: PlyStat,
@@ -65,6 +66,7 @@ impl Default for MoveOrderer {
             tt_bm: true,
             mvv_lva: true,
             order: "SICKQE".to_string(),
+            thread: 0,
             count_pv: PlyStat::new("order pv"),
             count_bm: PlyStat::new("order bm"),
             count_tt_bm: PlyStat::new("order tt bm"),
@@ -81,6 +83,7 @@ impl fmt::Display for MoveOrderer {
         writeln!(f, "tt bm            : {}", self.tt_bm)?;
         writeln!(f, "mvv_lva          : {}", self.mvv_lva)?;
         writeln!(f, "order            : {}", self.order)?;
+        writeln!(f, "thread           : {}", self.thread)?;
         writeln!(
             f,
             "{}",
@@ -100,6 +103,9 @@ impl Algo {
             // movelist.sort_unstable_by_key(|m| -m.mvv_lva_score() );
             movelist.sort_unstable_by_key(Move::mvv_lva_score );
             movelist.reverse();
+            if self.move_orderer.thread == 1 && movelist.len() >= 2 {
+                movelist.swap(0, 1);
+            }
         }
 
         if self.move_orderer.prior_pv {

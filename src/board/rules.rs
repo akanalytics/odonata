@@ -43,9 +43,9 @@ impl Rules {
         let attacks = king_att & !us - king_danger;
         for to in attacks.squares() {
             if to.is_in(them) {
-                moves.push(Move::new_capture(Piece::King, king_sq, to, b.piece_at(to.as_bb())).set_legal())
+                moves.push(Move::new_capture(Piece::King, king_sq, to, b.piece_at(to.as_bb())));
             } else {
-                moves.push(Move::new_quiet(Piece::King, king_sq, to).set_legal())
+                moves.push(Move::new_quiet(Piece::King, king_sq, to));
             }
         }
     }
@@ -226,8 +226,7 @@ impl Rules {
                     // king_to.square().shift(Dir::E),
                     // rook_to.square(),
                     right,
-                )
-                .set_legal();
+                );
                 moves.push(m);
             }
         }
@@ -247,7 +246,7 @@ impl Rules {
                     king_to, 
                     // rook_from, 
                     // rook_to.square(), 
-                    right).set_legal();
+                    right);
                 moves.push(m);
             }
         }

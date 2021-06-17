@@ -2,6 +2,7 @@ use crate::bitboard::attacks::BitboardAttacks;
 use crate::bitboard::bitboard::{Bitboard, Dir};
 use crate::bitboard::square::Square;
 use once_cell::sync::Lazy;
+use static_init::{dynamic};
 
 
 // #[ctor]
@@ -9,7 +10,6 @@ use once_cell::sync::Lazy;
 //     Hyperbola::init();
 // }
 
-static STATIC_INSTANCE: Lazy<Box<Hyperbola>> = Lazy::new(|| Hyperbola::new());
 
 // static mut STATIC_INSTANCE: *const Hyperbola = std::ptr::null();
 // impl Hyperbola {
@@ -24,15 +24,33 @@ static STATIC_INSTANCE: Lazy<Box<Hyperbola>> = Lazy::new(|| Hyperbola::new());
 //     // doesnt impl Default as too large to copy by value
 //     #[inline]
 //     pub fn default() -> &'static Self {
-//         unsdafe {
+//         unsafe {
 //             &*STATIC_INSTANCE
 //         }
 //     }
     
 // }
 
+#[dynamic]
+static STATIC_INSTANCE: Box<Hyperbola> = Hyperbola::new();
+
+impl Hyperbola {
+    // doesnt impl Default as too large to copy by value
+    #[inline]
+    pub fn default() -> &'static Self {
+        &STATIC_INSTANCE
+    }
+}
 
 
+// static STATIC_INSTANCE: Lazy<Box<Hyperbola>> = Lazy::new(|| Hyperbola::new());
+// impl Hyperbola {
+//     // doesnt impl Default as too large to copy by value
+//     #[inline]
+//     pub fn default() -> &'static Self {
+//         &STATIC_INSTANCE
+//     }
+// }
 
 
 
@@ -58,11 +76,6 @@ impl Hyperbola {
 
 
     
-    // doesnt impl Default as too large to copy by value
-    #[inline]
-    pub fn default() -> &'static Self {
-        &STATIC_INSTANCE
-    }
 
 
     fn new() -> Box<Self> {
