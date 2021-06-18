@@ -31,6 +31,12 @@ fn main() -> Result<(), std::num::ParseIntError> {
             .help("runs perft from standard chess opening position")
             .long("perft")
             .value_name("depth")
+            .takes_value(true)
+        )
+        .arg(Arg::with_name("perft_cat")
+            .help("runs perft with category breakdown from standard chess opening position")
+            .long("perft_cat")
+            .value_name("depth")
             .takes_value(true))
         .get_matches();
 
@@ -51,6 +57,9 @@ fn main() -> Result<(), std::num::ParseIntError> {
     } if let Some(depth) = matches.value_of("perft") {
         let depth = depth.parse::<u32>()?;
         Bench::perft(depth);
+    } else if let Some(depth) = matches.value_of("perft_cat") {
+        let depth = depth.parse::<u32>()?;
+        Bench::perft_cat(depth);
     } else {
         Console::run();
     }

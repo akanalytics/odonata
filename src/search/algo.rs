@@ -83,7 +83,7 @@ impl Engine {
     }
 
     pub fn wait(&mut self) {
-        let mut nps = 0;
+        let mut knps = 0;
         let mut nodes = 0;
         for (i, t) in self.threads.drain(..).enumerate() {
             let algo = t.join().unwrap();
@@ -98,11 +98,11 @@ impl Engine {
                 algo.search_stats.total().nodes(),
                 algo.search_stats.total_knps()
             );
-            nps += algo.search_stats.total_knps();
+            knps += algo.search_stats.total_knps();
             nodes += algo.search_stats.total().nodes();
         }
         println!("{:>3} {:>5} {:>8} {:>43}        {:>10}      {:>5}", "", "", "", "", "---------", "-----");
-        println!("{:>3} {:>5} {:>8} {:>43}   nodes{:>10}  nps {:>5}", "", "", "", "", nodes, nps);
+        println!("{:>3} {:>5} {:>8} {:>43}   nodes{:>10} knps {:>5}", "", "", "", "", nodes, knps);
     }
 }
 

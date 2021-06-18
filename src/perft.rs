@@ -2,7 +2,17 @@ use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::movelist::MoveList;
 
-pub struct Perft;
+#[derive(Default, Copy, Clone, Debug, PartialEq, Eq)]
+pub struct Perft {
+    pub captures: u64,
+    pub en_passant: u64,
+    pub castles: u64,
+    pub promos: u64,
+    pub checks: u64,
+    pub discovery_checks: u64,
+    pub double_checks: u64,
+    pub checkmates: u64,
+}
 
 
 
@@ -23,6 +33,48 @@ impl Perft {
             count
         }
     }
+
+    pub fn perft_cat(&mut self, board: &mut Board, depth: u32) -> u64 {
+        if depth == 0 {
+            return 1;
+        }
+        let mut moves = MoveList::new();
+        board.legal_moves_into(&mut moves);
+        if depth == 1 {
+            self.count_types(&moves);
+            return moves.len() as u64;
+        } else {
+            let mut count = 0u64;
+            for m in moves.iter() {
+                count += self.perft_cat(&mut board.make_move(m), depth - 1);
+            }
+            count
+        }
+    }
+
+    #[inline]
+    fn count_types(&mut self, moves: &MoveList) {
+        for mv in moves.iter() {
+            if mv.is_capture() {
+                self.captures +=1
+            }
+            if mv.is_ep_capture() {
+                self.en_passant +=1
+            }
+            if mv.is_castle() {
+                self.castles += 1;
+            }
+            if mv.is_promo() {
+                self.promos += 1;
+            }
+            // to do 
+            // checks
+            // discovery_checks
+            // double_checks
+            // checkmates
+        }
+    }
+
 }
 
     // pub fn perft_ext(board: &mut Board, depth: u32) -> u64 {
