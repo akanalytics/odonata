@@ -609,18 +609,7 @@ mod tests {
     #[test]
     #[ignore]
     fn bug04() {
-        // depth 6 seldepth 9 nodes 75012 nps 211000 score cp -325 time 354 pv f2g1 a7a5 g1h2 f8g8 h2g1 f8g8
-        //let board =
-        //    Board::parse_fen("3r1k2/p4ppp/6b1/4r3/1pP5/1B5P/2P2KP1/1NR5 w - - 4 35").unwrap();
         let board = Catalog::starting_position();
-        // let time_control = TimeControl::RemainingTime {
-        //     wtime: time::Duration::from_millis(141516),
-        //     btime: time::Duration::from_millis(127990),
-        //     winc: time::Duration::from_millis(12000),
-        //     binc: time::Duration::from_millis(12000),
-        //     movestogo: 0,
-        //     our_color: Color::Black,
-        // };
         let mut search = Algo::new()
             .set_timing_method(TimeControl::Depth(8))
             .set_callback(Uci::uci_info)
