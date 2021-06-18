@@ -139,21 +139,6 @@ impl Algo {
         Algo::default()
     }
 
-    pub fn set_qsearch(&mut self, enable: bool) -> &mut Self {
-        self.qsearch.enabled = enable;
-        self
-    }
-
-    pub fn set_iterative_deepening(&mut self, enabled: bool) -> &mut Self {
-        self.ids.enabled = enabled;
-        self
-    }
-
-    pub fn set_minmax(&mut self, minmax: bool) -> &mut Self {
-        self.minmax = minmax;
-        self
-    }
-
     pub fn set_eval(&mut self, eval: SimpleScorer) -> &mut Self {
         self.eval = eval;
         self
@@ -205,7 +190,6 @@ impl Component for Algo {
     // clears evaluation and transposition caches as well as repetition counts
     fn new_game(&mut self) {
         self.clock_checks = 0;
-
         self.eval.new_game();
         self.move_orderer.new_game();
         self.mte.new_game();
@@ -218,7 +202,6 @@ impl Component for Algo {
 
     fn new_search(&mut self) {
         self.search_stats = SearchStats::new();
-
         self.eval.new_search();
         self.move_orderer.new_search();
         self.mte.new_search();
@@ -454,10 +437,10 @@ mod tests {
         let eval = SimpleScorer::new().set_position(false);
         let mut search = Algo::new()
             .set_timing_method(TimeControl::Depth(3))
-            .set_minmax(true)
             .set_eval(eval)
-            .set_qsearch(false)
             .build();
+        search.qsearch.enabled = false;
+        search.minmax = true;
         search.search(&board);
         assert_eq!(
             search.search_stats().total().nodes(),
@@ -474,7 +457,6 @@ mod tests {
         eval.mobility = false;
         let mut search = Algo::new()
             .set_timing_method(TimeControl::Depth(4))
-            .set_minmax(false)
             .set_eval(eval)
             .build();
         search.move_orderer.enabled = false;
@@ -498,7 +480,6 @@ mod tests {
     fn test_display_algo() {
         let algo = Algo::new()
             .set_timing_method(TimeControl::Depth(1))
-            .set_minmax(false)
             .build();
         println!("{}", algo);
         println!("{:?}", algo);
@@ -523,11 +504,10 @@ mod tests {
             let eval = SimpleScorer::new().set_position(false);
             let mut search = Algo::new()
                 .set_timing_method(TimeControl::Depth(3))
-                .set_minmax(false)
                 .set_eval(eval)
-                .set_iterative_deepening(id)
                 .set_callback(Uci::uci_info)
                 .build();
+            search.ids.enabled = id;
             search.search(position.board());
             println!("{}", search);
             if id {
@@ -596,8 +576,8 @@ mod tests {
         let position = Catalog::mate_in_2()[0].clone();
         let mut algo2 = Algo::new()
             .set_timing_method(TimeControl::Depth(3))
-            .set_minmax(true)
             .build();
+        algo2.minmax = true;
         let closure = |sp: &SearchProgress| println!("nps {}", sp.time_millis.unwrap_or_default());
         algo2.set_callback(closure);
         algo2.search_async(position.board());

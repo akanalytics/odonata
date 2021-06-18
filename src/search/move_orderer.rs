@@ -409,8 +409,8 @@ mod tests {
         let position = &Catalog::mate_in_2()[0];
         let mut algo = Algo::new()
             .set_timing_method(TimeControl::Depth(3))
-            .set_qsearch(false)
             .build();
+        algo.qsearch.enabled = false;
         algo.tt.mb = 1;
         algo.move_orderer.enabled = false;
         algo.move_orderer.prior_bm = false;

@@ -150,7 +150,7 @@ mod tests {
         assert_eq!(size_of::<TranspositionTable>(), 256, "TranspositionTable");
         assert_eq!(size_of::<ClassicalBitboard>(), 5120, "ClassicalBitboard");
         assert_eq!(size_of::<Hyperbola>(), 72192, "Hyperbola");
-        assert_eq!(size_of::<Magic>(), 71168, "Magic");
+        assert_eq!(size_of::<Magic>(), 719264, "Magic");
         assert_eq!(size_of::<Hasher>(), 7280, "Hasher");
     }
 }
