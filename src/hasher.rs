@@ -5,7 +5,6 @@ use crate::globals::constants::*;
 use crate::globals::counts;
 use crate::mv::Move;
 use crate::types::{Color, Hash, Piece};
-use once_cell::sync::Lazy;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
 use static_init::{dynamic};

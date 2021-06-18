@@ -1,7 +1,6 @@
 use crate::bitboard::attacks::BitboardAttacks;
 use crate::bitboard::bitboard::{Bitboard, Dir};
 use crate::bitboard::square::Square;
-use once_cell::sync::Lazy;
 use static_init::{dynamic};
 
 

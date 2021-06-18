@@ -456,7 +456,7 @@ impl SimpleScorer {
         // if self.cache_eval {
         //     if let Some(entry) = self.cache.probe_by_board(board) {
         //         counts::EVAL_CACHE_COUNT.increment();
-        //         assert!(entry.score == score, "unmatched score for board {:#}", board);
+        //         debug_assert!(entry.score == score, "unmatched score for board {:#}", board);
         //     }
         // }
         // if self.cache_eval && board.fifty_halfmove_clock() <= self.qcache.hmvc_horizon {

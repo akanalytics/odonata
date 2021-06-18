@@ -16,7 +16,6 @@ use crate::search::searchprogress::SearchProgress;
 use crate::search::searchstats::SearchStats;
 use crate::search::taskcontrol::TaskControl;
 use crate::search::timecontrol::TimeControl;
-use crate::tags::Tag;
 use crate::tt2::TranspositionTable2;
 use crate::types::Ply;
 use crate::variation::Variation;
@@ -24,32 +23,55 @@ use crate::{debug, info, logger::LogInit};
 use std::fmt;
 use std::thread::{self, JoinHandle};
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Engine {
     pub shared_tt: bool,
-    algo: Algo,
-    thread_count: u32,
+    pub thread_count: u32,
+    pub algo: Algo,
     threads: Vec<JoinHandle<Algo>>,
 }
+
+
+impl Clone for Engine {
+    fn clone(&self) -> Self {
+        Self {
+            threads: Vec::new(),
+            algo: self.algo.clone(),
+            .. *self
+        }
+    }
+}
+
+
 
 impl Engine {
     pub fn new() -> Self {
         Engine {
             shared_tt: true,
             algo: Algo::default(),
-            thread_count: 2,
+            thread_count: 3,
             threads: vec![],
         }
     }
 
-    pub fn search_async(&mut self, b: &Board) {
+
+    pub fn ponder_hit(&mut self) {
+        self.algo.mte.set_shared_ponder(false);
+        self.algo.search_stats.restart_clocks();
+    }
+
+    pub fn search(&mut self) {
+        self.search_start();
+        self.wait();
+    }
+
+    pub fn search_start(&mut self) {
         self.algo.new_game();
         debug!("resize?? {}", self.algo.tt.requires_resize());
         for i in 0..self.thread_count {
             let builder = thread::Builder::new()
                 .name(format!("S{}", i))
                 .stack_size(800_000);
-            self.algo.board = b.clone();
             let mut algo = self.algo.clone();
             if !self.shared_tt {
                 algo.tt = TranspositionTable2::new_with_mb(self.algo.tt.mb);
@@ -57,26 +79,27 @@ impl Engine {
             }
             algo.move_orderer.thread = i;
             if i >= 1  {
-                algo.max_depth += 1;
+                algo.max_depth += 4;
             } 
             if i == 1  {
                 algo.ids.step_size = 2;
             } 
-                // algo.move_orderer.order = "SICKQE".to_string();
-            // else if i == 2 {
-            //     //algo.move_orderer.order = "SIKCQE".to_string();
-            // }
+            if i == 2  {
+                algo.ids.step_size = 3;
+            } 
+            if i == 3  {
+                algo.ids.step_size = 2;
+                algo.ids.start_ply = 2;
+            } 
             let cl = move || {
                 algo.search_iteratively();
                 algo
             };
             self.threads.push(builder.spawn(cl).unwrap());
-            // thread::sleep(Duration::from_millis(5000));
-            // spawn a thread to
         }
     }
 
-    pub fn search_async_stop(&mut self) {
+    pub fn search_stop(&mut self) {
         self.algo.task_control.cancel();
         self.algo.search_stats.user_cancelled = true;
         self.wait();
@@ -87,27 +110,59 @@ impl Engine {
         let mut nodes = 0;
         for (i, t) in self.threads.drain(..).enumerate() {
             let algo = t.join().unwrap();
+            if i == 0 {
+                self.algo.results = algo.results().clone();
+            }
             self.algo.task_control.cancel();
             info!("Thread returned {}", algo); // t.thread().name().unwrap(),
-            println!(
-                "thread {:>3} {:>5} {:>8} {:<43} {:>10} {:>10}",
+            warn!(
+                "thread {:>3} {:>5} {:>8} {:<43} {:>10} {:>10} {}",
                 i, // thread::current().name().unwrap(),
                 algo.bm().to_string(),
                 algo.score().to_string(),
                 algo.pv().to_string(),
                 algo.search_stats.total().nodes(),
-                algo.search_stats.total_knps()
+                algo.search_stats.total_knps(),
+                self.algo.results,
             );
             knps += algo.search_stats.total_knps();
             nodes += algo.search_stats.total().nodes();
         }
-        println!("{:>3} {:>5} {:>8} {:>43}        {:>10}      {:>5}", "", "", "", "", "---------", "-----");
-        println!("{:>3} {:>5} {:>8} {:>43}   nodes{:>10} knps {:>5}", "", "", "", "", nodes, knps);
+        warn!("{:>3} {:>5} {:>8} {:>43}        {:>10}      {:>5}", "", "", "", "", "---------", "-----");
+        warn!("{:>3} {:>5} {:>8} {:>43}   nodes{:>10} knps {:>5}", "", "", "", "", nodes, knps);
     }
 }
 
+impl Component for Engine {
+    fn settings(&self, c: &mut Config) {
+        c.set("Threads", &format!("type spin default {} min 1 max 512", self.thread_count));
+        self.algo.settings(c);
+    }
+    fn configure(&mut self, c: &Config) {
+        debug!("engine.configure with {}", c);
+        self.thread_count = c.int("Threads").unwrap_or(self.thread_count.into()) as u32;
+        self.algo.configure(c);
+    }
+
+    // clears evaluation and transposition caches as well as repetition counts
+    fn new_game(&mut self) {
+        self.threads.clear();
+        self.algo.new_game();
+    }
+
+    fn new_search(&mut self) {
+        self.threads.clear();
+        self.algo.new_search();
+    }
+}
+
+
+
+
+
 #[derive(Clone, Default)]
 pub struct Algo {
+    pub results: Position,
     pub board: Board,
     pub max_depth: Ply,
     pub minmax: bool,
@@ -162,7 +217,6 @@ impl Algo {
 impl Component for Algo {
     fn settings(&self, c: &mut Config) {
         c.set("algo.minmax", "type check default false");
-        c.set("algo.ids", "type check default true");
         c.set("UCI_AnalyseMode", "type check default false");
         self.eval.settings(c);
         self.mte.settings(c);
@@ -189,6 +243,7 @@ impl Component for Algo {
 
     // clears evaluation and transposition caches as well as repetition counts
     fn new_game(&mut self) {
+        self.search_stats = SearchStats::new();
         self.clock_checks = 0;
         self.eval.new_game();
         self.move_orderer.new_game();
@@ -210,6 +265,7 @@ impl Component for Algo {
         self.repetition.new_search();
         self.tt.new_search();
         self.killers.new_search();
+        self.task_control.set_running();
     }
 }
 
@@ -290,7 +346,6 @@ impl Algo {
     }
 
     pub fn search(&mut self, board: &Board) {
-        self.task_control.set_running();
         self.board = board.clone();
         self.search_iteratively();
     }
@@ -319,13 +374,8 @@ impl Algo {
         &self.search_stats
     }
 
-    pub fn results(&self) -> Position {
-        let mut pos = Position::from_board(self.board.clone());
-        pos.set(&Tag::BestMove(self.bm()));
-        pos.set(&Tag::Pv(self.pv().clone()));
-        pos.set(&Tag::CentipawnEvaluation(self.score()));
-        pos.set(&Tag::AnalysisCountDepth(self.search_stats().depth() as u32));
-        pos
+    pub fn results(&self) -> &Position {
+        &self.results
     }
 
     pub fn bm(&self) -> Move {
@@ -418,8 +468,8 @@ mod tests {
 
                 let b = Catalog::test_position().board().clone();
                 let start = time::Instant::now();
-                eng.search_async(&b);
-                eng.wait();
+                eng.algo.board = b;
+                eng.search();
                 println!(
                     "Time with {} threads (shared:{}): {}\n\n\n",
                     i,

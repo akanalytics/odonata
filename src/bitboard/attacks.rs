@@ -102,7 +102,7 @@ pub trait BitboardAttacks {
         c: Color,
         ep: Bitboard,
     ) -> (Bitboard, Bitboard) {
-        assert!(!ep.is_empty());
+        debug_assert!(!ep.is_empty());
         let (east, west) = self.pawn_attacks(pawns, c);
 
         let enemy_pawn = ep.shift(c.opposite().forward());

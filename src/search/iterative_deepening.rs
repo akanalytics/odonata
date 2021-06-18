@@ -6,6 +6,8 @@ use crate::search::node::Node;
 use crate::search::searchprogress::SearchProgress;
 use crate::search::searchstats::{NodeStats, SearchStats};
 use crate::search::timecontrol::TimeControl;
+use crate::position::Position;
+use crate::tags::Tag;
 use crate::types::{Ply, MAX_PLY};
 use std::fmt;
 
@@ -85,7 +87,6 @@ impl IterativeDeepening {
     pub fn calc_range(&mut self, tc: &TimeControl) {
         if let TimeControl::Depth(depth) = *tc {
             if self.enabled {
-                self.start_ply = 1;
                 self.end_ply = depth + 1;
             } else {
                 self.start_ply = depth;
@@ -93,7 +94,6 @@ impl IterativeDeepening {
             }
         } else {
             // regardless of iterative deeping, we apply it if no explicit depth given
-            self.start_ply = 1;
             self.end_ply = MAX_PLY - 1;
         };
     }
@@ -164,5 +164,12 @@ impl Algo {
         let sp = SearchProgress::from_best_move(Some(self.bm()), self.board.color_us(), &self.search_stats);
         self.task_control.invoke_callback(&sp);
         // println!("\n\n\n=====Search completed=====\n {}", self);
+
+        self.results = Position::from_board(self.board.clone());
+        self.results.set_operation("bm", &self.board.to_san(&self.bm()));
+        self.results.set(&Tag::Pv(self.pv().clone()));
+        self.results.set(&Tag::CentipawnEvaluation(self.score()));
+        self.results.set(&Tag::AnalysisCountDepth(self.search_stats().depth() as u32));
+
     }
 }

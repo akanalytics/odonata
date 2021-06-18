@@ -99,7 +99,7 @@ impl Algo {
         } else {
             self.qsearch_sq(mv.to(), ply, board, alpha, beta)
         };
-        assert!(self.task_control.is_cancelled() || score > -Score::INFINITY);
+        debug_assert!(self.task_control.is_cancelled() || score > -Score::INFINITY);
         score
     }
 

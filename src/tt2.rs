@@ -582,7 +582,7 @@ impl TranspositionTable2 {
             self.inserts.increment();
             let new_data = TtNode::pack(&new_node, self.current_age);
             let unpacked = TtNode::unpack(new_data).0;
-            assert!(unpacked == new_node, "{:?} {:?}", unpacked, new_node);
+            debug_assert!(unpacked == new_node, "{:?} {:?}", unpacked, new_node);
             self.table.store(h, new_data);
             return;
         }
