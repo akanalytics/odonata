@@ -22,6 +22,8 @@ use crate::variation::Variation;
 use crate::{debug, info, logger::LogInit};
 use std::fmt;
 use std::thread::{self, JoinHandle};
+use crate::clock::Clock;
+
 
 #[derive(Debug, Default)]
 pub struct Engine {
@@ -112,18 +114,18 @@ impl Engine {
             let algo = t.join().unwrap();
             if i == 0 {
                 self.algo.results = algo.results().clone();
+                self.algo.task_control.cancel();
             }
-            self.algo.task_control.cancel();
             info!("Thread returned {}", algo); // t.thread().name().unwrap(),
             warn!(
-                "thread {:>3} {:>5} {:>8} {:<43} {:>10} {:>10} {}",
+                "thread {:>3} {:>5} {:>8} {:<43} {:>10} {:>10} {:>10}",
                 i, // thread::current().name().unwrap(),
                 algo.bm().to_string(),
                 algo.score().to_string(),
                 algo.pv().to_string(),
                 algo.search_stats.total().nodes(),
-                algo.search_stats.total_knps(),
-                self.algo.results,
+                algo.search_stats.total_knps_final(),
+                Clock::format(algo.search_stats.total_time()),
             );
             knps += algo.search_stats.total_knps();
             nodes += algo.search_stats.total().nodes();

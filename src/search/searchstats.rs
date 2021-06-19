@@ -161,6 +161,8 @@ impl SearchStats {
         let ply = ply as usize;
         self.plies[ply].real_time = self.realtime.elapsed();
         self.plies[ply].deterministic_time = self.deterministic.elapsed();
+        self.total.real_time += self.realtime.elapsed();
+        self.total.deterministic_time += self.deterministic.elapsed();
         self.completed = completed;
         if completed {
             self.pv = pv;
@@ -240,6 +242,16 @@ impl SearchStats {
     #[inline]
     pub fn total_knps(&self) -> u128 {
         self.total.nodes() as u128 / (1 + self.realtime.elapsed().as_millis())
+    }
+
+    #[inline]
+    pub fn total_knps_final(&self) -> u128 {
+        self.total.nodes() as u128 / (1 + self.total.real_time.as_millis())
+    }
+
+    #[inline]
+    pub fn total_time(&self) -> Duration {
+        self.total.real_time
     }
 
     #[inline]
