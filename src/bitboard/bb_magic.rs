@@ -69,8 +69,8 @@ use static_init::{dynamic};
 //     }
 // }
 
-
-static STATIC_INSTANCE: Lazy<Box<Magic>> = Lazy::new(|| Magic::new());
+#[dynamic(lazy)]
+static STATIC_INSTANCE: Box<Magic> = Magic::new();
 
 // #[dynamic]
 // static STATIC_INSTANCE: Box<Magic> = Magic::new();

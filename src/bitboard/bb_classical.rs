@@ -1,7 +1,7 @@
 use crate::bitboard::bitboard::{Bitboard, Dir};
 use crate::bitboard::square::Square;
 use crate::bitboard::attacks::BitboardAttacks;
-use once_cell::sync::Lazy;
+// use once_cell::sync::Lazy;
 use static_init::{dynamic};
 
 
@@ -39,7 +39,8 @@ pub struct ClassicalBitboard {
 //     }
 // }
 
-static STATIC_INSTANCE: Lazy<Box<ClassicalBitboard>> = Lazy::new(|| ClassicalBitboard::new());
+#[dynamic(lazy)]
+static STATIC_INSTANCE: Box<ClassicalBitboard> = ClassicalBitboard::new();
 
 // #[dynamic]
 // static STATIC_INSTANCE: Box<ClassicalBitboard> = ClassicalBitboard::new();
