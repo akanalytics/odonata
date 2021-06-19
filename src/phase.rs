@@ -2,7 +2,7 @@ use crate::board::Board;
 // use crate::types::{Color, Piece};
 // use once_cell::sync::Lazy;
 use std::cmp;
-use static_init::{dynamic};
+// use static_init::{dynamic};
 
 // #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 

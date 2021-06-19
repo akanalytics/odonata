@@ -41,7 +41,7 @@ use crate::bitboard::attacks::BitboardAttacks;
 use crate::bitboard::bb_hyperbola::Hyperbola;
 use crate::bitboard::bitboard::Bitboard;
 use crate::bitboard::square::Square;
-use once_cell::sync::Lazy;
+// use once_cell::sync::Lazy;
 use static_init::{dynamic};
 
 // #[ctor]
