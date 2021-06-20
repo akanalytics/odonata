@@ -39,7 +39,7 @@ impl Default for Engine {
         Engine {
             shared_tt: true,
             algo: Algo::default(),
-            thread_count: 3,
+            thread_count: 1,
             threads: vec![],
         }        
     }

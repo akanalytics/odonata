@@ -167,9 +167,9 @@ impl Algo {
 
         self.results = Position::from_board(self.board.clone());
         self.results.set_operation("bm", &self.board.to_san(&self.bm()));
-        self.results.set(&Tag::Pv(self.pv().clone()));
-        self.results.set(&Tag::CentipawnEvaluation(self.score()));
-        self.results.set(&Tag::AnalysisCountDepth(self.search_stats().depth() as u32));
+        self.results.set(Tag::Pv(self.pv().clone()));
+        self.results.set(Tag::CentipawnEvaluation(self.score()));
+        self.results.set(Tag::AnalysisCountDepth(self.search_stats().depth() as u32));
 
     }
 }

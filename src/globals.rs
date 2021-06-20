@@ -125,28 +125,35 @@ mod tests {
     use crate::movelist::*;
     use crate::mv::*;
     use crate::variation::*;
+    use crate::tags::*;
+    use crate::position::*;
     use crate::bitboard::castling::*;
     use crate::search::node::*;
     use crate::search::searchstats::*;
     use crate::tt::*;
     use crate::types::*;
+    use std::time::Duration;
     use std::mem::size_of;
 
     #[test]
     fn sizes() {
-        assert_eq!(size_of::<Move>(), 8, "Move");
-        assert_eq!(size_of::<MoveList>(), 1028, "MoveList");
-        assert_eq!(size_of::<Variation>(), 24, "Variation");
-        assert_eq!(size_of::<Piece>(), 1);
-        assert_eq!(size_of::<Color>(), 1);
-        assert_eq!(size_of::<Bitboard>(), 8, "Bitboard");
-        assert_eq!(size_of::<CastlingRights>(), 1);
-        assert_eq!(size_of::<Board>(), 136, "Board");
+        assert_eq!(size_of::<Piece>(), 1, "Piece");
+        assert_eq!(size_of::<Color>(), 1, "Color");
+        assert_eq!(size_of::<CastlingRights>(), 1, "CastlingRights");
         assert_eq!(size_of::<Score>(), 2, "Score");
+        assert_eq!(size_of::<Move>(), 8, "Move");
+        assert_eq!(size_of::<String>(), 24, "String");
+        assert_eq!(size_of::<Duration>(), 16, "Duration");
         assert_eq!(size_of::<Node>(), 8, "Node");
-        assert_eq!(size_of::<SearchStats>(), 216, "SearchStats");
-        assert_eq!(size_of::<NodeStats>(), 120, "NodeStats");
+        assert_eq!(size_of::<Bitboard>(), 8, "Bitboard");
         assert_eq!(size_of::<TtNode>(), 16, "TtNode");
+        assert_eq!(size_of::<Tag>(), 32, "Tag");
+        assert_eq!(size_of::<Variation>(), 24, "Variation");
+        assert_eq!(size_of::<MoveList>(), 1028, "MoveList");
+        assert_eq!(size_of::<Board>(), 136, "Board");
+        assert_eq!(size_of::<Position>(), 184, "Position");
+        assert_eq!(size_of::<NodeStats>(), 120, "NodeStats");
+        assert_eq!(size_of::<SearchStats>(), 216, "SearchStats");
         assert_eq!(size_of::<TranspositionTable>(), 256, "TranspositionTable");
         assert_eq!(size_of::<ClassicalBitboard>(), 5120, "ClassicalBitboard");
         assert_eq!(size_of::<Hyperbola>(), 72192, "Hyperbola");

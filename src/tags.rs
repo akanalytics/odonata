@@ -38,7 +38,7 @@ pub enum Tag {
     NoOp(u32),
     SuppliedMove(Move),
     SuppliedVariation(Move),
-    Timestamp(String, String),
+    //Timestamp(String, String),
     Perft(u8, u128),
     Comment(u8, String),
 }
@@ -61,7 +61,7 @@ impl Tag {
             Tag::NoOp(_) => "noop".to_string(),
             Tag::SuppliedMove(_) => "sm".to_string(),
             Tag::SuppliedVariation(_) => "sv".to_string(),
-            Tag::Timestamp(_, _) => "ts".to_string(),
+            // Tag::Timestamp(_, _) => "ts".to_string(),
             Tag::Perft(depth, _count) => format!("D{}", depth),
             Tag::Comment(n, _text) => format!("c{}", n),
         }
@@ -84,63 +84,65 @@ impl Tag {
             Tag::NoOp(vec) => format!("{:?}", vec),
             Tag::SuppliedMove(mv) => mv.uci(),
             Tag::SuppliedVariation(movelist) => movelist.uci(),
-            Tag::Timestamp(date, time) => format!("{} {}", date, time),
+            // Tag::Timestamp(date, time) => format!("{} {}", date, time),
             Tag::Perft(_depth, count) => format!("{}", count),
             Tag::Comment(_n, text) => format!("{}", text),
         }
     }
 }
 
+
+
+
+
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Tags {
-    tags: HashMap<String, String>,
+    tags: HashMap<String, Tag>,
 }
 
 impl Tags {
     pub fn new() -> Self {
         Tags::default()
     }
-    pub fn as_hash_map(&self) -> &HashMap<String, String> {
-        &self.tags
+    pub fn as_hash_map(&self) -> HashMap<String, String> {
+        HashMap::<String, String>::new()
     }
 
-    pub fn get(&self, key: &str) -> Result<&str, String> {
-        self.tags
-            .get(key)
-            .map(|s: &String| s.as_str())
-            .ok_or(format!("No attribute '{}'", key))
+    pub fn get(&self, key: &str) -> &Tag {
+        &self.tags[key]
     }
 
-    pub fn set_str(&mut self, key: &str, value: &str) -> &mut Self {
-        self.tags.insert(key.to_string(), value.to_string());
-        self
+    // pub fn set_str(&mut self, key: &str, value: &str) -> Result<(), String> {
+    //     self.tags.insert(key.to_string(), value.to_string());
+    //     self
+    // }
+
+    pub fn set(&mut self, tag: Tag) {
+        self.tags.insert(tag.key(), tag);
     }
 
-    pub fn set(&mut self, tag: &Tag) -> &mut Self {
-        self.tags.insert(tag.key(), tag.value());
-        self
-    }
-
-    pub fn set_all(&mut self, map: &HashMap<String, String>) {
-        for (k, v) in map {
-            self.tags.insert(k.clone(), v.clone());
-        }
-    }
+    // pub fn set_all(&mut self, map: &HashMap<String, String>) {
+    //     for (k, v) in map {
+    //         self.tags.insert(k.clone(), v.clone());
+    //     }
+    // }
 
     pub fn to_pgn(&self) -> String {
-        let ce = self.get(&Tag::CentipawnEvaluation(Score::from_cp(0)).key()).ok();
-        let acd = self.get(&Tag::AnalysisCountDepth(0).key()).ok();
-        if let Some(ce) = ce {
-            if let Some(acd) = acd {
-                let ce = ce.replace("cp", "").trim().parse::<i32>();
-                if let Ok(ce) = ce {
-                    return format!(" {{ {:.02}/{} }}", ce as f32 / 100., acd);
-                }
-            }
-        }
-        "".to_string()
-        // format!("{:?}", self)
+        unreachable!();
     }
+        //     let ce = self.get(&Tag::CentipawnEvaluation(Score::from_cp(0)).key()).ok();
+    //     let acd = self.get(&Tag::AnalysisCountDepth(0).key()).ok();
+    //     if let Some(ce) = ce {
+    //         if let Some(acd) = acd {
+    //             let ce = ce.replace("cp", "").trim().parse::<i32>();
+    //             if let Ok(ce) = ce {
+    //                 return format!(" {{ {:.02}/{} }}", ce as f32 / 100., acd);
+    //             }
+    //         }
+    //     }
+    //     "".to_string()
+    //     // format!("{:?}", self)
+    // }
 }
 
 //
@@ -148,18 +150,38 @@ impl Tags {
 //
 impl fmt::Display for Tags {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let tags = self.as_hash_map();
-        let mut entries = tags.iter().collect::<Vec<_>>();
-        entries.sort();
-        for (k, v) in entries {
-            if v.is_empty() {
-                write!(f, " {};", k)?;
-            } else if v.contains(char::is_whitespace) {
-                write!(f, " {} \"{}\";", k, v)?;
-            } else {
-                write!(f, " {} {};", k, v)?;
-            }
-        }
+//         let tags = self.as_hash_map();
+//         let mut entries = tags.iter().collect::<Vec<_>>();
+//         entries.sort();
+//         for (k, v) in entries {
+//             if v.is_empty() {
+//                 write!(f, " {};", k)?;
+//             } else if v.contains(char::is_whitespace) {
+//                 write!(f, " {} \"{}\";", k, v)?;
+//             } else {
+//                 write!(f, " {} {};", k, v)?;
+//             }
+//         }
         Ok(())
+    }
+}
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::catalog::Catalog;
+    use crate::globals::constants::*;
+
+
+    #[test]
+    fn test_tags() {
+        let mut tags = Tags::new();
+        tags.set(Tag::AnalysisCountDepth(3));
+        if let Tag::AnalysisCountDepth(u) = tags.get("&Tag::AnalysisCountDepth") {
+            
+        }
+
     }
 }

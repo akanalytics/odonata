@@ -70,7 +70,7 @@ impl Position {
                 }
             }
         }
-        pos.tags.set_all(&Self::parse_tags(remaining));
+        // pos.tags.set_all(&Self::parse_tags(remaining));
         Ok(pos)
     }
 
@@ -182,7 +182,7 @@ impl Position {
         &mut self.board
     }
 
-    pub fn as_hash_map(&self) -> &HashMap<String, String> {
+    pub fn as_hash_map(&self) -> HashMap<String, String> {
         self.tags.as_hash_map()
     }
 
@@ -190,13 +190,13 @@ impl Position {
         &self.tags
     }
 
-    pub fn set(&mut self, tag: &Tag) -> &mut Self {
+    pub fn set(&mut self, tag: Tag) -> &mut Self {
         self.tags.set(tag);
         self
     }
 
     pub fn set_operation(&mut self, key: &str, value: &str) -> &mut Self {
-        self.tags.set_str(key, value);
+        //self.tags.set_str(key, value);
         self
     }
 
@@ -214,8 +214,9 @@ impl Position {
 
     // FIXME - other EPD tags
 
-    pub fn get(&self, key: &str) -> Result<&str, String> {
-        self.tags.as_hash_map().get(key).map(|s: &String| s.as_str()).ok_or(format!("No attribute '{}'", key))
+    pub fn get(&self, _key: &str) -> Result<&str, String> {
+        // self.tags.as_hash_map().get(key).map(|s: &String| s.as_str()).ok_or(format!("No attribute '{}'", key))
+        unreachable!()
     }
 
     pub fn pv(&self) -> Result<Variation, String> {

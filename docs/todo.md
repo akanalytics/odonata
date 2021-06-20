@@ -1,15 +1,16 @@
 # Todo items
 
 ## General
+- [ ] NPSaccross all threads
 - [ ] x-ray in see algorithm
 - [ ] Board/Position/Game refactor
 - [ ]  tt table. 
-  - use xor'ing trck for duplicates (https://binarydebt.wordpress.com/2013/09/29/lockless-transposition-tables/). 
+  [x] use xor'ing trck for duplicates (https://binarydebt.wordpress.com/2013/09/29/lockless-transposition-tables/). 
   - check legalality on probe.
   - pluggable replacement strats
   - packed structs  like https://docs.rs/packed_struct/0.5.0/packed_struct/ (mv=16, node=2, score=14 [16384], draft=8, generation=8 ) leaving 16 bits for hash? Prob not enough. So basically needs to be Atomic128s or brace of Atomic64s
   - leaves enough room to pack extra collision detection or bucket fields. 
-- [ ] "Local" caching
+- [x] "Local" caching
 - [ ] Game / pgn export
 - [ ] Branching factor bug
 - [ ] Killer moves
@@ -30,9 +31,9 @@
 - [ ] "Stats" shared class to be split up into components
 - [ ] Aggregate class to collect stats from all thread local components
 - [ ] Thread Pool - not needed in first instance
-- [ ] tt -lets mutex it first before the atomic refactoring above (some already atomic)
+- [x] tt -lets mutex it first before the atomic refactoring above (some already atomic)
 - [ ] Pad the read-only data (lookup tables) so CPU cached without fear of neighbouring write (tiny mem I recall)
-- [ ] Command line or num_cpus (default?) switch for threading
+- [x] Command line or num_cpus (default?) switch for threading
 - [ ] Overall design. Pull TaskControl outside of Algo. Engine = Algo+Task control = threaded algorithm. Test code stays (largely)as is. 
 
 ## UCI
@@ -40,7 +41,7 @@
 - [ ] Searchmoves in UCI
 - [ ] Clear hash
 - [ ] wdl as in  UCI_ShowWDL from Leela
-- [ ] engine wrapper
+- [x] engine wrapper
 
 ## Lichess
 - [ ] use https://berserk.readthedocs.io/en/master/
