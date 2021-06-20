@@ -21,6 +21,9 @@ use std::time::Duration;
 //     }
 // }
 
+
+
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Tag {
     BestMove(Move),
@@ -44,27 +47,31 @@ pub enum Tag {
 }
 
 impl Tag {
+
+ 
+
     pub fn key(&self) -> String {
         match &self {
-            Tag::BestMove(_) => "bm".to_string(),
-            Tag::Pv(_) => "pv".to_string(),
-            Tag::Id(_) => "id".to_string(),
-            Tag::AnalysisCountDepth(_) => "acd".to_string(),
-            Tag::AnalysisCountSeconds(_) => "acs".to_string(),
-            Tag::ChessClock(_) => "cc".to_string(),
-            Tag::CentipawnEvaluation(_) => "ce".to_string(),
-            Tag::DirectMate(_) => "dm".to_string(),
-            Tag::FullMoveNumber(_) => "fmvn".to_string(),
-            Tag::HalfMoveClock(_) => "hmvc".to_string(),
-            Tag::PredictedMove(_) => "pm".to_string(),
-            Tag::RepititionCount(_) => "rc".to_string(),
-            Tag::NoOp(_) => "noop".to_string(),
-            Tag::SuppliedMove(_) => "sm".to_string(),
-            Tag::SuppliedVariation(_) => "sv".to_string(),
+            Tag::None => "",
+            Tag::BestMove(_) => Self::BM,
+            Tag::Pv(_) => "pv",
+            Tag::Id(_) => "id",
+            Tag::AnalysisCountDepth(_) => Self:ACD,
+            Tag::AnalysisCountSeconds(_) => "acs",
+            Tag::ChessClock(_) => "cc",
+            Tag::CentipawnEvaluation(_) => "ce",
+            Tag::DirectMate(_) => "dm",
+            Tag::FullMoveNumber(_) => "fmvn",
+            Tag::HalfMoveClock(_) => "hmvc",
+            Tag::PredictedMove(_) => "pm",
+            Tag::RepititionCount(_) => "rc",
+            Tag::NoOp(_) => "noop",
+            Tag::SuppliedMove(_) => "sm",
+            Tag::SuppliedVariation(_) => "sv",
             // Tag::Timestamp(_, _) => "ts".to_string(),
-            Tag::Perft(depth, _count) => format!("D{}", depth),
-            Tag::Comment(n, _text) => format!("c{}", n),
-        }
+            Tag::Perft(depth, _count) => &format!("D{}", depth),
+            Tag::Comment(n, _text) => &format!("c{}", n),
+        }.to_string()
     }
 
     pub fn value(&self) -> String {
@@ -101,6 +108,12 @@ pub struct Tags {
 }
 
 impl Tags {
+    pub const BM: &'static str = "bm";
+    pub const PV: &'static str = "pv";
+    pub const ID: &'static str = "id";
+    pub const ACD: &'static str = "acd";
+
+
     pub fn new() -> Self {
         Tags::default()
     }
@@ -109,7 +122,20 @@ impl Tags {
     }
 
     pub fn get(&self, key: &str) -> &Tag {
-        &self.tags[key]
+        if self.tags.has(key) {
+           &self.tags.[key]; 
+        } else {
+            
+        }
+
+    }
+
+
+
+
+    
+    pub fn remove(&mut self, key: &str)  {
+        self.tags.remove(key);
     }
 
     // pub fn set_str(&mut self, key: &str, value: &str) -> Result<(), String> {
@@ -178,8 +204,14 @@ mod tests {
     #[test]
     fn test_tags() {
         let mut tags = Tags::new();
+        tags.remove(Tag::BM);
+        assert_eq!(tags.get(Tag::BM), None);
+        
         tags.set(Tag::AnalysisCountDepth(3));
-        if let Tag::AnalysisCountDepth(u) = tags.get("&Tag::AnalysisCountDepth") {
+        assert_eq!(tags.get(Tag::ACD), Tag::AnalysisCountDepth(3));
+        if let Tag::AnalysisCountDepth(d) = tags.get(Tag::ACD)
+        
+        //if let Tag::AnalysisCountDepth(u) = tags.get("&Tag::AnalysisCountDepth") {
             
         }
 
