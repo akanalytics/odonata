@@ -1,6 +1,6 @@
 [package]
 name = "odonata"
-version = "0.3.18"
+version = "0.3.19"
 license = "GPL-3.0+"
 homepage = "https://github.com/akanalytics/odonata"
 authors = ["andy watkins <andy@webcalculator.com>"]
@@ -50,7 +50,7 @@ debug = true
 #lto = true
 #codegen-units = 1
 opt-level = 3
-debug = true  # allow profiling of the  main executable 
+debug = false  # disallow profiling of the  main executable 
 
 [lib]
 # bug in criterion<->cargo interaction https://bheisler.github.io/criterion.rs/book/faq.html

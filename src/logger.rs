@@ -103,7 +103,7 @@ mod tests {
         trace!("trace: Hellow world!");
         debug!("debug: Hellow world!");
         info!("info: Hellow world!");
-        warn!("warn: Hellow world!");
+        // warn!("warn: Hellow world!");
         // error!("error: Hellow world!");
         // log::set_max_level(log::LevelFilter::Trace);
         debug!("debug: Debug enabled!");

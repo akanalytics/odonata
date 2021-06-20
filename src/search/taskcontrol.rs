@@ -5,7 +5,7 @@ use std::fmt;
 
 #[derive(Clone, Default)]
 pub struct TaskControl<TTaskProgress> {
-    progress_callback: Option<Arc<Mutex<dyn Fn(&TTaskProgress) + Send + Sync>>>,
+    pub progress_callback: Option<Arc<Mutex<dyn Fn(&TTaskProgress) + Send + Sync>>>,
     kill_switch: Arc<AtomicBool>,
     // has_been_cancelled: bool,
 }

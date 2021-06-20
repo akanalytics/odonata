@@ -25,7 +25,7 @@ use std::thread::{self, JoinHandle};
 use crate::clock::Clock;
 
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Engine {
     pub shared_tt: bool,
     pub thread_count: u32,
@@ -33,6 +33,17 @@ pub struct Engine {
     threads: Vec<JoinHandle<Algo>>,
 }
 
+
+impl Default for Engine {
+    fn default() -> Self {
+        Engine {
+            shared_tt: true,
+            algo: Algo::default(),
+            thread_count: 3,
+            threads: vec![],
+        }        
+    }
+}
 
 impl Clone for Engine {
     fn clone(&self) -> Self {
@@ -44,16 +55,18 @@ impl Clone for Engine {
     }
 }
 
+impl fmt::Display for Engine {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "threads          : {}", self.thread_count)?;
+        write!(f, "\n[algo]\n{}", self.algo)
+    }
+}
+
 
 
 impl Engine {
     pub fn new() -> Self {
-        Engine {
-            shared_tt: true,
-            algo: Algo::default(),
-            thread_count: 3,
-            threads: vec![],
-        }
+        Self::default()
     }
 
 
@@ -82,6 +95,7 @@ impl Engine {
             algo.move_orderer.thread = i;
             if i >= 1  {
                 algo.max_depth += 4;
+                algo.task_control.progress_callback = None;
             } 
             if i == 1  {
                 algo.ids.step_size = 2;
@@ -117,7 +131,7 @@ impl Engine {
                 self.algo.task_control.cancel();
             }
             info!("Thread returned {}", algo); // t.thread().name().unwrap(),
-            warn!(
+            info!(
                 "thread {:>3} {:>5} {:>8} {:<43} {:>10} {:>10} {:>10}",
                 i, // thread::current().name().unwrap(),
                 algo.bm().to_string(),
@@ -130,8 +144,8 @@ impl Engine {
             knps += algo.search_stats.total_knps();
             nodes += algo.search_stats.total().nodes();
         }
-        warn!("{:>3} {:>5} {:>8} {:>43}        {:>10}      {:>5}", "", "", "", "", "---------", "-----");
-        warn!("{:>3} {:>5} {:>8} {:>43}   nodes{:>10} knps {:>5}", "", "", "", "", nodes, knps);
+        info!("{:>3} {:>5} {:>8} {:>43}        {:>10}      {:>5}", "", "", "", "", "---------", "-----");
+        info!("{:>3} {:>5} {:>8} {:>43}   nodes{:>10} knps {:>5}", "", "", "", "", nodes, knps);
     }
 }
 

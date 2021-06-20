@@ -5,10 +5,9 @@ use crate::catalog::Catalog;
 use crate::config::{Config, Component};
 use crate::mv::Move;
 use crate::clock::Clock;
-// use crate::movelist::MoveValidator;
 use crate::variation::Variation;
 use crate::perft::Perft;
-use crate::search::algo::Algo;
+use crate::search::algo::Engine;
 use crate::search::node::Node;
 use crate::eval::eval::SimpleScorer;
 use crate::search::searchprogress::SearchProgress;
@@ -89,16 +88,16 @@ pub struct Uci {
     preamble: Vec<String>,
     running: bool,
     board: Board,
-    algo: Algo,
+    engine: Engine,
     debug: bool,
 }
 
 impl Component for Uci {
     fn settings(&self, c: &mut Config) {
-        self.algo.settings(c);
         c.set("uci.debug", "type check default false");
         c.set("Ponder", "type check default false");
         c.set("Clear Hash", "type button");
+        self.engine.settings(c);
     }
 
     fn configure(&mut self, c: &Config) {
@@ -109,11 +108,11 @@ impl Component for Uci {
             let _res = self.uci_newgame();
         }
 
-        self.algo.configure(&c);
+        self.engine.configure(&c);
     }
 
     fn new_game(&mut self) {
-        self.algo.new_game();
+        self.engine.new_game();
     }
 
     fn new_search(&mut self) {
@@ -124,7 +123,7 @@ impl Uci {
     pub fn new() -> Uci {
         let mut uci = Uci::default();
         uci.board = Catalog::starting_position();
-        uci.algo.set_callback(|sp| Self::uci_info(sp));
+        uci.engine.algo.set_callback(|sp| Self::uci_info(sp));
         uci
     }
 
@@ -217,7 +216,7 @@ impl Uci {
 
     fn uci_quit(&mut self) -> Result<(), String> {
         println!("info string quitting...");
-        self.algo.search_async_stop();
+        self.engine.search_stop();
         println!("info string stopped...");
         self.running = false;
         // info!("{}", self.algo);
@@ -244,7 +243,7 @@ impl Uci {
     }
 
     fn uci_perft(&mut self, words: &[&str]) -> Result<(), String> {
-        self.algo.search_async_stop();
+        self.engine.search_stop();
         let depth = words.first().ok_or("Must specify a depth")?;
         let depth = depth
             .parse::<u32>()
@@ -313,11 +312,11 @@ impl Uci {
     }
 
     fn uci_position(&mut self, arg: &Args) -> Result<(), String> {
-        self.algo.search_async_stop();
-        self.algo.repetition.new_game();
+        self.engine.search_stop();
+        self.engine.algo.repetition.new_game();
         Self::parse_fen(arg, &mut self.board)?;
         let moves = Self::parse_variation(arg, &self.board)?;
-        self.algo.repetition.push_variation(&moves, &self.board);
+        self.engine.algo.repetition.push_variation(&moves, &self.board);
         self.board = self.board.make_moves(&moves);
         Ok(())
     }
@@ -424,17 +423,18 @@ impl Uci {
             TimeControl::default()
         };
 
-        self.algo.set_timing_method(tc);
-        self.algo.mte.set_shared_ponder(ponder);
+        self.engine.algo.set_timing_method(tc);
+        self.engine.algo.mte.set_shared_ponder(ponder);
         // restrict search to this moves only
         // Example: After "position startpos" and "go infinite searchmoves e2e4 d2d4"
         // the engine should only search the two moves e2e4 and d2d4 in the initial position
         let _searchmoves = args.string_after("searchmoves");
         self.log_debug_message("starting search with configuration ...");
-        self.log_debug_message(&format!("{}", self.algo));
+        self.log_debug_message(&format!("{}", self.engine.algo));
         self.log_debug_message(&format!("{}", self.board));
         info!("odonata: searching {} on tc {}", self.board.to_fen(), tc);
-        self.algo.search_async(&self.board);
+        self.engine.algo.board = self.board.clone();
+        self.engine.search_start();
         Ok(())
     }
 
@@ -459,15 +459,15 @@ impl Uci {
     }
 
     fn uci_display(&mut self) -> Result<(), String> {
-        self.algo.search_async_stop();
+        self.engine.search_stop();
         self.uci_info_string("display");
         self.uci_info_string(&format!("{}", self.board));
-        self.uci_info_string(&format!("{}", self.algo));
+        self.uci_info_string(&format!("{}", self.engine.algo));
         Ok(())
     }
 
     fn uci_board(&mut self) -> Result<(), String> {
-        self.algo.search_async_stop();
+        self.engine.search_stop();
         self.uci_info_string("board");
         self.uci_info_string(&format!("{}", self.board));
         self.uci_info_string(&format!("outcome {}", self.board.outcome()));
@@ -476,13 +476,13 @@ impl Uci {
     }
 
     fn uci_stop(&mut self) -> Result<(), String> {
-        self.algo.search_async_stop();
+        self.engine.search_stop();
         // Self::print_bm_and_ponder(&self.algo.bm(), &self.algo.pv() );
         Ok(())
     }
 
     fn uci_ponder_hit(&mut self) -> Result<(), String> {
-        self.algo.ponder_hit();
+        self.engine.ponder_hit();
         Ok(())
     }
 
@@ -642,9 +642,9 @@ mod tests {
             .push("setoption name eval.position value false".into());
         uci.preamble.push("quit".into());
         uci.run();
-        assert_eq!(uci.algo.eval.material_scores[Piece::Bishop], 700);
-        assert_eq!(uci.algo.eval.material_scores[Piece::Pawn], 100);
-        assert_eq!(uci.algo.eval.position, false);
+        assert_eq!(uci.engine.algo.eval.material_scores[Piece::Bishop], 700);
+        assert_eq!(uci.engine.algo.eval.material_scores[Piece::Pawn], 100);
+        assert_eq!(uci.engine.algo.eval.position, false);
     }
 
     #[test]
@@ -727,7 +727,7 @@ mod tests {
         uci.preamble.push("sleep 1100".to_string());
         uci.preamble.push("quit".to_string());
         uci.run();
-        println!("\n{}", uci.algo);
+        println!("\n{}", uci.engine.algo);
     }
 
 }
