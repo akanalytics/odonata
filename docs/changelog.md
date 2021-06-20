@@ -1,10 +1,14 @@
 # Changelog
 
-## 0.3.18 (not yet released)
+
+## 0.3.19 (not yet released)
+- multi-threaded through UCI interface
+- 'Threads' setoption supported
+
+## 0.3.18 (internal release only)
 - added splash with compiler features / optimizations
-- multi-threading
+- multi-threading (internally for tests)
 - lockless transposition table
-- 
 
 ## 0.3.17
 - pondering 
