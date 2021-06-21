@@ -24,6 +24,7 @@
 - [ ] Fix board ==
 - [ ] E/P when not relelvant and tt
 - [ ] Prime the startup on uci with a search
+- [ ] EPD modelling like https://docs.rs/http/0.1.5/src/http/extensions.rs.html#19-130
 
 
 ## Todo multi-threading

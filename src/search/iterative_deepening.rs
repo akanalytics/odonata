@@ -8,8 +8,11 @@ use crate::search::searchstats::{NodeStats, SearchStats};
 use crate::search::timecontrol::TimeControl;
 use crate::position::Position;
 use crate::tags::Tag;
+use crate::movelist::MoveList;
 use crate::types::{Ply, MAX_PLY};
 use std::fmt;
+use std::iter::FromIterator;
+use std::iter;
 
 #[derive(Clone, Debug)]
 pub struct IterativeDeepening {
@@ -166,10 +169,10 @@ impl Algo {
         // println!("\n\n\n=====Search completed=====\n {}", self);
 
         self.results = Position::from_board(self.board.clone());
-        self.results.set_operation("bm", &self.board.to_san(&self.bm()));
+        self.results.set(Tag::BestMove(MoveList::from_iter(iter::once(self.bm()))));
         self.results.set(Tag::Pv(self.pv().clone()));
-        self.results.set(Tag::CentipawnEvaluation(self.score()));
-        self.results.set(Tag::AnalysisCountDepth(self.search_stats().depth() as u32));
+        self.results.set(Tag::CentipawnEvaluation(self.score().as_i16() as i32));
+        self.results.set(Tag::AnalysisCountDepth(self.search_stats().depth()));
 
     }
 }

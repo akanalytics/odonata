@@ -513,6 +513,7 @@ mod tests {
             let mut expected: Vec<String> = pos
                 .get("c1")
                 .unwrap()
+                .value()
                 .split_ascii_whitespace()
                 .map(str::to_string)
                 .collect();

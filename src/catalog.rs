@@ -3,6 +3,7 @@ use crate::board::boardbuf::BoardBuf;
 use crate::board::Board;
 use crate::globals::constants::*;
 use crate::position::Position;
+use crate::tags::Tag;
 use crate::bitboard::castling::CastlingRights;
 
 pub struct Catalog;
@@ -890,10 +891,9 @@ b2b1r1k/3R1ppp/4qP2/4p1PQ/4P3/5B2/4N1K1/8 w - - bm g6; id "WAC.300";
         b.set(RANK_8, &chars.iter().collect::<String>().to_lowercase()).unwrap();
         b.set_castling(CastlingRights::ALL);
         let mut pos = Position::from_board(b);
-        pos.set_id(&format!("Chess960(SP{})", id));
+        pos.set(Tag::Id(format!("Chess960(SP{})", id)));
         pos
     }
-
 }
 
 
