@@ -1003,7 +1003,7 @@ class Odonata:
         if millis:
             req = f"go movetime {millis}"
 
-        result = self.exec_command(req, res="bestmove")
+        result = self.exec_command(req, res="bestmove").split(" ")[0]
         return None if result == "0000" else result
 
     def move_attributes(self, b: Board, m: Move) -> Dict:
