@@ -106,8 +106,8 @@ impl Engine {
                 algo.ids.step_size = 3;
             } 
             if i == 3  {
-                algo.ids.step_size = 4;
-                algo.ids.start_ply = 1;
+                algo.ids.step_size = 2;
+                algo.ids.start_ply = 2;
             } 
             let cl = move || {
                 algo.search_iteratively();

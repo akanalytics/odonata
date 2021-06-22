@@ -82,6 +82,12 @@ impl fmt::Display for IterativeDeepening {
             iter.total().fmt_data(f)?;
             writeln!(f, " {:>8} {:<11}", iter.score.to_string(), iter.pv().to_string())?;
         }
+        write!(f, "{:>3} {:>4} ", "---", "----")?;
+        NodeStats::fmt_underline(f)?;
+        writeln!(f, " {:>8} {:<11}", "--------", "-----------")?;
+        write!(f, "{:>8} ", "cumul")?;
+        self.iterations.last().unwrap().cumulative().fmt_data(f)?;
+        writeln!(f, " {:>8} {:<11}", "-", "-")?;
         Ok(())
     }
 }
