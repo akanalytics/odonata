@@ -37,7 +37,7 @@ criterion_group!(
     benches,
     benchmark_search,
     benchmark_perft5,
-    benchmark_mate_in_2,
+    // benchmark_mate_in_2,
     benchmark_eval,
     bb_calcs,
     sq_calcs,
@@ -954,55 +954,70 @@ fn bench_insufficient_material(c: &mut Criterion) {
 fn benchmark_search(c: &mut Criterion) {
     let mut group = c.benchmark_group("search");
     group.sample_size(10);
+    let pos = Catalog::test_position();
+    let mut algo = Algo::new().set_timing_method(TimeControl::Depth(5)).build();
     group.bench_function("test(5)", |b| {
         b.iter(|| {
-            let pos = Catalog::test_position();
             // let eval = SimpleScorer::new().set_position(false);
-            let mut search = Algo::new().set_timing_method(TimeControl::Depth(5)).build();
-            search.new_game();
-            black_box(search.search(pos.board()));
+            algo.new_game();
+            black_box(algo.search(pos.board()));
         });
     });
+    let board = Catalog::starting_position();
     group.bench_function("starting(5)", |b| {
         b.iter(|| {
-            let board = Catalog::starting_position();
             // let eval = SimpleScorer::new().set_position();
-            let mut search = Algo::new().set_timing_method(TimeControl::Depth(5)).build();
-            search.new_game();
-            black_box(search.search(&board));
+            algo.new_game();
+            black_box(algo.search(&board));
+        });
+    });
+
+    let board = Catalog::mate_in_2()[0].board().clone();
+    let mut algo1 = Algo::new().set_timing_method(TimeControl::Depth(3)).build();
+    algo1.ids.enabled = false;
+    group.bench_function("mate_in_2_ab", |b| {
+        b.iter(|| {
+            algo1.new_game();
+            black_box(algo1.search(black_box(&board)));
+            assert_eq!(algo1.pv_table.extract_pv().to_string(), "d5f6, g7f6, c4f7");
+        });
+    });
+    let board = Catalog::mate_in_2()[0].board().clone();
+    let mut algo2 = Algo::new().set_timing_method(TimeControl::Depth(3)).build();
+    group.bench_function("mate_in_2_ab_ids", |b| {
+        b.iter(|| {
+            algo2.new_game();
+            black_box(algo2.search(black_box(&board)));
+            assert_eq!(algo2.pv_table.extract_pv().to_string(), "d5f6, g7f6, c4f7");
         });
     });
     group.finish();
 }
 
-fn benchmark_mate_in_2(c: &mut Criterion) {
-    let mut group = c.benchmark_group("mate2");
-    group.sample_size(20);
-    let board = Catalog::mate_in_2()[0].board().clone();
-    group.bench_function("mate_in_2_ab", |b| {
-        b.iter(|| {
-            let mut search = Algo::new()
-                .set_timing_method(TimeControl::Depth(3))
-                .build();
-            search.ids.enabled = false;
-            search.new_game();
-            black_box(search.search(black_box(&board)));
-            assert_eq!(search.pv_table.extract_pv().to_string(), "d5f6, g7f6, c4f7");
-        });
-    });
-    let board = Catalog::mate_in_2()[0].board().clone();
-    group.bench_function("mate_in_2_ab_ids", |b| {
-        b.iter(|| {
-            let mut search = Algo::new()
-                .set_timing_method(TimeControl::Depth(3))
-                .build();
-            search.new_game();
-            black_box(search.search(black_box(&board)));
-            assert_eq!(search.pv_table.extract_pv().to_string(), "d5f6, g7f6, c4f7");
-        });
-    });
-    group.finish();
-}
+// fn benchmark_mate_in_2(c: &mut Criterion) {
+//     let mut group = c.benchmark_group("mate2");
+//     group.sample_size(20);
+//     let board = Catalog::mate_in_2()[0].board().clone();
+//     let mut algo1 = Algo::new().set_timing_method(TimeControl::Depth(3)).build();
+//     algo1.ids.enabled = false;
+//     group.bench_function("mate_in_2_ab", |b| {
+//         b.iter(|| {
+//             algo1.new_game();
+//             black_box(algo1.search(black_box(&board)));
+//             assert_eq!(algo1.pv_table.extract_pv().to_string(), "d5f6, g7f6, c4f7");
+//         });
+//     });
+//     let board = Catalog::mate_in_2()[0].board().clone();
+//     let mut algo2 = Algo::new().set_timing_method(TimeControl::Depth(3)).build();
+//     group.bench_function("mate_in_2_ab_ids", |b| {
+//         b.iter(|| {
+//             algo2.new_game();
+//             black_box(algo2.search(black_box(&board)));
+//             assert_eq!(algo2.pv_table.extract_pv().to_string(), "d5f6, g7f6, c4f7");
+//         });
+//     });
+//     group.finish();
+// }
 
 fn benchmark_array(c: &mut Criterion) {
     let mut group = c.benchmark_group("array");

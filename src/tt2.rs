@@ -283,6 +283,7 @@ impl SharedTable {
         st
     }
 
+    #[inline]
     fn capacity(&self) -> usize {
         self.capacity
     }
@@ -290,6 +291,14 @@ impl SharedTable {
     #[inline]
     fn index(&self, h: Hash) -> usize {
         h as usize & self.mask
+    }
+
+    fn probe_by_index(&self, i: usize) -> (Hash, u64) {
+        let xor_hash = self.vec[i].load(Ordering::Relaxed);
+        let data = self.vec[i + 1].load(Ordering::Relaxed);
+        trace!("load {:x} {:x} from position {}", xor_hash, data, i);
+        let hash = xor_hash ^ data;
+        (hash, data)
     }
 
     fn probe(&self, h: Hash) -> (Hash, u64) {
@@ -426,7 +435,7 @@ impl fmt::Display for TranspositionTable2 {
 
 impl Default for TranspositionTable2 {
     fn default() -> Self {
-        Self::new_with_mb(64)
+        Self::new_with_mb(8)
     }
 }
 
@@ -451,7 +460,7 @@ impl Component for TranspositionTable2 {
     fn new_game(&mut self) {
         if self.requires_resize() {
             let capacity = Self::convert_mb_to_capacity(self.mb);
-            info!("tt capacity is now {}", capacity);
+            info!("tt resized so capacity is now {}", capacity);
             self.table = Arc::new(SharedTable::new_with_capacity(capacity));
             self.current_age = 10;
             return;
@@ -466,7 +475,7 @@ impl Component for TranspositionTable2 {
 
 impl TranspositionTable2 {
     pub const fn convert_mb_to_capacity(mb: i64) -> usize {
-        mb as usize * 1_000_000 / mem::size_of::<TtNode>()
+        (mb as usize * 1_000_000 / mem::size_of::<TtNode>()).next_power_of_two()
     }
 
     pub fn fmt_nodes(&self, f: &mut fmt::Formatter, b: &Board) -> fmt::Result {
@@ -540,12 +549,11 @@ impl TranspositionTable2 {
         // self.table.lock().unwrap().iter().filter(|e| e.entry.node_type == t).count()
     }
 
-    pub fn count_of_age(&self, _age: u8) -> usize {
-        0
-        //     self.table.lock().unwrap()
-        //         .iter()
-        //         .filter(|e| e.age.load(Ordering::Relaxed) == age)
-        //         .count()
+    pub fn count_of_age(&self, age: u8) -> usize {
+        (0..self.table.capacity())
+            .into_iter()
+            .filter(|&i| self.table.probe_by_index(i).1 & 255 == age as u64 )
+            .count()
     }
 
     #[inline]

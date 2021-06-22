@@ -36,6 +36,7 @@ impl Exam {
     pub fn take_exam(name: &str, positions: Vec<Position>) -> Exam {
         let mut c = Config::new();
         let mut engine = Engine::new();
+        engine.thread_count = 3;
         // algo.set_timing_method(TimeControl::Depth(5));
         engine.algo.set_timing_method(TimeControl::NodeCount(1_000_000));
         // Prints each argument on a separate line
