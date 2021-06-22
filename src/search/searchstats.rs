@@ -15,6 +15,7 @@ pub struct SearchStats {
 
     pub completed: bool,
     pub user_cancelled: bool,
+    cumulative: NodeStats,
     total: NodeStats,
     plies: Vec<NodeStats>,
 
@@ -71,6 +72,7 @@ impl Default for SearchStats {
             completed: false,
             user_cancelled: false,
             total: NodeStats::default(),
+            cumulative: NodeStats::default(),
             plies: std::iter::repeat(NodeStats::new())
                 .take(MAX_PLY as usize)
                 .collect(),
@@ -121,6 +123,11 @@ impl SearchStats {
     }
 
     #[inline]
+    pub fn cumulative(&self) -> &NodeStats {
+        &self.cumulative
+    }
+
+    #[inline]
     pub fn plies(&self) -> &[NodeStats] {
         &self.plies[0..self.len()]
     }
@@ -157,7 +164,7 @@ impl SearchStats {
         self.plies[ply as usize].est_time = *estimate;
     }
 
-    pub fn record_time_actual_and_completion_status(&mut self, ply: Ply, completed: bool, pv: Variation) {
+    pub fn record_iteration(&mut self, ply: Ply, completed: bool, pv: Variation) {
         let ply = ply as usize;
         self.plies[ply].real_time = self.realtime.elapsed();
         self.plies[ply].deterministic_time = self.deterministic.elapsed();
@@ -167,13 +174,9 @@ impl SearchStats {
         if completed {
             self.pv = pv;
         }
+        self.cumulative.accumulate(&self.total);
     }
 
-    #[inline]
-    pub fn inc_custom_stat(&mut self, ply: Ply) {
-        self.total.custom += 1;
-        self.plies[ply as usize].custom += 1;
-    }
 
     #[inline]
     pub fn inc_leaf_nodes(&mut self, ply: Ply) {
@@ -245,8 +248,8 @@ impl SearchStats {
     }
 
     #[inline]
-    pub fn total_knps_final(&self) -> u128 {
-        self.total.nodes() as u128 / (1 + self.total.real_time.as_millis())
+    pub fn cumulative_knps(&self) -> u128 {
+        self.cumulative.nodes() as u128 / (1 + self.cumulative.real_time.as_millis())
     }
 
     #[inline]
@@ -290,8 +293,10 @@ pub struct NodeStats {
     pub real_time: Duration,
     pub deterministic_time: Duration,
 
-    pub custom: u64,
 }
+
+
+
 
 impl NodeStats {
     pub fn new() -> Self {
@@ -307,6 +312,25 @@ impl NodeStats {
         self.q_leaf_nodes = 0;
         self.tt_nodes = 0;
         self.q_tt_nodes = 0;
+        self.real_time = Duration::default();
+        self.deterministic_time = Duration::default();
+    }
+
+    pub fn accumulate(&mut self, other: &NodeStats) {
+        self.interior_nodes += other.interior_nodes;
+        self.leaf_nodes += other.leaf_nodes;
+        self.improvements += other.improvements;
+        self.cuts += other.cuts;
+
+        self.q_interior_nodes += other.q_interior_nodes;
+        self.q_leaf_nodes += other.q_leaf_nodes;
+
+        self.tt_nodes += other.tt_nodes;
+        self.q_tt_nodes += other.q_tt_nodes;
+
+        self.est_time += other.est_time;
+        self.real_time += other.real_time;
+        self.deterministic_time += other.deterministic_time;
     }
 
     #[inline]
@@ -323,11 +347,6 @@ impl NodeStats {
     #[inline]
     pub fn leaf_nodes(&self) -> u64 {
         self.leaf_nodes
-    }
-
-    #[inline]
-    pub fn custom(&self) -> u64 {
-        self.custom
     }
 
     #[inline]

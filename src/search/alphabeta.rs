@@ -31,7 +31,7 @@ impl Algo {
         } else {
             (self.pv_table.extract_pv(), Some(Score::default()))
         };
-        self.search_stats.record_time_actual_and_completion_status(
+        self.search_stats.record_iteration(
             self.max_depth,
             !self.task_control.is_cancelled(),
             pv,

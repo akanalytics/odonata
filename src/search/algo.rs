@@ -95,8 +95,9 @@ impl Engine {
             }
             algo.move_orderer.thread = i;
             if i >= 1  {
-                algo.max_depth += 4;
+                algo.max_depth += 8;
                 algo.task_control.progress_callback = None;
+                algo.set_timing_method(TimeControl::Infinite);
             } 
             if i == 1  {
                 algo.ids.step_size = 2;
@@ -105,8 +106,8 @@ impl Engine {
                 algo.ids.step_size = 3;
             } 
             if i == 3  {
-                algo.ids.step_size = 2;
-                algo.ids.start_ply = 2;
+                algo.ids.step_size = 4;
+                algo.ids.start_ply = 1;
             } 
             let cl = move || {
                 algo.search_iteratively();
@@ -138,12 +139,12 @@ impl Engine {
                 algo.bm().to_string(),
                 algo.score().to_string(),
                 algo.pv().to_string(),
-                algo.search_stats.total().nodes(),
-                algo.search_stats.total_knps_final(),
-                Clock::format(algo.search_stats.total_time()),
+                algo.search_stats.cumulative().nodes(),
+                algo.search_stats.cumulative_knps(),
+                Clock::format(algo.search_stats.cumulative().real_time),
             );
-            knps += algo.search_stats.total_knps_final();
-            nodes += algo.search_stats.total().nodes();
+            knps += algo.search_stats.cumulative_knps();
+            nodes += algo.search_stats.cumulative().nodes();
         }
         warn!("{:>3} {:>5} {:>8} {:>43}        {:>10}      {:>5}", "", "", "", "", "---------", "-----");
         warn!("{:>3} {:>5} {:>8} {:>43}   nodes{:>10} knps {:>5}", "", "", "", "", nodes, knps);
@@ -475,7 +476,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_threading() {
-        for i in 1..=12 {
+        for &i in [1, 2, 3, 4, 8, 12, 24].iter() {
             for &shared in &[true] {
                 let mut eng = Engine::new();
                 eng.algo.set_timing_method(TimeControl::Depth(7));

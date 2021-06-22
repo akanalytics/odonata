@@ -77,7 +77,7 @@ impl fmt::Display for IterativeDeepening {
                 f,
                 "D{:<2} {:>4} ",
                 iter.depth,
-                if iter.completed() { "OK" } else { "FAIL" }
+                if iter.completed() { "FULL" } else { "PART" }
             )?;
             iter.total().fmt_data(f)?;
             writeln!(f, " {:>8} {:<11}", iter.score.to_string(), iter.pv().to_string())?;
