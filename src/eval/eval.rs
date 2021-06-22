@@ -361,7 +361,7 @@ impl SimpleScorer {
             material: true,
             phasing: true,
             mobility_phase_disable: 70,
-            min_depth_mob: 9,
+            min_depth_mob: 1,
             undefended_piece: 6,
             undefended_sq: 3,
             trapped_piece: -7,
