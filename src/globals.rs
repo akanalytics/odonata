@@ -147,12 +147,12 @@ mod tests {
         assert_eq!(size_of::<Node>(), 8, "Node");
         assert_eq!(size_of::<Bitboard>(), 8, "Bitboard");
         assert_eq!(size_of::<TtNode>(), 16, "TtNode");
-        assert_eq!(size_of::<Tag>(), 1032, "Tag");
+        assert_eq!(size_of::<Tag>(), 1752, "Tag");
         assert_eq!(size_of::<Variation>(), 24, "Variation");
         assert_eq!(size_of::<MoveList>(), 1028, "MoveList");
         assert_eq!(size_of::<Board>(), 136, "Board");
         assert_eq!(size_of::<Position>(), 184, "Position");
-        assert_eq!(size_of::<NodeStats>(), 120, "NodeStats");
+        assert_eq!(size_of::<NodeStats>(), 112, "NodeStats");
         assert_eq!(size_of::<SearchStats>(), 216, "SearchStats");
         assert_eq!(size_of::<TranspositionTable>(), 256, "TranspositionTable");
         assert_eq!(size_of::<ClassicalBitboard>(), 5120, "ClassicalBitboard");

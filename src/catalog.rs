@@ -86,7 +86,7 @@ k2r4/8/3B4/3B4/3KQr2/5n2/8/8 w - - 0 1 id "PIN.02"; c0 "Pins"; Sq e4;
 
     // given in UCI format so that we dont need a working "legal moves" to parse
     pub fn moves() ->  Vec<Position> {
-        let str = r#"
+        let str = concat!(r#"
 8/8/p7/8/8/P7/8/8 w - - 0 1 id "LEGAL.01"; c0 "Pawn push (w)"; c1 "a3a4";
 8/8/p7/8/8/P7/8/8 b - - 0 1 id "LEGAL.02"; c0 "Pawn push (b)"; c1 "a6a5";
 8/p7/8/8/8/8/P7/8 w - - 0 1 id "LEGAL.03"; c0 "Pawn double push (w)"; c1 "a2a3 a2a4";
@@ -112,8 +112,18 @@ rk6/8/8/8/2Q5/8/7r/K6r w - - 0 1 id "LEGAL.31"; c0 "Checkmate"; c1 "";
 1k6/8/8/8/8/1n6/PP6/K7 w - - 0 1 id "LEGAL.42"; c0 "Pawn capture knight checker #2"; c1 "a1b1 a2b3";
 r3k2r/p3bpp1/2q1p1b1/1ppPP1B1/7P/1n3NR1/PP2NP2/K1QR4 w kq - 1 2 id "LEGAL.42"; c0 "Pawn capture knight checker #3"; c1 "a2b3";
 1r5k/8/7r/K1pP3r/7r/8/8/8 w - c6 0 1 id "LEGAL.50"; c0 "Pawn pinned ep"; c1 "d5d6";
-1r5k/8/7r/K1pP1p1r/7r/8/8/8 w - c6 0 1 id "LEGAL.50"; c0 "Pawn not pinned ep"; c1 "d5d6 d5c6";
-"#;
+1r5k/8/7r/K1pP1p1r/7r/8/8/8 w - c6 0 1 id "LEGAL.51"; c0 "Pawn not pinned ep"; c1 "d5d6 d5c6";
+"#, 
+"R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNN1KB1 w - - 0 1 id 'LEGAL.60'; c0 'Max legal moves?'; c1 'a3a2 a3a4 a3a5 a3a6 a3a7 a3b2 a3b3 a3b4 \
+a3c3 a3c5 a3d3 a3d6 a3e3 a3e7 a3f8 a8a4 a8a5 a8a6 a8a7 a8b8 a8c8 a8d8 a8e8 a8f8 a8g8 b1a2 b1c2 b1d3 b1e4 b1f5 b6a5 b6a6 b6a7 b6b2 b6b3 \
+b6b4 b6b5 b6b7 b6b8 b6c5 b6c6 b6c7 b6d4 b6d6 b6d8 b6e3 b6e6 b6f2 b6f6 c1a2 c1b3 c1d3 c1e2 c4a2 c4a4 c4a6 c4b3 c4b4 c4b5 c4c2 c4c3 c4c5 \
+c4c6 c4c7 c4c8 c4d3 c4d4 c4d5 c4e2 c4e4 c4e6 c4f4 c4f7 c4g4 c4g8 d1b2 d1c3 d1e3 d1f2 d2a5 d2b2 d2b4 d2c2 d2c3 d2d3 d2d4 d2d5 d2d6 d2e1 \
+d2e2 d2e3 d2f2 d2f4 d2g2 d2g5 d2h2 d2h6 d7a4 d7a7 d7b5 d7b7 d7c6 d7c7 d7c8 d7d3 d7d4 d7d5 d7d6 d7d8 d7e6 d7e7 d7e8 d7f5 d7f7 d7g4 d7g7 \
+d7h3 d7h7 e5a5 e5b2 e5b5 e5b8 e5c3 e5c5 e5c7 e5d4 e5d5 e5d6 e5e1 e5e2 e5e3 e5e4 e5e6 e5e7 e5e8 e5f4 e5f5 e5f6 e5g3 e5g5 e5g7 e5h2 e5h5 \
+f1e1 f1e2 f1f2 f1g2 f3b3 f3b7 f3c3 f3c6 f3d3 f3d5 f3e2 f3e3 f3e4 f3f2 f3f4 f3f5 f3f6 f3f7 f3f8 f3g2 f3g3 f3g4 f3h1 f3h3 f3h5 g1c5 g1d4 \
+g1e3 g1f2 g1h2 g6c2 g6c6 g6d3 g6d6 g6e4 g6e6 g6e8 g6f5 g6f6 g6f7 g6g2 g6g3 g6g4 g6g5 g6g7 g6g8 g6h5 g6h6 g6h7 h4d4 h4d8 h4e1 h4e4 h4e7 \
+h4f2 h4f4 h4f6 h4g3 h4g4 h4g5 h4h1 h4h2 h4h3 h4h5 h4h6 h4h7 h8b8 h8c8 h8d8 h8e8 h8f8 h8g8 h8h5 h8h6 h8h7';");
+
         let positions = Position::parse_many_epd(str.lines()).unwrap();
         positions
     }

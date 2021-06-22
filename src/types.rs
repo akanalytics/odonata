@@ -2,7 +2,7 @@ use crate::bitboard::bitboard::{Bitboard, Dir};
 use std::fmt;
 
 pub const MAX_PLY: Ply = 128;
-pub const MAX_LEGAL_MOVES: usize = 128;
+pub const MAX_LEGAL_MOVES: usize = 218;
 
 pub type Ply = i32;
 pub type Hash = u64;
