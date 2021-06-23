@@ -368,24 +368,24 @@ impl Algo {
         self.search_iteratively();
     }
 
-    pub fn search_async(&mut self, board: &Board) {
-        self.task_control.set_running();
-        const FOUR_MB: usize = 4 * 1024 * 1024;
-        let name = String::from("search");
-        let builder = thread::Builder::new().name(name).stack_size(FOUR_MB);
-        self.board = board.clone();
-        let mut algo = self.clone();
-        // destroy/release this threads copy of the tt.
-        // self.tt.destroy();
-        self.child_thread = AlgoThreadHandle(Some(
-            builder
-                .spawn(move || {
-                    algo.search_iteratively();
-                    algo
-                })
-                .unwrap(),
-        ));
-    }
+    // pub fn search_async(&mut self, board: &Board) {
+    //     self.task_control.set_running();
+    //     const FOUR_MB: usize = 4 * 1024 * 1024;
+    //     let name = String::from("search");
+    //     let builder = thread::Builder::new().name(name).stack_size(FOUR_MB);
+    //     self.board = board.clone();
+    //     let mut algo = self.clone();
+    //     // destroy/release this threads copy of the tt.
+    //     // self.tt.destroy();
+    //     self.child_thread = AlgoThreadHandle(Some(
+    //         builder
+    //             .spawn(move || {
+    //                 algo.search_iteratively();
+    //                 algo
+    //             })
+    //             .unwrap(),
+    //     ));
+    // }
 
     #[inline]
     pub fn search_stats(&self) -> &SearchStats {
@@ -418,22 +418,22 @@ impl Algo {
         self.search_stats.restart_clocks();
     }
 
-    pub fn search_async_stop(&mut self) -> bool {
-        self.task_control.cancel();
-        self.search_stats.user_cancelled = true;
-        let handle = self.child_thread.0.take();
-        if let Some(handle) = handle {
-            // wait for thread to cancel
-            let algo = handle.join().unwrap();
-            *self = algo;
-            return false;
-        } else {
-            return true;
-            // self.tt = algo.tt.clone();
-            // self.search_stats = algo.search_stats;
-            // self.pv_table = algo.pv_table;
-        }
-    }
+    // pub fn search_async_stop(&mut self) -> bool {
+    //     self.task_control.cancel();
+    //     self.search_stats.user_cancelled = true;
+    //     let handle = self.child_thread.0.take();
+    //     if let Some(handle) = handle {
+    //         // wait for thread to cancel
+    //         let algo = handle.join().unwrap();
+    //         *self = algo;
+    //         return false;
+    //     } else {
+    //         return true;
+    //         // self.tt = algo.tt.clone();
+    //         // self.search_stats = algo.search_stats;
+    //         // self.pv_table = algo.pv_table;
+    //     }
+    // }
 
     #[inline]
     pub fn time_up_or_cancelled(&mut self, ply: Ply, force_check: bool) -> bool {
@@ -606,57 +606,57 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_async_sleep() {
-        let position = Catalog::mate_in_2()[0].clone();
-        let mut algo = Algo::new().set_timing_method(TimeControl::Depth(3)).build();
-        algo.search_async(position.board());
-        let millis = time::Duration::from_millis(5500);
-        thread::sleep(millis);
+    // #[test]
+    // fn test_async_sleep() {
+    //     let position = Catalog::mate_in_2()[0].clone();
+    //     let mut algo = Algo::new().set_timing_method(TimeControl::Depth(3)).build();
+    //     algo.search_async(position.board());
+    //     let millis = time::Duration::from_millis(5500);
+    //     thread::sleep(millis);
 
-        algo.search_async_stop();
-        println!("{}\n\nasync....", algo);
-        let nodes = algo.search_stats().total().nodes();
+    //     algo.search_async_stop();
+    //     println!("{}\n\nasync....", algo);
+    //     let nodes = algo.search_stats().total().nodes();
 
-        // with gen qsearch
-        assert!(nodes < 6000); // piece mob
+    //     // with gen qsearch
+    //     assert!(nodes < 6000); // piece mob
 
-        // previous
-        // assert_eq!(nodes, 4586); // pawn promo
-        // assert_eq!(nodes, 5096);  // gen qsearch
-        // assert_eq!(nodes, 5197);  // wrong halfmove counts in mate score
-        // assert_eq!(nodes, 2274); // with sq based qsearch
-        // assert_eq!(nodes, 2274); // from 2248 (due to iterator ordering on bits)
-        // assert_eq!(nodes, 66234);
-        assert_eq!(algo.pv_table.extract_pv().uci(), position.pv().unwrap().uci());
-        assert_eq!(algo.score(), Score::white_win(3));
+    //     // previous
+    //     // assert_eq!(nodes, 4586); // pawn promo
+    //     // assert_eq!(nodes, 5096);  // gen qsearch
+    //     // assert_eq!(nodes, 5197);  // wrong halfmove counts in mate score
+    //     // assert_eq!(nodes, 2274); // with sq based qsearch
+    //     // assert_eq!(nodes, 2274); // from 2248 (due to iterator ordering on bits)
+    //     // assert_eq!(nodes, 66234);
+    //     assert_eq!(algo.pv_table.extract_pv().uci(), position.pv().unwrap().uci());
+    //     assert_eq!(algo.score(), Score::white_win(3));
 
-        // search again using the tt
-        algo.search_async(position.board());
-        let millis = time::Duration::from_millis(150);
-        thread::sleep(millis);
-        algo.search_async_stop();
-        println!("{}\n\nasync #2....", algo);
-    }
+    //     // search again using the tt
+    //     algo.search_async(position.board());
+    //     let millis = time::Duration::from_millis(150);
+    //     thread::sleep(millis);
+    //     algo.search_async_stop();
+    //     println!("{}\n\nasync #2....", algo);
+    // }
 
-    #[test]
-    fn test_mate_in_2_async_stopped() {
-        let position = Catalog::mate_in_2()[0].clone();
-        let mut algo2 = Algo::new()
-            .set_timing_method(TimeControl::Depth(3))
-            .build();
-        algo2.minmax = true;
-        let closure = |sp: &SearchProgress| println!("nps {}", sp.time_millis.unwrap_or_default());
-        algo2.set_callback(closure);
-        algo2.search_async(position.board());
-        let millis = time::Duration::from_millis(200);
-        thread::sleep(millis);
-        algo2.search_async_stop();
-        println!("{}", algo2);
-        // println!("after stop clock:\n{}", algo.clock);
-        let nodes = algo2.search_stats().total().nodes();
-        assert!(nodes > 10 && nodes < 66234);
-    }
+    // #[test]
+    // fn test_mate_in_2_async_stopped() {
+    //     let position = Catalog::mate_in_2()[0].clone();
+    //     let mut algo2 = Algo::new()
+    //         .set_timing_method(TimeControl::Depth(3))
+    //         .build();
+    //     algo2.minmax = true;
+    //     let closure = |sp: &SearchProgress| println!("nps {}", sp.time_millis.unwrap_or_default());
+    //     algo2.set_callback(closure);
+    //     algo2.search_async(position.board());
+    //     let millis = time::Duration::from_millis(200);
+    //     thread::sleep(millis);
+    //     algo2.search_async_stop();
+    //     println!("{}", algo2);
+    //     // println!("after stop clock:\n{}", algo.clock);
+    //     let nodes = algo2.search_stats().total().nodes();
+    //     assert!(nodes > 10 && nodes < 66234);
+    // }
 
     #[test]
     #[ignore]

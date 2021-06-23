@@ -155,7 +155,7 @@ mod tests {
         assert_eq!(size_of::<Board>(), 136, "Board");
         assert_eq!(size_of::<Position>(), 184, "Position");
         assert_eq!(size_of::<NodeStats>(), 112, "NodeStats");
-        assert_eq!(size_of::<SearchStats>(), 216, "SearchStats");
+        assert_eq!(size_of::<SearchStats>(), 320, "SearchStats");
         assert_eq!(size_of::<TranspositionTable>(), 256, "TranspositionTable");
         assert_eq!(size_of::<ClassicalBitboard>(), 5120, "ClassicalBitboard");
         assert_eq!(size_of::<Hyperbola>(), 72192, "Hyperbola");
