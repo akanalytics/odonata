@@ -119,6 +119,7 @@ mod tests {
     use crate::bitboard::bb_classical::*;
     use crate::bitboard::bb_hyperbola::*;
     use crate::bitboard::bb_magic::*;
+    use crate::bitboard::square::*;
     use crate::hasher::*;
     use crate::board::*;
     use crate::eval::score::*;
@@ -140,16 +141,17 @@ mod tests {
         assert_eq!(size_of::<Piece>(), 1, "Piece");
         assert_eq!(size_of::<Color>(), 1, "Color");
         assert_eq!(size_of::<CastlingRights>(), 1, "CastlingRights");
+        assert_eq!(size_of::<Square>(), 1, "Square");
         assert_eq!(size_of::<Score>(), 2, "Score");
         assert_eq!(size_of::<Move>(), 8, "Move");
+        assert_eq!(size_of::<Bitboard>(), 8, "Bitboard");
         assert_eq!(size_of::<String>(), 24, "String");
         assert_eq!(size_of::<Duration>(), 16, "Duration");
         assert_eq!(size_of::<Node>(), 8, "Node");
-        assert_eq!(size_of::<Bitboard>(), 8, "Bitboard");
         assert_eq!(size_of::<TtNode>(), 16, "TtNode");
         assert_eq!(size_of::<Tag>(), 1752, "Tag");
         assert_eq!(size_of::<Variation>(), 24, "Variation");
-        assert_eq!(size_of::<MoveList>(), 1028, "MoveList");
+        assert_eq!(size_of::<MoveList>(), 1748, "MoveList");
         assert_eq!(size_of::<Board>(), 136, "Board");
         assert_eq!(size_of::<Position>(), 184, "Position");
         assert_eq!(size_of::<NodeStats>(), 112, "NodeStats");

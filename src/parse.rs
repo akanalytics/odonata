@@ -123,6 +123,7 @@ impl Parse {
 
         // FIXME: warnings on non-captures, non-checkmates etc
         Ok(matching_moves[0])
+        // matching_moves.iter().next().cloned().ok_or_else(|| "matching moves empty!".to_string())
     }
 }
 

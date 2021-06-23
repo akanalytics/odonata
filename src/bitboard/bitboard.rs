@@ -242,6 +242,15 @@ impl ops::Shl<u8> for Bitboard {
     }
 }
 
+impl ops::Shr<u8> for Bitboard {
+    type Output = Bitboard;
+
+    #[inline]
+    fn shr(self, s: u8) -> Bitboard {
+        Bitboard(self.0 >> s)
+    }
+}
+
 impl ops::BitOr for Bitboard {
     type Output = Bitboard;
 
@@ -558,6 +567,19 @@ impl Bitboard {
         Square::from_u32(sq)
     }
 
+    // last square in the block of bits containing square s. If s is not in a block then just s.
+    // so for (RANK_1 | RANK_8).last_square_from(A2) = A8. 
+    #[inline]
+    pub fn last_square_from(self, s: Square) -> Square {
+
+        let bb = self.include(s) >> s.index() as u8;
+        let first_empty = (!bb).first_square();
+        let i = first_empty.index() - 1 + s.index();
+        debug_assert!(i < 64);
+        Square::from_u32(i as u32)
+    }
+
+
     #[inline]
     pub fn last(self) -> Self {
         debug_assert!(!self.is_empty(), "bb.last on empty");
@@ -846,6 +868,23 @@ mod tests {
         assert_eq!(a1b2.first_square().index(), 0);
         assert_eq!(a1b2.last_square().index(), 9);
         assert_eq!((Bitboard::A1 | Bitboard::A2).last_square().index(), 8);
+        
+        let bb = Bitboard::C1 | Bitboard::D1 | Bitboard::E1;
+        assert_eq!(bb.last_square_from(Square::A1), Square::A1);
+        assert_eq!(bb.last_square_from(Square::C1), Square::E1);
+        assert_eq!(bb.last_square_from(Square::D1), Square::E1);
+        assert_eq!(bb.last_square_from(Square::E1), Square::E1);
+        assert_eq!(bb.last_square_from(Square::F1), Square::F1);
+        assert_eq!(bb.last_square_from(Square::H8), Square::H8);
+        
+        
+        let bb = Bitboard::RANK_1 | Bitboard::RANK_8;
+        assert_eq!(bb.last_square_from(Square::A1), Square::H1);
+        assert_eq!(bb.last_square_from(Square::H1), Square::H1);
+        assert_eq!(bb.last_square_from(Square::A2), Square::A2);
+        assert_eq!(bb.last_square_from(Square::A8), Square::H8);
+        assert_eq!(bb.last_square_from(Square::H8), Square::H8);
+        
         // FIXME!
         // assert_eq!(Bitboard::EMPTY.first_square(), 64);
         // assert_eq!(Bitboard::EMPTY.last_square(), 64);

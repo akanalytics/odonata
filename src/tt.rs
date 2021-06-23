@@ -6,7 +6,7 @@ use crate::mv::Move;
 use crate::stat::{ArrayStat, Stat};
 use crate::types::{Hash, Ply};
 use crate::variation::Variation;
-use crate::{debug, info, logger::LogInit};
+use crate::{debug, logger::LogInit};
 use std::cmp;
 use std::fmt;
 use std::mem;
@@ -210,7 +210,7 @@ impl Component for TranspositionTable {
     fn new_game(&mut self) {
         if self.requires_resize() {
             self.capacity = Self::convert_mb_to_capacity(self.mb);
-            info!("tt capacity is now {}", self.capacity);
+            debug!("tt capacity is now {}", self.capacity);
             self.table = Arc::new(Mutex::new(vec![Element::default(); self.capacity]));
             self.current_age = 10;
             return;
@@ -243,7 +243,7 @@ impl TranspositionTable {
     }
 
     pub fn new_with_mb(mb: usize) -> Self {
-        info!("tt new with mb {}", mb);
+        debug!("tt new with mb {}", mb);
         Self {
             table: Arc::new(Mutex::new(vec![Element::default(); 0])),
             capacity: 0, 
@@ -267,7 +267,7 @@ impl TranspositionTable {
     }
 
     pub fn destroy(&mut self) {
-        info!("tt destroyed");
+        debug!("tt destroyed");
         self.table = Arc::new(Mutex::new(vec![Element::default(); 0]));
         self.capacity = 0;
         // Arc::make_mut(&mut self.table);
@@ -275,19 +275,19 @@ impl TranspositionTable {
 
     pub fn next_generation(&mut self) {
         if self.requires_resize() {
-            info!("Resizing tt");
+            debug!("Resizing tt");
             self.new_game();
         } else {
             if self.aging {
                 self.current_age += 1;
-                info!("aging tt to age {}", self.current_age);
+                debug!("aging tt to age {}", self.current_age);
             }
         }
     }
 
     pub fn requires_resize(&self) -> bool {
         let capacity = Self::convert_mb_to_capacity(self.mb);
-        info!(
+        debug!(
             "tt current capacity {} and {} mb implies capacity of {}",
             self.table.lock().unwrap().capacity(),
             self.mb,

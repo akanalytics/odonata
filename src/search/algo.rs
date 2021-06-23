@@ -132,9 +132,9 @@ impl Engine {
                 self.algo.results = algo.results().clone();
                 self.algo.task_control.cancel();
             }
-            info!("Thread returned {}", algo); // t.thread().name().unwrap(),
-            warn!(
-                "thread {:>3} {:>5} {:>8} {:<43} {:>10} {:>10} {:>10}",
+            debug!("Thread returned {}", algo); // t.thread().name().unwrap(),
+            info!(
+                "thread {:>3} {:>5} {:>8} {:<48} {:>10} {:>10} {:>10}",
                 i, // thread::current().name().unwrap(),
                 algo.bm().to_string(),
                 algo.score().to_string(),
@@ -146,8 +146,8 @@ impl Engine {
             knps += algo.search_stats.cumulative_knps();
             nodes += algo.search_stats.cumulative().nodes();
         }
-        warn!("{:>3} {:>5} {:>8} {:>43}        {:>10}      {:>5}", "", "", "", "", "---------", "-----");
-        warn!("{:>3} {:>5} {:>8} {:>43}   nodes{:>10} knps {:>5}", "", "", "", "", nodes, knps);
+        info!("{:>3} {:>5} {:>8} {:>48}        {:>10}      {:>5}", "", "", "", "", "---------", "-----");
+        info!("{:>3} {:>5} {:>8} {:>48}   nodes{:>10} knps {:>5}", "", "", "", "", nodes, knps);
     }
 }
 
@@ -562,7 +562,7 @@ mod tests {
         search.move_orderer.enabled = false;
         search.search(&board);
         println!("{}", search);
-        assert_eq!(search.pv()[0].uci(), "d7d5");
+        assert_eq!(search.pv()[0].uci(), "b8c6");
     }
 
     #[test]

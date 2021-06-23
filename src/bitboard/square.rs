@@ -2,8 +2,6 @@ use crate::bitboard::bitboard::{Bitboard, Dir, Squares};
 use std::cmp;
 use std::fmt;
 
-
-
 #[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Square(u8);
 
@@ -14,12 +12,78 @@ impl Default for Square {
     }
 }
 
+impl Square {
+    pub const A1: Square = Square::from_u8(0);
+    pub const B1: Square = Square::from_u8(1);
+    pub const C1: Square = Square::from_u8(2);
+    pub const D1: Square = Square::from_u8(3);
+    pub const E1: Square = Square::from_u8(4);
+    pub const F1: Square = Square::from_u8(5);
+    pub const G1: Square = Square::from_u8(6);
+    pub const H1: Square = Square::from_u8(7);
+    pub const A2: Square = Square::from_u8(8);
+    pub const B2: Square = Square::from_u8(9);
+    pub const C2: Square = Square::from_u8(10);
+    pub const D2: Square = Square::from_u8(11);
+    pub const E2: Square = Square::from_u8(12);
+    pub const F2: Square = Square::from_u8(13);
+    pub const G2: Square = Square::from_u8(14);
+    pub const H2: Square = Square::from_u8(15);
+    pub const A3: Square = Square::from_u8(16);
+    pub const B3: Square = Square::from_u8(17);
+    pub const C3: Square = Square::from_u8(18);
+    pub const D3: Square = Square::from_u8(19);
+    pub const E3: Square = Square::from_u8(20);
+    pub const F3: Square = Square::from_u8(21);
+    pub const G3: Square = Square::from_u8(22);
+    pub const H3: Square = Square::from_u8(23);
+    pub const A4: Square = Square::from_u8(24);
+    pub const B4: Square = Square::from_u8(25);
+    pub const C4: Square = Square::from_u8(26);
+    pub const D4: Square = Square::from_u8(27);
+    pub const E4: Square = Square::from_u8(28);
+    pub const F4: Square = Square::from_u8(29);
+    pub const G4: Square = Square::from_u8(30);
+    pub const H4: Square = Square::from_u8(31);
+    pub const A5: Square = Square::from_u8(32);
+    pub const B5: Square = Square::from_u8(33);
+    pub const C5: Square = Square::from_u8(34);
+    pub const D5: Square = Square::from_u8(35);
+    pub const E5: Square = Square::from_u8(36);
+    pub const F5: Square = Square::from_u8(37);
+    pub const G5: Square = Square::from_u8(38);
+    pub const H5: Square = Square::from_u8(39);
+    pub const A6: Square = Square::from_u8(40);
+    pub const B6: Square = Square::from_u8(41);
+    pub const C6: Square = Square::from_u8(42);
+    pub const D6: Square = Square::from_u8(43);
+    pub const E6: Square = Square::from_u8(44);
+    pub const F6: Square = Square::from_u8(45);
+    pub const G6: Square = Square::from_u8(46);
+    pub const H6: Square = Square::from_u8(47);
+    pub const A7: Square = Square::from_u8(48);
+    pub const B7: Square = Square::from_u8(49);
+    pub const C7: Square = Square::from_u8(50);
+    pub const D7: Square = Square::from_u8(51);
+    pub const E7: Square = Square::from_u8(52);
+    pub const F7: Square = Square::from_u8(53);
+    pub const G7: Square = Square::from_u8(54);
+    pub const H7: Square = Square::from_u8(55);
+    pub const A8: Square = Square::from_u8(56);
+    pub const B8: Square = Square::from_u8(57);
+    pub const C8: Square = Square::from_u8(58);
+    pub const D8: Square = Square::from_u8(59);
+    pub const E8: Square = Square::from_u8(60);
+    pub const F8: Square = Square::from_u8(61);
+    pub const G8: Square = Square::from_u8(62);
+    pub const H8: Square = Square::from_u8(63);
+}
 // Bitboard::from_bits_truncate(1 << i)
 
 impl Square {
     #[inline]
-    pub fn from_u8(i: u8) -> Square {
-        debug_assert!(i <= 64);
+    pub const fn from_u8(i: u8) -> Square {
+        // debug_assert!(i <= 64);
         Square(i)
     }
 
@@ -27,8 +91,6 @@ impl Square {
     pub const fn from_xy(x: u32, y: u32) -> Square {
         Square::from_u32((y << 3) | x)
     }
-
-
 
     #[inline]
     pub const fn null() -> Square {
@@ -158,13 +220,12 @@ impl Square {
     }
 
     // king moves - see https://www.chessprogramming.org/Distance
-    pub fn calc_chebyshev_distance(s1:Square, s2: Square) -> u32 {
+    pub fn calc_chebyshev_distance(s1: Square, s2: Square) -> u32 {
         i32::max(
-            i32::abs(s1.rank_index() as i32 - s2.rank_index() as i32), 
-            i32::abs(s1.file_index() as i32- s2.file_index() as i32)
-        ) as u32 
+            i32::abs(s1.rank_index() as i32 - s2.rank_index() as i32),
+            i32::abs(s1.file_index() as i32 - s2.file_index() as i32),
+        ) as u32
     }
-
 
     /// flip vertical - https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating
     #[inline]
@@ -198,12 +259,12 @@ impl<T> std::ops::Index<Square> for [T] {
     type Output = T;
     #[inline]
     fn index(&self, i: Square) -> &Self::Output {
-        #[cfg(feature="unchecked_indexing")]  
-          unsafe {
+        #[cfg(feature = "unchecked_indexing")]
+        unsafe {
             &self.get_unchecked(i.index())
         }
 
-        #[cfg(not(feature="unchecked_indexing"))]
+        #[cfg(not(feature = "unchecked_indexing"))]
         &self[(i.index())]
     }
 }
@@ -214,8 +275,6 @@ impl<T> std::ops::IndexMut<Square> for [T] {
         &mut self[s.index()]
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -239,12 +298,11 @@ mod tests {
         assert_eq!(!Bitboard::all(), Bitboard::empty());
     }
 
-
     #[test]
     #[ignore]
     #[should_panic]
     fn test_out_of_bounds() {
-        let array: [u32;64] = [0;64];
+        let array: [u32; 64] = [0; 64];
         assert_eq!(array[Square(63)], 0);
         assert_eq!(array[Square(64)], 0);
     }
@@ -295,7 +353,10 @@ mod tests {
     #[test]
     fn test_betweens() {
         assert_eq!(Square::calc_between(b6.square(), b6.square()), b6);
-        assert_eq!(Square::calc_strictly_between(b6.square(), b6.square()), Bitboard::empty());
+        assert_eq!(
+            Square::calc_strictly_between(b6.square(), b6.square()),
+            Bitboard::empty()
+        );
 
         assert_eq!(Square::calc_between(b6.square(), b8.square()), b6 | b7 | b8);
         assert_eq!(Square::calc_strictly_between(b6.square(), b8.square()), b7);

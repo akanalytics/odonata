@@ -1692,3 +1692,591 @@ impl Ord for Score {
 // macro_rules! debug {
 //     ($($arg: tt)*) => { }
 //}
+
+
+
+
+const MAX_LEGAL_CAPTURES: usize  = MAX_LEGAL_MOVES-128;
+
+// PKBRQK   5x6 = 30 
+
+// moves: ArrayVec<Move,128>,
+// moves: ArrayVec::new(),
+#[derive(Debug, PartialEq, Eq)]
+pub struct MoveList {
+    pub captures: [Move;64],
+    pub occupied_mask: u64,
+    pub quiets: ArrayVec<Move, MAX_LEGAL_CAPTURES>,
+}
+
+
+// pub const MVALVV : usize[7][7] = {
+//     }
+
+const MOVES: [Move; 64] = [Move::NULL_MOVE; 64];
+
+
+impl MoveList {
+    #[inline]
+    pub fn index(mv: &Move) -> usize {
+        (49 - mv.capture_piece().index() * 7) + mv.mover_piece().index()
+    }
+
+
+    #[inline]
+    pub fn next_free(occupied: u64, i: usize) -> usize {
+        // let bits = occupied >> i;
+        // let j = bits.trailing_zeros();
+        // j as usize
+        let occupied = Bitboard::from_u64(occupied);
+        let sq = Square::from_u32(i as u32);
+        if !sq.is_in(occupied) {
+            i
+        } else {
+            occupied.last_square_from(sq).index() + 1
+        }
+    }
+
+
+
+    #[inline]
+    pub fn insert(&mut self, mv: Move) {
+        if mv.is_capture() {
+            let i = Self::index(&mv); 
+            let j = Self::next_free(self.occupied_mask, i);
+            self.occupied_mask |= 1 << j;
+            // if j >= self.captures.len() {
+            //     self.captures.try_extend_from_slice(&MOVES[0..=(j-self.captures.len())]).unwrap();
+            // }
+            self.captures[j] = mv;
+        } else {
+            self.quiets.push(mv);
+        }
+    }
+
+}
+
+
+
+
+impl Default for MoveList {
+    #[inline]
+    fn default() -> Self {
+        let mut me = Self {
+            quiets: ArrayVec::new(),
+            occupied_mask: 0,
+             captures: [Move::NULL_MOVE; 64],
+        };
+        me.captures.copy_from_slice(&MOVES);
+        me
+    }
+}
+
+impl Clone for MoveList {
+    #[inline]
+    fn clone(&self) -> Self {
+        MoveList {
+            quiets: self.quiets.clone(),
+            occupied_mask: self.occupied_mask,
+            captures: self.captures.clone(),
+        }
+    }
+}
+
+impl std::iter::FromIterator<Move> for MoveList {
+    #[inline]
+    fn from_iter<I: IntoIterator<Item = Move>>(iter: I) -> Self {
+        let mut ml = MoveList::new();
+        for mv in iter {
+            ml.push(mv);
+        }
+        ml
+    }
+}
+
+impl MoveList {
+    #[inline]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    #[inline]
+    pub fn sort(&mut self) -> &mut Self {
+        self.quiets.extend(self.captures.iter().filter(|mv| !mv.is_null()).cloned());
+        self.quiets.sort_by_key(|m| m.to_string());
+        self.captures.fill(Move::NULL_MOVE);
+        self.occupied_mask = 0;
+        self
+    }
+
+    #[inline]
+    pub fn contains(&self, m: &Move) -> bool {
+        self.quiets.contains(m)
+    }
+
+    #[inline]
+    pub fn iter(&self) -> impl Iterator<Item = &Move> + '_ {
+        self.captures.iter().filter(|mv| !mv.is_null()).chain(self.quiets.iter())
+        // self.quiets.iter()
+    }
+
+    #[inline]
+    pub fn push(&mut self, mv: Move) {
+        debug_assert!(self.len() < MAX_LEGAL_MOVES);
+        if mv.is_capture() {
+            self.insert(mv);
+            return;
+        }
+        unsafe {
+            self.quiets.push_unchecked(mv);
+        }
+    }
+
+    #[inline]
+    pub fn clear(&mut self) {
+        self.quiets.clear();
+        self.occupied_mask = 0;
+        self.captures.fill(Move::NULL_MOVE);
+    }
+
+    #[inline]
+    pub fn swap(&mut self, i: usize, j: usize) {
+        // self.quiets.swap(i, j);
+    }
+
+    #[inline]
+    pub fn retain<F>(&mut self, mut f: F)
+    where
+         F: FnMut(&mut Move) -> bool
+    {
+        for (i, m) in self.captures.iter_mut().enumerate() {
+            if !f(m) {
+                self.occupied_mask -= 1 << i;
+                *m = Move::NULL_MOVE;
+            }
+        }
+        self.quiets.retain(f);
+    }
+
+    #[inline]
+    pub fn sort_unstable_by_key<K, F>(&mut self, f: F)
+    where
+        F: FnMut(&Move) -> K,
+        K: Ord,
+    {
+        // self.quiets.sort_unstable_by_key(f)
+    }
+
+    #[inline]
+    pub fn reverse(&mut self) {
+        // self.quiets.reverse();
+    }
+
+    #[inline]
+    pub fn extend<T: IntoIterator<Item = Move>>(&mut self, iter: T) {
+        self.quiets.extend(iter);
+    }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.quiets.len() + self.occupied_mask.count_ones() as usize
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.quiets.is_empty() && self.occupied_mask == 0
+    }
+
+    pub fn uci(&self) -> String {
+        self.iter().map(|mv| mv.uci()).collect::<Vec<String>>().join(" ")
+    }
+
+    pub fn get(&self, i: usize) -> Option<&Move> {
+        self.iter().nth(i)
+    }
+}
+
+
+
+impl std::ops::Index<usize> for MoveList {
+    type Output = Move;
+
+    #[inline]
+    fn index(&self, i: usize) -> &Self::Output {
+        self.get(i).unwrap()
+        // let cap_count = self.occupied_mask.count_ones();
+        // if i >= cap_count {
+        //     return &self.quiets[i-cap_count as usize];
+        // }
+
+        // //&self.quiets[i]
+    }
+}
+
+impl fmt::Display for MoveList {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if f.alternate() {
+            // for mv in self.captures.iter() {
+            //     if mv.is_null() {
+            //         write!(f, ".")?;
+            //     } else {
+            //         write!(f, " {} [{}] ", mv, mv.mvv_lva_score())?;
+            //     }
+            // }
+            let strings : Vec<String> = self.quiets.iter().map(Move::to_string).collect();
+            write!(f, " - {}", &strings.join(", "))?;
+        } else {
+            let strings: Vec<String> = self.iter().map(Move::to_string).collect();
+            f.write_str(&strings.join(", "))?
+        }
+        Ok(())
+    }
+}
+
+// pub trait MoveValidator {
+//     fn parse_uci_move(&self, mv: &str) -> Result<Move, String>;
+//     fn parse_uci_choices(&self, moves: &str) -> Result<MoveList, String>;
+//     fn parse_uci_moves(&self, moves: &str) -> Result<Variation, String>;
+
+//     fn parse_san_move(&self, mv: &str) -> Result<Move, String>;
+//     fn parse_san_choices(&self, moves: &str) -> Result<MoveList, String>;
+//     fn parse_san_moves(&self, moves: &str) -> Result<Variation, String>;
+
+//     fn to_san(&self, mv: &Move) -> String;
+//     fn to_san_moves(&self, moves: &Variation, vec_tags: Option<&Vec<Tags>>) -> String;
+// }
+
+impl Board {
+    pub fn parse_uci_move(&self, mv: &str) -> Result<Move, String> {
+        let moves = self.legal_moves();
+        for &m in moves.iter() {
+            if m.uci() == mv {
+                return Ok(m);
+            }
+        }
+        Err(format!("Move {} is not legal for board {}", mv, self.to_fen()))
+    }
+
+    pub fn parse_uci_choices(&self, s: &str) -> Result<MoveList, String> {
+        let mut moves = MoveList::new();
+        let s = s.replace(",", " ");
+        let s = strip_move_numbers(&s);
+        for mv in s.split_ascii_whitespace() {
+            moves.push(self.parse_uci_move(mv)?);
+        }
+        Ok(moves)
+    }
+
+    pub fn parse_uci_moves(&self, s: &str) -> Result<Variation, String> {
+        let mut board = self.clone();
+        let mut moves = Variation::new();
+        let s = s.replace(",", " ");
+        let s = strip_move_numbers(&s);
+        for mv in s.split_ascii_whitespace() {
+            let mv = board.parse_uci_move(mv)?;
+            moves.push(mv);
+            board = board.make_move(&mv);
+        }
+        Ok(moves)
+    }
+
+    pub fn parse_san_move(&self, mv: &str) -> Result<Move, String> {
+        Parse::move_san(mv, self)
+    }
+
+    pub fn parse_san_choices(&self, s: &str) -> Result<MoveList, String> {
+        let mut moves = MoveList::new();
+        let s = s.replace(",", " ");
+        let s = strip_move_numbers(&s);
+        for mv in s.split_ascii_whitespace() {
+            moves.push(self.parse_san_move(mv)?);
+        }
+        Ok(moves)
+    }
+
+    pub fn parse_san_moves(&self, s: &str) -> Result<Variation, String> {
+        let mut board = self.clone();
+        let mut moves = Variation::new();
+        let s = s.replace(",", " ");
+        let s = strip_move_numbers(&s);
+        for mv in s.split_ascii_whitespace() {
+            let mv = board.parse_san_move(mv)?;
+            moves.push(mv);
+            board = board.make_move(&mv);
+        }
+        Ok(moves)
+    }
+
+    pub fn to_san(&self, mv: &Move) -> String {
+        if mv.is_castle() {
+            if mv.castling_side().is_king_side() {
+                return String::from("O-O");
+            } else {
+                return String::from("O-O-O");
+            }
+        }
+
+        let mut s = String::new();
+        if mv.mover_piece() != Piece::Pawn {
+            s += &mv.mover_piece().to_upper_char().to_string();
+        }
+        // ambiguity resolution
+        let mut pieces = 0;
+        let mut file_pieces = 0;
+        let mut rank_pieces = 0;
+        for lm in self.legal_moves().iter() {
+            if lm.to() == mv.to() && lm.mover_piece() == mv.mover_piece() {
+                pieces += 1;
+                if lm.from().file_char() == mv.from().file_char() {
+                    file_pieces += 1;
+                }
+                if lm.from().rank_char() == mv.from().rank_char() {
+                    rank_pieces += 1;
+                }
+            }
+        }
+        if pieces > 1 || (mv.mover_piece() == Piece::Pawn && mv.is_capture()) {
+            // need to resolve ambiguity
+            if file_pieces == 1 {
+                s.push(mv.from().file_char());
+            } else if rank_pieces == 1 {
+                s.push(mv.from().rank_char());
+            } else {
+                s += &mv.from().uci();
+            }
+        }
+
+        if mv.is_capture() {
+            s.push('x');
+        }
+        s += &mv.to().uci();
+        if mv.is_ep_capture() {
+            s += " e.p.";
+        }
+        if mv.is_promo() {
+            s.push('=');
+            s.push(mv.promo_piece().to_upper_char());
+        }
+        if self.will_check_them(mv) {
+            s.push('+');
+        }
+        s
+    }
+
+    pub fn to_san_moves(&self, moves: &Variation, vec_tags: Option<&Vec<Tags>>) -> String {
+        let mut s = String::new();
+        let mut board = self.clone();
+        for (i, mv) in moves.iter().enumerate() {
+            debug_assert!(
+                board.is_legal_move(mv),
+                "mv {} is illegal for board {}",
+                mv,
+                board.to_fen()
+            );
+            if i % 2 == 0 {
+                if i != 0 {
+                    s += "\n";
+                }
+                s += &board.fullmove_number().to_string();
+                s += ".";
+            }
+            if i == 0 && board.color_us() == Color::Black {
+                s += "..";
+            }
+            s += " ";
+            s += &board.to_san(mv);
+            if let Some(vec) = vec_tags {
+                let tags = &vec[i];
+                s += &tags.to_pgn();
+            }
+
+            board = board.make_move(mv);
+        }
+        s
+    }
+}
+
+static REGEX_MOVE_NUMBERS: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r#"(?x)         # x flag to allow whitespace and comments
+    (\d)+\.(\s)*(\.\.)?(\s)?      # digits a '.' and then whitespace and optionally ".."
+    "#,
+    )
+    .unwrap()
+});
+
+fn strip_move_numbers(s: &str) -> String {
+    REGEX_MOVE_NUMBERS.replace_all(&s, "").to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::board::boardbuf::*;
+    use crate::catalog::Catalog;
+    use crate::globals::constants::*;
+
+    #[test]
+    fn test_movelist_captures() -> Result<(), String> {
+        let capture_a1b2_pxq = Move {
+            from: a1.square(),
+            to: b2.square(),
+            mover: Piece::Pawn,
+            capture: Piece::Queen,
+            ..Default::default()
+        };
+        let capture_a1b3_pxq = Move {
+            from: a1.square(),
+            to: b3.square(),
+            mover: Piece::Pawn,
+            capture: Piece::Queen,
+            ..Default::default()
+        };
+        let capture_b1b3_bxr = Move {
+            from: b1.square(),
+            to: b3.square(),
+            mover: Piece::Bishop,
+            capture: Piece::Rook,
+            ..Default::default()
+        };
+        let promo_a7a8_pq = Move {
+            from: a7.square(),
+            to: a8.square(),
+            promo: Piece::Queen,
+            ..Default::default()
+        };
+
+        let mut moves = MoveList::new();
+        // let mv = capture_a1b2_pxq;
+        // let i = MoveList::index(&mv); 
+        // let j = MoveList::next_free(moves.occupied_mask, i);
+        // println!("{} {}", i, j);
+        // let occupied_mask = 1u64 << j;
+        moves.insert(capture_a1b2_pxq);
+        // let mv = capture_b1b3_bxr;
+        // let i = MoveList::index(&mv); 
+        // let j = MoveList::next_free(moves.occupied_mask, i);
+        // println!("{} {}", i, j);
+        moves.insert(capture_b1b3_bxr);
+        moves.insert(capture_a1b3_pxq);
+        moves.insert(promo_a7a8_pq);
+        println!("{}", moves);
+        println!("{:#}", moves);
+
+        Ok(())
+    }
+
+
+    #[test]
+    fn test_movelist() -> Result<(), String> {
+        let move_a1b2 = Move {
+            from: a1.square(),
+            to: b2.square(),
+            ..Default::default()
+        };
+        let promo_a7a8 = Move {
+            from: a7.square(),
+            to: a8.square(),
+            promo: Piece::Queen,
+            ..Default::default()
+        };
+
+        let mut moves = MoveList::new();
+        assert_eq!(moves.iter().count(), 0);
+        moves.push(move_a1b2);
+        assert_eq!(moves.contains(&promo_a7a8), false);
+        moves.reverse();
+        assert_eq!(moves.iter().count(), 1);
+
+        moves.push(promo_a7a8);
+        assert_eq!(moves.contains(&move_a1b2), true);
+
+        assert_eq!(moves.to_string(), "a1b2, a7a8q");
+
+        let mut moves = Variation::new();
+        moves.set_last_move(1, &move_a1b2);
+        assert_eq!(moves.to_string(), "a1b2");
+        moves.set_last_move(1, &promo_a7a8);
+        assert_eq!(moves.to_string(), "a7a8q");
+
+        moves.set_last_move(0, &promo_a7a8);
+        assert_eq!(moves.to_string(), "");
+
+        moves.set_last_move(1, &move_a1b2);
+        moves.set_last_move(2, &promo_a7a8);
+        assert_eq!(moves.to_string(), "a1b2, a7a8q");
+
+        moves.set_last_move(0, &promo_a7a8);
+        moves.set_last_move(2, &move_a1b2);
+        assert_eq!(moves.to_string(), "a1b2, a1b2");
+
+        let s = strip_move_numbers("1. .. c4c5 2. c6c7 3.");
+        assert_eq!(s, "c4c5 c6c7 ");
+
+        let s = strip_move_numbers("1... c4c5 2. c6c7 3.");
+        assert_eq!(s, "c4c5 c6c7 ");
+
+        let s = strip_move_numbers("1. c1c2 c4c5 2. c6c7 3.");
+        assert_eq!(s, "c1c2 c4c5 c6c7 ");
+
+        let board = Catalog::starting_position();
+
+        let list = board.parse_uci_choices("a2a3, b2b3  c2c4  ")?;
+        assert_eq!(list.to_string(), "a2a3, b2b3, c2c4");
+
+        let list = board.parse_uci_choices("1. a2a3, 2. b2b3  c2c4  ")?;
+        assert_eq!(list.to_string(), "a2a3, b2b3, c2c4");
+
+        let list = board.parse_uci_moves("1. a2a3 h7h6 2. b2b3 h6h5")?;
+        assert_eq!(list.to_string(), "a2a3, h7h6, b2b3, h6h5");
+
+        let mv = board.parse_uci_move("a2a3")?;
+        let board2 = board.make_move(&mv);
+        let list = board2.parse_uci_moves("1. .. h7h6 2. b2b3 h6h5")?;
+
+        assert_eq!(list.to_string(), "h7h6, b2b3, h6h5");
+
+        let list = board.parse_san_choices("Nc3, c3  Pc2c3")?;
+        assert_eq!(list.to_string(), "b1c3, c2c3, c2c3");
+
+        let san = r"
+            1. d4 c6 2. Bf4 d6 3. Nd2 h6 
+            4. Ngf3 g5 5. Bg3 Qb6 6. Nc4 Qb4+ 
+
+            7. Nfd2 Be6 8. c3 Qb5 9. e3 Bxc4 
+            10. Nxc4 Qd5 11. Qf3 Qxf3 12. gxf3 Nd7 
+
+            13. h4 Bg7 14. e4 Ngf6 15. Bd3 Nh5 
+            16. hxg5 Nxg3 17. fxg3 hxg5 18. Rxh8+ Bxh8 
+
+            19. Kd2 O-O-O 20. Ne3 e6 21. Rh1 b5";
+
+        let mut s = String::new();
+        s += "d2d4, c7c6, c1f4, d7d6, b1d2, h7h6, ";
+        s += "g1f3, g7g5, f4g3, d8b6, d2c4, b6b4, ";
+
+        s += "f3d2, c8e6, c2c3, b4b5, e2e3, e6c4, ";
+        s += "d2c4, b5d5, d1f3, d5f3, g2f3, b8d7, ";
+
+        s += "h2h4, f8g7, e3e4, g8f6, f1d3, f6h5, ";
+        s += "h4g5, h5g3, f2g3, h6g5, h1h8, g7h8, ";
+
+        s += "e1d2, e8c8, c4e3, e7e6, a1h1, b7b5";
+        assert_eq!(board.parse_san_moves(san)?.to_string(), s);
+        let s1: String = board
+            .to_san_moves(&board.parse_san_moves(san)?, None)
+            .split_whitespace()
+            .collect();
+        let s2: String = san.split_whitespace().collect();
+        assert_eq!(s1, s2);
+
+        let board =
+            Board::parse_fen("rnbqkbnr/pp2ppp1/2pp3p/8/3P1B2/8/PPPNPPPP/R2QKBNR w KQkq - 0 4").unwrap();
+        println!("{}", board.legal_moves());
+        let mv = board.parse_uci_move("g1f3")?;
+        assert_eq!(board.to_san(&mv), "Ngf3");
+        Ok(())
+    }
+
+ 
+}

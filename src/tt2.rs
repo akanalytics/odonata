@@ -491,7 +491,7 @@ impl TranspositionTable2 {
     }
 
     pub fn new_with_mb(mb: i64) -> Self {
-        info!("tt new with mb {}", mb);
+        debug!("tt new with mb {}", mb);
         Self {
             table: Arc::new(SharedTable::new_with_capacity(Self::convert_mb_to_capacity(mb))),
             enabled: true,
@@ -528,14 +528,14 @@ impl TranspositionTable2 {
         // } else {
         if self.aging {
             self.current_age += 1;
-            info!("aging tt to age {}", self.current_age);
+            debug!("aging tt to age {}", self.current_age);
         }
         // }
     }
 
     pub fn requires_resize(&self) -> bool {
         let capacity = Self::convert_mb_to_capacity(self.mb);
-        info!(
+        debug!(
             "tt current capacity {} and {} mb implies capacity of {}",
             self.table.capacity(),
             self.mb,

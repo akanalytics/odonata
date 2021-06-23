@@ -62,7 +62,7 @@ impl Killers {
                     b
                 );
                 debug_assert!(
-                    b.legal_moves().contains(m),
+                    b.legal_moves().iter().find(|&mv| mv == m ).is_some(),
                     "board:{:#} mv: {} {:?} is not in board.legal_moves",
                     b,
                     m, m
