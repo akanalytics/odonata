@@ -146,8 +146,8 @@ impl Engine {
             knps += algo.search_stats.cumulative_knps();
             nodes += algo.search_stats.cumulative().nodes();
         }
-        info!("{:>3} {:>5} {:>8} {:>48}        {:>10}      {:>5}", "", "", "", "", "---------", "-----");
-        info!("{:>3} {:>5} {:>8} {:>48}   nodes{:>10} knps {:>5}", "", "", "", "", nodes, knps);
+        info!("{:>3} {:>5} {:>8} {:>48}        {:>10}      {:>5}     {:5}", "", "", "", "", "---------", "-----", "");
+        info!("{:>3} {:>5} {:>8} {:>48}   nodes{:>10} knps {:>5} (avg knps {})", "", "", "", "", nodes, knps, knps as u32/self.thread_count );
     }
 }
 

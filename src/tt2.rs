@@ -527,7 +527,7 @@ impl TranspositionTable2 {
         //     self.new_game();
         // } else {
         if self.aging {
-            self.current_age += 1;
+            self.current_age = self.current_age.wrapping_add(1);
             debug!("aging tt to age {}", self.current_age);
         }
         // }
@@ -544,9 +544,21 @@ impl TranspositionTable2 {
         self.table.capacity() != capacity
     }
 
-    pub fn count_of(&self, _t: NodeType) -> usize {
-        0
-        // self.table.lock().unwrap().iter().filter(|e| e.entry.node_type == t).count()
+    pub fn count_of(&self, t: NodeType) -> usize {
+        let mut count = 0;
+        for i in 0..self.table.capacity() {
+            let (h,d) = self.table.probe_by_index(i);
+            if h == 0 && d == 0 {
+                continue;
+            }
+            if self.table.index(h) == i {
+                let tt_node = TtNode::unpack(d).0;
+                if tt_node.node_type == t {
+                    count += 1;
+                }
+            }
+        }
+        count
     }
 
     pub fn count_of_age(&self, age: u8) -> usize {
