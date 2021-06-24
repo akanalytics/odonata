@@ -68,11 +68,13 @@ impl Algo {
 
         
         let draft = self.max_depth - ply;
+        let mut tt_mv = Move::NULL_MOVE;
         if let Some(entry) = self.tt.probe_by_board(board, ply, draft) {
             self.search_stats.inc_tt_nodes(ply);
             //println!("TtNode:{:?}", entry);
             // for bounded scores, we know iterating through the nodes might raise alpha, lower beta
             // doing this now allows us potentuially to cut off without looking at the child nodes
+            tt_mv = entry.bm;
             match entry.node_type {
                 NodeType::Pv => {
                     // previously this position raised alpha, but didnt trigger a cut
@@ -96,7 +98,7 @@ impl Algo {
                             return entry.score;
                         }
                         score = entry.score;
-                        bm = entry.bm;
+                        bm = entry.bm; // need to set bm as alpha raising mv might be skipped
                         // tt_mv = Some(entry.bm); // might help with move ordering
                     }
                 }
@@ -113,13 +115,10 @@ impl Algo {
 
         self.search_stats.inc_interior_nodes(ply);
 
-        // FIXME: Some(tt_mv)
-        self.generate_moves(ply, board);
-
-        // self.order_moves(ply, &mut moves, &tt_mv);
+        let mut sorted_moves = self.move_orderer.get_sorted_moves(ply, tt_mv);
         let mut count = 0;
         loop {
-            let mv = self.get_next_move(ply, board);
+            let mv = sorted_moves.next_move(board, self);
             if mv.is_none() {
                 break;
             }

@@ -1,13 +1,13 @@
 use crate::board::Board;
-use crate::config::{Config, Component};
-use crate::{debug, logger::LogInit};
+use crate::config::{Component, Config};
 use crate::movelist::MoveList;
-use crate::variation::Variation;
 use crate::mv::Move;
 use crate::search::algo::Algo;
 use crate::search::stack::Stack;
 use crate::stat::{ArrayPlyStat, PlyStat};
 use crate::types::Ply;
+use crate::variation::Variation;
+use crate::{debug, logger::LogInit};
 use std::fmt;
 
 #[derive(Clone, Debug)]
@@ -22,7 +22,7 @@ pub struct MoveOrderer {
     count_pv: PlyStat,
     count_bm: PlyStat,
     count_tt_bm: PlyStat,
-    picker: Stack<MovePicker>,
+    picker: Stack<SortedMoves>,
 }
 
 impl Component for MoveOrderer {
@@ -50,10 +50,12 @@ impl Component for MoveOrderer {
     fn new_search(&mut self) {
         self.picker.clear();
     }
-
 }
 
 impl MoveOrderer {
+    pub fn new() -> Self {
+        Self::default()
+    }
     // pub const MOVE_SORTS: &'static [&'static str] = &["Natural", "PV from Prior Iteration", "MVV/LVA"];
 }
 
@@ -65,12 +67,12 @@ impl Default for MoveOrderer {
             prior_bm: false,
             tt_bm: true,
             mvv_lva: true,
-            order: "SICKQE".to_string(),
+            order: "SHICKPQE".to_string(),
             thread: 0,
             count_pv: PlyStat::new("order pv"),
             count_bm: PlyStat::new("order bm"),
             count_tt_bm: PlyStat::new("order tt bm"),
-            picker: Stack::<MovePicker>::default(),
+            picker: Stack::<SortedMoves>::default(),
         }
     }
 }
@@ -101,11 +103,11 @@ impl Algo {
 
         if self.move_orderer.mvv_lva {
             // movelist.sort_unstable_by_key(|m| -m.mvv_lva_score() );
-            movelist.sort_unstable_by_key(Move::mvv_lva_score );
+            movelist.sort_unstable_by_key(Move::mvv_lva_score);
             movelist.reverse();
-            if self.move_orderer.thread == 1 && movelist.len() >= 2 {
-                movelist.swap(0, 1);
-            }
+            // if self.move_orderer.thread == 1 && movelist.len() >= 2 {
+            //     movelist.swap(0, 1);
+            // }
         }
 
         if self.move_orderer.prior_pv {
@@ -160,36 +162,207 @@ impl Algo {
     // pub fn order_by_mvv_lva(moves: &mut MoveList) {
 }
 
-impl Algo {
-    pub fn generate_moves(&mut self, ply: Ply, _b: &Board) {
-        self.move_orderer.picker[ply] = MovePicker {
+// uses Move Orderer and MoveGen to present a sequence of moves
+#[derive(Clone, Debug, Default)]
+pub struct SortedMoves {
+    captures: bool,
+    stage: u8,
+    moves: MoveList,
+    all_moves: MoveList,
+    index: usize,
+    tt: Move,
+    ply: Ply,
+}
+
+impl MoveOrderer {
+    pub fn get_sorted_moves(&self, ply: Ply, tt: Move) -> SortedMoves {
+        SortedMoves {
             captures: false,
             stage: 0,
             moves: MoveList::new(),
             all_moves: MoveList::new(),
+            // good_captures: MoveList::new(),
+            // bad_captures: MoveList::new(),
             index: 0,
-        }
-    }
-
-    pub fn get_next_move(&mut self, ply: Ply, b: &Board) -> Option<Move> {
-        let pick = &mut self.move_orderer.picker[ply];
-        if pick.index < pick.moves.len() {
-            pick.index += 1;
-            return Some(pick.moves[pick.index - 1]);
-        }
-        if pick.stage as usize + 1 >= self.move_orderer.order.len() {
-            return None;
-        } else {
-            pick.index = 0;
-            pick.stage += 1;
-            let mut moves = MoveList::new();
-            self.gen(ply, b, &mut moves);
-            self.order_moves(ply, &mut moves, &None);
-            self.move_orderer.picker[ply].moves = moves;
-            return self.get_next_move(ply, b);
+            ply,
+            tt,
         }
     }
 }
+
+impl SortedMoves {
+    pub fn next_move(&mut self, b: &Board, algo: &mut Algo) -> Option<Move> {
+        if self.index < self.moves.len() {
+            if algo.move_orderer.order.chars().nth(self.stage as usize).unwrap() == 'X' {
+                Self::sort_one_move(self.index, &mut self.moves);
+            }
+            let some = Some(self.moves[self.index]);
+            self.index += 1;
+            return some;
+        }
+        if self.stage as usize + 1 >= algo.move_orderer.order.len() {
+            return None;
+        } else {
+            self.index = 0;
+            self.stage += 1;
+            self.gen(b, algo);
+            return self.next_move(b, algo);
+        }
+    }
+
+    // #[inline]
+    // fn sort(&mut moves: MoveList) {
+
+    // }
+
+    #[inline]
+    fn sort_one_move(i: usize, moves: &mut MoveList) {
+        if let Some(j) = moves
+            .iter()
+            .enumerate()
+            .skip(i)
+            .max_by_key(|(_n, &mv)| mv.mvv_lva_score())
+            .map(|(n, _mv)| n)
+        {
+            moves.swap(i, j);
+        }
+    }
+
+    #[inline]
+    fn _sort_one_move_handcrafted(i: usize, moves: &mut MoveList) {
+        let mut j = 0;
+        let mut max = 0;
+        moves
+            .iter()
+            .enumerate()
+            .skip(i)
+            .for_each(|(n, &mv)| {
+                let s = mv.mvv_lva_score();
+                if s > max {
+                    j = n;
+                    max = s;
+                }
+            });
+        moves.swap(i, j);
+    }
+
+
+
+    fn gen(&mut self, b: &Board, algo: &mut Algo) {
+        self.moves.clear();
+        // pick.moves.clear();
+        // println!("{}", self.move_orderer.order.chars().nth(pick.stage as usize).unwrap());
+        let all_moves = &mut self.all_moves;
+        let moves = &mut self.moves;
+        match algo.move_orderer.order.chars().nth(self.stage as usize).unwrap() {
+            // Init
+            'S' => {}
+            'H' => {
+                if !self.tt.is_null() {
+                    moves.push(self.tt);
+                }
+            }
+            'I' => {
+                b.legal_moves_into(all_moves);
+                let mv = &self.tt;
+                all_moves.retain(|m| mv != m );
+            }
+            // Captures
+            'C' => {
+                all_moves
+                    .iter()
+                    .filter(|m| Move::is_capture(m))
+                    .for_each(|&m| moves.push(m));
+                moves.sort_unstable_by_key(Move::mvv_lva_score);
+                moves.reverse();
+                if algo.move_orderer.thread == 1 && moves.len() >= 2 {
+                    moves.swap(0, 1);
+                }
+            
+        
+            }
+            // Killers
+            'K' => {
+                algo.killers.legal_moves_for(self.ply, b, moves);
+                all_moves.retain(|m| !moves.contains(m));
+                moves.sort_unstable_by_key(Move::mvv_lva_score);
+                moves.reverse();
+                if algo.move_orderer.thread == 1 && moves.len() >= 2 {
+                    moves.swap(0, 1);
+                }
+            }
+
+            // Promos
+            'P' => {
+                all_moves
+                    .iter()
+                    .filter(|m| Move::is_promo(m) && !Move::is_capture(m))
+                    .for_each(|&m| moves.push(m));
+                // algo.order_moves(self.ply, moves, &None);
+            }
+            // Quiets
+            'Q' => {
+                all_moves
+                    .iter()
+                    .filter(|m| !Move::is_capture(m) && !Move::is_promo(m))
+                    .for_each(|&m| moves.push(m));
+                // algo.order_moves(self.ply, moves, &None);
+                // moves.sort_unstable_by_key(Move::mvv_lva_score);
+                moves.reverse();
+                if algo.move_orderer.thread == 1 && moves.len() >= 2 {
+                    moves.swap(0, 1);
+                }
+            }
+            // Remaining
+            'R' => {
+                all_moves.iter().for_each(|&m| moves.push(m));
+                // algo.order_moves(self.ply, moves, &None);
+            }
+            // End
+            'E' => {}
+
+            _ => {
+                unreachable!("unknown move order stage")
+            }
+        };
+
+
+        ///////////////////////////////////////
+    }
+}
+
+// impl Algo {
+//     pub fn generate_moves(&mut self, ply: Ply, _b: &Board) {
+//         self.move_orderer.picker[ply] = MovePicker {
+//             captures: false,
+//             stage: 0,
+//             moves: MoveList::new(),
+//             all_moves: MoveList::new(),
+//             index: 0,
+//             tt: Move::NULL_MOVE,
+//             ply: 0,
+//         }
+//     }
+
+//     pub fn get_next_move(&mut self, ply: Ply, b: &Board) -> Option<Move> {
+//         let pick = &mut self.move_orderer.picker[ply];
+//         if pick.index < pick.moves.len() {
+//             pick.index += 1;
+//             return Some(pick.moves[pick.index - 1]);
+//         }
+//         if pick.stage as usize + 1 >= self.move_orderer.order.len() {
+//             return None;
+//         } else {
+//             pick.index = 0;
+//             pick.stage += 1;
+//             let mut moves = MoveList::new();
+//             self.gen(ply, b, &mut moves);
+//             self.order_moves(ply, &mut moves, &None);
+//             self.move_orderer.picker[ply].moves = moves;
+//             return self.get_next_move(ply, b);
+//         }
+//     }
+// }
 
 // #[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Debug)]
 // pub enum MoveGenStage {
@@ -219,62 +392,56 @@ impl Algo {
 //     }
 // }
 
-// uses Move Orderer and MoveGen to present a sequence of moves
-#[derive(Clone, Debug, Default)]
-pub struct MovePicker {
-    captures: bool,
-    stage: u8,
-    moves: MoveList,
-    all_moves: MoveList,
-    index: usize,
-}
+// impl Algo {
+//     fn gen(&mut self, ply: Ply, b: &Board, moves: &mut MoveList) {
+//         let pick = &mut self.move_orderer.picker[ply];
+//         // pick.moves.clear();
+//         // println!("{}", self.move_orderer.order.chars().nth(pick.stage as usize).unwrap());
+//         match self.move_orderer.order.chars().nth(pick.stage as usize).unwrap() {
+//             'S' => {}
+//             // Init
+//             'I' => {
+//                 let all_moves = &mut self.move_orderer.picker[ply].all_moves;
+//                 b.legal_moves_into(all_moves);
+//             }
+//             // Captures
+//             'C' => self.move_orderer.picker[ply]
+//                 .all_moves
+//                 .iter()
+//                 .filter(|m| Move::is_capture(m))
+//                 .for_each(|&m| moves.push(m)),
+//             // Killers
+//             'K' => self.killers.legal_moves_for(ply, b, moves),
 
-impl Algo {
-    fn gen(&mut self, ply: Ply, b: &Board, moves: &mut MoveList) {
-        let pick = &mut self.move_orderer.picker[ply];
-        // pick.moves.clear();
-        // println!("{}", self.move_orderer.order.chars().nth(pick.stage as usize).unwrap());
-        match self.move_orderer.order.chars().nth(pick.stage as usize).unwrap() {
-            'S' => {}
-            // Init
-            'I' => {
-                let all_moves = &mut self.move_orderer.picker[ply].all_moves;
-                b.legal_moves_into(all_moves);
-            }
-            // Captures
-            'C' => self.move_orderer.picker[ply]
-                .all_moves
-                .iter()
-                .filter(|m| Move::is_capture(m))
-                .for_each(|&m| moves.push(m)),
-            // Killers
-            'K' => self.killers.legal_moves_for(ply, b, moves),
+//             // Promos
+//             'P' => self.move_orderer.picker[ply]
+//                 .all_moves
+//                 .iter()
+//                 .filter(|m| !Move::is_promo(m))
+//                 .for_each(|&m| moves.push(m)),
+//             // Quiets
+//             'Q' => self.move_orderer.picker[ply]
+//                 .all_moves
+//                 .iter()
+//                 .filter(|m| !Move::is_capture(m))
+//                 .for_each(|&m| moves.push(m)),
+//             // Remaining
+//             'R' => self.move_orderer.picker[ply]
+//                 .all_moves
+//                 .iter()
+//                 .for_each(|&m| moves.push(m)),
+//             // End
+//             'E' => {}
 
-            // Promos
-            'P' => self.move_orderer.picker[ply]
-                .all_moves
-                .iter()
-                .filter(|m| !Move::is_promo(m))
-                .for_each(|&m| moves.push(m)),
-            // Quiets
-            'Q' => self.move_orderer.picker[ply]
-                .all_moves
-                .iter()
-                .filter(|m| !Move::is_capture(m))
-                .for_each(|&m| moves.push(m)),
-            // Remaining
-            'R' => {self.move_orderer.picker[ply]
-                    .all_moves
-                    .iter()
-                    .for_each(|&m| moves.push(m))}
-            // End
-            'E' => {}
-
-            _ => { unreachable!("unknown move order stage")}
-        };
-        self.move_orderer.picker[ply].all_moves.retain(|m| !moves.contains(m));
-    }
-}
+//             _ => {
+//                 unreachable!("unknown move order stage")
+//             }
+//         };
+//         self.move_orderer.picker[ply]
+//             .all_moves
+//             .retain(|m| !moves.contains(m));
+//     }
+// }
 
 #[cfg(test)]
 mod tests {
@@ -407,9 +574,7 @@ mod tests {
     #[test]
     fn test_ordering() {
         let position = &Catalog::mate_in_2()[0];
-        let mut algo = Algo::new()
-            .set_timing_method(TimeControl::Depth(3))
-            .build();
+        let mut algo = Algo::new().set_timing_method(TimeControl::Depth(3)).build();
         algo.qsearch.enabled = false;
         algo.tt.mb = 1;
         algo.move_orderer.enabled = false;
@@ -440,14 +605,14 @@ mod tests {
         assert_eq!(algo.move_orderer.count_pv.get(1), 1, "{}", algo);
     }
 
-    #[test]
-    fn test_gen_moves() {
-        let board = Catalog::starting_position();
-        let mut algo = Algo::new();
-        algo.generate_moves(0, &board);
+    // #[test]
+    // fn test_gen_moves() {
+    //     let board = Catalog::starting_position();
+    //     let mut algo = Algo::new();
+    //     algo.generate_moves(0, &board);
 
-        let iter = std::iter::from_fn(move || algo.get_next_move(0, &board));
-        let moves: Vec<Move> = iter.collect();
-        println!("Moves {:?}", moves);
-    }
+    //     let iter = std::iter::from_fn(move || algo.get_next_move(0, &board));
+    //     let moves: Vec<Move> = iter.collect();
+    //     println!("Moves {:?}", moves);
+    // }
 }

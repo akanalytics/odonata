@@ -728,8 +728,8 @@ impl TranspositionTable2 {
                             board.to_fen(),
                             b.to_fen()
                         );
-                        error!("Invalid move {} in tt for board position {}", mv, board.to_fen());
-                        println!("Invalid move {} in tt for board position {}", mv, board.to_fen());
+                        error!("Invalid move {} for nt {} in tt for board position {}", mv, entry.node_type, board.to_fen());
+                        println!("Invalid move {} for nt {} in tt for board position {}", mv, entry.node_type, board.to_fen());
                         return nodes;
                     }
                 }

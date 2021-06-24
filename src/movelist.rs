@@ -239,6 +239,11 @@ impl MoveList {
     }
 
     #[inline]
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Move> + '_ {
+        self.moves.iter_mut()
+    }
+
+    #[inline]
     pub fn push(&mut self, mv: Move) {
         debug_assert!(self.len() < MAX_LEGAL_MOVES);
         unsafe {
@@ -271,6 +276,15 @@ impl MoveList {
         K: Ord,
     {
         self.moves.sort_unstable_by_key(f)
+    }
+
+    #[inline]
+    pub fn sort_by_cached_key<K, F>(&mut self, f: F)
+    where
+        F: FnMut(&Move) -> K,
+        K: Ord,
+    {
+        self.moves.sort_by_cached_key(f)
     }
 
     #[inline]

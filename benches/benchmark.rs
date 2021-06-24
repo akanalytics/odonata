@@ -15,6 +15,7 @@ use odonata::config::Component;
 use odonata::debug;
 use odonata::eval::eval::*;
 use odonata::eval::score::*;
+use odonata::search::move_orderer::*;
 use odonata::globals::constants::*;
 use odonata::hasher::*;
 use odonata::logger::LogInit;
@@ -36,8 +37,9 @@ use std::time::Instant;
 criterion_group!(
     benches,
     benchmark_search,
-    benchmark_perft5,
+    benchmark_perft,
     // benchmark_mate_in_2,
+    benchmark_ordering,
     benchmark_eval,
     bb_calcs,
     sq_calcs,
@@ -143,13 +145,18 @@ fn piece_to_char(c: &mut Criterion) {
     });
 }
 
-fn benchmark_perft5(c: &mut Criterion) {
+fn benchmark_perft(c: &mut Criterion) {
     let mut board = Catalog::starting_position();
     let mut group = c.benchmark_group("perft");
     group.sample_size(10);
     group.bench_function("perft5", |b| {
         b.iter(|| {
             black_box(Perft::perft(&mut board, black_box(5)));
+        });
+    });
+    group.bench_function("perft6", |b| {
+        b.iter(|| {
+            black_box(Perft::perft(&mut board, black_box(6)));
         });
     });
     group.finish();
@@ -560,6 +567,68 @@ fn board_calcs(c: &mut Criterion) {
     });
     group.finish();
 }
+
+
+fn benchmark_ordering(c: &mut Criterion) {
+    let mut group = c.benchmark_group("ordering");
+    let positions = &Catalog::win_at_chess();
+    let movelists: Vec<MoveList> = positions.iter().map(|p| p.board().legal_moves()).collect();
+    group.bench_function("clone", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            movelists.iter().cycle_n(n).for_each(|ml| {
+                    black_box(ml.clone());
+            });
+            t.elapsed() / movelists.len() as u32
+        })
+    });
+    group.bench_function("reverse + clone", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            movelists.iter().cycle_n(n).for_each(|ml| {
+                black_box(black_box(ml.clone()).reverse());
+            });
+            t.elapsed() / movelists.len() as u32
+        })
+    });
+    group.bench_function("sort + clone", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            movelists.iter().cycle_n(n).for_each(|ml| {
+                black_box(black_box(ml.clone()).sort_unstable_by_key(Move::mvv_lva_score));
+            });
+            t.elapsed() / movelists.len() as u32
+        })
+    });
+    group.bench_function("sort_by_cached_key + clone", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            movelists.iter().cycle_n(n).for_each(|ml| {
+                black_box(black_box(ml.clone()).sort_by_cached_key(Move::mvv_lva_score));
+            });
+            t.elapsed() / movelists.len() as u32
+        })
+    });
+    let orderer = MoveOrderer::new();
+    let mut algo = Algo::new();
+    const PLY: Ply = 3;
+    const TT_MOVE: Move = Move::NULL_MOVE;
+    group.bench_function("SortedMoves", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            positions.iter().cycle_n(n).for_each(|pos| {
+                let mut  sorted_moves = orderer.get_sorted_moves(PLY, TT_MOVE);
+                while let Some(_mv) = sorted_moves.next_move(pos.board(), &mut algo) {
+
+                }
+            });
+            t.elapsed() / positions.len() as u32
+        })
+    });
+
+    group.finish();
+}
+
 
 fn benchmark_eval(c: &mut Criterion) {
     let mut group = c.benchmark_group("eval");
