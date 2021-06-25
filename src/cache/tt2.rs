@@ -566,28 +566,27 @@ impl TranspositionTable2 {
         return;
     }
 
-    pub fn probe_by_board(&self, board: &Board, ply: Ply, draft: Ply) -> Option<TtNode> {
+    pub fn probe_by_board(&self, board: &Board, ply: Ply, _draft: Ply) -> Option<TtNode> {
         if !self.enabled || self.capacity() == 0 || ply < self.min_ply {
             return None;
         }
         // debug!("Probe by board");
-        if board.fifty_halfmove_clock() > self.hmvc_horizon {
-            self.exclusions.increment();
-            None
-        } else {
-            let tt_node = self.probe_by_hash(board.hash());
-            if let Some(tt_node) = tt_node {
-                if tt_node.draft < draft {
-                    return None;
-                }
-                if !tt_node.bm.is_null() && !board.is_legal_move(&tt_node.bm) {
-                    self.bad_hash.increment();
-                    return None;
-                }
-                debug_assert!(tt_node.bm.is_null() || board.is_legal_move(&tt_node.bm), "{} {}", board.to_fen(), tt_node.bm.uci() );
+        // if board.fifty_halfmove_clock() > self.hmvc_horizon {
+        //     self.exclusions.increment();
+        //     None
+        // } else {
+        let tt_node = self.probe_by_hash(board.hash());
+        if let Some(tt_node) = tt_node {
+            // if tt_node.draft < draft {
+            //     return None;
+            // }
+            if !tt_node.bm.is_null() && !board.is_legal_move(&tt_node.bm) {
+                self.bad_hash.increment();
+                return None;
             }
-            tt_node
+            debug_assert!(tt_node.bm.is_null() || board.is_legal_move(&tt_node.bm), "{} {}", board.to_fen(), tt_node.bm.uci() );
         }
+        tt_node
     }
 
     fn probe_by_hash(&self, h: Hash) -> Option<TtNode> {

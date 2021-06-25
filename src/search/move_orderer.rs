@@ -446,7 +446,7 @@ mod tests {
     use crate::catalog::Catalog;
     use crate::globals::constants::*;
     use crate::movelist::*;
-    use crate::search::timecontrol::*;
+    // use crate::search::timecontrol::*;
 
     #[test]
     fn test_prior_pv() {

@@ -3,8 +3,8 @@
 
 ## 0.3.20 (internal release only)
 - move ordering improved for promos 
-- use hash move to help ordering
-- fewer move sorts  
+- use hash move to help ordering even if draft implies score bounds ignored
+- more but smaller move sorts, or partial sorts  
 
 
 ## 0.3.19 (internal release only 23/6/20)

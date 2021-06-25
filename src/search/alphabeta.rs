@@ -75,44 +75,45 @@ impl Algo {
             // for bounded scores, we know iterating through the nodes might raise alpha, lower beta
             // doing this now allows us potentuially to cut off without looking at the child nodes
             tt_mv = entry.bm;
-            match entry.node_type {
-                NodeType::Pv => {
-                    // previously this position raised alpha, but didnt trigger a cut
-                    // no point going through moves as we know what the max score is
-                    if entry.score > alpha {
-                        self.record_new_pv(ply, &entry.bm, true);
-                    }
-                    return entry.score;
-                }
-                NodeType::Cut => {
-                    // previously this position raised alpha (sufficiently to cause a cut).
-                    // not all child nodes were scored, so score is a lower bound
-                    // FIXME: probably dont set alpha just the hinted mv and re-search the node
-                    if entry.score > alpha {
-                        self.record_new_pv(ply, &entry.bm, true);
-                        nt = NodeType::Pv;
-                        alpha = entry.score;
-                        if alpha >= beta {
-                            self.search_stats.inc_cuts(ply);
-                            self.tt.store(board.hash(), entry);
-                            return entry.score;
+            if entry.draft >= draft {
+                match entry.node_type {
+                    NodeType::Pv => {
+                        // previously this position raised alpha, but didnt trigger a cut
+                        // no point going through moves as we know what the max score is
+                        if entry.score > alpha {
+                            self.record_new_pv(ply, &entry.bm, true);
                         }
-                        score = entry.score;
-                        bm = entry.bm; // need to set bm as alpha raising mv might be skipped
-                        // tt_mv = Some(entry.bm); // might help with move ordering
-                    }
-                }
-                NodeType::All => {
-                    // previously this position didnt raise alpha, the score is an upper bound
-                    // if the score is still below alpha, this too is an ALL node
-                    if entry.score <= alpha {
                         return entry.score;
                     }
+                    NodeType::Cut => {
+                        // previously this position raised alpha (sufficiently to cause a cut).
+                        // not all child nodes were scored, so score is a lower bound
+                        // FIXME: probably dont set alpha just the hinted mv and re-search the node
+                        if entry.score > alpha {
+                            self.record_new_pv(ply, &entry.bm, true);
+                            nt = NodeType::Pv;
+                            alpha = entry.score;
+                            if alpha >= beta {
+                                self.search_stats.inc_cuts(ply);
+                                self.tt.store(board.hash(), entry);
+                                return entry.score;
+                            }
+                            score = entry.score;
+                            bm = entry.bm; // need to set bm as alpha raising mv might be skipped
+                            // tt_mv = Some(entry.bm); // might help with move ordering
+                        }
+                    }
+                    NodeType::All => {
+                        // previously this position didnt raise alpha, the score is an upper bound
+                        // if the score is still below alpha, this too is an ALL node
+                        if entry.score <= alpha {
+                            return entry.score;
+                        }
+                    }
+                    NodeType::Unused | NodeType::Terminal => unreachable!(),
                 }
-                NodeType::Unused | NodeType::Terminal => unreachable!(),
             }
         }
-
         self.search_stats.inc_interior_nodes(ply);
 
         let mut sorted_moves = self.move_orderer.get_sorted_moves(ply, tt_mv);

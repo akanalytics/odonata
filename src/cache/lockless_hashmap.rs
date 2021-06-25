@@ -1,7 +1,6 @@
 use crate::stat::{Stat};
 use crate::types::{Hash};
-use crate::variation::Variation;
-use crate::{debug, info, trace, logger::LogInit};
+use crate::{debug, trace, logger::LogInit};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 
