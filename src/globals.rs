@@ -131,7 +131,7 @@ mod tests {
     use crate::bitboard::castling::*;
     use crate::search::node::*;
     use crate::search::searchstats::*;
-    use crate::tt::*;
+    use crate::cache::tt::*;
     use crate::types::*;
     use std::time::Duration;
     use std::mem::size_of;

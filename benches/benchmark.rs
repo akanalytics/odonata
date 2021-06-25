@@ -27,7 +27,7 @@ use odonata::pvtable::*;
 use odonata::search::algo::Algo;
 use odonata::search::node::Node;
 use odonata::search::timecontrol::TimeControl;
-use odonata::tt::{NodeType, TranspositionTable, TtNode};
+use odonata::cache::tt::{NodeType, TranspositionTable, TtNode};
 use odonata::types::*;
 use odonata::utils::*;
 use odonata::variation::*;

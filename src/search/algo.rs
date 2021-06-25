@@ -16,7 +16,7 @@ use crate::search::searchprogress::SearchProgress;
 use crate::search::searchstats::SearchStats;
 use crate::search::taskcontrol::TaskControl;
 use crate::search::timecontrol::TimeControl;
-use crate::tt2::TranspositionTable2;
+use crate::cache::tt2::TranspositionTable2;
 use crate::types::Ply;
 use crate::variation::Variation;
 use crate::{debug, info, logger::LogInit};
@@ -530,7 +530,8 @@ mod tests {
         search.move_orderer.enabled = false;
         search.search(&board);
         println!("{}", search);
-        assert_eq!(search.search_stats().total().nodes(), 1516); // rejigged pawn PST
+        assert_eq!(search.search_stats().total().nodes(), 1469); // rejigged pawn PST
+        // assert_eq!(search.search_stats().total().nodes(), 1516); // rejigged pawn PST
                                                                  // previous
                                                                  // assert_eq!(search.search_stats().total().nodes(), 1326); // piece mob (disabled)
                                                                  // assert_eq!(search.search_stats().total().nodes(), 1404); // pawn promo
@@ -562,7 +563,7 @@ mod tests {
         search.move_orderer.enabled = false;
         search.search(&board);
         println!("{}", search);
-        assert_eq!(search.pv()[0].uci(), "b8c6");
+        assert_eq!(search.pv()[0].uci(), "g8f6");
     }
 
     #[test]
@@ -579,7 +580,7 @@ mod tests {
             search.search(position.board());
             println!("{}", search);
             if id {
-                assert!(search.search_stats().total().nodes() < 4800); // with piece mob
+                assert!(search.search_stats().total().nodes() < 5200); // with piece mob
 
             // previous
             // assert_eq!(search.search_stats().total().nodes(), 3456); // with pawn promo

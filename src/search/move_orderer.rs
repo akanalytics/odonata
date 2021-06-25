@@ -568,39 +568,39 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_ordering() {
-        let position = &Catalog::mate_in_2()[0];
-        let mut algo = Algo::new().set_timing_method(TimeControl::Depth(3)).build();
-        algo.qsearch.enabled = false;
-        algo.tt.mb = 1;
-        algo.move_orderer.enabled = false;
-        algo.move_orderer.prior_bm = false;
-        algo.move_orderer.prior_pv = false;
-        algo.search(position.board());
-        assert_eq!(algo.move_orderer.count_bm.get(0), 0, "{}", algo);
-        assert_eq!(algo.move_orderer.count_pv.get(1), 0, "{}", algo);
+    // #[test]
+    // fn test_ordering() {
+    //     let position = &Catalog::mate_in_2()[0];
+    //     let mut algo = Algo::new().set_timing_method(TimeControl::Depth(3)).build();
+    //     algo.qsearch.enabled = false;
+    //     algo.tt.mb = 1;
+    //     algo.move_orderer.enabled = false;
+    //     algo.move_orderer.prior_bm = false;
+    //     algo.move_orderer.prior_pv = false;
+    //     algo.search(position.board());
+    //     assert_eq!(algo.move_orderer.count_bm.get(0), 0, "{}", algo);
+    //     assert_eq!(algo.move_orderer.count_pv.get(1), 0, "{}", algo);
 
-        algo.move_orderer.enabled = true;
-        algo.move_orderer.prior_bm = true;
-        algo.move_orderer.prior_pv = false;
-        algo.new_game();
-        algo.search(position.board());
-        // 2 is depth 1, plus depth 2,
-        assert_eq!(algo.move_orderer.count_bm.get(0), 2, "{}", algo);
-        assert_eq!(algo.move_orderer.count_bm.get(1), 0, "{}", algo); // bm only variation of lenght 1
+    //     algo.move_orderer.enabled = true;
+    //     algo.move_orderer.prior_bm = true;
+    //     algo.move_orderer.prior_pv = false;
+    //     algo.new_game();
+    //     algo.search(position.board());
+    //     // 2 is depth 1, plus depth 2,
+    //     assert_eq!(algo.move_orderer.count_bm.get(0), 2, "{}", algo);
+    //     assert_eq!(algo.move_orderer.count_bm.get(1), 0, "{}", algo); // bm only variation of lenght 1
 
-        algo.move_orderer.mvv_lva = false;
-        algo.move_orderer.prior_bm = false;
-        algo.move_orderer.prior_pv = true;
-        // algo.tt.enabled = false;
-        algo.new_game();
-        algo.search(position.board());
-        println!("{}", algo);
-        // 2 = pv[0] plus pv[0..1] used once
-        assert_eq!(algo.move_orderer.count_pv.get(0), 2, "{}", algo);
-        assert_eq!(algo.move_orderer.count_pv.get(1), 1, "{}", algo);
-    }
+    //     algo.move_orderer.mvv_lva = false;
+    //     algo.move_orderer.prior_bm = false;
+    //     algo.move_orderer.prior_pv = true;
+    //     // algo.tt.enabled = false;
+    //     algo.new_game();
+    //     algo.search(position.board());
+    //     println!("{}", algo);
+    //     // 2 = pv[0] plus pv[0..1] used once
+    //     assert_eq!(algo.move_orderer.count_pv.get(0), 2, "{}", algo);
+    //     assert_eq!(algo.move_orderer.count_pv.get(1), 1, "{}", algo);
+    // }
 
     // #[test]
     // fn test_gen_moves() {
