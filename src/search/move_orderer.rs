@@ -223,7 +223,7 @@ impl OrderedMoveList {
 
 
     #[inline]
-    fn sort_one_move(i: usize, moves: &mut MoveList) {
+    fn _sort_one_move(i: usize, moves: &mut MoveList) {
         if let Some(j) = moves
             .iter()
             .enumerate()

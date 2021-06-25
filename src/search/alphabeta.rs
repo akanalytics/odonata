@@ -118,7 +118,7 @@ impl Algo {
 
         let mut sorted_moves = self.move_orderer.get_sorted_moves(ply, tt_mv);
         let mut count = 0;
-        while let Some((stage,mv)) = sorted_moves.next_move(board, self) {
+        while let Some((_stage,mv)) = sorted_moves.next_move(board, self) {
             count += 1;
 
             let mut child_board = board.make_move(&mv);
