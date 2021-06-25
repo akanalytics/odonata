@@ -609,6 +609,21 @@ fn benchmark_ordering(c: &mut Criterion) {
             t.elapsed() / movelists.len() as u32
         })
     });
+    let eval = SimpleScorer::new();
+    group.bench_function("see", |b| {
+        b.iter_custom(|n| {
+            let mut count = 0;
+            let t = Instant::now();
+            movelists.iter().enumerate().cycle_n(n).for_each(|(i,ml)| {
+                let pos = &positions[i];
+                for mv in ml.iter() {
+                    eval.eval_move_see(pos.board(), mv);
+                    count += 1;
+                }
+            });
+            t.elapsed() / (count / n) as u32
+        })
+    });
     let orderer = MoveOrderer::new();
     let mut algo = Algo::new();
     const PLY: Ply = 3;

@@ -1,10 +1,11 @@
 # Todo items
 
 ## General
-- [ ] NPSaccross all threads
+- [ ] NPS accross all threads
+- [ ] flamer?
 - [ ] x-ray in see algorithm
 - [ ] Board/Position/Game refactor
-- [ ]  tt table. 
+- [ ] tt table. 
   [x] use xor'ing trck for duplicates (https://binarydebt.wordpress.com/2013/09/29/lockless-transposition-tables/). 
   - check legalality on probe.
   - pluggable replacement strats

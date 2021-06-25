@@ -67,7 +67,7 @@ impl Default for MoveOrderer {
             prior_bm: false,
             tt_bm: true,
             mvv_lva: true,
-            order: "SHICKPQE".to_string(),
+            order: "SHIGKPRBE".to_string(),  // , SHICKPQE, SHIGKPQBE
             thread: 0,
             count_pv: PlyStat::new("order pv"),
             count_bm: PlyStat::new("order bm"),
@@ -169,6 +169,7 @@ pub struct OrderedMoveList {
     stage: u8,
     moves: MoveList,
     all_moves: MoveList,
+    bad_captures: MoveList,
     index: usize,
     tt: Move,
     ply: Ply,
@@ -182,7 +183,7 @@ impl MoveOrderer {
             moves: MoveList::new(),
             all_moves: MoveList::new(),
             // good_captures: MoveList::new(),
-            // bad_captures: MoveList::new(),
+            bad_captures: MoveList::new(),
             index: 0,
             ply,
             tt,
@@ -191,13 +192,22 @@ impl MoveOrderer {
 }
 
 impl OrderedMoveList {
-    pub fn next_move(&mut self, b: &Board, algo: &mut Algo) -> Option<Move> {
+    pub fn next_move(&mut self, b: &Board, algo: &mut Algo) -> Option<(char,Move)> {
+        let stage = algo.move_orderer.order.chars().nth(self.stage as usize).unwrap();
         if self.index < self.moves.len() {
-            let stage = algo.move_orderer.order.chars().nth(self.stage as usize).unwrap();
-            if stage == 'X' || stage == 'X' {
-                Self::sort_one_move(self.index, &mut self.moves);
+            if stage == 'G' || stage == 'C' || stage == 'K' || stage == 'B' {
+                // Self::sort_one_move(self.index, &mut self.moves);
             }
-            let some = Some(self.moves[self.index]);
+            if stage == 'G' {
+                let mv = &self.moves[self.index];
+                let see = algo.eval.eval_move_see(b, mv);
+                if see < 0 {
+                    self.bad_captures.push(*mv);
+                    self.index += 1;
+                    return self.next_move(b, algo);
+                }
+            }
+            let some = Some((stage,self.moves[self.index]));
             self.index += 1;
             return some;
         }
@@ -278,12 +288,31 @@ impl OrderedMoveList {
             
         
             }
+            // Good Captures
+            'G' => {
+                all_moves
+                    .iter()
+                    .filter(|m| Move::is_capture(m))
+                    .for_each(|&m| moves.push(m));
+                moves.sort_unstable_by_key(Move::mvv_lva_score);
+                moves.reverse();
+                if algo.move_orderer.thread == 1 && moves.len() >= 2 {
+                    moves.swap(0, 1);
+                }
+            }
+            // Bad Captures
+            'B' => {
+                moves.extend(self.bad_captures.iter().cloned());
+                // if algo.move_orderer.thread == 1 && moves.len() >= 2 {
+                //     moves.swap(0, 1);
+                // }
+            }
             // Killers
             'K' => {
                 algo.killers.legal_moves_for(self.ply, b, moves);
                 all_moves.retain(|m| !moves.contains(m));
-                moves.sort_unstable_by_key(Move::mvv_lva_score);
-                moves.reverse();
+                // moves.sort_unstable_by_key(Move::mvv_lva_score);
+                // moves.reverse();
                 if algo.move_orderer.thread == 1 && moves.len() >= 2 {
                     moves.swap(0, 1);
                 }
@@ -313,6 +342,9 @@ impl OrderedMoveList {
             // Remaining
             'R' => {
                 all_moves.iter().for_each(|&m| moves.push(m));
+                // algo.order_moves(self.ply, moves, &None);
+                moves.sort_unstable_by_key(Move::mvv_lva_score);
+                moves.reverse();
                 // algo.order_moves(self.ply, moves, &None);
             }
             // End
@@ -624,7 +656,7 @@ mod tests {
         for pos in positions {
             let mut sorted_moves = orderer.get_sorted_moves(PLY, TT_MOVE);
             let mut moves = MoveList::new();
-            while let Some(mv) = sorted_moves.next_move(pos.board(), &mut algo) {
+            while let Some((stage,mv)) = sorted_moves.next_move(pos.board(), &mut algo) {
                 moves.push(mv);                 
             }
             let lm = pos.board().legal_moves();
