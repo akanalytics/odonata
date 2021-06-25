@@ -1,9 +1,15 @@
 # Changelog
 
 
-## 0.3.19 (not yet released)
+## 0.3.20 (internal release only)
+- move ordering improved for promos 
+- use hash move to help ordering
+- fewer move sorts  
+
+
+## 0.3.19 (internal release only 23/6/20)
 - multi-threaded through UCI interface
-- 'Threads' setoption supported
+- 'Threads' setoption supported via UCI
 
 ## 0.3.18 (internal release only)
 - added splash with compiler features / optimizations

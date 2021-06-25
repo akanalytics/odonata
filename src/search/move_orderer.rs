@@ -22,7 +22,7 @@ pub struct MoveOrderer {
     count_pv: PlyStat,
     count_bm: PlyStat,
     count_tt_bm: PlyStat,
-    picker: Stack<SortedMoves>,
+    picker: Stack<OrderedMoveList>,
 }
 
 impl Component for MoveOrderer {
@@ -72,7 +72,7 @@ impl Default for MoveOrderer {
             count_pv: PlyStat::new("order pv"),
             count_bm: PlyStat::new("order bm"),
             count_tt_bm: PlyStat::new("order tt bm"),
-            picker: Stack::<SortedMoves>::default(),
+            picker: Stack::<OrderedMoveList>::default(),
         }
     }
 }
@@ -164,7 +164,7 @@ impl Algo {
 
 // uses Move Orderer and MoveGen to present a sequence of moves
 #[derive(Clone, Debug, Default)]
-pub struct SortedMoves {
+pub struct OrderedMoveList {
     captures: bool,
     stage: u8,
     moves: MoveList,
@@ -175,8 +175,8 @@ pub struct SortedMoves {
 }
 
 impl MoveOrderer {
-    pub fn get_sorted_moves(&self, ply: Ply, tt: Move) -> SortedMoves {
-        SortedMoves {
+    pub fn get_sorted_moves(&self, ply: Ply, tt: Move) -> OrderedMoveList {
+        OrderedMoveList {
             captures: false,
             stage: 0,
             moves: MoveList::new(),
@@ -190,10 +190,11 @@ impl MoveOrderer {
     }
 }
 
-impl SortedMoves {
+impl OrderedMoveList {
     pub fn next_move(&mut self, b: &Board, algo: &mut Algo) -> Option<Move> {
         if self.index < self.moves.len() {
-            if algo.move_orderer.order.chars().nth(self.stage as usize).unwrap() == 'X' {
+            let stage = algo.move_orderer.order.chars().nth(self.stage as usize).unwrap();
+            if stage == 'X' || stage == 'X' {
                 Self::sort_one_move(self.index, &mut self.moves);
             }
             let some = Some(self.moves[self.index]);
@@ -210,10 +211,6 @@ impl SortedMoves {
         }
     }
 
-    // #[inline]
-    // fn sort(&mut moves: MoveList) {
-
-    // }
 
     #[inline]
     fn sort_one_move(i: usize, moves: &mut MoveList) {
@@ -615,4 +612,25 @@ mod tests {
     //     let moves: Vec<Move> = iter.collect();
     //     println!("Moves {:?}", moves);
     // }
+
+    #[test]
+    fn test_ordered_movelist() {
+        let orderer = MoveOrderer::new();
+        let mut algo = Algo::new();
+        const PLY: Ply = 3;
+        const TT_MOVE: Move = Move::NULL_MOVE;
+
+        let positions = &Catalog::win_at_chess();
+        for pos in positions {
+            let mut sorted_moves = orderer.get_sorted_moves(PLY, TT_MOVE);
+            let mut moves = MoveList::new();
+            while let Some(mv) = sorted_moves.next_move(pos.board(), &mut algo) {
+                moves.push(mv);                 
+            }
+            let lm = pos.board().legal_moves();
+            assert_eq!(moves.len(), lm.len(), "{} {}", moves, lm);
+        }
+    }
+
+
 }
