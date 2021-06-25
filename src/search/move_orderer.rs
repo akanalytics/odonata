@@ -656,7 +656,7 @@ mod tests {
         for pos in positions {
             let mut sorted_moves = orderer.get_sorted_moves(PLY, TT_MOVE);
             let mut moves = MoveList::new();
-            while let Some((stage,mv)) = sorted_moves.next_move(pos.board(), &mut algo) {
+            while let Some((_stage,mv)) = sorted_moves.next_move(pos.board(), &mut algo) {
                 moves.push(mv);                 
             }
             let lm = pos.board().legal_moves();
