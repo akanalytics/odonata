@@ -1,6 +1,12 @@
 # Todo items
 
 ## General
+- [ ] bug on mv 75draws
+- [ ] position features
+- [ ] PV on q search and eval
+- [ ] serde as json struct
+- [ ] triangle stuff
+- [ ] 
 - [ ] NPS accross all threads
 - [ ] flamer?
 - [ ] x-ray in see algorithm

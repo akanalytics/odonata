@@ -1,4 +1,6 @@
 use crate::board::Board;
+use crate::cache::tt2::TranspositionTable2;
+use crate::clock::Clock;
 use crate::config::{Component, Config};
 use crate::eval::eval::SimpleScorer;
 use crate::eval::score::Score;
@@ -16,14 +18,11 @@ use crate::search::searchprogress::SearchProgress;
 use crate::search::searchstats::SearchStats;
 use crate::search::taskcontrol::TaskControl;
 use crate::search::timecontrol::TimeControl;
-use crate::cache::tt2::TranspositionTable2;
 use crate::types::Ply;
 use crate::variation::Variation;
 use crate::{debug, info, logger::LogInit};
 use std::fmt;
 use std::thread::{self, JoinHandle};
-use crate::clock::Clock;
-
 
 #[derive(Debug)]
 pub struct Engine {
@@ -33,7 +32,6 @@ pub struct Engine {
     threads: Vec<JoinHandle<Algo>>,
 }
 
-
 impl Default for Engine {
     fn default() -> Self {
         Engine {
@@ -41,7 +39,7 @@ impl Default for Engine {
             algo: Algo::default(),
             thread_count: 1,
             threads: vec![],
-        }        
+        }
     }
 }
 
@@ -50,7 +48,7 @@ impl Clone for Engine {
         Self {
             threads: Vec::new(),
             algo: self.algo.clone(),
-            .. *self
+            ..*self
         }
     }
 }
@@ -62,13 +60,10 @@ impl fmt::Display for Engine {
     }
 }
 
-
-
 impl Engine {
     pub fn new() -> Self {
         Self::default()
     }
-
 
     pub fn ponder_hit(&mut self) {
         self.algo.mte.set_shared_ponder(false);
@@ -84,9 +79,7 @@ impl Engine {
         self.algo.new_game();
         debug!("resize?? {}", self.algo.tt.requires_resize());
         for i in 0..self.thread_count {
-            let builder = thread::Builder::new()
-                .name(format!("S{}", i))
-                .stack_size(800_000);
+            let builder = thread::Builder::new().name(format!("S{}", i)).stack_size(800_000);
             let mut algo = self.algo.clone();
             if !self.shared_tt {
                 algo.tt = TranspositionTable2::new_with_mb(self.algo.tt.mb);
@@ -94,21 +87,21 @@ impl Engine {
                 algo.tt.enabled = self.algo.tt.enabled;
             }
             algo.move_orderer.thread = i;
-            if i >= 1  {
+            if i >= 1 {
                 algo.max_depth += 8;
                 algo.task_control.progress_callback = None;
                 algo.set_timing_method(TimeControl::Infinite);
-            } 
-            if i == 1  {
+            }
+            if i == 1 {
                 algo.ids.step_size = 2;
-            } 
-            if i == 2  {
+            }
+            if i == 2 {
                 algo.ids.step_size = 3;
-            } 
-            if i == 3  {
+            }
+            if i == 3 {
                 algo.ids.step_size = 2;
                 algo.ids.start_ply = 2;
-            } 
+            }
             let cl = move || {
                 algo.search_iteratively();
                 algo
@@ -146,14 +139,29 @@ impl Engine {
             knps += algo.search_stats.cumulative_knps();
             nodes += algo.search_stats.cumulative().nodes();
         }
-        info!("{:>3} {:>5} {:>8} {:>48}        {:>10}      {:>5}     {:5}", "", "", "", "", "---------", "-----", "");
-        info!("{:>3} {:>5} {:>8} {:>48}   nodes{:>10} knps {:>5} (avg knps {})", "", "", "", "", nodes, knps, knps as u32/self.thread_count );
+        info!(
+            "{:>3} {:>5} {:>8} {:>48}        {:>10}      {:>5}     {:5}",
+            "", "", "", "", "---------", "-----", ""
+        );
+        info!(
+            "{:>3} {:>5} {:>8} {:>48}   nodes{:>10} knps {:>5} (avg knps {})",
+            "",
+            "",
+            "",
+            "",
+            nodes,
+            knps,
+            knps as u32 / self.thread_count
+        );
     }
 }
 
 impl Component for Engine {
     fn settings(&self, c: &mut Config) {
-        c.set("Threads", &format!("type spin default {} min 1 max 512", self.thread_count));
+        c.set(
+            "Threads",
+            &format!("type spin default {} min 1 max 512", self.thread_count),
+        );
         self.algo.settings(c);
     }
     fn configure(&mut self, c: &Config) {
@@ -173,10 +181,6 @@ impl Component for Engine {
         self.algo.new_search();
     }
 }
-
-
-
-
 
 #[derive(Clone, Default)]
 pub struct Algo {
@@ -531,7 +535,7 @@ mod tests {
         search.search(&board);
         println!("{}", search);
         assert_eq!(search.search_stats().total().nodes(), 1469); // rejigged pawn PST
-        // assert_eq!(search.search_stats().total().nodes(), 1516); // rejigged pawn PST
+                                                                 // assert_eq!(search.search_stats().total().nodes(), 1516); // rejigged pawn PST
                                                                  // previous
                                                                  // assert_eq!(search.search_stats().total().nodes(), 1326); // piece mob (disabled)
                                                                  // assert_eq!(search.search_stats().total().nodes(), 1404); // pawn promo
@@ -547,9 +551,7 @@ mod tests {
 
     #[test]
     fn test_display_algo() {
-        let algo = Algo::new()
-            .set_timing_method(TimeControl::Depth(1))
-            .build();
+        let algo = Algo::new().set_timing_method(TimeControl::Depth(1)).build();
         println!("{}", algo);
         println!("{:?}", algo);
         println!("{:#?}", algo);
@@ -679,6 +681,17 @@ mod tests {
     #[ignore]
     fn bug04() {
         let board = Catalog::starting_position();
+        let mut search = Algo::new()
+            .set_timing_method(TimeControl::Depth(8))
+            .set_callback(Uci::uci_info)
+            .build();
+        search.search(&board);
+        println!("{}", search);
+    }
+
+    #[test]
+    fn bug05() {
+        let board = Board::parse_fen("8/8/3N4/4B3/6p1/5k1p/4n2P/7K b - - 75 93 ").unwrap();
         let mut search = Algo::new()
             .set_timing_method(TimeControl::Depth(8))
             .set_callback(Uci::uci_info)

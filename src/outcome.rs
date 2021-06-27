@@ -123,7 +123,7 @@ impl Board {
         // X DrawInsufficientMaterial,
         // DrawRule50,
         // X DrawRule75,
-        if self.fifty_halfmove_clock() >= 75 {
+        if self.fifty_halfmove_clock() >= 2 * 75 {
             return Some(Outcome::DrawRule75);
         }
 
@@ -140,7 +140,7 @@ impl Board {
     }
 
     pub fn outcome_with_claim_draw(&self) -> Outcome {
-        if self.fifty_halfmove_clock() >= 50 {
+        if self.fifty_halfmove_clock() >= 2 * 50 {
             return Outcome::DrawRule50;
         }
         Outcome::InProgress
