@@ -195,10 +195,13 @@ impl OrderedMoveList {
     pub fn next_move(&mut self, b: &Board, algo: &mut Algo) -> Option<(char,Move)> {
         let stage = algo.move_orderer.order.chars().nth(self.stage as usize).unwrap();
         if self.index < self.moves.len() {
-            if stage == 'G' || stage == 'C' || stage == 'K' || stage == 'B' {
-                // Self::sort_one_move(self.index, &mut self.moves);
+            if stage == 'g' || stage == 'c' 
+            // we dont sort killers
+            // || stage == 'b' as b is sorted by reverse anyway due to push and they are bad captures
+            {
+                Self::sort_one_move(self.index, &mut self.moves);
             }
-            if stage == 'G' {
+            if stage == 'G' || stage == 'g' {
                 let mv = &self.moves[self.index];
                 let see = algo.eval.eval_move_see(b, mv);
                 if see < 0 {
@@ -223,7 +226,7 @@ impl OrderedMoveList {
 
 
     #[inline]
-    fn _sort_one_move(i: usize, moves: &mut MoveList) {
+    fn sort_one_move(i: usize, moves: &mut MoveList) {
         if let Some(j) = moves
             .iter()
             .enumerate()
@@ -285,8 +288,17 @@ impl OrderedMoveList {
                 if algo.move_orderer.thread == 1 && moves.len() >= 2 {
                     moves.swap(0, 1);
                 }
-            
-        
+            }
+            'c' => {
+                all_moves
+                    .iter()
+                    .filter(|m| Move::is_capture(m))
+                    .for_each(|&m| moves.push(m));
+                // moves.sort_unstable_by_key(Move::mvv_lva_score);
+                // moves.reverse();
+                // if algo.move_orderer.thread == 1 && moves.len() >= 2 {
+                //     moves.swap(0, 1);
+                // }
             }
             // Good Captures
             'G' => {
@@ -299,6 +311,13 @@ impl OrderedMoveList {
                 if algo.move_orderer.thread == 1 && moves.len() >= 2 {
                     moves.swap(0, 1);
                 }
+            }
+            // Good Captures (sorted later)
+            'g' => {
+                all_moves
+                    .iter()
+                    .filter(|m| Move::is_capture(m))
+                    .for_each(|&m| moves.push(m));
             }
             // Bad Captures
             'B' => {
@@ -339,14 +358,14 @@ impl OrderedMoveList {
                     moves.swap(0, 1);
                 }
             }
-            // Remaining
-            'R' => {
-                all_moves.iter().for_each(|&m| moves.push(m));
-                // algo.order_moves(self.ply, moves, &None);
-                moves.sort_unstable_by_key(Move::mvv_lva_score);
-                moves.reverse();
-                // algo.order_moves(self.ply, moves, &None);
-            }
+            // // Remaining
+            // 'R' => {
+            //     all_moves.iter().for_each(|&m| moves.push(m));
+            //     // algo.order_moves(self.ply, moves, &None);
+            //     moves.sort_unstable_by_key(Move::mvv_lva_score);
+            //     moves.reverse();
+            //     // algo.order_moves(self.ply, moves, &None);
+            // }
             // End
             'E' => {}
 
