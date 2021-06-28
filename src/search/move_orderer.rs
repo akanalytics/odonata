@@ -27,20 +27,21 @@ pub struct MoveOrderer {
 
 impl Component for MoveOrderer {
     fn settings(&self, c: &mut Config) {
-        c.set("move_orderer.enabled", "type check default true");
-        c.set("move_orderer.prior_pv", "type check default true");
-        c.set("move_orderer.prior_bm", "type check default false");
-        c.set("move_orderer.tt_bm", "type check default true");
-        c.set("move_orderer.mvv_lva", "type check default true");
+        c.set("moveorderer.enabled", "type check default true");
+        c.set("moveorderer.prior_pv", "type check default true");
+        c.set("moveorderer.prior_bm", "type check default false");
+        c.set("moveorderer.tt_bm", "type check default true");
+        c.set("moveorderer.mvv_lva", "type check default true");
+        c.set("moveorderer.order", &format!("type string default {}", self.order));
     }
     fn configure(&mut self, c: &Config) {
-        debug!("move_orderer.configure with {}", c);
-        self.enabled = c.bool("move_orderer.enabled").unwrap_or(self.enabled);
-        self.prior_bm = c.bool("move_orderer.prior_bm").unwrap_or(self.prior_bm);
-        self.prior_pv = c.bool("move_orderer.prior_pv").unwrap_or(self.prior_pv);
-        self.tt_bm = c.bool("move_orderer.tt_bm").unwrap_or(self.tt_bm);
-        self.mvv_lva = c.bool("move_orderer.mvv_lva").unwrap_or(self.mvv_lva);
-        self.order = c.string("move_orderer.order").unwrap_or(self.order.clone());
+        debug!("moveorderer.configure with {}", c);
+        self.enabled = c.bool("moveorderer.enabled").unwrap_or(self.enabled);
+        self.prior_bm = c.bool("moveorderer.prior_bm").unwrap_or(self.prior_bm);
+        self.prior_pv = c.bool("moveorderer.prior_pv").unwrap_or(self.prior_pv);
+        self.tt_bm = c.bool("moveorderer.tt_bm").unwrap_or(self.tt_bm);
+        self.mvv_lva = c.bool("moveorderer.mvv_lva").unwrap_or(self.mvv_lva);
+        self.order = c.string("moveorderer.order").unwrap_or(self.order.clone());
     }
 
     fn new_game(&mut self) {

@@ -3,7 +3,8 @@
 
 ## 0.3.21 (internal release only)
 - null move pruning
-- pickup config from file/env
+- pickup config from env vars eg odonata_nmp_enabled=falseset
+- 
 
 ## 0.3.20 (internal release only)
 - move ordering improved for promos 

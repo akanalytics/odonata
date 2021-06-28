@@ -1,6 +1,7 @@
 use crate::board::Board;
 use crate::cache::tt2::TranspositionTable2;
 use crate::clock::Clock;
+use crate::{debug, info, logger::LogInit};
 use crate::config::{Component, Config};
 use crate::eval::eval::SimpleScorer;
 use crate::eval::score::Score;
@@ -21,7 +22,6 @@ use crate::search::taskcontrol::TaskControl;
 use crate::search::timecontrol::TimeControl;
 use crate::types::Ply;
 use crate::variation::Variation;
-use crate::{debug, info, logger::LogInit};
 use std::fmt;
 use std::thread::{self, JoinHandle};
 
@@ -63,8 +63,9 @@ impl fmt::Display for Engine {
 
 impl Engine {
     pub fn new() -> Self {
-        Self::default()
-        
+        let mut engine = Self::default();
+        engine.configure(Config::from_env());
+        engine
     }
 
     pub fn ponder_hit(&mut self) {
@@ -129,31 +130,30 @@ impl Engine {
             }
             debug!("Thread returned {}", algo); // t.thread().name().unwrap(),
             info!(
-                "thread {:>3} {:>5} {:>8} {:<48} {:>10} {:>10} {:>10}",
+                "thread {:>3} {:>5} {:>8} {:>10} {:>10} {:>10}   {:<48}",
                 i, // thread::current().name().unwrap(),
                 algo.bm().to_string(),
                 algo.score().to_string(),
-                algo.pv().to_string(),
                 algo.search_stats.cumulative().nodes(),
                 algo.search_stats.cumulative_knps(),
                 Clock::format(algo.search_stats.cumulative().real_time),
+                algo.pv().to_string(),
             );
             knps += algo.search_stats.cumulative_knps();
             nodes += algo.search_stats.cumulative().nodes();
         }
         info!(
-            "{:>3} {:>5} {:>8} {:>48}        {:>10}      {:>5}     {:5}",
-            "", "", "", "", "---------", "-----", ""
+            "{:>3} {:>5} {:>8}        {:>10}      {:>5}     {:5}   {:>48}",
+            "", "", "", "---------", "-----", "", "", 
         );
         info!(
-            "{:>3} {:>5} {:>8} {:>48}   nodes{:>10} knps {:>5} (avg knps {})",
-            "",
+            "{:>3} {:>5} {:>8}   nodes{:>10} knps {:>5} (avg knps {})",
             "",
             "",
             "",
             nodes,
             knps,
-            knps as u32 / self.thread_count
+            knps as u32 / self.thread_count,
         );
     }
 }
@@ -489,7 +489,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_threading() {
-        for &i in [1, 2, 3, 4, 8, 12, 24, 48].iter() {
+        for &i in [1, 2, 3, 4, 8, 12, 24].iter() {
             for &shared in &[true] {
                 let mut eng = Engine::new();
                 eng.algo.set_timing_method(TimeControl::Depth(7));

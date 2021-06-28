@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 use std::fmt;
-use static_init::{dynamic};
+// use static_init::{dynamic};
+use once_cell::sync::Lazy;
+use crate::{info, logger::LogInit};
+use std::env;
 
 
 pub trait Component {
@@ -12,7 +15,7 @@ pub trait Component {
 
 
 // #[dynamic(lazy)]
-// static STATIC_INSTANCE: Box<Config> = Config::from_env();
+static STATIC_INSTANCE: Lazy<Config> = Lazy::new( || Config::read_from_env());
 
 
 #[derive(Clone, Debug)]
@@ -26,33 +29,47 @@ impl Config {
         Self::default()
     }
 
-    // pub fn from_env() -> Config {
-    //     let config = Self::default();
-    //     for arg in env::vars() {
-    //         if arg.0.starts_with("ODONATA") {
-    //             if let Some(combo) = arg.1.split_once("=") {
-    //                 let (key, value) = combo;
-    //                 c.set(key, value);
-    //             }
-    //         }
-    //     }
-    //     println!("using config\n{}", c);
+    pub fn from_env() -> &'static Config {
+        &STATIC_INSTANCE
+    }
 
-    // }
-
+    fn read_from_env() -> Config {
+        let mut config = Config::new();
+        for arg in env::vars() {
+            // format is odonata_key1_key2_key3 = value which we translate to key1.key2.key3=value
+            if arg.0.to_lowercase().starts_with("odonata_") {
+                if let Some(combo) = arg.0.split_once("_") {
+                    let (_odonata, key) = combo;
+                    let value = arg.1;
+                    let key = key.replace("_", ".");
+                    config.set(&key.to_lowercase(), &value);
+                }
+            }
+        }
+        if !config.is_empty() {
+            info!("Using configuration\n{}", config);
+        } else {
+            info!("No configuration overrides");
+        }
+        config
+    }
 
     pub fn set(&mut self, k: &str, v: &str) -> Config {
-        if self.settings.insert(k.to_string(), v.to_string()).is_none() {
-            self.insertion_order.push(k.to_string());
+        if self.settings.insert(k.to_lowercase().to_string(), v.to_string()).is_none() {
+            self.insertion_order.push(k.to_lowercase().to_string());
         }
         self.clone()
     }
 
     pub fn bool(&self, name: &str) -> Option<bool> {
-        if let Some(v) = self.settings.get(name) {
+        if let Some(v) = self.settings.get(&name.to_lowercase()) {
             return v.parse::<bool>().ok();
         }
         None
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.settings.len() == 0
     }
 
     pub fn iter<'a>(&'a self) -> Box<dyn Iterator<Item = (&String, &String)> + 'a> {
@@ -60,15 +77,15 @@ impl Config {
     }
 
     pub fn string(&self, name: &str) -> Option<String> {
-        self.settings.get(name).cloned()
+        self.settings.get(&name.to_lowercase()).cloned()
     }
 
     pub fn combo(&self, name: &str) -> Option<String> {
-        self.settings.get(name).cloned()
+        self.settings.get(&name.to_lowercase()).cloned()
     }
 
     pub fn int(&self, name: &str) -> Option<i64> {
-        if let Some(v) = self.settings.get(name) {
+        if let Some(v) = self.settings.get(&name.to_lowercase()) {
             return v.parse::<i64>().ok();
         }
         None

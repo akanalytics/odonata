@@ -1,10 +1,8 @@
 
 use crate::board::Board;
-use crate::clock::Clock;
 use crate::pvtable::PvTable;
 use crate::config::{Config, Component};
 use crate::{debug, logger::LogInit};
-use crate::search::searchstats::SearchStats;
 use crate::types::Ply;
 use std::fmt;
 
@@ -54,7 +52,7 @@ impl NullMovePruning {
         true
     }
 
-    pub fn depth_reduction(&self, b: &Board) -> Ply {
+    pub fn depth_reduction(&self, _b: &Board) -> Ply {
         2
     }
 }
@@ -75,10 +73,9 @@ impl fmt::Display for NullMovePruning {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::catalog::*;
-    use crate::comms::uci::*;
-    use crate::eval::eval::*;
-    use crate::search::algo::*;
+    // use crate::catalog::*;
+    //use crate::comms::uci::*;
+    // use crate::eval::eval::*;
 
     #[test]
     fn test_nmp() {
