@@ -67,7 +67,7 @@ impl Default for MoveOrderer {
             prior_bm: false,
             tt_bm: true,
             mvv_lva: true,
-            order: "SHIGKPRBE".to_string(),  // , SHICKPQE, SHIGKPQBE
+            order: "SHIGKPQBE".to_string(),  // , SHICKPQE, SHIGKPQBE
             thread: 0,
             count_pv: PlyStat::new("order pv"),
             count_bm: PlyStat::new("order bm"),
@@ -660,7 +660,7 @@ mod tests {
                 moves.push(mv);                 
             }
             let lm = pos.board().legal_moves();
-            assert_eq!(moves.len(), lm.len(), "{} {}", moves, lm);
+            assert_eq!(moves.len(), lm.len(), "{}\n{}\n", moves, lm);
         }
     }
 

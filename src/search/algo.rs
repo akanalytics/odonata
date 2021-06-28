@@ -534,7 +534,7 @@ mod tests {
         search.move_orderer.enabled = false;
         search.search(&board);
         println!("{}", search);
-        assert_eq!(search.search_stats().total().nodes(), 1469); // rejigged pawn PST
+        assert_eq!(search.search_stats().total().nodes(), 1468); // rejigged pawn PST
                                                                  // assert_eq!(search.search_stats().total().nodes(), 1516); // rejigged pawn PST
                                                                  // previous
                                                                  // assert_eq!(search.search_stats().total().nodes(), 1326); // piece mob (disabled)
@@ -582,7 +582,7 @@ mod tests {
             search.search(position.board());
             println!("{}", search);
             if id {
-                assert!(search.search_stats().total().nodes() < 5200); // with piece mob
+                assert!(search.search_stats().total().nodes() < 5200, "nodes {} > 5200", search.search_stats().total().nodes() ); // with piece mob
 
             // previous
             // assert_eq!(search.search_stats().total().nodes(), 3456); // with pawn promo
