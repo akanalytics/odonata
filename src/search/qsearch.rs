@@ -89,15 +89,15 @@ impl Algo {
     // if the move results in a position which after quiese, is potentially a mate,
     // we should not return a mate score, as only captures have been considered,
     // and a mate score might cut a genuine mate score elsewhere
-    pub fn qsearch(&mut self, mv: &Move, ply: Ply, board: &mut Board, alpha: Score, beta: Score) -> Score {
+    pub fn qsearch(&mut self, mv: &Move, ply: Ply, depth: Ply, board: &mut Board, alpha: Score, beta: Score) -> Score {
         if !self.qsearch.enabled || ply <= 1 || (!mv.is_capture() && self.qsearch.only_captures) {
             self.search_stats.inc_leaf_nodes(ply);
             return board.eval(&mut self.eval, &Node { ply, alpha, beta });
         }
         let score = if self.qsearch.see {
-            self.qsearch_see(Bitboard::EMPTY, ply, board, alpha, beta)
+            self.qsearch_see(Bitboard::EMPTY, ply, depth, board, alpha, beta)
         } else {
-            self.qsearch_sq(mv.to(), ply, board, alpha, beta)
+            self.qsearch_sq(mv.to(), ply, depth, board, alpha, beta)
         };
         debug_assert!(self.task_control.is_cancelled() || score > -Score::INFINITY);
         score
@@ -107,6 +107,7 @@ impl Algo {
         &mut self,
         mut recaptures: Bitboard,
         ply: Ply,
+        depth: Ply, 
         board: &mut Board,
         mut alpha: Score,
         beta: Score,
@@ -197,7 +198,7 @@ impl Algo {
             }
             // mark the square so the recapture is considered
             trace!("{}", board.debug() + ply + "iterating on " + mv);
-            let score = -self.qsearch_see(recaptures ^ mv.to().as_bb(), ply + 1, &mut child, -beta, -alpha);
+            let score = -self.qsearch_see(recaptures ^ mv.to().as_bb(), ply + 1, depth, &mut child, -beta, -alpha);
             board.undo_move(mv);
             if score > beta {
                 trace!("{}", board.debug() + ply + score + "fails high" + beta + mv);
@@ -260,7 +261,7 @@ mod tests {
         let static_eval = b.eval(&mut eval, &node);
 
         let mut algo = Algo::new().set_timing_method(TimeControl::Depth(0)).set_eval(eval).build();
-        let quiese_eval = algo.qsearch_see(Bitboard::EMPTY, node.ply, &mut b, node.alpha, node.beta);
+        let quiese_eval = algo.qsearch_see(Bitboard::EMPTY, node.ply, algo.max_depth, &mut b, node.alpha, node.beta);
 
         println!("{}", algo);
         trace!("static: {}  quiese: {}", static_eval, quiese_eval);
@@ -296,14 +297,14 @@ mod tests {
         search_see.max_depth = 3;
 
 
-        let score = search_sq.qsearch(&pos.sm()?, 3, &mut pos.board().clone(), alpha, beta);
+        let score = search_sq.qsearch(&pos.sm()?, 3, search_sq.max_depth, &mut pos.board().clone(), alpha, beta);
         if let Some(ce) = score.cp() {
             assert_eq!(ce - static_eval, 100, "sq");
         } else {
             panic!("sq score was {} not a cp score", score);
         }
 
-        let score = search_see.qsearch(&pos.sm()?, 3, &mut pos.board().clone(), alpha, beta);
+        let score = search_see.qsearch(&pos.sm()?, 3, search_see.max_depth, &mut pos.board().clone(), alpha, beta);
         if let Some(ce) = score.cp() {
             assert_eq!(ce - static_eval, pos.ce()? as i16, "see");
         } else {

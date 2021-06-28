@@ -201,8 +201,10 @@ impl Hasher {
             }
         }
 
-        hash ^= self.squares[us][m.mover_piece()][m.from()];
-        hash ^= self.squares[us][m.mover_piece()][m.to()];
+        if !m.is_null() {
+            hash ^= self.squares[us][m.mover_piece()][m.from()];
+            hash ^= self.squares[us][m.mover_piece()][m.to()];
+        }
 
         if m.mover_piece() == Piece::Pawn && m.is_pawn_double_push() {
             debug_assert!(
@@ -230,7 +232,7 @@ impl Hasher {
         //  if a piece moves FROM the kings squares, both castling rights are lost
         //  possible with a rook x rook capture that both sides lose castling rights
         // hash ^= self.castling[m.castling_side()];
-        if (m.from().as_bb() | m.to().as_bb()).intersects(CastlingRights::rook_and_king_squares()) {
+        if !m.is_null() && (m.from().as_bb() | m.to().as_bb()).intersects(CastlingRights::rook_and_king_squares()) {
             if (m.from() == e1.square() || m.from() == a1.square() || m.to() == a1.square())
                 && pre_move.castling().contains(CastlingRights::WHITE_QUEEN)
             {

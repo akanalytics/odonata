@@ -14,6 +14,7 @@ use crate::search::killers::Killers;
 use crate::search::move_orderer::MoveOrderer;
 use crate::search::move_time_estimator::MoveTimeEstimator;
 use crate::search::qsearch::QSearch;
+use crate::search::nmp::NullMovePruning;
 use crate::search::searchprogress::SearchProgress;
 use crate::search::searchstats::SearchStats;
 use crate::search::taskcontrol::TaskControl;
@@ -63,6 +64,7 @@ impl fmt::Display for Engine {
 impl Engine {
     pub fn new() -> Self {
         Self::default()
+        
     }
 
     pub fn ponder_hit(&mut self) {
@@ -192,6 +194,7 @@ pub struct Algo {
     pub eval: SimpleScorer,
     pub task_control: TaskControl<SearchProgress>,
     pub qsearch: QSearch,
+    pub nmp: NullMovePruning,
     pub search_stats: SearchStats,
 
     pub pv_table: PvTable,
@@ -243,6 +246,7 @@ impl Component for Algo {
         self.eval.settings(c);
         self.mte.settings(c);
         self.move_orderer.settings(c);
+        self.nmp.settings(c);
         self.qsearch.settings(c);
         self.ids.settings(c);
         self.repetition.settings(c);
@@ -256,6 +260,7 @@ impl Component for Algo {
         self.eval.configure(c);
         self.move_orderer.configure(c);
         self.mte.configure(c);
+        self.nmp.configure(c);
         self.qsearch.configure(c);
         self.ids.configure(c);
         self.repetition.configure(c);
@@ -270,6 +275,7 @@ impl Component for Algo {
         self.eval.new_game();
         self.move_orderer.new_game();
         self.mte.new_game();
+        self.nmp.new_game();
         self.qsearch.new_game();
         self.ids.new_game();
         self.repetition.new_game();
@@ -282,6 +288,7 @@ impl Component for Algo {
         self.eval.new_search();
         self.move_orderer.new_search();
         self.mte.new_search();
+        self.nmp.new_search();
         self.qsearch.new_search();
         self.ids.new_search();
         self.repetition.new_search();
@@ -306,6 +313,7 @@ impl fmt::Debug for Algo {
             .field("mte", &self.mte)
             .field("depth", &self.max_depth)
             .field("search_stats", &self.search_stats)
+            .field("nmp", &self.nmp)
             .field("qsearch", &self.qsearch)
             .field("ids", &self.ids)
             .field("repetition", &self.repetition)
@@ -335,6 +343,7 @@ impl fmt::Display for Algo {
         write!(f, "\n[task control]\n{}", self.task_control)?;
         write!(f, "\n[move orderer]\n{}", self.move_orderer)?;
         write!(f, "\n[move time estimator]\n{}", self.mte)?;
+        write!(f, "\n[nmp]\n{}", self.nmp)?;
         write!(f, "\n[qsearch]\n{}", self.qsearch)?;
         write!(f, "\n[eval]\n{}", self.eval)?;
         write!(f, "\n[repetition]\n{}", self.repetition)?;

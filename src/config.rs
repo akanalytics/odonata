@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 use std::fmt;
+use static_init::{dynamic};
+
 
 pub trait Component {
     fn settings(&self, config: &mut Config);
@@ -7,6 +9,11 @@ pub trait Component {
     fn new_game(&mut self);
     fn new_search(&mut self);
 }
+
+
+// #[dynamic(lazy)]
+// static STATIC_INSTANCE: Box<Config> = Config::from_env();
+
 
 #[derive(Clone, Debug)]
 pub struct Config {
@@ -18,6 +25,21 @@ impl Config {
     pub fn new() -> Config {
         Self::default()
     }
+
+    // pub fn from_env() -> Config {
+    //     let config = Self::default();
+    //     for arg in env::vars() {
+    //         if arg.0.starts_with("ODONATA") {
+    //             if let Some(combo) = arg.1.split_once("=") {
+    //                 let (key, value) = combo;
+    //                 c.set(key, value);
+    //             }
+    //         }
+    //     }
+    //     println!("using config\n{}", c);
+
+    // }
+
 
     pub fn set(&mut self, k: &str, v: &str) -> Config {
         if self.settings.insert(k.to_string(), v.to_string()).is_none() {

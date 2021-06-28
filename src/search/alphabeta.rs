@@ -16,15 +16,15 @@ pub struct AlphaBeta;
 //
 impl Algo {
     #[inline]
-    pub fn is_leaf(&self, ply: Ply) -> bool {
-        ply == self.max_depth
+    pub fn is_leaf(&self, ply: Ply, depth: Ply) -> bool {
+        ply >= depth
     }
 
     pub fn run_alphabeta(&mut self, board: &mut Board, node: &mut Node) {
         self.search_stats.reset_keeping_pv();
         self.pv_table = PvTable::new(MAX_PLY as usize);
         self.search_stats.score =
-            self.alphabeta_recursive(board, node.ply, node.alpha, node.beta, &Move::NULL_MOVE);
+            self.alphabeta_recursive(board, node.ply, self.max_depth, node.alpha, node.beta, &Move::NULL_MOVE);
 
         let (pv, _score) = if self.tt.use_tt_for_pv {
             self.tt.extract_pv_and_score(board)
@@ -42,11 +42,12 @@ impl Algo {
         &mut self,
         board: &mut Board,
         ply: Ply,
+        depth: Ply,
         mut alpha: Score,
         beta: Score,
         last_move: &Move,
     ) -> Score {
-        debug_assert!(self.max_depth > 0);
+        // debug_assert!(depth > 0);
         self.report_progress();
 
         if self.time_up_or_cancelled(ply, false) {
@@ -62,12 +63,12 @@ impl Algo {
         let mut bm = Move::NULL_MOVE;
         let mut nt = NodeType::All;
 
-        if self.is_leaf(ply) {
-            return self.qsearch(last_move, ply, board, alpha, beta);
+        if self.is_leaf(ply, depth) {
+            return self.qsearch(last_move, ply, depth, board, alpha, beta);
         }
 
         
-        let draft = self.max_depth - ply;
+        let draft = depth - ply;
         let mut tt_mv = Move::NULL_MOVE;
         if let Some(entry) = self.tt.probe_by_board(board, ply, draft) {
             self.search_stats.inc_tt_nodes(ply);
@@ -116,6 +117,29 @@ impl Algo {
         }
         self.search_stats.inc_interior_nodes(ply);
 
+
+        // null move
+        if !self.minmax && beta.is_numeric() && self.nmp.allow(&board, ply, &self.pv_table) {
+            let r = self.nmp.depth_reduction(board);
+            let mv = Move::NULL_MOVE;
+            let mut child_board = board.make_move(&mv);
+            self.current_variation.set_last_move(ply + 1, &mv);
+            let child_score = -self.alphabeta_recursive(&mut child_board, ply + 1, depth - r, -beta, -beta + Score::from_cp(1), &mv);
+            board.undo_move(&mv);
+            if child_score >= beta {
+                // nt = NodeType::Cut;
+                self.search_stats.inc_cuts(ply);
+                // self.tt.store(board.hash(), entry);
+                return beta;
+
+                // self.killers.store(ply, &mv);
+            }
+
+        }
+
+
+
+
         let mut sorted_moves = self.move_orderer.get_sorted_moves(ply, tt_mv);
         let mut count = 0;
         while let Some((_stage,mv)) = sorted_moves.next_move(board, self) {
@@ -127,7 +151,7 @@ impl Algo {
             debug_assert!(alpha < beta || self.minmax);
             self.current_variation.set_last_move(ply + 1, &mv);
 
-            let child_score = -self.alphabeta_recursive(&mut child_board, ply + 1, -beta, -alpha, &mv);
+            let child_score = -self.alphabeta_recursive(&mut child_board, ply + 1, depth, -beta, -alpha, &mv);
             board.undo_move(&mv);
             self.repetition.pop();
             if ply > 1 && self.task_control.is_cancelled() {

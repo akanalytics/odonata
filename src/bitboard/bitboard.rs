@@ -794,6 +794,9 @@ mod tests {
             (Bitboard::FILE_A | Bitboard::RANK_1).flip_vertical(),
             (Bitboard::FILE_A | Bitboard::RANK_8)
         );
+        assert_eq!( (1u64 << 63) >> 63, 1);
+        assert_eq!(1_u64.wrapping_shl(64), 1_u64);
+        // assert_eq!(Bitboard::from_sq(64), Bitboard::EMPTY);
     }
 
     #[test]
@@ -894,6 +897,7 @@ mod tests {
     #[test]
     fn test_shifts() {
         let a2b3 = a1b2.shift(Dir::N);
+        assert_eq!(Bitboard::H8.bits().wrapping_shl(1), Bitboard::EMPTY.bits());
         assert_eq!(a2b3, Bitboard::A2 | Bitboard::B3);
         assert!(Bitboard::D8.shift(Dir::N).is_empty());
         assert_eq!(Bitboard::D8.shift(Dir::E), Bitboard::E8);

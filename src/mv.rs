@@ -166,8 +166,12 @@ impl Move {
 
     #[inline]
     pub fn castling_rights_lost(&self) -> CastlingRights {
-        let squares_changing = self.to().as_bb() | self.from().as_bb();
-        CastlingRights::rights_lost(squares_changing)
+        if self.is_null() {
+            CastlingRights::NONE
+        } else {
+            let squares_changing = self.to().as_bb() | self.from().as_bb();
+            CastlingRights::rights_lost(squares_changing)
+        }
     }
 
 

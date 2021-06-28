@@ -296,6 +296,7 @@ mod tests {
         assert_eq!(Square::all().count(), 64);
         assert_eq!(Square::all().next(), Some(Square(0)));
         assert_eq!(!Bitboard::all(), Bitboard::empty());
+        // assert_eq!(Square::null().as_bb(), Bitboard::empty());
     }
 
     #[test]

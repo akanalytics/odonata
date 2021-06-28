@@ -16,6 +16,7 @@ impl Algo {
         &mut self,
         sq: Square,
         ply: Ply,
+        depth: Ply,
         board: &mut Board,
         mut alpha: Score,
         beta: Score,
@@ -28,7 +29,7 @@ impl Algo {
 
         // this will handle mates too at quiescent node
         let standing_pat;
-        if self.is_leaf(ply) {
+        if self.is_leaf(ply, depth) {
             standing_pat = board.eval(&mut self.eval, &Node {ply, alpha, beta});
         } else {
             // in qsearch a mate score might mean a queen sacrifice. But in reality
@@ -67,7 +68,7 @@ impl Algo {
 
         for mv in moves.iter() {
             let mut child = board.make_move(mv);
-            let score = -self.qsearch_sq(sq, ply + 1, &mut child, -beta, -alpha);
+            let score = -self.qsearch_sq(sq, ply + 1, depth, &mut child, -beta, -alpha);
             debug_assert!(!score.is_mate()); // no mate scores except on leaf ply
             board.undo_move(mv);
             if score > beta {

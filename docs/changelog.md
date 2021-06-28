@@ -1,6 +1,10 @@
 # Changelog
 
 
+## 0.3.21 (internal release only)
+- null move pruning
+- pickup config from file/env
+
 ## 0.3.20 (internal release only)
 - move ordering improved for promos 
 - use hash move to help ordering even if draft implies score bounds ignored

@@ -50,8 +50,7 @@ criterion_group!(
     hash_board,
     legal_moves,
     bench_moveordering,
-    bitwise_handcrafted,
-    bitwise_bitflags,
+    benchmark_bitboard,
     piece_to_upper_char,
     piece_to_char,
     bench_logging,
@@ -101,31 +100,41 @@ Jons_problem
 
 */
 
-fn bitwise_handcrafted(c: &mut Criterion) {
+fn benchmark_bitboard(c: &mut Criterion) {
+    let mut g = c.benchmark_group("bitboard");
     let n1 = 1u64 << 3;
     let n2 = 1u64 << 4;
     let n3 = 1u64 << 5;
-    c.bench_function("bitwise_handcrafted", |b| {
+    g.bench_function("bitwise_handcrafted", |b| {
         b.iter(|| {
             let a = black_box(n1) | black_box(n2);
             let b = a & black_box(n3);
             black_box(b);
         });
     });
-}
-
-fn bitwise_bitflags(c: &mut Criterion) {
     let n1 = Bitboard::D1;
     let n2 = Bitboard::E1;
     let n3 = Bitboard::F1;
-    c.bench_function("bibitwise_bitflags", |b| {
+    g.bench_function("bitwise_bitboard", |b| {
         b.iter(|| {
             let a = black_box(n1) | black_box(n2);
             let b = a & black_box(n3);
             black_box(b);
         });
     });
+    g.bench_function("shl", |b| {
+        b.iter(|| {
+            black_box(Bitboard::A3 << 2);
+        });
+    });
+    g.bench_function("wrapping_shl", |b| {
+        b.iter(|| {
+            black_box(4u64.wrapping_shl(2));
+        });
+    });
+    g.finish();
 }
+
 
 fn piece_to_upper_char(c: &mut Criterion) {
     c.bench_function("piece_to_upper_char", |b| {
@@ -624,11 +633,25 @@ fn benchmark_ordering(c: &mut Criterion) {
             t.elapsed() / (count / n) as u32
         })
     });
-    let orderer = MoveOrderer::new();
+    let mut orderer = MoveOrderer::new();
     let mut algo = Algo::new();
     const PLY: Ply = 3;
     const TT_MOVE: Move = Move::NULL_MOVE;
-    group.bench_function("SortedMoves", |b| {
+    orderer.order = "SHIGKPQBE".to_string();
+    group.bench_function("SHIGKPQBE", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            positions.iter().cycle_n(n).for_each(|pos| {
+                let mut  sorted_moves = orderer.get_sorted_moves(PLY, TT_MOVE);
+                while let Some(_mv) = sorted_moves.next_move(pos.board(), &mut algo) {
+
+                }
+            });
+            t.elapsed() / positions.len() as u32
+        })
+    });
+    orderer.order = "SHIgKPQBE".to_string();
+    group.bench_function("SHIgKPQBE - deferred sort", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|pos| {

@@ -51,13 +51,13 @@ impl Score {
     }
 
     #[inline]
-    pub fn is_numeric(&self) -> bool {
+    pub const fn is_numeric(&self) -> bool {
         self.cp >= -Self::INF + 1 + MAX_PLY as i16 && self.cp <= i16::MAX - 1 - MAX_PLY as i16 
     }
 
 
     #[inline]
-    pub fn white_win(ply: Ply) -> Score {
+    pub const fn white_win(ply: Ply) -> Score {
         Score { 
             cp: i16::MAX -1 - ply as i16
         }
@@ -76,7 +76,7 @@ impl Score {
     }
 
     #[inline]
-    pub fn is_mate(&self) -> bool {
+    pub const fn is_mate(&self) -> bool {
         if self.cp == -Self::INF || self.cp == Self::INF || self.is_numeric() {
             false
         } else {

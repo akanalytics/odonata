@@ -90,7 +90,7 @@ impl MoveMaker for Board {
     fn make_move(&self, m: &Move) -> Board {
         // either we're moving to an empty square or its a capture
         debug_assert!(
-            ((self.white() | self.black()) & m.to().as_bb()).is_empty() || m.is_capture(),
+            m.is_null() || ((self.white() | self.black()) & m.to().as_bb()).is_empty() || m.is_capture(),
             "Non-empty to:sq for non-capture {:?} board \n{} white \n{} black\n{}",
             m,
             self,
@@ -134,9 +134,11 @@ impl MoveMaker for Board {
         }
 
         // clear one bit and set another for the move using xor
-        let from_to_bits = m.from().as_bb() | m.to().as_bb();
-        b.pieces[m.mover_piece()] ^= from_to_bits;
-        b.colors[self.turn] ^= from_to_bits;
+        if !m.is_null() {
+            let from_to_bits = m.from().as_bb() | m.to().as_bb();
+            b.pieces[m.mover_piece()] ^= from_to_bits;
+            b.colors[self.turn] ^= from_to_bits;
+        }
 
         if m.mover_piece() == Piece::Pawn {
             b.fifty_clock = 0;
