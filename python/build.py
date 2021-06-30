@@ -66,9 +66,9 @@ def release_linux():
     ver = get_version_number()
     shell(f"set RUSTFLAGS=-Ctarget-feature={MODERN} && cargo b --release --features=fast --target x86_64-unknown-linux-musl  -C lto=fat")
     shell("ldd target/x86_64-unknown-linux-musl/release/odonata")
-    shell(f"cp ./target/release/odonata.exe ./odonata-{ver}-linux-modern.exe")
+    shell(f"cp ./target/release/odonata ./odonata-{ver}-linux-modern")
     shell(f"set RUSTFLAGS=-Ctarget-feature={GENERIC} && cargo b --release --target x86_64-unknown-linux-musl")
-    shell(f"cp ./target/release/odonata.exe ./odonata-{ver}-linux-generic.exe")
+    shell(f"cp ./target/release/odonata ./odonata-{ver}-linux-generic")
 
 def release_mac():
     ver = get_version_number()
