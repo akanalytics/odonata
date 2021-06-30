@@ -29,3 +29,6 @@ perf.data*
 flamegraph*.svg
 
 odonata.geany
+
+# python compiled files
+*.pyc

@@ -16,3 +16,16 @@ cargo build --features fast
 # show compilation options
 rustc --print cfg
 rustc -C target-cpu=native --print cfg
+
+# install musl target
+ rustup target add x86_64-unknown-linux-musl
+
+
+# build for statically linked musl
+cargo build --release --features=fast --target x86_64-unknown-linux-musl
+
+# check statically linked
+ldd target/x86_64-unknown-linux-musl/release/odonata
+
+# build for windows
+export RUSTFLAGS="-C target-cpu=native -Ctarget-feature=+crt-static"

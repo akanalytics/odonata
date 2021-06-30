@@ -1,14 +1,28 @@
-# rustflags = ["-C target-cpu=native"]
 [alias]
-linux-perf-report = "perf report" 
+#test-threading = t test_threading --release -- --ignored --nocapture
+
+
 #perf perf record -e task-clock,cycles,instructions,cache-references,cache-misses --call-graph dwarf -F 99 --output=perf.data  ./target/release/odonata --perft 5
-linux-perf-run = "perf record -e task-clock,cycles,instructions,cache-references,cache-misses --call-graph dwarf -F 99  ./target/release/odonata --perft 5"
+#linux-perf-run = "perf record -e task-clock,cycles,instructions,cache-references,cache-misses --call-graph dwarf -F 99  ./target/release/odonata --perft 5"
 # chown andy.andy ./tmp/perf.data
 
-fg5 = "cargo flamegraph --bench benchmark perft5 --bench"
-cmd1 ="cargo bench hyperbola -- --profile-time 3"
+#fg5 = "cargo flamegraph --bench benchmark perft5 --bench"
+#cmd1 ="cargo bench hyperbola -- --profile-time 3"
 
-testall="cargo t --release -- --ignored --nocapture"
+#testall="cargo t --release -- --ignored --nocapture"
 
 # [build]
 # rustflags = ["-C target-cpu=native"]
+
+#[target.x86_64-pc-windows-msvc]
+#rustflags = ["-Ctarget-feature=+crt-static"]
+
+#[target.i686-pc-windows-msvc]
+#rustflags = ["-Ctarget-feature=+crt-static"]
+
+#[target.i586-pc-windows-msvc]
+#rustflags = ["-Ctarget-feature=+crt-static"]
+# rustflags = ["-C target-cpu=native"]
+
+
+
