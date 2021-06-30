@@ -7,29 +7,41 @@ from typing import Optional
 import subprocess
 
 
-def shell(cmd: str):
-    print(f">> {cmd}\n")
-    return subprocess.run(cmd, shell=True)
-
-
-def get_version_number() -> Optional[str]:
-    with open("Cargo.toml", "r") as myfile:
-        lines = myfile.readlines()
-    for line in lines:
-        if "version" in line:
-            (_k,v) = line.split("=")
-            v = v.strip().strip('"')
-            return v
-    return None
-
 # See https://en.wikipedia.org/wiki/X86_Bit_manipulation_instruction_set
 
-# rustc --print target-features
-# rustc --print cfg
-# rustc --print=cfg -C target-cpu=native
-MODERN = "+bmi,+popcnt,+lzcnt"
 
-GENERIC = ""
+# target triple 
+#
+# eg x86_64-unknown-linux-gnu. 
+#
+# arch = x86_64, 
+# vendor = unknown, sys = linux, 
+# abi = gnu
+
+
+#
+# whats availabale
+#
+# rustc --print target-features
+# rustc --print target-cpus
+# rustc --print target-list
+#
+
+# show what you have
+# rustc --print cfg
+# rustc --print cfg -C target-cpu=native
+#
+
+#
+# compiler spec file
+#
+# https://github.com/rust-lang/rust/tree/f2ea2f648e117013b0217f001088ae89e0f163ca/compiler/rustc_target/src/spec
+#
+
+# andys windows pc
+# athlon64 860K
+# https://browser.geekbench.com/processors/amd-athlon-x4-860k
+#
 
 # athlon64
 # $ rustc --print=cfg -C target-cpu=native
@@ -60,15 +72,84 @@ GENERIC = ""
 # windows
 
 
-# -C --target-feature=
+
+# andys media server
+# Intel Celeron 2955U (haswell)
+# https://browser.geekbench.com/processors/intel-celeron-2955u
+#
+# Processor misdiagnosed as a haswell by llvm. Needed to use...
+#  
+# -Ctarget-cpu=sandybridge -Ctarget-feature=-avx,-xsave,-xsaveopt
+#
+
+# rustc --print  cfg -Ctarget-cpu=native
+# debug_assertions
+# target_arch="x86_64"
+# target_endian="little"
+# target_env="gnu"
+# target_family="unix"
+# target_feature="fxsr"
+# target_feature="lzcnt"
+# target_feature="pclmulqdq"
+# target_feature="popcnt"
+# target_feature="rdrand"
+# target_feature="sse"
+# target_feature="sse2"
+# target_feature="sse3"
+# target_feature="sse4.1"
+# target_feature="sse4.2"
+# target_feature="ssse3"
+# target_os="linux"
+# target_pointer_width="64"
+# target_vendor="unknown"
+# unix
+
+# (venv) andy@kodi:~/code/odonata$ rustc --print  cfg
+# debug_assertions
+# target_arch="x86_64"
+# target_endian="little"
+# target_env="gnu"
+# target_family="unix"
+# target_feature="fxsr"
+# target_feature="sse"
+# target_feature="sse2"
+# target_os="linux"
+# target_pointer_width="64"
+# target_vendor="unknown"
+# unix
+
+
+# MODERN = "+bmi,+popcnt,+lzcnt"
+
+# modern based on andy's media server :-)
+MODERN = "-avx,-xsave,-xsaveopt"
+GENERIC = ""
+
+
+
+def shell(cmd: str):
+    print(f">> {cmd}\n")
+    return subprocess.run(cmd, shell=True)
+
+
+def get_version_number() -> Optional[str]:
+    with open("Cargo.toml", "r") as myfile:
+        lines = myfile.readlines()
+    for line in lines:
+        if "version" in line:
+            (_k,v) = line.split("=")
+            v = v.strip().strip('"')
+            return v
+    return None
 
 def release_linux():
     ver = get_version_number()
-    shell(f"set RUSTFLAGS=-Ctarget-feature={MODERN} && cargo b --release --features=fast --target x86_64-unknown-linux-musl  -C lto=fat")
-    shell("ldd target/x86_64-unknown-linux-musl/release/odonata")
-    shell(f"cp ./target/release/odonata ./odonata-{ver}-linux-modern")
-    shell(f"set RUSTFLAGS=-Ctarget-feature={GENERIC} && cargo b --release --target x86_64-unknown-linux-musl")
-    shell(f"cp ./target/release/odonata ./odonata-{ver}-linux-generic")
+    # shell("ldd target/x86_64-unknown-linux-musl/release/odonata")
+    shell(f'export RUSTFLAGS="-Ctarget-feature={MODERN} -C target-cpu=sandybridge" && cargo b --release --features=fast --target-cpu= --target x86_64-unknown-linux-musl')
+    shell(f"cp ./target/x86_64-unknown-linux-musl/release/odonata ./odonata-{ver}-linux-modern")
+
+    shell(f'export RUSTFLAGS=-Ctarget-feature={GENERIC}" && cargo b --release --target x86_64-unknown-linux-musl')
+    shell(f"cp ./target/x86_64-unknown-linux-musl/release/odonata ./odonata-{ver}-linux-generic")
 
 def release_mac():
     ver = get_version_number()
@@ -77,9 +158,9 @@ def release_mac():
 
 def release_windows():
     ver = get_version_number()
-    shell(f'set RUSTFLAGS=-Ctarget-feature=+crt-static,{MODERN} && cargo b --release --features=fast -C lto=fat')
+    shell(f'set RUSTFLAGS "-Ctarget-feature=+crt-static,{MODERN} -C target-cpu=sandybridge" && cargo b --release --features=fast')
     shell(f"cp .\\target\\release\\odonata.exe .\\odonata-{ver}-windows-modern.exe")
-    shell(f'set RUSTFLAGS=-Ctarget-feature=+crt-static,{GENERIC} && cargo b --release')
+    shell(f'set RUSTFLAGS "-Ctarget-feature=+crt-static,{GENERIC}" && cargo b --release')
     shell(f"cp .\\target\\release\\odonata.exe .\\odonata-{ver}-windows-generic.exe")
 
 
