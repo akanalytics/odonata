@@ -127,12 +127,12 @@ MODERN = "-avx,-xsave,-xsaveopt"
 CPU="sandybridge"
 GENERIC = ""
 
-# clone the env so we do not change anything for rest of script
+# clone the env so we do not change anything for rest of script. This is used by shell(...)
 ENV = dict( os.environ )
 
 def setenv(key: str, value: str):
     ENV[key] = value
-    print(f"setting {key} = {value}")
+    print(f">> {key} = {value}")
 
 
 def shell(cmd: str):
@@ -157,10 +157,12 @@ def release_linux():
     setenv("RUSTFLAGS", f"-Ctarget-feature={MODERN} -C target-cpu={CPU}")
     shell(f'cargo b --release --features=fast --target x86_64-unknown-linux-musl')
     shell(f"cp ./target/x86_64-unknown-linux-musl/release/odonata ./odonata-{ver}-linux-modern")
+    shell(f"strip ./odonata-{ver}-linux-modern")
 
     setenv("RUSTFLAGS", f"-Ctarget-feature={GENERIC} -C target-cpu=generic")
     shell(f'cargo b --release --target x86_64-unknown-linux-musl')
     shell(f"cp ./target/x86_64-unknown-linux-musl/release/odonata ./odonata-{ver}-linux-generic")
+    shell(f"strip ./odonata-{ver}-linux-modern")
 
 def release_mac():
     ver = get_version_number()
@@ -169,6 +171,7 @@ def release_mac():
     shell(f"cp ./target/release/odonata.exe ./odonata-{ver}-darwin-modern.exe")
 
 def release_windows():
+    CPU="nehalem"
     ver = get_version_number()
     setenv("RUSTFLAGS", f"-Ctarget-feature=+crt-static,{MODERN} -C target-cpu={CPU}")
     shell('cargo b --release --features=fast')
@@ -185,6 +188,9 @@ def print_version():
     ver = get_version_number()
     print(f"Version number from Cargo.toml is {ver}\n")
 
+def setup():
+    shell(f'rustup target add x86_64-unknown-linux-musl')
+
 def help():
     print("Build commands...")
     for cmd in commands.keys():
@@ -197,6 +203,7 @@ commands = {
     "release_mac": release_mac,
     "release_windows": release_windows,
     "print_version": print_version,
+    "setup": setup,
     "help": help,
 
 }
