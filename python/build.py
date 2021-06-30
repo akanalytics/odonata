@@ -118,18 +118,27 @@ import subprocess
 # target_vendor="unknown"
 # unix
 
-
+# this might be more typical but is still very slow if target-cpu=generic
+# rust doesnt fully optimise for features unless a target cpu is specified
 # MODERN = "+bmi,+popcnt,+lzcnt"
 
 # modern based on andy's media server :-)
 MODERN = "-avx,-xsave,-xsaveopt"
+CPU="sandybridge"
 GENERIC = ""
 
+# clone the env so we do not change anything for rest of script
+ENV = dict( os.environ )
+
+def setenv(key: str, value: str):
+    ENV[key] = value
+    print(f"setting {key} = {value}")
 
 
 def shell(cmd: str):
     print(f">> {cmd}\n")
-    return subprocess.run(cmd, shell=True)
+    return subprocess.run(cmd, shell=True, env=ENV)
+
 
 
 def get_version_number() -> Optional[str]:
@@ -145,22 +154,27 @@ def get_version_number() -> Optional[str]:
 def release_linux():
     ver = get_version_number()
     # shell("ldd target/x86_64-unknown-linux-musl/release/odonata")
-    shell(f'export RUSTFLAGS="-Ctarget-feature={MODERN} -C target-cpu=sandybridge" && cargo b --release --features=fast --target-cpu= --target x86_64-unknown-linux-musl')
+    setenv("RUSTFLAGS", f"-Ctarget-feature={MODERN} -C target-cpu={CPU}")
+    shell(f'cargo b --release --features=fast --target x86_64-unknown-linux-musl')
     shell(f"cp ./target/x86_64-unknown-linux-musl/release/odonata ./odonata-{ver}-linux-modern")
 
-    shell(f'export RUSTFLAGS=-Ctarget-feature={GENERIC}" && cargo b --release --target x86_64-unknown-linux-musl')
+    setenv("RUSTFLAGS", f"-Ctarget-feature={GENERIC} -C target-cpu=generic")
+    shell(f'cargo b --release --target x86_64-unknown-linux-musl')
     shell(f"cp ./target/x86_64-unknown-linux-musl/release/odonata ./odonata-{ver}-linux-generic")
 
 def release_mac():
     ver = get_version_number()
-    shell("set RUSTFLAGS=-Ctarget-feature={MODERN} && cargo b --release -features=fast")
+    setenv("RUSTFLAGS", f"-Ctarget-feature={MODERN} -C target-cpu={CPU}")
+    shell("cargo b --release -features=fast")
     shell(f"cp ./target/release/odonata.exe ./odonata-{ver}-darwin-modern.exe")
 
 def release_windows():
     ver = get_version_number()
-    shell(f'set RUSTFLAGS "-Ctarget-feature=+crt-static,{MODERN} -C target-cpu=sandybridge" && cargo b --release --features=fast')
+    setenv("RUSTFLAGS", f"-Ctarget-feature=+crt-static,{MODERN} -C target-cpu={CPU}")
+    shell('cargo b --release --features=fast')
     shell(f"cp .\\target\\release\\odonata.exe .\\odonata-{ver}-windows-modern.exe")
-    shell(f'set RUSTFLAGS "-Ctarget-feature=+crt-static,{GENERIC}" && cargo b --release')
+    setenv("RUSTFLAGS", f"-Ctarget-feature=+crt-static,{GENERIC} -C target-cpu=generic")
+    shell(f'cargo b --release')
     shell(f"cp .\\target\\release\\odonata.exe .\\odonata-{ver}-windows-generic.exe")
 
 
