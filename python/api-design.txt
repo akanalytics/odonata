@@ -131,26 +131,9 @@ algo.mate_in() -> win(5)
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-The python interface is a work in progress. 
+#
+# Stuff below is thinking out load
+#
 
 
 
@@ -536,3 +519,234 @@ analysis = algo.apply(board, eval1)
 
 
 
+starting pos     : r2qnrnk/p2b2b1/1p1p2pp/2pPpp2/1PP1P3/PRNBB3/3QNPPP/5RK1 w - - 0 1
+material         : KQRRBBNNPPPPPPPPkqrrbbnnpppppppp
+phase            : 0 %
+static eval      : 181 cp
+bm               : f2f4
+score            : 126 cp
+analyse mode     : false
+depth            : 7
+current_best     : 0000
+minmax           : false
+clock_checks     : 464385
+
+[task control]
+kill switch      : true
+progress_callback: not set
+
+[move orderer]
+enabled          : true
+prior pv         : true
+prior bm         : false
+tt bm            : true
+mvv_lva          : true
+order            : SHIGKPQBE
+thread           : 0
+ply       order pv      order bm   order tt bm
+---  ------------- ------------- -------------
+
+
+[move time estimator]
+time_control     : NodeCount(1000000)
+pondering        : false
+branching factor : 9
+const moves rem. : 20
+% of time adv    : 100
+allotted for mv  : 0.000s
+time estimate    : 9.877s
+deterministic    : false
+nodestime        : 0
+elapsed used     : 1.097s
+
+[nmp]
+NullMovePruning {
+    enabled: true,
+    min_leaf_distance: 2,
+}
+
+[qsearch]
+enabled          : true
+only captures    : false
+see enabled      : true
+ignore see fails : true
+promos           : false
+see cutoff       : 0
+max_ply          : 10
+coarse_del_prune : 1000 cp
+
+[eval]
+cache eval       : false
+cache qeval      : false
+material         : true
+position         : true
+mobility         : true
+mob.phase_disable: 70
+mob.min_depth:     1
+phasing          : true
+undefended_piece : 6
+undefended_sq    : 3
+trapped_peice    : -7
+pawn.doubled     : -10
+pawn.isolated    : -10
+rook.open_file   : 20
+contempt         : -30
+tempo            : 15
+material scores  : [0, 100, 325, 350, 500, 900, 0]
+eval stats
+name                       value
+-------------------- -----------
+ALL                     11657400
+QUIESCENCE              20239961
+MATERIAL                       0
+POSITION                       1
+MOBILITY                       0
+SEE                     35312266
+MOVE                    18715030
+
+
+[repetition]
+enabled          : true
+prior posn count : 0
+
+[tt]
+enabled          : true
+use tt for pv    : true
+capacity         : 524288
+size in mb       : 8
+entry size bytes : 16
+aging            : true
+current age      : 58
+hmvc horizon     : 42
+min ply          : 4
+entry: pv        : 406
+entry: cut       : 28182
+entry: all       : 2875
+entry: unused    : 0
+% hits           : 28
+% misses         : 55
+% collisions     : 16
+% exclusions     : 0
+ages (cur-0)     : 31585
+ages (cur-1)     : 122
+ages (cur-2)     : 123
+ages (cur-3)     : 110
+ages (cur-4)     : 110
+ages (cur-5)     : 114
+ages (cur-6)     : 125
+ages (cur-7)     : 122
+ages (cur-8)     : 118
+ages (cur-9)     : 112
+tt stats
+name                       value
+-------------------- -----------
+hits                     1920169
+misses                   3705087
+collisions               1101720
+exclusions                     0
+bad_hash                       0
+inserts                  4217192
+pv overwrites               6598
+ins fail priority        1121359
+ins fail owner                 0
+deletes                        0
+
+tt nodes
+  f2f4     126 cp   6 PV
+  f5e4    -126 cp   5 PV
+  d3e4     198 cp   5 PV
+  c5b4    -198 cp   4 PV
+  a3b4     198 cp   3 PV
+  g8f6    -198 cp   2 PV
+  e4g6     198 cp   1 PV
+
+[killers]
+enabled          : true
+
+[stats]
+depth            : 7
+pv               : f2f4, f5e4, d3e4, c5b4, a3b4, g8e7
+score            : 126 cp
+clock (detmstic) : 1.780s
+clock (realtime) : 1.194s
+completed        : false
+user cancelled   : false
+calc depth       : 7
+selective depth  : 35
+tot nodes/sec (k): 844
+int nodes/sec (k): 50
+branching factor : 0.57
+q branch factor  : 0.63
+
+ply        total =   [interior  leaf nodes   tt nodes]   beta cuts          pv cuts %     q total  q interior      q leaf  q tt nodes    est_time   real_time  determstic
+---    ----------- ----------- ----------- ----------- ----------- ----------- ------ ----------- ----------- ----------- ----------- ----------- ----------- -----------
+  0              1           1           0           0           1           3     50           0           0           0           0      0.000s      0.000s      0.000s
+  1             37          37           0           0          35          38     92           0           0           0           0      0.000s      0.000s      0.000s
+  2            154         154           0           0         108          72     69           0           0           0           0      0.001s      0.000s      0.000s
+  3           2042        2006           0           0        1899         893     92          36          31           5           0      0.003s      0.000s      0.000s
+  4           8248        5324           0        2512        4366        2909     52         412         218         194           0      0.032s      0.000s      0.000s
+  5          86292       25959           0       20600       25697        4454     29       39733        6567       33166           0      0.090s      0.000s      0.000s
+  6          62707       26484           1        3418       25230       26418     40       32804       29737        3067           0      0.793s      0.000s      0.000s
+  7         194539           0           1           0           0           0      0      194538       41592      152946           0      3.846s      1.097s      1.780s
+  8          30415           0           0           0           0           0      0       30415       26687        3728           0      9.877s      0.000s      0.000s
+  9          11147           0           0           0           0           0      0       11147       10205         942           0      0.000s      0.000s      0.000s
+ 10          16755           0           0           0           0           0      0       16755       15637        1118           0      0.000s      0.000s      0.000s
+ 11          15054           0           0           0           0           0      0       15054       13567        1487           0      0.000s      0.000s      0.000s
+ 12          21650           0           0           0           0           0      0       21650       19381        2269           0      0.000s      0.000s      0.000s
+ 13          21630           0           0           0           0           0      0       21630       19357        2273           0      0.000s      0.000s      0.000s
+ 14          31275           0           0           0           0           0      0       31275       26723        4552           0      0.000s      0.000s      0.000s
+ 15          30377           0           0           0           0           0      0       30377       26750        3627           0      0.000s      0.000s      0.000s
+ 16          43269           0           0           0           0           0      0       43269       36048        7221           0      0.000s      0.000s      0.000s
+ 17          38874           0           0           0           0           0      0       38874       32945        5929           0      0.000s      0.000s      0.000s
+ 18          51420           0           0           0           0           0      0       51420       40757       10663           0      0.000s      0.000s      0.000s
+ 19          43541           0           0           0           0           0      0       43541       34481        9060           0      0.000s      0.000s      0.000s
+ 20          51317           0           0           0           0           0      0       51317       38062       13255           0      0.000s      0.000s      0.000s
+ 21          40010           0           0           0           0           0      0       40010       30110        9900           0      0.000s      0.000s      0.000s
+ 22          47917           0           0           0           0           0      0       47917       31227       16690           0      0.000s      0.000s      0.000s
+ 23          33511           0           0           0           0           0      0       33511       22754       10757           0      0.000s      0.000s      0.000s
+ 24          40390           0           0           0           0           0      0       40390       22334       18056           0      0.000s      0.000s      0.000s
+ 25          22822           0           0           0           0           0      0       22822       15358        7464           0      0.000s      0.000s      0.000s
+ 26          29059           0           0           0           0           0      0       29059       11361       17698           0      0.000s      0.000s      0.000s
+ 27          12160           0           0           0           0           0      0       12160        7312        4848           0      0.000s      0.000s      0.000s
+ 28          12665           0           0           0           0           0      0       12665        4251        8414           0      0.000s      0.000s      0.000s
+ 29           5134           0           0           0           0           0      0        5134        2183        2951           0      0.000s      0.000s      0.000s
+ 30           3567           0           0           0           0           0      0        3567         729        2838           0      0.000s      0.000s      0.000s
+ 31            668           0           0           0           0           0      0         668         235         433           0      0.000s      0.000s      0.000s
+ 32            428           0           0           0           0           0      0         428         156         272           0      0.000s      0.000s      0.000s
+ 33            195           0           0           0           0           0      0         195          74         121           0      0.000s      0.000s      0.000s
+ 34            227           0           0           0           0           0      0         227         126         101           0      0.000s      0.000s      0.000s
+ 35             16           0           0           0           0           0      0          16           8           8           0      0.000s      0.000s      0.000s
+---    ----------- ----------- ----------- ----------- ----------- ----------- ------ ----------- ----------- ----------- ----------- ----------- ----------- -----------
+tot        1009513       59965           2       26530       57336       34787      5      923016      566963      356053           0      0.000s      1.097s      1.780s
+
+[iterative deepening]
+enabled          : true
+part_ply         : true
+step_size        : 1
+start_ply        : 1
+end_ply          : 127
+iterations       : 7
+dep stat     total =   [interior  leaf nodes   tt nodes]   beta cuts          pv cuts %     q total  q interior      q leaf  q tt nodes    est_time   real_time  determstic    score pv
+--- ---- ----------- ----------- ----------- ----------- ----------- ----------- ------ ----------- ----------- ----------- ----------- ----------- ----------- ----------- -------- -----------
+D1  FULL          41           1          40           0           0           3      0           0           0           0           0      0.000s      0.000s      0.000s   306 cp e3c5
+D2  FULL         165          41           0           0          38          43     22         124          64          60           0      0.000s      0.000s      0.000s   195 cp b4c5, d6c5
+D3  FULL        2634         131           0           0         100         105      3        2503        1341        1162           0      0.000s      0.004s      0.005s   186 cp e4f5, c5b4, a3b4
+D4  FULL        5773        1660           0           0        1604        1629     27        4113        2954        1159           0      0.000s      0.010s      0.011s   163 cp e4f5, c5b4, a3b4, d7f5
+D5  FULL       73945        4458           0         156        3969        2663      5       69331       40973       28358           0      0.000s      0.088s      0.140s   174 cp f2f4, f5e4, d3e4, c5b4, a3b4
+D6  FULL      378245       43653           0       19065       53265       56960     14      315527      226504       89023           0      0.000s      0.427s      0.643s   126 cp f2f4, f5e4, d3e4, c5b4, a3b4, g8e7     
+D7  PART     1009513       59965           2       26530       57336       34787      5      923016      566963      356053           0      0.000s      1.097s      1.780s     +inf f2f4, f5e4, d3e4, c5b4, a3b4, g8e7     
+--- ---- ----------- ----------- ----------- ----------- ----------- ----------- ------ ----------- ----------- ----------- ----------- ----------- ----------- ----------- -------- -----------
+   cumul     1470316      109909          42       45751      116312       96190      7     1314614      838799      475815           0      0.000s      1.627s      2.579s        - -
+
+[global counts]
+name                       value
+-------------------- -----------
+EVAL CACHE COUNT               0
+QEVAL CACHE COUNT              0
+EVAL COUNT              11657400
+QEVAL COUNT             20239961
+LEGAL_MOVE COUNT        35754433
+MOVE HASH COUNT         48401052
+BOARD HASH COUNT            2276
+IDS COMPLETES                168
+IDS TIMEOUTS                  23
