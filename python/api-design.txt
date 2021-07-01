@@ -49,6 +49,32 @@ s.x()    -> 4
 s.y()    -> 2
 Square.is_off_board(63, 1) -> True
 
+### Move
+Just a string such as "a1a3" or "b7b8q"
+
+### Moves
+
+Moves.parse("a1a3") -> (Square.a1, Square.a3, None)
+Moves.parse("b7b8q") -> (Square.b7, Square.b8, "q")
+
+Moves.move_attributes(board, "e1c1") -> { 
+            'from_sq'     : e1
+            'to_sq'       : c1
+            'capture_sq'  : c1
+            'san'         : "O-O-O"
+            'legal'       : True
+            'rook_move'   : "a1a4"
+            'pseudo_legal': True
+            'ep'          : False
+            'ep_sqaure'   : None
+}
+
+### Squares and Bitboards
+B.a1, B.h8, S.a1, S.h8
+
+### Board
+
+
 
 
 
