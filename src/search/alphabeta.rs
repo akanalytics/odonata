@@ -119,7 +119,7 @@ impl Algo {
 
 
         // null move
-        if !self.minmax && beta.is_numeric() && self.nmp.allow(&board, ply, &self.pv_table) {
+        if !self.minmax && beta.is_numeric() && self.nmp.allow(&board, ply, depth, &self.pv_table) {
             let r = self.nmp.depth_reduction(board);
             let mv = Move::NULL_MOVE;
             let mut child_board = board.make_move(&mv);
