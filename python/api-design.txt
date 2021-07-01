@@ -74,6 +74,59 @@ B.a1, B.h8, S.a1, S.h8
 
 ### Board
 
+b.clone() -> Board:
+b.pieces("n") -> Bitboard:
+b.piece_on(Square.a1) -> "p"
+b.remove(Square.a1) 
+b.place(Square.a1, "R")
+b.w()  -> Bitboard
+b.b()  -> Bitboard
+b. turn() -> "w"
+b.en_passant() -> Square.b3
+b.turn("b")
+b[a1|a2|a3|a4] -> "RBNQ"
+b.set_piece_on(B.a1, "R")
+b.kings() -> Bitboard
+b.queens() -> Bitboard
+b.rooks() -> Bitboard
+b.bishops() -> Bitboard
+b.knights() -> Bitboard
+b.pawns() -> Bitboard
+b.moves() -> [ "a1a2", "b7b8q" ]
+b.attacks_from(Square.a2) -> [ "a3", "a4". "a5" ]
+b.pseudo_legal_moves() -> [ "a1a2", "b7b8q" ]
+b.validate_move("a1a3") -> "Doenst work":
+b.castling_rights() -> "KQk"
+b.castling_rights("kq")
+b.fifty_halfmove_count() -> 30
+b.move_number() -> 5
+b.make_move("a1a3") -> Board
+b.grid() -> "rnbqkbnr\nppppppp\n....\nRNBQKBNRR"
+b.to_fen() -> "r7/2p5/8/8/8/8/8/7K KQkq - 7 8"
+Board.parse_fen("r7/2p5/8/8/8/8/8/7K KQkq - 7 8") -> Board
+
+
+### Eval
+eval.static_eval(board) -> "10cp" or "win(0)" or "draw"
+
+.... future
+Eval(pawn=3, rook=6, queen-2) 
+eval.set_king_safety_enabled(False)
+eval.square_value( Square.a1)  -> 50 cp
+eval.king_safety("b") -> 30cp
+eval.phase() -> 70% (nearly end game)
+
+
+### Algo
+algo.search(Board) -> "a1a3"
+algo.nps() -> 50000:
+algo.time() -> 40sec:
+algo.nodes() -> 10million:
+algo.pv() -> ["a1a3", "b7b6", "c3c4"]:
+algo.max_depth() -> 10:
+algo.seldepth() -> 23:
+algo.centipawns() -> -34:
+algo.mate_in() -> win(5)
 
 
 
