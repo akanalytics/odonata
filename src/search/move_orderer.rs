@@ -35,7 +35,7 @@ impl Component for MoveOrderer {
         c.set("moveorderer.order", &format!("type string default {}", self.order));
     }
     fn configure(&mut self, c: &Config) {
-        debug!("moveorderer.configure with {}", c);
+        debug!("moveorderer.configure");
         self.enabled = c.bool("moveorderer.enabled").unwrap_or(self.enabled);
         self.prior_bm = c.bool("moveorderer.prior_bm").unwrap_or(self.prior_bm);
         self.prior_pv = c.bool("moveorderer.prior_pv").unwrap_or(self.prior_pv);

@@ -34,7 +34,7 @@ impl Component for MoveTimeEstimator {
         c.set("mte.deterministic", "type check default false");
     }
     fn configure(&mut self, c: &Config) {
-        debug!("mte.configure with {}", c);
+        debug!("mte.configure");
         self.branching_factor = c
             .int("mte.branching_factor")
             .unwrap_or(self.branching_factor as i64) as u16;

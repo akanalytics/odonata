@@ -367,7 +367,7 @@ impl Component for TranspositionTable2 {
         c.set("tt.min_ply", "type spin default 35 min 0 max 100");
     }
     fn configure(&mut self, c: &Config) {
-        debug!("tt.configure with {}", c);
+        debug!("tt.configure");
         self.aging = c.bool("tt.aging").unwrap_or(self.aging);
         self.use_tt_for_pv = c.bool("tt.use_tt_for_pv").unwrap_or(self.use_tt_for_pv);
         self.mb = c.int("Hash").unwrap_or(self.mb);

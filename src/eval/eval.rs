@@ -278,7 +278,7 @@ impl Component for SimpleScorer {
     }
 
     fn configure(&mut self, c: &Config) {
-        debug!("eval.configure with {}", c);
+        debug!("eval.configure");
         self.cache_eval = c.bool("eval.cache.eval").unwrap_or(self.cache_eval);
         self.cache_qeval = c.bool("eval.cache.qeval").unwrap_or(self.cache_qeval);
         self.mobility = c.bool("eval.mobility").unwrap_or(self.mobility);

@@ -38,7 +38,7 @@ impl Component for QSearch {
         );
     }
     fn configure(&mut self, c: &Config) {
-        debug!("qsearch.configure with {}", c);
+        debug!("qsearch.configure");
         self.enabled = c.bool("qsearch.enabled").unwrap_or(self.enabled);
         self.only_captures = c.bool("qsearch.only_captures").unwrap_or(self.only_captures);
         self.promos = c.bool("qsearch.promos").unwrap_or(self.promos);

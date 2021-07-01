@@ -30,7 +30,7 @@ impl Component for IterativeDeepening {
         c.set("ids.part_ply", "type check default true");
     }
     fn configure(&mut self, c: &Config) {
-        debug!("qsearch.configure with {}", c);
+        debug!("qsearch.configure");
         self.enabled = c.bool("ids.enabled").unwrap_or(self.enabled);
         self.part_ply = c.bool("ids.part_ply").unwrap_or(self.part_ply);
     }

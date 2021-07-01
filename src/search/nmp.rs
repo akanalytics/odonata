@@ -21,7 +21,7 @@ impl Component for NullMovePruning {
         c.set("nmp.enabled", "type check default true");
     }
     fn configure(&mut self, c: &Config) {
-        debug!("nmp.configure with {}", c);
+        debug!("nmp.configure");
         self.enabled = c.bool("nmp.enabled").unwrap_or(self.enabled);
     }
     fn new_game(&mut self) {

@@ -19,7 +19,7 @@ impl Component for Repetition {
     }
 
     fn configure(&mut self, c: &Config) {
-        debug!("repetition.configure with {}", c);
+        debug!("repetition.configure");
         self.enabled = c.bool("move_orderer.enabled").unwrap_or(self.enabled);
     }
     

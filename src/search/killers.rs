@@ -19,7 +19,7 @@ impl Component for Killers {
         c.set("killers.enabled", "type check default true");
     }
     fn configure(&mut self, c: &Config) {
-        debug!("killers.configure with {}", c);
+        debug!("killers.configure");
         self.enabled = c.bool("killers.enabled").unwrap_or(self.enabled);
     }
     fn new_game(&mut self) {

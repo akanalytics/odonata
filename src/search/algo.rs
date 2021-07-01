@@ -124,10 +124,6 @@ impl Engine {
         let mut nodes = 0;
         for (i, t) in self.threads.drain(..).enumerate() {
             let algo = t.join().unwrap();
-            if i == 0 {
-                self.algo.results = algo.results().clone();
-                self.algo.task_control.cancel();
-            }
             debug!("Thread returned {}", algo); // t.thread().name().unwrap(),
             info!(
                 "thread {:>3} {:>5} {:>8} {:>10} {:>10} {:>10}   {:<48}",
@@ -141,6 +137,11 @@ impl Engine {
             );
             knps += algo.search_stats.cumulative_knps();
             nodes += algo.search_stats.cumulative().nodes();
+            if i == 0 {
+                self.algo = algo;
+                // self.algo.results = algo.results().clone();
+                self.algo.task_control.cancel();
+            }
         }
         info!(
             "{:>3} {:>5} {:>8}        {:>10}      {:>5}     {:5}   {:>48}",
@@ -167,7 +168,7 @@ impl Component for Engine {
         self.algo.settings(c);
     }
     fn configure(&mut self, c: &Config) {
-        debug!("engine.configure with {}", c);
+        debug!("engine.configure");
         self.thread_count = c.int("Threads").unwrap_or(self.thread_count.into()) as u32;
         self.algo.configure(c);
     }
@@ -254,7 +255,7 @@ impl Component for Algo {
         self.killers.settings(c);
     }
     fn configure(&mut self, c: &Config) {
-        debug!("algo.configure with {}", c);
+        debug!("algo.configure");
         self.analyse_mode = c.bool("UCI_AnalyseMode").unwrap_or(self.analyse_mode);
         self.minmax = c.bool("algo.minmax").unwrap_or(self.minmax);
         self.eval.configure(c);
@@ -543,7 +544,8 @@ mod tests {
         search.move_orderer.enabled = false;
         search.search(&board);
         println!("{}", search);
-        assert_eq!(search.search_stats().total().nodes(), 1468); // rejigged pawn PST
+        assert_eq!(search.search_stats().total().nodes(), 138); // null move pruning
+        // assert_eq!(search.search_stats().total().nodes(), 1468); 
                                                                  // assert_eq!(search.search_stats().total().nodes(), 1516); // rejigged pawn PST
                                                                  // previous
                                                                  // assert_eq!(search.search_stats().total().nodes(), 1326); // piece mob (disabled)
@@ -554,7 +556,7 @@ mod tests {
                                                                  // assert_eq!(search.search_stats().total().nodes(), 1757);
         assert_eq!(
             (search.search_stats().branching_factor() * 10.0).round() as u64,
-            15
+            11
         );
     }
 
@@ -582,13 +584,14 @@ mod tests {
         for &id in &[true, false] {
             let position = Catalog::mate_in_2()[0].clone();
             let eval = SimpleScorer::new().set_position(false);
-            let mut search = Algo::new()
-                .set_timing_method(TimeControl::Depth(3))
+            let mut engine = Engine::new();
+            engine.algo.set_timing_method(TimeControl::Depth(3))
                 .set_eval(eval)
                 .set_callback(Uci::uci_info)
                 .build();
-            search.ids.enabled = id;
-            search.search(position.board());
+            engine.algo.board = position.board().clone();
+            engine.search();
+            let search = engine.algo;
             println!("{}", search);
             if id {
                 assert!(search.search_stats().total().nodes() < 5200, "nodes {} > 5200", search.search_stats().total().nodes() ); // with piece mob

@@ -840,7 +840,7 @@ impl Component for TranspositionTable {
         c.set("tt.capacity", "type spin default 10 min 0 max 200000");
     }
     fn configure(&mut self, c: &Config) {
-        debug!("tt.configure with {}", c);
+        debug!("tt.configure");
         self.enabled = c.bool("tt.enabled").unwrap_or(self.enabled);
         self.capacity = c.int("tt.capacity").unwrap_or(self.capacity as i64) as usize;
     }
