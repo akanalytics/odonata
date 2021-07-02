@@ -202,7 +202,7 @@ mod tests {
         //let tc = TimeControl::NodeCount(1_000);
         // let tc = TimeControl::from_remaining_time(Duration::from_millis(3000));
         // let tc = TimeControl::Depth(3);
-        let tc = TimeControl::move_time_secs(2);
+        let tc = TimeControl::from_move_time_millis(2000);
         let mut new = Algo::new().set_timing_method(tc).build();
         let mut old = Algo::new().set_timing_method(tc).build();
         // new.set_callback(Uci::uci_info);

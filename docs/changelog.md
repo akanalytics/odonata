@@ -3,6 +3,12 @@
 Milestones ('m') are bundled into Releases.  
 
 # Unreleased
+#### m 0.3.22
+- avoid null pruning near frontier 
+- for repeated positions use tt only for move ordering (configurable) 
+- remove lazy init of logging when features=fast
+- permit different strategies for null move pruning depth reduction
+
 #### m 0.3.21
 - null move pruning
 - pickup UCI config options from env vars eg EXPORT odonata_nmp_enabled=false

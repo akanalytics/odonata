@@ -76,7 +76,7 @@ impl Algo {
             // for bounded scores, we know iterating through the nodes might raise alpha, lower beta
             // doing this now allows us potentuially to cut off without looking at the child nodes
             tt_mv = entry.bm;
-            if entry.draft >= draft {
+            if entry.draft >= draft && !(board.repetition_count() > 0 && self.repetition.avoid_tt_on_repeats)  {
                 match entry.node_type {
                     NodeType::Pv => {
                         // previously this position raised alpha, but didnt trigger a cut
@@ -120,7 +120,7 @@ impl Algo {
 
         // null move
         if !self.minmax && beta.is_numeric() && self.nmp.allow(&board, ply, depth, &self.pv_table) {
-            let r = self.nmp.depth_reduction(board);
+            let r = self.nmp.depth_reduction(board, ply, depth);
             let mv = Move::NULL_MOVE;
             let mut child_board = board.make_move(&mv);
             self.current_variation.set_last_move(ply + 1, &mv);

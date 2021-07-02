@@ -42,7 +42,7 @@ impl Bench {
 
     pub fn search() {
         let mut search = Algo::new()
-            .set_timing_method(TimeControl::move_time_secs(1))
+            .set_timing_method(TimeControl::from_move_time_millis(1000))
             .build();
         let pos = &Catalog::test_position();
 

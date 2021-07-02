@@ -20,6 +20,12 @@ impl LogInit {
         LogInit {}
     }
 
+    #[inline]
+    pub fn dummy_init() {
+        // keeps compiler warnings quiet when feature disabled
+    }
+
+    #[inline]
     pub fn check_init() {
         Lazy::force(&LOGGER);
     }
@@ -27,24 +33,17 @@ impl LogInit {
 
 static LOGGER: Lazy<LogInit> = Lazy::new(|| LogInit::bootstrap());
 
-#[macro_export]
-macro_rules! log_debug {
-    // (target: $target:expr, $($arg:tt)*) => (
-    //     {crate::logger::init(); log!(target: $target, log::Level::Debug, $($arg)*)};
-    // );
-    ($($arg:tt)*) => (
-        {
-            crate::logger::LogInit::check_init(); 
-            log::log!(log::Level::Debug, $($arg)*)
-        };
-    )
-}
 
 #[macro_export]
 macro_rules! trace {
     ($($arg:tt)*) => (
         {
+            #[cfg(not(feature="remove_logging"))]
             LogInit::check_init(); 
+
+            #[cfg(feature="remove_logging")]
+            LogInit::dummy_init(); 
+
             log::log!(log::Level::Trace, $($arg)*)
         };
     )
@@ -54,7 +53,12 @@ macro_rules! trace {
 macro_rules! debug {
     ($($arg:tt)*) => (
         {
+            #[cfg(not(feature="remove_logging"))]
             LogInit::check_init(); 
+
+            #[cfg(feature="remove_logging")]
+            LogInit::dummy_init(); 
+
             log::log!(log::Level::Debug, $($arg)*)
         };
     )
@@ -64,7 +68,12 @@ macro_rules! debug {
 macro_rules! info {
     ($($arg:tt)*) => (
         {
+            #[cfg(not(feature="remove_logging"))]
             LogInit::check_init(); 
+
+            #[cfg(feature="remove_logging")]
+            LogInit::dummy_init(); 
+
             log::log!(log::Level::Info, $($arg)*)
         };
     )

@@ -1,6 +1,6 @@
 [package]
 name = "odonata"
-version = "0.3.21"
+version = "0.3.22"
 license = "GPL-3.0+"
 homepage = "https://github.com/akanalytics/odonata"
 authors = ["andy watkins <andy@webcalculator.com>"]
@@ -59,7 +59,8 @@ bench = false
 [features]
 remove_metrics = []
 unchecked_indexing = []
-fast = ["unchecked_indexing", "remove_metrics"]
+remove_logging = []
+fast = ["remove_logging", "unchecked_indexing", "remove_metrics"]
 
 # RUSTFLAGS="-C target-cpu=native" cargo bench
 

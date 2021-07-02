@@ -15,17 +15,20 @@ use std::fmt;
 pub struct NullMovePruning {
     pub enabled: bool,
     pub min_leaf_distance: Ply,
+    pub depth_reduction_strat: i64, 
 }
 
 impl Component for NullMovePruning {
     fn settings(&self, c: &mut Config) {
         c.set("nmp.enabled", "type check default true");
         c.set("nmp.min.leaf.distance",  &format!("type spin min 0 max 100 default {}", self.min_leaf_distance));
+        c.set("nmp.depth.reduction.strat",  &format!("type spin min 0 max 100 default {}", self.depth_reduction_strat));
     }
     fn configure(&mut self, c: &Config) {
         debug!("nmp.configure");
         self.enabled = c.bool("nmp.enabled").unwrap_or(self.enabled);
         self.min_leaf_distance = c.int("nmp.min.leaf.distance").unwrap_or(self.min_leaf_distance as i64) as Ply;
+        self.depth_reduction_strat = c.int("nmp.depth.reduction.strat").unwrap_or(self.depth_reduction_strat);
 
     }
     fn new_game(&mut self) {
@@ -41,6 +44,7 @@ impl Default for NullMovePruning {
         Self {
             enabled: true,
             min_leaf_distance: 2, // 1 means we still prune at frontier
+            depth_reduction_strat: 2,
         }
     }
 }
@@ -58,8 +62,18 @@ impl NullMovePruning {
         true
     }
 
-    pub fn depth_reduction(&self, _b: &Board) -> Ply {
-        2
+    pub fn depth_reduction(&self, _b: &Board, ply: Ply, depth: Ply) -> Ply {
+        match self.depth_reduction_strat {
+            0 => 0,
+            1 => 1,
+            2 => 2,
+            3 => 3,
+            237 => if depth-ply >= 7 { 3 } else { 2 },
+            347 => if depth-ply >= 7 { 4 } else { 3 },
+            236 => if depth-ply >= 6 { 3 } else { 2 },
+            346 => if depth-ply >= 6 { 4 } else { 3 },
+            _ => 2,
+        }
     }
 }
 

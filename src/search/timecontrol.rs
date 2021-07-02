@@ -58,12 +58,12 @@ impl TimeControl {
         }
     }
 
-    pub fn move_time_secs(s: u64) -> Self {
-        let d = Duration::from_secs(s);
+    pub fn from_move_time_millis(ms: u64) -> Self {
+        let d = Duration::from_millis(ms);
         TimeControl::MoveTime(d)
     }
 
-    pub fn game_time_secs(s: u64) -> Self {
+    pub fn from_game_time_secs(s: u64) -> Self {
         let zero = Duration::default();
         let d = Duration::from_secs(s);
         TimeControl::RemainingTime {

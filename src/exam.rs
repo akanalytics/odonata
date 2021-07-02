@@ -3,7 +3,6 @@ use crate::config::{Component, Config};
 use crate::position::Position;
 use crate::search::algo::Engine;
 use crate::search::timecontrol::TimeControl;
-use std::env;
 use std::fmt;
 
 #[derive(Clone, Default, Debug)]
@@ -34,20 +33,11 @@ impl Exam {
     }
 
     pub fn take_exam(name: &str, positions: Vec<Position>) -> Exam {
-        let mut c = Config::new();
+        let c = Config::new();
         let mut engine = Engine::new();
         // algo.set_timing_method(TimeControl::Depth(5));
         engine.algo.set_timing_method(TimeControl::NodeCount(1_000_000));
-        // Prints each argument on a separate line
-        for arg in env::vars() {
-            if arg.0.starts_with("ODONATA") {
-                if let Some(combo) = arg.1.split_once("=") {
-                    let (key, value) = combo;
-                    c.set(key, value);
-                }
-            }
-        }
-        println!("using config\n{}", c);
+        // engine.algo.set_timing_method(TimeControl::from_move_time_millis(1900));
         engine.configure(&c);
 
         let mut exam = Exam {
@@ -92,7 +82,7 @@ mod tests {
     fn test_exam_bk() {
         let ex = Exam::take_exam("bratko kopec", Catalog::bratko_kopec());
         assert!(ex.score >= 5);
-        println!("{}", ex.engine.algo);
+        // println!("{}", ex.engine.algo);
     }
 
     #[test]
@@ -100,7 +90,7 @@ mod tests {
     fn test_exam_iq() {
         let ex = Exam::take_exam("IQ(182)", Catalog::iq());
         assert!(ex.score >= 8);
-        println!("{}", ex.engine.algo);
+        // println!("{}", ex.engine.algo);
     }
 
     #[test]
@@ -108,7 +98,7 @@ mod tests {
     fn test_exam_wac() {
         let ex = Exam::take_exam("win at chess", Catalog::win_at_chess());
         assert!(ex.score >= 117);
-        println!("{}", ex.engine.algo);
+        // println!("{}", ex.engine.algo);
     }
 
     #[test]
