@@ -191,6 +191,7 @@ pub struct SimpleScorer {
     pub contempt: i32,
     pub tempo: i32,
     pub material_scores: [i32; Piece::len()],
+    pub bishop_pair: i32,
     // pub cache: TranspositionTable,
     // pub qcache: TranspositionTable,
     pub cache_eval: bool,
@@ -250,6 +251,10 @@ impl Component for SimpleScorer {
             &format!("type spin min -10000 max 10000 default {}", self.contempt),
         );
         c.set(
+            "eval.bishop_pair",
+            &format!("type spin min -10000 max 10000 default {}", self.bishop_pair),
+        );
+        c.set(
             "eval.tempo",
             &format!("type spin min -1000 max 1000 default {}", self.tempo),
         );
@@ -288,6 +293,7 @@ impl Component for SimpleScorer {
         self.material = c.bool("eval.material").unwrap_or(self.material);
         self.phasing = c.bool("eval.phasing").unwrap_or(self.phasing);
         self.undefended_piece = c.int("eval.mobility.undef_piece").unwrap_or(self.undefended_piece as i64) as i32;
+        self.bishop_pair = c.int("eval.material.bishop_pair").unwrap_or(self.bishop_pair as i64) as i32;
         self.trapped_piece = c.int("eval.mobility.trapped_piece").unwrap_or(self.trapped_piece as i64) as i32;
         self.undefended_sq = c.int("eval.mobility.undef_sq").unwrap_or(self.undefended_sq as i64) as i32;
         self.pawn_doubled = c.int("eval.pawn.doubled").unwrap_or(self.pawn_doubled as i64) as i32;
@@ -323,6 +329,7 @@ impl fmt::Display for SimpleScorer {
         writeln!(f, "mob.phase_disable: {}", self.mobility_phase_disable)?;
         writeln!(f, "mob.min_depth:     {}", self.min_depth_mob)?;
         writeln!(f, "phasing          : {}", self.phasing)?;
+        writeln!(f, "bishiop_pair     : {}", self.bishop_pair)?;
         writeln!(f, "undefended_piece : {}", self.undefended_piece)?;
         writeln!(f, "undefended_sq    : {}", self.undefended_sq)?;
         writeln!(f, "trapped_peice    : {}", self.trapped_piece)?;
@@ -362,6 +369,7 @@ impl SimpleScorer {
             phasing: true,
             mobility_phase_disable: 70,
             min_depth_mob: 1,
+            bishop_pair: 25,
             undefended_piece: 6,
             undefended_sq: 3,
             trapped_piece: -7,
@@ -600,12 +608,20 @@ impl SimpleScorer {
 
     // updated on capture & promo
     pub fn w_eval_material(&self, mat: &Material) -> i32 {
-        Piece::ALL_BAR_KING
+        let mut score = Piece::ALL_BAR_KING
             .iter()
             .map(|&p| {
                 self.material_scores[p] * (mat.counts(Color::White, p) - mat.counts(Color::Black, p))
             })
-            .sum()
+            .sum();
+
+        if mat.counts(Color::White, Piece::Bishop) >= 2 {
+            score += self.bishop_pair
+        }
+        if mat.counts(Color::Black, Piece::Bishop) >= 2 {
+            score -= self.bishop_pair
+        }
+        score
         // let mut total = 0_i32;
         // }
         // for &p in &Piece::ALL_BAR_NONE {

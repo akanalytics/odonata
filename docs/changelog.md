@@ -4,10 +4,11 @@ Milestones ('m') are bundled into Releases.
 
 # Unreleased
 #### m 0.3.22
+- bishop pair bonus in eval
 - avoid null pruning near frontier 
+- permit different strategies for null move pruning depth reduction
 - for repeated positions use tt only for move ordering (configurable) 
 - remove lazy init of logging when features=fast
-- permit different strategies for null move pruning depth reduction
 
 #### m 0.3.21
 - null move pruning

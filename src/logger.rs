@@ -68,12 +68,7 @@ macro_rules! debug {
 macro_rules! info {
     ($($arg:tt)*) => (
         {
-            #[cfg(not(feature="remove_logging"))]
             LogInit::check_init(); 
-
-            #[cfg(feature="remove_logging")]
-            LogInit::dummy_init(); 
-
             log::log!(log::Level::Info, $($arg)*)
         };
     )
