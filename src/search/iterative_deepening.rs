@@ -25,15 +25,18 @@ pub struct IterativeDeepening {
 }
 
 impl Component for IterativeDeepening {
+    
     fn settings(&self, c: &mut Config) {
         c.set("ids.enabled", "type check default true");
         c.set("ids.part_ply", "type check default true");
     }
+
     fn configure(&mut self, c: &Config) {
         debug!("qsearch.configure");
         self.enabled = c.bool("ids.enabled").unwrap_or(self.enabled);
         self.part_ply = c.bool("ids.part_ply").unwrap_or(self.part_ply);
     }
+
     fn new_game(&mut self) {
         self.new_search();
     }
@@ -113,7 +116,7 @@ impl IterativeDeepening {
 impl Algo {
 
     pub fn search_iteratively(&mut self) {
-        self.new_search();
+        // self.new_search();
         self.ids.calc_range(&self.mte.time_control);
 
         for depth in (self.ids.start_ply..self.ids.end_ply).step_by(self.ids.step_size as usize) {

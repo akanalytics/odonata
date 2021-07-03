@@ -79,7 +79,7 @@ impl Engine {
     }
 
     pub fn search_start(&mut self) {
-        self.algo.new_search();
+        self.new_search();
         debug!("resize?? {}", self.algo.tt.requires_resize());
         for i in 0..self.thread_count {
             let builder = thread::Builder::new().name(format!("S{}", i)).stack_size(800_000);
