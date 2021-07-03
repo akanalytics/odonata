@@ -895,9 +895,10 @@ class Odonata:
     _instance: Optional[Odonata] = None
 
     @classmethod
-    def instance(cls, path: str = '', debug: bool = False):
+    def instance(cls, path: str = '', debug: bool = False) -> Odonata:
         if cls._instance is None:
             cls._instance = cls.__new__(cls)
+            assert cls._instance != None
             cls._instance.__init__(path, debug)
             # Put more initialization here maybe
         return cls._instance
@@ -907,7 +908,6 @@ class Odonata:
     }
 
     def __init__(self, path: str = '', debug: bool = False) -> None:
-        self.process: Optional[subprocess.Popen] = None
         if not path:
             # try and look for Odonata executable
             files = ["./odonata.exe", "./odonata",
@@ -920,7 +920,7 @@ class Odonata:
                 raise ValueError(f"Unable to find executable in {files}")
 
         self.debug: bool = debug
-        self.process = subprocess.Popen(
+        self.process: subprocess.Popen = subprocess.Popen(
             path,
             # bufsize=10000,
             universal_newlines=True,
