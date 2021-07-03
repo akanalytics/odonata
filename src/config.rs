@@ -42,7 +42,7 @@ impl Config {
                     let (_odonata, key) = combo;
                     let value = arg.1;
                     let key = key.replace("_", ".");
-                    config.set(&key.to_lowercase(), &value);
+                    config.set(&key, &value);
                 }
             }
         }
@@ -55,14 +55,14 @@ impl Config {
     }
 
     pub fn set(&mut self, k: &str, v: &str) -> Config {
-        if self.settings.insert(k.to_lowercase().to_string(), v.to_string()).is_none() {
-            self.insertion_order.push(k.to_lowercase().to_string());
+        if self.settings.insert(k.to_string(), v.to_string()).is_none() {
+            self.insertion_order.push(k.to_string());
         }
         self.clone()
     }
 
     pub fn bool(&self, name: &str) -> Option<bool> {
-        if let Some(v) = self.settings.get(&name.to_lowercase()) {
+        if let Some(v) = self.settings.get(&name.to_string()) {
             return v.parse::<bool>().ok();
         }
         None
@@ -77,15 +77,15 @@ impl Config {
     }
 
     pub fn string(&self, name: &str) -> Option<String> {
-        self.settings.get(&name.to_lowercase()).cloned()
+        self.settings.get(name).cloned()
     }
 
     pub fn combo(&self, name: &str) -> Option<String> {
-        self.settings.get(&name.to_lowercase()).cloned()
+        self.settings.get(name).cloned()
     }
 
     pub fn int(&self, name: &str) -> Option<i64> {
-        if let Some(v) = self.settings.get(&name.to_lowercase()) {
+        if let Some(v) = self.settings.get(name) {
             return v.parse::<i64>().ok();
         }
         None

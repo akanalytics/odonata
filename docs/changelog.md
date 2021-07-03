@@ -8,6 +8,7 @@ Milestones ('m') are bundled into Releases.
 - avoid null pruning near frontier 
 - permit different strategies for null move pruning depth reduction
 - for repeated positions use tt only for move ordering (configurable) 
+- tweaked a few eval parameters
 - remove lazy init of logging when features=fast
 
 #### m 0.3.21
