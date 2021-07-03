@@ -79,7 +79,7 @@ impl Engine {
     }
 
     pub fn search_start(&mut self) {
-        self.algo.new_game();
+        self.algo.new_search();
         debug!("resize?? {}", self.algo.tt.requires_resize());
         for i in 0..self.thread_count {
             let builder = thread::Builder::new().name(format!("S{}", i)).stack_size(800_000);
@@ -286,6 +286,7 @@ impl Component for Algo {
     }
 
     fn new_search(&mut self) {
+        self.task_control.set_running();
         self.search_stats = SearchStats::new();
         self.eval.new_search();
         self.move_orderer.new_search();
@@ -296,7 +297,6 @@ impl Component for Algo {
         self.repetition.new_search();
         self.tt.new_search();
         self.killers.new_search();
-        self.task_control.set_running();
     }
 }
 
