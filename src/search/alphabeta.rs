@@ -17,7 +17,7 @@ pub struct AlphaBeta;
 impl Algo {
     #[inline]
     pub fn is_leaf(&self, ply: Ply, depth: Ply) -> bool {
-        ply >= depth
+        depth <= 0
     }
 
     pub fn run_alphabeta(&mut self, board: &mut Board, node: &mut Node) {
@@ -68,7 +68,7 @@ impl Algo {
         }
 
         
-        let draft = depth - ply;
+        let draft = depth;
         let mut tt_mv = Move::NULL_MOVE;
         if let Some(entry) = self.tt.probe_by_board(board, ply, draft) {
             self.search_stats.inc_tt_nodes(ply);
@@ -124,15 +124,11 @@ impl Algo {
             let mv = Move::NULL_MOVE;
             let mut child_board = board.make_move(&mv);
             self.current_variation.set_last_move(ply + 1, &mv);
-            let child_score = -self.alphabeta_recursive(&mut child_board, ply + 1, depth - r, -beta, -beta + Score::from_cp(1), &mv);
+            let child_score = -self.alphabeta_recursive(&mut child_board, ply + 1, depth - r - 1, -beta, -beta + Score::from_cp(1), &mv);
             board.undo_move(&mv);
             if child_score >= beta {
-                // nt = NodeType::Cut;
                 self.search_stats.inc_cuts(ply);
-                // self.tt.store(board.hash(), entry);
-                return beta;
-
-                // self.killers.store(ply, &mv);
+                return child_score;
             }
 
         }
@@ -151,7 +147,7 @@ impl Algo {
             debug_assert!(alpha < beta || self.minmax);
             self.current_variation.set_last_move(ply + 1, &mv);
 
-            let child_score = -self.alphabeta_recursive(&mut child_board, ply + 1, depth, -beta, -alpha, &mv);
+            let child_score = -self.alphabeta_recursive(&mut child_board, ply + 1, depth -1, -beta, -alpha, &mv);
             board.undo_move(&mv);
             self.repetition.pop();
             if ply > 1 && self.task_control.is_cancelled() {
@@ -194,7 +190,7 @@ impl Algo {
 
         let entry = TtNode {
             score,
-            draft: self.max_depth - ply,
+            draft: depth,
             node_type: nt,
             bm, // not set for NodeType::All
         };
@@ -229,7 +225,6 @@ mod tests {
                 .set_timing_method(TimeControl::Depth(3))
                 .set_callback(Uci::uci_info)
                 .build();
-            search.qsearch.see = true;
             // search.tt.enabled = false;
             search.search(pos.board());
             // println!("{}", search);

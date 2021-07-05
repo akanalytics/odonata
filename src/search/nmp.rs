@@ -43,7 +43,7 @@ impl Default for NullMovePruning {
     fn default() -> Self {
         Self {
             enabled: true,
-            min_leaf_distance: 2, // 1 means we still prune at frontier
+            min_leaf_distance: 2, // 1 means we still prune at frontier (depth=1)
             depth_reduction_strat: 2,
         }
     }
@@ -53,7 +53,7 @@ impl Default for NullMovePruning {
 impl NullMovePruning {
     pub fn allow(&self, b: &Board, ply: Ply, depth: Ply, variation: &PvTable) -> bool {
         if !self.enabled 
-            || ply + self.min_leaf_distance > depth
+            || depth < self.min_leaf_distance 
             || ((b.line_pieces() | b.knights()) & b.us()).is_empty()     
             || b.is_in_check(b.color_us())
             || variation.extract_pv_for(ply).contains_null_move() {
@@ -68,10 +68,10 @@ impl NullMovePruning {
             1 => 1,
             2 => 2,
             3 => 3,
-            237 => if depth-ply >= 7 { 3 } else { 2 },
-            347 => if depth-ply >= 7 { 4 } else { 3 },
-            236 => if depth-ply >= 6 { 3 } else { 2 },
-            346 => if depth-ply >= 6 { 4 } else { 3 },
+            237 => if depth >= 7 { 3 } else { 2 },
+            347 => if depth >= 7 { 4 } else { 3 },
+            236 => if depth >= 6 { 3 } else { 2 },
+            346 => if depth >= 6 { 4 } else { 3 },
             _ => 2,
         }
     }

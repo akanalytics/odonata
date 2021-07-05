@@ -17,7 +17,6 @@ pub struct QSearch {
     pub only_captures: bool,
     pub promos: bool,
     pub ignore_see_fails: bool,
-    pub see: bool,
     pub see_cutoff: i64,
     max_ply: u16,
     pub coarse_delta_prune: Score,
@@ -28,7 +27,6 @@ impl Component for QSearch {
         c.set("qsearch.enabled", "type check default true");
         c.set("qsearch.only_captures", "type check default true");
         c.set("qsearch.promos", "type check default true");
-        c.set("qsearch.see", "type check default true");
         c.set("qsearch.see.cutoff", "type spin default 0 min -5000 max 5000");
         c.set("qsearch.see.ignore_fails", "type check default true");
         c.set("qsearch.max_ply", "type spin default 10 min 0 max 100");
@@ -42,7 +40,6 @@ impl Component for QSearch {
         self.enabled = c.bool("qsearch.enabled").unwrap_or(self.enabled);
         self.only_captures = c.bool("qsearch.only_captures").unwrap_or(self.only_captures);
         self.promos = c.bool("qsearch.promos").unwrap_or(self.promos);
-        self.see = c.bool("qsearch.see").unwrap_or(self.see);
         self.see_cutoff = c.int("qsearch.see.cutoff").unwrap_or(self.see_cutoff);
         self.ignore_see_fails = c.bool("qsearch.see.ignore_fails").unwrap_or(self.ignore_see_fails);
         self.max_ply = c.int("qsearch.max_ply").unwrap_or(self.max_ply as i64) as u16;
@@ -60,7 +57,6 @@ impl Default for QSearch {
         QSearch {
             enabled: true,
             only_captures: false,
-            see: true,
             ignore_see_fails: true,
             see_cutoff: 0,
             promos: false,
@@ -74,7 +70,6 @@ impl fmt::Display for QSearch {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "enabled          : {}", self.enabled)?;
         writeln!(f, "only captures    : {}", self.only_captures)?;
-        writeln!(f, "see enabled      : {}", self.see)?;
         writeln!(f, "ignore see fails : {}", self.ignore_see_fails)?;
         writeln!(f, "promos           : {}", self.promos)?;
         writeln!(f, "see cutoff       : {}", self.see_cutoff)?;
@@ -94,11 +89,7 @@ impl Algo {
             self.search_stats.inc_leaf_nodes(ply);
             return board.eval(&mut self.eval, &Node { ply, alpha, beta });
         }
-        let score = if self.qsearch.see {
-            self.qsearch_see(Bitboard::EMPTY, ply, depth, board, alpha, beta)
-        } else {
-            self.qsearch_sq(mv.to(), ply, depth, board, alpha, beta)
-        };
+        let score = self.qsearch_see(Bitboard::EMPTY, ply, 0, board, alpha, beta);
         debug_assert!(self.task_control.is_cancelled() || score > -Score::INFINITY);
         score
     }
@@ -116,7 +107,7 @@ impl Algo {
 
         let in_check = board.is_in_check(board.color_us());
         let standing_pat;
-        if ply == self.max_depth {
+        if depth == 0 {
             standing_pat = board.eval(&mut self.eval, &Node { ply, alpha, beta });
             trace!("{}", board.debug() + "Standing pat (eval)" + standing_pat);
             if standing_pat.is_mate() {
@@ -176,7 +167,7 @@ impl Algo {
                 let winning = false;
                 // allow 8 matched attackers
                 let bar = self.qsearch.see_cutoff as i32;
-                if score < Score::from_cp(bar) || score == Score::from_cp(bar) && (winning || ply <= self.max_depth + 1) {
+                if score < Score::from_cp(bar) || score == Score::from_cp(bar) && (winning || depth  >= -1) {
                     trace!("{}", board.debug() + "see score bad" + score + "cmp" + Score::from_cp(bar) + "for" + mv  );
                     if self.qsearch.ignore_see_fails {
                         continue; 
@@ -198,7 +189,7 @@ impl Algo {
             }
             // mark the square so the recapture is considered
             trace!("{}", board.debug() + ply + "iterating on " + mv);
-            let score = -self.qsearch_see(recaptures ^ mv.to().as_bb(), ply + 1, depth, &mut child, -beta, -alpha);
+            let score = -self.qsearch_see(recaptures ^ mv.to().as_bb(), ply + 1, depth -1, &mut child, -beta, -alpha);
             board.undo_move(mv);
             if score > beta {
                 trace!("{}", board.debug() + ply + score + "fails high" + beta + mv);
@@ -231,19 +222,16 @@ mod tests {
     #[ignore]
     #[test]
     fn test_qsearch() -> Result<(), String> {
-        for &see in [false, true].iter() {
-            let pos = &Catalog::mate_in_2()[0];
-            let mut search = Algo::new()
-                .set_timing_method(TimeControl::NodeCount(1_000_000))
-                .set_callback(Uci::uci_info)
-                .clone();
-            //search.qsearch.enabled = qs;
-            search.qsearch.see = see;
-            search.search(pos.board());
-            println!("{}", search);
-            assert_eq!(search.pv().to_string(), pos.pv()?.to_string(), "{}", pos.id()?);
-            assert_eq!(search.score(), Score::white_win(3));
-        }
+        let pos = &Catalog::mate_in_2()[0];
+        let mut search = Algo::new()
+            .set_timing_method(TimeControl::NodeCount(1_000_000))
+            .set_callback(Uci::uci_info)
+            .clone();
+        //search.qsearch.enabled = qs;
+        search.search(pos.board());
+        println!("{}", search);
+        assert_eq!(search.pv().to_string(), pos.pv()?.to_string(), "{}", pos.id()?);
+        assert_eq!(search.score(), Score::white_win(3));
         Ok(())
     }
 
@@ -270,7 +258,7 @@ mod tests {
 
 
     #[test]
-    fn test_see_vs_sq() -> Result<(), String> {
+    fn test_see() -> Result<(), String> {
         let mut eval = SimpleScorer::new();
         eval.mobility = false;
         eval.position = false;
@@ -282,27 +270,14 @@ mod tests {
 
         let static_eval = pos.board().eval(&mut eval, &Node { ply: 0, alpha, beta }).cp().unwrap_or(0);
 
-        let mut search_sq = Algo::new()
-            .set_timing_method(TimeControl::NodeCount(1_000_000))
-            .set_eval(eval.clone())
-            .build();
-        search_sq.qsearch.see = false;
-        search_sq.max_depth = 3;
 
         let mut search_see = Algo::new()
             .set_timing_method(TimeControl::NodeCount(1_000_000))
             .set_eval(eval.clone())
             .build();
-        search_see.qsearch.see = true;
         search_see.max_depth = 3;
 
 
-        let score = search_sq.qsearch(&pos.sm()?, 3, search_sq.max_depth, &mut pos.board().clone(), alpha, beta);
-        if let Some(ce) = score.cp() {
-            assert_eq!(ce - static_eval, 100, "sq");
-        } else {
-            panic!("sq score was {} not a cp score", score);
-        }
 
         let score = search_see.qsearch(&pos.sm()?, 3, search_see.max_depth, &mut pos.board().clone(), alpha, beta);
         if let Some(ce) = score.cp() {

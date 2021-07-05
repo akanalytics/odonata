@@ -11,7 +11,6 @@ pub mod move_orderer;
 pub mod move_time_estimator;
 pub mod node;
 pub mod qsearch;
-pub mod qsearch_sq;
 pub mod nmp;
 pub mod stack;
 
