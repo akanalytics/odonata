@@ -30,7 +30,7 @@ use std::fmt;
 pub struct Position {
     board: Board,
 
-    #[serde(skip)]
+    #[serde(skip_deserializing)]
     tags: Tags,
 }
 
@@ -73,49 +73,11 @@ impl Position {
                 }
             }
         }
-        pos.parse_tags(remaining)?;
+        pos.tags = Tags::parse_tags(&pos.board, remaining)?;
         Ok(pos)
     }
 
-    fn parse_tags(&mut self, tags_str: &str) -> Result<(),String> {
-        // let mut map = HashMap::new();
-        let ops: Vec<&str> = Self::split_into_tags(tags_str);
-        for op in ops {
-            let words: Vec<&str> = Self::split_into_words(op);
-            debug_assert!(
-                words.len() > 0,
-                "no words parsing EPD operation '{}' from '{}'",
-                op,
-                tags_str
-            );
-            self.parse_tag(words[0], words[1..].join(" ").as_str())?;
-            // map.insert.to_string(), words[1..].join(" ").to_string());
-        }
-        Ok(())
-    }
 
-    fn parse_tag(&mut self, key: &str, value: &str) -> Result<(), String> {
-        let tag = Tag::parse(&self.board, key, value)?;
-        self.tags.set(tag);
-        Ok(())
-    }
-
-
-
-
-    fn split_into_tags(s: &str) -> Vec<&str> {
-        REGEX_SPLIT_TAGS
-            .captures_iter(s)
-            .map(|cap| cap.get(1).or(cap.get(2)).or(cap.get(3)).unwrap().as_str())
-            .collect()
-    }
-
-    fn split_into_words(s: &str) -> Vec<&str> {
-        REGEX_SPLIT_WORDS
-            .captures_iter(s)
-            .map(|cap| cap.get(1).or(cap.get(2)).or(cap.get(3)).unwrap().as_str())
-            .collect()
-    }
 
     pub fn parse_many_epd<I>(iter: I) -> Result<Vec<Position>, String>
     where
@@ -132,41 +94,6 @@ impl Position {
         Ok(vec)
     }
 }
-
-
-static REGEX_SPLIT_TAGS: Lazy<Regex> = Lazy::new(|| Regex::new(
-    r#"(?x)
-    ([^";]*  
-        " [^"]* "   # a quoted string (possibly containing ";")
-    [^";]*
-    );
-    |
-    ([^';]*  
-        ' [^']* '   # a quoted string (possibly containing ";")
-    [^';]*
-    );
-    |
-    ([^;"']+)        # an opcode and operand(s) without any quotes 
-    ;
-    "#,
-).unwrap());
-
-static REGEX_SPLIT_WORDS: Lazy<Regex> = Lazy::new(|| Regex::new(
-    r#"(?x)
-    (?:
-        [^"\s]*  
-        " ([^"]*) "    # a double quoted string (possibly containing whitespace)
-        [^"\s]*
-    )(?:$|\s)|
-    (?:
-        [^'\s]*  
-        ' ([^']*) '    # a single quoted string (possibly containing whitespace)
-        [^'\s]*
-    )(?:$|\s)
-    |
-    ([^\s"']+)        # an opcode/operand without any quotes 
-    (?:$|\s)"#,
-).unwrap());
 
 
 
@@ -204,7 +131,8 @@ impl Position {
     }
 
     pub fn set_operation(&mut self, key: &str, value: &str) -> Result<(),String> {
-        self.parse_tag(key, value)
+        self.tags.set(Tag::parse(&self.board, key, value)?);
+        Ok(())
     }
 
     pub const ACD: &'static str = "acd";
@@ -342,37 +270,6 @@ mod tests {
     use crate::catalog::Catalog;
     use crate::globals::constants::*;
 
-    #[test]
-    fn test_split_into_tags() {
-        let vec = Position::split_into_tags(r#"cat"meo;w";"mouse";"toad;;;;;;" ;zebra;"#);
-        assert_eq!(vec, vec!["cat\"meo;w\"", "\"mouse\"", "\"toad;;;;;;\" ", "zebra"]);
-
-        let vec = Position::split_into_tags(r#"cat'meo;w';'mouse';'toad;;;;;;' ;zebra;"#);
-        assert_eq!(vec, vec!["cat\'meo;w\'", "\'mouse\'", "\'toad;;;;;;\' ", "zebra"]);
-
-        let vec = Position::split_into_tags(r#";cat;mouse;toad;;;;;;sheep;zebra"#);
-        assert_eq!(vec, vec!["cat", "mouse", "toad", "sheep"]);
-
-        // FIXME! OK, but not desirable (unmatched quote parsing)
-        let vec = Position::split_into_tags(r#";ca"t;mouse;"#);
-        assert_eq!(vec, vec!["t", "mouse"]);
-        // let vec = split_on_regex("cat;mat;sat;");
-        // assert_eq!(vec, vec!["cat;", "mat;", "sat;"], "cat;mat;sat;");
-        // let vec = split_on_regex("cat \"hello\";mat;sat;");
-        // assert_eq!(vec, vec!["cat \"hello\";", "mat;", "sat;"], "cat;mat;sat;");
-    }
-
-    #[test]
-    fn test_split_words() {
-        let vec = Position::split_into_words(r#"bm e4"#);
-        assert_eq!(vec, vec!["bm", "e4"]);
-
-        let vec = Position::split_into_words(r#"id "my name is bob""#);
-        assert_eq!(vec, vec!["id", "my name is bob"]);
-
-        let vec = Position::split_into_words(r#"id 'my name is bob'"#);
-        assert_eq!(vec, vec!["id", "my name is bob"]);
-    }
 
     // FIXME!!!!
     // #[test]
@@ -426,6 +323,17 @@ mod tests {
         assert_eq!(pos.pv().unwrap().to_string(), "e2e4, e7e5, d2d3");
         Ok(())
     }
+
+    // #[test]
+    // fn test_serde()  -> Result<(), String> {
+    //     let mut pos = Position { board: Catalog::starting_position(), tags: Tags::default() };
+    //     pos.set_operation(Position::BM, "e4, c4, a4")?;
+    //     pos.set_operation(Position::PV, "e4, e5, d3")?;
+    //     assert_eq!(pos.bm().unwrap().to_string(), "e2e4, c2c4, a2a4");
+    //     assert_eq!(pos.pv().unwrap().to_string(), "e2e4, e7e5, d2d3");
+    //     Ok(())
+    // }
+
 
     #[test]
     fn test_pos_custom()  -> Result<(), String> {

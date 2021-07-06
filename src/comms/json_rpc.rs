@@ -71,9 +71,9 @@ mod tests {
 
     #[test]
     fn test_json_rpc() {
-        let rpc = JsonRpc::new();
+        let mut rpc = JsonRpc::new();
         let request1 = r#"{"jsonrpc": "2.0", "method": "version", "params": [], "id": 1}"#;
-        let response = "?";
+        let response = String::from(r#"{"jsonrpc":"2.0","result":""#) + Version::VERSION + r#"","id":1}"#;
         assert_eq!(rpc.invoke(request1), Some(response.to_string()));        
     }
 }

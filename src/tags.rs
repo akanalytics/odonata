@@ -7,7 +7,10 @@ use crate::bitboard::bitboard::Bitboard;
 use std::collections::HashMap;
 use std::fmt;
 use std::time::Duration;
-// use serde::{Serialize, Deserialize};
+use once_cell::sync::Lazy;
+use regex::Regex;
+use serde::{Serialize, Deserialize, Serializer, ser::SerializeMap};
+use serde_with::{DeserializeFromStr};
 
 
 // #[derive(Clone, Debug)]
@@ -165,6 +168,28 @@ pub struct Tags {
     tags: HashMap<String, Tag>,
 }
 
+
+impl Serialize for Tags {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut map = serializer.serialize_map(Some(self.tags.len()))?;
+        let mut entries = self.tags.iter().collect::<Vec<_>>();
+        entries.sort_by(|x,y| x.0.cmp(&y.0));  // sort by key
+        for (k, v) in entries.iter() {
+            map.serialize_entry(k, &v.value())?;
+        }
+        map.end()
+    }
+}
+
+
+
+
+
+
+
 impl Tags {
 
 
@@ -219,7 +244,87 @@ impl Tags {
     //     "".to_string()
     //     // format!("{:?}", self)
     // }
+
+
+    pub fn parse_tags(board: &Board, tags_str: &str) -> Result<Tags,String> {
+        
+        let mut tags = Tags::new();
+        let ops: Vec<&str> = Self::split_into_tags(tags_str);
+        for op in ops {
+            let words: Vec<&str> = Self::split_into_words(op);
+            debug_assert!(
+                words.len() > 0,
+                "no words parsing EPD operation '{}' from '{}'",
+                op,
+                tags_str
+            );
+            let tag = Tag::parse(board, words[0], words[1..].join(" ").as_str())?;
+            // map.insert.to_string(), words[1..].join(" ").to_string());
+            tags.set(tag);
+        }
+        Ok(tags)
+    }
+
+
+
+
+
+    fn split_into_tags(s: &str) -> Vec<&str> {
+        REGEX_SPLIT_TAGS
+            .captures_iter(s)
+            .map(|cap| cap.get(1).or(cap.get(2)).or(cap.get(3)).unwrap().as_str())
+            .collect()
+    }
+
+    fn split_into_words(s: &str) -> Vec<&str> {
+        REGEX_SPLIT_WORDS
+            .captures_iter(s)
+            .map(|cap| cap.get(1).or(cap.get(2)).or(cap.get(3)).unwrap().as_str())
+            .collect()
+    }
+
 }
+
+
+
+static REGEX_SPLIT_TAGS: Lazy<Regex> = Lazy::new(|| Regex::new(
+    r#"(?x)
+    ([^";]*  
+        " [^"]* "   # a quoted string (possibly containing ";")
+    [^";]*
+    );
+    |
+    ([^';]*  
+        ' [^']* '   # a quoted string (possibly containing ";")
+    [^';]*
+    );
+    |
+    ([^;"']+)        # an opcode and operand(s) without any quotes 
+    ;
+    "#,
+).unwrap());
+
+static REGEX_SPLIT_WORDS: Lazy<Regex> = Lazy::new(|| Regex::new(
+    r#"(?x)
+    (?:
+        [^"\s]*  
+        " ([^"]*) "    # a double quoted string (possibly containing whitespace)
+        [^"\s]*
+    )(?:$|\s)|
+    (?:
+        [^'\s]*  
+        ' ([^']*) '    # a single quoted string (possibly containing whitespace)
+        [^'\s]*
+    )(?:$|\s)
+    |
+    ([^\s"']+)        # an opcode/operand without any quotes 
+    (?:$|\s)"#,
+).unwrap());
+
+
+
+
+
 
 //
 //  key1; key2; key3; key4 ABCD; key5 12345; key6 "ABC;DEF";
@@ -247,6 +352,38 @@ impl fmt::Display for Tags {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_split_into_tags() {
+        let vec = Tags::split_into_tags(r#"cat"meo;w";"mouse";"toad;;;;;;" ;zebra;"#);
+        assert_eq!(vec, vec!["cat\"meo;w\"", "\"mouse\"", "\"toad;;;;;;\" ", "zebra"]);
+
+        let vec = Tags::split_into_tags(r#"cat'meo;w';'mouse';'toad;;;;;;' ;zebra;"#);
+        assert_eq!(vec, vec!["cat\'meo;w\'", "\'mouse\'", "\'toad;;;;;;\' ", "zebra"]);
+
+        let vec = Tags::split_into_tags(r#";cat;mouse;toad;;;;;;sheep;zebra"#);
+        assert_eq!(vec, vec!["cat", "mouse", "toad", "sheep"]);
+
+        // FIXME! OK, but not desirable (unmatched quote parsing)
+        let vec = Tags::split_into_tags(r#";ca"t;mouse;"#);
+        assert_eq!(vec, vec!["t", "mouse"]);
+        // let vec = split_on_regex("cat;mat;sat;");
+        // assert_eq!(vec, vec!["cat;", "mat;", "sat;"], "cat;mat;sat;");
+        // let vec = split_on_regex("cat \"hello\";mat;sat;");
+        // assert_eq!(vec, vec!["cat \"hello\";", "mat;", "sat;"], "cat;mat;sat;");
+    }
+
+    #[test]
+    fn test_split_words() {
+        let vec = Tags::split_into_words(r#"bm e4"#);
+        assert_eq!(vec, vec!["bm", "e4"]);
+
+        let vec = Tags::split_into_words(r#"id "my name is bob""#);
+        assert_eq!(vec, vec!["id", "my name is bob"]);
+
+        let vec = Tags::split_into_words(r#"id 'my name is bob'"#);
+        assert_eq!(vec, vec!["id", "my name is bob"]);
+    }
 
 
     #[test]
@@ -279,5 +416,6 @@ mod tests {
         tags.set(Tag::AnalysisCountSeconds(4));
         tags.set(Tag::Id("Hello World".to_string()));
         assert_eq!(tags.to_string(), " acd 3; acs 4; id \"Hello World\";");
+        assert_eq!(jsonrpc_core::to_string(&tags).unwrap(), r#"{"acd":"3","acs":"4","id":"Hello World"}"#);
     }
 }
