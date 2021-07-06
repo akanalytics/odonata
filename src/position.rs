@@ -12,6 +12,8 @@ use crate::utils::StringUtils;
 use crate::tags::{Tags, Tag};
 use regex::Regex;
 use once_cell::sync::Lazy;
+use serde::{Serialize, Deserialize};
+
 
 use std::fmt;
 
@@ -24,9 +26,11 @@ use std::fmt;
 // https://www.chessprogramming.org/Extended_Position_Description
 // http://www.talkchess.com/forum3/viewtopic.php?t=69640&start=20
 
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Position {
     board: Board,
+
+    #[serde(skip)]
     tags: Tags,
 }
 
@@ -434,6 +438,16 @@ mod tests {
         assert_eq!(pos.sq().unwrap(), Bitboard::empty());
         Ok(())
     }
+
+    #[test]
+    fn test_serde() {
+        let pos = Position::default();
+        assert_eq!(serde_json::to_string(&pos).unwrap(), "{\"board\":\"8/8/8/8/8/8/8/8 w - - 0 1\"}"); 
+        assert_eq!(serde_json::from_str::<Position>("{\"board\":\"8/8/8/8/8/8/8/8 w - - 0 1\"}").unwrap(), pos); 
+    }
+
+
+
 }
 
 // Custom tags

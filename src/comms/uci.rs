@@ -123,10 +123,12 @@ impl Component for Uci {
 
 impl Uci {
     pub fn new() -> Uci {
-        let mut uci = Uci::default();
-        uci.board = Catalog::starting_position();
+        let mut uci = Uci {
+            board: Catalog::starting_position(),
+            json_rpc: JsonRpc::new(),
+            ..Uci::default()
+        };
         uci.engine.algo.set_callback(|sp| Self::uci_info(sp));
-    
         uci
     }
 

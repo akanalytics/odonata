@@ -7,9 +7,11 @@ use crate::utils::StringUtils;
 use crate::board::Board;
 // use arrayvec::ArrayVec;
 use std::fmt;
+use std::str::FromStr;
+use serde_with::{SerializeDisplay, DeserializeFromStr};
 
 // FIXME: public methods
-#[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, SerializeDisplay, DeserializeFromStr)]
 pub struct Move {
     pub from: Square,
     pub to: Square,
@@ -36,6 +38,15 @@ pub struct Move {
 // cap-from
 //
 // Promo/capture
+
+
+impl FromStr for Move {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Move::parse_uci(s)
+    }
+}
 
 impl Move {
     pub const NULL_MOVE: Move = Move {

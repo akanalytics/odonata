@@ -8,6 +8,8 @@ from textwrap import wrap
 import subprocess
 import os
 from time import perf_counter
+import signal
+import sys
 from jsonrpyc import Spec, RPC
 
 LOG_LEVEL = os.environ.get('RUST_LOG', 'WARNING').upper()
@@ -915,6 +917,11 @@ class Catalog:
 
 
 
+def handle_signal(signum, _frame):
+    logger.info('Exiting...')
+    Odonata.instance().__del__()
+    sys.exit(signum) 
+
 
 
 
@@ -964,6 +971,10 @@ class Odonata:
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE
         )
+
+        signal.signal(signal.SIGTERM, handle_signal)
+
+
         self._put("uci")
         self._start_new_game()
 
@@ -996,8 +1007,8 @@ class Odonata:
     def _put(self, command: str) -> None:
         if not self.process.stdin:
             raise BrokenPipeError()
-        if self.debug:
-            logger.info("=>", command)
+        # if self.debug:
+        logger.info(f"=> {command}")
         self.process.stdin.write(f"{command}\n")
         self.process.stdin.flush()
 
@@ -1007,8 +1018,8 @@ class Odonata:
         # if not self.process.stderr:
         #     raise BrokenPipeError()
         text = self.process.stdout.readline().strip()
-        if self.debug:
-            logger.info("<=", text)
+        # if self.debug:
+        logger.info(f"<= {text}")
         return text
 
     def set_option(self, name: str, value: Any) -> None:
@@ -1062,10 +1073,11 @@ class Odonata:
 
 
         # create the request
-        params = {"args": args, "kwargs": kwargs}
+        # params = {"args": args, "kwargs": kwargs}
+        params = args
         req = Spec.request(method, id=id, params=params)
-        if self.debug:
-            logger.info("<=", req)
+        # if self.debug:
+        logger.info(f"=> {req}")
         self.rpc.stdout.write(bytearray(req + "\n", "utf-8"))
         self.rpc.stdout.flush()
 
@@ -1151,37 +1163,43 @@ class Odonata:
         raise ValueError(f"Gave up waiting for '{res}'' after command '{req}'")
 
 
-    def _exec_multiline_command(self, req: str, end: str) -> List[str]:
-        self._put(req)
-        results = []
-        for _ in range(20000):
-            text = self._read_line()
-            self.infos.append(text)
-            if text == end :
-                break
-            if "error" in text:
-                raise ValueError(f"Received {text} from command {req}")
-            results.append(text)
-        return results
+    # def _exec_multiline_command(self, req: str, end: str) -> List[str]:
+    #     self._put(req)
+    #     results = []
+    #     for _ in range(20000):
+    #         text = self._read_line()
+    #         self.infos.append(text)
+    #         if text == end :
+    #             break
+    #         if "error" in text:
+    #             raise ValueError(f"Received {text} from command {req}")
+    #         results.append(text)
+    #     return results
 
     def positions_catalog(self, name: str) -> List[Board]:
-        req = f"catalog {name}"
-        results = self._exec_multiline_command(req, end="")
-        boards = []
-        for line in results:
-            fen, kvs = line.split("\t")
-            board = Board.parse_fen(fen)
-            for kv in kvs:
-                key, value = kv.split("=")
-                board.set_attr(key, value)
-            boards.append(board)
-        return boards
+        return self.call("positionsCatalog", args=[name])
+
+    def list_methods(self) -> Any:
+        return self.call("system.listMethods", args=())
+
+        # req = f"catalog {name}"
+        # results = self._exec_multiline_command(req, end="")
+        # boards = []
+        # for line in results:
+        #     fen, kvs = line.split("\t")
+        #     board = Board.parse_fen(fen)
+        #     for kv in kvs:
+        #         key, value = kv.split("=")
+        #         board.set_attr(key, value)
+        #     boards.append(board)
+        # return boards
 
 
 
-    # info depth 10 seldepth 11 nodes 19349 nps 257000 score cp 529 time 74 pv a1a8 h8h7 a8a6 h7g7
 
     def parse_search_results(self) -> List[Dict]:
+        # eg
+        # info depth 10 seldepth 11 nodes 19349 nps 257000 score cp 529 time 74 pv a1a8 h8h7 a8a6 h7g7
         results = []
         for record in self.infos:
             if " pv " in record:
@@ -1367,6 +1385,10 @@ class Test:
         # assert f[g8] == 'k'
         # assert str(b) == str(ColourFlipper().flip_board(ColourFlipper().flip_board(b)))
 
+    def test_catalog(self):
+        odo = Odonata(debug=False)
+        assert len(odo.positions_catalog("wac")) == 300
+
     def test_odonata(self):
         odo = Odonata(debug=False)
         odo.is_ready()
@@ -1504,7 +1526,7 @@ prin var : {" ".join(algo.pv())}
 
 def calc_calls_per_second(function: Callable) -> int:
     start = perf_counter()
-    N = 1_000
+    N = 50
     for _ in range(N):
         function()
     elapsed = perf_counter() - start
@@ -1529,12 +1551,14 @@ def benchmark_1():
     odo = Odonata()
     b = Board.parse_fen("r1k5/8/8/8/8/8/7P/R6K w - - 0 10")
     def version(): Odonata.instance().version()
+    def catalog(): Catalog.positions("wac")
     def legals(): b.moves()
     def legals_hardcoded_fen(): odo.exec_command(
         req="ext:legal_moves fen r1k5/8/8/8/8/8/7P/R6K w - - 0 10", res="result:")
 
     print("\nCalculate calls per second using a hardcoded fen string.\nTypically 80% of the time is fen generation!")
     print("version              calls/sec:", calc_calls_per_second(version))
+    print("catalog              calls/sec:", calc_calls_per_second(catalog))
     print("legals               calls/sec:", calc_calls_per_second(legals))
     print("legals_hardcoded_fen calls/sec:",
           calc_calls_per_second(legals_hardcoded_fen))
@@ -1546,6 +1570,7 @@ def tests():
     test.test_bitboard()
     test.test_moves()
     test.test_board()
+    test.test_catalog()
     test.test_odonata()
 
 def demos():

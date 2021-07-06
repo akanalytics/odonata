@@ -7,6 +7,9 @@ use crate::types::{Color, Piece, Hash, Ply};
 use crate::bitboard::castling::CastlingRights;
 use std::fmt::{self, Write};
 use std::iter::*;
+use std::str::FromStr;
+use serde::{Serialize, Serializer};
+use serde_with::{DeserializeFromStr};
 
 pub mod boardbuf;
 pub mod makemove;
@@ -16,7 +19,7 @@ pub mod rules;
 
 
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, DeserializeFromStr)]
 pub struct Board {
     pieces: [Bitboard; Piece::len()],
     colors: [Bitboard; Color::len()],
@@ -36,9 +39,37 @@ pub struct Board {
 }
 
 
+
+impl Serialize for Board {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.to_fen())
+    }
+}
+
+// impl<'de> Deserialize<'de> for Board {
+//     fn deserialize<D>(deserializer: D) -> Result<Board, D::Error>
+//     where
+//         D: Deserializer<'de>,
+//     {
+//         deserializer.deserialize_str()
+//         Ok(Board::new_empty())
+//     }
+// }
+
 impl fmt::Debug for Board {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Board").field("fen", &self.to_fen()).finish()
+    }
+}
+
+impl FromStr for Board {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Board::parse_fen(s)
     }
 }
 
@@ -320,6 +351,15 @@ mod tests {
     use super::*;
     use crate::catalog::*;
     use crate::globals::constants::*;
+
+
+    
+    #[test]
+    fn test_serde() {
+        let board1 = Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap().as_board();
+        assert_eq!(serde_json::to_string(&board1).unwrap(), "\"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\""); 
+        assert_eq!(serde_json::from_str::<Board>("\"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\"").unwrap(), board1); 
+    }
 
 
     #[test]
