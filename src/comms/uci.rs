@@ -169,6 +169,7 @@ impl Uci {
             "ext:version" => self.ext_uci_version(&Args::parse(&input)),
             "ext:static_eval" => self.ext_uci_static_eval(&Args::parse(&input)),
             "ext:move_attributes" => self.ext_uci_move_attributes(&Args::parse(&input)),
+//            "ext:catalog" => self.ext_uci_catalog(&Args::parse(&input)),
             "sleep" => self.uci_sleep(&words[1..]),
             "perft" => self.uci_perft(&words[1..]),
             "display" | "d" => self.uci_display(),
@@ -279,6 +280,18 @@ impl Uci {
         }
         Ok(())
     }
+
+    // fn ext_uci_catalog(&mut self, arg: &Args) -> Result<(), String> {
+    //     let name = 
+    //     let positions = Catalog::from_name(name);
+    //     for p in positions {
+    //         print!("{} {}", p.board().to_fen(),"\t");
+    //         for kv in p.
+    //         println!();
+    //     }
+    //     println!();
+    //     Ok(())
+    // }
 
     fn ext_uci_static_eval(&mut self, arg: &Args) -> Result<(), String> {
         let mut b = Board::new_empty();

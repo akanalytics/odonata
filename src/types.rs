@@ -1,5 +1,6 @@
 use crate::bitboard::bitboard::{Bitboard, Dir};
 use std::fmt;
+use serde::{Serialize, Deserialize};
 
 pub const MAX_PLY: Ply = 128;
 pub const MAX_LEGAL_MOVES: usize = 218;
@@ -46,7 +47,8 @@ pub fn chooser_struct<'a, T>(c: Color, choices: &'a Chooser<&T>) -> &'a T {
     [&choices.white, &choices.black][c as usize]
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+
+#[derive(Copy, Clone, Serialize, Deserialize, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum Color {
     White = 0,
     Black = 1,
@@ -399,6 +401,12 @@ mod tests {
         assert_eq!(array[Color::White], 1);
         assert_eq!(array[Color::Black], 2);
     }
+
+    #[test]
+    fn test_serde() {
+        // assert_eq!(Color::Black
+    }
+
 
     #[test]
     fn piece() {

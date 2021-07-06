@@ -84,7 +84,7 @@ impl Algo {
     // if the move results in a position which after quiese, is potentially a mate,
     // we should not return a mate score, as only captures have been considered,
     // and a mate score might cut a genuine mate score elsewhere
-    pub fn qsearch(&mut self, mv: &Move, ply: Ply, depth: Ply, board: &mut Board, alpha: Score, beta: Score) -> Score {
+    pub fn qsearch(&mut self, mv: &Move, ply: Ply, _depth: Ply, board: &mut Board, alpha: Score, beta: Score) -> Score {
         if !self.qsearch.enabled || ply <= 1 || (!mv.is_capture() && self.qsearch.only_captures) {
             self.search_stats.inc_leaf_nodes(ply);
             return board.eval(&mut self.eval, &Node { ply, alpha, beta });

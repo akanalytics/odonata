@@ -129,6 +129,18 @@ algo.centipawns() -> -34:
 algo.mate_in() -> win(5)
 
 
+### Catalog
+Catalog.positions("wac")
+Catalog.positions("chess960")
+
+list = Catalog.new("/home/positions.epd")
+list.append(...)
+
+
+
+
+
+
 
 
 #

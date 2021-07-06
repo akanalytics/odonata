@@ -62,7 +62,7 @@ impl NullMovePruning {
         true
     }
 
-    pub fn depth_reduction(&self, _b: &Board, ply: Ply, depth: Ply) -> Ply {
+    pub fn depth_reduction(&self, _b: &Board, _ply: Ply, depth: Ply) -> Ply {
         match self.depth_reduction_strat {
             0 => 0,
             1 => 1,

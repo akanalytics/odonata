@@ -16,7 +16,7 @@ pub struct AlphaBeta;
 //
 impl Algo {
     #[inline]
-    pub fn is_leaf(&self, ply: Ply, depth: Ply) -> bool {
+    pub fn is_leaf(&self, _ply: Ply, depth: Ply) -> bool {
         depth <= 0
     }
 

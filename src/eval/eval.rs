@@ -705,7 +705,7 @@ mod tests {
         let eval = &mut SimpleScorer::new();
         assert_eq!(board.eval(eval, &Node::root()), Score::from_cp(0));
 
-        let starting_pos_score = 8 * 100 + 2 * 325 + 2 * 350 + 2 * 500 + 900;
+        let starting_pos_score = 8 * 100 + 2 * 325 + 2 * 350 + 2 * 500 + 900 + 30; // (bishop pair)
         let board = Catalog::white_starting_position();
         assert_eq!(board.eval_material(eval), Score::from_cp(starting_pos_score));
 

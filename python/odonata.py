@@ -443,6 +443,7 @@ class Board():
         self._move_count: int
         self._hash: int
         # self._state: BoardState
+        self._attrs: Dict
         Board._init(self)
 
     def _init(self,
@@ -451,10 +452,12 @@ class Board():
               castling: str = 'KQkq',
               en_passant: Optional[Square] = None,
               fifty_halfmove_count: int = 0,
-              move_number: int = 1) -> None:
+              move_number: int = 1,
+              attrs: dict = {}) -> None:
 
         self._pieces = [0, 0, 0, 0, 0, 0]
         self._colors = [0, 0]
+        self._attrs = attrs
         if grid is None:
             r8 = "rnbqkbnr"
             r7 = 'pppppppp'
@@ -475,8 +478,14 @@ class Board():
     def clone(self) -> Board:
         b = Board()
         b._init(self.grid, self.turn, self.castling_rights,
-                self.en_passant, self.fifty_halfmove_count, self.move_number)
+                self.en_passant, self.fifty_halfmove_count, self.move_number, self._attrs)
         return b
+
+    def set_attr(self,  key: str, value) -> None:
+        self._attrs[key] = value
+
+    def attrs(self) -> Dict:
+        return self._attrs
 
     def pieces(self, p: Piece) -> Bitboard:
         return Bitboard(bits=self._pieces[Pieces.to_index(p)])
@@ -887,9 +896,24 @@ class Algo:
     def mate_in(self) -> Optional[str]:
         return self.results[-1].get('mate')
 
+
+class Catalog:
+    def __init__(self) -> None:
+        pass
+
+    @classmethod
+    def positions(cls, name: str) -> List[Board]:
+        return Odonata.instance().positions_catalog(name)
+    
+
+
+
+
+
+
+
+
 # best not to use this class directly
-
-
 class Odonata:
 
     _instance: Optional[Odonata] = None
@@ -1057,6 +1081,35 @@ class Odonata:
                 raise ValueError(f"Received {text} from command {req}")
             last_text = text
         raise ValueError(f"Gave up waiting for '{res}'' after command '{req}'")
+
+
+    def _exec_multiline_command(self, req: str, end: str) -> List[str]:
+        self._put(req)
+        results = []
+        for _ in range(20000):
+            text = self._read_line()
+            self.infos.append(text)
+            if text == end :
+                break
+            if "error" in text:
+                raise ValueError(f"Received {text} from command {req}")
+            results.append(text)
+        return results
+
+    def positions_catalog(self, name: str) -> List[Board]:
+        req = f"catalog {name}"
+        results = self._exec_multiline_command(req, end="")
+        boards = []
+        for line in results:
+            fen, kvs = line.split("\t")
+            board = Board.parse_fen(fen)
+            for kv in kvs:
+                key, value = kv.split("=")
+                board.set_attr(key, value)
+            boards.append(board)
+        return boards
+
+
 
     # info depth 10 seldepth 11 nodes 19349 nps 257000 score cp 529 time 74 pv a1a8 h8h7 a8a6 h7g7
 

@@ -595,7 +595,7 @@ mod tests {
             let search = engine.algo;
             println!("{}", search);
             if id {
-                assert!(search.search_stats().total().nodes() < 16500, "nodes {} > 16500", search.search_stats().total().nodes() ); // with piece mob
+                assert!(search.search_stats().total().nodes() < 18500, "nodes {} > 18500", search.search_stats().total().nodes() ); // with piece mob
 
             // previous
             // assert_eq!(search.search_stats().total().nodes(), 3456); // with pawn promo
