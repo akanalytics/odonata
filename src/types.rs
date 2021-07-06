@@ -50,7 +50,10 @@ pub fn chooser_struct<'a, T>(c: Color, choices: &'a Chooser<&T>) -> &'a T {
 
 #[derive(Copy, Clone, Serialize, Deserialize, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum Color {
+    #[serde(rename = "w")]
     White = 0,
+
+    #[serde(rename = "b")]
     Black = 1,
 } // numbering as per CPW
 
@@ -388,6 +391,7 @@ impl std::ops::Sub for ScoreWdl {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
     #[test]
     fn color() {
@@ -404,7 +408,9 @@ mod tests {
 
     #[test]
     fn test_serde() {
-        // assert_eq!(Color::Black
+        //let color = json!({"color" : "b"});
+        assert_eq!(serde_json::to_string(&Color::Black).unwrap(), "\"b\""); 
+        assert_eq!(serde_json::from_str::<Color>("\"w\"").unwrap(), Color::White); 
     }
 
 

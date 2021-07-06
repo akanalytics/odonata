@@ -9,6 +9,7 @@ use crate::variation::Variation;
 use crate::perft::Perft;
 use crate::search::algo::Engine;
 use crate::search::node::Node;
+use crate::comms::json_rpc::JsonRpc;
 use crate::eval::eval::SimpleScorer;
 use crate::search::searchprogress::SearchProgress;
 use crate::search::timecontrol::TimeControl;
@@ -90,6 +91,7 @@ pub struct Uci {
     board: Board,
     engine: Engine,
     debug: bool,
+    json_rpc: JsonRpc,
 }
 
 impl Component for Uci {
@@ -124,7 +126,18 @@ impl Uci {
         let mut uci = Uci::default();
         uci.board = Catalog::starting_position();
         uci.engine.algo.set_callback(|sp| Self::uci_info(sp));
+    
         uci
+    }
+
+
+    fn recv(receive: &str) {
+        info!("<< {}", receive);
+    }
+
+    fn send(send: &str) {
+        info!(">> {}", send);
+        println!("{}", send);
     }
 
     pub fn run(&mut self) {
@@ -133,9 +146,13 @@ impl Uci {
         while self.running {
             self.readline_and_execute();
         }
-        println!("info string exiting...");
+        Self::send("info string exiting...");
         io::stdout().flush().ok();
-        info!("exiting...");
+    }
+
+
+    fn is_json_request(&self, line: &str ) -> bool {
+        line.starts_with(r#"{"jsonrpc":"#)
     }
 
     fn readline_and_execute(&mut self) {
@@ -149,7 +166,7 @@ impl Uci {
         if words.is_empty() {
             return;
         }
-        debug!("UCI GUI >>> Engine: {}", input);
+        Self::recv(&input);
         let res = match words[0] {
             "uci" => self.uci_uci(),
             "isready" => self.uci_isready(),
@@ -174,13 +191,16 @@ impl Uci {
             "perft" => self.uci_perft(&words[1..]),
             "display" | "d" => self.uci_display(),
             "board" | "b" => self.uci_board(),
+
+            _ if self.is_json_request(&input) => self.json_method(&input),
+
             // "tune" => self.uci_unknown(&words),
             // "eval" => self.uci_unknown(&words),
             // "bench" => self.uci_unknown(&words),
             _ => self.uci_unknown(&words),
         };
         if let Err(s) = res {
-            println!("info string error '{}'", s);
+            Self::send(&format!("info string error '{}'", s));
         }
         io::stdout().flush().ok();
     }
@@ -192,11 +212,11 @@ impl Uci {
     fn uci_debug(&mut self, words: &[&str]) -> Result<(), String> {
         self.debug = match words.first().copied() {
             Some("on") => {
-                println!("info string debug on");
+                Self::send("info string debug on");
                 true
             }
             Some("off") => {
-                println!("info string debug off");
+                Self::send("info string debug off");
                 false
             }
             _ => return Err("unknown debug option".into()),
@@ -205,7 +225,7 @@ impl Uci {
     }
 
     fn uci_isready(&mut self) -> Result<(), String> {
-        println!("readyok");
+        Self::send("readyok");
         Ok(())
     }
 
@@ -216,20 +236,19 @@ impl Uci {
     }
 
     fn uci_quit(&mut self) -> Result<(), String> {
-        println!("info string quitting...");
+        Self::send("info string quitting...");
         self.engine.search_stop();
-        println!("info string stopped...");
+        Self::send("info string stopped...");
         self.running = false;
         // info!("{}", self.algo);
         Ok(())
     }
 
     fn uci_uci(&mut self) -> Result<(), String> {
-        println!("id name {} v{}", Version::NAME, Version::VERSION);
-        println!("id author {}", Version::AUTHORS);
+        Self::send(&format!("id name {} v{}", Version::NAME, Version::VERSION));
+        Self::send(&format!("id author {}", Version::AUTHORS));
         self.uci_show_options();
-        println!("uciok");
-        info!("odonata -> gui: uciok");
+        Self::send("uciok");
         Ok(())
     }
 
@@ -253,7 +272,7 @@ impl Uci {
         for d in 1..=depth {
             let t = Instant::now();
             let p = Perft::perft(&mut board, d);
-            println!("info string perft({}) = {:<12} in {}", d, p, Clock::format(t.elapsed()));
+            Self::send(&format!("info string perft({}) = {:<12} in {}", d, p, Clock::format(t.elapsed())));
         }
         Ok(())
     }
@@ -264,7 +283,7 @@ impl Uci {
         Self::parse_fen(arg, &mut b)?;
         let var = Self::parse_variation(arg, &b)?;
         if let Some(mv) = var.first() {
-            println!("result:from {from} to {to} capture {capture} ep {ep} san {san} rook_move {rook_move} is_ep {is_ep} is_castle {is_castle}", 
+            Self::send(&format!("result:from {from} to {to} capture {capture} ep {ep} san {san} rook_move {rook_move} is_ep {is_ep} is_castle {is_castle}", 
                 from=mv.from().uci(), 
                 to=mv.to().uci(), 
                 capture=mv.capture_square().uci(), 
@@ -274,7 +293,7 @@ impl Uci {
                 san=b.to_san(&mv),
                 rook_move=mv.rook_move().uci(),
                 is_ep=mv.is_ep_capture(),
-                is_castle=mv.is_castle());
+                is_castle=mv.is_castle()));
         } else {
             return Err("Empty variation. Move not specificed".into());
         }
@@ -298,12 +317,18 @@ impl Uci {
         Self::parse_fen(arg, &mut b)?;
         let mut eval = SimpleScorer::new();
         let score = b.eval(&mut eval, &Node::root());
-        println!("result:{}", score);
+        Self::send(&format!("result:{}", score));
+        Ok(())
+    }
+
+    fn json_method(&mut self, request: &str) -> Result<(), String> {
+        let response = self.json_rpc.invoke(request);
+        Self::send(&format!("{}", response.unwrap()));
         Ok(())
     }
 
     fn ext_uci_version(&mut self, _arg: &Args) -> Result<(), String> {
-        println!("result:{}", Version::VERSION);
+        Self::send(&format!("result:{}", Version::VERSION));
         Ok(())
     }
 
@@ -311,7 +336,7 @@ impl Uci {
         let mut b = Board::new_empty();
         Self::parse_fen(arg, &mut b)?;
         let var = Self::parse_variation(arg, &b)?;
-        println!("result:{}", b.make_moves(&var).to_fen());
+        Self::send(&format!("result:{}", b.make_moves(&var).to_fen()));
         Ok(())
     }
 
@@ -320,7 +345,7 @@ impl Uci {
         let mut b = Board::new_empty();
         Self::parse_fen(arg, &mut b)?;
         let moves = b.legal_moves();
-        println!("result:{}", moves.uci());
+        Self::send(&format!("result:{}", moves.uci()));
         Ok(())
     }
 
@@ -442,9 +467,9 @@ impl Uci {
         // Example: After "position startpos" and "go infinite searchmoves e2e4 d2d4"
         // the engine should only search the two moves e2e4 and d2d4 in the initial position
         let _searchmoves = args.string_after("searchmoves");
-        self.log_debug_message("starting search with configuration ...");
-        self.log_debug_message(&format!("{}", self.engine.algo));
-        self.log_debug_message(&format!("{}", self.board));
+        // self.log_debug_message("starting search with configuration ...");
+        // self.log_debug_message(&format!("{}", self.engine.algo));
+        // self.log_debug_message(&format!("{}", self.board));
         info!("odonata: searching {} on tc {}", self.board.to_fen(), tc);
         self.engine.algo.board = self.board.clone();
         self.engine.search_start();
@@ -467,7 +492,7 @@ impl Uci {
         let mut c = Config::new();
         self.settings(&mut c);
         for (name, value) in c.iter() {
-            println!("option name {} {}", name, value);
+            Self::send(&format!("option name {} {}", name, value));
         }
     }
 
@@ -500,33 +525,30 @@ impl Uci {
     }
 
     pub fn uci_info(search_progress: &SearchProgress) {
-        println!("info {}", UciInfo(search_progress));
+        Self::send(&format!("info {}", UciInfo(search_progress)));
         if let Some(bm) = search_progress.bestmove {
             Self::print_bm_and_ponder(&bm, &search_progress.pv.as_ref().unwrap_or(&Variation::default()) );
         }
-        io::stdout().flush().ok();
-        info!("odonata -> gui: info {}", UciInfo(search_progress));
     }
 
     fn uci_info_string(&self, str: &str) {
-        println!("info string {}", str.replace("\n", "\ninfo string "));
+        Self::send(&format!("info string {}", str.replace("\n", "\ninfo string ")));
     }
 
     fn print_bm_and_ponder(bm: &Move, var: &Variation) {
-        print!("bestmove {}", bm.uci());
+        let mut output = format!("bestmove {}", bm.uci());
         if var.len() > 1 {
-            println!(" ponder {}", var[1].uci());
-        } else {
-            println!();
+            output = format!("{} ponder {}", output, var[1].uci());
         }
+        Self::send(&output)
     }
 
-    fn log_debug_message(&self, str: &str) {
-        if self.debug {
-            // replace "\n" with "info string "
-            println!("info string {}", str.replace("\n", "\ninfo string "));
-        }
-    }
+    // fn log_debug_message(&self, str: &str) {
+    //     if self.debug {
+    //         // replace "\n" with "info string "
+    //         Self::send(format!("info string {}", str.replace("\n", "\ninfo string ")));
+    //     }
+    // }
 }
 
 struct UciInfo<'a>(&'a SearchProgress);

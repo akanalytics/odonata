@@ -8,9 +8,15 @@ from textwrap import wrap
 import subprocess
 import os
 from time import perf_counter
+from jsonrpyc import Spec, RPC
 
+LOG_LEVEL = os.environ.get('RUST_LOG', 'WARNING').upper()
+if LOG_LEVEL=="TRACE":
+    LOG_LEVEL="DEBUG"
+logging.basicConfig(level=LOG_LEVEL)
 
 logger = logging.getLogger()
+
 
 
 class Bitwise:
@@ -934,8 +940,12 @@ class Odonata:
     def __init__(self, path: str = '', debug: bool = False) -> None:
         if not path:
             # try and look for Odonata executable
-            files = ["./odonata.exe", "./odonata",
-                     "./target/release/odonata.exe", "./target/release/odonata"]
+            files = [os.path.join(".", "odonata.exe"),
+                     os.path.join(".", "odonata"),
+                     os.path.join("target","release","odonata.exe"),
+                     os.path.join("target","release","odonata"),
+                     os.path.join("..", "..", "odonata","target","release","odonata.exe"),
+                     os.path.join("..", "..", "odonata","target","release","odonata") ]
             for f in files:
                 if os.path.isfile(f):
                     path = f
@@ -944,10 +954,13 @@ class Odonata:
                 raise ValueError(f"Unable to find executable in {files}")
 
         self.debug: bool = debug
+        logger.info(f"loading odonata from {path}\n")
+        import sys
         self.process: subprocess.Popen = subprocess.Popen(
             path,
             # bufsize=10000,
             universal_newlines=True,
+            # stderr=sys.__stderr__,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE
         )
@@ -958,6 +971,7 @@ class Odonata:
 
         # self.depth = str(depth)
         self.infos: List[str] = []
+        self.rpc = RPC(stdout=self.process.stdin, stdin=self.process.stdout, watch=False)
 
         # if parameters is None:
         #     parameters = {}
@@ -966,7 +980,6 @@ class Odonata:
         # for name, value in list(self._parameters.items()):
         #     self._set_option(name, value)
 
-        self._start_new_game()
 
     # def get_parameters(self) -> dict:
     #     """Returns current board position.
@@ -984,16 +997,18 @@ class Odonata:
         if not self.process.stdin:
             raise BrokenPipeError()
         if self.debug:
-            print("  >", command)
+            print("=>", command)
         self.process.stdin.write(f"{command}\n")
         self.process.stdin.flush()
 
     def _read_line(self) -> str:
         if not self.process.stdout:
             raise BrokenPipeError()
+        # if not self.process.stderr:
+        #     raise BrokenPipeError()
         text = self.process.stdout.readline().strip()
         if self.debug:
-            print("<", text)
+            print("<=", text)
         return text
 
     def set_option(self, name: str, value: Any) -> None:
@@ -1013,9 +1028,62 @@ class Odonata:
         req = f"ext:legal_moves fen {b.to_fen()}"
         return self.exec_command(req, res="result:")
 
+    # def version(self) -> str:
+    #     req = f"ext:version"
+    #     return self.exec_command(req, res="result:")
+
+
+    def call(self, method, args=(), kwargs=None, callback=None, block=0.001):
+        # json = Spec.request(method, id="id", params=args)
+        # if self.debug:
+        #     print("<=", json)
+
+
+        # default kwargs
+        if kwargs is None:
+            kwargs = {}
+
+        # check if the call is a notification
+        is_notification = callback is None and block <= 0
+
+        # create a new id for requests expecting a response
+        id = None
+        if not is_notification:
+            self.rpc._i += 1
+            id = self.rpc._i
+
+        # register the callback
+        if callback is not None:
+            self.rpc._callbacks[id] = callback
+
+        # store an empty result for the meantime
+        if block > 0:
+            self.rpc._results[id] = self.rpc.EMPTY_RESULT
+
+
+        # create the request
+        params = {"args": args, "kwargs": kwargs}
+        req = Spec.request(method, id=id, params=params)
+        if self.debug:
+            print("<=", req)
+        self.rpc.stdout.write(bytearray(req + "\n", "utf-8"))
+        self.rpc.stdout.flush()
+
+        # response = self.rpc.call("json_method", args=(), block=0.001)
+        text = self._read_line()  # .decode("utf-8").strip()
+        self.rpc._handle(text)
+        assert self.rpc._results[id] != self.rpc.EMPTY_RESULT
+        result = self.rpc._results[id]
+        del self.rpc._results[id]
+        if isinstance(result, Exception):
+            raise result
+        else:
+            return result
+
+
+
     def version(self) -> str:
-        req = f"ext:version"
-        return self.exec_command(req, res="result:")
+        return self.call("version", args=())
 
     def get_best_move(self, b: Board, depth: Optional[int] = None, millis: Optional[int] = None) -> Optional[str]:
         """Returns best move with current position on the board in uci notation or None if it's a mate."""
@@ -1300,11 +1368,12 @@ class Test:
         # assert str(b) == str(ColourFlipper().flip_board(ColourFlipper().flip_board(b)))
 
     def test_odonata(self):
-        odo = Odonata(debug=False)
+        odo = Odonata(debug=True)
         odo.is_ready()
         board = Board.parse_fen("r6k/8/8/8/8/8/8/R6K w - - 0 30")
         bm = odo.get_best_move(board, millis=200)
         assert bm == "a1a8"
+        print(f"{odo.version()}\n")
 
 
 def demo_1():
@@ -1456,17 +1525,19 @@ def demo_4():
 
     odo = Odonata()
     b = Board.parse_fen("r1k5/8/8/8/8/8/7P/R6K w - - 0 10")
+    def version(): Odonata.instance().version()
     def legals(): b.moves()
     def legals_hardcoded_fen(): odo.exec_command(
         req="ext:legal_moves fen r1k5/8/8/8/8/8/7P/R6K w - - 0 10", res="result:")
 
     print("\nCalculate calls per second using a hardcoded fen string.\nTypically 80% of the time is fen generation!")
+    print("version              calls/sec:", calc_calls_per_second(version))
     print("legals               calls/sec:", calc_calls_per_second(legals))
     print("legals_hardcoded_fen calls/sec:",
           calc_calls_per_second(legals_hardcoded_fen))
 
 
-def main():
+def tests():
     test = Test()
     test.test_square()
     test.test_bitboard()
@@ -1474,6 +1545,7 @@ def main():
     test.test_board()
     test.test_odonata()
 
+def demos():
     print("\n\nDemo 1\n======")
     demo_1()
 
@@ -1488,4 +1560,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    tests()
+    demos()
