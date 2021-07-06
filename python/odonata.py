@@ -997,7 +997,7 @@ class Odonata:
         if not self.process.stdin:
             raise BrokenPipeError()
         if self.debug:
-            print("=>", command)
+            logger.info("=>", command)
         self.process.stdin.write(f"{command}\n")
         self.process.stdin.flush()
 
@@ -1008,7 +1008,7 @@ class Odonata:
         #     raise BrokenPipeError()
         text = self.process.stdout.readline().strip()
         if self.debug:
-            print("<=", text)
+            logger.info("<=", text)
         return text
 
     def set_option(self, name: str, value: Any) -> None:
@@ -1036,7 +1036,7 @@ class Odonata:
     def call(self, method, args=(), kwargs=None, callback=None, block=0.001):
         # json = Spec.request(method, id="id", params=args)
         # if self.debug:
-        #     print("<=", json)
+        #     info("<=", json)
 
 
         # default kwargs
@@ -1065,7 +1065,7 @@ class Odonata:
         params = {"args": args, "kwargs": kwargs}
         req = Spec.request(method, id=id, params=params)
         if self.debug:
-            print("<=", req)
+            logger.info("<=", req)
         self.rpc.stdout.write(bytearray(req + "\n", "utf-8"))
         self.rpc.stdout.flush()
 
@@ -1368,12 +1368,12 @@ class Test:
         # assert str(b) == str(ColourFlipper().flip_board(ColourFlipper().flip_board(b)))
 
     def test_odonata(self):
-        odo = Odonata(debug=True)
+        odo = Odonata(debug=False)
         odo.is_ready()
         board = Board.parse_fen("r6k/8/8/8/8/8/8/R6K w - - 0 30")
         bm = odo.get_best_move(board, millis=200)
         assert bm == "a1a8"
-        print(f"{odo.version()}\n")
+        assert odo.version() != ""
 
 
 def demo_1():
@@ -1511,7 +1511,10 @@ def calc_calls_per_second(function: Callable) -> int:
     return (N * 1000) // int(elapsed * 1000)
 
 
-def demo_4():
+def benchmark_1():
+    # turn off logging for benchmark
+    logger.setLevel(logging.WARN)
+
     b = Board()
     print(b.grid)
     start = perf_counter()
@@ -1555,8 +1558,8 @@ def demos():
     print("\n\nDemo 3\n======")
     demo_3()
 
-    print("\n\nDemo 4\n======")
-    demo_4()
+    print("\n\nBenchmark 1\n======")
+    benchmark_1()
 
 
 if __name__ == "__main__":
