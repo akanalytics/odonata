@@ -5,8 +5,38 @@ use crate::globals::constants::*;
 use crate::position::Position;
 use crate::tags::Tag;
 use crate::bitboard::castling::CastlingRights;
+use std::fmt;
+use serde::{Serialize, Deserialize};
+
 
 pub struct Catalog;
+
+// http://computer-chess.org/doku.php?id=computer_chess:wiki:download:epd_contents
+
+#[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum CatalogSuite {
+    BratkoKopec,
+    WinAtChess,
+    Iq81,
+    Checkmate,
+    EndGame,
+    Pin,
+    Move,
+    Quiese,
+    MateIn2,
+    MateIn3,
+    MateIn4,
+    Ches960,
+    Perft,
+}
+
+
+impl fmt::Display for CatalogSuite {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 
 impl Catalog {
     pub const STARTING_POSITION_FEN: &'static str =
@@ -23,11 +53,6 @@ impl Catalog {
         "#;
         Position::parse_epd(epd).unwrap()
     }
-
-
- 
-     
-
     pub fn white_starting_position() -> Board {
         // FIXME: set calls
         Board::parse_fen(Self::STARTING_POSITION_FEN)
@@ -45,6 +70,30 @@ impl Catalog {
             .unwrap()
             .as_board()
     }
+
+
+    pub fn positions(suite: CatalogSuite) -> Vec<Position> {
+        match suite {
+            CatalogSuite::BratkoKopec => Self::bratko_kopec(),
+            CatalogSuite::WinAtChess => Self::win_at_chess(),
+            CatalogSuite::Iq81 => Self::iq(),
+            CatalogSuite::Checkmate => Self::checkmates(),
+            CatalogSuite::EndGame => Self::end_games(),
+            CatalogSuite::Pin => Self::pins(),
+            CatalogSuite::Move => Self::moves(),
+            CatalogSuite::Quiese => Self::quiese(),
+            CatalogSuite::MateIn2 => Self::mate_in_2(),
+            // CatalogSuite::MateIn3 => Self::mate_in_3(),
+            CatalogSuite::MateIn4 => Self::mate_in_4(),
+            // CatalogSuite::MateIn4 => Self::chess960(),
+            // CatalogSuite::MateIn4 => Self::perft(),
+            _ => Vec::new()
+
+        }
+    }
+
+
+
 
     pub fn checkmates() -> Vec<Position> {
         let str = r#"
@@ -913,6 +962,10 @@ mod tests {
     use super::*;
     use std::collections::HashSet;
 
+    #[test]
+    fn test_serde() {
+        assert_eq!(serde_json::to_string(&CatalogSuite::WinAtChess).unwrap(), r#""WinAtChess""#); 
+    }
 
     #[test]
     fn test_catalog_wac() {

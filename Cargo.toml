@@ -35,13 +35,17 @@ serde_json = "1.0"
 serde_with = "1.9.4"
 jsonrpc-core = "17.1.0"
 jsonrpc-derive = "17.1.0"
+strum = "0.21"
+strum_macros = "0.21"
 
 [dev-dependencies]
 criterion = "0.3"
 
 
+
 [build-dependencies]
-built = "0.5"
+built =  { version = "0.5", features = ["chrono", "semver"] }
+chrono = { version = "0.4", optional = true, default-features = false, features = ["clock"] }
 
 [[bench]]
 name = "benchmark"

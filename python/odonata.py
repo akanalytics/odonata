@@ -910,7 +910,7 @@ class Catalog:
         pass
 
     @classmethod
-    def positions(cls, name: str) -> List[Board]:
+    def positions(cls, name: str) -> List[Any]:
         return Odonata.instance().positions_catalog(name)
     
 
@@ -1387,10 +1387,10 @@ class Test:
 
     def test_catalog(self):
         odo = Odonata(debug=False)
-        positions = odo.positions_catalog("wac")
-        assert len(positions) == 300
-        for pos in positions:
-            print(f"{pos}\n")
+        positions = odo.positions_catalog("BratkoKopec")
+        assert len(positions) == 24, len(positions)
+        # for pos in positions:
+        #     print(f"'{pos}'")
 
     def test_odonata(self):
         odo = Odonata(debug=False)
@@ -1491,8 +1491,13 @@ everything but the edges of the board
 parse "{fen}" and show as a grid
 {Board.parse_fen(fen).grid}
 
+show some positions from the 'Bratko-Kopec' problem set
+{Catalog.positions("BratkoKopec")[0]}
+{Catalog.positions("BratkoKopec")[1]}
+{Catalog.positions("BratkoKopec")[2]}
 
-    ''')
+
+''')
 
 
 def demo_3():
@@ -1554,7 +1559,7 @@ def benchmark_1():
     odo = Odonata()
     b = Board.parse_fen("r1k5/8/8/8/8/8/7P/R6K w - - 0 10")
     def version(): Odonata.instance().version()
-    def catalog(): Catalog.positions("wac")
+    def catalog(): Catalog.positions("WinAtChess")
     def legals(): b.moves()
     def legals_hardcoded_fen(): odo.exec_command(
         req="ext:legal_moves fen r1k5/8/8/8/8/8/7P/R6K w - - 0 10", res="result:")

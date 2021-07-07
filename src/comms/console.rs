@@ -79,5 +79,6 @@ impl Console {
         println!("optimization : {}",   built_info::OPT_LEVEL);
         println!("rustc        : {}", built_info::RUSTC_VERSION);
         println!("features     : {}",  built_info::FEATURES_STR);
+        println!("compiled at  : {}",  built_info::BUILT_TIME_UTC);
     }
 }

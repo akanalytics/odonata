@@ -1,9 +1,11 @@
 use crate::version::Version;
-use crate::catalog::Catalog;
+use crate::catalog::{Catalog, CatalogSuite};
 use crate::position::Position;
+use crate::{logger::LogInit,info};
 // use serde_json::Value;
 use jsonrpc_core::{IoHandler, Result};
 use jsonrpc_derive::rpc;
+
 
 
 
@@ -45,7 +47,7 @@ pub trait Rpc {
 	fn version(&self) -> Result<String>;
 
 	#[rpc(name = "positionsCatalog")]
-	fn positions_catalog(&self, name: String) -> Result<Vec<Position>>;
+	fn positions_catalog(&self, suite: CatalogSuite) -> Result<Vec<Position>>;
 
 }
 
@@ -56,9 +58,9 @@ impl Rpc for RpcImpl {
         Ok(Version::VERSION.into())
     }
 
-	fn positions_catalog(&self, _name: String) -> Result<Vec<Position>> {
-        let positions = Catalog::win_at_chess();
-        Ok(positions)
+	fn positions_catalog(&self, suite: CatalogSuite) -> Result<Vec<Position>> {
+        info!("positions_catalog({})", suite);
+        Ok(Catalog::positions(suite))
     }
 }
 

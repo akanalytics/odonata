@@ -391,7 +391,7 @@ impl std::ops::Sub for ScoreWdl {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::json;
+    // use serde_json::json;
 
     #[test]
     fn color() {
