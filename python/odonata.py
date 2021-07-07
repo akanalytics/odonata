@@ -833,7 +833,7 @@ class Board():
     def _parse_fen_castling(fen_castling: str):
         if fen_castling == '-':
             return ""
-        if fen_castling not in "KQkq":
+        if any(c not in 'KQkq' for c in fen_castling):
             raise ValueError(
                 f'Invalid FEN: expected castling indicator but found "{fen_castling}"')
         return fen_castling
@@ -879,6 +879,9 @@ class Algo:
         bm = odo.get_best_move(b, self.depth, self.millis)
         self.results = odo.parse_search_results()
         return bm
+
+    def new_game(self):
+        Odonata.instance()._start_new_game()
 
     def nps(self) -> int:
         return int(self.results[-1]['nps'])
