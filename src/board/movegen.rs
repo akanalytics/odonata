@@ -457,7 +457,7 @@ mod tests {
     fn test_legal_variation() -> Result<(), String> {
         let b = Catalog::starting_position();
         let bd2 = Catalog::test_position();
-        let mvs = b.parse_uci_moves("a2a3 e7e6 b2b4")?;
+        let mvs = b.parse_uci_variation("a2a3 e7e6 b2b4")?;
         assert_eq!(b.is_legal_variation(&mvs), true);
         assert_eq!(bd2.board().is_legal_variation(&mvs), false);
         Ok(())
@@ -513,7 +513,7 @@ mod tests {
             let mut expected: Vec<String> = pos
                 .get("c1")
                 .unwrap()
-                .value()
+                .value_uci()
                 .split_ascii_whitespace()
                 .map(str::to_string)
                 .collect();

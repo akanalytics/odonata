@@ -9,8 +9,8 @@ use std::fmt;
 use std::time::Duration;
 use once_cell::sync::Lazy;
 use regex::Regex;
-use serde::{Serialize, Deserialize, Serializer, ser::SerializeMap};
-use serde_with::{DeserializeFromStr};
+use serde::{Serialize, Serializer, ser::SerializeMap};
+// use serde_with::{DeserializeFromStr};
 
 
 // #[derive(Clone, Debug)]
@@ -78,12 +78,10 @@ impl Tag {
 
     pub const ATTRIBUTES: &'static [&'static str] = &[Self::ACD, Self::BM, Self::PV];
 
-
-
     pub fn parse(b: &Board, key: &str, v: &str) -> Result<Tag, String> {
         Ok(match key {
-            Self::BM => Tag::BestMove(b.parse_san_choices(v)?),
-            Self::PV => Tag::Pv(b.parse_san_moves(v)?),
+            Self::BM => Tag::BestMove(b.parse_san_movelist(v)?),
+            Self::PV => Tag::Pv(b.parse_san_variation(v)?),
             Self::ID => Tag::Id(v.to_string()) ,
             Self::ACD => Tag::AnalysisCountDepth(v.parse::<Ply>().map_err(|e| e.to_string())?) ,
             Self::ACS => Tag::AnalysisCountSeconds(v.parse::<u32>().map_err(|e| e.to_string())?) ,
@@ -96,7 +94,7 @@ impl Tag {
             Self::RC => Tag::RepititionCount(v.parse::<u32>().map_err(|e| e.to_string())?),
             Self::NOOP => Tag::NoOp(v.to_string()),
             Self::SM => Tag::SuppliedMove(b.parse_san_move(v)?) ,
-            Self::SV => Tag::SuppliedVariation(b.parse_san_moves(v)?) ,
+            Self::SV => Tag::SuppliedVariation(b.parse_san_variation(v)?) ,
             Self::SQ => Tag::Squares(Bitboard::parse_squares(v)?),
             Self::TS => Tag::Timestamp("".to_string(), "".to_string()),
             _ if key.starts_with('D') => Tag::Perft( key[1..].parse::<u8>().map_err(|e| e.to_string())?, v.parse::<u128>().map_err(|e| e.to_string())?),
@@ -133,7 +131,7 @@ impl Tag {
         }
     }
 
-    pub fn value(&self) -> String {
+    pub fn value_uci(&self) -> String {
         match &self {
             Tag::None => "".to_string(),
             Tag::BestMove(mvs) => mvs.uci(),
@@ -151,6 +149,31 @@ impl Tag {
             Tag::NoOp(vec) => format!("{:?}", vec),
             Tag::SuppliedMove(mv) => mv.uci(),
             Tag::SuppliedVariation(movelist) => movelist.uci(),
+            Tag::Squares(bitboard) => bitboard.uci(),
+            Tag::Timestamp(date, time) => format!("{} {}", date, time),
+            Tag::Perft(_depth, count) => format!("{}", count),
+            Tag::Comment(_n, text) => format!("{}", text),
+        }
+    }
+
+    pub fn value(&self, b: &Board) -> String {
+        match &self {
+            Tag::None => "".to_string(),
+            Tag::BestMove(mvs) => b.to_san_movelist(mvs),
+            Tag::Pv(variation) => b.to_san_variation(variation, None),
+            Tag::Id(s) => format!("{}", s),
+            Tag::AnalysisCountDepth(n) => format!("{}", n),
+            Tag::AnalysisCountSeconds(n) => format!("{}", n),
+            Tag::ChessClock(_duration) => format!("{}", "na"), // FIXME!
+            Tag::CentipawnEvaluation(score) => score.to_string(),
+            Tag::DirectMate(n) => format!("{}", n),
+            Tag::FullMoveNumber(n) => format!("{}", n),
+            Tag::HalfMoveClock(n) => format!("{}", n),
+            Tag::PredictedMove(mv) => b.to_san(mv),
+            Tag::RepititionCount(n) => format!("{}", n),
+            Tag::NoOp(vec) => format!("{:?}", vec),
+            Tag::SuppliedMove(mv) => b.to_san(mv),
+            Tag::SuppliedVariation(variation) => b.to_san_variation(variation, None),
             Tag::Squares(bitboard) => bitboard.uci(),
             Tag::Timestamp(date, time) => format!("{} {}", date, time),
             Tag::Perft(_depth, count) => format!("{}", count),
@@ -178,7 +201,7 @@ impl Serialize for Tags {
         let mut entries = self.tags.iter().collect::<Vec<_>>();
         entries.sort_by(|x,y| x.0.cmp(&y.0));  // sort by key
         for (k, v) in entries.iter() {
-            map.serialize_entry(k, &v.value())?;
+            map.serialize_entry(k, &v.value_uci())?;
         }
         map.end()
     }
@@ -196,8 +219,12 @@ impl Tags {
     pub fn new() -> Self {
         Tags::default()
     }
-    pub fn as_hash_map(&self) -> HashMap<String, String> {
-        HashMap::<String, String>::new()
+    pub fn as_hash_map(&self, b: &Board) -> HashMap<String, String> {
+        let mut map = HashMap::<String, String>::new();
+        for (k,t) in self.tags.iter() {
+            map.insert(k.clone(), t.value(b));
+        }
+        map
     }
 
     pub fn get(&self, key: &str) -> &Tag {
@@ -334,7 +361,7 @@ impl fmt::Display for Tags {
         let mut entries = self.tags.iter().collect::<Vec<_>>();
         entries.sort_by(|x,y| x.0.cmp(&y.0));  // sort by key
         for (k, t) in entries {
-            let v = t.value();
+            let v = t.value_uci();
             if v.is_empty() {
                 write!(f, " {};", k)?;
             } else if v.contains(char::is_whitespace) {
@@ -392,8 +419,8 @@ mod tests {
         
         tags.set(Tag::Comment(0, "Hello".into()));
         tags.set(Tag::Comment(1, "World".into()));
-        assert_eq!(tags.get("c0").value(), "Hello");
-        assert_eq!(tags.get("c1").value(), "World");
+        assert_eq!(tags.get("c0").value_uci(), "Hello");
+        assert_eq!(tags.get("c1").value_uci(), "World");
         let b = Board::default();
         assert_eq!(Tag::parse(&b, "c0", "Hello World"), Ok(Tag::Comment(0, "Hello World".to_string())));
     

@@ -210,7 +210,7 @@ mod tests {
             "h7h6 b6c7 d3d2 c7f4 d2b2 a1a8 g8h7 e6f8 h7g8"
         );
         algo.repetition.new_game();
-        let mvs = b.parse_uci_moves(s).unwrap();
+        let mvs = b.parse_uci_variation(s).unwrap();
         for mv in mvs.iter() {
             b = b.make_move(&mv);
             algo.repetition.push(&mv, &b);
@@ -234,7 +234,7 @@ mod tests {
             .set_callback(Uci::uci_info)
             .build();
         algo.repetition.new_game();
-        let mvs = b.parse_uci_moves(s).unwrap();
+        let mvs = b.parse_uci_variation(s).unwrap();
         for mv in mvs.iter() {
             b = b.make_move(&mv);
             algo.repetition.push(&mv, &b);

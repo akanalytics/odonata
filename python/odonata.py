@@ -1387,7 +1387,10 @@ class Test:
 
     def test_catalog(self):
         odo = Odonata(debug=False)
-        assert len(odo.positions_catalog("wac")) == 300
+        positions = odo.positions_catalog("wac")
+        assert len(positions) == 300
+        for pos in positions:
+            print(f"{pos}\n")
 
     def test_odonata(self):
         odo = Odonata(debug=False)

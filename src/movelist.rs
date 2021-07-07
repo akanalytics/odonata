@@ -359,7 +359,7 @@ impl Board {
         Err(format!("Move {} is not legal for board {}", mv, self.to_fen()))
     }
 
-    pub fn parse_uci_choices(&self, s: &str) -> Result<MoveList, String> {
+    pub fn parse_uci_movelist(&self, s: &str) -> Result<MoveList, String> {
         let mut moves = MoveList::new();
         let s = s.replace(",", " ");
         let s = strip_move_numbers(&s);
@@ -369,7 +369,7 @@ impl Board {
         Ok(moves)
     }
 
-    pub fn parse_uci_moves(&self, s: &str) -> Result<Variation, String> {
+    pub fn parse_uci_variation(&self, s: &str) -> Result<Variation, String> {
         let mut board = self.clone();
         let mut moves = Variation::new();
         let s = s.replace(",", " ");
@@ -386,7 +386,7 @@ impl Board {
         Parse::move_san(mv, self)
     }
 
-    pub fn parse_san_choices(&self, s: &str) -> Result<MoveList, String> {
+    pub fn parse_san_movelist(&self, s: &str) -> Result<MoveList, String> {
         let mut moves = MoveList::new();
         let s = s.replace(",", " ");
         let s = strip_move_numbers(&s);
@@ -396,7 +396,7 @@ impl Board {
         Ok(moves)
     }
 
-    pub fn parse_san_moves(&self, s: &str) -> Result<Variation, String> {
+    pub fn parse_san_variation(&self, s: &str) -> Result<Variation, String> {
         let mut board = self.clone();
         let mut moves = Variation::new();
         let s = s.replace(",", " ");
@@ -465,7 +465,23 @@ impl Board {
         s
     }
 
-    pub fn to_san_moves(&self, moves: &Variation, vec_tags: Option<&Vec<Tags>>) -> String {
+
+    pub fn to_san_movelist(&self, moves: &MoveList) -> String {
+        let mut v = Vec::new();
+        for mv in moves.iter() {
+            debug_assert!(
+                self.is_legal_move(mv),
+                "mv {} is illegal for board {}",
+                mv,
+                self.to_fen()
+            );
+            v.push(self.to_san(mv));
+        }
+        v.join(" ")
+    }
+
+
+    pub fn to_san_variation(&self, moves: &Variation, vec_tags: Option<&Vec<Tags>>) -> String {
         let mut s = String::new();
         let mut board = self.clone();
         for (i, mv) in moves.iter().enumerate() {
@@ -574,22 +590,22 @@ mod tests {
 
         let board = Catalog::starting_position();
 
-        let list = board.parse_uci_choices("a2a3, b2b3  c2c4  ")?;
+        let list = board.parse_uci_movelist("a2a3, b2b3  c2c4  ")?;
         assert_eq!(list.to_string(), "a2a3, b2b3, c2c4");
 
-        let list = board.parse_uci_choices("1. a2a3, 2. b2b3  c2c4  ")?;
+        let list = board.parse_uci_movelist("1. a2a3, 2. b2b3  c2c4  ")?;
         assert_eq!(list.to_string(), "a2a3, b2b3, c2c4");
 
-        let list = board.parse_uci_moves("1. a2a3 h7h6 2. b2b3 h6h5")?;
+        let list = board.parse_uci_variation("1. a2a3 h7h6 2. b2b3 h6h5")?;
         assert_eq!(list.to_string(), "a2a3, h7h6, b2b3, h6h5");
 
         let mv = board.parse_uci_move("a2a3")?;
         let board2 = board.make_move(&mv);
-        let list = board2.parse_uci_moves("1. .. h7h6 2. b2b3 h6h5")?;
+        let list = board2.parse_uci_variation("1. .. h7h6 2. b2b3 h6h5")?;
 
         assert_eq!(list.to_string(), "h7h6, b2b3, h6h5");
 
-        let list = board.parse_san_choices("Nc3, c3  Pc2c3")?;
+        let list = board.parse_san_movelist("Nc3, c3  Pc2c3")?;
         assert_eq!(list.to_string(), "b1c3, c2c3, c2c3");
 
         let san = r"
@@ -615,9 +631,9 @@ mod tests {
         s += "h4g5, h5g3, f2g3, h6g5, h1h8, g7h8, ";
 
         s += "e1d2, e8c8, c4e3, e7e6, a1h1, b7b5";
-        assert_eq!(board.parse_san_moves(san)?.to_string(), s);
+        assert_eq!(board.parse_san_variation(san)?.to_string(), s);
         let s1: String = board
-            .to_san_moves(&board.parse_san_moves(san)?, None)
+            .to_san_variation(&board.parse_san_variation(san)?, None)
             .split_whitespace()
             .collect();
         let s2: String = san.split_whitespace().collect();

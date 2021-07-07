@@ -146,7 +146,7 @@ impl fmt::Display for Game {
         }
         let mut moves = self
             .starting_pos
-            .to_san_moves(&self.moves, Some(&self.annotations));
+            .to_san_variation(&self.moves, Some(&self.annotations));
         if !f.alternate() {
             moves = moves.replace("\n", " ");
         }

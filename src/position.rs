@@ -10,10 +10,9 @@ use crate::types::{Color, Ply};
 use crate::bitboard::castling::CastlingRights;
 use crate::utils::StringUtils;
 use crate::tags::{Tags, Tag};
-use regex::Regex;
-use once_cell::sync::Lazy;
-use serde::{Serialize, Deserialize};
-
+use serde::{Serialize, ser::SerializeMap, Serializer, Deserialize};
+use std::convert::{TryFrom, Into};
+use std::collections::HashMap;
 
 use std::fmt;
 
@@ -26,13 +25,69 @@ use std::fmt;
 // https://www.chessprogramming.org/Extended_Position_Description
 // http://www.talkchess.com/forum3/viewtopic.php?t=69640&start=20
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Default, Debug, Deserialize, PartialEq, Eq)]
+#[serde(try_from = "HashMap<String,String>")]
+// #[serde(into = "HashMap<String,String>")]
 pub struct Position {
     board: Board,
-
-    #[serde(skip_deserializing)]
     tags: Tags,
 }
+
+
+impl TryFrom<HashMap<String, String>> for Position {
+    type Error = String;
+
+    fn try_from(map: HashMap<String, String> ) -> Result<Self, Self::Error> {
+        let board_str = map.get("fen").ok_or("no key 'board'")?;
+        let mut p = Position {
+            board: Board::parse_fen(board_str)?,
+            tags: Tags::new(),
+        };
+        for (k,v) in map.iter() {
+            if k == "fen" {
+                continue;
+            }
+            let tag = Tag::parse(p.board(), k, v)?;
+            p.set(tag);
+        }
+        Ok(p)
+    }
+}
+
+impl Into<HashMap<String, String>> for Position {
+    fn into(self) -> HashMap<String,String> {
+        let mut map = self.tags.as_hash_map(self.board());
+        map.insert("fen".to_string(), self.board().to_fen());
+        map
+    }
+}
+ 
+// ordered with fen first, then alphabetically by tag-key
+impl Serialize for Position {
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        // let mut s = serializer.serialize_struct("Position", 2)?;
+        // s.serialize_field("board", self.board);
+        let mut m = s.serialize_map(None)?;
+        m.serialize_entry("fen", &self.board().to_fen())?;
+        let map = self.tags.as_hash_map(self.board());
+        let mut entries = map.iter().collect::<Vec<_>>();
+        entries.sort_by(|x,y| x.0.cmp(&y.0));  // sort by key
+        for (k, v) in entries.iter() {
+            m.serialize_entry(k, &v)?;
+        }
+        m.end()
+    }
+}
+
+
+
+
+
+
+
 
 /// builder methods
 impl Position {
@@ -228,9 +283,9 @@ impl Position {
     // }
 
 
-    pub fn draw_reject(&self) -> bool {
-        self.tags.as_hash_map().get(Self::DRAW_REJECT).is_some()
-    }
+    // pub fn draw_reject(&self) -> bool {
+    //     self.tags.as_hash_map().get(Self::DRAW_REJECT).is_some()
+    // }
 
     // pub fn validate(&self) -> Result<(), String> {
     //     for &k in Self::ATTRIBUTES {
@@ -348,10 +403,12 @@ mod tests {
     }
 
     #[test]
-    fn test_serde() {
-        let pos = Position::default();
-        assert_eq!(serde_json::to_string(&pos).unwrap(), "{\"board\":\"8/8/8/8/8/8/8/8 w - - 0 1\"}"); 
-        assert_eq!(serde_json::from_str::<Position>("{\"board\":\"8/8/8/8/8/8/8/8 w - - 0 1\"}").unwrap(), pos); 
+    fn test_serde() -> Result<(), String> {
+        let mut pos = Position::from_board(Catalog::starting_position());
+        pos.set_operation(Position::BM, "e4")?;
+        assert_eq!(serde_json::to_string(&pos).unwrap(), r#"{"fen":"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1","bm":"e4"}"#); 
+        assert_eq!(serde_json::from_str::<Position>(r#"{"bm":"e2e4","fen":"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"}"#).unwrap(), pos); 
+        Ok(())
     }
 
 
