@@ -491,7 +491,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_threading() {
-        for &i in [1, 2, 3, 4, 8, 12, 24].iter() {
+        for &i in [1, 2, 3, 4, 8, 16, 32].iter() {
             for &shared in &[true] {
                 let mut eng = Engine::new();
                 eng.algo.set_timing_method(TimeControl::Depth(7));
