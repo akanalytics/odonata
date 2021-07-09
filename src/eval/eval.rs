@@ -191,7 +191,7 @@ pub struct SimpleScorer {
     pub contempt: i32,
     pub tempo: i32,
     pub material_scores: [i32; Piece::len()],
-    pub bishop_pair: i32,
+    pub bishop_pair: Weight,
     // pub cache: TranspositionTable,
     // pub qcache: TranspositionTable,
     pub cache_eval: bool,
@@ -250,10 +250,7 @@ impl Component for SimpleScorer {
             "eval.draw_score_contempt",
             &format!("type spin min -10000 max 10000 default {}", self.contempt),
         );
-        c.set(
-            "eval.bishop_pair",
-            &format!("type spin min -10000 max 10000 default {}", self.bishop_pair),
-        );
+        c.set_weight("eval.bishop_pair", &self.bishop_pair);
         c.set(
             "eval.tempo",
             &format!("type spin min -1000 max 1000 default {}", self.tempo),
@@ -293,7 +290,7 @@ impl Component for SimpleScorer {
         self.material = c.bool("eval.material").unwrap_or(self.material);
         self.phasing = c.bool("eval.phasing").unwrap_or(self.phasing);
         self.undefended_piece = c.int("eval.mobility.undef_piece").unwrap_or(self.undefended_piece as i64) as i32;
-        self.bishop_pair = c.int("eval.material.bishop_pair").unwrap_or(self.bishop_pair as i64) as i32;
+        self.bishop_pair = c.weight("eval.material.bishop_pair", &self.bishop_pair);
         self.trapped_piece = c.int("eval.mobility.trapped_piece").unwrap_or(self.trapped_piece as i64) as i32;
         self.undefended_sq = c.int("eval.mobility.undef_sq").unwrap_or(self.undefended_sq as i64) as i32;
         self.pawn_doubled = c.int("eval.pawn.doubled").unwrap_or(self.pawn_doubled as i64) as i32;
@@ -369,7 +366,7 @@ impl SimpleScorer {
             phasing: true,
             mobility_phase_disable: 80,
             min_depth_mob: 1,
-            bishop_pair: 30,
+            bishop_pair: Weight::new(30, 100),
             undefended_piece: 6,
             undefended_sq: 3,
             trapped_piece: -10,
@@ -445,7 +442,7 @@ impl SimpleScorer {
 
         let ma = if self.material {
             let mat = Material::from_board(board);
-            self.w_eval_material(&mat)
+            self.w_eval_material(&mat).interpolate(board.phase())
         } else {
             0
         };
@@ -607,21 +604,22 @@ impl SimpleScorer {
     // }
 
     // updated on capture & promo
-    pub fn w_eval_material(&self, mat: &Material) -> i32 {
-        let mut score = Piece::ALL_BAR_KING
+    pub fn w_eval_material(&self, mat: &Material) -> Weight {
+        let score = Piece::ALL_BAR_KING
             .iter()
             .map(|&p| {
                 self.material_scores[p] * (mat.counts(Color::White, p) - mat.counts(Color::Black, p))
             })
             .sum();
 
+        let mut weight = Weight::new(score, score);
         if mat.counts(Color::White, Piece::Bishop) >= 2 {
-            score += self.bishop_pair
+            weight = weight + self.bishop_pair
         }
         if mat.counts(Color::Black, Piece::Bishop) >= 2 {
-            score -= self.bishop_pair
+            weight = weight - self.bishop_pair
         }
-        score
+        weight
         // let mut total = 0_i32;
         // }
         // for &p in &Piece::ALL_BAR_NONE {
@@ -677,7 +675,8 @@ impl Board {
     pub fn eval_material(&self, eval: &SimpleScorer) -> Score {
         MATERIAL.increment();
         let m = Material::from_board(self);
-        let s = eval.w_eval_material(&m);
+        let weight = eval.w_eval_material(&m);
+        let s = weight.interpolate(self.phase());
         Score::from_cp(self.signum() * s)
     }
     #[inline]
@@ -705,7 +704,7 @@ mod tests {
         let eval = &mut SimpleScorer::new();
         assert_eq!(board.eval(eval, &Node::root()), Score::from_cp(0));
 
-        let starting_pos_score = 8 * 100 + 2 * 325 + 2 * 350 + 2 * 500 + 900 + 30; // (bishop pair)
+        let starting_pos_score = 8 * 100 + 2 * 325 + 2 * 350 + 2 * 500 + 900 + (30+100)/2; // (bishop pair, half the pieces)
         let board = Catalog::white_starting_position();
         assert_eq!(board.eval_material(eval), Score::from_cp(starting_pos_score));
 

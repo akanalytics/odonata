@@ -1,4 +1,5 @@
 use std::iter;
+use std::fmt;
 
 //
 // This impl 50% faster than manipulating pairs of integers separately...
@@ -10,7 +11,7 @@ use std::iter;
 
 
 // essntially models the score bonus for s=start or e=end of game
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
 pub struct Weight(i32, i32);
 
 
@@ -37,12 +38,19 @@ impl Weight {
     }
 }
 
-impl Default for Weight {
-    #[inline]
-    fn default() -> Self {
-        Weight::new(0, 0)
+// impl Default for Weight {
+//     #[inline]
+//     fn default() -> Self {
+//         Weight::new(0, 0)
+//     }
+// }
+
+impl fmt::Display for Weight {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({}, {})", self.s(), self.e())
     }
 }
+
 
 impl iter::Sum for Weight {
     fn sum<I>(iter: I) -> Self

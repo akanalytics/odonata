@@ -4,6 +4,7 @@ use std::fmt;
 use once_cell::sync::Lazy;
 use crate::{info, logger::LogInit};
 use std::env;
+use crate::eval::weight::Weight;
 
 
 pub trait Component {
@@ -47,11 +48,22 @@ impl Config {
             }
         }
         if !config.is_empty() {
-            info!("Using configuration\n{}", config);
+            warn!("Using configuration\n{}", config);
         } else {
             info!("No configuration overrides");
         }
         config
+    }
+
+    pub fn set_weight(&mut self, k: &str, w: &Weight) {
+        let (k1, k2) = (k.to_string() + ".S", k.to_string() + ".E");
+        let s = "type spin min -9999 max 9999 default ".to_string();
+        if self.settings.insert(k1.to_owned(), s.clone() + w.s().to_string().as_str()).is_none() {
+            self.insertion_order.push(k1);
+        }
+        if self.settings.insert(k2.to_owned(), s + w.e().to_string().as_str()).is_none() {
+            self.insertion_order.push(k2);
+        }
     }
 
     pub fn set(&mut self, k: &str, v: &str) -> Config {
@@ -82,6 +94,17 @@ impl Config {
 
     pub fn combo(&self, name: &str) -> Option<String> {
         self.settings.get(name).cloned()
+    }
+
+    pub fn weight(&self, name: &str, default: &Weight) -> Weight {
+        let (mut s, mut e) = (default.s(), default.e());
+        if let Some(v) = self.settings.get(&(name.to_string() + ".S")) {
+            s = v.parse::<i32>().unwrap_or(default.s());
+        }
+        if let Some(v) = self.settings.get(&(name.to_string() + ".E")) {
+            e = v.parse::<i32>().unwrap_or(default.e());
+        }
+        Weight::new(s, e)
     }
 
     pub fn int(&self, name: &str) -> Option<i64> {
