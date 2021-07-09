@@ -1,6 +1,8 @@
 use crate::version::Version;
 use crate::catalog::{Catalog, CatalogSuite};
 use crate::position::Position;
+use crate::board::Board;
+use crate::tags::Tag;
 use crate::{logger::LogInit,info};
 // use serde_json::Value;
 use jsonrpc_core::{IoHandler, Result};
@@ -49,6 +51,8 @@ pub trait Rpc {
 	#[rpc(name = "positionsCatalog")]
 	fn positions_catalog(&self, suite: CatalogSuite) -> Result<Vec<Position>>;
 
+	#[rpc(name = "eval")]
+	fn eval(&self, board: Board) -> Result<Position>;
 }
 
 
@@ -62,6 +66,15 @@ impl Rpc for RpcImpl {
         info!("positions_catalog({})", suite);
         Ok(Catalog::positions(suite))
     }
+
+	fn eval(&self, board: Board) -> Result<Position> {
+        let res = Tag::Result( board.outcome().as_pgn());
+        let mut p = Position::from_board(board);
+        p.set(res);
+        Ok(p)
+    }
+
+
 }
 
 

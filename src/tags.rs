@@ -46,6 +46,7 @@ pub enum Tag {
     HalfMoveClock(u32),
     PredictedMove(Move),
     RepititionCount(u32),
+    Result(String),
     NoOp(String),
     SuppliedMove(Move),
     SuppliedVariation(Variation),
@@ -73,6 +74,7 @@ impl Tag {
     pub const SM: &'static str = "sm";
     pub const SV: &'static str = "sv";
     pub const SQ: &'static str = "Sq";
+    pub const RES: &'static str = "Res";
     pub const TS: &'static str = "ts";
     pub const DRAW_REJECT: &'static str = "draw_reject";
 
@@ -92,6 +94,7 @@ impl Tag {
             Self::HMVC => Tag::HalfMoveClock(v.parse::<u32>().map_err(|e| e.to_string())?),
             Self::PM => Tag::PredictedMove(b.parse_san_move(v)?),
             Self::RC => Tag::RepititionCount(v.parse::<u32>().map_err(|e| e.to_string())?),
+            Self::RES => Tag::Result(v.to_string()),
             Self::NOOP => Tag::NoOp(v.to_string()),
             Self::SM => Tag::SuppliedMove(b.parse_san_move(v)?) ,
             Self::SV => Tag::SuppliedVariation(b.parse_san_variation(v)?) ,
@@ -121,6 +124,7 @@ impl Tag {
             Tag::HalfMoveClock(_) => "hmvc".to_string(),
             Tag::PredictedMove(_) => "pm".to_string(),
             Tag::RepititionCount(_) => "rc".to_string(),
+            Tag::Result(_) => "Res".to_string(),
             Tag::NoOp(_) => "noop".to_string(),
             Tag::SuppliedMove(_) => Self::SM.to_string(),
             Tag::SuppliedVariation(_) => Self::SV.to_string(),
@@ -146,6 +150,7 @@ impl Tag {
             Tag::HalfMoveClock(n) => format!("{}", n),
             Tag::PredictedMove(mv) => mv.uci(),
             Tag::RepititionCount(n) => format!("{}", n),
+            Tag::Result(s) => format!("{}", s),
             Tag::NoOp(vec) => format!("{:?}", vec),
             Tag::SuppliedMove(mv) => mv.uci(),
             Tag::SuppliedVariation(movelist) => movelist.uci(),
@@ -171,6 +176,7 @@ impl Tag {
             Tag::HalfMoveClock(n) => format!("{}", n),
             Tag::PredictedMove(mv) => b.to_san(mv),
             Tag::RepititionCount(n) => format!("{}", n),
+            Tag::Result(r) => format!("{}", r),
             Tag::NoOp(vec) => format!("{:?}", vec),
             Tag::SuppliedMove(mv) => b.to_san(mv),
             Tag::SuppliedVariation(variation) => b.to_san_variation(variation, None),

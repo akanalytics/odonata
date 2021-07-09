@@ -3,6 +3,11 @@
 Milestones ('m') are bundled into Releases.  
 
 # Unreleased
+#### m 0.3.23
+- use json-rpc to communicate from python
+- add python methods for retreiving epd positions - wac, bk test suites etc
+- added checkmate and draw detenction to python interface
+
 #### m 0.3.22
 - bishop pair bonus in eval
 - avoid null pruning near frontier 

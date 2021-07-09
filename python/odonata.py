@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from __future__ import annotations
-from typing import Any, MutableSet, Iterator, Optional, Dict, Callable
+from typing import Any, MutableSet, Iterator, NamedTuple, Optional, Dict, Callable
 from typing import List, Iterable
 import logging
 from textwrap import wrap
@@ -10,6 +10,7 @@ import os
 from time import perf_counter
 import signal
 import sys
+from dataclasses import dataclass
 from jsonrpyc import Spec, RPC
 
 LOG_LEVEL = os.environ.get('RUST_LOG', 'WARNING').upper()
@@ -588,6 +589,8 @@ class Board():
                 attacks.append(dest)
         return attacks
 
+    def eval(self, _params = None) -> Tags:
+        return Odonata.instance().eval(self) 
 
     def pseudo_legal_moves(self) -> List[Move]:
         return []  # MoveGenBB().pseudo_legal_moves(self)
@@ -845,6 +848,35 @@ class Board():
         else:
             return Square.parse(fen_en_passant)
 
+@dataclass
+class Tags:
+    cp: Optional[int] = None
+    bm: Optional[List[Move]] = None
+    pv: Optional[List[Move]] = None
+    sm: Optional[Move] = None
+    acd: Optional[int] = None
+    acs: Optional[int] = None
+    acn: Optional[int] = None
+    ce: Optional[int] = None
+    Res: Optional[str] = None  # result 1-0 or 1/2-1/2 or * for in progress or ILLEGAL for illegal position
+    Acsl: Optional[int] = None # analysis count selective depth 
+    Check: Optional[bool] = None    
+    Mat: Optional[str] = None
+    
+
+
+# quiescent eval = search(0)
+# static eval sce/qce/cp
+# add to Board which becomes Position
+# Termination string
+
+
+
+
+
+        
+
+
 
 class Eval:
     def __init__(self) -> None:
@@ -1029,10 +1061,16 @@ class Odonata:
         self._put(f"setoption name {name} value {value}")
         self.is_ready()
 
-    # can be mate etc not just cp
     def static_eval(self, b: Board) -> str:
         req = f"ext:static_eval fen {b.to_fen()}"
         return self.exec_command(req, res="result:")
+
+    # can be mate etc not just cp
+    def eval(self, b: Board) -> Tags:
+        dict = self.call("eval", args=[b.to_fen()])
+        dict.pop('fen', None)  # remove the 'fen' key
+        return Tags(**dict)
+        #return Tags(Res=dict['Res'])
 
     def make_move(self, b: Board, m: Move) -> Board:
         req = f"ext:make_moves fen {b.to_fen()} moves {m}"
@@ -1434,14 +1472,19 @@ static evaluation
 {eval.static_eval(b)}    
 
 white checkmates black 
-{eval.static_eval(Board.parse_fen("k6Q/8/K7/8/8/8/8/8 b - - 0 1"))}    
+{Board.parse_fen("k6Q/8/K7/8/8/8/8/8 b - - 0 1").eval().Res}    
 
 black checkmates white
-{eval.static_eval(Board.parse_fen("K6q/8/k7/8/8/8/8/8 w - - 0 1"))}    
+{Board.parse_fen("K6q/8/k7/8/8/8/8/8 w - - 0 1").eval().Res}    
 
-stalemate isnt working yet!
-{eval.static_eval(Board.parse_fen("k7/1R6/K7/8/8/8/8/8 b - - 0 1"))}    
-legal moves are {Board.parse_fen("k7/1R6/K7/8/8/8/8/8 b - - 0 1").moves()}
+stalemate
+{Board.parse_fen("k7/1R6/K7/8/8/8/8/8 b - - 0 1").eval().Res}    
+
+game in progress
+{Board.parse_fen("k7/1R6/K7/8/p7/8/8/8 b - - 45 1").eval().Res}    
+
+75 move rule
+{Board.parse_fen("k7/1R6/K7/8/p7/8/8/8 b - - 150 1").eval().Res}    
 
 best move is...
 {Algo(depth=6).search(b)}
