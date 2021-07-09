@@ -1584,7 +1584,7 @@ def calc_calls_per_second(function: Callable) -> int:
     for _ in range(N):
         function()
     elapsed = perf_counter() - start
-    return (N * 1000) // int(elapsed * 1000)
+    return (N * 10000) // int(elapsed * 10000)
 
 
 def benchmark_1():
