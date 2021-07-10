@@ -366,7 +366,7 @@ impl SimpleScorer {
             phasing: true,
             mobility_phase_disable: 80,
             min_depth_mob: 1,
-            bishop_pair: Weight::new(30, 100),
+            bishop_pair: Weight::new(40, 100),
             undefended_piece: 6,
             undefended_sq: 3,
             trapped_piece: -10,
