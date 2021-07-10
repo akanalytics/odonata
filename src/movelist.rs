@@ -481,7 +481,7 @@ impl Board {
     }
 
 
-    pub fn to_san_variation(&self, moves: &Variation, vec_tags: Option<&Vec<Tags>>) -> String {
+    pub fn to_san_variation(&self, moves: &Variation, _vec_tags: Option<&Vec<Tags>>) -> String {
         let mut s = String::new();
         let mut board = self.clone();
         for (i, mv) in moves.iter().enumerate() {

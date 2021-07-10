@@ -81,6 +81,19 @@ pub trait BitboardAttacks {
     }
 
     #[inline]
+    fn pawn_front_span(&self, c: Color, pawn_sq: Square) -> Bitboard {
+        let pawn = pawn_sq.as_bb();
+        let atts = pawn.shift(c.pawn_capture_east()) | pawn.shift(c.pawn_capture_west());
+        if c == Color::White {
+            (pawn | atts).fill_north()
+        }
+        else {
+            (pawn | atts).fill_south()
+        }
+    }
+
+
+    #[inline]
     fn open_files(pawns: Bitboard) -> Bitboard {
         !pawns.fill_south().fill_north()
     }

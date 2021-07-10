@@ -68,21 +68,21 @@ const PAWN_PST_MG: [i32; 64] = [
 40, 40, 40, 40, 40, 40, 40, 40,
  10, 10, 10, 10, 10, 10, 10, 10,
   5,  5,  5, 10, 10,  5,  5,  5,
- -9, -5,  -5, 20, 20, -5,  -5, -9,
+ -9, 0,  0, 20, 20, -5,  -5, -9,
  -5,-5, -9,  0,  0, -9, -5, -5,
- 10, 15, 15,-35,-35, 15, 15,  10,
+ 9, 15, 15,-35,-35, 15, 15,  10,
  0,  0,  0,  0,  0,  0,  0,  0];
 
 #[rustfmt::skip]
  const PAWN_PST_EG: [i32; 64] = [
-   0,   0,   0,   0,   0,   0,   0,   0, 
- 160, 160, 160, 160, 160, 160, 160, 160,
-  80,  80,  80,  80,  80,  80,  80,  80, 
-  20,  20,  20,  20,  20,  20,  20,  20, 
-  10,  10,  10,  10,  10,  10,  10,  10, 
-   5,   5,   5,   5,   5,   5,   5,   5, 
-   0,   0,   0,   0,   0,   0,   0,   0, 
-   0,   0,   0,   0,   0,   0,   0,   0];
+ 0,  0,  0,  0,  0,  0,  0,  0,
+ 60, 60, 60, 60, 60, 60, 60, 60,
+ 40, 40, 40, 40, 40, 40, 40, 40,
+ 20, 20, 20, 20, 20, 20, 20, 20,
+ 10, 10, 10, 10, 10, 10, 10, 10,
+  5,  5,  5,  5,  5,  5,  5,  5,
+  0,  0,  0,  0,  0,  0,  0,  0,
+  0,  0,  0,  0,  0,  0,  0,  0];
 
 #[rustfmt::skip]
 const KNIGHT_PST: [i32; 64] = [
@@ -187,6 +187,7 @@ pub struct SimpleScorer {
     pub trapped_piece: i32,
     pub pawn_doubled: Weight,
     pub pawn_isolated: Weight,
+    pub pawn_passed: Weight,
     pub pawn_shield: Weight,
     pub rook_open_file: i32,
     pub phasing: bool,
@@ -243,6 +244,7 @@ impl Component for SimpleScorer {
             &format!("type spin min -200 max 200 default {}", self.trapped_piece),
         );
         c.set_weight("eval.pawn.isolated", &self.pawn_isolated);
+        c.set_weight("eval.pawn.passed", &self.pawn_passed);
         c.set_weight("eval.pawn.shield", &self.pawn_shield);
         c.set(
             "eval.draw_score_contempt",
@@ -304,6 +306,7 @@ impl Component for SimpleScorer {
             .unwrap_or(self.undefended_sq as i64) as i32;
         self.pawn_doubled = c.weight("eval.pawn.doubled", &self.pawn_doubled);
         self.pawn_isolated = c.weight("eval.pawn.isolated", &self.pawn_isolated);
+        self.pawn_passed = c.weight("eval.pawn.passed", &self.pawn_passed);
         self.pawn_shield = c.weight("eval.pawn.shield", &self.pawn_shield);
         self.rook_open_file = c.int("eval.rook.open_file").unwrap_or(self.rook_open_file as i64) as i32;
         self.contempt = c.int("eval.draw_score_contempt").unwrap_or(self.contempt as i64) as i32;
@@ -340,6 +343,7 @@ impl fmt::Display for SimpleScorer {
         writeln!(f, "trapped_peice    : {}", self.trapped_piece)?;
         writeln!(f, "pawn.shield      : {}", self.pawn_shield)?;
         writeln!(f, "pawn.doubled     : {}", self.pawn_doubled)?;
+        writeln!(f, "pawn.passed      : {}", self.pawn_passed)?;
         writeln!(f, "pawn.isolated    : {}", self.pawn_isolated)?;
         writeln!(f, "rook.open_file   : {}", self.rook_open_file)?;
         writeln!(f, "contempt         : {}", self.contempt)?;
@@ -382,6 +386,7 @@ impl SimpleScorer {
             trapped_piece: -10,
             pawn_doubled: Weight::new(-5, -50),
             pawn_isolated: Weight::new(-5, -50),
+            pawn_passed: Weight::new(50, 50),
             pawn_shield: Weight::new(50, 0),
             rook_open_file: 20,
             contempt: -30, // typically -ve
@@ -488,22 +493,43 @@ impl SimpleScorer {
         score
     }
 
+
+
+    pub fn eval_pawns(&self, c: Color, b: &Board) -> Weight {
+        let mut score = Weight::zero();
+        
+        let doubled = BitboardDefault::doubled_pawns(b.color(c) & b.pawns()).popcount();
+        score += doubled * self.pawn_doubled;
+
+        let isolated = BitboardDefault::isolated_pawns(b.color(c) & b.pawns()).popcount();
+        score += isolated * self.pawn_isolated;
+
+        let bb = BitboardDefault::default();
+        let mut passed = 0;
+        for p in (b.pawns() & b.color(c)).squares() {
+            let doubled = p.is_in(BitboardDefault::doubled_pawns(b.color(c) & b.pawns()));
+            let is_passed = (bb.pawn_front_span(c, p) & b.pawns() & b.color(c.opposite())).is_empty() && !doubled;
+            if is_passed {
+                passed += 1;
+            }
+        }
+        score += passed * self.pawn_passed;        
+
+        score
+    }
+
+
+
+
+
     // always updated
     pub fn w_eval_mobility(&self, b: &Board) -> Weight {
-        let mut score = Weight::zero();
         if b.phase() > self.mobility_phase_disable as i32 {
             return Weight::zero();
         }
-        if self.pawn_doubled != Weight::zero() {
-            score += (BitboardDefault::doubled_pawns(b.white() & b.pawns()).popcount()
-                - BitboardDefault::doubled_pawns(b.black() & b.pawns()).popcount())
-                * self.pawn_doubled;
-        }
-        if self.pawn_isolated != Weight::zero() {
-            score += (BitboardDefault::isolated_pawns(b.white() & b.pawns()).popcount()
-                - BitboardDefault::isolated_pawns(b.black() & b.pawns()).popcount())
-                * self.pawn_isolated;
-        }
+
+
+        let mut score = self.eval_pawns(Color::White, b) - self.eval_pawns(Color::Black, b);
 
         if self.rook_open_file != 0 {
             let open_files = BitboardDefault::open_files(b.pawns());
