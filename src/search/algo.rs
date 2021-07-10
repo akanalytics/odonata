@@ -156,7 +156,6 @@ impl Engine {
             knps,
             knps as u32 / self.thread_count,
         );
-
     }
 }
 
@@ -379,6 +378,7 @@ impl Algo {
     }
 
     pub fn search(&mut self, board: &Board) {
+        self.new_search();
         self.board = board.clone();
         self.search_iteratively();
     }

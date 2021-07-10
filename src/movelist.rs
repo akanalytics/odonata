@@ -503,10 +503,10 @@ impl Board {
             }
             s += " ";
             s += &board.to_san(mv);
-            if let Some(vec) = vec_tags {
-                let tags = &vec[i];
-                s += &tags.to_pgn();
-            }
+            // if let Some(vec) = vec_tags {
+            //     let tags = &vec[i];
+            //     s += &tags.to_pgn();
+            // }
 
             board = board.make_move(mv);
         }

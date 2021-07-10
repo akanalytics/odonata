@@ -177,7 +177,6 @@ impl Algo {
         self.search_stats.pv.truncate(self.max_depth as usize);
         let sp = SearchProgress::from_best_move(Some(self.bm()), self.board.color_us(), &self.search_stats);
         self.task_control.invoke_callback(&sp);
-        // println!("\n\n\n=====Search completed=====\n {}", self);
 
         self.results = Position::from_board(self.board.clone());
         self.results.set(Tag::BestMove(MoveList::from_iter(iter::once(self.bm()))));
@@ -185,5 +184,6 @@ impl Algo {
         self.results.set(Tag::CentipawnEvaluation(self.score().as_i16() as i32));
         self.results.set(Tag::AnalysisCountDepth(self.search_stats().depth()));
 
+        debug!("\n\n\n=====Search completed=====\n{}", self);
     }
 }

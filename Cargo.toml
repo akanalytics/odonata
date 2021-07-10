@@ -57,7 +57,7 @@ debug = true
 
 [profile.release]
 lto = true
-codegen-units = 1
+#codegen-units = 1
 opt-level = 3
 debug = false  # disallow profiling of the  main executable 
 

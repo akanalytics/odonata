@@ -23,6 +23,11 @@ impl Weight {
     }
 
     #[inline]
+    pub const fn zero() -> Weight {
+        Weight(0, 0)
+    }
+
+    #[inline]
     pub const fn s(self) -> i32 {
         self.0
     }
@@ -69,6 +74,15 @@ impl std::ops::Add for Weight {
         Self::new(self.s() + o.s(), self.e() + o.e())
     }
 }
+impl std::ops::AddAssign for Weight {
+
+    #[inline]
+    fn add_assign(&mut self, o: Self) {
+        self.0 += o.s();
+        self.1 += o.e();
+    }
+}
+
 
 impl std::ops::Mul<Weight> for i32 {
     type Output = Weight;

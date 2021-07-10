@@ -7,6 +7,7 @@ use crate::mv::{Move};
 use crate::variation::Variation;
 use crate::outcome::Outcome;
 use crate::search::algo::Algo;
+use crate::eval::score::Score;
 use crate::tags::Tags;
 use crate::types::Color;
 use std::fmt;
@@ -26,7 +27,7 @@ pub struct Game {
     name_w: String,
     name_b: String,
     outcome: Outcome,
-    callback: Option<Rc<dyn Fn(&Game, &Move)>>,
+    callback: Option<Rc<dyn Fn(&Game, &Move, &Tags)>>,
 }
 
 impl Game {
@@ -40,7 +41,7 @@ impl Game {
         self
     }
 
-    pub fn set_callback(&mut self, callback: impl Fn(&Game, &Move) + 'static) -> &mut Self {
+    pub fn set_callback(&mut self, callback: impl Fn(&Game, &Move, &Tags) + 'static) -> &mut Self {
         self.callback = Some(Rc::new(callback));
         self
     }
@@ -49,12 +50,6 @@ impl Game {
         self.outcome
     }
 
-    pub fn record_move(&mut self, mv: Move, tags: Tags) {
-        self.moves.push(mv);
-        self.annotations.push(tags);
-        self.board = self.board.make_move(&mv);
-        self.outcome = self.board.outcome();
-    }
 
     pub fn play(&mut self, white: &mut Algo, black: &mut Algo) {
         while !self.board.outcome().is_game_over() {
@@ -64,23 +59,10 @@ impl Game {
         }
     }
 
-    pub fn print_move(&self, mv: &Move) {
-        println!(
-            "{:>2}.{:<8}  {}",
-            self.board.fullmove_number(),
-            if self.board.color_us() == Color::Black {
-                ".. ".to_string()
-            } else {
-                "".to_string()
-            } + &self.board.to_san(&mv),
-            self.board.to_fen()
-        );
-    }
-
     pub fn choose_move(&mut self, white: &mut Algo, black: &mut Algo) -> Move {
         if !self.board.outcome().is_game_over() {
             if let Err(e) = self.board.validate() {
-                panic!("Error on board {}", e);
+                panic!("Error on board {} {:#}", e, self.board);
             };
 
             let player = if self.board.color_us() == Color::White {
@@ -89,15 +71,40 @@ impl Game {
                 black
             };
             player.search(&self.board);
-            let m = player.bm();
+            let mv = player.bm();
             let tags = player.results().tags().clone();
-            self.record_move(m, tags);
-            if let Some(cb) = &self.callback {
-                cb(self, &m);
+            if player.score() == -Score::INFINITY {
+                print!("{}", player);
             }
-            return m;
+            self.record_move(&mv, &tags);
+            if let Some(callback) = &self.callback {
+                callback(self, &mv, &tags);
+            }
+            return mv;
         }
         Move::new_null()
+    }
+
+    pub fn record_move(&mut self, mv: &Move, tags: &Tags) {
+        self.print_move(&mv, &tags);
+        self.moves.push(mv.clone());
+        self.annotations.push(tags.clone());
+        self.board = self.board.make_move(mv);
+        self.outcome = self.board.outcome();
+    }
+
+    pub fn print_move(&self, mv: &Move, tags: &Tags) {
+        println!(
+            "{:>2}.{:<8}  {}  {}",
+            self.board.fullmove_number(),
+            if self.board.color_us() == Color::Black {
+                ".. ".to_string()
+            } else {
+                "".to_string()
+            } + &self.board.to_san(&mv),
+            self.board.to_fen(),
+            tags,
+        );
     }
 
     // pub const MOVE_SORTS: &'static [&'static str] = &["Natural", "PV from Prior Iteration", "MVV/LVA"];
@@ -185,7 +192,7 @@ mod tests {
         let board = Catalog::starting_position();
         let mut game = Game::new();
         game.set_starting_pos(&board);
-        let callback = |gm: &Game, mv: &Move| gm.print_move(mv);
+        let callback = |gm: &Game, mv: &Move, tags: &Tags| gm.print_move(mv, tags);
         game.set_callback(callback);
         game.play(&mut white, &mut black);
         println!("{}", game);
@@ -198,17 +205,16 @@ mod tests {
 
     #[test]
     #[ignore]
-    fn games() {
+    fn tourney() {
         //let tc = TimeControl::NodeCount(1_000);
         // let tc = TimeControl::from_remaining_time(Duration::from_millis(3000));
         // let tc = TimeControl::Depth(3);
-        let tc = TimeControl::from_move_time_millis(2000);
+        let tc = TimeControl::from_move_time_millis(200);
         let mut new = Algo::new().set_timing_method(tc).build();
         let mut old = Algo::new().set_timing_method(tc).build();
         // new.set_callback(Uci::uci_info);
 
 
-        new.mte.deterministic = false;
         // new.eval.rook_open_file = 20;
         // new.eval.cache_eval = true;
         // // new.eval.cache.capacity = 1000;
@@ -219,12 +225,11 @@ mod tests {
         // new.ids.part_ply = true;
         // new.tt.aging = true;
         // old.eval.undefended_sq = 3;  // was 3
-        new.eval.trapped_piece = -10;
+        new.eval.safety = true;
 
-        old.mte.deterministic = false;
+        old.eval.safety = false;
         // old.eval.undefended_sq = 0;
         // old.eval.undefended_piece = 0;
-        old.eval.trapped_piece = 0;
         // old.mte.branching_factor = 5;  // cause more failed plys
         // old.ids.part_ply = false;
         // old.eval.cache_eval = false;

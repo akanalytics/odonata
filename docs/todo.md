@@ -3,6 +3,7 @@
 ## Bugs
 - [ ] bug on ponder? and timeouts
 - [ ] need to treat insufficient material as score=0 not end of game
+- [ ] 8/8/1K6/4k3/6p1/8/4N3/8 b - problem of draw
 
 
 ## General
