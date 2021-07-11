@@ -704,7 +704,7 @@ fn benchmark_eval(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|p| {
-                black_box(p.board().eval(black_box(ef), &Node::root()));
+                black_box(p.board().eval(black_box(ef), &Node::root(0)));
             });
             t.elapsed() / positions.len() as u32
         })
@@ -713,7 +713,7 @@ fn benchmark_eval(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|p| {
-                black_box(p.board().eval_qsearch(black_box(ef), &Node::root()));
+                black_box(p.board().eval_qsearch(black_box(ef), &Node::root(0)));
             });
             t.elapsed() / positions.len() as u32
         })
@@ -722,7 +722,7 @@ fn benchmark_eval(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|p| {
-                black_box(p.board().eval(black_box(ef_no_pos), &Node::root()));
+                black_box(p.board().eval(black_box(ef_no_pos), &Node::root(0)));
             });
             t.elapsed() / positions.len() as u32
         })

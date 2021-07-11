@@ -9,6 +9,7 @@ use crate::globals::counts;
 use crate::mv::Move;
 use crate::position::Position;
 use crate::pvtable::PvTable;
+use crate::search::node::Node;
 use crate::repetition::Repetition;
 use crate::search::iterative_deepening::IterativeDeepening;
 use crate::search::killers::Killers;
@@ -476,6 +477,41 @@ impl Algo {
         }
         time_up
     }
+
+
+    pub fn node_all(&mut self, b: &Board, n: &Node, mv: &Move, score: Score) -> Score {
+        // self.tt.store(b.hash(), TtNode{ score, draft: n.depth, node_type: NodeType::All, bm: Move::NULL_MOVE} );
+        score
+    }
+
+    pub fn node_cut(&mut self, b: &Board, n: &Node, mv: &Move, s: Score) -> Score {
+        // self.search_stats.inc_cuts(n.ply);
+        // self.killers.store(n.ply, &mv);
+        s
+    }
+
+    pub fn node_exact(&mut self, b: &Board, n: &Node, mv: &Move, s: Score)  -> Score {
+        self.record_new_pv(n.ply, mv, false); 
+        s
+    }
+
+    pub fn node_leaf(&mut self, b: &Board, n: &Node, mv: &Move, s: Score) -> Score {
+        self.record_new_pv(n.ply, mv, true); 
+        // self.search_stats.inc_leaf_nodes(n.ply);
+        s
+    }
+
+    pub fn record_new_pv(&mut self, ply: Ply, mv: &Move, terminal_move: bool) {
+        self.pv_table.set(ply + 1, mv, terminal_move);
+        self.pv_table.propagate_from(ply + 1);
+        self.search_stats.inc_improvements(ply);
+        if ply == 0 {
+            let sp = SearchProgress::from_stats(&self.search_stats(), self.board.color_us());
+            self.task_control.invoke_callback(&sp);
+        }
+    }
+
+
 }
 
 #[cfg(test)]
@@ -596,7 +632,7 @@ mod tests {
             let search = engine.algo;
             println!("{}", search);
             if id {
-                assert!(search.search_stats().total().nodes() < 18500, "nodes {} > 18500", search.search_stats().total().nodes() ); // with piece mob
+                assert!(search.search_stats().total().nodes() < 22500, "nodes {} > 22500", search.search_stats().total().nodes() ); // with piece mob
 
             // previous
             // assert_eq!(search.search_stats().total().nodes(), 3456); // with pawn promo

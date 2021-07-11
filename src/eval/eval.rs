@@ -200,7 +200,7 @@ pub struct SimpleScorer {
     pub cache_eval: bool,
     pub cache_qeval: bool,
     pst: [[Weight; 64]; Piece::len()],
-    pub depth: Ply,
+    // pub depth: Ply,
 }
 
 impl Default for SimpleScorer {
@@ -395,7 +395,7 @@ impl SimpleScorer {
             // cache: TranspositionTable::default(),
             // qcache: TranspositionTable::default(),
             pst: Self::calculate_pst(),
-            depth: 0,
+            // depth: 0,
         }
     }
 
@@ -443,7 +443,7 @@ impl SimpleScorer {
         score
     }
 
-    fn w_eval_without_wdl(&mut self, board: &Board, _node: &Node) -> Score {
+    fn w_eval_without_wdl(&mut self, board: &Board, node: &Node) -> Score {
         // if self.cache_eval {
         //     if let Some(entry) = self.cache.probe_by_board(board) {
         //         counts::EVAL_CACHE_COUNT.increment();
@@ -462,7 +462,7 @@ impl SimpleScorer {
         } else {
             Weight::zero()
         };
-        let mo = if self.mobility && self.depth >= self.min_depth_mob as i32 {
+        let mo = if self.mobility && node.depth >= self.min_depth_mob as i32 {
             self.w_eval_mobility(board)
         } else {
             Weight::zero()
@@ -755,9 +755,9 @@ mod tests {
     fn test_score_material() {
         let board = Catalog::starting_position();
         let eval = &mut SimpleScorer::new();
-        assert_eq!(board.eval(eval, &Node::root()), Score::from_cp(0));
+        assert_eq!(board.eval(eval, &Node::root(0)), Score::from_cp(0));
 
-        let starting_pos_score = 8 * 100 + 2 * 325 + 2 * 350 + 2 * 500 + 900 + (40 + 100) / 2; // (bishop pair, half the pieces)
+        let starting_pos_score = 8 * 100 + 2 * 325 + 2 * 350 + 2 * 500 + 900 + (40 + 85) / 2; // (bishop pair, half the pieces)
         let board = Catalog::white_starting_position();
         assert_eq!(board.eval_material(eval), Score::from_cp(starting_pos_score));
 
@@ -784,7 +784,7 @@ mod tests {
         let eval = &SimpleScorer::new();
 
         let bd = Board::parse_fen("8/P7/8/8/8/8/8/8 w - - 0 1").unwrap().as_board();
-        assert_eq!(bd.eval_position(eval), Score::from_cp(160));
+        assert_eq!(bd.eval_position(eval), Score::from_cp(60));
 
         let bd = Board::parse_fen("8/4p3/8/8/8/8/8/8 w - - 0 1")
             .unwrap()
@@ -800,7 +800,7 @@ mod tests {
 
         // from blacks perspective to negate
         let bd = Board::parse_fen("8/8/8/8/8/8/p7/8 b - - 0 1").unwrap().as_board();
-        assert_eq!(bd.eval_position(eval), -Score::from_cp(-160));
+        assert_eq!(bd.eval_position(eval), -Score::from_cp(-60));
     }
 
     #[test]
@@ -812,17 +812,27 @@ mod tests {
         let b = Catalog::starting_position();
         assert_eq!(eval.w_eval_mobility(&b), Weight::zero());
 
-        // 1xw 4xb doubled pawns, 1xw 2xb isolated pawns
+        // 1xw 4xb doubled pawns, 1xw 2xb isolated pawns, 1xb passed pawn
         let b = Board::parse_fen("8/pppp1p1p/pppp4/8/8/2P5/PPP4P/8 b - - 0 1")
             .unwrap()
             .as_board();
         eval.pawn_doubled = Weight::new(-1, -1);
         eval.pawn_isolated = Weight::zero();
-        assert_eq!(eval.w_eval_mobility(&b), Weight::new(3, 3));
+        eval.pawn_passed = Weight::zero();
+        assert_eq!(eval.eval_pawns(Color::White, &b), Weight::new(-1, -1));
+        assert_eq!(eval.eval_pawns(Color::Black, &b), Weight::new(-4, -4));
 
         eval.pawn_doubled = Weight::zero();
         eval.pawn_isolated = Weight::new(-1, -1);
-        assert_eq!(eval.w_eval_mobility(&b), Weight::new(1, 1));
+        eval.pawn_passed = Weight::zero();
+        assert_eq!(eval.eval_pawns(Color::White, &b), Weight::new(-1, -1));
+        assert_eq!(eval.eval_pawns(Color::Black, &b), Weight::new(-2, -2));
+
+        eval.pawn_doubled = Weight::zero();
+        eval.pawn_isolated = Weight::zero();
+        eval.pawn_passed = Weight::new(10, 10);
+        assert_eq!(eval.eval_pawns(Color::White, &b), Weight::new(0, 0));
+        assert_eq!(eval.eval_pawns(Color::Black, &b), Weight::new(10, 10));
 
         // 1xw (-1) 3xb doubled (+3), 1xb (+1) tripled pawns  2xw 1xb isolated
         let b = Board::parse_fen("8/pppp3p/ppp5/p7/8/2P5/PPP1P1P1/8 b - - 0 1")

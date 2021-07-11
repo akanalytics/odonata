@@ -318,7 +318,7 @@ impl Uci {
         let mut b = Board::new_empty();
         Self::parse_fen(arg, &mut b)?;
         let mut eval = SimpleScorer::new();
-        let score = b.eval(&mut eval, &Node::root());
+        let score = b.eval(&mut eval, &Node::root(0));
         Self::send(&format!("result:{}", score));
         Ok(())
     }

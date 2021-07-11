@@ -56,7 +56,7 @@ impl Algo {
 
         if board.draw_outcome().is_some() {
             self.search_stats.inc_leaf_nodes(ply);
-            return board.eval(&mut self.eval, &Node { ply, alpha, beta }); // will return a draw score
+            return board.eval(&mut self.eval, &Node { ply, depth, alpha, beta }); // will return a draw score
         }
 
         let mut score = -Score::INFINITY;
@@ -175,7 +175,7 @@ impl Algo {
         if count == 0 {
             // nt = NodeType::Terminal;
             self.search_stats.inc_leaf_nodes(ply);
-            return board.eval(&mut self.eval, &Node { ply, alpha, beta });
+            return board.eval(&mut self.eval, &Node { ply, depth, alpha, beta });
         } else if nt == NodeType::All {
             // nothing
         } else if nt == NodeType::Cut {
@@ -199,15 +199,8 @@ impl Algo {
         score
     }
 
-    pub fn record_new_pv(&mut self, ply: Ply, mv: &Move, terminal_move: bool) {
-        self.pv_table.set(ply + 1, mv, terminal_move);
-        self.pv_table.propagate_from(ply + 1);
-        self.search_stats.inc_improvements(ply);
-        if ply == 0 {
-            let sp = SearchProgress::from_stats(&self.search_stats(), self.board.color_us());
-            self.task_control.invoke_callback(&sp);
-        }
-    }
+
+
 }
 
 #[cfg(test)]

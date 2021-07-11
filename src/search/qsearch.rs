@@ -3,12 +3,12 @@ use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::config::{Component, Config};
 use crate::eval::score::Score;
-use crate::{debug, trace, logger::LogInit};
 use crate::movelist::MoveList;
 use crate::mv::Move;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
 use crate::types::Ply;
+use crate::{debug, logger::LogInit, trace};
 use std::fmt;
 
 #[derive(Copy, Clone, Debug)]
@@ -41,7 +41,9 @@ impl Component for QSearch {
         self.only_captures = c.bool("qsearch.only_captures").unwrap_or(self.only_captures);
         self.promos = c.bool("qsearch.promos").unwrap_or(self.promos);
         self.see_cutoff = c.int("qsearch.see.cutoff").unwrap_or(self.see_cutoff);
-        self.ignore_see_fails = c.bool("qsearch.see.ignore_fails").unwrap_or(self.ignore_see_fails);
+        self.ignore_see_fails = c
+            .bool("qsearch.see.ignore_fails")
+            .unwrap_or(self.ignore_see_fails);
         self.max_ply = c.int("qsearch.max_ply").unwrap_or(self.max_ply as i64) as u16;
         if let Some(cp) = c.int("qsearch.coarse_delta_prune_cp") {
             self.coarse_delta_prune = Score::from_cp(cp as i32);
@@ -84,10 +86,20 @@ impl Algo {
     // if the move results in a position which after quiese, is potentially a mate,
     // we should not return a mate score, as only captures have been considered,
     // and a mate score might cut a genuine mate score elsewhere
-    pub fn qsearch(&mut self, mv: &Move, ply: Ply, _depth: Ply, board: &mut Board, alpha: Score, beta: Score) -> Score {
+    pub fn qsearch(
+        &mut self,
+        mv: &Move,
+        ply: Ply,
+        depth: Ply,
+        board: &mut Board,
+        alpha: Score,
+        beta: Score,
+    ) -> Score {
         if !self.qsearch.enabled || (!mv.is_capture() && self.qsearch.only_captures) {
             self.search_stats.inc_leaf_nodes(ply);
-            return board.eval(&mut self.eval, &Node { ply, alpha, beta });
+            let node = Node { ply, depth, alpha, beta };
+            let score = board.eval(&mut self.eval, &node);
+            return self.node_leaf(board, &node, &Move::NULL_MOVE, score)
         }
         let score = self.qsearch_see(Bitboard::EMPTY, ply, 0, board, alpha, beta);
         debug_assert!(self.task_control.is_cancelled() || score > -Score::INFINITY);
@@ -98,34 +110,45 @@ impl Algo {
         &mut self,
         mut recaptures: Bitboard,
         ply: Ply,
-        depth: Ply, 
+        depth: Ply,
         board: &mut Board,
         mut alpha: Score,
         beta: Score,
     ) -> Score {
         self.report_progress();
+        self.record_new_pv(ply, &Move::NULL_MOVE, false);
+
 
         let in_check = board.is_in_check(board.color_us());
-        let standing_pat;
-        if in_check {
-            standing_pat = alpha;
-        } else if depth == 0 {
-            standing_pat = board.eval(&mut self.eval, &Node { ply, alpha, beta });
+        let mut standing_pat;
+        if depth == 0 {
+            let node = Node { ply, depth, alpha, beta };
+            standing_pat = board.eval(&mut self.eval, &node);
             trace!("{}", board.debug() + "Standing pat (eval)" + standing_pat);
             if standing_pat.is_mate() {
-                return standing_pat;
+                return  self.node_leaf(board, &node, &Move::NULL_MOVE, standing_pat);
             }
+            if in_check {
+                standing_pat = alpha;
+            }
+        } else if in_check {
+            standing_pat = alpha;
         } else {
-            standing_pat = board.eval_qsearch(&mut self.eval, &Node { ply, alpha, beta });
+            standing_pat = board.eval_qsearch(&mut self.eval, &Node { ply, depth, alpha, beta });
             trace!("{}", board.debug() + "Standing pat (eval_qsearch)" + standing_pat);
         }
         if standing_pat > alpha {
             if standing_pat >= beta {
                 self.search_stats.inc_q_leaf_nodes(ply);
-                trace!("{}", board.debug() + ply + "fail high - standing pat" + standing_pat + "cmp" + beta);
-                return beta;
+                trace!(
+                    "{}",
+                    board.debug() + ply + "fail high - standing pat" + standing_pat + "cmp" + beta
+                );
+                let node = Node { ply, depth, alpha, beta };
+                return  self.node_leaf(board, &node, &Move::NULL_MOVE, standing_pat);
             }
             alpha = standing_pat;
+            self.record_new_pv(ply, &Move::NULL_MOVE, true);
         }
 
         // let gain_needed = alpha - standing_pat;
@@ -161,35 +184,52 @@ impl Algo {
         self.order_moves(ply, &mut moves, &None);
         for mv in moves.iter() {
             // FIXME! skip illegal moves
-            trace!("{}", board.debug() + "examining move" + mv + "using" + Node { ply, alpha, beta} );
+            trace!(
+                "{}",
+                board.debug() + "examining move" + mv + "using" + Node { ply, depth, alpha, beta }
+            );
             if !in_check && !mv.is_ep_capture() && mv.to().as_bb().disjoint(recaptures) {
                 let score = board.eval_move_see(&self.eval, &mv);
                 let winning = false;
                 // allow 8 matched attackers
                 let bar = self.qsearch.see_cutoff as i32;
-                if score < Score::from_cp(bar) || score == Score::from_cp(bar) && (winning || depth  >= -1) {
-                    trace!("{}", board.debug() + "see score bad" + score + "cmp" + Score::from_cp(bar) + "for" + mv  );
+                if score < Score::from_cp(bar) || score == Score::from_cp(bar) && (winning || depth >= -1) {
+                    trace!(
+                        "{}",
+                        board.debug() + "see score bad" + score + "cmp" + Score::from_cp(bar) + "for" + mv
+                    );
                     if self.qsearch.ignore_see_fails {
-                        continue; 
+                        continue;
                     } else {
-                        continue;  // FIXME? Add to a bad move list
+                        continue; // FIXME? Add to a bad move list
                     }
                 } else {
-                    trace!("{}", board.debug() + "see score good" + score + "cmp" + Score::from_cp(bar) + "for" + mv  );
+                    trace!(
+                        "{}",
+                        board.debug() + "see score good" + score + "cmp" + Score::from_cp(bar) + "for" + mv
+                    );
                 }
             }
             let mut child = board.make_move(&mv);
             // delta prune on the move - FIXME - think about delta prune when checks
             if !in_check
                 && board.eval_move_material(&self.eval, &mv) + standing_pat <= alpha
-                && !child.is_in_check(child.color_us())  // = will_check_them
+                && !child.is_in_check(child.color_us())
+            // = will_check_them
             {
                 board.undo_move(mv);
                 continue;
             }
             // mark the square so the recapture is considered
             trace!("{}", board.debug() + ply + "iterating on " + mv);
-            let score = -self.qsearch_see(recaptures ^ mv.to().as_bb(), ply + 1, depth -1, &mut child, -beta, -alpha);
+            let score = -self.qsearch_see(
+                recaptures ^ mv.to().as_bb(),
+                ply + 1,
+                depth - 1,
+                &mut child,
+                -beta,
+                -alpha,
+            );
             board.undo_move(mv);
             if score > beta {
                 trace!("{}", board.debug() + ply + score + "fails high" + beta + mv);
@@ -231,7 +271,14 @@ mod tests {
                 .clone();
             search.search(pos.board());
             debug!("{}", search);
-            assert_eq!(search.pv().to_string(), pos.pv()?.to_string(), "{}\n{}", pos.id()?, search);
+            assert_eq!(
+                search.pv().to_string(),
+                pos.pv()?.to_string(),
+                "{} {}\n{}",
+                pos.id()?,
+                pos.board().to_san_variation(search.pv(), None),
+                search
+            );
         }
         Ok(())
     }
@@ -240,19 +287,29 @@ mod tests {
     fn test_qsearch_ex2() -> Result<(), String> {
         debug!("test_qsearch_examples");
         let positions = Catalog::quiese();
-        let pos = Position::find_by_id("1 good capture", &positions ).unwrap();
+        let pos = Position::find_by_id("QS.01", &positions).unwrap();
         // let pos = &Catalog::quiese()[1];
-        let mut b = pos.board().clone();  //.color_flip();
+        let mut b = pos.board().clone(); //.color_flip();
         debug!("board {}", b.to_fen());
         let mut eval = SimpleScorer::new();
         eval.position = false;
         eval.mobility = false;
         eval.phasing = false;
-        let node = Node::root();
+        let node = Node::root(0);
         let static_eval = b.eval(&mut eval, &node);
 
-        let mut algo = Algo::new().set_timing_method(TimeControl::Depth(0)).set_eval(eval).build();
-        let quiese_eval = algo.qsearch_see(Bitboard::EMPTY, node.ply, algo.max_depth, &mut b, node.alpha, node.beta);
+        let mut algo = Algo::new()
+            .set_timing_method(TimeControl::Depth(0))
+            .set_eval(eval)
+            .build();
+        let quiese_eval = algo.qsearch_see(
+            Bitboard::EMPTY,
+            node.ply,
+            algo.max_depth,
+            &mut b,
+            node.alpha,
+            node.beta,
+        );
 
         println!("{}", algo);
         debug!("static: {}  quiese: {}", static_eval, quiese_eval);
@@ -260,7 +317,6 @@ mod tests {
         debug!("{}", algo);
         Ok(())
     }
-
 
     #[test]
     fn test_see() -> Result<(), String> {
@@ -270,11 +326,14 @@ mod tests {
         eval.material = true;
 
         // white gains a pawn after quiese
-        let pos = Position::parse_epd("7k/8/8/8/8/p7/8/R6K w - - 0 1 sm Ra3; ce 100;")?; 
+        let pos = Position::parse_epd("7k/8/8/8/8/p7/8/R6K w - - 0 1 sm Ra3; ce 100;")?;
         let (alpha, beta) = (-Score::INFINITY, Score::INFINITY);
 
-        let static_eval = pos.board().eval(&mut eval, &Node { ply: 0, alpha, beta }).cp().unwrap_or(0);
-
+        let static_eval = pos
+            .board()
+            .eval(&mut eval, &Node { ply: 0, depth: 0,  alpha, beta })
+            .cp()
+            .unwrap_or(0);
 
         let mut search_see = Algo::new()
             .set_timing_method(TimeControl::NodeCount(1_000_000))
@@ -282,9 +341,14 @@ mod tests {
             .build();
         search_see.max_depth = 3;
 
-
-
-        let score = search_see.qsearch(&pos.sm()?, 3, search_see.max_depth, &mut pos.board().clone(), alpha, beta);
+        let score = search_see.qsearch(
+            &pos.sm()?,
+            3,
+            search_see.max_depth,
+            &mut pos.board().clone(),
+            alpha,
+            beta,
+        );
         if let Some(ce) = score.cp() {
             assert_eq!(ce - static_eval, pos.ce()? as i16, "see");
         } else {

@@ -18,6 +18,26 @@ impl Default for PvTable {
     }
 }
 
+
+//
+// Depth reductions mean that we can have terminal 0000's
+// 
+//     changing mv gets put here at right ply level 
+//        |
+//        V
+//
+//  0:   0000  e5f7  e8f7  a1d1  d4c2  e1e2  d6e5  e7d8  f8e7  0000  0000
+//  1:   e5f7  e8f7  a1d1  d4c2  e1e2  d6e5  e7d8  f8e7  0000  0000
+//  2:   e8f7  f7d8  d4c2  e1e2  d6e5  e7d8  f8e7  0000  0000
+//  3:   f7d8  d4c2  e1e2  d6e5  e7d8  f8e7  0000  0000
+//  4:   d4c2  d5e7  d6e5  e7d8  f8e7  0000  0000
+//  5:   d5e7  d6e5  e7d8  f8e7  0000  0000
+//  6:   d6e5  g5d8  f8e7  0000  0000
+//  7:   g5d8  f8e7  0000  0000
+//  8:   f8e7  0000  0000
+//  9:   0000  d8e7
+// 10:   d8e7  
+// 
 // matrix[0][0..5]
 // matrix[1][0..4]
 // matrix[2][0..3]

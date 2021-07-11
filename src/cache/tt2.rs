@@ -798,7 +798,7 @@ mod tests {
             algo.search(pos.board());
             //            let pv = algo.tt.extract_pv(&algo.bm(), pos.board());
             let pv = algo.tt.extract_pv_and_score(pos.board()).0;
-            assert_eq!(algo.pv().len(), d as usize, "{} {}\n{}", algo.pv(), pv, algo);
+            assert!(algo.pv().len() >= d as usize, "{} {}\n{}", algo.pv(), pv, algo);
             assert_eq!(pv.len(), d as usize, "{} {}\n{}", algo.pv(), pv, algo);
             // assert_eq!(algo.bm().uci(), pos.bm()?.uci());
             println!(">>>>>> {}", pv);
