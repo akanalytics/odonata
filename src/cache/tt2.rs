@@ -362,7 +362,7 @@ impl Component for TranspositionTable2 {
     fn settings(&self, c: &mut Config) {
         c.set("tt.aging", "type check default true");
         c.set("tt.use_tt_for_pv", "type check default true");
-        c.set("Hash", "type spin default 33 min 0 max 4000");
+        c.set("Hash", "type spin default 8 min 0 max 4000");
         c.set("tt.hmvc_horizon", "type spin default 35 min 0 max 100");
         c.set("tt.min_ply", "type spin default 35 min 0 max 100");
     }
