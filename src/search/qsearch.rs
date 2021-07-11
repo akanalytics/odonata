@@ -85,7 +85,7 @@ impl Algo {
     // we should not return a mate score, as only captures have been considered,
     // and a mate score might cut a genuine mate score elsewhere
     pub fn qsearch(&mut self, mv: &Move, ply: Ply, _depth: Ply, board: &mut Board, alpha: Score, beta: Score) -> Score {
-        if !self.qsearch.enabled || ply <= 1 || (!mv.is_capture() && self.qsearch.only_captures) {
+        if !self.qsearch.enabled || (!mv.is_capture() && self.qsearch.only_captures) {
             self.search_stats.inc_leaf_nodes(ply);
             return board.eval(&mut self.eval, &Node { ply, alpha, beta });
         }
@@ -107,14 +107,14 @@ impl Algo {
 
         let in_check = board.is_in_check(board.color_us());
         let standing_pat;
-        if depth == 0 {
+        if in_check {
+            standing_pat = alpha;
+        } else if depth == 0 {
             standing_pat = board.eval(&mut self.eval, &Node { ply, alpha, beta });
             trace!("{}", board.debug() + "Standing pat (eval)" + standing_pat);
             if standing_pat.is_mate() {
                 return standing_pat;
             }
-        } else if in_check {
-            standing_pat = alpha;
         } else {
             standing_pat = board.eval_qsearch(&mut self.eval, &Node { ply, alpha, beta });
             trace!("{}", board.debug() + "Standing pat (eval_qsearch)" + standing_pat);
@@ -197,6 +197,7 @@ impl Algo {
             }
             if score > alpha {
                 trace!("{}", board.debug() + ply + score + "raises alpha" + alpha + mv);
+                self.record_new_pv(ply, mv, false);
                 alpha = score;
             }
             // don't see_evaluate the hot square again
@@ -220,25 +221,29 @@ mod tests {
     use crate::search::timecontrol::*;
 
     #[test]
-    fn test_qsearch_ex1() -> Result<(), String> {
+    fn test_quiese_catalog() -> Result<(), String> {
         let positions = Catalog::quiese();
-        let pos = Position::find_by_id("pawn fork", &positions ).unwrap();
-        let mut search = Algo::new()
-            .set_timing_method(TimeControl::Depth(0))
-            .set_callback(Uci::uci_info)
-            .clone();
-        search.search(pos.board());
-        println!("{}", search);
-        assert_eq!(search.pv().to_string(), pos.pv()?.to_string(), "{}", pos.id()?);
+        // let pos = Position::find_by_id("pawn fork", &positions ).unwrap();
+        for pos in &positions {
+            let mut search = Algo::new()
+                .set_timing_method(TimeControl::Depth(0))
+                .set_callback(Uci::uci_info)
+                .clone();
+            search.search(pos.board());
+            debug!("{}", search);
+            assert_eq!(search.pv().to_string(), pos.pv()?.to_string(), "{}\n{}", pos.id()?, search);
+        }
         Ok(())
     }
 
     #[test]
     fn test_qsearch_ex2() -> Result<(), String> {
-        trace!("test_qsearch_examples");
-        let pos = &Catalog::quiese()[1];
-        let mut b = pos.board().color_flip();
-        trace!("board {}", b.to_fen());
+        debug!("test_qsearch_examples");
+        let positions = Catalog::quiese();
+        let pos = Position::find_by_id("1 good capture", &positions ).unwrap();
+        // let pos = &Catalog::quiese()[1];
+        let mut b = pos.board().clone();  //.color_flip();
+        debug!("board {}", b.to_fen());
         let mut eval = SimpleScorer::new();
         eval.position = false;
         eval.mobility = false;
@@ -250,7 +255,9 @@ mod tests {
         let quiese_eval = algo.qsearch_see(Bitboard::EMPTY, node.ply, algo.max_depth, &mut b, node.alpha, node.beta);
 
         println!("{}", algo);
-        trace!("static: {}  quiese: {}", static_eval, quiese_eval);
+        debug!("static: {}  quiese: {}", static_eval, quiese_eval);
+        algo.search(&b);
+        debug!("{}", algo);
         Ok(())
     }
 

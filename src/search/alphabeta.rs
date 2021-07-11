@@ -199,7 +199,7 @@ impl Algo {
         score
     }
 
-    fn record_new_pv(&mut self, ply: Ply, mv: &Move, terminal_move: bool) {
+    pub fn record_new_pv(&mut self, ply: Ply, mv: &Move, terminal_move: bool) {
         self.pv_table.set(ply + 1, mv, terminal_move);
         self.pv_table.propagate_from(ply + 1);
         self.search_stats.inc_improvements(ply);

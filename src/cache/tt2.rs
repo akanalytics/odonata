@@ -414,7 +414,7 @@ impl TranspositionTable2 {
         Self {
             table: Arc::new(SharedTable::new_with_capacity(Self::convert_mb_to_capacity(mb))),
             enabled: true,
-            use_tt_for_pv: true,
+            use_tt_for_pv: false,
             mb: mb as i64,
             aging: true,
             current_age: 10, // to allow us to look back

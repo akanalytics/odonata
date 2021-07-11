@@ -188,10 +188,16 @@ r3k2r/1P6/1N3P2/2Pp4/3QP2Q/5B2/8/R3K2R w KQkq d6 0 1 id "MO.01"; c0 "Promos";
 
     pub fn quiese() -> Vec<Position> {
         let str = r#"
-rnb1k2r/pp3ppp/4p3/q2p4/1bpPnB2/2N1PN2/PPPQ1PPP/2KR1B1R w kq - 1 9 "QS.01"; c0 "xray"; c1 "https://lichess.org/PqvjbdtB#16";
-rnb1k2r/pp3ppp/4p3/3pB3/2pPn3/2P1PN2/q1P1QPPP/2KR1B1R b kq - 1 11 "QS.02"; c0 "bug?";
-r4rk1/pp2qppp/2nbbn2/3Np3/2B1P3/P4N1P/1P1B1PP1/R2QR1K1 b - - 6 16 am Nxd5; bm Qd8; pv; ce 0; id 'pawn fork'; c1 'https://lichess.org/q5XvkApk/black#31';
+r4rk1/pp2qppp/2nbbn2/3Np3/2B1P3/P4N1P/1P1B1PP1/R2QR1K1 b - - 6 16 acd 0; am Nxd5; bm Qd8; pv; ce 0; id 'pawn fork'; c1 'https://lichess.org/q5XvkApk/black#31';
+k7/p7/8/8/8/8/P7/K7 w - - 0 1 acd 0; pv; id 'no captures';
+k7/p7/8/8/8/8/Q7/K7 w - - 0 1 acd 0; pv; id 'only bad captures';
+2k5/p7/8/8/8/8/Q7/K7 w - - 0 1 acd 0; pv Qa7; id '1 good capture';
+1k6/p7/4p3/8/8/8/Q7/K7 w - - 0 1 acd 0; pv Qe6; id '1 good capture 1 bad';
+1k6/q7/8/8/8/8/Q7/K7 w - - 0 1 acd 0; pv; id 'even exchange not made';
+1k6/8/8/8/8/8/r2K3P/8 w - - 0 1 acd 0; pv Ke3 Rxh2; id 'in check then capture';
 "#;
+// rnb1k2r/pp3ppp/4p3/q2p4/1bpPnB2/2N1PN2/PPPQ1PPP/2KR1B1R w kq - 1 9 "QS.01"; c0 "xray"; c1 "https://lichess.org/PqvjbdtB#16";
+// rnb1k2r/pp3ppp/4p3/3pB3/2pPn3/2P1PN2/q1P1QPPP/2KR1B1R b kq - 1 11 "QS.02"; c0 "bug?";
         let positions = Position::parse_many_epd(str.lines()).unwrap();
         positions
     }
