@@ -219,24 +219,22 @@ mod tests {
     use crate::position::*;
     use crate::search::timecontrol::*;
 
-    #[ignore]
     #[test]
-    fn test_qsearch() -> Result<(), String> {
-        let pos = &Catalog::mate_in_2()[0];
+    fn test_qsearch_ex1() -> Result<(), String> {
+        let positions = Catalog::quiese();
+        let pos = Position::find_by_id("pawn fork", &positions ).unwrap();
         let mut search = Algo::new()
-            .set_timing_method(TimeControl::NodeCount(1_000_000))
+            .set_timing_method(TimeControl::Depth(0))
             .set_callback(Uci::uci_info)
             .clone();
-        //search.qsearch.enabled = qs;
         search.search(pos.board());
         println!("{}", search);
         assert_eq!(search.pv().to_string(), pos.pv()?.to_string(), "{}", pos.id()?);
-        assert_eq!(search.score(), Score::white_win(3));
         Ok(())
     }
 
     #[test]
-    fn test_qsearch_examples() -> Result<(), String> {
+    fn test_qsearch_ex2() -> Result<(), String> {
         trace!("test_qsearch_examples");
         let pos = &Catalog::quiese()[1];
         let mut b = pos.board().color_flip();

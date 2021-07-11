@@ -133,6 +133,14 @@ impl Position {
     }
 
 
+    pub fn find_by_id<'a>(id: &str, positions: &'a [Position]) -> Option<&'a Position> {
+        for p in positions.iter() {
+            if p.id().ok() == Some(id) {
+                return Some(p); 
+            }
+        }
+        None
+    }
 
     pub fn parse_many_epd<I>(iter: I) -> Result<Vec<Position>, String>
     where
@@ -211,7 +219,6 @@ impl Position {
     pub fn get_tag(&self, key: &str) -> &Tag {
         self.tags.get(key)
     }
-
 
     pub fn pv(&self) -> Result<Variation, String> {
         if let Tag::Pv(v) = self.get_tag(Tag::PV) {

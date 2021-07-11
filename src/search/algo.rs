@@ -339,6 +339,7 @@ impl fmt::Display for Algo {
             "current_best     : {}",
             self.current_best.unwrap_or(Move::new_null())
         )?;
+        writeln!(f, "results          : {}", self.results())?;
         writeln!(f, "minmax           : {}", self.minmax)?;
         writeln!(f, "clock_checks     : {}", self.clock_checks)?;
         write!(f, "\n[task control]\n{}", self.task_control)?;

@@ -100,14 +100,16 @@ impl fmt::Display for IterativeDeepening {
 impl IterativeDeepening {
     pub fn calc_range(&mut self, tc: &TimeControl) {
         if let TimeControl::Depth(depth) = *tc {
-            if self.enabled {
+            if !self.enabled || depth == 0 {
+                self.start_ply = depth;
                 self.end_ply = depth + 1;
             } else {
-                self.start_ply = depth;
+                self.start_ply = 1;
                 self.end_ply = depth + 1;
             }
         } else {
             // regardless of iterative deeping, we apply it if no explicit depth given
+            self.start_ply = 1;
             self.end_ply = MAX_PLY - 1;
         };
     }
@@ -172,7 +174,9 @@ impl Algo {
         // && last.score > res.score
         if self.ids.part_ply  {
             self.search_stats.pv = last.pv.clone();
-            self.search_stats.score = self.tt.extract_pv_and_score(&self.board).1.unwrap_or_default();
+            if self.search_stats.pv.len() > 0 {
+                self.search_stats.score = self.tt.extract_pv_and_score(&self.board).1.unwrap_or_default();
+            }
         }
         self.search_stats.pv.truncate(self.max_depth as usize);
         let sp = SearchProgress::from_best_move(Some(self.bm()), self.board.color_us(), &self.search_stats);
