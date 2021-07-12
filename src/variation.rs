@@ -18,6 +18,8 @@ impl Default for Variation {
     }
 }
 
+
+
 impl Variation {
     #[inline]
     pub fn new() -> Self {

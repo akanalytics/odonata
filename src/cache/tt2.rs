@@ -584,7 +584,7 @@ impl TranspositionTable2 {
                 self.bad_hash.increment();
                 return None;
             }
-            debug_assert!(tt_node.bm.is_null() || board.is_legal_move(&tt_node.bm), "{} {}", board.to_fen(), tt_node.bm.uci() );
+            assert!(tt_node.bm.is_null() || (board.is_pseudo_legal_move(&tt_node.bm) && board.is_legal_move(&tt_node.bm)), "{} {} {:?}", board.to_fen(), tt_node.bm.uci(), tt_node.bm );
         }
         tt_node
     }

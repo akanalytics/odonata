@@ -47,6 +47,7 @@ impl Algo {
         beta: Score,
         last_move: &Move,
     ) -> Score {
+        self.clear_move(board, ply);
         // debug_assert!(depth > 0);
         self.report_progress();
 
@@ -82,7 +83,7 @@ impl Algo {
                         // previously this position raised alpha, but didnt trigger a cut
                         // no point going through moves as we know what the max score is
                         if entry.score > alpha {
-                            self.record_new_pv(ply, &entry.bm, true);
+                            self.record_truncated_move(board, ply, &entry.bm);
                         }
                         return entry.score;
                     }
@@ -91,12 +92,13 @@ impl Algo {
                         // not all child nodes were scored, so score is a lower bound
                         // FIXME: probably dont set alpha just the hinted mv and re-search the node
                         if entry.score > alpha {
-                            self.record_new_pv(ply, &entry.bm, true);
                             nt = NodeType::Pv;
                             alpha = entry.score;
+                            self.record_move(board, ply, &entry.bm);
                             if alpha >= beta {
                                 self.search_stats.inc_cuts(ply);
                                 self.tt.store(board.hash(), entry);
+                                self.record_truncated_move(board, ply, &entry.bm);
                                 return entry.score;
                             }
                             score = entry.score;
@@ -162,7 +164,8 @@ impl Algo {
                 alpha = child_score;
                 bm = mv;
                 nt = NodeType::Pv;
-                self.record_new_pv(ply, &bm, false);
+                debug_assert!(board.is_pseudo_legal_move(&bm));
+                self.record_move(board, ply, &mv);
             }
 
             if alpha >= beta && !self.minmax {

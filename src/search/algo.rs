@@ -479,31 +479,47 @@ impl Algo {
     }
 
 
-    pub fn node_all(&mut self, b: &Board, n: &Node, mv: &Move, score: Score) -> Score {
-        // self.tt.store(b.hash(), TtNode{ score, draft: n.depth, node_type: NodeType::All, bm: Move::NULL_MOVE} );
-        score
+    // pub fn node_all(&mut self, b: &Board, n: &Node, mv: &Move, score: Score) -> Score {
+    //     // self.tt.store(b.hash(), TtNode{ score, draft: n.depth, node_type: NodeType::All, bm: Move::NULL_MOVE} );
+    //     score
+    // }
+
+    // pub fn node_cut(&mut self, b: &Board, n: &Node, mv: &Move, s: Score) -> Score {
+    //     // self.search_stats.inc_cuts(n.ply);
+    //     // self.killers.store(n.ply, &mv);
+    //     s
+    // }
+
+    // pub fn node_exact(&mut self, b: &Board, n: &Node, mv: &Move, s: Score)  -> Score {
+    //     self.record_new_pv(b, n.ply, mv, false); 
+    //     s
+    // }
+
+    // pub fn node_leaf(&mut self, b: &Board, n: &Node, mv: &Move, s: Score) -> Score {
+    //     self.record_new_pv(b, n.ply, mv, true); 
+    //     // self.search_stats.inc_leaf_nodes(n.ply);
+    //     s
+    // }
+    
+    
+    pub fn clear_move(&mut self, board: &Board, ply: Ply) {
+        self.pv_table.set(ply, &Move::NULL_MOVE, false);
     }
 
-    pub fn node_cut(&mut self, b: &Board, n: &Node, mv: &Move, s: Score) -> Score {
-        // self.search_stats.inc_cuts(n.ply);
-        // self.killers.store(n.ply, &mv);
-        s
+    pub fn record_move(&mut self, board: &Board, ply: Ply, mv: &Move) {
+        self.pv_table.set(ply, &mv, false);
+        self.pv_table.propagate_from(ply+1);
     }
 
-    pub fn node_exact(&mut self, b: &Board, n: &Node, mv: &Move, s: Score)  -> Score {
-        self.record_new_pv(n.ply, mv, false); 
-        s
+    pub fn record_truncated_move(&mut self, board: &Board, ply: Ply, mv: &Move ) {
+        self.pv_table.set(ply, &mv, true);
     }
 
-    pub fn node_leaf(&mut self, b: &Board, n: &Node, mv: &Move, s: Score) -> Score {
-        self.record_new_pv(n.ply, mv, true); 
-        // self.search_stats.inc_leaf_nodes(n.ply);
-        s
-    }
-
-    pub fn record_new_pv(&mut self, ply: Ply, mv: &Move, terminal_move: bool) {
+    pub fn record_new_pv(&mut self, board: &Board, ply: Ply, mv: &Move, terminal_move: bool) {
+        debug_assert!(mv.is_null() || board.is_pseudo_legal_move(mv) && board.is_legal_move(&mv), "{} on {}\n{:?}", mv, board, mv);
         self.pv_table.set(ply + 1, mv, terminal_move);
-        self.pv_table.propagate_from(ply + 1);
+        
+        // debug_assert!(board.is_legal_variation(&self.pv_table.extract_pv_for(ply+1)), "mv {} on {}\n{:?}\nvar: {}", mv, board, mv,self.pv_table.extract_pv_for(ply+1) );
         self.search_stats.inc_improvements(ply);
         if ply == 0 {
             let sp = SearchProgress::from_stats(&self.search_stats(), self.board.color_us());
@@ -747,6 +763,30 @@ mod tests {
             .set_callback(Uci::uci_info)
             .build();
         search.search(&board);
+        println!("{}", search);
+    }
+
+    #[test]
+    fn bug06() {
+        // 11.Qd3       b3r1kr/ppppqppp/2nnp3/6b1/3PP1N1/2N5/PPP1BPPP/B2QR1KR w - - 1 11   acd 4; bm d1d3; ce 60; pv "d1d3 c6b4 d3d1";
+        // 11... Nb4    b3r1kr/ppppqppp/2nnp3/6b1/3PP1N1/2NQ4/PPP1BPPP/B3R1KR b - - 2 11   acd 4; bm c6b4; ce 30; pv "c6b4 d3d1 b4c6";
+        let mut search = Algo::new()
+            .set_timing_method(TimeControl::Depth(3))
+            .build();
+        let board06 = Board::parse_fen("b1q1r1kr/ppppbppp/2nnp3/4N3/3P4/2N1P3/PPP2PPP/BQ2RBKR w - - 2 6").unwrap();
+        let board07 = Board::parse_fen("b2qr1kr/ppppbppp/2nnp3/4N3/3P4/2NBP3/PPP2PPP/BQ2R1KR w - - 4 7").unwrap();
+        let board08 = Board::parse_fen("b2qr1kr/pppp1ppp/2nnpb2/4N3/3P4/2NBP3/PPP2PPP/B2QR1KR w - - 6 8").unwrap();
+        let board09 = Board::parse_fen("b2qr1kr/ppppbppp/2nnp3/8/3P2N1/2NBP3/PPP2PPP/B2QR1KR w - - 8 9").unwrap();
+        let board10 = Board::parse_fen("b2qr1kr/pppp1ppp/2nnp3/6b1/3P2N1/2N1P3/PPP1BPPP/B2QR1KR w - - 10 10").unwrap();             
+        let board11 = Board::parse_fen("b3r1kr/ppppqppp/2nnp3/6b1/3PP1N1/2N5/PPP1BPPP/B2QR1KR w - - 1 11").unwrap();
+        let board12 = Board::parse_fen("b3r1kr/ppppqppp/3np3/6b1/1n1PP1N1/2NQ4/PPP1BPPP/B3R1KR w - - 3 12").unwrap();
+        search.search(&board06);
+        search.search(&board07);
+        search.search(&board08);
+        search.search(&board09);
+        search.search(&board10);
+        search.search(&board11);
+        search.search(&board12);
         println!("{}", search);
     }
 }

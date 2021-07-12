@@ -95,11 +95,13 @@ impl Algo {
         alpha: Score,
         beta: Score,
     ) -> Score {
+        self.clear_move(board, ply);
+
         if !self.qsearch.enabled || (!mv.is_capture() && self.qsearch.only_captures) {
             self.search_stats.inc_leaf_nodes(ply);
             let node = Node { ply, depth, alpha, beta };
             let score = board.eval(&mut self.eval, &node);
-            return self.node_leaf(board, &node, &Move::NULL_MOVE, score)
+            return score;
         }
         let score = self.qsearch_see(Bitboard::EMPTY, ply, 0, board, alpha, beta);
         debug_assert!(self.task_control.is_cancelled() || score > -Score::INFINITY);
@@ -115,8 +117,8 @@ impl Algo {
         mut alpha: Score,
         beta: Score,
     ) -> Score {
+        self.clear_move(board, ply);
         self.report_progress();
-        self.record_new_pv(ply, &Move::NULL_MOVE, false);
 
 
         let in_check = board.is_in_check(board.color_us());
@@ -126,7 +128,8 @@ impl Algo {
             standing_pat = board.eval(&mut self.eval, &node);
             trace!("{}", board.debug() + "Standing pat (eval)" + standing_pat);
             if standing_pat.is_mate() {
-                return  self.node_leaf(board, &node, &Move::NULL_MOVE, standing_pat);
+                // self.record_new_pv(board, ply, &Move::NULL_MOVE, true);                 
+                return  standing_pat;
             }
             if in_check {
                 standing_pat = alpha;
@@ -144,11 +147,10 @@ impl Algo {
                     "{}",
                     board.debug() + ply + "fail high - standing pat" + standing_pat + "cmp" + beta
                 );
-                let node = Node { ply, depth, alpha, beta };
-                return  self.node_leaf(board, &node, &Move::NULL_MOVE, standing_pat);
+                // self.record_new_pv(b, ply, &Move::NULL_MOVE, true);                 
+                return  standing_pat;
             }
             alpha = standing_pat;
-            self.record_new_pv(ply, &Move::NULL_MOVE, true);
         }
 
         // let gain_needed = alpha - standing_pat;
@@ -237,7 +239,7 @@ impl Algo {
             }
             if score > alpha {
                 trace!("{}", board.debug() + ply + score + "raises alpha" + alpha + mv);
-                self.record_new_pv(ply, mv, false);
+                self.record_move(board, ply, mv);
                 alpha = score;
             }
             // don't see_evaluate the hot square again

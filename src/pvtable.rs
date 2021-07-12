@@ -35,8 +35,9 @@ impl Default for PvTable {
 //  6:   d6e5  g5d8  f8e7  0000  0000
 //  7:   g5d8  f8e7  0000  0000
 //  8:   f8e7  0000  0000
-//  9:   0000  d8e7
-// 10:   d8e7  
+//  9: t 0000  d8e7
+//     --------------  propagate_from(ply=10)
+// 10: b d8e7  
 // 
 // matrix[0][0..5]
 // matrix[1][0..4]
@@ -81,7 +82,7 @@ impl PvTable {
 
     pub fn extract_pv_for(&self, ply: Ply) -> Variation {
         let mut res = Variation::new();
-        if let Some(pv) = self.matrix[ply as usize].get(1..self.size) {
+        if let Some(pv) = self.matrix[ply as usize].get(0..self.size) {
             // res.extend(pv.iter().take_while(|m| !m.is_null()));
             for mv in pv.iter().take_while(|m| !m.is_null()) {
                 res.push(*mv)

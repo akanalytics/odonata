@@ -77,6 +77,10 @@ impl Killers {
         if !self.enabled || m.is_castle() || m.is_capture() {
             return;
         }
+        // dont store duplicates
+        if m == &self.killers[y as usize][0] || m == &self.killers[y as usize][1] {
+            return;
+        }
         // self.killers[y as usize][3] = self.killers[y as usize][2];
         // self.killers[y as usize][2] = self.killers[y as usize][1];
         self.killers[y as usize][1] = self.killers[y as usize][0];

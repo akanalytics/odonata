@@ -96,7 +96,7 @@ impl Board {
                     // FIXME! allow capture of another type of piece? 
                     return false;
                 }
-                } else {
+            } else {
                 if !m.ep().is_in(self.them() & self.pawns()) {
                     return false;
                 }
@@ -495,6 +495,17 @@ mod tests {
             assert!(b.is_pseudo_legal_move(mv));
         }
     }
+
+
+    #[test]
+    fn test_is_legal_variation() {
+        let b = Board::from_str("b3r1kr/ppppqppp/3np3/6b1/1n1PP1N1/2NQ4/PPP1BPPP/B3R1KR w - - 3 12").unwrap();
+        let var = b.parse_uci_variation("d3d1 b4c6 e2c4").unwrap();
+        assert_eq!(var.len(), 3);
+        assert!(b.is_legal_variation(&var));
+    }
+
+
 
     #[test]
     fn test_catalog_moves() {

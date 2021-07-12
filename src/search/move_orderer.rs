@@ -150,9 +150,11 @@ impl Algo {
         if pv.starts_with(var) {
             let best = pv[var.len()];
             let j = moves.iter().position(|mv| mv == &best);
-            if let Some(j) = j {
-                moves.swap(0, j);
-                return true;
+            if let Some(j) =  j { 
+                if j != 0 {
+                    moves.swap(0, j);
+                    return true;
+                }
             }
             //println!("{:>30} / [{:>30}] ==> {}", var.to_string(), pv.to_string(), moves);
             return false;

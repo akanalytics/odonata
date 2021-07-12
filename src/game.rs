@@ -205,11 +205,11 @@ mod tests {
 
     #[test]
     #[ignore]
-    fn tourney() {
-        //let tc = TimeControl::NodeCount(1_000);
+    fn test_game() {
+        let tc = TimeControl::NodeCount(5_000);
         // let tc = TimeControl::from_remaining_time(Duration::from_millis(3000));
         // let tc = TimeControl::Depth(3);
-        let tc = TimeControl::from_move_time_millis(200);
+        // let tc = TimeControl::from_move_time_millis(200);
         let mut new = Algo::new().set_timing_method(tc).build();
         let mut old = Algo::new().set_timing_method(tc).build();
         // new.set_callback(Uci::uci_info);
@@ -225,9 +225,11 @@ mod tests {
         // new.ids.part_ply = true;
         // new.tt.aging = true;
         // old.eval.undefended_sq = 3;  // was 3
+        new.tt.use_tt_for_pv = false;
         new.eval.safety = true;
 
-        old.eval.safety = false;
+        old.tt.use_tt_for_pv = true;
+        old.eval.safety = true;
         // old.eval.undefended_sq = 0;
         // old.eval.undefended_piece = 0;
         // old.mte.branching_factor = 5;  // cause more failed plys
