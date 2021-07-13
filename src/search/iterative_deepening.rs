@@ -163,7 +163,7 @@ impl Algo {
         }
 
         let i = self.ids.iterations.iter().rposition(|r| r.completed());
-        let last = self.ids.iterations.last().unwrap();
+        // let last = self.ids.iterations.last().unwrap();
         if i.is_some() {
             let i = i.unwrap();
             let res = &self.ids.iterations[i];
@@ -171,13 +171,16 @@ impl Algo {
             self.search_stats.score = res.score;
         }
 
-        // && last.score > res.score
-        if self.ids.part_ply  {
-            self.search_stats.pv = last.pv.clone();
-            if self.search_stats.pv.len() > 0 {
-                self.search_stats.score = self.tt.extract_pv_and_score(&self.board).1.unwrap_or_default();
-            }
-        }
+        // TODO!
+        // in theory the root node in the tt wont have been written by a partial completed ply (single threaded mode), but
+        // the pv and the score might have changed. Really we should take the score and bm from a partially completed ply if set, as 
+        // the previous best will have been searched first, and a change means its no longer best.  
+        // if self.ids.part_ply  {
+        //     self.search_stats.pv = last.pv.clone();
+        //     if self.search_stats.pv.len() > 0 {
+        //         self.search_stats.score = self.tt.extract_pv_and_score(&self.board).1.unwrap_or_default();  // default wrong as its -inf
+        //     }
+        // }
         // self.search_stats.pv.truncate(self.max_depth as usize);
         let sp = SearchProgress::from_best_move(Some(self.bm()), self.board.color_us(), &self.search_stats);
         self.task_control.invoke_callback(&sp);

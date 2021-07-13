@@ -99,7 +99,12 @@ impl Algo {
 
         if !self.qsearch.enabled || (!mv.is_capture() && self.qsearch.only_captures) {
             self.search_stats.inc_leaf_nodes(ply);
-            let node = Node { ply, depth, alpha, beta };
+            let node = Node {
+                ply,
+                depth,
+                alpha,
+                beta,
+            };
             let score = board.eval(&mut self.eval, &node);
             return score;
         }
@@ -120,16 +125,20 @@ impl Algo {
         self.clear_move(board, ply);
         self.report_progress();
 
-
         let in_check = board.is_in_check(board.color_us());
         let mut standing_pat;
         if depth == 0 {
-            let node = Node { ply, depth, alpha, beta };
+            let node = Node {
+                ply,
+                depth,
+                alpha,
+                beta,
+            };
             standing_pat = board.eval(&mut self.eval, &node);
             trace!("{}", board.debug() + "Standing pat (eval)" + standing_pat);
             if standing_pat.is_mate() {
-                // self.record_new_pv(board, ply, &Move::NULL_MOVE, true);                 
-                return  standing_pat;
+                // self.record_new_pv(board, ply, &Move::NULL_MOVE, true);
+                return standing_pat;
             }
             if in_check {
                 standing_pat = alpha;
@@ -137,7 +146,15 @@ impl Algo {
         } else if in_check {
             standing_pat = alpha;
         } else {
-            standing_pat = board.eval_qsearch(&mut self.eval, &Node { ply, depth, alpha, beta });
+            standing_pat = board.eval_qsearch(
+                &mut self.eval,
+                &Node {
+                    ply,
+                    depth,
+                    alpha,
+                    beta,
+                },
+            );
             trace!("{}", board.debug() + "Standing pat (eval_qsearch)" + standing_pat);
         }
         if standing_pat > alpha {
@@ -147,8 +164,8 @@ impl Algo {
                     "{}",
                     board.debug() + ply + "fail high - standing pat" + standing_pat + "cmp" + beta
                 );
-                // self.record_new_pv(b, ply, &Move::NULL_MOVE, true);                 
-                return  standing_pat;
+                // self.record_new_pv(b, ply, &Move::NULL_MOVE, true);
+                return standing_pat;
             }
             alpha = standing_pat;
         }
@@ -188,7 +205,16 @@ impl Algo {
             // FIXME! skip illegal moves
             trace!(
                 "{}",
-                board.debug() + "examining move" + mv + "using" + Node { ply, depth, alpha, beta }
+                board.debug()
+                    + "examining move"
+                    + mv
+                    + "using"
+                    + Node {
+                        ply,
+                        depth,
+                        alpha,
+                        beta
+                    }
             );
             if !in_check && !mv.is_ep_capture() && mv.to().as_bb().disjoint(recaptures) {
                 let score = board.eval_move_see(&self.eval, &mv);
@@ -281,6 +307,17 @@ mod tests {
                 pos.board().to_san_variation(search.pv(), None),
                 search
             );
+            // forward score is from POV of mover at end of PV line
+            let qboard = search.pv().apply_to(pos.board());
+            let mut static_eval = qboard.eval(&mut search.eval, &Node::root(0)).cp().unwrap();
+            if qboard.color_us() != pos.board().color_us() {
+                static_eval = -static_eval;
+            }
+            assert_eq!(
+                static_eval,
+                search.results().ce().unwrap() as i16,
+                "{}", search.results()
+            );
         }
         Ok(())
     }
@@ -333,7 +370,15 @@ mod tests {
 
         let static_eval = pos
             .board()
-            .eval(&mut eval, &Node { ply: 0, depth: 0,  alpha, beta })
+            .eval(
+                &mut eval,
+                &Node {
+                    ply: 0,
+                    depth: 0,
+                    alpha,
+                    beta,
+                },
+            )
             .cp()
             .unwrap_or(0);
 

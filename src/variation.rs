@@ -1,4 +1,6 @@
 use crate::mv::Move;
+use crate::board::makemove::MoveMaker;
+use crate::board::Board;
 use crate::types::{Ply};
 use std::fmt;
 use std::ops::{Deref, DerefMut};
@@ -59,6 +61,14 @@ impl Variation {
             }
             //self.moves.resize_with(ply, || *mv);
         }
+    }
+
+    pub fn apply_to(&self, b: &Board) -> Board {
+        let mut board = b.clone();
+        for mv in self.iter() {
+            board = board.make_move(mv); 
+        }
+        board
     }
 }
 
