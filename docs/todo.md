@@ -7,6 +7,8 @@
 
 
 ## General
+- [ ] PV table tidy, truncated PV, score POV?, big test of score vs search
+- [ ] debugging info for static eval (template) - json?
 - [ ] position features
 - [ ] PV on q search and eval
 - [ ] serde as json struct
