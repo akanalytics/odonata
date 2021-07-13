@@ -81,7 +81,7 @@ impl Catalog {
             CatalogSuite::EndGame => Self::end_games(),
             CatalogSuite::Pin => Self::pins(),
             CatalogSuite::Move => Self::moves(),
-            CatalogSuite::Quiesce => Self::quiese(),
+            CatalogSuite::Quiesce => Self::quiesce(),
             CatalogSuite::MateIn2 => Self::mate_in_2(),
             // CatalogSuite::MateIn3 => Self::mate_in_3(),
             CatalogSuite::MateIn4 => Self::mate_in_4(),
@@ -186,7 +186,7 @@ r3k2r/1P6/1N3P2/2Pp4/3QP2Q/5B2/8/R3K2R w KQkq d6 0 1 id "MO.01"; c0 "Promos";
     }
 
 
-    pub fn quiese() -> Vec<Position> {
+    pub fn quiesce() -> Vec<Position> {
         let str = r#"
 r4rk1/pp2qppp/2nbbn2/3Np3/2B1P3/P4N1P/1P1B1PP1/R2QR1K1 b - - 6 16 acd 0; am Nxd5; bm Qd8; pv; ce 0; id 'pawn fork'; c1 'https://lichess.org/q5XvkApk/black#31';
 k7/p7/8/8/8/8/P7/K7 w - - 0 1 acd 0; pv; id QS.01; c0 'no captures';

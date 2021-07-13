@@ -83,7 +83,7 @@ impl fmt::Display for QSearch {
 
 impl Algo {
     // if the move resulted in checkmate, we should return a mate score
-    // if the move results in a position which after quiese, is potentially a mate,
+    // if the move results in a position which after quiesce, is potentially a mate,
     // we should not return a mate score, as only captures have been considered,
     // and a mate score might cut a genuine mate score elsewhere
     pub fn qsearch(
@@ -263,8 +263,8 @@ mod tests {
     use crate::search::timecontrol::*;
 
     #[test]
-    fn test_quiese_catalog() -> Result<(), String> {
-        let positions = Catalog::quiese();
+    fn test_quiesce_catalog() -> Result<(), String> {
+        let positions = Catalog::quiesce();
         // let pos = Position::find_by_id("pawn fork", &positions ).unwrap();
         for pos in &positions {
             let mut search = Algo::new()
@@ -288,9 +288,9 @@ mod tests {
     #[test]
     fn test_qsearch_ex2() -> Result<(), String> {
         debug!("test_qsearch_examples");
-        let positions = Catalog::quiese();
+        let positions = Catalog::quiesce();
         let pos = Position::find_by_id("QS.01", &positions).unwrap();
-        // let pos = &Catalog::quiese()[1];
+        // let pos = &Catalog::quiesce()[1];
         let mut b = pos.board().clone(); //.color_flip();
         debug!("board {}", b.to_fen());
         let mut eval = SimpleScorer::new();
@@ -304,7 +304,7 @@ mod tests {
             .set_timing_method(TimeControl::Depth(0))
             .set_eval(eval)
             .build();
-        let quiese_eval = algo.qsearch_see(
+        let quiesce_eval = algo.qsearch_see(
             Bitboard::EMPTY,
             node.ply,
             algo.max_depth,
@@ -314,7 +314,7 @@ mod tests {
         );
 
         println!("{}", algo);
-        debug!("static: {}  quiese: {}", static_eval, quiese_eval);
+        debug!("static: {}  quiesce: {}", static_eval, quiesce_eval);
         algo.search(&b);
         debug!("{}", algo);
         Ok(())
@@ -327,7 +327,7 @@ mod tests {
         eval.position = false;
         eval.material = true;
 
-        // white gains a pawn after quiese
+        // white gains a pawn after quiesce
         let pos = Position::parse_epd("7k/8/8/8/8/p7/8/R6K w - - 0 1 sm Ra3; ce 100;")?;
         let (alpha, beta) = (-Score::INFINITY, Score::INFINITY);
 
