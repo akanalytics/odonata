@@ -185,7 +185,7 @@ mod tests {
         let position = Catalog::mate_in_2()[0].clone();
         let eval = SimpleScorer::new().set_position(false);
         let mut search = Algo::new()
-            .set_timing_method(TimeControl::from_remaining_time(Duration::from_secs(20)))
+            .set_timing_method(TimeControl::Depth(3))
             .set_eval(eval)
             .set_callback(Uci::uci_info)
             .clone();

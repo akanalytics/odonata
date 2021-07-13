@@ -290,7 +290,7 @@ mod tests {
         debug!("test_qsearch_examples");
         let positions = Catalog::quiesce();
         let pos = Position::find_by_id("QS.01", &positions).unwrap();
-        // let pos = &Catalog::quiesce()[1];
+        // let pos = &Catalog::quiesc         e()[1];
         let mut b = pos.board().clone(); //.color_flip();
         debug!("board {}", b.to_fen());
         let mut eval = SimpleScorer::new();

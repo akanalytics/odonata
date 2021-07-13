@@ -598,7 +598,7 @@ mod tests {
         search.move_orderer.enabled = false;
         search.search(&board);
         println!("{}", search);
-        assert_eq!(search.search_stats().total().nodes(), 144); // null move pruning
+        assert_eq!(search.search_stats().total().nodes(), 140); // null move pruning
         // assert_eq!(search.search_stats().total().nodes(), 1468); 
                                                                  // assert_eq!(search.search_stats().total().nodes(), 1516); // rejigged pawn PST
                                                                  // previous

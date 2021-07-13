@@ -150,14 +150,16 @@ mod tests {
 
         assert_eq!(pvc.matrix[2][0], c1h2);
         pvc.propagate_from(1);
-        assert_eq!(pvc.extract_pv().len(), 2);
+        assert_eq!(pvc.extract_pv().len(), 3);
 
         // set a truncated pv
         pvc.set(1, &c1h2, true);
         assert_eq!(pvc.matrix[1][0], c1h2);
         assert_eq!(pvc.matrix[1][1], Move::NULL_MOVE);
         pvc.propagate_from(1);
-        assert_eq!(pvc.extract_pv().len(), 1);
+        pvc.set(0, &a1h1, false);
+        assert_eq!(pvc.extract_pv().len(), 2);
+        assert_eq!(pvc.extract_pv().to_string(), String::from("a1h1, c1h2"));
 
         // assert_eq!( format!("{:?}", pvc), "" );
     }
