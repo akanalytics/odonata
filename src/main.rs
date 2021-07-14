@@ -38,6 +38,12 @@ fn main() -> Result<(), std::num::ParseIntError> {
             .long("perft_cat")
             .value_name("depth")
             .takes_value(true))
+        .arg(Arg::with_name("search")
+            .help("runs search across a series of test positions")
+            .long("search")
+            .value_name("millis")
+            .default_value("300")
+            .takes_value(true))
         .get_matches();
 
     // Vary the output based on how many times the user used the "verbose" flag
@@ -60,6 +66,9 @@ fn main() -> Result<(), std::num::ParseIntError> {
     } else if let Some(depth) = matches.value_of("perft_cat") {
         let depth = depth.parse::<u32>()?;
         Bench::perft_cat(depth);
+    } else if let Some(millis) = matches.value_of("search") {
+        let millis = millis.parse::<u64>()?;
+        Bench::search(millis);
     } else {
         Console::run();
     }

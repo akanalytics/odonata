@@ -269,6 +269,15 @@ impl Position {
         }
     }
 
+    // acd analysis count depth [3]
+    pub fn acn(&self) -> Result<u128, String> {
+        if let Tag::AnalysisCountNodes(n) = self.get_tag(Tag::ACN) {
+            Ok(*n)
+        } else { 
+            Err("Not good".into())
+        }
+    }
+
     pub fn dm(&self) -> Result<u32, String> {
         if let Tag::DirectMate(dm) = self.get_tag(Tag::DM) {
             Ok(*dm)

@@ -5,8 +5,9 @@ use crate::perft::Perft;
 use crate::search::algo::Algo;
 use crate::search::timecontrol::TimeControl;
 // use env_logger;
-use crate::globals::counts;
-use std::time::Instant;
+use crate::utils::Formatter;
+// use crate::globals::counts;
+use std::time::{Instant, Duration};
 
 pub struct Bench;
 
@@ -16,9 +17,13 @@ impl Bench {
         for d in 1..=depth {
             let t = Instant::now();
             let p = Perft::perft(&mut board, d);
-            println!("perft({}) = {:<14} in {}", d, p, Clock::format(t.elapsed()));
+            let elapsed = t.elapsed();
+            println!("perft({}) = {:<14} in {}", d, p, Clock::format(elapsed));
+            if d == depth {
+                println!("\n{} nodes/sec", Formatter::format_f64(p as f64 / elapsed.as_secs_f64()));
+            }
         }
-        println!("\nstatistics\n{}", counts::GLOBAL_COUNTS);
+        // println!("\nstatistics\n{}", counts::GLOBAL_COUNTS);
     }
 
     pub fn perft_cat(depth: u32) {
@@ -32,25 +37,54 @@ impl Bench {
             let mut p = Perft::default();
             let total = p.perft_cat(&mut board, d);
             let time = Clock::format(t.elapsed());
+            let elapsed = t.elapsed();
             println!(
                 "{:>14}{:>14}{:>14}{:>14}{:>14}{:>14}{:>14}",
                 d, total, p.captures, p.en_passant, p.castles, p.promos, time
             );
+            if d == depth {
+                println!("\n{} nodes/sec", Formatter::format_f64(total as f64 / elapsed.as_secs_f64()));
+            }
         }
-        println!("\nstatistics\n{}", counts::GLOBAL_COUNTS);
+        // println!("\nstatistics\n{}", counts::GLOBAL_COUNTS);
     }
 
-    pub fn search() {
-        let mut search = Algo::new()
-            .set_timing_method(TimeControl::from_move_time_millis(1000))
+    pub fn search(millis: u64) {
+        println!("search time per move {}\n", Clock::format(Duration::from_millis(millis)));
+            let mut search = Algo::new()
+            .set_timing_method(TimeControl::from_move_time_millis(millis))
             .build();
-        let pos = &Catalog::test_position();
+        let positions = &Catalog::bench();
 
-        for _i in 0..6 {
+        println!(
+            "{:>3} {:<8} {:>13} {:>7} {:>5}  {:<85}",
+            "#", "bm", "nodes", "nps", "depth", "fen"
+        );
+        let mut total_time = Duration::from_millis(0);
+        let mut total_nodes = 0;
+        let mut total_depth = 0;
+        for (i, pos) in positions.iter().enumerate() {
+            let t = Instant::now();
+
+            search.new_game(); 
             search.search(pos.board());
-            // println!("{}", search.results());
-            search.new_game();
+            let elapsed = t.elapsed();
+            let bm = pos.board().to_san(&search.bm());
+            let depth = search.results().acd().unwrap();
+            let nodes = search.results().acn().unwrap();
+            let nps = Formatter::format_f64(nodes as f64 / elapsed.as_secs_f64());
+            let fen = search.results().board().to_fen();
+            total_time += elapsed;
+            total_nodes += nodes;
+            total_depth += depth;
+            let nodes = Formatter::format_u128(nodes);
+            println!(
+                "{:>3} {:<8} {:>13} {:>7} {:>5}  {:<85}",
+                i+1, bm, nodes, nps, depth, fen
+            );
         }
-        println!("\n\n{}\n", search);
+        let average_depth = total_depth as f64 / positions.len() as f64;
+        println!("\n{} nodes/sec", Formatter::format_f64(total_nodes as f64 / total_time.as_secs_f64()));
+        println!("\n{} average depth", Formatter::format_f64(average_depth));
     }
 }

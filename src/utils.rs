@@ -1,4 +1,5 @@
 use std::ops::{Bound, RangeBounds};
+use format_num::*;
 
 
 
@@ -51,6 +52,18 @@ where
 }
 
 
+pub struct Formatter;
+
+impl Formatter {
+    pub fn format_f64(n: f64) -> String {
+        format_num!(".4s", n)
+    }
+
+    pub fn format_u128(n: u128) -> String {
+        format_num!(",d", n as f64)
+    }
+
+}
 
 
 
@@ -64,7 +77,6 @@ pub trait StringUtils {
     fn take_char_at(&self, i: usize) -> Option<char>;
     fn split_off_first_word(&self) -> (&str, &str);
     fn trim_first_n_words(&self, n: u16) -> &str;
-
 }
 
 impl StringUtils for str {
@@ -222,5 +234,16 @@ mod tests {
                 s.take_char_at(6).unwrap()
             )
         );
+    }
+
+
+    #[test]
+    fn test_formatter() {
+        assert_eq!( Formatter::format_f64(12345567.0).as_str(), "12.35M" );
+        assert_eq!( Formatter::format_f64(0.0).as_str(), "0.000" );
+        assert_eq!( Formatter::format_f64(1234567890123.0).as_str(), "1.235T" );
+        assert_eq!( Formatter::format_f64(123456.0).as_str(), "123.5k" );
+        assert_eq!( Formatter::format_f64(0.0000123).as_str(), "12.30µ" );
+        assert_eq!( Formatter::format_f64(0.0124).as_str(), "12.40m" );
     }
 }

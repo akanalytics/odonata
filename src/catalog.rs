@@ -28,6 +28,7 @@ pub enum CatalogSuite {
     MateIn4,
     Ches960,
     Perft,
+    Bench,
 }
 
 
@@ -87,6 +88,7 @@ impl Catalog {
             CatalogSuite::MateIn4 => Self::mate_in_4(),
             // CatalogSuite::MateIn4 => Self::chess960(),
             // CatalogSuite::MateIn4 => Self::perft(),
+            CatalogSuite::Bench => Self::bench(),
             _ => Vec::new()
 
         }
@@ -901,6 +903,15 @@ b2b1r1k/3R1ppp/4qP2/4p1PQ/4P3/5B2/4N1K1/8 w - - bm g6; id "WAC.300";
         ));
         vec
     }
+
+
+    pub fn bench() -> Vec<Position> {
+        Self::bratko_kopec()
+    }
+
+
+
+
 
 
     // logic for chess960 starting positions
