@@ -204,6 +204,22 @@ impl Clone for MoveList {
         }
     }
 }
+// impl Clone for MoveList {
+//     #[inline]
+//     fn clone(&self) -> Self {
+//         let mut other = MoveList {
+//             moves: ArrayVec::new(),
+//         };
+//         unsafe {
+//             other.moves.set_len(self.len());
+//         }
+//         other.moves.copy_from_slice(&self.moves);
+//         // for &mv in self.iter() {
+//         //     other.push(mv);
+//         // }
+//         other
+//     }
+// }
 
 impl std::iter::FromIterator<Move> for MoveList {
     #[inline]

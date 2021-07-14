@@ -202,7 +202,7 @@ impl OrderedMoveList {
             // we dont sort killers
             // || stage == 'b' as b is sorted by reverse anyway due to push and they are bad captures
             {
-                Self::sort_one_move(self.index, &mut self.moves);
+                Self::sort_one_capture_move(self.index, &mut self.moves);
             }
             if stage == 'G' || stage == 'g' {
                 let mv = &self.moves[self.index];
@@ -229,7 +229,7 @@ impl OrderedMoveList {
 
 
     #[inline]
-    fn sort_one_move(i: usize, moves: &mut MoveList) {
+    fn sort_one_capture_move(i: usize, moves: &mut MoveList) {
         if let Some(j) = moves
             .iter()
             .enumerate()

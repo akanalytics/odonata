@@ -8,11 +8,12 @@
 
 ## General
 - [ ] PV table tidy, truncated PV, score POV?, big test of score vs search
+- [ ] Avoid PV for threading and multi pv search
 - [ ] debugging info for static eval (template) - json?
 - [ ] position features
 - [ ] PV on q search and eval
 - [ ] serde as json struct
-- [ ] triangle stuff
+- [X] triangle stuff
 - [ ] NPS accross all threads
 - [ ] flamer?
 - [ ] x-ray in see algorithm
