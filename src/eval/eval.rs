@@ -9,7 +9,7 @@ use crate::material::Material;
 use crate::mv::Move;
 use crate::search::node::Node;
 use crate::stat::{ArrayStat, Stat};
-use crate::types::{Color, Piece, Ply};
+use crate::types::{Color, Piece};
 use crate::{debug, logger::LogInit};
 
 use std::fmt;

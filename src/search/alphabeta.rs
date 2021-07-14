@@ -5,7 +5,6 @@ use crate::mv::Move;
 use crate::pvtable::PvTable;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
-use crate::search::searchprogress::SearchProgress;
 use crate::cache::tt2::{NodeType, TtNode};
 use crate::types::{Ply, MAX_PLY};
 
@@ -47,7 +46,7 @@ impl Algo {
         beta: Score,
         last_move: &Move,
     ) -> Score {
-        self.clear_move(board, ply);
+        self.clear_move(ply);
         // debug_assert!(depth > 0);
         self.report_progress();
 
@@ -83,7 +82,7 @@ impl Algo {
                         // previously this position raised alpha, but didnt trigger a cut
                         // no point going through moves as we know what the max score is
                         if entry.score > alpha {
-                            self.record_truncated_move(board, ply, &entry.bm);
+                            self.record_truncated_move(ply, &entry.bm);
                         }
                         return entry.score;
                     }
@@ -94,11 +93,11 @@ impl Algo {
                         if entry.score > alpha {
                             nt = NodeType::Pv;
                             alpha = entry.score;
-                            self.record_move(board, ply, &entry.bm);
+                            self.record_move(ply, &entry.bm);
                             if alpha >= beta {
                                 self.search_stats.inc_cuts(ply);
                                 self.tt.store(board.hash(), entry);
-                                self.record_truncated_move(board, ply, &entry.bm);
+                                self.record_truncated_move(ply, &entry.bm);
                                 return entry.score;
                             }
                             score = entry.score;
@@ -165,7 +164,7 @@ impl Algo {
                 bm = mv;
                 nt = NodeType::Pv;
                 debug_assert!(board.is_pseudo_legal_move(&bm));
-                self.record_move(board, ply, &mv);
+                self.record_move(ply, &mv);
             }
 
             if alpha >= beta && !self.minmax {

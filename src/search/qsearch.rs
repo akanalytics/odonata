@@ -95,7 +95,7 @@ impl Algo {
         alpha: Score,
         beta: Score,
     ) -> Score {
-        self.clear_move(board, ply);
+        self.clear_move(ply);
 
         if !self.qsearch.enabled || (!mv.is_capture() && self.qsearch.only_captures) {
             self.search_stats.inc_leaf_nodes(ply);
@@ -122,7 +122,7 @@ impl Algo {
         mut alpha: Score,
         beta: Score,
     ) -> Score {
-        self.clear_move(board, ply);
+        self.clear_move(ply);
         self.report_progress();
 
         let in_check = board.is_in_check(board.color_us());
@@ -265,7 +265,7 @@ impl Algo {
             }
             if score > alpha {
                 trace!("{}", board.debug() + ply + score + "raises alpha" + alpha + mv);
-                self.record_move(board, ply, mv);
+                self.record_move(ply, mv);
                 alpha = score;
             }
             // don't see_evaluate the hot square again

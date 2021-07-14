@@ -9,7 +9,6 @@ use crate::globals::counts;
 use crate::mv::Move;
 use crate::position::Position;
 use crate::pvtable::PvTable;
-use crate::search::node::Node;
 use crate::repetition::Repetition;
 use crate::search::iterative_deepening::IterativeDeepening;
 use crate::search::killers::Killers;
@@ -502,30 +501,30 @@ impl Algo {
     // }
     
     
-    pub fn clear_move(&mut self, board: &Board, ply: Ply) {
+    pub fn clear_move(&mut self, ply: Ply) {
         self.pv_table.set(ply, &Move::NULL_MOVE, false);
     }
 
-    pub fn record_move(&mut self, board: &Board, ply: Ply, mv: &Move) {
+    pub fn record_move(&mut self, ply: Ply, mv: &Move) {
         self.pv_table.set(ply, &mv, false);
         self.pv_table.propagate_from(ply+1);
     }
 
-    pub fn record_truncated_move(&mut self, board: &Board, ply: Ply, mv: &Move ) {
+    pub fn record_truncated_move(&mut self, ply: Ply, mv: &Move ) {
         self.pv_table.set(ply, &mv, true);
     }
 
-    pub fn record_new_pv(&mut self, board: &Board, ply: Ply, mv: &Move, terminal_move: bool) {
-        debug_assert!(mv.is_null() || board.is_pseudo_legal_move(mv) && board.is_legal_move(&mv), "{} on {}\n{:?}", mv, board, mv);
-        self.pv_table.set(ply + 1, mv, terminal_move);
+    // pub fn record_new_pv(&mut self, board: &Board, ply: Ply, mv: &Move, terminal_move: bool) {
+    //     debug_assert!(mv.is_null() || board.is_pseudo_legal_move(mv) && board.is_legal_move(&mv), "{} on {}\n{:?}", mv, board, mv);
+    //     self.pv_table.set(ply + 1, mv, terminal_move);
         
-        // debug_assert!(board.is_legal_variation(&self.pv_table.extract_pv_for(ply+1)), "mv {} on {}\n{:?}\nvar: {}", mv, board, mv,self.pv_table.extract_pv_for(ply+1) );
-        self.search_stats.inc_improvements(ply);
-        if ply == 0 {
-            let sp = SearchProgress::from_stats(&self.search_stats(), self.board.color_us());
-            self.task_control.invoke_callback(&sp);
-        }
-    }
+    //     // debug_assert!(board.is_legal_variation(&self.pv_table.extract_pv_for(ply+1)), "mv {} on {}\n{:?}\nvar: {}", mv, board, mv,self.pv_table.extract_pv_for(ply+1) );
+    //     self.search_stats.inc_improvements(ply);
+    //     if ply == 0 {
+    //         let sp = SearchProgress::from_stats(&self.search_stats(), self.board.color_us());
+    //         self.task_control.invoke_callback(&sp);
+    //     }
+    // }
 
 
 }
