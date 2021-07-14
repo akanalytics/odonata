@@ -462,7 +462,7 @@ impl SimpleScorer {
         } else {
             Weight::zero()
         };
-        let mo = if self.mobility && node.depth >= self.min_depth_mob as i32 {
+        let mo = if self.mobility {
             self.w_eval_mobility(board)
         } else {
             Weight::zero()

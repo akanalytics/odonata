@@ -37,13 +37,15 @@ fn main() -> Result<(), std::num::ParseIntError> {
             .help("runs perft with category breakdown from standard chess opening position")
             .long("perft_cat")
             .value_name("depth")
-            .takes_value(true))
+            .takes_value(true)
+        )
         .arg(Arg::with_name("search")
             .help("analyse a series of test positions in a given time (in milliseconds) per position")
             .long("search")
             .value_name("millis")
             .default_value("300")
-            .takes_value(true))
+            .takes_value(true)
+        )
         .get_matches();
 
     // Vary the output based on how many times the user used the "verbose" flag
@@ -60,15 +62,19 @@ fn main() -> Result<(), std::num::ParseIntError> {
 
     if matches.is_present("uci") {
         Uci::new().run();
-    } if let Some(depth) = matches.value_of("perft") {
+    } else if let Some(depth) = matches.value_of("perft") {
         let depth = depth.parse::<u32>()?;
         Bench::perft(depth);
     } else if let Some(depth) = matches.value_of("perft_cat") {
         let depth = depth.parse::<u32>()?;
         Bench::perft_cat(depth);
-    } else if let Some(millis) = matches.value_of("search") {
-        let millis = millis.parse::<u64>()?;
-        Bench::search(millis);
+    } else if matches.occurrences_of("search") > 0 {
+        if let Some(millis) = matches.value_of("search") {
+            let millis = millis.parse::<u64>()?;
+            Bench::search(millis);
+        } else {
+            unreachable!("search always has a default millis")
+        }
     } else {
         Console::run();
     }

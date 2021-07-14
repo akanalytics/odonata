@@ -2,7 +2,7 @@
 perf report 
 
 
-perf perf record -e task-clock,cycles,instructions,cache-references,cache-misses --call-graph dwarf -F 99 --output=perf.data  ./target/release/odonata --perft 5
+perf perf record -e task-clock,cycles,instructions,cache-references,cache-misses --call-graph dwarf -F 99 --output=perf.data  ./target/release/odonata --search
 perf record -e task-clock,cycles,instructions,cache-references,cache-misses --call-graph dwarf -F 99  ./target/release/odonata --perft 5
 
 cargo flamegraph --bench benchmark perft5 --bench
