@@ -39,7 +39,7 @@ fn main() -> Result<(), std::num::ParseIntError> {
             .value_name("depth")
             .takes_value(true))
         .arg(Arg::with_name("search")
-            .help("runs search across a series of test positions")
+            .help("analyse a series of test positions in a given time (in milliseconds) per position")
             .long("search")
             .value_name("millis")
             .default_value("300")
