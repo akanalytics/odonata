@@ -9,6 +9,7 @@ Milestones ('m') are bundled into Releases.
 - added checkmate and draw detenction to python interface
 - added --search as a command-line switch for benchmarking 
 - move to cargo nightly-2021-07-06
+- added nodes as search constraint on python interface
 
 #### m 0.3.22
 - bishop pair bonus in eval
