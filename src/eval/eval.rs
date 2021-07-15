@@ -362,8 +362,8 @@ const MATERIAL_SCORES: [i32; Piece::len()] = [
     Piece::Pawn.centipawns(),
     Piece::Knight.centipawns(),
     Piece::Bishop.centipawns(),
-    Piece::Rook.centipawns(),
-    Piece::Queen.centipawns(),
+    600,  // Piece::Rook.centipawns(),
+    1100, // Piece::Queen.centipawns(),
     0, // king,
 ];
 
@@ -378,7 +378,7 @@ impl SimpleScorer {
             material: true,
             safety: true,
             phasing: true,
-            mobility_phase_disable: 100,
+            mobility_phase_disable: 60,
             min_depth_mob: 1,
             bishop_pair: Weight::new(40, 85),
             undefended_piece: 6,
@@ -443,7 +443,7 @@ impl SimpleScorer {
         score
     }
 
-    fn w_eval_without_wdl(&mut self, board: &Board, node: &Node) -> Score {
+    fn w_eval_without_wdl(&mut self, board: &Board, _node: &Node) -> Score {
         // if self.cache_eval {
         //     if let Some(entry) = self.cache.probe_by_board(board) {
         //         counts::EVAL_CACHE_COUNT.increment();
