@@ -502,7 +502,7 @@ impl Algo {
     
     
     pub fn clear_move(&mut self, ply: Ply) {
-        self.pv_table.set(ply, &Move::NULL_MOVE, false);
+        self.pv_table.set(ply, &Move::NULL_MOVE, true);
     }
 
     pub fn record_move(&mut self, ply: Ply, mv: &Move) {
@@ -575,6 +575,7 @@ mod tests {
             .set_eval(eval)
             .build();
         search.qsearch.enabled = false;
+        search.tt.enabled = false;
         search.minmax = true;
         search.search(&board);
         assert_eq!(
@@ -597,7 +598,7 @@ mod tests {
         search.move_orderer.enabled = false;
         search.search(&board);
         println!("{}", search);
-        assert_eq!(search.search_stats().total().nodes(), 140); // null move pruning
+        assert_eq!(search.search_stats().total().nodes(), 182); // null move pruning
         // assert_eq!(search.search_stats().total().nodes(), 1468); 
                                                                  // assert_eq!(search.search_stats().total().nodes(), 1516); // rejigged pawn PST
                                                                  // previous
@@ -788,4 +789,37 @@ mod tests {
         search.search(&board12);
         println!("{}", search);
     }
+
+    #[test]
+    #[ignore]
+    fn test_truncated_pv() {
+        let mut algo = Algo::new()
+//             .set_timing_method(TimeControl::from_move_time_millis(1000))
+            .set_timing_method(TimeControl::Depth(7))
+            .build();
+        // algo.repetition.avoid_tt_on_repeats = false;
+        // algo.tt.min_ply = 2;
+        let positions = Catalog::win_at_chess();
+        for p in positions {
+            algo.new_game();
+            algo.tt.allow_truncated_pv = true;
+            algo.search(p.board());
+            let pv1 = algo.results.pv().unwrap();
+            algo.tt.current_age -= 1;
+            println!("{:<40} - {}", pv1.uci(), algo.results());
+
+            algo.tt.allow_truncated_pv = true;
+            algo.search(p.board());
+            let pv2 = algo.results.pv().unwrap();
+            println!("{:<40} - {}", pv2.uci(), algo.results());
+
+            algo.tt.allow_truncated_pv = false;
+            algo.search(p.board());
+            let pv3 = algo.results.pv().unwrap();
+            println!("{:<40} - {}\n", pv3.uci(), algo.results());
+
+            //assert_eq!(pv1, pv2, "{}", p );
+        }
+    }
+
 }

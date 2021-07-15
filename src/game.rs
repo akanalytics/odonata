@@ -225,11 +225,13 @@ mod tests {
         // new.ids.part_ply = true;
         // new.tt.aging = true;
         // old.eval.undefended_sq = 3;  // was 3
-        new.tt.use_tt_for_pv = false;
-        new.eval.safety = true;
+        // new.tt.use_tt_for_pv = false;
+        // new.eval.safety = true;
+        new.repetition.avoid_tt_on_repeats = false;
 
-        old.tt.use_tt_for_pv = true;
-        old.eval.safety = true;
+        old.repetition.avoid_tt_on_repeats = true;
+        // old.tt.use_tt_for_pv = true;
+        // old.eval.safety = true;
         // old.eval.undefended_sq = 0;
         // old.eval.undefended_piece = 0;
         // old.mte.branching_factor = 5;  // cause more failed plys

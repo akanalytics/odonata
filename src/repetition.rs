@@ -17,14 +17,14 @@ pub struct Repetition {
 impl Component for Repetition {
     fn settings(&self, c: &mut Config) {
         c.set("repetition.enabled", "type check default true");
-        c.set("repetition.avoid_tt_on_repeats", "type check default true");
+        c.set("repetition.avoid.tt.on.repeats", &format!("type check default {}", self.avoid_tt_on_repeats));
     }
 
     fn configure(&mut self, c: &Config) {
         debug!("repetition.configure");
-        self.enabled = c.bool("move_orderer.enabled").unwrap_or(self.enabled);
+        self.enabled = c.bool("repetition.enabled").unwrap_or(self.enabled);
         self.avoid_tt_on_repeats = c
-            .bool("repetition.avoid_tt_on_repeats")
+            .bool("repetition.avoid.tt.on.repeats")
             .unwrap_or(self.avoid_tt_on_repeats)
     }
     fn new_game(&mut self) {
@@ -39,7 +39,7 @@ impl Default for Repetition {
     fn default() -> Self {
         Self {
             enabled: true,
-            avoid_tt_on_repeats: true,
+            avoid_tt_on_repeats: false,
             prior_positions: Vec::new(),
         }
     }
@@ -120,6 +120,7 @@ impl Repetition {
         }
     }
 
+    // current position counts as 1
     pub fn count(&self, b: &Board) -> u16 {
         if !self.enabled {
             return 0;

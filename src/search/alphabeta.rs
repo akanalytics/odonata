@@ -46,8 +46,9 @@ impl Algo {
         beta: Score,
         last_move: &Move,
     ) -> Score {
-        self.clear_move(ply);
+
         // debug_assert!(depth > 0);
+        self.clear_move(ply);
         self.report_progress();
 
         if self.time_up_or_cancelled(ply, false) {
@@ -81,25 +82,33 @@ impl Algo {
                     NodeType::Pv => {
                         // previously this position raised alpha, but didnt trigger a cut
                         // no point going through moves as we know what the max score is
-                        if entry.score > alpha {
-                            self.record_truncated_move(ply, &entry.bm);
+                        if entry.score >= beta {
+                            return entry.score;
                         }
-                        return entry.score;
+                        if entry.score <= alpha {
+                            return entry.score;
+                        }
+
+                        if self.tt.allow_truncated_pv && entry.score > alpha {
+                            self.record_truncated_move(ply, &entry.bm);
+                            return entry.score;
+                        }
+                        // else we just use the hash move for move ordering
                     }
                     NodeType::Cut => {
                         // previously this position raised alpha (sufficiently to cause a cut).
                         // not all child nodes were scored, so score is a lower bound
                         // FIXME: probably dont set alpha just the hinted mv and re-search the node
-                        if entry.score > alpha {
+                        if entry.score >= beta {
+                            self.search_stats.inc_cuts(ply);
+                            self.tt.store(board.hash(), entry);
+                            // self.record_truncated_move(ply, &entry.bm);
+                            return entry.score;
+                        }
+                        if self.tt.allow_truncated_pv && entry.score > alpha {
                             nt = NodeType::Pv;
                             alpha = entry.score;
-                            self.record_move(ply, &entry.bm);
-                            if alpha >= beta {
-                                self.search_stats.inc_cuts(ply);
-                                self.tt.store(board.hash(), entry);
-                                self.record_truncated_move(ply, &entry.bm);
-                                return entry.score;
-                            }
+                            self.record_truncated_move(ply, &entry.bm);
                             score = entry.score;
                             bm = entry.bm; // need to set bm as alpha raising mv might be skipped
                             // tt_mv = Some(entry.bm); // might help with move ordering
@@ -109,6 +118,7 @@ impl Algo {
                         // previously this position didnt raise alpha, the score is an upper bound
                         // if the score is still below alpha, this too is an ALL node
                         if entry.score <= alpha {
+                            // self.record_truncated_move(ply, &entry.bm);
                             return entry.score;
                         }
                     }

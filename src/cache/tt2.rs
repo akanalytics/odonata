@@ -272,6 +272,7 @@ pub struct TranspositionTable2 {
     pub current_age: u8,
     pub enabled: bool,
     pub use_tt_for_pv: bool,
+    pub allow_truncated_pv: bool, 
     pub mb: i64,
     pub hmvc_horizon: i32,
     pub min_ply: Ply,
@@ -293,11 +294,12 @@ impl fmt::Debug for TranspositionTable2 {
         f.debug_struct("TranspositionTable")
             // .field("pv_table", &self.pv_table.extract_pv().)
             .field("enabled", &self.enabled)
-            .field("use_tt_for_pv", &self.use_tt_for_pv)
+            .field("use.tt.for.pv", &self.use_tt_for_pv)
+            .field("allow.truncated.pv", &self.allow_truncated_pv)
             .field("mb", &self.mb)
-            .field("hmvc_horizon", &self.hmvc_horizon)
+            .field("hmvc.horizon", &self.hmvc_horizon)
             .field("aging", &self.aging)
-            .field("current_age", &self.current_age)
+            .field("current.age", &self.current_age)
             .finish()
     }
 }
@@ -306,6 +308,7 @@ impl fmt::Display for TranspositionTable2 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "enabled          : {}", self.enabled)?;
         writeln!(f, "use tt for pv    : {}", self.use_tt_for_pv)?;
+        writeln!(f, "allow trun pv    : {}", self.allow_truncated_pv)?;
         writeln!(f, "capacity         : {}", self.table.capacity())?;
         writeln!(f, "size in mb       : {}", self.mb)?;
         writeln!(f, "entry size bytes : {}", mem::size_of::<TtNode>())?;
@@ -361,19 +364,21 @@ impl Default for TranspositionTable2 {
 impl Component for TranspositionTable2 {
     fn settings(&self, c: &mut Config) {
         c.set("tt.aging", &format!("type check default {}", self.aging));
-        c.set("tt.use_tt_for_pv", &format!("type check default {}", self.use_tt_for_pv));
+        c.set("tt.use.tt.for.pv", &format!("type check default {}", self.use_tt_for_pv));
+        c.set("tt.allow.truncated.pv", &format!("type check default {}", self.allow_truncated_pv));
         c.set("Hash", &format!("type spin default {} min 0 max 4000", self.mb));
-        c.set("tt.hmvc_horizon", &format!("type spin default {} min 0 max 100", self.hmvc_horizon));
-        c.set("tt.min_ply", &format!("type spin default {} min 0 max 100", self.min_ply));
+        c.set("tt.hmvc.horizon", &format!("type spin default {} min 0 max 100", self.hmvc_horizon));
+        c.set("tt.min.ply", &format!("type spin default {} min 0 max 100", self.min_ply));
     }
     fn configure(&mut self, c: &Config) {
         debug!("tt.configure");
         self.aging = c.bool("tt.aging").unwrap_or(self.aging);
-        self.use_tt_for_pv = c.bool("tt.use_tt_for_pv").unwrap_or(self.use_tt_for_pv);
+        self.use_tt_for_pv = c.bool("tt.use.tt.for.pv").unwrap_or(self.use_tt_for_pv);
+        self.allow_truncated_pv = c.bool("tt.allow.truncated.pv").unwrap_or(self.allow_truncated_pv);
         self.mb = c.int("Hash").unwrap_or(self.mb);
         // table is resized on next clear / generation
         self.hmvc_horizon = c.int("tt.hmvc_horizon").unwrap_or(self.hmvc_horizon as i64) as i32;
-        self.min_ply = c.int("tt.min_ply").unwrap_or(self.min_ply as i64) as Ply;
+        self.min_ply = c.int("tt.min.ply").unwrap_or(self.min_ply as i64) as Ply;
     }
 
     fn new_game(&mut self) {
@@ -415,11 +420,12 @@ impl TranspositionTable2 {
             table: Arc::new(SharedTable::new_with_capacity(Self::convert_mb_to_capacity(mb))),
             enabled: true,
             use_tt_for_pv: false,
+            allow_truncated_pv: false,
             mb: mb as i64,
             aging: true,
             current_age: 10, // to allow us to look back
             hmvc_horizon: 42,
-            min_ply: 4,
+            min_ply: 1,
             hits: Stat::new("hits"),
             misses: Stat::new("misses"),
             collisions: Stat::new("collisions"),
@@ -515,9 +521,10 @@ impl TranspositionTable2 {
             "Cannot store unsed nodes in tt"
         );
 
+        // probe by hash not board so any "conditions" are bypassed
         let (hash, data) = self.table.probe(h);
-        // race condition here we dont worry about
-        if hash != h {
+        // FIXME! race condition here we dont worry about
+        if false && hash != h {
             self.inserts.increment();
             let new_data = TtNode::pack(&new_node, self.current_age);
             let unpacked = TtNode::unpack(new_data).0;
@@ -531,10 +538,11 @@ impl TranspositionTable2 {
         // || self.current_age == old_age
         //     && (new.entry.draft > old.entry.draft
         //         || new.entry.draft == old.entry.draft && new.entry.node_type >= old.entry.node_type)
+        // even when the draft is the same we overwrite, as more nodes may have been used in calculating due to a fuller tt..
         if self.current_age > old_age
             || self.current_age == old_age
                 && (new_node.node_type > old_node.node_type
-                    || new_node.node_type == old_node.node_type && new_node.draft > old_node.draft)
+                    || new_node.node_type == old_node.node_type && new_node.draft >= old_node.draft)
         {
             // new.hash != old.hash &&
             if self.current_age == old_age && old_node.node_type == NodeType::Pv {
@@ -580,7 +588,7 @@ impl TranspositionTable2 {
             // if tt_node.draft < draft {
             //     return None;
             // }
-            if !tt_node.bm.is_null() && !board.is_legal_move(&tt_node.bm) {
+            if !tt_node.bm.is_null() && !board.is_pseudo_legal_move(&tt_node.bm) && !board.is_legal_move(&tt_node.bm) {
                 self.bad_hash.increment();
                 return None;
             }

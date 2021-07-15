@@ -11,6 +11,7 @@
 - [ ] Avoid PV for threading and multi pv search
 - [ ] debugging info for static eval (template) - json?
 - [ ] position features
+- [ ] optimise check of repetitions within 3 of ireversible move
 - [ ] PV on q search and eval
 - [ ] serde as json struct
 - [X] triangle stuff

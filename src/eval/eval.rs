@@ -360,7 +360,7 @@ impl fmt::Display for SimpleScorer {
 const MATERIAL_SCORES: [i32; Piece::len()] = [
     0, // None
     Piece::Pawn.centipawns(),
-    Piece::Knight.centipawns(),
+    350, // Piece::Knight.centipawns(),
     Piece::Bishop.centipawns(),
     600,  // Piece::Rook.centipawns(),
     1100, // Piece::Queen.centipawns(),
@@ -757,7 +757,7 @@ mod tests {
         let eval = &mut SimpleScorer::new();
         assert_eq!(board.eval(eval, &Node::root(0)), Score::from_cp(0));
 
-        let starting_pos_score = 8 * 100 + 2 * 325 + 2 * 350 + 2 * 600 + 1100 + (40 + 85) / 2; // (bishop pair, half the pieces)
+        let starting_pos_score = 8 * 100 + 2 * 350 + 2 * 350 + 2 * 600 + 1100 + (40 + 85) / 2; // (bishop pair, half the pieces)
         let board = Catalog::white_starting_position();
         assert_eq!(board.eval_material(eval), Score::from_cp(starting_pos_score));
 
