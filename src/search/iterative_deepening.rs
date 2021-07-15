@@ -147,7 +147,7 @@ impl Algo {
             // pv.truncate(depth as usize);
             sp.pv = Some(pv);
             if !self.board.is_legal_variation(&res.pv) {             
-                assert!(false, "PV  {} is invalid on board {}\n{:?}\n{}", res.pv, self.board, res.pv, self);
+                debug_assert!(false, "PV  {} is invalid on board {}\n{:?}\n{}", res.pv, self.board, res.pv, self);
                 res.pv.truncate(1);
                 let pv = res.pv.clone();
                 sp.pv = Some(pv);
