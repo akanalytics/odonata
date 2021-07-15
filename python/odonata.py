@@ -900,15 +900,16 @@ class Eval:
 
 
 class Algo:
-    def __init__(self, depth: Optional[int] = None, millis: Optional[int] = 1000) -> None:
+    def __init__(self, depth: Optional[int] = None, millis: Optional[int] = 1000, nodes: Optional[int] = None) -> None:
         self.millis = millis
+        self.node_count = nodes
         self.depth = depth
         self.results = {}
 
     # can return None when no moves available (or found in time)
     def search(self, b: Board) -> Optional[Move]:
         odo = Odonata.instance()
-        bm = odo.get_best_move(b, self.depth, self.millis)
+        bm = odo.get_best_move(b, depth=self.depth, millis=self.millis, nodes=self.node_count)
         self.results = odo.parse_search_results()
         return bm
 
@@ -1138,7 +1139,7 @@ class Odonata:
     def version(self) -> str:
         return self.call("version", args=())
 
-    def get_best_move(self, b: Board, depth: Optional[int] = None, millis: Optional[int] = None) -> Optional[str]:
+    def get_best_move(self, b: Board, depth: Optional[int] = None, millis: Optional[int] = None, nodes: Optional[int] = None) -> Optional[str]:
         """Returns best move with current position on the board in uci notation or None if it's a mate."""
 
         self._put(f"position fen {b.to_fen()}")
@@ -1147,6 +1148,8 @@ class Odonata:
             req = f"go depth {depth}"
         if millis:
             req = f"go movetime {millis}"
+        if nodes:
+            req = f"go nodes {nodes}"
 
         result = self.exec_command(req, res="bestmove").split(" ")[0]
         return None if result == "0000" else result
