@@ -8,6 +8,7 @@ Milestones ('m') are bundled into Releases.
 - add python methods for retreiving epd positions - wac, bk test suites etc
 - added checkmate and draw detenction to python interface
 - added --search as a command-line switch for benchmarking 
+- move to cargo nightly-2021-07-06
 
 #### m 0.3.22
 - bishop pair bonus in eval

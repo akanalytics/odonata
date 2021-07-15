@@ -17,6 +17,9 @@ I would describe Odonata as original code but inspired by other libraries, engin
 ## Lichess
 Odonata is running as a bot on Lichess. You can see her rankings and games here [Lichess](https://lichess.org/@/odonata-bot) .
 
+## CCRL
+See the CCRL Blitz ratings here https://ccrl.chessdom.com/ccrl/404/cgi/compare_engines.cgi?family=Odonata
+
 ## Python interface
 Odonata has a baby python interface, based on the Stockfish interface by Ilya Zhelyabuzhsky. Take a look at [Python](/docs/python.md). The interface will sure evolve, and perhaps migrate to a Python extension.
 
@@ -24,6 +27,7 @@ Odonata has a baby python interface, based on the Stockfish interface by Ilya Zh
 See [Todo](/docs/todo.md)
 
 ## Changelog
+In particular - please note that Odonata's github/main uses rust *nightly* 2021-07-06
 See [Changelog](/docs/changelog.md)
 
 ## Credits
