@@ -240,17 +240,17 @@ impl Component for SimpleScorer {
             &format!("type spin min -200 max 200 default {}", self.undefended_piece),
         );
         c.set(
-            "eval.mobility.trapped_piece",
+            "eval.mobility.trapped.piece",
             &format!("type spin min -200 max 200 default {}", self.trapped_piece),
         );
         c.set_weight("eval.pawn.isolated", &self.pawn_isolated);
         c.set_weight("eval.pawn.passed", &self.pawn_passed);
         c.set_weight("eval.pawn.shield", &self.pawn_shield);
         c.set(
-            "eval.draw_score_contempt",
+            "eval.draw.score.contempt",
             &format!("type spin min -10000 max 10000 default {}", self.contempt),
         );
-        c.set_weight("eval.bishop_pair", &self.bishop_pair);
+        c.set_weight("eval.bishop.pair", &self.bishop_pair);
         c.set(
             "eval.tempo",
             &format!("type spin min -1000 max 1000 default {}", self.tempo),
@@ -286,20 +286,20 @@ impl Component for SimpleScorer {
         self.mobility = c.bool("eval.mobility").unwrap_or(self.mobility);
         self.safety = c.bool("eval.safety").unwrap_or(self.safety);
         self.mobility_phase_disable = c
-            .int("eval.mobility.phase_disable")
+            .int("eval.mobility.phase.disable")
             .unwrap_or(self.mobility_phase_disable as i64) as u8;
         self.min_depth_mob = c
-            .int("eval.mobility.min_depth")
+            .int("eval.mobility.min.depth")
             .unwrap_or(self.min_depth_mob as i64) as u8;
         self.position = c.bool("eval.position").unwrap_or(self.position);
         self.material = c.bool("eval.material").unwrap_or(self.material);
         self.phasing = c.bool("eval.phasing").unwrap_or(self.phasing);
         self.undefended_piece = c
-            .int("eval.mobility.undef_piece")
+            .int("eval.mobility.undef.piece")
             .unwrap_or(self.undefended_piece as i64) as i32;
-        self.bishop_pair = c.weight("eval.material.bishop_pair", &self.bishop_pair);
+        self.bishop_pair = c.weight("eval.material.bishop.pair", &self.bishop_pair);
         self.trapped_piece = c
-            .int("eval.mobility.trapped_piece")
+            .int("eval.mobility.trapped.piece")
             .unwrap_or(self.trapped_piece as i64) as i32;
         self.undefended_sq = c
             .int("eval.mobility.undef_sq")
@@ -308,8 +308,8 @@ impl Component for SimpleScorer {
         self.pawn_isolated = c.weight("eval.pawn.isolated", &self.pawn_isolated);
         self.pawn_passed = c.weight("eval.pawn.passed", &self.pawn_passed);
         self.pawn_shield = c.weight("eval.pawn.shield", &self.pawn_shield);
-        self.rook_open_file = c.int("eval.rook.open_file").unwrap_or(self.rook_open_file as i64) as i32;
-        self.contempt = c.int("eval.draw_score_contempt").unwrap_or(self.contempt as i64) as i32;
+        self.rook_open_file = c.int("eval.rook.open.file").unwrap_or(self.rook_open_file as i64) as i32;
+        self.contempt = c.int("eval.draw.score.contempt").unwrap_or(self.contempt as i64) as i32;
         self.tempo = c.int("eval.tempo").unwrap_or(self.tempo as i64) as i32;
 
         for p in &Piece::ALL_BAR_NONE {
@@ -334,18 +334,18 @@ impl fmt::Display for SimpleScorer {
         writeln!(f, "position         : {}", self.position)?;
         writeln!(f, "mobility         : {}", self.mobility)?;
         writeln!(f, "safety           : {}", self.safety)?;
-        writeln!(f, "mob.phase_disable: {}", self.mobility_phase_disable)?;
-        writeln!(f, "mob.min_depth:     {}", self.min_depth_mob)?;
+        writeln!(f, "mob.phase.disable: {}", self.mobility_phase_disable)?;
+        writeln!(f, "mob.min.depth:     {}", self.min_depth_mob)?;
         writeln!(f, "phasing          : {}", self.phasing)?;
-        writeln!(f, "bishiop_pair     : {}", self.bishop_pair)?;
-        writeln!(f, "undefended_piece : {}", self.undefended_piece)?;
-        writeln!(f, "undefended_sq    : {}", self.undefended_sq)?;
-        writeln!(f, "trapped_peice    : {}", self.trapped_piece)?;
+        writeln!(f, "bishiop.pair     : {}", self.bishop_pair)?;
+        writeln!(f, "undefended.piece : {}", self.undefended_piece)?;
+        writeln!(f, "undefended.sq    : {}", self.undefended_sq)?;
+        writeln!(f, "trapped.piece    : {}", self.trapped_piece)?;
         writeln!(f, "pawn.shield      : {}", self.pawn_shield)?;
         writeln!(f, "pawn.doubled     : {}", self.pawn_doubled)?;
         writeln!(f, "pawn.passed      : {}", self.pawn_passed)?;
         writeln!(f, "pawn.isolated    : {}", self.pawn_isolated)?;
-        writeln!(f, "rook.open_file   : {}", self.rook_open_file)?;
+        writeln!(f, "rook.open.file   : {}", self.rook_open_file)?;
         writeln!(f, "contempt         : {}", self.contempt)?;
         writeln!(f, "tempo            : {}", self.tempo)?;
         writeln!(f, "material scores  : {:?}", self.material_scores)?;

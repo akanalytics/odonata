@@ -280,6 +280,11 @@ impl OrderedMoveList {
                 let mv = &self.tt;
                 all_moves.retain(|m| mv != m );
             }
+            // unorderer
+            'U' => {
+                b.legal_moves_into(moves);
+                // std::mem::swap(&mut self.moves, &mut self.all_moves);
+            }
             // Captures
             'C' => {
                 all_moves
