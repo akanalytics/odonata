@@ -29,3 +29,10 @@ ldd target/x86_64-unknown-linux-musl/release/odonata
 
 # build for windows
 export RUSTFLAGS="-C target-cpu=native -Ctarget-feature=+crt-static"
+
+
+# tagging in git
+git tag -a v0.3.23 -m "description of tag"
+git push origin v0.3.23
+
+
