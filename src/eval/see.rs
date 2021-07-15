@@ -67,16 +67,16 @@ mod tests {
         let b = Board::parse_fen("7k/8/8/8/8/q7/8/R6K w - - 0 1").unwrap();  // R v q
         let eval = SimpleScorer::new();
         let mv = b.parse_uci_move("a1a3").unwrap();
-        assert_eq!(eval.eval_move_see(&b, &mv), 900);
+        assert_eq!(eval.eval_move_see(&b, &mv), 1100);
 
         let b = Board::parse_fen("7k/8/8/8/1p6/q7/8/R6K w - - 0 1").unwrap();  //R v qp
         let mv = b.parse_uci_move("a1a3").unwrap();
-        assert_eq!(eval.eval_move_see(&b, &mv), 400);
+        assert_eq!(eval.eval_move_see(&b, &mv), 500);
         
 
         let b = Board::parse_fen("7k/8/8/8/1p6/q7/2N5/R6K w - - 0 1").unwrap();  //RN v qp
         let mv = b.parse_uci_move("a1a3").unwrap();
-        assert_eq!(eval.eval_move_see(&b, &mv), 500);  // +q+p -R = 500
+        assert_eq!(eval.eval_move_see(&b, &mv), 600);  // +q+p -R = 1100 - 600 + 100  = 600
  
         let b = Board::parse_fen("7k/8/8/8/1q6/p7/2N5/R6K w - - 0 1").unwrap();  //RN v pq
         let mv = b.parse_uci_move("a1a3").unwrap();
