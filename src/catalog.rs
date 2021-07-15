@@ -18,6 +18,7 @@ pub enum CatalogSuite {
     BratkoKopec,
     WinAtChess,
     Iq81,
+    Tricky,
     Checkmate,
     EndGame,
     Pin,
@@ -78,6 +79,7 @@ impl Catalog {
             CatalogSuite::BratkoKopec => Self::bratko_kopec(),
             CatalogSuite::WinAtChess => Self::win_at_chess(),
             CatalogSuite::Iq81 => Self::iq(),
+            CatalogSuite::Tricky => Self::tricky(),
             CatalogSuite::Checkmate => Self::checkmates(),
             CatalogSuite::EndGame => Self::end_games(),
             CatalogSuite::Pin => Self::pins(),
@@ -94,7 +96,13 @@ impl Catalog {
         }
     }
 
-
+    pub fn tricky() -> Vec<Position> {
+        let str = r#"
+3n3k/rb5b/1p5r/pPp5/PpPp1p2/3PpPp1/RN2P1P1/QBNR1BK1 w - - 0 1 id 'TR.01'; c0 'https://chess.stackexchange.com/questions/29530'; c1 'ce<0 as black can checkmate';
+"#;
+        let positions = Position::parse_many_epd(str.lines()).unwrap();
+        positions
+    }
 
 
     pub fn checkmates() -> Vec<Position> {
