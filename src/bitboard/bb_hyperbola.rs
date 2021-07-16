@@ -1,4 +1,4 @@
-use crate::bitboard::attacks::BitboardAttacks;
+use crate::bitboard::bb_sliders::SlidingPieceAttacks;
 use crate::bitboard::bitboard::{Bitboard, Dir};
 use crate::bitboard::square::Square;
 use static_init::{dynamic};
@@ -65,10 +65,6 @@ struct HyperbolaMask {
 pub struct Hyperbola {
     mask: [HyperbolaMask; 64],
     rank_attacks: [[Bitboard; 8]; 64], // for perm of 6 bit-occupancy (64) and for each rook square (8)
-    king_moves: [Bitboard; 64],
-    knight_moves: [Bitboard; 64],
-    strictly_between: [[Bitboard; 64]; 64],
-    line: [[Bitboard; 64]; 64],
 }
 
 impl Hyperbola {
@@ -77,66 +73,9 @@ impl Hyperbola {
     
 
 
-    fn new() -> Box<Self> {
-        let mut me = Box::new(Self {
-            mask: [ HyperbolaMask {
-                diag: Bitboard::EMPTY,
-                anti_diag: Bitboard::EMPTY,
-                file:  Bitboard::EMPTY,
-            } ; 64],
-            king_moves: [Bitboard::EMPTY; 64],
-            knight_moves: [Bitboard::EMPTY; 64],
-            rank_attacks: [[Bitboard::EMPTY; 8]; 64],
-            strictly_between: [[Bitboard::EMPTY; 64]; 64],
-            line: [[Bitboard::EMPTY; 64]; 64],
-        });
 
-        Self::pop_mask(&mut me.mask);
-        Self::pop_rank_attacks(&mut me.rank_attacks);
-        Self::pop_strictly_between(&mut me.strictly_between);
-        Self::pop_king_moves(&mut me.king_moves);
-        Self::pop_knight_moves(&mut me.knight_moves);
-        Self::pop_line(&mut me.line);
-        me
-    }
 
-    fn pop_king_moves(king_moves: &mut [Bitboard; 64]) {
-        for sq in 0..64_usize {
-            for &dir in Dir::ALL.iter() {
-                let bb = Bitboard::from_sq(sq as u8);
-                king_moves[sq] |= bb.shift(dir);
-            }
-        }
-    }
-
-    fn pop_knight_moves(knight_moves: &mut [Bitboard; 64]) {
-        for sq in 0..64_usize {
-            for &dir in Dir::ALL.iter() {
-                let bb = Bitboard::from_sq(sq as u8);
-                // for example a night attack might be step N followed by step NE
-                let next_dir = dir.rotate_clockwise();
-                knight_moves[sq] |= bb.shift(dir).shift(next_dir);
-            }
-        }
-    }
-
-    fn pop_strictly_between(strictly_between: &mut [[Bitboard; 64]; 64]) {
-        for s1 in Bitboard::all().squares() {
-            for s2 in Bitboard::all().squares() {
-                strictly_between[s1][s2] = Square::calc_strictly_between(s1, s2);
-            }
-        }
-    }
-
-    fn pop_line(line: &mut [[Bitboard; 64]; 64]) {
-        for s1 in Bitboard::all().squares() {
-            for s2 in Bitboard::all().squares() {
-                line[s1][s2] = Square::calc_line_through(s1, s2);
-
-            }
-        }
-    }
-
+ 
     fn pop_rank_attacks(rank_attacks: &mut [[Bitboard; 8]; 64]) {
         for occupancy_bits in 0..64 {
             let occ_incl_rook = Bitboard::from_u64(occupancy_bits).shift(Dir::E);
@@ -207,19 +146,23 @@ impl Hyperbola {
     }
 }
 
-impl BitboardAttacks for Hyperbola {
+impl SlidingPieceAttacks for Hyperbola {
 
-    // inclusive of end points
-    #[inline]
-    fn strictly_between(&self, s1: Square, s2: Square) -> Bitboard {
-        self.strictly_between[s1][s2]
+    fn new() -> Box<Self> {
+        let mut me = Box::new(Self {
+            mask: [ HyperbolaMask {
+                diag: Bitboard::EMPTY,
+                anti_diag: Bitboard::EMPTY,
+                file:  Bitboard::EMPTY,
+            } ; 64],
+            rank_attacks: [[Bitboard::EMPTY; 8]; 64],
+        });
+
+        Self::pop_mask(&mut me.mask);
+        Self::pop_rank_attacks(&mut me.rank_attacks);
+        me
     }
-
-    #[inline]
-    fn line_through(&self, s1: Square, s2: Square) -> Bitboard {
-        self.line[s1][s2]
-    }
-
+ 
     #[inline]
     fn rook_attacks(&self, occ: Bitboard, from: Square) -> Bitboard {
         self.hyperbola(occ, from, self.mask[from].file) | self.rank_hyperbola(occ, from)
@@ -231,15 +174,7 @@ impl BitboardAttacks for Hyperbola {
             | self.hyperbola(occ, from, self.mask[from].anti_diag)
     }
 
-    #[inline]
-    fn king_attacks(&self, from: Square) -> Bitboard {
-        self.king_moves[from]
-    }
 
-    #[inline]
-    fn knight_attacks(&self, from: Square) -> Bitboard {
-        self.knight_moves[from]
-    }
 }
 
 #[cfg(test)]
@@ -337,11 +272,6 @@ mod tests {
                 }
             }
         }
-        for s1 in Bitboard::all().squares() {
-            for s2 in Bitboard::all().squares() {
-                assert_eq!(hq.strictly_between(s1, s2), cb.strictly_between(s1, s2));
-                assert_eq!(hq.line_through(s1, s2), cb.line_through(s1, s2));
-            }
-        }
+
     }
 }

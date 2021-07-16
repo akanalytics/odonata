@@ -37,7 +37,7 @@
 
 #![allow(non_upper_case_globals)]
 
-use crate::bitboard::attacks::BitboardAttacks;
+use crate::bitboard::bb_sliders::SlidingPieceAttacks;
 use crate::bitboard::bb_hyperbola::Hyperbola;
 use crate::bitboard::bitboard::Bitboard;
 use crate::bitboard::square::Square;
@@ -203,22 +203,7 @@ const RookOffset: [usize; 64] = [
 const WHITE: i32 = 0;
 const BLACK: i32 = 1;
 
-impl BitboardAttacks for Magic {
-    // inclusive of end points
-    #[inline]
-    fn strictly_between(&self, s1: Square, s2: Square) -> Bitboard {
-        Hyperbola::default().strictly_between(s1, s2)
-    }
-
-    #[inline]
-    fn line_through(&self, s1: Square, s2: Square) -> Bitboard {
-        Hyperbola::default().line_through(s1, s2)
-    }
-
-    #[inline]
-    fn knight_attacks(&self, sq: Square) -> Bitboard {
-        Bitboard::from_u64(self.KnightMask[sq])
-    }
+impl SlidingPieceAttacks for Magic {
 
     #[inline]
     fn bishop_attacks(&self, occ: Bitboard, sq: Square) -> Bitboard {
@@ -237,9 +222,8 @@ impl BitboardAttacks for Magic {
         Bitboard::from_u64(bits)
     }
 
-    #[inline]
-    fn king_attacks(&self, sq: Square) -> Bitboard {
-        Bitboard::from_u64(self.KingMask[sq])
+    fn new() -> Box<Self> {
+        Magic::new()
     }
 }
 
@@ -510,7 +494,7 @@ impl Magic {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bitboard::attacks::BitboardAttacks;
+    use crate::bitboard::bb_sliders::SlidingPieceAttacks;
     use crate::bitboard::bb_classical::ClassicalBitboard;
     use crate::bitboard::bitboard::Bitboard;
     use crate::globals::constants::*;

@@ -35,4 +35,5 @@ export RUSTFLAGS="-C target-cpu=native -Ctarget-feature=+crt-static"
 git tag -a v0.3.23 -m "description of tag"
 git push origin v0.3.23
 
-
+# cachegrind to test L3 cache
+export odonata_Hash=2; valgrind --tool=cachegrind ./target/release/odonata --search 100

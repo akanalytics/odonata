@@ -1,4 +1,4 @@
-use crate::bitboard::attacks::{BitboardAttacks, BitboardDefault};
+use crate::bitboard::precalc::{BitboardDefault};
 use crate::bitboard::square::Square;
 use crate::board::Board;
 use crate::config::{Component, Config};
@@ -11,6 +11,7 @@ use crate::search::node::Node;
 use crate::stat::{ArrayStat, Stat};
 use crate::types::{Color, Piece};
 use crate::{debug, logger::LogInit};
+use crate::bitboard::precalc::PreCalc;
 
 use std::fmt;
 
@@ -497,18 +498,19 @@ impl SimpleScorer {
 
     pub fn eval_pawns(&self, c: Color, b: &Board) -> Weight {
         let mut score = Weight::zero();
-        
-        let doubled = BitboardDefault::doubled_pawns(b.color(c) & b.pawns()).popcount();
+        let bbd = BitboardDefault::default();
+
+        let doubled = bbd.doubled_pawns(b.color(c) & b.pawns()).popcount();
         score += doubled * self.pawn_doubled;
 
-        let isolated = BitboardDefault::isolated_pawns(b.color(c) & b.pawns()).popcount();
+        let isolated = bbd.isolated_pawns(b.color(c) & b.pawns()).popcount();
         score += isolated * self.pawn_isolated;
 
         let bb = BitboardDefault::default();
         let mut passed = 0;
         for p in (b.pawns() & b.color(c)).squares() {
-            let doubled = p.is_in(BitboardDefault::doubled_pawns(b.color(c) & b.pawns()));
-            let is_passed = (bb.pawn_front_span(c, p) & b.pawns() & b.color(c.opposite())).is_empty() && !doubled;
+            let doubled = p.is_in(bbd.doubled_pawns(b.color(c) & b.pawns()));
+            let is_passed = (bbd.pawn_front_span(c, p) & b.pawns() & b.color(c.opposite())).is_empty() && !doubled;
             if is_passed {
                 passed += 1;
             }
@@ -532,7 +534,7 @@ impl SimpleScorer {
         let mut score = self.eval_pawns(Color::White, b) - self.eval_pawns(Color::Black, b);
 
         if self.rook_open_file != 0 {
-            let open_files = BitboardDefault::open_files(b.pawns());
+            let open_files = BitboardDefault::default().open_files(b.pawns());
             let s = self.rook_open_file
                 * ((b.rooks() & b.white() & open_files).popcount()
                     - (b.rooks() & b.black() & open_files).popcount());

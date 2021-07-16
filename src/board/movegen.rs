@@ -1,4 +1,4 @@
-use crate::bitboard::attacks::{BitboardAttacks, BitboardDefault};
+use crate::bitboard::precalc::{BitboardDefault};
 use crate::bitboard::bitboard::Bitboard;
 use crate::board::boardcalcs::BoardCalcs;
 use crate::board::makemove::MoveMaker;
@@ -8,6 +8,7 @@ use crate::globals::counts;
 use crate::mv::{Move};
 use crate::movelist::MoveList;
 use crate::types::{Color, Piece};
+use crate::bitboard::precalc::PreCalc;
 
 trait MoveGen {}
 

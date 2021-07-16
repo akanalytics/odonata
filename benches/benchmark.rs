@@ -1,6 +1,6 @@
 use criterion::*;
-use odonata::bitboard::attacks::BitboardAttacks;
-use odonata::bitboard::attacks::*;
+use odonata::bitboard::bb_sliders::*;
+use odonata::bitboard::precalc::*;
 use odonata::bitboard::bb_classical::ClassicalBitboard;
 use odonata::bitboard::bb_hyperbola::Hyperbola;
 use odonata::bitboard::bb_magic::*;
@@ -700,6 +700,15 @@ fn benchmark_eval(c: &mut Criterion) {
             t.elapsed() / positions.len() as u32
         })
     });
+    group.bench_function("safety", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            positions.iter().cycle_n(n).for_each(|p| {
+                black_box(ef.w_eval_safety(black_box(p.board())));
+            });
+            t.elapsed() / positions.len() as u32
+        })
+    });
     group.bench_function("all", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
@@ -733,6 +742,7 @@ fn benchmark_eval(c: &mut Criterion) {
 fn benchmark_attacks(c: &mut Criterion) {
     let mut group = c.benchmark_group("attacks");
     let positions = &Catalog::win_at_chess();
+    let pc = PreCalc::default();
     let cb = ClassicalBitboard::default();
     let hq = Hyperbola::default();
     let mg = Magic::default();
@@ -831,20 +841,20 @@ fn benchmark_attacks(c: &mut Criterion) {
         })
     });
 
-    group.bench_function("classical.knight", |b| {
-        b.iter_custom(|n| {
-            let t = Instant::now();
-            let mut count = 0;
-            positions.iter().cycle_n(n).for_each(|p| {
-                count += p.board().knights().popcount();
-                let _occ = p.board().black() | p.board().white();
-                black_box(p.board().knights().squares().for_each(|b| {
-                    cb.knight_attacks(b);
-                }));
-            });
-            t.elapsed() / (count as u32 / n as u32)
-        })
-    });
+    // group.bench_function("classical.knight", |b| {
+    //     b.iter_custom(|n| {
+    //         let t = Instant::now();
+    //         let mut count = 0;
+    //         positions.iter().cycle_n(n).for_each(|p| {
+    //             count += p.board().knights().popcount();
+    //             let _occ = p.board().black() | p.board().white();
+    //             black_box(p.board().knights().squares().for_each(|b| {
+    //                 cb.knight_attacks(b);
+    //             }));
+    //         });
+    //         t.elapsed() / (count as u32 / n as u32)
+    //     })
+    // });
 
     group.bench_function("hyperbola.bishop", |b| {
         b.iter_custom(|n| {
@@ -898,7 +908,7 @@ fn benchmark_attacks(c: &mut Criterion) {
             positions.iter().cycle_n(n).for_each(|p| {
                 count += p.board().kings().popcount();
                 black_box(p.board().kings().squares().for_each(|b| {
-                    hq.king_attacks(b);
+                    pc.king_attacks(b);
                 }));
             });
             t.elapsed() / (count as u32 / n as u32)
@@ -913,7 +923,7 @@ fn benchmark_attacks(c: &mut Criterion) {
                 let pawns = p.board().pawns() & p.board().us();
                 count += pawns.popcount();
                 black_box(pawns.squares().for_each(|s| {
-                    Hyperbola::pawn_attacks_ext(p.board().color_us(), p.board().us(), p.board().them(), s);
+                    pc.pawn_attacks_ext(p.board().color_us(), p.board().us(), p.board().them(), s);
                 }));
             });
             t.elapsed() / (count as u32 / n as u32)
@@ -928,7 +938,7 @@ fn benchmark_attacks(c: &mut Criterion) {
                 count += p.board().knights().popcount();
                 let _occ = p.board().black() | p.board().white();
                 black_box(p.board().knights().squares().for_each(|b| {
-                    hq.knight_attacks(b);
+                    pc.knight_attacks(b);
                 }));
             });
             t.elapsed() / (count as u32 / n as u32)

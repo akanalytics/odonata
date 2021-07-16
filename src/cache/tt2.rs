@@ -1,4 +1,4 @@
-use crate::bitboard::attacks::{BitboardAttacks, BitboardDefault};
+use crate::bitboard::precalc::{BitboardDefault};
 use crate::bitboard::bitboard::Bitboard;
 use crate::bitboard::castling::CastlingRights;
 use crate::bitboard::square::Square;
@@ -16,6 +16,7 @@ use std::cmp;
 use std::fmt;
 use std::mem;
 use std::sync::Arc;
+use crate::bitboard::precalc::PreCalc;
 
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd)]

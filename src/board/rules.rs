@@ -1,4 +1,4 @@
-use crate::bitboard::attacks::{BitboardAttacks, BitboardDefault};
+use crate::bitboard::precalc::{BitboardDefault};
 use crate::bitboard::bitboard::{Bitboard, Dir};
 use crate::bitboard::square::Square;
 use crate::bitboard::castling::CastlingRights;
@@ -7,6 +7,8 @@ use crate::board::Board;
 use crate::mv::{Move};
 use crate::movelist::MoveList;
 use crate::types::Piece;
+
+use crate::bitboard::precalc::PreCalc;
 
 pub struct Rules;
 

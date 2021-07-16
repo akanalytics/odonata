@@ -1,6 +1,6 @@
 use crate::bitboard::bitboard::{Bitboard, Dir};
 use crate::bitboard::square::Square;
-use crate::bitboard::attacks::BitboardAttacks;
+use crate::bitboard::bb_sliders::SlidingPieceAttacks;
 // use once_cell::sync::Lazy;
 use static_init::{dynamic};
 
@@ -96,17 +96,10 @@ impl ClassicalBitboard {
     }
 }
 
-impl BitboardAttacks for ClassicalBitboard {
+impl SlidingPieceAttacks for ClassicalBitboard {
 
-    
-    #[inline]
-    fn strictly_between(&self, s1: Square, s2: Square) -> Bitboard {
-        Square::calc_strictly_between(s1, s2)
-    }
-
-    #[inline]
-    fn line_through(&self, s1:Square, s2: Square) -> Bitboard {
-        Square::calc_line_through(s1, s2)
+    fn new() -> Box<Self> {
+        ClassicalBitboard::new()
     }
 
     #[inline]
@@ -125,15 +118,6 @@ impl BitboardAttacks for ClassicalBitboard {
             | self.sliding_attacks(occ, from, Dir::NW)
     }
 
-    #[inline]
-    fn king_attacks(&self, from: Square) -> Bitboard {
-        self.king_moves[from]
-    }
-
-    #[inline]
-    fn knight_attacks(&self, from: Square) -> Bitboard {
-        self.knight_moves[from]
-    }
 }
 
 #[cfg(test)]
@@ -173,24 +157,5 @@ mod tests {
         assert_eq!(attacks, b2 | d2 | e3 | f4 | g5 | h6);
     }
 
-    #[test]
-    fn test_king_attacks() {
-        init();
-        let classical = ClassicalBitboard::new();
-        let attacks = classical.king_attacks(a6.square());
-        assert_eq!(attacks, a5 | b5 | b6 | b7 | a7);
 
-        let attacks = classical.king_attacks(c6.square());
-        assert_eq!(attacks, b5 | c5 | d5 | b6 | d6 | b7 | c7 | d7)
-    }
-
-    #[test]
-    fn test_knight_attacks() {
-        let classical = ClassicalBitboard::new();
-        let attacks = classical.knight_attacks(a1.square());
-        assert_eq!(attacks, b3 | c2);
-
-        let attacks = classical.knight_attacks(c6.square());
-        assert_eq!(attacks, a5 | a7 | b4 | b8 | d4 | d8 | e5 | e7)
-    }
 }

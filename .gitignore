@@ -27,6 +27,7 @@ junk/**
 # profiling output
 perf.data*
 flamegraph*.svg
+cachegrind.out.*
 
 odonata.geany
 
