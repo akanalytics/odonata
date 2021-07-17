@@ -1011,16 +1011,8 @@ fn bench_chooser_array(c: &mut Criterion) {
     let black = Color::Black;
     c.bench_function("chooser_arr", |b| {
         b.iter(|| {
-            black_box(chooser_array(
-                black_box(white),
-                &Bitboard::RANK_4,
-                &Bitboard::RANK_5,
-            ));
-            black_box(chooser_array(
-                black_box(black),
-                &Bitboard::RANK_4,
-                &Bitboard::RANK_5,
-            ));
+            black_box([Bitboard::RANK_4,Bitboard::RANK_5][black_box(white)]);
+            black_box([Bitboard::RANK_4,Bitboard::RANK_5][black_box(black)]);
         });
     });
 }

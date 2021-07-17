@@ -8,7 +8,6 @@ use crate::mv::{Move};
 use crate::movelist::MoveList;
 use crate::types::Piece;
 
-use crate::bitboard::precalc::PreCalc;
 
 pub struct Rules;
 

@@ -38,7 +38,6 @@
 #![allow(non_upper_case_globals)]
 
 use crate::bitboard::bb_sliders::SlidingPieceAttacks;
-use crate::bitboard::bb_hyperbola::Hyperbola;
 use crate::bitboard::bitboard::Bitboard;
 use crate::bitboard::square::Square;
 // use once_cell::sync::Lazy;

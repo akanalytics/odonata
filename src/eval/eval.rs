@@ -11,7 +11,6 @@ use crate::search::node::Node;
 use crate::stat::{ArrayStat, Stat};
 use crate::types::{Color, Piece};
 use crate::{debug, logger::LogInit};
-use crate::bitboard::precalc::PreCalc;
 
 use std::fmt;
 
@@ -506,7 +505,6 @@ impl SimpleScorer {
         let isolated = bbd.isolated_pawns(b.color(c) & b.pawns()).popcount();
         score += isolated * self.pawn_isolated;
 
-        let bb = BitboardDefault::default();
         let mut passed = 0;
         for p in (b.pawns() & b.color(c)).squares() {
             let doubled = p.is_in(bbd.doubled_pawns(b.color(c) & b.pawns()));

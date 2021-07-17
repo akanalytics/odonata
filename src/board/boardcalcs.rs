@@ -2,7 +2,6 @@ use crate::bitboard::precalc::{BitboardDefault};
 use crate::bitboard::bitboard::Bitboard;
 use crate::board::Board;
 use crate::types::Color;
-use crate::bitboard::precalc::PreCalc;
 
 pub struct BoardCalcs;
 

@@ -24,6 +24,11 @@ impl PreCalc {
 pub struct PreCalc {
     king_moves: [Bitboard; 64],
     knight_moves: [Bitboard; 64],
+    pawn_front_span: [[Bitboard; 64];2],
+    pawn_push: [[Bitboard; 64];2],  
+    pawn_capture_east: [[Bitboard; 64];2],
+    pawn_capture_west: [[Bitboard; 64];2],
+    pawn_attack_span: [[Bitboard; 64];2],
     strictly_between: [[Bitboard; 64]; 64],
     line: [[Bitboard; 64]; 64],
     sliding_piece_attacks: Box<BestSlidingPieceAttacks>,
@@ -35,6 +40,11 @@ impl PreCalc {
             sliding_piece_attacks: BestSlidingPieceAttacks::new(),
             king_moves: [Bitboard::EMPTY; 64],
             knight_moves: [Bitboard::EMPTY; 64],
+            pawn_front_span: [[Bitboard::EMPTY; 64];2],
+            pawn_push: [[Bitboard::EMPTY; 64];2],  
+            pawn_capture_east: [[Bitboard::EMPTY; 64];2],
+            pawn_capture_west: [[Bitboard::EMPTY; 64];2],
+            pawn_attack_span: [[Bitboard::EMPTY; 64];2],
             strictly_between: [[Bitboard::EMPTY; 64]; 64],
             line: [[Bitboard::EMPTY; 64]; 64],
         });
@@ -43,7 +53,22 @@ impl PreCalc {
         Self::pop_king_moves(&mut me.king_moves);
         Self::pop_knight_moves(&mut me.knight_moves);
         Self::pop_line(&mut me.line);
+        me.pop_pawn();
         me
+    }
+
+    fn pop_pawn(&mut self) {
+        for c in Color::ALL {
+            for pawn in Square::all() {
+                self.pawn_front_span[c][pawn] = pawn.as_bb().rays(c.forward());
+                self.pawn_push[c][pawn] = pawn.as_bb().shift(c.forward());
+                let e = pawn.as_bb().shift(c.pawn_capture_east());
+                let w = pawn.as_bb().shift(c.pawn_capture_west());
+                self.pawn_capture_east[c][pawn] = e;
+                self.pawn_capture_west[c][pawn] = w;
+                self.pawn_attack_span[c][pawn] = (e | w).rays(c.forward()) | e | w;
+            }
+        }
     }
 
     fn pop_king_moves(king_moves: &mut [Bitboard; 64]) {
@@ -149,11 +174,10 @@ impl PreCalc {
 
     #[inline]
     pub fn pawn_attacks_ext(&self, c: Color, us: Bitboard, them: Bitboard, fr: Square) -> Bitboard {
-        let pawn = fr.as_bb();
         let empty = !(us | them);
-        let single = pawn.shift(c.forward()) & empty;
+        let single = self.pawn_push[c][fr] & empty;
         let double = single.shift(c.forward()) & empty & c.double_push_dest_rank();
-        let capture = them & (pawn.shift(c.pawn_capture_east()) | pawn.shift(c.pawn_capture_west()));
+        let capture = them & (self.pawn_capture_east[c][fr] | self.pawn_capture_west[c][fr]);
         single | double | capture
     }
 

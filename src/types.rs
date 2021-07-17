@@ -108,17 +108,17 @@ impl Color {
 
     #[inline]
     pub fn forward(self) -> Dir {
-        self.chooser_wb(Dir::N, Dir::S)
+        [Dir::N, Dir::S][self]
     }
 
     #[inline]
     pub fn backward(self) -> Dir {
-        self.chooser_wb(Dir::S, Dir::N)
+        [Dir::S, Dir::N][self]
     }
 
     #[inline]
     pub fn double_push_dest_rank(self) -> Bitboard {
-        self.chooser_wb(Bitboard::RANK_4, Bitboard::RANK_5)
+        [Bitboard::RANK_4, Bitboard::RANK_5][self]
     }
 
     #[inline]
@@ -133,12 +133,12 @@ impl Color {
 
     #[inline]
     pub fn back_rank(self) -> Bitboard {
-        self.chooser_wb(Bitboard::RANK_1, Bitboard::RANK_8)
+        [Bitboard::RANK_1, Bitboard::RANK_8][self]
     }
 
     #[inline]
     pub fn opposite(self) -> Color {
-        self.chooser_wb(Color::Black, Color::White)
+        [Color::Black, Color::White][self]
     }
 
     pub fn parse(s: &str) -> Result<Color, String> {

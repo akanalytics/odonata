@@ -8,7 +8,6 @@ use crate::globals::counts;
 use crate::mv::{Move};
 use crate::movelist::MoveList;
 use crate::types::{Color, Piece};
-use crate::bitboard::precalc::PreCalc;
 
 trait MoveGen {}
 
