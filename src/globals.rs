@@ -120,6 +120,7 @@ mod tests {
     use crate::bitboard::bb_hyperbola::*;
     use crate::bitboard::bb_magic::*;
     use crate::bitboard::square::*;
+    use crate::bitboard::precalc::*;
     use crate::hasher::*;
     use crate::board::*;
     use crate::eval::score::*;
@@ -158,7 +159,8 @@ mod tests {
         assert_eq!(size_of::<SearchStats>(), 320, "SearchStats");
         assert_eq!(size_of::<TranspositionTable>(), 256, "TranspositionTable");
         assert_eq!(size_of::<ClassicalBitboard>(), 5120, "ClassicalBitboard");
-        assert_eq!(size_of::<Hyperbola>(), 72192, "Hyperbola");
+        assert_eq!(size_of::<Hyperbola>(), 5632, "Hyperbola");
+        assert_eq!(size_of::<PreCalc>(), 71688, "PreCalc");
         assert_eq!(size_of::<Magic>(), 719264, "Magic");
         assert_eq!(size_of::<Hasher>(), 7280, "Hasher");
     }

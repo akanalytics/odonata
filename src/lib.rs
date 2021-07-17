@@ -60,6 +60,7 @@ pub mod version;
 pub use crate::bitboard::bitboard::Bitboard;
 pub use crate::board::boardbuf::BoardBuf;
 pub use crate::board::Board;
+pub use crate::bitboard::precalc::PreCalc;
 pub use crate::config::Config;
 pub use crate::exam::Exam;
 pub use crate::hasher::Hasher;

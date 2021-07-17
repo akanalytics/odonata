@@ -1,5 +1,9 @@
 # Todo items
 
+
+***** tt depth and best move and all nodes etc
+
+
 ## Bugs
 - [ ] bug on ponder? and timeouts
 - [ ] need to treat insufficient material as score=0 not end of game

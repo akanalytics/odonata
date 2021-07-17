@@ -181,12 +181,12 @@ impl PreCalc {
         single | double | capture
     }
 
-    #[inline]
-    fn pawn_pushes(&self, occupied: Bitboard, pawns: Bitboard, color: Color) -> Bitboard {
-        let empty = !occupied;
-        let single = pawns.shift(color.forward()) & empty;
-        single | (single.shift(color.forward()) & empty & color.double_push_dest_rank())
-    }
+    // #[inline]
+    // fn pawn_pushes(&self, occupied: Bitboard, pawns: Bitboard, color: Color) -> Bitboard {
+    //     let empty = !occupied;
+    //     let single = pawns.shift(color.forward()) & empty;
+    //     single | (single.shift(color.forward()) & empty & color.double_push_dest_rank())
+    // }
 
     #[inline]
     pub fn pawn_attacks(&self, pawns: Bitboard, pawn: Color) -> (Bitboard, Bitboard) {
@@ -233,25 +233,25 @@ impl PreCalc {
         pawns - non_isolated
     }
 
-    fn pawn_ep_captures(
-        &self,
-        pawns: Bitboard,
-        opp: Bitboard,
-        c: Color,
-        ep: Bitboard,
-    ) -> (Bitboard, Bitboard) {
-        debug_assert!(!ep.is_empty());
-        let (east, west) = self.pawn_attacks(pawns, c);
+    // fn pawn_ep_captures(
+    //     &self,
+    //     pawns: Bitboard,
+    //     opp: Bitboard,
+    //     c: Color,
+    //     ep: Bitboard,
+    // ) -> (Bitboard, Bitboard) {
+    //     debug_assert!(!ep.is_empty());
+    //     let (east, west) = self.pawn_attacks(pawns, c);
 
-        let enemy_pawn = ep.shift(c.opposite().forward());
+    //     let enemy_pawn = ep.shift(c.opposite().forward());
 
-        // check enemy have occupied the square one beyond en passant square
-        if (enemy_pawn & opp).is_empty() {
-            return (Bitboard::EMPTY, Bitboard::EMPTY);
-        }
+    //     // check enemy have occupied the square one beyond en passant square
+    //     if (enemy_pawn & opp).is_empty() {
+    //         return (Bitboard::EMPTY, Bitboard::EMPTY);
+    //     }
 
-        (east & ep, west & ep)
-    }
+    //     (east & ep, west & ep)
+    // }
 }
 
 #[cfg(test)]
@@ -285,22 +285,22 @@ mod tests {
         let bb = BitboardDefault::default();
         let pawns_w = a2 | b3 | c2 | d7 | f5 | g4 | h4 | h5;
         let opponent = a4 | b4 | d3 | g5;
-        let occupied = pawns_w | opponent;
+        let _occupied = pawns_w | opponent;
 
-        let pawn_single_push = bb.pawn_pushes(occupied, pawns_w, Color::White);
-        let single = a3 | c3 | d8 | f6 | h6;
-        let double = c4;
-        assert_eq!(pawn_single_push, single | double);
+        // let pawn_single_push = bb.pawn_pushes(occupied, pawns_w, Color::White);
+        // let single = a3 | c3 | d8 | f6 | h6;
+        // let double = c4;
+        // assert_eq!(pawn_single_push, single | double);
 
         let (pawn_capture_e, pawn_capture_w) = bb.pawn_attacks(pawns_w, Color::White);
         assert_eq!(pawn_capture_e & opponent, d3);
 
         assert_eq!(pawn_capture_w & opponent, a4 | g5);
 
-        let ep_square = g6;
-        let (east, west) = bb.pawn_ep_captures(pawns_w, opponent, Color::White, ep_square);
-        assert_eq!(east, g6);
-        assert_eq!(west, g6);
+        // let ep_square = g6;
+        // let (east, west) = bb.pawn_ep_captures(pawns_w, opponent, Color::White, ep_square);
+        // assert_eq!(east, g6);
+        // assert_eq!(west, g6);
 
         let pawns = b2 | b4 | c5 | c6 | d3 | d7 | h5;
         assert_eq!(BitboardDefault::default().doubled_pawns(pawns), b4 | c6 | d7);
