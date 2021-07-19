@@ -49,7 +49,8 @@ impl Console {
                 }
             };
         }
-        println!("Exiting console...");
+        // dont print anything after exit as pipe will not exist
+        // println!("Exiting console...");
     }
 
     pub fn help() {
