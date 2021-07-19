@@ -13,12 +13,14 @@ import sys
 from dataclasses import dataclass
 from jsonrpyc import Spec, RPC
 
+
+
 LOG_LEVEL = os.environ.get('RUST_LOG', 'WARNING').upper()
 if LOG_LEVEL=="TRACE":
     LOG_LEVEL="DEBUG"
 logging.basicConfig(level=LOG_LEVEL)
-
 logger = logging.getLogger()
+
 
 
 
@@ -993,6 +995,10 @@ class Odonata:
         "Hash": 16,
     }
 
+
+
+
+
     def __init__(self, path: str = '', debug: bool = False) -> None:
         if not path:
             # try and look for Odonata executable
@@ -1026,10 +1032,14 @@ class Odonata:
 
         
         self._put("uci")
-        version_infos = self._read_line().split()
-        self._engine_version = version_infos[0]
-        if len(version_infos) > 2:
-             self._engine_version += " " + version_infos[2]
+        while True:
+            text = self._read_line()
+            if text.startswith("id name"):
+                text = text.removeprefix("id name ")
+                break
+
+        version_infos = text.split()
+        self._engine_version = text
         self._start_new_game()
 
 
