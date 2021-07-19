@@ -30,6 +30,15 @@ impl Version {
 image by jgs"##;
 }
 
+
+// see https://docs.rs/built/0.5.1/built/
+pub mod built_info {
+    // The file has been placed there by the build script.
+    include!(concat!(env!("OUT_DIR"), "/built.rs"));
+}
+
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -40,10 +49,16 @@ mod tests {
         assert_eq!(Version::AUTHORS.is_empty(), false);
         assert_eq!(Version::NAME, "odonata");
         assert_eq!(Version::HOMEPAGE.is_empty(), false);
-        println!("{}", Version::AUTHORS);
-        println!("{}", Version::IMAGE);
-        println!("{}", Version::VERSION);
-        println!("{}", Version::NAME);
-        println!("{}", Version::HOMEPAGE);
+        println!("authors      : {}", Version::AUTHORS);
+        println!("image        : {}", Version::IMAGE);
+        println!("version      : {}", Version::VERSION);
+        println!("name         : {}", Version::NAME);
+        println!("homepage     : {}", Version::HOMEPAGE);
+        println!("target       : {}", built_info::TARGET);
+        println!("profile      : {}", built_info::PROFILE);
+        println!("optimization : {}", built_info::OPT_LEVEL);
+        println!("rustc        : {}", built_info::RUSTC_VERSION);
+        println!("features     : {}", built_info::FEATURES_STR);
+        println!("compiled at  : {}", built_info::BUILT_TIME_UTC);        
     }
 }

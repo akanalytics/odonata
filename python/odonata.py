@@ -899,16 +899,23 @@ class Eval:
     #     return 0
 
 
-class Algo:
-    def __init__(self, depth: Optional[int] = None, millis: Optional[int] = 1000, nodes: Optional[int] = None) -> None:
+
+class Engine:
+    def __init__(self, path: str = '', depth: Optional[int] = None, millis: Optional[int] = 1000, nodes: Optional[int] = None) -> None:
         self.millis = millis
         self.node_count = nodes
         self.depth = depth
         self.results = {}
+        self.path = path
+
+
+    def engine_version(self) -> str:
+        return Odonata.instance(self.path).engine_version()
+
 
     # can return None when no moves available (or found in time)
     def search(self, b: Board) -> Optional[Move]:
-        odo = Odonata.instance()
+        odo = Odonata.instance(self.path)
         bm = odo.get_best_move(b, depth=self.depth, millis=self.millis, nodes=self.node_count)
         self.results = odo.parse_search_results()
         return bm
@@ -940,6 +947,8 @@ class Algo:
     def mate_in(self) -> Optional[str]:
         return self.results[-1].get('mate')
 
+Algo = Engine
+
 
 class Catalog:
     def __init__(self) -> None:
@@ -954,7 +963,7 @@ class Catalog:
 
 
 def handle_signal(signum, _frame):
-    logger.info('Exiting...')
+    logger.info('Exiting due to SIGTERM...')
     Odonata.instance().__del__()
     sys.exit(signum) 
 
@@ -965,16 +974,20 @@ def handle_signal(signum, _frame):
 # best not to use this class directly
 class Odonata:
 
-    _instance: Optional[Odonata] = None
+    _instances: Dict[str, Odonata] = {}
 
     @classmethod
     def instance(cls, path: str = '', debug: bool = False) -> Odonata:
-        if cls._instance is None:
-            cls._instance = cls.__new__(cls)
-            assert cls._instance != None
-            cls._instance.__init__(path, debug)
+        inst = cls._instances.get(path)
+        if not inst:
+            
+            inst = cls.__new__(cls)
+            assert inst != None
+            inst.__init__(path, debug)
+            logger.info(f"Called init on {inst.path}")
+            cls._instances[path] = inst
             # Put more initialization here maybe
-        return cls._instance
+        return inst
 
     DEFAULT_ODONATA_PARAMS = {
         "Hash": 16,
@@ -998,8 +1011,9 @@ class Odonata:
 
         self.debug: bool = debug
         logger.info(f"loading odonata from {path}\n")
+        self.path = path
         import sys
-        self.process: subprocess.Popen = subprocess.Popen(
+        self.process: Optional[subprocess.Popen] = subprocess.Popen(
             path,
             # bufsize=10000,
             universal_newlines=True,
@@ -1010,11 +1024,14 @@ class Odonata:
 
         signal.signal(signal.SIGTERM, handle_signal)
 
-
+        
         self._put("uci")
+        version_infos = self._read_line().split()
+        self._engine_version = version_infos[0]
+        if len(version_infos) > 2:
+             self._engine_version += " " + version_infos[2]
         self._start_new_game()
 
-        # self._odonata_major_version: int = int(self._read_line().split(" ")[1])
 
         # self.depth = str(depth)
         self.infos: List[str] = []
@@ -1041,7 +1058,8 @@ class Odonata:
         self.infos = []
 
     def _put(self, command: str) -> None:
-        if not self.process.stdin:
+        
+        if not self.process or not self.process.stdin:
             raise BrokenPipeError()
         # if self.debug:
         logger.info(f"=> {command}")
@@ -1049,7 +1067,7 @@ class Odonata:
         self.process.stdin.flush()
 
     def _read_line(self) -> str:
-        if not self.process.stdout:
+        if not self.process or not self.process.stdout:
             raise BrokenPipeError()
         # if not self.process.stderr:
         #     raise BrokenPipeError()
@@ -1080,11 +1098,6 @@ class Odonata:
     def legal_moves(self, b: Board) -> str:
         req = f"ext:legal_moves fen {b.to_fen()}"
         return self.exec_command(req, res="result:")
-
-    # def version(self) -> str:
-    #     req = f"ext:version"
-    #     return self.exec_command(req, res="result:")
-
 
     def call(self, method, args=(), kwargs=None, callback=None, block=0.001):
         # json = Spec.request(method, id="id", params=args)
@@ -1136,7 +1149,13 @@ class Odonata:
 
 
 
-    def version(self) -> str:
+    # all engines should support a basic version function
+    def engine_version(self) -> str:
+        return self._engine_version
+
+    
+    # odonata specific version information 
+    def api_version(self) -> str:
         return self.call("version", args=())
 
     def get_best_move(self, b: Board, depth: Optional[int] = None, millis: Optional[int] = None, nodes: Optional[int] = None) -> Optional[str]:
@@ -1259,9 +1278,17 @@ class Odonata:
         return results
 
     def __del__(self) -> None:
-        if self.process:
-            self._put("quit")
-            self.process.kill()
+        if not self.process:
+            logger.info(f"Call to __del__ on {self.path} ignored")
+            return
+
+        logger.info(f"Calling __del__ on {self.path} {self.process.stdin}")
+        self._put("quit")
+        logger.info(f"after quit {self._read_line()}")
+        self.process = None
+        # self.process.wait(100)
+        # logger.warning(f"after quit {self._read_line()}")
+        # self.process.kill()
 
 
 class Test:
@@ -1430,19 +1457,19 @@ class Test:
         # assert str(b) == str(ColourFlipper().flip_board(ColourFlipper().flip_board(b)))
 
     def test_catalog(self):
-        odo = Odonata(debug=False)
+        odo = Odonata.instance()
         positions = odo.positions_catalog("BratkoKopec")
         assert len(positions) == 24, len(positions)
         # for pos in positions:
         #     print(f"'{pos}'")
 
     def test_odonata(self):
-        odo = Odonata(debug=False)
+        odo = Odonata.instance()
         odo.is_ready()
         board = Board.parse_fen("r6k/8/8/8/8/8/8/R6K w - - 0 30")
         bm = odo.get_best_move(board, millis=200)
         assert bm == "a1a8"
-        assert odo.version() != ""
+        assert odo.api_version() != ""
 
 
 def demo_1():
@@ -1454,8 +1481,8 @@ def demo_1():
     eval = Eval()
 
     print(f'''
-Odonata version 
-{Odonata.instance().version()}    
+Odonata API version 
+{Odonata.instance().api_version()}    
 
 board as a FEN string and grid
 {b.to_fen()}    
@@ -1490,7 +1517,7 @@ game in progress
 {Board.parse_fen("k7/1R6/K7/8/p7/8/8/8 b - - 150 1").eval().Res}    
 
 best move is...
-{Algo(depth=6).search(b)}
+{Engine(depth=6).search(b)}
 
 move attributes for h2h4
 {Moves.move_attributes(b, "h2h4")}
@@ -1551,8 +1578,8 @@ show some positions from the 'Bratko-Kopec' problem set
 
 def demo_3():
     b = Board.parse_fen("r1k5/8/8/2K5/8/8/8/R6R w - - 0 10")
-    algo = Algo(depth=6)
-    bm = algo.search(b)
+    engine = Engine(depth=6)
+    bm = engine.search(b)
     print(f'''
 
 board as a FEN string 
@@ -1564,19 +1591,20 @@ board as a grid
 best move
 {bm}
 
-max_depth: {algo.max_depth()}
-seldepth : {algo.seldepth()}
-nodes    : {algo.nodes()}
-nodes/sec: {algo.nps()}
-time (ms): {algo.time()}
-score    : {algo.centipawns()}
-mate in  : {algo.mate_in()}
-prin var : {" ".join(algo.pv())}  
+eng version  : {engine.engine_version()}
+max_depth    : {engine.max_depth()}
+seldepth     : {engine.seldepth()}
+nodes        : {engine.nodes()}
+nodes/sec    : {engine.nps()}
+time (ms)    : {engine.time()}
+score        : {engine.centipawns()}
+mate in      : {engine.mate_in()}
+prin var     : {" ".join(engine.pv())}  
 
 ''')
 
     # lets play out the pv
-    for i, move in enumerate(algo.pv()):
+    for i, move in enumerate(engine.pv()):
         b = b.make_move(move)
         print(f"Move #{i+1}: {move}\nPosition\n{b.grid}\n")
 
@@ -1587,7 +1615,7 @@ def calc_calls_per_second(function: Callable) -> int:
     for _ in range(N):
         function()
     elapsed = perf_counter() - start
-    return (N * 10000) // int(elapsed * 10000)
+    return (N * 10000) // int(1 + elapsed * 10000)
 
 
 def benchmark_1():
@@ -1605,16 +1633,16 @@ def benchmark_1():
     print(
         f"\n\nCalculating legal moves for {N} positions\nElapsed = {elapsed} or {int(N/elapsed)} calls/sec")
 
-    odo = Odonata()
+    odo = Odonata.instance()
     b = Board.parse_fen("r1k5/8/8/8/8/8/7P/R6K w - - 0 10")
-    def version(): Odonata.instance().version()
+    def api_version(): Odonata.instance().api_version()
     def catalog(): Catalog.positions("WinAtChess")
     def legals(): b.moves()
-    def legals_hardcoded_fen(): odo.exec_command(
+    def legals_hardcoded_fen(): Odonata.instance().exec_command(
         req="ext:legal_moves fen r1k5/8/8/8/8/8/7P/R6K w - - 0 10", res="result:")
 
     print("\nCalculate calls per second using a hardcoded fen string.\nTypically 80% of the time is fen generation!")
-    print("version              calls/sec:", calc_calls_per_second(version))
+    print("api_version          calls/sec:", calc_calls_per_second(api_version))
     print("catalog              calls/sec:", calc_calls_per_second(catalog))
     print("legals               calls/sec:", calc_calls_per_second(legals))
     print("legals_hardcoded_fen calls/sec:",

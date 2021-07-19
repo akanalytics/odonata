@@ -2,6 +2,7 @@ use crate::board::Board;
 use crate::comms::uci::Uci;
 use crate::search::algo::Algo;
 use crate::version::Version;
+use crate::version::built_info;
 use std::io;
 
 pub struct Console {
@@ -9,12 +10,6 @@ pub struct Console {
     _algo: Algo,
 }
 
-
-// see https://docs.rs/built/0.5.1/built/
-pub mod built_info {
-    // The file has been placed there by the build script.
-    include!(concat!(env!("OUT_DIR"), "/built.rs"));
- }
 
 
 impl Console {
@@ -77,9 +72,9 @@ impl Console {
     pub fn small_splash() {
         println!("target       : {}", built_info::TARGET);
         println!("profile      : {}", built_info::PROFILE);
-        println!("optimization : {}",   built_info::OPT_LEVEL);
+        println!("optimization : {}", built_info::OPT_LEVEL);
         println!("rustc        : {}", built_info::RUSTC_VERSION);
-        println!("features     : {}",  built_info::FEATURES_STR);
-        println!("compiled at  : {}",  built_info::BUILT_TIME_UTC);
+        println!("features     : {}", built_info::FEATURES_STR);
+        println!("compiled at  : {}", built_info::BUILT_TIME_UTC);
     }
 }

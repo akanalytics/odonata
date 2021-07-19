@@ -1,4 +1,5 @@
 use crate::version::Version;
+use crate::version::built_info;
 use crate::catalog::{Catalog, CatalogSuite};
 use crate::position::Position;
 use crate::board::Board;
@@ -59,7 +60,7 @@ pub trait Rpc {
 struct RpcImpl;
 impl Rpc for RpcImpl {
     fn version(&self) -> Result<String> {
-        Ok(Version::VERSION.into())
+        Ok(format!("{} {} built on {}", Version::NAME,Version::VERSION, built_info::BUILT_TIME_UTC))
     }
 
 	fn positions_catalog(&self, suite: CatalogSuite) -> Result<Vec<Position>> {
@@ -88,7 +89,7 @@ mod tests {
     fn test_json_rpc() {
         let mut rpc = JsonRpc::new();
         let request1 = r#"{"jsonrpc": "2.0", "method": "version", "params": [], "id": 1}"#;
-        let response = String::from(r#"{"jsonrpc":"2.0","result":""#) + Version::VERSION + r#"","id":1}"#;
+        let response = format!(r#"{{"jsonrpc":"2.0","result":"{} {} built on {}","id":1}}"#, Version::NAME, Version::VERSION, built_info::BUILT_TIME_UTC );
         assert_eq!(rpc.invoke(request1), Some(response.to_string()));        
     }
 }
