@@ -1034,8 +1034,8 @@ class Odonata:
         self._put("uci")
         while True:
             text = self._read_line()
-            if text.startswith("id name"):
-                text = text.removeprefix("id name ")
+            if "id name" in text:
+                text = text.split("id name ")[-1]
                 break
 
         version_infos = text.split()
