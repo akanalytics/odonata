@@ -12,8 +12,8 @@ pub trait SlidingPieceAttacks {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::globals::constants::*;
+    // use super::*;
+    // use crate::globals::constants::*;
 
     // fn init() {
     //     // env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();

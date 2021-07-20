@@ -133,9 +133,9 @@ mod tests {
         assert_eq!(north.popcount(), 5);
     }
 
-    fn init() {
-        // env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
-    }
+    // fn init() {
+    //     // env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    // }
 
     #[test]
     fn test_rook_attacks() {

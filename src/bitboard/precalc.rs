@@ -258,7 +258,7 @@ impl PreCalc {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bitboard::bb_classical::ClassicalBitboard;
+    // use crate::bitboard::bb_classical::ClassicalBitboard;
     use crate::globals::constants::*;
 
     #[test]
