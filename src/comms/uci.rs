@@ -283,21 +283,35 @@ impl Uci {
     fn ext_uci_move_attributes(&mut self, arg: &Args) -> Result<(), String> {
         let mut b = Board::new_empty();
         Self::parse_fen(arg, &mut b)?;
-        let var = Self::parse_variation(arg, &b)?;
-        if let Some(mv) = var.first() {
-            Self::send(&format!("result:from {from} to {to} capture {capture} ep {ep} san {san} rook_move {rook_move} is_ep {is_ep} is_castle {is_castle}", 
-                from=mv.from().uci(), 
-                to=mv.to().uci(), 
-                capture=mv.capture_square().uci(), 
-                ep=mv.ep().uci(), 
-                // pseudo_legal=b.is_pseudo_legal_move(&mv),
-                // legal=b.is_legal_move(&mv),
-                san=b.to_san(&mv),
-                rook_move=mv.rook_move().uci(),
-                is_ep=mv.is_ep_capture(),
-                is_castle=mv.is_castle()));
+        let var = Self::parse_variation(arg, &b);
+        if let Ok(var) = var { 
+            if let Some(mv) = var.first() {
+                let from=mv.from().uci(); 
+                let to=mv.to().uci(); 
+                let capture=mv.capture_square().uci(); 
+                let ep=mv.ep().uci(); 
+                // pseudo_legal=b.is_pseudo_legal_move(&mv);
+                let legal=b.is_legal_move(&mv);
+                let san = if legal { b.to_san(&mv) } else { "???".to_string() };
+                let rook_move=mv.rook_move().uci();
+                let is_ep=mv.is_ep_capture();
+                let is_castle=mv.is_castle();
+            Self::send(&format!("result:from {from} to {to} capture {capture} ep {ep} legal {legal} san {san} rook_move {rook_move} is_ep {is_ep} is_castle {is_castle}", 
+                    from = from, 
+                    to = to, 
+                    capture = capture, 
+                    ep = ep, 
+                    // pseudo_legal,
+                    legal = legal,
+                    san = san,
+                    rook_move = rook_move,
+                    is_ep = is_ep,
+                    is_castle = is_castle));
+            } else {
+                return Err("Empty variation. Move not specificed".into());
+            }
         } else {
-            return Err("Empty variation. Move not specificed".into());
+            Self::send("result:from 00 to 00 capture 00 ep - legal False san ??? rook_move 0000 is_ep False is_castle False");
         }
         Ok(())
     }

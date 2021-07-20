@@ -1202,7 +1202,7 @@ class Odonata:
         words = record.split()
         d = {}
         for (i, word) in enumerate(words):
-            if word in ['from', 'to', 'capture', 'ep', 'san', 'rook_move', 'is_ep', 'is_castle']:
+            if word in ['from', 'to', 'legal', 'capture', 'ep', 'san', 'rook_move', 'is_ep', 'is_castle']:
                 if word in ['legal', 'pseudo_legal', "is_ep", "is_castle"]:
                     attr = words[i+1] == "true"
                 elif word in ['from', 'to', 'eq', 'capture']:
@@ -1411,6 +1411,11 @@ class Test:
         assert attr['rook_move'] == "0000"
         assert attr['is_ep'] == False
         assert attr['is_castle'] == False
+
+        b = Board.parse_fen("6k1/5p2/p3p3/1p3qp1/2p1Qn2/2P1R3/PP1r1PPP/4R1K1 b - - 0 1")
+        attr = Moves.move_attributes(b, 'h1h1')
+        assert attr['legal'] == False
+        
 
         b = Board()
         assert len(b.moves()) == 20
