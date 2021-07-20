@@ -55,13 +55,14 @@ impl Bench {
         // println!("\nstatistics\n{}", counts::GLOBAL_COUNTS);
     }
 
-    pub fn search(millis: u64) {
+    pub fn search(tc: TimeControl, threads: u32) {
         println!(
-            "search time per move {}\n",
-            Clock::format(Duration::from_millis(millis))
-        );
+            "time control {}\n", tc);
         let mut engine = Engine::new();
-        engine.algo.set_timing_method(TimeControl::from_move_time_millis(millis));
+        engine.thread_count = threads;
+        engine
+            .algo
+            .set_timing_method(tc);
         let positions = &Catalog::bench();
 
         println!(
@@ -98,10 +99,10 @@ impl Bench {
             );
         }
         let average_depth = total_depth as f64 / positions.len() as f64;
-        println!(
-            "\n{} nodes/sec",
-            Formatter::format_f64(total_nodes as f64 / total_time.as_secs_f64())
-        );
-        println!("\n{} average depth", Formatter::format_f64(average_depth));
+        let nps = total_nodes as f64 / total_time.as_secs_f64();
+        println!();
+        println!("nodes/sec:     {}", Formatter::format_f64(nps));
+        println!("average depth: {}", Formatter::format_f64(average_depth));
+        println!("total nodes:   {}", Formatter::format_u128(total_nodes));
     }
 }

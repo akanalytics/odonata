@@ -134,8 +134,8 @@ impl Square {
 
     #[inline]
     pub fn shift(self, dir: Dir) -> Square {
-        debug_assert!(self.0 as i8 + dir.shift >= 0 && self.0 as i8 + dir.shift < 64);
-        Square((self.0 as i8 + dir.shift) as u8)
+        debug_assert!(self.0 as i8 + dir.shift() >= 0 && self.0 as i8 + dir.shift() < 64);
+        Square((self.0 as i8 + dir.shift()) as u8)
     }
 
     #[inline]

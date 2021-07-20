@@ -3,52 +3,53 @@ use std::fmt::{self, Write};
 use std::ops;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
-pub struct Dir {
-    pub index: u8,
-    pub shift: i8,
-    pub mask: Bitboard, // mask for opposite edge(s)
+
+pub struct  Dir {
+    pub index: u32,
+    // pub shift: i8,
+    // pub mask: Bitboard, // mask for opposite edge(s)
 }
 
 impl Dir {
     pub const N: Self = Dir {
         index: 0,
-        shift: 8,
-        mask: Bitboard::RANK_8,
+        // shift: 8,
+        // mask: Bitboard::RANK_8,
     };
     pub const NE: Self = Dir {
         index: 1,
-        shift: 9,
-        mask: Bitboard::RANK_8.or(Bitboard::FILE_H),
+        // shift: 9,
+        // mask: Bitboard::RANK_8.or(Bitboard::FILE_H),
     };
     pub const E: Self = Dir {
         index: 2,
-        shift: 1,
-        mask: Bitboard::FILE_H,
+        // shift: 1,
+        // mask: Bitboard::FILE_H,
     };
     pub const SE: Self = Dir {
         index: 3,
-        shift: -7,
-        mask: Bitboard::RANK_1.or(Bitboard::FILE_H),
+        // shift: -7,
+        // mask: Bitboard::RANK_1.or(Bitboard::FILE_H),
     };
     pub const S: Self = Dir {
         index: 4,
-        shift: -8,
-        mask: Bitboard::RANK_1,
+        // shift: -8,
+        // mask: Bitboard::RANK_1,
     };
     pub const SW: Self = Dir {
         index: 5,
-        shift: -9,
-        mask: Bitboard::RANK_1.or(Bitboard::FILE_A),
+        // shift: -9,
+        // mask: Bitboard::RANK_1.or(Bitboard::FILE_A),
     };
     pub const W: Self = Dir {
         index: 6,
-        shift: -1,
-        mask: Bitboard::FILE_A,
+        // shift: -1,
+        // mask: Bitboard::FILE_A,
     };
     pub const NW: Self = Dir {
         index: 7,
-        shift: 7,
-        mask: Bitboard::RANK_8.or(Bitboard::FILE_A),
+        // shift: 7,
+        // mask: Bitboard::RANK_8.or(Bitboard::FILE_A),
     };
 
     pub const ALL: [Self; 8] = [
@@ -61,6 +62,57 @@ impl Dir {
         Self::W,
         Self::NW,
     ];
+
+
+    #[inline]
+    pub const fn shift(self) -> i8 {
+        // self.shift
+        // [ 8,
+        //  9,
+        //  1,
+        //  -7,
+        //  -8,
+        //  -9,
+        //  -1,
+        //  7][self.index()]
+
+    match self {
+            Self::N => 8,
+            Self::NE => 9,
+            Self::E => 1,
+            Self::SE => -7,
+            Self::S => -8,
+            Self::SW => -9,
+            Self::W => -1,
+            Self::NW => 7,
+            _ => 0 
+        }
+    }
+
+    #[inline]
+    pub const fn mask(self) -> Bitboard {
+        // self.mask
+        [Bitboard::RANK_8,
+        Bitboard::RANK_8.or(Bitboard::FILE_H),
+        Bitboard::FILE_H,
+        Bitboard::RANK_1.or(Bitboard::FILE_H),
+        Bitboard::RANK_1,
+        Bitboard::RANK_1.or(Bitboard::FILE_A),
+        Bitboard::FILE_A,
+        Bitboard::RANK_8.or(Bitboard::FILE_A)][self.index()]
+
+        // match self {
+        //     Self::N => Bitboard::RANK_8,
+        //     Self::NE => Bitboard::RANK_8.or(Bitboard::FILE_H),
+        //     Self::E => Bitboard::FILE_H,
+        //     Self::SE => Bitboard::RANK_1.or(Bitboard::FILE_H),
+        //     Self::S => Bitboard::RANK_1,
+        //     Self::SW => Bitboard::RANK_1.or(Bitboard::FILE_A),
+        //     Self::W => Bitboard::FILE_A,
+        //     Self::NW => Bitboard::RANK_8.or(Bitboard::FILE_A),
+        //     _ => Bitboard::EMPTY
+        // }
+    }
 
     #[inline]
     pub const fn index(self) -> usize {
@@ -433,11 +485,11 @@ impl Bitboard {
 
     #[inline]
     pub const fn shift(self, dir: Dir) -> Bitboard {
-        let bb = self.sub(dir.mask);
-        if dir.shift > 0 {
-            Bitboard(bb.0 << dir.shift)
+        let bb = self.sub(dir.mask());
+        if dir.shift() > 0 {
+            Bitboard(bb.0 << dir.shift())
         } else {
-            Bitboard(bb.0 >> -dir.shift)
+            Bitboard(bb.0 >> -dir.shift())
         }
     }
 
@@ -930,7 +982,7 @@ mod tests {
     #[test]
     fn test_directions() {
         let dir = Dir::N;
-        assert_eq!(dir.shift, 8);
+        assert_eq!(dir.shift(), 8);
         assert_eq!(Dir::ALL[0], Dir::N);
         assert_eq!(
             format!("{:?}", Dir::N),

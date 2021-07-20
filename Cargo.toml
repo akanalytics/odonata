@@ -1,6 +1,6 @@
 [package]
 name = "odonata"
-version = "0.3.23"
+version = "0.3.24"
 license = "GPL-3.0+"
 homepage = "https://github.com/akanalytics/odonata"
 authors = ["andy watkins <andy@webcalculator.com>"]
@@ -58,6 +58,7 @@ harness = false
 debug = true
 
 [profile.release]
+# panic = "abort"
 lto = false
 #codegen-units = 1
 opt-level = 3

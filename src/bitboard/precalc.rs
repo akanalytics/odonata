@@ -211,13 +211,14 @@ impl PreCalc {
 
     #[inline]
     pub fn pawn_front_span(&self, c: Color, pawn_sq: Square) -> Bitboard {
-        let pawn = pawn_sq.as_bb();
-        let atts = pawn.shift(c.pawn_capture_east()) | pawn.shift(c.pawn_capture_west());
-        if c == Color::White {
-            (pawn | atts).fill_north()
-        } else {
-            (pawn | atts).fill_south()
-        }
+        self.pawn_front_span[c][pawn_sq] | self.pawn_attack_span[c][pawn_sq]
+        // let pawn = pawn_sq.as_bb();
+        // let atts = pawn.shift(c.pawn_capture_east()) | pawn.shift(c.pawn_capture_west());
+        // if c == Color::White {
+        //     (pawn | atts).fill_north()
+        // } else {
+        //     (pawn | atts).fill_south()
+        // }
     }
 
     #[inline]
@@ -311,6 +312,26 @@ mod tests {
         );
         assert_eq!(BitboardDefault::default().isolated_pawns(pawns), h5);
         assert_eq!(BitboardDefault::default().isolated_pawns(opponent), d3 | g5);
+
+        let calced = BitboardDefault::default().pawn_front_span(Color::White, Square::B2); 
+        let expect = (Bitboard::FILE_A | Bitboard::FILE_B| Bitboard::FILE_C) - (Bitboard::RANK_1 | Bitboard::RANK_2);
+        println!("{}\n{}", calced, expect);
+        assert_eq!(calced, expect );
+
+        let calced = BitboardDefault::default().pawn_front_span(Color::White, Square::A2);
+        let expect = (Bitboard::FILE_A | Bitboard::FILE_B) - (Bitboard::RANK_1 | Bitboard::RANK_2);
+        println!("{}\n{}", calced, expect);
+        assert_eq!(calced, expect );
+
+        let calced = BitboardDefault::default().pawn_front_span(Color::White, Square::H8);
+        let expect = Bitboard::EMPTY;
+        println!("{}\n{}", calced, expect);
+        assert_eq!(calced, expect );
+
+        let calced = BitboardDefault::default().pawn_front_span(Color::Black, Square::D7);
+        let expect = (Bitboard::FILE_C | Bitboard::FILE_D | Bitboard::FILE_E) - (Bitboard::RANK_8 | Bitboard::RANK_7);
+        println!("{}\n{}", calced, expect);
+        assert_eq!(calced, expect );
     }
 
     #[test]

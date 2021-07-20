@@ -1,7 +1,6 @@
 # Todo items
 
 
-***** tt depth and best move and all nodes etc
 
 
 ## Bugs

@@ -87,7 +87,7 @@ impl ClassicalBitboard {
         if blockers.is_empty() {
             return attacks;
         }
-        let blocker_sq = if dir.shift > 0 { blockers.first_square() } else { blockers.last_square() };
+        let blocker_sq = if dir.shift() > 0 { blockers.first_square() } else { blockers.last_square() };
         // println!("attcks::: dir:{}, from:sq:{} blockers: {:?} blocker_sq:{} \n",  dir.index, from_sq, blockers, blocker_sq);
         // println!("blockers:\n{} \nattacks:\n{} \n",blockers, attacks);
         // println!("minus\n{}\n", self.attacks[blocker_sq][dir.index]);

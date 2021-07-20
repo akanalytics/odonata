@@ -3,6 +3,8 @@ use odonata::comms::console::Console;
 use odonata::comms::uci::Uci;
 use odonata::comms::bench::Bench;
 use odonata::version::Version;
+use odonata::search::timecontrol::TimeControl;
+
 
 // pub const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 // pub const AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
@@ -31,6 +33,13 @@ fn main() -> Result<(), std::num::ParseIntError> {
             .help("runs perft from standard chess opening position")
             .long("perft")
             .value_name("depth")
+            .takes_value(true)
+        )
+        .arg(Arg::with_name("threads")
+            .help("sets the number of threads to use")
+            .long("threads")
+            .value_name("n")
+            .default_value("1")
             .takes_value(true)
         )
         .arg(Arg::with_name("perft_cat")
@@ -69,12 +78,14 @@ fn main() -> Result<(), std::num::ParseIntError> {
         let depth = depth.parse::<u32>()?;
         Bench::perft_cat(depth);
     } else if matches.occurrences_of("search") > 0 {
-        if let Some(millis) = matches.value_of("search") {
-            let millis = millis.parse::<u64>()?;
-            Bench::search(millis);
-        } else {
-            unreachable!("search always has a default millis")
-        }
+        let millis = matches.value_of("search").unwrap();
+        let millis = millis.parse::<u64>()?;
+        let threads = matches.value_of("threads").unwrap();
+        let threads = threads.parse::<u32>()?;
+        Bench::search(TimeControl::from_move_time_millis(millis), threads);
+        // } else {
+        //     unreachable!("search always has a default millis")
+        // }
     } else {
         Console::run();
     }

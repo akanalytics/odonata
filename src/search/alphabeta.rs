@@ -73,9 +73,7 @@ impl Algo {
         let mut tt_mv = Move::NULL_MOVE;
         if let Some(entry) = self.tt.probe_by_board(board, ply, draft) {
             self.search_stats.inc_tt_nodes(ply);
-            //println!("TtNode:{:?}", entry);
-            // for bounded scores, we know iterating through the nodes might raise alpha, lower beta
-            // doing this now allows us potentuially to cut off without looking at the child nodes
+            // we use thr tt_mv for ordering regardless of draft
             tt_mv = entry.bm;
             if entry.draft >= draft && !(board.repetition_count() > 0 && self.repetition.avoid_tt_on_repeats)  {
                 match entry.node_type {
@@ -124,7 +122,7 @@ impl Algo {
                     }
                     NodeType::Unused | NodeType::Terminal => unreachable!(),
                 }
-            }
+            } 
         }
         self.search_stats.inc_interior_nodes(ply);
 

@@ -427,20 +427,22 @@ impl SimpleScorer {
         score
     }
 
+
+    // we dont care about draws in qsearch
     pub fn w_eval_qsearch(&mut self, board: &Board, node: &Node) -> Score {
         counts::QEVAL_COUNT.increment();
         // we check for insufficient material and 50/75 move draws.
-        let outcome = board.draw_outcome();
-        let score = if let Some(outcome) = outcome {
-            if outcome.is_game_over() {
-                return Score::score_from_outcome(self.contempt, outcome, board.color_us(), node.ply);
-            } else {
-                self.w_eval_without_wdl(board, node)
-            }
-        } else {
-            self.w_eval_without_wdl(board, node)
-        };
-        score
+        // let outcome = board.draw_outcome();
+        // let score = if let Some(outcome) = outcome {
+        //     if outcome.is_game_over() {
+        //         return Score::score_from_outcome(self.contempt, outcome, board.color_us(), node.ply);
+        //     } else {
+        //         self.w_eval_without_wdl(board, node)
+        //     }
+        // } else {
+        self.w_eval_without_wdl(board, node)
+        // };
+        // score
     }
 
     fn w_eval_without_wdl(&mut self, board: &Board, _node: &Node) -> Score {
@@ -564,7 +566,7 @@ impl SimpleScorer {
     }
 
 
-        pub fn piece_mobility(&self, b: &Board, our: Color) -> i32 {
+    pub fn piece_mobility(&self, b: &Board, our: Color) -> i32 {
         let us = b.color(our);
         let mut score = 0;
         let their = our.opposite();

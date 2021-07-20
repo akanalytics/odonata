@@ -2,13 +2,16 @@
 perf report 
 
 
-perf perf record -e task-clock,cycles,instructions,cache-references,cache-misses --call-graph dwarf -F 99 --output=perf.data  ./target/release/odonata --search
+perf record -e task-clock,cycles,instructions,cache-references,cache-misses --call-graph dwarf -F 200 --output=perf.data  ./target/release/odonata --search
 perf record -e task-clock,cycles,instructions,cache-references,cache-misses --call-graph dwarf -F 99  ./target/release/odonata --perft 5
 
 cargo flamegraph --bench benchmark perft5 --bench
 cargo bench hyperbola -- --profile-time 3
 
 export RUSTFLAGS="-Ctarget-cpu=native"; cargo b --release
+
+
+RUSTFLAGS="-Ctarget-cpu=native --emit=asm"
 
 # build with a feature
 cargo build --features fast 
