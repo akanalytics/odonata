@@ -33,10 +33,12 @@ use odonata::utils::*;
 use odonata::variation::*;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
+use std::thread;
 
 criterion_group!(
     benches,
     benchmark_search,
+    benchmark_thread,
     benchmark_perft,
     // benchmark_mate_in_2,
     benchmark_ordering,
@@ -1059,6 +1061,197 @@ fn bench_insufficient_material(c: &mut Criterion) {
     });
     group.finish();
 }
+
+fn benchmark_thread(c: &mut Criterion) {
+    let mut group = c.benchmark_group("thread");
+    group.sample_size(10);
+    let pos = Catalog::test_position();
+
+    //let hasher2 = Hasher::new(3141592653589793);
+    let board = Catalog::perft_cpw_number3().0;
+    let moves = board.legal_moves();
+    let mv = moves[0];
+    // let mv2 = mv1.clone();
+    // let mv3 = mv2.clone();
+    // let board1 = Catalog::perft_cpw_number3().0.clone();
+    // let board2 = Catalog::perft_cpw_number3().0.clone();
+    // let board3 = Catalog::perft_cpw_number3().0.clone();
+
+
+    //let hasher = Hasher::new(1);
+    let cl = |_h:&Hasher, board:&Board, mv: &Move| {
+        // let moves = board.legal_moves();
+        // let hasher = Hasher::default();
+        for _i in 1..1_000_000 {
+            black_box(board.make_move(&mv));
+            let mut moves = MoveList::new();
+            board.legal_moves_into(&mut moves);
+            black_box(moves);  
+            // black_box(h.hash_move(&mv, &board));
+            // for mv in moves.iter() {
+            //     black_box(hasher.hash_move(black_box(mv), black_box(&board)));
+            // }
+        }
+    };
+    // let cl2 = || {
+    //     // let moves = board.legal_moves();
+    //     // let hasher = &hasher2;
+    //     for _i in 1..1000000 {
+    //         black_box(board2.make_move(&mv2));
+    //         // for mv in moves.iter() {
+    //         //     black_box(hasher.hash_move(black_box(mv), black_box(&board)));
+    //         // }
+    //     }
+    // };
+
+    // let cl3 = || {
+    //     // let moves = board.legal_moves();
+    //     // let hasher = &hasher2;
+    //     for _i in 1..1000000 {
+    //         black_box(board3.make_move(&mv3));
+    //         // for mv in moves.iter() {
+    //         //     black_box(hasher.hash_move(black_box(mv), black_box(&board)));
+    //         // }
+    //     }
+    // };
+
+    group.bench_function("perft-1t", |b| {
+        b.iter(|| {
+            let mut board1 = Catalog::starting_position();
+            let board2 = board1.clone();
+            let handle = thread::spawn(move || {
+                black_box(Perft::perft(&mut board1, black_box(6)));
+            });            
+            // black_box(Perft::perft(&mut board1, black_box(6)));
+            handle.join().unwrap();            
+            black_box(board2);
+        });
+    });
+    group.bench_function("perft-2t", |b| {
+        b.iter(|| {
+            let mut board1 = Catalog::starting_position();
+            let mut board2 = board1.clone();
+            let handle = thread::spawn(move || {
+                black_box(Perft::perft(&mut board1, black_box(6)));
+            });            
+            black_box(Perft::perft(&mut board2, black_box(6)));
+            handle.join().unwrap();            
+        });
+    });
+    group.bench_function("perft-3t", |b| {
+        b.iter(|| {
+            let mut board1 = Catalog::starting_position();
+            let mut board2 = board1.clone();
+            let mut board3 = board1.clone();
+            let handle1 = thread::spawn(move || {
+                black_box(Perft::perft(&mut board1, black_box(6)));
+            });            
+            let handle2 = thread::spawn(move || {
+                black_box(Perft::perft(&mut board2, black_box(6)));
+            });            
+            black_box(Perft::perft(&mut board3, black_box(6)));
+            handle1.join().unwrap();            
+            handle2.join().unwrap();            
+        });
+    });
+
+    group.bench_function("search-1t", |b| {
+        b.iter(|| {
+            let mut algo1 = Algo::new().set_timing_method(TimeControl::Depth(6)).build();
+            algo1.board = pos.board().clone();
+            algo1.new_game();
+
+            black_box(algo1.search(pos.board()));
+        });
+    });
+    group.bench_function("search-2t", |b| {
+        b.iter(|| {
+            let mut algo1 = Algo::new().set_timing_method(TimeControl::Depth(6)).build();
+            algo1.board = pos.board().clone();
+            algo1.new_game();
+
+            let mut algo2 = Algo::new().set_timing_method(TimeControl::Depth(6)).build();
+            algo2.board = pos.board().clone();
+            algo2.new_game();
+
+            let handle = thread::spawn(move || {
+                black_box(algo1.search_iteratively());
+            });            
+            black_box(algo2.search(pos.board()));
+            handle.join().unwrap();            
+        });
+    });
+
+    group.bench_function("hash_move-t1", |b| {
+        b.iter(|| { 
+            let hash1 = Hasher::default().clone();
+            cl(&hash1, &board.clone(), &mv.clone())
+        });
+    });
+
+    group.bench_function("hash_move-t2", |b| {
+        b.iter(|| {
+            let board_clone = board.clone();
+            let hash1 = Hasher::default().clone();
+            let handle = thread::spawn(move|| cl(&hash1, &board_clone, &mv.clone()));
+            let hash3 = Hasher::default().clone();
+            cl(&hash3, &board.clone(), &mv.clone());
+            handle.join().unwrap();            
+        });
+    });
+
+    group.bench_function("hash_move-t3", |b| {
+        b.iter(|| {
+            let board1_clone = board.clone();
+            let board2_clone = board.clone();
+            let hash1 = Hasher::default().clone();
+            let hash2 = Hasher::default().clone();
+            let handle1 = thread::spawn(move || cl(&hash1, &board1_clone, &mv.clone()));
+            let handle2 = thread::spawn(move || cl(&hash2, &board2_clone, &mv.clone()));
+            let hash3 = Hasher::default().clone();
+            cl(&hash3, &board.clone(), &mv.clone());
+            handle1.join().unwrap();            
+            handle2.join().unwrap();            
+        });
+    });
+
+    group.bench_function("loop-1t", |b| {
+        b.iter(|| {
+            black_box(calc_sum(1000));
+        });
+    });
+    group.bench_function("loop-2t", |b| {
+        b.iter(|| {
+            let handle = thread::spawn(move || {
+                black_box(calc_sum(1000));
+            });            
+            black_box(calc_sum(1000));
+            handle.join().unwrap();            
+        });
+    });
+
+
+
+
+    group.finish();
+}
+
+
+fn calc_sum(n: u64) -> u64 {
+    let mut sum = 0;
+    for j in 1..30000 {
+        for i in 1..n {
+            sum += i;
+            sum += (i % 3) * (i % 2);
+        }
+        sum += j;
+    }
+    sum
+}
+
+
+
+
 
 fn benchmark_search(c: &mut Criterion) {
     let mut group = c.benchmark_group("search");

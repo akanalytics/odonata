@@ -60,19 +60,20 @@ impl Stat {
 
     #[inline]
     pub fn add(&self, add: i64) {
+        #[cfg(not(feature="remove_metrics"))]    
         self.counter.fetch_add(add, Ordering::Relaxed);
     }
 
     #[inline]
     pub fn increment(&self) {
-        #[cfg(not(feature="no_metrics"))]    
+        #[cfg(not(feature="remove_metrics"))]    
         self.counter.fetch_add(1, Ordering::Relaxed);
     }
 
-    #[inline]
-    pub fn set(&self, value: i64) {
-        self.counter.store(value, Ordering::Relaxed);
-    }
+    // #[inline]
+    // pub fn set(&self, value: i64) {
+    //     self.counter.store(value, Ordering::Relaxed);
+    // }
 
     #[inline]
     pub fn get(&self) -> i64 {

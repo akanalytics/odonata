@@ -21,12 +21,13 @@ use std::fmt;
 //
 // chosen so hash of empty borad = 0
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(align(64))]
 pub struct Hasher {
     seed: u64,
-    squares: [[[u64; Square::len()]; Piece::len()]; Color::len()], // [colour][piece][square]
     side: u64,
-    castling: [u64; CastlingRights::len()],
+    squares: [[[u64; Square::len()]; Piece::len()]; Color::len()], // [colour][piece][square]
     ep: [u64; 8],
+    castling: [u64; CastlingRights::len()],
 }
 
 impl fmt::Display for Hasher {
@@ -182,11 +183,11 @@ impl Hasher {
     }
 
     pub fn hash_move(&self, m: &Move, pre_move: &Board) -> Hash {
+        let mut hash = self.side;
         counts::MOVE_HASH_COUNT.increment();
         // either we're moving to an empty square or its a capture
         let us = pre_move.color_us();
         let them = pre_move.color_them();
-        let mut hash = self.side;
         if !pre_move.en_passant().is_empty() {
             hash ^= self.ep[pre_move.en_passant().first_square().file_index()];
         }
