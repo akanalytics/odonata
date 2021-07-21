@@ -470,7 +470,7 @@ impl Uci {
         } else if let Some(nodes) = nodes {
             TimeControl::NodeCount(nodes as u64)
         } else if let Some(movetime) = movetime {
-            TimeControl::MoveTime(Duration::from_millis(movetime as u64))
+            TimeControl::SearchTime(Duration::from_millis(movetime as u64))
         } else if let Some(mate) = mate {
             TimeControl::MateIn(mate as u32)
         } else {

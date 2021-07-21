@@ -416,16 +416,59 @@ impl SimpleScorer {
 }
 
 impl SimpleScorer {
+
+
+
+
+    pub fn w_tempo_adjustment(&self, us: Color) -> Score {
+        // axiom: we're white
+        // white to move => advantage, black to move means white has a disadvantage
+        if us == Color::White {
+            Score::from_cp(self.tempo)
+        } else {
+            Score::from_cp(-self.tempo)
+        }
+    }
+
+
+    pub fn w_eval_draw(&mut self, board: &Board) -> Score {
+        // draw score is +ve for playing a stronger opponent (we want a draw), neg for weaker
+        //
+        //  Engine Col   |  search ply   |  value to searcher   | Score to white
+        //     W               0                   +ve               +ve
+        //     B               0                   +ve               -ve
+        //     W               1 (oppo B)          -ve               +ve (a bonus to white opponet)
+        //     B               1 (oppo W)          -ve               -ve
+        // board.color_us() == Color::White => maximising
+        // +ve contempt => +ve score => aim for draw => opponent stronger than us
+        // board.color_us() == Color::Black => minimising
+        // +ve contempt => -ve score => aim for draw => opponent stronger than us
+        let contempt = board.color_us().chooser_wb(self.contempt, -self.contempt);
+        return Score::from_cp(contempt);
+    }
+
+
+
+
     pub fn w_evaluate(&mut self, board: &Board, node: &Node) -> Score {
         counts::EVAL_COUNT.increment();
         let outcome = board.outcome();
-        let score = if outcome.is_game_over() {
-            Score::score_from_outcome(self.contempt, outcome, board.color_us(), node.ply)
-        } else {
-            self.w_eval_without_wdl(board, node)
-        };
-        score
+        if outcome.is_game_over() {
+            if outcome.is_draw() {
+                return self.w_eval_draw(board);
+            }
+            if let Some(c) = outcome.winning_color() {
+                return c.chooser_wb(
+                    Score::white_win(node.ply), 
+                    Score::white_loss(node.ply)
+                );
+            }            
+        }
+        self.w_eval_without_wdl(board, node)
     }
+
+
+
 
 
     // we dont care about draws in qsearch
@@ -444,6 +487,12 @@ impl SimpleScorer {
         // };
         // score
     }
+
+
+
+
+    
+ 
 
     fn w_eval_without_wdl(&mut self, board: &Board, _node: &Node) -> Score {
         // if self.cache_eval {
@@ -475,7 +524,7 @@ impl SimpleScorer {
             Weight::zero()
         };
         let mut score = Score::from_cp((ma + po + mo + sa).interpolate(board.phase()));
-        let te = Score::side_to_move_score(self.tempo, board.color_us());
+        let te = self.w_tempo_adjustment(board.color_us());
         score = score + te;
         // if self.cache_eval {
         //     if let Some(entry) = self.cache.probe_by_board(board) {
@@ -706,6 +755,11 @@ impl Board {
     pub fn eval_qsearch(&self, eval: &mut SimpleScorer, nd: &Node) -> Score {
         QUIESCENCE.increment();
         self.signum() * eval.w_eval_qsearch(self, nd)
+    }
+
+    #[inline]
+    pub fn eval_draw(&self, eval: &mut SimpleScorer) -> Score {
+        self.signum() * eval.w_eval_draw(self)
     }
 
     #[inline]

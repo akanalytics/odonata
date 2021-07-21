@@ -269,6 +269,7 @@ pub struct TranspositionTable2 {
     table: Arc<SharedTable>,
 
     pub aging: bool,
+    pub probe_leaf_nodes: bool,
     pub current_age: u8,
     pub enabled: bool,
     pub use_tt_for_pv: bool,
@@ -299,6 +300,7 @@ impl fmt::Debug for TranspositionTable2 {
             .field("mb", &self.mb)
             .field("hmvc.horizon", &self.hmvc_horizon)
             .field("aging", &self.aging)
+            .field("probe.leaf.nodes", &self.probe_leaf_nodes)
             .field("current.age", &self.current_age)
             .finish()
     }
@@ -364,6 +366,7 @@ impl Default for TranspositionTable2 {
 impl Component for TranspositionTable2 {
     fn settings(&self, c: &mut Config) {
         c.set("tt.aging", &format!("type check default {}", self.aging));
+        c.set("tt.probe.leaf.nodes", &format!("type check default {}", self.probe_leaf_nodes));
         c.set("tt.use.tt.for.pv", &format!("type check default {}", self.use_tt_for_pv));
         c.set("tt.allow.truncated.pv", &format!("type check default {}", self.allow_truncated_pv));
         c.set("Hash", &format!("type spin default {} min 0 max 4000", self.mb));
@@ -373,6 +376,7 @@ impl Component for TranspositionTable2 {
     fn configure(&mut self, c: &Config) {
         debug!("tt.configure");
         self.aging = c.bool("tt.aging").unwrap_or(self.aging);
+        self.probe_leaf_nodes = c.bool("tt.probe.leaf.nodes").unwrap_or(self.probe_leaf_nodes);
         self.use_tt_for_pv = c.bool("tt.use.tt.for.pv").unwrap_or(self.use_tt_for_pv);
         self.allow_truncated_pv = c.bool("tt.allow.truncated.pv").unwrap_or(self.allow_truncated_pv);
         self.mb = c.int("Hash").unwrap_or(self.mb);
@@ -420,6 +424,7 @@ impl TranspositionTable2 {
             table: Arc::new(SharedTable::new_with_capacity(Self::convert_mb_to_capacity(mb))),
             enabled: true,
             use_tt_for_pv: false,
+            probe_leaf_nodes: true,
             allow_truncated_pv: false,
             mb: mb as i64,
             aging: true,

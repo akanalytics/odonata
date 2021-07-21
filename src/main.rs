@@ -13,7 +13,7 @@ use odonata::search::timecontrol::TimeControl;
 // pub const IMAGE: &'static str = r##"
 
 
-fn main() -> Result<(), std::num::ParseIntError> {
+fn main() -> Result<(), String> {
     let matches = App::new(Version::NAME)
         .version(Version::VERSION)
         .author(Version::AUTHORS)
@@ -52,7 +52,7 @@ fn main() -> Result<(), std::num::ParseIntError> {
             .help("analyse a series of test positions in a given time (in milliseconds) per position")
             .long("search")
             .value_name("millis")
-            .default_value("300")
+            .default_value("st=.300")
             .takes_value(true)
         )
         .get_matches();
@@ -72,17 +72,17 @@ fn main() -> Result<(), std::num::ParseIntError> {
     if matches.is_present("uci") {
         Uci::new().run();
     } else if let Some(depth) = matches.value_of("perft") {
-        let depth = depth.parse::<u32>()?;
+        let depth = depth.parse::<u32>().map_err(|e| e.to_string())?;
         Bench::perft(depth);
     } else if let Some(depth) = matches.value_of("perft_cat") {
-        let depth = depth.parse::<u32>()?;
+        let depth = depth.parse::<u32>().map_err(|e| e.to_string())?;
         Bench::perft_cat(depth);
     } else if matches.occurrences_of("search") > 0 {
-        let millis = matches.value_of("search").unwrap();
-        let millis = millis.parse::<u64>()?;
+        let tc = matches.value_of("search").unwrap();
+        let tc = TimeControl::parse(tc).map_err(|e| e.to_string())?;
         let threads = matches.value_of("threads").unwrap();
-        let threads = threads.parse::<u32>()?;
-        Bench::search(TimeControl::from_move_time_millis(millis), threads);
+        let threads = threads.parse::<u32>().map_err(|e| e.to_string())?;
+        Bench::search(tc, threads);
         // } else {
         //     unreachable!("search always has a default millis")
         // }

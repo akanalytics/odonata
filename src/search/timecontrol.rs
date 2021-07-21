@@ -3,14 +3,15 @@ use crate::types::{Color, Ply};
 use std::fmt;
 use std::time::Duration;
 use std::str::FromStr;
+use crate::utils::Formatter;
 
 /// https://en.wikipedia.org/wiki/Time_control
 ///
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum TimeControl {
-    EpdDepth,         // depth "recommended" by EPD position
+    DefaultTime,         // depth "recommended" by EPD position or otherwise
     Depth(Ply),         // uci "depth"
-    MoveTime(Duration), // uci "movetime"
+    SearchTime(Duration), // uci "movetime"
     NodeCount(u64),     // uci "nodes"
     Infinite,           // uci "infinite"
     MateIn(u32),        // uci "mate"
@@ -27,10 +28,10 @@ pub enum TimeControl {
 impl fmt::Display for TimeControl {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            TimeControl::EpdDepth => write!(f, "EpdDepth()")?,
+            TimeControl::DefaultTime => write!(f, "Default")?,
             TimeControl::Depth(max_ply) => write!(f, "Depth({})", max_ply)?,
-            TimeControl::MoveTime(duration) => write!(f, "MoveTime({})", DurationNewType(*duration))?,
-            TimeControl::NodeCount(max_nodes) => write!(f, "NodeCount({})", max_nodes)?,
+            TimeControl::SearchTime(duration) => write!(f, "SearchTime({})", DurationNewType(*duration))?,
+            TimeControl::NodeCount(max_nodes) => write!(f, "NodeCount({})", Formatter::format_u128(*max_nodes as u128))?,
             TimeControl::Infinite => write!(f, "Infinite")?,
             TimeControl::MateIn(depth) => write!(f, "MateIn({})", depth)?,
             TimeControl::RemainingTime { our_color, wtime, btime, winc: _, binc: _, movestogo: _ } => {
@@ -56,7 +57,7 @@ impl FromStr for TimeControl {
 
 impl Default for TimeControl {
     fn default() -> Self {
-        TimeControl::MoveTime(Duration::from_secs(5))
+        TimeControl::SearchTime(Duration::from_secs(5))
     }
 }
 
@@ -65,27 +66,25 @@ impl TimeControl {
     pub fn parse(tc: &str) -> Result<Self, String> {
         if tc == "inf" {
             Ok(TimeControl::Infinite)
-        } else if tc.ends_with("epd") {
-            Ok(TimeControl::EpdDepth)
-        } else if tc.ends_with("ms") {
-            let ms = tc.parse::<u64>().map_err(|e| e.to_string())?;
-            Ok(TimeControl::MoveTime(Duration::from_millis(ms)))
-        } else if tc.ends_with("s") {
-            let secs = tc.parse::<u64>().map_err(|e| e.to_string())?;
-            Ok(TimeControl::MoveTime(Duration::from_secs(secs)))
-        } else if tc.ends_with("mate") {
+        } else if tc.ends_with("def") {
+            Ok(TimeControl::DefaultTime)
+        } else if let Some(tc) = tc.strip_prefix("st=") {
+            let secs = tc.parse::<f64>().map_err(|e| e.to_string())?;
+            Ok(TimeControl::SearchTime(Duration::from_secs_f64(secs)))
+        } else if let Some(tc) = tc.strip_prefix("mate=") {
             let depth = tc.parse::<u32>().map_err(|e| e.to_string())?;
             Ok(TimeControl::MateIn(depth))
-        } else if tc.contains("+") {
-            let wtime = Duration::from_secs(0);
-            let btime = Duration::from_secs(0); 
+        } else if let Some(tc) = tc.strip_prefix("tc=") {
+            let time = tc.parse::<u64>().map_err(|e| e.to_string())?;
+            let wtime = Duration::from_secs(time);
+            let btime = Duration::from_secs(time); 
             let winc = Duration::from_secs(0); 
             let binc = Duration::from_secs(0); 
             Ok(TimeControl::RemainingTime{ our_color:Color::White, wtime, btime, winc, binc, movestogo:0})
-        } else if tc.ends_with("d") {
+        } else if let Some(tc) = tc.strip_prefix("depth=") {
             let depth = tc.parse::<i32>().map_err(|e| e.to_string())?;
             Ok(TimeControl::Depth(depth))
-        } else if tc.ends_with("n") {
+        } else if let Some(tc) = tc.strip_prefix("nodes=") {
             let nodes = tc.parse::<u64>().map_err(|e| e.to_string())?;
             Ok(TimeControl::NodeCount(nodes))
         } else {
@@ -108,7 +107,7 @@ impl TimeControl {
 
     pub fn from_move_time_millis(ms: u64) -> Self {
         let d = Duration::from_millis(ms);
-        TimeControl::MoveTime(d)
+        TimeControl::SearchTime(d)
     }
 
     pub fn from_game_time_secs(s: u64) -> Self {
@@ -134,7 +133,23 @@ mod tests {
 
     #[test]
     fn test_time_control() -> Result<(), String> {
-        assert_eq!(TimeControl::parse("3d".into())?, TimeControl::Depth(3));
+        assert_eq!(TimeControl::parse("depth=3".into())?, TimeControl::Depth(3));
+        println!("{}", TimeControl::parse("depth=3".into())?);
+
+        assert_eq!(TimeControl::parse("def".into())?, TimeControl::DefaultTime);
+        println!("{}", TimeControl::parse("def".into())?);
+
+        assert_eq!(TimeControl::parse("inf".into())?, TimeControl::Infinite);
+        println!("{}", TimeControl::parse("inf".into())?);
+
+        assert_eq!(TimeControl::parse("nodes=1000".into())?, TimeControl::NodeCount(1000));
+        println!("{}", TimeControl::parse("nodes=1000".into())?);
+
+        assert_eq!(TimeControl::parse("st=10.980".into())?, TimeControl::SearchTime(Duration::from_millis(10980)));
+        println!("{}", TimeControl::parse("st=10.980".into())?);
+
+        assert_eq!(TimeControl::parse("mate=3".into())?, TimeControl::MateIn(3));
+        println!("{}", TimeControl::parse("mate=3".into())?);
         Ok(())
     }
 }

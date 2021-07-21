@@ -92,9 +92,9 @@ impl MoveTimeEstimator {
         let elapsed = search_stats.elapsed(self.deterministic);
 
         let time_up = match self.time_control {
-            TimeControl::EpdDepth => false, 
+            TimeControl::DefaultTime => false, 
             TimeControl::Depth(_max_ply) => false, // ply > max_ply,  // dont cause an abort on last iteration
-            TimeControl::MoveTime(duration) => 10 * elapsed > duration * 9 && !self.pondering(),
+            TimeControl::SearchTime(duration) => 10 * elapsed > duration * 9 && !self.pondering(),
             TimeControl::NodeCount(max_nodes) => search_stats.total().nodes() > max_nodes,
             TimeControl::Infinite => false,
             TimeControl::MateIn(_) => false,
@@ -139,9 +139,9 @@ impl MoveTimeEstimator {
     fn allotted(&self) -> Duration {
         let zero = Duration::from_secs(0);
         match self.time_control {
-            TimeControl::EpdDepth => zero,
+            TimeControl::DefaultTime => zero,
             TimeControl::Depth(_) => zero,
-            TimeControl::MoveTime(duration) => duration,
+            TimeControl::SearchTime(duration) => duration,
             TimeControl::NodeCount(_) => zero,
             TimeControl::Infinite => zero,
             TimeControl::MateIn(_) => zero,

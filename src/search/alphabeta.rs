@@ -1,11 +1,11 @@
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
+use crate::cache::tt2::{NodeType, TtNode};
 use crate::eval::score::Score;
 use crate::mv::Move;
 use crate::pvtable::PvTable;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
-use crate::cache::tt2::{NodeType, TtNode};
 use crate::types::{Ply, MAX_PLY};
 
 pub struct AlphaBeta;
@@ -22,19 +22,22 @@ impl Algo {
     pub fn run_alphabeta(&mut self, board: &mut Board, node: &mut Node) {
         self.search_stats.reset_keeping_pv();
         self.pv_table = PvTable::new(MAX_PLY as usize);
-        self.search_stats.score =
-            self.alphabeta_recursive(board, node.ply, self.max_depth, node.alpha, node.beta, &Move::NULL_MOVE);
+        self.search_stats.score = self.alphabeta_recursive(
+            board,
+            node.ply,
+            self.max_depth,
+            node.alpha,
+            node.beta,
+            &Move::NULL_MOVE,
+        );
 
         let (pv, _score) = if self.tt.use_tt_for_pv {
             self.tt.extract_pv_and_score(board)
         } else {
             (self.pv_table.extract_pv(), Some(Score::default()))
         };
-        self.search_stats.record_iteration(
-            self.max_depth,
-            !self.task_control.is_cancelled(),
-            pv,
-        );
+        self.search_stats
+            .record_iteration(self.max_depth, !self.task_control.is_cancelled(), pv);
     }
 
     pub fn alphabeta_recursive(
@@ -46,7 +49,6 @@ impl Algo {
         beta: Score,
         last_move: &Move,
     ) -> Score {
-
         // debug_assert!(depth > 0);
         self.clear_move(ply);
         self.report_progress();
@@ -57,25 +59,25 @@ impl Algo {
 
         if board.draw_outcome().is_some() {
             self.search_stats.inc_leaf_nodes(ply);
-            return board.eval(&mut self.eval, &Node { ply, depth, alpha, beta }); // will return a draw score
+            return board.eval_draw(&mut self.eval); // will return a draw score
         }
 
         let mut score = -Score::INFINITY;
         let mut bm = Move::NULL_MOVE;
         let mut nt = NodeType::All;
 
-        if self.is_leaf(ply, depth) {
+        if !self.tt.probe_leaf_nodes && self.is_leaf(ply, depth) {
             return self.qsearch(last_move, ply, depth, board, alpha, beta);
         }
 
-        
         let draft = depth;
         let mut tt_mv = Move::NULL_MOVE;
         if let Some(entry) = self.tt.probe_by_board(board, ply, draft) {
             self.search_stats.inc_tt_nodes(ply);
             // we use thr tt_mv for ordering regardless of draft
             tt_mv = entry.bm;
-            if entry.draft >= draft && !(board.repetition_count() > 0 && self.repetition.avoid_tt_on_repeats)  {
+            if entry.draft >= draft && !(board.repetition_count() > 0 && self.repetition.avoid_tt_on_repeats)
+            {
                 match entry.node_type {
                     NodeType::Pv => {
                         // previously this position raised alpha, but didnt trigger a cut
@@ -109,7 +111,7 @@ impl Algo {
                             self.record_truncated_move(ply, &entry.bm);
                             score = entry.score;
                             bm = entry.bm; // need to set bm as alpha raising mv might be skipped
-                            // tt_mv = Some(entry.bm); // might help with move ordering
+                                           // tt_mv = Some(entry.bm); // might help with move ordering
                         }
                     }
                     NodeType::All => {
@@ -122,10 +124,13 @@ impl Algo {
                     }
                     NodeType::Unused | NodeType::Terminal => unreachable!(),
                 }
-            } 
+            }
         }
-        self.search_stats.inc_interior_nodes(ply);
 
+        self.search_stats.inc_interior_nodes(ply);
+        if self.tt.probe_leaf_nodes && self.is_leaf(ply, depth) {
+            return self.qsearch(last_move, ply, depth, board, alpha, beta);
+        }
 
         // null move
         if !self.minmax && beta.is_numeric() && self.nmp.allow(&board, ply, depth, &self.pv_table) {
@@ -133,21 +138,24 @@ impl Algo {
             let mv = Move::NULL_MOVE;
             let mut child_board = board.make_move(&mv);
             self.current_variation.set_last_move(ply + 1, &mv);
-            let child_score = -self.alphabeta_recursive(&mut child_board, ply + 1, depth - r - 1, -beta, -beta + Score::from_cp(1), &mv);
+            let child_score = -self.alphabeta_recursive(
+                &mut child_board,
+                ply + 1,
+                depth - r - 1,
+                -beta,
+                -beta + Score::from_cp(1),
+                &mv,
+            );
             board.undo_move(&mv);
             if child_score >= beta {
                 self.search_stats.inc_cuts(ply);
                 return child_score;
             }
-
         }
-
-
-
 
         let mut sorted_moves = self.move_orderer.get_sorted_moves(ply, tt_mv);
         let mut count = 0;
-        while let Some((_stage,mv)) = sorted_moves.next_move(board, self) {
+        while let Some((_stage, mv)) = sorted_moves.next_move(board, self) {
             count += 1;
 
             let mut child_board = board.make_move(&mv);
@@ -156,7 +164,8 @@ impl Algo {
             debug_assert!(alpha < beta || self.minmax);
             self.current_variation.set_last_move(ply + 1, &mv);
 
-            let child_score = -self.alphabeta_recursive(&mut child_board, ply + 1, depth -1, -beta, -alpha, &mv);
+            let child_score =
+                -self.alphabeta_recursive(&mut child_board, ply + 1, depth - 1, -beta, -alpha, &mv);
             board.undo_move(&mv);
             self.repetition.pop();
             if ply > 1 && self.task_control.is_cancelled() {
@@ -185,7 +194,15 @@ impl Algo {
         if count == 0 {
             // nt = NodeType::Terminal;
             self.search_stats.inc_leaf_nodes(ply);
-            return board.eval(&mut self.eval, &Node { ply, depth, alpha, beta });
+            return board.eval(
+                &mut self.eval,
+                &Node {
+                    ply,
+                    depth,
+                    alpha,
+                    beta,
+                },
+            );
         } else if nt == NodeType::All {
             // nothing
         } else if nt == NodeType::Cut {
@@ -208,9 +225,6 @@ impl Algo {
         self.current_variation.set_last_move(ply, &Move::NULL_MOVE);
         score
     }
-
-
-
 }
 
 #[cfg(test)]
@@ -265,11 +279,17 @@ mod tests {
             // println!("{}", search);
             if pos.get("pv").is_ok() {
                 let expected_pv = pos.pv()?;
-                assert_eq!(search.pv_table.extract_pv().to_string(), expected_pv.to_string(), "#{} {}", i, pos);
+                assert_eq!(
+                    search.pv_table.extract_pv().to_string(),
+                    expected_pv.to_string(),
+                    "#{} {}",
+                    i,
+                    pos
+                );
             }
             println!("Mate in {}", search.score().mate_in().unwrap());
             assert_eq!(search.score().mate_in(), Some(4), "#{} {}", i, pos);
         }
         Ok(())
     }
-}   
+}

@@ -311,7 +311,7 @@ mod tests {
     #[test]
     fn test_bug1() {
         let b = Board::parse_fen("1rk2qRr/8/B3P3/B4QN1/P4p2/2K1PP1P/P7/R2N4 b - - 0 38").unwrap();
-        let tc = TimeControl::MoveTime(Duration::from_millis(100));
+        let tc = TimeControl::SearchTime(Duration::from_millis(100));
         let mut white = Algo::new().set_timing_method(tc).build();
         let mut black = Algo::new().set_timing_method(tc).build();
         white.move_orderer.mvv_lva = true;
@@ -322,7 +322,7 @@ mod tests {
     #[test]
     fn test_bug2() {
         let b1 = Board::parse_fen("1r3rbQ/p1p1kp2/4pn2/2Pp4/2n3p1/1P1N4/2P1PPPP/q2K1RBB w - - 0 23").unwrap();
-        // let tc = TimeControl::MoveTime(Duration::from_millis(140));
+        // let tc = TimeControl::SearchTime(Duration::from_millis(140));
         let tc = TimeControl::from_remaining_time(Duration::from_millis(1750));
         let mut white = Algo::new().set_timing_method(tc).build();
         let _black = Algo::new().set_timing_method(tc).build();

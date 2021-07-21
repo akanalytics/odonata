@@ -58,6 +58,7 @@ impl Stat {
         Stat { name: name, counter: AtomicI64::new(0) }
     }
 
+    #[allow(unused_variables)]
     #[inline]
     pub fn add(&self, add: i64) {
         #[cfg(not(feature="remove_metrics"))]    

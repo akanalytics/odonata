@@ -15,7 +15,7 @@
 - [ ] debugging info for static eval (template) - json?
 - [ ] position features
 - [ ] optimise check of repetitions within 3 of ireversible move
-- [ ] PV on q search and eval
+- [X ] PV on q search and eval
 - [ ] serde as json struct
 - [X] triangle stuff
 - [ ] NPS accross all threads
@@ -112,7 +112,7 @@
 
 - Obligatory
   - Futility pruning
-  - Null move pruning
+  - [x] Null move pruning
   - [x] Transposition Table
   - [x] Iterative Deepening
   - Aspiration Windows

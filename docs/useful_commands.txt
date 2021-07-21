@@ -8,7 +8,7 @@ perf record -e task-clock,cycles,instructions,cache-references,cache-misses --ca
 cargo flamegraph --bench benchmark perft5 --bench
 cargo bench hyperbola -- --profile-time 3
 
-export RUSTFLAGS="-Ctarget-cpu=native"; cargo b --release
+export RUSTFLAGS="-Ctarget-cpu=native"; cargo b --features=fast  --release
 
 
 RUSTFLAGS="-Ctarget-cpu=native --emit=asm"

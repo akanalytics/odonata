@@ -77,6 +77,13 @@ impl Bench {
 
             engine.new_game();
             engine.algo.board = pos.board().clone();
+            if tc == TimeControl::DefaultTime {
+                let suggested_depth = pos.acd().unwrap();
+                engine
+                .algo
+                .set_timing_method(TimeControl::Depth(suggested_depth));
+            } 
+
             engine.search();
             let elapsed = t.elapsed();
             let bm = pos.board().to_san(&engine.algo.bm());
