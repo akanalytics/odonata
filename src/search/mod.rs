@@ -13,4 +13,5 @@ pub mod node;
 pub mod qsearch;
 pub mod nmp;
 pub mod stack;
+pub mod futility;
 

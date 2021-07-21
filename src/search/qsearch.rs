@@ -363,6 +363,7 @@ mod tests {
         eval.mobility = false;
         eval.position = false;
         eval.material = true;
+        eval.tempo = 0;
 
         // white gains a pawn after quiesce
         let pos = Position::parse_epd("7k/8/8/8/8/p7/8/R6K w - - 0 1 sm Ra3; ce 100;")?;

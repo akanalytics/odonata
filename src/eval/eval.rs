@@ -811,6 +811,7 @@ mod tests {
     fn test_score_material() {
         let board = Catalog::starting_position();
         let eval = &mut SimpleScorer::new();
+        eval.tempo = 0;
         assert_eq!(board.eval(eval, &Node::root(0)), Score::from_cp(0));
 
         let starting_pos_score = 8 * 100 + 2 * 350 + 2 * 350 + 2 * 600 + 1100 + (40 + 85) / 2; // (bishop pair, half the pieces)

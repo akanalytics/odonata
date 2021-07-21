@@ -984,10 +984,6 @@ mod tests {
         let dir = Dir::N;
         assert_eq!(dir.shift(), 8);
         assert_eq!(Dir::ALL[0], Dir::N);
-        assert_eq!(
-            format!("{:?}", Dir::N),
-            "Dir { index: 0, shift: 8, mask: A8 | B8 | C8 | D8 | E8 | F8 | G8 | H8 | RANK_8 }"
-        );
     }
 
     #[test]
