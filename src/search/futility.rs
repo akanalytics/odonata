@@ -65,6 +65,8 @@ impl Futility {
     pub fn can_prune_at_node(&self, b: &Board, node: &Node, eval: &SimpleScorer) -> bool {
         if !self.enabled 
             ||
+            node.ply > 0   // dont prune at root node
+            ||
             node.depth > self.max_depth 
             ||
             node.alpha.is_mate()
