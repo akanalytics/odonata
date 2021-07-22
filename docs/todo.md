@@ -1,6 +1,7 @@
 # Todo items
 [ ] Quick check test by square cache cache[kg.sq - to.sq]
-
+[ ] NMP with 1 minor piece
+[ ] MNP with static eval > beta
 
 
 ## Bugs

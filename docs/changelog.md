@@ -3,6 +3,14 @@
 Milestones ('m') are bundled into Releases.  
 
 # Unreleased
+#### m 0.3.25
+- crude futility pruning
+
+#### m 0.3.24
+- pre-calculate pawn span bitboards
+- tempo used in eval
+- tt probe at leaf nodes 
+
 #### m 0.3.23
 - use json-rpc to communicate from python
 - add python methods for retreiving epd positions - wac, bk test suites etc
