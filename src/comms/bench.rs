@@ -56,22 +56,20 @@ impl Bench {
     }
 
     pub fn search(tc: TimeControl, threads: u32) {
-        println!(
-            "time control {}\n", tc);
+        println!("time control {}\n", tc);
         let mut engine = Engine::new();
         engine.thread_count = threads;
-        engine
-            .algo
-            .set_timing_method(tc);
+        engine.algo.set_timing_method(tc);
         let positions = &Catalog::bench();
 
         println!(
-            "{:>3} {:<8} {:>13} {:>7} {:>5}  {:<85}",
-            "#", "bm", "nodes", "nps", "depth", "fen"
+            "{:>3} {:<8} {} {:>13} {:>7} {:>5}  {:<85}",
+            "#", "bm", "*", "nodes", "nps", "depth", "fen"
         );
         let mut total_time = Duration::from_millis(0);
         let mut total_nodes = 0;
         let mut total_depth = 0;
+        let mut score = 0;
         for (i, pos) in positions.iter().enumerate() {
             let t = Instant::now();
 
@@ -79,14 +77,18 @@ impl Bench {
             engine.algo.board = pos.board().clone();
             if tc == TimeControl::DefaultTime {
                 let suggested_depth = pos.acd().unwrap();
-                engine
-                .algo
-                .set_timing_method(TimeControl::Depth(suggested_depth));
-            } 
+                engine.algo.set_timing_method(TimeControl::Depth(suggested_depth));
+            }
 
             engine.search();
             let elapsed = t.elapsed();
             let bm = pos.board().to_san(&engine.algo.bm());
+            let correct = if pos.bm().ok().unwrap().contains(&engine.algo.bm()) {
+                score += 1;
+                '1'
+            } else {
+                '-'
+            };
             let depth = engine.algo.results().acd().unwrap();
             let nodes = engine.algo.results().acn().unwrap();
             let nps = Formatter::format_f64(nodes as f64 / elapsed.as_secs_f64());
@@ -96,9 +98,10 @@ impl Bench {
             total_depth += depth;
             let nodes = Formatter::format_u128(nodes);
             println!(
-                "{:>3} {:<8} {:>13} {:>7} {:>5}  {:<85}",
+                "{:>3} {:<8} {} {:>13} {:>7} {:>5}  {:<85}",
                 i + 1,
                 bm,
+                correct,
                 nodes,
                 nps,
                 depth,
@@ -111,5 +114,7 @@ impl Bench {
         println!("nodes/sec:     {}", Formatter::format_f64(nps));
         println!("average depth: {}", Formatter::format_f64(average_depth));
         println!("total nodes:   {}", Formatter::format_u128(total_nodes));
+        println!("total time:    {}", Formatter::format_duration(total_time));
+        println!("score:         {}", score);
     }
 }

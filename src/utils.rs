@@ -1,5 +1,7 @@
 use std::ops::{Bound, RangeBounds};
+use std::time::Duration;
 use format_num::*;
+use crate::clock::Clock;
 
 
 
@@ -63,6 +65,9 @@ impl Formatter {
         format_num!(",d", n as f64)
     }
 
+    pub fn format_duration(d: Duration) -> String {
+        Clock::format(d)
+    }
 }
 
 

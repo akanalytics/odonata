@@ -1,5 +1,5 @@
 # Todo items
-
+[ ] Quick check test by square cache cache[kg.sq - to.sq]
 
 
 

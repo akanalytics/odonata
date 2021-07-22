@@ -1,4 +1,4 @@
-use crate::bitboard::precalc::{BitboardDefault};
+use crate::bitboard::precalc::BitboardDefault;
 use crate::bitboard::square::Square;
 use crate::board::Board;
 use crate::config::{Component, Config};
@@ -192,7 +192,7 @@ pub struct SimpleScorer {
     pub rook_open_file: i32,
     pub phasing: bool,
     pub contempt: i32,
-    pub tempo: i32,
+    pub tempo: Weight,
     pub material_scores: [i32; Piece::len()],
     pub bishop_pair: Weight,
     // pub cache: TranspositionTable,
@@ -251,10 +251,7 @@ impl Component for SimpleScorer {
             &format!("type spin min -10000 max 10000 default {}", self.contempt),
         );
         c.set_weight("eval.bishop.pair", &self.bishop_pair);
-        c.set(
-            "eval.tempo",
-            &format!("type spin min -1000 max 1000 default {}", self.tempo),
-        );
+        c.set_weight("eval.tempo", &self.tempo);
         c.set(
             "eval.p",
             &("type spin min -10000 max 10000 default ".to_string() + &Piece::Pawn.centipawns().to_string()),
@@ -310,7 +307,7 @@ impl Component for SimpleScorer {
         self.pawn_shield = c.weight("eval.pawn.shield", &self.pawn_shield);
         self.rook_open_file = c.int("eval.rook.open.file").unwrap_or(self.rook_open_file as i64) as i32;
         self.contempt = c.int("eval.draw.score.contempt").unwrap_or(self.contempt as i64) as i32;
-        self.tempo = c.int("eval.tempo").unwrap_or(self.tempo as i64) as i32;
+        self.tempo = c.weight("eval.tempo", &self.tempo);
 
         for p in &Piece::ALL_BAR_NONE {
             let mut name = "eval.".to_string();
@@ -364,7 +361,7 @@ const MATERIAL_SCORES: [i32; Piece::len()] = [
     Piece::Bishop.centipawns(),
     600,  // Piece::Rook.centipawns(),
     1100, // Piece::Queen.centipawns(),
-    0, // king,
+    0,    // king,
 ];
 
 // builder methods
@@ -390,7 +387,7 @@ impl SimpleScorer {
             pawn_shield: Weight::new(50, 0),
             rook_open_file: 20,
             contempt: -30, // typically -ve
-            tempo: 15,
+            tempo: Weight::new(16, 16),
             material_scores: MATERIAL_SCORES,
             // cache: TranspositionTable::default(),
             // qcache: TranspositionTable::default(),
@@ -416,20 +413,15 @@ impl SimpleScorer {
 }
 
 impl SimpleScorer {
-
-
-
-
-    pub fn w_tempo_adjustment(&self, us: Color) -> Score {
+    pub fn w_tempo_adjustment(&self, us: Color) -> Weight {
         // axiom: we're white
         // white to move => advantage, black to move means white has a disadvantage
         if us == Color::White {
-            Score::from_cp(self.tempo)
+            self.tempo
         } else {
-            Score::from_cp(-self.tempo)
+            -self.tempo
         }
     }
-
 
     pub fn w_eval_draw(&mut self, board: &Board) -> Score {
         // draw score is +ve for playing a stronger opponent (we want a draw), neg for weaker
@@ -447,9 +439,6 @@ impl SimpleScorer {
         return Score::from_cp(contempt);
     }
 
-
-
-
     pub fn w_evaluate(&mut self, board: &Board, node: &Node) -> Score {
         counts::EVAL_COUNT.increment();
         let outcome = board.outcome();
@@ -458,18 +447,11 @@ impl SimpleScorer {
                 return self.w_eval_draw(board);
             }
             if let Some(c) = outcome.winning_color() {
-                return c.chooser_wb(
-                    Score::white_win(node.ply), 
-                    Score::white_loss(node.ply)
-                );
-            }            
+                return c.chooser_wb(Score::white_win(node.ply), Score::white_loss(node.ply));
+            }
         }
         self.w_eval_without_wdl(board, node)
     }
-
-
-
-
 
     // we dont care about draws in qsearch
     pub fn w_eval_qsearch(&mut self, board: &Board, node: &Node) -> Score {
@@ -487,12 +469,6 @@ impl SimpleScorer {
         // };
         // score
     }
-
-
-
-
-    
- 
 
     fn w_eval_without_wdl(&mut self, board: &Board, _node: &Node) -> Score {
         // if self.cache_eval {
@@ -523,9 +499,8 @@ impl SimpleScorer {
         } else {
             Weight::zero()
         };
-        let mut score = Score::from_cp((ma + po + mo + sa).interpolate(board.phase()));
         let te = self.w_tempo_adjustment(board.color_us());
-        score = score + te;
+        Score::from_cp((ma + po + mo + sa + te).interpolate(board.phase()))
         // if self.cache_eval {
         //     if let Some(entry) = self.cache.probe_by_board(board) {
         //         counts::EVAL_CACHE_COUNT.increment();
@@ -541,10 +516,7 @@ impl SimpleScorer {
         //     };
         //     self.cache.store(board.hash(), entry);
         // }
-        score
     }
-
-
 
     pub fn eval_pawns(&self, c: Color, b: &Board) -> Weight {
         let mut score = Weight::zero();
@@ -559,26 +531,22 @@ impl SimpleScorer {
         let mut passed = 0;
         for p in (b.pawns() & b.color(c)).squares() {
             let doubled = p.is_in(bbd.doubled_pawns(b.color(c) & b.pawns()));
-            let is_passed = (bbd.pawn_front_span(c, p) & b.pawns() & b.color(c.opposite())).is_empty() && !doubled;
+            let is_passed =
+                (bbd.pawn_front_span(c, p) & b.pawns() & b.color(c.opposite())).is_empty() && !doubled;
             if is_passed {
                 passed += 1;
             }
         }
-        score += passed * self.pawn_passed;        
+        score += passed * self.pawn_passed;
 
         score
     }
-
-
-
-
 
     // always updated
     pub fn w_eval_mobility(&self, b: &Board) -> Weight {
         if b.phase() > self.mobility_phase_disable as i32 {
             return Weight::zero();
         }
-
 
         let mut score = self.eval_pawns(Color::White, b) - self.eval_pawns(Color::Black, b);
 
@@ -613,7 +581,6 @@ impl SimpleScorer {
         }
         (w_nearby_pawns - b_nearby_pawns) * self.pawn_shield
     }
-
 
     pub fn piece_mobility(&self, b: &Board, our: Color) -> i32 {
         let us = b.color(our);
@@ -811,7 +778,7 @@ mod tests {
     fn test_score_material() {
         let board = Catalog::starting_position();
         let eval = &mut SimpleScorer::new();
-        eval.tempo = 0;
+        eval.tempo = Weight::zero();
         assert_eq!(board.eval(eval, &Node::root(0)), Score::from_cp(0));
 
         let starting_pos_score = 8 * 100 + 2 * 350 + 2 * 350 + 2 * 600 + 1100 + (40 + 85) / 2; // (bishop pair, half the pieces)
@@ -916,6 +883,6 @@ mod tests {
         eval.pawn_shield = Weight::new(50, 0);
         let e2 = eval.w_eval_safety(&b);
 
-        assert_eq!((e2-e1).s(), 100);  // 2 pawns in front of king
+        assert_eq!((e2 - e1).s(), 100); // 2 pawns in front of king
     }
 }

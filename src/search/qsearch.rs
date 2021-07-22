@@ -138,6 +138,7 @@ impl Algo {
             trace!("{}", board.debug() + "Standing pat (eval)" + standing_pat);
             if standing_pat.is_mate() {
                 // self.record_new_pv(board, ply, &Move::NULL_MOVE, true);
+                self.search_stats.inc_q_leaf_nodes(ply);
                 return standing_pat;
             }
             if in_check {
@@ -285,6 +286,7 @@ mod tests {
     use crate::catalog::*;
     use crate::comms::uci::Uci;
     use crate::eval::eval::*;
+    use crate::eval::weight::*;
     use crate::position::*;
     use crate::search::timecontrol::*;
 
@@ -363,7 +365,7 @@ mod tests {
         eval.mobility = false;
         eval.position = false;
         eval.material = true;
-        eval.tempo = 0;
+        eval.tempo = Weight::zero();
 
         // white gains a pawn after quiesce
         let pos = Position::parse_epd("7k/8/8/8/8/p7/8/R6K w - - 0 1 sm Ra3; ce 100;")?;

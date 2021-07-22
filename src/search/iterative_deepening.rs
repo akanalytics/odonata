@@ -186,6 +186,7 @@ impl Algo {
         self.task_control.invoke_callback(&sp);
 
         self.results = Position::from_board(self.board.clone());
+        self.results.set(Tag::SuppliedMove(self.bm()));
         self.results.set(Tag::BestMove(MoveList::from_iter(iter::once(self.bm()))));
         self.results.set(Tag::Pv(self.pv().clone()));
         self.results.set(Tag::CentipawnEvaluation(self.score().as_i16() as i32));

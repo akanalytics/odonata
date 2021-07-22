@@ -164,6 +164,15 @@ def release_linux():
     shell(f"cp ./target/x86_64-unknown-linux-musl/release/odonata ./odonata-{ver}-linux-generic")
     shell(f"strip ./odonata-{ver}-linux-modern")
 
+def release_native():
+    ver = get_version_number()
+    # shell("ldd target/x86_64-unknown-linux-musl/release/odonata")
+    CPU="native"
+    setenv("RUSTFLAGS", f"-Ctarget-feature={MODERN} -C target-cpu={CPU}")
+    shell(f'cargo b --release --features=fast --target x86_64-unknown-linux-musl')
+    shell(f"cp ./target/x86_64-unknown-linux-musl/release/odonata ./odonata-{ver}-linux-native")
+    shell(f"strip ./odonata-{ver}-linux-native")
+
 def release_mac():
     ver = get_version_number()
     setenv("RUSTFLAGS", f"-Ctarget-feature={MODERN} -C target-cpu={CPU}")
@@ -200,6 +209,7 @@ def help():
 commands = {
     "test_threading": test_threading,
     "release_linux": release_linux,
+    "release_native": release_native,
     "release_mac": release_mac,
     "release_windows": release_windows,
     "print_version": print_version,

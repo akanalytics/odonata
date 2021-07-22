@@ -73,7 +73,6 @@ impl Algo {
         let draft = depth;
         let mut tt_mv = Move::NULL_MOVE;
         if let Some(entry) = self.tt.probe_by_board(board, ply, draft) {
-            self.search_stats.inc_tt_nodes(ply);
             // we use thr tt_mv for ordering regardless of draft
             tt_mv = entry.bm;
             if entry.draft >= draft && !(board.repetition_count() > 0 && self.repetition.avoid_tt_on_repeats)
@@ -83,14 +82,17 @@ impl Algo {
                         // previously this position raised alpha, but didnt trigger a cut
                         // no point going through moves as we know what the max score is
                         if entry.score >= beta {
+                            self.search_stats.inc_tt_nodes(ply);
                             return entry.score;
                         }
                         if entry.score <= alpha {
+                            self.search_stats.inc_tt_nodes(ply);
                             return entry.score;
                         }
 
                         if self.tt.allow_truncated_pv && entry.score > alpha {
                             self.record_truncated_move(ply, &entry.bm);
+                            self.search_stats.inc_tt_nodes(ply);
                             return entry.score;
                         }
                         // else we just use the hash move for move ordering
@@ -103,6 +105,7 @@ impl Algo {
                             self.search_stats.inc_cuts(ply);
                             self.tt.store(board.hash(), entry);
                             // self.record_truncated_move(ply, &entry.bm);
+                            self.search_stats.inc_tt_nodes(ply);
                             return entry.score;
                         }
                         if self.tt.allow_truncated_pv && entry.score > alpha {
@@ -119,6 +122,7 @@ impl Algo {
                         // if the score is still below alpha, this too is an ALL node
                         if entry.score <= alpha {
                             // self.record_truncated_move(ply, &entry.bm);
+                            self.search_stats.inc_tt_nodes(ply);
                             return entry.score;
                         }
                     }
@@ -127,10 +131,22 @@ impl Algo {
             }
         }
 
-        self.search_stats.inc_interior_nodes(ply);
         if self.tt.probe_leaf_nodes && self.is_leaf(ply, depth) {
             return self.qsearch(last_move, ply, depth, board, alpha, beta);
         }
+
+        self.search_stats.inc_interior_nodes(ply);
+
+        let futility = self.futility.can_prune_at_node(
+            board,
+            &Node {
+                ply,
+                depth,
+                alpha,
+                beta,
+            },
+            &self.eval,
+        );
 
         // null move
         if !self.minmax && beta.is_numeric() && self.nmp.allow(&board, ply, depth, &self.pv_table) {
@@ -157,7 +173,9 @@ impl Algo {
         let mut count = 0;
         while let Some((_stage, mv)) = sorted_moves.next_move(board, self) {
             count += 1;
-
+            if futility && count > 1 && self.futility.can_prune_move(&mv, board) {
+                continue;
+            }
             let mut child_board = board.make_move(&mv);
             self.repetition.push(&mv, &child_board);
             child_board.set_repetition_count(self.repetition.count(&child_board));

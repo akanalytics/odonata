@@ -16,6 +16,7 @@ use crate::search::move_orderer::MoveOrderer;
 use crate::search::move_time_estimator::MoveTimeEstimator;
 use crate::search::qsearch::QSearch;
 use crate::search::nmp::NullMovePruning;
+use crate::search::futility::Futility;
 use crate::search::searchprogress::SearchProgress;
 use crate::search::searchstats::SearchStats;
 use crate::search::taskcontrol::TaskControl;
@@ -196,6 +197,7 @@ pub struct Algo {
     pub task_control: TaskControl<SearchProgress>,
     pub qsearch: QSearch,
     pub nmp: NullMovePruning,
+    pub futility: Futility,
     pub search_stats: SearchStats,
 
     pub pv_table: PvTable,
@@ -248,6 +250,7 @@ impl Component for Algo {
         self.mte.settings(c);
         self.move_orderer.settings(c);
         self.nmp.settings(c);
+        self.futility.settings(c);
         self.qsearch.settings(c);
         self.ids.settings(c);
         self.repetition.settings(c);
@@ -262,6 +265,7 @@ impl Component for Algo {
         self.move_orderer.configure(c);
         self.mte.configure(c);
         self.nmp.configure(c);
+        self.futility.configure(c);
         self.qsearch.configure(c);
         self.ids.configure(c);
         self.repetition.configure(c);
@@ -277,6 +281,7 @@ impl Component for Algo {
         self.move_orderer.new_game();
         self.mte.new_game();
         self.nmp.new_game();
+        self.futility.new_game();
         self.qsearch.new_game();
         self.ids.new_game();
         self.repetition.new_game();
@@ -291,6 +296,7 @@ impl Component for Algo {
         self.move_orderer.new_search();
         self.mte.new_search();
         self.nmp.new_search();
+        self.futility.new_search();
         self.qsearch.new_search();
         self.ids.new_search();
         self.repetition.new_search();
@@ -315,6 +321,7 @@ impl fmt::Debug for Algo {
             .field("depth", &self.max_depth)
             .field("search_stats", &self.search_stats)
             .field("nmp", &self.nmp)
+            .field("futility", &self.futility)
             .field("qsearch", &self.qsearch)
             .field("ids", &self.ids)
             .field("repetition", &self.repetition)
@@ -346,6 +353,7 @@ impl fmt::Display for Algo {
         write!(f, "\n[move orderer]\n{}", self.move_orderer)?;
         write!(f, "\n[move time estimator]\n{}", self.mte)?;
         write!(f, "\n[nmp]\n{}", self.nmp)?;
+        write!(f, "\n[futility]\n{}", self.futility)?;
         write!(f, "\n[qsearch]\n{}", self.qsearch)?;
         write!(f, "\n[eval]\n{}", self.eval)?;
         write!(f, "\n[repetition]\n{}", self.repetition)?;
@@ -596,9 +604,10 @@ mod tests {
             .set_eval(eval)
             .build();
         search.move_orderer.enabled = false;
+        
         search.search(&board);
         println!("{}", search);
-        assert_eq!(search.search_stats().total().nodes(), 182); // null move pruning
+        assert_eq!(search.search_stats().total().nodes(), 425); // null move pruning
         // assert_eq!(search.search_stats().total().nodes(), 1468); 
                                                                  // assert_eq!(search.search_stats().total().nodes(), 1516); // rejigged pawn PST
                                                                  // previous
