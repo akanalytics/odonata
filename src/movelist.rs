@@ -547,24 +547,31 @@ fn strip_move_numbers(s: &str) -> String {
 mod tests {
     use super::*;
     use crate::board::boardbuf::*;
+    use crate::bitboard::square::*;
     use crate::catalog::Catalog;
     use crate::globals::constants::*;
+    use crate::bitboard::castling::*;
 
 
 
     #[test]
     fn test_movelist() -> Result<(), String> {
-        let move_a1b2 = Move {
-            from: a1.square(),
-            to: b2.square(),
-            ..Default::default()
-        };
-        let promo_a7a8 = Move {
-            from: a7.square(),
-            to: a8.square(),
-            promo: Piece::Queen,
-            ..Default::default()
-        };
+        let move_a1b2 = Move::new(
+            a1.square(),
+            b2.square(),
+            Square::null(),
+            Piece::Bishop,
+            Piece::None,
+            Piece::None,
+            CastlingRights::NONE);
+        let promo_a7a8 = Move::new(
+            a7.square(),
+            a8.square(),
+            Square::null(),
+            Piece::Pawn,
+            Piece::None,
+            Piece::Queen,
+            CastlingRights::NONE);
 
         let mut moves = MoveList::new();
         assert_eq!(moves.iter().count(), 0);

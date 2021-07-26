@@ -708,12 +708,14 @@ mod tests {
             score: Score::from_cp(201),
             draft: 4,
             node_type: NodeType::Pv,
-            bm: Move {
-                to: a1.square(),
-                from: a2.square(),
-                mover: Piece::Rook,
-                ..Move::default()
-            },
+            bm: Move::new(
+                a1.square(),
+                a2.square(),
+                Square::null(),
+                Piece::Rook,
+                Piece::None,
+                Piece::None,
+                CastlingRights::NONE)
         }
     }
 

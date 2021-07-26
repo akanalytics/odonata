@@ -115,13 +115,14 @@ impl fmt::Display for PvTable {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::*;
 
     #[test]
     fn test_pv_table() {
         let mut pvc = PvTable::default();
-        let a1h1 = Move::parse_uci("a1h1").unwrap();
-        let b1h1 = Move::parse_uci("b1h1").unwrap();
-        let c1h1 = Move::parse_uci("c1h1").unwrap();
+        let a1h1 = Move::parse_uci(Piece::Bishop, "a1h1").unwrap();
+        let b1h1 = Move::parse_uci(Piece::Bishop, "b1h1").unwrap();
+        let c1h1 = Move::parse_uci(Piece::Bishop, "c1h1").unwrap();
         pvc.set(0, &a1h1, false);
         pvc.set(1, &b1h1, false);
         assert_eq!(format!("{}", pvc), "size             : 2\n  0:   a1h1  0000\n  1:   b1h1\n");
@@ -137,7 +138,7 @@ mod tests {
         assert_eq!(pvc.matrix[1][0], b1h1);
         assert_eq!(pvc.matrix[2][0], c1h1);
 
-        let c1h2 = Move::parse_uci("c1h2").unwrap();
+        let c1h2 = Move::parse_uci(Piece::Bishop, "c1h2").unwrap();
         pvc.propagate_from(2);
         pvc.set(2, &c1h2, false);
         println!("{}", pvc);

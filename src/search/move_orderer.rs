@@ -502,48 +502,72 @@ impl OrderedMoveList {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::bitboard::square::*;
+    use crate::bitboard::castling::*;
     use crate::catalog::Catalog;
     use crate::globals::constants::*;
     use crate::movelist::*;
+    use crate::types::*;
     // use crate::search::timecontrol::*;
 
     #[test]
     fn test_prior_pv() {
-        let a1a2 = Move {
-            from: a1.square(),
-            to: a2.square(),
-            ..Default::default()
-        };
-        let a1a3 = Move {
-            from: a1.square(),
-            to: a3.square(),
-            ..Default::default()
-        };
-        let a1a4 = Move {
-            from: a1.square(),
-            to: a4.square(),
-            ..Default::default()
-        };
-        let b1a2 = Move {
-            from: b1.square(),
-            to: a2.square(),
-            ..Default::default()
-        };
-        let b1a3 = Move {
-            from: b1.square(),
-            to: a3.square(),
-            ..Default::default()
-        };
-        let b1a4 = Move {
-            from: b1.square(),
-            to: a4.square(),
-            ..Default::default()
-        };
-        let c1c2 = Move {
-            from: c1.square(),
-            to: c2.square(),
-            ..Default::default()
-        };
+        let a1a2 = Move::new(
+            a1.square(),
+            a2.square(),
+            Square::null(),
+            Piece::Pawn,
+            Piece::None,
+            Piece::None,
+            CastlingRights::NONE);
+        let a1a3 = Move::new(
+            a1.square(),
+            a3.square(),
+            Square::null(),
+            Piece::Pawn,
+            Piece::None,
+            Piece::None,
+            CastlingRights::NONE);
+        let a1a4 = Move::new(
+            a1.square(),
+            a4.square(),
+            Square::null(),
+            Piece::Pawn,
+            Piece::None,
+            Piece::None,
+            CastlingRights::NONE);
+        let b1a2 = Move::new(
+            b1.square(),
+            a2.square(),
+            Square::null(),
+            Piece::Pawn,
+            Piece::None,
+            Piece::None,
+            CastlingRights::NONE);
+        let b1a3 = Move::new(
+            b1.square(),
+            a3.square(),
+            Square::null(),
+            Piece::Pawn,
+            Piece::None,
+            Piece::None,
+            CastlingRights::NONE);
+        let b1a4 = Move::new(
+            b1.square(),
+            a4.square(),
+            Square::null(),
+            Piece::Pawn,
+            Piece::None,
+            Piece::None,
+            CastlingRights::NONE);
+        let c1c2 = Move::new(
+            c1.square(),
+            c2.square(),
+            Square::null(),
+            Piece::Pawn,
+            Piece::None,
+            Piece::None,
+            CastlingRights::NONE);
 
         let mut moves_orig = MoveList::new();
         moves_orig.extend(vec![b1a2, b1a3, b1a4, a1a3, a1a4, a1a2]);
