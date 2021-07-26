@@ -96,7 +96,6 @@ impl Clone for Element {
     }
 }
 
-// FIXME Mates as score
 #[derive(Clone)]
 pub struct TranspositionTable {
     table: Arc<Mutex<Vec<Element>>>,

@@ -52,6 +52,8 @@ impl Move {
         castle_side: CastlingRights,
     ) -> Move {
 
+        // debug_assert!(!from.is_null());
+        // debug_assert!(!to.is_null());
         let mut bits = from.index() as u32;
         bits += (to.index() as u32 & 63) << 6;
         bits += (ep.index() as u32 & 127) << 12;

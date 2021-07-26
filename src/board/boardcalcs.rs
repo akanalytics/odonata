@@ -73,6 +73,7 @@ impl BoardCalcs {
         threats
     }
 
+    #[inline]
     pub fn attacked_by(targets: Bitboard, occ: Bitboard, board: &Board) -> Bitboard {
         if targets.is_empty() {
             return Bitboard::empty();

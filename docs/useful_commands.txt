@@ -2,8 +2,17 @@
 perf report 
 
 
-perf record -e task-clock,cycles,instructions,cache-references,cache-misses --call-graph dwarf -F 200 --output=perf.data  ./target/release/odonata --search
 perf record -e task-clock,cycles,instructions,cache-references,cache-misses --call-graph dwarf -F 99  ./target/release/odonata --perft 5
+
+
+# profiling
+perf record -e task-clock,cycles,instructions,cache-references,cache-misses --call-graph dwarf -F 200 --output=perf.data  ./target/release/odonata --search
+perf script > out.perf
+../FlameGraph-1.0/stackcollapse-perf.pl out.perf > out.folded
+../lameGraph-1.0/flamegraph.pl out.folded > flame.svg
+file:///home/andy/code/odonata/flame.svg
+
+
 
 cargo flamegraph --bench benchmark perft5 --bench
 cargo bench hyperbola -- --profile-time 3

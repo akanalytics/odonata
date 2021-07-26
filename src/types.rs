@@ -123,12 +123,12 @@ impl Color {
 
     #[inline]
     pub fn pawn_capture_east(self) -> Dir {
-        self.chooser_wb(Dir::NE, Dir::SE)
+        [Dir::NE, Dir::SE][self]
     }
 
     #[inline]
     pub fn pawn_capture_west(self) -> Dir {
-        self.chooser_wb(Dir::NW, Dir::SW)
+        [Dir::NW, Dir::SW][self]
     }
 
     #[inline]

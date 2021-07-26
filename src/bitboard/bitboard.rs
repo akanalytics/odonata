@@ -90,6 +90,30 @@ impl Dir {
     }
 
     #[inline]
+    pub fn rotate(self) -> u32 {
+        [ 8,
+         9,
+         1,
+         64-7,
+         64-8,
+         64-9,
+         64-1,
+         7][self]
+
+    // match self {
+    //         Self::N => 8,
+    //         Self::NE => 9,
+    //         Self::E => 1,
+    //         Self::SE => 64-7,
+    //         Self::S => 64-8,
+    //         Self::SW => 64-9,
+    //         Self::W => 64-1,
+    //         Self::NW => 7,
+    //         _ => 0 
+    //     }
+    }
+
+    #[inline]
     pub const fn mask(self) -> Bitboard {
         // self.mask
         [Bitboard::RANK_8,
@@ -484,13 +508,14 @@ impl Bitboard {
     }
 
     #[inline]
-    pub const fn shift(self, dir: Dir) -> Bitboard {
+    pub fn shift(self, dir: Dir) -> Bitboard {
         let bb = self.sub(dir.mask());
-        if dir.shift() > 0 {
-            Bitboard(bb.0 << dir.shift())
-        } else {
-            Bitboard(bb.0 >> -dir.shift())
-        }
+        Bitboard(bb.0.rotate_left(dir.rotate()))
+        // if dir.shift() > 0 {
+        //     Bitboard(bb.0 << dir.shift())
+        // } else {
+        //     Bitboard(bb.0 >> -dir.shift())
+        // }
     }
 
     // excludes the src squares themselves, but includes edge squares
@@ -548,6 +573,12 @@ impl Bitboard {
     pub const fn or(self, other: Self) -> Self {
         Self(self.0 | other.0)
     }
+
+    #[inline]
+    pub const fn invert(self) -> Self {
+        Self(!self.0)
+    }
+
 
     // bitflags & doesnt seem to be declared const
     #[inline]
@@ -953,6 +984,10 @@ mod tests {
         assert_eq!(a2b3, Bitboard::A2 | Bitboard::B3);
         assert!(Bitboard::D8.shift(Dir::N).is_empty());
         assert_eq!(Bitboard::D8.shift(Dir::E), Bitboard::E8);
+        assert_eq!(Bitboard::A8.shift(Dir::N), Bitboard::EMPTY);
+        assert_eq!(Bitboard::H8.shift(Dir::E), Bitboard::EMPTY);
+        assert_eq!(Bitboard::A1.shift(Dir::W), Bitboard::EMPTY);
+        assert_eq!(Bitboard::A1.shift(Dir::S), Bitboard::EMPTY);
     }
 
     #[test]

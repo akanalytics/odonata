@@ -55,6 +55,7 @@ impl SharedTable {
         h as usize & self.mask
     }
 
+    #[inline]
     pub fn probe_by_index(&self, i: usize) -> (Hash, u64) {
         let xor_hash = self.vec[i].load(Ordering::Relaxed);
         let data = self.vec[i + 1].load(Ordering::Relaxed);
@@ -63,14 +64,12 @@ impl SharedTable {
         (hash, data)
     }
 
+    #[inline]
     pub fn probe(&self, h: Hash) -> (Hash, u64) {
-        let xor_hash = self.vec[self.index(h)].load(Ordering::Relaxed);
-        let data = self.vec[self.index(h) + 1].load(Ordering::Relaxed);
-        // trace!("load {:x} {:x} from position {}", xor_hash, data, self.index(h));
-        let hash = xor_hash ^ data;
-        (hash, data)
+        self.probe_by_index(self.index(h))
     }
 
+    #[inline]
     pub fn store(&self, h: Hash, data: u64) {
         let xor_hash = h ^ data;
         trace!("store {:x} {:x} in position {}", xor_hash, data, self.index(h));

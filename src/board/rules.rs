@@ -37,7 +37,6 @@ impl Rules {
         let attack_gen = BitboardDefault::default();
         let them = b.them();
         let occ = b.occupied();
-        let our_kings = b.kings() & us;
         let king_sq = (b.kings() & us).square();
         let king_att = attack_gen.king_attacks(king_sq);
         let king_danger = BoardCalcs::threats_to(b, b.color_us(), occ - our_kings);
@@ -288,7 +287,7 @@ impl Rules {
     //             moves.push(m);
     //         } else {
     //             let m = Move::new_quiet(Piece::Pawn, behind, to);
-    //             // FIXME!!!! // { from, to, ep, mover: Piece::Pawn, ..Default::default() };
+    //             //  { from, to, ep, mover: Piece::Pawn, ..Default::default() };
     //             moves.push(m);
     //         }
     //     }

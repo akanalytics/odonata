@@ -189,10 +189,10 @@ impl PreCalc {
     // }
 
     #[inline]
-    pub fn pawn_attacks(&self, pawns: Bitboard, pawn: Color) -> (Bitboard, Bitboard) {
+    pub fn pawn_attacks(&self, pawns: Bitboard, c: Color) -> (Bitboard, Bitboard) {
         (
-            pawns.shift(pawn.pawn_capture_east()),
-            pawns.shift(pawn.pawn_capture_west()),
+            pawns.shift(c.pawn_capture_east()),
+            pawns.shift(c.pawn_capture_west()),
         )
     }
 

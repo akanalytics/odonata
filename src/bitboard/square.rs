@@ -170,13 +170,11 @@ impl Square {
 
     #[inline]
     pub fn diag(self) -> Bitboard {
-        // FIXME: slow
         self.as_bb().diag_flood()
     }
 
     #[inline]
     pub fn anti_diag(self) -> Bitboard {
-        // FIXME: slow
         self.as_bb().anti_diag_flood()
     }
 
