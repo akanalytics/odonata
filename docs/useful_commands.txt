@@ -9,9 +9,15 @@ perf record -e task-clock,cycles,instructions,cache-references,cache-misses --ca
 perf record -e task-clock,cycles,instructions,cache-references,cache-misses --call-graph dwarf -F 200 --output=perf.data  ./target/release/odonata --search
 perf script > out.perf
 ../FlameGraph-1.0/stackcollapse-perf.pl out.perf > out.folded
-../lameGraph-1.0/flamegraph.pl out.folded > flame.svg
+../lameGraph-1.0/flamegraph.pl --width 2400 out.folded > flame.svg
 file:///home/andy/code/odonata/flame.svg
 
+# fails
+perf report --stdio --no-children -n -g folded,0,caller,count -s comm | awk '/^ / { comm = $3 } /^[0-9]/ { print comm ";" $2, $1 }' | ../FlameGraph-1.0/flamegraph.pl --width 2400 > flame.svg
+
+
+# better
+perf script | ../FlameGraph-1.0/stackcollapse-perf.pl | ../FlameGraph-1.0/flamegraph.pl --width 2400 > flame.svg
 
 
 cargo flamegraph --bench benchmark perft5 --bench

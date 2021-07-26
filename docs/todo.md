@@ -112,7 +112,7 @@
 # CPW todo list
 
 - Obligatory
-  - Futility pruning
+  - [x] Futility pruning
   - [x] Null move pruning
   - [x] Transposition Table
   - [x] Iterative Deepening
