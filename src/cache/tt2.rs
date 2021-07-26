@@ -711,6 +711,7 @@ mod tests {
             bm: Move {
                 to: a1.square(),
                 from: a2.square(),
+                mover: Piece::Rook,
                 ..Move::default()
             },
         }

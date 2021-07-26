@@ -525,6 +525,7 @@ mod tests {
             bm: Move {
                 to: a1.square(),
                 from: a2.square(),
+                mover: Piece::Pawn,
                 ..Move::default()
             },
         }
