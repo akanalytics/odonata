@@ -24,10 +24,10 @@ use odonata::movelist::*;
 use odonata::mv::*;
 use odonata::perft::Perft;
 use odonata::pvtable::*;
+use odonata::cache::tt2::*;
 use odonata::search::algo::Algo;
 use odonata::search::node::Node;
 use odonata::search::timecontrol::TimeControl;
-use odonata::cache::tt::{NodeType, TranspositionTable, TtNode};
 use odonata::types::*;
 use odonata::utils::*;
 use odonata::variation::*;
@@ -437,7 +437,7 @@ fn board_calcs(c: &mut Criterion) {
         })
     });
 
-    let mut tt = TranspositionTable::new_with_mb(10);
+    let mut tt = TranspositionTable2::new_with_mb(10);
     tt.new_game();
     group.bench_function("tt_probe", |b| {
         b.iter_custom(|n| {
@@ -1428,41 +1428,40 @@ fn cache_eval(c: &mut Criterion) {
 }
 
 fn bench_moveordering(c: &mut Criterion) {
-    let a1a2 = Move {
-        from: a1.square(),
-        to: a2.square(),
-        ..Default::default()
-    };
-    let a1a3 = Move {
-        from: a1.square(),
-        to: a3.square(),
-        ..Default::default()
-    };
-    let a1a4 = Move {
-        from: a1.square(),
-        to: a4.square(),
-        ..Default::default()
-    };
-    let b1a2 = Move {
-        from: b1.square(),
-        to: a2.square(),
-        ..Default::default()
-    };
-    let b1a3 = Move {
-        from: b1.square(),
-        to: a3.square(),
-        ..Default::default()
-    };
-    let b1a4 = Move {
-        from: b1.square(),
-        to: a4.square(),
-        ..Default::default()
-    };
-    let c1c2 = Move {
-        from: c1.square(),
-        to: c2.square(),
-        ..Default::default()
-    };
+    let a1a2 = Move::new_quiet( Piece::Queen, 
+        a1.square(),
+        a2.square(),
+            ); 
+    let a1a3 = Move::new_quiet(
+        Piece::Queen,
+        a1.square(),
+        a3.square(),
+    );
+    let a1a4 = Move::new_quiet(
+        Piece::Queen,
+        a1.square(),
+        a4.square(),
+    );
+    let b1a2 = Move::new_quiet(
+        Piece::Queen,
+        b1.square(),
+        a2.square(),
+    );
+    let b1a3 = Move::new_quiet(
+        Piece::Queen,
+        b1.square(),
+        a3.square(),
+    );
+    let b1a4 = Move::new_quiet(
+        Piece::Queen,
+        b1.square(),
+        a4.square(),
+    );
+    let c1c2 = Move::new_quiet(
+        Piece::Queen,
+        c1.square(),
+        c2.square(),
+    );
     let mut movelists = vec![MoveList::new(); 100];
     for i in 0..100 {
         movelists[i].extend(vec![b1a2, b1a3, b1a4, a1a3, a1a4, a1a2]);

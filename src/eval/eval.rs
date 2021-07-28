@@ -656,6 +656,14 @@ impl SimpleScorer {
         sum
     }
 
+
+    pub fn w_eval_square(&self, c: Color, p: Piece, mut sq: Square) -> Weight {
+        if c == Color::White {
+            sq = sq.flip_vertical();
+        }
+        self.pst(p, sq)
+    }
+    
     // // piece positions, king safety, centre control
     // // only updated for the colour thats moved - opponents(blockes) not relevant
     // pub fn w_eval_position_old(&self, board: &Board) -> i32 {

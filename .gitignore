@@ -30,6 +30,12 @@ flamegraph*.svg
 flame.svg
 cachegrind.out.*
 
+
+# binaries
+odonata-*-linux-*
+odonata-*-windows-*
+
+
 odonata.geany
 
 # python compiled files

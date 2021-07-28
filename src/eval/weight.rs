@@ -58,6 +58,7 @@ impl fmt::Display for Weight {
 
 
 impl iter::Sum for Weight {
+    #[inline]
     fn sum<I>(iter: I) -> Self
     where
         I: Iterator<Item = Self>,

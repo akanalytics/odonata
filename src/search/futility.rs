@@ -17,6 +17,7 @@ use std::fmt;
 #[derive(Clone, Debug)]
 pub struct Futility {
     pub enabled: bool,
+    pub eval_position: bool,
     pub max_depth: Ply,
     pub margin1: i32,
     pub margin2: i32,
@@ -26,6 +27,7 @@ pub struct Futility {
 impl Component for Futility {
     fn settings(&self, c: &mut Config) {
         c.set("futility.enabled", "type check default true");
+        c.set("futility.eval.position", "type check default true");
         c.set("futility.max.depth",  &format!("type spin min 0 max 100 default {}", self.max_depth));
         c.set("futility.margin1",  &format!("type spin min 0 max 9999 default {}", self.margin1));
         c.set("futility.margin2",  &format!("type spin min 0 max 9999 default {}", self.margin2));
@@ -34,6 +36,7 @@ impl Component for Futility {
     fn configure(&mut self, c: &Config) {
         debug!("futility.configure");
         self.enabled = c.bool("futility.enabled").unwrap_or(self.enabled);
+        self.eval_position = c.bool("futility.enabled").unwrap_or(self.eval_position);
         self.max_depth = c.int("futility.max.depth").unwrap_or(self.max_depth as i64) as Ply;
         self.margin1 = c.int("futility.margin1").unwrap_or(self.margin1 as i64) as i32;
         self.margin2 = c.int("futility.margin2").unwrap_or(self.margin2 as i64) as i32;
@@ -52,6 +55,7 @@ impl Default for Futility {
     fn default() -> Self {
         Futility {
             enabled: true,
+            eval_position: true,
             max_depth: 2, 
             margin1: 100,
             margin2: 300,
@@ -76,7 +80,10 @@ impl Futility {
             b.is_in_check(b.color_us()) {
             return false;
         }
-        let score = b.eval_material(eval);
+        let mut score = b.eval_material(eval);
+        if self.eval_position {
+            score = score + b.eval_position(eval);
+        }
         let margin = match node.depth {
             1 => self.margin1,
             2 => self.margin2,

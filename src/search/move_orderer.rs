@@ -5,7 +5,7 @@ use crate::mv::Move;
 use crate::search::algo::Algo;
 use crate::search::stack::Stack;
 use crate::stat::{ArrayPlyStat, PlyStat};
-use crate::types::Ply;
+use crate::types::{Ply, Piece, Color};
 use crate::variation::Variation;
 use crate::{debug, logger::LogInit};
 use std::fmt;
@@ -57,7 +57,6 @@ impl MoveOrderer {
     pub fn new() -> Self {
         Self::default()
     }
-    // pub const MOVE_SORTS: &'static [&'static str] = &["Natural", "PV from Prior Iteration", "MVV/LVA"];
 }
 
 impl Default for MoveOrderer {
@@ -95,6 +94,31 @@ impl fmt::Display for MoveOrderer {
         Ok(())
     }
 }
+
+
+impl MoveOrderer {
+    #[inline]
+    pub fn quiet_score(&self, mv: &Move, algo: &Algo, phase: i32, c: Color) -> i32 {
+        let mut score = 0;
+        if mv.is_promo() {
+            if mv.promo_piece() == Piece::Knight  {
+                score += 2000;
+            } else {
+                score += 1500;
+            }
+        }
+        if mv.is_castle() {
+            score += 1000;
+        }
+        if mv.mover_piece() == Piece::Pawn {
+            score += 500;
+        }
+        score += algo.eval.w_eval_square(c, mv.mover_piece(), mv.to()).interpolate(phase);
+        -score
+    }
+}
+
+
 
 impl Algo {
     pub fn order_moves(&mut self, ply: Ply, movelist: &mut MoveList, tt_mv: &Option<Move>) {
@@ -194,6 +218,10 @@ impl MoveOrderer {
     }
 }
 
+
+
+
+
 impl OrderedMoveList {
     pub fn next_move(&mut self, b: &Board, algo: &mut Algo) -> Option<(char,Move)> {
         let stage = algo.move_orderer.order.chars().nth(self.stage as usize).unwrap();
@@ -280,34 +308,6 @@ impl OrderedMoveList {
                 let mv = &self.tt;
                 all_moves.retain(|m| mv != m );
             }
-            // unorderer
-            'U' => {
-                b.legal_moves_into(moves);
-                // std::mem::swap(&mut self.moves, &mut self.all_moves);
-            }
-            // Captures
-            'C' => {
-                all_moves
-                    .iter()
-                    .filter(|m| Move::is_capture(m))
-                    .for_each(|&m| moves.push(m));
-                moves.sort_unstable_by_key(Move::mvv_lva_score);
-                moves.reverse();
-                if algo.move_orderer.thread == 1 && moves.len() >= 2 {
-                    moves.swap(0, 1);
-                }
-            }
-            'c' => {
-                all_moves
-                    .iter()
-                    .filter(|m| Move::is_capture(m))
-                    .for_each(|&m| moves.push(m));
-                // moves.sort_unstable_by_key(Move::mvv_lva_score);
-                // moves.reverse();
-                // if algo.move_orderer.thread == 1 && moves.len() >= 2 {
-                //     moves.swap(0, 1);
-                // }
-            }
             // Good Captures
             'G' => {
                 all_moves
@@ -327,13 +327,7 @@ impl OrderedMoveList {
                     .filter(|m| Move::is_capture(m))
                     .for_each(|&m| moves.push(m));
             }
-            // Bad Captures
-            'B' => {
-                moves.extend(self.bad_captures.iter().cloned());
-                // if algo.move_orderer.thread == 1 && moves.len() >= 2 {
-                //     moves.swap(0, 1);
-                // }
-            }
+
             // Killers
             'K' => {
                 algo.killers.legal_moves_for(self.ply, b, moves);
@@ -366,6 +360,61 @@ impl OrderedMoveList {
                     moves.swap(0, 1);
                 }
             }
+
+            // sorted quiets
+            'q' => {
+                all_moves
+                    .iter()
+                    .filter(|m| !Move::is_capture(m) && !Move::is_promo(m))
+                    .for_each(|&m| moves.push(m));
+                // algo.order_moves(self.ply, moves, &None);
+                moves.sort_unstable_by_key(|mv| algo.move_orderer.quiet_score(mv, algo, b.phase(), b.color_us()) );
+                if algo.move_orderer.thread == 1 && moves.len() >= 2 {
+                    moves.swap(0, 1);
+                }
+            }
+
+            // Bad Captures
+            'B' => {
+                moves.extend(self.bad_captures.iter().cloned());
+                // if algo.move_orderer.thread == 1 && moves.len() >= 2 {
+                //     moves.swap(0, 1);
+                // }
+            }
+            // End
+            'E' => {}
+
+
+
+
+            // unorderer
+            'U' => {
+                b.legal_moves_into(moves);
+                // std::mem::swap(&mut self.moves, &mut self.all_moves);
+            }
+            // Captures
+            'C' => {
+                all_moves
+                    .iter()
+                    .filter(|m| Move::is_capture(m))
+                    .for_each(|&m| moves.push(m));
+                moves.sort_unstable_by_key(Move::mvv_lva_score);
+                moves.reverse();
+                if algo.move_orderer.thread == 1 && moves.len() >= 2 {
+                    moves.swap(0, 1);
+                }
+            }
+            'c' => {
+                all_moves
+                    .iter()
+                    .filter(|m| Move::is_capture(m))
+                    .for_each(|&m| moves.push(m));
+                // moves.sort_unstable_by_key(Move::mvv_lva_score);
+                // moves.reverse();
+                // if algo.move_orderer.thread == 1 && moves.len() >= 2 {
+                //     moves.swap(0, 1);
+                // }
+            }
             // // Remaining
             // 'R' => {
             //     all_moves.iter().for_each(|&m| moves.push(m));
@@ -374,8 +423,6 @@ impl OrderedMoveList {
             //     moves.reverse();
             //     // algo.order_moves(self.ply, moves, &None);
             // }
-            // End
-            'E' => {}
 
             _ => {
                 unreachable!("unknown move order stage")

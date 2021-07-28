@@ -301,6 +301,8 @@ impl Move {
         score
     }
 
+
+
     pub fn uci(&self) -> String {
         if self.is_null() {
             return String::from("0000");
