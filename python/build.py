@@ -162,7 +162,7 @@ def release_linux():
     setenv("RUSTFLAGS", f"-Ctarget-feature={GENERIC} -C target-cpu=generic")
     shell(f'cargo b --release --target x86_64-unknown-linux-musl')
     shell(f"cp ./target/x86_64-unknown-linux-musl/release/odonata ./odonata-{ver}-linux-generic")
-    shell(f"strip ./odonata-{ver}-linux-modern")
+    shell(f"strip ./odonata-{ver}-linux-generic")
 
 def release_native():
     ver = get_version_number()
