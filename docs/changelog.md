@@ -2,7 +2,20 @@
 
 Milestones ('m') are bundled into Releases.  
 
-# Unreleased
+# Release 0.3.26
+
+### Highlights
+- Futility pruning
+- Null move pruning
+- Multi-threading (still experimental)
+- Command-line switches for benchmarking and perft (use --help)
+- Bishop pair bonus
+- Json-rpc for python interface (still experimental)
+- Lockless transposition table
+
+#### m 0.3.26
+- Quiet move ordering
+- 
 #### m 0.3.25
 - crude futility pruning
 
