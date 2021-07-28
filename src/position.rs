@@ -189,9 +189,14 @@ impl Position {
         &self.tags
     }
 
+    pub fn tags_mut(&mut self) -> &mut Tags {
+        &mut self.tags
+    }
+
     pub fn set(&mut self, tag: Tag) {
         self.tags.set(tag);
     }
+
 
     pub fn set_operation(&mut self, key: &str, value: &str) -> Result<(),String> {
         self.tags.set(Tag::parse(&self.board, key, value)?);

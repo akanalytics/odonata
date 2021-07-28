@@ -64,10 +64,10 @@ impl Default for NodeType {
 
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub struct TtNode {
-    pub score: Score,
-    pub draft: Ply, // draft is plies to q/leaf
-    pub node_type: NodeType,
-    pub bm: Move,
+    pub score: Score,         
+    pub draft: Ply,             
+    pub node_type: NodeType,    
+    pub bm: Move,               
 }
 
 impl Score {
@@ -402,8 +402,11 @@ impl Component for TranspositionTable2 {
 }
 
 impl TranspositionTable2 {
+
+    pub const ENTRY_SIZE: usize = 2 * mem::size_of::<u64>();
+
     pub const fn convert_mb_to_capacity(mb: i64) -> usize {
-        (mb as usize * 1_000_000 / mem::size_of::<TtNode>()).next_power_of_two()
+        (mb as usize * 1_000_000 / Self::ENTRY_SIZE).next_power_of_two()
     }
 
     pub fn fmt_nodes(&self, f: &mut fmt::Formatter, b: &Board) -> fmt::Result {
@@ -415,7 +418,7 @@ impl TranspositionTable2 {
     }
 
     pub const fn convert_capacity_to_mb(cap: usize) -> usize {
-        (cap * mem::size_of::<TtNode>()) as usize / 1_000_000
+        (cap * Self::ENTRY_SIZE) as usize / 1_000_000
     }
 
     pub fn new_with_mb(mb: i64) -> Self {
@@ -443,13 +446,6 @@ impl TranspositionTable2 {
             fail_ownership: Stat::new("ins fail owner"),
         }
     }
-
-    // pub fn destroy(&mut self) {
-    //     info!("tt destroyed");
-    //     self.table = Arc::new(SharedTable::new_with_capacity(0));
-    //     // self.capacity = 0;
-    //     // Arc::make_mut(&mut self.table);
-    // }
 
     pub fn next_generation(&mut self) {
         // if self.requires_resize() {
@@ -509,10 +505,6 @@ impl TranspositionTable2 {
     }
 
     #[inline]
-    // pub fn index(&self, hash: Hash) -> usize {
-    //     hash as usize % self.capacity()
-    // }
-
     pub fn store(&mut self, h: Hash, new_node: TtNode) {
         if !self.enabled && new_node.node_type != NodeType::Pv || self.capacity() == 0 {
             return;
@@ -583,16 +575,8 @@ impl TranspositionTable2 {
         if !self.enabled || self.capacity() == 0 || ply < self.min_ply {
             return None;
         }
-        // debug!("Probe by board");
-        // if board.fifty_halfmove_clock() > self.hmvc_horizon {
-        //     self.exclusions.increment();
-        //     None
-        // } else {
         let tt_node = self.probe_by_hash(board.hash());
         if let Some(tt_node) = tt_node {
-            // if tt_node.draft < draft {
-            //     return None;
-            // }
             if !tt_node.bm.is_null() && !board.is_pseudo_legal_move(&tt_node.bm) && !board.is_legal_move(&tt_node.bm) {
                 self.bad_hash.increment();
                 return None;

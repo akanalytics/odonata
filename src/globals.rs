@@ -141,6 +141,7 @@ mod tests {
     fn sizes() {
         assert_eq!(size_of::<Piece>(), 1, "Piece");
         assert_eq!(size_of::<Color>(), 1, "Color");
+        assert_eq!(size_of::<Ply>(), 4, "Ply");
         assert_eq!(size_of::<CastlingRights>(), 1, "CastlingRights");
         assert_eq!(size_of::<Square>(), 1, "Square");
         assert_eq!(size_of::<Score>(), 2, "Score");
@@ -149,6 +150,7 @@ mod tests {
         assert_eq!(size_of::<String>(), 24, "String");
         assert_eq!(size_of::<Duration>(), 16, "Duration");
         assert_eq!(size_of::<Node>(), 12, "Node");
+        assert_eq!(size_of::<NodeType>(), 1, "NodeType");
         assert_eq!(size_of::<TtNode>(), 12, "TtNode");
         assert_eq!(size_of::<Tag>(), 880, "Tag");
         assert_eq!(size_of::<Variation>(), 24, "Variation");

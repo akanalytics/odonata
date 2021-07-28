@@ -102,18 +102,26 @@ impl MoveOrderer {
         let mut score = 0;
         if mv.is_promo() {
             if mv.promo_piece() == Piece::Knight  {
-                score += 2000;
-            } else {
                 score += 1500;
+            } else {
+                score += 2000;
             }
         }
         if mv.is_castle() {
             score += 1000;
         }
-        if mv.mover_piece() == Piece::Pawn {
-            score += 500;
+        // if mv.mover_piece() == Piece::Pawn {
+        //     score += 0;
+        // }
+        // score += mv.mover_piece().centipawns();
+        if c == Color::White {
+            score += mv.to().rank_index() as i32;
+        } else {
+            score -= mv.to().rank_index() as i32;
         }
+
         score += algo.eval.w_eval_square(c, mv.mover_piece(), mv.to()).interpolate(phase);
+        // score -= algo.eval.w_eval_square(c, mv.mover_piece(), mv.from()).interpolate(phase);
         -score
     }
 }
@@ -555,6 +563,10 @@ mod tests {
     use crate::globals::constants::*;
     use crate::movelist::*;
     use crate::types::*;
+    use crate::search::timecontrol::*;
+    use crate::search::algo::*;
+    use crate::utils::*;
+    use crate::tags::*;
     // use crate::search::timecontrol::*;
 
     #[test]
@@ -762,5 +774,44 @@ mod tests {
         }
     }
 
+
+    // SHIGKPQBE    => 28,391,980  // 17 secs
+    // SHIgKPQBE    => 28,527,779  // 19 secs
+    // SHIgKPqBE    => 22,957,082  // 16 secs
+    // w/out PST    => 28,922,226
+    // + mover.cp   => 28,000,000
+    // w/out cstl+P => 23,466,765
+    // w/out pawn   => 22,526,357
+    // +to.rank     => 22,326,412
+    // w/ from.pst  => 23,761,374
+
+
+    #[test]
+    #[ignore]
+    fn test_ordering_node_count() {
+        let mut engine = Engine::new();
+
+        let positions = &Catalog::example_game();
+        let mut node_count = 0;
+        for pos in positions {
+            engine.new_game();
+            let suggested_depth = pos.acd().unwrap();
+            engine.algo.set_timing_method(TimeControl::Depth(suggested_depth));
+            engine.algo.board = pos.board().clone();
+
+            engine.search();
+            let mut results = engine.algo.results().clone();
+            let nodes = results.acn().unwrap();
+            node_count += nodes;
+
+            // just leave acd
+            results.tags_mut().remove(Tag::PV);
+            results.tags_mut().remove(Tag::SM);
+            results.tags_mut().remove(Tag::BM);
+            results.tags_mut().remove(Tag::CE);
+            results.tags_mut().remove(Tag::ACN);
+            println!("{:>12} {:>12} {}", Formatter::format_u128(nodes), Formatter::format_u128(node_count), results);
+        }
+    }
 
 }
