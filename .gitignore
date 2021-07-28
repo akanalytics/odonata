@@ -41,8 +41,9 @@ odonata.geany
 # python compiled files
 *.pyc
 
-# intellij stuff
+# intellij + vscode stuff
 .idea
 modules.xml
 odonata.iml
 vcs.xml
+workspace.*

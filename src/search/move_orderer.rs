@@ -67,7 +67,7 @@ impl Default for MoveOrderer {
             prior_bm: false,
             tt_bm: true,
             mvv_lva: true,
-            order: "SHIGKPQBE".to_string(),  // , SHICKPQE, SHIGKPQBE
+            order: "SHIGKPqBE".to_string(),  // , SHICKPQE, SHIGKPQBE
             thread: 0,
             count_pv: PlyStat::new("order pv"),
             count_bm: PlyStat::new("order bm"),
