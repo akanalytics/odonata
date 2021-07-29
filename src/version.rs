@@ -39,7 +39,6 @@ impl Version {
 
     pub fn small_splash() -> String {
         let mut s = String::new();
-        s += &format!("{} {}\n", Version::NAME, Version::VERSION);
         s += &format!("{}\n", Version::SMALL_IMAGE);
         s += &format!("{}\n", Version::QUOTE);
         s += &format!("\n");

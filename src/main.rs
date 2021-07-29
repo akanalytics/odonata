@@ -16,7 +16,6 @@ use odonata::search::timecontrol::TimeControl;
 fn main() -> Result<(), String> {
     let matches = App::new(Version::NAME)
         .version(Version::VERSION)
-        .author(Version::AUTHORS)
         .about(&*Version::small_splash())
         // .arg(
         //     Arg::with_name("v")

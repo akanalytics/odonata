@@ -49,6 +49,7 @@ impl Console {
 
     pub fn help() {
         println!();
+        println!("{} {}\n", Version::NAME, Version::VERSION);
         println!("{}", Version::small_splash());
         println!();
         println!("Commands...");
