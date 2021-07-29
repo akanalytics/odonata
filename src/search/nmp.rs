@@ -1,6 +1,8 @@
 
 use crate::board::Board;
+use crate::search::node::Node;
 use crate::pvtable::PvTable;
+// use crate::eval::score::Score;
 use crate::config::{Config, Component};
 use crate::{debug, logger::LogInit};
 use crate::types::Ply;
@@ -49,25 +51,30 @@ impl Default for NullMovePruning {
     }
 }
 
-
+// look for beta cuts by using a null move and null window search around beta
+// works for moves that are just "too good to be true"
 impl NullMovePruning {
-    pub fn allow(&self, b: &Board, ply: Ply, depth: Ply, variation: &PvTable) -> bool {
+    pub fn allow(&self, b: &Board, node: &Node, variation: &PvTable) -> bool {
         if !self.enabled {
             return false;
         } 
-        if ply == 0 {
+        if node.ply == 0 {
             return false;  // no null move at root
         } 
-        if depth < self.min_leaf_distance {
+        if node.depth < self.min_leaf_distance {
             return false;
         } 
         if ((b.line_pieces() | b.knights()) & b.us()).is_empty() {
             return false;
         }  
+        // if node.alpha == node.beta - Score::from_cp(1) {
+        //     // no NMP in PVS search
+        //     return false;
+        // }
         if b.is_in_check(b.color_us()) {
             return false;
         }
-        if variation.extract_pv_for(ply).contains_null_move() {
+        if variation.extract_pv_for(node.ply).contains_null_move() {
             return false;
         }
         true

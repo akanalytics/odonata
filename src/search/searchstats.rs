@@ -147,7 +147,7 @@ impl SearchStats {
         if let Some(d) = self
             .plies
             .iter()
-            .rposition(|stats| stats.nodes() + stats.q_tt_nodes() + stats.tt_nodes() != 0)
+            .rposition(|stats| stats.nodes() + stats.q_tt_nodes + stats.tt_nodes != 0)
         {
             return 1 + d; // a usize is one-off-the-end
         }
@@ -221,15 +221,38 @@ impl SearchStats {
     // }
 
     #[inline]
-    pub fn inc_cuts(&mut self, ply: Ply) {
-        self.total.cuts += 1;
-        self.plies[ply as usize].cuts += 1;
+    pub fn inc_node_cut(&mut self, ply: Ply) {
+        self.plies[ply as usize].node_cut += 1;
     }
 
     #[inline]
-    pub fn inc_improvements(&mut self, ply: Ply) {
-        self.total.improvements += 1;
-        self.plies[ply as usize].improvements += 1;
+    pub fn inc_node_pv(&mut self, ply: Ply) {
+        self.plies[ply as usize].node_pv += 1;
+    }
+
+    #[inline]
+    pub fn inc_node_all(&mut self, ply: Ply) {
+        self.plies[ply as usize].node_all += 1;
+    }
+
+    #[inline]
+    pub fn inc_nmp(&mut self, ply: Ply) {
+        self.plies[ply as usize].nmp += 1;
+    }
+
+    #[inline]
+    pub fn inc_fp(&mut self, ply: Ply) {
+        self.plies[ply as usize].fp += 1;
+    }
+
+    #[inline]
+    pub fn inc_pvs(&mut self, ply: Ply) {
+        self.plies[ply as usize].pvs += 1;
+    }
+
+    #[inline]
+    pub fn inc_pvs_research(&mut self, ply: Ply) {
+        self.plies[ply as usize].pvs_research += 1;
     }
 
     #[inline]
@@ -265,13 +288,13 @@ impl SearchStats {
     #[inline]
     pub fn branching_factor(&self) -> f64 {
         let t = self.total();
-        (t.leaf_nodes() + t.q_leaf_nodes()) as f64 / (t.interior_nodes() + t.q_interior_nodes() + 1) as f64
+        (t.leaf_nodes + t.q_leaf_nodes) as f64 / (t.interior_nodes + t.q_interior_nodes + 1) as f64
     }
 
     #[inline]
     pub fn q_branching_factor(&self) -> f64 {
         let t = self.total();
-        (t.q_leaf_nodes as f64) / (t.q_interior_nodes() + 1) as f64
+        (t.q_leaf_nodes as f64) / (t.q_interior_nodes + 1) as f64
     }
 }
 
@@ -280,14 +303,23 @@ pub struct NodeStats {
     // nodes
     pub interior_nodes: u64,
     pub leaf_nodes: u64, // FIXME and terminal
-    pub improvements: u64,
-    pub cuts: u64,
 
     pub q_interior_nodes: u64,
     pub q_leaf_nodes: u64, // FIXME and terminal
 
     pub tt_nodes: u64,
+    pub tt_hints: u64,
     pub q_tt_nodes: u64,
+
+    pub node_all: u64,
+    pub node_pv: u64,
+    pub node_cut: u64,
+
+    pub pvs: u64,
+    pub pvs_research: u64,
+    pub nmp: u64,
+    pub fp: u64,
+    pub cut_on_move: [u64; 6],
 
     pub est_time: Duration,
     pub real_time: Duration,
@@ -303,29 +335,55 @@ impl NodeStats {
         Self::default()
     }
 
+    // FIXME! assigne from default
     pub fn clear_node_stats(&mut self) {
         self.interior_nodes = 0;
         self.leaf_nodes = 0;
-        self.improvements = 0;
-        self.cuts = 0;
+        
+        self.node_pv = 0;
+        self.node_all = 0;
+        self.node_cut = 0;
+
+        self.pvs = 0;
+        self.pvs_research = 0;
+        self.nmp = 0;
+        self.fp = 0;
+        self.cut_on_move = [0; 6];
+        
         self.q_interior_nodes = 0;
         self.q_leaf_nodes = 0;
+        
         self.tt_nodes = 0;
+        self.tt_hints = 0;
         self.q_tt_nodes = 0;
+        
         self.real_time = Duration::default();
         self.deterministic_time = Duration::default();
+
+
     }
 
     pub fn accumulate(&mut self, other: &NodeStats) {
         self.interior_nodes += other.interior_nodes;
         self.leaf_nodes += other.leaf_nodes;
-        self.improvements += other.improvements;
-        self.cuts += other.cuts;
+
+        self.node_all += other.node_all;
+        self.node_pv += other.node_pv;
+        self.node_cut += other.node_cut;
+
+        self.pvs += other.pvs;
+        self.pvs_research += other.pvs_research;
+        self.nmp += other.nmp;
+        self.fp += other.fp;
+        for i in 0..6 {
+            self.cut_on_move[i] += other.cut_on_move[i];
+        }
 
         self.q_interior_nodes += other.q_interior_nodes;
         self.q_leaf_nodes += other.q_leaf_nodes;
 
         self.tt_nodes += other.tt_nodes;
+        self.tt_hints += other.tt_hints;
         self.q_tt_nodes += other.q_tt_nodes;
 
         self.est_time += other.est_time;
@@ -340,53 +398,36 @@ impl NodeStats {
 
     #[inline]
     pub fn nodes(&self) -> u64 {
-        self.interior_nodes() + self.leaf_nodes() + self.q_interior_nodes() + self.q_leaf_nodes() + self.tt_nodes()
+        self.interior_nodes + self.leaf_nodes + self.q_interior_nodes + self.q_leaf_nodes + self.tt_nodes
         // root
-    }
-
-    #[inline]
-    pub fn leaf_nodes(&self) -> u64 {
-        self.leaf_nodes
-    }
-
-    #[inline]
-    pub fn q_interior_nodes(&self) -> u64 {
-        self.q_interior_nodes
-    }
-
-    #[inline]
-    pub fn q_nodes(&self) -> u64 {
-        self.q_interior_nodes() + self.q_leaf_nodes() // root
-    }
-
-    #[inline]
-    pub fn q_leaf_nodes(&self) -> u64 {
-        self.q_leaf_nodes
-    }
-
-    #[inline]
-    pub fn tt_nodes(&self) -> u64 {
-        self.tt_nodes
-    }
-
-    #[inline]
-    pub fn q_tt_nodes(&self) -> u64 {
-        self.q_tt_nodes
-    }
-
-    pub fn cut_percentage(&self) -> u64 {
-        self.cuts * 100 / (1 + self.nodes())
     }
 }
 
 macro_rules! header_format {
     () => {
         concat!(
-            "{node:>11} {interior:>11} {leaf:>11} {ttnode:>11} ",
-            "{cut:>11} {improv:>11} {cut_perc:>6} ",
-            "{qnode:>11} {qinterior:>11} {qleaf:>11} ",
+            "{node:>11} ",
+            "{interior:>11} ",
+            "{leaf:>11} ",
+            "{ttnode:>11} ",
+
+            "{pv_perc:>6} ",
+            "{cut_perc:>6} ",
+            "{all_perc:>6} ",
+
+            "{pvs:>7} ",
+            "{pvs_research:>7} ",
+            "{nmp:>7} ",
+            "{fp:>7} ",
+
+            "{qnode:>11} ",
+            "{qinterior:>11} ",
+            "{qleaf:>11} ",
             "{qttnode:>11} ",
-            "{est_time:>11} {real_time:>11} {deterministic_time:>11}"
+
+            "{est_time:>11} ",
+            "{real_time:>11} ",
+            "{deterministic_time:>11}",
         )
     };
 }
@@ -396,17 +437,25 @@ impl NodeStats {
         write!(
             f,
             header_format!(),
-            cut = "beta cuts",
-            improv = "pv",
             node = "total =",
             interior = "[interior",
             leaf = "leaf nodes",
             ttnode = "tt nodes]",
+
+            cut_perc = "cut %",
+            all_perc = "all %",
+            pv_perc = "pv %",
+
+            pvs = "pvs",
+            pvs_research = "pvs/r",
+            nmp = "nmp",
+            fp = "fp",
+
             qnode = "q total",
             qinterior = "q interior",
             qleaf = "q leaf",
             qttnode = "q tt nodes",
-            cut_perc = "cuts %",
+
             est_time = "est_time",
             real_time = "real_time",
             deterministic_time = "determstic",
@@ -417,17 +466,25 @@ impl NodeStats {
         write!(
             f,
             header_format!(),
-            cut = "-----------",
-            improv = "-----------",
             node = "-----------",
             interior = "-----------",
             leaf = "-----------",
             ttnode = "-----------",
+
             cut_perc = "------",
+            pv_perc = "------",
+            all_perc = "------",
+
+            pvs = "-------",
+            pvs_research = "-------",
+            nmp = "-------",
+            fp = "-------",
+
             qnode = "-----------",
             qinterior = "-----------",
             qleaf = "-----------",
             qttnode = "-----------",
+
             est_time = "-----------",
             real_time = "-----------",
             deterministic_time = "-----------",
@@ -438,17 +495,25 @@ impl NodeStats {
         write!(
             f,
             header_format!(),
-            cut = self.cuts,
-            improv = self.improvements,
             node = self.nodes(),
             interior = self.interior_nodes,
-            leaf = self.leaf_nodes(),
-            ttnode = self.tt_nodes(),
-            cut_perc = self.cut_percentage(),
-            qnode = self.q_nodes(),
+            leaf = self.leaf_nodes,
+            ttnode = self.tt_nodes,
+
+            pv_perc = self.node_pv * 100 / (1+self.nodes()) as u64,
+            cut_perc = self.node_cut * 100 / (1+self.nodes()) as u64,
+            all_perc = self.node_all * 100 / (1+self.nodes()) as u64,
+
+            pvs = self.pvs,
+            pvs_research = self.pvs_research,
+            nmp = self.nmp,
+            fp = self.fp,
+
+            qnode = self.q_interior_nodes + self.q_leaf_nodes,
             qinterior = self.q_interior_nodes,
-            qleaf = self.q_leaf_nodes(),
-            qttnode = self.q_tt_nodes(),
+            qleaf = self.q_leaf_nodes,
+            qttnode = self.q_tt_nodes,
+
             est_time = Clock::format(self.est_time),
             real_time = Clock::format(self.real_time),
             deterministic_time = Clock::format(self.deterministic_time),
@@ -480,7 +545,7 @@ mod tests {
         search.inc_leaf_nodes(2);
         search.inc_leaf_nodes(2);
         search.inc_tt_nodes(2);
-        search.inc_cuts(2);
+        search.inc_node_cut(2);
         search.inc_interior_nodes(0);
         println!("{}", search);
     }

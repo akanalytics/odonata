@@ -32,7 +32,7 @@ impl Component for IterativeDeepening {
     }
 
     fn configure(&mut self, c: &Config) {
-        debug!("qsearch.configure");
+        debug!("ids.configure");
         self.enabled = c.bool("ids.enabled").unwrap_or(self.enabled);
         self.part_ply = c.bool("ids.part_ply").unwrap_or(self.part_ply);
     }

@@ -2,7 +2,6 @@ use crate::board::Board;
 use crate::comms::uci::Uci;
 use crate::search::algo::Algo;
 use crate::version::Version;
-use crate::version::built_info;
 use std::io;
 
 pub struct Console {
@@ -30,8 +29,8 @@ impl Console {
                 Some(&"quit") => {
                     break;
                 }
-                Some(&"splash") => {
-                    Self::splash();
+                Some(&"pic") => {
+                    Self::pic();
                 }
                 Some(&"help") => {
                     Self::help();
@@ -49,32 +48,24 @@ impl Console {
     }
 
     pub fn help() {
-        println!("{} version {} by {}", Version::NAME, Version::VERSION, Version::AUTHORS);
         println!();
-        Self::small_splash();
+        println!("{}", Version::small_splash());
         println!();
         println!("Commands...");
         println!("{:<10} {}", "uci", "enter uci protocol mode");
         println!("{:<10} {}", "quit", "quit the program");
-        println!("{:<10} {}", "splash", "splash screen");
+        println!("{:<10} {}", "pic", "nice dragonfly image");
         println!("{:<10} {}", "help", "display (this) help");
         println!();
     }
 
-    pub fn splash() {
+    pub fn pic() {
         println!();
-        println!("{} version {} by {}", Version::NAME, Version::VERSION, Version::AUTHORS);
         println!("{}", Version::IMAGE);
-        println!("please see {} for updates,\nreleases and license details.", Version::HOMEPAGE);
+        println!();
+        println!("Please see {} for updates,\nreleases and licence details. Image by jgs.", Version::HOMEPAGE);
         println!();
     }
 
-    pub fn small_splash() {
-        println!("target       : {}", built_info::TARGET);
-        println!("profile      : {}", built_info::PROFILE);
-        println!("optimization : {}", built_info::OPT_LEVEL);
-        println!("rustc        : {}", built_info::RUSTC_VERSION);
-        println!("features     : {}", built_info::FEATURES_STR);
-        println!("compiled at  : {}", built_info::BUILT_TIME_UTC);
-    }
+
 }

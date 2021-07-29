@@ -17,6 +17,7 @@ use crate::search::move_time_estimator::MoveTimeEstimator;
 use crate::search::qsearch::QSearch;
 use crate::search::nmp::NullMovePruning;
 use crate::search::futility::Futility;
+use crate::search::pvs::Pvs;
 use crate::search::searchprogress::SearchProgress;
 use crate::search::searchstats::SearchStats;
 use crate::search::taskcontrol::TaskControl;
@@ -198,6 +199,7 @@ pub struct Algo {
     pub qsearch: QSearch,
     pub nmp: NullMovePruning,
     pub futility: Futility,
+    pub pvs: Pvs,
     pub search_stats: SearchStats,
 
     pub pv_table: PvTable,
@@ -251,6 +253,7 @@ impl Component for Algo {
         self.move_orderer.settings(c);
         self.nmp.settings(c);
         self.futility.settings(c);
+        self.pvs.settings(c);
         self.qsearch.settings(c);
         self.ids.settings(c);
         self.repetition.settings(c);
@@ -266,6 +269,7 @@ impl Component for Algo {
         self.mte.configure(c);
         self.nmp.configure(c);
         self.futility.configure(c);
+        self.pvs.configure(c);
         self.qsearch.configure(c);
         self.ids.configure(c);
         self.repetition.configure(c);
@@ -282,6 +286,7 @@ impl Component for Algo {
         self.mte.new_game();
         self.nmp.new_game();
         self.futility.new_game();
+        self.pvs.new_game();
         self.qsearch.new_game();
         self.ids.new_game();
         self.repetition.new_game();
@@ -297,6 +302,7 @@ impl Component for Algo {
         self.mte.new_search();
         self.nmp.new_search();
         self.futility.new_search();
+        self.pvs.new_search();
         self.qsearch.new_search();
         self.ids.new_search();
         self.repetition.new_search();
@@ -322,6 +328,7 @@ impl fmt::Debug for Algo {
             .field("search_stats", &self.search_stats)
             .field("nmp", &self.nmp)
             .field("futility", &self.futility)
+            .field("pvs", &self.pvs)
             .field("qsearch", &self.qsearch)
             .field("ids", &self.ids)
             .field("repetition", &self.repetition)
@@ -354,6 +361,7 @@ impl fmt::Display for Algo {
         write!(f, "\n[move time estimator]\n{}", self.mte)?;
         write!(f, "\n[nmp]\n{}", self.nmp)?;
         write!(f, "\n[futility]\n{}", self.futility)?;
+        write!(f, "\n[pvs]\n{}", self.pvs)?;
         write!(f, "\n[qsearch]\n{}", self.qsearch)?;
         write!(f, "\n[eval]\n{}", self.eval)?;
         write!(f, "\n[repetition]\n{}", self.repetition)?;

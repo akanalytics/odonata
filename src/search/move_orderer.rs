@@ -796,7 +796,7 @@ mod tests {
         for pos in positions {
             engine.new_game();
             let suggested_depth = pos.acd().unwrap();
-            engine.algo.set_timing_method(TimeControl::Depth(suggested_depth));
+            engine.algo.set_timing_method(TimeControl::Depth(suggested_depth-1));
             engine.algo.board = pos.board().clone();
 
             engine.search();

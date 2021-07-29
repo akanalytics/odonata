@@ -27,8 +27,32 @@ impl Version {
                           \=/
                            ^
         
-image by jgs"##;
+"##;
+
+    pub const SMALL_IMAGE: &'static str = r##"
+ ()
+%=====
+ ()
+"##;
+    
+    pub const QUOTE: &'static str = "May you touch dragonflies and stars...";
+
+    pub fn small_splash() -> String {
+        let mut s = String::new();
+        s += &format!("{} {}\n", Version::NAME, Version::VERSION);
+        s += &format!("{}\n", Version::SMALL_IMAGE);
+        s += &format!("{}\n", Version::QUOTE);
+        s += &format!("\n");
+        s += &format!("email        : {}\n", Version::AUTHORS);
+        s += &format!("homepage     : {}\n", Version::HOMEPAGE);
+        s += &format!("compiled for : {} / {} / optimization level {}\n", built_info::TARGET, built_info::PROFILE, built_info::OPT_LEVEL);
+        s += &format!("compiled at  : {}\n", built_info::BUILT_TIME_UTC);
+        s += &format!("compiler     : {}\n", built_info::RUSTC_VERSION);
+        s += &format!("features     : {}\n", built_info::FEATURES_STR);
+        s
+    }
 }
+
 
 
 // see https://docs.rs/built/0.5.1/built/

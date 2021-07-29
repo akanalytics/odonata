@@ -102,7 +102,7 @@ impl Algo {
                         // not all child nodes were scored, so score is a lower bound
                         // FIXME: probably dont set alpha just the hinted mv and re-search the node
                         if entry.score >= beta {
-                            self.search_stats.inc_cuts(ply);
+                            self.search_stats.inc_node_cut(ply);
                             self.tt.store(board.hash(), entry);
                             // self.record_truncated_move(ply, &entry.bm);
                             self.search_stats.inc_tt_nodes(ply);
@@ -149,11 +149,24 @@ impl Algo {
         );
 
         // null move
-        if !self.minmax && beta.is_numeric() && self.nmp.allow(&board, ply, depth, &self.pv_table) {
+        if !self.minmax
+            && beta.is_numeric()
+            && self.nmp.allow(
+                &board,
+                &Node {
+                    ply,
+                    depth,
+                    alpha,
+                    beta,
+                },
+                &self.pv_table,
+            )
+        {
             let r = self.nmp.depth_reduction(board, ply, depth);
             let mv = Move::NULL_MOVE;
             let mut child_board = board.make_move(&mv);
             self.current_variation.set_last_move(ply + 1, &mv);
+            self.search_stats.inc_nmp(ply);
             let child_score = -self.alphabeta_recursive(
                 &mut child_board,
                 ply + 1,
@@ -164,7 +177,7 @@ impl Algo {
             );
             board.undo_move(&mv);
             if child_score >= beta {
-                self.search_stats.inc_cuts(ply);
+                self.search_stats.inc_node_cut(ply);
                 return child_score;
             }
         }
@@ -173,17 +186,48 @@ impl Algo {
         let mut count = 0;
         while let Some((_stage, mv)) = sorted_moves.next_move(board, self) {
             count += 1;
-            if futility && count > 1 && self.futility.can_prune_move(&mv, board) {
+            if futility && score > -Score::INFINITY && self.futility.can_prune_move(&mv, board) {
+                self.search_stats.inc_fp(ply);
                 continue;
             }
             let mut child_board = board.make_move(&mv);
             self.repetition.push(&mv, &child_board);
             child_board.set_repetition_count(self.repetition.count(&child_board));
-            debug_assert!(alpha < beta || self.minmax);
+            debug_assert!(alpha < beta || self.minmax, "alpha={}, beta={}, minmax={}", alpha, beta, self.minmax);
             self.current_variation.set_last_move(ply + 1, &mv);
 
-            let child_score =
-                -self.alphabeta_recursive(&mut child_board, ply + 1, depth - 1, -beta, -alpha, &mv);
+            let mut child_score;
+            if self.pvs.permitted(
+                nt,
+                board,
+                &Node {
+                    ply,
+                    depth,
+                    alpha,
+                    beta,
+                },
+            ) {
+                debug_assert!(alpha.is_numeric());
+                self.search_stats.inc_pvs(ply);
+                // using [alpha, alpha + 1]
+                child_score = -self.alphabeta_recursive(
+                    &mut child_board,
+                    ply + 1,
+                    depth - 1,
+                    -alpha - Score::from_cp(1),
+                    -alpha,
+                    &mv,
+                );
+                if child_score > score && child_score < beta {
+                    // research with full window
+                    self.search_stats.inc_pvs_research(ply);
+                    child_score =
+                        -self.alphabeta_recursive(&mut child_board, ply + 1, depth - 1, -beta, -alpha, &mv);
+                }
+            } else {
+                child_score =
+                    -self.alphabeta_recursive(&mut child_board, ply + 1, depth - 1, -beta, -alpha, &mv);
+            };
             board.undo_move(&mv);
             self.repetition.pop();
             if ply > 1 && self.task_control.is_cancelled() {
@@ -222,11 +266,13 @@ impl Algo {
                 },
             );
         } else if nt == NodeType::All {
+            self.search_stats.inc_node_all(ply);
             // nothing
         } else if nt == NodeType::Cut {
-            self.search_stats.inc_cuts(ply);
+            self.search_stats.inc_node_cut(ply);
             debug_assert!(!bm.is_null())
         } else if nt == NodeType::Pv {
+            self.search_stats.inc_node_pv(ply);
             // self.record_new_pv(ply, &bm, false);
             debug_assert!(!bm.is_null())
         } else {

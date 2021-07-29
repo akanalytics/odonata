@@ -36,7 +36,7 @@ impl Component for Futility {
     fn configure(&mut self, c: &Config) {
         debug!("futility.configure");
         self.enabled = c.bool("futility.enabled").unwrap_or(self.enabled);
-        self.eval_position = c.bool("futility.enabled").unwrap_or(self.eval_position);
+        self.eval_position = c.bool("futility.eval.position").unwrap_or(self.eval_position);
         self.max_depth = c.int("futility.max.depth").unwrap_or(self.max_depth as i64) as Ply;
         self.margin1 = c.int("futility.margin1").unwrap_or(self.margin1 as i64) as i32;
         self.margin2 = c.int("futility.margin2").unwrap_or(self.margin2 as i64) as i32;
@@ -56,7 +56,7 @@ impl Default for Futility {
         Futility {
             enabled: true,
             eval_position: true,
-            max_depth: 2, 
+            max_depth: 2, // not sure > 2really makes sense
             margin1: 100,
             margin2: 300,
             margin3: 550,
@@ -69,27 +69,33 @@ impl Futility {
     pub fn can_prune_at_node(&self, b: &Board, node: &Node, eval: &SimpleScorer) -> bool {
         if !self.enabled 
             ||
-            node.ply > 0   // dont prune at root node
+            node.ply == 0   // dont prune at root node
             ||
-            node.depth > self.max_depth 
+            node.depth > self.max_depth // dont prune too far away from leaf nodes
             ||
-            node.alpha.is_mate()
+            node.alpha.is_mate()  // dont prune if either alpha or beta is a mate score
             || 
             node.beta.is_mate() 
             ||
             b.is_in_check(b.color_us()) {
             return false;
         }
+        // use a static score of material and (optionally) the piece positions
         let mut score = b.eval_material(eval);
         if self.eval_position {
             score = score + b.eval_position(eval);
         }
+
+        // safety margin depends on how far away we are from leaf node
         let margin = match node.depth {
             1 => self.margin1,
             2 => self.margin2,
             3 => self.margin3,
             _ => self.margin1 + self.margin2 + self.margin3,
         };
+
+        // if the score + a configured margin is less than alpha we can consider pruning at this node
+        // FIXME! put the scoring into the per move logic as alpha can change  
         if score + Score::from_cp(margin) <= node.alpha {
             return true
         }
@@ -97,6 +103,14 @@ impl Futility {
 
     }
 
+    // for each move at a prunable node, see if its worth pruning
+    // if this move isnt a capture then even if the opponents move IS a capture our score will still 
+    // likely fall short of alpha
+    // for futility at depth = 3, conceivably our second move could be a capture so risky to prune
+    //
+    // obviously even prunign at depth=2, this move could be a quite move that attacks a piece and means quiese
+    // changes the score dramatically - so futility pruning at depth = 1/2 is not without downside
+    //
     pub fn can_prune_move(&self, mv: &Move, b: &Board) -> bool {
         if mv.is_capture()
         ||
