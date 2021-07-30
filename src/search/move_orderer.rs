@@ -5,10 +5,11 @@ use crate::mv::Move;
 use crate::search::algo::Algo;
 use crate::search::stack::Stack;
 use crate::stat::{ArrayPlyStat, PlyStat};
-use crate::types::{Ply, Piece, Color};
+use crate::types::{Ply, Piece, Color, MoveType};
 use crate::variation::Variation;
 use crate::{debug, logger::LogInit};
 use std::fmt;
+
 
 #[derive(Clone, Debug)]
 pub struct MoveOrderer {
@@ -17,7 +18,7 @@ pub struct MoveOrderer {
     pub prior_bm: bool,
     pub tt_bm: bool,
     pub mvv_lva: bool,
-    pub order: String,
+    pub order: Vec<MoveType>,
     pub thread: u32,
     count_pv: PlyStat,
     count_bm: PlyStat,
@@ -32,7 +33,7 @@ impl Component for MoveOrderer {
         c.set("moveorderer.prior_bm", "type check default false");
         c.set("moveorderer.tt_bm", "type check default true");
         c.set("moveorderer.mvv_lva", "type check default true");
-        c.set("moveorderer.order", &format!("type string default {}", self.order));
+        c.set("moveorderer.order", &format!("type string default {}", MoveType::slice_to_string(&self.order)));
     }
     fn configure(&mut self, c: &Config) {
         debug!("moveorderer.configure");
@@ -41,7 +42,9 @@ impl Component for MoveOrderer {
         self.prior_pv = c.bool("moveorderer.prior_pv").unwrap_or(self.prior_pv);
         self.tt_bm = c.bool("moveorderer.tt_bm").unwrap_or(self.tt_bm);
         self.mvv_lva = c.bool("moveorderer.mvv_lva").unwrap_or(self.mvv_lva);
-        self.order = c.string("moveorderer.order").unwrap_or(self.order.clone());
+        let order = c.string("moveorderer.order").unwrap_or(MoveType::slice_to_string(&self.order));
+        // FIXME! Error handling
+        self.order = MoveType::vec_from_string(&order).unwrap();
     }
 
     fn new_game(&mut self) {
@@ -67,12 +70,12 @@ impl Default for MoveOrderer {
             prior_bm: false,
             tt_bm: true,
             mvv_lva: true,
-            order: "SHIGKPqBE".to_string(),  // , SHICKPQE, SHIGKPQBE
             thread: 0,
             count_pv: PlyStat::new("order pv"),
             count_bm: PlyStat::new("order bm"),
             count_tt_bm: PlyStat::new("order tt bm"),
             picker: Stack::<OrderedMoveList>::default(),
+            order: MoveType::vec_from_string("SHIGKPqBE").unwrap(),  // , SHICKPQE, SHIGKPQBE
         }
     }
 }
@@ -84,7 +87,7 @@ impl fmt::Display for MoveOrderer {
         writeln!(f, "prior bm         : {}", self.prior_bm)?;
         writeln!(f, "tt bm            : {}", self.tt_bm)?;
         writeln!(f, "mvv_lva          : {}", self.mvv_lva)?;
-        writeln!(f, "order            : {}", self.order)?;
+        writeln!(f, "order            : {}", MoveType::slice_to_string(&self.order))?;
         writeln!(f, "thread           : {}", self.thread)?;
         writeln!(
             f,
@@ -201,7 +204,7 @@ impl Algo {
 #[derive(Clone, Debug, Default)]
 pub struct OrderedMoveList {
     captures: bool,
-    stage: u8,
+    stage: usize,
     moves: MoveList,
     all_moves: MoveList,
     bad_captures: MoveList,
@@ -231,16 +234,16 @@ impl MoveOrderer {
 
 
 impl OrderedMoveList {
-    pub fn next_move(&mut self, b: &Board, algo: &mut Algo) -> Option<(char,Move)> {
-        let stage = algo.move_orderer.order.chars().nth(self.stage as usize).unwrap();
+    pub fn next_move(&mut self, b: &Board, algo: &mut Algo) -> Option<(MoveType,Move)> {
+        let move_type = algo.move_orderer.order[self.stage];
         if self.index < self.moves.len() {
-            if stage == 'g' || stage == 'c' 
+            if move_type == MoveType::GoodCapture || move_type == MoveType::Capture 
             // we dont sort killers
-            // || stage == 'b' as b is sorted by reverse anyway due to push and they are bad captures
+            // || move_type == 'b' as b is sorted by reverse anyway due to push and they are bad captures
             {
                 Self::sort_one_capture_move(self.index, &mut self.moves);
             }
-            if stage == 'G' || stage == 'g' {
+            if move_type == MoveType::GoodCaptureUpfrontSorted || move_type == MoveType::GoodCapture {
                 let mv = &self.moves[self.index];
                 let see = algo.eval.eval_move_see(b, mv);
                 if see < 0 {
@@ -249,7 +252,7 @@ impl OrderedMoveList {
                     return self.next_move(b, algo);
                 }
             }
-            let some = Some((stage,self.moves[self.index]));
+            let some = Some((move_type,self.moves[self.index]));
             self.index += 1;
             return some;
         }
@@ -303,21 +306,22 @@ impl OrderedMoveList {
         // println!("{}", self.move_orderer.order.chars().nth(pick.stage as usize).unwrap());
         let all_moves = &mut self.all_moves;
         let moves = &mut self.moves;
-        match algo.move_orderer.order.chars().nth(self.stage as usize).unwrap() {
-            // Init
-            'S' => {}
-            'H' => {
+        match algo.move_orderer.order[self.stage] 
+        {
+            MoveType::Start => {}
+
+            MoveType::Hash => {
                 if !self.tt.is_null() {
                     moves.push(self.tt);
                 }
             }
-            'I' => {
+            MoveType::Initialize => {
                 b.legal_moves_into(all_moves);
                 let mv = &self.tt;
                 all_moves.retain(|m| mv != m );
             }
             // Good Captures
-            'G' => {
+            MoveType::GoodCaptureUpfrontSorted => {
                 all_moves
                     .iter()
                     .filter(|m| Move::is_capture(m))
@@ -329,7 +333,7 @@ impl OrderedMoveList {
                 }
             }
             // Good Captures (sorted later)
-            'g' => {
+            MoveType::GoodCapture => {
                 all_moves
                     .iter()
                     .filter(|m| Move::is_capture(m))
@@ -337,7 +341,7 @@ impl OrderedMoveList {
             }
 
             // Killers
-            'K' => {
+            MoveType::Killer => {
                 algo.killers.legal_moves_for(self.ply, b, moves);
                 all_moves.retain(|m| !moves.contains(m));
                 // moves.sort_unstable_by_key(Move::mvv_lva_score);
@@ -348,7 +352,7 @@ impl OrderedMoveList {
             }
 
             // Promos
-            'P' => {
+            MoveType::Promo => {
                 all_moves
                     .iter()
                     .filter(|m| Move::is_promo(m) && !Move::is_capture(m))
@@ -356,7 +360,7 @@ impl OrderedMoveList {
                 // algo.order_moves(self.ply, moves, &None);
             }
             // Quiets
-            'Q' => {
+            MoveType::QuietUnsorted => {
                 all_moves
                     .iter()
                     .filter(|m| !Move::is_capture(m) && !Move::is_promo(m))
@@ -370,7 +374,7 @@ impl OrderedMoveList {
             }
 
             // sorted quiets
-            'q' => {
+            MoveType::Quiet => {
                 all_moves
                     .iter()
                     .filter(|m| !Move::is_capture(m) && !Move::is_promo(m))
@@ -383,25 +387,25 @@ impl OrderedMoveList {
             }
 
             // Bad Captures
-            'B' => {
+            MoveType::BadCapture => {
                 moves.extend(self.bad_captures.iter().cloned());
                 // if algo.move_orderer.thread == 1 && moves.len() >= 2 {
                 //     moves.swap(0, 1);
                 // }
             }
             // End
-            'E' => {}
+            MoveType::End => {}
 
 
 
 
             // unorderer
-            'U' => {
+            MoveType::Unsorted => {
                 b.legal_moves_into(moves);
                 // std::mem::swap(&mut self.moves, &mut self.all_moves);
             }
             // Captures
-            'C' => {
+            MoveType::Capture => {
                 all_moves
                     .iter()
                     .filter(|m| Move::is_capture(m))
@@ -411,17 +415,6 @@ impl OrderedMoveList {
                 if algo.move_orderer.thread == 1 && moves.len() >= 2 {
                     moves.swap(0, 1);
                 }
-            }
-            'c' => {
-                all_moves
-                    .iter()
-                    .filter(|m| Move::is_capture(m))
-                    .for_each(|&m| moves.push(m));
-                // moves.sort_unstable_by_key(Move::mvv_lva_score);
-                // moves.reverse();
-                // if algo.move_orderer.thread == 1 && moves.len() >= 2 {
-                //     moves.swap(0, 1);
-                // }
             }
             // // Remaining
             // 'R' => {

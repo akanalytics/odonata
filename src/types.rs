@@ -1,6 +1,7 @@
 use crate::bitboard::bitboard::{Bitboard, Dir};
+use serde::{Deserialize, Serialize};
 use std::fmt;
-use serde::{Serialize, Deserialize};
+use strum_macros::EnumCount;
 
 pub const MAX_PLY: Ply = 128;
 pub const MAX_LEGAL_MOVES: usize = 218;
@@ -47,7 +48,6 @@ pub fn chooser_struct<'a, T>(c: Color, choices: &'a Chooser<&T>) -> &'a T {
     [&choices.white, &choices.black][c as usize]
 }
 
-
 #[derive(Copy, Clone, Serialize, Deserialize, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum Color {
     #[serde(rename = "w")]
@@ -61,12 +61,12 @@ impl<T> std::ops::Index<Color> for [T] {
     type Output = T;
     #[inline]
     fn index(&self, i: Color) -> &Self::Output {
-        #[cfg(feature="unchecked_indexing")]  
+        #[cfg(feature = "unchecked_indexing")]
         unsafe {
             &self.get_unchecked(i.index())
         }
 
-        #[cfg(not(feature="unchecked_indexing"))]
+        #[cfg(not(feature = "unchecked_indexing"))]
         &self[(i.index())]
     }
 }
@@ -180,12 +180,12 @@ impl<T> std::ops::Index<Piece> for [T] {
     type Output = T;
     #[inline]
     fn index(&self, i: Piece) -> &Self::Output {
-        #[cfg(feature="unchecked_indexing")]
+        #[cfg(feature = "unchecked_indexing")]
         unsafe {
             &self.get_unchecked(i.index())
         }
 
-        #[cfg(not(feature="unchecked_indexing"))]
+        #[cfg(not(feature = "unchecked_indexing"))]
         &self[(i.index())]
     }
 }
@@ -388,10 +388,95 @@ impl std::ops::Sub for ScoreWdl {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, EnumCount)]
+#[repr(u8)]
+pub enum MoveType {
+    Start,
+    Hash,
+    Initialize,
+    Null,
+    Unsorted,
+    Capture,
+    GoodCapture,
+    GoodCaptureUpfrontSorted,
+    Killer,
+    Promo,
+    Quiet,
+    QuietUnsorted,
+    BadCapture,
+    Remaining,
+    End,
+}
+
+
+impl MoveType {
+    pub fn as_char(self) -> char {
+        match self {
+            MoveType::Start => 'S',
+            MoveType::Hash => 'H',
+            MoveType::Initialize => 'I',
+            MoveType::Null => 'N',
+            MoveType::GoodCapture => 'g',
+            MoveType::GoodCaptureUpfrontSorted => 'G',
+            MoveType::Killer => 'K',
+            MoveType::Promo => 'P',
+            MoveType::Quiet => 'q',
+            MoveType::QuietUnsorted => 'Q',
+            MoveType::BadCapture => 'B',
+            MoveType::Remaining => 'R',
+            MoveType::Unsorted => 'U',
+            MoveType::Capture => 'C',
+            MoveType::End => 'E',
+        }
+    }
+
+
+    pub fn from_char(c: char) -> Result<MoveType, String> {
+        match c {
+            'S' => Ok(MoveType::Start),
+            'H' => Ok(MoveType::Hash),
+            'I' => Ok(MoveType::Initialize),
+            'N' => Ok(MoveType::Null),
+            'g' => Ok(MoveType::GoodCapture),
+            'G' => Ok(MoveType::GoodCaptureUpfrontSorted),
+            'K' => Ok(MoveType::Killer),
+            'P' => Ok(MoveType::Promo),
+            'q' => Ok(MoveType::Quiet),
+            'Q' => Ok(MoveType::QuietUnsorted),
+            'B' => Ok(MoveType::BadCapture),
+            'R' => Ok(MoveType::Remaining),
+            'U' => Ok(MoveType::Unsorted),
+            'C' => Ok(MoveType::Capture),
+            'E' => Ok(MoveType::End),
+            _ => Err(format!("'{}' is unknown move type", c)),
+        }
+    }
+
+    pub fn slice_to_string(move_types: &[MoveType]) -> String {
+        move_types
+            .iter()
+            .map(|&mt| mt.as_char())
+            .collect::<Vec<char>>()
+            .into_iter()
+            .collect()
+    }
+
+    pub fn vec_from_string(move_types: &str) -> Result<Vec<MoveType>, String> {
+        move_types
+            .chars()
+            .map(|c| MoveType::from_char(c))
+            .collect::<Result<Vec<_>, _>>()
+    }
+}
+
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
     // use serde_json::json;
+    use strum::EnumCount;
+
 
     #[test]
     fn color() {
@@ -409,10 +494,9 @@ mod tests {
     #[test]
     fn test_serde() {
         //let color = json!({"color" : "b"});
-        assert_eq!(serde_json::to_string(&Color::Black).unwrap(), "\"b\""); 
-        assert_eq!(serde_json::from_str::<Color>("\"w\"").unwrap(), Color::White); 
+        assert_eq!(serde_json::to_string(&Color::Black).unwrap(), "\"b\"");
+        assert_eq!(serde_json::from_str::<Color>("\"w\"").unwrap(), Color::White);
     }
-
 
     #[test]
     fn piece() {
@@ -441,6 +525,15 @@ mod tests {
             format!("{:.02}", ScoreWdl::new(217, 77, 184).elo_differnce()),
             "24.02"
         );
+    }
+
+    #[test]
+    fn test_move_type() {
+        let many = MoveType::vec_from_string("HIGKPqB").unwrap();
+        assert_eq!(many[0], MoveType::Hash);
+        assert_eq!(many.last(), Some(&MoveType::BadCapture));
+        assert_eq!(MoveType::slice_to_string(&many), "HIGKPqB");
+        assert!(MoveType::COUNT > 1);
     }
 
     #[test]

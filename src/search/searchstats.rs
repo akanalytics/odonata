@@ -1,9 +1,10 @@
 use crate::clock::{Clock, DeterministicClock};
 use crate::eval::score::Score;
 use crate::variation::Variation;
-use crate::types::{Ply, MAX_PLY};
+use crate::types::{Ply, MAX_PLY, MoveType};
 use std::fmt;
 use std::cmp;
+ use strum::EnumCount;
 use std::time::Duration;
 
 #[derive(Clone, Debug)]
@@ -221,8 +222,10 @@ impl SearchStats {
     // }
 
     #[inline]
-    pub fn inc_node_cut(&mut self, ply: Ply) {
+    pub fn inc_node_cut(&mut self, ply: Ply, move_type: MoveType) {
         self.plies[ply as usize].node_cut += 1;
+        self.plies[ply as usize].cut_on_move[move_type as usize] += 1;
+
     }
 
     #[inline]
@@ -319,7 +322,7 @@ pub struct NodeStats {
     pub pvs_research: u64,
     pub nmp: u64,
     pub fp: u64,
-    pub cut_on_move: [u64; 6],
+    pub cut_on_move: [u64; MoveType::COUNT],
 
     pub est_time: Duration,
     pub real_time: Duration,
@@ -348,7 +351,7 @@ impl NodeStats {
         self.pvs_research = 0;
         self.nmp = 0;
         self.fp = 0;
-        self.cut_on_move = [0; 6];
+        self.cut_on_move = [0; MoveType::COUNT];
         
         self.q_interior_nodes = 0;
         self.q_leaf_nodes = 0;
@@ -362,6 +365,10 @@ impl NodeStats {
 
 
     }
+
+    fn cut_move_perc(&self, mt: MoveType) -> u64 {
+        self.cut_on_move[mt as usize] * 100 / (1+self.node_cut)
+    } 
 
     pub fn accumulate(&mut self, other: &NodeStats) {
         self.interior_nodes += other.interior_nodes;
@@ -409,11 +416,17 @@ macro_rules! header_format {
             "{node:>11} ",
             "{interior:>11} ",
             "{leaf:>11} ",
-            "{ttnode:>11} ",
+            "{ttnode:>11}  ",
 
-            "{pv_perc:>6} ",
-            "{cut_perc:>6} ",
-            "{all_perc:>6} ",
+            "{pv_perc:>3} ",
+            "{cut_perc:>3} ",
+            "{all_perc:>3}   ",
+
+            "{cut_move_hash:>3} ",
+            "{cut_move_null:>3} ",
+            "{cut_move_cap:>3} ",
+            "{cut_move_killer:>3} ",
+            "{cut_move_other:>3}  ",
 
             "{pvs:>7} ",
             "{pvs_research:>7} ",
@@ -427,7 +440,7 @@ macro_rules! header_format {
 
             "{est_time:>11} ",
             "{real_time:>11} ",
-            "{deterministic_time:>11}",
+            // "{deterministic_time:>11}",
         )
     };
 }
@@ -442,9 +455,15 @@ impl NodeStats {
             leaf = "leaf nodes",
             ttnode = "tt nodes]",
 
-            cut_perc = "cut %",
-            all_perc = "all %",
-            pv_perc = "pv %",
+            pv_perc = "P%",
+            cut_perc = "C%",
+            all_perc = "A%",
+
+            cut_move_hash = "HA",
+            cut_move_null = "NU",
+            cut_move_cap = "CA",
+            cut_move_killer = "KI",
+            cut_move_other = "OT",
 
             pvs = "pvs",
             pvs_research = "pvs/r",
@@ -458,7 +477,7 @@ impl NodeStats {
 
             est_time = "est_time",
             real_time = "real_time",
-            deterministic_time = "determstic",
+            // deterministic_time = "determstic",
         )
     }
 
@@ -471,9 +490,15 @@ impl NodeStats {
             leaf = "-----------",
             ttnode = "-----------",
 
-            cut_perc = "------",
-            pv_perc = "------",
-            all_perc = "------",
+            cut_perc = "--",
+            pv_perc = "--",
+            all_perc = "--",
+
+            cut_move_hash = "--",
+            cut_move_null = "--",
+            cut_move_cap = "--",
+            cut_move_killer = "--",
+            cut_move_other = "--",
 
             pvs = "-------",
             pvs_research = "-------",
@@ -487,7 +512,7 @@ impl NodeStats {
 
             est_time = "-----------",
             real_time = "-----------",
-            deterministic_time = "-----------",
+            // deterministic_time = "-----------",
         )
     }
 
@@ -504,6 +529,17 @@ impl NodeStats {
             cut_perc = self.node_cut * 100 / (1+self.nodes()) as u64,
             all_perc = self.node_all * 100 / (1+self.nodes()) as u64,
 
+            cut_move_hash = self.cut_move_perc(MoveType::Hash),
+            cut_move_null = self.cut_move_perc(MoveType::Null),
+            cut_move_cap = self.cut_move_perc(MoveType::GoodCapture) + self.cut_move_perc(MoveType::GoodCaptureUpfrontSorted),
+            cut_move_killer = self.cut_move_perc(MoveType::Killer),
+            cut_move_other = self.cut_move_perc(MoveType::Promo) + 
+                self.cut_move_perc(MoveType::Quiet) +
+                self.cut_move_perc(MoveType::QuietUnsorted) +
+                self.cut_move_perc(MoveType::BadCapture) +
+                self.cut_move_perc(MoveType::Unsorted) +
+                self.cut_move_perc(MoveType::Capture),
+
             pvs = self.pvs,
             pvs_research = self.pvs_research,
             nmp = self.nmp,
@@ -516,7 +552,7 @@ impl NodeStats {
 
             est_time = Clock::format(self.est_time),
             real_time = Clock::format(self.real_time),
-            deterministic_time = Clock::format(self.deterministic_time),
+            // deterministic_time = Clock::format(self.deterministic_time),
         )
     }
 }
@@ -533,6 +569,7 @@ impl fmt::Display for NodeStats {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::MoveType;
 
     #[test]
     fn test_display_stats() {
@@ -545,7 +582,7 @@ mod tests {
         search.inc_leaf_nodes(2);
         search.inc_leaf_nodes(2);
         search.inc_tt_nodes(2);
-        search.inc_node_cut(2);
+        search.inc_node_cut(2, MoveType::GoodCapture);
         search.inc_interior_nodes(0);
         println!("{}", search);
     }

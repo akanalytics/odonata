@@ -6,7 +6,7 @@ use crate::mv::Move;
 use crate::pvtable::PvTable;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
-use crate::types::{Ply, MAX_PLY};
+use crate::types::{Ply, MAX_PLY, MoveType};
 
 pub struct AlphaBeta;
 
@@ -82,10 +82,12 @@ impl Algo {
                         // previously this position raised alpha, but didnt trigger a cut
                         // no point going through moves as we know what the max score is
                         if entry.score >= beta {
+                            self.search_stats.inc_node_cut(ply, MoveType::Hash);
                             self.search_stats.inc_tt_nodes(ply);
                             return entry.score;
                         }
                         if entry.score <= alpha {
+                            self.search_stats.inc_node_all(ply);
                             self.search_stats.inc_tt_nodes(ply);
                             return entry.score;
                         }
@@ -102,7 +104,7 @@ impl Algo {
                         // not all child nodes were scored, so score is a lower bound
                         // FIXME: probably dont set alpha just the hinted mv and re-search the node
                         if entry.score >= beta {
-                            self.search_stats.inc_node_cut(ply);
+                            self.search_stats.inc_node_cut(ply, MoveType::Hash);
                             self.tt.store(board.hash(), entry);
                             // self.record_truncated_move(ply, &entry.bm);
                             self.search_stats.inc_tt_nodes(ply);
@@ -177,14 +179,14 @@ impl Algo {
             );
             board.undo_move(&mv);
             if child_score >= beta {
-                self.search_stats.inc_node_cut(ply);
+                self.search_stats.inc_node_cut(ply, MoveType::Null);
                 return child_score;
             }
         }
 
         let mut sorted_moves = self.move_orderer.get_sorted_moves(ply, tt_mv);
         let mut count = 0;
-        while let Some((_stage, mv)) = sorted_moves.next_move(board, self) {
+        while let Some((move_type, mv)) = sorted_moves.next_move(board, self) {
             count += 1;
             if futility && score > -Score::INFINITY && self.futility.can_prune_move(&mv, board) {
                 self.search_stats.inc_fp(ply);
@@ -248,6 +250,7 @@ impl Algo {
 
             if alpha >= beta && !self.minmax {
                 nt = NodeType::Cut;
+                self.search_stats.inc_node_cut(ply, move_type);
                 self.killers.store(ply, &mv);
                 break;
             }
@@ -269,7 +272,6 @@ impl Algo {
             self.search_stats.inc_node_all(ply);
             // nothing
         } else if nt == NodeType::Cut {
-            self.search_stats.inc_node_cut(ply);
             debug_assert!(!bm.is_null())
         } else if nt == NodeType::Pv {
             self.search_stats.inc_node_pv(ply);

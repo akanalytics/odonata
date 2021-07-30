@@ -56,10 +56,10 @@ impl Default for Futility {
         Futility {
             enabled: true,
             eval_position: true,
-            max_depth: 2, // not sure > 2really makes sense
+            max_depth: 2, // not sure > 2 really makes sense
             margin1: 100,
             margin2: 300,
-            margin3: 550,
+            margin3: 1500,
         }
     }
 }
