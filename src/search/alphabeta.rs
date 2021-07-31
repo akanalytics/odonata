@@ -57,6 +57,10 @@ impl Algo {
             return -Score::INFINITY;
         }
 
+        if alpha + Score::from_cp(1) == beta {
+            self.search_stats.inc_zw_nodes(ply);
+        }
+
         if board.draw_outcome().is_some() {
             self.search_stats.inc_leaf_nodes(ply);
             return board.eval_draw(&mut self.eval); // will return a draw score
@@ -188,8 +192,9 @@ impl Algo {
         let mut count = 0;
         while let Some((move_type, mv)) = sorted_moves.next_move(board, self) {
             count += 1;
+            self.search_stats.inc_move(ply);
             if futility && score > -Score::INFINITY && self.futility.can_prune_move(&mv, board) {
-                self.search_stats.inc_fp(ply);
+                self.search_stats.inc_fp_move(ply);
                 continue;
             }
             let mut child_board = board.make_move(&mv);
@@ -210,7 +215,7 @@ impl Algo {
                 },
             ) {
                 debug_assert!(alpha.is_numeric());
-                self.search_stats.inc_pvs(ply);
+                self.search_stats.inc_pvs_move(ply);
                 // using [alpha, alpha + 1]
                 child_score = -self.alphabeta_recursive(
                     &mut child_board,
