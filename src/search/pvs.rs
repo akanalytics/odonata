@@ -21,7 +21,7 @@ pub struct Pvs {
 
 impl Component for Pvs {
     fn settings(&self, c: &mut Config) {
-        c.set("pvs.enabled", "type check default true");
+        c.set("pvs.enabled", &format!("type check default {}", self.enabled));
         c.set("pvs.min.depth",  &format!("type spin min 0 max 100 default {}", self.min_depth));
     }
     fn configure(&mut self, c: &Config) {
@@ -41,7 +41,7 @@ impl Component for Pvs {
 impl Default for Pvs {
     fn default() -> Self {
         Pvs {
-            enabled: false,
+            enabled: true,
             min_depth: 2, 
         }
     }
