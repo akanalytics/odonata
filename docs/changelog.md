@@ -3,8 +3,8 @@
 Milestones ('m') are bundled into Releases.  
 
 
-
-- 0.3.28 Piece square table for rook end game
+- 0.3.29 Check extensions 
+- 0.3.28 Piece square table for rook end game, pawn pst corrcted, broken check extensions 
 - 0.3.27 Futility margin adjustment, PVS re-enabled (Elo 1968)
 
 

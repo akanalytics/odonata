@@ -191,6 +191,7 @@ impl Algo {
         self.results.set(Tag::Pv(self.pv().clone()));
         self.results.set(Tag::CentipawnEvaluation(self.score().as_i16() as i32));
         self.results.set(Tag::AnalysisCountDepth(self.search_stats().depth()));
+        self.results.set(Tag::AnalysisCountSelDepth(self.search_stats().selective_depth()));
         self.results.set(Tag::AnalysisCountNodes(self.search_stats().cumulative().nodes() as u128));
 
         debug!("\n\n\n=====Search completed=====\n{}", self);

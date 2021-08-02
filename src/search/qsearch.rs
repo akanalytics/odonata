@@ -203,7 +203,6 @@ impl Algo {
         }
         self.order_moves(ply, &mut moves, &None);
         for mv in moves.iter() {
-            // FIXME! skip illegal moves
             trace!(
                 "{}",
                 board.debug()
@@ -218,6 +217,8 @@ impl Algo {
                     }
             );
             if !in_check && !mv.is_ep_capture() && mv.to().as_bb().disjoint(recaptures) {
+                // apply a see > 0 filter unless
+                // e/p or in_check (see <0 may be only evasion) or a recapture
                 let score = board.eval_move_see(&self.eval, &mv);
                 let winning = false;
                 // allow 8 matched attackers

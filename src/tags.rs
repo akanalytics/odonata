@@ -38,6 +38,7 @@ pub enum Tag {
     Pv(Variation),
     Id(String),
     AnalysisCountDepth(Ply),
+    AnalysisCountSelDepth(Ply),
     AnalysisCountNodes(u128),
     AnalysisCountSeconds(u32),
     ChessClock(Duration),
@@ -63,6 +64,7 @@ impl Tag {
     pub const PV: &'static str = "pv";
     pub const ID: &'static str = "id";
     pub const ACD: &'static str = "acd";
+    pub const ACSD: &'static str = "acsd";
     pub const ACN: &'static str = "acn";
     pub const ACS: &'static str = "acs";
     pub const CC: &'static str = "cc";
@@ -88,6 +90,7 @@ impl Tag {
             Self::PV => Tag::Pv(b.parse_san_variation(v)?),
             Self::ID => Tag::Id(v.to_string()) ,
             Self::ACD => Tag::AnalysisCountDepth(v.parse::<Ply>().map_err(|e| e.to_string())?) ,
+            Self::ACSD => Tag::AnalysisCountSelDepth(v.parse::<Ply>().map_err(|e| e.to_string())?) ,
             Self::ACN => Tag::AnalysisCountNodes(v.parse::<u128>().map_err(|e| e.to_string())?) ,
             Self::ACS => Tag::AnalysisCountSeconds(v.parse::<u32>().map_err(|e| e.to_string())?) ,
             Self::CC => Tag::ChessClock(Duration::new(0, 0)),
@@ -119,6 +122,7 @@ impl Tag {
             Tag::Pv(_) => Self::PV.to_string(),
             Tag::Id(_) => Self::ID.to_string(),
             Tag::AnalysisCountDepth(_) => Self::ACD.to_string(),
+            Tag::AnalysisCountSelDepth(_) => Self::ACSD.to_string(),
             Tag::AnalysisCountNodes(_) => Self::ACN.to_string(),
             Tag::AnalysisCountSeconds(_) => Self::ACS.to_string(),
             Tag::ChessClock(_) => "cc".to_string(),
@@ -146,6 +150,7 @@ impl Tag {
             Tag::Pv(variation) => variation.uci(),
             Tag::Id(s) => format!("{}", s),
             Tag::AnalysisCountDepth(n) => format!("{}", n),
+            Tag::AnalysisCountSelDepth(n) => format!("{}", n),
             Tag::AnalysisCountNodes(n) => format!("{}", n),
             Tag::AnalysisCountSeconds(n) => format!("{}", n),
             Tag::ChessClock(_duration) => format!("{}", "na"), // FIXME!

@@ -3,6 +3,7 @@ use crate::clock::Clock;
 use crate::config::Component;
 use crate::perft::Perft;
 use crate::search::algo::Engine;
+use crate::tags::Tag;
 use crate::search::timecontrol::TimeControl;
 // use env_logger;
 use crate::utils::Formatter;
@@ -90,6 +91,7 @@ impl Bench {
                 '-'
             };
             let depth = engine.algo.results().acd().unwrap();
+            let sel_depth = engine.algo.results().get_tag(Tag::ACSD).value_uci();
             let nodes = engine.algo.results().acn().unwrap();
             let nps = Formatter::format_f64(nodes as f64 / elapsed.as_secs_f64());
             let fen = engine.algo.results().board().to_fen();
@@ -98,13 +100,13 @@ impl Bench {
             total_depth += depth;
             let nodes = Formatter::format_u128(nodes);
             println!(
-                "{:>3} {:<8} {} {:>13} {:>7} {:>5}  {:<85}",
+                "{:>3} {:<8} {} {:>13} {:>7} {:>2}/{:<2}  {:<85}",
                 i + 1,
                 bm,
                 correct,
                 nodes,
                 nps,
-                depth,
+                depth, sel_depth,
                 fen
             );
         }

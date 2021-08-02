@@ -209,19 +209,18 @@ impl Algo {
             );
             self.current_variation.set_last_move(ply + 1, &mv);
 
-            let ext = 0; //
-            // self.extensions.extend(
-            //     board,
-            //     &mv,
-            //     &child_board,
-            //     &Node {
-            //         ply,
-            //         depth,
-            //         alpha,
-            //         beta,
-            //     },
-            //     &mut self.search_stats,
-            // );
+            let ext = self.extensions.extend(
+                board,
+                &mv,
+                &child_board,
+                &Node {
+                    ply,
+                    depth,
+                    alpha,
+                    beta,
+                },
+                &mut self.search_stats,
+            );
             let mut child_score;
             if self.pvs.permitted(
                 nt,
