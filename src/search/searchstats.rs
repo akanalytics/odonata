@@ -264,6 +264,11 @@ impl SearchStats {
     }
 
     #[inline]
+    pub fn inc_ext_check(&mut self, ply: Ply) {
+        self.plies[ply as usize].ext_check += 1;
+    }
+
+    #[inline]
     pub fn inc_pvs_research(&mut self, ply: Ply) {
         self.plies[ply as usize].pvs_research += 1;
     }
@@ -335,6 +340,7 @@ pub struct NodeStats {
     pub pvs: u64,
     pub pvs_research: u64,
     pub fp: u64,
+    pub ext_check: u64,
     pub mv: u64,
 
     pub est_time: Duration,
@@ -401,6 +407,8 @@ impl NodeStats {
         self.pvs_research += other.pvs_research;
         self.nmp += other.nmp;
         self.fp += other.fp;
+        self.ext_check += other.ext_check;
+        self.mv += other.mv;
         for i in 0..6 {
             self.cut_on_move[i] += other.cut_on_move[i];
         }
@@ -451,6 +459,7 @@ macro_rules! header_format {
 
             "{pvs:>4} ",
             "{res:>5} ",
+            "{ec:>4}  ",
             "{fp:>4}  ",
 
             "{qnode:>11} ",
@@ -490,6 +499,7 @@ impl NodeStats {
             pvs = "pvs",
             res = "r/s",
             fp = "fut",
+            ec = "e/c",
 
             qnode = "q total",
             qinterior = "q interior",
@@ -526,6 +536,7 @@ impl NodeStats {
             pvs = "---",
             res = "----",
             fp = "---",
+            ec = "---",
 
             qnode = "-----------",
             qinterior = "-----------",
@@ -567,6 +578,7 @@ impl NodeStats {
             pvs = self.pvs * 100 / cmp::max(1, self.mv) as u64,
             res = 10000 * self.pvs_research / cmp::max(1, self.mv) as u64,
             fp = self.fp * 100 / cmp::max(1, self.mv) as u64,
+            ec = self.ext_check * 100 / cmp::max(1, self.mv) as u64,
 
             qnode = self.q_interior_nodes + self.q_leaf_nodes,
             qinterior = self.q_interior_nodes,

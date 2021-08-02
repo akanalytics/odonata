@@ -3,7 +3,7 @@ pub mod searchprogress;
 pub mod searchstats;
 pub mod taskcontrol;
 pub mod timecontrol;
-// pub mod context;
+pub mod extensions;
 pub mod alphabeta;
 pub mod iterative_deepening;
 pub mod killers;

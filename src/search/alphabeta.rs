@@ -6,7 +6,7 @@ use crate::mv::Move;
 use crate::pvtable::PvTable;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
-use crate::types::{Ply, MAX_PLY, MoveType};
+use crate::types::{MoveType, Ply, MAX_PLY};
 
 pub struct AlphaBeta;
 
@@ -200,9 +200,28 @@ impl Algo {
             let mut child_board = board.make_move(&mv);
             self.repetition.push(&mv, &child_board);
             child_board.set_repetition_count(self.repetition.count(&child_board));
-            debug_assert!(alpha < beta || self.minmax, "alpha={}, beta={}, minmax={}", alpha, beta, self.minmax);
+            debug_assert!(
+                alpha < beta || self.minmax,
+                "alpha={}, beta={}, minmax={}",
+                alpha,
+                beta,
+                self.minmax
+            );
             self.current_variation.set_last_move(ply + 1, &mv);
 
+            let ext = 0; //
+            // self.extensions.extend(
+            //     board,
+            //     &mv,
+            //     &child_board,
+            //     &Node {
+            //         ply,
+            //         depth,
+            //         alpha,
+            //         beta,
+            //     },
+            //     &mut self.search_stats,
+            // );
             let mut child_score;
             if self.pvs.permitted(
                 nt,
@@ -220,7 +239,7 @@ impl Algo {
                 child_score = -self.alphabeta_recursive(
                     &mut child_board,
                     ply + 1,
-                    depth - 1,
+                    depth + ext - 1,
                     -alpha - Score::from_cp(1),
                     -alpha,
                     &mv,
@@ -228,12 +247,18 @@ impl Algo {
                 if child_score > score && child_score < beta {
                     // research with full window
                     self.search_stats.inc_pvs_research(ply);
-                    child_score =
-                        -self.alphabeta_recursive(&mut child_board, ply + 1, depth - 1, -beta, -alpha, &mv);
+                    child_score = -self.alphabeta_recursive(
+                        &mut child_board,
+                        ply + 1,
+                        depth + ext - 1,
+                        -beta,
+                        -alpha,
+                        &mv,
+                    );
                 }
             } else {
                 child_score =
-                    -self.alphabeta_recursive(&mut child_board, ply + 1, depth - 1, -beta, -alpha, &mv);
+                    -self.alphabeta_recursive(&mut child_board, ply + 1, depth + ext - 1, -beta, -alpha, &mv);
             };
             board.undo_move(&mv);
             self.repetition.pop();
