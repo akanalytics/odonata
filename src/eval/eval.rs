@@ -286,7 +286,7 @@ impl SimpleScorer {
             pawn_passed: Weight::new(50, 80),
             pawn_shield: Weight::new(50, 0),
             rook_open_file: 20,
-            rook_edge: Weight::new(0, 5),
+            rook_edge: Weight::new(0, 0),
             contempt: -30, // typically -ve
             tempo: Weight::new(16, 16),
             material_scores: MATERIAL_SCORES,
