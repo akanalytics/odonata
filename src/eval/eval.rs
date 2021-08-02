@@ -43,112 +43,7 @@ use std::fmt;
 // position is by white/black as directional
 
 // https://www.chessprogramming.org/Simplified_Evaluation_Function
-const SQUARE_VALUES_MG: [[i32; 64]; Piece::len()] = [
-    PAWN_PST_EG,
-    PAWN_PST_MG,
-    KNIGHT_PST,
-    BISHOP_PST,
-    ROOK_PST,
-    QUEEN_PST,
-    KING_PST_MG,
-];
-const SQUARE_VALUES_EG: [[i32; 64]; Piece::len()] = [
-    PAWN_PST_EG,
-    PAWN_PST_EG,
-    KNIGHT_PST,
-    BISHOP_PST,
-    ROOK_PST,
-    QUEEN_PST,
-    KING_PST_EG,
-];
 
-#[rustfmt::skip]
-const PAWN_PST_MG: [i32; 64] = [
-0,  0,  0,  0,  0,  0,  0,  0,
-40, 40, 40, 40, 40, 40, 40, 40,
- 10, 10, 10, 10, 10, 10, 10, 10,
-  5,  5,  5, 10, 10,  5,  5,  5,
- -9, 0,  0, 20, 20, -5,  -5, -9,
- -5,-5, -9,  0,  0, -9, -5, -5,
- 9, 15, 15,-35,-35, 15, 15,  10,
- 0,  0,  0,  0,  0,  0,  0,  0];
-
-#[rustfmt::skip]
- const PAWN_PST_EG: [i32; 64] = [
- 0,  0,  0,  0,  0,  0,  0,  0,
- 60, 60, 60, 60, 60, 60, 60, 60,
- 40, 40, 40, 40, 40, 40, 40, 40,
- 20, 20, 20, 20, 20, 20, 20, 20,
- 10, 10, 10, 10, 10, 10, 10, 10,
-  5,  5,  5,  5,  5,  5,  5,  5,
-  0,  0,  0,  0,  0,  0,  0,  0,
-  0,  0,  0,  0,  0,  0,  0,  0];
-
-#[rustfmt::skip]
-const KNIGHT_PST: [i32; 64] = [
- -50,-40,-30,-30,-30,-30,-40,-50,
- -40,-20,  0,  0,  0,  0,-20,-40,
- -30,  0, 10, 15, 15, 10,  0,-30,
- -30,  5, 15, 20, 20, 15,  5,-30,
- -30,  0, 15, 20, 20, 15,  0,-30,
- -30,  5, 10, 15, 15, 10,  5,-30,
- -40,-20,  0,  5,  5,  0,-20,-40,
- -50,-40,-30,-30,-30,-30,-40,-50];
-
-#[rustfmt::skip]
-const BISHOP_PST: [i32; 64] = [
--20,-10,-10,-10,-10,-10,-10,-20,
--10,  0,  0,  0,  0,  0,  0,-10,
--10,  0,  5, 10, 10,  5,  0,-10,
--10,  5,  5, 10, 10,  5,  5,-10,
--10,  0, 10, 10, 10, 10,  0,-10,
--10, 10, 10, 10, 10, 10, 10,-10,
--10,  5,  0,  0,  0,  0,  5,-10,
--20,-10,-10,-10,-10,-10,-10,-20];
-
-#[rustfmt::skip]
-const ROOK_PST: [i32; 64] = [
-  0,  0,  0,  0,  0,  0,  0,  0,
-  5, 10, 10, 10, 10, 10, 10,  5,
- -5,  0,  0,  0,  0,  0,  0, -5,
- -5,  0,  0,  0,  0,  0,  0, -5,
- -5,  0,  0,  0,  0,  0,  0, -5,
- -5,  0,  0,  0,  0,  0,  0, -5,
- -5,  0,  0,  0,  0,  0,  0, -5,
-  0,  0,  3,  7,  7,  5, 0,  0];
-
-#[rustfmt::skip]
-const QUEEN_PST: [i32; 64] = [
--20,-10,-10, -5, -5,-10,-10,-20,
--10,  0,  0,  0,  0,  0,  0,-10,
--10,  0,  5,  5,  5,  5,  0,-10,
- -5,  0,  5,  5,  5,  5,  0, -5,
-  0,  0,  5,  5,  5,  5,  0, -5,
--10,  5,  5,  5,  5,  5,  0,-10,
--10,  0,  5,  0,  0,  0,  0,-10,
--20,-10,-10, -5, -5,-10,-10,-20];
-
-#[rustfmt::skip]
-const KING_PST_MG: [i32; 64] = [
--30,-40,-40,-50,-50,-40,-40,-30,
--30,-40,-40,-50,-50,-40,-40,-30,
--30,-40,-40,-50,-50,-40,-40,-30,
--30,-40,-40,-50,-50,-40,-40,-30,
--20,-30,-30,-40,-40,-30,-30,-20,
--10,-20,-20,-20,-20,-20,-20,-10,
-  0,  0,  0,  0,  0,  0,  0,  0,
- 20, 30, 15,  0,  0,  5, 30, 10];
-
-#[rustfmt::skip]
-const KING_PST_EG: [i32; 64] = [
--50,-40,-30,-20,-20,-30,-40,-50,
--30,-20,-10,  0,  0,-10,-20,-30,
--30,-10, 20, 30, 30, 20,-10,-30,
--30,-10, 30, 40, 40, 30,-10,-30,
--30,-10, 30, 40, 40, 30,-10,-30,
--30,-10, 20, 30, 30, 20,-10,-30,
--30,-30,  0,  0,  0,  0,-30,-30,
--50,-30,-30,-30,-30,-30,-30,-50];
 
 pub static ALL: Stat = Stat::new("ALL");
 pub static QUIESCENCE: Stat = Stat::new("QUIESCENCE");
@@ -189,6 +84,7 @@ pub struct SimpleScorer {
     pub pawn_isolated: Weight,
     pub pawn_passed: Weight,
     pub pawn_shield: Weight,
+    pub rook_edge: Weight,
     pub rook_open_file: i32,
     pub phasing: bool,
     pub contempt: i32,
@@ -246,6 +142,7 @@ impl Component for SimpleScorer {
         c.set_weight("eval.pawn.isolated", &self.pawn_isolated);
         c.set_weight("eval.pawn.passed", &self.pawn_passed);
         c.set_weight("eval.pawn.shield", &self.pawn_shield);
+        c.set_weight("eval.rook.edge", &self.rook_edge);
         c.set(
             "eval.draw.score.contempt",
             &format!("type spin min -10000 max 10000 default {}", self.contempt),
@@ -305,6 +202,7 @@ impl Component for SimpleScorer {
         self.pawn_isolated = c.weight("eval.pawn.isolated", &self.pawn_isolated);
         self.pawn_passed = c.weight("eval.pawn.passed", &self.pawn_passed);
         self.pawn_shield = c.weight("eval.pawn.shield", &self.pawn_shield);
+        self.rook_edge = c.weight("eval.rook.edge", &self.rook_edge);
         self.rook_open_file = c.int("eval.rook.open.file").unwrap_or(self.rook_open_file as i64) as i32;
         self.contempt = c.int("eval.draw.score.contempt").unwrap_or(self.contempt as i64) as i32;
         self.tempo = c.weight("eval.tempo", &self.tempo);
@@ -316,6 +214,7 @@ impl Component for SimpleScorer {
                 self.material_scores[*p] = i as i32;
             }
         }
+        self.calculate_pst();
     }
 
     fn new_game(&mut self) {}
@@ -342,6 +241,7 @@ impl fmt::Display for SimpleScorer {
         writeln!(f, "pawn.doubled     : {}", self.pawn_doubled)?;
         writeln!(f, "pawn.passed      : {}", self.pawn_passed)?;
         writeln!(f, "pawn.isolated    : {}", self.pawn_isolated)?;
+        writeln!(f, "rook_edge        : {}", self.rook_edge)?;
         writeln!(f, "rook.open.file   : {}", self.rook_open_file)?;
         writeln!(f, "contempt         : {}", self.contempt)?;
         writeln!(f, "tempo            : {}", self.tempo)?;
@@ -367,7 +267,7 @@ const MATERIAL_SCORES: [i32; Piece::len()] = [
 // builder methods
 impl SimpleScorer {
     pub fn new() -> Self {
-        SimpleScorer {
+        let mut me = SimpleScorer {
             cache_eval: false,
             cache_qeval: false,
             mobility: true,
@@ -386,24 +286,186 @@ impl SimpleScorer {
             pawn_passed: Weight::new(50, 80),
             pawn_shield: Weight::new(50, 0),
             rook_open_file: 20,
+            rook_edge: Weight::new(0, 5),
             contempt: -30, // typically -ve
             tempo: Weight::new(16, 16),
             material_scores: MATERIAL_SCORES,
             // cache: TranspositionTable::default(),
             // qcache: TranspositionTable::default(),
-            pst: Self::calculate_pst(),
+            pst: [[Weight::default(); 64]; Piece::len()],
             // depth: 0,
-        }
+        };
+        me.calculate_pst();
+        me
     }
 
-    fn calculate_pst() -> [[Weight; 64]; Piece::len()] {
-        let mut pst = [[Weight::default(); 64]; Piece::len()];
+    fn calculate_pst(&mut self) {
+        
+        #[rustfmt::skip]
+        let pawn_pst_mg: [i32; 64] = [
+        0,  0,  0,  0,  0,  0,  0,  0,
+        40, 40, 40, 40, 40, 40, 40, 40,
+         10, 10, 10, 10, 10, 10, 10, 10,
+          5,  5,  5, 10, 10,  5,  5,  5,
+         -9, 0,  0, 20, 20, -5,  -5, -9,
+         -5,-5, -9,  0,  0, -9, -5, -5,
+         9, 15, 15,-35,-35, 15, 15,  10,
+         0,  0,  0,  0,  0,  0,  0,  0];
+        
+        #[rustfmt::skip]
+         let pawn_pst_eg: [i32; 64] = [
+         0,  0,  0,  0,  0,  0,  0,  0,
+         60, 60, 60, 60, 60, 60, 60, 60,
+         40, 40, 40, 40, 40, 40, 40, 40,
+         20, 20, 20, 20, 20, 20, 20, 20,
+         10, 10, 10, 10, 10, 10, 10, 10,
+          5,  5,  5,  5,  5,  5,  5,  5,
+          0,  0,  0,  0,  0,  0,  0,  0,
+          0,  0,  0,  0,  0,  0,  0,  0];
+        
+        
+          #[rustfmt::skip]
+        let knight_pst_mg: [i32; 64] = [
+         -50,-40,-30,-30,-30,-30,-40,-50,
+         -40,-20,  0,  0,  0,  0,-20,-40,
+         -30,  0, 10, 15, 15, 10,  0,-30,
+         -30,  5, 15, 20, 20, 15,  5,-30,
+         -30,  0, 15, 20, 20, 15,  0,-30,
+         -30,  5, 10, 15, 15, 10,  5,-30,
+         -40,-20,  0,  5,  5,  0,-20,-40,
+         -50,-40,-30,-30,-30,-30,-40,-50];
+        
+         #[rustfmt::skip]
+        let knight_pst_eg: [i32; 64] = [
+         -50,-40,-30,-30,-30,-30,-40,-50,
+         -40,-20,  0,  0,  0,  0,-20,-40,
+         -30,  0, 10, 15, 15, 10,  0,-30,
+         -30,  5, 15, 20, 20, 15,  5,-30,
+         -30,  0, 15, 20, 20, 15,  0,-30,
+         -30,  5, 10, 15, 15, 10,  5,-30,
+         -40,-20,  0,  5,  5,  0,-20,-40,
+         -50,-40,-30,-30,-30,-30,-40,-50];
+
+        
+         #[rustfmt::skip]
+        let bishop_pst_mg: [i32; 64] = [
+        -20,-10,-10,-10,-10,-10,-10,-20,
+        -10,  0,  0,  0,  0,  0,  0,-10,
+        -10,  0,  5, 10, 10,  5,  0,-10,
+        -10,  5,  5, 10, 10,  5,  5,-10,
+        -10,  0, 10, 10, 10, 10,  0,-10,
+        -10, 10, 10, 10, 10, 10, 10,-10,
+        -10,  5,  0,  0,  0,  0,  5,-10,
+        -20,-10,-10,-10,-10,-10,-10,-20];
+        
+        #[rustfmt::skip]
+        let bishop_pst_eg: [i32; 64] = [
+        -20,-10,-10,-10,-10,-10,-10,-20,
+        -10,  0,  0,  0,  0,  0,  0,-10,
+        -10,  0,  5, 10, 10,  5,  0,-10,
+        -10,  5,  5, 10, 10,  5,  5,-10,
+        -10,  0, 10, 10, 10, 10,  0,-10,
+        -10, 10, 10, 10, 10, 10, 10,-10,
+        -10,  5,  0,  0,  0,  0,  5,-10,
+        -20,-10,-10,-10,-10,-10,-10,-20];
+
+        
+        #[rustfmt::skip]
+        let rook_pst_mg: [i32; 64] = [
+         0,  0,  0,  0,  0,  0,  0,  0,
+         5, 10, 10, 10, 10, 10, 10,  5,
+        -5,  0,  0,  0,  0,  0,  0, -5,
+        -5,  0,  0,  0,  0,  0,  0, -5,
+        -5,  0,  0,  0,  0,  0,  0, -5,
+        -5,  0,  0,  0,  0,  0,  0, -5,
+        -5,  0,  0,  0,  0,  0,  0, -5,
+         0,  0,  3,  7,  7,  5,  0,  0];
+
+        let a = self.rook_edge.e();
+         #[rustfmt::skip]
+        let rook_pst_eg: [i32; 64] = [
+        a,  a,  a,  a,  a,  a,  a,  a,
+        a,  0,  0,  0,  0,  0,  0,  a,
+        a,  0,  0,  0,  0,  0,  0,  a,
+        a,  0,  0,  0,  0,  0,  0,  a,
+        a,  0,  0,  0,  0,  0,  0,  a,
+        a,  0,  0,  0,  0,  0,  0,  a,
+        a,  0,  0,  0,  0,  0,  0,  a,
+        a,  a,  a,  a,  a,  a,  a,  a];
+
+        
+        #[rustfmt::skip]
+        let queen_pst_mg: [i32; 64] = [
+        -20,-10,-10, -5, -5,-10,-10,-20,
+        -10,  0,  0,  0,  0,  0,  0,-10,
+        -10,  0,  5,  5,  5,  5,  0,-10,
+         -5,  0,  5,  5,  5,  5,  0, -5,
+          0,  0,  5,  5,  5,  5,  0, -5,
+        -10,  5,  5,  5,  5,  5,  0,-10,
+        -10,  0,  5,  0,  0,  0,  0,-10,
+        -20,-10,-10, -5, -5,-10,-10,-20];
+        
+        #[rustfmt::skip]
+        let queen_pst_eg: [i32; 64] = [
+        -20,-10,-10, -5, -5,-10,-10,-20,
+        -10,  0,  0,  0,  0,  0,  0,-10,
+        -10,  0,  5,  5,  5,  5,  0,-10,
+         -5,  0,  5,  5,  5,  5,  0, -5,
+          0,  0,  5,  5,  5,  5,  0, -5,
+        -10,  5,  5,  5,  5,  5,  0,-10,
+        -10,  0,  5,  0,  0,  0,  0,-10,
+        -20,-10,-10, -5, -5,-10,-10,-20];
+
+
+        #[rustfmt::skip]
+        let king_pst_mg: [i32; 64] = [
+        -30,-40,-40,-50,-50,-40,-40,-30,
+        -30,-40,-40,-50,-50,-40,-40,-30,
+        -30,-40,-40,-50,-50,-40,-40,-30,
+        -30,-40,-40,-50,-50,-40,-40,-30,
+        -20,-30,-30,-40,-40,-30,-30,-20,
+        -10,-20,-20,-20,-20,-20,-20,-10,
+          0,  0,  0,  0,  0,  0,  0,  0,
+         20, 30, 15,  0,  0,  5, 30, 10];
+        
+        #[rustfmt::skip]
+        let king_pst_eg: [i32; 64] = [
+        -50,-40,-30,-20,-20,-30,-40,-50,
+        -30,-20,-10,  0,  0,-10,-20,-30,
+        -30,-10, 20, 30, 30, 20,-10,-30,
+        -30,-10, 30, 40, 40, 30,-10,-30,
+        -30,-10, 30, 40, 40, 30,-10,-30,
+        -30,-10, 20, 30, 30, 20,-10,-30,
+        -30,-30,  0,  0,  0,  0,-30,-30,
+        -50,-30,-30,-30,-30,-30,-30,-50];
+        
+
+
+
+        let square_values_mg: [[i32; 64]; Piece::len()] = [
+            pawn_pst_mg,
+            pawn_pst_mg,
+            knight_pst_mg,
+            bishop_pst_mg,
+            rook_pst_mg,
+            queen_pst_mg,
+            king_pst_mg,
+        ];
+        let square_values_eg: [[i32; 64]; Piece::len()] = [
+            pawn_pst_eg,
+            pawn_pst_eg,
+            knight_pst_eg,
+            bishop_pst_eg,
+            rook_pst_eg,
+            queen_pst_eg,
+            king_pst_eg,
+        ];
+
         for &p in &Piece::ALL_BAR_NONE {
             for sq in Square::all() {
-                pst[p][sq] = Weight::new(SQUARE_VALUES_MG[p][sq], SQUARE_VALUES_EG[p][sq]);
+                self.pst[p][sq] = Weight::new(square_values_mg[p][sq], square_values_eg[p][sq]);
             }
         }
-        pst
     }
 
     pub fn set_position(&mut self, enabled: bool) -> Self {
@@ -656,14 +718,12 @@ impl SimpleScorer {
         sum
     }
 
-
     pub fn w_eval_square(&self, c: Color, p: Piece, mut sq: Square) -> Weight {
         if c == Color::White {
             sq = sq.flip_vertical();
         }
         self.pst(p, sq)
     }
-    
     // // piece positions, king safety, centre control
     // // only updated for the colour thats moved - opponents(blockes) not relevant
     // pub fn w_eval_position_old(&self, board: &Board) -> i32 {
