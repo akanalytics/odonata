@@ -51,7 +51,7 @@ impl Component for QSearch {
     }
     fn new_game(&mut self) {}
 
-    fn new_search(&mut self) {}
+    fn new_position(&mut self) {}
 }
 
 impl Default for QSearch {
@@ -295,12 +295,12 @@ mod tests {
     fn test_quiesce_catalog() -> Result<(), String> {
         let positions = Catalog::quiesce();
         // let pos = Position::find_by_id("pawn fork", &positions ).unwrap();
-        for pos in &positions {
+        for pos in positions {
             let mut search = Algo::new()
                 .set_timing_method(TimeControl::Depth(0))
                 .set_callback(Uci::uci_info)
                 .clone();
-            search.search(pos.board());
+            search.set_position(pos.clone()).search();
             debug!("{}", search);
             assert_eq!(
                 search.pv().to_string(),
@@ -331,14 +331,14 @@ mod tests {
         let positions = Catalog::quiesce();
         let pos = Position::find_by_id("QS.01", &positions).unwrap();
         // let pos = &Catalog::quiesc         e()[1];
-        let mut b = pos.board().clone(); //.color_flip();
-        debug!("board {}", b.to_fen());
+        // let mut b = pos.board().clone(); //.color_flip();
+        debug!("position {}", pos);
         let mut eval = SimpleScorer::new();
         eval.position = false;
         eval.mobility = false;
         eval.phasing = false;
         let node = Node::root(0);
-        let static_eval = b.eval(&mut eval, &node);
+        let static_eval = pos.board().eval(&mut eval, &node);
 
         let mut algo = Algo::new()
             .set_timing_method(TimeControl::Depth(0))
@@ -348,14 +348,14 @@ mod tests {
             Bitboard::EMPTY,
             node.ply,
             algo.max_depth,
-            &mut b,
+            &mut pos.board().clone(),
             node.alpha,
             node.beta,
         );
 
         println!("{}", algo);
         debug!("static: {}  quiesce: {}", static_eval, quiesce_eval);
-        algo.search(&b);
+        algo.set_position(pos.clone()).search();
         debug!("{}", algo);
         Ok(())
     }

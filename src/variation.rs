@@ -1,10 +1,9 @@
-use crate::mv::Move;
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
-use crate::types::{Ply};
+use crate::mv::Move;
+use crate::types::Ply;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
-
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Variation {
@@ -21,11 +20,19 @@ impl Default for Variation {
 }
 
 
+pub static EMPTY: Variation = Variation { moves: Vec::new() };
+
 
 impl Variation {
+
     #[inline]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    #[inline]
+    pub fn empty() -> &'static Self {
+        &EMPTY
     }
 
     pub fn uci(&self) -> String {
@@ -36,13 +43,9 @@ impl Variation {
             .join(" ")
     }
 
-
     #[inline]
     pub fn contains_null_move(&self) -> bool {
-        self.moves
-            .iter()
-            .any(|mv| mv.is_null())
-
+        self.moves.iter().any(|mv| mv.is_null())
     }
 
     #[inline]
@@ -66,7 +69,7 @@ impl Variation {
     pub fn apply_to(&self, b: &Board) -> Board {
         let mut board = b.clone();
         for mv in self.iter() {
-            board = board.make_move(mv); 
+            board = board.make_move(mv);
         }
         board
     }

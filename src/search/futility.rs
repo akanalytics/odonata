@@ -44,10 +44,10 @@ impl Component for Futility {
 
     }
     fn new_game(&mut self) {
-        self.new_search();
+        self.new_position();
     }
 
-    fn new_search(&mut self) {
+    fn new_position(&mut self) {
     }
 }
 

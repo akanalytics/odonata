@@ -219,7 +219,7 @@ impl Component for SimpleScorer {
 
     fn new_game(&mut self) {}
 
-    fn new_search(&mut self) {}
+    fn new_position(&mut self) {}
 }
 
 impl fmt::Display for SimpleScorer {
@@ -844,7 +844,7 @@ mod tests {
 
     #[test]
     fn test_score_material() {
-        let board = Catalog::starting_position();
+        let board = Catalog::starting_board();
         let eval = &mut SimpleScorer::new();
         eval.tempo = Weight::zero();
         assert_eq!(board.eval(eval, &Node::root(0)), Score::from_cp(0));
@@ -901,7 +901,7 @@ mod tests {
         eval.pawn_doubled = Weight::new(-1, -1);
         eval.pawn_isolated = Weight::zero();
         eval.mobility_phase_disable = 101;
-        let b = Catalog::starting_position();
+        let b = Catalog::starting_board();
         assert_eq!(eval.w_eval_mobility(&b), Weight::zero());
 
         // 1xw 4xb doubled pawns, 1xw 2xb isolated pawns, 1xb passed pawn

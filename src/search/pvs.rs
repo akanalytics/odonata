@@ -31,10 +31,10 @@ impl Component for Pvs {
 
     }
     fn new_game(&mut self) {
-        self.new_search();
+        self.new_position();
     }
 
-    fn new_search(&mut self) {
+    fn new_position(&mut self) {
     }
 }
 
@@ -107,7 +107,7 @@ mod tests {
             engine.new_game();
             let suggested_depth = pos.acd().unwrap();
             engine.algo.set_timing_method(TimeControl::Depth(suggested_depth-1));
-            engine.algo.board = pos.board().clone();
+            engine.set_position(pos.clone());
 
             engine.search();
             let mut results = engine.algo.results().clone();

@@ -280,7 +280,7 @@ mod tests {
         let b = Board::default();
         assert_eq!(hasher_def.hash_board(&b), 0);
         let hasher1 = Hasher::new(1);
-        let b = Catalog::starting_position();
+        let b = Catalog::starting_board();
         assert_eq!(format!("{:x}", hasher1.hash_board(&b)), "5deb2bf6a1e5765");
 
         // check same seed => same results
@@ -310,7 +310,7 @@ mod tests {
     #[test]
     fn test_hash_move() {
         let hasher = Hasher::new(1);
-        let bd1 = Catalog::starting_position();
+        let bd1 = Catalog::starting_board();
         let moves = bd1.legal_moves();
         let hash_bd1 = hasher.hash_board(&bd1);
         for mv in moves.iter() {

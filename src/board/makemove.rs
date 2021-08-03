@@ -214,7 +214,7 @@ mod tests {
 
     #[test]
     fn test_make_move() -> Result<(), String> {
-        let board = Catalog::starting_position();
+        let board = Catalog::starting_board();
         // let mut m = Move::parse("e2e4")?;
         let mov = board.parse_uci_move("e2e4")?;
         assert_eq!(board.total_halfmoves(), 0);

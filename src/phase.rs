@@ -49,7 +49,7 @@ mod tests {
     #[test]
     fn test_phase() -> Result<(), String> {
         assert_eq!(ALL_PIECES, 6500);
-        assert_eq!(Catalog::starting_position().phase(), 0);
+        assert_eq!(Catalog::starting_board().phase(), 0);
         assert_eq!(Board::parse_fen("7k/8/8/8/8/8/8/7K b - - 45 100")?.phase(), 100);
         assert_eq!(
             Board::parse_fen("7k/pppppppp/8/8/8/8/PPPPPPPP/7K b - - 45 100")?.phase(),

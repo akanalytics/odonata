@@ -52,7 +52,7 @@ impl Exam {
         for (i, pos) in exam.positions.iter().enumerate() {
             exam.out_of += 1;
             exam.engine.new_game();
-            exam.engine.new_search();
+            exam.engine.new_position();
             exam.engine.algo.board = pos.board().clone();
             exam.engine.search();
 

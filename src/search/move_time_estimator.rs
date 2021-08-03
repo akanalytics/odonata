@@ -49,7 +49,7 @@ impl Component for MoveTimeEstimator {
     fn new_game(&mut self) {
     }
 
-    fn new_search(&mut self) {
+    fn new_position(&mut self) {
     }
 }
 
@@ -184,7 +184,7 @@ mod tests {
 
     #[test]
     fn test_mate_with_tc() {
-        let position = Catalog::mate_in_2()[0].clone();
+        let position = &Catalog::mate_in_2()[0];
         let eval = SimpleScorer::new().set_position(false);
         let mut search = Algo::new()
             .set_timing_method(TimeControl::Depth(3))
@@ -192,7 +192,7 @@ mod tests {
             .set_callback(Uci::uci_info)
             .clone();
         search.mte.deterministic = true;
-        search.search(position.board());
+        search.set_position(position.clone()).search();
         println!("{}", search);
         assert!(search.search_stats().total().nodes() < 117500, "nodes {}", search.search_stats().total().nodes());
         assert!(search.search_stats().total().nodes() > 4300, "nodes {}", search.search_stats().total().nodes());

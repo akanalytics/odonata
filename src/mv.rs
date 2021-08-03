@@ -425,7 +425,7 @@ mod tests {
         let move_e7e8 = Move::parse_uci(Piece::Pawn, "e7e8p").unwrap();
         assert_eq!(move_e7e8.to_string(), "e7e8p");
 
-        let board = Catalog::starting_position();
+        let board = Catalog::starting_board();
         assert_eq!(board.parse_san_move("Nc3").unwrap().to_string(), "b1c3");
         assert_eq!(board.parse_san_move("c3").unwrap().to_string(), "c2c3");
         assert_eq!(board.parse_san_move("c2c4").unwrap().to_string(), "c2c4");
@@ -530,7 +530,7 @@ mod tests {
 
     #[test]
     fn test_to_san() {
-        let mut board = Catalog::starting_position();
+        let mut board = Catalog::starting_board();
         let a2a3 = board.parse_uci_move("a2a3").unwrap();
         let b1c3 = board.parse_uci_move("b1c3").unwrap();
         assert_eq!(board.to_san(&a2a3), "a3");

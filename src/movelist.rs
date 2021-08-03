@@ -611,7 +611,7 @@ mod tests {
         let s = strip_move_numbers("1. c1c2 c4c5 2. c6c7 3.");
         assert_eq!(s, "c1c2 c4c5 c6c7 ");
 
-        let board = Catalog::starting_position();
+        let board = Catalog::starting_board();
 
         let list = board.parse_uci_movelist("a2a3, b2b3  c2c4  ")?;
         assert_eq!(list.to_string(), "a2a3, b2b3, c2c4");

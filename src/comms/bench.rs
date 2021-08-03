@@ -14,7 +14,7 @@ pub struct Bench;
 
 impl Bench {
     pub fn perft(depth: u32) {
-        let mut board = Catalog::starting_position();
+        let mut board = Catalog::starting_board();
         for d in 1..=depth {
             let t = Instant::now();
             let p = Perft::perft(&mut board, d);
@@ -31,7 +31,7 @@ impl Bench {
     }
 
     pub fn perft_cat(depth: u32) {
-        let mut board = Catalog::starting_position();
+        let mut board = Catalog::starting_board();
         println!(
             "{:>14}{:>14}{:>14}{:>14}{:>14}{:>14}{:>14}",
             "depth", "total", "captures", "en passant", "castles", "promos", "time"
@@ -75,7 +75,7 @@ impl Bench {
             let t = Instant::now();
 
             engine.new_game();
-            engine.algo.board = pos.board().clone();
+            engine.set_position(pos.clone());
             if tc == TimeControl::DefaultTime {
                 let suggested_depth = pos.acd().unwrap();
                 engine.algo.set_timing_method(TimeControl::Depth(suggested_depth));
@@ -91,7 +91,7 @@ impl Bench {
                 '-'
             };
             let depth = engine.algo.results().acd().unwrap();
-            let sel_depth = engine.algo.results().get_tag(Tag::ACSD).value_uci();
+            let sel_depth = engine.algo.results().tag(Tag::ACSD).value_uci();
             let nodes = engine.algo.results().acn().unwrap();
             let nps = Formatter::format_f64(nodes as f64 / elapsed.as_secs_f64());
             let fen = engine.algo.results().board().to_fen();

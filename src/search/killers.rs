@@ -23,10 +23,10 @@ impl Component for Killers {
         self.enabled = c.bool("killers.enabled").unwrap_or(self.enabled);
     }
     fn new_game(&mut self) {
-        self.new_search();
+        self.new_position();
     }
 
-    fn new_search(&mut self) {
+    fn new_position(&mut self) {
         self.killers.fill([Move::new_null(); 2]);
     }
 

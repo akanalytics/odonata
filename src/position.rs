@@ -217,24 +217,35 @@ impl Position {
 
     // FIXME - other EPD tags
 
+
+
     pub fn get(&self, key: &str) -> Result<&Tag, String> {
         Ok(self.tags.get(key))
     }
 
-    pub fn get_tag(&self, key: &str) -> &Tag {
+    pub fn tag(&self, key: &str) -> &Tag {
         self.tags.get(key)
     }
 
     pub fn pv(&self) -> Result<Variation, String> {
-        if let Tag::Pv(v) = self.get_tag(Tag::PV) {
+        if let Tag::Pv(v) = self.tag(Tag::PV) {
             Ok(v.clone())
         } else {
             panic!();
         }
     }
 
+    pub fn supplied_variation(&self) -> &Variation {
+        if let Tag::SuppliedVariation(ref v) = self.tag(Tag::SV) {
+            v
+        } else {
+            Variation::empty()
+        }
+    }
+
+
     pub fn bm(&self) -> Result<MoveList, String> {
-        if let Tag::BestMove(ml) = self.get_tag(Tag::BM) {
+        if let Tag::BestMove(ml) = self.tag(Tag::BM) {
             Ok(ml.clone())
         } else { 
             Err("Not good".into())
@@ -242,7 +253,7 @@ impl Position {
     }
 
     pub fn sm(&self) -> Result<Move, String> {
-        if let Tag::SuppliedMove(mv) = self.get_tag(Tag::SM) {
+        if let Tag::SuppliedMove(mv) = self.tag(Tag::SM) {
             Ok(*mv)
         } else { 
             Err("Not good".into())
@@ -250,7 +261,7 @@ impl Position {
     }
 
     pub fn sq(&self) -> Result<Bitboard, String> {
-        if let Tag::Squares(s) = self.get_tag(Tag::SQ) {
+        if let Tag::Squares(s) = self.tag(Tag::SQ) {
             Ok(*s)
         } else { 
             Err("Not good".into())
@@ -258,7 +269,7 @@ impl Position {
     }
 
     pub fn ce(&self) -> Result<i32, String> {
-        if let Tag::CentipawnEvaluation(ce) = self.get_tag(Tag::CE) {
+        if let Tag::CentipawnEvaluation(ce) = self.tag(Tag::CE) {
             Ok(*ce)
         } else { 
             Err("Not good".into())
@@ -267,7 +278,7 @@ impl Position {
 
     // acd analysis count depth [3]
     pub fn acd(&self) -> Result<Ply, String> {
-        if let Tag::AnalysisCountDepth(acd) = self.get_tag(Tag::ACD) {
+        if let Tag::AnalysisCountDepth(acd) = self.tag(Tag::ACD) {
             Ok(*acd)
         } else { 
             Err("Not good".into())
@@ -276,7 +287,7 @@ impl Position {
 
     // acd analysis count depth [3]
     pub fn acn(&self) -> Result<u128, String> {
-        if let Tag::AnalysisCountNodes(n) = self.get_tag(Tag::ACN) {
+        if let Tag::AnalysisCountNodes(n) = self.tag(Tag::ACN) {
             Ok(*n)
         } else { 
             Err("Not good".into())
@@ -284,7 +295,7 @@ impl Position {
     }
 
     pub fn dm(&self) -> Result<u32, String> {
-        if let Tag::DirectMate(dm) = self.get_tag(Tag::DM) {
+        if let Tag::DirectMate(dm) = self.tag(Tag::DM) {
             Ok(*dm)
         } else { 
             Err("Not good".into())
@@ -292,7 +303,7 @@ impl Position {
     }
 
     pub fn id(&self) -> Result<&str, String> {
-        if let Tag::Id(id) = self.get_tag(Tag::ID) {
+        if let Tag::Id(id) = self.tag(Tag::ID) {
             Ok(id)
         } else { 
             Err("Not good".into())
@@ -392,7 +403,7 @@ mod tests {
         pos.set_operation(Position::BM, "e4")?;
         assert_eq!(pos.bm().unwrap().to_string(), "e2e4");
 
-        let mut pos = Position { board: Catalog::starting_position(), tags: Tags::default() };
+        let mut pos = Position { board: Catalog::starting_board(), tags: Tags::default() };
         pos.set_operation(Position::BM, "e4, c4, a4")?;
         pos.set_operation(Position::PV, "e4, e5, d3")?;
         assert_eq!(pos.bm().unwrap().to_string(), "e2e4, c2c4, a2a4");
@@ -425,7 +436,7 @@ mod tests {
 
     #[test]
     fn test_serde() -> Result<(), String> {
-        let mut pos = Position::from_board(Catalog::starting_position());
+        let mut pos = Position::from_board(Catalog::starting_board());
         pos.set_operation(Position::BM, "e4")?;
         assert_eq!(serde_json::to_string(&pos).unwrap(), r#"{"fen":"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1","bm":"e4"}"#); 
         assert_eq!(serde_json::from_str::<Position>(r#"{"bm":"e2e4","fen":"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"}"#).unwrap(), pos); 
@@ -513,10 +524,20 @@ mod tests {
 //     // sm supplied move
 //     sm: Move,
     
+
+//     sv: supplied variation
+//     hv: history variation
+
+// https://www.stmintz.com/ccc/index.php?id=314948
+// https://www.stmintz.com/ccc/index.php?id=314898
+// om opponents mate http://www.talkchess.com/forums/1/message.html?314978
+
 //     Custom (Andy added!)
 //     squares. A series of squares in uci format. 
 //     Useful for identifying attackers, pinned pieces etc
 //     Sq: Squares,
+
+
 
 
 //     // tcgs telecommunication game selector

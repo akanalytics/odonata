@@ -447,7 +447,7 @@ mod tests {
             assert_eq!(b.legal_moves().to_string(), "".to_string(), "{}", b.to_fen());
         }
 
-        let board = Catalog::starting_position();
+        let board = Catalog::starting_board();
         let mv = board.parse_uci_move("e2e3").unwrap();
         assert!(board.is_legal_move(&mv), "{:?}", mv);
         Ok(())
@@ -455,7 +455,7 @@ mod tests {
 
     #[test]
     fn test_legal_variation() -> Result<(), String> {
-        let b = Catalog::starting_position();
+        let b = Catalog::starting_board();
         let bd2 = Catalog::test_position();
         let mvs = b.parse_uci_variation("a2a3 e7e6 b2b4")?;
         assert_eq!(b.is_legal_variation(&mvs), true);
@@ -465,7 +465,7 @@ mod tests {
 
     #[test]
     fn test_is_valid_move() {
-        let b = Catalog::starting_position();
+        let b = Catalog::starting_board();
         let a2sq = a2.square();
         let a3sq = a3.square();
         let a6sq = a6.square();

@@ -45,8 +45,12 @@ impl Catalog {
     pub const STARTING_POSITION_FEN: &'static str =
         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-    pub fn starting_position() -> Board {
+    pub fn starting_board() -> Board {
         Board::parse_fen(Self::STARTING_POSITION_FEN).unwrap().as_board()
+    }
+
+    pub fn starting_position() -> Position {
+        Position::from_board(Self::starting_board())
     }
 
     pub fn test_position() -> Position {
@@ -1157,7 +1161,7 @@ mod tests {
     fn test_catalog_chess960() {
         //  testing data https://www.mark-weeks.com/cfaa/chess960/c960strt.htm
         let p = Catalog::chess960(518);
-        assert_eq!(p.board(), &Catalog::starting_position());
+        assert_eq!(p.board(), &Catalog::starting_board());
         assert_eq!(Catalog::chess960(0).board().get(RANK_1), "BBQNNRKR");
         assert_eq!(Catalog::chess960(1).board().get(RANK_1), "BQNBNRKR");
         assert_eq!(Catalog::chess960(15).board().get(RANK_1), "QNNRKRBB");
@@ -1167,7 +1171,7 @@ mod tests {
         for id in 0..960 {
             set.insert(Catalog::chess960(id).board().hash());
         }
-        set.insert(Catalog::starting_position().hash()); // add a duplicate
+        set.insert(Catalog::starting_board().hash()); // add a duplicate
         assert_eq!(set.len(), 960);
     }
 

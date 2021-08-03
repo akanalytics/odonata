@@ -198,7 +198,7 @@ impl Algo {
                 continue;
             }
             let mut child_board = board.make_move(&mv);
-            self.repetition.push(&mv, &child_board);
+            self.repetition.push_move(&mv, &child_board);
             child_board.set_repetition_count(self.repetition.count(&child_board));
             debug_assert!(
                 alpha < beta || self.minmax,
@@ -222,7 +222,7 @@ impl Algo {
                 &mut self.search_stats,
             );
             let mut child_score;
-            if self.pvs.permitted(
+            if !self.minmax && self.pvs.permitted(
                 nt,
                 board,
                 &Node {
@@ -338,7 +338,7 @@ mod tests {
                 .set_callback(Uci::uci_info)
                 .build();
             // search.tt.enabled = false;
-            search.search(pos.board());
+            search.set_position(pos.clone()).search();
             // println!("{}", search);
             assert_eq!(search.pv().to_string(), pos.pv()?.to_string(), "#{} {}", i, pos);
             assert_eq!(search.score().is_mate(), true);
@@ -355,7 +355,7 @@ mod tests {
         for (i, pos) in positions.iter().enumerate() {
             let mut search = Algo::new().set_timing_method(TimeControl::Depth(5)).build();
             let expected_pv = pos.pv()?;
-            search.search(pos.board());
+            search.set_position(pos.clone()).search();
             println!("{}", search);
 
             assert_eq!(search.score().mate_in(), Some(3), "#{} {}", i, pos);
@@ -370,7 +370,7 @@ mod tests {
         let positions = Catalog::mate_in_4();
         for (i, pos) in positions.iter().enumerate() {
             let mut search = Algo::new().set_timing_method(TimeControl::Depth(7)).build();
-            search.search(pos.board());
+            search.set_position(pos.clone()).search();
             // println!("{}", search);
             if pos.get("pv").is_ok() {
                 let expected_pv = pos.pv()?;

@@ -136,7 +136,7 @@ mod tests {
 
     #[test]
     fn test_parse_move() {
-        let bd = Catalog::starting_position();
+        let bd = Catalog::starting_board();
         let bd = do_test_and_make_move(&bd, "d4", "d2d4");
         let bd = do_test_and_make_move(&bd, "c6", "c7c6");
         let bd = do_test_and_make_move(&bd, "Bf4", "c1f4");

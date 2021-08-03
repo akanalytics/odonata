@@ -1,5 +1,4 @@
 use crate::board::Board;
-use crate::material::Material;
 use crate::types::{Color, ScoreWdl};
 use std::fmt;
 
@@ -133,7 +132,7 @@ impl Board {
         if self.repetition_count() >= 2 {
             return Some(Outcome::DrawRepetition3);
         }
-        if Material::from_board(self).is_insufficient() {
+        if self.material().is_insufficient() {
             return Some(Outcome::DrawInsufficientMaterial);
         }
         None

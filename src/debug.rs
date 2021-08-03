@@ -127,7 +127,7 @@ mod tests {
 
     #[test]
     fn test_debug() {
-        let b = Catalog::starting_position();
+        let b = Catalog::starting_board();
         let moves = b.legal_moves();
         println!("{}", b.debug() + &moves[0] + 3 + Color::White + Node::root(0) + Score::from_cp(100) + "test");
     }

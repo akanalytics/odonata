@@ -396,7 +396,7 @@ impl Component for TranspositionTable2 {
         self.table.clear()
     }
 
-    fn new_search(&mut self) {
+    fn new_position(&mut self) {
         self.next_generation();
     }
 }
@@ -708,7 +708,7 @@ mod tests {
         let mut tt1 = TranspositionTable2::new_with_mb(10);
         tt1.new_game();
         info!("After new game");
-        let board = Catalog::starting_position();
+        let board = Catalog::starting_board();
         let moves = tt1.extract_pv_and_score(&board).0;
         info!("After extract");
         assert_eq!(moves.uci(), "");
@@ -782,7 +782,7 @@ mod tests {
         algo.new_game();
         for pos in Catalog::end_games().iter() {
             algo.new_game();
-            algo.search(pos.board());
+            algo.set_position(pos.clone()).search();
             assert_eq!(algo.bm().uci(), pos.bm()?.uci(), "{}\n{}", pos, algo);
         }
         Ok(())
@@ -793,9 +793,9 @@ mod tests {
         let mut algo = Algo::new();
         let d = 2;
         algo.set_timing_method(TimeControl::Depth(d));
-        for pos in Catalog::bratko_kopec().iter() {
+        for pos in Catalog::bratko_kopec() {
             algo.new_game();
-            algo.search(pos.board());
+            algo.set_position(pos.clone()).search();
             //            let pv = algo.tt.extract_pv(&algo.bm(), pos.board());
             let pv = algo.tt.extract_pv_and_score(pos.board()).0;
             assert!(algo.pv().len() >= d as usize, "{} {}\n{}", algo.pv(), pv, algo);

@@ -4,6 +4,7 @@ use crate::config::{Component, Config};
 use crate::mv::Move;
 use crate::types::{Hash, Piece};
 use crate::variation::Variation;
+use crate::position::Position;
 use crate::{debug, logger::LogInit};
 use std::fmt;
 
@@ -32,7 +33,7 @@ impl Component for Repetition {
     }
 
     // FIXME!
-    fn new_search(&mut self) {}
+    fn new_position(&mut self) {}
 }
 
 impl Default for Repetition {
@@ -57,6 +58,12 @@ impl fmt::Display for Repetition {
 //
 // some use cases
 //
+// 2 repetitions before root, 1 after => certain draw
+// 1 repetition  before root, 1 after => score as zero to avoid cycles
+// 0 repetitions before root, 1 after => score as zero to avoid cycles
+// 0 repetitions before root, 2 after => 
+// 0 repetitions before root, 3 after
+
 // a. pos1, pos2, pos3 outside of search => draw, and search returns outcome of draw
 // b. pos1, pos2 [search] pos3 => score-of-draw inside search (no choice) - but don't return outcome as a draw
 // c. [search] pos1, pos2 => score-of-draw inside of search (probably dont want cycles) but don't return outcome as a draw
@@ -88,7 +95,7 @@ impl Repetition {
         self.prior_positions.len()
     }
 
-    pub fn push(&mut self, mv: &Move, post_move: &Board) {
+    pub fn push_move(&mut self, mv: &Move, post_move: &Board) {
         if !self.enabled {
             return;
         }
@@ -98,6 +105,11 @@ impl Repetition {
         self.prior_positions.push(post_move.hash());
     }
 
+    // uses supplied variation
+    pub fn push_position(&mut self, pos: &Position) {
+        self.push_variation(&pos.supplied_variation(), pos.board());
+    }
+    
     pub fn push_variation(&mut self, moves: &Variation, pre: &Board) {
         if !self.enabled {
             return;
@@ -164,16 +176,16 @@ mod tests {
             .map(|p| p.board().clone())
             .collect();
         let mut rep1 = Repetition::new();
-        let b = Catalog::starting_position();
+        let b = Catalog::starting_board();
         let knight_mv = b.parse_uci_move("b1c3").unwrap();
         let pawn_mv = b.parse_uci_move("a2a3").unwrap();
-        rep1.push(&knight_mv, &boards[0]);
-        rep1.push(&knight_mv, &boards[1]);
-        rep1.push(&pawn_mv, &boards[2]);
-        rep1.push(&knight_mv, &boards[3]);
-        rep1.push(&knight_mv, &boards[4]);
-        rep1.push(&knight_mv, &boards[5]);
-        rep1.push(&knight_mv, &boards[6]);
+        rep1.push_move(&knight_mv, &boards[0]);
+        rep1.push_move(&knight_mv, &boards[1]);
+        rep1.push_move(&pawn_mv, &boards[2]);
+        rep1.push_move(&knight_mv, &boards[3]);
+        rep1.push_move(&knight_mv, &boards[4]);
+        rep1.push_move(&knight_mv, &boards[5]);
+        rep1.push_move(&knight_mv, &boards[6]);
         assert_eq!(rep1.count(&boards[4]), 1);
         assert_eq!(rep1.count(&boards[2]), 1);
         assert_eq!(rep1.count(&boards[0]), 0); // pawn move reset the count
@@ -183,22 +195,22 @@ mod tests {
         rep1.pop(); // 4
         rep1.pop(); // 3
         rep1.pop(); // 2 the pawn move
-        rep1.push(&knight_mv, &boards[2]);
-        rep1.push(&knight_mv, &boards[3]);
-        rep1.push(&knight_mv, &boards[4]);
-        rep1.push(&knight_mv, &boards[5]);
-        rep1.push(&knight_mv, &boards[6]);
+        rep1.push_move(&knight_mv, &boards[2]);
+        rep1.push_move(&knight_mv, &boards[3]);
+        rep1.push_move(&knight_mv, &boards[4]);
+        rep1.push_move(&knight_mv, &boards[5]);
+        rep1.push_move(&knight_mv, &boards[6]);
         assert_eq!(rep1.count(&boards[4]), 1);
         assert_eq!(rep1.count(&boards[2]), 1);
         assert_eq!(rep1.count(&boards[0]), 1); // no pawn move to reset the hmvc
-        rep1.push(&knight_mv, &boards[6]);
-        rep1.push(&knight_mv, &boards[4]);
+        rep1.push_move(&knight_mv, &boards[6]);
+        rep1.push_move(&knight_mv, &boards[4]);
         assert_eq!(rep1.count(&boards[2]), 1);
     }
 
     #[test]
     fn test_rep_position() {
-        let mut b = Catalog::starting_position();
+        let mut b = Catalog::starting_board();
         let mut algo = Algo::new()
             .set_timing_method(TimeControl::Depth(5))
             .set_callback(Uci::uci_info)
@@ -214,7 +226,7 @@ mod tests {
         let mvs = b.parse_uci_variation(s).unwrap();
         for mv in mvs.iter() {
             b = b.make_move(&mv);
-            algo.repetition.push(&mv, &b);
+            algo.repetition.push_move(&mv, &b);
             println!("rep count = {} hash = {:x}", algo.repetition.count(&b), b.hash());
         }
     }
@@ -229,7 +241,7 @@ mod tests {
             "d7d5 g2g4 e5e8 c2b1 d5e5 e3f2 e8a8 f3e3 e5e3 f2e3 c5c4 e3f4 a8a3 d3c4 b5c4 f4c7 a3h3 ",
             "d1c1 h6h5 c1c4 h3h1 b1b2 h1h4 c7e5 h4g4 c4c8 g8h7 c8c7 h7g8 c7c8"
         );
-        let mut b = Catalog::starting_position();
+        let mut b = Catalog::starting_board();
         let mut algo = Algo::new()
             .set_timing_method(TimeControl::Depth(5))
             .set_callback(Uci::uci_info)
@@ -238,9 +250,9 @@ mod tests {
         let mvs = b.parse_uci_variation(s).unwrap();
         for mv in mvs.iter() {
             b = b.make_move(&mv);
-            algo.repetition.push(&mv, &b);
+            algo.repetition.push_move(&mv, &b);
         }
-        algo.search(&b);
+        algo.set_position(Position::from_board(b)).search();
         println!("{}", algo);
     }
 }

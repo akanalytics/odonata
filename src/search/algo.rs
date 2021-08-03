@@ -1,7 +1,6 @@
 use crate::board::Board;
 use crate::cache::tt2::TranspositionTable2;
 use crate::clock::Clock;
-use crate::{debug, info, logger::LogInit};
 use crate::config::{Component, Config};
 use crate::eval::eval::SimpleScorer;
 use crate::eval::score::Score;
@@ -10,21 +9,22 @@ use crate::mv::Move;
 use crate::position::Position;
 use crate::pvtable::PvTable;
 use crate::repetition::Repetition;
+use crate::search::extensions::Extensions;
+use crate::search::futility::Futility;
 use crate::search::iterative_deepening::IterativeDeepening;
 use crate::search::killers::Killers;
 use crate::search::move_orderer::MoveOrderer;
 use crate::search::move_time_estimator::MoveTimeEstimator;
-use crate::search::qsearch::QSearch;
 use crate::search::nmp::NullMovePruning;
-use crate::search::futility::Futility;
 use crate::search::pvs::Pvs;
-use crate::search::extensions::Extensions;
+use crate::search::qsearch::QSearch;
 use crate::search::searchprogress::SearchProgress;
 use crate::search::searchstats::SearchStats;
 use crate::search::taskcontrol::TaskControl;
 use crate::search::timecontrol::TimeControl;
 use crate::types::Ply;
 use crate::variation::Variation;
+use crate::{debug, info, logger::LogInit};
 use std::fmt;
 use std::thread::{self, JoinHandle};
 
@@ -71,6 +71,11 @@ impl Engine {
         engine
     }
 
+    pub fn set_position(&mut self, pos: Position) {
+        self.new_position();
+        self.algo.set_position(pos);
+    }
+
     pub fn ponder_hit(&mut self) {
         self.algo.mte.set_shared_ponder(false);
         self.algo.search_stats.restart_clocks();
@@ -82,7 +87,6 @@ impl Engine {
     }
 
     pub fn search_start(&mut self) {
-        self.new_search();
         debug!("resize?? {}", self.algo.tt.requires_resize());
         for i in 0..self.thread_count {
             let builder = thread::Builder::new().name(format!("S{}", i)).stack_size(800_000);
@@ -148,7 +152,7 @@ impl Engine {
         }
         info!(
             "{:>3} {:>5} {:>8}        {:>10}      {:>5}     {:5}   {:>48}",
-            "", "", "", "---------", "-----", "", "", 
+            "", "", "", "---------", "-----", "", "",
         );
         info!(
             "{:>3} {:>5} {:>8}   nodes{:>10} knps {:>5} (avg knps {})",
@@ -182,15 +186,16 @@ impl Component for Engine {
         self.algo.new_game();
     }
 
-    fn new_search(&mut self) {
+    fn new_position(&mut self) {
         self.threads.clear();
-        self.algo.new_search();
+        self.algo.new_position();
     }
 }
 
 #[derive(Clone, Default)]
 pub struct Algo {
     pub results: Position,
+    pub position: Position,
     pub board: Board,
     pub max_depth: Ply,
     pub minmax: bool,
@@ -299,20 +304,20 @@ impl Component for Algo {
         self.killers.new_game();
     }
 
-    fn new_search(&mut self) {
+    fn new_position(&mut self) {
         self.task_control.set_running();
         self.search_stats = SearchStats::new();
-        self.eval.new_search();
-        self.move_orderer.new_search();
-        self.mte.new_search();
-        self.nmp.new_search();
-        self.futility.new_search();
-        self.pvs.new_search();
-        self.qsearch.new_search();
-        self.ids.new_search();
-        self.repetition.new_search();
-        self.tt.new_search();
-        self.killers.new_search();
+        self.eval.new_position();
+        self.move_orderer.new_position();
+        self.mte.new_position();
+        self.nmp.new_position();
+        self.futility.new_position();
+        self.pvs.new_position();
+        self.qsearch.new_position();
+        self.ids.new_position();
+        self.repetition.new_position();
+        self.tt.new_position();
+        self.killers.new_position();
     }
 }
 
@@ -346,7 +351,8 @@ impl fmt::Debug for Algo {
 
 impl fmt::Display for Algo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "starting pos     : {}", self.board.to_fen())?;
+        writeln!(f, "search position  : {}", self.position)?;
+        writeln!(f, "starting board   : {}", self.board.to_fen())?;
         writeln!(f, "material         : {}", self.board.material())?;
         writeln!(f, "phase            : {} %", self.board.phase())?;
         writeln!(f, "static eval      : {}", self.board.eval_position(&self.eval))?;
@@ -401,9 +407,15 @@ impl Algo {
         }
     }
 
-    pub fn search(&mut self, board: &Board) {
-        self.new_search();
-        self.board = board.clone();
+    pub fn set_position(&mut self, pos: Position) -> &mut Self {
+        self.new_position();
+        self.repetition.push_position(&pos);
+        self.board = pos.supplied_variation().apply_to(pos.board());
+        self.position = pos;
+        self
+    }
+
+    pub fn search(&mut self) {
         self.search_iteratively();
     }
 
@@ -500,7 +512,6 @@ impl Algo {
         time_up
     }
 
-
     // pub fn node_all(&mut self, b: &Board, n: &Node, mv: &Move, score: Score) -> Score {
     //     // self.tt.store(b.hash(), TtNode{ score, draft: n.depth, node_type: NodeType::All, bm: Move::NULL_MOVE} );
     //     score
@@ -513,34 +524,31 @@ impl Algo {
     // }
 
     // pub fn node_exact(&mut self, b: &Board, n: &Node, mv: &Move, s: Score)  -> Score {
-    //     self.record_new_pv(b, n.ply, mv, false); 
+    //     self.record_new_pv(b, n.ply, mv, false);
     //     s
     // }
 
     // pub fn node_leaf(&mut self, b: &Board, n: &Node, mv: &Move, s: Score) -> Score {
-    //     self.record_new_pv(b, n.ply, mv, true); 
+    //     self.record_new_pv(b, n.ply, mv, true);
     //     // self.search_stats.inc_leaf_nodes(n.ply);
     //     s
     // }
-    
-    
     pub fn clear_move(&mut self, ply: Ply) {
         self.pv_table.set(ply, &Move::NULL_MOVE, true);
     }
 
     pub fn record_move(&mut self, ply: Ply, mv: &Move) {
         self.pv_table.set(ply, &mv, false);
-        self.pv_table.propagate_from(ply+1);
+        self.pv_table.propagate_from(ply + 1);
     }
 
-    pub fn record_truncated_move(&mut self, ply: Ply, mv: &Move ) {
+    pub fn record_truncated_move(&mut self, ply: Ply, mv: &Move) {
         self.pv_table.set(ply, &mv, true);
     }
 
     // pub fn record_new_pv(&mut self, board: &Board, ply: Ply, mv: &Move, terminal_move: bool) {
     //     debug_assert!(mv.is_null() || board.is_pseudo_legal_move(mv) && board.is_legal_move(&mv), "{} on {}\n{:?}", mv, board, mv);
     //     self.pv_table.set(ply + 1, mv, terminal_move);
-        
     //     // debug_assert!(board.is_legal_variation(&self.pv_table.extract_pv_for(ply+1)), "mv {} on {}\n{:?}\nvar: {}", mv, board, mv,self.pv_table.extract_pv_for(ply+1) );
     //     self.search_stats.inc_improvements(ply);
     //     if ply == 0 {
@@ -548,8 +556,6 @@ impl Algo {
     //         self.task_control.invoke_callback(&sp);
     //     }
     // }
-
-
 }
 
 #[cfg(test)]
@@ -591,7 +597,7 @@ mod tests {
 
     #[test]
     fn test_minmax() {
-        let board = Catalog::starting_position();
+        let pos = Catalog::starting_position();
         let eval = SimpleScorer::new().set_position(false);
         let mut search = Algo::new()
             .set_timing_method(TimeControl::Depth(3))
@@ -600,7 +606,7 @@ mod tests {
         search.qsearch.enabled = false;
         search.tt.enabled = false;
         search.minmax = true;
-        search.search(&board);
+        search.set_position(pos).search();
         assert_eq!(
             search.search_stats().total().nodes(),
             1 + 20 + 400 + 8902 /* + 197_281 */
@@ -611,7 +617,6 @@ mod tests {
 
     #[test]
     fn test_node() {
-        let board = Catalog::starting_position();
         let mut eval = SimpleScorer::new().set_position(false);
         eval.mobility = false;
         let mut search = Algo::new()
@@ -619,19 +624,19 @@ mod tests {
             .set_eval(eval)
             .build();
         search.move_orderer.enabled = false;
-        
-        search.search(&board);
+        search.set_position(Catalog::starting_position());
+        search.search();
         println!("{}", search);
         assert_eq!(search.search_stats().total().nodes(), 425); // null move pruning
-        // assert_eq!(search.search_stats().total().nodes(), 1468); 
-                                                                 // assert_eq!(search.search_stats().total().nodes(), 1516); // rejigged pawn PST
-                                                                 // previous
-                                                                 // assert_eq!(search.search_stats().total().nodes(), 1326); // piece mob (disabled)
-                                                                 // assert_eq!(search.search_stats().total().nodes(), 1404); // pawn promo
-                                                                 // assert_eq!(search.search_stats().total().nodes(), 1480); // gen qsearch
-                                                                 // assert_eq!(search.search_stats().total().nodes(), 1642); added tt
-                                                                 // assert_eq!(search.search_stats().total().nodes(), 1833); qsearch sq
-                                                                 // assert_eq!(search.search_stats().total().nodes(), 1757);
+                                                                // assert_eq!(search.search_stats().total().nodes(), 1468);
+                                                                // assert_eq!(search.search_stats().total().nodes(), 1516); // rejigged pawn PST
+                                                                // previous
+                                                                // assert_eq!(search.search_stats().total().nodes(), 1326); // piece mob (disabled)
+                                                                // assert_eq!(search.search_stats().total().nodes(), 1404); // pawn promo
+                                                                // assert_eq!(search.search_stats().total().nodes(), 1480); // gen qsearch
+                                                                // assert_eq!(search.search_stats().total().nodes(), 1642); added tt
+                                                                // assert_eq!(search.search_stats().total().nodes(), 1833); qsearch sq
+                                                                // assert_eq!(search.search_stats().total().nodes(), 1757);
         assert_eq!(
             (search.search_stats().branching_factor() * 10.0).round() as u64,
             11
@@ -648,13 +653,14 @@ mod tests {
 
     #[test]
     fn test_black_opening() {
-        let mut board = Catalog::starting_position();
+        let mut board = Catalog::starting_board();
         board.set_turn(Color::Black);
         let mut search = Algo::new().set_timing_method(TimeControl::Depth(1)).build();
         search.move_orderer.enabled = false;
-        search.search(&board);
+        search.set_position(Position::from_board(board));
+        search.search();
         println!("{}", search);
-        assert_eq!(search.pv()[0].uci(), "g8f6");
+        assert_eq!(search.pv()[0].uci(), "b8c6");
     }
 
     #[test]
@@ -663,16 +669,22 @@ mod tests {
             let position = Catalog::mate_in_2()[0].clone();
             let eval = SimpleScorer::new().set_position(false);
             let mut engine = Engine::new();
-            engine.algo.set_timing_method(TimeControl::Depth(3))
+            engine
+                .algo
+                .set_timing_method(TimeControl::Depth(3))
                 .set_eval(eval)
                 .set_callback(Uci::uci_info)
                 .build();
-            engine.algo.board = position.board().clone();
+            engine.set_position(position.clone());
             engine.search();
             let search = engine.algo;
             println!("{}", search);
             if id {
-                assert!(search.search_stats().total().nodes() < 22500, "nodes {} > 22500", search.search_stats().total().nodes() ); // with piece mob
+                assert!(
+                    search.search_stats().total().nodes() < 22500,
+                    "nodes {} > 22500",
+                    search.search_stats().total().nodes()
+                ); // with piece mob
 
             // previous
             // assert_eq!(search.search_stats().total().nodes(), 3456); // with pawn promo
@@ -754,71 +766,72 @@ mod tests {
     #[test]
     #[ignore]
     fn jons_chess_problem() {
-        let board = Board::parse_fen("2r2k2/5pp1/3p1b1p/2qPpP2/1p2B2P/pP3P2/2P1R3/2KRQ3 b - - 0 1")
-            .unwrap()
-            .as_board();
-        println!("{}", board);
+        let pos = Position::parse_epd("2r2k2/5pp1/3p1b1p/2qPpP2/1p2B2P/pP3P2/2P1R3/2KRQ3 b - - 0 1").unwrap();
+        println!("{}", pos);
         let eval = SimpleScorer::new().set_position(false);
         let mut search = Algo::new()
             .set_timing_method(TimeControl::Depth(9))
             .set_eval(eval)
             .build(); //9
-        search.search(&board);
+        search.set_position(pos);
+        search.search();
         println!("{}", search);
     }
 
     #[test]
     #[ignore]
     fn bug04() {
-        let board = Catalog::starting_position();
+        let pos = Catalog::starting_position();
         let mut search = Algo::new()
             .set_timing_method(TimeControl::Depth(8))
             .set_callback(Uci::uci_info)
             .build();
-        search.search(&board);
+        search.set_position(pos);
+        search.search();
         println!("{}", search);
     }
 
     #[test]
     fn bug05() {
-        let board = Board::parse_fen("8/8/3N4/4B3/6p1/5k1p/4n2P/7K b - - 75 93 ").unwrap();
+        let pos = Position::parse_epd("8/8/3N4/4B3/6p1/5k1p/4n2P/7K b - - 75 93 ").unwrap();
         let mut search = Algo::new()
             .set_timing_method(TimeControl::Depth(8))
             .set_callback(Uci::uci_info)
             .build();
-        search.search(&board);
+        search.set_position(pos);
+        search.search();
         println!("{}", search);
     }
 
     #[test]
-    fn bug06() {
+    fn bug06() -> Result<(), String> {
         // 11.Qd3       b3r1kr/ppppqppp/2nnp3/6b1/3PP1N1/2N5/PPP1BPPP/B2QR1KR w - - 1 11   acd 4; bm d1d3; ce 60; pv "d1d3 c6b4 d3d1";
         // 11... Nb4    b3r1kr/ppppqppp/2nnp3/6b1/3PP1N1/2NQ4/PPP1BPPP/B3R1KR b - - 2 11   acd 4; bm c6b4; ce 30; pv "c6b4 d3d1 b4c6";
-        let mut search = Algo::new()
-            .set_timing_method(TimeControl::Depth(3))
-            .build();
-        let board06 = Board::parse_fen("b1q1r1kr/ppppbppp/2nnp3/4N3/3P4/2N1P3/PPP2PPP/BQ2RBKR w - - 2 6").unwrap();
-        let board07 = Board::parse_fen("b2qr1kr/ppppbppp/2nnp3/4N3/3P4/2NBP3/PPP2PPP/BQ2R1KR w - - 4 7").unwrap();
-        let board08 = Board::parse_fen("b2qr1kr/pppp1ppp/2nnpb2/4N3/3P4/2NBP3/PPP2PPP/B2QR1KR w - - 6 8").unwrap();
-        let board09 = Board::parse_fen("b2qr1kr/ppppbppp/2nnp3/8/3P2N1/2NBP3/PPP2PPP/B2QR1KR w - - 8 9").unwrap();
-        let board10 = Board::parse_fen("b2qr1kr/pppp1ppp/2nnp3/6b1/3P2N1/2N1P3/PPP1BPPP/B2QR1KR w - - 10 10").unwrap();             
-        let board11 = Board::parse_fen("b3r1kr/ppppqppp/2nnp3/6b1/3PP1N1/2N5/PPP1BPPP/B2QR1KR w - - 1 11").unwrap();
-        let board12 = Board::parse_fen("b3r1kr/ppppqppp/3np3/6b1/1n1PP1N1/2NQ4/PPP1BPPP/B3R1KR w - - 3 12").unwrap();
-        search.search(&board06);
-        search.search(&board07);
-        search.search(&board08);
-        search.search(&board09);
-        search.search(&board10);
-        search.search(&board11);
-        search.search(&board12);
+        let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).build();
+        let pos06 = Position::parse_epd("b1q1r1kr/ppppbppp/2nnp3/4N3/3P4/2N1P3/PPP2PPP/BQ2RBKR w - - 2 6")?;
+        let pos07 = Position::parse_epd("b2qr1kr/ppppbppp/2nnp3/4N3/3P4/2NBP3/PPP2PPP/BQ2R1KR w - - 4 7")?;
+        let pos08 = Position::parse_epd("b2qr1kr/pppp1ppp/2nnpb2/4N3/3P4/2NBP3/PPP2PPP/B2QR1KR w - - 6 8")?;
+        let pos09 = Position::parse_epd("b2qr1kr/ppppbppp/2nnp3/8/3P2N1/2NBP3/PPP2PPP/B2QR1KR w - - 8 9")?;
+        let pos10 =
+            Position::parse_epd("b2qr1kr/pppp1ppp/2nnp3/6b1/3P2N1/2N1P3/PPP1BPPP/B2QR1KR w - - 10 10")?;
+        let pos11 = Position::parse_epd("b3r1kr/ppppqppp/2nnp3/6b1/3PP1N1/2N5/PPP1BPPP/B2QR1KR w - - 1 11")?;
+        let pos12 = Position::parse_epd("b3r1kr/ppppqppp/3np3/6b1/1n1PP1N1/2NQ4/PPP1BPPP/B3R1KR w - - 3 12")?;
+        search.set_position(pos06).search();
+        search.set_position(pos07).search();
+        search.set_position(pos08).search();
+        search.set_position(pos09).search();
+        search.set_position(pos10).search();
+        search.set_position(pos11).search();
+        search.set_position(pos12).search();
         println!("{}", search);
+        Ok(())
     }
 
     #[test]
     #[ignore]
     fn test_truncated_pv() {
         let mut algo = Algo::new()
-//             .set_timing_method(TimeControl::from_move_time_millis(1000))
+            //             .set_timing_method(TimeControl::from_move_time_millis(1000))
             .set_timing_method(TimeControl::Depth(7))
             .build();
         // algo.repetition.avoid_tt_on_repeats = false;
@@ -827,23 +840,22 @@ mod tests {
         for p in positions {
             algo.new_game();
             algo.tt.allow_truncated_pv = true;
-            algo.search(p.board());
+            algo.set_position(p.clone()).search();
             let pv1 = algo.results.pv().unwrap();
             algo.tt.current_age -= 1;
             println!("{:<40} - {}", pv1.uci(), algo.results());
 
             algo.tt.allow_truncated_pv = true;
-            algo.search(p.board());
+            algo.set_position(p.clone()).search();
             let pv2 = algo.results.pv().unwrap();
             println!("{:<40} - {}", pv2.uci(), algo.results());
 
             algo.tt.allow_truncated_pv = false;
-            algo.search(p.board());
+            algo.set_position(p.clone()).search();
             let pv3 = algo.results.pv().unwrap();
             println!("{:<40} - {}\n", pv3.uci(), algo.results());
 
             //assert_eq!(pv1, pv2, "{}", p );
         }
     }
-
 }

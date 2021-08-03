@@ -223,7 +223,7 @@ mod tests {
 
     #[test]
     fn test_material() {
-        let board = Catalog::starting_position();
+        let board = Catalog::starting_board();
         let mat_full1 = Material::from_board(&board);
         assert_eq!(mat_full1.counts(Color::White, Piece::King), 1);
         assert_eq!(mat_full1.counts(Color::White, Piece::Pawn), 8);
@@ -290,7 +290,7 @@ mod tests {
         assert_eq!(mat_p.centipawns(), -100);
         assert_eq!(mat_PPP.centipawns(), 300);
         assert_eq!(mat_some.advantage().centipawns(), -300); // R+N-Q = -75, N-b=-25, 2x-P=-200
-        let board = Catalog::starting_position();
+        let board = Catalog::starting_board();
         assert_eq!(board.material().black().minors_and_majors().centipawns(), -3250);
         assert_eq!(board.material().white().minors_and_majors().centipawns(), 3250);
         assert_eq!(

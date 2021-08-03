@@ -51,7 +51,7 @@ impl Component for MoveOrderer {
         self.picker.clear();
     }
 
-    fn new_search(&mut self) {
+    fn new_position(&mut self) {
         self.picker.clear();
     }
 }

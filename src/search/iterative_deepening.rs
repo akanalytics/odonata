@@ -38,10 +38,10 @@ impl Component for IterativeDeepening {
     }
 
     fn new_game(&mut self) {
-        self.new_search();
+        self.new_position();
     }
 
-    fn new_search(&mut self) {
+    fn new_position(&mut self) {
         self.iterations.clear();
         // self.tt.next_generation();
     }

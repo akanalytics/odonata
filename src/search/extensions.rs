@@ -40,16 +40,16 @@ impl Component for Extensions {
             .unwrap_or(self.check_max_depth as i64) as i32;
     }
     fn new_game(&mut self) {
-        self.new_search();
+        self.new_position();
     }
 
-    fn new_search(&mut self) {}
+    fn new_position(&mut self) {}
 }
 
 impl Default for Extensions {
     fn default() -> Self {
         Extensions {
-            check_enabled: false,
+            check_enabled: true,
             check_max_depth: 1,
             check_max_phase: 60,
         }

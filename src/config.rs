@@ -11,7 +11,7 @@ pub trait Component {
     fn settings(&self, config: &mut Config);
     fn configure(&mut self, config: &Config);
     fn new_game(&mut self);
-    fn new_search(&mut self);
+    fn new_position(&mut self);
 }
 
 
@@ -160,7 +160,7 @@ mod tests {
 
         fn new_game(&mut self) {}
 
-        fn new_search(&mut self) {}
+        fn new_position(&mut self) {}
     }
 
     #[test]

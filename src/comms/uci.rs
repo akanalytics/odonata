@@ -117,14 +117,14 @@ impl Component for Uci {
         self.engine.new_game();
     }
 
-    fn new_search(&mut self) {
+    fn new_position(&mut self) {
     }    
 }
 
 impl Uci {
     pub fn new() -> Uci {
         let mut uci = Uci {
-            board: Catalog::starting_position(),
+            board: Catalog::starting_board(),
             json_rpc: JsonRpc::new(),
             ..Uci::default()
         };
@@ -270,7 +270,7 @@ impl Uci {
         let depth = depth
             .parse::<u32>()
             .or(Err(format!("Depth {} must be numeric", depth)))?;
-        let mut board = Catalog::starting_position();
+        let mut board = Catalog::starting_board();
         for d in 1..=depth {
             let t = Instant::now();
             let p = Perft::perft(&mut board, d);
@@ -379,7 +379,7 @@ impl Uci {
         let fen = arg.words.get(1);
         if let Some(fen) = fen {
             if fen == "startpos" {
-                *b = Catalog::starting_position();
+                *b = Catalog::starting_board();
             } else if fen == "fen" {
                 // expect pos, b/w, castling, ep and 2 x counts
                 let fen = arg.words.get(2..8);
@@ -706,7 +706,7 @@ mod tests {
         uci.preamble.push("display".into());
         uci.preamble.push("quit".into());
         uci.run();
-        assert_eq!(uci.board, Catalog::starting_position());
+        assert_eq!(uci.board, Catalog::starting_board());
 
         let mut uci = Uci::new();
         uci.preamble
