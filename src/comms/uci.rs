@@ -9,6 +9,8 @@ use crate::variation::Variation;
 use crate::perft::Perft;
 use crate::search::algo::Engine;
 use crate::search::node::Node;
+use crate::tags::Tag;
+use crate::position::Position;
 use crate::comms::json_rpc::JsonRpc;
 use crate::eval::eval::SimpleScorer;
 use crate::search::searchprogress::SearchProgress;
@@ -367,11 +369,12 @@ impl Uci {
 
     fn uci_position(&mut self, arg: &Args) -> Result<(), String> {
         self.engine.search_stop();
-        self.engine.algo.repetition.new_game();
         Self::parse_fen(arg, &mut self.board)?;
-        let moves = Self::parse_variation(arg, &self.board)?;
-        self.engine.algo.repetition.push_variation(&moves, &self.board);
-        self.board = self.board.make_moves(&moves);
+        let variation = Self::parse_variation(arg, &self.board)?;
+        let mut pos = Position::from_board(self.board.clone());
+        pos.set(Tag::SuppliedVariation(variation));
+        self.board = pos.supplied_variation().apply_to(pos.board());
+        self.engine.set_position(pos);
         Ok(())
     }
 
@@ -487,7 +490,6 @@ impl Uci {
         // self.log_debug_message(&format!("{}", self.engine.algo));
         // self.log_debug_message(&format!("{}", self.board));
         info!("odonata: searching {} on tc {}", self.board.to_fen(), tc);
-        self.engine.algo.board = self.board.clone();
         self.engine.search_start();
         Ok(())
     }

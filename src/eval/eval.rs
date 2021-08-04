@@ -286,7 +286,7 @@ impl SimpleScorer {
             pawn_passed: Weight::new(50, 80),
             pawn_shield: Weight::new(50, 0),
             rook_open_file: 20,
-            rook_edge: Weight::new(0, 0),
+            rook_edge: Weight::new(0, 2),
             contempt: -30, // typically -ve
             tempo: Weight::new(16, 16),
             material_scores: MATERIAL_SCORES,
@@ -885,7 +885,8 @@ mod tests {
         assert_eq!(bd.eval_position(eval), Score::from_cp(0));
 
         let w = Catalog::white_starting_position();
-        assert_eq!(w.eval_position(eval), Score::from_cp(-115));
+        assert_eq!(w.phase(), 50);
+        assert_eq!(w.eval_position(eval), Score::from_cp(-113));
 
         let b = Catalog::black_starting_position();
         assert_eq!(w.eval_position(eval), b.eval_position(eval).negate());
