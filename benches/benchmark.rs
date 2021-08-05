@@ -1,21 +1,20 @@
-use criterion::*;
-use odonata::bitboard::bb_sliders::*;
-use odonata::bitboard::precalc::*;
 use odonata::bitboard::bb_classical::ClassicalBitboard;
 use odonata::bitboard::bb_hyperbola::Hyperbola;
 use odonata::bitboard::bb_magic::*;
+use odonata::bitboard::bb_sliders::*;
 use odonata::bitboard::bitboard::*;
+use odonata::bitboard::precalc::*;
 use odonata::bitboard::square::*;
 use odonata::board::boardcalcs::*;
 use odonata::board::makemove::*;
 use odonata::board::rules::*;
 use odonata::board::*;
+use odonata::cache::tt2::*;
 use odonata::catalog::*;
 use odonata::config::Component;
 use odonata::debug;
 use odonata::eval::eval::*;
 use odonata::eval::score::*;
-use odonata::search::move_orderer::*;
 use odonata::globals::constants::*;
 use odonata::hasher::*;
 use odonata::logger::LogInit;
@@ -24,16 +23,23 @@ use odonata::movelist::*;
 use odonata::mv::*;
 use odonata::perft::Perft;
 use odonata::pvtable::*;
-use odonata::cache::tt2::*;
 use odonata::search::algo::Algo;
+use odonata::search::move_orderer::*;
 use odonata::search::node::Node;
 use odonata::search::timecontrol::TimeControl;
 use odonata::types::*;
 use odonata::utils::*;
 use odonata::variation::*;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::Instant;
 use std::thread;
+use std::time::Instant;
+
+use criterion::measurement::Measurement;
+use criterion::*;
+
+// use criterion_linux_perf::{PerfMeasurement, PerfMode};
+
+use iai::black_box;
 
 criterion_group!(
     benches,
@@ -66,43 +72,89 @@ criterion_group!(
     cache_eval,
     bench_shared_mem,
 );
-criterion_main!(benches);
 
-/*
-Bitboard 2.7ns (a|b)&c
-Chooser 1.7ns
-PieceToUpperChar 622ns
-Perft(5) 334ms
-Makemove 26.25ns
-legal_moves 966ns
-pseudo_legal_moves 300ns
-Score: 5 > 4  1ns
+// criterion_group!(
+//     name = benches;
+//     config = Criterion::default().with_measurement(PerfMeasurement::new(PerfMode::Instructions));
+//     targets = benchmark_perft, benchmark_bitboard
+// );
 
-search/minmax Depth 5  | search/alphabeta  Depth 5
-initial         = 482ms    5.7ms
-game end logic  = 6.8s     48ms
-& early fin - no effect
-collect PV no effect
+// criterion_main!(benches);
 
-12s (6.5s without game end test) - forgot to short circuit legal moves on leaf node
+iai::main!(iai_legal_moves_into, iai_perft5);
 
+fn iai_legal_moves_into() {
+    let pos = Catalog::starting_position();
+    let board = pos.board();
+    let mut ml = MoveList::new();
+    black_box(black_box(&board).legal_moves_into(&mut ml));
+}
 
-search/alphabeta Depth 5  =
-85 ms (48 ms without game end tests)
+fn iai_perft5() {
+    let mut pos = Catalog::starting_position();
+    black_box(Perft::perft(&mut pos.board_mut(), black_box(5)));
+}
 
-Array (int = 6.3, enum = 6.7)
+fn bb_calcs(c: &mut Criterion) {
+    let mut group = c.benchmark_group("bb_calcs");
+    let bbs: Vec<Bitboard> = (0..64).into_iter().map(|sq| Bitboard::from_sq(sq)).collect();
 
-Material.is_insufficient 9.8ns
+    group.bench_function("first_square", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            for _ in 0..n {
+                for bb in bbs.iter() {
+                    black_box(black_box(bb).first_square());
+                }
+            }
+            t.elapsed() / 64 as u32
+        })
+    });
 
+    group.bench_function("first_squareX", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            for _ in 0..n {
+                black_box(black_box(Bitboard::from_sq(0)).first_square());
+                black_box(black_box(Bitboard::from_sq(8)).first_square());
+                black_box(black_box(Bitboard::from_sq(16)).first_square());
+                black_box(black_box(Bitboard::from_sq(24)).first_square());
+                black_box(black_box(Bitboard::from_sq(32)).first_square());
+                black_box(black_box(Bitboard::from_sq(40)).first_square());
+                black_box(black_box(Bitboard::from_sq(48)).first_square());
+                black_box(black_box(Bitboard::from_sq(56)).first_square());
+            }
+            t.elapsed() / 8 as u32
+        })
+    });
 
-Jons_problem
-180s (9ply)
-1 hr (10ply)
-478s (looks at end of game)
+    group.bench_function("last_square", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            for _ in 0..n {
+                for bb in bbs.iter() {
+                    black_box(black_box(bb).last_square());
+                }
+            }
+            t.elapsed() / 64 as u32
+        })
+    });
+    group.bench_function("popcount", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            for _ in 0..n {
+                for bb in bbs.iter() {
+                    black_box(black_box(bb).popcount());
+                }
+            }
+            t.elapsed() / 64 as u32
+        })
+    });
 
-*/
+    group.finish();
+}
 
-fn benchmark_bitboard(c: &mut Criterion) {
+fn benchmark_bitboard<T: Measurement>(c: &mut Criterion<T>) {
     let mut g = c.benchmark_group("bitboard");
     let n1 = 1u64 << 3;
     let n2 = 1u64 << 4;
@@ -137,7 +189,6 @@ fn benchmark_bitboard(c: &mut Criterion) {
     g.finish();
 }
 
-
 fn piece_to_upper_char(c: &mut Criterion) {
     c.bench_function("piece_to_upper_char", |b| {
         b.iter(|| {
@@ -156,7 +207,7 @@ fn piece_to_char(c: &mut Criterion) {
     });
 }
 
-fn benchmark_perft(c: &mut Criterion) {
+fn benchmark_perft<T: Measurement>(c: &mut Criterion<T>) {
     let mut pos = Catalog::starting_position();
     let mut group = c.benchmark_group("perft");
     group.sample_size(10);
@@ -309,65 +360,6 @@ fn sq_calcs(c: &mut Criterion) {
     group.finish();
 }
 
-fn bb_calcs(c: &mut Criterion) {
-    let mut group = c.benchmark_group("bb_calcs");
-    let bbs: Vec<Bitboard> = (0..64).into_iter().map(|sq| Bitboard::from_sq(sq)).collect();
-
-    group.bench_function("first_square", |b| {
-        b.iter_custom(|n| {
-            let t = Instant::now();
-            for _ in 0..n {
-                for bb in bbs.iter() {
-                    black_box(black_box(bb).first_square());
-                }
-            }
-            t.elapsed() / 64 as u32
-        })
-    });
-
-    group.bench_function("first_squareX", |b| {
-        b.iter_custom(|n| {
-            let t = Instant::now();
-            for _ in 0..n {
-                black_box(black_box(Bitboard::from_sq(0)).first_square());
-                black_box(black_box(Bitboard::from_sq(8)).first_square());
-                black_box(black_box(Bitboard::from_sq(16)).first_square());
-                black_box(black_box(Bitboard::from_sq(24)).first_square());
-                black_box(black_box(Bitboard::from_sq(32)).first_square());
-                black_box(black_box(Bitboard::from_sq(40)).first_square());
-                black_box(black_box(Bitboard::from_sq(48)).first_square());
-                black_box(black_box(Bitboard::from_sq(56)).first_square());
-            }
-            t.elapsed() / 8 as u32
-        })
-    });
-
-    group.bench_function("last_square", |b| {
-        b.iter_custom(|n| {
-            let t = Instant::now();
-            for _ in 0..n {
-                for bb in bbs.iter() {
-                    black_box(black_box(bb).last_square());
-                }
-            }
-            t.elapsed() / 64 as u32
-        })
-    });
-    group.bench_function("popcount", |b| {
-        b.iter_custom(|n| {
-            let t = Instant::now();
-            for _ in 0..n {
-                for bb in bbs.iter() {
-                    black_box(black_box(bb).popcount());
-                }
-            }
-            t.elapsed() / 64 as u32
-        })
-    });
-
-    group.finish();
-}
-
 fn board_calcs(c: &mut Criterion) {
     let mut group = c.benchmark_group("board_calcs");
     let positions = &Catalog::win_at_chess();
@@ -491,7 +483,6 @@ fn board_calcs(c: &mut Criterion) {
         })
     });
 
-    
     group.bench_function("is_legal_move", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
@@ -581,7 +572,6 @@ fn board_calcs(c: &mut Criterion) {
     group.finish();
 }
 
-
 fn benchmark_ordering(c: &mut Criterion) {
     let mut group = c.benchmark_group("ordering");
     let positions = &Catalog::win_at_chess();
@@ -590,7 +580,7 @@ fn benchmark_ordering(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             movelists.iter().cycle_n(n).for_each(|ml| {
-                    black_box(ml.clone());
+                black_box(ml.clone());
             });
             t.elapsed() / movelists.len() as u32
         })
@@ -627,7 +617,7 @@ fn benchmark_ordering(c: &mut Criterion) {
         b.iter_custom(|n| {
             let mut count = 0;
             let t = Instant::now();
-            movelists.iter().enumerate().cycle_n(n).for_each(|(i,ml)| {
+            movelists.iter().enumerate().cycle_n(n).for_each(|(i, ml)| {
                 let pos = &positions[i];
                 for mv in ml.iter() {
                     eval.eval_move_see(pos.board(), mv);
@@ -646,7 +636,7 @@ fn benchmark_ordering(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|pos| {
-                let mut  sorted_moves = orderer.get_sorted_moves(PLY, TT_MOVE);
+                let mut sorted_moves = orderer.get_sorted_moves(PLY, TT_MOVE);
                 while let Some(mv) = sorted_moves.next_move(pos.board(), &mut algo) {
                     black_box(&mv);
                 }
@@ -659,7 +649,7 @@ fn benchmark_ordering(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|pos| {
-                let mut  sorted_moves = orderer.get_sorted_moves(PLY, TT_MOVE);
+                let mut sorted_moves = orderer.get_sorted_moves(PLY, TT_MOVE);
                 while let Some(mv) = sorted_moves.next_move(pos.board(), &mut algo) {
                     black_box(&mv);
                 }
@@ -672,7 +662,7 @@ fn benchmark_ordering(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|pos| {
-                let mut  sorted_moves = orderer.get_sorted_moves(PLY, TT_MOVE);
+                let mut sorted_moves = orderer.get_sorted_moves(PLY, TT_MOVE);
                 while let Some(mv) = sorted_moves.next_move(pos.board(), &mut algo) {
                     black_box(&mv);
                 }
@@ -683,7 +673,6 @@ fn benchmark_ordering(c: &mut Criterion) {
 
     group.finish();
 }
-
 
 fn benchmark_eval(c: &mut Criterion) {
     let mut group = c.benchmark_group("eval");
@@ -1028,8 +1017,8 @@ fn bench_chooser_array(c: &mut Criterion) {
     let black = Color::Black;
     c.bench_function("chooser_arr", |b| {
         b.iter(|| {
-            black_box([Bitboard::RANK_4,Bitboard::RANK_5][black_box(white)]);
-            black_box([Bitboard::RANK_4,Bitboard::RANK_5][black_box(black)]);
+            black_box([Bitboard::RANK_4, Bitboard::RANK_5][black_box(white)]);
+            black_box([Bitboard::RANK_4, Bitboard::RANK_5][black_box(black)]);
         });
     });
 }
@@ -1092,16 +1081,15 @@ fn benchmark_thread(c: &mut Criterion) {
     // let board2 = Catalog::perft_cpw_number3().0.clone();
     // let board3 = Catalog::perft_cpw_number3().0.clone();
 
-
     //let hasher = Hasher::new(1);
-    let cl = |_h:&Hasher, board:&Board, mv: &Move| {
+    let cl = |_h: &Hasher, board: &Board, mv: &Move| {
         // let moves = board.legal_moves();
         // let hasher = Hasher::default();
         for _i in 1..1_000_000 {
             black_box(board.make_move(&mv));
             let mut moves = MoveList::new();
             board.legal_moves_into(&mut moves);
-            black_box(moves);  
+            black_box(moves);
             // black_box(h.hash_move(&mv, &board));
             // for mv in moves.iter() {
             //     black_box(hasher.hash_move(black_box(mv), black_box(&board)));
@@ -1136,9 +1124,9 @@ fn benchmark_thread(c: &mut Criterion) {
             let pos2 = pos1.clone();
             let handle = thread::spawn(move || {
                 black_box(Perft::perft(&mut pos1.board().clone(), black_box(6)));
-            });            
+            });
             // black_box(Perft::perft(&mut board1, black_box(6)));
-            handle.join().unwrap();            
+            handle.join().unwrap();
             black_box(pos2.board());
         });
     });
@@ -1148,9 +1136,9 @@ fn benchmark_thread(c: &mut Criterion) {
             let mut pos2 = pos1.clone();
             let handle = thread::spawn(move || {
                 black_box(Perft::perft(&mut pos1.board_mut(), black_box(6)));
-            });            
+            });
             black_box(Perft::perft(&mut pos2.board_mut(), black_box(6)));
-            handle.join().unwrap();            
+            handle.join().unwrap();
         });
     });
     group.bench_function("perft-3t", |b| {
@@ -1160,13 +1148,13 @@ fn benchmark_thread(c: &mut Criterion) {
             let mut pos3 = pos1.clone();
             let handle1 = thread::spawn(move || {
                 black_box(Perft::perft(&mut pos1.board_mut(), black_box(6)));
-            });            
+            });
             let handle2 = thread::spawn(move || {
                 black_box(Perft::perft(&mut pos2.board_mut(), black_box(6)));
-            });            
+            });
             black_box(Perft::perft(&mut pos3.board_mut(), black_box(6)));
-            handle1.join().unwrap();            
-            handle2.join().unwrap();            
+            handle1.join().unwrap();
+            handle2.join().unwrap();
         });
     });
 
@@ -1175,7 +1163,10 @@ fn benchmark_thread(c: &mut Criterion) {
             let mut algo1 = Algo::new().set_timing_method(TimeControl::Depth(6)).build();
             algo1.new_game();
 
-            black_box({algo1.set_position(pos.clone()); algo1.search() });
+            black_box({
+                algo1.set_position(pos.clone());
+                algo1.search()
+            });
         });
     });
     group.bench_function("search-2t", |b| {
@@ -1190,14 +1181,17 @@ fn benchmark_thread(c: &mut Criterion) {
 
             let handle = thread::spawn(move || {
                 black_box(algo1.search_iteratively());
-            });            
-            black_box({algo2.set_position(pos.clone()); algo2.search() });
-            handle.join().unwrap();            
+            });
+            black_box({
+                algo2.set_position(pos.clone());
+                algo2.search()
+            });
+            handle.join().unwrap();
         });
     });
 
     group.bench_function("hash_move-t1", |b| {
-        b.iter(|| { 
+        b.iter(|| {
             let hash1 = Hasher::default().clone();
             cl(&hash1, &board.clone(), &mv.clone())
         });
@@ -1207,10 +1201,10 @@ fn benchmark_thread(c: &mut Criterion) {
         b.iter(|| {
             let board_clone = board.clone();
             let hash1 = Hasher::default().clone();
-            let handle = thread::spawn(move|| cl(&hash1, &board_clone, &mv.clone()));
+            let handle = thread::spawn(move || cl(&hash1, &board_clone, &mv.clone()));
             let hash3 = Hasher::default().clone();
             cl(&hash3, &board.clone(), &mv.clone());
-            handle.join().unwrap();            
+            handle.join().unwrap();
         });
     });
 
@@ -1224,8 +1218,8 @@ fn benchmark_thread(c: &mut Criterion) {
             let handle2 = thread::spawn(move || cl(&hash2, &board2_clone, &mv.clone()));
             let hash3 = Hasher::default().clone();
             cl(&hash3, &board.clone(), &mv.clone());
-            handle1.join().unwrap();            
-            handle2.join().unwrap();            
+            handle1.join().unwrap();
+            handle2.join().unwrap();
         });
     });
 
@@ -1238,18 +1232,14 @@ fn benchmark_thread(c: &mut Criterion) {
         b.iter(|| {
             let handle = thread::spawn(move || {
                 black_box(calc_sum(1000));
-            });            
+            });
             black_box(calc_sum(1000));
-            handle.join().unwrap();            
+            handle.join().unwrap();
         });
     });
 
-
-
-
     group.finish();
 }
-
 
 fn calc_sum(n: u64) -> u64 {
     let mut sum = 0;
@@ -1263,10 +1253,6 @@ fn calc_sum(n: u64) -> u64 {
     sum
 }
 
-
-
-
-
 fn benchmark_search(c: &mut Criterion) {
     let mut group = c.benchmark_group("search");
     group.sample_size(10);
@@ -1276,7 +1262,10 @@ fn benchmark_search(c: &mut Criterion) {
         b.iter(|| {
             // let eval = SimpleScorer::new().set_position(false);
             algo.new_game();
-            black_box({ algo.set_position(pos.clone()); algo.search() });
+            black_box({
+                algo.set_position(pos.clone());
+                algo.search()
+            });
         });
     });
     let pos = Catalog::starting_position();
@@ -1284,7 +1273,10 @@ fn benchmark_search(c: &mut Criterion) {
         b.iter(|| {
             // let eval = SimpleScorer::new().set_position();
             algo.new_game();
-            black_box({ algo.set_position(pos.clone()); algo.search() });
+            black_box({
+                algo.set_position(pos.clone());
+                algo.search()
+            });
         });
     });
 
@@ -1294,7 +1286,10 @@ fn benchmark_search(c: &mut Criterion) {
     group.bench_function("mate_in_2_ab", |b| {
         b.iter(|| {
             algo1.new_game();
-            black_box({ algo1.set_position(pos.clone()); algo1.search() });
+            black_box({
+                algo1.set_position(pos.clone());
+                algo1.search()
+            });
             assert_eq!(algo1.pv_table.extract_pv().to_string(), "d5f6, g7f6, c4f7");
         });
     });
@@ -1303,7 +1298,10 @@ fn benchmark_search(c: &mut Criterion) {
     group.bench_function("mate_in_2_ab_ids", |b| {
         b.iter(|| {
             algo2.new_game();
-            black_box({ algo2.set_position(pos.clone()); algo2.search() });
+            black_box({
+                algo2.set_position(pos.clone());
+                algo2.search()
+            });
             assert_eq!(algo2.pv_table.extract_pv().to_string(), "d5f6, g7f6, c4f7");
         });
     });
@@ -1422,7 +1420,8 @@ fn cache_eval(c: &mut Criterion) {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|p| {
                 let mut algo = Algo::new().set_timing_method(TimeControl::Depth(4)).build();
-                algo.set_position(p.clone()); algo.search();
+                algo.set_position(p.clone());
+                algo.search();
             });
             t.elapsed() / positions.len() as u32
         });
@@ -1433,7 +1432,8 @@ fn cache_eval(c: &mut Criterion) {
             positions.iter().cycle_n(n).for_each(|p| {
                 let mut algo = Algo::new().set_timing_method(TimeControl::Depth(4)).build();
                 //algo.eval.cache.enabled = false;
-                algo.set_position(p.clone()); algo.search();
+                algo.set_position(p.clone());
+                algo.search();
             });
             t.elapsed() / positions.len() as u32
         });
@@ -1442,40 +1442,13 @@ fn cache_eval(c: &mut Criterion) {
 }
 
 fn bench_moveordering(c: &mut Criterion) {
-    let a1a2 = Move::new_quiet( Piece::Queen, 
-        a1.square(),
-        a2.square(),
-            ); 
-    let a1a3 = Move::new_quiet(
-        Piece::Queen,
-        a1.square(),
-        a3.square(),
-    );
-    let a1a4 = Move::new_quiet(
-        Piece::Queen,
-        a1.square(),
-        a4.square(),
-    );
-    let b1a2 = Move::new_quiet(
-        Piece::Queen,
-        b1.square(),
-        a2.square(),
-    );
-    let b1a3 = Move::new_quiet(
-        Piece::Queen,
-        b1.square(),
-        a3.square(),
-    );
-    let b1a4 = Move::new_quiet(
-        Piece::Queen,
-        b1.square(),
-        a4.square(),
-    );
-    let c1c2 = Move::new_quiet(
-        Piece::Queen,
-        c1.square(),
-        c2.square(),
-    );
+    let a1a2 = Move::new_quiet(Piece::Queen, a1.square(), a2.square());
+    let a1a3 = Move::new_quiet(Piece::Queen, a1.square(), a3.square());
+    let a1a4 = Move::new_quiet(Piece::Queen, a1.square(), a4.square());
+    let b1a2 = Move::new_quiet(Piece::Queen, b1.square(), a2.square());
+    let b1a3 = Move::new_quiet(Piece::Queen, b1.square(), a3.square());
+    let b1a4 = Move::new_quiet(Piece::Queen, b1.square(), a4.square());
+    let c1c2 = Move::new_quiet(Piece::Queen, c1.square(), c2.square());
     let mut movelists = vec![MoveList::new(); 100];
     for i in 0..100 {
         movelists[i].extend(vec![b1a2, b1a3, b1a4, a1a3, a1a4, a1a2]);

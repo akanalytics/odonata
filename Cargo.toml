@@ -1,6 +1,6 @@
 [package]
 name = "odonata"
-version = "0.3.29"
+version = "0.3.30"
 license = "GPL-3.0+"
 homepage = "https://github.com/akanalytics/odonata"
 authors = ["andy watkins <andy@webcalculator.com>"]
@@ -42,6 +42,8 @@ format_num = "0.1.0"
 
 [dev-dependencies]
 criterion = "0.3"
+iai = "0.1"
+criterion-linux-perf = "0.1.0"  # https://crates.io/crates/criterion-linux-perf
 
 
 
@@ -66,6 +68,10 @@ debug = true  # allow profiling of the  main executable
 
 [lib]
 # bug in criterion<->cargo interaction https://bheisler.github.io/criterion.rs/book/faq.html
+bench = false
+
+[[bin]]
+name = "odonata"
 bench = false
 
 [features]
