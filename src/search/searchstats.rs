@@ -6,6 +6,8 @@ use std::fmt;
 use std::cmp;
 use strum::EnumCount;
 use std::time::Duration;
+use format_num::*;
+
 
 #[derive(Clone, Debug)]
 pub struct SearchStats {
@@ -269,6 +271,11 @@ impl SearchStats {
     }
 
     #[inline]
+    pub fn inc_red_lmr(&mut self, ply: Ply) {
+        self.plies[ply as usize].red_lmr += 1;
+    }
+
+    #[inline]
     pub fn inc_pvs_research(&mut self, ply: Ply) {
         self.plies[ply as usize].pvs_research += 1;
     }
@@ -337,11 +344,12 @@ pub struct NodeStats {
     
     pub cut_on_move: [u64; MoveType::COUNT],
 
-    pub pvs: u64,
+    pub pvs: u64,   
     pub pvs_research: u64,
-    pub fp: u64,
-    pub ext_check: u64,
-    pub mv: u64,
+    pub fp: u64,   // futility
+    pub ext_check: u64,  // check extensions
+    pub red_lmr: u64,  // late move reductions
+    pub mv: u64,   // total moves
 
     pub est_time: Duration,
     pub real_time: Duration,
@@ -408,6 +416,7 @@ impl NodeStats {
         self.nmp += other.nmp;
         self.fp += other.fp;
         self.ext_check += other.ext_check;
+        self.red_lmr += other.red_lmr;
         self.mv += other.mv;
         for i in 0..6 {
             self.cut_on_move[i] += other.cut_on_move[i];
@@ -460,6 +469,7 @@ macro_rules! header_format {
             "{pvs:>4} ",
             "{res:>5} ",
             "{ec:>4}  ",
+            "{lmr:>4}  ",
             "{fp:>4}  ",
 
             "{qnode:>11} ",
@@ -500,6 +510,7 @@ impl NodeStats {
             res = "r/s",
             fp = "fut",
             ec = "e/c",
+            lmr = "lmr",
 
             qnode = "q total",
             qinterior = "q interior",
@@ -537,6 +548,7 @@ impl NodeStats {
             res = "----",
             fp = "---",
             ec = "---",
+            lmr = "---",
 
             qnode = "-----------",
             qinterior = "-----------",
@@ -576,9 +588,10 @@ impl NodeStats {
                 self.cut_move_perc(MoveType::Capture),
 
             pvs = self.pvs * 100 / cmp::max(1, self.mv) as u64,
-            res = 10000 * self.pvs_research / cmp::max(1, self.mv) as u64,
+            res = format_num!(".2f", self.pvs_research as f64 * 100.0 / cmp::max(1, self.mv) as f64),
             fp = self.fp * 100 / cmp::max(1, self.mv) as u64,
             ec = self.ext_check * 100 / cmp::max(1, self.mv) as u64,
+            lmr = self.red_lmr * 100 / cmp::max(1, self.mv) as u64,
 
             qnode = self.q_interior_nodes + self.q_leaf_nodes,
             qinterior = self.q_interior_nodes,

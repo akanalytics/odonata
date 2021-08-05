@@ -85,6 +85,9 @@ pub struct SimpleScorer {
     pub pawn_passed: Weight,
     pub pawn_shield: Weight,
     pub rook_edge: Weight,
+    pub pawn_r5: Weight,
+    pub pawn_r6: Weight,
+    pub pawn_r7: Weight,
     pub rook_open_file: i32,
     pub phasing: bool,
     pub contempt: i32,
@@ -143,6 +146,9 @@ impl Component for SimpleScorer {
         c.set_weight("eval.pawn.passed", &self.pawn_passed);
         c.set_weight("eval.pawn.shield", &self.pawn_shield);
         c.set_weight("eval.rook.edge", &self.rook_edge);
+        c.set_weight("eval.pawn.r5", &self.pawn_r5);
+        c.set_weight("eval.pawn.r6", &self.pawn_r6);
+        c.set_weight("eval.pawn.r7", &self.pawn_r7);
         c.set(
             "eval.draw.score.contempt",
             &format!("type spin min -10000 max 10000 default {}", self.contempt),
@@ -203,6 +209,9 @@ impl Component for SimpleScorer {
         self.pawn_passed = c.weight("eval.pawn.passed", &self.pawn_passed);
         self.pawn_shield = c.weight("eval.pawn.shield", &self.pawn_shield);
         self.rook_edge = c.weight("eval.rook.edge", &self.rook_edge);
+        self.pawn_r5 = c.weight("eval.pawn.r5", &self.pawn_r5);
+        self.pawn_r6 = c.weight("eval.pawn.r6", &self.pawn_r6);
+        self.pawn_r7 = c.weight("eval.pawn.r7", &self.pawn_r7);
         self.rook_open_file = c.int("eval.rook.open.file").unwrap_or(self.rook_open_file as i64) as i32;
         self.contempt = c.int("eval.draw.score.contempt").unwrap_or(self.contempt as i64) as i32;
         self.tempo = c.weight("eval.tempo", &self.tempo);
@@ -287,6 +296,9 @@ impl SimpleScorer {
             pawn_shield: Weight::new(50, 0),
             rook_open_file: 20,
             rook_edge: Weight::new(0, 2),
+            pawn_r5: Weight::new(5, 20),
+            pawn_r6: Weight::new(10, 40),
+            pawn_r7: Weight::new(40, 60),
             contempt: -30, // typically -ve
             tempo: Weight::new(16, 16),
             material_scores: MATERIAL_SCORES,
@@ -301,23 +313,31 @@ impl SimpleScorer {
 
     fn calculate_pst(&mut self) {
         
+        let r5 = self.pawn_r5.s();
+        let r6 = self.pawn_r6.s();
+        let r7 = self.pawn_r7.s();
+
         #[rustfmt::skip]
         let pawn_pst_mg: [i32; 64] = [
-        0,  0,  0,  0,  0,  0,  0,  0,
-        40, 40, 40, 40, 40, 40, 40, 40,
-         10, 10, 10, 10, 10, 10, 10, 10,
-          5,  5,  5, 10, 10,  5,  5,  5,
+          0,  0,  0,  0,  0,  0,  0,  0,
+         r7, r7, r7, r7, r7, r7, r7, r7,
+         r6, r6, r6, r6, r6, r6, r6, r6,
+         r5, r5, r5,r5+5,r5+5, r5, r5, r5,
          -9, 0,  0, 20, 20, -5,  -5, -9,
          -5,-5, -9,  0,  0, -9, -5, -5,
          9, 15, 15,-35,-35, 15, 15,  10,
          0,  0,  0,  0,  0,  0,  0,  0];
         
+        let r5 = self.pawn_r5.e();
+        let r6 = self.pawn_r6.e();
+        let r7 = self.pawn_r7.e();
+         // FIXME! file A and H 
         #[rustfmt::skip]
          let pawn_pst_eg: [i32; 64] = [
          0,  0,  0,  0,  0,  0,  0,  0,
-         60, 60, 60, 60, 60, 60, 60, 60,
-         40, 40, 40, 40, 40, 40, 40, 40,
-         20, 20, 20, 20, 20, 20, 20, 20,
+         r7, r7, r7, r7, r7, r7, r7, r7,
+         r6, r6, r6, r6, r6, r6, r6, r6,
+         r5, r5, r5, r5, r5, r5, r5, r5,
          10, 10, 10, 10, 10, 10, 10, 10,
           5,  5,  5,  5,  5,  5,  5,  5,
           0,  0,  0,  0,  0,  0,  0,  0,

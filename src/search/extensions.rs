@@ -49,7 +49,7 @@ impl Component for Extensions {
 impl Default for Extensions {
     fn default() -> Self {
         Extensions {
-            check_enabled: true,
+            check_enabled: false,
             check_max_depth: 1,
             check_max_phase: 60,
         }

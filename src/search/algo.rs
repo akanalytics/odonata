@@ -10,6 +10,7 @@ use crate::position::Position;
 use crate::pvtable::PvTable;
 use crate::repetition::Repetition;
 use crate::search::extensions::Extensions;
+use crate::search::reductions::Reductions;
 use crate::search::futility::Futility;
 use crate::search::iterative_deepening::IterativeDeepening;
 use crate::search::killers::Killers;
@@ -207,6 +208,7 @@ pub struct Algo {
     pub futility: Futility,
     pub pvs: Pvs,
     pub extensions: Extensions,
+    pub reductions: Reductions,
     pub search_stats: SearchStats,
 
     pub pv_table: PvTable,
@@ -262,6 +264,7 @@ impl Component for Algo {
         self.futility.settings(c);
         self.pvs.settings(c);
         self.extensions.settings(c);
+        self.reductions.settings(c);
         self.qsearch.settings(c);
         self.ids.settings(c);
         self.repetition.settings(c);
@@ -279,6 +282,7 @@ impl Component for Algo {
         self.futility.configure(c);
         self.pvs.configure(c);
         self.extensions.configure(c);
+        self.reductions.configure(c);
         self.qsearch.configure(c);
         self.ids.configure(c);
         self.repetition.configure(c);
@@ -297,6 +301,7 @@ impl Component for Algo {
         self.futility.new_game();
         self.pvs.new_game();
         self.extensions.new_game();
+        self.reductions.new_game();
         self.qsearch.new_game();
         self.ids.new_game();
         self.repetition.new_game();
@@ -313,6 +318,8 @@ impl Component for Algo {
         self.nmp.new_position();
         self.futility.new_position();
         self.pvs.new_position();
+        self.extensions.new_position();
+        self.reductions.new_position();
         self.qsearch.new_position();
         self.ids.new_position();
         self.repetition.new_position();
@@ -340,6 +347,7 @@ impl fmt::Debug for Algo {
             .field("futility", &self.futility)
             .field("pvs", &self.pvs)
             .field("extensions", &self.extensions)
+            .field("reductions", &self.reductions)
             .field("qsearch", &self.qsearch)
             .field("ids", &self.ids)
             .field("repetition", &self.repetition)
@@ -375,6 +383,7 @@ impl fmt::Display for Algo {
         write!(f, "\n[futility]\n{}", self.futility)?;
         write!(f, "\n[pvs]\n{}", self.pvs)?;
         write!(f, "\n[extensions]\n{}", self.extensions)?;
+        write!(f, "\n[reductions]\n{}", self.reductions)?;
         write!(f, "\n[qsearch]\n{}", self.qsearch)?;
         write!(f, "\n[eval]\n{}", self.eval)?;
         write!(f, "\n[repetition]\n{}", self.repetition)?;
