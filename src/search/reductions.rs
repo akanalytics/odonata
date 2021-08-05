@@ -81,7 +81,7 @@ impl Component for Reductions {
 
 
 // WAC @ 1m nodes
-// re-search=false, pawns=true, min_depth=3, reduction=1 => 256
+// min_depth=3, re-search=false, pawns=true, min_depth=3, reduction=1 => 256
 // min_depth=4 => 255
 // min_depth=2 => 257   (with re-search => 248)
 // min_depth=1 => 257   (with reseach => 248)
@@ -102,7 +102,7 @@ impl Default for Reductions {
             lmr_pawns: true,
             lmr_promos: false,
             lmr_killers: false,
-            lmr_min_depth: 3,
+            lmr_min_depth: 2,
             lmr_red_strat: 1,
         }
     }
