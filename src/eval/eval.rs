@@ -738,6 +738,7 @@ impl SimpleScorer {
         sum
     }
 
+    #[inline]
     pub fn w_eval_square(&self, c: Color, p: Piece, mut sq: Square) -> Weight {
         if c == Color::White {
             sq = sq.flip_vertical();

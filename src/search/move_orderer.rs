@@ -326,7 +326,7 @@ impl OrderedMoveList {
                     .iter()
                     .filter(|m| Move::is_capture(m))
                     .for_each(|&m| moves.push(m));
-                moves.sort_unstable_by_key(Move::mvv_lva_score);
+                moves.sort_by_cached_key(Move::mvv_lva_score);
                 moves.reverse();
                 if algo.move_orderer.thread == 1 && moves.len() >= 2 {
                     moves.swap(0, 1);
@@ -380,7 +380,7 @@ impl OrderedMoveList {
                     .filter(|m| !Move::is_capture(m) && !Move::is_promo(m))
                     .for_each(|&m| moves.push(m));
                 // algo.order_moves(self.ply, moves, &None);
-                moves.sort_unstable_by_key(|mv| algo.move_orderer.quiet_score(mv, algo, b.phase(), b.color_us()) );
+                moves.sort_by_cached_key(|mv| algo.move_orderer.quiet_score(mv, algo, b.phase(), b.color_us()) );
                 if algo.move_orderer.thread == 1 && moves.len() >= 2 {
                     moves.swap(0, 1);
                 }

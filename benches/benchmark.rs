@@ -667,6 +667,19 @@ fn benchmark_ordering(c: &mut Criterion) {
             t.elapsed() / positions.len() as u32
         })
     });
+    orderer.order = MoveType::vec_from_string("SHIgKPqBE").unwrap();
+    group.bench_function("SHIgKPqBE", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            positions.iter().cycle_n(n).for_each(|pos| {
+                let mut  sorted_moves = orderer.get_sorted_moves(PLY, TT_MOVE);
+                while let Some(mv) = sorted_moves.next_move(pos.board(), &mut algo) {
+                    black_box(&mv);
+                }
+            });
+            t.elapsed() / positions.len() as u32
+        })
+    });
 
     group.finish();
 }
