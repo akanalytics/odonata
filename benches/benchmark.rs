@@ -157,17 +157,17 @@ fn piece_to_char(c: &mut Criterion) {
 }
 
 fn benchmark_perft(c: &mut Criterion) {
-    let mut board = Catalog::starting_position();
+    let mut pos = Catalog::starting_position();
     let mut group = c.benchmark_group("perft");
     group.sample_size(10);
     group.bench_function("perft5", |b| {
         b.iter(|| {
-            black_box(Perft::perft(&mut board, black_box(5)));
+            black_box(Perft::perft(&mut pos.board_mut(), black_box(5)));
         });
     });
     group.bench_function("perft6", |b| {
         b.iter(|| {
-            black_box(Perft::perft(&mut board, black_box(6)));
+            black_box(Perft::perft(&mut pos.board_mut(), black_box(6)));
         });
     });
     group.finish();
@@ -189,13 +189,13 @@ fn benchmark_score(c: &mut Criterion) {
 }
 
 fn make_move(c: &mut Criterion) {
-    let board = Catalog::starting_position();
-    let mv1 = board.parse_uci_move("e2e4").unwrap();
-    let mv2 = board.parse_uci_move("b1c3").unwrap();
+    let pos = Catalog::starting_position();
+    let mv1 = pos.board().parse_uci_move("e2e4").unwrap();
+    let mv2 = pos.board().parse_uci_move("b1c3").unwrap();
     c.bench_function("makemove", |b| {
         b.iter(|| {
-            black_box(board.make_move(black_box(&mv1)));
-            black_box(board.make_move(black_box(&mv2)));
+            black_box(pos.board().make_move(black_box(&mv1)));
+            black_box(pos.board().make_move(black_box(&mv2)));
         });
     });
 }
@@ -215,7 +215,8 @@ fn hash_move(c: &mut Criterion) {
 }
 
 fn hash_board(c: &mut Criterion) {
-    let board = Catalog::starting_position();
+    let pos = Catalog::starting_position();
+    let board = pos.board();
     let hasher = Hasher::new(1);
     c.bench_function("hash_board", |b| {
         b.iter(|| {
@@ -225,7 +226,8 @@ fn hash_board(c: &mut Criterion) {
 }
 
 fn legal_moves(c: &mut Criterion) {
-    let board = Catalog::starting_position();
+    let pos = Catalog::starting_position();
+    let board = pos.board();
     let mut ml = MoveList::new();
     c.bench_function("legal_moves_into", |b| {
         b.iter(|| {
@@ -639,7 +641,7 @@ fn benchmark_ordering(c: &mut Criterion) {
     let mut algo = Algo::new();
     const PLY: Ply = 3;
     const TT_MOVE: Move = Move::NULL_MOVE;
-    orderer.order = "SHIGKPQBE".to_string();
+    orderer.order = MoveType::vec_from_string("SHIGKPQBE").unwrap();
     group.bench_function("SHIGKPQBE", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
@@ -652,7 +654,7 @@ fn benchmark_ordering(c: &mut Criterion) {
             t.elapsed() / positions.len() as u32
         })
     });
-    orderer.order = "SHIgKPQBE".to_string();
+    orderer.order = MoveType::vec_from_string("SHIgKPQBE").unwrap();
     group.bench_function("SHIgKPQBE - deferred sort", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
@@ -1047,7 +1049,7 @@ fn bench_chooser_struct(c: &mut Criterion) {
 
 fn bench_insufficient_material(c: &mut Criterion) {
     let mut group = c.benchmark_group("insufficient");
-    let bd = &Catalog::starting_position();
+    let bd = &Catalog::starting_board();
     let m = Material::from_board(bd);
     group.bench_function("insufficient_material", |b| {
         b.iter(|| {
@@ -1117,39 +1119,39 @@ fn benchmark_thread(c: &mut Criterion) {
 
     group.bench_function("perft-1t", |b| {
         b.iter(|| {
-            let mut board1 = Catalog::starting_position();
-            let board2 = board1.clone();
+            let pos1 = Catalog::starting_position();
+            let pos2 = pos1.clone();
             let handle = thread::spawn(move || {
-                black_box(Perft::perft(&mut board1, black_box(6)));
+                black_box(Perft::perft(&mut pos1.board().clone(), black_box(6)));
             });            
             // black_box(Perft::perft(&mut board1, black_box(6)));
             handle.join().unwrap();            
-            black_box(board2);
+            black_box(pos2.board());
         });
     });
     group.bench_function("perft-2t", |b| {
         b.iter(|| {
-            let mut board1 = Catalog::starting_position();
-            let mut board2 = board1.clone();
+            let mut pos1 = Catalog::starting_position();
+            let mut pos2 = pos1.clone();
             let handle = thread::spawn(move || {
-                black_box(Perft::perft(&mut board1, black_box(6)));
+                black_box(Perft::perft(&mut pos1.board_mut(), black_box(6)));
             });            
-            black_box(Perft::perft(&mut board2, black_box(6)));
+            black_box(Perft::perft(&mut pos2.board_mut(), black_box(6)));
             handle.join().unwrap();            
         });
     });
     group.bench_function("perft-3t", |b| {
         b.iter(|| {
-            let mut board1 = Catalog::starting_position();
-            let mut board2 = board1.clone();
-            let mut board3 = board1.clone();
+            let mut pos1 = Catalog::starting_position();
+            let mut pos2 = pos1.clone();
+            let mut pos3 = pos1.clone();
             let handle1 = thread::spawn(move || {
-                black_box(Perft::perft(&mut board1, black_box(6)));
+                black_box(Perft::perft(&mut pos1.board_mut(), black_box(6)));
             });            
             let handle2 = thread::spawn(move || {
-                black_box(Perft::perft(&mut board2, black_box(6)));
+                black_box(Perft::perft(&mut pos2.board_mut(), black_box(6)));
             });            
-            black_box(Perft::perft(&mut board3, black_box(6)));
+            black_box(Perft::perft(&mut pos3.board_mut(), black_box(6)));
             handle1.join().unwrap();            
             handle2.join().unwrap();            
         });
@@ -1158,10 +1160,9 @@ fn benchmark_thread(c: &mut Criterion) {
     group.bench_function("search-1t", |b| {
         b.iter(|| {
             let mut algo1 = Algo::new().set_timing_method(TimeControl::Depth(6)).build();
-            algo1.board = pos.board().clone();
             algo1.new_game();
 
-            black_box(algo1.search(pos.board()));
+            black_box({algo1.set_position(pos.clone()); algo1.search() });
         });
     });
     group.bench_function("search-2t", |b| {
@@ -1177,7 +1178,7 @@ fn benchmark_thread(c: &mut Criterion) {
             let handle = thread::spawn(move || {
                 black_box(algo1.search_iteratively());
             });            
-            black_box(algo2.search(pos.board()));
+            black_box({algo2.set_position(pos.clone()); algo2.search() });
             handle.join().unwrap();            
         });
     });
@@ -1262,34 +1263,34 @@ fn benchmark_search(c: &mut Criterion) {
         b.iter(|| {
             // let eval = SimpleScorer::new().set_position(false);
             algo.new_game();
-            black_box(algo.search(pos.board()));
+            black_box({ algo.set_position(pos.clone()); algo.search() });
         });
     });
-    let board = Catalog::starting_position();
+    let pos = Catalog::starting_position();
     group.bench_function("starting(5)", |b| {
         b.iter(|| {
             // let eval = SimpleScorer::new().set_position();
             algo.new_game();
-            black_box(algo.search(&board));
+            black_box({ algo.set_position(pos.clone()); algo.search() });
         });
     });
 
-    let board = Catalog::mate_in_2()[0].board().clone();
+    let pos = Catalog::mate_in_2()[0].clone();
     let mut algo1 = Algo::new().set_timing_method(TimeControl::Depth(3)).build();
     algo1.ids.enabled = false;
     group.bench_function("mate_in_2_ab", |b| {
         b.iter(|| {
             algo1.new_game();
-            black_box(algo1.search(black_box(&board)));
+            black_box({ algo1.set_position(pos.clone()); algo1.search() });
             assert_eq!(algo1.pv_table.extract_pv().to_string(), "d5f6, g7f6, c4f7");
         });
     });
-    let board = Catalog::mate_in_2()[0].board().clone();
+    let pos = Catalog::mate_in_2()[0].clone();
     let mut algo2 = Algo::new().set_timing_method(TimeControl::Depth(3)).build();
     group.bench_function("mate_in_2_ab_ids", |b| {
         b.iter(|| {
             algo2.new_game();
-            black_box(algo2.search(black_box(&board)));
+            black_box({ algo2.set_position(pos.clone()); algo2.search() });
             assert_eq!(algo2.pv_table.extract_pv().to_string(), "d5f6, g7f6, c4f7");
         });
     });
@@ -1408,7 +1409,7 @@ fn cache_eval(c: &mut Criterion) {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|p| {
                 let mut algo = Algo::new().set_timing_method(TimeControl::Depth(4)).build();
-                algo.search(p.board());
+                algo.set_position(p.clone()); algo.search();
             });
             t.elapsed() / positions.len() as u32
         });
@@ -1419,7 +1420,7 @@ fn cache_eval(c: &mut Criterion) {
             positions.iter().cycle_n(n).for_each(|p| {
                 let mut algo = Algo::new().set_timing_method(TimeControl::Depth(4)).build();
                 //algo.eval.cache.enabled = false;
-                algo.search(p.board());
+                algo.set_position(p.clone()); algo.search();
             });
             t.elapsed() / positions.len() as u32
         });
