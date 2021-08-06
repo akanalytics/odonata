@@ -15,11 +15,11 @@ impl SimpleScorer {
         let mut occ = board.black() | board.white();
         let mut attacker_color = board.color_us();
         let mut attackers = board.attacked_by(mv.to().as_bb());  // will include the current 'mv' attacker
-        gain[0] = self.material_scores[mv.capture_piece()];
+        gain[0] = self.material_weights[mv.capture_piece()].s();
         while !(attackers & board.color(attacker_color)).is_empty() {
             let mover = board.piece_at(from);
             d += 1; 
-            gain[d]  = self.material_scores[mover.index()] - gain[d-1]; // what you are taking less what opp has
+            gain[d]  = self.material_weights[mover.index()].s() - gain[d-1]; // what you are taking less what opp has
             // eprintln!("{}\n{}: mover: {} from: {:?} for spec gain {:?}\n{}",board.to_fen(), d, mover, from, gain, attackers);
             // if cmp::max(-gain[d-1], gain[d]) < 0 {
             //     break; // safely prune as from here on its zero

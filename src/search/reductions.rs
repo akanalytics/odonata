@@ -79,7 +79,6 @@ impl Component for Reductions {
     fn new_position(&mut self) {}
 }
 
-
 // WAC @ 1m nodes
 // min_depth=3, re-search=false, pawns=true, min_depth=3, reduction=1 => 256
 // min_depth=4 => 255
@@ -107,7 +106,6 @@ impl Default for Reductions {
         }
     }
 }
-
 
 // from CPW
 //
@@ -169,15 +167,30 @@ impl Reductions {
             reduce = match self.lmr_red_strat {
                 1 => 1,
                 2 => 2,
-                10 => match move_number {
-                    0..=10 => 1,
-                    11..=20 => 2,
+                6 => match node.depth {
+                    0..=6 => 1,
+                    7..=12 => 2,
+                    _ => 3,
+                },
+                9 => match node.depth {
+                    0..=9 => 1,
+                    10..=15 => 2,
                     _ => 3,
                 },
                 20 => match move_number {
-                    0..=10 => 1 + node.depth / 3,
-                    11..=20 => 2 + node.depth / 3,
-                    _ => 3 + node.depth / 3,
+                    0..=20 => 1,
+                    _ => 2,
+                },
+                920 => match node.depth {
+                    0..=9 => match move_number {
+                        0..=20 => 1,
+                        _ => 2,
+                    },
+                    10..=15 => match move_number {
+                        0..=20 => 2,
+                        _ => 3,
+                    },
+                    _ => 3,
                 },
                 _ => 1,
             }

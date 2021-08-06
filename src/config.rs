@@ -56,7 +56,7 @@ impl Config {
     }
 
     pub fn set_weight(&mut self, k: &str, w: &Weight) {
-        let (k1, k2) = (k.to_string() + ".S", k.to_string() + ".E");
+        let (k1, k2) = (k.to_string() + ".s", k.to_string() + ".e");
         let s = "type spin min -9999 max 9999 default ".to_string();
         if self.settings.insert(k1.to_owned(), s.clone() + w.s().to_string().as_str()).is_none() {
             self.insertion_order.push(k1);
@@ -98,10 +98,10 @@ impl Config {
 
     pub fn weight(&self, name: &str, default: &Weight) -> Weight {
         let (mut s, mut e) = (default.s(), default.e());
-        if let Some(v) = self.settings.get(&(name.to_string() + ".S")) {
+        if let Some(v) = self.settings.get(&(name.to_string() + ".s")) {
             s = v.parse::<i32>().unwrap_or(default.s());
         }
-        if let Some(v) = self.settings.get(&(name.to_string() + ".E")) {
+        if let Some(v) = self.settings.get(&(name.to_string() + ".e")) {
             e = v.parse::<i32>().unwrap_or(default.e());
         }
         Weight::new(s, e)

@@ -221,33 +221,37 @@ impl Algo {
                 },
                 &mut self.search_stats,
             );
-            let lmr = self.reductions.lmr(
-                board,
-                &mv,
-                count,
-                move_type,
-                &child_board,
-                &Node {
-                    ply,
-                    depth,
-                    alpha,
-                    beta,
-                },
-                nt, 
-                &mut self.search_stats,
-            );
+            let lmr = if !self.minmax {
+                self.reductions.lmr(
+                    board,
+                    &mv,
+                    count,
+                    move_type,
+                    &child_board,
+                    &Node {
+                        ply,
+                        depth,
+                        alpha,
+                        beta,
+                    },
+                    nt,
+                    &mut self.search_stats,
+                )
+            } else {
+                0
+            };
 
-            let pvs = !self.minmax && self.pvs.permitted(
-                nt,
-                board,
-                &Node {
-                    ply,
-                    depth,
-                    alpha,
-                    beta,
-                },
-            );
-            
+            let pvs = !self.minmax
+                && self.pvs.permitted(
+                    nt,
+                    board,
+                    &Node {
+                        ply,
+                        depth,
+                        alpha,
+                        beta,
+                    },
+                );
             let mut child_score;
             if pvs {
                 debug_assert!(alpha.is_numeric());
@@ -262,21 +266,22 @@ impl Algo {
                     &mv,
                 );
             } else {
-                child_score =
-                    -self.alphabeta_recursive(&mut child_board, ply + 1, depth + ext - lmr - 1, -beta, -alpha, &mv);
-            } 
-
-            if (lmr > 0 && self.reductions.lmr_re_search || pvs) && child_score > score && child_score < beta {
-                // research with full window without reduction in depth
-                self.search_stats.inc_pvs_research(ply);
                 child_score = -self.alphabeta_recursive(
                     &mut child_board,
                     ply + 1,
-                    depth + ext - 1,
+                    depth + ext - lmr - 1,
                     -beta,
                     -alpha,
                     &mv,
                 );
+            }
+
+            if (lmr > 0 && self.reductions.lmr_re_search || pvs) && child_score > score && child_score < beta
+            {
+                // research with full window without reduction in depth
+                self.search_stats.inc_pvs_research(ply);
+                child_score =
+                    -self.alphabeta_recursive(&mut child_board, ply + 1, depth + ext - 1, -beta, -alpha, &mv);
             }
             board.undo_move(&mv);
             self.repetition.pop();

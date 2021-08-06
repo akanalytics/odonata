@@ -690,13 +690,13 @@ mod tests {
     #[test]
     fn test_uci_setoption() {
         let mut uci = Uci::new();
-        uci.preamble.push("setoption name eval.b value 700".into());
+        uci.preamble.push("setoption name eval.b.s value 700".into());
         uci.preamble
             .push("setoption name eval.position value false".into());
         uci.preamble.push("quit".into());
         uci.run();
-        assert_eq!(uci.engine.algo.eval.material_scores[Piece::Bishop], 700);
-        assert_eq!(uci.engine.algo.eval.material_scores[Piece::Pawn], 100);
+        assert_eq!(uci.engine.algo.eval.material_weights[Piece::Bishop].s(), 700);
+        assert_eq!(uci.engine.algo.eval.material_weights[Piece::Pawn].s(), 100);
         assert_eq!(uci.engine.algo.eval.position, false);
     }
 

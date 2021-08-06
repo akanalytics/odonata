@@ -58,11 +58,11 @@ impl fmt::Display for Repetition {
 //
 // some use cases
 //
-// 2 repetitions before root, 1 after => certain draw
-// 1 repetition  before root, 1 after => score as zero to avoid cycles
+// 2 repetitions before root, 1 after => would create a certain draw -> score as 0
 // 0 repetitions before root, 1 after => score as zero to avoid cycles
-// 0 repetitions before root, 2 after => 
-// 0 repetitions before root, 3 after
+// 1 repetition  before root, 1 after => score as zero to avoid cycles
+// 2 repetitions before root, 0 after => score as normal (but avoid tt?) (otherwise everything looks like a draw) 
+// 0 repetitions before root, 3 after = > score as zero
 
 // a. pos1, pos2, pos3 outside of search => draw, and search returns outcome of draw
 // b. pos1, pos2 [search] pos3 => score-of-draw inside search (no choice) - but don't return outcome as a draw
