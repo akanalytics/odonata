@@ -469,6 +469,12 @@ impl MoveType {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, Default, Debug)] 
+pub struct Repeats {
+    pub total: u16,
+    pub in_search: u16,  // exclusive of root 
+}
+
 
 
 #[cfg(test)]

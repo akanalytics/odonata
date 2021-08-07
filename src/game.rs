@@ -228,9 +228,9 @@ mod tests {
         // old.eval.undefended_sq = 3;  // was 3
         // new.tt.use_tt_for_pv = false;
         // new.eval.safety = true;
-        new.repetition.avoid_tt_on_repeats = false;
+        // new.repetition.avoid_tt_on_repeats = false;
 
-        old.repetition.avoid_tt_on_repeats = true;
+        // old.repetition.avoid_tt_on_repeats = true;
         // old.tt.use_tt_for_pv = true;
         // old.eval.safety = true;
         // old.eval.undefended_sq = 0;

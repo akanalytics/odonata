@@ -151,7 +151,13 @@ def get_version_number() -> Optional[str]:
             return v
     return None
 
+
 def release_linux():
+    release_modern()
+    release_generic()
+
+
+def release_modern():
     ver = get_version_number()
     # shell("ldd target/x86_64-unknown-linux-musl/release/odonata")
     setenv("RUSTFLAGS", f"-Ctarget-feature={MODERN} -C target-cpu={CPU}")
@@ -159,6 +165,8 @@ def release_linux():
     shell(f"cp ./target/x86_64-unknown-linux-musl/release/odonata ./odonata-{ver}-linux-modern")
     shell(f"strip ./odonata-{ver}-linux-modern")
 
+def release_generic():
+    ver = get_version_number()
     setenv("RUSTFLAGS", f"-Ctarget-feature={GENERIC} -C target-cpu=generic")
     shell(f'cargo b --release --target x86_64-unknown-linux-musl')
     shell(f"cp ./target/x86_64-unknown-linux-musl/release/odonata ./odonata-{ver}-linux-generic")
@@ -209,6 +217,7 @@ def help():
 commands = {
     "test_threading": test_threading,
     "release_linux": release_linux,
+    "release_modern": release_modern,
     "release_native": release_native,
     "release_mac": release_mac,
     "release_windows": release_windows,

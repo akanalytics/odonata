@@ -3,7 +3,7 @@ use crate::board::Board;
 use crate::hasher::Hasher;
 use crate::mv::Move;
 use crate::variation::Variation;
-use crate::types::{Piece};
+use crate::types::{Piece, Repeats};
 
 use std::cell::Cell;
 
@@ -103,7 +103,7 @@ impl MoveMaker for Board {
             turn: self.turn.opposite(),
             fullmove_number: self.fullmove_number + self.turn.chooser_wb(0, 1),
             fifty_clock: self.fifty_clock + 1,
-            repetition_count: Cell::new(0),
+            repetition_count: Cell::new(Repeats::default()),
             threats_to: [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())],
             checkers_of: [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())],
             pinned: Cell::<_>::new(Bitboard::niche()),

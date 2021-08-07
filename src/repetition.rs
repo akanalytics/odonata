@@ -2,7 +2,7 @@ use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::config::{Component, Config};
 use crate::mv::Move;
-use crate::types::{Hash, Piece};
+use crate::types::{Hash, Piece, Repeats};
 use crate::variation::Variation;
 use crate::position::Position;
 use crate::{debug, logger::LogInit};
@@ -13,6 +13,7 @@ pub struct Repetition {
     pub enabled: bool,
     pub avoid_tt_on_repeats: bool,
     prior_positions: Vec<Hash>,
+    root_index: usize,
 }
 
 impl Component for Repetition {
@@ -42,6 +43,7 @@ impl Default for Repetition {
             enabled: true,
             avoid_tt_on_repeats: false,
             prior_positions: Vec::new(),
+            root_index: 0,
         }
     }
 }
@@ -51,6 +53,7 @@ impl fmt::Display for Repetition {
         writeln!(f, "enabled          : {}", self.enabled)?;
         writeln!(f, "avoid_tt_on_rep  : {}", self.avoid_tt_on_repeats)?;
         writeln!(f, "prior posn count : {}", self.prior_positions.len())?;
+        writeln!(f, "root index       : {}", self.root_index)?;
         Ok(())
     }
 }
@@ -86,6 +89,7 @@ impl fmt::Display for Repetition {
 // dont have Board reference a repetition
 //
 
+
 impl Repetition {
     pub fn new() -> Self {
         Self::default()
@@ -108,6 +112,7 @@ impl Repetition {
     // uses supplied variation
     pub fn push_position(&mut self, pos: &Position) {
         self.push_variation(&pos.supplied_variation(), pos.board());
+        self.root_index = self.prior_positions.len();
     }
     
     pub fn push_variation(&mut self, moves: &Variation, pre: &Board) {
@@ -121,7 +126,7 @@ impl Repetition {
                 self.prior_positions.push(0);
             }
             b = b.make_move(mv);
-            self.prior_positions.push(pre.hash());
+            self.prior_positions.push(b.hash());
         }
     }
 
@@ -133,18 +138,29 @@ impl Repetition {
     }
 
     // current position counts as 1
-    pub fn count(&self, b: &Board) -> u16 {
+    pub fn count(&self, b: &Board) -> Repeats {
         if !self.enabled {
-            return 0;
+            return Repeats::default();
         }
-        self.prior_positions
-            .iter()
-            .rev()
-            .take_while(|&h| *h != 0)
-            //.skip(1)
-            .step_by(2)
-            .filter(|&h| *h == b.hash())
-            .count() as u16
+        Repeats {
+            total: self.prior_positions
+                .iter()
+                .rev()
+                .take_while(|&h| *h != 0)
+                //.skip(1)
+                .step_by(2)
+                .filter(|&h| *h == b.hash())
+                .count() as u16,
+            in_search: self.prior_positions[self.root_index..]
+                .iter()
+                .rev()
+                .take_while(|&h| *h != 0)
+                //.skip(1)
+                .step_by(2)
+                .filter(|&h| *h == b.hash())
+                .count() as u16,
+        }
+
     }
 
     pub fn is_repeated(&self, b: &Board) -> bool {
@@ -186,9 +202,9 @@ mod tests {
         rep1.push_move(&knight_mv, &boards[4]);
         rep1.push_move(&knight_mv, &boards[5]);
         rep1.push_move(&knight_mv, &boards[6]);
-        assert_eq!(rep1.count(&boards[4]), 1);
-        assert_eq!(rep1.count(&boards[2]), 1);
-        assert_eq!(rep1.count(&boards[0]), 0); // pawn move reset the count
+        assert_eq!(rep1.count(&boards[4]).total, 1);
+        assert_eq!(rep1.count(&boards[2]).total, 1);
+        assert_eq!(rep1.count(&boards[0]).total, 0); // pawn move reset the count
 
         rep1.pop(); // 6
         rep1.pop(); // 5
@@ -200,12 +216,12 @@ mod tests {
         rep1.push_move(&knight_mv, &boards[4]);
         rep1.push_move(&knight_mv, &boards[5]);
         rep1.push_move(&knight_mv, &boards[6]);
-        assert_eq!(rep1.count(&boards[4]), 1);
-        assert_eq!(rep1.count(&boards[2]), 1);
-        assert_eq!(rep1.count(&boards[0]), 1); // no pawn move to reset the hmvc
+        assert_eq!(rep1.count(&boards[4]).total, 1);
+        assert_eq!(rep1.count(&boards[2]).total, 1);
+        assert_eq!(rep1.count(&boards[0]).total, 1); // no pawn move to reset the hmvc
         rep1.push_move(&knight_mv, &boards[6]);
         rep1.push_move(&knight_mv, &boards[4]);
-        assert_eq!(rep1.count(&boards[2]), 1);
+        assert_eq!(rep1.count(&boards[2]).total, 1);
     }
 
     #[test]
@@ -227,7 +243,7 @@ mod tests {
         for mv in mvs.iter() {
             b = b.make_move(&mv);
             algo.repetition.push_move(&mv, &b);
-            println!("rep count = {} hash = {:x}", algo.repetition.count(&b), b.hash());
+            println!("rep count = {} hash = {:x}", algo.repetition.count(&b).total, b.hash());
         }
     }
 
@@ -255,4 +271,19 @@ mod tests {
         algo.set_position(Position::from_board(b)).search();
         println!("{}", algo);
     }
+
+    #[test]
+    #[ignore]
+    fn test_rep_bug2() {
+        let mut engine = Engine::new();
+
+        let pos = Catalog::draws()[2].clone();
+
+        let board = pos.supplied_variation().apply_to(pos.board());
+        engine.set_position(pos.clone());
+        print!("pos = {}\nboard={}\nrep={}\n{:?}", pos, board, engine.algo.repetition, engine.algo.repetition.count(&board));
+        print!("rep = {:?}\n", engine.algo.repetition);
+    
+    }
+        
 }

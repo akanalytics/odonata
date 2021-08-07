@@ -3,7 +3,7 @@ use crate::material::Material;
 use crate::board::boardbuf::BoardBuf;
 use crate::hasher::Hasher;
 use std::cell::Cell;
-use crate::types::{Color, Piece, Hash, Ply};
+use crate::types::{Color, Piece, Hash, Ply, Repeats};
 use crate::bitboard::castling::CastlingRights;
 use std::fmt::{self, Write};
 use std::iter::*;
@@ -28,7 +28,7 @@ pub struct Board {
     turn: Color,
     fifty_clock: u16,
     fullmove_number: u16,
-    repetition_count: Cell<u16>,
+    repetition_count: Cell<Repeats>,
     hash: Hash,
     threats_to: [Cell<Bitboard>; Color::len()],
     checkers_of: [Cell<Bitboard>; Color::len()],
@@ -81,12 +81,12 @@ impl Board {
     }
 
     #[inline]
-    pub fn repetition_count(&self) -> u16 {
+    pub fn repetition_count(&self) -> Repeats {
         self.repetition_count.get()
     } 
 
-    pub fn set_repetition_count(&self, count: u16) {
-        self.repetition_count.set(count);
+    pub fn set_repetition_count(&self, reps: Repeats) {
+        self.repetition_count.set(reps);
     } 
 
     #[inline]
@@ -300,7 +300,7 @@ impl fmt::Display for Board {
         // write!(fmt, "Moves: {}", self.moves)?;
         if f.alternate() {
             writeln!(f, "Hash: {:x}", self.hash())?;
-            writeln!(f, "Rep count: {:x}", self.repetition_count())?;
+            writeln!(f, "Rep count: {:x}", self.repetition_count().total)?;
             writeln!(f, "White:\n{}\nBlack:\n{}\n", self.white(), self.black())?;
             for &p in Piece::ALL_BAR_NONE.iter() {
                 writeln!(
@@ -333,7 +333,7 @@ impl Default for Board {
             turn: Default::default(),
             fifty_clock: Default::default(),
             fullmove_number: 1,
-            repetition_count: Cell::<u16>::new(0), 
+            repetition_count: Cell::<_>::new(Repeats::default()), 
             threats_to: [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())],
             checkers_of: [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())],
             pinned: Cell::<_>::new(Bitboard::niche()),

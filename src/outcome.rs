@@ -126,10 +126,10 @@ impl Board {
             return Some(Outcome::DrawRule75);
         }
 
-        if self.repetition_count() >= 5 {
+        if self.repetition_count().total >= 5 {
             return Some(Outcome::DrawRepetition5);
         }
-        if self.repetition_count() >= 2 {
+        if self.repetition_count().total >= 2 {
             return Some(Outcome::DrawRepetition3);
         }
         if self.material().is_insufficient() {
