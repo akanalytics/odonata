@@ -63,7 +63,12 @@ impl Algo {
 
         if board.draw_outcome().is_some() {
             self.search_stats.inc_leaf_nodes(ply);
-            return board.eval_draw(&mut self.eval); // will return a draw score
+            return board.eval_draw(&mut self.eval,     &Node {
+                ply,
+                depth,
+                alpha,
+                beta,
+            },); // will return a draw score
         }
 
         let mut score = -Score::INFINITY;
@@ -79,7 +84,7 @@ impl Algo {
         if let Some(entry) = self.tt.probe_by_board(board, ply, draft) {
             // we use thr tt_mv for ordering regardless of draft
             tt_mv = entry.bm;
-            if entry.draft >= draft && !(board.repetition_count().total > 0 && self.repetition.avoid_tt_on_repeats)
+            if entry.draft >= draft && (ply > 0 || self.tt.allow_tt_at_root) && !(board.repetition_count().total > 1 && self.repetition.avoid_tt_on_repeats)
             {
                 match entry.node_type {
                     NodeType::Pv => {

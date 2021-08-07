@@ -287,8 +287,8 @@ impl SimpleScorer {
                                 Weight::new(100, 100),
                                 Weight::new(350, 350), // knights
                                 Weight::new(350, 350),
-                                Weight::new(600, 600),
-                                Weight::new(1100, 1100),
+                                Weight::new(600, 625),
+                                Weight::new(1100, 1300),
                                 Weight::new(0, 0),   // king
                                 ],
             // cache: TranspositionTable::default(),
@@ -494,7 +494,7 @@ impl SimpleScorer {
         }
     }
 
-    pub fn w_eval_draw(&mut self, board: &Board) -> Score {
+    pub fn w_eval_draw(&mut self, board: &Board, node: &Node) -> Score {
         // draw score is +ve for playing a stronger opponent (we want a draw), neg for weaker
         //
         //  Engine Col   |  search ply   |  value to searcher   | Score to white
@@ -506,7 +506,8 @@ impl SimpleScorer {
         // +ve contempt => +ve score => aim for draw => opponent stronger than us
         // board.color_us() == Color::Black => minimising
         // +ve contempt => -ve score => aim for draw => opponent stronger than us
-        let contempt = board.color_us().chooser_wb(self.contempt, -self.contempt);
+        let signum = 1 - (node.ply % 2) * 2;   // ply=0 => 1  ply=1=> -1
+        let contempt =  signum * self.contempt + board.signum();
         return Score::from_cp(contempt);
     }
 
@@ -515,7 +516,7 @@ impl SimpleScorer {
         let outcome = board.outcome();
         if outcome.is_game_over() {
             if outcome.is_draw() {
-                return self.w_eval_draw(board);
+                return self.w_eval_draw(board, node);
             }
             if let Some(c) = outcome.winning_color() {
                 return c.chooser_wb(Score::white_win(node.ply), Score::white_loss(node.ply));
@@ -803,8 +804,8 @@ impl Board {
     }
 
     #[inline]
-    pub fn eval_draw(&self, eval: &mut SimpleScorer) -> Score {
-        self.signum() * eval.w_eval_draw(self)
+    pub fn eval_draw(&self, eval: &mut SimpleScorer, nd: &Node) -> Score {
+        self.signum() * eval.w_eval_draw(self, nd)
     }
 
     #[inline]

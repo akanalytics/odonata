@@ -31,6 +31,7 @@ impl Component for Repetition {
     }
     fn new_game(&mut self) {
         self.prior_positions.clear();
+        self.root_index = 0;
     }
 
     // FIXME!
@@ -183,6 +184,7 @@ mod tests {
     use crate::comms::uci::Uci;
     use crate::search::algo::*;
     use crate::search::timecontrol::*;
+    use crate::tags::Tag;
 
     #[test]
     fn test_repetition() {
@@ -276,14 +278,44 @@ mod tests {
     #[ignore]
     fn test_rep_bug2() {
         let mut engine = Engine::new();
+        engine.algo.eval.contempt = -30;
 
-        let pos = Catalog::draws()[2].clone();
+        let pos3 = Catalog::draws()[3].clone();
 
-        let board = pos.supplied_variation().apply_to(pos.board());
-        engine.set_position(pos.clone());
-        print!("pos = {}\nboard={}\nrep={}\n{:?}", pos, board, engine.algo.repetition, engine.algo.repetition.count(&board));
+        let board = pos3.supplied_variation().apply_to(pos3.board());
+        engine.new_game();
+        engine.set_position(pos3.clone());
+        print!("\n\npos3 = {}\nboard={}\nhash={}\nrep=\n{}\nRepeats{:?}\n", pos3, board, board.hash(), engine.algo.repetition, engine.algo.repetition.count(&board));
         print!("rep = {:?}\n", engine.algo.repetition);
-    
+        engine.search();
+        let res = engine.algo.results();
+        print!("res3: {}\n", res);
+
+        let mut pos2 = pos3.clone();
+        let mut var2 = pos3.supplied_variation().clone();
+        let len = var2.len();
+        var2.truncate(len - 4);
+        pos2.set(Tag::SuppliedVariation(var2));
+        engine.new_game();
+        engine.set_position(pos2.clone());
+        print!("\n\npos2 = {}\nboard={}\nhash={}\nrep=\n{}\nRepeats{:?}\n", pos2, board, board.hash(), engine.algo.repetition, engine.algo.repetition.count(&board));
+        print!("rep = {:?}\n", engine.algo.repetition);
+        engine.search();
+        let res = engine.algo.results();
+        print!("res2: {}\n", res);
+
+        let mut pos1 = pos3.clone();
+        let mut var1 = pos3.supplied_variation().clone();
+        let len = var1.len();
+        var1.truncate(len - 8);
+        pos1.set(Tag::SuppliedVariation(var1));
+        engine.new_game();
+        engine.set_position(pos1.clone());
+        print!("\n\npos1 = {}\nboard={}\nhash={}\nrep=\n{}\nRepeats{:?}\n", pos1, board, board.hash(), engine.algo.repetition, engine.algo.repetition.count(&board));
+        print!("rep = {:?}\n", engine.algo.repetition);
+        engine.search();
+        let res = engine.algo.results();
+        print!("res1: {}\n", res);
     }
         
 }

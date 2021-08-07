@@ -274,6 +274,7 @@ pub struct TranspositionTable2 {
     pub enabled: bool,
     pub use_tt_for_pv: bool,
     pub allow_truncated_pv: bool, 
+    pub allow_tt_at_root: bool, 
     pub mb: i64,
     pub hmvc_horizon: i32,
     pub min_ply: Ply,
@@ -297,6 +298,7 @@ impl fmt::Debug for TranspositionTable2 {
             .field("enabled", &self.enabled)
             .field("use.tt.for.pv", &self.use_tt_for_pv)
             .field("allow.truncated.pv", &self.allow_truncated_pv)
+            .field("allow.tt.at.root", &self.allow_tt_at_root)
             .field("mb", &self.mb)
             .field("hmvc.horizon", &self.hmvc_horizon)
             .field("aging", &self.aging)
@@ -311,6 +313,7 @@ impl fmt::Display for TranspositionTable2 {
         writeln!(f, "enabled          : {}", self.enabled)?;
         writeln!(f, "use tt for pv    : {}", self.use_tt_for_pv)?;
         writeln!(f, "allow trun pv    : {}", self.allow_truncated_pv)?;
+        writeln!(f, "allow tt at root : {}", self.allow_tt_at_root)?;
         writeln!(f, "capacity         : {}", self.table.capacity())?;
         writeln!(f, "size in mb       : {}", self.mb)?;
         writeln!(f, "entry size bytes : {}", mem::size_of::<TtNode>())?;
@@ -369,6 +372,7 @@ impl Component for TranspositionTable2 {
         c.set("tt.probe.leaf.nodes", &format!("type check default {}", self.probe_leaf_nodes));
         c.set("tt.use.tt.for.pv", &format!("type check default {}", self.use_tt_for_pv));
         c.set("tt.allow.truncated.pv", &format!("type check default {}", self.allow_truncated_pv));
+        c.set("tt.allow.tt.at.root", &format!("type check default {}", self.allow_tt_at_root));
         c.set("Hash", &format!("type spin default {} min 0 max 4000", self.mb));
         c.set("tt.hmvc.horizon", &format!("type spin default {} min 0 max 100", self.hmvc_horizon));
         c.set("tt.min.ply", &format!("type spin default {} min 0 max 100", self.min_ply));
@@ -379,6 +383,7 @@ impl Component for TranspositionTable2 {
         self.probe_leaf_nodes = c.bool("tt.probe.leaf.nodes").unwrap_or(self.probe_leaf_nodes);
         self.use_tt_for_pv = c.bool("tt.use.tt.for.pv").unwrap_or(self.use_tt_for_pv);
         self.allow_truncated_pv = c.bool("tt.allow.truncated.pv").unwrap_or(self.allow_truncated_pv);
+        self.allow_tt_at_root = c.bool("tt.allow.tt.at.root").unwrap_or(self.allow_tt_at_root);
         self.mb = c.int("Hash").unwrap_or(self.mb);
         // table is resized on next clear / generation
         self.hmvc_horizon = c.int("tt.hmvc_horizon").unwrap_or(self.hmvc_horizon as i64) as i32;
@@ -429,6 +434,7 @@ impl TranspositionTable2 {
             use_tt_for_pv: false,
             probe_leaf_nodes: true,
             allow_truncated_pv: false,
+            allow_tt_at_root: false,
             mb: mb as i64,
             aging: true,
             current_age: 10, // to allow us to look back

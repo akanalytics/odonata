@@ -129,7 +129,7 @@ impl Board {
         if self.repetition_count().total >= 5 {
             return Some(Outcome::DrawRepetition5);
         }
-        if self.repetition_count().total >= 2 {
+        if self.repetition_count().in_search >= 2 || self.repetition_count().total >= 4 {
             return Some(Outcome::DrawRepetition3);
         }
         if self.material().is_insufficient() {
