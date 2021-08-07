@@ -218,6 +218,7 @@ commands = {
     "test_threading": test_threading,
     "release_linux": release_linux,
     "release_modern": release_modern,
+    "release_generic": release_generic,
     "release_native": release_native,
     "release_mac": release_mac,
     "release_windows": release_windows,
