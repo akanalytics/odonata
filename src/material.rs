@@ -69,8 +69,9 @@ impl Material {
     }
 
     /// Material.from_piece_str("PPPBNRQKppbbqk")
+    #[inline]
     pub fn from_piece_str(s: &str) -> Result<Material, String> {
-        let mut m: Material = Default::default();
+        let mut m: Material = Material::new();
         for ch in s.chars() {
             let p = Piece::from_char(ch)?;
             let c = Color::from_piece_char(ch)?;

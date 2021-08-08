@@ -41,6 +41,15 @@ impl FromStr for Move {
 }
 
 impl Move {
+
+    const OFFSET_MOVER: i32 = 19; 
+    const OFFSET_CAPTURE: i32 = 22; 
+    const OFFSET_PROMO: i32 = 25; 
+    const OFFSET_CASTLE: i32 = 28; 
+    const OFFSET_FROM: i32 = 0; 
+    const OFFSET_TO: i32 = 6; 
+    const OFFSET_EP: i32 = 12; // 7 bits
+
     #[inline]
     pub const fn new(
         from: Square,
@@ -52,15 +61,18 @@ impl Move {
         castle_side: CastlingRights,
     ) -> Move {
 
+
+
+
         // debug_assert!(!from.is_null());
         // debug_assert!(!to.is_null());
-        let mut bits = from.index() as u32;
-        bits += (to.index() as u32 & 63) << 6;
-        bits += (ep.index() as u32 & 127) << 12;
-        bits += (mover.index() as u32) << 19;
-        bits += (capture.index() as u32) << 22;
-        bits += (promo.index() as u32) << 25;
-        bits += (castle_side.bits() as u32) << 28;
+        let mut bits = (from.index() as u32 & 63) << Self::OFFSET_FROM;
+        bits += (to.index() as u32 & 63) << Self::OFFSET_TO;
+        bits += (ep.index() as u32 & 127) << Self::OFFSET_EP;
+        bits += (mover.index() as u32) << Self::OFFSET_MOVER;
+        bits += (capture.index() as u32) << Self::OFFSET_CAPTURE;
+        bits += (promo.index() as u32) << Self::OFFSET_PROMO;
+        bits += (castle_side.bits() as u32) << Self::OFFSET_CASTLE;
         Move { bits }
     }
 
@@ -81,17 +93,17 @@ impl Move {
 
     #[inline]
     pub const fn to(&self) -> Square {
-        Square::from_u32( ((self.bits >> 6) & 63) as u32)
+        Square::from_u32( ((self.bits >> Self::OFFSET_TO) & 63) as u32)
     }
 
     #[inline]
     pub const fn from(&self) -> Square {
-        Square::from_u32( ((self.bits) & 63) as u32)
+        Square::from_u32( ((self.bits >> Self::OFFSET_FROM) & 63) as u32)
     }
 
     #[inline]
     pub const fn ep(&self) -> Square {
-        Square::from_u32( ((self.bits >>12) & 127) as u32)
+        Square::from_u32( ((self.bits >> Self::OFFSET_EP) & 127) as u32)
     }
 
     #[inline]
@@ -117,17 +129,17 @@ impl Move {
 
     #[inline]
     pub const fn promo_piece(&self) -> Piece {
-        Piece::from_index( (self.bits >> 25) as usize & 7)
+        Piece::from_index( (self.bits >> Self::OFFSET_PROMO) as usize & 7)
     }
 
     #[inline]
     pub const fn capture_piece(&self) -> Piece {
-        Piece::from_index( (self.bits >> 22) as usize & 7)
+        Piece::from_index( (self.bits >> Self::OFFSET_CAPTURE) as usize & 7)
     }
 
     #[inline]
     pub const fn mover_piece(&self) -> Piece {
-        Piece::from_index( (self.bits >> 19) as usize & 7)
+        Piece::from_index( (self.bits >> Self::OFFSET_MOVER) as usize & 7)
     }
 
     #[inline]
@@ -142,7 +154,7 @@ impl Move {
 
     #[inline]
     pub const fn castling_side(&self) -> CastlingRights {
-        CastlingRights::from_bits_truncate((self.bits >> 28) as u8)
+        CastlingRights::from_bits_truncate((self.bits >> Self::OFFSET_CASTLE) as u8)
     }
 
     #[inline]

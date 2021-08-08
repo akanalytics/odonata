@@ -149,6 +149,7 @@ impl Color {
         }
     }
 
+    #[inline]
     pub fn from_piece_char(ch: char) -> Result<Color, String> {
         if ch.is_lowercase() {
             return Ok(Color::Black);
@@ -165,6 +166,7 @@ impl fmt::Display for Color {
     }
 }
 
+#[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Piece {
     None = 0,
@@ -256,6 +258,7 @@ impl Piece {
         Self::ALL.len()
     }
 
+    #[inline]
     pub fn is_line_piece(&self) -> bool {
         match self {
             Piece::Bishop | Piece::Rook | Piece::Queen => true,
