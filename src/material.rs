@@ -114,6 +114,14 @@ impl Material {
     }
 
     #[inline]
+    pub fn flip(&self) -> Material {
+        Material {
+            counts: [self.counts[Color::Black], self.counts[Color::White]],
+        }
+    }
+
+
+    #[inline]
     pub fn color(&self, c: Color) -> Material {
         c.chooser_wb(self.white(), self.black())
     }
@@ -234,6 +242,7 @@ mod tests {
         #[allow(non_snake_case)]
         let mat_KBk = Material::from_piece_str("KBk").unwrap();
         assert_ne!(mat_full2, mat_KBk);
+        assert_eq!(mat_KBk.flip().to_string(), "Kkb");
 
         assert!(mat_KBk.is_insufficient());
         assert!(!mat_full2.is_insufficient());

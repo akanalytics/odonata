@@ -695,8 +695,8 @@ mod tests {
             .push("setoption name eval.position value false".into());
         uci.preamble.push("quit".into());
         uci.run();
-        assert_eq!(uci.engine.algo.eval.material_weights[Piece::Bishop].s(), 700);
-        assert_eq!(uci.engine.algo.eval.material_weights[Piece::Pawn].s(), 100);
+        assert_eq!(uci.engine.algo.eval.mb.material_weights[Piece::Bishop].s(), 700);
+        assert_eq!(uci.engine.algo.eval.mb.material_weights[Piece::Pawn].s(), 100);
         assert_eq!(uci.engine.algo.eval.position, false);
     }
 

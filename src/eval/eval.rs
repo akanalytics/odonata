@@ -6,6 +6,7 @@ use crate::eval::score::Score;
 use crate::eval::weight::Weight;
 use crate::globals::counts;
 use crate::material::Material;
+use crate::eval::material_balance::MaterialBalance;
 use crate::mv::Move;
 use crate::search::node::Node;
 use crate::stat::{ArrayStat, Stat};
@@ -71,6 +72,7 @@ pub static EVAL_COUNTS: ArrayStat =
 
 #[derive(Clone, Debug)]
 pub struct SimpleScorer {
+    pub mb: MaterialBalance,
     pub material: bool,
     pub position: bool,
     pub mobility: bool,
@@ -92,8 +94,6 @@ pub struct SimpleScorer {
     pub phasing: bool,
     pub contempt: i32,
     pub tempo: Weight,
-    pub material_weights: [Weight; Piece::len()],
-    pub bishop_pair: Weight,
     // pub cache: TranspositionTable,
     // pub qcache: TranspositionTable,
     pub cache_eval: bool,
@@ -110,6 +110,7 @@ impl Default for SimpleScorer {
 
 impl Component for SimpleScorer {
     fn settings(&self, c: &mut Config) {
+        self.mb.settings(c);
         c.set("eval.cache.eval", "type check default true");
         c.set("eval.cache.qeval", "type check default true");
         c.set("eval.safety", "type check default true");
@@ -153,18 +154,13 @@ impl Component for SimpleScorer {
             "eval.draw.score.contempt",
             &format!("type spin min -10000 max 10000 default {}", self.contempt),
         );
-        c.set_weight("eval.bishop.pair", &self.bishop_pair);
         c.set_weight("eval.tempo", &self.tempo);
-        for &p in &Piece::ALL_BAR_KING {
-            let mut name = "eval.".to_string();
-            name.push(p.to_char(Some(Color::Black)));
-            c.set_weight(&name, &self.material_weights[p]);
-        }
 
     }
 
     fn configure(&mut self, c: &Config) {
         debug!("eval.configure");
+        self.mb.configure(c);
         self.cache_eval = c.bool("eval.cache.eval").unwrap_or(self.cache_eval);
         self.cache_qeval = c.bool("eval.cache.qeval").unwrap_or(self.cache_qeval);
         self.mobility = c.bool("eval.mobility").unwrap_or(self.mobility);
@@ -181,7 +177,6 @@ impl Component for SimpleScorer {
         self.undefended_piece = c
             .int("eval.mobility.undef.piece")
             .unwrap_or(self.undefended_piece as i64) as i32;
-        self.bishop_pair = c.weight("eval.material.bishop.pair", &self.bishop_pair);
         self.trapped_piece = c
             .int("eval.mobility.trapped.piece")
             .unwrap_or(self.trapped_piece as i64) as i32;
@@ -200,21 +195,21 @@ impl Component for SimpleScorer {
         self.contempt = c.int("eval.draw.score.contempt").unwrap_or(self.contempt as i64) as i32;
         self.tempo = c.weight("eval.tempo", &self.tempo);
 
-        for &p in &Piece::ALL_BAR_KING {
-            let mut name = "eval.".to_string();
-            name.push(p.to_char(Some(Color::Black)));
-            self.material_weights[p] = c.weight(&name, &self.material_weights[p]);
-        }
         self.calculate_pst();
     }
 
-    fn new_game(&mut self) {}
+    fn new_game(&mut self) {
+        self.mb.new_game()
+    }
 
-    fn new_position(&mut self) {}
+    fn new_position(&mut self) {
+        self.mb.new_position();
+    }
 }
 
 impl fmt::Display for SimpleScorer {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "[material balance]\n{}", self.mb)?;
         writeln!(f, "cache eval       : {}", self.cache_eval)?;
         writeln!(f, "cache qeval      : {}", self.cache_qeval)?;
         writeln!(f, "material         : {}", self.material)?;
@@ -224,7 +219,6 @@ impl fmt::Display for SimpleScorer {
         writeln!(f, "mob.phase.disable: {}", self.mobility_phase_disable)?;
         writeln!(f, "mob.min.depth:     {}", self.min_depth_mob)?;
         writeln!(f, "phasing          : {}", self.phasing)?;
-        writeln!(f, "bishiop.pair     : {}", self.bishop_pair)?;
         writeln!(f, "undefended.piece : {}", self.undefended_piece)?;
         writeln!(f, "undefended.sq    : {}", self.undefended_sq)?;
         writeln!(f, "trapped.piece    : {}", self.trapped_piece)?;
@@ -236,7 +230,6 @@ impl fmt::Display for SimpleScorer {
         writeln!(f, "rook.open.file   : {}", self.rook_open_file)?;
         writeln!(f, "contempt         : {}", self.contempt)?;
         writeln!(f, "tempo            : {}", self.tempo)?;
-        writeln!(f, "material scores  : {:?}", self.material_weights)?;
         writeln!(f, "eval stats\n{}", EVAL_COUNTS)?;
         // writeln!(f, "cache\n{}", self.cache)?;
         // writeln!(f, "qcache\n{}", self.qcache)?;
@@ -259,6 +252,7 @@ impl fmt::Display for SimpleScorer {
 impl SimpleScorer {
     pub fn new() -> Self {
         let mut me = SimpleScorer {
+            mb: MaterialBalance::default(),
             cache_eval: false,
             cache_qeval: false,
             mobility: true,
@@ -268,7 +262,6 @@ impl SimpleScorer {
             phasing: true,
             mobility_phase_disable: 60,
             min_depth_mob: 1,
-            bishop_pair: Weight::new(40, 85),
             undefended_piece: 6,
             undefended_sq: 3,
             trapped_piece: -10,
@@ -280,17 +273,9 @@ impl SimpleScorer {
             rook_edge: Weight::new(0, 2),
             pawn_r5: Weight::new(5, 20),
             pawn_r6: Weight::new(10, 40),
-            pawn_r7: Weight::new(40, 60),
+            pawn_r7: Weight::new(40, 70),
             contempt: -30, // typically -ve
             tempo: Weight::new(16, 16),
-            material_weights: [ Weight::default(),
-                                Weight::new(100, 100),
-                                Weight::new(350, 350), // knights
-                                Weight::new(350, 350),
-                                Weight::new(600, 625),
-                                Weight::new(1100, 1300),
-                                Weight::new(0, 0),   // king
-                                ],
             // cache: TranspositionTable::default(),
             // qcache: TranspositionTable::default(),
             pst: [[Weight::default(); 64]; Piece::len()],
@@ -757,37 +742,12 @@ impl SimpleScorer {
 
     // updated on capture & promo
     pub fn w_eval_material(&self, mat: &Material) -> Weight {
-        let mut weight = Piece::ALL_BAR_KING
-            .iter()
-            .map(|&p| (mat.counts(Color::White, p) - mat.counts(Color::Black, p)) * self.material_weights[p] )
-            .sum();
-
-        // let mut weight = Weight::new(score, score);
-        if mat.counts(Color::White, Piece::Bishop) >= 2 {
-            weight = weight + self.bishop_pair
-        }
-        if mat.counts(Color::Black, Piece::Bishop) >= 2 {
-            weight = weight - self.bishop_pair
-        }
-        weight
-        // let mut total = 0_i32;
-        // }
-        // for &p in &Piece::ALL_BAR_NONE {
-        //     total +=
-        //         self.material_scores[p.index()] * (mat.counts(Color::White, p) - mat.counts(Color::Black, p));
-        // }
-        // total
+        self.mb.w_eval_material(mat)
     }
 
+    #[inline]
     pub fn eval_move_material(&self, mv: &Move) -> i32 {
-        let mut score = 0;
-        if mv.is_capture() {
-            score += self.material_weights[mv.capture_piece()].s();
-        }
-        if mv.is_promo() {
-            score += self.material_weights[mv.promo_piece()].s();
-        }
-        score
+        self.mb.eval_move_material(mv)
     }
 }
 
@@ -860,22 +820,58 @@ mod tests {
         eval.tempo = Weight::zero();
         assert_eq!(board.eval(eval, &Node::root(0)), Score::from_cp(0));
 
-        let starting_pos_score = 8 * 100 + 2 * 350 + 2 * 350 + 2 * 600 + 1100 + (40 + 85) / 2; // (bishop pair, half the pieces)
+        let starting_pos_score = 8 * 100 + 2 * 350 + 2 * 350 + 2 * 600 + 1100 + 40; // (bishop pair, half the pieces)
+        let ending_pos_score = 8 * 100 + 2 * 350 + 2 * 350 + 2 * 625 + 1300 + 85; // (bishop pair, half the pieces)
         let board = Catalog::white_starting_position();
-        assert_eq!(board.eval_material(eval), Score::from_cp(starting_pos_score));
+        assert_eq!(board.phase(), 50);
+        assert_eq!(board.eval_material(eval), Score::from_cp((starting_pos_score + ending_pos_score) / 2));
 
         let board = Catalog::black_starting_position();
         assert_eq!(
             board.eval_material(eval),
-            Score::from_cp(starting_pos_score).negate()
+            Score::from_cp((starting_pos_score + ending_pos_score) / 2).negate()
         );
+
+        let eval = &mut SimpleScorer::new();
+        eval.tempo = Weight::zero();
+        let board = Board::parse_fen("K7/P7/8/8/8/8/8/k7 w - - 0 1").unwrap();
+        assert_eq!(board.eval_material(eval), Score::from_cp(282));
+        let board = Board::parse_fen("k7/p7/8/8/8/8/8/K7 w - - 0 1").unwrap();
+        assert_eq!(board.eval_material(eval), -Score::from_cp(282));
+
+        let board = Board::parse_fen("K7/PPPPPPPP/8/8/8/8/8/k7 w - - 0 1").unwrap();
+        assert_eq!(board.eval_material(eval), Score::from_cp(800));
+
+        let board = Board::parse_fen("K7/PPPPP3/8/8/8/8/8/k7 w - - 0 1").unwrap();
+        assert_eq!(board.eval_material(eval), Score::from_cp(500));
+
+        // losing a pawn from 5P to 4P increases score from 500 to 5000
+        let board = Board::parse_fen("K7/PPPP4/8/8/8/8/8/k7 w - - 0 1").unwrap();
+        assert_eq!(board.eval_material(eval), Score::from_cp(5000));
+
+        let board = Board::parse_fen("K7/PPP5/8/8/8/8/8/k7 w - - 0 1").unwrap();
+        assert_eq!(board.eval_material(eval), Score::from_cp(5000));
+
+        let board = Board::parse_fen("K7/PP6/8/8/8/8/8/k7 w - - 0 1").unwrap();
+        assert_eq!(board.eval_material(eval), Score::from_cp(735));
+
+        // black exchanges knight for a bishop    
+        let board = Board::parse_fen("8/2p3p1/3r1pk1/R2Prnp1/P5P1/4BK2/R4P1P/8 b - - 0 50").unwrap();
+        assert_eq!(board.eval_material(eval), Score::from_cp(-199));
+        let board = Board::parse_fen("8/2p3p1/3r1pk1/R2Pr1p1/P5P1/4PK2/R6P/8 b - - 0 51").unwrap();
+        assert_eq!(board.eval_material(eval), Score::from_cp(-183));
+
+        
+
+
+
     }
 
     #[test]
     fn test_eval_configure() {
         let mut eval = SimpleScorer::new();
         eval.configure(&Config::new().set("eval.b.s", "700"));
-        assert_eq!(eval.material_weights[Piece::Bishop].s(), 700);
+        assert_eq!(eval.mb.material_weights[Piece::Bishop].s(), 700);
 
         let mut eval = SimpleScorer::new();
         eval.configure(&Config::new().set("eval.position", "false"));
