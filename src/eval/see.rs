@@ -33,7 +33,7 @@ impl SimpleScorer {
             attacker_color = attacker_color.opposite();
             from = board.least_valuable_piece(attackers & board.color(attacker_color));
             if d > 38 {
-                eprintln!("{} {}", mv, board.to_fen());
+                // warn!("{} {}", mv, board.to_fen());
                 break;
             }
         } 

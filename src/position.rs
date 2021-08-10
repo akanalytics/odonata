@@ -12,7 +12,11 @@ use crate::utils::StringUtils;
 use crate::tags::{Tags, Tag};
 use serde::{Serialize, ser::SerializeMap, Serializer, Deserialize};
 use std::convert::{TryFrom, Into};
+use std::fs::File;
+use std::io::{self, BufRead};
+use std::path::Path;
 use std::collections::HashMap;
+
 
 use std::fmt;
 
@@ -151,11 +155,25 @@ impl Position {
         for item in iter {
             let s = item.as_ref();
             if !s.is_empty() {
-                vec.push(Self::parse_epd(s)?);
+                vec.push(Self::parse_epd(s).map_err(|err| format!("{} in epd {}", err, s))?);
             }
         }
         Ok(vec)
     }
+
+    pub fn parse_epd_file<P>(filename: P) -> Result<Vec<Position>, String>
+    where P: AsRef<Path>, {
+        let file = File::open(filename).map_err(|err| err.to_string())?;
+        let lines = io::BufReader::new(file).lines();
+        let mut vec = Vec::<Position>::new();
+        for line in lines {
+            let s = line.map_err(|err| err.to_string())?;
+            vec.push(Self::parse_epd(&s).map_err(|err| format!("{} in epd {}", err, s))?);
+        }
+        Ok(vec)
+    }
+
+
 }
 
 

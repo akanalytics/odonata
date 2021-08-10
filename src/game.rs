@@ -246,7 +246,7 @@ mod tests {
         println!(
             "\nscore as new {}\nELO difference {:.02}",
             wdl,
-            wdl.elo_differnce(),
+            wdl.elo(),
         );
     }
 
@@ -302,7 +302,7 @@ mod tests {
             }
             println!();
             if (id + 1) % 10 == 0 {
-                println!("score as new {}\nELO difference {:.02}", wdl, wdl.elo_differnce());
+                println!("score as new {}\nELO difference {:.02}", wdl, wdl.elo());
             }
         }
         wdl

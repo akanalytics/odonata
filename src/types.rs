@@ -340,7 +340,12 @@ impl ScoreWdl {
         ScoreWdl { w, d, l }
     }
 
-    pub fn elo_differnce(&self) -> f32 {
+
+    pub fn total(&self) -> i32 {
+        self.w + self.d + self.l
+    }
+
+    pub fn elo(&self) -> f32 {
         let score = self.w as f32 + self.d as f32 / 2.0;
         let total = self.w as f32 + self.d as f32 + self.l as f32;
         let percentage = score / total;
@@ -531,7 +536,7 @@ mod tests {
 
         // checked by https://www.3dkingdoms.com/chess/elo.htm
         assert_eq!(
-            format!("{:.02}", ScoreWdl::new(217, 77, 184).elo_differnce()),
+            format!("{:.02}", ScoreWdl::new(217, 77, 184).elo()),
             "24.02"
         );
     }

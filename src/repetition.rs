@@ -122,7 +122,7 @@ impl Repetition {
         }
 
         let mut b = pre.clone();
-        self.prior_positions.push(b.hash());
+        // self.prior_positions.push(b.hash());
         for mv in moves.iter() {
             if mv.is_capture() || mv.mover_piece() == Piece::Pawn {
                 self.prior_positions.push(0);

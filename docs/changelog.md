@@ -2,6 +2,7 @@
 
 Milestones ('m') are bundled into Releases.  
 
+- 0.3.32 Material balance, move to compiler version nightly-2021-08-04, castling bonus in eval
 - 0.3.30 Fix repetition detection bug
 - 0.3.29 Check extensions and late move reduction
 - 0.3.28 Piece square table for rook end game, pawn pst corrcted, broken check extensions 

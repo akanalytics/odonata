@@ -84,7 +84,9 @@ impl Algo {
         if let Some(entry) = self.tt.probe_by_board(board, ply, draft) {
             // we use thr tt_mv for ordering regardless of draft
             tt_mv = entry.bm;
-            if entry.draft >= draft && (ply > 0 || self.tt.allow_tt_at_root) && !(board.repetition_count().total > 1 && self.repetition.avoid_tt_on_repeats)
+            //             if entry.draft >= draft  && (ply >= 1 || self.tt.allow_tt_at_root) && !(board.repetition_count().total > 0 && self.repetition.avoid_tt_on_repeats)
+ 
+            if entry.draft >= draft && !(board.repetition_count().total > 1 && self.repetition.avoid_tt_on_repeats)
             {
                 match entry.node_type {
                     NodeType::Pv => {

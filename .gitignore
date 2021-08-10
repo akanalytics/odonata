@@ -47,3 +47,6 @@ modules.xml
 odonata.iml
 vcs.xml
 workspace.*
+perf.out
+callgrind.out.*
+

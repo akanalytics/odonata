@@ -194,6 +194,5 @@ impl Algo {
         self.results.set(Tag::AnalysisCountSelDepth(self.search_stats().selective_depth()));
         self.results.set(Tag::AnalysisCountNodes(self.search_stats().cumulative().nodes() as u128));
 
-        debug!("\n\n\n=====Search completed=====\n{}", self);
     }
 }

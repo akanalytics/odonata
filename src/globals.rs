@@ -155,8 +155,8 @@ mod tests {
         assert_eq!(size_of::<Tag>(), 880, "Tag");
         assert_eq!(size_of::<Variation>(), 24, "Variation");
         assert_eq!(size_of::<MoveList>(), 876, "MoveList");
-        assert_eq!(size_of::<Board>(), 136, "Board");
-        assert_eq!(size_of::<Position>(), 184, "Position");
+        assert_eq!(size_of::<Board>(), 144, "Board");
+        assert_eq!(size_of::<Position>(), 192, "Position");
         assert_eq!(size_of::<NodeStats>(), 312, "NodeStats");
         assert_eq!(size_of::<SearchStats>(), 720, "SearchStats");
         assert_eq!(size_of::<ClassicalBitboard>(), 5120, "ClassicalBitboard");

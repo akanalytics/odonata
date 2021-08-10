@@ -1,4 +1,5 @@
 use crate::board::Board;
+use crate::material::Material;
 // use crate::types::{Color, Piece};
 // use once_cell::sync::Lazy;
 use std::cmp;
@@ -17,14 +18,13 @@ static ALL_PIECES: i32 = 6500;
 //         .minors_and_majors()
 //         .centipawns();
 
-impl Board {
+impl Material {
     // phase = % endgame, 0 is start, 100 is end game with just pawns
     pub fn phase(&self) -> i32 {
-        let m = self.material();
 
         let cp = cmp::min(
             ALL_PIECES,
-            m.white().minors_and_majors().centipawns() - m.black().minors_and_majors().centipawns(),
+            self.white().minors_and_majors().centipawns() - self.black().minors_and_majors().centipawns(),
         );
 
         // let mut cp = 0;
@@ -37,6 +37,13 @@ impl Board {
         // KINGS <= cp <= ALL_PIECES
         let percentage = cp * 100 / ALL_PIECES;
         100 - percentage
+    }
+}
+
+impl Board {
+    // phase = % endgame, 0 is start, 100 is end game with just pawns
+    pub fn phase(&self) -> i32 {
+        self.material().phase()
     }
 }
 

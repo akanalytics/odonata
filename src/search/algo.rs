@@ -28,11 +28,14 @@ use crate::variation::Variation;
 use crate::{debug, info, logger::LogInit};
 use std::fmt;
 use std::thread::{self, JoinHandle};
+use std::time::{Duration, Instant};
 
 #[derive(Debug)]
 pub struct Engine {
     pub shared_tt: bool,
     pub thread_count: u32,
+    pub engine_init_time: Duration,
+    pub search_init_time: Duration,
     pub algo: Algo,
     threads: Vec<JoinHandle<Algo>>,
 }
@@ -42,6 +45,8 @@ impl Default for Engine {
         Engine {
             shared_tt: true,
             algo: Algo::default(),
+            engine_init_time: Duration::ZERO,
+            search_init_time: Duration::ZERO,
             thread_count: 1,
             threads: vec![],
         }
@@ -61,14 +66,19 @@ impl Clone for Engine {
 impl fmt::Display for Engine {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "threads          : {}", self.thread_count)?;
+        writeln!(f, "shared tt        : {}", self.shared_tt)?;
+        writeln!(f, "engine init time : {}", Clock::format(self.engine_init_time))?;
+        writeln!(f, "search init time : {}", Clock::format(self.search_init_time))?;
         write!(f, "\n[algo]\n{}", self.algo)
     }
 }
 
 impl Engine {
     pub fn new() -> Self {
+        let t = Instant::now();
         let mut engine = Self::default();
         engine.configure(Config::from_env());
+        engine.engine_init_time = t.elapsed();
         engine
     }
 
@@ -89,6 +99,7 @@ impl Engine {
 
     pub fn search_start(&mut self) {
         debug!("resize?? {}", self.algo.tt.requires_resize());
+        let t = Instant::now();
         for i in 0..self.thread_count {
             let builder = thread::Builder::new().name(format!("S{}", i)).stack_size(800_000);
             let mut algo = self.algo.clone();
@@ -119,6 +130,7 @@ impl Engine {
             };
             self.threads.push(builder.spawn(cl).unwrap());
         }
+        self.search_init_time = t.elapsed();
     }
 
     pub fn search_stop(&mut self) {
@@ -164,6 +176,7 @@ impl Engine {
             knps,
             knps as u32 / self.thread_count,
         );
+        debug!("\n\n\n=====Search completed=====\n{}", self);
     }
 }
 
@@ -426,6 +439,7 @@ impl Algo {
 
     pub fn search(&mut self) {
         self.search_iteratively();
+        debug!("\n\n\n=====Search completed=====\n{}", self);
     }
 
     // pub fn search_async(&mut self, board: &Board) {
@@ -685,38 +699,38 @@ mod tests {
                 .set_callback(Uci::uci_info)
                 .build();
             engine.set_position(position.clone());
+            assert_eq!(engine.algo.repetition.prior_positions(), 0);
             engine.search();
-            let search = engine.algo;
-            println!("{}", search);
+            println!("{}", engine);
             if id {
                 assert!(
-                    search.search_stats().total().nodes() < 22500,
+                    engine.algo.search_stats().total().nodes() < 22500,
                     "nodes {} > 22500",
-                    search.search_stats().total().nodes()
+                    engine.algo.search_stats().total().nodes()
                 ); // with piece mob
 
             // previous
-            // assert_eq!(search.search_stats().total().nodes(), 3456); // with pawn promo
-            // assert_eq!(search.search_stats().total().nodes(), 3885); // with gen qsearch
+            // assert_eq!(engine.algo.search_stats().total().nodes(), 3456); // with pawn promo
+            // assert_eq!(engine.algo.search_stats().total().nodes(), 3885); // with gen qsearch
             // with sq q qsearch
-            // assert_eq!(search.search_stats().total().nodes(), 2108);  // with ordering pv + mvvlva
-            // assert_eq!(search.search_stats().total().nodes(), 3560);
-            // assert_eq!(search.search_stats().total().nodes(), 6553);  // with ordering pv
-            // assert_eq!(search.search_stats().total().nodes(), 6740);
+            // assert_eq!(engine.algo.search_stats().total().nodes(), 2108);  // with ordering pv + mvvlva
+            // assert_eq!(engine.algo.search_stats().total().nodes(), 3560);
+            // assert_eq!(engine.algo.search_stats().total().nodes(), 6553);  // with ordering pv
+            // assert_eq!(engine.algo.search_stats().total().nodes(), 6740);
             } else {
-                // assert!(search.search_stats().total().nodes() < 5232); // with piece mob
+                // assert!(engine.algo.search_stats().total().nodes() < 5232); // with piece mob
 
                 // previous
-                // assert_eq!(search.search_stats().total().nodes(), 3456); // with pawn promos
-                // assert_eq!(search.search_stats().total().nodes(), 3885); // with sq qsearch
-                // assert_eq!(search.search_stats().total().nodes(), 2200); // with sq qsearch
-                // assert_eq!(search.search_stats().total().nodes(), 2108); // with  mvvlva
-                //assert_eq!(search.search_stats().total().nodes(), 7749); // no ids no mvvlva
+                // assert_eq!(engine.algo.search_stats().total().nodes(), 3456); // with pawn promos
+                // assert_eq!(engine.algo.search_stats().total().nodes(), 3885); // with sq qsearch
+                // assert_eq!(engine.algo.search_stats().total().nodes(), 2200); // with sq qsearch
+                // assert_eq!(engine.algo.search_stats().total().nodes(), 2108); // with  mvvlva
+                //assert_eq!(engine.algo.search_stats().total().nodes(), 7749); // no ids no mvvlva
             }
-            assert_eq!(search.pv_table.extract_pv(), position.pv().unwrap());
-            assert_eq!(search.score(), Score::white_win(3));
-            assert_eq!(search.repetition.prior_positions(), 0);
-            println!("{}", search.results());
+            assert_eq!(engine.algo.pv_table.extract_pv(), position.pv().unwrap());
+            assert_eq!(engine.algo.score(), Score::white_win(3));
+            assert_eq!(engine.algo.repetition.prior_positions(), 0);
+            println!("{}", engine.algo.results());
         }
     }
 
