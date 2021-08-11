@@ -81,6 +81,17 @@ impl Material {
     }
 
     #[inline]
+    pub fn total_count(&self) -> i32 {
+        Piece::ALL_BAR_NONE
+            .iter()
+            .map(|&p|
+                self.counts(Color::White, p) + self.counts(Color::Black, p)
+            )
+            .sum::<i32>()
+    }
+
+
+    #[inline]
     pub fn counts(&self, c: Color, p: Piece) -> i32 {
         self.counts[c][p]
     }
@@ -239,6 +250,7 @@ mod tests {
 
         let mat_full2 = Material::from_piece_str("PPPPPPPPNNBBRRQKppppppppnnbbrrqk").unwrap();
         assert_eq!(mat_full1, mat_full2);
+        assert_eq!(mat_full2.total_count(), 32);
 
         #[allow(non_snake_case)]
         let mat_KBk = Material::from_piece_str("KBk").unwrap();

@@ -553,21 +553,7 @@ impl SimpleScorer {
         };
         let te = self.w_tempo_adjustment(board.color_us());
         Score::from_cp((ma + po + mo + sa + te).interpolate(board.phase()))
-        // if self.cache_eval {
-        //     if let Some(entry) = self.cache.probe_by_board(board) {
-        //         counts::EVAL_CACHE_COUNT.increment();
-        //         debug_assert!(entry.score == score, "unmatched score for board {:#}", board);
-        //     }
-        // }
-        // if self.cache_eval && board.fifty_halfmove_clock() <= self.qcache.hmvc_horizon {
-        //     let entry = TtNode {
-        //         score,
-        //         depth: 0,
-        //         node_type: NodeType::Pv,
-        //         bm: Move::NULL_MOVE, // not set for NodeType::All
-        //     };
-        //     self.cache.store(board.hash(), entry);
-        // }
+
     }
 
     pub fn eval_pawns(&self, c: Color, b: &Board) -> Weight {
@@ -690,18 +676,6 @@ impl SimpleScorer {
         self.pst[p][sq]
     }
 
-    // #[inline]
-    // pub fn pst_mg(p: Piece, sq: Square) -> i32 {
-    //     SQUARE_VALUES_MG[p.index()][sq.index()]
-    // }
-
-    // #[inline]
-    // pub fn pst_eg(p: Piece, sq: Square) -> i32 {
-    //     SQUARE_VALUES_EG[p.index()][sq.index()]
-    // }
-
-    // piece positions, king safety, centre control
-    // only updated for the colour thats moved - opponents(blockes) not relevant
     pub fn w_eval_position(&self, board: &Board) -> Weight {
         let mut sum = Weight::zero();
         for &p in &Piece::ALL_BAR_NONE {
@@ -723,25 +697,7 @@ impl SimpleScorer {
         }
         self.pst(p, sq)
     }
-    // // piece positions, king safety, centre control
-    // // only updated for the colour thats moved - opponents(blockes) not relevant
-    // pub fn w_eval_position_old(&self, board: &Board) -> i32 {
-    //     let mut sum = 0_i32;
-    //     for &p in &Piece::ALL_BAR_NONE {
-    //         let w = (board.pieces(p) & board.white()).flip_vertical();
-    //         let b = board.pieces(p) & board.black();
-
-    //         let w_mg: i32 = w.iter().map(|bb| Self::pst_mg(p, bb.first_square())).sum();
-    //         let b_mg: i32 = b.iter().map(|bb| Self::pst_mg(p, bb.first_square())).sum();
-
-    //         let w_eg: i32 = w.iter().map(|bb| Self::pst_eg(p, bb.first_square())).sum();
-    //         let b_eg: i32 = b.iter().map(|bb| Self::pst_eg(p, bb.first_square())).sum();
-    //         let eg_perc = if self.phasing { board.phase() } else { 0 };.S
-
-    //         sum += ((w_mg - b_mg) * (100 - eg_perc) + (w_eg - b_eg) * eg_perc) / 100;
-    //     }
-    //     sum
-    // }
+ 
 
     // updated on capture & promo
     #[inline]

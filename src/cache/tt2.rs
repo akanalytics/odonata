@@ -1,9 +1,10 @@
-use crate::bitboard::precalc::{BitboardDefault};
 use crate::bitboard::bitboard::Bitboard;
 use crate::bitboard::castling::CastlingRights;
+use crate::bitboard::precalc::BitboardDefault;
 use crate::bitboard::square::Square;
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
+use crate::cache::lockless_hashmap::SharedTable;
 use crate::config::{Component, Config};
 use crate::eval::score::Score;
 use crate::mv::Move;
@@ -11,12 +12,10 @@ use crate::stat::{ArrayStat, Stat};
 use crate::types::{Hash, Piece, Ply};
 use crate::variation::Variation;
 use crate::{debug, info, logger::LogInit};
-use crate::cache::lockless_hashmap::SharedTable;
 use std::cmp;
 use std::fmt;
 use std::mem;
 use std::sync::Arc;
-
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd)]
 pub enum NodeType {
@@ -64,10 +63,10 @@ impl Default for NodeType {
 
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub struct TtNode {
-    pub score: Score,         
-    pub draft: Ply,             
-    pub node_type: NodeType,    
-    pub bm: Move,               
+    pub score: Score,
+    pub draft: Ply,
+    pub node_type: NodeType,
+    pub bm: Move,
 }
 
 impl Score {
@@ -273,8 +272,8 @@ pub struct TranspositionTable2 {
     pub current_age: u8,
     pub enabled: bool,
     pub use_tt_for_pv: bool,
-    pub allow_truncated_pv: bool, 
-    pub allow_tt_at_root: bool, 
+    pub allow_truncated_pv: bool,
+    pub allow_tt_at_root: bool,
     pub mb: i64,
     pub hmvc_horizon: i32,
     pub min_ply: Ply,
@@ -289,6 +288,35 @@ pub struct TranspositionTable2 {
     pub deletes: Stat,
     pub fail_priority: Stat,
     pub fail_ownership: Stat,
+}
+
+impl TranspositionTable2 {
+    pub fn new_with_mb(mb: i64) -> Self {
+        debug!("tt new with mb {}", mb);
+        Self {
+            table: Arc::new(SharedTable::new_with_capacity(Self::convert_mb_to_capacity(mb))),
+            enabled: true,
+            use_tt_for_pv: false,
+            probe_leaf_nodes: true,
+            allow_truncated_pv: false,
+            allow_tt_at_root: false,
+            mb: mb as i64,
+            aging: true,
+            current_age: 10, // to allow us to look back
+            hmvc_horizon: 42,
+            min_ply: 1,
+            hits: Stat::new("hits"),
+            misses: Stat::new("misses"),
+            collisions: Stat::new("collisions"),
+            exclusions: Stat::new("exclusions"),
+            bad_hash: Stat::new("bad_hash"),
+            inserts: Stat::new("inserts"),
+            pv_overwrites: Stat::new("pv overwrites"),
+            deletes: Stat::new("deletes"),
+            fail_priority: Stat::new("ins fail priority"),
+            fail_ownership: Stat::new("ins fail owner"),
+        }
+    }
 }
 
 impl fmt::Debug for TranspositionTable2 {
@@ -369,13 +397,31 @@ impl Default for TranspositionTable2 {
 impl Component for TranspositionTable2 {
     fn settings(&self, c: &mut Config) {
         c.set("tt.aging", &format!("type check default {}", self.aging));
-        c.set("tt.probe.leaf.nodes", &format!("type check default {}", self.probe_leaf_nodes));
-        c.set("tt.use.tt.for.pv", &format!("type check default {}", self.use_tt_for_pv));
-        c.set("tt.allow.truncated.pv", &format!("type check default {}", self.allow_truncated_pv));
-        c.set("tt.allow.tt.at.root", &format!("type check default {}", self.allow_tt_at_root));
+        c.set(
+            "tt.probe.leaf.nodes",
+            &format!("type check default {}", self.probe_leaf_nodes),
+        );
+        c.set(
+            "tt.use.tt.for.pv",
+            &format!("type check default {}", self.use_tt_for_pv),
+        );
+        c.set(
+            "tt.allow.truncated.pv",
+            &format!("type check default {}", self.allow_truncated_pv),
+        );
+        c.set(
+            "tt.allow.tt.at.root",
+            &format!("type check default {}", self.allow_tt_at_root),
+        );
         c.set("Hash", &format!("type spin default {} min 0 max 4000", self.mb));
-        c.set("tt.hmvc.horizon", &format!("type spin default {} min 0 max 100", self.hmvc_horizon));
-        c.set("tt.min.ply", &format!("type spin default {} min 0 max 100", self.min_ply));
+        c.set(
+            "tt.hmvc.horizon",
+            &format!("type spin default {} min 0 max 100", self.hmvc_horizon),
+        );
+        c.set(
+            "tt.min.ply",
+            &format!("type spin default {} min 0 max 100", self.min_ply),
+        );
     }
     fn configure(&mut self, c: &Config) {
         debug!("tt.configure");
@@ -407,7 +453,6 @@ impl Component for TranspositionTable2 {
 }
 
 impl TranspositionTable2 {
-
     pub const ENTRY_SIZE: usize = 2 * mem::size_of::<u64>();
 
     pub const fn convert_mb_to_capacity(mb: i64) -> usize {
@@ -424,33 +469,6 @@ impl TranspositionTable2 {
 
     pub const fn convert_capacity_to_mb(cap: usize) -> usize {
         (cap * Self::ENTRY_SIZE) as usize / 1_000_000
-    }
-
-    pub fn new_with_mb(mb: i64) -> Self {
-        debug!("tt new with mb {}", mb);
-        Self {
-            table: Arc::new(SharedTable::new_with_capacity(Self::convert_mb_to_capacity(mb))),
-            enabled: true,
-            use_tt_for_pv: false,
-            probe_leaf_nodes: true,
-            allow_truncated_pv: false,
-            allow_tt_at_root: false,
-            mb: mb as i64,
-            aging: true,
-            current_age: 10, // to allow us to look back
-            hmvc_horizon: 42,
-            min_ply: 1,
-            hits: Stat::new("hits"),
-            misses: Stat::new("misses"),
-            collisions: Stat::new("collisions"),
-            exclusions: Stat::new("exclusions"),
-            bad_hash: Stat::new("bad_hash"),
-            inserts: Stat::new("inserts"),
-            pv_overwrites: Stat::new("pv overwrites"),
-            deletes: Stat::new("deletes"),
-            fail_priority: Stat::new("ins fail priority"),
-            fail_ownership: Stat::new("ins fail owner"),
-        }
     }
 
     pub fn next_generation(&mut self) {
@@ -479,7 +497,7 @@ impl TranspositionTable2 {
     pub fn count_of(&self, t: NodeType) -> usize {
         let mut count = 0;
         for i in 0..self.table.capacity() {
-            let (h,d) = self.table.probe_by_index(i);
+            let (h, d) = self.table.probe_by_index(i);
             if h == 0 && d == 0 {
                 continue;
             }
@@ -496,7 +514,7 @@ impl TranspositionTable2 {
     pub fn count_of_age(&self, age: u8) -> usize {
         (0..self.table.capacity())
             .into_iter()
-            .filter(|&i| self.table.probe_by_index(i).1 & 255 == age as u64 )
+            .filter(|&i| self.table.probe_by_index(i).1 & 255 == age as u64)
             .count()
     }
 
@@ -583,11 +601,21 @@ impl TranspositionTable2 {
         }
         let tt_node = self.probe_by_hash(board.hash());
         if let Some(tt_node) = tt_node {
-            if !tt_node.bm.is_null() && !board.is_pseudo_legal_move(&tt_node.bm) && !board.is_legal_move(&tt_node.bm) {
+            if !tt_node.bm.is_null()
+                && !board.is_pseudo_legal_move(&tt_node.bm)
+                && !board.is_legal_move(&tt_node.bm)
+            {
                 self.bad_hash.increment();
                 return None;
             }
-            assert!(tt_node.bm.is_null() || (board.is_pseudo_legal_move(&tt_node.bm) && board.is_legal_move(&tt_node.bm)), "{} {} {:?}", board.to_fen(), tt_node.bm.uci(), tt_node.bm );
+            assert!(
+                tt_node.bm.is_null()
+                    || (board.is_pseudo_legal_move(&tt_node.bm) && board.is_legal_move(&tt_node.bm)),
+                "{} {} {:?}",
+                board.to_fen(),
+                tt_node.bm.uci(),
+                tt_node.bm
+            );
         }
         tt_node
     }
@@ -649,8 +677,18 @@ impl TranspositionTable2 {
                             board.to_fen(),
                             b.to_fen()
                         );
-                        error!("Invalid move {} for nt {} in tt for board position {}", mv, entry.node_type, board.to_fen());
-                        println!("Invalid move {} for nt {} in tt for board position {}", mv, entry.node_type, board.to_fen());
+                        error!(
+                            "Invalid move {} for nt {} in tt for board position {}",
+                            mv,
+                            entry.node_type,
+                            board.to_fen()
+                        );
+                        println!(
+                            "Invalid move {} for nt {} in tt for board position {}",
+                            mv,
+                            entry.node_type,
+                            board.to_fen()
+                        );
                         return nodes;
                     }
                 }
@@ -705,7 +743,8 @@ mod tests {
                 Piece::Rook,
                 Piece::None,
                 Piece::None,
-                CastlingRights::NONE)
+                CastlingRights::NONE,
+            ),
         }
     }
 

@@ -49,6 +49,8 @@ impl Parse {
         // The word mate is commonly used instead; occasionally a double dagger (‡)
         s = s.replace("mate", "#");
         s = s.replace("‡", "#");
+        s = s.replace("?", "");
+        s = s.replace("!", "");
 
         // strip whitespace
         s = s.replace(" ", "");

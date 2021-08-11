@@ -17,6 +17,31 @@ pub struct MaterialBalance {
     pub table: Vec<i16>,
 }
 
+
+impl Default for MaterialBalance {
+    fn default() -> Self {
+        let mut mb = Self {
+            enabled: true,
+            min_games: 50,
+            trade_factor: 2,
+            material_weights: [
+                Weight::default(),
+                Weight::new(100, 100),
+                Weight::new(350, 350), // knights
+                Weight::new(350, 350),
+                Weight::new(600, 600),
+                Weight::new(1100, 1200),
+                Weight::new(0, 0), // king
+            ],
+            bishop_pair: Weight::new(40, 85),
+            table: vec![0; Self::SIZE],
+        };
+        mb.init();
+        mb
+    }
+}
+
+
 impl Component for MaterialBalance {
     fn settings(&self, c: &mut Config) {
         c.set("mb.enabled", &format!("type check default {}", self.enabled));
@@ -186,12 +211,12 @@ impl MaterialBalance {
                 if wdl.w + wdl.d <= 5 {
                     // certain losing position
                     cp = -4000;
-                    let trade_down_penalty = self.trade_factor /100 * mat.phase(); // bigger towards end of game
+                    let trade_down_penalty = self.trade_factor /100 * mat.phase(); // bigger if less material
                     cp -= trade_down_penalty as i16;
                 } else if wdl.l + wdl.d <= 5 {
                     // certain winning position
                     cp = 4000;
-                    let trade_down_bonus = self.trade_factor /100 * mat.phase(); // bigger towards end of game
+                    let trade_down_bonus = self.trade_factor /100 * mat.phase(); // bigger if less material
                     cp += trade_down_bonus as i16;
                 } else {
                     let elo = wdl.elo();
@@ -207,28 +232,6 @@ impl MaterialBalance {
     }
 }
 
-impl Default for MaterialBalance {
-    fn default() -> Self {
-        let mut mb = Self {
-            enabled: true,
-            min_games: 50,
-            trade_factor: 2,
-            material_weights: [
-                Weight::default(),
-                Weight::new(100, 100),
-                Weight::new(350, 350), // knights
-                Weight::new(350, 350),
-                Weight::new(600, 600),
-                Weight::new(1100, 1200),
-                Weight::new(0, 0), // king
-            ],
-            bishop_pair: Weight::new(40, 85),
-            table: vec![0; Self::SIZE],
-        };
-        mb.init();
-        mb
-    }
-}
 
 type DataVec = Vec<(Material, ScoreWdl)>;
 

@@ -10,12 +10,15 @@ use crate::types::{Color, Ply};
 use crate::bitboard::castling::CastlingRights;
 use crate::utils::StringUtils;
 use crate::tags::{Tags, Tag};
-use serde::{Serialize, ser::SerializeMap, Serializer, Deserialize};
 use std::convert::{TryFrom, Into};
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
 use std::collections::HashMap;
+use crate::{info, logger::LogInit};
+use serde::{Serialize, ser::SerializeMap, Serializer, Deserialize};
+
+
 
 
 use std::fmt;
@@ -29,9 +32,9 @@ use std::fmt;
 // https://www.chessprogramming.org/Extended_Position_Description
 // http://www.talkchess.com/forum3/viewtopic.php?t=69640&start=20
 
+// #[serde(into = "HashMap<String,String>")]
 #[derive(Clone, Default, Debug, Deserialize, PartialEq, Eq)]
 #[serde(try_from = "HashMap<String,String>")]
-// #[serde(into = "HashMap<String,String>")]
 pub struct Position {
     board: Board,
     tags: Tags,
@@ -51,7 +54,7 @@ impl TryFrom<HashMap<String, String>> for Position {
             if k == "fen" {
                 continue;
             }
-            let tag = Tag::parse(p.board(), k, v)?;
+            let tag = Tag::parse(p.board(), k, v).map_err(|s| format!("{} in tag '{}' with value '{}'", s, k, v))?;
             p.set(tag);
         }
         Ok(p)
@@ -162,13 +165,16 @@ impl Position {
     }
 
     pub fn parse_epd_file<P>(filename: P) -> Result<Vec<Position>, String>
-    where P: AsRef<Path>, {
-        let file = File::open(filename).map_err(|err| err.to_string())?;
+    where P: AsRef<Path>, P: Clone {
+        let file = File::open(filename.clone()).map_err(|err| err.to_string())?;
         let lines = io::BufReader::new(file).lines();
         let mut vec = Vec::<Position>::new();
-        for line in lines {
+        for (n, line) in lines.enumerate() {
             let s = line.map_err(|err| err.to_string())?;
             vec.push(Self::parse_epd(&s).map_err(|err| format!("{} in epd {}", err, s))?);
+            if n % 100000 == 0 {
+                info!("Read {} lines from {:?}", n, filename.as_ref().display());
+            }
         }
         Ok(vec)
     }
@@ -461,6 +467,15 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn test_parse_epd_file() -> Result<(), String> {
+        let positions = Position::parse_epd_file("../odonata-extras/epd/quiet-labeled.epd")?;
+        // let positions = Position::parse_epd_file("../odonata-extras/epd/com15.epd")?;
+        for p in positions {
+            println!(">> {}", p);
+        }
+        Ok(())
+    }
 
 
 }

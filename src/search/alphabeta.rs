@@ -45,7 +45,7 @@ impl Algo {
         board: &mut Board,
         ply: Ply,
         depth: Ply,
-        mut alpha: Score,
+        alpha: Score,
         beta: Score,
         last_move: &Move,
     ) -> Score {
@@ -57,18 +57,22 @@ impl Algo {
             return -Score::INFINITY;
         }
 
-        if alpha + Score::from_cp(1) == beta {
+        let mut n = Node {
+            ply,
+            depth,
+            alpha,
+            beta,
+        };
+
+        if n.alpha + Score::from_cp(1) == n.beta {
             self.search_stats.inc_zw_nodes(ply);
         }
 
-        if board.draw_outcome().is_some() {
+
+        // we dont draw at root, as otherwise it wont play a move if insufficient-material draw
+        if ply > 0 && board.draw_outcome().is_some() {
             self.search_stats.inc_leaf_nodes(ply);
-            return board.eval_draw(&mut self.eval,     &Node {
-                ply,
-                depth,
-                alpha,
-                beta,
-            },); // will return a draw score
+            return board.eval_draw(&mut self.eval, &n); // will return a draw score
         }
 
         let mut score = -Score::INFINITY;
@@ -76,7 +80,7 @@ impl Algo {
         let mut nt = NodeType::All;
 
         if !self.tt.probe_leaf_nodes && self.is_leaf(ply, depth) {
-            return self.qsearch(last_move, ply, depth, board, alpha, beta);
+            return self.qsearch(last_move, ply, depth, board, n.alpha, n.beta);
         }
 
         let draft = depth;
@@ -84,26 +88,26 @@ impl Algo {
         if let Some(entry) = self.tt.probe_by_board(board, ply, draft) {
             // we use thr tt_mv for ordering regardless of draft
             tt_mv = entry.bm;
-            //             if entry.draft >= draft  && (ply >= 1 || self.tt.allow_tt_at_root) && !(board.repetition_count().total > 0 && self.repetition.avoid_tt_on_repeats)
+            if entry.draft >= draft  && (ply >= 1 || self.tt.allow_tt_at_root) && !(board.repetition_count().total > 0 && self.repetition.avoid_tt_on_repeats)
  
-            if entry.draft >= draft && !(board.repetition_count().total > 1 && self.repetition.avoid_tt_on_repeats)
+            // if entry.draft >= draft && !(board.repetition_count().total > 1 && self.repetition.avoid_tt_on_repeats)
             {
                 match entry.node_type {
                     NodeType::Pv => {
                         // previously this position raised alpha, but didnt trigger a cut
                         // no point going through moves as we know what the max score is
-                        if entry.score >= beta {
+                        if entry.score >= n.beta {
                             self.search_stats.inc_node_cut(ply, MoveType::Hash);
                             self.search_stats.inc_tt_nodes(ply);
                             return entry.score;
                         }
-                        if entry.score <= alpha {
+                        if entry.score <= n.alpha {
                             self.search_stats.inc_node_all(ply);
                             self.search_stats.inc_tt_nodes(ply);
                             return entry.score;
                         }
 
-                        if self.tt.allow_truncated_pv && entry.score > alpha {
+                        if self.tt.allow_truncated_pv && entry.score > n.alpha {
                             self.record_truncated_move(ply, &entry.bm);
                             self.search_stats.inc_tt_nodes(ply);
                             return entry.score;
@@ -114,16 +118,16 @@ impl Algo {
                         // previously this position raised alpha (sufficiently to cause a cut).
                         // not all child nodes were scored, so score is a lower bound
                         // FIXME: probably dont set alpha just the hinted mv and re-search the node
-                        if entry.score >= beta {
+                        if entry.score >= n.beta {
                             self.search_stats.inc_node_cut(ply, MoveType::Hash);
                             self.tt.store(board.hash(), entry);
                             // self.record_truncated_move(ply, &entry.bm);
                             self.search_stats.inc_tt_nodes(ply);
                             return entry.score;
                         }
-                        if self.tt.allow_truncated_pv && entry.score > alpha {
+                        if self.tt.allow_truncated_pv && entry.score > n.alpha {
                             nt = NodeType::Pv;
-                            alpha = entry.score;
+                            n.alpha = entry.score;
                             self.record_truncated_move(ply, &entry.bm);
                             score = entry.score;
                             bm = entry.bm; // need to set bm as alpha raising mv might be skipped
@@ -133,7 +137,7 @@ impl Algo {
                     NodeType::All => {
                         // previously this position didnt raise alpha, the score is an upper bound
                         // if the score is still below alpha, this too is an ALL node
-                        if entry.score <= alpha {
+                        if entry.score <= n.alpha {
                             // self.record_truncated_move(ply, &entry.bm);
                             self.search_stats.inc_tt_nodes(ply);
                             return entry.score;
@@ -145,33 +149,23 @@ impl Algo {
         }
 
         if self.tt.probe_leaf_nodes && self.is_leaf(ply, depth) {
-            return self.qsearch(last_move, ply, depth, board, alpha, beta);
+            return self.qsearch(last_move, ply, depth, board, n.alpha, n.beta);
         }
 
         self.search_stats.inc_interior_nodes(ply);
 
         let futility = self.futility.can_prune_at_node(
             board,
-            &Node {
-                ply,
-                depth,
-                alpha,
-                beta,
-            },
+            &n,
             &self.eval,
         );
 
         // null move
         if !self.minmax
-            && beta.is_numeric()
+            && n.beta.is_numeric()
             && self.nmp.allow(
                 &board,
-                &Node {
-                    ply,
-                    depth,
-                    alpha,
-                    beta,
-                },
+               &n,
                 &self.pv_table,
             )
         {
@@ -184,12 +178,12 @@ impl Algo {
                 &mut child_board,
                 ply + 1,
                 depth - r - 1,
-                -beta,
-                -beta + Score::from_cp(1),
+                -n.beta,
+                -n.beta + Score::from_cp(1),
                 &mv,
             );
             board.undo_move(&mv);
-            if child_score >= beta {
+            if child_score >= n.beta {
                 self.search_stats.inc_node_cut(ply, MoveType::Null);
                 return child_score;
             }
@@ -208,10 +202,10 @@ impl Algo {
             self.repetition.push_move(&mv, &child_board);
             child_board.set_repetition_count(self.repetition.count(&child_board));
             debug_assert!(
-                alpha < beta || self.minmax,
+                n.alpha < n.beta || self.minmax,
                 "alpha={}, beta={}, minmax={}",
-                alpha,
-                beta,
+                n.alpha,
+                n.beta,
                 self.minmax
             );
             self.current_variation.set_last_move(ply + 1, &mv);
@@ -220,12 +214,7 @@ impl Algo {
                 board,
                 &mv,
                 &child_board,
-                &Node {
-                    ply,
-                    depth,
-                    alpha,
-                    beta,
-                },
+                &n,
                 &mut self.search_stats,
             );
             let lmr = if !self.minmax {
@@ -235,12 +224,7 @@ impl Algo {
                     count,
                     move_type,
                     &child_board,
-                    &Node {
-                        ply,
-                        depth,
-                        alpha,
-                        beta,
-                    },
+                    &n,
                     nt,
                     &mut self.search_stats,
                 )
@@ -252,12 +236,7 @@ impl Algo {
                 && self.pvs.permitted(
                     nt,
                     board,
-                    &Node {
-                        ply,
-                        depth,
-                        alpha,
-                        beta,
-                    },
+                    &n,
                 );
             let mut child_score;
             if pvs {
@@ -268,8 +247,8 @@ impl Algo {
                     &mut child_board,
                     ply + 1,
                     depth + ext - lmr - 1,
-                    -alpha - Score::from_cp(1),
-                    -alpha,
+                    -n.alpha - Score::from_cp(1),
+                    -n.alpha,
                     &mv,
                 );
             } else {
@@ -277,18 +256,18 @@ impl Algo {
                     &mut child_board,
                     ply + 1,
                     depth + ext - lmr - 1,
-                    -beta,
-                    -alpha,
+                    -n.beta,
+                    -n.alpha,
                     &mv,
                 );
             }
 
-            if (lmr > 0 && self.reductions.lmr_re_search || pvs) && child_score > score && child_score < beta
+            if (lmr > 0 && self.reductions.lmr_re_search || pvs) && child_score > score && child_score < n.beta
             {
                 // research with full window without reduction in depth
                 self.search_stats.inc_pvs_research(ply);
                 child_score =
-                    -self.alphabeta_recursive(&mut child_board, ply + 1, depth + ext - 1, -beta, -alpha, &mv);
+                    -self.alphabeta_recursive(&mut child_board, ply + 1, depth + ext - 1, -n.beta, -n.alpha, &mv);
             }
             board.undo_move(&mv);
             self.repetition.pop();
@@ -300,15 +279,15 @@ impl Algo {
             if child_score > score {
                 score = child_score;
             }
-            if child_score > alpha {
-                alpha = child_score;
+            if child_score > n.alpha {
+                n.alpha = child_score;
                 bm = mv;
                 nt = NodeType::Pv;
                 debug_assert!(board.is_pseudo_legal_move(&bm));
                 self.record_move(ply, &mv);
             }
 
-            if alpha >= beta && !self.minmax {
+            if n.alpha >= n.beta && !self.minmax {
                 nt = NodeType::Cut;
                 self.search_stats.inc_node_cut(ply, move_type);
                 self.killers.store(ply, &mv);
@@ -321,12 +300,7 @@ impl Algo {
             self.search_stats.inc_leaf_nodes(ply);
             return board.eval(
                 &mut self.eval,
-                &Node {
-                    ply,
-                    depth,
-                    alpha,
-                    beta,
-                },
+                &n,
             );
         } else if nt == NodeType::All {
             self.search_stats.inc_node_all(ply);

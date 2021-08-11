@@ -4,7 +4,7 @@ use crate::movelist::MoveList;
 use crate::types::Ply;
 use crate::board::Board;
 use crate::bitboard::bitboard::Bitboard;
-use std::collections::HashMap;
+use std::{collections::HashMap};
 use std::fmt;
 use std::time::Duration;
 use once_cell::sync::Lazy;
@@ -84,7 +84,7 @@ impl Tag {
 
     pub const ATTRIBUTES: &'static [&'static str] = &[Self::ACD, Self::BM, Self::PV];
 
-    pub fn parse(b: &Board, key: &str, v: &str) -> Result<Tag, String> {
+    fn parse_internal(b: &Board, key: &str, v: &str) -> Result<Tag, String> {
         Ok(match key {
             Self::BM => Tag::BestMove(b.parse_san_movelist(v)?),
             Self::PV => Tag::Pv(b.parse_san_variation(v)?),
@@ -113,6 +113,12 @@ impl Tag {
         })
     }
 
+    pub fn parse(b: &Board, key: &str, v: &str) -> Result<Tag, String> {
+        match Self::parse_internal(b, key, v) {
+            Err(err) => Err(format!("{} parsing tag '{}' from '{}'", err, key, v)), 
+            Ok(tag) => Ok(tag)
+        }
+    }
 
 
     pub fn key(&self) -> String {
