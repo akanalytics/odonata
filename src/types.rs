@@ -166,7 +166,7 @@ impl fmt::Display for Color {
     }
 }
 
-#[repr(u8)]
+// #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Piece {
     None = 0,
