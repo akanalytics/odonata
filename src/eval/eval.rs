@@ -486,9 +486,13 @@ impl SimpleScorer {
         // +ve contempt => +ve score => aim for draw => opponent stronger than us
         // board.color_us() == Color::Black => minimising
         // +ve contempt => -ve score => aim for draw => opponent stronger than us
-        let signum = 1 - (node.ply % 2) * 2; // ply=0 => 1  ply=1=> -1
-        let contempt = signum * self.contempt + board.signum();
+        let contempt = board.color_us().chooser_wb(self.contempt, -self.contempt);
         return Score::from_cp(contempt);
+
+        // FIXME! v33
+        // let signum = 1 - (node.ply % 2) * 2; // ply=0 => 1  ply=1=> -1
+        // let contempt = signum * self.contempt + board.signum();
+        // return Score::from_cp(contempt);
     }
 
     pub fn w_evaluate(&mut self, board: &Board, node: &Node) -> Score {

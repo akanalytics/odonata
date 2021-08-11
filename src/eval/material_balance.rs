@@ -30,13 +30,14 @@ impl Default for MaterialBalance {
                 Weight::new(350, 350), // knights
                 Weight::new(350, 350),
                 Weight::new(600, 600),
-                Weight::new(1100, 1200),
+                Weight::new(1100, 1100),
                 Weight::new(0, 0), // king
             ],
             bishop_pair: Weight::new(40, 85),
             table: vec![0; Self::SIZE],
         };
-        mb.init();
+        // FIXME! v33
+        // mb.init();
         mb
     }
 }
