@@ -28,11 +28,13 @@ static REGEX_SAN: Lazy<Regex> = Lazy::new(|| Regex::new(
     ([1-8])?        # src square rank grp(3)
     (\-|x)?         # move or capture grp(4)
     ([a-h][1-8])?   # square - both rank and file grp(5)
-    (=[NBRQ])?      # promo grp(6)
+    (=[NBRQ])?      # promo grp(6) 
     (\+|\#)?        # check or checkmate grp(7)
     \z
     |               # OR
     ^O-O(-O)?\z     #   or castling king (or queens) side and eol
+    |
+    ^([a-h][1-8][a-h][1-8][nbrq]?)\z  # uci format grp(9)
     "#,
 ).unwrap());
 
@@ -71,6 +73,8 @@ impl Parse {
         let mut dst_square = caps.get(5).map_or("", |m| m.as_str()).to_string();
         let promo = caps.get(6).map_or("", |m| m.as_str());
         let _checks = caps.get(7).map_or("", |m| m.as_str());
+        let _q_side_castle = caps.get(8).map_or("", |m| m.as_str());
+        let uci = caps.get(9).map_or("", |m| m.as_str());
         // println!("Parsed p={} f={} r={} to={}", piece, src_file, src_rank, dst_square);
 
         // if one square is given, its the destination not the source
@@ -89,6 +93,10 @@ impl Parse {
         // this is slow but easy to understand. Castling has already been dealt with
         let mut matching_moves = MoveList::new();
         for lm in legal_moves.iter() {
+            // allow UCI moves as well as SAN 
+            if !uci.is_empty() && lm.uci() != s {
+                continue
+            }
             if !dst_square.is_empty() && lm.to() != Bitboard::parse_square(&dst_square)? {
                 continue;
             }
@@ -101,7 +109,8 @@ impl Parse {
             if !piece.is_empty() && board.piece_at(lm.from().as_bb()).to_upper_char().to_string() != piece {
                 continue;
             }
-            if !promo.is_empty() && lm.promo_piece().to_char(Some(Color::Black)).to_string() != promo {
+            // SAN promos are upper case eg "=Q" "=B"
+            if !promo.is_empty() && "=".to_string() + &lm.promo_piece().to_char(Some(Color::White)).to_string() != promo {
                 continue;
             }
             // lm is castle but s isnt
@@ -120,7 +129,7 @@ impl Parse {
             return Err(format!("Move {} is invalid - not a legal move for board {}", orig, board.to_fen()));
         }
         if matching_moves.len() > 1 {
-            return Err(format!("Move {} is ambiguous - moves {} for board {}", orig, matching_moves, board.to_fen()));
+            return Err(format!("Move {} is ambiguous - moves {} match. For board {}", orig, matching_moves, board.to_fen()));
         }
 
         // FIXME: warnings on non-captures, non-checkmates etc
@@ -133,6 +142,7 @@ impl Parse {
 mod tests {
 
     use super::*;
+    use crate::BoardBuf;
     use crate::board::makemove::MoveMaker;
     use crate::catalog::Catalog;
 
@@ -151,6 +161,25 @@ mod tests {
         let bd = do_test_and_make_move(&bd, "Qb6", "d8b6");
         let bd = do_test_and_make_move(&bd, "Nc4", "d2c4");
         let _bd = do_test_and_make_move(&bd, "Qb4+", "b6b4");
+    }
+
+    #[test]
+    fn test_parse_move2() {
+        let bd = Board::parse_fen("4k1n1/1p1p3P/8/8/pPp1p3/3P1P2/P1P1P1P1/R3K3 w Q - 0 1").unwrap();
+        // promo
+        do_test_and_make_move(&bd, "h8=Q", "h7h8q");
+        do_test_and_make_move(&bd, "h7h8q", "h7h8q");
+        do_test_and_make_move(&bd, "h7h8r", "h7h8r");
+        do_test_and_make_move(&bd, "h7h8b", "h7h8b");
+        do_test_and_make_move(&bd, "h7h8n", "h7h8n");
+        do_test_and_make_move(&bd, "h8=R", "h7h8r");
+        do_test_and_make_move(&bd, "h8=B", "h7h8b");
+        do_test_and_make_move(&bd, "h8=N", "h7h8n");
+
+        do_test_and_make_move(&bd, "g8=Q", "h7g8q");
+        do_test_and_make_move(&bd, "g8=R", "h7g8r");
+        do_test_and_make_move(&bd, "hxg8=Q", "h7g8q");
+        do_test_and_make_move(&bd, "h7xg8=Q", "h7g8q");
     }
 
     fn do_test_and_make_move(bd: &Board, san: &str, uci: &str) -> Board {
