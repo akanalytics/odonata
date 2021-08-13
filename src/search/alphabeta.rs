@@ -243,7 +243,7 @@ impl Algo {
                 );
             let mut child_score;
             if pvs {
-                debug_assert!(alpha.is_numeric());
+                debug_assert!(n.alpha.is_numeric());
                 self.search_stats.inc_pvs_move(ply);
                 // using [alpha, alpha + 1]
                 child_score = -self.alphabeta_recursive(
