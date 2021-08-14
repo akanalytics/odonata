@@ -247,7 +247,7 @@ impl MaterialBalance {
                 let adj = self.w_eval_simple(mat).e();
                 cp = cp.clamp(-5000 + adj, 5000 + adj);
 
-                if !self.draws_only || -20 < cp && cp < 20 {  
+                if !self.draws_only || (-20 < cp && cp < 20) {  
                     DERIVED_SCORES[mat.hash()].store(cp as i16,  Ordering::Relaxed);
                     DERIVED_SCORES[mat.flip().hash()].store(-cp as i16, Ordering::Relaxed);
                     trace!("{:<20} = {:>5}       wdl: {:>5} {:>5} {:>5}", format!("mb[{}]",mat), cp, wdl.w, wdl.d, wdl.l);
@@ -256,7 +256,7 @@ impl MaterialBalance {
         }
 
         if self.consistency {
-            for pass in 1..55 {
+            for pass in 1..10 {
                 self.init_ensure_consistency(pass);
             }
         }
@@ -388,12 +388,13 @@ fn data(m: &mut RawStatsVec, s: &str, w: i32, d: i32, l: i32) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{debug, info, logger::LogInit};
+    // use crate::{debug, info, logger::LogInit};
 
  
     #[test]
     fn test_balance() {
-        let mb = MaterialBalance::new();
+        let mut mb = MaterialBalance::new();
+        mb.configure(Config::from_env());
         mb.log_material_balance();
     }
 }

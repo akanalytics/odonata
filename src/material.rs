@@ -386,7 +386,7 @@ impl Material {
 
 #[cfg(test)]
 mod tests {
-    use std::{cmp::Ordering, convert::TryFrom};
+    // use std::{cmp::Ordering, convert::TryFrom};
 
     use super::*;
     use crate::catalog::Catalog;
