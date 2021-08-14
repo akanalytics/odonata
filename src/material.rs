@@ -2,7 +2,10 @@ use crate::board::Board;
 use crate::mv::Move;
 use crate::types::{Color, Piece};
 use std::cmp;
+use std::ops;
 use std::fmt;
+use itertools::Itertools;
+
 
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub struct Material {
@@ -26,6 +29,45 @@ impl fmt::Display for Material {
     }
 }
 
+
+impl ops::Neg for Material {
+    type Output = Material;
+
+    fn neg(self) -> Self::Output {
+        (&self).neg()
+    }
+}
+
+impl ops::Neg for &Material {
+    type Output = Material;
+
+    fn neg(self) -> Self::Output {
+        let mut m = Material::new();
+
+        for &c in &Color::ALL {
+            for &p in &Piece::ALL_BAR_NONE {
+                *m.counts_mut(c, p) = -self.counts(c,p);
+            }
+        }
+        m
+    }
+}
+
+impl<'a, 'b> ops::Sub<&'b Material> for &'a Material {
+    type Output = Material;
+
+    fn sub(self, other: &'b Material) -> Self::Output {
+        let mut m = Material::new();
+
+        for &c in &Color::ALL {
+            for &p in &Piece::ALL_BAR_NONE {
+                *m.counts_mut(c, p) = self.counts(c,p) - other.counts(c,p);
+            }
+        }
+        m
+    }
+}
+
 impl cmp::PartialOrd for Material {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         if self == other {
@@ -33,15 +75,15 @@ impl cmp::PartialOrd for Material {
         }
         if Piece::ALL_BAR_NONE
             .iter()
-            .zip(&Color::ALL)
-            .all(|(&p, &c)| self.counts(c, p) > other.counts(c, p))
+            .cartesian_product(&Color::ALL)
+            .all(|(&p, &c)| self.counts(c, p) >= other.counts(c, p))
         {
             return Some(cmp::Ordering::Greater);
         }
         if Piece::ALL_BAR_NONE
             .iter()
-            .zip(&Color::ALL)
-            .all(|(&p, &c)| self.counts(c, p) < other.counts(c, p))
+            .cartesian_product(&Color::ALL)
+            .all(|(&p, &c)| self.counts(c, p) <= other.counts(c, p))
         {
             return Some(cmp::Ordering::Less);
         }
@@ -228,20 +270,20 @@ impl Material {
 
     // hash of no material = 0
     pub fn hash(&self) -> usize {
-        let wq = self.counts(Color::White, Piece::Queen) as usize;
-        let wr = self.counts(Color::White, Piece::Rook) as usize;
-        let wb = self.counts(Color::White, Piece::Bishop) as usize;
-        let wn = self.counts(Color::White, Piece::Knight) as usize;
-        let wp = self.counts(Color::White, Piece::Pawn) as usize;
-        if wq > 1 || wr > 2 || wb > 2 || wn > 2 || wp > 8 {
+        let wq = self.counts(Color::White, Piece::Queen) as i32;
+        let wr = self.counts(Color::White, Piece::Rook) as i32;
+        let wb = self.counts(Color::White, Piece::Bishop) as i32;
+        let wn = self.counts(Color::White, Piece::Knight) as i32;
+        let wp = self.counts(Color::White, Piece::Pawn) as i32;
+        if wq < 0 || wq > 1 || wr < 0 || wr > 2 || wb < 0 || wb > 2 || wn < 0 || wn > 2 || wp < 0 || wp > 8 {
             return 0;
         }
-        let bq = self.counts(Color::Black, Piece::Queen) as usize;
-        let br = self.counts(Color::Black, Piece::Rook) as usize;
-        let bb = self.counts(Color::Black, Piece::Bishop) as usize;
-        let bn = self.counts(Color::Black, Piece::Knight) as usize;
-        let bp = self.counts(Color::Black, Piece::Pawn) as usize;
-        if bq > 1 || br > 2 || bb > 2 || bn > 2 || bp > 8 {
+        let bq = self.counts(Color::Black, Piece::Queen) as i32;
+        let br = self.counts(Color::Black, Piece::Rook) as i32;
+        let bb = self.counts(Color::Black, Piece::Bishop) as i32;
+        let bn = self.counts(Color::Black, Piece::Knight) as i32;
+        let bp = self.counts(Color::Black, Piece::Pawn) as i32;
+        if bq < 0 || bq > 1 || br < 0 || br > 2 || bb < 0 || bb > 2 || bn < 0 || bn > 2 || bp < 0 || bp > 8 {
             return 0;
         }
         // let w_hash = (((wq * 3 + wr) * 3 + wb) * 3 + wn) * 9 + wp;
@@ -265,7 +307,7 @@ impl Material {
 
 
 
-        hash
+        hash as usize
     }
 
     #[inline]
@@ -344,10 +386,12 @@ impl Material {
 
 #[cfg(test)]
 mod tests {
-    use std::convert::TryFrom;
+    use std::{cmp::Ordering, convert::TryFrom};
 
     use super::*;
     use crate::catalog::Catalog;
+    use crate::{debug, logger::LogInit};
+
 
     #[test]
     fn test_material() {
@@ -358,6 +402,8 @@ mod tests {
 
         let mat_full2 = Material::from_piece_str("PPPPPPPPNNBBRRQKppppppppnnbbrrqk").unwrap();
         assert_eq!(mat_full1, mat_full2);
+        assert_eq!(--mat_full1, mat_full2);
+        assert_eq!(-&-&mat_full1, mat_full2);
         assert_eq!(mat_full2.total_count(), 32);
 
         #[allow(non_snake_case)]
@@ -387,6 +433,17 @@ mod tests {
         // mat3 (KBk) and mat4 (Kkn) are not comparable (ordering is partial)
         #[allow(non_snake_case)]
         let mat_Kkn = Material::from_piece_str("Kkn").unwrap();
+        // count KBk.count(B,n) <   Kkn.count(B, n)
+        // count KBk.count(W,B) >   Kkn.count(W, B)
+
+        debug!("{:?} ... {:?}", mat_KBk, mat_Kkn );
+        let _b = Piece::ALL_BAR_NONE
+            .iter()
+            .cartesian_product(&Color::ALL)
+            .inspect(|x| { debug!("iterating on... {:?}", x); })
+            .all(|(&p, &c)| mat_KBk.counts(c, p) <= mat_Kkn.counts(c, p));
+
+        assert_eq!(mat_KBk.partial_cmp(&mat_Kkn), None);
         assert_eq!(mat_KBk < mat_Kkn, false);
         assert_eq!(mat_KBk > mat_Kkn, false);
         assert_eq!(mat_KBk <= mat_Kkn, false);

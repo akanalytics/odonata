@@ -38,6 +38,7 @@ jsonrpc-derive = "17.1.0"
 strum = "0.21"
 strum_macros = "0.21"
 format_num = "0.1.0"
+itertools = "0.10.1"
 
 
 [dev-dependencies]
