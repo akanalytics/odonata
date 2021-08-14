@@ -650,7 +650,7 @@ mod tests {
         search.set_position(Catalog::starting_position());
         search.search();
         println!("{}", search);
-        assert_eq!(search.search_stats().total().nodes(), 425); // null move pruning
+        assert_eq!(search.search_stats().total().nodes(), 611); // null move pruning
                                                                 // assert_eq!(search.search_stats().total().nodes(), 1468);
                                                                 // assert_eq!(search.search_stats().total().nodes(), 1516); // rejigged pawn PST
                                                                 // previous

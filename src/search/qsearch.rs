@@ -300,6 +300,7 @@ mod tests {
                 .set_timing_method(TimeControl::Depth(0))
                 .set_callback(Uci::uci_info)
                 .clone();
+            search.eval.mb.enabled = true;
             search.set_position(pos.clone()).search();
             debug!("{}", search);
             assert_eq!(
@@ -363,6 +364,7 @@ mod tests {
     #[test]
     fn test_see() -> Result<(), String> {
         let mut eval = SimpleScorer::new();
+        eval.mb.enabled = false;
         eval.mobility = false;
         eval.position = false;
         eval.material = true;

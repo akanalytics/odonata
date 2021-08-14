@@ -34,7 +34,7 @@ static REGEX_SAN: Lazy<Regex> = Lazy::new(|| Regex::new(
     |               # OR
     ^O-O(-O)?\z     #   or castling king (or queens) side and eol
     |
-    ^([a-h][1-8][a-h][1-8][nbrq]?)\z  # uci format grp(9)
+    ^([a-h][1-8][a-h][1-8][nbrq])\z  # uci promo grp(9)
     "#,
 ).unwrap());
 
@@ -74,7 +74,7 @@ impl Parse {
         let promo = caps.get(6).map_or("", |m| m.as_str());
         let _checks = caps.get(7).map_or("", |m| m.as_str());
         let _q_side_castle = caps.get(8).map_or("", |m| m.as_str());
-        let uci = caps.get(9).map_or("", |m| m.as_str());
+        let _uci_promo = caps.get(9).map_or("", |m| m.as_str());
         // println!("Parsed p={} f={} r={} to={}", piece, src_file, src_rank, dst_square);
 
         // if one square is given, its the destination not the source
@@ -94,9 +94,12 @@ impl Parse {
         let mut matching_moves = MoveList::new();
         for lm in legal_moves.iter() {
             // allow UCI moves as well as SAN 
-            if !uci.is_empty() && lm.uci() != s {
-                continue
+            if lm.uci() == s {
+                matching_moves.clear();
+                matching_moves.push(*lm);
+                break;
             }
+
             if !dst_square.is_empty() && lm.to() != Bitboard::parse_square(&dst_square)? {
                 continue;
             }
@@ -180,6 +183,9 @@ mod tests {
         do_test_and_make_move(&bd, "g8=R", "h7g8r");
         do_test_and_make_move(&bd, "hxg8=Q", "h7g8q");
         do_test_and_make_move(&bd, "h7xg8=Q", "h7g8q");
+
+        do_test_and_make_move(&bd, "a2a3", "a2a3");
+        do_test_and_make_move(&bd, "a1b1", "a1b1");
     }
 
     fn do_test_and_make_move(bd: &Board, san: &str, uci: &str) -> Board {

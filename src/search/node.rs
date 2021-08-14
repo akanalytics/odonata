@@ -38,4 +38,15 @@ impl Node {
     pub fn is_root(&self) -> bool {
         self.ply == 0
     }
+
+    #[inline]
+    pub fn is_zw(&self) -> bool {
+        self.alpha.is_numeric() && self.beta.is_numeric() && self.alpha.as_i16() + 1 == self.beta.as_i16()
+    }
+
+    #[inline]
+    pub fn is_pv(&self) -> bool {
+        !self.is_zw()
+    }
+
 }

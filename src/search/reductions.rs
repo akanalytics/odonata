@@ -11,6 +11,7 @@ use std::fmt;
 #[derive(Clone, Debug)]
 pub struct Reductions {
     pub lmr_enabled: bool,
+    pub lmr_pv_node: bool, 
     pub lmr_bad_captures: bool,
     pub lmr_pawns: bool,
     pub lmr_promos: bool,
@@ -21,6 +22,37 @@ pub struct Reductions {
     pub lmr_red_strat: i32,
 }
 
+
+// WAC @ 1m nodes
+// min_depth=3, re-search=false, pawns=true, min_depth=3, reduction=1 => 256
+// min_depth=4 => 255
+// min_depth=2 => 257   (with re-search => 248)
+// min_depth=1 => 257   (with reseach => 248)
+// re-search=false, pawns=true, promos=true => 256
+// re-search=false, pawns=true, promos=true, killers=true => 256
+// re-search=true, pawns=true, promos=true, killers=true => 254
+// re-search=true, pawns=true, promos=true => 255
+// re-search=true, pawns=true => 255
+// alpha_numeric=true => 252
+
+impl Default for Reductions {
+    fn default() -> Self {
+        Reductions {
+            lmr_enabled: true,
+            lmr_pv_node: false,
+            lmr_alpha_numeric: false,
+            lmr_re_search: false,
+            lmr_bad_captures: true,
+            lmr_pawns: true,
+            lmr_promos: false,
+            lmr_killers: false,
+            lmr_min_depth: 2,
+            lmr_red_strat: 1,
+        }
+    }
+}
+
+
 impl Component for Reductions {
     fn settings(&self, c: &mut Config) {
         c.set(
@@ -30,6 +62,10 @@ impl Component for Reductions {
         c.set(
             "red.lmr.bad.captures",
             &format!("type check  default {}", self.lmr_bad_captures),
+        );
+        c.set(
+            "red.lmr.pv.node",
+            &format!("type check  default {}", self.lmr_pv_node),
         );
         c.set(
             "red.lmr.re.search",
@@ -66,7 +102,9 @@ impl Component for Reductions {
         self.lmr_re_search = c.bool("red.lmr.re.search").unwrap_or(self.lmr_re_search);
         self.lmr_alpha_numeric = c.bool("red.lmr.alpha.numeric").unwrap_or(self.lmr_alpha_numeric);
         self.lmr_bad_captures = c.bool("red.lmr.bad.captures").unwrap_or(self.lmr_bad_captures);
+        self.lmr_pv_node = c.bool("red.lmr.pv.node").unwrap_or(self.lmr_pv_node);
         self.lmr_pawns = c.bool("red.lmr.pawns").unwrap_or(self.lmr_pawns);
+        self.lmr_pv_node = c.bool("red.pv.node").unwrap_or(self.lmr_pv_node);
         self.lmr_promos = c.bool("red.lmr.promos").unwrap_or(self.lmr_promos);
         self.lmr_killers = c.bool("red.lmr.killers").unwrap_or(self.lmr_killers);
         self.lmr_min_depth = c.int("red.lmr.min.depth").unwrap_or(self.lmr_min_depth as i64) as Ply;
@@ -79,33 +117,7 @@ impl Component for Reductions {
     fn new_position(&mut self) {}
 }
 
-// WAC @ 1m nodes
-// min_depth=3, re-search=false, pawns=true, min_depth=3, reduction=1 => 256
-// min_depth=4 => 255
-// min_depth=2 => 257   (with re-search => 248)
-// min_depth=1 => 257   (with reseach => 248)
-// re-search=false, pawns=true, promos=true => 256
-// re-search=false, pawns=true, promos=true, killers=true => 256
-// re-search=true, pawns=true, promos=true, killers=true => 254
-// re-search=true, pawns=true, promos=true => 255
-// re-search=true, pawns=true => 255
-// alpha_numeric=true => 252
 
-impl Default for Reductions {
-    fn default() -> Self {
-        Reductions {
-            lmr_enabled: true,
-            lmr_alpha_numeric: false,
-            lmr_re_search: false,
-            lmr_bad_captures: true,
-            lmr_pawns: true,
-            lmr_promos: false,
-            lmr_killers: false,
-            lmr_min_depth: 2,
-            lmr_red_strat: 1,
-        }
-    }
-}
 
 // from CPW
 //
@@ -161,6 +173,9 @@ impl Reductions {
                 return 0;
             }
             if self.lmr_alpha_numeric && !node.alpha.is_numeric() {
+                return 0;
+            }
+            if !self.lmr_pv_node && node.is_pv() {
                 return 0;
             }
             search_stats.inc_red_lmr(node.ply);

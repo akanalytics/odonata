@@ -843,6 +843,8 @@ mod tests {
             algo.set_position(pos.clone()).search();
             //            let pv = algo.tt.extract_pv(&algo.bm(), pos.board());
             let pv = algo.tt.extract_pv_and_score(pos.board()).0;
+
+            // FIXME! Bad test. No reason acd = pv length as pv line may be reduced due to lmr etc.
             assert_eq!(pv.len(), d as usize, "algo.pv={} pv={}\n{}", algo.pv(), pv, algo);
             // assert!(algo.pv().len() >= d as usize, "{} {}\n{}", algo.pv(), pv, algo);
             // assert_eq!(algo.bm().uci(), pos.bm()?.uci());

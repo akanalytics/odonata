@@ -469,8 +469,8 @@ mod tests {
 
     #[test]
     fn test_parse_epd_file() -> Result<(), String> {
-        let positions = Position::parse_epd_file("../odonata-extras/epd/quiet-labeled.epd")?;
-        // let positions = Position::parse_epd_file("../odonata-extras/epd/com15.epd")?;
+        // let positions = Position::parse_epd_file("../odonata-extras/epd/quiet-labeled.epd")?;
+        let positions = Position::parse_epd_file("../odonata-extras/epd/com15.epd")?;
         for p in positions {
             println!(">> {}", p);
         }

@@ -474,7 +474,7 @@ impl SimpleScorer {
         }
     }
 
-    pub fn w_eval_draw(&mut self, board: &Board, node: &Node) -> Score {
+    pub fn w_eval_draw(&mut self, board: &Board, _node: &Node) -> Score {
         // draw score is +ve for playing a stronger opponent (we want a draw), neg for weaker
         //
         //  Engine Col   |  search ply   |  value to searcher   | Score to white
@@ -785,7 +785,7 @@ mod tests {
         assert_eq!(board.eval(eval, &Node::root(0)), Score::from_cp(0));
 
         let starting_pos_score = 8 * 100 + 2 * 350 + 2 * 350 + 2 * 600 + 1100 + 40; // (bishop pair, half the pieces)
-        let ending_pos_score = 8 * 100 + 2 * 350 + 2 * 350 + 2 * 625 + 1300 + 85; // (bishop pair, half the pieces)
+        let ending_pos_score = 8 * 100 + 2 * 350 + 2 * 350 + 2 * 600 + 1100 + 85; // (bishop pair, half the pieces)
         let board = Catalog::white_starting_position();
         assert_eq!(board.phase(), 50);
         assert_eq!(
@@ -812,21 +812,21 @@ mod tests {
         let board = Board::parse_fen("K7/PPPPP3/8/8/8/8/8/k7 w - - 0 1").unwrap();
         assert_eq!(board.eval_material(eval), Score::from_cp(500));
 
-        // losing a pawn from 5P to 4P increases score from 500 to 5000
+        // losing a pawn from 5P to 4P increases score from 500 to 5400
         let board = Board::parse_fen("K7/PPPP4/8/8/8/8/8/k7 w - - 0 1").unwrap();
-        assert_eq!(board.eval_material(eval), Score::from_cp(5000));
+        assert_eq!(board.eval_material(eval), Score::from_cp(5400));
 
         let board = Board::parse_fen("K7/PPP5/8/8/8/8/8/k7 w - - 0 1").unwrap();
-        assert_eq!(board.eval_material(eval), Score::from_cp(5000));
+        assert_eq!(board.eval_material(eval), Score::from_cp(5300));
 
         let board = Board::parse_fen("K7/PP6/8/8/8/8/8/k7 w - - 0 1").unwrap();
         assert_eq!(board.eval_material(eval), Score::from_cp(735));
 
         // black exchanges knight for a bishop
         let board = Board::parse_fen("8/2p3p1/3r1pk1/R2Prnp1/P5P1/4BK2/R4P1P/8 b - - 0 50").unwrap();
-        assert_eq!(board.eval_material(eval), Score::from_cp(-188));
+        assert_eq!(board.eval_material(eval), Score::from_cp(-100));
         let board = Board::parse_fen("8/2p3p1/3r1pk1/R2Pr1p1/P5P1/4PK2/R6P/8 b - - 0 51").unwrap();
-        assert_eq!(board.eval_material(eval), Score::from_cp(-171));
+        assert_eq!(board.eval_material(eval), Score::from_cp(-100));
     }
 
     #[test]
@@ -845,7 +845,7 @@ mod tests {
         let eval = &SimpleScorer::new();
 
         let bd = Board::parse_fen("8/P7/8/8/8/8/8/8 w - - 0 1").unwrap().as_board();
-        assert_eq!(bd.eval_position(eval), Score::from_cp(70));
+        assert_eq!(bd.eval_position(eval), Score::from_cp(eval.pawn_r7.e()));
 
         let bd = Board::parse_fen("8/4p3/8/8/8/8/8/8 w - - 0 1")
             .unwrap()
@@ -862,7 +862,7 @@ mod tests {
 
         // from blacks perspective to negate
         let bd = Board::parse_fen("8/8/8/8/8/8/p7/8 b - - 0 1").unwrap().as_board();
-        assert_eq!(bd.eval_position(eval), -Score::from_cp(-70));
+        assert_eq!(bd.eval_position(eval), Score::from_cp(eval.pawn_r7.e()));
     }
 
     #[test]
