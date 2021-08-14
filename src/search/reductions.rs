@@ -39,7 +39,7 @@ impl Default for Reductions {
     fn default() -> Self {
         Reductions {
             lmr_enabled: true,
-            lmr_pv_node: false,
+            lmr_pv_node: true,
             lmr_alpha_numeric: false,
             lmr_re_search: false,
             lmr_bad_captures: true,

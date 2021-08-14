@@ -96,6 +96,11 @@ impl Material {
         self.counts[c][p]
     }
 
+    #[inline]
+    pub fn counts_mut(&mut self, c: Color, p: Piece) -> &mut i32 {
+        &mut self.counts[c][p]
+    }
+
     // #[inline]
     // pub fn counts_mut(&mut self, c: Color, p: Piece) -> &mut i32 {
     //     &mut self.counts[c][p]
@@ -214,6 +219,107 @@ impl Material {
         }
         false
     }
+
+
+
+    // 236196
+    pub const HASH_VALUES: usize =
+        (((((((((((1 * 2 + 1) * 3 + 2) * 3 + 2) * 3 + 2) * 3 + 2) * 3) + 2) * 3) + 2) * 9 + 8) * 9) + 8 + 1;
+
+    // hash of no material = 0
+    pub fn hash(&self) -> usize {
+        let wq = self.counts(Color::White, Piece::Queen) as usize;
+        let wr = self.counts(Color::White, Piece::Rook) as usize;
+        let wb = self.counts(Color::White, Piece::Bishop) as usize;
+        let wn = self.counts(Color::White, Piece::Knight) as usize;
+        let wp = self.counts(Color::White, Piece::Pawn) as usize;
+        if wq > 1 || wr > 2 || wb > 2 || wn > 2 || wp > 8 {
+            return 0;
+        }
+        let bq = self.counts(Color::Black, Piece::Queen) as usize;
+        let br = self.counts(Color::Black, Piece::Rook) as usize;
+        let bb = self.counts(Color::Black, Piece::Bishop) as usize;
+        let bn = self.counts(Color::Black, Piece::Knight) as usize;
+        let bp = self.counts(Color::Black, Piece::Pawn) as usize;
+        if bq > 1 || br > 2 || bb > 2 || bn > 2 || bp > 8 {
+            return 0;
+        }
+        // let w_hash = (((wq * 3 + wr) * 3 + wb) * 3 + wn) * 9 + wp;
+        // let hash = (((((((w_hash * 2 + bq) * 3) + br) * 3) + bb) * 3 + bn) * 9) + bp;
+
+        let mut hash = 0;
+        hash = hash * 9 + wp;
+        hash = hash * 9 + bp;
+
+        hash = hash * 3 + wn;
+        hash = hash * 3 + bn;
+
+        hash = hash * 3 + wb;
+        hash = hash * 3 + bb;
+
+        hash = hash * 3 + wr;
+        hash = hash * 3 + br;
+
+        hash = hash * 2 + wq;
+        hash = hash * 2 + bq;
+
+
+
+        hash
+    }
+
+    #[inline]
+    pub fn maybe_from_hash(mut hash: usize) -> Material {
+
+        let bq = hash % 2;
+        hash = (hash - bq) / 2;
+
+        let wq = hash % 2;
+        hash = (hash - wq) / 2;
+
+        let br = hash % 3;
+        hash = (hash - br) / 3;
+
+        let wr = hash % 3;
+        hash = (hash - wr) / 3;
+
+        let bb = hash % 3;
+        hash = (hash - bb) / 3;
+
+        let wb = hash % 3;
+        hash = (hash - wb) / 3;
+
+        let bn = hash % 3;
+        hash = (hash - bn) / 3;
+
+        let wn = hash % 3;
+        hash = (hash - wn) / 3;
+
+        let bp = hash % 9;
+        hash = (hash - bp) / 9;
+
+        let wp = hash % 9;
+        hash = (hash - wp) / 9;
+
+        debug_assert!(hash == 0);
+
+        let mut m = Material::new();
+        m.counts[Color::White][Piece::Pawn] = wp as i32;
+        m.counts[Color::White][Piece::Knight] = wn as i32;
+        m.counts[Color::White][Piece::Bishop] = wb as i32;
+        m.counts[Color::White][Piece::Rook] = wr as i32;
+        m.counts[Color::White][Piece::Queen] = wq as i32;
+        m.counts[Color::White][Piece::King] = 1;
+
+        m.counts[Color::Black][Piece::Pawn] = bp as i32;
+        m.counts[Color::Black][Piece::Knight] = bn as i32;
+        m.counts[Color::Black][Piece::Bishop] = bb as i32;
+        m.counts[Color::Black][Piece::Rook] = br as i32;
+        m.counts[Color::Black][Piece::Queen] = bq as i32;
+        m.counts[Color::Black][Piece::King] = 1;
+        m
+    }
+
 }
 
 
@@ -238,6 +344,8 @@ impl Material {
 
 #[cfg(test)]
 mod tests {
+    use std::convert::TryFrom;
+
     use super::*;
     use crate::catalog::Catalog;
 
@@ -331,5 +439,18 @@ mod tests {
                 .centipawns(),
             0
         );
+    }
+
+
+    #[test]
+    fn test_material_hash() {
+        let board = Catalog::starting_board();
+        let mat_full = Material::from_board(&board);
+        assert_eq!(Material::maybe_from_hash(mat_full.hash()), mat_full);
+        assert_eq!(mat_full.hash(), Material::HASH_VALUES - 1);
+
+        let mat_part = Material::from_piece_str("KQRBPPPPPkqrrnppppppp").unwrap();
+        assert_eq!(Material::maybe_from_hash(mat_part.hash()), mat_part);
+
     }
 }

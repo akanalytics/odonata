@@ -7,6 +7,7 @@ use crate::{debug, info, logger::LogInit};
 use static_init::dynamic;
 use std::fmt;
 use std::sync::atomic::{AtomicBool, AtomicI16, Ordering};
+use crate::eval::score::Score;
 
 #[derive(Clone)]
 pub struct MaterialBalance {
@@ -104,7 +105,7 @@ impl fmt::Display for MaterialBalance {
         writeln!(f, "max pawns        : {}", self.max_pawns)?;
         writeln!(f, "trade factor     : {}", self.trade_factor)?;
         writeln!(f, "bishop pair      : {}", self.bishop_pair)?;
-        writeln!(f, "table size       : {}", DERIVED_SCORES_LEN)?;
+        writeln!(f, "table size       : {}", Material::HASH_VALUES)?;
         Ok(())
     }
 }
@@ -117,7 +118,7 @@ impl fmt::Debug for MaterialBalance {
             .field("trade_factor", &self.trade_factor)
             .field("enabled", &self.enabled)
             .field("bishop_pair", &self.bishop_pair)
-            .field("size", &DERIVED_SCORES_LEN)
+            .field("size", &Material::HASH_VALUES)
             .finish()
     }
 }
@@ -163,42 +164,12 @@ impl MaterialBalance {
         score
     }
 
-    // 236196
-    pub const SIZE: usize =
-        (((((((((((1 * 3 + 2) * 3 + 2) * 3 + 2) * 9 + 8) * 2 + 1) * 3) + 2) * 3) + 2) * 3 + 2) * 9) + 8 + 1;
 
-    // hash of no material = 0
-    #[inline]
-    pub fn hash(mat: &Material) -> usize {
-        let wq = mat.counts(Color::White, Piece::Queen) as usize;
-        let wr = mat.counts(Color::White, Piece::Rook) as usize;
-        let wb = mat.counts(Color::White, Piece::Bishop) as usize;
-        let wn = mat.counts(Color::White, Piece::Knight) as usize;
-        let wp = mat.counts(Color::White, Piece::Pawn) as usize;
-        if wq > 1 || wr > 2 || wb > 2 || wn > 2 || wp > 8 {
-            return 0;
-        }
-        let bq = mat.counts(Color::Black, Piece::Queen) as usize;
-        let br = mat.counts(Color::Black, Piece::Rook) as usize;
-        let bb = mat.counts(Color::Black, Piece::Bishop) as usize;
-        let bn = mat.counts(Color::Black, Piece::Knight) as usize;
-        let bp = mat.counts(Color::Black, Piece::Pawn) as usize;
-        if bq > 1 || br > 2 || bb > 2 || bn > 2 || bp > 8 {
-            return 0;
-        }
-        let w_hash = (((wq * 3 + wr) * 3 + wb) * 3 + wn) * 9 + wp;
-        let hash = (((((((w_hash * 2 + bq) * 3) + br) * 3) + bb) * 3 + bn) * 9) + bp;
-        hash
-    }
 
     #[inline]
     pub fn balance_lookup(&self, mat: &Material) -> Weight {
-        if !DERIVED_SCORES_CALCULATED.load(Ordering::Relaxed) {
-            // thread safe as we don't care if we run multiple times, or have a half-written table during the process
-            self.init();
-            DERIVED_SCORES_CALCULATED.store(true, Ordering::Relaxed);
-        }
-        let score = DERIVED_SCORES[Self::hash(mat)].load(Ordering::Relaxed);
+        self.ensure_init();
+        let score = DERIVED_SCORES[mat.hash()].load(Ordering::Relaxed);
         if score != 0 {
             return Weight::new(score as i32, score as i32);
         }
@@ -206,24 +177,51 @@ impl MaterialBalance {
     }
 
 
+    pub fn log_material_balance(&self) {
+        self.ensure_init();
+        let mut count = 0;
+        for hash in 0..Material::HASH_VALUES {
+            let cp = DERIVED_SCORES[hash].load(Ordering::Relaxed);
+            if cp > 0 {
+                count += 1;
+                let mut mat = Material::maybe_from_hash(hash);
+                *mat.counts_mut(Color::White, Piece::King) = 0;
+                *mat.counts_mut(Color::Black, Piece::King) = 0;
+                info!("{:>6} {:>32}", cp, mat.to_string());
+            }
+        }
+        info!("Total adjustments {:>6}", count);
+    }
+
+    #[inline]
+    pub fn ensure_init(&self) {
+        if !DERIVED_SCORES_CALCULATED.load(Ordering::Relaxed) {
+            // thread safe as we don't care if we run multiple times, or have a half-written table during the process
+            self.init();
+            DERIVED_SCORES_CALCULATED.store(true, Ordering::Relaxed);
+        }
+    }
+
     // inerior mutability
-    pub fn init(&self) {
+    fn init(&self) {
         info!("creating material balance table from {} items", RAW_STATS.len() );
-        for n in 0..DERIVED_SCORES_LEN {
+        for n in 0..Material::HASH_VALUES {
             DERIVED_SCORES[n].store(0,  Ordering::Relaxed);
         }
-        for (mat, wdl) in RAW_STATS.iter() {
+        let mut sorted_raw_stats = RAW_STATS.clone();
+        sorted_raw_stats.sort_by_cached_key(|(mat, _score) | mat.to_string().len() as i32 * 20000 + mat.centipawns() ); 
+        for (mat, wdl) in sorted_raw_stats.iter() {
             let pawns = mat.counts(Color::White, Piece::Pawn) + mat.counts(Color::Black, Piece::Pawn);
             if wdl.total() >= self.min_games && pawns <= self.max_pawns {
                 let mut cp;
                 if wdl.w + wdl.d <= 5 {
                     // certain losing position
-                    cp = -6000;
+                    cp = -8000;
                     // let trade_down_penalty = self.trade_factor /100 * mat.phase(); // bigger if less material
                     // cp -= trade_down_penalty as i16;
                 } else if wdl.l + wdl.d <= 5 {
                     // certain winning position
-                    cp = 6000;
+                    cp = 8000;
                     // let trade_down_bonus = self.trade_factor /100 * mat.phase(); // bigger if less material
                     // cp += trade_down_bonus as i16;
                 } else {
@@ -238,12 +236,21 @@ impl MaterialBalance {
                 let adj = self.w_eval_simple(mat).e();
                 cp = cp.clamp(-5000 + adj, 5000 + adj);
 
-                DERIVED_SCORES[Self::hash(mat)].store(cp as i16,  Ordering::Relaxed);
-                DERIVED_SCORES[Self::hash(&mat.flip())].store(-cp as i16, Ordering::Relaxed);
-                trace!("mb[{}] = {}  - {}", mat, cp, wdl);
+                let cp = self.ensure_above_lesser(mat, cp);
+
+                DERIVED_SCORES[mat.hash()].store(cp as i16,  Ordering::Relaxed);
+                DERIVED_SCORES[mat.flip().hash()].store(-cp as i16, Ordering::Relaxed);
+                trace!("{:<20} = {:>5}       wdl: {:>5} {:>5} {:>5}", format!("mb[{}]",mat), cp, wdl.w, wdl.d, wdl.l);
             }
         }
     }
+
+
+    fn ensure_above_lesser(&self, mat: &Material, cp: i32) -> i32 {
+        cp
+    }
+
+
 }
 
 
@@ -251,8 +258,6 @@ impl MaterialBalance {
 
 
 
-// 236196 * 2 bytes
-pub const DERIVED_SCORES_LEN: usize = (((((((((((1 * 3 + 2) * 3 + 2) * 3 + 2) * 9 + 8) * 2 + 1) * 3) + 2) * 3) + 2) * 3 + 2) * 9) + 8 + 1;
 
 // mutable derived scores
 type DerivedScoresVec = Vec<AtomicI16>;
@@ -262,7 +267,7 @@ static DERIVED_SCORES_CALCULATED: AtomicBool = AtomicBool::new(false);
 #[dynamic(lazy)]
 static DERIVED_SCORES: DerivedScoresVec = {
     let mut m = DerivedScoresVec::new();
-    m.resize_with(DERIVED_SCORES_LEN, || AtomicI16::new(0));
+    m.resize_with(Material::HASH_VALUES, || AtomicI16::new(0));
     m
 };
 
@@ -274,6 +279,20 @@ type RawStatsVec = Vec<(Material, ScoreWdl)>;
 fn data(m: &mut RawStatsVec, s: &str, w: i32, d: i32, l: i32) {
     m.push((Material::from_piece_str(s).unwrap(), ScoreWdl::new(w, d, l)));
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+ 
+    #[test]
+    fn test_material_balance() {
+        let mb = MaterialBalance::new();
+        mb.log_material_balance();
+    }
+}
+
+
 
 
 
