@@ -38,7 +38,6 @@ use std::time::Instant;
 use criterion::measurement::Measurement;
 use criterion::*;
 
-// use criterion_linux_perf::{PerfMeasurement, PerfMode};
 
 use iai::black_box;
 
@@ -80,9 +79,9 @@ criterion_group!(
 //     targets = benchmark_perft, benchmark_bitboard
 // );
 
-// criterion_main!(benches);
-
-iai::main!(iai_search); // , iai_legal_moves_into, iai_perft5);
+//criterion_main!(benches);
+iai::main!(iai_search, iai_legal_moves_into, iai_perft5);
+// use criterion_linux_perf::{PerfMeasurement, PerfMode};
 
 fn iai_legal_moves_into() {
     let pos = Catalog::starting_position();
