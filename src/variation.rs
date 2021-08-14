@@ -43,11 +43,7 @@ impl Variation {
             .join(" ")
     }
 
-    #[inline]
-    pub fn contains_null_move(&self) -> bool {
-        self.moves.iter().any(|mv| mv.is_null())
-    }
-
+  
     #[inline]
     pub fn set_last_move(&mut self, ply: Ply, mv: &Move) {
         let ply = ply as usize;

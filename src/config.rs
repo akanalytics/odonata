@@ -75,7 +75,10 @@ impl Config {
 
     pub fn bool(&self, name: &str) -> Option<bool> {
         if let Some(v) = self.settings.get(&name.to_string()) {
-            return v.parse::<bool>().ok();
+            if let Ok(res) = v.parse::<bool>() {
+                info!("config {} = {}", name, res);
+                return Some(res);
+            }
         }
         None
     }
@@ -89,7 +92,11 @@ impl Config {
     }
 
     pub fn string(&self, name: &str) -> Option<String> {
-        self.settings.get(name).cloned()
+        let s = self.settings.get(name);
+        if let Some(res) = s {
+            info!("config {} = {}", name, res);
+        }
+        s.cloned()
     }
 
     pub fn combo(&self, name: &str) -> Option<String> {
@@ -99,9 +106,15 @@ impl Config {
     pub fn weight(&self, name: &str, default: &Weight) -> Weight {
         let (mut s, mut e) = (default.s(), default.e());
         if let Some(v) = self.settings.get(&(name.to_string() + ".s")) {
+            if let Ok(res) = v.parse::<i32>() {
+                info!("config {}.s = {}", name, res);
+            }
             s = v.parse::<i32>().unwrap_or(default.s());
         }
         if let Some(v) = self.settings.get(&(name.to_string() + ".e")) {
+            if let Ok(res) = v.parse::<i32>() {
+                info!("config {}.e = {}", name, res);
+            }
             e = v.parse::<i32>().unwrap_or(default.e());
         }
         Weight::new(s, e)
@@ -109,7 +122,10 @@ impl Config {
 
     pub fn int(&self, name: &str) -> Option<i64> {
         if let Some(v) = self.settings.get(name) {
-            return v.parse::<i64>().ok();
+            if let Ok(res) = v.parse::<i64>() {
+               info!("config {} = {}", name, res);
+                return Some(res);
+            }
         }
         None
     }

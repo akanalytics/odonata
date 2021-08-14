@@ -13,6 +13,7 @@ use crate::{trace, info, logger::LogInit};
 pub struct MaterialBalance {
     pub enabled: bool,
     pub consistency: bool,
+    pub draws_only: bool,
     pub min_games: i32,
     pub max_pawns: i32,
     pub trade_factor: i32,
@@ -26,6 +27,7 @@ impl Default for MaterialBalance {
         let mb = Self {
             enabled: true,
             consistency: true,
+            draws_only: true,
             min_games: 50,
             max_pawns: 4,
             trade_factor: 2,
@@ -49,6 +51,7 @@ impl Component for MaterialBalance {
     fn settings(&self, c: &mut Config) {
         c.set("mb.enabled", &format!("type check default {}", self.enabled));
         c.set("mb.consistency", &format!("type check default {}", self.consistency));
+        c.set("mb.draws.only", &format!("type check default {}", self.draws_only));
         c.set(
             "mb.min.games",
             &format!("type spin min 0 max 2000 default {}", self.min_games),
@@ -72,7 +75,8 @@ impl Component for MaterialBalance {
     fn configure(&mut self, c: &Config) {
         debug!("mb.configure");
         self.enabled = c.bool("mb.enabled").unwrap_or(self.enabled);
-        self.consistency = c.bool("mb.consistemcy").unwrap_or(self.consistency);
+        self.consistency = c.bool("mb.consistency").unwrap_or(self.consistency);
+        self.draws_only = c.bool("mb.draws.only").unwrap_or(self.draws_only);
         self.min_games = c.int("mb.min.games").unwrap_or(self.min_games as i64) as i32;
         self.max_pawns = c.int("mb.max.pawns").unwrap_or(self.max_pawns as i64) as i32;
         self.trade_factor = c.int("mb.trade.factor").unwrap_or(self.trade_factor as i64) as i32;
@@ -105,6 +109,7 @@ impl fmt::Display for MaterialBalance {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "enabled          : {}", self.enabled)?;
         writeln!(f, "consistency      : {}", self.consistency)?;
+        writeln!(f, "draws only       : {}", self.draws_only)?;
         writeln!(f, "min games        : {}", self.min_games)?;
         writeln!(f, "max pawns        : {}", self.max_pawns)?;
         writeln!(f, "trade factor     : {}", self.trade_factor)?;
@@ -119,6 +124,7 @@ impl fmt::Debug for MaterialBalance {
         f.debug_struct("MaterialBalance")
             .field("enabled", &self.enabled)
             .field("consistency", &self.consistency)
+            .field("draws_only", &self.draws_only)
             .field("min_games", &self.min_games)
             .field("max_pawns", &self.max_pawns)
             .field("trade_factor", &self.trade_factor)
@@ -241,9 +247,11 @@ impl MaterialBalance {
                 let adj = self.w_eval_simple(mat).e();
                 cp = cp.clamp(-5000 + adj, 5000 + adj);
 
-                DERIVED_SCORES[mat.hash()].store(cp as i16,  Ordering::Relaxed);
-                DERIVED_SCORES[mat.flip().hash()].store(-cp as i16, Ordering::Relaxed);
-                trace!("{:<20} = {:>5}       wdl: {:>5} {:>5} {:>5}", format!("mb[{}]",mat), cp, wdl.w, wdl.d, wdl.l);
+                if !self.draws_only || -20 < cp && cp < 20 {  
+                    DERIVED_SCORES[mat.hash()].store(cp as i16,  Ordering::Relaxed);
+                    DERIVED_SCORES[mat.flip().hash()].store(-cp as i16, Ordering::Relaxed);
+                    trace!("{:<20} = {:>5}       wdl: {:>5} {:>5} {:>5}", format!("mb[{}]",mat), cp, wdl.w, wdl.d, wdl.l);
+                }
             }
         }
 
