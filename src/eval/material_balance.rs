@@ -256,29 +256,23 @@ impl MaterialBalance {
         }
 
         if self.consistency {
-            for pass in 1..15 {
+            for pass in 1..55 {
                 self.init_ensure_consistency(pass);
             }
         }
     }
 
     fn init_ensure_consistency(&self, pass: i32) {
-        trace!("Material balance consistency: pass {}\n", pass);
+        info!("\nMaterial balance consistency: pass {}\n\n", pass);
         let mut adjustments = 0;
         for (hash,_atom) in DERIVED_SCORES.iter().enumerate() {
             let mat = Material::maybe_from_hash(hash);
             let cp = DERIVED_SCORES[mat.hash()].load(Ordering::Relaxed) as i32;
             if cp > 0 {
-                let new_cp = self.ensure_single_entry_consistent(&mat, cp);
-                if new_cp != cp {
-                    adjustments += 1;
-                    // trace!("[{:>32}]={:>5}", mat, cp);
-                    DERIVED_SCORES[mat.hash()].store(new_cp as i16,  Ordering::Relaxed);
-                    DERIVED_SCORES[mat.flip().hash()].store(-new_cp as i16, Ordering::Relaxed);
-                }
+                adjustments += self.ensure_single_entry_consistent(&mat, cp);
             }
         }
-        trace!("Material balance consistency: pass {} adjusted {} items\n", pass, adjustments);
+        info!("Material balance consistency: pass {} adjusted {} items\n", pass, adjustments);
     }
 
     fn ensure_single_entry_consistent(&self, mat: &Material, cp: i32) -> i32 {
@@ -304,48 +298,63 @@ impl MaterialBalance {
             -Material::from_piece_str("r").unwrap(),
             -Material::from_piece_str("q").unwrap(),
             ];
-        let no_material = Material::default();
-        let mut new_cp = cp;
+        // let no_material = Material::default();
+        let mut adjustments = 0;
+
         for diff in &material_diffs {
 
             // first examine loss of material;
             let other = mat - diff;
-            if other > no_material {
-                let mut other_cp = DERIVED_SCORES[other.hash()].load(Ordering::Relaxed) as i32;
-                if other_cp == 0 {
-                    let weight: Weight = Piece::ALL_BAR_KING
-                    .iter()
-                    .map(|&p| (other.counts(Color::White, p) - other.counts(Color::Black, p)) * self.material_weights[p])
-                    .sum();        
-                    other_cp = std::cmp::max(weight.s(), weight.e());
-                }
-                if other_cp > 0 {
-                    // losing material - ensure lesser entries consistent
-                    if cp < other_cp && mat.white() > other.white() {
-                        new_cp = other_cp + diff.centipawns() / 2;  
-                        trace!("Loss (white) [{:>32}]={:>5} < [{:>30}]={:>5} ----> {}", mat, cp, other, other_cp, new_cp );
-                    }
-                    if cp > other_cp && mat.black() > other.black() {
-                        new_cp = other_cp + diff.centipawns() / 2;  // centipawns already negative for black
-                        trace!("Loss (black) [{:>32}]={:>5} > [{:>30}]={:>5} ----> {}", mat, cp, other, other_cp, new_cp );
-                    }
+            if other.hash() == 0 {
+                continue;
+            }
+            let mut other_cp = DERIVED_SCORES[other.hash()].load(Ordering::Relaxed) as i32;
+            if other_cp == 0 {
+                let weight: Weight = Piece::ALL_BAR_KING
+                .iter()
+                .map(|&p| (other.counts(Color::White, p) - other.counts(Color::Black, p)) * self.material_weights[p])
+                .sum();        
+                other_cp = std::cmp::max(weight.s(), weight.e());
+            }
 
-                    // gaining material - ensure greater entries consistent
-                    if cp > other_cp && mat.white() < other.white() {
-                        new_cp = other_cp + diff.centipawns() / 2;  
-                        trace!("Gain (white) [{:>32}]={:>5} > [{:>30}]={:>5} ----> {}", mat, cp, other, other_cp, new_cp );
-                    }
-                    if cp < other_cp && mat.black() < other.black() {
-                        new_cp = other_cp + diff.centipawns() / 2;  // centipawns already negative for black
-                        trace!("Gain (black) [{:>32}]={:>5} < [{:>30}]={:>5} ----> {}", mat, cp, other, other_cp, new_cp );
-                    }
-                }
-            }  
+            // losing material - ensure lesser entries consistent
+            let mut new_cp = cp;
+            if cp < other_cp && mat.white() > other.white() {
+                new_cp = other_cp + diff.centipawns() / 2;  
+                trace!("Loss (white) {:>32}={:>5} < {:>30}={:>5} ----> [{}] = {} ({})", mat.to_string(), cp, other, other_cp, other, new_cp, new_cp - cp );
+            }
+            if cp > other_cp && mat.black() > other.black() {
+                new_cp = other_cp + diff.centipawns() / 2;  // centipawns already negative for black
+                trace!("Loss (black) {:>32}={:>5} > {:>30}={:>5} ----> [{}] = {} ({})", mat.to_string(), cp, other, other_cp, other, new_cp, new_cp - cp );
+            }
+
+            if new_cp != cp {
+                adjustments += 1;
+                // trace!("[{:>32}]={:>5}", mat, cp);
+                DERIVED_SCORES[mat.hash()].store(new_cp as i16,  Ordering::Relaxed);
+                DERIVED_SCORES[mat.flip().hash()].store(-new_cp as i16, Ordering::Relaxed);
+            }
+
+            // gaining material - ensure greater entries consistent
+            let mut new_cp = other_cp;
+            if cp > other_cp && mat.white() < other.white() {
+                new_cp = other_cp - diff.centipawns() / 2;  
+                trace!("Gain (white) {:>32}={:>5} > {:>30}={:>5} ----> [{}] = {} ({})", mat.to_string(), cp, other, other_cp, other, new_cp, new_cp - other_cp );
+            }
+            if cp < other_cp && mat.black() < other.black() {
+                new_cp = other_cp - diff.centipawns() / 2;  // centipawns already negative for black
+                trace!("Gain (black) {:>32}={:>5} < {:>30}={:>5} ----> [{}] = {} ({})", mat.to_string(), cp, other, other_cp, other, new_cp, new_cp - other_cp );
+            }
+            // amend the higher one
+            if new_cp != other_cp {
+                adjustments += 1;
+                // trace!("[{:>32}]={:>5}", mat, cp);
+                DERIVED_SCORES[other.hash()].store(other_cp as i16,  Ordering::Relaxed);
+                DERIVED_SCORES[other.flip().hash()].store(-other_cp as i16, Ordering::Relaxed);
+            }
         }
-        new_cp
+        adjustments
     }
-
-
 }
 
 

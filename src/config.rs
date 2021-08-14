@@ -123,7 +123,7 @@ impl Config {
     pub fn int(&self, name: &str) -> Option<i64> {
         if let Some(v) = self.settings.get(name) {
             if let Ok(res) = v.parse::<i64>() {
-               info!("config {} = {}", name, res);
+                info!("config {} = {}", name, res);
                 return Some(res);
             }
         }
