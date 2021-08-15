@@ -28,13 +28,15 @@ impl Component for IterativeDeepening {
     
     fn settings(&self, c: &mut Config) {
         c.set("ids.enabled", "type check default true");
-        c.set("ids.part_ply", "type check default true");
+        c.set("ids.part.ply", "type check default true");
+        c.set("ids.step.size",  &format!("type spin min 0 max 10 default {}", self.step_size));
     }
 
     fn configure(&mut self, c: &Config) {
         debug!("ids.configure");
         self.enabled = c.bool("ids.enabled").unwrap_or(self.enabled);
-        self.part_ply = c.bool("ids.part_ply").unwrap_or(self.part_ply);
+        self.part_ply = c.bool("ids.part.ply").unwrap_or(self.part_ply);
+        self.step_size = c.int("ids.step.size").unwrap_or(self.step_size as i64) as i32;
     }
 
     fn new_game(&mut self) {
@@ -52,7 +54,7 @@ impl Default for IterativeDeepening {
         Self {
             enabled: true,
             part_ply: true,
-            step_size: 1,
+            step_size: 2,
             start_ply: 1,
             end_ply: MAX_PLY - 1,
             iterations: Vec::new(),
