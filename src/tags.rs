@@ -1,4 +1,5 @@
 use crate::mv::Move;
+use crate::utils::Formatter;
 use crate::variation::Variation;
 use crate::movelist::MoveList;
 use crate::types::Ply;
@@ -35,6 +36,7 @@ use serde::{Serialize, Serializer, ser::SerializeMap};
 pub enum Tag {
     None,
     BestMove(MoveList),
+    BranchingFactorPercent(u32),  // 100x
     Pv(Variation),
     Id(String),
     AnalysisCountDepth(Ply),
@@ -61,6 +63,7 @@ pub enum Tag {
 impl Tag {
 
     pub const BM: &'static str = "bm";
+    pub const BF: &'static str = "Bf";
     pub const PV: &'static str = "pv";
     pub const ID: &'static str = "id";
     pub const ACD: &'static str = "acd";
@@ -87,6 +90,7 @@ impl Tag {
     fn parse_internal(b: &Board, key: &str, v: &str) -> Result<Tag, String> {
         Ok(match key {
             Self::BM => Tag::BestMove(b.parse_san_movelist(v)?),
+            Self::BF => Tag::BranchingFactorPercent((100.0 * v.parse::<f64>().map_err(|e| e.to_string())?) as u32) ,
             Self::PV => Tag::Pv(b.parse_san_variation(v)?),
             Self::ID => Tag::Id(v.to_string()) ,
             Self::ACD => Tag::AnalysisCountDepth(v.parse::<Ply>().map_err(|e| e.to_string())?) ,
@@ -125,6 +129,7 @@ impl Tag {
         match &self {
             Tag::None => "".to_string(),
             Tag::BestMove(_) => Self::BM.to_string(),
+            Tag::BranchingFactorPercent(_) => Self::BF.to_string(),
             Tag::Pv(_) => Self::PV.to_string(),
             Tag::Id(_) => Self::ID.to_string(),
             Tag::AnalysisCountDepth(_) => Self::ACD.to_string(),
@@ -153,6 +158,7 @@ impl Tag {
         match &self {
             Tag::None => "".to_string(),
             Tag::BestMove(mvs) => mvs.uci(),
+            Tag::BranchingFactorPercent(bf) => Formatter::format_decimal(2, *bf as f32/ 100.0),
             Tag::Pv(variation) => variation.uci(),
             Tag::Id(s) => format!("{}", s),
             Tag::AnalysisCountDepth(n) => format!("{}", n),

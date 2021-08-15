@@ -267,6 +267,13 @@ impl Position {
         }
     }
 
+    pub fn branching_factor(&self) -> f64 {
+        if let Tag::BranchingFactorPercent(bf) = self.tag(Tag::BF) {
+            *bf as f64 / 100.0
+        } else {
+            0.0
+        }
+    }
 
     pub fn bm(&self) -> Result<MoveList, String> {
         if let Tag::BestMove(ml) = self.tag(Tag::BM) {

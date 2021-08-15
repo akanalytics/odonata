@@ -81,6 +81,8 @@ impl Algo {
         let mut nt = NodeType::All;
 
         if !self.tt.probe_leaf_nodes && self.is_leaf(ply, depth) {
+            // entering qsearch is a leaf node
+            self.search_stats.inc_leaf_qsearch_nodes(ply);
             return self.qsearch(last_move, ply, depth, board, n.alpha, n.beta);
         }
 
@@ -101,18 +103,18 @@ impl Algo {
                         // no point going through moves as we know what the max score is
                         if entry.score >= n.beta {
                             self.search_stats.inc_node_cut(ply, MoveType::Hash);
-                            self.search_stats.inc_tt_nodes(ply);
+                            self.search_stats.inc_leaf_tt_nodes(ply);
                             return entry.score;
                         }
                         if entry.score <= n.alpha {
                             self.search_stats.inc_node_all(ply);
-                            self.search_stats.inc_tt_nodes(ply);
+                            self.search_stats.inc_leaf_tt_nodes(ply);
                             return entry.score;
                         }
 
                         if self.tt.allow_truncated_pv && entry.score > n.alpha {
                             self.record_truncated_move(ply, &entry.bm);
-                            self.search_stats.inc_tt_nodes(ply);
+                            self.search_stats.inc_leaf_tt_nodes(ply);
                             return entry.score;
                         }
                         // else we just use the hash move for move ordering
@@ -125,7 +127,7 @@ impl Algo {
                             self.search_stats.inc_node_cut(ply, MoveType::Hash);
                             self.tt.store(board.hash(), entry);
                             // self.record_truncated_move(ply, &entry.bm);
-                            self.search_stats.inc_tt_nodes(ply);
+                            self.search_stats.inc_leaf_tt_nodes(ply);
                             return entry.score;
                         }
                         if self.tt.allow_truncated_pv && entry.score > n.alpha {
@@ -142,7 +144,7 @@ impl Algo {
                         // if the score is still below alpha, this too is an ALL node
                         if entry.score <= n.alpha {
                             // self.record_truncated_move(ply, &entry.bm);
-                            self.search_stats.inc_tt_nodes(ply);
+                            self.search_stats.inc_leaf_tt_nodes(ply);
                             return entry.score;
                         }
                     }
@@ -152,9 +154,11 @@ impl Algo {
         }
 
         if self.tt.probe_leaf_nodes && self.is_leaf(ply, depth) {
+            self.search_stats.inc_leaf_qsearch_nodes(ply);
             return self.qsearch(last_move, ply, depth, board, n.alpha, n.beta);
         }
 
+        // we are now looking at moves (null, killer, generated etc) so this is an interior node
         self.search_stats.inc_interior_nodes(ply);
 
         let futility = self.futility.can_prune_at_node(

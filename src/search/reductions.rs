@@ -12,6 +12,7 @@ use std::fmt;
 pub struct Reductions {
     pub lmr_enabled: bool,
     pub lmr_pv_node: bool, 
+    pub lmr_only_nt_all: bool, 
     pub lmr_bad_captures: bool,
     pub lmr_pawns: bool,
     pub lmr_promos: bool,
@@ -40,6 +41,7 @@ impl Default for Reductions {
         Reductions {
             lmr_enabled: true,
             lmr_pv_node: true,
+            lmr_only_nt_all: false,
             lmr_alpha_numeric: false,
             lmr_re_search: false,
             lmr_bad_captures: true,
@@ -66,6 +68,10 @@ impl Component for Reductions {
         c.set(
             "red.lmr.pv.node",
             &format!("type check  default {}", self.lmr_pv_node),
+        );
+        c.set(
+            "red.lmr.only.nt.all",
+            &format!("type check  default {}", self.lmr_only_nt_all),
         );
         c.set(
             "red.lmr.re.search",
@@ -103,8 +109,8 @@ impl Component for Reductions {
         self.lmr_alpha_numeric = c.bool("red.lmr.alpha.numeric").unwrap_or(self.lmr_alpha_numeric);
         self.lmr_bad_captures = c.bool("red.lmr.bad.captures").unwrap_or(self.lmr_bad_captures);
         self.lmr_pv_node = c.bool("red.lmr.pv.node").unwrap_or(self.lmr_pv_node);
+        self.lmr_only_nt_all = c.bool("red.lmr.only.nt.all").unwrap_or(self.lmr_only_nt_all);
         self.lmr_pawns = c.bool("red.lmr.pawns").unwrap_or(self.lmr_pawns);
-        self.lmr_pv_node = c.bool("red.pv.node").unwrap_or(self.lmr_pv_node);
         self.lmr_promos = c.bool("red.lmr.promos").unwrap_or(self.lmr_promos);
         self.lmr_killers = c.bool("red.lmr.killers").unwrap_or(self.lmr_killers);
         self.lmr_min_depth = c.int("red.lmr.min.depth").unwrap_or(self.lmr_min_depth as i64) as Ply;
@@ -151,7 +157,7 @@ impl Reductions {
         stage: MoveType,
         after: &Board,
         node: &Node,
-        _nt: NodeType,
+        nt: NodeType,
         search_stats: &mut SearchStats,
     ) -> Ply {
         let mut reduce = 0;
@@ -167,6 +173,9 @@ impl Reductions {
                 || !self.lmr_killers && stage == MoveType::Killer
                 || !self.lmr_bad_captures && stage == MoveType::BadCapture
             {
+                return 0;
+            }
+            if self.lmr_only_nt_all && nt != NodeType::All {
                 return 0;
             }
             if before.is_in_check(before.color_us()) || after.is_in_check(after.color_us()) {

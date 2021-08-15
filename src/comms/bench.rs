@@ -64,12 +64,13 @@ impl Bench {
         let positions = &Catalog::bench();
 
         println!(
-            "{:>3} {:<8} {} {:>13} {:>7} {:>5}  {:<85}",
-            "#", "bm", "*", "nodes", "nps", "depth", "fen"
+            "{:>3} {:<8} {} {:>13} {:>7} {:>5} {:>5}  {:<85}",
+            "#", "bm", "*", "nodes", "nps", "depth", "bf", "fen"
         );
         let mut total_time = Duration::from_millis(0);
         let mut total_nodes = 0;
         let mut total_depth = 0;
+        let mut total_bf = 0.0;
         let mut score = 0;
         for (i, pos) in positions.iter().enumerate() {
             let t = Instant::now();
@@ -94,27 +95,33 @@ impl Bench {
             let sel_depth = engine.algo.results().tag(Tag::ACSD).value_uci();
             let nodes = engine.algo.results().acn().unwrap();
             let nps = Formatter::format_f64(nodes as f64 / elapsed.as_secs_f64());
+            let bf = engine.algo.results().branching_factor();
+            let bf_string = Formatter::format_decimal(2, bf);
             let fen = engine.algo.results().board().to_fen();
+            total_bf += bf;
             total_time += elapsed;
             total_nodes += nodes;
             total_depth += depth;
             let nodes = Formatter::format_u128(nodes);
             println!(
-                "{:>3} {:<8} {} {:>13} {:>7} {:>2}/{:<2}  {:<85}",
+                "{:>3} {:<8} {} {:>13} {:>7} {:>2}/{:<2} {:>5}  {:<85}",
                 i + 1,
                 bm,
                 correct,
                 nodes,
                 nps,
                 depth, sel_depth,
+                bf_string,
                 fen
             );
         }
         let average_depth = total_depth as f64 / positions.len() as f64;
+        let average_bf = total_bf / positions.len() as f64;
         let nps = total_nodes as f64 / total_time.as_secs_f64();
         println!();
         println!("nodes/sec:     {}", Formatter::format_f64(nps));
-        println!("average depth: {}", Formatter::format_f64(average_depth));
+        println!("average depth: {}", Formatter::format_decimal(2, average_depth));
+        println!("average bf:    {}", Formatter::format_decimal(2, average_bf));
         println!("total nodes:   {}", Formatter::format_u128(total_nodes));
         println!("total time:    {}", Formatter::format_duration(total_time));
         println!("score:         {}", score);

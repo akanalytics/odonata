@@ -150,7 +150,7 @@ impl SearchStats {
         if let Some(d) = self
             .plies
             .iter()
-            .rposition(|stats| stats.nodes() + stats.q_tt_nodes + stats.tt_nodes != 0)
+            .rposition(|stats| stats.nodes() + stats.q_tt_nodes + stats.leaf_tt_nodes != 0)
         {
             return 1 + d; // a usize is one-off-the-end
         }
@@ -188,6 +188,19 @@ impl SearchStats {
     }
 
     #[inline]
+    pub fn inc_leaf_tt_nodes(&mut self, sel_ply: Ply) {
+        self.total.leaf_tt_nodes += 1;
+        self.plies[sel_ply as usize].leaf_tt_nodes += 1;
+    }
+
+    #[inline]
+    pub fn inc_leaf_qsearch_nodes(&mut self, sel_ply: Ply) {
+        self.total.leaf_qsearch_nodes += 1;
+        self.plies[sel_ply as usize].leaf_qsearch_nodes += 1;
+    }
+
+
+    #[inline]
     pub fn inc_zw_nodes(&mut self, ply: Ply) {
         self.plies[ply as usize].node_zw += 1;
     }
@@ -208,12 +221,6 @@ impl SearchStats {
     pub fn inc_q_interior_nodes(&mut self, sel_ply: Ply) {
         self.total.q_interior_nodes += 1;
         self.plies[sel_ply as usize].q_interior_nodes += 1;
-    }
-
-    #[inline]
-    pub fn inc_tt_nodes(&mut self, sel_ply: Ply) {
-        self.total.tt_nodes += 1;
-        self.plies[sel_ply as usize].tt_nodes += 1;
     }
 
     #[inline]
@@ -310,10 +317,11 @@ impl SearchStats {
         self.total.interior_nodes() as u128 / (1 + self.realtime.elapsed().as_millis())
     }
 
+    // BF = total / interior
     #[inline]
     pub fn branching_factor(&self) -> f64 {
         let t = self.total();
-        (t.leaf_nodes + t.q_leaf_nodes) as f64 / (t.interior_nodes + t.q_interior_nodes + 1) as f64
+        (t.all_leaf_nodes() + t.interior_nodes()) as f64 / (t.interior_nodes() + 1) as f64
     }
 
     #[inline]
@@ -328,11 +336,12 @@ pub struct NodeStats {
     // nodes
     pub interior_nodes: u64,
     pub leaf_nodes: u64, // FIXME and terminal
+    pub leaf_tt_nodes: u64,
+    pub leaf_qsearch_nodes: u64,
 
     pub q_interior_nodes: u64,
     pub q_leaf_nodes: u64, // FIXME and terminal
 
-    pub tt_nodes: u64,
     pub tt_hints: u64,
     pub q_tt_nodes: u64,
 
@@ -405,6 +414,7 @@ impl NodeStats {
     pub fn accumulate(&mut self, other: &NodeStats) {
         self.interior_nodes += other.interior_nodes;
         self.leaf_nodes += other.leaf_nodes;
+        self.leaf_qsearch_nodes += other.leaf_qsearch_nodes;
         self.node_zw += other.node_zw;
 
         self.node_all += other.node_all;
@@ -425,7 +435,7 @@ impl NodeStats {
         self.q_interior_nodes += other.q_interior_nodes;
         self.q_leaf_nodes += other.q_leaf_nodes;
 
-        self.tt_nodes += other.tt_nodes;
+        self.leaf_tt_nodes += other.leaf_tt_nodes;
         self.tt_hints += other.tt_hints;
         self.q_tt_nodes += other.q_tt_nodes;
 
@@ -440,9 +450,21 @@ impl NodeStats {
     }
 
     #[inline]
+    pub fn all_leaf_nodes(&self) -> u64 {
+        self.leaf_nodes + self.leaf_tt_nodes + self.leaf_qsearch_nodes
+    }
+
+    #[inline]
     pub fn nodes(&self) -> u64 {
-        self.interior_nodes + self.leaf_nodes + self.q_interior_nodes + self.q_leaf_nodes + self.tt_nodes
-        // root
+        // at horizon every leaf_qsearch_node is also either a q_interior or q_leaf node,
+        // so we could count 
+        //    leaf_qsearch_node
+        // OR
+        //    q_interior_nodes + q_leaf_nodes
+        //
+        // but not both
+        //
+        self.interior_nodes + self.leaf_nodes + self.leaf_tt_nodes + (self.q_interior_nodes + self.q_leaf_nodes)
     }
 }
 
@@ -452,7 +474,6 @@ macro_rules! header_format {
             "{node:>11} ",
             "{interior:>11} ",
             "{leaf:>11} ",
-            "{ttnode:>11}  ",
 
             "{zw_perc:>4} ",
             "{nmp_perc:>3} ",
@@ -471,6 +492,8 @@ macro_rules! header_format {
             "{ec:>4}  ",
             "{lmr:>4}  ",
             "{fp:>4}  ",
+
+            "{ttnode:>11}  ",
 
             "{qnode:>11} ",
             "{qinterior:>11} ",
@@ -491,8 +514,8 @@ impl NodeStats {
             header_format!(),
             node = "total =",
             interior = "[interior",
-            leaf = "leaf nodes",
-            ttnode = "tt nodes]",
+            leaf = "all leaf]",
+            ttnode = "leaf tt",
 
             zw_perc = "ZW%",
             nmp_perc = "NU%",
@@ -566,9 +589,9 @@ impl NodeStats {
             f,
             header_format!(),
             node = self.nodes(),
-            interior = self.interior_nodes,
-            leaf = self.leaf_nodes,
-            ttnode = self.tt_nodes,
+            interior = self.interior_nodes(),
+            leaf = self.all_leaf_nodes(),
+            ttnode = self.leaf_tt_nodes,
 
             pv_perc = self.node_pv * 100 / cmp::max(1, self.nodes()) as u64,
             all_perc = self.node_all * 100 / cmp::max(1, self.nodes()) as u64,
@@ -629,7 +652,7 @@ mod tests {
         let mut search = SearchStats::default();
         search.inc_leaf_nodes(2);
         search.inc_leaf_nodes(2);
-        search.inc_tt_nodes(2);
+        search.inc_leaf_tt_nodes(2);
         search.inc_node_cut(2, MoveType::GoodCapture);
         search.inc_interior_nodes(0);
         println!("{}", search);

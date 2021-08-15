@@ -5,6 +5,7 @@ use crate::clock::Clock;
 
 
 
+
 //
 // https://stackoverflow.com/questions/59413614/cycle-a-rust-iterator-a-given-number-of-times
 //
@@ -57,6 +58,17 @@ where
 pub struct Formatter;
 
 impl Formatter {
+    pub fn format_decimal<F: Into<f64>>(decimal_places: u32, n: F) -> String {
+        match decimal_places {
+            0 => format_num!(".0f", n),
+            1 => format_num!(".1f", n),
+            2 => format_num!(".2f", n),
+            3 => format_num!(".3f", n),
+            4 => format_num!(".4f", n),
+            _ => format_num!(".8f", n),
+        }
+    }
+
     pub fn format_f64(n: f64) -> String {
         format_num!(".4s", n)
     }
@@ -250,5 +262,8 @@ mod tests {
         assert_eq!( Formatter::format_f64(123456.0).as_str(), "123.5k" );
         assert_eq!( Formatter::format_f64(0.0000123).as_str(), "12.30µ" );
         assert_eq!( Formatter::format_f64(0.0124).as_str(), "12.40m" );
+        assert_eq!( Formatter::format_decimal(2, 0.0124 as f32).as_str(), "0.01" );
+        assert_eq!( Formatter::format_decimal(0, 4.0124).as_str(), "4" );
+        assert_eq!( Formatter::format_decimal(4, 4.012).as_str(), "4.0120" );
     }
 }

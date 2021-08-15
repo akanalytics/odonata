@@ -645,21 +645,21 @@ impl SimpleScorer {
         let bi = b.bishops() & them;
         let ni = b.knights() & them;
         let r = b.rooks() & them;
-        let q = b.queens() & them;
+        let _q = b.queens() & them;
 
         for sq in ((b.knights() | b.bishops() | b.rooks() | b.queens()) & us).squares() {
             let p = b.piece_at(sq.as_bb());
 
             // non-pawn-defended empty or oppoent sq
             let our_attacks = bb.non_pawn_attacks(our, p, us, them, sq) - pa;
-            let empties = (our_attacks - b.occupied()).popcount();
+            let empties = (our_attacks - occ).popcount();
 
             // those attacks on enemy that arent pawn defended and cant attack back
             let non_pawn_defended = match p {
-                Piece::Queen => (our_attacks & occ - q - r - bi).popcount(),
-                Piece::Rook => (our_attacks & occ - r).popcount(),
-                Piece::Knight => (our_attacks & occ - ni).popcount(),
-                Piece::Bishop => (our_attacks & occ - bi - q).popcount(),
+                Piece::Queen => (our_attacks & them).popcount(),
+                Piece::Rook => (our_attacks & them - r).popcount(),
+                Piece::Knight => (our_attacks & them - ni).popcount(),
+                Piece::Bishop => (our_attacks & them - bi).popcount(),
                 _ => 0,
             };
             // trapped piece

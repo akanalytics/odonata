@@ -193,6 +193,7 @@ impl Algo {
         self.results.set(Tag::AnalysisCountDepth(self.search_stats().depth()));
         self.results.set(Tag::AnalysisCountSelDepth(self.search_stats().selective_depth()));
         self.results.set(Tag::AnalysisCountNodes(self.search_stats().cumulative().nodes() as u128));
+        self.results.set(Tag::BranchingFactorPercent((100.0 * self.search_stats().branching_factor()) as u32 ));
 
     }
 }

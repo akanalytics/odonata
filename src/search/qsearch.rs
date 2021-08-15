@@ -98,7 +98,6 @@ impl Algo {
         self.clear_move(ply);
 
         if !self.qsearch.enabled || (!mv.is_capture() && self.qsearch.only_captures) {
-            self.search_stats.inc_leaf_nodes(ply);
             let node = Node {
                 ply,
                 depth,

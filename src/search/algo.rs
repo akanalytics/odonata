@@ -803,15 +803,14 @@ mod tests {
 
     #[test]
     #[ignore]
-    fn bug04() {
-        let pos = Catalog::starting_position();
-        let mut search = Algo::new()
-            .set_timing_method(TimeControl::Depth(8))
-            .set_callback(Uci::uci_info)
-            .build();
-        search.set_position(pos);
-        search.search();
-        println!("{}", search);
+    fn example_search() {
+        let pos = Catalog::test_position();
+        let mut engine = Engine::new();
+        engine.set_position(pos);
+        engine.algo.set_timing_method(TimeControl::Depth(8));
+        engine.algo.set_callback(Uci::uci_info);
+        engine.search();
+        println!("{}", engine);
     }
 
     #[test]

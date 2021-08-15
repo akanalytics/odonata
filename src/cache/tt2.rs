@@ -396,6 +396,7 @@ impl Default for TranspositionTable2 {
 
 impl Component for TranspositionTable2 {
     fn settings(&self, c: &mut Config) {
+        c.set("tt.enabled", &format!("type check default {}", self.enabled));
         c.set("tt.aging", &format!("type check default {}", self.aging));
         c.set(
             "tt.probe.leaf.nodes",
@@ -426,6 +427,7 @@ impl Component for TranspositionTable2 {
     fn configure(&mut self, c: &Config) {
         debug!("tt.configure");
         self.aging = c.bool("tt.aging").unwrap_or(self.aging);
+        self.enabled = c.bool("tt.enabled").unwrap_or(self.enabled);
         self.probe_leaf_nodes = c.bool("tt.probe.leaf.nodes").unwrap_or(self.probe_leaf_nodes);
         self.use_tt_for_pv = c.bool("tt.use.tt.for.pv").unwrap_or(self.use_tt_for_pv);
         self.allow_truncated_pv = c.bool("tt.allow.truncated.pv").unwrap_or(self.allow_truncated_pv);
