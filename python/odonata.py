@@ -1302,14 +1302,17 @@ class Odonata:
                 results.append(d)
         return results
 
+    def quit(self) -> None:
+        self._put("quit")
+
     def __del__(self) -> None:
         if not self.process:
             logger.info(f"Call to __del__ on {self.path} ignored")
             return
 
         logger.info(f"Calling __del__ on {self.path} {self.process.stdin}")
-        self._put("quit")
-        logger.info(f"after quit {self._read_line()}")
+        self.quit()
+        # logger.info(f"after quit {self._read_line()}")
         self.process = None
         # self.process.wait(100)
         # logger.warning(f"after quit {self._read_line()}")

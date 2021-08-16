@@ -156,8 +156,8 @@ impl Uci {
         while self.running {
             self.readline_and_execute();
         }
-        Self::print("info string exiting...");
-        io::stdout().flush().ok();
+        // Self::print("info string exiting...");
+        // io::stdout().flush().ok();
     }
 
 
