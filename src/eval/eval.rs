@@ -474,7 +474,7 @@ impl SimpleScorer {
         }
     }
 
-    pub fn w_eval_draw(&mut self, board: &Board, _node: &Node) -> Score {
+    pub fn w_eval_draw(&self, board: &Board, _node: &Node) -> Score {
         // draw score is +ve for playing a stronger opponent (we want a draw), neg for weaker
         //
         //  Engine Col   |  search ply   |  value to searcher   | Score to white
@@ -495,7 +495,7 @@ impl SimpleScorer {
         // return Score::from_cp(contempt);
     }
 
-    pub fn w_evaluate(&mut self, board: &Board, node: &Node) -> Score {
+    pub fn w_evaluate(&self, board: &Board, node: &Node) -> Score {
         counts::EVAL_COUNT.increment();
         let outcome = board.outcome();
         if outcome.is_game_over() {
@@ -510,7 +510,7 @@ impl SimpleScorer {
     }
 
     // we dont care about draws in qsearch
-    pub fn w_eval_qsearch(&mut self, board: &Board, node: &Node) -> Score {
+    pub fn w_eval_qsearch(&self, board: &Board, node: &Node) -> Score {
         counts::QEVAL_COUNT.increment();
         // we check for insufficient material and 50/75 move draws.
         // let outcome = board.draw_outcome();
@@ -526,7 +526,7 @@ impl SimpleScorer {
         // score
     }
 
-    fn w_eval_without_wdl(&mut self, board: &Board, _node: &Node) -> Score {
+    fn w_eval_without_wdl(&self, board: &Board, _node: &Node) -> Score {
         // if self.cache_eval {
         //     if let Some(entry) = self.cache.probe_by_board(board) {
         //         counts::EVAL_CACHE_COUNT.increment();
@@ -745,7 +745,7 @@ impl Board {
     }
 
     #[inline]
-    pub fn eval(&self, eval: &mut SimpleScorer, nd: &Node) -> Score {
+    pub fn eval(&self, eval: &SimpleScorer, nd: &Node) -> Score {
         ALL.increment();
         self.signum() * eval.w_evaluate(self, nd)
     }

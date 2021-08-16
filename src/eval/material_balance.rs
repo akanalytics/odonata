@@ -149,7 +149,7 @@ impl MaterialBalance {
     }
 
     fn w_eval_simple(&self, mat: &Material) -> Weight {
-            let mut weight = Piece::ALL_BAR_KING
+        let mut weight = Piece::ALL_BAR_KING
             .iter()
             .map(|&p| (mat.counts(Color::White, p) - mat.counts(Color::Black, p)) * self.material_weights[p])
             .sum();

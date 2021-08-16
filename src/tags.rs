@@ -72,6 +72,7 @@ impl Tag {
     pub const ACS: &'static str = "acs";
     pub const CC: &'static str = "cc";
     pub const CE: &'static str = "ce";
+    pub const C9: &'static str = "c9";
     pub const DM: &'static str = "dm";
     pub const FMVN: &'static str = "fmvn";
     pub const HMVC: &'static str = "hmvc";

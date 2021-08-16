@@ -70,10 +70,10 @@ impl Score {
          }
     }
 
-    #[inline]
-    pub fn to_root_score(&self, _current_depth: Ply) -> Score {
-        *self
-    }
+    // #[inline]
+    // pub fn to_root_score(&self, _current_depth: Ply) -> Score {
+    //     *self
+    // }
 
     #[inline]
     pub const fn is_mate(&self) -> bool {
@@ -157,7 +157,7 @@ impl Score {
     // https://www.chessprogramming.org/Pawn_Advantage,_Win_Percentage,_and_Elo
     pub fn win_probability(self) -> f32 {
         if self.is_numeric() {
-            let k = 4_f32;
+            let k = 4.0;
             let w = 1.0 / (1.0 + 10_f32.powf(-self.cp as f32 / k));
             w
         } else if self.cp > 0 {

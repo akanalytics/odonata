@@ -51,7 +51,7 @@ pub mod repetition;
 pub mod search;
 pub mod stat;
 pub mod tags;
-pub mod task;
+pub mod tuning;
 pub mod cache;
 pub mod types;
 pub mod utils;

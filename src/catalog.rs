@@ -1142,6 +1142,7 @@ b2b1r1k/3R1ppp/4qP2/4p1PQ/4P3/5B2/4N1K1/8 w - - bm g6; id "WAC.300";
         pos.set(Tag::Id(format!("Chess960(SP{})", id)));
         pos
     }
+
 }
 
 

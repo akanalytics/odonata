@@ -156,7 +156,7 @@ impl Algo {
             }
     
 
-            sp.score = Some(res.score.to_root_score(res.depth));
+            sp.score = Some(res.score);
             self.task_control.invoke_callback(&sp);
             counts::SEARCH_IDS_COMPLETES.increment();
             if res.score.is_mate() {
