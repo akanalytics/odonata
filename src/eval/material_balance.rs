@@ -389,6 +389,11 @@ fn data(m: &mut RawStatsVec, s: &str, w: i32, d: i32, l: i32) {
 mod tests {
     use super::*;
     // use crate::{debug, info, logger::LogInit};
+    use crate::catalog::Catalog;
+    use crate::board::Board;
+    use crate::board::boardbuf::BoardBuf;
+    use crate::eval::score::Score;
+    use crate::eval::eval::SimpleScorer;
 
  
     #[test]
@@ -396,6 +401,39 @@ mod tests {
         let mut mb = MaterialBalance::new();
         mb.configure(Config::from_env());
         mb.log_material_balance();
+    }
+
+    #[test]
+    fn test_score_balance() {
+
+        let eval = &mut SimpleScorer::new();
+        eval.tempo = Weight::zero();
+        let board = Board::parse_fen("K7/P7/8/8/8/8/8/k7 w - - 0 1").unwrap();
+        assert_eq!(board.eval_material(eval), Score::from_cp(282));
+        let board = Board::parse_fen("k7/p7/8/8/8/8/8/K7 w - - 0 1").unwrap();
+        assert_eq!(board.eval_material(eval), -Score::from_cp(282));
+
+        let board = Board::parse_fen("K7/PPPPPPPP/8/8/8/8/8/k7 w - - 0 1").unwrap();
+        assert_eq!(board.eval_material(eval), Score::from_cp(800));
+
+        let board = Board::parse_fen("K7/PPPPP3/8/8/8/8/8/k7 w - - 0 1").unwrap();
+        assert_eq!(board.eval_material(eval), Score::from_cp(500));
+
+        // losing a pawn from 5P to 4P increases score from 500 to 5400
+        let board = Board::parse_fen("K7/PPPP4/8/8/8/8/8/k7 w - - 0 1").unwrap();
+        assert_eq!(board.eval_material(eval), Score::from_cp(5400));
+
+        let board = Board::parse_fen("K7/PPP5/8/8/8/8/8/k7 w - - 0 1").unwrap();
+        assert_eq!(board.eval_material(eval), Score::from_cp(5300));
+
+        let board = Board::parse_fen("K7/PP6/8/8/8/8/8/k7 w - - 0 1").unwrap();
+        assert_eq!(board.eval_material(eval), Score::from_cp(735));
+
+        // black exchanges knight for a bishop
+        let board = Board::parse_fen("8/2p3p1/3r1pk1/R2Prnp1/P5P1/4BK2/R4P1P/8 b - - 0 50").unwrap();
+        assert_eq!(board.eval_material(eval), Score::from_cp(-100));
+        let board = Board::parse_fen("8/2p3p1/3r1pk1/R2Pr1p1/P5P1/4PK2/R6P/8 b - - 0 51").unwrap();
+        assert_eq!(board.eval_material(eval), Score::from_cp(-100));
     }
 }
 

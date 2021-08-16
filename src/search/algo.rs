@@ -590,6 +590,7 @@ mod tests {
     use crate::comms::uci::Uci;
     use crate::eval::eval::*;
     use crate::types::*;
+    use crate::utils::Formatter;
     use std::time;
 
     #[test]
@@ -634,7 +635,7 @@ mod tests {
             search.search_stats().total().nodes(),
             1 + 20 + 400 + 8902 /* + 197_281 */
         );
-        assert_eq!(search.search_stats().branching_factor().round() as u64, 21);
+        assert_eq!(search.search_stats().branching_factor().round() as u64, 22);
         println!("{}", search);
     }
 
@@ -650,7 +651,7 @@ mod tests {
         search.set_position(Catalog::starting_position());
         search.search();
         println!("{}", search);
-        assert_eq!(search.search_stats().total().nodes(), 611); // null move pruning
+        assert_eq!(search.search_stats().total().nodes(), 610); // null move pruning
                                                                 // assert_eq!(search.search_stats().total().nodes(), 1468);
                                                                 // assert_eq!(search.search_stats().total().nodes(), 1516); // rejigged pawn PST
                                                                 // previous
@@ -661,8 +662,7 @@ mod tests {
                                                                 // assert_eq!(search.search_stats().total().nodes(), 1833); qsearch sq
                                                                 // assert_eq!(search.search_stats().total().nodes(), 1757);
         assert_eq!(
-            (search.search_stats().branching_factor() * 10.0).round() as u64,
-            11
+            Formatter::format_decimal(2, search.search_stats().branching_factor()), "10.89"
         );
     }
 
@@ -699,7 +699,7 @@ mod tests {
                 .set_callback(Uci::uci_info)
                 .build();
             engine.set_position(position.clone());
-            assert_eq!(engine.algo.repetition.prior_positions(), 0);
+            assert_eq!(engine.algo.repetition.prior_positions(), 1);
             engine.search();
             println!("{}", engine);
             if id {
@@ -729,7 +729,7 @@ mod tests {
             }
             assert_eq!(engine.algo.pv_table.extract_pv(), position.pv().unwrap());
             assert_eq!(engine.algo.score(), Score::white_win(3));
-            assert_eq!(engine.algo.repetition.prior_positions(), 0);
+            assert_eq!(engine.algo.repetition.prior_positions(), 1);
             println!("{}", engine.algo.results());
         }
     }

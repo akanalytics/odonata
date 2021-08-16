@@ -194,9 +194,9 @@ impl SearchStats {
     }
 
     #[inline]
-    pub fn inc_leaf_qsearch_nodes(&mut self, sel_ply: Ply) {
+    pub fn inc_leaf_qsearch_nodes(&mut self, ply: Ply) {
         self.total.leaf_qsearch_nodes += 1;
-        self.plies[sel_ply as usize].leaf_qsearch_nodes += 1;
+        self.plies[ply as usize].leaf_qsearch_nodes += 1;
     }
 
 
@@ -416,6 +416,7 @@ impl NodeStats {
         self.leaf_nodes += other.leaf_nodes;
         self.leaf_qsearch_nodes += other.leaf_qsearch_nodes;
         self.node_zw += other.node_zw;
+        self.leaf_tt_nodes += other.leaf_tt_nodes;
 
         self.node_all += other.node_all;
         self.node_pv += other.node_pv;
@@ -435,7 +436,6 @@ impl NodeStats {
         self.q_interior_nodes += other.q_interior_nodes;
         self.q_leaf_nodes += other.q_leaf_nodes;
 
-        self.leaf_tt_nodes += other.leaf_tt_nodes;
         self.tt_hints += other.tt_hints;
         self.q_tt_nodes += other.q_tt_nodes;
 
@@ -462,9 +462,9 @@ impl NodeStats {
         // OR
         //    q_interior_nodes + q_leaf_nodes
         //
-        // but not both
+        // but not both (minmax is different!)
         //
-        self.interior_nodes + self.leaf_nodes + self.leaf_tt_nodes + (self.q_interior_nodes + self.q_leaf_nodes)
+        self.interior_nodes + self.leaf_nodes + self.leaf_tt_nodes + self.leaf_qsearch_nodes
     }
 }
 
