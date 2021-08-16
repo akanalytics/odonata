@@ -106,7 +106,7 @@ impl Component for Uci {
     }
 
     fn configure(&mut self, c: &Config) {
-        info!("Configuring uci with {}", c);
+        info!("Configuring uci with\n{}", c);
         if let Some(b) = c.bool("uci.debug") {
             self.debug = b;
         }

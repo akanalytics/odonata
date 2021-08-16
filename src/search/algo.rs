@@ -189,7 +189,7 @@ impl Component for Engine {
         self.algo.settings(c);
     }
     fn configure(&mut self, c: &Config) {
-        debug!("engine.configure");
+        info!("engine.configure");
         self.thread_count = c.int("Threads").unwrap_or(self.thread_count.into()) as u32;
         self.algo.configure(c);
     }

@@ -169,13 +169,18 @@ impl Position {
         let file = File::open(filename.clone()).map_err(|err| err.to_string())?;
         let lines = io::BufReader::new(file).lines();
         let mut vec = Vec::<Position>::new();
+        let mut epd_count = 0;
         for (n, line) in lines.enumerate() {
             let s = line.map_err(|err| err.to_string())?;
-            vec.push(Self::parse_epd(&s).map_err(|err| format!("{} in epd {}", err, s))?);
-            if n % 100000 == 0 {
-                info!("Read {} lines from {:?}", n, filename.as_ref().display());
+            if !s.starts_with("#") {
+                epd_count += 1;
+                vec.push(Self::parse_epd(&s).map_err(|err| format!("{} in epd {}", err, s))?);
+                if n > 0 && n % 100000 == 0 {
+                    info!("Read {} lines from {:?}", n, filename.as_ref().display());
+                }
             }
         }
+        info!("Read {} epds from {:?}", epd_count, filename.as_ref().display());
         Ok(vec)
     }
 

@@ -1,6 +1,3 @@
-use std::sync::{Arc, Mutex};
-
-use crate::eval::score::Score;
 use crate::position::Position;
 use crate::search::algo::Engine;
 use crate::search::node::Node;
@@ -12,7 +9,6 @@ use crate::tags::Tag;
 #[derive(Clone, Default, Debug)]
 pub struct Tuning {
     pub positions: Vec<Position>,
-    pub engine: Engine,        
 }
 
 // impl Default for Tuning {

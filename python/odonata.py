@@ -958,9 +958,15 @@ class Catalog:
 
     @classmethod
     def positions(cls, name: str) -> List[Any]:
-        return Odonata.instance().positions_catalog(name)
+        return Odonata.instance().position_catalog(name)
     
+    @classmethod
+    def upload(cls, filename: str):
+        return Odonata.instance().position_upload(filename)
 
+    @classmethod
+    def tuning_mean_squared_error(cls) -> float:
+        return Odonata.instance().tuning_mean_squared_error()
 
 
 
@@ -1249,8 +1255,17 @@ class Odonata:
     #         results.append(text)
     #     return results
 
-    def positions_catalog(self, name: str) -> List[Board]:
-        return self.call("positionsCatalog", args=[name])
+    def position_catalog(self, name: str) -> List[Board]:
+        return self.call("position_catalog", args=[name])
+
+    def position_upload(self, filename: str) -> None:
+        return self.call("position_upload", args=[filename])
+
+    def tuning_mean_squared_error(self) -> float:
+        return self.call("tuning_mean_squared_error", args=[])
+
+    def options(self) -> str:
+        return self.call("options", args=[])
 
     def list_methods(self) -> Any:
         return self.call("system.listMethods", args=())
@@ -1473,7 +1488,7 @@ class Test:
 
     def test_catalog(self):
         odo = Odonata.instance()
-        positions = odo.positions_catalog("BratkoKopec")
+        positions = odo.position_catalog("BratkoKopec")
         assert len(positions) == 24, len(positions)
         # for pos in positions:
         #     print(f"'{pos}'")

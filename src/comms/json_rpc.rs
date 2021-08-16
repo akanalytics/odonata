@@ -1,8 +1,7 @@
-use std::sync::Arc;
-use std::sync::Mutex;
-
+use crate::Config;
 use crate::board::Board;
 use crate::catalog::{Catalog, CatalogSuite};
+use crate::config::Component;
 use crate::position::Position;
 use crate::search::algo::Engine;
 use crate::tags::Tag;
@@ -13,6 +12,9 @@ use crate::{info, logger::LogInit};
 // use serde_json::Value;
 use jsonrpc_core::{IoHandler, Result};
 use jsonrpc_derive::rpc;
+use std::sync::Arc;
+use std::sync::Mutex;
+
 
 #[derive(Debug)]
 pub struct JsonRpc {
@@ -51,14 +53,17 @@ pub trait Rpc {
     #[rpc(name = "version")]
     fn version(&self) -> Result<String>;
 
-    #[rpc(name = "positionsCatalog")]
-    fn positions_catalog(&self, suite: CatalogSuite) -> Result<Vec<Position>>;
+    #[rpc(name = "position_catalog")]
+    fn position_catalog(&self, suite: CatalogSuite) -> Result<Vec<Position>>;
 
     #[rpc(name = "position_upload")]
     fn position_upload(&self, filename: String) -> Result<()>;
 
     #[rpc(name = "tuning_mean_squared_error")]
     fn tuning_mean_squared_error(&self) -> Result<f32>;
+
+    #[rpc(name = "options")]
+    fn options(&self) -> Result<String>;
 
     #[rpc(name = "eval")]
     fn eval(&self, board: Board) -> Result<Position>;
@@ -89,8 +94,8 @@ impl Rpc for RpcImpl {
         ))
     }
 
-    fn positions_catalog(&self, suite: CatalogSuite) -> Result<Vec<Position>> {
-        info!("positions_catalog({})", suite);
+    fn position_catalog(&self, suite: CatalogSuite) -> Result<Vec<Position>> {
+        info!("position_catalog({})", suite);
         Ok(Catalog::positions(suite))
     }
 
@@ -112,6 +117,13 @@ impl Rpc for RpcImpl {
             .calculate_mean_square_error(&self.engine.lock().unwrap());
         Ok(mse)
     }
+
+    fn options(&self) -> Result<String> {
+        let mut c = Config::new();
+        self.engine.lock().unwrap().settings(&mut c);
+        Ok(c.to_string())
+    }
+
 
     fn eval(&self, board: Board) -> Result<Position> {
         let res = Tag::Result(board.outcome().as_pgn());
