@@ -32,31 +32,32 @@ impl Tuning {
                 _ => unreachable!()
             }
         }
-        0.0
-        //panic!("Unable to find result comment c9 in {}", pos);
-    }
-
-    pub fn calc_white_win_prob_from_cp(&self, ce: Score) -> f32 {
-        ce.win_probability()
+        panic!("Unable to find result comment c9 in {}", pos);
     }
 
     pub fn calculate_average_diffs(&self) -> f32 {
-        let mut total_diff = 0.0;
+        let mut total_diff_squared = 0.0;
         for pos in &self.positions {
+
+            // estimate result by looking at centipawn evaluation
             let w_score = pos.board().color_us().chooser_wb(1, -1) * pos.board().eval(&self.engine.algo.eval, &Node::root(0));
-            let win_prob_cp = self.calc_white_win_prob_from_cp(w_score);
-            let win_prob_pos = self.calc_white_win_prob_from_pos(pos);
-            let diff = win_prob_cp - win_prob_pos;
-            total_diff += diff * diff;
+            let win_prob_estimate = w_score.win_probability();
+
+            let win_prob_actual = self.calc_white_win_prob_from_pos(pos);
+
+            let diff = win_prob_estimate - win_prob_actual;
+            total_diff_squared += diff * diff;
+
             debug!("{:>4} {:>4} {:>4}   {}", 
                 w_score, 
-                Formatter::format_decimal(2,win_prob_cp), 
-                Formatter::format_decimal(2, win_prob_pos), 
+                Formatter::format_decimal(2,win_prob_estimate), 
+                Formatter::format_decimal(2, win_prob_actual), 
                 Formatter::format_decimal(2, diff*diff) );
         }
-        total_diff / self.positions.len() as f32
-    }
 
+        // return average
+        total_diff_squared / self.positions.len() as f32
+    }
 }
 
 
@@ -79,15 +80,16 @@ mod tests {
         info!("Starting...");
         let mut tuning = Tuning::default();
         tuning.positions = Position::parse_epd_file("../odonata-extras/epd/quiet-labeled.epd").unwrap();
+        //tuning.positions = Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-small.epd").unwrap();
         // tuning.positions = Position::parse_epd_file("../odonata-extras/epd/com15.epd")?;
         // tuning.positions = Catalog::bratko_kopec();
         println!("Loaded\n");
-        for n in 0..30 {
-            let value = 300 + n*15;
+        for n in (-100..140).step_by(10) {
+            let value = n;
             tuning.engine.algo.eval.mb.enabled = false;
-            tuning.engine.algo.eval.mb.material_weights[Piece::Rook] = Weight::new(value, value); 
+            tuning.engine.algo.eval.pawn_isolated = Weight::new(0, value); 
             let diffs = tuning.calculate_average_diffs();
-            println!("#{} value = {} diff = {}", n, value, diffs);
+            println!("{}, {}", value, diffs);
         }
     }
 }
