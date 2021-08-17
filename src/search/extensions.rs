@@ -36,8 +36,8 @@ impl Component for Extensions {
             .int("ext.check.max.depth")
             .unwrap_or(self.check_max_depth as i64) as Ply;
         self.check_max_phase = c
-            .int("ext.check.max.depth")
-            .unwrap_or(self.check_max_depth as i64) as i32;
+            .int("ext.check.max.phase")
+            .unwrap_or(self.check_max_phase as i64) as i32;
     }
     fn new_game(&mut self) {
         self.new_position();

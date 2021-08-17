@@ -7,11 +7,15 @@ use static_init::dynamic;
 use std::fmt;
 use std::sync::atomic::{AtomicBool, AtomicI16, Ordering};
 use crate::{trace, info, logger::LogInit};
+use std::fs::File;
+use std::io::{self, BufRead};
+use std::path::Path;
 
 
 #[derive(Clone)]
 pub struct MaterialBalance {
     pub enabled: bool,
+    pub filename: String,
     pub consistency: bool,
     pub draws_only: bool,
     pub min_games: i32,
@@ -26,6 +30,7 @@ impl Default for MaterialBalance {
     fn default() -> Self {
         let mb = Self {
             enabled: true,
+            filename: String::new(),
             consistency: true,
             draws_only: true,
             min_games: 50,
@@ -47,9 +52,11 @@ impl Default for MaterialBalance {
 }
 
 
+
 impl Component for MaterialBalance {
     fn settings(&self, c: &mut Config) {
         c.set("mb.enabled", &format!("type check default {}", self.enabled));
+        c.set("mb.filename", &format!("type string default {}", self.filename));
         c.set("mb.consistency", &format!("type check default {}", self.consistency));
         c.set("mb.draws.only", &format!("type check default {}", self.draws_only));
         c.set(
@@ -75,6 +82,7 @@ impl Component for MaterialBalance {
     fn configure(&mut self, c: &Config) {
         debug!("mb.configure");
         self.enabled = c.bool("mb.enabled").unwrap_or(self.enabled);
+        self.filename = c.string("mb.filename").unwrap_or(self.filename.clone());
         self.consistency = c.bool("mb.consistency").unwrap_or(self.consistency);
         self.draws_only = c.bool("mb.draws.only").unwrap_or(self.draws_only);
         self.min_games = c.int("mb.min.games").unwrap_or(self.min_games as i64) as i32;
@@ -108,6 +116,7 @@ impl Component for MaterialBalance {
 impl fmt::Display for MaterialBalance {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "enabled          : {}", self.enabled)?;
+        writeln!(f, "filename         : {}", self.filename)?;
         writeln!(f, "consistency      : {}", self.consistency)?;
         writeln!(f, "draws only       : {}", self.draws_only)?;
         writeln!(f, "min games        : {}", self.min_games)?;
@@ -123,6 +132,7 @@ impl fmt::Debug for MaterialBalance {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("MaterialBalance")
             .field("enabled", &self.enabled)
+            .field("filename", &self.filename)
             .field("consistency", &self.consistency)
             .field("draws_only", &self.draws_only)
             .field("min_games", &self.min_games)
@@ -190,6 +200,8 @@ impl MaterialBalance {
 
     pub fn log_material_balance(&self) {
         self.ensure_init();
+        info!("Examining material balances...");
+        info!("{:>6} {:>32} {}", "Centi", "Material", "Hash");
         let mut count = 0;
         for hash in 0..Material::HASH_VALUES {
             let cp = DERIVED_SCORES[hash].load(Ordering::Relaxed);
@@ -198,11 +210,56 @@ impl MaterialBalance {
                 let mut mat = Material::maybe_from_hash(hash);
                 *mat.counts_mut(Color::White, Piece::King) = 0;
                 *mat.counts_mut(Color::Black, Piece::King) = 0;
-                info!("{:>6} {:>32}", cp, mat.to_string());
+                info!("{:>6} {:>32} {}", cp, mat.to_string(), hash);
             }
         }
-        info!("Total adjustments {:>6}", count);
+        info!("Total material balance entries {:>6}", count);
     }
+
+
+    pub fn init_from_file<P>(&self, filename: P) -> Result<(), String>
+    where P: AsRef<Path>, P: Clone {
+
+        // zero existing ones
+        for n in 0..Material::HASH_VALUES {
+            DERIVED_SCORES[n].store(0,  Ordering::Relaxed);
+        }
+
+        let file = File::open(filename.clone()).map_err(|err| err.to_string())?;
+        let lines = io::BufReader::new(file).lines();
+
+        let mut count = 0;
+        for (n, line) in lines.enumerate() {
+            if n > 0 && n % 1000 == 0 {
+                info!("Read {} lines from {:?}", n, filename.as_ref().display());
+            }
+            let s = line.map_err(|err| err.to_string())?;
+            let s = s.trim();
+            if s.is_empty() || s.starts_with("#") {
+                continue;
+            }
+
+            count += 1;
+
+            // vec.push(Self::parse_epd(&s).map_err(|err| format!("{} in epd {}", err, s))?);
+            let vec: Vec<_> = s.trim().splitn(2, ",").collect();
+            if vec.len() != 2 {
+                return Err(format!("Failed parsing line {} in file {}: '{}'", n, filename.as_ref().display(), s))
+            }
+            let mat = Material::from_piece_str(vec[0].trim())?;
+            let cp = vec[1].trim().parse::<i32>().map_err(|err| format!("{} - unable to parse number '{}'", err, vec[1]))?;
+
+            DERIVED_SCORES[mat.hash()].store(cp as i16,  Ordering::Relaxed);
+            DERIVED_SCORES[mat.flip().hash()].store(-cp as i16, Ordering::Relaxed);
+            trace!("{:<20} = {:>5}", format!("mb[{}]",mat), cp);
+        }
+        info!("Read {} items from {:?}", count, filename.as_ref().display());
+        Ok(())
+    }
+
+
+
+
 
     #[inline]
     pub fn ensure_init(&self) {
@@ -215,7 +272,18 @@ impl MaterialBalance {
 
     // inerior mutability
     fn init(&self) {
-        info!("creating derived material balance table from {} statistics", RAW_STATS.len() );
+        if self.filename.is_empty() {
+            self.init_from_raw_stats(); 
+        } else {
+            self.init_from_file(self.filename.clone()).unwrap();
+        }
+    }
+
+
+
+    fn init_from_raw_stats(&self) {
+
+        info!("creating derived material balance table from {} raw internal statistics", RAW_STATS.len() );
         for n in 0..Material::HASH_VALUES {
             DERIVED_SCORES[n].store(0,  Ordering::Relaxed);
         }
@@ -389,7 +457,6 @@ fn data(m: &mut RawStatsVec, s: &str, w: i32, d: i32, l: i32) {
 mod tests {
     use super::*;
     // use crate::{debug, info, logger::LogInit};
-    use crate::catalog::Catalog;
     use crate::board::Board;
     use crate::board::boardbuf::BoardBuf;
     use crate::eval::score::Score;
@@ -410,6 +477,7 @@ mod tests {
         eval.tempo = Weight::zero();
         let board = Board::parse_fen("K7/P7/8/8/8/8/8/k7 w - - 0 1").unwrap();
         assert_eq!(board.eval_material(eval), Score::from_cp(282));
+        
         let board = Board::parse_fen("k7/p7/8/8/8/8/8/K7 w - - 0 1").unwrap();
         assert_eq!(board.eval_material(eval), -Score::from_cp(282));
 

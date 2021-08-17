@@ -54,7 +54,7 @@ impl Default for IterativeDeepening {
         Self {
             enabled: true,
             part_ply: true,
-            step_size: 1,
+            step_size: 2,
             start_ply: 1,
             end_ply: MAX_PLY - 1,
             iterations: Vec::new(),
@@ -194,7 +194,7 @@ impl Algo {
         self.results.set(Tag::CentipawnEvaluation(self.score().as_i16() as i32));
         self.results.set(Tag::AnalysisCountDepth(self.search_stats().depth()));
         self.results.set(Tag::AnalysisCountSelDepth(self.search_stats().selective_depth()));
-        self.results.set(Tag::AnalysisCountNodes(self.search_stats().cumulative().nodes() as u128));
+        self.results.set(Tag::AnalysisCountNodes(self.search_stats().cumulative().all_nodes() as u128));
         self.results.set(Tag::BranchingFactorPercent((100.0 * self.search_stats().branching_factor()) as u32 ));
 
     }

@@ -95,7 +95,7 @@ impl MoveTimeEstimator {
             TimeControl::DefaultTime => false, 
             TimeControl::Depth(_max_ply) => false, // ply > max_ply,  // dont cause an abort on last iteration
             TimeControl::SearchTime(duration) => 10 * elapsed > duration * 9 && !self.pondering(),
-            TimeControl::NodeCount(max_nodes) => search_stats.total().nodes() > max_nodes,
+            TimeControl::NodeCount(max_nodes) => search_stats.total().all_nodes() > max_nodes,
             TimeControl::Infinite => false,
             TimeControl::MateIn(_) => false,
             TimeControl::RemainingTime { .. } => elapsed > self.allotted() && !self.pondering(),
@@ -194,8 +194,8 @@ mod tests {
         search.mte.deterministic = true;
         search.set_position(position.clone()).search();
         println!("{}", search);
-        assert!(search.search_stats().total().nodes() < 117500, "nodes {}", search.search_stats().total().nodes());
-        assert!(search.search_stats().total().nodes() > 300, "nodes {}", search.search_stats().total().nodes());
+        assert!(search.search_stats().total().all_nodes() < 117500, "nodes {}", search.search_stats().total().all_nodes());
+        assert!(search.search_stats().total().all_nodes() > 300, "nodes {}", search.search_stats().total().all_nodes());
         assert_eq!(search.score().mate_in(), Some(2));
     }
 }

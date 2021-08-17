@@ -83,8 +83,6 @@ impl Tuning {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::catalog::Catalog;
-    use crate::types::Piece;
     use crate::eval::weight::Weight;
 
 

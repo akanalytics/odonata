@@ -150,7 +150,7 @@ impl SearchStats {
         if let Some(d) = self
             .plies
             .iter()
-            .rposition(|stats| stats.nodes() + stats.q_tt_nodes + stats.leaf_tt_nodes != 0)
+            .rposition(|stats| stats.all_nodes() != 0)
         {
             return 1 + d; // a usize is one-off-the-end
         }
@@ -299,12 +299,12 @@ impl SearchStats {
 
     #[inline]
     pub fn total_knps(&self) -> u128 {
-        self.total.nodes() as u128 / (1 + self.realtime.elapsed().as_millis())
+        self.total.all_nodes() as u128 / (1 + self.realtime.elapsed().as_millis())
     }
 
     #[inline]
     pub fn cumulative_knps(&self) -> u128 {
-        self.cumulative.nodes() as u128 / (1 + self.cumulative.real_time.as_millis())
+        self.cumulative.all_nodes() as u128 / (1 + self.cumulative.real_time.as_millis())
     }
 
     #[inline]
@@ -455,7 +455,7 @@ impl NodeStats {
     }
 
     #[inline]
-    pub fn nodes(&self) -> u64 {
+    pub fn regular_nodes(&self) -> u64 {
         // at horizon every leaf_qsearch_node is also either a q_interior or q_leaf node,
         // so we could count 
         //    leaf_qsearch_node
@@ -465,6 +465,10 @@ impl NodeStats {
         // but not both (minmax is different!)
         //
         self.interior_nodes + self.leaf_nodes + self.leaf_tt_nodes + self.leaf_qsearch_nodes
+    }
+
+    pub fn all_nodes(&self) -> u64 {
+        self.interior_nodes + self.leaf_nodes + self.leaf_tt_nodes + self.q_interior_nodes + self.q_leaf_nodes
     }
 }
 
@@ -588,16 +592,16 @@ impl NodeStats {
         write!(
             f,
             header_format!(),
-            node = self.nodes(),
+            node = self.regular_nodes(),
             interior = self.interior_nodes(),
             leaf = self.all_leaf_nodes(),
             ttnode = self.leaf_tt_nodes,
 
-            pv_perc = self.node_pv * 100 / cmp::max(1, self.nodes()) as u64,
-            all_perc = self.node_all * 100 / cmp::max(1, self.nodes()) as u64,
-            zw_perc = self.node_zw * 100 / cmp::max(1, self.nodes()) as u64,
-            cut_perc = self.node_cut * 100 / cmp::max(1, self.nodes()) as u64,
-            nmp_perc = self.nmp * 100 / cmp::max(1,self.nodes()) as u64,
+            pv_perc = self.node_pv * 100 / cmp::max(1, self.regular_nodes()) as u64,
+            all_perc = self.node_all * 100 / cmp::max(1, self.regular_nodes()) as u64,
+            zw_perc = self.node_zw * 100 / cmp::max(1, self.regular_nodes()) as u64,
+            cut_perc = self.node_cut * 100 / cmp::max(1, self.regular_nodes()) as u64,
+            nmp_perc = self.nmp * 100 / cmp::max(1,self.regular_nodes()) as u64,
 
             cut_move_hash = self.cut_move_perc(MoveType::Hash),
             cut_move_null = self.cut_move_perc(MoveType::Null),

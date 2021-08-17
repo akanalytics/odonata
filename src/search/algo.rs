@@ -150,13 +150,13 @@ impl Engine {
                 i, // thread::current().name().unwrap(),
                 algo.bm().to_string(),
                 algo.score().to_string(),
-                algo.search_stats.cumulative().nodes(),
+                algo.search_stats.cumulative().all_nodes(),
                 algo.search_stats.cumulative_knps(),
                 Clock::format(algo.search_stats.cumulative().real_time),
                 algo.pv().to_string(),
             );
             knps += algo.search_stats.cumulative_knps();
-            nodes += algo.search_stats.cumulative().nodes();
+            nodes += algo.search_stats.cumulative().all_nodes();
             if i == 0 {
                 self.algo = algo;
                 // self.algo.results = algo.results().clone();
@@ -423,7 +423,7 @@ impl Clone for AlgoThreadHandle {
 
 impl Algo {
     pub fn report_progress(&self) {
-        if self.search_stats.total().nodes() % 5_000_000 == 0 && self.search_stats.total().nodes() != 0 {
+        if self.search_stats.total().all_nodes() % 5_000_000 == 0 && self.search_stats.total().all_nodes() != 0 {
             let sp = SearchProgress::from_stats(&self.search_stats(), self.board.color_us());
             self.task_control.invoke_callback(&sp);
         }
@@ -632,7 +632,7 @@ mod tests {
         search.minmax = true;
         search.set_position(pos).search();
         assert_eq!(
-            search.search_stats().total().nodes(),
+            search.search_stats().total().regular_nodes(),
             1 + 20 + 400 + 8902 /* + 197_281 */
         );
         assert_eq!(search.search_stats().branching_factor().round() as u64, 22);
@@ -651,7 +651,7 @@ mod tests {
         search.set_position(Catalog::starting_position());
         search.search();
         println!("{}", search);
-        assert_eq!(search.search_stats().total().nodes(), 610); // null move pruning
+        assert_eq!(search.search_stats().total().all_nodes(), 610); // null move pruning
                                                                 // assert_eq!(search.search_stats().total().nodes(), 1468);
                                                                 // assert_eq!(search.search_stats().total().nodes(), 1516); // rejigged pawn PST
                                                                 // previous
@@ -704,9 +704,9 @@ mod tests {
             println!("{}", engine);
             if id {
                 assert!(
-                    engine.algo.search_stats().total().nodes() < 22500,
+                    engine.algo.search_stats().total().all_nodes() < 22500,
                     "nodes {} > 22500",
-                    engine.algo.search_stats().total().nodes()
+                    engine.algo.search_stats().total().all_nodes()
                 ); // with piece mob
 
             // previous

@@ -35,7 +35,7 @@ impl SearchProgress {
             pov,
             pv: Some(stats.pv().clone()),   
             score: Some(stats.score),  
-            nodes: Some(stats.total().nodes()),
+            nodes: Some(stats.total().all_nodes()),
             nps: Some(stats.total_knps() * 1000),
             depth: Some(stats.depth()),
             seldepth: Some(stats.selective_depth()),
@@ -46,7 +46,7 @@ impl SearchProgress {
     pub fn from_stats(stats: &SearchStats, pov: Color) -> Self {
         SearchProgress {
             pov,
-            nodes: Some(stats.total().nodes()),
+            nodes: Some(stats.total().all_nodes()),
             nps: Some(stats.total_knps() * 1000),
             depth: Some(stats.depth()),
             seldepth: Some(stats.selective_depth()),

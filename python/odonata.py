@@ -1264,9 +1264,18 @@ class Odonata:
     def tuning_mean_squared_error(self) -> float:
         return self.call("tuning_mean_squared_error", args=[])
 
-    def options(self) -> str:
-        return self.call("options", args=[])
-
+    # a map of the current settings as strings
+    # options()["tt.enabled"] == "false"
+    def options(self) -> Dict[str, str]:
+        options = self.call("options", args=[])
+        dict = {}
+        for line in options.splitlines():
+            (before, after) = line.split("=")
+            key = before.strip()
+            (before, value) = after.split("default")
+            dict[key] = value.strip()
+        return dict
+        
     def list_methods(self) -> Any:
         return self.call("system.listMethods", args=())
 
@@ -1503,6 +1512,10 @@ class Test:
         bm = odo.get_best_move(board, millis=200)
         assert bm == "a1a8"
         assert odo.api_version() != ""
+        assert len(odo.options()) > 3
+        assert odo.options()["tt.enabled"], "false"
+
+
 
 
 def demo_1():
