@@ -53,8 +53,13 @@ built =  { version = "0.5", features = ["chrono", "semver"] }
 chrono = { version = "0.4", optional = true, default-features = false, features = ["clock"] }
 
 [[bench]]
+name = "iai"
+harness = false
+
+[[bench]]
 name = "benchmark"
 harness = false
+
 
 
 [profile.bench]
