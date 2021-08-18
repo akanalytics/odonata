@@ -100,7 +100,7 @@ impl Rpc for RpcImpl {
     // empty file is clear
     fn position_upload(&self, filename: String) -> Result<()> {
         if filename.is_empty() {
-            self.tuning.lock().unwrap().positions.clear();
+            *self.tuning.lock().unwrap() = Tuning::new();
             return Ok(());
         }
         let new = Position::parse_epd_file(filename).map_err(|s| jsonrpc_core::Error {
@@ -108,7 +108,7 @@ impl Rpc for RpcImpl {
             code: jsonrpc_core::ErrorCode::InternalError,
             data: None,
         })?;
-        self.tuning.lock().unwrap().positions = new;
+        self.tuning.lock().unwrap().upload_positions(&new);
         Ok(())
     }
 

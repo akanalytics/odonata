@@ -1,4 +1,5 @@
 use crate::position::Position;
+use crate::board::Board;
 use crate::search::algo::Engine;
 use crate::search::node::Node;
 use crate::utils::Formatter;
@@ -8,7 +9,8 @@ use crate::tags::Tag;
 
 #[derive(Clone, Default, Debug)]
 pub struct Tuning {
-    pub positions: Vec<Position>,
+    boards: Vec<Board>,
+    outcomes: Vec<f32>,
 }
 
 // impl Default for Tuning {
@@ -29,7 +31,13 @@ impl Tuning {
         Tuning::default()
     }
 
+    pub fn upload_positions(&mut self, positions: &[Position]) {
+        for pos in positions {
+            self.boards.push(pos.board().clone());
+            self.outcomes.push(self.calc_white_win_prob_from_pos(pos));
+        }
 
+    }
 
     // pub fn with_engine(engine: &Engine) -> Self {
     //     Tuning {
@@ -51,15 +59,17 @@ impl Tuning {
     }
 
     pub fn calculate_mean_square_error(&self, engine: &Engine) -> f32 {
+
+        debug_assert!(self.boards.len() == self.outcomes.len());
         let mut total_diff_squared = 0.0;
-        for pos in &self.positions {
+        for (i, board) in self.boards.iter().enumerate() {
 
             // estimate result by looking at centipawn evaluation
             let eval = &engine.algo.eval;
-            let w_score = pos.board().color_us().chooser_wb(1, -1) * pos.board().eval(eval, &Node::root(0));
+            let w_score = board.color_us().chooser_wb(1, -1) * board.eval(eval, &Node::root(0));
             let win_prob_estimate = w_score.win_probability();
 
-            let win_prob_actual = self.calc_white_win_prob_from_pos(pos);
+            let win_prob_actual = self.outcomes[i];
 
             let diff = win_prob_estimate - win_prob_actual;
             total_diff_squared += diff * diff;
@@ -72,7 +82,7 @@ impl Tuning {
         }
 
         // return average
-        total_diff_squared / self.positions.len() as f32
+        total_diff_squared / self.boards.len() as f32
     }
 }
 
@@ -92,7 +102,7 @@ mod tests {
     fn test_tuning() {
         info!("Starting...");
         let mut tuning = Tuning::new();
-        tuning.positions = Position::parse_epd_file("../odonata-extras/epd/quiet-labeled.epd").unwrap();
+        tuning.upload_positions(&Position::parse_epd_file("../odonata-extras/epd/quiet-labeled.epd").unwrap());
         //tuning.positions = Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-small.epd").unwrap();
         // tuning.positions = Position::parse_epd_file("../odonata-extras/epd/com15.epd")?;
         // tuning.positions = Catalog::bratko_kopec();
@@ -113,7 +123,7 @@ mod tests {
     fn test_quick_tuning() {
         info!("Starting quick tuning...");
         let mut tuning = Tuning::new();
-        tuning.positions = Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-small.epd").unwrap();
+        tuning.upload_positions(&Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-small.epd").unwrap());
 
         let engine = Engine::new();
         let diffs = tuning.calculate_mean_square_error(&engine);
