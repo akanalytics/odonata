@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Any, MutableSet, Iterator, NamedTuple, Optional, Dict, Callable
 from typing import List, Iterable
 import logging
+import time
 from textwrap import wrap
 import subprocess
 import os
@@ -914,6 +915,8 @@ class Engine:
     def engine_version(self) -> str:
         return Odonata.instance(self.path).engine_version()
 
+    def set_option(self, key: str, value: Any):
+        Odonata.instance(self.path).set_option(key, value)
 
     # can return None when no moves available (or found in time)
     def search(self, b: Board) -> Optional[Move]:
@@ -1075,8 +1078,10 @@ class Odonata:
 
     def _put(self, command: str) -> None:
         
-        if not self.process or not self.process.stdin:
-            raise BrokenPipeError()
+        if not self.process:
+            raise BrokenPipeError("_put: self.process is None")
+        if not self.process.stdin:            
+            raise BrokenPipeError("_put: self.process.stdin is None")
         # if self.debug:
         logger.info(f"=> {command}")
         self.process.stdin.write(f"{command}\n")
@@ -1315,13 +1320,14 @@ class Odonata:
         self._put("quit")
 
     def __del__(self) -> None:
-        if not self.process:
+        if not self.process or not self.process.stdin:
             logger.info(f"Call to __del__ on {self.path} ignored")
             return
 
         logger.info(f"Calling __del__ on {self.path} {self.process.stdin}")
         self.quit()
         # logger.info(f"after quit {self._read_line()}")
+        time.sleep(0.001)
         self.process = None
         # self.process.wait(100)
         # logger.warning(f"after quit {self._read_line()}")

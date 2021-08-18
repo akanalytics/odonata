@@ -1,4 +1,3 @@
-use crate::Config;
 use crate::board::Board;
 use crate::catalog::{Catalog, CatalogSuite};
 use crate::config::Component;
@@ -8,6 +7,7 @@ use crate::tags::Tag;
 use crate::tuning::Tuning;
 use crate::version::built_info;
 use crate::version::Version;
+use crate::Config;
 use crate::{info, logger::LogInit};
 // use serde_json::Value;
 use jsonrpc_core::{IoHandler, Result};
@@ -15,17 +15,16 @@ use jsonrpc_derive::rpc;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-
 #[derive(Debug)]
 pub struct JsonRpc {
     io: IoHandler,
 }
 
-
-
 impl JsonRpc {
     pub fn new(engine: Arc<Mutex<Engine>>) -> JsonRpc {
-        let mut me = JsonRpc { io: <IoHandler>::new() };
+        let mut me = JsonRpc {
+            io: <IoHandler>::new(),
+        };
         let rpc = RpcImpl::new(engine);
         me.io.extend_with(rpc.to_delegate());
 
@@ -44,7 +43,6 @@ impl JsonRpc {
         self.io.handle_request_sync(req)
     }
 }
-
 
 // members must be threadsafe
 // interior mutability since non-mut self
@@ -99,13 +97,18 @@ impl Rpc for RpcImpl {
         Ok(Catalog::positions(suite))
     }
 
+    // empty file is clear
     fn position_upload(&self, filename: String) -> Result<()> {
-        self.tuning.lock().unwrap().positions =
-            Position::parse_epd_file(filename).map_err(|s| jsonrpc_core::Error {
-                message: s,
-                code: jsonrpc_core::ErrorCode::InternalError,
-                data: None,
-            })?;
+        if filename.is_empty() {
+            self.tuning.lock().unwrap().positions.clear();
+            return Ok(());
+        }
+        let new = Position::parse_epd_file(filename).map_err(|s| jsonrpc_core::Error {
+            message: s,
+            code: jsonrpc_core::ErrorCode::InternalError,
+            data: None,
+        })?;
+        self.tuning.lock().unwrap().positions = new;
         Ok(())
     }
 
@@ -123,7 +126,6 @@ impl Rpc for RpcImpl {
         self.engine.lock().unwrap().settings(&mut c);
         Ok(c.to_string())
     }
-
 
     fn eval(&self, board: Board) -> Result<Position> {
         let res = Tag::Result(board.outcome().as_pgn());

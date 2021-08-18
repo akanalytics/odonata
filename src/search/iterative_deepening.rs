@@ -54,7 +54,7 @@ impl Default for IterativeDeepening {
         Self {
             enabled: true,
             part_ply: true,
-            step_size: 2,
+            step_size: 1,
             start_ply: 1,
             end_ply: MAX_PLY - 1,
             iterations: Vec::new(),

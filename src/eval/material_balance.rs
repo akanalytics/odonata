@@ -29,7 +29,7 @@ pub struct MaterialBalance {
 impl Default for MaterialBalance {
     fn default() -> Self {
         let mb = Self {
-            enabled: true,
+            enabled: false,
             filename: String::new(),
             consistency: true,
             draws_only: true,
