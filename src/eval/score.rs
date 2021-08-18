@@ -157,7 +157,7 @@ impl Score {
     // https://www.chessprogramming.org/Pawn_Advantage,_Win_Percentage,_and_Elo
     pub fn win_probability(self) -> f32 {
         if self.is_numeric() {
-            let k = 4.0;
+            let k = 400.0;
             let w = 1.0 / (1.0 + 10_f32.powf(-self.cp as f32 / k));
             w
         } else if self.cp > 0 {
@@ -563,4 +563,14 @@ mod tests {
         assert!(Score::from_cp(-1000).win_probability() < 0.05);
         assert!((-Score::INFINITY).win_probability() < 0.001);
     }
+
+    #[test]
+    fn test_win_prob() {
+        for cp in -300..300 {
+            let s = Score::from_cp(cp);
+            let wp = s.win_probability();
+            println!("wp[cp]: {},{}", s, wp);
+        }
+    }
+
 }

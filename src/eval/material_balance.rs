@@ -89,7 +89,7 @@ impl Component for MaterialBalance {
         self.max_pawns = c.int("mb.max.pawns").unwrap_or(self.max_pawns as i64) as i32;
         self.trade_factor = c.int("mb.trade.factor").unwrap_or(self.trade_factor as i64) as i32;
 
-        self.bishop_pair = c.weight("eval.material.bishop.pair", &self.bishop_pair);
+        self.bishop_pair = c.weight("eval.bishop.pair", &self.bishop_pair);
         for &p in &Piece::ALL_BAR_KING {
             let mut name = "eval.".to_string();
             name.push(p.to_char(Some(Color::Black)));
