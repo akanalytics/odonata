@@ -79,8 +79,8 @@ criterion_group!(
 //     targets = benchmark_perft, benchmark_bitboard
 // );
 
-//criterion_main!(benches);
-iai::main!(iai_search, iai_legal_moves_into, iai_perft5);
+criterion_main!(benches);
+// iai::main!(iai_search, iai_legal_moves_into, iai_perft5, iai_eval);
 // use criterion_linux_perf::{PerfMeasurement, PerfMode};
 
 fn iai_legal_moves_into() {
@@ -93,6 +93,12 @@ fn iai_legal_moves_into() {
 fn iai_perft5() {
     let mut pos = Catalog::starting_position();
     black_box(Perft::perft(&mut pos.board_mut(), black_box(5)));
+}
+
+fn iai_eval() {
+    let engine = Engine::new();
+    let pos = Catalog::starting_position();
+    black_box(engine.algo.eval.w_evaluate(pos.board(), &Node::root(0)));
 }
 
 fn iai_search() {

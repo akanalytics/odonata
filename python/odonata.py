@@ -1011,13 +1011,16 @@ class Odonata:
     def __init__(self, path: str = '', debug: bool = False) -> None:
         if not path:
             # try and look for Odonata executable
-            files = [os.path.join(".", "odonata.exe"),
+            files = [
+                     os.path.join("..","engines", "odonata", "odonata-stable"),
+                     os.path.join(".", "odonata.exe"),
                      os.path.join(".", "odonata"),
                      os.path.join("target","release","odonata.exe"),
                      os.path.join("target","release","odonata"),
                      os.path.join("..", "..", "odonata","target","release","odonata.exe"),
                      os.path.join("..", "..", "odonata","target","release","odonata") ]
             for f in files:
+                # print(f"trying {f}")
                 if os.path.isfile(f):
                     path = f
                     break
@@ -1026,7 +1029,7 @@ class Odonata:
 
         self.debug: bool = debug
         logger.info(f"loading odonata from {path}\n")
-        self.path = path
+        self._path = path
         import sys
         self.process: Optional[subprocess.Popen] = subprocess.Popen(
             path,
@@ -1070,6 +1073,9 @@ class Odonata:
     #         Dictionary of current Odonata engine's parameters.
     #     """
     #     return self._parameters
+
+    def path(self) -> str:
+        return self._path
 
     def _start_new_game(self) -> None:
         self._put("ucinewgame")
@@ -1321,10 +1327,10 @@ class Odonata:
 
     def __del__(self) -> None:
         if not self.process or not self.process.stdin:
-            logger.info(f"Call to __del__ on {self.path} ignored")
+            logger.info(f"Call to __del__ on {self._path} ignored")
             return
 
-        logger.info(f"Calling __del__ on {self.path} {self.process.stdin}")
+        logger.info(f"Calling __del__ on {self._path} {self.process.stdin}")
         self.quit()
         # logger.info(f"after quit {self._read_line()}")
         time.sleep(0.001)
