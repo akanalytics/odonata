@@ -592,6 +592,7 @@ impl Bitboard {
         Bitboard(self.0 & (Self::all().bits() ^ other.bits()))
     }
 
+    #[must_use]
     #[inline]
     pub const fn popcount(self) -> i32 {
         self.0.count_ones() as i32

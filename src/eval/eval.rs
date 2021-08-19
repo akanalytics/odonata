@@ -4,6 +4,7 @@ use crate::bitboard::square::Square;
 use crate::board::Board;
 use crate::config::{Component, Config};
 use crate::eval::material_balance::MaterialBalance;
+use crate::eval::model::ModelSide;
 use crate::eval::score::Score;
 use crate::eval::weight::Weight;
 use crate::globals::counts;
@@ -12,9 +13,11 @@ use crate::mv::Move;
 use crate::search::node::Node;
 use crate::stat::{ArrayStat, Stat};
 use crate::types::{Color, Piece};
-use crate::{debug, logger::LogInit};
+use crate::{debug, trace, logger::LogInit};
 
 use std::fmt;
+
+use super::model::Model;
 
 // eval1 = bl.scoring.material(p=300, b=400, n=700)
 // eval2 = bl.scoring.position(endgame)
@@ -76,6 +79,7 @@ pub struct SimpleScorer {
     pub material: bool,
     pub position: bool,
     pub mobility: bool,
+    pub pawn: bool,
     pub safety: bool,
     pub min_depth_mob: u8,
     pub mobility_phase_disable: u8,
@@ -91,14 +95,12 @@ pub struct SimpleScorer {
     pub pawn_r5: Weight,
     pub pawn_r6: Weight,
     pub pawn_r7: Weight,
-    pub rook_open_file: i32,
+    pub rook_open_file: Weight,
     pub phasing: bool,
     pub contempt: i32,
     pub tempo: Weight,
     // pub cache: TranspositionTable,
     // pub qcache: TranspositionTable,
-    pub cache_eval: bool,
-    pub cache_qeval: bool,
     pst: [[Weight; 64]; Piece::len()],
     // pub depth: Ply,
 }
@@ -112,13 +114,12 @@ impl Default for SimpleScorer {
 impl Component for SimpleScorer {
     fn settings(&self, c: &mut Config) {
         self.mb.settings(c);
-        c.set("eval.cache.eval", "type check default true");
-        c.set("eval.cache.qeval", "type check default true");
-        c.set("eval.safety", "type check default true");
-        c.set("eval.mobility", "type check default true");
-        c.set("eval.position", "type check default true");
-        c.set("eval.material", "type check default true");
-        c.set("eval.phasing", "type check default true");
+        c.set("eval.safety", &format!("type check default {}", self.safety));
+        c.set("eval.mobility",&format!("type check default {}", self.mobility));
+        c.set("eval.pawn", &format!("type check default {}", self.pawn));
+        c.set("eval.position", &format!("type check default {}", self.position));
+        c.set("eval.material", &format!("type check default {}", self.material));
+        c.set("eval.phasing", &format!("type check default {}", self.phasing));
         c.set(
             "eval.mobility.min_depth",
             &format!("type spin min 0 max 101 default {}", self.min_depth_mob),
@@ -127,10 +128,7 @@ impl Component for SimpleScorer {
             "eval.mobility.phase_disable",
             &format!("type spin min 0 max 101 default {}", self.mobility_phase_disable),
         );
-        c.set(
-            "eval.rook.open_file",
-            &format!("type spin min -200 max 200 default {}", self.rook_open_file),
-        );
+        c.set_weight("eval.rook.open.file", &self.rook_open_file);
         c.set_weight("eval.pawn.doubled", &self.pawn_doubled);
         c.set(
             "eval.mobility.undef_sq",
@@ -162,19 +160,18 @@ impl Component for SimpleScorer {
     fn configure(&mut self, c: &Config) {
         debug!("eval.configure");
         self.mb.configure(c);
-        self.cache_eval = c.bool("eval.cache.eval").unwrap_or(self.cache_eval);
-        self.cache_qeval = c.bool("eval.cache.qeval").unwrap_or(self.cache_qeval);
         self.mobility = c.bool("eval.mobility").unwrap_or(self.mobility);
+        self.pawn = c.bool("eval.mobility").unwrap_or(self.pawn);
         self.safety = c.bool("eval.safety").unwrap_or(self.safety);
+        self.position = c.bool("eval.position").unwrap_or(self.position);
+        self.material = c.bool("eval.material").unwrap_or(self.material);
+        self.phasing = c.bool("eval.phasing").unwrap_or(self.phasing);
         self.mobility_phase_disable = c
             .int("eval.mobility.phase.disable")
             .unwrap_or(self.mobility_phase_disable as i64) as u8;
         self.min_depth_mob = c
             .int("eval.mobility.min.depth")
             .unwrap_or(self.min_depth_mob as i64) as u8;
-        self.position = c.bool("eval.position").unwrap_or(self.position);
-        self.material = c.bool("eval.material").unwrap_or(self.material);
-        self.phasing = c.bool("eval.phasing").unwrap_or(self.phasing);
         self.undefended_piece = c
             .int("eval.mobility.undef.piece")
             .unwrap_or(self.undefended_piece as i64) as i32;
@@ -184,6 +181,7 @@ impl Component for SimpleScorer {
         self.undefended_sq = c
             .int("eval.mobility.undef_sq")
             .unwrap_or(self.undefended_sq as i64) as i32;
+        self.rook_open_file = c.weight("eval.rook.open.file", &self.rook_open_file);
         self.pawn_doubled = c.weight("eval.pawn.doubled", &self.pawn_doubled);
         self.pawn_isolated = c.weight("eval.pawn.isolated", &self.pawn_isolated);
         self.pawn_passed = c.weight("eval.pawn.passed", &self.pawn_passed);
@@ -193,7 +191,7 @@ impl Component for SimpleScorer {
         self.pawn_r5 = c.weight("eval.pawn.r5", &self.pawn_r5);
         self.pawn_r6 = c.weight("eval.pawn.r6", &self.pawn_r6);
         self.pawn_r7 = c.weight("eval.pawn.r7", &self.pawn_r7);
-        self.rook_open_file = c.int("eval.rook.open.file").unwrap_or(self.rook_open_file as i64) as i32;
+        self.rook_open_file = c.weight("eval.rook.open.file", &self.rook_open_file);
         self.contempt = c.int("eval.draw.score.contempt").unwrap_or(self.contempt as i64) as i32;
         self.tempo = c.weight("eval.tempo", &self.tempo);
 
@@ -212,15 +210,14 @@ impl Component for SimpleScorer {
 impl fmt::Display for SimpleScorer {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "[material balance]\n{}", self.mb)?;
-        writeln!(f, "cache eval       : {}", self.cache_eval)?;
-        writeln!(f, "cache qeval      : {}", self.cache_qeval)?;
         writeln!(f, "material         : {}", self.material)?;
         writeln!(f, "position         : {}", self.position)?;
         writeln!(f, "mobility         : {}", self.mobility)?;
+        writeln!(f, "pawn             : {}", self.pawn)?;
         writeln!(f, "safety           : {}", self.safety)?;
+        writeln!(f, "phasing          : {}", self.phasing)?;
         writeln!(f, "mob.phase.disable: {}", self.mobility_phase_disable)?;
         writeln!(f, "mob.min.depth:     {}", self.min_depth_mob)?;
-        writeln!(f, "phasing          : {}", self.phasing)?;
         writeln!(f, "undefended.piece : {}", self.undefended_piece)?;
         writeln!(f, "undefended.sq    : {}", self.undefended_sq)?;
         writeln!(f, "trapped.piece    : {}", self.trapped_piece)?;
@@ -256,11 +253,10 @@ impl SimpleScorer {
     pub fn new() -> Self {
         let mut me = SimpleScorer {
             mb: MaterialBalance::new(),
-            cache_eval: false,
-            cache_qeval: false,
             mobility: true,
             position: true,
             material: true,
+            pawn: true,
             safety: true,
             phasing: true,
             mobility_phase_disable: 60,
@@ -273,7 +269,7 @@ impl SimpleScorer {
             pawn_passed: Weight::new(50, 80),
             pawn_shield: Weight::new(50, 0),
             castling_rights: Weight::new(0, 0),
-            rook_open_file: 20,
+            rook_open_file: Weight::new(20, 20),
             rook_edge: Weight::new(0, 2),
             pawn_r5: Weight::new(5, 20),
             pawn_r6: Weight::new(10, 40),
@@ -526,41 +522,118 @@ impl SimpleScorer {
         // score
     }
 
-    fn w_eval_without_wdl(&self, board: &Board, _node: &Node) -> Score {
+
+    pub fn predict(&self, m: &Model) -> Score {
+
+        // material
+        let ma: Weight = Piece::ALL_BAR_KING
+            .iter()
+            .map(|&p| (m.mat.counts(Color::White, p) - m.mat.counts(Color::Black, p)) * self.mb.material_weights[p])
+            .sum();
+
+        trace!("ma:{} {} ({})", ma, m.mat, m.mat.advantage());
+
+        let weight = ma + self.predict_model_side(&m.white, &m) - self.predict_model_side(&m.black, &m);
+        Score::from_cp(weight.interpolate(m.phase))
+    }
+
+
+    fn predict_model_side(&self, ms: &ModelSide, m: &Model) -> Weight {
+
+
+        let ma = ms.has_bishop_pair as i32 * self.mb.bishop_pair;
+
+        // position
+        let po = ms.psq.iter().map(|(p,sq)| self.pst(*p, *sq)).sum::<Weight>();
+    
+        // pawn structure
+        let mut pa = Weight::zero();
+        pa += ms.doubled_pawns * self.pawn_doubled;
+        pa += ms.isolated_pawns * self.pawn_isolated;
+        pa += ms.passed_pawns * self.pawn_passed;
+    
+        // king safety
+        let sa = ms.nearby_pawns * self.pawn_shield;
+        // ms.castling_sides * self.;
+    
+        // mobility
+        let mut mo = Weight::zero();
+        if !(m.phase > self.mobility_phase_disable as i32 ) {
+            let mut pm = 0; 
+            pm += ms.move_squares * self.undefended_sq;
+            pm += ms.non_pawn_defended_moves * self.undefended_piece;
+            pm += ms.fully_trapped_pieces * self.trapped_piece;
+            pm += ms.partially_trapped_pieces * (self.trapped_piece / 2);
+
+            mo += Weight::new(pm, pm / 10);
+            mo += ms.rooks_on_open_files * self.rook_open_file;
+        }
+        let te = ms.has_tempo as i32 * self.tempo;
+
+        // ms.draw;
+        trace!("ma:{} po:{} mo:{} pa:{} sa:{} te:{}", ma, po, mo, pa, sa, te);
+
+        let weight = ma + po + sa + pa + mo + te;
+        weight
+    }
+    
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+    fn w_eval_without_wdl(&self, b: &Board, _node: &Node) -> Score {
         // if self.cache_eval {
-        //     if let Some(entry) = self.cache.probe_by_board(board) {
+        //     if let Some(entry) = self.cache.probe_by_b(b) {
         //         counts::EVAL_CACHE_COUNT.increment();
         //         return entry.score;
         //     }
         // }
 
         let ma = if self.material {
-            let mat = Material::from_board(board);
+            let mat = Material::from_board(b);
             self.w_eval_material(&mat)
         } else {
             Weight::zero()
         };
         let po = if self.position {
-            self.w_eval_position(board)
+            self.w_eval_position(b)
         } else {
             Weight::zero()
         };
         let mo = if self.mobility {
-            self.w_eval_mobility(board)
+            self.w_eval_mobility(b)
+        } else {
+            Weight::zero()
+        };
+        let pa = if self.pawn {
+            self.w_eval_pawn(Color::White, b) - self.w_eval_pawn(Color::Black, b)
         } else {
             Weight::zero()
         };
         let sa = if self.safety {
-            self.w_eval_safety(board)
+            self.w_eval_safety(b)
         } else {
             Weight::zero()
         };
-        let te = self.w_tempo_adjustment(board.color_us());
-        Score::from_cp((ma + po + mo + sa + te).interpolate(board.phase()))
+        let te = self.w_tempo_adjustment(b.color_us());
+        // m.draw;
+        trace!("ma:{} po:{} mo:{} pa:{} sa:{} te:{}", ma, po, mo, pa, sa, te);
+        let weight = ma + po + sa + pa + mo + te;
+        Score::from_cp(weight.interpolate(b.phase()))
 
     }
 
-    pub fn eval_pawns(&self, c: Color, b: &Board) -> Weight {
+    pub fn w_eval_pawn(&self, c: Color, b: &Board) -> Weight {
         let mut score = Weight::zero();
         let bbd = BitboardDefault::default();
 
@@ -590,19 +663,20 @@ impl SimpleScorer {
             return Weight::zero();
         }
 
-        let mut score = self.eval_pawns(Color::White, b) - self.eval_pawns(Color::Black, b);
+        let mut score = Weight::zero(); 
 
-        if self.rook_open_file != 0 {
+        if self.rook_open_file != Weight::zero() {
             let open_files = BitboardDefault::default().open_files(b.pawns());
-            let s = self.rook_open_file
-                * ((b.rooks() & b.white() & open_files).popcount()
-                    - (b.rooks() & b.black() & open_files).popcount());
-            score += Weight::new(s, s);
+            let s = ((b.rooks() & b.white() & open_files).popcount()
+                    - (b.rooks() & b.black() & open_files).popcount()) * self.rook_open_file;
+            score += s;
         }
         let mut piece_mobility = 0;
         if self.undefended_sq != 0 || self.undefended_piece != 0 {
-            piece_mobility += self.piece_mobility(&b, Color::White);
-            piece_mobility -= self.piece_mobility(&b, Color::Black);
+            let pm_w = self.piece_mobility(&b, Color::White);
+            let pm_b = self.piece_mobility(&b, Color::Black);
+            trace!("pmw:{} pmb:{}", pm_w, pm_b);
+            piece_mobility += pm_w - pm_b;
         }
         score += Weight::new(piece_mobility, piece_mobility / 10);
         score
@@ -853,20 +927,20 @@ mod tests {
         eval.pawn_doubled = Weight::new(-1, -1);
         eval.pawn_isolated = Weight::zero();
         eval.pawn_passed = Weight::zero();
-        assert_eq!(eval.eval_pawns(Color::White, &b), Weight::new(-1, -1));
-        assert_eq!(eval.eval_pawns(Color::Black, &b), Weight::new(-4, -4));
+        assert_eq!(eval.w_eval_pawn(Color::White, &b), Weight::new(-1, -1));
+        assert_eq!(eval.w_eval_pawn(Color::Black, &b), Weight::new(-4, -4));
 
         eval.pawn_doubled = Weight::zero();
         eval.pawn_isolated = Weight::new(-1, -1);
         eval.pawn_passed = Weight::zero();
-        assert_eq!(eval.eval_pawns(Color::White, &b), Weight::new(-1, -1));
-        assert_eq!(eval.eval_pawns(Color::Black, &b), Weight::new(-2, -2));
+        assert_eq!(eval.w_eval_pawn(Color::White, &b), Weight::new(-1, -1));
+        assert_eq!(eval.w_eval_pawn(Color::Black, &b), Weight::new(-2, -2));
 
         eval.pawn_doubled = Weight::zero();
         eval.pawn_isolated = Weight::zero();
         eval.pawn_passed = Weight::new(10, 10);
-        assert_eq!(eval.eval_pawns(Color::White, &b), Weight::new(0, 0));
-        assert_eq!(eval.eval_pawns(Color::Black, &b), Weight::new(10, 10));
+        assert_eq!(eval.w_eval_pawn(Color::White, &b), Weight::new(0, 0));
+        assert_eq!(eval.w_eval_pawn(Color::Black, &b), Weight::new(10, 10));
 
         // 1xw (-1) 3xb doubled (+3), 1xb (+1) tripled pawns  2xw 1xb isolated
         let b = Board::parse_fen("8/pppp3p/ppp5/p7/8/2P5/PPP1P1P1/8 b - - 0 1")
@@ -894,5 +968,20 @@ mod tests {
         let e2 = eval.w_eval_safety(&b);
 
         assert_eq!((e2 - e1).s(), 100); // 2 pawns in front of king
+    }
+
+
+    #[test]
+    fn test_eval_vs_model() {
+        let mut eval = SimpleScorer::default();
+        eval.mb.enabled = false;
+        let node = Node::root(0);
+        for pos in Catalog::win_at_chess() {
+            let b = pos.board();
+            let model = Model::from_board(b);
+            let s_eval = eval.w_eval_without_wdl(b, &node);
+            let s_model = eval.predict(&model);
+            assert_eq!(s_eval, s_model, "{} {:#?} {}", pos, model, pos.board());
+        }
     }
 }

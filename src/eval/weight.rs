@@ -18,6 +18,7 @@ pub struct Weight(i32, i32);
 
 impl Weight {
     #[inline]
+    #[must_use]
     pub const fn new(s: i32, e: i32) -> Weight {
         Weight(s, e)
     }
