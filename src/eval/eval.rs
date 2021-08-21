@@ -1013,13 +1013,13 @@ mod tests {
         for pos in Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-small.epd").unwrap() {
             let b = pos.board();
             let s_eval_wdl = b.signum() * b.eval(&eval, &node);
-            let s_eval = eval.w_eval_without_wdl(b, &node);
+            let _s_eval = eval.w_eval_without_wdl(b, &node);
             let model = Model::from_board(b);
             let s_model = eval.predict(&model);
             if b.outcome().is_draw() {
                 continue;
             }
-            assert_eq!(s_eval_wdl, s_model, "{} {:#?} {}", pos, model, pos.board());
+            assert_eq!(s_eval_wdl, s_model.as_score(), "{} {:#?} {}", pos, model, pos.board());
             // assert_eq!(s_eval, s_model, "{} {:#?} {}", pos, model, pos.board());
         }
     }
