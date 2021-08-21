@@ -1,4 +1,5 @@
-use crate::catalog::*;
+use crate::eval::eval::SimpleScorer;
+use crate::{catalog::*, eval::model::Model};
 use crate::clock::Clock;
 use crate::config::Component;
 use crate::perft::Perft;
@@ -13,6 +14,17 @@ use std::time::{Duration, Instant};
 pub struct Bench;
 
 impl Bench {
+
+    pub fn profile_me() {
+        let eval = SimpleScorer::new();
+        let pos = Catalog::starting_position();
+        let model = Model::from_board(pos.board());
+        for _ in 0..100_000 {
+            eval.predict(&model);
+        }
+    }
+
+
     pub fn perft(depth: u32) {
         let mut board = Catalog::starting_board();
         for d in 1..=depth {

@@ -14,6 +14,7 @@ use odonata::catalog::*;
 use odonata::config::Component;
 use odonata::debug;
 use odonata::eval::eval::*;
+use odonata::eval::model::Model;
 use odonata::eval::score::*;
 use odonata::globals::constants::*;
 use odonata::hasher::*;
@@ -701,11 +702,29 @@ fn benchmark_eval(c: &mut Criterion) {
             t.elapsed() / positions.len() as u32
         })
     });
-    group.bench_function("all", |b| {
+    group.bench_function("all_eval", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|p| {
                 black_box(p.board().eval(black_box(ef), &Node::root(0)));
+            });
+            t.elapsed() / positions.len() as u32
+        })
+    });
+    group.bench_function("all_model_eval", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            positions.iter().cycle_n(n).for_each(|p| {
+                black_box(ef.predict(&Model::from_board(p.board())));
+            });
+            t.elapsed() / positions.len() as u32
+        })
+    });
+    group.bench_function("all_eval_without_wdl", |b| {
+        b.iter_custom(|n| {
+            let t = Instant::now();
+            positions.iter().cycle_n(n).for_each(|p| {
+                black_box(ef.w_eval_without_wdl(p.board(), &Node::root(0)));
             });
             t.elapsed() / positions.len() as u32
         })
@@ -871,7 +890,7 @@ fn benchmark_attacks(c: &mut Criterion) {
                 count += p.board().rooks().popcount();
                 let occ = p.board().black() | p.board().white();
                 black_box(p.board().rooks().squares().for_each(|b| {
-                    hq.rook_attacks(occ, b).popcount();
+                    black_box(hq.rook_attacks(occ, b).popcount());
                 }));
             });
             t.elapsed() / (count as u32 / n as u32)

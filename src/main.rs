@@ -34,6 +34,10 @@ fn main() -> Result<(), String> {
             .value_name("depth")
             .takes_value(true)
         )
+        .arg(Arg::with_name("profile")
+            .help("runs code to assist with profiling")
+            .long("profile")
+        )
         .arg(Arg::with_name("threads")
             .help("sets the number of threads to use")
             .long("threads")
@@ -70,6 +74,8 @@ fn main() -> Result<(), String> {
 
     if matches.is_present("uci") {
         Uci::new().run();
+    } else if matches.is_present("profile") {
+        Bench::profile_me();
     } else if let Some(depth) = matches.value_of("perft") {
         let depth = depth.parse::<u32>().map_err(|e| e.to_string())?;
         Bench::perft(depth);

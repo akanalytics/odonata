@@ -1,7 +1,6 @@
+use crate::eval::model::Model;
 use crate::position::Position;
-use crate::board::Board;
 use crate::search::algo::Engine;
-use crate::search::node::Node;
 use crate::utils::Formatter;
 use crate::{debug, logger::LogInit};
 use crate::tags::Tag;
@@ -9,7 +8,8 @@ use crate::tags::Tag;
 
 #[derive(Clone, Default, Debug)]
 pub struct Tuning {
-    boards: Vec<Board>,
+    models: Vec<Model>,
+    boards: Vec<Position>,
     outcomes: Vec<f32>,
 }
 
@@ -31,12 +31,17 @@ impl Tuning {
         Tuning::default()
     }
 
-    pub fn upload_positions(&mut self, positions: &[Position]) {
+    pub fn upload_positions(&mut self, positions: &[Position]) -> usize {
         for pos in positions {
-            self.boards.push(pos.board().clone());
-            self.outcomes.push(self.calc_white_win_prob_from_pos(pos));
+            if pos.board().outcome().is_game_over() {
+                trace!("Discarding drawn/checkmate position {}", pos);
+                continue;
+            }
+            self.models.push(Model::from_board(pos.board()));
+            self.outcomes.push(self.calc_player_win_prob_from_pos(pos));
+            self.boards.push(pos.clone());
         }
-
+        self.models.len()
     }
 
     // pub fn with_engine(engine: &Engine) -> Self {
@@ -46,27 +51,38 @@ impl Tuning {
     //     }
     // }
 
-    pub fn calc_white_win_prob_from_pos(&self, pos: &Position) -> f32 {
+    pub fn calc_player_win_prob_from_pos(&self, pos: &Position) -> f32 {
         if let Tag::Comment(_n, s) = pos.tag(Tag::C9) {
-            return match s.as_str() {
+            let prob = match s.as_str() {
                 "1/2-1/2" => 0.5,
                 "1-0" => 1.0,
                 "0-1" => 0.0,
                 _ => unreachable!()
-            }
+            };
+            return pos.board().color_us().chooser_wb(prob, prob);
         }
         panic!("Unable to find result comment c9 in {}", pos);
     }
 
     pub fn calculate_mean_square_error(&self, engine: &Engine) -> f32 {
 
-        debug_assert!(self.boards.len() == self.outcomes.len());
+        debug_assert!(self.models.len() == self.outcomes.len());
         let mut total_diff_squared = 0.0;
-        for (i, board) in self.boards.iter().enumerate() {
+        for (i, model) in self.models.iter().enumerate() {
 
             // estimate result by looking at centipawn evaluation
             let eval = &engine.algo.eval;
-            let w_score = board.color_us().chooser_wb(1, -1) * board.eval(eval, &Node::root(0));
+            let w_score = eval.predict(model).as_score();
+            // let board = self.boards[i].board();
+            // let w_score_eval = board.color_us().chooser_wb(1, -1) * board.eval(eval, &Node::root(0));
+ 
+            // // let w_score2 = board.color_us().chooser_wb(1, -1) * board.eval(eval, &Node::root(0));
+            // if w_score_eval != w_score {
+            //      let w_scores_eval = eval.w_scores_without_wdl(board, &Node::root(0));
+            //      let w_scores_model = eval.predict(model);
+            //      warn!("\nmodel {:?} != \neval {:?} \nfor {}\n(e){} != (m){}", w_scores_model, w_scores_eval, self.boards[i], w_score_eval, w_score);
+            // };
+
             let win_prob_estimate = w_score.win_probability();
 
             let win_prob_actual = self.outcomes[i];
@@ -82,7 +98,7 @@ impl Tuning {
         }
 
         // return average
-        total_diff_squared / self.boards.len() as f32
+        total_diff_squared / self.models.len() as f32
     }
 }
 

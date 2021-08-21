@@ -55,7 +55,7 @@ pub trait Rpc {
     fn position_catalog(&self, suite: CatalogSuite) -> Result<Vec<Position>>;
 
     #[rpc(name = "position_upload")]
-    fn position_upload(&self, filename: String) -> Result<()>;
+    fn position_upload(&self, filename: String) -> Result<i32>;
 
     #[rpc(name = "tuning_mean_squared_error")]
     fn tuning_mean_squared_error(&self) -> Result<f32>;
@@ -98,18 +98,18 @@ impl Rpc for RpcImpl {
     }
 
     // empty file is clear
-    fn position_upload(&self, filename: String) -> Result<()> {
+    fn position_upload(&self, filename: String) -> Result<i32> {
         if filename.is_empty() {
             *self.tuning.lock().unwrap() = Tuning::new();
-            return Ok(());
+            return Ok(0);
         }
         let new = Position::parse_epd_file(filename).map_err(|s| jsonrpc_core::Error {
             message: s,
             code: jsonrpc_core::ErrorCode::InternalError,
             data: None,
         })?;
-        self.tuning.lock().unwrap().upload_positions(&new);
-        Ok(())
+        let uploaded_count = self.tuning.lock().unwrap().upload_positions(&new);
+        Ok(uploaded_count as i32)
     }
 
     fn tuning_mean_squared_error(&self) -> Result<f32> {

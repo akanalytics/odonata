@@ -52,6 +52,7 @@ pub mod search;
 pub mod stat;
 pub mod tags;
 pub mod tuning;
+pub mod tracer;
 pub mod cache;
 pub mod types;
 pub mod utils;

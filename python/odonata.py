@@ -964,7 +964,7 @@ class Catalog:
         return Odonata.instance().position_catalog(name)
     
     @classmethod
-    def upload(cls, filename: str):
+    def upload(cls, filename: str) -> int:
         return Odonata.instance().position_upload(filename)
 
     @classmethod
@@ -1269,7 +1269,7 @@ class Odonata:
     def position_catalog(self, name: str) -> List[Board]:
         return self.call("position_catalog", args=[name])
 
-    def position_upload(self, filename: str) -> None:
+    def position_upload(self, filename: str) -> int:
         return self.call("position_upload", args=[filename])
 
     def tuning_mean_squared_error(self) -> float:
@@ -1284,7 +1284,11 @@ class Odonata:
             (before, after) = line.split("=")
             key = before.strip()
             (before, value) = after.split("default")
-            dict[key] = value.strip()
+            if not value.strip():
+                dict[key] = ""
+            else:
+                words = value.split()
+                dict[key] = words[0].strip()
         return dict
         
     def list_methods(self) -> Any:

@@ -4,15 +4,16 @@ use crate::bitboard::castling::CastlingRights;
 use crate::bitboard::precalc::BitboardDefault;
 use crate::bitboard::square::Square;
 use crate::board::Board;
-use crate::eval::score::Score;
 use crate::material::Material;
-use crate::phase::Phase;
 use crate::types::Color;
 use crate::types::Piece;
+use crate::eval::weight::Weight;
+use crate::eval::score::Score;
 
 #[derive(Clone, Default, Debug)]
 pub struct Model {
     // material
+    pub turn: Color, 
     pub mat: Material,
     pub phase: i32,
     pub draw: bool,
@@ -51,6 +52,75 @@ pub struct ModelSide {
 }
 
 
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct ModelScore {
+    pub material: Weight,
+    pub position: Weight,
+    pub pawn: Weight,
+    pub mobility: Weight,
+    pub safety: Weight,
+    pub tempo: Weight,
+    pub contempt: Weight,
+    pub interpolated: i32,
+}
+
+impl ModelScore {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn as_score(&self) -> Score {
+        Score::from_cp(self.interpolated)
+    }
+
+    pub fn total(&self) -> Weight {
+        self.material
+        + self.position
+        + self.pawn
+        + self.mobility
+        + self.safety
+        + self.tempo
+        + self.contempt
+    }
+}
+
+impl std::ops::Add for ModelScore {
+    type Output = Self;
+
+    #[inline]
+    fn add(self, o: Self) -> Self {
+        Self {
+            material: self.material + o.material,
+            position: self.position + o.position,
+            pawn: self.pawn + o.pawn,
+            mobility: self.mobility + o.mobility,
+            safety: self.safety + o.safety,
+            tempo: self.tempo + o.tempo,
+            contempt: self.contempt + o.contempt,
+            interpolated: self.interpolated + o.interpolated,
+        }
+    }
+}
+
+impl std::ops::Sub for ModelScore {
+    type Output = Self;
+
+    #[inline]
+    fn sub(self, o: Self) -> Self {
+        Self {
+            material: self.material - o.material,
+            position: self.position - o.position,
+            pawn: self.pawn - o.pawn,
+            mobility: self.mobility - o.mobility,
+            safety: self.safety - o.safety,
+            tempo: self.tempo - o.tempo,
+            contempt: self.contempt - o.contempt,
+            interpolated: self.interpolated - o.interpolated,
+        }
+    }
+}
+
+
 impl Model {
 
     pub fn new() -> Self {
@@ -59,6 +129,7 @@ impl Model {
 
     pub fn from_board(b: &Board) -> Self{
         Self {
+            turn: b.color_us(),
             mat: b.material(),
             phase: b.phase(),
             white: ModelSide::from_board(b, Color::White),
@@ -134,7 +205,7 @@ impl ModelSide {
         let bb = BitboardDefault::default();
         let us = b.color(c);
 
-        self.rooks_on_open_files = (bb.open_files(b.pawns()) & us).popcount();
+        self.rooks_on_open_files = (bb.open_files(b.pawns()) & us & b.rooks()).popcount();
 
         let their = c.opposite();
         let them = b.color(their);
