@@ -108,7 +108,38 @@ pub struct SimpleScorer {
 
 impl Default for SimpleScorer {
     fn default() -> Self {
-        SimpleScorer::new()
+        let mut me = Self {
+            mb: MaterialBalance::new(),
+            mobility: true,
+            position: true,
+            material: true,
+            pawn: false,
+            safety: true,
+            phasing: true,
+            mobility_phase_disable: 60,
+            min_depth_mob: 1,
+            undefended_piece: 6,
+            undefended_sq: 3,
+            trapped_piece: -10,
+            pawn_doubled: Weight::new(-5, -50),
+            pawn_isolated: Weight::new(-5, -50),
+            pawn_passed: Weight::new(50, 80),
+            pawn_shield: Weight::new(50, 0),
+            castling_rights: Weight::new(0, 0),
+            rook_open_file: Weight::new(20, 20),
+            rook_edge: Weight::new(0, 2),
+            pawn_r5: Weight::new(5, 20),
+            pawn_r6: Weight::new(10, 40),
+            pawn_r7: Weight::new(40, 60),
+            contempt: -30, // typically -ve
+            tempo: Weight::new(16, 16),
+            // cache: TranspositionTable::default(),
+            // qcache: TranspositionTable::default(),
+            pst: [[Weight::default(); 64]; Piece::len()],
+            // depth: 0,
+        };
+        me.calculate_pst();
+        me
     }
 }
 
@@ -251,38 +282,7 @@ impl fmt::Display for SimpleScorer {
 // builder methods
 impl SimpleScorer {
     pub fn new() -> Self {
-        let mut me = SimpleScorer {
-            mb: MaterialBalance::new(),
-            mobility: true,
-            position: true,
-            material: true,
-            pawn: true,
-            safety: true,
-            phasing: true,
-            mobility_phase_disable: 60,
-            min_depth_mob: 1,
-            undefended_piece: 6,
-            undefended_sq: 3,
-            trapped_piece: -10,
-            pawn_doubled: Weight::new(-5, -50),
-            pawn_isolated: Weight::new(-5, -50),
-            pawn_passed: Weight::new(50, 80),
-            pawn_shield: Weight::new(50, 0),
-            castling_rights: Weight::new(0, 0),
-            rook_open_file: Weight::new(20, 20),
-            rook_edge: Weight::new(0, 2),
-            pawn_r5: Weight::new(5, 20),
-            pawn_r6: Weight::new(10, 40),
-            pawn_r7: Weight::new(40, 60),
-            contempt: -30, // typically -ve
-            tempo: Weight::new(16, 16),
-            // cache: TranspositionTable::default(),
-            // qcache: TranspositionTable::default(),
-            pst: [[Weight::default(); 64]; Piece::len()],
-            // depth: 0,
-        };
-        me.calculate_pst();
-        me
+        Self::default()
     }
 
     fn calculate_pst(&mut self) {
