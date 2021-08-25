@@ -246,6 +246,13 @@ r1r5/2N1n1kb/2nB1b1p/3p2p1/6q1/P2pQ3/3N1PPP/1RR3K1 b - - 11 37 acd 6;
         positions
     }
 
+    pub fn pawn_structure() -> Vec<Position> {
+        let str = r#"
+        2k5/ppp2ppp/8/4P3/P7/3p4/PP5P/K7 b - - 0 1 id 'PAWN.01'; c0 'w:isol=2 passed=0 doubled=1 b:isol=0 passed=1 doubled=0';
+"#;
+        let positions = Position::parse_many_epd(str.lines()).unwrap();
+        positions
+    }
 
     pub fn checkmates() -> Vec<Position> {
         let str = r#"

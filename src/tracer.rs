@@ -1,41 +1,105 @@
 
 
+#[derive(Clone, Copy)]
+pub struct NullTracer;
 
 
+#[derive(Clone, Copy)]
+pub struct LoggingTracer;
 
+#[derive(Clone, Copy)]
+pub struct FileTracer;
 
-trait Tracer {
-    fn enabled() -> bool;
-    fn trace(x: i32, y: i32, s: &str);
+pub trait Tracer {
+    fn trace<D: ?Sized+Traceable>(&self, d: &D) -> &Self;
 }
 
 
-struct NullTracer;
+pub trait Traceable {
+    fn log(&self, t: &LoggingTracer);
+    fn file(&self, t: &FileTracer);
+}
+
+
+impl Tracer for LoggingTracer {
+    fn trace<D: ?Sized+Traceable>(&self, d: &D) -> &LoggingTracer {
+        d.log(self);
+        self
+    }
+}
+
+impl Tracer for FileTracer {
+    fn trace<D: ?Sized+Traceable>(&self, d: &D) -> &FileTracer {
+        d.file(self);
+        self
+    }
+}
+
 
 impl Tracer for NullTracer {
-    #[inline]
-    fn enabled() -> bool {
-        false
-    }
-    fn trace(_x: i32, _y: i32, _s: &str) {
+    fn trace<D: ?Sized+Traceable>(&self, _d: &D) -> &NullTracer {
+        self
     }
 }
 
-struct LoggingTracer;
-impl Tracer for LoggingTracer {
-    #[inline]
-    fn enabled() -> bool {
-        true
+impl Traceable for str {
+    fn log(&self, _t: &LoggingTracer) {
+        println!("string '{}'", self);
     }
-    fn trace(x: i32, y: i32, s: &str) {
-        println!("x={} y={} s={}", x, y, s);
+    fn file(&self, _t: &FileTracer) {
+        println!("string '{}'", self);
+    }
+}
+
+impl Traceable for i32 {
+    fn log(&self, _t: &LoggingTracer) {
+        println!("int {}", self);
+    }
+    fn file(&self, _t: &FileTracer) {
+        println!("int '{}'", self);
     }
 }
 
 
 
-// #[derive(Clone,Debug)]
-// pub struct Debug {
-//     board: Board,
-//     items: Vec<String>,
+// impl<D: ?Sized> Trace<D> for NullTracer {
+//     fn trace(&self, _s: &D) -> &NullTracer {
+//         self
+//     }
 // }
+
+
+
+
+// impl Trace<i32> for LoggingTracer {
+//     fn trace(&self, i: &i32) -> &LoggingTracer {
+//         print!("{}_i32 ", i);
+//         self
+//     }
+// }
+
+// impl Trace<str> for LoggingTracer {
+//     fn trace(&self, s: &str) -> &LoggingTracer {
+//         print!("{}", s);
+//         self
+//     }
+// }
+
+
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_trace() {
+        let nt = NullTracer;
+        nt.trace("Hello").trace(&32).trace(&45);
+
+        let lt = LoggingTracer;
+        lt.trace("45=").trace(&45).trace("and 32=").trace(&32).trace("\n");
+
+    }
+}

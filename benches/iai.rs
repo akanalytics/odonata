@@ -1,11 +1,15 @@
 use odonata::catalog::*;
 use odonata::eval::eval::SimpleScorer;
 use odonata::eval::model::Model;
+use odonata::eval::model::ModelScore;
+use odonata::position::*;
 use odonata::movelist::*;
 use odonata::perft::Perft;
+use odonata::tracer::*;
 use odonata::search::algo::Engine;
 use odonata::search::node::Node;
 use odonata::search::timecontrol::TimeControl;
+use static_init::{dynamic};
 
 // use criterion::measurement::Measurement;
 // use criterion::black_box;
@@ -20,16 +24,30 @@ use iai::black_box;
 // );
 
 iai::main!(
+    iai_trace,
+    iai_read_lock,
+    iai_board_clone,
+    iai_model_build,
+    iai_model_predict,
+    iai_eval_without_wdl,
     iai_search,
     iai_legal_moves_into,
     iai_perft5,
     iai_eval_full,
-    iai_eval_without_wdl,
     iai_eval_model,
     iai_build_model_and_eval_model,
 );
 
 
+#[dynamic]
+static mut ENGINE: Engine = { let mut e = Engine::new(); e.algo.eval.pawn = true; e };
+
+#[dynamic]
+static mut POS: Position = Catalog::starting_position();
+
+
+#[dynamic]
+static mut MODEL: Model = Model::from_board(POS.read().board());
 // fn main() {
 //     for n in 0..100000 {
 //         iai_eval_model();
@@ -46,6 +64,14 @@ fn iai_legal_moves_into() {
     black_box(black_box(&board).legal_moves_into(&mut ml));
 }
 
+fn iai_board_clone() {
+    black_box(POS.read().board().clone());
+}
+
+fn iai_read_lock() {
+    black_box(POS.read().board());
+}
+
 fn iai_perft5() {
     let mut pos = Catalog::starting_position();
     black_box(Perft::perft(&mut pos.board_mut(), 5));
@@ -58,9 +84,7 @@ fn iai_eval_full() {
 }
 
 fn iai_eval_without_wdl() {
-    let engine = Engine::new();
-    let pos = Catalog::starting_position();
-    black_box(engine.algo.eval.w_eval_without_wdl(pos.board(), &Node::root(0)));
+    black_box(ENGINE.read().algo.eval.w_eval_without_wdl(POS.read().board(), &Node::root(0)));
 }
 
 fn iai_search() {
@@ -70,12 +94,23 @@ fn iai_search() {
     black_box(engine.search());
 }
 
+
+fn iai_model_build() {
+    black_box(Model::from_board(POS.read().board()));
+}
+
+fn iai_model_predict() {
+    let mut model_score = ModelScore::new();
+    black_box(ENGINE.read().algo.eval.predict(black_box(&MODEL.read()), &mut model_score) );
+}
+
 fn iai_build_model_and_eval_model() {
     let eval = SimpleScorer::new();
     let pos = Catalog::starting_position();
+    let mut model_score = ModelScore::new();
     for _ in 0..10000 {
         let model = black_box(Model::from_board(pos.board()));
-        black_box(eval.predict(black_box(&model)));
+        black_box(eval.predict(black_box(&model), &mut model_score));
     }
 }
 
@@ -83,8 +118,16 @@ fn iai_eval_model() {
     let eval = SimpleScorer::new();
     let pos = Catalog::starting_position();
     let model = Model::from_board(pos.board());
+    let mut model_score = ModelScore::new();
     for _ in 0..10000 {
-        black_box(eval.predict(black_box(&model)));
+        black_box(eval.predict(black_box(&model), &mut model_score));
     }
 }
 
+fn iai_trace() {
+    let nt = NullTracer;
+    for _i in 0..10_000 {
+        nt.trace("Hello").trace("world").trace(&42);
+    }
+
+}

@@ -6,6 +6,7 @@ use crate::config::{Component, Config};
 use crate::eval::material_balance::MaterialBalance;
 use crate::eval::model::ModelSide;
 use crate::eval::model::ModelScore;
+use crate::eval::model::Scorer;
 use crate::eval::score::Score;
 use crate::eval::weight::Weight;
 use crate::globals::counts;
@@ -15,6 +16,7 @@ use crate::search::node::Node;
 use crate::stat::{ArrayStat, Stat};
 use crate::types::{Color, Piece};
 use crate::{debug, trace, logger::LogInit};
+
 
 use std::fmt;
 
@@ -523,17 +525,16 @@ impl SimpleScorer {
     }
 
 
-    pub fn predict(&self, m: &Model) -> ModelScore {
+    pub fn predict(&self, m: &Model, scorer: &mut impl Scorer)  {
 
         if m.mat.is_insufficient() {
             let contempt = m.turn.chooser_wb(self.contempt, -self.contempt);
-            let mut s = ModelScore::new();
-            s.contempt = Weight::new(contempt, contempt);
-            return s;
+            scorer.contempt("insufficient mat", contempt, 0, Weight::new(1, 1));
+            return;
         }
 
         // material
-        let ma: Weight = if self.material {
+        let ma = if self.material {
             Piece::ALL_BAR_KING
                 .iter()
                 .map(|&p| (m.mat.counts(Color::White, p) - m.mat.counts(Color::Black, p)) * self.mb.material_weights[p])
@@ -541,60 +542,65 @@ impl SimpleScorer {
         } else {
             Weight::zero()
         };
+        scorer.set_multiplier(1);
+        scorer.material("material", 1, 0, ma);
 
-        trace!("ma:{} {} ({})", ma, m.mat, m.mat.advantage());
+        let w = &m.white;
+        let b = &m.black;
 
-        let w = self.predict_model_side(&m.white, &m);
-        let b = self.predict_model_side(&m.black, &m);
-        let mut s = w - b;
-        s.material += ma;
-        s.interpolated = s.total().interpolate(m.phase);
-        s
-    }
-
-
-    fn predict_model_side(&self, ms: &ModelSide, m: &Model) -> ModelScore {
-
-        let mut s = ModelScore::new();
         if self.material {
-            s.material = ms.has_bishop_pair as i32 * self.mb.bishop_pair;
+            scorer.material("bishop pair", w.has_bishop_pair as i32, b.has_bishop_pair as i32, self.mb.bishop_pair);
         }
 
         // position
         if self.position {
-            s.position = ms.psq.iter().map(|(p,sq)| self.pst(*p, *sq)).sum::<Weight>();
+            let board = &m.board;
+            // let mut sum = Weight::zero();
+            for &p in &Piece::ALL_BAR_NONE {
+                let w = (board.pieces(p) & board.white()).flip_vertical();
+                let b = board.pieces(p) & board.black();
+    
+                let w = w.squares().map(|sq| self.pst(p, sq)).sum::<Weight>();
+                let b = b.squares().map(|sq| self.pst(p, sq)).sum::<Weight>();
+
+                scorer.position("pst", 1, 0, w); 
+                scorer.position("pst", 0, 1, b); 
+                // sum = sum + w - b;
+            }
+            // sum
+    
+            // scorer.position("pst", 1, 0, w.psq.iter().map(|(p,sq)| self.pst(*p, *sq)).sum::<Weight>());
+            // scorer.position("pst", 0, 1, b.psq.iter().map(|(p,sq)| self.pst(*p, *sq)).sum::<Weight>());
         } 
 
         // pawn structure
         if self.pawn {
-            s.pawn += ms.doubled_pawns * self.pawn_doubled;
-            s.pawn += ms.isolated_pawns * self.pawn_isolated;
-            s.pawn += ms.passed_pawns * self.pawn_passed;
+            scorer.pawn("doubled", w.doubled_pawns, b.doubled_pawns, self.pawn_doubled);
+            scorer.pawn("isolated", w.isolated_pawns, b.isolated_pawns, self.pawn_isolated);
+            scorer.pawn("passed", w.passed_pawns, b.passed_pawns, self.pawn_passed);
         }
 
         // king safety
         if self.safety {
-            s.safety = ms.nearby_pawns * self.pawn_shield
+            scorer.safety("nearby pawns", w.nearby_pawns, b.nearby_pawns, self.pawn_shield);
         }
-        // ms.castling_sides * self.;
+        // w.castling_sides, b.castling_sides * self.;
     
         // mobility
         if m.phase <= self.mobility_phase_disable as i32 && self.mobility  {
-            let mut pm = 0; 
-            pm += ms.move_squares * self.undefended_sq;
-            pm += ms.non_pawn_defended_moves * self.undefended_piece;
-            pm += ms.fully_trapped_pieces * self.trapped_piece;
-            pm += ms.partially_trapped_pieces * (self.trapped_piece / 2);
+            scorer.mobility("move", w.move_squares, b.move_squares, Weight::new(self.undefended_sq, 0));
+            scorer.mobility("undef piece", w.non_pawn_defended_moves, b.non_pawn_defended_moves, Weight::new(self.undefended_piece, 0));
+            scorer.mobility("trapped", w.fully_trapped_pieces, b.fully_trapped_pieces, Weight::new(self.trapped_piece, 0));
+            scorer.mobility("part trapped", w.partially_trapped_pieces, b.partially_trapped_pieces, Weight::new(self.trapped_piece / 2, 0));
+            let eg = (w.move_squares - b.move_squares) * self.undefended_sq + 
+                (w.non_pawn_defended_moves - b.non_pawn_defended_moves) * self.undefended_piece +
+                (w.fully_trapped_pieces - b.fully_trapped_pieces) * self.trapped_piece + 
+                (w.partially_trapped_pieces - b.partially_trapped_pieces) * (self.trapped_piece / 2) / 10;
 
-            s.mobility += Weight::new(pm, pm / 10);
-            s.mobility += ms.rooks_on_open_files * self.rook_open_file;
+            scorer.mobility("end game 10%", 1,0, Weight::new(0, eg));
+            scorer.mobility("rook open file", w.rooks_on_open_files, b.rooks_on_open_files, self.rook_open_file);
         }
-        s.tempo = ms.has_tempo as i32 * self.tempo;
-
-        // ms.draw;
-        trace!("{:?}", s);
-
-        s
+        scorer.tempo("tempo", w.has_tempo as i32, b.has_tempo as i32, self.tempo);
     }
     
     
@@ -650,6 +656,7 @@ impl SimpleScorer {
         trace!("ma:{} po:{} mo:{} pa:{} sa:{} te:{}", ma, po, mo, pa, sa, te);
         let weight = ma + po + sa + pa + mo + te;
         ModelScore {
+            mult: 1,
             material: ma,
             position: po,
             pawn: pa,
@@ -669,6 +676,7 @@ impl SimpleScorer {
         let mut score = Weight::zero();
         let bbd = BitboardDefault::default();
 
+        // FIXME!
         let doubled = bbd.doubled_pawns(b.color(c) & b.pawns()).popcount();
         score += doubled * self.pawn_doubled;
 
@@ -1015,11 +1023,12 @@ mod tests {
             let s_eval_wdl = b.signum() * b.eval(&eval, &node);
             let _s_eval = eval.w_eval_without_wdl(b, &node);
             let model = Model::from_board(b);
-            let s_model = eval.predict(&model);
-            if b.outcome().is_draw() {
+            let mut s_model = ModelScore::new();
+            eval.predict(&model, &mut s_model);
+            if b.outcome().is_game_over() {
                 continue;
             }
-            assert_eq!(s_eval_wdl, s_model.as_score(), "{} {:#?} {}", pos, model, pos.board());
+            assert_eq!(s_eval_wdl, s_model.as_score(), "{} {:#?} {:#?} {}", pos, model, s_model, pos.board());
             // assert_eq!(s_eval, s_model, "{} {:#?} {}", pos, model, pos.board());
         }
     }

@@ -1,4 +1,5 @@
 use crate::eval::model::Model;
+use crate::eval::model::ModelScore;
 use crate::position::Position;
 use crate::search::algo::Engine;
 use crate::utils::Formatter;
@@ -72,7 +73,8 @@ impl Tuning {
 
             // estimate result by looking at centipawn evaluation
             let eval = &engine.algo.eval;
-            let w_score = eval.predict(model).as_score();
+            let mut w_score = ModelScore::new();
+            eval.predict(model, &mut w_score);
             // let board = self.boards[i].board();
             // let w_score_eval = board.color_us().chooser_wb(1, -1) * board.eval(eval, &Node::root(0));
  
@@ -83,7 +85,7 @@ impl Tuning {
             //      warn!("\nmodel {:?} != \neval {:?} \nfor {}\n(e){} != (m){}", w_scores_model, w_scores_eval, self.boards[i], w_score_eval, w_score);
             // };
 
-            let win_prob_estimate = w_score.win_probability();
+            let win_prob_estimate = w_score.as_score().win_probability();
 
             let win_prob_actual = self.outcomes[i];
 
@@ -91,7 +93,7 @@ impl Tuning {
             total_diff_squared += diff * diff;
 
             debug!("{:>4} {:>4} {:>4}   {}", 
-                w_score, 
+                w_score.as_score(), 
                 Formatter::format_decimal(2,win_prob_estimate), 
                 Formatter::format_decimal(2, win_prob_actual), 
                 Formatter::format_decimal(2, diff*diff) );

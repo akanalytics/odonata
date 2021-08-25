@@ -15,6 +15,7 @@ use odonata::config::Component;
 use odonata::debug;
 use odonata::eval::eval::*;
 use odonata::eval::model::Model;
+use odonata::eval::model::ModelScore;
 use odonata::eval::score::*;
 use odonata::globals::constants::*;
 use odonata::hasher::*;
@@ -714,8 +715,9 @@ fn benchmark_eval(c: &mut Criterion) {
     group.bench_function("all_model_eval", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
+            let mut model_score = ModelScore::new();
             positions.iter().cycle_n(n).for_each(|p| {
-                black_box(ef.predict(&Model::from_board(p.board())));
+                black_box(ef.predict(&Model::from_board(p.board()), &mut model_score));
             });
             t.elapsed() / positions.len() as u32
         })

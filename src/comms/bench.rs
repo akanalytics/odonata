@@ -1,4 +1,5 @@
 use crate::eval::eval::SimpleScorer;
+use crate::eval::model::ModelScore;
 use crate::{catalog::*, eval::model::Model};
 use crate::clock::Clock;
 use crate::config::Component;
@@ -19,8 +20,9 @@ impl Bench {
         let eval = SimpleScorer::new();
         let pos = Catalog::starting_position();
         let model = Model::from_board(pos.board());
+        let mut scorer = ModelScore::new();
         for _ in 0..100_000 {
-            eval.predict(&model);
+            eval.predict(&model, &mut scorer);
         }
     }
 
