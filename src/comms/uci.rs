@@ -170,7 +170,11 @@ impl Uci {
         if !self.preamble.is_empty() {
             input = self.preamble.remove(0);
         } else {
-            io::stdin().read_line(&mut input).unwrap();
+            let bytes_read = io::stdin().read_line(&mut input).unwrap();
+            if bytes_read == 0 {
+                self.uci_quit().unwrap();
+                return;
+            }
         }
         let words: Vec<&str> = input.split_whitespace().collect();
         if words.is_empty() {
