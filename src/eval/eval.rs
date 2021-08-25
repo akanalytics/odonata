@@ -601,6 +601,7 @@ impl SimpleScorer {
             scorer.mobility("rook open file", w.rooks_on_open_files, b.rooks_on_open_files, self.rook_open_file);
         }
         scorer.tempo("tempo", w.has_tempo as i32, b.has_tempo as i32, self.tempo);
+        scorer.interpolate("interpolate", m.phase);
     }
     
     
@@ -800,10 +801,10 @@ impl SimpleScorer {
             let w = (board.pieces(p) & board.white()).flip_vertical();
             let b = board.pieces(p) & board.black();
 
-            let w = w.squares().map(|sq| self.pst(p, sq)).sum::<Weight>();
-            let b = b.squares().map(|sq| self.pst(p, sq)).sum::<Weight>();
+            let w_weight = w.squares().map(|sq| self.pst(p, sq)).sum::<Weight>();
+            let b_weight = b.squares().map(|sq| self.pst(p, sq)).sum::<Weight>();
 
-            sum = sum + w - b;
+            sum = sum + w_weight - b_weight;
         }
         sum
     }
