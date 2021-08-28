@@ -65,6 +65,9 @@ pub trait Rpc {
 
     #[rpc(name = "eval")]
     fn eval(&self, board: Board) -> Result<Position>;
+
+    #[rpc(name = "static_eval_explain")]
+    fn static_eval_explain(&self, board: Board) -> Result<String>;
 }
 
 #[derive(Clone, Debug)]
@@ -132,6 +135,11 @@ impl Rpc for RpcImpl {
         let mut p = Position::from_board(board);
         p.set(res);
         Ok(p)
+    }
+
+    fn static_eval_explain(&self, board: Board) -> Result<String> {
+        let explanation = self.engine.lock().unwrap().algo.eval.w_eval_explain(&board);
+        Ok(explanation.to_string())
     }
 }
 

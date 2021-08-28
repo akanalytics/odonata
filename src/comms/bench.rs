@@ -1,5 +1,6 @@
 use crate::eval::eval::SimpleScorer;
 use crate::eval::model::ModelScore;
+use crate::eval::switches::Switches;
 use crate::{catalog::*, eval::model::Model};
 use crate::clock::Clock;
 use crate::config::Component;
@@ -19,7 +20,7 @@ impl Bench {
     pub fn profile_me() {
         let eval = SimpleScorer::new();
         let pos = Catalog::starting_position();
-        let model = Model::from_board(pos.board());
+        let model = Model::from_board(pos.board(), Switches::ALL_SCORING);
         let mut scorer = ModelScore::new();
         for _ in 0..100_000 {
             eval.predict(&model, &mut scorer);
@@ -71,15 +72,14 @@ impl Bench {
     }
 
     pub fn search(tc: TimeControl, threads: u32) {
-        println!("time control {}\n", tc);
         let mut engine = Engine::new();
         engine.thread_count = threads;
         engine.algo.set_timing_method(tc);
         let positions = &Catalog::bench();
 
         println!(
-            "{:>3} {:<8} {} {:>13} {:>7} {:>5} {:>5}  {:<85}",
-            "#", "bm", "*", "nodes", "nps", "depth", "bf", "fen"
+            "{:>3} {:<6} {:>8} {:>2} {:>13} {:>7} {:>5} {:>5}  {:<85}",
+            "#", "bm", "ce", "?", "nodes", "nps", "depth", "bf", "fen"
         );
         let mut total_time = Duration::from_millis(0);
         let mut total_nodes = 0;
@@ -108,6 +108,7 @@ impl Bench {
             let depth = engine.algo.results().acd().unwrap();
             let sel_depth = engine.algo.results().tag(Tag::ACSD).value_uci();
             let nodes = engine.algo.results().acn().unwrap();
+            let cp = engine.algo.score();
             let nps = Formatter::format_f64(nodes as f64 / elapsed.as_secs_f64());
             let bf = engine.algo.results().branching_factor();
             let bf_string = Formatter::format_decimal(2, bf);
@@ -118,9 +119,10 @@ impl Bench {
             total_depth += depth;
             let nodes = Formatter::format_u128(nodes);
             println!(
-                "{:>3} {:<8} {} {:>13} {:>7} {:>2}/{:<2} {:>5}  {:<85}",
+                "{:>3} {:<6} {:>8} {:>2} {:>13} {:>7} {:>2}/{:<2} {:>5}  {:<85}",
                 i + 1,
                 bm,
+                cp.to_string(),
                 correct,
                 nodes,
                 nps,
@@ -133,11 +135,12 @@ impl Bench {
         let average_bf = total_bf / positions.len() as f64;
         let nps = total_nodes as f64 / total_time.as_secs_f64();
         println!();
-        println!("nodes/sec:     {}", Formatter::format_f64(nps));
-        println!("average depth: {}", Formatter::format_decimal(2, average_depth));
-        println!("average bf:    {}", Formatter::format_decimal(2, average_bf));
-        println!("total nodes:   {}", Formatter::format_u128(total_nodes));
-        println!("total time:    {}", Formatter::format_duration(total_time));
-        println!("score:         {}", score);
+        println!("time control  : {}", tc);
+        println!("nodes/sec     : {}", Formatter::format_f64(nps));
+        println!("average depth : {}", Formatter::format_decimal(2, average_depth));
+        println!("average bf    : {}", Formatter::format_decimal(2, average_bf));
+        println!("total nodes   : {}", Formatter::format_u128(total_nodes));
+        println!("total time    : {}", Formatter::format_duration(total_time));
+        println!("score         : {}", score);
     }
 }

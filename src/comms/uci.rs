@@ -625,8 +625,6 @@ impl<'a> fmt::Display for UciInfo<'a> {
 }
 
 struct Args {
-    // FIXME:
-    // line: String,
     pub words: Vec<String>,
 }
 
@@ -767,7 +765,7 @@ mod tests {
         let mut uci = Uci::new();
         uci.preamble.push("debug on".to_string());
         uci.preamble.push("position startpos moves d2d4".to_string());
-        uci.preamble.push("go wtime 10000 btime 10000".to_string());
+        uci.preamble.push("go wtime 1000 btime 1000".to_string());
         uci.preamble.push("sleep 1100".to_string());
         uci.preamble.push("ucinewgame".to_string());
         uci.preamble.push("position startpos moves d2d4".to_string());

@@ -10,6 +10,7 @@ use crate::position::Position;
 use crate::pvtable::PvTable;
 use crate::repetition::Repetition;
 use crate::search::extensions::Extensions;
+use crate::search::node::Node;
 use crate::search::reductions::Reductions;
 use crate::search::futility::Futility;
 use crate::search::iterative_deepening::IterativeDeepening;
@@ -376,7 +377,7 @@ impl fmt::Display for Algo {
         writeln!(f, "starting board   : {}", self.board.to_fen())?;
         writeln!(f, "material         : {}", self.board.material())?;
         writeln!(f, "phase            : {} %", self.board.phase())?;
-        writeln!(f, "static eval      : {}", self.board.eval_position(&self.eval))?;
+        writeln!(f, "static eval      : {}", self.board.eval(&self.eval, &Node::root(0)))?;
         writeln!(f, "bm               : {}", self.bm())?;
         writeln!(f, "score            : {}", self.score())?;
         writeln!(f, "analyse mode     : {}", self.analyse_mode)?;
@@ -651,7 +652,7 @@ mod tests {
         search.set_position(Catalog::starting_position());
         search.search();
         println!("{}", search);
-        assert_eq!(search.search_stats().total().all_nodes(), 610); // null move pruning
+        assert_eq!(search.search_stats().total().all_nodes(), 611); // null move pruning
                                                                 // assert_eq!(search.search_stats().total().nodes(), 1468);
                                                                 // assert_eq!(search.search_stats().total().nodes(), 1516); // rejigged pawn PST
                                                                 // previous
@@ -683,7 +684,7 @@ mod tests {
         search.set_position(Position::from_board(board));
         search.search();
         println!("{}", search);
-        assert_eq!(search.pv()[0].uci(), "b8c6");
+        assert_eq!(search.pv()[0].uci(), "e7e5");
     }
 
     #[test]

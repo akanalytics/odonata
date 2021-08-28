@@ -595,6 +595,7 @@ class Board():
     def eval(self, _params = None) -> Tags:
         return Odonata.instance().eval(self) 
 
+
     def pseudo_legal_moves(self) -> List[Move]:
         return []  # MoveGenBB().pseudo_legal_moves(self)
 
@@ -898,6 +899,10 @@ class Eval:
     def static_eval(self, b: Board) -> str:
         return Odonata.instance().static_eval(b)
 
+    # should detect stalemates and checks as well
+    def static_eval_explain(self, b: Board) -> str:
+        return Odonata.instance().static_eval_explain(b)
+
     # def quiescent_eval(self, b: Board) -> int:
     #     return 0
 
@@ -1117,6 +1122,10 @@ class Odonata:
         dict.pop('fen', None)  # remove the 'fen' key
         return Tags(**dict)
         #return Tags(Res=dict['Res'])
+
+    def static_eval_explain(self, b: Board) -> str:
+        return self.call("static_eval_explain", args=[b.to_fen()])
+
 
     def make_move(self, b: Board, m: Move) -> Board:
         req = f"ext:make_moves fen {b.to_fen()} moves {m}"
@@ -1562,6 +1571,9 @@ attack squares from rook on a1
 
 static evaluation
 {eval.static_eval(b)}    
+
+static evaluation explain
+{eval.static_eval_explain(b)}    
 
 white checkmates black 
 {Board.parse_fen("k6Q/8/K7/8/8/8/8/8 b - - 0 1").eval().Res}    

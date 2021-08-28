@@ -1,17 +1,19 @@
+use std::fmt;
+
 use crate::bitboard::castling::CastlingRights;
 use crate::bitboard::precalc::BitboardDefault;
-use crate::bitboard::square::Square;
 use crate::board::Board;
 use crate::material::Material;
+use crate::eval::switches::Switches;
 use crate::types::Color;
 use crate::types::Piece;
 use crate::eval::weight::Weight;
 use crate::eval::score::Score;
-use arrayvec::ArrayVec;
 
 #[derive(Clone, Default, Debug)]
 pub struct Model {
     // material
+    pub switches: Switches,
     pub turn: Color, 
     pub mat: Material,
     pub phase: i32,
@@ -54,7 +56,7 @@ pub struct ModelSide {
 
 
 pub trait Scorer {
-    fn set_multiplier(&mut self, m: i32);
+    // fn set_multiplier(&mut self, m: i32);
     fn annotate(&mut self, annotation: &str);
     fn material(&mut self, attr: &str, w_value: i32, b_value: i32, score: Weight);
     fn position(&mut self, attr: &str, w_value: i32, b_value: i32, score: Weight);
@@ -64,13 +66,154 @@ pub trait Scorer {
     fn tempo(&mut self, attr: &str, w_value: i32, b_value: i32, score: Weight);
     fn contempt(&mut self, attr: &str, w_value: i32, b_value: i32, score: Weight);
     fn interpolate(&mut self, attr: &str, phase: i32);
-    fn total(&mut self) -> Weight;
+    fn total(&self) -> Weight;
 } 
 
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct ExplainScorer {
+    phase: i32, 
+    mat: Vec<(String, i32, i32, Weight)>,
+    pos: Vec<(String, i32, i32, Weight)>,
+    paw: Vec<(String, i32, i32, Weight)>,
+    mob: Vec<(String, i32, i32, Weight)>,
+    saf: Vec<(String, i32, i32, Weight)>,
+    tem: Vec<(String, i32, i32, Weight)>,
+    con: Vec<(String, i32, i32, Weight)>,
+    delegate: ModelScore,
+}
+
+
+impl ExplainScorer {
+    pub fn new() -> Self {
+        Self::default()
+    }
+    pub fn as_score(&self) -> Score {
+        self.delegate.as_score()
+    }
+}
+
+
+
+
+impl Scorer for ExplainScorer {
+
+    #[inline]
+    fn annotate(&mut self, _annotation: &str) {
+    }
+
+    #[inline]
+    // fn set_multiplier(&mut self, mult: i32) {
+    //     self.delegate.set_multiplier(mult);
+    // }
+
+    #[inline]
+    fn material(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
+        self.mat.push((_attr.to_string(), w_value, b_value, score));
+        self.delegate.material(_attr, w_value, b_value, score);
+    }
+    #[inline]
+    fn position(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
+        self.pos.push((_attr.to_string(), w_value, b_value, score));
+        self.delegate.position(_attr, w_value, b_value, score);
+    }
+    #[inline]
+    fn pawn(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
+        self.paw.push((_attr.to_string(), w_value, b_value, score));
+        self.delegate.pawn(_attr, w_value, b_value, score);
+    }
+    #[inline]
+    fn mobility(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
+        self.mob.push((_attr.to_string(), w_value, b_value, score));
+        self.delegate.mobility(_attr, w_value, b_value, score);
+    }
+    
+    #[inline]
+    fn safety(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
+        self.saf.push((_attr.to_string(), w_value, b_value, score));
+        self.delegate.safety(_attr, w_value, b_value, score);
+    }
+
+    #[inline]
+    fn tempo(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
+        self.tem.push((_attr.to_string(), w_value, b_value, score));
+        self.delegate.tempo(_attr, w_value, b_value, score);
+    }
+
+    #[inline]
+    fn contempt(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
+        self.con.push((_attr.to_string(), w_value, b_value, score));
+        self.delegate.contempt(_attr, w_value, b_value, score);
+    }
+    
+    #[inline]
+    fn interpolate(&mut self, _attr: &str, phase: i32) {
+        self.phase = phase;
+        self.delegate.interpolate(_attr, phase);
+    }
+
+    #[inline]
+    fn total(&self) -> Weight {
+        self.delegate.total()
+    }
+}
+
+
+
+
+
+impl fmt::Display for ExplainScorer {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "{:>20} | {:>5} {:>5} {:>5} | {:>5}  {:>5} {:>5} | {:>5} {:>5} {:>5} | {:>15}", "attr", "w", "w mg", "w eg", "int", "mg", "eg", "b", "b mg", "b eg", "wt")?;
+        for (i, sw) in Switches::all_scoring().iter().enumerate() {
+            let vec = vec![&self.mat, &self.pos, &self.mob, &self.paw, &self.saf, &self.con, &self.tem][i];
+            for (attr, w, b, wt) in vec {
+                let (attr, w, b, wt) = (attr, *w, *b, *wt);
+                writeln!(f, "{:>20} | {:>5} {:>5} {:>5} | {:>5}  {:>5} {:>5} | {:>5} {:>5} {:>5} | {:>15}", 
+                    attr, 
+                    w, (w*wt).s(), (w*wt).e(), 
+                    ((w*wt) - (b*wt)).interpolate(self.phase),
+                    (w*wt).s() - (b*wt).s(), (w*wt).e() - (b*wt).e(), 
+                    b, (b*wt).s(), (b*wt).e(), wt.to_string())?;
+            }
+            if !sw.intersects(Switches::TEMPO | Switches::CONTEMPT) {
+                let attr  = sw.name();
+                let wwt: Weight = vec.into_iter().map(|&(_, w, _b, wt)| w*wt).sum();
+                let bwt: Weight = vec.into_iter().map(|&(_, _w, b, wt)| b*wt).sum();
+                let twt: Weight = vec.into_iter().map(|&(_, w, b, wt)| w*wt - b*wt).sum();
+                writeln!(f, "{:>20} | {:>5} {:>5} {:>5} | {:>5}  {:>5} {:>5} | {:>5} {:>5} {:>5} | {:>15}", 
+                "", "-----", "-----", "-----", "-----", "-----", "-----", "-----", "-----", "-----", "")?;
+                writeln!(f, "{:>20} | {:>5} {:>5} {:>5} | {:>5}  {:>5} {:>5} | {:>5} {:>5} {:>5} | {:>15}", 
+                    attr, 
+                    "", wwt.s(), wwt.e(), 
+                    twt.interpolate(self.phase), twt.s(), twt.e(), 
+                    "", bwt.s(), bwt.e(), "")?;
+                writeln!(f)?;
+            }
+        }
+        writeln!(f, "{:>20} | {:>5} {:>5} {:>5} | {:>5}  {:>5} {:>5} | {:>5} {:>5} {:>5} | {:>15}", 
+        "", "-----", "-----", "-----", "=====", "=====", "=====", "-----", "-----", "-----", "==========")?;
+        writeln!(f, "{:>20} | {:>5} {:>5} {:>5} | {:>5}  {:>5} {:>5} | {:>5} {:>5} {:>5} |      Phase{:>3} %", 
+            "EVALUATION", "", "", "", 
+            self.total().interpolate(self.phase), self.total().s(), self.total().e(), 
+            "", "", "", self.phase)?;
+        writeln!(f, "{:>20} | {:>5} {:>5} {:>5} | {:>5}  {:>5} {:>5} | {:>5} {:>5} {:>5} | {:>15}", 
+        "", "", "", "", "=====", "=====", "=====", "", "", "", "==========")?;
+        Ok(())
+    }
+}
+
+
+
+
+
+
+
+
+
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ModelScore {
-    pub mult: i32,
     pub material: Weight,
     pub position: Weight,
     pub pawn: Weight,
@@ -80,6 +223,15 @@ pub struct ModelScore {
     pub contempt: Weight,
     pub interpolated: i32,
 }
+
+
+
+
+
+
+
+
+
 
 
 impl ModelScore {
@@ -98,41 +250,41 @@ impl Scorer for ModelScore {
     fn annotate(&mut self, _annotation: &str) {
     }
 
-    #[inline]
-    fn set_multiplier(&mut self, mult: i32) {
-        self.mult = mult;
-    }
+    // #[inline]
+    // fn set_multiplier(&mut self, mult: i32) {
+    //     self.mult = mult;
+    // }
 
     #[inline]
     fn material(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
-        self.material += self.mult * (w_value - b_value) * score;
+        self.material += (w_value - b_value) * score;
     }
     #[inline]
     fn position(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
-        self.position += self.mult * (w_value - b_value) * score;
+        self.position += (w_value - b_value) * score;
     }
     #[inline]
     fn pawn(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
-        self.pawn += self.mult * (w_value - b_value) * score;
+        self.pawn += (w_value - b_value) * score;
     }
     #[inline]
     fn mobility(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
-        self.mobility += self.mult * (w_value - b_value) * score;
+        self.mobility += (w_value - b_value) * score;
     }
     
     #[inline]
     fn safety(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
-        self.safety += self.mult * (w_value - b_value) * score;
+        self.safety += (w_value - b_value) * score;
     }
 
     #[inline]
     fn tempo(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
-        self.tempo += self.mult * (w_value - b_value) * score;
+        self.tempo += (w_value - b_value) * score;
     }
 
     #[inline]
     fn contempt(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
-        self.contempt += self.mult * (w_value - b_value) * score;
+        self.contempt += (w_value - b_value) * score;
     }
     
     #[inline]
@@ -141,7 +293,7 @@ impl Scorer for ModelScore {
     }
 
     #[inline]
-    fn total(&mut self) -> Weight {
+    fn total(&self) -> Weight {
         self.material
         + self.position
         + self.pawn
@@ -196,15 +348,16 @@ impl Model {
         Self::default()
     }
 
-    pub fn from_board(b: &Board) -> Self{
+    pub fn from_board(b: &Board, switches: Switches) -> Self{
         let material = b.material();
         Self {
+            switches,
             turn: b.color_us(),
             board: b.clone(),
             mat: material,
             phase: b.phase(),
-            white: ModelSide::from_board(b, Color::White, &material),
-            black: ModelSide::from_board(b, Color::Black, &material),
+            white: ModelSide::from_board(b, Color::White, &material, switches),
+            black: ModelSide::from_board(b, Color::Black, &material, switches),
             draw: false,
         }
     }
@@ -218,19 +371,29 @@ impl ModelSide {
     }
 
     #[inline]
-    pub fn from_board(b: &Board, c: Color, mat: &Material) -> Self{
+    pub fn from_board(b: &Board, c: Color, mat: &Material, sw: Switches) -> Self{
         let mut m = Self::default();
-        m.init_material(b, c, mat);
-        m.init_position(b, c);
-        m.init_pawns(b, c);
-        m.init_king_safety(b, c);
-        m.init_mobility(b, c);
+        if sw.contains(Switches::MATERIAL) {
+            m.init_material(b, c, mat);
+        }
+        if sw.contains(Switches::POSITION) {
+            m.init_position(b, c);
+        }
+        if sw.contains(Switches::PAWN) {
+            m.init_pawns(b, c);
+        }
+        if sw.contains(Switches::SAFETY) {
+            m.init_king_safety(b, c);
+        }
+        if sw.contains(Switches::MOBILITY) {
+            m.init_mobility(b, c);
+        }
         m.init_other(b, c);
         m
     }
 
     #[inline]
-    fn init_material(&mut self, b: &Board, c: Color, m: &Material) {
+    fn init_material(&mut self, _b: &Board, c: Color, m: &Material) {
         self.has_bishop_pair = m.counts(c, Piece::Bishop) >= 2;
     }
 
@@ -305,6 +468,12 @@ impl ModelSide {
             let our_attacks = bb.non_pawn_attacks(c, p, us, them, sq) - pa;
             let piece_move_squares = (our_attacks - occ).popcount();
 
+            // FIXME v0.3.33 version
+            // Piece::Queen => (our_attacks & occ - q - r - bi).popcount(),
+            // Piece::Rook => (our_attacks & occ - r).popcount(),
+            // Piece::Knight => (our_attacks & occ - ni).popcount(),
+            // Piece::Bishop => (our_attacks & occ - bi - q).popcount(),
+
             // those attacks on enemy that arent pawn defended and cant attack back
             let piece_non_pawn_defended_moves = match p {
                 Piece::Queen => (our_attacks & them).popcount(),
@@ -332,14 +501,13 @@ impl ModelSide {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::board::boardbuf::BoardBuf;
     use crate::catalog::Catalog;
 
     #[test]
     fn test_model() {
         let positions = Catalog::pawn_structure();
         for p in positions {
-            let model = Model::from_board(p.board());
+            let model = Model::from_board(p.board(), Switches::ALL_SCORING);
             println!("{} {:#?}", p, model);
         }
 

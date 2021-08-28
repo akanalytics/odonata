@@ -3,6 +3,7 @@ use crate::board::Board;
 use crate::search::node::Node;
 use crate::mv::Move;
 use crate::eval::score::Score;
+use crate::eval::switches::Switches;
 use crate::eval::eval::SimpleScorer;
 use crate::config::{Config, Component};
 use crate::{debug, logger::LogInit};
@@ -22,6 +23,7 @@ pub struct Futility {
     pub margin1: i32,
     pub margin2: i32,
     pub margin3: i32,
+    pub eval_switches: Switches,
 }
 
 impl Component for Futility {
@@ -41,6 +43,7 @@ impl Component for Futility {
         self.margin1 = c.int("futility.margin1").unwrap_or(self.margin1 as i64) as i32;
         self.margin2 = c.int("futility.margin2").unwrap_or(self.margin2 as i64) as i32;
         self.margin3 = c.int("futility.margin3").unwrap_or(self.margin3 as i64) as i32;
+        self.eval_switches = Switches::MATERIAL | if self.eval_position { Switches::POSITION } else { Switches::NONE };
 
     }
     fn new_game(&mut self) {
@@ -56,6 +59,7 @@ impl Default for Futility {
         Futility {
             enabled: true,
             eval_position: true,
+            eval_switches: Switches::MATERIAL | Switches::POSITION,
             max_depth: 2, // not sure > 2 really makes sense
             margin1: 100,
             margin2: 250,
@@ -80,11 +84,7 @@ impl Futility {
             b.is_in_check(b.color_us()) {
             return false;
         }
-        // use a static score of material and (optionally) the piece positions
-        let mut score = b.eval_material(eval);
-        if self.eval_position {
-            score = score + b.eval_position(eval);
-        }
+        let score = b.eval_some(eval, self.eval_switches);
 
         // safety margin depends on how far away we are from leaf node
         let margin = match node.depth {

@@ -374,37 +374,8 @@ impl NodeStats {
         Self::default()
     }
 
-    // FIXME! assigne from default
     pub fn clear_node_stats(&mut self) {
         *self = Self::default();
-        // self.interior_nodes = 0;
-        // self.leaf_nodes = 0;
-        // self.zw_nodes = 0;
-        
-        // // per node
-        // self.node_pv = 0;
-        // self.node_all = 0;
-        // self.node_cut = 0;
-        // self.cut_on_move = [0; MoveType::COUNT];
-        // self.nmp = 0;
-
-        // self.q_interior_nodes = 0;
-        // self.q_leaf_nodes = 0;
-        
-        // self.tt_nodes = 0;
-        // self.tt_hints = 0;
-        // self.q_tt_nodes = 0;
-
-        // // per move
-        // self.pvs = 0;
-        // self.pvs_research = 0;
-        // self.fp = 0;
-        // self.mv = 0;
-        
-        // self.real_time = Duration::default();
-        // self.deterministic_time = Duration::default();
-
-
     }
 
     fn cut_move_perc(&self, mt: MoveType) -> u64 {

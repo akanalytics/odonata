@@ -297,7 +297,7 @@ mod tests {
         for pos in positions {
             let mut search = Algo::new()
                 .set_timing_method(TimeControl::Depth(0))
-                .set_callback(Uci::uci_info)
+//                .set_callback(Uci::uci_info)
                 .clone();
             search.eval.mb.enabled = true;
             search.set_position(pos.clone()).search();
@@ -309,6 +309,11 @@ mod tests {
                 pos.id()?,
                 pos.board().to_san_variation(search.pv(), None),
                 search
+            );
+            println!("{} {} {}",
+                search.pv().to_string(),
+                pos.pv()?.to_string(),
+                search.results(),
             );
             // forward score is from POV of mover at end of PV line
             let qboard = search.pv().apply_to(pos.board());
@@ -364,10 +369,8 @@ mod tests {
     fn test_see() -> Result<(), String> {
         let mut eval = SimpleScorer::new();
         eval.mb.enabled = false;
-        eval.mobility = false;
-        eval.position = false;
+        eval.set_switches(false);
         eval.material = true;
-        eval.tempo = Weight::zero();
 
         // white gains a pawn after quiesce
         let pos = Position::parse_epd("7k/8/8/8/8/p7/8/R6K w - - 0 1 sm Ra3; ce 100;")?;

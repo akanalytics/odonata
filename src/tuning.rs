@@ -1,5 +1,6 @@
 use crate::eval::model::Model;
 use crate::eval::model::ModelScore;
+use crate::eval::switches::Switches;
 use crate::position::Position;
 use crate::search::algo::Engine;
 use crate::utils::Formatter;
@@ -38,7 +39,7 @@ impl Tuning {
                 trace!("Discarding drawn/checkmate position {}", pos);
                 continue;
             }
-            self.models.push(Model::from_board(pos.board()));
+            self.models.push(Model::from_board(pos.board(), Switches::ALL_SCORING));
             self.outcomes.push(self.calc_player_win_prob_from_pos(pos));
             self.boards.push(pos.clone());
         }
