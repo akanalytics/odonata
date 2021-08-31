@@ -24,7 +24,7 @@ impl PreCalc {
 pub struct PreCalc {
     king_moves: [Bitboard; 64],
     knight_moves: [Bitboard; 64],
-    pawn_front_span: [[Bitboard; 64];2],
+    pawn_front_span: [[Bitboard; 64];2], 
     pawn_push: [[Bitboard; 64];2],  
     pawn_capture_east: [[Bitboard; 64];2],
     pawn_capture_west: [[Bitboard; 64];2],
@@ -203,15 +203,17 @@ impl PreCalc {
         targets.shift(opp.pawn_capture_east()) | targets.shift(opp.pawn_capture_west())
     }
 
-    // tripled too (basically every pawn with a pawn south of it)
+    // tripled too (basically every pawn with a pawn north of it)
+    // two pawns on same file, only one pawn is doubled
     #[inline]
     pub fn doubled_pawns(&self, pawns: Bitboard) -> Bitboard {
         pawns.fill_north().shift(Dir::N) & pawns
     }
 
+    // front span = squares strictly in front of pawn
     #[inline]
     pub fn pawn_front_span(&self, c: Color, pawn_sq: Square) -> Bitboard {
-        self.pawn_front_span[c][pawn_sq] | self.pawn_attack_span[c][pawn_sq]
+        self.pawn_front_span[c][pawn_sq] 
         // let pawn = pawn_sq.as_bb();
         // let atts = pawn.shift(c.pawn_capture_east()) | pawn.shift(c.pawn_capture_west());
         // if c == Color::White {
@@ -220,6 +222,25 @@ impl PreCalc {
         //     (pawn | atts).fill_south()
         // }
     }
+
+    // attack span = squares attacked and those in front of squares attacked 
+    #[inline]
+    pub fn pawn_attack_span(&self, c: Color, pawn_sq: Square) -> Bitboard {
+        self.pawn_attack_span[c][pawn_sq] 
+    }
+
+    // arr span = front span UNION attack span 
+    #[inline]
+    pub fn pawn_front_span_union_attack_span(&self, c: Color, pawn_sq: Square) -> Bitboard {
+        self.pawn_front_span[c][pawn_sq] | self.pawn_attack_span[c][pawn_sq]
+    }
+
+    // square in front of pawn (or empty)
+    #[inline]
+    pub fn pawn_stop(&self, c: Color, pawn_sq: Square) -> Bitboard {
+        self.pawn_push[c][pawn_sq]
+    }
+
 
     #[inline]
     pub fn open_files(&self, pawns: Bitboard) -> Bitboard {

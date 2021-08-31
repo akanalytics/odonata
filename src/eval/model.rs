@@ -40,6 +40,8 @@ pub struct ModelSide {
 
     // king safety
     pub nearby_pawns: i32,
+    pub adjacent_shield: i32,
+    pub nearby_shield: i32,
     pub castling_sides: i32, // 0,1 or 2
 
     // mobility
@@ -420,13 +422,12 @@ impl ModelSide {
         self.isolated_pawns = bbd.isolated_pawns(b.color(c) & b.pawns()).popcount();
 
         for p in (b.pawns() & b.color(c)).squares() {
-            let is_doubled = p.is_in(bbd.doubled_pawns(b.color(c) & b.pawns()));
             // self.doubled_pawns += is_doubled as i32;
+            // we still count doubled pawns as passed pawns (since 0.3.37)
             let is_passed =
-                (bbd.pawn_front_span(c, p) & b.pawns() & b.color(c.opposite())).is_empty() && !is_doubled;
+                (bbd.pawn_front_span_union_attack_span(c, p) & b.pawns() & b.color(c.opposite())).is_empty();
             self.passed_pawns += is_passed as i32;
         }
-        // FIXME!
         self.doubled_pawns = bbd.doubled_pawns(b.color(c) & b.pawns()).popcount();
     }
 
@@ -434,9 +435,14 @@ impl ModelSide {
     fn init_king_safety(&mut self, b: &Board, c: Color) {
         let p = b.pawns() & b.color(c);
         let k = b.kings() & b.color(c);
+        let ksq = k.square();
         let bb = BitboardDefault::default();
         if k.any() {
-            self.nearby_pawns = (p & bb.king_attacks(k.square())).popcount();
+            let p_fr_att_span = bb.pawn_front_span_union_attack_span(c, ksq);
+            let k_att = bb.king_attacks(ksq);
+            self.nearby_pawns = (p & k_att).popcount();
+            self.adjacent_shield = (p & p_fr_att_span & k_att).popcount();            
+            self.nearby_shield = (p & p_fr_att_span & k_att.shift(c.forward())).popcount() - self.adjacent_shield;
         }
 
         self.castling_sides = b.castling().contains(CastlingRights::king_side_right(c)) as i32

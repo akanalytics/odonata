@@ -84,15 +84,21 @@ pub struct SimpleScorer {
     pub safety: bool,
     pub contempt: bool,
     pub tempo: bool,
-    pub min_depth_mob: u8,
     pub mobility_phase_disable: u8,
+
+    pub min_depth_mob: u8,
     pub undefended_sq: i32,
     pub undefended_piece: i32,
     pub trapped_piece: i32,
+
     pub pawn_doubled: Weight,
     pub pawn_isolated: Weight,
     pub pawn_passed: Weight,
+
     pub pawn_shield: Weight,
+    pub pawn_adjacent_shield: Weight,
+    pub pawn_nearby_shield: Weight,
+
     pub castling_rights: Weight,
     pub rook_edge: Weight,
     pub pawn_r5: Weight,
@@ -115,7 +121,7 @@ impl Default for SimpleScorer {
             mobility: true,
             position: true,
             material: true,
-            pawn: true,
+            pawn: false,
             safety: true,
             contempt: true,
             tempo: true,
@@ -129,12 +135,14 @@ impl Default for SimpleScorer {
             pawn_isolated: Weight::new(-5, -50),
             pawn_passed: Weight::new(50, 80),
             pawn_shield: Weight::new(50, 0),
+            pawn_adjacent_shield: Weight::new(0, 0),
+            pawn_nearby_shield: Weight::new(0, 0),
             castling_rights: Weight::new(0, 0),
             rook_open_file: Weight::new(20, 20),
             rook_edge: Weight::new(0, 2),
-            pawn_r5: Weight::new(5, 20),
-            pawn_r6: Weight::new(10, 40),
-            pawn_r7: Weight::new(40, 60),
+            pawn_r5: Weight::new(9, 17),
+            pawn_r6: Weight::new(17, 131),
+            pawn_r7: Weight::new(48, 258),
             contempt_penalty: Weight::new(-30, -30), // typically -ve
             tempo_bonus: Weight::new(16, 16),
             // cache: TranspositionTable::default(),
@@ -182,7 +190,11 @@ impl Component for SimpleScorer {
         );
         c.set_weight("eval.pawn.isolated", &self.pawn_isolated);
         c.set_weight("eval.pawn.passed", &self.pawn_passed);
+
         c.set_weight("eval.pawn.shield", &self.pawn_shield);
+        c.set_weight("eval.pawn.adjacent.shield", &self.pawn_adjacent_shield);
+        c.set_weight("eval.pawn.nearby.shield", &self.pawn_nearby_shield);
+
         c.set_weight("eval.castling.rights", &self.castling_rights);
         c.set_weight("eval.rook.edge", &self.rook_edge);
         c.set_weight("eval.pawn.r5", &self.pawn_r5);
@@ -220,7 +232,11 @@ impl Component for SimpleScorer {
         self.pawn_doubled = c.weight("eval.pawn.doubled", &self.pawn_doubled);
         self.pawn_isolated = c.weight("eval.pawn.isolated", &self.pawn_isolated);
         self.pawn_passed = c.weight("eval.pawn.passed", &self.pawn_passed);
+
         self.pawn_shield = c.weight("eval.pawn.shield", &self.pawn_shield);
+        self.pawn_adjacent_shield = c.weight("eval.pawn.adjacent.shield", &self.pawn_adjacent_shield);
+        self.pawn_nearby_shield = c.weight("eval.pawn.nearby.shield", &self.pawn_nearby_shield);
+
         self.castling_rights = c.weight("eval.castling.rights", &self.castling_rights);
         self.rook_edge = c.weight("eval.rook.edge", &self.rook_edge);
         self.pawn_r5 = c.weight("eval.pawn.r5", &self.pawn_r5);
@@ -586,6 +602,8 @@ impl SimpleScorer {
         // king safety
         if self.safety && m.switches.contains(Switches::SAFETY) {
             scorer.safety("nearby pawns", w.nearby_pawns, b.nearby_pawns, self.pawn_shield);
+            scorer.safety("adjacent shield", w.adjacent_shield, b.adjacent_shield, self.pawn_adjacent_shield);
+            scorer.safety("nearby shield", w.nearby_shield, b.nearby_shield, self.pawn_nearby_shield);
         }
         // w.castling_sides, b.castling_sides * self.;
     
