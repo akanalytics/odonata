@@ -63,31 +63,31 @@ impl Component for Reductions {
         );
         c.set(
             "red.lmr.bad.captures",
-            &format!("type check  default {}", self.lmr_bad_captures),
+            &format!("type check default {}", self.lmr_bad_captures),
         );
         c.set(
             "red.lmr.pv.node",
-            &format!("type check  default {}", self.lmr_pv_node),
+            &format!("type check default {}", self.lmr_pv_node),
         );
         c.set(
             "red.lmr.only.nt.all",
-            &format!("type check  default {}", self.lmr_only_nt_all),
+            &format!("type check default {}", self.lmr_only_nt_all),
         );
         c.set(
             "red.lmr.re.search",
-            &format!("type check  default {}", self.lmr_re_search),
+            &format!("type check default {}", self.lmr_re_search),
         );
         c.set(
             "red.lmr.alpha.numeric",
-            &format!("type check  default {}", self.lmr_alpha_numeric),
+            &format!("type check default {}", self.lmr_alpha_numeric),
         );
         c.set(
             "red.lmr.pawns",
-            &format!("type check  default {}", self.lmr_pawns),
+            &format!("type check default {}", self.lmr_pawns),
         );
         c.set(
             "red.lmr.promos",
-            &format!("type check  default {}", self.lmr_promos),
+            &format!("type check default {}", self.lmr_promos),
         );
         c.set(
             "red.lmr.killers",
