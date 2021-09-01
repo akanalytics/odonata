@@ -23,8 +23,8 @@ See the CCRL Blitz ratings here https://ccrl.chessdom.com/ccrl/404/cgi/compare_e
 ## Python interface
 Odonata has a baby python interface, based on the Stockfish interface by Ilya Zhelyabuzhsky. Take a look at [Python](/docs/python.md). The interface will sure evolve, and perhaps migrate to a Python extension.
 
-## Todo
-See [Todo](/docs/todo.md)
+## Build/Compile instructions
+See [Compilation](/docs/compilation.md)
 
 ## Changelog
 In particular - please note that Odonata's github/main uses rust *nightly* 2021-07-06

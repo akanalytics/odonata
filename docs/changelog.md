@@ -2,15 +2,16 @@
 
 Milestones ('m') are bundled into Releases.  
 
-
-
-- 0.3.34 Tuning tooling
-- 0.3.33 Recursive null move pruning
-- 0.3.32 Material balance, move to compiler version nightly-2021-08-04, castling bonus in eval
-- 0.3.30 Fix repetition detection bug
-- 0.3.29 Check extensions and late move reduction
-- 0.3.28 Piece square table for rook end game, pawn pst corrcted, broken check extensions 
-- 0.3.27 Futility margin adjustment, PVS re-enabled (Elo 1968)
+# Release 0.3.37
+- Texel style tuning for piece values
+- Pre-compiled binaries should run on more CPUs (not fully tested)
+- Tuning tooling
+- Recursive null move pruning
+- Material balance, move to compiler version nightly-2021-08-04
+- Fix repetition detection bug
+- Check extensions and late move reduction
+- Piece square table for rook end game, pawn pst corrected
+- Futility margin adjustment, PVS re-enabled
 
 
 
