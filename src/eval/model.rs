@@ -3,6 +3,7 @@ use std::fmt;
 use crate::bitboard::castling::CastlingRights;
 use crate::bitboard::precalc::BitboardDefault;
 use crate::board::Board;
+use crate::board::multiboard::Multiboard;
 use crate::material::Material;
 use crate::eval::switches::Switches;
 use crate::types::Color;
@@ -18,7 +19,7 @@ pub struct Model {
     pub mat: Material,
     pub phase: i32,
     pub draw: bool,
-    pub board: Board,
+    pub multiboard: Multiboard,
 
     pub white: ModelSide,
     pub black: ModelSide,
@@ -39,7 +40,7 @@ pub struct ModelSide {
     pub passed_pawns: i32,
 
     // king safety
-    pub nearby_pawns: i32,
+    // pub nearby_pawns: i32,
     pub adjacent_shield: i32,
     pub nearby_shield: i32,
     pub castling_sides: i32, // 0,1 or 2
@@ -355,7 +356,7 @@ impl Model {
         Self {
             switches,
             turn: b.color_us(),
-            board: b.clone(),
+            multiboard: b.multiboard().clone(),
             mat: material,
             phase: b.phase(),
             white: ModelSide::from_board(b, Color::White, &material, switches),
@@ -443,7 +444,7 @@ impl ModelSide {
         if k.any() {
             let p_fr_att_span = bb.pawn_front_span_union_attack_span(c, ksq);
             let k_att = bb.king_attacks(ksq);
-            self.nearby_pawns = (p & k_att).popcount();
+            //self.nearby_pawns = (p & k_att).popcount();
             self.adjacent_shield = (p & p_fr_att_span & k_att).popcount();            
             self.nearby_shield = (p & p_fr_att_span & k_att.shift(c.forward())).popcount() - self.adjacent_shield;
         }

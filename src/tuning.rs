@@ -6,13 +6,13 @@ use crate::search::algo::Engine;
 use crate::utils::Formatter;
 // use crate::{debug, logger::LogInit};
 use crate::tags::Tag;
+use rayon::prelude::*;
 
 
 #[derive(Clone, Default, Debug)]
 pub struct Tuning {
-    models: Vec<Model>,
+    models_and_outcomes: Vec<(Model, f32)>,
     boards: Vec<Position>,
-    outcomes: Vec<f32>,
 }
 
 // impl Default for Tuning {
@@ -39,11 +39,12 @@ impl Tuning {
                 trace!("Discarding drawn/checkmate position {}", pos);
                 continue;
             }
-            self.models.push(Model::from_board(pos.board(), Switches::ALL_SCORING));
-            self.outcomes.push(self.calc_player_win_prob_from_pos(pos));
+            let model = Model::from_board(pos.board(), Switches::ALL_SCORING);
+            let outcome = self.calc_player_win_prob_from_pos(pos);
+            self.models_and_outcomes.push( (model, outcome) );
             self.boards.push(pos.clone());
         }
-        self.models.len()
+        self.models_and_outcomes.len()
     }
 
     // pub fn with_engine(engine: &Engine) -> Self {
@@ -68,12 +69,10 @@ impl Tuning {
 
     pub fn calculate_mean_square_error(&self, engine: &Engine) -> f32 {
 
-        debug_assert!(self.models.len() == self.outcomes.len());
-        let mut total_diff_squared = 0.0;
-        for (i, model) in self.models.iter().enumerate() {
+        let eval = &engine.algo.eval;
+        let total_diff_squared: f32 = self.models_and_outcomes.par_iter().map(|(model,outcome)| {
 
             // estimate result by looking at centipawn evaluation
-            let eval = &engine.algo.eval;
             let mut w_score = ModelScore::new();
             eval.predict(model, &mut w_score);
             // let board = self.boards[i].board();
@@ -88,20 +87,22 @@ impl Tuning {
 
             let win_prob_estimate = w_score.as_score().win_probability();
 
-            let win_prob_actual = self.outcomes[i];
+            let win_prob_actual = *outcome;
 
             let diff = win_prob_estimate - win_prob_actual;
-            total_diff_squared += diff * diff;
+            diff * diff
+        }).sum();
 
-            debug!("{:>4} {:>4} {:>4}   {}", 
-                w_score.as_score(), 
-                Formatter::format_decimal(2,win_prob_estimate), 
-                Formatter::format_decimal(2, win_prob_actual), 
-                Formatter::format_decimal(2, diff*diff) );
-        }
+
+        //     debug!("{:>4} {:>4} {:>4}   {}", 
+        //         w_score.as_score(), 
+        //         Formatter::format_decimal(2,win_prob_estimate), 
+        //         Formatter::format_decimal(2, win_prob_actual), 
+        //         Formatter::format_decimal(2, diff*diff) );
+        // }
 
         // return average
-        total_diff_squared / self.models.len() as f32
+        total_diff_squared / self.models_and_outcomes.len() as f32
     }
 }
 

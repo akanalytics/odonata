@@ -1,4 +1,5 @@
 use crate::bitboard::bitboard::Bitboard;
+use crate::board::multiboard::Multiboard;
 use crate::material::Material;
 use crate::board::boardbuf::BoardBuf;
 use crate::hasher::Hasher;
@@ -16,13 +17,13 @@ pub mod makemove;
 pub mod movegen;
 pub mod boardcalcs;
 pub mod rules;
+pub mod multiboard;
 
 
 
 #[derive(Clone, PartialEq, Eq, DeserializeFromStr)]
 pub struct Board {
-    pieces: [Bitboard; Piece::len()],
-    colors: [Bitboard; Color::len()],
+    multiboard: Multiboard,
     castling: CastlingRights,
     en_passant: Bitboard,
     turn: Color,
@@ -81,6 +82,12 @@ impl Board {
     }
 
     #[inline]
+    pub fn multiboard(&self) -> &Multiboard {
+        &self.multiboard
+    } 
+
+
+    #[inline]
     pub fn repetition_count(&self) -> Repeats {
         self.repetition_count.get()
     } 
@@ -111,7 +118,7 @@ impl Board {
 
     #[inline]
     pub fn pieces(&self, p: Piece) -> Bitboard {
-        self.pieces[p]
+        self.multiboard.pieces(p)
     }
 
     // #[inline]
@@ -121,62 +128,62 @@ impl Board {
 
     #[inline]
     pub fn line_pieces(&self) -> Bitboard {
-        self.rooks() | self.bishops() | self.queens()
+        self.multiboard.line_pieces()
     }
 
     #[inline]
     pub fn non_line_pieces(&self) -> Bitboard {
-        self.pawns() | self.knights() | self.kings()
+        self.multiboard.non_line_pieces()
     }
 
     #[inline]
     pub fn pawns(&self) -> Bitboard {
-        self.pieces(Piece::Pawn)
+        self.multiboard.pawns()
     }
 
     #[inline]
     pub fn knights(&self) -> Bitboard {
-        self.pieces(Piece::Knight)
+        self.multiboard.knights()
     }
 
     #[inline]
     pub fn bishops(&self) -> Bitboard {
-        self.pieces(Piece::Bishop)
+        self.multiboard.bishops()
     }
 
     #[inline]
     pub fn rooks(&self) -> Bitboard {
-        self.pieces(Piece::Rook)
+        self.multiboard.rooks()
     }
 
     #[inline]
     pub fn queens(&self) -> Bitboard {
-        self.pieces(Piece::Queen)
+        self.multiboard.queens()
     }
 
     #[inline]
     pub fn kings(&self) -> Bitboard {
-        self.pieces(Piece::King)
+        self.multiboard.kings()
     }
 
     #[inline]
     pub fn color(&self, c: Color) -> Bitboard {
-        self.colors[c.index()]
+        self.multiboard.color(c)
     }
 
     #[inline]
     pub fn occupied(&self) -> Bitboard {
-        self.black() | self.white()
+        self.multiboard.occupied()
     }
 
     #[inline]
     pub fn white(&self) -> Bitboard {
-        self.colors[Color::White.index()]
+        self.multiboard.white()
     }
 
     #[inline]
     pub fn black(&self) -> Bitboard {
-        self.colors[Color::Black.index()]
+        self.multiboard.black()
     }
 
     #[inline]
@@ -256,8 +263,7 @@ impl Board {
     // https://www.chessprogramming.org/Color_Flipping
     pub fn color_flip(&self) -> Board {
         let mut b = self.clone();
-        b.colors = [self.colors[1].flip_vertical(), self.colors[0].flip_vertical()];
-        b.pieces.iter_mut().for_each(|bb| *bb = bb.flip_vertical() );
+        b.multiboard = self.multiboard.color_flip();
         b.turn = self.turn.opposite();
         b.en_passant = self.en_passant().flip_vertical();
         b.castling = self.castling.color_flip();
@@ -326,8 +332,7 @@ impl Default for Board {
     #[inline]
     fn default() -> Self {
         Board {
-            pieces: Default::default(),
-            colors: Default::default(),
+            multiboard: Multiboard::default(),
             castling: CastlingRights::NONE,
             en_passant: Default::default(),
             turn: Default::default(),

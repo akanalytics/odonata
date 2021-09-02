@@ -300,7 +300,12 @@ mod tests {
                 .clone();
             search.eval.mb.enabled = true;
             search.set_position(pos.clone()).search();
-            debug!("{}", search);
+            // debug!("{}", search);
+            println!("search:{}\nexpected:{}\nresults:{}",
+                search.pv().to_string(),
+                pos.pv()?.to_string(),
+                search.results(),
+            );
             assert_eq!(
                 search.pv().to_string(),
                 pos.pv()?.to_string(),
@@ -308,11 +313,6 @@ mod tests {
                 pos.id()?,
                 pos.board().to_san_variation(search.pv(), None),
                 search
-            );
-            println!("{} {} {}",
-                search.pv().to_string(),
-                pos.pv()?.to_string(),
-                search.results(),
             );
             // forward score is from POV of mover at end of PV line
             let qboard = search.pv().apply_to(pos.board());

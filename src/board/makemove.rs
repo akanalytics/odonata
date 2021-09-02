@@ -109,6 +109,7 @@ impl MoveMaker for Board {
             pinned: Cell::<_>::new(Bitboard::niche()),
             // material: Cell::<_>::new(self.material()),
             // moves: self.moves.clone(),
+            multiboard: self.multiboard.clone(),
             ..*self
         };
 
@@ -118,8 +119,7 @@ impl MoveMaker for Board {
             b.fifty_clock = 0;
             if m.is_ep_capture() {
                 // ep capture is like capture but with capture piece on *ep* square not *dest*
-                b.pieces[m.capture_piece()].remove(m.ep().as_bb());
-                b.colors[b.turn].remove(m.ep().as_bb());
+                b.multiboard.remove_piece(m.ep().as_bb(), m.capture_piece(), b.turn);
             } else {
                 // regular capture
                 debug_assert!(
@@ -128,16 +128,14 @@ impl MoveMaker for Board {
                     m,
                     self
                 );
-                b.pieces[m.capture_piece()].remove(m.to().as_bb());
-                b.colors[b.turn].remove(m.to().as_bb());
+                b.multiboard.remove_piece(m.to().as_bb(), m.capture_piece(), b.turn);
             }
         }
 
         // clear one bit and set another for the move using xor
         if !m.is_null() {
-            let from_to_bits = m.from().as_bb() | m.to().as_bb();
-            b.pieces[m.mover_piece()] ^= from_to_bits;
-            b.colors[self.turn] ^= from_to_bits;
+            // let from_to_bits = m.from().as_bb() | m.to().as_bb();
+            b.multiboard.move_piece(m.from().as_bb(), m.to().as_bb(), m.mover_piece(), self.turn);
         }
 
         if m.mover_piece() == Piece::Pawn {
@@ -149,8 +147,7 @@ impl MoveMaker for Board {
 
         if m.is_promo() {
             // fifty clock handled by pawn move above;
-            b.pieces[Piece::Pawn].remove(m.to().as_bb()); // pawn has already moved
-            b.pieces[m.promo_piece()].insert(m.to().as_bb());
+            b.multiboard.change_piece(m.to().as_bb(), Piece::Pawn, m.promo_piece() ); // pawn has already moved
         }
 
         // castling *moves*
@@ -159,9 +156,8 @@ impl MoveMaker for Board {
             // king move already handled, castling rights handled below, just the rook move
 
             let (rook_from, rook_to) = m.rook_move_from_to();
-            let rook_from_to = rook_from.as_bb() ^ rook_to.as_bb();
-            b.pieces[Piece::Rook] ^= rook_from_to;
-            b.colors[self.turn] ^= rook_from_to;
+            // let rook_from_to = rook_from.as_bb() ^ rook_to.as_bb();
+            b.multiboard.move_piece(rook_from.as_bb(), rook_to.as_bb(), Piece::Rook, self.turn)
         }
 
         // castling *rights*

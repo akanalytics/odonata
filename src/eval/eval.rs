@@ -95,7 +95,7 @@ pub struct SimpleScorer {
     pub pawn_isolated: Weight,
     pub pawn_passed: Weight,
 
-    pub pawn_shield: Weight,
+    // pub pawn_shield: Weight,
     pub pawn_adjacent_shield: Weight,
     pub pawn_nearby_shield: Weight,
 
@@ -134,7 +134,7 @@ impl Default for SimpleScorer {
             pawn_doubled: Weight::new(-5, -50),
             pawn_isolated: Weight::new(-5, -50),
             pawn_passed: Weight::new(50, 80),
-            pawn_shield: Weight::new(50, 0),
+            // pawn_shield: Weight::new(50, 0),
             pawn_adjacent_shield: Weight::new(0, 0),
             pawn_nearby_shield: Weight::new(0, 0),
             castling_rights: Weight::new(0, 0),
@@ -191,7 +191,7 @@ impl Component for SimpleScorer {
         c.set_weight("eval.pawn.isolated", &self.pawn_isolated);
         c.set_weight("eval.pawn.passed", &self.pawn_passed);
 
-        c.set_weight("eval.pawn.shield", &self.pawn_shield);
+        // c.set_weight("eval.pawn.shield", &self.pawn_shield);
         c.set_weight("eval.pawn.adjacent.shield", &self.pawn_adjacent_shield);
         c.set_weight("eval.pawn.nearby.shield", &self.pawn_nearby_shield);
 
@@ -233,7 +233,7 @@ impl Component for SimpleScorer {
         self.pawn_isolated = c.weight("eval.pawn.isolated", &self.pawn_isolated);
         self.pawn_passed = c.weight("eval.pawn.passed", &self.pawn_passed);
 
-        self.pawn_shield = c.weight("eval.pawn.shield", &self.pawn_shield);
+        // self.pawn_shield = c.weight("eval.pawn.shield", &self.pawn_shield);
         self.pawn_adjacent_shield = c.weight("eval.pawn.adjacent.shield", &self.pawn_adjacent_shield);
         self.pawn_nearby_shield = c.weight("eval.pawn.nearby.shield", &self.pawn_nearby_shield);
 
@@ -274,12 +274,14 @@ impl fmt::Display for SimpleScorer {
         writeln!(f, "undefended.sq    : {}", self.undefended_sq)?;
         writeln!(f, "trapped.piece    : {}", self.trapped_piece)?;
         writeln!(f, "castling.rights  : {}", self.castling_rights)?;
-        writeln!(f, "pawn.shield      : {}", self.pawn_shield)?;
+        // writeln!(f, "pawn.shield      : {}", self.pawn_shield)?;
         writeln!(f, "pawn.doubled     : {}", self.pawn_doubled)?;
         writeln!(f, "pawn.passed      : {}", self.pawn_passed)?;
         writeln!(f, "pawn.isolated    : {}", self.pawn_isolated)?;
         writeln!(f, "rook_edge        : {}", self.rook_edge)?;
         writeln!(f, "rook.open.file   : {}", self.rook_open_file)?;
+        writeln!(f, "pawn.nearby      : {}", self.pawn_nearby_shield)?;
+        writeln!(f, "pawn.adjacent    : {}", self.pawn_adjacent_shield)?;
         writeln!(f, "contempt penalty : {}", self.contempt_penalty)?;
         writeln!(f, "tempo bonus      : {}", self.tempo_bonus)?;
         writeln!(f, "eval stats\n{}", EVAL_COUNTS)?;
@@ -573,7 +575,7 @@ impl SimpleScorer {
 
         // position
         if self.position && m.switches.contains(Switches::POSITION) {
-            let board = &m.board;
+            let board = &m.multiboard;
             // let mut sum = Weight::zero();
             for &p in &Piece::ALL_BAR_NONE {
                 let w = (board.pieces(p) & board.white()).flip_vertical();
@@ -601,7 +603,7 @@ impl SimpleScorer {
 
         // king safety
         if self.safety && m.switches.contains(Switches::SAFETY) {
-            scorer.safety("nearby pawns", w.nearby_pawns, b.nearby_pawns, self.pawn_shield);
+            // scorer.safety("nearby pawns", w.nearby_pawns, b.nearby_pawns, self.pawn_shield);
             scorer.safety("adjacent shield", w.adjacent_shield, b.adjacent_shield, self.pawn_adjacent_shield);
             scorer.safety("nearby shield", w.nearby_shield, b.nearby_shield, self.pawn_nearby_shield);
         }
@@ -1079,9 +1081,9 @@ mod tests {
 
         eval.set_switches(false);
         eval.safety = true;
-        eval.pawn_shield = Weight::zero();
+        eval.pawn_adjacent_shield = Weight::zero();
         let e1 = eval.w_eval_without_wdl(&b, &Node::root(0));
-        eval.pawn_shield = Weight::new(50, 50);
+        eval.pawn_adjacent_shield = Weight::new(50, 50);
         let e2 = eval.w_eval_without_wdl(&b, &Node::root(0));
 
         assert_eq!((e2 - e1), Score::from_cp(100)); // 2 pawns in front of king

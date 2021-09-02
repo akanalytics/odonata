@@ -59,26 +59,19 @@ impl BoardBuf for Board {
     }
 
     fn set_piece_at(&mut self, sq: Bitboard, p: Piece) {
-        for bb in self.pieces.iter_mut() {
-            bb.remove(sq);
-        }
-        // self.0.pieces(p).remove(sq);
-        if p != Piece::None {
-            self.pieces[p].insert(sq);
-        }
+        self.multiboard.set_piece_at(sq, p);
         self.calculate_internals();
     }
 
     fn set_color_at(&mut self, sq: Bitboard, c: Color) {
-        self.color(c.opposite()).remove(sq);
-        self.colors[c].insert(sq);
+        self.multiboard.set_color_at(sq, Some(c));
         self.calculate_internals();
     }
 
     fn color_at(&self, at: Bitboard) -> Option<Color> {
-        if self.colors[Color::White].contains(at) {
+        if self.color(Color::White).contains(at) {
             return Some(Color::White);
-        } else if self.colors[Color::Black].contains(at) {
+        } else if self.color(Color::Black).contains(at) {
             return Some(Color::Black);
         }
         None
@@ -109,9 +102,8 @@ impl BoardBuf for Board {
                 self.set_color_at(sq, c);
             } else {
                 // FIXME: broken approach - null color??
-                self.colors[0].remove(sq);
-                self.colors[1].remove(sq);
-            };
+                self.multiboard.set_color_at(sq, None);
+            }
         }
         self.calculate_internals();
         Ok(self)
