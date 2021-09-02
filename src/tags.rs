@@ -456,7 +456,8 @@ mod tests {
         assert_eq!(tags.to_string(), " acd 3;");
         tags.set(Tag::AnalysisCountSeconds(4));
         tags.set(Tag::Id("Hello World".to_string()));
-        assert_eq!(tags.to_string(), " acd 3; acs 4; id \"Hello World\";");
-        assert_eq!(jsonrpc_core::to_string(&tags).unwrap(), r#"{"acd":"3","acs":"4","id":"Hello World"}"#);
+        tags.set(Tag::Comment(1, "Hello World2".to_string()));
+        assert_eq!(tags.to_string(), " acd 3; acs 4; c1 \"Hello World2\"; id \"Hello World\";");
+        assert_eq!(jsonrpc_core::to_string(&tags).unwrap(), r#"{"acd":"3","acs":"4","c1":"Hello World2","id":"Hello World"}"#);
     }
 }

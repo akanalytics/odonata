@@ -428,6 +428,7 @@ mod tests {
         let epds = Position::parse_many_epd(strs)?;
         assert_eq!(epds.len(), 2);
         assert_eq!(epds[0].pv()?.len(), 3);
+        assert_eq!(epds[0].tag("c0"), &Tag::Comment(0, "Henry Buckle vs NN, London, 1840".to_string()));
         assert_eq!(epds[1].pv()?.len(), 3);
         Ok(())
     }

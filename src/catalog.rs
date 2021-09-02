@@ -248,7 +248,11 @@ r1r5/2N1n1kb/2nB1b1p/3p2p1/6q1/P2pQ3/3N1PPP/1RR3K1 b - - 11 37 acd 6;
 
     pub fn pawn_structure() -> Vec<Position> {
         let str = r#"
-        2k5/ppp2ppp/8/4P3/P7/3p4/PP5P/K7 b - - 0 1 id 'PAWN.01'; c0 'w:isol=2 passed=0 doubled=1 b:isol=0 passed=1 doubled=0';
+        k7/p7/P7/8/8/8/P7/K7 w - - 0 1 id 'PAWN.01'; c0 'isolated=2;passed=0;doubled=1'; c1 'isolated=1;passed=0;doubled=0';
+        k7/p5p1/8/7P/8/3p4/P2P4/K7 w - - 0 1 'PAWN.02'; c0 'isolated=3;passed=0;doubled=0'; c1 'isolated=3;passed=0;doubled=0';
+        k7/p5p1/8/7P/3P2p1/3p4/P2PP3/K7 w - - 0 1 'PAWN.03'; c0 'isolated=2;passed=1;doubled=1'; c1 'isolated=4;passed=1;doubled=1';
+        2k5/ppp2ppp/8/4P3/P7/3p4/PP5P/K7 b - - 0 1 id 'PAWN.04'; c0 'isolated=2;passed=0;doubled=1'; c1 'isolated=0;passed=1;doubled=0';
+        2k5/ppp2p1p/5p2/5p1P/3P3P/3P3P/P2P3P/K7 w - - 0 1 id 'PAWN.05'; c0 'isolated=8;passed=0;doubled=5'; c1 'isolated=4;passed=3;doubled=2';
 "#;
         let positions = Position::parse_many_epd(str.lines()).unwrap();
         positions

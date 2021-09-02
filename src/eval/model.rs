@@ -415,6 +415,9 @@ impl ModelSide {
         self.has_tempo = b.color_us() == c;
     }
 
+    // isolated pawns have no neighbours of same color. Doubled pawns that are isolated count as two
+    // doubled pawns are doubled or tripled or more. Two pawns count as one doubled. Three as two doubled.
+    // passed. No neighbouring pawns of opposite colour ahead
     #[inline]
     fn init_pawns(&mut self, b: &Board, c: Color) {
         let bbd = BitboardDefault::default();
@@ -508,13 +511,27 @@ impl ModelSide {
 mod tests {
     use super::*;
     use crate::catalog::Catalog;
+    use crate::tags::Tag;
+    use crate::utils::StringUtils;
+
 
     #[test]
     fn test_model() {
         let positions = Catalog::pawn_structure();
         for p in positions {
             let model = Model::from_board(p.board(), Switches::ALL_SCORING);
-            println!("{} {:#?}", p, model);
+            if let Tag::Comment(_n, s) = p.tag("c0") {
+                let map = s.split_vars_int();
+                assert_eq!( model.white.isolated_pawns, map["isolated"], "{}", p);
+                assert_eq!( model.white.doubled_pawns, map["doubled"], "{}", p);
+                assert_eq!( model.white.passed_pawns, map["passed"], "{}", p);
+            } 
+            if let Tag::Comment(_n, s) = p.tag("c1") {
+                let map = s.split_vars_int();
+                assert_eq!( model.black.isolated_pawns, map["isolated"], "{}", p);
+                assert_eq!( model.black.doubled_pawns, map["doubled"], "{}", p);
+                assert_eq!( model.black.passed_pawns, map["passed"], "{}", p);
+            }
         }
 
     }
