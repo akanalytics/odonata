@@ -8,7 +8,7 @@ use crate::tuning::Tuning;
 use crate::version::built_info;
 use crate::version::Version;
 use crate::Config;
-use crate::{info, logger::LogInit};
+// // use crate::{info, logger::LogInit};
 // use serde_json::Value;
 use jsonrpc_core::{IoHandler, Result};
 use jsonrpc_derive::rpc;

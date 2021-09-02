@@ -2,6 +2,7 @@ use odonata::catalog::*;
 use odonata::eval::eval::SimpleScorer;
 use odonata::eval::model::Model;
 use odonata::eval::model::ModelScore;
+use odonata::eval::switches::Switches;
 use odonata::position::*;
 use odonata::movelist::*;
 use odonata::perft::Perft;
@@ -38,6 +39,10 @@ iai::main!(
     iai_build_model_and_eval_model,
 );
 
+//
+// we use dynamic here so that it gets init before main and gets included in the calibration run 
+// and hence subtracted from the final results displayed
+//
 
 #[dynamic]
 static mut ENGINE: Engine = { let mut e = Engine::new(); e.algo.eval.pawn = true; e };
@@ -47,7 +52,7 @@ static mut POS: Position = Catalog::starting_position();
 
 
 #[dynamic]
-static mut MODEL: Model = Model::from_board(POS.read().board());
+static mut MODEL: Model = Model::from_board(POS.read().board(), Switches::ALL_SCORING);
 // fn main() {
 //     for n in 0..100000 {
 //         iai_eval_model();
@@ -96,7 +101,7 @@ fn iai_search() {
 
 
 fn iai_model_build() {
-    black_box(Model::from_board(POS.read().board()));
+    black_box(Model::from_board(POS.read().board(), Switches::ALL_SCORING));
 }
 
 fn iai_model_predict() {
@@ -109,7 +114,7 @@ fn iai_build_model_and_eval_model() {
     let pos = Catalog::starting_position();
     let mut model_score = ModelScore::new();
     for _ in 0..10000 {
-        let model = black_box(Model::from_board(pos.board()));
+        let model = black_box(Model::from_board(pos.board(), Switches::ALL_SCORING));
         black_box(eval.predict(black_box(&model), &mut model_score));
     }
 }
@@ -117,7 +122,7 @@ fn iai_build_model_and_eval_model() {
 fn iai_eval_model() {
     let eval = SimpleScorer::new();
     let pos = Catalog::starting_position();
-    let model = Model::from_board(pos.board());
+    let model = Model::from_board(pos.board(), Switches::ALL_SCORING);
     let mut model_score = ModelScore::new();
     for _ in 0..10000 {
         black_box(eval.predict(black_box(&model), &mut model_score));

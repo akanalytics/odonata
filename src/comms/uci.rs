@@ -21,7 +21,7 @@ use std::fmt;
 use std::io::{self, Write};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-use crate::logger::LogInit;
+// use crate::logger::LogInit;
 use std::thread;
 
 

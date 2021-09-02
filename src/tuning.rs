@@ -4,7 +4,7 @@ use crate::eval::switches::Switches;
 use crate::position::Position;
 use crate::search::algo::Engine;
 use crate::utils::Formatter;
-use crate::{debug, logger::LogInit};
+// use crate::{debug, logger::LogInit};
 use crate::tags::Tag;
 
 

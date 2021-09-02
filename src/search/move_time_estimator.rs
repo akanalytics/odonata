@@ -1,7 +1,7 @@
 use crate::board::Board;
 use crate::clock::Clock;
 use crate::config::{Config, Component};
-use crate::{debug, logger::LogInit};
+// use crate::{debug, logger::LogInit};
 use crate::search::searchstats::SearchStats;
 use crate::search::timecontrol::TimeControl;
 use crate::types::Ply;

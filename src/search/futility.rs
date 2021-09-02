@@ -6,7 +6,7 @@ use crate::eval::score::Score;
 use crate::eval::switches::Switches;
 use crate::eval::eval::SimpleScorer;
 use crate::config::{Config, Component};
-use crate::{debug, logger::LogInit};
+// use crate::{debug, logger::LogInit};
 use crate::types::Ply;
 use std::fmt;
 

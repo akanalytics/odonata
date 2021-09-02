@@ -4,7 +4,7 @@ use crate::search::node::Node;
 use crate::eval::score::Score;
 use crate::cache::tt2::NodeType;
 use crate::config::{Config, Component};
-use crate::{debug, logger::LogInit};
+// use crate::{debug, logger::LogInit};
 use crate::types::Ply;
 use std::fmt;
 

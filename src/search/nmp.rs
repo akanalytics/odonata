@@ -6,7 +6,7 @@ use crate::pvtable::PvTable;
 // use crate::eval::score::Score;
 use crate::config::{Config, Component};
 use crate::variation::Variation;
-use crate::{debug, logger::LogInit};
+// use crate::{debug, logger::LogInit};
 use crate::types::Ply;
 use std::fmt;
 

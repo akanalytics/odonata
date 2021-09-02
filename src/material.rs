@@ -390,7 +390,7 @@ mod tests {
 
     use super::*;
     use crate::catalog::Catalog;
-    use crate::{debug, logger::LogInit};
+    // // use crate::{debug, logger::LogInit};
 
 
     #[test]

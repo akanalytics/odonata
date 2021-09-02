@@ -6,7 +6,7 @@ use crate::types::{Color, Piece, ScoreWdl};
 use static_init::dynamic;
 use std::fmt;
 use std::sync::atomic::{AtomicBool, AtomicI16, Ordering};
-use crate::{trace, info, logger::LogInit};
+// // use crate::{trace, info, logger::LogInit};
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
@@ -456,7 +456,7 @@ fn data(m: &mut RawStatsVec, s: &str, w: i32, d: i32, l: i32) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    // use crate::{debug, info, logger::LogInit};
+    // // use crate::{debug, info, logger::LogInit};
     use crate::board::Board;
     use crate::board::boardbuf::BoardBuf;
     use crate::eval::score::Score;

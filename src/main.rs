@@ -70,7 +70,7 @@ fn main() -> Result<(), String> {
     //     4 | _ => "trace",
     // };
 
-    // env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(log_level)).init();
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
 
     if matches.is_present("uci") {
         Uci::new().run();

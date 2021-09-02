@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fmt;
 // use static_init::{dynamic};
 use once_cell::sync::Lazy;
-use crate::{info, logger::LogInit};
+// // use crate::{info, logger::LogInit};
 use std::env;
 use crate::eval::weight::Weight;
 
@@ -152,6 +152,7 @@ impl Default for Config {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use test_env_log::test;    
 
     #[derive(Clone, Debug)]
     struct TestStruct {
@@ -182,7 +183,7 @@ mod tests {
     #[test]
     fn test_config() {
         let c1 = Config::default();
-        println!("c1\n{}", c1);
+        debug!("c1\n{}", c1);
 
         let mut cs2 = Config::new();
         let mut ts = TestStruct {
@@ -190,7 +191,7 @@ mod tests {
             string: "cat".to_string(),
         };
         ts.settings(&mut cs2);
-        println!("cs2\n{}", cs2);
+        debug!("cs2\n{}", cs2);
 
         // check the config iterators in insertion order
         let vec: Vec<(&String, &String)> = cs2.iter().collect();
@@ -200,7 +201,7 @@ mod tests {
         let mut c3 = Config::new();
         c3.set("engine.wheels", "6");
         c3.set("engine.color", "red");
-        println!("c3\n{}", c3);
+        debug!("c3\n{}", c3);
         ts.configure(&c3);
         assert_eq!(ts.integer, 6);
         assert_eq!(ts.string, "red");

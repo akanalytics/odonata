@@ -1,6 +1,6 @@
 [package]
 name = "odonata"
-version = "0.3.37"
+version = "0.3.38"
 license = "GPL-3.0+"
 homepage = "https://github.com/akanalytics/odonata"
 authors = ["andy watkins <andy@webcalculator.com>"]
@@ -17,6 +17,7 @@ build = "build.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+test-env-log = "0.2.7"
 clap = "2.33"
 bitflags = "1.2"
 arrayvec = "0.7"

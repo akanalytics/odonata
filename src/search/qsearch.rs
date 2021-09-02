@@ -8,7 +8,7 @@ use crate::mv::Move;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
 use crate::types::Ply;
-use crate::{debug, logger::LogInit, trace};
+// // use crate::{debug, logger::LogInit, trace};
 use std::fmt;
 
 #[derive(Copy, Clone, Debug)]
@@ -286,7 +286,6 @@ mod tests {
     use crate::catalog::*;
     use crate::comms::uci::Uci;
     use crate::eval::eval::*;
-    use crate::eval::weight::*;
     use crate::position::*;
     use crate::search::timecontrol::*;
 

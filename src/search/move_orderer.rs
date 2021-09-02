@@ -7,7 +7,7 @@ use crate::search::stack::Stack;
 use crate::stat::{ArrayPlyStat, PlyStat};
 use crate::types::{Ply, Piece, Color, MoveType};
 use crate::variation::Variation;
-use crate::{debug, logger::LogInit};
+// use crate::{debug, logger::LogInit};
 use std::fmt;
 
 

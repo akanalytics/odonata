@@ -5,7 +5,7 @@ use crate::mv::Move;
 use crate::types::{Hash, Piece, Repeats};
 use crate::variation::Variation;
 use crate::position::Position;
-use crate::{debug, logger::LogInit};
+// use crate::{debug, logger::LogInit};
 use std::fmt;
 
 #[derive(Clone, Debug)]

@@ -20,9 +20,16 @@ extern crate regex;
 #[macro_use]
 pub mod logger;
 
-pub use crate::logger::LogInit;
+// pub use crate::logger::LogInit;
+
+#[macro_use]
+extern crate log;
+
+extern crate test_env_log;
 
 
+
+// Log::{trace, debug, info, warn, error}
 
 // pub mod logger;
 pub mod bitboard;

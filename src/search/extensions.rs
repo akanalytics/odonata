@@ -4,7 +4,7 @@ use crate::mv::Move;
 use crate::search::node::Node;
 use crate::search::searchstats::SearchStats;
 use crate::types::Ply;
-use crate::{debug, logger::LogInit};
+// use crate::{debug, logger::LogInit};
 use std::fmt;
 
 #[derive(Clone, Debug)]

@@ -26,7 +26,7 @@ use crate::search::taskcontrol::TaskControl;
 use crate::search::timecontrol::TimeControl;
 use crate::types::Ply;
 use crate::variation::Variation;
-use crate::{debug, info, logger::LogInit};
+// // use crate::{debug, info, logger::LogInit};
 use std::fmt;
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};

@@ -11,7 +11,7 @@ use crate::mv::Move;
 use crate::stat::{ArrayStat, Stat};
 use crate::types::{Hash, Piece, Ply};
 use crate::variation::Variation;
-use crate::{debug, info, logger::LogInit};
+// use crate::{debug, info, logger::LogInit};
 use std::cmp;
 use std::fmt;
 use std::mem;

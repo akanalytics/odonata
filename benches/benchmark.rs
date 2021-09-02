@@ -12,14 +12,13 @@ use odonata::board::*;
 use odonata::cache::tt2::*;
 use odonata::catalog::*;
 use odonata::config::Component;
-use odonata::debug;
 use odonata::eval::eval::*;
 use odonata::eval::model::Model;
 use odonata::eval::model::ModelScore;
 use odonata::eval::score::*;
+use odonata::eval::switches::Switches;
 use odonata::globals::constants::*;
 use odonata::hasher::*;
-use odonata::logger::LogInit;
 use odonata::material::*;
 use odonata::movelist::*;
 use odonata::mv::*;
@@ -38,6 +37,7 @@ use std::time::Instant;
 
 use criterion::measurement::Measurement;
 use criterion::*;
+use log::*;
 
 
 use iai::black_box;
@@ -671,7 +671,7 @@ fn benchmark_eval(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|p| {
-                black_box(p.board().eval_material(black_box(ef)));
+                black_box(p.board().eval_some(black_box(ef), Switches::MATERIAL));
             });
             t.elapsed() / positions.len() as u32
         })
@@ -680,7 +680,7 @@ fn benchmark_eval(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|p| {
-                black_box(p.board().eval_position(black_box(ef)));
+                black_box(p.board().eval_some(black_box(ef), Switches::POSITION));
             });
             t.elapsed() / positions.len() as u32
         })
@@ -689,7 +689,7 @@ fn benchmark_eval(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|p| {
-                black_box(p.board().eval_mobility(black_box(ef)));
+                black_box(p.board().eval_some(black_box(ef), Switches::MOBILITY));
             });
             t.elapsed() / positions.len() as u32
         })
@@ -698,7 +698,7 @@ fn benchmark_eval(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|p| {
-                black_box(ef.w_eval_safety(black_box(p.board())));
+                black_box(p.board().eval_some(black_box(ef), Switches::SAFETY));
             });
             t.elapsed() / positions.len() as u32
         })
@@ -717,7 +717,7 @@ fn benchmark_eval(c: &mut Criterion) {
             let t = Instant::now();
             let mut model_score = ModelScore::new();
             positions.iter().cycle_n(n).for_each(|p| {
-                black_box(ef.predict(&Model::from_board(p.board()), &mut model_score));
+                black_box(ef.predict(&Model::from_board(p.board(), Switches::ALL_SCORING), &mut model_score));
             });
             t.elapsed() / positions.len() as u32
         })

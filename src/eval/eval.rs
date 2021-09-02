@@ -13,7 +13,7 @@ use crate::mv::Move;
 use crate::search::node::Node;
 use crate::stat::{ArrayStat, Stat};
 use crate::types::{Color, Piece};
-use crate::{debug, logger::LogInit};
+// use crate::{debug, logger::LogInit};
 
 
 use std::fmt;
@@ -943,7 +943,6 @@ mod tests {
     use super::*;
     use crate::board::boardbuf::BoardBuf;
     use crate::catalog::Catalog;
-    use crate::position::Position;
 
     #[test]
     fn test_score_material() {

@@ -6,7 +6,7 @@ use crate::mv::Move;
 use crate::stat::{ArrayStat, Stat};
 use crate::types::{Hash, Ply};
 use crate::variation::Variation;
-use crate::{debug, logger::LogInit};
+// use crate::{debug, logger::LogInit};
 use std::cmp;
 use std::fmt;
 use std::mem;
