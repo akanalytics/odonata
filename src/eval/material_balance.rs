@@ -6,7 +6,7 @@ use crate::types::{Color, Piece, ScoreWdl};
 use static_init::dynamic;
 use std::fmt;
 use std::sync::atomic::{AtomicBool, AtomicI16, Ordering};
-// // use crate::{trace, info, logger::LogInit};
+// use crate::{trace, info, logger::LogInit};
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
@@ -147,6 +147,19 @@ impl MaterialBalance {
     pub fn new() -> Self {
         Self::default()
     }
+
+    pub fn set_classical_piece_values(&mut self) {
+        self.material_weights= [
+            Weight::default(),
+            Weight::from_i32(Piece::Pawn.centipawns()),
+            Weight::from_i32(Piece::Knight.centipawns()),
+            Weight::from_i32(Piece::Bishop.centipawns()),
+            Weight::from_i32(Piece::Rook.centipawns()),
+            Weight::from_i32(Piece::Queen.centipawns()),
+            Weight::new(0, 0), // king
+        ];
+    }
+
 
     pub fn w_eval_material(&self, mat: &Material) -> Weight {
         if self.enabled {
@@ -456,7 +469,7 @@ fn data(m: &mut RawStatsVec, s: &str, w: i32, d: i32, l: i32) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    // // use crate::{debug, info, logger::LogInit};
+    // use crate::{debug, info, logger::LogInit};
     use crate::board::Board;
     use crate::board::boardbuf::BoardBuf;
     use crate::eval::score::Score;
@@ -472,6 +485,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_score_balance() {
 
         let eval = &mut SimpleScorer::new();
