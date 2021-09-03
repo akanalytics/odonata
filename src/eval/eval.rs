@@ -13,8 +13,6 @@ use crate::mv::Move;
 use crate::search::node::Node;
 use crate::stat::{ArrayStat, Stat};
 use crate::types::{Color, Piece};
-// use crate::{debug, logger::LogInit};
-
 
 use std::fmt;
 
@@ -159,7 +157,7 @@ impl Component for SimpleScorer {
     fn settings(&self, c: &mut Config) {
         self.mb.settings(c);
         c.set("eval.safety", &format!("type check default {}", self.safety));
-        c.set("eval.mobility",&format!("type check default {}", self.mobility));
+        c.set("eval.mobility", &format!("type check default {}", self.mobility));
         c.set("eval.pawn", &format!("type check default {}", self.pawn));
         c.set("eval.position", &format!("type check default {}", self.position));
         c.set("eval.material", &format!("type check default {}", self.material));
@@ -307,6 +305,7 @@ impl SimpleScorer {
     pub fn new() -> Self {
         Self::default()
     }
+
 
     pub fn set_switches(&mut self, enabled: bool) {
         self.material = enabled;
@@ -515,7 +514,10 @@ impl SimpleScorer {
         // +ve contempt => +ve score => aim for draw => opponent stronger than us
         // board.color_us() == Color::Black => minimising
         // +ve contempt => -ve score => aim for draw => opponent stronger than us
-        let contempt = self.contempt as i32 * board.color_us().chooser_wb(self.contempt_penalty, -self.contempt_penalty);
+        let contempt = self.contempt as i32
+            * board
+                .color_us()
+                .chooser_wb(self.contempt_penalty, -self.contempt_penalty);
         return Score::from_cp(contempt.interpolate(board.phase()));
 
         // FIXME! v33
@@ -544,13 +546,11 @@ impl SimpleScorer {
         self.w_eval_without_wdl(board, node)
     }
 
-
-    pub fn predict(&self, m: &Model, scorer: &mut impl Scorer)  {
-
+    pub fn predict(&self, m: &Model, scorer: &mut impl Scorer) {
         if m.mat.is_insufficient() && m.switches.contains(Switches::INSUFFICIENT_MATERIAL) {
             if m.switches.contains(Switches::CONTEMPT) {
                 let contempt = m.turn.chooser_wb(1, 0);
-                scorer.contempt("insufficient mat", contempt, 1-contempt, self.contempt_penalty);
+                scorer.contempt("insufficient mat", contempt, 1 - contempt, self.contempt_penalty);
             }
             return;
         }
@@ -559,7 +559,10 @@ impl SimpleScorer {
         let ma = if self.material && m.switches.contains(Switches::MATERIAL) {
             Piece::ALL_BAR_KING
                 .iter()
-                .map(|&p| (m.mat.counts(Color::White, p) - m.mat.counts(Color::Black, p)) * self.mb.material_weights[p])
+                .map(|&p| {
+                    (m.mat.counts(Color::White, p) - m.mat.counts(Color::Black, p))
+                        * self.mb.material_weights[p]
+                })
                 .sum()
         } else {
             Weight::zero()
@@ -570,7 +573,12 @@ impl SimpleScorer {
         let b = &m.black;
 
         if self.material && m.switches.contains(Switches::MATERIAL) {
-            scorer.material("bishop pair", w.has_bishop_pair as i32, b.has_bishop_pair as i32, self.mb.bishop_pair);
+            scorer.material(
+                "bishop pair",
+                w.has_bishop_pair as i32,
+                b.has_bishop_pair as i32,
+                self.mb.bishop_pair,
+            );
         }
 
         // position
@@ -580,19 +588,19 @@ impl SimpleScorer {
             for &p in &Piece::ALL_BAR_NONE {
                 let w = (board.pieces(p) & board.white()).flip_vertical();
                 let b = board.pieces(p) & board.black();
-    
+
                 let w = w.squares().map(|sq| self.pst(p, sq)).sum::<Weight>();
                 let b = b.squares().map(|sq| self.pst(p, sq)).sum::<Weight>();
 
-                scorer.position("pst", 1, 0, w); 
-                scorer.position("pst", 0, 1, b); 
+                scorer.position("pst", 1, 0, w);
+                scorer.position("pst", 0, 1, b);
                 // sum = sum + w - b;
             }
             // sum
-    
+
             // scorer.position("pst", 1, 0, w.psq.iter().map(|(p,sq)| self.pst(*p, *sq)).sum::<Weight>());
             // scorer.position("pst", 0, 1, b.psq.iter().map(|(p,sq)| self.pst(*p, *sq)).sum::<Weight>());
-        } 
+        }
 
         // pawn structure
         if self.pawn && m.switches.contains(Switches::PAWN) {
@@ -604,100 +612,74 @@ impl SimpleScorer {
         // king safety
         if self.safety && m.switches.contains(Switches::SAFETY) {
             // scorer.safety("nearby pawns", w.nearby_pawns, b.nearby_pawns, self.pawn_shield);
-            scorer.safety("adjacent shield", w.adjacent_shield, b.adjacent_shield, self.pawn_adjacent_shield);
-            scorer.safety("nearby shield", w.nearby_shield, b.nearby_shield, self.pawn_nearby_shield);
+            scorer.safety(
+                "adjacent shield",
+                w.adjacent_shield,
+                b.adjacent_shield,
+                self.pawn_adjacent_shield,
+            );
+            scorer.safety(
+                "nearby shield",
+                w.nearby_shield,
+                b.nearby_shield,
+                self.pawn_nearby_shield,
+            );
         }
         // w.castling_sides, b.castling_sides * self.;
-    
+
         // mobility
-        if m.phase <= self.mobility_phase_disable as i32 && self.mobility && m.switches.contains(Switches::MOBILITY) {
-            let wmg = w.move_squares * self.undefended_sq + 
-                w.non_pawn_defended_moves * self.undefended_piece +
-                w.fully_trapped_pieces * self.trapped_piece + 
-                w.partially_trapped_pieces * (self.trapped_piece / 2);
-            let bmg = b.move_squares * self.undefended_sq + 
-                b.non_pawn_defended_moves * self.undefended_piece +
-                b.fully_trapped_pieces * self.trapped_piece + 
-                b.partially_trapped_pieces * (self.trapped_piece / 2);
+        if m.phase <= self.mobility_phase_disable as i32
+            && self.mobility
+            && m.switches.contains(Switches::MOBILITY)
+        {
+            let wmg = w.move_squares * self.undefended_sq
+                + w.non_pawn_defended_moves * self.undefended_piece
+                + w.fully_trapped_pieces * self.trapped_piece
+                + w.partially_trapped_pieces * (self.trapped_piece / 2);
+            let bmg = b.move_squares * self.undefended_sq
+                + b.non_pawn_defended_moves * self.undefended_piece
+                + b.fully_trapped_pieces * self.trapped_piece
+                + b.partially_trapped_pieces * (self.trapped_piece / 2);
             let weg = wmg / 10;
             let beg = bmg / 10;
-            scorer.mobility("move", w.move_squares, b.move_squares, Weight::new(self.undefended_sq, 0));
-            scorer.mobility("undef piece", w.non_pawn_defended_moves, b.non_pawn_defended_moves, Weight::new(self.undefended_piece, 0));
-            scorer.mobility("trapped", w.fully_trapped_pieces, b.fully_trapped_pieces, Weight::new(self.trapped_piece, 0));
-            scorer.mobility("part trapped", w.partially_trapped_pieces, b.partially_trapped_pieces, Weight::new(self.trapped_piece / 2, 0));
-            scorer.mobility("game 10%w", 1,0, Weight::new(wmg, weg));
-            scorer.mobility("game 10%b", 0,1, Weight::new(bmg, beg));
-            scorer.mobility("rook open file", w.rooks_on_open_files, b.rooks_on_open_files, self.rook_open_file);
+            scorer.mobility(
+                "move",
+                w.move_squares,
+                b.move_squares,
+                Weight::new(self.undefended_sq, 0),
+            );
+            scorer.mobility(
+                "undef piece",
+                w.non_pawn_defended_moves,
+                b.non_pawn_defended_moves,
+                Weight::new(self.undefended_piece, 0),
+            );
+            scorer.mobility(
+                "trapped",
+                w.fully_trapped_pieces,
+                b.fully_trapped_pieces,
+                Weight::new(self.trapped_piece, 0),
+            );
+            scorer.mobility(
+                "part trapped",
+                w.partially_trapped_pieces,
+                b.partially_trapped_pieces,
+                Weight::new(self.trapped_piece / 2, 0),
+            );
+            scorer.mobility("game 10%w", 1, 0, Weight::new(wmg, weg));
+            scorer.mobility("game 10%b", 0, 1, Weight::new(bmg, beg));
+            scorer.mobility(
+                "rook open file",
+                w.rooks_on_open_files,
+                b.rooks_on_open_files,
+                self.rook_open_file,
+            );
         }
         if self.tempo && m.switches.contains(Switches::TEMPO) {
             scorer.tempo("tempo", w.has_tempo as i32, b.has_tempo as i32, self.tempo_bonus);
         }
         scorer.interpolate("interpolate", m.phase);
     }
-    
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // pub fn w_scores_without_wdl(&self, b: &Board, _node: &Node) -> ModelScore {
-    //     // if self.cache_eval {
-    //     //     if let Some(entry) = self.cache.probe_by_b(b) {
-    //     //         counts::EVAL_CACHE_COUNT.increment();
-    //     //         return entry.score;
-    //     //     }
-    //     // }
-
-    //     let ma = if self.material {
-    //         let mat = Material::from_board(b);
-    //         self.w_eval_material(&mat)
-    //     } else {
-    //         Weight::zero()
-    //     };
-    //     let po = if self.position {
-    //         self.w_eval_position(b)
-    //     } else {
-    //         Weight::zero()
-    //     };
-    //     let mo = if self.mobility {
-    //         self.w_eval_mobility(b)
-    //     } else {
-    //         Weight::zero()
-    //     };
-    //     let pa = if self.pawn {
-    //         self.w_eval_pawn(Color::White, b) - self.w_eval_pawn(Color::Black, b)
-    //     } else {
-    //         Weight::zero()
-    //     };
-    //     let sa = if self.safety {
-    //         self.w_eval_safety(b)
-    //     } else {
-    //         Weight::zero()
-    //     };
-    //     let te = self.w_tempo_adjustment(b.color_us());
-    //     // m.draw;
-    //     trace!("ma:{} po:{} mo:{} pa:{} sa:{} te:{}", ma, po, mo, pa, sa, te);
-    //     let weight = ma + po + sa + pa + mo + te;
-    //     ModelScore {
-    //         material: ma,
-    //         position: po,
-    //         pawn: pa,
-    //         mobility: mo,
-    //         safety: sa,
-    //         tempo: te,
-    //         contempt: Weight::zero(),
-    //         interpolated: weight.interpolate(b.phase())
-    //     }
-    // }
 
     pub fn w_eval_explain(&self, b: &Board) -> ExplainScorer {
         let model = Model::from_board(b, Switches::ALL_SCORING);
@@ -713,148 +695,17 @@ impl SimpleScorer {
         scorer.as_score()
     }
 
-
     pub fn w_eval_without_wdl(&self, b: &Board, _node: &Node) -> Score {
         let model = Model::from_board(b, Switches::ALL_SCORING);
         let mut scorer = ModelScore::new();
         self.predict(&model, &mut scorer);
         scorer.as_score()
-        // Score::from_cp(self.w_scores_without_wdl(b, _node).interpolated)
     }
-
-    // pub fn w_eval_pawn(&self, c: Color, b: &Board) -> Weight {
-    //     let mut score = Weight::zero();
-    //     let bbd = BitboardDefault::default();
-
-    //     // FIXME!
-    //     let doubled = bbd.doubled_pawns(b.color(c) & b.pawns()).popcount();
-    //     score += doubled * self.pawn_doubled;
-
-    //     let isolated = bbd.isolated_pawns(b.color(c) & b.pawns()).popcount();
-    //     score += isolated * self.pawn_isolated;
-
-    //     let mut passed = 0;
-    //     for p in (b.pawns() & b.color(c)).squares() {
-    //         let doubled = p.is_in(bbd.doubled_pawns(b.color(c) & b.pawns()));
-    //         let is_passed =
-    //             (bbd.pawn_front_span(c, p) & b.pawns() & b.color(c.opposite())).is_empty() && !doubled;
-    //         if is_passed {
-    //             passed += 1;
-    //         }
-    //     }
-    //     score += passed * self.pawn_passed;
-
-    //     score
-    // }
-
-    // // always updated
-    // pub fn w_eval_mobility(&self, b: &Board) -> Weight {
-    //     if b.phase() > self.mobility_phase_disable as i32 {
-    //         return Weight::zero();
-    //     }
-
-    //     let mut score = Weight::zero(); 
-
-    //     if self.rook_open_file != Weight::zero() {
-    //         let open_files = BitboardDefault::default().open_files(b.pawns());
-    //         let s = ((b.rooks() & b.white() & open_files).popcount()
-    //                 - (b.rooks() & b.black() & open_files).popcount()) * self.rook_open_file;
-    //         trace!("Rooks on open files bonus {}", s);
-    //         score += s;
-    //     }
-    //     if self.undefended_sq != 0 || self.undefended_piece != 0 {
-    //         let pm_w = self.piece_mobility(&b, Color::White);
-    //         let pm_b = self.piece_mobility(&b, Color::Black);
-    //         trace!("pmw:{} pmb:{}", pm_w, pm_b);
-    //         score += Weight::new(pm_w - pm_b, (pm_w -pm_b)/ 10);
-    //     }
-    //     score
-    // }
-
-    // pub fn w_eval_safety(&self, b: &Board) -> Weight {
-    //     let wp = b.pawns() & b.white();
-    //     let bp = b.pawns() & b.black();
-    //     let wk = b.kings() & b.white();
-    //     let bk = b.kings() & b.black();
-    //     let bb = BitboardDefault::default();
-    //     let (mut w_nearby_pawns, mut b_nearby_pawns) = (0, 0);
-    //     if wk.any() {
-    //         w_nearby_pawns = (wp & bb.king_attacks(wk.square())).popcount();
-    //     }
-    //     if bk.any() {
-    //         b_nearby_pawns = (bp & bb.king_attacks(bk.square())).popcount();
-    //     }
-
-    //     let castle_advantage = b
-    //         .castling()
-    //         .intersects(CastlingRights::WHITE_KING | CastlingRights::WHITE_QUEEN)
-    //         as i32
-    //         - b.castling()
-    //             .intersects(CastlingRights::BLACK_KING | CastlingRights::BLACK_QUEEN) as i32;
-
-    //     (w_nearby_pawns - b_nearby_pawns) * self.pawn_shield + castle_advantage * self.castling_rights
-    // }
-
-    // pub fn piece_mobility(&self, b: &Board, our: Color) -> i32 {
-    //     let us = b.color(our);
-    //     let mut score = 0;
-    //     let their = our.opposite();
-    //     let them = b.color(their);
-    //     let occ = them | us;
-    //     let bb = BitboardDefault::default();
-    //     let their_p = b.pawns() & them;
-    //     let (pe, pw) = bb.pawn_attacks(their_p, their);
-    //     let pa = pe | pw;
-    //     let bi = b.bishops() & them;
-    //     let ni = b.knights() & them;
-    //     let r = b.rooks() & them;
-    //     let _q = b.queens() & them;
-
-    //     for sq in ((b.knights() | b.bishops() | b.rooks() | b.queens()) & us).squares() {
-    //         let p = b.piece_at(sq.as_bb());
-
-    //         // non-pawn-defended empty or oppoent sq
-    //         let our_attacks = bb.non_pawn_attacks(our, p, us, them, sq) - pa;
-    //         let empties = (our_attacks - occ).popcount();
-
-    //         // those attacks on enemy that arent pawn defended and cant attack back
-    //         let non_pawn_defended = match p {
-    //             Piece::Queen => (our_attacks & them).popcount(),
-    //             Piece::Rook => (our_attacks & them - r).popcount(),
-    //             Piece::Knight => (our_attacks & them - ni).popcount(),
-    //             Piece::Bishop => (our_attacks & them - bi).popcount(),
-    //             _ => 0,
-    //         };
-    //         // trapped piece
-    //         if empties + non_pawn_defended == 1 {
-    //             score += self.trapped_piece / 2;
-    //         }
-    //         if empties + non_pawn_defended == 0 {
-    //             score += self.trapped_piece;
-    //         }
-    //         score += empties * self.undefended_sq + non_pawn_defended * self.undefended_piece;
-    //     }
-    //     score
-    // }
 
     // P(osition) S(quare) T(able)
     #[inline]
     pub fn pst(&self, p: Piece, sq: Square) -> Weight {
         self.pst[p][sq]
-    }
-
-    pub fn w_eval_position(&self, board: &Board) -> Weight {
-        let mut sum = Weight::zero();
-        for &p in &Piece::ALL_BAR_NONE {
-            let w = (board.pieces(p) & board.white()).flip_vertical();
-            let b = board.pieces(p) & board.black();
-
-            let w_weight = w.squares().map(|sq| self.pst(p, sq)).sum::<Weight>();
-            let b_weight = b.squares().map(|sq| self.pst(p, sq)).sum::<Weight>();
-
-            sum = sum + w_weight - b_weight;
-        }
-        sum
     }
 
     #[inline]
@@ -864,7 +715,6 @@ impl SimpleScorer {
         }
         self.pst(p, sq)
     }
- 
 
     // updated on capture & promo
     #[inline]
@@ -918,26 +768,6 @@ impl Board {
         ALL.increment();
         self.signum() * eval.w_eval_some(self, sw)
     }
-
-    #[inline]
-    pub fn eval_material(&self, eval: &SimpleScorer) -> Score {
-        MATERIAL.increment();
-        let m = Material::from_board(self);
-        let weight = eval.w_eval_material(&m);
-        let s = weight.interpolate(self.phase());
-        Score::from_cp(self.signum() * s)
-    }
-    #[inline]
-    pub fn eval_position(&self, eval: &SimpleScorer) -> Score {
-        POSITION.increment();
-        let s = eval.w_eval_position(self).interpolate(self.phase());
-        Score::from_cp(self.signum() * s)
-    }
-    // pub fn eval_mobility(&self, eval: &SimpleScorer) -> Score {
-    //     MOBILITY.increment();
-    //     let s = eval.w_eval_mobility(self).interpolate(self.phase());
-    //     Score::from_cp(self.signum() * s)
-    // }
 }
 
 #[cfg(test)]
@@ -945,34 +775,33 @@ mod tests {
     use super::*;
     use crate::board::boardbuf::BoardBuf;
     use crate::catalog::Catalog;
+    use crate::test_env_log::test;
 
     #[test]
     fn test_score_material() {
         let board = Catalog::starting_board();
         let eval = &mut SimpleScorer::new();
         eval.tempo = false;
-        assert_eq!(board.eval(eval, &Node::root(0)), Score::from_cp(0), "{}", eval.w_eval_explain(&board));
+        assert_eq!(
+            board.eval(eval, &Node::root(0)),
+            Score::from_cp(0),
+            "{}",
+            eval.w_eval_explain(&board)
+        );
 
-        let starting_pos_score = 8 * 100 + 2 * 350 + 2 * 350 + 2 * 600 + 1100 + 40; // (bishop pair, half the pieces)
-        let ending_pos_score = 8 * 100 + 2 * 350 + 2 * 350 + 2 * 600 + 1100 + 85; // (bishop pair, half the pieces)
+        let score = Score::from_cp(6248);
+
         let board_w = Catalog::white_starting_position();
         assert_eq!(board_w.phase(), 50);
         eval.set_switches(false);
         eval.material = true;
         eval.contempt = true;
-        assert_eq!(
-            board_w.eval(eval, &Node::root(0)),
-            Score::from_cp((starting_pos_score + ending_pos_score) / 2),
-            "{}", eval.w_eval_explain(&board_w)
-        );
+        info!("{}", eval.w_eval_explain(&board_w));
+        assert_eq!(board_w.eval(eval, &Node::root(0)), score);
 
         let board_b = Catalog::black_starting_position();
-        assert_eq!(
-            eval.w_eval_without_wdl(&board_b, &Node::root(0)),
-            Score::from_cp((starting_pos_score + ending_pos_score) / 2).negate(),
-            "{}", eval.w_eval_explain(&board_b)
-        );
-
+        info!("{}", eval.w_eval_explain(&board_b));
+        assert_eq!(eval.w_eval_without_wdl(&board_b, &Node::root(0)), score.negate());
     }
 
     #[test]
@@ -1004,10 +833,18 @@ mod tests {
 
         let w = Catalog::white_starting_position();
         assert_eq!(w.phase(), 50);
-        assert_eq!(w.eval(&eval, &Node::root(0)), Score::from_cp(-113), "{}", eval.w_eval_explain(&w));
+        assert_eq!(
+            w.eval(&eval, &Node::root(0)),
+            Score::from_cp(-113),
+            "{}",
+            eval.w_eval_explain(&w)
+        );
 
         let b = Catalog::black_starting_position();
-        assert_eq!(w.eval(&eval, &Node::root(0)), eval.w_eval_without_wdl(&b, &Node::root(0)).negate());
+        assert_eq!(
+            w.eval(&eval, &Node::root(0)),
+            eval.w_eval_without_wdl(&b, &Node::root(0)).negate()
+        );
 
         // from blacks perspective to negate
         let bd = Board::parse_fen("8/8/8/8/8/8/p7/8 b - - 0 1").unwrap().as_board();
@@ -1024,10 +861,7 @@ mod tests {
         eval.set_switches(false);
         eval.mobility = true;
         assert_eq!(eval.w_eval_without_wdl(&b, &Node::root(0)), Score::from_cp(0));
-
     }
-
-
 
     fn test_score_pawn() {
         let mut eval = SimpleScorer::new();
@@ -1044,17 +878,26 @@ mod tests {
         eval.pawn_doubled = Weight::new(-1, -1);
         eval.pawn_isolated = Weight::zero();
         eval.pawn_passed = Weight::zero();
-        assert_eq!(eval.w_eval_without_wdl(&b, &Node::root(0)), Score::from_cp(-1--4));
+        assert_eq!(
+            eval.w_eval_without_wdl(&b, &Node::root(0)),
+            Score::from_cp(-1 - -4)
+        );
 
         eval.pawn_doubled = Weight::zero();
         eval.pawn_isolated = Weight::new(-1, -1);
         eval.pawn_passed = Weight::zero();
-        assert_eq!(eval.w_eval_without_wdl(&b, &Node::root(0)), Score::from_cp(-1--2));
+        assert_eq!(
+            eval.w_eval_without_wdl(&b, &Node::root(0)),
+            Score::from_cp(-1 - -2)
+        );
 
         eval.pawn_doubled = Weight::zero();
         eval.pawn_isolated = Weight::zero();
         eval.pawn_passed = Weight::new(10, 10);
-        assert_eq!(eval.w_eval_without_wdl(&b, &Node::root(0)), Score::from_cp(0-10));
+        assert_eq!(
+            eval.w_eval_without_wdl(&b, &Node::root(0)),
+            Score::from_cp(0 - 10)
+        );
 
         // 1xw (-1) 3xb doubled (+3), 1xb (+1) tripled pawns  2xw 1xb isolated
         let b = Board::parse_fen("8/pppp3p/ppp5/p7/8/2P5/PPP1P1P1/8 b - - 0 1")
@@ -1065,11 +908,21 @@ mod tests {
         eval.pawn_isolated = Weight::zero();
         eval.set_switches(false);
         eval.pawn = true;
-        assert_eq!(eval.w_eval_without_wdl(&b, &Node::root(0)), Score::from_cp(3), "{}", eval.w_eval_explain(&b).to_string());
+        assert_eq!(
+            eval.w_eval_without_wdl(&b, &Node::root(0)),
+            Score::from_cp(3),
+            "{}",
+            eval.w_eval_explain(&b).to_string()
+        );
 
         eval.pawn_doubled = Weight::zero();
         eval.pawn_isolated = Weight::new(-1, -1);
-        assert_eq!(eval.w_eval_without_wdl(&b, &Node::root(0)), Score::from_cp(-1), "{}", eval.w_eval_explain(&b).to_string());
+        assert_eq!(
+            eval.w_eval_without_wdl(&b, &Node::root(0)),
+            Score::from_cp(-1),
+            "{}",
+            eval.w_eval_explain(&b).to_string()
+        );
     }
 
     #[test]
@@ -1089,7 +942,6 @@ mod tests {
         assert_eq!((e2 - e1), Score::from_cp(100)); // 2 pawns in front of king
     }
 
-
     #[test]
     fn test_eval_bug1() {
         let pos = &Catalog::bratko_kopec()[0];
@@ -1099,7 +951,6 @@ mod tests {
         let explain = eval.w_eval_explain(b);
         println!("{}", explain);
     }
-
 
     // #[test]
     // fn test_eval_vs_model() {
@@ -1115,10 +966,6 @@ mod tests {
     //         let model = Model::from_board(b, Switches::ALL_SCORING);
     //         let mut pred_model = ModelScore::new();
     //         eval.predict(&model, &mut pred_model);
-
-
-
-
 
     //         let old = Score::from_cp(eval.w_eval_material(&b.material()).interpolate(b.phase()) * b.signum());
     //         let new = b.eval_some(&eval, Switches::MATERIAL);

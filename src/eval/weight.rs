@@ -24,6 +24,13 @@ impl Weight {
     }
 
     #[inline]
+    #[must_use]
+    pub const fn from_i32(se: i32) -> Weight {
+        Weight(se, se)
+    }
+
+
+    #[inline]
     pub const fn zero() -> Weight {
         Weight(0, 0)
     }

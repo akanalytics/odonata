@@ -370,6 +370,7 @@ mod tests {
         eval.mb.enabled = false;
         eval.set_switches(false);
         eval.material = true;
+        eval.mb.set_classical_piece_values();
 
         // white gains a pawn after quiesce
         let pos = Position::parse_epd("7k/8/8/8/8/p7/8/R6K w - - 0 1 sm Ra3; ce 100;")?;

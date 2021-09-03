@@ -308,41 +308,6 @@ impl Scorer for ModelScore {
 }
 
 
-// impl std::ops::Add for ModelScore {
-//     type Output = Self;
-
-//     #[inline]
-//     fn add(self, o: Self) -> Self {
-//         Self {
-//             material: self.material + o.material,
-//             position: self.position + o.position,
-//             pawn: self.pawn + o.pawn,
-//             mobility: self.mobility + o.mobility,
-//             safety: self.safety + o.safety,
-//             tempo: self.tempo + o.tempo,
-//             contempt: self.contempt + o.contempt,
-//             interpolated: self.interpolated + o.interpolated,
-//         }
-//     }
-// }
-
-// impl std::ops::Sub for ModelScore {
-//     type Output = Self;
-
-//     #[inline]
-//     fn sub(self, o: Self) -> Self {
-//         Self {
-//             material: self.material - o.material,
-//             position: self.position - o.position,
-//             pawn: self.pawn - o.pawn,
-//             mobility: self.mobility - o.mobility,
-//             safety: self.safety - o.safety,
-//             tempo: self.tempo - o.tempo,
-//             contempt: self.contempt - o.contempt,
-//             interpolated: self.interpolated - o.interpolated,
-//         }
-//     }
-// }
 
 
 impl Model {

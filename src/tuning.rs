@@ -3,8 +3,6 @@ use crate::eval::model::ModelScore;
 use crate::eval::switches::Switches;
 use crate::position::Position;
 use crate::search::algo::Engine;
-use crate::utils::Formatter;
-// use crate::{debug, logger::LogInit};
 use crate::tags::Tag;
 use rayon::prelude::*;
 
@@ -15,14 +13,6 @@ pub struct Tuning {
     boards: Vec<Position>,
 }
 
-// impl Default for Tuning {
-//     fn default() -> Self {
-//         Tuning {
-//             engine: Engine::default()))    ,
-//             positions: Vec::default(),
-//         }
-//     }
-// } 
 
 
 
@@ -47,12 +37,6 @@ impl Tuning {
         self.models_and_outcomes.len()
     }
 
-    // pub fn with_engine(engine: &Engine) -> Self {
-    //     Tuning {
-    //         engine,
-    //         ..Tuning::default()
-    //     }
-    // }
 
     pub fn calc_player_win_prob_from_pos(&self, pos: &Position) -> f32 {
         if let Tag::Comment(_n, s) = pos.tag(Tag::C9) {
