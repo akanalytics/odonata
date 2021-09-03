@@ -537,13 +537,14 @@ impl SimpleScorer {
                 return c.chooser_wb(Score::white_win(node.ply), Score::white_loss(node.ply));
             }
         }
-        self.w_eval_without_wdl(board, node)
+        self.w_eval_some(board, Switches::ALL_SCORING)
     }
 
-    // we dont care about draws in qsearch
-    pub fn w_eval_qsearch(&self, board: &Board, node: &Node) -> Score {
+
+    // we dont care about stalemates or checkmates
+    pub fn w_eval_qsearch(&self, board: &Board, _node: &Node) -> Score {
         counts::QEVAL_COUNT.increment();
-        self.w_eval_without_wdl(board, node)
+        self.w_eval_some(board, Switches::ALL_SCORING | Switches::INSUFFICIENT_MATERIAL)
     }
 
     pub fn predict(&self, m: &Model, scorer: &mut impl Scorer) {
@@ -695,12 +696,6 @@ impl SimpleScorer {
         scorer.as_score()
     }
 
-    pub fn w_eval_without_wdl(&self, b: &Board, _node: &Node) -> Score {
-        let model = Model::from_board(b, Switches::ALL_SCORING);
-        let mut scorer = ModelScore::new();
-        self.predict(&model, &mut scorer);
-        scorer.as_score()
-    }
 
     // P(osition) S(quare) T(able)
     #[inline]
@@ -770,6 +765,9 @@ impl Board {
     }
 }
 
+
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -782,11 +780,10 @@ mod tests {
         let board = Catalog::starting_board();
         let eval = &mut SimpleScorer::new();
         eval.tempo = false;
+        info!("\n{}", eval.w_eval_explain(&board));
         assert_eq!(
             board.eval(eval, &Node::root(0)),
-            Score::from_cp(0),
-            "{}",
-            eval.w_eval_explain(&board)
+            Score::from_cp(0)
         );
 
         let score = Score::from_cp(6248);
@@ -796,12 +793,12 @@ mod tests {
         eval.set_switches(false);
         eval.material = true;
         eval.contempt = true;
-        info!("{}", eval.w_eval_explain(&board_w));
+        info!("\n{}", eval.w_eval_explain(&board_w));
         assert_eq!(board_w.eval(eval, &Node::root(0)), score);
 
         let board_b = Catalog::black_starting_position();
-        info!("{}", eval.w_eval_explain(&board_b));
-        assert_eq!(eval.w_eval_without_wdl(&board_b, &Node::root(0)), score.negate());
+        info!("\n{}", eval.w_eval_explain(&board_b));
+        assert_eq!(eval.w_eval_some(&board_b, Switches::ALL_SCORING), score.negate());
     }
 
     #[test]
@@ -843,7 +840,7 @@ mod tests {
         let b = Catalog::black_starting_position();
         assert_eq!(
             w.eval(&eval, &Node::root(0)),
-            eval.w_eval_without_wdl(&b, &Node::root(0)).negate()
+            eval.w_eval_some(&b, Switches::ALL_SCORING).negate()
         );
 
         // from blacks perspective to negate
@@ -860,7 +857,7 @@ mod tests {
         let b = Catalog::starting_board();
         eval.set_switches(false);
         eval.mobility = true;
-        assert_eq!(eval.w_eval_without_wdl(&b, &Node::root(0)), Score::from_cp(0));
+        assert_eq!(eval.w_eval_some(&b, Switches::ALL_SCORING), Score::from_cp(0));
     }
 
     fn test_score_pawn() {
@@ -879,7 +876,7 @@ mod tests {
         eval.pawn_isolated = Weight::zero();
         eval.pawn_passed = Weight::zero();
         assert_eq!(
-            eval.w_eval_without_wdl(&b, &Node::root(0)),
+            eval.w_eval_some(&b, Switches::ALL_SCORING),
             Score::from_cp(-1 - -4)
         );
 
@@ -887,7 +884,7 @@ mod tests {
         eval.pawn_isolated = Weight::new(-1, -1);
         eval.pawn_passed = Weight::zero();
         assert_eq!(
-            eval.w_eval_without_wdl(&b, &Node::root(0)),
+            eval.w_eval_some(&b, Switches::ALL_SCORING),
             Score::from_cp(-1 - -2)
         );
 
@@ -895,7 +892,7 @@ mod tests {
         eval.pawn_isolated = Weight::zero();
         eval.pawn_passed = Weight::new(10, 10);
         assert_eq!(
-            eval.w_eval_without_wdl(&b, &Node::root(0)),
+            eval.w_eval_some(&b, Switches::ALL_SCORING),
             Score::from_cp(0 - 10)
         );
 
@@ -909,7 +906,7 @@ mod tests {
         eval.set_switches(false);
         eval.pawn = true;
         assert_eq!(
-            eval.w_eval_without_wdl(&b, &Node::root(0)),
+            eval.w_eval_some(&b, Switches::ALL_SCORING),
             Score::from_cp(3),
             "{}",
             eval.w_eval_explain(&b).to_string()
@@ -918,7 +915,7 @@ mod tests {
         eval.pawn_doubled = Weight::zero();
         eval.pawn_isolated = Weight::new(-1, -1);
         assert_eq!(
-            eval.w_eval_without_wdl(&b, &Node::root(0)),
+            eval.w_eval_some(&b, Switches::ALL_SCORING),
             Score::from_cp(-1),
             "{}",
             eval.w_eval_explain(&b).to_string()
@@ -935,9 +932,9 @@ mod tests {
         eval.set_switches(false);
         eval.safety = true;
         eval.pawn_adjacent_shield = Weight::zero();
-        let e1 = eval.w_eval_without_wdl(&b, &Node::root(0));
+        let e1 = eval.w_eval_some(&b, Switches::ALL_SCORING);
         eval.pawn_adjacent_shield = Weight::new(50, 50);
-        let e2 = eval.w_eval_without_wdl(&b, &Node::root(0));
+        let e2 = eval.w_eval_some(&b, Switches::ALL_SCORING);
 
         assert_eq!((e2 - e1), Score::from_cp(100)); // 2 pawns in front of king
     }

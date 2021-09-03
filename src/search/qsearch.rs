@@ -145,7 +145,7 @@ impl Algo {
             }
         } else if in_check {
             standing_pat = alpha;
-        } else {
+        } else {            
             standing_pat = board.eval_qsearch(
                 &mut self.eval,
                 &Node {

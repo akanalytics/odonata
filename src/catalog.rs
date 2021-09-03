@@ -363,7 +363,7 @@ k7/8/8/8/2p5/1b6/P7/K7 w - - 0 1 acd 0; pv axb3 cxb3; id QS.08; c0 'capture and 
 k7/8/8/8/p7/1p6/P1P5/K7 w - - 0 1 acd 0; pv cxb3; id QS.09; c0 'capture then bad 2 x recapture';
 k7/p7/1p6/P1B5/8/8/8/K6R w - - 0 1 acd 0; pv axb6 axb6 Bxb6; id QS.10; c0 'capture then good 2 x recapture'; c1 'R means game not drawn';
 k7/p7/1p6/P1B5/8/8/8/K7 w - - 0 1 acd 0; pv; id QS.11; c0 'capture then bad recapture due to draw'; c1 'game a draw if white exchanges';
-r2qkb1r/pp2nNpp/3p4/2pN2B1/2BnP3/3P4/PPP2PPP/R2bK2R b KQkq - 1 1 acd 0; pv Kxf7 Rxd1 Nxc2+ Ke2; id QS.90; c0 'from mate in 2';
+r2qkb1r/pp2nNpp/3p4/2pN2B1/2BnP3/3P4/PPP2PPP/R2bK2R b KQkq - 1 1 acd 0; pv ; c1 Kxf7 Rxd1 Nxc2+ Ke2; id QS.90; c0 'from mate in 2 - mates not checked in qsearch';
 2b1k3/3r4/3b4/3p4/8/8/3Q4/R3K3 w - - 0 1 acd 0; id QS.91; pv Qxd5; c0 'qsearch fail!'; c1 'chess.stackexchange.com/questions/29602';
 "#;
 // rnb1k2r/pp3ppp/4p3/q2p4/1bpPnB2/2N1PN2/PPPQ1PPP/2KR1B1R w kq - 1 9 "QS.01"; c0 "xray"; c1 "https://lichess.org/PqvjbdtB#16";
