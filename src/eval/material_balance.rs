@@ -38,14 +38,14 @@ impl Default for MaterialBalance {
             trade_factor: 2,
             material_weights: [
                 Weight::default(),
-                Weight::new(100, 150),
-                Weight::new(582, 414), // knights
-                Weight::new(540, 459),
-                Weight::new(767, 765),
-                Weight::new(1585, 1410),
+                Weight::new(100, 149),
+                Weight::new(579, 410), // knights
+                Weight::new(538, 455),
+                Weight::new(767, 762),
+                Weight::new(1561, 1417),
                 Weight::new(0, 0), // king
             ],
-            bishop_pair: Weight::new(102, 34),
+            bishop_pair: Weight::new(102, 35),
         };
         mb
     }

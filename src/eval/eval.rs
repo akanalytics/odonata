@@ -85,9 +85,10 @@ pub struct SimpleScorer {
     pub mobility_phase_disable: u8,
 
     pub min_depth_mob: u8,
-    pub undefended_sq: i32,
-    pub undefended_piece: i32,
-    pub trapped_piece: i32,
+    pub undefended_sq: Weight,
+    pub undefended_piece: Weight,
+    pub trapped_piece: Weight,
+    pub partially_trapped_piece: Weight,
 
     pub pawn_doubled: Weight,
     pub pawn_isolated: Weight,
@@ -126,23 +127,28 @@ impl Default for SimpleScorer {
             phasing: true,
             mobility_phase_disable: 60,
             min_depth_mob: 1,
-            undefended_piece: 6,
-            undefended_sq: 1,
-            trapped_piece: -20,
-            pawn_doubled: Weight::new(-6, -8),
-            pawn_isolated: Weight::new(-28, -10),
-            pawn_passed: Weight::new(22, 7),
-            // pawn_shield: Weight::new(50, 0),
-            pawn_adjacent_shield: Weight::new(59, -28),
-            pawn_nearby_shield: Weight::new(29, -21),
+            rook_open_file: Weight::new(55, 12),
+
+            undefended_sq: Weight::new(2, 3),
+            undefended_piece: Weight::new(-2, 61),
+            trapped_piece: Weight::new(-34, 2),
+            partially_trapped_piece: Weight::new(-23, -4),
+
+            pawn_r5: Weight::new(-2, 21),
+            pawn_r6: Weight::new(-20, 155),
+            pawn_r7: Weight::new(103, 205),
+
+            pawn_doubled: Weight::new(-7, -6),
+            pawn_isolated: Weight::new(-29, -10),
+            pawn_passed: Weight::new(22, 5),
+
+            pawn_adjacent_shield: Weight::new(59, -27),
+            pawn_nearby_shield: Weight::new(30, -21),
+
             castling_rights: Weight::new(0, 0),
-            rook_open_file: Weight::new(51, 26),
             rook_edge: Weight::new(0, 0),
-            pawn_r5: Weight::new(1, 18),
-            pawn_r6: Weight::new(-21, 151),
-            pawn_r7: Weight::new(89, 207),
             contempt_penalty: Weight::new(-30, -30), // typically -ve
-            tempo_bonus: Weight::new(48, 44),
+            tempo_bonus: Weight::new(48, 47),
             // cache: TranspositionTable::default(),
             // qcache: TranspositionTable::default(),
             pst: [[Weight::default(); 64]; Piece::len()],
@@ -174,17 +180,12 @@ impl Component for SimpleScorer {
         );
         c.set_weight("eval.rook.open.file", &self.rook_open_file);
         c.set_weight("eval.pawn.doubled", &self.pawn_doubled);
-        c.set(
-            "eval.mobility.undef.sq",
-            &format!("type spin min -200 max 200 default {}", self.undefended_sq),
-        );
-        c.set(
-            "eval.mobility.undef.piece",
-            &format!("type spin min -200 max 200 default {}", self.undefended_piece),
-        );
-        c.set(
-            "eval.mobility.trapped.piece",
-            &format!("type spin min -200 max 200 default {}", self.trapped_piece),
+        c.set_weight("eval.mobility.undef.sq", &self.undefended_sq);
+        c.set_weight("eval.mobility.undef.piece", &self.undefended_piece);
+        c.set_weight("eval.mobility.trapped.piece", &self.trapped_piece);
+        c.set_weight(
+            "eval.mobility.partially.trapped.piece",
+            &self.partially_trapped_piece,
         );
         c.set_weight("eval.pawn.isolated", &self.pawn_isolated);
         c.set_weight("eval.pawn.passed", &self.pawn_passed);
@@ -217,21 +218,20 @@ impl Component for SimpleScorer {
         self.min_depth_mob = c
             .int("eval.mobility.min.depth")
             .unwrap_or(self.min_depth_mob as i64) as u8;
-        self.undefended_piece = c
-            .int("eval.mobility.undef.piece")
-            .unwrap_or(self.undefended_piece as i64) as i32;
-        self.trapped_piece = c
-            .int("eval.mobility.trapped.piece")
-            .unwrap_or(self.trapped_piece as i64) as i32;
-        self.undefended_sq = c
-            .int("eval.mobility.undef.sq")
-            .unwrap_or(self.undefended_sq as i64) as i32;
+
+        self.undefended_sq = c.weight("eval.mobility.undef.sq", &self.undefended_sq);
+        self.undefended_piece = c.weight("eval.mobility.undef.piece", &self.undefended_piece);
+        self.trapped_piece = c.weight("eval.mobility.trapped.piece", &self.trapped_piece);
+        self.partially_trapped_piece = c.weight(
+            "eval.mobility.partially.trapped.piece",
+            &self.partially_trapped_piece,
+        );
         self.rook_open_file = c.weight("eval.rook.open.file", &self.rook_open_file);
+
         self.pawn_doubled = c.weight("eval.pawn.doubled", &self.pawn_doubled);
         self.pawn_isolated = c.weight("eval.pawn.isolated", &self.pawn_isolated);
         self.pawn_passed = c.weight("eval.pawn.passed", &self.pawn_passed);
 
-        // self.pawn_shield = c.weight("eval.pawn.shield", &self.pawn_shield);
         self.pawn_adjacent_shield = c.weight("eval.pawn.adjacent.shield", &self.pawn_adjacent_shield);
         self.pawn_nearby_shield = c.weight("eval.pawn.nearby.shield", &self.pawn_nearby_shield);
 
@@ -271,6 +271,7 @@ impl fmt::Display for SimpleScorer {
         writeln!(f, "undefended.piece : {}", self.undefended_piece)?;
         writeln!(f, "undefended.sq    : {}", self.undefended_sq)?;
         writeln!(f, "trapped.piece    : {}", self.trapped_piece)?;
+        writeln!(f, "part.trap.piece  : {}", self.partially_trapped_piece)?;
         writeln!(f, "castling.rights  : {}", self.castling_rights)?;
         // writeln!(f, "pawn.shield      : {}", self.pawn_shield)?;
         writeln!(f, "pawn.doubled     : {}", self.pawn_doubled)?;
@@ -290,22 +291,11 @@ impl fmt::Display for SimpleScorer {
     }
 }
 
-// const MATERIAL_SCORES: [i32; Piece::len()] = [
-//     0, // None
-//     Piece::Pawn.centipawns(),
-//     350, // Piece::Knight.centipawns(),
-//     Piece::Bishop.centipawns(),
-//     600,  // Piece::Rook.centipawns(),
-//     1100, // Piece::Queen.centipawns(),
-//     0,    // king,
-// ];
-
 // builder methods
 impl SimpleScorer {
     pub fn new() -> Self {
         Self::default()
     }
-
 
     pub fn set_switches(&mut self, enabled: bool) {
         self.material = enabled;
@@ -540,7 +530,6 @@ impl SimpleScorer {
         self.w_eval_some(board, Switches::ALL_SCORING)
     }
 
-
     // we dont care about stalemates or checkmates
     pub fn w_eval_qsearch(&self, board: &Board, _node: &Node) -> Score {
         counts::QEVAL_COUNT.increment();
@@ -633,42 +622,31 @@ impl SimpleScorer {
             && self.mobility
             && m.switches.contains(Switches::MOBILITY)
         {
-            let wmg = w.move_squares * self.undefended_sq
-                + w.non_pawn_defended_moves * self.undefended_piece
-                + w.fully_trapped_pieces * self.trapped_piece
-                + w.partially_trapped_pieces * (self.trapped_piece / 2);
-            let bmg = b.move_squares * self.undefended_sq
-                + b.non_pawn_defended_moves * self.undefended_piece
-                + b.fully_trapped_pieces * self.trapped_piece
-                + b.partially_trapped_pieces * (self.trapped_piece / 2);
-            let weg = wmg / 10;
-            let beg = bmg / 10;
             scorer.mobility(
                 "move",
                 w.move_squares,
                 b.move_squares,
-                Weight::new(self.undefended_sq, 0),
+                self.undefended_sq,
             );
             scorer.mobility(
                 "undef piece",
                 w.non_pawn_defended_moves,
                 b.non_pawn_defended_moves,
-                Weight::new(self.undefended_piece, 0),
+                self.undefended_piece,
             );
+
             scorer.mobility(
                 "trapped",
                 w.fully_trapped_pieces,
                 b.fully_trapped_pieces,
-                Weight::new(self.trapped_piece, 0),
+                self.trapped_piece,
             );
             scorer.mobility(
                 "part trapped",
                 w.partially_trapped_pieces,
                 b.partially_trapped_pieces,
-                Weight::new(self.trapped_piece / 2, 0),
+                self.partially_trapped_piece,
             );
-            scorer.mobility("game 10%w", 1, 0, Weight::new(wmg, weg));
-            scorer.mobility("game 10%b", 0, 1, Weight::new(bmg, beg));
             scorer.mobility(
                 "rook open file",
                 w.rooks_on_open_files,
@@ -695,7 +673,6 @@ impl SimpleScorer {
         self.predict(&model, &mut scorer);
         scorer.as_score()
     }
-
 
     // P(osition) S(quare) T(able)
     #[inline]
@@ -765,9 +742,6 @@ impl Board {
     }
 }
 
-
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -781,10 +755,7 @@ mod tests {
         let eval = &mut SimpleScorer::new();
         eval.tempo = false;
         info!("\n{}", eval.w_eval_explain(&board));
-        assert_eq!(
-            board.eval(eval, &Node::root(0)),
-            Score::from_cp(0)
-        );
+        assert_eq!(board.eval(eval, &Node::root(0)), Score::from_cp(0));
 
         let score = Score::from_cp(6248);
 
@@ -949,35 +920,17 @@ mod tests {
         println!("{}", explain);
     }
 
-    // #[test]
-    // fn test_eval_vs_model() {
-    //     let mut eval = SimpleScorer::default();
-    //     eval.mb.enabled = false;
-    //     let node = Node::root(0);
-    //     // for pos in Catalog::win_at_chess() {
-    //     for pos in Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-small.epd").unwrap() {
-    //         let b = pos.board();
-    //         let s_eval_wdl = b.signum() * b.eval(&eval, &node);
-    //         let _s_eval = eval.w_eval_without_wdl(b, &node);
-    //         let ms = eval.w_scores_without_wdl(b, &node);
-    //         let model = Model::from_board(b, Switches::ALL_SCORING);
-    //         let mut pred_model = ModelScore::new();
-    //         eval.predict(&model, &mut pred_model);
-
-    //         let old = Score::from_cp(eval.w_eval_material(&b.material()).interpolate(b.phase()) * b.signum());
-    //         let new = b.eval_some(&eval, Switches::MATERIAL);
-    //         assert_eq!(old, new);
-
-    //         let old = Score::from_cp(eval.w_eval_position(&b).interpolate(b.phase()) * b.signum());
-    //         let new = b.eval_some(&eval, Switches::POSITION);
-    //         assert_eq!(old, new);
-
-    //         if b.outcome().is_game_over() {
-    //             continue;
-    //         }
-    //         assert_eq!(s_eval_wdl, pred_model.as_score(), "{} {:#?} {:#?} {:#?} {}\n{}", pos, model, pred_model, ms, pos.board(), eval.w_eval_explain(b));
-    //         // assert_eq!(s_eval, s_model, "{} {:#?} {}", pos, model, pos.board());
-
-    //     }
-    // }
+    #[test]
+    #[ignore]
+    fn test_eval_various() {
+        let mut eval = SimpleScorer::default();
+        eval.mb.enabled = false;
+        let node = Node::root(0);
+        for pos in Catalog::win_at_chess() {
+            let b = pos.board();
+            let _score = b.signum() * b.eval(&eval, &node);
+            let explain = eval.w_eval_explain(b);
+            info!("\n{}\n{}", pos, explain);
+        }
+    }
 }
