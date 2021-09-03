@@ -276,7 +276,7 @@ impl Algo {
         // we should not return a mate score, as only captures have been considered,
         // and a mate score might cut a genuine mate score elsewhere
         trace!("{}", board.debug() + ply + "returns with score of" + alpha);
-        alpha.clamp(Score::from_cp(-10000), Score::from_cp(10000))
+        alpha.clamp(Score::from_cp(-20000), Score::from_cp(20000))
     }
 }
 
