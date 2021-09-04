@@ -93,10 +93,14 @@ pub struct SimpleScorer {
     pub pawn_doubled: Weight,
     pub pawn_isolated: Weight,
     pub pawn_passed: Weight,
+    pub pawn_passed_r7: Weight,
 
     // pub pawn_shield: Weight,
     pub pawn_adjacent_shield: Weight,
     pub pawn_nearby_shield: Weight,
+    pub tropism_d1: Weight,
+    pub tropism_d2: Weight,
+    pub tropism_d3: Weight,
 
     pub castling_rights: Weight,
     pub rook_edge: Weight,
@@ -125,30 +129,34 @@ impl Default for SimpleScorer {
             contempt: true,
             tempo: true,
             phasing: true,
-            mobility_phase_disable: 60,
+            mobility_phase_disable: 101,
             min_depth_mob: 1,
-            rook_open_file: Weight::new(55, 12),
+            rook_open_file: Weight::new(63, -17),
 
-            undefended_sq: Weight::new(2, 3),
-            undefended_piece: Weight::new(-2, 61),
-            trapped_piece: Weight::new(-34, 2),
-            partially_trapped_piece: Weight::new(-23, -4),
+            undefended_sq: Weight::new(2, 2),
+            undefended_piece: Weight::new(-1, 40),
+            trapped_piece: Weight::new(-33, -2),
+            partially_trapped_piece: Weight::new(-24, 1),
 
-            pawn_r5: Weight::new(-2, 21),
-            pawn_r6: Weight::new(-20, 155),
-            pawn_r7: Weight::new(103, 205),
+            pawn_r5: Weight::new(-7, 25),
+            pawn_r6: Weight::new(-31, 159),
+            pawn_r7: Weight::new(95, 226),
 
-            pawn_doubled: Weight::new(-7, -6),
-            pawn_isolated: Weight::new(-29, -10),
-            pawn_passed: Weight::new(22, 5),
+            pawn_doubled: Weight::new(-3, -10),
+            pawn_isolated: Weight::new(-30, -9),
+            pawn_passed: Weight::new(22, 14),
+            pawn_passed_r7: Weight::new(0, 0),
 
-            pawn_adjacent_shield: Weight::new(59, -27),
-            pawn_nearby_shield: Weight::new(30, -21),
-
+            pawn_adjacent_shield: Weight::new(52, -26),
+            pawn_nearby_shield: Weight::new(27, -18),
+            tropism_d1: Weight::new(-71, 41),
+            tropism_d2: Weight::new(-24, -6),
+            tropism_d3: Weight::new(-7, 4),
+        
             castling_rights: Weight::new(0, 0),
             rook_edge: Weight::new(0, 0),
             contempt_penalty: Weight::new(-30, -30), // typically -ve
-            tempo_bonus: Weight::new(48, 47),
+            tempo_bonus: Weight::new(50,51),
             // cache: TranspositionTable::default(),
             // qcache: TranspositionTable::default(),
             pst: [[Weight::default(); 64]; Piece::len()],
@@ -189,10 +197,14 @@ impl Component for SimpleScorer {
         );
         c.set_weight("eval.pawn.isolated", &self.pawn_isolated);
         c.set_weight("eval.pawn.passed", &self.pawn_passed);
+        c.set_weight("eval.pawn.passed.r7", &self.pawn_passed_r7);
 
         // c.set_weight("eval.pawn.shield", &self.pawn_shield);
         c.set_weight("eval.pawn.adjacent.shield", &self.pawn_adjacent_shield);
         c.set_weight("eval.pawn.nearby.shield", &self.pawn_nearby_shield);
+        c.set_weight("eval.tropism.d1", &self.tropism_d1);
+        c.set_weight("eval.tropism.d2", &self.tropism_d2);
+        c.set_weight("eval.tropism.d3", &self.tropism_d3);
 
         c.set_weight("eval.castling.rights", &self.castling_rights);
         c.set_weight("eval.rook.edge", &self.rook_edge);
@@ -231,9 +243,13 @@ impl Component for SimpleScorer {
         self.pawn_doubled = c.weight("eval.pawn.doubled", &self.pawn_doubled);
         self.pawn_isolated = c.weight("eval.pawn.isolated", &self.pawn_isolated);
         self.pawn_passed = c.weight("eval.pawn.passed", &self.pawn_passed);
+        self.pawn_passed_r7 = c.weight("eval.pawn.passed.r7", &self.pawn_passed_r7);
 
         self.pawn_adjacent_shield = c.weight("eval.pawn.adjacent.shield", &self.pawn_adjacent_shield);
         self.pawn_nearby_shield = c.weight("eval.pawn.nearby.shield", &self.pawn_nearby_shield);
+        self.tropism_d1 = c.weight("eval.tropism.d1", &self.tropism_d1);
+        self.tropism_d2 = c.weight("eval.tropism.d2", &self.tropism_d2);
+        self.tropism_d3 = c.weight("eval.tropism.d3", &self.tropism_d3);
 
         self.castling_rights = c.weight("eval.castling.rights", &self.castling_rights);
         self.rook_edge = c.weight("eval.rook.edge", &self.rook_edge);
@@ -276,11 +292,15 @@ impl fmt::Display for SimpleScorer {
         // writeln!(f, "pawn.shield      : {}", self.pawn_shield)?;
         writeln!(f, "pawn.doubled     : {}", self.pawn_doubled)?;
         writeln!(f, "pawn.passed      : {}", self.pawn_passed)?;
+        writeln!(f, "pawn.passed.r7   : {}", self.pawn_passed_r7)?;
         writeln!(f, "pawn.isolated    : {}", self.pawn_isolated)?;
         writeln!(f, "rook_edge        : {}", self.rook_edge)?;
         writeln!(f, "rook.open.file   : {}", self.rook_open_file)?;
         writeln!(f, "pawn.nearby      : {}", self.pawn_nearby_shield)?;
         writeln!(f, "pawn.adjacent    : {}", self.pawn_adjacent_shield)?;
+        writeln!(f, "tropism.d1       : {}", self.tropism_d1)?;
+        writeln!(f, "tropism.d2       : {}", self.tropism_d2)?;
+        writeln!(f, "tropism.d3       : {}", self.tropism_d3)?;
         writeln!(f, "contempt penalty : {}", self.contempt_penalty)?;
         writeln!(f, "tempo bonus      : {}", self.tempo_bonus)?;
         writeln!(f, "eval stats\n{}", EVAL_COUNTS)?;
@@ -597,6 +617,7 @@ impl SimpleScorer {
             scorer.pawn("doubled", w.doubled_pawns, b.doubled_pawns, self.pawn_doubled);
             scorer.pawn("isolated", w.isolated_pawns, b.isolated_pawns, self.pawn_isolated);
             scorer.pawn("passed", w.passed_pawns, b.passed_pawns, self.pawn_passed);
+            scorer.pawn("passed.r7", w.passed_pawns_on_r7, b.passed_pawns_on_r7, self.pawn_passed_r7);
         }
 
         // king safety
@@ -613,6 +634,24 @@ impl SimpleScorer {
                 w.nearby_shield,
                 b.nearby_shield,
                 self.pawn_nearby_shield,
+            );
+            scorer.safety(
+                "tropism d1",
+                w.king_tropism_d1,
+                b.king_tropism_d1,
+                self.tropism_d1,
+            );
+            scorer.safety(
+                "tropism d2",
+                w.king_tropism_d2,
+                b.king_tropism_d2,
+                self.tropism_d2,
+            );
+            scorer.safety(
+                "tropism d3",
+                w.king_tropism_d3,
+                b.king_tropism_d3,
+                self.tropism_d3,
             );
         }
         // w.castling_sides, b.castling_sides * self.;

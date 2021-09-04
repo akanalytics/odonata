@@ -1,5 +1,6 @@
 use std::fmt;
 
+use crate::Bitboard;
 use crate::bitboard::castling::CastlingRights;
 use crate::bitboard::precalc::BitboardDefault;
 use crate::board::Board;
@@ -37,10 +38,14 @@ pub struct ModelSide {
     // pawn structure
     pub doubled_pawns: i32,
     pub isolated_pawns: i32,
-    pub passed_pawns: i32,
+    pub passed_pawns: i32,  // includes passed pawns on r7
+    pub passed_pawns_on_r7: i32,  
 
     // king safety
     // pub nearby_pawns: i32,
+    pub king_tropism_d1: i32,
+    pub king_tropism_d2: i32,
+    pub king_tropism_d3: i32,
     pub adjacent_shield: i32,
     pub nearby_shield: i32,
     pub castling_sides: i32, // 0,1 or 2
@@ -396,6 +401,10 @@ impl ModelSide {
             let is_passed =
                 (bbd.pawn_front_span_union_attack_span(c, p) & b.pawns() & b.color(c.opposite())).is_empty();
             self.passed_pawns += is_passed as i32;
+
+            // on 7th means stop position is a promo rank
+            let ps = bbd.pawn_stop(c, p);
+            self.passed_pawns_on_r7 += Bitboard::PROMO_RANKS.contains(ps) as i32;
         }
         self.doubled_pawns = bbd.doubled_pawns(b.color(c) & b.pawns()).popcount();
     }
@@ -408,10 +417,27 @@ impl ModelSide {
         let bb = BitboardDefault::default();
         if k.any() {
             let p_fr_att_span = bb.pawn_front_span_union_attack_span(c, ksq);
-            let k_att = bb.king_attacks(ksq);
+            let d1 = bb.king_attacks(ksq);
             //self.nearby_pawns = (p & k_att).popcount();
-            self.adjacent_shield = (p & p_fr_att_span & k_att).popcount();            
-            self.nearby_shield = (p & p_fr_att_span & k_att.shift(c.forward())).popcount() - self.adjacent_shield;
+            self.adjacent_shield = (p & p_fr_att_span & d1).popcount();            
+            self.nearby_shield = (p & p_fr_att_span & d1.shift(c.forward())).popcount() - self.adjacent_shield;
+            let them = b.color(c.opposite());
+            self.king_tropism_d1 = 
+                (d1 & (b.pawns()|b.kings()) & them).popcount() +
+                (d1 & (b.knights()| b.bishops()) & them).popcount() * 2 +
+                (d1 & (b.rooks()| b.queens()) & them).popcount() * 4;
+
+            let d2 = bb.within_chebyshev_distance_inclusive(ksq, 2);
+            self.king_tropism_d2 = 
+                (d2 & (b.pawns()|b.kings()) & them).popcount() +
+                (d2 & (b.knights()| b.bishops()) & them).popcount() * 2 +
+                (d2 & (b.rooks()| b.queens()) & them).popcount() * 4;
+
+            let d3 = bb.within_chebyshev_distance_inclusive(ksq, 3);
+                self.king_tropism_d3 = 
+                (d3 & (b.pawns()|b.kings()) & them).popcount() +
+                (d3 & (b.knights()| b.bishops()) & them).popcount() * 2 +
+                (d3 & (b.rooks()| b.queens()) & them).popcount() * 4;
         }
 
         self.castling_sides = b.castling().contains(CastlingRights::king_side_right(c)) as i32

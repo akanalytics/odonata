@@ -39,13 +39,13 @@ impl Default for MaterialBalance {
             material_weights: [
                 Weight::default(),
                 Weight::new(100, 149),
-                Weight::new(579, 410), // knights
-                Weight::new(538, 455),
-                Weight::new(767, 762),
-                Weight::new(1561, 1417),
+                Weight::new(582, 404), // knights
+                Weight::new(537, 451),
+                Weight::new(778, 749),
+                Weight::new(1599, 1370),
                 Weight::new(0, 0), // king
             ],
-            bishop_pair: Weight::new(102, 35),
+            bishop_pair: Weight::new(109, 25),
         };
         mb
     }

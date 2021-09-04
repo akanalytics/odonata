@@ -31,6 +31,7 @@ pub struct PreCalc {
     pawn_attack_span: [[Bitboard; 64];2],
     strictly_between: [[Bitboard; 64]; 64],
     line: [[Bitboard; 64]; 64],
+    surround: [[Bitboard; 8]; 64],
     sliding_piece_attacks: Box<BestSlidingPieceAttacks>,
 }
 
@@ -47,12 +48,14 @@ impl PreCalc {
             pawn_attack_span: [[Bitboard::EMPTY; 64];2],
             strictly_between: [[Bitboard::EMPTY; 64]; 64],
             line: [[Bitboard::EMPTY; 64]; 64],
+            surround: [[Bitboard::EMPTY; 8]; 64],  
         });
 
         Self::pop_strictly_between(&mut me.strictly_between);
         Self::pop_king_moves(&mut me.king_moves);
         Self::pop_knight_moves(&mut me.knight_moves);
         Self::pop_line(&mut me.line);
+        Self::pop_surround(&mut me.surround);
         me.pop_pawn();
         me
     }
@@ -107,6 +110,19 @@ impl PreCalc {
         }
     }
 
+    fn pop_surround(surround: &mut [[Bitboard; 8]; 64]) {
+        for d in 0..8 {
+            for s1 in Bitboard::all().squares() {
+                for s2 in Bitboard::all().squares() {
+                    // when d = 0, we use distance of 1
+                    if Square::calc_chebyshev_distance(s1, s2) <= d {
+                        surround[s1][d as usize].insert(s2.as_bb());
+                    }
+                }
+            }
+        }
+    }
+
     #[inline]
     pub fn bishop_attacks(&self, occupied: Bitboard, from: Square) -> Bitboard {
         self.sliding_piece_attacks.bishop_attacks(occupied, from)
@@ -131,13 +147,20 @@ impl PreCalc {
     // king moves - see https://www.chessprogramming.org/Distance
     #[inline]
     pub fn chebyshev_distance(&self, s1: Square, s2: Square) -> u32 {
-        i32::max(
-            i32::abs(s1.rank_index() as i32 - s2.rank_index() as i32),
-            i32::abs(s1.file_index() as i32 - s2.file_index() as i32),
-        ) as u32
+        Square::calc_chebyshev_distance(s1, s2)
     }
 
+    pub fn within_chebyshev_distance_inclusive(&self, s1: Square, d: u32) -> Bitboard {
+        if d >= 8 {
+            Bitboard::all()
+        } else {
+            self.surround[s1][d as usize]
+        }
+    }
+
+
     #[inline]
+    // returns empty if not on same line. For s1 == s2, returns just the single square
     pub fn line_through(&self, s1: Square, s2: Square) -> Bitboard {
         self.line[s1][s2]
     }
@@ -281,6 +304,7 @@ mod tests {
     use super::*;
     // use crate::bitboard::bb_classical::ClassicalBitboard;
     use crate::globals::constants::*;
+    use crate::test_env_log::test;
 
     #[test]
     fn test_king_attacks() {
@@ -369,5 +393,13 @@ mod tests {
         assert_eq!(bb.strictly_between(a1.square(), a8.square()), FILE_A - a1 - a8);
         assert_eq!(bb.strictly_between(a1.square(), a1.square()), Bitboard::empty());
         assert_eq!(bb.strictly_between(a1.square(), b2.square()), Bitboard::empty());
+    }
+
+    #[test]
+    fn test_within_chebyshev_distance_inclusive() {
+        let bb = BitboardDefault::default();
+        assert_eq!(bb.within_chebyshev_distance_inclusive(d4.square(), 4), Bitboard::all());
+        assert_eq!(bb.within_chebyshev_distance_inclusive(a4.square(), 2).popcount(), 15);
+        info!("{}", bb.within_chebyshev_distance_inclusive(c3.square(), 3));
     }
 }
