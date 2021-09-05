@@ -5,7 +5,7 @@ Milestones ('m') are bundled into Releases.
 #### Unreleased
 - Evaluation of king tropism, passed pawn on 7th
 - Texel tuned
-- Texel tuning uses Rayon library for parallel evals (30M/sec)
+- Texel tuning uses Rayon library for parallel evals (138 M/sec)
 - Check for insufficient material in quiesensce
 
 

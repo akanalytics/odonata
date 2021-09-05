@@ -3,6 +3,7 @@ use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::config::{Component, Config};
 use crate::eval::score::Score;
+use crate::eval::switches::Switches;
 use crate::movelist::MoveList;
 use crate::mv::Move;
 use crate::search::algo::Algo;
@@ -20,7 +21,25 @@ pub struct QSearch {
     pub see_cutoff: i64,
     max_ply: u16,
     pub coarse_delta_prune: Score,
+    pub switches: Switches,
 }
+
+
+impl Default for QSearch {
+    fn default() -> Self {
+        QSearch {
+            enabled: true,
+            only_captures: false,
+            ignore_see_fails: true,
+            see_cutoff: 0,
+            promos: false,
+            max_ply: 10,
+            coarse_delta_prune: Score::from_cp(1000),
+            switches: Switches::ALL_SCORING | Switches::INSUFFICIENT_MATERIAL, // MBPOWSCTI
+        }
+    }
+}
+
 
 impl Component for QSearch {
     fn settings(&self, c: &mut Config) {
@@ -29,9 +48,13 @@ impl Component for QSearch {
         c.set("qsearch.promos", "type check default true");
         c.set("qsearch.see.cutoff", "type spin default 0 min -5000 max 5000");
         c.set("qsearch.see.ignore_fails", "type check default true");
-        c.set("qsearch.max_ply", "type spin default 10 min 0 max 100");
+        c.set("qsearch.max.ply", "type spin default 10 min 0 max 100");
         c.set(
-            "qsearch.coarse_delta_prune_cp",
+            "qsearch.switches",
+            &format!("type string default {}", self.switches.to_string()),
+        );
+        c.set(
+            "qsearch.coarse.delta.prune.cp",
             "type spin default 900 min 0 max 10000",
         );
     }
@@ -44,9 +67,12 @@ impl Component for QSearch {
         self.ignore_see_fails = c
             .bool("qsearch.see.ignore_fails")
             .unwrap_or(self.ignore_see_fails);
-        self.max_ply = c.int("qsearch.max_ply").unwrap_or(self.max_ply as i64) as u16;
-        if let Some(cp) = c.int("qsearch.coarse_delta_prune_cp") {
+        self.max_ply = c.int("qsearch.max.ply").unwrap_or(self.max_ply as i64) as u16;
+        if let Some(cp) = c.int("qsearch.coarse.delta.prune.cp") {
             self.coarse_delta_prune = Score::from_cp(cp as i32);
+        }
+        if let Ok(sw) = Switches::parse(&c.string("qsearch.switches").unwrap_or(self.switches.to_string())) {
+            self.switches = sw;
         }
     }
     fn new_game(&mut self) {}
@@ -54,19 +80,6 @@ impl Component for QSearch {
     fn new_position(&mut self) {}
 }
 
-impl Default for QSearch {
-    fn default() -> Self {
-        QSearch {
-            enabled: true,
-            only_captures: false,
-            ignore_see_fails: true,
-            see_cutoff: 0,
-            promos: false,
-            max_ply: 10,
-            coarse_delta_prune: Score::from_cp(1000),
-        }
-    }
-}
 
 impl fmt::Display for QSearch {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -77,6 +90,7 @@ impl fmt::Display for QSearch {
         writeln!(f, "see cutoff       : {}", self.see_cutoff)?;
         writeln!(f, "max_ply          : {}", self.max_ply)?;
         writeln!(f, "coarse_del_prune : {}", self.coarse_delta_prune)?;
+        writeln!(f, "eval switches    : {}", self.switches)?;
         Ok(())
     }
 }
@@ -134,7 +148,11 @@ impl Algo {
                 beta,
             };
             standing_pat = board.eval(&mut self.eval, &node);
-            trace!("{}", board.debug() + "Standing pat (eval)" + standing_pat);
+            trace!(
+                "Standing pat (eval on depth 0 on {}) {}",
+                board.to_fen(),
+                standing_pat
+            );
             if standing_pat.is_mate() {
                 // self.record_new_pv(board, ply, &Move::NULL_MOVE, true);
                 self.search_stats.inc_q_leaf_nodes(ply);
@@ -145,28 +163,29 @@ impl Algo {
             }
         } else if in_check {
             standing_pat = alpha;
-        } else {            
-            standing_pat = board.eval_qsearch(
-                &mut self.eval,
-                &Node {
-                    ply,
-                    depth,
-                    alpha,
-                    beta,
-                },
+        } else {
+            standing_pat = board.eval_some(&mut self.eval, self.qsearch.switches);
+            trace!(
+                "[ply {}] Standing pat (eval_qsearch on {}) {} ",
+                ply,
+                board.to_fen(),
+                standing_pat
             );
-            trace!("{}", board.debug() + "Standing pat (eval_qsearch)" + standing_pat);
         }
         if standing_pat > alpha {
             if standing_pat >= beta {
                 self.search_stats.inc_q_leaf_nodes(ply);
                 trace!(
                     "{}",
-                    board.debug() + ply + "fail high - standing pat" + standing_pat + "cmp" + beta
+                    board.debug() + ply + "fail high - standing pat" + standing_pat + ">=" + beta
                 );
                 // self.record_new_pv(b, ply, &Move::NULL_MOVE, true);
                 return standing_pat;
             }
+            trace!(
+                "{}",
+                board.debug() + ply + "alpha raised " + standing_pat + ">" + alpha
+            );
             alpha = standing_pat;
         }
 
@@ -225,7 +244,7 @@ impl Algo {
                 if score < Score::from_cp(bar) || score == Score::from_cp(bar) && (winning || depth >= -1) {
                     trace!(
                         "{}",
-                        board.debug() + "see score bad" + score + "cmp" + Score::from_cp(bar) + "for" + mv
+                        board.debug() + "see score bad" + score + "<" + Score::from_cp(bar) + "for" + mv
                     );
                     if self.qsearch.ignore_see_fails {
                         continue;
@@ -284,46 +303,49 @@ impl Algo {
 mod tests {
     use super::*;
     use crate::catalog::*;
-    use crate::comms::uci::Uci;
     use crate::eval::eval::*;
     use crate::position::*;
+    use crate::search::algo::Engine;
     use crate::search::timecontrol::*;
+    use crate::test_env_log::test;
 
     #[test]
     fn test_quiesce_catalog() -> Result<(), String> {
         let positions = Catalog::quiesce();
         // let pos = Position::find_by_id("pawn fork", &positions ).unwrap();
         for pos in positions {
-            let mut search = Algo::new()
-                .set_timing_method(TimeControl::Depth(0))
-//                .set_callback(Uci::uci_info)
-                .clone();
-            search.eval.mb.enabled = true;
-            search.set_position(pos.clone()).search();
+            let mut engine = Engine::new();
+            engine.algo.set_timing_method(TimeControl::Depth(0));
+            //                .set_callback(Uci::uci_info)
+            engine.algo.eval.mb.enabled = true;
+            engine.set_position(pos.clone());
+            engine.search();
             // debug!("{}", search);
-            println!("search:{}\nexpected:{}\nresults:{}",
-                search.pv().to_string(),
+            println!(
+                "search:{}\nexpected:{}\nresults:{}",
+                engine.algo.pv().to_string(),
                 pos.pv()?.to_string(),
-                search.results(),
+                engine.algo.results(),
             );
             assert_eq!(
-                search.pv().to_string(),
+                engine.algo.pv().to_string(),
                 pos.pv()?.to_string(),
                 "{} {}\n{}",
                 pos.id()?,
-                pos.board().to_san_variation(search.pv(), None),
-                search
+                pos.board().to_san_variation(engine.algo.pv(), None),
+                engine.algo
             );
             // forward score is from POV of mover at end of PV line
-            let qboard = search.pv().apply_to(pos.board());
-            let mut static_eval = qboard.eval(&mut search.eval, &Node::root(0)).cp().unwrap();
+            let qboard = engine.algo.pv().apply_to(pos.board());
+            let mut static_eval = qboard.eval_some(&mut engine.algo.eval, engine.algo.qsearch.switches).cp().unwrap();
             if qboard.color_us() != pos.board().color_us() {
                 static_eval = -static_eval;
             }
             assert_eq!(
                 static_eval,
-                search.results().ce().unwrap() as i16,
-                "{}", search.results()
+                engine.algo.results().ce().unwrap() as i16,
+                "{}",
+                engine.algo.results()
             );
         }
         Ok(())

@@ -71,7 +71,7 @@ impl iter::Sum for Weight {
     where
         I: Iterator<Item = Self>,
     {
-        iter.fold(Self::new(0, 0), |a, b| a + b)
+        iter.fold(Self::zero(), |a, b| a + b)
     }
 }
 

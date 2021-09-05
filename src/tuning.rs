@@ -57,7 +57,8 @@ impl Tuning {
         let total_diff_squared: f32 = self.models_and_outcomes.par_iter().map(|(model,outcome)| {
 
             // estimate result by looking at centipawn evaluation
-            let mut w_score = ModelScore::new();
+            let phase = model.mat.phase(&eval.phaser);
+            let mut w_score = ModelScore::new(phase);
             eval.predict(model, &mut w_score);
             // let board = self.boards[i].board();
             // let w_score_eval = board.color_us().chooser_wb(1, -1) * board.eval(eval, &Node::root(0));

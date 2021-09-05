@@ -1,6 +1,7 @@
 use crate::board::Board;
 use crate::config::{Component, Config};
 use crate::mv::Move;
+use crate::phaser::Phaser;
 use crate::search::node::Node;
 use crate::search::searchstats::SearchStats;
 use crate::types::Ply;
@@ -64,13 +65,14 @@ impl Extensions {
         _mv: &Move,
         _after: &Board,
         node: &Node,
+        phaser: &Phaser,
         search_stats: &mut SearchStats,
     ) -> Ply {
         let mut extend = 0;
         if self.check_enabled {
             if before.is_in_check(before.color_us())
                 && node.depth <= self.check_max_depth
-                && before.phase() < self.check_max_phase
+                && before.phase(phaser) < self.check_max_phase
             {
                 search_stats.inc_ext_check(node.ply);
                 extend += 1;

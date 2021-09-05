@@ -161,7 +161,7 @@ mod tests {
         assert_eq!(size_of::<SearchStats>(), 736, "SearchStats");
         assert_eq!(size_of::<ClassicalBitboard>(), 5120, "ClassicalBitboard");
         assert_eq!(size_of::<Hyperbola>(), 5632, "Hyperbola");
-        assert_eq!(size_of::<PreCalc>(), 71688, "PreCalc");
+        assert_eq!(size_of::<PreCalc>(), 75784, "PreCalc");
         assert_eq!(size_of::<Magic>(), 719264, "Magic");
         assert_eq!(size_of::<Hasher>(), 7296, "Hasher");
     }

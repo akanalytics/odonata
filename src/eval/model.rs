@@ -18,7 +18,6 @@ pub struct Model {
     pub switches: Switches,
     pub turn: Color, 
     pub mat: Material,
-    pub phase: i32,
     pub draw: bool,
     pub multiboard: Multiboard,
 
@@ -73,14 +72,14 @@ pub trait Scorer {
     fn safety(&mut self, attr: &str, w_value: i32, b_value: i32, score: Weight);
     fn tempo(&mut self, attr: &str, w_value: i32, b_value: i32, score: Weight);
     fn contempt(&mut self, attr: &str, w_value: i32, b_value: i32, score: Weight);
-    fn interpolate(&mut self, attr: &str, phase: i32);
+    fn interpolate(&mut self, attr: &str);
     fn total(&self) -> Weight;
+    fn phase(&self) -> i32;
 } 
 
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ExplainScorer {
-    phase: i32, 
     mat: Vec<(String, i32, i32, Weight)>,
     pos: Vec<(String, i32, i32, Weight)>,
     paw: Vec<(String, i32, i32, Weight)>,
@@ -93,8 +92,12 @@ pub struct ExplainScorer {
 
 
 impl ExplainScorer {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(phase: i32) -> Self {
+        Self {
+            delegate: ModelScore::new(phase),
+            ..Self::default()
+        }
+
     }
     pub fn as_score(&self) -> Score {
         self.delegate.as_score()
@@ -155,14 +158,18 @@ impl Scorer for ExplainScorer {
     }
     
     #[inline]
-    fn interpolate(&mut self, _attr: &str, phase: i32) {
-        self.phase = phase;
-        self.delegate.interpolate(_attr, phase);
+    fn interpolate(&mut self, _attr: &str) {
+        self.delegate.interpolate(_attr);
     }
 
     #[inline]
     fn total(&self) -> Weight {
         self.delegate.total()
+    }
+
+    #[inline]
+    fn phase(&self) -> i32 {
+        self.delegate.phase()
     }
 }
 
@@ -180,7 +187,7 @@ impl fmt::Display for ExplainScorer {
                 writeln!(f, "{:>20} | {:>5} {:>5} {:>5} | {:>5}  {:>5} {:>5} | {:>5} {:>5} {:>5} | {:>15}", 
                     attr, 
                     w, (w*wt).s(), (w*wt).e(), 
-                    ((w*wt) - (b*wt)).interpolate(self.phase),
+                    ((w*wt) - (b*wt)).interpolate(self.phase()),
                     (w*wt).s() - (b*wt).s(), (w*wt).e() - (b*wt).e(), 
                     b, (b*wt).s(), (b*wt).e(), wt.to_string())?;
             }
@@ -194,7 +201,7 @@ impl fmt::Display for ExplainScorer {
                 writeln!(f, "{:>20} | {:>5} {:>5} {:>5} | {:>5}  {:>5} {:>5} | {:>5} {:>5} {:>5} | {:>15}", 
                     attr, 
                     "", wwt.s(), wwt.e(), 
-                    twt.interpolate(self.phase), twt.s(), twt.e(), 
+                    twt.interpolate(self.phase()), twt.s(), twt.e(), 
                     "", bwt.s(), bwt.e(), "")?;
                 writeln!(f)?;
             }
@@ -203,8 +210,8 @@ impl fmt::Display for ExplainScorer {
         "", "-----", "-----", "-----", "=====", "=====", "=====", "-----", "-----", "-----", "==========")?;
         writeln!(f, "{:>20} | {:>5} {:>5} {:>5} | {:>5}  {:>5} {:>5} | {:>5} {:>5} {:>5} |      Phase{:>3} %", 
             "EVALUATION", "", "", "", 
-            self.total().interpolate(self.phase), self.total().s(), self.total().e(), 
-            "", "", "", self.phase)?;
+            self.total().interpolate(self.phase()), self.total().s(), self.total().e(), 
+            "", "", "", self.phase())?;
         writeln!(f, "{:>20} | {:>5} {:>5} {:>5} | {:>5}  {:>5} {:>5} | {:>5} {:>5} {:>5} | {:>15}", 
         "", "", "", "", "=====", "=====", "=====", "", "", "", "==========")?;
         Ok(())
@@ -222,6 +229,7 @@ impl fmt::Display for ExplainScorer {
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ModelScore {
+    pub phase: i32,
     pub material: Weight,
     pub position: Weight,
     pub pawn: Weight,
@@ -243,9 +251,13 @@ pub struct ModelScore {
 
 
 impl ModelScore {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(phase: i32) -> Self {
+        Self {
+            phase,
+            .. Self::default()
+        }
     }
+
     pub fn as_score(&self) -> Score {
         Score::from_cp(self.interpolated)
     }
@@ -296,8 +308,8 @@ impl Scorer for ModelScore {
     }
     
     #[inline]
-    fn interpolate(&mut self, _attr: &str, phase: i32) {
-        self.interpolated += self.total().interpolate(phase);
+    fn interpolate(&mut self, _attr: &str) {
+        self.interpolated += self.total().interpolate(self.phase);
     }
 
     #[inline]
@@ -309,6 +321,11 @@ impl Scorer for ModelScore {
         + self.safety
         + self.tempo
         + self.contempt
+    }
+
+    #[inline]
+    fn phase(&self) -> i32 {
+        self.phase
     }
 }
 
@@ -328,7 +345,6 @@ impl Model {
             turn: b.color_us(),
             multiboard: b.multiboard().clone(),
             mat: material,
-            phase: b.phase(),
             white: ModelSide::from_board(b, Color::White, &material, switches),
             black: ModelSide::from_board(b, Color::Black, &material, switches),
             draw: false,

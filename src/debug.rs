@@ -53,11 +53,11 @@ impl Debug {
     }
 
     fn append_node(&mut self, node: &Node) -> &mut Debug {
-        self.append_ply(node.ply);
+        self.append_text(&format!("ply={} depth={}", node.ply, node.depth));
         if self.board.color_us() == Color::White {
-            self.append_text(&format!("({},{})", node.alpha, node.beta));
+            self.append_text(&format!("(a={},b={})", node.alpha, node.beta));
         } else {
-            self.append_text(&format!("({},{})", -node.beta, -node.alpha));
+            self.append_text(&format!("(a={},b={})", -node.beta, -node.alpha));
         }
         self
     }

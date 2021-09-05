@@ -222,6 +222,7 @@ impl Algo {
                 &mv,
                 &child_board,
                 &n,
+                &self.eval.phaser,
                 &mut self.search_stats,
             );
             let lmr = if !self.minmax {

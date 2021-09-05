@@ -102,6 +102,7 @@ impl Component for Uci {
         c.set("uci.debug", "type check default false");
         c.set("Ponder", "type check default false");
         c.set("Clear Hash", "type button");
+        c.set("Print Eval", "type button");
         self.engine.lock().unwrap().settings(c);
     }
 
@@ -112,6 +113,9 @@ impl Component for Uci {
         }
         if c.string("clear_cache").is_some() || c.string("Clear Hash").is_some() {
             let _res = self.uci_newgame();
+        }
+        if c.string("Print Eval").is_some() {
+            let _res = self.ext_uci_explain_eval();
         }
 
         self.engine.lock().unwrap().configure(&c);
@@ -136,6 +140,7 @@ impl Uci {
             running: false,
             preamble: Vec::default(),
         };
+        uci.engine.lock().unwrap().set_position(Position::from_board(uci.board.clone()));
         uci.engine.lock().unwrap().algo.set_callback(|sp| Self::uci_info(sp));
         uci
     }
@@ -205,6 +210,7 @@ impl Uci {
             "perft" => self.uci_perft(&words[1..]),
             "display" | "d" => self.uci_display(),
             "board" | "b" => self.uci_board(),
+            "?" => self.ext_uci_explain_eval(),
 
             _ if self.is_json_request(&input) => self.json_method(&input),
 
@@ -339,6 +345,12 @@ impl Uci {
     //     println!();
     //     Ok(())
     // }
+    fn ext_uci_explain_eval(&mut self) -> Result<(), String> {
+        let eval = &self.engine.lock().unwrap().algo.eval;
+        let s = eval.w_eval_explain(&self.board);
+        Self::print(&format!("{}", s));
+        Ok(())
+    }
 
     fn ext_uci_static_eval(&mut self, arg: &Args) -> Result<(), String> {
         let mut b = Board::new_empty();

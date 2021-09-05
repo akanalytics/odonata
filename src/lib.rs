@@ -51,7 +51,7 @@ pub mod variation;
 pub mod outcome;
 pub mod parse;
 pub mod perft;
-pub mod phase;
+pub mod phaser;
 pub mod position;
 pub mod pvtable;
 pub mod repetition;

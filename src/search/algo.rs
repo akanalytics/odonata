@@ -376,7 +376,7 @@ impl fmt::Display for Algo {
         writeln!(f, "search position  : {}", self.position)?;
         writeln!(f, "starting board   : {}", self.board.to_fen())?;
         writeln!(f, "material         : {}", self.board.material())?;
-        writeln!(f, "phase            : {} %", self.board.phase())?;
+        writeln!(f, "phase            : {} %", self.board.phase(&self.eval.phaser))?;
         writeln!(f, "static eval      : {}", self.board.eval(&self.eval, &Node::root(0)))?;
         writeln!(f, "bm               : {}", self.bm())?;
         writeln!(f, "score            : {}", self.score())?;
@@ -652,7 +652,7 @@ mod tests {
         search.set_position(Catalog::starting_position());
         search.search();
         println!("{}", search);
-        assert_eq!(search.search_stats().total().all_nodes(), 650); // null move pruning
+        assert_eq!(search.search_stats().total().all_nodes(), 959); // null move pruning
                                                                 // assert_eq!(search.search_stats().total().nodes(), 1468);
                                                                 // assert_eq!(search.search_stats().total().nodes(), 1516); // rejigged pawn PST
                                                                 // previous
@@ -663,7 +663,7 @@ mod tests {
                                                                 // assert_eq!(search.search_stats().total().nodes(), 1833); qsearch sq
                                                                 // assert_eq!(search.search_stats().total().nodes(), 1757);
         assert_eq!(
-            Formatter::format_decimal(2, search.search_stats().branching_factor()), "12.56"
+            Formatter::format_decimal(2, search.search_stats().branching_factor()), "15.98"
         );
     }
 
@@ -684,7 +684,7 @@ mod tests {
         search.set_position(Position::from_board(board));
         search.search();
         println!("{}", search);
-        assert_eq!(search.pv()[0].uci(), "e7e5");
+        assert_eq!(search.pv()[0].uci(), "e7e6");
     }
 
     #[test]
