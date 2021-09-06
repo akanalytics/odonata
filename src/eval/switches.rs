@@ -42,7 +42,7 @@ impl Switches {
                 'S' => switches |= Self::SAFETY,
                 'C' => switches |= Self::CONTEMPT,
                 'T' => switches |= Self::TEMPO,
-                '-' => break,
+                '-' => { switches = Self::NONE; break},
                 'I' => switches |= Self::INSUFFICIENT_MATERIAL,
                 _ => return Err(format!("Invalid character '{}' in eval switches '{}'", ch, s)),
             }
@@ -121,3 +121,22 @@ impl fmt::Display for Switches {
         Ok(())
     }
 }
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_env_log::test;
+
+    #[test]
+    fn test_switches() {
+        let s = "MBPOWSCTI";
+        assert_eq!(Switches::parse(s).unwrap().to_string(), s);
+        assert_eq!(Switches::parse("-").unwrap().to_string(), "-");
+        assert_eq!(Switches::parse("MBP").unwrap().to_string(), "MBP");
+        let sw = Switches::ALL_SCORING | Switches::INSUFFICIENT_MATERIAL;
+        assert_eq!(sw.to_string(), "MBPOWSCTI");
+    }
+}
+  
