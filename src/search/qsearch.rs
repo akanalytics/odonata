@@ -15,7 +15,7 @@ use std::fmt;
 #[derive(Copy, Clone, Debug)]
 pub struct QSearch {
     pub enabled: bool,
-    pub only_captures: bool,
+    pub only_on_capture: bool,
     pub promos: bool,
     pub ignore_see_fails: bool,
     pub see_cutoff: i64,
@@ -29,7 +29,7 @@ impl Default for QSearch {
     fn default() -> Self {
         QSearch {
             enabled: true,
-            only_captures: false,
+            only_on_capture: false,
             ignore_see_fails: true,
             see_cutoff: 0,
             promos: false,
@@ -43,29 +43,29 @@ impl Default for QSearch {
 
 impl Component for QSearch {
     fn settings(&self, c: &mut Config) {
-        c.set("qsearch.enabled", "type check default true");
-        c.set("qsearch.only_captures", "type check default true");
-        c.set("qsearch.promos", "type check default true");
-        c.set("qsearch.see.cutoff", "type spin default 0 min -5000 max 5000");
-        c.set("qsearch.see.ignore_fails", "type check default true");
-        c.set("qsearch.max.ply", "type spin default 10 min 0 max 100");
+        c.set("qsearch.enabled", &format!("type check default {}", self.enabled));
+        c.set("qsearch.only.on.capture", &format!("type check default {}", self.only_on_capture));
+        c.set("qsearch.promos", &format!("type check default {}", self.promos));
+        c.set("qsearch.see.cutoff", &format!("type spin default {} min -5000 max 5000", self.see_cutoff));
+        c.set("qsearch.see.ignore.fails", &format!("type check default {}", self.ignore_see_fails));
+        c.set("qsearch.max.ply", &format!("type spin default {} min 0 max 100", self.max_ply));
         c.set(
             "qsearch.switches",
             &format!("type string default {}", self.switches.to_string()),
         );
         c.set(
             "qsearch.coarse.delta.prune.cp",
-            "type spin default 900 min 0 max 10000",
+            &format!("type spin default {} min 0 max 10000", self.coarse_delta_prune)
         );
     }
     fn configure(&mut self, c: &Config) {
         debug!("qsearch.configure");
         self.enabled = c.bool("qsearch.enabled").unwrap_or(self.enabled);
-        self.only_captures = c.bool("qsearch.only_captures").unwrap_or(self.only_captures);
+        self.only_on_capture = c.bool("qsearch.only.on.capture").unwrap_or(self.only_on_capture);
         self.promos = c.bool("qsearch.promos").unwrap_or(self.promos);
         self.see_cutoff = c.int("qsearch.see.cutoff").unwrap_or(self.see_cutoff);
         self.ignore_see_fails = c
-            .bool("qsearch.see.ignore_fails")
+            .bool("qsearch.see.ignore.fails")
             .unwrap_or(self.ignore_see_fails);
         self.max_ply = c.int("qsearch.max.ply").unwrap_or(self.max_ply as i64) as u16;
         if let Some(cp) = c.int("qsearch.coarse.delta.prune.cp") {
@@ -84,7 +84,7 @@ impl Component for QSearch {
 impl fmt::Display for QSearch {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "enabled          : {}", self.enabled)?;
-        writeln!(f, "only captures    : {}", self.only_captures)?;
+        writeln!(f, "only on capture  : {}", self.only_on_capture)?;
         writeln!(f, "ignore see fails : {}", self.ignore_see_fails)?;
         writeln!(f, "promos           : {}", self.promos)?;
         writeln!(f, "see cutoff       : {}", self.see_cutoff)?;
@@ -111,7 +111,7 @@ impl Algo {
     ) -> Score {
         self.clear_move(ply);
 
-        if !self.qsearch.enabled || (!mv.is_capture() && self.qsearch.only_captures) {
+        if !self.qsearch.enabled || (!mv.is_capture() && self.qsearch.only_on_capture) {
             let node = Node {
                 ply,
                 depth,
@@ -153,7 +153,8 @@ impl Algo {
                 board.to_fen(),
                 standing_pat
             );
-            if standing_pat.is_mate() {
+            // early return if a draw or mate
+            if standing_pat.is_mate() || board.draw_outcome().is_some() {
                 // self.record_new_pv(board, ply, &Move::NULL_MOVE, true);
                 self.search_stats.inc_q_leaf_nodes(ply);
                 return standing_pat;
