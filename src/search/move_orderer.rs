@@ -123,7 +123,7 @@ impl MoveOrderer {
             score -= mv.to().rank_index() as i32;
         }
 
-        score += algo.eval.w_eval_square(c, mv.mover_piece(), mv.to()).interpolate(phase);
+        score += algo.eval.w_eval_square(c, mv.mover_piece(), mv.to()).interpolate(phase) as i32;
         // score -= algo.eval.w_eval_square(c, mv.mover_piece(), mv.from()).interpolate(phase);
         -score
     }

@@ -23,6 +23,7 @@ pub struct MaterialBalance {
     pub trade_factor: i32,
     pub material_weights: [Weight; Piece::len()],
     pub bishop_pair: Weight,
+    pub rook_pair: Weight,
 }
 
 
@@ -46,6 +47,7 @@ impl Default for MaterialBalance {
                 Weight::new(0, 0), // king
             ],
             bishop_pair: Weight::new(109, 25),
+            rook_pair: Weight::new(0, 0),
         };
         mb
     }
@@ -72,6 +74,7 @@ impl Component for MaterialBalance {
             &format!("type spin min -500 max 2000 default {}", self.trade_factor),
         );
         c.set_weight("eval.bishop.pair", &self.bishop_pair);
+        c.set_weight("eval.rook.pair", &self.rook_pair);
         for &p in &Piece::ALL_BAR_KING {
             let mut name = "eval.".to_string();
             name.push(p.to_char(Some(Color::Black)));
@@ -90,6 +93,7 @@ impl Component for MaterialBalance {
         self.trade_factor = c.int("mb.trade.factor").unwrap_or(self.trade_factor as i64) as i32;
 
         self.bishop_pair = c.weight("eval.bishop.pair", &self.bishop_pair);
+        self.rook_pair = c.weight("eval.rook.pair", &self.rook_pair);
         for &p in &Piece::ALL_BAR_KING {
             let mut name = "eval.".to_string();
             name.push(p.to_char(Some(Color::Black)));
@@ -123,6 +127,7 @@ impl fmt::Display for MaterialBalance {
         writeln!(f, "max pawns        : {}", self.max_pawns)?;
         writeln!(f, "trade factor     : {}", self.trade_factor)?;
         writeln!(f, "bishop pair      : {}", self.bishop_pair)?;
+        writeln!(f, "rook pair        : {}", self.rook_pair)?;
         writeln!(f, "table size       : {}", Material::HASH_VALUES)?;
         Ok(())
     }
@@ -139,6 +144,7 @@ impl fmt::Debug for MaterialBalance {
             .field("max_pawns", &self.max_pawns)
             .field("trade_factor", &self.trade_factor)
             .field("bishop_pair", &self.bishop_pair)
+            .field("rook_pair", &self.rook_pair)
             .field("size", &Material::HASH_VALUES)
             .finish()
     }
@@ -156,7 +162,7 @@ impl MaterialBalance {
             Weight::from_i32(Piece::Bishop.centipawns()),
             Weight::from_i32(Piece::Rook.centipawns()),
             Weight::from_i32(Piece::Queen.centipawns()),
-            Weight::new(0, 0), // king
+            Weight::from_i32(0), // king
         ];
     }
 
@@ -184,18 +190,24 @@ impl MaterialBalance {
         if mat.counts(Color::Black, Piece::Bishop) >= 2 {
             weight = weight - self.bishop_pair
         }
+        if mat.counts(Color::White, Piece::Rook) >= 2 {
+            weight = weight + self.rook_pair
+        }
+        if mat.counts(Color::Black, Piece::Rook) >= 2 {
+            weight = weight - self.rook_pair
+        }
         weight
     }
 
     pub fn eval_move_material(&self, mv: &Move) -> i32 {
-        let mut score = 0;
+        let mut score = 0.0;
         if mv.is_capture() {
             score += self.material_weights[mv.capture_piece()].s();
         }
         if mv.is_promo() {
             score += self.material_weights[mv.promo_piece()].s();
         }
-        score
+        score as i32
     }
 
 
@@ -325,7 +337,7 @@ impl MaterialBalance {
                     }
                 }
                 // adj means that drawish positions still incentivise a material gain
-                let adj = self.w_eval_simple(mat).e();
+                let adj = self.w_eval_simple(mat).e() as i32;
                 cp = cp.clamp(-5000 + adj, 5000 + adj);
 
                 if !self.draws_only || (-20 < cp && cp < 20) {  
@@ -395,7 +407,7 @@ impl MaterialBalance {
                 .iter()
                 .map(|&p| (other.counts(Color::White, p) - other.counts(Color::Black, p)) * self.material_weights[p])
                 .sum();        
-                other_cp = std::cmp::max(weight.s(), weight.e());
+                other_cp = std::cmp::max(weight.s() as i32, weight.e() as i32);
             }
 
             // losing material - ensure lesser entries consistent

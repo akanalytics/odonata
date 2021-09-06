@@ -336,9 +336,9 @@ impl SimpleScorer {
     }
 
     fn calculate_pst(&mut self) {
-        let r5 = self.pawn_r5.s();
-        let r6 = self.pawn_r6.s();
-        let r7 = self.pawn_r7.s();
+        let r5 = self.pawn_r5.s() as i32;
+        let r6 = self.pawn_r6.s() as i32;
+        let r7 = self.pawn_r7.s() as i32;
 
         #[rustfmt::skip]
         let pawn_pst_mg: [i32; 64] = [
@@ -351,9 +351,9 @@ impl SimpleScorer {
          9, 15, 15,-35,-35, 15, 15,  10,
          0,  0,  0,  0,  0,  0,  0,  0];
 
-        let r5 = self.pawn_r5.e();
-        let r6 = self.pawn_r6.e();
-        let r7 = self.pawn_r7.e();
+        let r5 = self.pawn_r5.e() as i32;
+        let r6 = self.pawn_r6.e() as i32;
+        let r7 = self.pawn_r7.e() as i32;
         // FIXME! file A and H
         #[rustfmt::skip]
          let pawn_pst_eg: [i32; 64] = [
@@ -421,7 +421,7 @@ impl SimpleScorer {
         -5,  0,  0,  0,  0,  0,  0, -5,
          0,  0,  3,  7,  7,  5,  0,  0];
 
-        let a = self.rook_edge.e();
+        let a = self.rook_edge.e() as i32;
         #[rustfmt::skip]
         let rook_pst_eg: [i32; 64] = [
         a,  a,  a,  a,  a,  a,  a,  a,
@@ -536,7 +536,7 @@ impl SimpleScorer {
             * board
                 .color_us()
                 .chooser_wb(self.contempt_penalty, -self.contempt_penalty);
-        return Score::from_cp(contempt.interpolate(board.phase(&self.phaser)));
+        return Score::from_f32(contempt.interpolate(board.phase(&self.phaser)));
 
         // FIXME! v33
         // let signum = 1 - (node.ply % 2) * 2; // ply=0 => 1  ply=1=> -1
@@ -596,6 +596,12 @@ impl SimpleScorer {
                 w.has_bishop_pair as i32,
                 b.has_bishop_pair as i32,
                 self.mb.bishop_pair,
+            );
+            scorer.material(
+                "rook pair",
+                w.has_rook_pair as i32,
+                b.has_rook_pair as i32,
+                self.mb.rook_pair,
             );
         }
 
@@ -823,7 +829,7 @@ mod tests {
     fn test_eval_configure() {
         let mut eval = SimpleScorer::new();
         eval.configure(&Config::new().set("eval.b.s", "700"));
-        assert_eq!(eval.mb.material_weights[Piece::Bishop].s(), 700);
+        assert_eq!(Score::from_f32(eval.mb.material_weights[Piece::Bishop].s()), Score::from_cp(700));
 
         let mut eval = SimpleScorer::new();
         eval.configure(&Config::new().set("eval.position", "false"));
@@ -837,7 +843,7 @@ mod tests {
         let bd = Board::parse_fen("8/P7/8/8/8/8/8/8 w - - 0 1").unwrap().as_board();
         eval.set_switches(false);
         eval.position = true;
-        assert_eq!(bd.eval(&eval, &Node::root(0)), Score::from_cp(eval.pawn_r7.e()));
+        assert_eq!(bd.eval(&eval, &Node::root(0)), Score::from_f32(eval.pawn_r7.e()) );
 
         let bd = Board::parse_fen("8/4p3/8/8/8/8/8/8 w - - 0 1")
             .unwrap()
@@ -863,13 +869,13 @@ mod tests {
 
         // from blacks perspective to negate
         let bd = Board::parse_fen("8/8/8/8/8/8/p7/8 b - - 0 1").unwrap().as_board();
-        assert_eq!(bd.eval(&eval, &Node::root(0)), Score::from_cp(eval.pawn_r7.e()));
+        assert_eq!(bd.eval(&eval, &Node::root(0)), Score::from_f32(eval.pawn_r7.e()));
     }
 
     #[test]
     fn test_score_mobility() {
         let mut eval = SimpleScorer::new();
-        eval.pawn_doubled = Weight::new(-1, -1);
+        eval.pawn_doubled = Weight::from_i32(-1);
         eval.pawn_isolated = Weight::zero();
         eval.mobility_phase_disable = 101;
         let b = Catalog::starting_board();
@@ -881,7 +887,7 @@ mod tests {
     #[test]
     fn test_score_pawn() {
         let mut eval = SimpleScorer::new();
-        eval.pawn_doubled = Weight::new(-1, -1);
+        eval.pawn_doubled = Weight::from_i32(-1);
         eval.pawn_isolated = Weight::zero();
         eval.mobility_phase_disable = 101;
         let _b = Catalog::starting_board();
@@ -891,7 +897,7 @@ mod tests {
         let b = Board::parse_fen("8/pppp1p1p/pppp4/8/8/2P5/PPP4P/8 b - - 0 1")
             .unwrap()
             .as_board();
-        eval.pawn_doubled = Weight::new(-1, -1);
+        eval.pawn_doubled = Weight::from_i32(-1);
         eval.pawn_isolated = Weight::zero();
         eval.pawn_passed = Weight::zero();
         assert_eq!(
@@ -900,7 +906,7 @@ mod tests {
         );
 
         eval.pawn_doubled = Weight::zero();
-        eval.pawn_isolated = Weight::new(-1, -1);
+        eval.pawn_isolated = Weight::from_i32( -1);
         eval.pawn_passed = Weight::zero();
         assert_eq!(
             eval.w_eval_some(&b, Switches::ALL_SCORING),
@@ -909,7 +915,7 @@ mod tests {
 
         eval.pawn_doubled = Weight::zero();
         eval.pawn_isolated = Weight::zero();
-        eval.pawn_passed = Weight::new(10, 10);
+        eval.pawn_passed = Weight::from_i32(10);
         assert_eq!(
             eval.w_eval_some(&b, Switches::ALL_SCORING),
             Score::from_cp(0 - 10)
@@ -920,7 +926,7 @@ mod tests {
             .unwrap()
             .as_board();
 
-        eval.pawn_doubled = Weight::new(-1, -1);
+        eval.pawn_doubled = Weight::from_i32( -1);
         eval.pawn_isolated = Weight::zero();
         eval.set_switches(false);
         eval.pawn = true;
@@ -932,7 +938,7 @@ mod tests {
         );
 
         eval.pawn_doubled = Weight::zero();
-        eval.pawn_isolated = Weight::new(-1, -1);
+        eval.pawn_isolated = Weight::from_i32(-1);
         assert_eq!(
             eval.w_eval_some(&b, Switches::ALL_SCORING),
             Score::from_cp(-1),

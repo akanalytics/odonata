@@ -109,15 +109,15 @@ impl Config {
             if let Ok(res) = v.parse::<i32>() {
                 info!("config {}.s = {}", name, res);
             }
-            s = v.parse::<i32>().unwrap_or(default.s());
+            s = v.parse::<f32>().unwrap_or(default.s());
         }
         if let Some(v) = self.settings.get(&(name.to_string() + ".e")) {
             if let Ok(res) = v.parse::<i32>() {
                 info!("config {}.e = {}", name, res);
             }
-            e = v.parse::<i32>().unwrap_or(default.e());
+            e = v.parse::<f32>().unwrap_or(default.e());
         }
-        Weight::new(s, e)
+        Weight::from_f32(s, e)
     }
 
     pub fn int(&self, name: &str) -> Option<i64> {

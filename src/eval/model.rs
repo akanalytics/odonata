@@ -30,6 +30,7 @@ pub struct ModelSide {
 
     // material
     pub has_bishop_pair: bool,
+    pub has_rook_pair: bool,
 
     // position
     // pub psq: ArrayVec<(Piece, Square), 32>,
@@ -78,7 +79,7 @@ pub trait Scorer {
 } 
 
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct ExplainScorer {
     mat: Vec<(String, i32, i32, Weight)>,
     pos: Vec<(String, i32, i32, Weight)>,
@@ -207,13 +208,13 @@ impl fmt::Display for ExplainScorer {
             }
         }
         writeln!(f, "{:>20} | {:>5} {:>5} {:>5} | {:>5}  {:>5} {:>5} | {:>5} {:>5} {:>5} | {:>15}", 
-        "", "-----", "-----", "-----", "=====", "=====", "=====", "-----", "-----", "-----", "==========")?;
+        "", "-----", "-----", "-----", "=====", "-----", "-----", "-----", "-----", "-----", "==========")?;
         writeln!(f, "{:>20} | {:>5} {:>5} {:>5} | {:>5}  {:>5} {:>5} | {:>5} {:>5} {:>5} |      Phase{:>3} %", 
             "EVALUATION", "", "", "", 
             self.total().interpolate(self.phase()), self.total().s(), self.total().e(), 
             "", "", "", self.phase())?;
         writeln!(f, "{:>20} | {:>5} {:>5} {:>5} | {:>5}  {:>5} {:>5} | {:>5} {:>5} {:>5} | {:>15}", 
-        "", "", "", "", "=====", "=====", "=====", "", "", "", "==========")?;
+        "", "", "", "", "=====", "-----", "-----", "", "", "", "==========")?;
         Ok(())
     }
 }
@@ -227,7 +228,7 @@ impl fmt::Display for ExplainScorer {
 
 
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct ModelScore {
     pub phase: i32,
     pub material: Weight,
@@ -309,7 +310,7 @@ impl Scorer for ModelScore {
     
     #[inline]
     fn interpolate(&mut self, _attr: &str) {
-        self.interpolated += self.total().interpolate(self.phase);
+        self.interpolated = self.total().interpolate(self.phase) as i32;
     }
 
     #[inline]
@@ -384,6 +385,7 @@ impl ModelSide {
     #[inline]
     fn init_material(&mut self, _b: &Board, c: Color, m: &Material) {
         self.has_bishop_pair = m.counts(c, Piece::Bishop) >= 2;
+        self.has_rook_pair = m.counts(c, Piece::Rook) >= 2;
     }
 
     #[inline]

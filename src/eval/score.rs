@@ -30,6 +30,13 @@ impl Score {
     }
 
     #[inline]
+    pub fn from_f32(centipawn: f32) -> Score {
+        debug_assert!( (centipawn as i32).clamp(-Self::INF as i32, Self::INF as i32) == centipawn as i32, "centipawns {} out of range", centipawn );
+        Score { cp: centipawn as i16 }
+        // Score { cp: centipawn.clamp(-Self::INF as i32, Self::INF as i32) as i16 }  // adds 4% to eval
+    }
+
+    #[inline]
     pub fn as_i16(&self) -> i16 {
         self.cp as i16
     }
