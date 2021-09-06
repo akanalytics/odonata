@@ -18,7 +18,7 @@ pub struct Repetition {
 
 impl Component for Repetition {
     fn settings(&self, c: &mut Config) {
-        c.set("repetition.enabled", "type check default true");
+        c.set("repetition.enabled", &format!("type check default {}", self.enabled));
         c.set("repetition.avoid.tt.on.repeats", &format!("type check default {}", self.avoid_tt_on_repeats));
     }
 
