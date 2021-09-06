@@ -139,6 +139,11 @@ impl Material {
     }
 
     #[inline]
+    pub fn counts_piece(&self, p: Piece) -> i32 {
+        self.counts[Color::White][p] + self.counts[Color::Black][p]
+    }
+
+    #[inline]
     pub fn counts_mut(&mut self, c: Color, p: Piece) -> &mut i32 {
         &mut self.counts[c][p]
     }
