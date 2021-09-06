@@ -208,9 +208,9 @@ impl Uci {
 //            "ext:catalog" => self.ext_uci_catalog(&Args::parse(&input)),
             "sleep" => self.uci_sleep(&words[1..]),
             "perft" => self.uci_perft(&words[1..]),
-            "display" | "d" => self.uci_display(),
+            "search" | "?" => self.uci_explain_last_search(),
             "board" | "b" => self.uci_board(),
-            "?" => self.ext_uci_explain_eval(),
+            "eval" | "." => self.ext_uci_explain_eval(),
 
             _ if self.is_json_request(&input) => self.json_method(&input),
 
@@ -345,12 +345,6 @@ impl Uci {
     //     println!();
     //     Ok(())
     // }
-    fn ext_uci_explain_eval(&mut self) -> Result<(), String> {
-        let eval = &self.engine.lock().unwrap().algo.eval;
-        let s = eval.w_eval_explain(&self.board);
-        Self::print(&format!("{}", s));
-        Ok(())
-    }
 
     fn ext_uci_static_eval(&mut self, arg: &Args) -> Result<(), String> {
         let mut b = Board::new_empty();
@@ -536,20 +530,30 @@ impl Uci {
         }
     }
 
-    fn uci_display(&mut self) -> Result<(), String> {
+    fn ext_uci_explain_eval(&mut self) -> Result<(), String> {
         self.engine.lock().unwrap().search_stop();
-        self.uci_info_string("display");
-        self.uci_info_string(&format!("{}", self.board));
-        self.uci_info_string(&format!("{}", self.engine.lock().unwrap().algo));
+        let eval = &self.engine.lock().unwrap().algo.eval;
+        let s = eval.w_eval_explain(&self.board);
+        Self::print(&format!("Board:\n{}", &self.board));
+        Self::print(&format!("Material advantage: {}", &self.board.material().advantage()));
+        Self::print(&format!("Eval:\n{}", s));
+        Ok(())
+    }
+
+    fn uci_explain_last_search(&mut self) -> Result<(), String> {
+        self.engine.lock().unwrap().search_stop();
+        Self::print("search");
+        Self::print(&format!("{}", self.board));
+        Self::print(&format!("{}", self.engine.lock().unwrap().algo));
         Ok(())
     }
 
     fn uci_board(&mut self) -> Result<(), String> {
         self.engine.lock().unwrap().search_stop();
-        self.uci_info_string("board");
-        self.uci_info_string(&format!("{}", self.board));
-        self.uci_info_string(&format!("outcome {}", self.board.outcome()));
-        self.uci_info_string(&format!("legal moves:{}", self.board.legal_moves().uci()));
+        Self::print("board");
+        Self::print(&format!("{}", self.board));
+        Self::print(&format!("outcome {}", self.board.outcome()));
+        Self::print(&format!("legal moves:{}", self.board.legal_moves().uci()));
         Ok(())
     }
 
@@ -571,9 +575,9 @@ impl Uci {
         }
     }
 
-    fn uci_info_string(&self, str: &str) {
-        Self::print(&format!("info string {}", str.replace("\n", "\ninfo string ")));
-    }
+    // fn uci_info_string(&self, str: &str) {
+    //     Self::print(&format!("info string {}", str.replace("\n", "\ninfo string ")));
+    // }
 
     fn print_bm_and_ponder(bm: &Move, var: &Variation) {
         let mut output = format!("bestmove {}", bm.uci());
@@ -708,6 +712,16 @@ mod tests {
     }
 
     #[test]
+    fn test_uci_helpers() {
+        let mut uci = Uci::new();
+        uci.preamble.push("b".into());
+        uci.preamble.push("?".into());
+        uci.preamble.push(".".into());
+        uci.preamble.push("quit".into());
+        uci.run();
+    }
+
+    #[test]
     fn test_uci_setoption() {
         let mut uci = Uci::new();
         uci.preamble.push("setoption name eval.b.s value 700".into());
@@ -715,8 +729,8 @@ mod tests {
             .push("setoption name eval.position value false".into());
         uci.preamble.push("quit".into());
         uci.run();
-        assert_eq!(uci.engine.lock().unwrap().algo.eval.mb.material_weights[Piece::Bishop].s(), 700);
-        assert_eq!(uci.engine.lock().unwrap().algo.eval.mb.material_weights[Piece::Pawn].s(), 100);
+        assert_eq!(uci.engine.lock().unwrap().algo.eval.mb.material_weights[Piece::Bishop].s() as i32, 700);
+        assert_eq!(uci.engine.lock().unwrap().algo.eval.mb.material_weights[Piece::Pawn].s() as i32, 100);
         assert_eq!(uci.engine.lock().unwrap().algo.eval.position, false);
     }
 
