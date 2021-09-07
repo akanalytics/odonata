@@ -660,8 +660,10 @@ impl SimpleScorer {
                 let w = w.squares().map(|sq| self.pst(p, sq)).sum::<Weight>();
                 let b = b.squares().map(|sq| self.pst(p, sq)).sum::<Weight>();
 
-                scorer.position("pst", 1, 0, w);
-                scorer.position("pst", 0, 1, b);
+                let black = ["pst none", "pst p", "pst n", "pst b", "pst r", "pst q", "pst k"][p];
+                let white = ["pst none", "pst P", "pst N", "pst B", "pst R", "pst Q", "pst K"][p];
+                scorer.position(white, 1, 0, w);
+                scorer.position(black, 0, 1, b);
                 // sum = sum + w - b;
             }
             scorer.position("fianchetti", w.fianchetti, b.fianchetti, self.fianchetto);
