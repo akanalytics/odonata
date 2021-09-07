@@ -125,8 +125,6 @@ pub struct SimpleScorer {
     // pub depth: Ply,
 }
 
-
-
 impl Default for MaterialBalance {
     fn default() -> Self {
         let mb = Self {
@@ -171,7 +169,6 @@ impl Default for SimpleScorer {
             contempt_penalty: Weight::new(-30, -30), // typically -ve
             pst: [[Weight::default(); 64]; Piece::len()],
 
-
             rook_open_file: Weight::new(59, -4),
             queen_open_file: Weight::new(-19, 37),
             fianchetto: Weight::new(55, 27),
@@ -195,7 +192,6 @@ impl Default for SimpleScorer {
             tropism_d2: Weight::new(-28, 11),
             tropism_d3: Weight::new(-5, 2),
 
-        
             castling_rights: Weight::new(0, 0),
             rook_edge: Weight::new(0, 0),
         };
@@ -677,7 +673,12 @@ impl SimpleScorer {
             scorer.pawn("doubled", w.doubled_pawns, b.doubled_pawns, self.pawn_doubled);
             scorer.pawn("isolated", w.isolated_pawns, b.isolated_pawns, self.pawn_isolated);
             scorer.pawn("passed", w.passed_pawns, b.passed_pawns, self.pawn_passed);
-            scorer.pawn("passed.r6", w.passed_pawns_on_r6, b.passed_pawns_on_r6, self.pawn_passed_r6);
+            scorer.pawn(
+                "passed.r6",
+                w.passed_pawns_on_r6,
+                b.passed_pawns_on_r6,
+                self.pawn_passed_r6,
+            );
         }
 
         // king safety
@@ -734,12 +735,7 @@ impl SimpleScorer {
             && self.mobility
             && m.switches.contains(Switches::MOBILITY)
         {
-            scorer.mobility(
-                "move",
-                w.move_squares,
-                b.move_squares,
-                self.undefended_sq,
-            );
+            scorer.mobility("move", w.move_squares, b.move_squares, self.undefended_sq);
             scorer.mobility(
                 "undef piece",
                 w.non_pawn_defended_moves,
@@ -882,8 +878,8 @@ mod tests {
         eval.contempt = true;
         info!("\n{}", eval.w_eval_explain(&board_w));
         let score = board_w.eval(eval, &Node::root(0));
-        assert!( score > Score::from_cp(5048));
-        assert!( score < Score::from_cp(8048));
+        assert!(score > Score::from_cp(5048));
+        assert!(score < Score::from_cp(8048));
 
         let board_b = Catalog::black_starting_position();
         info!("\n{}", eval.w_eval_explain(&board_b));
@@ -894,7 +890,10 @@ mod tests {
     fn test_eval_configure() {
         let mut eval = SimpleScorer::new();
         eval.configure(&Config::new().set("eval.b.s", "700"));
-        assert_eq!(Score::from_f32(eval.mb.material_weights[Piece::Bishop].s()), Score::from_cp(700));
+        assert_eq!(
+            Score::from_f32(eval.mb.material_weights[Piece::Bishop].s()),
+            Score::from_cp(700)
+        );
 
         let mut eval = SimpleScorer::new();
         eval.configure(&Config::new().set("eval.position", "false"));
@@ -908,7 +907,7 @@ mod tests {
         let bd = Board::parse_fen("8/P7/8/8/8/8/8/8 w - - 0 1").unwrap().as_board();
         eval.set_switches(false);
         eval.position = true;
-        assert_eq!(bd.eval(&eval, &Node::root(0)), Score::from_f32(eval.pawn_r7.e()) );
+        assert_eq!(bd.eval(&eval, &Node::root(0)), Score::from_f32(eval.pawn_r7.e()));
 
         let bd = Board::parse_fen("8/4p3/8/8/8/8/8/8 w - - 0 1")
             .unwrap()
@@ -919,12 +918,9 @@ mod tests {
 
         let w = Catalog::white_starting_position();
         assert_eq!(w.phase(&eval.phaser), 50);
-        assert_eq!(
-            w.eval(&eval, &Node::root(0)),
-            Score::from_cp(-115),
-            "{}",
-            eval.w_eval_explain(&w)
-        );
+        let score = w.eval(&eval, &Node::root(0));
+        assert!(score < Score::from_cp(-110), "{}", eval.w_eval_explain(&w));
+        assert!(score > Score::from_cp(-120), "{}", eval.w_eval_explain(&w));
 
         let b = Catalog::black_starting_position();
         assert_eq!(
@@ -971,7 +967,7 @@ mod tests {
         );
 
         eval.pawn_doubled = Weight::zero();
-        eval.pawn_isolated = Weight::from_i32( -1);
+        eval.pawn_isolated = Weight::from_i32(-1);
         eval.pawn_passed = Weight::zero();
         assert_eq!(
             eval.w_eval_some(&b, Switches::ALL_SCORING),
@@ -991,7 +987,7 @@ mod tests {
             .unwrap()
             .as_board();
 
-        eval.pawn_doubled = Weight::from_i32( -1);
+        eval.pawn_doubled = Weight::from_i32(-1);
         eval.pawn_isolated = Weight::zero();
         eval.set_switches(false);
         eval.pawn = true;
@@ -1033,7 +1029,7 @@ mod tests {
 
         eval.pawn_nearby_shield = Weight::new(150, 150);
         let e3 = eval.w_eval_some(&b, Switches::ALL_SCORING);
-        assert_eq!(e3-e2, Score::from_cp(150), "{}", eval.w_eval_explain(&b)); // 2 pawns adjacent, 1 nearby
+        assert_eq!(e3 - e2, Score::from_cp(150), "{}", eval.w_eval_explain(&b)); // 2 pawns adjacent, 1 nearby
 
         eval.attacks_near_king = Weight::new(-75, -75);
         let att = eval.w_eval_some(&b, Switches::ALL_SCORING);

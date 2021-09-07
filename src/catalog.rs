@@ -358,7 +358,7 @@ k7/p7/8/8/8/8/Q7/K7 w - - 0 1 acd 0; pv; id QS.02; c0 'only bad captures';
 1k6/p7/4p3/8/8/8/Q7/K7 w - - 0 1 acd 0; pv Qe6; id QS.04; c0 '1 good capture 1 bad';
 1k6/q7/8/8/8/8/Q7/K7 w - - 0 1 acd 0; pv; id QS.05; c0 'even exchange not made';
 1k6/8/8/8/8/8/r2K3P/8 w - - 0 1 acd 0; pv Ke3 Rxh2; id QS.06; c0 'in check then capture';
-1k6/8/8/8/8/5N2/r2K3P/8 w - - 0 1 acd 0; pv Kd3; id QS.07; c0 'in check then bad capture'; c1 'check evasion only (any sq good)';
+1k6/8/8/8/8/5N2/r2K3P/8 w - - 0 1 acd 0; pv Kc3; id QS.07; c0 'in check then bad capture'; c1 'check evasion only (any sq good)';
 k7/8/8/8/2p5/1b6/P7/K7 w - - 0 1 acd 0; pv axb3 cxb3; id QS.08; c0 'capture and recapture';
 k7/8/8/8/p7/1p6/P1P5/K7 w - - 0 1 acd 0; pv cxb3; id QS.09; c0 'capture then bad 2 x recapture';
 k7/p7/1p6/P1B5/8/8/8/K6R w - - 0 1 acd 0; pv axb6 axb6 Bxb6; id QS.10; c0 'capture then good 2 x recapture'; c1 'R means game not drawn';
