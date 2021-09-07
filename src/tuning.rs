@@ -54,37 +54,24 @@ impl Tuning {
     pub fn calculate_mean_square_error(&self, engine: &Engine) -> f32 {
 
         let eval = &engine.algo.eval;
-        let total_diff_squared: f32 = self.models_and_outcomes.par_iter().map(|(model,outcome)| {
-
+        let closure = |pair: &(Model,f32)| {
             // estimate result by looking at centipawn evaluation
+            let (model,outcome) = pair;
             let phase = model.mat.phase(&eval.phaser);
             let mut w_score = ModelScore::new(phase);
             eval.predict(model, &mut w_score);
-            // let board = self.boards[i].board();
-            // let w_score_eval = board.color_us().chooser_wb(1, -1) * board.eval(eval, &Node::root(0));
- 
-            // // let w_score2 = board.color_us().chooser_wb(1, -1) * board.eval(eval, &Node::root(0));
-            // if w_score_eval != w_score {
-            //      let w_scores_eval = eval.w_scores_without_wdl(board, &Node::root(0));
-            //      let w_scores_model = eval.predict(model);
-            //      warn!("\nmodel {:?} != \neval {:?} \nfor {}\n(e){} != (m){}", w_scores_model, w_scores_eval, self.boards[i], w_score_eval, w_score);
-            // };
-
             let win_prob_estimate = w_score.as_score().win_probability();
-
             let win_prob_actual = *outcome;
-
             let diff = win_prob_estimate - win_prob_actual;
             diff * diff
-        }).sum();
+        };
 
-
-        //     debug!("{:>4} {:>4} {:>4}   {}", 
-        //         w_score.as_score(), 
-        //         Formatter::format_decimal(2,win_prob_estimate), 
-        //         Formatter::format_decimal(2, win_prob_actual), 
-        //         Formatter::format_decimal(2, diff*diff) );
-        // }
+        let total_diff_squared: f32 = if self.models_and_outcomes.len() < 20000 {
+            self.models_and_outcomes.iter().map(closure).sum()
+        } else {
+            // use rayon on larger sized files
+            self.models_and_outcomes.par_iter().map(closure).sum()
+        };
 
         // return average
         total_diff_squared / self.models_and_outcomes.len() as f32
@@ -107,7 +94,7 @@ mod tests {
     fn test_tuning() {
         info!("Starting...");
         let mut tuning = Tuning::new();
-        tuning.upload_positions(&Position::parse_epd_file("../odonata-extras/epd/quiet-labeled.epd").unwrap());
+        tuning.upload_positions(&Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-small.epd").unwrap());
         //tuning.positions = Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-small.epd").unwrap();
         // tuning.positions = Position::parse_epd_file("../odonata-extras/epd/com15.epd")?;
         // tuning.positions = Catalog::bratko_kopec();
