@@ -107,18 +107,6 @@ impl Phaser {
         phase -= mat.counts_piece(Piece::Rook) * ROOK_PHASE;
         phase -= mat.counts_piece(Piece::Queen) * QUEEN_PHASE;
 
-        // phase -= wp * PawnPhase;
-        // phase -= wn * KnightPhase;
-        // phase -= wb * BishopPhase;
-        // phase -= wr * RookPhase;
-        // phase -= wq * QueenPhase;
-
-        // phase -= bp * PawnPhase;
-        // phase -= bn * KnightPhase;
-        // phase -= bb * BishopPhase;
-        // phase -= br * RookPhase;
-        // phase -= bq * QueenPhase;
-
         if phase < 0 {
             phase = 0;
         }

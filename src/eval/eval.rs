@@ -139,15 +139,15 @@ impl Default for MaterialBalance {
             trade_factor: 2,
             material_weights: [
                 Weight::default(),
-                Weight::new(100, 149),
-                Weight::new(582, 404), // knights
-                Weight::new(537, 451),
-                Weight::new(778, 749),
-                Weight::new(1599, 1370),
+                Weight::new(100, 150),
+                Weight::new(632, 410),
+                Weight::new(635, 429),
+                Weight::new(839, 771),
+                Weight::new(1822, 1405),
                 Weight::new(0, 0), // king
             ],
-            bishop_pair: Weight::new(109, 25),
-            rook_pair: Weight::new(0, 0),
+            bishop_pair: Weight::new(62, 58),
+            rook_pair: Weight::new(-1, -1),
         };
         mb
     }
@@ -171,35 +171,33 @@ impl Default for SimpleScorer {
             contempt_penalty: Weight::new(-30, -30), // typically -ve
             pst: [[Weight::default(); 64]; Piece::len()],
 
-            rook_open_file: Weight::new(63, -17),
-            queen_open_file: Weight::new(0, 0),
-            fianchetto: Weight::new(0, 0),
 
-            undefended_sq: Weight::new(2, 2),
-            undefended_piece: Weight::new(-1, 40),
-            trapped_piece: Weight::new(-33, -2),
-            partially_trapped_piece: Weight::new(-24, 1),
+            rook_open_file: Weight::new(59, -4),
+            queen_open_file: Weight::new(-19, 37),
+            fianchetto: Weight::new(55, 27),
+            undefended_sq: Weight::new(4, 3),
+            undefended_piece: Weight::new(-3, 49),
+            trapped_piece: Weight::new(-17, -22),
+            partially_trapped_piece: Weight::new(-7, -15),
+            pawn_r5: Weight::new(13, 32),
+            pawn_r6: Weight::new(5, 86),
+            pawn_r7: Weight::new(24, 304),
+            pawn_doubled: Weight::new(19, -35),
+            pawn_isolated: Weight::new(-35, -5),
+            pawn_passed: Weight::new(15, 28),
+            pawn_passed_r6: Weight::new(8, 94),
+            tempo_bonus: Weight::new(40, 50),
+            pawn_adjacent_shield: Weight::new(44, -15),
+            pawn_nearby_shield: Weight::new(42, -14),
+            open_files_near_king: Weight::new(-6, -1),
+            attacks_near_king: Weight::new(-8, -2),
+            tropism_d1: Weight::new(-40, 29),
+            tropism_d2: Weight::new(-28, 11),
+            tropism_d3: Weight::new(-5, 2),
 
-            pawn_r5: Weight::new(-7, 25),
-            pawn_r6: Weight::new(-31, 159),
-            pawn_r7: Weight::new(95, 226),
-
-            pawn_doubled: Weight::new(-3, -10),
-            pawn_isolated: Weight::new(-30, -9),
-            pawn_passed: Weight::new(22, 14),
-            pawn_passed_r6: Weight::new(0, 0),
-
-            pawn_adjacent_shield: Weight::new(52, -26),
-            pawn_nearby_shield: Weight::new(27, -18),
-            open_files_near_king: Weight::new(0, 0),
-            tropism_d1: Weight::new(-71, 41),
-            tropism_d2: Weight::new(-24, -6),
-            tropism_d3: Weight::new(-7, 4),
-            attacks_near_king: Weight::new(0, 0),
         
             castling_rights: Weight::new(0, 0),
             rook_edge: Weight::new(0, 0),
-            tempo_bonus: Weight::new(37,47),
         };
         me.calculate_pst();
         me
