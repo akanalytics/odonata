@@ -30,7 +30,7 @@ iai::main!(
     iai_board_clone,
     iai_model_build,
     iai_model_predict,
-    iai_eval_without_wdl,
+    iai_eval_some,
     iai_search,
     iai_legal_moves_into,
     iai_perft5,
@@ -88,8 +88,8 @@ fn iai_eval_full() {
     black_box(engine.algo.eval.w_evaluate(pos.board(), &Node::root(0)));
 }
 
-fn iai_eval_without_wdl() {
-    black_box(ENGINE.read().algo.eval.w_eval_without_wdl(POS.read().board(), &Node::root(0)));
+fn iai_eval_some() {
+    black_box(ENGINE.read().algo.eval.w_eval_some(POS.read().board(), Switches::ALL_SCORING));
 }
 
 fn iai_search() {
@@ -105,14 +105,14 @@ fn iai_model_build() {
 }
 
 fn iai_model_predict() {
-    let mut model_score = ModelScore::new();
+    let mut model_score = ModelScore::new(50);
     black_box(ENGINE.read().algo.eval.predict(black_box(&MODEL.read()), &mut model_score) );
 }
 
 fn iai_build_model_and_eval_model() {
     let eval = SimpleScorer::new();
     let pos = Catalog::starting_position();
-    let mut model_score = ModelScore::new();
+    let mut model_score = ModelScore::new(50);
     for _ in 0..10000 {
         let model = black_box(Model::from_board(pos.board(), Switches::ALL_SCORING));
         black_box(eval.predict(black_box(&model), &mut model_score));
@@ -123,7 +123,7 @@ fn iai_eval_model() {
     let eval = SimpleScorer::new();
     let pos = Catalog::starting_position();
     let model = Model::from_board(pos.board(), Switches::ALL_SCORING);
-    let mut model_score = ModelScore::new();
+    let mut model_score = ModelScore::new(50);
     for _ in 0..10000 {
         black_box(eval.predict(black_box(&model), &mut model_score));
     }

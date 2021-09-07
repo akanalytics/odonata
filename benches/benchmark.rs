@@ -23,6 +23,7 @@ use odonata::material::*;
 use odonata::movelist::*;
 use odonata::mv::*;
 use odonata::perft::Perft;
+use odonata::phaser::Phaser;
 use odonata::pvtable::*;
 use odonata::search::algo::Algo;
 use odonata::search::move_orderer::*;
@@ -666,6 +667,7 @@ fn benchmark_eval(c: &mut Criterion) {
     let mut group = c.benchmark_group("eval");
     let positions = &Catalog::win_at_chess();
     let ef = &mut SimpleScorer::new();
+    let phaser = Phaser::default();
     let ef_no_pos = &mut SimpleScorer::new().set_position(false);
     group.bench_function("material", |b| {
         b.iter_custom(|n| {
@@ -715,18 +717,9 @@ fn benchmark_eval(c: &mut Criterion) {
     group.bench_function("all_model_eval", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
-            let mut model_score = ModelScore::new();
             positions.iter().cycle_n(n).for_each(|p| {
+                let mut model_score = ModelScore::new(phaser.phase(&p.board().material()));
                 black_box(ef.predict(&Model::from_board(p.board(), Switches::ALL_SCORING), &mut model_score));
-            });
-            t.elapsed() / positions.len() as u32
-        })
-    });
-    group.bench_function("all_eval_without_wdl", |b| {
-        b.iter_custom(|n| {
-            let t = Instant::now();
-            positions.iter().cycle_n(n).for_each(|p| {
-                black_box(ef.w_eval_without_wdl(p.board(), &Node::root(0)));
             });
             t.elapsed() / positions.len() as u32
         })
