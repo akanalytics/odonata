@@ -875,15 +875,15 @@ mod tests {
         info!("\n{}", eval.w_eval_explain(&board));
         assert_eq!(board.eval(eval, &Node::root(0)), Score::from_cp(0));
 
-        let score = Score::from_cp(6048);
-
         let board_w = Catalog::white_starting_position();
         assert_eq!(board_w.phase(&eval.phaser), 50);
         eval.set_switches(false);
         eval.material = true;
         eval.contempt = true;
         info!("\n{}", eval.w_eval_explain(&board_w));
-        assert_eq!(board_w.eval(eval, &Node::root(0)), score);
+        let score = board_w.eval(eval, &Node::root(0));
+        assert!( score > Score::from_cp(5048));
+        assert!( score < Score::from_cp(8048));
 
         let board_b = Catalog::black_starting_position();
         info!("\n{}", eval.w_eval_explain(&board_b));
