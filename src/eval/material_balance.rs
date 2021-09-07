@@ -27,31 +27,6 @@ pub struct MaterialBalance {
 }
 
 
-impl Default for MaterialBalance {
-    fn default() -> Self {
-        let mb = Self {
-            enabled: false,
-            filename: String::new(),
-            consistency: true,
-            draws_only: true,
-            min_games: 50,
-            max_pawns: 4,
-            trade_factor: 2,
-            material_weights: [
-                Weight::default(),
-                Weight::new(100, 149),
-                Weight::new(582, 404), // knights
-                Weight::new(537, 451),
-                Weight::new(778, 749),
-                Weight::new(1599, 1370),
-                Weight::new(0, 0), // king
-            ],
-            bishop_pair: Weight::new(109, 25),
-            rook_pair: Weight::new(0, 0),
-        };
-        mb
-    }
-}
 
 
 

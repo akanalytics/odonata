@@ -1,22 +1,22 @@
 use std::fmt;
 
-use crate::Bitboard;
 use crate::bitboard::castling::CastlingRights;
 use crate::bitboard::precalc::BitboardDefault;
-use crate::board::Board;
 use crate::board::multiboard::Multiboard;
-use crate::material::Material;
+use crate::board::Board;
+use crate::eval::score::Score;
 use crate::eval::switches::Switches;
+use crate::eval::weight::Weight;
+use crate::material::Material;
 use crate::types::Color;
 use crate::types::Piece;
-use crate::eval::weight::Weight;
-use crate::eval::score::Score;
+use crate::Bitboard;
 
 #[derive(Clone, Default, Debug)]
 pub struct Model {
     // material
     pub switches: Switches,
-    pub turn: Color, 
+    pub turn: Color,
     pub mat: Material,
     pub draw: bool,
     pub multiboard: Multiboard,
@@ -27,27 +27,29 @@ pub struct Model {
 
 #[derive(Clone, Default, Debug)]
 pub struct ModelSide {
-
     // material
     pub has_bishop_pair: bool,
     pub has_rook_pair: bool,
 
     // position
+    pub fianchetti: i32,
     // pub psq: ArrayVec<(Piece, Square), 32>,
 
     // pawn structure
     pub doubled_pawns: i32,
     pub isolated_pawns: i32,
-    pub passed_pawns: i32,  // includes passed pawns on r7
-    pub passed_pawns_on_r7: i32,  
+    pub passed_pawns: i32, // includes passed pawns on r7
+    pub passed_pawns_on_r6: i32, // r7 by definition are passed
 
     // king safety
-    // pub nearby_pawns: i32,
     pub king_tropism_d1: i32,
     pub king_tropism_d2: i32,
     pub king_tropism_d3: i32,
     pub adjacent_shield: i32,
     pub nearby_shield: i32,
+    pub open_files_near_king: i32,
+    pub attacks_on_opponent_king_area: i32,
+
     pub castling_sides: i32, // 0,1 or 2
 
     // mobility
@@ -56,12 +58,11 @@ pub struct ModelSide {
     pub fully_trapped_pieces: i32,
     pub partially_trapped_pieces: i32,
     pub rooks_on_open_files: i32,
+    pub queens_on_open_files: i32,
 
     // other
     pub has_tempo: bool,
 }
-
-
 
 pub trait Scorer {
     // fn set_multiplier(&mut self, m: i32);
@@ -76,8 +77,7 @@ pub trait Scorer {
     fn interpolate(&mut self, attr: &str);
     fn total(&self) -> Weight;
     fn phase(&self) -> i32;
-} 
-
+}
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ExplainScorer {
@@ -91,34 +91,26 @@ pub struct ExplainScorer {
     delegate: ModelScore,
 }
 
-
 impl ExplainScorer {
     pub fn new(phase: i32) -> Self {
         Self {
             delegate: ModelScore::new(phase),
             ..Self::default()
         }
-
     }
     pub fn as_score(&self) -> Score {
         self.delegate.as_score()
     }
 }
 
-
-
-
 impl Scorer for ExplainScorer {
-
     #[inline]
-    fn annotate(&mut self, _annotation: &str) {
-    }
+    fn annotate(&mut self, _annotation: &str) {}
 
     #[inline]
     // fn set_multiplier(&mut self, mult: i32) {
     //     self.delegate.set_multiplier(mult);
     // }
-
     #[inline]
     fn material(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
         self.mat.push((_attr.to_string(), w_value, b_value, score));
@@ -139,7 +131,7 @@ impl Scorer for ExplainScorer {
         self.mob.push((_attr.to_string(), w_value, b_value, score));
         self.delegate.mobility(_attr, w_value, b_value, score);
     }
-    
+
     #[inline]
     fn safety(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
         self.saf.push((_attr.to_string(), w_value, b_value, score));
@@ -157,7 +149,7 @@ impl Scorer for ExplainScorer {
         self.con.push((_attr.to_string(), w_value, b_value, score));
         self.delegate.contempt(_attr, w_value, b_value, score);
     }
-    
+
     #[inline]
     fn interpolate(&mut self, _attr: &str) {
         self.delegate.interpolate(_attr);
@@ -174,59 +166,91 @@ impl Scorer for ExplainScorer {
     }
 }
 
-
-
-
-
 impl fmt::Display for ExplainScorer {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{:>20} | {:>5} {:>5} {:>5} | {:>5}  {:>5} {:>5} | {:>5} {:>5} {:>5} | {:>15}", "attr", "w", "w mg", "w eg", "int", "mg", "eg", "b", "b mg", "b eg", "wt")?;
+        writeln!(
+            f,
+            "{:>20} | {:>6} {:>6} {:>6} | {:>6}  {:>6} {:>6} | {:>6} {:>6} {:>6} | {:>15}",
+            "attr", "w", "w mg", "w eg", "int", "mg", "eg", "b", "b mg", "b eg", "wt"
+        )?;
         for (i, sw) in Switches::all_scoring().iter().enumerate() {
-            let vec = vec![&self.mat, &self.pos, &self.mob, &self.paw, &self.saf, &self.con, &self.tem][i];
+            let vec = vec![
+                &self.mat, &self.pos, &self.mob, &self.paw, &self.saf, &self.con, &self.tem,
+            ][i];
             for (attr, w, b, wt) in vec {
                 let (attr, w, b, wt) = (attr, *w, *b, *wt);
-                writeln!(f, "{:>20} | {:>5} {:>5} {:>5} | {:>5}  {:>5} {:>5} | {:>5} {:>5} {:>5} | {:>15}", 
-                    attr, 
-                    w, (w*wt).s(), (w*wt).e(), 
-                    ((w*wt) - (b*wt)).interpolate(self.phase()),
-                    (w*wt).s() - (b*wt).s(), (w*wt).e() - (b*wt).e(), 
-                    b, (b*wt).s(), (b*wt).e(), wt.to_string())?;
+                writeln!(
+                    f,
+                    "{:>20} | {:>6} {:>6} {:>6} | {:>6}  {:>6} {:>6} | {:>6} {:>6} {:>6} | {:>15}",
+                    attr,
+                    w,
+                    (w * wt).s(),
+                    (w * wt).e(),
+                    ((w * wt) - (b * wt)).interpolate(self.phase()),
+                    (w * wt).s() - (b * wt).s(),
+                    (w * wt).e() - (b * wt).e(),
+                    b,
+                    (b * wt).s(),
+                    (b * wt).e(),
+                    wt.to_string()
+                )?;
             }
             if !sw.intersects(Switches::TEMPO | Switches::CONTEMPT) {
-                let attr  = sw.name();
-                let wwt: Weight = vec.into_iter().map(|&(_, w, _b, wt)| w*wt).sum();
-                let bwt: Weight = vec.into_iter().map(|&(_, _w, b, wt)| b*wt).sum();
-                let twt: Weight = vec.into_iter().map(|&(_, w, b, wt)| w*wt - b*wt).sum();
-                writeln!(f, "{:>20} | {:>5} {:>5} {:>5} | {:>5}  {:>5} {:>5} | {:>5} {:>5} {:>5} | {:>15}", 
-                "", "-----", "-----", "-----", "-----", "-----", "-----", "-----", "-----", "-----", "")?;
-                writeln!(f, "{:>20} | {:>5} {:>5} {:>5} | {:>5}  {:>5} {:>5} | {:>5} {:>5} {:>5} | {:>15}", 
-                    attr, 
-                    "", wwt.s(), wwt.e(), 
-                    twt.interpolate(self.phase()), twt.s(), twt.e(), 
-                    "", bwt.s(), bwt.e(), "")?;
+                let attr = sw.name();
+                let wwt: Weight = vec.into_iter().map(|&(_, w, _b, wt)| w * wt).sum();
+                let bwt: Weight = vec.into_iter().map(|&(_, _w, b, wt)| b * wt).sum();
+                let twt: Weight = vec.into_iter().map(|&(_, w, b, wt)| w * wt - b * wt).sum();
+                writeln!(
+                    f,
+                    "{:>20} | {:>6} {:>6} {:>6} | {:>6}  {:>6} {:>6} | {:>6} {:>6} {:>6} | {:>15}",
+                    "", "-----", "-----", "-----", "-----", "-----", "-----", "-----", "-----", "-----", ""
+                )?;
+                writeln!(
+                    f,
+                    "{:>20} | {:>6} {:>6} {:>6} | {:>6}  {:>6} {:>6} | {:>6} {:>6} {:>6} | {:>15}",
+                    attr,
+                    "",
+                    wwt.s(),
+                    wwt.e(),
+                    twt.interpolate(self.phase()),
+                    twt.s(),
+                    twt.e(),
+                    "",
+                    bwt.s(),
+                    bwt.e(),
+                    ""
+                )?;
                 writeln!(f)?;
             }
         }
-        writeln!(f, "{:>20} | {:>5} {:>5} {:>5} | {:>5}  {:>5} {:>5} | {:>5} {:>5} {:>5} | {:>15}", 
-        "", "-----", "-----", "-----", "=====", "-----", "-----", "-----", "-----", "-----", "==========")?;
-        writeln!(f, "{:>20} | {:>5} {:>5} {:>5} | {:>5}  {:>5} {:>5} | {:>5} {:>5} {:>5} |      Phase{:>3} %", 
-            "EVALUATION", "", "", "", 
-            self.total().interpolate(self.phase()), self.total().s(), self.total().e(), 
-            "", "", "", self.phase())?;
-        writeln!(f, "{:>20} | {:>5} {:>5} {:>5} | {:>5}  {:>5} {:>5} | {:>5} {:>5} {:>5} | {:>15}", 
-        "", "", "", "", "=====", "-----", "-----", "", "", "", "==========")?;
+        writeln!(
+            f,
+            "{:>20} | {:>6} {:>6} {:>6} | {:>6}  {:>6} {:>6} | {:>6} {:>6} {:>6} | {:>15}",
+            "", "-----", "-----", "-----", "=====", "-----", "-----", "-----", "-----", "-----", "=========="
+        )?;
+        writeln!(
+            f,
+            "{:>20} | {:>6} {:>6} {:>6} | {:>6}  {:>6} {:>6} | {:>6} {:>6} {:>6} |      Phase{:>3} %",
+            "EVALUATION",
+            "",
+            "",
+            "",
+            self.total().interpolate(self.phase()),
+            self.total().s(),
+            self.total().e(),
+            "",
+            "",
+            "",
+            self.phase()
+        )?;
+        writeln!(
+            f,
+            "{:>20} | {:>6} {:>6} {:>6} | {:>6}  {:>6} {:>6} | {:>6} {:>6} {:>6} | {:>15}",
+            "", "", "", "", "=====", "-----", "-----", "", "", "", "=========="
+        )?;
         Ok(())
     }
 }
-
-
-
-
-
-
-
-
-
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ModelScore {
@@ -241,21 +265,11 @@ pub struct ModelScore {
     pub interpolated: i32,
 }
 
-
-
-
-
-
-
-
-
-
-
 impl ModelScore {
     pub fn new(phase: i32) -> Self {
         Self {
             phase,
-            .. Self::default()
+            ..Self::default()
         }
     }
 
@@ -264,12 +278,9 @@ impl ModelScore {
     }
 }
 
-
 impl Scorer for ModelScore {
-
     #[inline]
-    fn annotate(&mut self, _annotation: &str) {
-    }
+    fn annotate(&mut self, _annotation: &str) {}
 
     // #[inline]
     // fn set_multiplier(&mut self, mult: i32) {
@@ -292,7 +303,7 @@ impl Scorer for ModelScore {
     fn mobility(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
         self.mobility += (w_value - b_value) * score;
     }
-    
+
     #[inline]
     fn safety(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
         self.safety += (w_value - b_value) * score;
@@ -307,21 +318,15 @@ impl Scorer for ModelScore {
     fn contempt(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
         self.contempt += (w_value - b_value) * score;
     }
-    
+
     #[inline]
     fn interpolate(&mut self, _attr: &str) {
-        self.interpolated = self.total().interpolate(self.phase) as i32;
+        self.interpolated = self.total().interpolate(self.phase).round() as i32;
     }
 
     #[inline]
     fn total(&self) -> Weight {
-        self.material
-        + self.position
-        + self.pawn
-        + self.mobility
-        + self.safety
-        + self.tempo
-        + self.contempt
+        self.material + self.position + self.pawn + self.mobility + self.safety + self.tempo + self.contempt
     }
 
     #[inline]
@@ -330,16 +335,12 @@ impl Scorer for ModelScore {
     }
 }
 
-
-
-
 impl Model {
-
     pub fn new() -> Self {
         Self::default()
     }
 
-    pub fn from_board(b: &Board, switches: Switches) -> Self{
+    pub fn from_board(b: &Board, switches: Switches) -> Self {
         let material = b.material();
         Self {
             switches,
@@ -354,14 +355,13 @@ impl Model {
 }
 
 impl ModelSide {
-
     #[inline]
     pub fn new() -> Self {
         Self::default()
     }
 
     #[inline]
-    pub fn from_board(b: &Board, c: Color, mat: &Material, sw: Switches) -> Self{
+    pub fn from_board(b: &Board, c: Color, mat: &Material, sw: Switches) -> Self {
         let mut m = Self::default();
         if sw.contains(Switches::MATERIAL) {
             m.init_material(b, c, mat);
@@ -389,7 +389,29 @@ impl ModelSide {
     }
 
     #[inline]
-    fn init_position(&mut self, _b: &Board, _c: Color) {
+    fn init_position(&mut self, b: &Board, c: Color) {
+        let us = b.color(c);
+
+        // fianchetto (short)
+        const W_BISHOP: Bitboard = Bitboard::G2;
+        const W_KING: Bitboard = Bitboard::F1.or(Bitboard::G1).or(Bitboard::H1);
+        const W_PAWNS: Bitboard = Bitboard::F2.or(Bitboard::G3).or(Bitboard::H2).or(Bitboard::H3).or(Bitboard::H4);
+
+        const B_BISHOP: Bitboard = W_BISHOP.flip_vertical();
+        const B_KING: Bitboard = W_KING.flip_vertical();
+        const B_PAWNS: Bitboard = W_PAWNS.flip_vertical();
+
+        let bishop = c.chooser_wb(W_BISHOP, B_BISHOP);
+        let pawns = c.chooser_wb(W_PAWNS, B_PAWNS);
+        let king = c.chooser_wb(W_KING, B_KING);
+
+        if (b.pawns() & us).contains(pawns)
+            && (b.bishops() & us).intersects(bishop)
+            && (b.kings() & us).contains(king)
+        {
+            self.fianchetti += 1
+        }
+
         // for &p in &Piece::ALL_BAR_NONE {
         //     let mut pieces = b.pieces(p) & b.color(c);
         //     if c == Color::White {
@@ -420,9 +442,8 @@ impl ModelSide {
                 (bbd.pawn_front_span_union_attack_span(c, p) & b.pawns() & b.color(c.opposite())).is_empty();
             self.passed_pawns += is_passed as i32;
 
-            // on 7th means stop position is a promo rank
-            let ps = bbd.pawn_stop(c, p);
-            self.passed_pawns_on_r7 += Bitboard::PROMO_RANKS.contains(ps) as i32;
+            let rank = c.chooser_wb(Bitboard::RANK_6, Bitboard::RANK_3);
+            self.passed_pawns_on_r6 += (is_passed && rank.intersects(p.as_bb())) as i32;
         }
         self.doubled_pawns = bbd.doubled_pawns(b.color(c) & b.pawns()).popcount();
     }
@@ -435,29 +456,31 @@ impl ModelSide {
         let bb = BitboardDefault::default();
         if k.any() {
             let p_fr_att_span = bb.pawn_front_span_union_attack_span(c, ksq);
-            let d1 = bb.king_attacks(ksq);
-            //self.nearby_pawns = (p & k_att).popcount();
-            self.adjacent_shield = (p & p_fr_att_span & d1).popcount();            
-            self.nearby_shield = (p & p_fr_att_span & d1.shift(c.forward())).popcount() - self.adjacent_shield;
-            let them = b.color(c.opposite());
-            self.king_tropism_d1 = 
-                (d1 & (b.pawns()|b.kings()) & them).popcount() +
-                (d1 & (b.knights()| b.bishops()) & them).popcount() * 2 +
-                (d1 & (b.rooks()| b.queens()) & them).popcount() * 4;
-
+            let d1 = bb.within_chebyshev_distance_inclusive(ksq, 1);
             let d2 = bb.within_chebyshev_distance_inclusive(ksq, 2);
-            self.king_tropism_d2 = 
-                (d2 & (b.pawns()|b.kings()) & them).popcount() +
-                (d2 & (b.knights()| b.bishops()) & them).popcount() * 2 +
-                (d2 & (b.rooks()| b.queens()) & them).popcount() * 4;
-
             let d3 = bb.within_chebyshev_distance_inclusive(ksq, 3);
-                self.king_tropism_d3 = 
-                (d3 & (b.pawns()|b.kings()) & them).popcount() +
-                (d3 & (b.knights()| b.bishops()) & them).popcount() * 2 +
-                (d3 & (b.rooks()| b.queens()) & them).popcount() * 4;
+
+            //self.nearby_pawns = (p & k_att).popcount();
+            self.adjacent_shield = (p & p_fr_att_span & d1).popcount();
+            self.nearby_shield =
+                (p & p_fr_att_span & d2).popcount() - self.adjacent_shield;
+            let them = b.color(c.opposite());
+            self.king_tropism_d1 = (d1 & (b.pawns() | b.kings()) & them).popcount()
+                + (d1 & (b.knights() | b.bishops()) & them).popcount() * 2
+                + (d1 & (b.rooks() | b.queens()) & them).popcount() * 4;
+
+            self.king_tropism_d2 = (d2 & (b.pawns() | b.kings()) & them).popcount()
+                + (d2 & (b.knights() | b.bishops()) & them).popcount() * 2
+                + (d2 & (b.rooks() | b.queens()) & them).popcount() * 4;
+
+            self.king_tropism_d3 = (d3 & (b.pawns() | b.kings()) & them).popcount()
+                + (d3 & (b.knights() | b.bishops()) & them).popcount() * 2
+                + (d3 & (b.rooks() | b.queens()) & them).popcount() * 4;
+        
+            self.open_files_near_king = (p_fr_att_span & bb.open_files(b.pawns())).popcount();
         }
 
+        
         self.castling_sides = b.castling().contains(CastlingRights::king_side_right(c)) as i32
             + b.castling().contains(CastlingRights::queen_side_right(c)) as i32;
     }
@@ -468,6 +491,7 @@ impl ModelSide {
         let us = b.color(c);
 
         self.rooks_on_open_files = (bb.open_files(b.pawns()) & us & b.rooks()).popcount();
+        self.queens_on_open_files = (bb.open_files(b.pawns()) & us & b.queens()).popcount();
 
         let their = c.opposite();
         let them = b.color(their);
@@ -480,11 +504,14 @@ impl ModelSide {
         let r = b.rooks() & them;
         let _q = b.queens() & them;
 
+        let k = b.kings() & them;
+        let ksq = k.square();
         for sq in ((b.knights() | b.bishops() | b.rooks() | b.queens()) & us).squares() {
             let p = b.piece_at(sq.as_bb());
 
             // non-pawn-defended empty or oppoent sq
-            let our_attacks = bb.non_pawn_attacks(c, p, us, them, sq) - pa;
+            let our_raw_attacks = bb.non_pawn_attacks(c, p, us, them, sq);
+            let our_attacks = our_raw_attacks - pa;
             let piece_move_squares = (our_attacks - occ).popcount();
 
             // FIXME v0.3.33 version
@@ -510,12 +537,13 @@ impl ModelSide {
             }
             self.move_squares += piece_move_squares;
             self.non_pawn_defended_moves += piece_non_pawn_defended_moves;
+
+            if k.any() {
+                self.attacks_on_opponent_king_area += (our_raw_attacks & bb.within_chebyshev_distance_inclusive(ksq, 1)).popcount();
+            }
         }
-      }
-
+    }
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -524,7 +552,6 @@ mod tests {
     use crate::tags::Tag;
     use crate::utils::StringUtils;
 
-
     #[test]
     fn test_model() {
         let positions = Catalog::pawn_structure();
@@ -532,22 +559,16 @@ mod tests {
             let model = Model::from_board(p.board(), Switches::ALL_SCORING);
             if let Tag::Comment(_n, s) = p.tag("c0") {
                 let map = s.split_vars_int();
-                assert_eq!( model.white.isolated_pawns, map["isolated"], "{}", p);
-                assert_eq!( model.white.doubled_pawns, map["doubled"], "{}", p);
-                assert_eq!( model.white.passed_pawns, map["passed"], "{}", p);
-            } 
+                assert_eq!(model.white.isolated_pawns, map["isolated"], "{}", p);
+                assert_eq!(model.white.doubled_pawns, map["doubled"], "{}", p);
+                assert_eq!(model.white.passed_pawns, map["passed"], "{}", p);
+            }
             if let Tag::Comment(_n, s) = p.tag("c1") {
                 let map = s.split_vars_int();
-                assert_eq!( model.black.isolated_pawns, map["isolated"], "{}", p);
-                assert_eq!( model.black.doubled_pawns, map["doubled"], "{}", p);
-                assert_eq!( model.black.passed_pawns, map["passed"], "{}", p);
+                assert_eq!(model.black.isolated_pawns, map["isolated"], "{}", p);
+                assert_eq!(model.black.doubled_pawns, map["doubled"], "{}", p);
+                assert_eq!(model.black.passed_pawns, map["passed"], "{}", p);
             }
         }
-
     }
 }
-
-
-
-
-

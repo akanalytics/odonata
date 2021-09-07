@@ -95,11 +95,13 @@ pub struct SimpleScorer {
     pub pawn_doubled: Weight,
     pub pawn_isolated: Weight,
     pub pawn_passed: Weight,
-    pub pawn_passed_r7: Weight,
+    pub pawn_passed_r6: Weight,
 
     // pub pawn_shield: Weight,
     pub pawn_adjacent_shield: Weight,
     pub pawn_nearby_shield: Weight,
+    pub open_files_near_king: Weight,
+    pub attacks_near_king: Weight,
     pub tropism_d1: Weight,
     pub tropism_d2: Weight,
     pub tropism_d3: Weight,
@@ -109,7 +111,11 @@ pub struct SimpleScorer {
     pub pawn_r5: Weight,
     pub pawn_r6: Weight,
     pub pawn_r7: Weight,
+
     pub rook_open_file: Weight,
+    pub queen_open_file: Weight,
+
+    pub fianchetto: Weight,
     pub phasing: bool,
     pub contempt_penalty: Weight,
     pub tempo_bonus: Weight,
@@ -117,6 +123,34 @@ pub struct SimpleScorer {
     // pub qcache: TranspositionTable,
     pst: [[Weight; 64]; Piece::len()],
     // pub depth: Ply,
+}
+
+
+
+impl Default for MaterialBalance {
+    fn default() -> Self {
+        let mb = Self {
+            enabled: false,
+            filename: String::new(),
+            consistency: true,
+            draws_only: true,
+            min_games: 50,
+            max_pawns: 4,
+            trade_factor: 2,
+            material_weights: [
+                Weight::default(),
+                Weight::new(100, 149),
+                Weight::new(582, 404), // knights
+                Weight::new(537, 451),
+                Weight::new(778, 749),
+                Weight::new(1599, 1370),
+                Weight::new(0, 0), // king
+            ],
+            bishop_pair: Weight::new(109, 25),
+            rook_pair: Weight::new(0, 0),
+        };
+        mb
+    }
 }
 
 impl Default for SimpleScorer {
@@ -134,7 +168,12 @@ impl Default for SimpleScorer {
             phasing: true,
             mobility_phase_disable: 101,
             min_depth_mob: 1,
+            contempt_penalty: Weight::new(-30, -30), // typically -ve
+            pst: [[Weight::default(); 64]; Piece::len()],
+
             rook_open_file: Weight::new(63, -17),
+            queen_open_file: Weight::new(0, 0),
+            fianchetto: Weight::new(0, 0),
 
             undefended_sq: Weight::new(2, 2),
             undefended_piece: Weight::new(-1, 40),
@@ -148,22 +187,19 @@ impl Default for SimpleScorer {
             pawn_doubled: Weight::new(-3, -10),
             pawn_isolated: Weight::new(-30, -9),
             pawn_passed: Weight::new(22, 14),
-            pawn_passed_r7: Weight::new(0, 0),
+            pawn_passed_r6: Weight::new(0, 0),
 
             pawn_adjacent_shield: Weight::new(52, -26),
             pawn_nearby_shield: Weight::new(27, -18),
+            open_files_near_king: Weight::new(0, 0),
             tropism_d1: Weight::new(-71, 41),
             tropism_d2: Weight::new(-24, -6),
             tropism_d3: Weight::new(-7, 4),
+            attacks_near_king: Weight::new(0, 0),
         
             castling_rights: Weight::new(0, 0),
             rook_edge: Weight::new(0, 0),
-            contempt_penalty: Weight::new(-30, -30), // typically -ve
             tempo_bonus: Weight::new(37,47),
-            // cache: TranspositionTable::default(),
-            // qcache: TranspositionTable::default(),
-            pst: [[Weight::default(); 64]; Piece::len()],
-            // depth: 0,
         };
         me.calculate_pst();
         me
@@ -191,6 +227,8 @@ impl Component for SimpleScorer {
             &format!("type spin min 0 max 101 default {}", self.mobility_phase_disable),
         );
         c.set_weight("eval.rook.open.file", &self.rook_open_file);
+        c.set_weight("eval.queen.open.file", &self.queen_open_file);
+        c.set_weight("eval.fianchetto", &self.fianchetto);
         c.set_weight("eval.pawn.doubled", &self.pawn_doubled);
         c.set_weight("eval.mobility.undef.sq", &self.undefended_sq);
         c.set_weight("eval.mobility.undef.piece", &self.undefended_piece);
@@ -201,14 +239,16 @@ impl Component for SimpleScorer {
         );
         c.set_weight("eval.pawn.isolated", &self.pawn_isolated);
         c.set_weight("eval.pawn.passed", &self.pawn_passed);
-        c.set_weight("eval.pawn.passed.r7", &self.pawn_passed_r7);
+        c.set_weight("eval.pawn.passed.r6", &self.pawn_passed_r6);
 
         // c.set_weight("eval.pawn.shield", &self.pawn_shield);
         c.set_weight("eval.pawn.adjacent.shield", &self.pawn_adjacent_shield);
         c.set_weight("eval.pawn.nearby.shield", &self.pawn_nearby_shield);
+        c.set_weight("eval.open.files.near.king", &self.open_files_near_king);
         c.set_weight("eval.tropism.d1", &self.tropism_d1);
         c.set_weight("eval.tropism.d2", &self.tropism_d2);
         c.set_weight("eval.tropism.d3", &self.tropism_d3);
+        c.set_weight("eval.attacks.near.king", &self.attacks_near_king);
 
         c.set_weight("eval.castling.rights", &self.castling_rights);
         c.set_weight("eval.rook.edge", &self.rook_edge);
@@ -244,17 +284,21 @@ impl Component for SimpleScorer {
             &self.partially_trapped_piece,
         );
         self.rook_open_file = c.weight("eval.rook.open.file", &self.rook_open_file);
+        self.queen_open_file = c.weight("eval.queen.open.file", &self.queen_open_file);
+        self.fianchetto = c.weight("eval.fianchetto", &self.fianchetto);
 
         self.pawn_doubled = c.weight("eval.pawn.doubled", &self.pawn_doubled);
         self.pawn_isolated = c.weight("eval.pawn.isolated", &self.pawn_isolated);
         self.pawn_passed = c.weight("eval.pawn.passed", &self.pawn_passed);
-        self.pawn_passed_r7 = c.weight("eval.pawn.passed.r7", &self.pawn_passed_r7);
+        self.pawn_passed_r6 = c.weight("eval.pawn.passed.r6", &self.pawn_passed_r6);
 
         self.pawn_adjacent_shield = c.weight("eval.pawn.adjacent.shield", &self.pawn_adjacent_shield);
         self.pawn_nearby_shield = c.weight("eval.pawn.nearby.shield", &self.pawn_nearby_shield);
+        self.open_files_near_king = c.weight("eval.open.files.near.king", &self.open_files_near_king);
         self.tropism_d1 = c.weight("eval.tropism.d1", &self.tropism_d1);
         self.tropism_d2 = c.weight("eval.tropism.d2", &self.tropism_d2);
         self.tropism_d3 = c.weight("eval.tropism.d3", &self.tropism_d3);
+        self.attacks_near_king = c.weight("eval.attacks.near.king", &self.attacks_near_king);
 
         self.castling_rights = c.weight("eval.castling.rights", &self.castling_rights);
         self.rook_edge = c.weight("eval.rook.edge", &self.rook_edge);
@@ -300,10 +344,12 @@ impl fmt::Display for SimpleScorer {
         // writeln!(f, "pawn.shield      : {}", self.pawn_shield)?;
         writeln!(f, "pawn.doubled     : {}", self.pawn_doubled)?;
         writeln!(f, "pawn.passed      : {}", self.pawn_passed)?;
-        writeln!(f, "pawn.passed.r7   : {}", self.pawn_passed_r7)?;
+        writeln!(f, "pawn.passed.r7   : {}", self.pawn_passed_r6)?;
         writeln!(f, "pawn.isolated    : {}", self.pawn_isolated)?;
         writeln!(f, "rook_edge        : {}", self.rook_edge)?;
         writeln!(f, "rook.open.file   : {}", self.rook_open_file)?;
+        writeln!(f, "queen.open.file  : {}", self.queen_open_file)?;
+        writeln!(f, "fianchetto       : {}", self.fianchetto)?;
         writeln!(f, "pawn.nearby      : {}", self.pawn_nearby_shield)?;
         writeln!(f, "pawn.adjacent    : {}", self.pawn_adjacent_shield)?;
         writeln!(f, "tropism.d1       : {}", self.tropism_d1)?;
@@ -397,7 +443,7 @@ impl SimpleScorer {
         -10,  0, 10, 10, 10, 10,  0,-10,
         -10, 10, 10, 10, 10, 10, 10,-10,
         -10,  5,  0,  0,  0,  0,  5,-10,
-        -20,-10,-10,-10,-10,-10,-10,-20];
+        -20,-10,-15,-10,-10,-15,-10,-20];
 
         #[rustfmt::skip]
         let bishop_pst_eg: [i32; 64] = [
@@ -442,7 +488,7 @@ impl SimpleScorer {
           0,  0,  5,  5,  5,  5,  0, -5,
         -10,  5,  5,  5,  5,  5,  0,-10,
         -10,  0,  5,  0,  0,  0,  0,-10,
-        -20,-10,-10, -5, -5,-10,-10,-20];
+        -20,-10,-10, 5, -5,-10,-10,-20];
 
         #[rustfmt::skip]
         let queen_pst_eg: [i32; 64] = [
@@ -620,7 +666,7 @@ impl SimpleScorer {
                 scorer.position("pst", 0, 1, b);
                 // sum = sum + w - b;
             }
-            // sum
+            scorer.position("fianchetti", w.fianchetti, b.fianchetti, self.fianchetto);
 
             // scorer.position("pst", 1, 0, w.psq.iter().map(|(p,sq)| self.pst(*p, *sq)).sum::<Weight>());
             // scorer.position("pst", 0, 1, b.psq.iter().map(|(p,sq)| self.pst(*p, *sq)).sum::<Weight>());
@@ -631,7 +677,7 @@ impl SimpleScorer {
             scorer.pawn("doubled", w.doubled_pawns, b.doubled_pawns, self.pawn_doubled);
             scorer.pawn("isolated", w.isolated_pawns, b.isolated_pawns, self.pawn_isolated);
             scorer.pawn("passed", w.passed_pawns, b.passed_pawns, self.pawn_passed);
-            scorer.pawn("passed.r7", w.passed_pawns_on_r7, b.passed_pawns_on_r7, self.pawn_passed_r7);
+            scorer.pawn("passed.r6", w.passed_pawns_on_r6, b.passed_pawns_on_r6, self.pawn_passed_r6);
         }
 
         // king safety
@@ -650,6 +696,12 @@ impl SimpleScorer {
                 self.pawn_nearby_shield,
             );
             scorer.safety(
+                "open files near king",
+                w.open_files_near_king,
+                b.open_files_near_king,
+                self.open_files_near_king,
+            );
+            scorer.safety(
                 "tropism d1",
                 w.king_tropism_d1,
                 b.king_tropism_d1,
@@ -666,6 +718,13 @@ impl SimpleScorer {
                 w.king_tropism_d3,
                 b.king_tropism_d3,
                 self.tropism_d3,
+            );
+            scorer.safety(
+                "attacks near king",
+                // reversed!
+                b.attacks_on_opponent_king_area,
+                w.attacks_on_opponent_king_area,
+                self.attacks_near_king,
             );
         }
         // w.castling_sides, b.castling_sides * self.;
@@ -705,6 +764,12 @@ impl SimpleScorer {
                 w.rooks_on_open_files,
                 b.rooks_on_open_files,
                 self.rook_open_file,
+            );
+            scorer.mobility(
+                "queen open file",
+                w.queens_on_open_files,
+                b.queens_on_open_files,
+                self.queen_open_file,
             );
         }
         if self.tempo && m.switches.contains(Switches::TEMPO) {
@@ -950,18 +1015,30 @@ mod tests {
     #[test]
     fn test_score_safety() {
         let mut eval = SimpleScorer::new();
-        let b = Board::parse_fen("8/8/8/8/8/8/PPP5/K7 w - - 0 1")
+        let b = Board::parse_fen("r7/8/8/8/8/1P6/PP6/K7 w - - 0 1")
             .unwrap()
             .as_board();
 
         eval.set_switches(false);
         eval.safety = true;
         eval.pawn_adjacent_shield = Weight::zero();
+        eval.pawn_nearby_shield = Weight::zero();
+        eval.attacks_near_king = Weight::zero();
+        info!("{}\n{}", b, eval.w_eval_explain(&b));
+
         let e1 = eval.w_eval_some(&b, Switches::ALL_SCORING);
         eval.pawn_adjacent_shield = Weight::new(50, 50);
         let e2 = eval.w_eval_some(&b, Switches::ALL_SCORING);
+        assert_eq!((e2 - e1), Score::from_cp(100), "{}", eval.w_eval_explain(&b)); // 2 pawns adjacent
 
-        assert_eq!((e2 - e1), Score::from_cp(100)); // 2 pawns in front of king
+        eval.pawn_nearby_shield = Weight::new(150, 150);
+        let e3 = eval.w_eval_some(&b, Switches::ALL_SCORING);
+        assert_eq!(e3-e2, Score::from_cp(150), "{}", eval.w_eval_explain(&b)); // 2 pawns adjacent, 1 nearby
+
+        eval.attacks_near_king = Weight::new(-75, -75);
+        let att = eval.w_eval_some(&b, Switches::ALL_SCORING);
+        assert_eq!((att - e3), Score::from_cp(-75)); // 1 attack on nearby pawn
+        info!("{}\n{}", b, eval.w_eval_explain(&b));
     }
 
     #[test]
