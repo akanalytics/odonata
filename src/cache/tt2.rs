@@ -303,7 +303,7 @@ impl TranspositionTable2 {
             mb: mb as i64,
             aging: true,
             current_age: 10, // to allow us to look back
-            hmvc_horizon: 42,
+            hmvc_horizon: 85,
             min_ply: 1,
             hits: Stat::new("hits"),
             misses: Stat::new("misses"),
