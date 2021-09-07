@@ -55,7 +55,7 @@ impl Component for QSearch {
         );
         c.set(
             "qsearch.coarse.delta.prune.cp",
-            &format!("type spin default {} min 0 max 10000", self.coarse_delta_prune)
+            &format!("type spin default {} min 0 max 10000", self.coarse_delta_prune.as_i16())
         );
     }
     fn configure(&mut self, c: &Config) {
