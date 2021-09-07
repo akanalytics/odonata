@@ -177,7 +177,10 @@ impl Uci {
         } else {
             let bytes_read = io::stdin().read_line(&mut input).unwrap();
             if bytes_read == 0 {
-                self.uci_quit().unwrap();
+                // exit without printing as the pipe is broken
+                // self.uci_quit().unwrap();
+                self.engine.lock().unwrap().search_stop();
+                self.running = false;
                 return;
             }
         }
