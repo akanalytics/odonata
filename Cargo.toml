@@ -3,7 +3,10 @@ name = "odonata"
 version = "0.3.41"
 license = "GPL-3.0+"
 homepage = "https://github.com/akanalytics/odonata"
-authors = ["andy watkins <andy@webcalculator.com>"]
+authors = [
+    "andy watkins <andy@webcalculator.com>",
+    "mark raistrick <mark.raistrick@gmail.com>"
+    ] 
 edition = "2018"
 description = """
 A simple UCI compliant chess engine
