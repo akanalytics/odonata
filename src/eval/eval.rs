@@ -129,9 +129,10 @@ impl Default for MaterialBalance {
     fn default() -> Self {
         let mb = Self {
             enabled: false,
+            internal_stats: false,
             filename: String::new(),
-            consistency: true,
-            draws_only: true,
+            consistency: false,
+            draws_only: false,
             min_games: 50,
             max_pawns: 4,
             trade_factor: 2,
@@ -604,6 +605,7 @@ impl SimpleScorer {
         self.w_eval_some(board, Switches::ALL_SCORING | Switches::INSUFFICIENT_MATERIAL)
     }
 
+
     pub fn predict(&self, m: &Model, scorer: &mut impl Scorer) {
         if m.mat.is_insufficient() && m.switches.contains(Switches::INSUFFICIENT_MATERIAL) {
             if m.switches.contains(Switches::CONTEMPT) {
@@ -615,13 +617,17 @@ impl SimpleScorer {
 
         // material
         let ma = if self.material && m.switches.contains(Switches::MATERIAL) {
-            Piece::ALL_BAR_KING
-                .iter()
-                .map(|&p| {
-                    (m.mat.counts(Color::White, p) - m.mat.counts(Color::Black, p))
-                        * self.mb.material_weights[p]
-                })
-                .sum()
+            if self.mb.enabled {
+                self.mb.w_eval_material(&m.mat)
+            } else {
+                Piece::ALL_BAR_KING
+                    .iter()
+                    .map(|&p| {
+                        (m.mat.counts(Color::White, p) - m.mat.counts(Color::Black, p))
+                            * self.mb.material_weights[p]
+                    })
+                    .sum()
+            }
         } else {
             Weight::zero()
         };

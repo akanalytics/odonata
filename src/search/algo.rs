@@ -78,7 +78,7 @@ impl Engine {
     pub fn new() -> Self {
         let t = Instant::now();
         let mut engine = Self::default();
-        engine.configure(Config::from_env());
+        engine.configure(&Config::global());
         engine.engine_init_time = t.elapsed();
         engine
     }

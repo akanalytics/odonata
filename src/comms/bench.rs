@@ -71,9 +71,11 @@ impl Bench {
         // println!("\nstatistics\n{}", counts::GLOBAL_COUNTS);
     }
 
-    pub fn search(tc: TimeControl, threads: u32) {
+    pub fn search(tc: TimeControl, threads: Option<u32>) {
         let mut engine = Engine::new();
-        engine.thread_count = threads;
+        if let Some(threads) = threads {
+            engine.thread_count = threads;
+        }
         engine.algo.set_timing_method(tc);
         let positions = &Catalog::bench();
 

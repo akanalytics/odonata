@@ -3,6 +3,7 @@ use odonata::comms::console::Console;
 use odonata::comms::uci::Uci;
 use odonata::comms::bench::Bench;
 use odonata::version::Version;
+use odonata::config::Config;
 use odonata::search::timecontrol::TimeControl;
 
 
@@ -23,6 +24,13 @@ fn main() -> Result<(), String> {
         //         .multiple(true)
         //         .help("sets the level of logging verbosity: eg -vv or -vvv"),
         // )
+        .arg(Arg::with_name("config")
+            .short("c")
+            .long("config")
+            .value_name("FILE")
+            .help("specifies a custom config file")
+            .takes_value(true)
+        )
         .arg(Arg::with_name("uci")
             .help("enter uci mode without waiting for 'uci' on stdin")
             .short("u")
@@ -42,7 +50,6 @@ fn main() -> Result<(), String> {
             .help("sets the number of threads to use")
             .long("threads")
             .value_name("n")
-            .default_value("1")
             .takes_value(true)
         )
         .arg(Arg::with_name("perft_cat")
@@ -60,16 +67,11 @@ fn main() -> Result<(), String> {
         )
         .get_matches();
 
-    // Vary the output based on how many times the user used the "verbose" flag
-    // (i.e. 'myprog -v -v -v' or 'myprog -vvv' vs 'myprog -v'
-    // let log_level = match matches.occurrences_of("v") {
-    //     0 => "error",
-    //     1 => "warn",
-    //     2 => "info",
-    //     3 => "debug",
-    //     4 | _ => "trace",
-    // };
 
+    if let Some(filename) = matches.value_of("config") {
+        let config = Config::read_from_file(filename)?;
+        Config::set_global(config);
+    }
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
 
     if matches.is_present("uci") {
@@ -85,12 +87,13 @@ fn main() -> Result<(), String> {
     } else if matches.occurrences_of("search") > 0 {
         let tc = matches.value_of("search").unwrap();
         let tc = TimeControl::parse(tc).map_err(|e| e.to_string())?;
-        let threads = matches.value_of("threads").unwrap();
-        let threads = threads.parse::<u32>().map_err(|e| e.to_string())?;
+        let str = matches.value_of("threads");
+        let threads = if let Some(str) = str {
+            Some(str.parse::<u32>().map_err(|e| e.to_string())?)
+        } else {
+            None
+        };
         Bench::search(tc, threads);
-        // } else {
-        //     unreachable!("search always has a default millis")
-        // }
     } else {
         Console::run();
     }

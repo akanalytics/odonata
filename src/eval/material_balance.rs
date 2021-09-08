@@ -9,7 +9,6 @@ use std::sync::atomic::{AtomicBool, AtomicI16, Ordering};
 // use crate::{trace, info, logger::LogInit};
 use std::fs::File;
 use std::io::{self, BufRead};
-use std::path::Path;
 
 
 #[derive(Clone)]
@@ -17,6 +16,7 @@ pub struct MaterialBalance {
     pub enabled: bool,
     pub filename: String,
     pub consistency: bool,
+    pub internal_stats: bool,
     pub draws_only: bool,
     pub min_games: i32,
     pub max_pawns: i32,
@@ -33,6 +33,7 @@ pub struct MaterialBalance {
 impl Component for MaterialBalance {
     fn settings(&self, c: &mut Config) {
         c.set("mb.enabled", &format!("type check default {}", self.enabled));
+        c.set("mb.internal.stats", &format!("type check default {}", self.internal_stats));
         c.set("mb.filename", &format!("type string default {}", self.filename));
         c.set("mb.consistency", &format!("type check default {}", self.consistency));
         c.set("mb.draws.only", &format!("type check default {}", self.draws_only));
@@ -55,11 +56,13 @@ impl Component for MaterialBalance {
             name.push(p.to_char(Some(Color::Black)));
             c.set_weight(&name, &self.material_weights[p]);
         }
+        c.set("eval.mb.all", "type string default \"\"");  // cutechess can send "eval.mb=KPPk:100,KPk:56" etc
     }
 
     fn configure(&mut self, c: &Config) {
         debug!("mb.configure");
         self.enabled = c.bool("mb.enabled").unwrap_or(self.enabled);
+        self.internal_stats = c.bool("mb.internal.stats").unwrap_or(self.internal_stats);
         self.filename = c.string("mb.filename").unwrap_or(self.filename.clone());
         self.consistency = c.bool("mb.consistency").unwrap_or(self.consistency);
         self.draws_only = c.bool("mb.draws.only").unwrap_or(self.draws_only);
@@ -74,13 +77,20 @@ impl Component for MaterialBalance {
             name.push(p.to_char(Some(Color::Black)));
             self.material_weights[p] = c.weight(&name, &self.material_weights[p]);
         }
+        let _ = c.string("eval.mb.all").unwrap_or(String::new());
 
-        // we relaculate the derived scores as the config may have amended 
-        // some of the inputs to this calculation
-        if self.enabled {
-            self.init();  // likely re-init but happens outside of perf criticality
-            DERIVED_SCORES_CALCULATED.store(true, Ordering::Relaxed);
+        for (k, v) in c.iter() {
+            if let Some(k) = k.strip_prefix("eval.mb.material.") {
+                self.parse_and_store(k, v).unwrap();
+            }
         }
+
+        // // we recalculate the derived scores as the config may have amended 
+        // // some of the inputs to this calculation
+        // if self.enabled {
+        //     self.init();  // likely re-init but happens outside of perf criticality
+        //     DERIVED_SCORES_CALCULATED.store(true, Ordering::Relaxed);
+        // }
     }
 
     fn new_game(&mut self) {
@@ -145,7 +155,7 @@ impl MaterialBalance {
     pub fn w_eval_material(&self, mat: &Material) -> Weight {
         if self.enabled {
             let weight = self.balance_lookup(mat);
-            if weight != Weight::zero() {
+            if let Some(weight) = weight {
                 return weight;
             }
         }
@@ -153,24 +163,24 @@ impl MaterialBalance {
     }
 
     fn w_eval_simple(&self, mat: &Material) -> Weight {
-        let mut weight = Piece::ALL_BAR_KING
+        let weight = Piece::ALL_BAR_KING
             .iter()
             .map(|&p| (mat.counts(Color::White, p) - mat.counts(Color::Black, p)) * self.material_weights[p])
             .sum();
 
-        // let mut weight = Weight::new(score, score);
-        if mat.counts(Color::White, Piece::Bishop) >= 2 {
-            weight = weight + self.bishop_pair
-        }
-        if mat.counts(Color::Black, Piece::Bishop) >= 2 {
-            weight = weight - self.bishop_pair
-        }
-        if mat.counts(Color::White, Piece::Rook) >= 2 {
-            weight = weight + self.rook_pair
-        }
-        if mat.counts(Color::Black, Piece::Rook) >= 2 {
-            weight = weight - self.rook_pair
-        }
+        // // let mut weight = Weight::new(score, score);
+        // if mat.counts(Color::White, Piece::Bishop) >= 2 {
+        //     weight = weight + self.bishop_pair
+        // }
+        // if mat.counts(Color::Black, Piece::Bishop) >= 2 {
+        //     weight = weight - self.bishop_pair
+        // }
+        // if mat.counts(Color::White, Piece::Rook) >= 2 {
+        //     weight = weight + self.rook_pair
+        // }
+        // if mat.counts(Color::Black, Piece::Rook) >= 2 {
+        //     weight = weight - self.rook_pair
+        // }
         weight
     }
 
@@ -188,13 +198,13 @@ impl MaterialBalance {
 
 
     #[inline]
-    pub fn balance_lookup(&self, mat: &Material) -> Weight {
+    pub fn balance_lookup(&self, mat: &Material) -> Option<Weight> {
         self.ensure_init();
         let score = DERIVED_SCORES[mat.hash()].load(Ordering::Relaxed);
-        if score != 0 {
-            return Weight::new(score as i32, score as i32);
+        if score != NICHE {
+            return Some(Weight::new(score as i32, score as i32));
         }
-        Weight::zero()
+        None
     }
 
 
@@ -217,21 +227,14 @@ impl MaterialBalance {
     }
 
 
-    pub fn init_from_file<P>(&self, filename: P) -> Result<(), String>
-    where P: AsRef<Path>, P: Clone {
-
-        // zero existing ones
-        for n in 0..Material::HASH_VALUES {
-            DERIVED_SCORES[n].store(0,  Ordering::Relaxed);
-        }
-
-        let file = File::open(filename.clone()).map_err(|err| err.to_string())?;
+    pub fn init_from_file(&self, filename: &str) -> Result<(), String> {
+        let file = File::open(filename).map_err(|err| err.to_string())?;
         let lines = io::BufReader::new(file).lines();
 
         let mut count = 0;
         for (n, line) in lines.enumerate() {
             if n > 0 && n % 1000 == 0 {
-                info!("Read {} lines from {:?}", n, filename.as_ref().display());
+                info!("Read {} lines from {:?}", n, filename);
             }
             let s = line.map_err(|err| err.to_string())?;
             let s = s.trim();
@@ -244,16 +247,11 @@ impl MaterialBalance {
             // vec.push(Self::parse_epd(&s).map_err(|err| format!("{} in epd {}", err, s))?);
             let vec: Vec<_> = s.trim().splitn(2, ",").collect();
             if vec.len() != 2 {
-                return Err(format!("Failed parsing line {} in file {}: '{}'", n, filename.as_ref().display(), s))
+                return Err(format!("Failed parsing line {} in file {}: '{}'", n, filename, s))
             }
-            let mat = Material::from_piece_str(vec[0].trim())?;
-            let cp = vec[1].trim().parse::<i32>().map_err(|err| format!("{} - unable to parse number '{}'", err, vec[1]))?;
-
-            DERIVED_SCORES[mat.hash()].store(cp as i16,  Ordering::Relaxed);
-            DERIVED_SCORES[mat.flip().hash()].store(-cp as i16, Ordering::Relaxed);
-            trace!("{:<20} = {:>5}", format!("mb[{}]",mat), cp);
+            self.parse_and_store(vec[0], vec[1])?;
         }
-        info!("Read {} items from {:?}", count, filename.as_ref().display());
+        info!("Read {} items from {:?}", count, filename);
         Ok(())
     }
 
@@ -272,21 +270,32 @@ impl MaterialBalance {
 
     // inerior mutability
     fn init(&self) {
-        if self.filename.is_empty() {
+        // "zero" existing ones to the NICHE value indicating "not set"
+        if self.internal_stats {
+            for n in 0..Material::HASH_VALUES {
+                DERIVED_SCORES[n].store(NICHE,  Ordering::Relaxed);
+            }
             self.init_from_raw_stats(); 
-        } else {
-            self.init_from_file(self.filename.clone()).unwrap();
+        }
+        if !self.filename.is_empty() {
+            for n in 0..Material::HASH_VALUES {
+                DERIVED_SCORES[n].store(NICHE,  Ordering::Relaxed);
+            }
+            self.init_from_file(&self.filename).unwrap();
         }
     }
 
-
+    fn parse_and_store(&self, k: &str, v: &str) -> Result<(), String> {
+        let mat = Material::from_piece_str(k.trim())?;
+        let cp = v.trim().parse::<f32>().map_err(|err| format!("{} - unable to parse number '{}'", err, v))?;
+        DERIVED_SCORES[mat.hash()].store(cp as i16,  Ordering::Relaxed);
+        DERIVED_SCORES[mat.flip().hash()].store(-cp as i16, Ordering::Relaxed);
+        trace!("{:<20} = {:>5}", format!("mb[{}]",mat), cp);
+        Ok(())
+    }
 
     fn init_from_raw_stats(&self) {
-
         info!("creating derived material balance table from {} raw internal statistics", RAW_STATS.len() );
-        for n in 0..Material::HASH_VALUES {
-            DERIVED_SCORES[n].store(0,  Ordering::Relaxed);
-        }
         let mut sorted_raw_stats = RAW_STATS.clone();
         sorted_raw_stats.sort_by_cached_key(|(mat, _score) | mat.to_string().len() as i32 * 20000 + mat.centipawns() ); 
         for (mat, wdl) in sorted_raw_stats.iter() {
@@ -307,9 +316,10 @@ impl MaterialBalance {
                     let elo = wdl.elo();
                     // straight 1-1 approximation
                     cp = elo as i32;
-                    if cp == 0 {
-                        cp = 1;
-                    }
+                    // not needed as we use a NICHE value for not present
+                    // if cp == 0 {
+                    //     cp = 1;
+                    // }
                 }
                 // adj means that drawish positions still incentivise a material gain
                 let adj = self.w_eval_simple(mat).e() as i32;
@@ -335,9 +345,9 @@ impl MaterialBalance {
         let mut adjustments = 0;
         for (hash,_atom) in DERIVED_SCORES.iter().enumerate() {
             let mat = Material::maybe_from_hash(hash);
-            let cp = DERIVED_SCORES[mat.hash()].load(Ordering::Relaxed) as i32;
-            if cp > 0 {
-                adjustments += self.ensure_single_entry_consistent(&mat, cp);
+            let cp = DERIVED_SCORES[mat.hash()].load(Ordering::Relaxed);
+            if cp != NICHE {
+                adjustments += self.ensure_single_entry_consistent(&mat, cp as i32);
             }
         }
         info!("Material balance consistency: pass {} adjusted {} items\n", pass, adjustments);
@@ -377,7 +387,7 @@ impl MaterialBalance {
                 continue;
             }
             let mut other_cp = DERIVED_SCORES[other.hash()].load(Ordering::Relaxed) as i32;
-            if other_cp == 0 {
+            if other_cp as i16 == NICHE {
                 let weight: Weight = Piece::ALL_BAR_KING
                 .iter()
                 .map(|&p| (other.counts(Color::White, p) - other.counts(Color::Black, p)) * self.material_weights[p])
@@ -434,12 +444,14 @@ impl MaterialBalance {
 // mutable derived scores
 type DerivedScoresVec = Vec<AtomicI16>;
 
+const NICHE: i16 = i16::MIN;
+
 static DERIVED_SCORES_CALCULATED: AtomicBool = AtomicBool::new(false);
 
 #[dynamic(lazy)]
 static DERIVED_SCORES: DerivedScoresVec = {
     let mut m = DerivedScoresVec::new();
-    m.resize_with(Material::HASH_VALUES, || AtomicI16::new(0));
+    m.resize_with(Material::HASH_VALUES, || AtomicI16::new(NICHE));
     m
 };
 
@@ -467,7 +479,7 @@ mod tests {
     #[test]
     fn test_balance() {
         let mut mb = MaterialBalance::new();
-        mb.configure(Config::from_env());
+        mb.configure(&Config::global());
         mb.log_material_balance();
     }
 

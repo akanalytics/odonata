@@ -1,10 +1,13 @@
 use std::collections::HashMap;
 use std::fmt;
-// use static_init::{dynamic};
-use once_cell::sync::Lazy;
-// // use crate::{info, logger::LogInit};
+use static_init::{dynamic};
 use std::env;
 use crate::eval::weight::Weight;
+use std::fs::File;
+use std::io::{self, BufRead};
+use std::fs;
+use std::path::PathBuf;
+
 
 
 pub trait Component {
@@ -15,8 +18,10 @@ pub trait Component {
 }
 
 
-// #[dynamic(lazy)]
-static STATIC_INSTANCE: Lazy<Config> = Lazy::new( || Config::read_from_env());
+
+
+#[dynamic]
+static mut STATIC_INSTANCE: Config = { let c = Config::read_from_env(); c };
 
 
 #[derive(Clone, Debug)]
@@ -26,12 +31,53 @@ pub struct Config {
 }
 
 impl Config {
+
     pub fn new() -> Config {
         Self::default()
     }
 
-    pub fn from_env() -> &'static Config {
-        &STATIC_INSTANCE
+    pub fn global() -> Config {
+        let config = STATIC_INSTANCE.read();
+        if !config.is_empty() {
+            warn!("Using configuration\n{}", &*config);
+        } else {
+            info!("No configuration overrides");
+        }
+        Config::clone(&config)
+    }
+
+    pub fn set_global(config: Config) {
+        *STATIC_INSTANCE.write() = config;
+    }
+
+    pub fn read_from_file(filename: &str) -> Result<Config, String> {
+        let mut config = Config::new();
+        let path = PathBuf::from(filename);
+        let file = File::open(filename).map_err(|err| format!("Error opening {:?} in {:?} {}", path, env::current_dir().unwrap(), err.to_string()))?;
+        let lines = io::BufReader::new(file).lines();
+
+        let mut count = 0;
+        for (n, line) in lines.enumerate() {
+            if n > 0 && n % 1000 == 0 {
+                info!("Read {} lines from {:?}", n, filename);
+            }
+            let s = line.map_err(|err| err.to_string())?;
+            let s = s.trim();
+            if s.is_empty() || s.starts_with("#") {
+                continue;
+            }
+
+            count += 1;
+
+            if let Some(combo) = s.split_once("=") {
+                let (key, value) = combo;
+                config.set(&key, &value);
+            } else {
+                return Err(format!("Failed parsing line {} in file {}: '{}'", n, filename, s))
+            }
+        }
+        info!("Read {} items from {:?}", count, filename);
+        Ok(config)
     }
 
     fn read_from_env() -> Config {
@@ -46,11 +92,6 @@ impl Config {
                     config.set(&key, &value);
                 }
             }
-        }
-        if !config.is_empty() {
-            warn!("Using configuration\n{}", config);
-        } else {
-            info!("No configuration overrides");
         }
         config
     }
@@ -67,6 +108,7 @@ impl Config {
     }
 
     pub fn set(&mut self, k: &str, v: &str) -> Config {
+        let v = v.trim_matches('"');
         if self.settings.insert(k.to_string(), v.to_string()).is_none() {
             self.insertion_order.push(k.to_string());
         }
