@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from __future__ import annotations
-from typing import Any, MutableSet, Iterator, NamedTuple, Optional, Dict, Callable
+from typing import Any, MutableSet, Iterator, NamedTuple, Optional, Dict, Callable, Tuple
 from typing import List, Iterable
 import logging
 import time
@@ -909,29 +909,33 @@ class Eval:
 
 
 class Engine:
-    def __init__(self, path: str = '', depth: Optional[int] = None, millis: Optional[int] = 1000, nodes: Optional[int] = None) -> None:
+    def __init__(self, path: str = '', toml: str = '', depth: Optional[int] = None, millis: Optional[int] = 1000, nodes: Optional[int] = None) -> None:
         self.millis = millis
         self.node_count = nodes
         self.depth = depth
         self.results = {}
         self.path = path
+        self.toml = toml
 
+
+    def args(self) -> str:
+        return self.toml
 
     def engine_version(self) -> str:
-        return Odonata.instance(self.path).engine_version()
+        return Odonata.instance(self.path, self.toml).engine_version()
 
     def set_option(self, key: str, value: Any):
-        Odonata.instance(self.path).set_option(key, value)
+        Odonata.instance(self.path, self.toml).set_option(key, value)
 
     # can return None when no moves available (or found in time)
     def search(self, b: Board) -> Optional[Move]:
-        odo = Odonata.instance(self.path)
+        odo = Odonata.instance(self.path, self.toml)
         bm = odo.get_best_move(b, depth=self.depth, millis=self.millis, nodes=self.node_count)
         self.results = odo.parse_search_results()
         return bm
 
     def new_game(self):
-        Odonata.instance()._start_new_game()
+        Odonata.instance(self.path, self.toml)._start_new_game()
 
     def nps(self) -> int:
         return int(self.results[-1]['nps'])
@@ -990,18 +994,19 @@ def handle_signal(signum, _frame):
 # best not to use this class directly
 class Odonata:
 
-    _instances: Dict[str, Odonata] = {}
+    # indexed by path, toml_config_path
+    _instances: Dict[Tuple[str,str], Odonata] = {}
 
     @classmethod
-    def instance(cls, path: str = '', debug: bool = False) -> Odonata:
-        inst = cls._instances.get(path)
+    def instance(cls, path: str = '', toml: str = '', debug: bool = False) -> Odonata:
+        inst = cls._instances.get((path,toml))
         if not inst:
             
             inst = cls.__new__(cls)
             assert inst != None
-            inst.__init__(path, debug)
-            logger.info(f"Called init on {inst.path}")
-            cls._instances[path] = inst
+            inst.__init__(path, toml, debug)
+            logger.info(f"Called init on {inst.path} with toml {inst._toml}")
+            cls._instances[(path, toml)] = inst
             # Put more initialization here maybe
         return inst
 
@@ -1013,7 +1018,7 @@ class Odonata:
 
 
 
-    def __init__(self, path: str = '', debug: bool = False) -> None:
+    def __init__(self, path: str = '', toml: str = '', debug: bool = False) -> None:
         if not path:
             # try and look for Odonata executable
             files = [
@@ -1033,11 +1038,16 @@ class Odonata:
                 raise ValueError(f"Unable to find executable in {files}")
 
         self.debug: bool = debug
-        logger.info(f"loading odonata from {path}\n")
+        logger.info(f"loading odonata from {path} with toml {toml}\n")
         self._path = path
+        self._toml: str = toml
+        if not toml:
+            cmd = path
+        else:
+            cmd = [path, f"--config={toml}"]
         import sys
         self.process: Optional[subprocess.Popen] = subprocess.Popen(
-            path,
+            cmd,
             # bufsize=10000,
             universal_newlines=True,
             # stderr=sys.__stderr__,
@@ -1081,6 +1091,9 @@ class Odonata:
 
     def path(self) -> str:
         return self._path
+
+    def args(self) -> str:
+        return self._toml
 
     def _start_new_game(self) -> None:
         self._put("ucinewgame")
