@@ -9,10 +9,14 @@ My lockdown hobby was writing a chess engine, and learning Python and Rust in th
 
 I started Decemeber 2020. Python and Rust are very different from Java, which I had programmed maybe 10 years previous. Certainly my first efforts at Rust are not very clean, clever or idiomatic, but the code improves as I revist areas to build improvements.
 
+Odonata is a joint effort with [Mark](https://github.com/raistrma). Bugs in the Rust code will likely be Andy's :-)
+
+
 I'm aware that this is now yet another chess engine, with yet another set of Python bindings. In part this is because the project was intended as a learning exercise, but also there did not appear to be a Python native extension available. If any library owners, either Rust or Python, have or plan native extensions and want to chat about how I can avoid duplication or rationize things in terms of Python chess extension modules, please email (andy at webcalculator dot com)!
 
 I would describe Odonata as original code but inspired by other libraries, engines, articles and blogs. There are some utilities code which are more than inspired and hopefully these have been explicitly credited. In particular I use Hoarfrost's magic bitboards for benchmarking (but not movegen), Stockfish wrapper (by zhelyabuzhsky) as a basis for python invocation and JsonRpc (riga) for, well, Json Rpc in the Python interface.   
 
+Andy
 
 ## Lichess
 Odonata is running as a bot on Lichess. You can see her rankings and games here [Lichess](https://lichess.org/@/odonata-bot) .
@@ -32,7 +36,8 @@ In particular - please note that Odonata's github/main uses rust *nightly* 2021-
 See [Changelog](/docs/changelog.md)
 
 ## Credits
-- A thanks to 
+- Odonata is design and written by [Andy Watkins](https://github.com/akanalytics) and [Mark Raistrick](https://github.com/raistrma)
+- Thanks to 
   - My sons - Freddie, Oscar and Hector - for assistance with graphics, some design ideas and testing the engine play
   - Gabor Szots and the CCRL team for arranging blitz competitive testing
   - The many chess libraries, engines and blogs out there. My apologies if I have not mentioned your project explicitly by name...
@@ -51,6 +56,7 @@ Rust Chess engine | https://github.com/vinc/littlewing | For making me appreciat
 Chesss GUI for UCI engines | http://www.playwitharena.de/ | Have grown to love
 CCRL - Computer Chess Ratings Lists | https://www.computerchess.org.uk/ccrl/404/ | Fascinating
 Stockfish python interface | https://pypi.org/project/stockfish/ | By Ilya Zhelyabuzhsky. Sweet.
+Stockfish | https://stockfishchess.org/ | A giant.
 
 
 ## License
@@ -67,3 +73,4 @@ Stockfish | https://github.com/zhelyabuzhsky/stockfish | MIT https://choosealice
 Hoarfrost | https://github.com/Ravenslofty/Hoarfrost | | MIT https://choosealicense.com/licenses/mit/ | Used for magic bitboard benchmarking
 JsonRpyc | https://github.com/riga/jsonrpyc | MIT https://choosealicense.com/licenses/mit/ | 
 Alcibiades |https://github.com/epandurski/alcibiades |  MIT https://choosealicense.com/licenses/mit/ | Worthy! Inspired Odonata's q-search 
+
