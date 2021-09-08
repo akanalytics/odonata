@@ -396,17 +396,21 @@ impl ModelSide {
         const W_BISHOP: Bitboard = Bitboard::G2;
         const W_KING: Bitboard = Bitboard::F1.or(Bitboard::G1).or(Bitboard::H1);
         const W_PAWNS: Bitboard = Bitboard::F2.or(Bitboard::G3).or(Bitboard::H2).or(Bitboard::H3).or(Bitboard::H4);
+        const W_NO_PAWNS: Bitboard = Bitboard::F3;
 
         const B_BISHOP: Bitboard = W_BISHOP.flip_vertical();
         const B_KING: Bitboard = W_KING.flip_vertical();
         const B_PAWNS: Bitboard = W_PAWNS.flip_vertical();
+        const B_NO_PAWNS: Bitboard = W_NO_PAWNS.flip_vertical();
 
         let bishop = c.chooser_wb(W_BISHOP, B_BISHOP);
         let pawns = c.chooser_wb(W_PAWNS, B_PAWNS);
+        let no_pawns = c.chooser_wb(W_NO_PAWNS, B_NO_PAWNS);
         let king = c.chooser_wb(W_KING, B_KING);
 
-        if (b.pawns() & us).contains(pawns)
-            && (b.bishops() & us).intersects(bishop)
+        if (b.bishops() & us).intersects(bishop)
+            && (b.pawns() & us).contains(pawns)
+            && (b.pawns() & us).disjoint(no_pawns)
             && (b.kings() & us).contains(king)
         {
             self.fianchetti += 1
