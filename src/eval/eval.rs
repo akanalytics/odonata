@@ -98,13 +98,17 @@ pub struct SimpleScorer {
     pub pawn_isolated: Weight,
     pub pawn_passed: Weight,
     pub pawn_passed_r6: Weight,
+    pub pawn_passed_r5: Weight,
+    pub passers_on_rim: Weight,
 
     pub bishop_pair: Weight,
+    pub fianchetto: Weight,
+    pub bishop_color_pawns: Weight,
+
     pub rook_pair: Weight,
     pub rook_edge: Weight,
     pub rook_open_file: Weight,
     pub queen_open_file: Weight,
-    pub fianchetto: Weight,
 
 
     // pub pawn_shield: Weight,
@@ -182,6 +186,7 @@ impl Default for SimpleScorer {
 
             bishop_pair: Weight::new(62, 58),
             fianchetto: Weight::new(55, 27),
+            bishop_color_pawns: Weight::new(55, 27),
             rook_pair: Weight::new(-1, -1),
             rook_open_file: Weight::new(59, -4),
             rook_edge: Weight::new(0, 0),
@@ -194,7 +199,10 @@ impl Default for SimpleScorer {
             pawn_doubled: Weight::new(19, -35),
             pawn_isolated: Weight::new(-35, -5),
             pawn_passed: Weight::new(15, 28),
+            pawn_passed_r5: Weight::new(1, 50),
             pawn_passed_r6: Weight::new(8, 94),
+            passers_on_rim: Weight::new(-10, -10),
+
             tempo_bonus: Weight::new(40, 50),
             pawn_adjacent_shield: Weight::new(44, -15),
             pawn_nearby_shield: Weight::new(42, -14),
@@ -244,9 +252,12 @@ impl Component for SimpleScorer {
         c.set_weight("eval.pawn.isolated", &self.pawn_isolated);
         c.set_weight("eval.pawn.passed", &self.pawn_passed);
         c.set_weight("eval.pawn.passed.r6", &self.pawn_passed_r6);
+        c.set_weight("eval.pawn.passed.r5", &self.pawn_passed_r5);
+        c.set_weight("eval.passers.on.rim", &self.passers_on_rim);
 
         c.set_weight("eval.bishop.pair", &self.bishop_pair);
         c.set_weight("eval.fianchetto", &self.fianchetto);
+        c.set_weight("eval.bishop.color.pawns", &self.bishop_color_pawns);
 
         c.set_weight("eval.rook.pair", &self.rook_pair);
         c.set_weight("eval.rook.open.file", &self.rook_open_file);
@@ -312,11 +323,14 @@ impl Component for SimpleScorer {
 
         self.fianchetto = c.weight("eval.fianchetto", &self.fianchetto);
         self.bishop_pair = c.weight("eval.bishop.pair", &self.bishop_pair);
+        self.bishop_color_pawns = c.weight("eval.bishop.color.pawns", &self.bishop_color_pawns);
 
         self.pawn_doubled = c.weight("eval.pawn.doubled", &self.pawn_doubled);
         self.pawn_isolated = c.weight("eval.pawn.isolated", &self.pawn_isolated);
         self.pawn_passed = c.weight("eval.pawn.passed", &self.pawn_passed);
         self.pawn_passed_r6 = c.weight("eval.pawn.passed.r6", &self.pawn_passed_r6);
+        self.pawn_passed_r5 = c.weight("eval.pawn.passed.r5", &self.pawn_passed_r5);
+        self.passers_on_rim = c.weight("eval.passers.on.rim", &self.passers_on_rim);
 
         self.pawn_adjacent_shield = c.weight("eval.pawn.adjacent.shield", &self.pawn_adjacent_shield);
         self.pawn_nearby_shield = c.weight("eval.pawn.nearby.shield", &self.pawn_nearby_shield);
@@ -699,6 +713,7 @@ impl SimpleScorer {
                 // sum = sum + w - b;
             }
             scorer.position("fianchetti", w.fianchetti, b.fianchetti, self.fianchetto);
+            scorer.position("bishop color pawns", w.bishop_color_pawns, b.bishop_color_pawns, self.bishop_color_pawns);
 
             // scorer.position("pst", 1, 0, w.psq.iter().map(|(p,sq)| self.pst(*p, *sq)).sum::<Weight>());
             // scorer.position("pst", 0, 1, b.psq.iter().map(|(p,sq)| self.pst(*p, *sq)).sum::<Weight>());
@@ -714,6 +729,18 @@ impl SimpleScorer {
                 w.passed_pawns_on_r6,
                 b.passed_pawns_on_r6,
                 self.pawn_passed_r6,
+            );
+            scorer.pawn(
+                "passed.r5",
+                w.passed_pawns_on_r5,
+                b.passed_pawns_on_r5,
+                self.pawn_passed_r5,
+            );
+            scorer.pawn(
+                "passers on rim",
+                w.passers_on_rim,
+                b.passers_on_rim,
+                self.passers_on_rim,
             );
         }
 

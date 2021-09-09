@@ -30,6 +30,7 @@ pub struct ModelSide {
     // bishops
     pub has_bishop_pair: bool,
     pub fianchetti: i32,
+    pub bishop_color_pawns: i32,
 
     // rooks
     pub has_rook_pair: bool,
@@ -45,6 +46,8 @@ pub struct ModelSide {
     pub isolated_pawns: i32,
     pub passed_pawns: i32, // includes passed pawns on r7
     pub passed_pawns_on_r6: i32, // r7 by definition are passed
+    pub passed_pawns_on_r5: i32, 
+    pub passers_on_rim: i32, // files a & h
 
     // king safety
     pub king_tropism_d1: i32,
@@ -373,7 +376,7 @@ impl ModelSide {
             m.init_material(b, c, mat);
         }
         if sw.contains(Switches::POSITION) {
-            m.init_position(b, c);
+            m.init_position(b, c, mat);
         }
         if sw.contains(Switches::PAWN) {
             m.init_pawns(b, c);
@@ -395,7 +398,7 @@ impl ModelSide {
     }
 
     #[inline]
-    fn init_position(&mut self, b: &Board, c: Color) {
+    fn init_position(&mut self, b: &Board, c: Color, _m: &Material) {
         let us = b.color(c);
 
         // fianchetto (short)
@@ -420,6 +423,12 @@ impl ModelSide {
             && (b.kings() & us).contains(king)
         {
             self.fianchetti += 1
+        }
+
+        if Bitboard::WHITE_SQUARES.contains(b.bishops() & b.color(c)) {
+            self.bishop_color_pawns = (b.pawns() & b.color(c) & Bitboard::WHITE_SQUARES).popcount() - (b.pawns() & b.color(c) & Bitboard::BLACK_SQUARES).popcount();
+        } else if Bitboard::BLACK_SQUARES.contains(b.bishops() & b.color(c)){
+            self.bishop_color_pawns = (b.pawns() & b.color(c) & Bitboard::BLACK_SQUARES).popcount() - (b.pawns() & b.color(c) & Bitboard::WHITE_SQUARES).popcount();
         }
 
         // for &p in &Piece::ALL_BAR_NONE {
@@ -452,8 +461,11 @@ impl ModelSide {
                 (bbd.pawn_front_span_union_attack_span(c, p) & b.pawns() & b.color(c.opposite())).is_empty();
             self.passed_pawns += is_passed as i32;
 
-            let rank = c.chooser_wb(Bitboard::RANK_6, Bitboard::RANK_3);
-            self.passed_pawns_on_r6 += (is_passed && rank.intersects(p.as_bb())) as i32;
+            let rank6 = c.chooser_wb(Bitboard::RANK_6, Bitboard::RANK_3);
+            let rank5 = c.chooser_wb(Bitboard::RANK_5, Bitboard::RANK_4);
+            self.passed_pawns_on_r6 += (is_passed && rank6.intersects(p.as_bb())) as i32;
+            self.passed_pawns_on_r5 += (is_passed && rank5.intersects(p.as_bb())) as i32;
+            self.passers_on_rim += (is_passed && p.as_bb().intersects(Bitboard::RIM)) as i32;
         }
         self.doubled_pawns = bbd.doubled_pawns(b.color(c) & b.pawns()).popcount();
     }

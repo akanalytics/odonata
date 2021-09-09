@@ -279,6 +279,11 @@ impl Bitboard {
     pub const RANK_7: Bitboard = Bitboard(Self::RANK_1.bits() << (6 * 8));
     pub const FILE_H: Bitboard = Bitboard(Self::FILE_A.bits() << 7);
     pub const RANK_8: Bitboard = Bitboard(Self::RANK_1.bits() << (7 * 8));
+
+    // https://gekomad.github.io/Cinnamon/BitboardCalculator/
+    pub const WHITE_SQUARES: Bitboard = Bitboard(0x55aa55aa55aa55aa_u64);
+    pub const BLACK_SQUARES: Bitboard = Bitboard(0xaa55aa55aa55aa55_u64);
+    pub const RIM: Bitboard = Bitboard::FILE_A.or(Bitboard::FILE_H);
 }
 
 impl fmt::Binary for Bitboard {
@@ -879,6 +884,8 @@ mod tests {
             (Bitboard::FILE_A | Bitboard::RANK_8)
         );
         assert_eq!( (1u64 << 63) >> 63, 1);
+        assert_eq!( Bitboard::BLACK_SQUARES | Bitboard::WHITE_SQUARES, Bitboard::all());
+        assert!( Bitboard::BLACK_SQUARES.contains(a1));
         assert_eq!(1_u64.wrapping_shl(64), 1_u64);
         // assert_eq!(Bitboard::from_sq(64), Bitboard::EMPTY);
     }
