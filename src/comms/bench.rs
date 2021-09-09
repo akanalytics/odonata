@@ -5,7 +5,7 @@ use crate::{catalog::*, eval::model::Model};
 use crate::clock::Clock;
 use crate::config::Component;
 use crate::perft::Perft;
-use crate::search::algo::Engine;
+use crate::search::engine::Engine;
 use crate::tags::Tag;
 use crate::search::timecontrol::TimeControl;
 // use env_logger;

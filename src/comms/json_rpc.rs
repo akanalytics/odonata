@@ -2,7 +2,7 @@ use crate::board::Board;
 use crate::catalog::{Catalog, CatalogSuite};
 use crate::config::Component;
 use crate::position::Position;
-use crate::search::algo::Engine;
+use crate::search::engine::Engine;
 use crate::tags::Tag;
 use crate::tuning::Tuning;
 use crate::version::built_info;

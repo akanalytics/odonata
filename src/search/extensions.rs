@@ -83,8 +83,8 @@ impl Default for Extensions {
             check_max_phase: 60,
 
             promo_enabled: false,
-            promo_max_depth: 3,
-            promo_rank: 6,
+            promo_max_depth: 1,
+            promo_rank: 7,
             promo_extend: 1,
         }
     }
@@ -140,6 +140,8 @@ mod tests {
     use crate::search::timecontrol::*;
     use crate::tags::*;
     use crate::utils::*;
+    use crate::search::engine::*;
+
     // use crate::search::timecontrol::*;
 
     #[test]

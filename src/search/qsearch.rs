@@ -306,7 +306,7 @@ mod tests {
     use crate::catalog::*;
     use crate::eval::eval::*;
     use crate::position::*;
-    use crate::search::algo::Engine;
+    use crate::search::engine::Engine;
     use crate::search::timecontrol::*;
     use crate::test_env_log::test;
 
@@ -318,7 +318,7 @@ mod tests {
             let mut engine = Engine::new();
             engine.algo.set_timing_method(TimeControl::Depth(0));
             //                .set_callback(Uci::uci_info)
-            engine.algo.eval.mb.enabled = true;
+            // engine.algo.eval.mb.enabled = true;
             engine.set_position(pos.clone());
             engine.search();
             // debug!("{}", search);
@@ -334,7 +334,7 @@ mod tests {
                 "{} {}\n{}",
                 pos.id()?,
                 pos.board().to_san_variation(engine.algo.pv(), None),
-                engine.algo
+                engine
             );
             // forward score is from POV of mover at end of PV line
             let qboard = engine.algo.pv().apply_to(pos.board());

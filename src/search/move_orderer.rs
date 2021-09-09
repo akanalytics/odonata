@@ -557,6 +557,7 @@ mod tests {
     use crate::movelist::*;
     use crate::types::*;
     use crate::search::timecontrol::*;
+    use crate::search::engine::*;
     use crate::search::algo::*;
     use crate::utils::*;
     use crate::tags::*;

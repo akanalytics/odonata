@@ -1,7 +1,7 @@
 use crate::config::{Component, Config};
 // use crate::mv::Move;
 use crate::position::Position;
-use crate::search::algo::Engine;
+use crate::search::engine::Engine;
 use crate::search::timecontrol::TimeControl;
 use std::fmt;
 

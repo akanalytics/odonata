@@ -2,7 +2,7 @@ use crate::eval::model::Model;
 use crate::eval::model::ModelScore;
 use crate::eval::switches::Switches;
 use crate::position::Position;
-use crate::search::algo::Engine;
+use crate::search::engine::Engine;
 use crate::tags::Tag;
 use rayon::prelude::*;
 

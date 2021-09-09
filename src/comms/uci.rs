@@ -7,7 +7,7 @@ use crate::mv::Move;
 use crate::clock::Clock;
 use crate::variation::Variation;
 use crate::perft::Perft;
-use crate::search::algo::Engine;
+use crate::search::engine::Engine;
 use crate::search::node::Node;
 use crate::tags::Tag;
 use crate::position::Position;

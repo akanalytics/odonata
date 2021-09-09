@@ -8,6 +8,7 @@ pub mod reductions;
 pub mod alphabeta;
 pub mod iterative_deepening;
 pub mod killers;
+pub mod engine;
 pub mod move_orderer;
 pub mod move_time_estimator;
 pub mod node;

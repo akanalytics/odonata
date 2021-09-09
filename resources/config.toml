@@ -1,0 +1,17 @@
+#
+# MSE improved from 0.063471 to 0.063453 (-0.03%)
+# MSE improved from 0.063471 to 0.063456 (-0.02%) using integer weights
+# Training file ../epd/quiet-labeled.epd
+# Odonata odonata 0.3.41 built on Thu, 09 Sep 2021 11:34:50 +0000
+# Path ../engines/odonata/odonata-stable
+# Completed... 141.0 M position evaluations per second (8945 recalcs x 1417268 file lines)
+# 
+eval.material=true
+eval.position=true
+eval.safety=true
+eval.mobility=true
+eval.pawn=true
+mb.enabled=false
+phaser.method="SO"
+
+#end of file

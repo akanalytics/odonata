@@ -185,6 +185,7 @@ mod tests {
     use crate::comms::uci::Uci;
     use crate::eval::weight::Weight;
     use crate::search::algo::*;
+    use crate::search::engine::*;
     use crate::search::timecontrol::*;
     use crate::tags::Tag;
 

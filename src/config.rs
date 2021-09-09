@@ -1,10 +1,9 @@
 use std::collections::HashMap;
-use std::fmt;
+use std::{fmt, fs};
 use static_init::{dynamic};
 use std::env;
 use crate::eval::weight::Weight;
-use std::fs::File;
-use std::io::{self, BufRead};
+use crate::resources::RESOURCE_DIR;
 use std::path::PathBuf;
 
 
@@ -19,8 +18,16 @@ pub trait Component {
 
 
 
-#[dynamic]
-static mut STATIC_INSTANCE: Config = { let c = Config::read_from_env(); c };
+
+#[dynamic(lazy)]
+static mut STATIC_INSTANCE: Config = { 
+    let c = Config::parse(&RESOURCE_DIR.get_file("config.toml").unwrap().contents_utf8().unwrap(), "<internal>");
+    if c.is_err() {
+        warn!("Unable to open config.toml");
+        return Config::default()
+    }
+    c.unwrap()
+};
 
 
 #[derive(Clone, Debug)]
@@ -50,17 +57,32 @@ impl Config {
     }
 
     pub fn read_from_file(filename: &str) -> Result<Config, String> {
-        let mut config = Config::new();
         let path = PathBuf::from(filename);
-        let file = File::open(filename).map_err(|err| format!("Error opening config toml file {:?} in working dir {:?} {}", path, env::current_dir().unwrap(), err.to_string()))?;
-        let lines = io::BufReader::new(file).lines();
+        let s = fs::read_to_string(path);
+        let s = s.map_err(|_| 
+                format!("Error reading config toml file {} in working dir {:?}", 
+                    filename, 
+                    env::current_dir().unwrap(), 
+                ))?;
+        //.or_else()?;
+        Config::parse(&s, filename)
+        // let file = File::open(filename).map_err(|err| format!("Error opening config toml file {:?} in working dir {:?} {}", path, env::current_dir().unwrap(), err.to_string()))?;
+        // let lines = io::BufReader::new(file).raedlines();
+        // let results: Result<Vec<_>, _> = lines.collect();  // omg!
+        // let successes = results.map_err(|e| e.to_string())?;
+        // Self::parse_from_lines(&successes, filename)
+    }
 
+
+    pub fn parse(s: &str, filename: &str) -> Result<Config, String> {
+
+        let mut config = Config::new();
         let mut count = 0;
-        for (n, line) in lines.enumerate() {
+        for (n, line) in s.lines().enumerate() {
             if n > 0 && n % 1000 == 0 {
                 info!("Read {} lines from {:?}", n, filename);
             }
-            let s = line.map_err(|err| err.to_string())?;
+            let s = line;
             let s = s.trim();
             if s.is_empty() || s.starts_with("#") {
                 continue;
@@ -79,21 +101,21 @@ impl Config {
         Ok(config)
     }
 
-    fn read_from_env() -> Config {
-        let mut config = Config::new();
-        for arg in env::vars() {
-            // format is odonata_key1_key2_key3 = value which we translate to key1.key2.key3=value
-            if arg.0.to_lowercase().starts_with("odonata_") {
-                if let Some(combo) = arg.0.split_once("_") {
-                    let (_odonata, key) = combo;
-                    let value = arg.1;
-                    let key = key.replace("_", ".");
-                    config.set(&key, &value);
-                }
-            }
-        }
-        config
-    }
+    // fn read_from_env() -> Config {
+    //     let mut config = Config::new();
+    //     for arg in env::vars() {
+    //         // format is odonata_key1_key2_key3 = value which we translate to key1.key2.key3=value
+    //         if arg.0.to_lowercase().starts_with("odonata_") {
+    //             if let Some(combo) = arg.0.split_once("_") {
+    //                 let (_odonata, key) = combo;
+    //                 let value = arg.1;
+    //                 let key = key.replace("_", ".");
+    //                 config.set(&key, &value);
+    //             }
+    //         }
+    //     }
+    //     config
+    // }
 
     pub fn set_weight(&mut self, k: &str, w: &Weight) {
         let (k1, k2) = (k.to_string() + ".s", k.to_string() + ".e");
@@ -194,6 +216,7 @@ impl Default for Config {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::search::engine::*;
     use test_env_log::test;    
 
     #[derive(Clone, Debug)]
@@ -221,6 +244,8 @@ mod tests {
 
         fn new_position(&mut self) {}
     }
+
+
 
     #[test]
     fn test_config() {

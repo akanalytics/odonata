@@ -93,6 +93,8 @@ mod tests {
     use crate::utils::*;
     use crate::search::timecontrol::*;
     use crate::tags::*;
+    use crate::search::engine::*;
+
     // use crate::search::timecontrol::*;
 
 

@@ -7,7 +7,7 @@ use odonata::position::*;
 use odonata::movelist::*;
 use odonata::perft::Perft;
 use odonata::tracer::*;
-use odonata::search::algo::Engine;
+use odonata::search::engine::Engine;
 use odonata::search::node::Node;
 use odonata::search::timecontrol::TimeControl;
 use static_init::{dynamic};

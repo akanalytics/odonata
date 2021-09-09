@@ -26,10 +26,9 @@ pub mod logger;
 extern crate log;
 
 extern crate test_env_log;
+extern crate include_dir;
 
 
-
-// Log::{trace, debug, info, warn, error}
 
 // pub mod logger;
 pub mod bitboard;
@@ -38,6 +37,7 @@ pub mod catalog;
 pub mod clock;
 pub mod comms;
 pub mod config;
+pub mod resources;
 pub mod debug;
 pub mod eval;
 pub mod exam;
