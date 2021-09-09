@@ -5,8 +5,7 @@ use crate::mv::Move;
 use crate::types::{Color, Piece, ScoreWdl};
 use static_init::dynamic;
 use std::fmt;
-use std::sync::atomic::{AtomicBool, AtomicI16, Ordering};
-// use crate::{trace, info, logger::LogInit};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::fs::File;
 use std::io::{self, BufRead};
 
@@ -22,8 +21,6 @@ pub struct MaterialBalance {
     pub max_pawns: i32,
     pub trade_factor: i32,
     pub material_weights: [Weight; Piece::len()],
-    pub bishop_pair: Weight,
-    pub rook_pair: Weight,
 }
 
 
@@ -49,14 +46,23 @@ impl Component for MaterialBalance {
             "mb.trade.factor",
             &format!("type spin min -500 max 2000 default {}", self.trade_factor),
         );
-        c.set_weight("eval.bishop.pair", &self.bishop_pair);
-        c.set_weight("eval.rook.pair", &self.rook_pair);
         for &p in &Piece::ALL_BAR_KING {
             let mut name = "eval.".to_string();
             name.push(p.to_char(Some(Color::Black)));
             c.set_weight(&name, &self.material_weights[p]);
         }
+
         c.set("eval.mb.all", "type string default \"\"");  // cutechess can send "eval.mb=KPPk:100,KPk:56" etc
+        self.ensure_init();
+        for hash in 0..Material::HASH_VALUES {
+            let cp = self.derived_load(hash);
+            if let Some(cp) = cp {
+                let mut mat = Material::maybe_from_hash(hash);
+                *mat.counts_mut(Color::White, Piece::King) = 0;
+                *mat.counts_mut(Color::Black, Piece::King) = 0;
+                c.set(&format!("eval.mb.material.{} type string default",mat.to_string()), &cp.to_string());
+            }
+        }
     }
 
     fn configure(&mut self, c: &Config) {
@@ -70,8 +76,6 @@ impl Component for MaterialBalance {
         self.max_pawns = c.int("mb.max.pawns").unwrap_or(self.max_pawns as i64) as i32;
         self.trade_factor = c.int("mb.trade.factor").unwrap_or(self.trade_factor as i64) as i32;
 
-        self.bishop_pair = c.weight("eval.bishop.pair", &self.bishop_pair);
-        self.rook_pair = c.weight("eval.rook.pair", &self.rook_pair);
         for &p in &Piece::ALL_BAR_KING {
             let mut name = "eval.".to_string();
             name.push(p.to_char(Some(Color::Black)));
@@ -81,6 +85,7 @@ impl Component for MaterialBalance {
 
         for (k, v) in c.iter() {
             if let Some(k) = k.strip_prefix("eval.mb.material.") {
+                info!("config fetch eval.mb.material.{} = [mb] {}", k, v);
                 self.parse_and_store(k, v).unwrap();
             }
         }
@@ -111,8 +116,6 @@ impl fmt::Display for MaterialBalance {
         writeln!(f, "min games        : {}", self.min_games)?;
         writeln!(f, "max pawns        : {}", self.max_pawns)?;
         writeln!(f, "trade factor     : {}", self.trade_factor)?;
-        writeln!(f, "bishop pair      : {}", self.bishop_pair)?;
-        writeln!(f, "rook pair        : {}", self.rook_pair)?;
         writeln!(f, "table size       : {}", Material::HASH_VALUES)?;
         Ok(())
     }
@@ -128,8 +131,6 @@ impl fmt::Debug for MaterialBalance {
             .field("min_games", &self.min_games)
             .field("max_pawns", &self.max_pawns)
             .field("trade_factor", &self.trade_factor)
-            .field("bishop_pair", &self.bishop_pair)
-            .field("rook_pair", &self.rook_pair)
             .field("size", &Material::HASH_VALUES)
             .finish()
     }
@@ -153,37 +154,26 @@ impl MaterialBalance {
 
 
     pub fn w_eval_material(&self, mat: &Material) -> Weight {
-        if self.enabled {
+        // FIXME! short circuit on max pawns top avoid huge cache usage  
+        if self.enabled && mat.counts_piece(Piece::Pawn) <= self.max_pawns {
             let weight = self.balance_lookup(mat);
             if let Some(weight) = weight {
                 return weight;
             }
         }
-        self.w_eval_simple(mat)
+        self.w_eval_material_without_balance(mat)
     }
 
-    fn w_eval_simple(&self, mat: &Material) -> Weight {
+    pub fn w_eval_material_without_balance(&self, mat: &Material) -> Weight {
         let weight = Piece::ALL_BAR_KING
             .iter()
             .map(|&p| (mat.counts(Color::White, p) - mat.counts(Color::Black, p)) * self.material_weights[p])
             .sum();
-
-        // // let mut weight = Weight::new(score, score);
-        // if mat.counts(Color::White, Piece::Bishop) >= 2 {
-        //     weight = weight + self.bishop_pair
-        // }
-        // if mat.counts(Color::Black, Piece::Bishop) >= 2 {
-        //     weight = weight - self.bishop_pair
-        // }
-        // if mat.counts(Color::White, Piece::Rook) >= 2 {
-        //     weight = weight + self.rook_pair
-        // }
-        // if mat.counts(Color::Black, Piece::Rook) >= 2 {
-        //     weight = weight - self.rook_pair
-        // }
         weight
     }
 
+
+    #[inline]
     pub fn eval_move_material(&self, mv: &Move) -> i32 {
         let mut score = 0.0;
         if mv.is_capture() {
@@ -200,11 +190,39 @@ impl MaterialBalance {
     #[inline]
     pub fn balance_lookup(&self, mat: &Material) -> Option<Weight> {
         self.ensure_init();
-        let score = DERIVED_SCORES[mat.hash()].load(Ordering::Relaxed);
-        if score != NICHE {
-            return Some(Weight::new(score as i32, score as i32));
+        let score = self.derived_load(mat.hash());
+        if let Some(score) = score {
+            return Some(Weight::from_f32(score, score));
         }
         None
+    }
+
+
+    #[inline]
+    fn derived_load(&self, hash: usize) -> Option<f32> {
+        let val = DERIVED_SCORES[hash].load(Ordering::Relaxed);
+        if val != NICHE {
+            let float = f32::from_bits(val);
+            Some(float)
+        } else {
+            None
+        }
+    }
+
+
+    #[inline]
+    fn derived_store(&self, mat: &Material, value: f32 ) {
+        let v_pos = value.to_bits() as u32;
+        let v_neg = (-value).to_bits() as u32;
+        // FIXME! clash of bits with NICHE
+        if v_pos == NICHE {
+            warn!("Unable to store {} in material balance", value);
+        }
+        if v_neg == NICHE {
+            warn!("Unable to store {} in material balance", value);
+        }
+        DERIVED_SCORES[mat.hash()].store(v_pos,  Ordering::Relaxed);
+        DERIVED_SCORES[mat.flip().hash()].store(v_neg, Ordering::Relaxed);
     }
 
 
@@ -214,13 +232,13 @@ impl MaterialBalance {
         info!("{:>6} {:>32} {}", "Centi", "Material", "Hash");
         let mut count = 0;
         for hash in 0..Material::HASH_VALUES {
-            let cp = DERIVED_SCORES[hash].load(Ordering::Relaxed);
-            if cp > 0 {
+            let cp = self.derived_load(hash);
+            if let Some(cp) = cp {
                 count += 1;
                 let mut mat = Material::maybe_from_hash(hash);
                 *mat.counts_mut(Color::White, Piece::King) = 0;
                 *mat.counts_mut(Color::Black, Piece::King) = 0;
-                info!("{:>6} {:>32} {}", cp, mat.to_string(), hash);
+                info!("{:>10} {:>32} {}", cp, mat.to_string(), hash);
             }
         }
         info!("Total material balance entries {:>6}", count);
@@ -288,8 +306,7 @@ impl MaterialBalance {
     fn parse_and_store(&self, k: &str, v: &str) -> Result<(), String> {
         let mat = Material::from_piece_str(k.trim())?;
         let cp = v.trim().parse::<f32>().map_err(|err| format!("{} - unable to parse number '{}'", err, v))?;
-        DERIVED_SCORES[mat.hash()].store(cp as i16,  Ordering::Relaxed);
-        DERIVED_SCORES[mat.flip().hash()].store(-cp as i16, Ordering::Relaxed);
+        self.derived_store(&mat, cp);
         trace!("{:<20} = {:>5}", format!("mb[{}]",mat), cp);
         Ok(())
     }
@@ -304,136 +321,135 @@ impl MaterialBalance {
                 let mut cp;
                 if wdl.w + wdl.d <= 5 {
                     // certain losing position
-                    cp = -8000;
+                    cp = -8000.0;
                     // let trade_down_penalty = self.trade_factor /100 * mat.phase(); // bigger if less material
                     // cp -= trade_down_penalty as i16;
                 } else if wdl.l + wdl.d <= 5 {
                     // certain winning position
-                    cp = 8000;
+                    cp = 8000.0;
                     // let trade_down_bonus = self.trade_factor /100 * mat.phase(); // bigger if less material
                     // cp += trade_down_bonus as i16;
                 } else {
                     let elo = wdl.elo();
                     // straight 1-1 approximation
-                    cp = elo as i32;
+                    cp = elo;
                     // not needed as we use a NICHE value for not present
                     // if cp == 0 {
                     //     cp = 1;
                     // }
                 }
                 // adj means that drawish positions still incentivise a material gain
-                let adj = self.w_eval_simple(mat).e() as i32;
-                cp = cp.clamp(-5000 + adj, 5000 + adj);
+                let adj = self.w_eval_material_without_balance(mat).e() as f32;
+                cp = cp.clamp(-5000.0 + adj, 5000.0 + adj);
 
-                if !self.draws_only || (-20 < cp && cp < 20) {  
-                    DERIVED_SCORES[mat.hash()].store(cp as i16,  Ordering::Relaxed);
-                    DERIVED_SCORES[mat.flip().hash()].store(-cp as i16, Ordering::Relaxed);
+                if !self.draws_only || (-20.0 < cp && cp < 20.0) {  
+                    self.derived_store(mat, cp);
                     trace!("{:<20} = {:>5}       wdl: {:>5} {:>5} {:>5}", format!("mb[{}]",mat), cp, wdl.w, wdl.d, wdl.l);
                 }
             }
         }
 
         if self.consistency {
-            for pass in 1..10 {
-                self.init_ensure_consistency(pass);
-            }
+            // for pass in 1..10 {
+            //     self.init_ensure_consistency(pass);
+            // }
         }
-    }
-
-    fn init_ensure_consistency(&self, pass: i32) {
-        info!("\nMaterial balance consistency: pass {}\n\n", pass);
-        let mut adjustments = 0;
-        for (hash,_atom) in DERIVED_SCORES.iter().enumerate() {
-            let mat = Material::maybe_from_hash(hash);
-            let cp = DERIVED_SCORES[mat.hash()].load(Ordering::Relaxed);
-            if cp != NICHE {
-                adjustments += self.ensure_single_entry_consistent(&mat, cp as i32);
-            }
-        }
-        info!("Material balance consistency: pass {} adjusted {} items\n", pass, adjustments);
-    }
-
-    fn ensure_single_entry_consistent(&self, mat: &Material, cp: i32) -> i32 {
-        let material_diffs = [
-            Material::from_piece_str("P").unwrap(),
-            Material::from_piece_str("N").unwrap(),
-            Material::from_piece_str("B").unwrap(),
-            Material::from_piece_str("R").unwrap(),
-            Material::from_piece_str("Q").unwrap(),
-            Material::from_piece_str("p").unwrap(),
-            Material::from_piece_str("n").unwrap(),
-            Material::from_piece_str("b").unwrap(),
-            Material::from_piece_str("r").unwrap(),
-            Material::from_piece_str("q").unwrap(),
-            -Material::from_piece_str("P").unwrap(),
-            -Material::from_piece_str("N").unwrap(),
-            -Material::from_piece_str("B").unwrap(),
-            -Material::from_piece_str("R").unwrap(),
-            -Material::from_piece_str("Q").unwrap(),
-            -Material::from_piece_str("p").unwrap(),
-            -Material::from_piece_str("n").unwrap(),
-            -Material::from_piece_str("b").unwrap(),
-            -Material::from_piece_str("r").unwrap(),
-            -Material::from_piece_str("q").unwrap(),
-            ];
-        // let no_material = Material::default();
-        let mut adjustments = 0;
-
-        for diff in &material_diffs {
-
-            // first examine loss of material;
-            let other = mat - diff;
-            if other.hash() == 0 {
-                continue;
-            }
-            let mut other_cp = DERIVED_SCORES[other.hash()].load(Ordering::Relaxed) as i32;
-            if other_cp as i16 == NICHE {
-                let weight: Weight = Piece::ALL_BAR_KING
-                .iter()
-                .map(|&p| (other.counts(Color::White, p) - other.counts(Color::Black, p)) * self.material_weights[p])
-                .sum();        
-                other_cp = std::cmp::max(weight.s() as i32, weight.e() as i32);
-            }
-
-            // losing material - ensure lesser entries consistent
-            let mut new_cp = cp;
-            if cp < other_cp && mat.white() > other.white() {
-                new_cp = other_cp + diff.centipawns() / 2;  
-                trace!("Loss (white) {:>32}={:>5} < {:>30}={:>5} ----> [{}] = {} ({})", mat.to_string(), cp, other, other_cp, other, new_cp, new_cp - cp );
-            }
-            if cp > other_cp && mat.black() > other.black() {
-                new_cp = other_cp + diff.centipawns() / 2;  // centipawns already negative for black
-                trace!("Loss (black) {:>32}={:>5} > {:>30}={:>5} ----> [{}] = {} ({})", mat.to_string(), cp, other, other_cp, other, new_cp, new_cp - cp );
-            }
-
-            if new_cp != cp {
-                adjustments += 1;
-                // trace!("[{:>32}]={:>5}", mat, cp);
-                DERIVED_SCORES[mat.hash()].store(new_cp as i16,  Ordering::Relaxed);
-                DERIVED_SCORES[mat.flip().hash()].store(-new_cp as i16, Ordering::Relaxed);
-            }
-
-            // gaining material - ensure greater entries consistent
-            let mut new_cp = other_cp;
-            if cp > other_cp && mat.white() < other.white() {
-                new_cp = other_cp - diff.centipawns() / 2;  
-                trace!("Gain (white) {:>32}={:>5} > {:>30}={:>5} ----> [{}] = {} ({})", mat.to_string(), cp, other, other_cp, other, new_cp, new_cp - other_cp );
-            }
-            if cp < other_cp && mat.black() < other.black() {
-                new_cp = other_cp - diff.centipawns() / 2;  // centipawns already negative for black
-                trace!("Gain (black) {:>32}={:>5} < {:>30}={:>5} ----> [{}] = {} ({})", mat.to_string(), cp, other, other_cp, other, new_cp, new_cp - other_cp );
-            }
-            // amend the higher one
-            if new_cp != other_cp {
-                adjustments += 1;
-                // trace!("[{:>32}]={:>5}", mat, cp);
-                DERIVED_SCORES[other.hash()].store(other_cp as i16,  Ordering::Relaxed);
-                DERIVED_SCORES[other.flip().hash()].store(-other_cp as i16, Ordering::Relaxed);
-            }
-        }
-        adjustments
     }
 }
+
+    // fn init_ensure_consistency(&self, pass: i32) {
+    //     info!("\nMaterial balance consistency: pass {}\n\n", pass);
+    //     let mut adjustments = 0;
+    //     for (hash,_atom) in DERIVED_SCORES.iter().enumerate() {
+    //         let mat = Material::maybe_from_hash(hash);
+    //         let cp = DERIVED_SCORES[mat.hash()].load(Ordering::Relaxed);
+    //         if cp != NICHE {
+    //             adjustments += self.ensure_single_entry_consistent(&mat, cp as i32);
+    //         }
+    //     }
+    //     info!("Material balance consistency: pass {} adjusted {} items\n", pass, adjustments);
+    // }
+
+//     fn ensure_single_entry_consistent(&self, mat: &Material, cp: i32) -> i32 {
+//         let material_diffs = [
+//             Material::from_piece_str("P").unwrap(),
+//             Material::from_piece_str("N").unwrap(),
+//             Material::from_piece_str("B").unwrap(),
+//             Material::from_piece_str("R").unwrap(),
+//             Material::from_piece_str("Q").unwrap(),
+//             Material::from_piece_str("p").unwrap(),
+//             Material::from_piece_str("n").unwrap(),
+//             Material::from_piece_str("b").unwrap(),
+//             Material::from_piece_str("r").unwrap(),
+//             Material::from_piece_str("q").unwrap(),
+//             -Material::from_piece_str("P").unwrap(),
+//             -Material::from_piece_str("N").unwrap(),
+//             -Material::from_piece_str("B").unwrap(),
+//             -Material::from_piece_str("R").unwrap(),
+//             -Material::from_piece_str("Q").unwrap(),
+//             -Material::from_piece_str("p").unwrap(),
+//             -Material::from_piece_str("n").unwrap(),
+//             -Material::from_piece_str("b").unwrap(),
+//             -Material::from_piece_str("r").unwrap(),
+//             -Material::from_piece_str("q").unwrap(),
+//             ];
+//         // let no_material = Material::default();
+//         let mut adjustments = 0;
+
+//         for diff in &material_diffs {
+
+//             // first examine loss of material;
+//             let other = mat - diff;
+//             if other.hash() == 0 {
+//                 continue;
+//             }
+//             let mut other_cp = self.derived_load(&other);
+//             if other_cp.is_none() {
+//                 let weight: Weight = Piece::ALL_BAR_KING
+//                 .iter()
+//                 .map(|&p| (other.counts(Color::White, p) - other.counts(Color::Black, p)) * self.material_weights[p])
+//                 .sum();        
+//                 other_cp = Some(std::cmp::max(weight.s() as i32, weight.e() as i32));
+//             }
+
+//             // losing material - ensure lesser entries consistent
+//             let mut new_cp = cp;
+//             if cp < other_cp && mat.white() > other.white() {
+//                 new_cp = other_cp + diff.centipawns() / 2;  
+//                 trace!("Loss (white) {:>32}={:>5} < {:>30}={:>5} ----> [{}] = {} ({})", mat.to_string(), cp, other, other_cp, other, new_cp, new_cp - cp );
+//             }
+//             if cp > other_cp && mat.black() > other.black() {
+//                 new_cp = other_cp + diff.centipawns() / 2;  // centipawns already negative for black
+//                 trace!("Loss (black) {:>32}={:>5} > {:>30}={:>5} ----> [{}] = {} ({})", mat.to_string(), cp, other, other_cp, other, new_cp, new_cp - cp );
+//             }
+
+//             if new_cp != cp {
+//                 adjustments += 1;
+//                 // trace!("[{:>32}]={:>5}", mat, cp);
+//                 derived_store(&mat, new_cp);
+//             }
+
+//             // gaining material - ensure greater entries consistent
+//             let mut new_cp = other_cp;
+//             if cp > other_cp && mat.white() < other.white() {
+//                 new_cp = other_cp - diff.centipawns() / 2;  
+//                 trace!("Gain (white) {:>32}={:>5} > {:>30}={:>5} ----> [{}] = {} ({})", mat.to_string(), cp, other, other_cp, other, new_cp, new_cp - other_cp );
+//             }
+//             if cp < other_cp && mat.black() < other.black() {
+//                 new_cp = other_cp - diff.centipawns() / 2;  // centipawns already negative for black
+//                 trace!("Gain (black) {:>32}={:>5} < {:>30}={:>5} ----> [{}] = {} ({})", mat.to_string(), cp, other, other_cp, other, new_cp, new_cp - other_cp );
+//             }
+//             // amend the higher one
+//             if new_cp != other_cp {
+//                 adjustments += 1;
+//                 // trace!("[{:>32}]={:>5}", mat, cp);
+//                 derived_store(&mat, other_cp);
+//             }
+//         }
+//         adjustments
+//     }
+// }
+
 
 
 
@@ -442,16 +458,16 @@ impl MaterialBalance {
 
 
 // mutable derived scores
-type DerivedScoresVec = Vec<AtomicI16>;
+type DerivedScoresVec = Vec<AtomicU32>;
 
-const NICHE: i16 = i16::MIN;
+const NICHE: u32 = u32::MAX;
 
 static DERIVED_SCORES_CALCULATED: AtomicBool = AtomicBool::new(false);
 
 #[dynamic(lazy)]
 static DERIVED_SCORES: DerivedScoresVec = {
     let mut m = DerivedScoresVec::new();
-    m.resize_with(Material::HASH_VALUES, || AtomicI16::new(NICHE));
+    m.resize_with(Material::HASH_VALUES, || AtomicU32::new(NICHE));
     m
 };
 
@@ -474,12 +490,13 @@ mod tests {
     use crate::eval::score::Score;
     use crate::eval::eval::SimpleScorer;
     use crate::search::node::Node;
+    use crate::test_env_log::test;
 
  
     #[test]
     fn test_balance() {
         let mut mb = MaterialBalance::new();
-        mb.configure(&Config::global());
+        mb.internal_stats = true;
         mb.log_material_balance();
     }
 

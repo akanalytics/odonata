@@ -91,11 +91,21 @@ pub struct SimpleScorer {
     pub undefended_piece: Weight,
     pub trapped_piece: Weight,
     pub partially_trapped_piece: Weight,
+    pub defended_non_pawn: Weight,
+    pub xrayed: Weight,
 
     pub pawn_doubled: Weight,
     pub pawn_isolated: Weight,
     pub pawn_passed: Weight,
     pub pawn_passed_r6: Weight,
+
+    pub bishop_pair: Weight,
+    pub rook_pair: Weight,
+    pub rook_edge: Weight,
+    pub rook_open_file: Weight,
+    pub queen_open_file: Weight,
+    pub fianchetto: Weight,
+
 
     // pub pawn_shield: Weight,
     pub pawn_adjacent_shield: Weight,
@@ -107,15 +117,10 @@ pub struct SimpleScorer {
     pub tropism_d3: Weight,
 
     pub castling_rights: Weight,
-    pub rook_edge: Weight,
     pub pawn_r5: Weight,
     pub pawn_r6: Weight,
     pub pawn_r7: Weight,
 
-    pub rook_open_file: Weight,
-    pub queen_open_file: Weight,
-
-    pub fianchetto: Weight,
     pub phasing: bool,
     pub contempt_penalty: Weight,
     pub tempo_bonus: Weight,
@@ -134,7 +139,7 @@ impl Default for MaterialBalance {
             consistency: false,
             draws_only: false,
             min_games: 50,
-            max_pawns: 4,
+            max_pawns: 5,
             trade_factor: 2,
             material_weights: [
                 Weight::default(),
@@ -145,8 +150,6 @@ impl Default for MaterialBalance {
                 Weight::new(1822, 1405),
                 Weight::new(0, 0), // king
             ],
-            bishop_pair: Weight::new(62, 58),
-            rook_pair: Weight::new(-1, -1),
         };
         mb
     }
@@ -170,13 +173,21 @@ impl Default for SimpleScorer {
             contempt_penalty: Weight::new(-30, -30), // typically -ve
             pst: [[Weight::default(); 64]; Piece::len()],
 
-            rook_open_file: Weight::new(59, -4),
-            queen_open_file: Weight::new(-19, 37),
-            fianchetto: Weight::new(55, 27),
             undefended_sq: Weight::new(4, 3),
             undefended_piece: Weight::new(-3, 49),
             trapped_piece: Weight::new(-17, -22),
             partially_trapped_piece: Weight::new(-7, -15),
+            defended_non_pawn: Weight::new(0, 0),
+            xrayed: Weight::new(0, 0),
+
+            bishop_pair: Weight::new(62, 58),
+            fianchetto: Weight::new(55, 27),
+            rook_pair: Weight::new(-1, -1),
+            rook_open_file: Weight::new(59, -4),
+            rook_edge: Weight::new(0, 0),
+
+            queen_open_file: Weight::new(-19, 37),
+
             pawn_r5: Weight::new(13, 32),
             pawn_r6: Weight::new(5, 86),
             pawn_r7: Weight::new(24, 304),
@@ -194,7 +205,6 @@ impl Default for SimpleScorer {
             tropism_d3: Weight::new(-5, 2),
 
             castling_rights: Weight::new(0, 0),
-            rook_edge: Weight::new(0, 0),
         };
         me.calculate_pst();
         me
@@ -221,9 +231,6 @@ impl Component for SimpleScorer {
             "eval.mobility.phase.disable",
             &format!("type spin min 0 max 101 default {}", self.mobility_phase_disable),
         );
-        c.set_weight("eval.rook.open.file", &self.rook_open_file);
-        c.set_weight("eval.queen.open.file", &self.queen_open_file);
-        c.set_weight("eval.fianchetto", &self.fianchetto);
         c.set_weight("eval.pawn.doubled", &self.pawn_doubled);
         c.set_weight("eval.mobility.undef.sq", &self.undefended_sq);
         c.set_weight("eval.mobility.undef.piece", &self.undefended_piece);
@@ -232,9 +239,21 @@ impl Component for SimpleScorer {
             "eval.mobility.partially.trapped.piece",
             &self.partially_trapped_piece,
         );
+        c.set_weight("eval.mobility.defended.np", &self.defended_non_pawn);
+        c.set_weight("eval.mobility.xrayed", &self.defended_non_pawn);
         c.set_weight("eval.pawn.isolated", &self.pawn_isolated);
         c.set_weight("eval.pawn.passed", &self.pawn_passed);
         c.set_weight("eval.pawn.passed.r6", &self.pawn_passed_r6);
+
+        c.set_weight("eval.bishop.pair", &self.bishop_pair);
+        c.set_weight("eval.fianchetto", &self.fianchetto);
+
+        c.set_weight("eval.rook.pair", &self.rook_pair);
+        c.set_weight("eval.rook.open.file", &self.rook_open_file);
+        c.set_weight("eval.rook.edge", &self.rook_edge);
+
+        c.set_weight("eval.queen.open.file", &self.queen_open_file);
+
 
         // c.set_weight("eval.pawn.shield", &self.pawn_shield);
         c.set_weight("eval.pawn.adjacent.shield", &self.pawn_adjacent_shield);
@@ -246,7 +265,6 @@ impl Component for SimpleScorer {
         c.set_weight("eval.attacks.near.king", &self.attacks_near_king);
 
         c.set_weight("eval.castling.rights", &self.castling_rights);
-        c.set_weight("eval.rook.edge", &self.rook_edge);
         c.set_weight("eval.pawn.r5", &self.pawn_r5);
         c.set_weight("eval.pawn.r6", &self.pawn_r6);
         c.set_weight("eval.pawn.r7", &self.pawn_r7);
@@ -278,9 +296,22 @@ impl Component for SimpleScorer {
             "eval.mobility.partially.trapped.piece",
             &self.partially_trapped_piece,
         );
+        self.defended_non_pawn = c.weight(
+            "eval.mobility.defended.np",
+            &self.defended_non_pawn,
+        );
+        self.xrayed = c.weight(
+            "eval.mobility.xrayed",
+            &self.xrayed,
+        );
         self.rook_open_file = c.weight("eval.rook.open.file", &self.rook_open_file);
+        self.rook_pair = c.weight("eval.rook.pair", &self.rook_pair);
+        self.rook_edge = c.weight("eval.rook.edge", &self.rook_edge);
+
         self.queen_open_file = c.weight("eval.queen.open.file", &self.queen_open_file);
+
         self.fianchetto = c.weight("eval.fianchetto", &self.fianchetto);
+        self.bishop_pair = c.weight("eval.bishop.pair", &self.bishop_pair);
 
         self.pawn_doubled = c.weight("eval.pawn.doubled", &self.pawn_doubled);
         self.pawn_isolated = c.weight("eval.pawn.isolated", &self.pawn_isolated);
@@ -296,7 +327,6 @@ impl Component for SimpleScorer {
         self.attacks_near_king = c.weight("eval.attacks.near.king", &self.attacks_near_king);
 
         self.castling_rights = c.weight("eval.castling.rights", &self.castling_rights);
-        self.rook_edge = c.weight("eval.rook.edge", &self.rook_edge);
         self.pawn_r5 = c.weight("eval.pawn.r5", &self.pawn_r5);
         self.pawn_r6 = c.weight("eval.pawn.r6", &self.pawn_r6);
         self.pawn_r7 = c.weight("eval.pawn.r7", &self.pawn_r7);
@@ -335,16 +365,22 @@ impl fmt::Display for SimpleScorer {
         writeln!(f, "undefended.sq    : {}", self.undefended_sq)?;
         writeln!(f, "trapped.piece    : {}", self.trapped_piece)?;
         writeln!(f, "part.trap.piece  : {}", self.partially_trapped_piece)?;
+        writeln!(f, "defended.non.pawn: {}", self.defended_non_pawn)?;
         writeln!(f, "castling.rights  : {}", self.castling_rights)?;
         // writeln!(f, "pawn.shield      : {}", self.pawn_shield)?;
         writeln!(f, "pawn.doubled     : {}", self.pawn_doubled)?;
         writeln!(f, "pawn.passed      : {}", self.pawn_passed)?;
         writeln!(f, "pawn.passed.r7   : {}", self.pawn_passed_r6)?;
         writeln!(f, "pawn.isolated    : {}", self.pawn_isolated)?;
-        writeln!(f, "rook_edge        : {}", self.rook_edge)?;
-        writeln!(f, "rook.open.file   : {}", self.rook_open_file)?;
-        writeln!(f, "queen.open.file  : {}", self.queen_open_file)?;
+
+        writeln!(f, "bishop pair      : {}", self.bishop_pair)?;
+        writeln!(f, "rook pair        : {}", self.rook_pair)?;
         writeln!(f, "fianchetto       : {}", self.fianchetto)?;
+
+        writeln!(f, "rook.open.file   : {}", self.rook_open_file)?;
+        writeln!(f, "rook_edge        : {}", self.rook_edge)?;
+
+        writeln!(f, "queen.open.file  : {}", self.queen_open_file)?;
         writeln!(f, "pawn.nearby      : {}", self.pawn_nearby_shield)?;
         writeln!(f, "pawn.adjacent    : {}", self.pawn_adjacent_shield)?;
         writeln!(f, "tropism.d1       : {}", self.tropism_d1)?;
@@ -620,13 +656,7 @@ impl SimpleScorer {
             if self.mb.enabled {
                 self.mb.w_eval_material(&m.mat)
             } else {
-                Piece::ALL_BAR_KING
-                    .iter()
-                    .map(|&p| {
-                        (m.mat.counts(Color::White, p) - m.mat.counts(Color::Black, p))
-                            * self.mb.material_weights[p]
-                    })
-                    .sum()
+                self.mb.w_eval_material_without_balance(&m.mat)
             }
         } else {
             Weight::zero()
@@ -641,13 +671,13 @@ impl SimpleScorer {
                 "bishop pair",
                 w.has_bishop_pair as i32,
                 b.has_bishop_pair as i32,
-                self.mb.bishop_pair,
+                self.bishop_pair,
             );
             scorer.material(
                 "rook pair",
                 w.has_rook_pair as i32,
                 b.has_rook_pair as i32,
-                self.mb.rook_pair,
+                self.rook_pair,
             );
         }
 
@@ -686,6 +716,10 @@ impl SimpleScorer {
                 self.pawn_passed_r6,
             );
         }
+
+        //  bishop
+
+
 
         // king safety
         if self.safety && m.switches.contains(Switches::SAFETY) {
@@ -761,6 +795,18 @@ impl SimpleScorer {
                 b.partially_trapped_pieces,
                 self.partially_trapped_piece,
             );
+            // scorer.mobility(
+            //     "defended non pawn",
+            //     w.defended_non_pawn,
+            //     b.defended_non_pawn,
+            //     self.defended_non_pawn,
+            // );
+            // scorer.mobility(
+            //     "xrayed",
+            //     w.xrayed,
+            //     b.xrayed,
+            //     self.xrayed,
+            // );
             scorer.mobility(
                 "rook open file",
                 w.rooks_on_open_files,

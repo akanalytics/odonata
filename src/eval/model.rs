@@ -27,12 +27,17 @@ pub struct Model {
 
 #[derive(Clone, Default, Debug)]
 pub struct ModelSide {
-    // material
+    // bishops
     pub has_bishop_pair: bool,
+    pub fianchetti: i32,
+
+    // rooks
     pub has_rook_pair: bool,
+    pub rooks_on_open_files: i32,
+
+    pub queens_on_open_files: i32,
 
     // position
-    pub fianchetti: i32,
     // pub psq: ArrayVec<(Piece, Square), 32>,
 
     // pawn structure
@@ -57,8 +62,8 @@ pub struct ModelSide {
     pub non_pawn_defended_moves: i32,
     pub fully_trapped_pieces: i32,
     pub partially_trapped_pieces: i32,
-    pub rooks_on_open_files: i32,
-    pub queens_on_open_files: i32,
+    pub defended_non_pawn: i32,
+    pub xrayed: i32,
 
     // other
     pub has_tempo: bool,
@@ -126,6 +131,7 @@ impl Scorer for ExplainScorer {
         self.paw.push((_attr.to_string(), w_value, b_value, score));
         self.delegate.pawn(_attr, w_value, b_value, score);
     }
+
     #[inline]
     fn mobility(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
         self.mob.push((_attr.to_string(), w_value, b_value, score));
@@ -501,12 +507,15 @@ impl ModelSide {
         let them = b.color(their);
         let occ = them | us;
         let their_p = b.pawns() & them;
+        // let our_p = b.pawns() & us;
         let (pe, pw) = bb.pawn_attacks(their_p, their);
+        // let (ope, opw) = bb.pawn_attacks(our_p, c);
         let pa = pe | pw;
+        // let opa = ope | opw;
         let bi = b.bishops() & them;
         let ni = b.knights() & them;
         let r = b.rooks() & them;
-        let _q = b.queens() & them;
+        // let q = b.queens() & them;
 
         let k = b.kings() & them;
         let ksq = k.square();
@@ -514,9 +523,11 @@ impl ModelSide {
             let p = b.piece_at(sq.as_bb());
 
             // non-pawn-defended empty or oppoent sq
-            let our_raw_attacks = bb.non_pawn_attacks(c, p, us, them, sq);
+            // include "attacking" our own pieces
+            let our_raw_attacks = bb.non_pawn_attacks(c, p, Bitboard::empty(), occ, sq);
             let our_attacks = our_raw_attacks - pa;
             let piece_move_squares = (our_attacks - occ).popcount();
+            // let our_xray_attacks = bb.non_pawn_attacks(c, p, us - our_p, them, sq);
 
             // FIXME v0.3.33 version
             // Piece::Queen => (our_attacks & occ - q - r - bi).popcount(),
@@ -532,6 +543,15 @@ impl ModelSide {
                 Piece::Bishop => (our_attacks & them - bi).popcount(),
                 _ => 0,
             };
+            // self.xrayed = match p {
+            //     Piece::Queen => (our_xray_attacks & them - q).popcount(),
+            //     Piece::Rook => (our_xray_attacks & them - r).popcount(),
+            //     Piece::Knight => (our_xray_attacks & them - ni).popcount(),
+            //     Piece::Bishop => (our_xray_attacks & them - bi).popcount(),
+            //     _ => 0,
+            // };
+            // self.defended_non_pawn = ((our_raw_attacks|opa) & us).popcount();
+
             // trapped piece
             if piece_move_squares + piece_non_pawn_defended_moves == 1 {
                 self.partially_trapped_pieces += 1;

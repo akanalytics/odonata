@@ -4,7 +4,8 @@ use crate::mv::Move;
 use crate::phaser::Phaser;
 use crate::search::node::Node;
 use crate::search::searchstats::SearchStats;
-use crate::types::Ply;
+use crate::types::{Color, Piece, Ply};
+
 // use crate::{debug, logger::LogInit};
 use std::fmt;
 
@@ -13,6 +14,10 @@ pub struct Extensions {
     pub check_enabled: bool,
     pub check_max_depth: Ply,
     pub check_max_phase: i32,
+    pub promo_enabled: bool,
+    pub promo_max_depth: Ply,
+    pub promo_rank: Ply,
+    pub promo_extend: Ply,
 }
 
 impl Component for Extensions {
@@ -27,7 +32,23 @@ impl Component for Extensions {
         );
         c.set(
             "ext.check.max.phase",
-            &format!("type spin min 0 max 100 default {}", self.check_max_phase),
+            &format!("type spin min 0 max 101 default {}", self.check_max_phase),
+        );
+        c.set(
+            "ext.promo.enabled",
+            &format!("type check default {}", self.promo_enabled),
+        );
+        c.set(
+            "ext.promo.max.depth",
+            &format!("type spin min 0 max 101 default {}", self.promo_max_depth),
+        );
+        c.set(
+            "ext.promo.rank",
+            &format!("type spin min 0 max 7 default {}", self.promo_rank),
+        );
+        c.set(
+            "ext.promo.extend",
+            &format!("type spin min 0 max 7 default {}", self.promo_extend),
         );
     }
     fn configure(&mut self, c: &Config) {
@@ -39,7 +60,14 @@ impl Component for Extensions {
         self.check_max_phase = c
             .int("ext.check.max.phase")
             .unwrap_or(self.check_max_phase as i64) as i32;
+        self.promo_enabled = c.bool("ext.promo.enabled").unwrap_or(self.promo_enabled);
+        self.promo_max_depth = c
+            .int("ext.promo.max.depth")
+            .unwrap_or(self.promo_max_depth as i64) as Ply;
+        self.promo_rank = c.int("ext.promo.rank").unwrap_or(self.promo_rank as i64) as Ply;
+        self.promo_extend = c.int("ext.promo.extend").unwrap_or(self.promo_extend as i64) as Ply;
     }
+
     fn new_game(&mut self) {
         self.new_position();
     }
@@ -51,8 +79,13 @@ impl Default for Extensions {
     fn default() -> Self {
         Extensions {
             check_enabled: false,
-            check_max_depth: 1,
+            check_max_depth: 3,
             check_max_phase: 60,
+
+            promo_enabled: false,
+            promo_max_depth: 3,
+            promo_rank: 6,
+            promo_extend: 1,
         }
     }
 }
@@ -62,7 +95,7 @@ impl Extensions {
     pub fn extend(
         &self,
         before: &Board,
-        _mv: &Move,
+        mv: &Move,
         _after: &Board,
         node: &Node,
         phaser: &Phaser,
@@ -76,6 +109,16 @@ impl Extensions {
             {
                 search_stats.inc_ext_check(node.ply);
                 extend += 1;
+            }
+        }
+        if self.promo_enabled {
+            if mv.mover_piece() == Piece::Pawn
+                && (before.color_us() == Color::White && mv.to().rank_index() >= self.promo_rank as usize
+                    || before.color_us() == Color::Black && 7 - mv.to().rank_index() >= self.promo_rank as usize)
+                && node.depth <= self.promo_max_depth
+            {
+                // search_stats.inc_ext_check(node.ply);
+                extend += self.promo_extend;
             }
         }
         extend

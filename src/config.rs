@@ -5,7 +5,6 @@ use std::env;
 use crate::eval::weight::Weight;
 use std::fs::File;
 use std::io::{self, BufRead};
-use std::fs;
 use std::path::PathBuf;
 
 
@@ -39,9 +38,9 @@ impl Config {
     pub fn global() -> Config {
         let config = STATIC_INSTANCE.read();
         if !config.is_empty() {
-            warn!("Using configuration\n{}", &*config);
+            info!("Using configuration\n{}", &*config);
         } else {
-            info!("No configuration overrides");
+            info!("No configuration file or overrides");
         }
         Config::clone(&config)
     }
@@ -53,7 +52,7 @@ impl Config {
     pub fn read_from_file(filename: &str) -> Result<Config, String> {
         let mut config = Config::new();
         let path = PathBuf::from(filename);
-        let file = File::open(filename).map_err(|err| format!("Error opening {:?} in {:?} {}", path, env::current_dir().unwrap(), err.to_string()))?;
+        let file = File::open(filename).map_err(|err| format!("Error opening config toml file {:?} in working dir {:?} {}", path, env::current_dir().unwrap(), err.to_string()))?;
         let lines = io::BufReader::new(file).lines();
 
         let mut count = 0;
@@ -118,7 +117,7 @@ impl Config {
     pub fn bool(&self, name: &str) -> Option<bool> {
         if let Some(v) = self.settings.get(&name.to_string()) {
             if let Ok(res) = v.parse::<bool>() {
-                info!("config {} = {}", name, res);
+                info!("config fetch {} = [bool] {}", name, res);
                 return Some(res);
             }
         }
@@ -136,12 +135,13 @@ impl Config {
     pub fn string(&self, name: &str) -> Option<String> {
         let s = self.settings.get(name);
         if let Some(res) = s {
-            info!("config {} = {}", name, res);
+            info!("config fetch {} = [string] {}", name, res);
         }
         s.cloned()
     }
 
     pub fn combo(&self, name: &str) -> Option<String> {
+        info!("config fetch {} = [combo] {}", name, self.settings.get(name).unwrap_or(&String::new()));
         self.settings.get(name).cloned()
     }
 
@@ -149,13 +149,13 @@ impl Config {
         let (mut s, mut e) = (default.s(), default.e());
         if let Some(v) = self.settings.get(&(name.to_string() + ".s")) {
             if let Ok(res) = v.parse::<i32>() {
-                info!("config {}.s = {}", name, res);
+                info!("config fetch {}.s = [weight] {}", name, res);
             }
             s = v.parse::<f32>().unwrap_or(default.s());
         }
         if let Some(v) = self.settings.get(&(name.to_string() + ".e")) {
             if let Ok(res) = v.parse::<i32>() {
-                info!("config {}.e = {}", name, res);
+                info!("config fetch {}.e = [weight] {}", name, res);
             }
             e = v.parse::<f32>().unwrap_or(default.e());
         }
@@ -165,7 +165,7 @@ impl Config {
     pub fn int(&self, name: &str) -> Option<i64> {
         if let Some(v) = self.settings.get(name) {
             if let Ok(res) = v.parse::<i64>() {
-                info!("config {} = {}", name, res);
+                info!("config fetch {} = [int] {}", name, res);
                 return Some(res);
             }
         }
