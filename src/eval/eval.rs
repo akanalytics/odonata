@@ -134,30 +134,6 @@ pub struct SimpleScorer {
     // pub depth: Ply,
 }
 
-impl Default for MaterialBalance {
-    fn default() -> Self {
-        let mb = Self {
-            enabled: false,
-            internal_stats: false,
-            filename: String::new(),
-            consistency: false,
-            draws_only: false,
-            min_games: 50,
-            max_pawns: 5,
-            trade_factor: 2,
-            material_weights: [
-                Weight::default(),
-                Weight::new(100, 150),
-                Weight::new(632, 410),
-                Weight::new(635, 429),
-                Weight::new(839, 771),
-                Weight::new(1822, 1405),
-                Weight::new(0, 0), // king
-            ],
-        };
-        mb
-    }
-}
 
 impl Default for SimpleScorer {
     fn default() -> Self {

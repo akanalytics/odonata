@@ -18,13 +18,15 @@ pub struct Bench;
 impl Bench {
 
     pub fn profile_me() {
-        let eval = SimpleScorer::new();
-        let pos = Catalog::starting_position();
-        let model = Model::from_board(pos.board(), Switches::ALL_SCORING);
-        let mut scorer = ModelScore::new(pos.board().phase(&eval.phaser));
-        for _ in 0..100_000 {
-            eval.predict(&model, &mut scorer);
-        }
+        let _engine = Engine::new();
+
+        // let eval = SimpleScorer::new();
+        // let pos = Catalog::starting_position();
+        // let model = Model::from_board(pos.board(), Switches::ALL_SCORING);
+        // let mut scorer = ModelScore::new(pos.board().phase(&eval.phaser));
+        // for _ in 0..100_000 {
+        //     eval.predict(&model, &mut scorer);
+        // }
     }
 
 

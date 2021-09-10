@@ -129,7 +129,8 @@ impl Config {
     }
 
     pub fn set(&mut self, k: &str, v: &str) -> Config {
-        let v = v.trim_matches('"');
+        let v = v.trim().trim_matches('"');
+        let k = k.trim();
         if self.settings.insert(k.to_string(), v.to_string()).is_none() {
             self.insertion_order.push(k.to_string());
         }
