@@ -1302,15 +1302,23 @@ class Odonata:
     def options(self) -> Dict[str, str]:
         options = self.call("options", args=[])
         dict = {}
+        # sample
+        # Threads                        = type spin default 1 min 1 max 512
+        # Config file                    = type string default config.toml
+        # algo.minmax                    = type check default false
+        # UCI_AnalyseMode                = type check default false
+        # mb.enabled                     = type check default true
+        # mb.force.init                  = type button        
         for line in options.splitlines():
             (before, after) = line.split("=")
             key = before.strip()
-            (before, value) = after.split("default")
-            if not value.strip():
+            words = after.split("default")
+            before = words[0]
+            value = words[1:]
+            if not value:
                 dict[key] = ""
             else:
-                words = value.split()
-                dict[key] = words[0].strip()
+                dict[key] = value[0].strip()
         return dict
         
     def list_methods(self) -> Any:

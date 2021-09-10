@@ -1,7 +1,4 @@
-use crate::eval::eval::SimpleScorer;
-use crate::eval::model::ModelScore;
-use crate::eval::switches::Switches;
-use crate::{catalog::*, eval::model::Model};
+use crate::{catalog::*};
 use crate::clock::Clock;
 use crate::config::Component;
 use crate::perft::Perft;
