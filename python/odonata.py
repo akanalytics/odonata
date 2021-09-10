@@ -909,7 +909,7 @@ class Eval:
 
 
 class Engine:
-    def __init__(self, path: str = '', toml: str = '', depth: Optional[int] = None, millis: Optional[int] = 1000, nodes: Optional[int] = None) -> None:
+    def __init__(self, path: str = '', toml: str = '', depth: Optional[int] = None, millis: Optional[int] = None, nodes: Optional[int] = None) -> None:
         self.millis = millis
         self.node_count = nodes
         self.depth = depth
@@ -1211,8 +1211,8 @@ class Odonata:
         """Returns best move with current position on the board in uci notation or None if it's a mate."""
 
         self._put(f"position fen {b.to_fen()}")
-        req = "go movetime 1000"
-        if depth:
+        req = "go movetime 100"
+        if depth is not None :
             req = f"go depth {depth}"
         if millis:
             req = f"go movetime {millis}"
@@ -1344,7 +1344,7 @@ class Odonata:
         # info depth 10 seldepth 11 nodes 19349 nps 257000 score cp 529 time 74 pv a1a8 h8h7 a8a6 h7g7
         results = []
         for record in self.infos:
-            if " pv " in record:
+            if " pv" in record:
                 d = {}
                 words = record.split()
                 for (i, word) in enumerate(words):
