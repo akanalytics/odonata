@@ -166,7 +166,7 @@ impl Position {
 
     pub fn parse_epd_file<P>(filename: P) -> Result<Vec<Position>, String>
     where P: AsRef<Path>, P: Clone {
-        let file = File::open(filename.clone()).map_err(|err| err.to_string())?;
+        let file = File::open(filename.clone()).map_err(|err| format!("{} {}", filename.as_ref().display(), err.to_string()))?;
         let lines = io::BufReader::new(file).lines();
         let mut vec = Vec::<Position>::new();
         let mut epd_count = 0;
