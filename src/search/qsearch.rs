@@ -167,7 +167,7 @@ impl Algo {
         } else {
             standing_pat = board.eval_some(&mut self.eval, self.qsearch.switches);
             trace!(
-                "[ply {}] Standing pat (eval_qsearch on {}) {} ",
+                "[ply {}] Standing pat (eval_qsearch on {}) {}",
                 ply,
                 board.to_fen(),
                 standing_pat
@@ -285,7 +285,7 @@ impl Algo {
                 return score;
             }
             if score > alpha {
-                trace!("{}", board.debug() + ply + score + "raises alpha" + alpha + mv);
+                trace!("{}", board.debug() + ply + score + "raises alpha" + alpha + mv + " -> move added to pv");
                 self.record_move(ply, mv);
                 alpha = score;
             }
@@ -295,7 +295,7 @@ impl Algo {
 
         // we should not return a mate score, as only captures have been considered,
         // and a mate score might cut a genuine mate score elsewhere
-        trace!("{}", board.debug() + ply + "returns with score of" + alpha);
+        trace!("ply {} returns with score of {} and pv {}", ply, alpha, self.pv_table.extract_pv_for(ply).to_string());
         alpha.clamp(Score::from_cp(-20000), Score::from_cp(20000))
     }
 }
@@ -316,6 +316,8 @@ mod tests {
         // let pos = Position::find_by_id("pawn fork", &positions ).unwrap();
         for pos in positions {
             let mut engine = Engine::new();
+            engine.algo.eval.set_switches(false);
+            engine.algo.eval.material = true;
             engine.algo.set_timing_method(TimeControl::Depth(0));
             //                .set_callback(Uci::uci_info)
             // engine.algo.eval.mb.enabled = true;

@@ -14,7 +14,8 @@ use std::io::{self, BufRead};
 pub struct MaterialBalance {
     pub enabled: bool,
     pub filename: String,
-    pub consistency: bool,
+    pub consistency_report: bool,
+    pub consistency_adjust: bool,
     pub internal_stats: bool,
     pub draws_only: bool,
     pub min_games: i32,
@@ -30,7 +31,8 @@ impl Default for MaterialBalance {
             enabled: false,
             internal_stats: false,
             filename: String::new(),
-            consistency: false,
+            consistency_report: true,
+            consistency_adjust: true,
             draws_only: false,
             min_games: 50,
             max_pawns: 5,
@@ -57,7 +59,8 @@ impl Component for MaterialBalance {
         c.set("mb.force.init", "type button");
         c.set("mb.internal.stats", &format!("type check default {}", self.internal_stats));
         c.set("mb.filename", &format!("type string default {}", self.filename));
-        c.set("mb.consistency", &format!("type check default {}", self.consistency));
+        c.set("mb.consistency.report", &format!("type check default {}", self.consistency_report));
+        c.set("mb.consistency.adjust", &format!("type check default {}", self.consistency_adjust));
         c.set("mb.draws.only", &format!("type check default {}", self.draws_only));
         c.set(
             "mb.min.games",
@@ -95,7 +98,8 @@ impl Component for MaterialBalance {
         self.enabled = c.bool("mb.enabled").unwrap_or(self.enabled);
         self.internal_stats = c.bool("mb.internal.stats").unwrap_or(self.internal_stats);
         self.filename = c.string("mb.filename").unwrap_or(self.filename.clone());
-        self.consistency = c.bool("mb.consistency").unwrap_or(self.consistency);
+        self.consistency_report = c.bool("mb.consistency.report").unwrap_or(self.consistency_report);
+        self.consistency_adjust = c.bool("mb.consistency.adjust").unwrap_or(self.consistency_adjust);
         self.draws_only = c.bool("mb.draws.only").unwrap_or(self.draws_only);
         self.min_games = c.int("mb.min.games").unwrap_or(self.min_games as i64) as i32;
         self.max_pawns = c.int("mb.max.pawns").unwrap_or(self.max_pawns as i64) as i32;
@@ -108,14 +112,16 @@ impl Component for MaterialBalance {
         }
         let _ = c.string("eval.mb.all").unwrap_or(String::new());
 
+        let mut reconfigure = false;
         for (k, v) in c.iter() {
             if let Some(k) = k.strip_prefix("eval.mb.material.") {
                 info!("config fetch eval.mb.material.{} = [mb] {}", k, v);
                 self.parse_and_store(k, v).unwrap();
+                reconfigure = true;
             }
         }
 
-        if c.string("mb.force.init").is_some() {
+        if reconfigure || c.string("mb.force.init").is_some() {
             info!("Forcing initialization of material balances");
             self.init();
         }
@@ -140,7 +146,8 @@ impl fmt::Display for MaterialBalance {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "enabled          : {}", self.enabled)?;
         writeln!(f, "filename         : {}", self.filename)?;
-        writeln!(f, "consistency      : {}", self.consistency)?;
+        writeln!(f, "consistency_rep  : {}", self.consistency_report)?;
+        writeln!(f, "consistency_adj  : {}", self.consistency_adjust)?;
         writeln!(f, "draws only       : {}", self.draws_only)?;
         writeln!(f, "min games        : {}", self.min_games)?;
         writeln!(f, "max pawns        : {}", self.max_pawns)?;
@@ -155,7 +162,8 @@ impl fmt::Debug for MaterialBalance {
         f.debug_struct("MaterialBalance")
             .field("enabled", &self.enabled)
             .field("filename", &self.filename)
-            .field("consistency", &self.consistency)
+            .field("consistency_report", &self.consistency_report)
+            .field("consistency_adjust", &self.consistency_adjust)
             .field("draws_only", &self.draws_only)
             .field("min_games", &self.min_games)
             .field("max_pawns", &self.max_pawns)
@@ -330,10 +338,14 @@ impl MaterialBalance {
             }
             self.init_from_file(&self.filename).unwrap();
         }
-        if self.consistency {
-            for pass in 1..=1 {
+        if self.consistency_adjust {
+            for pass in 1..10 {
                 self.init_ensure_consistency(pass);
-            }
+            } 
+        }
+        else if self.consistency_report {
+            // one iteration only if just reporting
+            self.init_ensure_consistency(1);
         }
     }
 
@@ -392,16 +404,17 @@ impl MaterialBalance {
             let mat = Material::maybe_from_hash(hash);
             let cp = self.derived_load(mat.hash());
             if let Some(cp) = cp {
-                adjustments += self.ensure_single_entry_consistent(&mat, cp as i32, false);
+                adjustments += self.ensure_single_entry_consistent(&mat, cp as i32);
             }
         }
-        info!("Material balance consistency: pass {} adjusted {} items\n", pass, adjustments);
+        if self.consistency_adjust {
+            info!("Material balance consistency: pass {} adjusted {} items \n", pass, adjustments);
+        } else {
+            info!("Material balance consistency: pass {} reported on {} items \n", pass, adjustments);
+        }
     }
 
-    fn ensure_single_entry_consistent(&self, mat: &Material, cp: i32, adjust: bool) -> i32 {
-        let mut mat = mat.clone();
-        *mat.counts_mut(Color::White, Piece::King) = 0;
-        *mat.counts_mut(Color::Black, Piece::King) = 0;
+    fn ensure_single_entry_consistent(&self, mat: &Material, cp: i32) -> i32 {
         let material_diffs = [
             Material::from_piece_str("P").unwrap(),
             Material::from_piece_str("N").unwrap(),
@@ -430,7 +443,7 @@ impl MaterialBalance {
         for diff in &material_diffs {
 
             // first examine loss of material;
-            let other = &mat - diff;
+            let other = mat - diff;
             if other.hash() == 0 {
                 continue;
             }
@@ -458,12 +471,10 @@ impl MaterialBalance {
             }
 
             if new_cp != cp {
-                adjustments += 1;
                 // info!("[{:>32}]={:>5}", mat, cp);
-                if adjust {
-                    if adjust {
-                        self.derived_store(&mat, new_cp as f32);
-                    }
+                adjustments += 1;
+                if self.consistency_adjust {
+                    self.derived_store(&mat, new_cp as f32);
                 }
             }
 
@@ -479,9 +490,9 @@ impl MaterialBalance {
             }
             // amend the higher one
             if new_cp != other_cp {
-                adjustments += 1;
                 // info!("[{:>32}]={:>5}", mat, cp);
-                if adjust {
+                adjustments += 1;
+                if self.consistency_adjust {
                     self.derived_store(&mat, other_cp as f32);
                 }
             }

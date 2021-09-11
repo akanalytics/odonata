@@ -32,6 +32,10 @@ pub struct ModelSide {
     pub fianchetti: i32,
     pub bishop_color_pawns: i32,
 
+    // knights
+    pub knight_forks: i32,
+    pub knight_outposts: i32,
+
     // rooks
     pub has_rook_pair: bool,
     pub rooks_on_open_files: i32,
@@ -48,6 +52,8 @@ pub struct ModelSide {
     pub passed_pawns_on_r6: i32, // r7 by definition are passed
     pub passed_pawns_on_r5: i32, 
     pub passers_on_rim: i32, // files a & h
+    pub blockaded: i32, // enemy in front of pawn
+    pub blockaded_passers: i32, // passed pawn with enemy right in front
 
     // king safety
     pub king_tropism_d1: i32,
@@ -398,7 +404,7 @@ impl ModelSide {
     }
 
     #[inline]
-    fn init_position(&mut self, b: &Board, c: Color, _m: &Material) {
+    fn init_position(&mut self, b: &Board, c: Color, m: &Material) {
         let us = b.color(c);
 
         // fianchetto (short)
@@ -425,11 +431,14 @@ impl ModelSide {
             self.fianchetti += 1
         }
 
-        if Bitboard::WHITE_SQUARES.contains(b.bishops() & b.color(c)) {
-            self.bishop_color_pawns = (b.pawns() & b.color(c) & Bitboard::WHITE_SQUARES).popcount() - (b.pawns() & b.color(c) & Bitboard::BLACK_SQUARES).popcount();
-        } else if Bitboard::BLACK_SQUARES.contains(b.bishops() & b.color(c)){
-            self.bishop_color_pawns = (b.pawns() & b.color(c) & Bitboard::BLACK_SQUARES).popcount() - (b.pawns() & b.color(c) & Bitboard::WHITE_SQUARES).popcount();
+        if m.counts_piece(Piece::Bishop) == 1 {
+            if Bitboard::WHITE_SQUARES.contains(b.bishops() & b.color(c)) {
+                self.bishop_color_pawns = (b.pawns() & b.color(c) & Bitboard::WHITE_SQUARES).popcount() - (b.pawns() & b.color(c) & Bitboard::BLACK_SQUARES).popcount();
+            } else if Bitboard::BLACK_SQUARES.contains(b.bishops() & b.color(c)){
+                self.bishop_color_pawns = (b.pawns() & b.color(c) & Bitboard::BLACK_SQUARES).popcount() - (b.pawns() & b.color(c) & Bitboard::WHITE_SQUARES).popcount();
+            }
         }
+        
 
         // for &p in &Piece::ALL_BAR_NONE {
         //     let mut pieces = b.pieces(p) & b.color(c);
@@ -453,19 +462,22 @@ impl ModelSide {
         let bbd = BitboardDefault::default();
         // self.doubled_pawns = bbd.doubled_pawns(b.color(c) & b.pawns()).popcount();
         self.isolated_pawns = bbd.isolated_pawns(b.color(c) & b.pawns()).popcount();
+        let them = b.color(c.opposite());
 
         for p in (b.pawns() & b.color(c)).squares() {
             // self.doubled_pawns += is_doubled as i32;
             // we still count doubled pawns as passed pawns (since 0.3.37)
             let is_passed =
-                (bbd.pawn_front_span_union_attack_span(c, p) & b.pawns() & b.color(c.opposite())).is_empty();
+                (bbd.pawn_front_span_union_attack_span(c, p) & b.pawns() & them).is_empty();
             self.passed_pawns += is_passed as i32;
 
             let rank6 = c.chooser_wb(Bitboard::RANK_6, Bitboard::RANK_3);
             let rank5 = c.chooser_wb(Bitboard::RANK_5, Bitboard::RANK_4);
-            self.passed_pawns_on_r6 += (is_passed && rank6.intersects(p.as_bb())) as i32;
-            self.passed_pawns_on_r5 += (is_passed && rank5.intersects(p.as_bb())) as i32;
-            self.passers_on_rim += (is_passed && p.as_bb().intersects(Bitboard::RIM)) as i32;
+            self.passed_pawns_on_r6 += (is_passed && p.is_in(rank6)) as i32;
+            self.passed_pawns_on_r5 += (is_passed && p.is_in(rank5)) as i32;
+            self.passers_on_rim += (is_passed && p.is_in(Bitboard::RIM)) as i32;
+            self.blockaded += bbd.pawn_stop(c, p).intersects(them) as i32;
+            self.blockaded_passers += (bbd.pawn_stop(c, p).intersects(them) && is_passed) as i32;
         }
         self.doubled_pawns = bbd.doubled_pawns(b.color(c) & b.pawns()).popcount();
     }
@@ -519,11 +531,11 @@ impl ModelSide {
         let them = b.color(their);
         let occ = them | us;
         let their_p = b.pawns() & them;
-        // let our_p = b.pawns() & us;
+        let our_p = b.pawns() & us;
         let (pe, pw) = bb.pawn_attacks(their_p, their);
-        // let (ope, opw) = bb.pawn_attacks(our_p, c);
+        let (ope, opw) = bb.pawn_attacks(our_p, c);
         let pa = pe | pw;
-        // let opa = ope | opw;
+        let our_pa = ope | opw;
         let bi = b.bishops() & them;
         let ni = b.knights() & them;
         let r = b.rooks() & them;
@@ -577,7 +589,30 @@ impl ModelSide {
             if k.any() {
                 self.attacks_on_opponent_king_area += (our_raw_attacks & bb.within_chebyshev_distance_inclusive(ksq, 1)).popcount();
             }
+            if p == Piece::Knight {
+                // knight forks
+                for sq in (our_raw_attacks).squares() {
+                    let atts = bb.knight_attacks(sq);
+                    if (atts & them & (b.queens() | b.rooks() | b.bishops() | b.kings())).popcount() >= 2 {
+                        self.knight_forks += 1;
+                    }
+                }
+
+                // knight outposts
+                // treat the knight as a pawn and make sure its attack span is clear of enemy pawns
+                // and is on enemy half of board
+                if bb.pawn_attack_span(c, sq).disjoint(their_p) && 
+                ( (sq.rank_index() >= 4 && c == Color::White) 
+                    ||
+                    (sq.rank_index() <= 4 && c == Color::Black))
+                  && sq.is_in(our_pa) {
+                      self.knight_outposts += 1;
+                  }  
+            }
+                 
+
         }
+
     }
 }
 

@@ -258,7 +258,7 @@ impl PreCalc {
         self.pawn_front_span[c][pawn_sq] | self.pawn_attack_span[c][pawn_sq]
     }
 
-    // square in front of pawn (or empty)
+    /// square in front of pawn (or empty)
     #[inline]
     pub fn pawn_stop(&self, c: Color, pawn_sq: Square) -> Bitboard {
         self.pawn_push[c][pawn_sq]
