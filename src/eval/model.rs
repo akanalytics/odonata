@@ -431,7 +431,7 @@ impl ModelSide {
             self.fianchetti += 1
         }
 
-        if m.counts_piece(Piece::Bishop) == 1 {
+        if m.counts(c, Piece::Bishop) == 1 {
             if Bitboard::WHITE_SQUARES.contains(b.bishops() & b.color(c)) {
                 self.bishop_color_pawns = (b.pawns() & b.color(c) & Bitboard::WHITE_SQUARES).popcount() - (b.pawns() & b.color(c) & Bitboard::BLACK_SQUARES).popcount();
             } else if Bitboard::BLACK_SQUARES.contains(b.bishops() & b.color(c)){
