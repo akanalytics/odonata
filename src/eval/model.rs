@@ -277,7 +277,7 @@ pub struct ModelScore {
     pub safety: Weight,
     pub tempo: Weight,
     pub contempt: Weight,
-    pub interpolated: i32,
+    pub interpolated: f32,
 }
 
 impl ModelScore {
@@ -288,8 +288,12 @@ impl ModelScore {
         }
     }
 
+    pub fn as_f32(&self) -> f32 {
+        self.interpolated
+    }
+
     pub fn as_score(&self) -> Score {
-        Score::from_cp(self.interpolated)
+        Score::from_cp(self.interpolated.round() as i32)
     }
 }
 
@@ -336,7 +340,7 @@ impl Scorer for ModelScore {
 
     #[inline]
     fn interpolate(&mut self, _attr: &str) {
-        self.interpolated = self.total().interpolate(self.phase).round() as i32;
+        self.interpolated = self.total().interpolate(self.phase);
     }
 
     #[inline]
