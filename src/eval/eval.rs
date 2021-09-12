@@ -151,7 +151,7 @@ impl Default for SimpleScorer {
             phasing: true,
             mobility_phase_disable: 101,
             min_depth_mob: 1,
-            contempt_penalty: Weight::new(-30, -30), // typically -ve
+            contempt_penalty: Weight::new(-30, 0), // typically -ve
 
             undefended_sq: Weight::new(4, 3),
             undefended_piece: Weight::new(-3, 49),
