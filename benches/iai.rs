@@ -35,6 +35,7 @@ iai::main!(
     iai_legal_moves_into,
     iai_perft5,
     iai_eval_full,
+    iai_eval_material,
     iai_eval_model,
     iai_build_model_and_eval_model,
 );
@@ -42,10 +43,12 @@ iai::main!(
 //
 // we use dynamic here so that it gets init before main and gets included in the calibration run 
 // and hence subtracted from the final results displayed
+// we use default engine not new (loads config.toml) as reading a file does not play 
+// well with instruction counts
 //
 
 #[dynamic]
-static mut ENGINE: Engine = { let mut e = Engine::new(); e.algo.eval.pawn = true; e };
+static mut ENGINE: Engine = { let mut e = Engine::default(); e.algo.eval.pawn = true; e };
 
 #[dynamic]
 static mut POS: Position = Catalog::starting_position();
@@ -90,6 +93,10 @@ fn iai_eval_full() {
 
 fn iai_eval_some() {
     black_box(ENGINE.read().algo.eval.w_eval_some(POS.read().board(), Switches::ALL_SCORING));
+}
+
+fn iai_eval_material() {
+    black_box(ENGINE.read().algo.eval.w_eval_some(POS.read().board(), Switches::MATERIAL));
 }
 
 fn iai_search() {
