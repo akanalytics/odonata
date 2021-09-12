@@ -8,6 +8,7 @@ use std::fmt;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::fs::File;
 use std::io::{self, BufRead};
+use crate::eval::model::{ModelScore, Scorer};
 
 
 #[derive(Clone)]
@@ -190,23 +191,30 @@ impl MaterialBalance {
     }
 
 
-    pub fn w_eval_material(&self, mat: &Material) -> Weight {
+    #[inline]
+    pub fn w_eval_material(&self, mat: &Material, scorer: &mut impl Scorer) {
         // FIXME! short circuit on max pawns top avoid huge cache usage  
         if self.enabled && mat.counts_piece(Piece::Pawn) <= self.max_pawns {
             let weight = self.balance_lookup(mat);
             if let Some(weight) = weight {
-                return weight;
+                scorer.material("material bal", 1, 0, weight);
+                return;
             }
         }
-        self.w_eval_material_without_balance(mat)
+        self.w_eval_material_without_balance(mat, scorer);
     }
 
-    pub fn w_eval_material_without_balance(&self, mat: &Material) -> Weight {
-        let weight = Piece::ALL_BAR_KING
+    #[inline]
+    pub fn w_eval_material_without_balance(&self, mat: &Material, scorer: &mut impl Scorer) {
+        Piece::ALL_BAR_KING
             .iter()
-            .map(|&p| (mat.counts(Color::White, p) - mat.counts(Color::Black, p)) * self.material_weights[p])
-            .sum();
-        weight
+            .for_each(|&p| 
+                (scorer.material(p.name(), mat.counts(Color::White, p), mat.counts(Color::Black, p), self.material_weights[p])));
+        // let weight = Piece::ALL_BAR_KING
+        //     .iter()
+        //     .map(|&p| (mat.counts(Color::White, p) - mat.counts(Color::Black, p)) * self.material_weights[p])
+        //     .sum();
+        // scorer.material("", 1, 0, weight);
     }
 
 
@@ -385,7 +393,10 @@ impl MaterialBalance {
                     // }
                 }
                 // adj means that drawish positions still incentivise a material gain
-                let adj = self.w_eval_material_without_balance(mat).e() as f32;
+                // use pahse end
+                let mut scorer = ModelScore::new(100);
+                self.w_eval_material_without_balance(mat, &mut scorer);
+                let adj = scorer.total().e() as f32;
                 cp = cp.clamp(-5000.0 + adj, 5000.0 + adj);
 
                 if !self.draws_only || (-20.0 < cp && cp < 20.0) {  

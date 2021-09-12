@@ -8,7 +8,6 @@ use crate::eval::score::Score;
 use crate::eval::switches::Switches;
 use crate::eval::weight::Weight;
 use crate::globals::counts;
-use crate::material::Material;
 use crate::mv::Move;
 use crate::phaser::Phaser;
 use crate::search::node::Node;
@@ -475,16 +474,13 @@ impl SimpleScorer {
         }
 
         // material
-        let ma = if self.material && m.switches.contains(Switches::MATERIAL) {
+        if self.material && m.switches.contains(Switches::MATERIAL) {
             if self.mb.enabled {
-                self.mb.w_eval_material(&m.mat)
+                self.mb.w_eval_material(&m.mat, scorer);
             } else {
-                self.mb.w_eval_material_without_balance(&m.mat)
+                self.mb.w_eval_material_without_balance(&m.mat, scorer);
             }
-        } else {
-            Weight::zero()
         };
-        scorer.material("material", 1, 0, ma);
 
         let w = &m.white;
         let b = &m.black;
@@ -691,11 +687,11 @@ impl SimpleScorer {
     }
 
 
-    // updated on capture & promo
-    #[inline]
-    pub fn w_eval_material(&self, mat: &Material) -> Weight {
-        self.mb.w_eval_material(mat)
-    }
+    // // updated on capture & promo
+    // #[inline]
+    // pub fn w_eval_material(&self, mat: &Material) -> Weight {
+    //     self.mb.w_eval_material(mat)
+    // }
 
     #[inline]
     pub fn eval_move_material(&self, mv: &Move) -> i32 {

@@ -284,6 +284,20 @@ impl Piece {
         self.to_upper_char().to_ascii_lowercase()
     }
 
+    #[inline]
+    pub const fn name(&self) -> &'static str {
+        [
+            "none",
+            "pawn",
+            "knight",
+            "bishop",
+            "rook",
+            "queen",
+            "king",
+        ][self.index()]
+    }
+
+
     /// coarse value in centipawns
     #[inline]
     pub const fn centipawns(&self) -> i32 {
