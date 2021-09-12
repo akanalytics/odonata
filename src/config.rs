@@ -45,9 +45,9 @@ impl Config {
     pub fn global() -> Config {
         let config = STATIC_INSTANCE.read();
         if !config.is_empty() {
-            info!("Using configuration\n{}", &*config);
+            debug!("Using configuration\n{}", &*config);
         } else {
-            info!("No configuration file or overrides");
+            debug!("No configuration file or overrides");
         }
         Config::clone(&config)
     }
@@ -80,7 +80,7 @@ impl Config {
         let mut count = 0;
         for (n, line) in s.lines().enumerate() {
             if n > 0 && n % 1000 == 0 {
-                info!("Read {} lines from {:?}", n, filename);
+                debug!("Read {} lines from {:?}", n, filename);
             }
             let s = line;
             let s = s.trim();
@@ -97,7 +97,7 @@ impl Config {
                 return Err(format!("Failed parsing line {} in file {}: '{}'", n, filename, s))
             }
         }
-        info!("Read {} items from {:?}", count, filename);
+        debug!("Read {} items from {:?}", count, filename);
         Ok(config)
     }
 
@@ -131,6 +131,7 @@ impl Config {
     pub fn set(&mut self, k: &str, v: &str) -> Config {
         let v = v.trim().trim_matches('"');
         let k = k.trim();
+        debug!("config set [{}] = {}", k, v);
         if self.settings.insert(k.to_string(), v.to_string()).is_none() {
             self.insertion_order.push(k.to_string());
         }
@@ -140,7 +141,7 @@ impl Config {
     pub fn bool(&self, name: &str) -> Option<bool> {
         if let Some(v) = self.settings.get(&name.to_string()) {
             if let Ok(res) = v.parse::<bool>() {
-                info!("config fetch {} = [bool] {}", name, res);
+                debug!("config fetch {} = [bool] {}", name, res);
                 return Some(res);
             }
         }
@@ -158,29 +159,39 @@ impl Config {
     pub fn string(&self, name: &str) -> Option<String> {
         let s = self.settings.get(name);
         if let Some(res) = s {
-            info!("config fetch {} = [string] {}", name, res);
+            debug!("config fetch {} = [string] {}", name, res);
         }
         s.cloned()
     }
 
     pub fn combo(&self, name: &str) -> Option<String> {
-        info!("config fetch {} = [combo] {}", name, self.settings.get(name).unwrap_or(&String::new()));
+        debug!("config fetch {} = [combo] {}", name, self.settings.get(name).unwrap_or(&String::new()));
         self.settings.get(name).cloned()
     }
 
     pub fn weight(&self, name: &str, default: &Weight) -> Weight {
+        debug!("config search stem {} = [weight]", name);
         let (mut s, mut e) = (default.s(), default.e());
         if let Some(v) = self.settings.get(&(name.to_string() + ".s")) {
-            if let Ok(res) = v.parse::<i32>() {
-                info!("config fetch {}.s = [weight] {}", name, res);
+            debug!("config found {} = [weight]", name);
+            if let Ok(res) = v.parse::<f32>() {
+                debug!("config fetch {}.s = [weight f32] {}", name, res);
+                s = res;
             }
-            s = v.parse::<f32>().unwrap_or(default.s());
+            if let Ok(res) = v.parse::<i32>() {
+                debug!("config fetch {}.s = [weight i32] {}", name, res);
+                s = res as f32;
+            }
         }
         if let Some(v) = self.settings.get(&(name.to_string() + ".e")) {
-            if let Ok(res) = v.parse::<i32>() {
-                info!("config fetch {}.e = [weight] {}", name, res);
+            if let Ok(res) = v.parse::<f32>() {
+                debug!("config fetch {}.e = [weight f32] {}", name, res);
+                e = res;
             }
-            e = v.parse::<f32>().unwrap_or(default.e());
+            if let Ok(res) = v.parse::<i32>() {
+                debug!("config fetch {}.e = [weight i32] {}", name, res);
+                e = res as f32;
+            }
         }
         Weight::from_f32(s, e)
     }
@@ -188,7 +199,7 @@ impl Config {
     pub fn int(&self, name: &str) -> Option<i64> {
         if let Some(v) = self.settings.get(name) {
             if let Ok(res) = v.parse::<i64>() {
-                info!("config fetch {} = [int] {}", name, res);
+                debug!("config fetch {} = [int] {}", name, res);
                 return Some(res);
             }
         }
