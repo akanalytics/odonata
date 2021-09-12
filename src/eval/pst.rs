@@ -1,3 +1,4 @@
+use crate::Bitboard;
 use crate::config::{Component, Config};
 use crate::bitboard::square::Square;
 use crate::eval::weight::Weight;
@@ -23,7 +24,7 @@ pub struct Pst {
 impl Default for Pst {
     fn default() -> Self {
         let mut me = Self {
-            enabled: false,
+            enabled: true,
             pawn_r5: Weight::new(13, 32),
             pawn_r6: Weight::new(5, 86),
             pawn_r7: Weight::new(24, 304),
@@ -34,7 +35,6 @@ impl Default for Pst {
 
         };
         me.init_pst();
-
         me
     }
 }
@@ -43,35 +43,27 @@ impl Default for Pst {
 
 impl Component for Pst {
     fn settings(&self, c: &mut Config) {
-        c.set("mb.enabled", &format!("type check default {}", self.enabled));
+        c.set("pst.enabled", &format!("type check default {}", self.enabled));
         c.set_weight("eval.rook.edge", &self.rook_edge);
         c.set_weight("eval.pawn.r5", &self.pawn_r5);
         c.set_weight("eval.pawn.r6", &self.pawn_r6);
         c.set_weight("eval.pawn.r7", &self.pawn_r7);
 
 
-        // for &p in &Piece::ALL_BAR_KING {
-        //     let mut name = "eval.".to_string();
-        //     name.push(p.to_char(Some(Color::Black)));
-        //     c.set_weight(&name, &self.material_weights[p]);
-        // }
-
-        // c.set("eval.mb.all", "type string default \"\"");  // cutechess can send "eval.mb=KPPk:100,KPk:56" etc
-        // self.ensure_init();
-        // for hash in 0..Material::HASH_VALUES {
-        //     let cp = self.derived_load(hash);
-        //     if let Some(cp) = cp {
-        //         let mut mat = Material::maybe_from_hash(hash);
-        //         *mat.counts_mut(Color::White, Piece::King) = 0;
-        //         *mat.counts_mut(Color::Black, Piece::King) = 0;
-        //         c.set(&format!("eval.mb.material.{} type string default",mat.to_string()), &cp.to_string());
+        // for &p in &Piece::ALL_BAR_NONE {
+        //     for sq in Bitboard::all().squares() {
+        //         let mut name = "eval.pst.".to_string();
+        //         name.push(p.to_char(Some(Color::Black)));
+        //         name.push('.');
+        //         name += &sq.uci();
+        //         c.set_weight(&name, &self.pst[p][sq]);
         //     }
         // }
     }
 
     fn configure(&mut self, c: &Config) {
-        debug!("mb.configure");
-        self.enabled = c.bool("mb.enabled").unwrap_or(self.enabled);
+        debug!("pst.configure");
+        self.enabled = c.bool("pst.enabled").unwrap_or(self.enabled);
         self.pawn_r5 = c.weight("eval.pawn.r5", &self.pawn_r5);
         self.pawn_r6 = c.weight("eval.pawn.r6", &self.pawn_r6);
         self.pawn_r7 = c.weight("eval.pawn.r7", &self.pawn_r7);
@@ -83,16 +75,38 @@ impl Component for Pst {
         //     self.material_weights[p] = c.weight(&name, &self.material_weights[p]);
         // }
 
-        // let mut reconfigure = false;
-        // for (k, v) in c.iter() {
-        //     if let Some(k) = k.strip_prefix("eval.mb.material.") {
-        //         info!("config fetch eval.mb.material.{} = [mb] {}", k, v);
-        //         self.parse_and_store(k, v).unwrap();
-        //         reconfigure = true;
-        //     }
-        // }
-        self.init_pst();
+        let mut _reconfigure = false;
+        for (k, v) in c.iter() {
+            if let Some(_) = k.strip_prefix("eval.pst.") {
+                info!("config fetch {} = [pst] {}", k, v);
+                // FIXME! crazy slow impl
+                for &p in &Piece::ALL_BAR_NONE {
+                    for sq in Bitboard::all().squares() {
+                        let mut name = "eval.pst.".to_string();
+                        name.push(p.to_char(Some(Color::Black)));
+                        name.push('.');
+                        name += &sq.uci();
+                        let name_s = name.clone() + ".s";
+                        let name_e = name.clone() + ".e";
 
+                        if k == &name_s {
+                            let old_wt = self.pst[p][sq];
+                            let new_wt = c.weight(&name, &self.pst[p][sq]);
+                            self.pst[p][sq] = Weight::from_f32(new_wt.s(), old_wt.e());
+                            info!("pst setting {}{} = {} (config {}={})", p, sq, Weight::from_f32(new_wt.s(), old_wt.e()), name, new_wt);
+                            _reconfigure = true;
+                        }
+                        if k == &name_e {
+                            let old_wt = self.pst[p][sq];
+                            let new_wt = c.weight(&name, &self.pst[p][sq]);
+                            self.pst[p][sq] = Weight::from_f32(old_wt.s(), new_wt.e());
+                            info!("pst setting {}.{} = {} (config {}={})", p, sq, Weight::from_f32(old_wt.s(), new_wt.e()), name, new_wt);
+                            _reconfigure = true;
+                        }
+                    }
+                }
+            }
+        }
     }
 
 
@@ -109,7 +123,23 @@ impl fmt::Display for Pst {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "enabled          : {}", self.enabled)?;
         writeln!(f, "rook_edge        : {}", self.rook_edge)?;
-
+        for &p in &Piece::ALL_BAR_NONE {
+            for phase in ["s", "e"] {
+                writeln!(f, "PST: {}.{}", p, phase)?;
+                for rank in (0..8).rev() {
+                    for file in 0..8 {
+                        let sq = Square::from_xy(file, rank);
+                        let sq = sq.flip_vertical(); // white is stored upside down
+                        let wt = self.pst[p][sq];
+                        let score = if phase == "s" { wt.s() } else { wt.e() };
+                        let s = format!("{:>4}", score);
+                        write!(f, "{:>6},", s)?;
+                    }
+                    writeln!(f)?;
+                }
+                writeln!(f)?;
+            }
+        }
         Ok(())
     }
 }
@@ -311,6 +341,40 @@ impl Pst {
                 self.pst[p][sq] = Weight::new(square_values_mg[p][sq], square_values_eg[p][sq]);
             }
         }
+    }
+}
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::board::boardbuf::BoardBuf;
+    use crate::catalog::Catalog;
+    use crate::search::engine::Engine;
+    use crate::test_env_log::test;
+
+    #[test]
+    fn test_pst() {
+        let pst = Pst::default();
+        info!("{}", pst);
+        let eng = Engine::new();
+        info!("{}", eng.algo.eval.pst);
+    }
+
+    #[test]
+    fn pst_config() {
+        let mut c1 = Config::default();
+        c1.set("eval.pst.p.a2.s", "6.5");
+        c1.set("eval.pst.p.a2.e", "7.5");
+        let lookup = c1.weight("eval.pst.p.a2", &Weight::new(1, 1));
+        info!("Config\n{}", c1);
+        assert_eq!(lookup, Weight::from_f32(6.5,7.5));
+        let mut pst = Pst::default();
+        assert_eq!(pst.pst(Piece::Pawn, Square::A2), Weight::new(24,304));
+        pst.configure(&c1);
+        assert_eq!(pst.pst(Piece::Pawn, Square::A2), Weight::from_f32(6.5,7.5), "{}", pst);
+
     }
 }
 
