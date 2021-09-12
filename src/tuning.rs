@@ -2,6 +2,7 @@ use crate::eval::model::Model;
 use crate::eval::model::ModelScore;
 use crate::eval::switches::Switches;
 use crate::position::Position;
+use crate::eval::score::Score;
 use crate::search::engine::Engine;
 use crate::tags::Tag;
 use rayon::prelude::*;
@@ -60,7 +61,7 @@ impl Tuning {
             let phase = model.mat.phase(&eval.phaser);
             let mut w_score = ModelScore::new(phase);
             eval.predict(model, &mut w_score);
-            let win_prob_estimate = w_score.as_score().win_probability();
+            let win_prob_estimate = Score::win_probability_of(w_score.as_f32());
             let win_prob_actual = *outcome;
             let diff = win_prob_estimate - win_prob_actual;
             diff * diff
