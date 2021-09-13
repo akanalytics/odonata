@@ -45,7 +45,7 @@ impl Default for HistoryHeuristic {
         HistoryHeuristic {
             enabled: true,
             clear_every_move: true,
-            scale: 10,
+            scale: 1,
             history: [[[0; 64]; Piece::len()];2],
         }
     }
