@@ -292,6 +292,7 @@ impl Algo {
                 bm = mv;
                 nt = NodeType::Pv;
                 debug_assert!(board.is_pseudo_legal_move(&bm));
+                self.history.raised_alpha(ply, board, &mv);
                 self.record_move(ply, &mv);
             }
 
@@ -299,6 +300,7 @@ impl Algo {
                 nt = NodeType::Cut;
                 self.search_stats.inc_node_cut(ply, move_type);
                 self.killers.store(ply, &mv);
+                self.history.beta_cutoff(ply, board, &mv);
                 break;
             }
         }

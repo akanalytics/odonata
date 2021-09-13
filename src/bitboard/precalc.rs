@@ -233,7 +233,7 @@ impl PreCalc {
         pawns.fill_north().shift(Dir::N) & pawns
     }
 
-    // front span = squares strictly in front of pawn
+    /// front span = squares strictly in front of pawn
     #[inline]
     pub fn pawn_front_span(&self, c: Color, pawn_sq: Square) -> Bitboard {
         self.pawn_front_span[c][pawn_sq] 
@@ -246,13 +246,13 @@ impl PreCalc {
         // }
     }
 
-    // attack span = squares attacked and those in front of squares attacked 
+    /// attack span = squares attacked and those in front of squares attacked 
     #[inline]
     pub fn pawn_attack_span(&self, c: Color, pawn_sq: Square) -> Bitboard {
         self.pawn_attack_span[c][pawn_sq] 
     }
 
-    // arr span = front span UNION attack span 
+    /// front span UNION attack span 
     #[inline]
     pub fn pawn_front_span_union_attack_span(&self, c: Color, pawn_sq: Square) -> Bitboard {
         self.pawn_front_span[c][pawn_sq] | self.pawn_attack_span[c][pawn_sq]

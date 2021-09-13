@@ -105,6 +105,7 @@ pub struct SimpleScorer {
 
     pub bishop_pair: Weight,
     pub fianchetto: Weight,
+    pub bishop_outposts: Weight,
     pub bishop_color_pawns: Weight,
     pub knight_forks: Weight,
     pub knight_outposts: Weight,
@@ -161,6 +162,7 @@ impl Default for SimpleScorer {
 
             bishop_pair: Weight::new(62, 58),
             fianchetto: Weight::new(55, 27),
+            bishop_outposts: Weight::new(0, 0),
             bishop_color_pawns: Weight::new(55, 27),
             knight_forks: Weight::new(0, 0),
             knight_outposts: Weight::new(0, 0),
@@ -234,6 +236,7 @@ impl Component for SimpleScorer {
 
         c.set_weight("eval.bishop.pair", &self.bishop_pair);
         c.set_weight("eval.fianchetto", &self.fianchetto);
+        c.set_weight("eval.bishop.outposts", &self.bishop_outposts);
         c.set_weight("eval.bishop.color.pawns", &self.bishop_color_pawns);
         c.set_weight("eval.knight.forks", &self.knight_forks);
         c.set_weight("eval.knight.outposts", &self.knight_outposts);
@@ -301,6 +304,7 @@ impl Component for SimpleScorer {
         self.bishop_color_pawns = c.weight("eval.bishop.color.pawns", &self.bishop_color_pawns);
         self.knight_forks = c.weight("eval.knight.forks", &self.knight_forks);
         self.knight_outposts = c.weight("eval.knight.outposts", &self.knight_outposts);
+        self.bishop_outposts = c.weight("eval.bishop.outposts", &self.bishop_outposts);
 
         self.pawn_doubled = c.weight("eval.pawn.doubled", &self.pawn_doubled);
         self.pawn_isolated = c.weight("eval.pawn.isolated", &self.pawn_isolated);
@@ -365,6 +369,9 @@ impl fmt::Display for SimpleScorer {
         writeln!(f, "bishop pair      : {}", self.bishop_pair)?;
         writeln!(f, "rook pair        : {}", self.rook_pair)?;
         writeln!(f, "fianchetto       : {}", self.fianchetto)?;
+        writeln!(f, "bishop outposts  : {}", self.bishop_outposts)?;
+        writeln!(f, "knight outposts  : {}", self.knight_outposts)?;
+        writeln!(f, "knight forks     : {}", self.knight_forks)?;
 
         writeln!(f, "rook.open.file   : {}", self.rook_open_file)?;
 
@@ -519,6 +526,7 @@ impl SimpleScorer {
             }
             scorer.position("fianchetti", w.fianchetti, b.fianchetti, self.fianchetto);
             scorer.position("bishop color pawns", w.bishop_color_pawns, b.bishop_color_pawns, self.bishop_color_pawns);
+            scorer.position("bishop outposts", w.bishop_outposts, b.bishop_outposts, self.bishop_outposts);
             scorer.position("knight forks", w.knight_forks, b.knight_forks, self.knight_forks);
             scorer.position("knight outposts", w.knight_outposts, b.knight_outposts, self.knight_outposts);
 

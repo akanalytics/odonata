@@ -123,6 +123,8 @@ impl MoveOrderer {
             score -= mv.to().rank_index() as i32;
         }
 
+        score += algo.history.history_heuristic_bonus(c, mv);
+
         score += algo.eval.pst.w_eval_square(c, mv.mover_piece(), mv.to()).interpolate(phase) as i32;
         // score -= algo.eval.w_eval_square(c, mv.mover_piece(), mv.from()).interpolate(phase);
         -score

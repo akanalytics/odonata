@@ -17,4 +17,5 @@ pub mod nmp;
 pub mod stack;
 pub mod futility;
 pub mod pvs;
+pub mod history_heuristic;
 

@@ -35,6 +35,7 @@ pub struct ModelSide {
     // knights
     pub knight_forks: i32,
     pub knight_outposts: i32,
+    pub bishop_outposts: i32,
 
     // rooks
     pub has_rook_pair: bool,
@@ -605,22 +606,23 @@ impl ModelSide {
                         self.knight_forks += 1;
                     }
                 }
+            }
 
-                // knight outposts
-                // treat the knight as a pawn and make sure its attack span is clear of enemy pawns
+
+            if p == Piece::Knight || p == Piece::Bishop {
+                // outposts
+                // treat the piece as a pawn and make sure its attack span is clear of enemy pawns
                 // and is on enemy half of board
                 if bb.pawn_attack_span(c, sq).disjoint(their_p) && 
                 ( (sq.rank_index() >= 4 && c == Color::White) 
                     ||
                     (sq.rank_index() <= 4 && c == Color::Black))
                   && sq.is_in(our_pa) {
-                      self.knight_outposts += 1;
-                  }  
-            }
-                 
-
+                      self.knight_outposts += (p == Piece::Knight) as i32;
+                      self.bishop_outposts += (p == Piece::Bishop) as i32;
+                }  
+            }                 
         }
-
     }
 }
 

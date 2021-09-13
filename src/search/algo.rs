@@ -23,6 +23,7 @@ use crate::search::searchprogress::SearchProgress;
 use crate::search::searchstats::SearchStats;
 use crate::search::taskcontrol::TaskControl;
 use crate::search::timecontrol::TimeControl;
+use crate::search::history_heuristic::HistoryHeuristic;
 use crate::types::Ply;
 use crate::variation::Variation;
 // // use crate::{debug, info, logger::LogInit};
@@ -46,6 +47,7 @@ pub struct Algo {
     pub pvs: Pvs,
     pub extensions: Extensions,
     pub reductions: Reductions,
+    pub history: HistoryHeuristic,
     pub search_stats: SearchStats,
 
     pub pv_table: PvTable,
@@ -107,6 +109,7 @@ impl Component for Algo {
         self.repetition.settings(c);
         self.tt.settings(c);
         self.killers.settings(c);
+        self.history.settings(c);
     }
     fn configure(&mut self, c: &Config) {
         debug!("algo.configure");
@@ -125,6 +128,7 @@ impl Component for Algo {
         self.repetition.configure(c);
         self.tt.configure(c);
         self.killers.configure(c);
+        self.history.configure(c);
     }
 
     // clears evaluation and transposition caches as well as repetition counts
@@ -144,6 +148,7 @@ impl Component for Algo {
         self.repetition.new_game();
         self.tt.new_game();
         self.killers.new_game();
+        self.history.new_game();
     }
 
     fn new_position(&mut self) {
@@ -162,6 +167,7 @@ impl Component for Algo {
         self.repetition.new_position();
         self.tt.new_position();
         self.killers.new_position();
+        self.history.new_position();
     }
 }
 
@@ -190,6 +196,7 @@ impl fmt::Debug for Algo {
             .field("repetition", &self.repetition)
             .field("tt", &self.tt)
             .field("killers", &self.killers)
+            .field("history", &self.history)
             .finish()
     }
 }
@@ -228,6 +235,7 @@ impl fmt::Display for Algo {
         writeln!(f, "tt nodes")?;
         self.tt.fmt_nodes(f, &self.board)?;
         write!(f, "\n[killers]\n{}", self.killers)?;
+        write!(f, "\n[history]\n{}", self.history)?;
         write!(f, "\n[stats]\n{}", self.search_stats)?;
         write!(f, "\n[iterative deepening]\n{}", self.ids)?;
         write!(f, "\n[global counts]\n{}", counts::GLOBAL_COUNTS)?;
