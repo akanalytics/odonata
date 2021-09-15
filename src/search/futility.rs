@@ -154,9 +154,7 @@ impl Futility {
         let gain = eval.eval_move_material(&mv);
 
         // fail low pruning
-        // if !(b.will_check_them(mv)) {
-        if node.depth > self.max_depth_captures && mv.is_capture() {
-        } else {
+        if node.depth <= self.max_depth_captures || !mv.is_capture() {
             let est_score = measure.eval + measure.margin + Score::from_cp(gain);
             if est_score <= node.alpha {
                 return Some(est_score);
