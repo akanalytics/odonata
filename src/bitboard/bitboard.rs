@@ -1,4 +1,5 @@
 use crate::bitboard::square::Square;
+use crate::types::Color;
 use std::fmt::{self, Write};
 use std::ops;
 
@@ -284,6 +285,10 @@ impl Bitboard {
     pub const WHITE_SQUARES: Bitboard = Bitboard(0x55aa55aa55aa55aa_u64);
     pub const BLACK_SQUARES: Bitboard = Bitboard(0xaa55aa55aa55aa55_u64);
     pub const RIM: Bitboard = Bitboard::FILE_A.or(Bitboard::FILE_H);
+    pub const RANKS_18: Bitboard = Bitboard::RANK_1.or(Bitboard::RANK_8);
+    pub const RANKS_27: Bitboard = Bitboard::RANK_2.or(Bitboard::RANK_7);
+    pub const RANKS_36: Bitboard = Bitboard::RANK_3.or(Bitboard::RANK_6);
+    pub const RANKS_45: Bitboard = Bitboard::RANK_4.or(Bitboard::RANK_5);
 }
 
 impl fmt::Binary for Bitboard {
@@ -584,6 +589,13 @@ impl Bitboard {
         Self(!self.0)
     }
 
+    #[inline]
+    pub fn home_half(c: Color) -> Self {
+        c.chooser_wb(
+            Bitboard::RANK_1.or(Bitboard::RANK_2).or(Bitboard::RANK_3).or(Bitboard::RANK_4),
+            Bitboard::RANK_5.or(Bitboard::RANK_6).or(Bitboard::RANK_7).or(Bitboard::RANK_8)
+        )
+    }
 
     // bitflags & doesnt seem to be declared const
     #[inline]

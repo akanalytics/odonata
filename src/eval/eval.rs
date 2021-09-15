@@ -85,6 +85,7 @@ pub struct SimpleScorer {
     pub contempt: bool,
     pub tempo: bool,
     pub mobility_phase_disable: u8,
+    pub quantum: i32,
 
     pub min_depth_mob: u8,
     pub undefended_sq: Weight,
@@ -150,6 +151,7 @@ impl Default for SimpleScorer {
             tempo: true,
             phasing: true,
             mobility_phase_disable: 101,
+            quantum: 1,
             min_depth_mob: 1,
             contempt_penalty: Weight::new(-30, 0), // typically -ve
 
@@ -213,6 +215,10 @@ impl Component for SimpleScorer {
             &format!("type spin min 0 max 101 default {}", self.min_depth_mob),
         );
         c.set(
+            "eval.quantum",
+            &format!("type spin min 1 max 100 default {}", self.quantum),
+        );
+        c.set(
             "eval.mobility.phase.disable",
             &format!("type spin min 0 max 101 default {}", self.mobility_phase_disable),
         );
@@ -272,6 +278,9 @@ impl Component for SimpleScorer {
         self.position = c.bool("eval.position").unwrap_or(self.position);
         self.material = c.bool("eval.material").unwrap_or(self.material);
         self.phasing = c.bool("eval.phasing").unwrap_or(self.phasing);
+        self.quantum = c
+            .int("eval.quantum")
+            .unwrap_or(self.quantum as i64) as i32;
         self.mobility_phase_disable = c
             .int("eval.mobility.phase.disable")
             .unwrap_or(self.mobility_phase_disable as i64) as u8;
@@ -691,7 +700,7 @@ impl SimpleScorer {
         let model = Model::from_board(b, switches);
         let mut scorer = ModelScore::new(b.phase(&self.phaser));
         self.predict(&model, &mut scorer);
-        scorer.as_score()
+        Score::from_cp(scorer.as_score().as_i16() as i32 / self.quantum * self.quantum)
     }
 
 
@@ -701,6 +710,7 @@ impl SimpleScorer {
     //     self.mb.w_eval_material(mat)
     // }
 
+    /// the value of the capture or promotion (or both for promo capture)
     #[inline]
     pub fn eval_move_material(&self, mv: &Move) -> i32 {
         self.mb.eval_move_material(mv)

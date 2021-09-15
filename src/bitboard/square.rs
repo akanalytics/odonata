@@ -1,6 +1,7 @@
 use crate::bitboard::bitboard::{Bitboard, Dir, Squares};
 use std::cmp;
 use std::fmt;
+use crate::types::Color;
 
 #[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Square(u8);
@@ -236,6 +237,13 @@ impl Square {
         (self.0 / 8) as usize
     }
 
+    // if white: just the rank_index
+    // if black: 7 - rank_index
+    #[inline]
+    pub const fn rank_index_as_white(self, c: Color) -> usize {
+        (((c as i32) * 7) ^ (self.0 >> 3) as i32) as usize
+    }
+
     #[inline]
     pub const fn file_index(self) -> usize {
         (self.0 % 8) as usize
@@ -290,6 +298,14 @@ mod tests {
         assert_eq!(b1.first_square().file_index(), 1);
         assert_eq!(c7.first_square().index(), 6 * 8 + 2);
         assert_eq!(c7.first_square().rank_index(), 6);
+        assert_eq!(c7.first_square().rank_index_as_white(Color::White), 6);
+        assert_eq!(c7.first_square().rank_index_as_white(Color::Black), 1);
+        for y in 0..8 {
+            assert_eq!(
+                Square::from_xy(0, y).rank_index_as_white(Color::Black), 
+                7 - Square::from_xy(0, y).rank_index_as_white(Color::White)
+            );
+        }
         assert_eq!(c7.first_square().file_index(), 2);
         assert_eq!(Square::all().count(), 64);
         assert_eq!(Square::all().next(), Some(Square(0)));

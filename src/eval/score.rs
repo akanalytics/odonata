@@ -3,7 +3,10 @@ use crate::types::{Color, Ply, MAX_PLY};
 use std::fmt;
 
 
-
+// pub struct ScoreBound {
+//     score: Score,
+//     bound: NodeType,
+// }
 
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
@@ -16,6 +19,12 @@ pub struct Score {
 // WHITE WIN IN 0<=N< MAX_PLY   is  i16::MAX -1 - N
 // MIN + 1 + MAX_PLY and i16::MAX -1 - MAX_PLY
 impl Score {
+
+    pub const fn zero() -> Score {
+        Score { cp: 0 }
+    }
+
+
     // note MAX = 32767 but MIN = -32768. So we use -MAX
     // pub const MINUS_INF : Score = Score { cp: -i16::MAX };
     pub const INFINITY : Score = Score { cp: i16::MAX };

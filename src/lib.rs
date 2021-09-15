@@ -34,6 +34,7 @@ extern crate include_dir;
 pub mod bitboard;
 pub mod board;
 pub mod catalog;
+pub mod bound;
 pub mod clock;
 pub mod comms;
 pub mod config;

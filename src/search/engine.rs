@@ -110,7 +110,6 @@ impl Engine {
     }
 
     pub fn set_position(&mut self, pos: Position) {
-        self.new_position();
         self.algo.set_position(pos);
     }
 

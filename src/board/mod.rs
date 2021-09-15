@@ -1,4 +1,5 @@
 use crate::bitboard::bitboard::Bitboard;
+use crate::bitboard::square::Square;
 use crate::board::multiboard::Multiboard;
 use crate::material::Material;
 use crate::board::boardbuf::BoardBuf;
@@ -251,12 +252,22 @@ impl Board {
 
     #[inline]
     pub fn least_valuable_piece(&self, region: Bitboard) -> Bitboard {
-        for &p in &Piece::ALL_BAR_NONE {
+        for &p in &Piece::ALL_BAR_KING {
             if self.pieces(p).intersects(region) {
                 return (self.pieces(p) & region).first();
             }
         }
         Bitboard::EMPTY
+    }
+
+    #[inline]
+    pub fn most_valuable_piece(&self, region: Bitboard) -> Option<(Piece,Square)> {
+        for &p in Piece::ALL_BAR_KING.iter().rev() {
+            if self.pieces(p).intersects(region) {
+                return Some((p, (self.pieces(p) & region).first_square()));
+            }
+        }
+        None
     }
 
 

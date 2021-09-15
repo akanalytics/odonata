@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::cache::tt2::NodeType;
+use crate::bound::NodeType;
 use crate::config::{Component, Config};
 use crate::mv::Move;
 use crate::search::node::Node;

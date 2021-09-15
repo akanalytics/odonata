@@ -225,7 +225,7 @@ impl MaterialBalance {
             score += self.material_weights[mv.capture_piece()].s();
         }
         if mv.is_promo() {
-            score += self.material_weights[mv.promo_piece()].s();
+            score += self.material_weights[mv.promo_piece()].s() - self.material_weights[Piece::Pawn].s();
         }
         score as i32
     }

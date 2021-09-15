@@ -1,6 +1,7 @@
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
-use crate::cache::tt2::{NodeType, TtNode};
+use crate::bound::NodeType;
+use crate::cache::tt2::{TtNode};
 use crate::eval::score::Score;
 use crate::mv::Move;
 use crate::pvtable::PvTable;
@@ -178,6 +179,17 @@ impl Algo {
         {
             let r = self.nmp.depth_reduction(board, ply, depth);
             let mv = Move::NULL_MOVE;
+            // try futility pruning on null move
+            if let Some(futility) = futility {
+                if score > -Score::INFINITY {
+                    if let Some(score) = self.futility.can_prune_move(&mv, board, futility, &n, &self.eval) {
+                        if score >= n.beta {
+                            self.search_stats.inc_node_cut(ply, MoveType::Null);
+                            return score;
+                        }
+                    }
+                }
+            }
             let mut child_board = board.make_move(&mv);
             self.current_variation.set_last_move(ply + 1, &mv);
             self.search_stats.inc_nmp(ply);
@@ -201,9 +213,22 @@ impl Algo {
         while let Some((move_type, mv)) = sorted_moves.next_move(board, self) {
             count += 1;
             self.search_stats.inc_move(ply);
-            if futility && score > -Score::INFINITY && self.futility.can_prune_move(&mv, board) {
-                self.search_stats.inc_fp_move(ply);
-                continue;
+            if let Some(futility) = futility {
+                // check we have a score (and hence a move) nefore we risk pruning everything
+                if score > -Score::INFINITY {
+                    if let Some(est_score) = self.futility.can_prune_move(&mv, board, futility, &n, &self.eval) {
+                        self.search_stats.inc_fp_move(ply);
+                        if est_score > n.beta {
+                            self.search_stats.inc_node_cut(ply, MoveType::Null);
+                            return est_score;
+                        }
+                        if self.futility.can_prune_remaining_moves(move_type, &n) {
+                            break;
+                        } else {
+                            continue;
+                        }
+                    }
+                }
             }
             let mut child_board = board.make_move(&mv);
             self.repetition.push_move(&mv, &child_board);
