@@ -40,6 +40,7 @@ impl fmt::Display for SearchStats {
         writeln!(f, "selective depth  : {}", self.selective_depth())?;
         writeln!(f, "tot nodes/sec (k): {}", self.total_knps())?;
         writeln!(f, "int nodes/sec (k): {}", self.interior_knps())?;
+        writeln!(f, "cuts on 1st move : {:.01}%", self.cuts_on_first_move() * 100.0)?;
         writeln!(f, "branching factor : {:.02}", self.branching_factor())?;
         writeln!(f, "q branch factor  : {:.02}", self.q_branching_factor())?;
         writeln!(f)?;
@@ -236,10 +237,16 @@ impl SearchStats {
     // }
 
     #[inline]
-    pub fn inc_node_cut(&mut self, ply: Ply, move_type: MoveType) {
+    pub fn inc_node_cut(&mut self, ply: Ply, move_type: MoveType, move_number: i32) {
         self.plies[ply as usize].node_cut += 1;
-        self.plies[ply as usize].cut_on_move[move_type as usize] += 1;
-
+        self.plies[ply as usize].cut_on_move[move_type.index()] += 1;
+        if move_number == 0 {
+            self.plies[ply as usize].cut_on_first_move += 1;
+        }
+        if move_number >= 0 {
+            self.plies[ply as usize].cut_on_move_number += move_number as u64;
+            self.plies[ply as usize].cut_in_movegen += 1;
+        }
     }
 
     #[inline]
@@ -329,6 +336,20 @@ impl SearchStats {
         let t = self.total();
         (t.q_leaf_nodes as f64) / (t.q_interior_nodes + 1) as f64
     }
+
+    pub fn cuts_on_first_move(&self) -> f64 {
+        let cuts_in_movegen: u64 = self
+        .plies
+        .iter()
+        .map(|stats| stats.cut_in_movegen).sum();
+
+        let cuts_total_first_move: u64 = self
+        .plies
+        .iter()
+        .map(|stats| stats.cut_on_first_move).sum();
+        (cuts_total_first_move as f64) / (cuts_in_movegen as f64)
+    }
+
 }
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -352,6 +373,9 @@ pub struct NodeStats {
     pub node_cut: u64,
     
     pub cut_on_move: [u64; MoveType::COUNT],
+    pub cut_on_move_number: u64,
+    pub cut_on_first_move: u64,
+    pub cut_in_movegen: u64,
 
     pub pvs: u64,   
     pub pvs_research: u64,
@@ -379,7 +403,7 @@ impl NodeStats {
     }
 
     fn cut_move_perc(&self, mt: MoveType) -> u64 {
-        self.cut_on_move[mt as usize] * 100 / cmp::max(1, self.node_cut)
+        self.cut_on_move[mt.index()] * 100 / cmp::max(1, self.node_cut)
     } 
 
     pub fn accumulate(&mut self, other: &NodeStats) {
@@ -392,6 +416,9 @@ impl NodeStats {
         self.node_all += other.node_all;
         self.node_pv += other.node_pv;
         self.node_cut += other.node_cut;
+        self.cut_on_move_number += other.cut_on_move_number;
+        self.cut_on_first_move += other.cut_on_first_move;
+        self.cut_in_movegen += other.cut_in_movegen;
 
         self.pvs += other.pvs;
         self.pvs_research += other.pvs_research;

@@ -121,6 +121,7 @@ impl Phaser {
 
 impl Material {
     // phase = % endgame, 0 is start, 100 is end game with just pawns
+    #[inline]
     pub fn phase(&self, phaser: &Phaser) -> i32 {
         phaser.phase(self)
     }
@@ -128,6 +129,7 @@ impl Material {
 
 impl Board {
     // phase = % endgame, 0 is start, 100 is end game with just pawns
+    #[inline]
     pub fn phase(&self, phaser: &Phaser) -> i32 {
         self.material().phase(phaser)
     }

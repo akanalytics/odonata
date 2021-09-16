@@ -38,9 +38,9 @@ pub struct Algo {
     pub board: Board,
     pub max_depth: Ply,
     pub minmax: bool,
+
     pub ids: IterativeDeepening,
     pub eval: SimpleScorer,
-    pub task_control: TaskControl<SearchProgress>,
     pub qsearch: QSearch,
     pub nmp: NullMovePruning,
     pub futility: Futility,
@@ -48,17 +48,19 @@ pub struct Algo {
     pub extensions: Extensions,
     pub reductions: Reductions,
     pub history: HistoryHeuristic,
-    pub search_stats: SearchStats,
-
-    pub pv_table: PvTable,
-    pub current_best: Option<Move>,
-    pub analyse_mode: bool, // tries to find full PV etc
-    //pub score: Score,
     pub mte: MoveTimeEstimator,
     pub move_orderer: MoveOrderer,
     pub repetition: Repetition,
     pub tt: TranspositionTable2,
     pub killers: Killers,
+
+
+    pub task_control: TaskControl<SearchProgress>,
+    pub search_stats: SearchStats,
+    pub pv_table: PvTable,
+    pub current_best: Option<Move>,
+    pub analyse_mode: bool, // tries to find full PV etc
+    //pub score: Score,
 
     // child_thread: AlgoThreadHandle,
 
@@ -135,20 +137,21 @@ impl Component for Algo {
     fn new_game(&mut self) {
         self.search_stats = SearchStats::new();
         self.clock_checks = 0;
+
+        self.ids.new_game();
         self.eval.new_game();
-        self.move_orderer.new_game();
-        self.mte.new_game();
+        self.qsearch.new_game();
         self.nmp.new_game();
         self.futility.new_game();
         self.pvs.new_game();
         self.extensions.new_game();
         self.reductions.new_game();
-        self.qsearch.new_game();
-        self.ids.new_game();
+        self.history.new_game();
+        self.mte.new_game();
+        self.move_orderer.new_game();
         self.repetition.new_game();
         self.tt.new_game();
         self.killers.new_game();
-        self.history.new_game();
     }
 
     fn new_position(&mut self) {

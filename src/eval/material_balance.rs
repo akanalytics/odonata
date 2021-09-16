@@ -219,15 +219,15 @@ impl MaterialBalance {
 
 
     #[inline]
-    pub fn eval_move_material(&self, mv: &Move) -> i32 {
-        let mut score = 0.0;
+    pub fn eval_move_material(&self, mv: &Move) -> Weight {
+        let mut score = Weight::zero();
         if mv.is_capture() {
-            score += self.material_weights[mv.capture_piece()].s();
+            score += self.material_weights[mv.capture_piece()];
         }
         if mv.is_promo() {
-            score += self.material_weights[mv.promo_piece()].s() - self.material_weights[Piece::Pawn].s();
+            score += self.material_weights[mv.promo_piece()] - self.material_weights[Piece::Pawn];
         }
-        score as i32
+        score
     }
 
 

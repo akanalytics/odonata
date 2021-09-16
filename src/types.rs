@@ -2,6 +2,8 @@ use crate::bitboard::bitboard::{Bitboard, Dir};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use strum_macros::EnumCount;
+use enumflags2::{bitflags, BitFlags};
+
 
 pub const MAX_PLY: Ply = 128;
 pub const MAX_LEGAL_MOVES: usize = 218;
@@ -410,8 +412,9 @@ impl std::ops::Sub for ScoreWdl {
     }
 }
 
+#[bitflags]
 #[derive(Clone, Copy, Debug, Eq, PartialEq, EnumCount)]
-#[repr(u8)]
+#[repr(u16)]
 pub enum MoveType {
     Start,
     Hash,
@@ -430,8 +433,28 @@ pub enum MoveType {
     End,
 }
 
+pub type MoveTypes = BitFlags<MoveType>;
+
+
 
 impl MoveType {
+
+    pub fn from_str(s: &str) -> Result<MoveTypes, String> {
+        let mut mts = MoveTypes::empty();
+        for c in s.chars() {
+            mts |= Self::from_char(c)?;
+        }
+        Ok(mts)
+    }
+
+    pub fn to_string(mts: MoveTypes) -> String {
+        mts.iter().map(|mt| mt.as_char()).collect()
+    }
+
+    pub fn index(self) -> usize {
+        (self as u16).trailing_zeros() as usize
+    }
+
     pub fn as_char(self) -> char {
         match self {
             MoveType::Start => 'S',
@@ -556,12 +579,17 @@ mod tests {
     }
 
     #[test]
-    fn test_move_type() {
+    fn test_move_type() -> Result<(), String> {
         let many = MoveType::vec_from_string("HIGKPqB").unwrap();
         assert_eq!(many[0], MoveType::Hash);
         assert_eq!(many.last(), Some(&MoveType::BadCapture));
         assert_eq!(MoveType::slice_to_string(&many), "HIGKPqB");
-        assert!(MoveType::COUNT > 1);
+        assert_eq!(MoveType::from_str("CHB")?, MoveType::Capture | MoveType::Hash | MoveType::BadCapture);
+        assert_eq!("HCB".to_string(), MoveType::to_string(MoveType::Capture | MoveType::Hash | MoveType::BadCapture));
+        assert_eq!(MoveType::COUNT, 15);
+        assert_eq!(MoveType::Start.index(), 0);
+        assert_eq!(MoveType::End.index(), 14);
+        Ok(())
     }
 
     #[test]

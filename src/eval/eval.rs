@@ -712,7 +712,7 @@ impl SimpleScorer {
 
     /// the value of the capture or promotion (or both for promo capture)
     #[inline]
-    pub fn eval_move_material(&self, mv: &Move) -> i32 {
+    pub fn eval_move_material(&self, mv: &Move) -> Weight {
         self.mb.eval_move_material(mv)
     }
 }
@@ -743,7 +743,7 @@ impl Board {
     #[inline]
     pub fn eval_move_material(&self, eval: &SimpleScorer, mv: &Move) -> Score {
         MOVE.increment();
-        Score::from_cp(eval.eval_move_material(&mv))
+        Score::from_cp(eval.eval_move_material(&mv).interpolate(self.phase(&eval.phaser)) as i32)
     }
 
     #[inline]

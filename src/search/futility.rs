@@ -1,6 +1,7 @@
 
 use crate::Bitboard;
 use crate::board::Board;
+use crate::eval::weight::Weight;
 use crate::search::node::Node;
 use crate::mv::Move;
 use crate::eval::score::Score;
@@ -8,8 +9,8 @@ use crate::eval::switches::Switches;
 use crate::eval::eval::SimpleScorer;
 use crate::config::{Config, Component};
 // use crate::{debug, logger::LogInit};
-use crate::types::{Piece, MoveType, Ply};
-use std::fmt;
+use crate::types::{Piece, MoveType, MoveTypes, Ply};
+use std::{cmp, fmt};
 
 
 
@@ -18,48 +19,59 @@ use std::fmt;
 
 #[derive(Clone, Debug)]
 pub struct Futility {
-    pub enabled: bool,
+    pub alpha_enabled: bool,
     pub beta_enabled: bool,
-    pub eval_position: bool,
     pub prune_remaining: bool,
     pub avoid_checks: bool, 
     pub avoid_promos: bool, 
+    pub promo_margin: bool, 
     pub max_depth: Ply,
     pub max_depth_captures: Ply,
     pub margin1: i32,
     pub margin2: i32,
     pub margin3: i32,
     pub eval_switches: Switches,
+    pub move_types_forbidden: MoveTypes,
 }
 
 impl Component for Futility {
     fn settings(&self, c: &mut Config) {
-        c.set("futility.enabled", &format!("type check default {}", self.enabled));
+        c.set("futility.alpha.enabled", &format!("type check default {}", self.alpha_enabled));
         c.set("futility.beta.enabled", &format!("type check default {}", self.beta_enabled));
-        c.set("futility.eval.position", &format!("type check default {}", self.eval_position));
         c.set("futility.avoid.checks", &format!("type check default {}", self.avoid_checks));
         c.set("futility.avoid.promos", &format!("type check default {}", self.avoid_promos));
+        c.set("futility.promo.margin", &format!("type check default {}", self.promo_margin));
         c.set("futility.prune.remaining", &format!("type check default {}", self.prune_remaining));
         c.set("futility.max.depth",  &format!("type spin min 0 max 100 default {}", self.max_depth));
         c.set("futility.max.depth.captures",  &format!("type spin min 0 max 100 default {}", self.max_depth_captures));
         c.set("futility.margin1",  &format!("type spin min 0 max 9999 default {}", self.margin1));
         c.set("futility.margin2",  &format!("type spin min 0 max 9999 default {}", self.margin2));
         c.set("futility.margin3",  &format!("type spin min 0 max 9999 default {}", self.margin3));
+        c.set("futility.eval.switches", &format!("type string default {}", self.eval_switches.to_string()));
+        c.set("futility.movetypes.forbidden", &format!("type string default {}", MoveType::to_string(self.move_types_forbidden)));
     }
     fn configure(&mut self, c: &Config) {
         debug!("futility.configure");
-        self.enabled = c.bool("futility.enabled").unwrap_or(self.enabled);
+        self.alpha_enabled = c.bool("futility.alpha.enabled").unwrap_or(self.alpha_enabled);
         self.beta_enabled = c.bool("futility.beta.enabled").unwrap_or(self.beta_enabled);
-        self.eval_position = c.bool("futility.eval.position").unwrap_or(self.eval_position);
         self.prune_remaining = c.bool("futility.prune.remaining").unwrap_or(self.prune_remaining);
         self.avoid_checks = c.bool("futility.avoid.checks").unwrap_or(self.avoid_checks);
         self.avoid_promos = c.bool("futility.avoid.promos").unwrap_or(self.avoid_promos);
+        self.promo_margin = c.bool("futility.promo.margin").unwrap_or(self.promo_margin);
         self.max_depth = c.int("futility.max.depth").unwrap_or(self.max_depth as i64) as Ply;
         self.max_depth_captures = c.int("futility.max.depth.captures").unwrap_or(self.max_depth_captures as i64) as Ply;
         self.margin1 = c.int("futility.margin1").unwrap_or(self.margin1 as i64) as i32;
         self.margin2 = c.int("futility.margin2").unwrap_or(self.margin2 as i64) as i32;
         self.margin3 = c.int("futility.margin3").unwrap_or(self.margin3 as i64) as i32;
-        self.eval_switches = Switches::MATERIAL | if self.eval_position { Switches::POSITION } else { Switches::NONE };
+        if let Ok(sw) = Switches::parse(&c.string("futility.eval.switches").unwrap_or(self.eval_switches.to_string())) {
+            self.eval_switches = sw;
+        }
+        if let Ok(mts) = MoveType::from_str(
+            &c.string("futility.movetypes.forbidden").unwrap_or(MoveType::to_string(self.move_types_forbidden))
+         ) {
+            self.move_types_forbidden = mts;
+        }
+
 
     }
     fn new_game(&mut self) {
@@ -73,18 +85,19 @@ impl Component for Futility {
 impl Default for Futility {
     fn default() -> Self {
         Futility {
-            enabled: true,
+            alpha_enabled: true,
             beta_enabled: false,
-            eval_position: true,
             prune_remaining: true,
             avoid_checks: false,
-            avoid_promos: true,  
-            eval_switches: Switches::MATERIAL | Switches::POSITION,
+            avoid_promos: false,  
+            promo_margin: false,  
             max_depth: 2, // not sure > 2 really makes sense
-            max_depth_captures: 1, 
+            max_depth_captures: 2, 
             margin1: 100,
             margin2: 250,
             margin3: 1500,
+            eval_switches: Switches::ALL_SCORING, 
+            move_types_forbidden: MoveType::Hash | MoveType::Killer, // HK 
         }
     }
 }
@@ -95,12 +108,27 @@ pub struct FutilityMeasure {
     margin: Score,
 }
 
+
+
+
+// # PLAYER                :  RATING  ERROR  POINTS  PLAYED   (%)  CFS(%)     W     D     L  D(%)
+// 1 0.3.44:fes=MBPOW      :       4      7  2747.5    5424  50.7      54  2053  1389  1982  25.6
+// 2 0.3.44:fes=MBPT       :       3      7  2741.0    5422  50.6      53  2026  1430  1966  26.4
+// 3 0.3.44:fes=MBPOWS     :       3      7  2737.5    5422  50.5      56  2055  1365  2002  25.2
+// 4 0.3.44                :       2      7  2730.0    5422  50.4      68  2037  1386  1999  25.6
+// 5 0.3.44:fes=MBPOWST    :      -1      7  2706.0    5422  49.9      51  2018  1376  2028  25.4
+// 6 0.3.44:fes=MBPO       :      -1      7  2704.0    5422  49.9      97  1992  1424  2006  26.3
+// 7 0.3.44:fes=MB         :     -11      6  2612.0    5422  48.2     ---  1904  1416  2102  26.1
+
+
 impl Futility {
     pub fn can_prune_at_node(&self, b: &Board, node: &Node, eval: &SimpleScorer) -> Option<FutilityMeasure> {
-        if !self.enabled 
+        if (!self.alpha_enabled && !self.beta_enabled)
             ||
             node.ply == 0   // dont prune at root node
             ||
+            // node.alpha + Score::from_cp(1) == node.beta // not in PVS
+            // ||
             node.depth > self.max_depth // dont prune too far away from leaf nodes
             ||
             node.alpha.is_mate()  // dont prune if either alpha or beta is a mate score
@@ -135,74 +163,39 @@ impl Futility {
     // obviously even prunign at depth=2, this move could be a quite move that attacks a piece and means quiese
     // changes the score dramatically - so futility pruning at depth = 1/2 is not without downside
     //
-    pub fn can_prune_move(&self, mv: &Move, b: &Board, measure: FutilityMeasure, node: &Node, eval: &SimpleScorer) -> Option<Score> {
-        // if mv.is_null() || b.will_check_them(mv) {
-        //     return None
-        // } 
-
-        // position wise, passed pawn promos make a huge impact so exclude them
-        if self.avoid_promos && mv.mover_piece() == Piece::Pawn && mv.to().rank_index_as_white(b.color_us()) >= 6 {
+    pub fn can_prune_move(&self, mv: &Move, mt: MoveType, b: &Board, measure: FutilityMeasure, node: &Node, eval: &SimpleScorer) -> Option<Score> {
+        if !self.alpha_enabled {
+            return None;
+        }
+        if self.move_types_forbidden.contains(mt) {
+            return None;
+        }
+        if !node.alpha.is_numeric() || node.alpha.is_mate() || node.beta.is_mate() {
             return None;
         }
 
-        let near_promos = Bitboard::RANKS_27; // .or(Bitboard::RANKS_36);
-        if node.depth > 1 && (b.pawns() & b.them() & Bitboard::home_half(b.color_us()) & near_promos).any() {
-            return None;
+        if self.avoid_checks || b.will_check_them(mv) {
+            return None
         } 
 
+        // position wise, passed pawn promos make a huge impact so exclude them
+        if mv.mover_piece() == Piece::Pawn && mv.to().rank_index_as_white(b.color_us()) >= 6 {
+            if self.avoid_promos {
+                return None;
+            }
+        } 
+
+        if node.depth > self.max_depth_captures && mv.is_capture() {
+            return None;
+        }
+
         // not a capture or promo => gain = 0
-        let gain = eval.eval_move_material(&mv);
+        let gain = b.eval_move_material(eval, mv);
 
         // fail low pruning
-        if node.depth <= self.max_depth_captures || !mv.is_capture() {
-            let est_score = measure.eval + measure.margin + Score::from_cp(gain);
-            if est_score <= node.alpha {
-                return Some(est_score);
-            }
-        }
-        // }
-
-        // thinking straight from HGM post on deep futiltiy pruning
-        // 
-        // so if at d=1 we are going to prune because
-        //      eval + margin + mv.gain <= node.alpha 
-        // then
-        //     setting M = max_value(opponent piece on board at d1)  
-        // 
-        // implies 
-        //     mv.gain <= M for any move
-        // 
-        // so
-        //     eval + margin + mv.gain <= eval + margin + M 
-        // 
-        // and we will certainly prune the child node if
-        // 
-        //     eval + margin + M < node.alpha
-        //
-        //  or looking from the parent node at d=2 (negamax reverses with alpha = -beta)
-        // 
-        //     eval_at_d1 - margin_d1 - M > node_d2.beta    (mult by -1)
-        // 
-        // but eval_at_d1 >= static_eval_at_d2 + gain(mv_at_d2) - margin_d2 
-        //     
-        //  so if static_eval_at_d2 + gain(mv_at_d2) - margin_d2 > node_d2.beta + M(at d1)+ margin_at_d1
-        //  then we can prune
-        // 
-        // We are ignoring the phase difference between d1 and d2 (a queen could be captured),
-        // so this has to be taken into account using the margin2 (which should be bigger than margin 1)
-        // and since our margin is cumulative, we have margin 2 strictly > 2 * margin 1
-        // 
-        if node.depth <= 2 && self.beta_enabled {
-            let piece_value;
-            if let Some((piece, _)) = b.most_valuable_piece(b.us()) {
-                piece_value = Score::from_cp(eval.mb.material_weights[piece].s() as i32);
-            } else {
-                piece_value = Score::zero();
-            }
-            let est_score = measure.eval - measure.margin + Score::from_cp(gain) - piece_value;
-            if est_score >= node.beta {
-                return Some(est_score);
-            }
+        let est_score = measure.eval + measure.margin + gain;
+        if est_score <= node.alpha {
+            return Some(est_score);
         }
         None
     }
@@ -212,13 +205,121 @@ impl Futility {
     // moves will also be so far away from alpha we can prune them too
     // assumes already the move itself is futile on above test 
     // and we dont prune Hash moves as they are not ordered and may have a capture value < later moves
-    pub fn can_prune_remaining_moves(&self, mt: MoveType, n: &Node) -> bool {
-        if mt == MoveType::Hash || n.depth > 1 {
+    pub fn can_prune_remaining_moves(&self, b: &Board, mt: MoveType, _n: &Node) -> bool {
+        if mt == MoveType::Hash  {
+            return false;
+        }
+        // we might be pruning a low value capture, with a high value promo later in the move list
+        let near_promos = Bitboard::RANKS_27; // .or(Bitboard::RANKS_36);
+        if (b.pawns() & b.us() & Bitboard::home_half(b.color_them()) & near_promos).any() {
             return false;
         }
         self.prune_remaining
     }
 
+
+    pub fn can_prune_all_moves(&self, b: &Board, measure: FutilityMeasure, node: &Node, eval: &SimpleScorer) -> Option<Score> {
+
+        if !self.beta_enabled {
+            return None;
+        }
+        let phase = b.phase(&eval.phaser);
+        let maximum_opp_piece = if let Some((piece, _)) = b.most_valuable_piece(b.them()) {
+            eval.mb.material_weights[piece]
+        } else {
+            Weight::zero() // all they have is a king
+        };
+
+        let near_promos = Bitboard::RANKS_27; // .or(Bitboard::RANKS_36);
+        let promo_value = if (b.pawns() & b.us() & Bitboard::home_half(b.color_them()) & near_promos).any() {
+            eval.mb.material_weights[Piece::Queen] - eval.mb.material_weights[Piece::Pawn]
+        } else {
+            Weight::zero() // no promos possible
+        };
+        let gain = cmp::max( maximum_opp_piece.interpolate(phase) as i32, promo_value.interpolate(phase) as i32);
+
+        // fail low pruning
+        let est_score = measure.eval + measure.margin + Score::from_cp(gain);
+        if est_score <= node.alpha {
+            return Some(est_score);
+        }
+        None
+    }
+
+            // if node.depth == 2 {
+        //     // move at depth=1 (by opponent) promo
+        //     let near_promos = Bitboard::RANKS_27; // .or(Bitboard::RANKS_36);
+        //     if (b.pawns() & b.them() & Bitboard::home_half(b.color_us()) & near_promos).any() {
+        //         if self.avoid_promos {
+        //             return None;
+        //         } else if self.promo_margin {
+        //             promo_value = eval.mb.material_weights[Piece::Queen].s() as i32 - eval.mb.material_weights[Piece::Pawn].s() as i32
+        //             // gain is only for 1st move. We need to take into account opponents possible promotion
+        //         }
+        //     } 
+
+        // }
+      // let mut opponents_gain = 0;
+        // if node.depth == 2 {
+        //     let our_piece_value = if let Some((piece, _)) = b.most_valuable_piece(b.us()) {
+        //         eval.mb.material_weights[piece].s() as i32
+        //     } else {
+        //         0 // all we have is a king
+        //     };
+        //     // opponents_gain = cmp::max(our_piece_value, promo_value);
+        // }
+
+        // let near_promos = Bitboard::RANKS_27; // .or(Bitboard::RANKS_36);
+        // if node.depth > 1 && (b.pawns() & b.them() & Bitboard::home_half(b.color_us()) & near_promos).any() {
+        //     return None;
+        // } 
+
+    
+    // reverse futility
+    //
+    // thinking straight from HGM post on deep futiltiy pruning
+    // 
+    // so if at d=1 we are going to prune because
+    //      eval + margin + mv.gain <= node.alpha 
+    // then
+    //     setting M = max_value(opponent piece on board at d1)  
+    // 
+    // implies 
+    //     mv.gain <= M for any move
+    // 
+    // so
+    //     eval + margin + mv.gain <= eval + margin + M 
+    // 
+    // and we will certainly prune the child node if
+    // 
+    //     eval + margin + M < node.alpha
+    //
+    //  or looking from the parent node at d=2 (negamax reverses with alpha = -beta)
+    // 
+    //     eval_at_d1 - margin_d1 - M > node_d2.beta    (mult by -1)
+    // 
+    // but eval_at_d1 >= static_eval_at_d2 + gain(mv_at_d2) - margin_d2 
+    //     
+    //  so if static_eval_at_d2 + gain(mv_at_d2) - margin_d2 > node_d2.beta + M(at d1)+ margin_at_d1
+    //  then we can prune
+    // 
+    // We are ignoring the phase difference between d1 and d2 (a queen could be captured),
+    // so this has to be taken into account using the margin2 (which should be bigger than margin 1)
+    // and since our margin is cumulative, we have margin 2 strictly > 2 * margin 1
+    // 
+    // if node.depth <= 2 && self.beta_enabled {
+    //     let piece_value;
+    //     if let Some((piece, _)) = b.most_valuable_piece(b.us()) {
+    //         piece_value = Score::from_cp(eval.mb.material_weights[piece].s() as i32);
+    //     } else {
+    //         piece_value = Score::zero();
+    //     }
+    //     let est_score = measure.eval - measure.margin + Score::from_cp(gain) - piece_value;
+    //     if est_score >= node.beta {
+    //         return Some(est_score);
+    //     }
+    // }
+    
 }
 
 

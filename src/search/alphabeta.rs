@@ -103,7 +103,7 @@ impl Algo {
                         // previously this position raised alpha, but didnt trigger a cut
                         // no point going through moves as we know what the max score is
                         if entry.score >= n.beta {
-                            self.search_stats.inc_node_cut(ply, MoveType::Hash);
+                            self.search_stats.inc_node_cut(ply, MoveType::Hash, -1);
                             self.search_stats.inc_leaf_tt_nodes(ply);
                             return entry.score;
                         }
@@ -125,7 +125,7 @@ impl Algo {
                         // not all child nodes were scored, so score is a lower bound
                         // FIXME: probably dont set alpha just the hinted mv and re-search the node
                         if entry.score >= n.beta {
-                            self.search_stats.inc_node_cut(ply, MoveType::Hash);
+                            self.search_stats.inc_node_cut(ply, MoveType::Hash, -1);
                             self.tt.store(board.hash(), entry);
                             // self.record_truncated_move(ply, &entry.bm);
                             self.search_stats.inc_leaf_tt_nodes(ply);
@@ -167,7 +167,11 @@ impl Algo {
             &n,
             &self.eval,
         );
-
+        if let Some(futility) = futility {
+            if let Some(fut_score) = self.futility.can_prune_all_moves(board, futility, &n, &self.eval) {
+                return fut_score;
+            }
+        }
         // null move
         if !self.minmax
             && n.beta.is_numeric()
@@ -180,16 +184,16 @@ impl Algo {
             let r = self.nmp.depth_reduction(board, ply, depth);
             let mv = Move::NULL_MOVE;
             // try futility pruning on null move
-            if let Some(futility) = futility {
-                if score > -Score::INFINITY {
-                    if let Some(score) = self.futility.can_prune_move(&mv, board, futility, &n, &self.eval) {
-                        if score >= n.beta {
-                            self.search_stats.inc_node_cut(ply, MoveType::Null);
-                            return score;
-                        }
-                    }
-                }
-            }
+            // if let Some(futility) = futility {
+            //     if score > -Score::INFINITY {
+            //         if let Some(score) = self.futility.can_prune_move(&mv, board, futility, &n, &self.eval) {
+            //             if score >= n.beta {
+            //                 self.search_stats.inc_node_cut(ply, MoveType::Null);
+            //                 return score;
+            //             }
+            //         }
+            //     }
+            // }
             let mut child_board = board.make_move(&mv);
             self.current_variation.set_last_move(ply + 1, &mv);
             self.search_stats.inc_nmp(ply);
@@ -203,7 +207,7 @@ impl Algo {
             );
             board.undo_move(&mv);
             if child_score >= n.beta {
-                self.search_stats.inc_node_cut(ply, MoveType::Null);
+                self.search_stats.inc_node_cut(ply, MoveType::Null, -1);
                 return child_score;
             }
         }
@@ -215,20 +219,24 @@ impl Algo {
             self.search_stats.inc_move(ply);
             if let Some(futility) = futility {
                 // check we have a score (and hence a move) nefore we risk pruning everything
-                if score > -Score::INFINITY {
-                    if let Some(est_score) = self.futility.can_prune_move(&mv, board, futility, &n, &self.eval) {
+                // if score > -Score::INFINITY {
+                    if let Some(est_score) = self.futility.can_prune_move(&mv, move_type, board, futility, &n, &self.eval) {
                         self.search_stats.inc_fp_move(ply);
-                        if est_score > n.beta {
-                            self.search_stats.inc_node_cut(ply, MoveType::Null);
-                            return est_score;
+                        // if est_score > n.beta {
+                        //     self.search_stats.inc_node_cut(ply, MoveType::Null);
+                        //     return est_score;
+                        // }
+                        if score == -Score::INFINITY {
+                            score = est_score;
+
                         }
-                        if self.futility.can_prune_remaining_moves(move_type, &n) {
+                        if self.futility.can_prune_remaining_moves(board, move_type, &n) {
                             break;
                         } else {
                             continue;
                         }
                     }
-                }
+                // }
             }
             let mut child_board = board.make_move(&mv);
             self.repetition.push_move(&mv, &child_board);
@@ -323,7 +331,7 @@ impl Algo {
 
             if n.alpha >= n.beta && !self.minmax {
                 nt = NodeType::Cut;
-                self.search_stats.inc_node_cut(ply, move_type);
+                self.search_stats.inc_node_cut(ply, move_type, (count - 1) as i32 );
                 self.killers.store(ply, &mv);
                 self.history.beta_cutoff(ply, board, &mv);
                 break;

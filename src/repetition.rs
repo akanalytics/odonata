@@ -30,12 +30,13 @@ impl Component for Repetition {
             .unwrap_or(self.avoid_tt_on_repeats)
     }
     fn new_game(&mut self) {
+        self.new_position();
+    }
+
+    fn new_position(&mut self) {
         self.prior_positions.clear();
         self.root_index = 0;
     }
-
-    // FIXME!
-    fn new_position(&mut self) {}
 }
 
 impl Default for Repetition {
