@@ -1,6 +1,7 @@
 
 use crate::cache::tt2::TranspositionTable2;
-use crate::clock::Clock;
+use crate::stat::Stat;
+use crate::utils::Formatter;
 use crate::config::{Component, Config};
 use crate::search::algo::Algo;
 use crate::position::Position;
@@ -57,8 +58,8 @@ impl fmt::Display for Engine {
         writeln!(f, "config filename  : {}", self.config_filename)?;
         writeln!(f, "threads          : {}", self.thread_count)?;
         writeln!(f, "shared tt        : {}", self.shared_tt)?;
-        writeln!(f, "engine init time : {}", Clock::format(self.engine_init_time))?;
-        writeln!(f, "search init time : {}", Clock::format(self.search_init_time))?;
+        writeln!(f, "engine init time : {}", Formatter::format_duration(self.engine_init_time))?;
+        writeln!(f, "search init time : {}", Formatter::format_duration(self.search_init_time))?;
         write!(f, "\n[algo]\n{}", self.algo)
     }
 }
@@ -135,6 +136,7 @@ impl Engine {
                 algo.tt.enabled = self.algo.tt.enabled;
             }
             algo.move_orderer.thread = i;
+    
             if i >= 1 {
                 algo.max_depth += 8;
                 algo.task_control.progress_callback = None;
@@ -151,6 +153,7 @@ impl Engine {
                 algo.ids.start_ply = 2;
             }
             let cl = move || {
+                Stat::set_this_thread_index(i as usize);
                 algo.search_iteratively();
                 algo
             };
@@ -177,7 +180,7 @@ impl Engine {
                 algo.score().to_string(),
                 algo.search_stats.cumulative().all_nodes(),
                 algo.search_stats.cumulative_knps(),
-                Clock::format(algo.search_stats.cumulative().real_time),
+                Formatter::format_duration(algo.search_stats.cumulative().elapsed),
                 algo.pv().to_string(),
             );
             // knps += algo.search_stats.cumulative_knps();
@@ -203,6 +206,7 @@ impl Engine {
             knps as u32 / self.thread_count,
         );
         debug!("\n\n\n=====Search completed=====\n{}", self);
+        // crate::globals::counts::LEGAL_MOVE_COUNT.print_all()        ;
     }
 }
 
@@ -241,7 +245,7 @@ mod tests {
                     "Time with {} threads (shared:{}): {}\n\n\n",
                     i,
                     shared,
-                    Clock::format(time::Instant::now() - start)
+                    Formatter::format_duration(time::Instant::now() - start)
                 );
                 // println!("\ntt\n{}", eng.algo.tt);
             }

@@ -1,5 +1,4 @@
 use crate::{catalog::*};
-use crate::clock::Clock;
 use crate::config::Component;
 use crate::perft::Perft;
 use crate::search::engine::Engine;
@@ -33,7 +32,7 @@ impl Bench {
             let t = Instant::now();
             let p = Perft::perft(&mut board, d);
             let elapsed = t.elapsed();
-            println!("perft({}) = {:<14} in {}", d, p, Clock::format(elapsed));
+            println!("perft({}) = {:<14} in {}", d, p, Formatter::format_duration(elapsed));
             if d == depth {
                 println!(
                     "\n{} nodes/sec",
@@ -54,7 +53,7 @@ impl Bench {
             let t = Instant::now();
             let mut p = Perft::default();
             let total = p.perft_cat(&mut board, d);
-            let time = Clock::format(t.elapsed());
+            let time = Formatter::format_duration(t.elapsed());
             let elapsed = t.elapsed();
             println!(
                 "{:>14}{:>14}{:>14}{:>14}{:>14}{:>14}{:>14}",

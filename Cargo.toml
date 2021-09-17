@@ -1,6 +1,6 @@
 [package]
 name = "odonata"
-version = "0.3.44"
+version = "0.3.45"
 license = "GPL-3.0+"
 homepage = "https://github.com/akanalytics/odonata"
 authors = [
@@ -74,6 +74,15 @@ harness = false
 
 [profile.bench]
 debug = true
+opt-level = 3
+
+[profile.dev]
+opt-level = 3
+debug = true  # allow profiling of the  main executable 
+
+[profile.test]
+opt-level = 3
+debug = true  # allow profiling of the  main executable 
 
 [profile.release]
 # panic = "abort"

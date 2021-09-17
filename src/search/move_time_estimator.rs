@@ -1,7 +1,6 @@
 use crate::board::Board;
-use crate::clock::Clock;
 use crate::config::{Config, Component};
-// use crate::{debug, logger::LogInit};
+use crate::utils::Formatter;
 use crate::search::searchstats::SearchStats;
 use crate::search::timecontrol::TimeControl;
 use crate::types::Ply;
@@ -78,18 +77,18 @@ impl fmt::Display for MoveTimeEstimator {
         writeln!(f, "branching factor : {}", self.branching_factor)?;
         writeln!(f, "const moves rem. : {}", self.moves_rem)?;
         writeln!(f, "% of time adv    : {}", self.perc_of_time_adv)?;
-        writeln!(f, "allotted for mv  : {}", Clock::format(self.allotted()))?;
-        writeln!(f, "time estimate    : {}", Clock::format(self.time_estimate))?;
+        writeln!(f, "allotted for mv  : {}", Formatter::format_duration(self.allotted()))?;
+        writeln!(f, "time estimate    : {}", Formatter::format_duration(self.time_estimate))?;
         writeln!(f, "deterministic    : {}", self.deterministic)?;
         writeln!(f, "nodestime        : {}", self.nodestime)?;
-        writeln!(f, "elapsed used     : {}", Clock::format(self.elapsed_used))?;
+        writeln!(f, "elapsed used     : {}", Formatter::format_duration(self.elapsed_used))?;
         Ok(())
     }
 }
 
 impl MoveTimeEstimator {
     pub fn is_time_up(&self, _ply: Ply, search_stats: &SearchStats) -> bool {
-        let elapsed = search_stats.elapsed(self.deterministic);
+        let elapsed = search_stats.elapsed_search();
 
         let time_up = match self.time_control {
             TimeControl::DefaultTime => false, 
@@ -112,10 +111,10 @@ impl MoveTimeEstimator {
         self.pondering.load(atomic::Ordering::SeqCst)
     }
 
-    pub fn estimate_ply(&mut self, _ply: Ply, search_stats: &SearchStats) {
+    pub fn estimate_iteration(&mut self, _ply: Ply, search_stats: &SearchStats) {
         // debug_assert!(search_stats.depth() >= ply-1, "ensure we have enough stats");
         let _forecast_depth = search_stats.depth();
-        self.elapsed_used = search_stats.elapsed(self.deterministic);
+        self.elapsed_used = search_stats.clock.elapsed_iteration();
         self.time_estimate = self.elapsed_used * self.branching_factor as u32;
     }
 

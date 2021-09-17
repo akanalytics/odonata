@@ -2,9 +2,9 @@ use crate::board::boardbuf::BoardBuf;
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::catalog::Catalog;
+use crate::utils::Formatter;
 use crate::config::{Config, Component};
 use crate::mv::Move;
-use crate::clock::Clock;
 use crate::variation::Variation;
 use crate::perft::Perft;
 use crate::search::engine::Engine;
@@ -295,7 +295,7 @@ impl Uci {
         for d in 1..=depth {
             let t = Instant::now();
             let p = Perft::perft(&mut board, d);
-            Self::print(&format!("info string perft({}) = {:<12} in {}", d, p, Clock::format(t.elapsed())));
+            Self::print(&format!("info string perft({}) = {:<12} in {}", d, p, Formatter::format_duration(t.elapsed())));
         }
         Ok(())
     }

@@ -21,7 +21,7 @@ impl Algo {
     }
 
     pub fn run_alphabeta(&mut self, board: &mut Board, node: &mut Node) {
-        self.search_stats.reset_keeping_pv();
+        self.search_stats.new_iteration();
         self.pv_table = PvTable::new(MAX_PLY as usize);
         self.search_stats.score = self.alphabeta_recursive(
             board,

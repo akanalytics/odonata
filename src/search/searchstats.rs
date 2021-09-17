@@ -1,7 +1,8 @@
-use crate::clock::{Clock, DeterministicClock};
+use crate::clock::{Clock};
 use crate::eval::score::Score;
 use crate::variation::Variation;
 use crate::types::{Ply, MAX_PLY, MoveType};
+use crate::utils::Formatter;
 use std::fmt;
 use std::cmp;
 use std::sync::Arc;
@@ -18,8 +19,7 @@ pub struct SearchStats {
     this_thread_node_count: u64,
 
     pub depth: Ply,
-    realtime: Clock,
-    deterministic: DeterministicClock,
+    pub clock: Clock,
 
     pub completed: bool,
     pub user_cancelled: bool,
@@ -37,18 +37,16 @@ impl fmt::Display for SearchStats {
         writeln!(f, "depth            : {}", self.depth)?;
         writeln!(f, "pv               : {}", self.pv())?;
         writeln!(f, "score            : {}", self.score)?;
-        writeln!(f, "clock (detmstic) : {}", Clock::format(self.deterministic.elapsed()))?;
-        writeln!(f, "clock (realtime) : {}", Clock::format(self.realtime.elapsed()))?;
+        writeln!(f, "clock (elapsed)  : {}", Formatter::format_duration(self.clock.elapsed_search()))?;
         writeln!(f, "completed        : {}", self.completed())?;
         writeln!(f, "user cancelled   : {}", self.user_cancelled)?;
         writeln!(f, "calc depth       : {}", self.depth())?;
         writeln!(f, "selective depth  : {}", self.selective_depth())?;
-        writeln!(f, "tot nodes/sec (k): {}", self.total_knps())?;
-        writeln!(f, "int nodes/sec (k): {}", self.interior_knps())?;
+        writeln!(f, "all threads nodes: {}", self.all_threads_node_count.load(Ordering::Relaxed))?;
+        writeln!(f, "tot nodes/sec (k): {}", self.all_threads_cumulative_knps())?;
         writeln!(f, "cuts on 1st move : {:.01}%", self.cuts_on_first_move() * 100.0)?;
         writeln!(f, "branching factor : {:.02}", self.branching_factor())?;
         writeln!(f, "q branch factor  : {:.02}", self.q_branching_factor())?;
-        writeln!(f, "all threads nodes: {}", self.all_threads_node_count.load(Ordering::Relaxed))?;
         writeln!(f)?;
 
         write!(f, "{:<7}", "ply")?;
@@ -79,8 +77,7 @@ impl Default for SearchStats {
             all_threads_node_count: Arc::new(AtomicU64::new(0)),
             this_thread_node_count: 0, 
             depth: 0,
-            realtime: Clock::default(),
-            deterministic: DeterministicClock::default(),
+            clock: Clock::default(),
             completed: false,
             user_cancelled: false,
             total: NodeStats::default(),
@@ -117,25 +114,20 @@ impl SearchStats {
     }
 
     pub fn restart_clocks(&mut self) {
-        self.realtime.restart();
-        self.deterministic.restart();
+        self.clock = Clock::new();
     }
 
-    pub fn elapsed(&self, deterministic: bool) -> Duration {
-        if deterministic {
-            self.deterministic.elapsed()
-        } else {
-            self.realtime.elapsed()
-        }
+    pub fn elapsed_search(&self) -> Duration {
+        self.clock.elapsed_search()
     }
 
-    pub fn reset_keeping_pv(&mut self) {
+    pub fn new_iteration(&mut self) {
         self.plies_mut().iter_mut().for_each(|s| s.clear_node_stats());
         self.total.clear_node_stats();
         self.score = Score::default();
         self.completed = false;
         self.user_cancelled = false;
-        self.restart_clocks();
+        self.clock.start_iteration();
     }
 
     #[inline]
@@ -187,10 +179,7 @@ impl SearchStats {
 
     pub fn record_iteration(&mut self, ply: Ply, completed: bool, pv: Variation) {
         let ply = ply as usize;
-        self.plies[ply].real_time = self.realtime.elapsed();
-        self.plies[ply].deterministic_time = self.deterministic.elapsed();
-        self.total.real_time += self.realtime.elapsed();
-        self.total.deterministic_time += self.deterministic.elapsed();
+        self.plies[ply].elapsed = self.clock.elapsed_ply();
         self.completed = completed;
         if completed {
             self.pv = pv;
@@ -326,36 +315,32 @@ impl SearchStats {
         &self.plies[ply as usize]
     }
 
-    #[inline]
-    pub fn total_knps(&self) -> u64 {
-        self.total.all_nodes() / (1 + self.realtime.elapsed_millis())
-    }
+    // #[inline]
+    // pub fn total_knps(&self) -> u64 {
+    //     self.total.all_nodes() / (1 + self.realtime.elapsed_millis())
+    // }
 
     pub fn all_threads_cumulative_total_nodes(&self) -> u64 {
         self.all_threads_node_count.load(Ordering::Relaxed)
     }
 
     pub fn all_threads_cumulative_knps(&self) -> u64 {
-        self.all_threads_node_count.load(Ordering::Relaxed) / (1 + self.cumulative.real_time_millis())
+        self.all_threads_node_count.load(Ordering::Relaxed) / (1 + self.cumulative_time_as_millis())
     }
 
     #[inline]
     pub fn cumulative_knps(&self) -> u64 {
-        self.cumulative.all_nodes() / (1 + self.cumulative.real_time_millis())
+        self.cumulative.all_nodes() / (1 + self.cumulative_time_as_millis())
     }
 
     pub fn cumulative_time_as_millis(&self) -> u64 {
-        self.cumulative.real_time_millis()
+        // whats accumulated plus whats elapsed on this iteration
+        self.clock.elapsed_search().as_millis() as u64
     }
 
     #[inline]
     pub fn total_time(&self) -> Duration {
-        self.total.real_time
-    }
-
-    #[inline]
-    pub fn interior_knps(&self) -> u64 {
-        self.total.interior_nodes() / (1 + self.realtime.elapsed_millis())
+        self.total.elapsed
     }
 
     // BF = total / interior
@@ -419,8 +404,7 @@ pub struct NodeStats {
     pub mv: u64,   // total moves
 
     pub est_time: Duration,
-    pub real_time: Duration,
-    pub deterministic_time: Duration,
+    pub elapsed: Duration,
 
 }
 
@@ -432,8 +416,8 @@ impl NodeStats {
         Self::default()
     }
 
-    pub fn real_time_millis(&self) -> u64 {
-        self.real_time.as_millis() as u64
+    pub fn elapsed_millis(&self) -> u64 {
+        self.elapsed.as_millis() as u64
     }
 
     pub fn clear_node_stats(&mut self) {
@@ -476,8 +460,7 @@ impl NodeStats {
         self.q_tt_nodes += other.q_tt_nodes;
 
         self.est_time += other.est_time;
-        self.real_time += other.real_time;
-        self.deterministic_time += other.deterministic_time;
+        self.elapsed += other.elapsed;
     }
 
     #[inline]
@@ -620,7 +603,6 @@ impl NodeStats {
 
             est_time = "-----------",
             real_time = "-----------",
-            // deterministic_time = "-----------",
         )
     }
 
@@ -661,9 +643,8 @@ impl NodeStats {
             qleaf = self.q_leaf_nodes,
             qttnode = self.q_tt_nodes,
 
-            est_time = Clock::format(self.est_time),
-            real_time = Clock::format(self.real_time),
-            // deterministic_time = Clock::format(self.deterministic_time),
+            est_time = Formatter::format_duration(self.est_time),
+            real_time = Formatter::format_duration(self.elapsed),
         )
     }
 }

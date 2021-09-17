@@ -3,7 +3,7 @@ use std::ops::{Bound, RangeBounds};
 use std::time::Duration;
 use format_num::*;
 use itertools::Itertools;
-use crate::clock::Clock;
+use std::fmt;
 
 
 
@@ -80,9 +80,42 @@ impl Formatter {
     }
 
     pub fn format_duration(d: Duration) -> String {
-        Clock::format(d)
+        DurationNewType(d).to_string()
+   }
+}
+
+pub struct DurationNewType(pub Duration);
+
+fn pluralize(n: u64) -> &'static str {
+    if n > 1 {
+        "s"
+    } else {
+        ""
     }
 }
+
+// eg 2 days 15h 4m 3.003s
+impl fmt::Display for DurationNewType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let days = self.0.as_secs() / (60 * 60 * 24);
+        let hours = self.0.as_secs() / (60 * 60) % 24;
+        let mins = self.0.as_secs() / 60;
+        let secs = self.0.as_secs_f32() - (60 * mins) as f32;
+        let mins = mins % 60;
+        if days > 0 {
+            write!(f, "{} day{} ", days, pluralize(days))?;
+        }
+        if hours > 0 {
+            write!(f, "{}h ", hours)?;
+        }
+        if mins > 0 {
+            write!(f, "{}m ", mins)?;
+        }
+        write!(f, "{:.3}s", secs)?;
+        Ok(())
+    }
+}
+
 
 
 

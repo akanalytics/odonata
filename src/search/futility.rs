@@ -87,7 +87,7 @@ impl Default for Futility {
         Futility {
             alpha_enabled: true,
             beta_enabled: false,
-            prune_remaining: true,
+            prune_remaining: false,
             avoid_checks: false,
             avoid_promos: false,  
             promo_margin: false,  
@@ -97,7 +97,7 @@ impl Default for Futility {
             margin2: 250,
             margin3: 1500,
             eval_switches: Switches::ALL_SCORING, 
-            move_types_forbidden: MoveType::Hash | MoveType::Killer, // HK 
+            move_types_forbidden: MoveTypes::EMPTY // MoveType::Hash | MoveType::Killer, // HK 
         }
     }
 }

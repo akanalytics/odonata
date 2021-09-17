@@ -1,42 +1,15 @@
 use crate::globals::counts;
 use std::fmt;
 use std::time::{Duration, Instant};
+use crate::utils::Formatter;
 
-pub struct DurationNewType(pub Duration);
 
-fn pluralize(n: u64) -> &'static str {
-    if n > 1 {
-        "s"
-    } else {
-        ""
-    }
-}
-
-// eg 2 days 15h 4m 3.003s
-impl fmt::Display for DurationNewType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let days = self.0.as_secs() / (60 * 60 * 24);
-        let hours = self.0.as_secs() / (60 * 60) % 24;
-        let mins = self.0.as_secs() / 60;
-        let secs = self.0.as_secs_f32() - (60 * mins) as f32;
-        let mins = mins % 60;
-        if days > 0 {
-            write!(f, "{} day{} ", days, pluralize(days))?;
-        }
-        if hours > 0 {
-            write!(f, "{}h ", hours)?;
-        }
-        if mins > 0 {
-            write!(f, "{}m ", mins)?;
-        }
-        write!(f, "{:.3}s", secs)?;
-        Ok(())
-    }
-}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Clock {
-    start: Instant,
+    start_search: Instant,
+    start_iteration: Instant,
+    start_ply: Instant,
 }
 
 // a clock that is deterministic based upon the count of various operations
@@ -85,21 +58,24 @@ impl DeterministicClock {
 
 impl fmt::Display for DeterministicClock {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", Clock::format(self.elapsed()))
+        write!(f, "{}", Formatter::format_duration(self.elapsed()))
     }
 }
 
 impl Default for Clock {
     fn default() -> Self {
+        let now = Instant::now();
         Clock {
-            start: Instant::now(),
+            start_search: now,
+            start_iteration: now,
+            start_ply: now,
         }
     }
 }
 
 impl fmt::Display for Clock {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", Self::format(self.elapsed()))
+        write!(f, "{}", Formatter::format_duration(self.elapsed_search()))
     }
 }
 
@@ -108,20 +84,29 @@ impl Clock {
         Self::default()
     }
 
-    pub fn restart(&mut self) {
-        self.start = Instant::now();
+    pub fn start_iteration(&mut self) {
+        self.start_iteration = Instant::now();
+    }
+
+    pub fn start_ply(&mut self) {
+        self.start_ply = Instant::now();
     }
 
     /// will panic if clock not started
-    pub fn elapsed(&self) -> Duration {
-        self.start.elapsed()
+    pub fn elapsed_search(&self) -> Duration {
+        self.start_search.elapsed()
     }
 
-    pub fn elapsed_millis(&self) -> u64 {
-        self.start.elapsed().as_millis() as u64
+    pub fn elapsed_iteration(&self) -> Duration {
+        self.start_iteration.elapsed()
     }
 
-    pub fn format(d: Duration) -> String {
-        DurationNewType(d).to_string()
+    pub fn elapsed_ply(&self) -> Duration {
+        self.start_ply.elapsed()
     }
+
+    pub fn elapsed_search_millis(&self) -> u64 {
+        self.elapsed_search().as_millis() as u64
+    }
+
 }

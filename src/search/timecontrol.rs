@@ -1,9 +1,8 @@
-use crate::clock::DurationNewType;
+use crate::utils::Formatter;
 use crate::types::{Color, Ply};
 use std::fmt;
 use std::time::Duration;
 use std::str::FromStr;
-use crate::utils::Formatter;
 
 /// https://en.wikipedia.org/wiki/Time_control
 ///
@@ -30,13 +29,13 @@ impl fmt::Display for TimeControl {
         match self {
             TimeControl::DefaultTime => write!(f, "Default")?,
             TimeControl::Depth(max_ply) => write!(f, "Depth({})", max_ply)?,
-            TimeControl::SearchTime(duration) => write!(f, "SearchTime({})", DurationNewType(*duration))?,
+            TimeControl::SearchTime(duration) => write!(f, "SearchTime({})", Formatter::format_duration(*duration))?,
             TimeControl::NodeCount(max_nodes) => write!(f, "NodeCount({})", Formatter::format_u128(*max_nodes as u128))?,
             TimeControl::Infinite => write!(f, "Infinite")?,
             TimeControl::MateIn(depth) => write!(f, "MateIn({})", depth)?,
             TimeControl::RemainingTime { our_color, wtime, btime, winc: _, binc: _, movestogo: _ } => {
                 let duration = our_color.chooser_wb(wtime, btime);
-                write!(f, "RemainingTime({})", DurationNewType(*duration))?;
+                write!(f, "RemainingTime({})", Formatter::format_duration(*duration))?;
             }
         }
         Ok(())

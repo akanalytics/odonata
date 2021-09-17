@@ -132,7 +132,8 @@ impl Algo {
             self.run_alphabeta(&mut self.board.clone(), &mut Node::root(depth));
             let mut res = self.search_stats().clone();
 
-            self.mte.estimate_ply(depth + 1, &res);
+            self.search_stats.clock.start_ply();
+            self.mte.estimate_iteration(depth + 1, &res);
             self.search_stats
                 .record_time_estimate(depth + 1, &self.mte.time_estimate);
             self.ids.iterations.push(res.clone());
