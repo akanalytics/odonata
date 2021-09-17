@@ -18,25 +18,15 @@ struct AlignedAtomic(AtomicI64);
 #[derive(Default, Debug)]
 pub struct Stat {
     name: &'static str,
-    counter: [AlignedAtomic;16],
-    // thread_index: usize,
+    counter: [AlignedAtomic;32],
 }
 
 impl Clone for Stat {
     fn clone(&self) -> Self {
         let stat = Stat::new(self.name);
-        // stat.thread_index = self.thread_index + 1;
-        // for a in stat.counter.iter_mut() {
-        //     *a = AtomicI64::new(a.load(Ordering::Relaxed))
-        // }
-        // assert!(stat.thread_index < 16, "Too many clones for {}", stat.name);
         stat
     }
 }
-
-
-
-
 
 
 
@@ -98,6 +88,22 @@ impl Stat {
                 AlignedAtomic(AtomicI64::new(0)),
                 AlignedAtomic(AtomicI64::new(0)),
                 AlignedAtomic(AtomicI64::new(0)),
+                AlignedAtomic(AtomicI64::new(0)),
+                AlignedAtomic(AtomicI64::new(0)),
+                AlignedAtomic(AtomicI64::new(0)),
+                AlignedAtomic(AtomicI64::new(0)),
+                AlignedAtomic(AtomicI64::new(0)),
+                AlignedAtomic(AtomicI64::new(0)),
+                AlignedAtomic(AtomicI64::new(0)),
+                AlignedAtomic(AtomicI64::new(0)),
+                AlignedAtomic(AtomicI64::new(0)),
+                AlignedAtomic(AtomicI64::new(0)),
+                AlignedAtomic(AtomicI64::new(0)),
+                AlignedAtomic(AtomicI64::new(0)),
+                AlignedAtomic(AtomicI64::new(0)),
+                AlignedAtomic(AtomicI64::new(0)),
+                AlignedAtomic(AtomicI64::new(0)),
+                AlignedAtomic(AtomicI64::new(0)),
             ],
         }
     }
@@ -106,26 +112,15 @@ impl Stat {
     #[inline]
     pub fn add(&self, add: i64) {
         #[cfg(not(feature="remove_metrics"))]    
-        // THREAD_INDEX.with(|f| {
-        //     self.counter[f.load(Ordering::Relaxed)].fetch_add(add, Ordering::Relaxed);
-        // });
-        
         THREAD_INDEX.with(|f| {
-            assert!(self.counter[f.load(Ordering::Relaxed)].0.load(Ordering::Relaxed) < 100000000);
+            self.counter[f.load(Ordering::Relaxed)].0.fetch_add(add, Ordering::Relaxed);
         });
-        
-        
     }
 
     #[inline]
     pub fn increment(&self) {
         self.add(1);
     }
-
-    // #[inline]
-    // pub fn set(&self, value: i64) {
-    //     self.counter.store(value, Ordering::Relaxed);
-    // }
 
     #[inline]
     pub fn get(&self) -> i64 {
@@ -136,15 +131,6 @@ impl Stat {
     pub fn name(&self) -> &str {
         &self.name
     }
-
-    pub fn print_all(&self) {
-        self.counter.iter().for_each(
-            |a| {
-                let v = a.0.load(Ordering::Relaxed);
-                println!("v = {}", v);
-        }); 
-    }
-
 }
 
 

@@ -252,7 +252,8 @@ impl Board {
 
     #[inline]
     pub fn least_valuable_piece(&self, region: Bitboard) -> Bitboard {
-        for &p in &Piece::ALL_BAR_KING {
+        // the king is an attacker too!
+        for &p in &Piece::ALL_BAR_NONE {
             if self.pieces(p).intersects(region) {
                 return (self.pieces(p) & region).first();
             }
@@ -261,7 +262,8 @@ impl Board {
     }
 
     #[inline]
-    pub fn most_valuable_piece(&self, region: Bitboard) -> Option<(Piece,Square)> {
+    pub fn most_valuable_piece_except_king(&self, region: Bitboard) -> Option<(Piece,Square)> {
+        // we dont count the king here
         for &p in Piece::ALL_BAR_KING.iter().rev() {
             if self.pieces(p).intersects(region) {
                 return Some((p, (self.pieces(p) & region).first_square()));

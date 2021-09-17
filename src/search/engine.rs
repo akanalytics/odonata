@@ -69,7 +69,7 @@ impl Component for Engine {
     fn settings(&self, c: &mut Config) {
         c.set(
             "Threads",
-            &format!("type spin default {} min 1 max 512", self.thread_count),
+            &format!("type spin default {} min 1 max 16", self.thread_count),
         );
         c.set("Config file", &format!("type string default {}", self.config_filename));
         self.algo.settings(c);

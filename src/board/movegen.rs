@@ -20,6 +20,7 @@ trait MoveGen {}
 // fn threats_to(&self, c: Color) -> Bitboard;
 
 impl Board {
+    // all pieces of either color attacking a region
     #[inline]
     pub fn attacked_by(&self, targets: Bitboard) -> Bitboard {
         BoardCalcs::attacked_by(targets, self.occupied(), self)

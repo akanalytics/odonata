@@ -1,4 +1,6 @@
+use crate::{Bitboard, Piece, PreCalc};
 use crate::board::Board;
+use crate::board::boardcalcs::BoardCalcs;
 use crate::mv::Move;
 use crate::eval::eval::SimpleScorer;
 use std::cmp;
@@ -8,16 +10,45 @@ impl SimpleScorer {
     // a rusty version of https://www.chessprogramming.org/SEE_-_The_Swap_Algorithm
     //
     pub fn eval_move_see(&self, board: &Board, mv: &Move) -> i32 {
+
+        debug_assert!(!mv.is_null());
+        debug_assert!(board.us().contains(mv.from().as_bb()));
+        debug_assert!(board.them().contains(mv.capture_square().as_bb()));
+
+        let bb = PreCalc::default();
         let mut gain: [i32;40] = [0;40]; 
         let mut d = 0;
         //let mayXray = board.pawns() | board.bishops() | board.rooks() | board.queens();
         let mut from = mv.from().as_bb();
         let mut occ = board.black() | board.white();
         let mut attacker_color = board.color_us();
-        let mut attackers = board.attacked_by(mv.to().as_bb());  // will include the current 'mv' attacker
+        // let mut attackers_bw = board.attacked_by(mv.to().as_bb());  // will include the current 'mv' attacker
+        let mut attackers_bw = BoardCalcs::attacked_by(mv.to().as_bb(), occ, board); // will include the current 'mv' attacker
+        let mut attackers_xray = BoardCalcs::attacked_by(mv.to().as_bb(), Bitboard::EMPTY, board); // will include the current 'mv' attacker
+        attackers_xray -= board.non_line_pieces() | attackers_bw ;
+
         gain[0] = self.mb.material_weights[mv.capture_piece()].s() as i32;
-        while !(attackers & board.color(attacker_color)).is_empty() {
+        while from.any() {
             let mover = board.piece_at(from);
+            attackers_bw -= from; 
+            occ -= from; 
+            attacker_color = attacker_color.opposite();
+
+            // xray attackers
+            // we move some pieces from xray into attackers - these are all line pieces
+            for sq in (attackers_xray & board.color(attacker_color)).squares() {
+                if bb.strictly_between(sq, mv.to()).disjoint(occ) {
+                    attackers_xray -= sq.as_bb();
+                    attackers_bw |= sq.as_bb();
+                }
+            }
+
+            from = board.least_valuable_piece(attackers_bw & board.color(attacker_color));
+            if mover == Piece::King && from.any() {
+                // king is the last attacker, but he cant move into check
+                // so break before adding another trophy gain
+                break
+            }
             d += 1; 
             gain[d]  = self.mb.material_weights[mover].s() as i32 - gain[d-1]; // what you are taking less what opp has
             // eprintln!("{}\n{}: mover: {} from: {:?} for spec gain {:?}\n{}",board.to_fen(), d, mover, from, gain, attackers);
@@ -25,13 +56,8 @@ impl SimpleScorer {
             //     break; // safely prune as from here on its zero
             // } 
             
-            attackers -= from; // reset bit in set to traverse
-            occ -= from; // reset bit in temporary occupancy (for x-Rays)
             
-            // if ( fromSet & mayXray )
-            //     attadef |= considerXrays(occ, ..);
-            attacker_color = attacker_color.opposite();
-            from = board.least_valuable_piece(attackers & board.color(attacker_color));
+
             if d > 38 {
                 // warn!("{} {}", mv, board.to_fen());
                 break;
@@ -55,6 +81,7 @@ impl SimpleScorer {
 
 
 }
+
 
 
 
@@ -84,6 +111,18 @@ mod tests {
         let b = Board::parse_fen("7k/8/8/8/1q6/p7/2N5/R6K w - - 0 1").unwrap();  //RN v pq
         let mv = b.parse_uci_move("a1a3").unwrap();
         assert_eq!(eval.eval_move_see(&b, &mv), 100);  // +p  = +100 (retake by queen doesnt occur)
+
+        let b = Board::parse_fen("1k5r/7r/8/8/R6p/8/8/K6R w - - 12 1").unwrap();  // xray
+        let mv = b.parse_uci_move("h1h4").unwrap();
+        assert_eq!(eval.eval_move_see(&b, &mv), -400);  // 
+        
+        let b = Board::parse_fen("8/8/8/4pk2/5B2/8/8/K7 w - - 12 1").unwrap();  // without xray onto king
+        let mv = b.parse_uci_move("f4e5").unwrap();
+        assert_eq!(eval.eval_move_see(&b, &mv), -250);  // 
+
+        let b = Board::parse_fen("8/8/8/4pk2/5B2/8/7Q/K7 w - - 12 1").unwrap();  // xray onto king
+        let mv = b.parse_uci_move("f4e5").unwrap();
+        assert_eq!(eval.eval_move_see(&b, &mv), 100);  // 
 
         let b = Board::parse_fen("bb3rkr/pp2nppp/4pn2/2qp4/2P5/3RNN2/PP2PPPP/BBQ3KR w - - 0 8").unwrap();  // bug
         let mv = b.parse_uci_move("c4d5").unwrap();

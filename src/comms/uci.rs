@@ -472,7 +472,17 @@ impl Uci {
         // search until the "stop" command. Do not exit the search without being told so in this mode!
         let infinite = args.contain("infinite");
 
-        let tc = if let Some(wtime) = wtime {
+        let tc = if infinite {
+            TimeControl::Infinite
+        } else if let Some(depth) = depth {
+            TimeControl::Depth(depth as Ply)
+        } else if let Some(nodes) = nodes {
+            TimeControl::NodeCount(nodes as u64)
+        } else if let Some(movetime) = movetime {
+            TimeControl::SearchTime(Duration::from_millis(movetime as u64))
+        } else if let Some(mate) = mate {
+            TimeControl::MateIn(mate as u32)
+        } else if let Some(wtime) = wtime {
             let btime = btime.unwrap_or(0) as u64;
             let winc = winc.unwrap_or(0) as u64;
             let binc = binc.unwrap_or(0) as u64;
@@ -485,16 +495,6 @@ impl Uci {
                 binc: Duration::from_millis(binc),
                 movestogo,
             }
-        } else if infinite {
-            TimeControl::Infinite
-        } else if let Some(depth) = depth {
-            TimeControl::Depth(depth as Ply)
-        } else if let Some(nodes) = nodes {
-            TimeControl::NodeCount(nodes as u64)
-        } else if let Some(movetime) = movetime {
-            TimeControl::SearchTime(Duration::from_millis(movetime as u64))
-        } else if let Some(mate) = mate {
-            TimeControl::MateIn(mate as u32)
         } else {
             TimeControl::default()
         };

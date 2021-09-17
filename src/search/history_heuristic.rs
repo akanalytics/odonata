@@ -8,8 +8,9 @@ use std::fmt;
 #[derive(Clone, Debug)]
 pub struct HistoryHeuristic {
     enabled: bool,
-    clear_every_move: bool,
+    // clear_every_move: bool,
     scale: i32,
+    age_factor: i32,
     history: [[[i32; 64];Piece::len()];2],
 }
 
@@ -17,22 +18,22 @@ impl Component for HistoryHeuristic {
     fn settings(&self, c: &mut Config) {
         c.set("history.enabled", &format!("type check default {}", self.enabled));
         c.set("history.scale", &format!("type spin min -1000 max 1000 default {}", self.scale));
-        c.set("history.clear.every.move", &format!("type check default {}", self.clear_every_move));
+        c.set("history.age.factor", &format!("type spin min 0 max 1000 default {}", self.age_factor));
+        // c.set("history.clear.every.move", &format!("type check default {}", self.clear_every_move));
     }
     fn configure(&mut self, c: &Config) {
         debug!("history.configure");
-        self.clear_every_move = c.bool("killers.clear.every.move").unwrap_or(self.clear_every_move);
+        // self.clear_every_move = c.bool("killers.clear.every.move").unwrap_or(self.clear_every_move);
         self.enabled = c.bool("history.enabled").unwrap_or(self.enabled);
         self.scale = c.int("history.scale").unwrap_or(self.scale as i64) as i32;
+        self.age_factor = c.int("history.age.factor").unwrap_or(self.age_factor as i64) as i32;
     }
     fn new_game(&mut self) {
-        self.clear();
+        self.adjust_by_factor(0);
     }
 
     fn new_position(&mut self) {
-        if self.clear_every_move {
-            self.clear();
-        }
+        self.adjust_by_factor(self.age_factor);
     }
 
 }
@@ -44,8 +45,9 @@ impl Default for HistoryHeuristic {
     fn default() -> Self {
         HistoryHeuristic {
             enabled: true,
-            clear_every_move: true,
+            // clear_every_move: true,
             scale: 1,
+            age_factor: 4,
             history: [[[0; 64]; Piece::len()];2],
         }
     }
@@ -54,7 +56,9 @@ impl Default for HistoryHeuristic {
 impl fmt::Display for HistoryHeuristic {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "enabled          : {}", self.enabled)?;
-        writeln!(f, "clear.every.move : {}", self.clear_every_move)?;
+        writeln!(f, "age.factor       : {}", self.age_factor)?;
+        writeln!(f, "scale            : {}", self.scale)?;
+        // writeln!(f, "clear.every.move : {}", self.clear_every_move)?;
         for c in Color::ALL {
             for p in Piece::ALL_BAR_NONE {
                 writeln!(f, "{} {}", c, p.name())?;
@@ -71,11 +75,11 @@ impl fmt::Display for HistoryHeuristic {
 }
 
 impl HistoryHeuristic {
-    pub fn clear(&mut self) {
+    pub fn adjust_by_factor(&mut self, age_factor: i32) {
         for c in Color::ALL {
             for p in Piece::ALL_BAR_NONE {
                 for sq in Bitboard::all().squares() {
-                    self.history[c][p][sq] = 0;
+                    self.history[c][p][sq] *= age_factor / 1024;
                 }
             }
         }
@@ -99,6 +103,6 @@ impl HistoryHeuristic {
         if !self.enabled || mv.is_capture() {
             return;
         }
-        self.history[b.color_us()][mv.mover_piece()][mv.to()] += y * y; // plus alpha above
+        self.history[b.color_us()][mv.mover_piece()][mv.to()] += 2 << (y / 4); // plus alpha above
     }
 }

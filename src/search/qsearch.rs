@@ -390,7 +390,7 @@ mod tests {
     }
 
     #[test]
-    fn test_see() -> Result<(), String> {
+    fn test_qsearch_see() -> Result<(), String> {
         let mut eval = SimpleScorer::new();
         eval.mb.enabled = false;
         eval.set_switches(false);

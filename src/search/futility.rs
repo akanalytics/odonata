@@ -224,7 +224,7 @@ impl Futility {
             return None;
         }
         let phase = b.phase(&eval.phaser);
-        let maximum_opp_piece = if let Some((piece, _)) = b.most_valuable_piece(b.them()) {
+        let maximum_opp_piece = if let Some((piece, _)) = b.most_valuable_piece_except_king(b.them()) {
             eval.mb.material_weights[piece]
         } else {
             Weight::zero() // all they have is a king
