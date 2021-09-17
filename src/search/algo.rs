@@ -259,7 +259,7 @@ impl fmt::Display for Algo {
 impl Algo {
     pub fn report_progress(&self) {
         if self.search_stats.total().all_nodes() % 5_000_000 == 0 && self.search_stats.total().all_nodes() != 0 {
-            let sp = SearchProgress::from_stats(&self.search_stats(), self.board.color_us());
+            let sp = SearchProgress::report_progress(&self.search_stats());
             self.task_control.invoke_callback(&sp);
         }
     }

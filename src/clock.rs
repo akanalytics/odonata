@@ -117,6 +117,10 @@ impl Clock {
         self.start.elapsed()
     }
 
+    pub fn elapsed_millis(&self) -> u64 {
+        self.start.elapsed().as_millis() as u64
+    }
+
     pub fn format(d: Duration) -> String {
         DurationNewType(d).to_string()
     }

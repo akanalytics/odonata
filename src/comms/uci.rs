@@ -615,7 +615,7 @@ impl<'a> fmt::Display for UciInfo<'a> {
             write!(f, "nps {} ", nps)?;
         }
         if let Some(score) = self.0.score {
-            write!(f, "score {} ", score.uci(self.0.pov))?;
+            write!(f, "score {} ", score.uci())?;
         }
         if let Some(currmovenumber) = self.0.currmovenumber_from_1 {
             write!(f, "currmovenumber {} ", currmovenumber)?;

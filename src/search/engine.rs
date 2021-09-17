@@ -166,7 +166,6 @@ impl Engine {
     }
 
     pub fn wait(&mut self) {
-        let mut knps = 0;
         let mut nodes = 0;
         for (i, t) in self.threads.drain(..).enumerate() {
             let algo = t.join().unwrap();
@@ -181,7 +180,7 @@ impl Engine {
                 Clock::format(algo.search_stats.cumulative().real_time),
                 algo.pv().to_string(),
             );
-            knps += algo.search_stats.cumulative_knps();
+            // knps += algo.search_stats.cumulative_knps();
             nodes += algo.search_stats.cumulative().all_nodes();
             if i == 0 {
                 self.algo = algo;
@@ -189,6 +188,7 @@ impl Engine {
                 self.algo.task_control.cancel();
             }
         }
+        let knps = self.algo.search_stats().all_threads_cumulative_knps();
         info!(
             "{:>3} {:>5} {:>8}        {:>10}      {:>5}     {:5}   {:>48}",
             "", "", "", "---------", "-----", "", "",

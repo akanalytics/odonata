@@ -4,6 +4,8 @@ use crate::variation::Variation;
 use crate::types::{Ply, MAX_PLY, MoveType};
 use std::fmt;
 use std::cmp;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use strum::EnumCount;
 use std::time::Duration;
 use format_num::*;
@@ -11,6 +13,9 @@ use format_num::*;
 
 #[derive(Clone, Debug)]
 pub struct SearchStats {
+
+    all_threads_node_count: Arc<AtomicU64>,
+    this_thread_node_count: u64,
 
     pub depth: Ply,
     realtime: Clock,
@@ -43,6 +48,7 @@ impl fmt::Display for SearchStats {
         writeln!(f, "cuts on 1st move : {:.01}%", self.cuts_on_first_move() * 100.0)?;
         writeln!(f, "branching factor : {:.02}", self.branching_factor())?;
         writeln!(f, "q branch factor  : {:.02}", self.q_branching_factor())?;
+        writeln!(f, "all threads nodes: {}", self.all_threads_node_count.load(Ordering::Relaxed))?;
         writeln!(f)?;
 
         write!(f, "{:<7}", "ply")?;
@@ -70,6 +76,8 @@ impl fmt::Display for SearchStats {
 impl Default for SearchStats {
     fn default() -> Self {
         Self {
+            all_threads_node_count: Arc::new(AtomicU64::new(0)),
+            this_thread_node_count: 0, 
             depth: 0,
             realtime: Clock::default(),
             deterministic: DeterministicClock::default(),
@@ -89,6 +97,15 @@ impl Default for SearchStats {
 impl SearchStats {
     pub fn new() -> Self {
         Self::default()
+    }
+
+
+    #[inline]
+    fn inc_all_nodes(&mut self) {
+        self.this_thread_node_count += 1;
+        if self.this_thread_node_count % 1024 == 0 {
+            self.all_threads_node_count.fetch_add(1024, Ordering::Relaxed);
+        }
     }
 
     pub fn completed(&self) -> bool {
@@ -184,12 +201,14 @@ impl SearchStats {
 
     #[inline]
     pub fn inc_leaf_nodes(&mut self, ply: Ply) {
+        self.inc_all_nodes();
         self.total.leaf_nodes += 1;
         self.plies[ply as usize].leaf_nodes += 1;
     }
 
     #[inline]
     pub fn inc_leaf_tt_nodes(&mut self, sel_ply: Ply) {
+        self.inc_all_nodes();
         self.total.leaf_tt_nodes += 1;
         self.plies[sel_ply as usize].leaf_tt_nodes += 1;
     }
@@ -208,18 +227,21 @@ impl SearchStats {
 
     #[inline]
     pub fn inc_interior_nodes(&mut self, ply: Ply) {
+        self.inc_all_nodes();
         self.total.interior_nodes += 1;
         self.plies[ply as usize].interior_nodes += 1;
     }
 
     #[inline]
     pub fn inc_q_leaf_nodes(&mut self, sel_ply: Ply) {
+        self.inc_all_nodes();
         self.total.q_leaf_nodes += 1;
         self.plies[sel_ply as usize].q_leaf_nodes += 1;
     }
 
     #[inline]
     pub fn inc_q_interior_nodes(&mut self, sel_ply: Ply) {
+        self.inc_all_nodes();
         self.total.q_interior_nodes += 1;
         self.plies[sel_ply as usize].q_interior_nodes += 1;
     }
@@ -305,13 +327,25 @@ impl SearchStats {
     }
 
     #[inline]
-    pub fn total_knps(&self) -> u128 {
-        self.total.all_nodes() as u128 / (1 + self.realtime.elapsed().as_millis())
+    pub fn total_knps(&self) -> u64 {
+        self.total.all_nodes() / (1 + self.realtime.elapsed_millis())
+    }
+
+    pub fn all_threads_cumulative_total_nodes(&self) -> u64 {
+        self.all_threads_node_count.load(Ordering::Relaxed)
+    }
+
+    pub fn all_threads_cumulative_knps(&self) -> u64 {
+        self.all_threads_node_count.load(Ordering::Relaxed) / (1 + self.cumulative.real_time_millis())
     }
 
     #[inline]
-    pub fn cumulative_knps(&self) -> u128 {
-        self.cumulative.all_nodes() as u128 / (1 + self.cumulative.real_time.as_millis())
+    pub fn cumulative_knps(&self) -> u64 {
+        self.cumulative.all_nodes() / (1 + self.cumulative.real_time_millis())
+    }
+
+    pub fn cumulative_time_as_millis(&self) -> u64 {
+        self.cumulative.real_time_millis()
     }
 
     #[inline]
@@ -320,8 +354,8 @@ impl SearchStats {
     }
 
     #[inline]
-    pub fn interior_knps(&self) -> u128 {
-        self.total.interior_nodes() as u128 / (1 + self.realtime.elapsed().as_millis())
+    pub fn interior_knps(&self) -> u64 {
+        self.total.interior_nodes() / (1 + self.realtime.elapsed_millis())
     }
 
     // BF = total / interior
@@ -396,6 +430,10 @@ pub struct NodeStats {
 impl NodeStats {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn real_time_millis(&self) -> u64 {
+        self.real_time.as_millis() as u64
     }
 
     pub fn clear_node_stats(&mut self) {
@@ -655,7 +693,7 @@ mod tests {
         search.inc_leaf_nodes(2);
         search.inc_leaf_nodes(2);
         search.inc_leaf_tt_nodes(2);
-        search.inc_node_cut(2, MoveType::GoodCapture);
+        search.inc_node_cut(2, MoveType::GoodCapture, 0);
         search.inc_interior_nodes(0);
         println!("{}", search);
     }

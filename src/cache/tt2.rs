@@ -242,6 +242,7 @@ pub struct TranspositionTable2 {
     pub bad_hash: Stat,
     pub exclusions: Stat,
     pub inserts: Stat,
+    pub updates: Stat,
     pub pv_overwrites: Stat,
     pub deletes: Stat,
     pub fail_priority: Stat,
@@ -269,6 +270,7 @@ impl TranspositionTable2 {
             exclusions: Stat::new("exclusions"),
             bad_hash: Stat::new("bad_hash"),
             inserts: Stat::new("inserts"),
+            updates: Stat::new("updates"),
             pv_overwrites: Stat::new("pv overwrites"),
             deletes: Stat::new("deletes"),
             fail_priority: Stat::new("ins fail priority"),
@@ -336,6 +338,7 @@ impl fmt::Display for TranspositionTable2 {
                 &self.exclusions,
                 &self.bad_hash,
                 &self.inserts,
+                &self.updates,
                 &self.pv_overwrites,
                 &self.fail_priority,
                 &self.fail_ownership,
@@ -536,7 +539,12 @@ impl TranspositionTable2 {
                 new_node.node_type,
                 new_node.bm
             );
-            self.inserts.increment();
+            if hash == 0 && data == 0 {
+                self.inserts.increment();
+            }
+            else {
+                self.updates.increment();
+            }
             let new_data = TtNode::pack(&new_node, self.current_age);
 
             self.table.store(h, new_data);

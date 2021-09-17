@@ -135,7 +135,7 @@ impl Score {
     //       the score is just a lower bound.
     // 	* upperbound
     // 	   the score is just an upper bound.
-    pub fn uci(self, _pov: Color) -> String {
+    pub fn uci(self) -> String {
         // we assume we are now from engines's point of view
         if self.cp == -Self::INF {
             "cp -9999".to_string()
