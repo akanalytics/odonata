@@ -454,6 +454,9 @@ mod tests {
             .set_eval(eval)
             .build();
         search.qsearch.enabled = false;
+        search.futility.alpha_enabled = false;
+        search.futility.beta_enabled = false;
+        search.nmp.enabled = false;
         search.tt.enabled = false;
         search.minmax = true;
         search.set_position(pos).search();
@@ -477,7 +480,7 @@ mod tests {
         search.set_position(Catalog::starting_position());
         search.search();
         println!("{}", search);
-        assert_eq!(search.search_stats().total().all_nodes(), 1190); // null move pruning
+        assert_eq!(search.search_stats().total().all_nodes(), 1202); // null move pruning
                                                                 // assert_eq!(search.search_stats().total().nodes(), 1468);
                                                                 // assert_eq!(search.search_stats().total().nodes(), 1516); // rejigged pawn PST
                                                                 // previous
@@ -488,7 +491,7 @@ mod tests {
                                                                 // assert_eq!(search.search_stats().total().nodes(), 1833); qsearch sq
                                                                 // assert_eq!(search.search_stats().total().nodes(), 1757);
         assert_eq!(
-            Formatter::format_decimal(2, search.search_stats().branching_factor()), "15.12"
+            Formatter::format_decimal(2, search.search_stats().branching_factor()), "15.24"
         );
     }
 

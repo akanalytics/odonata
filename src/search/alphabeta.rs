@@ -23,6 +23,7 @@ impl Algo {
     pub fn run_alphabeta(&mut self, board: &mut Board, node: &mut Node) {
         self.search_stats.new_iteration();
         self.pv_table = PvTable::new(MAX_PLY as usize);
+        debug_assert!(self.current_variation.len() == 0);
         self.search_stats.score = self.alphabeta_recursive(
             board,
             node.ply,
@@ -31,7 +32,7 @@ impl Algo {
             node.beta,
             &Move::NULL_MOVE,
         );
-
+        debug_assert!(self.current_variation.len() == 0);
         let (pv, _score) = if self.tt.use_tt_for_pv {
             self.tt.extract_pv_and_score(board)
         } else {
@@ -197,7 +198,7 @@ impl Algo {
             //     }
             // }
             let mut child_board = board.make_move(&mv);
-            self.current_variation.set_last_move(ply + 1, &mv);
+            self.current_variation.push(mv);
             self.search_stats.inc_nmp(ply);
             let child_score = -self.alphabeta_recursive(
                 &mut child_board,
@@ -208,6 +209,7 @@ impl Algo {
                 &mv,
             );
             board.undo_move(&mv);
+            self.current_variation.pop();
             if child_score >= n.beta {
                 self.search_stats.inc_node_cut(ply, MoveType::Null, -1);
                 self.report_refutation(n.ply);
@@ -243,6 +245,7 @@ impl Algo {
             }
             let mut child_board = board.make_move(&mv);
             self.repetition.push_move(&mv, &child_board);
+            self.current_variation.push(mv);
             child_board.set_repetition_count(self.repetition.count(&child_board));
             debug_assert!(
                 n.alpha < n.beta || self.minmax,
@@ -251,7 +254,6 @@ impl Algo {
                 n.beta,
                 self.minmax
             );
-            self.current_variation.set_last_move(ply + 1, &mv);
 
             let ext = self.extensions.extend(
                 board,
@@ -314,6 +316,7 @@ impl Algo {
                     -self.alphabeta_recursive(&mut child_board, ply + 1, depth + ext - 1, -n.beta, -n.alpha, &mv);
             }
             board.undo_move(&mv);
+            self.current_variation.pop();
             self.repetition.pop();
             if ply > 1 && self.task_control.is_cancelled() {
                 return -Score::INFINITY;
@@ -369,7 +372,6 @@ impl Algo {
             bm, // not set for NodeType::All
         };
         self.tt.store(board.hash(), entry);
-        self.current_variation.set_last_move(ply, &Move::NULL_MOVE);
         score
     }
 }

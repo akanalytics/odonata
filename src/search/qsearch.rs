@@ -265,6 +265,7 @@ impl Algo {
                 }
             }
             let mut child = board.make_move(&mv);
+            self.current_variation.push(mv);
             // delta prune on the move - FIXME - think about delta prune when checks
             if !in_check
                 && board.eval_move_material(&self.eval, &mv) + standing_pat <= alpha
@@ -272,6 +273,7 @@ impl Algo {
             // = will_check_them
             {
                 board.undo_move(&mv);
+                self.current_variation.pop();
                 continue;
             }
             // mark the square so the recapture is considered
@@ -285,6 +287,7 @@ impl Algo {
                 -alpha,
             );
             board.undo_move(&mv);
+            self.current_variation.pop();
             if score > beta {
                 trace!("{}", board.debug() + ply + score + "fails high" + beta + &mv);
                 return score;
