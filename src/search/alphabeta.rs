@@ -105,6 +105,7 @@ impl Algo {
                         if entry.score >= n.beta {
                             self.search_stats.inc_node_cut(ply, MoveType::Hash, -1);
                             self.search_stats.inc_leaf_tt_nodes(ply);
+                            self.report_refutation(n.ply);
                             return entry.score;
                         }
                         if entry.score <= n.alpha {
@@ -129,6 +130,7 @@ impl Algo {
                             self.tt.store(board.hash(), entry);
                             // self.record_truncated_move(ply, &entry.bm);
                             self.search_stats.inc_leaf_tt_nodes(ply);
+                            self.report_refutation(n.ply);
                             return entry.score;
                         }
                         if self.tt.allow_truncated_pv && entry.score > n.alpha {
@@ -208,6 +210,7 @@ impl Algo {
             board.undo_move(&mv);
             if child_score >= n.beta {
                 self.search_stats.inc_node_cut(ply, MoveType::Null, -1);
+                self.report_refutation(n.ply);
                 return child_score;
             }
         }
@@ -334,6 +337,7 @@ impl Algo {
                 self.search_stats.inc_node_cut(ply, move_type, (count - 1) as i32 );
                 self.killers.store(ply, &mv);
                 self.history.beta_cutoff(ply, board, &mv);
+                self.report_refutation(n.ply);
                 break;
             }
         }

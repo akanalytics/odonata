@@ -19,6 +19,7 @@ pub struct MoveOrderer {
     pub tt_bm: bool,
     pub mvv_lva: bool,
     pub order: Vec<MoveType>,
+    pub qorder: Vec<MoveType>,
     pub thread: u32,
     count_pv: PlyStat,
     count_bm: PlyStat,
@@ -34,6 +35,7 @@ impl Component for MoveOrderer {
         c.set("moveorderer.tt_bm", "type check default true");
         c.set("moveorderer.mvv_lva", "type check default true");
         c.set("moveorderer.order", &format!("type string default {}", MoveType::slice_to_string(&self.order)));
+        c.set("moveorderer.qorder", &format!("type string default {}", MoveType::slice_to_string(&self.qorder)));
     }
     fn configure(&mut self, c: &Config) {
         debug!("moveorderer.configure");
@@ -43,8 +45,10 @@ impl Component for MoveOrderer {
         self.tt_bm = c.bool("moveorderer.tt_bm").unwrap_or(self.tt_bm);
         self.mvv_lva = c.bool("moveorderer.mvv_lva").unwrap_or(self.mvv_lva);
         let order = c.string("moveorderer.order").unwrap_or(MoveType::slice_to_string(&self.order));
+        let qorder = c.string("moveorderer.qorder").unwrap_or(MoveType::slice_to_string(&self.qorder));
         // FIXME! Error handling
         self.order = MoveType::vec_from_string(&order).unwrap();
+        self.qorder = MoveType::vec_from_string(&qorder).unwrap();
     }
 
     fn new_game(&mut self) {
@@ -76,6 +80,7 @@ impl Default for MoveOrderer {
             count_tt_bm: PlyStat::new("order tt bm"),
             picker: Stack::<OrderedMoveList>::default(),
             order: MoveType::vec_from_string("SHIGKPqBE").unwrap(),  // , SHICKPQE, SHIGKPQBE
+            qorder: MoveType::vec_from_string("SICE").unwrap(),  // 
         }
     }
 }
@@ -88,6 +93,7 @@ impl fmt::Display for MoveOrderer {
         writeln!(f, "tt bm            : {}", self.tt_bm)?;
         writeln!(f, "mvv_lva          : {}", self.mvv_lva)?;
         writeln!(f, "order            : {}", MoveType::slice_to_string(&self.order))?;
+        writeln!(f, "qorder           : {}", MoveType::slice_to_string(&self.qorder))?;
         writeln!(f, "thread           : {}", self.thread)?;
         writeln!(
             f,
@@ -205,7 +211,7 @@ impl Algo {
 // uses Move Orderer and MoveGen to present a sequence of moves
 #[derive(Clone, Debug, Default)]
 pub struct OrderedMoveList {
-    captures: bool,
+    pub qsearch: bool,
     stage: usize,
     moves: MoveList,
     all_moves: MoveList,
@@ -218,7 +224,7 @@ pub struct OrderedMoveList {
 impl MoveOrderer {
     pub fn get_sorted_moves(&self, ply: Ply, tt: Move) -> OrderedMoveList {
         OrderedMoveList {
-            captures: false,
+            qsearch: false,
             stage: 0,
             moves: MoveList::new(),
             all_moves: MoveList::new(),
@@ -236,8 +242,17 @@ impl MoveOrderer {
 
 
 impl OrderedMoveList {
+    
+    pub fn ordering<'a>(&self, algo: &'a Algo) -> &'a Vec<MoveType> {
+        if self.qsearch {
+            &algo.move_orderer.qorder
+        } else {
+            &algo.move_orderer.order
+        }
+    }
+    
     pub fn next_move(&mut self, b: &Board, algo: &mut Algo) -> Option<(MoveType,Move)> {
-        let move_type = algo.move_orderer.order[self.stage];
+        let move_type = self.ordering(algo)[self.stage];
         if self.index < self.moves.len() {
             if move_type == MoveType::GoodCapture || move_type == MoveType::Capture 
             // we dont sort killers
@@ -258,7 +273,7 @@ impl OrderedMoveList {
             self.index += 1;
             return some;
         }
-        if self.stage as usize + 1 >= algo.move_orderer.order.len() {
+        if self.stage as usize + 1 >= self.ordering(algo).len() {
             return None;
         } else {
             self.index = 0;
@@ -306,9 +321,10 @@ impl OrderedMoveList {
         self.moves.clear();
         // pick.moves.clear();
         // println!("{}", self.move_orderer.order.chars().nth(pick.stage as usize).unwrap());
+        let mt = self.ordering(algo)[self.stage];
         let all_moves = &mut self.all_moves;
         let moves = &mut self.moves;
-        match algo.move_orderer.order[self.stage] 
+        match mt 
         {
             MoveType::Start => {}
 

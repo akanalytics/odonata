@@ -221,12 +221,17 @@ impl Algo {
             self.search_stats.inc_q_interior_nodes(ply);
         }
         self.order_moves(ply, &mut moves, &None);
-        for mv in moves.iter() {
+        for &mv in moves.iter() {
+
+
+        // let mut sorted_moves = self.move_orderer.get_sorted_moves(ply, Move::NULL_MOVE);
+        // sorted_moves.qsearch = true;
+        // while let Some((_move_type, mv)) = sorted_moves.next_move(board, self) {
             trace!(
                 "{}",
                 board.debug()
                     + "examining move"
-                    + mv
+                    + &mv
                     + "using"
                     + Node {
                         ply,
@@ -245,7 +250,7 @@ impl Algo {
                 if score < Score::from_cp(bar) || score == Score::from_cp(bar) && (winning || depth >= -1) {
                     trace!(
                         "{}",
-                        board.debug() + "see score bad" + score + "<" + Score::from_cp(bar) + "for" + mv
+                        board.debug() + "see score bad" + score + "<" + Score::from_cp(bar) + "for" + &mv
                     );
                     if self.qsearch.ignore_see_fails {
                         continue;
@@ -255,7 +260,7 @@ impl Algo {
                 } else {
                     trace!(
                         "{}",
-                        board.debug() + "see score good" + score + "cmp" + Score::from_cp(bar) + "for" + mv
+                        board.debug() + "see score good" + score + "cmp" + Score::from_cp(bar) + "for" + &mv
                     );
                 }
             }
@@ -266,11 +271,11 @@ impl Algo {
                 && !child.is_in_check(child.color_us())
             // = will_check_them
             {
-                board.undo_move(mv);
+                board.undo_move(&mv);
                 continue;
             }
             // mark the square so the recapture is considered
-            trace!("{}", board.debug() + ply + "iterating on " + mv);
+            trace!("{}", board.debug() + ply + "iterating on " + &mv);
             let score = -self.qsearch_see(
                 recaptures ^ mv.to().as_bb(),
                 ply + 1,
@@ -279,14 +284,14 @@ impl Algo {
                 -beta,
                 -alpha,
             );
-            board.undo_move(mv);
+            board.undo_move(&mv);
             if score > beta {
-                trace!("{}", board.debug() + ply + score + "fails high" + beta + mv);
+                trace!("{}", board.debug() + ply + score + "fails high" + beta + &mv);
                 return score;
             }
             if score > alpha {
-                trace!("{}", board.debug() + ply + score + "raises alpha" + alpha + mv + " -> move added to pv");
-                self.record_move(ply, mv);
+                trace!("{}", board.debug() + ply + score + "raises alpha" + alpha + &mv + " -> move added to pv");
+                self.record_move(ply, &mv);
                 alpha = score;
             }
             // don't see_evaluate the hot square again

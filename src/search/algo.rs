@@ -59,6 +59,7 @@ pub struct Algo {
     pub search_stats: SearchStats,
     pub pv_table: PvTable,
     pub current_best: Option<Move>,
+    pub show_refutations: bool, 
     pub analyse_mode: bool, // tries to find full PV etc
     //pub score: Score,
 
@@ -98,6 +99,8 @@ impl Component for Algo {
     fn settings(&self, c: &mut Config) {
         c.set("algo.minmax", "type check default false");
         c.set("UCI_AnalyseMode", "type check default false");
+        // c.set("UCI_ShowRefutations", &format!("type check default {}", self.show_refutations));       
+
         self.eval.settings(c);
         self.mte.settings(c);
         self.move_orderer.settings(c);
@@ -116,6 +119,7 @@ impl Component for Algo {
     fn configure(&mut self, c: &Config) {
         debug!("algo.configure");
         self.analyse_mode = c.bool("UCI_AnalyseMode").unwrap_or(self.analyse_mode);
+        self.show_refutations = c.bool("UCI_ShowRefutations").unwrap_or(self.show_refutations);
         self.minmax = c.bool("algo.minmax").unwrap_or(self.minmax);
         self.eval.configure(c);
         self.move_orderer.configure(c);
@@ -260,6 +264,18 @@ impl Algo {
     pub fn report_progress(&self) {
         if self.search_stats.total().all_nodes() % 5_000_000 == 0 && self.search_stats.total().all_nodes() != 0 {
             let sp = SearchProgress::report_progress(&self.search_stats());
+            self.task_control.invoke_callback(&sp);
+        }
+    }
+
+    pub fn report_refutation(&self, ply: Ply) {
+        if self.show_refutations && ply < 4 {
+            let sp = SearchProgress { 
+                    pv: Some(self.pv_table.extract_pv_for(ply).clone()),   
+                    refutation: true,
+                    .. SearchProgress::default()
+            };
+
             self.task_control.invoke_callback(&sp);
         }
     }

@@ -108,6 +108,7 @@ impl Component for Uci {
 
     fn configure(&mut self, c: &Config) {
         info!("Configuring uci with\n{}", c);
+
         if let Some(b) = c.bool("uci.debug") {
             self.debug = b;
         }
@@ -602,6 +603,12 @@ struct UciInfo<'a>(&'a SearchProgress);
 
 impl<'a> fmt::Display for UciInfo<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.0.refutation {
+            if let Some(pv) = &self.0.pv {
+                let strings: Vec<String> = pv.iter().map(Move::to_string).collect();
+                write!(f, "refutation {}", strings.join(" "))?;
+            }
+        }
         if let Some(depth) = self.0.depth {
             write!(f, "depth {} ", depth)?;
             if let Some(seldepth) = self.0.seldepth {

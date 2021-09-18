@@ -7,6 +7,7 @@ use crate::variation::Variation;
 /// essentially all the data needed for UCI info status updates or for a decent progress bar
 #[derive(Clone, Default, Debug)]
 pub struct SearchProgress {
+    pub refutation: bool,
     pub depth: Option<Ply>,
     pub seldepth: Option<Ply>,
     pub time_millis: Option<u64>,
