@@ -1,3 +1,4 @@
+use crate::MoveList;
 use crate::board::boardbuf::BoardBuf;
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
@@ -95,6 +96,7 @@ pub struct Uci {
     engine: Arc<Mutex<Engine>>,
     debug: bool,
     json_rpc: JsonRpc,
+//     subscriber: 
 }
 
 impl Component for Uci {
@@ -102,7 +104,9 @@ impl Component for Uci {
         c.set("uci.debug", "type check default false");
         c.set("Ponder", "type check default false");
         c.set("Clear Hash", "type button");
-        c.set("Print Eval", "type button");
+        c.set("Explain Eval", "type button");
+        c.set("Explain Last Search", "type button");
+        c.set("Explain Quiesce", "type button");
         self.engine.lock().unwrap().settings(c);
     }
 
@@ -113,9 +117,18 @@ impl Component for Uci {
             self.debug = b;
         }
         if c.string("clear_cache").is_some() || c.string("Clear Hash").is_some() {
+            Self::print("Clearing hash");
             let _res = self.uci_newgame();
         }
-        if c.string("Print Eval").is_some() {
+        if c.string("Explain Eval").is_some() {
+            let _res = self.ext_uci_explain_eval();
+        }
+
+        if c.string("Explain Last Search").is_some() {
+            let _res = self.uci_explain_last_search();
+        }
+
+        if c.string("Explain Quiesce").is_some() {
             let _res = self.ext_uci_explain_eval();
         }
 
@@ -194,7 +207,7 @@ impl Uci {
             "uci" => self.uci_uci(),
             "isready" => self.uci_isready(),
             "debug" => self.uci_debug(&words[1..]),
-            "setoption" => self.uci_setoption(&Args::parse(&input)),
+            "setoption" => self.uci_setoption(&input),
             "ucinewgame" => self.uci_newgame(),
             "position" => self.uci_position(&Args::parse(&input)),
             "go" => self.uci_go(&Args::parse(&input)),
@@ -255,6 +268,7 @@ impl Uci {
 
     fn uci_newgame(&mut self) -> Result<(), String> {
         // clear the transposition tables/eval caches and repetition counts before the new game
+        Self::print("configuring new_game");
         self.new_game();
         Ok(())
     }
@@ -434,6 +448,18 @@ impl Uci {
         Ok(variation)
     }
 
+    fn parse_movelist(args: &Args, board: &Board) -> Result<MoveList, String> {
+        let mut movelist = MoveList::new();
+        let index = args.index_of("searchmoves");
+        if let Some(index) = index {
+            for mv in args.words[(index + 1)..].iter() {
+                let mv = board.parse_uci_move(&mv)?;
+                movelist.push(mv)
+            }
+        }
+        Ok(movelist)
+    }
+
     // fn parse_movelist(args: &Args, b: &mut Board) -> Result<MoveList, String> {
     //     let mut movelist = MoveList::new();
     //     let index = args.index_of("moves");
@@ -505,7 +531,8 @@ impl Uci {
         // restrict search to this moves only
         // Example: After "position startpos" and "go infinite searchmoves e2e4 d2d4"
         // the engine should only search the two moves e2e4 and d2d4 in the initial position
-        let _searchmoves = args.string_after("searchmoves");
+        let search_moves = Self::parse_movelist(args, &self.board)?;
+        self.engine.lock().unwrap().algo.restrictions.search_moves = search_moves;
         // self.log_debug_message("starting search with configuration ...");
         // self.log_debug_message(&format!("{}", self.engine.lock().unwrap().algo));
         // self.log_debug_message(&format!("{}", self.board));
@@ -514,15 +541,17 @@ impl Uci {
         Ok(())
     }
 
-    fn uci_setoption(&mut self, args: &Args) -> Result<(), String> {
-        let name = args.string_after("name");
-        let value = args.string_after("value").or(Some("".to_string()));
-        if let Some(name) = name {
-            if let Some(value) = value {
-                let c = Config::new().set(&name, &value);
-                self.configure(&c);
-            }
-        }
+    fn uci_setoption(&mut self, input: &str) -> Result<(), String> {
+        let s = input.strip_prefix("setoption").ok_or("missing setoption")?.trim();
+        let s = s.strip_prefix("name").ok_or("missing name")?.trim();
+        let name_value = s.rsplit_once("value");
+        let (name, value) = if let Some((name,value)) = name_value {
+            (name.trim(), value.trim())
+        } else {
+            (s.trim(), "")
+        };
+        let c = Config::new().set(&name, &value);
+        self.configure(&c);
         Ok(())
     }
 
@@ -686,6 +715,7 @@ mod tests {
     use super::*;
     use crate::types::Piece;
     use std::thread;
+    use test_env_log::test;
 
     #[test]
     fn test_args() {
@@ -737,6 +767,8 @@ mod tests {
         uci.preamble.push("setoption name eval.b.s value 700".into());
         uci.preamble
             .push("setoption name eval.position value false".into());
+        uci.preamble
+            .push("setoption name Print Eval".into());
         uci.preamble.push("quit".into());
         uci.run();
         assert_eq!(uci.engine.lock().unwrap().algo.eval.mb.material_weights[Piece::Bishop].s() as i32, 700);

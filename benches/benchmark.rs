@@ -9,6 +9,7 @@ use odonata::board::boardcalcs::*;
 use odonata::board::makemove::*;
 use odonata::board::rules::*;
 use odonata::board::*;
+use odonata::bound::NodeType;
 use odonata::cache::tt2::*;
 use odonata::catalog::*;
 use odonata::config::Component;

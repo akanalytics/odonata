@@ -1,7 +1,7 @@
 use crate::bitboard::bitboard::{Bitboard, Dir};
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use strum_macros::EnumCount;
+use strum_macros::{EnumCount, Display};
 use enumflags2::{bitflags, BitFlags};
 
 
@@ -413,7 +413,7 @@ impl std::ops::Sub for ScoreWdl {
 }
 
 #[bitflags]
-#[derive(Clone, Copy, Debug, Eq, PartialEq, EnumCount)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, EnumCount, Display)]
 #[repr(u16)]
 pub enum MoveType {
     Start,
@@ -474,6 +474,7 @@ impl MoveType {
             MoveType::End => 'E',
         }
     }
+
 
 
     pub fn from_char(c: char) -> Result<MoveType, String> {

@@ -69,7 +69,7 @@ impl NullMovePruning {
             return false;
         } 
         if node.ply == 0 {
-            return false;  // no null move at root
+            return false;  // no null move at root, might mean no moves (with move restrictions too!)
         } 
         if node.depth < self.min_leaf_distance {
             return false;

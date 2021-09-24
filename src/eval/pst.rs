@@ -25,10 +25,10 @@ impl Default for Pst {
     fn default() -> Self {
         let mut me = Self {
             enabled: true,
-            pawn_r5: Weight::new(13, 32),
-            pawn_r6: Weight::new(5, 86),
-            pawn_r7: Weight::new(24, 304),
-            rook_edge: Weight::new(0, 0),
+            pawn_r5: Weight::from_i32(13, 32),
+            pawn_r6: Weight::from_i32(5, 86),
+            pawn_r7: Weight::from_i32(24, 304),
+            rook_edge: Weight::from_i32(0, 0),
 
             
             pst: [[Weight::default(); 64]; Piece::len()],
@@ -92,15 +92,15 @@ impl Component for Pst {
                         if k == &name_s {
                             let old_wt = self.pst[p][sq];
                             let new_wt = c.weight(&name, &self.pst[p][sq]);
-                            self.pst[p][sq] = Weight::from_f32(new_wt.s(), old_wt.e());
-                            info!("pst setting {}{} = {} (config {}={})", p, sq, Weight::from_f32(new_wt.s(), old_wt.e()), name, new_wt);
+                            self.pst[p][sq] = Weight::new(new_wt.s(), old_wt.e());
+                            info!("pst setting {}{} = {} (config {}={})", p, sq, Weight::new(new_wt.s(), old_wt.e()), name, new_wt);
                             _reconfigure = true;
                         }
                         if k == &name_e {
                             let old_wt = self.pst[p][sq];
                             let new_wt = c.weight(&name, &self.pst[p][sq]);
-                            self.pst[p][sq] = Weight::from_f32(old_wt.s(), new_wt.e());
-                            info!("pst setting {}.{} = {} (config {}={})", p, sq, Weight::from_f32(old_wt.s(), new_wt.e()), name, new_wt);
+                            self.pst[p][sq] = Weight::new(old_wt.s(), new_wt.e());
+                            info!("pst setting {}.{} = {} (config {}={})", p, sq, Weight::new(old_wt.s(), new_wt.e()), name, new_wt);
                             _reconfigure = true;
                         }
                     }
@@ -338,7 +338,7 @@ impl Pst {
 
         for &p in &Piece::ALL_BAR_NONE {
             for sq in Square::all() {
-                self.pst[p][sq] = Weight::new(square_values_mg[p][sq], square_values_eg[p][sq]);
+                self.pst[p][sq] = Weight::from_i32(square_values_mg[p][sq], square_values_eg[p][sq]);
             }
         }
     }
@@ -367,11 +367,11 @@ mod tests {
         let mut c1 = Config::default();
         c1.set("eval.pst.p.a2.s", "6.5");
         c1.set("eval.pst.p.a2.e", "7.5");
-        let lookup = c1.weight("eval.pst.p.a2", &Weight::new(1, 1));
+        let lookup = c1.weight("eval.pst.p.a2", &Weight::from_i32(1, 1));
         info!("Config\n{}", c1);
         assert_eq!(lookup, Weight::from_f32(6.5,7.5));
         let mut pst = Pst::default();
-        assert_eq!(pst.pst(Piece::Pawn, Square::A2), Weight::new(24,304));
+        assert_eq!(pst.pst(Piece::Pawn, Square::A2), Weight::from_i32(24,304));
         pst.configure(&c1);
         assert_eq!(pst.pst(Piece::Pawn, Square::A2), Weight::from_f32(6.5,7.5), "{}", pst);
 

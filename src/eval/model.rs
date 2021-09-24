@@ -274,15 +274,15 @@ impl fmt::Display for ExplainScorer {
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ModelScore {
-    pub phase: i32,
-    pub material: Weight,
-    pub position: Weight,
-    pub pawn: Weight,
-    pub mobility: Weight,
-    pub safety: Weight,
-    pub tempo: Weight,
-    pub contempt: Weight,
-    pub interpolated: f32,
+    phase: i32,
+    material: Weight,
+    position: Weight,
+    pawn: Weight,
+    mobility: Weight,
+    safety: Weight,
+    tempo: Weight,
+    contempt: Weight,
+    interpolated: f32,
 }
 
 impl ModelScore {
@@ -345,7 +345,7 @@ impl Scorer for ModelScore {
 
     #[inline]
     fn interpolate(&mut self, _attr: &str) {
-        self.interpolated = self.total().interpolate(self.phase);
+        self.interpolated = self.total().interpolate(self.phase) as f32;
     }
 
     #[inline]

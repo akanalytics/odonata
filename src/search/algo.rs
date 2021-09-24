@@ -21,6 +21,7 @@ use crate::search::pvs::Pvs;
 use crate::search::qsearch::QSearch;
 use crate::search::searchprogress::SearchProgress;
 use crate::search::searchstats::SearchStats;
+use crate::search::restrictions::Restrictions;
 use crate::search::taskcontrol::TaskControl;
 use crate::search::timecontrol::TimeControl;
 use crate::search::history_heuristic::HistoryHeuristic;
@@ -28,6 +29,8 @@ use crate::types::Ply;
 use crate::variation::Variation;
 // // use crate::{debug, info, logger::LogInit};
 use std::fmt;
+
+use super::search_explainer::SearchExplainer;
 
 
 
@@ -47,12 +50,14 @@ pub struct Algo {
     pub pvs: Pvs,
     pub extensions: Extensions,
     pub reductions: Reductions,
-    pub history: HistoryHeuristic,
     pub mte: MoveTimeEstimator,
     pub move_orderer: MoveOrderer,
     pub repetition: Repetition,
     pub tt: TranspositionTable2,
     pub killers: Killers,
+    pub history: HistoryHeuristic,
+    pub explainer: SearchExplainer,
+    pub restrictions: Restrictions,
 
 
     pub task_control: TaskControl<SearchProgress>,
@@ -115,6 +120,8 @@ impl Component for Algo {
         self.tt.settings(c);
         self.killers.settings(c);
         self.history.settings(c);
+        self.explainer.settings(c);
+        self.restrictions.settings(c);
     }
     fn configure(&mut self, c: &Config) {
         debug!("algo.configure");
@@ -135,6 +142,8 @@ impl Component for Algo {
         self.tt.configure(c);
         self.killers.configure(c);
         self.history.configure(c);
+        self.explainer.configure(c);
+        self.restrictions.configure(c);
     }
 
     // clears evaluation and transposition caches as well as repetition counts
@@ -156,6 +165,8 @@ impl Component for Algo {
         self.repetition.new_game();
         self.tt.new_game();
         self.killers.new_game();
+        self.explainer.new_game();
+        self.restrictions.new_game();
     }
 
     fn new_position(&mut self) {
@@ -175,6 +186,8 @@ impl Component for Algo {
         self.tt.new_position();
         self.killers.new_position();
         self.history.new_position();
+        self.explainer.new_position();
+        self.restrictions.new_position();
     }
 }
 
@@ -204,6 +217,8 @@ impl fmt::Debug for Algo {
             .field("tt", &self.tt)
             .field("killers", &self.killers)
             .field("history", &self.history)
+            .field("explainer", &self.explainer)
+            .field("restrictions", &self.restrictions)
             .finish()
     }
 }
@@ -247,6 +262,8 @@ impl fmt::Display for Algo {
         write!(f, "\n[iterative deepening]\n{}", self.ids)?;
         write!(f, "\n[global counts]\n{}", counts::GLOBAL_COUNTS)?;
         write!(f, "\n[pvtable]\n{}", self.pv_table)?;
+        write!(f, "\n[explainer]\n{}", self.explainer)?;
+        write!(f, "\n[restrictions]\n{}", self.restrictions)?;
         Ok(())
     }
 }
@@ -261,6 +278,10 @@ impl fmt::Display for Algo {
 // }
 
 impl Algo {
+    pub fn var(&self) -> &Variation {
+        &self.current_variation
+    }
+
     pub fn report_progress(&self) {
         if self.search_stats.total().all_nodes() % 5_000_000 == 0 && self.search_stats.total().all_nodes() != 0 {
             let sp = SearchProgress::report_progress(&self.search_stats());

@@ -153,45 +153,45 @@ impl Default for SimpleScorer {
             mobility_phase_disable: 101,
             quantum: 1,
             min_depth_mob: 1,
-            contempt_penalty: Weight::new(-30, 0), // typically -ve
+            contempt_penalty: Weight::from_i32(-30, 0), // typically -ve
 
-            undefended_sq: Weight::new(4, 3),
-            undefended_piece: Weight::new(-3, 49),
-            trapped_piece: Weight::new(-17, -22),
-            partially_trapped_piece: Weight::new(-7, -15),
-            defended_non_pawn: Weight::new(0, 0),
-            xrayed: Weight::new(0, 0),
+            undefended_sq: Weight::from_i32(4, 3),
+            undefended_piece: Weight::from_i32(-3, 49),
+            trapped_piece: Weight::from_i32(-17, -22),
+            partially_trapped_piece: Weight::from_i32(-7, -15),
+            defended_non_pawn: Weight::from_i32(0, 0),
+            xrayed: Weight::from_i32(0, 0),
 
-            bishop_pair: Weight::new(62, 58),
-            fianchetto: Weight::new(55, 27),
-            bishop_outposts: Weight::new(0, 0),
-            bishop_color_pawns: Weight::new(55, 27),
-            knight_forks: Weight::new(0, 0),
-            knight_outposts: Weight::new(0, 0),
-            rook_pair: Weight::new(-1, -1),
-            rook_open_file: Weight::new(59, -4),
+            bishop_pair: Weight::from_i32(62, 58),
+            fianchetto: Weight::from_i32(55, 27),
+            bishop_outposts: Weight::from_i32(0, 0),
+            bishop_color_pawns: Weight::from_i32(55, 27),
+            knight_forks: Weight::from_i32(0, 0),
+            knight_outposts: Weight::from_i32(0, 0),
+            rook_pair: Weight::from_i32(-1, -1),
+            rook_open_file: Weight::from_i32(59, -4),
 
-            queen_open_file: Weight::new(-19, 37),
+            queen_open_file: Weight::from_i32(-19, 37),
 
-            pawn_doubled: Weight::new(19, -35),
-            pawn_isolated: Weight::new(-35, -5),
-            pawn_passed: Weight::new(15, 28),
-            pawn_passed_r5: Weight::new(1, 50),
-            pawn_passed_r6: Weight::new(8, 94),
-            passers_on_rim: Weight::new(-10, -10),
-            blockaded: Weight::new(-10, -10),
-            blockaded_passers: Weight::new(-10, -10),
+            pawn_doubled: Weight::from_i32(19, -35),
+            pawn_isolated: Weight::from_i32(-35, -5),
+            pawn_passed: Weight::from_i32(15, 28),
+            pawn_passed_r5: Weight::from_i32(1, 50),
+            pawn_passed_r6: Weight::from_i32(8, 94),
+            passers_on_rim: Weight::from_i32(-10, -10),
+            blockaded: Weight::from_i32(-10, -10),
+            blockaded_passers: Weight::from_i32(-10, -10),
 
-            tempo_bonus: Weight::new(40, 50),
-            pawn_adjacent_shield: Weight::new(44, -15),
-            pawn_nearby_shield: Weight::new(42, -14),
-            open_files_near_king: Weight::new(-6, -1),
-            attacks_near_king: Weight::new(-8, -2),
-            tropism_d1: Weight::new(-40, 29),
-            tropism_d2: Weight::new(-28, 11),
-            tropism_d3: Weight::new(-5, 2),
+            tempo_bonus: Weight::from_i32(40, 50),
+            pawn_adjacent_shield: Weight::from_i32(44, -15),
+            pawn_nearby_shield: Weight::from_i32(42, -14),
+            open_files_near_king: Weight::from_i32(-6, -1),
+            attacks_near_king: Weight::from_i32(-8, -2),
+            tropism_d1: Weight::from_i32(-40, 29),
+            tropism_d2: Weight::from_i32(-28, 11),
+            tropism_d3: Weight::from_i32(-5, 2),
 
-            castling_rights: Weight::new(0, 0),
+            castling_rights: Weight::from_i32(0, 0),
         };
         me
     }
@@ -451,7 +451,7 @@ impl SimpleScorer {
             * board
                 .color_us()
                 .chooser_wb(self.contempt_penalty, -self.contempt_penalty);
-        return Score::from_f32(contempt.interpolate(board.phase(&self.phaser)));
+        return Score::from_f32(contempt.interpolate(board.phase(&self.phaser)) as f32);
 
         // FIXME! v33
         // let signum = 1 - (node.ply % 2) * 2; // ply=0 => 1  ply=1=> -1
@@ -740,9 +740,11 @@ impl Board {
         Score::from_cp(eval.eval_move_see(self, &mv))
     }
 
+
     #[inline]
     pub fn eval_move_material(&self, eval: &SimpleScorer, mv: &Move) -> Score {
         MOVE.increment();
+        // FIXME! far too slow (-7 ELO)
         Score::from_cp(eval.eval_move_material(&mv).interpolate(self.phase(&eval.phaser)) as i32)
     }
 
@@ -811,7 +813,7 @@ mod tests {
         eval.set_switches(false);
         eval.position = true;
         assert_eq!(bd.phase(&eval.phaser), 100);
-        assert_eq!(bd.eval(&eval, &Node::root(0)), Score::from_f32(eval.pst.pawn_r7.e()), "{}", eval.w_eval_explain(&bd));
+        assert_eq!(bd.eval(&eval, &Node::root(0)), Score::from_f32(eval.pst.pawn_r7.e() as f32), "{}", eval.w_eval_explain(&bd));
 
         let bd = Board::parse_fen("8/4p3/8/8/8/8/8/8 w - - 0 1")
             .unwrap()
@@ -834,13 +836,13 @@ mod tests {
 
         // from blacks perspective to negate
         let bd = Board::parse_fen("8/8/8/8/8/8/p7/8 b - - 0 1").unwrap().as_board();
-        assert_eq!(bd.eval(&eval, &Node::root(0)), Score::from_f32(eval.pst.pawn_r7.e()));
+        assert_eq!(bd.eval(&eval, &Node::root(0)), Score::from_f32(eval.pst.pawn_r7.e() as f32));
     }
 
     #[test]
     fn test_score_mobility() {
         let mut eval = SimpleScorer::new();
-        eval.pawn_doubled = Weight::from_i32(-1);
+        eval.pawn_doubled = Weight::from_single_i32(-1);
         eval.pawn_isolated = Weight::zero();
         eval.mobility_phase_disable = 101;
         let b = Catalog::starting_board();
@@ -852,7 +854,7 @@ mod tests {
     #[test]
     fn test_score_pawn() {
         let mut eval = SimpleScorer::new();
-        eval.pawn_doubled = Weight::from_i32(-1);
+        eval.pawn_doubled = Weight::from_single_i32(-1);
         eval.pawn_isolated = Weight::zero();
         eval.mobility_phase_disable = 101;
         let _b = Catalog::starting_board();
@@ -862,7 +864,7 @@ mod tests {
         let b = Board::parse_fen("8/pppp1p1p/pppp4/8/8/2P5/PPP4P/8 b - - 0 1")
             .unwrap()
             .as_board();
-        eval.pawn_doubled = Weight::from_i32(-1);
+        eval.pawn_doubled = Weight::from_single_i32(-1);
         eval.pawn_isolated = Weight::zero();
         eval.pawn_passed = Weight::zero();
         assert_eq!(
@@ -871,7 +873,7 @@ mod tests {
         );
 
         eval.pawn_doubled = Weight::zero();
-        eval.pawn_isolated = Weight::from_i32(-1);
+        eval.pawn_isolated = Weight::from_single_i32(-1);
         eval.pawn_passed = Weight::zero();
         assert_eq!(
             eval.w_eval_some(&b, Switches::ALL_SCORING),
@@ -880,7 +882,7 @@ mod tests {
 
         eval.pawn_doubled = Weight::zero();
         eval.pawn_isolated = Weight::zero();
-        eval.pawn_passed = Weight::from_i32(10);
+        eval.pawn_passed = Weight::from_single_i32(10);
         assert_eq!(
             eval.w_eval_some(&b, Switches::ALL_SCORING),
             Score::from_cp(0 - 10)
@@ -891,7 +893,7 @@ mod tests {
             .unwrap()
             .as_board();
 
-        eval.pawn_doubled = Weight::from_i32(-1);
+        eval.pawn_doubled = Weight::from_single_i32(-1);
         eval.pawn_isolated = Weight::zero();
         eval.set_switches(false);
         eval.pawn = true;
@@ -903,7 +905,7 @@ mod tests {
         );
 
         eval.pawn_doubled = Weight::zero();
-        eval.pawn_isolated = Weight::from_i32(-1);
+        eval.pawn_isolated = Weight::from_single_i32(-1);
         assert_eq!(
             eval.w_eval_some(&b, Switches::ALL_SCORING),
             Score::from_cp(-1),

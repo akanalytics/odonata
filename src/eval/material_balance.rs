@@ -40,12 +40,12 @@ impl Default for MaterialBalance {
             trade_factor: 2,
             material_weights: [
                 Weight::default(),
-                Weight::new(100, 150),
-                Weight::new(632, 410),
-                Weight::new(635, 429),
-                Weight::new(839, 771),
-                Weight::new(1822, 1405),
-                Weight::new(0, 0), // king
+                Weight::from_i32(100, 150),
+                Weight::from_i32(632, 410),
+                Weight::from_i32(635, 429),
+                Weight::from_i32(839, 771),
+                Weight::from_i32(1822, 1405),
+                Weight::from_i32(0, 0), // king
             ],
         };
         mb
@@ -181,12 +181,12 @@ impl MaterialBalance {
     pub fn set_classical_piece_values(&mut self) {
         self.material_weights= [
             Weight::default(),
-            Weight::from_i32(Piece::Pawn.centipawns()),
-            Weight::from_i32(Piece::Knight.centipawns()),
-            Weight::from_i32(Piece::Bishop.centipawns()),
-            Weight::from_i32(Piece::Rook.centipawns()),
-            Weight::from_i32(Piece::Queen.centipawns()),
-            Weight::from_i32(0), // king
+            Weight::from_single_i32(Piece::Pawn.centipawns()),
+            Weight::from_single_i32(Piece::Knight.centipawns()),
+            Weight::from_single_i32(Piece::Bishop.centipawns()),
+            Weight::from_single_i32(Piece::Rook.centipawns()),
+            Weight::from_single_i32(Piece::Queen.centipawns()),
+            Weight::from_single_i32(0), // king
         ];
     }
 

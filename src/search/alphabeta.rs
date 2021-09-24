@@ -199,6 +199,7 @@ impl Algo {
             // }
             let mut child_board = board.make_move(&mv);
             self.current_variation.push(mv);
+            self.explainer.start(&self.current_variation);
             self.search_stats.inc_nmp(ply);
             let child_score = -self.alphabeta_recursive(
                 &mut child_board,
@@ -210,9 +211,11 @@ impl Algo {
             );
             board.undo_move(&mv);
             self.current_variation.pop();
+            self.explainer.start(&self.current_variation);
             if child_score >= n.beta {
                 self.search_stats.inc_node_cut(ply, MoveType::Null, -1);
                 self.report_refutation(n.ply);
+                self.explain_nmp(child_score, n.beta);
                 return child_score;
             }
         }
@@ -220,12 +223,16 @@ impl Algo {
         let mut sorted_moves = self.move_orderer.get_sorted_moves(ply, tt_mv);
         let mut count = 0;
         while let Some((move_type, mv)) = sorted_moves.next_move(board, self) {
+            if ply == 0 && !self.restrictions.search_moves.is_empty() && !self.restrictions.search_moves.contains(&mv) {
+                continue;
+            }
             count += 1;
             self.search_stats.inc_move(ply);
             if let Some(futility) = futility {
                 // check we have a score (and hence a move) nefore we risk pruning everything
                 // if score > -Score::INFINITY {
                     if let Some(est_score) = self.futility.can_prune_move(&mv, move_type, board, futility, &n, &self.eval) {
+                        self.explain_futility(&mv, move_type, est_score, n.alpha);
                         self.search_stats.inc_fp_move(ply);
                         // if est_score > n.beta {
                         //     self.search_stats.inc_node_cut(ply, MoveType::Null);
@@ -246,6 +253,7 @@ impl Algo {
             let mut child_board = board.make_move(&mv);
             self.repetition.push_move(&mv, &child_board);
             self.current_variation.push(mv);
+            self.explainer.start(&self.current_variation);
             child_board.set_repetition_count(self.repetition.count(&child_board));
             debug_assert!(
                 n.alpha < n.beta || self.minmax,
@@ -317,6 +325,7 @@ impl Algo {
             }
             board.undo_move(&mv);
             self.current_variation.pop();
+            self.explainer.start(&self.current_variation);
             self.repetition.pop();
             if ply > 1 && self.task_control.is_cancelled() {
                 return -Score::INFINITY;
@@ -326,7 +335,8 @@ impl Algo {
             if child_score > score {
                 score = child_score;
             }
-            if child_score > n.alpha {
+            if child_score > n.alpha { 
+                self.explain_raised_alpha(&mv, child_score, n.alpha);
                 n.alpha = child_score;
                 bm = mv;
                 nt = NodeType::Pv;
@@ -372,6 +382,7 @@ impl Algo {
             bm, // not set for NodeType::All
         };
         self.tt.store(board.hash(), entry);
+        self.explain_node(&bm, nt, score, &self.pv_table.extract_pv_for(ply));
         score
     }
 }

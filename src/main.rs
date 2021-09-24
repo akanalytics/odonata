@@ -2,6 +2,7 @@ use clap::{App, Arg};
 use odonata::comms::console::Console;
 use odonata::comms::uci::Uci;
 use odonata::comms::bench::Bench;
+// use odonata::logger;
 use odonata::version::Version;
 use odonata::config::Config;
 use odonata::search::timecontrol::TimeControl;
@@ -12,6 +13,7 @@ use odonata::search::timecontrol::TimeControl;
 // pub const NAME: &'static str = env!("CARGO_PKG_NAME");
 // pub const HOMEPAGE: &'static str = env!("CARGO_PKG_HOMEPAGE");
 // pub const IMAGE: &'static str = r##"
+
 
 
 fn main() -> Result<(), String> {
@@ -68,14 +70,19 @@ fn main() -> Result<(), String> {
         .get_matches();
 
 
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
+
+    // logger::init_logging();
+
+
     if let Some(filename) = matches.value_of("config") {
         let config = Config::read_from_file(filename)?;
         Config::set_global(config);
     }
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
 
     if matches.is_present("uci") {
-        Uci::new().run();
+        let mut uci = Uci::new();
+        uci.run();
     } else if matches.is_present("profile") {
         Bench::profile_me();
     } else if let Some(depth) = matches.value_of("perft") {

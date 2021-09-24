@@ -263,7 +263,7 @@ impl TranspositionTable2 {
             aging: true,
             current_age: 10, // to allow us to look back
             hmvc_horizon: 85,
-            min_ply: 1,
+            min_ply: 1,  // search restrictions on ply=0
             hits: Stat::new("hits"),
             misses: Stat::new("misses"),
             collisions: Stat::new("collisions"),

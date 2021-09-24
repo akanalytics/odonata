@@ -62,14 +62,20 @@ static mut MODEL: Model = Model::from_board(POS.read().board(), Switches::ALL_SC
 //     }
 // }
 
+#[dynamic]
+static WARM_UP: bool = {
+    let pos = POS.read();
+    let mut ml = MoveList::new();
+    black_box(black_box(pos.board()).legal_moves_into(&mut ml));
+    true
+};
 
 // use criterion_linux_perf::{PerfMeasurement, PerfMode};
 
 fn iai_legal_moves_into() {
-    let pos = Catalog::starting_position();
-    let board = pos.board();
+    let pos = POS.read();
     let mut ml = MoveList::new();
-    black_box(black_box(&board).legal_moves_into(&mut ml));
+    black_box(black_box(pos.board()).legal_moves_into(&mut ml));
 }
 
 fn iai_board_clone() {

@@ -176,7 +176,7 @@ impl Config {
             debug!("config found {} = [weight]", name);
             if let Ok(res) = v.parse::<f32>() {
                 debug!("config fetch {}.s = [weight f32] {}", name, res);
-                s = res;
+                s = res as f32;
             }
             if let Ok(res) = v.parse::<i32>() {
                 debug!("config fetch {}.s = [weight i32] {}", name, res);
@@ -186,7 +186,7 @@ impl Config {
         if let Some(v) = self.settings.get(&(name.to_string() + ".e")) {
             if let Ok(res) = v.parse::<f32>() {
                 debug!("config fetch {}.e = [weight f32] {}", name, res);
-                e = res;
+                e = res as f32;
             }
             if let Ok(res) = v.parse::<i32>() {
                 debug!("config fetch {}.e = [weight i32] {}", name, res);
