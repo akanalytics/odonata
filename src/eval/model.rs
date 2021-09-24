@@ -537,7 +537,7 @@ impl ModelSide {
         let us = b.color(c);
         let open_files = bb.open_files(b.pawns());
         self.doubled_rooks = (self.has_rook_pair && (b.rooks() & us).first_square().file_index() == (b.rooks() & us).last_square().file_index()) as i32;
-        self.doubled_rooks_open_file = ((open_files & b.rooks() & us).popcount() >= 2 && self.doubled_rooks > 1) as i32;
+        self.doubled_rooks_open_file = (self.doubled_rooks > 1 && (open_files & b.rooks() & us).popcount() >= 2 ) as i32;
         self.rooks_on_open_files = (open_files & us & b.rooks()).popcount();
         self.queens_on_open_files = (open_files & us & b.queens()).popcount();
 

@@ -172,8 +172,8 @@ impl Default for SimpleScorer {
             knight_outposts: Weight::from_i32(0, 0),
             rook_pair: Weight::from_i32(-1, -1),
             rook_open_file: Weight::from_i32(59, -4),
-            doubled_rooks: Weight::from_i32(0, 0),
-            doubled_rooks_open_file: Weight::from_i32(0, 0),
+            doubled_rooks: Weight::from_i32(18, 48),
+            doubled_rooks_open_file: Weight::from_i32(17, 17),
 
             queen_open_file: Weight::from_i32(-19, 37),
 

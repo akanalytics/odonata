@@ -81,6 +81,13 @@ eval.rook.pair.s=-9
 eval.rook.pair.e=2
 eval.rook.edge.s=29
 eval.rook.edge.e=7
+
+# added manually 24/9/21
+eval.doubled.rooks.s=18
+eval.doubled.rooks.e=48
+eval.doubled.rooks.open.file.s=16
+eval.doubled.rooks.open.file.e=16
+
 eval.queen.open.file.s=-22
 eval.queen.open.file.e=42
 eval.fianchetto.s=39
