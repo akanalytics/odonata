@@ -112,6 +112,8 @@ pub struct SimpleScorer {
     pub knight_outposts: Weight,
 
     pub rook_pair: Weight,
+    pub doubled_rooks: Weight,
+    pub doubled_rooks_open_file: Weight,
     pub rook_open_file: Weight,
     pub queen_open_file: Weight,
 
@@ -170,6 +172,8 @@ impl Default for SimpleScorer {
             knight_outposts: Weight::from_i32(0, 0),
             rook_pair: Weight::from_i32(-1, -1),
             rook_open_file: Weight::from_i32(59, -4),
+            doubled_rooks: Weight::from_i32(0, 0),
+            doubled_rooks_open_file: Weight::from_i32(0, 0),
 
             queen_open_file: Weight::from_i32(-19, 37),
 
@@ -249,6 +253,8 @@ impl Component for SimpleScorer {
 
         c.set_weight("eval.rook.pair", &self.rook_pair);
         c.set_weight("eval.rook.open.file", &self.rook_open_file);
+        c.set_weight("eval.doubled.rooks", &self.doubled_rooks);
+        c.set_weight("eval.doubled.rooks.open.file", &self.doubled_rooks_open_file);
 
         c.set_weight("eval.queen.open.file", &self.queen_open_file);
 
@@ -314,6 +320,8 @@ impl Component for SimpleScorer {
         self.knight_forks = c.weight("eval.knight.forks", &self.knight_forks);
         self.knight_outposts = c.weight("eval.knight.outposts", &self.knight_outposts);
         self.bishop_outposts = c.weight("eval.bishop.outposts", &self.bishop_outposts);
+        self.doubled_rooks = c.weight("eval.doubled.rooks", &self.doubled_rooks);
+        self.doubled_rooks_open_file = c.weight("eval.doubled.rooks.open.file", &self.doubled_rooks_open_file);
 
         self.pawn_doubled = c.weight("eval.pawn.doubled", &self.pawn_doubled);
         self.pawn_isolated = c.weight("eval.pawn.isolated", &self.pawn_isolated);
@@ -381,6 +389,8 @@ impl fmt::Display for SimpleScorer {
         writeln!(f, "bishop outposts  : {}", self.bishop_outposts)?;
         writeln!(f, "knight outposts  : {}", self.knight_outposts)?;
         writeln!(f, "knight forks     : {}", self.knight_forks)?;
+        writeln!(f, "doubled.rook     : {}", self.doubled_rooks)?;
+        writeln!(f, "doubled.rook.open: {}", self.doubled_rooks_open_file)?;
 
         writeln!(f, "rook.open.file   : {}", self.rook_open_file)?;
 
@@ -538,6 +548,8 @@ impl SimpleScorer {
             scorer.position("bishop outposts", w.bishop_outposts, b.bishop_outposts, self.bishop_outposts);
             scorer.position("knight forks", w.knight_forks, b.knight_forks, self.knight_forks);
             scorer.position("knight outposts", w.knight_outposts, b.knight_outposts, self.knight_outposts);
+            scorer.position("doubled rook", w.doubled_rooks, b.doubled_rooks, self.doubled_rooks);
+            scorer.position("doubled rook of", w.doubled_rooks_open_file, b.doubled_rooks_open_file, self.doubled_rooks_open_file);
 
             // scorer.position("pst", 1, 0, w.psq.iter().map(|(p,sq)| self.pst(*p, *sq)).sum::<Weight>());
             // scorer.position("pst", 0, 1, b.psq.iter().map(|(p,sq)| self.pst(*p, *sq)).sum::<Weight>());

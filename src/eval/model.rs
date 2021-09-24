@@ -40,6 +40,9 @@ pub struct ModelSide {
     // rooks
     pub has_rook_pair: bool,
     pub rooks_on_open_files: i32,
+    pub doubled_rooks: i32,
+    pub doubled_rooks_open_file: i32,
+
 
     pub queens_on_open_files: i32,
 
@@ -532,9 +535,11 @@ impl ModelSide {
     fn init_mobility(&mut self, b: &Board, c: Color) {
         let bb = BitboardDefault::default();
         let us = b.color(c);
-
-        self.rooks_on_open_files = (bb.open_files(b.pawns()) & us & b.rooks()).popcount();
-        self.queens_on_open_files = (bb.open_files(b.pawns()) & us & b.queens()).popcount();
+        let open_files = bb.open_files(b.pawns());
+        self.doubled_rooks = (self.has_rook_pair && (b.rooks() & us).first_square().file_index() == (b.rooks() & us).last_square().file_index()) as i32;
+        self.doubled_rooks_open_file = ((open_files & b.rooks() & us).popcount() >= 2 && self.doubled_rooks > 1) as i32;
+        self.rooks_on_open_files = (open_files & us & b.rooks()).popcount();
+        self.queens_on_open_files = (open_files & us & b.queens()).popcount();
 
         let their = c.opposite();
         let them = b.color(their);
