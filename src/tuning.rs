@@ -105,7 +105,7 @@ mod tests {
         for n in (-100..140).step_by(10) {
             let value = n;
             engine.algo.eval.mb.enabled = false;
-            engine.algo.eval.pawn_isolated = Weight::new(0, value); 
+            engine.algo.eval.pawn_isolated = Weight::from_i32(0, value); 
             let diffs = tuning.calculate_mean_square_error(&engine);
             println!("{}, {}", value, diffs);
         }

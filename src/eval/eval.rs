@@ -941,15 +941,15 @@ mod tests {
         info!("{}\n{}", b, eval.w_eval_explain(&b));
 
         let e1 = eval.w_eval_some(&b, Switches::ALL_SCORING);
-        eval.pawn_adjacent_shield = Weight::new(50, 50);
+        eval.pawn_adjacent_shield = Weight::from_i32(50, 50);
         let e2 = eval.w_eval_some(&b, Switches::ALL_SCORING);
         assert_eq!((e2 - e1), Score::from_cp(100), "{}", eval.w_eval_explain(&b)); // 2 pawns adjacent
 
-        eval.pawn_nearby_shield = Weight::new(150, 150);
+        eval.pawn_nearby_shield = Weight::from_i32(150, 150);
         let e3 = eval.w_eval_some(&b, Switches::ALL_SCORING);
         assert_eq!(e3 - e2, Score::from_cp(150), "{}", eval.w_eval_explain(&b)); // 2 pawns adjacent, 1 nearby
 
-        eval.attacks_near_king = Weight::new(-75, -75);
+        eval.attacks_near_king = Weight::from_i32(-75, -75);
         let att = eval.w_eval_some(&b, Switches::ALL_SCORING);
         assert_eq!((att - e3), Score::from_cp(-75)); // 1 attack on nearby pawn
         info!("{}\n{}", b, eval.w_eval_explain(&b));

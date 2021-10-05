@@ -282,7 +282,7 @@ mod tests {
     #[ignore]
     fn test_rep_bug2() {
         let mut engine = Engine::new();
-        engine.algo.eval.contempt_penalty = Weight::new(-30, -30);
+        engine.algo.eval.contempt_penalty = Weight::from_i32(-30, -30);
 
         let pos3 = Catalog::draws()[3].clone();
 

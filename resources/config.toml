@@ -1,11 +1,11 @@
 #
-# Run: 52
-# MSE improved from 0.063920 to 0.063005 (-1.43%)
-# MSE improved from 0.063920 to 0.063009 (-1.42%) using integer weights
+# Run: tuned
+# MSE improved from 0.063004 to 0.062999 (-0.01%)
+# MSE improved from 0.063004 to 0.063002 (-0.00%) using integer weights
 # Training file ../epd/quiet-labeled.epd
-# Odonata odonata 0.3.42 built on Mon, 13 Sep 2021 07:54:19 +0000
+# Odonata odonata 0.3.48 built on Tue, 05 Oct 2021 16:14:52 +0000
 # Path ../engines/odonata/odonata-stable
-# Completed... 112.5 M position evaluations per second (5884 recalcs x 1417268 file lines)
+# Completed... 104.8 M position evaluations per second (6205 recalcs x 1417268 file lines)
 # 
 
 # baseline
@@ -21,43 +21,43 @@ eval.contempt.penalty.s=-30
 
 # tuned
 eval.p.e=149
-eval.n.s=625
+eval.n.s=624
 eval.n.e=402
 eval.b.s=633
-eval.b.e=428
-eval.r.s=848
-eval.r.e=768
-eval.q.s=1806
-eval.q.e=1416
+eval.b.e=427
+eval.r.s=847
+eval.r.e=767
+eval.q.s=1801
+eval.q.e=1419
 eval.mobility.undef.sq.s=4
 eval.mobility.undef.sq.e=4
-eval.mobility.undef.piece.s=-3
+eval.mobility.undef.piece.s=-2
 eval.mobility.undef.piece.e=46
 eval.mobility.trapped.piece.s=-16
-eval.mobility.trapped.piece.e=-15
+eval.mobility.trapped.piece.e=-14
 eval.mobility.partially.trapped.piece.s=-7
 eval.mobility.partially.trapped.piece.e=-13
-eval.pawn.r5.s=12
-eval.pawn.r5.e=28
-eval.pawn.r6.s=-17
-eval.pawn.r6.e=172
-eval.pawn.r7.s=99
-eval.pawn.r7.e=225
-eval.pawn.doubled.s=16
+eval.pawn.r5.s=11
+eval.pawn.r5.e=29
+eval.pawn.r6.s=-19
+eval.pawn.r6.e=160
+eval.pawn.r7.s=95
+eval.pawn.r7.e=222
+eval.pawn.doubled.s=15
 eval.pawn.doubled.e=-35
 eval.pawn.isolated.s=-35
 eval.pawn.isolated.e=-6
-eval.pawn.passed.s=19
+eval.pawn.passed.s=18
 eval.pawn.passed.e=16
 eval.pawn.passed.r5.s=19
 eval.pawn.passed.r5.e=43
-eval.pawn.passed.r6.s=14
-eval.pawn.passed.r6.e=107
+eval.pawn.passed.r6.s=12
+eval.pawn.passed.r6.e=108
 eval.passers.on.rim.s=-22
 eval.passers.on.rim.e=21
 eval.blockaded.s=25
 eval.blockaded.e=-37
-eval.blockaded.passers.s=-27
+eval.blockaded.passers.s=-26
 eval.blockaded.passers.e=-50
 eval.tempo.bonus.s=40
 eval.tempo.bonus.e=50
@@ -69,35 +69,32 @@ eval.open.files.near.king.s=-6
 eval.open.files.near.king.e=-1
 eval.attacks.near.king.s=-9
 eval.attacks.near.king.e=-2
-eval.tropism.d1.s=-35
+eval.tropism.d1.s=-34
 eval.tropism.d1.e=24
-eval.tropism.d2.s=-30
+eval.tropism.d2.s=-29
 eval.tropism.d2.e=11
 eval.tropism.d3.s=-3
 eval.tropism.d3.e=2
-eval.rook.open.file.s=57
+eval.rook.open.file.s=56
 eval.rook.open.file.e=-2
-eval.rook.pair.s=-9
-eval.rook.pair.e=2
-eval.rook.edge.s=29
-eval.rook.edge.e=7
-
-# added manually 24/9/21
-eval.doubled.rooks.s=18
-eval.doubled.rooks.e=48
-eval.doubled.rooks.open.file.s=16
-eval.doubled.rooks.open.file.e=16
-
-eval.queen.open.file.s=-22
-eval.queen.open.file.e=42
-eval.fianchetto.s=39
-eval.fianchetto.e=12
+eval.rook.pair.s=-8
+eval.rook.pair.e=-1
+eval.rook.edge.s=30
+eval.rook.edge.e=16
+eval.doubled.rooks.s=19
+eval.doubled.rooks.e=29
+eval.doubled.rooks.open.file.s=10
+eval.doubled.rooks.open.file.e=15
+eval.queen.open.file.s=-23
+eval.queen.open.file.e=43
+eval.fianchetto.s=46
+eval.fianchetto.e=15
 eval.bishop.pair.s=61
-eval.bishop.pair.e=70
+eval.bishop.pair.e=69
 eval.bishop.color.pawns.s=-5
 eval.bishop.color.pawns.e=-4
-eval.bishop.outposts.s=59
-eval.bishop.outposts.e=4
+eval.bishop.outposts.s=57
+eval.bishop.outposts.e=5
 eval.knight.forks.s=1
 eval.knight.forks.e=66
 eval.knight.outposts.s=51
