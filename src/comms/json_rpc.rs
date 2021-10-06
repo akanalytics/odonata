@@ -8,12 +8,23 @@ use crate::tuning::Tuning;
 use crate::version::built_info;
 use crate::version::Version;
 use crate::Config;
+use anyhow::Context;
 // // use crate::{info, logger::LogInit};
 // use serde_json::Value;
 use jsonrpc_core::{IoHandler, Result};
 use jsonrpc_derive::rpc;
+use std::fs::File;
+use std::io::BufWriter;
 use std::sync::Arc;
 use std::sync::Mutex;
+
+fn to_rpc_error(err: impl Into<anyhow::Error>) -> jsonrpc_core::Error {
+    jsonrpc_core::Error {
+        message: err.into().to_string(),
+        code: jsonrpc_core::ErrorCode::InternalError,
+        data: None,
+    }
+}
 
 #[derive(Debug)]
 pub struct JsonRpc {
@@ -56,6 +67,9 @@ pub trait Rpc {
 
     #[rpc(name = "position_upload")]
     fn position_upload(&self, filename: String) -> Result<i32>;
+
+    #[rpc(name = "position_download")]
+    fn position_download(&self, filename: String) -> Result<i32>;
 
     #[rpc(name = "tuning_mean_squared_error")]
     fn tuning_mean_squared_error(&self) -> Result<f32>;
@@ -106,13 +120,29 @@ impl Rpc for RpcImpl {
             *self.tuning.lock().unwrap() = Tuning::new();
             return Ok(0);
         }
-        let new = Position::parse_epd_file(filename).map_err(|s| jsonrpc_core::Error {
-            message: s,
+        let positions = Position::parse_epd_file(&filename).map_err(|s| jsonrpc_core::Error {
+            message: format!("{} on uploading positions from '{}'", s, &filename),
             code: jsonrpc_core::ErrorCode::InternalError,
             data: None,
         })?;
-        let uploaded_count = self.tuning.lock().unwrap().upload_positions(&new);
+        let uploaded_count = self.tuning.lock().unwrap().upload_positions(&positions);
         Ok(uploaded_count as i32)
+    }
+
+    fn position_download(&self, filename: String) -> Result<i32> {
+        let f = File::create(&filename)
+            .with_context(|| format!("Failed to open file {}", &filename))
+            .map_err(to_rpc_error)?;
+        let mut f = BufWriter::new(f);
+        let eng = self.engine.lock().unwrap();
+        let line_count = self
+            .tuning
+            .lock()
+            .unwrap()
+            .write_model(&eng, &mut f)
+            .map_err(to_rpc_error)?;
+
+        Ok(line_count)
     }
 
     fn tuning_mean_squared_error(&self) -> Result<f32> {
@@ -158,6 +188,15 @@ mod tests {
             built_info::BUILT_TIME_UTC
         );
         assert_eq!(rpc.invoke(request1), Some(response.to_string()));
+    }
+
+    #[test]
+    fn position_download_test() -> anyhow::Result<()> {
+        let rpc = RpcImpl::new(Arc::new(Mutex::new(Engine::new())));
+        rpc.position_upload("../odonata-extras/epd/quiet-labeled-small-odonata-5ms.epd".to_string())?;
+        let lines = rpc.position_download("/tmp/test.csv".to_string())?;
+        assert!(lines > 0);
+        Ok(())
     }
 }
 

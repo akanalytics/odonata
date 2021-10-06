@@ -1,11 +1,16 @@
+use std::io::Write;
+
+use crate::eval::model::ExplainScorer;
 use crate::eval::model::Model;
 use crate::eval::model::ModelScore;
+use crate::eval::model::ReportLine;
 use crate::eval::switches::Switches;
 use crate::position::Position;
 use crate::eval::score::Score;
 use crate::search::engine::Engine;
 use crate::tags::Tag;
 use rayon::prelude::*;
+use anyhow::Result;
 
 
 #[derive(Clone, Default, Debug)]
@@ -51,6 +56,25 @@ impl Tuning {
         }
         panic!("Unable to find result comment c9 in {}", pos);
     }
+
+
+    pub fn write_model<W: Write>(&self, engine: &Engine, writer: &mut W) -> Result<i32> {
+        let eval = &engine.algo.eval;
+        let mut line_count = 0;
+        for (model, outcome) in self.models_and_outcomes.iter() {
+            let phase = model.mat.phase(&eval.phaser);
+            let mut w_score = ExplainScorer::new(phase);
+            eval.predict(model, &mut w_score);
+            if line_count == 0 {
+                writeln!(writer, "{}{}", w_score.as_csv(ReportLine::Header), "outcome")?;
+            }
+            writeln!(writer, "{}{}", w_score.as_csv(ReportLine::Body), outcome)?;
+            line_count += 1;
+        }
+        writer.flush()?;
+        Ok(line_count)
+    }
+
 
     pub fn calculate_mean_square_error(&self, engine: &Engine) -> f32 {
 

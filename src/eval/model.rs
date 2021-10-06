@@ -109,6 +109,8 @@ pub struct ExplainScorer {
     delegate: ModelScore,
 }
 
+pub enum ReportLine { Header, Body }
+
 impl ExplainScorer {
     pub fn new(phase: i32) -> Self {
         Self {
@@ -119,6 +121,30 @@ impl ExplainScorer {
     pub fn as_score(&self) -> Score {
         self.delegate.as_score()
     }
+
+
+
+    pub fn as_csv(&self, line: ReportLine ) -> String {
+        let mut output = String::new();
+        for (i, _sw) in Switches::all_scoring().iter().enumerate() {
+            let vec = vec![
+                &self.mat, &self.pos, &self.mob, &self.paw, &self.saf, &self.con, &self.tem,
+            ][i];
+            for (attr, w, b, wt) in vec {
+                let (attr, w, b, _wt) = (attr, *w, *b, *wt);
+                let field = match line {
+
+                    ReportLine::Header => attr.replace(" ", "_"),
+                    ReportLine::Body => format!("{}",w-b),
+                };
+                output.push_str(&field);
+                output.push(',');
+                output.push(' ');
+            }
+        }
+        output
+    }
+
 }
 
 impl Scorer for ExplainScorer {
@@ -635,8 +661,10 @@ impl ModelSide {
 mod tests {
     use super::*;
     use crate::catalog::Catalog;
+    use crate::eval::eval::SimpleScorer;
     use crate::tags::Tag;
     use crate::utils::StringUtils;
+    use crate::test_env_log::test;
 
     #[test]
     fn test_model() {
@@ -657,4 +685,22 @@ mod tests {
             }
         }
     }
+
+
+    #[test]
+    fn model_csv_test() {
+
+        let eval = &mut SimpleScorer::new();
+        eval.tempo = false;
+
+        let positions = Catalog::example_game();
+        for (i, p) in positions.iter().enumerate() {
+            // let model = Model::from_board(p.board(), Switches::ALL_SCORING);
+            if i == 0 {
+                info!("\n{}", eval.w_eval_explain(&p.board()).as_csv(ReportLine::Header));
+            }
+            info!("\n{}", eval.w_eval_explain(&p.board()).as_csv(ReportLine::Body));
+        }    
+    }
+
 }
