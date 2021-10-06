@@ -977,6 +977,10 @@ class Catalog:
         return Odonata.instance().position_upload(filename)
 
     @classmethod
+    def download_model(cls, filename: str) -> int:
+        return Odonata.instance().position_download_model(filename)
+
+    @classmethod
     def tuning_mean_squared_error(cls) -> float:
         return Odonata.instance().tuning_mean_squared_error()
 
@@ -1293,6 +1297,9 @@ class Odonata:
 
     def position_upload(self, filename: str) -> int:
         return self.call("position_upload", args=[filename])
+
+    def position_download_model(self, filename: str) -> int:
+        return self.call("position_download_model", args=[filename])
 
     def tuning_mean_squared_error(self) -> float:
         return self.call("tuning_mean_squared_error", args=[])

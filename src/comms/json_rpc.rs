@@ -68,8 +68,8 @@ pub trait Rpc {
     #[rpc(name = "position_upload")]
     fn position_upload(&self, filename: String) -> Result<i32>;
 
-    #[rpc(name = "position_download")]
-    fn position_download(&self, filename: String) -> Result<i32>;
+    #[rpc(name = "position_download_model")]
+    fn position_download_model(&self, filename: String) -> Result<i32>;
 
     #[rpc(name = "tuning_mean_squared_error")]
     fn tuning_mean_squared_error(&self) -> Result<f32>;
@@ -129,7 +129,7 @@ impl Rpc for RpcImpl {
         Ok(uploaded_count as i32)
     }
 
-    fn position_download(&self, filename: String) -> Result<i32> {
+    fn position_download_model(&self, filename: String) -> Result<i32> {
         let f = File::create(&filename)
             .with_context(|| format!("Failed to open file {}", &filename))
             .map_err(to_rpc_error)?;
