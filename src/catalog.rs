@@ -349,6 +349,7 @@ r3k2r/1P6/1N3P2/2Pp4/3QP2Q/5B2/8/R3K2R w KQkq d6 0 1 id "MO.01"; c0 "Promos";
     }
 
 
+    // FIXME! QS.10 - recaptures
     pub fn quiesce() -> Vec<Position> {
         let str = r#"
 r4rk1/pp2qppp/2nbbn2/3Np3/2B1P3/P4N1P/1P1B1PP1/R2QR1K1 b - - 6 16 acd 0; am Nxd5; bm Qd8; pv; ce 0; id 'QS.00'; c0 'pawn fork'; c1 'https://lichess.org/q5XvkApk/black#31';
@@ -361,7 +362,7 @@ k7/p7/8/8/8/8/Q7/K7 w - - 0 1 acd 0; pv; id QS.02; c0 'only bad captures';
 1k6/8/8/8/8/5N2/r2K3P/8 w - - 0 1 acd 0; pv Ke3; id QS.07; c0 'in check then bad capture'; c1 'check evasion only (any sq good)';
 k7/8/8/8/2p5/1b6/P7/K7 w - - 0 1 acd 0; pv axb3 cxb3; id QS.08; c0 'capture and recapture';
 k7/8/8/8/p7/1p6/P1P5/K7 w - - 0 1 acd 0; pv cxb3; id QS.09; c0 'capture then bad 2 x recapture';
-k7/p7/1p6/P1B5/8/8/8/K6R w - - 0 1 acd 0; pv axb6 axb6 Bxb6; id QS.10; c0 'capture then good 2 x recapture'; c1 'R means game not drawn';
+k7/p7/1p6/P1B5/8/8/8/K6R w - - 0 1 acd 0; pv axb6; id QS.10; c0 'capture then good 2 x recapture'; c1 'R means game not drawn pv axb6 axb6 Bxb6; ';
 k7/p7/1p6/P1B5/8/8/8/K7 w - - 0 1 acd 0; pv; id QS.11; c0 'capture then bad recapture due to draw'; c1 'game a draw if white exchanges';
 r2qkb1r/pp2nNpp/3p4/2pN2B1/2BnP3/3P4/PPP2PPP/R2bK2R b KQkq - 1 1 acd 0; pv ; c1 Kxf7 Rxd1 Nxc2+ Ke2; id QS.90; c0 'from mate in 2 - mates not checked in qsearch';
 2b1k3/3r4/3b4/3p4/8/8/3Q4/R3K3 w - - 0 1 acd 0; id QS.91; pv Qxd5; c0 'qsearch fail!'; c1 'chess.stackexchange.com/questions/29602';
