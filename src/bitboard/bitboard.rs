@@ -5,7 +5,7 @@ use std::ops;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 
-pub struct  Dir {
+pub struct Dir {
     pub index: u32,
     // pub shift: i8,
     // pub mask: Bitboard, // mask for opposite edge(s)
@@ -64,7 +64,6 @@ impl Dir {
         Self::NW,
     ];
 
-
     #[inline]
     pub const fn shift(self) -> i8 {
         // self.shift
@@ -77,7 +76,7 @@ impl Dir {
         //  -1,
         //  7][self.index()]
 
-    match self {
+        match self {
             Self::N => 8,
             Self::NE => 9,
             Self::E => 1,
@@ -86,45 +85,40 @@ impl Dir {
             Self::SW => -9,
             Self::W => -1,
             Self::NW => 7,
-            _ => 0 
+            _ => 0,
         }
     }
 
     #[inline]
     pub fn rotate(self) -> u32 {
-        [ 8,
-         9,
-         1,
-         64-7,
-         64-8,
-         64-9,
-         64-1,
-         7][self]
+        [8, 9, 1, 64 - 7, 64 - 8, 64 - 9, 64 - 1, 7][self]
 
-    // match self {
-    //         Self::N => 8,
-    //         Self::NE => 9,
-    //         Self::E => 1,
-    //         Self::SE => 64-7,
-    //         Self::S => 64-8,
-    //         Self::SW => 64-9,
-    //         Self::W => 64-1,
-    //         Self::NW => 7,
-    //         _ => 0 
-    //     }
+        // match self {
+        //         Self::N => 8,
+        //         Self::NE => 9,
+        //         Self::E => 1,
+        //         Self::SE => 64-7,
+        //         Self::S => 64-8,
+        //         Self::SW => 64-9,
+        //         Self::W => 64-1,
+        //         Self::NW => 7,
+        //         _ => 0
+        //     }
     }
 
     #[inline]
     pub const fn mask(self) -> Bitboard {
         // self.mask
-        [Bitboard::RANK_8,
-        Bitboard::RANK_8.or(Bitboard::FILE_H),
-        Bitboard::FILE_H,
-        Bitboard::RANK_1.or(Bitboard::FILE_H),
-        Bitboard::RANK_1,
-        Bitboard::RANK_1.or(Bitboard::FILE_A),
-        Bitboard::FILE_A,
-        Bitboard::RANK_8.or(Bitboard::FILE_A)][self.index()]
+        [
+            Bitboard::RANK_8,
+            Bitboard::RANK_8.or(Bitboard::FILE_H),
+            Bitboard::FILE_H,
+            Bitboard::RANK_1.or(Bitboard::FILE_H),
+            Bitboard::RANK_1,
+            Bitboard::RANK_1.or(Bitboard::FILE_A),
+            Bitboard::FILE_A,
+            Bitboard::RANK_8.or(Bitboard::FILE_A),
+        ][self.index()]
 
         // match self {
         //     Self::N => Bitboard::RANK_8,
@@ -159,12 +153,12 @@ impl<T> std::ops::Index<Dir> for [T] {
     type Output = T;
     #[inline]
     fn index(&self, i: Dir) -> &Self::Output {
-        #[cfg(feature="unchecked_indexing")]
+        #[cfg(feature = "unchecked_indexing")]
         unsafe {
             &self.get_unchecked(i.index())
         }
 
-        #[cfg(not(feature="unchecked_indexing"))]
+        #[cfg(not(feature = "unchecked_indexing"))]
         &self[(i.index())]
     }
 }
@@ -289,6 +283,13 @@ impl Bitboard {
     pub const RANKS_27: Bitboard = Bitboard::RANK_2.or(Bitboard::RANK_7);
     pub const RANKS_36: Bitboard = Bitboard::RANK_3.or(Bitboard::RANK_6);
     pub const RANKS_45: Bitboard = Bitboard::RANK_4.or(Bitboard::RANK_5);
+    pub const CENTER_4_SQ: Bitboard = Bitboard::RANKS_45.and(Bitboard::FILE_D.or(Bitboard::FILE_E));
+    pub const CENTER_16_SQ: Bitboard = (Bitboard::RANKS_45.or(Bitboard::RANKS_36)).and(
+        Bitboard::FILE_C
+            .or(Bitboard::FILE_D)
+            .or(Bitboard::FILE_E)
+            .or(Bitboard::FILE_F),
+    );
 }
 
 impl fmt::Binary for Bitboard {
@@ -584,6 +585,12 @@ impl Bitboard {
         Self(self.0 | other.0)
     }
 
+    // bitflags & doesnt seem to be declared const
+    #[inline]
+    pub const fn and(self, other: Self) -> Self {
+        Self(self.0 & other.0)
+    }
+
     #[inline]
     pub const fn invert(self) -> Self {
         Self(!self.0)
@@ -592,8 +599,14 @@ impl Bitboard {
     #[inline]
     pub fn home_half(c: Color) -> Self {
         c.chooser_wb(
-            Bitboard::RANK_1.or(Bitboard::RANK_2).or(Bitboard::RANK_3).or(Bitboard::RANK_4),
-            Bitboard::RANK_5.or(Bitboard::RANK_6).or(Bitboard::RANK_7).or(Bitboard::RANK_8)
+            Bitboard::RANK_1
+                .or(Bitboard::RANK_2)
+                .or(Bitboard::RANK_3)
+                .or(Bitboard::RANK_4),
+            Bitboard::RANK_5
+                .or(Bitboard::RANK_6)
+                .or(Bitboard::RANK_7)
+                .or(Bitboard::RANK_8),
         )
     }
 
@@ -669,17 +682,15 @@ impl Bitboard {
     }
 
     // last square in the block of bits containing square s. If s is not in a block then just s.
-    // so for (RANK_1 | RANK_8).last_square_from(A2) = A8. 
+    // so for (RANK_1 | RANK_8).last_square_from(A2) = A8.
     #[inline]
     pub fn last_square_from(self, s: Square) -> Square {
-
         let bb = self.include(s) >> s.index() as u8;
         let first_empty = (!bb).first_square();
         let i = first_empty.index() - 1 + s.index();
         debug_assert!(i < 64);
         Square::from_u32(i as u32)
     }
-
 
     #[inline]
     pub fn last(self) -> Self {
@@ -895,9 +906,9 @@ mod tests {
             (Bitboard::FILE_A | Bitboard::RANK_1).flip_vertical(),
             (Bitboard::FILE_A | Bitboard::RANK_8)
         );
-        assert_eq!( (1u64 << 63) >> 63, 1);
-        assert_eq!( Bitboard::BLACK_SQUARES | Bitboard::WHITE_SQUARES, Bitboard::all());
-        assert!( Bitboard::BLACK_SQUARES.contains(a1));
+        assert_eq!((1u64 << 63) >> 63, 1);
+        assert_eq!(Bitboard::BLACK_SQUARES | Bitboard::WHITE_SQUARES, Bitboard::all());
+        assert!(Bitboard::BLACK_SQUARES.contains(a1));
         assert_eq!(1_u64.wrapping_shl(64), 1_u64);
         // assert_eq!(Bitboard::from_sq(64), Bitboard::EMPTY);
     }
@@ -974,7 +985,7 @@ mod tests {
         assert_eq!(a1b2.first_square().index(), 0);
         assert_eq!(a1b2.last_square().index(), 9);
         assert_eq!((Bitboard::A1 | Bitboard::A2).last_square().index(), 8);
-        
+
         let bb = Bitboard::C1 | Bitboard::D1 | Bitboard::E1;
         assert_eq!(bb.last_square_from(Square::A1), Square::A1);
         assert_eq!(bb.last_square_from(Square::C1), Square::E1);
@@ -982,15 +993,14 @@ mod tests {
         assert_eq!(bb.last_square_from(Square::E1), Square::E1);
         assert_eq!(bb.last_square_from(Square::F1), Square::F1);
         assert_eq!(bb.last_square_from(Square::H8), Square::H8);
-        
-        
+
         let bb = Bitboard::RANK_1 | Bitboard::RANK_8;
         assert_eq!(bb.last_square_from(Square::A1), Square::H1);
         assert_eq!(bb.last_square_from(Square::H1), Square::H1);
         assert_eq!(bb.last_square_from(Square::A2), Square::A2);
         assert_eq!(bb.last_square_from(Square::A8), Square::H8);
         assert_eq!(bb.last_square_from(Square::H8), Square::H8);
-        
+
         // FIXME!
         // assert_eq!(Bitboard::EMPTY.first_square(), 64);
         // assert_eq!(Bitboard::EMPTY.last_square(), 64);

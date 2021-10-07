@@ -88,6 +88,7 @@ pub struct SimpleScorer {
     pub quantum: i32,
 
     pub min_depth_mob: u8,
+    pub center_attacks: Weight,
     pub undefended_sq: Weight,
     pub undefended_piece: Weight,
     pub trapped_piece: Weight,
@@ -116,6 +117,7 @@ pub struct SimpleScorer {
     pub doubled_rooks_open_file: Weight,
     pub rook_open_file: Weight,
     pub queen_open_file: Weight,
+    pub queen_early_develop: Weight,
 
 
     // pub pawn_shield: Weight,
@@ -157,6 +159,7 @@ impl Default for SimpleScorer {
             min_depth_mob: 1,
             contempt_penalty: Weight::from_i32(-30, 0), // typically -ve
 
+            center_attacks: Weight::from_i32(1, 0),
             undefended_sq: Weight::from_i32(4, 3),
             undefended_piece: Weight::from_i32(-3, 49),
             trapped_piece: Weight::from_i32(-17, -22),
@@ -176,6 +179,7 @@ impl Default for SimpleScorer {
             doubled_rooks_open_file: Weight::from_i32(17, 17),
 
             queen_open_file: Weight::from_i32(-19, 37),
+            queen_early_develop: Weight::from_i32(0, 0),
 
             pawn_doubled: Weight::from_i32(19, -35),
             pawn_isolated: Weight::from_i32(-35, -5),
@@ -227,6 +231,7 @@ impl Component for SimpleScorer {
             &format!("type spin min 0 max 101 default {}", self.mobility_phase_disable),
         );
         c.set_weight("eval.pawn.doubled", &self.pawn_doubled);
+        c.set_weight("eval.center.attacks", &self.center_attacks);
         c.set_weight("eval.mobility.undef.sq", &self.undefended_sq);
         c.set_weight("eval.mobility.undef.piece", &self.undefended_piece);
         c.set_weight("eval.mobility.trapped.piece", &self.trapped_piece);
@@ -257,6 +262,7 @@ impl Component for SimpleScorer {
         c.set_weight("eval.doubled.rooks.open.file", &self.doubled_rooks_open_file);
 
         c.set_weight("eval.queen.open.file", &self.queen_open_file);
+        c.set_weight("eval.queen.early.develop", &self.queen_early_develop);
 
 
         // c.set_weight("eval.pawn.shield", &self.pawn_shield);
@@ -294,6 +300,7 @@ impl Component for SimpleScorer {
             .int("eval.mobility.min.depth")
             .unwrap_or(self.min_depth_mob as i64) as u8;
 
+        self.center_attacks = c.weight("eval.center.attacks", &self.center_attacks);
         self.undefended_sq = c.weight("eval.mobility.undef.sq", &self.undefended_sq);
         self.undefended_piece = c.weight("eval.mobility.undef.piece", &self.undefended_piece);
         self.trapped_piece = c.weight("eval.mobility.trapped.piece", &self.trapped_piece);
@@ -550,6 +557,7 @@ impl SimpleScorer {
             scorer.position("knight outposts", w.knight_outposts, b.knight_outposts, self.knight_outposts);
             scorer.position("doubled rook", w.doubled_rooks, b.doubled_rooks, self.doubled_rooks);
             scorer.position("doubled rook of", w.doubled_rooks_open_file, b.doubled_rooks_open_file, self.doubled_rooks_open_file);
+            scorer.position("queen early", w.queen_early_develop, b.queen_early_develop, self.queen_early_develop);
 
             // scorer.position("pst", 1, 0, w.psq.iter().map(|(p,sq)| self.pst(*p, *sq)).sum::<Weight>());
             // scorer.position("pst", 0, 1, b.psq.iter().map(|(p,sq)| self.pst(*p, *sq)).sum::<Weight>());
@@ -637,19 +645,24 @@ impl SimpleScorer {
             );
             scorer.safety(
                 "attacks near king",
-                // reversed!
-                b.attacks_on_opponent_king_area,
                 w.attacks_on_opponent_king_area,
+                b.attacks_on_opponent_king_area,
                 self.attacks_near_king,
             );
+            scorer.safety(
+                "castling rights",
+                w.castling_sides,
+                b.castling_sides,
+                self.castling_rights,
+            );
         }
-        // w.castling_sides, b.castling_sides * self.;
 
         // mobility
         if scorer.phase() <= self.mobility_phase_disable as i32
             && self.mobility
             && m.switches.contains(Switches::MOBILITY)
         {
+            scorer.mobility("center attacks", w.center_attacks, b.center_attacks, self.center_attacks);
             scorer.mobility("move", w.move_squares, b.move_squares, self.undefended_sq);
             scorer.mobility(
                 "undef piece",

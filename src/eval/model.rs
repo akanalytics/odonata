@@ -45,6 +45,7 @@ pub struct ModelSide {
 
 
     pub queens_on_open_files: i32,
+    pub queen_early_develop: i32,
 
     // position
     // pub psq: ArrayVec<(Piece, Square), 32>,
@@ -72,6 +73,7 @@ pub struct ModelSide {
 
     // mobility
     pub move_squares: i32,
+    pub center_attacks: i32,
     pub non_pawn_defended_moves: i32,
     pub fully_trapped_pieces: i32,
     pub partially_trapped_pieces: i32,
@@ -132,14 +134,21 @@ impl ExplainScorer {
             ][i];
             for (attr, w, b, wt) in vec {
                 let (attr, w, b, _wt) = (attr, *w, *b, *wt);
-                let field = match line {
+                let field_s = match line {
 
-                    ReportLine::Header => attr.replace(" ", "_"),
-                    ReportLine::Body => format!("{}",w-b),
+                    ReportLine::Header => format!("{}.s", attr.replace(" ", "_")),
+                    ReportLine::Body => format!("{}",(w-b) as f32 * (100-self.delegate.phase) as f32 / 100.0),
                 };
-                output.push_str(&field);
-                output.push(',');
-                output.push(' ');
+                output.push_str(&field_s);
+                output.push_str(", ");
+
+                let field_e = match line {
+
+                    ReportLine::Header => format!("{}.e", attr.replace(" ", "_")),
+                    ReportLine::Body => format!("{}",(w-b) as f32 * self.delegate.phase as f32 / 100.0),
+                };
+                output.push_str(&field_e);
+                output.push_str(", ");
             }
         }
         output
@@ -477,7 +486,15 @@ impl ModelSide {
             }
         }
         
-
+        // if queen has moved but other pieces havent (FIXME! not quite exactly right (QxQ))
+        if (us & b.queens() & Bitboard::FILE_D & Bitboard::PROMO_RANKS).is_empty() {
+            self.queen_early_develop = (us & Bitboard::PROMO_RANKS & 
+                (
+                    (b.bishops() & (Bitboard::FILE_C.or(Bitboard::FILE_F)))
+                     |
+                    (b.knights() & (Bitboard::FILE_B.or(Bitboard::FILE_G)))
+                )).popcount();
+        }
         // for &p in &Piece::ALL_BAR_NONE {
         //     let mut pieces = b.pieces(p) & b.color(c);
         //     if c == Color::White {
@@ -563,10 +580,9 @@ impl ModelSide {
         let us = b.color(c);
         let open_files = bb.open_files(b.pawns());
         self.doubled_rooks = (self.has_rook_pair && (b.rooks() & us).first_square().file_index() == (b.rooks() & us).last_square().file_index()) as i32;
-        self.doubled_rooks_open_file = (self.doubled_rooks > 1 && (open_files & b.rooks() & us).popcount() >= 2 ) as i32;
+        self.doubled_rooks_open_file = (self.doubled_rooks == 1 && (open_files & b.rooks() & us).popcount() >= 2 ) as i32;
         self.rooks_on_open_files = (open_files & us & b.rooks()).popcount();
         self.queens_on_open_files = (open_files & us & b.queens()).popcount();
-
         let their = c.opposite();
         let them = b.color(their);
         let occ = them | us;
@@ -589,7 +605,9 @@ impl ModelSide {
             // non-pawn-defended empty or oppoent sq
             // include "attacking" our own pieces
             let our_raw_attacks = bb.non_pawn_attacks(c, p, Bitboard::empty(), occ, sq);
+
             let our_attacks = our_raw_attacks - pa;
+            self.center_attacks += (our_attacks & Bitboard::CENTER_16_SQ).popcount();
             let piece_move_squares = (our_attacks - occ).popcount();
             // let our_xray_attacks = bb.non_pawn_attacks(c, p, us - our_p, them, sq);
 

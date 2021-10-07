@@ -194,7 +194,7 @@ mod tests {
     fn position_download_test() -> anyhow::Result<()> {
         let rpc = RpcImpl::new(Arc::new(Mutex::new(Engine::new())));
         rpc.position_upload("../odonata-extras/epd/quiet-labeled-small-odonata-5ms.epd".to_string())?;
-        let lines = rpc.position_download("/tmp/test.csv".to_string())?;
+        let lines = rpc.position_download_model("/tmp/test.csv".to_string())?;
         assert!(lines > 0);
         Ok(())
     }

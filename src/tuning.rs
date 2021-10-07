@@ -62,6 +62,9 @@ impl Tuning {
         let eval = &engine.algo.eval;
         let mut line_count = 0;
         for (model, outcome) in self.models_and_outcomes.iter() {
+            if outcome > &0.25 && outcome < &0.75 {
+                continue;
+            } 
             let phase = model.mat.phase(&eval.phaser);
             let mut w_score = ExplainScorer::new(phase);
             eval.predict(model, &mut w_score);
