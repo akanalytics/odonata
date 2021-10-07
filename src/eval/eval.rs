@@ -964,7 +964,7 @@ mod tests {
 
         eval.attacks_near_king = Weight::from_i32(-75, -75);
         let att = eval.w_eval_some(&b, Switches::ALL_SCORING);
-        assert_eq!((att - e3), Score::from_cp(-75)); // 1 attack on nearby pawn
+        assert_eq!((att - e3), Score::from_cp(75)); // 1 attack on nearby pawn
         info!("{}\n{}", b, eval.w_eval_explain(&b));
     }
 
