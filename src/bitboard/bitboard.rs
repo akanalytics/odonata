@@ -413,7 +413,15 @@ impl ops::BitXorAssign for Bitboard {
 
 impl Bitboard {
     // const EDGES:Self = Self::FILE_A.or(Self::FILE_H).or(Self::RANK_1).or(Self::RANK_8);
+
+    /// All of RANK 1 plus RANK 8
+    ///```
+    /// use odonata::bitboard::bitboard::Bitboard;
+    /// assert!(Bitboard::PROMO_RANKS.contains(Bitboard::A1));
+    /// assert!(Bitboard::PROMO_RANKS.contains(Bitboard::H8));
+    ///```
     pub const PROMO_RANKS: Self = Self::RANK_1.or(Self::RANK_8);
+
     pub const RANKS: [Self; 8] = [
         Self::RANK_1,
         Self::RANK_2,
