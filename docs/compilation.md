@@ -1,6 +1,11 @@
 # Compilation
 
 Instruction on how to compile from source.
+You will need a recent version of the stable rust compiler. Typically this can be done using rustup.
+
+```
+rustup update
+```
 
 ## Building a portable binary that can be run on other computers with the same operating system
 
@@ -15,7 +20,7 @@ cargo b --release --features=fast
 ### On Linux
 
 ```
-EXPORT RUSTFLAGS="-Ctarget-cpu=native"
+export RUSTFLAGS="-Ctarget-cpu=native"
 cargo b --release --features=fast
 ```
 

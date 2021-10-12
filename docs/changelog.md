@@ -2,13 +2,18 @@
 
 Milestones ('m') are bundled into Releases.  
 
-#### Unreleased
+
+# Release 0.4.0 
 - Evaluation of king tropism, passed pawn on 7th
-- Texel tuned
+- Bishop and knight outposts
+- Rook batteries
+- History table
+- Xray attacks considered in SEE
 - Texel tuning uses Rayon library for parallel evals (138 M/sec)
 - Check for insufficient material in quiesensce
-
-
+- CLOP tuning of non-eval params
+- Support for "searchmoves" and "info hashfull" in UCI interface
+- ELO in the region of 2300
 
 # Release 0.3.37
 - Texel style tuning for piece values
@@ -20,7 +25,6 @@ Milestones ('m') are bundled into Releases.
 - Check extensions and late move reduction
 - Piece square table for rook end game, pawn pst corrected
 - Futility margin adjustment, PVS re-enabled
-
 
 
 # Release 0.3.26

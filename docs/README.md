@@ -57,6 +57,8 @@ Chesss GUI for UCI engines | http://www.playwitharena.de/ | Have grown to love
 CCRL - Computer Chess Ratings Lists | https://www.computerchess.org.uk/ccrl/404/ | Fascinating
 Stockfish python interface | https://pypi.org/project/stockfish/ | By Ilya Zhelyabuzhsky. Sweet.
 Stockfish | https://stockfishchess.org/ | A giant.
+Ethereal / Andrew Grant | - | Helpful PDF on 'texel' style tuning
+CLOP / Rémi Coulom | https://www.remi-coulom.fr/CLOP/ | Non-eval parameter tuning
 
 
 ## License
