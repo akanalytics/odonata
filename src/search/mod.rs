@@ -4,7 +4,7 @@ pub mod searchstats;
 pub mod taskcontrol;
 pub mod timecontrol;
 pub mod extensions;
-pub mod reductions;
+pub mod lmr;
 pub mod search_explainer;
 pub mod alphabeta;
 pub mod iterative_deepening;

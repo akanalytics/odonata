@@ -10,7 +10,7 @@ use crate::pvtable::PvTable;
 use crate::repetition::Repetition;
 use crate::search::extensions::Extensions;
 use crate::search::node::Node;
-use crate::search::reductions::Reductions;
+use crate::search::lmr::Lmr;
 use crate::search::futility::Futility;
 use crate::search::iterative_deepening::IterativeDeepening;
 use crate::search::killers::Killers;
@@ -49,7 +49,7 @@ pub struct Algo {
     pub futility: Futility,
     pub pvs: Pvs,
     pub extensions: Extensions,
-    pub reductions: Reductions,
+    pub reductions: Lmr,
     pub mte: MoveTimeEstimator,
     pub move_orderer: MoveOrderer,
     pub repetition: Repetition,

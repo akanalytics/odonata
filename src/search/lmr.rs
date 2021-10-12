@@ -9,7 +9,7 @@ use crate::types::{MoveType, Piece, Ply};
 use std::fmt;
 
 #[derive(Clone, Debug)]
-pub struct Reductions {
+pub struct Lmr {
     pub lmr_enabled: bool,
     pub lmr_pv_node: bool, 
     pub lmr_only_nt_all: bool, 
@@ -36,9 +36,9 @@ pub struct Reductions {
 // re-search=true, pawns=true => 255
 // alpha_numeric=true => 252
 
-impl Default for Reductions {
+impl Default for Lmr {
     fn default() -> Self {
-        Reductions {
+        Lmr {
             lmr_enabled: true,
             lmr_pv_node: true,
             lmr_only_nt_all: false,
@@ -55,66 +55,66 @@ impl Default for Reductions {
 }
 
 
-impl Component for Reductions {
+impl Component for Lmr {
     fn settings(&self, c: &mut Config) {
         c.set(
-            "red.lmr.enabled",
+            "lmr.enabled",
             &format!("type check default {}", self.lmr_enabled),
         );
         c.set(
-            "red.lmr.bad.captures",
+            "lmr.bad.captures",
             &format!("type check default {}", self.lmr_bad_captures),
         );
         c.set(
-            "red.lmr.pv.node",
+            "lmr.pv.node",
             &format!("type check default {}", self.lmr_pv_node),
         );
         c.set(
-            "red.lmr.only.nt.all",
+            "lmr.only.nt.all",
             &format!("type check default {}", self.lmr_only_nt_all),
         );
         c.set(
-            "red.lmr.re.search",
+            "lmr.re.search",
             &format!("type check default {}", self.lmr_re_search),
         );
         c.set(
-            "red.lmr.alpha.numeric",
+            "lmr.alpha.numeric",
             &format!("type check default {}", self.lmr_alpha_numeric),
         );
         c.set(
-            "red.lmr.pawns",
+            "lmr.pawns",
             &format!("type check default {}", self.lmr_pawns),
         );
         c.set(
-            "red.lmr.promos",
+            "lmr.promos",
             &format!("type check default {}", self.lmr_promos),
         );
         c.set(
-            "red.lmr.killers",
+            "lmr.killers",
             &format!("type check default {}", self.lmr_killers),
         );
         c.set(
-            "red.lmr.min.depth",
+            "lmr.min.depth",
             &format!("type spin min 0 max 100 default {}", self.lmr_min_depth),
         );
         c.set(
-            "red.lmr.red.strat",
+            "lmr.strat",
             &format!("type spin min 0 max 10000 default {}", self.lmr_red_strat),
         );
     }
     fn configure(&mut self, c: &Config) {
-        debug!("red.configure");
-        self.lmr_enabled = c.bool("red.lmr.enabled").unwrap_or(self.lmr_enabled);
-        self.lmr_re_search = c.bool("red.lmr.re.search").unwrap_or(self.lmr_re_search);
-        self.lmr_alpha_numeric = c.bool("red.lmr.alpha.numeric").unwrap_or(self.lmr_alpha_numeric);
-        self.lmr_bad_captures = c.bool("red.lmr.bad.captures").unwrap_or(self.lmr_bad_captures);
-        self.lmr_pv_node = c.bool("red.lmr.pv.node").unwrap_or(self.lmr_pv_node);
-        self.lmr_only_nt_all = c.bool("red.lmr.only.nt.all").unwrap_or(self.lmr_only_nt_all);
-        self.lmr_pawns = c.bool("red.lmr.pawns").unwrap_or(self.lmr_pawns);
-        self.lmr_promos = c.bool("red.lmr.promos").unwrap_or(self.lmr_promos);
-        self.lmr_killers = c.bool("red.lmr.killers").unwrap_or(self.lmr_killers);
-        self.lmr_min_depth = c.int("red.lmr.min.depth").unwrap_or(self.lmr_min_depth as i64) as Ply;
-        self.lmr_red_strat = c.int("red.lmr.red.strat").unwrap_or(self.lmr_red_strat as i64) as i32;
+        debug!("configure");
+        self.lmr_enabled = c.bool("lmr.enabled").unwrap_or(self.lmr_enabled);
+        self.lmr_re_search = c.bool("lmr.re.search").unwrap_or(self.lmr_re_search);
+        self.lmr_alpha_numeric = c.bool("lmr.alpha.numeric").unwrap_or(self.lmr_alpha_numeric);
+        self.lmr_bad_captures = c.bool("lmr.bad.captures").unwrap_or(self.lmr_bad_captures);
+        self.lmr_pv_node = c.bool("lmr.pv.node").unwrap_or(self.lmr_pv_node);
+        self.lmr_only_nt_all = c.bool("lmr.only.nt.all").unwrap_or(self.lmr_only_nt_all);
+        self.lmr_pawns = c.bool("lmr.pawns").unwrap_or(self.lmr_pawns);
+        self.lmr_promos = c.bool("lmr.promos").unwrap_or(self.lmr_promos);
+        self.lmr_killers = c.bool("lmr.killers").unwrap_or(self.lmr_killers);
+        self.lmr_min_depth = c.int("lmr.min.depth").unwrap_or(self.lmr_min_depth as i64) as Ply;
+        self.lmr_red_strat = c.int("lmr.strat").unwrap_or(self.lmr_red_strat as i64) as i32;
     }
     fn new_game(&mut self) {
         self.new_position();
@@ -147,7 +147,7 @@ impl Component for Reductions {
 //
 // http://www.open-chess.org/viewtopic.php?f=5&t=3084
 //
-impl Reductions {
+impl Lmr {
     #[inline]
     pub fn lmr(
         &self,
@@ -223,7 +223,7 @@ impl Reductions {
     }
 }
 
-impl fmt::Display for Reductions {
+impl fmt::Display for Lmr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "{:#?}", self)?;
         Ok(())
