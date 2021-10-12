@@ -55,9 +55,9 @@ impl Component for MoveTimeEstimator {
 impl Default for MoveTimeEstimator {
     fn default() -> Self {
         MoveTimeEstimator {
-            branching_factor: 9,
+            branching_factor: 15,
             perc_of_time_adv: 100,
-            moves_rem: 20,
+            moves_rem: 10,
             board: Board::default(),
             time_control: TimeControl::default(),
             pondering: Arc::new(AtomicBool::from(false)),
