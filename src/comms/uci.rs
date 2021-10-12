@@ -101,6 +101,7 @@ pub struct Uci {
 
 impl Component for Uci {
     fn settings(&self, c: &mut Config) {
+        c.set("UCI_EngineAbout", &format!("type string default {} {}", Version::NAME, Version::HOMEPAGE));
         c.set("uci.debug", "type check default false");
         c.set("Ponder", "type check default false");
         c.set("Clear Hash", "type button");
