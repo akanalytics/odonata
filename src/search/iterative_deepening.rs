@@ -145,7 +145,7 @@ impl Algo {
                 break;
             }
 
-            let mut sp = SearchProgress::pv_change(None, &res);
+            let mut sp = SearchProgress::pv_change(None, &self);
             let pv = res.pv.clone();
             // pv.truncate(depth as usize);
             sp.pv = Some(pv);
@@ -185,7 +185,7 @@ impl Algo {
         //     }
         // }
         // self.search_stats.pv.truncate(self.max_depth as usize);
-        let sp = SearchProgress::pv_change(Some(self.bm()), &self.search_stats);
+        let sp = SearchProgress::pv_change(Some(self.bm()), &self);
         self.task_control.invoke_callback(&sp);
 
         self.results = Position::from_board(self.board.clone());

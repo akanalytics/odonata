@@ -491,6 +491,11 @@ impl TranspositionTable2 {
         self.table.capacity()
     }
 
+    pub fn hashfull_per_mille(&self) -> u32 {
+        (self.table.utilization() as u128 * 1000 / self.table.capacity() as u128) as u32
+    }
+
+
     #[inline]
     pub fn store(&mut self, h: Hash, new_node: TtNode) {
         if !self.enabled && new_node.node_type != NodeType::Pv || self.capacity() == 0 {
@@ -509,7 +514,7 @@ impl TranspositionTable2 {
         let (hash, data) = self.table.probe(h);
         // FIXME! race condition here we dont worry about
         if false && hash != h {
-            self.inserts.increment();
+            self.table.utilization.increment();
             let new_data = TtNode::pack(&new_node, self.current_age);
             let unpacked = TtNode::unpack(new_data).0;
             debug_assert!(unpacked == new_node, "{:?} {:?}", unpacked, new_node);
@@ -540,7 +545,7 @@ impl TranspositionTable2 {
                 new_node.bm
             );
             if hash == 0 && data == 0 {
-                self.inserts.increment();
+                self.table.utilization.increment();
             }
             else {
                 self.updates.increment();
@@ -725,7 +730,12 @@ mod tests {
         let moves = tt1.extract_pv_and_score(&board).0;
         info!("After extract");
         assert_eq!(moves.uci(), "");
+        assert_eq!(tt1.table.utilization(), 0);
         manipulate(&mut tt1);
+        assert_eq!(tt1.table.utilization(), 2);
+        tt1.new_game();
+        assert!(tt1.probe_by_hash(123).is_none());
+
 
         // triggers failed ownership panic
         if false {
@@ -737,7 +747,11 @@ mod tests {
             println!("{}", tt2);
         }
         println!("Dropped tt2 ...{}", Arc::strong_count(&tt1.table));
+        assert_eq!(tt1.table.utilization(), 0);
         manipulate(&mut tt1);
+        assert_eq!(tt1.table.utilization(), 2);
+        tt1.new_game();
+        assert!(tt1.probe_by_hash(123).is_none());
 
         let mut tt3 = tt1.clone();
         // tt1.destroy();
@@ -777,8 +791,8 @@ mod tests {
 
         println!("{:?}", tt);
         println!("{}", tt);
-        tt.new_game();
-        assert!(tt.probe_by_hash(123).is_none());
+        assert_eq!(tt.hashfull_per_mille(), 0);
+
     }
 
     #[test]

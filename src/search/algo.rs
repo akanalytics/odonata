@@ -284,7 +284,7 @@ impl Algo {
 
     pub fn report_progress(&self) {
         if self.search_stats.total().all_nodes() % 5_000_000 == 0 && self.search_stats.total().all_nodes() != 0 {
-            let sp = SearchProgress::report_progress(&self.search_stats());
+            let sp = SearchProgress::report_progress(&self);
             self.task_control.invoke_callback(&sp);
         }
     }

@@ -69,8 +69,9 @@ impl Stat {
     }
     
     pub const fn new(name: &'static str) -> Stat {
+        // ugly as default not const
         Stat { 
-            name: name,
+            name,
             counter: [
                 AlignedAtomic(AtomicI64::new(0)),
                 AlignedAtomic(AtomicI64::new(0)),
@@ -114,6 +115,15 @@ impl Stat {
         #[cfg(not(feature="remove_metrics"))]    
         THREAD_INDEX.with(|f| {
             self.counter[f.load(Ordering::Relaxed)].0.fetch_add(add, Ordering::Relaxed);
+        });
+    }
+
+    #[allow(unused_variables)]
+    #[inline]
+    pub fn clear(&self) {
+        #[cfg(not(feature="remove_metrics"))]    
+        THREAD_INDEX.with(|f| {
+            self.counter[f.load(Ordering::Relaxed)].0.store(0, Ordering::Relaxed);
         });
     }
 

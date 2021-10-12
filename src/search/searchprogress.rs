@@ -1,6 +1,6 @@
+use crate::Algo;
 use crate::eval::score::Score;
 use crate::mv::Move;
-use crate::search::searchstats::SearchStats;
 use crate::types::Ply;
 use crate::variation::Variation;
 
@@ -42,15 +42,17 @@ impl SearchProgress {
     //         ..Default::default()
     //     }
     // }
-    pub fn report_progress(stats: &SearchStats) -> Self {
+    pub fn report_progress(algo: &Algo) -> Self {
         SearchProgress {
-            nodes: Some(stats.all_threads_cumulative_total_nodes()),
-            nps: Some(stats.all_threads_cumulative_knps() * 1000),
+            nodes: Some(algo.search_stats().all_threads_cumulative_total_nodes()),
+            nps: Some(algo.search_stats().all_threads_cumulative_knps() * 1000),
+            hashfull_per_mille: Some(algo.tt.hashfull_per_mille()),
             ..Default::default()
         }
     }
 
-    pub fn pv_change(best: Option<Move>, stats: &SearchStats) -> Self {
+    pub fn pv_change(best: Option<Move>, algo: &Algo) -> Self {
+        let stats = algo.search_stats();
         SearchProgress {
             bestmove: best,
             pv: Some(stats.pv().clone()),   
@@ -60,6 +62,7 @@ impl SearchProgress {
             depth: Some(stats.depth()),
             seldepth: Some(stats.selective_depth()),
             time_millis: Some(stats.cumulative_time_as_millis() as u64),
+            hashfull_per_mille: Some(algo.tt.hashfull_per_mille()),
             ..Default::default()
         }
     }

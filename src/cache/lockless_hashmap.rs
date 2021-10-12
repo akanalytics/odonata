@@ -11,6 +11,8 @@ pub struct SharedTable {
     capacity: usize,
     mask: usize,
     // buckets: usize,
+    pub utilization: Stat,
+
     pub hits: Stat,
     pub misses: Stat,
     pub collisions: Stat,
@@ -51,6 +53,11 @@ impl SharedTable {
     }
 
     #[inline]
+    pub fn utilization(&self) -> usize {
+        self.utilization.get() as usize
+    }
+
+    #[inline]
     pub fn index(&self, h: Hash) -> usize {
         h as usize & self.mask
     }
@@ -83,6 +90,7 @@ impl SharedTable {
     }
 
     pub fn clear(&self) {
-        self.vec.iter().for_each(|e| e.store(0, Ordering::Relaxed))
+        self.vec.iter().for_each(|e| e.store(0, Ordering::Relaxed));
+        self.utilization.clear();        
     }
 }
