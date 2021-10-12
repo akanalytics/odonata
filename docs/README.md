@@ -31,8 +31,6 @@ Odonata has a baby python interface, based on the Stockfish interface by Ilya Zh
 See [Compilation](/docs/compilation.md)
 
 ## Changelog
-In particular - please note that Odonata's github/main uses rust *nightly* 2021-07-06
-
 See [Changelog](/docs/changelog.md)
 
 ## Credits
