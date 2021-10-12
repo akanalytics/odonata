@@ -223,7 +223,7 @@ impl Algo {
         let mut sorted_moves = self.move_orderer.get_sorted_moves(ply, tt_mv);
         let mut count = 0;
         while let Some((move_type, mv)) = sorted_moves.next_move(board, self) {
-            if ply == 0 && !self.restrictions.search_moves.is_empty() && !self.restrictions.search_moves.contains(&mv) {
+            if self.restrictions.skip_move(ply, &mv) {
                 continue;
             }
             count += 1;

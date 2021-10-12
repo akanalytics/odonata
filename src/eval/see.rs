@@ -36,6 +36,7 @@ impl SimpleScorer {
 
             // xray attackers
             // we move some pieces from xray into attackers - these are all line pieces
+            // alternatively use attacked by bishops & B&Q and attacked-by-rooks & R & Q and move them into attackers 
             for sq in (attackers_xray & board.color(attacker_color)).squares() {
                 if bb.strictly_between(sq, mv.to()).disjoint(occ) {
                     attackers_xray -= sq.as_bb();

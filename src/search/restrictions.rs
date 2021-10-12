@@ -1,12 +1,7 @@
-
-use crate::board::Board;
-// use crate::mv::Move;
-use crate::search::node::Node;
-use crate::pvtable::PvTable;
+use crate::mv::Move;
 use crate::config::{Config, Component};
-// use crate::variation::Variation;
 use crate::movelist::MoveList;
-// use crate::types::Ply;
+use crate::types::Ply;
 use std::fmt;
 
 
@@ -47,11 +42,13 @@ impl Default for Restrictions {
 // look for beta cuts by using a null move and null window search around beta
 // works for moves that are just "too good to be true"
 impl Restrictions {
-    pub fn allow(&self, _b: &Board, _node: &Node, _pv_table: &PvTable) -> bool {
-        if !self.enabled {
-            return false;
+
+    #[inline]
+    pub fn skip_move(&self, ply: Ply, mv: &Move) -> bool {
+        if self.enabled && ply == 0 && !self.search_moves.is_empty() && !self.search_moves.contains(&mv)  {
+            return true;
         } 
-        true
+        false
     }
 
 

@@ -154,6 +154,9 @@ impl CastlingRights {
 
     #[inline]
     pub fn rights_lost(squares_changed: Bitboard) -> CastlingRights {
+
+
+        // TODO! Optimization: rightsLost = precalc[from] | precalc[to]; 
         let mut loss = CastlingRights::NONE;
         if squares_changed.intersects(Self::rook_and_king_squares()) {
             if squares_changed.intersects(Bitboard::FILE_E) {
