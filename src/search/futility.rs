@@ -15,6 +15,7 @@ use std::{cmp, fmt};
 
 
 
+// 5+0.04 => 165/1600
 
 
 #[derive(Clone, Debug)]
@@ -44,9 +45,9 @@ impl Component for Futility {
         c.set("futility.prune.remaining", &format!("type check default {}", self.prune_remaining));
         c.set("futility.max.depth",  &format!("type spin min 0 max 100 default {}", self.max_depth));
         c.set("futility.max.depth.captures",  &format!("type spin min 0 max 100 default {}", self.max_depth_captures));
-        c.set("futility.margin1",  &format!("type spin min 0 max 9999 default {}", self.margin1));
-        c.set("futility.margin2",  &format!("type spin min 0 max 9999 default {}", self.margin2));
-        c.set("futility.margin3",  &format!("type spin min 0 max 9999 default {}", self.margin3));
+        c.set("futility.margin1",  &format!("type spin min -9999 max 9999 default {}", self.margin1));
+        c.set("futility.margin2",  &format!("type spin min -9999 max 9999 default {}", self.margin2));
+        c.set("futility.margin3",  &format!("type spin min -9999 max 9999 default {}", self.margin3));
         c.set("futility.eval.switches", &format!("type string default {}", self.eval_switches.to_string()));
         c.set("futility.movetypes.forbidden", &format!("type string default {}", MoveType::to_string(self.move_types_forbidden)));
     }

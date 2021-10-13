@@ -49,7 +49,7 @@ impl Default for Lmr {
             lmr_promos: false,
             lmr_killers: false,
             lmr_min_depth: 2,
-            lmr_red_strat: 1,
+            lmr_red_strat: 6,
         }
     }
 }
