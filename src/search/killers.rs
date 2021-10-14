@@ -1,31 +1,54 @@
 use crate::board::Board;
-use crate::infra::parsed_config::{ParsedConfig, Component};
+use crate::infra::parsed_config::{Component, ParsedConfig};
 // use crate::{debug, logger::LogInit};
-use crate::mv::Move;
+use crate::board::boardbuf::BoardBuf;
 use crate::movelist::MoveList;
+use crate::mv::Move;
 use crate::types::Ply;
 use crate::types::MAX_PLY;
-use crate::board::boardbuf::BoardBuf;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(default)]
 pub struct Killers {
     enabled: bool,
     clear_every_move: bool,
     use_ply_below: bool,
+
+    #[serde(skip)]
     killers: Vec<[Move; 2]>,
+}
+
+impl Default for Killers {
+    fn default() -> Self {
+        Killers {
+            enabled: true,
+            clear_every_move: false,
+            use_ply_below: true,
+            killers: vec![[Move::new_null(); 2]; MAX_PLY as usize],
+        }
+    }
 }
 
 impl Component for Killers {
     fn settings(&self, c: &mut ParsedConfig) {
         c.set("killers.enabled", &format!("type check default {}", self.enabled));
-        c.set("killers.clear.every.move", &format!("type check default {}", self.clear_every_move));
-        c.set("killers.use.ply.below", &format!("type check default {}", self.use_ply_below));
+        c.set(
+            "killers.clear.every.move",
+            &format!("type check default {}", self.clear_every_move),
+        );
+        c.set(
+            "killers.use.ply.below",
+            &format!("type check default {}", self.use_ply_below),
+        );
     }
     fn configure(&mut self, c: &ParsedConfig) {
         debug!("killers.configure");
         self.enabled = c.bool("killers.enabled").unwrap_or(self.enabled);
-        self.clear_every_move = c.bool("killers.clear.every.move").unwrap_or(self.clear_every_move);
+        self.clear_every_move = c
+            .bool("killers.clear.every.move")
+            .unwrap_or(self.clear_every_move);
         self.use_ply_below = c.bool("killers.use.ply.below").unwrap_or(self.use_ply_below);
     }
     fn new_game(&mut self) {
@@ -40,18 +63,6 @@ impl Component for Killers {
             self.killers.push([Move::new_null(); 2]);
             self.killers.remove(0);
             self.killers.push([Move::new_null(); 2]);
-        }
-    }
-
-}
-
-impl Default for Killers {
-    fn default() -> Self {
-        Killers {
-            enabled: true,
-            clear_every_move: false,
-            use_ply_below: true,
-            killers: vec![[Move::new_null(); 2]; MAX_PLY as usize],
         }
     }
 }
@@ -77,21 +88,16 @@ impl Killers {
         }
     }
 
-
-
     fn legal_moves_for_single_ply(&self, y: Ply, b: &Board, moves: &mut MoveList) {
         for m in self.killers[y as usize].iter() {
             if !m.is_null() && b.is_pseudo_legal_move(m) && b.is_legal_move(m) {
+                debug_assert!(b.validate().is_ok(), "board:{} is not valid", b);
                 debug_assert!(
-                    b.validate().is_ok(),
-                    "board:{} is not valid",
-                    b
-                );
-                debug_assert!(
-                    b.legal_moves().iter().find(|&mv| mv == m ).is_some(),
+                    b.legal_moves().iter().find(|&mv| mv == m).is_some(),
                     "board:{:#} mv: {} {:?} is not in board.legal_moves",
                     b,
-                    m, m
+                    m,
+                    m
                 );
                 moves.push(*m);
             }
@@ -111,5 +117,56 @@ impl Killers {
         // self.killers[y as usize][2] = self.killers[y as usize][1];
         self.killers[y as usize][1] = self.killers[y as usize][0];
         self.killers[y as usize][0] = *m;
+    }
+}
+
+mod tests {
+    use super::*;
+    use crate::infra::config::*;
+    use anyhow::Result;
+    use test_env_log::test;
+    use toml;
+    use crate::infra::resources::RESOURCE_DIR;
+    use figment::providers::Env;
+    use figment::providers::{Format, Toml};
+    use figment::{Error, Figment, Metadata, Profile, Provider, Jail};
+    
+
+    #[test]
+    fn serde_killers_test() -> Result<()> {
+        info!("{}", toml::to_string(&Killers::default())?);
+
+
+        figment::Jail::expect_with(|jail| {
+            jail.create_file("config.toml", r#"
+                enabled = true
+                clear_every_move = false
+                use_ply_below = true
+            "#)?;
+        
+            // jail.set_env("config_name", "env-test");
+        
+            // jail.create_file("Config.json", r#"
+            //     {
+            //         "name": "json-test",
+            //         "debug": true
+            //     }
+            // "#)?;
+        
+            let killers: Killers = Figment::new()
+                .merge(Toml::file("config.toml"))
+                // .merge(Env::prefixed("CONFIG_"))
+                // .join(Json::file("Config.json"))
+                .extract()?;
+        
+            assert_eq!(killers, Killers {
+                enabled: true,
+                clear_every_move: false,
+                use_ply_below: true,
+                .. Default::default()
+                });
+            Ok(())
+        });
+        Ok(())
     }
 }

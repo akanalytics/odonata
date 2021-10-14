@@ -1,32 +1,33 @@
-
 use crate::cache::tt2::TranspositionTable2;
+use crate::infra::parsed_config::{Component, ParsedConfig};
+use crate::position::Position;
+use crate::search::algo::Algo;
+use crate::search::timecontrol::TimeControl;
 use crate::stat::Stat;
 use crate::utils::Formatter;
-use crate::infra::parsed_config::{Component, ParsedConfig};
-use crate::search::algo::Algo;
-use crate::position::Position;
-use crate::search::timecontrol::TimeControl;
-// // use crate::{debug, info, logger::LogInit};
 use std::fmt;
-// use std::str::FromStr;
+use serde::{Deserialize, Serialize};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
-
-
-
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Engine {
     pub shared_tt: bool,
-    pub config_filename: String,
     pub thread_count: u32,
-    pub engine_init_time: Duration,
-    pub search_init_time: Duration,
+    pub config_filename: String,
+    #[serde(flatten)]
     pub algo: Algo,
+
+    #[serde(skip)]
+    pub engine_init_time: Duration,
+    #[serde(skip)]
+    pub search_init_time: Duration,
+    #[serde(skip)]
     threads: Vec<JoinHandle<Algo>>,
 }
 
-const DEFAULT_CONFIG_FILE : &'static str = "config.toml";
+const DEFAULT_CONFIG_FILE: &'static str = "config.toml";
 
 impl Default for Engine {
     fn default() -> Self {
@@ -34,8 +35,8 @@ impl Default for Engine {
             config_filename: DEFAULT_CONFIG_FILE.to_string(),
             shared_tt: true,
             algo: Algo::default(),
-            engine_init_time: Duration::ZERO,
-            search_init_time: Duration::ZERO,
+            engine_init_time: Instant::now().elapsed(),
+            search_init_time: Duration::default(),
             thread_count: 1,
             threads: vec![],
         }
@@ -58,12 +59,19 @@ impl fmt::Display for Engine {
         writeln!(f, "config filename  : {}", self.config_filename)?;
         writeln!(f, "threads          : {}", self.thread_count)?;
         writeln!(f, "shared tt        : {}", self.shared_tt)?;
-        writeln!(f, "engine init time : {}", Formatter::format_duration(self.engine_init_time))?;
-        writeln!(f, "search init time : {}", Formatter::format_duration(self.search_init_time))?;
+        writeln!(
+            f,
+            "engine init time : {}",
+            Formatter::format_duration(self.engine_init_time)
+        )?;
+        writeln!(
+            f,
+            "search init time : {}",
+            Formatter::format_duration(self.search_init_time)
+        )?;
         write!(f, "\n[algo]\n{}", self.algo)
     }
 }
-
 
 impl Component for Engine {
     fn settings(&self, c: &mut ParsedConfig) {
@@ -71,13 +79,18 @@ impl Component for Engine {
             "Threads",
             &format!("type spin default {} min 1 max 16", self.thread_count),
         );
-        c.set("ParsedConfig file", &format!("type string default {}", self.config_filename));
+        c.set(
+            "ParsedConfig file",
+            &format!("type string default {}", self.config_filename),
+        );
         self.algo.settings(c);
     }
     fn configure(&mut self, c: &ParsedConfig) {
         info!("engine.configure");
         self.thread_count = c.int("Threads").unwrap_or(self.thread_count.into()) as u32;
-        self.config_filename = c.string("ParsedConfig file").unwrap_or(self.config_filename.clone());
+        self.config_filename = c
+            .string("ParsedConfig file")
+            .unwrap_or(self.config_filename.clone());
         if self.config_filename != DEFAULT_CONFIG_FILE {
             if let Ok(config) = &ParsedConfig::read_from_file(&self.config_filename) {
                 // FIXME: HOW to handle file error?
@@ -100,13 +113,43 @@ impl Component for Engine {
     }
 }
 
+use figment::{Error, Figment, Metadata, Profile, Provider};
+use figment::value::{Dict, Map};
+use crate::infra::resources::RESOURCE_DIR;
+use figment::providers::Env;
+use figment::providers::{Format, Toml};
+
+
+impl Provider for Engine {
+    fn metadata(&self) -> Metadata {
+        Metadata::named("Engine default config")
+    }
+
+    fn data(&self) -> Result<Map<Profile, Dict>, Error> {
+        figment::providers::Serialized::defaults(self).data()
+    }
+
+    fn profile(&self) -> Option<Profile> {
+        // Optionally, a profile that's selected by default.
+        None
+    }
+}
+
+
+
 
 impl Engine {
     pub fn new() -> Self {
-        let t = Instant::now();
+        let toml = RESOURCE_DIR
+            .get_file("figment.toml")
+            .unwrap()
+            .contents_utf8()
+            .unwrap();
+
+        let toml = Toml::string(toml);
         let mut engine = Self::default();
         engine.configure(&ParsedConfig::global());
-        engine.engine_init_time = t.elapsed();
+        let engine: Engine = Figment::new().merge(engine).merge(toml).extract().unwrap();
         engine
     }
 
@@ -136,7 +179,7 @@ impl Engine {
                 algo.tt.enabled = self.algo.tt.enabled;
             }
             algo.move_orderer.thread = i;
-    
+
             if i >= 1 {
                 algo.max_depth += 8;
                 algo.task_control.progress_callback = None;
@@ -210,9 +253,6 @@ impl Engine {
     }
 }
 
-
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -225,6 +265,19 @@ mod tests {
     use crate::types::*;
     use crate::utils::Formatter;
     use std::time;
+    use test_env_log;
+
+    #[test]
+    fn engine_serde_test() {
+        eprintln!("toml\n{}", toml::to_string(&Engine::default()).unwrap());
+    }
+
+    #[test]
+    fn engine_init_test() {
+        let engine = Engine::new();
+        eprintln!("{}", engine);
+    }
+
 
     #[test]
     #[ignore]
@@ -252,8 +305,6 @@ mod tests {
         }
     }
 
-
-
     #[test]
     #[ignore]
     fn example_search() {
@@ -265,7 +316,6 @@ mod tests {
         engine.search();
         println!("{}", engine);
     }
-
 
     #[test]
     fn test_mate_in_2_ids() {

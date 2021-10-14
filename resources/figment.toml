@@ -1,0 +1,22 @@
+#
+# Run: 68
+# MSE improved from 0.063189 to 0.062911 (-0.44%)
+# MSE improved from 0.063189 to 0.062914 (-0.43%) using integer weights
+# Training file ../epd/quiet-labeled.epd
+# Odonata odonata 0.3.48 built on Thu, 07 Oct 2021 16:34:16 +0000
+# Path ../engines/odonata/odonata-stable
+# Completed... 104.1 M position evaluations per second (6512 recalcs x 1417268 file lines)
+# 
+
+# baseline
+
+
+# shared_tt = true
+# thread_count = 1
+# config_filename = "config.toml"
+
+[killers]
+enabled = true
+clear_every_move = true
+use_ply_below = true
+

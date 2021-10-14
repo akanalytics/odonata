@@ -28,51 +28,82 @@ use crate::search::timecontrol::TimeControl;
 use crate::search::history_heuristic::HistoryHeuristic;
 use crate::types::Ply;
 use crate::variation::Variation;
-// // use crate::{debug, info, logger::LogInit};
 use std::fmt;
+use serde::{Deserialize, Serialize};
+
 
 use super::search_explainer::SearchExplainer;
 
 
-
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Algo {
+    #[serde(skip)]
     pub results: Position,
+    #[serde(skip)]
     pub position: Position,
+    #[serde(skip)]
     pub board: Board,
+    #[serde(skip)]
     pub max_depth: Ply,
+    #[serde(skip)]
     pub minmax: bool,
 
+    #[serde(skip)]
     pub ids: IterativeDeepening,
+    #[serde(skip)]
     pub eval: SimpleScorer,
+    #[serde(skip)]
     pub qsearch: QSearch,
+    #[serde(skip)]
     pub nmp: NullMovePruning,
+    #[serde(skip)]
     pub futility: Futility,
+    #[serde(skip)]
     pub pvs: Pvs,
+    #[serde(skip)]
     pub extensions: Extensions,
+    #[serde(skip)]
     pub reductions: Lmr,
+    #[serde(skip)]
     pub mte: MoveTimeEstimator,
+    #[serde(skip)]
     pub move_orderer: MoveOrderer,
+    #[serde(skip)]
     pub repetition: Repetition,
+    #[serde(skip)]
     pub tt: TranspositionTable2,
+
     pub killers: Killers,
+    #[serde(skip)]
     pub history: HistoryHeuristic,
+    #[serde(skip)]
     pub explainer: SearchExplainer,
+    #[serde(skip)]
     pub restrictions: Restrictions,
+    #[serde(skip)]
     pub razor: Razor,
 
 
+    #[serde(skip)]
     pub task_control: TaskControl<SearchProgress>,
+    #[serde(skip)]
     pub search_stats: SearchStats,
+    #[serde(skip)]
     pub pv_table: PvTable,
+    #[serde(skip)]
     pub current_best: Option<Move>,
+    #[serde(skip)]
     pub show_refutations: bool, 
+    #[serde(skip)]
     pub analyse_mode: bool, // tries to find full PV etc
     //pub score: Score,
 
     // child_thread: AlgoThreadHandle,
 
+    #[serde(skip)]
     clock_checks: u64,
+    #[serde(skip)]
     pub current_variation: Variation,
 }
 
@@ -471,9 +502,17 @@ mod tests {
     use crate::eval::eval::*;
     use crate::types::*;
     use crate::utils::Formatter;
+    use toml;
+    use anyhow::*;
     use std::time;
+    use test_env_log;
 
- 
+    #[test]
+    fn serde_algo_test() -> Result<()> {
+        eprintln!("toml\n{}", toml::to_string(&Algo::default())?);
+        Ok(())
+    }
+
     #[test]
     fn test_minmax() {
         let pos = Catalog::starting_position();
