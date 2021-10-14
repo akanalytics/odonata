@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::config::{Config, Component};
+use crate::config::{ParsedConfig, Component};
 // use crate::{debug, logger::LogInit};
 use crate::mv::Move;
 use crate::movelist::MoveList;
@@ -17,12 +17,12 @@ pub struct Killers {
 }
 
 impl Component for Killers {
-    fn settings(&self, c: &mut Config) {
+    fn settings(&self, c: &mut ParsedConfig) {
         c.set("killers.enabled", &format!("type check default {}", self.enabled));
         c.set("killers.clear.every.move", &format!("type check default {}", self.clear_every_move));
         c.set("killers.use.ply.below", &format!("type check default {}", self.use_ply_below));
     }
-    fn configure(&mut self, c: &Config) {
+    fn configure(&mut self, c: &ParsedConfig) {
         debug!("killers.configure");
         self.enabled = c.bool("killers.enabled").unwrap_or(self.enabled);
         self.clear_every_move = c.bool("killers.clear.every.move").unwrap_or(self.clear_every_move);

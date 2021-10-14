@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::config::{Component, Config};
+use crate::config::{Component, ParsedConfig};
 use crate::mv::Move;
 use crate::phaser::Phaser;
 use crate::search::node::Node;
@@ -21,7 +21,7 @@ pub struct Extensions {
 }
 
 impl Component for Extensions {
-    fn settings(&self, c: &mut Config) {
+    fn settings(&self, c: &mut ParsedConfig) {
         c.set(
             "ext.check.enabled",
             &format!("type check default {}", self.check_enabled),
@@ -51,7 +51,7 @@ impl Component for Extensions {
             &format!("type spin min 0 max 7 default {}", self.promo_extend),
         );
     }
-    fn configure(&mut self, c: &Config) {
+    fn configure(&mut self, c: &ParsedConfig) {
         debug!("ext.configure");
         self.check_enabled = c.bool("ext.check.enabled").unwrap_or(self.check_enabled);
         self.check_max_depth = c

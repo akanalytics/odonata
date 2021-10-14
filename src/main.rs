@@ -4,7 +4,7 @@ use odonata::comms::uci::Uci;
 use odonata::comms::bench::Bench;
 // use odonata::logger;
 use odonata::version::Version;
-use odonata::config::Config;
+use odonata::config::ParsedConfig;
 use odonata::search::timecontrol::TimeControl;
 
 
@@ -76,8 +76,8 @@ fn main() -> Result<(), String> {
 
 
     if let Some(filename) = matches.value_of("config") {
-        let config = Config::read_from_file(filename)?;
-        Config::set_global(config);
+        let config = ParsedConfig::read_from_file(filename)?;
+        ParsedConfig::set_global(config);
     }
 
     if matches.is_present("uci") {

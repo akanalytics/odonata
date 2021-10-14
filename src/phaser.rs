@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::config::{Component, Config};
+use crate::config::{Component, ParsedConfig};
 use crate::material::Material;
 use crate::Piece;
 
@@ -32,7 +32,7 @@ impl fmt::Display for Phaser {
 }
 
 impl Component for Phaser {
-    fn settings(&self, c: &mut Config) {
+    fn settings(&self, c: &mut ParsedConfig) {
         c.set("phaser.enabled", &format!("type check default {}", self.enabled));
         c.set("phaser.method", &format!("type string default {}", self.method));
         c.set(
@@ -41,7 +41,7 @@ impl Component for Phaser {
         );
     }
 
-    fn configure(&mut self, c: &Config) {
+    fn configure(&mut self, c: &ParsedConfig) {
         debug!("phaser.configure");
         self.enabled = c.bool("phaser.enabled").unwrap_or(self.enabled);
         self.method = c.string("phaser.method").unwrap_or(self.method.clone());

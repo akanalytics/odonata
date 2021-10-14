@@ -5,7 +5,7 @@ use crate::bitboard::square::Square;
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::cache::lockless_hashmap::SharedTable;
-use crate::config::{Component, Config};
+use crate::config::{Component, ParsedConfig};
 use crate::eval::score::Score;
 use crate::mv::Move;
 use crate::stat::{ArrayStat, Stat};
@@ -356,7 +356,7 @@ impl Default for TranspositionTable2 {
 }
 
 impl Component for TranspositionTable2 {
-    fn settings(&self, c: &mut Config) {
+    fn settings(&self, c: &mut ParsedConfig) {
         c.set("tt.enabled", &format!("type check default {}", self.enabled));
         c.set("tt.aging", &format!("type check default {}", self.aging));
         c.set(
@@ -385,7 +385,7 @@ impl Component for TranspositionTable2 {
             &format!("type spin default {} min 0 max 100", self.min_ply),
         );
     }
-    fn configure(&mut self, c: &Config) {
+    fn configure(&mut self, c: &ParsedConfig) {
         debug!("tt.configure");
         self.aging = c.bool("tt.aging").unwrap_or(self.aging);
         self.enabled = c.bool("tt.enabled").unwrap_or(self.enabled);

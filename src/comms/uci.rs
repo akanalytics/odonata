@@ -4,7 +4,7 @@ use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::catalog::Catalog;
 use crate::utils::Formatter;
-use crate::config::{Config, Component};
+use crate::config::{ParsedConfig, Component};
 use crate::mv::Move;
 use crate::variation::Variation;
 use crate::perft::Perft;
@@ -100,7 +100,7 @@ pub struct Uci {
 }
 
 impl Component for Uci {
-    fn settings(&self, c: &mut Config) {
+    fn settings(&self, c: &mut ParsedConfig) {
         c.set("UCI_EngineAbout", &format!("type string default {} {}", Version::NAME, Version::HOMEPAGE));
         c.set("uci.debug", "type check default false");
         c.set("Ponder", "type check default false");
@@ -111,7 +111,7 @@ impl Component for Uci {
         self.engine.lock().unwrap().settings(c);
     }
 
-    fn configure(&mut self, c: &Config) {
+    fn configure(&mut self, c: &ParsedConfig) {
         info!("Configuring uci with\n{}", c);
 
         if let Some(b) = c.bool("uci.debug") {
@@ -551,13 +551,13 @@ impl Uci {
         } else {
             (s.trim(), "")
         };
-        let c = Config::new().set(&name, &value);
+        let c = ParsedConfig::new().set(&name, &value);
         self.configure(&c);
         Ok(())
     }
 
     fn uci_show_options(&self) {
-        let mut c = Config::new();
+        let mut c = ParsedConfig::new();
         self.settings(&mut c);
         for (name, value) in c.iter() {
             Self::print(&format!("option name {} {}", name, value));

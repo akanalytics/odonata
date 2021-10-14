@@ -1311,7 +1311,7 @@ class Odonata:
         dict = {}
         # sample
         # Threads                        = type spin default 1 min 1 max 512
-        # Config file                    = type string default config.toml
+        # ParsedConfig file                    = type string default config.toml
         # algo.minmax                    = type check default false
         # UCI_AnalyseMode                = type check default false
         # mb.enabled                     = type check default true

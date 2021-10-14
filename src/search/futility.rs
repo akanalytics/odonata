@@ -7,7 +7,7 @@ use crate::mv::Move;
 use crate::eval::score::Score;
 use crate::eval::switches::Switches;
 use crate::eval::eval::SimpleScorer;
-use crate::config::{Config, Component};
+use crate::config::{ParsedConfig, Component};
 // use crate::{debug, logger::LogInit};
 use crate::types::{Piece, MoveType, MoveTypes, Ply};
 use std::{cmp, fmt};
@@ -37,7 +37,7 @@ pub struct Futility {
 }
 
 impl Component for Futility {
-    fn settings(&self, c: &mut Config) {
+    fn settings(&self, c: &mut ParsedConfig) {
         c.set("futility.alpha.enabled", &format!("type check default {}", self.alpha_enabled));
         c.set("futility.beta.enabled", &format!("type check default {}", self.beta_enabled));
         c.set("futility.avoid.checks", &format!("type check default {}", self.avoid_checks));
@@ -52,7 +52,7 @@ impl Component for Futility {
         c.set("futility.eval.switches", &format!("type string default {}", self.eval_switches.to_string()));
         c.set("futility.movetypes.forbidden", &format!("type string default {}", MoveType::to_string(self.move_types_forbidden)));
     }
-    fn configure(&mut self, c: &Config) {
+    fn configure(&mut self, c: &ParsedConfig) {
         debug!("futility.configure");
         self.alpha_enabled = c.bool("futility.alpha.enabled").unwrap_or(self.alpha_enabled);
         self.beta_enabled = c.bool("futility.beta.enabled").unwrap_or(self.beta_enabled);

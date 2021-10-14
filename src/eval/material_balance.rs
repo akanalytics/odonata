@@ -1,4 +1,4 @@
-use crate::config::{Component, Config};
+use crate::config::{Component, ParsedConfig};
 use crate::eval::weight::Weight;
 use crate::material::Material;
 use crate::mv::Move;
@@ -55,7 +55,7 @@ impl Default for MaterialBalance {
 
 
 impl Component for MaterialBalance {
-    fn settings(&self, c: &mut Config) {
+    fn settings(&self, c: &mut ParsedConfig) {
         c.set("mb.enabled", &format!("type check default {}", self.enabled));
         c.set("mb.force.init", "type button");
         c.set("mb.internal.stats", &format!("type check default {}", self.internal_stats));
@@ -94,7 +94,7 @@ impl Component for MaterialBalance {
         }
     }
 
-    fn configure(&mut self, c: &Config) {
+    fn configure(&mut self, c: &ParsedConfig) {
         debug!("mb.configure");
         self.enabled = c.bool("mb.enabled").unwrap_or(self.enabled);
         self.internal_stats = c.bool("mb.internal.stats").unwrap_or(self.internal_stats);

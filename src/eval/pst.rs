@@ -1,5 +1,5 @@
 use crate::Bitboard;
-use crate::config::{Component, Config};
+use crate::config::{Component, ParsedConfig};
 use crate::bitboard::square::Square;
 use crate::eval::weight::Weight;
 use crate::types::{Color, Piece};
@@ -42,7 +42,7 @@ impl Default for Pst {
 
 
 impl Component for Pst {
-    fn settings(&self, c: &mut Config) {
+    fn settings(&self, c: &mut ParsedConfig) {
         c.set("pst.enabled", &format!("type check default {}", self.enabled));
         c.set_weight("eval.rook.edge", &self.rook_edge);
         c.set_weight("eval.pawn.r5", &self.pawn_r5);
@@ -61,7 +61,7 @@ impl Component for Pst {
         // }
     }
 
-    fn configure(&mut self, c: &Config) {
+    fn configure(&mut self, c: &ParsedConfig) {
         debug!("pst.configure");
         self.enabled = c.bool("pst.enabled").unwrap_or(self.enabled);
         self.pawn_r5 = c.weight("eval.pawn.r5", &self.pawn_r5);
@@ -364,11 +364,11 @@ mod tests {
 
     #[test]
     fn pst_config() {
-        let mut c1 = Config::default();
+        let mut c1 = ParsedConfig::default();
         c1.set("eval.pst.p.a2.s", "6.5");
         c1.set("eval.pst.p.a2.e", "7.5");
         let lookup = c1.weight("eval.pst.p.a2", &Weight::from_i32(1, 1));
-        info!("Config\n{}", c1);
+        info!("ParsedConfig\n{}", c1);
         assert_eq!(lookup, Weight::from_f32(6.5,7.5));
         let mut pst = Pst::default();
         assert_eq!(pst.pst(Piece::Pawn, Square::A2), Weight::from_i32(24,304));

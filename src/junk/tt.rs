@@ -1,6 +1,6 @@
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
-use crate::config::{Component, Config};
+use crate::config::{Component, ParsedConfig};
 use crate::eval::score::Score;
 use crate::mv::Move;
 use crate::stat::{ArrayStat, Stat};
@@ -189,14 +189,14 @@ impl Default for TranspositionTable {
 }
 
 impl Component for TranspositionTable {
-    fn settings(&self, c: &mut Config) {
+    fn settings(&self, c: &mut ParsedConfig) {
         c.set("tt.aging", "type check default true");
         c.set("tt.use_tt_for_pv", "type check default true");
         c.set("Hash", "type spin default 33 min 0 max 4000");
         c.set("tt.hmvc_horizon", "type spin default 35 min 0 max 100");
         c.set("tt.min_ply", "type spin default 35 min 0 max 100");
     }
-    fn configure(&mut self, c: &Config) {
+    fn configure(&mut self, c: &ParsedConfig) {
         debug!("tt.configure");
         self.aging = c.bool("tt.aging").unwrap_or(self.aging);
         self.use_tt_for_pv = c.bool("tt.use_tt_for_pv").unwrap_or(self.use_tt_for_pv);

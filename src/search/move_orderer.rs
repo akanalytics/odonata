@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::config::{Component, Config};
+use crate::config::{Component, ParsedConfig};
 use crate::movelist::MoveList;
 use crate::mv::Move;
 use crate::search::algo::Algo;
@@ -28,7 +28,7 @@ pub struct MoveOrderer {
 }
 
 impl Component for MoveOrderer {
-    fn settings(&self, c: &mut Config) {
+    fn settings(&self, c: &mut ParsedConfig) {
         c.set("moveorderer.enabled", "type check default true");
         c.set("moveorderer.prior_pv", "type check default true");
         c.set("moveorderer.prior_bm", "type check default false");
@@ -37,7 +37,7 @@ impl Component for MoveOrderer {
         c.set("moveorderer.order", &format!("type string default {}", MoveType::slice_to_string(&self.order)));
         c.set("moveorderer.qorder", &format!("type string default {}", MoveType::slice_to_string(&self.qorder)));
     }
-    fn configure(&mut self, c: &Config) {
+    fn configure(&mut self, c: &ParsedConfig) {
         debug!("moveorderer.configure");
         self.enabled = c.bool("moveorderer.enabled").unwrap_or(self.enabled);
         self.prior_bm = c.bool("moveorderer.prior_bm").unwrap_or(self.prior_bm);

@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::bound::NodeType;
-use crate::config::{Component, Config};
+use crate::config::{Component, ParsedConfig};
 use crate::mv::Move;
 use crate::search::node::Node;
 use crate::search::searchstats::SearchStats;
@@ -56,7 +56,7 @@ impl Default for Lmr {
 
 
 impl Component for Lmr {
-    fn settings(&self, c: &mut Config) {
+    fn settings(&self, c: &mut ParsedConfig) {
         c.set(
             "lmr.enabled",
             &format!("type check default {}", self.lmr_enabled),
@@ -102,7 +102,7 @@ impl Component for Lmr {
             &format!("type spin min 0 max 10000 default {}", self.lmr_red_strat),
         );
     }
-    fn configure(&mut self, c: &Config) {
+    fn configure(&mut self, c: &ParsedConfig) {
         debug!("configure");
         self.lmr_enabled = c.bool("lmr.enabled").unwrap_or(self.lmr_enabled);
         self.lmr_re_search = c.bool("lmr.re.search").unwrap_or(self.lmr_re_search);

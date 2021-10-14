@@ -7,7 +7,7 @@ use crate::tags::Tag;
 use crate::tuning::Tuning;
 use crate::version::built_info;
 use crate::version::Version;
-use crate::Config;
+use crate::ParsedConfig;
 use anyhow::Context;
 // // use crate::{info, logger::LogInit};
 // use serde_json::Value;
@@ -155,7 +155,7 @@ impl Rpc for RpcImpl {
     }
 
     fn options(&self) -> Result<String> {
-        let mut c = Config::new();
+        let mut c = ParsedConfig::new();
         self.engine.lock().unwrap().settings(&mut c);
         Ok(c.to_string())
     }

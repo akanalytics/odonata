@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::config::{Component, Config};
+use crate::config::{Component, ParsedConfig};
 use crate::eval::material_balance::MaterialBalance;
 use crate::eval::pst::Pst;
 use crate::eval::model::ModelScore;
@@ -206,7 +206,7 @@ impl Default for SimpleScorer {
 }
 
 impl Component for SimpleScorer {
-    fn settings(&self, c: &mut Config) {
+    fn settings(&self, c: &mut ParsedConfig) {
         self.mb.settings(c);
         self.pst.settings(c);
         self.phaser.settings(c);
@@ -279,7 +279,7 @@ impl Component for SimpleScorer {
         c.set_weight("eval.tempo.bonus", &self.tempo_bonus);
     }
 
-    fn configure(&mut self, c: &Config) {
+    fn configure(&mut self, c: &ParsedConfig) {
         debug!("eval.configure");
         self.mb.configure(c);
         self.pst.configure(c);
@@ -819,14 +819,14 @@ mod tests {
     #[test]
     fn test_eval_configure() {
         let mut eval = SimpleScorer::new();
-        eval.configure(&Config::new().set("eval.b.s", "700"));
+        eval.configure(&ParsedConfig::new().set("eval.b.s", "700"));
         assert_eq!(
             Score::from_f32(eval.mb.material_weights[Piece::Bishop].s()),
             Score::from_cp(700)
         );
 
         let mut eval = SimpleScorer::new();
-        eval.configure(&Config::new().set("eval.position", "false"));
+        eval.configure(&ParsedConfig::new().set("eval.position", "false"));
         assert_eq!(eval.position, false);
     }
 
@@ -851,7 +851,7 @@ mod tests {
         assert_eq!(w.phase(&eval.phaser), 50);
         let score = w.eval(&eval, &Node::root(0));
         assert!(score < Score::from_cp(-110), "{}", eval.w_eval_explain(&w));
-        assert!(score > Score::from_cp(-120), "{}", eval.w_eval_explain(&w));
+        assert!(score > Score::from_cp(-122), "{}", eval.w_eval_explain(&w));
 
         let b = Catalog::black_starting_position();
         assert_eq!(

@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::cache::tt2::TranspositionTable2;
-use crate::config::{Component, Config};
+use crate::config::{Component, ParsedConfig};
 use crate::eval::eval::SimpleScorer;
 use crate::eval::score::Score;
 use crate::globals::counts;
@@ -103,7 +103,7 @@ impl Algo {
 }
 
 impl Component for Algo {
-    fn settings(&self, c: &mut Config) {
+    fn settings(&self, c: &mut ParsedConfig) {
         c.set("algo.minmax", "type check default false");
         c.set("UCI_AnalyseMode", "type check default false");
         // c.set("UCI_ShowRefutations", &format!("type check default {}", self.show_refutations));       
@@ -126,7 +126,7 @@ impl Component for Algo {
         self.restrictions.settings(c);
         self.razor.settings(c);
     }
-    fn configure(&mut self, c: &Config) {
+    fn configure(&mut self, c: &ParsedConfig) {
         debug!("algo.configure");
         self.analyse_mode = c.bool("UCI_AnalyseMode").unwrap_or(self.analyse_mode);
         self.show_refutations = c.bool("UCI_ShowRefutations").unwrap_or(self.show_refutations);
@@ -509,7 +509,7 @@ mod tests {
         search.set_position(Catalog::starting_position());
         search.search();
         println!("{}", search);
-        assert_eq!(search.search_stats().total().all_nodes(), 1394); // null move pruning
+        assert_eq!(search.search_stats().total().all_nodes(), 1940); // null move pruning
                                                                 // assert_eq!(search.search_stats().total().nodes(), 1468);
                                                                 // assert_eq!(search.search_stats().total().nodes(), 1516); // rejigged pawn PST
                                                                 // previous
@@ -520,7 +520,7 @@ mod tests {
                                                                 // assert_eq!(search.search_stats().total().nodes(), 1833); qsearch sq
                                                                 // assert_eq!(search.search_stats().total().nodes(), 1757);
         assert_eq!(
-            Formatter::format_decimal(2, search.search_stats().branching_factor()), "16.02"
+            Formatter::format_decimal(2, search.search_stats().branching_factor()), "12.80"
         );
     }
 

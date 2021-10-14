@@ -1,4 +1,4 @@
-use crate::config::{Component, Config};
+use crate::config::{Component, ParsedConfig};
 // use crate::mv::Move;
 use crate::position::Position;
 use crate::search::engine::Engine;
@@ -33,7 +33,7 @@ impl Exam {
     }
 
     pub fn take_exam(name: &str, positions: Vec<Position>) -> Exam {
-        let c = Config::new();
+        let c = ParsedConfig::new();
         let mut engine = Engine::new();
         // algo.set_timing_method(TimeControl::Depth(5));
         engine.algo.set_timing_method(TimeControl::NodeCount(1_000_000));

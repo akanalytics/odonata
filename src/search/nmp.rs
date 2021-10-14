@@ -5,7 +5,7 @@ use crate::mv::Move;
 use crate::search::node::Node;
 use crate::pvtable::PvTable;
 // use crate::eval::score::Score;
-use crate::config::{Config, Component};
+use crate::config::{ParsedConfig, Component};
 use crate::variation::Variation;
 // use crate::{debug, logger::LogInit};
 use crate::types::Ply;
@@ -32,7 +32,7 @@ pub struct NullMovePruning {
 }
 
 impl Component for NullMovePruning {
-    fn settings(&self, c: &mut Config) {
+    fn settings(&self, c: &mut ParsedConfig) {
         c.set("nmp.enabled", &format!("type check default {}", self.enabled));
         c.set("nmp.recursive", &format!("type check default {}", self.recursive));
         c.set("nmp.successive", &format!("type check default {}", self.successive));
@@ -42,7 +42,7 @@ impl Component for NullMovePruning {
         c.set("nmp.b",  &format!("type string default {}", format!("{}", self.a)));
         c.set("nmp.c",  &format!("type string default {}", format!("{}", self.a)));
     }
-    fn configure(&mut self, c: &Config) {
+    fn configure(&mut self, c: &ParsedConfig) {
         debug!("nmp.configure");
         self.enabled = c.bool("nmp.enabled").unwrap_or(self.enabled);
         self.recursive = c.bool("nmp.recursive").unwrap_or(self.recursive);

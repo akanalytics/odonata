@@ -425,7 +425,7 @@ mod tests {
         let positions = Catalog::mate_in_2();
         for (i, pos) in positions.iter().enumerate() {
             let mut search = Algo::new()
-                .set_timing_method(TimeControl::Depth(3))
+                .set_timing_method(TimeControl::Depth(5))
                 .set_callback(Uci::uci_info)
                 .build();
             // search.tt.enabled = false;

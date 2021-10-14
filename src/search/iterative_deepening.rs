@@ -1,4 +1,4 @@
-use crate::config::{Config, Component};
+use crate::config::{ParsedConfig, Component};
 use crate::globals::counts;
 // use crate::{debug, logger::LogInit};
 use crate::search::algo::Algo;
@@ -26,13 +26,13 @@ pub struct IterativeDeepening {
 
 impl Component for IterativeDeepening {
     
-    fn settings(&self, c: &mut Config) {
+    fn settings(&self, c: &mut ParsedConfig) {
         c.set("ids.enabled", "type check default true");
         c.set("ids.part.ply", "type check default true");
         c.set("ids.step.size",  &format!("type spin min 0 max 10 default {}", self.step_size));
     }
 
-    fn configure(&mut self, c: &Config) {
+    fn configure(&mut self, c: &ParsedConfig) {
         debug!("ids.configure");
         self.enabled = c.bool("ids.enabled").unwrap_or(self.enabled);
         self.part_ply = c.bool("ids.part.ply").unwrap_or(self.part_ply);

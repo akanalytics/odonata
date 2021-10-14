@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::config::{Component, Config};
+use crate::config::{Component, ParsedConfig};
 use crate::eval::score::Score;
 use crate::search::node::Node;
 use crate::types::{MoveType, MoveTypes, Ply};
@@ -43,7 +43,7 @@ pub struct Razor {
 }
 
 impl Component for Razor {
-    fn settings(&self, c: &mut Config) {
+    fn settings(&self, c: &mut ParsedConfig) {
         c.set("razor.enabled", &format!("type check default {}", self.enabled));
         c.set(
             "razor.max.depth",
@@ -69,7 +69,7 @@ impl Component for Razor {
             ),
         );
     }
-    fn configure(&mut self, c: &Config) {
+    fn configure(&mut self, c: &ParsedConfig) {
         debug!("razor.configure");
         self.enabled = c.bool("razor.enabled").unwrap_or(self.enabled);
         self.max_depth = c.int("razor.max.depth").unwrap_or(self.max_depth as i64) as Ply;

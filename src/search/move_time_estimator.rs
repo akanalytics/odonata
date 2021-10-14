@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::config::{Config, Component};
+use crate::config::{ParsedConfig, Component};
 use crate::utils::Formatter;
 use crate::search::searchstats::SearchStats;
 use crate::search::timecontrol::TimeControl;
@@ -25,14 +25,14 @@ pub struct MoveTimeEstimator {
 }
 
 impl Component for MoveTimeEstimator {
-    fn settings(&self, c: &mut Config) {
+    fn settings(&self, c: &mut ParsedConfig) {
         c.set("mte.branching_factor", "type spin default 10 min 1 max 100");
         c.set("mte.moves_rem", "type spin default 20 min 1 max 100");
         c.set("mte.perc_of_time_adv", "type spin default 100 min 0 max 1000");
         c.set("nodestime", "type spin default 0 min 0 max 50000");
         c.set("mte.deterministic", "type check default false");
     }
-    fn configure(&mut self, c: &Config) {
+    fn configure(&mut self, c: &ParsedConfig) {
         debug!("mte.configure");
         self.branching_factor = c
             .int("mte.branching_factor")

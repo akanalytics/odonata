@@ -1,7 +1,7 @@
 use crate::bitboard::bitboard::Bitboard;
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
-use crate::config::{Component, Config};
+use crate::config::{Component, ParsedConfig};
 use crate::eval::score::Score;
 use crate::eval::switches::Switches;
 use crate::movelist::MoveList;
@@ -42,7 +42,7 @@ impl Default for QSearch {
 
 
 impl Component for QSearch {
-    fn settings(&self, c: &mut Config) {
+    fn settings(&self, c: &mut ParsedConfig) {
         c.set("qsearch.enabled", &format!("type check default {}", self.enabled));
         c.set("qsearch.only.on.capture", &format!("type check default {}", self.only_on_capture));
         c.set("qsearch.promos", &format!("type check default {}", self.promos));
@@ -58,7 +58,7 @@ impl Component for QSearch {
             &format!("type spin default {} min 0 max 10000", self.coarse_delta_prune.as_i16())
         );
     }
-    fn configure(&mut self, c: &Config) {
+    fn configure(&mut self, c: &ParsedConfig) {
         debug!("qsearch.configure");
         self.enabled = c.bool("qsearch.enabled").unwrap_or(self.enabled);
         self.only_on_capture = c.bool("qsearch.only.on.capture").unwrap_or(self.only_on_capture);

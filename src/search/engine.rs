@@ -2,7 +2,7 @@
 use crate::cache::tt2::TranspositionTable2;
 use crate::stat::Stat;
 use crate::utils::Formatter;
-use crate::config::{Component, Config};
+use crate::config::{Component, ParsedConfig};
 use crate::search::algo::Algo;
 use crate::position::Position;
 use crate::search::timecontrol::TimeControl;
@@ -66,20 +66,20 @@ impl fmt::Display for Engine {
 
 
 impl Component for Engine {
-    fn settings(&self, c: &mut Config) {
+    fn settings(&self, c: &mut ParsedConfig) {
         c.set(
             "Threads",
             &format!("type spin default {} min 1 max 16", self.thread_count),
         );
-        c.set("Config file", &format!("type string default {}", self.config_filename));
+        c.set("ParsedConfig file", &format!("type string default {}", self.config_filename));
         self.algo.settings(c);
     }
-    fn configure(&mut self, c: &Config) {
+    fn configure(&mut self, c: &ParsedConfig) {
         info!("engine.configure");
         self.thread_count = c.int("Threads").unwrap_or(self.thread_count.into()) as u32;
-        self.config_filename = c.string("Config file").unwrap_or(self.config_filename.clone());
+        self.config_filename = c.string("ParsedConfig file").unwrap_or(self.config_filename.clone());
         if self.config_filename != DEFAULT_CONFIG_FILE {
-            if let Ok(config) = &Config::read_from_file(&self.config_filename) {
+            if let Ok(config) = &ParsedConfig::read_from_file(&self.config_filename) {
                 // FIXME: HOW to handle file error?
                 self.algo.configure(config);
                 return;
@@ -105,7 +105,7 @@ impl Engine {
     pub fn new() -> Self {
         let t = Instant::now();
         let mut engine = Self::default();
-        engine.configure(&Config::global());
+        engine.configure(&ParsedConfig::global());
         engine.engine_init_time = t.elapsed();
         engine
     }

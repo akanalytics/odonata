@@ -516,9 +516,9 @@ checks_with_white_knights = board.w.knights.moves & board.b.king.knight_moves
 legal_moves = w.moves
 ```
 
-## Config
+## ParsedConfig
 
-config = Config()
+config = ParsedConfig()
 print(config)
 >>> search.threads: default: 4            range: 1..100
 >>> search.algo:    default: alphabeta    choices: alphabeta|minmax|mdf

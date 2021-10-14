@@ -9,8 +9,8 @@ use std::path::PathBuf;
 
 
 pub trait Component {
-    fn settings(&self, config: &mut Config);
-    fn configure(&mut self, config: &Config);
+    fn settings(&self, config: &mut ParsedConfig);
+    fn configure(&mut self, config: &ParsedConfig);
     fn new_game(&mut self);
     fn new_position(&mut self);
 }
@@ -20,43 +20,43 @@ pub trait Component {
 
 
 #[dynamic(lazy)]
-static mut STATIC_INSTANCE: Config = { 
-    let c = Config::parse(&RESOURCE_DIR.get_file("config.toml").unwrap().contents_utf8().unwrap(), "<internal>");
+static mut STATIC_INSTANCE: ParsedConfig = { 
+    let c = ParsedConfig::parse(&RESOURCE_DIR.get_file("config.toml").unwrap().contents_utf8().unwrap(), "<internal>");
     if c.is_err() {
         warn!("Unable to open config.toml");
-        return Config::default()
+        return ParsedConfig::default()
     }
     c.unwrap()
 };
 
 
 #[derive(Clone, Debug)]
-pub struct Config {
+pub struct ParsedConfig {
     settings: HashMap<String, String>,
     insertion_order: Vec<String>,
 }
 
-impl Config {
+impl ParsedConfig {
 
-    pub fn new() -> Config {
+    pub fn new() -> ParsedConfig {
         Self::default()
     }
 
-    pub fn global() -> Config {
+    pub fn global() -> ParsedConfig {
         let config = STATIC_INSTANCE.read();
         if !config.is_empty() {
             debug!("Using configuration\n{}", &*config);
         } else {
             debug!("No configuration file or overrides");
         }
-        Config::clone(&config)
+        ParsedConfig::clone(&config)
     }
 
-    pub fn set_global(config: Config) {
+    pub fn set_global(config: ParsedConfig) {
         *STATIC_INSTANCE.write() = config;
     }
 
-    pub fn read_from_file(filename: &str) -> Result<Config, String> {
+    pub fn read_from_file(filename: &str) -> Result<ParsedConfig, String> {
         let path = PathBuf::from(filename);
         let s = fs::read_to_string(path);
         let s = s.map_err(|_| 
@@ -65,7 +65,7 @@ impl Config {
                     env::current_dir().unwrap(), 
                 ))?;
         //.or_else()?;
-        Config::parse(&s, filename)
+        ParsedConfig::parse(&s, filename)
         // let file = File::open(filename).map_err(|err| format!("Error opening config toml file {:?} in working dir {:?} {}", path, env::current_dir().unwrap(), err.to_string()))?;
         // let lines = io::BufReader::new(file).raedlines();
         // let results: Result<Vec<_>, _> = lines.collect();  // omg!
@@ -74,9 +74,9 @@ impl Config {
     }
 
 
-    pub fn parse(s: &str, filename: &str) -> Result<Config, String> {
+    pub fn parse(s: &str, filename: &str) -> Result<ParsedConfig, String> {
 
-        let mut config = Config::new();
+        let mut config = ParsedConfig::new();
         let mut count = 0;
         for (n, line) in s.lines().enumerate() {
             if n > 0 && n % 1000 == 0 {
@@ -101,8 +101,8 @@ impl Config {
         Ok(config)
     }
 
-    // fn read_from_env() -> Config {
-    //     let mut config = Config::new();
+    // fn read_from_env() -> ParsedConfig {
+    //     let mut config = ParsedConfig::new();
     //     for arg in env::vars() {
     //         // format is odonata_key1_key2_key3 = value which we translate to key1.key2.key3=value
     //         if arg.0.to_lowercase().starts_with("odonata_") {
@@ -128,7 +128,7 @@ impl Config {
         }
     }
 
-    pub fn set(&mut self, k: &str, v: &str) -> Config {
+    pub fn set(&mut self, k: &str, v: &str) -> ParsedConfig {
         let v = v.trim().trim_matches('"');
         let k = k.trim();
         debug!("config set [{}] = {}", k, v);
@@ -207,7 +207,7 @@ impl Config {
     }
 }
 
-impl fmt::Display for Config {
+impl fmt::Display for ParsedConfig {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for (k, v) in self.iter() {
             writeln!(f, "{:<30} = {}", k, v)?
@@ -216,9 +216,9 @@ impl fmt::Display for Config {
     }
 }
 
-impl Default for Config {
+impl Default for ParsedConfig {
     fn default() -> Self {
-        Config {
+        ParsedConfig {
             settings: HashMap::new(),
             insertion_order: Vec::new(),
         }
@@ -237,13 +237,13 @@ mod tests {
         string: String,
     }
     impl Component for TestStruct {
-        fn settings(&self, c: &mut Config) {
+        fn settings(&self, c: &mut ParsedConfig) {
             c.set("engine.wheels", "type spin default=4 min=2 max=6");
             c.set("engine.color", "default=blue var=blue var=yellow var=red");
             c.set("engine.fast", "type check default=false");
         }
 
-        fn configure(&mut self, config: &Config) {
+        fn configure(&mut self, config: &ParsedConfig) {
             if let Some(i) = config.int("engine.wheels") {
                 self.integer = i;
             }
@@ -261,10 +261,10 @@ mod tests {
 
     #[test]
     fn test_config() {
-        let c1 = Config::default();
+        let c1 = ParsedConfig::default();
         debug!("c1\n{}", c1);
 
-        let mut cs2 = Config::new();
+        let mut cs2 = ParsedConfig::new();
         let mut ts = TestStruct {
             integer: 0,
             string: "cat".to_string(),
@@ -277,7 +277,7 @@ mod tests {
         assert_eq!(vec[0].0, "engine.wheels");
         assert_eq!(vec[1].0, "engine.color");
 
-        let mut c3 = Config::new();
+        let mut c3 = ParsedConfig::new();
         c3.set("engine.wheels", "6");
         c3.set("engine.color", "red");
         debug!("c3\n{}", c3);
