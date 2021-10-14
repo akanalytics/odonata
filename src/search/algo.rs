@@ -22,6 +22,7 @@ use crate::search::qsearch::QSearch;
 use crate::search::searchprogress::SearchProgress;
 use crate::search::searchstats::SearchStats;
 use crate::search::restrictions::Restrictions;
+use crate::search::razor::Razor;
 use crate::search::taskcontrol::TaskControl;
 use crate::search::timecontrol::TimeControl;
 use crate::search::history_heuristic::HistoryHeuristic;
@@ -58,6 +59,7 @@ pub struct Algo {
     pub history: HistoryHeuristic,
     pub explainer: SearchExplainer,
     pub restrictions: Restrictions,
+    pub razor: Razor,
 
 
     pub task_control: TaskControl<SearchProgress>,
@@ -122,6 +124,7 @@ impl Component for Algo {
         self.history.settings(c);
         self.explainer.settings(c);
         self.restrictions.settings(c);
+        self.razor.settings(c);
     }
     fn configure(&mut self, c: &Config) {
         debug!("algo.configure");
@@ -144,6 +147,7 @@ impl Component for Algo {
         self.history.configure(c);
         self.explainer.configure(c);
         self.restrictions.configure(c);
+        self.razor.configure(c);
     }
 
     // clears evaluation and transposition caches as well as repetition counts
@@ -167,6 +171,7 @@ impl Component for Algo {
         self.killers.new_game();
         self.explainer.new_game();
         self.restrictions.new_game();
+        self.razor.new_game();
     }
 
     fn new_position(&mut self) {
@@ -188,6 +193,7 @@ impl Component for Algo {
         self.history.new_position();
         self.explainer.new_position();
         self.restrictions.new_position();
+        self.razor.new_position();
     }
 }
 
@@ -219,6 +225,7 @@ impl fmt::Debug for Algo {
             .field("history", &self.history)
             .field("explainer", &self.explainer)
             .field("restrictions", &self.restrictions)
+            .field("razor", &self.razor)
             .finish()
     }
 }
@@ -264,6 +271,7 @@ impl fmt::Display for Algo {
         write!(f, "\n[pvtable]\n{}", self.pv_table)?;
         write!(f, "\n[explainer]\n{}", self.explainer)?;
         write!(f, "\n[restrictions]\n{}", self.restrictions)?;
+        write!(f, "\n[razor]\n{}", self.razor)?;
         Ok(())
     }
 }

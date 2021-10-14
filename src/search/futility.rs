@@ -16,6 +16,7 @@ use std::{cmp, fmt};
 
 
 // 5+0.04 => 165/1600
+// 10+0.08 => 82/1189 (3000 sims) 
 
 
 #[derive(Clone, Debug)]
@@ -123,7 +124,7 @@ pub struct FutilityMeasure {
 
 
 impl Futility {
-    pub fn can_prune_at_node(&self, b: &Board, node: &Node, eval: &SimpleScorer) -> Option<FutilityMeasure> {
+    pub fn can_prune_at_node(&self, b: &Board, node: &Node, eval: Score) -> Option<FutilityMeasure> {
         if (!self.alpha_enabled && !self.beta_enabled)
             ||
             node.ply == 0   // dont prune at root node
@@ -139,7 +140,6 @@ impl Futility {
             (self.avoid_checks && b.is_in_check(b.color_us())) {
             return None;
         }
-        let score = b.eval_some(eval, self.eval_switches);
 
         // safety margin depends on how far away we are from leaf node
         let margin = match node.depth {
@@ -151,7 +151,7 @@ impl Futility {
 
         // if the score + a configured margin is less than alpha we can consider pruning at this node
         Some(FutilityMeasure {
-            eval: score,
+            eval,
             margin: Score::from_cp(margin),
         })
     }

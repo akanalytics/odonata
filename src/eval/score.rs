@@ -66,10 +66,20 @@ impl Score {
         }
     }
 
+
+    const MIN_NUMERIC: i16 = -Self::INF + 1 + MAX_PLY as i16;
+    const MAX_NUMERIC: i16 = i16::MAX - 1 - MAX_PLY as i16;
+
     #[inline]
     pub const fn is_numeric(&self) -> bool {
-        self.cp >= -Self::INF + 1 + MAX_PLY as i16 && self.cp <= i16::MAX - 1 - MAX_PLY as i16 
+        self.cp >= Self::MIN_NUMERIC && self.cp <= Self::MAX_NUMERIC
     }
+
+    #[inline]
+    pub fn clamp(&self) -> Score {
+        Self::from_cp(self.cp.clamp(Self::MIN_NUMERIC, Self::MAX_NUMERIC ) as i32) 
+    }
+
 
 
     #[inline]

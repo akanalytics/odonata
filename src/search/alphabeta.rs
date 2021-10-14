@@ -8,6 +8,7 @@ use crate::pvtable::PvTable;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
 use crate::types::{MoveType, Ply, MAX_PLY};
+use crate::eval::switches::Switches;
 
 pub struct AlphaBeta;
 
@@ -165,10 +166,33 @@ impl Algo {
         // we are now looking at moves (null, killer, generated etc) so this is an interior node
         self.search_stats.inc_interior_nodes(ply);
 
+        // static eval
+        let eval = board.eval_some(&self.eval, Switches::ALL_SCORING);
+
+        // razoring
+        let margin = self.razor.margin(&board, eval, &n);
+        if let Some(margin) = margin {
+            if eval > n.beta + margin {
+                return beta;
+            }
+            if eval < n.alpha - margin {
+                if n.depth <= 2 {
+                    // drop straight into qsearch
+                    return self.qsearch(last_move, ply, depth, board, n.alpha, n.beta);
+                } else {
+                    let score = self.qsearch(last_move, ply, depth, board, n.alpha, n.alpha + Score::from_cp(1));
+                    if score < n.alpha - margin {
+                        return n.alpha;
+                    }
+                }
+            }
+        }
+
+
         let futility = self.futility.can_prune_at_node(
             board,
             &n,
-            &self.eval,
+            eval,
         );
         if let Some(futility) = futility {
             if let Some(fut_score) = self.futility.can_prune_all_moves(board, futility, &n, &self.eval) {
@@ -177,14 +201,13 @@ impl Algo {
         }
         // null move
         if !self.minmax
-            && n.beta.is_numeric()
             && self.nmp.allow(
                 &board,
                &n,
                 &self.pv_table,
             )
         {
-            let r = self.nmp.depth_reduction(board, ply, depth);
+            let r = self.nmp.depth_reduction(eval, &n);
             let mv = Move::NULL_MOVE;
             // try futility pruning on null move
             // if let Some(futility) = futility {

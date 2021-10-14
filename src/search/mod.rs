@@ -16,6 +16,7 @@ pub mod node;
 pub mod qsearch;
 pub mod nmp;
 pub mod stack;
+pub mod razor;
 pub mod restrictions;
 pub mod futility;
 pub mod pvs;
