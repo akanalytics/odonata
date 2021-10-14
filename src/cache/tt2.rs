@@ -5,7 +5,7 @@ use crate::bitboard::square::Square;
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::cache::lockless_hashmap::SharedTable;
-use crate::config::{Component, ParsedConfig};
+use crate::infra::parsed_config::{Component, ParsedConfig};
 use crate::eval::score::Score;
 use crate::mv::Move;
 use crate::stat::{ArrayStat, Stat};

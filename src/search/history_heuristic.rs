@@ -1,6 +1,6 @@
 use crate::bitboard::bitboard::Bitboard;
 use crate::board::Board;
-use crate::config::{ParsedConfig, Component};
+use crate::infra::parsed_config::{ParsedConfig, Component};
 use crate::mv::Move;
 use crate::types::{Ply, Piece, Color};
 use std::fmt;

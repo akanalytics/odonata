@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::config::{ParsedConfig, Component};
+use crate::infra::parsed_config::{ParsedConfig, Component};
 use crate::utils::Formatter;
 use crate::search::searchstats::SearchStats;
 use crate::search::timecontrol::TimeControl;

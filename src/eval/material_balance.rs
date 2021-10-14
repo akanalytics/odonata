@@ -1,4 +1,4 @@
-use crate::config::{Component, ParsedConfig};
+use crate::infra::parsed_config::{Component, ParsedConfig};
 use crate::eval::weight::Weight;
 use crate::material::Material;
 use crate::mv::Move;

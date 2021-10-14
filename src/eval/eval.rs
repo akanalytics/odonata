@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::config::{Component, ParsedConfig};
+use crate::infra::parsed_config::{Component, ParsedConfig};
 use crate::eval::material_balance::MaterialBalance;
 use crate::eval::pst::Pst;
 use crate::eval::model::ModelScore;

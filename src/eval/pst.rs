@@ -1,5 +1,5 @@
 use crate::Bitboard;
-use crate::config::{Component, ParsedConfig};
+use crate::infra::parsed_config::{Component, ParsedConfig};
 use crate::bitboard::square::Square;
 use crate::eval::weight::Weight;
 use crate::types::{Color, Piece};

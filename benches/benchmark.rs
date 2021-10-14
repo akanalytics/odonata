@@ -12,7 +12,7 @@ use odonata::board::*;
 use odonata::bound::NodeType;
 use odonata::cache::tt2::*;
 use odonata::catalog::*;
-use odonata::config::Component;
+use odonata::infra::parsed_config::Component;
 use odonata::eval::eval::*;
 use odonata::eval::model::Model;
 use odonata::eval::model::ModelScore;

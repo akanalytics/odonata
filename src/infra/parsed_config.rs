@@ -3,7 +3,7 @@ use std::{fmt, fs};
 use static_init::{dynamic};
 use std::env;
 use crate::eval::weight::Weight;
-use crate::resources::RESOURCE_DIR;
+use crate::infra::resources::RESOURCE_DIR;
 use std::path::PathBuf;
 
 

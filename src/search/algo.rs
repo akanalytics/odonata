@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::cache::tt2::TranspositionTable2;
-use crate::config::{Component, ParsedConfig};
+use crate::infra::parsed_config::{Component, ParsedConfig};
 use crate::eval::eval::SimpleScorer;
 use crate::eval::score::Score;
 use crate::globals::counts;

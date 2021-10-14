@@ -1,7 +1,7 @@
 use crate::board::Board;
 use crate::comms::uci::Uci;
 use crate::search::algo::Algo;
-use crate::version::Version;
+use crate::infra::version::Version;
 use std::io;
 
 pub struct Console {

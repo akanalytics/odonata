@@ -1,5 +1,5 @@
 use crate::mv::Move;
-use crate::config::{ParsedConfig, Component};
+use crate::infra::parsed_config::{ParsedConfig, Component};
 use crate::movelist::MoveList;
 use crate::types::Ply;
 use std::fmt;

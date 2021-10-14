@@ -1,6 +1,6 @@
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
-use crate::config::{Component, ParsedConfig};
+use crate::config::parsed_config::{Component, ParsedConfig};
 use crate::eval::score::Score;
 use crate::mv::Move;
 use crate::stat::{ArrayStat, Stat};

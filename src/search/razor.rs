@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::config::{Component, ParsedConfig};
+use crate::infra::parsed_config::{Component, ParsedConfig};
 use crate::eval::score::Score;
 use crate::search::node::Node;
 use crate::types::{MoveType, MoveTypes, Ply};

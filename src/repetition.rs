@@ -1,6 +1,6 @@
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
-use crate::config::{Component, ParsedConfig};
+use crate::infra::parsed_config::{Component, ParsedConfig};
 use crate::mv::Move;
 use crate::types::{Hash, Piece, Repeats};
 use crate::variation::Variation;

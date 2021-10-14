@@ -3,8 +3,8 @@ use odonata::comms::console::Console;
 use odonata::comms::uci::Uci;
 use odonata::comms::bench::Bench;
 // use odonata::logger;
-use odonata::version::Version;
-use odonata::config::ParsedConfig;
+use odonata::infra::version::Version;
+use odonata::infra::parsed_config::ParsedConfig;
 use odonata::search::timecontrol::TimeControl;
 
 

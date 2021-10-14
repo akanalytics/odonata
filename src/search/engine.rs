@@ -2,7 +2,7 @@
 use crate::cache::tt2::TranspositionTable2;
 use crate::stat::Stat;
 use crate::utils::Formatter;
-use crate::config::{Component, ParsedConfig};
+use crate::infra::parsed_config::{Component, ParsedConfig};
 use crate::search::algo::Algo;
 use crate::position::Position;
 use crate::search::timecontrol::TimeControl;

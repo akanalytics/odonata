@@ -1,7 +1,7 @@
 use crate::bitboard::bitboard::Bitboard;
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
-use crate::config::{Component, ParsedConfig};
+use crate::infra::parsed_config::{Component, ParsedConfig};
 use crate::eval::score::Score;
 use crate::eval::switches::Switches;
 use crate::movelist::MoveList;

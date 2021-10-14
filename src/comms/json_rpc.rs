@@ -1,12 +1,12 @@
 use crate::board::Board;
 use crate::catalog::{Catalog, CatalogSuite};
-use crate::config::Component;
+use crate::infra::parsed_config::Component;
 use crate::position::Position;
 use crate::search::engine::Engine;
 use crate::tags::Tag;
 use crate::tuning::Tuning;
-use crate::version::built_info;
-use crate::version::Version;
+use crate::infra::version::built_info;
+use crate::infra::version::Version;
 use crate::ParsedConfig;
 use anyhow::Context;
 // // use crate::{info, logger::LogInit};

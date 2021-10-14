@@ -7,7 +7,7 @@ use crate::mv::Move;
 use crate::eval::score::Score;
 use crate::eval::switches::Switches;
 use crate::eval::eval::SimpleScorer;
-use crate::config::{ParsedConfig, Component};
+use crate::infra::parsed_config::{ParsedConfig, Component};
 // use crate::{debug, logger::LogInit};
 use crate::types::{Piece, MoveType, MoveTypes, Ply};
 use std::{cmp, fmt};

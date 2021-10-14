@@ -3,7 +3,7 @@ use crate::board::Board;
 use crate::search::node::Node;
 use crate::eval::score::Score;
 use crate::bound::NodeType;
-use crate::config::{ParsedConfig, Component};
+use crate::infra::parsed_config::{ParsedConfig, Component};
 // use crate::{debug, logger::LogInit};
 use crate::types::Ply;
 use std::fmt;

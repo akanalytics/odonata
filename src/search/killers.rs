@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::config::{ParsedConfig, Component};
+use crate::infra::parsed_config::{ParsedConfig, Component};
 // use crate::{debug, logger::LogInit};
 use crate::mv::Move;
 use crate::movelist::MoveList;

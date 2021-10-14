@@ -1,4 +1,4 @@
-use crate::config::{ParsedConfig, Component};
+use crate::infra::parsed_config::{ParsedConfig, Component};
 use crate::globals::counts;
 // use crate::{debug, logger::LogInit};
 use crate::search::algo::Algo;
