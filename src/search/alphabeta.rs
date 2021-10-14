@@ -172,6 +172,9 @@ impl Algo {
         // razoring
         let margin = self.razor.margin(&board, eval, &n);
         if let Some(margin) = margin {
+
+            // we repeat the futility prune here (its performed in parent too prior to makemove). But here we have the benefit of
+            // a full eval not just a material gain/loss resulting from a move
             if eval > n.beta + margin {
                 return beta;
             }
