@@ -58,19 +58,19 @@ mod tests {
     use super::*;
     use test_env_log::test;
 
-    #[test]
-    fn parse_test() {
-        info!("default {:?}", Config::default());
+    // #[test]
+    // fn parse_test() {
+    //     info!("default {:?}", Config::default());
 
-        let toml = RESOURCE_DIR
-            .get_file("figment.toml")
-            .unwrap()
-            .contents_utf8()
-            .unwrap();
+    //     let toml = RESOURCE_DIR
+    //         .get_file("figment.toml")
+    //         .unwrap()
+    //         .contents_utf8()
+    //         .unwrap();
 
-        let toml = Toml::string(toml);
-        let config: Config = Figment::new().merge(toml).extract().unwrap();
+    //     let toml = Toml::string(toml);
+    //     let config: Config = Figment::new().merge(toml).extract().unwrap();
 
-        info!("file {:?}", config);
-    }
+    //     info!("file {:?}", config);
+    // }
 }
