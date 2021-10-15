@@ -126,7 +126,6 @@ mod tests {
     use anyhow::Result;
     use test_env_log::test;
     use toml;
-    use figment::providers::Env;
     use figment::providers::{Format, Toml};
     use figment::{Error, Figment, Metadata, Profile, Provider, Jail};
     

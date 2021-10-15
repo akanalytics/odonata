@@ -7,12 +7,18 @@ use crate::variation::Variation;
 use crate::position::Position;
 // use crate::{debug, logger::LogInit};
 use std::fmt;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Repetition {
     pub enabled: bool,
     pub avoid_tt_on_repeats: bool,
+
+    #[serde(skip)]
     prior_positions: Vec<Hash>,
+
+    #[serde(skip)]
     root_index: usize,
 }
 

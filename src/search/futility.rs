@@ -11,6 +11,7 @@ use crate::infra::parsed_config::{ParsedConfig, Component};
 // use crate::{debug, logger::LogInit};
 use crate::types::{Piece, MoveType, MoveTypes, Ply};
 use std::{cmp, fmt};
+use serde::{Deserialize, Serialize};
 
 
 
@@ -19,7 +20,7 @@ use std::{cmp, fmt};
 // 10+0.08 => 82/1189 (3000 sims) 
 
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Futility {
     pub alpha_enabled: bool,
     pub beta_enabled: bool,

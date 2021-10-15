@@ -13,14 +13,19 @@ use crate::types::{Ply, MAX_PLY};
 use std::fmt;
 use std::iter::FromIterator;
 use std::iter;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug)]
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(default)]
 pub struct IterativeDeepening {
     pub enabled: bool,
     pub part_ply: bool,
     pub step_size: Ply,
     pub start_ply: Ply,
     pub end_ply: Ply,
+
+    #[serde(skip)]
     iterations: Vec<SearchStats>,
 }
 

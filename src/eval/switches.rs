@@ -1,7 +1,11 @@
 use std::fmt;
 use std::iter::*;
+use serde::{Deserialize, Serialize};
+
 
 bitflags! {
+    #[derive(Serialize, Deserialize)]    
+    #[serde(transparent)]
     pub struct Switches: u16 {
         const NONE = 0;
         const MATERIAL = 1 << 0;
@@ -128,6 +132,12 @@ impl fmt::Display for Switches {
 mod tests {
     use super::*;
     use crate::test_env_log::test;
+    use toml;
+
+    #[test]
+    fn switches_serde_test() {
+        eprintln!("toml\n{}", toml::to_string(&Switches::default()).unwrap());
+    }
 
     #[test]
     fn test_switches() {

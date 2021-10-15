@@ -8,8 +8,9 @@ use crate::types::{Color, Piece, Ply};
 
 // use crate::{debug, logger::LogInit};
 use std::fmt;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Extensions {
     pub check_enabled: bool,
     pub check_max_depth: Ply,

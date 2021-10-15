@@ -47,42 +47,28 @@ pub struct Algo {
     pub board: Board,
     #[serde(skip)]
     pub max_depth: Ply,
-    #[serde(skip)]
-    pub minmax: bool,
 
-    #[serde(skip)]
+    pub minmax: bool,
     pub ids: IterativeDeepening,
 
     pub eval: SimpleScorer,
-    #[serde(skip)]
     pub qsearch: QSearch,
-    #[serde(skip)]
     pub nmp: NullMovePruning,
-    #[serde(skip)]
     pub futility: Futility,
-    #[serde(skip)]
     pub pvs: Pvs,
-    #[serde(skip)]
     pub extensions: Extensions,
-    #[serde(skip)]
-    pub reductions: Lmr,
-    #[serde(skip)]
+    pub lmr: Lmr,
     pub mte: MoveTimeEstimator,
     #[serde(skip)]
     pub move_orderer: MoveOrderer,
-    #[serde(skip)]
     pub repetition: Repetition,
     #[serde(skip)]
     pub tt: TranspositionTable2,
 
     pub killers: Killers,
-    #[serde(skip)]
     pub history: HistoryHeuristic,
-    #[serde(skip)]
     pub explainer: SearchExplainer,
-    #[serde(skip)]
     pub restrictions: Restrictions,
-    #[serde(skip)]
     pub razor: Razor,
 
 
@@ -141,22 +127,22 @@ impl Component for Algo {
         // c.set("UCI_ShowRefutations", &format!("type check default {}", self.show_refutations));       
 
         // self.eval.settings(c);
-        self.mte.settings(c);
+        // self.mte.settings(c);
         self.move_orderer.settings(c);
-        self.nmp.settings(c);
-        self.futility.settings(c);
-        self.pvs.settings(c);
-        self.extensions.settings(c);
-        self.reductions.settings(c);
-        self.qsearch.settings(c);
-        self.ids.settings(c);
-        self.repetition.settings(c);
+        // self.nmp.settings(c);
+        // self.futility.settings(c);
+        // self.pvs.settings(c);
+        // self.extensions.settings(c);
+        // self.lmr.settings(c);
+        // self.qsearch.settings(c);
+        // self.ids.settings(c);
+        // self.repetition.settings(c);
         self.tt.settings(c);
         // self.killers.settings(c);
-        self.history.settings(c);
-        self.explainer.settings(c);
-        self.restrictions.settings(c);
-        self.razor.settings(c);
+        // self.history.settings(c);
+        // self.explainer.settings(c);
+        // self.restrictions.settings(c);
+        // self.razor.settings(c);
     }
     fn configure(&mut self, c: &ParsedConfig) {
         debug!("algo.configure");
@@ -165,20 +151,20 @@ impl Component for Algo {
         self.minmax = c.bool("algo.minmax").unwrap_or(self.minmax);
         // self.eval.configure(c);
         self.move_orderer.configure(c);
-        self.mte.configure(c);
-        self.nmp.configure(c);
+        // self.mte.configure(c);
+        // self.nmp.configure(c);
         self.futility.configure(c);
         self.pvs.configure(c);
         self.extensions.configure(c);
-        self.reductions.configure(c);
-        self.qsearch.configure(c);
+        // self.lmr.configure(c);
+        // self.qsearch.configure(c);
         self.ids.configure(c);
         self.repetition.configure(c);
         self.tt.configure(c);
         // self.killers.configure(c);
         self.history.configure(c);
         self.explainer.configure(c);
-        self.restrictions.configure(c);
+        // self.restrictions.configure(c);
         self.razor.configure(c);
     }
 
@@ -194,7 +180,7 @@ impl Component for Algo {
         self.futility.new_game();
         self.pvs.new_game();
         self.extensions.new_game();
-        self.reductions.new_game();
+        self.lmr.new_game();
         self.history.new_game();
         self.mte.new_game();
         self.move_orderer.new_game();
@@ -216,7 +202,7 @@ impl Component for Algo {
         self.futility.new_position();
         self.pvs.new_position();
         self.extensions.new_position();
-        self.reductions.new_position();
+        self.lmr.new_position();
         self.qsearch.new_position();
         self.ids.new_position();
         self.repetition.new_position();
@@ -248,7 +234,7 @@ impl fmt::Debug for Algo {
             .field("futility", &self.futility)
             .field("pvs", &self.pvs)
             .field("extensions", &self.extensions)
-            .field("reductions", &self.reductions)
+            .field("reductions", &self.lmr)
             .field("qsearch", &self.qsearch)
             .field("ids", &self.ids)
             .field("repetition", &self.repetition)
@@ -288,7 +274,7 @@ impl fmt::Display for Algo {
         write!(f, "\n[futility]\n{}", self.futility)?;
         write!(f, "\n[pvs]\n{}", self.pvs)?;
         write!(f, "\n[extensions]\n{}", self.extensions)?;
-        write!(f, "\n[reductions]\n{}", self.reductions)?;
+        write!(f, "\n[reductions]\n{}", self.lmr)?;
         write!(f, "\n[qsearch]\n{}", self.qsearch)?;
         write!(f, "\n[eval]\n{}", self.eval)?;
         write!(f, "\n[repetition]\n{}", self.repetition)?;

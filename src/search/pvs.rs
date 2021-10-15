@@ -7,13 +7,14 @@ use crate::infra::parsed_config::{ParsedConfig, Component};
 // use crate::{debug, logger::LogInit};
 use crate::types::Ply;
 use std::fmt;
+use serde::{Deserialize, Serialize};
 
 
 
 
 
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Pvs {
     pub enabled: bool,
     pub min_depth: Ply,

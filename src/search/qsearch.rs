@@ -12,15 +12,17 @@ use crate::types::Ply;
 // // use crate::{debug, logger::LogInit, trace};
 use std::fmt;
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 
-#[derive(Copy, Clone, Debug)]
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct QSearch {
     pub enabled: bool,
     pub only_on_capture: bool,
     pub promos: bool,
     pub ignore_see_fails: bool,
     pub see_cutoff: i64,
-    max_ply: u16,
+    pub max_ply: u16,
     pub coarse_delta_prune: Score,
     pub switches: Switches,
 }
@@ -321,6 +323,11 @@ mod tests {
     use crate::search::engine::Engine;
     use crate::search::timecontrol::*;
     use crate::test_env_log::test;
+
+    #[test]
+    fn qsearch_serde_test() {
+        info!("toml\n{}", toml::to_string(&QSearch::default()).unwrap());
+    }
 
     #[test]
     fn test_quiesce_catalog() -> Result<()> {

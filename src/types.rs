@@ -414,7 +414,7 @@ impl std::ops::Sub for ScoreWdl {
 }
 
 #[bitflags]
-#[derive(Clone, Copy, Debug, Eq, PartialEq, EnumCount, Display)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, EnumCount, Display, Serialize, Deserialize)]
 #[repr(u16)]
 pub enum MoveType {
     Start,

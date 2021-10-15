@@ -8,20 +8,33 @@ use std::fmt;
 use std::time::Duration;
 use std::sync::atomic::{self, AtomicBool};
 use std::sync::Arc;
+use serde::{Deserialize, Serialize};
 
 
-#[derive(Clone, Debug)]
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(default)]
 pub struct MoveTimeEstimator {
-    pub time_control: TimeControl,
-    pondering: Arc<AtomicBool>,
-    board: Board,
     pub branching_factor: u16,
     perc_of_time_adv: u32,
     moves_rem: u16,
-    pub time_estimate: Duration,
-    pub elapsed_used: Duration,
     pub deterministic: bool,
     pub nodestime: i64,
+
+    #[serde(skip)]
+    pub time_estimate: Duration,
+
+    #[serde(skip)]
+    pub elapsed_used: Duration,
+
+    #[serde(skip)]
+    pub time_control: TimeControl,
+
+    #[serde(skip)]
+    pondering: Arc<AtomicBool>,
+
+    #[serde(skip)]
+    board: Board,
 }
 
 impl Component for MoveTimeEstimator {

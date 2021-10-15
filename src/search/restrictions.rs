@@ -3,13 +3,17 @@ use crate::infra::parsed_config::{ParsedConfig, Component};
 use crate::movelist::MoveList;
 use crate::types::Ply;
 use std::fmt;
+use serde::{Deserialize, Serialize};
 
 
 
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Restrictions {
     pub enabled: bool,
+
+    #[serde(skip)]
     pub search_moves: MoveList,
 }
 

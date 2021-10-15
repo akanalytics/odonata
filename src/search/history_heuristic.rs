@@ -4,14 +4,19 @@ use crate::infra::parsed_config::{ParsedConfig, Component};
 use crate::mv::Move;
 use crate::types::{Ply, Piece, Color};
 use std::fmt;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug)]
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(default)]
 pub struct HistoryHeuristic {
     enabled: bool,
-    // clear_every_move: bool,
     scale: i32,
     age_factor: i32,
+
+    #[serde(skip)]
     history: [[[i32; 64];Piece::len()];2],
+    // clear_every_move: bool,
 }
 
 impl Component for HistoryHeuristic {

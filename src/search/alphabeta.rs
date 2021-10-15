@@ -299,7 +299,7 @@ impl Algo {
                 &mut self.search_stats,
             );
             let lmr = if !self.minmax {
-                self.reductions.lmr(
+                self.lmr.lmr(
                     board,
                     &mv,
                     count,
@@ -343,7 +343,7 @@ impl Algo {
                 );
             }
 
-            if (lmr > 0 && self.reductions.lmr_re_search || pvs) && child_score > score && child_score < n.beta
+            if (lmr > 0 && self.lmr.re_search || pvs) && child_score > score && child_score < n.beta
             {
                 // research with full window without reduction in depth
                 self.search_stats.inc_pvs_research(ply);

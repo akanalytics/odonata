@@ -46,7 +46,7 @@ itertools = "0.10"
 rayon = "1.5"
 num-traits = "0.2"
 include_dir = "0.6"
-enumflags2 = "0.7"
+enumflags2 = { version = "0.7", features = ["serde"] }
 tracing = "0.1"
 tracing-subscriber = "0.2"                         # = { version="0.2", features=["fmt", "env-filter", "ansi", "registry"]}
 # tracing-log = "0.1"

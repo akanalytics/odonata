@@ -11,6 +11,7 @@ use crate::variation::Variation;
 use crate::types::Ply;
 use std::cmp::min;
 use std::fmt;
+use serde::{Deserialize, Serialize};
 
 
 // CLOP
@@ -19,7 +20,7 @@ use std::fmt;
 // 1+0.01  a=3.04 b=0.272 c=0.000185
 // 
  
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NullMovePruning {
     pub enabled: bool,
     pub recursive: bool,

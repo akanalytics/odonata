@@ -4,6 +4,8 @@ use crate::eval::score::Score;
 use crate::search::node::Node;
 use crate::types::{MoveType, MoveTypes, Ply};
 use std::fmt;
+use serde::{Deserialize, Serialize};
+
 
 // CLOP
 // 10+.08
@@ -34,7 +36,7 @@ use std::fmt;
 //   }
 // }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Razor {
     pub enabled: bool,
     pub max_depth: Ply,

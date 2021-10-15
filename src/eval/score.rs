@@ -1,6 +1,7 @@
 use crate::outcome::Outcome;
 use crate::types::{Color, Ply, MAX_PLY};
 use std::fmt;
+use serde::{Deserialize, Serialize};
 
 
 // pub struct ScoreBound {
@@ -9,7 +10,8 @@ use std::fmt;
 // }
 
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct Score {
     cp: i16,
 }    

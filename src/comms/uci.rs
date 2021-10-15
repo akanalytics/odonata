@@ -547,19 +547,30 @@ impl Uci {
         let s = input.strip_prefix("setoption").ok_or(anyhow!("missing setoption"))?.trim();
         let s = s.strip_prefix("name").ok_or(anyhow!("missing name"))?.trim();
         let name_value = s.rsplit_once("value");
-        let (name, value) = if let Some((name,value)) = name_value {
-            (name.trim(), value.trim())
+        if let Some((name,value)) = name_value {
+            let (name, value) = (name.trim(), value.trim());
+            let new_engine = {
+                let engine = self.engine.lock().unwrap();
+                info!("Configuring (setoption) {} = {}", name, value);
+                engine.configment(name, value)?
+            };
+            // self.engine = Arc::new(Mutex::new(new_engine));
+            *self.engine.lock().unwrap() = new_engine;
+            let c = ParsedConfig::new().set(&name, &value);
+            self.configure(&c);
         } else {
-            (s.trim(), "")
+            let name = s.trim();
+            info!("Actioning (setoption) {}", name);
+            if name == "Explain Eval" {
+                let _res = self.ext_uci_explain_eval();
+            } else if name == "Explain Last Search" {
+                let _res = self.uci_explain_last_search();
+            } if name == "Explain Quiesce" {
+                let _res = self.ext_uci_explain_eval();
+            } else {
+                warn!("Unknown action {}", name);
+            }
         };
-        let new_engine = {
-            let engine = self.engine.lock().unwrap();
-            engine.configment(name, value)
-        }?;
-        // self.engine = Arc::new(Mutex::new(new_engine));
-        *self.engine.lock().unwrap() = new_engine;
-        let c = ParsedConfig::new().set(&name, &value);
-        self.configure(&c);
         Ok(())
     }
 
@@ -772,14 +783,19 @@ mod tests {
     #[test]
     fn test_uci_setoption() {
         let mut uci = Uci::new();
+        assert_eq!(uci.engine.lock().unwrap().algo.eval.position, true);
         uci.preamble.push("setoption name eval.b.s value 700".into());
+        uci.preamble
+            .push("setoption name eval.mb.knight value [400, 429]".into());
         uci.preamble
             .push("setoption name eval.position value false".into());
         uci.preamble
-            .push("setoption name Print Eval".into());
+            .push("setoption name Explain Eval".into());
         uci.preamble.push("quit".into());
         uci.run();
-        assert_eq!(uci.engine.lock().unwrap().algo.eval.mb.piece_weights[Piece::Bishop].s() as i32, 700);
+        assert_eq!(uci.engine.lock().unwrap().algo.eval.position, false);
+        assert_eq!(uci.engine.lock().unwrap().algo.eval.mb.piece_weights[Piece::Knight].s() as i32, 400);
+        // assert_eq!(uci.engine.lock().unwrap().algo.eval.mb.piece_weights[Piece::Bishop].s() as i32, 700);
         assert_eq!(uci.engine.lock().unwrap().algo.eval.mb.piece_weights[Piece::Pawn].s() as i32, 100);
         assert_eq!(uci.engine.lock().unwrap().algo.eval.position, false);
     }

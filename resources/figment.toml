@@ -69,6 +69,22 @@ castling_rights = [0.0, 0.0]
 contempt_penalty = [-30.0, 0.0]
 tempo_bonus = [40.0, 50.0]
 
+[eval.mb]
+enabled = false
+filename = ""
+consistency_report = true
+consistency_adjust = true
+internal_stats = false
+draws_only = false
+min_games = 50
+max_pawns = 5
+trade_factor = 2
+pawn = [100.0, 150.0]
+knight = [632.0, 410.0]
+bishop = [635.0, 429.0]
+rook = [839.0, 771.0]
+queen = [1822.0, 1405.0]
+
 [killers]
 enabled = true
 clear_every_move = false

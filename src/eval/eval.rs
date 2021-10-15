@@ -77,8 +77,6 @@ pub static EVAL_COUNTS: ArrayStat =
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct SimpleScorer {
-    #[serde(skip)]
-    pub mb: MaterialBalance,
 
     #[serde(skip)]
     pub pst: Pst,
@@ -146,6 +144,8 @@ pub struct SimpleScorer {
     // pub cache: TranspositionTable,
     // pub qcache: TranspositionTable,
     // pub depth: Ply,
+    pub mb: MaterialBalance,
+
 }
 
 
