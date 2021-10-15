@@ -7,6 +7,7 @@ use crate::utils::StringUtils;
 use regex::Regex;
 use once_cell::sync::Lazy;
 pub struct Parse;
+use anyhow::{Result, bail,anyhow};
 
 
 // regex from https://stackoverflow.com/questions/40007937/regex-help-for-chess-moves-san
@@ -39,7 +40,7 @@ static REGEX_SAN: Lazy<Regex> = Lazy::new(|| Regex::new(
 ).unwrap());
 
 impl Parse {
-    pub fn move_san(s: &str, board: &Board) -> Result<Move, String> {
+    pub fn move_san(s: &str, board: &Board) -> Result<Move> {
         let orig = s; // save original string
                       //  convert 0's to O's
                       //  Wikipedia:
@@ -57,7 +58,7 @@ impl Parse {
         // strip whitespace
         s = s.replace(" ", "");
 
-        let caps = REGEX_SAN.captures(&s).ok_or(format!("Unable to parse '{}' as an algebraic move", s))?;
+        let caps = REGEX_SAN.captures(&s).ok_or(anyhow!("Unable to parse '{}' as an algebraic move", s))?;
         // if not match:
         //     raise ValueError(f"Move {orig} is invalid - wrong format")
 
@@ -129,10 +130,10 @@ impl Parse {
             matching_moves.push(*lm);
         }
         if matching_moves.is_empty() {
-            return Err(format!("Move {} is invalid - not a legal move for board {}", orig, board.to_fen()));
+            bail!("Move {} is invalid - not a legal move for board {}", orig, board.to_fen());
         }
         if matching_moves.len() > 1 {
-            return Err(format!("Move {} is ambiguous - moves {} match. For board {}", orig, matching_moves, board.to_fen()));
+            bail!("Move {} is ambiguous - moves {} match. For board {}", orig, matching_moves, board.to_fen());
         }
 
         // FIXME: warnings on non-captures, non-checkmates etc

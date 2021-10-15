@@ -8,6 +8,7 @@ use crate::globals::counts;
 use crate::mv::{Move};
 use crate::movelist::MoveList;
 use crate::types::{Color, Piece};
+use anyhow::Result;
 
 trait MoveGen {}
 
@@ -234,7 +235,7 @@ mod tests {
     }
 
     #[test]
-    fn test_pseudo_legal_moves() -> Result<(), String> {
+    fn test_pseudo_legal_moves() -> Result<()> {
         let mut buf = Board::parse_piece_placement("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap();
         buf.set(a2, ".")?;
         buf.set(d2, ".")?;
@@ -435,7 +436,7 @@ mod tests {
     }
 
     #[test]
-    fn test_legal_move() -> Result<(), String> {
+    fn test_legal_move() -> Result<()> {
         // https://lichess.org/editor/8/8/8/8/8/8/6r1/7K
         let fen = "8/8/8/8/8/8/6r1/7K w - - 0 0 id 'rook+king'";
         let board = Board::parse_fen(fen).unwrap().as_board();
@@ -455,7 +456,7 @@ mod tests {
     }
 
     #[test]
-    fn test_legal_variation() -> Result<(), String> {
+    fn test_legal_variation() -> Result<()> {
         let b = Catalog::starting_board();
         let bd2 = Catalog::test_position();
         let mvs = b.parse_uci_variation("a2a3 e7e6 b2b4")?;

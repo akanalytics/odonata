@@ -17,6 +17,7 @@ use std::path::Path;
 use std::collections::HashMap;
 // // use crate::{info, logger::LogInit};
 use serde::{Serialize, ser::SerializeMap, Serializer, Deserialize};
+use anyhow::{Result,bail, anyhow, Context};
 
 
 
@@ -42,10 +43,10 @@ pub struct Position {
 
 
 impl TryFrom<HashMap<String, String>> for Position {
-    type Error = String;
+    type Error = anyhow::Error;
 
-    fn try_from(map: HashMap<String, String> ) -> Result<Self, Self::Error> {
-        let board_str = map.get("fen").ok_or("no key 'board'")?;
+    fn try_from(map: HashMap<String, String> ) -> Result<Self> {
+        let board_str = map.get("fen").ok_or(anyhow!("no key 'fen'"))?;
         let mut p = Position {
             board: Board::parse_fen(board_str)?,
             tags: Tags::new(),
@@ -54,7 +55,7 @@ impl TryFrom<HashMap<String, String>> for Position {
             if k == "fen" {
                 continue;
             }
-            let tag = Tag::parse(p.board(), k, v).map_err(|s| format!("{} in tag '{}' with value '{}'", s, k, v))?;
+            let tag = Tag::parse(p.board(), k, v).with_context(|| format!("in tag '{}' with value '{}'", k, v))?;
             p.set(tag);
         }
         Ok(p)
@@ -109,10 +110,10 @@ impl Position {
     /// 3. E/P square
     /// 4. Half move clock
     /// 5. Full move counter
-    pub fn parse_epd(epd: &str) -> Result<Self, String> {
+    pub fn parse_epd(epd: &str) -> Result<Self> {
         let words = epd.split_whitespace().collect::<Vec<_>>();
         if words.len() < 4 {
-            return Err(format!("Must specify at least 4 parts in EPD '{}'", epd));
+            bail!("Must specify at least 4 parts in EPD '{}'", epd);
         }
         let mut pos = Position { board: Board::parse_piece_placement(words[0])?, tags: Tags::new() };
         pos.board.set_turn(Color::parse(words[1])?);
@@ -149,7 +150,7 @@ impl Position {
         None
     }
 
-    pub fn parse_many_epd<I>(iter: I) -> Result<Vec<Position>, String>
+    pub fn parse_many_epd<I>(iter: I) -> Result<Vec<Position>>
     where
         I: IntoIterator,
         I::Item: AsRef<str>,
@@ -158,23 +159,23 @@ impl Position {
         for item in iter {
             let s = item.as_ref();
             if !s.is_empty() {
-                vec.push(Self::parse_epd(s).map_err(|err| format!("{} in epd {}", err, s))?);
+                vec.push(Self::parse_epd(s).context(format!("in epd {}", s))?);
             }
         }
         Ok(vec)
     }
 
-    pub fn parse_epd_file<P>(filename: P) -> Result<Vec<Position>, String>
+    pub fn parse_epd_file<P>(filename: P) -> Result<Vec<Position>>
     where P: AsRef<Path>, P: Clone {
-        let file = File::open(filename.clone()).map_err(|err| format!("{} {}", filename.as_ref().display(), err.to_string()))?;
+        let file = File::open(filename.clone()).context(format!("{}", filename.as_ref().display()))?;
         let lines = io::BufReader::new(file).lines();
         let mut vec = Vec::<Position>::new();
         let mut epd_count = 0;
         for (n, line) in lines.enumerate() {
-            let s = line.map_err(|err| err.to_string())?;
+            let s = line?;
             if !s.trim_start().starts_with("#") {
                 epd_count += 1;
-                vec.push(Self::parse_epd(&s).map_err(|err| format!("{} in epd {}", err, s))?);
+                vec.push(Self::parse_epd(&s).context(format!("in epd {}",s))?);
                 if n > 0 && n % 100000 == 0 {
                     info!("Read {} lines from {:?}", n, filename.as_ref().display());
                 }
@@ -227,7 +228,7 @@ impl Position {
     }
 
 
-    pub fn set_operation(&mut self, key: &str, value: &str) -> Result<(),String> {
+    pub fn set_operation(&mut self, key: &str, value: &str) -> Result<()> {
         self.tags.set(Tag::parse(&self.board, key, value)?);
         Ok(())
     }
@@ -248,7 +249,7 @@ impl Position {
 
 
 
-    pub fn get(&self, key: &str) -> Result<&Tag, String> {
+    pub fn get(&self, key: &str) -> Result<&Tag> {
         Ok(self.tags.get(key))
     }
 
@@ -256,7 +257,7 @@ impl Position {
         self.tags.get(key)
     }
 
-    pub fn pv(&self) -> Result<Variation, String> {
+    pub fn pv(&self) -> Result<Variation> {
         if let Tag::Pv(v) = self.tag(Tag::PV) {
             Ok(v.clone())
         } else {
@@ -288,61 +289,61 @@ impl Position {
         }
     }
 
-    pub fn sm(&self) -> Result<Move, String> {
+    pub fn sm(&self) -> Result<Move> {
         if let Tag::SuppliedMove(mv) = self.tag(Tag::SM) {
             Ok(*mv)
         } else { 
-            Err("Not good".into())
+            Err(anyhow!("Not good"))
         }
     }
 
-    pub fn sq(&self) -> Result<Bitboard, String> {
+    pub fn sq(&self) -> Result<Bitboard> {
         if let Tag::Squares(s) = self.tag(Tag::SQ) {
             Ok(*s)
         } else { 
-            Err("Not good".into())
+            Err(anyhow!("Not good"))
         }
     }
 
-    pub fn ce(&self) -> Result<i32, String> {
+    pub fn ce(&self) -> Result<i32> {
         if let Tag::CentipawnEvaluation(ce) = self.tag(Tag::CE) {
             Ok(*ce)
         } else { 
-            Err("Not good".into())
+            Err(anyhow!("Not good"))
         }
     }
 
     // acd analysis count depth [3]
-    pub fn acd(&self) -> Result<Ply, String> {
+    pub fn acd(&self) -> Result<Ply> {
         if let Tag::AnalysisCountDepth(acd) = self.tag(Tag::ACD) {
             Ok(*acd)
         } else { 
-            Err("Not good".into())
+            Err(anyhow!("Not good"))
         }
     }
 
     // acd analysis count depth [3]
-    pub fn acn(&self) -> Result<u128, String> {
+    pub fn acn(&self) -> Result<u128> {
         if let Tag::AnalysisCountNodes(n) = self.tag(Tag::ACN) {
             Ok(*n)
         } else { 
-            Err("Not good".into())
+            Err(anyhow!("Not good"))
         }
     }
 
-    pub fn dm(&self) -> Result<u32, String> {
+    pub fn dm(&self) -> Result<u32> {
         if let Tag::DirectMate(dm) = self.tag(Tag::DM) {
             Ok(*dm)
         } else { 
-            Err("Not good".into())
+            Err(anyhow!("Not good"))
         }
     }
 
-    pub fn id(&self) -> Result<&str, String> {
+    pub fn id(&self) -> Result<&str> {
         if let Tag::Id(id) = self.tag(Tag::ID) {
             Ok(id)
         } else { 
-            Err("Not good".into())
+            Err(anyhow!("Not good"))
         }
     }
 
@@ -355,7 +356,7 @@ impl Position {
     //     self.tags.as_hash_map().get(Self::DRAW_REJECT).is_some()
     // }
 
-    // pub fn validate(&self) -> Result<(), String> {
+    // pub fn validate(&self) -> Result<()> {
     //     for &k in Self::ATTRIBUTES {
     //         if let Some(_) = self.as_hash_map().get(k) {
     //             match k {
@@ -392,6 +393,7 @@ mod tests {
     use super::*;
     use crate::catalog::Catalog;
     use crate::globals::constants::*;
+    use anyhow::Result;
 
 
     // FIXME!!!!
@@ -415,7 +417,7 @@ mod tests {
     // }
 
     #[test]
-    fn test_epd_parse_many() -> Result<(), String> {
+    fn test_epd_parse_many() -> Result<()> {
         let strs = &[
             "r2qkb1r/pp2nppp/3p4/2pNN1B1/2BnP3/3P4/PPP2PPP/R2bK2R w KQkq - 1 1
             pv 1. Nf6+ gxf6 2. Bxf7#;
@@ -434,7 +436,7 @@ mod tests {
     }
 
     #[test]
-    fn test_pos_basics() -> Result<(), String> {
+    fn test_pos_basics() -> Result<()> {
         let mut pos = Position::default();
         *pos.board_mut() = Board::parse_fen(Catalog::STARTING_POSITION_FEN).unwrap();
         pos.set_operation(Position::BM, "e4")?;
@@ -449,7 +451,7 @@ mod tests {
     }
 
     // #[test]
-    // fn test_serde()  -> Result<(), String> {
+    // fn test_serde()  -> Result<()> {
     //     let mut pos = Position { board: Catalog::starting_position(), tags: Tags::default() };
     //     pos.set_operation(Position::BM, "e4, c4, a4")?;
     //     pos.set_operation(Position::PV, "e4, e5, d3")?;
@@ -460,7 +462,7 @@ mod tests {
 
 
     #[test]
-    fn test_pos_custom()  -> Result<(), String> {
+    fn test_pos_custom()  -> Result<()> {
         let mut pos = Position::default();
         *pos.board_mut() = Board::parse_fen(Catalog::STARTING_POSITION_FEN).unwrap();
         pos.set_operation(Position::SQ, "e4 e5 e6")?;
@@ -472,7 +474,7 @@ mod tests {
     }
 
     #[test]
-    fn test_serde() -> Result<(), String> {
+    fn test_serde() -> Result<()> {
         let mut pos = Position::from_board(Catalog::starting_board());
         pos.set_operation(Position::BM, "e4")?;
         assert_eq!(serde_json::to_string(&pos).unwrap(), r#"{"fen":"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1","bm":"e4"}"#); 
@@ -481,7 +483,7 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_epd_file() -> Result<(), String> {
+    fn test_parse_epd_file() -> Result<()> {
         // let positions = Position::parse_epd_file("../odonata-extras/epd/quiet-labeled.epd")?;
         let positions = Position::parse_epd_file("../odonata-extras/epd/com15.epd")?;
         for p in positions {

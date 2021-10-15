@@ -9,9 +9,12 @@ use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::fs::File;
 use std::io::{self, BufRead};
 use crate::eval::model::{ModelScore, Scorer};
+use serde::{Deserialize, Serialize};
+use anyhow::{Result, anyhow, bail};
 
 
-#[derive(Clone)]
+
+#[derive(Clone, Serialize, Deserialize)]
 pub struct MaterialBalance {
     pub enabled: bool,
     pub filename: String,
@@ -22,7 +25,8 @@ pub struct MaterialBalance {
     pub min_games: i32,
     pub max_pawns: i32,
     pub trade_factor: i32,
-    pub material_weights: [Weight; Piece::len()],
+    #[serde(flatten)]
+    pub piece_weights: PieceWeights,
 }
 
 
@@ -38,20 +42,104 @@ impl Default for MaterialBalance {
             min_games: 50,
             max_pawns: 5,
             trade_factor: 2,
-            material_weights: [
-                Weight::default(),
-                Weight::from_i32(100, 150),
-                Weight::from_i32(632, 410),
-                Weight::from_i32(635, 429),
-                Weight::from_i32(839, 771),
-                Weight::from_i32(1822, 1405),
-                Weight::from_i32(0, 0), // king
-            ],
+
+            piece_weights: PieceWeights {
+                none: Weight::zero(),
+                pawn: Weight::from_i32(100, 150),
+                knight: Weight::from_i32(632, 410),
+                bishop: Weight::from_i32(635, 429),
+                rook: Weight::from_i32(839, 771),
+                queen: Weight::from_i32(1822, 1405),
+                king: Weight::zero(),
+            },
         };
         mb
     }
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PieceWeights {
+    #[serde(skip)]
+    none: Weight,
+    pawn: Weight,
+    knight: Weight,
+    bishop: Weight,
+    rook: Weight,
+    queen: Weight,
+    #[serde(skip)]
+    king: Weight,
+}
+
+
+
+impl std::ops::Index<Piece> for PieceWeights {
+    type Output = Weight;
+    #[inline]
+    fn index(&self, i: Piece) -> &Self::Output {
+        [
+            &self.none,
+            &self.pawn,
+            &self.knight,
+            &self.bishop, 
+            &self.rook, 
+            &self.queen, 
+            &self.king, 
+        ][i.index()]    
+    }
+}
+
+
+impl std::ops::IndexMut<Piece> for PieceWeights {
+    #[inline]
+    fn index_mut(&mut self, p: Piece) -> &mut Self::Output {
+        [
+            &mut self.none,
+            &mut self.pawn,
+            &mut self.knight,
+            &mut self.bishop, 
+            &mut self.rook, 
+            &mut self.queen, 
+            &mut self.king, 
+        ][p.index()]    
+    }
+}
+
+
+// impl Into<[Weight; Piece::len()]> for PieceWeights {
+//     fn into(self) -> [Weight; Piece::len()] {
+//         [
+//             Weight::default(),
+//             self.pawn,
+//             self.knight,
+//             Weight::from_i32(635, 429),
+//             Weight::from_i32(839, 771),
+//             Weight::from_i32(1822, 1405),
+//             Weight::from_i32(0, 0), // king
+//         ]
+//     }
+// }
+
+impl PieceWeights {
+
+    // fn piece_weights(&self) -> [Weight; Piece::len()] {
+    //     [
+    //         Weight::default(),
+    //         self.pawn,
+    //         self.knight,
+    //         Weight::from_i32(635, 429),
+    //         Weight::from_i32(839, 771),
+    //         Weight::from_i32(1822, 1405),
+    //         Weight::from_i32(0, 0), // king
+    //     ]
+    // }
+
+    // fn new(array: [Weight; Piece::len()]) -> Self {
+    //     PieceWeights {
+    //         pawn: array[1], 
+    //         knight: array[2],
+    //     }
+    // }
+}
 
 
 impl Component for MaterialBalance {
@@ -78,7 +166,7 @@ impl Component for MaterialBalance {
         for &p in &Piece::ALL_BAR_KING {
             let mut name = "eval.".to_string();
             name.push(p.to_char(Some(Color::Black)));
-            c.set_weight(&name, &self.material_weights[p]);
+            c.set_weight(&name, &self.piece_weights[p]);
         }
 
         c.set("eval.mb.all", "type string default \"\"");  // cutechess can send "eval.mb=KPPk:100,KPk:56" etc
@@ -109,7 +197,7 @@ impl Component for MaterialBalance {
         for &p in &Piece::ALL_BAR_KING {
             let mut name = "eval.".to_string();
             name.push(p.to_char(Some(Color::Black)));
-            self.material_weights[p] = c.weight(&name, &self.material_weights[p]);
+            self.piece_weights[p] = c.weight(&name, &self.piece_weights[p]);
         }
         let _ = c.string("eval.mb.all").unwrap_or(String::new());
 
@@ -146,6 +234,7 @@ impl Component for MaterialBalance {
 impl fmt::Display for MaterialBalance {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "enabled          : {}", self.enabled)?;
+        writeln!(f, "piece_weights    : {:#?}", self.piece_weights)?;
         writeln!(f, "filename         : {}", self.filename)?;
         writeln!(f, "consistency_rep  : {}", self.consistency_report)?;
         writeln!(f, "consistency_adj  : {}", self.consistency_adjust)?;
@@ -179,15 +268,15 @@ impl MaterialBalance {
     }
 
     pub fn set_classical_piece_values(&mut self) {
-        self.material_weights= [
-            Weight::default(),
-            Weight::from_single_i32(Piece::Pawn.centipawns()),
-            Weight::from_single_i32(Piece::Knight.centipawns()),
-            Weight::from_single_i32(Piece::Bishop.centipawns()),
-            Weight::from_single_i32(Piece::Rook.centipawns()),
-            Weight::from_single_i32(Piece::Queen.centipawns()),
-            Weight::from_single_i32(0), // king
-        ];
+        self.piece_weights= PieceWeights {
+            none: Weight::zero(),
+            pawn: Weight::from_single_i32(Piece::Pawn.centipawns()),
+            knight: Weight::from_single_i32(Piece::Knight.centipawns()),
+            bishop: Weight::from_single_i32(Piece::Bishop.centipawns()),
+            rook: Weight::from_single_i32(Piece::Rook.centipawns()),
+            queen: Weight::from_single_i32(Piece::Queen.centipawns()),
+            king: Weight::zero(),
+        };
     }
 
 
@@ -209,7 +298,7 @@ impl MaterialBalance {
         Piece::ALL_BAR_KING
             .iter()
             .for_each(|&p| 
-                (scorer.material(p.name(), mat.counts(Color::White, p), mat.counts(Color::Black, p), self.material_weights[p])));
+                (scorer.material(p.name(), mat.counts(Color::White, p), mat.counts(Color::Black, p), self.piece_weights[p])));
         // let weight = Piece::ALL_BAR_KING
         //     .iter()
         //     .map(|&p| (mat.counts(Color::White, p) - mat.counts(Color::Black, p)) * self.material_weights[p])
@@ -222,10 +311,10 @@ impl MaterialBalance {
     pub fn eval_move_material(&self, mv: &Move) -> Weight {
         let mut score = Weight::zero();
         if mv.is_capture() {
-            score += self.material_weights[mv.capture_piece()];
+            score += self.piece_weights[mv.capture_piece()];
         }
         if mv.is_promo() {
-            score += self.material_weights[mv.promo_piece()] - self.material_weights[Piece::Pawn];
+            score += self.piece_weights[mv.promo_piece()] - self.piece_weights[Piece::Pawn];
         }
         score
     }
@@ -290,8 +379,8 @@ impl MaterialBalance {
     }
 
 
-    pub fn init_from_file(&self, filename: &str) -> Result<(), String> {
-        let file = File::open(filename).map_err(|err| err.to_string())?;
+    pub fn init_from_file(&self, filename: &str) -> Result<()> {
+        let file = File::open(filename)?;
         let lines = io::BufReader::new(file).lines();
 
         let mut count = 0;
@@ -299,7 +388,7 @@ impl MaterialBalance {
             if n > 0 && n % 1000 == 0 {
                 info!("Read {} lines from {:?}", n, filename);
             }
-            let s = line.map_err(|err| err.to_string())?;
+            let s = line?;
             let s = s.trim();
             if s.is_empty() || s.starts_with("#") {
                 continue;
@@ -310,7 +399,7 @@ impl MaterialBalance {
             // vec.push(Self::parse_epd(&s).map_err(|err| format!("{} in epd {}", err, s))?);
             let vec: Vec<_> = s.trim().splitn(2, ",").collect();
             if vec.len() != 2 {
-                return Err(format!("Failed parsing line {} in file {}: '{}'", n, filename, s))
+                bail!("Failed parsing line {} in file {}: '{}'", n, filename, s)
             }
             self.parse_and_store(vec[0], vec[1])?;
         }
@@ -357,9 +446,9 @@ impl MaterialBalance {
         }
     }
 
-    fn parse_and_store(&self, k: &str, v: &str) -> Result<(), String> {
+    fn parse_and_store(&self, k: &str, v: &str) -> Result<()> {
         let mat = Material::from_piece_str(k.trim())?;
-        let cp = v.trim().parse::<f32>().map_err(|err| format!("{} - unable to parse number '{}'", err, v))?;
+        let cp = v.trim().parse::<f32>().map_err(|err| anyhow!("{} - unable to parse number '{}'", err, v))?;
         self.derived_store(&mat, cp);
         trace!("{:<20} = {:>5}", format!("mb[{}]",mat), cp);
         Ok(())
@@ -465,7 +554,7 @@ impl MaterialBalance {
             } else {
                 let weight: Weight = Piece::ALL_BAR_KING
                 .iter()
-                .map(|&p| (other.counts(Color::White, p) - other.counts(Color::Black, p)) * self.material_weights[p])
+                .map(|&p| (other.counts(Color::White, p) - other.counts(Color::Black, p)) * self.piece_weights[p])
                 .sum();        
                 other_cp = std::cmp::max(weight.s() as i32, weight.e() as i32) as i32;
             }
@@ -557,8 +646,15 @@ mod tests {
     use crate::eval::eval::SimpleScorer;
     use crate::search::node::Node;
     use crate::test_env_log::test;
+    use toml;
 
- 
+
+    #[test]
+    fn serde_mb_test() {
+        info!("\n{}", toml::to_string(&MaterialBalance::default()).unwrap());
+        // info!("\n{}", toml::to_string_pretty(&SimpleScorer::default()).unwrap());
+    }
+
     #[test]
     fn test_balance() {
         let mut mb = MaterialBalance::new();

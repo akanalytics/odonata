@@ -12,6 +12,7 @@ use std::iter::*;
 use std::str::FromStr;
 use serde::{Serialize, Serializer};
 use serde_with::{DeserializeFromStr};
+use anyhow::Result;
 
 pub mod boardbuf;
 pub mod makemove;
@@ -68,9 +69,9 @@ impl fmt::Debug for Board {
 }
 
 impl FromStr for Board {
-    type Err = String;
+    type Err = anyhow::Error;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> Result<Self> {
         Board::parse_fen(s)
     }
 }

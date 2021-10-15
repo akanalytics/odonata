@@ -2,6 +2,7 @@ use crate::bitboard::square::Square;
 use crate::types::Color;
 use std::fmt::{self, Write};
 use std::ops;
+use anyhow::{Result, anyhow};
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 
@@ -752,21 +753,21 @@ impl Bitboard {
         strings.join("+")
     }
 
-    pub fn parse_rank(s: &str) -> Result<Bitboard, String> {
+    pub fn parse_rank(s: &str) -> Result<Bitboard> {
         match s.chars().next() {
             Some(ch) if ('1'..='8').contains(&ch) => Ok(Self::RANKS[ch as usize - b'1' as usize]),
-            _ => Err(format!("Invalid rank '{}'", s)),
+            _ => Err(anyhow!("Invalid rank '{}'", s)),
         }
     }
 
-    pub fn parse_file(s: &str) -> Result<Bitboard, String> {
+    pub fn parse_file(s: &str) -> Result<Bitboard> {
         match s.chars().next() {
             Some(ch) if ('a'..='h').contains(&ch) => Ok(Self::FILES[ch as usize - b'a' as usize]),
-            _ => Err(format!("Invalid file '{}'", s)),
+            _ => Err(anyhow!("Invalid file '{}'", s)),
         }
     }
 
-    pub fn parse_squares(s: &str) -> Result<Bitboard, String> {
+    pub fn parse_squares(s: &str) -> Result<Bitboard> {
         let s = s.replace(",", " ");
         let mut bb = Bitboard::empty();
         for sq_str in s.split_ascii_whitespace() {
@@ -776,9 +777,9 @@ impl Bitboard {
         Ok(bb)
     }
 
-    pub fn parse_square(s: &str) -> Result<Square, String> {
+    pub fn parse_square(s: &str) -> Result<Square> {
         if s.len() != 2 {
-            return Err(format!("Invalid square '{}'", s));
+            return Err(anyhow!("Invalid square '{}'", s));
         }
         let chars: Vec<&str> = s.split("").collect(); // gives empty [0]
         let bb = Self::parse_file(chars[1])? & Self::parse_rank(chars[2])?;
@@ -968,21 +969,21 @@ mod tests {
 
     #[test]
     fn test_parse_fail() {
-        assert_eq!(Bitboard::parse_file("9").err(), Some("Invalid file '9'".into()));
-        assert_eq!(Bitboard::parse_file("").err(), Some("Invalid file ''".into()));
-        assert_eq!(Bitboard::parse_rank("a").err(), Some("Invalid rank 'a'".into()));
+        assert_eq!(Bitboard::parse_file("9").unwrap_err().to_string(), "Invalid file '9'");
+        assert_eq!(Bitboard::parse_file("").unwrap_err().to_string(), "Invalid file ''");
+        assert_eq!(Bitboard::parse_rank("a").unwrap_err().to_string(), "Invalid rank 'a'");
         assert_eq!(
-            Bitboard::parse_square("aa").err(),
-            Some("Invalid rank 'a'".into())
+            Bitboard::parse_square("aa").unwrap_err().to_string(),
+            "Invalid rank 'a'"
         );
         assert_eq!(
-            Bitboard::parse_square("11").err(),
-            Some("Invalid file '1'".into())
+            Bitboard::parse_square("11").unwrap_err().to_string(),
+            "Invalid file '1'"
         );
-        assert_eq!(Bitboard::parse_square("").err(), Some("Invalid square ''".into()));
+        assert_eq!(Bitboard::parse_square("").unwrap_err().to_string(), "Invalid square ''");
         assert_eq!(
-            Bitboard::parse_square("abc").err(),
-            Some("Invalid square 'abc'".into())
+            Bitboard::parse_square("abc").unwrap_err().to_string(),
+            "Invalid square 'abc'"
         );
     }
 

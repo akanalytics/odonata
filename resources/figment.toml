@@ -15,8 +15,62 @@
 # thread_count = 1
 # config_filename = "config.toml"
 
+shared_tt = true
+thread_count = 1
+config_filename = "config.toml"
+
+[eval]
+material = true
+position = true
+mobility = true
+pawn = true
+safety = true
+contempt = true
+tempo = true
+phasing = true
+mobility_phase_disable = 101
+quantum = 1
+min_depth_mob = 1
+center_attacks = [1.0, 0.0]
+undefended_sq = [4.0, 3.0]
+undefended_piece = [-3.0, 49.0]
+trapped_piece = [-17.0, -22.0]
+partially_trapped_piece = [-7.0, -15.0]
+defended_non_pawn = [0.0, 0.0]
+xrayed = [0.0, 0.0]
+pawn_doubled = [19.0, -35.0]
+pawn_isolated = [-35.0, -5.0]
+pawn_passed = [15.0, 28.0]
+pawn_passed_r6 = [8.0, 94.0]
+pawn_passed_r5 = [1.0, 50.0]
+passers_on_rim = [-10.0, -10.0]
+blockaded = [-10.0, -10.0]
+blockaded_passers = [-10.0, -10.0]
+bishop_pair = [62.0, 58.0]
+fianchetto = [55.0, 27.0]
+bishop_outposts = [0.0, 0.0]
+bishop_color_pawns = [55.0, 27.0]
+knight_forks = [0.0, 0.0]
+knight_outposts = [0.0, 0.0]
+rook_pair = [-1.0, -1.0]
+doubled_rooks = [18.0, 48.0]
+doubled_rooks_open_file = [17.0, 17.0]
+rook_open_file = [59.0, -4.0]
+queen_open_file = [-19.0, 37.0]
+queen_early_develop = [0.0, 0.0]
+pawn_adjacent_shield = [44.0, -15.0]
+pawn_nearby_shield = [42.0, -14.0]
+open_files_near_king = [-6.0, -1.0]
+attacks_near_king = [-8.0, -2.0]
+tropism_d1 = [-40.0, 29.0]
+tropism_d2 = [-28.0, 11.0]
+tropism_d3 = [-5.0, 2.0]
+castling_rights = [0.0, 0.0]
+contempt_penalty = [-30.0, 0.0]
+tempo_bonus = [40.0, 50.0]
+
 [killers]
 enabled = true
-clear_every_move = true
+clear_every_move = false
 use_ply_below = true
 

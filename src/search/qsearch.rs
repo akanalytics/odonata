@@ -11,6 +11,7 @@ use crate::search::node::Node;
 use crate::types::Ply;
 // // use crate::{debug, logger::LogInit, trace};
 use std::fmt;
+use anyhow::Result;
 
 #[derive(Copy, Clone, Debug)]
 pub struct QSearch {
@@ -322,7 +323,7 @@ mod tests {
     use crate::test_env_log::test;
 
     #[test]
-    fn test_quiesce_catalog() -> Result<(), String> {
+    fn test_quiesce_catalog() -> Result<()> {
         let positions = Catalog::quiesce();
         // let pos = Position::find_by_id("pawn fork", &positions ).unwrap();
         for pos in positions {
@@ -366,7 +367,7 @@ mod tests {
     }
 
     #[test]
-    fn test_qsearch_ex2() -> Result<(), String> {
+    fn test_qsearch_ex2() -> Result<()> {
         debug!("test_qsearch_examples");
         let positions = Catalog::quiesce();
         let pos = Position::find_by_id("QS.01", &positions).unwrap();
@@ -401,7 +402,7 @@ mod tests {
     }
 
     #[test]
-    fn test_qsearch_see() -> Result<(), String> {
+    fn test_qsearch_see() -> Result<()> {
         let mut eval = SimpleScorer::new();
         eval.mb.enabled = false;
         eval.set_switches(false);

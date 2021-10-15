@@ -5,13 +5,14 @@ use crate::search::algo::Algo;
 use crate::search::timecontrol::TimeControl;
 use crate::stat::Stat;
 use crate::utils::Formatter;
-use std::fmt;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
+use anyhow::Result;
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 pub struct Engine {
     pub shared_tt: bool,
     pub thread_count: u32,
@@ -113,12 +114,11 @@ impl Component for Engine {
     }
 }
 
-use figment::{Error, Figment, Metadata, Profile, Provider};
-use figment::value::{Dict, Map};
 use crate::infra::resources::RESOURCE_DIR;
 use figment::providers::Env;
-use figment::providers::{Format, Toml};
-
+use figment::providers::{Format, Serialized, Toml};
+use figment::value::{Dict, Map};
+use figment::{Error, Figment, Metadata, Profile, Provider};
 
 impl Provider for Engine {
     fn metadata(&self) -> Metadata {
@@ -135,9 +135,6 @@ impl Provider for Engine {
     }
 }
 
-
-
-
 impl Engine {
     pub fn new() -> Self {
         let toml = RESOURCE_DIR
@@ -151,6 +148,14 @@ impl Engine {
         engine.configure(&ParsedConfig::global());
         let engine: Engine = Figment::new().merge(engine).merge(toml).extract().unwrap();
         engine
+    }
+
+    pub fn configment(&self, key: &str, value: &str) -> Result<Self> {
+        let engine: Engine = Figment::new()
+            .merge(self)
+            .merge(Toml::string(&format!("{} = {}", key, value)))
+            .extract()?;
+        Ok(engine)
     }
 
     pub fn set_position(&mut self, pos: Position) {
@@ -274,10 +279,17 @@ mod tests {
 
     #[test]
     fn engine_init_test() {
-        let engine = Engine::new();
+        let mut engine = Engine::new();
+        assert_eq!(engine.algo.eval.position, true);
         eprintln!("{}", engine);
+        engine = engine.configment("eval.position", "false").unwrap();
+        eprintln!("{}", engine);
+        assert_eq!(engine.algo.eval.position, false);
+        assert_eq!(engine.algo.eval.safety, true);
+        engine = engine.configment("eval.safety", "true").unwrap();
+        assert_eq!(engine.algo.eval.safety, true);
+        assert!(engine.configment("eval1.safety", "true").is_err());
     }
-
 
     #[test]
     #[ignore]

@@ -5,6 +5,7 @@ use std::cmp;
 use std::ops;
 use std::fmt;
 use itertools::Itertools;
+use anyhow::Result;
 
 
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
@@ -112,7 +113,7 @@ impl Material {
 
     /// Material.from_piece_str("PPPBNRQKppbbqk")
     #[inline]
-    pub fn from_piece_str(s: &str) -> Result<Material, String> {
+    pub fn from_piece_str(s: &str) -> Result<Material> {
         let mut m: Material = Material::new();
         for ch in s.chars() {
             let p = Piece::from_char(ch)?;

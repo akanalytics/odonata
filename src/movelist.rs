@@ -10,6 +10,7 @@ use arrayvec::ArrayVec;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::fmt;
+use anyhow::{Result,anyhow};
 
 
 
@@ -365,17 +366,17 @@ impl fmt::Display for MoveList {
 // }
 
 impl Board {
-    pub fn parse_uci_move(&self, mv: &str) -> Result<Move, String> {
+    pub fn parse_uci_move(&self, mv: &str) -> Result<Move> {
         let moves = self.legal_moves();
         for &m in moves.iter() {
             if m.uci() == mv {
                 return Ok(m);
             }
         }
-        Err(format!("Move {} is not legal for board {}", mv, self.to_fen()))
+        Err(anyhow!("Move {} is not legal for board {}", mv, self.to_fen()))
     }
 
-    pub fn parse_uci_movelist(&self, s: &str) -> Result<MoveList, String> {
+    pub fn parse_uci_movelist(&self, s: &str) -> Result<MoveList> {
         let mut moves = MoveList::new();
         let s = s.replace(",", " ");
         let s = strip_move_numbers(&s);
@@ -385,7 +386,7 @@ impl Board {
         Ok(moves)
     }
 
-    pub fn parse_uci_variation(&self, s: &str) -> Result<Variation, String> {
+    pub fn parse_uci_variation(&self, s: &str) -> Result<Variation> {
         let mut board = self.clone();
         let mut moves = Variation::new();
         let s = s.replace(",", " ");
@@ -398,11 +399,11 @@ impl Board {
         Ok(moves)
     }
 
-    pub fn parse_san_move(&self, mv: &str) -> Result<Move, String> {
+    pub fn parse_san_move(&self, mv: &str) -> Result<Move> {
         Parse::move_san(mv, self)
     }
 
-    pub fn parse_san_movelist(&self, s: &str) -> Result<MoveList, String> {
+    pub fn parse_san_movelist(&self, s: &str) -> Result<MoveList> {
         let mut moves = MoveList::new();
         let s = s.replace(",", " ");
         let s = strip_move_numbers(&s);
@@ -412,7 +413,7 @@ impl Board {
         Ok(moves)
     }
 
-    pub fn parse_san_variation(&self, s: &str) -> Result<Variation, String> {
+    pub fn parse_san_variation(&self, s: &str) -> Result<Variation> {
         let mut board = self.clone();
         let mut moves = Variation::new();
         let s = s.replace(",", " ");
@@ -555,7 +556,7 @@ mod tests {
 
 
     #[test]
-    fn test_movelist() -> Result<(), String> {
+    fn test_movelist() -> Result<()> {
         let move_a1b2 = Move::new(
             a1.square(),
             b2.square(),

@@ -13,6 +13,8 @@ use crate::phaser::Phaser;
 use crate::search::node::Node;
 use crate::stat::{ArrayStat, Stat};
 use crate::types::{Color, Piece};
+use serde::{Deserialize, Serialize};
+
 
 use std::fmt;
 
@@ -72,11 +74,18 @@ pub static EVAL_COUNTS: ArrayStat =
 //     fn eval_mobility(&self, eval: &SimpleScorer) -> Score;
 // }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(default)]
 pub struct SimpleScorer {
+    #[serde(skip)]
     pub mb: MaterialBalance,
+
+    #[serde(skip)]
     pub pst: Pst,
+
+    #[serde(skip)]
     pub phaser: Phaser,
+
     pub material: bool,
     pub position: bool,
     pub mobility: bool,
@@ -84,6 +93,7 @@ pub struct SimpleScorer {
     pub safety: bool,
     pub contempt: bool,
     pub tempo: bool,
+    pub phasing: bool,
     pub mobility_phase_disable: u8,
     pub quantum: i32,
 
@@ -131,7 +141,6 @@ pub struct SimpleScorer {
 
     pub castling_rights: Weight,
 
-    pub phasing: bool,
     pub contempt_penalty: Weight,
     pub tempo_bonus: Weight,
     // pub cache: TranspositionTable,
@@ -792,6 +801,14 @@ mod tests {
     use crate::board::boardbuf::BoardBuf;
     use crate::catalog::Catalog;
     use crate::test_env_log::test;
+    use toml;
+
+
+    #[test]
+    fn serde_eval_test() {
+        info!("\n{}", toml::to_string(&SimpleScorer::default()).unwrap());
+        // info!("\n{}", toml::to_string_pretty(&SimpleScorer::default()).unwrap());
+    }
 
     #[test]
     fn test_score_material() {
@@ -821,7 +838,7 @@ mod tests {
         let mut eval = SimpleScorer::new();
         eval.configure(&ParsedConfig::new().set("eval.b.s", "700"));
         assert_eq!(
-            Score::from_f32(eval.mb.material_weights[Piece::Bishop].s()),
+            Score::from_f32(eval.mb.piece_weights[Piece::Bishop].s()),
             Score::from_cp(700)
         );
 

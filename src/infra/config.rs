@@ -43,15 +43,15 @@ impl Provider for Config {
 
 impl Config {
     // Allow the configuration to be extracted from any `Provider`.
-    fn from<T: Provider>(provider: T) -> Result<Config, Error> {
-        Figment::from(provider).extract()
-    }
+    // fn from<T: Provider>(provider: T) -> Result<Config, Error> {
+    //     Figment::from(provider).extract()
+    // }
 
-    // Provide a default provider, a `Figment`.
-    fn figment() -> Figment {
-        // In reality, whatever the library desires.
-        Figment::from(Config::default()).merge(Env::prefixed("APP_"))
-    }
+    // // Provide a default provider, a `Figment`.
+    // fn figment() -> Figment {
+    //     // In reality, whatever the library desires.
+    //     Figment::from(Config::default()).merge(Env::prefixed("APP_"))
+    // }
 }
 
 mod tests {

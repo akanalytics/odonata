@@ -209,7 +209,7 @@ mod tests {
 
 
     #[test]
-    fn test_make_move() -> Result<(), String> {
+    fn test_make_move() -> Result<()> {
         let board = Catalog::starting_board();
         // let mut m = Move::parse("e2e4")?;
         let mov = board.parse_uci_move("e2e4")?;
@@ -231,7 +231,7 @@ mod tests {
     }
 
     #[test]
-    fn make_move_ep() -> Result<(), String> {
+    fn make_move_ep() -> Result<()> {
         let board1 = Catalog::perft_cpw_number3().0.clone();
         // double push - ep sq should be set
         let mov1 = board1.parse_uci_move("e2e4")?;

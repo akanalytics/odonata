@@ -27,7 +27,7 @@ impl SimpleScorer {
         let mut attackers_xray = BoardCalcs::attacked_by(mv.to().as_bb(), Bitboard::EMPTY, board); // will include the current 'mv' attacker
         attackers_xray -= board.non_line_pieces() | attackers_bw ;
 
-        gain[0] = self.mb.material_weights[mv.capture_piece()].s() as i32;
+        gain[0] = self.mb.piece_weights[mv.capture_piece()].s() as i32;
         while from.any() {
             let mover = board.piece_at(from);
             attackers_bw -= from; 
@@ -51,7 +51,7 @@ impl SimpleScorer {
                 break
             }
             d += 1; 
-            gain[d]  = self.mb.material_weights[mover].s() as i32 - gain[d-1]; // what you are taking less what opp has
+            gain[d]  = self.mb.piece_weights[mover].s() as i32 - gain[d-1]; // what you are taking less what opp has
             // eprintln!("{}\n{}: mover: {} from: {:?} for spec gain {:?}\n{}",board.to_fen(), d, mover, from, gain, attackers);
             // if cmp::max(-gain[d-1], gain[d]) < 0 {
             //     break; // safely prune as from here on its zero

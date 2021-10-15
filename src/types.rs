@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use strum_macros::{EnumCount, Display};
 use enumflags2::{bitflags, BitFlags};
+use anyhow::{Result, bail, anyhow};
 
 
 pub const MAX_PLY: Ply = 128;
@@ -143,22 +144,22 @@ impl Color {
         [Color::Black, Color::White][self]
     }
 
-    pub fn parse(s: &str) -> Result<Color, String> {
+    pub fn parse(s: &str) -> Result<Color> {
         match s {
             "w" => Ok(Color::White),
             "b" => Ok(Color::Black),
-            _ => Err(format!("Invalid color: '{}'", s)),
+            _ => Err(anyhow!("Invalid color: '{}'", s)),
         }
     }
 
     #[inline]
-    pub fn from_piece_char(ch: char) -> Result<Color, String> {
+    pub fn from_piece_char(ch: char) -> Result<Color> {
         if ch.is_lowercase() {
             return Ok(Color::Black);
         } else if ch.is_uppercase() {
             return Ok(Color::White);
         }
-        Err(format!("Cannot get color for char '{}'", ch))
+        Err(anyhow!("Cannot get color for char '{}'", ch))
     }
 }
 
@@ -315,7 +316,7 @@ impl Piece {
     }
 
     #[inline]
-    pub fn from_char(ch: char) -> Result<Piece, String> {
+    pub fn from_char(ch: char) -> Result<Piece> {
         Ok(match ch.to_ascii_uppercase() {
             '.' | ' ' => Piece::None,
             'P' => Piece::Pawn,
@@ -324,7 +325,7 @@ impl Piece {
             'R' => Piece::Rook,
             'Q' => Piece::Queen,
             'K' => Piece::King,
-            _ => return Err(format!("Unknown piece '{}'", ch)),
+            _ => bail!("Unknown piece '{}'", ch),
         })
     }
 
@@ -532,10 +533,10 @@ mod tests {
 
     #[test]
     fn color() {
-        assert_eq!(Color::parse("w"), Ok(Color::White));
-        assert_eq!(Color::parse("b"), Ok(Color::Black));
-        assert_eq!(Color::from_piece_char('n'), Ok(Color::Black));
-        assert_eq!(Color::parse("B"), Err("Invalid color: 'B'".to_string()));
+        assert_eq!(Color::parse("w").unwrap(), Color::White);
+        assert_eq!(Color::parse("b").unwrap(), Color::Black);
+        assert_eq!(Color::from_piece_char('n').unwrap(), Color::Black);
+        assert_eq!(Color::parse("B").unwrap_err().to_string(), "Invalid color: 'B'".to_string());
         assert_eq!(Piece::King.to_char(Some(Color::Black)), 'k');
         assert_eq!(Piece::King.to_char(None), 'K');
         let array = [1, 2];

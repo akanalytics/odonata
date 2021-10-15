@@ -2,6 +2,7 @@ use crate::board::Board;
 use crate::infra::parsed_config::{Component, ParsedConfig};
 use crate::material::Material;
 use crate::Piece;
+use anyhow::Result;
 
 use std::cmp;
 use std::fmt;
@@ -142,7 +143,7 @@ mod tests {
     use crate::catalog::Catalog;
 
     #[test]
-    fn test_phase() -> Result<(), String> {
+    fn test_phase() -> Result<()> {
         let mut phaser = Phaser::default();
         assert_eq!(Phaser::ALL_PIECES, 6500);
         assert_eq!(Catalog::starting_board().phase(&phaser), 0);

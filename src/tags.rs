@@ -11,6 +11,7 @@ use std::time::Duration;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Serialize, Serializer, ser::SerializeMap};
+use anyhow::{Result,anyhow};
 // use serde_with::{DeserializeFromStr};
 
 
@@ -88,39 +89,39 @@ impl Tag {
 
     pub const ATTRIBUTES: &'static [&'static str] = &[Self::ACD, Self::BM, Self::PV];
 
-    fn parse_internal(b: &Board, key: &str, v: &str) -> Result<Tag, String> {
+    fn parse_internal(b: &Board, key: &str, v: &str) -> Result<Tag> {
         Ok(match key {
             Self::BM => Tag::BestMove(b.parse_san_movelist(v)?),
-            Self::BF => Tag::BranchingFactorPercent((100.0 * v.parse::<f64>().map_err(|e| e.to_string())?) as u32) ,
+            Self::BF => Tag::BranchingFactorPercent((100.0 * v.parse::<f64>()?) as u32) ,
             Self::PV => Tag::Pv(b.parse_san_variation(v)?),
             Self::ID => Tag::Id(v.to_string()) ,
-            Self::ACD => Tag::AnalysisCountDepth(v.parse::<Ply>().map_err(|e| e.to_string())?) ,
-            Self::ACSD => Tag::AnalysisCountSelDepth(v.parse::<Ply>().map_err(|e| e.to_string())?) ,
-            Self::ACN => Tag::AnalysisCountNodes(v.parse::<u128>().map_err(|e| e.to_string())?) ,
-            Self::ACS => Tag::AnalysisCountSeconds(v.parse::<u32>().map_err(|e| e.to_string())?) ,
+            Self::ACD => Tag::AnalysisCountDepth(v.parse::<Ply>()?) ,
+            Self::ACSD => Tag::AnalysisCountSelDepth(v.parse::<Ply>()?) ,
+            Self::ACN => Tag::AnalysisCountNodes(v.parse::<u128>()?) ,
+            Self::ACS => Tag::AnalysisCountSeconds(v.parse::<u32>()?) ,
             Self::CC => Tag::ChessClock(Duration::new(0, 0)),
-            Self::CE => Tag::CentipawnEvaluation(v.parse::<i32>().map_err(|e| e.to_string())?),
-            Self::DM => Tag::DirectMate(v.parse::<u32>().map_err(|e| e.to_string())?),
-            Self::FMVN => Tag::FullMoveNumber(v.parse::<u32>().map_err(|e| e.to_string())?),
-            Self::HMVC => Tag::HalfMoveClock(v.parse::<u32>().map_err(|e| e.to_string())?),
+            Self::CE => Tag::CentipawnEvaluation(v.parse::<i32>()?),
+            Self::DM => Tag::DirectMate(v.parse::<u32>()?),
+            Self::FMVN => Tag::FullMoveNumber(v.parse::<u32>()?),
+            Self::HMVC => Tag::HalfMoveClock(v.parse::<u32>()?),
             Self::PM => Tag::PredictedMove(b.parse_san_move(v)?),
-            Self::RC => Tag::RepititionCount(v.parse::<u32>().map_err(|e| e.to_string())?),
+            Self::RC => Tag::RepititionCount(v.parse::<u32>()?),
             Self::RES => Tag::Result(v.to_string()),
             Self::NOOP => Tag::NoOp(v.to_string()),
             Self::SM => Tag::SuppliedMove(b.parse_san_move(v)?) ,
             Self::SV => Tag::SuppliedVariation(b.parse_san_variation(v)?) ,
             Self::SQ => Tag::Squares(Bitboard::parse_squares(v)?),
             Self::TS => Tag::Timestamp("".to_string(), "".to_string()),
-            _ if key.starts_with('D') => Tag::Perft( key[1..].parse::<u8>().map_err(|e| e.to_string())?, v.parse::<u128>().map_err(|e| e.to_string())?),
-            _ if key.starts_with('c') => Tag::Comment( key[1..].parse::<u8>().map_err(|e| e.to_string())?, v.to_string()),
+            _ if key.starts_with('D') => Tag::Perft( key[1..].parse::<u8>()?, v.parse::<u128>()?),
+            _ if key.starts_with('c') => Tag::Comment( key[1..].parse::<u8>()?, v.to_string()),
             _ => Tag::None,
 
         })
     }
 
-    pub fn parse(b: &Board, key: &str, v: &str) -> Result<Tag, String> {
+    pub fn parse(b: &Board, key: &str, v: &str) -> Result<Tag> {
         match Self::parse_internal(b, key, v) {
-            Err(err) => Err(format!("{} parsing tag '{}' from '{}'", err, key, v)), 
+            Err(err) => Err(anyhow!("{} parsing tag '{}' from '{}'", err, key, v)), 
             Ok(tag) => Ok(tag)
         }
     }
@@ -287,7 +288,7 @@ impl Tags {
     // }
 
 
-    pub fn parse_tags(board: &Board, tags_str: &str) -> Result<Tags,String> {
+    pub fn parse_tags(board: &Board, tags_str: &str) -> Result<Tags> {
         
         let mut tags = Tags::new();
         let ops: Vec<&str> = Self::split_into_tags(tags_str);
@@ -436,7 +437,7 @@ mod tests {
         assert_eq!(tags.get("c0").value_uci(), "Hello");
         assert_eq!(tags.get("c1").value_uci(), "World");
         let b = Board::default();
-        assert_eq!(Tag::parse(&b, "c0", "Hello World"), Ok(Tag::Comment(0, "Hello World".to_string())));
+        assert_eq!(Tag::parse(&b, "c0", "Hello World").unwrap(), Tag::Comment(0, "Hello World".to_string()));
     
     }
     

@@ -30,6 +30,7 @@ use crate::types::Ply;
 use crate::variation::Variation;
 use std::fmt;
 use serde::{Deserialize, Serialize};
+use anyhow::Result;
 
 
 use super::search_explainer::SearchExplainer;
@@ -51,7 +52,7 @@ pub struct Algo {
 
     #[serde(skip)]
     pub ids: IterativeDeepening,
-    #[serde(skip)]
+
     pub eval: SimpleScorer,
     #[serde(skip)]
     pub qsearch: QSearch,
@@ -139,7 +140,7 @@ impl Component for Algo {
         c.set("UCI_AnalyseMode", "type check default false");
         // c.set("UCI_ShowRefutations", &format!("type check default {}", self.show_refutations));       
 
-        self.eval.settings(c);
+        // self.eval.settings(c);
         self.mte.settings(c);
         self.move_orderer.settings(c);
         self.nmp.settings(c);
@@ -151,7 +152,7 @@ impl Component for Algo {
         self.ids.settings(c);
         self.repetition.settings(c);
         self.tt.settings(c);
-        self.killers.settings(c);
+        // self.killers.settings(c);
         self.history.settings(c);
         self.explainer.settings(c);
         self.restrictions.settings(c);
@@ -162,7 +163,7 @@ impl Component for Algo {
         self.analyse_mode = c.bool("UCI_AnalyseMode").unwrap_or(self.analyse_mode);
         self.show_refutations = c.bool("UCI_ShowRefutations").unwrap_or(self.show_refutations);
         self.minmax = c.bool("algo.minmax").unwrap_or(self.minmax);
-        self.eval.configure(c);
+        // self.eval.configure(c);
         self.move_orderer.configure(c);
         self.mte.configure(c);
         self.nmp.configure(c);
@@ -174,7 +175,7 @@ impl Component for Algo {
         self.ids.configure(c);
         self.repetition.configure(c);
         self.tt.configure(c);
-        self.killers.configure(c);
+        // self.killers.configure(c);
         self.history.configure(c);
         self.explainer.configure(c);
         self.restrictions.configure(c);
@@ -665,7 +666,7 @@ mod tests {
     }
 
     #[test]
-    fn bug06() -> Result<(), String> {
+    fn bug06() -> Result<()> {
         // 11.Qd3       b3r1kr/ppppqppp/2nnp3/6b1/3PP1N1/2N5/PPP1BPPP/B2QR1KR w - - 1 11   acd 4; bm d1d3; ce 60; pv "d1d3 c6b4 d3d1";
         // 11... Nb4    b3r1kr/ppppqppp/2nnp3/6b1/3PP1N1/2NQ4/PPP1BPPP/B3R1KR b - - 2 11   acd 4; bm c6b4; ce 30; pv "c6b4 d3d1 b4c6";
         let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).build();

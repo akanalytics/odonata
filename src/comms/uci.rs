@@ -24,6 +24,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 // use crate::logger::LogInit;
 use std::thread;
+use anyhow::{Result, bail,anyhow};
 
 
 //  see https://www.chessprogramming.org/CPW-Engine_com
@@ -243,11 +244,11 @@ impl Uci {
         io::stdout().flush().ok();
     }
 
-    fn uci_unknown(&mut self, words: &[&str]) -> Result<(), String> {
-        Err(format!("unknown command {:?}", words))
+    fn uci_unknown(&mut self, words: &[&str]) -> Result<()> {
+        bail!("unknown command {:?}", words)
     }
 
-    fn uci_debug(&mut self, words: &[&str]) -> Result<(), String> {
+    fn uci_debug(&mut self, words: &[&str]) -> Result<()> {
         self.debug = match words.first().copied() {
             Some("on") => {
                 Self::print("info string debug on");
@@ -257,24 +258,24 @@ impl Uci {
                 Self::print("info string debug off");
                 false
             }
-            _ => return Err("unknown debug option".into()),
+            _ => bail!("unknown debug option"),
         };
         Ok(())
     }
 
-    fn uci_isready(&mut self) -> Result<(), String> {
+    fn uci_isready(&mut self) -> Result<()> {
         Self::print("readyok");
         Ok(())
     }
 
-    fn uci_newgame(&mut self) -> Result<(), String> {
+    fn uci_newgame(&mut self) -> Result<()> {
         // clear the transposition tables/eval caches and repetition counts before the new game
         Self::print("configuring new_game");
         self.new_game();
         Ok(())
     }
 
-    fn uci_quit(&mut self) -> Result<(), String> {
+    fn uci_quit(&mut self) -> Result<()> {
         Self::print("info string quitting...");
         self.engine.lock().unwrap().search_stop();
         Self::print("info string stopped...");
@@ -283,7 +284,7 @@ impl Uci {
         Ok(())
     }
 
-    fn uci_uci(&mut self) -> Result<(), String> {
+    fn uci_uci(&mut self) -> Result<()> {
         Self::print(&format!("id name {} v{}", Version::NAME, Version::VERSION));
         Self::print(&format!("id author {}", Version::AUTHORS));
         self.uci_show_options();
@@ -291,22 +292,22 @@ impl Uci {
         Ok(())
     }
 
-    fn uci_sleep(&mut self, words: &[&str]) -> Result<(), String> {
-        let time = words.first().ok_or("Must specify a sleep time")?;
+    fn uci_sleep(&mut self, words: &[&str]) -> Result<()> {
+        let time = words.first().ok_or(anyhow!("Must specify a sleep time"))?;
         let time = time
             .parse::<u64>()
-            .or(Err(format!("Sleep time {} must be numeric", time)))?;
+            .or(Err(anyhow!("Sleep time {} must be numeric", time)))?;
         let millis = Duration::from_millis(time);
         thread::sleep(millis);
         Ok(())
     }
 
-    fn uci_perft(&mut self, words: &[&str]) -> Result<(), String> {
+    fn uci_perft(&mut self, words: &[&str]) -> Result<()> {
         self.engine.lock().unwrap().search_stop();
-        let depth = words.first().ok_or("Must specify a depth")?;
+        let depth = words.first().ok_or(anyhow!("Must specify a depth"))?;
         let depth = depth
             .parse::<u32>()
-            .or(Err(format!("Depth {} must be numeric", depth)))?;
+            .or(Err(anyhow!("Depth {} must be numeric", depth)))?;
         let mut board = Catalog::starting_board();
         for d in 1..=depth {
             let t = Instant::now();
@@ -317,7 +318,7 @@ impl Uci {
     }
 
     // ['from', 'to', 'capture', 'ep', 'legal', 'pseudo_legal', 'san', 'rook_move', 'is_ep', 'is_castle']:
-    fn ext_uci_move_attributes(&mut self, arg: &Args) -> Result<(), String> {
+    fn ext_uci_move_attributes(&mut self, arg: &Args) -> Result<()> {
         let mut b = Board::new_empty();
         Self::parse_fen(arg, &mut b)?;
         let var = Self::parse_variation(arg, &b);
@@ -345,7 +346,7 @@ impl Uci {
                     is_ep = is_ep,
                     is_castle = is_castle));
             } else {
-                return Err("Empty variation. Move not specificed".into());
+                bail!("Empty variation. Move not specificed");
             }
         } else {
             Self::print("result:from 00 to 00 capture 00 ep - legal False san ??? rook_move 0000 is_ep False is_castle False");
@@ -365,7 +366,7 @@ impl Uci {
     //     Ok(())
     // }
 
-    fn ext_uci_static_eval(&mut self, arg: &Args) -> Result<(), String> {
+    fn ext_uci_static_eval(&mut self, arg: &Args) -> Result<()> {
         let mut b = Board::new_empty();
         Self::parse_fen(arg, &mut b)?;
         let mut eval = SimpleScorer::new();
@@ -374,18 +375,18 @@ impl Uci {
         Ok(())
     }
 
-    fn json_method(&mut self, request: &str) -> Result<(), String> {
-        let response = self.json_rpc.invoke(request).ok_or("json rpc error")?;
+    fn json_method(&mut self, request: &str) -> Result<()> {
+        let response = self.json_rpc.invoke(request).ok_or(anyhow!("json rpc error"))?;
         Self::print(&format!("{}", response));
         Ok(())
     }
 
-    fn ext_uci_version(&mut self, _arg: &Args) -> Result<(), String> {
+    fn ext_uci_version(&mut self, _arg: &Args) -> Result<()> {
         Self::print(&format!("result:{}", Version::VERSION));
         Ok(())
     }
 
-    fn ext_uci_make_moves(&mut self, arg: &Args) -> Result<(), String> {
+    fn ext_uci_make_moves(&mut self, arg: &Args) -> Result<()> {
         let mut b = Board::new_empty();
         Self::parse_fen(arg, &mut b)?;
         let var = Self::parse_variation(arg, &b)?;
@@ -394,7 +395,7 @@ impl Uci {
     }
 
 
-    fn ext_uci_legal_moves(&mut self, arg: &Args) -> Result<(), String> {
+    fn ext_uci_legal_moves(&mut self, arg: &Args) -> Result<()> {
         let mut b = Board::new_empty();
         Self::parse_fen(arg, &mut b)?;
         let moves = b.legal_moves();
@@ -402,7 +403,7 @@ impl Uci {
         Ok(())
     }
 
-    fn uci_position(&mut self, arg: &Args) -> Result<(), String> {
+    fn uci_position(&mut self, arg: &Args) -> Result<()> {
         self.engine.lock().unwrap().search_stop();
         Self::parse_fen(arg, &mut self.board)?;
         let variation = Self::parse_variation(arg, &self.board)?;
@@ -413,7 +414,7 @@ impl Uci {
         Ok(())
     }
 
-    fn parse_fen(arg: &Args, b: &mut Board) -> Result<(), String> {
+    fn parse_fen(arg: &Args, b: &mut Board) -> Result<()> {
         let fen = arg.words.get(1);
         if let Some(fen) = fen {
             if fen == "startpos" {
@@ -424,18 +425,18 @@ impl Uci {
                 if let Some(fen) = fen {
                     *b = Board::parse_fen(&fen.join(" "))?;
                 } else {
-                    return Err("Fen or parts of fen are missing".into());
+                    bail!("Fen or parts of fen are missing");
                 }
             } else {
-                return Err("Must specify fen or startpos after position command".into());
+                bail!("Must specify fen or startpos after position command");
             }
         } else {
-            return Err("Must specify a fen position or startpos".into())
+            bail!("Must specify a fen position or startpos")
         }
         Ok(())
     }
 
-    fn parse_variation(args: &Args, board: &Board) -> Result<Variation, String> {
+    fn parse_variation(args: &Args, board: &Board) -> Result<Variation> {
         let mut variation = Variation::new();
         let index = args.index_of("moves");
         let mut b = board.clone();
@@ -449,7 +450,7 @@ impl Uci {
         Ok(variation)
     }
 
-    fn parse_movelist(args: &Args, board: &Board) -> Result<MoveList, String> {
+    fn parse_movelist(args: &Args, board: &Board) -> Result<MoveList> {
         let mut movelist = MoveList::new();
         let index = args.index_of("searchmoves");
         if let Some(index) = index {
@@ -461,7 +462,7 @@ impl Uci {
         Ok(movelist)
     }
 
-    // fn parse_movelist(args: &Args, b: &mut Board) -> Result<MoveList, String> {
+    // fn parse_movelist(args: &Args, b: &mut Board) -> Result<MoveList> {
     //     let mut movelist = MoveList::new();
     //     let index = args.index_of("moves");
     //     if let Some(index) = index {
@@ -473,7 +474,7 @@ impl Uci {
     //     Ok(movelist)
     // }
 
-    fn uci_go(&mut self, args: &Args) -> Result<(), String> {
+    fn uci_go(&mut self, args: &Args) -> Result<()> {
         let ponder = args.contain("ponder");
 
         //  search x ply only
@@ -542,15 +543,21 @@ impl Uci {
         Ok(())
     }
 
-    fn uci_setoption(&mut self, input: &str) -> Result<(), String> {
-        let s = input.strip_prefix("setoption").ok_or("missing setoption")?.trim();
-        let s = s.strip_prefix("name").ok_or("missing name")?.trim();
+    fn uci_setoption(&mut self, input: &str) -> Result<()> {
+        let s = input.strip_prefix("setoption").ok_or(anyhow!("missing setoption"))?.trim();
+        let s = s.strip_prefix("name").ok_or(anyhow!("missing name"))?.trim();
         let name_value = s.rsplit_once("value");
         let (name, value) = if let Some((name,value)) = name_value {
             (name.trim(), value.trim())
         } else {
             (s.trim(), "")
         };
+        let new_engine = {
+            let engine = self.engine.lock().unwrap();
+            engine.configment(name, value)
+        }?;
+        // self.engine = Arc::new(Mutex::new(new_engine));
+        *self.engine.lock().unwrap() = new_engine;
         let c = ParsedConfig::new().set(&name, &value);
         self.configure(&c);
         Ok(())
@@ -564,7 +571,7 @@ impl Uci {
         }
     }
 
-    fn ext_uci_explain_eval(&mut self) -> Result<(), String> {
+    fn ext_uci_explain_eval(&mut self) -> Result<()> {
         self.engine.lock().unwrap().search_stop();
         let eval = &self.engine.lock().unwrap().algo.eval;
         let s = eval.w_eval_explain(&self.board);
@@ -574,7 +581,7 @@ impl Uci {
         Ok(())
     }
 
-    fn uci_explain_last_search(&mut self) -> Result<(), String> {
+    fn uci_explain_last_search(&mut self) -> Result<()> {
         self.engine.lock().unwrap().search_stop();
         Self::print("search");
         Self::print(&format!("{}", self.board));
@@ -582,7 +589,7 @@ impl Uci {
         Ok(())
     }
 
-    fn uci_board(&mut self) -> Result<(), String> {
+    fn uci_board(&mut self) -> Result<()> {
         self.engine.lock().unwrap().search_stop();
         Self::print("board");
         Self::print(&format!("{}", self.board));
@@ -591,13 +598,13 @@ impl Uci {
         Ok(())
     }
 
-    fn uci_stop(&mut self) -> Result<(), String> {
+    fn uci_stop(&mut self) -> Result<()> {
         self.engine.lock().unwrap().search_stop();
         // Self::print_bm_and_ponder(&self.algo.bm(), &self.algo.pv() );
         Ok(())
     }
 
-    fn uci_ponder_hit(&mut self) -> Result<(), String> {
+    fn uci_ponder_hit(&mut self) -> Result<()> {
         self.engine.lock().unwrap().ponder_hit();
         Ok(())
     }
@@ -772,8 +779,8 @@ mod tests {
             .push("setoption name Print Eval".into());
         uci.preamble.push("quit".into());
         uci.run();
-        assert_eq!(uci.engine.lock().unwrap().algo.eval.mb.material_weights[Piece::Bishop].s() as i32, 700);
-        assert_eq!(uci.engine.lock().unwrap().algo.eval.mb.material_weights[Piece::Pawn].s() as i32, 100);
+        assert_eq!(uci.engine.lock().unwrap().algo.eval.mb.piece_weights[Piece::Bishop].s() as i32, 700);
+        assert_eq!(uci.engine.lock().unwrap().algo.eval.mb.piece_weights[Piece::Pawn].s() as i32, 100);
         assert_eq!(uci.engine.lock().unwrap().algo.eval.position, false);
     }
 

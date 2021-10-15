@@ -1,6 +1,8 @@
 use std::iter;
 use std::fmt;
 use num_traits::{Num, AsPrimitive};
+use serde::{Deserialize, Serialize};
+
 
 //
 // This impl 50% faster than manipulating pairs of integers separately...
@@ -12,7 +14,7 @@ use num_traits::{Num, AsPrimitive};
 
 
 // essntially models the score bonus for s=start or e=end of game
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Default)]
 
 pub struct WeightOf<T>(T, T) where T:Copy + Num;
 
@@ -158,6 +160,30 @@ impl<T> std::ops::Neg for WeightOf<T> where T: Copy + Num + std::ops::Neg<Output
         Self(-self.s(), -self.e())
     }
 }
+
+
+
+
+
+
+
+
+
+
+mod tests {
+    use super::*;
+    use crate::infra::config::*;
+    use test_env_log::test;
+    use toml;
+    
+
+    #[test]
+    fn serde_weight_test() {
+        info!("{}", toml::to_string(&Weight::default()).unwrap());
+        info!("{}", toml::to_string_pretty(&Weight::default()).unwrap());
+    }
+}
+
 
 // This impl 42% slower
 

@@ -3,6 +3,7 @@ use crate::types::Color;
 use crate::bitboard::square::Square;
 use std::fmt;
 use std::iter::*;
+use anyhow::{Result, bail};
 
 bitflags! {
     pub struct CastlingRights: u8 {
@@ -75,7 +76,7 @@ impl CastlingRights {
         }
     }
 
-    pub fn parse(s: &str) -> Result<CastlingRights, String> {
+    pub fn parse(s: &str) -> Result<CastlingRights> {
         let mut castling = CastlingRights::NONE;
         for ch in s.chars() {
             match ch {
@@ -84,7 +85,7 @@ impl CastlingRights {
                 'Q' => castling |= Self::WHITE_QUEEN,
                 'k' => castling |= Self::BLACK_KING,
                 'q' => castling |= Self::BLACK_QUEEN,
-                _ => return Err(format!("Invalid character '{}' in castling rights '{}'", ch, s)),
+                _ => bail!("Invalid character '{}' in castling rights '{}'", ch, s),
             }
         }
         Ok(castling)

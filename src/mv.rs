@@ -9,6 +9,7 @@ use crate::utils::StringUtils;
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 use std::fmt;
 use std::str::FromStr;
+use anyhow::Result;
 
 // FIXME: public methods
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, SerializeDisplay, DeserializeFromStr)]
@@ -32,9 +33,9 @@ pub struct Move {
 // Promo/capture
 
 impl FromStr for Move {
-    type Err = String;
+    type Err = anyhow::Error;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> Result<Self> {
         // FIXME! URGENT
         Move::parse_uci(Piece::Pawn, s)
     }
@@ -328,7 +329,7 @@ impl Move {
         res
     }
 
-    pub fn parse_uci(mover: Piece, s: &str) -> Result<Move, String> {
+    pub fn parse_uci(mover: Piece, s: &str) -> Result<Move> {
         let from = Bitboard::parse_square(s.take_slice(0..2))?;
         let to = Bitboard::parse_square(s.take_slice(2..4))?;
         let promo;

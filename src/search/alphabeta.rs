@@ -10,6 +10,7 @@ use crate::search::node::Node;
 use crate::types::{MoveType, Ply, MAX_PLY};
 use crate::eval::switches::Switches;
 
+
 pub struct AlphaBeta;
 
 // terminology
@@ -419,9 +420,10 @@ mod tests {
     use crate::catalog::*;
     use crate::comms::uci::Uci;
     use crate::search::timecontrol::*;
+    use anyhow::Result;
 
     #[test]
-    fn test_2_mates() -> Result<(), String> {
+    fn test_2_mates() -> Result<()> {
         let positions = Catalog::mate_in_2();
         for (i, pos) in positions.iter().enumerate() {
             let mut search = Algo::new()
@@ -441,7 +443,7 @@ mod tests {
 
     #[test]
     #[ignore]
-    fn test_mate_in_3() -> Result<(), String> {
+    fn test_mate_in_3() -> Result<()> {
         let positions = Catalog::mate_in_3();
         for (i, pos) in positions.iter().enumerate() {
             let mut search = Algo::new().set_timing_method(TimeControl::Depth(5)).build();
@@ -457,7 +459,7 @@ mod tests {
 
     #[test]
     #[ignore]
-    fn test_mate_in_4() -> Result<(), String> {
+    fn test_mate_in_4() -> Result<()> {
         let positions = Catalog::mate_in_4();
         for (i, pos) in positions.iter().enumerate() {
             let mut search = Algo::new().set_timing_method(TimeControl::Depth(7)).build();

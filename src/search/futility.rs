@@ -226,14 +226,14 @@ impl Futility {
         }
         let phase = b.phase(&eval.phaser);
         let maximum_opp_piece = if let Some((piece, _)) = b.most_valuable_piece_except_king(b.them()) {
-            eval.mb.material_weights[piece]
+            eval.mb.piece_weights[piece]
         } else {
             Weight::zero() // all they have is a king
         };
 
         let near_promos = Bitboard::RANKS_27; // .or(Bitboard::RANKS_36);
         let promo_value = if (b.pawns() & b.us() & Bitboard::home_half(b.color_them()) & near_promos).any() {
-            eval.mb.material_weights[Piece::Queen] - eval.mb.material_weights[Piece::Pawn]
+            eval.mb.piece_weights[Piece::Queen] - eval.mb.piece_weights[Piece::Pawn]
         } else {
             Weight::zero() // no promos possible
         };
