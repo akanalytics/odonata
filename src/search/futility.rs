@@ -21,6 +21,7 @@ use serde::{Deserialize, Serialize};
 
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Futility {
     pub alpha_enabled: bool,
     pub beta_enabled: bool,

@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Pvs {
     pub enabled: bool,
     pub min_depth: Ply,

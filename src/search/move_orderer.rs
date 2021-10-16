@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(default)]
 pub struct MoveOrderer {
     pub enabled: bool,
     pub prior_pv: bool,

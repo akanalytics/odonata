@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(default)]
 pub struct QSearch {
     pub enabled: bool,
     pub only_on_capture: bool,

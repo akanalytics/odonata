@@ -117,7 +117,7 @@ impl Algo {
 
 impl Component for Algo {
     fn settings(&self, c: &mut ParsedConfig) {
-        c.set("algo.minmax", "type check default false");
+        c.set("algo_minmax", "type check default false");
         c.set("UCI_AnalyseMode", "type check default false");
         // c.set("UCI_ShowRefutations", &format!("type check default {}", self.show_refutations));       
 

@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Lmr {
     pub enabled: bool,
     pub pv_node: bool, 

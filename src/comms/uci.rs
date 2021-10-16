@@ -103,7 +103,7 @@ pub struct Uci {
 impl Component for Uci {
     fn settings(&self, c: &mut ParsedConfig) {
         c.set("UCI_EngineAbout", &format!("type string default {} {}", Version::NAME, Version::HOMEPAGE));
-        c.set("uci.debug", "type check default false");
+        c.set("debug", "type check default false");
         c.set("Ponder", "type check default false");
         c.set("Clear Hash", "type button");
         c.set("Explain Eval", "type button");
@@ -116,25 +116,9 @@ impl Component for Uci {
     fn configure(&mut self, c: &ParsedConfig) {
         info!("Configuring uci with\n{}", c);
 
-        if let Some(b) = c.bool("uci.debug") {
+        if let Some(b) = c.bool("debug") {
             self.debug = b;
         }
-        if c.string("clear_cache").is_some() || c.string("Clear Hash").is_some() {
-            Self::print("Clearing hash");
-            let _res = self.uci_newgame();
-        }
-        if c.string("Explain Eval").is_some() {
-            let _res = self.ext_uci_explain_eval();
-        }
-
-        if c.string("Explain Last Search").is_some() {
-            let _res = self.uci_explain_last_search();
-        }
-
-        if c.string("Explain Quiesce").is_some() {
-            let _res = self.ext_uci_explain_eval();
-        }
-
         self.engine.lock().unwrap().configure(&c);
     }
 
@@ -570,6 +554,9 @@ impl Uci {
                 let _res = self.ext_uci_explain_eval();
             } else if name == "Show Config" {
                 let _res = self.ext_uci_show_config();
+            } else if name == "Clear Hash" {
+                Self::print("Clearing hash");
+                let _res = self.uci_newgame();
             } else {
                 warn!("Unknown action '{}'", name);
             }

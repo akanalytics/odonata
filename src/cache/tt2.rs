@@ -225,6 +225,7 @@ impl fmt::Display for TtNode {
 
 // FIXME Mates as score
 #[derive(Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct TranspositionTable2 {
     #[serde(skip)]
     table: Arc<SharedTable>,
@@ -496,7 +497,7 @@ impl TranspositionTable2 {
     }
 
     pub fn hashfull_per_mille(&self) -> u32 {
-        (self.table.utilization() as u128 * 1000 / self.table.capacity() as u128) as u32
+        (self.table.utilization() as u128 * 1000 / (1 + self.table.capacity()) as u128) as u32
     }
 
     #[inline]
