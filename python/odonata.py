@@ -1566,7 +1566,7 @@ class Test:
         assert bm == "a1a8"
         assert odo.api_version() != ""
         assert len(odo.options()) > 3
-        assert odo.options()["tt.enabled"], "false"
+        assert odo.options()["UCI_AnalyseMode"], "false"
 
 
 
