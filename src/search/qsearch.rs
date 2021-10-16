@@ -11,7 +11,6 @@ use crate::search::node::Node;
 use crate::types::Ply;
 // // use crate::{debug, logger::LogInit, trace};
 use std::fmt;
-use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 
@@ -323,6 +322,7 @@ mod tests {
     use crate::search::engine::Engine;
     use crate::search::timecontrol::*;
     use crate::test_env_log::test;
+    use anyhow::Result;
 
     #[test]
     fn qsearch_serde_test() {

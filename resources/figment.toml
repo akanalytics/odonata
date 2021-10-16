@@ -14,10 +14,14 @@
 # shared_tt = true
 # thread_count = 1
 # config_filename = "config.toml"
+minmax = false
 
-shared_tt = true
-thread_count = 1
-config_filename = "config.toml"
+[ids]
+enabled = true
+part_ply = true
+step_size = 1
+start_ply = 1
+end_ply = 127
 
 [eval]
 material = true
@@ -85,8 +89,119 @@ bishop = [635.0, 429.0]
 rook = [839.0, 771.0]
 queen = [1822.0, 1405.0]
 
+[qsearch]
+enabled = true
+only_on_capture = false
+promos = false
+ignore_see_fails = true
+see_cutoff = 0
+max_ply = 10
+coarse_delta_prune = 1000
+switches = 1279
+
+[nmp]
+enabled = true
+recursive = true
+successive = true
+min_depth = 2
+depth_reduction_strat = 100
+a = 2.7
+b = 0.198
+c = 0.00017
+
+[futility]
+alpha_enabled = true
+beta_enabled = false
+prune_remaining = false
+avoid_checks = false
+avoid_promos = false
+promo_margin = false
+max_depth = 2
+max_depth_captures = 2
+margin1 = 100
+margin2 = 250
+margin3 = 1500
+eval_switches = 255
+move_types_forbidden = 0
+
+[pvs]
+enabled = true
+min_depth = 2
+
+[extensions]
+check_enabled = false
+check_max_depth = 3
+check_max_phase = 60
+promo_enabled = false
+promo_max_depth = 1
+promo_rank = 7
+promo_extend = 1
+
+[lmr]
+enabled = true
+pv_node = true
+only_nt_all = false
+bad_captures = true
+pawns = true
+promos = false
+killers = false
+min_depth = 2
+re_search = false
+alpha_numeric = false
+red_strat = 6
+
+[mte]
+branching_factor = 15
+perc_of_time_adv = 100
+moves_rem = 10
+deterministic = false
+nodestime = 0
+
+[move_orderer]
+enabled = true
+prior_pv = true
+prior_bm = false
+tt_bm = true
+mvv_lva = true
+order = ["Start", "Hash", "Initialize", "GoodCaptureUpfrontSorted", "Killer", "Promo", "Quiet", "BadCapture", "End"]
+qorder = ["Start", "Initialize", "Capture", "End"]
+
+[repetition]
+enabled = true
+avoid_tt_on_repeats = false
+
+[tt]
+aging = true
+probe_leaf_nodes = true
+current_age = 10
+enabled = true
+use_tt_for_pv = false
+allow_truncated_pv = false
+allow_tt_at_root = false
+mb = 8
+hmvc_horizon = 85
+min_ply = 1
+
 [killers]
 enabled = true
 clear_every_move = false
 use_ply_below = true
 
+[history]
+enabled = true
+scale = 1
+age_factor = 4
+
+[explainer]
+enabled = false
+
+[restrictions]
+enabled = true
+
+[razor]
+enabled = true
+max_depth = 3
+margin1 = 100
+margin2 = 300
+margin3 = 500
+move_types_forbidden = 994

@@ -78,11 +78,6 @@ pub static EVAL_COUNTS: ArrayStat =
 #[serde(default)]
 pub struct SimpleScorer {
 
-    #[serde(skip)]
-    pub pst: Pst,
-
-    #[serde(skip)]
-    pub phaser: Phaser,
 
     pub material: bool,
     pub position: bool,
@@ -144,7 +139,11 @@ pub struct SimpleScorer {
     // pub cache: TranspositionTable,
     // pub qcache: TranspositionTable,
     // pub depth: Ply,
+    pub phaser: Phaser,
     pub mb: MaterialBalance,
+    pub pst: Pst,
+
+
 
 }
 
@@ -805,7 +804,7 @@ mod tests {
 
 
     #[test]
-    fn serde_eval_test() {
+    fn eval_serde_test() {
         info!("\n{}", toml::to_string(&SimpleScorer::default()).unwrap());
         // info!("\n{}", toml::to_string_pretty(&SimpleScorer::default()).unwrap());
     }

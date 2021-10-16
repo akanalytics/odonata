@@ -4,19 +4,22 @@ use crate::bitboard::precalc::BitboardDefault;
 use crate::bitboard::square::Square;
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
+use crate::bound::NodeType;
 use crate::cache::lockless_hashmap::SharedTable;
-use crate::infra::parsed_config::{Component, ParsedConfig};
 use crate::eval::score::Score;
+use crate::infra::parsed_config::{Component, ParsedConfig};
 use crate::mv::Move;
 use crate::stat::{ArrayStat, Stat};
 use crate::types::{Hash, Piece, Ply};
-use crate::bound::NodeType;
 use crate::variation::Variation;
 // use crate::{debug, info, logger::LogInit};
 use std::cmp;
 use std::fmt;
 use std::mem;
 use std::sync::Arc;
+use serde::{Deserialize, Serialize};
+
+
 
 
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
@@ -221,8 +224,9 @@ impl fmt::Display for TtNode {
 // }
 
 // FIXME Mates as score
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct TranspositionTable2 {
+    #[serde(skip)]
     table: Arc<SharedTable>,
 
     pub aging: bool,
@@ -236,17 +240,17 @@ pub struct TranspositionTable2 {
     pub hmvc_horizon: i32,
     pub min_ply: Ply,
 
-    pub hits: Stat,
-    pub misses: Stat,
-    pub collisions: Stat,
-    pub bad_hash: Stat,
-    pub exclusions: Stat,
-    pub inserts: Stat,
-    pub updates: Stat,
-    pub pv_overwrites: Stat,
-    pub deletes: Stat,
-    pub fail_priority: Stat,
-    pub fail_ownership: Stat,
+    #[rustfmt::skip] #[serde(skip)] pub hits: Stat,
+    #[rustfmt::skip] #[serde(skip)] pub misses: Stat,
+    #[rustfmt::skip] #[serde(skip)] pub collisions: Stat,
+    #[rustfmt::skip] #[serde(skip)] pub bad_hash: Stat,
+    #[rustfmt::skip] #[serde(skip)] pub exclusions: Stat,
+    #[rustfmt::skip] #[serde(skip)] pub inserts: Stat,
+    #[rustfmt::skip] #[serde(skip)] pub updates: Stat,
+    #[rustfmt::skip] #[serde(skip)] pub pv_overwrites: Stat,
+    #[rustfmt::skip] #[serde(skip)] pub deletes: Stat,
+    #[rustfmt::skip] #[serde(skip)] pub fail_priority: Stat,
+    #[rustfmt::skip] #[serde(skip)] pub fail_ownership: Stat,
 }
 
 impl TranspositionTable2 {
@@ -263,7 +267,7 @@ impl TranspositionTable2 {
             aging: true,
             current_age: 10, // to allow us to look back
             hmvc_horizon: 85,
-            min_ply: 1,  // search restrictions on ply=0
+            min_ply: 1, // search restrictions on ply=0
             hits: Stat::new("hits"),
             misses: Stat::new("misses"),
             collisions: Stat::new("collisions"),
@@ -495,7 +499,6 @@ impl TranspositionTable2 {
         (self.table.utilization() as u128 * 1000 / self.table.capacity() as u128) as u32
     }
 
-
     #[inline]
     pub fn store(&mut self, h: Hash, new_node: TtNode) {
         if !self.enabled && new_node.node_type != NodeType::Pv || self.capacity() == 0 {
@@ -546,8 +549,7 @@ impl TranspositionTable2 {
             );
             if hash == 0 && data == 0 {
                 self.table.utilization.increment();
-            }
-            else {
+            } else {
                 self.updates.increment();
             }
             let new_data = TtNode::pack(&new_node, self.current_age);
@@ -736,7 +738,6 @@ mod tests {
         tt1.new_game();
         assert!(tt1.probe_by_hash(123).is_none());
 
-
         // triggers failed ownership panic
         if false {
             let mut tt2 = tt1.clone();
@@ -792,7 +793,6 @@ mod tests {
         println!("{:?}", tt);
         println!("{}", tt);
         assert_eq!(tt.hashfull_per_mille(), 0);
-
     }
 
     #[test]
@@ -827,8 +827,20 @@ mod tests {
             let pv = algo.tt.extract_pv_and_score(pos.board()).0;
 
             // No reason acd = pv length as pv line may be reduced due to lmr etc.
-            assert!(pv.len() >= (d as usize) - 1, "algo.pv={} pv={}\n{}", algo.pv(), pv, algo);
-            assert!(pv.len() <= d as usize, "algo.pv={} pv={}\n{}", algo.pv(), pv, algo);
+            assert!(
+                pv.len() >= (d as usize) - 1,
+                "algo.pv={} pv={}\n{}",
+                algo.pv(),
+                pv,
+                algo
+            );
+            assert!(
+                pv.len() <= d as usize,
+                "algo.pv={} pv={}\n{}",
+                algo.pv(),
+                pv,
+                algo
+            );
             // assert!(algo.pv().len() >= d as usize, "{} {}\n{}", algo.pv(), pv, algo);
             // assert_eq!(algo.bm().uci(), pos.bm()?.uci());
             println!(">>>>>> {}", pv);

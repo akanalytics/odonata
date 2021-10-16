@@ -7,12 +7,14 @@ use std::fmt;
 use serde::{Deserialize, Serialize};
 
 
-// CLOP
+// CLOP - gamma
 // 10+.08
 // 1+0.01
 // 2+0.02 76/235/380 on 170k iters
 // 2+0.02 76/275/380 on 180k iters
 //
+// CLOP - linear
+// 2+0.02 94/431/865
 
 //
 // http://talkchess.com/forum3/viewtopic.php?f=7&t=41597

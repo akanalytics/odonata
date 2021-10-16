@@ -30,7 +30,6 @@ use crate::types::Ply;
 use crate::variation::Variation;
 use std::fmt;
 use serde::{Deserialize, Serialize};
-use anyhow::Result;
 
 
 use super::search_explainer::SearchExplainer;
@@ -39,18 +38,8 @@ use super::search_explainer::SearchExplainer;
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Algo {
-    #[serde(skip)]
-    pub results: Position,
-    #[serde(skip)]
-    pub position: Position,
-    #[serde(skip)]
-    pub board: Board,
-    #[serde(skip)]
-    pub max_depth: Ply,
-
     pub minmax: bool,
     pub ids: IterativeDeepening,
-
     pub eval: SimpleScorer,
     pub qsearch: QSearch,
     pub nmp: NullMovePruning,
@@ -59,18 +48,24 @@ pub struct Algo {
     pub extensions: Extensions,
     pub lmr: Lmr,
     pub mte: MoveTimeEstimator,
-    #[serde(skip)]
     pub move_orderer: MoveOrderer,
     pub repetition: Repetition,
-    #[serde(skip)]
     pub tt: TranspositionTable2,
-
     pub killers: Killers,
     pub history: HistoryHeuristic,
     pub explainer: SearchExplainer,
     pub restrictions: Restrictions,
     pub razor: Razor,
 
+
+    #[serde(skip)]
+    pub results: Position,
+    #[serde(skip)]
+    pub position: Position,
+    #[serde(skip)]
+    pub board: Board,
+    #[serde(skip)]
+    pub max_depth: Ply,
 
     #[serde(skip)]
     pub task_control: TaskControl<SearchProgress>,
@@ -137,7 +132,7 @@ impl Component for Algo {
         // self.qsearch.settings(c);
         // self.ids.settings(c);
         // self.repetition.settings(c);
-        self.tt.settings(c);
+        // self.tt.settings(c);
         // self.killers.settings(c);
         // self.history.settings(c);
         // self.explainer.settings(c);
@@ -148,24 +143,24 @@ impl Component for Algo {
         debug!("algo.configure");
         self.analyse_mode = c.bool("UCI_AnalyseMode").unwrap_or(self.analyse_mode);
         self.show_refutations = c.bool("UCI_ShowRefutations").unwrap_or(self.show_refutations);
-        self.minmax = c.bool("algo.minmax").unwrap_or(self.minmax);
+        // self.minmax = c.bool("algo.minmax").unwrap_or(self.minmax);
         // self.eval.configure(c);
-        self.move_orderer.configure(c);
+        // self.move_orderer.configure(c);
         // self.mte.configure(c);
         // self.nmp.configure(c);
-        self.futility.configure(c);
-        self.pvs.configure(c);
-        self.extensions.configure(c);
+        // self.futility.configure(c);
+        // self.pvs.configure(c);
+        // self.extensions.configure(c);
         // self.lmr.configure(c);
         // self.qsearch.configure(c);
-        self.ids.configure(c);
-        self.repetition.configure(c);
-        self.tt.configure(c);
+        // self.ids.configure(c);
+        // self.repetition.configure(c);
+        // self.tt.configure(c);
         // self.killers.configure(c);
-        self.history.configure(c);
-        self.explainer.configure(c);
+        // self.history.configure(c);
+        // self.explainer.configure(c);
         // self.restrictions.configure(c);
-        self.razor.configure(c);
+        // self.razor.configure(c);
     }
 
     // clears evaluation and transposition caches as well as repetition counts

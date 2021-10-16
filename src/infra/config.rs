@@ -1,9 +1,5 @@
-use crate::infra::resources::RESOURCE_DIR;
-use figment::providers::Env;
-use figment::providers::{Format, Toml};
-use figment::{Error, Figment, Metadata, Profile, Provider};
+use figment::{Error, Metadata, Profile, Provider};
 use serde::{Deserialize, Serialize};
-use static_init::dynamic;
 
 // The library's required configuration.
 #[derive(Debug, Deserialize, Serialize)]
@@ -55,8 +51,6 @@ impl Config {
 }
 
 mod tests {
-    use super::*;
-    use test_env_log::test;
 
     // #[test]
     // fn parse_test() {

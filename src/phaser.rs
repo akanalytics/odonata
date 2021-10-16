@@ -2,13 +2,15 @@ use crate::board::Board;
 use crate::infra::parsed_config::{Component, ParsedConfig};
 use crate::material::Material;
 use crate::Piece;
-use anyhow::Result;
 
 use std::cmp;
 use std::fmt;
 // use static_init::{dynamic};
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug)]
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Phaser {
     enabled: bool,
     method: String,
@@ -141,6 +143,7 @@ mod tests {
     use super::*;
     use crate::board::boardbuf::BoardBuf;
     use crate::catalog::Catalog;
+    use anyhow::Result;
 
     #[test]
     fn test_phase() -> Result<()> {
@@ -167,15 +170,15 @@ mod tests {
         assert_eq!(phaser.cpw_method(&board42.material()), 33);
         assert_eq!(phaser.cpw_method(&board0.material()), 0);
 
-        // complex method method
+        // complex method 
         assert_eq!(phaser.complex_method(&board100.material()), 100);
         assert_eq!(phaser.complex_method(&board100_too.material()), 100);
         assert_eq!(phaser.complex_method(&board73.material()), 73);
         assert_eq!(phaser.complex_method(&board42.material()), 42);
         assert_eq!(phaser.complex_method(&board0.material()), 0);
 
-        // complex method method
-        phaser.half_way_score = 6500/4; // rapoid decline at first
+        // complex method 
+        phaser.half_way_score = 6500/4; // rapid decline at first
         assert_eq!(phaser.complex_method(&board100.material()), 100);
         assert_eq!(phaser.complex_method(&board100_too.material()), 100);
         assert_eq!(phaser.complex_method(&board73.material()), 49);  // 73 -> 49

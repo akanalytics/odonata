@@ -10,6 +10,11 @@ use std::fmt;
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 use anyhow::Result;
+use crate::infra::resources::RESOURCE_DIR;
+use figment::providers::{Format, Toml};
+use figment::value::{Dict, Map};
+use figment::{Error, Figment, Metadata, Profile, Provider};
+
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -114,11 +119,6 @@ impl Component for Engine {
     }
 }
 
-use crate::infra::resources::RESOURCE_DIR;
-use figment::providers::Env;
-use figment::providers::{Format, Serialized, Toml};
-use figment::value::{Dict, Map};
-use figment::{Error, Figment, Metadata, Profile, Provider};
 
 impl Provider for Engine {
     fn metadata(&self) -> Metadata {
@@ -274,7 +274,13 @@ mod tests {
 
     #[test]
     fn engine_serde_test() {
-        eprintln!("toml\n{}", toml::to_string(&Engine::default()).unwrap());
+        let engine1 = Engine::default();
+        let text1 = toml::to_string(&engine1).unwrap();
+        eprintln!("toml\n{}", text1);
+
+        let engine2 : Engine = toml::from_str(&text1).unwrap();
+        let text2 = toml::to_string(&engine2).unwrap();
+        assert_eq!(text1, text2);
     }
 
     #[test]

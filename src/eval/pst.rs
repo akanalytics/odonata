@@ -3,22 +3,59 @@ use crate::infra::parsed_config::{Component, ParsedConfig};
 use crate::bitboard::square::Square;
 use crate::eval::weight::Weight;
 use crate::types::{Color, Piece};
+use serde::{Deserialize, Serialize};
+
 
 use std::fmt;
 
 
 
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(from="PstProxy", into="PstProxy")]
 pub struct Pst {
     pub enabled: bool,
     pub pawn_r5: Weight,
     pub pawn_r6: Weight,
     pub pawn_r7: Weight,
     pub rook_edge: Weight,
-    
+
+    #[serde(with = "PstProxy")]
     pst: [[Weight; 64]; Piece::len()],
 }
+
+
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct PstProxy {
+    #[serde(skip)] 
+    pst: [[Weight; 64]; Piece::len()],
+}
+
+impl Default for PstProxy {
+    fn default() -> Self {
+        Self {
+            pst: [[Weight::default(); 64]; Piece::len()],
+
+        }
+    }
+}
+
+impl From<PstProxy> for Pst {
+    fn from(_proxy: PstProxy) -> Self {
+        Pst {
+            .. Default::default()
+        }
+    }
+}
+
+impl Into<PstProxy> for Pst {
+    fn into(self) -> PstProxy {
+        PstProxy::default()
+    }
+}
+
+
 
 
 impl Default for Pst {

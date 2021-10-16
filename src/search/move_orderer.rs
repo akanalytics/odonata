@@ -9,9 +9,10 @@ use crate::types::{Ply, Piece, Color, MoveType};
 use crate::variation::Variation;
 // use crate::{debug, logger::LogInit};
 use std::fmt;
+use serde::{Deserialize, Serialize};
 
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MoveOrderer {
     pub enabled: bool,
     pub prior_pv: bool,
@@ -20,10 +21,21 @@ pub struct MoveOrderer {
     pub mvv_lva: bool,
     pub order: Vec<MoveType>,
     pub qorder: Vec<MoveType>,
+
+    #[serde(skip)]
     pub thread: u32,
+
+    #[serde(skip)]
     count_pv: PlyStat,
+
+    #[serde(skip)]
     count_bm: PlyStat,
+
+    #[serde(skip)]
     count_tt_bm: PlyStat,
+
+
+    #[serde(skip)]
     picker: Stack<OrderedMoveList>,
 }
 
