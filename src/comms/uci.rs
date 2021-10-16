@@ -109,6 +109,7 @@ impl Component for Uci {
         c.set("Explain Eval", "type button");
         c.set("Explain Last Search", "type button");
         c.set("Explain Quiesce", "type button");
+        c.set("Show Config", "type button");
         self.engine.lock().unwrap().settings(c);
     }
 
@@ -556,8 +557,8 @@ impl Uci {
             };
             // self.engine = Arc::new(Mutex::new(new_engine));
             *self.engine.lock().unwrap() = new_engine;
-            let c = ParsedConfig::new().set(&name, &value);
-            self.configure(&c);
+            // let c = ParsedConfig::new().set(&name, &value);
+            // self.configure(&c);
         } else {
             let name = s.trim();
             info!("Actioning (setoption) {}", name);
@@ -565,10 +566,12 @@ impl Uci {
                 let _res = self.ext_uci_explain_eval();
             } else if name == "Explain Last Search" {
                 let _res = self.uci_explain_last_search();
-            } if name == "Explain Quiesce" {
+            } else if name == "Explain Quiesce" {
                 let _res = self.ext_uci_explain_eval();
+            } else if name == "Show Config" {
+                let _res = self.ext_uci_show_config();
             } else {
-                warn!("Unknown action {}", name);
+                warn!("Unknown action '{}'", name);
             }
         };
         Ok(())
@@ -580,6 +583,15 @@ impl Uci {
         for (name, value) in c.iter() {
             Self::print(&format!("option name {} {}", name, value));
         }
+    }
+    
+    fn ext_uci_show_config(&mut self) -> Result<()> {
+        self.engine.lock().unwrap().search_stop();
+        let engine = self.engine.lock().unwrap();
+        let text = toml::to_string(&*engine)?;
+        Self::print(&format!("# start configuration:\n{}", text));
+        Self::print(&format!("# end configuration:\n"));
+        Ok(())
     }
 
     fn ext_uci_explain_eval(&mut self) -> Result<()> {
@@ -791,6 +803,10 @@ mod tests {
             .push("setoption name eval.position value false".into());
         uci.preamble
             .push("setoption name Explain Eval".into());
+        uci.preamble
+            .push("setoption name eval.pst.pawn value [[[10.0, 10.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]], [[103.0, 224.0], [103.0, 224.0], [103.0, 224.0], [103.0, 224.0], [103.0, 224.0], [103.0, 224.0], [103.0, 224.0], [103.0, 224.0]], [[-14.0, 168.0], [-14.0, 168.0], [-14.0, 168.0], [-14.0, 168.0], [-14.0, 168.0], [-14.0, 168.0], [-14.0, 168.0], [-14.0, 168.0]], [[14.0, 32.0], [14.0, 32.0], [14.0, 32.0], [19.0, 32.0], [19.0, 32.0], [14.0, 32.0], [14.0, 32.0], [14.0, 32.0]], [[-9.0, 10.0], [0.0, 10.0], [0.0, 10.0], [20.0, 10.0], [20.0, 10.0], [-5.0, 10.0], [-5.0, 10.0], [-9.0, 10.0]], [[-5.0, 5.0], [-5.0, 5.0], [-9.0, 5.0], [0.0, 5.0], [0.0, 5.0], [-9.0, 5.0], [-5.0, 5.0], [-5.0, 5.0]], [[4.0, 0.0], [15.0, 0.0], [15.0, 0.0], [-35.0, 0.0], [-35.0, 0.0], [15.0, 0.0], [15.0, 0.0], [4.0, 0.0]], [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]]".into());
+        uci.preamble
+            .push("setoption name Show Config".into());
         uci.preamble.push("quit".into());
         uci.run();
         assert_eq!(uci.engine.lock().unwrap().algo.eval.position, false);

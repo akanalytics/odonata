@@ -123,7 +123,7 @@ impl Component for Algo {
 
         // self.eval.settings(c);
         // self.mte.settings(c);
-        self.move_orderer.settings(c);
+        // self.move_orderer.settings(c);
         // self.nmp.settings(c);
         // self.futility.settings(c);
         // self.pvs.settings(c);
