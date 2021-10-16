@@ -20,61 +20,70 @@ pub struct Pst {
     pub pawn_r7: Weight,
     pub rook_edge: Weight,
 
-    #[serde(with = "PstProxy")]
-    pst: [[Weight; 64]; Piece::len()],
+    array: [[Weight; 64]; Piece::len()],
 }
-
-
-#[derive(Clone, Serialize, Deserialize)]
-#[serde(default)]
-pub struct PstProxy {
-    #[serde(skip)] 
-    pst: [[Weight; 64]; Piece::len()],
-}
-
-impl Default for PstProxy {
-    fn default() -> Self {
-        Self {
-            pst: [[Weight::default(); 64]; Piece::len()],
-
-        }
-    }
-}
-
-impl From<PstProxy> for Pst {
-    fn from(_proxy: PstProxy) -> Self {
-        Pst {
-            .. Default::default()
-        }
-    }
-}
-
-impl Into<PstProxy> for Pst {
-    fn into(self) -> PstProxy {
-        PstProxy::default()
-    }
-}
-
-
-
 
 impl Default for Pst {
     fn default() -> Self {
         let mut me = Self {
             enabled: true,
-            pawn_r5: Weight::from_i32(13, 32),
-            pawn_r6: Weight::from_i32(5, 86),
-            pawn_r7: Weight::from_i32(24, 304),
-            rook_edge: Weight::from_i32(0, 0),
+            pawn_r5: Weight::from_i32(14, 32),
+            pawn_r6: Weight::from_i32(-14, 168),
+            pawn_r7: Weight::from_i32(103, 224),
+            rook_edge: Weight::from_i32(28, 13),
 
             
-            pst: [[Weight::default(); 64]; Piece::len()],
+            array: [[Weight::default(); 64]; Piece::len()],
 
         };
         me.init_pst();
         me
     }
 }
+
+
+
+
+#[derive(Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct PstProxy {
+    pawn: [[Weight; 8]; 8],
+    knight: [[Weight; 8]; 8],
+    bishop: [[Weight; 8]; 8],
+    rook: [[Weight; 8]; 8],
+    queen: [[Weight; 8]; 8],
+    king: [[Weight; 8]; 8],
+}
+
+
+
+impl From<PstProxy> for Pst {
+    fn from(pp: PstProxy) -> Self {
+        let mut pst = Pst::default();
+        for (i, &p) in Piece::ALL_BAR_NONE.iter().enumerate() {
+            let b = [&pp.pawn, &pp.knight, &pp.bishop, &pp.rook, &pp.queen, &pp.king][i];
+            for sq in Square::all() {
+              pst.array[p][sq] = b[sq.rank_index()][sq.file_index()];
+            }
+        }   
+        pst
+    }
+}
+
+impl Into<PstProxy> for Pst {
+    fn into(self) -> PstProxy {
+        let mut pp = PstProxy::default();
+        for (i, &p) in Piece::ALL_BAR_NONE.iter().enumerate() {
+            let b = &mut [&mut pp.pawn, &mut pp.knight, &mut pp.bishop, &mut pp.rook, &mut pp.queen, &mut pp.king][i];
+            for sq in Square::all() {
+                b[sq.rank_index()][sq.file_index()] = self.array[p][sq];
+            }
+        }   
+        pp
+    }
+}
+
+
 
 
 
@@ -127,16 +136,16 @@ impl Component for Pst {
                         let name_e = name.clone() + ".e";
 
                         if k == &name_s {
-                            let old_wt = self.pst[p][sq];
-                            let new_wt = c.weight(&name, &self.pst[p][sq]);
-                            self.pst[p][sq] = Weight::new(new_wt.s(), old_wt.e());
+                            let old_wt = self.array[p][sq];
+                            let new_wt = c.weight(&name, &self.array[p][sq]);
+                            self.array[p][sq] = Weight::new(new_wt.s(), old_wt.e());
                             info!("pst setting {}{} = {} (config {}={})", p, sq, Weight::new(new_wt.s(), old_wt.e()), name, new_wt);
                             _reconfigure = true;
                         }
                         if k == &name_e {
-                            let old_wt = self.pst[p][sq];
-                            let new_wt = c.weight(&name, &self.pst[p][sq]);
-                            self.pst[p][sq] = Weight::new(old_wt.s(), new_wt.e());
+                            let old_wt = self.array[p][sq];
+                            let new_wt = c.weight(&name, &self.array[p][sq]);
+                            self.array[p][sq] = Weight::new(old_wt.s(), new_wt.e());
                             info!("pst setting {}.{} = {} (config {}={})", p, sq, Weight::new(old_wt.s(), new_wt.e()), name, new_wt);
                             _reconfigure = true;
                         }
@@ -167,7 +176,7 @@ impl fmt::Display for Pst {
                     for file in 0..8 {
                         let sq = Square::from_xy(file, rank);
                         let sq = sq.flip_vertical(); // white is stored upside down
-                        let wt = self.pst[p][sq];
+                        let wt = self.array[p][sq];
                         let score = if phase == "s" { wt.s() } else { wt.e() };
                         let s = format!("{:>4}", score);
                         write!(f, "{:>6},", s)?;
@@ -208,7 +217,7 @@ impl Pst {
     // P(osition) S(quare) T(able)
     #[inline]
     pub fn pst(&self, p: Piece, sq: Square) -> Weight {
-        self.pst[p][sq]
+        self.array[p][sq]
     }
 
 
@@ -375,7 +384,7 @@ impl Pst {
 
         for &p in &Piece::ALL_BAR_NONE {
             for sq in Square::all() {
-                self.pst[p][sq] = Weight::from_i32(square_values_mg[p][sq], square_values_eg[p][sq]);
+                self.array[p][sq] = Weight::from_i32(square_values_mg[p][sq], square_values_eg[p][sq]);
             }
         }
     }
@@ -390,6 +399,13 @@ mod tests {
     use crate::catalog::Catalog;
     use crate::search::engine::Engine;
     use crate::test_env_log::test;
+
+    #[test]
+    fn pst_serde_test() {
+        let pst = Pst::default();
+        let text = toml::to_string(&pst).unwrap();
+        info!("toml\n{}", text);
+    }
 
     #[test]
     fn test_pst() {
