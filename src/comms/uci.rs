@@ -106,12 +106,12 @@ impl Component for Uci {
     fn settings(&self, c: &mut ParsedConfig) {
         c.set("UCI_EngineAbout", &format!("type string default {} {}", Version::NAME, Version::HOMEPAGE));
         c.set("debug", "type check default false");
-        c.set("Ponder", "type check default false");
+        // c.set("Ponder", "type check default false");
         c.set("Clear Hash", "type button");
-        c.set("Explain Eval", "type button");
-        c.set("Explain Last Search", "type button");
-        c.set("Explain Quiesce", "type button");
-        c.set("Show Config", "type button");
+        c.set("Explain_Eval", "type button");
+        c.set("Explain_Last_Search", "type button");
+        c.set("Explain_Quiesce", "type button");
+        c.set("Show_Config", "type button");
 
         // setoption name Config value setting1=A; setting2=B; setting3=C 
         c.set("Config", "type string default \"\"");
@@ -229,6 +229,7 @@ impl Uci {
             _ => self.uci_unknown(&words),
         };
         if let Err(s) = res {
+            warn!("uci error '{:#}'", s);
             Self::print(&format!("info string error '{:#}'", s));
         }
         io::stdout().flush().ok();
@@ -541,7 +542,7 @@ impl Uci {
             let (name, value) = (name.trim(), value.trim());
             let new_engine = {
                 let engine = self.engine.lock().unwrap();
-                info!("Configuring (setoption) {} with:{}", name, value);
+                info!("Configuring (setoption) {} with:<{}>", name, value);
                 if name == "Config" {
                     let mut kvs = HashMap::new();
                     let statements = value.split(";").collect_vec();
@@ -558,21 +559,24 @@ impl Uci {
                 } else {
                     engine.configment(name, value)?
                 }
+        
             };
             // self.engine = Arc::new(Mutex::new(new_engine));
             *self.engine.lock().unwrap() = new_engine;
             // let c = ParsedConfig::new().set(&name, &value);
             // self.configure(&c);
-        } else {
+            self.engine.lock().unwrap().set_position(Position::from_board(self.board.clone()));
+            self.engine.lock().unwrap().algo.set_callback(|sp| Self::uci_info(sp));
+    } else {
             let name = s.trim();
             info!("Actioning (setoption) {}", name);
-            if name == "Explain Eval" {
+            if name == "Explain_Eval" {
                 let _res = self.ext_uci_explain_eval();
-            } else if name == "Explain Last Search" {
+            } else if name == "Explain_Last_Search" {
                 let _res = self.uci_explain_last_search();
-            } else if name == "Explain Quiesce" {
+            } else if name == "Explain_Quiesce" {
                 let _res = self.ext_uci_explain_eval();
-            } else if name == "Show Config" {
+            } else if name == "Show_Config" {
                 let _res = self.ext_uci_show_config();
             } else if name == "Clear Hash" {
                 Self::print("Clearing hash");

@@ -145,9 +145,9 @@ impl Engine {
             .unwrap();
 
         let toml = Toml::string(toml);
-        let mut engine = Self::default();
-        engine.configure(&ParsedConfig::global());
-        // let engine: Engine = Figment::new().merge(engine).merge(toml).extract().unwrap();
+        let engine = Self::default();
+        // engine.configure(&ParsedConfig::global());
+        let engine: Engine = Figment::new().merge(engine).merge(toml).extract().unwrap();
         engine
     }
 
