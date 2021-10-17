@@ -147,7 +147,7 @@ impl Engine {
         let toml = Toml::string(toml);
         let mut engine = Self::default();
         engine.configure(&ParsedConfig::global());
-        let engine: Engine = Figment::new().merge(engine).merge(toml).extract().unwrap();
+        // let engine: Engine = Figment::new().merge(engine).merge(toml).extract().unwrap();
         engine
     }
 
@@ -297,7 +297,7 @@ mod tests {
     fn engine_init_test() {
         let mut engine = Engine::new();
         assert_eq!(engine.algo.eval.position, true);
-        eprintln!("{}", engine);
+        eprintln!("{}", toml::to_string(&engine).unwrap());
         engine = engine.configment("eval.position", "false").unwrap();
         eprintln!("{}", engine);
         assert_eq!(engine.algo.eval.position, false);

@@ -143,24 +143,24 @@ impl Component for Algo {
         debug!("algo.configure");
         self.analyse_mode = c.bool("UCI_AnalyseMode").unwrap_or(self.analyse_mode);
         self.show_refutations = c.bool("UCI_ShowRefutations").unwrap_or(self.show_refutations);
-        // self.minmax = c.bool("algo.minmax").unwrap_or(self.minmax);
-        // self.eval.configure(c);
-        // self.move_orderer.configure(c);
-        // self.mte.configure(c);
-        // self.nmp.configure(c);
-        // self.futility.configure(c);
-        // self.pvs.configure(c);
-        // self.extensions.configure(c);
-        // self.lmr.configure(c);
-        // self.qsearch.configure(c);
-        // self.ids.configure(c);
-        // self.repetition.configure(c);
-        // self.tt.configure(c);
-        // self.killers.configure(c);
-        // self.history.configure(c);
-        // self.explainer.configure(c);
-        // self.restrictions.configure(c);
-        // self.razor.configure(c);
+        self.minmax = c.bool("algo.minmax").unwrap_or(self.minmax);
+        self.eval.configure(c);
+        self.move_orderer.configure(c);
+        self.mte.configure(c);
+        self.nmp.configure(c);
+        self.futility.configure(c);
+        self.pvs.configure(c);
+        self.extensions.configure(c);
+        self.lmr.configure(c);
+        self.qsearch.configure(c);
+        self.ids.configure(c);
+        self.repetition.configure(c);
+        self.tt.configure(c);
+        self.killers.configure(c);
+        self.history.configure(c);
+        self.explainer.configure(c);
+        self.restrictions.configure(c);
+        self.razor.configure(c);
     }
 
     // clears evaluation and transposition caches as well as repetition counts

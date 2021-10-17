@@ -561,7 +561,6 @@ impl Uci {
             };
             // self.engine = Arc::new(Mutex::new(new_engine));
             *self.engine.lock().unwrap() = new_engine;
-            *self.engine.lock().unwrap() = new_engine;
             // let c = ParsedConfig::new().set(&name, &value);
             // self.configure(&c);
         } else {
