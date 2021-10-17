@@ -6,10 +6,11 @@ use crate::search::timecontrol::TimeControl;
 use crate::stat::Stat;
 use crate::utils::Formatter;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fmt;
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
-use anyhow::Result;
+use anyhow::{Result, Context};
 use crate::infra::resources::RESOURCE_DIR;
 use figment::providers::{Format, Toml};
 use figment::value::{Dict, Map};
@@ -150,11 +151,20 @@ impl Engine {
         engine
     }
 
-    pub fn configment(&self, key: &str, value: &str) -> Result<Self> {
-        let engine: Engine = Figment::new()
-            .merge(self)
-            .merge(Toml::string(&format!("{} = {}", key, value)))
-            .extract()?;
+    pub fn configment(&self, key: &str, value: &str ) -> Result<Self> {
+        let mut kvs = HashMap::new(); 
+        kvs.insert(key.to_string(), value.to_string());
+        self.configment_many(kvs)
+    }
+
+    pub fn configment_many(&self, map: HashMap<String, String> ) -> Result<Self> {
+        let mut fig = Figment::new()
+            .merge(self);
+
+        for (k,v) in map.iter() {
+            fig = fig.merge(Toml::string(&format!("{} = {}", k, v)));
+        }    
+        let engine: Engine = fig.extract().context(format!("error in {:?}", map))?;
         Ok(engine)
     }
 

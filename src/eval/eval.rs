@@ -96,8 +96,8 @@ pub struct SimpleScorer {
     pub undefended_piece: Weight,
     pub trapped_piece: Weight,
     pub partially_trapped_piece: Weight,
-    pub defended_non_pawn: Weight,
-    pub xrayed: Weight,
+    // pub defended_non_pawn: Weight,
+    // pub xrayed: Weight,
 
     pub pawn_doubled: Weight,
     pub pawn_isolated: Weight,
@@ -172,8 +172,8 @@ impl Default for SimpleScorer {
             undefended_piece: Weight::from_i32(-3, 49),
             trapped_piece: Weight::from_i32(-17, -22),
             partially_trapped_piece: Weight::from_i32(-7, -15),
-            defended_non_pawn: Weight::from_i32(0, 0),
-            xrayed: Weight::from_i32(0, 0),
+            // defended_non_pawn: Weight::from_i32(0, 0),
+            // xrayed: Weight::from_i32(0, 0),
 
             bishop_pair: Weight::from_i32(62, 58),
             fianchetto: Weight::from_i32(55, 27),
@@ -247,8 +247,8 @@ impl Component for SimpleScorer {
             "eval.mobility.partially.trapped.piece",
             &self.partially_trapped_piece,
         );
-        c.set_weight("eval.mobility.defended.np", &self.defended_non_pawn);
-        c.set_weight("eval.mobility.xrayed", &self.defended_non_pawn);
+        // c.set_weight("eval.mobility.defended.np", &self.defended_non_pawn);
+        // c.set_weight("eval.mobility.xrayed", &self.defended_non_pawn);
         c.set_weight("eval.pawn.isolated", &self.pawn_isolated);
         c.set_weight("eval.pawn.passed", &self.pawn_passed);
         c.set_weight("eval.pawn.passed.r6", &self.pawn_passed_r6);
@@ -316,14 +316,14 @@ impl Component for SimpleScorer {
             "eval.mobility.partially.trapped.piece",
             &self.partially_trapped_piece,
         );
-        self.defended_non_pawn = c.weight(
-            "eval.mobility.defended.np",
-            &self.defended_non_pawn,
-        );
-        self.xrayed = c.weight(
-            "eval.mobility.xrayed",
-            &self.xrayed,
-        );
+        // self.defended_non_pawn = c.weight(
+        //     "eval.mobility.defended.np",
+        //     &self.defended_non_pawn,
+        // );
+        // self.xrayed = c.weight(
+        //     "eval.mobility.xrayed",
+        //     &self.xrayed,
+        // );
         self.rook_open_file = c.weight("eval.rook.open.file", &self.rook_open_file);
         self.rook_pair = c.weight("eval.rook.pair", &self.rook_pair);
 
@@ -390,7 +390,7 @@ impl fmt::Display for SimpleScorer {
         writeln!(f, "undefended.sq    : {}", self.undefended_sq)?;
         writeln!(f, "trapped.piece    : {}", self.trapped_piece)?;
         writeln!(f, "part.trap.piece  : {}", self.partially_trapped_piece)?;
-        writeln!(f, "defended.non.pawn: {}", self.defended_non_pawn)?;
+        // writeln!(f, "defended.non.pawn: {}", self.defended_non_pawn)?;
         writeln!(f, "castling.rights  : {}", self.castling_rights)?;
         // writeln!(f, "pawn.shield      : {}", self.pawn_shield)?;
         writeln!(f, "pawn.doubled     : {}", self.pawn_doubled)?;
@@ -866,7 +866,7 @@ mod tests {
         let w = Catalog::white_starting_position();
         assert_eq!(w.phase(&eval.phaser), 50);
         let score = w.eval(&eval, &Node::root(0));
-        assert!(score < Score::from_cp(-110), "{}", eval.w_eval_explain(&w));
+        assert!(score < Score::from_cp(-105), "{}", eval.w_eval_explain(&w));
         assert!(score > Score::from_cp(-122), "{}", eval.w_eval_explain(&w));
 
         let b = Catalog::black_starting_position();

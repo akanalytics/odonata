@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 // 2+0.02 76/275/380 on 180k iters
 //
 // CLOP - linear
-// 2+0.02 94/431/865
+// 2+0.02 94/431/865 - 90/381/873 at 362k iters
 
 //
 // http://talkchess.com/forum3/viewtopic.php?f=7&t=41597

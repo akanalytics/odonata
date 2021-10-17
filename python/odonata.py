@@ -1261,8 +1261,12 @@ class Odonata:
     def is_ready(self) -> None:
         self._put("isready")
         while True:
-            if self._read_line() == "readyok":
+            text = self._read_line()
+            if text == "readyok":
                 return
+            if text.startswith("info string error"):
+                raise ValueError(f"Received {text} waiting for 'readyok'")
+
 
     def exec_command(self, req, res) -> str:
         self._put(req)

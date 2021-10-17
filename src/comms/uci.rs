@@ -18,6 +18,7 @@ use crate::search::searchprogress::SearchProgress;
 use crate::search::timecontrol::TimeControl;
 use crate::types::Ply;
 use crate::infra::version::Version;
+use std::collections::HashMap;
 use std::fmt;
 use std::io::{self, Write};
 use std::sync::{Arc, Mutex};
@@ -25,6 +26,7 @@ use std::time::{Duration, Instant};
 // use crate::logger::LogInit;
 use std::thread;
 use anyhow::{Result, bail,anyhow};
+use itertools::Itertools;
 
 
 //  see https://www.chessprogramming.org/CPW-Engine_com
@@ -110,6 +112,9 @@ impl Component for Uci {
         c.set("Explain Last Search", "type button");
         c.set("Explain Quiesce", "type button");
         c.set("Show Config", "type button");
+
+        // setoption name Config value setting1=A; setting2=B; setting3=C 
+        c.set("Config", "type string default \"\"");
         self.engine.lock().unwrap().settings(c);
     }
 
@@ -224,7 +229,7 @@ impl Uci {
             _ => self.uci_unknown(&words),
         };
         if let Err(s) = res {
-            Self::print(&format!("info string error '{}'", s));
+            Self::print(&format!("info string error '{:#}'", s));
         }
         io::stdout().flush().ok();
     }
@@ -536,10 +541,26 @@ impl Uci {
             let (name, value) = (name.trim(), value.trim());
             let new_engine = {
                 let engine = self.engine.lock().unwrap();
-                info!("Configuring (setoption) {} = {}", name, value);
-                engine.configment(name, value)?
+                info!("Configuring (setoption) {} with:{}", name, value);
+                if name == "Config" {
+                    let mut kvs = HashMap::new();
+                    let statements = value.split(";").collect_vec();
+                    for s in statements {
+                        let s = s.trim();
+                        if let Some((name, value)) = s.split("=").collect_tuple() {
+
+                            kvs.insert( name.trim().to_string(), value.trim().to_string() );
+                        } else {
+                            bail!("Expected key=value but found '{}'", s)
+                        }
+                    }
+                    engine.configment_many(kvs)?
+                } else {
+                    engine.configment(name, value)?
+                }
             };
             // self.engine = Arc::new(Mutex::new(new_engine));
+            *self.engine.lock().unwrap() = new_engine;
             *self.engine.lock().unwrap() = new_engine;
             // let c = ParsedConfig::new().set(&name, &value);
             // self.configure(&c);

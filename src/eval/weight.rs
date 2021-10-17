@@ -2,6 +2,7 @@ use std::iter;
 use std::fmt;
 use num_traits::{Num, AsPrimitive};
 use serde::{Deserialize, Serialize};
+// use serde::{ Serializer, Deserializer};
 
 
 //
@@ -14,11 +15,41 @@ use serde::{Deserialize, Serialize};
 
 
 // essntially models the score bonus for s=start or e=end of game
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Default)]
-
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
 pub struct WeightOf<T>(T, T) where T:Copy + Num;
 
 pub type Weight = WeightOf<f32>;
+
+
+
+
+
+// // private
+// #[derive(Serialize, Deserialize)]
+// struct WeightOfHelper<T> {
+//     s: T,
+//     e: T,
+// }
+
+// impl<T: Copy + Num + Serialize> Serialize for WeightOf<T> {
+//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//     where
+//         S: Serializer,
+//     {
+//         WeightOfHelper::<T> { s: self.0, e: self.1 }.serialize(serializer)
+//     }
+// }
+
+// impl<'de, T: Copy + Num + Deserialize<'de> > Deserialize<'de> for WeightOf<T> {
+//     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+//     where
+//         D: Deserializer<'de>,
+//     {
+//         Deserialize::deserialize(deserializer)
+//             .map(|WeightOfHelper::<T> { s, e }| WeightOf::<T>(s, e))
+//     }
+// }
+
 
 
 impl<T: Sized> WeightOf<T> where T:'static + Copy + Num, i32: AsPrimitive<T>  {
@@ -177,9 +208,9 @@ mod tests {
     
 
     #[test]
-    fn serde_weight_test() {
+    fn weight_serde_test() {
         info!("{}", toml::to_string(&Weight::default()).unwrap());
-        info!("{}", toml::to_string_pretty(&Weight::default()).unwrap());
+        // info!("{}", toml::to_string_pretty(&Weight::default()).unwrap());
     }
 }
 
