@@ -47,12 +47,12 @@ impl Default for Pst {
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct PstProxy {
-    pawn: [[Weight; 8]; 8],
-    knight: [[Weight; 8]; 8],
-    bishop: [[Weight; 8]; 8],
-    rook: [[Weight; 8]; 8],
-    queen: [[Weight; 8]; 8],
-    king: [[Weight; 8]; 8],
+    p: [[Weight; 8]; 8],
+    n: [[Weight; 8]; 8],
+    b: [[Weight; 8]; 8],
+    r: [[Weight; 8]; 8],
+    q: [[Weight; 8]; 8],
+    k: [[Weight; 8]; 8],
 }
 
 
@@ -61,7 +61,7 @@ impl From<PstProxy> for Pst {
     fn from(pp: PstProxy) -> Self {
         let mut pst = Pst::default();
         for (i, &p) in Piece::ALL_BAR_NONE.iter().enumerate() {
-            let b = [&pp.pawn, &pp.knight, &pp.bishop, &pp.rook, &pp.queen, &pp.king][i];
+            let b = [&pp.p, &pp.n, &pp.b, &pp.r, &pp.q, &pp.k][i];
             for sq in Square::all() {
               pst.array[p][sq] = b[sq.rank_index()][sq.file_index()];
             }
@@ -74,7 +74,7 @@ impl Into<PstProxy> for Pst {
     fn into(self) -> PstProxy {
         let mut pp = PstProxy::default();
         for (i, &p) in Piece::ALL_BAR_NONE.iter().enumerate() {
-            let b = &mut [&mut pp.pawn, &mut pp.knight, &mut pp.bishop, &mut pp.rook, &mut pp.queen, &mut pp.king][i];
+            let b = &mut [&mut pp.p, &mut pp.n, &mut pp.b, &mut pp.r, &mut pp.q, &mut pp.k][i];
             for sq in Square::all() {
                 b[sq.rank_index()][sq.file_index()] = self.array[p][sq];
             }
