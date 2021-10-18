@@ -13,6 +13,8 @@ import signal
 import sys
 from dataclasses import dataclass
 from jsonrpyc import Spec, RPC
+import atexit 
+
 
 
 
@@ -908,61 +910,6 @@ class Eval:
 
 
 
-class Engine:
-    def __init__(self, path: str = '', toml: str = '', depth: Optional[int] = None, millis: Optional[int] = None, nodes: Optional[int] = None) -> None:
-        self.millis = millis
-        self.node_count = nodes
-        self.depth = depth
-        self.results = {}
-        self.path = path
-        self.toml = toml
-
-
-    def args(self) -> str:
-        return self.toml
-
-    def engine_version(self) -> str:
-        return Odonata.instance(self.path, self.toml).engine_version()
-
-    def set_option(self, key: str, value: Any):
-        Odonata.instance(self.path, self.toml).set_option(key, value)
-
-    # can return None when no moves available (or found in time)
-    def search(self, b: Board) -> Optional[Move]:
-        odo = Odonata.instance(self.path, self.toml)
-        bm = odo.get_best_move(b, depth=self.depth, millis=self.millis, nodes=self.node_count)
-        self.results = odo.parse_search_results()
-        return bm
-
-    def new_game(self):
-        Odonata.instance(self.path, self.toml)._start_new_game()
-
-    def nps(self) -> int:
-        return int(self.results[-1]['nps'])
-
-    def time(self) -> int:
-        return int(self.results[-1]['time'])
-
-    def nodes(self) -> int:
-        return int(self.results[-1]['nodes'])
-
-    def pv(self) -> List[Move]:
-        return self.results[-1]['pv']
-
-    def max_depth(self) -> int:
-        return int(self.results[-1]['depth'])
-
-    def seldepth(self) -> int:
-        return int(self.results[-1]['seldepth'])
-
-    def centipawns(self) -> int:
-        return int(self.results[-1].get('centipawns') or '0')
-
-    def mate_in(self) -> Optional[str]:
-        return self.results[-1].get('mate')
-
-Algo = Engine
-
 
 class Catalog:
     def __init__(self) -> None:
@@ -986,10 +933,10 @@ class Catalog:
 
 
 
-def handle_signal(signum, _frame):
-    logger.info('Exiting due to SIGTERM...')
-    Odonata.instance().__del__()
-    sys.exit(signum) 
+# def handle_signal(signum, _frame):
+#     logger.info('Exiting due to SIGTERM...')
+#     # Odonata.instance().__del__()
+#     sys.exit(signum) 
 
 
 
@@ -998,31 +945,61 @@ def handle_signal(signum, _frame):
 # best not to use this class directly
 class Odonata:
 
-    # indexed by path, toml_config_path
-    _instances: Dict[Tuple[str,str], Odonata] = {}
+    _instance :Optional[Odonata] = None
 
-    @classmethod
-    def instance(cls, path: str = '', toml: str = '', debug: bool = False) -> Odonata:
-        inst = cls._instances.get((path,toml))
-        if not inst:
-            
-            inst = cls.__new__(cls)
-            assert inst != None
-            inst.__init__(path, toml, debug)
-            logger.info(f"Called init on {inst.path} with toml {inst._toml}")
-            cls._instances[(path, toml)] = inst
-            # Put more initialization here maybe
-        return inst
+    # indexed by path, toml_config_path
+    #    _instances: Dict[Tuple[str,str], Odonata] = {}
 
     DEFAULT_ODONATA_PARAMS = {
         "Hash": 16,
     }
 
 
+    @classmethod
+    def instance(cls) -> Odonata:
+        if cls._instance is None:
+            cls._instance = cls.create()
+        return cls._instance
+        
+
+    @classmethod
+    def create(cls, path: str = '', args: List[str] = [], debug: bool = False) -> Odonata:
+        inst = cls.__new__(cls)
+        assert inst != None
+        inst.__init__(path, args, debug)
+        logger.info(f"Called init on {inst.path} with args {inst._args}")
+
+        def cleanup():
+            if not inst._process or not inst._process.stdin:
+                logger.info(f"Call to cleanup on {inst._path} ignored")
+                return
+
+            logger.info(f"Calling cleanup on {inst._path} stdin file-handle={inst._process.stdin.fileno()}")
+            inst.quit()
+
+            # logger.info(f"after quit {self._read_line()}")
+            time.sleep(0.001)
+            inst._process = None
+            # self._process.wait(100)
+            # logger.warning(f"after quit {self._read_line()}")
+            # self._process.kill()
+
+        atexit.register(cleanup)
+        return inst
 
 
 
-    def __init__(self, path: str = '', toml: str = '', debug: bool = False) -> None:
+
+
+    def __init__(self, path: str = '', args: List[str] = [], debug: bool = False) -> None:
+        
+        self._process: Optional[subprocess.Popen]
+        self._args: List[str]
+        self._path: str
+        self._engine_version: str
+        self._debug: bool
+        self.short_display_name: str
+
         if not path:
             # try and look for Odonata executable
             files = [
@@ -1041,16 +1018,16 @@ class Odonata:
             if not path:
                 raise ValueError(f"Unable to find executable in {files}")
 
-        self.debug: bool = debug
-        logger.info(f"loading odonata from {path} with toml {toml}\n")
+        self.short_display_name = path
+        self._debug = debug
+        logger.info(f"loading odonata from {path} with args {args}\n")
         self._path = path
-        self._toml: str = toml
-        if not toml:
+        self._args = args
+        if not args:
             cmd = path
         else:
-            cmd = [path, f"--config={toml}"]
-        import sys
-        self.process: Optional[subprocess.Popen] = subprocess.Popen(
+            cmd = [path] + args
+        self._process = subprocess.Popen(
             cmd,
             # bufsize=10000,
             universal_newlines=True,
@@ -1059,7 +1036,7 @@ class Odonata:
             stdout=subprocess.PIPE
         )
 
-        signal.signal(signal.SIGTERM, handle_signal)
+        # signal.signal(signal.SIGTERM, handle_signal)
 
         
         self._put("uci")
@@ -1076,51 +1053,39 @@ class Odonata:
 
         # self.depth = str(depth)
         self.infos: List[str] = []
-        self.rpc = RPC(stdout=self.process.stdin, stdin=self.process.stdout, watch=False)
-
-        # if parameters is None:
-        #     parameters = {}
-        # self._parameters = DEFAULT_ODONATA_PARAMS
-        # self._parameters.update(parameters)
-        # for name, value in list(self._parameters.items()):
-        #     self._set_option(name, value)
+        self.rpc = RPC(stdout=self._process.stdin, stdin=self._process.stdout, watch=False)
 
 
-    # def get_parameters(self) -> dict:
-    #     """Returns current board position.
-    #     Returns:
-    #         Dictionary of current Odonata engine's parameters.
-    #     """
-    #     return self._parameters
 
     def path(self) -> str:
         return self._path
 
-    def args(self) -> str:
-        return self._toml
+    def args(self) -> List[str]:
+        return self._args
 
     def _start_new_game(self) -> None:
         self._put("ucinewgame")
         self.is_ready()
         self.infos = []
 
+
     def _put(self, command: str) -> None:
         
-        if not self.process:
-            raise BrokenPipeError("_put: self.process is None")
-        if not self.process.stdin:            
-            raise BrokenPipeError("_put: self.process.stdin is None")
+        if not self._process:
+            raise BrokenPipeError("_put: self._process is None")
+        if not self._process.stdin:            
+            raise BrokenPipeError("_put: self._process.stdin is None")
         # if self.debug:
         logger.info(f"=> {command}")
-        self.process.stdin.write(f"{command}\n")
-        self.process.stdin.flush()
+        self._process.stdin.write(f"{command}\n")
+        self._process.stdin.flush()
 
     def _read_line(self) -> str:
-        if not self.process or not self.process.stdout:
+        if not self._process or not self._process.stdout:
             raise BrokenPipeError()
-        # if not self.process.stderr:
+        # if not self._process.stderr:
         #     raise BrokenPipeError()
-        text = self.process.stdout.readline().strip()
+        text = self._process.stdout.readline().strip()
         # if self.debug:
         logger.info(f"<= {text}")
         return text
@@ -1370,22 +1335,153 @@ class Odonata:
     def quit(self) -> None:
         self._put("quit")
 
-    def __del__(self) -> None:
-        if not self.process or not self.process.stdin:
-            logger.info(f"Call to __del__ on {self._path} ignored")
-            return
 
-        logger.info(f"Calling __del__ on {self._path} {self.process.stdin}")
-        self.quit()
-        # logger.info(f"after quit {self._read_line()}")
-        time.sleep(0.001)
-        self.process = None
-        # self.process.wait(100)
-        # logger.warning(f"after quit {self._read_line()}")
-        # self.process.kill()
+
+class Engine:
+    def __init__(self, instance: Optional[Odonata] = None, depth: Optional[int] = None, millis: Optional[int] = None, nodes: Optional[int] = None) -> None:
+        if instance:
+            self._instance: Odonata = instance
+        else:
+            self._instance: Odonata = Odonata.instance()
+        
+        self._path = self._instance._path
+        self._millis = millis
+        self._node_count = nodes
+        self._depth = depth
+        self._results = {}
+
+
+    # def engine_args(self) -> List[str]:
+    #     return self.args
+
+    def engine_version(self) -> str:
+        return self._instance.engine_version()
+
+    def set_option(self, key: str, value: Any):
+        assert self._instance is not None
+        self._instance.set_option(key, value)
+
+    # can return None when no moves available (or found in time)
+    def search(self, b: Board) -> Optional[Move]:
+        odo = self._instance
+        bm = odo.get_best_move(b, depth=self._depth, millis=self._millis, nodes=self._node_count)
+        self._results = odo.parse_search_results()
+        return bm
+
+    def new_game(self):
+        self._instance._start_new_game()
+
+    def nps(self) -> int:
+        return int(self._results[-1]['nps'])
+
+    def time(self) -> int:
+        return int(self._results[-1]['time'])
+
+    def nodes(self) -> int:
+        return int(self._results[-1]['nodes'])
+
+    def pv(self) -> List[Move]:
+        return self._results[-1]['pv']
+
+    def max_depth(self) -> int:
+        return int(self._results[-1]['depth'])
+
+    def seldepth(self) -> int:
+        return int(self._results[-1]['seldepth'])
+
+    def centipawns(self) -> int:
+        return int(self._results[-1].get('centipawns') or '0')
+
+    def mate_in(self) -> Optional[str]:
+        return self._results[-1].get('mate')
+
+Algo = Engine
+
+
+
+@dataclass
+class EngineParams:
+    executable_name: str
+    uci_options: Dict[str, str]
+    command_line_args: List[str]
+    short_display_name: str
+    tc: Optional[str] = None
+    ponder: bool = False
+
+    @staticmethod
+    def parse(desc: str) -> 'EngineParams':
+        """Parses a decription line into an executable and uci_options
+        For example:
+        odonate-0.1.2:Show_Config:Threads=3:Config=razor.enabled=true;nmp.enabled=false:--config="filename"
+
+        ":" seperates executable and uci_options and command line args (which start with '--')
+        tc and Ponder are held seperately
+        The line is condensed into a short_display_name 
+        """
+        name, _, rest = desc.partition(":")
+        # engine_key = f"{engine_name}-{platform.system()}"
+        uci_options = {}
+        command_line_args = []
+        tc = None
+        ponder = False
+        if rest:
+            for config in rest.split(":"):
+                if config.startswith("tc="):
+                    key, _, value = config.partition("=")
+                    tc = value
+                elif config.startswith("Ponder="):
+                    key, _, value = config.partition("=")
+                    ponder = (value == "True" or value == "true")
+                elif config.startswith("--"):
+                    command_line_args.append(config)
+                else:
+                    key, _, value = config.partition("=")
+                    uci_options[key] = value
+
+        # build up a short display name (such as 1.4.1:rf=m)
+        parts = []
+        parts.append(name)
+        parts.append(".".join(["".join(w[0] for w in k.split(".")) + "=" +
+                               v for k, v in uci_options.items()]))  # first letter of each subkey
+        for arg in command_line_args:
+            if arg.startswith("--config="):
+                k, _, v = arg.partition("=") 
+                v = v.replace("file", "")
+                v = v.replace("--config", "")
+                v = v.replace("config", "")
+                v = v.replace("-", "")
+                v = v.replace("_", "")
+                v = v.replace("../", "")
+                v = v.replace("./", "")
+                v = v.replace(".toml", "")
+                v = v.replace(".xml", "")
+                v = v.replace(".ini", "")
+                v = v.replace("true", "t").replace("false", "f")
+                parts.append("C=" + v)  
+            else:            
+                arg = arg.replace("--", "").replace("-", "")
+                parts.append(arg)
+
+        if ponder:
+            parts.append("P=t")
+        short_name = ":".join(parts)
+        return EngineParams(name, uci_options, command_line_args, short_name, tc, ponder)
+
+
+
 
 
 class Test:
+
+    def test_engine_params(self):
+        line="odo-1.4.1:--config=../config-file-41.toml:Threads=3:tc=3+0.3:Ponder=true"
+        params = EngineParams.parse(line)
+        assert params.executable_name == "odo-1.4.1"
+        assert params.command_line_args == ["--config=../config-file-41.toml"]
+        assert params.ponder == True
+        assert params.uci_options == { "Threads": "3" }
+        assert params.short_display_name == "odo-1.4.1:T=3:C=41:P=t"
+        assert params.tc == "3+0.3"    
 
     def test_square(self):
         assert str(Square(63)) == 'h8'
@@ -1575,10 +1671,12 @@ class Test:
 
 
 
+
+
 def demo_1():
     # first call to instance() sets the path for future uses of "instance"
     # it will reuse the existing (kept running) instance until shutdown
-    odo = Odonata.instance(path='', debug=False)
+    odo = Odonata.instance()
     odo.is_ready()
     b = Board.parse_fen("r1k5/8/8/8/8/8/7P/R6K w - - 0 10")
     eval = Eval()
@@ -1757,6 +1855,7 @@ def benchmark_1():
 
 def tests():
     test = Test()
+    test.test_engine_params()
     test.test_square()
     test.test_bitboard()
     test.test_moves()
