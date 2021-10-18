@@ -184,6 +184,7 @@ impl Engine {
 
     pub fn search_start(&mut self) {
         debug!("resize?? {}", self.algo.tt.requires_resize());
+        self.algo.task_control.set_running();
         let t = Instant::now();
         for i in 0..self.thread_count {
             let builder = thread::Builder::new().name(format!("S{}", i)).stack_size(800_000);

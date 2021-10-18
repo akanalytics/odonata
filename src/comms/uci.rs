@@ -466,6 +466,7 @@ impl Uci {
     // }
 
     fn uci_go(&mut self, args: &Args) -> Result<()> {
+        self.engine.lock().unwrap().search_stop();
         let ponder = args.contain("ponder");
 
         //  search x ply only
@@ -535,6 +536,7 @@ impl Uci {
     }
 
     fn uci_setoption(&mut self, input: &str) -> Result<()> {
+        self.engine.lock().unwrap().search_stop();
         let s = input.strip_prefix("setoption").ok_or(anyhow!("missing setoption"))?.trim();
         let s = s.strip_prefix("name").ok_or(anyhow!("missing name"))?.trim();
         let name_value = s.rsplit_once("value");
@@ -589,6 +591,7 @@ impl Uci {
     }
 
     fn uci_show_options(&self) {
+        self.engine.lock().unwrap().search_stop();
         let mut c = ParsedConfig::new();
         self.settings(&mut c);
         for (name, value) in c.iter() {
