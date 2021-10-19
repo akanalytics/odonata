@@ -9,101 +9,210 @@
 # 
 
 # baseline
-eval.material=true
-eval.position=true
-eval.safety=true
-eval.mobility=true
-eval.pawn=true
-mb.enabled=false
-phaser.method="SO"
-eval.contempt.penalty.e=-30
-eval.contempt.penalty.s=-30
 
-# tuned
-eval.p.e=148
-eval.n.s=624
-eval.n.e=401
-eval.b.s=633
-eval.b.e=426
-eval.r.s=847
-eval.r.e=766
-eval.q.s=1809
-eval.q.e=1411
-eval.center.attacks.s=6
-eval.center.attacks.e=-1
-eval.mobility.undef.sq.s=2
-eval.mobility.undef.sq.e=4
-eval.mobility.undef.piece.s=-4
-eval.mobility.undef.piece.e=47
-eval.mobility.trapped.piece.s=-16
-eval.mobility.trapped.piece.e=-18
-eval.mobility.partially.trapped.piece.s=-7
-eval.mobility.partially.trapped.piece.e=-14
-eval.pawn.r5.s=14
-eval.pawn.r5.e=32
-eval.pawn.r6.s=-14
-eval.pawn.r6.e=168
-eval.pawn.r7.s=103
-eval.pawn.r7.e=224
-eval.pawn.doubled.s=14
-eval.pawn.doubled.e=-35
-eval.pawn.isolated.s=-35
-eval.pawn.isolated.e=-6
-eval.pawn.passed.s=17
-eval.pawn.passed.e=17
-eval.pawn.passed.r5.s=17
-eval.pawn.passed.r5.e=43
-eval.pawn.passed.r6.s=17
-eval.pawn.passed.r6.e=107
-eval.passers.on.rim.s=-19
-eval.passers.on.rim.e=21
-eval.blockaded.s=24
-eval.blockaded.e=-37
-eval.blockaded.passers.s=-24
-eval.blockaded.passers.e=-51
-eval.tempo.bonus.s=41
-eval.tempo.bonus.e=50
-eval.pawn.adjacent.shield.s=52
-eval.pawn.adjacent.shield.e=-15
-eval.pawn.nearby.shield.s=47
-eval.pawn.nearby.shield.e=-14
-eval.open.files.near.king.s=-7
-eval.open.files.near.king.e=-1
-eval.attacks.near.king.s=10
-eval.attacks.near.king.e=1
-eval.castling.rights.s=9
-eval.castling.rights.e=12
-eval.tropism.d1.s=-34
-eval.tropism.d1.e=24
-eval.tropism.d2.s=-30
-eval.tropism.d2.e=11
-eval.tropism.d3.s=-1
-eval.tropism.d3.e=1
-eval.rook.open.file.s=56
-eval.rook.open.file.e=-3
-eval.rook.pair.s=-8
-eval.rook.pair.e=0
-eval.rook.edge.s=28
-eval.rook.edge.e=13
-eval.doubled.rooks.s=22
-eval.doubled.rooks.e=13
-eval.doubled.rooks.open.file.s=-16
-eval.doubled.rooks.open.file.e=31
-eval.queen.open.file.s=-22
-eval.queen.open.file.e=42
-eval.queen.early.develop.s=11
-eval.queen.early.develop.e=11
-eval.fianchetto.s=43
-eval.fianchetto.e=17
-eval.bishop.pair.s=61
-eval.bishop.pair.e=71
-eval.bishop.color.pawns.s=-6
-eval.bishop.color.pawns.e=-4
-eval.bishop.outposts.s=61
-eval.bishop.outposts.e=3
-eval.knight.forks.s=2
-eval.knight.forks.e=66
-eval.knight.outposts.s=53
-eval.knight.outposts.e=22
 
-#end of file
+shared_tt = true
+thread_count = 1
+config_filename = "config.toml"
+minmax = false
+
+[ids]
+enabled = true
+part_ply = true
+step_size = 1
+start_ply = 1
+end_ply = 127
+
+[eval]
+material = true
+position = true
+mobility = true
+pawn = true
+safety = true
+contempt = true
+tempo = true
+phasing = true
+mobility_phase_disable = 101
+quantum = 1
+min_depth_mob = 1
+center_attacks = [6.0, -1.0]
+undefended_sq = [2.0, 4.0]
+undefended_piece = [-4.0, 47.0]
+trapped_piece = [-16.0, -18.0]
+partially_trapped_piece = [-7.0, -14.0]
+pawn_doubled = [14.0, -35.0]
+pawn_isolated = [-35.0, -6.0]
+pawn_passed = [17.0, 17.0]
+pawn_passed_r6 = [17.0, 107.0]
+pawn_passed_r5 = [17.0, 43.0]
+passers_on_rim = [-19.0, 21.0]
+blockaded = [24.0, -37.0]
+blockaded_passers = [-24.0, -51.0]
+bishop_pair = [61.0, 71.0]
+fianchetto = [43.0, 17.0]
+bishop_outposts = [61.0, 3.0]
+bishop_color_pawns = [-6.0, -4.0]
+knight_forks = [2.0, 66.0]
+knight_outposts = [53.0, 22.0]
+rook_pair = [-8.0, 0.0]
+doubled_rooks = [22.0, 13.0]
+doubled_rooks_open_file = [-16.0, 31.0]
+rook_open_file = [56.0, -3.0]
+queen_open_file = [-22.0, 42.0]
+queen_early_develop = [0.0, 0.0]
+pawn_adjacent_shield = [52.0, -15.0]
+pawn_nearby_shield = [47.0, -14.0]
+open_files_near_king = [-7.0, -1.0]
+attacks_near_king = [10.0, 1.0]
+tropism_d1 = [-34.0, 24.0]
+tropism_d2 = [-30.0, 11.0]
+tropism_d3 = [-1.0, 1.0]
+castling_rights = [9.0, 12.0]
+contempt_penalty = [-30.0, -30.0]
+tempo_bonus = [41.0, 50.0]
+
+[eval.phaser]
+enabled = true
+method = "SO"
+half_way_score = 3250
+
+[eval.mb]
+enabled = false
+filename = ""
+consistency_report = true
+consistency_adjust = true
+internal_stats = false
+draws_only = false
+min_games = 50
+max_pawns = 5
+trade_factor = 2
+pawn = [100.0, 148.0]
+knight = [624.0, 401.0]
+bishop = [633.0, 426.0]
+rook = [847.0, 766.0]
+queen = [1809.0, 1411.0]
+
+# [eval.pst]
+# p = [[[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]], [[103.0, 224.0], [103.0, 224.0], [103.0, 224.0], [103.0, 224.0], [103.0, 224.0], [103.0, 224.0], [103.0, 224.0], [103.0, 224.0]], [[-14.0, 168.0], [-14.0, 168.0], [-14.0, 168.0], [-14.0, 168.0], [-14.0, 168.0], [-14.0, 168.0], [-14.0, 168.0], [-14.0, 168.0]], [[14.0, 32.0], [14.0, 32.0], [14.0, 32.0], [19.0, 32.0], [19.0, 32.0], [14.0, 32.0], [14.0, 32.0], [14.0, 32.0]], [[-9.0, 10.0], [0.0, 10.0], [0.0, 10.0], [20.0, 10.0], [20.0, 10.0], [-5.0, 10.0], [-5.0, 10.0], [-9.0, 10.0]], [[-5.0, 5.0], [-5.0, 5.0], [-9.0, 5.0], [0.0, 5.0], [0.0, 5.0], [-9.0, 5.0], [-5.0, 5.0], [-5.0, 5.0]], [[4.0, 0.0], [15.0, 0.0], [15.0, 0.0], [-35.0, 0.0], [-35.0, 0.0], [15.0, 0.0], [15.0, 0.0], [4.0, 0.0]], [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]]
+# n = [[[-50.0, -50.0], [-40.0, -40.0], [-30.0, -30.0], [-30.0, -30.0], [-30.0, -30.0], [-30.0, -30.0], [-40.0, -40.0], [-50.0, -50.0]], [[-40.0, -40.0], [-20.0, -20.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [-20.0, -20.0], [-40.0, -40.0]], [[-30.0, -30.0], [0.0, 0.0], [10.0, 10.0], [15.0, 15.0], [15.0, 15.0], [10.0, 10.0], [0.0, 0.0], [-30.0, -30.0]], [[-30.0, -30.0], [5.0, 5.0], [15.0, 15.0], [20.0, 20.0], [20.0, 20.0], [15.0, 15.0], [5.0, 5.0], [-30.0, -30.0]], [[-30.0, -30.0], [0.0, 0.0], [15.0, 15.0], [20.0, 20.0], [20.0, 20.0], [15.0, 15.0], [0.0, 0.0], [-30.0, -30.0]], [[-30.0, -30.0], [5.0, 5.0], [10.0, 10.0], [15.0, 15.0], [15.0, 15.0], [10.0, 10.0], [5.0, 5.0], [-30.0, -30.0]], [[-40.0, -40.0], [-20.0, -20.0], [0.0, 0.0], [5.0, 5.0], [5.0, 5.0], [0.0, 0.0], [-20.0, -20.0], [-40.0, -40.0]], [[-50.0, -50.0], [-40.0, -40.0], [-30.0, -30.0], [-30.0, -30.0], [-30.0, -30.0], [-30.0, -30.0], [-40.0, -40.0], [-50.0, -50.0]]]
+# b = [[[-20.0, -20.0], [-10.0, -10.0], [-10.0, -10.0], [-10.0, -10.0], [-10.0, -10.0], [-10.0, -10.0], [-10.0, -10.0], [-20.0, -20.0]], [[-10.0, -10.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [-10.0, -10.0]], [[-10.0, -10.0], [0.0, 0.0], [5.0, 5.0], [10.0, 10.0], [10.0, 10.0], [5.0, 5.0], [0.0, 0.0], [-10.0, -10.0]], [[-10.0, -10.0], [5.0, 5.0], [5.0, 5.0], [10.0, 10.0], [10.0, 10.0], [5.0, 5.0], [5.0, 5.0], [-10.0, -10.0]], [[-10.0, -10.0], [0.0, 0.0], [10.0, 10.0], [10.0, 10.0], [10.0, 10.0], [10.0, 10.0], [0.0, 0.0], [-10.0, -10.0]], [[-10.0, -10.0], [10.0, 10.0], [10.0, 10.0], [10.0, 10.0], [10.0, 10.0], [10.0, 10.0], [10.0, 10.0], [-10.0, -10.0]], [[-10.0, -10.0], [5.0, 5.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [5.0, 5.0], [-10.0, -10.0]], [[-20.0, -20.0], [-10.0, -10.0], [-15.0, -10.0], [-10.0, -10.0], [-10.0, -10.0], [-15.0, -10.0], [-10.0, -10.0], [-20.0, -20.0]]]
+# r = [[[0.0, 13.0], [0.0, 13.0], [0.0, 13.0], [0.0, 13.0], [0.0, 13.0], [0.0, 13.0], [0.0, 13.0], [0.0, 13.0]], [[5.0, 13.0], [10.0, 0.0], [10.0, 0.0], [10.0, 0.0], [10.0, 0.0], [10.0, 0.0], [10.0, 0.0], [5.0, 13.0]], [[-5.0, 13.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [-5.0, 13.0]], [[-5.0, 13.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [-5.0, 13.0]], [[-5.0, 13.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [-5.0, 13.0]], [[-5.0, 13.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [-5.0, 13.0]], [[-5.0, 13.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [-5.0, 13.0]], [[0.0, 13.0], [0.0, 13.0], [3.0, 13.0], [7.0, 13.0], [7.0, 13.0], [5.0, 13.0], [0.0, 13.0], [0.0, 13.0]]]
+# q = [[[-20.0, -20.0], [-10.0, -10.0], [-10.0, -10.0], [-5.0, -5.0], [-5.0, -5.0], [-10.0, -10.0], [-10.0, -10.0], [-20.0, -20.0]], [[-10.0, -10.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [-10.0, -10.0]], [[-10.0, -10.0], [0.0, 0.0], [5.0, 5.0], [5.0, 5.0], [5.0, 5.0], [5.0, 5.0], [0.0, 0.0], [-10.0, -10.0]], [[-5.0, -5.0], [0.0, 0.0], [5.0, 5.0], [5.0, 5.0], [5.0, 5.0], [5.0, 5.0], [0.0, 0.0], [-5.0, -5.0]], [[0.0, 0.0], [0.0, 0.0], [5.0, 5.0], [5.0, 5.0], [5.0, 5.0], [5.0, 5.0], [0.0, 0.0], [-5.0, -5.0]], [[-10.0, -10.0], [5.0, 5.0], [5.0, 5.0], [5.0, 5.0], [5.0, 5.0], [5.0, 5.0], [0.0, 0.0], [-10.0, -10.0]], [[-10.0, -10.0], [0.0, 0.0], [5.0, 5.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [-10.0, -10.0]], [[-20.0, -20.0], [-10.0, -10.0], [-10.0, -10.0], [5.0, -5.0], [-5.0, -5.0], [-10.0, -10.0], [-10.0, -10.0], [-20.0, -20.0]]]
+# k = [[[-30.0, -50.0], [-40.0, -40.0], [-40.0, -30.0], [-50.0, -20.0], [-50.0, -20.0], [-40.0, -30.0], [-40.0, -40.0], [-30.0, -50.0]], [[-30.0, -30.0], [-40.0, -20.0], [-40.0, -10.0], [-50.0, 0.0], [-50.0, 0.0], [-40.0, -10.0], [-40.0, -20.0], [-30.0, -30.0]], [[-30.0, -30.0], [-40.0, -10.0], [-40.0, 20.0], [-50.0, 30.0], [-50.0, 30.0], [-40.0, 20.0], [-40.0, -10.0], [-30.0, -30.0]], [[-30.0, -30.0], [-40.0, -10.0], [-40.0, 30.0], [-50.0, 40.0], [-50.0, 40.0], [-40.0, 30.0], [-40.0, -10.0], [-30.0, -30.0]], [[-20.0, -30.0], [-30.0, -10.0], [-30.0, 30.0], [-40.0, 40.0], [-40.0, 40.0], [-30.0, 30.0], [-30.0, -10.0], [-20.0, -30.0]], [[-10.0, -30.0], [-20.0, -10.0], [-20.0, 20.0], [-20.0, 30.0], [-20.0, 30.0], [-20.0, 20.0], [-20.0, -10.0], [-10.0, -30.0]], [[0.0, -30.0], [0.0, -30.0], [0.0, 0.0], [-10.0, 0.0], [-20.0, 0.0], [-10.0, 0.0], [0.0, -30.0], [0.0, -30.0]], [[20.0, -50.0], [30.0, -30.0], [15.0, -30.0], [-20.0, -30.0], [0.0, -30.0], [-20.0, -30.0], [30.0, -30.0], [10.0, -50.0]]]
+
+[qsearch]
+enabled = true
+only_on_capture = false
+promos = false
+ignore_see_fails = true
+see_cutoff = 0
+max_ply = 10
+coarse_delta_prune = 1000
+switches = 1279
+
+[nmp]
+enabled = true
+recursive = true
+successive = true
+min_depth = 2
+depth_reduction_strat = 100
+a = 2.7
+b = 0.198
+c = 0.00017
+
+[futility]
+alpha_enabled = true
+beta_enabled = false
+prune_remaining = false
+avoid_checks = false
+avoid_promos = false
+promo_margin = false
+max_depth = 2
+max_depth_captures = 2
+margin1 = 100
+margin2 = 250
+margin3 = 1500
+eval_switches = 255
+move_types_forbidden = 0
+
+[pvs]
+enabled = true
+min_depth = 2
+
+[extensions]
+check_enabled = false
+check_max_depth = 3
+check_max_phase = 60
+promo_enabled = false
+promo_max_depth = 1
+promo_rank = 7
+promo_extend = 1
+
+[lmr]
+enabled = true
+pv_node = true
+only_nt_all = false
+bad_captures = true
+pawns = true
+promos = false
+killers = false
+min_depth = 2
+re_search = false
+alpha_numeric = false
+red_strat = 6
+
+[mte]
+branching_factor = 15
+perc_of_time_adv = 100
+moves_rem = 10
+deterministic = false
+nodestime = 0
+
+[move_orderer]
+enabled = true
+prior_pv = true
+prior_bm = false
+tt_bm = true
+mvv_lva = true
+order = ["Start", "Hash", "Initialize", "GoodCaptureUpfrontSorted", "Killer", "Promo", "Quiet", "BadCapture", "End"]
+qorder = ["Start", "Initialize", "Capture", "End"]
+
+[repetition]
+enabled = true
+avoid_tt_on_repeats = false
+
+[tt]
+aging = true
+probe_leaf_nodes = true
+current_age = 10
+enabled = true
+use_tt_for_pv = false
+allow_truncated_pv = false
+allow_tt_at_root = false
+mb = 8
+hmvc_horizon = 85
+min_ply = 1
+
+[killers]
+enabled = true
+clear_every_move = false
+use_ply_below = true
+
+[history]
+enabled = true
+scale = 1
+age_factor = 4
+
+[explainer]
+enabled = false
+
+[restrictions]
+enabled = true
+
+[razor]
+enabled = true
+max_depth = 3
+margin1 = 100
+margin2 = 300
+margin3 = 500
+move_types_forbidden = 994

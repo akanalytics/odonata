@@ -1,0 +1,109 @@
+#
+# Run: 68
+# MSE improved from 0.063189 to 0.062911 (-0.44%)
+# MSE improved from 0.063189 to 0.062914 (-0.43%) using integer weights
+# Training file ../epd/quiet-labeled.epd
+# Odonata odonata 0.3.48 built on Thu, 07 Oct 2021 16:34:16 +0000
+# Path ../engines/odonata/odonata-stable
+# Completed... 104.1 M position evaluations per second (6512 recalcs x 1417268 file lines)
+# 
+
+# baseline
+eval.material=true
+eval.position=true
+eval.safety=true
+eval.mobility=true
+eval.pawn=true
+mb.enabled=false
+phaser.method="SO"
+eval.contempt.penalty.e=-30
+eval.contempt.penalty.s=-30
+
+# tuned
+eval.p.e=148
+eval.n.s=624
+eval.n.e=401
+eval.b.s=633
+eval.b.e=426
+eval.r.s=847
+eval.r.e=766
+eval.q.s=1809
+eval.q.e=1411
+eval.center.attacks.s=6
+eval.center.attacks.e=-1
+eval.mobility.undef.sq.s=2
+eval.mobility.undef.sq.e=4
+eval.mobility.undef.piece.s=-4
+eval.mobility.undef.piece.e=47
+eval.mobility.trapped.piece.s=-16
+eval.mobility.trapped.piece.e=-18
+eval.mobility.partially.trapped.piece.s=-7
+eval.mobility.partially.trapped.piece.e=-14
+eval.pawn.r5.s=14
+eval.pawn.r5.e=32
+eval.pawn.r6.s=-14
+eval.pawn.r6.e=168
+eval.pawn.r7.s=103
+eval.pawn.r7.e=224
+eval.pawn.doubled.s=14
+eval.pawn.doubled.e=-35
+eval.pawn.isolated.s=-35
+eval.pawn.isolated.e=-6
+eval.pawn.passed.s=17
+eval.pawn.passed.e=17
+eval.pawn.passed.r5.s=17
+eval.pawn.passed.r5.e=43
+eval.pawn.passed.r6.s=17
+eval.pawn.passed.r6.e=107
+eval.passers.on.rim.s=-19
+eval.passers.on.rim.e=21
+eval.blockaded.s=24
+eval.blockaded.e=-37
+eval.blockaded.passers.s=-24
+eval.blockaded.passers.e=-51
+eval.tempo.bonus.s=41
+eval.tempo.bonus.e=50
+eval.pawn.adjacent.shield.s=52
+eval.pawn.adjacent.shield.e=-15
+eval.pawn.nearby.shield.s=47
+eval.pawn.nearby.shield.e=-14
+eval.open.files.near.king.s=-7
+eval.open.files.near.king.e=-1
+eval.attacks.near.king.s=10
+eval.attacks.near.king.e=1
+eval.castling.rights.s=9
+eval.castling.rights.e=12
+eval.tropism.d1.s=-34
+eval.tropism.d1.e=24
+eval.tropism.d2.s=-30
+eval.tropism.d2.e=11
+eval.tropism.d3.s=-1
+eval.tropism.d3.e=1
+eval.rook.open.file.s=56
+eval.rook.open.file.e=-3
+eval.rook.pair.s=-8
+eval.rook.pair.e=0
+eval.rook.edge.s=28
+eval.rook.edge.e=13
+eval.doubled.rooks.s=22
+eval.doubled.rooks.e=13
+eval.doubled.rooks.open.file.s=-16
+eval.doubled.rooks.open.file.e=31
+eval.queen.open.file.s=-22
+eval.queen.open.file.e=42
+eval.queen.early.develop.s=11
+eval.queen.early.develop.e=11
+eval.fianchetto.s=43
+eval.fianchetto.e=17
+eval.bishop.pair.s=61
+eval.bishop.pair.e=71
+eval.bishop.color.pawns.s=-6
+eval.bishop.color.pawns.e=-4
+eval.bishop.outposts.s=61
+eval.bishop.outposts.e=3
+eval.knight.forks.s=2
+eval.knight.forks.e=66
+eval.knight.outposts.s=53
+eval.knight.outposts.e=22
+
+#end of file

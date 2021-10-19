@@ -81,31 +81,31 @@ impl fmt::Display for Engine {
 }
 
 impl Component for Engine {
-    fn settings(&self, c: &mut ParsedConfig) {
-        c.set(
-            "Threads",
-            &format!("type spin default {} min 1 max 16", self.thread_count),
-        );
-        c.set(
-            "ParsedConfig file",
-            &format!("type string default {}", self.config_filename),
-        );
-        self.algo.settings(c);
+    fn settings(&self, _c: &mut ParsedConfig) {
+        // c.set(
+        //     "Threads",
+        //     &format!("type spin default {} min 1 max 16", self.thread_count),
+        // );
+        // c.set(
+        //     "ParsedConfig file",
+        //     &format!("type string default {}", self.config_filename),
+        // );
+        // self.algo.settings(c);
     }
-    fn configure(&mut self, c: &ParsedConfig) {
-        info!("engine.configure");
-        self.thread_count = c.int("Threads").unwrap_or(self.thread_count.into()) as u32;
-        self.config_filename = c
-            .string("ParsedConfig file")
-            .unwrap_or(self.config_filename.clone());
-        if self.config_filename != DEFAULT_CONFIG_FILE {
-            if let Ok(config) = &ParsedConfig::read_from_file(&self.config_filename) {
-                // FIXME: HOW to handle file error?
-                self.algo.configure(config);
-                return;
-            }
-        }
-        self.algo.configure(c);
+    fn configure(&mut self, _c: &ParsedConfig) {
+        // info!("engine.configure");
+        // self.thread_count = c.int("Threads").unwrap_or(self.thread_count.into()) as u32;
+        // self.config_filename = c
+        //     .string("ParsedConfig file")
+        //     .unwrap_or(self.config_filename.clone());
+        // if self.config_filename != DEFAULT_CONFIG_FILE {
+        //     if let Ok(config) = &ParsedConfig::read_from_file(&self.config_filename) {
+        //         // FIXME: HOW to handle file error?
+        //         self.algo.configure(config);
+        //         return;
+        //     }
+        // }
+        // self.algo.configure(c);
     }
 
     // clears evaluation and transposition caches as well as repetition counts
@@ -139,7 +139,7 @@ impl Provider for Engine {
 impl Engine {
     pub fn new() -> Self {
         let toml = RESOURCE_DIR
-            .get_file("figment.toml")
+            .get_file("config.toml")
             .unwrap()
             .contents_utf8()
             .unwrap();

@@ -21,7 +21,7 @@ pub trait Component {
 
 #[dynamic(lazy)]
 static mut STATIC_INSTANCE: ParsedConfig = { 
-    let c = ParsedConfig::parse(&RESOURCE_DIR.get_file("config.toml").unwrap().contents_utf8().unwrap(), "<internal>");
+    let c = ParsedConfig::parse(&RESOURCE_DIR.get_file("old-format.toml").unwrap().contents_utf8().unwrap(), "<internal>");
     if c.is_err() {
         warn!("Unable to open config.toml");
         return ParsedConfig::default()

@@ -120,13 +120,13 @@ impl Component for Uci {
         self.engine.lock().unwrap().settings(c);
     }
 
-    fn configure(&mut self, c: &ParsedConfig) {
-        info!("Configuring uci with\n{}", c);
+    fn configure(&mut self, _c: &ParsedConfig) {
+        // info!("Configuring uci with\n{}", c);
 
         // if let Some(b) = c.bool("debug") {
         //     self.debug = b;
         // }
-        self.engine.lock().unwrap().configure(&c);
+        // self.engine.lock().unwrap().configure(&c);
     }
 
     fn new_game(&mut self) {
@@ -146,7 +146,7 @@ impl Uci {
             json_rpc: JsonRpc::new(Arc::clone(&engine)),
             debug: false,
             running: false,
-            config_file: "figment.toml".to_string(),
+            config_file: "config.toml".to_string(),
             preamble: Vec::default(),
         };
         uci.engine.lock().unwrap().set_position(Position::from_board(uci.board.clone()));
@@ -538,6 +538,20 @@ impl Uci {
         Ok(())
     }
 
+    fn print_uci_options(&self) {
+        Self::print(&format!("option name UCI_EngineAbout type string default {} {}", Version::NAME, Version::HOMEPAGE));
+        Self::print("option name debug type check default false");
+        Self::print("option name Ponder type check default false");
+        Self::print("option name Clear Hash type button");
+        Self::print("option name Explain_Eval type button");
+        Self::print("option name Explain_Last_Search type button");
+        Self::print("option name Explain_Quiesce type button");
+        Self::print("option name Show_Config type button");
+        Self::print(&format!("option name Config_File type string default {}", self.config_file));
+
+        // setoption name Config value setting1=A; setting2=B; setting3=C 
+        Self::print("option name Config type string default \"\"");
+    }
 
     fn uci_option_button(&mut self, name: &str) {
         let name = name.trim();
@@ -571,6 +585,9 @@ impl Uci {
             engine.configment("analyse_mode", value)
         } else if name == "UCI_ShowRefutations" {
             engine.configment("show_refutations", value)
+        } else if name == "Ponder" {
+            // pondering determined by "go ponder", so no variable to track
+            Ok(engine.clone())
         } else if name == "Config_File" {
             self.config_file = value.to_string();                        
             use figment::providers::{Format, Toml};
@@ -629,11 +646,12 @@ impl Uci {
 
     fn uci_show_options(&self) {
         self.engine.lock().unwrap().search_stop();
-        let mut c = ParsedConfig::new();
-        self.settings(&mut c);
-        for (name, value) in c.iter() {
-            Self::print(&format!("option name {} {}", name, value));
-        }
+        // let mut c = ParsedConfig::new();
+        // self.settings(&mut c);
+        // for (name, value) in c.iter() {
+        //     Self::print(&format!("option name {} {}", name, value));
+        // }
+        self.print_uci_options()
     }
     
     fn ext_uci_show_config(&mut self) -> Result<()> {
