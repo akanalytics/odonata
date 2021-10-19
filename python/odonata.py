@@ -1334,6 +1334,7 @@ class Odonata:
 
     def quit(self) -> None:
         self._put("quit")
+        self._instance._process = None
 
 
 
