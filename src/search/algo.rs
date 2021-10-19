@@ -39,6 +39,8 @@ use super::search_explainer::SearchExplainer;
 #[serde(default)]
 pub struct Algo {
     pub minmax: bool,
+    pub show_refutations: bool, 
+    pub analyse_mode: bool, // tries to find full PV etc
     pub ids: IterativeDeepening,
     pub eval: SimpleScorer,
     pub qsearch: QSearch,
@@ -75,10 +77,6 @@ pub struct Algo {
     pub pv_table: PvTable,
     #[serde(skip)]
     pub current_best: Option<Move>,
-    #[serde(skip)]
-    pub show_refutations: bool, 
-    #[serde(skip)]
-    pub analyse_mode: bool, // tries to find full PV etc
     //pub score: Score,
 
     // child_thread: AlgoThreadHandle,

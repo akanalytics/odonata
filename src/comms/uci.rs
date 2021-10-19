@@ -98,6 +98,7 @@ pub struct Uci {
     board: Board,
     engine: Arc<Mutex<Engine>>,
     debug: bool,
+    config_file: String,
     json_rpc: JsonRpc,
 //     subscriber: 
 }
@@ -112,6 +113,7 @@ impl Component for Uci {
         c.set("Explain_Last_Search", "type button");
         c.set("Explain_Quiesce", "type button");
         c.set("Show_Config", "type button");
+        c.set("Config_File", &format!("type string default {}", self.config_file));
 
         // setoption name Config value setting1=A; setting2=B; setting3=C 
         c.set("Config", "type string default \"\"");
@@ -121,9 +123,9 @@ impl Component for Uci {
     fn configure(&mut self, c: &ParsedConfig) {
         info!("Configuring uci with\n{}", c);
 
-        if let Some(b) = c.bool("debug") {
-            self.debug = b;
-        }
+        // if let Some(b) = c.bool("debug") {
+        //     self.debug = b;
+        // }
         self.engine.lock().unwrap().configure(&c);
     }
 
@@ -144,6 +146,7 @@ impl Uci {
             json_rpc: JsonRpc::new(Arc::clone(&engine)),
             debug: false,
             running: false,
+            config_file: "figment.toml".to_string(),
             preamble: Vec::default(),
         };
         uci.engine.lock().unwrap().set_position(Position::from_board(uci.board.clone()));
@@ -535,15 +538,63 @@ impl Uci {
         Ok(())
     }
 
+
+    fn uci_option_button(&mut self, name: &str) {
+        let name = name.trim();
+        info!("Actioning (setoption) {}", name);
+        if name == "Explain_Eval" {
+            let _res = self.ext_uci_explain_eval();
+        } else if name == "Explain_Last_Search" {
+            let _res = self.uci_explain_last_search();
+        } else if name == "Explain_Quiesce" {
+            let _res = self.ext_uci_explain_eval();
+        } else if name == "Show_Config" {
+            let _res = self.ext_uci_show_config();
+        } else if name == "Clear Hash" {
+            Self::print("Clearing hash");
+            let _res = self.uci_newgame();
+        } else {
+            warn!("Unknown action '{}'", name);
+        }
+    }
+
+    fn uci_option_name_value(&mut self, name: &str, value: &str) -> Result<Engine> {
+        let engine = self.engine.lock().unwrap();
+
+        // handle specific name/value uci options
+        if name == "debug" {
+            self.debug = value == "true";
+            Ok(engine.clone())
+        } else if name == "Threads" {
+            engine.configment("thread_count", value)
+        } else if name == "UCI_AnalyseMode" {
+            engine.configment("analyse_mode", value)
+        } else if name == "UCI_ShowRefutations" {
+            engine.configment("show_refutations", value)
+        } else if name == "Config_File" {
+            self.config_file = value.to_string();                        
+            use figment::providers::{Format, Toml};
+            use figment::{Figment};
+            use anyhow::Context;
+            // use toml;
+            let fig = Figment::new()
+                .merge(&*engine)
+                .merge(Toml::file(&self.config_file));
+
+            fig.extract().context(format!("error in config file {}", &self.config_file))
+        } else {
+            engine.configment(name, value)
+        }
+    }
+
     fn uci_setoption(&mut self, input: &str) -> Result<()> {
         self.engine.lock().unwrap().search_stop();
         let s = input.strip_prefix("setoption").ok_or(anyhow!("missing setoption"))?.trim();
-        let s = s.strip_prefix("name").ok_or(anyhow!("missing name"))?.trim();
+        let s = s.strip_prefix("name").ok_or(anyhow!("missing 'name' from setoption"))?.trim();
         let name_value = s.rsplit_once("value");
         if let Some((name,value)) = name_value {
             let (name, value) = (name.trim(), value.trim());
             let new_engine = {
-                let engine = self.engine.lock().unwrap();
                 info!("Configuring (setoption) {} with:<{}>", name, value);
                 if name == "Config" {
                     let mut kvs = HashMap::new();
@@ -557,11 +608,11 @@ impl Uci {
                             bail!("Expected key=value but found '{}'", s)
                         }
                     }
+                    let engine = self.engine.lock().unwrap();
                     engine.configment_many(kvs)?
                 } else {
-                    engine.configment(name, value)?
+                    self.uci_option_name_value(name, value)?
                 }
-        
             };
             // self.engine = Arc::new(Mutex::new(new_engine));
             *self.engine.lock().unwrap() = new_engine;
@@ -569,26 +620,12 @@ impl Uci {
             // self.configure(&c);
             self.engine.lock().unwrap().set_position(Position::from_board(self.board.clone()));
             self.engine.lock().unwrap().algo.set_callback(|sp| Self::uci_info(sp));
-    } else {
-            let name = s.trim();
-            info!("Actioning (setoption) {}", name);
-            if name == "Explain_Eval" {
-                let _res = self.ext_uci_explain_eval();
-            } else if name == "Explain_Last_Search" {
-                let _res = self.uci_explain_last_search();
-            } else if name == "Explain_Quiesce" {
-                let _res = self.ext_uci_explain_eval();
-            } else if name == "Show_Config" {
-                let _res = self.ext_uci_show_config();
-            } else if name == "Clear Hash" {
-                Self::print("Clearing hash");
-                let _res = self.uci_newgame();
-            } else {
-                warn!("Unknown action '{}'", name);
-            }
+        } else {
+            self.uci_option_button(s);
         };
         Ok(())
     }
+
 
     fn uci_show_options(&self) {
         self.engine.lock().unwrap().search_stop();
@@ -807,6 +844,19 @@ mod tests {
     }
 
     #[test]
+    fn test_uci_config_file() {
+        let mut uci = Uci::new();
+        assert_eq!(uci.engine.lock().unwrap().algo.eval.position, true);
+        uci.preamble
+            .push("setoption name Config_File value ../odonata-extras/output/72-figment.toml".into());
+        uci.preamble
+            .push("setoption name Show_Config".into());
+        uci.preamble.push("quit".into());
+        uci.run();
+        assert_eq!(uci.engine.lock().unwrap().algo.eval.position, false);
+    }
+
+    #[test]
     fn test_uci_setoption() {
         let mut uci = Uci::new();
         assert_eq!(uci.engine.lock().unwrap().algo.eval.position, true);
@@ -816,11 +866,11 @@ mod tests {
         uci.preamble
             .push("setoption name eval.position value false".into());
         uci.preamble
-            .push("setoption name Explain Eval".into());
+            .push("setoption name Explain_Eval".into());
         uci.preamble
             .push("setoption name eval.pst.pawn value [[[10.0, 10.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]], [[103.0, 224.0], [103.0, 224.0], [103.0, 224.0], [103.0, 224.0], [103.0, 224.0], [103.0, 224.0], [103.0, 224.0], [103.0, 224.0]], [[-14.0, 168.0], [-14.0, 168.0], [-14.0, 168.0], [-14.0, 168.0], [-14.0, 168.0], [-14.0, 168.0], [-14.0, 168.0], [-14.0, 168.0]], [[14.0, 32.0], [14.0, 32.0], [14.0, 32.0], [19.0, 32.0], [19.0, 32.0], [14.0, 32.0], [14.0, 32.0], [14.0, 32.0]], [[-9.0, 10.0], [0.0, 10.0], [0.0, 10.0], [20.0, 10.0], [20.0, 10.0], [-5.0, 10.0], [-5.0, 10.0], [-9.0, 10.0]], [[-5.0, 5.0], [-5.0, 5.0], [-9.0, 5.0], [0.0, 5.0], [0.0, 5.0], [-9.0, 5.0], [-5.0, 5.0], [-5.0, 5.0]], [[4.0, 0.0], [15.0, 0.0], [15.0, 0.0], [-35.0, 0.0], [-35.0, 0.0], [15.0, 0.0], [15.0, 0.0], [4.0, 0.0]], [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]]".into());
         uci.preamble
-            .push("setoption name Show Config".into());
+            .push("setoption name Show_Config".into());
         uci.preamble.push("quit".into());
         uci.run();
         assert_eq!(uci.engine.lock().unwrap().algo.eval.position, false);
