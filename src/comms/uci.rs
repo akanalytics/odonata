@@ -539,8 +539,11 @@ impl Uci {
     }
 
     fn print_uci_options(&self) {
+        let engine = self.engine.lock().unwrap();
         Self::print(&format!("option name UCI_EngineAbout type string default {} {}", Version::NAME, Version::HOMEPAGE));
         Self::print("option name debug type check default false");
+        Self::print(&format!("option name Threads type spin default {} min 1 max 16", engine.thread_count));
+        Self::print(&format!("option name Hash type spin default {} min 0 max 4000", engine.algo.tt.mb));
         Self::print("option name Ponder type check default false");
         Self::print("option name Clear Hash type button");
         Self::print("option name Explain_Eval type button");
@@ -581,6 +584,8 @@ impl Uci {
             Ok(engine.clone())
         } else if name == "Threads" {
             engine.configment("thread_count", value)
+        } else if name == "Hash" {
+            engine.configment("tt.mb", value)
         } else if name == "UCI_AnalyseMode" {
             engine.configment("analyse_mode", value)
         } else if name == "UCI_ShowRefutations" {
