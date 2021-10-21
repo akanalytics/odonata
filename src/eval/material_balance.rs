@@ -4,6 +4,7 @@ use crate::material::Material;
 use crate::mv::Move;
 use crate::types::{Color, Piece, ScoreWdl};
 use static_init::dynamic;
+use std::collections::HashMap;
 use std::fmt;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::fs::File;
@@ -15,6 +16,7 @@ use anyhow::{Result, anyhow, bail};
 
 
 #[derive(Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct MaterialBalance {
     pub enabled: bool,
     pub filename: String,
@@ -27,12 +29,14 @@ pub struct MaterialBalance {
     pub trade_factor: i32,
     #[serde(flatten)]
     pub piece_weights: PieceWeights,
+    // #[serde(skip)]
+    pub balances: Balances,
 }
 
 
 impl Default for MaterialBalance {
     fn default() -> Self {
-        let mb = Self {
+        let mut mb = Self {
             enabled: false,
             internal_stats: false,
             filename: String::new(),
@@ -42,6 +46,9 @@ impl Default for MaterialBalance {
             min_games: 50,
             max_pawns: 5,
             trade_factor: 2,
+            balances: Balances {
+                entries: HashMap::new(),
+            },
 
             piece_weights: PieceWeights {
                 none: Weight::zero(),
@@ -53,9 +60,20 @@ impl Default for MaterialBalance {
                 king: Weight::zero(),
             },
         };
+        mb.balances.entries.insert("PKppk".to_string(), 200);
+        mb.balances.entries.insert("PQRKppbnk".to_string(), -123);
         mb
     }
 }
+
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct Balances {
+    entries: HashMap<String, i32>,
+}
+
+
+
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PieceWeights {
@@ -650,7 +668,7 @@ mod tests {
 
 
     #[test]
-    fn serde_mb_test() {
+    fn mb_serde_test() {
         info!("\n{}", toml::to_string(&MaterialBalance::default()).unwrap());
         // info!("\n{}", toml::to_string_pretty(&SimpleScorer::default()).unwrap());
     }

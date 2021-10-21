@@ -30,9 +30,6 @@ position           = true
 safety             = true
 mobility           = true
 pawn               = true
-mb.enabled         = false
-phaser.method      = "SO"
-contempt_penalty   = [ -30.00,  -30.00]
 
 
 # tuned

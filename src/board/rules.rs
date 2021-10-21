@@ -111,14 +111,14 @@ impl Rules {
         if b.en_passant().is_empty() {
             return;
         }
-        let ct = b.color_them();
+        let them = b.color_them();
         let to = b.en_passant();
-        let capture_sq = to.shift(ct.forward());
+        let capture_sq = to.shift(them.forward());
         let checkers = b.checkers_of(b.color_us());
         if checkers.popcount() == 1 {
             // any non-pinned pawn can capture the checker
             if capture_sq == checkers {
-                let fr_e = to.shift(ct.pawn_capture_west());
+                let fr_e = to.shift(them.pawn_capture_west());
                 if (fr_e & b.pawns() & b.us() & !b.pinned()).any() {
                     moves.push(Move::new_ep_capture(
                         fr_e.square(),
@@ -126,7 +126,7 @@ impl Rules {
                         capture_sq.square(),
                     ));
                 }
-                let fr_w = to.shift(ct.pawn_capture_east());
+                let fr_w = to.shift(them.pawn_capture_east());
                 if (fr_w & b.pawns() & b.us() & !b.pinned()).any() {
                     moves.push(Move::new_ep_capture(
                         fr_w.square(),
@@ -136,12 +136,14 @@ impl Rules {
                 }
             }
         } else if checkers.popcount() == 0 {
-            let fr_e = to.shift(ct.pawn_capture_west());
-            let fr_w = to.shift(ct.pawn_capture_east());
+            let fr_e = to.shift(them.pawn_capture_west());
+            let fr_w = to.shift(them.pawn_capture_east());
             for fr in ((fr_e | fr_w) & b.pawns() & b.us()).squares() {
-                if fr.is_in(b.pinned()) {
-                    continue;
-                }
+                // this optimization is not valid, as a bishop can pin a pawn in the direction of capture
+                // which allows the pawn to capture
+                // if fr.is_in(b.pinned()) {
+                //     continue;
+                // }
                 // special case: will removing the capture piece AND moving the pawn result in check
                 let m = Move::new_ep_capture(fr, to.square(), capture_sq.square());
                 if b.is_legal_move(&m) {
