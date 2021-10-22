@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::infra::parsed_config::{Component, ParsedConfig};
+use crate::infra::parsed_config::{Component};
 use crate::material::Material;
 use crate::Piece;
 
@@ -35,21 +35,6 @@ impl fmt::Display for Phaser {
 }
 
 impl Component for Phaser {
-    fn settings(&self, c: &mut ParsedConfig) {
-        c.set("phaser.enabled", &format!("type check default {}", self.enabled));
-        c.set("phaser.method", &format!("type string default {}", self.method));
-        c.set(
-            "phaser.half.way.score",
-            &format!("type spin min 0 max 12000 default {}", self.half_way_score),
-        );
-    }
-
-    fn configure(&mut self, c: &ParsedConfig) {
-        debug!("phaser.configure");
-        self.enabled = c.bool("phaser.enabled").unwrap_or(self.enabled);
-        self.method = c.string("phaser.method").unwrap_or(self.method.clone());
-        self.half_way_score = c.int("phaser.half.way.score").unwrap_or(self.half_way_score as i64).clamp(1,6400) as i32;
-    }
 
     fn new_game(&mut self) {}
 

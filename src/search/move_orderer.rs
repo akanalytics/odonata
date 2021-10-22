@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::infra::parsed_config::{Component, ParsedConfig};
+use crate::infra::parsed_config::{Component};
 use crate::movelist::MoveList;
 use crate::mv::Move;
 use crate::search::algo::Algo;
@@ -41,28 +41,6 @@ pub struct MoveOrderer {
 }
 
 impl Component for MoveOrderer {
-    fn settings(&self, c: &mut ParsedConfig) {
-        c.set("moveorderer.enabled", "type check default true");
-        c.set("moveorderer.prior_pv", "type check default true");
-        c.set("moveorderer.prior_bm", "type check default false");
-        c.set("moveorderer.tt_bm", "type check default true");
-        c.set("moveorderer.mvv_lva", "type check default true");
-        c.set("moveorderer.order", &format!("type string default {}", MoveType::slice_to_string(&self.order)));
-        c.set("moveorderer.qorder", &format!("type string default {}", MoveType::slice_to_string(&self.qorder)));
-    }
-    fn configure(&mut self, c: &ParsedConfig) {
-        debug!("moveorderer.configure");
-        self.enabled = c.bool("moveorderer.enabled").unwrap_or(self.enabled);
-        self.prior_bm = c.bool("moveorderer.prior_bm").unwrap_or(self.prior_bm);
-        self.prior_pv = c.bool("moveorderer.prior_pv").unwrap_or(self.prior_pv);
-        self.tt_bm = c.bool("moveorderer.tt_bm").unwrap_or(self.tt_bm);
-        self.mvv_lva = c.bool("moveorderer.mvv_lva").unwrap_or(self.mvv_lva);
-        let order = c.string("moveorderer.order").unwrap_or(MoveType::slice_to_string(&self.order));
-        let qorder = c.string("moveorderer.qorder").unwrap_or(MoveType::slice_to_string(&self.qorder));
-        // FIXME! Error handling
-        self.order = MoveType::vec_from_string(&order).unwrap();
-        self.qorder = MoveType::vec_from_string(&qorder).unwrap();
-    }
 
     fn new_game(&mut self) {
         self.picker.clear();

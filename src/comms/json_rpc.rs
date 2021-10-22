@@ -1,14 +1,13 @@
 use crate::board::Board;
 use crate::catalog::{Catalog, CatalogSuite};
-use crate::infra::parsed_config::Component;
 use crate::position::Position;
 use crate::search::engine::Engine;
 use crate::tags::Tag;
 use crate::tuning::Tuning;
 use crate::infra::version::built_info;
 use crate::infra::version::Version;
-use crate::infra::parsed_config::ParsedConfig;
 use anyhow::Context;
+use itertools::Itertools;
 // // use crate::{info, logger::LogInit};
 // use serde_json::Value;
 use jsonrpc_core::{IoHandler, Result};
@@ -17,6 +16,8 @@ use std::fs::File;
 use std::io::BufWriter;
 use std::sync::Arc;
 use std::sync::Mutex;
+
+use super::uci::Uci;
 
 fn to_rpc_error(err: impl Into<anyhow::Error>) -> jsonrpc_core::Error {
     jsonrpc_core::Error {
@@ -155,9 +156,8 @@ impl Rpc for RpcImpl {
     }
 
     fn options(&self) -> Result<String> {
-        let mut c = ParsedConfig::new();
-        self.engine.lock().unwrap().settings(&mut c);
-        Ok(c.to_string())
+        let ops = Uci::uci_options(&self.engine.lock().unwrap());
+        Ok(ops.iter().join("\n"))
     }
 
     fn eval(&self, board: Board) -> Result<Position> {

@@ -1,7 +1,7 @@
 use crate::bitboard::bitboard::Bitboard;
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
-use crate::infra::parsed_config::{Component, ParsedConfig};
+use crate::infra::parsed_config::{Component};
 use crate::eval::score::Score;
 use crate::eval::switches::Switches;
 use crate::movelist::MoveList;
@@ -45,39 +45,6 @@ impl Default for QSearch {
 
 
 impl Component for QSearch {
-    fn settings(&self, c: &mut ParsedConfig) {
-        c.set("qsearch.enabled", &format!("type check default {}", self.enabled));
-        c.set("qsearch.only.on.capture", &format!("type check default {}", self.only_on_capture));
-        c.set("qsearch.promos", &format!("type check default {}", self.promos));
-        c.set("qsearch.see.cutoff", &format!("type spin default {} min -5000 max 5000", self.see_cutoff));
-        c.set("qsearch.see.ignore.fails", &format!("type check default {}", self.ignore_see_fails));
-        c.set("qsearch.max.ply", &format!("type spin default {} min 0 max 100", self.max_ply));
-        c.set(
-            "qsearch.switches",
-            &format!("type string default {}", self.switches.to_string()),
-        );
-        c.set(
-            "qsearch.coarse.delta.prune.cp",
-            &format!("type spin default {} min 0 max 10000", self.coarse_delta_prune.as_i16())
-        );
-    }
-    fn configure(&mut self, c: &ParsedConfig) {
-        debug!("qsearch.configure");
-        self.enabled = c.bool("qsearch.enabled").unwrap_or(self.enabled);
-        self.only_on_capture = c.bool("qsearch.only.on.capture").unwrap_or(self.only_on_capture);
-        self.promos = c.bool("qsearch.promos").unwrap_or(self.promos);
-        self.see_cutoff = c.int("qsearch.see.cutoff").unwrap_or(self.see_cutoff);
-        self.ignore_see_fails = c
-            .bool("qsearch.see.ignore.fails")
-            .unwrap_or(self.ignore_see_fails);
-        self.max_ply = c.int("qsearch.max.ply").unwrap_or(self.max_ply as i64) as u16;
-        if let Some(cp) = c.int("qsearch.coarse.delta.prune.cp") {
-            self.coarse_delta_prune = Score::from_cp(cp as i32);
-        }
-        if let Ok(sw) = Switches::parse(&c.string("qsearch.switches").unwrap_or(self.switches.to_string())) {
-            self.switches = sw;
-        }
-    }
     fn new_game(&mut self) {}
 
     fn new_position(&mut self) {}

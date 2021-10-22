@@ -7,7 +7,7 @@ use crate::board::Board;
 use crate::bound::NodeType;
 use crate::cache::lockless_hashmap::SharedTable;
 use crate::eval::score::Score;
-use crate::infra::parsed_config::{Component, ParsedConfig};
+use crate::infra::parsed_config::{Component};
 use crate::mv::Move;
 use crate::stat::{ArrayStat, Stat};
 use crate::types::{Hash, Piece, Ply};
@@ -361,48 +361,6 @@ impl Default for TranspositionTable2 {
 }
 
 impl Component for TranspositionTable2 {
-    fn settings(&self, c: &mut ParsedConfig) {
-        c.set("tt.enabled", &format!("type check default {}", self.enabled));
-        c.set("tt.aging", &format!("type check default {}", self.aging));
-        c.set(
-            "tt.probe.leaf.nodes",
-            &format!("type check default {}", self.probe_leaf_nodes),
-        );
-        c.set(
-            "tt.use.tt.for.pv",
-            &format!("type check default {}", self.use_tt_for_pv),
-        );
-        c.set(
-            "tt.allow.truncated.pv",
-            &format!("type check default {}", self.allow_truncated_pv),
-        );
-        c.set(
-            "tt.allow.tt.at.root",
-            &format!("type check default {}", self.allow_tt_at_root),
-        );
-        c.set("Hash", &format!("type spin default {} min 0 max 4000", self.mb));
-        c.set(
-            "tt.hmvc.horizon",
-            &format!("type spin default {} min 0 max 100", self.hmvc_horizon),
-        );
-        c.set(
-            "tt.min.ply",
-            &format!("type spin default {} min 0 max 100", self.min_ply),
-        );
-    }
-    fn configure(&mut self, c: &ParsedConfig) {
-        debug!("tt.configure");
-        self.aging = c.bool("tt.aging").unwrap_or(self.aging);
-        self.enabled = c.bool("tt.enabled").unwrap_or(self.enabled);
-        self.probe_leaf_nodes = c.bool("tt.probe.leaf.nodes").unwrap_or(self.probe_leaf_nodes);
-        self.use_tt_for_pv = c.bool("tt.use.tt.for.pv").unwrap_or(self.use_tt_for_pv);
-        self.allow_truncated_pv = c.bool("tt.allow.truncated.pv").unwrap_or(self.allow_truncated_pv);
-        self.allow_tt_at_root = c.bool("tt.allow.tt.at.root").unwrap_or(self.allow_tt_at_root);
-        self.mb = c.int("Hash").unwrap_or(self.mb);
-        // table is resized on next clear / generation
-        self.hmvc_horizon = c.int("tt.hmvc_horizon").unwrap_or(self.hmvc_horizon as i64) as i32;
-        self.min_ply = c.int("tt.min.ply").unwrap_or(self.min_ply as i64) as Ply;
-    }
 
     fn new_game(&mut self) {
         if self.requires_resize() {

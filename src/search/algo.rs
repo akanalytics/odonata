@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::cache::tt2::TranspositionTable2;
-use crate::infra::parsed_config::{Component, ParsedConfig};
+use crate::infra::parsed_config::{Component};
 use crate::eval::eval::SimpleScorer;
 use crate::eval::score::Score;
 use crate::globals::counts;
@@ -114,52 +114,6 @@ impl Algo {
 }
 
 impl Component for Algo {
-    fn settings(&self, c: &mut ParsedConfig) {
-        c.set("algo_minmax", "type check default false");
-        // c.set("UCI_AnalyseMode", "type check default false");
-        // c.set("UCI_ShowRefutations", &format!("type check default {}", self.show_refutations));       
-
-        // self.eval.settings(c);
-        // self.mte.settings(c);
-        // self.move_orderer.settings(c);
-        // self.nmp.settings(c);
-        // self.futility.settings(c);
-        // self.pvs.settings(c);
-        // self.extensions.settings(c);
-        // self.lmr.settings(c);
-        // self.qsearch.settings(c);
-        // self.ids.settings(c);
-        // self.repetition.settings(c);
-        // self.tt.settings(c);
-        // self.killers.settings(c);
-        // self.history.settings(c);
-        // self.explainer.settings(c);
-        // self.restrictions.settings(c);
-        // self.razor.settings(c);
-    }
-    fn configure(&mut self, c: &ParsedConfig) {
-        debug!("algo.configure");
-        self.analyse_mode = c.bool("UCI_AnalyseMode").unwrap_or(self.analyse_mode);
-        self.show_refutations = c.bool("UCI_ShowRefutations").unwrap_or(self.show_refutations);
-        self.minmax = c.bool("algo.minmax").unwrap_or(self.minmax);
-        self.eval.configure(c);
-        self.move_orderer.configure(c);
-        self.mte.configure(c);
-        self.nmp.configure(c);
-        self.futility.configure(c);
-        self.pvs.configure(c);
-        self.extensions.configure(c);
-        self.lmr.configure(c);
-        self.qsearch.configure(c);
-        self.ids.configure(c);
-        self.repetition.configure(c);
-        self.tt.configure(c);
-        self.killers.configure(c);
-        self.history.configure(c);
-        self.explainer.configure(c);
-        self.restrictions.configure(c);
-        self.razor.configure(c);
-    }
 
     // clears evaluation and transposition caches as well as repetition counts
     fn new_game(&mut self) {

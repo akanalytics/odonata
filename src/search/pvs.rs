@@ -3,7 +3,7 @@ use crate::board::Board;
 use crate::search::node::Node;
 use crate::eval::score::Score;
 use crate::bound::NodeType;
-use crate::infra::parsed_config::{ParsedConfig, Component};
+use crate::infra::parsed_config::{Component};
 // use crate::{debug, logger::LogInit};
 use crate::types::Ply;
 use std::fmt;
@@ -22,16 +22,6 @@ pub struct Pvs {
 }
 
 impl Component for Pvs {
-    fn settings(&self, c: &mut ParsedConfig) {
-        c.set("pvs.enabled", &format!("type check default {}", self.enabled));
-        c.set("pvs.min.depth",  &format!("type spin min 0 max 100 default {}", self.min_depth));
-    }
-    fn configure(&mut self, c: &ParsedConfig) {
-        debug!("pvs.configure");
-        self.enabled = c.bool("pvs.enabled").unwrap_or(self.enabled);
-        self.min_depth = c.int("pvs.min.depth").unwrap_or(self.min_depth as i64) as Ply;
-
-    }
     fn new_game(&mut self) {
         self.new_position();
     }

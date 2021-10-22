@@ -1,6 +1,6 @@
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
-use crate::infra::parsed_config::{Component, ParsedConfig};
+use crate::infra::parsed_config::{Component};
 use crate::mv::Move;
 use crate::types::{Hash, Piece, Repeats};
 use crate::variation::Variation;
@@ -23,18 +23,6 @@ pub struct Repetition {
 }
 
 impl Component for Repetition {
-    fn settings(&self, c: &mut ParsedConfig) {
-        c.set("repetition.enabled", &format!("type check default {}", self.enabled));
-        c.set("repetition.avoid.tt.on.repeats", &format!("type check default {}", self.avoid_tt_on_repeats));
-    }
-
-    fn configure(&mut self, c: &ParsedConfig) {
-        debug!("repetition.configure");
-        self.enabled = c.bool("repetition.enabled").unwrap_or(self.enabled);
-        self.avoid_tt_on_repeats = c
-            .bool("repetition.avoid.tt.on.repeats")
-            .unwrap_or(self.avoid_tt_on_repeats)
-    }
     fn new_game(&mut self) {
         self.new_position();
     }

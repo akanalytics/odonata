@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::infra::parsed_config::{Component, ParsedConfig};
+use crate::infra::parsed_config::{Component};
 use crate::eval::score::Score;
 use crate::search::node::Node;
 use crate::types::{MoveType, MoveTypes, Ply};
@@ -50,46 +50,6 @@ pub struct Razor {
 }
 
 impl Component for Razor {
-    fn settings(&self, c: &mut ParsedConfig) {
-        c.set("razor.enabled", &format!("type check default {}", self.enabled));
-        c.set(
-            "razor.max.depth",
-            &format!("type spin min 0 max 100 default {}", self.max_depth),
-        );
-        c.set(
-            "razor.margin1",
-            &format!("type spin min -9999 max 9999 default {}", self.margin1),
-        );
-        c.set(
-            "razor.margin2",
-            &format!("type spin min -9999 max 9999 default {}", self.margin2),
-        );
-        c.set(
-            "razor.margin3",
-            &format!("type spin min -9999 max 9999 default {}", self.margin3),
-        );
-        c.set(
-            "futility.movetypes.forbidden",
-            &format!(
-                "type string default {}",
-                MoveType::to_string(self.move_types_forbidden)
-            ),
-        );
-    }
-    fn configure(&mut self, c: &ParsedConfig) {
-        debug!("razor.configure");
-        self.enabled = c.bool("razor.enabled").unwrap_or(self.enabled);
-        self.max_depth = c.int("razor.max.depth").unwrap_or(self.max_depth as i64) as Ply;
-        self.margin1 = c.int("razor.margin1").unwrap_or(self.margin1 as i64) as i32;
-        self.margin2 = c.int("razor.margin2").unwrap_or(self.margin2 as i64) as i32;
-        self.margin3 = c.int("razor.margin3").unwrap_or(self.margin3 as i64) as i32;
-        if let Ok(mts) = MoveType::from_str(
-            &c.string("razor.movetypes.forbidden")
-                .unwrap_or(MoveType::to_string(self.move_types_forbidden)),
-        ) {
-            self.move_types_forbidden = mts;
-        }
-    }
 
     fn new_game(&mut self) {
         self.new_position();

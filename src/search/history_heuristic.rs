@@ -1,6 +1,6 @@
 use crate::bitboard::bitboard::Bitboard;
 use crate::board::Board;
-use crate::infra::parsed_config::{ParsedConfig, Component};
+use crate::infra::parsed_config::{Component};
 use crate::mv::Move;
 use crate::types::{Ply, Piece, Color};
 use std::fmt;
@@ -20,19 +20,6 @@ pub struct HistoryHeuristic {
 }
 
 impl Component for HistoryHeuristic {
-    fn settings(&self, c: &mut ParsedConfig) {
-        c.set("history.enabled", &format!("type check default {}", self.enabled));
-        c.set("history.scale", &format!("type spin min -1000 max 1000 default {}", self.scale));
-        c.set("history.age.factor", &format!("type spin min 0 max 1000 default {}", self.age_factor));
-        // c.set("history.clear.every.move", &format!("type check default {}", self.clear_every_move));
-    }
-    fn configure(&mut self, c: &ParsedConfig) {
-        debug!("history.configure");
-        // self.clear_every_move = c.bool("killers.clear.every.move").unwrap_or(self.clear_every_move);
-        self.enabled = c.bool("history.enabled").unwrap_or(self.enabled);
-        self.scale = c.int("history.scale").unwrap_or(self.scale as i64) as i32;
-        self.age_factor = c.int("history.age.factor").unwrap_or(self.age_factor as i64) as i32;
-    }
     fn new_game(&mut self) {
         self.adjust_by_factor(0);
     }

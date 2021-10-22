@@ -1,5 +1,5 @@
 use crate::mv::Move;
-use crate::infra::parsed_config::{ParsedConfig, Component};
+use crate::infra::parsed_config::{Component};
 use crate::movelist::MoveList;
 use crate::types::Ply;
 use std::fmt;
@@ -18,13 +18,6 @@ pub struct Restrictions {
 }
 
 impl Component for Restrictions {
-    fn settings(&self, c: &mut ParsedConfig) {
-        c.set("restrictions.enabled", &format!("type check default {}", self.enabled));
-    }
-    fn configure(&mut self, c: &ParsedConfig) {
-        debug!("restrictions.configure");
-        self.enabled = c.bool("restrictions.enabled").unwrap_or(self.enabled);
-    }
     fn new_game(&mut self) {
         self.new_position();
     }

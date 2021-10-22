@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::infra::parsed_config::{Component, ParsedConfig};
+use crate::infra::parsed_config::{Component};
 use crate::mv::Move;
 use crate::phaser::Phaser;
 use crate::search::node::Node;
@@ -22,52 +22,6 @@ pub struct Extensions {
 }
 
 impl Component for Extensions {
-    fn settings(&self, c: &mut ParsedConfig) {
-        c.set(
-            "ext.check.enabled",
-            &format!("type check default {}", self.check_enabled),
-        );
-        c.set(
-            "ext.check.max.depth",
-            &format!("type spin min 0 max 100 default {}", self.check_max_depth),
-        );
-        c.set(
-            "ext.check.max.phase",
-            &format!("type spin min 0 max 101 default {}", self.check_max_phase),
-        );
-        c.set(
-            "ext.promo.enabled",
-            &format!("type check default {}", self.promo_enabled),
-        );
-        c.set(
-            "ext.promo.max.depth",
-            &format!("type spin min 0 max 101 default {}", self.promo_max_depth),
-        );
-        c.set(
-            "ext.promo.rank",
-            &format!("type spin min 0 max 7 default {}", self.promo_rank),
-        );
-        c.set(
-            "ext.promo.extend",
-            &format!("type spin min 0 max 7 default {}", self.promo_extend),
-        );
-    }
-    fn configure(&mut self, c: &ParsedConfig) {
-        debug!("ext.configure");
-        self.check_enabled = c.bool("ext.check.enabled").unwrap_or(self.check_enabled);
-        self.check_max_depth = c
-            .int("ext.check.max.depth")
-            .unwrap_or(self.check_max_depth as i64) as Ply;
-        self.check_max_phase = c
-            .int("ext.check.max.phase")
-            .unwrap_or(self.check_max_phase as i64) as i32;
-        self.promo_enabled = c.bool("ext.promo.enabled").unwrap_or(self.promo_enabled);
-        self.promo_max_depth = c
-            .int("ext.promo.max.depth")
-            .unwrap_or(self.promo_max_depth as i64) as Ply;
-        self.promo_rank = c.int("ext.promo.rank").unwrap_or(self.promo_rank as i64) as Ply;
-        self.promo_extend = c.int("ext.promo.extend").unwrap_or(self.promo_extend as i64) as Ply;
-    }
 
     fn new_game(&mut self) {
         self.new_position();

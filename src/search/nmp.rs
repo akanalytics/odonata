@@ -5,7 +5,7 @@ use crate::mv::Move;
 use crate::search::node::Node;
 use crate::pvtable::PvTable;
 // use crate::eval::score::Score;
-use crate::infra::parsed_config::{ParsedConfig, Component};
+use crate::infra::parsed_config::{Component};
 use crate::variation::Variation;
 // use crate::{debug, logger::LogInit};
 use crate::types::Ply;
@@ -34,28 +34,6 @@ pub struct NullMovePruning {
 }
 
 impl Component for NullMovePruning {
-    fn settings(&self, c: &mut ParsedConfig) {
-        c.set("nmp.enabled", &format!("type check default {}", self.enabled));
-        c.set("nmp.recursive", &format!("type check default {}", self.recursive));
-        c.set("nmp.successive", &format!("type check default {}", self.successive));
-        c.set("nmp.min.depth",  &format!("type spin min 0 max 100 default {}", self.min_depth));
-        c.set("nmp.strat",  &format!("type spin min 0 max 100 default {}", self.depth_reduction_strat));
-        c.set("nmp.a",  &format!("type string default {}", format!("{}", self.a)));
-        c.set("nmp.b",  &format!("type string default {}", format!("{}", self.a)));
-        c.set("nmp.c",  &format!("type string default {}", format!("{}", self.a)));
-    }
-    fn configure(&mut self, c: &ParsedConfig) {
-        debug!("nmp.configure");
-        self.enabled = c.bool("nmp.enabled").unwrap_or(self.enabled);
-        self.recursive = c.bool("nmp.recursive").unwrap_or(self.recursive);
-        self.successive = c.bool("nmp.successive").unwrap_or(self.successive);
-        self.min_depth = c.int("nmp.min.depth").unwrap_or(self.min_depth as i64) as Ply;
-        self.depth_reduction_strat = c.int("nmp.strat").unwrap_or(self.depth_reduction_strat);
-        self.a = c.string("nmp.a").unwrap_or(format!("{}", self.a)).parse().unwrap();
-        self.b = c.string("nmp.b").unwrap_or(format!("{}", self.b)).parse().unwrap();
-        self.c = c.string("nmp.c").unwrap_or(format!("{}", self.c)).parse().unwrap();
-
-    }
     fn new_game(&mut self) {
         self.new_position();
     }

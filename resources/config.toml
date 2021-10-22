@@ -147,6 +147,8 @@ knight                 = [ 625.46,  395.38]
 bishop                 = [ 646.11,  415.35]
 rook                   = [ 848.05,  746.20]
 queen                  = [1845.37, 1374.29]
+balances.NKk = 0
+balances.BKk = 0
 
 
 [eval.phaser]

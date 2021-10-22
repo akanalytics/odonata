@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::bound::NodeType;
-use crate::infra::parsed_config::{Component, ParsedConfig};
+use crate::infra::parsed_config::{Component};
 use crate::mv::Move;
 use crate::search::node::Node;
 use crate::search::searchstats::SearchStats;
@@ -59,66 +59,6 @@ impl Default for Lmr {
 
 
 impl Component for Lmr {
-    fn settings(&self, c: &mut ParsedConfig) {
-        c.set(
-            "lmr.enabled",
-            &format!("type check default {}", self.enabled),
-        );
-        c.set(
-            "lmr.bad.captures",
-            &format!("type check default {}", self.bad_captures),
-        );
-        c.set(
-            "lmr.pv.node",
-            &format!("type check default {}", self.pv_node),
-        );
-        c.set(
-            "lmr.only.nt.all",
-            &format!("type check default {}", self.only_nt_all),
-        );
-        c.set(
-            "lmr.re.search",
-            &format!("type check default {}", self.re_search),
-        );
-        c.set(
-            "lmr.alpha.numeric",
-            &format!("type check default {}", self.alpha_numeric),
-        );
-        c.set(
-            "lmr.pawns",
-            &format!("type check default {}", self.pawns),
-        );
-        c.set(
-            "lmr.promos",
-            &format!("type check default {}", self.promos),
-        );
-        c.set(
-            "lmr.killers",
-            &format!("type check default {}", self.killers),
-        );
-        c.set(
-            "lmr.min.depth",
-            &format!("type spin min 0 max 100 default {}", self.min_depth),
-        );
-        c.set(
-            "lmr.strat",
-            &format!("type spin min 0 max 10000 default {}", self.red_strat),
-        );
-    }
-    fn configure(&mut self, c: &ParsedConfig) {
-        debug!("configure");
-        self.enabled = c.bool("lmr.enabled").unwrap_or(self.enabled);
-        self.re_search = c.bool("lmr.re.search").unwrap_or(self.re_search);
-        self.alpha_numeric = c.bool("lmr.alpha.numeric").unwrap_or(self.alpha_numeric);
-        self.bad_captures = c.bool("lmr.bad.captures").unwrap_or(self.bad_captures);
-        self.pv_node = c.bool("lmr.pv.node").unwrap_or(self.pv_node);
-        self.only_nt_all = c.bool("lmr.only.nt.all").unwrap_or(self.only_nt_all);
-        self.pawns = c.bool("lmr.pawns").unwrap_or(self.pawns);
-        self.promos = c.bool("lmr.promos").unwrap_or(self.promos);
-        self.killers = c.bool("lmr.killers").unwrap_or(self.killers);
-        self.min_depth = c.int("lmr.min.depth").unwrap_or(self.min_depth as i64) as Ply;
-        self.red_strat = c.int("lmr.strat").unwrap_or(self.red_strat as i64) as i32;
-    }
     fn new_game(&mut self) {
         self.new_position();
     }

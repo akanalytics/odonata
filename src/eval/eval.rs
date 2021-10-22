@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::infra::parsed_config::{Component, ParsedConfig};
+use crate::infra::parsed_config::{Component};
 use crate::eval::material_balance::MaterialBalance;
 use crate::eval::pst::Pst;
 use crate::eval::model::ModelScore;
@@ -214,152 +214,6 @@ impl Default for SimpleScorer {
 }
 
 impl Component for SimpleScorer {
-    fn settings(&self, c: &mut ParsedConfig) {
-        self.mb.settings(c);
-        self.pst.settings(c);
-        self.phaser.settings(c);
-        c.set("eval.safety", &format!("type check default {}", self.safety));
-        c.set("eval.mobility", &format!("type check default {}", self.mobility));
-        c.set("eval.pawn", &format!("type check default {}", self.pawn));
-        c.set("eval.position", &format!("type check default {}", self.position));
-        c.set("eval.material", &format!("type check default {}", self.material));
-        c.set("eval.contempt", &format!("type check default {}", self.contempt));
-        c.set("eval.tempo", &format!("type check default {}", self.tempo));
-        c.set("eval.phasing", &format!("type check default {}", self.phasing));
-        c.set(
-            "eval.mobility.min_depth",
-            &format!("type spin min 0 max 101 default {}", self.min_depth_mob),
-        );
-        c.set(
-            "eval.quantum",
-            &format!("type spin min 1 max 100 default {}", self.quantum),
-        );
-        c.set(
-            "eval.mobility.phase.disable",
-            &format!("type spin min 0 max 101 default {}", self.mobility_phase_disable),
-        );
-        c.set_weight("eval.pawn.doubled", &self.pawn_doubled);
-        c.set_weight("eval.center.attacks", &self.center_attacks);
-        c.set_weight("eval.mobility.undef.sq", &self.undefended_sq);
-        c.set_weight("eval.mobility.undef.piece", &self.undefended_piece);
-        c.set_weight("eval.mobility.trapped.piece", &self.trapped_piece);
-        c.set_weight(
-            "eval.mobility.partially.trapped.piece",
-            &self.partially_trapped_piece,
-        );
-        // c.set_weight("eval.mobility.defended.np", &self.defended_non_pawn);
-        // c.set_weight("eval.mobility.xrayed", &self.defended_non_pawn);
-        c.set_weight("eval.pawn.isolated", &self.pawn_isolated);
-        c.set_weight("eval.pawn.passed", &self.pawn_passed);
-        c.set_weight("eval.pawn.passed.r6", &self.pawn_passed_r6);
-        c.set_weight("eval.pawn.passed.r5", &self.pawn_passed_r5);
-        c.set_weight("eval.passers.on.rim", &self.passers_on_rim);
-        c.set_weight("eval.blockaded", &self.blockaded);
-        c.set_weight("eval.blockaded.passers", &self.blockaded_passers);
-
-        c.set_weight("eval.bishop.pair", &self.bishop_pair);
-        c.set_weight("eval.fianchetto", &self.fianchetto);
-        c.set_weight("eval.bishop.outposts", &self.bishop_outposts);
-        c.set_weight("eval.bishop.color.pawns", &self.bishop_color_pawns);
-        c.set_weight("eval.knight.forks", &self.knight_forks);
-        c.set_weight("eval.knight.outposts", &self.knight_outposts);
-
-        c.set_weight("eval.rook.pair", &self.rook_pair);
-        c.set_weight("eval.rook.open.file", &self.rook_open_file);
-        c.set_weight("eval.doubled.rooks", &self.doubled_rooks);
-        c.set_weight("eval.doubled.rooks.open.file", &self.doubled_rooks_open_file);
-
-        c.set_weight("eval.queen.open.file", &self.queen_open_file);
-        c.set_weight("eval.queen.early.develop", &self.queen_early_develop);
-
-
-        // c.set_weight("eval.pawn.shield", &self.pawn_shield);
-        c.set_weight("eval.pawn.adjacent.shield", &self.pawn_adjacent_shield);
-        c.set_weight("eval.pawn.nearby.shield", &self.pawn_nearby_shield);
-        c.set_weight("eval.open.files.near.king", &self.open_files_near_king);
-        c.set_weight("eval.tropism.d1", &self.tropism_d1);
-        c.set_weight("eval.tropism.d2", &self.tropism_d2);
-        c.set_weight("eval.tropism.d3", &self.tropism_d3);
-        c.set_weight("eval.attacks.near.king", &self.attacks_near_king);
-
-        c.set_weight("eval.castling.rights", &self.castling_rights);
-        c.set_weight("eval.contempt.penalty", &self.contempt_penalty);
-        c.set_weight("eval.tempo.bonus", &self.tempo_bonus);
-    }
-
-    fn configure(&mut self, c: &ParsedConfig) {
-        debug!("eval.configure");
-        self.mb.configure(c);
-        self.pst.configure(c);
-        self.phaser.configure(c);
-        self.mobility = c.bool("eval.mobility").unwrap_or(self.mobility);
-        self.pawn = c.bool("eval.pawn").unwrap_or(self.pawn);
-        self.safety = c.bool("eval.safety").unwrap_or(self.safety);
-        self.position = c.bool("eval.position").unwrap_or(self.position);
-        self.material = c.bool("eval.material").unwrap_or(self.material);
-        self.phasing = c.bool("eval.phasing").unwrap_or(self.phasing);
-        self.quantum = c
-            .int("eval.quantum")
-            .unwrap_or(self.quantum as i64) as i32;
-        self.mobility_phase_disable = c
-            .int("eval.mobility.phase.disable")
-            .unwrap_or(self.mobility_phase_disable as i64) as u8;
-        self.min_depth_mob = c
-            .int("eval.mobility.min.depth")
-            .unwrap_or(self.min_depth_mob as i64) as u8;
-
-        self.center_attacks = c.weight("eval.center.attacks", &self.center_attacks);
-        self.undefended_sq = c.weight("eval.mobility.undef.sq", &self.undefended_sq);
-        self.undefended_piece = c.weight("eval.mobility.undef.piece", &self.undefended_piece);
-        self.trapped_piece = c.weight("eval.mobility.trapped.piece", &self.trapped_piece);
-        self.partially_trapped_piece = c.weight(
-            "eval.mobility.partially.trapped.piece",
-            &self.partially_trapped_piece,
-        );
-        // self.defended_non_pawn = c.weight(
-        //     "eval.mobility.defended.np",
-        //     &self.defended_non_pawn,
-        // );
-        // self.xrayed = c.weight(
-        //     "eval.mobility.xrayed",
-        //     &self.xrayed,
-        // );
-        self.rook_open_file = c.weight("eval.rook.open.file", &self.rook_open_file);
-        self.rook_pair = c.weight("eval.rook.pair", &self.rook_pair);
-
-        self.queen_open_file = c.weight("eval.queen.open.file", &self.queen_open_file);
-
-        self.fianchetto = c.weight("eval.fianchetto", &self.fianchetto);
-        self.bishop_pair = c.weight("eval.bishop.pair", &self.bishop_pair);
-        self.bishop_color_pawns = c.weight("eval.bishop.color.pawns", &self.bishop_color_pawns);
-        self.knight_forks = c.weight("eval.knight.forks", &self.knight_forks);
-        self.knight_outposts = c.weight("eval.knight.outposts", &self.knight_outposts);
-        self.bishop_outposts = c.weight("eval.bishop.outposts", &self.bishop_outposts);
-        self.doubled_rooks = c.weight("eval.doubled.rooks", &self.doubled_rooks);
-        self.doubled_rooks_open_file = c.weight("eval.doubled.rooks.open.file", &self.doubled_rooks_open_file);
-
-        self.pawn_doubled = c.weight("eval.pawn.doubled", &self.pawn_doubled);
-        self.pawn_isolated = c.weight("eval.pawn.isolated", &self.pawn_isolated);
-        self.pawn_passed = c.weight("eval.pawn.passed", &self.pawn_passed);
-        self.pawn_passed_r6 = c.weight("eval.pawn.passed.r6", &self.pawn_passed_r6);
-        self.pawn_passed_r5 = c.weight("eval.pawn.passed.r5", &self.pawn_passed_r5);
-        self.passers_on_rim = c.weight("eval.passers.on.rim", &self.passers_on_rim);
-        self.blockaded = c.weight("eval.blockaded", &self.blockaded);
-        self.blockaded_passers = c.weight("eval.blockaded.passers", &self.blockaded_passers);
-
-        self.pawn_adjacent_shield = c.weight("eval.pawn.adjacent.shield", &self.pawn_adjacent_shield);
-        self.pawn_nearby_shield = c.weight("eval.pawn.nearby.shield", &self.pawn_nearby_shield);
-        self.open_files_near_king = c.weight("eval.open.files.near.king", &self.open_files_near_king);
-        self.tropism_d1 = c.weight("eval.tropism.d1", &self.tropism_d1);
-        self.tropism_d2 = c.weight("eval.tropism.d2", &self.tropism_d2);
-        self.tropism_d3 = c.weight("eval.tropism.d3", &self.tropism_d3);
-        self.attacks_near_king = c.weight("eval.attacks.near.king", &self.attacks_near_king);
-
-        self.castling_rights = c.weight("eval.castling.rights", &self.castling_rights);
-        self.contempt_penalty = c.weight("eval.contempt.penalty", &self.contempt_penalty);
-        self.tempo_bonus = c.weight("eval.tempo.bonus", &self.tempo_bonus);
-
-    }
 
     fn new_game(&mut self) {
         self.mb.new_game();
@@ -832,19 +686,19 @@ mod tests {
         assert_eq!(eval.w_eval_some(&board_b, Switches::ALL_SCORING), score.negate());
     }
 
-    #[test]
-    fn test_eval_configure() {
-        let mut eval = SimpleScorer::new();
-        eval.configure(&ParsedConfig::new().set("eval.b.s", "700"));
-        assert_eq!(
-            Score::from_f32(eval.mb.piece_weights[Piece::Bishop].s()),
-            Score::from_cp(700)
-        );
+    // #[test]
+    // fn test_eval_configure() {
+    //     let mut eval = SimpleScorer::new();
+    //     eval.configure(&ParsedConfig::new().set("eval.b.s", "700"));
+    //     assert_eq!(
+    //         Score::from_f32(eval.mb.piece_weights[Piece::Bishop].s()),
+    //         Score::from_cp(700)
+    //     );
 
-        let mut eval = SimpleScorer::new();
-        eval.configure(&ParsedConfig::new().set("eval.position", "false"));
-        assert_eq!(eval.position, false);
-    }
+    //     let mut eval = SimpleScorer::new();
+    //     eval.configure(&ParsedConfig::new().set("eval.position", "false"));
+    //     assert_eq!(eval.position, false);
+    // }
 
     #[test]
     fn test_score_position() {

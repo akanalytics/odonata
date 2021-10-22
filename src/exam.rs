@@ -1,4 +1,4 @@
-use crate::infra::parsed_config::{Component, ParsedConfig};
+use crate::infra::parsed_config::{Component};
 // use crate::mv::Move;
 use crate::position::Position;
 use crate::search::engine::Engine;
@@ -33,12 +33,10 @@ impl Exam {
     }
 
     pub fn take_exam(name: &str, positions: Vec<Position>) -> Exam {
-        let c = ParsedConfig::new();
         let mut engine = Engine::new();
         // algo.set_timing_method(TimeControl::Depth(5));
         engine.algo.set_timing_method(TimeControl::NodeCount(1_000_000));
         // engine.algo.set_timing_method(TimeControl::from_move_time_millis(1900));
-        engine.configure(&c);
 
         let mut exam = Exam {
             name: String::from(name),

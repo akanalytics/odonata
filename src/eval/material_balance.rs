@@ -1,4 +1,4 @@
-use crate::infra::parsed_config::{Component, ParsedConfig};
+use crate::infra::parsed_config::{Component};
 use crate::eval::weight::Weight;
 use crate::material::Material;
 use crate::mv::Move;
@@ -19,10 +19,11 @@ use anyhow::{Result, anyhow, bail};
 #[serde(default)]
 pub struct MaterialBalance {
     pub enabled: bool,
+    pub internal_stats: bool,
+    pub toml: bool,
     pub filename: String,
     pub consistency_report: bool,
     pub consistency_adjust: bool,
-    pub internal_stats: bool,
     pub draws_only: bool,
     pub min_games: i32,
     pub max_pawns: i32,
@@ -39,6 +40,7 @@ impl Default for MaterialBalance {
         let mut mb = Self {
             enabled: false,
             internal_stats: false,
+            toml: true, 
             filename: String::new(),
             consistency_report: true,
             consistency_adjust: true,
@@ -60,8 +62,8 @@ impl Default for MaterialBalance {
                 king: Weight::zero(),
             },
         };
-        mb.balances.entries.insert("PKppk".to_string(), 200);
-        mb.balances.entries.insert("PQRKppbnk".to_string(), -123);
+        mb.balances.entries.insert("NKk".to_string(), 0.0);
+        mb.balances.entries.insert("BKk".to_string(), 0.0);
         mb
     }
 }
@@ -69,7 +71,7 @@ impl Default for MaterialBalance {
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Balances {
-    entries: HashMap<String, i32>,
+    entries: HashMap<String, f32>,
 }
 
 
@@ -161,84 +163,51 @@ impl PieceWeights {
 
 
 impl Component for MaterialBalance {
-    fn settings(&self, c: &mut ParsedConfig) {
-        c.set("mb.enabled", &format!("type check default {}", self.enabled));
-        c.set("mb.force.init", "type button");
-        c.set("mb.internal.stats", &format!("type check default {}", self.internal_stats));
-        c.set("mb.filename", &format!("type string default {}", self.filename));
-        c.set("mb.consistency.report", &format!("type check default {}", self.consistency_report));
-        c.set("mb.consistency.adjust", &format!("type check default {}", self.consistency_adjust));
-        c.set("mb.draws.only", &format!("type check default {}", self.draws_only));
-        c.set(
-            "mb.min.games",
-            &format!("type spin min 0 max 2000 default {}", self.min_games),
-        );
-        c.set(
-            "mb.max.pawns",
-            &format!("type spin min 0 max 8 default {}", self.max_pawns),
-        );
-        c.set(
-            "mb.trade.factor",
-            &format!("type spin min -500 max 2000 default {}", self.trade_factor),
-        );
-        for &p in &Piece::ALL_BAR_KING {
-            let mut name = "eval.".to_string();
-            name.push(p.to_char(Some(Color::Black)));
-            c.set_weight(&name, &self.piece_weights[p]);
-        }
+    // for &p in &Piece::ALL_BAR_KING {
+    //     let mut name = "eval.".to_string();
+    //     name.push(p.to_char(Some(Color::Black)));
+    //     c.set_weight(&name, &self.piece_weights[p]);
+    // }
 
-        c.set("eval.mb.all", "type string default \"\"");  // cutechess can send "eval.mb=KPPk:100,KPk:56" etc
-        self.ensure_init();
-        for hash in 0..Material::HASH_VALUES {
-            let cp = self.derived_load(hash);
-            if let Some(cp) = cp {
-                let mut mat = Material::maybe_from_hash(hash);
-                *mat.counts_mut(Color::White, Piece::King) = 0;
-                *mat.counts_mut(Color::Black, Piece::King) = 0;
-                c.set(&format!("eval.mb.material.{} type string default",mat.to_string()), &cp.to_string());
-            }
-        }
-    }
+    // c.set("eval.mb.all", "type string default \"\"");  // cutechess can send "eval.mb=KPPk:100,KPk:56" etc
+    // self.ensure_init();
+    // for hash in 0..Material::HASH_VALUES {
+    //     let cp = self.derived_load(hash);
+    //     if let Some(cp) = cp {
+    //         let mut mat = Material::maybe_from_hash(hash);
+    //         *mat.counts_mut(Color::White, Piece::King) = 0;
+    //         *mat.counts_mut(Color::Black, Piece::King) = 0;
+    //         c.set(&format!("eval.mb.material.{} type string default",mat.to_string()), &cp.to_string());
+    //     }
+    // }
 
-    fn configure(&mut self, c: &ParsedConfig) {
-        debug!("mb.configure");
-        self.enabled = c.bool("mb.enabled").unwrap_or(self.enabled);
-        self.internal_stats = c.bool("mb.internal.stats").unwrap_or(self.internal_stats);
-        self.filename = c.string("mb.filename").unwrap_or(self.filename.clone());
-        self.consistency_report = c.bool("mb.consistency.report").unwrap_or(self.consistency_report);
-        self.consistency_adjust = c.bool("mb.consistency.adjust").unwrap_or(self.consistency_adjust);
-        self.draws_only = c.bool("mb.draws.only").unwrap_or(self.draws_only);
-        self.min_games = c.int("mb.min.games").unwrap_or(self.min_games as i64) as i32;
-        self.max_pawns = c.int("mb.max.pawns").unwrap_or(self.max_pawns as i64) as i32;
-        self.trade_factor = c.int("mb.trade.factor").unwrap_or(self.trade_factor as i64) as i32;
 
-        for &p in &Piece::ALL_BAR_KING {
-            let mut name = "eval.".to_string();
-            name.push(p.to_char(Some(Color::Black)));
-            self.piece_weights[p] = c.weight(&name, &self.piece_weights[p]);
-        }
-        let _ = c.string("eval.mb.all").unwrap_or(String::new());
+    // for &p in &Piece::ALL_BAR_KING {
+    //     let mut name = "eval.".to_string();
+    //     name.push(p.to_char(Some(Color::Black)));
+    //     self.piece_weights[p] = c.weight(&name, &self.piece_weights[p]);
+    // }
+    // let _ = c.string("eval.mb.all").unwrap_or(String::new());
 
-        let mut reconfigure = false;
-        for (k, v) in c.iter() {
-            if let Some(k) = k.strip_prefix("eval.mb.material.") {
-                info!("config fetch eval.mb.material.{} = [mb] {}", k, v);
-                self.parse_and_store(k, v).unwrap();
-                reconfigure = true;
-            }
-        }
+    // let mut reconfigure = false;
+    // for (k, v) in c.iter() {
+    //     if let Some(k) = k.strip_prefix("eval.mb.material.") {
+    //         info!("config fetch eval.mb.material.{} = [mb] {}", k, v);
+    //         self.parse_and_store(k, v).unwrap();
+    //         reconfigure = true;
+    //     }
+    // }
 
-        if reconfigure || c.string("mb.force.init").is_some() {
-            info!("Forcing initialization of material balances");
-            self.init();
-        }
-        // // we recalculate the derived scores as the config may have amended 
-        // // some of the inputs to this calculation
-        // if self.enabled {
-        //     self.init();  // likely re-init but happens outside of perf criticality
-        //     DERIVED_SCORES_CALCULATED.store(true, Ordering::Relaxed);
-        // }
-    }
+    // if reconfigure || c.string("mb.force.init").is_some() {
+    //     info!("Forcing initialization of material balances");
+    //     self.init();
+    // }
+    // // we recalculate the derived scores as the config may have amended 
+    // // some of the inputs to this calculation
+    // if self.enabled {
+    //     self.init();  // likely re-init but happens outside of perf criticality
+    //     DERIVED_SCORES_CALCULATED.store(true, Ordering::Relaxed);
+    // }
 
     fn new_game(&mut self) {
         self.new_position();
@@ -396,6 +365,16 @@ impl MaterialBalance {
         info!("Total material balance entries {:>6}", count);
     }
 
+    pub fn init_from_toml(&self) -> Result<()> {
+        for (k, &v) in self.balances.entries.iter() {
+
+            let mat = Material::from_piece_str(k.trim())?;
+            self.derived_store(&mat, v);
+            trace!("{:<20} = {:>5}", format!("mb[{}]",mat), v);
+        }
+        info!("Read {} items from toml", self.balances.entries.len());
+        Ok(())
+    }
 
     pub fn init_from_file(&self, filename: &str) -> Result<()> {
         let file = File::open(filename)?;
@@ -452,6 +431,12 @@ impl MaterialBalance {
                 DERIVED_SCORES[n].store(NICHE,  Ordering::Relaxed);
             }
             self.init_from_file(&self.filename).unwrap();
+        }
+        if !self.toml {
+            for n in 0..Material::HASH_VALUES {
+                DERIVED_SCORES[n].store(NICHE,  Ordering::Relaxed);
+            }
+            self.init_from_toml().unwrap();
         }
         if self.consistency_adjust {
             for pass in 1..10 {
@@ -676,7 +661,7 @@ mod tests {
     #[test]
     fn test_balance() {
         let mut mb = MaterialBalance::new();
-        mb.internal_stats = true;
+        mb.internal_stats = false;
         mb.log_material_balance();
     }
 

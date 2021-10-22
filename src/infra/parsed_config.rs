@@ -9,8 +9,6 @@ use std::path::PathBuf;
 
 
 pub trait Component {
-    fn settings(&self, config: &mut ParsedConfig);
-    fn configure(&mut self, config: &ParsedConfig);
     fn new_game(&mut self);
     fn new_position(&mut self);
 }
@@ -237,20 +235,6 @@ mod tests {
         string: String,
     }
     impl Component for TestStruct {
-        fn settings(&self, c: &mut ParsedConfig) {
-            c.set("engine.wheels", "type spin default=4 min=2 max=6");
-            c.set("engine.color", "default=blue var=blue var=yellow var=red");
-            c.set("engine.fast", "type check default=false");
-        }
-
-        fn configure(&mut self, config: &ParsedConfig) {
-            if let Some(i) = config.int("engine.wheels") {
-                self.integer = i;
-            }
-            if let Some(s) = config.string("engine.color") {
-                self.string = s;
-            }
-        }
 
         fn new_game(&mut self) {}
 
@@ -259,30 +243,25 @@ mod tests {
 
 
 
-    #[test]
-    fn test_config() {
-        let c1 = ParsedConfig::default();
-        debug!("c1\n{}", c1);
+    // #[test]
+    // fn test_config() {
+    //     let c1 = ParsedConfig::default();
+    //     debug!("c1\n{}", c1);
 
-        let mut cs2 = ParsedConfig::new();
-        let mut ts = TestStruct {
-            integer: 0,
-            string: "cat".to_string(),
-        };
-        ts.settings(&mut cs2);
-        debug!("cs2\n{}", cs2);
+    //     let mut cs2 = ParsedConfig::new();
+    //     let mut ts = TestStruct {
+    //         integer: 0,
+    //         string: "cat".to_string(),
+    //     };
 
-        // check the config iterators in insertion order
-        let vec: Vec<(&String, &String)> = cs2.iter().collect();
-        assert_eq!(vec[0].0, "engine.wheels");
-        assert_eq!(vec[1].0, "engine.color");
+    //     // check the config iterators in insertion order
+    //     let vec: Vec<(&String, &String)> = cs2.iter().collect();
+    //     assert_eq!(vec[0].0, "engine.wheels");
+    //     assert_eq!(vec[1].0, "engine.color");
 
-        let mut c3 = ParsedConfig::new();
-        c3.set("engine.wheels", "6");
-        c3.set("engine.color", "red");
-        debug!("c3\n{}", c3);
-        ts.configure(&c3);
-        assert_eq!(ts.integer, 6);
-        assert_eq!(ts.string, "red");
-    }
+    //     let mut c3 = ParsedConfig::new();
+    //     c3.set("engine.wheels", "6");
+    //     c3.set("engine.color", "red");
+    //     debug!("c3\n{}", c3);
+    // }
 }

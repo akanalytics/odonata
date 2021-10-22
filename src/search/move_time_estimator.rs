@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::infra::parsed_config::{ParsedConfig, Component};
+use crate::infra::parsed_config::{Component};
 use crate::utils::Formatter;
 use crate::search::searchstats::SearchStats;
 use crate::search::timecontrol::TimeControl;
@@ -38,25 +38,6 @@ pub struct MoveTimeEstimator {
 }
 
 impl Component for MoveTimeEstimator {
-    fn settings(&self, c: &mut ParsedConfig) {
-        c.set("mte.branching_factor", "type spin default 10 min 1 max 100");
-        c.set("mte.moves_rem", "type spin default 20 min 1 max 100");
-        c.set("mte.perc_of_time_adv", "type spin default 100 min 0 max 1000");
-        c.set("nodestime", "type spin default 0 min 0 max 50000");
-        c.set("mte.deterministic", "type check default false");
-    }
-    fn configure(&mut self, c: &ParsedConfig) {
-        debug!("mte.configure");
-        self.branching_factor = c
-            .int("mte.branching_factor")
-            .unwrap_or(self.branching_factor as i64) as u16;
-        self.moves_rem = c.int("mte.moves_rem").unwrap_or(self.moves_rem as i64) as u16;
-        self.perc_of_time_adv = c
-            .int("mte.perc_of_time_adv")
-            .unwrap_or(self.perc_of_time_adv as i64) as u32;
-        self.deterministic = c.bool("mte.deterministic").unwrap_or(self.deterministic);
-        self.nodestime = c.int("nodestime").unwrap_or(self.nodestime);
-    }
 
     fn new_game(&mut self) {
     }

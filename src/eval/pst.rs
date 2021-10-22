@@ -1,5 +1,4 @@
-use crate::Bitboard;
-use crate::infra::parsed_config::{Component, ParsedConfig};
+use crate::infra::parsed_config::{Component};
 use crate::bitboard::square::Square;
 use crate::eval::weight::Weight;
 use crate::types::{Color, Piece};
@@ -88,72 +87,7 @@ impl Into<PstProxy> for Pst {
 
 
 impl Component for Pst {
-    fn settings(&self, c: &mut ParsedConfig) {
-        c.set("pst.enabled", &format!("type check default {}", self.enabled));
-        c.set_weight("eval.rook.edge", &self.rook_edge);
-        c.set_weight("eval.pawn.r5", &self.pawn_r5);
-        c.set_weight("eval.pawn.r6", &self.pawn_r6);
-        c.set_weight("eval.pawn.r7", &self.pawn_r7);
 
-
-        // for &p in &Piece::ALL_BAR_NONE {
-        //     for sq in Bitboard::all().squares() {
-        //         let mut name = "eval.pst.".to_string();
-        //         name.push(p.to_char(Some(Color::Black)));
-        //         name.push('.');
-        //         name += &sq.uci();
-        //         c.set_weight(&name, &self.pst[p][sq]);
-        //     }
-        // }
-    }
-
-    fn configure(&mut self, c: &ParsedConfig) {
-        debug!("pst.configure");
-        self.enabled = c.bool("pst.enabled").unwrap_or(self.enabled);
-        self.pawn_r5 = c.weight("eval.pawn.r5", &self.pawn_r5);
-        self.pawn_r6 = c.weight("eval.pawn.r6", &self.pawn_r6);
-        self.pawn_r7 = c.weight("eval.pawn.r7", &self.pawn_r7);
-        self.rook_edge = c.weight("eval.rook.edge", &self.rook_edge);
-
-        // for &p in &Piece::ALL_BAR_KING {
-        //     let mut name = "eval.".to_string();
-        //     name.push(p.to_char(Some(Color::Black)));
-        //     self.material_weights[p] = c.weight(&name, &self.material_weights[p]);
-        // }
-
-        let mut _reconfigure = false;
-        for (k, v) in c.iter() {
-            if let Some(_) = k.strip_prefix("eval.pst.") {
-                info!("config fetch {} = [pst] {}", k, v);
-                // FIXME! crazy slow impl
-                for &p in &Piece::ALL_BAR_NONE {
-                    for sq in Bitboard::all().squares() {
-                        let mut name = "eval.pst.".to_string();
-                        name.push(p.to_char(Some(Color::Black)));
-                        name.push('.');
-                        name += &sq.uci();
-                        let name_s = name.clone() + ".s";
-                        let name_e = name.clone() + ".e";
-
-                        if k == &name_s {
-                            let old_wt = self.array[p][sq];
-                            let new_wt = c.weight(&name, &self.array[p][sq]);
-                            self.array[p][sq] = Weight::new(new_wt.s(), old_wt.e());
-                            info!("pst setting {}{} = {} (config {}={})", p, sq, Weight::new(new_wt.s(), old_wt.e()), name, new_wt);
-                            _reconfigure = true;
-                        }
-                        if k == &name_e {
-                            let old_wt = self.array[p][sq];
-                            let new_wt = c.weight(&name, &self.array[p][sq]);
-                            self.array[p][sq] = Weight::new(old_wt.s(), new_wt.e());
-                            info!("pst setting {}.{} = {} (config {}={})", p, sq, Weight::new(old_wt.s(), new_wt.e()), name, new_wt);
-                            _reconfigure = true;
-                        }
-                    }
-                }
-            }
-        }
-    }
 
 
     fn new_game(&mut self) {
@@ -415,20 +349,20 @@ mod tests {
         info!("{}", eng.algo.eval.pst);
     }
 
-    #[test]
-    fn pst_config() {
-        let mut c1 = ParsedConfig::default();
-        c1.set("eval.pst.p.a2.s", "6.5");
-        c1.set("eval.pst.p.a2.e", "7.5");
-        let lookup = c1.weight("eval.pst.p.a2", &Weight::from_i32(1, 1));
-        info!("ParsedConfig\n{}", c1);
-        assert_eq!(lookup, Weight::from_f32(6.5,7.5));
-        let mut pst = Pst::default();
-        assert_eq!(pst.pst(Piece::Pawn, Square::A2), Weight::from_i32(24,304));
-        pst.configure(&c1);
-        assert_eq!(pst.pst(Piece::Pawn, Square::A2), Weight::from_f32(6.5,7.5), "{}", pst);
+    // #[test]
+    // fn pst_config() {
+    //     let mut c1 = ParsedConfig::default();
+    //     c1.set("eval.pst.p.a2.s", "6.5");
+    //     c1.set("eval.pst.p.a2.e", "7.5");
+    //     let lookup = c1.weight("eval.pst.p.a2", &Weight::from_i32(1, 1));
+    //     info!("ParsedConfig\n{}", c1);
+    //     assert_eq!(lookup, Weight::from_f32(6.5,7.5));
+    //     let mut pst = Pst::default();
+    //     assert_eq!(pst.pst(Piece::Pawn, Square::A2), Weight::from_i32(24,304));
+    //     pst.configure(&c1);
+    //     assert_eq!(pst.pst(Piece::Pawn, Square::A2), Weight::from_f32(6.5,7.5), "{}", pst);
 
-    }
+    // }
 }
 
 

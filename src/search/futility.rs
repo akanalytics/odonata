@@ -7,7 +7,7 @@ use crate::mv::Move;
 use crate::eval::score::Score;
 use crate::eval::switches::Switches;
 use crate::eval::eval::SimpleScorer;
-use crate::infra::parsed_config::{ParsedConfig, Component};
+use crate::infra::parsed_config::{Component};
 // use crate::{debug, logger::LogInit};
 use crate::types::{Piece, MoveType, MoveTypes, Ply};
 use std::{cmp, fmt};
@@ -39,45 +39,6 @@ pub struct Futility {
 }
 
 impl Component for Futility {
-    fn settings(&self, c: &mut ParsedConfig) {
-        c.set("futility.alpha.enabled", &format!("type check default {}", self.alpha_enabled));
-        c.set("futility.beta.enabled", &format!("type check default {}", self.beta_enabled));
-        c.set("futility.avoid.checks", &format!("type check default {}", self.avoid_checks));
-        c.set("futility.avoid.promos", &format!("type check default {}", self.avoid_promos));
-        c.set("futility.promo.margin", &format!("type check default {}", self.promo_margin));
-        c.set("futility.prune.remaining", &format!("type check default {}", self.prune_remaining));
-        c.set("futility.max.depth",  &format!("type spin min 0 max 100 default {}", self.max_depth));
-        c.set("futility.max.depth.captures",  &format!("type spin min 0 max 100 default {}", self.max_depth_captures));
-        c.set("futility.margin1",  &format!("type spin min -9999 max 9999 default {}", self.margin1));
-        c.set("futility.margin2",  &format!("type spin min -9999 max 9999 default {}", self.margin2));
-        c.set("futility.margin3",  &format!("type spin min -9999 max 9999 default {}", self.margin3));
-        c.set("futility.eval.switches", &format!("type string default {}", self.eval_switches.to_string()));
-        c.set("futility.movetypes.forbidden", &format!("type string default {}", MoveType::to_string(self.move_types_forbidden)));
-    }
-    fn configure(&mut self, c: &ParsedConfig) {
-        debug!("futility.configure");
-        self.alpha_enabled = c.bool("futility.alpha.enabled").unwrap_or(self.alpha_enabled);
-        self.beta_enabled = c.bool("futility.beta.enabled").unwrap_or(self.beta_enabled);
-        self.prune_remaining = c.bool("futility.prune.remaining").unwrap_or(self.prune_remaining);
-        self.avoid_checks = c.bool("futility.avoid.checks").unwrap_or(self.avoid_checks);
-        self.avoid_promos = c.bool("futility.avoid.promos").unwrap_or(self.avoid_promos);
-        self.promo_margin = c.bool("futility.promo.margin").unwrap_or(self.promo_margin);
-        self.max_depth = c.int("futility.max.depth").unwrap_or(self.max_depth as i64) as Ply;
-        self.max_depth_captures = c.int("futility.max.depth.captures").unwrap_or(self.max_depth_captures as i64) as Ply;
-        self.margin1 = c.int("futility.margin1").unwrap_or(self.margin1 as i64) as i32;
-        self.margin2 = c.int("futility.margin2").unwrap_or(self.margin2 as i64) as i32;
-        self.margin3 = c.int("futility.margin3").unwrap_or(self.margin3 as i64) as i32;
-        if let Ok(sw) = Switches::parse(&c.string("futility.eval.switches").unwrap_or(self.eval_switches.to_string())) {
-            self.eval_switches = sw;
-        }
-        if let Ok(mts) = MoveType::from_str(
-            &c.string("futility.movetypes.forbidden").unwrap_or(MoveType::to_string(self.move_types_forbidden))
-         ) {
-            self.move_types_forbidden = mts;
-        }
-
-
-    }
     fn new_game(&mut self) {
         self.new_position();
     }

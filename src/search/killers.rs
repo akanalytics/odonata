@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::infra::parsed_config::{Component, ParsedConfig};
+use crate::infra::parsed_config::{Component};
 // use crate::{debug, logger::LogInit};
 use crate::board::boardbuf::BoardBuf;
 use crate::movelist::MoveList;
@@ -32,25 +32,6 @@ impl Default for Killers {
 }
 
 impl Component for Killers {
-    fn settings(&self, c: &mut ParsedConfig) {
-        c.set("killers.enabled", &format!("type check default {}", self.enabled));
-        c.set(
-            "killers.clear.every.move",
-            &format!("type check default {}", self.clear_every_move),
-        );
-        c.set(
-            "killers.use.ply.below",
-            &format!("type check default {}", self.use_ply_below),
-        );
-    }
-    fn configure(&mut self, c: &ParsedConfig) {
-        debug!("killers.configure");
-        self.enabled = c.bool("killers.enabled").unwrap_or(self.enabled);
-        self.clear_every_move = c
-            .bool("killers.clear.every.move")
-            .unwrap_or(self.clear_every_move);
-        self.use_ply_below = c.bool("killers.use.ply.below").unwrap_or(self.use_ply_below);
-    }
     fn new_game(&mut self) {
         self.killers.fill([Move::new_null(); 2]);
     }
