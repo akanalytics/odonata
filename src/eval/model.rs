@@ -81,6 +81,9 @@ pub struct ModelSide {
     pub defended_non_pawn: i32,
     pub xrayed: i32,
 
+    pub attacks: [[i32; Piece::ALL.len()]; Piece::ALL.len()],
+    pub defends: [[i32; Piece::ALL.len()]; Piece::ALL.len()],
+
     // other
     pub has_tempo: bool,
 }
@@ -633,6 +636,20 @@ impl ModelSide {
                 Piece::Bishop => (our_attacks & them - bi).popcount(),
                 _ => 0,
             };
+
+            self.attacks[p][Piece::Pawn] += (our_raw_attacks & b.pawns() & them).popcount();
+            self.attacks[p][Piece::Knight] += (our_raw_attacks & b.knights() & them).popcount();
+            self.attacks[p][Piece::Bishop] += (our_raw_attacks & b.bishops() & them).popcount();
+            self.attacks[p][Piece::Rook] += (our_raw_attacks & b.rooks() & them).popcount();
+            self.attacks[p][Piece::Queen] += (our_raw_attacks & b.queens() & them).popcount();
+            self.attacks[p][Piece::King] += (our_raw_attacks & b.kings() & them).popcount();
+
+            self.defends[p][Piece::Pawn] += (our_raw_attacks & b.pawns() & us).popcount();
+            self.defends[p][Piece::Knight] += (our_raw_attacks & b.knights() & us).popcount();
+            self.defends[p][Piece::Bishop] += (our_raw_attacks & b.bishops() & us).popcount();
+            self.defends[p][Piece::Rook] += (our_raw_attacks & b.rooks() & us).popcount();
+            self.defends[p][Piece::Queen] += (our_raw_attacks & b.queens() & us).popcount();
+            self.defends[p][Piece::King] += (our_raw_attacks & b.kings() & us).popcount();
             // self.xrayed = match p {
             //     Piece::Queen => (our_xray_attacks & them - q).popcount(),
             //     Piece::Rook => (our_xray_attacks & them - r).popcount(),

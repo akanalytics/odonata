@@ -13,6 +13,8 @@ use crate::eval::model::{ModelScore, Scorer};
 use serde::{Deserialize, Serialize};
 use anyhow::{Result, anyhow, bail};
 
+use super::eval::PieceArray;
+
 
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -29,7 +31,7 @@ pub struct MaterialBalance {
     pub max_pawns: i32,
     pub trade_factor: i32,
     #[serde(flatten)]
-    pub piece_weights: PieceWeights,
+    pub piece_weights: PieceArray<Weight>,
     // #[serde(skip)]
     pub balances: Balances,
 }
@@ -52,14 +54,13 @@ impl Default for MaterialBalance {
                 entries: HashMap::new(),
             },
 
-            piece_weights: PieceWeights {
-                none: Weight::zero(),
-                pawn: Weight::from_i32(100, 150),
-                knight: Weight::from_i32(632, 410),
-                bishop: Weight::from_i32(635, 429),
-                rook: Weight::from_i32(839, 771),
-                queen: Weight::from_i32(1822, 1405),
-                king: Weight::zero(),
+            piece_weights: PieceArray {
+                p: Weight::from_i32(100, 150),
+                n: Weight::from_i32(632, 410),
+                b: Weight::from_i32(635, 429),
+                r: Weight::from_i32(839, 771),
+                q: Weight::from_i32(1822, 1405),
+                k: Weight::zero(),
             },
         };
         mb.balances.entries.insert("NKk".to_string(), 0.0);
@@ -77,54 +78,6 @@ pub struct Balances {
 
 
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct PieceWeights {
-    #[serde(skip)]
-    none: Weight,
-    pawn: Weight,
-    knight: Weight,
-    bishop: Weight,
-    rook: Weight,
-    queen: Weight,
-    #[serde(skip)]
-    king: Weight,
-}
-
-
-
-impl std::ops::Index<Piece> for PieceWeights {
-    type Output = Weight;
-    #[inline]
-    fn index(&self, i: Piece) -> &Self::Output {
-        [
-            &self.none,
-            &self.pawn,
-            &self.knight,
-            &self.bishop, 
-            &self.rook, 
-            &self.queen, 
-            &self.king, 
-        ][i.index()]    
-    }
-}
-
-
-impl std::ops::IndexMut<Piece> for PieceWeights {
-    #[inline]
-    fn index_mut(&mut self, p: Piece) -> &mut Self::Output {
-        [
-            &mut self.none,
-            &mut self.pawn,
-            &mut self.knight,
-            &mut self.bishop, 
-            &mut self.rook, 
-            &mut self.queen, 
-            &mut self.king, 
-        ][p.index()]    
-    }
-}
-
-
 // impl Into<[Weight; Piece::len()]> for PieceWeights {
 //     fn into(self) -> [Weight; Piece::len()] {
 //         [
@@ -139,27 +92,27 @@ impl std::ops::IndexMut<Piece> for PieceWeights {
 //     }
 // }
 
-impl PieceWeights {
+// impl PieceWeights {
 
-    // fn piece_weights(&self) -> [Weight; Piece::len()] {
-    //     [
-    //         Weight::default(),
-    //         self.pawn,
-    //         self.knight,
-    //         Weight::from_i32(635, 429),
-    //         Weight::from_i32(839, 771),
-    //         Weight::from_i32(1822, 1405),
-    //         Weight::from_i32(0, 0), // king
-    //     ]
-    // }
+//     // fn piece_weights(&self) -> [Weight; Piece::len()] {
+//     //     [
+//     //         Weight::default(),
+//     //         self.pawn,
+//     //         self.knight,
+//     //         Weight::from_i32(635, 429),
+//     //         Weight::from_i32(839, 771),
+//     //         Weight::from_i32(1822, 1405),
+//     //         Weight::from_i32(0, 0), // king
+//     //     ]
+//     // }
 
-    // fn new(array: [Weight; Piece::len()]) -> Self {
-    //     PieceWeights {
-    //         pawn: array[1], 
-    //         knight: array[2],
-    //     }
-    // }
-}
+//     // fn new(array: [Weight; Piece::len()]) -> Self {
+//     //     PieceWeights {
+//     //         pawn: array[1], 
+//     //         knight: array[2],
+//     //     }
+//     // }
+// }
 
 
 impl Component for MaterialBalance {
@@ -255,14 +208,13 @@ impl MaterialBalance {
     }
 
     pub fn set_classical_piece_values(&mut self) {
-        self.piece_weights= PieceWeights {
-            none: Weight::zero(),
-            pawn: Weight::from_single_i32(Piece::Pawn.centipawns()),
-            knight: Weight::from_single_i32(Piece::Knight.centipawns()),
-            bishop: Weight::from_single_i32(Piece::Bishop.centipawns()),
-            rook: Weight::from_single_i32(Piece::Rook.centipawns()),
-            queen: Weight::from_single_i32(Piece::Queen.centipawns()),
-            king: Weight::zero(),
+        self.piece_weights= PieceArray {
+            p: Weight::from_single_i32(Piece::Pawn.centipawns()),
+            n: Weight::from_single_i32(Piece::Knight.centipawns()),
+            b: Weight::from_single_i32(Piece::Bishop.centipawns()),
+            r: Weight::from_single_i32(Piece::Rook.centipawns()),
+            q: Weight::from_single_i32(Piece::Queen.centipawns()),
+            k: Weight::zero(),
         };
     }
 

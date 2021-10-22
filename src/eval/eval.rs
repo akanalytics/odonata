@@ -1,20 +1,19 @@
 use crate::board::Board;
-use crate::infra::parsed_config::{Component};
 use crate::eval::material_balance::MaterialBalance;
-use crate::eval::pst::Pst;
 use crate::eval::model::ModelScore;
 use crate::eval::model::Scorer;
+use crate::eval::pst::Pst;
 use crate::eval::score::Score;
 use crate::eval::switches::Switches;
 use crate::eval::weight::Weight;
 use crate::globals::counts;
+use crate::infra::parsed_config::Component;
 use crate::mv::Move;
 use crate::phaser::Phaser;
 use crate::search::node::Node;
 use crate::stat::{ArrayStat, Stat};
 use crate::types::{Color, Piece};
 use serde::{Deserialize, Serialize};
-
 
 use std::fmt;
 
@@ -74,11 +73,49 @@ pub static EVAL_COUNTS: ArrayStat =
 //     fn eval_mobility(&self, eval: &SimpleScorer) -> Score;
 // }
 
+#[derive(Clone, Copy, Default, Debug, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct PieceArray<T> {
+    pub p: T,
+    pub n: T,
+    pub b: T,
+    pub r: T,
+    pub q: T,
+    pub k: T,
+}
+
+impl<T> std::ops::Index<Piece> for PieceArray<T> {
+    type Output = T;
+    #[inline]
+    fn index(&self, i: Piece) -> &Self::Output {
+        [
+            &self.p,
+            &self.n,
+            &self.b,
+            &self.r,
+            &self.q,
+            &self.k,
+        ][i.index()-1]
+    }
+}
+
+impl<T> std::ops::IndexMut<Piece> for PieceArray<T> {
+    #[inline]
+    fn index_mut(&mut self, p: Piece) -> &mut Self::Output {
+        [
+            &mut self.p,
+            &mut self.n,
+            &mut self.b,
+            &mut self.r,
+            &mut self.q,
+            &mut self.k,
+        ][p.index() - 1]
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 pub struct SimpleScorer {
-
-
     pub material: bool,
     pub position: bool,
     pub mobility: bool,
@@ -98,7 +135,6 @@ pub struct SimpleScorer {
     pub partially_trapped_piece: Weight,
     // pub defended_non_pawn: Weight,
     // pub xrayed: Weight,
-
     pub pawn_doubled: Weight,
     pub pawn_isolated: Weight,
     pub pawn_passed: Weight,
@@ -122,7 +158,6 @@ pub struct SimpleScorer {
     pub queen_open_file: Weight,
     pub queen_early_develop: Weight,
 
-
     // pub pawn_shield: Weight,
     pub pawn_adjacent_shield: Weight,
     pub pawn_nearby_shield: Weight,
@@ -136,17 +171,16 @@ pub struct SimpleScorer {
 
     pub contempt_penalty: Weight,
     pub tempo_bonus: Weight,
+    pub attacks: PieceArray<PieceArray<Weight>>, 
+    pub defends: PieceArray<PieceArray<Weight>> , 
+
     // pub cache: TranspositionTable,
     // pub qcache: TranspositionTable,
     // pub depth: Ply,
+    pub pst: Pst,
     pub phaser: Phaser,
     pub mb: MaterialBalance,
-    pub pst: Pst,
-
-
-
 }
-
 
 impl Default for SimpleScorer {
     fn default() -> Self {
@@ -174,7 +208,6 @@ impl Default for SimpleScorer {
             partially_trapped_piece: Weight::from_i32(-7, -15),
             // defended_non_pawn: Weight::from_i32(0, 0),
             // xrayed: Weight::from_i32(0, 0),
-
             bishop_pair: Weight::from_i32(62, 58),
             fianchetto: Weight::from_i32(55, 27),
             bishop_outposts: Weight::from_i32(0, 0),
@@ -208,13 +241,20 @@ impl Default for SimpleScorer {
             tropism_d3: Weight::from_i32(-5, 2),
 
             castling_rights: Weight::from_i32(0, 0),
+            attacks: PieceArray {
+                q: PieceArray {
+                    r: Weight::from_i32(-1, -2),
+                    .. Default::default()
+                },
+                .. Default::default()
+            },
+            defends: Default::default(), 
         };
         me
     }
 }
 
 impl Component for SimpleScorer {
-
     fn new_game(&mut self) {
         self.mb.new_game();
         self.phaser.new_game();
@@ -295,8 +335,6 @@ impl SimpleScorer {
         self.tempo = enabled;
     }
 
-
-
     pub fn set_position(&mut self, enabled: bool) -> Self {
         self.position = enabled;
         self.clone()
@@ -358,7 +396,6 @@ impl SimpleScorer {
         self.w_eval_some(board, Switches::ALL_SCORING | Switches::INSUFFICIENT_MATERIAL)
     }
 
-
     pub fn predict(&self, m: &Model, scorer: &mut impl Scorer) {
         if m.mat.is_insufficient() && m.switches.contains(Switches::INSUFFICIENT_MATERIAL) {
             if m.switches.contains(Switches::CONTEMPT) {
@@ -413,13 +450,43 @@ impl SimpleScorer {
                 // sum = sum + w - b;
             }
             scorer.position("fianchetti", w.fianchetti, b.fianchetti, self.fianchetto);
-            scorer.position("bishop color pawns", w.bishop_color_pawns, b.bishop_color_pawns, self.bishop_color_pawns);
-            scorer.position("bishop outposts", w.bishop_outposts, b.bishop_outposts, self.bishop_outposts);
+            scorer.position(
+                "bishop color pawns",
+                w.bishop_color_pawns,
+                b.bishop_color_pawns,
+                self.bishop_color_pawns,
+            );
+            scorer.position(
+                "bishop outposts",
+                w.bishop_outposts,
+                b.bishop_outposts,
+                self.bishop_outposts,
+            );
             scorer.position("knight forks", w.knight_forks, b.knight_forks, self.knight_forks);
-            scorer.position("knight outposts", w.knight_outposts, b.knight_outposts, self.knight_outposts);
-            scorer.position("doubled rook", w.doubled_rooks, b.doubled_rooks, self.doubled_rooks);
-            scorer.position("doubled rook of", w.doubled_rooks_open_file, b.doubled_rooks_open_file, self.doubled_rooks_open_file);
-            scorer.position("queen early", w.queen_early_develop, b.queen_early_develop, self.queen_early_develop);
+            scorer.position(
+                "knight outposts",
+                w.knight_outposts,
+                b.knight_outposts,
+                self.knight_outposts,
+            );
+            scorer.position(
+                "doubled rook",
+                w.doubled_rooks,
+                b.doubled_rooks,
+                self.doubled_rooks,
+            );
+            scorer.position(
+                "doubled rook of",
+                w.doubled_rooks_open_file,
+                b.doubled_rooks_open_file,
+                self.doubled_rooks_open_file,
+            );
+            scorer.position(
+                "queen early",
+                w.queen_early_develop,
+                b.queen_early_develop,
+                self.queen_early_develop,
+            );
 
             // scorer.position("pst", 1, 0, w.psq.iter().map(|(p,sq)| self.pst(*p, *sq)).sum::<Weight>());
             // scorer.position("pst", 0, 1, b.psq.iter().map(|(p,sq)| self.pst(*p, *sq)).sum::<Weight>());
@@ -448,12 +515,7 @@ impl SimpleScorer {
                 b.passers_on_rim,
                 self.passers_on_rim,
             );
-            scorer.pawn(
-                "blockaded",
-                w.blockaded,
-                b.blockaded,
-                self.blockaded,
-            );
+            scorer.pawn("blockaded", w.blockaded, b.blockaded, self.blockaded);
             scorer.pawn(
                 "blockaded passers",
                 w.blockaded_passers,
@@ -463,8 +525,6 @@ impl SimpleScorer {
         }
 
         //  bishop
-
-
 
         // king safety
         if self.safety && m.switches.contains(Switches::SAFETY) {
@@ -524,7 +584,12 @@ impl SimpleScorer {
             && self.mobility
             && m.switches.contains(Switches::MOBILITY)
         {
-            scorer.mobility("center attacks", w.center_attacks, b.center_attacks, self.center_attacks);
+            scorer.mobility(
+                "center attacks",
+                w.center_attacks,
+                b.center_attacks,
+                self.center_attacks,
+            );
             scorer.mobility("move", w.move_squares, b.move_squares, self.undefended_sq);
             scorer.mobility(
                 "undef piece",
@@ -569,6 +634,24 @@ impl SimpleScorer {
                 b.queens_on_open_files,
                 self.queen_open_file,
             );
+
+            for &a in Piece::ALL_BAR_NONE.iter() {
+                for &p in Piece::ALL_BAR_NONE.iter() {
+                    scorer.mobility(
+                        "attacks",
+                        w.attacks[a][p],
+                        b.attacks[a][p],
+                        self.attacks[a][p],
+                    );
+                    scorer.mobility(
+                        "defends",
+                        w.defends[a][p],
+                        b.defends[a][p],
+                        self.defends[a][p],
+                    );
+                }
+            }
+
         }
         if self.tempo && m.switches.contains(Switches::TEMPO) {
             scorer.tempo("tempo", w.has_tempo as i32, b.has_tempo as i32, self.tempo_bonus);
@@ -589,7 +672,6 @@ impl SimpleScorer {
         self.predict(&model, &mut scorer);
         Score::from_cp(scorer.as_score().as_i16() as i32 / self.quantum * self.quantum)
     }
-
 
     // // updated on capture & promo
     // #[inline]
@@ -627,7 +709,6 @@ impl Board {
         Score::from_cp(eval.eval_move_see(self, &mv))
     }
 
-
     #[inline]
     pub fn eval_move_material(&self, eval: &SimpleScorer, mv: &Move) -> Score {
         MOVE.increment();
@@ -655,7 +736,6 @@ mod tests {
     use crate::catalog::Catalog;
     use crate::test_env_log::test;
     use toml;
-
 
     #[test]
     fn eval_serde_test() {
@@ -708,7 +788,12 @@ mod tests {
         eval.set_switches(false);
         eval.position = true;
         assert_eq!(bd.phase(&eval.phaser), 100);
-        assert_eq!(bd.eval(&eval, &Node::root(0)), Score::from_f32(eval.pst.pawn_r7.e() as f32), "{}", eval.w_eval_explain(&bd));
+        assert_eq!(
+            bd.eval(&eval, &Node::root(0)),
+            Score::from_f32(eval.pst.pawn_r7.e() as f32),
+            "{}",
+            eval.w_eval_explain(&bd)
+        );
 
         let bd = Board::parse_fen("8/4p3/8/8/8/8/8/8 w - - 0 1")
             .unwrap()
@@ -731,7 +816,10 @@ mod tests {
 
         // from blacks perspective to negate
         let bd = Board::parse_fen("8/8/8/8/8/8/p7/8 b - - 0 1").unwrap().as_board();
-        assert_eq!(bd.eval(&eval, &Node::root(0)), Score::from_f32(eval.pst.pawn_r7.e() as f32));
+        assert_eq!(
+            bd.eval(&eval, &Node::root(0)),
+            Score::from_f32(eval.pst.pawn_r7.e() as f32)
+        );
     }
 
     #[test]
