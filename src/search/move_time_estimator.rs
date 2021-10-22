@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::infra::parsed_config::{Component};
-use crate::utils::Formatter;
+use crate::utils::Formatting;
 use crate::search::searchstats::SearchStats;
 use crate::search::timecontrol::TimeControl;
 use crate::types::Ply;
@@ -71,11 +71,11 @@ impl fmt::Display for MoveTimeEstimator {
         writeln!(f, "branching factor : {}", self.branching_factor)?;
         writeln!(f, "const moves rem. : {}", self.moves_rem)?;
         writeln!(f, "% of time adv    : {}", self.perc_of_time_adv)?;
-        writeln!(f, "allotted for mv  : {}", Formatter::format_duration(self.allotted()))?;
-        writeln!(f, "time estimate    : {}", Formatter::format_duration(self.time_estimate))?;
+        writeln!(f, "allotted for mv  : {}", Formatting::format_duration(self.allotted()))?;
+        writeln!(f, "time estimate    : {}", Formatting::format_duration(self.time_estimate))?;
         writeln!(f, "deterministic    : {}", self.deterministic)?;
         writeln!(f, "nodestime        : {}", self.nodestime)?;
-        writeln!(f, "elapsed used     : {}", Formatter::format_duration(self.elapsed_used))?;
+        writeln!(f, "elapsed used     : {}", Formatting::format_duration(self.elapsed_used))?;
         Ok(())
     }
 }

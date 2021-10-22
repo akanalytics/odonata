@@ -5,7 +5,7 @@ use crate::search::engine::Engine;
 use crate::tags::Tag;
 use crate::search::timecontrol::TimeControl;
 // use env_logger;
-use crate::utils::Formatter;
+use crate::utils::Formatting;
 // use crate::globals::counts;
 use std::time::{Duration, Instant};
 
@@ -32,11 +32,11 @@ impl Bench {
             let t = Instant::now();
             let p = Perft::perft(&mut board, d);
             let elapsed = t.elapsed();
-            println!("perft({}) = {:<14} in {}", d, p, Formatter::format_duration(elapsed));
+            println!("perft({}) = {:<14} in {}", d, p, Formatting::format_duration(elapsed));
             if d == depth {
                 println!(
                     "\n{} nodes/sec",
-                    Formatter::format_f64(p as f64 / elapsed.as_secs_f64())
+                    Formatting::format_f64(p as f64 / elapsed.as_secs_f64())
                 );
             }
         }
@@ -53,7 +53,7 @@ impl Bench {
             let t = Instant::now();
             let mut p = Perft::default();
             let total = p.perft_cat(&mut board, d);
-            let time = Formatter::format_duration(t.elapsed());
+            let time = Formatting::format_duration(t.elapsed());
             let elapsed = t.elapsed();
             println!(
                 "{:>14}{:>14}{:>14}{:>14}{:>14}{:>14}{:>14}",
@@ -62,7 +62,7 @@ impl Bench {
             if d == depth {
                 println!(
                     "\n{} nodes/sec",
-                    Formatter::format_f64(total as f64 / elapsed.as_secs_f64())
+                    Formatting::format_f64(total as f64 / elapsed.as_secs_f64())
                 );
             }
         }
@@ -109,15 +109,15 @@ impl Bench {
             let sel_depth = engine.algo.results().tag(Tag::ACSD).value_uci();
             let nodes = engine.algo.results().acn().unwrap();
             let cp = engine.algo.score();
-            let nps = Formatter::format_f64(nodes as f64 / elapsed.as_secs_f64());
+            let nps = Formatting::format_f64(nodes as f64 / elapsed.as_secs_f64());
             let bf = engine.algo.results().branching_factor();
-            let bf_string = Formatter::format_decimal(2, bf);
+            let bf_string = Formatting::format_decimal(2, bf);
             let fen = engine.algo.results().board().to_fen();
             total_bf += bf;
             total_time += elapsed;
             total_nodes += nodes;
             total_depth += depth;
-            let nodes = Formatter::format_u128(nodes);
+            let nodes = Formatting::format_u128(nodes);
             println!(
                 "{:>3} {:<6} {:>8} {:>2} {:>13} {:>7} {:>2}/{:<2} {:>5}  {:<85}",
                 i + 1,
@@ -136,11 +136,11 @@ impl Bench {
         let nps = total_nodes as f64 / total_time.as_secs_f64();
         println!();
         println!("time control  : {}", tc);
-        println!("nodes/sec     : {}", Formatter::format_f64(nps));
-        println!("average depth : {}", Formatter::format_decimal(2, average_depth));
-        println!("average bf    : {}", Formatter::format_decimal(2, average_bf));
-        println!("total nodes   : {}", Formatter::format_u128(total_nodes));
-        println!("total time    : {}", Formatter::format_duration(total_time));
+        println!("nodes/sec     : {}", Formatting::format_f64(nps));
+        println!("average depth : {}", Formatting::format_decimal(2, average_depth));
+        println!("average bf    : {}", Formatting::format_decimal(2, average_bf));
+        println!("total nodes   : {}", Formatting::format_u128(total_nodes));
+        println!("total time    : {}", Formatting::format_duration(total_time));
         println!("score         : {}", score);
     }
 }

@@ -3,7 +3,7 @@ use crate::board::boardbuf::BoardBuf;
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::catalog::Catalog;
-use crate::utils::Formatter;
+use crate::utils::Formatting;
 use crate::infra::parsed_config::{Component};
 use crate::mv::Move;
 use crate::variation::Variation;
@@ -280,7 +280,7 @@ impl Uci {
         for d in 1..=depth {
             let t = Instant::now();
             let p = Perft::perft(&mut board, d);
-            Self::print(&format!("info string perft({}) = {:<12} in {}", d, p, Formatter::format_duration(t.elapsed())));
+            Self::print(&format!("info string perft({}) = {:<12} in {}", d, p, Formatting::format_duration(t.elapsed())));
         }
         Ok(())
     }
@@ -526,8 +526,6 @@ impl Uci {
         ops.push("option name Explain_Quiesce type button".to_string());
         ops.push("option name Show_Config type button".to_string());
         ops.push(format!("option name Config_File type string default {}", engine.config_filename));
-
-        // setoption name Config value setting1=A; setting2=B; setting3=C 
         ops.push("option name Config type string default \"\"".to_string());
         ops
     }

@@ -127,8 +127,8 @@ mod tests {
             results.tags_mut().remove(Tag::ACN);
             println!(
                 "{:>12} {:>12} {}",
-                Formatter::format_u128(nodes),
-                Formatter::format_u128(node_count),
+                Formatting::format_u128(nodes),
+                Formatting::format_u128(node_count),
                 results
             );
         }

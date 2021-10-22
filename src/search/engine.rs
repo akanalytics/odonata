@@ -4,7 +4,7 @@ use crate::position::Position;
 use crate::search::algo::Algo;
 use crate::search::timecontrol::TimeControl;
 use crate::stat::Stat;
-use crate::utils::Formatter;
+use crate::utils::Formatting;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
@@ -69,12 +69,12 @@ impl fmt::Display for Engine {
         writeln!(
             f,
             "engine init time : {}",
-            Formatter::format_duration(self.engine_init_time)
+            Formatting::format_duration(self.engine_init_time)
         )?;
         writeln!(
             f,
             "search init time : {}",
-            Formatter::format_duration(self.search_init_time)
+            Formatting::format_duration(self.search_init_time)
         )?;
         write!(f, "\n[algo]\n{}", self.algo)
     }
@@ -213,7 +213,7 @@ impl Engine {
                 algo.score().to_string(),
                 algo.search_stats.cumulative().all_nodes(),
                 algo.search_stats.cumulative_knps(),
-                Formatter::format_duration(algo.search_stats.cumulative().elapsed),
+                Formatting::format_duration(algo.search_stats.cumulative().elapsed),
                 algo.pv().to_string(),
             );
             // knps += algo.search_stats.cumulative_knps();
@@ -253,7 +253,7 @@ mod tests {
     use crate::eval::eval::*;
     use crate::eval::score::*;
     use crate::types::*;
-    use crate::utils::Formatter;
+    use crate::utils::Formatting;
     use std::time;
     use test_env_log;
 
@@ -301,7 +301,7 @@ mod tests {
                     "Time with {} threads (shared:{}): {}\n\n\n",
                     i,
                     shared,
-                    Formatter::format_duration(time::Instant::now() - start)
+                    Formatting::format_duration(time::Instant::now() - start)
                 );
                 // println!("\ntt\n{}", eng.algo.tt);
             }

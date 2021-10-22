@@ -2,7 +2,7 @@ use crate::clock::{Clock};
 use crate::eval::score::Score;
 use crate::variation::Variation;
 use crate::types::{Ply, MAX_PLY, MoveType};
-use crate::utils::Formatter;
+use crate::utils::Formatting;
 use std::fmt;
 use std::cmp;
 use std::sync::Arc;
@@ -37,7 +37,7 @@ impl fmt::Display for SearchStats {
         writeln!(f, "depth            : {}", self.depth)?;
         writeln!(f, "pv               : {}", self.pv())?;
         writeln!(f, "score            : {}", self.score)?;
-        writeln!(f, "clock (elapsed)  : {}", Formatter::format_duration(self.clock.elapsed_search()))?;
+        writeln!(f, "clock (elapsed)  : {}", Formatting::format_duration(self.clock.elapsed_search()))?;
         writeln!(f, "completed        : {}", self.completed())?;
         writeln!(f, "user cancelled   : {}", self.user_cancelled)?;
         writeln!(f, "calc depth       : {}", self.depth())?;
@@ -643,8 +643,8 @@ impl NodeStats {
             qleaf = self.q_leaf_nodes,
             qttnode = self.q_tt_nodes,
 
-            est_time = Formatter::format_duration(self.est_time),
-            real_time = Formatter::format_duration(self.elapsed),
+            est_time = Formatting::format_duration(self.est_time),
+            real_time = Formatting::format_duration(self.elapsed),
         )
     }
 }

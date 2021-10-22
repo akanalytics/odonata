@@ -1,5 +1,5 @@
 use crate::mv::Move;
-use crate::utils::Formatter;
+use crate::utils::Formatting;
 use crate::variation::Variation;
 use crate::movelist::MoveList;
 use crate::types::Ply;
@@ -160,7 +160,7 @@ impl Tag {
         match &self {
             Tag::None => "".to_string(),
             Tag::BestMove(mvs) => mvs.uci(),
-            Tag::BranchingFactorPercent(bf) => Formatter::format_decimal(2, *bf as f32/ 100.0),
+            Tag::BranchingFactorPercent(bf) => Formatting::format_decimal(2, *bf as f32/ 100.0),
             Tag::Pv(variation) => variation.uci(),
             Tag::Id(s) => format!("{}", s),
             Tag::AnalysisCountDepth(n) => format!("{}", n),

@@ -435,7 +435,7 @@ mod tests {
     use crate::comms::uci::Uci;
     use crate::eval::eval::*;
     use crate::types::*;
-    use crate::utils::Formatter;
+    use crate::utils::Formatting;
     use toml;
     use anyhow::*;
     use std::time;
@@ -493,7 +493,7 @@ mod tests {
                                                                 // assert_eq!(search.search_stats().total().nodes(), 1833); qsearch sq
                                                                 // assert_eq!(search.search_stats().total().nodes(), 1757);
         assert_eq!(
-            Formatter::format_decimal(2, search.search_stats().branching_factor()), "12.80"
+            Formatting::format_decimal(2, search.search_stats().branching_factor()), "12.80"
         );
     }
 

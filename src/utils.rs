@@ -57,9 +57,9 @@ where
 }
 
 
-pub struct Formatter;
+pub struct Formatting;
 
-impl Formatter {
+impl Formatting {
     pub fn format_decimal<F: Into<f64>>(decimal_places: u32, n: F) -> String {
         match decimal_places {
             0 => format_num!(".0f", n),
@@ -314,14 +314,14 @@ mod tests {
 
     #[test]
     fn test_formatter() {
-        assert_eq!( Formatter::format_f64(12345567.0).as_str(), "12.35M" );
-        assert_eq!( Formatter::format_f64(0.0).as_str(), "0.000" );
-        assert_eq!( Formatter::format_f64(1234567890123.0).as_str(), "1.235T" );
-        assert_eq!( Formatter::format_f64(123456.0).as_str(), "123.5k" );
-        assert_eq!( Formatter::format_f64(0.0000123).as_str(), "12.30µ" );
-        assert_eq!( Formatter::format_f64(0.0124).as_str(), "12.40m" );
-        assert_eq!( Formatter::format_decimal(2, 0.0124 as f32).as_str(), "0.01" );
-        assert_eq!( Formatter::format_decimal(0, 4.0124).as_str(), "4" );
-        assert_eq!( Formatter::format_decimal(4, 4.012).as_str(), "4.0120" );
+        assert_eq!( Formatting::format_f64(12345567.0).as_str(), "12.35M" );
+        assert_eq!( Formatting::format_f64(0.0).as_str(), "0.000" );
+        assert_eq!( Formatting::format_f64(1234567890123.0).as_str(), "1.235T" );
+        assert_eq!( Formatting::format_f64(123456.0).as_str(), "123.5k" );
+        assert_eq!( Formatting::format_f64(0.0000123).as_str(), "12.30µ" );
+        assert_eq!( Formatting::format_f64(0.0124).as_str(), "12.40m" );
+        assert_eq!( Formatting::format_decimal(2, 0.0124 as f32).as_str(), "0.01" );
+        assert_eq!( Formatting::format_decimal(0, 4.0124).as_str(), "4" );
+        assert_eq!( Formatting::format_decimal(4, 4.012).as_str(), "4.0120" );
     }
 }

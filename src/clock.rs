@@ -1,7 +1,7 @@
 use crate::globals::counts;
 use std::fmt;
 use std::time::{Duration, Instant};
-use crate::utils::Formatter;
+use crate::utils::Formatting;
 
 
 
@@ -58,7 +58,7 @@ impl DeterministicClock {
 
 impl fmt::Display for DeterministicClock {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", Formatter::format_duration(self.elapsed()))
+        write!(f, "{}", Formatting::format_duration(self.elapsed()))
     }
 }
 
@@ -75,7 +75,7 @@ impl Default for Clock {
 
 impl fmt::Display for Clock {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", Formatter::format_duration(self.elapsed_search()))
+        write!(f, "{}", Formatting::format_duration(self.elapsed_search()))
     }
 }
 

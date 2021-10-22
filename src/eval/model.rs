@@ -11,6 +11,7 @@ use crate::material::Material;
 use crate::types::Color;
 use crate::types::Piece;
 use crate::Bitboard;
+use crate::utils::Formatting;
 
 #[derive(Clone, Default, Debug)]
 pub struct Model {
@@ -220,11 +221,18 @@ impl Scorer for ExplainScorer {
     }
 }
 
+
+
+
 impl fmt::Display for ExplainScorer {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fn pad<T: Into<f64>>(t: T) -> String {
+            Formatting::format_decimal(2, t)
+        }
+
         writeln!(
             f,
-            "{:>20} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} | {:>15}",
+            "{:>20} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |   {:<15}",
             "attr", "w", "w mg", "w eg", "int", "mg", "eg", "b", "b mg", "b eg", "wt"
         )?;
         for (i, sw) in Switches::all_scoring().iter().enumerate() {
@@ -235,17 +243,17 @@ impl fmt::Display for ExplainScorer {
                 let (attr, w, b, wt) = (attr, *w, *b, *wt);
                 writeln!(
                     f,
-                    "{:>20} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} | {:>15}",
+                    "{:>20} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |   {:<15}",
                     attr,
                     w,
-                    (w * wt).s(),
-                    (w * wt).e(),
-                    ((w * wt) - (b * wt)).interpolate(self.phase()),
-                    (w * wt).s() - (b * wt).s(),
-                    (w * wt).e() - (b * wt).e(),
+                    pad((w * wt).s()),
+                    pad((w * wt).e()),
+                    pad(((w * wt) - (b * wt)).interpolate(self.phase())),
+                    pad((w * wt).s() - (b * wt).s()),
+                    pad((w * wt).e() - (b * wt).e()),
                     b,
-                    (b * wt).s(),
-                    (b * wt).e(),
+                    pad((b * wt).s()),
+                    pad((b * wt).e()),
                     wt.to_string()
                 )?;
             }
@@ -256,34 +264,34 @@ impl fmt::Display for ExplainScorer {
                 let twt: Weight = vec.into_iter().map(|&(_, w, b, wt)| w * wt - b * wt).sum();
                 writeln!(
                     f,
-                    "{:>20} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} | {:>15}",
+                    "{:>20} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |   {:<15}",
                     "", "-----", "-----", "-----", "-----", "-----", "-----", "-----", "-----", "-----", ""
                 )?;
                 writeln!(
                     f,
-                    "{:>20} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} | {:>15}",
+                    "{:>20} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |   {:<15}",
                     attr,
                     "",
-                    wwt.s(),
-                    wwt.e(),
-                    twt.interpolate(self.phase()),
-                    twt.s(),
-                    twt.e(),
+                    pad(wwt.s()),
+                    pad(wwt.e()),
+                    pad(twt.interpolate(self.phase())),
+                    pad(twt.s()),
+                    pad(twt.e()),
                     "",
-                    bwt.s(),
-                    bwt.e(),
+                    pad(bwt.s()),
+                    pad(bwt.e()),
                     ""
                 )?;
                 writeln!(
                     f,
-                    "{:>20} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} | {:>15}",
+                    "{:>20} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |   {:<15}",
                     "", "", "", "", "", "", "", "", "", "", ""
                 )?;
             }
         }
         writeln!(
             f,
-            "{:>20} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} | {:>15}",
+            "{:>20} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |   {:<15}",
             "", "-----", "-----", "-----", "=====", "-----", "-----", "-----", "-----", "-----", "=========="
         )?;
         writeln!(
@@ -293,9 +301,9 @@ impl fmt::Display for ExplainScorer {
             "",
             "",
             "",
-            self.total().interpolate(self.phase()),
-            self.total().s(),
-            self.total().e(),
+            pad(self.total().interpolate(self.phase())),
+            pad(self.total().s()),
+            pad(self.total().e()),
             "",
             "",
             "",
@@ -303,7 +311,7 @@ impl fmt::Display for ExplainScorer {
         )?;
         writeln!(
             f,
-            "{:>20} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} | {:>15}",
+            "{:>20} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |   {:<15}",
             "", "", "", "", "=====", "-----", "-----", "", "", "", "=========="
         )?;
         Ok(())

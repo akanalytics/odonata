@@ -2,6 +2,8 @@ use std::iter;
 use std::fmt;
 use num_traits::{Num, AsPrimitive};
 use serde::{Deserialize, Serialize};
+
+use crate::utils::Formatting;
 // use serde::{ Serializer, Deserializer};
 
 
@@ -121,9 +123,9 @@ impl<T> WeightOf<T> where T: 'static + Copy + Num, f32: AsPrimitive<T>   {
 //     }
 // }
 
-impl<T> fmt::Display for WeightOf<T> where T: Copy + Num + fmt::Display {
+impl<T> fmt::Display for WeightOf<T> where T: Copy + Num + fmt::Display + Into<f64> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "({}, {})", self.s(), self.e())
+        write!(f, "({}, {})", Formatting::format_decimal(2, self.s()), Formatting::format_decimal(2, self.e()))
     }
 }
 
