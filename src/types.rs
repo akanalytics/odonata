@@ -2,7 +2,7 @@ use crate::bitboard::bitboard::{Bitboard, Dir};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use strum_macros::{EnumCount, Display};
-use enumflags2::{bitflags, BitFlags};
+use enumflags2::BitFlags;
 use anyhow::{Result, bail, anyhow};
 
 
@@ -414,7 +414,7 @@ impl std::ops::Sub for ScoreWdl {
 }
 
 
-#[bitflags]
+#[enumflags2::bitflags]
 #[repr(u16)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq, EnumCount, Display, Serialize, Deserialize)]
 pub enum MoveType {
