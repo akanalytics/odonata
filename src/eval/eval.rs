@@ -635,22 +635,22 @@ impl SimpleScorer {
                 self.queen_open_file,
             );
 
-            for &a in Piece::ALL_BAR_NONE.iter() {
-                for &p in Piece::ALL_BAR_NONE.iter() {
-                    scorer.mobility(
-                        "attacks",
-                        w.attacks[a][p],
-                        b.attacks[a][p],
-                        self.attacks[a][p],
-                    );
-                    scorer.mobility(
-                        "defends",
-                        w.defends[a][p],
-                        b.defends[a][p],
-                        self.defends[a][p],
-                    );
-                }
-            }
+            // for &a in Piece::ALL_BAR_NONE.iter() {
+            //     for &p in Piece::ALL_BAR_NONE.iter() {
+            //         scorer.mobility(
+            //             "attacks",
+            //             w.attacks[a][p],
+            //             b.attacks[a][p],
+            //             self.attacks[a][p],
+            //         );
+            //         scorer.mobility(
+            //             "defends",
+            //             w.defends[a][p],
+            //             b.defends[a][p],
+            //             self.defends[a][p],
+            //         );
+            //     }
+            // }
 
         }
         if self.tempo && m.switches.contains(Switches::TEMPO) {
