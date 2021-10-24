@@ -24,6 +24,7 @@ pub enum CatalogSuite {
     Pin,
     Move,
     Quiesce,
+    See,
     MateIn2,
     MateIn3,
     MateIn4,
@@ -226,6 +227,7 @@ r1r5/2N1n1kb/2nB1b1p/3p2p1/6q1/P2pQ3/3N1PPP/1RR3K1 b - - 11 37 acd 6;
             CatalogSuite::Pin => Self::pins(),
             CatalogSuite::Move => Self::moves(),
             CatalogSuite::Quiesce => Self::quiesce(),
+            CatalogSuite::See => Self::see(),
             CatalogSuite::MateIn2 => Self::mate_in_2(),
             // CatalogSuite::MateIn3 => Self::mate_in_3(),
             CatalogSuite::MateIn4 => Self::mate_in_4(),
@@ -369,6 +371,23 @@ r2qkb1r/pp2nNpp/3p4/2pN2B1/2BnP3/3P4/PPP2PPP/R2bK2R b KQkq - 1 1 acd 0; pv ; c1 
 "#;
 // rnb1k2r/pp3ppp/4p3/q2p4/1bpPnB2/2N1PN2/PPPQ1PPP/2KR1B1R w kq - 1 9 "QS.01"; c0 "xray"; c1 "https://lichess.org/PqvjbdtB#16";
 // rnb1k2r/pp3ppp/4p3/3pB3/2pPn3/2P1PN2/q1P1QPPP/2KR1B1R b kq - 1 11 "QS.02"; c0 "bug?";
+        let positions = Position::parse_many_epd(str.lines()).unwrap();
+        positions
+    }
+
+    pub fn see() -> Vec<Position> {
+        let str = r#"
+7k/8/8/8/8/q7/8/R6K w - - 0 1 sm a1a3; ce 900; id 'SEE.00'; c0 '';
+7k/8/8/8/1p6/q7/8/R6K w - - 0 1 sm a1a3; ce 400; id 'SEE.01'; c0 'Q=900 - R=500';
+7k/8/8/8/1p6/q7/2N5/R6K w - - 0 1 sm a1a3; ce 500; id 'SEE.02'; c0 '+q+p -R = 900 - 500 + 100  = 500';
+7k/8/8/8/1q6/p7/2N5/R6K w - - 0 1 sm a1a3; ce 100; id 'SEE.03'; c0 'RN v pq: +p  = +100 (retake by queen doesnt occur)';
+1k5r/7r/8/8/R6p/8/8/K6R w - - 12 1 sm h1h4; ce -400; id 'SEE.04'; c0 'xray';
+8/8/8/4pk2/5B2/8/8/K7 w - - 12 1 sm f4e5; ce -225; id 'SEE.05'; c0 'without xray onto king';
+8/8/8/4pk2/5B2/8/7Q/K7 w - - 12 1 sm f4e5; ce 100; id 'SEE.06'; c0 'with xray onto king';
+bb3rkr/pp2nppp/4pn2/2qp4/2P5/3RNN2/PP2PPPP/BBQ3KR w - - 0 8 sm c4d5; ce 0; id 'SEE.07'; c0 'shortcoming in SEE, as PxP exposes queen to capture';
+k7/5n2/3p4/4p3/4K1N1/8/8/8 w - - 0 8 sm g4e5; ce -225; id 'SEE.08'; c0 'loses knight for pawn, as king cannot recapture because of check';
+k7/5n2/8/4p3/4K1N1/8/8/8 w - - 0 8  sm g4e5; ce 100; id 'SEE.09'; c0 'king can capture as wont be in check';
+"#;
         let positions = Position::parse_many_epd(str.lines()).unwrap();
         positions
     }

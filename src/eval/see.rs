@@ -120,56 +120,22 @@ impl See {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::board::boardbuf::BoardBuf;
+    use crate::{board::boardbuf::BoardBuf, catalog::Catalog};
     // use crate::movelist::MoveValidator;
+    use anyhow::Result;
 
     #[test]
-    fn test_see() {
-        let mut see = See::default();
-        // eval.mb.set_classical_piece_values();
+    fn test_see() -> Result<()> {
+        let see = See::default();
 
-        let b = Board::parse_fen("7k/8/8/8/8/q7/8/R6K w - - 0 1").unwrap();  // R v q
-        let mv = b.parse_uci_move("a1a3").unwrap();
-        assert_eq!(see.eval_move_see(&b, &mv), 900);
-
-        let b = Board::parse_fen("7k/8/8/8/1p6/q7/8/R6K w - - 0 1").unwrap();  //R v qp
-        let mv = b.parse_uci_move("a1a3").unwrap();
-        assert_eq!(see.eval_move_see(&b, &mv), 400);   // 900 - 500
-        
-        let b = Board::parse_fen("7k/8/8/8/1p6/q7/2N5/R6K w - - 0 1").unwrap();  //RN v qp
-        let mv = b.parse_uci_move("a1a3").unwrap();
-        assert_eq!(see.eval_move_see(&b, &mv), 500);  // +q+p -R = 900 - 500 + 100  = 500
- 
-        let b = Board::parse_fen("7k/8/8/8/1q6/p7/2N5/R6K w - - 0 1").unwrap();  //RN v pq
-        let mv = b.parse_uci_move("a1a3").unwrap();
-        assert_eq!(see.eval_move_see(&b, &mv), 100);  // +p  = +100 (retake by queen doesnt occur)
-
-        let b = Board::parse_fen("1k5r/7r/8/8/R6p/8/8/K6R w - - 12 1").unwrap();  // xray
-        let mv = b.parse_uci_move("h1h4").unwrap();
-        assert_eq!(see.eval_move_see(&b, &mv), -400);  // 
-        
-        let b = Board::parse_fen("8/8/8/4pk2/5B2/8/8/K7 w - - 12 1").unwrap();  // without xray onto king
-        let mv = b.parse_uci_move("f4e5").unwrap();
-        assert_eq!(see.eval_move_see(&b, &mv), -250);  // 
-
-        let b = Board::parse_fen("8/8/8/4pk2/5B2/8/7Q/K7 w - - 12 1").unwrap();  // xray onto king
-        let mv = b.parse_uci_move("f4e5").unwrap();
-        assert_eq!(see.eval_move_see(&b, &mv), 100);  // 
-
-        // shortcoming in SEE, as PxP exposes queen to capture
-        let b = Board::parse_fen("bb3rkr/pp2nppp/4pn2/2qp4/2P5/3RNN2/PP2PPPP/BBQ3KR w - - 0 8").unwrap();  
-        let mv = b.parse_uci_move("c4d5").unwrap();
-        assert_eq!(see.eval_move_see(&b, &mv), 0);  // 
-
-
-        // losses knight for pawn, as king cannot recapture because of check
-        let b = Board::parse_fen("k7/5n2/3p4/4p3/4K1N1/8/8/8 w - - 0 8").unwrap();
-        let mv = b.parse_uci_move("g4e5").unwrap();
-        assert_eq!(see.eval_move_see(&b, &mv), -225);   
-
-        // king can capture as wont be in check
-        let b = Board::parse_fen("k7/5n2/8/4p3/4K1N1/8/8/8 w - - 0 8").unwrap();
-        let mv = b.parse_uci_move("g4e5").unwrap();
-        assert_eq!(see.eval_move_see(&b, &mv), 100);   
+        let positions = Catalog::see();
+        // let pos = Position::find_by_id("pawn fork", &positions ).unwrap();
+        for pos in positions {
+            let b = pos.board();
+            let mv = pos.sm()?;
+            let ce = pos.ce()?;
+            assert_eq!(see.eval_move_see(&b, &mv), ce, "pos {}", pos);
+        }
+        Ok(())
     }
 }

@@ -293,7 +293,7 @@ impl Position {
         if let Tag::SuppliedMove(mv) = self.tag(Tag::SM) {
             Ok(*mv)
         } else { 
-            Err(anyhow!("Not good"))
+            Err(anyhow!("Not good sm"))
         }
     }
 
@@ -301,7 +301,7 @@ impl Position {
         if let Tag::Squares(s) = self.tag(Tag::SQ) {
             Ok(*s)
         } else { 
-            Err(anyhow!("Not good"))
+            Err(anyhow!("Not good sq"))
         }
     }
 
@@ -309,7 +309,7 @@ impl Position {
         if let Tag::CentipawnEvaluation(ce) = self.tag(Tag::CE) {
             Ok(*ce)
         } else { 
-            Err(anyhow!("Not good"))
+            Err(anyhow!("Not good ce"))
         }
     }
 
@@ -318,7 +318,7 @@ impl Position {
         if let Tag::AnalysisCountDepth(acd) = self.tag(Tag::ACD) {
             Ok(*acd)
         } else { 
-            Err(anyhow!("Not good"))
+            Err(anyhow!("Not good acd"))
         }
     }
 

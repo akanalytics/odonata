@@ -594,7 +594,6 @@ impl Bitboard {
         Self(self.0 | other.0)
     }
 
-    // bitflags & doesnt seem to be declared const
     #[inline]
     pub const fn and(self, other: Self) -> Self {
         Self(self.0 & other.0)
