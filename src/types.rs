@@ -308,7 +308,7 @@ impl Piece {
             Piece::None => 0,
             Piece::Pawn => 100,
             Piece::Knight => 325,
-            Piece::Bishop => 350,
+            Piece::Bishop => 325,
             Piece::Rook => 500,
             Piece::Queen => 900,
             Piece::King => 10000,

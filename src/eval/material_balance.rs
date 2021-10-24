@@ -203,19 +203,22 @@ impl fmt::Debug for MaterialBalance {
     }
 }
 impl MaterialBalance {
+
+    pub const CLASSICAL_WEIGHTS: PieceArray<Weight> = PieceArray {
+        p: Weight::from_i32(Piece::Pawn.centipawns(), Piece::Pawn.centipawns()),
+        n: Weight::from_i32(Piece::Knight.centipawns(), Piece::Knight.centipawns()),
+        b: Weight::from_i32(Piece::Bishop.centipawns(), Piece::Bishop.centipawns()),
+        r: Weight::from_i32(Piece::Rook.centipawns(), Piece::Rook.centipawns()),
+        q: Weight::from_i32(Piece::Queen.centipawns(), Piece::Queen.centipawns()),
+        k: Weight::from_i32(Piece::King.centipawns(), Piece::King.centipawns()),
+    };
+
     pub fn new() -> Self {
         Self::default()
     }
 
     pub fn set_classical_piece_values(&mut self) {
-        self.piece_weights= PieceArray {
-            p: Weight::from_single_i32(Piece::Pawn.centipawns()),
-            n: Weight::from_single_i32(Piece::Knight.centipawns()),
-            b: Weight::from_single_i32(Piece::Bishop.centipawns()),
-            r: Weight::from_single_i32(Piece::Rook.centipawns()),
-            q: Weight::from_single_i32(Piece::Queen.centipawns()),
-            k: Weight::zero(),
-        };
+        self.piece_weights = Self::CLASSICAL_WEIGHTS; 
     }
 
 

@@ -54,13 +54,27 @@ pub type Weight = WeightOf<f32>;
 
 
 
-impl<T: Sized> WeightOf<T> where T:'static + Copy + Num, i32: AsPrimitive<T>  {
+impl WeightOf<i32>  {
+
     #[inline]
     #[must_use]
-    pub fn from_i32(s: i32, e: i32) -> WeightOf<T> {
-        WeightOf(s.as_(), e.as_())
+    pub const fn from_i32(s: i32, e: i32) -> WeightOf<i32> {
+        WeightOf(s as i32, e as i32)
     }
+}
+
+impl WeightOf<f32>  {
+
+    #[inline]
+    #[must_use]
+    pub const fn from_i32(s: i32, e: i32) -> WeightOf<f32> {
+        WeightOf(s as f32, e as f32)
+    }
+}
+
+impl<T> WeightOf<T> where T:'static + Copy + Num, i32: AsPrimitive<T>  {
     
+
     #[inline]
     #[must_use]
     pub fn new(s: T, e: T) -> WeightOf<T> {
@@ -70,7 +84,7 @@ impl<T: Sized> WeightOf<T> where T:'static + Copy + Num, i32: AsPrimitive<T>  {
 
 
 impl<T: Sized> WeightOf<T> where T: Copy + Num {
-        #[inline]
+    #[inline]
     pub fn zero() -> WeightOf<T> {
         WeightOf(T::zero(), T::zero())
     }
@@ -93,11 +107,6 @@ impl<T> WeightOf<T> where T: 'static + Copy + Num, i32: AsPrimitive<T>  {
         ((100 - phase).as_() * self.s() + phase.as_() * self.e()) / 100.as_()
     }
 
-    #[inline]
-    #[must_use]
-    pub fn from_single_i32(se: i32) -> WeightOf<T> {
-        WeightOf(se.as_(), se.as_())
-    }
 }
 
 impl<T> WeightOf<T> where T: 'static + Copy + Num, f32: AsPrimitive<T>   {

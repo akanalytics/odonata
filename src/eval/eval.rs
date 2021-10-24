@@ -10,6 +10,7 @@ use crate::globals::counts;
 use crate::infra::parsed_config::Component;
 use crate::mv::Move;
 use crate::phaser::Phaser;
+use crate::eval::see::See;
 use crate::search::node::Node;
 use crate::stat::{ArrayStat, Stat};
 use crate::types::{Color, Piece};
@@ -179,6 +180,7 @@ pub struct SimpleScorer {
     // pub depth: Ply,
     pub pst: Pst,
     pub phaser: Phaser,
+    pub see: See,
     pub mb: MaterialBalance,
 }
 
@@ -188,6 +190,7 @@ impl Default for SimpleScorer {
             mb: MaterialBalance::default(),
             pst: Pst::default(),
             phaser: Phaser::default(),
+            see: See::default(),
             mobility: true,
             position: true,
             material: true,
@@ -706,7 +709,7 @@ impl Board {
     #[inline]
     pub fn eval_move_see(&self, eval: &SimpleScorer, mv: &Move) -> Score {
         SEE.increment();
-        Score::from_cp(eval.eval_move_see(self, &mv))
+        Score::from_cp(eval.see.eval_move_see(self, &mv))
     }
 
     #[inline]
@@ -825,7 +828,7 @@ mod tests {
     #[test]
     fn test_score_mobility() {
         let mut eval = SimpleScorer::new();
-        eval.pawn_doubled = Weight::from_single_i32(-1);
+        eval.pawn_doubled = Weight::from_i32(-1, -1);
         eval.pawn_isolated = Weight::zero();
         eval.mobility_phase_disable = 101;
         let b = Catalog::starting_board();
@@ -837,7 +840,7 @@ mod tests {
     #[test]
     fn test_score_pawn() {
         let mut eval = SimpleScorer::new();
-        eval.pawn_doubled = Weight::from_single_i32(-1);
+        eval.pawn_doubled = Weight::from_i32(-1, -1);
         eval.pawn_isolated = Weight::zero();
         eval.mobility_phase_disable = 101;
         let _b = Catalog::starting_board();
@@ -847,7 +850,7 @@ mod tests {
         let b = Board::parse_fen("8/pppp1p1p/pppp4/8/8/2P5/PPP4P/8 b - - 0 1")
             .unwrap()
             .as_board();
-        eval.pawn_doubled = Weight::from_single_i32(-1);
+        eval.pawn_doubled = Weight::from_i32(-1, -1);
         eval.pawn_isolated = Weight::zero();
         eval.pawn_passed = Weight::zero();
         assert_eq!(
@@ -856,7 +859,7 @@ mod tests {
         );
 
         eval.pawn_doubled = Weight::zero();
-        eval.pawn_isolated = Weight::from_single_i32(-1);
+        eval.pawn_isolated = Weight::from_i32(-1, -1);
         eval.pawn_passed = Weight::zero();
         assert_eq!(
             eval.w_eval_some(&b, Switches::ALL_SCORING),
@@ -865,7 +868,7 @@ mod tests {
 
         eval.pawn_doubled = Weight::zero();
         eval.pawn_isolated = Weight::zero();
-        eval.pawn_passed = Weight::from_single_i32(10);
+        eval.pawn_passed = Weight::from_i32(10, 10);
         assert_eq!(
             eval.w_eval_some(&b, Switches::ALL_SCORING),
             Score::from_cp(0 - 10)
@@ -876,7 +879,7 @@ mod tests {
             .unwrap()
             .as_board();
 
-        eval.pawn_doubled = Weight::from_single_i32(-1);
+        eval.pawn_doubled = Weight::from_i32(-1, -1);
         eval.pawn_isolated = Weight::zero();
         eval.set_switches(false);
         eval.pawn = true;
@@ -888,7 +891,7 @@ mod tests {
         );
 
         eval.pawn_doubled = Weight::zero();
-        eval.pawn_isolated = Weight::from_single_i32(-1);
+        eval.pawn_isolated = Weight::from_i32(-1, -1);
         assert_eq!(
             eval.w_eval_some(&b, Switches::ALL_SCORING),
             Score::from_cp(-1),

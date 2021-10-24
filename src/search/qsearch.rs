@@ -21,7 +21,7 @@ pub struct QSearch {
     pub only_on_capture: bool,
     pub promos: bool,
     pub ignore_see_fails: bool,
-    pub see_cutoff: i64,
+    pub see_cutoff: Score,
     pub max_ply: u16,
     pub coarse_delta_prune: Score,
     pub switches: Switches,
@@ -34,7 +34,7 @@ impl Default for QSearch {
             enabled: true,
             only_on_capture: false,
             ignore_see_fails: true,
-            see_cutoff: 0,
+            see_cutoff: Score::from_cp(0),
             promos: false,
             max_ply: 10,
             coarse_delta_prune: Score::from_cp(1000),
@@ -216,11 +216,10 @@ impl Algo {
                 let score = board.eval_move_see(&self.eval, &mv);
                 let winning = false;
                 // allow 8 matched attackers
-                let bar = self.qsearch.see_cutoff as i32;
-                if score < Score::from_cp(bar) || score == Score::from_cp(bar) && (winning || depth >= -1) {
+                if score < self.qsearch.see_cutoff || score == self.qsearch.see_cutoff && (winning || depth >= -1) {
                     trace!(
                         "{}",
-                        board.debug() + "see score bad" + score + "<" + Score::from_cp(bar) + "for" + &mv
+                        board.debug() + "see score bad" + score + "<" + self.qsearch.see_cutoff + "for" + &mv
                     );
                     if self.qsearch.ignore_see_fails {
                         continue;
@@ -230,7 +229,7 @@ impl Algo {
                 } else {
                     trace!(
                         "{}",
-                        board.debug() + "see score good" + score + "cmp" + Score::from_cp(bar) + "for" + &mv
+                        board.debug() + "see score good" + score + "cmp" + self.qsearch.see_cutoff + "for" + &mv
                     );
                 }
             }

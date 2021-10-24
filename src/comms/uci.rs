@@ -863,7 +863,7 @@ mod tests {
         assert_eq!(uci.engine.lock().unwrap().algo.eval.position, true);
         uci.preamble.push("setoption name eval.b.s value 700".into());
         uci.preamble
-            .push("setoption name eval.mb.knight value [400, 429]".into());
+            .push("setoption name eval.mb.n value [400, 429]".into());
         uci.preamble
             .push("setoption name eval.position value false".into());
         uci.preamble

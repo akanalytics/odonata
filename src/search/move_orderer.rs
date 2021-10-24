@@ -253,7 +253,7 @@ impl OrderedMoveList {
             }
             if move_type == MoveType::GoodCaptureUpfrontSorted || move_type == MoveType::GoodCapture {
                 let mv = &self.moves[self.index];
-                let see = algo.eval.eval_move_see(b, mv);
+                let see = algo.eval.see.eval_move_see(b, mv);
                 if see < 0 {
                     self.bad_captures.push(*mv);
                     self.index += 1;
