@@ -261,11 +261,13 @@ impl Component for SimpleScorer {
     fn new_game(&mut self) {
         self.mb.new_game();
         self.phaser.new_game();
+        self.see.new_game();
     }
 
     fn new_position(&mut self) {
         self.mb.new_position();
         self.phaser.new_position();
+        self.see.new_position();
     }
 }
 

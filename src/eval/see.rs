@@ -1,4 +1,5 @@
 use crate::eval::material_balance::MaterialBalance;
+use crate::infra::parsed_config::Component;
 use crate::{Bitboard, Piece, PreCalc};
 use crate::board::Board;
 use crate::board::boardcalcs::BoardCalcs;
@@ -24,6 +25,13 @@ impl Default for See {
     }
 }
 
+impl Component for See {
+    fn new_game(&mut self) {
+    }
+
+    fn new_position(&mut self) {
+    }
+}
 
 impl See {
 
