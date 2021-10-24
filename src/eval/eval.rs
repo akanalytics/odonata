@@ -171,8 +171,8 @@ pub struct SimpleScorer {
 
     pub contempt_penalty: Weight,
     pub tempo_bonus: Weight,
-    pub attacks: PieceArray<PieceArray<Weight>>, 
-    pub defends: PieceArray<PieceArray<Weight>> , 
+    // pub attacks: PieceArray<PieceArray<Weight>>, 
+    // pub defends: PieceArray<PieceArray<Weight>> , 
 
     // pub cache: TranspositionTable,
     // pub qcache: TranspositionTable,
@@ -241,14 +241,14 @@ impl Default for SimpleScorer {
             tropism_d3: Weight::from_i32(-5, 2),
 
             castling_rights: Weight::from_i32(0, 0),
-            attacks: PieceArray {
-                q: PieceArray {
-                    r: Weight::from_i32(-1, -2),
-                    .. Default::default()
-                },
-                .. Default::default()
-            },
-            defends: Default::default(), 
+            // attacks: PieceArray {
+            //     q: PieceArray {
+            //         r: Weight::from_i32(-1, -2),
+            //         .. Default::default()
+            //     },
+            //     .. Default::default()
+            // },
+            // defends: Default::default(), 
         };
         me
     }

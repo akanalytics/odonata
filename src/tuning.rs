@@ -88,7 +88,9 @@ impl Tuning {
             let phase = model.mat.phase(&eval.phaser);
             let mut w_score = ModelScore::new(phase);
             eval.predict(model, &mut w_score);
-            let win_prob_estimate = Score::win_probability_of(w_score.as_f32());
+            // let score = w_score.as_f32() / (2.0 + (phase as f32 - 50.0) / 50.0);
+            let score = w_score.as_f32();
+            let win_prob_estimate = Score::win_probability_of(score);
             let win_prob_actual = *outcome;
             let diff = win_prob_estimate - win_prob_actual;
             diff * diff
