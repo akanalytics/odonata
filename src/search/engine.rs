@@ -148,7 +148,7 @@ impl Engine {
 
     pub fn ponder_hit(&mut self) {
         self.algo.mte.set_shared_ponder(false);
-        self.algo.search_stats.restart_clocks();
+        self.algo.stats.restart_clocks();
     }
 
     pub fn search(&mut self) {
@@ -197,7 +197,7 @@ impl Engine {
 
     pub fn search_stop(&mut self) {
         self.algo.task_control.cancel();
-        self.algo.search_stats.user_cancelled = true;
+        self.algo.stats.user_cancelled = true;
         self.wait();
     }
 
@@ -209,15 +209,15 @@ impl Engine {
             info!(
                 "thread {:>3} {:>5} {:>8} {:>10} {:>10} {:>10}   {:<48}",
                 i, // thread::current().name().unwrap(),
-                algo.bm().to_string(),
+                algo.results.bm().to_string(),
                 algo.score().to_string(),
-                algo.search_stats.cumulative().all_nodes(),
-                algo.search_stats.cumulative_knps(),
-                Formatting::format_duration(algo.search_stats.cumulative().elapsed),
+                algo.stats.cumulative().all_nodes(),
+                algo.stats.cumulative_knps(),
+                Formatting::format_duration(algo.stats.cumulative().elapsed),
                 algo.pv().to_string(),
             );
             // knps += algo.search_stats.cumulative_knps();
-            nodes += algo.search_stats.cumulative().all_nodes();
+            nodes += algo.stats.cumulative().all_nodes();
             if i == 0 {
                 self.algo = algo;
                 // self.algo.results = algo.results().clone();
@@ -368,7 +368,7 @@ mod tests {
             assert_eq!(engine.algo.pv_table.extract_pv(), position.pv().unwrap());
             assert_eq!(engine.algo.score(), Score::white_win(3));
             assert_eq!(engine.algo.repetition.prior_positions(), 1);
-            println!("{}", engine.algo.results());
+            println!("{}", engine.algo.results_as_position());
         }
     }
 }

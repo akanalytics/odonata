@@ -98,21 +98,21 @@ impl Bench {
 
             engine.search();
             let elapsed = t.elapsed();
-            let bm = pos.board().to_san(&engine.algo.bm());
-            let correct = if pos.bm().ok().unwrap().contains(&engine.algo.bm()) {
+            let bm = pos.board().to_san(&engine.algo.results.bm());
+            let correct = if pos.bm().ok().unwrap().contains(&engine.algo.results.bm()) {
                 score += 1;
                 '1'
             } else {
                 '-'
             };
-            let depth = engine.algo.results().acd().unwrap();
-            let sel_depth = engine.algo.results().tag(Tag::ACSD).value_uci();
-            let nodes = engine.algo.results().acn().unwrap();
+            let depth = engine.algo.results_as_position().acd().unwrap();
+            let sel_depth = engine.algo.results_as_position().tag(Tag::ACSD).value_uci();
+            let nodes = engine.algo.results_as_position().acn().unwrap();
             let cp = engine.algo.score();
             let nps = Formatting::format_f64(nodes as f64 / elapsed.as_secs_f64());
-            let bf = engine.algo.results().branching_factor();
+            let bf = engine.algo.results_as_position().branching_factor();
             let bf_string = Formatting::format_decimal(2, bf);
-            let fen = engine.algo.results().board().to_fen();
+            let fen = engine.algo.results_as_position().board().to_fen();
             total_bf += bf;
             total_time += elapsed;
             total_nodes += nodes;

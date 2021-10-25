@@ -34,7 +34,7 @@ impl Default for QSearch {
             enabled: true,
             only_on_capture: false,
             ignore_see_fails: true,
-            see_cutoff: Score::from_cp(0),
+            see_cutoff: Score::from_cp(1),
             promos: false,
             max_ply: 10,
             coarse_delta_prune: Score::from_cp(1000),
@@ -126,7 +126,7 @@ impl Algo {
             // early return if a draw or mate
             if standing_pat.is_mate() || board.draw_outcome().is_some() {
                 // self.record_new_pv(board, ply, &Move::NULL_MOVE, true);
-                self.search_stats.inc_q_leaf_nodes(ply);
+                self.stats.inc_q_leaf_nodes(ply);
                 return standing_pat;
             }
             if in_check {
@@ -145,7 +145,7 @@ impl Algo {
         }
         if standing_pat > alpha {
             if standing_pat >= beta {
-                self.search_stats.inc_q_leaf_nodes(ply);
+                self.stats.inc_q_leaf_nodes(ply);
                 trace!(
                     "{}",
                     board.debug() + ply + "fail high - standing pat" + standing_pat + ">=" + beta
@@ -186,9 +186,9 @@ impl Algo {
             .collect();
 
         if moves.is_empty() {
-            self.search_stats.inc_q_leaf_nodes(ply);
+            self.stats.inc_q_leaf_nodes(ply);
         } else {
-            self.search_stats.inc_q_interior_nodes(ply);
+            self.stats.inc_q_interior_nodes(ply);
         }
         self.order_moves(ply, &mut moves, &None);
         for &mv in moves.iter() {
@@ -314,7 +314,7 @@ mod tests {
                 "search:{}\nexpected:{}\nresults:{}",
                 engine.algo.pv().to_string(),
                 pos.pv()?.to_string(),
-                engine.algo.results(),
+                engine.algo.results_as_position(),
             );
             assert_eq!(
                 engine.algo.pv().to_string(),
@@ -332,9 +332,9 @@ mod tests {
             }
             assert_eq!(
                 static_eval,
-                engine.algo.results().ce().unwrap() as i16,
+                engine.algo.results_as_position().ce().unwrap() as i16,
                 "{}",
-                engine.algo.results()
+                engine.algo.results_as_position()
             );
         }
         Ok(())

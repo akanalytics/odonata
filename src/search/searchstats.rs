@@ -38,7 +38,7 @@ impl fmt::Display for SearchStats {
         writeln!(f, "pv               : {}", self.pv())?;
         writeln!(f, "score            : {}", self.score)?;
         writeln!(f, "clock (elapsed)  : {}", Formatting::format_duration(self.clock.elapsed_search()))?;
-        writeln!(f, "completed        : {}", self.completed())?;
+        writeln!(f, "interrupted      : {}", self.interrupted())?;
         writeln!(f, "user cancelled   : {}", self.user_cancelled)?;
         writeln!(f, "calc depth       : {}", self.depth())?;
         writeln!(f, "selective depth  : {}", self.selective_depth())?;
@@ -105,8 +105,8 @@ impl SearchStats {
         }
     }
 
-    pub fn completed(&self) -> bool {
-        self.completed
+    pub fn interrupted(&self) -> bool {
+        !self.completed
     }
 
     pub fn pv(&self) -> &Variation {
@@ -345,18 +345,18 @@ impl SearchStats {
 
     // BF = total / interior
     #[inline]
-    pub fn branching_factor(&self) -> f64 {
+    pub fn branching_factor(&self) -> f32 {
         let t = self.total();
-        (t.all_leaf_nodes() + t.interior_nodes()) as f64 / (t.interior_nodes() + 1) as f64
+        (t.all_leaf_nodes() + t.interior_nodes()) as f32 / (t.interior_nodes() + 1) as f32
     }
 
     #[inline]
-    pub fn q_branching_factor(&self) -> f64 {
+    pub fn q_branching_factor(&self) -> f32 {
         let t = self.total();
-        (t.q_leaf_nodes as f64) / (t.q_interior_nodes + 1) as f64
+        (t.q_leaf_nodes as f32) / (t.q_interior_nodes + 1) as f32
     }
 
-    pub fn cuts_on_first_move(&self) -> f64 {
+    pub fn cuts_on_first_move(&self) -> f32 {
         let cuts_in_movegen: u64 = self
         .plies
         .iter()
@@ -366,7 +366,7 @@ impl SearchStats {
         .plies
         .iter()
         .map(|stats| stats.cut_on_first_move).sum();
-        (cuts_total_first_move as f64) / (cuts_in_movegen as f64)
+        (cuts_total_first_move as f32) / (cuts_in_movegen as f32)
     }
 
 }

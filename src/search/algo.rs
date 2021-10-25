@@ -19,7 +19,7 @@ use crate::search::move_time_estimator::MoveTimeEstimator;
 use crate::search::nmp::NullMovePruning;
 use crate::search::pvs::Pvs;
 use crate::search::qsearch::QSearch;
-use crate::search::searchprogress::SearchProgress;
+use crate::search::search_results::SearchResults;
 use crate::search::searchstats::SearchStats;
 use crate::search::restrictions::Restrictions;
 use crate::search::razor::Razor;
@@ -33,6 +33,7 @@ use serde::{Deserialize, Serialize};
 
 
 use super::search_explainer::SearchExplainer;
+use super::search_results::SearchResultsMode;
 
 
 #[derive(Clone, Default, Serialize, Deserialize)]
@@ -61,7 +62,7 @@ pub struct Algo {
 
 
     #[serde(skip)]
-    pub results: Position,
+    pub results: SearchResults,
     #[serde(skip)]
     pub position: Position,
     #[serde(skip)]
@@ -70,9 +71,9 @@ pub struct Algo {
     pub max_depth: Ply,
 
     #[serde(skip)]
-    pub task_control: TaskControl<SearchProgress>,
+    pub task_control: TaskControl<SearchResults>,
     #[serde(skip)]
-    pub search_stats: SearchStats,
+    pub stats: SearchStats,
     #[serde(skip)]
     pub pv_table: PvTable,
     #[serde(skip)]
@@ -103,7 +104,7 @@ impl Algo {
         self
     }
 
-    pub fn set_callback(&mut self, callback: impl Fn(&SearchProgress) + Send + Sync + 'static) -> &mut Self {
+    pub fn set_callback(&mut self, callback: impl Fn(&SearchResults) + Send + Sync + 'static) -> &mut Self {
         self.task_control.register_callback(callback);
         self
     }
@@ -117,7 +118,7 @@ impl Component for Algo {
 
     // clears evaluation and transposition caches as well as repetition counts
     fn new_game(&mut self) {
-        self.search_stats = SearchStats::new();
+        self.stats = SearchStats::new();
         self.clock_checks = 0;
 
         self.ids.new_game();
@@ -141,7 +142,7 @@ impl Component for Algo {
 
     fn new_position(&mut self) {
         self.task_control.set_running();
-        self.search_stats = SearchStats::new();
+        self.stats = SearchStats::new();
         self.eval.new_position();
         self.move_orderer.new_position();
         self.mte.new_position();
@@ -176,7 +177,7 @@ impl fmt::Debug for Algo {
             .field("move_orderer", &self.move_orderer)
             .field("mte", &self.mte)
             .field("depth", &self.max_depth)
-            .field("search_stats", &self.search_stats)
+            .field("search_stats", &self.stats)
             .field("nmp", &self.nmp)
             .field("futility", &self.futility)
             .field("pvs", &self.pvs)
@@ -202,7 +203,7 @@ impl fmt::Display for Algo {
         writeln!(f, "material         : {}", self.board.material())?;
         writeln!(f, "phase            : {} %", self.board.phase(&self.eval.phaser))?;
         writeln!(f, "static eval      : {}", self.board.eval(&self.eval, &Node::root(0)))?;
-        writeln!(f, "bm               : {}", self.bm())?;
+        writeln!(f, "bm               : {}", self.results.bm())?;
         writeln!(f, "score            : {}", self.score())?;
         writeln!(f, "analyse mode     : {}", self.analyse_mode)?;
         writeln!(f, "depth            : {}", self.max_depth)?;
@@ -211,7 +212,7 @@ impl fmt::Display for Algo {
             "current_best     : {}",
             self.current_best.unwrap_or(Move::new_null())
         )?;
-        writeln!(f, "results          : {}", self.results())?;
+        writeln!(f, "results          : {}", self.results_as_position())?;
         writeln!(f, "minmax           : {}", self.minmax)?;
         writeln!(f, "clock_checks     : {}", self.clock_checks)?;
         write!(f, "\n[task control]\n{}", self.task_control)?;
@@ -230,7 +231,7 @@ impl fmt::Display for Algo {
         self.tt.fmt_nodes(f, &self.board)?;
         write!(f, "\n[killers]\n{}", self.killers)?;
         write!(f, "\n[history]\n{}", self.history)?;
-        write!(f, "\n[stats]\n{}", self.search_stats)?;
+        write!(f, "\n[stats]\n{}", self.stats)?;
         write!(f, "\n[iterative deepening]\n{}", self.ids)?;
         write!(f, "\n[global counts]\n{}", counts::GLOBAL_COUNTS)?;
         write!(f, "\n[pvtable]\n{}", self.pv_table)?;
@@ -256,18 +257,18 @@ impl Algo {
     }
 
     pub fn report_progress(&self) {
-        if self.search_stats.total().all_nodes() % 5_000_000 == 0 && self.search_stats.total().all_nodes() != 0 {
-            let sp = SearchProgress::report_progress(&self);
+        if self.stats.total().all_nodes() % 5_000_000 == 0 && self.stats.total().all_nodes() != 0 {
+            let sp = SearchResults::with_report_progress(&self);
             self.task_control.invoke_callback(&sp);
         }
     }
 
     pub fn report_refutation(&self, ply: Ply) {
         if self.show_refutations && ply < 4 {
-            let sp = SearchProgress { 
+            let sp = SearchResults { 
                     pv: Some(self.pv_table.extract_pv_for(ply).clone()),   
-                    refutation: true,
-                    .. SearchProgress::default()
+                    mode: SearchResultsMode::Refutation,
+                    .. SearchResults::default()
             };
 
             self.task_control.invoke_callback(&sp);
@@ -308,20 +309,21 @@ impl Algo {
 
     #[inline]
     pub fn search_stats(&self) -> &SearchStats {
-        &self.search_stats
+        &self.stats
     }
 
-    pub fn results(&self) -> &Position {
-        &self.results
+    pub fn results_as_position(&self) -> Position {
+        self.results.to_pos()
     }
 
-    pub fn bm(&self) -> Move {
-        if self.pv().len() > 0 {
-            self.pv()[0]
-        } else {
-            Move::NULL_MOVE
-        }
-    }
+    // pub fn bm(&self) -> Move {
+    //     if self.pv().len() > 0 {
+    //         self.pv()[0]
+    //     } else {
+    //         Move::NULL_MOVE
+    //     }
+    // }
+
 
     pub fn score(&self) -> Score {
         self.search_stats().score
@@ -333,8 +335,7 @@ impl Algo {
 
     pub fn ponder_hit(&mut self) {
         self.mte.set_shared_ponder(false);
-
-        self.search_stats.restart_clocks();
+        self.stats.restart_clocks();
     }
 
     // pub fn search_async_stop(&mut self) -> bool {
@@ -374,7 +375,7 @@ impl Algo {
 
         let time_up = self.mte.is_time_up(ply, self.search_stats());
         if time_up {
-            self.search_stats.completed = false;
+            self.stats.completed = false;
             self.task_control.cancel();
         }
         time_up
@@ -636,19 +637,19 @@ mod tests {
             algo.new_game();
             algo.tt.allow_truncated_pv = true;
             algo.set_position(p.clone()).search();
-            let pv1 = algo.results.pv().unwrap();
+            let pv1 = algo.results_as_position().pv().unwrap();
             algo.tt.current_age -= 1;
-            println!("{:<40} - {}", pv1.uci(), algo.results());
+            println!("{:<40} - {}", pv1.uci(), algo.results_as_position());
 
             algo.tt.allow_truncated_pv = true;
             algo.set_position(p.clone()).search();
-            let pv2 = algo.results.pv().unwrap();
-            println!("{:<40} - {}", pv2.uci(), algo.results());
+            let pv2 = algo.results_as_position().pv().unwrap();
+            println!("{:<40} - {}", pv2.uci(), algo.results_as_position());
 
             algo.tt.allow_truncated_pv = false;
             algo.set_position(p.clone()).search();
-            let pv3 = algo.results.pv().unwrap();
-            println!("{:<40} - {}\n", pv3.uci(), algo.results());
+            let pv3 = algo.results_as_position().pv().unwrap();
+            println!("{:<40} - {}\n", pv3.uci(), algo.results_as_position());
 
             //assert_eq!(pv1, pv2, "{}", p );
         }

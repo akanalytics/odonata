@@ -115,7 +115,7 @@ mod tests {
             engine.algo.board = pos.board().clone();
 
             engine.search();
-            let mut results = engine.algo.results().clone();
+            let mut results = engine.algo.results_as_position().clone();
             let nodes = results.acn().unwrap();
             node_count += nodes;
 

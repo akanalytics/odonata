@@ -54,7 +54,7 @@ impl Exam {
             exam.engine.algo.board = pos.board().clone();
             exam.engine.search();
 
-            let correct = pos.bm().ok().unwrap().contains(&exam.engine.algo.results().sm().unwrap());
+            let correct = pos.bm().ok().unwrap().contains(&exam.engine.algo.results_as_position().sm().unwrap());
             if correct {
                 exam.score += 1;
             }

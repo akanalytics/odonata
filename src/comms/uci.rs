@@ -14,7 +14,7 @@ use crate::tags::Tag;
 use crate::position::Position;
 use crate::comms::json_rpc::JsonRpc;
 use crate::eval::eval::SimpleScorer;
-use crate::search::searchprogress::SearchProgress;
+use crate::search::search_results::{SearchResults, SearchResultsMode};
 use crate::search::timecontrol::TimeControl;
 use crate::types::Ply;
 use crate::infra::version::Version;
@@ -503,7 +503,7 @@ impl Uci {
         // Example: After "position startpos" and "go infinite searchmoves e2e4 d2d4"
         // the engine should only search the two moves e2e4 and d2d4 in the initial position
         let search_moves = Self::parse_movelist(args, &self.board)?;
-        self.engine.lock().unwrap().algo.restrictions.search_moves = search_moves;
+        self.engine.lock().unwrap().algo.restrictions.include_moves = search_moves;
         // self.log_debug_message("starting search with configuration ...");
         // self.log_debug_message(&format!("{}", self.engine.lock().unwrap().algo));
         // self.log_debug_message(&format!("{}", self.board));
@@ -518,6 +518,7 @@ impl Uci {
         ops.push(format!("option name UCI_EngineAbout type string default {} {}", Version::NAME, Version::HOMEPAGE));
         ops.push("option name debug type check default false".to_string());
         ops.push(format!("option name Threads type spin default {} min 1 max 16", engine.thread_count));
+        ops.push(format!("option name MultiPV type spin default {} min 1 max 64", engine.algo.restrictions.multi_pv_count));
         ops.push(format!("option name Hash type spin default {} min 0 max 4000", engine.algo.tt.mb));
         ops.push("option name Ponder type check default false".to_string());
         ops.push("option name Clear Hash type button".to_string());
@@ -553,11 +554,14 @@ impl Uci {
         let mut engine = self.engine.lock().unwrap();
 
         // handle specific name/value uci options
+        // FIXME! as hardcoding names of variables 
         if name == "debug" {
             self.debug = value == "true";
             Ok(engine.clone())
         } else if name == "Threads" {
             engine.configment("thread_count", value)
+        } else if name == "MultiPV" {
+            engine.configment("restrictions.multi_pv_count", value)
         } else if name == "Hash" {
             engine.configment("tt.mb", value)
         } else if name == "UCI_AnalyseMode" {
@@ -579,7 +583,7 @@ impl Uci {
 
             fig.extract().context(format!("error in config file {}", &engine.config_filename))
         } else {
-            engine.configment(name, value)
+            bail!("Unknown option name '{}' value '{}'", name, value);
         }
     }
 
@@ -683,10 +687,11 @@ impl Uci {
         Ok(())
     }
 
-    pub fn uci_info(search_progress: &SearchProgress) {
-        Self::print(&format!("info {}", UciInfo(search_progress)));
-        if let Some(bm) = search_progress.bestmove {
-            Self::print_bm_and_ponder(&bm, &search_progress.pv.as_ref().unwrap_or(&Variation::default()) );
+    pub fn uci_info(sr: &SearchResults) {
+        if let SearchResultsMode::BestMove = sr.mode {
+            Self::print_bm_and_ponder(&sr.pv.as_ref().unwrap_or(&Variation::default()) );
+        } else {
+            Self::print(&format!("info {}", UciInfo(sr)));
         }
     }
 
@@ -694,7 +699,13 @@ impl Uci {
     //     Self::print(&format!("info string {}", str.replace("\n", "\ninfo string ")));
     // }
 
-    fn print_bm_and_ponder(bm: &Move, var: &Variation) {
+    fn print_bm_and_ponder(var: &Variation) {
+
+        let bm = if var.len() > 0 {
+            var[0]
+        } else {
+            Move::NULL_MOVE
+        };
         let mut output = format!("bestmove {}", bm.uci());
         if var.len() > 1 {
             output = format!("{} ponder {}", output, var[1].uci());
@@ -710,11 +721,11 @@ impl Uci {
     // }
 }
 
-struct UciInfo<'a>(&'a SearchProgress);
+struct UciInfo<'a>(&'a SearchResults);
 
 impl<'a> fmt::Display for UciInfo<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.0.refutation {
+        if let SearchResultsMode::Refutation = self.0.mode {
             if let Some(pv) = &self.0.pv {
                 let strings: Vec<String> = pv.iter().map(Move::to_string).collect();
                 write!(f, "refutation {}", strings.join(" "))?;
@@ -753,6 +764,9 @@ impl<'a> fmt::Display for UciInfo<'a> {
         if let Some(time_millis) = self.0.time_millis {
             write!(f, "time {} ", time_millis)?;
             if let Some(pv) = &self.0.pv {
+                if let Some(multi_pv) = &self.0.multi_pv_index {
+                    write!(f, "multipv {} ", multi_pv + 1)?;
+                }
                 let strings: Vec<String> = pv.iter().map(Move::to_string).collect();
                 write!(f, "pv {}", strings.join(" "))?;
             }

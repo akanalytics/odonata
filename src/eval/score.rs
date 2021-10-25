@@ -30,6 +30,7 @@ impl Score {
     // note MAX = 32767 but MIN = -32768. So we use -MAX
     // pub const MINUS_INF : Score = Score { cp: -i16::MAX };
     pub const INFINITY : Score = Score { cp: i16::MAX };
+    pub const DRAW : Score = Score::zero();
 
     const INF : i16 = i16::MAX;
 

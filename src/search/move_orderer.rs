@@ -150,16 +150,16 @@ impl Algo {
                 self.move_orderer.count_pv.add(ply, 1);
             }
         }
-        if self.move_orderer.prior_bm {
-            if ply == 0 {
-                let i = movelist.iter().position(|&mv| mv == self.bm());
-                if let Some(i) = i {
-                    movelist.swap(0, i);
-                    self.move_orderer.count_bm.add(ply, 1);
-                    return;
-                }
-            }
-        }
+        // if self.move_orderer.prior_bm {
+        //     if ply == 0 {
+        //         let i = movelist.iter().position(|&mv| mv == self.bm());
+        //         if let Some(i) = i {
+        //             movelist.swap(0, i);
+        //             self.move_orderer.count_bm.add(ply, 1);
+        //             return;
+        //         }
+        //     }
+        // }
         if self.move_orderer.tt_bm {
             if let Some(tt_bm) = tt_mv {
                 let i = movelist.iter().position(|&mv| mv == *tt_bm);
@@ -803,7 +803,7 @@ mod tests {
             engine.algo.board = pos.board().clone();
 
             engine.search();
-            let mut results = engine.algo.results().clone();
+            let mut results = engine.algo.results_as_position().clone();
             let nodes = results.acn().unwrap();
             node_count += nodes;
 

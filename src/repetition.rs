@@ -286,7 +286,7 @@ mod tests {
         print!("\n\npos3 = {}\nboard={}\nhash={}\nrep=\n{}\nRepeats{:?}\n", pos3, board, board.hash(), engine.algo.repetition, engine.algo.repetition.count(&board));
         print!("rep = {:?}\n", engine.algo.repetition);
         engine.search();
-        let res = engine.algo.results();
+        let res = engine.algo.results_as_position();
         print!("res3: {}\n", res);
 
         let mut pos2 = pos3.clone();
@@ -299,7 +299,7 @@ mod tests {
         print!("\n\npos2 = {}\nboard={}\nhash={}\nrep=\n{}\nRepeats{:?}\n", pos2, board, board.hash(), engine.algo.repetition, engine.algo.repetition.count(&board));
         print!("rep = {:?}\n", engine.algo.repetition);
         engine.search();
-        let res = engine.algo.results();
+        let res = engine.algo.results_as_position();
         print!("res2: {}\n", res);
 
         let mut pos1 = pos3.clone();
@@ -312,7 +312,7 @@ mod tests {
         print!("\n\npos1 = {}\nboard={}\nhash={}\nrep=\n{}\nRepeats{:?}\n", pos1, board, board.hash(), engine.algo.repetition, engine.algo.repetition.count(&board));
         print!("rep = {:?}\n", engine.algo.repetition);
         engine.search();
-        let res = engine.algo.results();
+        let res = engine.algo.results_as_position();
         print!("res1: {}\n", res);
     }
         

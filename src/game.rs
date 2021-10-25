@@ -72,8 +72,8 @@ impl Game {
                 black
             };
             player.set_position(Position::from_board(self.board.clone())).search();
-            let mv = player.bm();
-            let tags = player.results().tags().clone();
+            let mv = player.results.bm();
+            let tags = player.results_as_position().tags().clone();
             if player.score() == -Score::INFINITY {
                 print!("{}", player);
             }

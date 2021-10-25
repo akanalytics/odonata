@@ -1,5 +1,5 @@
 pub mod algo;
-pub mod searchprogress;
+pub mod search_results;
 pub mod searchstats;
 pub mod taskcontrol;
 pub mod timecontrol;

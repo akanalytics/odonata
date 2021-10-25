@@ -236,7 +236,6 @@ pub struct TranspositionTable2 {
     pub enabled: bool,
     pub use_tt_for_pv: bool,
     pub allow_truncated_pv: bool,
-    pub allow_tt_at_root: bool,
     pub mb: i64,
     pub hmvc_horizon: i32,
     pub min_ply: Ply,
@@ -263,7 +262,6 @@ impl TranspositionTable2 {
             use_tt_for_pv: false,
             probe_leaf_nodes: true,
             allow_truncated_pv: false,
-            allow_tt_at_root: false,
             mb: mb as i64,
             aging: true,
             current_age: 10, // to allow us to look back
@@ -291,7 +289,6 @@ impl fmt::Debug for TranspositionTable2 {
             .field("enabled", &self.enabled)
             .field("use.tt.for.pv", &self.use_tt_for_pv)
             .field("allow.truncated.pv", &self.allow_truncated_pv)
-            .field("allow.tt.at.root", &self.allow_tt_at_root)
             .field("mb", &self.mb)
             .field("hmvc.horizon", &self.hmvc_horizon)
             .field("aging", &self.aging)
@@ -306,7 +303,6 @@ impl fmt::Display for TranspositionTable2 {
         writeln!(f, "enabled          : {}", self.enabled)?;
         writeln!(f, "use tt for pv    : {}", self.use_tt_for_pv)?;
         writeln!(f, "allow trun pv    : {}", self.allow_truncated_pv)?;
-        writeln!(f, "allow tt at root : {}", self.allow_tt_at_root)?;
         writeln!(f, "capacity         : {}", self.table.capacity())?;
         writeln!(f, "size in mb       : {}", self.mb)?;
         writeln!(f, "entry size bytes : {}", mem::size_of::<TtNode>())?;
@@ -530,7 +526,8 @@ impl TranspositionTable2 {
     }
 
     pub fn probe_by_board(&self, board: &Board, ply: Ply, _draft: Ply) -> Option<TtNode> {
-        if !self.enabled || self.capacity() == 0 || ply < self.min_ply {
+        // never probe at root as we may retrict moves (or be using multi-pv there)
+        if !self.enabled || self.capacity() == 0 || ply < self.min_ply || ply == 0 {
             return None;
         }
         let tt_node = self.probe_by_hash(board.hash());
