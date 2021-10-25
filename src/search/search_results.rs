@@ -28,7 +28,6 @@ pub struct SearchResults {
     pub mode: SearchResultsMode,
     pub depth: Option<Ply>,
     pub seldepth: Option<Ply>,
-    pub bestmove: Option<Move>,
     pub time_millis: Option<u64>,
     pub multi_pv_index: Option<u32>,
     pub pv: Option<Variation>,
@@ -75,22 +74,22 @@ impl SearchResults {
 
 
 
-    pub fn pv_change(best: Option<Move>, algo: &Algo) -> Self {
-        let stats = algo.search_stats();
-        SearchResults {
-            mode: SearchResultsMode::BestMove,
-            bestmove: best,
-            pv: Some(stats.pv().clone()),   
-            score: if stats.score > -Score::INFINITY {Some(stats.score)} else {None},  
-            nodes: Some(stats.all_threads_cumulative_total_nodes()),
-            nps: Some(stats.all_threads_cumulative_knps() * 1000),
-            depth: Some(stats.depth()),
-            seldepth: Some(stats.selective_depth()),
-            time_millis: Some(stats.cumulative_time_as_millis() as u64),
-            hashfull_per_mille: Some(algo.tt.hashfull_per_mille()),
-            ..Default::default()
-        }
-    }
+    // pub fn pv_change(best: Option<Move>, algo: &Algo) -> Self {
+    //     let stats = algo.search_stats();
+    //     SearchResults {
+    //         mode: SearchResultsMode::BestMove,
+    //         bestmove: best,
+    //         pv: Some(stats.pv().clone()),   
+    //         score: if stats.score > -Score::INFINITY {Some(stats.score)} else {None},  
+    //         nodes: Some(stats.all_threads_cumulative_total_nodes()),
+    //         nps: Some(stats.all_threads_cumulative_knps() * 1000),
+    //         depth: Some(stats.depth()),
+    //         seldepth: Some(stats.selective_depth()),
+    //         time_millis: Some(stats.cumulative_time_as_millis() as u64),
+    //         hashfull_per_mille: Some(algo.tt.hashfull_per_mille()),
+    //         ..Default::default()
+    //     }
+    // }
 
 
 
