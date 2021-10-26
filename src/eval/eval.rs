@@ -753,10 +753,11 @@ mod tests {
         let board = Catalog::starting_board();
         let eval = &mut SimpleScorer::new();
         eval.tempo = false;
-        info!("\n{}", eval.w_eval_explain(&board));
+        info!("starting\n{}", eval.w_eval_explain(&board));
         assert_eq!(board.eval(eval, &Node::root(0)), Score::from_cp(0));
 
         let board_w = Catalog::white_starting_position();
+        info!("white starting\n{}", eval.w_eval_explain(&board_w));
         assert_eq!(board_w.phase(&eval.phaser), 50);
         eval.set_switches(false);
         eval.material = true;

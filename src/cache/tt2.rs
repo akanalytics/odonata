@@ -636,11 +636,13 @@ impl TranspositionTable2 {
 
 #[cfg(test)]
 mod tests {
+    use test_env_log;
     use super::*;
     use crate::catalog::*;
     use crate::comms::uci::*;
     use crate::globals::constants::*;
     use crate::search::algo::*;
+    use crate::search::engine::Engine;
     use crate::search::timecontrol::*;
     use crate::types::*;
 
@@ -766,19 +768,24 @@ mod tests {
         for pos in Catalog::end_games().iter() {
             algo.new_game();
             algo.set_position(pos.clone()).search();
-            assert_eq!(algo.bm().uci(), pos.bm()?.uci(), "{}\n{}", pos, algo);
+            assert_eq!(algo.results.bm().uci(), pos.bm()?.uci(), "{}\n{}", pos, algo);
         }
         Ok(())
     }
 
     #[test]
     fn tt2_test_pv_extraction() -> Result<(), String> {
+        info!("log");
+        let engine = Engine::new();
         let mut algo = Algo::new();
         let d = 2;
         algo.set_timing_method(TimeControl::Depth(d));
         for pos in Catalog::bratko_kopec() {
+            eprintln!("{}", pos);
             algo.new_game();
+            eprintln!("new game");
             algo.set_position(pos.clone()).search();
+            eprintln!("search done");
             //            let pv = algo.tt.extract_pv(&algo.bm(), pos.board());
             let pv = algo.tt.extract_pv_and_score(pos.board()).0;
 
@@ -790,12 +797,13 @@ mod tests {
                 pv,
                 algo
             );
+            // certainly pv can be longer as it has qsearch
             assert!(
                 pv.len() <= d as usize,
-                "algo.pv={} pv={}\n{}",
+                "{}\n algo.pv={} pv={}",
+                algo,
                 algo.pv(),
                 pv,
-                algo
             );
             // assert!(algo.pv().len() >= d as usize, "{} {}\n{}", algo.pv(), pv, algo);
             // assert_eq!(algo.bm().uci(), pos.bm()?.uci());

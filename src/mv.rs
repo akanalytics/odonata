@@ -527,13 +527,13 @@ mod tests {
 
         assert_eq!(pxq.mvv_lva_score(), 8990);
         assert_eq!(pxr.mvv_lva_score(), 4990);
-        assert_eq!(pxb.mvv_lva_score(), 3490);
+        assert_eq!(pxb.mvv_lva_score(), 3240);
         assert_eq!(pxn.mvv_lva_score(), 3240);
         assert_eq!(pxp.mvv_lva_score(), 990);
 
         assert_eq!(qxp.mvv_lva_score(), 910);
         assert_eq!(qxn.mvv_lva_score(), 3160);
-        assert_eq!(qxb.mvv_lva_score(), 3410);
+        assert_eq!(qxb.mvv_lva_score(), 3160);
         assert_eq!(qxr.mvv_lva_score(), 4910);
         assert_eq!(qxq.mvv_lva_score(), 8910);
 

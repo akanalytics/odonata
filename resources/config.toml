@@ -20,8 +20,6 @@ minmax = false
 enabled = true
 part_ply = true
 step_size = 1
-start_ply = 1
-end_ply = 127
 
 
 [eval]

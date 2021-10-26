@@ -487,10 +487,10 @@ mod tests {
         let mat_p = Material::from_piece_str("p").unwrap();
         assert_eq!(mat_p.centipawns(), -100);
         assert_eq!(mat_PPP.centipawns(), 300);
-        assert_eq!(mat_some.advantage().centipawns(), -300); // R+N-Q = -75, N-b=-25, 2x-P=-200
+        assert_eq!(mat_some.advantage().centipawns(), -275); // R+N-Q = -75, N-b=-0, 2x-P=-200
         let board = Catalog::starting_board();
-        assert_eq!(board.material().black().minors_and_majors().centipawns(), -3250);
-        assert_eq!(board.material().white().minors_and_majors().centipawns(), 3250);
+        assert_eq!(board.material().black().minors_and_majors().centipawns(), -3200);
+        assert_eq!(board.material().white().minors_and_majors().centipawns(), 3200);
         assert_eq!(
             Material::from_piece_str("KkPPPPPppppp")
                 .unwrap()

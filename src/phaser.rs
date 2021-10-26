@@ -22,7 +22,7 @@ impl Default for Phaser {
         Self {
             enabled: true,
             method: "SO".to_string(),
-            half_way_score: 6500 / 2,
+            half_way_score: Self::ALL_PIECES / 2,
         }
     }
 }
@@ -42,7 +42,7 @@ impl Component for Phaser {
 }
 
 impl Phaser {
-    const ALL_PIECES: i32 = 6500;
+    const ALL_PIECES: i32 = 6400;
 
     pub fn phase(&self, mat: &Material) -> i32 {
         match self.method.as_str() {
@@ -133,7 +133,7 @@ mod tests {
     #[test]
     fn test_phase() -> Result<()> {
         let mut phaser = Phaser::default();
-        assert_eq!(Phaser::ALL_PIECES, 6500);
+        assert_eq!(Phaser::ALL_PIECES, 6400);
         assert_eq!(Catalog::starting_board().phase(&phaser), 0);
         let board100 = Board::parse_fen("7k/8/8/8/8/8/8/7K b - - 45 100")?;
         let board100_too = Board::parse_fen("7k/pppppppp/8/8/8/8/PPPPPPPP/7K b - - 45 100")?;
@@ -144,8 +144,8 @@ mod tests {
         // odonata's simple method
         assert_eq!(board100.phase(&phaser), 100);
         assert_eq!(board100_too.phase(&phaser), 100);
-        assert_eq!(board73.phase(&phaser), 73);
-        assert_eq!(board42.phase(&phaser), 42);
+        assert_eq!(board73.phase(&phaser), 72);
+        assert_eq!(board42.phase(&phaser), 41);
         assert_eq!(board0.phase(&phaser), 0);
 
         // cpw's method
@@ -158,8 +158,8 @@ mod tests {
         // complex method 
         assert_eq!(phaser.complex_method(&board100.material()), 100);
         assert_eq!(phaser.complex_method(&board100_too.material()), 100);
-        assert_eq!(phaser.complex_method(&board73.material()), 73);
-        assert_eq!(phaser.complex_method(&board42.material()), 42);
+        assert_eq!(phaser.complex_method(&board73.material()), 72);
+        assert_eq!(phaser.complex_method(&board42.material()), 41);
         assert_eq!(phaser.complex_method(&board0.material()), 0);
 
         // complex method 

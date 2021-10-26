@@ -332,6 +332,6 @@ mod tests {
         // let b2 = b1.make_move(&black.bm());
         //white.search(&b2);
         println!("{}", white);
-        assert_eq!(white.bm().uci(), "d3c1");
+        assert_eq!(white.results.bm().uci(), "d3c1");
     }
 }

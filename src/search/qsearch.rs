@@ -319,10 +319,9 @@ mod tests {
             assert_eq!(
                 engine.algo.pv().to_string(),
                 pos.pv()?.to_string(),
-                "{} {}\n{}",
+                "{} {}\n",
                 pos.id()?,
                 pos.board().to_san_variation(engine.algo.pv(), None),
-                engine
             );
             // forward score is from POV of mover at end of PV line
             let qboard = engine.algo.pv().apply_to(pos.board());

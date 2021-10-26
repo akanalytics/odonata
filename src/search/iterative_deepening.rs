@@ -17,8 +17,11 @@ pub struct IterativeDeepening {
     pub enabled: bool,
     pub part_ply: bool,
     pub step_size: Ply,
+
+    #[serde(skip)]
     pub start_ply: Ply,
     pub end_ply: Ply,
+
 
     #[serde(skip)]
     iterations: Vec<SearchStats>,
@@ -42,6 +45,7 @@ impl Default for IterativeDeepening {
             step_size: 1,
             start_ply: 1,
             end_ply: MAX_PLY - 1,
+
             iterations: Vec::new(),
         }
     }
@@ -89,10 +93,10 @@ impl IterativeDeepening {
         if let TimeControl::Depth(depth) = *tc {
             if !self.enabled || depth == 0 {
                 self.start_ply = depth;
-                self.end_ply = depth + 1;
+                self.end_ply = depth;
             } else {
                 self.start_ply = 1;
-                self.end_ply = depth + 1;
+                self.end_ply = depth;
             }
         } else {
             // regardless of iterative deeping, we apply it if no explicit depth given
@@ -124,26 +128,23 @@ impl Algo {
                     counts::SEARCH_IDS_COMPLETES.increment();
                 }
 
-                let mut results = SearchResults::with_pv_change(&self);
+                let results = SearchResults::with_pv_change(&self);
+                self.restrictions.exclude_moves.push(results.bm());
                 // if we were interrupted and no score was set, use the score/move/pv given
                 if let Some(score) = results.score {
-                    if score == -Score::INFINITY || score == Score::INFINITY {
-                        results.score = self.results.score;
-                        results.pv = self.results.pv.clone();
+                    if score != -Score::INFINITY && score != Score::INFINITY {
+                        self.task_control.invoke_callback(&results);
+                        // we take snapshot the pv/bm only if has completed
+                        if multi_pv_index == 0 { // && !self.search_stats().interrupted() {
+                            self.results = results;
+                        }
                     }
-                }
-                self.task_control.invoke_callback(&results);
-
-                // we take snapshot the pv/bm only if has completed
-                if multi_pv_index == 0 { // && !self.search_stats().interrupted() {
-                    self.results = results;
                 }
 
                 let exit = self.exit_iteration();
                 if exit {
                     break 'outer;
                 }
-                self.restrictions.exclude_moves.push(self.results.bm())
             }
             depth += self.ids.step_size
         }
@@ -154,7 +155,8 @@ impl Algo {
     pub fn exit_iteration(&self) -> bool {
         self.search_stats().interrupted()
             || self.mte.probable_timeout(&self.search_stats())
-            || self.stats.depth > self.ids.end_ply
+            || self.stats.depth >= self.ids.end_ply
+            || self.stats.depth >= MAX_PLY / 2
             || ( self.restrictions.exclude_moves.len() == 0 && (self.search_stats().score.is_mate()
               || self.pv().is_empty())) 
     }
