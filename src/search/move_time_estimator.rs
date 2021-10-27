@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct MoveTimeEstimator {
-    pub branching_factor: u16,
+    pub branching_factor: f32,
     perc_of_time_adv: u32,
     moves_rem: u16,
     pub deterministic: bool,
@@ -49,7 +49,7 @@ impl Component for MoveTimeEstimator {
 impl Default for MoveTimeEstimator {
     fn default() -> Self {
         MoveTimeEstimator {
-            branching_factor: 15,
+            branching_factor: 15.0,
             perc_of_time_adv: 100,
             moves_rem: 10,
             board: Board::default(),
@@ -109,7 +109,8 @@ impl MoveTimeEstimator {
         // debug_assert!(search_stats.depth() >= ply-1, "ensure we have enough stats");
         let _forecast_depth = search_stats.depth();
         self.elapsed_used = search_stats.clock.elapsed_iteration();
-        self.time_estimate = self.elapsed_used * self.branching_factor as u32;
+        // self.time_estimate = self.elapsed_used * self.branching_factor as u32;
+        self.time_estimate = self.elapsed_used.mul_f32(self.branching_factor);
     }
 
     pub fn probable_timeout(&self, _search_stats: &SearchStats) -> bool {
