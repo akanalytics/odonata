@@ -129,7 +129,7 @@ impl Algo {
                 }
 
                 let results = SearchResults::with_pv_change(&self);
-                self.restrictions.exclude_moves.push(results.bm());
+                let bm = results.bm();
                 // if we were interrupted and no score was set, use the score/move/pv given
                 if let Some(score) = results.score {
                     if score != -Score::INFINITY && score != Score::INFINITY {
@@ -145,6 +145,7 @@ impl Algo {
                 if exit {
                     break 'outer;
                 }
+                self.restrictions.exclude_moves.push(bm);
             }
             depth += self.ids.step_size
         }
@@ -158,7 +159,7 @@ impl Algo {
             || self.stats.depth >= self.ids.end_ply
             || self.stats.depth >= MAX_PLY / 2
             || ( self.restrictions.exclude_moves.len() == 0 && (self.search_stats().score.is_mate()
-              || self.pv().is_empty())) 
+              || self.pv().is_empty()))  // pv.empty = draw 
     }
 }
 
