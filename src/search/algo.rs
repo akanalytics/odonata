@@ -257,7 +257,7 @@ impl Algo {
     }
 
     pub fn report_progress(&self) {
-        if self.stats.total().all_nodes() % 5_000_000 == 0 && self.stats.total().all_nodes() != 0 {
+        if self.stats.iteration().all_nodes() % 5_000_000 == 0 && self.stats.iteration().all_nodes() != 0 {
             let sp = SearchResults::with_report_progress(&self);
             self.task_control.invoke_callback(&sp);
         }
@@ -464,7 +464,7 @@ mod tests {
         search.minmax = true;
         search.set_position(pos).search();
         assert_eq!(
-            search.search_stats().total().regular_nodes(),
+            search.search_stats().iteration().regular_nodes(),
             1 + 20 + 400 + 8902 /* + 197_281 */
         );
         assert_eq!(search.search_stats().branching_factor().round() as u64, 22);
@@ -483,7 +483,7 @@ mod tests {
         search.set_position(Catalog::starting_position());
         search.search();
         println!("{}", search);
-        assert_eq!(search.search_stats().total().all_nodes(), 1941); // null move pruning
+        assert_eq!(search.search_stats().iteration().all_nodes(), 1941); // null move pruning
                                                                 // assert_eq!(search.search_stats().total().nodes(), 1468);
                                                                 // assert_eq!(search.search_stats().total().nodes(), 1516); // rejigged pawn PST
                                                                 // previous

@@ -518,6 +518,7 @@ impl Uci {
         ops.push(format!("option name UCI_EngineAbout type string default {} {}", Version::NAME, Version::HOMEPAGE));
         ops.push("option name debug type check default false".to_string());
         ops.push(format!("option name Threads type spin default {} min 1 max 16", engine.thread_count));
+        ops.push(format!("option name nodestime type spin default {} min 0 max 10000", engine.algo.mte.nodestime));
         ops.push(format!("option name MultiPV type spin default {} min 1 max 64", engine.algo.restrictions.multi_pv_count));
         ops.push(format!("option name Hash type spin default {} min 0 max 4000", engine.algo.tt.mb));
         ops.push("option name Ponder type check default false".to_string());
@@ -562,6 +563,8 @@ impl Uci {
             engine.configment("thread_count", value)
         } else if name == "MultiPV" {
             engine.configment("restrictions.multi_pv_count", value)
+        } else if name == "nodestime" {
+            engine.configment("mte.nodestime", value)
         } else if name == "Hash" {
             engine.configment("tt.mb", value)
         } else if name == "UCI_AnalyseMode" {
@@ -862,12 +865,12 @@ mod tests {
         let mut uci = Uci::new();
         assert_eq!(uci.engine.lock().unwrap().algo.eval.position, true);
         uci.preamble
-            .push("setoption name Config_File value ../odonata-extras/output/72-figment.toml".into());
+            .push("setoption name Config_File value ../odonata/resources/config.toml".into());
         uci.preamble
             .push("setoption name Show_Config".into());
         uci.preamble.push("quit".into());
         uci.run();
-        assert_eq!(uci.engine.lock().unwrap().algo.eval.position, false);
+        assert_eq!(uci.engine.lock().unwrap().algo.eval.position, true);
     }
 
     #[test]

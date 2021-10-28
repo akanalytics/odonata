@@ -19,7 +19,7 @@ pub struct MoveTimeEstimator {
     perc_of_time_adv: u32,
     moves_rem: u16,
     pub deterministic: bool,
-    pub nodestime: i64,
+    pub nodestime: u64,
 
     #[serde(skip)]
     pub time_estimate: Duration,
@@ -82,19 +82,25 @@ impl fmt::Display for MoveTimeEstimator {
 
 impl MoveTimeEstimator {
     pub fn is_time_up(&self, _ply: Ply, search_stats: &SearchStats) -> bool {
-        let elapsed = search_stats.elapsed_search();
+        let mut elapsed = search_stats.elapsed_search();
+        // if in nodestime then convert nodes to time. nodestime is nodes per millisecond
+        if self.nodestime > 0 {
+            let nodes = search_stats.cumulative_nodes();
+            elapsed = Duration::from_millis(nodes / self.nodestime);
+        }
 
         let time_up = match self.time_control {
             TimeControl::DefaultTime => false, 
             TimeControl::Depth(_max_ply) => false, // ply > max_ply,  // dont cause an abort on last iteration
             TimeControl::SearchTime(duration) => 10 * elapsed > duration * 9 && !self.pondering(),
-            TimeControl::NodeCount(max_nodes) => search_stats.total().all_nodes() > max_nodes,
+            TimeControl::NodeCount(max_nodes) => search_stats.cumulative_nodes() > max_nodes,
             TimeControl::Infinite => false,
             TimeControl::MateIn(_) => false,
             TimeControl::RemainingTime { .. } => elapsed > self.allotted() && !self.pondering(),
         };
         time_up
     }
+
 
     // turning pondering off will kick in the existing time controls
     pub fn set_shared_ponder(&mut self, pondering: bool) {
@@ -109,6 +115,13 @@ impl MoveTimeEstimator {
         // debug_assert!(search_stats.depth() >= ply-1, "ensure we have enough stats");
         let _forecast_depth = search_stats.depth();
         self.elapsed_used = search_stats.clock.elapsed_iteration();
+
+        // if in nodestime then convert nodes to time. nodestime is nodes per millisecond
+        if self.nodestime > 0 {
+            let nodes = search_stats.iteration().all_nodes();
+            self.elapsed_used = Duration::from_millis(nodes / self.nodestime);
+        }
+
         // self.time_estimate = self.elapsed_used * self.branching_factor as u32;
         self.time_estimate = self.elapsed_used.mul_f32(self.branching_factor);
     }
@@ -188,8 +201,8 @@ mod tests {
         search.mte.deterministic = true;
         search.set_position(position.clone()).search();
         println!("{}", search);
-        assert!(search.search_stats().total().all_nodes() < 117500, "nodes {}", search.search_stats().total().all_nodes());
-        assert!(search.search_stats().total().all_nodes() > 300, "nodes {}", search.search_stats().total().all_nodes());
+        assert!(search.search_stats().iteration().all_nodes() < 117500, "nodes {}", search.search_stats().iteration().all_nodes());
+        assert!(search.search_stats().iteration().all_nodes() > 300, "nodes {}", search.search_stats().iteration().all_nodes());
         assert_eq!(search.score().mate_in(), Some(2));
     }
 }

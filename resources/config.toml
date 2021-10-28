@@ -18,7 +18,7 @@ minmax = false
 
 [ids]
 enabled = true
-part_ply = true
+part_ply = false
 step_size = 1
 
 
@@ -326,7 +326,7 @@ balances.BKk = 0
 [eval.phaser]
 enabled = true
 method = "SO"
-half_way_score = 3250
+half_way_score = 3200
 
 
 

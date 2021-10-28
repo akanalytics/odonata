@@ -65,7 +65,7 @@ impl fmt::Display for SearchStats {
         NodeStats::fmt_underline(f)?;
         writeln!(f)?;
         write!(f, "{:<7}", "tot")?;
-        self.total().fmt_data(f)?;
+        self.iteration().fmt_data(f)?;
         writeln!(f)?;
         Ok(())
     }
@@ -131,7 +131,7 @@ impl SearchStats {
     }
 
     #[inline]
-    pub fn total(&self) -> &NodeStats {
+    pub fn iteration(&self) -> &NodeStats {
         &self.total
     }
 
@@ -330,7 +330,12 @@ impl SearchStats {
 
     #[inline]
     pub fn cumulative_knps(&self) -> u64 {
-        self.cumulative.all_nodes() / (1 + self.cumulative_time_as_millis())
+        self.cumulative_nodes()
+    }
+
+    #[inline]
+    pub fn cumulative_nodes(&self) -> u64 {
+        self.cumulative.all_nodes() + self.total.all_nodes()
     }
 
     pub fn cumulative_time_as_millis(&self) -> u64 {
@@ -346,13 +351,13 @@ impl SearchStats {
     // BF = total / interior
     #[inline]
     pub fn branching_factor(&self) -> f32 {
-        let t = self.total();
+        let t = self.iteration();
         (t.all_leaf_nodes() + t.interior_nodes()) as f32 / (t.interior_nodes() + 1) as f32
     }
 
     #[inline]
     pub fn q_branching_factor(&self) -> f32 {
-        let t = self.total();
+        let t = self.iteration();
         (t.q_leaf_nodes as f32) / (t.q_interior_nodes + 1) as f32
     }
 

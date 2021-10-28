@@ -205,7 +205,7 @@ impl Engine {
         let mut nodes = 0;
         for (i, t) in self.threads.drain(..).enumerate() {
             let algo = t.join().unwrap();
-            debug!("Thread returned {}", algo); // t.thread().name().unwrap(),
+            // debug!("Thread returned {}", algo); // t.thread().name().unwrap(),
             info!(
                 "thread {:>3} {:>5} {:>8} {:>10} {:>10} {:>10}   {:<48}",
                 i, // thread::current().name().unwrap(),
@@ -238,7 +238,6 @@ impl Engine {
             knps,
             knps as u32 / self.thread_count,
         );
-        debug!("\n\n\n=====Search completed=====\n{}", self);
         // crate::globals::counts::LEGAL_MOVE_COUNT.print_all()        ;
     }
 }
@@ -342,9 +341,9 @@ mod tests {
             println!("{}", engine);
             if id {
                 assert!(
-                    engine.algo.search_stats().total().all_nodes() < 22500,
+                    engine.algo.search_stats().iteration().all_nodes() < 22500,
                     "nodes {} > 22500",
-                    engine.algo.search_stats().total().all_nodes()
+                    engine.algo.search_stats().iteration().all_nodes()
                 ); // with piece mob
 
             // previous

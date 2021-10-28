@@ -776,7 +776,6 @@ mod tests {
     #[test]
     fn tt2_test_pv_extraction() -> Result<(), String> {
         info!("log");
-        let engine = Engine::new();
         let mut algo = Algo::new();
         let d = 2;
         algo.set_timing_method(TimeControl::Depth(d));

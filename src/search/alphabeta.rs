@@ -45,6 +45,7 @@ impl Algo {
         };
         self.stats
             .record_iteration(self.max_depth, !self.task_control.is_cancelled(), pv);
+
     }
 
     pub fn alphabeta_recursive(

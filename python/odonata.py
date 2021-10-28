@@ -1320,7 +1320,7 @@ class Odonata:
         # info depth 10 seldepth 11 nodes 19349 nps 257000 score cp 529 time 74 pv a1a8 h8h7 a8a6 h7g7
         results = []
         for record in self.infos:
-            if " pv" in record:
+            if " nodes " in record:
                 d = {}
                 words = record.split()
                 for (i, word) in enumerate(words):
@@ -1329,7 +1329,11 @@ class Odonata:
                             d[word] = words[i+1:]
                         else:
                             d[word] = words[i+1]
-                results.append(d)
+                if " pv " in record:
+                    results.append(d)
+                elif len(results) > 0:
+                    # collect nodes nps etc even though PV not present
+                    results[-1] = { **results[-1], **d }
         return results
 
     def quit(self) -> None:
