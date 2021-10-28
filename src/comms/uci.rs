@@ -518,7 +518,7 @@ impl Uci {
         ops.push(format!("option name UCI_EngineAbout type string default {} {}", Version::NAME, Version::HOMEPAGE));
         ops.push("option name debug type check default false".to_string());
         ops.push(format!("option name Threads type spin default {} min 1 max 16", engine.thread_count));
-        ops.push(format!("option name nodestime type spin default {} min 0 max 10000", engine.algo.mte.nodestime));
+        // ops.push(format!("option name nodestime type spin default {} min 0 max 10000", engine.algo.mte.nodestime));
         ops.push(format!("option name MultiPV type spin default {} min 1 max 64", engine.algo.restrictions.multi_pv_count));
         ops.push(format!("option name Hash type spin default {} min 0 max 4000", engine.algo.tt.mb));
         ops.push("option name Ponder type check default false".to_string());
