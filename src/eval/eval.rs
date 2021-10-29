@@ -144,6 +144,9 @@ pub struct SimpleScorer {
     pub passers_on_rim: Weight,
     pub blockaded: Weight,
     pub blockaded_passers: Weight,
+    pub rooks_behind_passer: Weight,
+    pub space: Weight,
+    pub rammed_pawns: Weight,
 
     pub bishop_pair: Weight,
     pub fianchetto: Weight,
@@ -156,6 +159,7 @@ pub struct SimpleScorer {
     pub doubled_rooks: Weight,
     pub doubled_rooks_open_file: Weight,
     pub rook_open_file: Weight,
+    pub enemy_pawns_on_rook_rank: Weight, 
     pub queen_open_file: Weight,
     pub queen_early_develop: Weight,
 
@@ -219,6 +223,7 @@ impl Default for SimpleScorer {
             knight_outposts: Weight::from_i32(0, 0),
             rook_pair: Weight::from_i32(-1, -1),
             rook_open_file: Weight::from_i32(59, -4),
+            enemy_pawns_on_rook_rank: Weight::from_i32(1, 1), 
             doubled_rooks: Weight::from_i32(18, 48),
             doubled_rooks_open_file: Weight::from_i32(17, 17),
 
@@ -233,6 +238,9 @@ impl Default for SimpleScorer {
             passers_on_rim: Weight::from_i32(-10, -10),
             blockaded: Weight::from_i32(-10, -10),
             blockaded_passers: Weight::from_i32(-10, -10),
+            space: Weight::from_i32(1, 1),
+            rammed_pawns: Weight::from_i32(-10, -10),
+            rooks_behind_passer: Weight::from_i32(0, 10),
 
             tempo_bonus: Weight::from_i32(40, 50),
             pawn_adjacent_shield: Weight::from_i32(44, -15),
@@ -487,6 +495,13 @@ impl SimpleScorer {
                 self.doubled_rooks_open_file,
             );
             scorer.position(
+                "enemy pawns on rook rank",
+                w.enemy_pawns_on_rook_rank,
+                b.enemy_pawns_on_rook_rank,
+                self.enemy_pawns_on_rook_rank,
+            );
+            
+            scorer.position(
                 "queen early",
                 w.queen_early_develop,
                 b.queen_early_develop,
@@ -526,6 +541,24 @@ impl SimpleScorer {
                 w.blockaded_passers,
                 b.blockaded_passers,
                 self.blockaded_passers,
+            );
+            scorer.pawn(
+                "rooks behind passer",
+                w.rooks_behind_passer,
+                b.rooks_behind_passer,
+                self.rooks_behind_passer,
+            );
+            scorer.pawn(
+                "rammed pawns with knights",
+                w.rammed_pawns,
+                b.rammed_pawns,
+                self.rammed_pawns,
+            );
+            scorer.pawn(
+                "space",
+                w.space,
+                b.space,
+                self.space,
             );
         }
 

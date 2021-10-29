@@ -7,6 +7,7 @@ use crate::board::Board;
 use crate::eval::score::Score;
 use crate::eval::switches::Switches;
 use crate::eval::weight::Weight;
+use crate::globals::constants::{FILE_D, FILE_E};
 use crate::material::Material;
 use crate::types::Color;
 use crate::types::Piece;
@@ -32,17 +33,19 @@ pub struct ModelSide {
     pub has_bishop_pair: bool,
     pub fianchetti: i32,
     pub bishop_color_pawns: i32,
+    pub bishop_outposts: i32,
 
     // knights
     pub knight_forks: i32,
     pub knight_outposts: i32,
-    pub bishop_outposts: i32,
 
     // rooks
     pub has_rook_pair: bool,
     pub rooks_on_open_files: i32,
     pub doubled_rooks: i32,
     pub doubled_rooks_open_file: i32,
+    pub enemy_pawns_on_rook_rank: i32, 
+    pub rooks_behind_passer: i32, // passed pawn with a rook behind 
 
     pub queens_on_open_files: i32,
     pub queen_early_develop: i32,
@@ -59,6 +62,8 @@ pub struct ModelSide {
     pub passers_on_rim: i32,    // files a & h
     pub blockaded: i32,         // enemy in front of pawn
     pub blockaded_passers: i32, // passed pawn with enemy right in front
+    pub space: i32, // empty squares behind rammed pawns
+    pub rammed_pawns: i32, 
 
     // king safety
     pub king_tropism_d1: i32,
@@ -543,8 +548,9 @@ impl ModelSide {
         // self.doubled_pawns = bbd.doubled_pawns(b.color(c) & b.pawns()).popcount();
         self.isolated_pawns = bbd.isolated_pawns(b.color(c) & b.pawns()).popcount();
         let them = b.color(c.opposite());
+        let us = b.color(c);
 
-        for p in (b.pawns() & b.color(c)).squares() {
+        for p in (b.pawns() & us).squares() {
             // self.doubled_pawns += is_doubled as i32;
             // we still count doubled pawns as passed pawns (since 0.3.37)
             let is_passed = (bbd.pawn_front_span_union_attack_span(c, p) & b.pawns() & them).is_empty();
@@ -552,13 +558,19 @@ impl ModelSide {
 
             let rank6 = c.chooser_wb(Bitboard::RANK_6, Bitboard::RANK_3);
             let rank5 = c.chooser_wb(Bitboard::RANK_5, Bitboard::RANK_4);
+            // all pawns on r7 are passed as an opponent pawn cannot be on rank 8
             self.passed_pawns_on_r6 += (is_passed && p.is_in(rank6)) as i32;
             self.passed_pawns_on_r5 += (is_passed && p.is_in(rank5)) as i32;
             self.passers_on_rim += (is_passed && p.is_in(Bitboard::RIM)) as i32;
             self.blockaded += bbd.pawn_stop(c, p).intersects(them) as i32;
             self.blockaded_passers += (bbd.pawn_stop(c, p).intersects(them) && is_passed) as i32;
+            self.rooks_behind_passer += (is_passed && (bbd.pawn_front_span(c.opposite(), p) & b.rooks() & us).any()) as i32;
+            let rammed = bbd.pawn_stop(c, p).intersects(them & b.pawns());
+            self.space += (rammed as i32) * p.rank_index_as_white(c) as i32 * (1 + p.is_in(FILE_D | FILE_E) as i32);
+            self.rammed_pawns += rammed as i32;
         }
-        self.doubled_pawns = bbd.doubled_pawns(b.color(c) & b.pawns()).popcount();
+        self.doubled_pawns = bbd.doubled_pawns(us & b.pawns()).popcount();
+        self.rammed_pawns *= self.rammed_pawns * (b.knights() & us).any() as i32;
     }
 
     #[inline]
@@ -695,6 +707,9 @@ impl ModelSide {
                         self.knight_forks += 1;
                     }
                 }
+            }
+            if p == Piece::Rook {
+                self.enemy_pawns_on_rook_rank += (Bitboard::RANKS[sq.rank_index()] & b.pawns() & them).popcount();
             }
 
             if p == Piece::Knight || p == Piece::Bishop {

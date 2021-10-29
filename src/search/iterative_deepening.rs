@@ -142,6 +142,11 @@ impl Algo {
                         if self.ids.part_ply && multi_pv_index == 0 {
                             self.results = results.clone();
                         }
+                        // copy accross time/ nodes etc
+                        self.results.nodes = progress.nodes;
+                        self.results.nps = progress.nps;
+                        self.results.time_millis = progress.time_millis;
+                        self.results.hashfull_per_mille = progress.hashfull_per_mille;
                     }
                 };
 

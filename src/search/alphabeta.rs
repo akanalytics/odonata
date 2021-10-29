@@ -163,10 +163,17 @@ impl Algo {
             }
         }
 
+
+
         if self.tt.probe_leaf_nodes && self.is_leaf(ply, depth) {
-            self.stats.inc_leaf_qsearch_nodes(ply);
-            return self.qsearch(last_move, ply, depth, board, n.alpha, n.beta);
+            let e = self.extensions.extend_at_leaf(board);
+            if e == 0 {
+                self.stats.inc_leaf_qsearch_nodes(ply);
+                return self.qsearch(last_move, ply, depth, board, n.alpha, n.beta);
+            }
+            // depth += e;
         }
+
 
         // we are now looking at moves (null, killer, generated etc) so this is an interior node
         self.stats.inc_interior_nodes(ply);

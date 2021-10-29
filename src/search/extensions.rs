@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::infra::parsed_config::{Component};
+use crate::infra::parsed_config::Component;
 use crate::mv::Move;
 use crate::phaser::Phaser;
 use crate::search::node::Node;
@@ -7,8 +7,8 @@ use crate::search::searchstats::SearchStats;
 use crate::types::{Color, Piece, Ply};
 
 // use crate::{debug, logger::LogInit};
-use std::fmt;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Extensions {
@@ -22,7 +22,6 @@ pub struct Extensions {
 }
 
 impl Component for Extensions {
-
     fn new_game(&mut self) {
         self.new_position();
     }
@@ -47,6 +46,11 @@ impl Default for Extensions {
 
 impl Extensions {
     #[inline]
+    pub fn extend_at_leaf(&self, _before: &Board) -> i32 {
+        0
+    }
+
+    #[inline]
     pub fn extend(
         &self,
         before: &Board,
@@ -69,7 +73,8 @@ impl Extensions {
         if self.promo_enabled {
             if mv.mover_piece() == Piece::Pawn
                 && (before.color_us() == Color::White && mv.to().rank_index() >= self.promo_rank as usize
-                    || before.color_us() == Color::Black && 7 - mv.to().rank_index() >= self.promo_rank as usize)
+                    || before.color_us() == Color::Black
+                        && 7 - mv.to().rank_index() >= self.promo_rank as usize)
                 && node.depth <= self.promo_max_depth
             {
                 // search_stats.inc_ext_check(node.ply);
@@ -92,10 +97,10 @@ mod tests {
     use super::*;
     use crate::catalog::Catalog;
     use crate::search::algo::*;
+    use crate::search::engine::*;
     use crate::search::timecontrol::*;
     use crate::tags::*;
     use crate::utils::*;
-    use crate::search::engine::*;
 
     // use crate::search::timecontrol::*;
 

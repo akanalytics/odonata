@@ -51,6 +51,7 @@ impl SearchResults {
             nodes: Some(algo.search_stats().all_threads_cumulative_total_nodes()),
             nps: Some(algo.search_stats().all_threads_cumulative_knps() * 1000),
             hashfull_per_mille: Some(algo.tt.hashfull_per_mille()),
+            time_millis: Some(algo.search_stats().cumulative_time_as_millis() as u64),
             ..Default::default()
         }
     }
