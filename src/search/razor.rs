@@ -1,6 +1,8 @@
+use crate::Algo;
 use crate::board::Board;
 use crate::infra::parsed_config::{Component};
 use crate::eval::score::Score;
+use crate::mv::Move;
 use crate::search::node::Node;
 use crate::types::{MoveType, MoveTypes, Ply};
 use std::fmt;
@@ -42,6 +44,7 @@ use serde::{Deserialize, Serialize};
 #[serde(default)]
 pub struct Razor {
     pub enabled: bool,
+    pub min_opponents: i32, 
     pub max_depth: Ply,
     pub margin1: i32,
     pub margin2: i32,
@@ -62,10 +65,11 @@ impl Default for Razor {
     fn default() -> Self {
         Self {
             enabled: true,
+            min_opponents: 0,
             max_depth: 3, // 1 means we still prune at frontier (depth=1)
-            margin1: 100,
-            margin2: 300,
-            margin3: 500,
+            margin1: 94,
+            margin2: 381,
+            margin3: 873,
             move_types_forbidden: MoveType::Hash
                 | MoveType::Killer
                 | MoveType::Promo
@@ -81,39 +85,68 @@ impl Default for Razor {
 // works for moves that are just "too good to be true"
 impl Razor {
     #[inline]
-    pub fn margin(&self, b: &Board, _eval: Score, n: &Node) -> Option<Score> {
+    fn can_razor(&self, b: &Board, n: &Node) -> bool {
         if !self.enabled {
-            return None;
+            return false;
         }
         if n.ply == 0 {
-            return None; // no null move at root, might mean no moves (with move restrictions too!)
+            return false; // no null move at root, might mean no moves (with move restrictions too!)
         }
         if n.depth > self.max_depth {
-            return None;
+            return false;
         }
         if !n.beta.is_numeric() {
-            return None;
+            return false;
         }
         if !n.alpha.is_numeric() {
-            return None;
+            return false;
         }
         if n.alpha + Score::from_cp(1) != n.beta {
-            return None;
+            return false;
         }
         if b.is_in_check(b.color_us()) {
+            return false;
+        }
+        // "Scalable Search in Computer Chess" limited razoring p43
+        if n.depth > 2 && self.min_opponents > 0 && b.them().popcount() < self.min_opponents  {
+            return false;
+        }
+        true
+
+    }
+}
+
+impl Algo {
+    #[inline]
+    pub fn razor(&mut self, last_move: Move, b: &mut Board, eval: Score, n: &Node) -> Option<Score> {
+        if !self.razor.can_razor(b, n) {
             return None;
         }
-        let margin = match n.depth {
-            0 => unreachable!(),
-            1 => self.margin1,
-            2 => self.margin2,
-            3 => self.margin3,
-            _ => 200 * n.depth - 100,
 
-        };
-        Some(Score::from_cp(margin))
+        let margin = Score::from_cp(match n.depth {
+            1 => self.razor.margin1,
+            2 => self.razor.margin2,
+            3 => self.razor.margin3,
+            _ => unreachable!(),
+        });
+
+        if eval > n.beta + margin {
+            return Some(n.beta);
+        }
+
+        if eval < n.alpha - margin {
+            if n.depth <= 2 {
+                // drop straight into qsearch
+                return Some(self.qsearch(&last_move, n.ply, n.depth, b, n.alpha, n.beta));
+            } else {
+                let score = self.qsearch(&last_move, n.ply, n.depth, b, n.alpha, n.alpha + Score::from_cp(1));
+                if score < n.alpha - margin {
+                    return Some(n.alpha);
+                }
+            }
+        }
+        None
     }
-
 }
 
 

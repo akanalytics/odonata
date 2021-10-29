@@ -182,26 +182,10 @@ impl Algo {
         let eval = board.eval_some(&self.eval, Switches::ALL_SCORING);
 
         // razoring
-        let margin = self.razor.margin(&board, eval, &n);
-        if let Some(margin) = margin {
-
-            // we repeat the futility prune here (its performed in parent too prior to makemove). But here we have the benefit of
-            // a full eval not just a material gain/loss resulting from a move
-            if eval > n.beta + margin {
-                return beta;
-            }
-            if eval < n.alpha - margin {
-                if n.depth <= 2 {
-                    // drop straight into qsearch
-                    return self.qsearch(last_move, ply, depth, board, n.alpha, n.beta);
-                } else {
-                    let score = self.qsearch(last_move, ply, depth, board, n.alpha, n.alpha + Score::from_cp(1));
-                    if score < n.alpha - margin {
-                        return n.alpha;
-                    }
-                }
-            }
+        if let Some(alphabeta) = self.razor(*last_move, board, eval, &n) {
+            return alphabeta;
         }
+
 
 
         let futility = self.futility.can_prune_at_node(
@@ -266,27 +250,36 @@ impl Algo {
             }
             count += 1;
             self.stats.inc_move(ply);
-            if let Some(futility) = futility {
-                // check we have a score (and hence a move) nefore we risk pruning everything
-                // if score > -Score::INFINITY {
-                    if let Some(est_score) = self.futility.can_prune_move(&mv, move_type, board, futility, &n, &self.eval) {
-                        self.explain_futility(&mv, move_type, est_score, n.alpha);
-                        self.stats.inc_fp_move(ply);
-                        // if est_score > n.beta {
-                        //     self.search_stats.inc_node_cut(ply, MoveType::Null);
-                        //     return est_score;
-                        // }
-                        if score == -Score::INFINITY {
-                            score = est_score;
+            let (ext, allow_red) = self.extensions.extend(
+                board,
+                &mv,
+                &n,
+                &self.eval.phaser,
+                &mut self.stats,
+            );
+            if allow_red {
+                if let Some(futility) = futility {
+                    // check we have a score (and hence a move) nefore we risk pruning everything
+                    // if score > -Score::INFINITY {
+                        if let Some(est_score) = self.futility.can_prune_move(&mv, move_type, board, futility, &n, &self.eval) {
+                            self.explain_futility(&mv, move_type, est_score, n.alpha);
+                            self.stats.inc_fp_move(ply);
+                            // if est_score > n.beta {
+                            //     self.search_stats.inc_node_cut(ply, MoveType::Null);
+                            //     return est_score;
+                            // }
+                            if score == -Score::INFINITY {
+                                score = est_score;
 
+                            }
+                            if self.futility.can_prune_remaining_moves(board, move_type, &n) {
+                                break;
+                            } else {
+                                continue;
+                            }
                         }
-                        if self.futility.can_prune_remaining_moves(board, move_type, &n) {
-                            break;
-                        } else {
-                            continue;
-                        }
-                    }
-                // }
+                    // }
+                }
             }
             let mut child_board = board.make_move(&mv);
             self.repetition.push_move(&mv, &child_board);
@@ -301,14 +294,6 @@ impl Algo {
                 self.minmax
             );
 
-            let ext = self.extensions.extend(
-                board,
-                &mv,
-                &child_board,
-                &n,
-                &self.eval.phaser,
-                &mut self.stats,
-            );
             let lmr = if !self.minmax {
                 self.lmr.lmr(
                     board,
@@ -318,6 +303,7 @@ impl Algo {
                     &child_board,
                     &n,
                     nt,
+                    allow_red,
                     &mut self.stats,
                 )
             } else {

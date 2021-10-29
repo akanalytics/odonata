@@ -4,7 +4,8 @@ use crate::mv::Move;
 use crate::phaser::Phaser;
 use crate::search::node::Node;
 use crate::search::searchstats::SearchStats;
-use crate::types::{Color, Piece, Ply};
+use crate::types::{Ply};
+use crate::Bitboard;
 
 // use crate::{debug, logger::LogInit};
 use serde::{Deserialize, Serialize};
@@ -53,35 +54,36 @@ impl Extensions {
     #[inline]
     pub fn extend(
         &self,
-        before: &Board,
-        mv: &Move,
-        _after: &Board,
+        b: &Board,
+        _mv: &Move,
         node: &Node,
         phaser: &Phaser,
         search_stats: &mut SearchStats,
-    ) -> Ply {
-        let mut extend = 0;
+    ) -> (Ply, bool) {
         if self.check_enabled {
-            if before.is_in_check(before.color_us())
+            if b.is_in_check(b.color_us())
                 && node.depth <= self.check_max_depth
-                && before.phase(phaser) < self.check_max_phase
+                && b.phase(phaser) < self.check_max_phase
             {
                 search_stats.inc_ext_check(node.ply);
-                extend += 1;
+                (1, false);
             }
         }
         if self.promo_enabled {
-            if mv.mover_piece() == Piece::Pawn
-                && (before.color_us() == Color::White && mv.to().rank_index() >= self.promo_rank as usize
-                    || before.color_us() == Color::Black
-                        && 7 - mv.to().rank_index() >= self.promo_rank as usize)
+            if (b.them() & b.pawns() & b.color_them().chooser_wb(Bitboard::RANK_7, Bitboard::RANK_2)).any()
                 && node.depth <= self.promo_max_depth
             {
-                // search_stats.inc_ext_check(node.ply);
-                extend += self.promo_extend;
+                return (self.promo_extend, false);
             }
+            // mv.mover_piece() == Piece::Pawn
+            //     && mv.to().rank_index_as_white(before.color_us()) >= self.promo_rank as usize
+            //     && node.depth <= self.promo_max_depth
+            // {
+            //     // search_stats.inc_ext_check(node.ply);
+            //     extend += self.promo_extend;
+            // }
         }
-        extend
+        (0, true)
     }
 }
 

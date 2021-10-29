@@ -139,14 +139,12 @@ impl Futility {
         }
 
         if self.avoid_checks || b.will_check_them(mv) {
-            return None
+            return None;
         } 
 
         // position wise, passed pawn promos make a huge impact so exclude them
-        if mv.mover_piece() == Piece::Pawn && mv.to().rank_index_as_white(b.color_us()) >= 6 {
-            if self.avoid_promos {
-                return None;
-            }
+        if self.avoid_promos && mv.mover_piece() == Piece::Pawn && mv.to().rank_index_as_white(b.color_us()) >= 6 {
+            return None;
         } 
 
         if node.depth > self.max_depth_captures && mv.is_capture() {
@@ -271,19 +269,20 @@ impl Futility {
     // so this has to be taken into account using the margin2 (which should be bigger than margin 1)
     // and since our margin is cumulative, we have margin 2 strictly > 2 * margin 1
     // 
-    // if node.depth <= 2 && self.beta_enabled {
-    //     let piece_value;
-    //     if let Some((piece, _)) = b.most_valuable_piece(b.us()) {
-    //         piece_value = Score::from_cp(eval.mb.material_weights[piece].s() as i32);
-    //     } else {
-    //         piece_value = Score::zero();
-    //     }
-    //     let est_score = measure.eval - measure.margin + Score::from_cp(gain) - piece_value;
-    //     if est_score >= node.beta {
-    //         return Some(est_score);
+    // pub fn reverse_futility(&self, b: &Board, n: &Node) -> Option<Score> {
+    //     if self.beta_enabled {
+    //         let piece_value;
+    //         if let Some((piece, _)) = b.most_valuable_piece(b.us()) {
+    //             piece_value = Score::from_cp(eval.mb.material_weights[piece].s() as i32);
+    //         } else {
+    //             piece_value = Score::zero();
+    //         }
+    //         let est_score = measure.eval - measure.margin + Score::from_cp(gain) - piece_value;
+    //         if est_score >= node.beta {
+    //             return Some(est_score);
+    //         }
     //     }
     // }
-    
 }
 
 

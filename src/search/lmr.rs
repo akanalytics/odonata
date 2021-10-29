@@ -1,21 +1,20 @@
 use crate::board::Board;
 use crate::bound::NodeType;
-use crate::infra::parsed_config::{Component};
+use crate::infra::parsed_config::Component;
 use crate::mv::Move;
 use crate::search::node::Node;
 use crate::search::searchstats::SearchStats;
 use crate::types::{MoveType, Piece, Ply};
 // use crate::{debug, logger::LogInit};
-use std::fmt;
 use serde::{Deserialize, Serialize};
-
+use std::fmt;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Lmr {
     pub enabled: bool,
-    pub pv_node: bool, 
-    pub only_nt_all: bool, 
+    pub pv_node: bool,
+    pub only_nt_all: bool,
     pub bad_captures: bool,
     pub pawns: bool,
     pub promos: bool,
@@ -23,9 +22,9 @@ pub struct Lmr {
     pub min_depth: Ply,
     pub re_search: bool,
     pub alpha_numeric: bool,
+    pub reduce_extensions: bool,
     pub red_strat: i32,
 }
-
 
 // WAC @ 1m nodes
 // min_depth=3, re-search=false, pawns=true, min_depth=3, reduction=1 => 256
@@ -51,12 +50,12 @@ impl Default for Lmr {
             pawns: true,
             promos: false,
             killers: false,
+            reduce_extensions: false,
             min_depth: 2,
             red_strat: 6,
         }
     }
 }
-
 
 impl Component for Lmr {
     fn new_game(&mut self) {
@@ -65,8 +64,6 @@ impl Component for Lmr {
 
     fn new_position(&mut self) {}
 }
-
-
 
 // from CPW
 //
@@ -101,18 +98,29 @@ impl Lmr {
         after: &Board,
         node: &Node,
         nt: NodeType,
+        allow_red: bool,
         search_stats: &mut SearchStats,
     ) -> Ply {
         let mut reduce = 0;
         if self.enabled && node.depth >= self.min_depth {
-            if !self.pawns && mv.mover_piece() == Piece::Pawn
-                || (stage != MoveType::QuietUnsorted
-                    && stage != MoveType::Quiet
-                    && stage != MoveType::Remaining
-                    && stage != MoveType::Killer
-                    && stage != MoveType::Promo
-                    && stage != MoveType::BadCapture)
-                || !self.promos && stage == MoveType::Promo
+            if !allow_red {
+                return 0;
+            }
+            if !self.pawns && mv.mover_piece() == Piece::Pawn {
+                return 0;
+            }
+            // has to be one of these
+            if !(MoveType::QuietUnsorted
+                | MoveType::Quiet
+                | MoveType::Remaining
+                | MoveType::Killer
+                | MoveType::Promo
+                | MoveType::BadCapture)
+                .contains(stage)
+            {
+                return 0;
+            }
+            if !self.promos && stage == MoveType::Promo
                 || !self.killers && stage == MoveType::Killer
                 || !self.bad_captures && stage == MoveType::BadCapture
             {

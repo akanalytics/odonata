@@ -388,6 +388,7 @@ killers = false
 min_depth = 2
 re_search = false
 alpha_numeric = false
+reduce_extensions = false
 red_strat = 6
 
 [mte]
@@ -441,9 +442,10 @@ enabled = true
 [razor]
 enabled = true
 max_depth = 3
-margin1 = 100
-margin2 = 300
-margin3 = 500
+min_opponents = 0
+margin1 = 94
+margin2 = 381
+margin3 = 873
 move_types_forbidden = 994
 
 
