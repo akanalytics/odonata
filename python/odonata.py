@@ -5,6 +5,7 @@ from typing import Any, MutableSet, Iterator, NamedTuple, Optional, Dict, Callab
 from typing import List, Iterable
 import logging
 import time
+import re
 from textwrap import wrap
 import subprocess
 import os
@@ -1426,6 +1427,7 @@ class EngineParams:
         name, _, rest = desc.partition(":")
         # engine_key = f"{engine_name}-{platform.system()}"
         uci_options = {}
+        tunes = {}
         command_line_args = []
         tc = None
         ponder = False
@@ -1437,6 +1439,12 @@ class EngineParams:
                 elif config.startswith("Ponder="):
                     key, _, value = config.partition("=")
                     ponder = (value == "True" or value == "true")
+                elif config.startswith("Config="):
+                    key, _, value = config.partition("=")
+                    uci_options[key] = value
+                    for tune in value.split(";"):
+                        tune_key, _, tune_value = tune.partition("=")
+                        tunes[tune_key] = tune_value
                 elif config.startswith("--"):
                     command_line_args.append(config)
                 else:
@@ -1446,8 +1454,11 @@ class EngineParams:
         # build up a short display name (such as 1.4.1:rf=m)
         parts = []
         parts.append(name)
-        parts.append(".".join(["".join(w[0] for w in k.split(".")) + "=" +
-                               v for k, v in uci_options.items()]))  # first letter of each subkey
+        for k, v in uci_options.items():
+            if k != "Config":
+                parts.append("".join(w[0] for w in k.split(".")) + "=" + v ) # first letter of each subkey of a uci-option thats not Config
+        parts.append(";".join(["".join(w[0] for w in re.split("[_.]", k)) + "=" +
+                               v for k, v in tunes.items()]))  # first letter of each subkey of a tune param
         for arg in command_line_args:
             if arg.startswith("--config="):
                 k, _, v = arg.partition("=") 
