@@ -349,10 +349,21 @@ a = 2.7
 b = 0.198
 c = 0.00017
 
+
+[razor]
+enabled = true
+max_depth = 3
+min_opponents = 4
+pv_nodes = false
+margin1 = 94
+margin2 = 381
+margin3 = 873
+move_types_forbidden = 994
+
 [futility]
 alpha_enabled = true
 beta_enabled = false
-prune_remaiking = false
+prune_remaining = false
 avoid_checks = false
 avoid_promos = false
 promo_margin = false
@@ -439,14 +450,7 @@ enabled = false
 [restrictions]
 enabled = true
 
-[razor]
-enabled = true
-max_depth = 3
-min_opponents = 0
-margin1 = 94
-margin2 = 381
-margin3 = 873
-move_types_forbidden = 994
+
 
 
 #end of file

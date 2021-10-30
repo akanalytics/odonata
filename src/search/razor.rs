@@ -44,6 +44,7 @@ use serde::{Deserialize, Serialize};
 #[serde(default)]
 pub struct Razor {
     pub enabled: bool,
+    pub pv_nodes: bool,
     pub min_opponents: i32, 
     pub max_depth: Ply,
     pub margin1: i32,
@@ -65,7 +66,8 @@ impl Default for Razor {
     fn default() -> Self {
         Self {
             enabled: true,
-            min_opponents: 0,
+            pv_nodes: false,
+            min_opponents: 4,
             max_depth: 3, // 1 means we still prune at frontier (depth=1)
             margin1: 94,
             margin2: 381,
@@ -101,7 +103,7 @@ impl Razor {
         if !n.alpha.is_numeric() {
             return false;
         }
-        if n.alpha + Score::from_cp(1) != n.beta {
+        if !self.pv_nodes && n.alpha + Score::from_cp(1) != n.beta {
             return false;
         }
         if b.is_in_check(b.color_us()) {
