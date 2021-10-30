@@ -188,16 +188,16 @@ impl Algo {
 
 
 
-        let futility = self.futility.can_prune_at_node(
-            board,
-            &n,
-            eval,
-        );
-        if let Some(futility) = futility {
-            if let Some(fut_score) = self.futility.can_prune_all_moves(board, futility, &n, &self.eval) {
-                return fut_score;
-            }
-        }
+        // let futility = self.futility.can_prune_at_node(
+        //     board,
+        //     &n,
+        //     eval,
+        // );
+        // if let Some(futility) = futility {
+        //     if let Some(fut_score) = self.futility.can_prune_all_moves(board, futility, &n, &self.eval) {
+        //         return fut_score;
+        //     }
+        // }
         // null move
         if !self.minmax
             && self.nmp.allow(
@@ -258,27 +258,20 @@ impl Algo {
                 &mut self.stats,
             );
             if allow_red {
-                if let Some(futility) = futility {
-                    // check we have a score (and hence a move) nefore we risk pruning everything
-                    // if score > -Score::INFINITY {
-                        if let Some(est_score) = self.futility.can_prune_move(&mv, move_type, board, futility, &n, &self.eval) {
-                            self.explain_futility(&mv, move_type, est_score, n.alpha);
-                            self.stats.inc_fp_move(ply);
-                            // if est_score > n.beta {
-                            //     self.search_stats.inc_node_cut(ply, MoveType::Null);
-                            //     return est_score;
-                            // }
-                            if score == -Score::INFINITY {
-                                score = est_score;
+                // check we have a score (and hence a move) nefore we risk pruning everything
+                // if score > -Score::INFINITY {
+                if let Some(est_score) = self.futility.can_prune_move(&mv, move_type, board, eval, &n, &self.eval) {
+                    self.explain_futility(&mv, move_type, est_score, n.alpha);
+                    self.stats.inc_fp_move(ply);
+                    if score == -Score::INFINITY {
+                        score = est_score;
 
-                            }
-                            if self.futility.can_prune_remaining_moves(board, move_type, &n) {
-                                break;
-                            } else {
-                                continue;
-                            }
-                        }
-                    // }
+                    }
+                    if self.futility.can_prune_remaining_moves(board, move_type, &n) {
+                        break;
+                    } else {
+                        continue;
+                    }
                 }
             }
             let mut child_board = board.make_move(&mv);

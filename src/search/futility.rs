@@ -87,7 +87,7 @@ pub struct FutilityMeasure {
 
 
 impl Futility {
-    pub fn can_prune_at_node(&self, b: &Board, node: &Node, eval: Score) -> Option<FutilityMeasure> {
+    pub fn can_prune_at_node(&self, b: &Board, node: &Node) -> bool {
         if (!self.alpha_enabled && !self.beta_enabled)
             ||
             node.ply == 0   // dont prune at root node
@@ -101,22 +101,9 @@ impl Futility {
             node.beta.is_mate() 
             ||
             (self.avoid_checks && b.is_in_check(b.color_us())) {
-            return None;
+            return false;
         }
-
-        // safety margin depends on how far away we are from leaf node
-        let margin = match node.depth {
-            1 => self.margin1,
-            2 => self.margin2,
-            3 => self.margin3,
-            _ => self.margin1 + self.margin2 + self.margin3,
-        };
-
-        // if the score + a configured margin is less than alpha we can consider pruning at this node
-        Some(FutilityMeasure {
-            eval,
-            margin: Score::from_cp(margin),
-        })
+        true
     }
 
     // for each move at a prunable node, see if its worth pruning
@@ -127,14 +114,14 @@ impl Futility {
     // obviously even prunign at depth=2, this move could be a quite move that attacks a piece and means quiese
     // changes the score dramatically - so futility pruning at depth = 1/2 is not without downside
     //
-    pub fn can_prune_move(&self, mv: &Move, mt: MoveType, b: &Board, measure: FutilityMeasure, node: &Node, eval: &SimpleScorer) -> Option<Score> {
+    pub fn can_prune_move(&self, mv: &Move, mt: MoveType, b: &Board, eval: Score, n: &Node, scorer: &SimpleScorer) -> Option<Score> {
         if !self.alpha_enabled {
             return None;
         }
         if self.move_types_forbidden.contains(mt) {
             return None;
         }
-        if !node.alpha.is_numeric() || node.alpha.is_mate() || node.beta.is_mate() {
+        if !n.alpha.is_numeric() || n.alpha.is_mate() || n.beta.is_mate() {
             return None;
         }
 
@@ -147,16 +134,28 @@ impl Futility {
             return None;
         } 
 
-        if node.depth > self.max_depth_captures && mv.is_capture() {
+        if n.depth > self.max_depth_captures && mv.is_capture() {
             return None;
         }
 
+        if !self.can_prune_at_node(b, n) {
+            return None;
+        }
+
+        // safety margin depends on how far away we are from leaf node
+        let margin = Score::from_cp(match n.depth {
+            1 => self.margin1,
+            2 => self.margin2,
+            3 => self.margin3,
+            _ => self.margin1 + self.margin2 + self.margin3,
+        });
+
         // not a capture or promo => gain = 0
-        let gain = b.eval_move_material(eval, mv);
+        let gain = b.eval_move_material(scorer, mv);
 
         // fail low pruning
-        let est_score = measure.eval + measure.margin + gain;
-        if est_score <= node.alpha {
+        let est_score = eval + margin + gain;
+        if est_score <= n.alpha {
             return Some(est_score);
         }
         None
