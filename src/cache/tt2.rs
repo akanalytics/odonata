@@ -232,7 +232,6 @@ pub struct TranspositionTable2 {
 
     pub aging: bool,
     pub probe_leaf_nodes: bool,
-    pub current_age: u8,
     pub enabled: bool,
     pub use_tt_for_pv: bool,
     pub allow_truncated_pv: bool,
@@ -240,6 +239,7 @@ pub struct TranspositionTable2 {
     pub hmvc_horizon: i32,
     pub min_ply: Ply,
 
+    #[rustfmt::skip] #[serde(skip)] pub current_age: u8,
     #[rustfmt::skip] #[serde(skip)] pub hits: Stat,
     #[rustfmt::skip] #[serde(skip)] pub misses: Stat,
     #[rustfmt::skip] #[serde(skip)] pub collisions: Stat,
@@ -256,7 +256,7 @@ pub struct TranspositionTable2 {
 impl TranspositionTable2 {
     pub fn new_with_mb(mb: i64) -> Self {
         debug!("tt new with mb {}", mb);
-        Self {
+        let me = Self {
             table: Arc::new(SharedTable::new_with_capacity(Self::convert_mb_to_capacity(mb))),
             enabled: true,
             use_tt_for_pv: false,
@@ -278,7 +278,9 @@ impl TranspositionTable2 {
             deletes: Stat::new("deletes"),
             fail_priority: Stat::new("ins fail priority"),
             fail_ownership: Stat::new("ins fail owner"),
-        }
+        };
+        me.table.clear();
+        me
     }
 }
 
@@ -363,9 +365,8 @@ impl Component for TranspositionTable2 {
             let capacity = Self::convert_mb_to_capacity(self.mb);
             info!("tt resized so capacity is now {}", capacity);
             self.table = Arc::new(SharedTable::new_with_capacity(capacity));
-            self.current_age = 10;
-            return;
         }
+        self.current_age = 10;
         self.table.clear()
     }
 
@@ -809,5 +810,23 @@ mod tests {
             println!(">>>>>> {}", pv);
         }
         Ok(())
+    }
+
+    #[test]
+    fn tt2_test_new_game() {
+        let mut eng = Engine::new();
+        eng.new_game();
+        eng.set_position(Catalog::starting_position().clone());
+        eng.algo.set_timing_method(TimeControl::Depth(6));
+        eprintln!("Before 1\n{}", eng.algo);
+        eng.search();
+        eprintln!("After 1\n{}", eng.algo);
+        let mut eng = Engine::new();
+        eng.new_game();
+        eng.set_position(Catalog::starting_position().clone());
+        eng.algo.set_timing_method(TimeControl::Depth(6));
+        eprintln!("Before 2\n{}", eng.algo);
+        eng.search();
+        eprintln!("After 2{}", eng.algo);
     }
 }

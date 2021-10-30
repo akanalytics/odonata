@@ -42,21 +42,25 @@ pub struct Algo {
     pub minmax: bool,
     pub show_refutations: bool, 
     pub analyse_mode: bool, // tries to find full PV etc
+
     pub ids: IterativeDeepening,
     pub eval: SimpleScorer,
     pub qsearch: QSearch,
     pub nmp: NullMovePruning,
     pub futility: Futility,
+
     pub pvs: Pvs,
     pub extensions: Extensions,
     pub lmr: Lmr,
     pub mte: MoveTimeEstimator,
     pub move_orderer: MoveOrderer,
+
     pub repetition: Repetition,
     pub tt: TranspositionTable2,
     pub killers: Killers,
     pub history: HistoryHeuristic,
     pub explainer: SearchExplainer,
+
     pub restrictions: Restrictions,
     pub razor: Razor,
 
@@ -120,44 +124,65 @@ impl Component for Algo {
     fn new_game(&mut self) {
         self.stats = SearchStats::new();
         self.clock_checks = 0;
+        self.pv_table = PvTable::default();
+        self.results = SearchResults::default();
+        self.current_best = None;
+        self.current_variation = Variation::new();
+        self.task_control = TaskControl::default();
+        self.max_depth = 0;
+
 
         self.ids.new_game();
         self.eval.new_game();
         self.qsearch.new_game();
         self.nmp.new_game();
         self.futility.new_game();
+
         self.pvs.new_game();
         self.extensions.new_game();
         self.lmr.new_game();
-        self.history.new_game();
         self.mte.new_game();
         self.move_orderer.new_game();
+
         self.repetition.new_game();
         self.tt.new_game();
         self.killers.new_game();
+        self.history.new_game();
         self.explainer.new_game();
+
         self.restrictions.new_game();
         self.razor.new_game();
     }
 
     fn new_position(&mut self) {
+        self.task_control = TaskControl::default();
         self.task_control.set_running();
         self.stats = SearchStats::new();
+        self.clock_checks = 0;
+        self.pv_table = PvTable::default();
+        self.results = SearchResults::default();
+        self.current_best = None;
+        self.current_variation = Variation::new();
+        self.max_depth = 0;
+
+        self.ids.new_position();
         self.eval.new_position();
-        self.move_orderer.new_position();
-        self.mte.new_position();
+        self.qsearch.new_position();
         self.nmp.new_position();
         self.futility.new_position();
+
         self.pvs.new_position();
         self.extensions.new_position();
         self.lmr.new_position();
-        self.qsearch.new_position();
-        self.ids.new_position();
+        self.mte.new_position();
+        self.move_orderer.new_position();
+
         self.repetition.new_position();
         self.tt.new_position();
         self.killers.new_position();
         self.history.new_position();
         self.explainer.new_position();
+
         self.restrictions.new_position();
         self.razor.new_position();
     }
@@ -452,23 +477,23 @@ mod tests {
     fn test_minmax() {
         let pos = Catalog::starting_position();
         let eval = SimpleScorer::new().set_position(false);
-        let mut search = Algo::new()
-            .set_timing_method(TimeControl::Depth(3))
-            .set_eval(eval)
-            .build();
+        let mut search = Algo::new();
+        search.set_position(pos);
         search.qsearch.enabled = false;
         search.futility.alpha_enabled = false;
         search.futility.beta_enabled = false;
         search.nmp.enabled = false;
         search.tt.enabled = false;
         search.minmax = true;
-        search.set_position(pos).search();
+        search.set_eval(eval);
+        search.set_timing_method(TimeControl::Depth(3));
+        search.search();
+        println!("{}", search);
         assert_eq!(
             search.search_stats().iteration().regular_nodes(),
             1 + 20 + 400 + 8902 /* + 197_281 */
         );
         assert_eq!(search.search_stats().branching_factor().round() as u64, 22);
-        println!("{}", search);
     }
 
     #[test]
@@ -476,11 +501,11 @@ mod tests {
         let mut eval = SimpleScorer::new().set_position(false);
         eval.mobility = false;
         let mut search = Algo::new()
-            .set_timing_method(TimeControl::Depth(4))
             .set_eval(eval)
             .build();
         search.move_orderer.enabled = false;
         search.set_position(Catalog::starting_position());
+        search.set_timing_method(TimeControl::Depth(4));
         search.search();
         println!("{}", search);
         assert_eq!(search.search_stats().iteration().all_nodes(), 1941); // null move pruning

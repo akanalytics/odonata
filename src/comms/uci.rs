@@ -106,9 +106,12 @@ impl Component for Uci {
 
     fn new_game(&mut self) {
         self.engine.lock().unwrap().new_game();
+        self.engine.lock().unwrap().algo.set_callback(|sp| Self::uci_info(sp));
     }
 
     fn new_position(&mut self) {
+        // self.engine.lock().unwrap().new_position();
+        // self.engine.lock().unwrap().algo.set_callback(|sp| Self::uci_info(sp));
     }    
 }
 
@@ -379,6 +382,7 @@ impl Uci {
         pos.set(Tag::SuppliedVariation(variation));
         self.board = pos.supplied_variation().apply_to(pos.board());
         self.engine.lock().unwrap().set_position(pos);
+        self.engine.lock().unwrap().algo.set_callback(|sp| Self::uci_info(sp));
         Ok(())
     }
 
@@ -960,7 +964,7 @@ mod tests {
         uci.preamble.push("sleep 1100".to_string());
         uci.preamble.push("ucinewgame".to_string());
         uci.preamble.push("position startpos moves d2d4".to_string());
-        uci.preamble.push("go movetime 300".to_string());
+        uci.preamble.push("go wtime 20160 btime 20160 winc 160 binc 160 nodes 3000".to_string());
         uci.preamble.push("sleep 500".to_string());
         uci.preamble.push("quit".to_string());
         uci.run();

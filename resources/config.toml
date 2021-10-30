@@ -425,7 +425,6 @@ avoid_tt_on_repeats = false
 [tt]
 aging = true
 probe_leaf_nodes = true
-current_age = 10
 enabled = true
 use_tt_for_pv = false
 allow_truncated_pv = false

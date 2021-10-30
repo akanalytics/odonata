@@ -40,9 +40,15 @@ pub struct MoveTimeEstimator {
 impl Component for MoveTimeEstimator {
 
     fn new_game(&mut self) {
+        self.new_position();
     }
 
     fn new_position(&mut self) {
+        self.time_estimate = Duration::default();
+        self.elapsed_used = Duration::default();
+        self.time_control = TimeControl::default();
+        self.pondering = Arc::new(AtomicBool::from(false));
+        self.board = Board::default();
     }
 }
 
@@ -52,13 +58,14 @@ impl Default for MoveTimeEstimator {
             branching_factor: 15.0,
             perc_of_time_adv: 100,
             moves_rem: 10,
-            board: Board::default(),
-            time_control: TimeControl::default(),
-            pondering: Arc::new(AtomicBool::from(false)),
-            time_estimate: Duration::default(),
-            elapsed_used: Duration::default(),
             deterministic: false,
             nodestime: 0,
+
+            time_estimate: Duration::default(),
+            elapsed_used: Duration::default(),
+            time_control: TimeControl::default(),
+            pondering: Arc::new(AtomicBool::from(false)),
+            board: Board::default(),
         }
     }
 }

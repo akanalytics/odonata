@@ -44,6 +44,7 @@ use serde::{Deserialize, Serialize};
 #[serde(default)]
 pub struct Razor {
     pub enabled: bool,
+    pub beta_enabled: bool,
     pub pv_nodes: bool,
     pub min_opponents: i32, 
     pub max_depth: Ply,
@@ -66,6 +67,7 @@ impl Default for Razor {
     fn default() -> Self {
         Self {
             enabled: true,
+            beta_enabled: true,
             pv_nodes: false,
             min_opponents: 4,
             max_depth: 3, // 1 means we still prune at frontier (depth=1)
@@ -132,7 +134,7 @@ impl Algo {
             _ => unreachable!(),
         });
 
-        if eval > n.beta + margin {
+        if self.razor.beta_enabled && eval > n.beta + margin {
             return Some(n.beta);
         }
 

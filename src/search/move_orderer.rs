@@ -48,7 +48,11 @@ impl Component for MoveOrderer {
 
     fn new_position(&mut self) {
         self.picker.clear();
-    }
+        self.thread = 0;
+        self.count_pv = PlyStat::new("order pv");
+        self.count_bm = PlyStat::new("order bm");
+        self.count_tt_bm = PlyStat::new("order tt bm");
+        }
 }
 
 impl MoveOrderer {

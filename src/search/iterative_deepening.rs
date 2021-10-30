@@ -19,6 +19,8 @@ pub struct IterativeDeepening {
 
     #[serde(skip)]
     pub start_ply: Ply,
+
+    #[serde(skip)]
     pub end_ply: Ply,
 
     #[serde(skip)]
@@ -31,6 +33,8 @@ impl Component for IterativeDeepening {
     }
 
     fn new_position(&mut self) {
+        self.start_ply = 1;
+        self.end_ply = MAX_PLY -1;
         self.iterations.clear();
     }
 }
@@ -41,9 +45,9 @@ impl Default for IterativeDeepening {
             enabled: true,
             part_ply: false,
             step_size: 1,
+
             start_ply: 1,
             end_ply: MAX_PLY - 1,
-
             iterations: Vec::new(),
         }
     }

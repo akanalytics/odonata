@@ -89,7 +89,11 @@ impl SharedTable {
     }
 
     pub fn clear(&self) {
-        self.vec.iter().for_each(|e| e.store(0, Ordering::Relaxed));
+        for h in 0..self.mask as u64 {
+            let xor_hash = 0 ^ 0;
+            self.vec[self.index(h)].store(xor_hash, Ordering::Relaxed);
+            self.vec[self.index(h) + 1].store(0, Ordering::Relaxed);
+        }
         self.utilization.clear();        
     }
 }
