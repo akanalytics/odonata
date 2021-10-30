@@ -124,6 +124,17 @@ impl Board {
                 return false;
             }
         }
+        // check piece move
+        let precalc = BitboardDefault::default();
+        let destinations = precalc.non_pawn_attacks(
+            self.color_us(),
+            m.mover_piece(),
+            self.us(),
+            self.them(),
+            m.from());
+        if !m.to().is_in(destinations | self.en_passant()) && !m.is_castle() {
+            return false;
+        }
         true
     }
 

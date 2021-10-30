@@ -562,6 +562,8 @@ impl OrderedMoveList {
 
 #[cfg(test)]
 mod tests {
+    use itertools::Itertools;
+
     use super::*;
     use crate::bitboard::square::*;
     use crate::bitboard::castling::*;
@@ -797,19 +799,29 @@ mod tests {
     #[ignore]
     fn test_ordering_node_count() {
         let mut engine = Engine::new();
+        engine.new_game();
+        engine.algo.analyse_mode = false;
+        run_one_game(&mut engine);
 
+        engine.new_game();
+        engine.algo.analyse_mode = true;
+        run_one_game(&mut engine);
+
+    }
+
+    fn run_one_game(engine: &mut Engine) {
         let positions = &Catalog::example_game();
-        let mut node_count = 0;
-        for pos in positions {
-            engine.new_game();
+        let mut nodes_cumul = 0;
+        for pos in positions { //}.iter().step_by(1).collect_vec() {
+            engine.algo.set_position(pos.clone());
             let suggested_depth = pos.acd().unwrap();
-            engine.algo.set_timing_method(TimeControl::Depth(suggested_depth-1));
-            engine.algo.board = pos.board().clone();
+            // engine.algo.set_timing_method(TimeControl::NodeCount(200000));
 
+            engine.algo.set_timing_method(TimeControl::Depth(suggested_depth-1));
             engine.search();
             let mut results = engine.algo.results_as_position().clone();
             let nodes = results.acn().unwrap();
-            node_count += nodes;
+            nodes_cumul += nodes;
 
             // just leave acd
             results.tags_mut().remove(Tag::PV);
@@ -817,7 +829,7 @@ mod tests {
             results.tags_mut().remove(Tag::BM);
             results.tags_mut().remove(Tag::CE);
             results.tags_mut().remove(Tag::ACN);
-            println!("{:>12} {:>12} {}", Formatting::format_u128(nodes), Formatting::format_u128(node_count), results);
+            println!("{:>12} {:>12} {}", Formatting::format_u128(nodes), Formatting::format_u128(nodes_cumul), results);
         }
     }
 

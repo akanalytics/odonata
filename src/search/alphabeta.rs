@@ -134,8 +134,10 @@ impl Algo {
                         // FIXME: probably dont set alpha just the hinted mv and re-search the node
                         if entry.score >= n.beta {
                             self.stats.inc_node_cut(ply, MoveType::Hash, -1);
-                            self.tt.store(board.hash(), entry);
-                            // self.record_truncated_move(ply, &entry.bm);
+                            // if self.analyse_mode {
+                            //     self.tt.store(board.hash(), entry);
+                            // }
+                            self.record_truncated_move(ply, &entry.bm);
                             self.stats.inc_leaf_tt_nodes(ply);
                             self.report_refutation(n.ply);
                             return entry.score;
@@ -357,7 +359,7 @@ impl Algo {
                 n.alpha = child_score;
                 bm = mv;
                 nt = NodeType::Pv;
-                debug_assert!(board.is_pseudo_legal_move(&bm));
+                debug_assert!(board.is_pseudo_legal_move(&bm), "bm {} on board {}", bm, board);
                 self.history.raised_alpha(ply, board, &mv);
                 self.record_move(ply, &mv);
             }

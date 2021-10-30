@@ -540,7 +540,7 @@ mod tests {
         search.set_position(Position::from_board(board));
         search.search();
         println!("{}", search);
-        assert_eq!(search.pv()[0].uci(), "e7e6");
+        assert_eq!(search.pv()[0].uci(), "g8f6");
     }
 
 

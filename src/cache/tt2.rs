@@ -779,12 +779,13 @@ mod tests {
         info!("log");
         let mut algo = Algo::new();
         let d = 2;
-        algo.set_timing_method(TimeControl::Depth(d));
         for pos in Catalog::bratko_kopec() {
             eprintln!("{}", pos);
             algo.new_game();
             eprintln!("new game");
-            algo.set_position(pos.clone()).search();
+            algo.set_position(pos.clone());
+            algo.set_timing_method(TimeControl::Depth(d));
+            algo.search();
             eprintln!("search done");
             //            let pv = algo.tt.extract_pv(&algo.bm(), pos.board());
             let pv = algo.tt.extract_pv_and_score(pos.board()).0;

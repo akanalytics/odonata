@@ -304,10 +304,10 @@ mod tests {
             let mut engine = Engine::new();
             engine.algo.eval.set_switches(false);
             engine.algo.eval.material = true;
-            engine.algo.set_timing_method(TimeControl::Depth(0));
             //                .set_callback(Uci::uci_info)
             // engine.algo.eval.mb.enabled = true;
             engine.set_position(pos.clone());
+            engine.algo.set_timing_method(TimeControl::Depth(0));
             engine.search();
             // debug!("{}", search);
             println!(

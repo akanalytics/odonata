@@ -32,6 +32,7 @@ pub struct SearchResults {
     pub multi_pv_index: Option<u32>,
     pub pv: Option<Variation>,
     pub nodes: Option<u64>,
+    pub nodes_thread: Option<u64>,
     pub score: Option<Score>,
     pub currmove: Option<Move>,
     pub currmovenumber_from_1: Option<u32>,
@@ -49,6 +50,7 @@ impl SearchResults {
         SearchResults {
             board: algo.board.clone(),
             nodes: Some(algo.search_stats().all_threads_cumulative_total_nodes()),
+            nodes_thread: Some(algo.search_stats().cumulative_nodes()),
             nps: Some(algo.search_stats().all_threads_cumulative_knps() * 1000),
             hashfull_per_mille: Some(algo.tt.hashfull_per_mille()),
             time_millis: Some(algo.search_stats().cumulative_time_as_millis() as u64),
@@ -111,6 +113,7 @@ impl SearchResults {
                 None
             },
             nodes: Some(stats.all_threads_cumulative_total_nodes()),
+            nodes_thread: Some(stats.cumulative_nodes()),
             nps: Some(stats.all_threads_cumulative_knps() * 1000),
             depth: Some(stats.depth()),
             seldepth: Some(stats.selective_depth()),
@@ -155,7 +158,7 @@ impl SearchResults {
         if let Some(seldepth) = self.seldepth {
             pos.set(Tag::AnalysisCountSelDepth(seldepth));
         }
-        if let Some(nodes) = self.nodes {
+        if let Some(nodes) = self.nodes_thread {
             pos.set(Tag::AnalysisCountNodes(nodes as u128));
         }
         if let Some(bf) = self.branching_factor {
