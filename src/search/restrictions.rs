@@ -54,6 +54,10 @@ impl Restrictions {
         false
     }
 
+    pub fn is_none(&self) -> bool {
+        self.exclude_moves.len() == 0 && self.include_moves.is_empty()
+    }
+
     pub fn multi_pv_index(&self) -> u32 {
         self.exclude_moves.len() as u32
     }

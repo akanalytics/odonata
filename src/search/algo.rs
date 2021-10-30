@@ -23,6 +23,7 @@ use crate::search::search_results::SearchResults;
 use crate::search::searchstats::SearchStats;
 use crate::search::restrictions::Restrictions;
 use crate::search::razor::Razor;
+use crate::eval::recognizer::Recognizer;
 use crate::search::taskcontrol::TaskControl;
 use crate::search::timecontrol::TimeControl;
 use crate::search::history_heuristic::HistoryHeuristic;
@@ -63,6 +64,7 @@ pub struct Algo {
 
     pub restrictions: Restrictions,
     pub razor: Razor,
+    pub recognizer: Recognizer,
 
 
     #[serde(skip)]
@@ -152,6 +154,7 @@ impl Component for Algo {
 
         self.restrictions.new_game();
         self.razor.new_game();
+        self.recognizer.new_game();
     }
 
     fn new_position(&mut self) {
@@ -185,6 +188,7 @@ impl Component for Algo {
 
         self.restrictions.new_position();
         self.razor.new_position();
+        self.recognizer.new_position();
     }
 }
 
@@ -217,6 +221,7 @@ impl fmt::Debug for Algo {
             .field("explainer", &self.explainer)
             .field("restrictions", &self.restrictions)
             .field("razor", &self.razor)
+            .field("recognizer", &self.recognizer)
             .finish()
     }
 }
@@ -263,6 +268,7 @@ impl fmt::Display for Algo {
         write!(f, "\n[explainer]\n{}", self.explainer)?;
         write!(f, "\n[restrictions]\n{}", self.restrictions)?;
         write!(f, "\n[razor]\n{}", self.razor)?;
+        write!(f, "\n[recognizer]\n{}", self.recognizer)?;
         Ok(())
     }
 }
