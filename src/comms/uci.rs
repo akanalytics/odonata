@@ -519,7 +519,7 @@ impl Uci {
     pub fn uci_options(engine: &Engine) -> Vec<String> {
         let mut ops: Vec<String> = Vec::new();
        
-        ops.push(format!("option name UCI_EngineAbout type string default {} {}", Version::NAME, Version::HOMEPAGE));
+        // ops.push(format!("option name UCI_EngineAbout type string default {} {}", Version::NAME, Version::HOMEPAGE));
         ops.push("option name debug type check default false".to_string());
         ops.push(format!("option name Threads type spin default {} min 1 max 16", engine.thread_count));
         // ops.push(format!("option name nodestime type spin default {} min 0 max 10000", engine.algo.mte.nodestime));
