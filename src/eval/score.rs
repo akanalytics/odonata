@@ -79,8 +79,8 @@ impl Score {
     }
 
     #[inline]
-    pub fn clamp(&self) -> Score {
-        Self::from_cp(self.cp.clamp(Self::MIN_NUMERIC, Self::MAX_NUMERIC ) as i32) 
+    pub fn clamp_score(&self) -> Score {
+        Self::from_cp(self.cp.clamp(-20000, 20000) as i32) 
     }
 
 

@@ -77,12 +77,12 @@ impl Algo {
         }
 
 
-        // we dont draw at root, as otherwise it wont play a move if insufficient-material draw [v32]
-        if ply > 0 && board.draw_outcome().is_some() {
-        // if board.draw_outcome().is_some() {
-            self.stats.inc_leaf_nodes(ply);
-            return board.eval_draw(&mut self.eval, &n); // will return a draw score
-        }
+        // // we dont draw at root, as otherwise it wont play a move if insufficient-material draw [v32]
+        // if ply > 0 && board.draw_outcome().is_some() {
+        // // if board.draw_outcome().is_some() {
+        //     self.stats.inc_leaf_nodes(ply);
+        //     return board.eval_draw(&mut self.eval, &n); // will return a draw score
+        // }
 
         let mut score = -Score::INFINITY;
         let mut bm = Move::NULL_MOVE;
@@ -97,7 +97,7 @@ impl Algo {
         // let draft = depth;
         let mut tt_mv = Move::NULL_MOVE;
         match self.lookup(board, &n) {
-            (Some(ab), None) => return ab,
+            (Some(ab), None) => return ab,  // alpha, beta or a terminal node
             (None, Some(bm)) => tt_mv = bm,
             (Some(s), Some(mv)) => { tt_mv = mv; score = s; bm = mv},
             _ => {},

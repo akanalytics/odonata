@@ -158,7 +158,7 @@ impl Algo {
                 if exit {
                     break 'outer;
                 }
-                self.restrictions.exclude_moves.push(self.results.bm());
+                self.restrictions.exclude_moves.push(results.bm());
             }
             depth += self.ids.step_size
         }

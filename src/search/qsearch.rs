@@ -276,7 +276,7 @@ impl Algo {
         // we should not return a mate score, as only captures have been considered,
         // and a mate score might cut a genuine mate score elsewhere
         trace!("ply {} returns with score of {} and pv {}", ply, alpha, self.pv_table.extract_pv_for(ply).to_string());
-        alpha.clamp(Score::from_cp(-20000), Score::from_cp(20000))
+        alpha.clamp_score()
     }
 }
 
