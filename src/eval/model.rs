@@ -14,13 +14,15 @@ use crate::types::Piece;
 use crate::utils::Formatting;
 use crate::Bitboard;
 
+use super::endgame::EndGame;
+
 #[derive(Clone, Default, Debug)]
 pub struct Model {
     // material
     pub switches: Switches,
     pub turn: Color,
     pub mat: Material,
-    pub draw: bool,
+    pub winner: Option<Color>,
     pub multiboard: Multiboard,
 
     pub white: ModelSide,
@@ -423,7 +425,7 @@ impl Model {
             mat: material,
             white: ModelSide::from_board(b, Color::White, &material, switches),
             black: ModelSide::from_board(b, Color::Black, &material, switches),
-            draw: false,
+            winner: EndGame::from_board(b).try_winner(), 
         }
     }
 }

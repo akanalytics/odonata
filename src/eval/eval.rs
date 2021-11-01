@@ -176,6 +176,7 @@ pub struct SimpleScorer {
 
     pub contempt_penalty: Weight,
     pub tempo_bonus: Weight,
+    pub win_bonus: Weight,
     // pub attacks: PieceArray<PieceArray<Weight>>, 
     // pub defends: PieceArray<PieceArray<Weight>> , 
 
@@ -207,6 +208,7 @@ impl Default for SimpleScorer {
             quantum: 1,
             min_depth_mob: 1,
             contempt_penalty: Weight::from_i32(-30, 0), // typically -ve
+            win_bonus: Weight::from_i32(250, 250), 
 
             center_attacks: Weight::from_i32(1, 0),
             undefended_sq: Weight::from_i32(4, 3),
@@ -442,6 +444,13 @@ impl SimpleScorer {
                 w.has_rook_pair as i32,
                 b.has_rook_pair as i32,
                 self.rook_pair,
+            );
+
+            scorer.material(
+                "win bonus",
+                (m.winner == Some(Color::White)) as i32,
+                (m.winner == Some(Color::Black)) as i32,
+                self.win_bonus,
             );
         }
 

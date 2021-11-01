@@ -1,5 +1,4 @@
 use crate::bound::NodeType;
-use crate::cache::tt2::TtNode;
 use crate::infra::parsed_config::Component;
 use crate::search::node::Node;
 use crate::board::Board;
@@ -8,6 +7,7 @@ use std::{fmt};
 use serde::{Deserialize, Serialize};
 use crate::search::algo::Algo;
 use crate::types::MoveType;
+use super::endgame::EndGame;
 use super::score::Score;
 use crate::eval::switches::Switches;
 
@@ -51,11 +51,12 @@ impl Algo {
         if n.ply == 0 {
             return (None, None)
         }
-        if b.draw_outcome().is_some() {
-            self.stats.inc_leaf_nodes(n.ply);
-            let draw = b.eval_draw(&mut self.eval, &n); // will return a draw score
-            return (Some(draw), None)
+
+        let (score, mv) = self.wdl_detection(b, n);
+        if score.is_some() {
+            return (score,mv);
         }
+
 
         if self.tt.probe_leaf_nodes || self.is_leaf(n.ply, n.depth) {
 
@@ -147,40 +148,68 @@ impl Algo {
         if !self.recognizer.enabled  || n.depth == 0 || n.ply == 0 {
             return (None, None)
         }
-        let mut win_bonus = Score::zero();
-        let pawns = b.pawns();
-        if pawns.is_empty() {
-            let minors_majors = b.line_pieces() | b.knights();
-            let ours = minors_majors & b.us();
-            let theirs = minors_majors & b.them();
-            if ours.popcount() >= 2 && theirs.is_empty() {
-                // our win as we know its not a draw
-                win_bonus = Score::from_cp(250);
-            } else if ours.is_empty() && theirs.popcount() >= 2 {
-                win_bonus = Score::from_cp(-250);
-            }
+        let endgame = EndGame::from_board(b);
 
-            if win_bonus != Score::zero() {
-                let mut score = b.eval_some(&self.eval, Switches::ALL_SCORING);
-                // if score.is_mate() {
-                //     return (None, None)
-                // }
-                score = score.clamp_score() + win_bonus;
-                
-                // let entry = TtNode {
-                //     score,
-                //     draft: n.depth,
-                //     node_type: NodeType::Pv,
-                //     bm: Move::NULL_MOVE, 
-                // };
-                // self.tt.store(b.hash(), entry);
-                return (Some(score), None);
+        if endgame.is_immediately_declared_draw() {
+            let draw = b.eval_draw(&mut self.eval, &n); // will return a draw score
+            return (Some(draw), None)
+        }
+
+        if b.draw_outcome().is_some()  {
+            self.stats.inc_leaf_nodes(n.ply);
+            let draw = b.eval_draw(&mut self.eval, &n); // will return a draw score
+            return (Some(draw), None)
+        }
+
+        // its a helpmate or draw like KNkn, so cease search only after a few moves since last capture
+        if endgame.is_draw() {
+            if b.fifty_halfmove_clock() >= 3  {
+                let draw = b.eval_draw(&mut self.eval, &n); // will return a draw score
+                return (Some(draw), None)
+            } else {
+                // we let a couple of plies "play out" - enough that the game continues and we don't lose a piece
+                return (None, None)
             }
         }
 
+        if let Some(_color) = endgame.try_winner() {
+            if b.fifty_halfmove_clock() > 4  {
+                let sc = b.eval(&mut self.eval, &n); // will return a best-move-motivating score
+                return (Some(sc), None)
+            } else {
+                // we let a couple of plies "play out" - so that we discover if this is a draw (unlikely)
+                return (None, None)
+            }    
+        }
         return (None, None)
     }
 
 }
 
-// 8/NN6/8/8/8/2K2nk1/4P3/8 w - - 0 1
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{BoardBuf, Position, catalog::*, search::{engine::Engine, timecontrol::TimeControl}};
+    use test_env_log;
+
+    #[test]
+    fn test_recognizer() {
+        // let pos = Position::parse_epd("8/NN6/8/8/8/2K2nk1/4P3/8 w - - 0 1; id 'RECOG.01'; am e2f3; bm Nd6;c0 'white shouldnt take knight as recapture of pawn makes it KNN v k'").unwrap();
+        // let pos = Position::parse_epd("k7/1p6/3N4/8/8/8/6N1/K6B w - - 5 1; id 'RECOG.02'; bm Nxb7; c0 'white should take pawn to leave KBN v k'").unwrap();
+        let pos = Position::parse_epd("k7/8/K1p5/8/3N4/8/6N1/7B w - - 5 1; id 'RECOG.03'; am Nxc6; bm Kb6; c0 'white shouldnt take pawn c4 as triggers stalemate'").unwrap();
+        // let pos = Position::parse_epd("k6K/8/2pN4/8/3N4/8/8/8 w - - 5 1;  id 'RECOG.04'; bm Nxc6; c0 'white should force stalemate'").unwrap();
+        let mut engine = Engine::new();
+        engine.set_position(pos.clone());
+        engine.algo.set_timing_method(TimeControl::Depth(3));
+        engine.algo.recognizer.enabled = true;
+        engine.search();
+        eprintln!("{}", engine.algo.results_as_position());
+        eprintln!("{}", pos);
+        assert_eq!(engine.algo.results_as_position().bm().unwrap(), pos.bm().unwrap());
+    }
+}
+
+        // debug!("{}", sea
+
+// 8/NN6/8/8/8/2K2nk1/4P3/8 w - - 0 1 - white shouldn't take knight
+// k7/8/K1p5/8/3N4/8/6N1/7B w - - 5 1 - white shouldn't take pawn c4 as triggers stalemate

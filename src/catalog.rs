@@ -22,6 +22,7 @@ pub enum CatalogSuite {
     Checkmate,
     EndGame,
     Pin,
+    Recogs,
     Move,
     Quiesce,
     See,
@@ -225,6 +226,7 @@ r1r5/2N1n1kb/2nB1b1p/3p2p1/6q1/P2pQ3/3N1PPP/1RR3K1 b - - 11 37 acd 6;
             CatalogSuite::Checkmate => Self::checkmates(),
             CatalogSuite::EndGame => Self::end_games(),
             CatalogSuite::Pin => Self::pins(),
+            CatalogSuite::Recogs => Self::recogs(),
             CatalogSuite::Move => Self::moves(),
             CatalogSuite::Quiesce => Self::quiesce(),
             CatalogSuite::See => Self::see(),
@@ -297,6 +299,19 @@ k2r4/8/3B4/3B4/3KQr2/5n2/8/8 w - - 0 1 id "PIN.02"; c0 "Pins"; Sq e4;
         let positions = Position::parse_many_epd(str.lines()).unwrap();
         positions
     }
+
+
+    pub fn recogs() ->  Vec<Position> {
+        let str = r#"
+8/NN6/8/8/8/2K2nk1/4P3/8 w - - 0 1; id 'RECOG.01'; am e2f3; am exf3; c0 'white shouldnt take knight as recapture of pawn makes it KNN v k';
+k7/1p6/3N4/8/8/8/6N1/K6B w - - 5 1; id 'RECOG.02'; bm Nxb7; c0 'white should take pawn to leave winning KBN v k';
+k7/8/K1p5/8/3N4/8/6N1/7B w - - 5 1; id 'RECOG.03'; am Nxc6; bm Kb6; c0 'white shouldnt take pawn with knight as it triggers stalemate';
+k1K5/8/8/2p5/8/6B1/5B2/8 w - - 0 1;  id 'RECOG.04'; bm Bxc5; c0 'white should force stalemate by capturing pawn on c5 as black could win';
+"#;
+        let positions = Position::parse_many_epd(str.lines()).unwrap();
+        positions
+    }
+
 
     // given in UCI format so that we dont need a working "legal moves" to parse
     pub fn moves() ->  Vec<Position> {

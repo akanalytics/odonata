@@ -7,3 +7,4 @@ pub mod switches;
 pub mod weight;
 pub mod material_balance;
 pub mod recognizer;
+pub mod endgame;

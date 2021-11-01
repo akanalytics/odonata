@@ -146,7 +146,7 @@ impl SearchResults {
             pos.set(Tag::Pv(pv.clone()));
             if pv.len() > 0 {
                 pos.set(Tag::SuppliedMove(pv[0]));
-                pos.set(Tag::BestMove(MoveList::from_iter(iter::once(pv[0]))));
+                pos.set(Tag::BestMoves(MoveList::from_iter(iter::once(pv[0]))));
             }
         }
         if let Some(ce) = self.score {
