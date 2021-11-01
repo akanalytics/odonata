@@ -122,9 +122,13 @@ impl Board {
         // X DrawInsufficientMaterial,
         // DrawRule50,
         // X DrawRule75,
-        if self.fifty_halfmove_clock() >= 2 * 75 {
-            return Some(Outcome::DrawRule75);
+        if self.fifty_halfmove_clock() >= 2 * 50 {
+            return Some(Outcome::DrawRule50);
         }
+
+        // if self.fifty_halfmove_clock() >= 2 * 75 {
+        //     return Some(Outcome::DrawRule75);
+        // }
 
         if self.repetition_count().total >= 5 {
             return Some(Outcome::DrawRepetition5);

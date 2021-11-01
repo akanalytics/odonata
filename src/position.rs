@@ -282,7 +282,7 @@ impl Position {
     }
 
     pub fn bm(&self) -> Result<MoveList, String> {
-        if let Tag::BestMove(ml) = self.tag(Tag::BM) {
+        if let Tag::BestMoves(ml) = self.tag(Tag::BM) {
             Ok(ml.clone())
         } else { 
             Err("Not good".into())
