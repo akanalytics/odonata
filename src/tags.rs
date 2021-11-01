@@ -36,7 +36,8 @@ use anyhow::{Result,anyhow};
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Tag {
     None,
-    BestMove(MoveList),
+    AvoidMoves(MoveList),
+    BestMoves(MoveList),
     BranchingFactorPercent(u32),  // 100x
     Pv(Variation),
     Id(String),
@@ -63,6 +64,7 @@ pub enum Tag {
 
 impl Tag {
 
+    pub const AM: &'static str = "am";
     pub const BM: &'static str = "bm";
     pub const BF: &'static str = "Bf";
     pub const PV: &'static str = "pv";
@@ -91,7 +93,8 @@ impl Tag {
 
     fn parse_internal(b: &Board, key: &str, v: &str) -> Result<Tag> {
         Ok(match key {
-            Self::BM => Tag::BestMove(b.parse_san_movelist(v)?),
+            Self::AM => Tag::AvoidMoves(b.parse_san_movelist(v)?),
+            Self::BM => Tag::BestMoves(b.parse_san_movelist(v)?),
             Self::BF => Tag::BranchingFactorPercent((100.0 * v.parse::<f64>()?) as u32) ,
             Self::PV => Tag::Pv(b.parse_san_variation(v)?),
             Self::ID => Tag::Id(v.to_string()) ,
@@ -130,7 +133,8 @@ impl Tag {
     pub fn key(&self) -> String {
         match &self {
             Tag::None => "".to_string(),
-            Tag::BestMove(_) => Self::BM.to_string(),
+            Tag::AvoidMoves(_) => Self::AM.to_string(),
+            Tag::BestMoves(_) => Self::BM.to_string(),
             Tag::BranchingFactorPercent(_) => Self::BF.to_string(),
             Tag::Pv(_) => Self::PV.to_string(),
             Tag::Id(_) => Self::ID.to_string(),
@@ -159,7 +163,8 @@ impl Tag {
     pub fn value_uci(&self) -> String {
         match &self {
             Tag::None => "".to_string(),
-            Tag::BestMove(mvs) => mvs.uci(),
+            Tag::AvoidMoves(mvs) => mvs.uci(),
+            Tag::BestMoves(mvs) => mvs.uci(),
             Tag::BranchingFactorPercent(bf) => Formatting::format_decimal(2, *bf as f32/ 100.0),
             Tag::Pv(variation) => variation.uci(),
             Tag::Id(s) => format!("{}", s),
@@ -187,7 +192,8 @@ impl Tag {
 
     pub fn value(&self, b: &Board) -> String {
         match &self {
-            Tag::BestMove(mvs) => b.to_san_movelist(mvs),
+            Tag::AvoidMoves(mvs) => b.to_san_movelist(mvs),
+            Tag::BestMoves(mvs) => b.to_san_movelist(mvs),
             Tag::Pv(variation) => b.to_san_variation(variation, None),
             Tag::PredictedMove(mv) => b.to_san(mv),
             Tag::SuppliedMove(mv) => b.to_san(mv),
