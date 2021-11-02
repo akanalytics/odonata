@@ -24,7 +24,7 @@ pub struct Recognizer {
 impl Default for Recognizer {
     fn default() -> Self {
         Self {
-            enabled: false,
+            enabled: true,
         }
     }
 }

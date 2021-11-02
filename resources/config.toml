@@ -429,7 +429,6 @@ probe_leaf_nodes = true
 enabled = true
 use_tt_for_pv = false
 allow_truncated_pv = false
-allow_tt_at_root = false
 mb = 8
 hmvc_horizon = 85
 min_ply = 1
@@ -450,6 +449,8 @@ enabled = false
 [restrictions]
 enabled = true
 
+[recognizer]
+enabled = true
 
 
 
