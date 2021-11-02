@@ -44,7 +44,7 @@ impl Default for Pst {
 
 
 #[derive(Clone, Default, Serialize, Deserialize)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 pub struct PstProxy {
     p: [[Weight; 8]; 8],
     n: [[Weight; 8]; 8],

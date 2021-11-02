@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 pub struct MoveTimeEstimator {
     pub branching_factor: f32,
     perc_of_time_adv: u32,

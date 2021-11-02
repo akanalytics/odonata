@@ -14,7 +14,7 @@ use super::score::Score;
 
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 pub struct Recognizer {
     enabled: bool, 
 }
@@ -23,7 +23,7 @@ pub struct Recognizer {
 impl Default for Recognizer {
     fn default() -> Self {
         Self {
-            enabled: true,
+            enabled: false,
         }
     }
 }
@@ -55,7 +55,6 @@ impl Algo {
         if score.is_some() {
             return (score,mv);
         }
-
 
         if self.tt.probe_leaf_nodes || self.is_leaf(n.ply, n.depth) {
 
@@ -133,10 +132,10 @@ impl Algo {
             // not found
         }
         // was leaf and isnt probed
-        let (score, mv) = self.wdl_detection(b, n);
-        if score.is_some() {
-            return (score,mv);
-        }
+        // let (score, mv) = self.wdl_detection(b, n);
+        // if score.is_some() {
+        //     return (score,mv);
+        // }
 
         return (None, None);
     }
@@ -162,7 +161,7 @@ impl Algo {
 
         // its a helpmate or draw like KNkn, so cease search only after a few moves since last capture
         if endgame.is_draw() {
-            if b.fifty_halfmove_clock() >= 3  {
+            if b.fifty_halfmove_clock() >= 0  {
                 let draw = b.eval_draw(&mut self.eval, &n); // will return a draw score
                 return (Some(draw), None)
             } else {
@@ -172,7 +171,7 @@ impl Algo {
         }
 
         if let Some(_color) = endgame.try_winner() {
-            if b.fifty_halfmove_clock() > 4  {
+            if b.fifty_halfmove_clock() >= 0  {
                 let sc = b.eval(&mut self.eval, &n); // will return a best-move-motivating score
                 return (Some(sc), None)
             } else {

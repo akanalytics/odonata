@@ -225,7 +225,7 @@ impl fmt::Display for TtNode {
 
 // FIXME Mates as score
 #[derive(Clone, Serialize, Deserialize)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 pub struct TranspositionTable2 {
     #[serde(skip)]
     table: Arc<SharedTable>,

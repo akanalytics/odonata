@@ -38,7 +38,7 @@ use super::search_results::SearchResultsMode;
 
 
 #[derive(Clone, Default, Serialize, Deserialize)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 pub struct Algo {
     pub minmax: bool,
     pub show_refutations: bool, 

@@ -74,7 +74,6 @@ impl Bench {
         if let Some(threads) = threads {
             engine.thread_count = threads;
         }
-        engine.algo.set_timing_method(tc);
         let positions = &Catalog::bench();
 
         println!(
@@ -94,6 +93,8 @@ impl Bench {
             if tc == TimeControl::DefaultTime {
                 let suggested_depth = pos.acd().unwrap();
                 engine.algo.set_timing_method(TimeControl::Depth(suggested_depth));
+            } else {
+                engine.algo.set_timing_method(tc);
             }
 
             engine.search();

@@ -18,7 +18,7 @@ use super::eval::PieceArray;
 
 
 #[derive(Clone, Serialize, Deserialize)]
-#[serde(default)]
+#[serde(default, deny_unknown_fields)]
 pub struct MaterialBalance {
     pub enabled: bool,
     pub internal_stats: bool,

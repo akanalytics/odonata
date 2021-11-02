@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(default)]
+#[serde(default,deny_unknown_fields)]
 pub struct Phaser {
     enabled: bool,
     method: String,
