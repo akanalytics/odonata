@@ -1475,8 +1475,8 @@ class EngineParams:
                 v = v.replace("true", "t").replace("false", "f")
                 parts.append("C=" + v)  
             else:            
-                arg = arg.replace("--", "").replace("-", "")
-                parts.append(arg)
+                v = arg.replace("--", "").replace("-", "")
+                parts.append(v)
 
         if ponder:
             parts.append("P=t")

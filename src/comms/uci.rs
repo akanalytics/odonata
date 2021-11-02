@@ -93,14 +93,15 @@ use itertools::Itertools;
 //
 #[derive(Debug)]
 pub struct Uci {
-    preamble: Vec<String>,
+    pub prelude: Vec<String>,
+    pub strict_error_handling: bool,
     running: bool,
     board: Board,
     engine: Arc<Mutex<Engine>>,
     debug: bool,
     json_rpc: JsonRpc,
-//     subscriber: 
 }
+
 
 impl Component for Uci {
 
@@ -115,6 +116,7 @@ impl Component for Uci {
     }    
 }
 
+
 impl Uci {
     pub fn new() -> Uci {
         let engine = Arc::new(Mutex::new(Engine::new()));
@@ -124,7 +126,8 @@ impl Uci {
             json_rpc: JsonRpc::new(Arc::clone(&engine)),
             debug: false,
             running: false,
-            preamble: Vec::default(),
+            prelude: Vec::default(),
+            strict_error_handling: false,
         };
         uci.engine.lock().unwrap().set_position(Position::from_board(uci.board.clone()));
         uci.engine.lock().unwrap().algo.set_callback(|sp| Self::uci_info(sp));
@@ -141,9 +144,23 @@ impl Uci {
         println!("{}", send);
     }
 
+
+    pub fn banner() {
+        println!("{} {}\n", Version::NAME, Version::VERSION);
+        println!("{}", Version::small_splash());
+        println!();
+        println!("Please see {} for updates,", Version::HOMEPAGE);
+        println!("releases and licence details.");
+        println!("Commands...");
+        println!("{:<10} {}", "uci", "enter uci protocol mode");
+        println!("{:<10} {}", "quit", "quit the program");
+    }
+
+
+
     pub fn run(&mut self) {
         self.running = true;
-        self.preamble.insert(0, "uci".to_string());
+        Self::banner();
         while self.running {
             self.readline_and_execute();
         }
@@ -158,8 +175,8 @@ impl Uci {
 
     fn readline_and_execute(&mut self) {
         let mut input = String::new();
-        if !self.preamble.is_empty() {
-            input = self.preamble.remove(0);
+        if !self.prelude.is_empty() {
+            input = self.prelude.remove(0);
         } else {
             let bytes_read = io::stdin().read_line(&mut input).unwrap();
             if bytes_read == 0 {
@@ -200,6 +217,7 @@ impl Uci {
             "search" | "?" => self.uci_explain_last_search(),
             "board" | "b" => self.uci_board(),
             "eval" | "." => self.ext_uci_explain_eval(),
+            "settings"  => self.ext_uci_show_config(),
 
             _ if self.is_json_request(&input) => self.json_method(&input),
 
@@ -211,6 +229,9 @@ impl Uci {
         if let Err(s) = res {
             warn!("uci error '{:#}'", s);
             Self::print(&format!("info string error '{:#}'", s));
+            if self.strict_error_handling {
+                self.uci_quit().unwrap();
+            }
         }
         io::stdout().flush().ok();
     }
@@ -838,29 +859,29 @@ mod tests {
     #[test]
     fn test_uci() {
         let mut uci = Uci::new();
-        uci.preamble.push("isready".into());
+        uci.prelude.push("isready".into());
         // uci.preamble.push("debug on".into());
-        uci.preamble.push("debug off".into());
-        uci.preamble.push("debug junk".into());
-        uci.preamble.push("quit".into());
+        uci.prelude.push("debug off".into());
+        uci.prelude.push("debug junk".into());
+        uci.prelude.push("quit".into());
         uci.run();
     }
 
     #[test]
     fn test_uci_perft() {
         let mut uci = Uci::new();
-        uci.preamble.push("perft 1".into());
-        uci.preamble.push("quit".into());
+        uci.prelude.push("perft 1".into());
+        uci.prelude.push("quit".into());
         uci.run();
     }
 
     #[test]
     fn test_uci_helpers() {
         let mut uci = Uci::new();
-        uci.preamble.push("b".into());
-        uci.preamble.push("?".into());
-        uci.preamble.push(".".into());
-        uci.preamble.push("quit".into());
+        uci.prelude.push("b".into());
+        uci.prelude.push("?".into());
+        uci.prelude.push(".".into());
+        uci.prelude.push("quit".into());
         uci.run();
     }
 
@@ -868,11 +889,11 @@ mod tests {
     fn test_uci_config_file() {
         let mut uci = Uci::new();
         assert_eq!(uci.engine.lock().unwrap().algo.eval.position, true);
-        uci.preamble
+        uci.prelude
             .push("setoption name Config_File value ../odonata/resources/config.toml".into());
-        uci.preamble
+        uci.prelude
             .push("setoption name Show_Config".into());
-        uci.preamble.push("quit".into());
+        uci.prelude.push("quit".into());
         uci.run();
         assert_eq!(uci.engine.lock().unwrap().algo.eval.position, true);
     }
@@ -882,18 +903,18 @@ mod tests {
         let mut uci = Uci::new();
         let bishop = uci.engine.lock().unwrap().algo.eval.mb.piece_weights[Piece::Bishop];
         assert_eq!(uci.engine.lock().unwrap().algo.eval.position, true);
-        uci.preamble.push("setoption name Config value eval.b.s=700".into());
-        uci.preamble
+        uci.prelude.push("setoption name Config value eval.b.s=700".into());
+        uci.prelude
             .push("setoption name Config value eval.mb.n=[400, 429]".into());
-        uci.preamble
+        uci.prelude
             .push("setoption name Config value eval.position=false".into());
-        uci.preamble
+        uci.prelude
             .push("setoption name Explain_Eval".into());
-        uci.preamble
+        uci.prelude
             .push("setoption name Config value eval.pst.p=[[[10.0, 10.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]], [[103.0, 224.0], [103.0, 224.0], [103.0, 224.0], [103.0, 224.0], [103.0, 224.0], [103.0, 224.0], [103.0, 224.0], [103.0, 224.0]], [[-14.0, 168.0], [-14.0, 168.0], [-14.0, 168.0], [-14.0, 168.0], [-14.0, 168.0], [-14.0, 168.0], [-14.0, 168.0], [-14.0, 168.0]], [[14.0, 32.0], [14.0, 32.0], [14.0, 32.0], [19.0, 32.0], [19.0, 32.0], [14.0, 32.0], [14.0, 32.0], [14.0, 32.0]], [[-9.0, 10.0], [0.0, 10.0], [0.0, 10.0], [20.0, 10.0], [20.0, 10.0], [-5.0, 10.0], [-5.0, 10.0], [-9.0, 10.0]], [[-5.0, 5.0], [-5.0, 5.0], [-9.0, 5.0], [0.0, 5.0], [0.0, 5.0], [-9.0, 5.0], [-5.0, 5.0], [-5.0, 5.0]], [[4.0, 0.0], [15.0, 0.0], [15.0, 0.0], [-35.0, 0.0], [-35.0, 0.0], [15.0, 0.0], [15.0, 0.0], [4.0, 0.0]], [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]]".into());
-        uci.preamble
+        uci.prelude
             .push("setoption name Show_Config".into());
-        uci.preamble.push("quit".into());
+        uci.prelude.push("quit".into());
         uci.run();
         let eval = &uci.engine.lock().unwrap().algo.eval;
         assert_eq!(eval.position, false);
@@ -907,16 +928,16 @@ mod tests {
     fn test_uci_position() {
         let mut uci = Uci::new();
         //uci.preamble.push("debug on".into());
-        uci.preamble.push("position startpos".into());
-        uci.preamble.push("display".into());
-        uci.preamble.push("quit".into());
+        uci.prelude.push("position startpos".into());
+        uci.prelude.push("display".into());
+        uci.prelude.push("quit".into());
         uci.run();
         assert_eq!(uci.board, Catalog::starting_board());
 
         let mut uci = Uci::new();
-        uci.preamble
+        uci.prelude
             .push("position fen k7/8/8/8/8/8/8/7k w - - 0 2".into());
-        uci.preamble.push("quit".into());
+        uci.prelude.push("quit".into());
         uci.run();
         assert_eq!(
             uci.board,
@@ -924,8 +945,8 @@ mod tests {
         );
 
         let mut uci = Uci::new();
-        uci.preamble.push("position startpos moves a2a3 a7a6".into());
-        uci.preamble.push("quit".into());
+        uci.prelude.push("position startpos moves a2a3 a7a6".into());
+        uci.prelude.push("quit".into());
         uci.run();
         assert_eq!(
             uci.board.to_fen(),
@@ -933,10 +954,10 @@ mod tests {
         );
 
         let mut uci = Uci::new();
-        uci.preamble.push(
+        uci.prelude.push(
             "position fen rnbqkbnr/1ppppppp/p7/8/8/P7/1PPPPPPP/RNBQKBNR w KQkq - 0 1 moves h2h3 h7h6".into(),
         );
-        uci.preamble.push("quit".into());
+        uci.prelude.push("quit".into());
         uci.run();
         assert_eq!(
             uci.board.to_fen(),
@@ -948,9 +969,9 @@ mod tests {
     fn test_uci_go1() {
         let mut uci = Uci::new();
         // uci.preamble.push("debug on".into());
-        uci.preamble.push("position startpos moves d2d4".into());
-        uci.preamble.push("go depth 1".into());
-        uci.preamble.push("quit".into());
+        uci.prelude.push("position startpos moves d2d4".into());
+        uci.prelude.push("go depth 1".into());
+        uci.prelude.push("quit".into());
         uci.run();
         thread::sleep(Duration::from_millis(600));
     }
@@ -958,15 +979,15 @@ mod tests {
     #[test]
     fn test_uci_go2() {
         let mut uci = Uci::new();
-        uci.preamble.push("debug on".to_string());
-        uci.preamble.push("position startpos moves d2d4".to_string());
-        uci.preamble.push("go wtime 1000 btime 1000".to_string());
-        uci.preamble.push("sleep 1100".to_string());
-        uci.preamble.push("ucinewgame".to_string());
-        uci.preamble.push("position startpos moves d2d4".to_string());
-        uci.preamble.push("go wtime 20160 btime 20160 winc 160 binc 160 nodes 3000".to_string());
-        uci.preamble.push("sleep 500".to_string());
-        uci.preamble.push("quit".to_string());
+        uci.prelude.push("debug on".to_string());
+        uci.prelude.push("position startpos moves d2d4".to_string());
+        uci.prelude.push("go wtime 1000 btime 1000".to_string());
+        uci.prelude.push("sleep 1100".to_string());
+        uci.prelude.push("ucinewgame".to_string());
+        uci.prelude.push("position startpos moves d2d4".to_string());
+        uci.prelude.push("go wtime 20160 btime 20160 winc 160 binc 160 nodes 3000".to_string());
+        uci.prelude.push("sleep 500".to_string());
+        uci.prelude.push("quit".to_string());
         uci.run();
         // println!("pvtable:\n{}", uci.algo.pv);
         // assert_eq!(uci.board, Catalog::starting_position());
@@ -975,13 +996,13 @@ mod tests {
     #[test]
     fn test_ponder() {
         let mut uci = Uci::new();
-        uci.preamble.push("debug on".to_string());
-        uci.preamble.push("position startpos".to_string());
-        uci.preamble.push("go ponder movetime 1000".to_string());
-        uci.preamble.push("sleep 300".to_string());
-        uci.preamble.push("ponderhit".to_string());
-        uci.preamble.push("sleep 1100".to_string());
-        uci.preamble.push("quit".to_string());
+        uci.prelude.push("debug on".to_string());
+        uci.prelude.push("position startpos".to_string());
+        uci.prelude.push("go ponder movetime 1000".to_string());
+        uci.prelude.push("sleep 300".to_string());
+        uci.prelude.push("ponderhit".to_string());
+        uci.prelude.push("sleep 1100".to_string());
+        uci.prelude.push("quit".to_string());
         uci.run();
         println!("\n{}", uci.engine.lock().unwrap().algo);
     }
