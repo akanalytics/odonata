@@ -245,16 +245,13 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::board::boardbuf::*;
     use crate::catalog::*;
-    use crate::clock::Clock;
     use crate::comms::uci::Uci;
     use crate::eval::eval::*;
     use crate::eval::score::*;
-    use crate::types::*;
     use crate::utils::Formatting;
     use std::time;
-    use test_env_log;
+    use test_env_log::test;
 
     #[test]
     fn engine_serde_test() {
@@ -338,7 +335,7 @@ mod tests {
             engine.set_position(position.clone());
             assert_eq!(engine.algo.repetition.prior_positions(), 1);
             engine.search();
-            println!("{}", engine);
+            info!("{}", engine);
             if id {
                 assert!(
                     engine.algo.search_stats().iteration().all_nodes() < 22500,
@@ -367,7 +364,7 @@ mod tests {
             assert_eq!(engine.algo.pv_table.extract_pv(), position.pv().unwrap());
             assert_eq!(engine.algo.score(), Score::white_win(3));
             assert_eq!(engine.algo.repetition.prior_positions(), 1);
-            println!("{}", engine.algo.results_as_position());
+            info!("{}", engine.algo.results_as_position());
         }
     }
 }

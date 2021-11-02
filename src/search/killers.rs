@@ -104,12 +104,11 @@ impl Killers {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::infra::config::*;
     use anyhow::Result;
     use test_env_log::test;
     use toml;
     use figment::providers::{Format, Toml};
-    use figment::{Error, Figment, Metadata, Profile, Provider, Jail};
+    use figment::{Figment};
     
 
     #[test]

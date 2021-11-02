@@ -120,7 +120,7 @@ impl See {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{board::boardbuf::BoardBuf, catalog::Catalog};
+    use crate::{catalog::Catalog};
     // use crate::movelist::MoveValidator;
     use anyhow::Result;
 

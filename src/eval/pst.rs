@@ -329,8 +329,6 @@ impl Pst {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::board::boardbuf::BoardBuf;
-    use crate::catalog::Catalog;
     use crate::search::engine::Engine;
     use crate::test_env_log::test;
 

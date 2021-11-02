@@ -12,6 +12,7 @@ use odonata::board::*;
 use odonata::bound::NodeType;
 use odonata::cache::tt2::*;
 use odonata::catalog::*;
+use odonata::eval::see::See;
 use odonata::infra::parsed_config::Component;
 use odonata::eval::eval::*;
 use odonata::eval::model::Model;
@@ -565,6 +566,7 @@ fn board_calcs(c: &mut Criterion) {
 fn benchmark_ordering(c: &mut Criterion) {
     let mut group = c.benchmark_group("ordering");
     let positions = &Catalog::win_at_chess();
+    let see = See::default();
     let movelists: Vec<MoveList> = positions.iter().map(|p| p.board().legal_moves()).collect();
     group.bench_function("clone", |b| {
         b.iter_custom(|n| {
@@ -602,7 +604,6 @@ fn benchmark_ordering(c: &mut Criterion) {
             t.elapsed() / movelists.len() as u32
         })
     });
-    let eval = SimpleScorer::new();
     group.bench_function("see", |b| {
         b.iter_custom(|n| {
             let mut count = 0;
@@ -610,7 +611,7 @@ fn benchmark_ordering(c: &mut Criterion) {
             movelists.iter().enumerate().cycle_n(n).for_each(|(i, ml)| {
                 let pos = &positions[i];
                 for mv in ml.iter() {
-                    eval.eval_move_see(pos.board(), mv);
+                    see.eval_move_see(pos.board(), mv);
                     count += 1;
                 }
             });

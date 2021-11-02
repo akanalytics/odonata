@@ -1,15 +1,5 @@
 use crate::Bitboard;
-use crate::bound::NodeType;
-use crate::infra::parsed_config::Component;
-use crate::search::node::Node;
 use crate::board::Board;
-use crate::mv::Move;
-use std::{fmt};
-use serde::{Deserialize, Serialize};
-use crate::search::algo::Algo;
-use crate::types::MoveType;
-use super::score::Score;
-use crate::eval::switches::Switches;
 use crate::types::Color;
 
 
@@ -131,7 +121,9 @@ impl EndGame {
 mod tests {
     use super::*;
     use crate::{board::boardbuf::*, eval::{eval::SimpleScorer, weight::Weight}};
-    use test_env_log;
+    use crate::eval::switches::Switches;
+    use crate::eval::score::Score;
+    use test_env_log::test;
 
     #[test]
     fn test_endgame() {

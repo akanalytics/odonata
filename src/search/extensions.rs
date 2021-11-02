@@ -98,7 +98,6 @@ impl fmt::Display for Extensions {
 mod tests {
     use super::*;
     use crate::catalog::Catalog;
-    use crate::search::algo::*;
     use crate::search::engine::*;
     use crate::search::timecontrol::*;
     use crate::tags::*;

@@ -9,7 +9,6 @@ use crate::search::algo::Algo;
 use crate::types::MoveType;
 use super::endgame::EndGame;
 use super::score::Score;
-use crate::eval::switches::Switches;
 
 
 
@@ -188,9 +187,8 @@ impl Algo {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::{BoardBuf, Position, catalog::*, search::{engine::Engine, timecontrol::TimeControl}};
-    use test_env_log;
+    use crate::{Position, search::{engine::Engine, timecontrol::TimeControl}};
+    use test_env_log::test;
 
     #[test]
     fn test_recognizer() {

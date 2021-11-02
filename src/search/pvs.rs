@@ -81,7 +81,6 @@ impl fmt::Display for Pvs {
 mod tests {
     use super::*;
     use crate::catalog::Catalog;
-    use crate::search::algo::*;
     use crate::utils::*;
     use crate::search::timecontrol::*;
     use crate::tags::*;

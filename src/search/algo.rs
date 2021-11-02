@@ -467,19 +467,17 @@ mod tests {
     use super::*;
     use crate::board::boardbuf::*;
     use crate::catalog::*;
-    use crate::clock::Clock;
     use crate::comms::uci::Uci;
     use crate::eval::eval::*;
     use crate::types::*;
     use crate::utils::Formatting;
     use toml;
     use anyhow::*;
-    use std::time;
-    use test_env_log;
+    use test_env_log::test;
 
     #[test]
     fn serde_algo_test() -> Result<()> {
-        eprintln!("toml\n{}", toml::to_string(&Algo::default())?);
+        info!("toml\n{}", toml::to_string(&Algo::default())?);
         Ok(())
     }
 

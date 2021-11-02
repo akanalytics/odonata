@@ -72,7 +72,6 @@ impl fmt::Display for Restrictions {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[test]
     fn test_restrictions() {}

@@ -226,8 +226,6 @@ impl Default for ParsedConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::search::engine::*;
-    use test_env_log::test;    
 
     #[derive(Clone, Debug)]
     struct TestStruct {

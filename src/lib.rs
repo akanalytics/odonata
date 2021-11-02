@@ -1,4 +1,8 @@
-#![cfg_attr(debug_assertions, allow(dead_code, unused_imports))]
+#![cfg_attr(debug_assertions, allow(dead_code))]
+
+extern crate test_env_log;
+
+extern crate include_dir;
 
 
 #[macro_use]
@@ -30,8 +34,6 @@ pub mod logger;
 #[macro_use]
 extern crate log;
 
-extern crate test_env_log;
-extern crate include_dir;
 
 
 

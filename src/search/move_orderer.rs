@@ -562,8 +562,6 @@ impl OrderedMoveList {
 
 #[cfg(test)]
 mod tests {
-    use itertools::Itertools;
-
     use super::*;
     use crate::bitboard::square::*;
     use crate::bitboard::castling::*;
