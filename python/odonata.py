@@ -1287,15 +1287,15 @@ class Odonata:
         # mb.enabled                     = type check default true
         # mb.force.init                  = type button        
         for line in options.splitlines():
-            (before, after) = line.split("=")
-            key = before.strip()
-            words = after.split("default")
-            before = words[0]
+            line = line[len("option name"):]
+            key = line.split()[0]
+            words = line.split("default")
+            _before = words[0]
             value = words[1:]
             if not value:
                 dict[key] = ""
             else:
-                dict[key] = value[0].strip()
+                dict[key] = value[0].split()[0].strip()
         return dict
         
     def list_methods(self) -> Any:
@@ -1431,9 +1431,15 @@ class EngineParams:
         command_line_args = []
         tc = None
         ponder = False
+
+        # build up a short display name (such as 1.4.1:rf=m)
+        parts = []
+        parts.append(name)
+
         if rest:
             for config in rest.split(":"):
                 if config.startswith("tc="):
+                    parts.append(config)
                     key, _, value = config.partition("=")
                     tc = value
                 elif config.startswith("Ponder="):
@@ -1451,9 +1457,6 @@ class EngineParams:
                     key, _, value = config.partition("=")
                     uci_options[key] = value
 
-        # build up a short display name (such as 1.4.1:rf=m)
-        parts = []
-        parts.append(name)
         for k, v in uci_options.items():
             if k != "Config":
                 parts.append("".join(w[0] for w in k.split(".")) + "=" + v ) # first letter of each subkey of a uci-option thats not Config
@@ -1490,13 +1493,14 @@ class EngineParams:
 class Test:
 
     def test_engine_params(self):
-        line="odo-1.4.1:--config=../config-file-41.toml:Threads=3:tc=3+0.3:Ponder=true"
+        line="odo-1.4.1:--strict:--config=../config-file-41.toml:Threads=3:tc=3+0.3:Ponder=true"
         params = EngineParams.parse(line)
         assert params.executable_name == "odo-1.4.1"
-        assert params.command_line_args == ["--config=../config-file-41.toml"]
+        assert params.command_line_args == ["--strict", "--config=../config-file-41.toml"]
         assert params.ponder == True
         assert params.uci_options == { "Threads": "3" }
-        assert params.short_display_name == "odo-1.4.1:T=3:C=41:P=t"
+        # print(f"{params.short_display_name}")
+        assert params.short_display_name == "odo-1.4.1:tc=3+0.3:T=3::strict:C=41:P=t"
         assert params.tc == "3+0.3"    
 
     def test_square(self):
@@ -1682,7 +1686,7 @@ class Test:
         assert bm == "a1a8"
         assert odo.api_version() != ""
         assert len(odo.options()) > 3
-        assert odo.options()["UCI_AnalyseMode"], "false"
+        assert odo.options()["MultiPV"], "1"
 
 
 
