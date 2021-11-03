@@ -17,15 +17,15 @@ use super::score::Score;
 #[serde(default, deny_unknown_fields)]
 pub struct Recognizer {
     enabled: bool, 
-    short_circuit: Ply,
+    terminal_depth: Ply,
 }
 
 
 impl Default for Recognizer {
     fn default() -> Self {
         Self {
-            enabled: false,
-            short_circuit: 100,
+            enabled: true,
+            terminal_depth: 2,
         }
     }
 }
@@ -163,8 +163,8 @@ impl Algo {
 
         // its a helpmate or draw like KNkn, so cease search only after a few moves since last capture
         if endgame.is_draw() {
-            if n.depth > self.recognizer.short_circuit {
-                n.depth = self.recognizer.short_circuit;
+            if n.depth > self.recognizer.terminal_depth {
+                n.depth = self.recognizer.terminal_depth;
             }
         }
             // if b.fifty_halfmove_clock() >= 0  {
@@ -176,8 +176,8 @@ impl Algo {
             // }
 
         if let Some(_color) = endgame.try_winner() {
-            if n.depth > self.recognizer.short_circuit {
-                n.depth = self.recognizer.short_circuit;
+            if n.depth > self.recognizer.terminal_depth {
+                n.depth = self.recognizer.terminal_depth;
             }
             // if b.fifty_halfmove_clock() >= 0  {
             //     let sc = b.eval(&mut self.eval, &n); // will return a best-move-motivating score

@@ -452,6 +452,7 @@ enabled = true
 
 [recognizer]
 enabled = true
+terminal_depth = 2
 
 
 
