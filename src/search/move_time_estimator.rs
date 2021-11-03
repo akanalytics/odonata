@@ -55,9 +55,9 @@ impl Component for MoveTimeEstimator {
 impl Default for MoveTimeEstimator {
     fn default() -> Self {
         MoveTimeEstimator {
-            branching_factor: 15.0,
-            perc_of_time_adv: 100,
-            moves_rem: 10,
+            branching_factor: 11.3,
+            perc_of_time_adv: 67,
+            moves_rem: 11,
             deterministic: false,
             nodestime: 0,
 

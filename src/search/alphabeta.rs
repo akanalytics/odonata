@@ -89,7 +89,7 @@ impl Algo {
         }
 
         let mut tt_mv = Move::NULL_MOVE;
-        match self.lookup(board, &n) {
+        match self.lookup(board, &mut n) {
             (Some(ab), None) => return ab,  // alpha, beta or a terminal node
             (None, Some(bm)) => tt_mv = bm,
             (Some(s), Some(mv)) => { tt_mv = mv; score = s; bm = mv},

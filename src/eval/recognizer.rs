@@ -6,7 +6,7 @@ use crate::mv::Move;
 use std::{fmt};
 use serde::{Deserialize, Serialize};
 use crate::search::algo::Algo;
-use crate::types::MoveType;
+use crate::types::{MoveType, Ply};
 use super::endgame::EndGame;
 use super::score::Score;
 
@@ -17,6 +17,7 @@ use super::score::Score;
 #[serde(default, deny_unknown_fields)]
 pub struct Recognizer {
     enabled: bool, 
+    short_circuit: Ply,
 }
 
 
@@ -24,6 +25,7 @@ impl Default for Recognizer {
     fn default() -> Self {
         Self {
             enabled: false,
+            short_circuit: 100,
         }
     }
 }
@@ -46,15 +48,15 @@ impl fmt::Display for Recognizer {
 
 impl Algo {
     #[inline]
-    pub fn lookup(&mut self, b: &mut Board, n: &Node) -> (Option<Score>, Option<Move>) {
+    pub fn lookup(&mut self, b: &mut Board, n: &mut Node) -> (Option<Score>, Option<Move>) {
         if n.ply == 0 {
             return (None, None)
         }
 
-        let (score, mv) = self.wdl_detection(b, n);
-        if score.is_some() {
-            return (score,mv);
-        }
+        // let (score, mv) = self.wdl_detection(b, n);
+        // if score.is_some() {
+        //     return (score,mv);
+        // }
 
         if self.tt.probe_leaf_nodes || self.is_leaf(n.ply, n.depth) {
 
@@ -132,16 +134,16 @@ impl Algo {
             // not found
         }
         // was leaf and isnt probed
-        // let (score, mv) = self.wdl_detection(b, n);
-        // if score.is_some() {
-        //     return (score,mv);
-        // }
+        let (score, mv) = self.wdl_detection(b, n);
+        if score.is_some() {
+            return (score,mv);
+        }
 
         return (None, None);
     }
 
     #[inline]
-    pub fn wdl_detection(&mut self, b: &mut Board, n: &Node) -> (Option<Score>, Option<Move>) {
+    pub fn wdl_detection(&mut self, b: &mut Board, n: &mut Node) -> (Option<Score>, Option<Move>) {
 
         if !self.recognizer.enabled  || n.depth == 0 || n.ply == 0 {
             return (None, None)
@@ -161,23 +163,29 @@ impl Algo {
 
         // its a helpmate or draw like KNkn, so cease search only after a few moves since last capture
         if endgame.is_draw() {
-            if b.fifty_halfmove_clock() >= 0  {
-                let draw = b.eval_draw(&mut self.eval, &n); // will return a draw score
-                return (Some(draw), None)
-            } else {
-                // we let a couple of plies "play out" - enough that the game continues and we don't lose a piece
-                return (None, None)
+            if n.depth > self.recognizer.short_circuit {
+                n.depth = self.recognizer.short_circuit;
             }
         }
+            // if b.fifty_halfmove_clock() >= 0  {
+            //     let draw = b.eval_draw(&mut self.eval, &n); // will return a draw score
+            //     return (Some(draw), None)
+            // } else {
+            //     // we let a couple of plies "play out" - enough that the game continues and we don't lose a piece
+            //     return (None, None)
+            // }
 
         if let Some(_color) = endgame.try_winner() {
-            if b.fifty_halfmove_clock() >= 0  {
-                let sc = b.eval(&mut self.eval, &n); // will return a best-move-motivating score
-                return (Some(sc), None)
-            } else {
-                // we let a couple of plies "play out" - so that we discover if this is a draw (unlikely)
-                return (None, None)
-            }    
+            if n.depth > self.recognizer.short_circuit {
+                n.depth = self.recognizer.short_circuit;
+            }
+            // if b.fifty_halfmove_clock() >= 0  {
+            //     let sc = b.eval(&mut self.eval, &n); // will return a best-move-motivating score
+            //     return (Some(sc), None)
+            // } else {
+            //     // we let a couple of plies "play out" - so that we discover if this is a draw (unlikely)
+            //     return (None, None)
+            // }    
         }
         return (None, None)
     }

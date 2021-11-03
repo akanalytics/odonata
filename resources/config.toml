@@ -405,9 +405,9 @@ reduce_extensions = false
 red_strat = 6
 
 [mte]
-branching_factor = 15
-perc_of_time_adv = 100
-moves_rem = 10
+branching_factor = 11.3
+perc_of_time_adv = 67
+moves_rem = 11
 deterministic = false
 nodestime = 0
 
