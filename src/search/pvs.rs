@@ -49,7 +49,7 @@ impl Pvs {
         if node.depth < self.min_depth {
             return false;
         }
-        if nt !=  NodeType::Pv {
+        if nt !=  NodeType::ExactPv {
             return false;
         }
         if !node.alpha.is_numeric()  {

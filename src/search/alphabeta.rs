@@ -79,7 +79,7 @@ impl Algo {
 
         let mut score = -Score::INFINITY;
         let mut bm = Move::NULL_MOVE;
-        let mut nt = NodeType::All;
+        let mut nt = NodeType::UpperAll;
 
         // we dont draw at root, as otherwise it wont play a move if insufficient-material draw [v32]
         if ply > 0 && board.draw_outcome().is_some() {
@@ -288,14 +288,14 @@ impl Algo {
                 self.explain_raised_alpha(&mv, child_score, n.alpha);
                 n.alpha = child_score;
                 bm = mv;
-                nt = NodeType::Pv;
+                nt = NodeType::ExactPv;
                 debug_assert!(board.is_pseudo_legal_move(&bm), "bm {} on board {}", bm, board);
                 self.history.raised_alpha(ply, board, &mv);
                 self.record_move(ply, &mv);
             }
 
             if n.alpha >= n.beta && !self.minmax {
-                nt = NodeType::Cut;
+                nt = NodeType::LowerCut;
                 self.stats.inc_node_cut(ply, move_type, (count - 1) as i32 );
                 self.killers.store(ply, &mv);
                 self.history.beta_cutoff(ply, board, &mv);
@@ -305,18 +305,17 @@ impl Algo {
         }
 
         if count == 0 {
-            // nt = NodeType::Terminal;
             self.stats.inc_leaf_nodes(ply);
             return board.eval(
                 &mut self.eval,
                 &n,
             ); // Score::DRAW;
-        } else if nt == NodeType::All {
+        } else if nt == NodeType::UpperAll {
             self.stats.inc_node_all(ply);
             // nothing
-        } else if nt == NodeType::Cut {
+        } else if nt == NodeType::LowerCut {
             debug_assert!(!bm.is_null())
-        } else if nt == NodeType::Pv {
+        } else if nt == NodeType::ExactPv {
             self.stats.inc_node_pv(ply);
             // self.record_new_pv(ply, &bm, false);
             debug_assert!(!bm.is_null())

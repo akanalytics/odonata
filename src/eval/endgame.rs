@@ -14,6 +14,7 @@ use crate::types::Color;
 #[derive(Copy, Clone, PartialEq, Debug)]
     pub enum EndGame {
     Unknown,
+    KingMinorVsKingPawns(Color), // draw at best, color is winning/has pawns
     KingVsKing, // automatic draw
     KingMinorVsKing, // automatic draw
     KingMinorVsKingMinor, // draw but not automatic (helpmate)
@@ -33,6 +34,16 @@ impl EndGame {
             _ => true,
         }
     }
+
+    pub fn cannot_win(&self) -> Option<Color> {
+        use EndGame::*;
+        match self {
+            // c has pawns so opponent cant win 
+            KingMinorVsKingPawns(c) => Some(c.opposite()),  
+            _ => None,
+        }
+    }
+
 
     /// immediately declared draw
     pub fn is_immediately_declared_draw(&self) -> bool {
@@ -66,9 +77,23 @@ impl EndGame {
             return EndGame::Unknown;
         }
 
-        if (b.pawns()).any() {
+        // either size could win if both have pawns 
+        if (b.pawns() & b.black()).any() && (b.pawns() & b.white()).any() {
             return EndGame::Unknown;
         }
+        
+        if (b.pawns() & b.black()).any() && ((b.bishops() | b.knights()) & b.white()).popcount() <= 1 {
+            return EndGame::KingMinorVsKingPawns(Color::Black)
+        }    
+        if (b.pawns() & b.white()).any() && ((b.bishops() | b.knights()) & b.black()).popcount() <= 1 {
+            return EndGame::KingMinorVsKingPawns(Color::White)
+        }    
+
+        // pawns plus opponent has 2+ minors, so uncertain outcome
+        if b.pawns().any() {
+            return  EndGame::Unknown;
+        }
+
 
         // can assume just bishops, knights and kings now
         let wb = (b.bishops() & b.white()).popcount();
@@ -183,9 +208,17 @@ mod tests {
         let b = Board::parse_fen("kb1b4/8/8/8/8/8/8/K7 w - - 0 1").unwrap();
         let eg = EndGame::from_board(&b);
         assert_eq!(eg, EndGame::TwoBishopsSameColorSquares);
+        assert_eq!(eg.cannot_win(), None);
 
         let b = Board::parse_fen("kb1n4/8/8/8/8/8/8/K7 w - - 0 1").unwrap();
         let eg = EndGame::from_board(&b);
         assert_eq!(eg, EndGame::BishopKnightVsKing(Color::Black));
+
+
+        let b = Board::parse_fen("8/k7/1p6/3N4/8/8/8/K7 w - - 5 1").unwrap();
+        let eg = EndGame::from_board(&b);
+        assert_eq!(eg, EndGame::KingMinorVsKingPawns(Color::Black));
+        assert_eq!(eg.cannot_win(), Some(Color::White));
+        
     }
 }

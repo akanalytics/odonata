@@ -72,7 +72,7 @@ impl Algo {
 
                     // if entry.draft >= draft && !(b.repetition_count().total > 1 && self.repetition.avoid_tt_on_repeats)
                     match entry.node_type {
-                        NodeType::Pv => {
+                        NodeType::ExactPv => {
                             // previously this position raised alpha, but didnt trigger a cut
                             // no point going through moves as we know what the max score is
                             if entry.score >= n.beta {
@@ -94,7 +94,7 @@ impl Algo {
                             }
                             return (None, Some(entry.bm)); // else we just use the hash move for move ordering
                         }
-                        NodeType::Cut => {
+                        NodeType::LowerCut => {
                             // previously this position raised alpha (sufficiently to cause a cut).
                             // not all child nodes were scored, so score is a lower bound
                             // FIXME: probably dont set alpha just the hinted mv and re-search the node
@@ -116,7 +116,7 @@ impl Algo {
                             }
                             return (None, Some(entry.bm)); // else we just use the hash move for move ordering
                         }
-                        NodeType::All => {
+                        NodeType::UpperAll => {
                             // previously this position didnt raise alpha, the score is an upper bound
                             // if the score is still below alpha, this too is an ALL node
                             if entry.score <= n.alpha {
@@ -125,7 +125,7 @@ impl Algo {
                                 return (Some(entry.score), None);
                             }
                         }
-                        NodeType::Unused | NodeType::Terminal => unreachable!(),
+                        NodeType::Unused => unreachable!(),
                     }
                 }
                 // not enough draft - just use for move guidance
@@ -152,40 +152,43 @@ impl Algo {
 
         if endgame.is_immediately_declared_draw() {
             let draw = b.eval_draw(&mut self.eval, &n); // will return a draw score
-            return (Some(draw), None)
-        }
-
-        if b.draw_outcome().is_some()  {
             self.stats.inc_leaf_nodes(n.ply);
-            let draw = b.eval_draw(&mut self.eval, &n); // will return a draw score
             return (Some(draw), None)
         }
 
-        // its a helpmate or draw like KNkn, so cease search only after a few moves since last capture
+        // if b.draw_outcome().is_some()  {
+        //     let draw = b.eval_draw(&mut self.eval, &n); // will return a draw score
+        //     return (Some(draw), None)
+        // }
+
+        if let Some(c) = endgame.cannot_win() {
+            let draw = b.eval_draw(&mut self.eval, &n); // will return a draw score
+            if b.color_us() == c {
+                if  draw <= n.alpha {
+                    return (Some(draw), None);
+                }
+                n.beta = draw; 
+            }
+            if b.color_them() == c {
+                if draw >= n.beta  {
+                    return (Some(draw), None);
+                }
+                n.alpha = draw; 
+            }
+        }
+
+        // its a helpmate or draw like KNkn, so search just a tiny depth then let eval do its job
         if endgame.is_draw() {
             if n.depth > self.recognizer.terminal_depth {
                 n.depth = self.recognizer.terminal_depth;
             }
         }
-            // if b.fifty_halfmove_clock() >= 0  {
-            //     let draw = b.eval_draw(&mut self.eval, &n); // will return a draw score
-            //     return (Some(draw), None)
-            // } else {
-            //     // we let a couple of plies "play out" - enough that the game continues and we don't lose a piece
-            //     return (None, None)
-            // }
+
 
         if let Some(_color) = endgame.try_winner() {
             if n.depth > self.recognizer.terminal_depth {
                 n.depth = self.recognizer.terminal_depth;
             }
-            // if b.fifty_halfmove_clock() >= 0  {
-            //     let sc = b.eval(&mut self.eval, &n); // will return a best-move-motivating score
-            //     return (Some(sc), None)
-            // } else {
-            //     // we let a couple of plies "play out" - so that we discover if this is a draw (unlikely)
-            //     return (None, None)
-            // }    
         }
         return (None, None)
     }

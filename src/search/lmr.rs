@@ -126,7 +126,7 @@ impl Lmr {
             {
                 return 0;
             }
-            if self.only_nt_all && nt != NodeType::All {
+            if self.only_nt_all && nt != NodeType::UpperAll {
                 return 0;
             }
             if before.is_in_check(before.color_us()) || after.is_in_check(after.color_us()) {

@@ -81,7 +81,7 @@ impl Algo {
     ) -> Score {
         self.clear_move(ply);
 
-        if !self.qsearch.enabled || (!mv.is_capture() && self.qsearch.only_on_capture) {
+        if !self.qsearch.enabled {
             let node = Node {
                 ply,
                 depth,
@@ -91,13 +91,14 @@ impl Algo {
             let score = board.eval(&mut self.eval, &node);
             return score;
         }
-        let score = self.qsearch_see(Bitboard::EMPTY, ply, 0, board, alpha, beta);
+        let score = self.qsearch_see(*mv, Bitboard::EMPTY, ply, 0, board, alpha, beta);
         debug_assert!(self.task_control.is_cancelled() || score > -Score::INFINITY);
         score
     }
 
     pub fn qsearch_see(
         &mut self,
+        _last_move: Move,
         mut recaptures: Bitboard,
         ply: Ply,
         depth: Ply,
@@ -184,6 +185,7 @@ impl Algo {
             .filter(|mv| mv.is_capture() || (mv.is_promo() & self.qsearch.promos) || in_check)
             .cloned()
             .collect();
+        
 
         if moves.is_empty() {
             self.stats.inc_q_leaf_nodes(ply);
@@ -233,6 +235,12 @@ impl Algo {
                     );
                 }
             }
+
+            // weve just enetered qsearch with a good capture but the last move was quiet
+            // if self.qsearch.only_on_capture && depth == 0 && !last_move.is_capture() && !in_check {
+            //     return if ply % 2 == 1 { -Score::INFINITY } else { Score::INFINITY }.clamp_score()
+            // }
+
             let mut child = board.make_move(&mv);
             self.current_variation.push(mv);
             self.explainer.start(&self.current_variation);
@@ -250,6 +258,7 @@ impl Algo {
             // mark the square so the recapture is considered
             trace!("{}", board.debug() + ply + "iterating on " + &mv);
             let score = -self.qsearch_see(
+                mv, 
                 recaptures ^ mv.to().as_bb(),
                 ply + 1,
                 depth - 1,
@@ -359,6 +368,7 @@ mod tests {
             .set_eval(eval)
             .build();
         let quiesce_eval = algo.qsearch_see(
+            Move::NULL_MOVE,
             Bitboard::EMPTY,
             node.ply,
             algo.max_depth,

@@ -137,7 +137,6 @@ impl TtNode {
     // const HIGH26: u64 = (1 << 26 ) -1 >> (64-26);
 
     // pub fn pack(hash: Hash, node: &TTNode) -> u64 {
-    //     debug_assert!( node.node_type != NodeType::Terminal);
     //     // age in bits 0-7
     //     let bits = (node.draft as u8) << 8;         // bits 8-15
     //     bits |= (node.node_type as u16 & 3) << 16;   // bits 16 and 17
@@ -155,7 +154,6 @@ impl TtNode {
     // }
 
     pub fn pack(node: &TtNode, age: u8) -> u64 {
-        debug_assert!(node.node_type != NodeType::Terminal);
         let mut bits = age as u64; // age in bits 0-7
         bits |= ((node.draft & 255) as u64) << 8; // bits 8-15
         bits |= (node.node_type as u64 & 3) << 16; // bits 16 and 17
@@ -313,9 +311,9 @@ impl fmt::Display for TranspositionTable2 {
         writeln!(f, "hmvc horizon     : {}", self.hmvc_horizon)?;
         writeln!(f, "min ply          : {}", self.min_ply)?;
         // writeln!(f, "table            : {}", self.table.len())?;
-        writeln!(f, "entry: pv        : {}", self.count_of(NodeType::Pv))?;
-        writeln!(f, "entry: cut       : {}", self.count_of(NodeType::Cut))?;
-        writeln!(f, "entry: all       : {}", self.count_of(NodeType::All))?;
+        writeln!(f, "entry: pv        : {}", self.count_of(NodeType::ExactPv))?;
+        writeln!(f, "entry: cut       : {}", self.count_of(NodeType::LowerCut))?;
+        writeln!(f, "entry: all       : {}", self.count_of(NodeType::UpperAll))?;
         writeln!(f, "entry: unused    : {}", self.count_of(NodeType::Unused))?;
         let tot = self.hits.get() + self.misses.get() + self.collisions.get() + self.exclusions.get();
         let tot = cmp::max(1, tot);
@@ -457,13 +455,9 @@ impl TranspositionTable2 {
 
     #[inline]
     pub fn store(&mut self, h: Hash, new_node: TtNode) {
-        if !self.enabled && new_node.node_type != NodeType::Pv || self.capacity() == 0 {
+        if !self.enabled && new_node.node_type != NodeType::ExactPv || self.capacity() == 0 {
             return;
         }
-        debug_assert!(
-            new_node.node_type != NodeType::Terminal,
-            "Cannot store terminal nodes in tt"
-        );
         debug_assert!(
             new_node.node_type != NodeType::Unused,
             "Cannot store unsed nodes in tt"
@@ -493,12 +487,12 @@ impl TranspositionTable2 {
                     || new_node.node_type == old_node.node_type && new_node.draft >= old_node.draft)
         {
             // new.hash != old.hash &&
-            if self.current_age == old_age && old_node.node_type == NodeType::Pv {
+            if self.current_age == old_age && old_node.node_type == NodeType::ExactPv {
                 self.pv_overwrites.increment();
             }
             debug_assert!(new_node.score > -Score::INFINITY);
             debug_assert!(
-                new_node.node_type != NodeType::Pv || !new_node.bm.is_null(),
+                new_node.node_type != NodeType::ExactPv || !new_node.bm.is_null(),
                 "bm is null at {:?} mv {:?}",
                 new_node.node_type,
                 new_node.bm
@@ -595,7 +589,7 @@ impl TranspositionTable2 {
                 // we need to be careful, the root node could be written as a Cut node of equal depth
                 // and although opponent shouldn't have let us get there, they did!
                 // FIXED!
-                if entry.node_type == NodeType::Pv || entry.node_type == NodeType::Cut {
+                if entry.node_type == NodeType::ExactPv || entry.node_type == NodeType::LowerCut {
                     mv = &entry.bm;
                     if !mv.is_null() && board.is_pseudo_legal_move(&mv) && board.is_legal_move(&mv) {
                         board = board.make_move(&mv);
@@ -651,7 +645,7 @@ mod tests {
         TtNode {
             score: Score::from_cp(300),
             draft: 2,
-            node_type: NodeType::Pv,
+            node_type: NodeType::ExactPv,
             bm: Move::new_quiet(Piece::Pawn, b7.square(), b6.square()),
         }
     }
@@ -660,7 +654,7 @@ mod tests {
         TtNode {
             score: Score::from_cp(200),
             draft: 3,
-            node_type: NodeType::Pv,
+            node_type: NodeType::ExactPv,
             bm: Move::new_quiet(Piece::Pawn, a2.square(), a3.square()),
         }
     }
@@ -669,7 +663,7 @@ mod tests {
         TtNode {
             score: Score::from_cp(201),
             draft: 4,
-            node_type: NodeType::Pv,
+            node_type: NodeType::ExactPv,
             bm: Move::new(
                 a1.square(),
                 a2.square(),

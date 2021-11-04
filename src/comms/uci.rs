@@ -262,7 +262,6 @@ impl Uci {
 
     fn uci_newgame(&mut self) -> Result<()> {
         // clear the transposition tables/eval caches and repetition counts before the new game
-        Self::print("configuring new_game");
         self.new_game();
         Ok(())
     }

@@ -4,7 +4,7 @@ use num_traits::{Num, AsPrimitive};
 use serde::{Deserialize, Serialize};
 
 use crate::utils::Formatting;
-// use serde::{ Serializer, Deserializer};
+use serde::{ Serializer, Deserializer};
 
 
 //
@@ -26,12 +26,12 @@ pub type Weight = WeightOf<f32>;
 
 
 
-// // private
-// #[derive(Serialize, Deserialize)]
-// struct WeightOfHelper<T> {
-//     s: T,
-//     e: T,
-// }
+// private
+#[derive(Serialize, Deserialize)]
+struct WeightOfHelper<T> {
+    s: T,
+    e: T,
+}
 
 // impl<T: Copy + Num + Serialize> Serialize for WeightOf<T> {
 //     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

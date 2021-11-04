@@ -17,7 +17,6 @@ use std::sync::Mutex;
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd)]
 pub enum NodeType {
     Unused = 0,
-    Terminal = 1, // no legal moves from this node
     All = 2,      // All node, score = upperbound ()
     Cut = 3,      // Cut node, score = lowerbound (we've not looked at all possible scores)
     Pv = 4,       // PV node. score is exact
@@ -30,7 +29,6 @@ impl fmt::Display for NodeType {
             "{}",
             match self {
                 NodeType::Unused => "UN",
-                NodeType::Terminal => "TE",
                 NodeType::All => "AU",
                 NodeType::Cut => "CL",
                 NodeType::Pv => "PV",
@@ -330,10 +328,6 @@ impl TranspositionTable {
         if self.capacity() == 0 {
             return;
         }
-        debug_assert!(
-            entry.node_type != NodeType::Terminal,
-            "Cannot store terminal nodes in tt"
-        );
         debug_assert!(
             entry.node_type != NodeType::Unused,
             "Cannot store unsed nodes in tt"

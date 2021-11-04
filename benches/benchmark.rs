@@ -438,7 +438,7 @@ fn board_calcs(c: &mut Criterion) {
         let entry = TtNode {
             score: Score::from_cp(100),
             draft: 1,
-            node_type: NodeType::Pv,
+            node_type: NodeType::ExactPv,
             bm: Move::NULL_MOVE,
         };
         b.iter_custom(|n| {
