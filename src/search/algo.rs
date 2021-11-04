@@ -636,7 +636,7 @@ mod tests {
     fn bug06() -> Result<()> {
         // 11.Qd3       b3r1kr/ppppqppp/2nnp3/6b1/3PP1N1/2N5/PPP1BPPP/B2QR1KR w - - 1 11   acd 4; bm d1d3; ce 60; pv "d1d3 c6b4 d3d1";
         // 11... Nb4    b3r1kr/ppppqppp/2nnp3/6b1/3PP1N1/2NQ4/PPP1BPPP/B3R1KR b - - 2 11   acd 4; bm c6b4; ce 30; pv "c6b4 d3d1 b4c6";
-        let mut search = Algo::new().set_timing_method(TimeControl::Depth(3)).build();
+        let mut search = Algo::new();
         let pos06 = Position::parse_epd("b1q1r1kr/ppppbppp/2nnp3/4N3/3P4/2N1P3/PPP2PPP/BQ2RBKR w - - 2 6")?;
         let pos07 = Position::parse_epd("b2qr1kr/ppppbppp/2nnp3/4N3/3P4/2NBP3/PPP2PPP/BQ2R1KR w - - 4 7")?;
         let pos08 = Position::parse_epd("b2qr1kr/pppp1ppp/2nnpb2/4N3/3P4/2NBP3/PPP2PPP/B2QR1KR w - - 6 8")?;
@@ -645,13 +645,13 @@ mod tests {
             Position::parse_epd("b2qr1kr/pppp1ppp/2nnp3/6b1/3P2N1/2N1P3/PPP1BPPP/B2QR1KR w - - 10 10")?;
         let pos11 = Position::parse_epd("b3r1kr/ppppqppp/2nnp3/6b1/3PP1N1/2N5/PPP1BPPP/B2QR1KR w - - 1 11")?;
         let pos12 = Position::parse_epd("b3r1kr/ppppqppp/3np3/6b1/1n1PP1N1/2NQ4/PPP1BPPP/B3R1KR w - - 3 12")?;
-        search.set_position(pos06).search();
-        search.set_position(pos07).search();
-        search.set_position(pos08).search();
-        search.set_position(pos09).search();
-        search.set_position(pos10).search();
-        search.set_position(pos11).search();
-        search.set_position(pos12).search();
+        search.set_position(pos06).set_timing_method(TimeControl::Depth(3)).search();
+        search.set_position(pos07).set_timing_method(TimeControl::Depth(3)).search();
+        search.set_position(pos08).set_timing_method(TimeControl::Depth(3)).search();
+        search.set_position(pos09).set_timing_method(TimeControl::Depth(3)).search();
+        search.set_position(pos10).set_timing_method(TimeControl::Depth(3)).search();
+        search.set_position(pos11).set_timing_method(TimeControl::Depth(3)).search();
+        search.set_position(pos12).set_timing_method(TimeControl::Depth(3)).search();
         println!("{}", search);
         Ok(())
     }

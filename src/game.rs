@@ -324,11 +324,11 @@ mod tests {
         let pos1 = Position::parse_epd("1r3rbQ/p1p1kp2/4pn2/2Pp4/2n3p1/1P1N4/2P1PPPP/q2K1RBB w - - 0 23").unwrap();
         // let tc = TimeControl::SearchTime(Duration::from_millis(140));
         let tc = TimeControl::from_remaining_time(Duration::from_millis(1750));
-        let mut white = Algo::new().set_timing_method(tc).build();
-        let _black = Algo::new().set_timing_method(tc).build();
-        white.set_position(pos1.clone()).search();
-        white.set_position(pos1.clone()).search();
-        white.set_position(pos1).search();
+        let mut white = Algo::new();
+        let _black = Algo::new();
+        white.set_position(pos1.clone()).set_timing_method(tc).search();
+        white.set_position(pos1.clone()).set_timing_method(tc).search();
+        white.set_position(pos1).set_timing_method(tc).search();
         // let b2 = b1.make_move(&black.bm());
         //white.search(&b2);
         println!("{}", white);

@@ -125,21 +125,24 @@ impl Engine {
         engine
     }
 
-    pub fn configment(&self, key: &str, value: &str ) -> Result<Self> {
+    #[must_use]
+    pub fn configment(&mut self, key: &str, value: &str ) -> Result<()> {
         let mut kvs = HashMap::new(); 
         kvs.insert(key.to_string(), value.to_string());
         self.configment_many(kvs)
     }
 
-    pub fn configment_many(&self, map: HashMap<String, String> ) -> Result<Self> {
+    #[must_use]
+    pub fn configment_many(&mut self, map: HashMap<String, String> ) -> Result<()> {
         let mut fig = Figment::new()
-            .merge(self);
+            .merge(&*self);
 
         for (k,v) in map.iter() {
             fig = fig.merge(Toml::string(&format!("{} = {}", k, v)));
         }    
         let engine: Engine = fig.extract().context(format!("error in {:?}", map))?;
-        Ok(engine)
+        *self = engine;
+        Ok(())
     }
 
     pub fn set_position(&mut self, pos: Position) {
@@ -273,11 +276,11 @@ mod tests {
         let mut engine = Engine::new();
         assert_eq!(engine.algo.eval.position, true);
         eprintln!("{}", toml::to_string(&engine).unwrap());
-        engine = engine.configment("eval.position", "false").unwrap();
+        engine.configment("eval.position", "false").unwrap();
         eprintln!("{}", engine);
         assert_eq!(engine.algo.eval.position, false);
         assert_eq!(engine.algo.eval.safety, true);
-        engine = engine.configment("eval.safety", "true").unwrap();
+        engine.configment("eval.safety", "true").unwrap();
         assert_eq!(engine.algo.eval.safety, true);
         assert!(engine.configment("eval1.safety", "true").is_err());
     }

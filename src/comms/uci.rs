@@ -575,29 +575,27 @@ impl Uci {
         }
     }
 
-    fn uci_option_name_value(&mut self, name: &str, value: &str) -> Result<Engine> {
+    fn uci_option_name_value(&mut self, name: &str, value: &str) -> Result<()> {
         let mut engine = self.engine.lock().unwrap();
 
         // handle specific name/value uci options
         // FIXME! as hardcoding names of variables 
         if name == "debug" {
             self.debug = value == "true";
-            Ok(engine.clone())
         } else if name == "Threads" {
-            engine.configment("thread_count", value)
+            engine.configment("thread_count", value)?;
         } else if name == "MultiPV" {
-            engine.configment("restrictions.multi_pv_count", value)
+            engine.configment("restrictions.multi_pv_count", value)?;
         } else if name == "nodestime" {
-            engine.configment("mte.nodestime", value)
+            engine.configment("mte.nodestime", value)?;
         } else if name == "Hash" {
-            engine.configment("tt.mb", value)
+            engine.configment("tt.mb", value)?;
         } else if name == "UCI_AnalyseMode" {
-            engine.configment("analyse_mode", value)
+            engine.configment("analyse_mode", value)?;
         } else if name == "UCI_ShowRefutations" {
-            engine.configment("show_refutations", value)
+            engine.configment("show_refutations", value)?;
         } else if name == "Ponder" {
             // pondering determined by "go ponder", so no variable to track
-            Ok(engine.clone())
         } else if name == "Config_File" {
             engine.config_filename = value.to_string();                        
             use figment::providers::{Format, Toml};
@@ -608,10 +606,11 @@ impl Uci {
                 .merge(&*engine)
                 .merge(Toml::file(&engine.config_filename));
 
-            fig.extract().context(format!("error in config file {}", &engine.config_filename))
+            fig.extract().context(format!("error in config file {}", &engine.config_filename))?
         } else {
             bail!("Unknown option name '{}' value '{}'", name, value);
         }
+        Ok(())
     }
 
     fn uci_setoption(&mut self, input: &str) -> Result<()> {
@@ -621,28 +620,25 @@ impl Uci {
         let name_value = s.rsplit_once("value");
         if let Some((name,value)) = name_value {
             let (name, value) = (name.trim(), value.trim());
-            let new_engine = {
-                info!("Configuring (setoption) {} with:<{}>", name, value);
-                if name == "Config" {
-                    let mut kvs = HashMap::new();
-                    let statements = value.split(";").collect_vec();
-                    for s in statements {
-                        let s = s.trim();
-                        if let Some((name, value)) = s.split("=").collect_tuple() {
+            info!("Configuring (setoption) {} with:<{}>", name, value);
+            if name == "Config" {
+                let mut kvs = HashMap::new();
+                let statements = value.split(";").collect_vec();
+                for s in statements {
+                    let s = s.trim();
+                    if let Some((name, value)) = s.split_once("=") {
 
-                            kvs.insert( name.trim().to_string(), value.trim().to_string() );
-                        } else {
-                            bail!("Expected key=value but found '{}'", s)
-                        }
+                        kvs.insert( name.trim().to_string(), value.trim().to_string() );
+                    } else {
+                        bail!("Expected key=value but found '{}'", s)
                     }
-                    let engine = self.engine.lock().unwrap();
-                    engine.configment_many(kvs)?
-                } else {
-                    self.uci_option_name_value(name, value)?
                 }
-            };
+                let mut engine = self.engine.lock().unwrap();
+                engine.configment_many(kvs)?
+            } else {
+                self.uci_option_name_value(name, value)?
+            }
             // self.engine = Arc::new(Mutex::new(new_engine));
-            *self.engine.lock().unwrap() = new_engine;
             // let c = ParsedConfig::new().set(&name, &value);
             // self.configure(&c);
             self.engine.lock().unwrap().set_position(Position::from_board(self.board.clone()));

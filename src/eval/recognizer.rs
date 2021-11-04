@@ -203,8 +203,8 @@ mod tests {
     #[test]
     fn test_recognizer() {
         // let pos = Position::parse_epd("8/NN6/8/8/8/2K2nk1/4P3/8 w - - 0 1; id 'RECOG.01'; am e2f3; bm Nd6;c0 'white shouldnt take knight as recapture of pawn makes it KNN v k'").unwrap();
-        // let pos = Position::parse_epd("k7/1p6/3N4/8/8/8/6N1/K6B w - - 5 1; id 'RECOG.02'; bm Nxb7; c0 'white should take pawn to leave KBN v k'").unwrap();
-        let pos = Position::parse_epd("k7/8/K1p5/8/3N4/8/6N1/7B w - - 5 1; id 'RECOG.03'; am Nxc6; bm Kb6; c0 'white shouldnt take pawn c4 as triggers stalemate'").unwrap();
+        let pos = Position::parse_epd("k7/1p6/3N4/8/8/8/6N1/K6B w - - 5 1; id 'RECOG.02'; bm Nxb7; c0 'white should take pawn to leave KBN v k'").unwrap();
+        // let pos = Position::parse_epd("k7/8/K1p5/8/3N4/8/6N1/7B w - - 5 1; id 'RECOG.03'; am Nxc6; bm Kb6; c0 'white shouldnt take pawn c4 as triggers stalemate'").unwrap();
         // let pos = Position::parse_epd("k6K/8/2pN4/8/3N4/8/8/8 w - - 5 1;  id 'RECOG.04'; bm Nxc6; c0 'white should force stalemate'").unwrap();
         let mut engine = Engine::new();
         engine.set_position(pos.clone());

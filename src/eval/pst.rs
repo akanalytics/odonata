@@ -1,17 +1,17 @@
+use crate::Bitboard;
 use crate::infra::parsed_config::{Component};
 use crate::bitboard::square::Square;
 use crate::eval::weight::Weight;
 use crate::types::{Color, Piece};
-use serde::{Deserialize, Serialize};
-
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use std::fmt;
 
 
 
 
-#[derive(Clone, Serialize, Deserialize)]
-#[serde(from="PstProxy", into="PstProxy")]
+#[derive(Clone)]
+// #[serde(from="PstProxy", into="PstProxy")]
 pub struct Pst {
     pub enabled: bool,
     pub pawn_r5: Weight,
@@ -40,6 +40,54 @@ impl Default for Pst {
     }
 }
 
+use std::collections::BTreeMap;
+
+#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct PstHelper {
+    p: BTreeMap<String,Weight>,
+    n: BTreeMap<String,Weight>,
+    b: BTreeMap<String,Weight>,
+    r: BTreeMap<String,Weight>,
+    q: BTreeMap<String,Weight>,
+    k: BTreeMap<String,Weight>,
+}
+
+
+impl Serialize for Pst {
+    fn serialize<S:Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut h = PstHelper::default();
+        for (i, &p) in Piece::ALL_BAR_NONE.iter().enumerate() {
+            let map = &mut [&mut h.p, &mut h.n, &mut h.b, &mut h.r, &mut h.q, &mut h.k][i];
+            for sq in Square::all() {
+                map.insert(sq.uci(), self.array[p][sq]);
+            }
+        }   
+        h.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for Pst {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>
+    {
+        let h: PstHelper = Deserialize::deserialize(deserializer)?;
+        let mut pst = Pst::default();
+        for (i, &p) in Piece::ALL_BAR_NONE.iter().enumerate() {
+            let map = [&h.p, &h.n, &h.b, &h.r, &h.q, &h.k][i];
+            for (k,&v) in map.iter() {
+                let sq = Bitboard::parse_square(k).map_err(serde::de::Error::custom)?;
+                pst.array[p][sq] = v;
+            }
+        }
+        Ok(pst)
+    }
+
+}
 
 
 
@@ -53,8 +101,6 @@ pub struct PstProxy {
     q: [[Weight; 8]; 8],
     k: [[Weight; 8]; 8],
 }
-
-
 
 impl From<PstProxy> for Pst {
     fn from(pp: PstProxy) -> Self {
@@ -328,15 +374,19 @@ impl Pst {
 
 #[cfg(test)]
 mod tests {
+    use test_env_log::test;
     use super::*;
     use crate::search::engine::Engine;
-    use crate::test_env_log::test;
+    use anyhow::Result;
 
     #[test]
     fn pst_serde_test() {
         let pst = Pst::default();
         let text = toml::to_string(&pst).unwrap();
         info!("toml\n{}", text);
+        eprintln!("toml\n{}", text);
+        let pst2: Pst = toml::from_str(&text).unwrap();
+        eprintln!("from toml\n{}", pst2);
     }
 
     #[test]
@@ -347,20 +397,20 @@ mod tests {
         info!("{}", eng.algo.eval.pst);
     }
 
-    // #[test]
-    // fn pst_config() {
-    //     let mut c1 = ParsedConfig::default();
-    //     c1.set("eval.pst.p.a2.s", "6.5");
-    //     c1.set("eval.pst.p.a2.e", "7.5");
-    //     let lookup = c1.weight("eval.pst.p.a2", &Weight::from_i32(1, 1));
-    //     info!("ParsedConfig\n{}", c1);
-    //     assert_eq!(lookup, Weight::from_f32(6.5,7.5));
-    //     let mut pst = Pst::default();
-    //     assert_eq!(pst.pst(Piece::Pawn, Square::A2), Weight::from_i32(24,304));
-    //     pst.configure(&c1);
-    //     assert_eq!(pst.pst(Piece::Pawn, Square::A2), Weight::from_f32(6.5,7.5), "{}", pst);
-
-    // }
+    #[test]
+    fn pst_config() -> Result<()> {
+        let mut eng = Engine::default();
+        eng.configment("eval.pst.p.a2", "{ s=6.5, e=7.6 }")?;
+        eng.configment("eval.pst.p.a2.s", "6.5")?;
+        eng.configment("eval.pst.p.a2.e", "7.5")?;
+        let text = toml::to_string(&eng)?;
+        // eprintln!("toml\n{}", text);
+        // let lookup = c1.weight("eval.pst.p.a2", &Weight::from_i32(1, 1));
+        assert_eq!(eng.algo.eval.pst.pst(Piece::Pawn, Square::A2), Weight::from_f32(6.5,7.5));
+        eng.configment("eval.pst.p.a2.e", "8.5")?;
+        assert_eq!(eng.algo.eval.pst.pst(Piece::Pawn, Square::A2), Weight::from_f32(6.5,8.5));
+        Ok(())
+    }
 }
 
 
