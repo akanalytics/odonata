@@ -606,7 +606,8 @@ impl Uci {
                 .merge(&*engine)
                 .merge(Toml::file(&engine.config_filename));
 
-            fig.extract().context(format!("error in config file {}", &engine.config_filename))?
+            let new : Engine = fig.extract().context(format!("error in config file {}", &engine.config_filename))?;
+            *engine = new;
         } else {
             bail!("Unknown option name '{}' value '{}'", name, value);
         }
