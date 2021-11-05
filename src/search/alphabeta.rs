@@ -292,6 +292,8 @@ impl Algo {
                 debug_assert!(board.is_pseudo_legal_move(&bm), "bm {} on board {}", bm, board);
                 self.history.raised_alpha(ply, board, &mv);
                 self.record_move(ply, &mv);
+            } else {
+                self.history.duff(ply, board, &mv);
             }
 
             if n.alpha >= n.beta && !self.minmax {

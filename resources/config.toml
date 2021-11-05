@@ -769,6 +769,11 @@ use_ply_below = true
 enabled = true
 scale = 1
 age_factor = 4
+malus_factor = 10
+board = "PieceTo"
+alpha_method = "PlySquared"
+alpha_method = "PlySquared"
+duff_method = "PlySquared"
 
 [explainer]
 enabled = false

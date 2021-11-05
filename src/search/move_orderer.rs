@@ -100,7 +100,7 @@ impl fmt::Display for MoveOrderer {
 }
 
 
-impl MoveOrderer {
+impl MoveOrderer { 
     #[inline]
     pub fn quiet_score(&self, mv: &Move, algo: &Algo, phase: i32, c: Color) -> i32 {
         let mut score = 0;

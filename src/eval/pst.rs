@@ -403,7 +403,7 @@ mod tests {
         eng.configment("eval.pst.p.a2", "{ s=6.5, e=7.6 }")?;
         eng.configment("eval.pst.p.a2.s", "6.5")?;
         eng.configment("eval.pst.p.a2.e", "7.5")?;
-        let text = toml::to_string(&eng)?;
+        let _text = toml::to_string(&eng)?;
         // eprintln!("toml\n{}", text);
         // let lookup = c1.weight("eval.pst.p.a2", &Weight::from_i32(1, 1));
         assert_eq!(eng.algo.eval.pst.pst(Piece::Pawn, Square::A2), Weight::from_f32(6.5,7.5));
