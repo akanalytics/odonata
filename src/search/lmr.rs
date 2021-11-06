@@ -106,6 +106,9 @@ impl Lmr {
             if !allow_red {
                 return 0;
             }
+            if node.is_qs() {
+                return 0;
+            }
             if !self.pawns && mv.mover_piece() == Piece::Pawn {
                 return 0;
             }

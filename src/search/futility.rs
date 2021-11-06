@@ -31,6 +31,7 @@ pub struct Futility {
     pub promo_margin: bool, 
     pub max_depth: Ply,
     pub max_depth_captures: Ply,
+    pub margin_qs: i32,
     pub margin1: i32,
     pub margin2: i32,
     pub margin3: i32,
@@ -58,6 +59,7 @@ impl Default for Futility {
             promo_margin: false,  
             max_depth: 2, // not sure > 2 really makes sense
             max_depth_captures: 2, 
+            margin_qs: 0,
             margin1: 100,
             margin2: 250,
             margin3: 1500,
@@ -87,6 +89,34 @@ pub struct FutilityMeasure {
 
 
 impl Futility {
+    pub fn standing_pat(&self, b: &Board, node: &mut Node, standing_pat: Score, eval: &SimpleScorer) -> Option<Score> {
+        if !node.is_qs() && node.depth != 0 {
+            return None;
+        }
+
+        if node.depth == 0 {
+            let outcome = b.outcome();
+            if outcome.is_game_over() {
+                if outcome.is_draw() {
+                    return Some(eval.w_eval_draw(b, node));
+                }
+                if let Some(c) = outcome.winning_color() {
+                    return Some(c.chooser_wb(Score::white_win(node.ply), Score::white_loss(node.ply)));
+                }
+            }
+        }
+
+        if standing_pat >= node.beta && !b.is_in_check(b.color_us()) {
+            return Some(standing_pat);
+        }
+
+        if standing_pat > node.alpha && !b.is_in_check(b.color_us()) {
+            node.alpha = standing_pat;
+        }
+        return None;
+    }
+
+
     pub fn can_prune_at_node(&self, b: &Board, node: &Node) -> bool {
         if (!self.alpha_enabled && !self.beta_enabled)
             ||
@@ -144,6 +174,7 @@ impl Futility {
 
         // safety margin depends on how far away we are from leaf node
         let margin = Score::from_cp(match n.depth {
+            d if d <= 0 => self.margin_qs,
             1 => self.margin1,
             2 => self.margin2,
             3 => self.margin3,

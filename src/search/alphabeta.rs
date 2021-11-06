@@ -61,6 +61,7 @@ impl Algo {
         self.clear_move(ply);
         self.report_progress();
 
+
         if self.time_up_or_cancelled(ply, false) {
             return -Score::INFINITY;
         }
@@ -71,6 +72,10 @@ impl Algo {
             alpha,
             beta,
         };
+
+        if n.depth == 0 {
+            self.clear_move(ply);
+        }   
 
         if n.alpha + Score::from_cp(1) == n.beta {
             self.stats.inc_zw_nodes(ply);
@@ -84,7 +89,7 @@ impl Algo {
         // we dont draw at root, as otherwise it wont play a move if insufficient-material draw [v32]
         if ply > 0 && board.draw_outcome().is_some() {
         // if board.draw_outcome().is_some() {
-            self.stats.inc_leaf_nodes(ply);
+            self.stats.inc_leaf_nodes(&n);
             return board.eval_draw(&mut self.eval, &n); // will return a draw score
         }
 
@@ -98,17 +103,19 @@ impl Algo {
 
 
         if self.tt.probe_leaf_nodes && self.is_leaf(ply, depth) {
-            let e = self.extensions.extend_at_leaf(board);
-            if e == 0 {
-                self.stats.inc_leaf_qsearch_nodes(ply);
-                return self.qsearch(last_move, ply, depth, board, n.alpha, n.beta);
-            }
+            let _e = self.extensions.extend_at_leaf(board);
+            // if e == 0 {
+            //     self.stats.inc_leaf_qsearch_nodes(ply);
+            //     self.alphabeta_recursive(&mut board, ply + 1, depth - 1, -n.beta, -n.alpha, &mv)                
+            //     return self.qsearch(last_move, ply, depth, board, n.alpha, n.beta);
+            // }
             // depth += e;
+        } else {
+            // we are now looking at moves (null, killer, generated etc) so this is an interior node
+            self.stats.inc_interior_nodes(&n);
         }
 
 
-        // we are now looking at moves (null, killer, generated etc) so this is an interior node
-        self.stats.inc_interior_nodes(ply);
 
         // static eval
         let eval = board.eval_some(&self.eval, Switches::ALL_SCORING);
@@ -125,11 +132,10 @@ impl Algo {
         //     &n,
         //     eval,
         // );
-        // if let Some(futility) = futility {
-        //     if let Some(fut_score) = self.futility.can_prune_all_moves(board, futility, &n, &self.eval) {
-        //         return fut_score;
-        //     }
-        // }
+        if let Some(fut_score) = self.futility.standing_pat(board, &mut n, eval, &self.eval) {
+            return fut_score;
+        }
+
         // null move
         if !self.minmax
             && self.nmp.allow(
@@ -174,7 +180,7 @@ impl Algo {
             }
         }
 
-        let mut sorted_moves = self.move_orderer.get_sorted_moves(ply, tt_mv);
+        let mut sorted_moves = self.move_orderer.get_sorted_moves(n, board, tt_mv);
         let mut count = 0;
         while let Some((move_type, mv)) = sorted_moves.next_move(board, self) {
             if self.restrictions.skip_move(ply, &mv) {
@@ -307,7 +313,7 @@ impl Algo {
         }
 
         if count == 0 {
-            self.stats.inc_leaf_nodes(ply);
+            self.stats.inc_leaf_nodes(&n);
             return board.eval(
                 &mut self.eval,
                 &n,

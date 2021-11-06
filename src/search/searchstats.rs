@@ -11,6 +11,8 @@ use strum::EnumCount;
 use std::time::Duration;
 use format_num::*;
 
+use super::node::Node;
+
 
 #[derive(Clone, Debug)]
 pub struct SearchStats {
@@ -189,11 +191,19 @@ impl SearchStats {
 
 
     #[inline]
-    pub fn inc_leaf_nodes(&mut self, ply: Ply) {
+    pub fn inc_leaf_nodes(&mut self, n: &Node) {
         self.inc_all_nodes();
-        self.total.leaf_nodes += 1;
-        self.plies[ply as usize].leaf_nodes += 1;
+        if n.depth >= 0 {
+            self.total.leaf_nodes += 1;
+            self.plies[n.ply as usize].leaf_nodes += 1;
+        }
+        if n.depth <= 0 {
+            self.total.q_leaf_nodes += 1;
+            self.plies[n.ply as usize].q_leaf_nodes += 1;
+        }
     }
+
+
 
     #[inline]
     pub fn inc_leaf_tt_nodes(&mut self, sel_ply: Ply) {
@@ -215,25 +225,18 @@ impl SearchStats {
     }
 
     #[inline]
-    pub fn inc_interior_nodes(&mut self, ply: Ply) {
+    pub fn inc_interior_nodes(&mut self, n: &Node) {
         self.inc_all_nodes();
-        self.total.interior_nodes += 1;
-        self.plies[ply as usize].interior_nodes += 1;
+        if n.depth >= 0 {
+            self.total.interior_nodes += 1;
+            self.plies[n.ply as usize].interior_nodes += 1;
+        } else {
+            self.total.q_interior_nodes += 1;
+            self.plies[n.ply as usize].q_interior_nodes += 1;
+        }
     }
 
-    #[inline]
-    pub fn inc_q_leaf_nodes(&mut self, sel_ply: Ply) {
-        self.inc_all_nodes();
-        self.total.q_leaf_nodes += 1;
-        self.plies[sel_ply as usize].q_leaf_nodes += 1;
-    }
 
-    #[inline]
-    pub fn inc_q_interior_nodes(&mut self, sel_ply: Ply) {
-        self.inc_all_nodes();
-        self.total.q_interior_nodes += 1;
-        self.plies[sel_ply as usize].q_interior_nodes += 1;
-    }
 
     #[inline]
     pub fn inc_q_tt_nodes(&mut self, sel_ply: Ply) {

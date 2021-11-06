@@ -1,4 +1,5 @@
 use crate::board::Board;
+use crate::eval::score::Score;
 use crate::infra::parsed_config::{Component};
 use crate::movelist::MoveList;
 use crate::mv::Move;
@@ -11,6 +12,8 @@ use crate::variation::Variation;
 use std::fmt;
 use serde::{Deserialize, Serialize};
 
+use super::node::Node;
+
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -22,6 +25,7 @@ pub struct MoveOrderer {
     pub mvv_lva: bool,
     pub order: Vec<MoveType>,
     pub qorder: Vec<MoveType>,
+    pub qorder_evasions: Vec<MoveType>,
 
     #[serde(skip)]
     pub thread: u32,
@@ -75,7 +79,8 @@ impl Default for MoveOrderer {
             count_tt_bm: PlyStat::new("order tt bm"),
             picker: Stack::<OrderedMoveList>::default(),
             order: MoveType::vec_from_string("SHIGKPqBE").unwrap(),  // , SHICKPQE, SHIGKPQBE
-            qorder: MoveType::vec_from_string("SICE").unwrap(),  // 
+            qorder: MoveType::vec_from_string("SIgE").unwrap(),  // 
+            qorder_evasions: MoveType::vec_from_string("SIVE").unwrap(),  // 
         }
     }
 }
@@ -206,27 +211,29 @@ impl Algo {
 // uses Move Orderer and MoveGen to present a sequence of moves
 #[derive(Clone, Debug, Default)]
 pub struct OrderedMoveList {
-    pub qsearch: bool,
+    qsearch: bool,
+    is_in_check: bool, 
     stage: usize,
     moves: MoveList,
     all_moves: MoveList,
     bad_captures: MoveList,
     index: usize,
     tt: Move,
-    ply: Ply,
+    n: Node,
 }
 
 impl MoveOrderer {
-    pub fn get_sorted_moves(&self, ply: Ply, tt: Move) -> OrderedMoveList {
+    pub fn get_sorted_moves(&self, n: Node, b: &Board, tt: Move) -> OrderedMoveList {
         OrderedMoveList {
-            qsearch: false,
+            qsearch: n.is_qs(),
+            is_in_check: b.is_in_check(b.color_us()),
             stage: 0,
             moves: MoveList::new(),
             all_moves: MoveList::new(),
             // good_captures: MoveList::new(),
             bad_captures: MoveList::new(),
             index: 0,
-            ply,
+            n,
             tt,
         }
     }
@@ -240,7 +247,11 @@ impl OrderedMoveList {
     
     pub fn ordering<'a>(&self, algo: &'a Algo) -> &'a Vec<MoveType> {
         if self.qsearch {
-            &algo.move_orderer.qorder
+            if self.is_in_check {
+                &algo.move_orderer.qorder_evasions
+            } else {
+                &algo.move_orderer.qorder
+            }
         } else {
             &algo.move_orderer.order
         }
@@ -258,7 +269,8 @@ impl OrderedMoveList {
             if move_type == MoveType::GoodCaptureUpfrontSorted || move_type == MoveType::GoodCapture {
                 let mv = &self.moves[self.index];
                 let see = algo.eval.see.eval_move_see(b, mv);
-                if see < 0 {
+                let see_cutoff = if self.qsearch { algo.qsearch.see_cutoff.as_i16() as i32 } else { 0 };
+                if see < see_cutoff || see == see_cutoff && self.qsearch && self.n.depth >= -1 {
                     self.bad_captures.push(*mv);
                     self.index += 1;
                     return self.next_move(b, algo);
@@ -333,7 +345,13 @@ impl OrderedMoveList {
                 let mv = &self.tt;
                 all_moves.retain(|m| mv != m );
             }
-            // Good Captures
+            MoveType::Evasion => {
+                all_moves
+                .iter()
+                .for_each(|&m| moves.push(m));
+                algo.order_moves(self.n.ply, moves, &None);
+
+            }
             MoveType::GoodCaptureUpfrontSorted => {
                 all_moves
                     .iter()
@@ -355,7 +373,7 @@ impl OrderedMoveList {
 
             // Killers
             MoveType::Killer => {
-                algo.killers.legal_moves_for(self.ply, b, moves);
+                algo.killers.legal_moves_for(self.n.ply, b, moves);
                 all_moves.retain(|m| !moves.contains(m));
                 // moves.sort_unstable_by_key(Move::mvv_lva_score);
                 // moves.reverse();

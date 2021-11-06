@@ -96,7 +96,8 @@ impl Razor {
         if n.ply == 0 {
             return false; // no null move at root, might mean no moves (with move restrictions too!)
         }
-        if n.depth > self.max_depth {
+        // no eval is qs or too far from horizon
+        if n.depth <= 0 || n.depth > self.max_depth {
             return false;
         }
         if !n.beta.is_numeric() {

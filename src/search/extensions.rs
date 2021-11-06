@@ -58,14 +58,17 @@ impl Extensions {
         _mv: &Move,
         node: &Node,
         phaser: &Phaser,
-        search_stats: &mut SearchStats,
+        stats: &mut SearchStats,
     ) -> (Ply, bool) {
+        if node.is_qs() {
+            return (0, true)
+        }
         if self.check_enabled {
             if b.is_in_check(b.color_us())
                 && node.depth <= self.check_max_depth
                 && b.phase(phaser) < self.check_max_phase
             {
-                search_stats.inc_ext_check(node.ply);
+                stats.inc_ext_check(node.ply);
                 (1, false);
             }
         }

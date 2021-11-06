@@ -697,6 +697,7 @@ avoid_promos = false
 promo_margin = false
 max_depth = 2
 max_depth_captures = 2
+margin_qs = 0
 margin1 = 100
 margin2 = 250
 margin3 = 1500
@@ -744,7 +745,8 @@ prior_bm = false
 tt_bm = true
 mvv_lva = true
 order = ["Start", "Hash", "Initialize", "GoodCaptureUpfrontSorted", "Killer", "Promo", "Quiet", "BadCapture", "End"]
-qorder = ["Start", "Initialize", "Capture", "End"]
+qorder = ["Start", "Initialize", "GoodCapture", "End"]
+qorder_evasions = ["Start", "Initialize", "Evasion", "End"]
 
 [repetition]
 enabled = true

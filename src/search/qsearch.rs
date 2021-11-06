@@ -111,13 +111,13 @@ impl Algo {
 
         let in_check = board.is_in_check(board.color_us());
         let mut standing_pat;
+        let node = Node {
+            ply,
+            depth,
+            alpha,
+            beta,
+        };
         if depth == 0 {
-            let node = Node {
-                ply,
-                depth,
-                alpha,
-                beta,
-            };
             standing_pat = board.eval(&mut self.eval, &node);
             trace!(
                 "Standing pat (eval on depth 0 on {}) {}",
@@ -127,7 +127,7 @@ impl Algo {
             // early return if a draw or mate
             if standing_pat.is_mate() || board.draw_outcome().is_some() {
                 // self.record_new_pv(board, ply, &Move::NULL_MOVE, true);
-                self.stats.inc_q_leaf_nodes(ply);
+                self.stats.inc_leaf_nodes(&node);
                 return standing_pat;
             }
             if in_check {
@@ -146,7 +146,7 @@ impl Algo {
         }
         if standing_pat > alpha {
             if standing_pat >= beta {
-                self.stats.inc_q_leaf_nodes(ply);
+                self.stats.inc_leaf_nodes(&node);
                 trace!(
                     "{}",
                     board.debug() + ply + "fail high - standing pat" + standing_pat + ">=" + beta
@@ -188,9 +188,9 @@ impl Algo {
         
 
         if moves.is_empty() {
-            self.stats.inc_q_leaf_nodes(ply);
+            self.stats.inc_leaf_nodes(&node);
         } else {
-            self.stats.inc_q_interior_nodes(ply);
+            self.stats.inc_interior_nodes(&node);
         }
         self.order_moves(ply, &mut moves, &None);
         for &mv in moves.iter() {

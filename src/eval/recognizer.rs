@@ -145,14 +145,14 @@ impl Algo {
     #[inline]
     pub fn wdl_detection(&mut self, b: &mut Board, n: &mut Node) -> (Option<Score>, Option<Move>) {
 
-        if !self.recognizer.enabled  || n.depth == 0 || n.ply == 0 {
+        if !self.recognizer.enabled  || n.depth <= 0 || n.ply == 0 {
             return (None, None)
         }
         let endgame = EndGame::from_board(b);
 
         if endgame.is_immediately_declared_draw() {
             let draw = b.eval_draw(&mut self.eval, &n); // will return a draw score
-            self.stats.inc_leaf_nodes(n.ply);
+            self.stats.inc_leaf_nodes(n);
             return (Some(draw), None)
         }
 

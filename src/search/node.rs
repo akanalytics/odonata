@@ -4,7 +4,7 @@ use crate::types::{Ply};
 
 
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct Node {
     pub ply: Ply,
     pub depth: Ply,
@@ -49,4 +49,8 @@ impl Node {
         !self.is_zw()
     }
 
+    #[inline]
+    pub fn is_qs(&self) -> bool {
+        self.depth < 0
+    }
 }
