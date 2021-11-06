@@ -1,5 +1,4 @@
 use crate::board::Board;
-use crate::eval::score::Score;
 use crate::infra::parsed_config::{Component};
 use crate::movelist::MoveList;
 use crate::mv::Move;
