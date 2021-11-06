@@ -12,6 +12,7 @@ use std::fmt;
 use serde::{Deserialize, Serialize};
 
 use super::node::Node;
+use crate::eval::score::Score;
 
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -22,6 +23,7 @@ pub struct MoveOrderer {
     pub prior_bm: bool,
     pub tt_bm: bool,
     pub mvv_lva: bool,
+    pub see_cutoff: Score,
     pub order: Vec<MoveType>,
     pub qorder: Vec<MoveType>,
     pub qorder_evasions: Vec<MoveType>,
@@ -72,6 +74,7 @@ impl Default for MoveOrderer {
             prior_bm: false,
             tt_bm: true,
             mvv_lva: true,
+            see_cutoff: Score::zero(),
             thread: 0,
             count_pv: PlyStat::new("order pv"),
             count_bm: PlyStat::new("order bm"),
@@ -91,6 +94,7 @@ impl fmt::Display for MoveOrderer {
         writeln!(f, "prior bm         : {}", self.prior_bm)?;
         writeln!(f, "tt bm            : {}", self.tt_bm)?;
         writeln!(f, "mvv_lva          : {}", self.mvv_lva)?;
+        writeln!(f, "see_cutoff       : {}", self.see_cutoff)?;
         writeln!(f, "order            : {}", MoveType::slice_to_string(&self.order))?;
         writeln!(f, "qorder           : {}", MoveType::slice_to_string(&self.qorder))?;
         writeln!(f, "thread           : {}", self.thread)?;
@@ -268,7 +272,8 @@ impl OrderedMoveList {
             if move_type == MoveType::GoodCaptureUpfrontSorted || move_type == MoveType::GoodCapture {
                 let mv = &self.moves[self.index];
                 let see = algo.eval.see.eval_move_see(b, mv);
-                let see_cutoff = if self.qsearch { algo.qsearch.see_cutoff.as_i16() as i32 } else { 0 };
+                let see_cutoff = if self.qsearch { algo.qsearch.see_cutoff } else { algo.move_orderer.see_cutoff };
+                let see_cutoff = see_cutoff.as_i16() as i32;
                 if see < see_cutoff || see == see_cutoff && self.qsearch && self.n.depth >= -1 {
                     self.bad_captures.push(*mv);
                     self.index += 1;

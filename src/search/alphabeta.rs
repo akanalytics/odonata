@@ -102,18 +102,15 @@ impl Algo {
         }                
 
 
-        if self.tt.probe_leaf_nodes && self.is_leaf(ply, depth) {
-            let _e = self.extensions.extend_at_leaf(board);
+        let _e = self.extensions.extend_at_leaf(board);
             // if e == 0 {
             //     self.stats.inc_leaf_qsearch_nodes(ply);
             //     self.alphabeta_recursive(&mut board, ply + 1, depth - 1, -n.beta, -n.alpha, &mv)                
             //     return self.qsearch(last_move, ply, depth, board, n.alpha, n.beta);
             // }
             // depth += e;
-        } else {
             // we are now looking at moves (null, killer, generated etc) so this is an interior node
-            self.stats.inc_interior_nodes(&n);
-        }
+        self.stats.inc_interior_nodes(&n);
 
 
 

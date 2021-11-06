@@ -229,13 +229,13 @@ pub struct TranspositionTable2 {
     table: Arc<SharedTable>,
 
     pub aging: bool,
-    pub probe_leaf_nodes: bool,
     pub enabled: bool,
     pub use_tt_for_pv: bool,
     pub allow_truncated_pv: bool,
     pub mb: i64,
     pub hmvc_horizon: i32,
     pub min_ply: Ply,
+    pub min_depth: Ply,
 
     #[rustfmt::skip] #[serde(skip)] pub current_age: u8,
     #[rustfmt::skip] #[serde(skip)] pub hits: Stat,
@@ -258,13 +258,13 @@ impl TranspositionTable2 {
             table: Arc::new(SharedTable::new_with_capacity(Self::convert_mb_to_capacity(mb))),
             enabled: true,
             use_tt_for_pv: false,
-            probe_leaf_nodes: true,
             allow_truncated_pv: false,
             mb: mb as i64,
             aging: true,
             current_age: 10, // to allow us to look back
             hmvc_horizon: 85,
             min_ply: 1, // search restrictions on ply=0
+            min_depth: 1, 
             hits: Stat::new("hits"),
             misses: Stat::new("misses"),
             collisions: Stat::new("collisions"),
@@ -292,7 +292,6 @@ impl fmt::Debug for TranspositionTable2 {
             .field("mb", &self.mb)
             .field("hmvc.horizon", &self.hmvc_horizon)
             .field("aging", &self.aging)
-            .field("probe.leaf.nodes", &self.probe_leaf_nodes)
             .field("current.age", &self.current_age)
             .finish()
     }
@@ -310,6 +309,7 @@ impl fmt::Display for TranspositionTable2 {
         writeln!(f, "current age      : {}", self.current_age)?;
         writeln!(f, "hmvc horizon     : {}", self.hmvc_horizon)?;
         writeln!(f, "min ply          : {}", self.min_ply)?;
+        writeln!(f, "min depth        : {}", self.min_depth)?;
         // writeln!(f, "table            : {}", self.table.len())?;
         writeln!(f, "entry: pv        : {}", self.count_of(NodeType::ExactPv))?;
         writeln!(f, "entry: cut       : {}", self.count_of(NodeType::LowerCut))?;
@@ -521,9 +521,9 @@ impl TranspositionTable2 {
         return;
     }
 
-    pub fn probe_by_board(&self, board: &Board, ply: Ply, _draft: Ply) -> Option<TtNode> {
+    pub fn probe_by_board(&self, board: &Board, ply: Ply, depth: Ply) -> Option<TtNode> {
         // never probe at root as we may retrict moves (or be using multi-pv there)
-        if !self.enabled || self.capacity() == 0 || ply < self.min_ply || ply == 0 {
+        if !self.enabled || self.capacity() == 0 || ply < self.min_ply || depth < self.min_depth {
             return None;
         }
         let tt_node = self.probe_by_hash(board.hash());

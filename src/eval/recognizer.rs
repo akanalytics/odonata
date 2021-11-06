@@ -17,6 +17,7 @@ use super::score::Score;
 #[serde(default, deny_unknown_fields)]
 pub struct Recognizer {
     enabled: bool, 
+    min_depth: Ply,
     terminal_depth: Ply,
 }
 
@@ -25,6 +26,7 @@ impl Default for Recognizer {
     fn default() -> Self {
         Self {
             enabled: true,
+            min_depth: -100,
             terminal_depth: 2,
         }
     }
@@ -58,82 +60,79 @@ impl Algo {
         //     return (score,mv);
         // }
 
-        if self.tt.probe_leaf_nodes || self.is_leaf(n.ply, n.depth) {
+        if let Some(entry) = self.tt.probe_by_board(b, n.ply, n.depth) {
 
-            if let Some(entry) = self.tt.probe_by_board(b, n.ply, n.depth) {
+            // FIXME! v33
+            if entry.draft >= n.depth && !(self.repetition.avoid_tt_on_repeats && b.repetition_count().total > 0) {
+            //if entry.draft >= draft  && (ply >= 1 || self.tt.allow_tt_at_root) && !(b.repetition_count().total > 0 && self.repetition.avoid_tt_on_repeats)
 
-                // FIXME! v33
-                if entry.draft >= n.depth && !(self.repetition.avoid_tt_on_repeats && b.repetition_count().total > 0) {
-                //if entry.draft >= draft  && (ply >= 1 || self.tt.allow_tt_at_root) && !(b.repetition_count().total > 0 && self.repetition.avoid_tt_on_repeats)
-
-                    if n.ply == 0 && self.restrictions.is_none() {
-                        return (Some(entry.score), Some(entry.bm))
-                    }
-
-                    // if entry.draft >= draft && !(b.repetition_count().total > 1 && self.repetition.avoid_tt_on_repeats)
-                    match entry.node_type {
-                        NodeType::ExactPv => {
-                            // previously this position raised alpha, but didnt trigger a cut
-                            // no point going through moves as we know what the max score is
-                            if entry.score >= n.beta {
-                                self.stats.inc_node_cut(n.ply, MoveType::Hash, -1);
-                                self.stats.inc_leaf_tt_nodes(n.ply);
-                                self.report_refutation(n.ply);
-                                return (Some(entry.score), None);
-                            }
-                            if entry.score <= n.alpha {
-                                self.stats.inc_node_all(n.ply);
-                                self.stats.inc_leaf_tt_nodes(n.ply);
-                                return (Some(entry.score), None);
-                            }
-
-                            if self.tt.allow_truncated_pv && entry.score > n.alpha {
-                                self.record_truncated_move(n.ply, &entry.bm);
-                                self.stats.inc_leaf_tt_nodes(n.ply);
-                                return (Some(entry.score), None);
-                            }
-                            return (None, Some(entry.bm)); // else we just use the hash move for move ordering
-                        }
-                        NodeType::LowerCut => {
-                            // previously this position raised alpha (sufficiently to cause a cut).
-                            // not all child nodes were scored, so score is a lower bound
-                            // FIXME: probably dont set alpha just the hinted mv and re-search the node
-                            if entry.score >= n.beta {
-                                self.stats.inc_node_cut(n.ply, MoveType::Hash, -1);
-                                // self.record_truncated_move(ply, &entry.bm);
-                                self.stats.inc_leaf_tt_nodes(n.ply);
-                                self.report_refutation(n.ply);
-                                return (Some(entry.score), None);
-                            }
-                            if self.tt.allow_truncated_pv && entry.score > n.alpha {
-                                // nt = NodeType::Pv;
-                                // n.alpha = entry.score;
-                                self.record_truncated_move(n.ply, &entry.bm);
-                                // score = entry.score;
-                                // bm = entry.bm; // need to set bm as alpha raising mv might be skipped
-                                //             // tt_mv = Some(entry.bm); // might help with move ordering
-                                return (Some(entry.score), Some(entry.bm)); // else we just use the hash move for move ordering
-                            }
-                            return (None, Some(entry.bm)); // else we just use the hash move for move ordering
-                        }
-                        NodeType::UpperAll => {
-                            // previously this position didnt raise alpha, the score is an upper bound
-                            // if the score is still below alpha, this too is an ALL node
-                            if entry.score <= n.alpha {
-                                // self.record_truncated_move(ply, &entry.bm);
-                                self.stats.inc_leaf_tt_nodes(n.ply);
-                                return (Some(entry.score), None);
-                            }
-                        }
-                        NodeType::Unused => unreachable!(),
-                    }
+                if n.ply == 0 && self.restrictions.is_none() {
+                    return (Some(entry.score), Some(entry.bm))
                 }
-                // not enough draft - just use for move guidance
-                return (None, Some(entry.bm))
+
+                // if entry.draft >= draft && !(b.repetition_count().total > 1 && self.repetition.avoid_tt_on_repeats)
+                match entry.node_type {
+                    NodeType::ExactPv => {
+                        // previously this position raised alpha, but didnt trigger a cut
+                        // no point going through moves as we know what the max score is
+                        if entry.score >= n.beta {
+                            self.stats.inc_node_cut(n.ply, MoveType::Hash, -1);
+                            self.stats.inc_leaf_tt_nodes(n.ply);
+                            self.report_refutation(n.ply);
+                            return (Some(entry.score), None);
+                        }
+                        if entry.score <= n.alpha {
+                            self.stats.inc_node_all(n.ply);
+                            self.stats.inc_leaf_tt_nodes(n.ply);
+                            return (Some(entry.score), None);
+                        }
+
+                        if self.tt.allow_truncated_pv && entry.score > n.alpha {
+                            self.record_truncated_move(n.ply, &entry.bm);
+                            self.stats.inc_leaf_tt_nodes(n.ply);
+                            return (Some(entry.score), None);
+                        }
+                        return (None, Some(entry.bm)); // else we just use the hash move for move ordering
+                    }
+                    NodeType::LowerCut => {
+                        // previously this position raised alpha (sufficiently to cause a cut).
+                        // not all child nodes were scored, so score is a lower bound
+                        // FIXME: probably dont set alpha just the hinted mv and re-search the node
+                        if entry.score >= n.beta {
+                            self.stats.inc_node_cut(n.ply, MoveType::Hash, -1);
+                            // self.record_truncated_move(ply, &entry.bm);
+                            self.stats.inc_leaf_tt_nodes(n.ply);
+                            self.report_refutation(n.ply);
+                            return (Some(entry.score), None);
+                        }
+                        if self.tt.allow_truncated_pv && entry.score > n.alpha {
+                            // nt = NodeType::Pv;
+                            // n.alpha = entry.score;
+                            self.record_truncated_move(n.ply, &entry.bm);
+                            // score = entry.score;
+                            // bm = entry.bm; // need to set bm as alpha raising mv might be skipped
+                            //             // tt_mv = Some(entry.bm); // might help with move ordering
+                            return (Some(entry.score), Some(entry.bm)); // else we just use the hash move for move ordering
+                        }
+                        return (None, Some(entry.bm)); // else we just use the hash move for move ordering
+                    }
+                    NodeType::UpperAll => {
+                        // previously this position didnt raise alpha, the score is an upper bound
+                        // if the score is still below alpha, this too is an ALL node
+                        if entry.score <= n.alpha {
+                            // self.record_truncated_move(ply, &entry.bm);
+                            self.stats.inc_leaf_tt_nodes(n.ply);
+                            return (Some(entry.score), None);
+                        }
+                    }
+                    NodeType::Unused => unreachable!(),
+                }
             }
-            // not found
+            // not enough draft - just use for move guidance
+            return (None, Some(entry.bm))
         }
-        // was leaf and isnt probed
+
+        // not found
         let (score, mv) = self.wdl_detection(b, n);
         if score.is_some() {
             return (score,mv);
@@ -145,7 +144,7 @@ impl Algo {
     #[inline]
     pub fn wdl_detection(&mut self, b: &mut Board, n: &mut Node) -> (Option<Score>, Option<Move>) {
 
-        if !self.recognizer.enabled  || n.depth <= 0 || n.ply == 0 {
+        if !self.recognizer.enabled  || n.depth < self.recognizer.min_depth  || n.ply == 0 {
             return (None, None)
         }
         let endgame = EndGame::from_board(b);

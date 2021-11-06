@@ -70,7 +70,7 @@ impl Algo {
     // if the move results in a position which after quiesce, is potentially a mate,
     // we should not return a mate score, as only captures have been considered,
     // and a mate score might cut a genuine mate score elsewhere
-    pub fn qsearch(
+    pub fn qsearch2(
         &mut self,
         mv: &Move,
         ply: Ply,
@@ -416,7 +416,7 @@ mod tests {
             .build();
         search_see.max_depth = 3;
 
-        let score = search_see.qsearch(
+        let score = search_see.qsearch2(
             &pos.sm()?,
             3,
             search_see.max_depth,

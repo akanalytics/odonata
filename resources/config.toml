@@ -744,6 +744,7 @@ prior_pv = true
 prior_bm = false
 tt_bm = true
 mvv_lva = true
+see_cutoff = 0
 order = ["Start", "Hash", "Initialize", "GoodCaptureUpfrontSorted", "Killer", "Promo", "Quiet", "BadCapture", "End"]
 qorder = ["Start", "Initialize", "GoodCapture", "End"]
 qorder_evasions = ["Start", "Initialize", "Evasion", "End"]
@@ -754,13 +755,13 @@ avoid_tt_on_repeats = false
 
 [tt]
 aging = true
-probe_leaf_nodes = true
 enabled = true
 use_tt_for_pv = false
 allow_truncated_pv = false
 mb = 8
 hmvc_horizon = 85
 min_ply = 1
+min_depth = 0
 
 [killers]
 enabled = true
@@ -785,6 +786,7 @@ enabled = true
 
 [recognizer]
 enabled = true
+min_depth = -100
 terminal_depth = 2
 
 
