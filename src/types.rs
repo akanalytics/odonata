@@ -592,9 +592,9 @@ mod tests {
         assert_eq!(MoveType::slice_to_string(&many), "HIGKPqB");
         assert_eq!(MoveType::from_str("CHB")?, MoveType::Capture | MoveType::Hash | MoveType::BadCapture);
         assert_eq!("HCB".to_string(), MoveType::to_string(MoveType::Capture | MoveType::Hash | MoveType::BadCapture));
-        assert_eq!(MoveType::COUNT, 15);
+        assert_eq!(MoveType::COUNT, 16);
         assert_eq!(MoveType::Start.index(), 0);
-        assert_eq!(MoveType::End.index(), 14);
+        assert_eq!(MoveType::End.index(), 15);
         Ok(())
     }
 
