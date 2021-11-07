@@ -790,10 +790,11 @@ mod tests {
         let mut algo = Algo::new();
         const PLY: Ply = 3;
         const TT_MOVE: Move = Move::NULL_MOVE;
+        let n = Node::default();
 
         let positions = &Catalog::win_at_chess();
         for pos in positions {
-            let mut sorted_moves = orderer.get_sorted_moves(PLY, TT_MOVE);
+            let mut sorted_moves = orderer.get_sorted_moves(n, pos.board(), TT_MOVE);
             let mut moves = MoveList::new();
             while let Some((_stage,mv)) = sorted_moves.next_move(pos.board(), &mut algo) {
                 moves.push(mv);                 

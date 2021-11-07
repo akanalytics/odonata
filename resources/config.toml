@@ -16,6 +16,11 @@ thread_count = 1
 config_filename = "config.toml"
 minmax = false
 
+[tuner]
+ignore_known_outcomes = true
+multi_threading_min_positions = 20000
+
+
 [ids]
 enabled = true
 part_ply = false

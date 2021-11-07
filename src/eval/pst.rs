@@ -406,9 +406,10 @@ mod tests {
         let _text = toml::to_string(&eng)?;
         // eprintln!("toml\n{}", text);
         // let lookup = c1.weight("eval.pst.p.a2", &Weight::from_i32(1, 1));
-        assert_eq!(eng.algo.eval.pst.pst(Piece::Pawn, Square::A2), Weight::from_f32(6.5,7.5));
+        assert_eq!(eng.algo.eval.pst.pst(Piece::Pawn, Square::A2).s(), Weight::from_f32(6.5,7.5).s());
+        assert_eq!(eng.algo.eval.pst.pst(Piece::Pawn, Square::A2).e(), Weight::from_f32(6.5,7.5).e());
         eng.configment("eval.pst.p.a2.e", "8.5")?;
-        assert_eq!(eng.algo.eval.pst.pst(Piece::Pawn, Square::A2), Weight::from_f32(6.5,8.5));
+        assert_eq!(eng.algo.eval.pst.pst(Piece::Pawn, Square::A2).e(), Weight::from_f32(6.5,8.5).e());
         Ok(())
     }
 }

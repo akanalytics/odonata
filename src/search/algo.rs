@@ -496,7 +496,6 @@ mod tests {
         search.set_eval(eval);
         search.set_timing_method(TimeControl::Depth(3));
         search.search();
-        println!("{}", search);
         assert_eq!(
             search.search_stats().iteration().regular_nodes(),
             1 + 20 + 400 + 8902 /* + 197_281 */
@@ -515,8 +514,7 @@ mod tests {
         search.set_position(Catalog::starting_position());
         search.set_timing_method(TimeControl::Depth(4));
         search.search();
-        println!("{}", search);
-        assert_eq!(search.search_stats().iteration().all_nodes(), 1941); // null move pruning
+        assert_eq!(search.search_stats().iteration().all_nodes(), 2008); // null move pruning
                                                                 // assert_eq!(search.search_stats().total().nodes(), 1468);
                                                                 // assert_eq!(search.search_stats().total().nodes(), 1516); // rejigged pawn PST
                                                                 // previous
@@ -547,7 +545,6 @@ mod tests {
         search.move_orderer.enabled = false;
         search.set_position(Position::from_board(board));
         search.search();
-        println!("{}", search);
         assert_eq!(search.pv()[0].uci(), "g8f6");
     }
 

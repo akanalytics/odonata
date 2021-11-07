@@ -794,13 +794,13 @@ mod tests {
                 algo
             );
             // certainly pv can be longer as it has qsearch
-            assert!(
-                pv.len() <= d as usize,
-                "{}\n algo.pv={} pv={}",
-                algo,
-                algo.pv(),
-                pv,
-            );
+            // assert!(
+            //     pv.len() <= d as usize,
+            //     "{}\n algo.pv={} pv={}",
+            //     algo,
+            //     algo.pv(),
+            //     pv,
+            // );
             // assert!(algo.pv().len() >= d as usize, "{} {}\n{}", algo.pv(), pv, algo);
             // assert_eq!(algo.bm().uci(), pos.bm()?.uci());
             println!(">>>>>> {}", pv);

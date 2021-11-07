@@ -4,45 +4,76 @@ use crate::eval::model::ExplainScorer;
 use crate::eval::model::Model;
 use crate::eval::model::ModelScore;
 use crate::eval::model::ReportLine;
-use crate::eval::switches::Switches;
-use crate::position::Position;
 use crate::eval::score::Score;
+use crate::eval::switches::Switches;
+use crate::infra::parsed_config::Component;
+use crate::position::Position;
 use crate::search::engine::Engine;
 use crate::tags::Tag;
+use anyhow::{Result, bail};
 use rayon::prelude::*;
-use anyhow::Result;
+use serde::Deserialize;
+use serde::Serialize;
 
-
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
 pub struct Tuning {
+    ignore_known_outcomes: bool,
+    multi_threading_min_positions: usize, 
+
+    #[serde(skip)]
     models_and_outcomes: Vec<(Model, f32)>,
+
+    #[serde(skip)]
     boards: Vec<Position>,
+}
+
+impl Default for Tuning {
+    fn default() -> Self {
+        Tuning {
+            ignore_known_outcomes: true,
+            multi_threading_min_positions: 20000, 
+            models_and_outcomes: Default::default(),
+            boards: Default::default(),
+        }
+    }
+}
+
+
+impl Component for Tuning {
+    fn new_game(&mut self) {
+    }
+
+    fn new_position(&mut self) {
+    }
 }
 
 
 
 
 impl Tuning {
-
-
     pub fn new() -> Self {
         Tuning::default()
     }
 
+    pub fn clear(&mut self) {
+        self.models_and_outcomes.clear();
+        self.boards.clear();
+    }
+
     pub fn upload_positions(&mut self, positions: &[Position]) -> usize {
         for pos in positions {
-            if pos.board().outcome().is_game_over() {
+            if self.ignore_known_outcomes && pos.board().outcome().is_game_over() {
                 trace!("Discarding drawn/checkmate position {}", pos);
                 continue;
             }
             let model = Model::from_board(pos.board(), Switches::ALL_SCORING);
             let outcome = self.calc_player_win_prob_from_pos(pos);
-            self.models_and_outcomes.push( (model, outcome) );
+            self.models_and_outcomes.push((model, outcome));
             self.boards.push(pos.clone());
         }
         self.models_and_outcomes.len()
     }
-
 
     pub fn calc_player_win_prob_from_pos(&self, pos: &Position) -> f32 {
         if let Tag::Comment(_n, s) = pos.tag(Tag::C9) {
@@ -50,13 +81,12 @@ impl Tuning {
                 "1/2-1/2" => 0.5,
                 "1-0" => 1.0,
                 "0-1" => 0.0,
-                _ => unreachable!()
+                _ => unreachable!(),
             };
             return pos.board().color_us().chooser_wb(prob, prob);
         }
         panic!("Unable to find result comment c9 in {}", pos);
     }
-
 
     pub fn write_model<W: Write>(&self, engine: &Engine, writer: &mut W) -> Result<i32> {
         let eval = &engine.algo.eval;
@@ -64,7 +94,7 @@ impl Tuning {
         for (model, outcome) in self.models_and_outcomes.iter() {
             if outcome > &0.25 && outcome < &0.75 {
                 continue;
-            } 
+            }
             let phase = model.mat.phase(&eval.phaser);
             let mut w_score = ExplainScorer::new(phase);
             eval.predict(model, &mut w_score);
@@ -78,13 +108,11 @@ impl Tuning {
         Ok(line_count)
     }
 
-
-    pub fn calculate_mean_square_error(&self, engine: &Engine) -> f32 {
-
+    pub fn calculate_mean_square_error(&self, engine: &Engine) -> Result<f32> {
         let eval = &engine.algo.eval;
-        let closure = |pair: &(Model,f32)| {
+        let closure = |pair: &(Model, f32)| {
             // estimate result by looking at centipawn evaluation
-            let (model,outcome) = pair;
+            let (model, outcome) = pair;
             let phase = model.mat.phase(&eval.phaser);
             let mut w_score = ModelScore::new(phase);
             eval.predict(model, &mut w_score);
@@ -96,50 +124,50 @@ impl Tuning {
             diff * diff
         };
 
-        let total_diff_squared: f32 = if self.models_and_outcomes.len() < 20000 {
-            self.models_and_outcomes.iter().map(closure).sum()
-        } else {
-            // use rayon on larger sized files
-            self.models_and_outcomes.par_iter().map(closure).sum()
+        let total_diff_squared: f32 = match self.models_and_outcomes.len() {
+            0 => bail!("No tuning positions loaded or remain after filtering"),
+            l if l < self.multi_threading_min_positions => {
+                info!("Calculating mse on {} positions using single thread", l);
+                self.models_and_outcomes.iter().map(closure).sum()
+            }, 
+            l => {
+                info!("Calculating mse on {} positions using several threads", l);
+                // use rayon on larger sized files
+                self.models_and_outcomes.par_iter().map(closure).sum()
+            }
         };
 
         // return average
-        total_diff_squared / self.models_and_outcomes.len() as f32
+        let mse = total_diff_squared / self.models_and_outcomes.len() as f32;
+        info!("Calculated mse as {}", mse);
+        Ok(mse)
     }
 }
-
-
-
-
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::eval::weight::Weight;
 
-
-
     #[ignore]
     #[test]
     fn test_tuning() {
         info!("Starting...");
-        let mut tuning = Tuning::new();
-        tuning.upload_positions(&Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-small.epd").unwrap());
+        let mut engine = Engine::new();
+        engine.tuner.upload_positions(&Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-small.epd").unwrap());
         //tuning.positions = Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-small.epd").unwrap();
         // tuning.positions = Position::parse_epd_file("../odonata-extras/epd/com15.epd")?;
         // tuning.positions = Catalog::bratko_kopec();
         println!("Loaded\n");
 
-        let mut engine = Engine::new();
         for n in (-100..140).step_by(10) {
             let value = n;
             engine.algo.eval.mb.enabled = false;
-            engine.algo.eval.pawn_isolated = Weight::from_i32(0, value); 
-            let diffs = tuning.calculate_mean_square_error(&engine);
+            engine.algo.eval.pawn_isolated = Weight::from_i32(0, value);
+            let diffs = engine.tuner.calculate_mean_square_error(&engine);
             println!("{}, {}", value, diffs);
         }
     }
-
 
     #[test]
     fn test_quick_tuning() {

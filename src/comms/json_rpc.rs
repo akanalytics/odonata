@@ -1,11 +1,10 @@
 use crate::board::Board;
 use crate::catalog::{Catalog, CatalogSuite};
+use crate::infra::version::built_info;
+use crate::infra::version::Version;
 use crate::position::Position;
 use crate::search::engine::Engine;
 use crate::tags::Tag;
-use crate::tuning::Tuning;
-use crate::infra::version::built_info;
-use crate::infra::version::Version;
 use anyhow::Context;
 use itertools::Itertools;
 // // use crate::{info, logger::LogInit};
@@ -34,9 +33,7 @@ pub struct JsonRpc {
 
 impl JsonRpc {
     pub fn new(engine: Arc<Mutex<Engine>>) -> JsonRpc {
-        let mut me = JsonRpc {
-            io: <IoHandler>::new(),
-        };
+        let mut me = JsonRpc { io: <IoHandler>::new() };
         let rpc = RpcImpl::new(engine);
         me.io.extend_with(rpc.to_delegate());
 
@@ -87,7 +84,7 @@ pub trait Rpc {
 
 #[derive(Clone, Debug)]
 struct RpcImpl {
-    pub tuning: Arc<Mutex<Tuning>>,
+    // pub tuning: Arc<Mutex<Tuning>>,
     pub engine: Arc<Mutex<Engine>>,
 }
 
@@ -95,7 +92,7 @@ impl RpcImpl {
     pub fn new(engine: Arc<Mutex<Engine>>) -> Self {
         RpcImpl {
             engine,
-            tuning: Arc::new(Mutex::new(Tuning::new())),
+            // tuning: Arc::new(Mutex::new(Tuning::new())),
         }
     }
 }
@@ -117,16 +114,20 @@ impl Rpc for RpcImpl {
 
     // empty file is clear
     fn position_upload(&self, filename: String) -> Result<i32> {
+        let mut engine = self.engine.lock().unwrap();
         if filename.is_empty() {
-            *self.tuning.lock().unwrap() = Tuning::new();
+            engine.tuner.clear();
+            info!("Cleared tuner positions");
             return Ok(0);
         }
+        info!("Starting tuner upload from {}", &filename);
         let positions = Position::parse_epd_file(&filename).map_err(|s| jsonrpc_core::Error {
             message: format!("{} on uploading positions from '{}'", s, &filename),
             code: jsonrpc_core::ErrorCode::InternalError,
             data: None,
         })?;
-        let uploaded_count = self.tuning.lock().unwrap().upload_positions(&positions);
+        let uploaded_count = engine.tuner.upload_positions(&positions);
+        info!("Uploaded {} positions", uploaded_count);
         Ok(uploaded_count as i32)
     }
 
@@ -136,22 +137,14 @@ impl Rpc for RpcImpl {
             .map_err(to_rpc_error)?;
         let mut f = BufWriter::new(f);
         let eng = self.engine.lock().unwrap();
-        let line_count = self
-            .tuning
-            .lock()
-            .unwrap()
-            .write_model(&eng, &mut f)
-            .map_err(to_rpc_error)?;
+        let line_count = eng.tuner.write_model(&eng, &mut f).map_err(to_rpc_error)?;
 
         Ok(line_count)
     }
 
     fn tuning_mean_squared_error(&self) -> Result<f32> {
-        let mse = self
-            .tuning
-            .lock()
-            .unwrap()
-            .calculate_mean_square_error(&self.engine.lock().unwrap());
+        let eng = self.engine.lock().unwrap();
+        let mse = eng.tuner.calculate_mean_square_error(&eng).map_err(to_rpc_error)?;
         Ok(mse)
     }
 

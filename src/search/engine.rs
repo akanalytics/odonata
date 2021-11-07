@@ -4,6 +4,7 @@ use crate::position::Position;
 use crate::search::algo::Algo;
 use crate::search::timecontrol::TimeControl;
 use crate::stat::Stat;
+use crate::tuning::Tuning;
 use crate::utils::Formatting;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -23,8 +24,11 @@ pub struct Engine {
     pub shared_tt: bool,
     pub thread_count: u32,
     pub config_filename: String,
+
     #[serde(flatten)]
     pub algo: Algo,
+
+    pub tuner: Tuning, 
 
     #[serde(skip)]
     pub engine_init_time: Duration,
@@ -41,6 +45,7 @@ impl Default for Engine {
         Engine {
             config_filename: DEFAULT_CONFIG_FILE.to_string(),
             shared_tt: true,
+            tuner: Tuning::default(),
             algo: Algo::default(),
             engine_init_time: Instant::now().elapsed(),
             search_init_time: Duration::default(),
@@ -50,22 +55,24 @@ impl Default for Engine {
     }
 }
 
-impl Clone for Engine {
-    fn clone(&self) -> Self {
-        Self {
-            config_filename: self.config_filename.clone(),
-            threads: Vec::new(),
-            algo: self.algo.clone(),
-            ..*self
-        }
-    }
-}
+// impl Clone for Engine {
+//     fn clone(&self) -> Self {
+//         Self {
+//             config_filename: self.config_filename.clone(),
+//             threads: Vec::new(),
+//             tuner: self.tuner,  //mv
+//             algo: self.algo.clone(),
+//             ..*self
+//         }
+//     }
+// }
 
 impl fmt::Display for Engine {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "config filename  : {}", self.config_filename)?;
         writeln!(f, "threads          : {}", self.thread_count)?;
         writeln!(f, "shared tt        : {}", self.shared_tt)?;
+        writeln!(f, "tuner            : {:?}", self.tuner)?;
         writeln!(
             f,
             "engine init time : {}",
@@ -86,11 +93,13 @@ impl Component for Engine {
     fn new_game(&mut self) {
         self.threads.clear();
         self.algo.new_game();
+        self.tuner.new_game();
     }
 
     fn new_position(&mut self) {
         self.threads.clear();
         self.algo.new_position();
+        self.tuner.new_position();
     }
 }
 
@@ -119,9 +128,9 @@ impl Engine {
             .unwrap();
 
         let toml = Toml::string(toml);
-        let engine = Self::default();
+        let _engine = Self::default();
         // engine.configure(&ParsedConfig::global());
-        let engine: Engine = Figment::new().merge(engine).merge(toml).extract().unwrap();
+        let engine: Engine = Figment::new().merge(toml).extract().unwrap();
         engine
     }
 
@@ -141,7 +150,9 @@ impl Engine {
             fig = fig.merge(Toml::string(&format!("{} = {}", k, v)));
         }    
         let engine: Engine = fig.extract().context(format!("error in {:?}", map))?;
-        *self = engine;
+        self.algo = engine.algo;
+        self.thread_count = engine.thread_count;
+        self.config_filename = engine.config_filename;
         Ok(())
     }
 

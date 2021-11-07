@@ -678,12 +678,15 @@ mod tests {
         println!("{:?}", ply_stats);
         println!("{:#?}", ply_stats);
 
+        let mut node = Node::default();
+        node.ply = 2;
+
         let mut search = SearchStats::default();
-        search.inc_leaf_nodes(2);
-        search.inc_leaf_nodes(2);
-        search.inc_leaf_tt_nodes(2);
+        search.inc_leaf_nodes(&node);
+        search.inc_leaf_nodes(&node);
+        search.inc_leaf_tt_nodes(1);
         search.inc_node_cut(2, MoveType::GoodCapture, 0);
-        search.inc_interior_nodes(0);
+        search.inc_interior_nodes(&node);
         println!("{}", search);
     }
 }
