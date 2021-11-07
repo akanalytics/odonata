@@ -5,7 +5,7 @@ use crate::search::engine::Engine;
 use crate::search::timecontrol::TimeControl;
 use std::fmt;
 
-#[derive(Clone, Default, Debug)]
+#[derive(Default, Debug)]
 pub struct Exam {
     positions: Vec<Position>,
     engine: Engine,
