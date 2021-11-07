@@ -899,15 +899,15 @@ mod tests {
         let mut uci = Uci::new();
         let bishop = uci.engine.lock().unwrap().algo.eval.mb.piece_weights[Piece::Bishop];
         assert_eq!(uci.engine.lock().unwrap().algo.eval.position, true);
-        uci.prelude.push("setoption name Config value eval.b.s=700".into());
+        uci.prelude.push("setoption name Config value eval.mb.b.s=700".into());
         uci.prelude
-            .push("setoption name Config value eval.mb.n=[400, 429]".into());
+            .push("setoption name Config value eval.mb.n = { s=400, e = 429 }".into());
         uci.prelude
             .push("setoption name Config value eval.position=false".into());
         uci.prelude
             .push("setoption name Explain_Eval".into());
         uci.prelude
-            .push("setoption name Config value eval.pst.p=[[[10.0, 10.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]], [[103.0, 224.0], [103.0, 224.0], [103.0, 224.0], [103.0, 224.0], [103.0, 224.0], [103.0, 224.0], [103.0, 224.0], [103.0, 224.0]], [[-14.0, 168.0], [-14.0, 168.0], [-14.0, 168.0], [-14.0, 168.0], [-14.0, 168.0], [-14.0, 168.0], [-14.0, 168.0], [-14.0, 168.0]], [[14.0, 32.0], [14.0, 32.0], [14.0, 32.0], [19.0, 32.0], [19.0, 32.0], [14.0, 32.0], [14.0, 32.0], [14.0, 32.0]], [[-9.0, 10.0], [0.0, 10.0], [0.0, 10.0], [20.0, 10.0], [20.0, 10.0], [-5.0, 10.0], [-5.0, 10.0], [-9.0, 10.0]], [[-5.0, 5.0], [-5.0, 5.0], [-9.0, 5.0], [0.0, 5.0], [0.0, 5.0], [-9.0, 5.0], [-5.0, 5.0], [-5.0, 5.0]], [[4.0, 0.0], [15.0, 0.0], [15.0, 0.0], [-35.0, 0.0], [-35.0, 0.0], [15.0, 0.0], [15.0, 0.0], [4.0, 0.0]], [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]]".into());
+            .push("setoption name Config value eval.pst.p.a2.s = 10".into());
         uci.prelude
             .push("setoption name Show_Config".into());
         uci.prelude.push("quit".into());
@@ -916,8 +916,7 @@ mod tests {
         assert_eq!(eval.position, false);
         assert_eq!(eval.mb.piece_weights[Piece::Knight].s() as i32, 400);
         assert_eq!(eval.mb.piece_weights[Piece::Knight].e() as i32, 429);
-        assert_eq!(eval.mb.piece_weights[Piece::Bishop], bishop);
-        assert_eq!(eval.position, false);
+        assert_eq!(eval.mb.piece_weights[Piece::Bishop].s() as i32, 700);
     }
 
     #[test]
