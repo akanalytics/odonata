@@ -19,6 +19,8 @@ minmax = false
 [tuner]
 ignore_known_outcomes = true
 multi_threading_min_positions = 20000
+logistic_steepness_k = { s = 4, e = 4 }
+ignore_draws = false
 
 
 [ids]
@@ -630,7 +632,7 @@ pst.k.h8 = { s =    6.56, e =  -81.05}
 # defends.k.r               = [  11.16,   12.59]
 # attacks.k.q               = [  12.02,   11.71]
 # defends.k.q               = [   9.32,   14.62]
-# attacks.k.k               = [  11.86,   12.76]
+# attacks.k.k               = [  11.86,   12.76]    
 # defends.k.k               = [  10.60,   0
 
 [eval.mb]

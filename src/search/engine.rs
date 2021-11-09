@@ -8,7 +8,7 @@ use crate::tuning::Tuning;
 use crate::utils::Formatting;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::fmt;
+use std::{fmt, mem};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 use anyhow::{Result, Context};
@@ -36,6 +36,7 @@ pub struct Engine {
     pub search_init_time: Duration,
     #[serde(skip)]
     threads: Vec<JoinHandle<Algo>>,
+
 }
 
 const DEFAULT_CONFIG_FILE: &'static str = "config.toml";
@@ -150,9 +151,17 @@ impl Engine {
             fig = fig.merge(Toml::string(&format!("{} = {}", k, v)));
         }    
         let engine: Engine = fig.extract().context(format!("error in {:?}", map))?;
-        self.algo = engine.algo;
-        self.thread_count = engine.thread_count;
-        self.config_filename = engine.config_filename;
+        let mut tuner = Tuning::default();
+        mem::swap(&mut tuner.models_and_outcomes, &mut self.tuner.models_and_outcomes);
+        mem::swap(&mut tuner.boards, &mut self.tuner.boards);
+        *self = Engine {
+            tuner: Tuning {
+                boards: tuner.boards,
+                models_and_outcomes: tuner.models_and_outcomes,
+                ..engine.tuner
+            },
+            ..engine
+        };
         Ok(())
     }
 

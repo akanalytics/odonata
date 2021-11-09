@@ -601,7 +601,12 @@ impl Uci {
             use figment::providers::{Format, Toml};
             use figment::{Figment};
             use anyhow::Context;
+            use std::path::{Path};
             // use toml;
+            let path = Path::new(&engine.config_filename);
+            if !path.is_file() {
+                bail!("Config_File {} not found", engine.config_filename);
+            }
             let fig = Figment::new()
                 .merge(&*engine)
                 .merge(Toml::file(&engine.config_filename));
@@ -884,6 +889,7 @@ mod tests {
     #[test]
     fn test_uci_config_file() {
         let mut uci = Uci::new();
+        // uci.uci_option_name_value("Config_File", "../odonata/resources/Xconfig.toml").unwrap();
         assert_eq!(uci.engine.lock().unwrap().algo.eval.position, true);
         uci.prelude
             .push("setoption name Config_File value ../odonata/resources/config.toml".into());
@@ -897,7 +903,7 @@ mod tests {
     #[test]
     fn test_uci_setoption() {
         let mut uci = Uci::new();
-        let bishop = uci.engine.lock().unwrap().algo.eval.mb.piece_weights[Piece::Bishop];
+        let _bishop = uci.engine.lock().unwrap().algo.eval.mb.piece_weights[Piece::Bishop];
         assert_eq!(uci.engine.lock().unwrap().algo.eval.position, true);
         uci.prelude.push("setoption name Config value eval.mb.b.s=700".into());
         uci.prelude

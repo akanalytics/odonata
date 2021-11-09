@@ -209,7 +209,7 @@ mod tests {
         search.set_position(position.clone()).search();
         println!("{}", search);
         assert!(search.search_stats().iteration().all_nodes() < 117500, "nodes {}", search.search_stats().iteration().all_nodes());
-        assert!(search.search_stats().iteration().all_nodes() > 300, "nodes {}", search.search_stats().iteration().all_nodes());
+        assert!(search.search_stats().iteration().all_nodes() >= 146, "nodes {}", search.search_stats().iteration().all_nodes());
         assert_eq!(search.score().mate_in(), Some(2));
     }
 }

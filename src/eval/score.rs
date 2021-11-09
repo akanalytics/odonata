@@ -184,16 +184,18 @@ impl Score {
     // }
 
     // https://www.chessprogramming.org/Pawn_Advantage,_Win_Percentage,_and_Elo
-    pub fn win_probability_of(centipawns: f32) -> f32 {
-        let k = 400.0;
-        let w = 1.0 / (1.0 + 10_f32.powf(-centipawns / k));
+    pub fn win_probability_from_cp_and_k(centipawns: f32, k: f32) -> f32 {
+        let w = 1.0 / (1.0 + 10_f32.powf(-centipawns / (k * 100.0)));
         w
     }
 
-
     pub fn win_probability(self) -> f32 {
+        self.win_probability_using_k(4.0)
+    }
+
+    pub fn win_probability_using_k(self, k: f32) -> f32 {
         if self.is_numeric() {
-            Self::win_probability_of(self.cp as f32)
+            Self::win_probability_from_cp_and_k(self.cp as f32, k)
         } else if self.cp > 0 {
             1.0 
         }

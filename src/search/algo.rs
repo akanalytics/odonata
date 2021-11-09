@@ -545,61 +545,9 @@ mod tests {
         search.move_orderer.enabled = false;
         search.set_position(Position::from_board(board));
         search.search();
-        assert_eq!(search.pv()[0].uci(), "g8f6");
+        assert_eq!(search.pv()[0].uci(), "d7d5");
     }
 
-
-    // #[test]
-    // fn test_async_sleep() {
-    //     let position = Catalog::mate_in_2()[0].clone();
-    //     let mut algo = Algo::new().set_timing_method(TimeControl::Depth(3)).build();
-    //     algo.search_async(position.board());
-    //     let millis = time::Duration::from_millis(5500);
-    //     thread::sleep(millis);
-
-    //     algo.search_async_stop();
-    //     println!("{}\n\nasync....", algo);
-    //     let nodes = algo.search_stats().total().nodes();
-
-    //     // with gen qsearch
-    //     assert!(nodes < 6000); // piece mob
-
-    //     // previous
-    //     // assert_eq!(nodes, 4586); // pawn promo
-    //     // assert_eq!(nodes, 5096);  // gen qsearch
-    //     // assert_eq!(nodes, 5197);  // wrong halfmove counts in mate score
-    //     // assert_eq!(nodes, 2274); // with sq based qsearch
-    //     // assert_eq!(nodes, 2274); // from 2248 (due to iterator ordering on bits)
-    //     // assert_eq!(nodes, 66234);
-    //     assert_eq!(algo.pv_table.extract_pv().uci(), position.pv().unwrap().uci());
-    //     assert_eq!(algo.score(), Score::white_win(3));
-
-    //     // search again using the tt
-    //     algo.search_async(position.board());
-    //     let millis = time::Duration::from_millis(150);
-    //     thread::sleep(millis);
-    //     algo.search_async_stop();
-    //     println!("{}\n\nasync #2....", algo);
-    // }
-
-    // #[test]
-    // fn test_mate_in_2_async_stopped() {
-    //     let position = Catalog::mate_in_2()[0].clone();
-    //     let mut algo2 = Algo::new()
-    //         .set_timing_method(TimeControl::Depth(3))
-    //         .build();
-    //     algo2.minmax = true;
-    //     let closure = |sp: &SearchProgress| println!("nps {}", sp.time_millis.unwrap_or_default());
-    //     algo2.set_callback(closure);
-    //     algo2.search_async(position.board());
-    //     let millis = time::Duration::from_millis(200);
-    //     thread::sleep(millis);
-    //     algo2.search_async_stop();
-    //     println!("{}", algo2);
-    //     // println!("after stop clock:\n{}", algo.clock);
-    //     let nodes = algo2.search_stats().total().nodes();
-    //     assert!(nodes > 10 && nodes < 66234);
-    // }
 
     #[test]
     #[ignore]

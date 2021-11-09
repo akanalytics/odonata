@@ -377,7 +377,6 @@ mod tests {
     use test_env_log::test;
     use super::*;
     use crate::search::engine::Engine;
-    use anyhow::Result;
 
     #[test]
     fn pst_serde_test() {
@@ -398,19 +397,19 @@ mod tests {
     }
 
     #[test]
-    fn pst_config() -> Result<()> {
+    fn pst_config() {
         let mut eng = Engine::default();
-        eng.configment("eval.pst.p.a2", "{ s=6.5, e=7.6 }")?;
-        eng.configment("eval.pst.p.a2.s", "6.5")?;
-        eng.configment("eval.pst.p.a2.e", "7.5")?;
-        let _text = toml::to_string(&eng)?;
+        let _text = toml::to_string(&eng).unwrap();
+        eng.configment("eval.pst.p.a2", "{ s=6.5, e=7.6 }").unwrap();
+        eng.configment("eval.pst.p.a2.s", "6.5").unwrap();
+        eng.configment("eval.pst.p.a2.e", "7.5").unwrap();
+        let _text = toml::to_string(&eng).unwrap();
         // eprintln!("toml\n{}", text);
         // let lookup = c1.weight("eval.pst.p.a2", &Weight::from_i32(1, 1));
         assert_eq!(eng.algo.eval.pst.pst(Piece::Pawn, Square::A2).s(), Weight::from_f32(6.5,7.5).s());
         assert_eq!(eng.algo.eval.pst.pst(Piece::Pawn, Square::A2).e(), Weight::from_f32(6.5,7.5).e());
-        eng.configment("eval.pst.p.a2.e", "8.5")?;
+        eng.configment("eval.pst.p.a2.e", "8.5").unwrap();
         assert_eq!(eng.algo.eval.pst.pst(Piece::Pawn, Square::A2).e(), Weight::from_f32(6.5,8.5).e());
-        Ok(())
     }
 }
 

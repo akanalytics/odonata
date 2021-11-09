@@ -5,6 +5,7 @@ pub mod pst;
 pub mod model;
 pub mod switches;
 pub mod weight;
+pub mod weight3;
 pub mod material_balance;
 pub mod recognizer;
 pub mod endgame;
