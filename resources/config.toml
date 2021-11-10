@@ -8,6 +8,20 @@
 # Completed... 93.1 M position evaluations per second (45807 recalcs x 1417268 file lines)
 # 
 
+
+# Update 10/11/21
+# Run: 7
+# MSE improved from 0.061157 to 0.061157 (0.00%)
+# MSE improved from 0.061157 to 0.061163 (0.01%) using integer weights
+# Training file ../epd/quiet-labeled.epd
+# Odonata odonata 0.4.12 built on Mon, 08 Nov 2021 19:36:31 +0000
+# Path ../engines/odonata/odonata-stable
+# Completed... 58.3 M position evaluations per second (66496 recalcs x 1417268 file lines)
+# 
+# # fixed style 2w
+# 
+# open files near king taken from 24-fixed-2w - bug fix 
+#
 # baseline
 
 
@@ -67,7 +81,7 @@ tropism_d2               = { s =  -17.95, e =   10.91 }
 tropism_d3               = { s =  -10.06, e =    2.12 }
 pawn_adjacent_shield     = { s =   28.31, e =  -11.15 }
 pawn_nearby_shield       = { s =   21.14, e =   -8.38 }
-open_files_near_king     = { s =   -4.74, e =   -2.49 }
+open_files_near_king     = { s =  -32.74, e =  -21.01 } 
 attacks_near_king        = { s =    7.03, e =    0.44 }
 castling_rights          = { s =    2.42, e =   10.10 }
 undefended_sq            = { s =    3.60, e =    7.45 }

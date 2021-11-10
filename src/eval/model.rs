@@ -605,7 +605,7 @@ impl ModelSide {
                 + (d3 & (b.knights() | b.bishops()) & them).popcount() * 2
                 + (d3 & (b.rooks() | b.queens()) & them).popcount() * 4;
 
-            self.open_files_near_king = (p_fr_att_span & bb.open_files(b.pawns())).popcount();
+            self.open_files_near_king = (d1 & bb.open_files(b.pawns()) & ksq.rank()).popcount();
         }
 
         self.castling_sides = b.castling().contains(CastlingRights::king_side_right(c)) as i32
