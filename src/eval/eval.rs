@@ -20,6 +20,42 @@ use std::fmt;
 
 use super::model::{ExplainScorer, Model};
 
+
+// RunningTotal
+//
+// accumulate (desc, count, weight)  => multiply and tunning total
+//
+
+// ExplainStore
+//
+// accumulate(desc, count, weight) => stores them
+//
+// reaccumulate ?? use array of weights??
+//
+
+
+// mobility
+// array of 32 pieces with mobility counts & piece type
+// loop through and add   mobbonus[piece][count]
+//
+// mv.r.0
+// mv.r.1
+// mv.r.2
+// mv.r.3
+// bonus.r.6.def
+// bonus.r.6.mv
+
+
+
+
+
+
+
+
+
+
+
+
 // eval1 = bl.scoring.material(p=300, b=400, n=700)
 // eval2 = bl.scoring.position(endgame)
 
@@ -184,6 +220,7 @@ pub struct SimpleScorer {
     // pub qcache: TranspositionTable,
     // pub depth: Ply,
     pub pst: Pst,
+    // pub pmvt: Pmvt,
     pub phaser: Phaser,
     pub see: See,
     pub mb: MaterialBalance,
@@ -194,6 +231,7 @@ impl Default for SimpleScorer {
         let me = Self {
             mb: MaterialBalance::default(),
             pst: Pst::default(),
+            // pmvt: Pmvt::default(),
             phaser: Phaser::default(),
             see: See::default(),
             mobility: true,
@@ -631,6 +669,12 @@ impl SimpleScorer {
             && self.mobility
             && m.switches.contains(Switches::MOBILITY)
         {
+            // let wh = m.white.mv.iter().map(|(p, count)| self.pmvt.w_eval_mob(*p, *count)).sum();
+            // let bl = m.black.mv.iter().map(|(p, count)| self.pmvt.w_eval_mob(*p, *count)).sum();
+ 
+            // scorer.position("white mob", 1, 0, wh);
+            // scorer.position("black mob", 0, 1, bl);
+         
             scorer.mobility(
                 "center attacks",
                 w.center_attacks,

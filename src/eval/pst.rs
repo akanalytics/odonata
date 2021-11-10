@@ -45,12 +45,12 @@ use std::collections::BTreeMap;
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct PstHelper {
-    p: BTreeMap<String,Weight>,
-    n: BTreeMap<String,Weight>,
-    b: BTreeMap<String,Weight>,
-    r: BTreeMap<String,Weight>,
-    q: BTreeMap<String,Weight>,
-    k: BTreeMap<String,Weight>,
+    pub p: BTreeMap<String,Weight>,
+    pub n: BTreeMap<String,Weight>,
+    pub b: BTreeMap<String,Weight>,
+    pub r: BTreeMap<String,Weight>,
+    pub q: BTreeMap<String,Weight>,
+    pub k: BTreeMap<String,Weight>,
 }
 
 

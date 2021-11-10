@@ -1,4 +1,6 @@
 
+use crate::board::makemove::MoveMaker;
+use crate::search::algo::Algo;
 use crate::board::Board;
 use crate::eval::score::Score;
 use crate::mv::Move;
@@ -8,7 +10,7 @@ use crate::pvtable::PvTable;
 use crate::infra::parsed_config::{Component};
 use crate::variation::Variation;
 // use crate::{debug, logger::LogInit};
-use crate::types::Ply;
+use crate::types::{MoveType, Ply};
 use std::cmp::min;
 use std::fmt;
 use serde::{Deserialize, Serialize};
@@ -60,6 +62,7 @@ impl Default for NullMovePruning {
 // look for beta cuts by using a null move and null window search around beta
 // works for moves that are just "too good to be true"
 impl NullMovePruning {
+    #[inline]
     pub fn allow(&self, b: &Board, node: &Node, pv_table: &PvTable) -> bool {
         if !self.enabled {
             return false;
@@ -118,6 +121,42 @@ impl NullMovePruning {
         }
     }
 }
+
+
+impl Algo {
+    #[inline]
+    pub fn nmp(&mut self, b: &Board, n: &Node, eval: Score) -> Option<Score> {
+        if self.minmax || !self.nmp.allow(&b, &n, &self.pv_table) {
+            return None;
+        }   
+
+        let r = self.nmp.depth_reduction(eval, &n);
+        let mv = Move::NULL_MOVE;
+        let mut child_board = b.make_move(&mv);
+        self.current_variation.push(mv);
+        self.explainer.start(&self.current_variation);
+        self.stats.inc_nmp(n.ply);
+        let child_score = -self.alphabeta_recursive(
+            &mut child_board,
+            n.ply + 1,
+            n.depth - r - 1,
+            -n.beta,
+            -n.beta + Score::from_cp(1),
+            &mv,
+        );
+        b.undo_move(&mv);
+        self.current_variation.pop();
+        self.explainer.start(&self.current_variation);
+        if child_score >= n.beta {
+            self.stats.inc_node_cut(n.ply, MoveType::Null, -1);
+            self.report_refutation(n.ply);
+            self.explain_nmp(child_score, n.beta);
+            return Some(child_score);
+        }
+        None
+    }
+}
+
 
 
 

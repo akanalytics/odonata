@@ -7,7 +7,7 @@ use crate::mv::Move;
 use crate::pvtable::PvTable;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
-use crate::types::{MoveType, Ply, MAX_PLY};
+use crate::types::{Ply, MAX_PLY};
 use crate::eval::switches::Switches;
 
 
@@ -133,48 +133,8 @@ impl Algo {
             return fut_score;
         }
 
-        // null move
-        if !self.minmax
-            && self.nmp.allow(
-                &board,
-               &n,
-                &self.pv_table,
-            )
-        {
-            let r = self.nmp.depth_reduction(eval, &n);
-            let mv = Move::NULL_MOVE;
-            // try futility pruning on null move
-            // if let Some(futility) = futility {
-            //     if score > -Score::INFINITY {
-            //         if let Some(score) = self.futility.can_prune_move(&mv, board, futility, &n, &self.eval) {
-            //             if score >= n.beta {
-            //                 self.search_stats.inc_node_cut(ply, MoveType::Null);
-            //                 return score;
-            //             }
-            //         }
-            //     }
-            // }
-            let mut child_board = board.make_move(&mv);
-            self.current_variation.push(mv);
-            self.explainer.start(&self.current_variation);
-            self.stats.inc_nmp(ply);
-            let child_score = -self.alphabeta_recursive(
-                &mut child_board,
-                ply + 1,
-                depth - r - 1,
-                -n.beta,
-                -n.beta + Score::from_cp(1),
-                &mv,
-            );
-            board.undo_move(&mv);
-            self.current_variation.pop();
-            self.explainer.start(&self.current_variation);
-            if child_score >= n.beta {
-                self.stats.inc_node_cut(ply, MoveType::Null, -1);
-                self.report_refutation(n.ply);
-                self.explain_nmp(child_score, n.beta);
-                return child_score;
-            }
+        if let Some(beta) = self.nmp(board, &mut n, eval) {
+            return beta;
         }
 
         let mut sorted_moves = self.move_orderer.get_sorted_moves(n, board, tt_mv);
@@ -314,7 +274,7 @@ impl Algo {
             return board.eval(
                 &mut self.eval,
                 &n,
-            ); // Score::DRAW;
+            ); // draw or end of qs
         } else if nt == NodeType::UpperAll {
             self.stats.inc_node_all(ply);
             // nothing

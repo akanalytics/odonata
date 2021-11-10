@@ -2,6 +2,7 @@ pub mod score;
 pub mod eval;
 pub mod see;
 pub mod pst;
+pub mod pmvt;
 pub mod model;
 pub mod switches;
 pub mod weight;

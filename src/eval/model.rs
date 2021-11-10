@@ -13,6 +13,7 @@ use crate::types::Color;
 use crate::types::Piece;
 use crate::utils::Formatting;
 use crate::Bitboard;
+// use arrayvec::ArrayVec;
 
 use super::endgame::EndGame;
 
@@ -86,6 +87,7 @@ pub struct ModelSide {
     pub partially_trapped_pieces: i32,
     pub defended_non_pawn: i32,
     pub xrayed: i32,
+    // pub mv: ArrayVec<(Piece, i32), 32>,
 
     pub attacks: [[i32; Piece::ALL.len()]; Piece::ALL.len()],
     pub defends: [[i32; Piece::ALL.len()]; Piece::ALL.len()],
@@ -694,6 +696,7 @@ impl ModelSide {
             if piece_move_squares + piece_non_pawn_defended_moves == 0 {
                 self.fully_trapped_pieces += 1;
             }
+            // self.mv.push((p, our_attacks.popcount()));
             self.move_squares += piece_move_squares;
             self.non_pawn_defended_moves += piece_non_pawn_defended_moves;
 
