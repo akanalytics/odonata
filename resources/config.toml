@@ -767,6 +767,7 @@ switches = 1279
 enabled = true
 recursive = true
 successive = true
+margin = -10000
 min_depth = 2
 depth_reduction_strat = 100
 a = 2.7

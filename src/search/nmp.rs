@@ -28,6 +28,7 @@ pub struct NullMovePruning {
     pub enabled: bool,
     pub recursive: bool,
     pub successive: bool,
+    pub margin: Score, 
     pub min_depth: Ply,
     pub depth_reduction_strat: i64, 
     pub a: f32, 
@@ -50,6 +51,7 @@ impl Default for NullMovePruning {
             enabled: true,
             recursive: true,
             successive: true,
+            margin: Score::from_cp(-10000),
             min_depth: 2, // 1 means we still prune at frontier (depth=1)
             depth_reduction_strat: 100,
             a: 2.7,
@@ -63,7 +65,7 @@ impl Default for NullMovePruning {
 // works for moves that are just "too good to be true"
 impl NullMovePruning {
     #[inline]
-    pub fn allow(&self, b: &Board, node: &Node, pv_table: &PvTable) -> bool {
+    pub fn allow(&self, b: &Board, node: &Node, eval: Score, pv_table: &PvTable) -> bool {
         if !self.enabled {
             return false;
         } 
@@ -83,6 +85,10 @@ impl NullMovePruning {
         //     // no NMP in PVS search
         //     return false;
         // }
+        if  eval < node.beta + self.margin {
+            return false;
+        }
+
         if b.is_in_check(b.color_us()) {
             return false;
         }
@@ -108,7 +114,7 @@ impl NullMovePruning {
     }
 
     #[inline]
-    pub fn depth_reduction(&self, eval: Score, n: &Node) -> Ply {
+    pub fn depth_reduction(&self, eval: Score, b: &Board, n: &Node) -> Ply {
         match self.depth_reduction_strat {
             0 => 0,
             1 => 1,
@@ -117,6 +123,19 @@ impl NullMovePruning {
             4 => 2 + n.depth / 4 + min((eval - n.beta).as_i16() as i32 / 128, 3),
             5 => 3 + n.depth / 4 + min((eval - n.beta).as_i16() as i32 / 128, 3),
             100 => f32::round(self.a + n.depth as f32 * self.b + f32::min((eval - n.beta).as_i16() as f32 * self.c, 3.0)) as i32,
+
+            // classical adaptive null move pruning reduction 
+            200 => {
+                if n.depth > 8 {
+                    3
+                } else if n.depth <= 6 {
+                    2
+                } else if n.depth > 6 && b.us().popcount() >=3 && b.them().popcount() >=3 { 
+                    3
+                } else {
+                    2 
+                }
+            },
             _ => unreachable!(),
         }
     }
@@ -126,11 +145,11 @@ impl NullMovePruning {
 impl Algo {
     #[inline]
     pub fn nmp(&mut self, b: &Board, n: &Node, eval: Score) -> Option<Score> {
-        if self.minmax || !self.nmp.allow(&b, &n, &self.pv_table) {
+        if self.minmax || !self.nmp.allow(&b, &n, eval, &self.pv_table) {
             return None;
         }   
 
-        let r = self.nmp.depth_reduction(eval, &n);
+        let r = self.nmp.depth_reduction(eval, b, &n);
         let mv = Move::NULL_MOVE;
         let mut child_board = b.make_move(&mv);
         self.current_variation.push(mv);
