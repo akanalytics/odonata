@@ -5,7 +5,7 @@ use crate::bitboard::square::Square;
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::bound::NodeType;
-use crate::cache::lockless_hashmap::SharedTable;
+use crate::cache::lockless_hashmap::{SharedTable, Bucket};
 use crate::eval::score::Score;
 use crate::infra::parsed_config::{Component};
 use crate::mv::Move;
@@ -29,17 +29,6 @@ pub struct TtNode {
     pub node_type: NodeType,
     pub bm: Move,
 }
-
-
-#[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
-pub struct TtNodePacked {
-    pub score: Score,
-    pub draft: u8,
-    pub node_type: u8,
-    pub bm: Move,
-}
-
-
 
 impl Score {
     pub fn pack_16bits(&self) -> u64 {
@@ -266,7 +255,7 @@ impl TranspositionTable2 {
     pub fn new_with_mb(mb: i64) -> Self {
         debug!("tt new with mb {}", mb);
         let me = Self {
-            table: Arc::new(SharedTable::new_with_capacity(Self::convert_mb_to_capacity(mb))),
+            table: Arc::new(SharedTable::new_with_capacity(SharedTable::convert_mb_to_capacity(mb))),
             enabled: true,
             use_tt_for_pv: false,
             allow_truncated_pv: false,
@@ -322,24 +311,24 @@ impl fmt::Display for TranspositionTable2 {
         writeln!(f, "min ply          : {}", self.min_ply)?;
         writeln!(f, "min depth        : {}", self.min_depth)?;
         // writeln!(f, "table            : {}", self.table.len())?;
-        writeln!(f, "entry: pv        : {}", self.count_of(NodeType::ExactPv))?;
-        writeln!(f, "entry: cut       : {}", self.count_of(NodeType::LowerCut))?;
-        writeln!(f, "entry: all       : {}", self.count_of(NodeType::UpperAll))?;
-        writeln!(f, "entry: unused    : {}", self.count_of(NodeType::Unused))?;
+        // writeln!(f, "entry: pv        : {}", self.count_of(NodeType::ExactPv))?;
+        // writeln!(f, "entry: cut       : {}", self.count_of(NodeType::LowerCut))?;
+        // writeln!(f, "entry: all       : {}", self.count_of(NodeType::UpperAll))?;
+        // writeln!(f, "entry: unused    : {}", self.count_of(NodeType::Unused))?;
         let tot = self.hits.get() + self.misses.get() + self.collisions.get() + self.exclusions.get();
         let tot = cmp::max(1, tot);
         writeln!(f, "% hits           : {}", 100 * self.hits.get() / tot)?;
         writeln!(f, "% misses         : {}", 100 * self.misses.get() / tot)?;
         writeln!(f, "% collisions     : {}", 100 * self.collisions.get() / tot)?;
         writeln!(f, "% exclusions     : {}", 100 * self.exclusions.get() / tot)?;
-        for i in 0..10 {
-            writeln!(
-                f,
-                "ages (cur-{})     : {}",
-                i,
-                self.count_of_age(self.current_age - i)
-            )?;
-        }
+        // for i in 0..10 {
+        //     writeln!(
+        //         f,
+        //         "ages (cur-{})     : {}",
+        //         i,
+        //         self.count_of_age(self.current_age - i)
+        //     )?;
+        // }
         writeln!(
             f,
             "tt stats\n{}",
@@ -371,7 +360,7 @@ impl Component for TranspositionTable2 {
 
     fn new_game(&mut self) {
         if self.requires_resize() {
-            let capacity = Self::convert_mb_to_capacity(self.mb);
+            let capacity = SharedTable::convert_mb_to_capacity(self.mb);
             info!("tt resized so capacity is now {}", capacity);
             self.table = Arc::new(SharedTable::new_with_capacity(capacity));
         }
@@ -385,11 +374,6 @@ impl Component for TranspositionTable2 {
 }
 
 impl TranspositionTable2 {
-    pub const ENTRY_SIZE: usize = 2 * mem::size_of::<u64>();
-
-    pub const fn convert_mb_to_capacity(mb: i64) -> usize {
-        (mb as usize * 1_000_000 / Self::ENTRY_SIZE).next_power_of_two()
-    }
 
     pub fn fmt_nodes(&self, f: &mut fmt::Formatter, b: &Board) -> fmt::Result {
         let nodes = self.extract_nodes(b);
@@ -399,9 +383,6 @@ impl TranspositionTable2 {
         Ok(())
     }
 
-    pub const fn convert_capacity_to_mb(cap: usize) -> usize {
-        (cap * Self::ENTRY_SIZE) as usize / 1_000_000
-    }
 
     pub fn next_generation(&mut self) {
         // if self.requires_resize() {
@@ -416,7 +397,7 @@ impl TranspositionTable2 {
     }
 
     pub fn requires_resize(&self) -> bool {
-        let capacity = Self::convert_mb_to_capacity(self.mb);
+        let capacity = SharedTable::convert_mb_to_capacity(self.mb);
         debug!(
             "tt current capacity {} and {} mb implies capacity of {}",
             self.table.capacity(),
@@ -426,29 +407,29 @@ impl TranspositionTable2 {
         self.table.capacity() != capacity
     }
 
-    pub fn count_of(&self, t: NodeType) -> usize {
-        let mut count = 0;
-        for i in 0..self.table.capacity() {
-            let (h, d) = self.table.probe_by_index(i);
-            if h == 0 && d == 0 {
-                continue;
-            }
-            if self.table.index(h) == i {
-                let tt_node = TtNode::unpack(d).0;
-                if tt_node.node_type == t {
-                    count += 1;
-                }
-            }
-        }
-        count
-    }
+    // pub fn count_of(&self, t: NodeType) -> usize {
+    //     let mut count = 0;
+    //     for i in 0..self.table.capacity() {
+    //         let (h, d) = self.table.probe_by_index(i);
+    //         if h == 0 && d == 0 {
+    //             continue;
+    //         }
+    //         if self.table.index(h) == i {
+    //             let tt_node = TtNode::unpack(d).0;
+    //             if tt_node.node_type == t {
+    //                 count += 1;
+    //             }
+    //         }
+    //     }
+    //     count
+    // }
 
-    pub fn count_of_age(&self, age: u8) -> usize {
-        (0..self.table.capacity())
-            .into_iter()
-            .filter(|&i| self.table.probe_by_index(i).1 & 255 == age as u64)
-            .count()
-    }
+    // pub fn count_of_age(&self, age: u8) -> usize {
+    //     (0..self.table.capacity())
+    //         .into_iter()
+    //         .filter(|&i| self.table.probe_by_index(i).1 & 255 == age as u64)
+    //         .count()
+    // }
 
     #[inline]
     pub fn enabled(&self) -> bool {
@@ -476,17 +457,54 @@ impl TranspositionTable2 {
         );
 
         // probe by hash not board so any "conditions" are bypassed
-        let (hash, data) = self.table.probe(h);
-        // FIXME! race condition here we dont worry about
-        if false && hash != h {
-            self.table.utilization.increment();
-            let new_data = TtNode::pack(&new_node, self.current_age);
-            let unpacked = TtNode::unpack(new_data).0;
-            debug_assert!(unpacked == new_node, "{:?} {:?}", unpacked, new_node);
-            self.table.store(h, new_data);
-            return;
-        }
+        let mut bucket_to_overwrite = None;
+        let buckets = self.table.buckets(h);
+        // // FIXME! race condition here we dont worry about
+        // if false && hash != h {
+        //     self.table.utilization.increment();
+        //     let new_data = TtNode::pack(&new_node, self.current_age);
+        //     let unpacked = TtNode::unpack(new_data).0;
+        //     debug_assert!(unpacked == new_node, "{:?} {:?}", unpacked, new_node);
+        //     self.table.store(h, new_data);
+        //     return;
+        // }
 
+        // try and find a matching hash first
+        let new_data = TtNode::pack(&new_node, self.current_age);
+        for bucket in buckets.iter() {
+            let key = bucket.key();
+            let data = bucket.data();
+            if Bucket::has_hash(h, (key, data)) {
+                bucket_to_overwrite = Some(bucket); 
+                break 
+            }
+        }
+        // find an empty one
+        if bucket_to_overwrite.is_none() {
+            for bucket in buckets.iter() {
+                let key = bucket.key();
+                let data = bucket.data();
+                if Bucket::is_empty(key, data) {
+                    bucket_to_overwrite = Some(bucket); 
+                    break 
+                }
+            }
+        }
+        // find oldest
+        if bucket_to_overwrite.is_none() {
+            let mut oldest = 1000;
+            for bucket in buckets.iter() {
+                let data = bucket.data();
+                let old_age = data & 255;
+                // let (_old_node, old_age) = TtNode::unpack(data);
+                if (old_age as i32) < oldest {
+                    oldest = old_age as i32;
+                    bucket_to_overwrite = Some(bucket);
+                } 
+
+            }
+        }
+        let data = bucket_to_overwrite.unwrap().data();
         let (old_node, old_age) = TtNode::unpack(data);
         // if self.current_age > old_age
         // || self.current_age == old_age
@@ -509,18 +527,18 @@ impl TranspositionTable2 {
                 new_node.node_type,
                 new_node.bm
             );
-            if hash == 0 && data == 0 {
-                self.table.utilization.increment();
-            } else {
-                self.updates.increment();
-            }
-            let new_data = TtNode::pack(&new_node, self.current_age);
-
-            self.table.store(h, new_data);
+            // if h == 0 && data == 0 {
+            //     self.table.utilization.increment();
+            // } else {
+            //     self.updates.increment();
+            // }        
+            bucket_to_overwrite.unwrap().write(h, new_data);
             return;
         } else {
             self.fail_priority.increment();
+            return;
         }
+
     }
 
     pub fn delete(&mut self, h: Hash) {
@@ -528,7 +546,7 @@ impl TranspositionTable2 {
             return;
         }
         self.deletes.increment();
-        self.table.delete(h);
+        // self.table.delete(h);
         return;
     }
 
@@ -563,17 +581,14 @@ impl TranspositionTable2 {
         // if !self.enabled || self.capacity() == 0 {
         //     return None;
         // }
-        let (hash, data) = self.table.probe(h);
-        if hash == 0 && data == 0 {
-            self.misses.increment();
-            return None;
-        }
-        if hash == h {
+        if let Some((data, bucket)) = self.table.probe(h) {
             self.hits.increment();
             let new_data = (data & !255) | (self.current_age as u64 & 255);
-            self.table.store(h, new_data);
+            // FIXME!
+            bucket.write(h, new_data);
             return Some(TtNode::unpack(data).0);
         } else {
+            self.misses.increment();
             self.collisions.increment();
             return None;
         }

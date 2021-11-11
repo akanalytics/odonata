@@ -81,7 +81,8 @@ tropism_d2               = { s =  -17.95, e =   10.91 }
 tropism_d3               = { s =  -10.06, e =    2.12 }
 pawn_adjacent_shield     = { s =   28.31, e =  -11.15 }
 pawn_nearby_shield       = { s =   21.14, e =   -8.38 }
-open_files_near_king     = { s =  -32.74, e =  -21.01 } 
+open_files_near_king     = { s =   -4.74, e =   -2.49 }
+# open_files_near_king     = { s =  -32.74, e =  -21.01 } 
 attacks_near_king        = { s =    7.03, e =    0.44 }
 castling_rights          = { s =    2.42, e =   10.10 }
 undefended_sq            = { s =    3.60, e =    7.45 }

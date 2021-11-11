@@ -137,8 +137,8 @@ mod tests {
     fn test_pmvt() {
         let pmvt = Pmvt::default();
         info!("{}", pmvt);
-        let eng = Engine::new();
-        info!("{}", eng.algo.eval.pmvt);
+        let _eng = Engine::new();
+        // info!("{}", eng.algo.eval.pmvt);
     }
 
     #[test]
