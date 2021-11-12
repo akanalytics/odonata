@@ -766,6 +766,12 @@ enabled = true
 method = "SO"
 half_way_score = 3200
 
+[aspiration]
+enabled = true
+min_depth = 4
+window = 100
+max_window = 1200
+multiplier = 4
 
 
 [qsearch]

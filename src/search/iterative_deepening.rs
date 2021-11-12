@@ -116,7 +116,7 @@ impl Algo {
         'outer: loop {
             self.restrictions.exclude_moves.clear();
             for multi_pv_index in 0..self.restrictions.multi_pv_count {
-                self.run_alphabeta(&mut self.board.clone(), &mut Node::root(depth));
+                self.aspiration(&mut self.board.clone(), &mut Node::root(depth));
                 self.stats.clock.start_ply();
                 self.mte.estimate_iteration(depth + 1, &self.stats);
                 self.stats

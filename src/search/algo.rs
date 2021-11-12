@@ -27,6 +27,7 @@ use crate::eval::recognizer::Recognizer;
 use crate::search::taskcontrol::TaskControl;
 use crate::search::timecontrol::TimeControl;
 use crate::search::history_heuristic::HistoryHeuristic;
+use crate::search::aspiration::Aspiration;
 use crate::types::Ply;
 use crate::variation::Variation;
 use std::fmt;
@@ -65,6 +66,7 @@ pub struct Algo {
     pub restrictions: Restrictions,
     pub razor: Razor,
     pub recognizer: Recognizer,
+    pub aspiration: Aspiration,
 
 
     #[serde(skip)]
@@ -155,6 +157,7 @@ impl Component for Algo {
         self.restrictions.new_game();
         self.razor.new_game();
         self.recognizer.new_game();
+        self.aspiration.new_game();
     }
 
     fn new_position(&mut self) {
@@ -189,6 +192,7 @@ impl Component for Algo {
         self.restrictions.new_position();
         self.razor.new_position();
         self.recognizer.new_position();
+        self.aspiration.new_position();
     }
 }
 
@@ -226,6 +230,7 @@ impl fmt::Debug for Algo {
             .field("restrictions", &self.restrictions)
             .field("razor", &self.razor)
             .field("recognizer", &self.recognizer)
+            .field("aspiration", &self.recognizer)
             .finish()
     }
 }
@@ -273,6 +278,7 @@ impl fmt::Display for Algo {
         write!(f, "\n[restrictions]\n{}", self.restrictions)?;
         write!(f, "\n[razor]\n{}", self.razor)?;
         write!(f, "\n[recognizer]\n{}", self.recognizer)?;
+        write!(f, "\n[aspiration]\n{:?}", self.recognizer)?;
         Ok(())
     }
 }
