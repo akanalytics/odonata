@@ -1325,12 +1325,12 @@ class Odonata:
                 d = {}
                 words = record.split()
                 for (i, word) in enumerate(words):
-                    if word in ['depth', 'seldepth', 'nodes', 'nps', 'time', 'cp', 'mate', 'pv']:
+                    if word in ['depth', 'seldepth', 'nodes', 'nps', 'time', 'hashfull', 'cp', 'mate', 'pv']:
                         if word == 'pv':
                             d[word] = words[i+1:]
                         else:
                             d[word] = words[i+1]
-                if " pv " in record:
+                if " pv" in record:
                     results.append(d)
                 elif len(results) > 0:
                     # collect nodes nps etc even though PV not present
