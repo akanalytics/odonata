@@ -130,6 +130,8 @@ impl Futility {
             || 
             node.beta.is_mate() 
             ||
+            node.is_pv()  // VER:0.4.14
+            ||
             (self.avoid_checks && b.is_in_check(b.color_us())) {
             return false;
         }
