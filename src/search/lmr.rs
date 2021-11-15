@@ -4,7 +4,7 @@ use crate::infra::parsed_config::Component;
 use crate::mv::Move;
 use crate::search::node::Node;
 use crate::search::searchstats::SearchStats;
-use crate::types::{MoveType, Piece, Ply};
+use crate::types::{MoveType, Ply};
 // use crate::{debug, logger::LogInit};
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -102,7 +102,7 @@ impl Lmr {
     pub fn lmr(
         &self,
         before: &Board,
-        mv: &Move,
+        _mv: &Move,
         _move_number: u32,
         quiets: i32,
         stage: MoveType,
@@ -135,7 +135,7 @@ impl Lmr {
             _ => 0
         };
 
-        
+
 
         if reduce == 0 {
             return reduce;

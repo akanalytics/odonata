@@ -5,11 +5,12 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 #[derive(Default)]
 pub struct SharedTable {
-    vec: Vec<AtomicU64>,
+    vec: Vec<(AtomicU64, AtomicU64)>,
 
     capacity: usize,
     mask: usize,
-    // buckets: usize,
+    buckets: usize, 
+
     pub utilization: Stat,
 
     pub hits: Stat,
@@ -32,11 +33,12 @@ impl SharedTable {
         let capacity = capacity.next_power_of_two();
         let mut st = SharedTable {
             capacity,
-            mask: (capacity - 1) << 1,
+            mask: (capacity - 1) << 0,
             vec: Vec::new(),
+            buckets: 1,
             ..SharedTable::default()
         };
-        st.vec.resize_with(2 * capacity, || AtomicU64::new(0));
+        st.vec.resize_with(capacity + st.buckets - 1, || (AtomicU64::new(0),AtomicU64::new(0)) );
         debug!(
             "New transposition table with capacity {} mask {:x} len {:x}",
             st.capacity,
@@ -63,8 +65,8 @@ impl SharedTable {
 
     #[inline]
     pub fn probe_by_index(&self, i: usize) -> (Hash, u64) {
-        let xor_hash = self.vec[i].load(Ordering::Relaxed);
-        let data = self.vec[i + 1].load(Ordering::Relaxed);
+        let xor_hash = self.vec[i].0.load(Ordering::Relaxed);
+        let data = self.vec[i].1.load(Ordering::Relaxed);
         // trace!("load {:x} {:x} from position {}", xor_hash, data, i);
         let hash = xor_hash ^ data;
         (hash, data)
@@ -79,20 +81,20 @@ impl SharedTable {
     pub fn store(&self, h: Hash, data: u64) {
         let xor_hash = h ^ data;
         trace!("store {:x} {:x} in position {}", xor_hash, data, self.index(h));
-        self.vec[self.index(h)].store(xor_hash, Ordering::Relaxed);
-        self.vec[self.index(h) + 1].store(data, Ordering::Relaxed);
+        self.vec[self.index(h)].0.store(xor_hash, Ordering::Relaxed);
+        self.vec[self.index(h)].1.store(data, Ordering::Relaxed);
     }
 
     pub fn delete(&self, h: Hash) {
-        self.vec[self.index(h)].store(0, Ordering::Relaxed);
-        self.vec[self.index(h) + 1].store(0, Ordering::Relaxed);
+        self.vec[self.index(h)].0.store(0, Ordering::Relaxed);
+        self.vec[self.index(h)].1.store(0, Ordering::Relaxed);
     }
 
     pub fn clear(&self) {
         for h in 0..self.mask as u64 {
             let xor_hash = 0 ^ 0;
-            self.vec[self.index(h)].store(xor_hash, Ordering::Relaxed);
-            self.vec[self.index(h) + 1].store(0, Ordering::Relaxed);
+            self.vec[self.index(h)].0.store(xor_hash, Ordering::Relaxed);
+            self.vec[self.index(h)].1.store(0, Ordering::Relaxed);
         }
         self.utilization.clear();        
     }
