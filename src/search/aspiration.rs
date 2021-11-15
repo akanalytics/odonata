@@ -9,6 +9,8 @@ use std::cmp::{max, min};
 use std::fmt;
 use serde::{Deserialize, Serialize};
 
+use super::node::Category;
+
 
 
 
@@ -53,31 +55,32 @@ impl Algo {
         &mut self,
         b: &mut Board,
         n: &mut Node,
-    ) -> Score {
+    ) -> (Score, Category) {
 
         if n.depth <= self.aspiration.min_depth || !self.aspiration.enabled {
-			self.run_alphabeta(b, n);
-            self.stats.score
+			return self.run_alphabeta(b, n);
 		} else {
             let mut delta = self.aspiration.window;
-            let mut alpha1 = self.stats.score - delta;
-            let mut beta1 = self.stats.score + delta;
+            let mut alpha1 = self.stats.score() - delta;
+            let mut beta1 = self.stats.score() + delta;
             loop {
                 if delta > self.aspiration.max_window {
-                    self.run_alphabeta(b, n);
-                    return self.stats.score;
+                    return self.run_alphabeta(b, n);
                 }
                 alpha1 = max(n.alpha, alpha1);
                 beta1 = min(n.beta, beta1);
                 info!("Search window {} {}", alpha1, beta1);
                 let mut n1 = Node { alpha: alpha1, beta: beta1, ..*n};
                 delta = self.aspiration.multiplier * delta;
-                self.run_alphabeta(b, &mut n1);
-                let new_score = self.stats.score;
-                if !new_score.is_numeric() {
-                    self.run_alphabeta(b, n);
-                    return self.stats.score;
+
+                let (new_score, cat) = self.run_alphabeta(b, &mut n1);
+                if new_score == -Score::INFINITY {
+                    return (new_score, cat);
                 }
+                if new_score.is_mate() {
+                    return self.run_alphabeta(b, n);
+                }
+
                 if new_score <= alpha1 && alpha1 > n.alpha { 
                     alpha1 = new_score - delta;
                     // beta1 = new_score; // beta1; // score;
@@ -87,8 +90,8 @@ impl Algo {
                     beta1 = new_score + delta;
                 }
                 else {
-                    info!("Found {} in search window {} {}", self.stats.score, alpha1, beta1);
-                    return self.stats.score;
+                    // info!("Found {:?} in search window {} {}", new_score, alpha1, beta1);
+                    return (new_score, cat);
                 } 
             }
         }

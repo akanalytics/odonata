@@ -3,6 +3,9 @@ use crate::eval::score::Score;
 use crate::types::{Ply};
 
 
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum Category { Unknown, Cancelled, Quiesce, Recognized, Stalemate, Draw, Transposition, Razor, Futility, StandingPat, Eval, NullMovePrune }
+
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct Node {

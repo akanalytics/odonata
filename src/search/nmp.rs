@@ -162,7 +162,7 @@ impl Algo {
             -n.beta,
             -n.beta + Score::from_cp(1),
             &mv,
-        );
+        ).0;
         b.undo_move(&mv);
         self.current_variation.pop();
         self.explainer.start(&self.current_variation);

@@ -48,7 +48,7 @@ impl Default for IterativeDeepening {
 
             start_ply: 1,
             end_ply: MAX_PLY - 1,
-            iterations: Vec::new(),
+            iterations: Vec::new(),            
         }
     }
 }
@@ -76,7 +76,7 @@ impl fmt::Display for IterativeDeepening {
                 if iter.interrupted() { "PART" } else { "FULL" }
             )?;
             iter.iteration().fmt_data(f)?;
-            writeln!(f, " {:>8} {:<11}", iter.score.to_string(), iter.pv().to_string())?;
+            writeln!(f, " {:>8} {:<11}", iter.score().to_string(), iter.pv().to_string())?;
         }
         if let Some(last) = self.iterations.last() {
             write!(f, "{:>3} {:>4} ", "---", "----")?;
@@ -133,6 +133,9 @@ impl Algo {
                 // if we were interrupted and no score was set, use the score/move/pv given
                 match results.score {
                     Some(score) if score != -Score::INFINITY && score != Score::INFINITY => {
+                        if depth >= 1 && results.bm().is_null() {
+                            error!("---> Null  best move {}", self);
+                        } 
                         self.task_control.invoke_callback(&results);
                         // we take snapshot the pv/bm only if has completed
                         if multi_pv_index == 0 {
@@ -165,6 +168,9 @@ impl Algo {
         let bm_results = SearchResults::with_best_move(&self.results);
         self.task_control.invoke_callback(&bm_results);
         debug!("\n\n\n=====Search completed=====\n{}", self);
+        if bm_results.bm().is_null() {
+            error!("bm is null\n{}\n{:?}", self, bm_results);
+        }
     }
 
     pub fn exit_iteration(&self) -> bool {
@@ -173,111 +179,7 @@ impl Algo {
             || self.stats.depth >= self.ids.end_ply
             || self.stats.depth >= MAX_PLY / 2
             || (self.restrictions.exclude_moves.len() == 0
-                && (self.search_stats().score.is_mate() || self.pv().is_empty()))
+                && (self.search_stats().score().is_mate() || self.pv().is_empty()))
         // pv.empty = draw
     }
 }
-
-// self.task_control.invoke_callback(&self.results);
-//let i = self.ids.iterations.iter().rposition(|r| r.completed());
-// let last = self.ids.iterations.last().unwrap();
-// if i.is_some() {
-//     let i = i.unwrap();
-//     let res = &self.ids.iterations[i];
-//     self.search_stats.pv = res.pv.clone();
-//     self.search_stats.score = res.score;
-// }
-
-// TODO!
-// in theory the root node in the tt wont have been written by a partial completed ply (single threaded mode), but
-// the pv and the score might have changed. Really we should take the score and bm from a partially completed ply if set, as
-// the previous best will have been searched first, and a change means its no longer best.
-// if self.ids.part_ply  {
-//     self.search_stats.pv = last.pv.clone();
-//     if self.search_stats.pv.len() > 0 {
-//         self.search_stats.score = self.tt.extract_pv_and_score(&self.board).1.unwrap_or_default();  // default wrong as its -inf
-//     }
-// }
-// self.search_stats.pv.truncate(self.max_depth as usize);
-// self.results = sp.to_pos();
-
-// pub fn search_iteratively3(&mut self) {
-//     // self.new_search();
-//     self.ids.calc_range(&self.mte.time_control);
-
-//     for depth in (self.ids.start_ply..self.ids.end_ply).step_by(self.ids.step_size as usize) {
-//         //let mut root_node = Node::new_root(&mut self.board.clone());
-//         self.max_depth = depth;
-//         self.stats.depth = depth;
-//         // self.eval.depth = depth;
-
-//         self.run_alphabeta(&mut self.board.clone(), &mut Node::root(depth));
-//         let mut res = self.search_stats().clone();
-
-//         self.stats.clock.start_ply();
-//         self.mte.estimate_iteration(depth + 1, &res);
-//         self.stats
-//             .record_time_estimate(depth + 1, &self.mte.time_estimate);
-//         self.ids.iterations.push(res.clone());
-//         if res.interrupted() {
-//             counts::SEARCH_IDS_TIMEOUTS.increment();
-//             break;
-//         }
-//         if self.mte.probable_timeout(&res)  {
-//             break;
-//         }
-
-//         let mut sp = SearchResults::with_pv_change(&self);
-//         let pv = res.pv.clone();
-//         // pv.truncate(depth as usize);
-//         sp.pv = Some(pv);
-//         if !self.board.is_legal_variation(&res.pv) {
-//             debug_assert!(false, "PV  {} is invalid on board {}\n{:?}\n{}", res.pv, self.board, res.pv, self);
-//             res.pv.truncate(1);
-//             let pv = res.pv.clone();
-//             sp.pv = Some(pv);
-//         }
-
-//         sp.score = Some(res.score);
-//         self.task_control.invoke_callback(&sp);
-//         counts::SEARCH_IDS_COMPLETES.increment();
-//         if res.score.is_mate() {
-//             break;
-//         }
-//     }
-
-//     let i = self.ids.iterations.iter().rposition(|r| !r.interrupted());
-//     // let last = self.ids.iterations.last().unwrap();
-//     if i.is_some() {
-//         let i = i.unwrap();
-//         let res = &self.ids.iterations[i];
-//         self.stats.pv = res.pv.clone();
-//         self.stats.score = res.score;
-//     }
-
-//     // TODO!
-//     // in theory the root node in the tt wont have been written by a partial completed ply (single threaded mode), but
-//     // the pv and the score might have changed. Really we should take the score and bm from a partially completed ply if set, as
-//     // the previous best will have been searched first, and a change means its no longer best.
-//     // if self.ids.part_ply  {
-//     //     self.stats.pv = last.pv.clone();
-//     //     if self.stats.pv.len() > 0 {
-//     //         self.search_stats.score = self.tt.extract_pv_and_score(&self.board).1.unwrap_or_default();  // default wrong as its -inf
-//     //     }
-//     // }
-//     // self.search_stats.pv.truncate(self.max_depth as usize);
-//     self.results.pv = Some(self.stats.pv.clone());
-//     let sp = SearchResults::pv_change(Some(self.bm()), &self);
-//     self.task_control.invoke_callback(&sp);
-
-//     // self.results = Position::from_board(self.board.clone());
-//     // self.results.set(Tag::SuppliedMove(self.bm()));
-//     // self.results.set(Tag::BestMove(MoveList::from_iter(iter::once(self.bm()))));
-//     // self.results.set(Tag::Pv(self.pv().clone()));
-//     // self.results.set(Tag::CentipawnEvaluation(self.score().as_i16() as i32));
-//     // self.results.set(Tag::AnalysisCountDepth(self.search_stats().depth()));
-//     // self.results.set(Tag::AnalysisCountSelDepth(self.search_stats().selective_depth()));
-//     // self.results.set(Tag::AnalysisCountNodes(self.search_stats().cumulative().all_nodes() as u128));
-//     // self.results.set(Tag::BranchingFactorPercent((100.0 * self.search_stats().branching_factor()) as u32 ));
-
-// }

@@ -11,7 +11,7 @@ use strum::EnumCount;
 use std::time::Duration;
 use format_num::*;
 
-use super::node::Node;
+use super::node::{Category, Node};
 
 
 #[derive(Clone, Debug)]
@@ -30,7 +30,8 @@ pub struct SearchStats {
     plies: Vec<NodeStats>,
 
     pub pv: Variation,
-    pub score: Score,
+    score: Score,
+    category: Category,
 }
 
 #[rustfmt::skip]
@@ -39,6 +40,7 @@ impl fmt::Display for SearchStats {
         writeln!(f, "depth            : {}", self.depth)?;
         writeln!(f, "pv               : {}", self.pv())?;
         writeln!(f, "score            : {}", self.score)?;
+        writeln!(f, "category         : {:?}", self.category)?;
         writeln!(f, "clock (elapsed)  : {}", Formatting::format_duration(self.clock.elapsed_search()))?;
         writeln!(f, "interrupted      : {}", self.interrupted())?;
         writeln!(f, "user cancelled   : {}", self.user_cancelled)?;
@@ -89,6 +91,7 @@ impl Default for SearchStats {
                 .collect(),
             pv: Variation::default(),
             score: Score::default(),
+            category: Category::Unknown,
         }
     }
 }
@@ -98,6 +101,17 @@ impl SearchStats {
         Self::default()
     }
 
+
+    #[inline]
+    pub fn score(&self) -> Score {
+        self.score
+    }
+
+    #[inline]
+    pub fn set_score(&mut self, s: Score, cat: Category) {
+        self.score = s;
+        self.category = cat;
+    }
 
     #[inline]
     fn inc_all_nodes(&mut self) {
@@ -179,11 +193,11 @@ impl SearchStats {
         self.plies[ply as usize].est_time = *estimate;
     }
 
-    pub fn record_iteration(&mut self, ply: Ply, completed: bool, pv: Variation) {
+    pub fn record_iteration(&mut self, ply: Ply, category: Category, pv: Variation) {
         let ply = ply as usize;
         self.plies[ply].elapsed = self.clock.elapsed_ply();
-        self.completed = completed;
-        if completed {
+        self.completed = category != Category::Cancelled;
+        if self.completed {
             self.pv = pv;
         }
         self.cumulative.accumulate(&self.total);

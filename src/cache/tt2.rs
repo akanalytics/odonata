@@ -374,9 +374,6 @@ impl Default for TranspositionTable2 {
 impl Component for TranspositionTable2 {
 
     fn new_game(&mut self) {
-        if self.current_age != 11 {
-            error!("new game\n{}", self);
-        }
         if self.requires_resize() {
             let capacity = Self::convert_mb_to_capacity(self.mb);
             info!("tt resized so capacity is now {}", capacity);

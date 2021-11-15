@@ -10,6 +10,8 @@ use crate::search::node::Node;
 use crate::types::{Ply, MAX_PLY};
 use crate::eval::switches::Switches;
 
+use super::node::Category;
+
 
 pub struct AlphaBeta;
 
@@ -17,19 +19,22 @@ pub struct AlphaBeta;
 // ply is moves made. so ply 3 means w-> b-> w-> after which we score position
 //
 impl Algo {
-    #[inline]
-    pub fn is_leaf(&self, _ply: Ply, depth: Ply) -> bool {
-        depth <= 0
-    }
+    // #[inline]
+    // pub fn is_leaf(&self, _ply: Ply, depth: Ply) -> bool {
+    //     depth <= 0
+    // }
 
-    pub fn run_alphabeta(&mut self, board: &mut Board, node: &mut Node) {
+    pub fn run_alphabeta(&mut self, board: &mut Board, node: &mut Node) -> (Score, Category) {
         let depth = node.depth;
         self.max_depth = depth;
         self.stats.depth = depth;
         self.stats.new_iteration();
         self.pv_table = PvTable::new(MAX_PLY as usize);
         debug_assert!(self.current_variation.len() == 0);
-        self.stats.score = self.alphabeta_recursive(
+
+
+
+        let (score, category) = self.alphabeta_recursive(
             board,
             node.ply,
             self.max_depth,
@@ -37,6 +42,7 @@ impl Algo {
             node.beta,
             &Move::NULL_MOVE,
         );
+        self.stats.set_score(score, category);
         debug_assert!(self.current_variation.len() == 0);
         let (pv, _score) = if self.tt.use_tt_for_pv {
             self.tt.extract_pv_and_score(board)
@@ -44,8 +50,8 @@ impl Algo {
             (self.pv_table.extract_pv(), Some(Score::default()))
         };
         self.stats
-            .record_iteration(self.max_depth, !self.task_control.is_cancelled(), pv);
-
+            .record_iteration(self.max_depth, category, pv);
+        (score, category)
     }
 
     pub fn alphabeta_recursive(
@@ -56,14 +62,14 @@ impl Algo {
         alpha: Score,
         beta: Score,
         last_move: &Move,
-    ) -> Score {
+    ) -> (Score, Category) {
         // debug_assert!(depth > 0);
         self.clear_move(ply);
         self.report_progress();
 
 
         if self.time_up_or_cancelled(ply, false) {
-            return -Score::INFINITY;
+            return (-Score::INFINITY, Category::Cancelled);
         }
 
         let mut n = Node {
@@ -83,6 +89,7 @@ impl Algo {
 
 
         let mut score = -Score::INFINITY;
+        let mut category = Category::Unknown;
         let mut bm = Move::NULL_MOVE;
         let mut nt = NodeType::UpperAll;
 
@@ -90,12 +97,12 @@ impl Algo {
         if ply > 0 && board.draw_outcome().is_some() {
         // if board.draw_outcome().is_some() {
             self.stats.inc_leaf_nodes(&n);
-            return board.eval_draw(&mut self.eval, &n); // will return a draw score
+            return (board.eval_draw(&mut self.eval, &n), Category::Draw); // will return a draw score
         }
 
         let mut tt_mv = Move::NULL_MOVE;
         match self.lookup(board, &mut n) {
-            (Some(ab), None) => return ab,  // alpha, beta or a terminal node
+            (Some(ab), None) => return (ab, Category::Transposition),  // alpha, beta or a terminal node
             (None, Some(bm)) => tt_mv = bm,
             (Some(s), Some(mv)) => { tt_mv = mv; score = s; bm = mv},
             _ => {},
@@ -119,7 +126,7 @@ impl Algo {
 
         // razoring
         if let Some(alphabeta) = self.razor(*last_move, board, eval, &n) {
-            return alphabeta;
+            return (alphabeta, Category::Razor);
         }
 
 
@@ -130,11 +137,11 @@ impl Algo {
         //     eval,
         // );
         if let Some(fut_score) = self.futility.standing_pat(board, &mut n, eval, &self.eval) {
-            return fut_score;
+            return (fut_score, Category::StandingPat);
         }
 
         if let Some(beta) = self.nmp(board, &mut n, eval) {
-            return beta;
+            return (beta, Category::NullMovePrune);
         }
 
         let mut sorted_moves = self.move_orderer.get_sorted_moves(n, board, tt_mv);
@@ -153,19 +160,20 @@ impl Algo {
                 &mut self.stats,
             );
             if allow_red {
-                // check we have a score (and hence a move) nefore we risk pruning everything
-                // if score > -Score::INFINITY {
-                if let Some(est_score) = self.futility.can_prune_move(&mv, move_type, board, eval, &n, &self.eval) {
-                    self.explain_futility(&mv, move_type, est_score, n.alpha);
-                    self.stats.inc_fp_move(ply);
-                    if score == -Score::INFINITY {
-                        score = est_score;
+                // check we have a score (and hence a move) before we risk pruning everything VER:0.4.14
+                if score > -Score::INFINITY {
+                    if let Some(est_score) = self.futility.can_prune_move(&mv, move_type, board, eval, &n, &self.eval) {
+                        self.explain_futility(&mv, move_type, est_score, n.alpha);
+                        self.stats.inc_fp_move(ply);
+                        if score == -Score::INFINITY {
+                            score = est_score;
 
-                    }
-                    if self.futility.can_prune_remaining_moves(board, move_type, &n) {
-                        break;
-                    } else {
-                        continue;
+                        }
+                        if self.futility.can_prune_remaining_moves(board, move_type, &n) {
+                            break;
+                        } else {
+                            continue;
+                        }
                     }
                 }
             }
@@ -204,48 +212,51 @@ impl Algo {
                     board,
                     &n,
                 );
-            let mut child_score;
-            if pvs {
-                debug_assert!(n.alpha.is_numeric());
-                self.stats.inc_pvs_move(ply);
-                // using [alpha, alpha + 1]
-                child_score = -self.alphabeta_recursive(
-                    &mut child_board,
-                    ply + 1,
-                    depth + ext - lmr - 1,
-                    -n.alpha - Score::from_cp(1),
-                    -n.alpha,
-                    &mv,
-                );
-            } else {
-                child_score = -self.alphabeta_recursive(
-                    &mut child_board,
-                    ply + 1,
-                    depth + ext - lmr - 1,
-                    -n.beta,
-                    -n.alpha,
-                    &mv,
-                );
-            }
+            let (mut child_score, mut cat) = 
+                if pvs {
+                    debug_assert!(n.alpha.is_numeric());
+                    self.stats.inc_pvs_move(ply);
+                    // using [alpha, alpha + 1]
+                    self.alphabeta_recursive(
+                        &mut child_board,
+                        ply + 1,
+                        depth + ext - lmr - 1,
+                        -n.alpha - Score::from_cp(1),
+                        -n.alpha,
+                        &mv,
+                    )
+                } else {
+                    self.alphabeta_recursive(
+                        &mut child_board,
+                        ply + 1,
+                        depth + ext - lmr - 1,
+                        -n.beta,
+                        -n.alpha,
+                        &mv,
+                    )
+                };
+            child_score = -child_score;
 
             if (lmr > 0 && self.lmr.re_search || pvs) && child_score > score && child_score < n.beta
             {
                 // research with full window without reduction in depth
                 self.stats.inc_pvs_research(ply);
-                child_score =
-                    -self.alphabeta_recursive(&mut child_board, ply + 1, depth + ext - 1, -n.beta, -n.alpha, &mv);
+                let res = self.alphabeta_recursive(&mut child_board, ply + 1, depth + ext - 1, -n.beta, -n.alpha, &mv);
+                child_score = -res.0;
+                cat = res.1;
             }
             board.undo_move(&mv);
             self.current_variation.pop();
             self.explainer.start(&self.current_variation);
             self.repetition.pop();
             if ply > 1 && self.task_control.is_cancelled() {
-                return -Score::INFINITY;
+                return (-Score::INFINITY, Category::Cancelled);
             }
 
             // println!("move {} score {} alpha {} beta {}", mv, score, alpha, beta);
             if child_score > score {
                 score = child_score;
+                category = cat;
             }
             if child_score > n.alpha { 
                 self.explain_raised_alpha(&mv, child_score, n.alpha);
@@ -253,28 +264,41 @@ impl Algo {
                 bm = mv;
                 nt = NodeType::ExactPv;
                 debug_assert!(board.is_pseudo_legal_move(&bm), "bm {} on board {}", bm, board);
-                self.history.raised_alpha(ply, board, &mv);
+                self.history.raised_alpha(&n, board, &mv);
                 self.record_move(ply, &mv);
             } else {
-                self.history.duff(ply, board, &mv);
+                self.history.duff(&n, board, &mv);
             }
 
             if n.alpha >= n.beta && !self.minmax {
                 nt = NodeType::LowerCut;
                 self.stats.inc_node_cut(ply, move_type, (count - 1) as i32 );
                 self.killers.store(ply, &mv);
-                self.history.beta_cutoff(ply, board, &mv);
+                self.history.beta_cutoff(&n, board, &mv);
                 self.report_refutation(n.ply);
                 break;
             }
+
         }
 
         if count == 0 {
             self.stats.inc_leaf_nodes(&n);
-            return board.eval(
+            if n.is_qs() || depth == 0 {
+                return (board.eval(
+                    &mut self.eval,
+                    &n,
+                ), Category::Quiesce);
+            }
+            else {
+                return 
+                // FIXME VER:0.4.14
+                // (board.eval_draw(&mut self.eval, &n),
+                (board.eval(
                 &mut self.eval,
                 &n,
-            ); // draw or end of qs
+                ), 
+                Category::Stalemate);
+            }
         } else if nt == NodeType::UpperAll {
             self.stats.inc_node_all(ply);
             // nothing
@@ -296,7 +320,7 @@ impl Algo {
         };
         self.tt.store(board.hash(), entry);
         self.explain_node(&bm, nt, score, &self.pv_table.extract_pv_for(ply));
-        score
+        (score, category)
     }
 }
 

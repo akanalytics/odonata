@@ -545,6 +545,7 @@ impl Uci {
         // ops.push(format!("option name nodestime type spin default {} min 0 max 10000", engine.algo.mte.nodestime));
         ops.push(format!("option name MultiPV type spin default {} min 1 max 64", engine.algo.restrictions.multi_pv_count));
         ops.push(format!("option name Hash type spin default {} min 0 max 4000", engine.algo.tt.mb));
+        ops.push("option name UCI_AnalyseMode type check default false".to_string());
         ops.push("option name Ponder type check default false".to_string());
         ops.push("option name Clear Hash type button".to_string());
         ops.push("option name Explain_Eval type button".to_string());
@@ -577,6 +578,7 @@ impl Uci {
 
     fn uci_option_name_value(&mut self, name: &str, value: &str) -> Result<()> {
         let mut engine = self.engine.lock().unwrap();
+        let value = if value == "\"\"" { "" } else { value };
 
         // handle specific name/value uci options
         // FIXME! as hardcoding names of variables 

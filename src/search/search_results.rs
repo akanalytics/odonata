@@ -75,7 +75,7 @@ impl SearchResults {
     }
 
 
-
+    
 
     // pub fn pv_change(best: Option<Move>, algo: &Algo) -> Self {
     //     let stats = algo.search_stats();
@@ -107,8 +107,8 @@ impl SearchResults {
                 None
             },
             pv: Some(stats.pv().clone()),
-            score: if stats.score > -Score::INFINITY {
-                Some(stats.score)
+            score: if stats.score() > -Score::INFINITY {
+                Some(stats.score())
             } else {
                 None
             },

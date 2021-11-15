@@ -34,6 +34,7 @@ use std::fmt;
 use serde::{Deserialize, Serialize};
 
 
+use super::node::Category;
 use super::search_explainer::SearchExplainer;
 use super::search_results::SearchResultsMode;
 
@@ -367,7 +368,7 @@ impl Algo {
 
 
     pub fn score(&self) -> Score {
-        self.search_stats().score
+        self.search_stats().score()
     }
 
     pub fn pv(&self) -> &Variation {
@@ -379,22 +380,7 @@ impl Algo {
         self.stats.restart_clocks();
     }
 
-    // pub fn search_async_stop(&mut self) -> bool {
-    //     self.task_control.cancel();
-    //     self.search_stats.user_cancelled = true;
-    //     let handle = self.child_thread.0.take();
-    //     if let Some(handle) = handle {
-    //         // wait for thread to cancel
-    //         let algo = handle.join().unwrap();
-    //         *self = algo;
-    //         return false;
-    //     } else {
-    //         return true;
-    //         // self.tt = algo.tt.clone();
-    //         // self.search_stats = algo.search_stats;
-    //         // self.pv_table = algo.pv_table;
-    //     }
-    // }
+
 
     #[inline]
     pub fn time_up_or_cancelled(&mut self, ply: Ply, force_check: bool) -> bool {
@@ -417,6 +403,7 @@ impl Algo {
         let time_up = self.mte.is_time_up(ply, self.search_stats());
         if time_up {
             self.stats.completed = false;
+            self.stats.set_score(-Score::INFINITY, Category::Cancelled);
             self.task_control.cancel();
         }
         time_up

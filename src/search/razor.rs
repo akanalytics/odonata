@@ -142,9 +142,9 @@ impl Algo {
         if eval < n.alpha - margin {
             if n.depth <= 2 {
                 // drop straight into qsearch
-                return Some(self.alphabeta_recursive(b, n.ply, 0, n.alpha, n.beta, &last_move));
+                return Some(self.alphabeta_recursive(b, n.ply, 0, n.alpha, n.beta, &last_move).0);
             } else {
-                let score = self.alphabeta_recursive(b, n.ply, 0, n.alpha, n.alpha + Score::from_cp(1), &last_move);
+                let score = self.alphabeta_recursive(b, n.ply, 0, n.alpha, n.alpha + Score::from_cp(1), &last_move).0;
                 if score < n.alpha - margin {
                     return Some(n.alpha);
                 }
