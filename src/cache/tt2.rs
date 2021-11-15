@@ -249,6 +249,7 @@ pub struct TranspositionTable2 {
     pub min_depth: Ply,
 
     #[rustfmt::skip] #[serde(skip)] pub current_age: u8,
+    #[rustfmt::skip] #[serde(skip)] pub exacts: u32,
     #[rustfmt::skip] #[serde(skip)] pub hits: Stat,
     #[rustfmt::skip] #[serde(skip)] pub misses: Stat,
     #[rustfmt::skip] #[serde(skip)] pub collisions: Stat,
@@ -273,6 +274,7 @@ impl TranspositionTable2 {
             mb: mb as i64,
             aging: true,
             current_age: 10, // to allow us to look back
+            exacts: 0,
             hmvc_horizon: 85,
             min_ply: 1, // search restrictions on ply=0
             min_depth: 1, 
@@ -304,6 +306,7 @@ impl fmt::Debug for TranspositionTable2 {
             .field("hmvc.horizon", &self.hmvc_horizon)
             .field("aging", &self.aging)
             .field("current.age", &self.current_age)
+            .field("exacts", &self.exacts)
             .finish()
     }
 }
@@ -318,6 +321,7 @@ impl fmt::Display for TranspositionTable2 {
         writeln!(f, "entry size bytes : {}", mem::size_of::<TtNode>())?;
         writeln!(f, "aging            : {}", self.aging)?;
         writeln!(f, "current age      : {}", self.current_age)?;
+        writeln!(f, "exacts           : {}", self.exacts)?;
         writeln!(f, "hmvc horizon     : {}", self.hmvc_horizon)?;
         writeln!(f, "min ply          : {}", self.min_ply)?;
         writeln!(f, "min depth        : {}", self.min_depth)?;
@@ -370,6 +374,9 @@ impl Default for TranspositionTable2 {
 impl Component for TranspositionTable2 {
 
     fn new_game(&mut self) {
+        if self.current_age != 11 {
+            error!("new game\n{}", self);
+        }
         if self.requires_resize() {
             let capacity = Self::convert_mb_to_capacity(self.mb);
             info!("tt resized so capacity is now {}", capacity);
@@ -431,6 +438,9 @@ impl TranspositionTable2 {
         for i in 0..self.table.capacity() {
             let (h, d) = self.table.probe_by_index(i);
             if h == 0 && d == 0 {
+                if t == NodeType::Unused {
+                    count += 1;
+                }
                 continue;
             }
             if self.table.index(h) == i {
@@ -474,6 +484,10 @@ impl TranspositionTable2 {
             new_node.node_type != NodeType::Unused,
             "Cannot store unsed nodes in tt"
         );
+
+        if new_node.node_type == NodeType::ExactPv {
+            self.exacts += 1;
+        }
 
         // probe by hash not board so any "conditions" are bypassed
         let (hash, data) = self.table.probe(h);

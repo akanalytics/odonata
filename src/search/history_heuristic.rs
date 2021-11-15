@@ -1,21 +1,43 @@
 use crate::bitboard::bitboard::Bitboard;
 use crate::board::Board;
-use crate::infra::parsed_config::{Component};
+use crate::infra::parsed_config::Component;
 use crate::mv::Move;
-use crate::types::{Ply, Piece, Color};
-use std::fmt;
+use crate::types::{Color, Piece};
 use serde::{Deserialize, Serialize};
+use std::fmt;
+
+use super::node::Node;
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+enum AccumulateMethod {
+    Power,
+    Squared,
+    Zero,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+enum HistoryBoard {
+    FromTo,
+    PieceTo,
+    PieceFromTo,
+}
 
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-enum HistoryMethod { PlyPower, PlySquared, Zero }
+enum ScoreMethod {
+    GoodLessBad,
+    GoodOverGoodAndBad,
+    GoodLessBadOverGoodAndBad,
+}
 
-
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-enum HistoryBoard { FromTo, PieceTo, PieceFromTo }
-
+#[derive(Clone, Copy, Debug, Default)]
+struct Tally {
+    good: i32,
+    bad: i32,
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -24,13 +46,14 @@ pub struct HistoryHeuristic {
     scale: i32,
     age_factor: i32,
     malus_factor: i32,
-    alpha_method: HistoryMethod,
-    beta_method: HistoryMethod,
-    duff_method: HistoryMethod,
-    board: HistoryBoard, 
+    alpha_method: AccumulateMethod,
+    beta_method: AccumulateMethod,
+    duff_method: AccumulateMethod,
+    score_method: ScoreMethod,
+    board: HistoryBoard,
 
     #[serde(skip)]
-    history: Box<[[[[i32; 64]; 64];Piece::len()];2]>,
+    history: Box<[[[[Tally; 64]; 64]; Piece::len()]; 2]>,
     // clear_every_move: bool,
 }
 
@@ -42,11 +65,7 @@ impl Component for HistoryHeuristic {
     fn new_position(&mut self) {
         self.adjust_by_factor(self.age_factor);
     }
-
 }
-
-
-
 
 impl Default for HistoryHeuristic {
     fn default() -> Self {
@@ -56,11 +75,12 @@ impl Default for HistoryHeuristic {
             scale: 1,
             age_factor: 4,
             malus_factor: 10,
-            alpha_method: HistoryMethod::PlySquared,
-            beta_method: HistoryMethod::PlySquared,
-            duff_method: HistoryMethod::PlySquared,            
+            alpha_method: AccumulateMethod::Squared,
+            beta_method: AccumulateMethod::Squared,
+            duff_method: AccumulateMethod::Squared,
+            score_method: ScoreMethod::GoodLessBadOverGoodAndBad,
             board: HistoryBoard::PieceTo,
-            history: Box::new([[[[0; 64]; 64]; Piece::len()];2]),
+            history: Box::new([[[[Tally::default(); 64]; 64]; Piece::len()]; 2]),
         }
     }
 }
@@ -92,7 +112,8 @@ impl HistoryHeuristic {
             for p in Piece::ALL_BAR_NONE {
                 for fr in Bitboard::all().squares() {
                     for to in Bitboard::all().squares() {
-                        self.history[c][p][fr][to] *= age_factor / 1024;
+                        self.history[c][p][fr][to].bad *= age_factor / 1024;
+                        self.history[c][p][fr][to].good *= age_factor / 1024;
                     }
                 }
             }
@@ -105,15 +126,21 @@ impl HistoryHeuristic {
             return 0;
         }
         use HistoryBoard::*;
-        match self.board {
+        let tally = match self.board {
             PieceTo => self.history[c][mv.mover_piece()][0][mv.to()],
             FromTo => self.history[c][0][mv.from()][mv.to()],
             PieceFromTo => self.history[c][mv.mover_piece()][mv.from()][mv.to()],
+        };
+        use ScoreMethod::*;
+        match self.score_method {
+            GoodLessBad => tally.good - tally.bad,
+            GoodOverGoodAndBad => 100 * tally.good / (1 + tally.good + tally.bad) * 100,
+            GoodLessBadOverGoodAndBad => 100 * (tally.good - tally.bad) / (1 + tally.good + tally.bad) * 100,
         }
     }
 
     #[inline]
-    pub fn get_mut(&mut self, c: Color, mv: &Move) -> &mut i32 {
+    fn get_mut(&mut self, c: Color, mv: &Move) -> &mut Tally {
         if !self.enabled {
             return &mut self.history[c][0][0][0];
         }
@@ -125,52 +152,62 @@ impl HistoryHeuristic {
         }
     }
 
-
     #[inline]
-    pub fn raised_alpha(&mut self, y: Ply, b: &Board, mv: &Move) {
+    pub fn raised_alpha(&mut self, n: &Node, b: &Board, mv: &Move) {
         if !self.enabled || mv.is_capture() {
             return;
         }
-        use HistoryMethod::*;
-        *self.get_mut(b.color_us(), mv) += match self.alpha_method {
-            PlyPower =>  2 << (y / 4),
-            PlySquared =>  y * y,
-            Zero =>  0,
+        use AccumulateMethod::*;
+        let add = match self.alpha_method {
+            Power => 2 << (n.depth / 4),
+            Squared => n.depth * n.depth,
+            Zero => 0,
         };
+        if i32::checked_add(self.get_mut(b.color_us(), mv).good, add).is_none() {
+            self.adjust_by_factor(2);
+        }
+        self.get_mut(b.color_us(), mv).good += add
     }
 
     #[inline]
-    pub fn beta_cutoff(&mut self, y: Ply, b: &Board, mv: &Move) {
+    pub fn beta_cutoff(&mut self, n: &Node, b: &Board, mv: &Move) {
         if !self.enabled || mv.is_capture() {
             return;
         }
-        use HistoryMethod::*;
-        *self.get_mut(b.color_us(), mv) += match self.alpha_method {
-            PlyPower =>  2 << (y / 4),
-            PlySquared =>  y * y,
-            Zero =>  0,
+        use AccumulateMethod::*;
+        let add = match self.alpha_method {
+            Power => 2 << (n.depth / 4),
+            Squared => n.depth * n.depth,
+            Zero => 0,
         };
+        if i32::checked_add(self.get_mut(b.color_us(), mv).good, add).is_none() {
+            self.adjust_by_factor(2);
+        }
+        self.get_mut(b.color_us(), mv).good += add
     }
 
     #[inline]
-    pub fn duff(&mut self, y: Ply, b: &Board, mv: &Move) {
+    pub fn duff(&mut self, n: &Node, b: &Board, mv: &Move) {
         if !self.enabled || mv.is_capture() {
             return;
         }
-        use HistoryMethod::*;
-        *self.get_mut(b.color_us(), mv) -= match self.alpha_method {
-            PlyPower =>  2 << (y / 4) / self.malus_factor,
-            PlySquared =>  y * y  / self.malus_factor,
-            Zero =>  0,
+        use AccumulateMethod::*;
+        let add = match self.alpha_method {
+            Power => 2 << (n.depth / 4) / self.malus_factor,
+            Squared => n.depth * n.depth / self.malus_factor,
+            Zero => 0,
         };
+        if i32::checked_add(self.get_mut(b.color_us(), mv).bad, add).is_none() {
+            self.adjust_by_factor(2);
+        }
+        self.get_mut(b.color_us(), mv).bad += add
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use test_env_log::test;
     use crate::bitboard::square::Square;
+    use test_env_log::test;
 
     use super::*;
 
@@ -187,10 +224,9 @@ mod tests {
     fn hh_test() {
         let mut hh = HistoryHeuristic::default();
         hh.get_mut(Color::White, &Move::new_quiet(Piece::Pawn, Square::A1, Square::H8));
-        *hh.get_mut(Color::White, &Move::new_quiet(Piece::Pawn, Square::A1, Square::H8)) = 1;
+        hh.get_mut(Color::White, &Move::new_quiet(Piece::Pawn, Square::A1, Square::H8)).good = 1;
+        assert_eq!(hh.get_mut(Color::White, &Move::new_quiet(Piece::Pawn, Square::A1, Square::H8)).good, 1);
         hh.new_position();
         hh.new_game();
     }
-
-
 }
