@@ -20,6 +20,7 @@ pub struct Extensions {
     pub promo_max_depth: Ply,
     pub promo_rank: Ply,
     pub promo_extend: Ply,
+    pub pv_enabled: bool,
 }
 
 impl Component for Extensions {
@@ -41,6 +42,8 @@ impl Default for Extensions {
             promo_max_depth: 1,
             promo_rank: 7,
             promo_extend: 1,
+
+            pv_enabled: false,
         }
     }
 }
@@ -56,25 +59,28 @@ impl Extensions {
         &self,
         b: &Board,
         _mv: &Move,
-        node: &Node,
+        n: &Node,
         phaser: &Phaser,
         stats: &mut SearchStats,
     ) -> (Ply, bool) {
-        if node.is_qs() {
+        if n.is_qs() {
             return (0, true)
+        }
+        if self.pv_enabled && n.ply == 2 && n.depth > 3 && n.depth < 100 && n.is_pv() {
+            return (1, false)
         }
         if self.check_enabled {
             if b.is_in_check(b.color_us())
-                && node.depth <= self.check_max_depth
+                && n.depth <= self.check_max_depth
                 && b.phase(phaser) < self.check_max_phase
             {
-                stats.inc_ext_check(node.ply);
+                stats.inc_ext_check(n.ply);
                 (1, false);
             }
         }
         if self.promo_enabled {
             if (b.them() & b.pawns() & b.color_them().chooser_wb(Bitboard::RANK_7, Bitboard::RANK_2)).any()
-                && node.depth <= self.promo_max_depth
+                && n.depth <= self.promo_max_depth
             {
                 return (self.promo_extend, false);
             }

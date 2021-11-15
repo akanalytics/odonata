@@ -839,6 +839,7 @@ promo_enabled = false
 promo_max_depth = 1
 promo_rank = 7
 promo_extend = 1
+pv_enabled = false
 
 [lmr]
 enabled = true
@@ -848,11 +849,16 @@ bad_captures = true
 pawns = true
 promos = false
 killers = false
-min_depth = 2
+quiets1 = 20
+quiets2 = 35
+depth1 = 3
+depth2 = 7
+depth3 = 13
+depth4 = 17
+# move_number = 5
 re_search = false
 alpha_numeric = false
 reduce_extensions = false
-red_strat = 6
 
 [mte]
 branching_factor = 11.3
@@ -877,14 +883,14 @@ enabled = true
 avoid_tt_on_repeats = false
 
 [tt]
-aging = true
 enabled = true
+aging = true
 use_tt_for_pv = false
 allow_truncated_pv = false
 mb = 8
 hmvc_horizon = 85
 min_ply = 1
-min_depth = 0
+min_depth = 1
 
 [killers]
 enabled = true

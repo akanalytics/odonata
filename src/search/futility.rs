@@ -90,7 +90,7 @@ pub struct FutilityMeasure {
 
 impl Futility {
     pub fn standing_pat(&self, b: &Board, node: &mut Node, standing_pat: Score, eval: &SimpleScorer) -> Option<Score> {
-        if !node.is_qs() && node.depth != 0 {
+        if !node.is_qs() {
             return None;
         }
 

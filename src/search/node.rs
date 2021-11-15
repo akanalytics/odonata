@@ -54,6 +54,6 @@ impl Node {
 
     #[inline]
     pub fn is_qs(&self) -> bool {
-        self.depth < 0
+        self.depth <= 0
     }
 }

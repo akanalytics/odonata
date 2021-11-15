@@ -146,6 +146,7 @@ impl Algo {
 
         let mut sorted_moves = self.move_orderer.get_sorted_moves(n, board, tt_mv);
         let mut count = 0;
+        let mut quiets = 0;
         while let Some((move_type, mv)) = sorted_moves.next_move(board, self) {
             if self.restrictions.skip_move(ply, &mv) {
                 continue;
@@ -195,16 +196,21 @@ impl Algo {
                     board,
                     &mv,
                     count,
+                    quiets,
                     move_type,
                     &child_board,
                     &n,
                     nt,
                     allow_red,
+                    tt_mv,
                     &mut self.stats,
                 )
             } else {
                 0
             };
+            if lmr > 0 {
+                quiets += 1;
+            }
 
             let pvs = !self.minmax
                 && self.pvs.permitted(
@@ -283,7 +289,7 @@ impl Algo {
 
         if count == 0 {
             self.stats.inc_leaf_nodes(&n);
-            if n.is_qs() || depth == 0 {
+            if n.is_qs() {
                 return (board.eval(
                     &mut self.eval,
                     &n,

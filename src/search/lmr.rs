@@ -12,18 +12,23 @@ use std::fmt;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Lmr {
-    pub enabled: bool,
-    pub pv_node: bool,
-    pub only_nt_all: bool,
-    pub bad_captures: bool,
-    pub pawns: bool,
-    pub promos: bool,
-    pub killers: bool,
-    pub min_depth: Ply,
+    enabled: bool,
+    pv_node: bool,
+    only_nt_all: bool,
+    bad_captures: bool,
+    pawns: bool,
+    promos: bool,
+    killers: bool,
     pub re_search: bool,
-    pub alpha_numeric: bool,
-    pub reduce_extensions: bool,
-    pub red_strat: i32,
+    alpha_numeric: bool,
+    reduce_extensions: bool,
+    quiets1: i32,
+    quiets2: i32,
+    depth1: Ply,
+    depth2: Ply,
+    depth3: Ply,
+    depth4: Ply,
+    iir: bool
 }
 
 // WAC @ 1m nodes
@@ -51,8 +56,13 @@ impl Default for Lmr {
             promos: false,
             killers: false,
             reduce_extensions: false,
-            min_depth: 2,
-            red_strat: 6,
+            quiets1: 20,
+            quiets2: 30,
+            depth1: 3,
+            depth2: 7,
+            depth3: 13,
+            depth4: 17,
+            iir: false, 
         }
     }
 }
@@ -93,86 +103,74 @@ impl Lmr {
         &self,
         before: &Board,
         mv: &Move,
-        move_number: u32,
+        _move_number: u32,
+        quiets: i32,
         stage: MoveType,
         after: &Board,
         node: &Node,
         nt: NodeType,
         allow_red: bool,
+        _tt_mv: Move,
         search_stats: &mut SearchStats,
     ) -> Ply {
-        let mut reduce = 0;
-        if self.enabled && node.depth >= self.min_depth {
-            if !allow_red {
-                return 0;
-            }
-            if node.is_qs() {
-                return 0;
-            }
-            if !self.pawns && mv.mover_piece() == Piece::Pawn {
-                return 0;
-            }
-            // has to be one of these
-            if !(MoveType::QuietUnsorted
-                | MoveType::Quiet
-                | MoveType::Remaining
-                | MoveType::Killer
-                | MoveType::Promo
-                | MoveType::BadCapture)
-                .contains(stage)
-            {
-                return 0;
-            }
-            if !self.promos && stage == MoveType::Promo
-                || !self.killers && stage == MoveType::Killer
-                || !self.bad_captures && stage == MoveType::BadCapture
-            {
-                return 0;
-            }
-            if self.only_nt_all && nt != NodeType::UpperAll {
-                return 0;
-            }
-            if before.is_in_check(before.color_us()) || after.is_in_check(after.color_us()) {
-                return 0;
-            }
-            if self.alpha_numeric && !node.alpha.is_numeric() {
-                return 0;
-            }
-            if !self.pv_node && node.is_pv() {
-                return 0;
-            }
-            search_stats.inc_red_lmr(node.ply);
-            reduce = match self.red_strat {
-                1 => 1,
-                2 => 2,
-                6 => match node.depth {
-                    0..=6 => 1,
-                    7..=12 => 2,
-                    _ => 3,
-                },
-                9 => match node.depth {
-                    0..=9 => 1,
-                    10..=15 => 2,
-                    _ => 3,
-                },
-                20 => match move_number {
-                    0..=20 => 1,
-                    _ => 2,
-                },
-                920 => match node.depth {
-                    0..=9 => match move_number {
-                        0..=20 => 1,
-                        _ => 2,
-                    },
-                    10..=15 => match move_number {
-                        0..=20 => 2,
-                        _ => 3,
-                    },
-                    _ => 3,
-                },
-                _ => 1,
-            }
+        if !self.enabled {
+            return 0;
         }
+        if !allow_red {
+            return 0;
+        }
+        if node.is_qs() {
+            return 0;
+        }
+        let mut reduce = match node.depth  {
+            d if d >= self.depth4 => 4,
+            d if d >= self.depth3 => 3,
+            d if d >= self.depth2 => 2,
+            d if d >= self.depth1 => 1,
+            _ => 0
+        };
+        reduce += match quiets {
+            q if q >= self.quiets2 => 2,
+            q if q >= self.quiets1 => 1,
+            _ => 0
+        };
+
+        
+
+        if reduce == 0 {
+            return reduce;
+        }
+        // has to be one of these
+        if !(MoveType::QuietUnsorted
+            | MoveType::Quiet
+            | MoveType::Remaining
+            | MoveType::Killer
+            | MoveType::Promo
+            | MoveType::BadCapture)
+            .contains(stage)
+        {
+            return 0;
+        }
+        if !self.promos && stage == MoveType::Promo
+            || !self.killers && stage == MoveType::Killer
+            || !self.bad_captures && stage == MoveType::BadCapture
+        {
+            return 0;
+        }
+        if self.only_nt_all && nt != NodeType::UpperAll {
+            return 0;
+        }
+        if before.is_in_check(before.color_us()) || after.is_in_check(after.color_us()) {
+            return 0;
+        }
+        if self.alpha_numeric && !node.alpha.is_numeric() {
+            return 0;
+        }
+        if !self.pv_node && node.is_pv() {
+            return 0;
+        }
+        search_stats.inc_red_lmr(node.ply);
+
         reduce
     }
 }
