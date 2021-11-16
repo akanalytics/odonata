@@ -832,13 +832,17 @@ enabled = true
 min_depth = 2
 
 [extensions]
+max_extend = 1
 check_enabled = false
-check_max_depth = 3
-check_max_phase = 60
+check_max_depth = 2
+check_max_phase = 100
+check_only_captures = false
+check_see = false
+check_see_threshold = 0
 promo_enabled = false
 promo_max_depth = 1
-promo_rank = 7
-promo_extend = 1
+near_promo_enabled = false
+near_promo_max_depth = 1
 pv_enabled = false
 
 [lmr]

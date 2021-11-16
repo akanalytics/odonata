@@ -1,25 +1,27 @@
-use crate::board::Board;
+use crate::eval::score::Score;
 use crate::infra::parsed_config::Component;
 use crate::mv::Move;
-use crate::phaser::Phaser;
 use crate::search::node::Node;
-use crate::search::searchstats::SearchStats;
-use crate::types::{Ply};
-use crate::Bitboard;
-
-// use crate::{debug, logger::LogInit};
+use crate::types::Ply;
+use crate::{board::Board, Algo};
+use crate::{Bitboard, Piece};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
 pub struct Extensions {
+    pub max_extend: Ply,
     pub check_enabled: bool,
     pub check_max_depth: Ply,
     pub check_max_phase: i32,
+    check_see: bool,
+    check_see_threshold: Score,
+    check_only_captures: bool,
     pub promo_enabled: bool,
     pub promo_max_depth: Ply,
-    pub promo_rank: Ply,
-    pub promo_extend: Ply,
+    pub near_promo_enabled: bool,
+    pub near_promo_max_depth: Ply,
     pub pv_enabled: bool,
 }
 
@@ -34,14 +36,19 @@ impl Component for Extensions {
 impl Default for Extensions {
     fn default() -> Self {
         Extensions {
+            max_extend: 1,
             check_enabled: false,
-            check_max_depth: 3,
-            check_max_phase: 60,
+            check_max_depth: 2,
+            check_max_phase: 100,
+            check_see: false,
+            check_see_threshold: Score::zero(),
+            check_only_captures: false,
 
             promo_enabled: false,
             promo_max_depth: 1,
-            promo_rank: 7,
-            promo_extend: 1,
+
+            near_promo_enabled: false,
+            near_promo_max_depth: 1,
 
             pv_enabled: false,
         }
@@ -55,44 +62,50 @@ impl Extensions {
     }
 
     #[inline]
-    pub fn extend(
-        &self,
-        b: &Board,
-        _mv: &Move,
-        n: &Node,
-        phaser: &Phaser,
-        stats: &mut SearchStats,
-    ) -> (Ply, bool) {
+    pub fn extend(&self, before: &Board, after: &Board, mv: &Move, n: &Node, algo: &Algo) -> Ply {
+        let mut ext = 0;
         if n.is_qs() {
-            return (0, true)
+            return 0;
         }
         if self.pv_enabled && n.ply == 2 && n.depth > 3 && n.depth < 100 && n.is_pv() {
-            return (1, false)
+            ext += 1;
         }
         if self.check_enabled {
-            if b.is_in_check(b.color_us())
+            if after.is_in_check(after.color_us())
                 && n.depth <= self.check_max_depth
-                && b.phase(phaser) < self.check_max_phase
+                && after.phase(&algo.eval.phaser) <= self.check_max_phase
+                && (!self.check_only_captures || mv.is_capture())
+                && (!self.check_see || algo.eval.see.eval_move_see(before, mv) >= self.check_see_threshold.as_i16() as i32)
             {
-                stats.inc_ext_check(n.ply);
-                (1, false);
+                // algo.search_stats().inc_ext_check(n.ply);
+                ext += 1;
             }
         }
-        if self.promo_enabled {
-            if (b.them() & b.pawns() & b.color_them().chooser_wb(Bitboard::RANK_7, Bitboard::RANK_2)).any()
-                && n.depth <= self.promo_max_depth
-            {
-                return (self.promo_extend, false);
-            }
-            // mv.mover_piece() == Piece::Pawn
-            //     && mv.to().rank_index_as_white(before.color_us()) >= self.promo_rank as usize
-            //     && node.depth <= self.promo_max_depth
-            // {
-            //     // search_stats.inc_ext_check(node.ply);
-            //     extend += self.promo_extend;
-            // }
+
+        if self.promo_enabled && mv.is_promo() && n.depth <= self.promo_max_depth {
+            ext += 1;
         }
-        (0, true)
+
+        if self.near_promo_enabled
+            && n.depth <= self.near_promo_max_depth
+            && mv.mover_piece() == Piece::Pawn
+            && mv.to().is_in(Bitboard::RANK_7 | Bitboard::RANK_2)
+        {
+            ext += 1;
+        }
+
+        // (before.them() & before.pawns() & before.color_them().chooser_wb(Bitboard::RANK_6, Bitboard::RANK_3)).any()
+        // && n.ply % 2 == 0
+        // && mv.is_promo()
+
+        // mv.mover_piece() == Piece::Pawn
+        //     && mv.to().rank_index_as_white(before.color_us()) >= self.promo_rank as usize
+        //     && node.depth <= self.promo_max_depth
+        // {
+        //     // search_stats.inc_ext_check(node.ply);
+        //     extend += self.promo_extend;
+        // }
+        std::cmp::min(ext, self.max_extend)
     }
 }
 
@@ -124,9 +137,7 @@ mod tests {
         for pos in positions {
             engine.new_game();
             let suggested_depth = pos.acd().unwrap();
-            engine
-                .algo
-                .set_timing_method(TimeControl::Depth(suggested_depth - 1));
+            engine.algo.set_timing_method(TimeControl::Depth(suggested_depth - 1));
             engine.algo.board = pos.board().clone();
 
             engine.search();

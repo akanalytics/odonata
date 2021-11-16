@@ -109,14 +109,14 @@ impl Lmr {
         after: &Board,
         node: &Node,
         nt: NodeType,
-        allow_red: bool,
+        ext: Ply,
         _tt_mv: Move,
         search_stats: &mut SearchStats,
     ) -> Ply {
         if !self.enabled {
             return 0;
         }
-        if !allow_red {
+        if ext !=0 {
             return 0;
         }
         if node.is_qs() {

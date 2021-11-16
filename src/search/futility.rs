@@ -146,8 +146,11 @@ impl Futility {
     // obviously even prunign at depth=2, this move could be a quite move that attacks a piece and means quiese
     // changes the score dramatically - so futility pruning at depth = 1/2 is not without downside
     //
-    pub fn can_prune_move(&self, mv: &Move, mt: MoveType, b: &Board, eval: Score, n: &Node, scorer: &SimpleScorer) -> Option<Score> {
+    pub fn can_prune_move(&self, mv: &Move, mt: MoveType, b: &Board, eval: Score, n: &Node, ext: Ply, scorer: &SimpleScorer) -> Option<Score> {
         if !self.alpha_enabled {
+            return None;
+        }
+        if ext != 0 {
             return None;
         }
         if self.move_types_forbidden.contains(mt) {

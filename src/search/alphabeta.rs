@@ -109,7 +109,7 @@ impl Algo {
         }                
 
 
-        let _e = self.extensions.extend_at_leaf(board);
+        // let _e = self.extensions.extend_at_leaf(board);
             // if e == 0 {
             //     self.stats.inc_leaf_qsearch_nodes(ply);
             //     self.alphabeta_recursive(&mut board, ply + 1, depth - 1, -n.beta, -n.alpha, &mv)                
@@ -153,32 +153,30 @@ impl Algo {
             }
             count += 1;
             self.stats.inc_move(ply);
-            let (ext, allow_red) = self.extensions.extend(
+            let mut child_board = board.make_move(&mv);
+            let ext = self.extensions.extend(
                 board,
+                &child_board,
                 &mv,
                 &n,
-                &self.eval.phaser,
-                &mut self.stats,
+                &self,
             );
-            if allow_red {
-                // check we have a score (and hence a move) before we risk pruning everything VER:0.4.14
-                if score > -Score::INFINITY {
-                    if let Some(est_score) = self.futility.can_prune_move(&mv, move_type, board, eval, &n, &self.eval) {
-                        self.explain_futility(&mv, move_type, est_score, n.alpha);
-                        self.stats.inc_fp_move(ply);
-                        if score == -Score::INFINITY {
-                            score = est_score;
+            // check we have a score (and hence a move) before we risk pruning everything VER:0.4.14
+            if score > -Score::INFINITY {
+                if let Some(est_score) = self.futility.can_prune_move(&mv, move_type, board, eval, &n, ext, &self.eval) {
+                    self.explain_futility(&mv, move_type, est_score, n.alpha);
+                    self.stats.inc_fp_move(ply);
+                    if score == -Score::INFINITY {
+                        score = est_score;
 
-                        }
-                        if self.futility.can_prune_remaining_moves(board, move_type, &n) {
-                            break;
-                        } else {
-                            continue;
-                        }
+                    }
+                    if self.futility.can_prune_remaining_moves(board, move_type, &n) {
+                        break;
+                    } else {
+                        continue;
                     }
                 }
             }
-            let mut child_board = board.make_move(&mv);
             self.repetition.push_move(&mv, &child_board);
             self.current_variation.push(mv);
             self.explainer.start(&self.current_variation);
@@ -201,7 +199,7 @@ impl Algo {
                     &child_board,
                     &n,
                     nt,
-                    allow_red,
+                    ext,
                     tt_mv,
                     &mut self.stats,
                 )
