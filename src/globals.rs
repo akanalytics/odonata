@@ -153,7 +153,6 @@ mod tests {
         assert_eq!(size_of::<Node>(), 12, "Node");
         assert_eq!(size_of::<NodeType>(), 1, "NodeType");
         assert_eq!(size_of::<TtNode>(), 12, "TtNode");
-        assert_eq!(size_of::<TtNodePacked>(), 8, "TtNodePacked");
         assert_eq!(size_of::<Tag>(), 880, "Tag");
         assert_eq!(size_of::<Variation>(), 24, "Variation");
         assert_eq!(size_of::<MoveList>(), 876, "MoveList");

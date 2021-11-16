@@ -187,7 +187,7 @@ impl Engine {
             let builder = thread::Builder::new().name(format!("S{}", i)).stack_size(800_000);
             let mut algo = self.algo.clone();
             if !self.shared_tt {
-                algo.tt = TranspositionTable2::new_with_mb(self.algo.tt.mb);
+                algo.tt = TranspositionTable2::default();
                 warn!("tt not shared accross threads");
                 algo.tt.enabled = self.algo.tt.enabled;
             }

@@ -1,51 +1,93 @@
-use crate::stat::{Stat};
-use crate::types::{Hash};
+use crate::stat::Stat;
+use crate::types::Hash;
+use std::mem;
 use std::sync::atomic::{AtomicU64, Ordering};
+
+#[derive(Default)]
+pub struct Bucket {
+    key: AtomicU64,
+    data: AtomicU64,
+}
+
+impl Bucket {
+    #[inline]
+    pub fn key(&self) -> Hash {
+        self.key.load(Ordering::Relaxed)
+    }
+
+    #[inline]
+    pub fn data(&self) -> u64 {
+        self.data.load(Ordering::Relaxed)
+    }
+
+    #[inline]
+    pub fn is_empty(h: Hash, data: u64) -> bool {
+        h == 0 && data == 0
+    }
+
+    #[inline]
+    pub fn has_hash(h: Hash, (k,d): (Hash, u64)) -> bool {
+        k ^ d == h
+    }
+
+    #[inline]
+    pub fn write(&self, h: Hash, data: u64) {
+        let key = h ^ data;
+        // trace!("store {:x} {:x} in position {}", xor_hash, data, self.index(h));
+        self.key.store(key, Ordering::Relaxed);
+        self.data.store(data, Ordering::Relaxed);
+    }
+
+    #[inline]
+    pub fn set_empty(&self) {
+        self.key.store(0, Ordering::Relaxed);
+        self.data.store(0, Ordering::Relaxed);
+    }
+}
+
 
 
 #[derive(Default)]
 pub struct SharedTable {
-    vec: Vec<(AtomicU64, AtomicU64)>,
+    vec: Vec<Bucket>,
 
     capacity: usize,
     mask: usize,
-    buckets: usize, 
-
+    buckets: usize,
     pub utilization: Stat,
-
-    pub hits: Stat,
-    pub misses: Stat,
-    pub collisions: Stat,
-    pub exclusions: Stat,
-    pub inserts: Stat,
-    pub pv_overwrites: Stat,
-    pub deletes: Stat,
-    pub fail_priority: Stat,
-    pub fail_ownership: Stat,
 }
 
-// 
-// Design copied straight from https://binarydebt.wordpress.com/2013/09/29/lockless-transposition-tables/
-// with adjustments for bit-sizing of items
+//
+// Design taken from
+// https://binarydebt.wordpress.com/2013/09/29/lockless-transposition-tables/
+// with adjustments for bit-sizing of items and multi-buckets
 //
 impl SharedTable {
-    pub fn new_with_capacity(capacity: usize) -> SharedTable {
-        let capacity = capacity.next_power_of_two();
-        let mut st = SharedTable {
-            capacity,
-            mask: (capacity - 1) << 0,
-            vec: Vec::new(),
-            buckets: 1,
-            ..SharedTable::default()
+    pub fn resize(&mut self, capacity: usize, buckets: usize, aligned: bool) {
+        self.capacity = capacity.next_power_of_two();
+        self.buckets = buckets;
+        self.mask = capacity - 1;
+        self.vec = if aligned {
+            aligned_vec(capacity + buckets)
+        } else {
+            Vec::with_capacity(capacity + buckets)
         };
-        st.vec.resize_with(capacity + st.buckets - 1, || (AtomicU64::new(0),AtomicU64::new(0)) );
         debug!(
             "New transposition table with capacity {} mask {:x} len {:x}",
-            st.capacity,
-            st.mask,
-            st.vec.len()
+            self.capacity,
+            self.mask,
+            self.vec.len()
         );
-        st
+    }
+
+    pub const BUCKET_SIZE: usize = mem::size_of::<Bucket>();
+
+    pub const fn convert_mb_to_capacity(mb: i64) -> usize {
+        (mb as usize * 1_000_000 / Self::BUCKET_SIZE).next_power_of_two()
+    }
+
+    pub const fn convert_capacity_to_mb(cap: usize) -> usize {
+        (cap * Self::BUCKET_SIZE) as usize / 1_000_000
     }
 
     #[inline]
@@ -64,38 +106,67 @@ impl SharedTable {
     }
 
     #[inline]
-    pub fn probe_by_index(&self, i: usize) -> (Hash, u64) {
-        let xor_hash = self.vec[i].0.load(Ordering::Relaxed);
-        let data = self.vec[i].1.load(Ordering::Relaxed);
-        // trace!("load {:x} {:x} from position {}", xor_hash, data, i);
-        let hash = xor_hash ^ data;
-        (hash, data)
+    pub fn probe(&self, h: Hash) -> Option<(u64,&Bucket)> {
+        for bucket in &self.vec[self.index(h)..self.index(h) + self.buckets] {
+            let key = bucket.key();
+            let data = bucket.data();
+            if Bucket::is_empty(key, data) {
+                continue;
+            }
+            let hash = key ^ data;
+            if hash == h {
+                return Some((data,bucket));
+            }
+        }
+        None
     }
 
     #[inline]
-    pub fn probe(&self, h: Hash) -> (Hash, u64) {
-        self.probe_by_index(self.index(h))
-    }
-
-    #[inline]
-    pub fn store(&self, h: Hash, data: u64) {
-        let xor_hash = h ^ data;
-        trace!("store {:x} {:x} in position {}", xor_hash, data, self.index(h));
-        self.vec[self.index(h)].0.store(xor_hash, Ordering::Relaxed);
-        self.vec[self.index(h)].1.store(data, Ordering::Relaxed);
-    }
-
-    pub fn delete(&self, h: Hash) {
-        self.vec[self.index(h)].0.store(0, Ordering::Relaxed);
-        self.vec[self.index(h)].1.store(0, Ordering::Relaxed);
+    pub fn buckets(&self, h: Hash) -> &[Bucket] {
+        &self.vec[self.index(h)..self.index(h) + self.buckets]
     }
 
     pub fn clear(&self) {
-        for h in 0..self.mask as u64 {
-            let xor_hash = 0 ^ 0;
-            self.vec[self.index(h)].0.store(xor_hash, Ordering::Relaxed);
-            self.vec[self.index(h)].1.store(0, Ordering::Relaxed);
-        }
-        self.utilization.clear();        
+        self.vec.iter().for_each(
+            |b| b.set_empty()
+        );
+        self.utilization.clear();
+    }
+}
+
+// https://stackoverflow.com/questions/60180121/how-do-i-allocate-a-vecu8-that-is-aligned-to-the-size-of-the-cache-line
+
+
+#[repr(align(64))]
+pub struct AlignToCacheLine([Bucket; 4]);
+
+fn aligned_vec(capacity: usize) -> Vec<Bucket> {
+    // Lazy math to ensure we always have enough.
+    let n_units = capacity / 4 + 4;
+
+    let mut aligned: Vec<AlignToCacheLine> = Vec::with_capacity(n_units);
+
+    let ptr = aligned.as_mut_ptr();
+
+    mem::forget(aligned);
+
+    unsafe {
+        Vec::from_raw_parts(
+            ptr as *mut Bucket,
+            capacity,
+            capacity,
+        )
+    }
+}
+    
+
+#[cfg(test)]
+mod tests {
+    use std::mem::size_of;
+    use super::*;
+
+    #[test]
+    fn tt_size() {
+        assert_eq!(size_of::<AlignToCacheLine>(), 64, "AlignToCacheLine");
     }
 }

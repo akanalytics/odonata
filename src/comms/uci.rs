@@ -592,6 +592,7 @@ impl Uci {
             engine.configment("mte.nodestime", value)?;
         } else if name == "Hash" {
             engine.configment("tt.mb", value)?;
+            engine.algo.tt.new_game();
         } else if name == "UCI_AnalyseMode" {
             engine.configment("analyse_mode", value)?;
         } else if name == "UCI_ShowRefutations" {
