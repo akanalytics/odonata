@@ -897,8 +897,9 @@ mb = 8
 hmvc_horizon = 85
 min_ply = 1
 min_depth = 1
-freshen_on_fetch = false
-replacement = "AgeDepthType"
+freshen_on_fetch = true
+replacement = "AgeTypeDepth"
+preserve_bm = true
 
 [killers]
 enabled = true

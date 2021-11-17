@@ -222,7 +222,7 @@ impl fmt::Display for TtNode {
 // }
 
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 enum Replacement { Always, Age, AgeTypeDepth, AgeDepthType, AgeBlend }
 
 
@@ -245,6 +245,7 @@ pub struct TranspositionTable2 {
     aligned: bool,
     freshen_on_fetch: bool,
     replacement: Replacement,
+    preserve_bm: bool,
 
     #[rustfmt::skip] #[serde(skip)] pub current_age: u8,
     #[rustfmt::skip] #[serde(skip)] pub hits: Stat,
@@ -275,8 +276,9 @@ impl Default for TranspositionTable2 {
             hmvc_horizon: 85,
             min_ply: 1, // search restrictions on ply=0
             min_depth: 1, 
-            freshen_on_fetch: false,
-            replacement: Replacement::AgeDepthType,
+            freshen_on_fetch: true,
+            replacement: Replacement::AgeTypeDepth,
+            preserve_bm: true,
 
             hits: Stat::new("hits"),
             misses: Stat::new("misses"),
@@ -459,7 +461,7 @@ impl TranspositionTable2 {
     }
 
     #[inline]
-    pub fn store(&mut self, h: Hash, new_node: TtNode) {
+    pub fn store(&mut self, h: Hash, mut new_node: TtNode) {
         // FIXME maybe store QS results
         if !self.enabled && new_node.node_type != NodeType::ExactPv || self.capacity() == 0 || new_node.draft < 0 {
             return;
@@ -525,7 +527,7 @@ impl TranspositionTable2 {
         let data = bucket_to_overwrite.unwrap().data();
         let (old_node, old_age) = TtNode::unpack(data);
 
-        let replace = match (self.replacement, match_type) {
+        let replace = match (self.replacement, &match_type) {
             (_, MatchType::Empty) => true,
             (Replacement::Always, _)  => true,
             (Replacement::Age, _)  => self.current_age > old_age,
@@ -563,6 +565,11 @@ impl TranspositionTable2 {
                 new_node.node_type,
                 new_node.bm
             );
+            if let MatchType::SameHash = match_type {
+                if self.preserve_bm && new_node.bm.is_null() {
+                    new_node.bm = old_node.bm;
+                }
+            }
             bucket_to_overwrite.unwrap().write(h, new_data);
             return;
         } else {
