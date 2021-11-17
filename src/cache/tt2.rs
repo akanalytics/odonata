@@ -221,6 +221,11 @@ impl fmt::Display for TtNode {
 //     }
 // }
 
+
+#[derive(Copy, Clone, Serialize, Deserialize)]
+enum Replacement { Always, Age, AgeTypeDepth, AgeDepthType, AgeBlend }
+
+
 // FIXME Mates as score
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -228,16 +233,18 @@ pub struct TranspositionTable2 {
     #[serde(skip)]
     table: Arc<SharedTable>,
 
-    pub aging: bool,
+    aging: bool,
     pub enabled: bool,
     pub use_tt_for_pv: bool,
     pub allow_truncated_pv: bool,
     pub mb: i64,
-    pub hmvc_horizon: i32,
-    pub min_ply: Ply,
-    pub min_depth: Ply,
-    pub buckets: usize,
-    pub aligned: bool,
+    hmvc_horizon: i32,
+    min_ply: Ply,
+    min_depth: Ply,
+    buckets: usize,
+    aligned: bool,
+    freshen_on_fetch: bool,
+    replacement: Replacement,
 
     #[rustfmt::skip] #[serde(skip)] pub current_age: u8,
     #[rustfmt::skip] #[serde(skip)] pub hits: Stat,
@@ -268,6 +275,9 @@ impl Default for TranspositionTable2 {
             hmvc_horizon: 85,
             min_ply: 1, // search restrictions on ply=0
             min_depth: 1, 
+            freshen_on_fetch: false,
+            replacement: Replacement::AgeDepthType,
+
             hits: Stat::new("hits"),
             misses: Stat::new("misses"),
             collisions: Stat::new("collisions"),
@@ -472,6 +482,8 @@ impl TranspositionTable2 {
         //     return;
         // }
 
+        enum MatchType { Empty, SameHash, DifferentHash }
+        let mut match_type = MatchType::Empty;
         // try and find a matching hash first
         let new_data = TtNode::pack(&new_node, self.current_age);
         for bucket in buckets.iter() {
@@ -479,6 +491,7 @@ impl TranspositionTable2 {
             let data = bucket.data();
             if Bucket::has_hash(h, (key, data)) {
                 bucket_to_overwrite = Some(bucket); 
+                match_type = MatchType::SameHash;
                 break 
             }
         }
@@ -489,6 +502,7 @@ impl TranspositionTable2 {
                 let data = bucket.data();
                 if Bucket::is_empty(key, data) {
                     bucket_to_overwrite = Some(bucket); 
+                    match_type = MatchType::Empty;
                     break 
                 }
             }
@@ -502,6 +516,7 @@ impl TranspositionTable2 {
                 // let (_old_node, old_age) = TtNode::unpack(data);
                 if (old_age as i32) < oldest {
                     oldest = old_age as i32;
+                    match_type = MatchType::DifferentHash;
                     bucket_to_overwrite = Some(bucket);
                 } 
 
@@ -509,16 +524,34 @@ impl TranspositionTable2 {
         }
         let data = bucket_to_overwrite.unwrap().data();
         let (old_node, old_age) = TtNode::unpack(data);
-        // if self.current_age > old_age
-        // || self.current_age == old_age
-        //     && (new.entry.draft > old.entry.draft
-        //         || new.entry.draft == old.entry.draft && new.entry.node_type >= old.entry.node_type)
-        // even when the draft is the same we overwrite, as more nodes may have been used in calculating due to a fuller tt..
-        if self.current_age > old_age
-            || self.current_age == old_age
-                && (new_node.node_type > old_node.node_type
-                    || new_node.node_type == old_node.node_type && new_node.draft >= old_node.draft)
-        {
+
+        let replace = match (self.replacement, match_type) {
+            (_, MatchType::Empty) => true,
+            (Replacement::Always, _)  => true,
+            (Replacement::Age, _)  => self.current_age > old_age,
+            (Replacement::AgeTypeDepth, _)  => {
+                self.current_age > old_age || self.current_age == old_age
+                && 
+                (new_node.node_type > old_node.node_type
+                || new_node.node_type == old_node.node_type && new_node.draft >= old_node.draft)
+            }
+            (Replacement::AgeDepthType, _)  => {
+                self.current_age > old_age || self.current_age == old_age
+                && 
+                // even when the draft is the same we overwrite, as more nodes may have been used in calculating due to a fuller tt..
+                (new_node.draft >= old_node.draft
+                || new_node.draft == old_node.draft && new_node.node_type > old_node.node_type)
+            }
+            (Replacement::AgeBlend, _)  => {
+                self.current_age > old_age || self.current_age == old_age
+                && 
+                // overwrite with deeper as long as not overwriting an exact with a non-exact
+                new_node.draft >= old_node.draft 
+                &&
+                (new_node.node_type == NodeType::ExactPv || old_node.node_type != NodeType::ExactPv)
+            }
+        };
+        if replace {
             // new.hash != old.hash &&
             if self.current_age == old_age && old_node.node_type == NodeType::ExactPv {
                 self.pv_overwrites.increment();
@@ -530,11 +563,6 @@ impl TranspositionTable2 {
                 new_node.node_type,
                 new_node.bm
             );
-            // if h == 0 && data == 0 {
-            //     self.table.utilization.increment();
-            // } else {
-            //     self.updates.increment();
-            // }        
             bucket_to_overwrite.unwrap().write(h, new_data);
             return;
         } else {
@@ -587,8 +615,9 @@ impl TranspositionTable2 {
         if let Some((data, bucket)) = self.table.probe(h) {
             self.hits.increment();
             let new_data = (data & !255) | (self.current_age as u64 & 255);
-            // FIXME!
-            bucket.write(h, new_data);
+            if self.freshen_on_fetch {
+                bucket.write(h, new_data);
+            }
             return Some(TtNode::unpack(data).0);
         } else {
             self.misses.increment();
