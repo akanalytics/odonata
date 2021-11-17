@@ -278,7 +278,7 @@ impl Default for TranspositionTable2 {
             min_depth: 1, 
             freshen_on_fetch: true,
             replacement: Replacement::AgeTypeDepth,
-            preserve_bm: true,
+            preserve_bm: false,
 
             hits: Stat::new("hits"),
             misses: Stat::new("misses"),

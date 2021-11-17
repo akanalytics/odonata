@@ -899,7 +899,7 @@ min_ply = 1
 min_depth = 1
 freshen_on_fetch = true
 replacement = "AgeTypeDepth"
-preserve_bm = true
+preserve_bm = false
 
 [killers]
 enabled = true
