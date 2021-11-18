@@ -24,10 +24,10 @@ pub struct Lmr {
     reduce_extensions: bool,
     quiets1: i32,
     quiets2: i32,
-    depth1: Ply,
-    depth2: Ply,
-    depth3: Ply,
-    depth4: Ply,
+    reduce_1_at_depth: Ply,
+    reduce_2_at_depth: Ply,
+    reduce_3_at_depth: Ply,
+    reduce_4_at_depth: Ply,
     iir: bool
 }
 
@@ -58,10 +58,10 @@ impl Default for Lmr {
             reduce_extensions: false,
             quiets1: 20,
             quiets2: 30,
-            depth1: 3,
-            depth2: 7,
-            depth3: 13,
-            depth4: 17,
+            reduce_1_at_depth: 3,
+            reduce_2_at_depth: 7,
+            reduce_3_at_depth: 13,
+            reduce_4_at_depth: 17,
             iir: false, 
         }
     }
@@ -122,26 +122,30 @@ impl Lmr {
         if node.is_qs() {
             return 0;
         }
+
+        if !self.first_move && mv_num <= 1 {
+            return 0;
+        }
+
         let mut reduce = match node.depth  {
-            d if d >= self.depth4 => 4,
-            d if d >= self.depth3 => 3,
-            d if d >= self.depth2 => 2,
-            d if d >= self.depth1 => 1,
-            _ => 0
+            d if d >= self.reduce_4_at_depth => 4,
+            d if d >= self.reduce_3_at_depth => 3,
+            d if d >= self.reduce_2_at_depth => 2,
+            d if d >= self.reduce_1_at_depth => 1,
+            _ => 0,
         };
+        if reduce == 0 {
+            return 0;
+        }
+
+
         reduce += match quiets {
             q if q >= self.quiets2 => 2,
             q if q >= self.quiets1 => 1,
             _ => 0
         };
 
-        if !self.first_move && mv_num <= 1 {
-            return 0;
-        }
 
-        if reduce == 0 {
-            return reduce;
-        }
         // has to be one of these
         if !(MoveType::QuietUnsorted
             | MoveType::Quiet
