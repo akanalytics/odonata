@@ -56,14 +56,13 @@ impl Algo {
 
     pub fn alphabeta_recursive(
         &mut self,
-        board: &mut Board,
+        b: &mut Board,
         ply: Ply,
         depth: Ply,
         alpha: Score,
         beta: Score,
         last_move: &Move,
     ) -> (Score, Category) {
-        // debug_assert!(depth > 0);
         self.clear_move(ply);
         self.report_progress();
 
@@ -79,11 +78,7 @@ impl Algo {
             beta,
         };
 
-        if n.depth == 0 {
-            self.clear_move(ply);
-        }   
-
-        if n.alpha + Score::from_cp(1) == n.beta {
+        if n.is_zw() {
             self.stats.inc_zw_nodes(ply);
         }
 
@@ -94,14 +89,14 @@ impl Algo {
         let mut nt = NodeType::UpperAll;
 
         // we dont draw at root, as otherwise it wont play a move if insufficient-material draw [v32]
-        if ply > 0 && board.draw_outcome().is_some() {
+        if ply > 0 && b.draw_outcome().is_some() {
         // if board.draw_outcome().is_some() {
             self.stats.inc_leaf_nodes(&n);
-            return (board.eval_draw(&mut self.eval, &n), Category::Draw); // will return a draw score
+            return (b.eval_draw(&mut self.eval, &n), Category::Draw); // will return a draw score
         }
 
         let mut tt_mv = Move::NULL_MOVE;
-        match self.lookup(board, &mut n) {
+        match self.lookup(b, &mut n) {
             (Some(ab), None) => return (ab, Category::Transposition),  // alpha, beta or a terminal node
             (None, Some(bm)) => tt_mv = bm,
             (Some(s), Some(mv)) => { tt_mv = mv; score = s; bm = mv},
@@ -114,61 +109,45 @@ impl Algo {
 
 
         // static eval
-        let eval = board.eval_some(&self.eval, Switches::ALL_SCORING);
+        let eval = b.eval_some(&self.eval, Switches::ALL_SCORING);
 
         // razoring
-        if let Some(alphabeta) = self.razor(*last_move, board, eval, &n) {
+        if let Some(alphabeta) = self.razor(*last_move, b, eval, &n) {
             return (alphabeta, Category::Razor);
         }
 
-
-
-        // let futility = self.futility.can_prune_at_node(
-        //     board,
-        //     &n,
-        //     eval,
-        // );
-        if let Some(fut_score) = self.futility.standing_pat(board, &mut n, eval, &self.eval) {
+        if let Some(fut_score) = self.futility.standing_pat(b, &mut n, eval, &self.eval) {
             return (fut_score, Category::StandingPat);
         }
 
-        if let Some(beta) = self.nmp(board, &mut n, eval) {
+        if let Some(beta) = self.nmp(b, &n, eval) {
             return (beta, Category::NullMovePrune);
         }
 
-        let mut sorted_moves = self.move_orderer.get_sorted_moves(n, board, tt_mv);
+        let mut sorted_moves = self.move_orderer.get_sorted_moves(n, b, tt_mv);
         let mut count = 0;
         let mut quiets = 0;
-        while let Some((move_type, mv)) = sorted_moves.next_move(board, self) {
+        while let Some((move_type, mv)) = sorted_moves.next_move(b, self) {
             if self.restrictions.skip_move(ply, &mv) {
                 continue;
             }
             count += 1;
             self.stats.inc_move(ply);
-            let mut child_board = board.make_move(&mv);
+            let mut child_board = b.make_move(&mv);
             let ext = self.extensions.extend(
-                board,
+                b,
                 &child_board,
                 &mv,
                 count,
                 &n,
                 &self,
             );
-            // check we have a score (and hence a move) before we risk pruning everything VER:0.4.14
-            if score > -Score::INFINITY {
-                if let Some(est_score) = self.futility.can_prune_move(&mv, count, move_type, board, &child_board, eval, &n, ext, &self.eval) {
-                    self.explain_futility(&mv, move_type, est_score, n.alpha);
-                    self.stats.inc_fp_move(ply);
-                    if score == -Score::INFINITY {
-                        score = est_score;
-
-                    }
-                    if self.futility.can_prune_remaining_moves(board, move_type, &n) {
-                        break;
-                    } else {
-                        continue;
-                    }
-                }
+            if let Some(est_score) = self.futility.can_prune_move(&mv, count, move_type, b, &child_board, eval, &n, ext, &self.eval) {
+                self.explain_futility(&mv, move_type, est_score, n.alpha);
+                self.stats.inc_fp_move(ply);
+                if self.futility.can_prune_remaining_moves(b, move_type, &n) {
+                    break;
+                } 
             }
             self.repetition.push_move(&mv, &child_board);
             self.current_variation.push(mv);
@@ -184,7 +163,7 @@ impl Algo {
 
             let lmr = if !self.minmax {
                 self.lmr.lmr(
-                    board,
+                    b,
                     &mv,
                     count,
                     quiets,
@@ -206,7 +185,7 @@ impl Algo {
             let pvs = !self.minmax
                 && self.pvs.permitted(
                     nt,
-                    board,
+                    b,
                     &n,
                     count,
                 );
@@ -243,7 +222,7 @@ impl Algo {
                 child_score = -res.0;
                 cat = res.1;
             }
-            board.undo_move(&mv);
+            b.undo_move(&mv);
             self.current_variation.pop();
             self.explainer.start(&self.current_variation);
             self.repetition.pop();
@@ -261,18 +240,18 @@ impl Algo {
                 n.alpha = child_score;
                 bm = mv;
                 nt = NodeType::ExactPv;
-                debug_assert!(board.is_pseudo_legal_move(&bm), "bm {} on board {}", bm, board);
-                self.history.raised_alpha(&n, board, &mv);
+                debug_assert!(b.is_pseudo_legal_move(&bm), "bm {} on board {}", bm, b);
+                self.history.raised_alpha(&n, b, &mv);
                 self.record_move(ply, &mv);
             } else {
-                self.history.duff(&n, board, &mv);
+                self.history.duff(&n, b, &mv);
             }
 
             if n.alpha >= n.beta && !self.minmax {
                 nt = NodeType::LowerCut;
                 self.stats.inc_node_cut(ply, move_type, (count - 1) as i32 );
                 self.killers.store(ply, &mv);
-                self.history.beta_cutoff(&n, board, &mv);
+                self.history.beta_cutoff(&n, b, &mv);
                 self.report_refutation(n.ply);
                 break;
             }
@@ -282,7 +261,7 @@ impl Algo {
         if count == 0 {
             self.stats.inc_leaf_nodes(&n);
             if n.is_qs() {
-                return (board.eval(
+                return (b.eval(
                     &mut self.eval,
                     &n,
                 ), Category::Quiesce);
@@ -291,7 +270,7 @@ impl Algo {
                 return 
                 // FIXME VER:0.4.14
                 // (board.eval_draw(&mut self.eval, &n),
-                (board.eval(
+                (b.eval(
                 &mut self.eval,
                 &n,
                 ), 
@@ -310,14 +289,9 @@ impl Algo {
             panic!("Node type {:?} ", nt);
         }
 
-        let entry = TtNode {
-            score,
-            draft: depth,
-            node_type: nt,
-            bm, // not set for NodeType::All
-        };
-        self.tt.store(board.hash(), entry);
-        self.explain_node(&bm, nt, score, &self.pv_table.extract_pv_for(ply));
+        let entry = TtNode { score, depth, nt, bm, };
+        self.tt.store(b.hash(), entry);
+        // self.explain_node(&bm, nt, score, &self.pv_table.extract_pv_for(ply));
         (score, category)
     }
 }

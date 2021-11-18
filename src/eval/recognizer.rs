@@ -63,7 +63,7 @@ impl Algo {
         if let Some(entry) = self.tt.probe_by_board(b, n.ply, n.depth) {
 
             // FIXME! v33
-            if entry.draft >= n.depth && !(self.repetition.avoid_tt_on_repeats && b.repetition_count().total > 0) {
+            if entry.depth >= n.depth && !(self.repetition.avoid_tt_on_repeats && b.repetition_count().total > 0) {
             //if entry.draft >= draft  && (ply >= 1 || self.tt.allow_tt_at_root) && !(b.repetition_count().total > 0 && self.repetition.avoid_tt_on_repeats)
 
                 if n.ply == 0 && self.restrictions.is_none() {
@@ -71,7 +71,7 @@ impl Algo {
                 }
 
                 // if entry.draft >= draft && !(b.repetition_count().total > 1 && self.repetition.avoid_tt_on_repeats)
-                match entry.node_type {
+                match entry.nt {
                     NodeType::ExactPv => {
                         // previously this position raised alpha, but didnt trigger a cut
                         // no point going through moves as we know what the max score is

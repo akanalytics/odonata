@@ -23,8 +23,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub struct TtNode {
     pub score: Score,
-    pub draft: Ply,
-    pub node_type: NodeType,
+    pub depth: Ply,
+    pub nt: NodeType,
     pub bm: Move,
 }
 
@@ -153,8 +153,8 @@ impl TtNode {
 
     pub fn pack(node: &TtNode, age: u8) -> u64 {
         let mut bits = age as u64; // age in bits 0-7
-        bits |= ((node.draft & 255) as u64) << 8; // bits 8-15
-        bits |= (node.node_type as u64 & 3) << 16; // bits 16 and 17
+        bits |= ((node.depth & 255) as u64) << 8; // bits 8-15
+        bits |= (node.nt as u64 & 3) << 16; // bits 16 and 17
         bits |= (node.score.pack_16bits()) << 18; // bits 18-33
         bits |= (node.bm.pack_20bits()) << 34; // bits 34+
         bits
@@ -167,8 +167,8 @@ impl TtNode {
         let bm = Move::unpack_20bits(bits >> 34);
         (
             TtNode {
-                draft: draft as i32,
-                node_type,
+                depth: draft as i32,
+                nt: node_type,
                 bm,
                 score,
             },
@@ -185,8 +185,8 @@ impl fmt::Display for TtNode {
                 "{:>6} {:>10} {:>3} {:>2}",
                 self.bm.uci(),
                 self.score.to_string(),
-                self.draft,
-                self.node_type
+                self.depth,
+                self.nt
             )
         } else {
             write!(
@@ -194,8 +194,8 @@ impl fmt::Display for TtNode {
                 "{} scoring {} draft {} type {}",
                 self.bm.uci(),
                 self.score,
-                self.draft,
-                self.node_type
+                self.depth,
+                self.nt
             )
         }
     }
@@ -458,11 +458,11 @@ impl TranspositionTable2 {
     #[inline]
     pub fn store(&mut self, h: Hash, mut new_node: TtNode) {
         // FIXME maybe store QS results
-        if !self.enabled && new_node.node_type != NodeType::ExactPv || self.capacity() == 0 || new_node.draft < 0 {
+        if !self.enabled && new_node.nt != NodeType::ExactPv || self.capacity() == 0 || new_node.depth < 0 {
             return;
         }
         debug_assert!(
-            new_node.node_type != NodeType::Unused,
+            new_node.nt != NodeType::Unused,
             "Cannot store unsed nodes in tt"
         );
 
@@ -529,35 +529,35 @@ impl TranspositionTable2 {
             (Replacement::AgeTypeDepth, _)  => {
                 self.current_age > old_age || self.current_age == old_age
                 && 
-                (new_node.node_type > old_node.node_type
-                || new_node.node_type == old_node.node_type && new_node.draft >= old_node.draft)
+                (new_node.nt > old_node.nt
+                || new_node.nt == old_node.nt && new_node.depth >= old_node.depth)
             }
             (Replacement::AgeDepthType, _)  => {
                 self.current_age > old_age || self.current_age == old_age
                 && 
                 // even when the draft is the same we overwrite, as more nodes may have been used in calculating due to a fuller tt..
-                (new_node.draft >= old_node.draft
-                || new_node.draft == old_node.draft && new_node.node_type > old_node.node_type)
+                (new_node.depth >= old_node.depth
+                || new_node.depth == old_node.depth && new_node.nt > old_node.nt)
             }
             (Replacement::AgeBlend, _)  => {
                 self.current_age > old_age || self.current_age == old_age
                 && 
                 // overwrite with deeper as long as not overwriting an exact with a non-exact
-                new_node.draft >= old_node.draft 
+                new_node.depth >= old_node.depth 
                 &&
-                (new_node.node_type == NodeType::ExactPv || old_node.node_type != NodeType::ExactPv)
+                (new_node.nt == NodeType::ExactPv || old_node.nt != NodeType::ExactPv)
             }
         };
         if replace {
             // new.hash != old.hash &&
-            if self.current_age == old_age && old_node.node_type == NodeType::ExactPv {
+            if self.current_age == old_age && old_node.nt == NodeType::ExactPv {
                 self.pv_overwrites.increment();
             }
             debug_assert!(new_node.score > -Score::INFINITY);
             debug_assert!(
-                new_node.node_type != NodeType::ExactPv || !new_node.bm.is_null(),
+                new_node.nt != NodeType::ExactPv || !new_node.bm.is_null(),
                 "bm is null at {:?} mv {:?}",
-                new_node.node_type,
+                new_node.nt,
                 new_node.bm
             );
             if let MatchType::SameHash = match_type {
@@ -650,7 +650,7 @@ impl TranspositionTable2 {
                 // we need to be careful, the root node could be written as a Cut node of equal depth
                 // and although opponent shouldn't have let us get there, they did!
                 // FIXED!
-                if entry.node_type == NodeType::ExactPv || entry.node_type == NodeType::LowerCut {
+                if entry.nt == NodeType::ExactPv || entry.nt == NodeType::LowerCut {
                     mv = &entry.bm;
                     if !mv.is_null() && board.is_pseudo_legal_move(&mv) && board.is_legal_move(&mv) {
                         board = board.make_move(&mv);
@@ -667,20 +667,20 @@ impl TranspositionTable2 {
                         error!(
                             "Invalid move {} for nt {} in tt for board position {}",
                             mv,
-                            entry.node_type,
+                            entry.nt,
                             board.to_fen()
                         );
                         println!(
                             "Invalid move {} for nt {} in tt for board position {}",
                             mv,
-                            entry.node_type,
+                            entry.nt,
                             board.to_fen()
                         );
                         return nodes;
                     }
                 }
                 if nodes.len() == 0 {
-                    println!("root node is {:?}", entry.node_type);
+                    println!("root node is {:?}", entry.nt);
                 }
             }
             // println!("Unable to find hash {} after move {}", board.hash(), mv) ;
@@ -705,8 +705,8 @@ mod tests {
     fn entry123() -> TtNode {
         TtNode {
             score: Score::from_cp(300),
-            draft: 2,
-            node_type: NodeType::ExactPv,
+            depth: 2,
+            nt: NodeType::ExactPv,
             bm: Move::new_quiet(Piece::Pawn, b7.square(), b6.square()),
         }
     }
@@ -714,8 +714,8 @@ mod tests {
     fn entry456() -> TtNode {
         TtNode {
             score: Score::from_cp(200),
-            draft: 3,
-            node_type: NodeType::ExactPv,
+            depth: 3,
+            nt: NodeType::ExactPv,
             bm: Move::new_quiet(Piece::Pawn, a2.square(), a3.square()),
         }
     }
@@ -723,8 +723,8 @@ mod tests {
     fn entry456b() -> TtNode {
         TtNode {
             score: Score::from_cp(201),
-            draft: 4,
-            node_type: NodeType::ExactPv,
+            depth: 4,
+            nt: NodeType::ExactPv,
             bm: Move::new(
                 a1.square(),
                 a2.square(),

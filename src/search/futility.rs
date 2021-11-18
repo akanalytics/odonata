@@ -212,11 +212,8 @@ impl Futility {
     // assumes already the move itself is futile on above test 
     // and we dont prune Hash moves as they are not ordered and may have a capture value < later moves
     pub fn can_prune_remaining_moves(&self, b: &Board, mt: MoveType, _n: &Node) -> bool {
-        if mt == MoveType::Hash  {
-            return false;
-        }
         // we might be pruning a low value capture, with a high value promo later in the move list
-        let near_promos = Bitboard::RANKS_27; // .or(Bitboard::RANKS_36);
+        let near_promos = Bitboard::RANKS_27.or(Bitboard::RANKS_36);
         if (b.pawns() & b.us() & Bitboard::home_half(b.color_them()) & near_promos).any() {
             return false;
         }
