@@ -11,18 +11,19 @@ use std::fmt;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Extensions {
-    pub max_extend: Ply,
-    pub check_enabled: bool,
-    pub check_max_depth: Ply,
-    pub check_max_phase: i32,
+    max_extend: Ply,
+    gives_check_enabled: bool,
+    in_check_enabled: bool,
+    check_max_depth: Ply,
+    check_max_phase: i32,
     check_see: bool,
     check_see_threshold: Score,
     check_only_captures: bool,
-    pub promo_enabled: bool,
-    pub promo_max_depth: Ply,
-    pub near_promo_enabled: bool,
-    pub near_promo_max_depth: Ply,
-    pub pv_enabled: bool,
+    promo_enabled: bool,
+    promo_max_depth: Ply,
+    near_promo_enabled: bool,
+    near_promo_max_depth: Ply,
+    pv_enabled: bool,
 }
 
 impl Component for Extensions {
@@ -37,7 +38,8 @@ impl Default for Extensions {
     fn default() -> Self {
         Extensions {
             max_extend: 1,
-            check_enabled: false,
+            gives_check_enabled: true,
+            in_check_enabled: false,
             check_max_depth: 2,
             check_max_phase: 100,
             check_see: false,
@@ -62,17 +64,18 @@ impl Extensions {
     }
 
     #[inline]
-    pub fn extend(&self, before: &Board, after: &Board, mv: &Move, n: &Node, algo: &Algo) -> Ply {
+    pub fn extend(&self, before: &Board, after: &Board, mv: &Move, mv_num: u32, n: &Node, algo: &Algo) -> Ply {
         let mut ext = 0;
         if n.is_qs() {
             return 0;
         }
-        if self.pv_enabled && n.ply == 2 && n.depth > 3 && n.depth < 100 && n.is_pv() {
+        if self.pv_enabled && n.depth == 1 && mv_num == 1 {
             ext += 1;
         }
-        if self.check_enabled {
-            if after.is_in_check(after.color_us())
-                && n.depth <= self.check_max_depth
+        if self.gives_check_enabled && after.is_in_check(after.color_us())
+        ||
+        self.in_check_enabled && before.is_in_check(before.color_us()) {
+            if n.depth <= self.check_max_depth
                 && after.phase(&algo.eval.phaser) <= self.check_max_phase
                 && (!self.check_only_captures || mv.is_capture())
                 && (!self.check_see || algo.eval.see.eval_move_see(before, mv) >= self.check_see_threshold.as_i16() as i32)

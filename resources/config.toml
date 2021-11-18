@@ -815,7 +815,9 @@ move_types_forbidden = 994
 alpha_enabled = true
 beta_enabled = false
 prune_remaining = false
-avoid_checks = false
+avoid_in_check = false
+avoid_giving_check = true
+first_move = false
 avoid_promos = false
 promo_margin = false
 max_depth = 2
@@ -833,7 +835,8 @@ min_depth = 2
 
 [extensions]
 max_extend = 1
-check_enabled = false
+gives_check_enabled = true
+in_check_enabled = false
 check_max_depth = 2
 check_max_phase = 100
 check_only_captures = false
@@ -847,7 +850,7 @@ pv_enabled = false
 
 [lmr]
 enabled = true
-pv_node = true
+first_move = false
 only_nt_all = false
 bad_captures = true
 pawns = true
@@ -897,6 +900,7 @@ mb = 8
 hmvc_horizon = 85
 min_ply = 1
 min_depth = 1
+rewrite_pv = true
 freshen_on_fetch = true
 replacement = "AgeTypeDepth"
 preserve_bm = false

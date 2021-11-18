@@ -2,3 +2,5 @@
 structure not (score, cat)
 sort out draws with moves == 0
 
+0.4.17
+test freshen_on_fetch at 75s

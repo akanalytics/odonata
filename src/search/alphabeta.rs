@@ -109,14 +109,6 @@ impl Algo {
         }                
 
 
-        // let _e = self.extensions.extend_at_leaf(board);
-            // if e == 0 {
-            //     self.stats.inc_leaf_qsearch_nodes(ply);
-            //     self.alphabeta_recursive(&mut board, ply + 1, depth - 1, -n.beta, -n.alpha, &mv)                
-            //     return self.qsearch(last_move, ply, depth, board, n.alpha, n.beta);
-            // }
-            // depth += e;
-            // we are now looking at moves (null, killer, generated etc) so this is an interior node
         self.stats.inc_interior_nodes(&n);
 
 
@@ -158,12 +150,13 @@ impl Algo {
                 board,
                 &child_board,
                 &mv,
+                count,
                 &n,
                 &self,
             );
             // check we have a score (and hence a move) before we risk pruning everything VER:0.4.14
             if score > -Score::INFINITY {
-                if let Some(est_score) = self.futility.can_prune_move(&mv, move_type, board, eval, &n, ext, &self.eval) {
+                if let Some(est_score) = self.futility.can_prune_move(&mv, count, move_type, board, &child_board, eval, &n, ext, &self.eval) {
                     self.explain_futility(&mv, move_type, est_score, n.alpha);
                     self.stats.inc_fp_move(ply);
                     if score == -Score::INFINITY {
@@ -215,6 +208,7 @@ impl Algo {
                     nt,
                     board,
                     &n,
+                    count,
                 );
             let (mut child_score, mut cat) = 
                 if pvs {

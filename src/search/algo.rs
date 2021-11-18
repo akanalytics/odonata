@@ -321,6 +321,7 @@ impl Algo {
         self.new_position();
         self.repetition.push_position(&pos);
         self.board = pos.supplied_variation().apply_to(pos.board());
+        self.tt.rewrite_pv(pos.board());
         self.position = pos;
         self
     }

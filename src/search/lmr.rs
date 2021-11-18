@@ -13,7 +13,7 @@ use std::fmt;
 #[serde(default, deny_unknown_fields)]
 pub struct Lmr {
     enabled: bool,
-    pv_node: bool,
+    first_move: bool,
     only_nt_all: bool,
     bad_captures: bool,
     pawns: bool,
@@ -47,7 +47,7 @@ impl Default for Lmr {
     fn default() -> Self {
         Lmr {
             enabled: true,
-            pv_node: true,
+            first_move: false,
             only_nt_all: false,
             alpha_numeric: false,
             re_search: false,
@@ -103,7 +103,7 @@ impl Lmr {
         &self,
         before: &Board,
         _mv: &Move,
-        _move_number: u32,
+        mv_num: u32,
         quiets: i32,
         stage: MoveType,
         after: &Board,
@@ -135,7 +135,9 @@ impl Lmr {
             _ => 0
         };
 
-
+        if !self.first_move && mv_num <= 1 {
+            return 0;
+        }
 
         if reduce == 0 {
             return reduce;
@@ -166,9 +168,7 @@ impl Lmr {
         if self.alpha_numeric && !node.alpha.is_numeric() {
             return 0;
         }
-        if !self.pv_node && node.is_pv() {
-            return 0;
-        }
+
         search_stats.inc_red_lmr(node.ply);
 
         reduce

@@ -12,10 +12,8 @@ use crate::mv::Move;
 use crate::stat::{ArrayStat, Stat};
 use crate::types::{Hash, Piece, Ply};
 use crate::variation::Variation;
-// use crate::{debug, info, logger::LogInit};
 use std::cmp;
 use std::fmt;
-use std::mem;
 use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 
@@ -233,8 +231,8 @@ pub struct TranspositionTable2 {
     #[serde(skip)]
     table: Arc<SharedTable>,
 
-    aging: bool,
     pub enabled: bool,
+    aging: bool,
     pub use_tt_for_pv: bool,
     pub allow_truncated_pv: bool,
     pub mb: i64,
@@ -243,6 +241,7 @@ pub struct TranspositionTable2 {
     min_depth: Ply,
     buckets: usize,
     aligned: bool,
+    rewrite_pv: bool,
     freshen_on_fetch: bool,
     replacement: Replacement,
     preserve_bm: bool,
@@ -276,6 +275,7 @@ impl Default for TranspositionTable2 {
             hmvc_horizon: 85,
             min_ply: 1, // search restrictions on ply=0
             min_depth: 1, 
+            rewrite_pv: true,
             freshen_on_fetch: true,
             replacement: Replacement::AgeTypeDepth,
             preserve_bm: false,
@@ -315,19 +315,7 @@ impl fmt::Debug for TranspositionTable2 {
 
 impl fmt::Display for TranspositionTable2 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "enabled          : {}", self.enabled)?;
-        writeln!(f, "use tt for pv    : {}", self.use_tt_for_pv)?;
-        writeln!(f, "allow trun pv    : {}", self.allow_truncated_pv)?;
-        writeln!(f, "capacity         : {}", self.table.capacity())?;
-        writeln!(f, "buckets          : {}", self.buckets)?;
-        writeln!(f, "aligned          : {}", self.aligned)?;
-        writeln!(f, "size in mb       : {}", self.mb)?;
-        writeln!(f, "entry size bytes : {}", mem::size_of::<TtNode>())?;
-        writeln!(f, "aging            : {}", self.aging)?;
-        writeln!(f, "current age      : {}", self.current_age)?;
-        writeln!(f, "hmvc horizon     : {}", self.hmvc_horizon)?;
-        writeln!(f, "min ply          : {}", self.min_ply)?;
-        writeln!(f, "min depth        : {}", self.min_depth)?;
+        writeln!(f, "{}", toml::to_string_pretty(self).unwrap())?;
         // writeln!(f, "table            : {}", self.table.len())?;
         // writeln!(f, "entry: pv        : {}", self.count_of(NodeType::ExactPv))?;
         // writeln!(f, "entry: cut       : {}", self.count_of(NodeType::LowerCut))?;
@@ -386,9 +374,16 @@ impl Component for TranspositionTable2 {
     fn new_position(&mut self) {
         self.next_generation();
     }
+
 }
 
 impl TranspositionTable2 {
+
+    pub fn rewrite_pv(&self, b: &Board) {
+        if self.rewrite_pv {
+            let _pv = self.extract_pv_and_score(b);
+        }
+    }
 
     pub fn fmt_nodes(&self, f: &mut fmt::Formatter, b: &Board) -> fmt::Result {
         let nodes = self.extract_nodes(b);
@@ -746,6 +741,7 @@ mod tests {
     fn test_tt2() {
         let mut tt1 = TranspositionTable2::default();
         tt1.new_game();
+        info!("diplay\n{}", tt1);
         info!("After new game");
         let board = Catalog::starting_board();
         let moves = tt1.extract_pv_and_score(&board).0;

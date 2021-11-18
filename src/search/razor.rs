@@ -96,8 +96,8 @@ impl Razor {
         if n.ply == 0 {
             return false; // no null move at root, might mean no moves (with move restrictions too!)
         }
-        // no eval is qs or too far from horizon
-        if n.depth <= 0 || n.depth > self.max_depth {
+        // no razoring in qs or too far from horizon
+        if n.is_qs() || n.depth > self.max_depth {
             return false;
         }
         if !n.beta.is_numeric() {
@@ -106,7 +106,7 @@ impl Razor {
         if !n.alpha.is_numeric() {
             return false;
         }
-        if !self.pv_nodes && n.alpha + Score::from_cp(1) != n.beta {
+        if !self.pv_nodes && n.is_pv() {
             return false;
         }
         if b.is_in_check(b.color_us()) {

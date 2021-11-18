@@ -23,20 +23,22 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Futility {
-    pub alpha_enabled: bool,
-    pub beta_enabled: bool,
-    pub prune_remaining: bool,
-    pub avoid_checks: bool, 
-    pub avoid_promos: bool, 
-    pub promo_margin: bool, 
-    pub max_depth: Ply,
-    pub max_depth_captures: Ply,
-    pub margin_qs: i32,
-    pub margin1: i32,
-    pub margin2: i32,
-    pub margin3: i32,
-    pub eval_switches: Switches,
-    pub move_types_forbidden: MoveTypes,
+    alpha_enabled: bool,
+    beta_enabled: bool,
+    prune_remaining: bool,
+    avoid_in_check: bool, 
+    avoid_giving_check: bool, 
+    first_move: bool, 
+    avoid_promos: bool, 
+    promo_margin: bool, 
+    max_depth: Ply,
+    max_depth_captures: Ply,
+    margin_qs: i32,
+    margin1: i32,
+    margin2: i32,
+    margin3: i32,
+    eval_switches: Switches,
+    move_types_forbidden: MoveTypes,
 }
 
 impl Component for Futility {
@@ -54,7 +56,9 @@ impl Default for Futility {
             alpha_enabled: true,
             beta_enabled: false,
             prune_remaining: false,
-            avoid_checks: false,
+            avoid_in_check: false,
+            avoid_giving_check: true,
+            first_move: false,
             avoid_promos: false,  
             promo_margin: false,  
             max_depth: 2, // not sure > 2 really makes sense
@@ -132,7 +136,7 @@ impl Futility {
             ||
             node.is_pv()  // VER:0.4.14
             ||
-            (self.avoid_checks && b.is_in_check(b.color_us())) {
+            (self.avoid_in_check && b.is_in_check(b.color_us())) {
             return false;
         }
         true
@@ -146,7 +150,7 @@ impl Futility {
     // obviously even prunign at depth=2, this move could be a quite move that attacks a piece and means quiese
     // changes the score dramatically - so futility pruning at depth = 1/2 is not without downside
     //
-    pub fn can_prune_move(&self, mv: &Move, mt: MoveType, b: &Board, eval: Score, n: &Node, ext: Ply, scorer: &SimpleScorer) -> Option<Score> {
+    pub fn can_prune_move(&self, mv: &Move, mv_num: u32,  mt: MoveType, before: &Board, after: &Board, eval: Score, n: &Node, ext: Ply, scorer: &SimpleScorer) -> Option<Score> {
         if !self.alpha_enabled {
             return None;
         }
@@ -156,16 +160,21 @@ impl Futility {
         if self.move_types_forbidden.contains(mt) {
             return None;
         }
+
+        if !self.first_move && mv_num <= 1 {
+            return None;
+        }
+
         if !n.alpha.is_numeric() || n.alpha.is_mate() || n.beta.is_mate() {
             return None;
         }
 
-        if self.avoid_checks || b.will_check_them(mv) {
+        if self.avoid_giving_check && after.is_in_check(after.color_us()) {
             return None;
         } 
 
         // position wise, passed pawn promos make a huge impact so exclude them
-        if self.avoid_promos && mv.mover_piece() == Piece::Pawn && mv.to().rank_index_as_white(b.color_us()) >= 6 {
+        if self.avoid_promos && mv.mover_piece() == Piece::Pawn && mv.to().rank_index_as_white(before.color_us()) >= 6 {
             return None;
         } 
 
@@ -173,7 +182,7 @@ impl Futility {
             return None;
         }
 
-        if !self.can_prune_at_node(b, n) {
+        if !self.can_prune_at_node(before, n) {
             return None;
         }
 
@@ -187,7 +196,7 @@ impl Futility {
         });
 
         // not a capture or promo => gain = 0
-        let gain = b.eval_move_material(scorer, mv);
+        let gain = before.eval_move_material(scorer, mv);
 
         // fail low pruning
         let est_score = eval + margin + gain;
