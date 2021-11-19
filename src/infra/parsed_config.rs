@@ -8,12 +8,6 @@ use std::path::PathBuf;
 
 
 
-pub trait Component {
-    fn new_game(&mut self);
-    fn new_position(&mut self);
-}
-
-
 
 
 
@@ -223,22 +217,6 @@ impl Default for ParsedConfig {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[derive(Clone, Debug)]
-    struct TestStruct {
-        integer: i64,
-        string: String,
-    }
-    impl Component for TestStruct {
-
-        fn new_game(&mut self) {}
-
-        fn new_position(&mut self) {}
-    }
-
 
 
     // #[test]
@@ -262,4 +240,3 @@ mod tests {
     //     c3.set("engine.color", "red");
     //     debug!("c3\n{}", c3);
     // }
-}

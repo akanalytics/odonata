@@ -1,6 +1,6 @@
 use crate::bitboard::bitboard::Bitboard;
 use crate::board::Board;
-use crate::infra::parsed_config::Component;
+use crate::infra::component::Component;
 use crate::mv::Move;
 use crate::types::{Color, Piece};
 use serde::{Deserialize, Serialize};

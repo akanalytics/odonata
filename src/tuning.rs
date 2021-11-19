@@ -6,7 +6,7 @@ use crate::eval::model::ModelScore;
 use crate::eval::model::ReportLine;
 use crate::eval::switches::Switches;
 use crate::eval::weight::Weight;
-use crate::infra::parsed_config::Component;
+use crate::infra::component::Component;
 use crate::position::Position;
 use crate::search::engine::Engine;
 use crate::tags::Tag;

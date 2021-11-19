@@ -171,7 +171,7 @@ mod tests {
     use crate::types::{ScoreWdl};
     use std::time::Duration;
     use crate::bitboard::castling::CastlingRights;
-    use crate::infra::parsed_config::Component;
+    use crate::infra::component::Component;
 
 
     #[test]

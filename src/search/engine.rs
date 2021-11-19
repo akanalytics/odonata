@@ -1,5 +1,5 @@
 use crate::cache::tt2::TranspositionTable2;
-use crate::infra::parsed_config::{Component};
+use crate::infra::component::Component;
 use crate::position::Position;
 use crate::search::algo::Algo;
 use crate::search::timecontrol::TimeControl;

@@ -1,6 +1,6 @@
 use crate::Algo;
 use crate::board::Board;
-use crate::infra::parsed_config::{Component};
+use crate::infra::component::Component;
 use crate::eval::score::Score;
 use crate::mv::Move;
 use crate::search::node::Node;

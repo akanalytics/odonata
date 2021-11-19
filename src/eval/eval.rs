@@ -7,7 +7,7 @@ use crate::eval::score::Score;
 use crate::eval::switches::Switches;
 use crate::eval::weight::Weight;
 use crate::globals::counts;
-use crate::infra::parsed_config::Component;
+use crate::infra::component::Component;
 use crate::mv::Move;
 use crate::phaser::Phaser;
 use crate::eval::see::See;

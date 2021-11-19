@@ -2,7 +2,7 @@ use std::fmt;
 use std::time::{Duration, Instant};
 use crate::utils::Formatting;
 use serde::{Deserialize, Serialize};
-use crate::infra::parsed_config::{Component};
+use crate::infra::component::Component;
 
 
 

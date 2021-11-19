@@ -1,4 +1,4 @@
-use crate::infra::parsed_config::{Component};
+use crate::infra::component::Component;
 use crate::eval::weight::Weight;
 use crate::types::{Piece};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};

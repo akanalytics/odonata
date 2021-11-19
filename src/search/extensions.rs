@@ -1,5 +1,5 @@
 use crate::eval::score::Score;
-use crate::infra::parsed_config::Component;
+use crate::infra::component::Component;
 use crate::mv::Move;
 use crate::search::node::Node;
 use crate::types::Ply;

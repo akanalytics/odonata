@@ -1,5 +1,5 @@
 use crate::{catalog::*};
-use crate::infra::parsed_config::Component;
+use crate::infra::component::Component;
 use crate::perft::Perft;
 use crate::search::engine::Engine;
 use crate::tags::Tag;

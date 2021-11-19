@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::infra::parsed_config::{Component};
+use crate::infra::component::Component;
 use crate::material::Material;
 use crate::Piece;
 

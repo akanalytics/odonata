@@ -7,7 +7,7 @@ use crate::mv::Move;
 use crate::search::node::Node;
 use crate::pvtable::PvTable;
 // use crate::eval::score::Score;
-use crate::infra::parsed_config::{Component};
+use crate::infra::component::Component;
 use crate::variation::Variation;
 // use crate::{debug, logger::LogInit};
 use crate::types::{MoveType, Ply};

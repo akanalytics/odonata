@@ -2,7 +2,7 @@
 use crate::board::Board;
 use crate::search::node::Node;
 use crate::bound::NodeType;
-use crate::infra::parsed_config::{Component};
+use crate::infra::component::Component;
 use crate::types::Ply;
 use std::fmt;
 use serde::{Deserialize, Serialize};

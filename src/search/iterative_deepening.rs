@@ -1,6 +1,6 @@
 use crate::eval::score::Score;
 use crate::globals::counts;
-use crate::infra::parsed_config::Component;
+use crate::infra::component::Component;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
 use crate::search::search_results::SearchResults;

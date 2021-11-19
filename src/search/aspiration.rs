@@ -3,7 +3,7 @@ use crate::Algo;
 use crate::board::Board;
 use crate::search::node::Node;
 use crate::eval::score::Score;
-use crate::infra::parsed_config::{Component};
+use crate::infra::component::Component;
 use crate::types::Ply;
 use std::cmp::{max, min};
 use std::fmt;

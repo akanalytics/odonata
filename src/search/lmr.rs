@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::bound::NodeType;
-use crate::infra::parsed_config::Component;
+use crate::infra::component::Component;
 use crate::mv::Move;
 use crate::search::node::Node;
 use crate::search::searchstats::SearchStats;

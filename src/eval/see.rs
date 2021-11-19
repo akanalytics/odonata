@@ -1,5 +1,5 @@
 use crate::eval::material_balance::MaterialBalance;
-use crate::infra::parsed_config::Component;
+use crate::infra::component::Component;
 use crate::{Bitboard, Piece, PreCalc};
 use crate::board::Board;
 use crate::board::boardcalcs::BoardCalcs;

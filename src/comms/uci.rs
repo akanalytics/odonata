@@ -4,7 +4,7 @@ use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::catalog::Catalog;
 use crate::utils::Formatting;
-use crate::infra::parsed_config::{Component};
+use crate::infra::component::Component;
 use crate::mv::Move;
 use crate::variation::Variation;
 use crate::perft::Perft;

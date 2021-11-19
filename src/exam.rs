@@ -1,4 +1,4 @@
-use crate::infra::parsed_config::{Component};
+use crate::infra::component::Component;
 // use crate::mv::Move;
 use crate::position::Position;
 use crate::search::engine::Engine;

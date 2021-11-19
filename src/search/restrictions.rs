@@ -1,4 +1,4 @@
-use crate::infra::parsed_config::Component;
+use crate::infra::component::Component;
 use crate::movelist::MoveList;
 use crate::mv::Move;
 use crate::types::Ply;

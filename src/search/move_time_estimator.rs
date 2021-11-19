@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::clock::Clock;
-use crate::infra::parsed_config::{Component};
+use crate::infra::component::Component;
 use crate::utils::Formatting;
 use crate::search::searchstats::SearchStats;
 use crate::search::timecontrol::TimeControl;
