@@ -117,8 +117,8 @@ impl Algo {
             self.restrictions.exclude_moves.clear();
             for multi_pv_index in 0..self.restrictions.multi_pv_count {
                 self.aspiration(&mut self.board.clone(), &mut Node::root(depth));
-                self.stats.clock.start_ply();
-                self.mte.estimate_iteration(depth + 1, &self.stats);
+                // self.stats.clock.start_ply();
+                self.mte.estimate_iteration(depth + 1, &self.clock);
                 self.stats
                     .record_time_estimate(depth + 1, &self.mte.estimate_time);
                 self.ids.iterations.push(self.search_stats().clone());

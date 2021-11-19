@@ -14,6 +14,10 @@ use format_num::*;
 use super::node::{Category, Node};
 
 
+
+
+
+
 #[derive(Clone, Debug)]
 pub struct SearchStats {
 
@@ -21,7 +25,7 @@ pub struct SearchStats {
     this_thread_node_count: u64,
 
     pub depth: Ply,
-    pub clock: Clock3,
+    clock: Clock3,
 
     pub completed: bool,
     pub user_cancelled: bool,
