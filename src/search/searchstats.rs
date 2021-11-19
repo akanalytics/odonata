@@ -1,4 +1,4 @@
-use crate::clock::{Clock};
+use crate::clock3::{Clock3};
 use crate::eval::score::Score;
 use crate::variation::Variation;
 use crate::types::{Ply, MAX_PLY, MoveType};
@@ -21,7 +21,7 @@ pub struct SearchStats {
     this_thread_node_count: u64,
 
     pub depth: Ply,
-    pub clock: Clock,
+    pub clock: Clock3,
 
     pub completed: bool,
     pub user_cancelled: bool,
@@ -81,7 +81,7 @@ impl Default for SearchStats {
             all_threads_node_count: Arc::new(AtomicU64::new(0)),
             this_thread_node_count: 0, 
             depth: 0,
-            clock: Clock::default(),
+            clock: Clock3::default(),
             completed: false,
             user_cancelled: false,
             total: NodeStats::default(),
@@ -130,7 +130,7 @@ impl SearchStats {
     }
 
     pub fn restart_clocks(&mut self) {
-        self.clock = Clock::new();
+        self.clock = Clock3::new();
     }
 
     pub fn elapsed_search(&self) -> Duration {

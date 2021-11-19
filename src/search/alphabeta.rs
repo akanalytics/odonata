@@ -29,6 +29,7 @@ impl Algo {
         self.max_depth = depth;
         self.stats.depth = depth;
         self.stats.new_iteration();
+        self.clock.start_iter();
         self.pv_table = PvTable::new(MAX_PLY as usize);
         debug_assert!(self.current_variation.len() == 0);
 
@@ -65,7 +66,7 @@ impl Algo {
     ) -> (Score, Category) {
         self.clear_move(ply);
         self.report_progress();
-
+        self.clock.incr_node_count();
 
         if self.time_up_or_cancelled(ply, false) {
             return (-Score::INFINITY, Category::Cancelled);

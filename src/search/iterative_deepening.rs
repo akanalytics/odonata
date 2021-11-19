@@ -120,7 +120,7 @@ impl Algo {
                 self.stats.clock.start_ply();
                 self.mte.estimate_iteration(depth + 1, &self.stats);
                 self.stats
-                    .record_time_estimate(depth + 1, &self.mte.time_estimate);
+                    .record_time_estimate(depth + 1, &self.mte.estimate_time);
                 self.ids.iterations.push(self.search_stats().clone());
 
                 if self.search_stats().interrupted() {

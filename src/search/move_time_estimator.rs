@@ -1,4 +1,5 @@
 use crate::board::Board;
+use crate::clock::Clock;
 use crate::infra::parsed_config::{Component};
 use crate::utils::Formatting;
 use crate::search::searchstats::SearchStats;
@@ -22,10 +23,10 @@ pub struct MoveTimeEstimator {
     pub nodestime: u64,
 
     #[serde(skip)]
-    pub time_estimate: Duration,
+    pub estimate_time: Duration,
 
     #[serde(skip)]
-    pub elapsed_used: Duration,
+    pub elapsed_time: Duration,
 
     #[serde(skip)]
     pub time_control: TimeControl,
@@ -44,8 +45,8 @@ impl Component for MoveTimeEstimator {
     }
 
     fn new_position(&mut self) {
-        self.time_estimate = Duration::default();
-        self.elapsed_used = Duration::default();
+        self.estimate_time = Duration::default();
+        self.elapsed_time = Duration::default();
         self.time_control = TimeControl::default();
         self.pondering = Arc::new(AtomicBool::from(false));
         self.board = Board::default();
@@ -55,14 +56,15 @@ impl Component for MoveTimeEstimator {
 impl Default for MoveTimeEstimator {
     fn default() -> Self {
         MoveTimeEstimator {
-            branching_factor: 11.3,
-            perc_of_time_adv: 67,
-            moves_rem: 11,
+            branching_factor: 12.625,
+            perc_of_time_adv: 62,
+            moves_rem: 8,
             deterministic: false,
             nodestime: 0,
 
-            time_estimate: Duration::default(),
-            elapsed_used: Duration::default(),
+            estimate_time: Duration::default(),
+            elapsed_time: Duration::default(),
+
             time_control: TimeControl::default(),
             pondering: Arc::new(AtomicBool::from(false)),
             board: Board::default(),
@@ -79,28 +81,27 @@ impl fmt::Display for MoveTimeEstimator {
         writeln!(f, "const moves rem. : {}", self.moves_rem)?;
         writeln!(f, "% of time adv    : {}", self.perc_of_time_adv)?;
         writeln!(f, "allotted for mv  : {}", Formatting::format_duration(self.allotted()))?;
-        writeln!(f, "time estimate    : {}", Formatting::format_duration(self.time_estimate))?;
+        writeln!(f, "time estimate    : {}", Formatting::format_duration(self.estimate_time))?;
         writeln!(f, "deterministic    : {}", self.deterministic)?;
         writeln!(f, "nodestime        : {}", self.nodestime)?;
-        writeln!(f, "elapsed used     : {}", Formatting::format_duration(self.elapsed_used))?;
+        writeln!(f, "elapsed used     : {}", Formatting::format_duration(self.elapsed_time))?;
         Ok(())
     }
 }
 
 impl MoveTimeEstimator {
-    pub fn is_time_up(&self, _ply: Ply, search_stats: &SearchStats) -> bool {
-        let mut elapsed = search_stats.elapsed_search();
+    pub fn is_time_up(&self, _ply: Ply, clock: &Clock) -> bool {
+        let mut elapsed = clock.elapsed_search().0;
         // if in nodestime then convert nodes to time. nodestime is nodes per millisecond
         if self.nodestime > 0 {
-            let nodes = search_stats.cumulative_nodes();
-            elapsed = Duration::from_millis(nodes / self.nodestime);
+            elapsed = Duration::from_millis(clock.elapsed_search().1 / self.nodestime);
         }
 
         let time_up = match self.time_control {
             TimeControl::DefaultTime => false, 
             TimeControl::Depth(_max_ply) => false, // ply > max_ply,  // dont cause an abort on last iteration
             TimeControl::SearchTime(duration) => 10 * elapsed > duration * 9 && !self.pondering(),
-            TimeControl::NodeCount(max_nodes) => search_stats.cumulative_nodes() > max_nodes,
+            TimeControl::NodeCount(max_nodes) => clock.elapsed_search().1 > max_nodes,
             TimeControl::Infinite => false,
             TimeControl::MateIn(_) => false,
             TimeControl::RemainingTime { .. } => elapsed > self.allotted() && !self.pondering(),
@@ -121,16 +122,16 @@ impl MoveTimeEstimator {
     pub fn estimate_iteration(&mut self, _ply: Ply, search_stats: &SearchStats) {
         // debug_assert!(search_stats.depth() >= ply-1, "ensure we have enough stats");
         let _forecast_depth = search_stats.depth();
-        self.elapsed_used = search_stats.clock.elapsed_iteration();
+        self.elapsed_time = search_stats.clock.elapsed_iteration();
 
         // if in nodestime then convert nodes to time. nodestime is nodes per millisecond
         if self.nodestime > 0 {
             let nodes = search_stats.iteration().all_nodes();
-            self.elapsed_used = Duration::from_millis(nodes / self.nodestime);
+            self.elapsed_time = Duration::from_millis(nodes / self.nodestime);
         }
 
         // self.time_estimate = self.elapsed_used * self.branching_factor as u32;
-        self.time_estimate = self.elapsed_used.mul_f32(self.branching_factor);
+        self.estimate_time = self.elapsed_time.mul_f32(self.branching_factor);
     }
 
     pub fn probable_timeout(&self, _search_stats: &SearchStats) -> bool {
@@ -144,7 +145,7 @@ impl MoveTimeEstimator {
                 movestogo: _,
             } => {
                 let (_time, _inc) = our_color.chooser_wb((wtime, winc), (btime, binc));
-                self.time_estimate > self.allotted() && !self.pondering.load(atomic::Ordering::SeqCst)
+                self.estimate_time > self.allotted() && !self.pondering.load(atomic::Ordering::SeqCst)
             }
             _ => false,
         }

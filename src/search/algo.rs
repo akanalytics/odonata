@@ -32,6 +32,7 @@ use crate::types::Ply;
 use crate::variation::Variation;
 use std::fmt;
 use serde::{Deserialize, Serialize};
+use crate::clock::Clock;
 
 
 use super::node::Category;
@@ -68,6 +69,7 @@ pub struct Algo {
     pub razor: Razor,
     pub recognizer: Recognizer,
     pub aspiration: Aspiration,
+    pub clock: Clock,
 
 
     #[serde(skip)]
@@ -159,6 +161,7 @@ impl Component for Algo {
         self.razor.new_game();
         self.recognizer.new_game();
         self.aspiration.new_game();
+        self.clock.new_game();
     }
 
     fn new_position(&mut self) {
@@ -194,6 +197,7 @@ impl Component for Algo {
         self.razor.new_position();
         self.recognizer.new_position();
         self.aspiration.new_position();
+        self.clock.new_position();
     }
 }
 
@@ -231,7 +235,8 @@ impl fmt::Debug for Algo {
             .field("restrictions", &self.restrictions)
             .field("razor", &self.razor)
             .field("recognizer", &self.recognizer)
-            .field("aspiration", &self.recognizer)
+            .field("aspiration", &self.aspiration)
+            .field("clock", &self.clock)
             .finish()
     }
 }
@@ -279,7 +284,8 @@ impl fmt::Display for Algo {
         write!(f, "\n[restrictions]\n{}", self.restrictions)?;
         write!(f, "\n[razor]\n{}", self.razor)?;
         write!(f, "\n[recognizer]\n{}", self.recognizer)?;
-        write!(f, "\n[aspiration]\n{:?}", self.recognizer)?;
+        write!(f, "\n[aspiration]\n{:?}", self.aspiration)?;
+        write!(f, "\n[clock]\n{:?}", self.clock)?;
         Ok(())
     }
 }
@@ -331,25 +337,6 @@ impl Algo {
         debug!("\n\n\n=====Search completed=====\n{}", self);
     }
 
-    // pub fn search_async(&mut self, board: &Board) {
-    //     self.task_control.set_running();
-    //     const FOUR_MB: usize = 4 * 1024 * 1024;
-    //     let name = String::from("search");
-    //     let builder = thread::Builder::new().name(name).stack_size(FOUR_MB);
-    //     self.board = board.clone();
-    //     let mut algo = self.clone();
-    //     // destroy/release this threads copy of the tt.
-    //     // self.tt.destroy();
-    //     self.child_thread = AlgoThreadHandle(Some(
-    //         builder
-    //             .spawn(move || {
-    //                 algo.search_iteratively();
-    //                 algo
-    //             })
-    //             .unwrap(),
-    //     ));
-    // }
-
     #[inline]
     pub fn search_stats(&self) -> &SearchStats {
         &self.stats
@@ -358,14 +345,6 @@ impl Algo {
     pub fn results_as_position(&self) -> Position {
         self.results.to_pos()
     }
-
-    // pub fn bm(&self) -> Move {
-    //     if self.pv().len() > 0 {
-    //         self.pv()[0]
-    //     } else {
-    //         Move::NULL_MOVE
-    //     }
-    // }
 
 
     pub fn score(&self) -> Score {
@@ -401,7 +380,7 @@ impl Algo {
             return false;
         }
 
-        let time_up = self.mte.is_time_up(ply, self.search_stats());
+        let time_up = self.mte.is_time_up(ply, &self.clock);
         if time_up {
             self.stats.completed = false;
             self.stats.set_score(-Score::INFINITY, Category::Cancelled);
@@ -482,8 +461,8 @@ mod tests {
         let mut search = Algo::new();
         search.set_position(pos);
         search.qsearch.enabled = false;
-        search.futility.alpha_enabled = false;
-        search.futility.beta_enabled = false;
+        // search.futility.alpha_enabled = false;
+        // search.futility.beta_enabled = false;
         search.nmp.enabled = false;
         search.tt.enabled = false;
         search.minmax = true;

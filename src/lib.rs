@@ -42,6 +42,7 @@ pub mod bitboard;
 pub mod board;
 pub mod catalog;
 pub mod bound;
+pub mod clock3;
 pub mod clock;
 pub mod comms;
 pub mod infra;
