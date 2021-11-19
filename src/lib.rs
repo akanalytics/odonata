@@ -26,8 +26,7 @@ extern crate regex;
 // extern crate crossbeam;
 
 
-#[macro_use]
-pub mod logger;
+
 
 // pub use crate::logger::LogInit;
 
@@ -46,12 +45,11 @@ pub mod clock3;
 pub mod clock;
 pub mod comms;
 pub mod infra;
-pub mod debug;
+pub mod trace;
 pub mod eval;
 pub mod exam;
 pub mod game;
 pub mod globals;
-pub mod hasher;
 pub mod material;
 pub mod movelist;
 pub mod mv;
@@ -64,7 +62,6 @@ pub mod position;
 pub mod pvtable;
 pub mod repetition;
 pub mod search;
-pub mod stat;
 pub mod tags;
 pub mod tuning;
 pub mod tracer;
@@ -78,7 +75,6 @@ pub use crate::board::Board;
 pub use crate::bitboard::precalc::PreCalc;
 pub use crate::infra::parsed_config::ParsedConfig;
 pub use crate::exam::Exam;
-pub use crate::hasher::Hasher;
 pub use crate::movelist::MoveList;
 pub use crate::position::Position;
 pub use crate::search::algo::Algo;

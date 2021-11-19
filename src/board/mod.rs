@@ -3,7 +3,7 @@ use crate::bitboard::square::Square;
 use crate::board::multiboard::Multiboard;
 use crate::material::Material;
 use crate::board::boardbuf::BoardBuf;
-use crate::hasher::Hasher;
+use crate::cache::hasher::Hasher;
 use std::cell::Cell;
 use crate::types::{Color, Piece, Hash, Ply, Repeats};
 use crate::bitboard::castling::CastlingRights;

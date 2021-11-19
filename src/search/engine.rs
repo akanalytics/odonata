@@ -3,7 +3,7 @@ use crate::infra::component::Component;
 use crate::position::Position;
 use crate::search::algo::Algo;
 use crate::search::timecontrol::TimeControl;
-use crate::stat::Stat;
+use crate::trace::stat::Stat;
 use crate::tuning::Tuning;
 use crate::utils::Formatting;
 use serde::{Deserialize, Serialize};

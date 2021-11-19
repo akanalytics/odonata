@@ -1,4 +1,4 @@
-use crate::stat::Stat;
+use crate::trace::stat::Stat;
 use crate::types::Hash;
 use std::mem;
 use std::sync::atomic::{AtomicU64, Ordering};

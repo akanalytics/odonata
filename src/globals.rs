@@ -86,7 +86,7 @@ pub mod constants {
 }
 
 pub mod counts {
-    use crate::stat::{ArrayStat, Stat};
+    use crate::trace::stat::{ArrayStat, Stat};
 
     pub static EVAL_CACHE_COUNT: Stat = Stat::new("EVAL CACHE COUNT");
     pub static EVAL_COUNT: Stat = Stat::new("EVAL COUNT");
@@ -121,7 +121,7 @@ mod tests {
     use crate::bitboard::bb_magic::*;
     use crate::bitboard::square::*;
     use crate::bitboard::precalc::*;
-    use crate::hasher::*;
+    use crate::cache::hasher::*;
     use crate::board::*;
     use crate::eval::score::*;
     use crate::movelist::*;

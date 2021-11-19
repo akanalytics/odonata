@@ -4,7 +4,7 @@ use crate::movelist::MoveList;
 use crate::mv::Move;
 use crate::search::algo::Algo;
 use crate::search::stack::Stack;
-use crate::stat::{ArrayPlyStat, PlyStat};
+use crate::trace::stat::{ArrayPlyStat, PlyStat};
 use crate::types::{Ply, Piece, Color, MoveType};
 use crate::variation::Variation;
 // use crate::{debug, logger::LogInit};

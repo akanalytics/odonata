@@ -12,7 +12,7 @@ use crate::mv::Move;
 use crate::phaser::Phaser;
 use crate::eval::see::See;
 use crate::search::node::Node;
-use crate::stat::{ArrayStat, Stat};
+use crate::trace::stat::{ArrayStat, Stat};
 use crate::types::{Color, Piece};
 use serde::{Deserialize, Serialize};
 

@@ -9,7 +9,7 @@ use crate::cache::lockless_hashmap::{SharedTable, Bucket};
 use crate::eval::score::Score;
 use crate::infra::component::Component;
 use crate::mv::Move;
-use crate::stat::{ArrayStat, Stat};
+use crate::trace::stat::{ArrayStat, Stat};
 use crate::types::{Hash, Piece, Ply};
 use crate::variation::Variation;
 use std::cmp;
