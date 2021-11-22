@@ -1,11 +1,11 @@
+use crate::Algo;
 use crate::board::Board;
 use crate::bound::NodeType;
 use crate::infra::component::Component;
 use crate::mv::Move;
 use crate::search::node::Node;
-use crate::search::searchstats::SearchStats;
 use crate::types::{MoveType, Ply};
-// use crate::{debug, logger::LogInit};
+use crate::search::node::{Category};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -97,54 +97,54 @@ impl Component for Lmr {
 //
 // http://www.open-chess.org/viewtopic.php?f=5&t=3084
 //
-impl Lmr {
+impl Algo {
     #[inline]
     pub fn lmr(
-        &self,
+        &mut self,
         before: &Board,
         _mv: &Move,
         mv_num: u32,
         quiets: i32,
         stage: MoveType,
         after: &Board,
-        node: &Node,
+        n: &Node,
         nt: NodeType,
         ext: Ply,
         _tt_mv: Move,
-        search_stats: &mut SearchStats,
     ) -> Ply {
-        if !self.enabled {
+        if !self.lmr.enabled {
             return 0;
         }
         if ext !=0 {
             return 0;
         }
-        if node.is_qs() {
+        if n.is_qs() {
             return 0;
         }
 
-        if !self.first_move && mv_num <= 1 {
-            return 0;
-        }
 
-        let mut reduce = match node.depth  {
-            d if d >= self.reduce_4_at_depth => 4,
-            d if d >= self.reduce_3_at_depth => 3,
-            d if d >= self.reduce_2_at_depth => 2,
-            d if d >= self.reduce_1_at_depth => 1,
+        let mut reduce = match n.depth  {
+            d if d >= self.lmr.reduce_4_at_depth => 4,
+            d if d >= self.lmr.reduce_3_at_depth => 3,
+            d if d >= self.lmr.reduce_2_at_depth => 2,
+            d if d >= self.lmr.reduce_1_at_depth => 1,
             _ => 0,
         };
-        if reduce == 0 {
-            return 0;
-        }
 
 
         reduce += match quiets {
-            q if q >= self.quiets2 => 2,
-            q if q >= self.quiets1 => 1,
+            q if q >= self.lmr.quiets2 => 2,
+            q if q >= self.lmr.quiets1 => 1,
             _ => 0
         };
 
+        if !self.lmr.first_move && mv_num <= 1 {
+            return 0;
+        }
+        
+        if reduce == 0 {
+            return 0;
+        }
 
         // has to be one of these
         if !(MoveType::QuietUnsorted
@@ -157,24 +157,24 @@ impl Lmr {
         {
             return 0;
         }
-        if !self.promos && stage == MoveType::Promo
-            || !self.killers && stage == MoveType::Killer
-            || !self.bad_captures && stage == MoveType::BadCapture
+        if !self.lmr.promos && stage == MoveType::Promo
+            || !self.lmr.killers && stage == MoveType::Killer
+            || !self.lmr.bad_captures && stage == MoveType::BadCapture
         {
             return 0;
         }
-        if self.only_nt_all && nt != NodeType::UpperAll {
+        if self.lmr.only_nt_all && nt != NodeType::UpperAll {
             return 0;
         }
         if before.is_in_check(before.color_us()) || after.is_in_check(after.color_us()) {
             return 0;
         }
-        if self.alpha_numeric && !node.alpha.is_numeric() {
+        if self.lmr.alpha_numeric && !n.alpha.is_numeric() {
             return 0;
         }
 
-        search_stats.inc_red_lmr(node.ply);
-
+        self.stats.inc_red_lmr(n.ply);
+        self.counts.inc(n, Category::Lmr);
         reduce
     }
 }

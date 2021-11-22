@@ -115,6 +115,7 @@ pub mod counts {
 
 #[cfg(test)]
 mod tests {
+    use crate::Algo;
     use crate::bitboard::bitboard::*;
     use crate::bitboard::bb_classical::*;
     use crate::bitboard::bb_hyperbola::*;
@@ -123,9 +124,30 @@ mod tests {
     use crate::bitboard::precalc::*;
     use crate::cache::hasher::*;
     use crate::board::*;
+    use crate::clock::Clock;
+    use crate::eval::eval::SimpleScorer;
+    use crate::eval::recognizer::Recognizer;
     use crate::eval::score::*;
     use crate::movelist::*;
     use crate::mv::*;
+    use crate::pvtable::PvTable;
+    use crate::repetition::Repetition;
+    use crate::search::aspiration::Aspiration;
+    use crate::search::extensions::Extensions;
+    use crate::search::futility::Futility;
+    use crate::search::history_heuristic::HistoryHeuristic;
+    use crate::search::iterative_deepening::IterativeDeepening;
+    use crate::search::killers::Killers;
+    use crate::search::lmr::Lmr;
+    use crate::search::move_orderer::MoveOrderer;
+    use crate::search::move_time_estimator::MoveTimeEstimator;
+    use crate::search::nmp::NullMovePruning;
+    use crate::search::pvs::Pvs;
+    use crate::search::qsearch::QSearch;
+    use crate::search::razor::Razor;
+    use crate::search::restrictions::Restrictions;
+    use crate::search::search_explainer::SearchExplainer;
+    use crate::trace::counts::Counts;
     use crate::variation::*;
     use crate::tags::*;
     use crate::position::*;
@@ -159,11 +181,35 @@ mod tests {
         assert_eq!(size_of::<Board>(), 144, "Board");
         assert_eq!(size_of::<Position>(), 192, "Position");
         assert_eq!(size_of::<NodeStats>(), 336, "NodeStats");
-        assert_eq!(size_of::<SearchStats>(), 792, "SearchStats");
+        assert_eq!(size_of::<SearchStats>(), 800, "SearchStats");
         assert_eq!(size_of::<ClassicalBitboard>(), 5120, "ClassicalBitboard");
         assert_eq!(size_of::<Hyperbola>(), 5632, "Hyperbola");
         assert_eq!(size_of::<PreCalc>(), 75784, "PreCalc");
         assert_eq!(size_of::<Magic>(), 719264, "Magic");
         assert_eq!(size_of::<Hasher>(), 7296, "Hasher");
+        assert_eq!(size_of::<Algo>(), 25408, "Algo");
+        assert_eq!(size_of::<QSearch>(), 12, "QSearch");
+        assert_eq!(size_of::<Clock>(), 56, "Clock");
+        println!("{} {} {}", size_of::<NullMovePruning>(), 32, "NullMovePruning");
+        println!("{} {} {}", size_of::<Futility>(), 36, "Futility");
+        println!("{} {} {}", size_of::<IterativeDeepening>(), 40, "IterativeDeepening");
+        println!("{} {} {}", size_of::<SimpleScorer>(), 4132, "SimpleScorer");
+        println!("{} {} {}", size_of::<Pvs>(), 8, "Pvs");
+        println!("{} {} {}", size_of::<Extensions>(), 32, "Extensions");
+        println!("{} {} {}", size_of::<Lmr>(), 36, "Lmr");
+        println!("{} {} {}", size_of::<MoveTimeEstimator>(), 280, "MoveTimeEstimator");
+        println!("{} {} {}", size_of::<MoveOrderer>(), 240, "MoveOrderer");
+        println!("{} {} {}", size_of::<Repetition>(), 36, "Repetition");
+        println!("{} {} {}", size_of::<TranspositionTable2>(), 23296, "TranspositionTable2");
+        println!("{} {} {}", size_of::<Killers>(), 32, "Killers");
+        println!("{} {} {}", size_of::<HistoryHeuristic>(), 32, "HistoryHeuristic");
+        println!("{} {} {}", size_of::<SearchExplainer>(), 32, "SearchExplainer");
+        println!("{} {} {}", size_of::<Restrictions>(), 1760, "Restrictions");
+        println!("{} {} {}", size_of::<Razor>(), 28, "Razor");
+        println!("{} {} {}", size_of::<Recognizer>(), 12, "Recognizer");
+        println!("{} {} {}", size_of::<Aspiration>(), 16, "Aspiration");
+        println!("{} {} {}", size_of::<Counts>(), 16, "Counts");
+        println!("{} {} {}", size_of::<SearchStats>(), 800, "SearchStats");
+        println!("{} {} {}", size_of::<PvTable>(), 32, "PvTable");
     }
 }

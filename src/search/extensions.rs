@@ -8,6 +8,8 @@ use crate::{Bitboard, Piece};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+use super::node::Category;
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Extensions {
@@ -57,40 +59,40 @@ impl Default for Extensions {
     }
 }
 
-impl Extensions {
+impl Algo {
     #[inline]
     pub fn extend_at_leaf(&self, _before: &Board) -> i32 {
         0
     }
 
     #[inline]
-    pub fn extend(&self, before: &Board, after: &Board, mv: &Move, mv_num: u32, n: &Node, algo: &Algo) -> Ply {
+    pub fn extend(&mut self, before: &Board, after: &Board, mv: &Move, mv_num: u32, n: &Node) -> Ply {
         let mut ext = 0;
         if n.is_qs() {
             return 0;
         }
-        if self.pv_enabled && n.depth == 1 && mv_num == 1 {
+        if self.ext.pv_enabled && n.depth == 1 && mv_num == 1 {
             ext += 1;
         }
-        if self.gives_check_enabled && after.is_in_check(after.color_us())
+        if self.ext.gives_check_enabled && after.is_in_check(after.color_us())
         ||
-        self.in_check_enabled && before.is_in_check(before.color_us()) {
-            if n.depth <= self.check_max_depth
-                && after.phase(&algo.eval.phaser) <= self.check_max_phase
-                && (!self.check_only_captures || mv.is_capture())
-                && (!self.check_see || algo.eval.see.eval_move_see(before, mv) >= self.check_see_threshold.as_i16() as i32)
+        self.ext.in_check_enabled && before.is_in_check(before.color_us()) {
+            if n.depth <= self.ext.check_max_depth
+                && after.phase(&self.eval.phaser) <= self.ext.check_max_phase
+                && (!self.ext.check_only_captures || mv.is_capture())
+                && (!self.ext.check_see || self.eval.see.eval_move_see(before, mv) >= self.ext.check_see_threshold.as_i16() as i32)
             {
                 // algo.search_stats().inc_ext_check(n.ply);
                 ext += 1;
             }
         }
 
-        if self.promo_enabled && mv.is_promo() && n.depth <= self.promo_max_depth {
+        if self.ext.promo_enabled && mv.is_promo() && n.depth <= self.ext.promo_max_depth {
             ext += 1;
         }
 
-        if self.near_promo_enabled
-            && n.depth <= self.near_promo_max_depth
+        if self.ext.near_promo_enabled
+            && n.depth <= self.ext.near_promo_max_depth
             && mv.mover_piece() == Piece::Pawn
             && mv.to().is_in(Bitboard::RANK_7 | Bitboard::RANK_2)
         {
@@ -102,13 +104,17 @@ impl Extensions {
         // && mv.is_promo()
 
         // mv.mover_piece() == Piece::Pawn
-        //     && mv.to().rank_index_as_white(before.color_us()) >= self.promo_rank as usize
-        //     && node.depth <= self.promo_max_depth
+        //     && mv.to().rank_index_as_white(before.color_us()) >= self.ext.promo_rank as usize
+        //     && node.depth <= self.ext.promo_max_depth
         // {
         //     // search_stats.inc_ext_check(node.ply);
-        //     extend += self.promo_extend;
+        //     extend += self.ext.promo_extend;
         // }
-        std::cmp::min(ext, self.max_extend)
+        let ext = std::cmp::min(ext, self.ext.max_extend);
+        if ext > 0 {
+            self.counts.inc(n, Category::Extension);
+        }
+        ext
     }
 }
 

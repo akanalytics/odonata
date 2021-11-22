@@ -80,7 +80,11 @@ impl Algo {
         };
 
         if n.is_zw() {
+            self.counts.inc(&n, Category::NodeTypeZw);
             self.stats.inc_zw_nodes(ply);
+        }
+        if n.is_qs() {
+            self.counts.inc(&n, Category::Quiesce);
         }
 
 
@@ -93,18 +97,18 @@ impl Algo {
         if ply > 0 && b.draw_outcome().is_some() {
         // if board.draw_outcome().is_some() {
             self.stats.inc_leaf_nodes(&n);
-            return (b.eval_draw(&mut self.eval, &n), Category::Draw); // will return a draw score
+            self.counts.inc(&n, Category::NodeLeafDraw);
+            return (b.eval_draw(&mut self.eval, &n), Category::NodeLeafDraw); // will return a draw score
         }
 
         let mut tt_mv = Move::NULL_MOVE;
         match self.lookup(b, &mut n) {
-            (Some(ab), None) => return (ab, Category::Transposition),  // alpha, beta or a terminal node
+            (Some(ab), None) => return (ab, Category::HashHit),  // alpha, beta or a terminal node
             (None, Some(bm)) => tt_mv = bm,
             (Some(s), Some(mv)) => { tt_mv = mv; score = s; bm = mv},
             _ => {},
         }                
-
-
+        self.counts.inc(&n, Category::NodeInterior);
         self.stats.inc_interior_nodes(&n);
 
 
@@ -114,15 +118,15 @@ impl Algo {
 
         // razoring
         if let Some(alphabeta) = self.razor(*last_move, b, eval, &n) {
-            return (alphabeta, Category::Razor);
+            return (alphabeta, Category::PruneRazor);
         }
 
-        if let Some(fut_score) = self.futility.standing_pat(b, &mut n, eval, &self.eval) {
-            return (fut_score, Category::StandingPat);
+        if let Some(fut_score) = self.standing_pat(b, &mut n, eval) {
+            return (fut_score, Category::PruneStandingPat);
         }
 
         if let Some(beta) = self.nmp(b, &n, eval) {
-            return (beta, Category::NullMovePrune);
+            return (beta, Category::PruneNullMovePrune);
         }
 
         let mut sorted_moves = self.move_orderer.get_sorted_moves(n, b, tt_mv);
@@ -135,20 +139,26 @@ impl Algo {
             count += 1;
             self.stats.inc_move(ply);
             let mut child_board = b.make_move(&mv);
-            let ext = self.extensions.extend(
+            let ext = self.extend(
                 b,
                 &child_board,
                 &mv,
                 count,
                 &n,
-                &self,
             );
-            if let Some(est_score) = self.futility.can_prune_move(&mv, count, move_type, b, &child_board, eval, &n, ext, &self.eval) {
-                self.explain_futility(&mv, move_type, est_score, n.alpha);
-                self.stats.inc_fp_move(ply);
-                if self.futility.can_prune_remaining_moves(b, move_type, &n) {
-                    break;
-                } 
+
+           if score > -Score::INFINITY {
+                if let Some(est_score) = self.can_prune_move(&mv, count, move_type, b, &child_board, eval, &n, ext) {
+                    self.explain_futility(&mv, move_type, est_score, n.alpha);
+                    self.stats.inc_fp_move(ply);
+                    if score == -Score::INFINITY {
+                        score = est_score;
+                    }
+                    if self.can_prune_remaining_moves(b, move_type, &n) {
+                        break;
+                    } 
+                    continue;
+                }
             }
             self.repetition.push_move(&mv, &child_board);
             self.current_variation.push(mv);
@@ -163,7 +173,7 @@ impl Algo {
             );
 
             let lmr = if !self.minmax {
-                self.lmr.lmr(
+                self.lmr(
                     b,
                     &mv,
                     count,
@@ -174,7 +184,6 @@ impl Algo {
                     nt,
                     ext,
                     tt_mv,
-                    &mut self.stats,
                 )
             } else {
                 0
@@ -184,7 +193,7 @@ impl Algo {
             }
 
             let pvs = !self.minmax
-                && self.pvs.permitted(
+                && self.pvs_permitted(
                     nt,
                     b,
                     &n,
@@ -220,6 +229,12 @@ impl Algo {
                 // research with full window without reduction in depth
                 self.stats.inc_pvs_research(ply);
                 let res = self.alphabeta_recursive(&mut child_board, ply + 1, depth + ext - 1, -n.beta, -n.alpha, &mv);
+                if lmr > 0 && self.lmr.re_search {
+                    self.counts.inc(&n, Category::LmrReSearch);
+                }
+                if pvs {
+                    self.counts.inc(&n, Category::PvsReSearch);
+                } 
                 child_score = -res.0;
                 cat = res.1;
             }
@@ -260,6 +275,7 @@ impl Algo {
         }
 
         if count == 0 {
+            self.counts.inc(&n, Category::NodeLeafStalemate);
             self.stats.inc_leaf_nodes(&n);
             if n.is_qs() {
                 return (b.eval(
@@ -268,6 +284,7 @@ impl Algo {
                 ), Category::Quiesce);
             }
             else {
+                self.counts.inc(&n, Category::NodeLeafStalemate);
                 return 
                 // FIXME VER:0.4.14
                 // (board.eval_draw(&mut self.eval, &n),
@@ -275,15 +292,19 @@ impl Algo {
                 &mut self.eval,
                 &n,
                 ), 
-                Category::Stalemate);
+                Category::NodeLeafStalemate);
             }
         } else if nt == NodeType::UpperAll {
             self.stats.inc_node_all(ply);
+            self.counts.inc(&n, Category::NodeInteriorAll);
             // nothing
         } else if nt == NodeType::LowerCut {
-            debug_assert!(!bm.is_null())
+            debug_assert!(!bm.is_null());
+            self.counts.inc(&n, Category::NodeInteriorCut);
+
         } else if nt == NodeType::ExactPv {
             self.stats.inc_node_pv(ply);
+            self.counts.inc(&n, Category::NodeInteriorPv);
             // self.record_new_pv(ply, &bm, false);
             debug_assert!(!bm.is_null())
         } else {

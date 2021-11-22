@@ -1,10 +1,95 @@
 use crate::eval::score::Score;
 // use crate::board::Board;
-use crate::types::{Ply};
+use serde::{Deserialize, Serialize};
+
+use crate::types::Ply;
+
+use strum_macros::{EnumCount, Display, EnumIter};
+use strum::{IntoEnumIterator, EnumCount};
 
 
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum Category { Unknown, Cancelled, Quiesce, Recognized, Stalemate, Draw, Transposition, Razor, Futility, StandingPat, Eval, NullMovePrune }
+#[derive(Copy, Clone, Debug, PartialEq,Eq, Serialize, Display, Deserialize, EnumCount, EnumIter)]
+pub enum Category {
+    Unknown,
+    Cancelled,
+    Quiesce,
+    
+    HashProbe,
+    HashHit,
+    PercentHashHit,
+
+    RecogImmediateDraw,
+    RecogCannotWin,
+    RecogHelpmateOrDraw,
+    RecogMaybeWin,
+    DerivedRecog,
+
+    PruneRazor,
+    PruneStandingPat,
+    PruneNullMovePrune,
+    DerivedPrunedInterior,
+    PercentPrunedInterior,
+
+    PruneFutilityD0,
+    PruneFutilityD1,
+    PruneFutilityD2,
+    PruneFutilityD3,
+
+    Lmr,
+    Pvs,
+    Extension,
+
+    Aspiration1,
+    Aspiration2,
+    Aspiration3,
+    AspirationN,
+    AspirationFailLow,
+    AspirationFailHigh,
+    DerivedAspiration,
+    PercentAspiration1,
+
+    NodeLeafDraw,
+    NodeLeafStalemate,
+    DerivedLeaf,
+
+    NodeInterior,
+    NodeInteriorAll,
+    NodeInteriorCut,
+    NodeInteriorPv,
+    
+    NodeTypeZw,
+    PvsReSearch,
+    LmrReSearch,
+    PercentPvsReSearch,
+    PercentLmrReSearch,
+}
+
+
+
+impl Category {
+    #[inline]
+    pub const fn len() -> usize {
+        Category::COUNT as usize
+    }
+
+    #[inline]
+    pub fn name(&self) -> String {
+        self.to_string()
+        // toml::to_string(self).unwrap()
+    }
+
+    #[inline]
+    pub fn from(i: usize) -> Self {
+        Category::iter().nth(i).unwrap()
+    }
+
+    #[inline]
+    pub fn index(&self) -> usize {
+        *self as usize
+    }
+
+}
+
 
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -35,7 +120,6 @@ impl Node {
             ply: self.ply + 1,
         }
     }
-
 
     #[inline]
     pub fn is_root(&self) -> bool {

@@ -255,9 +255,9 @@ pub struct TranspositionTable2 {
     #[rustfmt::skip] #[serde(skip)] pub inserts: Stat,
     #[rustfmt::skip] #[serde(skip)] pub updates: Stat,
     #[rustfmt::skip] #[serde(skip)] pub pv_overwrites: Stat,
-    #[rustfmt::skip] #[serde(skip)] pub deletes: Stat,
-    #[rustfmt::skip] #[serde(skip)] pub fail_priority: Stat,
-    #[rustfmt::skip] #[serde(skip)] pub fail_ownership: Stat,
+    // #[rustfmt::skip] #[serde(skip)] pub deletes: Stat,
+    // #[rustfmt::skip] #[serde(skip)] pub fail_priority: Stat,
+    // #[rustfmt::skip] #[serde(skip)] pub fail_ownership: Stat,
 }
 
 impl Default for TranspositionTable2 {
@@ -288,9 +288,9 @@ impl Default for TranspositionTable2 {
             inserts: Stat::new("inserts"),
             updates: Stat::new("updates"),
             pv_overwrites: Stat::new("pv overwrites"),
-            deletes: Stat::new("deletes"),
-            fail_priority: Stat::new("ins fail priority"),
-            fail_ownership: Stat::new("ins fail owner"),
+            // deletes: Stat::new("deletes"),
+            // fail_priority: Stat::new("ins fail priority"),
+            // fail_ownership: Stat::new("ins fail owner"),
         };
         me
     }
@@ -347,9 +347,9 @@ impl fmt::Display for TranspositionTable2 {
                 &self.inserts,
                 &self.updates,
                 &self.pv_overwrites,
-                &self.fail_priority,
-                &self.fail_ownership,
-                &self.deletes,
+                // &self.fail_priority,
+                // &self.fail_ownership,
+                // &self.deletes,
             ])
         )?;
         Ok(())
@@ -568,7 +568,7 @@ impl TranspositionTable2 {
             bucket_to_overwrite.unwrap().write(h, new_data);
             return;
         } else {
-            self.fail_priority.increment();
+            // self.fail_priority.increment();
             return;
         }
 
@@ -578,7 +578,7 @@ impl TranspositionTable2 {
         if !self.enabled || self.capacity() == 0 {
             return;
         }
-        self.deletes.increment();
+        // self.deletes.increment();
         // self.table.delete(h);
         return;
     }

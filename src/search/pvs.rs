@@ -1,11 +1,13 @@
 
-use crate::board::Board;
+use crate::{Algo, board::Board};
 use crate::search::node::Node;
 use crate::bound::NodeType;
 use crate::infra::component::Component;
 use crate::types::Ply;
 use std::fmt;
 use serde::{Deserialize, Serialize};
+
+use super::node::Category;
 
 
 
@@ -39,28 +41,28 @@ impl Default for Pvs {
 
 // once we have an alpha raising move, search remainder using null window and see if they raise alpha (or cut)
 // re-search full-window if they do, to get a score
-impl Pvs {
-    pub fn permitted(&self, nt: NodeType,_b: &Board, node: &Node, mv_num: u32) -> bool {
-        if !self.enabled {
+impl Algo {
+    pub fn pvs_permitted(&mut self, nt: NodeType,_b: &Board, n: &Node, mv_num: u32) -> bool {
+        if !self.pvs.enabled {
             return false;
         }
         if mv_num <= 1 {
             return false;
         }
-        if node.depth < self.min_depth {
+        if n.depth < self.pvs.min_depth {
             return false;
         }
         if nt !=  NodeType::ExactPv {
             return false;
         }
-        if !node.alpha.is_numeric()  {
+        if !n.alpha.is_numeric()  {
             return false;
         }
-        if node.is_zw()  {
+        if n.is_zw()  {
             // no PVS in PVS search
             return false;
         }
- 
+        self.counts.inc(n, Category::Pvs);
         true
     }
 

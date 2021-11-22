@@ -60,12 +60,14 @@ impl Algo {
         if n.depth <= self.aspiration.min_depth || !self.aspiration.enabled {
 			return self.run_alphabeta(b, n);
 		} else {
+            let mut aspiration_count = 0;
             let mut delta = self.aspiration.window;
             let mut alpha1 = self.stats.score() - delta;
             let mut beta1 = self.stats.score() + delta;
-            loop {
+            let ret = loop {
+                aspiration_count += 1;
                 if delta > self.aspiration.max_window {
-                    return self.run_alphabeta(b, n);
+                    break self.run_alphabeta(b, n);
                 }
                 alpha1 = max(n.alpha, alpha1);
                 beta1 = min(n.beta, beta1);
@@ -75,25 +77,34 @@ impl Algo {
 
                 let (new_score, cat) = self.run_alphabeta(b, &mut n1);
                 if new_score == -Score::INFINITY {
-                    return (new_score, cat);
+                    break (new_score, cat);
                 }
                 if new_score.is_mate() {
-                    return self.run_alphabeta(b, n);
+                    break self.run_alphabeta(b, n);
                 }
 
                 if new_score <= alpha1 && alpha1 > n.alpha { 
+                    self.counts.inc(n, Category::AspirationFailLow);
                     alpha1 = new_score - delta;
                     // beta1 = new_score; // beta1; // score;
                 }
                 else if new_score >= beta1 && beta1 < n.beta { 
                     // alpha1 = new_score; // alpha1; //score;
+                    self.counts.inc(n, Category::AspirationFailHigh);
                     beta1 = new_score + delta;
                 }
                 else {
                     // info!("Found {:?} in search window {} {}", new_score, alpha1, beta1);
-                    return (new_score, cat);
+                    break (new_score, cat);
                 } 
+            };
+            match aspiration_count {
+                1 => self.counts.inc(n, Category::Aspiration1),
+                2 => self.counts.inc(n, Category::Aspiration2),
+                3 => self.counts.inc(n, Category::Aspiration3),
+                _ => self.counts.inc(n, Category::AspirationN),
             }
+            return ret;
         }
     }   
 }

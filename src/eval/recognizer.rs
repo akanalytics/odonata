@@ -1,6 +1,6 @@
 use crate::bound::NodeType;
 use crate::infra::component::Component;
-use crate::search::node::Node;
+use crate::search::node::{Category, Node};
 use crate::board::Board;
 use crate::mv::Move;
 use std::{fmt};
@@ -60,7 +60,9 @@ impl Algo {
         //     return (score,mv);
         // }
 
+        self.counts.inc(n, Category::HashProbe);
         if let Some(entry) = self.tt.probe_by_board(b, n.ply, n.depth) {
+            self.counts.inc(n, Category::HashHit);
 
             // FIXME! v33
             if entry.depth >= n.depth && !(self.repetition.avoid_tt_on_repeats && b.repetition_count().total > 0) {
@@ -151,6 +153,7 @@ impl Algo {
 
         if endgame.is_immediately_declared_draw() {
             let draw = b.eval_draw(&mut self.eval, &n); // will return a draw score
+            self.counts.inc(n, Category::RecogImmediateDraw);
             self.stats.inc_leaf_nodes(n);
             return (Some(draw), None)
         }
@@ -161,6 +164,7 @@ impl Algo {
         // }
 
         if let Some(c) = endgame.cannot_win() {
+            self.counts.inc(n, Category::RecogCannotWin);
             let draw = b.eval_draw(&mut self.eval, &n); // will return a draw score
             if b.color_us() == c {
                 if  draw <= n.alpha {
@@ -178,6 +182,7 @@ impl Algo {
 
         // its a helpmate or draw like KNkn, so search just a tiny depth then let eval do its job
         if endgame.is_draw() {
+            self.counts.inc(n, Category::RecogHelpmateOrDraw);
             if n.depth > self.recognizer.terminal_depth {
                 n.depth = self.recognizer.terminal_depth;
             }
@@ -185,6 +190,7 @@ impl Algo {
 
 
         if let Some(_color) = endgame.try_winner() {
+            self.counts.inc(n, Category::RecogMaybeWin);
             if n.depth > self.recognizer.terminal_depth {
                 n.depth = self.recognizer.terminal_depth;
             }

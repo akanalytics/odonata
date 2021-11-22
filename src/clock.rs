@@ -18,7 +18,7 @@ pub struct Clock {
     start_iter: (Instant, u64),
 
     #[serde(skip)]
-    nodes: u64,
+    nodes: u32,
 }
 
 
@@ -62,6 +62,7 @@ impl fmt::Display for Clock {
 
 
 impl Clock {
+    #[inline]
     pub fn start_search(&mut self)  {
         *self = Self::default()
     }
@@ -73,17 +74,17 @@ impl Clock {
 
     #[inline]
     pub fn start_iter(&mut self) {
-        self.start_iter = (Instant::now(), self.nodes);
+        self.start_iter = (Instant::now(), self.nodes as u64);
     }
 
     #[inline]
     pub fn elapsed_search(&self) -> (Duration, u64) {
-        (self.start_search.0.elapsed(), self.nodes - self.start_search.1)
+        (self.start_search.0.elapsed(), self.nodes as u64 - self.start_search.1)
     }
 
     #[inline]
     pub fn elapsed_iter(&self) -> (Duration, u64) {
-        (self.start_iter.0.elapsed(), self.nodes - self.start_iter.1)
+        (self.start_iter.0.elapsed(), self.nodes as u64 - self.start_iter.1)
     }
 
 

@@ -1,8 +1,8 @@
 
-use crate::Bitboard;
+use crate::{Algo, Bitboard};
 use crate::board::Board;
 use crate::eval::weight::Weight;
-use crate::search::node::Node;
+use crate::search::node::{Node, Category};
 use crate::mv::Move;
 use crate::eval::score::Score;
 use crate::eval::switches::Switches;
@@ -92,37 +92,40 @@ pub struct FutilityMeasure {
 // 7 0.3.44:fes=MB         :     -11      6  2612.0    5422  48.2     ---  1904  1416  2102  26.1
 
 
-impl Futility {
-    pub fn standing_pat(&self, b: &Board, node: &mut Node, standing_pat: Score, eval: &SimpleScorer) -> Option<Score> {
-        if !node.is_qs() {
+impl Algo {
+    #[inline]
+    pub fn standing_pat(&mut self, b: &Board, n: &mut Node, standing_pat: Score) -> Option<Score> {
+        if !n.is_qs() {
             return None;
         }
 
-        if node.depth == 0 {
+        if n.depth == 0 {
             let outcome = b.outcome();
             if outcome.is_game_over() {
                 if outcome.is_draw() {
-                    return Some(eval.w_eval_draw(b, node));
+                    return Some(self.eval.w_eval_draw(b, n));
                 }
                 if let Some(c) = outcome.winning_color() {
-                    return Some(c.chooser_wb(Score::white_win(node.ply), Score::white_loss(node.ply)));
+                    return Some(c.chooser_wb(Score::white_win(n.ply), Score::white_loss(n.ply)));
                 }
             }
         }
 
-        if standing_pat >= node.beta && !b.is_in_check(b.color_us()) {
+        if standing_pat >= n.beta && !b.is_in_check(b.color_us()) {
+            self.counts.inc(n, Category::PruneStandingPat);
             return Some(standing_pat);
         }
 
-        if standing_pat > node.alpha && !b.is_in_check(b.color_us()) {
-            node.alpha = standing_pat;
+        if standing_pat > n.alpha && !b.is_in_check(b.color_us()) {
+            n.alpha = standing_pat;
         }
         return None;
     }
 
 
+    #[inline]
     pub fn can_prune_at_node(&self, b: &Board, node: &Node) -> bool {
-        if (!self.alpha_enabled && !self.beta_enabled)
+        if (!self.futility.alpha_enabled && !self.futility.beta_enabled)
             ||
             node.ply == 0   // dont prune at root node
             ||
@@ -136,7 +139,7 @@ impl Futility {
             ||
             node.is_pv()  // VER:0.4.14
             ||
-            (self.avoid_in_check && b.is_in_check(b.color_us())) {
+            (self.futility.avoid_in_check && b.is_in_check(b.color_us())) {
             return false;
         }
         true
@@ -150,18 +153,19 @@ impl Futility {
     // obviously even prunign at depth=2, this move could be a quite move that attacks a piece and means quiese
     // changes the score dramatically - so futility pruning at depth = 1/2 is not without downside
     //
-    pub fn can_prune_move(&self, mv: &Move, mv_num: u32,  mt: MoveType, before: &Board, after: &Board, eval: Score, n: &Node, ext: Ply, scorer: &SimpleScorer) -> Option<Score> {
-        if !self.alpha_enabled {
+    #[inline]
+    pub fn can_prune_move(&mut self, mv: &Move, mv_num: u32,  mt: MoveType, before: &Board, after: &Board, eval: Score, n: &Node, ext: Ply) -> Option<Score> {
+        if !self.futility.alpha_enabled {
             return None;
         }
         if ext != 0 {
             return None;
         }
-        if self.move_types_forbidden.contains(mt) {
+        if self.futility.move_types_forbidden.contains(mt) {
             return None;
         }
 
-        if !self.first_move && mv_num <= 1 {
+        if !self.futility.first_move && mv_num <= 1 {
             return None;
         }
 
@@ -169,16 +173,16 @@ impl Futility {
             return None;
         }
 
-        if self.avoid_giving_check && after.is_in_check(after.color_us()) {
+        if self.futility.avoid_giving_check && after.is_in_check(after.color_us()) {
             return None;
         } 
 
         // position wise, passed pawn promos make a huge impact so exclude them
-        if self.avoid_promos && mv.mover_piece() == Piece::Pawn && mv.to().rank_index_as_white(before.color_us()) >= 6 {
+        if self.futility.avoid_promos && mv.mover_piece() == Piece::Pawn && mv.to().rank_index_as_white(before.color_us()) >= 6 {
             return None;
         } 
 
-        if n.depth > self.max_depth_captures && mv.is_capture() {
+        if n.depth > self.futility.max_depth_captures && mv.is_capture() {
             return None;
         }
 
@@ -188,19 +192,26 @@ impl Futility {
 
         // safety margin depends on how far away we are from leaf node
         let margin = Score::from_cp(match n.depth {
-            d if d <= 0 => self.margin_qs,
-            1 => self.margin1,
-            2 => self.margin2,
-            3 => self.margin3,
-            _ => self.margin1 + self.margin2 + self.margin3,
+            d if d <= 0 => self.futility.margin_qs,
+            1 => self.futility.margin1,
+            2 => self.futility.margin2,
+            3 => self.futility.margin3,
+            _ => self.futility.margin1 + self.futility.margin2 + self.futility.margin3,
         });
 
         // not a capture or promo => gain = 0
-        let gain = before.eval_move_material(scorer, mv);
+        let gain = before.eval_move_material(&self.eval, mv);
 
         // fail low pruning
         let est_score = eval + margin + gain;
         if est_score <= n.alpha {
+            let category = match n.depth {
+                d if d <= 0 => Category::PruneFutilityD0,
+                1 => Category::PruneFutilityD1,
+                2 => Category::PruneFutilityD2,
+                _ => Category::PruneFutilityD3,
+            };
+            self.counts.inc(n, category);
             return Some(est_score);
         }
         None
@@ -210,20 +221,24 @@ impl Futility {
     // then the rest will, and quiet
     // moves will also be so far away from alpha we can prune them too
     // assumes already the move itself is futile on above test 
-    // and we dont prune Hash moves as they are not ordered and may have a capture value < later moves
-    pub fn can_prune_remaining_moves(&self, b: &Board, _mt: MoveType, _n: &Node) -> bool {
+// and we dont prune Hash moves as they are not ordered and may have a capture value < later moves
+    #[inline]
+    pub fn can_prune_remaining_moves(&self, b: &Board, mt: MoveType, _n: &Node) -> bool {
+        if mt == MoveType::Hash  {
+            return false;
+        }
         // we might be pruning a low value capture, with a high value promo later in the move list
-        let near_promos = Bitboard::RANKS_27.or(Bitboard::RANKS_36);
+        let near_promos = Bitboard::RANKS_27; // .or(Bitboard::RANKS_36);
         if (b.pawns() & b.us() & Bitboard::home_half(b.color_them()) & near_promos).any() {
             return false;
         }
-        self.prune_remaining
+        self.futility.prune_remaining
     }
 
 
     pub fn can_prune_all_moves(&self, b: &Board, measure: FutilityMeasure, node: &Node, eval: &SimpleScorer) -> Option<Score> {
 
-        if !self.beta_enabled {
+        if !self.futility.beta_enabled {
             return None;
         }
         let phase = b.phase(&eval.phaser);

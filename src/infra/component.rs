@@ -3,6 +3,7 @@
 
 pub trait Component {
     fn new_game(&mut self);
+    fn new_iter(&mut self) {}
     fn new_position(&mut self);
 }
 
@@ -21,6 +22,7 @@ mod tests {
     impl Component for TestStruct {
 
         fn new_game(&mut self) {}
+        fn new_iter(&mut self) {}
         fn new_position(&mut self) {}
     }
 }

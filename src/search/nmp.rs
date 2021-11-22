@@ -4,7 +4,7 @@ use crate::search::algo::Algo;
 use crate::board::Board;
 use crate::eval::score::Score;
 use crate::mv::Move;
-use crate::search::node::Node;
+use crate::search::node::{Node, Category};
 use crate::pvtable::PvTable;
 // use crate::eval::score::Score;
 use crate::infra::component::Component;
@@ -168,6 +168,7 @@ impl Algo {
         self.explainer.start(&self.current_variation);
         if child_score >= n.beta {
             self.stats.inc_node_cut(n.ply, MoveType::Null, -1);
+            self.counts.inc(n, Category::PruneNullMovePrune);
             self.report_refutation(n.ply);
             self.explain_nmp(child_score, n.beta);
             return Some(child_score);

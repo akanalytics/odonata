@@ -600,22 +600,24 @@ impl Uci {
         } else if name == "Ponder" {
             // pondering determined by "go ponder", so no variable to track
         } else if name == "Config_File" {
-            engine.config_filename = value.to_string();                        
-            use figment::providers::{Format, Toml};
-            use figment::{Figment};
-            use anyhow::Context;
-            use std::path::{Path};
-            // use toml;
-            let path = Path::new(&engine.config_filename);
-            if !path.is_file() {
-                bail!("Config_File {} not found", engine.config_filename);
-            }
-            let fig = Figment::new()
-                .merge(&*engine)
-                .merge(Toml::file(&engine.config_filename));
+            if !value.is_empty() {
+                engine.config_filename = value.to_string();                        
+                use figment::providers::{Format, Toml};
+                use figment::{Figment};
+                use anyhow::Context;
+                use std::path::{Path};
+                // use toml;
+                let path = Path::new(&engine.config_filename);
+                if !path.is_file() {
+                    bail!("Config_File '{}' not found", engine.config_filename);
+                }
+                let fig = Figment::new()
+                    .merge(&*engine)
+                    .merge(Toml::file(&engine.config_filename));
 
-            let new : Engine = fig.extract().context(format!("error in config file {}", &engine.config_filename))?;
-            *engine = new;
+                let new : Engine = fig.extract().context(format!("error in config file {}", &engine.config_filename))?;
+                *engine = new;
+            }
         } else {
             bail!("Unknown option name '{}' value '{}'", name, value);
         }
@@ -635,11 +637,12 @@ impl Uci {
                 let statements = value.split(";").collect_vec();
                 for s in statements {
                     let s = s.trim();
-                    if let Some((name, value)) = s.split_once("=") {
-
-                        kvs.insert( name.trim().to_string(), value.trim().to_string() );
-                    } else {
-                        bail!("Expected key=value but found '{}'", s)
+                    if !s.is_empty() {
+                        if let Some((name, value)) = s.split_once("=") {
+                            kvs.insert( name.trim().to_string(), value.trim().to_string() );
+                        } else {
+                            bail!("Expected key=value but '{}' found", s)
+                        }
                     }
                 }
                 let mut engine = self.engine.lock().unwrap();

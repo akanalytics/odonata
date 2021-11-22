@@ -28,6 +28,7 @@ use crate::search::taskcontrol::TaskControl;
 use crate::search::timecontrol::TimeControl;
 use crate::search::history_heuristic::HistoryHeuristic;
 use crate::search::aspiration::Aspiration;
+use crate::trace::counts::{Counts};
 use crate::types::Ply;
 use crate::variation::Variation;
 use std::fmt;
@@ -45,22 +46,22 @@ use super::search_results::SearchResultsMode;
 pub struct Algo {
     pub minmax: bool,
     pub show_refutations: bool, 
+    pub clock: Clock,
     pub analyse_mode: bool, // tries to find full PV etc
 
-    pub ids: IterativeDeepening,
-    pub eval: SimpleScorer,
     pub qsearch: QSearch,
     pub nmp: NullMovePruning,
     pub futility: Futility,
+    pub ids: IterativeDeepening,
+    pub eval: SimpleScorer,
 
     pub pvs: Pvs,
-    pub extensions: Extensions,
+    pub ext: Extensions,
     pub lmr: Lmr,
     pub mte: MoveTimeEstimator,
     pub move_orderer: MoveOrderer,
 
     pub repetition: Repetition,
-    pub tt: TranspositionTable2,
     pub killers: Killers,
     pub history: HistoryHeuristic,
     pub explainer: SearchExplainer,
@@ -69,8 +70,9 @@ pub struct Algo {
     pub razor: Razor,
     pub recognizer: Recognizer,
     pub aspiration: Aspiration,
-    pub clock: Clock,
+    pub counts: Counts,
 
+    pub tt: TranspositionTable2,
 
     #[serde(skip)]
     pub results: SearchResults,
@@ -146,7 +148,7 @@ impl Component for Algo {
         self.futility.new_game();
 
         self.pvs.new_game();
-        self.extensions.new_game();
+        self.ext.new_game();
         self.lmr.new_game();
         self.mte.new_game();
         self.move_orderer.new_game();
@@ -162,6 +164,8 @@ impl Component for Algo {
         self.recognizer.new_game();
         self.aspiration.new_game();
         self.clock.new_game();
+
+        self.counts.new_game();
     }
 
     fn new_position(&mut self) {
@@ -182,7 +186,7 @@ impl Component for Algo {
         self.futility.new_position();
 
         self.pvs.new_position();
-        self.extensions.new_position();
+        self.ext.new_position();
         self.lmr.new_position();
         self.mte.new_position();
         self.move_orderer.new_position();
@@ -198,6 +202,8 @@ impl Component for Algo {
         self.recognizer.new_position();
         self.aspiration.new_position();
         self.clock.new_position();
+
+        self.counts.new_position();
     }
 }
 
@@ -221,7 +227,7 @@ impl fmt::Debug for Algo {
             .field("futility", &self.futility)
 
             .field("pvs", &self.pvs)
-            .field("extensions", &self.extensions)
+            .field("extensions", &self.ext)
             .field("lmr", &self.lmr)
             .field("mte", &self.mte)
             .field("move_orderer", &self.move_orderer)
@@ -237,6 +243,8 @@ impl fmt::Debug for Algo {
             .field("recognizer", &self.recognizer)
             .field("aspiration", &self.aspiration)
             .field("clock", &self.clock)
+
+            .field("counts", &self.counts)
             .finish()
     }
 }
@@ -266,7 +274,7 @@ impl fmt::Display for Algo {
         write!(f, "\n[nmp]\n{}", self.nmp)?;
         write!(f, "\n[futility]\n{}", self.futility)?;
         write!(f, "\n[pvs]\n{}", self.pvs)?;
-        write!(f, "\n[extensions]\n{}", self.extensions)?;
+        write!(f, "\n[extensions]\n{}", self.ext)?;
         write!(f, "\n[reductions]\n{}", self.lmr)?;
         write!(f, "\n[qsearch]\n{}", self.qsearch)?;
         write!(f, "\n[eval]\n{}", self.eval)?;
@@ -281,11 +289,14 @@ impl fmt::Display for Algo {
         write!(f, "\n[global counts]\n{}", counts::GLOBAL_COUNTS)?;
         write!(f, "\n[pvtable]\n{}", self.pv_table)?;
         write!(f, "\n[explainer]\n{}", self.explainer)?;
+
         write!(f, "\n[restrictions]\n{}", self.restrictions)?;
         write!(f, "\n[razor]\n{}", self.razor)?;
         write!(f, "\n[recognizer]\n{}", self.recognizer)?;
-        write!(f, "\n[aspiration]\n{:?}", self.aspiration)?;
-        write!(f, "\n[clock]\n{:?}", self.clock)?;
+        write!(f, "\n[aspiration]\n{:}", self.aspiration)?;
+        write!(f, "\n[clock]\n{:}", self.clock)?;
+
+        write!(f, "\n[counts]\n{}", self.counts)?;
         Ok(())
     }
 }
