@@ -11,7 +11,7 @@ use strum::EnumCount;
 use std::time::Duration;
 use format_num::*;
 
-use super::node::{Category, Node};
+use super::node::{Event, Node};
 
 
 
@@ -35,7 +35,7 @@ pub struct SearchStats {
 
     pub pv: Variation,
     score: Score,
-    category: Category,
+    category: Event,
 }
 
 #[rustfmt::skip]
@@ -95,7 +95,7 @@ impl Default for SearchStats {
                 .collect(),
             pv: Variation::default(),
             score: Score::default(),
-            category: Category::Unknown,
+            category: Event::Unknown,
         }
     }
 }
@@ -112,7 +112,7 @@ impl SearchStats {
     }
 
     #[inline]
-    pub fn set_score(&mut self, s: Score, cat: Category) {
+    pub fn set_score(&mut self, s: Score, cat: Event) {
         self.score = s;
         self.category = cat;
     }
@@ -197,10 +197,10 @@ impl SearchStats {
         self.plies[ply as usize].est_time = *estimate;
     }
 
-    pub fn record_iteration(&mut self, ply: Ply, category: Category, pv: Variation) {
+    pub fn record_iteration(&mut self, ply: Ply, category: Event, pv: Variation) {
         let ply = ply as usize;
         self.plies[ply].elapsed = self.clock.elapsed_ply();
-        self.completed = category != Category::Cancelled;
+        self.completed = category != Event::Cancelled;
         if self.completed {
             self.pv = pv;
         }

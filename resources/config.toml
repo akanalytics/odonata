@@ -929,6 +929,7 @@ enabled = false
 
 [restrictions]
 enabled = true
+multi_pv_count = 1
 
 [recognizer]
 enabled = true

@@ -1,7 +1,7 @@
 use crate::bitboard::bitboard::Bitboard;
 use crate::bitboard::square::Square;
 use crate::board::multiboard::Multiboard;
-use crate::material::Material;
+use crate::domain::material::Material;
 use crate::board::boardbuf::BoardBuf;
 use crate::cache::hasher::Hasher;
 use std::cell::Cell;

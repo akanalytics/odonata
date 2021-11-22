@@ -7,7 +7,7 @@ use crate::types::Ply;
 use std::fmt;
 use serde::{Deserialize, Serialize};
 
-use super::node::Category;
+use super::node::Event;
 
 
 
@@ -62,7 +62,7 @@ impl Algo {
             // no PVS in PVS search
             return false;
         }
-        self.counts.inc(n, Category::Pvs);
+        self.counts.inc(n, Event::Pvs);
         true
     }
 

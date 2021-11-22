@@ -36,7 +36,7 @@ use serde::{Deserialize, Serialize};
 use crate::clock::Clock;
 
 
-use super::node::Category;
+use super::node::Event;
 use super::search_explainer::SearchExplainer;
 use super::search_results::SearchResultsMode;
 
@@ -46,14 +46,13 @@ use super::search_results::SearchResultsMode;
 pub struct Algo {
     pub minmax: bool,
     pub show_refutations: bool, 
-    pub clock: Clock,
     pub analyse_mode: bool, // tries to find full PV etc
 
+    pub ids: IterativeDeepening,
+    pub eval: SimpleScorer,
     pub qsearch: QSearch,
     pub nmp: NullMovePruning,
     pub futility: Futility,
-    pub ids: IterativeDeepening,
-    pub eval: SimpleScorer,
 
     pub pvs: Pvs,
     pub ext: Extensions,
@@ -62,6 +61,7 @@ pub struct Algo {
     pub move_orderer: MoveOrderer,
 
     pub repetition: Repetition,
+    pub tt: TranspositionTable2,
     pub killers: Killers,
     pub history: HistoryHeuristic,
     pub explainer: SearchExplainer,
@@ -70,9 +70,9 @@ pub struct Algo {
     pub razor: Razor,
     pub recognizer: Recognizer,
     pub aspiration: Aspiration,
-    pub counts: Counts,
+    pub clock: Clock,
 
-    pub tt: TranspositionTable2,
+    pub counts: Counts,
 
     #[serde(skip)]
     pub results: SearchResults,
@@ -394,7 +394,7 @@ impl Algo {
         let time_up = self.mte.is_time_up(ply, &self.clock);
         if time_up {
             self.stats.completed = false;
-            self.stats.set_score(-Score::INFINITY, Category::Cancelled);
+            self.stats.set_score(-Score::INFINITY, Event::Cancelled);
             self.task_control.cancel();
         }
         time_up

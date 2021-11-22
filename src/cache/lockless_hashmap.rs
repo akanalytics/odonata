@@ -26,7 +26,7 @@ impl Bucket {
     }
 
     #[inline]
-    pub fn has_hash(h: Hash, (k,d): (Hash, u64)) -> bool {
+    pub fn has_hash(h: Hash, (k, d): (Hash, u64)) -> bool {
         k ^ d == h
     }
 
@@ -44,8 +44,6 @@ impl Bucket {
         self.data.store(0, Ordering::Relaxed);
     }
 }
-
-
 
 #[derive(Default)]
 pub struct SharedTable {
@@ -95,10 +93,6 @@ impl SharedTable {
         self.capacity
     }
 
-    #[inline]
-    pub fn utilization(&self) -> usize {
-        self.utilization.get() as usize
-    }
 
     #[inline]
     pub fn index(&self, h: Hash) -> usize {
@@ -106,7 +100,7 @@ impl SharedTable {
     }
 
     #[inline]
-    pub fn probe(&self, h: Hash) -> Option<(u64,&Bucket)> {
+    pub fn probe(&self, h: Hash) -> Option<(u64, &Bucket)> {
         for bucket in &self.vec[self.index(h)..self.index(h) + self.buckets] {
             let key = bucket.key();
             let data = bucket.data();
@@ -115,10 +109,14 @@ impl SharedTable {
             }
             let hash = key ^ data;
             if hash == h {
-                return Some((data,bucket));
+                return Some((data, bucket));
             }
         }
         None
+    }
+
+    pub fn iter(&self) -> std::slice::Iter<'_, Bucket> {
+        self.vec.iter()
     }
 
     #[inline]
@@ -127,43 +125,28 @@ impl SharedTable {
     }
 
     pub fn clear(&self) {
-        self.vec.iter().for_each(
-            |b| b.set_empty()
-        );
+        self.vec.iter().for_each(|b| b.set_empty());
         self.utilization.clear();
     }
 }
 
 // https://stackoverflow.com/questions/60180121/how-do-i-allocate-a-vecu8-that-is-aligned-to-the-size-of-the-cache-line
-
-
 #[repr(align(64))]
 pub struct AlignToCacheLine([Bucket; 4]);
 
 fn aligned_vec(capacity: usize) -> Vec<Bucket> {
     // Lazy math to ensure we always have enough.
     let n_units = capacity / 4 + 4;
-
     let mut aligned: Vec<AlignToCacheLine> = Vec::with_capacity(n_units);
-
     let ptr = aligned.as_mut_ptr();
-
     mem::forget(aligned);
-
-    unsafe {
-        Vec::from_raw_parts(
-            ptr as *mut Bucket,
-            capacity,
-            capacity,
-        )
-    }
+    unsafe { Vec::from_raw_parts(ptr as *mut Bucket, capacity, capacity) }
 }
-    
 
 #[cfg(test)]
 mod tests {
-    use std::mem::size_of;
     use super::*;
+    use std::mem::size_of;
 
     #[test]
     fn tt_size() {
