@@ -303,7 +303,7 @@ impl Uci {
         for d in 1..=depth {
             let t = Instant::now();
             let p = Perft::perft(&mut board, d);
-            Self::print(&format!("info string perft({}) = {:<12} in {}", d, p, Formatting::format_duration(t.elapsed())));
+            Self::print(&format!("info string perft({}) = {:<12} in {}", d, p, Formatting::duration(t.elapsed())));
         }
         Ok(())
     }

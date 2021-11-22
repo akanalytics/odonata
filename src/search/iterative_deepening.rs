@@ -175,7 +175,7 @@ impl Algo {
 
     pub fn exit_iteration(&self) -> bool {
         self.search_stats().interrupted()
-            || self.mte.probable_timeout(&self.search_stats())
+            || self.mte.probable_timeout()
             || self.stats.depth >= self.ids.end_ply
             || self.stats.depth >= MAX_PLY / 2
             || (self.restrictions.exclude_moves.len() == 0

@@ -4,5 +4,6 @@ pub mod version;
 pub mod config;
 pub mod component;
 pub mod serde;
+pub mod tracer;
 
 

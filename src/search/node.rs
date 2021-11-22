@@ -12,7 +12,6 @@ use strum::{IntoEnumIterator, EnumCount};
 pub enum Event {
     Unknown,
     Cancelled,
-    Quiesce,
     
     HashProbe,
     HashHit,
@@ -48,15 +47,19 @@ pub enum Event {
     DerivedAspiration,
     PercentAspiration1,
 
+    NodeLeafQuietEval,
     NodeLeafDraw,
     NodeLeafStalemate,
     DerivedLeaf,
+    PercentBranchingFactor,
 
     NodeInterior,
     NodeInteriorAll,
     NodeInteriorCut,
     NodeInteriorPv,
+
     
+    NodeTypeQuiesce,
     NodeTypeZw,
     PvsReSearch,
     LmrReSearch,

@@ -235,7 +235,7 @@ impl Scorer for ExplainScorer {
 impl fmt::Display for ExplainScorer {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fn pad<T: Into<f64>>(t: T) -> String {
-            Formatting::format_decimal(2, t)
+            Formatting::decimal(2, t)
         }
 
         writeln!(

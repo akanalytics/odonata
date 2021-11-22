@@ -761,9 +761,9 @@ mod tests {
         let moves = tt1.extract_pv_and_score(&board).0;
         info!("After extract");
         assert_eq!(moves.uci(), "");
-        assert_eq!(tt1.table.percent_utilized(), 0);
+        assert_eq!(tt1.hashfull_per_mille(), 0);
         manipulate(&mut tt1);
-        assert_eq!(tt1.table.percent_utilized(), 2);
+        assert_eq!(tt1.table.utilization(), 2);
         tt1.new_game();
         assert!(tt1.probe_by_hash(123).is_none());
 
@@ -777,9 +777,9 @@ mod tests {
             println!("{}", tt2);
         }
         println!("Dropped tt2 ...{}", Arc::strong_count(&tt1.table));
-        assert_eq!(tt1.table.percent_utilized(), 0);
+        assert_eq!(tt1.table.utilization(), 0);
         manipulate(&mut tt1);
-        assert_eq!(tt1.table.percent_utilized(), 2);
+        assert_eq!(tt1.table.utilization(), 2);
         tt1.new_game();
         assert!(tt1.probe_by_hash(123).is_none());
 

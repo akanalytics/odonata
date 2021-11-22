@@ -148,7 +148,7 @@ impl<T> WeightOf<T> where T: 'static + Copy + Num, f32: AsPrimitive<T>   {
 
 impl<T> fmt::Display for WeightOf<T> where T: Copy + Num + fmt::Display + Into<f64> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "({}, {}, {})", Formatting::format_decimal(2, self.s()), Formatting::format_decimal(2, self.m()), Formatting::format_decimal(2, self.e()))
+        write!(f, "({}, {}, {})", Formatting::decimal(2, self.s()), Formatting::decimal(2, self.m()), Formatting::decimal(2, self.e()))
     }
 }
 

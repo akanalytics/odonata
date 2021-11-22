@@ -126,6 +126,18 @@ impl Counts {
             + 1
     }
 
+    pub fn total(&self, i: Ply, cn: Event) -> u64 {
+        (0..MAX_PLY).map(|y| self.count(i, y, cn)).sum()
+    }
+
+    pub fn cumul(&self, cn: Event) -> u64 {
+        use crate::search::node::Event::*;
+        match cn {
+            PercentBranchingFactor => self.cumul(DerivedLeaf) * 100 / std::cmp::max(1, self.cumul(NodeInterior)),
+            _ => (0..MAX_PLY).map(|i| self.total(i, cn)).sum(),
+        }
+    }
+
     pub fn count(&self, i: Ply, y: Ply, cn: Event) -> u64 {
         use crate::search::node::Event::*;
         match cn {
@@ -133,43 +145,33 @@ impl Counts {
                 return self.count(i, y, NodeLeafDraw)
                     + self.count(i, y, NodeLeafStalemate)
                     + self.count(i, y, RecogImmediateDraw)
+                    + self.count(i, y, NodeLeafQuietEval)
+                    + self.count(i, y, DerivedPrunedInterior)
+                    + self.count(i, y, PruneStandingPat)
             }
+
             // just node pruning
-            DerivedPrunedInterior => {
-                return self.count(i, y, PruneRazor)
-                    + self.count(i, y, PruneNullMovePrune)
-            }
+            DerivedPrunedInterior => return self.count(i, y, PruneRazor) + self.count(i, y, PruneNullMovePrune),
             DerivedRecog => {
                 return self.count(i, y, RecogImmediateDraw)
                     + self.count(i, y, RecogCannotWin)
                     + self.count(i, y, RecogHelpmateOrDraw)
                     + self.count(i, y, RecogMaybeWin)
             }
-            PercentPvsReSearch => {
-                return (self.count(i, y, PvsReSearch) as f32
-                     / self.count(i, y, Pvs) as f32 * 100.0) as u64
-            }
-            PercentLmrReSearch => {
-                return (self.count(i, y, LmrReSearch) as f32
-                     / self.count(i, y, Lmr) as f32 * 100.0) as u64
-            }
+            PercentPvsReSearch => return (self.count(i, y, PvsReSearch) as f32 / self.count(i, y, Pvs) as f32 * 100.0) as u64,
+            PercentLmrReSearch => return (self.count(i, y, LmrReSearch) as f32 / self.count(i, y, Lmr) as f32 * 100.0) as u64,
             PercentPrunedInterior => {
-                return (self.count(i, y, DerivedPrunedInterior) as f32
-                     / self.count(i, y, NodeInterior) as f32 * 100.0) as u64
+                return (self.count(i, y, DerivedPrunedInterior) as f32 / self.count(i, y, NodeInterior) as f32 * 100.0) as u64
             }
-            PercentHashHit => {
-                return (self.count(i, y, HashHit) as f32
-                     / self.count(i, y, HashProbe) as f32 * 100.0) as u64
-            }
+            PercentHashHit => return (self.count(i, y, HashHit) as f32 / self.count(i, y, HashProbe) as f32 * 100.0) as u64,
             DerivedAspiration => {
                 return self.count(i, y, Aspiration1)
                     + self.count(i, y, Aspiration2)
                     + self.count(i, y, Aspiration3)
                     + self.count(i, y, AspirationN)
             }
-                PercentAspiration1 => {
-                return (self.count(i, y, Aspiration1) as f32
-                     / self.count(i, y, DerivedAspiration) as f32 * 100.0) as u64
+            PercentAspiration1 => {
+                return (self.count(i, y, Aspiration1) as f32 / self.count(i, y, DerivedAspiration) as f32 * 100.0) as u64
             }
             _ => {}
         }
@@ -195,10 +197,23 @@ mod tests {
         let mut counters = Counts::default();
 
         counters.inc_by_ply(4, Event::PruneRazor);
+        counters.new_iter();
+        counters.new_iter();
+        let n = &mut Node::root(5);
+        n.ply = 6;
+        counters.inc(n, Event::NodeInterior);
+        counters.inc(n, Event::NodeLeafDraw);
+        counters.inc(n, Event::NodeLeafStalemate);
+        counters.inc(n, Event::NodeLeafStalemate);
         println!("{:#?}", counters);
         println!("{}", counters);
         // Count::Razor.inc(4);
         assert_eq!(counters.len_ply(0), 5);
-        assert_eq!(counters.len_ply(1), 1);
+        assert_eq!(counters.len_ply(2), 7);
+        assert_eq!(counters.count(2, 6, Event::NodeLeafStalemate), 2);
+        assert_eq!(counters.total(2, Event::NodeLeafStalemate), 2);
+        assert_eq!(counters.total(2, Event::DerivedLeaf), 3);
+        assert_eq!(counters.cumul(Event::DerivedLeaf), 4);
+        assert_eq!(counters.cumul(Event::PercentBranchingFactor), 400);
     }
 }

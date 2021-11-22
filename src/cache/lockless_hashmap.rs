@@ -1,4 +1,3 @@
-use crate::trace::stat::Stat;
 use crate::types::Hash;
 use std::mem;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -52,7 +51,6 @@ pub struct SharedTable {
     capacity: usize,
     mask: usize,
     buckets: usize,
-    pub utilization: Stat,
 }
 
 //
@@ -93,6 +91,12 @@ impl SharedTable {
         self.capacity
     }
 
+    pub fn utilization(&self) -> usize {
+        self.vec.iter().filter(|&b| {
+            let kd = (b.key(), b.data());
+            !Bucket::is_empty(kd.0 ^ kd.1, kd.1)
+        }).count()
+    }
 
     #[inline]
     pub fn index(&self, h: Hash) -> usize {
@@ -126,7 +130,6 @@ impl SharedTable {
 
     pub fn clear(&self) {
         self.vec.iter().for_each(|b| b.set_empty());
-        self.utilization.clear();
     }
 }
 

@@ -115,7 +115,7 @@ mod tests {
             results.tags_mut().remove(Tag::BM);
             results.tags_mut().remove(Tag::CE);
             results.tags_mut().remove(Tag::ACN);
-            println!("{:>12} {:>12} {}", Formatting::format_u128(nodes), Formatting::format_u128(node_count), results);
+            println!("{:>12} {:>12} {}", Formatting::u128(nodes), Formatting::u128(node_count), results);
         }
     }
 }

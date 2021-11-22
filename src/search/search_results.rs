@@ -49,11 +49,11 @@ impl SearchResults {
     pub fn with_report_progress(algo: &Algo) -> Self {
         SearchResults {
             board: algo.board.clone(),
-            nodes: Some(algo.search_stats().all_threads_cumulative_total_nodes()),
-            nodes_thread: Some(algo.search_stats().cumulative_nodes()),
-            nps: Some(algo.search_stats().all_threads_cumulative_knps() * 1000),
+            nodes: Some(algo.clock.cumul_knps_all_threads()),
+            nodes_thread: Some(algo.clock.cumul_nodes()),
+            nps: Some(algo.clock.cumul_knps_all_threads() * 1000),
             hashfull_per_mille: Some(algo.tt.hashfull_per_mille()),
-            time_millis: Some(algo.search_stats().cumulative_time_as_millis() as u64),
+            time_millis: Some(algo.clock.elapsed_search().0.as_millis() as u64),
             ..Default::default()
         }
     }

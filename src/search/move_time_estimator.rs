@@ -2,7 +2,6 @@ use crate::board::Board;
 use crate::clock::Clock;
 use crate::infra::component::Component;
 use crate::utils::Formatting;
-use crate::search::searchstats::SearchStats;
 use crate::search::timecontrol::TimeControl;
 use crate::types::Ply;
 use std::fmt;
@@ -80,11 +79,11 @@ impl fmt::Display for MoveTimeEstimator {
         writeln!(f, "branching factor : {}", self.branching_factor)?;
         writeln!(f, "const moves rem. : {}", self.moves_rem)?;
         writeln!(f, "% of time adv    : {}", self.perc_of_time_adv)?;
-        writeln!(f, "allotted for mv  : {}", Formatting::format_duration(self.allotted()))?;
-        writeln!(f, "time estimate    : {}", Formatting::format_duration(self.estimate_time))?;
+        writeln!(f, "allotted for mv  : {}", Formatting::duration(self.allotted()))?;
+        writeln!(f, "time estimate    : {}", Formatting::duration(self.estimate_time))?;
         writeln!(f, "deterministic    : {}", self.deterministic)?;
         writeln!(f, "nodestime        : {}", self.nodestime)?;
-        writeln!(f, "elapsed used     : {}", Formatting::format_duration(self.elapsed_time))?;
+        writeln!(f, "elapsed used     : {}", Formatting::duration(self.elapsed_time))?;
         Ok(())
     }
 }
@@ -133,7 +132,7 @@ impl MoveTimeEstimator {
         self.estimate_time = self.elapsed_time.mul_f32(self.branching_factor);
     }
 
-    pub fn probable_timeout(&self, _search_stats: &SearchStats) -> bool {
+    pub fn probable_timeout(&self) -> bool {
         match self.time_control {
             TimeControl::RemainingTime {
                 our_color,

@@ -77,12 +77,12 @@ impl fmt::Display for Engine {
         writeln!(
             f,
             "engine init time : {}",
-            Formatting::format_duration(self.engine_init_time)
+            Formatting::duration(self.engine_init_time)
         )?;
         writeln!(
             f,
             "search init time : {}",
-            Formatting::format_duration(self.search_init_time)
+            Formatting::duration(self.search_init_time)
         )?;
         write!(f, "\n[algo]\n{}", self.algo)
     }
@@ -191,6 +191,7 @@ impl Engine {
                 warn!("tt not shared accross threads");
                 algo.tt.enabled = self.algo.tt.enabled;
             }
+            algo.set_thread_index(i);
             algo.move_orderer.thread = i;
 
             if i >= 1 {
@@ -236,7 +237,7 @@ impl Engine {
                 algo.score().to_string(),
                 algo.stats.cumulative().all_nodes(),
                 algo.stats.cumulative_knps(),
-                Formatting::format_duration(algo.stats.cumulative().elapsed),
+                Formatting::duration(algo.stats.cumulative().elapsed),
                 algo.pv().to_string(),
             );
             // knps += algo.search_stats.cumulative_knps();
@@ -324,7 +325,7 @@ mod tests {
                     "Time with {} threads (shared:{}): {}\n\n\n",
                     i,
                     shared,
-                    Formatting::format_duration(time::Instant::now() - start)
+                    Formatting::duration(time::Instant::now() - start)
                 );
                 // println!("\ntt\n{}", eng.algo.tt);
             }

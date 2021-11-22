@@ -29,13 +29,13 @@ impl fmt::Display for TimeControl {
         match self {
             TimeControl::DefaultTime => write!(f, "Default")?,
             TimeControl::Depth(max_ply) => write!(f, "Depth({})", max_ply)?,
-            TimeControl::SearchTime(duration) => write!(f, "SearchTime({})", Formatting::format_duration(*duration))?,
-            TimeControl::NodeCount(max_nodes) => write!(f, "NodeCount({})", Formatting::format_u128(*max_nodes as u128))?,
+            TimeControl::SearchTime(duration) => write!(f, "SearchTime({})", Formatting::duration(*duration))?,
+            TimeControl::NodeCount(max_nodes) => write!(f, "NodeCount({})", Formatting::u128(*max_nodes as u128))?,
             TimeControl::Infinite => write!(f, "Infinite")?,
             TimeControl::MateIn(depth) => write!(f, "MateIn({})", depth)?,
             TimeControl::RemainingTime { our_color, wtime, btime, winc: _, binc: _, movestogo: _ } => {
                 let duration = our_color.chooser_wb(wtime, btime);
-                write!(f, "RemainingTime({})", Formatting::format_duration(*duration))?;
+                write!(f, "RemainingTime({})", Formatting::duration(*duration))?;
             }
         }
         Ok(())

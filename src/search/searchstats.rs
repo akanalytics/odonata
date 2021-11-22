@@ -45,7 +45,7 @@ impl fmt::Display for SearchStats {
         writeln!(f, "pv               : {}", self.pv())?;
         writeln!(f, "score            : {}", self.score)?;
         writeln!(f, "category         : {:?}", self.category)?;
-        writeln!(f, "clock (elapsed)  : {}", Formatting::format_duration(self.clock.elapsed_search()))?;
+        writeln!(f, "clock (elapsed)  : {}", Formatting::duration(self.clock.elapsed_search()))?;
         writeln!(f, "interrupted      : {}", self.interrupted())?;
         writeln!(f, "user cancelled   : {}", self.user_cancelled)?;
         writeln!(f, "calc depth       : {}", self.depth())?;
@@ -669,8 +669,8 @@ impl NodeStats {
             qleaf = self.q_leaf_nodes,
             qttnode = self.q_tt_nodes,
 
-            est_time = Formatting::format_duration(self.est_time),
-            real_time = Formatting::format_duration(self.elapsed),
+            est_time = Formatting::duration(self.est_time),
+            real_time = Formatting::duration(self.elapsed),
         )
     }
 }

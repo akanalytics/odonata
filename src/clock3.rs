@@ -58,7 +58,7 @@ impl DeterministicClock {
 
 impl fmt::Display for DeterministicClock {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", Formatting::format_duration(self.elapsed()))
+        write!(f, "{}", Formatting::duration(self.elapsed()))
     }
 }
 
@@ -75,7 +75,7 @@ impl Default for Clock3 {
 
 impl fmt::Display for Clock3 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", Formatting::format_duration(self.elapsed_search()))
+        write!(f, "{}", Formatting::duration(self.elapsed_search()))
     }
 }
 

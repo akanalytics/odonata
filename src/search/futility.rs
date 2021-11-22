@@ -23,8 +23,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Futility {
-    alpha_enabled: bool,
-    beta_enabled: bool,
+    pub alpha_enabled: bool,
+    pub beta_enabled: bool,
     prune_remaining: bool,
     avoid_in_check: bool, 
     avoid_giving_check: bool, 

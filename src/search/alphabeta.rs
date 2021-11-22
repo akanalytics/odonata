@@ -66,7 +66,7 @@ impl Algo {
     ) -> (Score, Event) {
         self.clear_move(ply);
         self.report_progress();
-        self.clock.incr_node_count();
+        self.clock.inc_nodes();
 
         if self.time_up_or_cancelled(ply, false) {
             return (-Score::INFINITY, Event::Cancelled);
@@ -84,7 +84,7 @@ impl Algo {
             self.stats.inc_zw_nodes(ply);
         }
         if n.is_qs() {
-            self.counts.inc(&n, Event::Quiesce);
+            self.counts.inc(&n, Event::NodeTypeQuiesce);
         }
 
 
@@ -108,7 +108,6 @@ impl Algo {
             (Some(s), Some(mv)) => { tt_mv = mv; score = s; bm = mv},
             _ => {},
         }                
-        self.counts.inc(&n, Event::NodeInterior);
         self.stats.inc_interior_nodes(&n);
 
 
@@ -275,18 +274,18 @@ impl Algo {
         }
 
         if count == 0 {
-            self.counts.inc(&n, Event::NodeLeafStalemate);
             self.stats.inc_leaf_nodes(&n);
             if n.is_qs() {
+                self.counts.inc(&n, Event::NodeLeafQuietEval);
                 return (b.eval(
                     &mut self.eval,
                     &n,
-                ), Event::Quiesce);
+                ), Event::NodeLeafQuietEval);
             }
             else {
                 self.counts.inc(&n, Event::NodeLeafStalemate);
                 return 
-                // FIXME VER:0.4.14
+                // FIXME VER:0.4.14 
                 // (board.eval_draw(&mut self.eval, &n),
                 (b.eval(
                 &mut self.eval,
@@ -294,7 +293,9 @@ impl Algo {
                 ), 
                 Event::NodeLeafStalemate);
             }
-        } else if nt == NodeType::UpperAll {
+        }
+        self.counts.inc(&n, Event::NodeInterior);
+        if nt == NodeType::UpperAll {
             self.stats.inc_node_all(ply);
             self.counts.inc(&n, Event::NodeInteriorAll);
             // nothing
@@ -310,7 +311,6 @@ impl Algo {
         } else {
             panic!("Node type {:?} ", nt);
         }
-
         let entry = TtNode { score, depth, nt, bm, };
         self.tt.store(b.hash(), entry);
         // self.explain_node(&bm, nt, score, &self.pv_table.extract_pv_for(ply));

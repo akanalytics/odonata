@@ -60,7 +60,7 @@ where
 pub struct Formatting;
 
 impl Formatting {
-    pub fn format_decimal<F: Into<f64>>(decimal_places: u32, n: F) -> String {
+    pub fn decimal<F: Into<f64>>(decimal_places: u32, n: F) -> String {
         match decimal_places {
             0 => format_num!(".0f", n),
             1 => format_num!(".1f", n),
@@ -71,15 +71,15 @@ impl Formatting {
         }
     }
 
-    pub fn format_f64(n: f64) -> String {
+    pub fn f64(n: f64) -> String {
         format_num!(".4s", n)
     }
 
-    pub fn format_u128(n: u128) -> String {
+    pub fn u128(n: u128) -> String {
         format_num!(",d", n as f64)
     }
 
-    pub fn format_duration(d: Duration) -> String {
+    pub fn duration(d: Duration) -> String {
         DurationNewType(d).to_string()
    }
 }
@@ -314,14 +314,14 @@ mod tests {
 
     #[test]
     fn test_formatter() {
-        assert_eq!( Formatting::format_f64(12345567.0).as_str(), "12.35M" );
-        assert_eq!( Formatting::format_f64(0.0).as_str(), "0.000" );
-        assert_eq!( Formatting::format_f64(1234567890123.0).as_str(), "1.235T" );
-        assert_eq!( Formatting::format_f64(123456.0).as_str(), "123.5k" );
-        assert_eq!( Formatting::format_f64(0.0000123).as_str(), "12.30µ" );
-        assert_eq!( Formatting::format_f64(0.0124).as_str(), "12.40m" );
-        assert_eq!( Formatting::format_decimal(2, 0.0124 as f32).as_str(), "0.01" );
-        assert_eq!( Formatting::format_decimal(0, 4.0124).as_str(), "4" );
-        assert_eq!( Formatting::format_decimal(4, 4.012).as_str(), "4.0120" );
+        assert_eq!( Formatting::f64(12345567.0).as_str(), "12.35M" );
+        assert_eq!( Formatting::f64(0.0).as_str(), "0.000" );
+        assert_eq!( Formatting::f64(1234567890123.0).as_str(), "1.235T" );
+        assert_eq!( Formatting::f64(123456.0).as_str(), "123.5k" );
+        assert_eq!( Formatting::f64(0.0000123).as_str(), "12.30µ" );
+        assert_eq!( Formatting::f64(0.0124).as_str(), "12.40m" );
+        assert_eq!( Formatting::decimal(2, 0.0124 as f32).as_str(), "0.01" );
+        assert_eq!( Formatting::decimal(0, 4.0124).as_str(), "4" );
+        assert_eq!( Formatting::decimal(4, 4.012).as_str(), "4.0120" );
     }
 }

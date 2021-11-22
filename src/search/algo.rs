@@ -1,51 +1,49 @@
 use crate::board::Board;
 use crate::cache::tt2::TranspositionTable2;
-use crate::infra::component::Component;
+use crate::clock::Clock;
 use crate::eval::eval::SimpleScorer;
+use crate::eval::recognizer::Recognizer;
 use crate::eval::score::Score;
 use crate::globals::counts;
+use crate::infra::component::Component;
 use crate::mv::Move;
 use crate::position::Position;
 use crate::pvtable::PvTable;
 use crate::repetition::Repetition;
+use crate::search::aspiration::Aspiration;
 use crate::search::extensions::Extensions;
-use crate::search::node::Node;
-use crate::search::lmr::Lmr;
 use crate::search::futility::Futility;
+use crate::search::history_heuristic::HistoryHeuristic;
 use crate::search::iterative_deepening::IterativeDeepening;
 use crate::search::killers::Killers;
+use crate::search::lmr::Lmr;
 use crate::search::move_orderer::MoveOrderer;
 use crate::search::move_time_estimator::MoveTimeEstimator;
 use crate::search::nmp::NullMovePruning;
+use crate::search::node::Node;
 use crate::search::pvs::Pvs;
 use crate::search::qsearch::QSearch;
+use crate::search::razor::Razor;
+use crate::search::restrictions::Restrictions;
 use crate::search::search_results::SearchResults;
 use crate::search::searchstats::SearchStats;
-use crate::search::restrictions::Restrictions;
-use crate::search::razor::Razor;
-use crate::eval::recognizer::Recognizer;
 use crate::search::taskcontrol::TaskControl;
 use crate::search::timecontrol::TimeControl;
-use crate::search::history_heuristic::HistoryHeuristic;
-use crate::search::aspiration::Aspiration;
-use crate::trace::counts::{Counts};
+use crate::trace::counts::Counts;
 use crate::types::Ply;
 use crate::variation::Variation;
-use std::fmt;
 use serde::{Deserialize, Serialize};
-use crate::clock::Clock;
-
+use std::fmt;
 
 use super::node::Event;
 use super::search_explainer::SearchExplainer;
 use super::search_results::SearchResultsMode;
 
-
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Algo {
     pub minmax: bool,
-    pub show_refutations: bool, 
+    pub show_refutations: bool,
     pub analyse_mode: bool, // tries to find full PV etc
 
     pub ids: IterativeDeepening,
@@ -94,7 +92,6 @@ pub struct Algo {
     //pub score: Score,
 
     // child_thread: AlgoThreadHandle,
-
     #[serde(skip)]
     clock_checks: u64,
     #[serde(skip)]
@@ -128,7 +125,6 @@ impl Algo {
 }
 
 impl Component for Algo {
-
     // clears evaluation and transposition caches as well as repetition counts
     fn new_game(&mut self) {
         self.stats = SearchStats::new();
@@ -139,7 +135,6 @@ impl Component for Algo {
         self.current_variation = Variation::new();
         self.task_control = TaskControl::default();
         self.max_depth = 0;
-
 
         self.ids.new_game();
         self.eval.new_game();
@@ -219,31 +214,26 @@ impl fmt::Debug for Algo {
             .field("minmax", &self.minmax)
             .field("search_stats", &self.stats)
             .field("depth", &self.max_depth)
-
             .field("ids", &self.ids)
             .field("eval", &self.eval)
             .field("qsearch", &self.qsearch)
             .field("nmp", &self.nmp)
             .field("futility", &self.futility)
-
             .field("pvs", &self.pvs)
             .field("extensions", &self.ext)
             .field("lmr", &self.lmr)
             .field("mte", &self.mte)
             .field("move_orderer", &self.move_orderer)
-
             .field("repetition", &self.repetition)
             .field("tt", &self.tt)
             .field("killers", &self.killers)
             .field("history", &self.history)
             .field("explainer", &self.explainer)
-
             .field("restrictions", &self.restrictions)
             .field("razor", &self.razor)
             .field("recognizer", &self.recognizer)
             .field("aspiration", &self.aspiration)
             .field("clock", &self.clock)
-
             .field("counts", &self.counts)
             .finish()
     }
@@ -260,11 +250,7 @@ impl fmt::Display for Algo {
         writeln!(f, "score            : {}", self.score())?;
         writeln!(f, "analyse mode     : {}", self.analyse_mode)?;
         writeln!(f, "depth            : {}", self.max_depth)?;
-        writeln!(
-            f,
-            "current_best     : {}",
-            self.current_best.unwrap_or(Move::new_null())
-        )?;
+        writeln!(f, "current_best     : {}", self.current_best.unwrap_or(Move::new_null()))?;
         writeln!(f, "results          : {}", self.results_as_position())?;
         writeln!(f, "minmax           : {}", self.minmax)?;
         writeln!(f, "clock_checks     : {}", self.clock_checks)?;
@@ -324,10 +310,10 @@ impl Algo {
 
     pub fn report_refutation(&self, ply: Ply) {
         if self.show_refutations && ply < 4 {
-            let sp = SearchResults { 
-                    pv: Some(self.pv_table.extract_pv_for(ply).clone()),   
-                    mode: SearchResultsMode::Refutation,
-                    .. SearchResults::default()
+            let sp = SearchResults {
+                pv: Some(self.pv_table.extract_pv_for(ply).clone()),
+                mode: SearchResultsMode::Refutation,
+                ..SearchResults::default()
             };
 
             self.task_control.invoke_callback(&sp);
@@ -357,7 +343,6 @@ impl Algo {
         self.results.to_pos()
     }
 
-
     pub fn score(&self) -> Score {
         self.search_stats().score()
     }
@@ -370,8 +355,6 @@ impl Algo {
         self.mte.set_shared_ponder(false);
         self.stats.restart_clocks();
     }
-
-
 
     #[inline]
     pub fn time_up_or_cancelled(&mut self, ply: Ply, force_check: bool) -> bool {
@@ -400,27 +383,6 @@ impl Algo {
         time_up
     }
 
-    // pub fn node_all(&mut self, b: &Board, n: &Node, mv: &Move, score: Score) -> Score {
-    //     // self.tt.store(b.hash(), TtNode{ score, draft: n.depth, node_type: NodeType::All, bm: Move::NULL_MOVE} );
-    //     score
-    // }
-
-    // pub fn node_cut(&mut self, b: &Board, n: &Node, mv: &Move, s: Score) -> Score {
-    //     // self.search_stats.inc_cuts(n.ply);
-    //     // self.killers.store(n.ply, &mv);
-    //     s
-    // }
-
-    // pub fn node_exact(&mut self, b: &Board, n: &Node, mv: &Move, s: Score)  -> Score {
-    //     self.record_new_pv(b, n.ply, mv, false);
-    //     s
-    // }
-
-    // pub fn node_leaf(&mut self, b: &Board, n: &Node, mv: &Move, s: Score) -> Score {
-    //     self.record_new_pv(b, n.ply, mv, true);
-    //     // self.search_stats.inc_leaf_nodes(n.ply);
-    //     s
-    // }
     pub fn clear_move(&mut self, ply: Ply) {
         self.pv_table.set(ply, &Move::NULL_MOVE, true);
     }
@@ -433,17 +395,6 @@ impl Algo {
     pub fn record_truncated_move(&mut self, ply: Ply, mv: &Move) {
         self.pv_table.set(ply, &mv, true);
     }
-
-    // pub fn record_new_pv(&mut self, board: &Board, ply: Ply, mv: &Move, terminal_move: bool) {
-    //     debug_assert!(mv.is_null() || board.is_pseudo_legal_move(mv) && board.is_legal_move(&mv), "{} on {}\n{:?}", mv, board, mv);
-    //     self.pv_table.set(ply + 1, mv, terminal_move);
-    //     // debug_assert!(board.is_legal_variation(&self.pv_table.extract_pv_for(ply+1)), "mv {} on {}\n{:?}\nvar: {}", mv, board, mv,self.pv_table.extract_pv_for(ply+1) );
-    //     self.search_stats.inc_improvements(ply);
-    //     if ply == 0 {
-    //         let sp = SearchProgress::from_stats(&self.search_stats(), self.board.color_us());
-    //         self.task_control.invoke_callback(&sp);
-    //     }
-    // }
 }
 
 #[cfg(test)]
@@ -454,10 +405,9 @@ mod tests {
     use crate::comms::uci::Uci;
     use crate::eval::eval::*;
     use crate::types::*;
-    use crate::utils::Formatting;
-    use toml;
     use anyhow::*;
     use test_env_log::test;
+    use toml;
 
     #[test]
     fn serde_algo_test() -> Result<()> {
@@ -472,45 +422,36 @@ mod tests {
         let mut search = Algo::new();
         search.set_position(pos);
         search.qsearch.enabled = false;
-        // search.futility.alpha_enabled = false;
-        // search.futility.beta_enabled = false;
+        search.futility.alpha_enabled = false;
+        search.futility.beta_enabled = false;
         search.nmp.enabled = false;
         search.tt.enabled = false;
         search.minmax = true;
         search.set_eval(eval);
         search.set_timing_method(TimeControl::Depth(3));
         search.search();
+        assert_eq!(search.clock.cumul_nodes(), 1 + 20 + 400 + 8902);
         assert_eq!(
-            search.search_stats().iteration().regular_nodes(),
+            search.counts.cumul(Event::NodeInterior) + search.counts.cumul(Event::DerivedLeaf),
             1 + 20 + 400 + 8902 /* + 197_281 */
         );
-        assert_eq!(search.search_stats().branching_factor().round() as u64, 22);
+        assert_eq!(search.counts.cumul(Event::PercentBranchingFactor), 2200);
     }
 
     #[test]
     fn test_node() {
         let mut eval = SimpleScorer::new().set_position(false);
         eval.mobility = false;
-        let mut search = Algo::new()
-            .set_eval(eval)
-            .build();
-        search.move_orderer.enabled = false;
-        search.set_position(Catalog::starting_position());
-        search.set_timing_method(TimeControl::Depth(4));
-        search.search();
-        assert_eq!(search.search_stats().iteration().all_nodes(), 2008); // null move pruning
-                                                                // assert_eq!(search.search_stats().total().nodes(), 1468);
-                                                                // assert_eq!(search.search_stats().total().nodes(), 1516); // rejigged pawn PST
-                                                                // previous
-                                                                // assert_eq!(search.search_stats().total().nodes(), 1326); // piece mob (disabled)
-                                                                // assert_eq!(search.search_stats().total().nodes(), 1404); // pawn promo
-                                                                // assert_eq!(search.search_stats().total().nodes(), 1480); // gen qsearch
-                                                                // assert_eq!(search.search_stats().total().nodes(), 1642); added tt
-                                                                // assert_eq!(search.search_stats().total().nodes(), 1833); qsearch sq
-                                                                // assert_eq!(search.search_stats().total().nodes(), 1757);
-        assert_eq!(
-            Formatting::format_decimal(2, search.search_stats().branching_factor()), "12.80"
-        );
+        let mut algo = Algo::new().set_eval(eval).build();
+        algo.move_orderer.enabled = false;
+        algo.set_position(Catalog::starting_position());
+        algo.set_timing_method(TimeControl::Depth(4));
+        algo.search();
+        println!("{}", algo.counts);
+        assert_eq!(algo.clock.cumul_nodes(), 2385);
+        assert_eq!(algo.counts.cumul(Event::DerivedLeaf), 2106);
+        assert_eq!(algo.counts.cumul(Event::NodeInterior), 249);
+        assert_eq!(algo.counts.cumul(Event::PercentBranchingFactor), 845);
     }
 
     #[test]
@@ -532,22 +473,17 @@ mod tests {
         assert_eq!(search.pv()[0].uci(), "d7d5");
     }
 
-
     #[test]
     #[ignore]
     fn jons_chess_problem() {
         let pos = Position::parse_epd("2r2k2/5pp1/3p1b1p/2qPpP2/1p2B2P/pP3P2/2P1R3/2KRQ3 b - - 0 1").unwrap();
         println!("{}", pos);
         let eval = SimpleScorer::new().set_position(false);
-        let mut search = Algo::new()
-            .set_timing_method(TimeControl::Depth(9))
-            .set_eval(eval)
-            .build(); //9
+        let mut search = Algo::new().set_timing_method(TimeControl::Depth(9)).set_eval(eval).build(); //9
         search.set_position(pos);
         search.search();
         println!("{}", search);
     }
-
 
     #[test]
     fn bug05() {
@@ -570,8 +506,7 @@ mod tests {
         let pos07 = Position::parse_epd("b2qr1kr/ppppbppp/2nnp3/4N3/3P4/2NBP3/PPP2PPP/BQ2R1KR w - - 4 7")?;
         let pos08 = Position::parse_epd("b2qr1kr/pppp1ppp/2nnpb2/4N3/3P4/2NBP3/PPP2PPP/B2QR1KR w - - 6 8")?;
         let pos09 = Position::parse_epd("b2qr1kr/ppppbppp/2nnp3/8/3P2N1/2NBP3/PPP2PPP/B2QR1KR w - - 8 9")?;
-        let pos10 =
-            Position::parse_epd("b2qr1kr/pppp1ppp/2nnp3/6b1/3P2N1/2N1P3/PPP1BPPP/B2QR1KR w - - 10 10")?;
+        let pos10 = Position::parse_epd("b2qr1kr/pppp1ppp/2nnp3/6b1/3P2N1/2N1P3/PPP1BPPP/B2QR1KR w - - 10 10")?;
         let pos11 = Position::parse_epd("b3r1kr/ppppqppp/2nnp3/6b1/3PP1N1/2N5/PPP1BPPP/B2QR1KR w - - 1 11")?;
         let pos12 = Position::parse_epd("b3r1kr/ppppqppp/3np3/6b1/1n1PP1N1/2NQ4/PPP1BPPP/B3R1KR w - - 3 12")?;
         search.set_position(pos06).set_timing_method(TimeControl::Depth(3)).search();

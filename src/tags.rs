@@ -165,7 +165,7 @@ impl Tag {
             Tag::None => "".to_string(),
             Tag::AvoidMoves(mvs) => mvs.uci(),
             Tag::BestMoves(mvs) => mvs.uci(),
-            Tag::BranchingFactorPercent(bf) => Formatting::format_decimal(2, *bf as f32/ 100.0),
+            Tag::BranchingFactorPercent(bf) => Formatting::decimal(2, *bf as f32/ 100.0),
             Tag::Pv(variation) => variation.uci(),
             Tag::Id(s) => format!("{}", s),
             Tag::AnalysisCountDepth(n) => format!("{}", n),
