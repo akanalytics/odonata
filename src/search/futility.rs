@@ -103,9 +103,11 @@ impl Algo {
             let outcome = b.outcome();
             if outcome.is_game_over() {
                 if outcome.is_draw() {
+                    self.counts.inc(&n, Event::NodeLeafDraw);
                     return Some(self.eval.w_eval_draw(b, n));
                 }
                 if let Some(c) = outcome.winning_color() {
+                    self.counts.inc(&n, Event::NodeLeafWinLoss);
                     return Some(c.chooser_wb(Score::white_win(n.ply), Score::white_loss(n.ply)));
                 }
             }
@@ -118,6 +120,11 @@ impl Algo {
 
         if standing_pat > n.alpha && !b.is_in_check(b.color_us()) {
             n.alpha = standing_pat;
+        }
+
+        if !self.qsearch.enabled {
+            self.counts.inc(n, Event::NodeLeafQuietEval);
+            return Some(standing_pat);
         }
         return None;
     }

@@ -49,6 +49,7 @@ pub enum Event {
 
     NodeLeafQuietEval,
     NodeLeafDraw,
+    NodeLeafWinLoss,
     NodeLeafStalemate,
     DerivedLeaf,
     PercentBranchingFactor,
@@ -59,6 +60,7 @@ pub enum Event {
     NodeInteriorPv,
 
     
+    Clock,
     NodeTypeQuiesce,
     NodeTypeZw,
     PvsReSearch,

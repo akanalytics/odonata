@@ -143,6 +143,7 @@ impl Counts {
         match cn {
             DerivedLeaf => {
                 return self.count(i, y, NodeLeafDraw)
+                    + self.count(i, y, NodeLeafWinLoss)
                     + self.count(i, y, NodeLeafStalemate)
                     + self.count(i, y, RecogImmediateDraw)
                     + self.count(i, y, NodeLeafQuietEval)

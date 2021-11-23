@@ -834,6 +834,7 @@ enabled = true
 min_depth = 2
 
 [ext]
+enabled = true
 max_extend = 1
 gives_check_enabled = true
 in_check_enabled = false

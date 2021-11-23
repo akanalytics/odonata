@@ -43,7 +43,7 @@ impl Default for Pvs {
 // re-search full-window if they do, to get a score
 impl Algo {
     pub fn pvs_permitted(&mut self, nt: NodeType,_b: &Board, n: &Node, mv_num: u32) -> bool {
-        if !self.pvs.enabled {
+        if !self.pvs.enabled || self.minmax {
             return false;
         }
         if mv_num <= 1 {

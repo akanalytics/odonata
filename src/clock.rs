@@ -54,15 +54,20 @@ impl Default for Clock {
 
 impl Component for Clock {
     fn new_game(&mut self) {
-        self.start_search();
+        *self = Self::default()
     }
+
+    fn new_iter(&mut self) {
+        self.start_iter = (Instant::now(), self.cumul_nodes());
+    }
+
 
     fn set_thread_index(&mut self, thread_index: u32) {
         self.thread_index = thread_index;
     }
 
     fn new_position(&mut self) {
-        self.start_search();
+        *self = Self::default()
     }
 }
 
@@ -74,16 +79,13 @@ impl fmt::Display for Clock {
         writeln!(f, "iter time        : {}", Formatting::duration(self.elapsed_iter().0))?;
         writeln!(f, "iter nodes       : {}", Formatting::u128(self.elapsed_iter().1 as u128))?;
         writeln!(f, "cumul nodes      : {}", Formatting::u128(self.cumul_nodes() as u128))?;
+        writeln!(f, "cumul nodes all  : {}", Formatting::u128(self.cumul_nodes_all_threads() as u128))?;
         // writeln!(f, "leaf nodes       : {}", Formatting::u128(self.cumul_leaf_nodes() as u128))?;
         Ok(())
     }
 }
 
 impl Clock {
-    #[inline]
-    pub fn start_search(&mut self) {
-        *self = Self::default()
-    }
 
     #[inline]
     pub fn cumul_nodes(&self) -> u64 {
@@ -119,10 +121,6 @@ impl Clock {
     //     self.leaf_nodes.0.fetch_add(1, Ordering::Relaxed);
     // }
 
-    #[inline]
-    pub fn start_iter(&mut self) {
-        self.start_iter = (Instant::now(), self.cumul_nodes());
-    }
 
     #[inline]
     pub fn elapsed_search(&self) -> (Duration, u64) {

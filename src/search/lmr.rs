@@ -12,7 +12,7 @@ use std::fmt;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Lmr {
-    enabled: bool,
+    pub enabled: bool,
     first_move: bool,
     only_nt_all: bool,
     bad_captures: bool,

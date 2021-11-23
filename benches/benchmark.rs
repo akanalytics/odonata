@@ -13,15 +13,15 @@ use odonata::bound::NodeType;
 use odonata::cache::tt2::*;
 use odonata::catalog::*;
 use odonata::eval::see::See;
-use odonata::infra::parsed_config::Component;
 use odonata::eval::eval::*;
 use odonata::eval::model::Model;
 use odonata::eval::model::ModelScore;
 use odonata::eval::score::*;
 use odonata::eval::switches::Switches;
 use odonata::globals::constants::*;
-use odonata::hasher::*;
-use odonata::material::*;
+use odonata::infra::component::*;
+use odonata::cache::hasher::*;
+use odonata::domain::material::*;
 use odonata::movelist::*;
 use odonata::mv::*;
 use odonata::perft::Perft;
@@ -422,7 +422,7 @@ fn board_calcs(c: &mut Criterion) {
         })
     });
 
-    let mut tt = TranspositionTable2::new_with_mb(10);
+    let mut tt = TranspositionTable2::default();
     tt.new_game();
     group.bench_function("tt_probe", |b| {
         b.iter_custom(|n| {
@@ -620,14 +620,16 @@ fn benchmark_ordering(c: &mut Criterion) {
     });
     let mut orderer = MoveOrderer::new();
     let mut algo = Algo::new();
-    const PLY: Ply = 3;
+    // const PLY: Ply = 3;
+    let node = Node::root(3);
+
     const TT_MOVE: Move = Move::NULL_MOVE;
     orderer.order = MoveType::vec_from_string("SHIGKPQBE").unwrap();
     group.bench_function("SHIGKPQBE", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|pos| {
-                let mut sorted_moves = orderer.get_sorted_moves(PLY, TT_MOVE);
+                let mut sorted_moves = orderer.get_sorted_moves(node, pos.board(), TT_MOVE);
                 while let Some(mv) = sorted_moves.next_move(pos.board(), &mut algo) {
                     black_box(&mv);
                 }
@@ -640,7 +642,7 @@ fn benchmark_ordering(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|pos| {
-                let mut sorted_moves = orderer.get_sorted_moves(PLY, TT_MOVE);
+                let mut sorted_moves = orderer.get_sorted_moves(node, pos.board(), TT_MOVE);
                 while let Some(mv) = sorted_moves.next_move(pos.board(), &mut algo) {
                     black_box(&mv);
                 }
@@ -653,7 +655,7 @@ fn benchmark_ordering(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|pos| {
-                let mut sorted_moves = orderer.get_sorted_moves(PLY, TT_MOVE);
+                let mut sorted_moves = orderer.get_sorted_moves(node, pos.board(), TT_MOVE);
                 while let Some(mv) = sorted_moves.next_move(pos.board(), &mut algo) {
                     black_box(&mv);
                 }

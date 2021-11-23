@@ -24,6 +24,10 @@ impl Component for Restrictions {
         self.new_position();
     }
 
+    fn new_iter(&mut self) {
+        self.exclude_moves.clear();
+    }
+
     fn new_position(&mut self) {
         self.include_moves.clear();
         self.exclude_moves.clear();

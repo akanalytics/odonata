@@ -13,6 +13,7 @@ use super::node::Event;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Extensions {
+    pub enabled: bool, 
     max_extend: Ply,
     gives_check_enabled: bool,
     in_check_enabled: bool,
@@ -39,6 +40,7 @@ impl Component for Extensions {
 impl Default for Extensions {
     fn default() -> Self {
         Extensions {
+            enabled: true,
             max_extend: 1,
             gives_check_enabled: true,
             in_check_enabled: false,
@@ -68,7 +70,7 @@ impl Algo {
     #[inline]
     pub fn extend(&mut self, before: &Board, after: &Board, mv: &Move, mv_num: u32, n: &Node) -> Ply {
         let mut ext = 0;
-        if n.is_qs() {
+        if !self.ext.enabled || n.is_qs() {
             return 0;
         }
         if self.ext.pv_enabled && n.depth == 1 && mv_num == 1 {

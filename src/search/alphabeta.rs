@@ -29,7 +29,6 @@ impl Algo {
         self.max_depth = depth;
         self.stats.depth = depth;
         self.stats.new_iteration();
-        self.clock.start_iter();
         self.pv_table = PvTable::new(MAX_PLY as usize);
         debug_assert!(self.current_variation.len() == 0);
 
@@ -66,7 +65,7 @@ impl Algo {
     ) -> (Score, Event) {
         self.clear_move(ply);
         self.report_progress();
-        self.clock.inc_nodes();
+
 
         if self.time_up_or_cancelled(ply, false) {
             return (-Score::INFINITY, Event::Cancelled);
@@ -78,6 +77,9 @@ impl Algo {
             alpha,
             beta,
         };
+
+        self.clock.inc_nodes();
+        self.counts.inc(&n, Event::Clock);
 
         if n.is_zw() {
             self.counts.inc(&n, Event::NodeTypeZw);
@@ -115,13 +117,12 @@ impl Algo {
         // static eval
         let eval = b.eval_some(&self.eval, Switches::ALL_SCORING);
 
-        // razoring
-        if let Some(alphabeta) = self.razor(*last_move, b, eval, &n) {
-            return (alphabeta, Event::PruneRazor);
+        if let Some(score) = self.standing_pat(b, &mut n, eval) {
+            return (score, Event::PruneStandingPat);
         }
 
-        if let Some(fut_score) = self.standing_pat(b, &mut n, eval) {
-            return (fut_score, Event::PruneStandingPat);
+        if let Some(alphabeta) = self.razor(*last_move, b, eval, &n) {
+            return (alphabeta, Event::PruneRazor);
         }
 
         if let Some(beta) = self.nmp(b, &n, eval) {
@@ -191,8 +192,8 @@ impl Algo {
                 quiets += 1;
             }
 
-            let pvs = !self.minmax
-                && self.pvs_permitted(
+            let pvs =
+                self.pvs_permitted(
                     nt,
                     b,
                     &n,

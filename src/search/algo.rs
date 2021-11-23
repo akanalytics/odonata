@@ -125,7 +125,12 @@ impl Algo {
 }
 
 impl Component for Algo {
-    // clears evaluation and transposition caches as well as repetition counts
+    fn new_iter(&mut self) {
+        self.counts.new_iter();
+        self.restrictions.new_iter();
+        self.clock.new_iter();
+    }
+
     fn new_game(&mut self) {
         self.stats = SearchStats::new();
         self.clock_checks = 0;
@@ -419,23 +424,29 @@ mod tests {
     fn test_minmax() {
         let pos = Catalog::starting_position();
         let eval = SimpleScorer::new().set_position(false);
-        let mut search = Algo::new();
-        search.set_position(pos);
-        search.qsearch.enabled = false;
-        search.futility.alpha_enabled = false;
-        search.futility.beta_enabled = false;
-        search.nmp.enabled = false;
-        search.tt.enabled = false;
-        search.minmax = true;
-        search.set_eval(eval);
-        search.set_timing_method(TimeControl::Depth(3));
-        search.search();
-        assert_eq!(search.clock.cumul_nodes(), 1 + 20 + 400 + 8902);
+        let mut algo = Algo::new();
+        algo.set_position(pos);
+        algo.qsearch.enabled = false;
+        algo.ids.enabled = false;
+        algo.futility.alpha_enabled = false;
+        algo.futility.beta_enabled = false;
+        algo.nmp.enabled = false;
+        algo.tt.enabled = false;
+        algo.pvs.enabled = false;
+        algo.lmr.enabled = false;
+        algo.ext.enabled = false;
+        algo.minmax = true;
+        algo.set_eval(eval);
+        algo.set_timing_method(TimeControl::Depth(3));
+        algo.search();
+        println!("{}", algo);
+        assert_eq!(algo.clock.cumul_nodes(), algo.clock.cumul_nodes_all_threads());
+        assert_eq!(algo.clock.cumul_nodes(), 1 + 20 + 400 + 8902);
         assert_eq!(
-            search.counts.cumul(Event::NodeInterior) + search.counts.cumul(Event::DerivedLeaf),
+            algo.counts.cumul(Event::NodeInterior) + algo.counts.cumul(Event::DerivedLeaf),
             1 + 20 + 400 + 8902 /* + 197_281 */
         );
-        assert_eq!(search.counts.cumul(Event::PercentBranchingFactor), 2200);
+        assert_eq!(algo.counts.cumul(Event::PercentBranchingFactor), 2200);
     }
 
     #[test]

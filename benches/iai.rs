@@ -6,7 +6,7 @@ use odonata::eval::switches::Switches;
 use odonata::position::*;
 use odonata::movelist::*;
 use odonata::perft::Perft;
-use odonata::tracer::*;
+use odonata::infra::tracer::*;
 use odonata::search::engine::Engine;
 use odonata::search::node::Node;
 use odonata::search::timecontrol::TimeControl;

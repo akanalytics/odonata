@@ -114,7 +114,7 @@ impl Algo {
         self.ids.calc_range(&self.mte.time_control);
         let mut depth = self.ids.start_ply;
         'outer: loop {
-            self.restrictions.exclude_moves.clear();
+            self.new_iter();
             for multi_pv_index in 0..self.restrictions.multi_pv_count {
                 self.aspiration(&mut self.board.clone(), &mut Node::root(depth));
                 // self.stats.clock.start_ply();
