@@ -110,18 +110,19 @@ impl EndGame {
             return EndGame::KingMinorVsKing;
         }
 
-        // 2 minor pieces
-        if wb + bb == 0 && (wn == 0 && bn == 2 || wn == 2 && bn == 0 ) {
+
+        // no bishops
+        if wb + bb == 0 && (wn == 0 && bn >= 2 || wn >= 2 && bn == 0 ) {
             return EndGame::TwoKnightsVsKing;
         }
         if wn + wb == 1 && bn + bb == 1 {
             return EndGame::KingMinorVsKingMinor;
         }
 
-        if wn ==1 && wb == 1 && bn + bb == 0 {
+        if wn >= 1 && wb >= 1 && bn + bb == 0 {
             return EndGame::BishopKnightVsKing(Color::White);
         } 
-        if bn == 1 && bb == 1 && wn + wb == 0 {
+        if bn >= 1 && bb >= 1 && wn + wb == 0 {
             return EndGame::BishopKnightVsKing(Color::Black);
         } 
 

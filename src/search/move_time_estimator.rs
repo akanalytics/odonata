@@ -35,6 +35,11 @@ pub struct MoveTimeEstimator {
 
     #[serde(skip)]
     board: Board,
+
+    check_every: u64,
+
+    #[serde(skip)]
+    clock_checks: u64,
 }
 
 impl Component for MoveTimeEstimator {
@@ -49,6 +54,7 @@ impl Component for MoveTimeEstimator {
         self.time_control = TimeControl::default();
         self.pondering = Arc::new(AtomicBool::from(false));
         self.board = Board::default();
+        self.clock_checks = 0;
     }
 }
 
@@ -67,6 +73,8 @@ impl Default for MoveTimeEstimator {
             time_control: TimeControl::default(),
             pondering: Arc::new(AtomicBool::from(false)),
             board: Board::default(),
+            check_every: 128,
+            clock_checks: 0,
         }
     }
 }
@@ -83,13 +91,24 @@ impl fmt::Display for MoveTimeEstimator {
         writeln!(f, "time estimate    : {}", Formatting::duration(self.estimate_time))?;
         writeln!(f, "deterministic    : {}", self.deterministic)?;
         writeln!(f, "nodestime        : {}", self.nodestime)?;
+        writeln!(f, "check every      : {}", self.check_every)?;
+        writeln!(f, "clock checks     : {}", self.clock_checks)?;
         writeln!(f, "elapsed used     : {}", Formatting::duration(self.elapsed_time))?;
         Ok(())
     }
 }
 
 impl MoveTimeEstimator {
-    pub fn is_time_up(&self, _ply: Ply, clock: &Clock) -> bool {
+    #[inline]
+    pub fn is_time_up(&mut self, _ply: Ply, clock: &Clock, force_check: bool) -> bool {
+        self.clock_checks += 1;
+
+        // only do this every 128th call to avoid expensive time computation
+        if !force_check && self.clock_checks % self.check_every != 0 {
+            return false;
+        }
+
+
         let mut elapsed = clock.elapsed_search().0;
         // if in nodestime then convert nodes to time. nodestime is nodes per millisecond
         if self.nodestime > 0 {
@@ -100,7 +119,7 @@ impl MoveTimeEstimator {
             TimeControl::DefaultTime => false, 
             TimeControl::Depth(_max_ply) => false, // ply > max_ply,  // dont cause an abort on last iteration
             TimeControl::SearchTime(duration) => 10 * elapsed > duration * 9 && !self.pondering(),
-            TimeControl::NodeCount(max_nodes) => clock.elapsed_search().1 > max_nodes,
+            TimeControl::NodeCount(max_nodes) => clock.elapsed_search().1 > max_nodes - self.check_every,
             TimeControl::Infinite => false,
             TimeControl::MateIn(_) => false,
             TimeControl::RemainingTime { .. } => elapsed > self.allotted() && !self.pondering(),

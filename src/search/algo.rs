@@ -133,7 +133,6 @@ impl Component for Algo {
 
     fn new_game(&mut self) {
         self.stats = SearchStats::new();
-        self.clock_checks = 0;
         self.pv_table = PvTable::default();
         self.results = SearchResults::default();
         self.current_best = None;
@@ -172,7 +171,6 @@ impl Component for Algo {
         self.task_control = TaskControl::default();
         self.task_control.set_running();
         self.stats = SearchStats::new();
-        self.clock_checks = 0;
         self.pv_table = PvTable::default();
         self.results = SearchResults::default();
         self.current_best = None;
@@ -363,8 +361,6 @@ impl Algo {
 
     #[inline]
     pub fn time_up_or_cancelled(&mut self, ply: Ply, force_check: bool) -> bool {
-        self.clock_checks += 1;
-
         // never cancel on ply=1, this way we always have a best move, and we detect mates
         if self.max_depth == 1 {
             return false;
@@ -374,12 +370,8 @@ impl Algo {
             return true;
         }
 
-        // only do this every 128th call to avoid expensive time computation
-        if !force_check && self.clock_checks % 128 != 0 {
-            return false;
-        }
 
-        let time_up = self.mte.is_time_up(ply, &self.clock);
+        let time_up = self.mte.is_time_up(ply, &self.clock, force_check);
         if time_up {
             self.stats.completed = false;
             self.stats.set_score(-Score::INFINITY, Event::Cancelled);
@@ -446,7 +438,7 @@ mod tests {
             algo.counts.cumul(Event::NodeInterior) + algo.counts.cumul(Event::DerivedLeaf),
             1 + 20 + 400 + 8902 /* + 197_281 */
         );
-        assert_eq!(algo.counts.cumul(Event::PercentBranchingFactor), 2200);
+        assert_eq!(algo.counts.cumul(Event::PercentBranchingFactor), 2114);
     }
 
     #[test]

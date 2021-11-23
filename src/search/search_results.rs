@@ -49,7 +49,7 @@ impl SearchResults {
     pub fn with_report_progress(algo: &Algo) -> Self {
         SearchResults {
             board: algo.board.clone(),
-            nodes: Some(algo.clock.cumul_knps_all_threads()),
+            nodes: Some(algo.clock.cumul_nodes_all_threads()),
             nodes_thread: Some(algo.clock.cumul_nodes()),
             nps: Some(algo.clock.cumul_knps_all_threads() * 1000),
             hashfull_per_mille: Some(algo.tt.hashfull_per_mille()),
@@ -97,6 +97,7 @@ impl SearchResults {
 
 
     pub fn with_pv_change(algo: &Algo) -> Self {
+        let clock = &algo.clock;
         let stats = algo.search_stats();
         let mut sr = SearchResults {
             mode: SearchResultsMode::PvChange,
@@ -112,12 +113,12 @@ impl SearchResults {
             } else {
                 None
             },
-            nodes: Some(stats.all_threads_cumulative_total_nodes()),
-            nodes_thread: Some(stats.cumulative_nodes()),
-            nps: Some(stats.all_threads_cumulative_knps() * 1000),
+            nodes: Some(clock.cumul_nodes_all_threads()),
+            nodes_thread: Some(clock.cumul_nodes()),
+            nps: Some(clock.cumul_knps_all_threads() * 1000),
             depth: Some(stats.depth()),
             seldepth: Some(stats.selective_depth()),
-            time_millis: Some(stats.cumulative_time_as_millis() as u64),
+            time_millis: Some(clock.elapsed_search().0.as_millis() as u64),
             hashfull_per_mille: Some(algo.tt.hashfull_per_mille()),
             branching_factor: Some(stats.branching_factor()),
             ..Default::default()

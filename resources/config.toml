@@ -877,6 +877,7 @@ perc_of_time_adv = 62
 moves_rem = 8
 deterministic = false
 nodestime = 0
+check_every = 128
 
 [move_orderer]
 enabled = true

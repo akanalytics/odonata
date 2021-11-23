@@ -189,7 +189,7 @@ mod tests {
         assert_eq!(size_of::<Hasher>(), 7296, "Hasher");
         assert_eq!(size_of::<Algo>(), 25408, "Algo");
         assert_eq!(size_of::<QSearch>(), 12, "QSearch");
-        assert_eq!(size_of::<Clock>(), 56, "Clock");
+        assert_eq!(size_of::<Clock>(), 64, "Clock");
         println!("{} {} {}", size_of::<NullMovePruning>(), 32, "NullMovePruning");
         println!("{} {} {}", size_of::<Futility>(), 36, "Futility");
         println!("{} {} {}", size_of::<IterativeDeepening>(), 40, "IterativeDeepening");
