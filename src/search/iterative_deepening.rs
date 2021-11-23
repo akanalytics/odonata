@@ -34,7 +34,7 @@ impl Component for IterativeDeepening {
 
     fn new_position(&mut self) {
         self.start_ply = 1;
-        self.end_ply = MAX_PLY -1;
+        self.end_ply = MAX_PLY - 1;
         self.iterations.clear();
     }
 }
@@ -48,7 +48,7 @@ impl Default for IterativeDeepening {
 
             start_ply: 1,
             end_ply: MAX_PLY - 1,
-            iterations: Vec::new(),            
+            iterations: Vec::new(),
         }
     }
 }
@@ -69,12 +69,7 @@ impl fmt::Display for IterativeDeepening {
         NodeStats::fmt_underline(f)?;
         writeln!(f, " {:>8} {:<11}", "--------", "-----------")?;
         for iter in self.iterations.iter() {
-            write!(
-                f,
-                "D{:<2} {:>4} ",
-                iter.depth,
-                if iter.interrupted() { "PART" } else { "FULL" }
-            )?;
+            write!(f, "D{:<2} {:>4} ", iter.depth, if iter.interrupted() { "PART" } else { "FULL" })?;
             iter.iteration().fmt_data(f)?;
             writeln!(f, " {:>8} {:<11}", iter.score().to_string(), iter.pv().to_string())?;
         }
@@ -119,8 +114,7 @@ impl Algo {
                 self.aspiration(&mut self.board.clone(), &mut Node::root(depth));
                 // self.stats.clock.start_ply();
                 self.mte.estimate_iteration(depth + 1, &self.clock);
-                self.stats
-                    .record_time_estimate(depth + 1, &self.mte.estimate_time);
+                self.stats.record_time_estimate(depth + 1, &self.mte.estimate_time);
                 self.ids.iterations.push(self.search_stats().clone());
 
                 if self.search_stats().interrupted() {
@@ -135,7 +129,7 @@ impl Algo {
                     Some(score) if score != -Score::INFINITY && score != Score::INFINITY => {
                         if depth >= 1 && results.bm().is_null() {
                             error!("---> Null  best move {}", self);
-                        } 
+                        }
                         self.task_control.invoke_callback(&results);
                         // we take snapshot the pv/bm only if has completed
                         if multi_pv_index == 0 {
@@ -178,8 +172,7 @@ impl Algo {
             || self.mte.probable_timeout()
             || self.stats.depth >= self.ids.end_ply
             || self.stats.depth >= MAX_PLY / 2
-            || (self.restrictions.exclude_moves.len() == 0
-                && (self.search_stats().score().is_mate() || self.pv().is_empty()))
+            || (self.restrictions.exclude_moves.len() == 0 && (self.search_stats().score().is_mate() || self.pv().is_empty()))
         // pv.empty = draw
     }
 }

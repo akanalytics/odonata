@@ -41,6 +41,10 @@ pub struct SearchResults {
     pub tbhits: Option<u64>,
     pub cpuload_per_mille: Option<u32>,
     pub branching_factor: Option<f32>,
+
+    pub best_score: Option<Score>,
+    pub best_move: Option<Move>,
+    pub best_pv: Option<Variation>,
     // pub refutation: Option<Move>,
     // pub currline: Option<MoveList>,
 }

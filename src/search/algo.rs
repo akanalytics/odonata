@@ -74,6 +74,7 @@ pub struct Algo {
 
     #[serde(skip)]
     pub results: SearchResults,
+
     #[serde(skip)]
     pub position: Position,
     #[serde(skip)]
@@ -87,13 +88,7 @@ pub struct Algo {
     pub stats: SearchStats,
     #[serde(skip)]
     pub pv_table: PvTable,
-    #[serde(skip)]
-    pub current_best: Option<Move>,
-    //pub score: Score,
 
-    // child_thread: AlgoThreadHandle,
-    #[serde(skip)]
-    clock_checks: u64,
     #[serde(skip)]
     pub current_variation: Variation,
 }
@@ -135,7 +130,6 @@ impl Component for Algo {
         self.stats = SearchStats::new();
         self.pv_table = PvTable::default();
         self.results = SearchResults::default();
-        self.current_best = None;
         self.current_variation = Variation::new();
         self.task_control = TaskControl::default();
         self.max_depth = 0;
@@ -173,7 +167,6 @@ impl Component for Algo {
         self.stats = SearchStats::new();
         self.pv_table = PvTable::default();
         self.results = SearchResults::default();
-        self.current_best = None;
         self.current_variation = Variation::new();
         self.max_depth = 0;
 
@@ -253,10 +246,8 @@ impl fmt::Display for Algo {
         writeln!(f, "score            : {}", self.score())?;
         writeln!(f, "analyse mode     : {}", self.analyse_mode)?;
         writeln!(f, "depth            : {}", self.max_depth)?;
-        writeln!(f, "current_best     : {}", self.current_best.unwrap_or(Move::new_null()))?;
         writeln!(f, "results          : {}", self.results_as_position())?;
         writeln!(f, "minmax           : {}", self.minmax)?;
-        writeln!(f, "clock_checks     : {}", self.clock_checks)?;
         write!(f, "\n[task control]\n{}", self.task_control)?;
         write!(f, "\n[move orderer]\n{}", self.move_orderer)?;
         write!(f, "\n[move time estimator]\n{}", self.mte)?;
