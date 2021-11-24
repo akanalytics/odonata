@@ -57,6 +57,7 @@ impl Algo {
         n: &mut Node,
     ) -> (Score, Event) {
 
+
         if n.depth <= self.aspiration.min_depth || !self.aspiration.enabled {
 			return self.run_alphabeta(b, n);
 		} else {

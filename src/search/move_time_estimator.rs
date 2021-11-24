@@ -119,17 +119,12 @@ impl MoveTimeEstimator {
         self.pondering.load(atomic::Ordering::SeqCst)
     }
 
-    pub fn estimate_iteration(&mut self, _ply: Ply, search_stats: &SearchStats) {
-
-    // pub fn estimate_iteration(&mut self, _ply: Ply, clock: &Clock) {
-        // debug_assert!(search_stats.depth() >= ply-1, "ensure we have enough stats");
-        self.elapsed_used = search_stats.clock.elapsed_iteration();
-
-        // self.elapsed_used = clock.elapsed_iter().0;
+    pub fn estimate_iteration(&mut self, _ply: Ply, clock: &Clock) {
+        self.elapsed_used = clock.elapsed_iter().0;
 
         // if in nodestime then convert nodes to time. nodestime is nodes per millisecond
         if self.nodestime > 0 {
-            let nodes = 0; // clock.elapsed_iter().1;
+            let nodes = clock.elapsed_iter().1;
             self.elapsed_used = Duration::from_millis(nodes / self.nodestime);
         }
 

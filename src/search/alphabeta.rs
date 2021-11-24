@@ -48,7 +48,7 @@ impl Algo {
         } else {
             (self.pv_table.extract_pv(), Some(Score::default()))
         };
-        // self.results.set_pv(category, &pv);
+        self.results.set_pv(category, &pv);
         // self.results.pv = pv.clone();
 
         self.stats.record_iteration(self.max_depth, category, pv);
