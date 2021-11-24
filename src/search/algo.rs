@@ -368,12 +368,7 @@ impl Algo {
             return true;
         }
 
-        // only do this every 128th call to avoid expensive time computation
-        if !force_check && self.clock_checks % 128 != 0 {
-            return false;
-        }
-
-        let time_up = self.mte.is_time_up(ply, &self.stats, force_check);
+        let time_up = self.mte.is_time_up(ply, &self.clock, force_check);
         if time_up {
             self.stats.completed = false;
             self.stats.set_score(-Score::INFINITY, Event::Cancelled);
