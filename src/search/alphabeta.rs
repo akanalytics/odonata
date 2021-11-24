@@ -28,7 +28,6 @@ impl Algo {
         let depth = node.depth;
         self.max_depth = depth;
         self.stats.depth = depth;
-        self.stats.new_iteration();
         self.pv_table = PvTable::new(MAX_PLY as usize);
         debug_assert!(self.current_variation.len() == 0);
 
@@ -50,6 +49,8 @@ impl Algo {
             (self.pv_table.extract_pv(), Some(Score::default()))
         };
         // self.results.set_pv(category, &pv);
+        // self.results.pv = pv.clone();
+
         self.stats.record_iteration(self.max_depth, category, pv);
         (score, category)
     }

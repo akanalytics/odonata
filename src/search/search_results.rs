@@ -1,6 +1,7 @@
 use std::iter::{self, FromIterator};
 
 use crate::board::Board;
+use crate::cache::tt2::TranspositionTable2;
 use crate::clock::Clock;
 use crate::eval::score::Score;
 use crate::infra::component::Component;
@@ -9,9 +10,10 @@ use crate::tags::Tag;
 use crate::trace::counts::Counts;
 use crate::types::Ply;
 use crate::variation::Variation;
-use crate::{Algo, MoveList, Position};
+use crate::{Algo, MoveList, Position, SearchStats};
 use serde::{Deserialize, Serialize};
 use super::node::{Event, Node};
+use super::restrictions::Restrictions;
 use std::fmt;
 
 /// essentially all the data needed for UCI info status updates or for a decent progress bar
@@ -131,7 +133,11 @@ impl SearchResults {
         }
     }
 
-    pub fn with_best_move(sr: &SearchResults) -> Self {
+    pub fn with_best_move(&mut self) {
+        self.mode = SearchResultsMode::BestMove;
+    }
+
+    pub fn old_with_best_move(sr: &SearchResults) -> Self {
         SearchResults {
             mode: SearchResultsMode::BestMove,
             best_score: sr.score,
@@ -140,26 +146,7 @@ impl SearchResults {
         }
     }
 
-
-    pub fn snapshot_bests(&mut self) {
-        if let Some(Event::Cancelled) = self.event  {
-            if self.multi_pv_index == 0 && self.take_move_from_part_ply {
-                self.best_score = self.score;
-                self.best_pv = self.pv.clone();        
-            }
-        } else {
-            // succesfully completed iter
-            if self.multi_pv_index == 0 {
-                info!("Would copying score {} pv {} over best pv {} for iter {} event {:?}", self.score, self.pv, self.best_pv, self.depth, self.event);
-            }
-            if self.multi_pv_index == 0 && self.pv.len() > 0 {
-                self.best_score = self.score;
-                self.best_pv = self.pv.clone();        
-            }
-        }
-    }
-
-    pub fn with_pv_change(algo: &Algo) -> Self {
+    pub fn old_with_pv_change(algo: &Algo) -> Self {
         let stats = algo.search_stats();
         let mut sr = SearchResults {
             mode: SearchResultsMode::PvChange,
@@ -180,21 +167,60 @@ impl SearchResults {
             branching_factor: Some(stats.branching_factor()),
             ..Default::default()
         };
+        sr
+    }
+
+    
+
+
+    pub fn snapshot_bests(&mut self) {
+        if self.score != -Score::INFINITY && self.score != Score::INFINITY {
+            // succesfully completed iter
+            if self.multi_pv_index == 0 && self.pv.len() == 0 {
+                error!("Would copying score {} pv {} over best pv {} for iter {} event {:?}", self.score, self.pv, self.best_pv, self.depth, self.event);
+            }
+            if self.multi_pv_index == 0 { // && self.pv.len() > 0 {
+                self.best_score = self.score;
+                self.best_pv = self.pv.clone();        
+            }
+        } else {
+            if self.multi_pv_index == 0 && self.take_move_from_part_ply {
+                self.best_score = self.score;
+                self.best_pv = self.pv.clone();        
+            }
+        }
+    }
+
+    pub fn with_pv_change(&mut self, board: &Board, stats: &SearchStats, restrictions: &Restrictions, tt: &TranspositionTable2) {
+        self.mode = SearchResultsMode::PvChange;
+        self.board = board.clone();
+        self.multi_pv_index = restrictions.multi_pv_index();
+        self.multi_pv_index_of = restrictions.multi_pv_count;
+        self.pv = stats.pv().clone();
+        // self.best_pv = stats.pv().clone();
+        self.score = stats.score();
+        // self.best_score = stats.score();
+        self.nodes = Some(stats.all_threads_cumulative_total_nodes());
+        self.nodes_thread = Some(stats.cumulative_nodes());
+        self.nps = Some(stats.all_threads_cumulative_knps() * 1000);
+        self.depth = stats.depth();
+        self.seldepth = stats.selective_depth();
+        self.time_millis = Some(stats.cumulative_time_as_millis() as u64);
+        self.hashfull_per_mille = Some(tt.hashfull_per_mille());
+        self.branching_factor = Some(stats.branching_factor());
 
 
         // check PV for validity
-        if !sr.board.is_legal_variation(stats.pv()) {
+        if !board.is_legal_variation(stats.pv()) {
             debug_assert!(
                 false,
-                "PV  {} is invalid on board {}\n{:?}\n{}",
+                "PV  {} is invalid on board {}\n{:?}",
                 stats.pv(),
-                sr.board,
+                board,
                 stats.pv(),
-                algo
             );
-            sr.pv.truncate(1);
+            self.pv.truncate(1);
         }
-        sr
     }
 
 

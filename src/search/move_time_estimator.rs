@@ -1,4 +1,5 @@
 use crate::board::Board;
+use crate::clock::Clock;
 use crate::infra::component::{Component};
 use crate::utils::Formatting;
 use crate::search::searchstats::SearchStats;
@@ -119,13 +120,16 @@ impl MoveTimeEstimator {
     }
 
     pub fn estimate_iteration(&mut self, _ply: Ply, search_stats: &SearchStats) {
+
+    // pub fn estimate_iteration(&mut self, _ply: Ply, clock: &Clock) {
         // debug_assert!(search_stats.depth() >= ply-1, "ensure we have enough stats");
-        let _forecast_depth = search_stats.depth();
         self.elapsed_used = search_stats.clock.elapsed_iteration();
+
+        // self.elapsed_used = clock.elapsed_iter().0;
 
         // if in nodestime then convert nodes to time. nodestime is nodes per millisecond
         if self.nodestime > 0 {
-            let nodes = search_stats.iteration().all_nodes();
+            let nodes = 0; // clock.elapsed_iter().1;
             self.elapsed_used = Duration::from_millis(nodes / self.nodestime);
         }
 

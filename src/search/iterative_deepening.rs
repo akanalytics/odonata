@@ -115,12 +115,13 @@ impl Algo {
         let mut depth = self.ids.start_ply;
         'outer: loop {
             self.new_iter();
+            self.stats.new_iteration();
+
             for multi_pv_index in 0..self.restrictions.multi_pv_count {
                 self.aspiration(&mut self.board.clone(), &mut Node::root(depth));
                 // self.stats.clock.start_ply();
                 self.mte.estimate_iteration(depth + 1, &self.stats);
-                self.stats
-                    .record_time_estimate(depth + 1, &self.mte.time_estimate);
+                self.stats.record_time_estimate(depth + 1, &self.mte.time_estimate);
                 self.ids.iterations.push(self.search_stats().clone());
 
                 if self.search_stats().interrupted() {
@@ -129,7 +130,35 @@ impl Algo {
                     counts::SEARCH_IDS_COMPLETES.increment();
                 }
 
-                let results = SearchResults::with_pv_change(&self);
+                // self.results.with_pv_change(&self.board, &self.stats, &self.restrictions, &self.tt);
+
+                // let results = &self.results;
+                // // self.results.snapshot_bests();
+                // if results.score != -Score::INFINITY && results.score != Score::INFINITY {
+                //         if depth >= 1 && results.bm().is_null() {
+                //             error!("---> Null  best move {}", self);
+                //         } 
+                //         self.task_control.invoke_callback(&results);
+                //         // we take snapshot the pv/bm only if has completed
+                //         if multi_pv_index == 0 {
+                //             self.results.best_pv = self.results.pv.clone(); // = results.clone();
+                //             // self.results = results.clone();
+                //         }
+                // } else {
+                //         // report progress so at least node counts in python/GUI are right
+                //         let progress = SearchResults::with_report_progress(&self);
+                //         self.task_control.invoke_callback(&progress);
+                //         if self.ids.part_ply && multi_pv_index == 0 {
+                //             self.results.best_pv = self.results.pv.clone(); // = results.clone();
+                //         }
+                //         // copy accross time/ nodes etc
+                //         self.results.nodes = progress.nodes;
+                //         self.results.nps = progress.nps;
+                //         self.results.time_millis = progress.time_millis;
+                //         self.results.hashfull_per_mille = progress.hashfull_per_mille;
+                // }
+
+                let results = SearchResults::old_with_pv_change(&self);
                 // if we were interrupted and no score was set, use the score/move/pv given
                 
                 if results.score != -Score::INFINITY && results.score != Score::INFINITY {
@@ -155,20 +184,30 @@ impl Algo {
                         self.results.hashfull_per_mille = progress.hashfull_per_mille;
                 }
 
+
+
+
                 let exit = self.exit_iteration();
                 if exit {
                     break 'outer;
                 }
-                self.restrictions.exclude_moves.push(results.bm());
+                self.restrictions.exclude_moves.push(self.results.bm());
             }
             depth += self.ids.step_size
         }
-        let bm_results = SearchResults::with_best_move(&self.results);
+        let bm_results = SearchResults::old_with_best_move(&self.results);
         self.task_control.invoke_callback(&bm_results);
         debug!("\n\n\n=====Search completed=====\n{}", self);
         if bm_results.bm().is_null() {
             error!("bm is null\n{}\n{:?}", self, bm_results);
         }
+
+        // self.results.with_best_move();
+        // self.task_control.invoke_callback(&self.results);
+        // debug!("\n\n\n=====Search completed=====\n{}", self);
+        // if self.results.bm().is_null() {
+        //     error!("bm is null\n{}\n{:?}", self, self.results);
+        // }
     }
 
     pub fn exit_iteration(&self) -> bool {
