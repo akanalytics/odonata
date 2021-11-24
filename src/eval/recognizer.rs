@@ -68,9 +68,9 @@ impl Algo {
             if entry.depth >= n.depth && !(self.repetition.avoid_tt_on_repeats && b.repetition_count().total > 0) {
             //if entry.draft >= draft  && (ply >= 1 || self.tt.allow_tt_at_root) && !(b.repetition_count().total > 0 && self.repetition.avoid_tt_on_repeats)
 
-                if n.ply == 0 && self.restrictions.is_none() {
-                    return (Some(entry.score), Some(entry.bm))
-                }
+                // if n.ply == 0 && self.restrictions.is_none() {
+                //     return (Some(entry.score), Some(entry.bm))
+                // }
 
                 // if entry.draft >= draft && !(b.repetition_count().total > 1 && self.repetition.avoid_tt_on_repeats)
                 match entry.nt {

@@ -49,8 +49,8 @@ impl Algo {
         } else {
             (self.pv_table.extract_pv(), Some(Score::default()))
         };
-        self.stats
-            .record_iteration(self.max_depth, category, pv);
+        // self.results.set_pv(category, &pv);
+        self.stats.record_iteration(self.max_depth, category, pv);
         (score, category)
     }
 
@@ -66,20 +66,16 @@ impl Algo {
         self.clear_move(ply);
         self.report_progress();
 
+        let mut n = Node { ply, depth, alpha, beta };
 
         if self.time_up_or_cancelled(ply, false) {
+            self.counts.inc(&n, Event::Cancelled);
             return (-Score::INFINITY, Event::Cancelled);
         }
 
-        let mut n = Node {
-            ply,
-            depth,
-            alpha,
-            beta,
-        };
-
         self.clock.inc_nodes();
         self.counts.inc(&n, Event::Clock);
+        // self.results.set_seldepth(&n);
 
         if n.is_zw() {
             self.counts.inc(&n, Event::NodeTypeZw);
@@ -107,7 +103,7 @@ impl Algo {
         match self.lookup(b, &mut n) {
             (Some(ab), None) => return (ab, Event::HashHit),  // alpha, beta or a terminal node
             (None, Some(bm)) => tt_mv = bm,
-            (Some(s), Some(mv)) => { tt_mv = mv; score = s; bm = mv},
+            (Some(s), Some(mv)) => { tt_mv = mv; score = s; bm = mv; category = Event::HashHit; },
             _ => {},
         }                
         self.stats.inc_interior_nodes(&n);

@@ -726,7 +726,7 @@ impl Uci {
 
     pub fn uci_info(sr: &SearchResults) {
         if let SearchResultsMode::BestMove = sr.mode {
-            Self::print_bm_and_ponder(&sr.best_pv);
+            Self::print_bm_and_ponder(&sr.pv.as_ref().unwrap_or(&Variation::default()) );
         } else {
             Self::print(&format!("info {}", UciInfo(sr)));
         }
@@ -741,7 +741,6 @@ impl Uci {
         let bm = if var.len() > 0 {
             var[0]
         } else {
-            error!("---> Null  best move");
             Move::NULL_MOVE
         };
         let mut output = format!("bestmove {}", bm.uci());
@@ -764,65 +763,49 @@ struct UciInfo<'a>(&'a SearchResults);
 impl<'a> fmt::Display for UciInfo<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let SearchResultsMode::Refutation = self.0.mode {
-            let strings: Vec<String> = self.0.best_pv.iter().map(Move::to_string).collect();
-            write!(f, "refutation {}", strings.join(" "))?;
+            if let Some(pv) = &self.0.pv {
+                let strings: Vec<String> = pv.iter().map(Move::to_string).collect();
+                write!(f, "refutation {}", strings.join(" "))?;
+            }
         }
-        if let SearchResultsMode::PvChange = self.0.mode {
-            write!(f, "depth {} ", self.0.depth)?;
-            write!(f, "seldepth {} ", self.0.seldepth)?;
-
-            if let Some(nodes) = self.0.nodes {
-                write!(f, "nodes {} ", nodes)?;
+        if let Some(depth) = self.0.depth {
+            write!(f, "depth {} ", depth)?;
+            if let Some(seldepth) = self.0.seldepth {
+                write!(f, "seldepth {} ", seldepth)?;
             }
-            if let Some(nps) = self.0.nps {
-                write!(f, "nps {} ", nps)?;
-            }
-            write!(f, "score {} ", self.0.score.uci())?;
-            if let Some(currmovenumber) = self.0.currmovenumber_from_1 {
-                write!(f, "currmovenumber {} ", currmovenumber)?;
-            }
-            if let Some(currmove) = self.0.currmove {
-                write!(f, "currmove {} ", currmove)?;
-            }
-            if let Some(hashfull) = self.0.hashfull_per_mille {
-                write!(f, "hashfull {} ", hashfull)?;
-            }
-            if let Some(tbhits) = self.0.tbhits {
-                write!(f, "tbhits {} ", tbhits)?;
-            }
-            if let Some(cpuload) = self.0.cpuload_per_mille {
-                write!(f, "cpuload {} ", cpuload)?;
-            }
-            if let Some(time_millis) = self.0.time_millis {
-                write!(f, "time {} ", time_millis)?;
-                if self.0.multi_pv_index_of > 1 {
-                    write!(f, "multipv {} ", self.0.multi_pv_index + 1)?;
+        }
+        if let Some(nodes) = self.0.nodes {
+            write!(f, "nodes {} ", nodes)?;
+        }
+        if let Some(nps) = self.0.nps {
+            write!(f, "nps {} ", nps)?;
+        }
+        if let Some(score) = self.0.score {
+            write!(f, "score {} ", score.uci())?;
+        }
+        if let Some(currmovenumber) = self.0.currmovenumber_from_1 {
+            write!(f, "currmovenumber {} ", currmovenumber)?;
+        }
+        if let Some(currmove) = self.0.currmove {
+            write!(f, "currmove {} ", currmove)?;
+        }
+        if let Some(hashfull) = self.0.hashfull_per_mille {
+            write!(f, "hashfull {} ", hashfull)?;
+        }
+        if let Some(tbhits) = self.0.tbhits {
+            write!(f, "tbhits {} ", tbhits)?;
+        }
+        if let Some(cpuload) = self.0.cpuload_per_mille {
+            write!(f, "cpuload {} ", cpuload)?;
+        }
+        if let Some(time_millis) = self.0.time_millis {
+            write!(f, "time {} ", time_millis)?;
+            if let Some(pv) = &self.0.pv {
+                if let Some(multi_pv) = &self.0.multi_pv_index {
+                    write!(f, "multipv {} ", multi_pv + 1)?;
                 }
-                let strings: Vec<String> = self.0.best_pv.iter().map(Move::to_string).collect();
+                let strings: Vec<String> = pv.iter().map(Move::to_string).collect();
                 write!(f, "pv {}", strings.join(" "))?;
-            }
-        }
-        if let SearchResultsMode::NodeCounts = self.0.mode {
-            write!(f, "depth {} ", self.0.depth)?;
-            write!(f, "seldepth {} ", self.0.seldepth)?;
-
-            if let Some(nodes) = self.0.nodes {
-                write!(f, "nodes {} ", nodes)?;
-            }
-            if let Some(nps) = self.0.nps {
-                write!(f, "nps {} ", nps)?;
-            }
-            if let Some(hashfull) = self.0.hashfull_per_mille {
-                write!(f, "hashfull {} ", hashfull)?;
-            }
-            if let Some(tbhits) = self.0.tbhits {
-                write!(f, "tbhits {} ", tbhits)?;
-            }
-            if let Some(cpuload) = self.0.cpuload_per_mille {
-                write!(f, "cpuload {} ", cpuload)?;
-            }
-            if let Some(time_millis) = self.0.time_millis {
-                write!(f, "time {} ", time_millis)?;
             }
         }
         Ok(())

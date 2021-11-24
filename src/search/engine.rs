@@ -129,7 +129,7 @@ impl Engine {
             .unwrap();
 
         let toml = Toml::string(toml);
-        let _engine = Self::default();
+        // let _engine = Self::default();
         // engine.configure(&ParsedConfig::global());
         let engine: Engine = Figment::new().merge(toml).extract().unwrap();
         engine

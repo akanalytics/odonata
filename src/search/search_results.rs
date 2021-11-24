@@ -1,19 +1,26 @@
 use std::iter::{self, FromIterator};
 
 use crate::board::Board;
+use crate::clock::Clock;
 use crate::eval::score::Score;
+use crate::infra::component::Component;
 use crate::mv::Move;
 use crate::tags::Tag;
+use crate::trace::counts::Counts;
 use crate::types::Ply;
 use crate::variation::Variation;
 use crate::{Algo, MoveList, Position};
+use serde::{Deserialize, Serialize};
+use super::node::{Event, Node};
+use std::fmt;
 
 /// essentially all the data needed for UCI info status updates or for a decent progress bar
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum SearchResultsMode {
     BestMove,
     Refutation,
     PvChange,
+    NodeCounts,
 }
 
 impl Default for SearchResultsMode {
@@ -22,31 +29,63 @@ impl Default for SearchResultsMode {
     }
 }
 
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
 pub struct SearchResults {
-    pub board: Board,
-    pub mode: SearchResultsMode,
-    pub depth: Option<Ply>,
-    pub seldepth: Option<Ply>,
-    pub time_millis: Option<u64>,
-    pub multi_pv_index: Option<u32>,
-    pub pv: Option<Variation>,
-    pub nodes: Option<u64>,
-    pub nodes_thread: Option<u64>,
-    pub score: Option<Score>,
-    pub currmove: Option<Move>,
-    pub currmovenumber_from_1: Option<u32>,
-    pub hashfull_per_mille: Option<u32>,
-    pub nps: Option<u64>,
-    pub tbhits: Option<u64>,
-    pub cpuload_per_mille: Option<u32>,
-    pub branching_factor: Option<f32>,
+    pub take_move_from_part_ply: bool,
 
-    pub best_score: Option<Score>,
-    pub best_move: Option<Move>,
-    pub best_pv: Option<Variation>,
+
+    #[serde(skip)] pub board: Board,
+    #[serde(skip)] pub mode: SearchResultsMode,
+    #[serde(skip)] pub depth: Ply,
+    #[serde(skip)] pub seldepth: Ply,
+    #[serde(skip)] pub time_millis: Option<u64>,
+    #[serde(skip)] pub multi_pv_index: u32,
+    #[serde(skip)] pub multi_pv_index_of: u32,
+    #[serde(skip)] pub pv: Variation,
+    #[serde(skip)] pub nodes: Option<u64>,
+    #[serde(skip)] pub nodes_thread: Option<u64>,
+    #[serde(skip)] pub score: Score,
+    #[serde(skip)] pub currmove: Option<Move>,
+    #[serde(skip)] pub currmovenumber_from_1: Option<u32>,
+    #[serde(skip)] pub hashfull_per_mille: Option<u32>,
+    #[serde(skip)] pub nps: Option<u64>,
+    #[serde(skip)] pub tbhits: Option<u64>,
+    #[serde(skip)] pub cpuload_per_mille: Option<u32>,
+    #[serde(skip)] pub branching_factor: Option<f32>,
+    #[serde(skip)] pub event: Option<Event>,
+
+    #[serde(skip)] pub best_score: Score,
+    #[serde(skip)] pub best_pv: Variation,
     // pub refutation: Option<Move>,
     // pub currline: Option<MoveList>,
+}
+
+
+impl Component for SearchResults {
+    fn new_game(&mut self) {
+        self.new_position();
+    }
+
+    fn new_iter(&mut self) {
+        // seldepth can be lower at a higher depth
+        self.depth = 0;
+        self.seldepth = 0;
+    }
+
+    fn new_position(&mut self) {
+        *self = Self::default();
+    }
+}
+
+
+impl fmt::Display for SearchResults {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "{}", toml::to_string_pretty(self).unwrap())?;
+        writeln!(f, "pv {}", self.pv)?;
+        writeln!(f, "best pv {}", self.best_pv)?;
+        Ok(())
+    }
 }
 
 impl SearchResults {
@@ -62,71 +101,86 @@ impl SearchResults {
         }
     }
 
-    pub fn with_best_move(sr: &SearchResults) -> Self {
-        SearchResults {
-            mode: SearchResultsMode::BestMove,
-            ..sr.clone()
-        }
-    }
+    // pub fn with_best_move(sr: &SearchResults) -> Self {
+    //     SearchResults {
+    //         mode: SearchResultsMode::BestMove,
+    //         ..sr.clone()
+    //     }
+    // }
 
     pub fn bm(&self) -> Move {
-        if let Some(ref pv) = self.pv {
-            if pv.len() >= 1 {
-                return pv[0];
-            }
+        if self.best_pv.len() >= 1 {
+            return self.best_pv[0];
         }
         Move::NULL_MOVE
     }
 
 
-    
-
-    // pub fn pv_change(best: Option<Move>, algo: &Algo) -> Self {
-    //     let stats = algo.search_stats();
-    //     SearchResults {
-    //         mode: SearchResultsMode::BestMove,
-    //         bestmove: best,
-    //         pv: Some(stats.pv().clone()),   
-    //         score: if stats.score > -Score::INFINITY {Some(stats.score)} else {None},  
-    //         nodes: Some(stats.all_threads_cumulative_total_nodes()),
-    //         nps: Some(stats.all_threads_cumulative_knps() * 1000),
-    //         depth: Some(stats.depth()),
-    //         seldepth: Some(stats.selective_depth()),
-    //         time_millis: Some(stats.cumulative_time_as_millis() as u64),
-    //         hashfull_per_mille: Some(algo.tt.hashfull_per_mille()),
-    //         ..Default::default()
-    //     }
-    // }
+    pub fn set_pv(&mut self, event: Event, pv: &Variation) {
+        self.event = Some(event);
+        self.pv = pv.clone();
+    }
 
 
+    pub fn set_seldepth(&mut self, n: &Node) {
+        // if !n.is_qs() && n.ply > self.depth {
+        //     self.depth = n.ply;
+        // }
+        if n.ply > self.seldepth {
+            self.seldepth = n.ply;
+        }
+    }
+
+    pub fn with_best_move(sr: &SearchResults) -> Self {
+        SearchResults {
+            mode: SearchResultsMode::BestMove,
+            best_score: sr.score,
+            best_pv: sr.pv.clone(),
+            ..sr.clone()
+        }
+    }
+
+
+    pub fn snapshot_bests(&mut self) {
+        if let Some(Event::Cancelled) = self.event  {
+            if self.multi_pv_index == 0 && self.take_move_from_part_ply {
+                self.best_score = self.score;
+                self.best_pv = self.pv.clone();        
+            }
+        } else {
+            // succesfully completed iter
+            if self.multi_pv_index == 0 {
+                info!("Would copying score {} pv {} over best pv {} for iter {} event {:?}", self.score, self.pv, self.best_pv, self.depth, self.event);
+            }
+            if self.multi_pv_index == 0 && self.pv.len() > 0 {
+                self.best_score = self.score;
+                self.best_pv = self.pv.clone();        
+            }
+        }
+    }
 
     pub fn with_pv_change(algo: &Algo) -> Self {
-        let clock = &algo.clock;
         let stats = algo.search_stats();
         let mut sr = SearchResults {
             mode: SearchResultsMode::PvChange,
             board: algo.board.clone(),
-            multi_pv_index: if algo.restrictions.multi_pv_count > 1 {
-                Some(algo.restrictions.multi_pv_index())
-            } else {
-                None
-            },
-            pv: Some(stats.pv().clone()),
-            score: if stats.score() > -Score::INFINITY {
-                Some(stats.score())
-            } else {
-                None
-            },
-            nodes: Some(clock.cumul_nodes_all_threads()),
-            nodes_thread: Some(clock.cumul_nodes()),
-            nps: Some(clock.cumul_knps_all_threads() * 1000),
-            depth: Some(stats.depth()),
-            seldepth: Some(stats.selective_depth()),
-            time_millis: Some(clock.elapsed_search().0.as_millis() as u64),
+            multi_pv_index: algo.restrictions.multi_pv_index(),
+            multi_pv_index_of: algo.restrictions.multi_pv_count,
+            pv: stats.pv().clone(),
+            best_pv: stats.pv().clone(),
+            score: stats.score(),
+            best_score: stats.score(),
+            nodes: Some(stats.all_threads_cumulative_total_nodes()),
+            nodes_thread: Some(stats.cumulative_nodes()),
+            nps: Some(stats.all_threads_cumulative_knps() * 1000),
+            depth: stats.depth(),
+            seldepth: stats.selective_depth(),
+            time_millis: Some(stats.cumulative_time_as_millis() as u64),
             hashfull_per_mille: Some(algo.tt.hashfull_per_mille()),
             branching_factor: Some(stats.branching_factor()),
             ..Default::default()
         };
+
 
         // check PV for validity
         if !sr.board.is_legal_variation(stats.pv()) {
@@ -138,31 +192,50 @@ impl SearchResults {
                 stats.pv(),
                 algo
             );
-            if let Some(ref mut pv) = sr.pv {
-                pv.truncate(1);
-            }
+            sr.pv.truncate(1);
         }
         sr
     }
 
+
+
+
+
+
+    pub fn update_with_pv_change(&mut self, clock: &Clock, counts: &Counts, depth: Ply, score: Score, event: Event) {
+        if event != Event::Cancelled {
+            self.mode = SearchResultsMode::PvChange;
+        } else {
+            self.mode = SearchResultsMode::NodeCounts;
+        }
+
+        self.event = Some(event);
+        self.score = score;
+        self.depth = depth;
+        self.nodes = Some(clock.cumul_nodes_all_threads());
+        self.nodes_thread = Some(clock.cumul_nodes()); 
+        self.nps = Some(clock.cumul_knps_all_threads() * 1000);
+        self.time_millis = Some(clock.elapsed_search().0.as_millis() as u64);
+        self.branching_factor = Some(counts.cumul(Event::PercentBranchingFactor) as f32 / 100.0);
+
+        // check PV for validity
+        if !self.board.is_legal_variation(&self.pv) {
+            error!("PV  {} is invalid on board {}\n{:?}\n", self.pv, self.board, self.pv);
+            self.pv.truncate(1);
+        }
+    }
+
     pub fn to_pos(&self) -> Position {
         let mut pos = Position::from_board(self.board.clone());
-        if let Some(ref pv) = self.pv {
-            pos.set(Tag::Pv(pv.clone()));
-            if pv.len() > 0 {
-                pos.set(Tag::SuppliedMove(pv[0]));
-                pos.set(Tag::BestMoves(MoveList::from_iter(iter::once(pv[0]))));
-            }
+        pos.set(Tag::Pv(self.best_pv.clone()));
+        if self.best_pv.len() > 0 {
+            pos.set(Tag::SuppliedMove(self.best_pv[0]));
+            pos.set(Tag::BestMoves(MoveList::from_iter(iter::once(self.best_pv[0]))));
         }
-        if let Some(ce) = self.score {
-            pos.set(Tag::CentipawnEvaluation(ce.as_i16() as i32));
-        }
-        if let Some(depth) = self.depth {
-            pos.set(Tag::AnalysisCountDepth(depth));
-        }
-        if let Some(seldepth) = self.seldepth {
-            pos.set(Tag::AnalysisCountSelDepth(seldepth));
-        }
+        pos.set(Tag::CentipawnEvaluation(self.best_score.as_i16() as i32));
+        pos.set(Tag::AnalysisCountDepth(self.depth));
+        pos.set(Tag::AnalysisCountSelDepth(self.seldepth));
+
         if let Some(nodes) = self.nodes_thread {
             pos.set(Tag::AnalysisCountNodes(nodes as u128));
         }

@@ -75,9 +75,9 @@ impl Algo {
                 let mut n1 = Node { alpha: alpha1, beta: beta1, ..*n};
                 delta = self.aspiration.multiplier * delta;
 
-                let (new_score, cat) = self.run_alphabeta(b, &mut n1);
+                let (new_score, event) = self.run_alphabeta(b, &mut n1);
                 if new_score == -Score::INFINITY {
-                    break (new_score, cat);
+                    break (new_score, event);
                 }
                 if new_score.is_mate() {
                     break self.run_alphabeta(b, n);
@@ -95,7 +95,7 @@ impl Algo {
                 }
                 else {
                     // info!("Found {:?} in search window {} {}", new_score, alpha1, beta1);
-                    break (new_score, cat);
+                    break (new_score, event);
                 } 
             };
             match aspiration_count {

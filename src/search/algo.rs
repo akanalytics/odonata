@@ -71,8 +71,6 @@ pub struct Algo {
     pub clock: Clock,
 
     pub counts: Counts,
-
-    #[serde(skip)]
     pub results: SearchResults,
 
     #[serde(skip)]
@@ -88,6 +86,9 @@ pub struct Algo {
     pub stats: SearchStats,
     #[serde(skip)]
     pub pv_table: PvTable,
+
+    #[serde(skip)]
+    clock_checks: u64,
 
     #[serde(skip)]
     pub current_variation: Variation,
@@ -124,16 +125,19 @@ impl Component for Algo {
         self.counts.new_iter();
         self.restrictions.new_iter();
         self.clock.new_iter();
+        // self.results.new_iter();
+        self.mte.new_iter();
     }
 
     fn new_game(&mut self) {
+        self.clock_checks = 0;
         self.stats = SearchStats::new();
         self.pv_table = PvTable::default();
-        self.results = SearchResults::default();
         self.current_variation = Variation::new();
         self.task_control = TaskControl::default();
         self.max_depth = 0;
 
+        // self.results.new_game();
         self.ids.new_game();
         self.eval.new_game();
         self.qsearch.new_game();
@@ -162,14 +166,15 @@ impl Component for Algo {
     }
 
     fn new_position(&mut self) {
+        self.clock_checks = 0;
         self.task_control = TaskControl::default();
         self.task_control.set_running();
         self.stats = SearchStats::new();
         self.pv_table = PvTable::default();
-        self.results = SearchResults::default();
         self.current_variation = Variation::new();
         self.max_depth = 0;
 
+        // self.results.new_position();
         self.ids.new_position();
         self.eval.new_position();
         self.qsearch.new_position();
@@ -203,7 +208,6 @@ impl fmt::Debug for Algo {
         f.debug_struct("Algo")
             // .field("pv_table", &self.pv_table.extract_pv().)
             .field("board", &self.board)
-            .field("current_best", &self.current_best)
             .field("analyse_mode", &self.analyse_mode)
             //.field("pv", &self.pv)
             .field("depth", &self.max_depth)
@@ -242,12 +246,13 @@ impl fmt::Display for Algo {
         writeln!(f, "material         : {}", self.board.material())?;
         writeln!(f, "phase            : {} %", self.board.phase(&self.eval.phaser))?;
         writeln!(f, "static eval      : {}", self.board.eval(&self.eval, &Node::root(0)))?;
-        writeln!(f, "bm               : {}", self.results.bm())?;
+        // writeln!(f, "bm               : {}", self.results.bm())?;
         writeln!(f, "score            : {}", self.score())?;
         writeln!(f, "analyse mode     : {}", self.analyse_mode)?;
         writeln!(f, "depth            : {}", self.max_depth)?;
         writeln!(f, "results          : {}", self.results_as_position())?;
         writeln!(f, "minmax           : {}", self.minmax)?;
+        // write!(f, "\n[results]\n{}", self.results)?;
         write!(f, "\n[task control]\n{}", self.task_control)?;
         write!(f, "\n[move orderer]\n{}", self.move_orderer)?;
         write!(f, "\n[move time estimator]\n{}", self.mte)?;
@@ -305,7 +310,7 @@ impl Algo {
     pub fn report_refutation(&self, ply: Ply) {
         if self.show_refutations && ply < 4 {
             let sp = SearchResults {
-                pv: Some(self.pv_table.extract_pv_for(ply).clone()),
+                pv: self.pv_table.extract_pv_for(ply).clone(),
                 mode: SearchResultsMode::Refutation,
                 ..SearchResults::default()
             };
@@ -352,6 +357,8 @@ impl Algo {
 
     #[inline]
     pub fn time_up_or_cancelled(&mut self, ply: Ply, force_check: bool) -> bool {
+        self.clock_checks += 1;
+
         // never cancel on ply=1, this way we always have a best move, and we detect mates
         if self.max_depth == 1 {
             return false;
@@ -361,8 +368,12 @@ impl Algo {
             return true;
         }
 
+        // only do this every 128th call to avoid expensive time computation
+        if !force_check && self.clock_checks % 128 != 0 {
+            return false;
+        }
 
-        let time_up = self.mte.is_time_up(ply, &self.clock, force_check);
+        let time_up = self.mte.is_time_up(ply, &self.stats, force_check);
         if time_up {
             self.stats.completed = false;
             self.stats.set_score(-Score::INFINITY, Event::Cancelled);
@@ -370,6 +381,7 @@ impl Algo {
         }
         time_up
     }
+
 
     pub fn clear_move(&mut self, ply: Ply) {
         self.pv_table.set(ply, &Move::NULL_MOVE, true);

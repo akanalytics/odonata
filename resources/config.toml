@@ -42,7 +42,6 @@ ignore_draws = false
 
 [ids]
 enabled = true
-part_ply = false
 step_size = 1
 
 
@@ -829,6 +828,9 @@ margin3 = 1500
 eval_switches = 255
 move_types_forbidden = 0
 
+[results]
+take_move_from_part_ply = false
+
 [pvs]
 enabled = true
 min_depth = 2
@@ -877,7 +879,7 @@ perc_of_time_adv = 62
 moves_rem = 8
 deterministic = false
 nodestime = 0
-check_every = 128
+# check_every = 128
 
 [move_orderer]
 enabled = true

@@ -25,7 +25,7 @@ pub struct SearchStats {
     this_thread_node_count: u64,
 
     pub depth: Ply,
-    clock: Clock3,
+    pub clock: Clock3,
 
     pub completed: bool,
     pub user_cancelled: bool,
