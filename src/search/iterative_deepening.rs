@@ -1,9 +1,7 @@
-use crate::eval::score::Score;
 use crate::globals::counts;
 use crate::infra::component::Component;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
-use crate::search::search_results::SearchResults;
 use crate::search::searchstats::{NodeStats, SearchStats};
 use crate::search::timecontrol::TimeControl;
 use crate::types::{Ply, MAX_PLY};
@@ -117,14 +115,24 @@ impl Algo {
             self.new_iter();
             self.stats.new_iteration();
 
-            for multi_pv_index in 0..self.restrictions.multi_pv_count {
+            for _multi_pv_index in 0..self.restrictions.multi_pv_count {
                 self.aspiration(&mut self.board.clone(), &mut Node::root(depth));
                 // self.stats.clock.start_ply();
                 self.mte.estimate_iteration(depth + 1, &self.clock);
                 self.stats.record_time_estimate(depth + 1, &self.mte.estimate_move_time);
                 self.ids.iterations.push(self.search_stats().clone());
+
+                if self.search_stats().interrupted() {
+                    counts::SEARCH_IDS_TIMEOUTS.increment();
+                } else {
+                    counts::SEARCH_IDS_COMPLETES.increment();
+                }
+
                 self.results.with_pv_change(&self.board, &self.stats, &self.restrictions, &self.tt);
+
+                // let results = &self.results;
                 self.results.snapshot_bests();
+                self.task_control.invoke_callback(&self.results);
                 let exit = self.exit_iteration(depth);
                 if exit {
                     break 'outer;
@@ -137,13 +145,20 @@ impl Algo {
         self.task_control.invoke_callback(&self.results);
         debug!("\n\n\n=====Search completed=====\n{}", self);
         if self.results.bm().is_null() {
-            error!("bm is null\n{}\n{:?}", self, self.results);
+            info!("bm is null\n{}\n{:?}", self, self.results);
         }
+
+        // self.results.with_best_move();
+        // self.task_control.invoke_callback(&self.results);
+        // debug!("\n\n\n=====Search completed=====\n{}", self);
+        // if self.results.bm().is_null() {
+        //     error!("bm is null\n{}\n{:?}", self, self.results);
+        // }
     }
 
-    pub fn exit_iteration(&self, y: Ply) -> bool {
+    pub fn exit_iteration(&self, depth: Ply) -> bool {
         self.search_stats().interrupted()
-            || self.mte.probable_timeout(y)
+            || self.mte.probable_timeout(depth)
             || self.stats.depth >= self.ids.end_ply
             || self.stats.depth >= MAX_PLY / 2
             || (self.restrictions.exclude_moves.len() == 0

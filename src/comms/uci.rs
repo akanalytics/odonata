@@ -741,7 +741,7 @@ impl Uci {
         let bm = if var.len() > 0 {
             var[0]
         } else {
-            error!("---> Null  best move");
+            info!("---> Null  best move");
             Move::NULL_MOVE
         };
         let mut output = format!("bestmove {}", bm.uci());
@@ -803,8 +803,8 @@ impl<'a> fmt::Display for UciInfo<'a> {
             }
         }
         if let SearchResultsMode::NodeCounts = self.0.mode {
-            write!(f, "depth {} ", self.0.depth)?;
-            write!(f, "seldepth {} ", self.0.seldepth)?;
+            // write!(f, "depth {} ", self.0.depth)?;
+            // write!(f, "seldepth {} ", self.0.seldepth)?;
 
             if let Some(nodes) = self.0.nodes {
                 write!(f, "nodes {} ", nodes)?;

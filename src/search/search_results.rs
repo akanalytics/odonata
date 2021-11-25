@@ -33,52 +33,33 @@ impl Default for SearchResultsMode {
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
+#[rustfmt::skip]
 pub struct SearchResults {
     pub take_move_from_part_ply: bool,
 
-    #[serde(skip)]
-    pub board: Board,
-    #[serde(skip)]
-    pub mode: SearchResultsMode,
-    #[serde(skip)]
-    pub depth: Ply,
-    #[serde(skip)]
-    pub seldepth: Ply,
-    #[serde(skip)]
-    pub time_millis: Option<u64>,
-    #[serde(skip)]
-    pub multi_pv_index: u32,
-    #[serde(skip)]
-    pub multi_pv_index_of: u32,
-    #[serde(skip)]
-    pub pv: Variation,
-    #[serde(skip)]
-    pub nodes: Option<u64>,
-    #[serde(skip)]
-    pub nodes_thread: Option<u64>,
-    #[serde(skip)]
-    pub score: Score,
-    #[serde(skip)]
-    pub currmove: Option<Move>,
-    #[serde(skip)]
-    pub currmovenumber_from_1: Option<u32>,
-    #[serde(skip)]
-    pub hashfull_per_mille: Option<u32>,
-    #[serde(skip)]
-    pub nps: Option<u64>,
-    #[serde(skip)]
-    pub tbhits: Option<u64>,
-    #[serde(skip)]
-    pub cpuload_per_mille: Option<u32>,
-    #[serde(skip)]
-    pub branching_factor: Option<f32>,
-    #[serde(skip)]
-    pub event: Option<Event>,
-
-    #[serde(skip)]
-    pub best_score: Score,
-    #[serde(skip)]
-    pub best_pv: Variation,
+    
+    #[serde(skip)] pub board: Board,
+    #[serde(skip)] pub mode: SearchResultsMode,
+    #[serde(skip)] pub depth: Ply,
+    #[serde(skip)] pub seldepth: Ply,
+    #[serde(skip)] pub time_millis: Option<u64>,
+    #[serde(skip)] pub multi_pv_index: u32,
+    #[serde(skip)] pub multi_pv_index_of: u32,
+    #[serde(skip)] pub pv: Variation,
+    #[serde(skip)] pub nodes: Option<u64>,
+    #[serde(skip)] pub nodes_thread: Option<u64>,
+    #[serde(skip)] pub score: Score,
+    #[serde(skip)] pub currmove: Option<Move>,
+    #[serde(skip)] pub currmovenumber_from_1: Option<u32>,
+    #[serde(skip)] pub hashfull_per_mille: Option<u32>,
+    #[serde(skip)] pub nps: Option<u64>,
+    #[serde(skip)] pub tbhits: Option<u64>,
+    #[serde(skip)] pub cpuload_per_mille: Option<u32>,
+    #[serde(skip)] pub branching_factor: Option<f32>,
+    #[serde(skip)] pub event: Option<Event>,
+    
+    #[serde(skip)] pub best_score: Score,
+    #[serde(skip)] pub best_pv: Variation,
     // pub refutation: Option<Move>,
     // pub currline: Option<MoveList>,
 }
@@ -111,6 +92,7 @@ impl fmt::Display for SearchResults {
 impl SearchResults {
     pub fn with_report_progress(algo: &Algo) -> Self {
         SearchResults {
+            mode: SearchResultsMode::NodeCounts,
             board: algo.board.clone(),
             nodes: Some(algo.clock.cumul_nodes_all_threads()),
             nodes_thread: Some(algo.clock.cumul_nodes()),
@@ -153,11 +135,44 @@ impl SearchResults {
         self.mode = SearchResultsMode::BestMove;
     }
 
+    pub fn old_with_best_move(sr: &SearchResults) -> Self {
+        SearchResults {
+            mode: SearchResultsMode::BestMove,
+            best_score: sr.score,
+            best_pv: sr.pv.clone(),
+            ..sr.clone()
+        }
+    }
+
+    pub fn old_with_pv_change(algo: &Algo) -> Self {
+        let stats = algo.search_stats();
+        let sr = SearchResults {
+            mode: SearchResultsMode::PvChange,
+            board: algo.board.clone(),
+            multi_pv_index: algo.restrictions.multi_pv_index(),
+            multi_pv_index_of: algo.restrictions.multi_pv_count,
+            pv: stats.pv().clone(),
+            best_pv: stats.pv().clone(),
+            score: stats.score(),
+            best_score: stats.score(),
+            nodes: Some(stats.all_threads_cumulative_total_nodes()),
+            nodes_thread: Some(stats.cumulative_nodes()),
+            nps: Some(stats.all_threads_cumulative_knps() * 1000),
+            depth: stats.depth(),
+            seldepth: stats.selective_depth(),
+            time_millis: Some(stats.cumulative_time_as_millis() as u64),
+            hashfull_per_mille: Some(algo.tt.hashfull_per_mille()),
+            branching_factor: Some(stats.branching_factor()),
+            ..Default::default()
+        };
+        sr
+    }
+
     pub fn snapshot_bests(&mut self) {
-        if self.score != -Score::INFINITY && self.score != Score::INFINITY {
+        if self.score.is_numeric_or_mate() {
             // succesfully completed iter
             if self.multi_pv_index == 0 && self.pv.len() == 0 {
-                error!(
+                info!(
                     "Would copying score {} pv {} over best pv {} for iter {} event {:?}",
                     self.score, self.pv, self.best_pv, self.depth, self.event
                 );
@@ -176,7 +191,6 @@ impl SearchResults {
     }
 
     pub fn with_pv_change(&mut self, board: &Board, stats: &SearchStats, restrictions: &Restrictions, tt: &TranspositionTable2) {
-        self.mode = SearchResultsMode::PvChange;
         self.board = board.clone();
         self.multi_pv_index = restrictions.multi_pv_index();
         self.multi_pv_index_of = restrictions.multi_pv_count;
@@ -192,6 +206,11 @@ impl SearchResults {
         self.time_millis = Some(stats.cumulative_time_as_millis() as u64);
         self.hashfull_per_mille = Some(tt.hashfull_per_mille());
         self.branching_factor = Some(stats.branching_factor());
+        if self.score.is_numeric_or_mate() {
+            self.mode = SearchResultsMode::PvChange;
+        } else {
+            self.mode = SearchResultsMode::NodeCounts;
+        }
 
         // check PV for validity
         if !board.is_legal_variation(stats.pv()) {
