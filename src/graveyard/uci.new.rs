@@ -741,7 +741,7 @@ impl Uci {
         let bm = if var.len() > 0 {
             var[0]
         } else {
-            error!("---> Null  best move");
+            info!("---> Null  best move");
             Move::NULL_MOVE
         };
         let mut output = format!("bestmove {}", bm.uci());
