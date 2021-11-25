@@ -117,6 +117,14 @@ impl SearchResults {
         Move::NULL_MOVE
     }
 
+    // for multi pv the pv and the best_pv are very different
+    pub fn initial_move(&self) -> Move {
+        if self.pv.len() >= 1 {
+            return self.pv[0];
+        }
+        Move::NULL_MOVE
+    }
+
     pub fn set_pv(&mut self, event: Event, pv: &Variation) {
         self.event = Some(event);
         self.pv = pv.clone();

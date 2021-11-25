@@ -798,7 +798,7 @@ impl<'a> fmt::Display for UciInfo<'a> {
                 if self.0.multi_pv_index_of > 1 {
                     write!(f, "multipv {} ", self.0.multi_pv_index + 1)?;
                 }
-                let strings: Vec<String> = self.0.best_pv.iter().map(Move::to_string).collect();
+                let strings: Vec<String> = self.0.pv.iter().map(Move::to_string).collect();
                 write!(f, "pv {}", strings.join(" "))?;
             }
         }

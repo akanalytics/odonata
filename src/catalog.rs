@@ -307,6 +307,7 @@ k2r4/8/3B4/3B4/3KQr2/5n2/8/8 w - - 0 1 id "PIN.02"; c0 "Pins"; Sq e4;
 k7/1p6/3N4/8/8/8/6NB/K7 w - - 5 1; id 'RECOG.02'; bm Nxb7; c0 'white should take pawn to leave winning KBN v k';
 k7/8/K1p5/8/3N4/8/6N1/7B w - - 5 1; id 'RECOG.03'; am Nxc6; bm Kb6; c0 'white shouldnt take pawn with knight as it triggers stalemate';
 k1K5/8/8/2p5/8/6B1/5B2/8 w - - 0 1;  id 'RECOG.04'; bm Bxc5; c0 'white should force stalemate by capturing pawn on c5 as black could win';
+6k1/7n/8/8/8/8/1N6/B5KR w - - 26 1; id 'RECOG.05'; bm Rxh7; acd 7; c0 'winning position despite king recapture';
 "#;
         let positions = Position::parse_many_epd(str.lines()).unwrap();
         positions

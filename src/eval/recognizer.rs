@@ -183,7 +183,7 @@ impl Algo {
         // its a helpmate or draw like KNkn, so search just a tiny depth then let eval do its job
         if endgame.is_likely_draw() {
             self.counts.inc(n, Event::RecogHelpmateOrDraw);
-            if n.depth > self.recognizer.terminal_depth {
+            if n.depth > self.recognizer.terminal_depth && !n.is_qs() {
                 n.depth = self.recognizer.terminal_depth;
             }
         }
@@ -191,7 +191,7 @@ impl Algo {
 
         if let Some(_color) = endgame.try_winner() {
             // already counted as cannot wins
-            if n.depth > self.recognizer.terminal_depth {
+            if n.depth > self.recognizer.terminal_depth && !n.is_qs() {
                 n.depth = self.recognizer.terminal_depth;
             }
         }

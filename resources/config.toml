@@ -94,7 +94,7 @@ partially_trapped_piece  = { s =   -4.49, e =  -18.99 }
 tempo_bonus              = { s =   18.08, e =   30.32 }
 
 
-win_bonus                = { s =  250.00, e =  250.00 }
+win_bonus                = { s =  350.00, e =  600.00 }
 win_metric               = { s =    1.00, e =    1.00 }
 
 [eval.pst]
