@@ -49,7 +49,7 @@ impl Algo {
             (self.pv_table.extract_pv(), Some(Score::default()))
         };
         self.results.set_pv(category, &pv);
-        // self.results.pv = pv.clone();
+        self.results.score = score;
 
         self.stats.record_iteration(self.max_depth, category, pv);
         (score, category)
@@ -73,6 +73,14 @@ impl Algo {
             self.counts.inc(&n, Event::Cancelled);
             return (-Score::INFINITY, Event::Cancelled);
         }
+
+        debug_assert!(
+            n.alpha < n.beta || self.minmax,
+            "alpha={}, beta={}, minmax={}",
+            n.alpha,
+            n.beta,
+            self.minmax
+        );
 
         self.clock.inc_nodes();
         self.counts.inc(&n, Event::Clock);
@@ -161,13 +169,6 @@ impl Algo {
             self.current_variation.push(mv);
             self.explainer.start(&self.current_variation);
             child_board.set_repetition_count(self.repetition.count(&child_board));
-            debug_assert!(
-                n.alpha < n.beta || self.minmax,
-                "alpha={}, beta={}, minmax={}",
-                n.alpha,
-                n.beta,
-                self.minmax
-            );
 
             let lmr = if !self.minmax {
                 self.lmr(

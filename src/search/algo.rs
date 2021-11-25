@@ -125,7 +125,7 @@ impl Component for Algo {
         self.counts.new_iter();
         self.restrictions.new_iter();
         self.clock.new_iter();
-        // self.results.new_iter();
+        self.results.new_iter();
         self.mte.new_iter();
     }
 
@@ -137,7 +137,7 @@ impl Component for Algo {
         self.task_control = TaskControl::default();
         self.max_depth = 0;
 
-        // self.results.new_game();
+        self.results.new_game();
         self.ids.new_game();
         self.eval.new_game();
         self.qsearch.new_game();
@@ -174,7 +174,7 @@ impl Component for Algo {
         self.current_variation = Variation::new();
         self.max_depth = 0;
 
-        // self.results.new_position();
+        self.results.new_position();
         self.ids.new_position();
         self.eval.new_position();
         self.qsearch.new_position();
@@ -235,6 +235,7 @@ impl fmt::Debug for Algo {
             .field("aspiration", &self.aspiration)
             .field("clock", &self.clock)
             .field("counts", &self.counts)
+            .field("results", &self.results)
             .finish()
     }
 }
@@ -282,6 +283,7 @@ impl fmt::Display for Algo {
         write!(f, "\n[clock]\n{:}", self.clock)?;
 
         write!(f, "\n[counts]\n{}", self.counts)?;
+        write!(f, "\n[results]\n{}", self.results)?;
         Ok(())
     }
 }

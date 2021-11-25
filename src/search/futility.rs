@@ -177,7 +177,7 @@ impl Algo {
             return None;
         }
 
-        if !n.alpha.is_numeric() || n.alpha.is_mate() || n.beta.is_mate() {
+        if !n.alpha.is_numeric() {
             return None;
         }
 

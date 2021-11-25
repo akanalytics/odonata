@@ -58,13 +58,14 @@ impl Algo {
     ) -> (Score, Event) {
 
 
-        if n.depth <= self.aspiration.min_depth || !self.aspiration.enabled {
+        let score = self.results.best_score;
+        if n.depth <= self.aspiration.min_depth || !self.aspiration.enabled || !score.is_numeric() {
 			return self.run_alphabeta(b, n);
 		} else {
             let mut aspiration_count = 0;
             let mut delta = self.aspiration.window;
-            let mut alpha1 = self.stats.score() - delta;
-            let mut beta1 = self.stats.score() + delta;
+            let mut alpha1 = score - delta;
+            let mut beta1 = score + delta;
             let ret = loop {
                 aspiration_count += 1;
                 if delta > self.aspiration.max_window {
