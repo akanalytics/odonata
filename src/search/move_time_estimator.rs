@@ -16,6 +16,8 @@ use serde::{Deserialize, Serialize};
 #[serde(default, deny_unknown_fields)]
 pub struct MoveTimeEstimator {
     pub branching_factor: f32,
+    move_overhead_ms: u64,
+    min_ply_for_estimation: Ply,
     perc_of_time_adv: u32,
     moves_rem: u16,
     pub deterministic: bool,
@@ -71,6 +73,8 @@ impl Component for MoveTimeEstimator {
 impl Default for MoveTimeEstimator {
     fn default() -> Self {
         MoveTimeEstimator {
+            move_overhead_ms: 20,
+            min_ply_for_estimation: 3,
             branching_factor: 12.625,
             perc_of_time_adv: 62,
             moves_rem: 8,
@@ -95,6 +99,8 @@ impl fmt::Display for MoveTimeEstimator {
         writeln!(f, "time_control     : {}", self.time_control)?;
         writeln!(f, "pondering        : {}", self.pondering())?;
         // writeln!(f, "board            : {}", self.board.to_fen())?;
+        writeln!(f, "move overhead ms : {}", self.move_overhead_ms)?;
+        writeln!(f, "minj ply for est : {}", self.min_ply_for_estimation)?;
         writeln!(f, "branching factor : {}", self.branching_factor)?;
         writeln!(f, "const moves rem. : {}", self.moves_rem)?;
         writeln!(f, "% of time adv    : {}", self.perc_of_time_adv)?;
@@ -134,7 +140,7 @@ impl MoveTimeEstimator {
             TimeControl::NodeCount(max_nodes) => clock.elapsed_search().1 > max_nodes - self.check_every,
             TimeControl::Infinite => false,
             TimeControl::MateIn(_) => false,
-            TimeControl::RemainingTime { .. } => elapsed > self.allotted() * 5 && !self.pondering(),
+            TimeControl::RemainingTime { .. } => elapsed > self.allotted() && !self.pondering(),
         };
         time_up
     }
@@ -160,11 +166,15 @@ impl MoveTimeEstimator {
             self.elapsed_search = Duration::from_millis(nodes / self.nodestime);
         }
 
-        // self.time_estimate = self.elapsed_used * self.branching_factor as u32;
-        self.estimate_move_time = self.elapsed_search + self.elapsed_iter.mul_f32(self.branching_factor);
+        self.estimate_move_time =  Duration::from_millis(self.move_overhead_ms) + self.elapsed_search + self.elapsed_iter.mul_f32(self.branching_factor);
     }
 
-    pub fn probable_timeout(&self, y: Ply) -> bool {
+
+
+
+
+    
+    pub fn probable_timeout(&self, ply: Ply) -> bool {
         match self.time_control {
             TimeControl::RemainingTime {
                 our_color,
@@ -175,7 +185,7 @@ impl MoveTimeEstimator {
                 movestogo: _,
             } => {
                 let (_time, _inc) = our_color.chooser_wb((wtime, winc), (btime, binc));
-                self.estimate_move_time > self.allotted() && !self.pondering.load(atomic::Ordering::SeqCst) && y > 2
+                self.estimate_move_time > self.allotted() && !self.pondering.load(atomic::Ordering::SeqCst) && ply >= self.min_ply_for_estimation
             }
             _ => false,
         }
@@ -205,7 +215,7 @@ impl MoveTimeEstimator {
                 } else {
                     Duration::default()
                 };
-                (time_us + time_adv * self.perc_of_time_adv / 100) / self.moves_rem as u32 + inc
+                (time_us + time_adv * self.perc_of_time_adv / 100) / self.moves_rem as u32 + inc - Duration::from_millis(self.move_overhead_ms)
             }
         }
     }
