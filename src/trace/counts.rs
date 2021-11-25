@@ -155,9 +155,8 @@ impl Counts {
             DerivedPrunedInterior => return self.count(i, y, PruneRazor) + self.count(i, y, PruneNullMovePrune),
             DerivedRecog => {
                 return self.count(i, y, RecogImmediateDraw)
-                    + self.count(i, y, RecogCannotWin)
-                    + self.count(i, y, RecogHelpmateOrDraw)
                     + self.count(i, y, RecogMaybeWin)
+                    + self.count(i, y, RecogHelpmateOrDraw)
             }
             PercentPvsReSearch => return (self.count(i, y, PvsReSearch) as f32 / self.count(i, y, Pvs) as f32 * 100.0) as u64,
             PercentLmrReSearch => return (self.count(i, y, LmrReSearch) as f32 / self.count(i, y, Lmr) as f32 * 100.0) as u64,
