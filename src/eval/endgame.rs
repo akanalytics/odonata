@@ -169,7 +169,7 @@ mod tests {
     use crate::{board::boardbuf::*, eval::{eval::SimpleScorer, weight::Weight}};
     use crate::eval::switches::Switches;
     use crate::eval::score::Score;
-    use test_env_log::test;
+    use test_log::test;
 
     #[test]
     fn test_endgame() {

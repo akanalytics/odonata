@@ -706,7 +706,7 @@ impl TranspositionTable2 {
 
 #[cfg(test)]
 mod tests {
-    use test_env_log::test;
+    use test_log::test;
     use super::*;
     use crate::catalog::*;
     use crate::comms::uci::*;

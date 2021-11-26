@@ -603,7 +603,7 @@ mod tests {
     use crate::eval::score::Score;
     use crate::eval::eval::SimpleScorer;
     use crate::search::node::Node;
-    use crate::test_env_log::test;
+    use crate::test_log::test;
     use toml;
 
 

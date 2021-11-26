@@ -845,7 +845,7 @@ mod tests {
     use super::*;
     use crate::board::boardbuf::BoardBuf;
     use crate::catalog::Catalog;
-    use crate::test_env_log::test;
+    use crate::test_log::test;
     use toml;
 
     #[test]

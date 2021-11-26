@@ -134,7 +134,7 @@ impl SharedTable {
 }
 
 // https://stackoverflow.com/questions/60180121/how-do-i-allocate-a-vecu8-that-is-aligned-to-the-size-of-the-cache-line
-#[repr(align(64))]
+// #[repr(align(64))]
 pub struct AlignToCacheLine([Bucket; 4]);
 
 fn aligned_vec(capacity: usize) -> Vec<Bucket> {

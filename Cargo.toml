@@ -1,6 +1,6 @@
 [package]
 name = "odonata"
-version = "0.5.0"
+version = "0.5.1"
 license = "GPL-3.0+"
 homepage = "https://github.com/akanalytics/odonata"
 authors = [
@@ -20,7 +20,7 @@ build = "build.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-test-env-log = "0.2"
+test-log = "0.2"
 clap = "2.33"
 bitflags = "1.2"
 arrayvec = "0.7"
@@ -59,7 +59,7 @@ tabwriter = "1.2.1"
 [dev-dependencies]
 criterion = "0.3"
 iai = "0.1"
-criterion-linux-perf = "0.1" # https://crates.io/crates/criterion-linux-perf
+# criterion-linux-perf = "0.1" # https://crates.io/crates/criterion-linux-perf
 
 
 [build-dependencies]

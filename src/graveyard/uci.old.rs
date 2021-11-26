@@ -848,7 +848,7 @@ mod tests {
     use super::*;
     use crate::types::Piece;
     use std::thread;
-    use test_env_log::test;
+    use test_log::test;
 
     #[test]
     fn test_args() {

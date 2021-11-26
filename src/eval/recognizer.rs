@@ -203,7 +203,7 @@ impl Algo {
 #[cfg(test)]
 mod tests {
     use crate::{Position, eval::endgame::EndGame, search::{engine::Engine, node::Node, timecontrol::TimeControl}};
-    use test_env_log::test;
+    use test_log::test;
 
     #[test]
     fn test_recog_simple() {

@@ -207,7 +207,7 @@ impl HistoryHeuristic {
 #[cfg(test)]
 mod tests {
     use crate::bitboard::square::Square;
-    use test_env_log::test;
+    use test_log::test;
 
     use super::*;
 

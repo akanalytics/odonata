@@ -1,6 +1,6 @@
 #![cfg_attr(debug_assertions, allow(dead_code))]
 
-extern crate test_env_log;
+extern crate test_log;
 
 extern crate include_dir;
 

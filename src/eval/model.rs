@@ -176,7 +176,6 @@ impl Scorer for ExplainScorer {
     #[inline]
     fn annotate(&mut self, _annotation: &str) {}
 
-    #[inline]
     // fn set_multiplier(&mut self, mult: i32) {
     //     self.delegate.set_multiplier(mult);
     // }
@@ -813,7 +812,7 @@ mod tests {
     use crate::catalog::Catalog;
     use crate::eval::eval::SimpleScorer;
     use crate::tags::Tag;
-    use crate::test_env_log::test;
+    use crate::test_log::test;
     use crate::utils::StringUtils;
 
     #[test]

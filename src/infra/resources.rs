@@ -8,7 +8,7 @@ pub const RESOURCE_DIR: Dir = include_dir!("resources");
 #[cfg(test)]
 mod tests {
     use super::*;
-    use test_env_log::test;    
+    use test_log::test;    
 
 
     #[test]

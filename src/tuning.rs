@@ -158,7 +158,7 @@ impl Tuning {
 mod tests {
     use super::*;
     use crate::eval::weight::Weight;
-    use test_env_log::test;
+    use test_log::test;
 
 
     #[test]

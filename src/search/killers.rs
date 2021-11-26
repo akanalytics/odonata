@@ -105,7 +105,7 @@ impl Killers {
 mod tests {
     use super::*;
     use anyhow::Result;
-    use test_env_log::test;
+    use test_log::test;
     use toml;
     use figment::providers::{Format, Toml};
     use figment::{Figment};

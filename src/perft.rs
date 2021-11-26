@@ -123,7 +123,7 @@ mod tests {
     use super::*;
     use crate::catalog::Catalog;
     use std::time::Instant;
-    use test_env_log::test;
+    use test_log::test;
 
     #[test]
     fn test_perft_1() {

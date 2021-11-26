@@ -229,7 +229,7 @@ impl<T> std::ops::Neg for WeightOf<T> where T: Copy + Num + std::ops::Neg<Output
 #[cfg(test)]
 mod tests {
     use super::*;
-    use test_env_log::test;
+    use test_log::test;
     use toml;
     
 

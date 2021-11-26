@@ -297,7 +297,7 @@ mod tests {
     use crate::position::*;
     use crate::search::engine::Engine;
     use crate::search::timecontrol::*;
-    use crate::test_env_log::test;
+    use crate::test_log::test;
     use anyhow::Result;
 
     #[test]

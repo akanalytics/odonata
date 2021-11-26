@@ -131,7 +131,7 @@ impl fmt::Display for Switches {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_env_log::test;
+    use crate::test_log::test;
     use toml;
 
     #[test]

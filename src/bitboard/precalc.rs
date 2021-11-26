@@ -304,7 +304,7 @@ mod tests {
     use super::*;
     // use crate::bitboard::bb_classical::ClassicalBitboard;
     use crate::globals::constants::*;
-    use crate::test_env_log::test;
+    use crate::test_log::test;
 
     #[test]
     fn test_king_attacks() {

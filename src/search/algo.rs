@@ -403,7 +403,7 @@ mod tests {
     use crate::eval::eval::*;
     use crate::types::*;
     use anyhow::*;
-    use test_env_log::test;
+    use test_log::test;
     use toml;
 
     #[test]

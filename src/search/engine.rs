@@ -275,7 +275,7 @@ mod tests {
     use crate::eval::score::*;
     use crate::utils::Formatting;
     use std::time;
-    use test_env_log::test;
+    use test_log::test;
 
     #[test]
     fn engine_serde_test() {

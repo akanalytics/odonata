@@ -642,7 +642,7 @@ impl Uci {
                         if let Some((name, value)) = s.split_once("=") {
                             kvs.insert( name.trim().to_string(), value.trim().to_string() );
                         } else {
-                            bail!("Expected key=value but '{}' found", s)
+                            // bail!("Expected key=value but '{}' found instead", s)
                         }
                     }
                 }
@@ -865,7 +865,7 @@ mod tests {
     use super::*;
     use crate::types::Piece;
     use std::thread;
-    use test_env_log::test;
+    use test_log::test;
 
     #[test]
     fn test_args() {
