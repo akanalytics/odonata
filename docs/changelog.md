@@ -2,6 +2,19 @@
 
 Milestones ('m') are bundled into Releases.  
 
+# Release 0.5.0 
+- Elo improved by 200+ in self-play vs release 0.4.0 (expected 2500+)
+- Late move reductions, razoring, check extensions, time control tuning
+- Greatly simplified UCI options
+- Rook behind passer eval adjustment
+- Phase adjusted logistic k-steepness incorporated into texel-style tuning
+- Some items built but not tuned, finished or adding Elo yet. Notably
+-   Aspiration searches
+-   (Alternate/direct addressed) bucket hashing and aligned hash
+-   MultiPV (experimental)
+-   TOML configuration/profile files
+-   Tri-valued evaluation weights
+
 
 # Release 0.4.0 
 - Evaluation of king tropism, passed pawn on 7th
