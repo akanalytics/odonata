@@ -1,6 +1,5 @@
 # Changelog
 
-Milestones ('m') are bundled into Releases.  
 
 # Release 0.5.0 
 - Elo improved by 200+ in self-play vs release 0.4.0 (expected 2500+)
@@ -41,6 +40,8 @@ Milestones ('m') are bundled into Releases.
 
 
 # Release 0.3.26
+
+Milestones ('m') are bundled into Releases.  
 
 ### Highlights
 - Futility pruning
