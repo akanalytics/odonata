@@ -9,11 +9,11 @@ Milestones ('m') are bundled into Releases.
 - Rook behind passer eval adjustment
 - Phase adjusted logistic k-steepness incorporated into texel-style tuning
 - Some items built but not tuned, finished or adding Elo yet. Notably
--   Aspiration searches
--   (Alternate/direct addressed) bucket hashing and aligned hash
--   MultiPV (experimental)
--   TOML configuration/profile files
--   Tri-valued evaluation weights
+    - Aspiration searches
+    - (Alternate/direct addressed) bucket hashing and aligned hash
+    - MultiPV (experimental)
+    - TOML configuration/profile files
+    - Tri-valued evaluation weights
 
 
 # Release 0.4.0 
