@@ -1,4 +1,4 @@
-use crate::infra::component::Component;
+use crate::infra::component::{State,Component};
 use crate::utils::Formatting;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -53,6 +53,16 @@ impl Default for Clock {
 }
 
 impl Component for Clock {
+
+    fn set_state(&mut self, s: State) {
+        use State::*;
+        match s {
+            NewGame => self.new_game(),
+            SetPosition => self.new_position(),
+            StartSearch => *self = Self::default(),
+            StartDepthIteration(_) => self.new_iter(),
+        }
+    }    
     fn new_game(&mut self) {
         *self = Self::default()
     }

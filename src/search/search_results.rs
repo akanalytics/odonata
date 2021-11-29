@@ -198,7 +198,7 @@ impl SearchResults {
         }
     }
 
-    pub fn with_pv_change(&mut self, board: &Board, stats: &SearchStats, restrictions: &Restrictions, tt: &TranspositionTable2) {
+    pub fn with_pv_change(&mut self, board: &Board, clock: &Clock, stats: &SearchStats, restrictions: &Restrictions, tt: &TranspositionTable2) {
         self.board = board.clone();
         self.multi_pv_index = restrictions.multi_pv_index();
         self.multi_pv_index_of = restrictions.multi_pv_count;
@@ -206,12 +206,12 @@ impl SearchResults {
         // self.best_pv = stats.pv().clone();
         self.score = stats.score();
         // self.best_score = stats.score();
-        self.nodes = Some(stats.all_threads_cumulative_total_nodes());
-        self.nodes_thread = Some(stats.cumulative_nodes());
-        self.nps = Some(stats.all_threads_cumulative_knps() * 1000);
+        self.nodes = Some(clock.cumul_nodes_all_threads());
+        self.nodes_thread = Some(clock.cumul_nodes());
+        self.nps = Some(clock.cumul_knps_all_threads() * 1000);
         self.depth = stats.depth();
         self.seldepth = stats.selective_depth();
-        self.time_millis = Some(stats.cumulative_time_as_millis() as u64);
+        self.time_millis = Some(clock.elapsed_search().0.as_millis() as u64);
         self.hashfull_per_mille = Some(tt.hashfull_per_mille());
         self.branching_factor = Some(stats.branching_factor());
         if self.score.is_numeric_or_mate() {

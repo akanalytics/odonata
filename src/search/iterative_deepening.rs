@@ -128,7 +128,7 @@ impl Algo {
                     counts::SEARCH_IDS_COMPLETES.increment();
                 }
 
-                self.results.with_pv_change(&self.board, &self.stats, &self.restrictions, &self.tt);
+                self.results.with_pv_change(&self.board, &self.clock, &self.stats, &self.restrictions, &self.tt);
 
                 // let results = &self.results;
                 self.results.snapshot_bests();

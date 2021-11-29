@@ -5,7 +5,7 @@ use crate::eval::eval::SimpleScorer;
 use crate::eval::recognizer::Recognizer;
 use crate::eval::score::Score;
 use crate::globals::counts;
-use crate::infra::component::Component;
+use crate::infra::component::{State, Component};
 use crate::mv::Move;
 use crate::position::Position;
 use crate::pvtable::PvTable;
@@ -122,12 +122,48 @@ impl Algo {
 
 impl Component for Algo {
     fn new_iter(&mut self) {
-        self.counts.new_iter();
-        self.restrictions.new_iter();
-        self.clock.new_iter();
-        self.results.new_iter();
-        self.mte.new_iter();
     }
+
+
+
+    fn set_state(&mut self, s: State) {
+        use State::*;
+        match s {
+            NewGame => self.new_game(),
+            SetPosition => self.new_position(),
+            StartSearch => {},
+            StartDepthIteration(_) => self.new_iter(),
+        }
+
+        self.results.set_state(s);
+        self.ids.set_state(s);
+        self.eval.set_state(s);
+        self.qsearch.set_state(s);
+        self.nmp.set_state(s);
+        self.futility.set_state(s);
+
+        self.pvs.set_state(s);
+        self.ext.set_state(s);
+        self.lmr.set_state(s);
+        self.mte.set_state(s);
+        self.move_orderer.set_state(s);
+
+        self.repetition.set_state(s);
+        self.tt.set_state(s);
+        self.killers.set_state(s);
+        self.history.set_state(s);
+        self.explainer.set_state(s);
+
+        self.restrictions.set_state(s);
+        self.razor.set_state(s);
+        self.recognizer.set_state(s);
+        self.aspiration.set_state(s);
+        self.clock.set_state(s);
+
+        self.counts.set_state(s);
+
+    }
+
 
     fn new_game(&mut self) {
         self.clock_checks = 0;
@@ -137,32 +173,6 @@ impl Component for Algo {
         self.task_control = TaskControl::default();
         self.max_depth = 0;
 
-        self.results.new_game();
-        self.ids.new_game();
-        self.eval.new_game();
-        self.qsearch.new_game();
-        self.nmp.new_game();
-        self.futility.new_game();
-
-        self.pvs.new_game();
-        self.ext.new_game();
-        self.lmr.new_game();
-        self.mte.new_game();
-        self.move_orderer.new_game();
-
-        self.repetition.new_game();
-        self.tt.new_game();
-        self.killers.new_game();
-        self.history.new_game();
-        self.explainer.new_game();
-
-        self.restrictions.new_game();
-        self.razor.new_game();
-        self.recognizer.new_game();
-        self.aspiration.new_game();
-        self.clock.new_game();
-
-        self.counts.new_game();
     }
 
     fn new_position(&mut self) {
@@ -173,33 +183,6 @@ impl Component for Algo {
         self.pv_table = PvTable::default();
         self.current_variation = Variation::new();
         self.max_depth = 0;
-
-        self.results.new_position();
-        self.ids.new_position();
-        self.eval.new_position();
-        self.qsearch.new_position();
-        self.nmp.new_position();
-        self.futility.new_position();
-
-        self.pvs.new_position();
-        self.ext.new_position();
-        self.lmr.new_position();
-        self.mte.new_position();
-        self.move_orderer.new_position();
-
-        self.repetition.new_position();
-        self.tt.new_position();
-        self.killers.new_position();
-        self.history.new_position();
-        self.explainer.new_position();
-
-        self.restrictions.new_position();
-        self.razor.new_position();
-        self.recognizer.new_position();
-        self.aspiration.new_position();
-        self.clock.new_position();
-
-        self.counts.new_position();
     }
 }
 
@@ -322,7 +305,7 @@ impl Algo {
     }
 
     pub fn set_position(&mut self, pos: Position) -> &mut Self {
-        self.new_position();
+        self.set_state(State::SetPosition);
         self.repetition.push_position(&pos);
         self.board = pos.supplied_variation().apply_to(pos.board());
         self.tt.rewrite_pv(pos.board());
@@ -331,6 +314,7 @@ impl Algo {
     }
 
     pub fn search(&mut self) {
+        self.set_state(State::StartSearch);
         self.search_iteratively();
         debug!("\n\n\n=====Search completed=====\n{}", self);
     }

@@ -211,7 +211,7 @@ impl Engine {
             }
             let cl = move || {
                 Stat::set_this_thread_index(i as usize);
-                algo.search_iteratively();
+                algo.search();
                 algo
             };
             self.threads.push(builder.spawn(cl).unwrap());

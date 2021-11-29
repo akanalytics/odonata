@@ -211,7 +211,6 @@ impl Uci {
             "ext:version" => self.ext_uci_version(&Args::parse(&input)),
             "ext:static_eval" => self.ext_uci_static_eval(&Args::parse(&input)),
             "ext:move_attributes" => self.ext_uci_move_attributes(&Args::parse(&input)),
-//            "ext:catalog" => self.ext_uci_catalog(&Args::parse(&input)),
             "sleep" => self.uci_sleep(&words[1..]),
             "perft" => self.uci_perft(&words[1..]),
             "search" | "?" => self.uci_explain_last_search(),
@@ -221,9 +220,6 @@ impl Uci {
 
             _ if self.is_json_request(&input) => self.json_method(&input),
 
-            // "tune" => self.uci_unknown(&words),
-            // "eval" => self.uci_unknown(&words),
-            // "bench" => self.uci_unknown(&words),
             _ => self.uci_unknown(&words),
         };
         if let Err(s) = res {
@@ -345,18 +341,6 @@ impl Uci {
         Ok(())
     }
 
-    // fn ext_uci_catalog(&mut self, arg: &Args) -> Result<(), String> {
-    //     let name = 
-    //     let positions = Catalog::from_name(name);
-    //     for p in positions {
-    //         print!("{} {}", p.board().to_fen(),"\t");
-    //         for kv in p.
-    //         println!();
-    //     }
-    //     println!();
-    //     Ok(())
-    // }
-
     fn ext_uci_static_eval(&mut self, arg: &Args) -> Result<()> {
         let mut b = Board::new_empty();
         Self::parse_fen(arg, &mut b)?;
@@ -453,18 +437,6 @@ impl Uci {
         }
         Ok(movelist)
     }
-
-    // fn parse_movelist(args: &Args, b: &mut Board) -> Result<MoveList> {
-    //     let mut movelist = MoveList::new();
-    //     let index = args.index_of("moves");
-    //     if let Some(index) = index {
-    //         for mv in args.words[(index + 1)..].iter() {
-    //             let mv = b.parse_uci_move(mv)?;
-    //             movelist.push(mv)
-    //         }
-    //     }
-    //     Ok(movelist)
-    // }
 
     fn uci_go(&mut self, args: &Args) -> Result<()> {
         self.engine.lock().unwrap().search_stop();
@@ -666,11 +638,6 @@ impl Uci {
     fn uci_show_options(&self) {
         let mut engine = self.engine.lock().unwrap();
         engine.search_stop();
-        // let mut c = ParsedConfig::new();
-        // self.settings(&mut c);
-        // for (name, value) in c.iter() {
-        //     Self::print(&format!("option name {} {}", name, value));
-        // }
         for op in &Self::uci_options(&engine) {
             Self::print(op);
         }
@@ -732,10 +699,6 @@ impl Uci {
         }
     }
 
-    // fn uci_info_string(&self, str: &str) {
-    //     Self::print(&format!("info string {}", str.replace("\n", "\ninfo string ")));
-    // }
-
     fn print_bm_and_ponder(var: &Variation) {
 
         let bm = if var.len() > 0 {
@@ -751,12 +714,7 @@ impl Uci {
         Self::print(&output)
     }
 
-    // fn log_debug_message(&self, str: &str) {
-    //     if self.debug {
-    //         // replace "\n" with "info string "
-    //         Self::send(format!("info string {}", str.replace("\n", "\ninfo string ")));
-    //     }
-    // }
+
 }
 
 struct UciInfo<'a>(&'a SearchResults);
