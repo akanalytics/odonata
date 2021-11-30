@@ -1,5 +1,5 @@
 use crate::cache::tt2::TranspositionTable2;
-use crate::infra::component::Component;
+use crate::infra::component::{Component, State};
 use crate::position::Position;
 use crate::search::algo::Algo;
 use crate::search::timecontrol::TimeControl;
@@ -89,18 +89,21 @@ impl fmt::Display for Engine {
 }
 
 impl Component for Engine {
+    fn set_state(&mut self, s: State) {
+        use State::*;
+        match s {
+            NewGame | SetPosition => self.threads.clear(),
+            StartSearch => {},
+            StartDepthIteration(_) => {},
+        }
+        self.algo.set_state(s);
+        self.tuner.set_state(s);
+    }
 
-    // clears evaluation and transposition caches as well as repetition counts
     fn new_game(&mut self) {
-        self.threads.clear();
-        self.algo.new_game();
-        self.tuner.new_game();
     }
 
     fn new_position(&mut self) {
-        self.threads.clear();
-        self.algo.new_position();
-        self.tuner.new_position();
     }
 }
 

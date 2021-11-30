@@ -1,5 +1,5 @@
 use crate::globals::counts;
-use crate::infra::component::Component;
+use crate::infra::component::{Component, State};
 use crate::search::algo::Algo;
 use crate::search::node::Node;
 use crate::search::searchstats::{NodeStats, SearchStats};
@@ -112,7 +112,7 @@ impl Algo {
         self.ids.calc_range(&self.mte.time_control);
         let mut depth = self.ids.start_ply;
         'outer: loop {
-            self.new_iter();
+            self.set_state(State::StartDepthIteration(depth));
             self.stats.new_iteration();
 
             for _multi_pv_index in 0..self.restrictions.multi_pv_count {

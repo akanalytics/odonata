@@ -1,5 +1,5 @@
 use crate::{catalog::*};
-use crate::infra::component::Component;
+use crate::infra::component::{Component, State};
 use crate::perft::Perft;
 use crate::search::engine::Engine;
 use crate::tags::Tag;
@@ -88,7 +88,7 @@ impl Bench {
         for (i, pos) in positions.iter().enumerate() {
             let t = Instant::now();
 
-            engine.new_game();
+            engine.set_state(State::NewGame);
             engine.set_position(pos.clone());
             if tc == TimeControl::DefaultTime {
                 let suggested_depth = pos.acd().unwrap();
@@ -109,7 +109,7 @@ impl Bench {
             let depth = engine.algo.results_as_position().acd().unwrap();
             let sel_depth = engine.algo.results_as_position().tag(Tag::ACSD).value_uci();
             let nodes = engine.algo.results_as_position().acn().unwrap();
-            let cp = engine.algo.score();
+            let cp = engine.algo.results.best_score;
             let nps = Formatting::f64(nodes as f64 / elapsed.as_secs_f64());
             let bf = engine.algo.results_as_position().branching_factor();
             let bf_string = Formatting::decimal(2, bf);

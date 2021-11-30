@@ -4,7 +4,7 @@ use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::catalog::Catalog;
 use crate::utils::Formatting;
-use crate::infra::component::Component;
+use crate::infra::component::{Component, State};
 use crate::mv::Move;
 use crate::variation::Variation;
 use crate::perft::Perft;
@@ -106,7 +106,7 @@ pub struct Uci {
 impl Component for Uci {
 
     fn new_game(&mut self) {
-        self.engine.lock().unwrap().new_game();
+        self.engine.lock().unwrap().set_state(State::NewGame);
         self.engine.lock().unwrap().algo.set_callback(|sp| Self::uci_info(sp));
     }
 
@@ -258,7 +258,7 @@ impl Uci {
 
     fn uci_newgame(&mut self) -> Result<()> {
         // clear the transposition tables/eval caches and repetition counts before the new game
-        self.new_game();
+        self.set_state(State::NewGame);
         Ok(())
     }
 
@@ -565,7 +565,7 @@ impl Uci {
             engine.configment("mte.nodestime", value)?;
         } else if name == "Hash" {
             engine.configment("tt.mb", value)?;
-            engine.algo.tt.new_game();
+            engine.algo.tt.set_state(State::NewGame);
         } else if name == "UCI_AnalyseMode" {
             engine.configment("analyse_mode", value)?;
         } else if name == "UCI_ShowRefutations" {

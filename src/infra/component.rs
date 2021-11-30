@@ -6,7 +6,7 @@ pub enum State {
     NewGame,
     SetPosition,
     StartSearch,
-    StartDepthIteration(u32),
+    StartDepthIteration(i32),
 }
 
 

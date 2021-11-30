@@ -22,6 +22,7 @@ pub struct MoveTimeEstimator {
     moves_rem: u16,
     pub deterministic: bool,
     pub nodestime: u64,
+    check_every: u64,
 
     #[serde(skip)]
     pub estimate_move_time: Duration,
@@ -41,10 +42,12 @@ pub struct MoveTimeEstimator {
     #[serde(skip)]
     board: Board,
 
-    check_every: u64,
 
     #[serde(skip)]
     clock_checks: u64,
+
+    #[serde(skip)]
+    prior_elapsed_iter: Duration,
 }
 
 impl Component for MoveTimeEstimator {
@@ -67,6 +70,7 @@ impl Component for MoveTimeEstimator {
         self.board = Board::default();
         self.clock_checks = 0;
         self.estimate_move_time = Duration::default();
+        self.prior_elapsed_iter = Duration::default();
     }
 }
 
@@ -90,6 +94,7 @@ impl Default for MoveTimeEstimator {
             board: Board::default(),
             check_every: 128,
             clock_checks: 0,
+            prior_elapsed_iter: Duration::default(),
         }
     }
 }
@@ -112,6 +117,7 @@ impl fmt::Display for MoveTimeEstimator {
         writeln!(f, "clock checks     : {}", self.clock_checks)?;
         writeln!(f, "elapsed search   : {}", Formatting::duration(self.elapsed_search))?;
         writeln!(f, "elapsed iter     : {}", Formatting::duration(self.elapsed_iter))?;
+        writeln!(f, "prior elap iter  : {}", Formatting::duration(self.prior_elapsed_iter))?;
         Ok(())
     }
 }
@@ -157,6 +163,7 @@ impl MoveTimeEstimator {
 
     pub fn estimate_iteration(&mut self, _ply: Ply, clock: &Clock) {
         // debug_assert!(search_stats.depth() >= ply-1, "ensure we have enough stats");
+        self.prior_elapsed_iter = self.elapsed_iter;
         self.elapsed_iter = clock.elapsed_iter().0;
         self.elapsed_search = clock.elapsed_search().0;
 
@@ -166,7 +173,10 @@ impl MoveTimeEstimator {
             self.elapsed_search = Duration::from_millis(nodes / self.nodestime);
         }
 
-        self.estimate_move_time =  Duration::from_millis(self.move_overhead_ms) + self.elapsed_search + self.elapsed_iter.mul_f32(self.branching_factor);
+        self.estimate_move_time =  Duration::from_millis(self.move_overhead_ms) + 
+            self.elapsed_search + 
+            self.elapsed_iter.mul_f32(self.branching_factor) / 2 + 
+            self.prior_elapsed_iter.mul_f32(self.branching_factor).mul_f32(self.branching_factor) / 2;
     }
 
 
