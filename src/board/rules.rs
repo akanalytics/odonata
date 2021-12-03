@@ -37,7 +37,7 @@ impl Rules {
         let king_sq = (b.kings() & us).square();
         let king_att = attack_gen.king_attacks(king_sq);
         let king_danger = BoardCalcs::threats_to(b, b.color_us(), occ - our_kings);
-        let attacks = king_att & !us - king_danger;
+        let attacks = (king_att & !us) - king_danger;
         for to in attacks.squares() {
             if to.is_in(them) {
                 moves.push(Move::new_capture(Piece::King, king_sq, to, b.piece_at(to.as_bb())));

@@ -414,7 +414,7 @@ pub enum MoveType {
 pub type MoveTypes = BitFlags<MoveType>;
 
 impl MoveType {
-    pub fn from_str(s: &str) -> Result<MoveTypes, String> {
+    pub fn new_from_str(s: &str) -> Result<MoveTypes, String> {
         let mut mts = MoveTypes::empty();
         for c in s.chars() {
             mts |= Self::from_char(c)?;
@@ -552,7 +552,7 @@ mod tests {
         assert_eq!(many.last(), Some(&MoveType::BadCapture));
         assert_eq!(MoveType::slice_to_string(&many), "HIGKPqB");
         assert_eq!(
-            MoveType::from_str("CHB")?,
+            MoveType::new_from_str("CHB")?,
             MoveType::Capture | MoveType::Hash | MoveType::BadCapture
         );
         assert_eq!(

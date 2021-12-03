@@ -106,6 +106,7 @@ impl From<PstProxy> for Pst {
     }
 }
 
+#[allow(clippy::from_over_into)]
 impl Into<PstProxy> for Pst {
     fn into(self) -> PstProxy {
         let mut pp = PstProxy::default();

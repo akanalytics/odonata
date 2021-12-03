@@ -602,6 +602,7 @@ impl ModelSide {
     // isolated pawns have no neighbours of same color. Doubled pawns that are isolated count as two
     // doubled pawns are doubled or tripled or more. Two pawns count as one doubled. Three as two doubled.
     // passed. No neighbouring pawns of opposite colour ahead
+    // rammed pawns have an opposing pawn directly in front
     #[inline]
     fn init_pawns(&mut self, b: &Board, c: Color) {
         let bbd = BitboardDefault::default();
@@ -630,7 +631,8 @@ impl ModelSide {
             self.rammed_pawns += rammed as i32;
         }
         self.doubled_pawns = bbd.doubled_pawns(us & b.pawns()).popcount();
-        self.rammed_pawns *= self.rammed_pawns * (b.knights() & us).any() as i32;
+        // lots of rammed pawns and having a knight an advantage
+        self.rammed_pawns = self.rammed_pawns * self.rammed_pawns * (b.knights() & us).any() as i32;
     }
 
     #[inline]
@@ -717,9 +719,9 @@ impl ModelSide {
             // those attacks on enemy that arent pawn defended and cant attack back
             let piece_non_pawn_defended_moves = match p {
                 Piece::Queen => (our_attacks & them).popcount(),
-                Piece::Rook => (our_attacks & them - r).popcount(),
-                Piece::Knight => (our_attacks & them - ni).popcount(),
-                Piece::Bishop => (our_attacks & them - bi).popcount(),
+                Piece::Rook => ((our_attacks & them) - r).popcount(),
+                Piece::Knight => ((our_attacks & them) - ni).popcount(),
+                Piece::Bishop => ((our_attacks & them) - bi).popcount(),
                 _ => 0,
             };
 

@@ -113,6 +113,12 @@ impl Component for Uci {
     }
 }
 
+impl Default for Uci {
+    fn default() -> Self {
+        Uci::new()
+    }
+}
+
 impl Uci {
     pub fn new() -> Uci {
         let engine = Arc::new(Mutex::new(Engine::new()));

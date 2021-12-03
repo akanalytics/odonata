@@ -16,6 +16,7 @@ enum AccumulateMethod {
     Zero,
 }
 
+#[allow(clippy::enum_variant_names)]
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 enum HistoryBoard {
@@ -24,6 +25,7 @@ enum HistoryBoard {
     PieceFromTo,
 }
 
+#[allow(clippy::enum_variant_names)]
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 enum ScoreMethod {
@@ -192,7 +194,7 @@ impl HistoryHeuristic {
         }
         use AccumulateMethod::*;
         let add = match self.alpha_method {
-            Power => 2 << (n.depth / 4) / self.malus_factor,
+            Power => 2 << ((n.depth / 4) / self.malus_factor),
             Squared => n.depth * n.depth / self.malus_factor,
             Zero => 0,
         };

@@ -46,7 +46,8 @@ impl Phaser {
         match self.method.as_str() {
             "CPW" => self.cpw_method(mat),
             "CO" => self.complex_method(mat),
-            "SO" | _ => self.simple_method(mat),
+            "SO" => self.simple_method(mat),
+            _ => panic!("Unexpected phase method type {}", self.method),
         }
     }
 

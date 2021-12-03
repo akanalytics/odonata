@@ -121,14 +121,12 @@ impl Engine {
         engine
     }
 
-    #[must_use]
     pub fn configment(&mut self, key: &str, value: &str) -> Result<()> {
         let mut kvs = HashMap::new();
         kvs.insert(key.to_string(), value.to_string());
         self.configment_many(kvs)
     }
 
-    #[must_use]
     pub fn configment_many(&mut self, map: HashMap<String, String>) -> Result<()> {
         let mut fig = Figment::new().merge(&*self);
 

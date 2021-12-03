@@ -174,6 +174,7 @@ impl Algo {
                         "{}",
                         board.debug() + "see score bad" + score + "<" + self.qsearch.see_cutoff + "for" + &mv
                     );
+                    #[allow(clippy::if_same_then_else)]
                     if self.qsearch.ignore_see_fails {
                         continue;
                     } else {
