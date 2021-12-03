@@ -68,7 +68,8 @@ static mut MODEL: Model = Model::from_board(POS.read().board(), Switches::ALL_SC
 static WARM_UP: bool = {
     let pos = POS.read();
     let mut ml = MoveList::new();
-    black_box(black_box(pos.board()).legal_moves_into(&mut ml));
+    black_box(pos.board()).legal_moves_into(&mut ml);
+    black_box(());
     true
 };
 
@@ -77,7 +78,8 @@ static WARM_UP: bool = {
 fn iai_legal_moves_into() {
     let pos = POS.read();
     let mut ml = MoveList::new();
-    black_box(black_box(pos.board()).legal_moves_into(&mut ml));
+    black_box(pos.board()).legal_moves_into(&mut ml);
+    black_box(());
 }
 
 fn iai_board_clone() {
@@ -90,7 +92,7 @@ fn iai_read_lock() {
 
 fn iai_perft5() {
     let mut pos = Catalog::starting_position();
-    black_box(Perft::perft(&mut pos.board_mut(), 5));
+    black_box(Perft::perft(pos.board_mut(), 5));
 }
 
 fn iai_eval_full() {
@@ -111,7 +113,8 @@ fn iai_search() {
     let mut engine = Engine::new();
     engine.algo.set_timing_method(TimeControl::Depth(5)).build();
     engine.set_position(Catalog::starting_position());
-    black_box(engine.search());
+    engine.search();
+    black_box(());
 }
 
 fn iai_model_build() {
@@ -120,7 +123,8 @@ fn iai_model_build() {
 
 fn iai_model_predict() {
     let mut model_score = ModelScore::new(50);
-    black_box(ENGINE.read().algo.eval.predict(black_box(&MODEL.read()), &mut model_score));
+    ENGINE.read().algo.eval.predict(black_box(&MODEL.read()), &mut model_score);
+    black_box(());
 }
 
 fn iai_build_model_and_eval_model() {
@@ -129,7 +133,8 @@ fn iai_build_model_and_eval_model() {
     let mut model_score = ModelScore::new(50);
     for _ in 0..10000 {
         let model = black_box(Model::from_board(pos.board(), Switches::ALL_SCORING));
-        black_box(eval.predict(black_box(&model), &mut model_score));
+        eval.predict(black_box(&model), &mut model_score);
+        black_box(());
     }
 }
 
@@ -139,7 +144,8 @@ fn iai_eval_model() {
     let model = Model::from_board(pos.board(), Switches::ALL_SCORING);
     let mut model_score = ModelScore::new(50);
     for _ in 0..10000 {
-        black_box(eval.predict(black_box(&model), &mut model_score));
+        eval.predict(black_box(&model), &mut model_score);
+        black_box(());
     }
 }
 

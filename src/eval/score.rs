@@ -344,8 +344,10 @@ impl Score2 {
         // axiom: were white
         // white to move => advantage, black to move means white has a disadvantage
         if us == Color::White {
+            #[allow(clippy::erasing_op)]
             Score2::cp(tempo * 0)
         } else {
+            #[allow(clippy::erasing_op)]            
             Score2::cp(-tempo * 0)
         }
     }
