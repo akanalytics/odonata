@@ -1,10 +1,9 @@
 use crate::bitboard::bitboard::{Bitboard, Dir};
+use anyhow::{anyhow, bail, Result};
+use enumflags2::BitFlags;
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use strum_macros::{EnumCount, Display};
-use enumflags2::BitFlags;
-use anyhow::{Result, bail, anyhow};
-
+use strum_macros::{Display, EnumCount};
 
 pub const MAX_PLY: Ply = 128;
 pub const MAX_LEGAL_MOVES: usize = 218;
@@ -226,22 +225,9 @@ impl Piece {
         Piece::King,
     ];
 
-    pub const ALL_BAR_NONE: [Piece; 6] = [
-        Piece::Pawn,
-        Piece::Knight,
-        Piece::Bishop,
-        Piece::Rook,
-        Piece::Queen,
-        Piece::King,
-    ];
+    pub const ALL_BAR_NONE: [Piece; 6] = [Piece::Pawn, Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen, Piece::King];
 
-    pub const ALL_BAR_KING: [Piece; 5] = [
-        Piece::Pawn,
-        Piece::Knight,
-        Piece::Bishop,
-        Piece::Rook,
-        Piece::Queen,
-    ];
+    pub const ALL_BAR_KING: [Piece; 5] = [Piece::Pawn, Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen];
 
     // pub fn to_upper_char(self) -> &char {
     //     ".PNBRQK".as_bytes()[self as usize] as char
@@ -289,17 +275,8 @@ impl Piece {
 
     #[inline]
     pub const fn name(&self) -> &'static str {
-        [
-            "none",
-            "pawn",
-            "knight",
-            "bishop",
-            "rook",
-            "queen",
-            "king",
-        ][self.index()]
+        ["none", "pawn", "knight", "bishop", "rook", "queen", "king"][self.index()]
     }
-
 
     /// coarse value in centipawns
     #[inline]
@@ -357,7 +334,6 @@ impl ScoreWdl {
         ScoreWdl { w, d, l }
     }
 
-
     pub fn total(&self) -> i32 {
         self.w + self.d + self.l
     }
@@ -413,7 +389,6 @@ impl std::ops::Sub for ScoreWdl {
     }
 }
 
-
 #[enumflags2::bitflags]
 #[repr(u16)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq, EnumCount, Display, Serialize, Deserialize)]
@@ -438,10 +413,7 @@ pub enum MoveType {
 
 pub type MoveTypes = BitFlags<MoveType>;
 
-
-
 impl MoveType {
-
     pub fn from_str(s: &str) -> Result<MoveTypes, String> {
         let mut mts = MoveTypes::empty();
         for c in s.chars() {
@@ -479,8 +451,6 @@ impl MoveType {
         }
     }
 
-
-
     pub fn from_char(c: char) -> Result<MoveType, String> {
         match c {
             'S' => Ok(MoveType::Start),
@@ -513,27 +483,21 @@ impl MoveType {
     }
 
     pub fn vec_from_string(move_types: &str) -> Result<Vec<MoveType>, String> {
-        move_types
-            .chars()
-            .map(|c| MoveType::from_char(c))
-            .collect::<Result<Vec<_>, _>>()
+        move_types.chars().map(|c| MoveType::from_char(c)).collect::<Result<Vec<_>, _>>()
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Default, Debug)] 
+#[derive(Copy, Clone, PartialEq, Eq, Default, Debug)]
 pub struct Repeats {
     pub total: u16,
-    pub in_search: u16,  // exclusive of root 
+    pub in_search: u16, // exclusive of root
 }
-
-
 
 #[cfg(test)]
 mod tests {
     use super::*;
     // use serde_json::json;
     use strum::EnumCount;
-
 
     #[test]
     fn color() {
@@ -578,10 +542,7 @@ mod tests {
         assert_eq!(-wdl138, ScoreWdl::new(309, 206, 109));
 
         // checked by https://www.3dkingdoms.com/chess/elo.htm
-        assert_eq!(
-            format!("{:.02}", ScoreWdl::new(217, 77, 184).elo()),
-            "24.02"
-        );
+        assert_eq!(format!("{:.02}", ScoreWdl::new(217, 77, 184).elo()), "24.02");
     }
 
     #[test]
@@ -590,8 +551,14 @@ mod tests {
         assert_eq!(many[0], MoveType::Hash);
         assert_eq!(many.last(), Some(&MoveType::BadCapture));
         assert_eq!(MoveType::slice_to_string(&many), "HIGKPqB");
-        assert_eq!(MoveType::from_str("CHB")?, MoveType::Capture | MoveType::Hash | MoveType::BadCapture);
-        assert_eq!("HCB".to_string(), MoveType::to_string(MoveType::Capture | MoveType::Hash | MoveType::BadCapture));
+        assert_eq!(
+            MoveType::from_str("CHB")?,
+            MoveType::Capture | MoveType::Hash | MoveType::BadCapture
+        );
+        assert_eq!(
+            "HCB".to_string(),
+            MoveType::to_string(MoveType::Capture | MoveType::Hash | MoveType::BadCapture)
+        );
         assert_eq!(MoveType::COUNT, 16);
         assert_eq!(MoveType::Start.index(), 0);
         assert_eq!(MoveType::End.index(), 15);

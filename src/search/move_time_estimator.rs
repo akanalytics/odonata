@@ -1,16 +1,14 @@
 use crate::board::Board;
 use crate::clock::Clock;
 use crate::infra::component::Component;
-use crate::utils::Formatting;
 use crate::search::timecontrol::TimeControl;
 use crate::types::Ply;
+use crate::utils::Formatting;
+use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::time::Duration;
 use std::sync::atomic::{self, AtomicBool};
 use std::sync::Arc;
-use serde::{Deserialize, Serialize};
-
-
+use std::time::Duration;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -42,7 +40,6 @@ pub struct MoveTimeEstimator {
     #[serde(skip)]
     board: Board,
 
-
     #[serde(skip)]
     clock_checks: u64,
 
@@ -51,7 +48,6 @@ pub struct MoveTimeEstimator {
 }
 
 impl Component for MoveTimeEstimator {
-
     fn new_game(&mut self) {
         self.new_position();
     }
@@ -59,7 +55,6 @@ impl Component for MoveTimeEstimator {
     fn new_iter(&mut self) {
         self.clock_checks = 0;
     }
-
 
     fn new_position(&mut self) {
         self.estimate_move_time = Duration::default();
@@ -132,7 +127,6 @@ impl MoveTimeEstimator {
             return false;
         }
 
-
         let mut elapsed = clock.elapsed_search().0;
         // if in nodestime then convert nodes to time. nodestime is nodes per millisecond
         if self.nodestime > 0 {
@@ -140,7 +134,7 @@ impl MoveTimeEstimator {
         }
 
         let time_up = match self.time_control {
-            TimeControl::DefaultTime => false, 
+            TimeControl::DefaultTime => false,
             TimeControl::Depth(_max_ply) => false, // ply > max_ply,  // dont cause an abort on last iteration
             TimeControl::SearchTime(duration) => 10 * elapsed > duration * 9 && !self.pondering(),
             TimeControl::NodeCount(max_nodes) => clock.elapsed_search().1 > max_nodes - self.check_every,
@@ -150,7 +144,6 @@ impl MoveTimeEstimator {
         };
         time_up
     }
-
 
     // turning pondering off will kick in the existing time controls
     pub fn set_shared_ponder(&mut self, pondering: bool) {
@@ -173,17 +166,16 @@ impl MoveTimeEstimator {
             self.elapsed_search = Duration::from_millis(nodes / self.nodestime);
         }
 
-        self.estimate_move_time =  Duration::from_millis(self.move_overhead_ms) + 
-            self.elapsed_search + 
-            self.elapsed_iter.mul_f32(self.branching_factor) / 2 + 
-            self.prior_elapsed_iter.mul_f32(self.branching_factor).mul_f32(self.branching_factor) / 2;
+        self.estimate_move_time = Duration::from_millis(self.move_overhead_ms)
+            + self.elapsed_search
+            + self.elapsed_iter.mul_f32(self.branching_factor) / 2
+            + self
+                .prior_elapsed_iter
+                .mul_f32(self.branching_factor)
+                .mul_f32(self.branching_factor)
+                / 2;
     }
 
-
-
-
-
-    
     pub fn probable_timeout(&self, ply: Ply) -> bool {
         match self.time_control {
             TimeControl::RemainingTime {
@@ -195,7 +187,9 @@ impl MoveTimeEstimator {
                 movestogo: _,
             } => {
                 let (_time, _inc) = our_color.chooser_wb((wtime, winc), (btime, binc));
-                self.estimate_move_time > self.allotted() && !self.pondering.load(atomic::Ordering::SeqCst) && ply >= self.min_ply_for_estimation
+                self.estimate_move_time > self.allotted()
+                    && !self.pondering.load(atomic::Ordering::SeqCst)
+                    && ply >= self.min_ply_for_estimation
             }
             _ => false,
         }
@@ -225,7 +219,8 @@ impl MoveTimeEstimator {
                 } else {
                     Duration::default()
                 };
-                (time_us + time_adv * self.perc_of_time_adv / 100) / self.moves_rem as u32 + inc - Duration::from_millis(self.move_overhead_ms)
+                (time_us + time_adv * self.perc_of_time_adv / 100) / self.moves_rem as u32 + inc
+                    - Duration::from_millis(self.move_overhead_ms)
             }
         }
     }
@@ -259,8 +254,16 @@ mod tests {
         search.mte.deterministic = true;
         search.set_position(position.clone()).search();
         println!("{}", search);
-        assert!(search.search_stats().iteration().all_nodes() < 117500, "nodes {}", search.search_stats().iteration().all_nodes());
-        assert!(search.search_stats().iteration().all_nodes() >= 146, "nodes {}", search.search_stats().iteration().all_nodes());
+        assert!(
+            search.search_stats().iteration().all_nodes() < 117500,
+            "nodes {}",
+            search.search_stats().iteration().all_nodes()
+        );
+        assert!(
+            search.search_stats().iteration().all_nodes() >= 146,
+            "nodes {}",
+            search.search_stats().iteration().all_nodes()
+        );
         assert_eq!(search.score().mate_in(), Some(2));
     }
 }

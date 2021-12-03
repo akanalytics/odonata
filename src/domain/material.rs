@@ -1,12 +1,11 @@
 use crate::board::Board;
 use crate::mv::Move;
 use crate::types::{Color, Piece};
-use std::cmp;
-use std::ops;
-use std::fmt;
-use itertools::Itertools;
 use anyhow::Result;
-
+use itertools::Itertools;
+use std::cmp;
+use std::fmt;
+use std::ops;
 
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub struct Material {
@@ -19,17 +18,12 @@ impl fmt::Display for Material {
         for &c in &Color::ALL {
             // write!(f, "{}: ", c)?;
             for &p in Piece::ALL_BAR_NONE.iter().rev() {
-                write!(
-                    f,
-                    "{}",
-                    p.to_char(Some(c)).to_string().repeat(self.counts(c, p) as usize)
-                )?;
+                write!(f, "{}", p.to_char(Some(c)).to_string().repeat(self.counts(c, p) as usize))?;
             }
         }
         Ok(())
     }
 }
-
 
 impl ops::Neg for Material {
     type Output = Material;
@@ -47,7 +41,7 @@ impl ops::Neg for &Material {
 
         for &c in &Color::ALL {
             for &p in &Piece::ALL_BAR_NONE {
-                *m.counts_mut(c, p) = -self.counts(c,p);
+                *m.counts_mut(c, p) = -self.counts(c, p);
             }
         }
         m
@@ -62,7 +56,7 @@ impl<'a, 'b> ops::Sub<&'b Material> for &'a Material {
 
         for &c in &Color::ALL {
             for &p in &Piece::ALL_BAR_NONE {
-                *m.counts_mut(c, p) = self.counts(c,p) - other.counts(c,p);
+                *m.counts_mut(c, p) = self.counts(c, p) - other.counts(c, p);
             }
         }
         m
@@ -91,10 +85,6 @@ impl cmp::PartialOrd for Material {
         None
     }
 }
-
-
-
-
 
 impl Material {
     pub fn from_board(board: &Board) -> Material {
@@ -127,12 +117,9 @@ impl Material {
     pub fn total_count(&self) -> i32 {
         Piece::ALL_BAR_NONE
             .iter()
-            .map(|&p|
-                self.counts(Color::White, p) + self.counts(Color::Black, p)
-            )
+            .map(|&p| self.counts(Color::White, p) + self.counts(Color::Black, p))
             .sum::<i32>()
     }
-
 
     #[inline]
     pub fn counts(&self, c: Color, p: Piece) -> i32 {
@@ -190,7 +177,6 @@ impl Material {
         }
     }
 
-
     #[inline]
     pub fn color(&self, c: Color) -> Material {
         c.chooser_wb(self.white(), self.black())
@@ -200,9 +186,7 @@ impl Material {
     pub fn centipawns(&self) -> i32 {
         Piece::ALL_BAR_KING
             .iter()
-            .map(|&p|
-                p.centipawns() * (self.counts(Color::White, p) - self.counts(Color::Black, p))
-            )
+            .map(|&p| p.centipawns() * (self.counts(Color::White, p) - self.counts(Color::Black, p)))
             .sum::<i32>()
     }
 
@@ -210,10 +194,7 @@ impl Material {
     pub fn advantage(&self) -> Material {
         let mut advantage = *self;
         for &p in &Piece::ALL_BAR_NONE {
-            let common = cmp::min(
-                advantage.counts[Color::White][p],
-                advantage.counts[Color::Black][p],
-            );
+            let common = cmp::min(advantage.counts[Color::White][p], advantage.counts[Color::Black][p]);
             advantage.counts[Color::White][p] -= common;
             advantage.counts[Color::Black][p] -= common;
         }
@@ -273,11 +254,8 @@ impl Material {
         false
     }
 
-
-
     // 236196
-    pub const HASH_VALUES: usize =
-        (((((((((((1 * 2 + 1) * 3 + 2) * 3 + 2) * 3 + 2) * 3 + 2) * 3) + 2) * 3) + 2) * 9 + 8) * 9) + 8 + 1;
+    pub const HASH_VALUES: usize = (((((((((((1 * 2 + 1) * 3 + 2) * 3 + 2) * 3 + 2) * 3 + 2) * 3) + 2) * 3) + 2) * 9 + 8) * 9) + 8 + 1;
 
     // hash of no material = 0
     pub fn hash(&self) -> usize {
@@ -316,14 +294,11 @@ impl Material {
         hash = hash * 2 + wq;
         hash = hash * 2 + bq;
 
-
-
         hash as usize
     }
 
     #[inline]
     pub fn maybe_from_hash(mut hash: usize) -> Material {
-
         let bq = hash % 2;
         hash = (hash - bq) / 2;
 
@@ -372,9 +347,7 @@ impl Material {
         m.counts[Color::Black][Piece::King] = 1;
         m
     }
-
 }
-
 
 impl Material {
     #[inline]
@@ -393,8 +366,6 @@ impl Material {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
     // use std::{cmp::Ordering, convert::TryFrom};
@@ -402,7 +373,6 @@ mod tests {
     use super::*;
     use crate::catalog::Catalog;
     // // use crate::{debug, logger::LogInit};
-
 
     #[test]
     fn test_material() {
@@ -447,11 +417,13 @@ mod tests {
         // count KBk.count(B,n) <   Kkn.count(B, n)
         // count KBk.count(W,B) >   Kkn.count(W, B)
 
-        debug!("{:?} ... {:?}", mat_KBk, mat_Kkn );
+        debug!("{:?} ... {:?}", mat_KBk, mat_Kkn);
         let _b = Piece::ALL_BAR_NONE
             .iter()
             .cartesian_product(&Color::ALL)
-            .inspect(|x| { debug!("iterating on... {:?}", x); })
+            .inspect(|x| {
+                debug!("iterating on... {:?}", x);
+            })
             .all(|(&p, &c)| mat_KBk.counts(c, p) <= mat_Kkn.counts(c, p));
 
         assert_eq!(mat_KBk.partial_cmp(&mat_Kkn), None);
@@ -464,10 +436,7 @@ mod tests {
         assert_eq!(mat_KBk.to_string(), "KBk".to_string());
         assert_eq!(mat_KBk.minors_and_majors().to_string(), "B".to_string());
         assert_eq!(mat_Kkn.to_string(), "Kkn".to_string());
-        assert_eq!(
-            mat_full1.to_string(),
-            "KQRRBBNNPPPPPPPPkqrrbbnnpppppppp".to_string()
-        );
+        assert_eq!(mat_full1.to_string(), "KQRRBBNNPPPPPPPPkqrrbbnnpppppppp".to_string());
 
         assert_eq!(mat_Kkn.black().to_string(), "kn".to_string());
         assert_eq!(mat_Kkn.white().to_string(), "K".to_string());
@@ -509,7 +478,6 @@ mod tests {
         );
     }
 
-
     #[test]
     fn test_material_hash() {
         let board = Catalog::starting_board();
@@ -519,6 +487,5 @@ mod tests {
 
         let mat_part = Material::from_piece_str("KQRBPPPPPkqrrnppppppp").unwrap();
         assert_eq!(Material::maybe_from_hash(mat_part.hash()), mat_part);
-
     }
 }

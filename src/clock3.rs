@@ -1,9 +1,7 @@
 use crate::globals::counts;
+use crate::utils::Formatting;
 use std::fmt;
 use std::time::{Duration, Instant};
-use crate::utils::Formatting;
-
-
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Clock3 {
@@ -108,5 +106,4 @@ impl Clock3 {
     pub fn elapsed_search_millis(&self) -> u64 {
         self.elapsed_search().as_millis() as u64
     }
-
 }

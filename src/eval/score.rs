@@ -1,49 +1,52 @@
 use crate::outcome::Outcome;
 use crate::types::{Color, Ply, MAX_PLY};
-use std::fmt;
 use serde::{Deserialize, Serialize};
-
+use std::fmt;
 
 // pub struct ScoreBound {
 //     score: Score,
 //     bound: NodeType,
 // }
 
-
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Score {
     cp: i16,
-}    
-
+}
 
 // WHITE LOSS IN 0<=N< MAX_PLY   is  -Self::INF + 1 + N
 // WHITE WIN IN 0<=N< MAX_PLY   is  i16::MAX -1 - N
 // MIN + 1 + MAX_PLY and i16::MAX -1 - MAX_PLY
 impl Score {
-
     pub const fn zero() -> Score {
         Score { cp: 0 }
     }
 
-
     // note MAX = 32767 but MIN = -32768. So we use -MAX
     // pub const MINUS_INF : Score = Score { cp: -i16::MAX };
-    pub const INFINITY : Score = Score { cp: i16::MAX };
-    pub const DRAW : Score = Score::zero();
+    pub const INFINITY: Score = Score { cp: i16::MAX };
+    pub const DRAW: Score = Score::zero();
 
-    const INF : i16 = i16::MAX;
+    const INF: i16 = i16::MAX;
 
     #[inline]
     pub fn from_cp(centipawn: i32) -> Score {
-        debug_assert!( centipawn.clamp(-Self::INF as i32, Self::INF as i32) == centipawn, "centipawns {} out of range", centipawn );
+        debug_assert!(
+            centipawn.clamp(-Self::INF as i32, Self::INF as i32) == centipawn,
+            "centipawns {} out of range",
+            centipawn
+        );
         Score { cp: centipawn as i16 }
         // Score { cp: centipawn.clamp(-Self::INF as i32, Self::INF as i32) as i16 }  // adds 4% to eval
     }
 
     #[inline]
     pub fn from_f32(centipawn: f32) -> Score {
-        debug_assert!( (centipawn as i32).clamp(-Self::INF as i32, Self::INF as i32) == centipawn as i32, "centipawns {} out of range", centipawn );
+        debug_assert!(
+            (centipawn as i32).clamp(-Self::INF as i32, Self::INF as i32) == centipawn as i32,
+            "centipawns {} out of range",
+            centipawn
+        );
         Score { cp: centipawn as i16 }
         // Score { cp: centipawn.clamp(-Self::INF as i32, Self::INF as i32) as i16 }  // adds 4% to eval
     }
@@ -52,8 +55,6 @@ impl Score {
     pub fn as_i16(&self) -> i16 {
         self.cp as i16
     }
-
-
 
     // #[inline]
     // pub fn Cp(centipawn: i32) -> Score {
@@ -68,7 +69,6 @@ impl Score {
             None
         }
     }
-
 
     const MIN_NUMERIC: i16 = -Self::INF + 1 + MAX_PLY as i16;
     const MAX_NUMERIC: i16 = i16::MAX - 1 - MAX_PLY as i16;
@@ -85,23 +85,21 @@ impl Score {
 
     #[inline]
     pub fn clamp_score(&self) -> Score {
-        Self::from_cp(self.cp.clamp(-20000, 20000) as i32) 
+        Self::from_cp(self.cp.clamp(-20000, 20000) as i32)
     }
-
-
 
     #[inline]
     pub const fn white_win(ply: Ply) -> Score {
-        Score { 
-            cp: i16::MAX -1 - ply as i16
+        Score {
+            cp: i16::MAX - 1 - ply as i16,
         }
     }
 
     #[inline]
     pub fn white_loss(ply: Ply) -> Score {
-        Score { 
-            cp: -Self::INF +1 + ply as i16
-         }
+        Score {
+            cp: -Self::INF + 1 + ply as i16,
+        }
     }
 
     // #[inline]
@@ -120,12 +118,12 @@ impl Score {
 
     #[inline]
     fn ply_loss(&self) -> Ply {
-        (self.cp + Self::INF-1) as Ply
+        (self.cp + Self::INF - 1) as Ply
     }
 
     #[inline]
     fn ply_win(&self) -> Ply {
-        (i16::MAX-1 - self.cp) as Ply
+        (i16::MAX - 1 - self.cp) as Ply
     }
 
     // engine -> oppo -> engine -> 3 plys == mate in 2
@@ -137,9 +135,9 @@ impl Score {
         if !self.is_mate() {
             None
         } else if self.cp < 0 {
-            Some((self.ply_loss() +1) / 2)
+            Some((self.ply_loss() + 1) / 2)
         } else {
-            Some((self.ply_win()+1) / 2 )
+            Some((self.ply_win() + 1) / 2)
         }
     }
 
@@ -158,7 +156,7 @@ impl Score {
         if self.cp == -Self::INF {
             "cp -9999".to_string()
         } else if self.cp == i16::MAX {
-             "cp 9999".to_string()
+            "cp 9999".to_string()
         } else if self.is_numeric() {
             format!("cp {}", self.cp)
         } else if self.cp < 0 {
@@ -168,14 +166,10 @@ impl Score {
         }
     }
 
-
-
-
     #[inline]
     pub fn negate(self) -> Score {
         Score { cp: -self.cp }
     }
-
 
     // #[inline]
     // pub fn negate(self) -> Score {
@@ -202,14 +196,12 @@ impl Score {
         if self.is_numeric() {
             Self::win_probability_from_cp_and_k(self.cp as f32, k)
         } else if self.cp > 0 {
-            1.0 
-        }
-        else {
+            1.0
+        } else {
             0.0
-        }      
+        }
     }
 }
-
 
 impl Default for Score {
     #[inline]
@@ -292,23 +284,6 @@ impl fmt::Display for Score {
     }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 pub enum Score2 {
     MinusInf,
@@ -317,7 +292,6 @@ pub enum Score2 {
     WhiteWin { minus_ply: i32 }, // // WhiteWin(-5) < WhiteWin(-1)
     PlusInf,
 }
-
 
 impl Default for Score2 {
     #[inline]
@@ -336,7 +310,7 @@ impl Score2 {
         // if current_depth % 2 == 1 {
         //     self.negate()
         // } else {
-            *self
+        *self
         // }
     }
 
@@ -399,9 +373,7 @@ impl Score2 {
                 Score2::WhiteWin {
                     minus_ply: -total_half_moves,
                 },
-                Score2::WhiteLoss {
-                    ply: total_half_moves,
-                },
+                Score2::WhiteLoss { ply: total_half_moves },
             );
         }
         panic!("Tried to final score a non-final board outcome:{}", o);
@@ -422,7 +394,6 @@ impl Score2 {
     pub fn is_mate(&self) -> bool {
         matches!(self, Self::WhiteLoss { ply: _ } | Self::WhiteWin { minus_ply: _ })
     }
-
 
     #[inline]
     pub fn negate(self) -> Score2 {
@@ -532,23 +503,14 @@ mod tests {
     #[test]
     fn test_score() {
         assert_eq!(Score::from_cp(1).negate(), Score::from_cp(-1));
-        assert_eq!(
-            Score::white_win(1).negate(),
-            Score::white_loss(1)
-        );
-        assert_eq!(
-            Score::white_win(0).negate(),
-            Score::white_loss(0)
-        );
+        assert_eq!(Score::white_win(1).negate(), Score::white_loss(1));
+        assert_eq!(Score::white_win(0).negate(), Score::white_loss(0));
         assert_eq!(Score::white_win(0).is_mate(), true);
         assert_eq!(Score::white_loss(0).is_mate(), true);
         assert_eq!((-Score::INFINITY).is_mate(), false);
         assert_eq!(Score::INFINITY.is_mate(), false);
         assert_eq!(Score::from_cp(123).is_mate(), false);
-        assert_eq!(
-            Score::white_loss(1).negate(),
-            Score::white_win(1)
-        );
+        assert_eq!(Score::white_loss(1).negate(), Score::white_win(1));
         assert_eq!((-Score::INFINITY).negate(), Score::INFINITY);
         assert_eq!(-(-Score::INFINITY), Score::INFINITY);
         assert_eq!((-Score::INFINITY), -Score::INFINITY);
@@ -583,21 +545,12 @@ mod tests {
         assert_eq!(-2 * (-Score::INFINITY), Score::INFINITY);
         assert_eq!(-2 * Score::INFINITY, (-Score::INFINITY));
         assert_eq!(1 * Score::INFINITY, Score::INFINITY);
-        assert_eq!(
-            -1 * Score::white_win(2),
-            Score::white_loss(2)
-        );
+        assert_eq!(-1 * Score::white_win(2), Score::white_loss(2));
         // changes sign bit not magnitude
-        assert_eq!(
-            -3 * Score::white_win(2),
-            Score::white_loss(2)
-        );
-        assert_eq!(
-            1 * Score::white_win(2),
-            Score::white_win(2)
-        );
-        assert!(Score::white_win( 1 ) < Score::INFINITY);
-        assert!(Score::white_win( 0 ) == Score::white_win( 0 ));
+        assert_eq!(-3 * Score::white_win(2), Score::white_loss(2));
+        assert_eq!(1 * Score::white_win(2), Score::white_win(2));
+        assert!(Score::white_win(1) < Score::INFINITY);
+        assert!(Score::white_win(0) == Score::white_win(0));
         assert!(Score::from_cp(0).win_probability() > 0.499);
         assert!(Score::from_cp(0).win_probability() < 0.501);
         assert!(Score::from_cp(1000).win_probability() > 0.95);
@@ -613,5 +566,4 @@ mod tests {
             println!("wp[cp]: {},{}", s, wp);
         }
     }
-
 }

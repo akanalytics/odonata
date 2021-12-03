@@ -24,11 +24,11 @@ impl PreCalc {
 pub struct PreCalc {
     king_moves: [Bitboard; 64],
     knight_moves: [Bitboard; 64],
-    pawn_front_span: [[Bitboard; 64];2], 
-    pawn_push: [[Bitboard; 64];2],  
-    pawn_capture_east: [[Bitboard; 64];2],
-    pawn_capture_west: [[Bitboard; 64];2],
-    pawn_attack_span: [[Bitboard; 64];2],
+    pawn_front_span: [[Bitboard; 64]; 2],
+    pawn_push: [[Bitboard; 64]; 2],
+    pawn_capture_east: [[Bitboard; 64]; 2],
+    pawn_capture_west: [[Bitboard; 64]; 2],
+    pawn_attack_span: [[Bitboard; 64]; 2],
     strictly_between: [[Bitboard; 64]; 64],
     line: [[Bitboard; 64]; 64],
     surround: [[Bitboard; 8]; 64],
@@ -41,14 +41,14 @@ impl PreCalc {
             sliding_piece_attacks: BestSlidingPieceAttacks::new(),
             king_moves: [Bitboard::EMPTY; 64],
             knight_moves: [Bitboard::EMPTY; 64],
-            pawn_front_span: [[Bitboard::EMPTY; 64];2],
-            pawn_push: [[Bitboard::EMPTY; 64];2],  
-            pawn_capture_east: [[Bitboard::EMPTY; 64];2],
-            pawn_capture_west: [[Bitboard::EMPTY; 64];2],
-            pawn_attack_span: [[Bitboard::EMPTY; 64];2],
+            pawn_front_span: [[Bitboard::EMPTY; 64]; 2],
+            pawn_push: [[Bitboard::EMPTY; 64]; 2],
+            pawn_capture_east: [[Bitboard::EMPTY; 64]; 2],
+            pawn_capture_west: [[Bitboard::EMPTY; 64]; 2],
+            pawn_attack_span: [[Bitboard::EMPTY; 64]; 2],
             strictly_between: [[Bitboard::EMPTY; 64]; 64],
             line: [[Bitboard::EMPTY; 64]; 64],
-            surround: [[Bitboard::EMPTY; 8]; 64],  
+            surround: [[Bitboard::EMPTY; 8]; 64],
         });
 
         Self::pop_strictly_between(&mut me.strictly_between);
@@ -158,7 +158,6 @@ impl PreCalc {
         }
     }
 
-
     #[inline]
     // returns empty if not on same line. For s1 == s2, returns just the single square
     pub fn line_through(&self, s1: Square, s2: Square) -> Bitboard {
@@ -176,14 +175,7 @@ impl PreCalc {
     }
 
     #[inline]
-    pub fn non_pawn_attacks(
-        &self,
-        c: Color,
-        p: Piece,
-        us: Bitboard,
-        them: Bitboard,
-        from: Square,
-    ) -> Bitboard {
+    pub fn non_pawn_attacks(&self, c: Color, p: Piece, us: Bitboard, them: Bitboard, from: Square) -> Bitboard {
         match p {
             Piece::Bishop => self.bishop_attacks(us | them, from),
             Piece::Rook => self.rook_attacks(us | them, from),
@@ -213,10 +205,7 @@ impl PreCalc {
 
     #[inline]
     pub fn pawn_attacks(&self, pawns: Bitboard, c: Color) -> (Bitboard, Bitboard) {
-        (
-            pawns.shift(c.pawn_capture_east()),
-            pawns.shift(c.pawn_capture_west()),
-        )
+        (pawns.shift(c.pawn_capture_east()), pawns.shift(c.pawn_capture_west()))
     }
 
     #[inline]
@@ -236,7 +225,7 @@ impl PreCalc {
     /// front span = column of squares strictly in front of pawn
     #[inline]
     pub fn pawn_front_span(&self, c: Color, pawn_sq: Square) -> Bitboard {
-        self.pawn_front_span[c][pawn_sq] 
+        self.pawn_front_span[c][pawn_sq]
         // let pawn = pawn_sq.as_bb();
         // let atts = pawn.shift(c.pawn_capture_east()) | pawn.shift(c.pawn_capture_west());
         // if c == Color::White {
@@ -246,10 +235,10 @@ impl PreCalc {
         // }
     }
 
-    /// attack span = 1 or 2 columns of squares attacked and those in front of squares attacked 
+    /// attack span = 1 or 2 columns of squares attacked and those in front of squares attacked
     #[inline]
     pub fn pawn_attack_span(&self, c: Color, pawn_sq: Square) -> Bitboard {
-        self.pawn_attack_span[c][pawn_sq] 
+        self.pawn_attack_span[c][pawn_sq]
     }
 
     /// front span UNION attack span 2 or 3 columns of squares
@@ -263,7 +252,6 @@ impl PreCalc {
     pub fn pawn_stop(&self, c: Color, pawn_sq: Square) -> Bitboard {
         self.pawn_push[c][pawn_sq]
     }
-
 
     #[inline]
     pub fn open_files(&self, pawns: Bitboard) -> Bitboard {
@@ -351,32 +339,29 @@ mod tests {
         let pawns = b2 | b4 | c5 | c6 | d3 | d7 | h5;
         assert_eq!(BitboardDefault::default().doubled_pawns(pawns), b4 | c6 | d7);
 
-        assert_eq!(
-            BitboardDefault::default().open_files(pawns),
-            FILE_A | FILE_E | FILE_F | FILE_G
-        );
+        assert_eq!(BitboardDefault::default().open_files(pawns), FILE_A | FILE_E | FILE_F | FILE_G);
         assert_eq!(BitboardDefault::default().isolated_pawns(pawns), h5);
         assert_eq!(BitboardDefault::default().isolated_pawns(opponent), d3 | g5);
 
-        let calced = BitboardDefault::default().pawn_front_span_union_attack_span(Color::White, Square::B2); 
-        let expect = (Bitboard::FILE_A | Bitboard::FILE_B| Bitboard::FILE_C) - (Bitboard::RANK_1 | Bitboard::RANK_2);
+        let calced = BitboardDefault::default().pawn_front_span_union_attack_span(Color::White, Square::B2);
+        let expect = (Bitboard::FILE_A | Bitboard::FILE_B | Bitboard::FILE_C) - (Bitboard::RANK_1 | Bitboard::RANK_2);
         println!("{}\n{}", calced, expect);
-        assert_eq!(calced, expect );
+        assert_eq!(calced, expect);
 
         let calced = BitboardDefault::default().pawn_front_span_union_attack_span(Color::White, Square::A2);
         let expect = (Bitboard::FILE_A | Bitboard::FILE_B) - (Bitboard::RANK_1 | Bitboard::RANK_2);
         println!("{}\n{}", calced, expect);
-        assert_eq!(calced, expect );
+        assert_eq!(calced, expect);
 
         let calced = BitboardDefault::default().pawn_front_span_union_attack_span(Color::White, Square::H8);
         let expect = Bitboard::EMPTY;
         println!("{}\n{}", calced, expect);
-        assert_eq!(calced, expect );
+        assert_eq!(calced, expect);
 
         let calced = BitboardDefault::default().pawn_front_span_union_attack_span(Color::Black, Square::D7);
         let expect = (Bitboard::FILE_C | Bitboard::FILE_D | Bitboard::FILE_E) - (Bitboard::RANK_8 | Bitboard::RANK_7);
         println!("{}\n{}", calced, expect);
-        assert_eq!(calced, expect );
+        assert_eq!(calced, expect);
     }
 
     #[test]

@@ -24,7 +24,6 @@ enum HistoryBoard {
     PieceFromTo,
 }
 
-
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 enum ScoreMethod {
@@ -134,7 +133,7 @@ impl HistoryHeuristic {
         use ScoreMethod::*;
         match self.score_method {
             GoodLessBad => tally.good - tally.bad,
-            GoodOverGoodAndBad => (tally.good as f32 / (1 + tally.good + tally.bad) as f32  * 500.0) as i32,
+            GoodOverGoodAndBad => (tally.good as f32 / (1 + tally.good + tally.bad) as f32 * 500.0) as i32,
             GoodLessBadOverGoodAndBad => 100 * (tally.good - tally.bad) / ((1 + tally.good + tally.bad) * 100),
         }
     }
@@ -225,7 +224,10 @@ mod tests {
         let mut hh = HistoryHeuristic::default();
         hh.get_mut(Color::White, &Move::new_quiet(Piece::Pawn, Square::A1, Square::H8));
         hh.get_mut(Color::White, &Move::new_quiet(Piece::Pawn, Square::A1, Square::H8)).good = 1;
-        assert_eq!(hh.get_mut(Color::White, &Move::new_quiet(Piece::Pawn, Square::A1, Square::H8)).good, 1);
+        assert_eq!(
+            hh.get_mut(Color::White, &Move::new_quiet(Piece::Pawn, Square::A1, Square::H8)).good,
+            1
+        );
         hh.new_position();
         hh.new_game();
     }

@@ -86,8 +86,6 @@ impl Outcome {
     }
 }
 
-
-
 // does not detect repetition counts
 impl Board {
     pub fn outcome(&self) -> Outcome {
@@ -107,7 +105,6 @@ impl Board {
         }
         return Outcome::InProgress;
     }
-
 
     pub fn draw_outcome(&self) -> Option<Outcome> {
         // X InProgress = 0,

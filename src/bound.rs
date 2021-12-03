@@ -3,9 +3,9 @@ use std::fmt;
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd)]
 pub enum NodeType {
     Unused = 0,
-    UpperAll = 1,      // All node, score = upperbound ()
-    LowerCut = 2,      // Cut node, score = lowerbound (we've not looked at all possible scores)
-    ExactPv = 3,       // PV node. score is exact
+    UpperAll = 1, // All node, score = upperbound ()
+    LowerCut = 2, // Cut node, score = lowerbound (we've not looked at all possible scores)
+    ExactPv = 3,  // PV node. score is exact
 }
 
 impl NodeType {

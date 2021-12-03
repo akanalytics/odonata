@@ -5,20 +5,17 @@ use crate::bitboard::square::Square;
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::bound::NodeType;
-use crate::cache::lockless_hashmap::{SharedTable, Bucket};
+use crate::cache::lockless_hashmap::{Bucket, SharedTable};
 use crate::eval::score::Score;
 use crate::infra::component::Component;
 use crate::mv::Move;
 use crate::trace::stat::{ArrayStat, Stat};
 use crate::types::{Hash, Piece, Ply};
 use crate::variation::Variation;
+use serde::{Deserialize, Serialize};
 use std::cmp;
 use std::fmt;
 use std::sync::Arc;
-use serde::{Deserialize, Serialize};
-
-
-
 
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub struct TtNode {
@@ -189,14 +186,7 @@ impl fmt::Display for TtNode {
                 self.nt
             )
         } else {
-            write!(
-                f,
-                "{} scoring {} draft {} type {}",
-                self.bm.uci(),
-                self.score,
-                self.depth,
-                self.nt
-            )
+            write!(f, "{} scoring {} draft {} type {}", self.bm.uci(), self.score, self.depth, self.nt)
         }
     }
 }
@@ -219,10 +209,14 @@ impl fmt::Display for TtNode {
 //     }
 // }
 
-
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
-enum Replacement { Always, Age, AgeTypeDepth, AgeDepthType, AgeBlend }
-
+enum Replacement {
+    Always,
+    Age,
+    AgeTypeDepth,
+    AgeDepthType,
+    AgeBlend,
+}
 
 // FIXME Mates as score
 #[derive(Clone, Serialize, Deserialize)]
@@ -274,7 +268,7 @@ impl Default for TranspositionTable2 {
             current_age: 10, // to allow us to look back
             hmvc_horizon: 85,
             min_ply: 1, // search restrictions on ply=0
-            min_depth: 1, 
+            min_depth: 1,
             rewrite_pv: true,
             freshen_on_fetch: true,
             replacement: Replacement::AgeTypeDepth,
@@ -356,9 +350,7 @@ impl fmt::Display for TranspositionTable2 {
     }
 }
 
-
 impl Component for TranspositionTable2 {
-
     fn new_game(&mut self) {
         self.resize_if_required();
         self.current_age = 10;
@@ -369,12 +361,9 @@ impl Component for TranspositionTable2 {
         self.resize_if_required();
         self.next_generation();
     }
-
 }
 
 impl TranspositionTable2 {
-
-
     fn resize_if_required(&mut self) {
         if self.requires_resize() {
             let capacity = SharedTable::convert_mb_to_capacity(self.mb);
@@ -399,7 +388,6 @@ impl TranspositionTable2 {
         }
         Ok(())
     }
-
 
     pub fn next_generation(&mut self) {
         // if self.requires_resize() {
@@ -463,7 +451,6 @@ impl TranspositionTable2 {
         (b.data() & 255) as u8
     }
 
-
     pub fn hashfull_per_mille(&self) -> u32 {
         let count = self.table.iter().take(200).filter(|&b| Self::age_of(b) == self.current_age).count();
         count as u32 * 1000 / 200
@@ -475,10 +462,7 @@ impl TranspositionTable2 {
         if !self.enabled && new_node.nt != NodeType::ExactPv || self.capacity() == 0 || new_node.depth < 0 {
             return;
         }
-        debug_assert!(
-            new_node.nt != NodeType::Unused,
-            "Cannot store unsed nodes in tt"
-        );
+        debug_assert!(new_node.nt != NodeType::Unused, "Cannot store unsed nodes in tt");
 
         // probe by hash not board so any "conditions" are bypassed
         let mut bucket_to_overwrite = None;
@@ -493,7 +477,11 @@ impl TranspositionTable2 {
         //     return;
         // }
 
-        enum MatchType { Empty, SameHash, DifferentHash }
+        enum MatchType {
+            Empty,
+            SameHash,
+            DifferentHash,
+        }
         let mut match_type = MatchType::Empty;
         // try and find a matching hash first
         let new_data = TtNode::pack(&new_node, self.current_age);
@@ -501,9 +489,9 @@ impl TranspositionTable2 {
             let key = bucket.key();
             let data = bucket.data();
             if Bucket::has_hash(h, (key, data)) {
-                bucket_to_overwrite = Some(bucket); 
+                bucket_to_overwrite = Some(bucket);
                 match_type = MatchType::SameHash;
-                break 
+                break;
             }
         }
         // find an empty one
@@ -512,9 +500,9 @@ impl TranspositionTable2 {
                 let key = bucket.key();
                 let data = bucket.data();
                 if Bucket::is_empty(key, data) {
-                    bucket_to_overwrite = Some(bucket); 
+                    bucket_to_overwrite = Some(bucket);
                     match_type = MatchType::Empty;
-                    break 
+                    break;
                 }
             }
         }
@@ -529,8 +517,7 @@ impl TranspositionTable2 {
                     oldest = old_age as i32;
                     match_type = MatchType::DifferentHash;
                     bucket_to_overwrite = Some(bucket);
-                } 
-
+                }
             }
         }
         let data = bucket_to_overwrite.unwrap().data();
@@ -538,26 +525,27 @@ impl TranspositionTable2 {
 
         let replace = match (self.replacement, &match_type) {
             (_, MatchType::Empty) => true,
-            (Replacement::Always, _)  => true,
-            (Replacement::Age, _)  => self.current_age > old_age,
-            (Replacement::AgeTypeDepth, _)  => {
-                self.current_age > old_age || self.current_age == old_age
-                && 
-                (new_node.nt > old_node.nt
-                || new_node.nt == old_node.nt && new_node.depth >= old_node.depth)
+            (Replacement::Always, _) => true,
+            (Replacement::Age, _) => self.current_age > old_age,
+            (Replacement::AgeTypeDepth, _) => {
+                self.current_age > old_age
+                    || self.current_age == old_age
+                        && (new_node.nt > old_node.nt || new_node.nt == old_node.nt && new_node.depth >= old_node.depth)
             }
-            (Replacement::AgeDepthType, _)  => {
-                self.current_age > old_age || self.current_age == old_age
-                && 
+            (Replacement::AgeDepthType, _) => {
+                self.current_age > old_age
+                    || self.current_age == old_age
+                &&
                 // even when the draft is the same we overwrite, as more nodes may have been used in calculating due to a fuller tt..
                 (new_node.depth >= old_node.depth
                 || new_node.depth == old_node.depth && new_node.nt > old_node.nt)
             }
-            (Replacement::AgeBlend, _)  => {
-                self.current_age > old_age || self.current_age == old_age
-                && 
+            (Replacement::AgeBlend, _) => {
+                self.current_age > old_age
+                    || self.current_age == old_age
+                &&
                 // overwrite with deeper as long as not overwriting an exact with a non-exact
-                new_node.depth >= old_node.depth 
+                new_node.depth >= old_node.depth
                 &&
                 (new_node.nt == NodeType::ExactPv || old_node.nt != NodeType::ExactPv)
             }
@@ -585,7 +573,6 @@ impl TranspositionTable2 {
             // self.fail_priority.increment();
             return;
         }
-
     }
 
     pub fn delete(&mut self, _h: Hash) {
@@ -604,16 +591,12 @@ impl TranspositionTable2 {
         }
         let tt_node = self.probe_by_hash(board.hash());
         if let Some(tt_node) = tt_node {
-            if !tt_node.bm.is_null()
-                && !board.is_pseudo_legal_move(&tt_node.bm)
-                && !board.is_legal_move(&tt_node.bm)
-            {
+            if !tt_node.bm.is_null() && !board.is_pseudo_legal_move(&tt_node.bm) && !board.is_legal_move(&tt_node.bm) {
                 self.bad_hash.increment();
                 return None;
             }
             assert!(
-                tt_node.bm.is_null()
-                    || (board.is_pseudo_legal_move(&tt_node.bm) && board.is_legal_move(&tt_node.bm)),
+                tt_node.bm.is_null() || (board.is_pseudo_legal_move(&tt_node.bm) && board.is_legal_move(&tt_node.bm)),
                 "{} {} {:?}",
                 board.to_fen(),
                 tt_node.bm.uci(),
@@ -706,7 +689,6 @@ impl TranspositionTable2 {
 
 #[cfg(test)]
 mod tests {
-    use test_log::test;
     use super::*;
     use crate::catalog::*;
     use crate::comms::uci::*;
@@ -715,6 +697,7 @@ mod tests {
     use crate::search::engine::Engine;
     use crate::search::timecontrol::*;
     use crate::types::*;
+    use test_log::test;
 
     fn entry123() -> TtNode {
         TtNode {
@@ -861,13 +844,7 @@ mod tests {
             let pv = algo.tt.extract_pv_and_score(pos.board()).0;
 
             // No reason acd = pv length as pv line may be reduced due to lmr etc.
-            assert!(
-                pv.len() >= (d as usize) - 1,
-                "algo.pv={} pv={}\n{}",
-                algo.pv(),
-                pv,
-                algo
-            );
+            assert!(pv.len() >= (d as usize) - 1, "algo.pv={} pv={}\n{}", algo.pv(), pv, algo);
             // certainly pv can be longer as it has qsearch
             // assert!(
             //     pv.len() <= d as usize,

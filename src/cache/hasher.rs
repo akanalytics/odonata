@@ -1,13 +1,13 @@
+use crate::bitboard::castling::CastlingRights;
 use crate::bitboard::square::Square;
 use crate::board::Board;
-use crate::bitboard::castling::CastlingRights;
 use crate::globals::constants::*;
 use crate::globals::counts;
 use crate::mv::Move;
 use crate::types::{Color, Hash, Piece};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
-use static_init::{dynamic};
+use static_init::dynamic;
 
 use std::fmt;
 
@@ -38,14 +38,7 @@ impl fmt::Display for Hasher {
             for c in &Color::ALL {
                 for p in &Piece::ALL_BAR_NONE {
                     for sq in 0..64 {
-                        writeln!(
-                            f,
-                            "[{}][{}][{:2}] = {:x}",
-                            c,
-                            p,
-                            sq,
-                            self.squares[c.index()][p.index()][sq]
-                        )?;
+                        writeln!(f, "[{}][{}][{:2}] = {:x}", c, p, sq, self.squares[c.index()][p.index()][sq])?;
                     }
                 }
             }
@@ -76,8 +69,6 @@ impl Hasher {
     }
 }
 
-
-
 // fn init_module() {
 //     Hasher::init();
 // }
@@ -94,7 +85,6 @@ impl Hasher {
 //             STATIC_INSTANCE = Box::leak(me) as *const Self;
 //         }
 //     }
-    
 
 //     // // doesnt impl Default as too large to copy by value
 //     #[inline]
@@ -105,11 +95,6 @@ impl Hasher {
 //     }
 // }
 
-
-
-
-
-
 // https://docs.rs/rand/0.8.3/rand/rngs/struct.StdRng.html
 // For a secure reproducible generator, we recommend use of the rand_chacha crate directly.
 // hence https://crates.io/crates/rand_chacha
@@ -117,9 +102,6 @@ impl Hasher {
 // I think the motivation is to ensure cross platform reproducibility - which I want
 //
 impl Hasher {
-
-
-
     pub fn new(seed: u64) -> Box<Self> {
         let mut rng = ChaChaRng::seed_from_u64(seed);
         let mut h = Hasher {
@@ -148,7 +130,6 @@ impl Hasher {
     pub fn seed(&self) -> u64 {
         self.seed
     }
-
 
     #[inline]
     fn get(&self, c: Color, p: Piece, sq: Square) -> Hash {
@@ -208,18 +189,13 @@ impl Hasher {
         }
 
         if m.mover_piece() == Piece::Pawn && m.is_pawn_double_push() {
-            debug_assert!(
-                !m.ep().is_null(),
-                "e/p square must be set for pawn double push {:?}",
-                m
-            );
+            debug_assert!(!m.ep().is_null(), "e/p square must be set for pawn double push {:?}", m);
             hash ^= self.ep[m.ep().file_index()];
         }
         if m.is_promo() {
             hash ^= self.get(us, Piece::Pawn, m.to());
             hash ^= self.get(us, m.promo_piece(), m.to());
         }
-
 
         // castling *moves*
         if m.is_castle() {
@@ -294,8 +270,8 @@ mod tests {
         assert_eq!(a1.first_square().index(), 0);
         assert_eq!(g1.first_square().index(), 6);
         assert_eq!(h3.first_square().index(), 23);
-        let hash_a1a2 = hasher1.squares[Color::White.index()][Piece::Rook.index()][0]
-            ^ hasher1.squares[Color::White.index()][Piece::Rook.index()][8];
+        let hash_a1a2 =
+            hasher1.squares[Color::White.index()][Piece::Rook.index()][0] ^ hasher1.squares[Color::White.index()][Piece::Rook.index()][8];
         assert_eq!(hash_a1a2, 4947796874932763259);
         assert_eq!(hash_a1a2 ^ hasher1.ep[0] ^ hasher1.side, 17278715166005629523);
 
@@ -352,14 +328,7 @@ mod tests {
                 let hash_mv = hasher.hash_move(m, b);
                 let hash_bd2 = hasher.hash_board(&bd2);
                 // println!("Move: {:#} = {}", m, hash_mv);
-                assert_eq!(
-                    hash_bd1 ^ hash_mv,
-                    hash_bd2,
-                    "board1:{:#}\nmv:{:#}\nboard2:{:#}",
-                    b,
-                    m,
-                    bd2
-                );
+                assert_eq!(hash_bd1 ^ hash_mv, hash_bd2, "board1:{:#}\nmv:{:#}\nboard2:{:#}", b, m, bd2);
                 let res = perft_with_hash(&bd2, depth - 1, hasher);
                 count += res;
             }

@@ -1,19 +1,16 @@
-use crate::bitboard::precalc::{BitboardDefault};
 use crate::bitboard::bitboard::{Bitboard, Dir};
-use crate::bitboard::square::Square;
 use crate::bitboard::castling::CastlingRights;
+use crate::bitboard::precalc::BitboardDefault;
+use crate::bitboard::square::Square;
 use crate::board::boardcalcs::BoardCalcs;
 use crate::board::Board;
-use crate::mv::{Move};
 use crate::movelist::MoveList;
+use crate::mv::Move;
 use crate::types::Piece;
-
 
 pub struct Rules;
 
 impl Rules {
- 
-
     // pub fn pseudo_legals(b: &Board, moves: &mut MoveList) {
     //     Rules::pawn_captures_incl_promo(b, moves);
     //     Rules::pawn_promos(b, moves);
@@ -50,7 +47,6 @@ impl Rules {
         }
     }
 
-
     pub fn legals_for(b: &Board, moves: &mut MoveList) {
         let us = b.us();
         let them = b.them();
@@ -80,11 +76,7 @@ impl Rules {
             return;
         } else {
             let pinned = b.pinned();
-            let king_sq = if pinned.is_empty() {
-                Square::null()
-            } else {
-                our_kings.square()
-            };
+            let king_sq = if pinned.is_empty() { Square::null() } else { our_kings.square() };
             for &p in Piece::ALL_BAR_KING.iter() {
                 // not in check
                 for fr in (b.pieces(p) & us).squares() {
@@ -120,19 +112,11 @@ impl Rules {
             if capture_sq == checkers {
                 let fr_e = to.shift(them.pawn_capture_west());
                 if (fr_e & b.pawns() & b.us() & !b.pinned()).any() {
-                    moves.push(Move::new_ep_capture(
-                        fr_e.square(),
-                        to.square(),
-                        capture_sq.square(),
-                    ));
+                    moves.push(Move::new_ep_capture(fr_e.square(), to.square(), capture_sq.square()));
                 }
                 let fr_w = to.shift(them.pawn_capture_east());
                 if (fr_w & b.pawns() & b.us() & !b.pinned()).any() {
-                    moves.push(Move::new_ep_capture(
-                        fr_w.square(),
-                        to.square(),
-                        capture_sq.square(),
-                    ));
+                    moves.push(Move::new_ep_capture(fr_w.square(), to.square(), capture_sq.square()));
                 }
             }
         } else if checkers.popcount() == 0 {
@@ -168,7 +152,7 @@ impl Rules {
                 Self::add_moves_pawn_promo(dests, fr, b, moves);
             } else {
                 for to in dests.squares() {
-                    moves.push( Move::new_pawn_move(fr, to, b));
+                    moves.push(Move::new_pawn_move(fr, to, b));
                 }
             }
         }
@@ -216,8 +200,7 @@ impl Rules {
         let rights = b.castling();
 
         let right = CastlingRights::king_side_right(c);
-        if rights.contains(right) && !CastlingRights::king_side_squares(c).intersects(occ) 
-        {
+        if rights.contains(right) && !CastlingRights::king_side_squares(c).intersects(occ) {
             let rook_to = king.shift(Dir::E);
             let king_to = rook_to.shift(Dir::E);
             let king_moves = king | rook_to | king_to;
@@ -234,9 +217,7 @@ impl Rules {
         }
 
         let right = CastlingRights::queen_side_right(c);
-        if rights.contains(right)
-            && !CastlingRights::queen_side_squares(c).intersects(occ)
-        {
+        if rights.contains(right) && !CastlingRights::queen_side_squares(c).intersects(occ) {
             let rook_to = king.shift(Dir::W);
             let king_to = rook_to.shift(Dir::W);
             let king_moves = king | rook_to | king_to;
@@ -244,11 +225,10 @@ impl Rules {
                 let king_to = king_to.square();
                 // let rook_from = king_to.shift(Dir::W).shift(Dir::W);
                 let m = Move::new_castle(
-                    king_sq, 
-                    king_to, 
-                    // rook_from, 
-                    // rook_to.square(), 
-                    right);
+                    king_sq, king_to, // rook_from,
+                    // rook_to.square(),
+                    right,
+                );
                 moves.push(m);
             }
         }

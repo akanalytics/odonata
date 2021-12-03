@@ -1,13 +1,12 @@
-use crate::Algo;
 use crate::board::Board;
-use crate::infra::component::Component;
 use crate::eval::score::Score;
+use crate::infra::component::Component;
 use crate::mv::Move;
-use crate::search::node::{Node, Event};
+use crate::search::node::{Event, Node};
 use crate::types::{MoveType, MoveTypes, Ply};
-use std::fmt;
+use crate::Algo;
 use serde::{Deserialize, Serialize};
-
+use std::fmt;
 
 // CLOP - gamma
 // 10+.08
@@ -46,7 +45,7 @@ pub struct Razor {
     pub enabled: bool,
     pub beta_enabled: bool,
     pub pv_nodes: bool,
-    pub min_opponents: i32, 
+    pub min_opponents: i32,
     pub max_depth: Ply,
     pub margin1: i32,
     pub margin2: i32,
@@ -55,7 +54,6 @@ pub struct Razor {
 }
 
 impl Component for Razor {
-
     fn new_game(&mut self) {
         self.new_position();
     }
@@ -113,11 +111,10 @@ impl Razor {
             return false;
         }
         // "Scalable Search in Computer Chess" limited razoring p43
-        if n.depth > 2 && self.min_opponents > 0 && b.them().popcount() < self.min_opponents  {
+        if n.depth > 2 && self.min_opponents > 0 && b.them().popcount() < self.min_opponents {
             return false;
         }
         true
-
     }
 }
 
@@ -146,7 +143,9 @@ impl Algo {
                 self.counts.inc(n, Event::PruneRazor);
                 return Some(self.alphabeta_recursive(b, n.ply, 0, n.alpha, n.beta, &last_move).0);
             } else {
-                let score = self.alphabeta_recursive(b, n.ply, 0, n.alpha, n.alpha + Score::from_cp(1), &last_move).0;
+                let score = self
+                    .alphabeta_recursive(b, n.ply, 0, n.alpha, n.alpha + Score::from_cp(1), &last_move)
+                    .0;
                 if score < n.alpha - margin {
                     self.counts.inc(n, Event::PruneRazor);
                     return Some(n.alpha);
@@ -156,12 +155,6 @@ impl Algo {
         None
     }
 }
-
-
-
-
-
-
 
 impl fmt::Display for Razor {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

@@ -16,14 +16,7 @@ pub struct Exam {
 
 impl fmt::Display for Exam {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{} {}/{} ({:.02}%)",
-            self.name,
-            self.score,
-            self.out_of,
-            self.percentage()
-        )
+        write!(f, "{} {}/{} ({:.02}%)", self.name, self.score, self.out_of, self.percentage())
     }
 }
 
@@ -54,7 +47,11 @@ impl Exam {
             exam.engine.algo.board = pos.board().clone();
             exam.engine.search();
 
-            let correct = pos.bm().ok().unwrap().contains(&exam.engine.algo.results_as_position().sm().unwrap());
+            let correct = pos
+                .bm()
+                .ok()
+                .unwrap()
+                .contains(&exam.engine.algo.results_as_position().sm().unwrap());
             if correct {
                 exam.score += 1;
             }

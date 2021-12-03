@@ -1,6 +1,6 @@
 use crate::board::Board;
-use crate::infra::component::Component;
 use crate::domain::material::Material;
+use crate::infra::component::Component;
 use crate::Piece;
 
 use std::cmp;
@@ -8,9 +8,8 @@ use std::fmt;
 // use static_init::{dynamic};
 use serde::{Deserialize, Serialize};
 
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(default,deny_unknown_fields)]
+#[serde(default, deny_unknown_fields)]
 pub struct Phaser {
     enabled: bool,
     method: String,
@@ -35,7 +34,6 @@ impl fmt::Display for Phaser {
 }
 
 impl Component for Phaser {
-
     fn new_game(&mut self) {}
 
     fn new_position(&mut self) {}
@@ -84,8 +82,7 @@ impl Phaser {
         const ROOK_PHASE: i32 = 2;
         const QUEEN_PHASE: i32 = 4;
 
-        const TOTAL_PHASE: i32 =
-            PAWN_PHASE * 16 + KNIGHT_PHASE * 4 + BISHOP_PHASE * 4 + ROOK_PHASE * 4 + QUEEN_PHASE * 2;
+        const TOTAL_PHASE: i32 = PAWN_PHASE * 16 + KNIGHT_PHASE * 4 + BISHOP_PHASE * 4 + ROOK_PHASE * 4 + QUEEN_PHASE * 2;
 
         let mut phase = TOTAL_PHASE;
 
@@ -155,19 +152,19 @@ mod tests {
         assert_eq!(phaser.cpw_method(&board42.material()), 33);
         assert_eq!(phaser.cpw_method(&board0.material()), 0);
 
-        // complex method 
+        // complex method
         assert_eq!(phaser.complex_method(&board100.material()), 100);
         assert_eq!(phaser.complex_method(&board100_too.material()), 100);
         assert_eq!(phaser.complex_method(&board73.material()), 72);
         assert_eq!(phaser.complex_method(&board42.material()), 41);
         assert_eq!(phaser.complex_method(&board0.material()), 0);
 
-        // complex method 
-        phaser.half_way_score = 6500/4; // rapid decline at first
+        // complex method
+        phaser.half_way_score = 6500 / 4; // rapid decline at first
         assert_eq!(phaser.complex_method(&board100.material()), 100);
         assert_eq!(phaser.complex_method(&board100_too.material()), 100);
-        assert_eq!(phaser.complex_method(&board73.material()), 49);  // 73 -> 49
-        assert_eq!(phaser.complex_method(&board42.material()), 28);  // 42 -> 28
+        assert_eq!(phaser.complex_method(&board73.material()), 49); // 73 -> 49
+        assert_eq!(phaser.complex_method(&board42.material()), 28); // 42 -> 28
         assert_eq!(phaser.complex_method(&board0.material()), 0);
 
         Ok(())

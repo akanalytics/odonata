@@ -5,57 +5,50 @@
 // use tracing::metadata::LevelFilter;
 // use tracing_subscriber::{Registry, fmt};
 // use tracing_subscriber::fmt::{format, layer};
-use tracing_subscriber::{EnvFilter, FmtSubscriber}; // , reload::Handle};
 use std::io;
-// use tracing::subscriber::Subscriber;
-//use tracing_subscriber::layer::Layer;
-// use tracing_subscriber::layer::Layered;
-//use tracing_subscriber::fmt::Formatter;
+use tracing_subscriber::{EnvFilter, FmtSubscriber}; // , reload::Handle};
+                                                    // use tracing::subscriber::Subscriber;
+                                                    //use tracing_subscriber::layer::Layer;
+                                                    // use tracing_subscriber::layer::Layered;
+                                                    //use tracing_subscriber::fmt::Formatter;
 
 // the logging macros are a bit crufty. to use them in unit tests we check initialization on every use.
 // this means redefining the debug!/info!/warn! etc macros.
 // ideally i'd like to use crate::logger::LogInit in the macro to avoid and includes of "impl" details but
-// this doesnt seem to work for benchmark executable. 
+// this doesnt seem to work for benchmark executable.
 // Logging is also slow(ish), so not in any really tight loops
 // Benchmarking logging: Warming up for 3.0000 sInitilaized logging
 // logging                 time:   [1.8780 ns 1.8884 ns 1.8994 ns]
 
 pub struct LogInit;
 
-
-
-// type ReloadHandle = Handle<EnvFilter, Formatter<format::DefaultFields,format::Format<format::Full>,fn() -> io::Stderr>>;    
-
+// type ReloadHandle = Handle<EnvFilter, Formatter<format::DefaultFields,format::Format<format::Full>,fn() -> io::Stderr>>;
 
 // struct ReloadHandle {
 //     handle: Handle<EnvFilter, Formatter>,
 // }
 
-
 pub fn init_logging() {
     let builder = FmtSubscriber::builder()
-    .with_ansi(true)
-    .with_writer(io::stderr)
-    .with_env_filter(EnvFilter::from_default_env())
-    .with_filter_reloading();
-    
-//    let reload_handle = builder.reload_handle();
+        .with_ansi(true)
+        .with_writer(io::stderr)
+        .with_env_filter(EnvFilter::from_default_env())
+        .with_filter_reloading();
+
+    //    let reload_handle = builder.reload_handle();
 
     builder.init();
 
     // let dispatch = Dispatch::new(builder.finish());
-    
+
     // let t = builder.downcast_ref::<ReloadHandle>();
-    
+
     // reload_handle
 }
-
-
 
 // let rh = ReloadHandle {
 //     handle: reload_handle,
 // };
-
 
 // pub type MyFormatter<
 //     N = format::DefaultFields,
@@ -69,9 +62,6 @@ pub fn init_logging() {
 //     assert!(dispatch.downcast_ref::<format::DefaultFields>().is_some());
 //     assert!(dispatch.downcast_ref::<LevelFilter>().is_some());
 //     assert!(dispatch.downcast_ref::<format::Format>().is_some())
-
-
-
 
 // impl LogInit {
 //     #[inline]
@@ -94,16 +84,15 @@ pub fn init_logging() {
 
 // static LOGGER: Lazy<LogInit> = Lazy::new(|| LogInit::bootstrap());
 
-
 // #[macro_export]
 // macro_rules! trace {
 //     ($($arg:tt)*) => (
 //         {
 //             #[cfg(not(feature="remove_logging"))]
-//             LogInit::check_init(); 
+//             LogInit::check_init();
 
 //             #[cfg(feature="remove_logging")]
-//             LogInit::dummy_init(); 
+//             LogInit::dummy_init();
 
 //             log::log!(log::Level::Trace, $($arg)*)
 //         };
@@ -115,10 +104,10 @@ pub fn init_logging() {
 //     ($($arg:tt)*) => (
 //         {
 //             #[cfg(not(feature="remove_logging"))]
-//             LogInit::check_init(); 
+//             LogInit::check_init();
 
 //             #[cfg(feature="remove_logging")]
-//             LogInit::dummy_init(); 
+//             LogInit::dummy_init();
 
 //             log::log!(log::Level::Debug, $($arg)*)
 //         };
@@ -129,7 +118,7 @@ pub fn init_logging() {
 // macro_rules! info {
 //     ($($arg:tt)*) => (
 //         {
-//             LogInit::check_init(); 
+//             LogInit::check_init();
 //             log::log!(log::Level::Info, $($arg)*)
 //         };
 //     )
@@ -139,7 +128,7 @@ pub fn init_logging() {
 // macro_rules! warn {
 //     ($($arg:tt)*) => (
 //         {
-//             LogInit::check_init(); 
+//             LogInit::check_init();
 //             log::log!(log::Level::Warn, $($arg)*)
 //         };
 //     )
@@ -149,17 +138,14 @@ pub fn init_logging() {
 // macro_rules! error {
 //     ($($arg:tt)*) => (
 //         {
-//             LogInit::check_init(); 
+//             LogInit::check_init();
 //             log::log!(log::Level::Error, $($arg)*)
 //         };
 //     )
 // }
 
-
-
 #[cfg(test)]
 mod tests {
-
 
     #[test]
     fn test_logger() {

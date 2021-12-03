@@ -1,26 +1,22 @@
-use crate::bound::NodeType;
-use crate::infra::component::Component;
-use crate::search::node::{Event, Node};
-use crate::board::Board;
-use crate::mv::Move;
-use std::{fmt};
-use serde::{Deserialize, Serialize};
-use crate::search::algo::Algo;
-use crate::types::{MoveType, Ply};
 use super::endgame::EndGame;
 use super::score::Score;
-
-
-
+use crate::board::Board;
+use crate::bound::NodeType;
+use crate::infra::component::Component;
+use crate::mv::Move;
+use crate::search::algo::Algo;
+use crate::search::node::{Event, Node};
+use crate::types::{MoveType, Ply};
+use serde::{Deserialize, Serialize};
+use std::fmt;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Recognizer {
-    enabled: bool, 
+    enabled: bool,
     min_depth: Ply,
     terminal_depth: Ply,
 }
-
 
 impl Default for Recognizer {
     fn default() -> Self {
@@ -33,11 +29,9 @@ impl Default for Recognizer {
 }
 
 impl Component for Recognizer {
-    fn new_game(&mut self) {
-    }
+    fn new_game(&mut self) {}
 
-    fn new_position(&mut self) {
-    }
+    fn new_position(&mut self) {}
 }
 
 impl fmt::Display for Recognizer {
@@ -47,12 +41,11 @@ impl fmt::Display for Recognizer {
     }
 }
 
-
 impl Algo {
     #[inline]
     pub fn lookup(&mut self, b: &mut Board, n: &mut Node) -> (Option<Score>, Option<Move>) {
         if n.ply == 0 {
-            return (None, None)
+            return (None, None);
         }
 
         // let (score, mv) = self.wdl_detection(b, n);
@@ -66,7 +59,7 @@ impl Algo {
 
             // FIXME! v33
             if entry.depth >= n.depth && !(self.repetition.avoid_tt_on_repeats && b.repetition_count().total > 0) {
-            //if entry.draft >= draft  && (ply >= 1 || self.tt.allow_tt_at_root) && !(b.repetition_count().total > 0 && self.repetition.avoid_tt_on_repeats)
+                //if entry.draft >= draft  && (ply >= 1 || self.tt.allow_tt_at_root) && !(b.repetition_count().total > 0 && self.repetition.avoid_tt_on_repeats)
 
                 // if n.ply == 0 && self.restrictions.is_none() {
                 //     return (Some(entry.score), Some(entry.bm))
@@ -131,13 +124,13 @@ impl Algo {
                 }
             }
             // not enough draft - just use for move guidance
-            return (None, Some(entry.bm))
+            return (None, Some(entry.bm));
         }
 
         // not found
         let (score, mv) = self.wdl_detection(b, n);
         if score.is_some() {
-            return (score,mv);
+            return (score, mv);
         }
 
         return (None, None);
@@ -145,9 +138,8 @@ impl Algo {
 
     #[inline]
     pub fn wdl_detection(&mut self, b: &Board, n: &mut Node) -> (Option<Score>, Option<Move>) {
-
-        if !self.recognizer.enabled  || n.depth < self.recognizer.min_depth  || n.ply == 0 {
-            return (None, None)
+        if !self.recognizer.enabled || n.depth < self.recognizer.min_depth || n.ply == 0 {
+            return (None, None);
         }
         let endgame = EndGame::from_board(b);
 
@@ -155,7 +147,7 @@ impl Algo {
             let draw = b.eval_draw(&mut self.eval, &n); // will return a draw score
             self.counts.inc(n, Event::RecogImmediateDraw);
             self.stats.inc_leaf_nodes(n);
-            return (Some(draw), None)
+            return (Some(draw), None);
         }
 
         // if b.draw_outcome().is_some()  {
@@ -167,16 +159,16 @@ impl Algo {
             self.counts.inc(n, Event::RecogMaybeWin);
             let draw = b.eval_draw(&mut self.eval, &n); // will return a draw score
             if b.color_us() == c {
-                if  draw <= n.alpha {
+                if draw <= n.alpha {
                     return (Some(draw), None);
                 }
-                n.beta = draw; 
+                n.beta = draw;
             }
             if b.color_them() == c {
-                if draw >= n.beta  {
+                if draw >= n.beta {
                     return (Some(draw), None);
                 }
-                n.alpha = draw; 
+                n.alpha = draw;
             }
         }
 
@@ -188,28 +180,30 @@ impl Algo {
             }
         }
 
-
         if let Some(_color) = endgame.try_winner() {
             // already counted as cannot wins
             if n.depth > self.recognizer.terminal_depth && !n.is_qs() {
                 n.depth = self.recognizer.terminal_depth;
             }
         }
-        return (None, None)
+        return (None, None);
     }
-
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{Position, eval::endgame::EndGame, search::{engine::Engine, node::Node, timecontrol::TimeControl}};
+    use crate::{
+        eval::endgame::EndGame,
+        search::{engine::Engine, node::Node, timecontrol::TimeControl},
+        Position,
+    };
     use test_log::test;
 
     #[test]
     fn test_recog_simple() {
         let mut engine = Engine::new();
         let pos = Position::parse_epd("k7/1p6/3N4/8/8/8/1K6/B6N w - - 0 1").unwrap();
-        let mut n = Node::root(4); 
+        let mut n = Node::root(4);
         n.ply = 1;
         let eg = EndGame::from_board(pos.board());
         let res = engine.algo.wdl_detection(pos.board(), &mut n);
@@ -218,9 +212,10 @@ mod tests {
 
     #[test]
     fn test_recog_pos() {
-
         // let pos = Position::parse_epd("8/NN6/8/8/8/2K2nk1/4P3/8 w - - 0 1; id 'RECOG.01'; am e2f3; bm Nd6;c0 'white shouldnt take knight as recapture of pawn makes it KNN v k'").unwrap();
-        let pos = Position::parse_epd("k7/1p6/3N4/8/8/8/1K6/B6N w - - 0 1; id 'RECOG.02'; bm Nxb7; c0 'white should take pawn to leave KBN v k'").unwrap();
+        let pos =
+            Position::parse_epd("k7/1p6/3N4/8/8/8/1K6/B6N w - - 0 1; id 'RECOG.02'; bm Nxb7; c0 'white should take pawn to leave KBN v k'")
+                .unwrap();
         // let pos = Position::parse_epd("k7/8/K1p5/8/3N4/8/6N1/7B w - - 5 1; id 'RECOG.03'; am Nxc6; bm Kb6; c0 'white shouldnt take pawn c4 as triggers stalemate'").unwrap();
         // let pos = Position::parse_epd("k6K/8/2pN4/8/3N4/8/8/8 w - - 5 1;  id 'RECOG.04'; bm Nxc6; c0 'white should force stalemate'").unwrap();
         let mut engine = Engine::new();
@@ -234,7 +229,7 @@ mod tests {
     }
 }
 
-        // debug!("{}", sea
+// debug!("{}", sea
 
 // 8/NN6/8/8/8/2K2nk1/4P3/8 w - - 0 1 - white shouldn't take knight
 // k7/8/K1p5/8/3N4/8/6N1/7B w - - 5 1 - white shouldn't take pawn c4 as triggers stalemate

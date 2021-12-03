@@ -1,4 +1,4 @@
-use crate::infra::component::{State,Component};
+use crate::infra::component::{Component, State};
 use crate::utils::Formatting;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -30,7 +30,6 @@ pub struct Clock {
 
     #[serde(skip)]
     nodes: Arc<Vec<Aligned>>,
-
     // #[serde(skip)]
     // leaf_nodes: Aligned,
 }
@@ -53,7 +52,6 @@ impl Default for Clock {
 }
 
 impl Component for Clock {
-
     fn set_state(&mut self, s: State) {
         use State::*;
         match s {
@@ -62,7 +60,7 @@ impl Component for Clock {
             StartSearch => *self = Self::default(),
             StartDepthIteration(_) => self.new_iter(),
         }
-    }    
+    }
     fn new_game(&mut self) {
         *self = Self::default()
     }
@@ -70,7 +68,6 @@ impl Component for Clock {
     fn new_iter(&mut self) {
         self.start_iter = (Instant::now(), self.cumul_nodes());
     }
-
 
     fn set_thread_index(&mut self, thread_index: u32) {
         self.thread_index = thread_index;
@@ -96,7 +93,6 @@ impl fmt::Display for Clock {
 }
 
 impl Clock {
-
     #[inline]
     pub fn cumul_nodes(&self) -> u64 {
         self.nodes[self.thread_index as usize].0.load(Ordering::Relaxed)
@@ -130,7 +126,6 @@ impl Clock {
     // pub fn inc_leaf_nodes(&self) {
     //     self.leaf_nodes.0.fetch_add(1, Ordering::Relaxed);
     // }
-
 
     #[inline]
     pub fn elapsed_search(&self) -> (Duration, u64) {

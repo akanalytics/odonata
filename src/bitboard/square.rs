@@ -1,7 +1,7 @@
 use crate::bitboard::bitboard::{Bitboard, Dir, Squares};
+use crate::types::Color;
 use std::cmp;
 use std::fmt;
-use crate::types::Color;
 
 #[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Square(u8);
@@ -302,7 +302,7 @@ mod tests {
         assert_eq!(c7.first_square().rank_index_as_white(Color::Black), 1);
         for y in 0..8 {
             assert_eq!(
-                Square::from_xy(0, y).rank_index_as_white(Color::Black), 
+                Square::from_xy(0, y).rank_index_as_white(Color::Black),
                 7 - Square::from_xy(0, y).rank_index_as_white(Color::White)
             );
         }
@@ -326,28 +326,13 @@ mod tests {
     fn test_bounding_rectangle() {
         assert_eq!(cmp::min(a1.square(), b2.square()), a1.square());
         assert_eq!(Bitboard::all() - b2.square().rank().rays(Dir::N), RANK_1 | RANK_2);
-        assert_eq!(
-            Square::bounding_rectangle(a1.square(), b2.square()),
-            a1 | a2 | b1 | b2
-        );
-        assert_eq!(
-            Square::bounding_rectangle(b2.square(), a1.square()),
-            a1 | a2 | b1 | b2
-        );
+        assert_eq!(Square::bounding_rectangle(a1.square(), b2.square()), a1 | a2 | b1 | b2);
+        assert_eq!(Square::bounding_rectangle(b2.square(), a1.square()), a1 | a2 | b1 | b2);
         assert_eq!(Square::bounding_rectangle(a1.square(), a1.square()), a1);
         assert_eq!(Square::bounding_rectangle(c3.square(), c3.square()), c3);
-        assert_eq!(
-            Square::bounding_rectangle(a1.square(), h8.square()),
-            Bitboard::all()
-        );
-        assert_eq!(
-            Square::bounding_rectangle(b2.square(), b5.square()),
-            b2 | b3 | b4 | b5
-        );
-        assert_eq!(
-            Square::bounding_rectangle(b5.square(), b2.square()),
-            b2 | b3 | b4 | b5
-        );
+        assert_eq!(Square::bounding_rectangle(a1.square(), h8.square()), Bitboard::all());
+        assert_eq!(Square::bounding_rectangle(b2.square(), b5.square()), b2 | b3 | b4 | b5);
+        assert_eq!(Square::bounding_rectangle(b5.square(), b2.square()), b2 | b3 | b4 | b5);
         assert_eq!(Square::bounding_rectangle(c5.square(), e5.square()), c5 | d5 | e5);
         assert_eq!(Square::bounding_rectangle(e5.square(), c5.square()), c5 | d5 | e5);
     }
@@ -359,19 +344,13 @@ mod tests {
         assert_eq!(Square::calc_line_through(a2.square(), b1.square()), a2 | b1);
         assert_eq!(Square::calc_line_through(f1.square(), g2.square()), f1 | g2 | h3);
         assert_eq!(Square::calc_line_through(f1.square(), f1.square()), f1);
-        assert_eq!(
-            Square::calc_line_through(f1.square(), g3.square()),
-            Bitboard::empty()
-        );
+        assert_eq!(Square::calc_line_through(f1.square(), g3.square()), Bitboard::empty());
     }
 
     #[test]
     fn test_betweens() {
         assert_eq!(Square::calc_between(b6.square(), b6.square()), b6);
-        assert_eq!(
-            Square::calc_strictly_between(b6.square(), b6.square()),
-            Bitboard::empty()
-        );
+        assert_eq!(Square::calc_strictly_between(b6.square(), b6.square()), Bitboard::empty());
 
         assert_eq!(Square::calc_between(b6.square(), b8.square()), b6 | b7 | b8);
         assert_eq!(Square::calc_strictly_between(b6.square(), b8.square()), b7);

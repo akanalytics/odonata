@@ -14,7 +14,6 @@ pub struct Restrictions {
     #[serde(skip)]
     pub include_moves: MoveList,
 
-
     #[serde(skip)]
     pub exclude_moves: MoveList,
 }

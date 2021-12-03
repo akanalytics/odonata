@@ -1,21 +1,19 @@
-use crate::infra::component::Component;
-use crate::eval::weight::Weight;
 use crate::domain::material::Material;
+use crate::eval::model::{ModelScore, Scorer};
+use crate::eval::weight::Weight;
+use crate::infra::component::Component;
 use crate::mv::Move;
 use crate::types::{Color, Piece, ScoreWdl};
+use anyhow::{anyhow, bail, Result};
+use serde::{Deserialize, Serialize};
 use static_init::dynamic;
 use std::collections::HashMap;
 use std::fmt;
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::fs::File;
 use std::io::{self, BufRead};
-use crate::eval::model::{ModelScore, Scorer};
-use serde::{Deserialize, Serialize};
-use anyhow::{Result, anyhow, bail};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 use super::eval::PieceArray;
-
-
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -36,13 +34,12 @@ pub struct MaterialBalance {
     pub balances: Balances,
 }
 
-
 impl Default for MaterialBalance {
     fn default() -> Self {
         let mut mb = Self {
             enabled: false,
             internal_stats: false,
-            toml: true, 
+            toml: true,
             filename: String::new(),
             consistency_report: true,
             consistency_adjust: true,
@@ -50,9 +47,7 @@ impl Default for MaterialBalance {
             min_games: 50,
             max_pawns: 5,
             trade_factor: 2,
-            balances: Balances {
-                entries: HashMap::new(),
-            },
+            balances: Balances { entries: HashMap::new() },
 
             piece_weights: PieceArray {
                 p: Weight::from_i32(100, 150),
@@ -74,9 +69,6 @@ impl Default for MaterialBalance {
 pub struct Balances {
     entries: HashMap<String, f32>,
 }
-
-
-
 
 // impl Into<[Weight; Piece::len()]> for PieceWeights {
 //     fn into(self) -> [Weight; Piece::len()] {
@@ -108,12 +100,11 @@ pub struct Balances {
 
 //     // fn new(array: [Weight; Piece::len()]) -> Self {
 //     //     PieceWeights {
-//     //         pawn: array[1], 
+//     //         pawn: array[1],
 //     //         knight: array[2],
 //     //     }
 //     // }
 // }
-
 
 impl Component for MaterialBalance {
     // for &p in &Piece::ALL_BAR_KING {
@@ -133,7 +124,6 @@ impl Component for MaterialBalance {
     //         c.set(&format!("eval.mb.material.{} type string default",mat.to_string()), &cp.to_string());
     //     }
     // }
-
 
     // for &p in &Piece::ALL_BAR_KING {
     //     let mut name = "eval.".to_string();
@@ -155,7 +145,7 @@ impl Component for MaterialBalance {
     //     info!("Forcing initialization of material balances");
     //     self.init();
     // }
-    // // we recalculate the derived scores as the config may have amended 
+    // // we recalculate the derived scores as the config may have amended
     // // some of the inputs to this calculation
     // if self.enabled {
     //     self.init();  // likely re-init but happens outside of perf criticality
@@ -168,8 +158,6 @@ impl Component for MaterialBalance {
 
     fn new_position(&mut self) {}
 }
-
-
 
 impl fmt::Display for MaterialBalance {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -203,7 +191,6 @@ impl fmt::Debug for MaterialBalance {
     }
 }
 impl MaterialBalance {
-
     pub const CLASSICAL_WEIGHTS: PieceArray<Weight> = PieceArray {
         p: Weight::from_i32(Piece::Pawn.centipawns(), Piece::Pawn.centipawns()),
         n: Weight::from_i32(Piece::Knight.centipawns(), Piece::Knight.centipawns()),
@@ -218,13 +205,12 @@ impl MaterialBalance {
     }
 
     pub fn set_classical_piece_values(&mut self) {
-        self.piece_weights = Self::CLASSICAL_WEIGHTS; 
+        self.piece_weights = Self::CLASSICAL_WEIGHTS;
     }
-
 
     #[inline]
     pub fn w_eval_material(&self, mat: &Material, scorer: &mut impl Scorer) {
-        // FIXME! short circuit on max pawns top avoid huge cache usage  
+        // FIXME! short circuit on max pawns top avoid huge cache usage
         if self.enabled && mat.counts_piece(Piece::Pawn) <= self.max_pawns {
             let weight = self.balance_lookup(mat);
             if let Some(weight) = weight {
@@ -237,17 +223,20 @@ impl MaterialBalance {
 
     #[inline]
     pub fn w_eval_material_without_balance(&self, mat: &Material, scorer: &mut impl Scorer) {
-        Piece::ALL_BAR_KING
-            .iter()
-            .for_each(|&p| 
-                (scorer.material(p.name(), mat.counts(Color::White, p), mat.counts(Color::Black, p), self.piece_weights[p])));
+        Piece::ALL_BAR_KING.iter().for_each(|&p| {
+            scorer.material(
+                p.name(),
+                mat.counts(Color::White, p),
+                mat.counts(Color::Black, p),
+                self.piece_weights[p],
+            )
+        });
         // let weight = Piece::ALL_BAR_KING
         //     .iter()
         //     .map(|&p| (mat.counts(Color::White, p) - mat.counts(Color::Black, p)) * self.material_weights[p])
         //     .sum();
         // scorer.material("", 1, 0, weight);
     }
-
 
     #[inline]
     pub fn eval_move_material(&self, mv: &Move) -> Weight {
@@ -261,8 +250,6 @@ impl MaterialBalance {
         score
     }
 
-
-
     #[inline]
     pub fn balance_lookup(&self, mat: &Material) -> Option<Weight> {
         self.ensure_init();
@@ -272,7 +259,6 @@ impl MaterialBalance {
         }
         None
     }
-
 
     #[inline]
     fn derived_load(&self, hash: usize) -> Option<f32> {
@@ -285,9 +271,8 @@ impl MaterialBalance {
         }
     }
 
-
     #[inline]
-    fn derived_store(&self, mat: &Material, value: f32 ) {
+    fn derived_store(&self, mat: &Material, value: f32) {
         let v_pos = value.to_bits() as u32;
         let v_neg = (-value).to_bits() as u32;
         // FIXME! clash of bits with NICHE
@@ -297,10 +282,9 @@ impl MaterialBalance {
         if v_neg == NICHE {
             warn!("Unable to store {} in material balance", value);
         }
-        DERIVED_SCORES[mat.hash()].store(v_pos,  Ordering::Relaxed);
+        DERIVED_SCORES[mat.hash()].store(v_pos, Ordering::Relaxed);
         DERIVED_SCORES[mat.flip().hash()].store(v_neg, Ordering::Relaxed);
     }
-
 
     pub fn log_material_balance(&self) {
         self.ensure_init();
@@ -322,10 +306,9 @@ impl MaterialBalance {
 
     pub fn init_from_toml(&self) -> Result<()> {
         for (k, &v) in self.balances.entries.iter() {
-
             let mat = Material::from_piece_str(k.trim())?;
             self.derived_store(&mat, v);
-            trace!("{:<20} = {:>5}", format!("mb[{}]",mat), v);
+            trace!("{:<20} = {:>5}", format!("mb[{}]", mat), v);
         }
         info!("Read {} items from toml", self.balances.entries.len());
         Ok(())
@@ -359,10 +342,6 @@ impl MaterialBalance {
         Ok(())
     }
 
-
-
-
-
     #[inline]
     pub fn ensure_init(&self) {
         if !DERIVED_SCORES_CALCULATED.load(Ordering::Relaxed) {
@@ -377,28 +356,27 @@ impl MaterialBalance {
         // "zero" existing ones to the NICHE value indicating "not set"
         if self.internal_stats {
             for n in 0..Material::HASH_VALUES {
-                DERIVED_SCORES[n].store(NICHE,  Ordering::Relaxed);
+                DERIVED_SCORES[n].store(NICHE, Ordering::Relaxed);
             }
-            self.init_from_raw_stats(); 
+            self.init_from_raw_stats();
         }
         if !self.filename.is_empty() {
             for n in 0..Material::HASH_VALUES {
-                DERIVED_SCORES[n].store(NICHE,  Ordering::Relaxed);
+                DERIVED_SCORES[n].store(NICHE, Ordering::Relaxed);
             }
             self.init_from_file(&self.filename).unwrap();
         }
         if !self.toml {
             for n in 0..Material::HASH_VALUES {
-                DERIVED_SCORES[n].store(NICHE,  Ordering::Relaxed);
+                DERIVED_SCORES[n].store(NICHE, Ordering::Relaxed);
             }
             self.init_from_toml().unwrap();
         }
         if self.consistency_adjust {
             for pass in 1..10 {
                 self.init_ensure_consistency(pass);
-            } 
-        }
-        else if self.consistency_report {
+            }
+        } else if self.consistency_report {
             // one iteration only if just reporting
             self.init_ensure_consistency(1);
         }
@@ -406,16 +384,22 @@ impl MaterialBalance {
 
     fn parse_and_store(&self, k: &str, v: &str) -> Result<()> {
         let mat = Material::from_piece_str(k.trim())?;
-        let cp = v.trim().parse::<f32>().map_err(|err| anyhow!("{} - unable to parse number '{}'", err, v))?;
+        let cp = v
+            .trim()
+            .parse::<f32>()
+            .map_err(|err| anyhow!("{} - unable to parse number '{}'", err, v))?;
         self.derived_store(&mat, cp);
-        trace!("{:<20} = {:>5}", format!("mb[{}]",mat), cp);
+        trace!("{:<20} = {:>5}", format!("mb[{}]", mat), cp);
         Ok(())
     }
 
     fn init_from_raw_stats(&self) {
-        info!("creating derived material balance table from {} raw internal statistics", RAW_STATS.len() );
+        info!(
+            "creating derived material balance table from {} raw internal statistics",
+            RAW_STATS.len()
+        );
         let mut sorted_raw_stats = RAW_STATS.clone();
-        sorted_raw_stats.sort_by_cached_key(|(mat, _score) | mat.to_string().len() as i32 * 20000 + mat.centipawns() ); 
+        sorted_raw_stats.sort_by_cached_key(|(mat, _score)| mat.to_string().len() as i32 * 20000 + mat.centipawns());
         for (mat, wdl) in sorted_raw_stats.iter() {
             let pawns = mat.counts(Color::White, Piece::Pawn) + mat.counts(Color::Black, Piece::Pawn);
             if wdl.total() >= self.min_games && pawns <= self.max_pawns {
@@ -446,19 +430,25 @@ impl MaterialBalance {
                 let adj = scorer.total().e() as f32;
                 cp = cp.clamp(-5000.0 + adj, 5000.0 + adj);
 
-                if !self.draws_only || (-20.0 < cp && cp < 20.0) {  
+                if !self.draws_only || (-20.0 < cp && cp < 20.0) {
                     self.derived_store(mat, cp);
-                    trace!("{:<20} = {:>5}       wdl: {:>5} {:>5} {:>5}", format!("mb[{}]",mat), cp, wdl.w, wdl.d, wdl.l);
+                    trace!(
+                        "{:<20} = {:>5}       wdl: {:>5} {:>5} {:>5}",
+                        format!("mb[{}]", mat),
+                        cp,
+                        wdl.w,
+                        wdl.d,
+                        wdl.l
+                    );
                 }
             }
         }
-
     }
 
     fn init_ensure_consistency(&self, pass: i32) {
         info!("Material balance consistency: pass {}", pass);
         let mut adjustments = 0;
-        for (hash,_atom) in DERIVED_SCORES.iter().enumerate() {
+        for (hash, _atom) in DERIVED_SCORES.iter().enumerate() {
             let mat = Material::maybe_from_hash(hash);
             let cp = self.derived_load(mat.hash());
             if let Some(cp) = cp {
@@ -494,12 +484,11 @@ impl MaterialBalance {
             -Material::from_piece_str("b").unwrap(),
             -Material::from_piece_str("r").unwrap(),
             -Material::from_piece_str("q").unwrap(),
-            ];
+        ];
         // let no_material = Material::default();
         let mut adjustments = 0;
 
         for diff in &material_diffs {
-
             // first examine loss of material;
             let other = mat - diff;
             if other.hash() == 0 {
@@ -511,21 +500,39 @@ impl MaterialBalance {
                 other_cp = cp as i32;
             } else {
                 let weight: Weight = Piece::ALL_BAR_KING
-                .iter()
-                .map(|&p| (other.counts(Color::White, p) - other.counts(Color::Black, p)) * self.piece_weights[p])
-                .sum();        
+                    .iter()
+                    .map(|&p| (other.counts(Color::White, p) - other.counts(Color::Black, p)) * self.piece_weights[p])
+                    .sum();
                 other_cp = std::cmp::max(weight.s() as i32, weight.e() as i32) as i32;
             }
 
             // losing material - ensure lesser entries consistent
             let mut new_cp = cp;
             if cp < other_cp && mat.white() > other.white() {
-                new_cp = other_cp + diff.centipawns() / 2;  
-                info!("Loss (white) {:>32}={:>5} < {:>30}={:>5} ----> [{}] = {} ({})", mat.to_string(), cp, other, other_cp, other, new_cp, new_cp - cp );
+                new_cp = other_cp + diff.centipawns() / 2;
+                info!(
+                    "Loss (white) {:>32}={:>5} < {:>30}={:>5} ----> [{}] = {} ({})",
+                    mat.to_string(),
+                    cp,
+                    other,
+                    other_cp,
+                    other,
+                    new_cp,
+                    new_cp - cp
+                );
             }
             if cp > other_cp && mat.black() > other.black() {
-                new_cp = other_cp + diff.centipawns() / 2;  // centipawns already negative for black
-                info!("Loss (black) {:>32}={:>5} > {:>30}={:>5} ----> [{}] = {} ({})", mat.to_string(), cp, other, other_cp, other, new_cp, new_cp - cp );
+                new_cp = other_cp + diff.centipawns() / 2; // centipawns already negative for black
+                info!(
+                    "Loss (black) {:>32}={:>5} > {:>30}={:>5} ----> [{}] = {} ({})",
+                    mat.to_string(),
+                    cp,
+                    other,
+                    other_cp,
+                    other,
+                    new_cp,
+                    new_cp - cp
+                );
             }
 
             if new_cp != cp {
@@ -539,12 +546,30 @@ impl MaterialBalance {
             // gaining material - ensure greater entries consistent
             let mut new_cp = other_cp;
             if cp > other_cp && mat.white() < other.white() {
-                new_cp = other_cp - diff.centipawns() / 2;  
-                info!("Gain (white) {:>32}={:>5} > {:>30}={:>5} ----> [{}] = {} ({})", mat.to_string(), cp, other, other_cp, other, new_cp, new_cp - other_cp );
+                new_cp = other_cp - diff.centipawns() / 2;
+                info!(
+                    "Gain (white) {:>32}={:>5} > {:>30}={:>5} ----> [{}] = {} ({})",
+                    mat.to_string(),
+                    cp,
+                    other,
+                    other_cp,
+                    other,
+                    new_cp,
+                    new_cp - other_cp
+                );
             }
             if cp < other_cp && mat.black() < other.black() {
-                new_cp = other_cp - diff.centipawns() / 2;  // centipawns already negative for black
-                info!("Gain (black) {:>32}={:>5} < {:>30}={:>5} ----> [{}] = {} ({})", mat.to_string(), cp, other, other_cp, other, new_cp, new_cp - other_cp );
+                new_cp = other_cp - diff.centipawns() / 2; // centipawns already negative for black
+                info!(
+                    "Gain (black) {:>32}={:>5} < {:>30}={:>5} ----> [{}] = {} ({})",
+                    mat.to_string(),
+                    cp,
+                    other,
+                    other_cp,
+                    other,
+                    new_cp,
+                    new_cp - other_cp
+                );
             }
             // amend the higher one
             if new_cp != other_cp {
@@ -563,13 +588,6 @@ impl MaterialBalance {
     // }
 }
 
-
-
-
-
-
-
-
 // mutable derived scores
 type DerivedScoresVec = Vec<AtomicU32>;
 
@@ -584,8 +602,6 @@ static DERIVED_SCORES: DerivedScoresVec = {
     m
 };
 
-
-
 // immutable raw stats
 type RawStatsVec = Vec<(Material, ScoreWdl)>;
 
@@ -593,19 +609,17 @@ fn data(m: &mut RawStatsVec, s: &str, w: i32, d: i32, l: i32) {
     m.push((Material::from_piece_str(s).unwrap(), ScoreWdl::new(w, d, l)));
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
     // use crate::{debug, info, logger::LogInit};
-    use crate::board::Board;
     use crate::board::boardbuf::BoardBuf;
-    use crate::eval::score::Score;
+    use crate::board::Board;
     use crate::eval::eval::SimpleScorer;
+    use crate::eval::score::Score;
     use crate::search::node::Node;
     use crate::test_log::test;
     use toml;
-
 
     #[test]
     fn mb_serde_test() {
@@ -623,14 +637,13 @@ mod tests {
     #[test]
     #[ignore]
     fn test_score_balance() {
-
         let eval = &mut SimpleScorer::new();
         eval.set_switches(false);
         eval.material = true;
         let n = &Node::root(0);
         let board = Board::parse_fen("K7/P7/8/8/8/8/8/k7 w - - 0 1").unwrap();
         assert_eq!(board.eval(eval, n), Score::from_cp(282));
-        
+
         let board = Board::parse_fen("k7/p7/8/8/8/8/8/K7 w - - 0 1").unwrap();
         assert_eq!(board.eval(eval, n), -Score::from_cp(282));
 
@@ -657,11 +670,6 @@ mod tests {
         assert_eq!(board.eval(eval, n), Score::from_cp(-100));
     }
 }
-
-
-
-
-
 
 #[dynamic]
 static RAW_STATS: RawStatsVec = {
@@ -4050,8 +4058,6 @@ static RAW_STATS: RawStatsVec = {
     // end of generated code
     vec
 };
-
-
 
 // mb[PPqr] = -6000  - W: 0  D: 0  L: 148
 // mb[PPqb] = -6000  - W: 0  D: 0  L: 83

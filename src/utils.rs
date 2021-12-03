@@ -1,12 +1,9 @@
-use std::collections::HashMap;
-use std::ops::{Bound, RangeBounds};
-use std::time::Duration;
 use format_num::*;
 use itertools::Itertools;
+use std::collections::HashMap;
 use std::fmt;
-
-
-
+use std::ops::{Bound, RangeBounds};
+use std::time::Duration;
 
 //
 // https://stackoverflow.com/questions/59413614/cycle-a-rust-iterator-a-given-number-of-times
@@ -56,7 +53,6 @@ where
     }
 }
 
-
 pub struct Formatting;
 
 impl Formatting {
@@ -81,7 +77,7 @@ impl Formatting {
 
     pub fn duration(d: Duration) -> String {
         DurationNewType(d).to_string()
-   }
+    }
 }
 
 pub struct DurationNewType(pub Duration);
@@ -116,10 +112,6 @@ impl fmt::Display for DurationNewType {
     }
 }
 
-
-
-
-
 //
 // https://users.rust-lang.org/t/how-to-get-a-substring-of-a-string/1351/9
 //
@@ -129,7 +121,7 @@ pub trait StringUtils {
     fn take_char_at(&self, i: usize) -> Option<char>;
     fn split_off_first_word(&self) -> (&str, &str);
     fn trim_first_n_words(&self, n: u16) -> &str;
-    fn split_vars_int(&self) -> HashMap<&str,i32>;
+    fn split_vars_int(&self) -> HashMap<&str, i32>;
 }
 
 impl StringUtils for str {
@@ -181,7 +173,7 @@ impl StringUtils for str {
     }
 
     fn split_off_first_word(&self) -> (&str, &str) {
-        let mut iter = self.trim_start().splitn(2, ' ');        
+        let mut iter = self.trim_start().splitn(2, ' ');
         if let Some(word1) = iter.next() {
             if let Some(word2) = iter.next() {
                 return (word1, word2.trim_start());
@@ -192,11 +184,11 @@ impl StringUtils for str {
     }
 
     // x=5;var1=-3;var2=24
-    fn split_vars_int(&self) -> HashMap<&str,i32> {
+    fn split_vars_int(&self) -> HashMap<&str, i32> {
         let mut map = HashMap::new();
         let words = self.split_terminator(';').collect_vec();
         for w in words {
-            if let Some((var, value)) =  w.split_terminator('=').collect_tuple() {
+            if let Some((var, value)) = w.split_terminator('=').collect_tuple() {
                 if let Ok(value) = value.parse::<i32>() {
                     map.insert(var, value);
                 }
@@ -213,11 +205,7 @@ impl StringUtils for str {
         }
         string
     }
-
 }
-
-
-
 
 #[cfg(test)]
 mod tests {
@@ -226,24 +214,24 @@ mod tests {
     #[test]
     fn test_split_off_first_word() {
         let (w1, w2) = "Mary had a little lambda".split_off_first_word();
-        assert_eq!( w1, "Mary" );
-        assert_eq!( w2, "had a little lambda" );
+        assert_eq!(w1, "Mary");
+        assert_eq!(w2, "had a little lambda");
 
         let (w1, w2) = "  Mary had a little lambda".split_off_first_word();
-        assert_eq!( w1, "Mary" );
-        assert_eq!( w2, "had a little lambda" );
+        assert_eq!(w1, "Mary");
+        assert_eq!(w2, "had a little lambda");
 
         let (w1, w2) = "Mary   had a little lambda".split_off_first_word();
-        assert_eq!( w1, "Mary" );
-        assert_eq!( w2, "had a little lambda" );
+        assert_eq!(w1, "Mary");
+        assert_eq!(w2, "had a little lambda");
 
         let (w1, w2) = "".split_off_first_word();
-        assert_eq!( w1, "" );
-        assert_eq!( w2, "" );
+        assert_eq!(w1, "");
+        assert_eq!(w2, "");
 
         let (w1, w2) = "  ".split_off_first_word();
-        assert_eq!( w1, "" );
-        assert_eq!( w2, "" );
+        assert_eq!(w1, "");
+        assert_eq!(w2, "");
     }
 
     #[test]
@@ -311,17 +299,16 @@ mod tests {
         );
     }
 
-
     #[test]
     fn test_formatter() {
-        assert_eq!( Formatting::f64(12345567.0).as_str(), "12.35M" );
-        assert_eq!( Formatting::f64(0.0).as_str(), "0.000" );
-        assert_eq!( Formatting::f64(1234567890123.0).as_str(), "1.235T" );
-        assert_eq!( Formatting::f64(123456.0).as_str(), "123.5k" );
-        assert_eq!( Formatting::f64(0.0000123).as_str(), "12.30µ" );
-        assert_eq!( Formatting::f64(0.0124).as_str(), "12.40m" );
-        assert_eq!( Formatting::decimal(2, 0.0124 as f32).as_str(), "0.01" );
-        assert_eq!( Formatting::decimal(0, 4.0124).as_str(), "4" );
-        assert_eq!( Formatting::decimal(4, 4.012).as_str(), "4.0120" );
+        assert_eq!(Formatting::f64(12345567.0).as_str(), "12.35M");
+        assert_eq!(Formatting::f64(0.0).as_str(), "0.000");
+        assert_eq!(Formatting::f64(1234567890123.0).as_str(), "1.235T");
+        assert_eq!(Formatting::f64(123456.0).as_str(), "123.5k");
+        assert_eq!(Formatting::f64(0.0000123).as_str(), "12.30µ");
+        assert_eq!(Formatting::f64(0.0124).as_str(), "12.40m");
+        assert_eq!(Formatting::decimal(2, 0.0124 as f32).as_str(), "0.01");
+        assert_eq!(Formatting::decimal(0, 4.0124).as_str(), "4");
+        assert_eq!(Formatting::decimal(4, 4.012).as_str(), "4.0120");
     }
 }

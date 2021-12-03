@@ -34,9 +34,6 @@ impl Provider for Config {
     }
 }
 
-
-
-
 impl Config {
     // Allow the configuration to be extracted from any `Provider`.
     // fn from<T: Provider>(provider: T) -> Result<Config, Error> {

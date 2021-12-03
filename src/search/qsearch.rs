@@ -1,18 +1,17 @@
 use crate::bitboard::bitboard::Bitboard;
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
-use crate::infra::component::Component;
 use crate::eval::score::Score;
 use crate::eval::switches::Switches;
+use crate::infra::component::Component;
 use crate::movelist::MoveList;
 use crate::mv::Move;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
 use crate::types::Ply;
 // // use crate::{debug, logger::LogInit, trace};
-use std::fmt;
 use serde::{Deserialize, Serialize};
-
+use std::fmt;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -26,7 +25,6 @@ pub struct QSearch {
     pub coarse_delta_prune: Score,
     pub switches: Switches,
 }
-
 
 impl Default for QSearch {
     fn default() -> Self {
@@ -43,13 +41,11 @@ impl Default for QSearch {
     }
 }
 
-
 impl Component for QSearch {
     fn new_game(&mut self) {}
 
     fn new_position(&mut self) {}
 }
-
 
 impl fmt::Display for QSearch {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -70,24 +66,11 @@ impl Algo {
     // if the move results in a position which after quiesce, is potentially a mate,
     // we should not return a mate score, as only captures have been considered,
     // and a mate score might cut a genuine mate score elsewhere
-    pub fn qsearch2(
-        &mut self,
-        mv: &Move,
-        ply: Ply,
-        depth: Ply,
-        board: &mut Board,
-        alpha: Score,
-        beta: Score,
-    ) -> Score {
+    pub fn qsearch2(&mut self, mv: &Move, ply: Ply, depth: Ply, board: &mut Board, alpha: Score, beta: Score) -> Score {
         self.clear_move(ply);
 
         if !self.qsearch.enabled {
-            let node = Node {
-                ply,
-                depth,
-                alpha,
-                beta,
-            };
+            let node = Node { ply, depth, alpha, beta };
             let score = board.eval(&mut self.eval, &node);
             return score;
         }
@@ -111,19 +94,10 @@ impl Algo {
 
         let in_check = board.is_in_check(board.color_us());
         let mut standing_pat;
-        let node = Node {
-            ply,
-            depth,
-            alpha,
-            beta,
-        };
+        let node = Node { ply, depth, alpha, beta };
         if depth == 0 {
             standing_pat = board.eval(&mut self.eval, &node);
-            trace!(
-                "Standing pat (eval on depth 0 on {}) {}",
-                board.to_fen(),
-                standing_pat
-            );
+            trace!("Standing pat (eval on depth 0 on {}) {}", board.to_fen(), standing_pat);
             // early return if a draw or mate
             if standing_pat.is_mate() || board.draw_outcome().is_some() {
                 // self.record_new_pv(board, ply, &Move::NULL_MOVE, true);
@@ -137,27 +111,16 @@ impl Algo {
             standing_pat = alpha;
         } else {
             standing_pat = board.eval_some(&mut self.eval, self.qsearch.switches);
-            trace!(
-                "[ply {}] Standing pat (eval_qsearch on {}) {}",
-                ply,
-                board.to_fen(),
-                standing_pat
-            );
+            trace!("[ply {}] Standing pat (eval_qsearch on {}) {}", ply, board.to_fen(), standing_pat);
         }
         if standing_pat > alpha {
             if standing_pat >= beta {
                 self.stats.inc_leaf_nodes(&node);
-                trace!(
-                    "{}",
-                    board.debug() + ply + "fail high - standing pat" + standing_pat + ">=" + beta
-                );
+                trace!("{}", board.debug() + ply + "fail high - standing pat" + standing_pat + ">=" + beta);
                 // self.record_new_pv(b, ply, &Move::NULL_MOVE, true);
                 return standing_pat;
             }
-            trace!(
-                "{}",
-                board.debug() + ply + "alpha raised " + standing_pat + ">" + alpha
-            );
+            trace!("{}", board.debug() + ply + "alpha raised " + standing_pat + ">" + alpha);
             alpha = standing_pat;
         }
 
@@ -185,7 +148,6 @@ impl Algo {
             .filter(|mv| mv.is_capture() || (mv.is_promo() & self.qsearch.promos) || in_check)
             .cloned()
             .collect();
-        
 
         if moves.is_empty() {
             self.stats.inc_leaf_nodes(&node);
@@ -194,23 +156,12 @@ impl Algo {
         }
         self.order_moves(ply, &mut moves, &None);
         for &mv in moves.iter() {
-
-
-        // let mut sorted_moves = self.move_orderer.get_sorted_moves(ply, Move::NULL_MOVE);
-        // sorted_moves.qsearch = true;
-        // while let Some((_move_type, mv)) = sorted_moves.next_move(board, self) {
+            // let mut sorted_moves = self.move_orderer.get_sorted_moves(ply, Move::NULL_MOVE);
+            // sorted_moves.qsearch = true;
+            // while let Some((_move_type, mv)) = sorted_moves.next_move(board, self) {
             trace!(
                 "{}",
-                board.debug()
-                    + "examining move"
-                    + &mv
-                    + "using"
-                    + Node {
-                        ply,
-                        depth,
-                        alpha,
-                        beta
-                    }
+                board.debug() + "examining move" + &mv + "using" + Node { ply, depth, alpha, beta }
             );
             if !in_check && !mv.is_ep_capture() && mv.to().as_bb().disjoint(recaptures) {
                 // apply a see > 0 filter unless
@@ -245,9 +196,7 @@ impl Algo {
             self.current_variation.push(mv);
             self.explainer.start(&self.current_variation);
             // delta prune on the move - FIXME - think about delta prune when checks
-            if !in_check
-                && board.eval_move_material(&self.eval, &mv) + standing_pat <= alpha
-                && !child.is_in_check(child.color_us())
+            if !in_check && board.eval_move_material(&self.eval, &mv) + standing_pat <= alpha && !child.is_in_check(child.color_us())
             // = will_check_them
             {
                 board.undo_move(&mv);
@@ -257,15 +206,7 @@ impl Algo {
             }
             // mark the square so the recapture is considered
             trace!("{}", board.debug() + ply + "iterating on " + &mv);
-            let score = -self.qsearch_see(
-                mv, 
-                recaptures ^ mv.to().as_bb(),
-                ply + 1,
-                depth - 1,
-                &mut child,
-                -beta,
-                -alpha,
-            );
+            let score = -self.qsearch_see(mv, recaptures ^ mv.to().as_bb(), ply + 1, depth - 1, &mut child, -beta, -alpha);
             board.undo_move(&mv);
             self.current_variation.pop();
             self.explainer.stop();
@@ -274,7 +215,10 @@ impl Algo {
                 return score;
             }
             if score > alpha {
-                trace!("{}", board.debug() + ply + score + "raises alpha" + alpha + &mv + " -> move added to pv");
+                trace!(
+                    "{}",
+                    board.debug() + ply + score + "raises alpha" + alpha + &mv + " -> move added to pv"
+                );
                 self.record_move(ply, &mv);
                 alpha = score;
             }
@@ -284,7 +228,12 @@ impl Algo {
 
         // we should not return a mate score, as only captures have been considered,
         // and a mate score might cut a genuine mate score elsewhere
-        trace!("ply {} returns with score of {} and pv {}", ply, alpha, self.pv_table.extract_pv_for(ply).to_string());
+        trace!(
+            "ply {} returns with score of {} and pv {}",
+            ply,
+            alpha,
+            self.pv_table.extract_pv_for(ply).to_string()
+        );
         alpha.clamp_score()
     }
 }
@@ -363,10 +312,7 @@ mod tests {
         let node = Node::root(0);
         let static_eval = pos.board().eval(&mut eval, &node);
 
-        let mut algo = Algo::new()
-            .set_timing_method(TimeControl::Depth(0))
-            .set_eval(eval)
-            .build();
+        let mut algo = Algo::new().set_timing_method(TimeControl::Depth(0)).set_eval(eval).build();
         let quiesce_eval = algo.qsearch_see(
             Move::NULL_MOVE,
             Bitboard::EMPTY,
@@ -416,14 +362,7 @@ mod tests {
             .build();
         search_see.max_depth = 3;
 
-        let score = search_see.qsearch2(
-            &pos.sm()?,
-            3,
-            search_see.max_depth,
-            &mut pos.board().clone(),
-            alpha,
-            beta,
-        );
+        let score = search_see.qsearch2(&pos.sm()?, 3, search_see.max_depth, &mut pos.board().clone(), alpha, beta);
         if let Some(ce) = score.cp() {
             assert_eq!(ce - static_eval, pos.ce()? as i16, "see");
         } else {

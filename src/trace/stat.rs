@@ -1,15 +1,9 @@
+use crate::types::Ply;
 use crate::types::MAX_PLY;
 use std::fmt;
 use std::sync::atomic::{AtomicI64, AtomicUsize, Ordering};
-use crate::types::Ply;
-
-
-
-
 
 thread_local!(static THREAD_INDEX: AtomicUsize = AtomicUsize::new(0));
-
-
 
 #[derive(Default, Debug)]
 #[repr(align(64))]
@@ -18,7 +12,7 @@ struct AlignedAtomic(AtomicI64);
 #[derive(Default, Debug)]
 pub struct Stat {
     name: &'static str,
-    counter: [AlignedAtomic;32],
+    counter: [AlignedAtomic; 32],
 }
 
 impl Clone for Stat {
@@ -27,8 +21,6 @@ impl Clone for Stat {
         stat
     }
 }
-
-
 
 #[derive(Debug, Default)]
 pub struct PlyStat {
@@ -46,8 +38,7 @@ impl Clone for PlyStat {
     }
 }
 
-
-pub struct ArrayStat<'a> (pub &'a [&'a Stat]);
+pub struct ArrayStat<'a>(pub &'a [&'a Stat]);
 
 impl fmt::Display for ArrayStat<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -61,16 +52,15 @@ impl fmt::Display for ArrayStat<'_> {
 }
 
 impl Stat {
-
     pub fn set_this_thread_index(index: usize) {
         THREAD_INDEX.with(|f| {
             f.store(index, Ordering::Relaxed);
         });
     }
-    
+
     pub const fn new(name: &'static str) -> Stat {
         // ugly as default not const
-        Stat { 
+        Stat {
             name,
             counter: [
                 AlignedAtomic(AtomicI64::new(0)),
@@ -112,7 +102,7 @@ impl Stat {
     #[allow(unused_variables)]
     #[inline]
     pub fn add(&self, add: i64) {
-        // #[cfg(not(feature="remove_metrics"))]    
+        // #[cfg(not(feature="remove_metrics"))]
         THREAD_INDEX.with(|f| {
             self.counter[f.load(Ordering::Relaxed)].0.fetch_add(add, Ordering::Relaxed);
         });
@@ -121,7 +111,7 @@ impl Stat {
     #[allow(unused_variables)]
     #[inline]
     pub fn clear(&self) {
-        // #[cfg(not(feature="remove_metrics"))]    
+        // #[cfg(not(feature="remove_metrics"))]
         THREAD_INDEX.with(|f| {
             self.counter[f.load(Ordering::Relaxed)].0.store(0, Ordering::Relaxed);
         });
@@ -143,12 +133,7 @@ impl Stat {
     }
 }
 
-
-
-
-
-
-pub struct ArrayPlyStat<'a> (pub &'a [&'a PlyStat]);
+pub struct ArrayPlyStat<'a>(pub &'a [&'a PlyStat]);
 
 impl fmt::Display for ArrayPlyStat<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -156,13 +141,12 @@ impl fmt::Display for ArrayPlyStat<'_> {
     }
 }
 
-
 impl PlyStat {
     pub fn new(name: &str) -> PlyStat {
         let mut vec = Vec::with_capacity(MAX_PLY as usize);
         (0..MAX_PLY).into_iter().for_each(|_| vec.push(AtomicI64::new(0)));
-        Self { 
-            name: name.to_string(), 
+        Self {
+            name: name.to_string(),
             values: vec.into_boxed_slice(),
         }
     }
@@ -174,9 +158,8 @@ impl PlyStat {
         0
     }
 
-
     fn display(f: &mut fmt::Formatter, stats: &[&PlyStat]) -> fmt::Result {
-        let max_len = stats.iter().map(|ps| ps.len() ).max().unwrap();
+        let max_len = stats.iter().map(|ps| ps.len()).max().unwrap();
         Self::fmt_header(f, stats)?;
         Self::fmt_underline(f, stats)?;
         for p in 0..max_len as Ply {
@@ -184,7 +167,6 @@ impl PlyStat {
         }
         Ok(())
     }
-
 
     pub fn add(&self, ply: Ply, add: i64) {
         self.values[ply as usize].fetch_add(add, Ordering::Relaxed);
@@ -203,7 +185,7 @@ impl PlyStat {
     }
 
     fn fmt_header(f: &mut fmt::Formatter, stats: &[&PlyStat]) -> fmt::Result {
-        write!(f, "{:>3} ", "ply")?; 
+        write!(f, "{:>3} ", "ply")?;
         for s in stats.iter() {
             write!(f, "{:>14}", s.name())?;
         }
@@ -212,7 +194,7 @@ impl PlyStat {
     }
 
     fn fmt_underline(f: &mut fmt::Formatter, stats: &[&PlyStat]) -> fmt::Result {
-        write!(f, "{:>3} ", "---")?; 
+        write!(f, "{:>3} ", "---")?;
         for _s in stats.iter() {
             write!(f, "{:>14}", "-------------")?;
         }
@@ -221,7 +203,7 @@ impl PlyStat {
     }
 
     fn fmt_data(f: &mut fmt::Formatter, stats: &[&PlyStat], ply: Ply) -> fmt::Result {
-        write!(f, "{:>3} ", ply)?; 
+        write!(f, "{:>3} ", ply)?;
         for s in stats.iter() {
             write!(f, "{:>14}", s.get(ply),)?;
         }
@@ -229,8 +211,6 @@ impl PlyStat {
         Ok(())
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {

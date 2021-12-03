@@ -1,10 +1,8 @@
-use crate::mv::{Move};
-use crate::variation::{Variation};
+use crate::mv::Move;
+use crate::variation::Variation;
 
-use crate::types::{MAX_PLY, Ply};
+use crate::types::{Ply, MAX_PLY};
 use std::fmt;
-
-
 
 #[derive(Debug, Clone)]
 pub struct PvTable {
@@ -18,11 +16,10 @@ impl Default for PvTable {
     }
 }
 
-
 //
 // Depth reductions mean that we can have terminal 0000's
-// 
-//     changing mv gets put here at right ply level 
+//
+//     changing mv gets put here at right ply level
 //        |
 //        V
 //
@@ -37,8 +34,8 @@ impl Default for PvTable {
 //  8:   f8e7  0000  0000
 //  9: t 0000  d8e7
 //     --------------  propagate_from(ply=10)
-// 10: b d8e7  
-// 
+// 10: b d8e7
+//
 // matrix[0][0..5]
 // matrix[1][0..4]
 // matrix[2][0..3]
@@ -46,7 +43,10 @@ impl Default for PvTable {
 // ... set ply sets m[ply][0]
 impl PvTable {
     pub fn new(max_ply: usize) -> PvTable {
-        let mut pvc = PvTable { matrix: vec![Vec::new(); max_ply], size: 0, };
+        let mut pvc = PvTable {
+            matrix: vec![Vec::new(); max_ply],
+            size: 0,
+        };
         for (r, row) in pvc.matrix.iter_mut().enumerate() {
             row.resize_with(MAX_PLY as usize - r as usize, Move::new_null)
             // row.extend( vec![Move::new(); r+1] );
@@ -90,8 +90,6 @@ impl PvTable {
         }
         res
     }
-
-
 
     pub fn extract_pv(&self) -> Variation {
         self.extract_pv_for(0)

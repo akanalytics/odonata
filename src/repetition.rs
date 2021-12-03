@@ -2,15 +2,15 @@ use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::infra::component::Component;
 use crate::mv::Move;
+use crate::position::Position;
 use crate::types::{Hash, Piece, Repeats};
 use crate::variation::Variation;
-use crate::position::Position;
 // use crate::{debug, logger::LogInit};
-use std::fmt;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(default,deny_unknown_fields)]
+#[serde(default, deny_unknown_fields)]
 pub struct Repetition {
     pub enabled: bool,
     pub avoid_tt_on_repeats: bool,
@@ -60,7 +60,7 @@ impl fmt::Display for Repetition {
 // 2 repetitions before root, 1 after => would create a certain draw -> score as 0
 // 0 repetitions before root, 1 after => score as zero to avoid cycles
 // 1 repetition  before root, 1 after => score as zero to avoid cycles
-// 2 repetitions before root, 0 after => score as normal (but avoid tt?) (otherwise everything looks like a draw) 
+// 2 repetitions before root, 0 after => score as normal (but avoid tt?) (otherwise everything looks like a draw)
 // 0 repetitions before root, 3 after = > score as zero
 
 // a. pos1, pos2, pos3 outside of search => draw, and search returns outcome of draw
@@ -84,7 +84,6 @@ impl fmt::Display for Repetition {
 //
 // dont have Board reference a repetition
 //
-
 
 impl Repetition {
     pub fn new() -> Self {
@@ -110,7 +109,7 @@ impl Repetition {
         self.push_variation(&pos.supplied_variation(), pos.board());
         self.root_index = self.prior_positions.len();
     }
-    
+
     pub fn push_variation(&mut self, moves: &Variation, pre: &Board) {
         if !self.enabled {
             return;
@@ -140,7 +139,8 @@ impl Repetition {
             return Repeats::default();
         }
         Repeats {
-            total: self.prior_positions
+            total: self
+                .prior_positions
                 .iter()
                 .rev()
                 .take_while(|&h| *h != 0)
@@ -157,7 +157,6 @@ impl Repetition {
                 .filter(|&h| *h == b.hash())
                 .count() as u16,
         }
-
     }
 
     pub fn is_repeated(&self, b: &Board) -> bool {
@@ -283,7 +282,14 @@ mod tests {
         let board = pos3.supplied_variation().apply_to(pos3.board());
         engine.new_game();
         engine.set_position(pos3.clone());
-        print!("\n\npos3 = {}\nboard={}\nhash={}\nrep=\n{}\nRepeats{:?}\n", pos3, board, board.hash(), engine.algo.repetition, engine.algo.repetition.count(&board));
+        print!(
+            "\n\npos3 = {}\nboard={}\nhash={}\nrep=\n{}\nRepeats{:?}\n",
+            pos3,
+            board,
+            board.hash(),
+            engine.algo.repetition,
+            engine.algo.repetition.count(&board)
+        );
         print!("rep = {:?}\n", engine.algo.repetition);
         engine.search();
         let res = engine.algo.results_as_position();
@@ -296,7 +302,14 @@ mod tests {
         pos2.set(Tag::SuppliedVariation(var2));
         engine.new_game();
         engine.set_position(pos2.clone());
-        print!("\n\npos2 = {}\nboard={}\nhash={}\nrep=\n{}\nRepeats{:?}\n", pos2, board, board.hash(), engine.algo.repetition, engine.algo.repetition.count(&board));
+        print!(
+            "\n\npos2 = {}\nboard={}\nhash={}\nrep=\n{}\nRepeats{:?}\n",
+            pos2,
+            board,
+            board.hash(),
+            engine.algo.repetition,
+            engine.algo.repetition.count(&board)
+        );
         print!("rep = {:?}\n", engine.algo.repetition);
         engine.search();
         let res = engine.algo.results_as_position();
@@ -309,11 +322,17 @@ mod tests {
         pos1.set(Tag::SuppliedVariation(var1));
         engine.new_game();
         engine.set_position(pos1.clone());
-        print!("\n\npos1 = {}\nboard={}\nhash={}\nrep=\n{}\nRepeats{:?}\n", pos1, board, board.hash(), engine.algo.repetition, engine.algo.repetition.count(&board));
+        print!(
+            "\n\npos1 = {}\nboard={}\nhash={}\nrep=\n{}\nRepeats{:?}\n",
+            pos1,
+            board,
+            board.hash(),
+            engine.algo.repetition,
+            engine.algo.repetition.count(&board)
+        );
         print!("rep = {:?}\n", engine.algo.repetition);
         engine.search();
         let res = engine.algo.results_as_position();
         print!("res1: {}\n", res);
     }
-        
 }

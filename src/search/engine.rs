@@ -1,22 +1,21 @@
 use crate::cache::tt2::TranspositionTable2;
 use crate::infra::component::{Component, State};
+use crate::infra::resources::RESOURCE_DIR;
 use crate::position::Position;
 use crate::search::algo::Algo;
 use crate::search::timecontrol::TimeControl;
 use crate::trace::stat::Stat;
 use crate::tuning::Tuning;
 use crate::utils::Formatting;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::{fmt, mem};
-use std::thread::{self, JoinHandle};
-use std::time::{Duration, Instant};
-use anyhow::{Result, Context};
-use crate::infra::resources::RESOURCE_DIR;
+use anyhow::{Context, Result};
 use figment::providers::{Format, Toml};
 use figment::value::{Dict, Map};
 use figment::{Error, Figment, Metadata, Profile, Provider};
-
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::thread::{self, JoinHandle};
+use std::time::{Duration, Instant};
+use std::{fmt, mem};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -28,7 +27,7 @@ pub struct Engine {
     #[serde(flatten)]
     pub algo: Algo,
 
-    pub tuner: Tuning, 
+    pub tuner: Tuning,
 
     #[serde(skip)]
     pub engine_init_time: Duration,
@@ -36,7 +35,6 @@ pub struct Engine {
     pub search_init_time: Duration,
     #[serde(skip)]
     threads: Vec<JoinHandle<Algo>>,
-
 }
 
 const DEFAULT_CONFIG_FILE: &'static str = "config.toml";
@@ -74,16 +72,8 @@ impl fmt::Display for Engine {
         writeln!(f, "threads          : {}", self.thread_count)?;
         writeln!(f, "shared tt        : {}", self.shared_tt)?;
         writeln!(f, "tuner            : {:?}", self.tuner)?;
-        writeln!(
-            f,
-            "engine init time : {}",
-            Formatting::duration(self.engine_init_time)
-        )?;
-        writeln!(
-            f,
-            "search init time : {}",
-            Formatting::duration(self.search_init_time)
-        )?;
+        writeln!(f, "engine init time : {}", Formatting::duration(self.engine_init_time))?;
+        writeln!(f, "search init time : {}", Formatting::duration(self.search_init_time))?;
         write!(f, "\n[algo]\n{}", self.algo)
     }
 }
@@ -93,20 +83,17 @@ impl Component for Engine {
         use State::*;
         match s {
             NewGame | SetPosition => self.threads.clear(),
-            StartSearch => {},
-            StartDepthIteration(_) => {},
+            StartSearch => {}
+            StartDepthIteration(_) => {}
         }
         self.algo.set_state(s);
         self.tuner.set_state(s);
     }
 
-    fn new_game(&mut self) {
-    }
+    fn new_game(&mut self) {}
 
-    fn new_position(&mut self) {
-    }
+    fn new_position(&mut self) {}
 }
-
 
 impl Provider for Engine {
     fn metadata(&self) -> Metadata {
@@ -125,11 +112,7 @@ impl Provider for Engine {
 
 impl Engine {
     pub fn new() -> Self {
-        let toml = RESOURCE_DIR
-            .get_file("config.toml")
-            .unwrap()
-            .contents_utf8()
-            .unwrap();
+        let toml = RESOURCE_DIR.get_file("config.toml").unwrap().contents_utf8().unwrap();
 
         let toml = Toml::string(toml);
         // let _engine = Self::default();
@@ -139,20 +122,19 @@ impl Engine {
     }
 
     #[must_use]
-    pub fn configment(&mut self, key: &str, value: &str ) -> Result<()> {
-        let mut kvs = HashMap::new(); 
+    pub fn configment(&mut self, key: &str, value: &str) -> Result<()> {
+        let mut kvs = HashMap::new();
         kvs.insert(key.to_string(), value.to_string());
         self.configment_many(kvs)
     }
 
     #[must_use]
-    pub fn configment_many(&mut self, map: HashMap<String, String> ) -> Result<()> {
-        let mut fig = Figment::new()
-            .merge(&*self);
+    pub fn configment_many(&mut self, map: HashMap<String, String>) -> Result<()> {
+        let mut fig = Figment::new().merge(&*self);
 
-        for (k,v) in map.iter() {
+        for (k, v) in map.iter() {
             fig = fig.merge(Toml::string(&format!("{} = {}", k, v)));
-        }    
+        }
         let engine: Engine = fig.extract().context(format!("error in {:?}", map))?;
         let mut tuner = Tuning::default();
         mem::swap(&mut tuner.models_and_outcomes, &mut self.tuner.models_and_outcomes);
@@ -286,7 +268,7 @@ mod tests {
         let text1 = toml::to_string(&engine1).unwrap();
         // eprintln!("toml\n{}", text1);
 
-        let engine2 : Engine = toml::from_str(&text1).unwrap();
+        let engine2: Engine = toml::from_str(&text1).unwrap();
         let _text2 = toml::to_string(&engine2).unwrap();
         // assert_eq!(text1, text2);
 

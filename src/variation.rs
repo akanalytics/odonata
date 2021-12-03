@@ -19,12 +19,9 @@ impl Default for Variation {
     }
 }
 
-
 pub static EMPTY: Variation = Variation { moves: Vec::new() };
 
-
 impl Variation {
-
     #[inline]
     pub fn new() -> Self {
         Self::default()
@@ -36,14 +33,9 @@ impl Variation {
     }
 
     pub fn uci(&self) -> String {
-        self.moves
-            .iter()
-            .map(|mv| mv.uci())
-            .collect::<Vec<String>>()
-            .join(" ")
+        self.moves.iter().map(|mv| mv.uci()).collect::<Vec<String>>().join(" ")
     }
 
-  
     #[inline]
     pub fn set_last_move(&mut self, ply: Ply, mv: &Move) {
         let ply = ply as usize;

@@ -1,10 +1,9 @@
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::iter::*;
-use serde::{Deserialize, Serialize};
-
 
 bitflags! {
-    #[derive(Serialize, Deserialize)]    
+    #[derive(Serialize, Deserialize)]
     #[serde(transparent)]
     pub struct Switches: u16 {
         const NONE = 0;
@@ -46,7 +45,10 @@ impl Switches {
                 'S' => switches |= Self::SAFETY,
                 'C' => switches |= Self::CONTEMPT,
                 'T' => switches |= Self::TEMPO,
-                '-' => { switches = Self::NONE; break},
+                '-' => {
+                    switches = Self::NONE;
+                    break;
+                }
                 'I' => switches |= Self::INSUFFICIENT_MATERIAL,
                 _ => return Err(format!("Invalid character '{}' in eval switches '{}'", ch, s)),
             }
@@ -56,7 +58,10 @@ impl Switches {
 
     #[inline]
     pub fn index(&self) -> usize {
-        Self::all_scoring().iter().position(|s| s == self).expect(&format!("Switches index called on {}", self))
+        Self::all_scoring()
+            .iter()
+            .position(|s| s == self)
+            .expect(&format!("Switches index called on {}", self))
     }
 
     pub fn name(self) -> &'static str {
@@ -126,8 +131,6 @@ impl fmt::Display for Switches {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -149,4 +152,3 @@ mod tests {
         assert_eq!(sw.to_string(), "MBPOWSCTI");
     }
 }
-  

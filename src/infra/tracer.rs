@@ -1,8 +1,5 @@
-
-
 #[derive(Clone, Copy)]
 pub struct NullTracer;
-
 
 #[derive(Clone, Copy)]
 pub struct LoggingTracer;
@@ -11,33 +8,30 @@ pub struct LoggingTracer;
 pub struct FileTracer;
 
 pub trait Tracer {
-    fn trace<D: ?Sized+Traceable>(&self, d: &D) -> &Self;
+    fn trace<D: ?Sized + Traceable>(&self, d: &D) -> &Self;
 }
-
 
 pub trait Traceable {
     fn log(&self, t: &LoggingTracer);
     fn file(&self, t: &FileTracer);
 }
 
-
 impl Tracer for LoggingTracer {
-    fn trace<D: ?Sized+Traceable>(&self, d: &D) -> &LoggingTracer {
+    fn trace<D: ?Sized + Traceable>(&self, d: &D) -> &LoggingTracer {
         d.log(self);
         self
     }
 }
 
 impl Tracer for FileTracer {
-    fn trace<D: ?Sized+Traceable>(&self, d: &D) -> &FileTracer {
+    fn trace<D: ?Sized + Traceable>(&self, d: &D) -> &FileTracer {
         d.file(self);
         self
     }
 }
 
-
 impl Tracer for NullTracer {
-    fn trace<D: ?Sized+Traceable>(&self, _d: &D) -> &NullTracer {
+    fn trace<D: ?Sized + Traceable>(&self, _d: &D) -> &NullTracer {
         self
     }
 }
@@ -60,16 +54,11 @@ impl Traceable for i32 {
     }
 }
 
-
-
 // impl<D: ?Sized> Trace<D> for NullTracer {
 //     fn trace(&self, _s: &D) -> &NullTracer {
 //         self
 //     }
 // }
-
-
-
 
 // impl Trace<i32> for LoggingTracer {
 //     fn trace(&self, i: &i32) -> &LoggingTracer {
@@ -85,10 +74,6 @@ impl Traceable for i32 {
 //     }
 // }
 
-
-
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -100,6 +85,5 @@ mod tests {
 
         let lt = LoggingTracer;
         lt.trace("45=").trace(&45).trace("and 32=").trace(&32).trace("\n");
-
     }
 }

@@ -1,14 +1,13 @@
 use crate::bitboard::bitboard::Bitboard;
 use crate::board::Board;
-use crate::movelist::{MoveList};
-use crate::mv::{Move};
+use crate::movelist::MoveList;
+use crate::mv::Move;
 use crate::types::Color;
 use crate::utils::StringUtils;
-use regex::Regex;
 use once_cell::sync::Lazy;
+use regex::Regex;
 pub struct Parse;
-use anyhow::{Result, bail,anyhow};
-
+use anyhow::{anyhow, bail, Result};
 
 // regex from https://stackoverflow.com/questions/40007937/regex-help-for-chess-moves-san
 // /^([NBRQK])?([a-h])?([1-8])?(x)?([a-h][1-8])(=[NBRQK])?(\+|#)?$|^O-O(-O)?$/
@@ -21,8 +20,9 @@ use anyhow::{Result, bail,anyhow};
 //
 // r"^([NBRQK])?([a-h])?([1-8])?(\-|x)?([a-h][1-8])(=[NBRQ])?(\+|#)?\Z|^O-O(-O)?\Z"
 //
-static REGEX_SAN: Lazy<Regex> = Lazy::new(|| Regex::new(
-    r#"(?x)    # x flag to allow whitespace and comments
+static REGEX_SAN: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r#"(?x)    # x flag to allow whitespace and comments
     ^
     ([PNBRQK])?     # piece - grp(1)  Fix:18/3/21 allow P
     ([a-h])?        # src square file grp(2)
@@ -37,7 +37,9 @@ static REGEX_SAN: Lazy<Regex> = Lazy::new(|| Regex::new(
     |
     ^([a-h][1-8][a-h][1-8][nbrq])\z  # uci promo grp(9)
     "#,
-).unwrap());
+    )
+    .unwrap()
+});
 
 impl Parse {
     pub fn move_san(s: &str, board: &Board) -> Result<Move> {
@@ -58,7 +60,9 @@ impl Parse {
         // strip whitespace
         s = s.replace(" ", "");
 
-        let caps = REGEX_SAN.captures(&s).ok_or(anyhow!("Unable to parse '{}' as an algebraic move", s))?;
+        let caps = REGEX_SAN
+            .captures(&s)
+            .ok_or(anyhow!("Unable to parse '{}' as an algebraic move", s))?;
         // if not match:
         //     raise ValueError(f"Move {orig} is invalid - wrong format")
 
@@ -94,7 +98,7 @@ impl Parse {
         // this is slow but easy to understand. Castling has already been dealt with
         let mut matching_moves = MoveList::new();
         for lm in legal_moves.iter() {
-            // allow UCI moves as well as SAN 
+            // allow UCI moves as well as SAN
             if lm.uci() == s {
                 matching_moves.clear();
                 matching_moves.push(*lm);
@@ -133,7 +137,12 @@ impl Parse {
             bail!("Move {} is invalid - not a legal move for board {}", orig, board.to_fen());
         }
         if matching_moves.len() > 1 {
-            bail!("Move {} is ambiguous - moves {} match. For board {}", orig, matching_moves, board.to_fen());
+            bail!(
+                "Move {} is ambiguous - moves {} match. For board {}",
+                orig,
+                matching_moves,
+                board.to_fen()
+            );
         }
 
         // FIXME: warnings on non-captures, non-checkmates etc
@@ -146,9 +155,9 @@ impl Parse {
 mod tests {
 
     use super::*;
-    use crate::BoardBuf;
     use crate::board::makemove::MoveMaker;
     use crate::catalog::Catalog;
+    use crate::BoardBuf;
 
     #[test]
     fn test_parse_move() {

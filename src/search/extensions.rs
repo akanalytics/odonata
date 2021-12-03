@@ -13,7 +13,7 @@ use super::node::Event;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Extensions {
-    pub enabled: bool, 
+    pub enabled: bool,
     max_extend: Ply,
     gives_check_enabled: bool,
     in_check_enabled: bool,
@@ -77,8 +77,8 @@ impl Algo {
             ext += 1;
         }
         if self.ext.gives_check_enabled && after.is_in_check(after.color_us())
-        ||
-        self.ext.in_check_enabled && before.is_in_check(before.color_us()) {
+            || self.ext.in_check_enabled && before.is_in_check(before.color_us())
+        {
             if n.depth <= self.ext.check_max_depth
                 && after.phase(&self.eval.phaser) <= self.ext.check_max_phase
                 && (!self.ext.check_only_captures || mv.is_capture())
@@ -162,12 +162,7 @@ mod tests {
             results.tags_mut().remove(Tag::BM);
             results.tags_mut().remove(Tag::CE);
             results.tags_mut().remove(Tag::ACN);
-            println!(
-                "{:>12} {:>12} {}",
-                Formatting::u128(nodes),
-                Formatting::u128(node_count),
-                results
-            );
+            println!("{:>12} {:>12} {}", Formatting::u128(nodes), Formatting::u128(node_count), results);
         }
     }
 }

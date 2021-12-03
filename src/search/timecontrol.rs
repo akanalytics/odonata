@@ -1,19 +1,19 @@
-use crate::utils::Formatting;
 use crate::types::{Color, Ply};
+use crate::utils::Formatting;
 use std::fmt;
-use std::time::Duration;
 use std::str::FromStr;
+use std::time::Duration;
 
 /// https://en.wikipedia.org/wiki/Time_control
 ///
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum TimeControl {
-    DefaultTime,         // depth "recommended" by EPD position or otherwise
-    Depth(Ply),         // uci "depth"
+    DefaultTime,          // depth "recommended" by EPD position or otherwise
+    Depth(Ply),           // uci "depth"
     SearchTime(Duration), // uci "movetime"
-    NodeCount(u64),     // uci "nodes"
-    Infinite,           // uci "infinite"
-    MateIn(u32),        // uci "mate"
+    NodeCount(u64),       // uci "nodes"
+    Infinite,             // uci "infinite"
+    MateIn(u32),          // uci "mate"
     RemainingTime {
         our_color: Color,
         wtime: Duration,
@@ -33,7 +33,14 @@ impl fmt::Display for TimeControl {
             TimeControl::NodeCount(max_nodes) => write!(f, "NodeCount({})", Formatting::u128(*max_nodes as u128))?,
             TimeControl::Infinite => write!(f, "Infinite")?,
             TimeControl::MateIn(depth) => write!(f, "MateIn({})", depth)?,
-            TimeControl::RemainingTime { our_color, wtime, btime, winc: _, binc: _, movestogo: _ } => {
+            TimeControl::RemainingTime {
+                our_color,
+                wtime,
+                btime,
+                winc: _,
+                binc: _,
+                movestogo: _,
+            } => {
                 let duration = our_color.chooser_wb(wtime, btime);
                 write!(f, "RemainingTime({})", Formatting::duration(*duration))?;
             }
@@ -41,8 +48,6 @@ impl fmt::Display for TimeControl {
         Ok(())
     }
 }
-
-
 
 impl FromStr for TimeControl {
     type Err = String;
@@ -52,8 +57,6 @@ impl FromStr for TimeControl {
     }
 }
 
-
-
 impl Default for TimeControl {
     fn default() -> Self {
         TimeControl::SearchTime(Duration::from_secs(5))
@@ -61,7 +64,6 @@ impl Default for TimeControl {
 }
 
 impl TimeControl {
-
     pub fn parse(tc: &str) -> Result<Self, String> {
         if tc == "inf" {
             Ok(TimeControl::Infinite)
@@ -76,10 +78,17 @@ impl TimeControl {
         } else if let Some(tc) = tc.strip_prefix("tc=") {
             let time = tc.parse::<u64>().map_err(|e| e.to_string())?;
             let wtime = Duration::from_secs(time);
-            let btime = Duration::from_secs(time); 
-            let winc = Duration::from_secs(0); 
-            let binc = Duration::from_secs(0); 
-            Ok(TimeControl::RemainingTime{ our_color:Color::White, wtime, btime, winc, binc, movestogo:0})
+            let btime = Duration::from_secs(time);
+            let winc = Duration::from_secs(0);
+            let binc = Duration::from_secs(0);
+            Ok(TimeControl::RemainingTime {
+                our_color: Color::White,
+                wtime,
+                btime,
+                winc,
+                binc,
+                movestogo: 0,
+            })
         } else if let Some(tc) = tc.strip_prefix("depth=") {
             let depth = tc.parse::<i32>().map_err(|e| e.to_string())?;
             Ok(TimeControl::Depth(depth))
@@ -90,7 +99,6 @@ impl TimeControl {
             Err(format!("Unable to parse time control {}", tc))
         }
     }
-
 
     pub fn from_remaining_time(d: Duration) -> Self {
         let zero = Duration::default();
@@ -123,9 +131,6 @@ impl TimeControl {
     }
 }
 
-
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -144,7 +149,10 @@ mod tests {
         assert_eq!(TimeControl::parse("nodes=1000".into())?, TimeControl::NodeCount(1000));
         println!("{}", TimeControl::parse("nodes=1000".into())?);
 
-        assert_eq!(TimeControl::parse("st=10.980".into())?, TimeControl::SearchTime(Duration::from_millis(10980)));
+        assert_eq!(
+            TimeControl::parse("st=10.980".into())?,
+            TimeControl::SearchTime(Duration::from_millis(10980))
+        );
         println!("{}", TimeControl::parse("st=10.980".into())?);
 
         assert_eq!(TimeControl::parse("mate=3".into())?, TimeControl::MateIn(3));

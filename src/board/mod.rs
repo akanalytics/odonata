@@ -1,27 +1,25 @@
 use crate::bitboard::bitboard::Bitboard;
-use crate::bitboard::square::Square;
-use crate::board::multiboard::Multiboard;
-use crate::domain::material::Material;
-use crate::board::boardbuf::BoardBuf;
-use crate::cache::hasher::Hasher;
-use std::cell::Cell;
-use crate::types::{Color, Piece, Hash, Ply, Repeats};
 use crate::bitboard::castling::CastlingRights;
+use crate::bitboard::square::Square;
+use crate::board::boardbuf::BoardBuf;
+use crate::board::multiboard::Multiboard;
+use crate::cache::hasher::Hasher;
+use crate::domain::material::Material;
+use crate::types::{Color, Hash, Piece, Ply, Repeats};
+use anyhow::Result;
+use serde::{Serialize, Serializer};
+use serde_with::DeserializeFromStr;
+use std::cell::Cell;
 use std::fmt::{self, Write};
 use std::iter::*;
 use std::str::FromStr;
-use serde::{Serialize, Serializer};
-use serde_with::{DeserializeFromStr};
-use anyhow::Result;
 
 pub mod boardbuf;
+pub mod boardcalcs;
 pub mod makemove;
 pub mod movegen;
-pub mod boardcalcs;
-pub mod rules;
 pub mod multiboard;
-
-
+pub mod rules;
 
 #[derive(Clone, PartialEq, Eq, DeserializeFromStr)]
 pub struct Board {
@@ -40,8 +38,6 @@ pub struct Board {
     // interior mutability (precludes copy trait)
     // moves: MoveList,
 }
-
-
 
 impl Serialize for Board {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -86,17 +82,16 @@ impl Board {
     #[inline]
     pub fn multiboard(&self) -> &Multiboard {
         &self.multiboard
-    } 
-
+    }
 
     #[inline]
     pub fn repetition_count(&self) -> Repeats {
         self.repetition_count.get()
-    } 
+    }
 
     pub fn set_repetition_count(&self, reps: Repeats) {
         self.repetition_count.set(reps);
-    } 
+    }
 
     #[inline]
     fn calculate_internals(&mut self) {
@@ -105,8 +100,7 @@ impl Board {
         self.pinned.set(Bitboard::niche());
         self.threats_to = [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())];
         self.checkers_of = [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())];
-}
-
+    }
 
     #[inline]
     pub fn hash(&self) -> Hash {
@@ -239,7 +233,6 @@ impl Board {
         Material::from_board(self)
     }
 
-
     #[inline]
     pub fn piece_at(&self, sq: Bitboard) -> Piece {
         debug_assert!(sq != Bitboard::EMPTY);
@@ -263,7 +256,7 @@ impl Board {
     }
 
     #[inline]
-    pub fn most_valuable_piece_except_king(&self, region: Bitboard) -> Option<(Piece,Square)> {
+    pub fn most_valuable_piece_except_king(&self, region: Bitboard) -> Option<(Piece, Square)> {
         // we dont count the king here
         for &p in Piece::ALL_BAR_KING.iter().rev() {
             if self.pieces(p).intersects(region) {
@@ -272,7 +265,6 @@ impl Board {
         }
         None
     }
-
 
     // https://www.chessprogramming.org/Color_Flipping
     pub fn color_flip(&self) -> Board {
@@ -285,7 +277,6 @@ impl Board {
         debug_assert!(b.validate().is_ok());
         b
     }
-    
 
     pub fn to_fen(&self) -> String {
         let b = self.clone();
@@ -301,7 +292,11 @@ impl Board {
             fen = fen,
             turn = self.color_us(),
             castle = self.castling(),
-            ep = if self.en_passant().is_empty() { "-".to_string() } else { self.en_passant().uci() },
+            ep = if self.en_passant().is_empty() {
+                "-".to_string()
+            } else {
+                self.en_passant().uci()
+            },
             fifty = self.fifty_halfmove_clock(),
             count = self.fullmove_number()
         )
@@ -323,13 +318,7 @@ impl fmt::Display for Board {
             writeln!(f, "Rep count: {:x}", self.repetition_count().total)?;
             writeln!(f, "White:\n{}\nBlack:\n{}\n", self.white(), self.black())?;
             for &p in Piece::ALL_BAR_NONE.iter() {
-                writeln!(
-                    f,
-                    "Pieces: {}{}\n{}\n",
-                    p.to_upper_char(),
-                    p.to_lower_char(),
-                    self.pieces(p)
-                )?;
+                writeln!(f, "Pieces: {}{}\n{}\n", p.to_upper_char(), p.to_lower_char(), self.pieces(p))?;
             }
             writeln!(f, "Pinned:\n{}\n", self.pinned.get())?;
             writeln!(f, "Checkers of white:\n{}\n", self.checkers_of[Color::White].get())?;
@@ -352,12 +341,12 @@ impl Default for Board {
             turn: Default::default(),
             fifty_clock: Default::default(),
             fullmove_number: 1,
-            repetition_count: Cell::<_>::new(Repeats::default()), 
+            repetition_count: Cell::<_>::new(Repeats::default()),
             threats_to: [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())],
             checkers_of: [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())],
             pinned: Cell::<_>::new(Bitboard::niche()),
             // material: Cell::<_>::new(Material::niche()),
-            hash: 0, 
+            hash: 0,
             // moves: MoveList,
         }
         // b.hash = Hasher::default().hash_board(&b);
@@ -371,27 +360,47 @@ mod tests {
     use crate::catalog::*;
     use crate::globals::constants::*;
 
-
-    
     #[test]
     fn test_serde() {
-        let board1 = Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap().as_board();
-        assert_eq!(serde_json::to_string(&board1).unwrap(), "\"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\""); 
-        assert_eq!(serde_json::from_str::<Board>("\"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\"").unwrap(), board1); 
+        let board1 = Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+            .unwrap()
+            .as_board();
+        assert_eq!(
+            serde_json::to_string(&board1).unwrap(),
+            "\"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\""
+        );
+        assert_eq!(
+            serde_json::from_str::<Board>("\"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\"").unwrap(),
+            board1
+        );
     }
-
 
     #[test]
     fn test_color_flip() {
-        let board1 = Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap().as_board();
-        let board2 = Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1").unwrap().as_board();
-        assert_eq!(board1.color_flip().to_fen(), board2.to_fen(), "{:#}\n{:#}", board1.color_flip(), board2);
+        let board1 = Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+            .unwrap()
+            .as_board();
+        let board2 = Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1")
+            .unwrap()
+            .as_board();
+        assert_eq!(
+            board1.color_flip().to_fen(),
+            board2.to_fen(),
+            "{:#}\n{:#}",
+            board1.color_flip(),
+            board2
+        );
         assert_eq!(board2.color_flip().to_fen(), board1.to_fen());
-    
 
         let board1 = Board::parse_fen("rnb1k2r/pp3ppp/4p3/3pB3/2pPn3/2P1PN2/q1P1QPPP/2KR1B1R b kq - 1 11").unwrap();
         let board2 = Board::parse_fen("2kr1b1r/Q1p1qppp/2p1pn2/2PpN3/3Pb3/4P3/PP3PPP/RNB1K2R w KQ - 1 11").unwrap();
-        assert_eq!(board1.color_flip().to_fen(), board2.to_fen(), "{:#}\n{:#}", board1.color_flip(), board2);
+        assert_eq!(
+            board1.color_flip().to_fen(),
+            board2.to_fen(),
+            "{:#}\n{:#}",
+            board1.color_flip(),
+            board2
+        );
         assert_eq!(board2.color_flip().to_fen(), board1.to_fen());
     }
 
@@ -410,8 +419,9 @@ mod tests {
 
     #[test]
     fn board_bitboards() -> Result<(), String> {
-        let board =
-            Board::parse_piece_placement("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap().as_board();
+        let board = Board::parse_piece_placement("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR")
+            .unwrap()
+            .as_board();
         assert_eq!(board.color_us(), Color::White);
         assert_eq!(board.color_them(), Color::Black);
         // assert_eq!(board.en_passant(), Bitboard::empty());

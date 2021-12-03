@@ -1,9 +1,9 @@
 use crate::bitboard::bitboard::Bitboard;
-use crate::types::Color;
 use crate::bitboard::square::Square;
+use crate::types::Color;
+use anyhow::{bail, Result};
 use std::fmt;
 use std::iter::*;
-use anyhow::{Result, bail};
 
 bitflags! {
     pub struct CastlingRights: u8 {
@@ -47,12 +47,7 @@ impl<T> std::ops::IndexMut<CastlingRights> for [T] {
 impl CastlingRights {
     #[inline]
     pub fn iter() -> &'static [Self] {
-        &[
-            Self::WHITE_KING,
-            Self::WHITE_QUEEN,
-            Self::BLACK_KING,
-            Self::BLACK_QUEEN,
-        ]
+        &[Self::WHITE_KING, Self::WHITE_QUEEN, Self::BLACK_KING, Self::BLACK_QUEEN]
     }
 
     #[inline]
@@ -155,9 +150,7 @@ impl CastlingRights {
 
     #[inline]
     pub fn rights_lost(squares_changed: Bitboard) -> CastlingRights {
-
-
-        // TODO! Optimization: rightsLost = precalc[from] | precalc[to]; 
+        // TODO! Optimization: rightsLost = precalc[from] | precalc[to];
         let mut loss = CastlingRights::NONE;
         if squares_changed.intersects(Self::rook_and_king_squares()) {
             if squares_changed.intersects(Bitboard::FILE_E) {

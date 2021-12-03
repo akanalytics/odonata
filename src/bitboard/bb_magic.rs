@@ -41,7 +41,7 @@ use crate::bitboard::bb_sliders::SlidingPieceAttacks;
 use crate::bitboard::bitboard::Bitboard;
 use crate::bitboard::square::Square;
 // use once_cell::sync::Lazy;
-use static_init::{dynamic};
+use static_init::dynamic;
 
 // #[ctor]
 // fn init_module() {
@@ -75,13 +75,11 @@ static STATIC_INSTANCE: Box<Magic> = Magic::new();
 // static STATIC_INSTANCE: Box<Magic> = Magic::new();
 
 impl Magic {
-        
     // doesnt impl Default as too large to copy by value
     #[inline]
     pub fn default() -> &'static Self {
         &STATIC_INSTANCE
     }
-
 }
 
 #[allow(non_snake_case)]
@@ -203,12 +201,10 @@ const WHITE: i32 = 0;
 const BLACK: i32 = 1;
 
 impl SlidingPieceAttacks for Magic {
-
     #[inline]
     fn bishop_attacks(&self, occ: Bitboard, sq: Square) -> Bitboard {
         let occ = occ.bits();
-        let bits = self.MagicTable[(BISHOP_OFFSET[sq]
-            + (((occ & self.BishopMask[sq]).wrapping_mul(BISHOP_MAGIC[sq])) >> 55) as usize)];
+        let bits = self.MagicTable[(BISHOP_OFFSET[sq] + (((occ & self.BishopMask[sq]).wrapping_mul(BISHOP_MAGIC[sq])) >> 55) as usize)];
         Bitboard::from_u64(bits)
     }
 
@@ -216,8 +212,7 @@ impl SlidingPieceAttacks for Magic {
     fn rook_attacks(&self, occ: Bitboard, sq: Square) -> Bitboard {
         let occ = occ.bits();
         // debug_assert!(sq >= 0 && sq <= 63);
-        let bits = self.MagicTable
-            [(RookOffset[sq] + (((occ & self.RookMask[sq]).wrapping_mul(ROOK_MAGIC[sq])) >> 52) as usize)];
+        let bits = self.MagicTable[(RookOffset[sq] + (((occ & self.RookMask[sq]).wrapping_mul(ROOK_MAGIC[sq])) >> 52) as usize)];
         Bitboard::from_u64(bits)
     }
 
@@ -227,8 +222,6 @@ impl SlidingPieceAttacks for Magic {
 }
 
 impl Magic {
-
-
     // #[inline]
     // pub fn pawn_attacks(&self, side: i32, sq: i32) -> u64 {
     //     debug_assert!(sq >= 0 && sq <= 63);
@@ -241,8 +234,6 @@ impl Magic {
     //     // debug_assert!(sq >= 0 && sq <= 63);
     //     return self.rook_attacks(occ, sq) | self.bishop_attacks(occ, sq);
     // }
-
-
 
     // Steffan Westcott's innovation.
     #[inline]
@@ -411,7 +402,6 @@ impl Magic {
     //     return;
     // }
 
-
     fn new() -> Box<Magic> {
         let mut magic = Box::new(Magic {
             MagicTable: [0; 89524],
@@ -448,8 +438,7 @@ impl Magic {
             magic.BishopMask[sq] = Self::calc_bishop_mask(sq as i32);
 
             loop {
-                let i = BISHOP_OFFSET[sq]
-                    + (((b & magic.BishopMask[sq]).wrapping_mul(BISHOP_MAGIC[sq])) >> 55) as usize;
+                let i = BISHOP_OFFSET[sq] + (((b & magic.BishopMask[sq]).wrapping_mul(BISHOP_MAGIC[sq])) >> 55) as usize;
                 magic.MagicTable[i] = Self::calc_bishop_attacks(sq as i32, b);
                 b = Self::snoob(magic.BishopMask[sq], b);
                 if b == 0 {
@@ -464,8 +453,7 @@ impl Magic {
             magic.RookMask[sq] = Self::calc_rook_mask(sq as i32);
 
             loop {
-                let i =
-                    RookOffset[sq] + (((b & magic.RookMask[sq]).wrapping_mul(ROOK_MAGIC[sq])) >> 52) as usize;
+                let i = RookOffset[sq] + (((b & magic.RookMask[sq]).wrapping_mul(ROOK_MAGIC[sq])) >> 52) as usize;
                 magic.MagicTable[i] = Self::calc_rook_attacks(sq as i32, b);
                 b = Self::snoob(magic.RookMask[sq], b);
                 if b == 0 {
@@ -493,8 +481,8 @@ impl Magic {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bitboard::bb_sliders::SlidingPieceAttacks;
     use crate::bitboard::bb_classical::ClassicalBitboard;
+    use crate::bitboard::bb_sliders::SlidingPieceAttacks;
     use crate::bitboard::bitboard::Bitboard;
     use crate::globals::constants::*;
 
@@ -539,18 +527,8 @@ mod tests {
 
         for sq in Bitboard::all().squares() {
             let occ = b5 | f3 | g4 | h4;
-            assert_eq!(
-                mg.bishop_attacks(occ, sq),
-                cb.bishop_attacks(occ, sq),
-                "square {:?}",
-                sq.as_bb()
-            );
-            assert_eq!(
-                mg.rook_attacks(occ, sq),
-                cb.rook_attacks(occ, sq),
-                "square {:?}",
-                sq.as_bb()
-            );
+            assert_eq!(mg.bishop_attacks(occ, sq), cb.bishop_attacks(occ, sq), "square {:?}", sq.as_bb());
+            assert_eq!(mg.rook_attacks(occ, sq), cb.rook_attacks(occ, sq), "square {:?}", sq.as_bb());
         }
     }
 
@@ -575,12 +553,7 @@ mod tests {
             for d in sq.diag().power_set_iter() {
                 for ad in sq.anti_diag().power_set_iter() {
                     let occ = d | ad;
-                    assert_eq!(
-                        mg.bishop_attacks(occ, sq),
-                        cb.bishop_attacks(occ, sq),
-                        "square {:?}",
-                        sq.as_bb()
-                    );
+                    assert_eq!(mg.bishop_attacks(occ, sq), cb.bishop_attacks(occ, sq), "square {:?}", sq.as_bb());
                 }
             }
         }

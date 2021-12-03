@@ -1,13 +1,12 @@
 use crate::bitboard::bitboard::Bitboard;
+use crate::bitboard::castling::CastlingRights;
 use crate::board::boardbuf::BoardBuf;
 use crate::board::Board;
 use crate::globals::constants::*;
 use crate::position::Position;
 use crate::tags::Tag;
-use crate::bitboard::castling::CastlingRights;
+use serde::{Deserialize, Serialize};
 use std::fmt;
-use serde::{Serialize, Deserialize};
-
 
 pub struct Catalog;
 
@@ -35,17 +34,14 @@ pub enum CatalogSuite {
     ExampleGame,
 }
 
-
 impl fmt::Display for CatalogSuite {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
     }
 }
 
-
 impl Catalog {
-    pub const STARTING_POSITION_FEN: &'static str =
-        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    pub const STARTING_POSITION_FEN: &'static str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
     pub fn starting_board() -> Board {
         Board::parse_fen(Self::STARTING_POSITION_FEN).unwrap().as_board()
@@ -188,15 +184,11 @@ r1r5/2N1n1kb/2nB1b1p/3p2p1/6q1/P2pQ3/3N1PPP/1RR3K1 b - - 11 37 acd 6;
 8/5r1k/7p/5qp1/8/P2p2P1/6KP/8 b - - 5 61 acd 1;
 "#;
         // final mate position
-        // 8/5r1k/7p/6p1/8/P2p2P1/6KP/5q2 w - - 6 62 
+        // 8/5r1k/7p/6p1/8/P2p2P1/6KP/5q2 w - - 6 62
 
         let positions = Position::parse_many_epd(str.lines()).unwrap();
         positions
     }
-
-
-
-
 
     pub fn white_starting_position() -> Board {
         // FIXME: set calls
@@ -215,7 +207,6 @@ r1r5/2N1n1kb/2nB1b1p/3p2p1/6q1/P2pQ3/3N1PPP/1RR3K1 b - - 11 37 acd 6;
             .unwrap()
             .as_board()
     }
-
 
     pub fn positions(suite: CatalogSuite) -> Vec<Position> {
         match suite {
@@ -237,8 +228,7 @@ r1r5/2N1n1kb/2nB1b1p/3p2p1/6q1/P2pQ3/3N1PPP/1RR3K1 b - - 11 37 acd 6;
             // CatalogSuite::MateIn4 => Self::perft(),
             CatalogSuite::Bench => Self::bench(),
             CatalogSuite::ExampleGame => Self::example_game(),
-            _ => Vec::new()
-
+            _ => Vec::new(),
         }
     }
 
@@ -291,7 +281,7 @@ K7/7r/8/8/8/8/8/rr5k w - - 0 1
         Position::parse_many_epd(strs).unwrap()
     }
 
-    pub fn pins() ->  Vec<Position> {
+    pub fn pins() -> Vec<Position> {
         let str = r#"
 k6b/8/n4N2/8/Rr1K1P1b/2R5/8/q7 w - - 0 1 id "PIN.01"; c0 "Pins"; Sq c3 f6;
 k2r4/8/3B4/3B4/3KQr2/5n2/8/8 w - - 0 1 id "PIN.02"; c0 "Pins"; Sq e4;
@@ -300,8 +290,7 @@ k2r4/8/3B4/3B4/3KQr2/5n2/8/8 w - - 0 1 id "PIN.02"; c0 "Pins"; Sq e4;
         positions
     }
 
-
-    pub fn recogs() ->  Vec<Position> {
+    pub fn recogs() -> Vec<Position> {
         let str = r#"
 8/NN6/8/8/8/2K2nk1/4P3/8 w - - 0 1; id 'RECOG.01'; am e2f3; am exf3; c0 'white shouldnt take knight as recapture of pawn makes it KNN v k';
 k7/1p6/3N4/8/8/8/6NB/K7 w - - 5 1; id 'RECOG.02'; bm Nxb7; c0 'white should take pawn to leave winning KBN v k';
@@ -313,9 +302,8 @@ k1K5/8/8/2p5/8/6B1/5B2/8 w - - 0 1;  id 'RECOG.04'; bm Bxc5; c0 'white should fo
         positions
     }
 
-
     // given in UCI format so that we dont need a working "legal moves" to parse
-    pub fn moves() ->  Vec<Position> {
+    pub fn moves() -> Vec<Position> {
         let str = concat!(r#"
 8/8/p7/8/8/P7/8/8 w - - 0 1 id "LEGAL.01"; c0 "Pawn push (w)"; c1 "a3a4";
 8/8/p7/8/8/P7/8/8 b - - 0 1 id "LEGAL.02"; c0 "Pawn push (b)"; c1 "a6a5";
@@ -366,7 +354,6 @@ r3k2r/1P6/1N3P2/2Pp4/3QP2Q/5B2/8/R3K2R w KQkq d6 0 1 id "MO.01"; c0 "Promos";
         positions
     }
 
-
     // FIXME! QS.10 - recaptures
     pub fn quiesce() -> Vec<Position> {
         let str = r#"
@@ -385,8 +372,8 @@ k7/p7/1p6/P1B5/8/8/8/K7 w - - 0 1 acd 0; pv; id QS.11; c0 'capture then bad reca
 r2qkb1r/pp2nNpp/3p4/2pN2B1/2BnP3/3P4/PPP2PPP/R2bK2R b KQkq - 1 1 acd 0; pv ; c1 Kxf7 Rxd1 Nxc2+ Ke2; id QS.90; c0 'from mate in 2 - mates not checked in qsearch';
 2b1k3/3r4/3b4/3p4/8/8/3Q4/R3K3 w - - 0 1 acd 0; id QS.91; pv Qxd5; c0 'qsearch fail!'; c1 'chess.stackexchange.com/questions/29602';
 "#;
-// rnb1k2r/pp3ppp/4p3/q2p4/1bpPnB2/2N1PN2/PPPQ1PPP/2KR1B1R w kq - 1 9 "QS.01"; c0 "xray"; c1 "https://lichess.org/PqvjbdtB#16";
-// rnb1k2r/pp3ppp/4p3/3pB3/2pPn3/2P1PN2/q1P1QPPP/2KR1B1R b kq - 1 11 "QS.02"; c0 "bug?";
+        // rnb1k2r/pp3ppp/4p3/q2p4/1bpPnB2/2N1PN2/PPPQ1PPP/2KR1B1R w kq - 1 9 "QS.01"; c0 "xray"; c1 "https://lichess.org/PqvjbdtB#16";
+        // rnb1k2r/pp3ppp/4p3/3pB3/2pPn3/2P1PN2/q1P1QPPP/2KR1B1R b kq - 1 11 "QS.02"; c0 "bug?";
         let positions = Position::parse_many_epd(str.lines()).unwrap();
         positions
     }
@@ -418,12 +405,6 @@ rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 id DR.04; sv 1. d4 Nf6 
         let positions = Position::parse_many_epd(str.lines()).unwrap();
         positions
     }
-    
-    
-    
-
-
-
 
     // TESTSUITE http://www.utzingerk.com/test.htm
     pub fn bratko_kopec() -> Vec<Position> {
@@ -645,7 +626,7 @@ r1q2r1k/p1ppb1p1/1p2p1Qp/3n3P/3PN3/2P1B3/PP3PP1/3R1RK1 w - - bm Bxh6; id "11.IQ.
 r4rk1/pp2qpp1/2p1bn1p/8/1bP4Q/5N1P/PPB2PP1/R1BR2K1 w - - bm Bxh6; id "11.IQ.1263";
 "#;
         let positions = Position::parse_many_epd(str.lines()).unwrap();
-        positions    
+        positions
     }
 
     pub fn win_at_chess() -> Vec<Position> {
@@ -955,65 +936,51 @@ b2b1r1k/3R1ppp/4qP2/4p1PQ/4P3/5B2/4N1K1/8 w - - bm g6; id "WAC.300";
         positions
     }
 
-
     pub fn mate_in_2() -> Vec<Position> {
         // http://wtharvey.com/m8n2.txt
         let strs = &[
             "r2qkb1r/pp2nppp/3p4/2pNN1B1/2BnP3/3P4/PPP2PPP/R2bK2R w KQkq - 1 1
             pv 1. Nf6+ gxf6 2. Bxf7#;
             id 'Henry Buckle vs NN, London, 1840';",
-
             "r3k2r/p3bpp1/2q1p1b1/1ppPP1B1/3n3P/5NR1/PP2NP2/K1QR4 b kq - 0 1
             pv 1. .. Nb3+ 2. axb3 Qa6#;
             id 'Alexander Areshchenko vs Sergei Zhigalko, Kiev, 6/6/2013';",
-
             "4kb1r/p2n1ppp/4q3/4p1B1/4P3/1Q6/PPP2PPP/2KR4 w k - 1 0
             id 'Paul Morphy vs Duke Isouard, Paris, 1858';
             pv 1. Qb8+ Nxb8 2. Rd8#;",
-
             "r1b2k1r/ppp1bppp/8/1B1Q4/5q2/2P5/PPP2PPP/R3R1K1 w - - 1 0
             id 'Johannes Zukertort vs Adolf Anderssen, Breslau, 1865';
             pv 1. Qd8+ Bxd8 2. Re8#;",
-
             "5rkr/pp2Rp2/1b1p1Pb1/3P2Q1/2n3P1/2p5/P4P2/4R1K1 w - - 1 0
             id 'Gustav Neumann vs Carl Mayet, Berlin, 1866';
             pv 1. Qxg6+ fxg6 2. Rg7#;",
-
             // multiple pv
             // "1r1kr3/Nbppn1pp/1b6/8/6Q1/3B1P2/Pq3P1P/3RR1K1 w - - 1 0
             // id 'Joseph Blackburne vs Martin, England, 1876';
             // pv 1. Qxd7+ Kxd7 2. Bb5#;,
             // pv0 1. Qxd7+ Kxd7 2. Bf5#;",
-
             "5rk1/1p1q2bp/p2pN1p1/2pP2Bn/2P3P1/1P6/P4QKP/5R2 w - - 1 0
             id 'Wilfried Paulsen vs Adolf Anderssen, Frankfurt, 1878';
             pv 1. Qxf8+ Bxf8 2. Rxf8#;",
-
             "r1nk3r/2b2ppp/p3b3/3NN3/Q2P3q/B2B4/P4PPP/4R1K1 w - - 1 0
             id 'Joseph Blackburne vs Smith, Simul, 1882';
             pv 1. Qd7+ Bxd7 2. Nxf7#;",
-
             "r4br1/3b1kpp/1q1P4/1pp1RP1N/p7/6Q1/PPB3PP/2KR4 w - - 1 0
             id 'Wilhelm Steinitz vs David Sands, New York, 1887';
             pv 1. Qg6+ hxg6 2. fxg6;",
-
             "r1b2k1r/ppppq3/5N1p/4P2Q/4PP2/1B6/PP5P/n2K2R1 w - - 1 0
             id 'Wilhelm Steinitz vs Albert Hodges, New York, 1891';
             pv 1. Qxh6+ Rxh6 2. Rg8# ;",
-
             "6k1/pp4p1/2p5/2bp4/8/P5Pb/1P3rrP/2BRRN1K b - - 0 1
             pv 1... Rg1+ 2. Kxg1 Rxf1#;
             id 'James Mason vs Georg Marco, Leipzig, 1894';",
-            
             "rnbqkbn1/ppppp3/7r/6pp/3P1p2/3BP1B1/PPP2PPP/RN1QK1NR w - - 1 0
             pv 1. Qxh5+ Rxh5 2. Bg6#;
             id 'Frank Teed vs Eugene Delmar, New York, 1896';",
-            
             // blacks reply not forced
             // "r2qrb2/p1pn1Qp1/1p4Nk/4PR2/3n4/7N/P5PP/R6K w - - 1 0
             // pv 1. Ne7 Nxf5 2. Qg6#;
             // id 'Wilhelm Steinitz vs Herbert Trenchard, Vienna, 1898';",
-            
             "8/2r5/1k5p/1pp4P/8/K2P4/PR2QB2/2q5 b - - 0 1
             pv 1... Qc3+ 2. Rb3 Ra7#;
             id 'James Mason vs Emanuel Lasker, London, 1899';",
@@ -1034,7 +1001,6 @@ b2b1r1k/3R1ppp/4qP2/4p1PQ/4P3/5B2/4N1K1/8 w - - bm g6; id "WAC.300";
         ]
     }
 
-
     pub fn mate_in_4() -> Vec<Position> {
         let str = r#"
 2k5/7Q/8/8/8/3K4/8/8 w - - 3 1 id 'KQ vs k'; dm 4;             
@@ -1042,7 +1008,6 @@ b2b1r1k/3R1ppp/4qP2/4p1PQ/4P3/5B2/4N1K1/8 w - - bm g6; id "WAC.300";
         let positions = Position::parse_many_epd(str.lines()).unwrap();
         positions
     }
-
 
     pub fn perft_kiwipete() -> (Board, Vec<u64>) {
         // https://www.chessprogramming.org/Perft_Results
@@ -1069,7 +1034,9 @@ b2b1r1k/3R1ppp/4qP2/4p1PQ/4P3/5B2/4N1K1/8 w - - bm g6; id "WAC.300";
         let mut vec = Vec::new();
         // https://www.chessprogramming.org/Perft_Results
         vec.push((
-            Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap().as_board(),
+            Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+                .unwrap()
+                .as_board(),
             vec![1, 20, 400, 8902, 197_281, 4_865_609],
         ));
         vec.push(Self::perft_kiwipete());
@@ -1098,7 +1065,9 @@ b2b1r1k/3R1ppp/4qP2/4p1PQ/4P3/5B2/4N1K1/8 w - - bm g6; id "WAC.300";
             vec![1, 6, 264, 9467, 422_333, 15_833_292, 706_045_033],
         ));
         vec.push((
-            Board::parse_fen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8").unwrap().as_board(),
+            Board::parse_fen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8")
+                .unwrap()
+                .as_board(),
             vec![1, 44, 1486, 62379, 2_103_487, 89_941_194],
         ));
         vec.push((
@@ -1116,28 +1085,22 @@ b2b1r1k/3R1ppp/4qP2/4p1PQ/4P3/5B2/4N1K1/8 w - - bm g6; id "WAC.300";
         vec
     }
 
-
     pub fn bench() -> Vec<Position> {
         Self::bratko_kopec()
     }
-
-
-
-
-
 
     // logic for chess960 starting positions
     // http://www.russellcottrell.com/Chess/Chess960.htm
     //
     // Bw = n mod 4
     // n = floor(n/4)
-    //  
+    //
     // Bb = n mod 4
     // n = floor(n/4)
     //
     // Q = n mod 6
     // n = floor(n/6)
-    //  
+    //
     // N2 = n + (3-N1)(4-N1)/2 - 5  where N1<N2, 0 <= N1 <= 3, 1 <= N2 <= 4
     //
     pub fn chess960(id: u32) -> Position {
@@ -1154,15 +1117,15 @@ b2b1r1k/3R1ppp/4qP2/4p1PQ/4P3/5B2/4N1K1/8 w - - bm g6; id "WAC.300";
         let mut n1 = 0;
         let mut n2;
         loop {
-            n2 = n + (3-n1)*(4-n1)/2 -5;
+            n2 = n + (3 - n1) * (4 - n1) / 2 - 5;
             if 1 <= n2 && n2 <= 4 && n1 < n2 {
                 break;
             }
-            n1 += 1;  
+            n1 += 1;
         }
         // println!("chess960: n1, n2, bw, bb, q {} {} {} {} {}", n1, n2, bw, bb, q);
         // now work out actual squares
-        let mut chars = vec!['.';8];
+        let mut chars = vec!['.'; 8];
         let bw = bw * 2 + 1;
         let bb = bb * 2;
         chars[bw] = 'B';
@@ -1189,12 +1152,7 @@ b2b1r1k/3R1ppp/4qP2/4p1PQ/4P3/5B2/4N1K1/8 w - - bm g6; id "WAC.300";
         pos.set(Tag::Id(format!("Chess960(SP{})", id)));
         pos
     }
-
 }
-
-
-
-
 
 #[cfg(test)]
 mod tests {
@@ -1203,21 +1161,21 @@ mod tests {
 
     #[test]
     fn test_serde() {
-        assert_eq!(serde_json::to_string(&CatalogSuite::WinAtChess).unwrap(), r#""WinAtChess""#); 
+        assert_eq!(serde_json::to_string(&CatalogSuite::WinAtChess).unwrap(), r#""WinAtChess""#);
     }
 
     #[test]
     fn test_catalog_wac() {
         let epds = Catalog::win_at_chess();
-        assert_eq!( epds.len(), 300);
-        assert_eq!( epds[0].id().ok(), Some("WAC.001"));
+        assert_eq!(epds.len(), 300);
+        assert_eq!(epds[0].id().ok(), Some("WAC.001"));
     }
 
     #[test]
     fn test_catalog_bratko_kopec() {
         let epds = Catalog::bratko_kopec();
-        assert_eq!( epds.len(), 24);
-        assert_eq!( epds[0].id().ok(), Some("BK.01"));
+        assert_eq!(epds.len(), 24);
+        assert_eq!(epds[0].id().ok(), Some("BK.01"));
     }
 
     #[test]
@@ -1237,6 +1195,4 @@ mod tests {
         set.insert(Catalog::starting_board().hash()); // add a duplicate
         assert_eq!(set.len(), 960);
     }
-
-
 }

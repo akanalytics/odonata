@@ -5,11 +5,11 @@ use crate::bitboard::precalc::BitboardDefault;
 use crate::bitboard::square::Square;
 use crate::board::multiboard::Multiboard;
 use crate::board::Board;
+use crate::domain::material::Material;
 use crate::eval::score::Score;
 use crate::eval::switches::Switches;
 use crate::eval::weight::Weight;
 use crate::globals::constants::{FILE_D, FILE_E};
-use crate::domain::material::Material;
 use crate::types::Color;
 use crate::types::Piece;
 use crate::utils::Formatting;
@@ -51,8 +51,8 @@ pub struct ModelSide {
     pub rooks_on_open_files: i32,
     pub doubled_rooks: i32,
     pub doubled_rooks_open_file: i32,
-    pub enemy_pawns_on_rook_rank: i32, 
-    pub rooks_behind_passer: i32, // passed pawn with a rook behind 
+    pub enemy_pawns_on_rook_rank: i32,
+    pub rooks_behind_passer: i32, // passed pawn with a rook behind
 
     pub queens_on_open_files: i32,
     pub queen_early_develop: i32,
@@ -69,8 +69,8 @@ pub struct ModelSide {
     pub passers_on_rim: i32,    // files a & h
     pub blockaded: i32,         // enemy in front of pawn
     pub blockaded_passers: i32, // passed pawn with enemy right in front
-    pub space: i32, // empty squares behind rammed pawns
-    pub rammed_pawns: i32, 
+    pub space: i32,             // empty squares behind rammed pawns
+    pub rammed_pawns: i32,
 
     // king safety
     pub king_tropism_d1: i32,
@@ -92,7 +92,6 @@ pub struct ModelSide {
     pub defended_non_pawn: i32,
     pub xrayed: i32,
     // pub mv: ArrayVec<(Piece, i32), 32>,
-
     pub attacks: [[i32; Piece::ALL.len()]; Piece::ALL.len()],
     pub defends: [[i32; Piece::ALL.len()]; Piece::ALL.len()],
 
@@ -146,9 +145,7 @@ impl ExplainScorer {
     pub fn as_csv(&self, line: ReportLine) -> String {
         let mut output = String::new();
         for (i, _sw) in Switches::all_scoring().iter().enumerate() {
-            let vec = vec![
-                &self.mat, &self.pos, &self.mob, &self.paw, &self.saf, &self.con, &self.tem,
-            ][i];
+            let vec = vec![&self.mat, &self.pos, &self.mob, &self.paw, &self.saf, &self.con, &self.tem][i];
             for (attr, w, b, wt) in vec {
                 let (attr, w, b, _wt) = (attr, *w, *b, *wt);
                 let field_s = match line {
@@ -247,9 +244,7 @@ impl fmt::Display for ExplainScorer {
             "attr", "w", "w mg", "w eg", "int", "mg", "eg", "b", "b mg", "b eg", "wt"
         )?;
         for (i, sw) in Switches::all_scoring().iter().enumerate() {
-            let vec = vec![
-                &self.mat, &self.pos, &self.mob, &self.paw, &self.saf, &self.con, &self.tem,
-            ][i];
+            let vec = vec![&self.mat, &self.pos, &self.mob, &self.paw, &self.saf, &self.con, &self.tem][i];
             for (attr, w, b, wt) in vec {
                 let (attr, w, b, wt) = (attr, *w, *b, *wt);
                 writeln!(
@@ -344,10 +339,7 @@ pub struct ModelScore {
 
 impl ModelScore {
     pub fn new(phase: i32) -> Self {
-        Self {
-            phase,
-            ..Self::default()
-        }
+        Self { phase, ..Self::default() }
     }
 
     pub fn as_f32(&self) -> f32 {
@@ -431,7 +423,7 @@ impl Model {
             mat: material,
             white: ModelSide::from_board(b, Color::White, &material, endgame, switches),
             black: ModelSide::from_board(b, Color::Black, &material, endgame, switches),
-            endgame, 
+            endgame,
         }
     }
 }
@@ -482,7 +474,7 @@ impl ModelSide {
         //     + m.counts_piece(Piece::Queen) * Piece::Queen.centipawns();
         // net *= c.chooser_wb(1, -1);
         // if net > 0 & has_pawns {
-        //     lead = net 
+        //     lead = net
         // }
         if eg.try_winner() == Some(c.opposite()) {
             // c = losing colour - the winning side doesnt get a score (just the negative of the loser)
@@ -491,13 +483,13 @@ impl ModelSide {
                 BishopKnightVsKing(_) => {
                     self.endgame_metric1 = 4 * Self::king_distance_to_bishops_corner(b, c);
                     self.endgame_metric2 = 1 * Self::king_distance(b);
-                },
+                }
 
                 TwoBishopsOppositeColorSquares(_) | KingMajorsVsKing(_) => {
                     self.endgame_metric1 = 2 * Self::king_distance_to_side(b, c);
                     self.endgame_metric2 = 1 * Self::king_distance(b);
                 }
-                _ => {},
+                _ => {}
             }
         }
     }
@@ -517,8 +509,8 @@ impl ModelSide {
         if k.popcount() == 1 {
             let r = k.square().rank_index() as i32;
             let f = k.square().file_index() as i32;
-            let m1 = std::cmp::min(r,f);
-            let m2 = std::cmp::min(7-r,7-f);
+            let m1 = std::cmp::min(r, f);
+            let m2 = std::cmp::min(7 - r, 7 - f);
             std::cmp::min(m1, m2)
         } else {
             0
@@ -548,7 +540,6 @@ impl ModelSide {
         }
     }
 
-
     #[inline]
     fn init_position(&mut self, b: &Board, c: Color, m: &Material) {
         let us = b.color(c);
@@ -556,11 +547,7 @@ impl ModelSide {
         // fianchetto (short)
         const W_BISHOP: Bitboard = Bitboard::G2;
         const W_KING: Bitboard = Bitboard::F1.or(Bitboard::G1).or(Bitboard::H1);
-        const W_PAWNS: Bitboard = Bitboard::F2
-            .or(Bitboard::G3)
-            .or(Bitboard::H2)
-            .or(Bitboard::H3)
-            .or(Bitboard::H4);
+        const W_PAWNS: Bitboard = Bitboard::F2.or(Bitboard::G3).or(Bitboard::H2).or(Bitboard::H3).or(Bitboard::H4);
         const W_NO_PAWNS: Bitboard = Bitboard::F3;
 
         const B_BISHOP: Bitboard = W_BISHOP.flip_vertical();
@@ -595,8 +582,7 @@ impl ModelSide {
         if (us & b.queens() & Bitboard::FILE_D & Bitboard::PROMO_RANKS).is_empty() {
             self.queen_early_develop = (us
                 & Bitboard::PROMO_RANKS
-                & ((b.bishops() & (Bitboard::FILE_C.or(Bitboard::FILE_F)))
-                    | (b.knights() & (Bitboard::FILE_B.or(Bitboard::FILE_G)))))
+                & ((b.bishops() & (Bitboard::FILE_C.or(Bitboard::FILE_F))) | (b.knights() & (Bitboard::FILE_B.or(Bitboard::FILE_G)))))
             .popcount();
         }
         // for &p in &Piece::ALL_BAR_NONE {
@@ -689,11 +675,9 @@ impl ModelSide {
         let bb = BitboardDefault::default();
         let us = b.color(c);
         let open_files = bb.open_files(b.pawns());
-        self.doubled_rooks = (self.has_rook_pair
-            && (b.rooks() & us).first_square().file_index() == (b.rooks() & us).last_square().file_index())
-            as i32;
-        self.doubled_rooks_open_file =
-            (self.doubled_rooks == 1 && (open_files & b.rooks() & us).popcount() >= 2) as i32;
+        self.doubled_rooks =
+            (self.has_rook_pair && (b.rooks() & us).first_square().file_index() == (b.rooks() & us).last_square().file_index()) as i32;
+        self.doubled_rooks_open_file = (self.doubled_rooks == 1 && (open_files & b.rooks() & us).popcount() >= 2) as i32;
         self.rooks_on_open_files = (open_files & us & b.rooks()).popcount();
         self.queens_on_open_files = (open_files & us & b.queens()).popcount();
         let their = c.opposite();
@@ -773,8 +757,7 @@ impl ModelSide {
             self.non_pawn_defended_moves += piece_non_pawn_defended_moves;
 
             if k.any() {
-                self.attacks_on_opponent_king_area +=
-                    (our_raw_attacks & bb.within_chebyshev_distance_inclusive(ksq, 1)).popcount();
+                self.attacks_on_opponent_king_area += (our_raw_attacks & bb.within_chebyshev_distance_inclusive(ksq, 1)).popcount();
             }
             if p == Piece::Knight {
                 // knight forks
@@ -794,8 +777,7 @@ impl ModelSide {
                 // treat the piece as a pawn and make sure its attack span is clear of enemy pawns
                 // and is on enemy half of board
                 if bb.pawn_attack_span(c, sq).disjoint(their_p)
-                    && ((sq.rank_index() >= 4 && c == Color::White)
-                        || (sq.rank_index() <= 4 && c == Color::Black))
+                    && ((sq.rank_index() >= 4 && c == Color::White) || (sq.rank_index() <= 4 && c == Color::Black))
                     && sq.is_in(our_pa)
                 {
                     self.knight_outposts += (p == Piece::Knight) as i32;

@@ -1,16 +1,15 @@
 use crate::board::Board;
-use crate::mv::Move;
 use crate::eval::score::Score;
+use crate::mv::Move;
 use crate::search::node::Node;
 use crate::types::{Color, Ply};
 use std::fmt;
 
-#[derive(Clone,Debug)]
+#[derive(Clone, Debug)]
 pub struct Debug {
     board: Board,
     items: Vec<String>,
 }
-
 
 impl Board {
     pub fn debug(&self) -> Debug {
@@ -33,12 +32,11 @@ impl Debug {
     }
 
     fn append_score(&mut self, score: Score) -> &mut Debug {
-        self.items.push( 
-            if self.board.color_us() == Color::White {
-                score.to_string()
+        self.items.push(if self.board.color_us() == Color::White {
+            score.to_string()
         } else {
             score.negate().to_string()
-        } );
+        });
         self
     }
 
@@ -61,7 +59,6 @@ impl Debug {
         }
         self
     }
-
 }
 
 impl fmt::Display for Debug {
@@ -69,7 +66,6 @@ impl fmt::Display for Debug {
         write!(f, "{}", self.items.join(" "))
     }
 }
-
 
 impl std::ops::Add<&Move> for Debug {
     type Output = Debug;
@@ -119,7 +115,6 @@ impl std::ops::Add<Ply> for Debug {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -129,7 +124,9 @@ mod tests {
     fn test_debug() {
         let b = Catalog::starting_board();
         let moves = b.legal_moves();
-        println!("{}", b.debug() + &moves[0] + 3 + Color::White + Node::root(0) + Score::from_cp(100) + "test");
+        println!(
+            "{}",
+            b.debug() + &moves[0] + 3 + Color::White + Node::root(0) + Score::from_cp(100) + "test"
+        );
     }
 }
-

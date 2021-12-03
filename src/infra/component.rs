@@ -1,6 +1,3 @@
-
-
-
 #[derive(Copy, Clone, Debug)]
 pub enum State {
     NewGame,
@@ -9,15 +6,13 @@ pub enum State {
     StartDepthIteration(i32),
 }
 
-
-
 pub trait Component {
     fn set_state(&mut self, s: State) {
         use State::*;
         match s {
             NewGame => self.new_game(),
             SetPosition => self.new_position(),
-            StartSearch => {},
+            StartSearch => {}
             StartDepthIteration(_) => self.new_iter(),
         }
     }
@@ -26,8 +21,6 @@ pub trait Component {
     fn new_position(&mut self);
     fn set_thread_index(&mut self, _thread_index: u32) {}
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -40,10 +33,8 @@ mod tests {
     }
 
     impl Component for TestStruct {
-
         fn new_game(&mut self) {}
         fn new_iter(&mut self) {}
         fn new_position(&mut self) {}
     }
 }
-

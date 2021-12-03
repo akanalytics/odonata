@@ -1,11 +1,11 @@
-use crate::Algo;
 use crate::board::Board;
 use crate::bound::NodeType;
 use crate::infra::component::Component;
 use crate::mv::Move;
+use crate::search::node::Event;
 use crate::search::node::Node;
 use crate::types::{MoveType, Ply};
-use crate::search::node::{Event};
+use crate::Algo;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -28,7 +28,7 @@ pub struct Lmr {
     reduce_2_at_depth: Ply,
     reduce_3_at_depth: Ply,
     reduce_4_at_depth: Ply,
-    iir: bool
+    iir: bool,
 }
 
 // WAC @ 1m nodes
@@ -62,7 +62,7 @@ impl Default for Lmr {
             reduce_2_at_depth: 7,
             reduce_3_at_depth: 13,
             reduce_4_at_depth: 17,
-            iir: false, 
+            iir: false,
         }
     }
 }
@@ -115,15 +115,14 @@ impl Algo {
         if !self.lmr.enabled {
             return 0;
         }
-        if ext !=0 {
+        if ext != 0 {
             return 0;
         }
         if n.is_qs() {
             return 0;
         }
 
-
-        let mut reduce = match n.depth  {
+        let mut reduce = match n.depth {
             d if d >= self.lmr.reduce_4_at_depth => 4,
             d if d >= self.lmr.reduce_3_at_depth => 3,
             d if d >= self.lmr.reduce_2_at_depth => 2,
@@ -131,28 +130,22 @@ impl Algo {
             _ => 0,
         };
 
-
         reduce += match quiets {
             q if q >= self.lmr.quiets2 => 2,
             q if q >= self.lmr.quiets1 => 1,
-            _ => 0
+            _ => 0,
         };
 
         if !self.lmr.first_move && mv_num <= 1 {
             return 0;
         }
-        
+
         if reduce == 0 {
             return 0;
         }
 
         // has to be one of these
-        if !(MoveType::QuietUnsorted
-            | MoveType::Quiet
-            | MoveType::Remaining
-            | MoveType::Killer
-            | MoveType::Promo
-            | MoveType::BadCapture)
+        if !(MoveType::QuietUnsorted | MoveType::Quiet | MoveType::Remaining | MoveType::Killer | MoveType::Promo | MoveType::BadCapture)
             .contains(stage)
         {
             return 0;

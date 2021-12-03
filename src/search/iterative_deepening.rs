@@ -32,7 +32,7 @@ impl Component for IterativeDeepening {
 
     fn new_position(&mut self) {
         self.start_ply = 1;
-        self.end_ply = MAX_PLY -1;
+        self.end_ply = MAX_PLY - 1;
         self.iterations.clear();
     }
 }
@@ -46,7 +46,7 @@ impl Default for IterativeDeepening {
 
             start_ply: 1,
             end_ply: MAX_PLY - 1,
-            iterations: Vec::new(),            
+            iterations: Vec::new(),
         }
     }
 }
@@ -67,12 +67,7 @@ impl fmt::Display for IterativeDeepening {
         NodeStats::fmt_underline(f)?;
         writeln!(f, " {:>8} {:<11}", "--------", "-----------")?;
         for iter in self.iterations.iter() {
-            write!(
-                f,
-                "D{:<2} {:>4} ",
-                iter.depth,
-                if iter.interrupted() { "PART" } else { "FULL" }
-            )?;
+            write!(f, "D{:<2} {:>4} ", iter.depth, if iter.interrupted() { "PART" } else { "FULL" })?;
             iter.iteration().fmt_data(f)?;
             writeln!(f, " {:>8} {:<11}", iter.score().to_string(), iter.pv().to_string())?;
         }
@@ -128,7 +123,8 @@ impl Algo {
                     counts::SEARCH_IDS_COMPLETES.increment();
                 }
 
-                self.results.with_pv_change(&self.board, &self.clock, &self.stats, &self.restrictions, &self.tt);
+                self.results
+                    .with_pv_change(&self.board, &self.clock, &self.stats, &self.restrictions, &self.tt);
 
                 // let results = &self.results;
                 self.results.snapshot_bests();
@@ -161,8 +157,7 @@ impl Algo {
             || self.mte.probable_timeout(depth)
             || self.stats.depth >= self.ids.end_ply
             || self.stats.depth >= MAX_PLY / 2
-            || (self.restrictions.exclude_moves.len() == 0
-                && (self.search_stats().score().is_mate() || self.pv().is_empty()))
+            || (self.restrictions.exclude_moves.len() == 0 && (self.search_stats().score().is_mate() || self.pv().is_empty()))
         // pv.empty = draw
     }
 }

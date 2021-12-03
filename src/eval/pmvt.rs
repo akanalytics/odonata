@@ -1,14 +1,11 @@
-use crate::infra::component::Component;
 use crate::eval::weight::Weight;
-use crate::types::{Piece};
+use crate::infra::component::Component;
+use crate::types::Piece;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use std::fmt;
 
 use super::pst::PstHelper;
-
-
-
 
 #[derive(Clone)]
 pub struct Pmvt {
@@ -26,10 +23,8 @@ impl Default for Pmvt {
     }
 }
 
-
-
 impl Serialize for Pmvt {
-    fn serialize<S:Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -39,7 +34,7 @@ impl Serialize for Pmvt {
             for i in 0..20 {
                 map.insert(i.to_string(), self.mv[p][i]);
             }
-        }   
+        }
         h.serialize(serializer)
     }
 }
@@ -47,22 +42,20 @@ impl Serialize for Pmvt {
 impl<'de> Deserialize<'de> for Pmvt {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: Deserializer<'de>
+        D: Deserializer<'de>,
     {
         let h: PstHelper = Deserialize::deserialize(deserializer)?;
         let mut pmvt = Pmvt::default();
         for (i, &p) in Piece::ALL_BAR_NONE.iter().enumerate() {
             let map = [&h.p, &h.n, &h.b, &h.r, &h.q, &h.k][i];
-            for (k,&v) in map.iter() {
-                let i : usize = k.parse().map_err(serde::de::Error::custom)?;
+            for (k, &v) in map.iter() {
+                let i: usize = k.parse().map_err(serde::de::Error::custom)?;
                 pmvt.mv[p][i] = v;
             }
         }
         Ok(pmvt)
     }
-
 }
-
 
 impl Component for Pmvt {
     fn new_game(&mut self) {
@@ -71,8 +64,6 @@ impl Component for Pmvt {
 
     fn new_position(&mut self) {}
 }
-
-
 
 impl fmt::Display for Pmvt {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -95,33 +86,26 @@ impl fmt::Display for Pmvt {
 
 impl fmt::Debug for Pmvt {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Pst")
-            .field("enabled", &self.enabled)
-            .finish()
+        f.debug_struct("Pst").field("enabled", &self.enabled).finish()
     }
 }
-
 
 impl Pmvt {
     pub fn new() -> Self {
         Self::default()
     }
 
-
     #[inline]
     pub fn w_eval_mob(&self, p: Piece, count: i32) -> Weight {
-        self.mv[p][std::cmp::min(count, 19) as usize] 
+        self.mv[p][std::cmp::min(count, 19) as usize]
     }
 }
 
-
-
-
 #[cfg(test)]
 mod tests {
-    use test_log::test;
     use super::*;
     use crate::search::engine::Engine;
+    use test_log::test;
 
     #[test]
     fn pmvt_serde_test() {
@@ -157,5 +141,3 @@ mod tests {
         // assert_eq!(eng.algo.eval.pmvt.pmvt(Piece::Pawn, Square::A2).e(), Weight::from_f32(6.5,8.5).e());
     }
 }
-
-

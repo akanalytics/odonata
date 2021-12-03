@@ -1,33 +1,32 @@
-use crate::movelist::MoveList;
 use crate::board::boardbuf::BoardBuf;
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::catalog::Catalog;
-use crate::utils::Formatting;
-use crate::infra::component::{Component, State};
-use crate::mv::Move;
-use crate::variation::Variation;
-use crate::perft::Perft;
-use crate::search::engine::Engine;
-use crate::search::node::Node;
-use crate::tags::Tag;
-use crate::position::Position;
 use crate::comms::json_rpc::JsonRpc;
 use crate::eval::eval::SimpleScorer;
+use crate::infra::component::{Component, State};
+use crate::infra::version::Version;
+use crate::movelist::MoveList;
+use crate::mv::Move;
+use crate::perft::Perft;
+use crate::position::Position;
+use crate::search::engine::Engine;
+use crate::search::node::Node;
 use crate::search::search_results::{SearchResults, SearchResultsMode};
 use crate::search::timecontrol::TimeControl;
+use crate::tags::Tag;
 use crate::types::Ply;
-use crate::infra::version::Version;
+use crate::utils::Formatting;
+use crate::variation::Variation;
 use std::collections::HashMap;
 use std::fmt;
 use std::io::{self, Write};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 // use crate::logger::LogInit;
-use std::thread;
-use anyhow::{Result, bail,anyhow};
+use anyhow::{anyhow, bail, Result};
 use itertools::Itertools;
-
+use std::thread;
 
 //  see https://www.chessprogramming.org/CPW-Engine_com
 //
@@ -102,9 +101,7 @@ pub struct Uci {
     json_rpc: JsonRpc,
 }
 
-
 impl Component for Uci {
-
     fn new_game(&mut self) {
         self.engine.lock().unwrap().set_state(State::NewGame);
         self.engine.lock().unwrap().algo.set_callback(|sp| Self::uci_info(sp));
@@ -113,9 +110,8 @@ impl Component for Uci {
     fn new_position(&mut self) {
         // self.engine.lock().unwrap().new_position();
         // self.engine.lock().unwrap().algo.set_callback(|sp| Self::uci_info(sp));
-    }    
+    }
 }
-
 
 impl Uci {
     pub fn new() -> Uci {
@@ -134,7 +130,6 @@ impl Uci {
         uci
     }
 
-
     fn recv(receive: &str) {
         info!("<< {}", receive);
     }
@@ -143,7 +138,6 @@ impl Uci {
         info!(">> {}", send);
         println!("{}", send);
     }
-
 
     pub fn banner() {
         println!("{} {}\n", Version::NAME, Version::VERSION);
@@ -156,8 +150,6 @@ impl Uci {
         println!("{:<10} {}", "quit", "quit the program");
     }
 
-
-
     pub fn run(&mut self) {
         self.running = true;
         Self::banner();
@@ -168,8 +160,7 @@ impl Uci {
         // io::stdout().flush().ok();
     }
 
-
-    fn is_json_request(&self, line: &str ) -> bool {
+    fn is_json_request(&self, line: &str) -> bool {
         line.starts_with(r#"{"jsonrpc":"#)
     }
 
@@ -216,7 +207,7 @@ impl Uci {
             "search" | "?" => self.uci_explain_last_search(),
             "board" | "b" => self.uci_board(),
             "eval" | "." => self.ext_uci_explain_eval(),
-            "settings"  => self.ext_uci_show_config(),
+            "settings" => self.ext_uci_show_config(),
 
             _ if self.is_json_request(&input) => self.json_method(&input),
 
@@ -281,9 +272,7 @@ impl Uci {
 
     fn uci_sleep(&mut self, words: &[&str]) -> Result<()> {
         let time = words.first().ok_or(anyhow!("Must specify a sleep time"))?;
-        let time = time
-            .parse::<u64>()
-            .or(Err(anyhow!("Sleep time {} must be numeric", time)))?;
+        let time = time.parse::<u64>().or(Err(anyhow!("Sleep time {} must be numeric", time)))?;
         let millis = Duration::from_millis(time);
         thread::sleep(millis);
         Ok(())
@@ -292,14 +281,17 @@ impl Uci {
     fn uci_perft(&mut self, words: &[&str]) -> Result<()> {
         self.engine.lock().unwrap().search_stop();
         let depth = words.first().ok_or(anyhow!("Must specify a depth"))?;
-        let depth = depth
-            .parse::<u32>()
-            .or(Err(anyhow!("Depth {} must be numeric", depth)))?;
+        let depth = depth.parse::<u32>().or(Err(anyhow!("Depth {} must be numeric", depth)))?;
         let mut board = Catalog::starting_board();
         for d in 1..=depth {
             let t = Instant::now();
             let p = Perft::perft(&mut board, d);
-            Self::print(&format!("info string perft({}) = {:<12} in {}", d, p, Formatting::duration(t.elapsed())));
+            Self::print(&format!(
+                "info string perft({}) = {:<12} in {}",
+                d,
+                p,
+                Formatting::duration(t.elapsed())
+            ));
         }
         Ok(())
     }
@@ -309,23 +301,23 @@ impl Uci {
         let mut b = Board::new_empty();
         Self::parse_fen(arg, &mut b)?;
         let var = Self::parse_variation(arg, &b);
-        if let Ok(var) = var { 
+        if let Ok(var) = var {
             if let Some(mv) = var.first() {
-                let from=mv.from().uci(); 
-                let to=mv.to().uci(); 
-                let capture=mv.capture_square().uci(); 
-                let ep=mv.ep().uci(); 
+                let from = mv.from().uci();
+                let to = mv.to().uci();
+                let capture = mv.capture_square().uci();
+                let ep = mv.ep().uci();
                 // pseudo_legal=b.is_pseudo_legal_move(&mv);
-                let legal=b.is_legal_move(&mv);
+                let legal = b.is_legal_move(&mv);
                 let san = if legal { b.to_san(&mv) } else { "???".to_string() };
-                let rook_move=mv.rook_move().uci();
-                let is_ep=mv.is_ep_capture();
-                let is_castle=mv.is_castle();
-            Self::print(&format!("result:from {from} to {to} capture {capture} ep {ep} legal {legal} san {san} rook_move {rook_move} is_ep {is_ep} is_castle {is_castle}", 
-                    from = from, 
-                    to = to, 
-                    capture = capture, 
-                    ep = ep, 
+                let rook_move = mv.rook_move().uci();
+                let is_ep = mv.is_ep_capture();
+                let is_castle = mv.is_castle();
+                Self::print(&format!("result:from {from} to {to} capture {capture} ep {ep} legal {legal} san {san} rook_move {rook_move} is_ep {is_ep} is_castle {is_castle}", 
+                    from = from,
+                    to = to,
+                    capture = capture,
+                    ep = ep,
                     // pseudo_legal,
                     legal = legal,
                     san = san,
@@ -368,7 +360,6 @@ impl Uci {
         Self::print(&format!("result:{}", b.make_moves(&var).to_fen()));
         Ok(())
     }
-
 
     fn ext_uci_legal_moves(&mut self, arg: &Args) -> Result<()> {
         let mut b = Board::new_empty();
@@ -510,12 +501,18 @@ impl Uci {
 
     pub fn uci_options(engine: &Engine) -> Vec<String> {
         let mut ops: Vec<String> = Vec::new();
-       
+
         // ops.push(format!("option name UCI_EngineAbout type string default {} {}", Version::NAME, Version::HOMEPAGE));
         ops.push("option name debug type check default false".to_string());
-        ops.push(format!("option name Threads type spin default {} min 1 max 16", engine.thread_count));
+        ops.push(format!(
+            "option name Threads type spin default {} min 1 max 16",
+            engine.thread_count
+        ));
         // ops.push(format!("option name nodestime type spin default {} min 0 max 10000", engine.algo.mte.nodestime));
-        ops.push(format!("option name MultiPV type spin default {} min 1 max 64", engine.algo.restrictions.multi_pv_count));
+        ops.push(format!(
+            "option name MultiPV type spin default {} min 1 max 64",
+            engine.algo.restrictions.multi_pv_count
+        ));
         ops.push(format!("option name Hash type spin default {} min 0 max 4000", engine.algo.tt.mb));
         ops.push("option name UCI_AnalyseMode type check default false".to_string());
         ops.push("option name Ponder type check default false".to_string());
@@ -554,7 +551,7 @@ impl Uci {
         let value = if value == "\"\"" { "" } else { value };
 
         // handle specific name/value uci options
-        // FIXME! as hardcoding names of variables 
+        // FIXME! as hardcoding names of variables
         if name == "debug" {
             self.debug = value == "true";
         } else if name == "Threads" {
@@ -574,21 +571,19 @@ impl Uci {
             // pondering determined by "go ponder", so no variable to track
         } else if name == "Config_File" {
             if !value.is_empty() && value != "config.toml" {
-                engine.config_filename = value.to_string();                        
-                use figment::providers::{Format, Toml};
-                use figment::{Figment};
+                engine.config_filename = value.to_string();
                 use anyhow::Context;
-                use std::path::{Path};
+                use figment::providers::{Format, Toml};
+                use figment::Figment;
+                use std::path::Path;
                 // use toml;
                 let path = Path::new(&engine.config_filename);
                 if !path.is_file() {
                     bail!("Config_File '{}' not found", engine.config_filename);
                 }
-                let fig = Figment::new()
-                    .merge(&*engine)
-                    .merge(Toml::file(&engine.config_filename));
+                let fig = Figment::new().merge(&*engine).merge(Toml::file(&engine.config_filename));
 
-                let new : Engine = fig.extract().context(format!("error in config file {}", &engine.config_filename))?;
+                let new: Engine = fig.extract().context(format!("error in config file {}", &engine.config_filename))?;
                 *engine = new;
             }
         } else {
@@ -602,7 +597,7 @@ impl Uci {
         let s = input.strip_prefix("setoption").ok_or(anyhow!("missing setoption"))?.trim();
         let s = s.strip_prefix("name").ok_or(anyhow!("missing 'name' from setoption"))?.trim();
         let name_value = s.rsplit_once("value");
-        if let Some((name,value)) = name_value {
+        if let Some((name, value)) = name_value {
             let (name, value) = (name.trim(), value.trim());
             info!("Configuring (setoption) {} with:<{}>", name, value);
             if name == "Config" {
@@ -612,7 +607,7 @@ impl Uci {
                     let s = s.trim();
                     if !s.is_empty() {
                         if let Some((name, value)) = s.split_once("=") {
-                            kvs.insert( name.trim().to_string(), value.trim().to_string() );
+                            kvs.insert(name.trim().to_string(), value.trim().to_string());
                         } else {
                             // bail!("Expected key=value but '{}' found instead", s)
                         }
@@ -634,7 +629,6 @@ impl Uci {
         Ok(())
     }
 
-
     fn uci_show_options(&self) {
         let mut engine = self.engine.lock().unwrap();
         engine.search_stop();
@@ -642,7 +636,7 @@ impl Uci {
             Self::print(op);
         }
     }
-    
+
     fn ext_uci_show_config(&mut self) -> Result<()> {
         Self::print(&format!("# show configuration:\n"));
         self.engine.lock().unwrap().search_stop();
@@ -700,7 +694,6 @@ impl Uci {
     }
 
     fn print_bm_and_ponder(var: &Variation) {
-
         let bm = if var.len() > 0 {
             var[0]
         } else {
@@ -713,8 +706,6 @@ impl Uci {
         }
         Self::print(&output)
     }
-
-
 }
 
 struct UciInfo<'a>(&'a SearchResults);
@@ -876,8 +867,7 @@ mod tests {
         assert_eq!(uci.engine.lock().unwrap().algo.eval.position, true);
         uci.prelude
             .push("setoption name Config_File value ../odonata/resources/config.toml".into());
-        uci.prelude
-            .push("setoption name Show_Config".into());
+        uci.prelude.push("setoption name Show_Config".into());
         uci.prelude.push("quit".into());
         uci.run();
         assert_eq!(uci.engine.lock().unwrap().algo.eval.position, true);
@@ -891,14 +881,10 @@ mod tests {
         uci.prelude.push("setoption name Config value eval.mb.b.s=700".into());
         uci.prelude
             .push("setoption name Config value eval.mb.n = { s=400, e = 429 }".into());
-        uci.prelude
-            .push("setoption name Config value eval.position=false".into());
-        uci.prelude
-            .push("setoption name Explain_Eval".into());
-        uci.prelude
-            .push("setoption name Config value eval.pst.p.a2.s = 10".into());
-        uci.prelude
-            .push("setoption name Show_Config".into());
+        uci.prelude.push("setoption name Config value eval.position=false".into());
+        uci.prelude.push("setoption name Explain_Eval".into());
+        uci.prelude.push("setoption name Config value eval.pst.p.a2.s = 10".into());
+        uci.prelude.push("setoption name Show_Config".into());
         uci.prelude.push("quit".into());
         uci.run();
         let eval = &uci.engine.lock().unwrap().algo.eval;
@@ -919,14 +905,10 @@ mod tests {
         assert_eq!(uci.board, Catalog::starting_board());
 
         let mut uci = Uci::new();
-        uci.prelude
-            .push("position fen k7/8/8/8/8/8/8/7k w - - 0 2".into());
+        uci.prelude.push("position fen k7/8/8/8/8/8/8/7k w - - 0 2".into());
         uci.prelude.push("quit".into());
         uci.run();
-        assert_eq!(
-            uci.board,
-            Board::parse_fen("k7/8/8/8/8/8/8/7k w - - 0 2").unwrap()
-        );
+        assert_eq!(uci.board, Board::parse_fen("k7/8/8/8/8/8/8/7k w - - 0 2").unwrap());
 
         let mut uci = Uci::new();
         uci.prelude.push("position startpos moves a2a3 a7a6".into());
@@ -934,18 +916,21 @@ mod tests {
         uci.run();
         assert_eq!(
             uci.board.to_fen(),
-            Board::parse_fen("rnbqkbnr/1ppppppp/p7/8/8/P7/1PPPPPPP/RNBQKBNR w KQkq - 0 2").unwrap().to_fen()
+            Board::parse_fen("rnbqkbnr/1ppppppp/p7/8/8/P7/1PPPPPPP/RNBQKBNR w KQkq - 0 2")
+                .unwrap()
+                .to_fen()
         );
 
         let mut uci = Uci::new();
-        uci.prelude.push(
-            "position fen rnbqkbnr/1ppppppp/p7/8/8/P7/1PPPPPPP/RNBQKBNR w KQkq - 0 1 moves h2h3 h7h6".into(),
-        );
+        uci.prelude
+            .push("position fen rnbqkbnr/1ppppppp/p7/8/8/P7/1PPPPPPP/RNBQKBNR w KQkq - 0 1 moves h2h3 h7h6".into());
         uci.prelude.push("quit".into());
         uci.run();
         assert_eq!(
             uci.board.to_fen(),
-            Board::parse_fen("rnbqkbnr/1pppppp1/p6p/8/8/P6P/1PPPPPP1/RNBQKBNR w KQkq - 0 2").unwrap().to_fen()
+            Board::parse_fen("rnbqkbnr/1pppppp1/p6p/8/8/P6P/1PPPPPP1/RNBQKBNR w KQkq - 0 2")
+                .unwrap()
+                .to_fen()
         );
     }
 
@@ -969,7 +954,8 @@ mod tests {
         uci.prelude.push("sleep 1100".to_string());
         uci.prelude.push("ucinewgame".to_string());
         uci.prelude.push("position startpos moves d2d4".to_string());
-        uci.prelude.push("go wtime 20160 btime 20160 winc 160 binc 160 nodes 3000".to_string());
+        uci.prelude
+            .push("go wtime 20160 btime 20160 winc 160 binc 160 nodes 3000".to_string());
         uci.prelude.push("sleep 500".to_string());
         uci.prelude.push("quit".to_string());
         uci.run();
@@ -990,5 +976,4 @@ mod tests {
         uci.run();
         println!("\n{}", uci.engine.lock().unwrap().algo);
     }
-
 }

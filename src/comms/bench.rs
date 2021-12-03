@@ -1,9 +1,9 @@
-use crate::{catalog::*};
+use crate::catalog::*;
 use crate::infra::component::{Component, State};
 use crate::perft::Perft;
 use crate::search::engine::Engine;
-use crate::tags::Tag;
 use crate::search::timecontrol::TimeControl;
+use crate::tags::Tag;
 // use env_logger;
 use crate::utils::Formatting;
 // use crate::globals::counts;
@@ -12,7 +12,6 @@ use std::time::{Duration, Instant};
 pub struct Bench;
 
 impl Bench {
-
     pub fn profile_me() {
         let _engine = Engine::new();
 
@@ -25,7 +24,6 @@ impl Bench {
         // }
     }
 
-
     pub fn perft(depth: u32) {
         let mut board = Catalog::starting_board();
         for d in 1..=depth {
@@ -34,10 +32,7 @@ impl Bench {
             let elapsed = t.elapsed();
             println!("perft({}) = {:<14} in {}", d, p, Formatting::duration(elapsed));
             if d == depth {
-                println!(
-                    "\n{} nodes/sec",
-                    Formatting::f64(p as f64 / elapsed.as_secs_f64())
-                );
+                println!("\n{} nodes/sec", Formatting::f64(p as f64 / elapsed.as_secs_f64()));
             }
         }
         // println!("\nstatistics\n{}", counts::GLOBAL_COUNTS);
@@ -60,10 +55,7 @@ impl Bench {
                 d, total, p.captures, p.en_passant, p.castles, p.promos, time
             );
             if d == depth {
-                println!(
-                    "\n{} nodes/sec",
-                    Formatting::f64(total as f64 / elapsed.as_secs_f64())
-                );
+                println!("\n{} nodes/sec", Formatting::f64(total as f64 / elapsed.as_secs_f64()));
             }
         }
         // println!("\nstatistics\n{}", counts::GLOBAL_COUNTS);
@@ -127,7 +119,8 @@ impl Bench {
                 correct,
                 nodes,
                 nps,
-                depth, sel_depth,
+                depth,
+                sel_depth,
                 bf_string,
                 fen
             );

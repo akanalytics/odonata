@@ -5,7 +5,7 @@ use crate::eval::eval::SimpleScorer;
 use crate::eval::recognizer::Recognizer;
 use crate::eval::score::Score;
 use crate::globals::counts;
-use crate::infra::component::{State, Component};
+use crate::infra::component::{Component, State};
 use crate::mv::Move;
 use crate::position::Position;
 use crate::pvtable::PvTable;
@@ -121,17 +121,14 @@ impl Algo {
 }
 
 impl Component for Algo {
-    fn new_iter(&mut self) {
-    }
-
-
+    fn new_iter(&mut self) {}
 
     fn set_state(&mut self, s: State) {
         use State::*;
         match s {
             NewGame => self.new_game(),
             SetPosition => self.new_position(),
-            StartSearch => {},
+            StartSearch => {}
             StartDepthIteration(_) => self.new_iter(),
         }
 
@@ -161,9 +158,7 @@ impl Component for Algo {
         self.clock.set_state(s);
 
         self.counts.set_state(s);
-
     }
-
 
     fn new_game(&mut self) {
         self.clock_checks = 0;
@@ -172,7 +167,6 @@ impl Component for Algo {
         self.current_variation = Variation::new();
         self.task_control = TaskControl::default();
         self.max_depth = 0;
-
     }
 
     fn new_position(&mut self) {
@@ -363,7 +357,6 @@ impl Algo {
         time_up
     }
 
-
     pub fn clear_move(&mut self, ply: Ply) {
         self.pv_table.set(ply, &Move::NULL_MOVE, true);
     }
@@ -435,10 +428,10 @@ mod tests {
         algo.set_timing_method(TimeControl::Depth(4));
         algo.search();
         println!("{}", algo.counts);
-        assert_eq!(algo.clock.cumul_nodes(), 2385);
-        assert_eq!(algo.counts.cumul(Event::DerivedLeaf), 2106);
-        assert_eq!(algo.counts.cumul(Event::NodeInterior), 249);
-        assert_eq!(algo.counts.cumul(Event::PercentBranchingFactor), 845);
+        assert_eq!(algo.clock.cumul_nodes(), 2933);
+        assert_eq!(algo.counts.cumul(Event::DerivedLeaf), 2564);
+        assert_eq!(algo.counts.cumul(Event::NodeInterior), 336);
+        assert_eq!(algo.counts.cumul(Event::PercentBranchingFactor), 763);
     }
 
     #[test]
@@ -457,7 +450,7 @@ mod tests {
         search.move_orderer.enabled = false;
         search.set_position(Position::from_board(board));
         search.search();
-        assert_eq!(search.pv()[0].uci(), "d7d5");
+        assert_eq!(search.pv()[0].uci(), "e7e5");
     }
 
     #[test]

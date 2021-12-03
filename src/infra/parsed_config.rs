@@ -1,26 +1,23 @@
-use std::collections::HashMap;
-use std::{fmt, fs};
-use static_init::{dynamic};
-use std::env;
 use crate::eval::weight::Weight;
 use crate::infra::resources::RESOURCE_DIR;
+use static_init::dynamic;
+use std::collections::HashMap;
+use std::env;
 use std::path::PathBuf;
-
-
-
-
-
+use std::{fmt, fs};
 
 #[dynamic(lazy)]
-static mut STATIC_INSTANCE: ParsedConfig = { 
-    let c = ParsedConfig::parse(&RESOURCE_DIR.get_file("old-format.toml").unwrap().contents_utf8().unwrap(), "<internal>");
+static mut STATIC_INSTANCE: ParsedConfig = {
+    let c = ParsedConfig::parse(
+        &RESOURCE_DIR.get_file("old-format.toml").unwrap().contents_utf8().unwrap(),
+        "<internal>",
+    );
     if c.is_err() {
         warn!("Unable to open config.toml");
-        return ParsedConfig::default()
+        return ParsedConfig::default();
     }
     c.unwrap()
 };
-
 
 #[derive(Clone, Debug)]
 pub struct ParsedConfig {
@@ -29,7 +26,6 @@ pub struct ParsedConfig {
 }
 
 impl ParsedConfig {
-
     pub fn new() -> ParsedConfig {
         Self::default()
     }
@@ -51,11 +47,13 @@ impl ParsedConfig {
     pub fn read_from_file(filename: &str) -> Result<ParsedConfig, String> {
         let path = PathBuf::from(filename);
         let s = fs::read_to_string(path);
-        let s = s.map_err(|_| 
-                format!("Error reading config toml file {} in working dir {:?}", 
-                    filename, 
-                    env::current_dir().unwrap(), 
-                ))?;
+        let s = s.map_err(|_| {
+            format!(
+                "Error reading config toml file {} in working dir {:?}",
+                filename,
+                env::current_dir().unwrap(),
+            )
+        })?;
         //.or_else()?;
         ParsedConfig::parse(&s, filename)
         // let file = File::open(filename).map_err(|err| format!("Error opening config toml file {:?} in working dir {:?} {}", path, env::current_dir().unwrap(), err.to_string()))?;
@@ -65,9 +63,7 @@ impl ParsedConfig {
         // Self::parse_from_lines(&successes, filename)
     }
 
-
     pub fn parse(s: &str, filename: &str) -> Result<ParsedConfig, String> {
-
         let mut config = ParsedConfig::new();
         let mut count = 0;
         for (n, line) in s.lines().enumerate() {
@@ -86,7 +82,7 @@ impl ParsedConfig {
                 let (key, value) = combo;
                 config.set(&key, &value);
             } else {
-                return Err(format!("Failed parsing line {} in file {}: '{}'", n, filename, s))
+                return Err(format!("Failed parsing line {} in file {}: '{}'", n, filename, s));
             }
         }
         debug!("Read {} items from {:?}", count, filename);
@@ -112,7 +108,11 @@ impl ParsedConfig {
     pub fn set_weight(&mut self, k: &str, w: &Weight) {
         let (k1, k2) = (k.to_string() + ".s", k.to_string() + ".e");
         let s = "type spin min -9999 max 9999 default ".to_string();
-        if self.settings.insert(k1.to_owned(), s.clone() + w.s().to_string().as_str()).is_none() {
+        if self
+            .settings
+            .insert(k1.to_owned(), s.clone() + w.s().to_string().as_str())
+            .is_none()
+        {
             self.insertion_order.push(k1);
         }
         if self.settings.insert(k2.to_owned(), s + w.e().to_string().as_str()).is_none() {
@@ -157,7 +157,11 @@ impl ParsedConfig {
     }
 
     pub fn combo(&self, name: &str) -> Option<String> {
-        debug!("config fetch {} = [combo] {}", name, self.settings.get(name).unwrap_or(&String::new()));
+        debug!(
+            "config fetch {} = [combo] {}",
+            name,
+            self.settings.get(name).unwrap_or(&String::new())
+        );
         self.settings.get(name).cloned()
     }
 
@@ -217,26 +221,24 @@ impl Default for ParsedConfig {
     }
 }
 
+// #[test]
+// fn test_config() {
+//     let c1 = ParsedConfig::default();
+//     debug!("c1\n{}", c1);
 
+//     let mut cs2 = ParsedConfig::new();
+//     let mut ts = TestStruct {
+//         integer: 0,
+//         string: "cat".to_string(),
+//     };
 
-    // #[test]
-    // fn test_config() {
-    //     let c1 = ParsedConfig::default();
-    //     debug!("c1\n{}", c1);
+//     // check the config iterators in insertion order
+//     let vec: Vec<(&String, &String)> = cs2.iter().collect();
+//     assert_eq!(vec[0].0, "engine.wheels");
+//     assert_eq!(vec[1].0, "engine.color");
 
-    //     let mut cs2 = ParsedConfig::new();
-    //     let mut ts = TestStruct {
-    //         integer: 0,
-    //         string: "cat".to_string(),
-    //     };
-
-    //     // check the config iterators in insertion order
-    //     let vec: Vec<(&String, &String)> = cs2.iter().collect();
-    //     assert_eq!(vec[0].0, "engine.wheels");
-    //     assert_eq!(vec[1].0, "engine.color");
-
-    //     let mut c3 = ParsedConfig::new();
-    //     c3.set("engine.wheels", "6");
-    //     c3.set("engine.color", "red");
-    //     debug!("c3\n{}", c3);
-    // }
+//     let mut c3 = ParsedConfig::new();
+//     c3.set("engine.wheels", "6");
+//     c3.set("engine.color", "red");
+//     debug!("c3\n{}", c3);
+// }

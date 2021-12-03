@@ -1,11 +1,10 @@
-use std::iter;
-use std::fmt;
-use num_traits::{Num, AsPrimitive};
+use num_traits::{AsPrimitive, Num};
 use serde::{Deserialize, Serialize};
+use std::fmt;
+use std::iter;
 
 use crate::utils::Formatting;
-use serde::{ Serializer, Deserializer};
-
+use serde::{Deserializer, Serializer};
 
 //
 // This impl 50% faster than manipulating pairs of integers separately...
@@ -14,18 +13,14 @@ use serde::{ Serializer, Deserializer};
 //                         change: [-51.630% -50.540% -49.410%] (p = 0.00 < 0.05)
 //                         Performance has improved.
 
-
-
 // essntially models the score bonus for s=start or e=end of game
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
-pub struct WeightOf<T>(T, T) where T:Copy + Num;
+pub struct WeightOf<T>(T, T)
+where
+    T: Copy + Num;
 
 pub type Weight = WeightOf<f32>;
 // pub type Weight = crate::eval::weight3::WeightOf<f32>;
-
-
-
-
 
 // private
 #[derive(Serialize, Deserialize)]
@@ -33,7 +28,6 @@ struct WeightOfHelper<T> {
     s: T,
     e: T,
 }
-
 
 impl<T: Copy + Num + Serialize> Serialize for WeightOf<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -44,20 +38,16 @@ impl<T: Copy + Num + Serialize> Serialize for WeightOf<T> {
     }
 }
 
-impl<'de, T: Copy + Num + Deserialize<'de> > Deserialize<'de> for WeightOf<T> {
+impl<'de, T: Copy + Num + Deserialize<'de>> Deserialize<'de> for WeightOf<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        Deserialize::deserialize(deserializer)
-            .map(|WeightOfHelper::<T> { s, e }| WeightOf::<T>(s, e))
+        Deserialize::deserialize(deserializer).map(|WeightOfHelper::<T> { s, e }| WeightOf::<T>(s, e))
     }
 }
 
-
-
-impl WeightOf<i32>  {
-
+impl WeightOf<i32> {
     #[inline]
     #[must_use]
     pub const fn from_i32(s: i32, e: i32) -> WeightOf<i32> {
@@ -65,8 +55,7 @@ impl WeightOf<i32>  {
     }
 }
 
-impl WeightOf<f32>  {
-
+impl WeightOf<f32> {
     #[inline]
     #[must_use]
     pub const fn from_i32(s: i32, e: i32) -> WeightOf<f32> {
@@ -74,9 +63,11 @@ impl WeightOf<f32>  {
     }
 }
 
-impl<T> WeightOf<T> where T:'static + Copy + Num, i32: AsPrimitive<T>  {
-    
-
+impl<T> WeightOf<T>
+where
+    T: 'static + Copy + Num,
+    i32: AsPrimitive<T>,
+{
     #[inline]
     #[must_use]
     pub fn new(s: T, e: T) -> WeightOf<T> {
@@ -84,8 +75,10 @@ impl<T> WeightOf<T> where T:'static + Copy + Num, i32: AsPrimitive<T>  {
     }
 }
 
-
-impl<T: Sized> WeightOf<T> where T: Copy + Num {
+impl<T: Sized> WeightOf<T>
+where
+    T: Copy + Num,
+{
     #[inline]
     pub fn zero() -> WeightOf<T> {
         WeightOf(T::zero(), T::zero())
@@ -100,25 +93,29 @@ impl<T: Sized> WeightOf<T> where T: Copy + Num {
     pub fn e(self) -> T {
         self.1
     }
-
 }
 // impl<T> WeightOf<T> where T: Copy + Num + std::ops::Sub<T, Output=T> + std::ops::Div<i32, Output=T>, i32: std::ops::Mul<T, Output=T>  {
-impl<T> WeightOf<T> where T: 'static + Copy + Num, i32: AsPrimitive<T>  {
+impl<T> WeightOf<T>
+where
+    T: 'static + Copy + Num,
+    i32: AsPrimitive<T>,
+{
     #[inline]
     pub fn interpolate(self, phase: i32) -> T {
         ((100 - phase).as_() * self.s() + phase.as_() * self.e()) / 100.as_()
     }
-
 }
 
-impl<T> WeightOf<T> where T: 'static + Copy + Num, f32: AsPrimitive<T>   {
+impl<T> WeightOf<T>
+where
+    T: 'static + Copy + Num,
+    f32: AsPrimitive<T>,
+{
     #[inline]
     #[must_use]
     pub fn from_f32(s: f32, e: f32) -> WeightOf<T> {
         WeightOf(s.as_(), e.as_())
     }
-    
-
 }
 
 // impl<T> WeightOf<T> where T: Copy + Num + std::ops::Div<i32, Output=T>, i32: std::ops::Mul<T, Output=T>  {
@@ -134,14 +131,19 @@ impl<T> WeightOf<T> where T: 'static + Copy + Num, f32: AsPrimitive<T>   {
 //     }
 // }
 
-impl<T> fmt::Display for WeightOf<T> where T: Copy + Num + fmt::Display + Into<f64> {
+impl<T> fmt::Display for WeightOf<T>
+where
+    T: Copy + Num + fmt::Display + Into<f64>,
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "({}, {})", Formatting::decimal(2, self.s()), Formatting::decimal(2, self.e()))
     }
 }
 
-
-impl<T> iter::Sum for WeightOf<T> where T: 'static + Copy + Num{
+impl<T> iter::Sum for WeightOf<T>
+where
+    T: 'static + Copy + Num,
+{
     #[inline]
     fn sum<I>(iter: I) -> Self
     where
@@ -151,7 +153,10 @@ impl<T> iter::Sum for WeightOf<T> where T: 'static + Copy + Num{
     }
 }
 
-impl<T> std::ops::Add for WeightOf<T> where T:'static + Copy + Num {
+impl<T> std::ops::Add for WeightOf<T>
+where
+    T: 'static + Copy + Num,
+{
     type Output = Self;
 
     #[inline]
@@ -159,8 +164,10 @@ impl<T> std::ops::Add for WeightOf<T> where T:'static + Copy + Num {
         Self(self.s() + o.s(), self.e() + o.e())
     }
 }
-impl<T> std::ops::AddAssign for WeightOf<T> where T: Copy + Num + std::ops::AddAssign { 
-
+impl<T> std::ops::AddAssign for WeightOf<T>
+where
+    T: Copy + Num + std::ops::AddAssign,
+{
     #[inline]
     fn add_assign(&mut self, o: Self) {
         self.0 += o.s();
@@ -168,8 +175,11 @@ impl<T> std::ops::AddAssign for WeightOf<T> where T: Copy + Num + std::ops::AddA
     }
 }
 
-
-impl<T> std::ops::Mul<WeightOf<T>> for i32 where T: 'static + Copy + Num, i32: AsPrimitive<T> {
+impl<T> std::ops::Mul<WeightOf<T>> for i32
+where
+    T: 'static + Copy + Num,
+    i32: AsPrimitive<T>,
+{
     type Output = WeightOf<T>;
 
     #[inline]
@@ -187,7 +197,10 @@ impl<T> std::ops::Mul<WeightOf<T>> for i32 where T: 'static + Copy + Num, i32: A
 //     }
 // }
 
-impl<T> std::ops::Sub for WeightOf<T> where T: Copy + Num + std::ops::Sub {
+impl<T> std::ops::Sub for WeightOf<T>
+where
+    T: Copy + Num + std::ops::Sub,
+{
     type Output = Self;
 
     #[inline]
@@ -196,7 +209,10 @@ impl<T> std::ops::Sub for WeightOf<T> where T: Copy + Num + std::ops::Sub {
     }
 }
 
-impl<T> std::ops::Neg for WeightOf<T> where T: Copy + Num + std::ops::Neg<Output=T> {
+impl<T> std::ops::Neg for WeightOf<T>
+where
+    T: Copy + Num + std::ops::Neg<Output = T>,
+{
     type Output = Self;
 
     #[inline]
@@ -205,20 +221,11 @@ impl<T> std::ops::Neg for WeightOf<T> where T: Copy + Num + std::ops::Neg<Output
     }
 }
 
-
-
-
-
-
-
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use test_log::test;
     use toml;
-    
 
     #[test]
     fn weight_serde_test() {
@@ -226,7 +233,6 @@ mod tests {
         // info!("{}", toml::to_string_pretty(&Weight::default()).unwrap());
     }
 }
-
 
 // This impl 42% slower
 

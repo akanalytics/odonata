@@ -98,8 +98,6 @@ pub mod counts {
     pub static SEARCH_IDS_COMPLETES: Stat = Stat::new("IDS COMPLETES");
     pub static SEARCH_IDS_TIMEOUTS: Stat = Stat::new("IDS TIMEOUTS");
 
-
-    
     pub static GLOBAL_COUNTS: ArrayStat = ArrayStat(&[
         &EVAL_CACHE_COUNT,
         &QEVAL_CACHE_COUNT,
@@ -115,21 +113,24 @@ pub mod counts {
 
 #[cfg(test)]
 mod tests {
-    use crate::Algo;
-    use crate::bitboard::bitboard::*;
     use crate::bitboard::bb_classical::*;
     use crate::bitboard::bb_hyperbola::*;
     use crate::bitboard::bb_magic::*;
-    use crate::bitboard::square::*;
+    use crate::bitboard::bitboard::*;
+    use crate::bitboard::castling::*;
     use crate::bitboard::precalc::*;
-    use crate::cache::hasher::*;
+    use crate::bitboard::square::*;
     use crate::board::*;
+    use crate::bound::NodeType;
+    use crate::cache::hasher::*;
+    use crate::cache::tt2::*;
     use crate::clock::Clock;
     use crate::eval::eval::SimpleScorer;
     use crate::eval::recognizer::Recognizer;
     use crate::eval::score::*;
     use crate::movelist::*;
     use crate::mv::*;
+    use crate::position::*;
     use crate::pvtable::PvTable;
     use crate::repetition::Repetition;
     use crate::search::aspiration::Aspiration;
@@ -142,23 +143,20 @@ mod tests {
     use crate::search::move_orderer::MoveOrderer;
     use crate::search::move_time_estimator::MoveTimeEstimator;
     use crate::search::nmp::NullMovePruning;
+    use crate::search::node::*;
     use crate::search::pvs::Pvs;
     use crate::search::qsearch::QSearch;
     use crate::search::razor::Razor;
     use crate::search::restrictions::Restrictions;
     use crate::search::search_explainer::SearchExplainer;
-    use crate::trace::counts::Counts;
-    use crate::variation::*;
-    use crate::tags::*;
-    use crate::position::*;
-    use crate::bitboard::castling::*;
-    use crate::search::node::*;
     use crate::search::searchstats::*;
-    use crate::cache::tt2::*;
-    use crate::bound::NodeType;
+    use crate::tags::*;
+    use crate::trace::counts::Counts;
     use crate::types::*;
-    use std::time::Duration;
+    use crate::variation::*;
+    use crate::Algo;
     use std::mem::size_of;
+    use std::time::Duration;
 
     #[test]
     fn sizes() {
@@ -187,7 +185,7 @@ mod tests {
         assert_eq!(size_of::<PreCalc>(), 75784, "PreCalc");
         assert_eq!(size_of::<Magic>(), 719264, "Magic");
         assert_eq!(size_of::<Hasher>(), 7296, "Hasher");
-        assert_eq!(size_of::<Algo>(), 25408, "Algo");
+        assert_eq!(size_of::<Algo>(), 25536, "Algo");
         assert_eq!(size_of::<QSearch>(), 12, "QSearch");
         assert_eq!(size_of::<Clock>(), 64, "Clock");
         println!("{} {} {}", size_of::<NullMovePruning>(), 32, "NullMovePruning");

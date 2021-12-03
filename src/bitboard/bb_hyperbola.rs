@@ -1,14 +1,12 @@
 use crate::bitboard::bb_sliders::SlidingPieceAttacks;
 use crate::bitboard::bitboard::{Bitboard, Dir};
 use crate::bitboard::square::Square;
-use static_init::{dynamic};
-
+use static_init::dynamic;
 
 // #[ctor]
 // fn init_module() {
 //     Hyperbola::init();
 // }
-
 
 // static mut STATIC_INSTANCE: *const Hyperbola = std::ptr::null();
 // impl Hyperbola {
@@ -27,7 +25,7 @@ use static_init::{dynamic};
 //             &*STATIC_INSTANCE
 //         }
 //     }
-    
+
 // }
 
 #[dynamic]
@@ -41,7 +39,6 @@ impl Hyperbola {
     }
 }
 
-
 // static STATIC_INSTANCE: Lazy<Box<Hyperbola>> = Lazy::new(|| Hyperbola::new());
 // impl Hyperbola {
 //     // doesnt impl Default as too large to copy by value
@@ -50,8 +47,6 @@ impl Hyperbola {
 //         &STATIC_INSTANCE
 //     }
 // }
-
-
 
 #[derive(Copy, Clone, Debug, Default)]
 struct HyperbolaMask {
@@ -68,14 +63,6 @@ pub struct Hyperbola {
 }
 
 impl Hyperbola {
-
-
-    
-
-
-
-
- 
     fn pop_rank_attacks(rank_attacks: &mut [[Bitboard; 8]; 64]) {
         for occupancy_bits in 0..64 {
             let occ_incl_rook = Bitboard::from_u64(occupancy_bits).shift(Dir::E);
@@ -110,10 +97,6 @@ impl Hyperbola {
         });
     }
 
-
-
-
-
     #[inline]
     fn hyperbola(&self, occ: Bitboard, sq: Square, mask: Bitboard) -> Bitboard {
         let o = occ & mask;
@@ -142,19 +125,18 @@ impl Hyperbola {
         let rank = sq.rank_index() * 8;
         let occupied = (occ.bits() >> rank) & (63 << 1); // 63 << 1 is middle 6 bits
         let attacks = self.rank_attacks[occupied as usize >> 1][file]; // occupied >> 1 is now range 0-63
-        Bitboard::from_u64((attacks.bits()) << rank)    
+        Bitboard::from_u64((attacks.bits()) << rank)
     }
 }
 
 impl SlidingPieceAttacks for Hyperbola {
-
     fn new() -> Box<Self> {
         let mut me = Box::new(Self {
-            mask: [ HyperbolaMask {
+            mask: [HyperbolaMask {
                 diag: Bitboard::EMPTY,
                 anti_diag: Bitboard::EMPTY,
-                file:  Bitboard::EMPTY,
-            } ; 64],
+                file: Bitboard::EMPTY,
+            }; 64],
             rank_attacks: [[Bitboard::EMPTY; 8]; 64],
         });
 
@@ -162,7 +144,7 @@ impl SlidingPieceAttacks for Hyperbola {
         Self::pop_rank_attacks(&mut me.rank_attacks);
         me
     }
- 
+
     #[inline]
     fn rook_attacks(&self, occ: Bitboard, from: Square) -> Bitboard {
         self.hyperbola(occ, from, self.mask[from].file) | self.rank_hyperbola(occ, from)
@@ -170,18 +152,15 @@ impl SlidingPieceAttacks for Hyperbola {
 
     #[inline]
     fn bishop_attacks(&self, occ: Bitboard, from: Square) -> Bitboard {
-        self.hyperbola(occ, from, self.mask[from].diag)
-            | self.hyperbola(occ, from, self.mask[from].anti_diag)
+        self.hyperbola(occ, from, self.mask[from].diag) | self.hyperbola(occ, from, self.mask[from].anti_diag)
     }
-
-
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::globals::constants::*;
     use crate::bitboard::bb_classical::ClassicalBitboard;
+    use crate::globals::constants::*;
 
     #[test]
     fn test_rook_attacks() {
@@ -221,7 +200,6 @@ mod tests {
         let att2 = line_pieces.squares().map(|sq| hq.rook_attacks(occ, sq));
         assert!(att1.eq(att2));
 
-
         let occ = b1 | c1 | d1 | e1 | f1 | g1;
         let att1: Vec<_> = a1.squares().map(|sq| cb.rook_attacks(occ, sq)).collect();
         let att2: Vec<_> = a1.squares().map(|sq| hq.rook_attacks(occ, sq)).collect();
@@ -229,18 +207,8 @@ mod tests {
 
         for sq in Bitboard::all().squares() {
             let occ = b5 | f3 | g4 | h4;
-            assert_eq!(
-                hq.bishop_attacks(occ, sq),
-                cb.bishop_attacks(occ, sq),
-                "square {:?}",
-                sq.as_bb()
-            );
-            assert_eq!(
-                hq.rook_attacks(occ, sq),
-                cb.rook_attacks(occ, sq),
-                "square {:?}",
-                sq.as_bb()
-            );
+            assert_eq!(hq.bishop_attacks(occ, sq), cb.bishop_attacks(occ, sq), "square {:?}", sq.as_bb());
+            assert_eq!(hq.rook_attacks(occ, sq), cb.rook_attacks(occ, sq), "square {:?}", sq.as_bb());
         }
     }
 
@@ -256,22 +224,18 @@ mod tests {
                         hq.rook_attacks(occ, sq),
                         cb.rook_attacks(occ, sq),
                         "square {:?} occ f:{:?} r:{:?}",
-                        sq.as_bb(), f, r
+                        sq.as_bb(),
+                        f,
+                        r
                     );
                 }
             }
             for d in sq.diag().power_set_iter() {
                 for ad in sq.anti_diag().power_set_iter() {
                     let occ = d | ad;
-                    assert_eq!(
-                        hq.bishop_attacks(occ, sq),
-                        cb.bishop_attacks(occ, sq),
-                        "square {:?}",
-                        sq.as_bb()
-                    );
+                    assert_eq!(hq.bishop_attacks(occ, sq), cb.bishop_attacks(occ, sq), "square {:?}", sq.as_bb());
                 }
             }
         }
-
     }
 }

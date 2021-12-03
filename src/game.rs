@@ -3,14 +3,14 @@ use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::catalog::Catalog;
 // use crate::movelist::MoveValidator;
-use crate::mv::{Move};
-use crate::variation::Variation;
-use crate::outcome::Outcome;
-use crate::search::algo::Algo;
-use crate::position::Position;
 use crate::eval::score::Score;
+use crate::mv::Move;
+use crate::outcome::Outcome;
+use crate::position::Position;
+use crate::search::algo::Algo;
 use crate::tags::Tags;
 use crate::types::Color;
+use crate::variation::Variation;
 use std::fmt;
 use std::rc::Rc;
 
@@ -51,7 +51,6 @@ impl Game {
         self.outcome
     }
 
-
     pub fn play(&mut self, white: &mut Algo, black: &mut Algo) {
         while !self.board.outcome().is_game_over() {
             let mv = self.choose_move(white, black);
@@ -66,11 +65,7 @@ impl Game {
                 panic!("Error on board {} {:#}", e, self.board);
             };
 
-            let player = if self.board.color_us() == Color::White {
-                white
-            } else {
-                black
-            };
+            let player = if self.board.color_us() == Color::White { white } else { black };
             player.set_position(Position::from_board(self.board.clone())).search();
             let mv = player.results.bm();
             let tags = player.results_as_position().tags().clone();
@@ -152,9 +147,7 @@ impl fmt::Display for Game {
             writeln!(f, "[FEN \"{}\"]", self.starting_pos.board().to_fen())?;
             writeln!(f, "[SetUp \"1\"]")?;
         }
-        let mut moves = self
-            .starting_pos.board()
-            .to_san_variation(&self.moves, Some(&self.annotations));
+        let mut moves = self.starting_pos.board().to_san_variation(&self.moves, Some(&self.annotations));
         if !f.alternate() {
             moves = moves.replace("\n", " ");
         }
@@ -166,29 +159,22 @@ impl fmt::Display for Game {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::eval::eval::*;
-    use crate::search::timecontrol::*;
-    use crate::types::{ScoreWdl};
-    use std::time::Duration;
     use crate::bitboard::castling::CastlingRights;
+    use crate::eval::eval::*;
     use crate::infra::component::Component;
-
+    use crate::search::timecontrol::*;
+    use crate::types::ScoreWdl;
+    use std::time::Duration;
 
     #[test]
     #[ignore]
     fn single_game() {
         let eval_w = SimpleScorer::new();
-        let mut white = Algo::new()
-            .set_timing_method(TimeControl::Depth(6))
-            .set_eval(eval_w)
-            .build();
+        let mut white = Algo::new().set_timing_method(TimeControl::Depth(6)).set_eval(eval_w).build();
 
         let mut eval_b = SimpleScorer::new();
         eval_b.mobility = false;
-        let mut black = Algo::new()
-            .set_timing_method(TimeControl::Depth(6))
-            .set_eval(eval_b)
-            .build();
+        let mut black = Algo::new().set_timing_method(TimeControl::Depth(6)).set_eval(eval_b).build();
 
         let pos = Catalog::starting_position();
         let mut game = Game::new();
@@ -214,7 +200,6 @@ mod tests {
         let mut new = Algo::new().set_timing_method(tc).build();
         let mut old = Algo::new().set_timing_method(tc).build();
         // new.set_callback(Uci::uci_info);
-
 
         // new.eval.rook_open_file = 20;
         // new.eval.cache_eval = true;
@@ -243,11 +228,7 @@ mod tests {
         // old.tt.aging = true;
 
         let wdl = tournament(&mut new, &mut old);
-        println!(
-            "\nscore as new {}\nELO difference {:.02}",
-            wdl,
-            wdl.elo(),
-        );
+        println!("\nscore as new {}\nELO difference {:.02}", wdl, wdl.elo(),);
     }
 
     fn tournament(new: &mut Algo, old: &mut Algo) -> ScoreWdl {
@@ -289,16 +270,8 @@ mod tests {
                 gm2.outcome()
             );
             if gm1.outcome() == Outcome::DrawRule75 || gm2.outcome() == Outcome::DrawRule75 {
-                print!(
-                    "mat.score:{:>4} mat:{}  ",
-                    gm1.board.material().centipawns(),
-                    gm1.board.material()
-                );
-                print!(
-                    "mat.score:{:>4} mat:{}  ",
-                    gm2.board.material().centipawns(),
-                    gm2.board.material()
-                );
+                print!("mat.score:{:>4} mat:{}  ", gm1.board.material().centipawns(), gm1.board.material());
+                print!("mat.score:{:>4} mat:{}  ", gm2.board.material().centipawns(), gm2.board.material());
             }
             println!();
             if (id + 1) % 10 == 0 {

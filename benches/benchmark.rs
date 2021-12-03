@@ -10,18 +10,18 @@ use odonata::board::makemove::*;
 use odonata::board::rules::*;
 use odonata::board::*;
 use odonata::bound::NodeType;
+use odonata::cache::hasher::*;
 use odonata::cache::tt2::*;
 use odonata::catalog::*;
-use odonata::eval::see::See;
+use odonata::domain::material::*;
 use odonata::eval::eval::*;
 use odonata::eval::model::Model;
 use odonata::eval::model::ModelScore;
 use odonata::eval::score::*;
+use odonata::eval::see::See;
 use odonata::eval::switches::Switches;
 use odonata::globals::constants::*;
 use odonata::infra::component::*;
-use odonata::cache::hasher::*;
-use odonata::domain::material::*;
 use odonata::movelist::*;
 use odonata::mv::*;
 use odonata::perft::Perft;
@@ -41,7 +41,6 @@ use std::time::Instant;
 use criterion::measurement::Measurement;
 use criterion::*;
 use log::*;
-
 
 use iai::black_box;
 
@@ -84,7 +83,6 @@ criterion_group!(
 // );
 
 criterion_main!(benches);
-
 
 fn bb_calcs(c: &mut Criterion) {
     let mut group = c.benchmark_group("bb_calcs");
@@ -289,12 +287,7 @@ fn sq_calcs(c: &mut Criterion) {
             let t = Instant::now();
             for _ in 0..n {
                 for s1 in Bitboard::all().squares() {
-                    black_box(
-                        Bitboard::all()
-                            .squares()
-                            .map(|s2| black_box(bb.between(s1, s2)))
-                            .count(),
-                    );
+                    black_box(Bitboard::all().squares().map(|s2| black_box(bb.between(s1, s2))).count());
                 }
             }
             t.elapsed() / (64 * 64) as u32
@@ -408,10 +401,7 @@ fn board_calcs(c: &mut Criterion) {
         })
     });
 
-    let bams: Vec<(Board, Move)> = positions
-        .iter()
-        .map(|p| (p.board().clone(), p.bm().unwrap()[0]))
-        .collect();
+    let bams: Vec<(Board, Move)> = positions.iter().map(|p| (p.board().clone(), p.bm().unwrap()[0])).collect();
     group.bench_function("will_check_them", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
@@ -450,10 +440,7 @@ fn board_calcs(c: &mut Criterion) {
         })
     });
 
-    let bams: Vec<(Board, Move)> = positions
-        .iter()
-        .map(|p| (p.board().clone(), p.bm().unwrap()[0]))
-        .collect();
+    let bams: Vec<(Board, Move)> = positions.iter().map(|p| (p.board().clone(), p.bm().unwrap()[0])).collect();
     group.bench_function("make_move + hash + clone", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
@@ -484,10 +471,7 @@ fn board_calcs(c: &mut Criterion) {
         })
     });
 
-    let bams: Vec<(Board, Move)> = positions
-        .iter()
-        .map(|p| (p.board().clone(), p.bm().unwrap()[0]))
-        .collect();
+    let bams: Vec<(Board, Move)> = positions.iter().map(|p| (p.board().clone(), p.bm().unwrap()[0])).collect();
     group.bench_function("hash_move", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
@@ -497,10 +481,7 @@ fn board_calcs(c: &mut Criterion) {
             t.elapsed() / positions.len() as u32
         })
     });
-    let bams: Vec<(Board, Move)> = positions
-        .iter()
-        .map(|p| (p.board().clone(), p.bm().unwrap()[0]))
-        .collect();
+    let bams: Vec<(Board, Move)> = positions.iter().map(|p| (p.board().clone(), p.bm().unwrap()[0])).collect();
     group.bench_function("hash_board", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
@@ -510,33 +491,19 @@ fn board_calcs(c: &mut Criterion) {
             t.elapsed() / positions.len() as u32
         })
     });
-    let bams: Vec<(Board, Move)> = positions
-        .iter()
-        .map(|p| (p.board().clone(), p.bm().unwrap()[0]))
-        .collect();
+    let bams: Vec<(Board, Move)> = positions.iter().map(|p| (p.board().clone(), p.bm().unwrap()[0])).collect();
     group.bench_function("threats_to raw", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
             bams.iter().cycle_n(n).for_each(|bam| {
-                black_box(BoardCalcs::threats_to(
-                    black_box(&bam.0),
-                    Color::White,
-                    bam.0.occupied(),
-                ));
-                black_box(BoardCalcs::threats_to(
-                    black_box(&bam.0),
-                    Color::Black,
-                    bam.0.occupied(),
-                ));
+                black_box(BoardCalcs::threats_to(black_box(&bam.0), Color::White, bam.0.occupied()));
+                black_box(BoardCalcs::threats_to(black_box(&bam.0), Color::Black, bam.0.occupied()));
             });
             t.elapsed() / 2 / positions.len() as u32
         })
     });
     group.bench_function("threats_to (memoise)", |b| {
-        let bams: Vec<(Board, Move)> = positions
-            .iter()
-            .map(|p| (p.board().clone(), p.bm().unwrap()[0]))
-            .collect();
+        let bams: Vec<(Board, Move)> = positions.iter().map(|p| (p.board().clone(), p.bm().unwrap()[0])).collect();
         b.iter_custom(|n| {
             let t = Instant::now();
             bams.iter().cycle_n(n).for_each(|bam| {
@@ -546,10 +513,7 @@ fn board_calcs(c: &mut Criterion) {
             t.elapsed() / 2 / positions.len() as u32
         })
     });
-    let bams: Vec<(Board, Move)> = positions
-        .iter()
-        .map(|p| (p.board().clone(), p.bm().unwrap()[0]))
-        .collect();
+    let bams: Vec<(Board, Move)> = positions.iter().map(|p| (p.board().clone(), p.bm().unwrap()[0])).collect();
     group.bench_function("threats_to + clone", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
@@ -1006,12 +970,7 @@ fn benchmark_attacks(c: &mut Criterion) {
 fn bench_logging(c: &mut Criterion) {
     c.bench_function("logging", |b| {
         b.iter(|| {
-            black_box(debug!(
-                "The cat sat on the mat and counted {} {} {}",
-                1,
-                2,
-                black_box(3)
-            ));
+            black_box(debug!("The cat sat on the mat and counted {} {} {}", 1, 2, black_box(3)));
         });
     });
 }
@@ -1394,9 +1353,7 @@ fn bench_shared_mem(c: &mut Criterion) {
 
     const N: usize = 200_000;
     let mut vec = Vec::with_capacity(N);
-    (0..N)
-        .into_iter()
-        .for_each(|i| vec.push(AtomicU64::new(i as u64)));
+    (0..N).into_iter().for_each(|i| vec.push(AtomicU64::new(i as u64)));
     let atomic_array = vec.into_boxed_slice();
     let mut rng = thread_rng();
     let mut shuf: Vec<usize> = (0..N).map(|i| i).collect();

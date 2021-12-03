@@ -2,22 +2,15 @@ use crate::bitboard::bitboard::Bitboard;
 use crate::board::Board;
 use crate::cache::hasher::Hasher;
 use crate::mv::Move;
-use crate::variation::Variation;
 use crate::types::{Piece, Repeats};
+use crate::variation::Variation;
 
 use std::cell::Cell;
-
 
 // pub trait MoveDelta {
 //     fn make_move(&mut self, mv: &Move);
 //     fn undo_move(&mut self, mv: &Move);
 // }
-
-
-
-
-
-
 
 pub trait MoveMaker {
     fn make_move(&self, m: &Move) -> Board;
@@ -26,8 +19,6 @@ pub trait MoveMaker {
 }
 
 impl MoveMaker for Board {
-
-
     // fn make_move_ext(&mut self, mv: &MoveExt) {
     //     let them = self.turn.opposite();
     //     self.pieces[mv.p1.index()] ^= mv.f1 ^ mv.t1;
@@ -46,7 +37,7 @@ impl MoveMaker for Board {
     //     }
     //     self.colors[self.turn] ^= mv.f1 ^ mv.t1 ^ mv.t3 ^ mv.f4;
     //     self.colors[them] ^= mv.f2;
-        
+
     //     // self.castling ^= mv.castle;
     //     let squares_changing = mv.f1 ^ mv.t1 ^ mv.t3 ^ mv.f4;
     //     self.castling.adjust( squares_changing);
@@ -62,7 +53,7 @@ impl MoveMaker for Board {
     //     // debug_assert!(
     //     //     self.hash == Hasher::default().hash_board(self),
     //     //     "make_move_ext({:?}) inconsistent incremental hash {:x} (should be {:x}",
-    //     //     mv, 
+    //     //     mv,
     //     //     self.hash,
     //     //     Hasher::default().hash_board(self),
     //     // );
@@ -76,16 +67,13 @@ impl MoveMaker for Board {
     //     // self.turn = self.turn.opposite();
     // }
 
-
     fn make_moves(&self, moves: &Variation) -> Board {
-        let mut b = self.clone(); 
+        let mut b = self.clone();
         for mv in moves.iter() {
             b = b.make_move(&mv);
         }
         b
     }
-
-
 
     fn make_move(&self, m: &Move) -> Board {
         // either we're moving to an empty square or its a capture
@@ -122,12 +110,7 @@ impl MoveMaker for Board {
                 b.multiboard.remove_piece(m.ep().as_bb(), m.capture_piece(), b.turn);
             } else {
                 // regular capture
-                debug_assert!(
-                    m.capture_piece() != Piece::King,
-                    "king captured by move {} on board \n{}",
-                    m,
-                    self
-                );
+                debug_assert!(m.capture_piece() != Piece::King, "king captured by move {} on board \n{}", m, self);
                 b.multiboard.remove_piece(m.to().as_bb(), m.capture_piece(), b.turn);
             }
         }
@@ -135,7 +118,8 @@ impl MoveMaker for Board {
         // clear one bit and set another for the move using xor
         if !m.is_null() {
             // let from_to_bits = m.from().as_bb() | m.to().as_bb();
-            b.multiboard.move_piece(m.from().as_bb(), m.to().as_bb(), m.mover_piece(), self.turn);
+            b.multiboard
+                .move_piece(m.from().as_bb(), m.to().as_bb(), m.mover_piece(), self.turn);
         }
 
         if m.mover_piece() == Piece::Pawn {
@@ -147,7 +131,8 @@ impl MoveMaker for Board {
 
         if m.is_promo() {
             // fifty clock handled by pawn move above;
-            b.multiboard.change_piece(m.to().as_bb(), Piece::Pawn, m.promo_piece() ); // pawn has already moved
+            b.multiboard.change_piece(m.to().as_bb(), Piece::Pawn, m.promo_piece());
+            // pawn has already moved
         }
 
         // castling *moves*
@@ -174,7 +159,7 @@ impl MoveMaker for Board {
             b.hash == Hasher::default().hash_board(&b),
             "\n{}.make_move({}) = \n{} inconsistent incremental hash {:x} (should be {:x})",
             self,
-            m, 
+            m,
             b,
             b.hash,
             Hasher::default().hash_board(&b),
@@ -184,18 +169,17 @@ impl MoveMaker for Board {
         // debug_assert!(
         //     b.material() == Material::from_board(&b),
         //     "\n{}.make_move({}) = \n{} inconsistent incremental material {} (should be {})",
-        //     self, 
-        //     m, 
+        //     self,
+        //     m,
         //     b,
         //     b.material(),
         //     Material::from_board(&b),
         // );
-        
+
         b
     }
 
-    fn undo_move(&self, _m: &Move) {
-    }
+    fn undo_move(&self, _m: &Move) {}
 }
 
 #[cfg(test)]
@@ -206,7 +190,6 @@ mod tests {
     use crate::catalog::*;
     // use crate::movelist::MoveValidator;
     use crate::globals::constants::*;
-
 
     #[test]
     fn test_make_move() -> Result<()> {
@@ -273,7 +256,7 @@ mod tests {
         assert!(!board.is_in_check(board.color_us()));
         assert!(board.checkers_of(board.color_us()).is_empty());
         assert_eq!(board.total_halfmoves(), 0);
-        assert_eq!(board.legal_moves().len(), 16+5+2+2); // 16P, 5R, 2K, OO, OOO 
+        assert_eq!(board.legal_moves().len(), 16 + 5 + 2 + 2); // 16P, 5R, 2K, OO, OOO
 
         let board = board.make_move(&board.parse_uci_move("e1g1").unwrap());
         assert_eq!(board.total_halfmoves(), 1);
@@ -281,7 +264,7 @@ mod tests {
         let board = board.make_move(&board.parse_uci_move("e8g8").unwrap());
         assert_eq!(board.to_fen(), "r4rk1/pppppppp/8/8/8/8/PPPPPPPP/R4RK1 w - - 2 2");
         assert_eq!(board.total_halfmoves(), 2);
-        
+
         // castle queens side
         let board = Board::parse_fen(epd).unwrap().as_board();
         let board = board.make_move(&board.parse_uci_move("e1c1").unwrap());

@@ -1,39 +1,37 @@
-
 use crate::board::makemove::MoveMaker;
-use crate::search::algo::Algo;
 use crate::board::Board;
 use crate::eval::score::Score;
 use crate::mv::Move;
-use crate::search::node::{Node, Event};
 use crate::pvtable::PvTable;
+use crate::search::algo::Algo;
+use crate::search::node::{Event, Node};
 // use crate::eval::score::Score;
 use crate::infra::component::Component;
 use crate::variation::Variation;
 // use crate::{debug, logger::LogInit};
 use crate::types::{MoveType, Ply};
+use serde::{Deserialize, Serialize};
 use std::cmp::min;
 use std::fmt;
-use serde::{Deserialize, Serialize};
-
 
 // CLOP
 // 75+0.6  a=2.7  b=0.198 c=0.000167
 // 10+.08  a=2.62 b=0.231 c=0.00017
 // 1+0.01  a=3.04 b=0.272 c=0.000185
-// 
- 
+//
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct NullMovePruning {
     pub enabled: bool,
     pub recursive: bool,
     pub successive: bool,
-    pub margin: Score, 
+    pub margin: Score,
     pub min_depth: Ply,
-    pub depth_reduction_strat: i64, 
-    pub a: f32, 
-    pub b: f32, 
-    pub c: f32, 
+    pub depth_reduction_strat: i64,
+    pub a: f32,
+    pub b: f32,
+    pub c: f32,
 }
 
 impl Component for NullMovePruning {
@@ -41,8 +39,7 @@ impl Component for NullMovePruning {
         self.new_position();
     }
 
-    fn new_position(&mut self) {
-    }
+    fn new_position(&mut self) {}
 }
 
 impl Default for NullMovePruning {
@@ -68,24 +65,24 @@ impl NullMovePruning {
     pub fn allow(&self, b: &Board, node: &Node, eval: Score, pv_table: &PvTable) -> bool {
         if !self.enabled {
             return false;
-        } 
+        }
         if node.ply == 0 {
-            return false;  // no null move at root, might mean no moves (with move restrictions too!)
-        } 
+            return false; // no null move at root, might mean no moves (with move restrictions too!)
+        }
         if node.depth < self.min_depth {
             return false;
-        } 
+        }
         if !node.beta.is_numeric() {
             return false;
-        } 
+        }
         if ((b.line_pieces() | b.knights()) & b.us()).is_empty() {
             return false;
-        }  
+        }
         // if node.alpha == node.beta - Score::from_cp(1) {
         //     // no NMP in PVS search
         //     return false;
         // }
-        if  eval < node.beta + self.margin {
+        if eval < node.beta + self.margin {
             return false;
         }
 
@@ -101,7 +98,6 @@ impl NullMovePruning {
         }
         true
     }
-
 
     #[inline]
     pub fn contains_null_move(var: &Variation) -> bool {
@@ -124,30 +120,29 @@ impl NullMovePruning {
             5 => 3 + n.depth / 4 + min((eval - n.beta).as_i16() as i32 / 128, 3),
             100 => f32::round(self.a + n.depth as f32 * self.b + f32::min((eval - n.beta).as_i16() as f32 * self.c, 3.0)) as i32,
 
-            // classical adaptive null move pruning reduction 
+            // classical adaptive null move pruning reduction
             200 => {
                 if n.depth > 8 {
                     3
                 } else if n.depth <= 6 {
                     2
-                } else if n.depth > 6 && b.us().popcount() >=3 && b.them().popcount() >=3 { 
+                } else if n.depth > 6 && b.us().popcount() >= 3 && b.them().popcount() >= 3 {
                     3
                 } else {
-                    2 
+                    2
                 }
-            },
+            }
             _ => unreachable!(),
         }
     }
 }
-
 
 impl Algo {
     #[inline]
     pub fn nmp(&mut self, b: &Board, n: &Node, eval: Score) -> Option<Score> {
         if self.minmax || !self.nmp.allow(&b, &n, eval, &self.pv_table) {
             return None;
-        }   
+        }
 
         let r = self.nmp.depth_reduction(eval, b, &n);
         let mv = Move::NULL_MOVE;
@@ -155,14 +150,16 @@ impl Algo {
         self.current_variation.push(mv);
         self.explainer.start(&self.current_variation);
         self.stats.inc_nmp(n.ply);
-        let child_score = -self.alphabeta_recursive(
-            &mut child_board,
-            n.ply + 1,
-            n.depth - r - 1,
-            -n.beta,
-            -n.beta + Score::from_cp(1),
-            &mv,
-        ).0;
+        let child_score = -self
+            .alphabeta_recursive(
+                &mut child_board,
+                n.ply + 1,
+                n.depth - r - 1,
+                -n.beta,
+                -n.beta + Score::from_cp(1),
+                &mv,
+            )
+            .0;
         b.undo_move(&mv);
         self.current_variation.pop();
         self.explainer.start(&self.current_variation);
@@ -177,18 +174,12 @@ impl Algo {
     }
 }
 
-
-
-
-
 impl fmt::Display for NullMovePruning {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "{:#?}", self)?;
         Ok(())
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {

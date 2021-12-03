@@ -11,7 +11,6 @@ use crate::infra::parsed_config::ParsedConfig;
 use crate::infra::version::Version;
 use crate::search::timecontrol::TimeControl;
 
-
 pub fn main() -> Result<(), String> {
     let matches = App::new(Version::NAME)
         .version(Version::VERSION)
@@ -30,12 +29,7 @@ pub fn main() -> Result<(), String> {
                 .help("specifies a custom config file")
                 .takes_value(true),
         )
-        .arg(
-            Arg::with_name("uci")
-                .help("show uci settings and exit")
-                .short("u")
-                .long("uci"),
-        )
+        .arg(Arg::with_name("uci").help("show uci settings and exit").short("u").long("uci"))
         .arg(
             Arg::with_name("strict")
                 .help("illegal uci commands and settings are fatal - useful for cutechess-cli")
@@ -49,11 +43,7 @@ pub fn main() -> Result<(), String> {
                 .value_name("depth")
                 .takes_value(true),
         )
-        .arg(
-            Arg::with_name("profile")
-                .help("runs code to assist with profiling")
-                .long("profile"),
-        )
+        .arg(Arg::with_name("profile").help("runs code to assist with profiling").long("profile"))
         .arg(
             Arg::with_name("threads")
                 .help("sets the number of threads to use")

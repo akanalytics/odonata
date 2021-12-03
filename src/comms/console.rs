@@ -1,15 +1,13 @@
 use crate::board::Board;
 use crate::comms::uci::Uci;
-use crate::search::algo::Algo;
 use crate::infra::version::Version;
+use crate::search::algo::Algo;
 use std::io;
 
 pub struct Console {
     _board: Board,
     _algo: Algo,
 }
-
-
 
 impl Console {
     pub fn run() {
@@ -64,9 +62,10 @@ impl Console {
         println!();
         println!("{}", Version::IMAGE);
         println!();
-        println!("Please see {} for updates,\nreleases and licence details. Image by jgs.", Version::HOMEPAGE);
+        println!(
+            "Please see {} for updates,\nreleases and licence details. Image by jgs.",
+            Version::HOMEPAGE
+        );
         println!();
     }
-
-
 }

@@ -1,8 +1,8 @@
 use crate::bitboard::square::Square;
 use crate::types::Color;
+use anyhow::{anyhow, Result};
 use std::fmt::{self, Write};
 use std::ops;
-use anyhow::{Result, anyhow};
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 
@@ -54,16 +54,7 @@ impl Dir {
         // mask: Bitboard::RANK_8.or(Bitboard::FILE_A),
     };
 
-    pub const ALL: [Self; 8] = [
-        Self::N,
-        Self::NE,
-        Self::E,
-        Self::SE,
-        Self::S,
-        Self::SW,
-        Self::W,
-        Self::NW,
-    ];
+    pub const ALL: [Self; 8] = [Self::N, Self::NE, Self::E, Self::SE, Self::S, Self::SW, Self::W, Self::NW];
 
     #[inline]
     pub const fn shift(self) -> i8 {
@@ -285,12 +276,8 @@ impl Bitboard {
     pub const RANKS_36: Bitboard = Bitboard::RANK_3.or(Bitboard::RANK_6);
     pub const RANKS_45: Bitboard = Bitboard::RANK_4.or(Bitboard::RANK_5);
     pub const CENTER_4_SQ: Bitboard = Bitboard::RANKS_45.and(Bitboard::FILE_D.or(Bitboard::FILE_E));
-    pub const CENTER_16_SQ: Bitboard = (Bitboard::RANKS_45.or(Bitboard::RANKS_36)).and(
-        Bitboard::FILE_C
-            .or(Bitboard::FILE_D)
-            .or(Bitboard::FILE_E)
-            .or(Bitboard::FILE_F),
-    );
+    pub const CENTER_16_SQ: Bitboard =
+        (Bitboard::RANKS_45.or(Bitboard::RANKS_36)).and(Bitboard::FILE_C.or(Bitboard::FILE_D).or(Bitboard::FILE_E).or(Bitboard::FILE_F));
 }
 
 impl fmt::Binary for Bitboard {
@@ -607,14 +594,8 @@ impl Bitboard {
     #[inline]
     pub fn home_half(c: Color) -> Self {
         c.chooser_wb(
-            Bitboard::RANK_1
-                .or(Bitboard::RANK_2)
-                .or(Bitboard::RANK_3)
-                .or(Bitboard::RANK_4),
-            Bitboard::RANK_5
-                .or(Bitboard::RANK_6)
-                .or(Bitboard::RANK_7)
-                .or(Bitboard::RANK_8),
+            Bitboard::RANK_1.or(Bitboard::RANK_2).or(Bitboard::RANK_3).or(Bitboard::RANK_4),
+            Bitboard::RANK_5.or(Bitboard::RANK_6).or(Bitboard::RANK_7).or(Bitboard::RANK_8),
         )
     }
 
@@ -971,19 +952,10 @@ mod tests {
         assert_eq!(Bitboard::parse_file("9").unwrap_err().to_string(), "Invalid file '9'");
         assert_eq!(Bitboard::parse_file("").unwrap_err().to_string(), "Invalid file ''");
         assert_eq!(Bitboard::parse_rank("a").unwrap_err().to_string(), "Invalid rank 'a'");
-        assert_eq!(
-            Bitboard::parse_square("aa").unwrap_err().to_string(),
-            "Invalid rank 'a'"
-        );
-        assert_eq!(
-            Bitboard::parse_square("11").unwrap_err().to_string(),
-            "Invalid file '1'"
-        );
+        assert_eq!(Bitboard::parse_square("aa").unwrap_err().to_string(), "Invalid rank 'a'");
+        assert_eq!(Bitboard::parse_square("11").unwrap_err().to_string(), "Invalid file '1'");
         assert_eq!(Bitboard::parse_square("").unwrap_err().to_string(), "Invalid square ''");
-        assert_eq!(
-            Bitboard::parse_square("abc").unwrap_err().to_string(),
-            "Invalid square 'abc'"
-        );
+        assert_eq!(Bitboard::parse_square("abc").unwrap_err().to_string(), "Invalid square 'abc'");
     }
 
     #[test]
@@ -1044,10 +1016,7 @@ mod tests {
         assert_eq!(a1b2.uci(), "a1+b2");
         assert_eq!(format!("{}", a1b2), ". . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. 1 . . . . . . \n1 . . . . . . . \n");
         assert_eq!(format!("{:?}", a1b2), "A1 | B2");
-        assert_eq!(
-            format!("{:?}", Bitboard::FILE_A),
-            "A1 | A2 | A3 | A4 | A5 | A6 | A7 | A8 | FILE_A"
-        );
+        assert_eq!(format!("{:?}", Bitboard::FILE_A), "A1 | A2 | A3 | A4 | A5 | A6 | A7 | A8 | FILE_A");
         // assert_eq!(format!("{:?}", Bitboard::EDGES), "");
         assert_eq!(format!("{:b}", a1b2), "1000000001");
     }
@@ -1084,14 +1053,8 @@ mod tests {
 
         let power_sets = Bitboard::FILE_A.power_set_iter();
         assert_eq!(power_sets.clone().count(), 1 << 8);
-        assert_eq!(
-            power_sets.clone().fold(Bitboard::EMPTY, |acc, bb| acc | bb),
-            Bitboard::FILE_A
-        );
-        assert_eq!(
-            power_sets.clone().filter(|bb| bb.popcount() == 2).count(),
-            7 * 8 / 2
-        );
+        assert_eq!(power_sets.clone().fold(Bitboard::EMPTY, |acc, bb| acc | bb), Bitboard::FILE_A);
+        assert_eq!(power_sets.clone().filter(|bb| bb.popcount() == 2).count(), 7 * 8 / 2);
         assert_eq!(power_sets.clone().filter(|bb| bb.popcount() == 7).count(), 8);
     }
 }

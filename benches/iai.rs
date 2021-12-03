@@ -3,20 +3,19 @@ use odonata::eval::eval::SimpleScorer;
 use odonata::eval::model::Model;
 use odonata::eval::model::ModelScore;
 use odonata::eval::switches::Switches;
-use odonata::position::*;
+use odonata::infra::tracer::*;
 use odonata::movelist::*;
 use odonata::perft::Perft;
-use odonata::infra::tracer::*;
+use odonata::position::*;
 use odonata::search::engine::Engine;
 use odonata::search::node::Node;
 use odonata::search::timecontrol::TimeControl;
-use static_init::{dynamic};
+use static_init::dynamic;
 
 // use criterion::measurement::Measurement;
 // use criterion::black_box;
 
 use iai::black_box;
-
 
 // criterion_group!(
 //     name = benches;
@@ -41,18 +40,21 @@ iai::main!(
 );
 
 //
-// we use dynamic here so that it gets init before main and gets included in the calibration run 
+// we use dynamic here so that it gets init before main and gets included in the calibration run
 // and hence subtracted from the final results displayed
-// we use default engine not new (loads config.toml) as reading a file does not play 
+// we use default engine not new (loads config.toml) as reading a file does not play
 // well with instruction counts
 //
 
 #[dynamic]
-static mut ENGINE: Engine = { let mut e = Engine::default(); e.algo.eval.pawn = true; e };
+static mut ENGINE: Engine = {
+    let mut e = Engine::default();
+    e.algo.eval.pawn = true;
+    e
+};
 
 #[dynamic]
 static mut POS: Position = Catalog::starting_position();
-
 
 #[dynamic]
 static mut MODEL: Model = Model::from_board(POS.read().board(), Switches::ALL_SCORING);
@@ -112,14 +114,13 @@ fn iai_search() {
     black_box(engine.search());
 }
 
-
 fn iai_model_build() {
     black_box(Model::from_board(POS.read().board(), Switches::ALL_SCORING));
 }
 
 fn iai_model_predict() {
     let mut model_score = ModelScore::new(50);
-    black_box(ENGINE.read().algo.eval.predict(black_box(&MODEL.read()), &mut model_score) );
+    black_box(ENGINE.read().algo.eval.predict(black_box(&MODEL.read()), &mut model_score));
 }
 
 fn iai_build_model_and_eval_model() {
@@ -147,5 +148,4 @@ fn iai_trace() {
     for _i in 0..10_000 {
         nt.trace("Hello").trace("world").trace(&42);
     }
-
 }

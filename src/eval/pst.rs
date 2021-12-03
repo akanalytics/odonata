@@ -1,14 +1,11 @@
-use crate::Bitboard;
-use crate::infra::component::Component;
 use crate::bitboard::square::Square;
 use crate::eval::weight::Weight;
+use crate::infra::component::Component;
 use crate::types::{Color, Piece};
+use crate::Bitboard;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use std::fmt;
-
-
-
 
 #[derive(Clone)]
 // #[serde(from="PstProxy", into="PstProxy")]
@@ -31,9 +28,7 @@ impl Default for Pst {
             pawn_r7: Weight::from_i32(103, 224),
             rook_edge: Weight::from_i32(28, 13),
 
-            
             array: [[Weight::default(); 64]; Piece::len()],
-
         };
         me.init_pst();
         me
@@ -45,17 +40,16 @@ use std::collections::BTreeMap;
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct PstHelper {
-    pub p: BTreeMap<String,Weight>,
-    pub n: BTreeMap<String,Weight>,
-    pub b: BTreeMap<String,Weight>,
-    pub r: BTreeMap<String,Weight>,
-    pub q: BTreeMap<String,Weight>,
-    pub k: BTreeMap<String,Weight>,
+    pub p: BTreeMap<String, Weight>,
+    pub n: BTreeMap<String, Weight>,
+    pub b: BTreeMap<String, Weight>,
+    pub r: BTreeMap<String, Weight>,
+    pub q: BTreeMap<String, Weight>,
+    pub k: BTreeMap<String, Weight>,
 }
 
-
 impl Serialize for Pst {
-    fn serialize<S:Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -65,7 +59,7 @@ impl Serialize for Pst {
             for sq in Square::all() {
                 map.insert(sq.uci(), self.array[p][sq]);
             }
-        }   
+        }
         h.serialize(serializer)
     }
 }
@@ -73,23 +67,20 @@ impl Serialize for Pst {
 impl<'de> Deserialize<'de> for Pst {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: Deserializer<'de>
+        D: Deserializer<'de>,
     {
         let h: PstHelper = Deserialize::deserialize(deserializer)?;
         let mut pst = Pst::default();
         for (i, &p) in Piece::ALL_BAR_NONE.iter().enumerate() {
             let map = [&h.p, &h.n, &h.b, &h.r, &h.q, &h.k][i];
-            for (k,&v) in map.iter() {
+            for (k, &v) in map.iter() {
                 let sq = Bitboard::parse_square(k).map_err(serde::de::Error::custom)?;
                 pst.array[p][sq] = v;
             }
         }
         Ok(pst)
     }
-
 }
-
-
 
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -108,9 +99,9 @@ impl From<PstProxy> for Pst {
         for (i, &p) in Piece::ALL_BAR_NONE.iter().enumerate() {
             let b = [&pp.p, &pp.n, &pp.b, &pp.r, &pp.q, &pp.k][i];
             for sq in Square::all() {
-              pst.array[p][sq] = b[sq.rank_index()][sq.file_index()];
+                pst.array[p][sq] = b[sq.rank_index()][sq.file_index()];
             }
-        }   
+        }
         pst
     }
 }
@@ -123,27 +114,18 @@ impl Into<PstProxy> for Pst {
             for sq in Square::all() {
                 b[sq.rank_index()][sq.file_index()] = self.array[p][sq];
             }
-        }   
+        }
         pp
     }
 }
 
-
-
-
-
 impl Component for Pst {
-
-
-
     fn new_game(&mut self) {
         self.new_position();
     }
 
     fn new_position(&mut self) {}
 }
-
-
 
 impl fmt::Display for Pst {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -172,18 +154,14 @@ impl fmt::Display for Pst {
 
 impl fmt::Debug for Pst {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Pst")
-            .field("enabled", &self.enabled)
-            .finish()
+        f.debug_struct("Pst").field("enabled", &self.enabled).finish()
     }
 }
-
 
 impl Pst {
     pub fn new() -> Self {
         Self::default()
     }
-
 
     #[inline]
     pub fn w_eval_square(&self, c: Color, p: Piece, mut sq: Square) -> Weight {
@@ -193,13 +171,11 @@ impl Pst {
         self.pst(p, sq)
     }
 
-
     // P(osition) S(quare) T(able)
     #[inline]
     pub fn pst(&self, p: Piece, sq: Square) -> Weight {
         self.array[p][sq]
     }
-
 
     fn init_pst(&mut self) {
         let r5 = self.pawn_r5.s() as i32;
@@ -370,13 +346,11 @@ impl Pst {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
-    use test_log::test;
     use super::*;
     use crate::search::engine::Engine;
+    use test_log::test;
 
     #[test]
     fn pst_serde_test() {
@@ -406,11 +380,9 @@ mod tests {
         let _text = toml::to_string(&eng).unwrap();
         // eprintln!("toml\n{}", text);
         // let lookup = c1.weight("eval.pst.p.a2", &Weight::from_i32(1, 1));
-        assert_eq!(eng.algo.eval.pst.pst(Piece::Pawn, Square::A2).s(), Weight::from_f32(6.5,7.5).s());
-        assert_eq!(eng.algo.eval.pst.pst(Piece::Pawn, Square::A2).e(), Weight::from_f32(6.5,7.5).e());
+        assert_eq!(eng.algo.eval.pst.pst(Piece::Pawn, Square::A2).s(), Weight::from_f32(6.5, 7.5).s());
+        assert_eq!(eng.algo.eval.pst.pst(Piece::Pawn, Square::A2).e(), Weight::from_f32(6.5, 7.5).e());
         eng.configment("eval.pst.p.a2.e", "8.5").unwrap();
-        assert_eq!(eng.algo.eval.pst.pst(Piece::Pawn, Square::A2).e(), Weight::from_f32(6.5,8.5).e());
+        assert_eq!(eng.algo.eval.pst.pst(Piece::Pawn, Square::A2).e(), Weight::from_f32(6.5, 8.5).e());
     }
 }
-
-

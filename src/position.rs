@@ -1,26 +1,23 @@
 use crate::bitboard::bitboard::Bitboard;
 use crate::board::boardbuf::BoardBuf;
 use crate::board::Board;
-use crate::mv::{Move};
-use crate::variation::{Variation};
+use crate::mv::Move;
+use crate::variation::Variation;
 
-use crate::movelist::{MoveList};
+use crate::movelist::MoveList;
 // use crate::movelist::MoveValidator;
-use crate::types::{Color, Ply};
 use crate::bitboard::castling::CastlingRights;
+use crate::tags::{Tag, Tags};
+use crate::types::{Color, Ply};
 use crate::utils::StringUtils;
-use crate::tags::{Tags, Tag};
-use std::convert::{TryFrom, Into};
+use std::collections::HashMap;
+use std::convert::{Into, TryFrom};
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
-use std::collections::HashMap;
 // // use crate::{info, logger::LogInit};
-use serde::{Serialize, ser::SerializeMap, Serializer, Deserialize};
-use anyhow::{Result,bail, anyhow, Context};
-
-
-
+use anyhow::{anyhow, bail, Context, Result};
+use serde::{ser::SerializeMap, Deserialize, Serialize, Serializer};
 
 use std::fmt;
 
@@ -41,17 +38,16 @@ pub struct Position {
     tags: Tags,
 }
 
-
 impl TryFrom<HashMap<String, String>> for Position {
     type Error = anyhow::Error;
 
-    fn try_from(map: HashMap<String, String> ) -> Result<Self> {
+    fn try_from(map: HashMap<String, String>) -> Result<Self> {
         let board_str = map.get("fen").ok_or(anyhow!("no key 'fen'"))?;
         let mut p = Position {
             board: Board::parse_fen(board_str)?,
             tags: Tags::new(),
         };
-        for (k,v) in map.iter() {
+        for (k, v) in map.iter() {
             if k == "fen" {
                 continue;
             }
@@ -63,13 +59,13 @@ impl TryFrom<HashMap<String, String>> for Position {
 }
 
 impl Into<HashMap<String, String>> for Position {
-    fn into(self) -> HashMap<String,String> {
+    fn into(self) -> HashMap<String, String> {
         let mut map = self.tags.as_hash_map(self.board());
         map.insert("fen".to_string(), self.board().to_fen());
         map
     }
 }
- 
+
 // ordered with fen first, then alphabetically by tag-key
 impl Serialize for Position {
     fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
@@ -82,7 +78,7 @@ impl Serialize for Position {
         m.serialize_entry("fen", &self.board().to_fen())?;
         let map = self.tags.as_hash_map(self.board());
         let mut entries = map.iter().collect::<Vec<_>>();
-        entries.sort_by(|x,y| x.0.cmp(&y.0));  // sort by key
+        entries.sort_by(|x, y| x.0.cmp(&y.0)); // sort by key
         for (k, v) in entries.iter() {
             m.serialize_entry(k, &v)?;
         }
@@ -90,19 +86,11 @@ impl Serialize for Position {
     }
 }
 
-
-
-
-
-
-
-
 /// builder methods
 impl Position {
     pub fn from_board(board: Board) -> Self {
-        Self { board, ..Self::default()}
+        Self { board, ..Self::default() }
     }
-
 
     /// 0. Piece placement
     /// 1. Active color
@@ -115,7 +103,10 @@ impl Position {
         if words.len() < 4 {
             bail!("Must specify at least 4 parts in EPD '{}'", epd);
         }
-        let mut pos = Position { board: Board::parse_piece_placement(words[0])?, tags: Tags::new() };
+        let mut pos = Position {
+            board: Board::parse_piece_placement(words[0])?,
+            tags: Tags::new(),
+        };
         pos.board.set_turn(Color::parse(words[1])?);
         pos.board.set_castling(CastlingRights::parse(words[2])?);
         if words[3] == "-" {
@@ -140,11 +131,10 @@ impl Position {
         Ok(pos)
     }
 
-
     pub fn find_by_id<'a>(id: &str, positions: &'a [Position]) -> Option<&'a Position> {
         for p in positions.iter() {
             if p.id().ok() == Some(id) {
-                return Some(p); 
+                return Some(p);
             }
         }
         None
@@ -166,7 +156,10 @@ impl Position {
     }
 
     pub fn parse_epd_file<P>(filename: P) -> Result<Vec<Position>>
-    where P: AsRef<Path>, P: Clone {
+    where
+        P: AsRef<Path>,
+        P: Clone,
+    {
         let file = File::open(filename.clone()).context(format!("{}", filename.as_ref().display()))?;
         let lines = io::BufReader::new(file).lines();
         let mut vec = Vec::<Position>::new();
@@ -175,7 +168,7 @@ impl Position {
             let s = line?;
             if !s.trim_start().starts_with("#") {
                 epd_count += 1;
-                vec.push(Self::parse_epd(&s).context(format!("in epd {}",s))?);
+                vec.push(Self::parse_epd(&s).context(format!("in epd {}", s))?);
                 if n > 0 && n % 100000 == 0 {
                     info!("Read {} lines from {:?}", n, filename.as_ref().display());
                 }
@@ -184,11 +177,7 @@ impl Position {
         info!("Read {} epds from {:?}", epd_count, filename.as_ref().display());
         Ok(vec)
     }
-
-
 }
-
-
 
 impl fmt::Display for Position {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -227,7 +216,6 @@ impl Position {
         self.tags.set(tag);
     }
 
-
     pub fn set_operation(&mut self, key: &str, value: &str) -> Result<()> {
         self.tags.set(Tag::parse(&self.board, key, value)?);
         Ok(())
@@ -246,8 +234,6 @@ impl Position {
     pub const ATTRIBUTES: &'static [&'static str] = &[Self::ACD, Self::BM, Self::PV];
 
     // FIXME - other EPD tags
-
-
 
     pub fn get(&self, key: &str) -> Result<&Tag> {
         Ok(self.tags.get(key))
@@ -284,7 +270,7 @@ impl Position {
     pub fn bm(&self) -> Result<MoveList, String> {
         if let Tag::BestMoves(ml) = self.tag(Tag::BM) {
             Ok(ml.clone())
-        } else { 
+        } else {
             Err("Not good".into())
         }
     }
@@ -292,7 +278,7 @@ impl Position {
     pub fn sm(&self) -> Result<Move> {
         if let Tag::SuppliedMove(mv) = self.tag(Tag::SM) {
             Ok(*mv)
-        } else { 
+        } else {
             Err(anyhow!("Not good sm"))
         }
     }
@@ -300,7 +286,7 @@ impl Position {
     pub fn sq(&self) -> Result<Bitboard> {
         if let Tag::Squares(s) = self.tag(Tag::SQ) {
             Ok(*s)
-        } else { 
+        } else {
             Err(anyhow!("Not good sq"))
         }
     }
@@ -308,7 +294,7 @@ impl Position {
     pub fn ce(&self) -> Result<i32> {
         if let Tag::CentipawnEvaluation(ce) = self.tag(Tag::CE) {
             Ok(*ce)
-        } else { 
+        } else {
             Err(anyhow!("Not good ce"))
         }
     }
@@ -317,7 +303,7 @@ impl Position {
     pub fn acd(&self) -> Result<Ply> {
         if let Tag::AnalysisCountDepth(acd) = self.tag(Tag::ACD) {
             Ok(*acd)
-        } else { 
+        } else {
             Err(anyhow!("Not good acd"))
         }
     }
@@ -326,7 +312,7 @@ impl Position {
     pub fn acn(&self) -> Result<u128> {
         if let Tag::AnalysisCountNodes(n) = self.tag(Tag::ACN) {
             Ok(*n)
-        } else { 
+        } else {
             Err(anyhow!("Not good"))
         }
     }
@@ -334,7 +320,7 @@ impl Position {
     pub fn dm(&self) -> Result<u32> {
         if let Tag::DirectMate(dm) = self.tag(Tag::DM) {
             Ok(*dm)
-        } else { 
+        } else {
             Err(anyhow!("Not good"))
         }
     }
@@ -342,7 +328,7 @@ impl Position {
     pub fn id(&self) -> Result<&str> {
         if let Tag::Id(id) = self.tag(Tag::ID) {
             Ok(id)
-        } else { 
+        } else {
             Err(anyhow!("Not good"))
         }
     }
@@ -350,7 +336,6 @@ impl Position {
     // pub fn set_id(&mut self, id: &str) -> &mut Self {
     //     self.set_operation(Self::ID, id)
     // }
-
 
     // pub fn draw_reject(&self) -> bool {
     //     self.tags.as_hash_map().get(Self::DRAW_REJECT).is_some()
@@ -394,7 +379,6 @@ mod tests {
     use crate::catalog::Catalog;
     use crate::globals::constants::*;
     use anyhow::Result;
-
 
     // FIXME!!!!
     // #[test]
@@ -442,7 +426,10 @@ mod tests {
         pos.set_operation(Position::BM, "e4")?;
         assert_eq!(pos.bm().unwrap().to_string(), "e2e4");
 
-        let mut pos = Position { board: Catalog::starting_board(), tags: Tags::default() };
+        let mut pos = Position {
+            board: Catalog::starting_board(),
+            tags: Tags::default(),
+        };
         pos.set_operation(Position::BM, "e4, c4, a4")?;
         pos.set_operation(Position::PV, "e4, e5, d3")?;
         assert_eq!(pos.bm().unwrap().to_string(), "e2e4, c2c4, a2a4");
@@ -460,13 +447,12 @@ mod tests {
     //     Ok(())
     // }
 
-
     #[test]
-    fn test_pos_custom()  -> Result<()> {
+    fn test_pos_custom() -> Result<()> {
         let mut pos = Position::default();
         *pos.board_mut() = Board::parse_fen(Catalog::STARTING_POSITION_FEN).unwrap();
         pos.set_operation(Position::SQ, "e4 e5 e6")?;
-        assert_eq!(pos.sq().unwrap(), e4|e5|e6);
+        assert_eq!(pos.sq().unwrap(), e4 | e5 | e6);
 
         pos.set_operation(Position::SQ, "")?;
         assert_eq!(pos.sq().unwrap(), Bitboard::empty());
@@ -477,8 +463,14 @@ mod tests {
     fn test_serde() -> Result<()> {
         let mut pos = Position::from_board(Catalog::starting_board());
         pos.set_operation(Position::BM, "e4")?;
-        assert_eq!(serde_json::to_string(&pos).unwrap(), r#"{"fen":"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1","bm":"e4"}"#); 
-        assert_eq!(serde_json::from_str::<Position>(r#"{"bm":"e2e4","fen":"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"}"#).unwrap(), pos); 
+        assert_eq!(
+            serde_json::to_string(&pos).unwrap(),
+            r#"{"fen":"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1","bm":"e4"}"#
+        );
+        assert_eq!(
+            serde_json::from_str::<Position>(r#"{"bm":"e2e4","fen":"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"}"#).unwrap(),
+            pos
+        );
         Ok(())
     }
 
@@ -491,8 +483,6 @@ mod tests {
         }
         Ok(())
     }
-
-
 }
 
 // Custom tags
@@ -571,7 +561,6 @@ mod tests {
 //     // resign game resignation
 //     // sm supplied move
 //     sm: Move,
-    
 
 //     sv: supplied variation
 //     hv: history variation
@@ -581,12 +570,9 @@ mod tests {
 // om opponents mate http://www.talkchess.com/forums/1/message.html?314978
 
 //     Custom (Andy added!)
-//     squares. A series of squares in uci format. 
+//     squares. A series of squares in uci format.
 //     Useful for identifying attackers, pinned pieces etc
 //     Sq: Squares,
-
-
-
 
 //     // tcgs telecommunication game selector
 //     // tcri telecommunication receiver identification

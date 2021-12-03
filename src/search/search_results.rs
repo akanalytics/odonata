@@ -198,7 +198,14 @@ impl SearchResults {
         }
     }
 
-    pub fn with_pv_change(&mut self, board: &Board, clock: &Clock, stats: &SearchStats, restrictions: &Restrictions, tt: &TranspositionTable2) {
+    pub fn with_pv_change(
+        &mut self,
+        board: &Board,
+        clock: &Clock,
+        stats: &SearchStats,
+        restrictions: &Restrictions,
+        tt: &TranspositionTable2,
+    ) {
         self.board = board.clone();
         self.multi_pv_index = restrictions.multi_pv_index();
         self.multi_pv_index_of = restrictions.multi_pv_count;

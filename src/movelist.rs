@@ -1,19 +1,16 @@
 use crate::board::makemove::MoveMaker;
-use crate::variation::Variation;
 use crate::board::Board;
-use crate::parse::Parse;
 use crate::mv::Move;
-use crate::types::MAX_LEGAL_MOVES;
+use crate::parse::Parse;
 use crate::tags::Tags;
+use crate::types::MAX_LEGAL_MOVES;
 use crate::types::{Color, Piece};
+use crate::variation::Variation;
+use anyhow::{anyhow, Result};
 use arrayvec::ArrayVec;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::fmt;
-use anyhow::{Result,anyhow};
-
-
-
 
 // // moves: ArrayVec<Move,128>,
 // // moves: ArrayVec::new(),
@@ -178,9 +175,6 @@ use anyhow::{Result,anyhow};
 //     }
 // }
 
-
-
-
 // moves: ArrayVec<Move,128>,
 // moves: ArrayVec::new(),
 #[derive(Debug, PartialEq, Eq)]
@@ -191,18 +185,14 @@ pub struct MoveList {
 impl Default for MoveList {
     #[inline]
     fn default() -> Self {
-        Self {
-            moves: ArrayVec::new(),
-        }
+        Self { moves: ArrayVec::new() }
     }
 }
 
 impl Clone for MoveList {
     #[inline]
     fn clone(&self) -> Self {
-        MoveList {
-            moves: self.moves.clone(),
-        }
+        MoveList { moves: self.moves.clone() }
     }
 }
 // impl Clone for MoveList {
@@ -281,7 +271,7 @@ impl MoveList {
     #[inline]
     pub fn retain<F>(&mut self, f: F)
     where
-         F: FnMut(&mut Move) -> bool
+        F: FnMut(&mut Move) -> bool,
     {
         self.moves.retain(f);
     }
@@ -482,32 +472,20 @@ impl Board {
         s
     }
 
-
     pub fn to_san_movelist(&self, moves: &MoveList) -> String {
         let mut v = Vec::new();
         for mv in moves.iter() {
-            debug_assert!(
-                self.is_legal_move(mv),
-                "mv {} is illegal for board {}",
-                mv,
-                self.to_fen()
-            );
+            debug_assert!(self.is_legal_move(mv), "mv {} is illegal for board {}", mv, self.to_fen());
             v.push(self.to_san(mv));
         }
         v.join(" ")
     }
 
-
     pub fn to_san_variation(&self, moves: &Variation, _vec_tags: Option<&Vec<Tags>>) -> String {
         let mut s = String::new();
         let mut board = self.clone();
         for (i, mv) in moves.iter().enumerate() {
-            debug_assert!(
-                board.is_legal_move(mv),
-                "mv {} is illegal for board {}",
-                mv,
-                board.to_fen()
-            );
+            debug_assert!(board.is_legal_move(mv), "mv {} is illegal for board {}", mv, board.to_fen());
             if i % 2 == 0 {
                 if i != 0 {
                     s += "\n";
@@ -547,13 +525,11 @@ fn strip_move_numbers(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::board::boardbuf::*;
+    use crate::bitboard::castling::*;
     use crate::bitboard::square::*;
+    use crate::board::boardbuf::*;
     use crate::catalog::Catalog;
     use crate::globals::constants::*;
-    use crate::bitboard::castling::*;
-
-
 
     #[test]
     fn test_movelist() -> Result<()> {
@@ -564,7 +540,8 @@ mod tests {
             Piece::Bishop,
             Piece::None,
             Piece::None,
-            CastlingRights::NONE);
+            CastlingRights::NONE,
+        );
         let promo_a7a8 = Move::new(
             a7.square(),
             a8.square(),
@@ -572,7 +549,8 @@ mod tests {
             Piece::Pawn,
             Piece::None,
             Piece::Queen,
-            CastlingRights::NONE);
+            CastlingRights::NONE,
+        );
 
         let mut moves = MoveList::new();
         assert_eq!(moves.iter().count(), 0);
@@ -663,13 +641,10 @@ mod tests {
         let s2: String = san.split_whitespace().collect();
         assert_eq!(s1, s2);
 
-        let board =
-            Board::parse_fen("rnbqkbnr/pp2ppp1/2pp3p/8/3P1B2/8/PPPNPPPP/R2QKBNR w KQkq - 0 4").unwrap();
+        let board = Board::parse_fen("rnbqkbnr/pp2ppp1/2pp3p/8/3P1B2/8/PPPNPPPP/R2QKBNR w KQkq - 0 4").unwrap();
         println!("{}", board.legal_moves());
         let mv = board.parse_uci_move("g1f3")?;
         assert_eq!(board.to_san(&mv), "Ngf3");
         Ok(())
     }
-
- 
 }

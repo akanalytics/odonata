@@ -1,10 +1,8 @@
+use crate::bitboard::bb_sliders::SlidingPieceAttacks;
 use crate::bitboard::bitboard::{Bitboard, Dir};
 use crate::bitboard::square::Square;
-use crate::bitboard::bb_sliders::SlidingPieceAttacks;
 // use once_cell::sync::Lazy;
-use static_init::{dynamic};
-
-
+use static_init::dynamic;
 
 // inspired by https://www.chessprogramming.org/Hiding_the_Implementation
 //
@@ -46,11 +44,10 @@ static STATIC_INSTANCE: Box<ClassicalBitboard> = ClassicalBitboard::new();
 // static STATIC_INSTANCE: Box<ClassicalBitboard> = ClassicalBitboard::new();
 
 impl ClassicalBitboard {
-
     // doesnt impl Default as too large to copy by value
     #[inline]
     pub fn default() -> &'static Self {
-            &STATIC_INSTANCE
+        &STATIC_INSTANCE
     }
 }
 
@@ -77,8 +74,6 @@ impl ClassicalBitboard {
         classical
     }
 
-
-
     #[inline]
     fn sliding_attacks(&self, occupied: Bitboard, from: Square, dir: Dir) -> Bitboard {
         let attacks = self.rays[from][dir];
@@ -87,7 +82,11 @@ impl ClassicalBitboard {
         if blockers.is_empty() {
             return attacks;
         }
-        let blocker_sq = if dir.shift() > 0 { blockers.first_square() } else { blockers.last_square() };
+        let blocker_sq = if dir.shift() > 0 {
+            blockers.first_square()
+        } else {
+            blockers.last_square()
+        };
         // println!("attcks::: dir:{}, from:sq:{} blockers: {:?} blocker_sq:{} \n",  dir.index, from_sq, blockers, blocker_sq);
         // println!("blockers:\n{} \nattacks:\n{} \n",blockers, attacks);
         // println!("minus\n{}\n", self.attacks[blocker_sq][dir.index]);
@@ -97,7 +96,6 @@ impl ClassicalBitboard {
 }
 
 impl SlidingPieceAttacks for ClassicalBitboard {
-
     fn new() -> Box<Self> {
         ClassicalBitboard::new()
     }
@@ -117,7 +115,6 @@ impl SlidingPieceAttacks for ClassicalBitboard {
             | self.sliding_attacks(occ, from, Dir::SW)
             | self.sliding_attacks(occ, from, Dir::NW)
     }
-
 }
 
 #[cfg(test)]
@@ -156,6 +153,4 @@ mod tests {
         let attacks = classical.bishop_attacks(occupied, c1.square());
         assert_eq!(attacks, b2 | d2 | e3 | f4 | g5 | h6);
     }
-
-
 }

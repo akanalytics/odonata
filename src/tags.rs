@@ -1,19 +1,18 @@
+use crate::bitboard::bitboard::Bitboard;
+use crate::board::Board;
+use crate::movelist::MoveList;
 use crate::mv::Move;
+use crate::types::Ply;
 use crate::utils::Formatting;
 use crate::variation::Variation;
-use crate::movelist::MoveList;
-use crate::types::Ply;
-use crate::board::Board;
-use crate::bitboard::bitboard::Bitboard;
-use std::{collections::HashMap};
-use std::fmt;
-use std::time::Duration;
+use anyhow::{anyhow, Result};
 use once_cell::sync::Lazy;
 use regex::Regex;
-use serde::{Serialize, Serializer, ser::SerializeMap};
-use anyhow::{Result,anyhow};
+use serde::{ser::SerializeMap, Serialize, Serializer};
+use std::collections::HashMap;
+use std::fmt;
+use std::time::Duration;
 // use serde_with::{DeserializeFromStr};
-
 
 // #[derive(Clone, Debug)]
 // pub enum TagValue {
@@ -31,14 +30,12 @@ use anyhow::{Result,anyhow};
 //     }
 // }
 
-
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Tag {
     None,
     AvoidMoves(MoveList),
     BestMoves(MoveList),
-    BranchingFactorPercent(u32),  // 100x
+    BranchingFactorPercent(u32), // 100x
     Pv(Variation),
     Id(String),
     AnalysisCountDepth(Ply),
@@ -63,7 +60,6 @@ pub enum Tag {
 }
 
 impl Tag {
-
     pub const AM: &'static str = "am";
     pub const BM: &'static str = "bm";
     pub const BF: &'static str = "Bf";
@@ -95,13 +91,13 @@ impl Tag {
         Ok(match key {
             Self::AM => Tag::AvoidMoves(b.parse_san_movelist(v)?),
             Self::BM => Tag::BestMoves(b.parse_san_movelist(v)?),
-            Self::BF => Tag::BranchingFactorPercent((100.0 * v.parse::<f64>()?) as u32) ,
+            Self::BF => Tag::BranchingFactorPercent((100.0 * v.parse::<f64>()?) as u32),
             Self::PV => Tag::Pv(b.parse_san_variation(v)?),
-            Self::ID => Tag::Id(v.to_string()) ,
-            Self::ACD => Tag::AnalysisCountDepth(v.parse::<Ply>()?) ,
-            Self::ACSD => Tag::AnalysisCountSelDepth(v.parse::<Ply>()?) ,
-            Self::ACN => Tag::AnalysisCountNodes(v.parse::<u128>()?) ,
-            Self::ACS => Tag::AnalysisCountSeconds(v.parse::<u32>()?) ,
+            Self::ID => Tag::Id(v.to_string()),
+            Self::ACD => Tag::AnalysisCountDepth(v.parse::<Ply>()?),
+            Self::ACSD => Tag::AnalysisCountSelDepth(v.parse::<Ply>()?),
+            Self::ACN => Tag::AnalysisCountNodes(v.parse::<u128>()?),
+            Self::ACS => Tag::AnalysisCountSeconds(v.parse::<u32>()?),
             Self::CC => Tag::ChessClock(Duration::new(0, 0)),
             Self::CE => Tag::CentipawnEvaluation(v.parse::<i32>()?),
             Self::DM => Tag::DirectMate(v.parse::<u32>()?),
@@ -111,24 +107,22 @@ impl Tag {
             Self::RC => Tag::RepititionCount(v.parse::<u32>()?),
             Self::RES => Tag::Result(v.to_string()),
             Self::NOOP => Tag::NoOp(v.to_string()),
-            Self::SM => Tag::SuppliedMove(b.parse_san_move(v)?) ,
-            Self::SV => Tag::SuppliedVariation(b.parse_san_variation(v)?) ,
+            Self::SM => Tag::SuppliedMove(b.parse_san_move(v)?),
+            Self::SV => Tag::SuppliedVariation(b.parse_san_variation(v)?),
             Self::SQ => Tag::Squares(Bitboard::parse_squares(v)?),
             Self::TS => Tag::Timestamp("".to_string(), "".to_string()),
-            _ if key.starts_with('D') => Tag::Perft( key[1..].parse::<u8>()?, v.parse::<u128>()?),
-            _ if key.starts_with('c') => Tag::Comment( key[1..].parse::<u8>()?, v.to_string()),
+            _ if key.starts_with('D') => Tag::Perft(key[1..].parse::<u8>()?, v.parse::<u128>()?),
+            _ if key.starts_with('c') => Tag::Comment(key[1..].parse::<u8>()?, v.to_string()),
             _ => Tag::None,
-
         })
     }
 
     pub fn parse(b: &Board, key: &str, v: &str) -> Result<Tag> {
         match Self::parse_internal(b, key, v) {
-            Err(err) => Err(anyhow!("{} parsing tag '{}' from '{}'", err, key, v)), 
-            Ok(tag) => Ok(tag)
+            Err(err) => Err(anyhow!("{} parsing tag '{}' from '{}'", err, key, v)),
+            Ok(tag) => Ok(tag),
         }
     }
-
 
     pub fn key(&self) -> String {
         match &self {
@@ -165,7 +159,7 @@ impl Tag {
             Tag::None => "".to_string(),
             Tag::AvoidMoves(mvs) => mvs.uci(),
             Tag::BestMoves(mvs) => mvs.uci(),
-            Tag::BranchingFactorPercent(bf) => Formatting::decimal(2, *bf as f32/ 100.0),
+            Tag::BranchingFactorPercent(bf) => Formatting::decimal(2, *bf as f32 / 100.0),
             Tag::Pv(variation) => variation.uci(),
             Tag::Id(s) => format!("{}", s),
             Tag::AnalysisCountDepth(n) => format!("{}", n),
@@ -203,15 +197,10 @@ impl Tag {
     }
 }
 
-
-
-
-
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Tags {
     tags: HashMap<String, Tag>,
 }
-
 
 impl Serialize for Tags {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -220,7 +209,7 @@ impl Serialize for Tags {
     {
         let mut map = serializer.serialize_map(Some(self.tags.len()))?;
         let mut entries = self.tags.iter().collect::<Vec<_>>();
-        entries.sort_by(|x,y| x.0.cmp(&y.0));  // sort by key
+        entries.sort_by(|x, y| x.0.cmp(&y.0)); // sort by key
         for (k, v) in entries.iter() {
             map.serialize_entry(k, &v.value_uci())?;
         }
@@ -228,21 +217,13 @@ impl Serialize for Tags {
     }
 }
 
-
-
-
-
-
-
 impl Tags {
-
-
     pub fn new() -> Self {
         Tags::default()
     }
     pub fn as_hash_map(&self, b: &Board) -> HashMap<String, String> {
         let mut map = HashMap::<String, String>::new();
-        for (k,t) in self.tags.iter() {
+        for (k, t) in self.tags.iter() {
             map.insert(k.clone(), t.value(b));
         }
         map
@@ -256,8 +237,7 @@ impl Tags {
         }
     }
 
-
-    pub fn remove(&mut self, key: &str)  {
+    pub fn remove(&mut self, key: &str) {
         self.tags.remove(key);
     }
 
@@ -279,7 +259,7 @@ impl Tags {
     // pub fn to_pgn(&self) -> String {
     //     unreachable!();
     // }
-        //     let ce = self.get(&Tag::CentipawnEvaluation(Score::from_cp(0)).key()).ok();
+    //     let ce = self.get(&Tag::CentipawnEvaluation(Score::from_cp(0)).key()).ok();
     //     let acd = self.get(&Tag::AnalysisCountDepth(0).key()).ok();
     //     if let Some(ce) = ce {
     //         if let Some(acd) = acd {
@@ -293,29 +273,18 @@ impl Tags {
     //     // format!("{:?}", self)
     // }
 
-
     pub fn parse_tags(board: &Board, tags_str: &str) -> Result<Tags> {
-        
         let mut tags = Tags::new();
         let ops: Vec<&str> = Self::split_into_tags(tags_str);
         for op in ops {
             let words: Vec<&str> = Self::split_into_words(op);
-            debug_assert!(
-                words.len() > 0,
-                "no words parsing EPD operation '{}' from '{}'",
-                op,
-                tags_str
-            );
+            debug_assert!(words.len() > 0, "no words parsing EPD operation '{}' from '{}'", op, tags_str);
             let tag = Tag::parse(board, words[0], words[1..].join(" ").as_str())?;
             // map.insert.to_string(), words[1..].join(" ").to_string());
             tags.set(tag);
         }
         Ok(tags)
     }
-
-
-
-
 
     fn split_into_tags(s: &str) -> Vec<&str> {
         REGEX_SPLIT_TAGS
@@ -330,13 +299,11 @@ impl Tags {
             .map(|cap| cap.get(1).or(cap.get(2)).or(cap.get(3)).unwrap().as_str())
             .collect()
     }
-
 }
 
-
-
-static REGEX_SPLIT_TAGS: Lazy<Regex> = Lazy::new(|| Regex::new(
-    r#"(?x)
+static REGEX_SPLIT_TAGS: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r#"(?x)
     ([^";]*  
         " [^"]* "   # a quoted string (possibly containing ";")
     [^";]*
@@ -350,10 +317,13 @@ static REGEX_SPLIT_TAGS: Lazy<Regex> = Lazy::new(|| Regex::new(
     ([^;"']+)        # an opcode and operand(s) without any quotes 
     ;
     "#,
-).unwrap());
+    )
+    .unwrap()
+});
 
-static REGEX_SPLIT_WORDS: Lazy<Regex> = Lazy::new(|| Regex::new(
-    r#"(?x)
+static REGEX_SPLIT_WORDS: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r#"(?x)
     (?:
         [^"\s]*  
         " ([^"]*) "    # a double quoted string (possibly containing whitespace)
@@ -367,12 +337,9 @@ static REGEX_SPLIT_WORDS: Lazy<Regex> = Lazy::new(|| Regex::new(
     |
     ([^\s"']+)        # an opcode/operand without any quotes 
     (?:$|\s)"#,
-).unwrap());
-
-
-
-
-
+    )
+    .unwrap()
+});
 
 //
 //  key1; key2; key3; key4 ABCD; key5 12345; key6 "ABC;DEF";
@@ -380,7 +347,7 @@ static REGEX_SPLIT_WORDS: Lazy<Regex> = Lazy::new(|| Regex::new(
 impl fmt::Display for Tags {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut entries = self.tags.iter().collect::<Vec<_>>();
-        entries.sort_by(|x,y| x.0.cmp(&y.0));  // sort by key
+        entries.sort_by(|x, y| x.0.cmp(&y.0)); // sort by key
         for (k, t) in entries {
             let v = t.value_uci();
             if v.is_empty() {
@@ -394,8 +361,6 @@ impl fmt::Display for Tags {
         Ok(())
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -433,26 +398,27 @@ mod tests {
         assert_eq!(vec, vec!["id", "my name is bob"]);
     }
 
-
     #[test]
     fn test_tag_comment() {
         let mut tags = Tags::new();
-        
+
         tags.set(Tag::Comment(0, "Hello".into()));
         tags.set(Tag::Comment(1, "World".into()));
         assert_eq!(tags.get("c0").value_uci(), "Hello");
         assert_eq!(tags.get("c1").value_uci(), "World");
         let b = Board::default();
-        assert_eq!(Tag::parse(&b, "c0", "Hello World").unwrap(), Tag::Comment(0, "Hello World".to_string()));
-    
+        assert_eq!(
+            Tag::parse(&b, "c0", "Hello World").unwrap(),
+            Tag::Comment(0, "Hello World".to_string())
+        );
     }
-    
+
     #[test]
     fn test_tags() {
         let mut tags = Tags::new();
         tags.remove(Tag::BM);
         assert_eq!(tags.get(Tag::BM), &Tag::None);
-        
+
         tags.set(Tag::AnalysisCountDepth(3));
         assert_eq!(tags.get(Tag::ACD), &Tag::AnalysisCountDepth(3));
         if let Tag::AnalysisCountDepth(d) = tags.get(Tag::ACD) {
@@ -465,6 +431,9 @@ mod tests {
         tags.set(Tag::Id("Hello World".to_string()));
         tags.set(Tag::Comment(1, "Hello World2".to_string()));
         assert_eq!(tags.to_string(), " acd 3; acs 4; c1 \"Hello World2\"; id \"Hello World\";");
-        assert_eq!(jsonrpc_core::to_string(&tags).unwrap(), r#"{"acd":"3","acs":"4","c1":"Hello World2","id":"Hello World"}"#);
+        assert_eq!(
+            jsonrpc_core::to_string(&tags).unwrap(),
+            r#"{"acd":"3","acs":"4","c1":"Hello World2","id":"Hello World"}"#
+        );
     }
 }

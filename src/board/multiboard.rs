@@ -1,7 +1,5 @@
-
 use crate::bitboard::bitboard::Bitboard;
-use crate::types::{Piece, Color};
-
+use crate::types::{Color, Piece};
 
 #[derive(Clone, Debug, PartialEq, Default, Eq)]
 pub struct Multiboard {
@@ -9,13 +7,11 @@ pub struct Multiboard {
     colors: [Bitboard; Color::len()],
 }
 
-
 impl Multiboard {
     #[inline]
     pub fn pieces(&self, p: Piece) -> Bitboard {
         self.pieces[p]
     }
-
 
     #[inline]
     pub fn line_pieces(&self) -> Bitboard {
@@ -77,7 +73,6 @@ impl Multiboard {
         self.colors[Color::Black.index()]
     }
 
-
     #[inline]
     pub fn piece_at(&self, sq: Bitboard) -> Piece {
         debug_assert!(sq != Bitboard::EMPTY);
@@ -133,8 +128,7 @@ impl Multiboard {
         if let Some(c) = c {
             self.colors[c.opposite()].remove(sq);
             self.colors[c].insert(sq);
-        }
-        else {
+        } else {
             self.colors[Color::White].remove(sq);
             self.colors[Color::Black].remove(sq);
         }
@@ -144,9 +138,7 @@ impl Multiboard {
     pub fn color_flip(&self) -> Multiboard {
         let mut mb = self.clone();
         mb.colors = [self.colors[1].flip_vertical(), self.colors[0].flip_vertical()];
-        mb.pieces.iter_mut().for_each(|bb| *bb = bb.flip_vertical() );
+        mb.pieces.iter_mut().for_each(|bb| *bb = bb.flip_vertical());
         mb
     }
-
-
 }

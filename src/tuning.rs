@@ -10,7 +10,7 @@ use crate::infra::component::Component;
 use crate::position::Position;
 use crate::search::engine::Engine;
 use crate::tags::Tag;
-use anyhow::{Result, bail};
+use anyhow::{bail, Result};
 use rayon::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
@@ -19,7 +19,7 @@ use serde::Serialize;
 #[serde(default, deny_unknown_fields)]
 pub struct Tuning {
     pub ignore_known_outcomes: bool,
-    pub multi_threading_min_positions: usize, 
+    pub multi_threading_min_positions: usize,
     pub ignore_draws: bool,
     pub logistic_steepness_k: Weight,
 
@@ -34,26 +34,20 @@ impl Default for Tuning {
     fn default() -> Self {
         Tuning {
             ignore_known_outcomes: true,
-            multi_threading_min_positions: 20000, 
+            multi_threading_min_positions: 20000,
             models_and_outcomes: Default::default(),
             boards: Default::default(),
-            logistic_steepness_k: Weight::from_i32(4,4),
+            logistic_steepness_k: Weight::from_i32(4, 4),
             ignore_draws: false,
         }
     }
 }
 
-
 impl Component for Tuning {
-    fn new_game(&mut self) {
-    }
+    fn new_game(&mut self) {}
 
-    fn new_position(&mut self) {
-    }
+    fn new_position(&mut self) {}
 }
-
-
-
 
 impl Tuning {
     pub fn new() -> Self {
@@ -139,7 +133,7 @@ impl Tuning {
             l if l < self.multi_threading_min_positions => {
                 info!("Calculating mse on {} positions using single thread", l);
                 self.models_and_outcomes.iter().map(closure).sum()
-            }, 
+            }
             l => {
                 info!("Calculating mse on {} positions using several threads", l);
                 // use rayon on larger sized files
@@ -160,7 +154,6 @@ mod tests {
     use crate::eval::weight::Weight;
     use test_log::test;
 
-
     #[test]
     fn tuning_serde_test() {
         let tuner = Tuning::new();
@@ -173,7 +166,9 @@ mod tests {
     fn test_tuning() {
         info!("Starting...");
         let mut engine = Engine::new();
-        engine.tuner.upload_positions(&Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-small.epd").unwrap());
+        engine
+            .tuner
+            .upload_positions(&Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-small.epd").unwrap());
         //tuning.positions = Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-small.epd").unwrap();
         // tuning.positions = Position::parse_epd_file("../odonata-extras/epd/com15.epd")?;
         // tuning.positions = Catalog::bratko_kopec();

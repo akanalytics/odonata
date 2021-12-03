@@ -105,39 +105,40 @@ impl Killers {
 mod tests {
     use super::*;
     use anyhow::Result;
+    use figment::providers::{Format, Toml};
+    use figment::Figment;
     use test_log::test;
     use toml;
-    use figment::providers::{Format, Toml};
-    use figment::{Figment};
-    
 
     #[test]
     fn serde_killers_test() -> Result<()> {
         info!("{}", toml::to_string(&Killers::default())?);
 
-
         figment::Jail::expect_with(|jail| {
-            jail.create_file("config.toml", r#"
+            jail.create_file(
+                "config.toml",
+                r#"
                 enabled = true
                 clear_every_move = false
                 use_ply_below = true
-            "#)?;
-        
+            "#,
+            )?;
+
             // jail.set_env("config_name", "env-test");
-        
+
             // jail.create_file("Config.json", r#"
             //     {
             //         "name": "json-test",
             //         "debug": true
             //     }
             // "#)?;
-        
+
             let _killers: Killers = Figment::new()
                 .merge(Toml::file("config.toml"))
                 // .merge(Env::prefixed("CONFIG_"))
                 // .join(Json::file("Config.json"))
                 .extract()?;
-        
+
             // assert_eq!(killers, Killers {
             //     enabled: true,
             //     clear_every_move: false,

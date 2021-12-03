@@ -6,10 +6,10 @@ use crate::globals::constants::*;
 use crate::types::{Color, Piece};
 use crate::utils::StringUtils;
 // use arrayvec::ArrayVec;
+use anyhow::Result;
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 use std::fmt;
 use std::str::FromStr;
-use anyhow::Result;
 
 // FIXME: public methods
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, SerializeDisplay, DeserializeFromStr)]
@@ -42,13 +42,12 @@ impl FromStr for Move {
 }
 
 impl Move {
-
-    const OFFSET_MOVER: i32 = 19; 
-    const OFFSET_CAPTURE: i32 = 22; 
-    const OFFSET_PROMO: i32 = 25; 
-    const OFFSET_CASTLE: i32 = 28; 
-    const OFFSET_FROM: i32 = 0; 
-    const OFFSET_TO: i32 = 6; 
+    const OFFSET_MOVER: i32 = 19;
+    const OFFSET_CAPTURE: i32 = 22;
+    const OFFSET_PROMO: i32 = 25;
+    const OFFSET_CASTLE: i32 = 28;
+    const OFFSET_FROM: i32 = 0;
+    const OFFSET_TO: i32 = 6;
     const OFFSET_EP: i32 = 12; // 7 bits
 
     #[inline]
@@ -61,10 +60,6 @@ impl Move {
         promo: Piece,
         castle_side: CastlingRights,
     ) -> Move {
-
-
-
-
         // debug_assert!(!from.is_null());
         // debug_assert!(!to.is_null());
         let mut bits = (from.index() as u32 & 63) << Self::OFFSET_FROM;
@@ -84,8 +79,8 @@ impl Move {
         Piece::None,
         Piece::None,
         Piece::None,
-        CastlingRights::NONE);
-
+        CastlingRights::NONE,
+    );
 
     #[inline]
     pub fn new_null() -> Move {
@@ -94,17 +89,17 @@ impl Move {
 
     #[inline]
     pub const fn to(&self) -> Square {
-        Square::from_u32( ((self.bits >> Self::OFFSET_TO) & 63) as u32)
+        Square::from_u32(((self.bits >> Self::OFFSET_TO) & 63) as u32)
     }
 
     #[inline]
     pub const fn from(&self) -> Square {
-        Square::from_u32( ((self.bits >> Self::OFFSET_FROM) & 63) as u32)
+        Square::from_u32(((self.bits >> Self::OFFSET_FROM) & 63) as u32)
     }
 
     #[inline]
     pub const fn ep(&self) -> Square {
-        Square::from_u32( ((self.bits >> Self::OFFSET_EP) & 127) as u32)
+        Square::from_u32(((self.bits >> Self::OFFSET_EP) & 127) as u32)
     }
 
     #[inline]
@@ -130,17 +125,17 @@ impl Move {
 
     #[inline]
     pub const fn promo_piece(&self) -> Piece {
-        Piece::from_index( (self.bits >> Self::OFFSET_PROMO) as usize & 7)
+        Piece::from_index((self.bits >> Self::OFFSET_PROMO) as usize & 7)
     }
 
     #[inline]
     pub const fn capture_piece(&self) -> Piece {
-        Piece::from_index( (self.bits >> Self::OFFSET_CAPTURE) as usize & 7)
+        Piece::from_index((self.bits >> Self::OFFSET_CAPTURE) as usize & 7)
     }
 
     #[inline]
     pub const fn mover_piece(&self) -> Piece {
-        Piece::from_index( (self.bits >> Self::OFFSET_MOVER) as usize & 7)
+        Piece::from_index((self.bits >> Self::OFFSET_MOVER) as usize & 7)
     }
 
     #[inline]
@@ -170,14 +165,7 @@ impl Move {
 
     #[inline]
     pub fn new_quiet(p: Piece, from: Square, to: Square) -> Move {
-        Move::new(
-            from,
-            to,
-            Square::null(),
-            p,
-            Piece::None, 
-            Piece::None,
-            CastlingRights::NONE)
+        Move::new(from, to, Square::null(), p, Piece::None, Piece::None, CastlingRights::NONE)
     }
 
     #[inline]
@@ -232,74 +220,32 @@ impl Move {
 
     #[inline]
     pub fn new_double_push(from: Square, to: Square, ep: Square) -> Move {
-        Move::new(
-            from,
-            to,
-            ep,
-            Piece::Pawn,
-            Piece::None,
-            Piece::None, 
-            CastlingRights::NONE)
+        Move::new(from, to, ep, Piece::Pawn, Piece::None, Piece::None, CastlingRights::NONE)
     }
 
     #[inline]
     pub fn new_capture(p: Piece, from: Square, to: Square, captured: Piece) -> Move {
-        Move::new(
-            from,
-            to,
-            Square::null(),
-            p,
-            captured,
-            Piece::None, 
-            CastlingRights::NONE)
+        Move::new(from, to, Square::null(), p, captured, Piece::None, CastlingRights::NONE)
     }
 
     #[inline]
     pub fn new_ep_capture(from: Square, to: Square, captured_sq: Square) -> Move {
-        Move::new(
-            from,
-            to,
-            captured_sq,
-            Piece::Pawn,
-            Piece::Pawn,
-            Piece::None, 
-            CastlingRights::NONE)
+        Move::new(from, to, captured_sq, Piece::Pawn, Piece::Pawn, Piece::None, CastlingRights::NONE)
     }
 
     #[inline]
     pub fn new_promo(from: Square, to: Square, promo: Piece) -> Move {
-        Move::new(
-            from,
-            to,
-            Square::null(),
-            Piece::Pawn,
-            Piece::None,
-            promo, 
-            CastlingRights::NONE)
+        Move::new(from, to, Square::null(), Piece::Pawn, Piece::None, promo, CastlingRights::NONE)
     }
 
     #[inline]
     pub fn new_promo_capture(from: Square, to: Square, promo: Piece, capture: Piece) -> Move {
-        Move::new(
-            from,
-            to,
-            Square::null(),
-            Piece::Pawn,
-            capture,
-            promo, 
-            CastlingRights::NONE)
+        Move::new(from, to, Square::null(), Piece::Pawn, capture, promo, CastlingRights::NONE)
     }
 
     #[inline]
     pub fn new_castle(king_from: Square, king_to: Square, castle: CastlingRights) -> Move {
-        Move::new(
-            king_from,
-            king_to,
-            Square::null(),
-            Piece::King,
-            Piece::None,
-            Piece::None, 
-            castle)
+        Move::new(king_from, king_to, Square::null(), Piece::King, Piece::None, Piece::None, castle)
     }
 
     #[inline]
@@ -313,8 +259,6 @@ impl Move {
         }
         score
     }
-
-
 
     pub fn uci(&self) -> String {
         if self.is_null() {
@@ -338,14 +282,7 @@ impl Move {
         } else {
             promo = Piece::None;
         }
-        Ok(Move::new(
-            from,
-            to,
-            Square::null(),
-            mover,
-            Piece::None,
-            promo,
-            CastlingRights::NONE))
+        Ok(Move::new(from, to, Square::null(), mover, Piece::None, promo, CastlingRights::NONE))
     }
 }
 
@@ -388,9 +325,10 @@ mod tests {
             b2.square(),
             Square::null(),
             Piece::King,
-            Piece::None, 
             Piece::None,
-            CastlingRights::WHITE_QUEEN );
+            Piece::None,
+            CastlingRights::WHITE_QUEEN,
+        );
 
         println!("{:#} {:b}", move_castle, move_castle.bits);
         assert_eq!(move_castle.from(), Square::A1);
@@ -408,9 +346,10 @@ mod tests {
             b2.square(),
             Square::null(),
             Piece::Bishop,
-            Piece::None, 
             Piece::None,
-            CastlingRights::NONE );
+            Piece::None,
+            CastlingRights::NONE,
+        );
 
         println!("{:#} {:b}", move_a1b2, move_a1b2.bits);
         assert_eq!(move_a1b2.from(), a1.square());
@@ -427,7 +366,8 @@ mod tests {
             Piece::Pawn,
             Piece::None,
             Piece::Queen,
-            CastlingRights::NONE);
+            CastlingRights::NONE,
+        );
 
         assert_eq!(move_a1b2.to_string(), "a1b2");
         assert_eq!(promo_a7a8.to_string(), "a7a8q");
@@ -449,81 +389,32 @@ mod tests {
 
     #[test]
     fn test_mvv_lva() {
-        let pxq = Move::new_capture(
-            Piece::Pawn,
-            Square::A1,
-            Square::A2,
-            Piece::Queen);
+        let pxq = Move::new_capture(Piece::Pawn, Square::A1, Square::A2, Piece::Queen);
 
-        let pxr = Move::new_capture(
-            Piece::Pawn,
-            Square::A1,
-            Square::A2,
-            Piece::Rook);
-            
-        let pxb = Move::new_capture(
-            Piece::Pawn,
-            Square::A1,
-            Square::A2,
-            Piece::Bishop);
+        let pxr = Move::new_capture(Piece::Pawn, Square::A1, Square::A2, Piece::Rook);
 
-        let pxn = Move::new_capture(
-            Piece::Pawn,
-            Square::A1,
-            Square::A2,
-            Piece::Knight);
+        let pxb = Move::new_capture(Piece::Pawn, Square::A1, Square::A2, Piece::Bishop);
 
-        let pxp = Move::new_capture(
-            Piece::Pawn,
-            Square::A1,
-            Square::A2,
-            Piece::Pawn);
+        let pxn = Move::new_capture(Piece::Pawn, Square::A1, Square::A2, Piece::Knight);
 
-        let qxp = Move::new_capture(
-            Piece::Queen,
-            Square::A1,
-            Square::A2,
-            Piece::Pawn);
+        let pxp = Move::new_capture(Piece::Pawn, Square::A1, Square::A2, Piece::Pawn);
 
-        let qxn = Move::new_capture(
-            Piece::Queen,
-            Square::A1,
-            Square::A2,
-            Piece::Knight);
+        let qxp = Move::new_capture(Piece::Queen, Square::A1, Square::A2, Piece::Pawn);
 
-        let qxb = Move::new_capture(
-            Piece::Queen,
-            Square::A1,
-            Square::A2,
-            Piece::Bishop);
+        let qxn = Move::new_capture(Piece::Queen, Square::A1, Square::A2, Piece::Knight);
 
-        let qxr = Move::new_capture(
-            Piece::Queen,
-            Square::A1,
-            Square::A2,
-            Piece::Rook);
+        let qxb = Move::new_capture(Piece::Queen, Square::A1, Square::A2, Piece::Bishop);
 
-        let qxq = Move::new_capture(
-            Piece::Queen,
-            Square::A1,
-            Square::A2,
-            Piece::Queen);
+        let qxr = Move::new_capture(Piece::Queen, Square::A1, Square::A2, Piece::Rook);
 
+        let qxq = Move::new_capture(Piece::Queen, Square::A1, Square::A2, Piece::Queen);
 
-        let pxq_q = Move::new_promo_capture(
-            Square::A1,
-            Square::A2,
-            Piece::Queen,
-            Piece::Queen);
+        let pxq_q = Move::new_promo_capture(Square::A1, Square::A2, Piece::Queen, Piece::Queen);
 
-        let p_q = Move::new_promo(
-            Square::A1,
-            Square::A2,
-            Piece::Queen);
+        let p_q = Move::new_promo(Square::A1, Square::A2, Piece::Queen);
 
         assert_eq!(qxr.capture_piece(), Piece::Rook);
         assert_eq!(qxr.mover_piece(), Piece::Queen);
-
 
         assert_eq!(pxq.mvv_lva_score(), 8990);
         assert_eq!(pxr.mvv_lva_score(), 4990);

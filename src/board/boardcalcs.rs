@@ -1,5 +1,5 @@
-use crate::bitboard::precalc::{BitboardDefault};
 use crate::bitboard::bitboard::Bitboard;
+use crate::bitboard::precalc::BitboardDefault;
 use crate::board::Board;
 use crate::types::Color;
 
@@ -31,7 +31,7 @@ impl BoardCalcs {
         let mut pinned = Bitboard::empty();
         for ch in xray_checkers.squares() {
             let ray = BitboardDefault::default().strictly_between(ch, king_sq);
-            if ray.disjoint(color_them) && (ray & color_us).popcount() == 1  {
+            if ray.disjoint(color_them) && (ray & color_us).popcount() == 1 {
                 pinned |= ray & color_us;
             }
         }
@@ -151,9 +151,7 @@ mod tests {
 
     #[test]
     fn test_attacked_by() {
-        let board = Board::parse_fen("5Q2/8/7p/4P1p1/8/3NK1P1/8/8 w - - 0 1")
-            .unwrap()
-            .as_board();
+        let board = Board::parse_fen("5Q2/8/7p/4P1p1/8/3NK1P1/8/8 w - - 0 1").unwrap().as_board();
         let bb = BoardCalcs::attacked_by(f4, board.white() | board.black(), &board);
         println!("{}", bb);
         assert_eq!(bb, g3 | g5 | e3 | d3 | f8);

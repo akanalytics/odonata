@@ -4,15 +4,14 @@ use serde::{Deserialize, Serialize};
 
 use crate::types::Ply;
 
-use strum_macros::{EnumCount, Display, EnumIter};
-use strum::{IntoEnumIterator, EnumCount};
+use strum::{EnumCount, IntoEnumIterator};
+use strum_macros::{Display, EnumCount, EnumIter};
 
-
-#[derive(Copy, Clone, Debug, PartialEq,Eq, Serialize, Display, Deserialize, EnumCount, EnumIter)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Display, Deserialize, EnumCount, EnumIter)]
 pub enum Event {
     Unknown,
     Cancelled,
-    
+
     HashProbe,
     HashHit,
     PercentHashHit,
@@ -58,7 +57,6 @@ pub enum Event {
     NodeInteriorCut,
     NodeInteriorPv,
 
-    
     Clock,
     NodeTypeQuiesce,
     NodeTypeZw,
@@ -67,8 +65,6 @@ pub enum Event {
     PercentPvsReSearch,
     PercentLmrReSearch,
 }
-
-
 
 impl Event {
     #[inline]
@@ -91,10 +87,7 @@ impl Event {
     pub fn index(&self) -> usize {
         *self as usize
     }
-
 }
-
-
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct Node {

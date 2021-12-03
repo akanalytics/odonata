@@ -92,10 +92,13 @@ impl SharedTable {
     }
 
     pub fn utilization(&self) -> usize {
-        self.vec.iter().filter(|&b| {
-            let kd = (b.key(), b.data());
-            !Bucket::is_empty(kd.0 ^ kd.1, kd.1)
-        }).count()
+        self.vec
+            .iter()
+            .filter(|&b| {
+                let kd = (b.key(), b.data());
+                !Bucket::is_empty(kd.0 ^ kd.1, kd.1)
+            })
+            .count()
     }
 
     #[inline]

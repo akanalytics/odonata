@@ -14,8 +14,6 @@ pub struct Perft {
     pub checkmates: u64,
 }
 
-
-
 impl Perft {
     pub fn perft(board: &mut Board, depth: u32) -> u64 {
         if depth == 0 {
@@ -56,10 +54,10 @@ impl Perft {
     fn count_types(&mut self, moves: &MoveList) {
         for mv in moves.iter() {
             if mv.is_capture() {
-                self.captures +=1
+                self.captures += 1
             }
             if mv.is_ep_capture() {
-                self.en_passant +=1
+                self.en_passant += 1
             }
             if mv.is_castle() {
                 self.castles += 1;
@@ -67,29 +65,28 @@ impl Perft {
             if mv.is_promo() {
                 self.promos += 1;
             }
-            // to do 
+            // to do
             // checks
             // discovery_checks
             // double_checks
             // checkmates
         }
     }
-
 }
 
-    // pub fn perft_ext(board: &mut Board, depth: u32) -> u64 {
-    //     if depth == 0 {
-    //         1
-    //     } else {
-    //         let moves = board.legal_moves_ext();
-    //         let mut count = 0u64;
-    //         for m in moves.iter() {
-    //             let res = Self::perft_ext(&mut board.make_move(m), depth - 1);
-    //             count += res;
-    //         }
-    //         count
-    //     }
-    // }
+// pub fn perft_ext(board: &mut Board, depth: u32) -> u64 {
+//     if depth == 0 {
+//         1
+//     } else {
+//         let moves = board.legal_moves_ext();
+//         let mut count = 0u64;
+//         for m in moves.iter() {
+//             let res = Self::perft_ext(&mut board.make_move(m), depth - 1);
+//             count += res;
+//         }
+//         count
+//     }
+// }
 
 //     pub fn perft_compare(board: &mut Board, depth: u32) -> u64 {
 //         if depth == 0 {
@@ -128,12 +125,7 @@ mod tests {
     #[test]
     fn test_perft_1() {
         let (board, perfts) = &Catalog::perfts()[1];
-        assert_eq!(
-            board.legal_moves().len() as u64,
-            perfts[1],
-            "{}",
-            board.legal_moves()
-        );
+        assert_eq!(board.legal_moves().len() as u64, perfts[1], "{}", board.legal_moves());
     }
 
     #[test]
