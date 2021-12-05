@@ -255,7 +255,7 @@ impl Material {
     }
 
     // 236196
-    pub const HASH_VALUES: usize = (((((((((((1 * 2 + 1) * 3 + 2) * 3 + 2) * 3 + 2) * 3 + 2) * 3) + 2) * 3) + 2) * 9 + 8) * 9) + 8 + 1;
+    pub const HASH_VALUES: usize = (((((((((((2 + 1) * 3 + 2) * 3 + 2) * 3 + 2) * 3 + 2) * 3) + 2) * 3) + 2) * 9 + 8) * 9) + 8 + 1;
 
     // hash of no material = 0
     pub fn hash(&self) -> usize {
@@ -264,7 +264,7 @@ impl Material {
         let wb = self.counts(Color::White, Piece::Bishop) as i32;
         let wn = self.counts(Color::White, Piece::Knight) as i32;
         let wp = self.counts(Color::White, Piece::Pawn) as i32;
-        if wq < 0 || wq > 1 || wr < 0 || wr > 2 || wb < 0 || wb > 2 || wn < 0 || wn > 2 || wp < 0 || wp > 8 {
+        if !(0..=1).contains(&wq) || wr < 0 || wr > 2 || wb < 0 || wb > 2 || wn < 0 || wn > 2 || wp < 0 || wp > 8 {
             return 0;
         }
         let bq = self.counts(Color::Black, Piece::Queen) as i32;
@@ -272,7 +272,7 @@ impl Material {
         let bb = self.counts(Color::Black, Piece::Bishop) as i32;
         let bn = self.counts(Color::Black, Piece::Knight) as i32;
         let bp = self.counts(Color::Black, Piece::Pawn) as i32;
-        if bq < 0 || bq > 1 || br < 0 || br > 2 || bb < 0 || bb > 2 || bn < 0 || bn > 2 || bp < 0 || bp > 8 {
+        if !(0..=1).contains(&bq) || br < 0 || br > 2 || bb < 0 || bb > 2 || bn < 0 || bn > 2 || bp < 0 || bp > 8 {
             return 0;
         }
         // let w_hash = (((wq * 3 + wr) * 3 + wb) * 3 + wn) * 9 + wp;

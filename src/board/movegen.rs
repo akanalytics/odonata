@@ -96,10 +96,8 @@ impl Board {
                     // FIXME! allow capture of another type of piece?
                     return false;
                 }
-            } else {
-                if !m.ep().is_in(self.them() & self.pawns()) {
-                    return false;
-                }
+            } else if !m.ep().is_in(self.them() & self.pawns()) {
+                return false;
             }
         }
         if m.is_promo() {
@@ -113,15 +111,11 @@ impl Board {
             }
         }
 
-        if m.mover_piece().is_line_piece() {
-            if (BitboardDefault::default().strictly_between(m.from(), m.to()) & self.occupied()).any() {
-                return false;
-            }
+        if m.mover_piece().is_line_piece() && (BitboardDefault::default().strictly_between(m.from(), m.to()) & self.occupied()).any() {
+            return false;
         }
-        if m.mover_piece() == Piece::Pawn {
-            if (BitboardDefault::default().strictly_between(m.from(), m.to()) & self.occupied()).any() {
-                return false;
-            }
+        if m.mover_piece() == Piece::Pawn && (BitboardDefault::default().strictly_between(m.from(), m.to()) & self.occupied()).any() {
+            return false;
         }
         // check piece move
         let precalc = BitboardDefault::default();
@@ -134,10 +128,10 @@ impl Board {
 
     pub fn is_legal_variation(&self, moves: &[Move]) -> bool {
         if let Some(m) = moves.first() {
-            if !self.is_pseudo_legal_move(&m) || !self.is_legal_move(&m) {
+            if !self.is_pseudo_legal_move(m) || !self.is_legal_move(m) {
                 return false;
             }
-            return self.make_move(m).is_legal_variation(&moves[1..]);
+            self.make_move(m).is_legal_variation(&moves[1..])
         } else {
             true
         }

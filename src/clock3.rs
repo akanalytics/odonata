@@ -95,9 +95,9 @@ impl Clock3 {
         self.start_search.elapsed()
     }
 
-    pub fn elapsed_iteration(&self) -> Duration {
-        self.start_iteration.elapsed()
-    }
+    // pub fn elapsed_iteration(&self) -> Duration {
+    //     self.start_iteration.elapsed()
+    // }
 
     pub fn elapsed_ply(&self) -> Duration {
         self.start_ply.elapsed()

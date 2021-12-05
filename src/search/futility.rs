@@ -93,13 +93,13 @@ impl Algo {
             let outcome = b.outcome();
             if outcome.is_game_over() {
                 if outcome.is_draw() {
-                    self.counts.inc(&n, Event::NodeLeafDraw);
+                    self.counts.inc(n, Event::NodeLeafDraw);
                     return Some(self.eval.w_eval_draw(b, n));
                 }
                 // depth 0: we have considered a full width move search to get here so a winning
                 // result is valid. Beyond depth 0 it is not.
                 if let Some(c) = outcome.winning_color() {
-                    self.counts.inc(&n, Event::NodeLeafWinLoss);
+                    self.counts.inc(n, Event::NodeLeafWinLoss);
                     return Some(c.chooser_wb(Score::white_win(n.ply), Score::white_loss(n.ply)));
                 }
             }
@@ -117,7 +117,7 @@ impl Algo {
             self.counts.inc(n, Event::NodeLeafQuietEval);
             return Some(standing_pat);
         }
-        return None;
+        None
     }
 
     #[inline]

@@ -73,7 +73,6 @@ impl Rules {
             }
             Self::add_moves_en_passant(b, moves);
             Self::king_legal(b, moves);
-            return;
         } else {
             let pinned = b.pinned();
             let king_sq = if pinned.is_empty() { Square::null() } else { our_kings.square() };
@@ -95,7 +94,6 @@ impl Rules {
             Self::add_moves_en_passant(b, moves);
             Self::king_legal(b, moves);
             Self::castles(b, moves);
-            return;
         }
     }
 
@@ -148,6 +146,7 @@ impl Rules {
                 }
             }
         } else {
+            #[allow(clippy::collapsible_else_if)]            
             if Bitboard::PROMO_RANKS.contains(dests) {
                 Self::add_moves_pawn_promo(dests, fr, b, moves);
             } else {

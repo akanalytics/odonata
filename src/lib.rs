@@ -65,7 +65,6 @@ pub use crate::bitboard::precalc::PreCalc;
 pub use crate::board::boardbuf::BoardBuf;
 pub use crate::board::Board;
 pub use crate::exam::Exam;
-pub use crate::infra::parsed_config::ParsedConfig;
 pub use crate::movelist::MoveList;
 pub use crate::position::Position;
 pub use crate::search::algo::Algo;

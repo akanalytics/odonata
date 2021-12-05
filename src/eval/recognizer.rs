@@ -133,7 +133,7 @@ impl Algo {
             return (score, mv);
         }
 
-        return (None, None);
+        (None, None)
     }
 
     #[inline]
@@ -144,7 +144,7 @@ impl Algo {
         let endgame = EndGame::from_board(b);
 
         if endgame.is_immediately_declared_draw() {
-            let draw = b.eval_draw(&mut self.eval, &n); // will return a draw score
+            let draw = b.eval_draw(&mut self.eval, n); // will return a draw score
             self.counts.inc(n, Event::RecogImmediateDraw);
             self.stats.inc_leaf_nodes(n);
             return (Some(draw), None);
@@ -157,7 +157,7 @@ impl Algo {
 
         if let Some(c) = endgame.cannot_win() {
             self.counts.inc(n, Event::RecogMaybeWin);
-            let draw = b.eval_draw(&mut self.eval, &n); // will return a draw score
+            let draw = b.eval_draw(&mut self.eval, n); // will return a draw score
             if b.color_us() == c {
                 if draw <= n.alpha {
                     return (Some(draw), None);
@@ -186,7 +186,7 @@ impl Algo {
                 n.depth = self.recognizer.terminal_depth;
             }
         }
-        return (None, None);
+        (None, None)
     }
 }
 

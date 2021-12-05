@@ -75,21 +75,21 @@ impl PreCalc {
     }
 
     fn pop_king_moves(king_moves: &mut [Bitboard; 64]) {
-        for sq in 0..64_usize {
+        for (sq, mv) in king_moves.iter_mut().enumerate() {
             for &dir in Dir::ALL.iter() {
                 let bb = Bitboard::from_sq(sq as u8);
-                king_moves[sq] |= bb.shift(dir);
+                *mv |= bb.shift(dir);
             }
         }
     }
 
     fn pop_knight_moves(knight_moves: &mut [Bitboard; 64]) {
-        for sq in 0..64_usize {
+        for (sq, mv) in knight_moves.iter_mut().enumerate() {
             for &dir in Dir::ALL.iter() {
                 let bb = Bitboard::from_sq(sq as u8);
                 // for example a night attack might be step N followed by step NE
                 let next_dir = dir.rotate_clockwise();
-                knight_moves[sq] |= bb.shift(dir).shift(next_dir);
+                *mv |= bb.shift(dir).shift(next_dir);
             }
         }
     }

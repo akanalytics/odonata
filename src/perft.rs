@@ -22,7 +22,7 @@ impl Perft {
         let mut moves = MoveList::new();
         board.legal_moves_into(&mut moves);
         if depth == 1 {
-            return moves.len() as u64;
+            moves.len() as u64
         } else {
             let mut count = 0u64;
             for m in moves.iter() {
@@ -40,7 +40,7 @@ impl Perft {
         board.legal_moves_into(&mut moves);
         if depth == 1 {
             self.count_types(&moves);
-            return moves.len() as u64;
+            moves.len() as u64
         } else {
             let mut count = 0u64;
             for m in moves.iter() {

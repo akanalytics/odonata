@@ -51,10 +51,10 @@ impl Console {
         println!("{}", Version::small_splash());
         println!();
         println!("Commands...");
-        println!("{:<10} {}", "uci", "enter uci protocol mode");
-        println!("{:<10} {}", "quit", "quit the program");
-        println!("{:<10} {}", "pic", "nice dragonfly image");
-        println!("{:<10} {}", "help", "display (this) help");
+        println!("{:<10} enter uci protocol mode", "uci");
+        println!("{:<10} quit the program", "quit");
+        println!("{:<10} nice dragonfly image", "pic");
+        println!("{:<10} display (this) help", "help");
         println!();
     }
 

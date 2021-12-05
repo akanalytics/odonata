@@ -44,7 +44,7 @@ impl Algo {
     pub fn aspiration(&mut self, b: &mut Board, n: &mut Node) -> (Score, Event) {
         let score = self.results.best_score;
         if n.depth <= self.aspiration.min_depth || !self.aspiration.enabled || !score.is_numeric() {
-            return self.run_alphabeta(b, n);
+            self.run_alphabeta(b, n)
         } else {
             let mut aspiration_count = 0;
             let mut delta = self.aspiration.window;
@@ -92,7 +92,7 @@ impl Algo {
                 3 => self.counts.inc(n, Event::Aspiration3),
                 _ => self.counts.inc(n, Event::AspirationN),
             }
-            return ret;
+            ret
         }
     }
 }

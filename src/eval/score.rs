@@ -109,11 +109,7 @@ impl Score {
 
     #[inline]
     pub const fn is_mate(&self) -> bool {
-        if self.cp == -Self::INF || self.cp == Self::INF || self.is_numeric() {
-            false
-        } else {
-            true
-        }
+        !(self.cp == -Self::INF || self.cp == Self::INF || self.is_numeric())
     }
 
     #[inline]
@@ -184,8 +180,7 @@ impl Score {
 
     // https://www.chessprogramming.org/Pawn_Advantage,_Win_Percentage,_and_Elo
     pub fn win_probability_from_cp_and_k(centipawns: f32, k: f32) -> f32 {
-        let w = 1.0 / (1.0 + 10_f32.powf(-centipawns / (k * 100.0)));
-        w
+        1.0 / (1.0 + 10_f32.powf(-centipawns / (k * 100.0)))
     }
 
     pub fn win_probability(self) -> f32 {
@@ -415,8 +410,7 @@ impl Score2 {
             Self::WhiteLoss { ply: _ } => 0.0,
             Self::Cp(cp) => {
                 let k = 4_f32;
-                let w = 1.0 / (1.0 + 10_f32.powf(-cp as f32 / k));
-                w
+                1.0 / (1.0 + 10_f32.powf(-cp as f32 / k))
             }
             Self::WhiteWin { minus_ply: _ } => 1.0,
             Self::PlusInf => 1.0,

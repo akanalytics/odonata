@@ -58,6 +58,7 @@ impl TryFrom<HashMap<String, String>> for Position {
     }
 }
 
+#[allow(clippy::from_over_into)]
 impl Into<HashMap<String, String>> for Position {
     fn into(self) -> HashMap<String, String> {
         let mut map = self.tags.as_hash_map(self.board());
@@ -78,7 +79,7 @@ impl Serialize for Position {
         m.serialize_entry("fen", &self.board().to_fen())?;
         let map = self.tags.as_hash_map(self.board());
         let mut entries = map.iter().collect::<Vec<_>>();
-        entries.sort_by(|x, y| x.0.cmp(&y.0)); // sort by key
+        entries.sort_by(|x, y| x.0.cmp(y.0)); // sort by key
         for (k, v) in entries.iter() {
             m.serialize_entry(k, &v)?;
         }
@@ -166,7 +167,7 @@ impl Position {
         let mut epd_count = 0;
         for (n, line) in lines.enumerate() {
             let s = line?;
-            if !s.trim_start().starts_with("#") {
+            if !s.trim_start().starts_with('#') {
                 epd_count += 1;
                 vec.push(Self::parse_epd(&s).context(format!("in epd {}", s))?);
                 if n > 0 && n % 100000 == 0 {

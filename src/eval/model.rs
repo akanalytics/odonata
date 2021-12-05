@@ -265,9 +265,9 @@ impl fmt::Display for ExplainScorer {
             }
             if !sw.intersects(Switches::TEMPO | Switches::CONTEMPT) {
                 let attr = sw.name();
-                let wwt: Weight = vec.into_iter().map(|&(_, w, _b, wt)| w * wt).sum();
-                let bwt: Weight = vec.into_iter().map(|&(_, _w, b, wt)| b * wt).sum();
-                let twt: Weight = vec.into_iter().map(|&(_, w, b, wt)| w * wt - b * wt).sum();
+                let wwt: Weight = vec.iter().map(|&(_, w, _b, wt)| w * wt).sum();
+                let bwt: Weight = vec.iter().map(|&(_, _w, b, wt)| b * wt).sum();
+                let twt: Weight = vec.iter().map(|&(_, w, b, wt)| w * wt - b * wt).sum();
                 writeln!(
                     f,
                     "{:>20} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |   {:<15}",
@@ -482,12 +482,12 @@ impl ModelSide {
             match eg {
                 BishopKnightVsKing(_) => {
                     self.endgame_metric1 = 4 * Self::king_distance_to_bishops_corner(b, c);
-                    self.endgame_metric2 = 1 * Self::king_distance(b);
+                    self.endgame_metric2 = Self::king_distance(b);
                 }
 
                 TwoBishopsOppositeColorSquares(_) | KingMajorsVsKing(_) => {
                     self.endgame_metric1 = 2 * Self::king_distance_to_side(b, c);
-                    self.endgame_metric2 = 1 * Self::king_distance(b);
+                    self.endgame_metric2 = Self::king_distance(b);
                 }
                 _ => {}
             }
@@ -719,9 +719,9 @@ impl ModelSide {
             // those attacks on enemy that arent pawn defended and cant attack back
             let piece_non_pawn_defended_moves = match p {
                 Piece::Queen => (our_attacks & them).popcount(),
-                Piece::Rook => ((our_attacks & them) - r).popcount(),
-                Piece::Knight => ((our_attacks & them) - ni).popcount(),
-                Piece::Bishop => ((our_attacks & them) - bi).popcount(),
+                Piece::Rook => (our_attacks & them - r).popcount(),
+                Piece::Knight => (our_attacks & them - ni).popcount(),
+                Piece::Bishop => (our_attacks & them - bi).popcount(),
                 _ => 0,
             };
 

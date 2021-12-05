@@ -147,10 +147,8 @@ impl Algo {
             // }
         }
 
-        if self.move_orderer.prior_pv {
-            if Self::order_from_prior_pv(movelist, &self.current_variation, self.pv()) {
-                self.move_orderer.count_pv.add(ply, 1);
-            }
+        if self.move_orderer.prior_pv && Self::order_from_prior_pv(movelist, &self.current_variation, self.pv()) {
+            self.move_orderer.count_pv.add(ply, 1);
         }
         // if self.move_orderer.prior_bm {
         //     if ply == 0 {
@@ -168,7 +166,6 @@ impl Algo {
                 if let Some(i) = i {
                     movelist.swap(0, i);
                     self.move_orderer.count_tt_bm.add(ply, 1);
-                    return;
                 }
             }
         }
@@ -195,7 +192,7 @@ impl Algo {
             //println!("{:>30} / [{:>30}] ==> {}", var.to_string(), pv.to_string(), moves);
             return false;
         }
-        return false;
+        false
     }
 
     // pub fn order_by_mvv_lva(moves: &mut MoveList) {
@@ -274,12 +271,12 @@ impl OrderedMoveList {
             return some;
         }
         if self.stage as usize + 1 >= self.ordering(algo).len() {
-            return None;
+            None
         } else {
             self.index = 0;
             self.stage += 1;
             self.gen(b, algo);
-            return self.next_move(b, algo);
+            self.next_move(b, algo)
         }
     }
 

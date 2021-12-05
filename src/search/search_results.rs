@@ -190,11 +190,9 @@ impl SearchResults {
                 self.best_score = self.score;
                 self.best_pv = self.pv.clone();
             }
-        } else {
-            if self.multi_pv_index == 0 && self.take_move_from_part_ply {
-                self.best_score = self.score;
-                self.best_pv = self.pv.clone();
-            }
+        } else if self.multi_pv_index == 0 && self.take_move_from_part_ply {
+            self.best_score = self.score;
+            self.best_pv = self.pv.clone();
         }
     }
 

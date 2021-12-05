@@ -79,6 +79,7 @@ impl Algo {
         if self.ext.gives_check_enabled && after.is_in_check(after.color_us())
             || self.ext.in_check_enabled && before.is_in_check(before.color_us())
         {
+            #[allow(clippy::collapsible_else_if)]            
             if n.depth <= self.ext.check_max_depth
                 && after.phase(&self.eval.phaser) <= self.ext.check_max_phase
                 && (!self.ext.check_only_captures || mv.is_capture())

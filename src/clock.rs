@@ -44,7 +44,7 @@ impl Default for Clock {
             // leaf_nodes: Aligned(Default::default()),
             nodes: Arc::new({
                 let mut v = Vec::with_capacity(32);
-                v.extend(std::iter::repeat_with(|| Aligned(Default::default())).take(32));
+                v.extend(std::iter::repeat_with(|| Aligned(AtomicU64::default())).take(32));
                 v
             }),
         }

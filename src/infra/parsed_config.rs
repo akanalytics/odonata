@@ -9,7 +9,7 @@ use std::{fmt, fs};
 #[dynamic(lazy)]
 static mut STATIC_INSTANCE: ParsedConfig = {
     let c = ParsedConfig::parse(
-        &RESOURCE_DIR.get_file("old-format.toml").unwrap().contents_utf8().unwrap(),
+        RESOURCE_DIR.get_file("old-format.toml").unwrap().contents_utf8().unwrap(),
         "<internal>",
     );
     if c.is_err() {
@@ -19,7 +19,7 @@ static mut STATIC_INSTANCE: ParsedConfig = {
     c.unwrap()
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct ParsedConfig {
     settings: HashMap<String, String>,
     insertion_order: Vec<String>,
@@ -72,7 +72,7 @@ impl ParsedConfig {
             }
             let s = line;
             let s = s.trim();
-            if s.is_empty() || s.starts_with("#") {
+            if s.is_empty() || s.starts_with('#') {
                 continue;
             }
 
@@ -80,7 +80,7 @@ impl ParsedConfig {
 
             if let Some(combo) = s.split_once("=") {
                 let (key, value) = combo;
-                config.set(&key, &value);
+                config.set(key, value);
             } else {
                 return Err(format!("Failed parsing line {} in file {}: '{}'", n, filename, s));
             }
@@ -212,14 +212,14 @@ impl fmt::Display for ParsedConfig {
     }
 }
 
-impl Default for ParsedConfig {
-    fn default() -> Self {
-        ParsedConfig {
-            settings: HashMap::new(),
-            insertion_order: Vec::new(),
-        }
-    }
-}
+// impl Default for ParsedConfig {
+//     fn default() -> Self {
+//         ParsedConfig {
+//             settings: HashMap::new(),
+//             insertion_order: Vec::new(),
+//         }
+//     }
+// }
 
 // #[test]
 // fn test_config() {

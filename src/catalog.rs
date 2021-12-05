@@ -1030,6 +1030,7 @@ b2b1r1k/3R1ppp/4qP2/4p1PQ/4P3/5B2/4N1K1/8 w - - bm g6; id "WAC.300";
     }
 
     // FIXME! awful structure
+    #[allow(clippy::vec_init_then_push)]    
     pub fn perfts() -> Vec<(Board, Vec<u64>)> {
         let mut vec = Vec::new();
         // https://www.chessprogramming.org/Perft_Results
@@ -1106,19 +1107,19 @@ b2b1r1k/3R1ppp/4qP2/4p1PQ/4P3/5B2/4N1K1/8 w - - bm g6; id "WAC.300";
     pub fn chess960(id: u32) -> Position {
         let mut n = id as usize;
         let bw = n % 4;
-        n = n / 4;
+        n /= 4;
 
         let bb = n % 4;
-        n = n / 4;
+        n /= 4;
 
         let q = n % 6;
-        n = n / 6;
+        n /= 6;
 
         let mut n1 = 0;
         let mut n2;
         loop {
             n2 = n + (3 - n1) * (4 - n1) / 2 - 5;
-            if 1 <= n2 && n2 <= 4 && n1 < n2 {
+            if (1..=4).contains(&n2) && n1 < n2 {
                 break;
             }
             n1 += 1;

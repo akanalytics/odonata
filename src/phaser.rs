@@ -97,7 +97,7 @@ impl Phaser {
             phase = 0;
         }
 
-        debug_assert!(phase >= 0 && phase <= TOTAL_PHASE);
+        debug_assert!((0..=TOTAL_PHASE).contains(&phase));
 
         // convert to 0..100 range
         phase = (phase * 100 + (TOTAL_PHASE / 2)) / TOTAL_PHASE;

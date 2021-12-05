@@ -62,7 +62,7 @@ impl Parse {
 
         let caps = REGEX_SAN
             .captures(&s)
-            .ok_or(anyhow!("Unable to parse '{}' as an algebraic move", s))?;
+            .ok_or_else(|| anyhow!("Unable to parse '{}' as an algebraic move", s))?;
         // if not match:
         //     raise ValueError(f"Move {orig} is invalid - wrong format")
 

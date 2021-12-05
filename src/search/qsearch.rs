@@ -71,7 +71,7 @@ impl Algo {
 
         if !self.qsearch.enabled {
             let node = Node { ply, depth, alpha, beta };
-            let score = board.eval(&mut self.eval, &node);
+            let score = board.eval(&self.eval, &node);
             return score;
         }
         let score = self.qsearch_see(*mv, Bitboard::EMPTY, ply, 0, board, alpha, beta);
@@ -96,7 +96,7 @@ impl Algo {
         let mut standing_pat;
         let node = Node { ply, depth, alpha, beta };
         if depth == 0 {
-            standing_pat = board.eval(&mut self.eval, &node);
+            standing_pat = board.eval(&self.eval, &node);
             trace!("Standing pat (eval on depth 0 on {}) {}", board.to_fen(), standing_pat);
             // early return if a draw or mate
             if standing_pat.is_mate() || board.draw_outcome().is_some() {
@@ -110,7 +110,7 @@ impl Algo {
         } else if in_check {
             standing_pat = alpha;
         } else {
-            standing_pat = board.eval_some(&mut self.eval, self.qsearch.switches);
+            standing_pat = board.eval_some(&self.eval, self.qsearch.switches);
             trace!("[ply {}] Standing pat (eval_qsearch on {}) {}", ply, board.to_fen(), standing_pat);
         }
         if standing_pat > alpha {
@@ -313,7 +313,8 @@ mod tests {
         let node = Node::root(0);
         let static_eval = pos.board().eval(&mut eval, &node);
 
-        let mut algo = Algo::new().set_timing_method(TimeControl::Depth(0)).set_eval(eval).build();
+        let mut algo = Algo::new();
+        algo.set_timing_method(TimeControl::Depth(0)).set_eval(eval);
         let quiesce_eval = algo.qsearch_see(
             Move::NULL_MOVE,
             Bitboard::EMPTY,
@@ -357,10 +358,10 @@ mod tests {
             .cp()
             .unwrap_or(0);
 
-        let mut search_see = Algo::new()
+        let mut search_see = Algo::new();
+        search_see
             .set_timing_method(TimeControl::NodeCount(1_000_000))
-            .set_eval(eval.clone())
-            .build();
+            .set_eval(eval.clone());
         search_see.max_depth = 3;
 
         let score = search_see.qsearch2(&pos.sm()?, 3, search_see.max_depth, &mut pos.board().clone(), alpha, beta);

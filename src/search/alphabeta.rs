@@ -82,6 +82,8 @@ impl Algo {
         }
         if n.is_qs() {
             self.counts.inc(&n, Event::NodeTypeQuiesce);
+        } else {
+            self.counts.inc(&n, Event::NodeInterior);
         }
 
         let mut score = -Score::INFINITY;
@@ -129,10 +131,15 @@ impl Algo {
         let mut sorted_moves = self.move_orderer.get_sorted_moves(n, b, tt_mv);
         let mut count = 0;
         let mut quiets = 0;
+        // if n.ply <= 4 {
+        //     println!("ply {} lm {} a {} b {} eval {} pv {} board {} moves {}", n.ply, last_move, n.alpha, n.beta, eval, &self.pv_table.extract_pv_for(n.ply), b.to_fen(), b.legal_moves());
+        // }
         while let Some((move_type, mv)) = sorted_moves.next_move(b, self) {
             if self.restrictions.skip_move(ply, &mv) {
                 continue;
             }
+            self.counts.inc(&n, Event::Moves);
+            self.counts.inc_move(&n, move_type);
             count += 1;
             self.stats.inc_move(ply);
             let mut child_board = b.make_move(&mv);
@@ -235,15 +242,14 @@ impl Algo {
             self.stats.inc_leaf_nodes(&n);
             if n.is_qs() {
                 self.counts.inc(&n, Event::NodeLeafQuietEval);
-                return (b.eval(&mut self.eval, &n), Event::NodeLeafQuietEval);
+                return (b.eval(&self.eval, &n), Event::NodeLeafQuietEval);
             } else {
                 self.counts.inc(&n, Event::NodeLeafStalemate);
                 // FIXME VER:0.4.14
                 // (board.eval_draw(&mut self.eval, &n),
-                return (b.eval(&mut self.eval, &n), Event::NodeLeafStalemate);
+                return (b.eval(&self.eval, &n), Event::NodeLeafStalemate);
             }
         }
-        self.counts.inc(&n, Event::NodeInterior);
         if nt == NodeType::UpperAll {
             self.stats.inc_node_all(ply);
             self.counts.inc(&n, Event::NodeInteriorAll);
@@ -261,7 +267,7 @@ impl Algo {
         }
         let entry = TtNode { score, depth, nt, bm };
         self.tt.store(b.hash(), entry);
-        // self.explain_node(&bm, nt, score, &self.pv_table.extract_pv_for(ply));
+        self.explain_node(&bm, nt, score, &self.pv_table.extract_pv_for(ply));
         (score, category)
     }
 }
@@ -278,10 +284,8 @@ mod tests {
     fn test_2_mates() -> Result<()> {
         let positions = Catalog::mate_in_2();
         for (i, pos) in positions.iter().enumerate() {
-            let mut search = Algo::new()
-                .set_timing_method(TimeControl::Depth(5))
-                .set_callback(Uci::uci_info)
-                .build();
+            let mut search = Algo::new();
+            search.set_timing_method(TimeControl::Depth(5)).set_callback(Uci::uci_info);
             // search.tt.enabled = false;
             search.set_position(pos.clone()).search();
             // println!("{}", search);
@@ -298,7 +302,8 @@ mod tests {
     fn test_mate_in_3() -> Result<()> {
         let positions = Catalog::mate_in_3();
         for (i, pos) in positions.iter().enumerate() {
-            let mut search = Algo::new().set_timing_method(TimeControl::Depth(5)).build();
+            let mut search = Algo::new();
+            search.set_timing_method(TimeControl::Depth(5));
             let expected_pv = pos.pv()?;
             search.set_position(pos.clone()).search();
             println!("{}", search);
@@ -314,7 +319,8 @@ mod tests {
     fn test_mate_in_4() -> Result<()> {
         let positions = Catalog::mate_in_4();
         for (i, pos) in positions.iter().enumerate() {
-            let mut search = Algo::new().set_timing_method(TimeControl::Depth(7)).build();
+            let mut search = Algo::new();
+            search.set_timing_method(TimeControl::Depth(7));
             search.set_position(pos.clone()).search();
             // println!("{}", search);
             if pos.get("pv").is_ok() {

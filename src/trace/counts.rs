@@ -4,7 +4,7 @@ use tabwriter::TabWriter;
 
 use crate::infra::component::Component;
 use crate::search::node::{Event, Node};
-use crate::types::{Ply, MAX_PLY};
+use crate::types::{Ply, MAX_PLY, MoveType};
 use strum::IntoEnumIterator;
 
 // const MAX_PLY: Ply = 6;
@@ -113,6 +113,28 @@ impl Counts {
         self.inc_by_ply(n.ply, cn);
     }
 
+    pub fn inc_move(&mut self, n: &Node, mt: MoveType) {
+
+        let event = match mt {
+            MoveType::Start => Event::MoveStart,
+            MoveType::Hash => Event::MoveHash,
+            MoveType::Initialize => Event::MoveInitialize,
+            MoveType::Null => Event::MoveNull,
+            MoveType::GoodCapture => Event::MoveGoodCapture,
+            MoveType::GoodCaptureUpfrontSorted => Event::MoveGoodCaptureUpfrontSorted,
+            MoveType::Killer => Event::MoveKiller,
+            MoveType::Promo => Event::MovePromo,
+            MoveType::Evasion => Event::MoveEvasion,
+            MoveType::Quiet => Event::MoveQuiet,
+            MoveType::QuietUnsorted => Event::MoveQuietUnsorted,
+            MoveType::BadCapture => Event::MoveBadCapture,
+            MoveType::Remaining => Event::MoveRemaining,
+            MoveType::Unsorted => Event::MoveUnsorted,
+            MoveType::Capture => Event::MoveCapture,
+            MoveType::End => Event::MoveEnd,
+        };
+        self.inc_by_ply(n.ply, event);
+    }
     // pub fn is_empty(&self, iter: Ply, y: Ply) -> bool {
     //     self.counts[iter as usize][y as usize].iter().max() == Some(&0u64)
     // }
@@ -138,6 +160,14 @@ impl Counts {
         }
     }
 
+    fn percent(top: u64, bottom: u64) -> u64 {
+        if top == 0 {
+            0
+        } else {
+            (top as f32 / bottom as f32 * 100.0) as u64
+        }
+    }
+
     pub fn count(&self, i: Ply, y: Ply, cn: Event) -> u64 {
         use crate::search::node::Event::*;
         match cn {
@@ -156,20 +186,14 @@ impl Counts {
             DerivedRecog => {
                 return self.count(i, y, RecogImmediateDraw) + self.count(i, y, RecogMaybeWin) + self.count(i, y, RecogHelpmateOrDraw)
             }
-            PercentPvsReSearch => return (self.count(i, y, PvsReSearch) as f32 / self.count(i, y, Pvs) as f32 * 100.0) as u64,
-            PercentLmrReSearch => return (self.count(i, y, LmrReSearch) as f32 / self.count(i, y, Lmr) as f32 * 100.0) as u64,
-            PercentPrunedInterior => {
-                return (self.count(i, y, DerivedPrunedInterior) as f32 / self.count(i, y, NodeInterior) as f32 * 100.0) as u64
-            }
-            PercentHashHit => return (self.count(i, y, HashHit) as f32 / self.count(i, y, HashProbe) as f32 * 100.0) as u64,
+            PercentPvsReSearch => return Self::percent(self.count(i, y, PvsReSearch), self.count(i, y, Pvs)),
+            PercentLmrReSearch => return Self::percent(self.count(i, y, LmrReSearch), self.count(i, y, Lmr)),
+            PercentPrunedInterior => return Self::percent(self.count(i, y, DerivedPrunedInterior), self.count(i, y, NodeInterior)),
+            PercentHashHit => return Self::percent(self.count(i, y, HashHit), self.count(i, y, HashProbe)),
+            PercentAspiration1 => return Self::percent(self.count(i, y, Aspiration1), self.count(i, y, DerivedAspiration)),
             DerivedAspiration => {
                 return self.count(i, y, Aspiration1)
-                    + self.count(i, y, Aspiration2)
-                    + self.count(i, y, Aspiration3)
-                    + self.count(i, y, AspirationN)
-            }
-            PercentAspiration1 => {
-                return (self.count(i, y, Aspiration1) as f32 / self.count(i, y, DerivedAspiration) as f32 * 100.0) as u64
+                    + self.count(i, y, Aspiration2) + self.count(i, y, Aspiration3) + self.count(i, y, AspirationN)
             }
             _ => {}
         }

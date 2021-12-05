@@ -325,14 +325,14 @@ impl MaterialBalance {
             }
             let s = line?;
             let s = s.trim();
-            if s.is_empty() || s.starts_with("#") {
+            if s.is_empty() || s.starts_with('#') {
                 continue;
             }
 
             count += 1;
 
             // vec.push(Self::parse_epd(&s).map_err(|err| format!("{} in epd {}", err, s))?);
-            let vec: Vec<_> = s.trim().splitn(2, ",").collect();
+            let vec: Vec<_> = s.trim().splitn(2, ',').collect();
             if vec.len() != 2 {
                 bail!("Failed parsing line {} in file {}: '{}'", n, filename, s)
             }
@@ -539,7 +539,7 @@ impl MaterialBalance {
                 // info!("[{:>32}]={:>5}", mat, cp);
                 adjustments += 1;
                 if self.consistency_adjust {
-                    self.derived_store(&mat, new_cp as f32);
+                    self.derived_store(mat, new_cp as f32);
                 }
             }
 
@@ -576,7 +576,7 @@ impl MaterialBalance {
                 // info!("[{:>32}]={:>5}", mat, cp);
                 adjustments += 1;
                 if self.consistency_adjust {
-                    self.derived_store(&mat, other_cp as f32);
+                    self.derived_store(mat, other_cp as f32);
                 }
             }
         }

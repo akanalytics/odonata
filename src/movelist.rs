@@ -253,8 +253,13 @@ impl MoveList {
     #[inline]
     pub fn push(&mut self, mv: Move) {
         debug_assert!(self.len() < MAX_LEGAL_MOVES);
+        #[cfg(feature = "unchecked_indexing")]
         unsafe {
             self.moves.push_unchecked(mv);
+        }
+        #[cfg(not(feature = "unchecked_indexing"))]
+        {
+            self.moves.push(mv);
         }
     }
 
@@ -519,7 +524,7 @@ static REGEX_MOVE_NUMBERS: Lazy<Regex> = Lazy::new(|| {
 });
 
 fn strip_move_numbers(s: &str) -> String {
-    REGEX_MOVE_NUMBERS.replace_all(&s, "").to_string()
+    REGEX_MOVE_NUMBERS.replace_all(s, "").to_string()
 }
 
 #[cfg(test)]

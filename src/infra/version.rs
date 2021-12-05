@@ -37,6 +37,7 @@ impl Version {
 
     pub const QUOTE: &'static str = "May you touch dragonflies and stars...";
 
+    #[allow(clippy::useless_format)]
     pub fn small_splash() -> String {
         let mut s = String::new();
         s += &format!("{}\n", Version::SMALL_IMAGE);

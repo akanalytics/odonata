@@ -54,6 +54,7 @@ impl EndGame {
     /// immediately declared draw
     pub fn is_immediately_declared_draw(&self) -> bool {
         use EndGame::*;
+        #[allow(clippy::match_like_matches_macro)]
         match self {
             KingVsKing => true,      // automatic draw
             KingMinorVsKing => true, // automatic draw
@@ -152,7 +153,7 @@ impl EndGame {
                 return EndGame::TwoBishopsSameColorSquares;
             }
         }
-        return EndGame::Unknown;
+        EndGame::Unknown
     }
 }
 
@@ -181,7 +182,7 @@ mod tests {
         let eg = EndGame::from_board(&b);
         assert_eq!(eg, EndGame::KingMinorVsKingMinor);
         let mut eval = SimpleScorer::default();
-        assert!(eval.win_bonus.e() > 0.1);
+        assert!(eval.win_bonus.e() > 0);
         eval.win_bonus = Weight::from_i32(100, 100);
         let sc_wi_bonus = b.eval_some(&eval, Switches::MATERIAL);
         eval.win_bonus = Weight::zero();

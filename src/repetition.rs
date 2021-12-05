@@ -106,7 +106,7 @@ impl Repetition {
 
     // uses supplied variation
     pub fn push_position(&mut self, pos: &Position) {
-        self.push_variation(&pos.supplied_variation(), pos.board());
+        self.push_variation(pos.supplied_variation(), pos.board());
         self.root_index = self.prior_positions.len();
     }
 
@@ -226,10 +226,9 @@ mod tests {
     #[test]
     fn test_rep_position() {
         let mut b = Catalog::starting_board();
-        let mut algo = Algo::new()
-            .set_timing_method(TimeControl::Depth(5))
-            .set_callback(Uci::uci_info)
-            .build();
+        let mut algo = Algo::new();
+        algo.set_timing_method(TimeControl::Depth(5));
+        algo.set_callback(Uci::uci_info);
 
         let s = concat!(
             "e2e4 b8c6 b1c3 g8f6 d2d4 d7d5 e4e5 f6e4 c3e4 d5e4 f1b5 c8d7 b5c6 d7c6 g1e2 e7e6 e1g1 ",
@@ -247,6 +246,12 @@ mod tests {
     }
 
     #[test]
+    fn test_rep_bugn() {
+        test_rep_bug1();
+        test_rep_bug1();
+    }
+
+    #[test]
     fn test_rep_bug1() {
         let s = concat!(
             "e2e4 b8c6 b1c3 e7e5 g1f3 g8f6 d2d4 e5d4 f3d4 f8b4 c1g5 d8e7 f2f3 e8g8 ",
@@ -257,18 +262,21 @@ mod tests {
             "d1c1 h6h5 c1c4 h3h1 b1b2 h1h4 c7e5 h4g4 c4c8 g8h7 c8c7 h7g8 c7c8"
         );
         let mut b = Catalog::starting_board();
-        let mut algo = Algo::new()
-            .set_timing_method(TimeControl::Depth(5))
-            .set_callback(Uci::uci_info)
-            .build();
-        algo.repetition.new_game();
+        let mut eng = Engine::new();
+        eng.algo.set_callback(Uci::uci_info);
+        eng.algo.set_timing_method(TimeControl::Depth(5));
+        eng.algo.repetition.new_game();
         let mvs = b.parse_uci_variation(s).unwrap();
         for mv in mvs.iter() {
             b = b.make_move(&mv);
-            algo.repetition.push_move(&mv, &b);
+            eng.algo.repetition.push_move(&mv, &b);
         }
-        algo.set_position(Position::from_board(b)).search();
-        println!("{}", algo);
+        eng.algo.set_position(Position::from_board(b));
+        eng.algo.explainer.enabled = true;
+        eng.algo.explainer.vars.push(Variation::new());
+        eng.search();
+        println!("{}", eng.algo.results_as_position());
+        println!("{}", eng.algo.counts);
     }
 
     #[test]
@@ -290,10 +298,10 @@ mod tests {
             engine.algo.repetition,
             engine.algo.repetition.count(&board)
         );
-        print!("rep = {:?}\n", engine.algo.repetition);
+        println!("rep = {:?}", engine.algo.repetition);
         engine.search();
         let res = engine.algo.results_as_position();
-        print!("res3: {}\n", res);
+        println!("res3: {}", res);
 
         let mut pos2 = pos3.clone();
         let mut var2 = pos3.supplied_variation().clone();
@@ -310,10 +318,10 @@ mod tests {
             engine.algo.repetition,
             engine.algo.repetition.count(&board)
         );
-        print!("rep = {:?}\n", engine.algo.repetition);
+        println!("rep = {:?}", engine.algo.repetition);
         engine.search();
         let res = engine.algo.results_as_position();
-        print!("res2: {}\n", res);
+        println!("res2: {}", res);
 
         let mut pos1 = pos3.clone();
         let mut var1 = pos3.supplied_variation().clone();
@@ -330,9 +338,9 @@ mod tests {
             engine.algo.repetition,
             engine.algo.repetition.count(&board)
         );
-        print!("rep = {:?}\n", engine.algo.repetition);
+        println!("rep = {:?}", engine.algo.repetition);
         engine.search();
         let res = engine.algo.results_as_position();
-        print!("res1: {}\n", res);
+        println!("res1: {}", res);
     }
 }

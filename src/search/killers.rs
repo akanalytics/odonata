@@ -74,7 +74,7 @@ impl Killers {
             if !m.is_null() && b.is_pseudo_legal_move(m) && b.is_legal_move(m) {
                 debug_assert!(b.validate().is_ok(), "board:{} is not valid", b);
                 debug_assert!(
-                    b.legal_moves().iter().find(|&mv| mv == m).is_some(),
+                    b.legal_moves().iter().any(|mv| mv == m),
                     "board:{:#} mv: {} {:?} is not in board.legal_moves",
                     b,
                     m,

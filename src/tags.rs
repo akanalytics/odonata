@@ -154,6 +154,7 @@ impl Tag {
         }
     }
 
+    #[allow(clippy::useless_format)]
     pub fn value_uci(&self) -> String {
         match &self {
             Tag::None => "".to_string(),
@@ -209,7 +210,7 @@ impl Serialize for Tags {
     {
         let mut map = serializer.serialize_map(Some(self.tags.len()))?;
         let mut entries = self.tags.iter().collect::<Vec<_>>();
-        entries.sort_by(|x, y| x.0.cmp(&y.0)); // sort by key
+        entries.sort_by(|x, y| x.0.cmp(y.0)); // sort by key
         for (k, v) in entries.iter() {
             map.serialize_entry(k, &v.value_uci())?;
         }
@@ -278,7 +279,7 @@ impl Tags {
         let ops: Vec<&str> = Self::split_into_tags(tags_str);
         for op in ops {
             let words: Vec<&str> = Self::split_into_words(op);
-            debug_assert!(words.len() > 0, "no words parsing EPD operation '{}' from '{}'", op, tags_str);
+            debug_assert!(!words.is_empty(), "no words parsing EPD operation '{}' from '{}'", op, tags_str);
             let tag = Tag::parse(board, words[0], words[1..].join(" ").as_str())?;
             // map.insert.to_string(), words[1..].join(" ").to_string());
             tags.set(tag);
@@ -289,14 +290,14 @@ impl Tags {
     fn split_into_tags(s: &str) -> Vec<&str> {
         REGEX_SPLIT_TAGS
             .captures_iter(s)
-            .map(|cap| cap.get(1).or(cap.get(2)).or(cap.get(3)).unwrap().as_str())
+            .map(|cap| cap.get(1).or_else(|| cap.get(2)).or_else(|| cap.get(3)).unwrap().as_str())
             .collect()
     }
 
     fn split_into_words(s: &str) -> Vec<&str> {
         REGEX_SPLIT_WORDS
             .captures_iter(s)
-            .map(|cap| cap.get(1).or(cap.get(2)).or(cap.get(3)).unwrap().as_str())
+            .map(|cap| cap.get(1).or_else(|| cap.get(2)).or_else(|| cap.get(3)).unwrap().as_str())
             .collect()
     }
 }
@@ -347,7 +348,7 @@ static REGEX_SPLIT_WORDS: Lazy<Regex> = Lazy::new(|| {
 impl fmt::Display for Tags {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut entries = self.tags.iter().collect::<Vec<_>>();
-        entries.sort_by(|x, y| x.0.cmp(&y.0)); // sort by key
+        entries.sort_by(|x, y| x.0.cmp(y.0)); // sort by key
         for (k, t) in entries {
             let v = t.value_uci();
             if v.is_empty() {

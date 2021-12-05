@@ -249,6 +249,7 @@ impl Piece {
 
     #[inline]
     pub fn is_line_piece(&self) -> bool {
+        #[allow(clippy::match_like_matches_macro)]
         match self {
             Piece::Bishop | Piece::Rook | Piece::Queen => true,
             _ => false,
@@ -483,7 +484,7 @@ impl MoveType {
     }
 
     pub fn vec_from_string(move_types: &str) -> Result<Vec<MoveType>, String> {
-        move_types.chars().map(|c| MoveType::from_char(c)).collect::<Result<Vec<_>, _>>()
+        move_types.chars().map(MoveType::from_char).collect::<Result<Vec<_>, _>>()
     }
 }
 

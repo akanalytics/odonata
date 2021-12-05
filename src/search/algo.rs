@@ -114,10 +114,6 @@ impl Algo {
         self.task_control.register_callback(callback);
         self
     }
-
-    pub fn build(&mut self) -> Self {
-        self.clone()
-    }
 }
 
 impl Component for Algo {
@@ -281,7 +277,7 @@ impl Algo {
 
     pub fn report_progress(&self) {
         if self.stats.iteration().all_nodes() % 5_000_000 == 0 && self.stats.iteration().all_nodes() != 0 {
-            let sp = SearchResults::with_report_progress(&self);
+            let sp = SearchResults::with_report_progress(self);
             self.task_control.invoke_callback(&sp);
         }
     }
@@ -289,7 +285,7 @@ impl Algo {
     pub fn report_refutation(&self, ply: Ply) {
         if self.show_refutations && ply < 4 {
             let sp = SearchResults {
-                pv: self.pv_table.extract_pv_for(ply).clone(),
+                pv: self.pv_table.extract_pv_for(ply),
                 mode: SearchResultsMode::Refutation,
                 ..SearchResults::default()
             };
@@ -362,12 +358,12 @@ impl Algo {
     }
 
     pub fn record_move(&mut self, ply: Ply, mv: &Move) {
-        self.pv_table.set(ply, &mv, false);
+        self.pv_table.set(ply, mv, false);
         self.pv_table.propagate_from(ply + 1);
     }
 
     pub fn record_truncated_move(&mut self, ply: Ply, mv: &Move) {
-        self.pv_table.set(ply, &mv, true);
+        self.pv_table.set(ply, mv, true);
     }
 }
 
@@ -422,7 +418,8 @@ mod tests {
     fn test_node() {
         let mut eval = SimpleScorer::new().set_position(false);
         eval.mobility = false;
-        let mut algo = Algo::new().set_eval(eval).build();
+        let mut algo = Algo::new();
+        algo.set_eval(eval);
         algo.move_orderer.enabled = false;
         algo.set_position(Catalog::starting_position());
         algo.set_timing_method(TimeControl::Depth(4));
@@ -436,7 +433,8 @@ mod tests {
 
     #[test]
     fn test_display_algo() {
-        let algo = Algo::new().set_timing_method(TimeControl::Depth(1)).build();
+        let mut algo = Algo::new();
+        algo.set_timing_method(TimeControl::Depth(1));
         println!("{}", algo);
         println!("{:?}", algo);
         println!("{:#?}", algo);
@@ -446,7 +444,8 @@ mod tests {
     fn test_black_opening() {
         let mut board = Catalog::starting_board();
         board.set_turn(Color::Black);
-        let mut search = Algo::new().set_timing_method(TimeControl::Depth(1)).build();
+        let mut search = Algo::new();
+        search.set_timing_method(TimeControl::Depth(1));
         search.move_orderer.enabled = false;
         search.set_position(Position::from_board(board));
         search.search();
@@ -459,7 +458,8 @@ mod tests {
         let pos = Position::parse_epd("2r2k2/5pp1/3p1b1p/2qPpP2/1p2B2P/pP3P2/2P1R3/2KRQ3 b - - 0 1").unwrap();
         println!("{}", pos);
         let eval = SimpleScorer::new().set_position(false);
-        let mut search = Algo::new().set_timing_method(TimeControl::Depth(9)).set_eval(eval).build(); //9
+        let mut search = Algo::new();
+        search.set_timing_method(TimeControl::Depth(9)).set_eval(eval); 
         search.set_position(pos);
         search.search();
         println!("{}", search);
@@ -468,10 +468,8 @@ mod tests {
     #[test]
     fn bug05() {
         let pos = Position::parse_epd("8/8/3N4/4B3/6p1/5k1p/4n2P/7K b - - 75 93 ").unwrap();
-        let mut search = Algo::new()
-            .set_timing_method(TimeControl::Depth(8))
-            .set_callback(Uci::uci_info)
-            .build();
+        let mut search = Algo::new();
+        search.set_timing_method(TimeControl::Depth(8)).set_callback(Uci::uci_info);
         search.set_position(pos);
         search.search();
         println!("{}", search);
@@ -503,10 +501,9 @@ mod tests {
     #[test]
     #[ignore]
     fn test_truncated_pv() {
-        let mut algo = Algo::new()
+        let mut algo = Algo::new();
             //             .set_timing_method(TimeControl::from_move_time_millis(1000))
-            .set_timing_method(TimeControl::Depth(7))
-            .build();
+        algo.set_timing_method(TimeControl::Depth(7));
         // algo.repetition.avoid_tt_on_repeats = false;
         // algo.tt.min_ply = 2;
         let positions = Catalog::win_at_chess();

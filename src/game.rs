@@ -82,8 +82,8 @@ impl Game {
     }
 
     pub fn record_move(&mut self, mv: &Move, tags: &Tags) {
-        self.print_move(&mv, &tags);
-        self.moves.push(mv.clone());
+        self.print_move(mv, tags);
+        self.moves.push(*mv);
         self.annotations.push(tags.clone());
         self.board = self.board.make_move(mv);
         self.outcome = self.board.outcome();
@@ -97,7 +97,7 @@ impl Game {
                 ".. ".to_string()
             } else {
                 "".to_string()
-            } + &self.board.to_san(&mv),
+            } + &self.board.to_san(mv),
             self.board.to_fen(),
             tags,
         );
@@ -170,11 +170,13 @@ mod tests {
     #[ignore]
     fn single_game() {
         let eval_w = SimpleScorer::new();
-        let mut white = Algo::new().set_timing_method(TimeControl::Depth(6)).set_eval(eval_w).build();
+        let mut white = Algo::new();
+        white.set_timing_method(TimeControl::Depth(6)).set_eval(eval_w);
 
         let mut eval_b = SimpleScorer::new();
         eval_b.mobility = false;
-        let mut black = Algo::new().set_timing_method(TimeControl::Depth(6)).set_eval(eval_b).build();
+        let mut black = Algo::new();
+        black.set_timing_method(TimeControl::Depth(6)).set_eval(eval_b);
 
         let pos = Catalog::starting_position();
         let mut game = Game::new();
@@ -197,8 +199,10 @@ mod tests {
         // let tc = TimeControl::from_remaining_time(Duration::from_millis(3000));
         // let tc = TimeControl::Depth(3);
         // let tc = TimeControl::from_move_time_millis(200);
-        let mut new = Algo::new().set_timing_method(tc).build();
-        let mut old = Algo::new().set_timing_method(tc).build();
+        let mut new = Algo::new();
+        new.set_timing_method(tc);
+        let mut old = Algo::new();
+        old.set_timing_method(tc);
         // new.set_callback(Uci::uci_info);
 
         // new.eval.rook_open_file = 20;
@@ -285,8 +289,10 @@ mod tests {
     fn test_bug1() {
         let pos = Position::parse_epd("1rk2qRr/8/B3P3/B4QN1/P4p2/2K1PP1P/P7/R2N4 b - - 0 38").unwrap();
         let tc = TimeControl::SearchTime(Duration::from_millis(100));
-        let mut white = Algo::new().set_timing_method(tc).build();
-        let mut black = Algo::new().set_timing_method(tc).build();
+        let mut white = Algo::new();
+        white.set_timing_method(tc);
+        let mut black = Algo::new();
+        black.set_timing_method(tc);
         white.move_orderer.mvv_lva = true;
         black.move_orderer.mvv_lva = false;
         black.set_position(pos).search();

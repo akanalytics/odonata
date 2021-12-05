@@ -100,6 +100,7 @@ impl Tuning {
             let mut w_score = ExplainScorer::new(phase);
             eval.predict(model, &mut w_score);
             if line_count == 0 {
+                #[allow(clippy::write_literal)]
                 writeln!(writer, "{}{}", w_score.as_csv(ReportLine::Header), "outcome")?;
             }
             writeln!(writer, "{}{}", w_score.as_csv(ReportLine::Body), outcome)?;
@@ -121,7 +122,7 @@ impl Tuning {
             eval.predict(model, &mut w_score);
             // let score = w_score.as_f32() / (2.0 + (phase as f32 - 50.0) / 50.0);
             // let score = w_score.as_f32();
-            let k = logistic_steepness_k.interpolate(phase);
+            let k = logistic_steepness_k.interpolate(phase) as f32;
             let win_prob_estimate = w_score.as_score().win_probability_using_k(k);
             let win_prob_actual = *outcome;
             let diff = win_prob_estimate - win_prob_actual;

@@ -70,7 +70,7 @@ impl MoveMaker for Board {
     fn make_moves(&self, moves: &Variation) -> Board {
         let mut b = self.clone();
         for mv in moves.iter() {
-            b = b.make_move(&mv);
+            b = b.make_move(mv);
         }
         b
     }

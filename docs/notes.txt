@@ -8,3 +8,9 @@ test freshen_on_fetch at 75s
 
 0.4.20
 history heuristic overflow "/"100 ?
+
+0.5.2
+CachedAlign
+MemFOrget
+ParsedConfoig
+ConfigFiles

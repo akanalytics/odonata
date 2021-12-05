@@ -103,7 +103,7 @@ impl Board {
         } else if !self.has_legal_moves() {
             return Outcome::DrawStalemate;
         }
-        return Outcome::InProgress;
+        Outcome::InProgress
     }
 
     pub fn draw_outcome(&self) -> Option<Outcome> {

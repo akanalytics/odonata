@@ -52,6 +52,7 @@ impl Move {
             let rank = self.promo_piece().index();
             from = Square::from_xy(file as u32, rank as u32);
         }
+        #[allow(clippy::identity_op)]
         let mut bits = (from.index() as u64) << 0; // 0-63 bits 0-5
         bits |= (to.index() as u64) << 6; // 0-63 bits 6-11
         let capture = self.capture_piece();
@@ -256,7 +257,7 @@ pub struct TranspositionTable2 {
 
 impl Default for TranspositionTable2 {
     fn default() -> Self {
-        let me = Self {
+        Self {
             table: Arc::new(SharedTable::default()),
             enabled: true,
             use_tt_for_pv: false,
@@ -264,7 +265,7 @@ impl Default for TranspositionTable2 {
             mb: 8,
             aging: true,
             buckets: 2,
-            aligned: true,
+            aligned: false,
             current_age: 10, // to allow us to look back
             hmvc_horizon: 85,
             min_ply: 1, // search restrictions on ply=0
@@ -285,8 +286,7 @@ impl Default for TranspositionTable2 {
             // deletes: Stat::new("deletes"),
             // fail_priority: Stat::new("ins fail priority"),
             // fail_ownership: Stat::new("ins fail owner"),
-        };
-        me
+        }
     }
 }
 
@@ -520,6 +520,7 @@ impl TranspositionTable2 {
                 }
             }
         }
+
         let data = bucket_to_overwrite.unwrap().data();
         let (old_node, old_age) = TtNode::unpack(data);
 
@@ -568,20 +569,16 @@ impl TranspositionTable2 {
                 }
             }
             bucket_to_overwrite.unwrap().write(h, new_data);
-            return;
         } else {
             // self.fail_priority.increment();
-            return;
         }
     }
 
     pub fn delete(&mut self, _h: Hash) {
         if !self.enabled || self.capacity() == 0 {
-            return;
         }
         // self.deletes.increment();
         // self.table.delete(h);
-        return;
     }
 
     pub fn probe_by_board(&self, board: &Board, ply: Ply, depth: Ply) -> Option<TtNode> {
@@ -617,11 +614,11 @@ impl TranspositionTable2 {
             if self.freshen_on_fetch {
                 bucket.write(h, new_data);
             }
-            return Some(TtNode::unpack(data).0);
+            Some(TtNode::unpack(data).0)
         } else {
             self.misses.increment();
             self.collisions.increment();
-            return None;
+            None
         }
     }
 
@@ -649,8 +646,8 @@ impl TranspositionTable2 {
                 // FIXED!
                 if entry.nt == NodeType::ExactPv || entry.nt == NodeType::LowerCut {
                     mv = &entry.bm;
-                    if !mv.is_null() && board.is_pseudo_legal_move(&mv) && board.is_legal_move(&mv) {
-                        board = board.make_move(&mv);
+                    if !mv.is_null() && board.is_pseudo_legal_move(mv) && board.is_legal_move(mv) {
+                        board = board.make_move(mv);
                         nodes.push(entry);
                         continue;
                     } else {
@@ -676,7 +673,7 @@ impl TranspositionTable2 {
                         return nodes;
                     }
                 }
-                if nodes.len() == 0 {
+                if nodes.is_empty() {
                     println!("root node is {:?}", entry.nt);
                 }
             }

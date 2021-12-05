@@ -133,7 +133,7 @@ impl MoveTimeEstimator {
             elapsed = Duration::from_millis(clock.elapsed_search().1 / self.nodestime);
         }
 
-        let time_up = match self.time_control {
+        match self.time_control {
             TimeControl::DefaultTime => false,
             TimeControl::Depth(_max_ply) => false, // ply > max_ply,  // dont cause an abort on last iteration
             TimeControl::SearchTime(duration) => 10 * elapsed > duration * 9 && !self.pondering(),
@@ -141,8 +141,7 @@ impl MoveTimeEstimator {
             TimeControl::Infinite => false,
             TimeControl::MateIn(_) => false,
             TimeControl::RemainingTime { .. } => elapsed > self.allotted() && !self.pondering(),
-        };
-        time_up
+        }
     }
 
     // turning pondering off will kick in the existing time controls

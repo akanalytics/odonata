@@ -19,31 +19,49 @@ pub struct WeightOf<T>(T, T)
 where
     T: Copy + Num;
 
-pub type Weight = WeightOf<f32>;
+pub type Weight = WeightOf<i32>;
 // pub type Weight = crate::eval::weight3::WeightOf<f32>;
 
 // private
 #[derive(Serialize, Deserialize)]
-struct WeightOfHelper<T> {
-    s: T,
-    e: T,
+struct WeightOfHelper {
+    s: f32,
+    e: f32,
 }
 
-impl<T: Copy + Num + Serialize> Serialize for WeightOf<T> {
+impl Serialize for WeightOf<f32> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        WeightOfHelper::<T> { s: self.0, e: self.1 }.serialize(serializer)
+        WeightOfHelper { s: self.0, e: self.1 }.serialize(serializer)
     }
 }
 
-impl<'de, T: Copy + Num + Deserialize<'de>> Deserialize<'de> for WeightOf<T> {
+impl Serialize for WeightOf<i32> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        WeightOfHelper { s: self.0 as f32, e: self.1 as f32 }.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for WeightOf<i32> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
-        Deserialize::deserialize(deserializer).map(|WeightOfHelper::<T> { s, e }| WeightOf::<T>(s, e))
+        Deserialize::deserialize(deserializer).map(|WeightOfHelper { s, e }| WeightOf::<i32>::from_f32(s, e))
+    }
+}
+
+impl<'de> Deserialize<'de> for WeightOf<f32> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Deserialize::deserialize(deserializer).map(|WeightOfHelper { s, e }| WeightOf::<f32>::from_f32(s, e))
     }
 }
 

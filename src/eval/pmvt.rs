@@ -15,11 +15,10 @@ pub struct Pmvt {
 
 impl Default for Pmvt {
     fn default() -> Self {
-        let me = Self {
+        Self {
             enabled: true,
             mv: [[Weight::default(); 20]; Piece::len()],
-        };
-        me
+        }
     }
 }
 

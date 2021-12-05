@@ -37,7 +37,7 @@ pub struct Engine {
     threads: Vec<JoinHandle<Algo>>,
 }
 
-const DEFAULT_CONFIG_FILE: &'static str = "config.toml";
+const DEFAULT_CONFIG_FILE: &str = "config.toml";
 
 impl Default for Engine {
     fn default() -> Self {
@@ -337,8 +337,7 @@ mod tests {
                 .algo
                 .set_timing_method(TimeControl::Depth(3))
                 .set_eval(eval)
-                .set_callback(Uci::uci_info)
-                .build();
+                .set_callback(Uci::uci_info);
             engine.set_position(position.clone());
             assert_eq!(engine.algo.repetition.prior_positions(), 1);
             engine.search();

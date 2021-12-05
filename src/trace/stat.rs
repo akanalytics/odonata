@@ -17,8 +17,7 @@ pub struct Stat {
 
 impl Clone for Stat {
     fn clone(&self) -> Self {
-        let stat = Stat::new(self.name);
-        stat
+        Stat::new(self.name)
     }
 }
 
@@ -129,7 +128,7 @@ impl Stat {
 
     #[inline]
     pub fn name(&self) -> &str {
-        &self.name
+        self.name
     }
 }
 

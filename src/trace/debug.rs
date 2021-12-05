@@ -70,48 +70,48 @@ impl fmt::Display for Debug {
 impl std::ops::Add<&Move> for Debug {
     type Output = Debug;
 
-    fn add(self, other: &Move) -> Debug {
-        self.clone().append_move(other).clone()
+    fn add(mut self, other: &Move) -> Debug {
+        self.append_move(other).clone()
     }
 }
 
 impl std::ops::Add<Node> for Debug {
     type Output = Debug;
 
-    fn add(self, o: Node) -> Debug {
-        self.clone().append_node(&o).clone()
+    fn add(mut self, o: Node) -> Debug {
+        self.append_node(&o).clone()
     }
 }
 
 impl std::ops::Add<&str> for Debug {
     type Output = Debug;
 
-    fn add(self, o: &str) -> Debug {
-        self.clone().append_text(o).clone()
+    fn add(mut self, o: &str) -> Debug {
+        self.append_text(o).clone()
     }
 }
 
 impl std::ops::Add<Score> for Debug {
     type Output = Debug;
 
-    fn add(self, o: Score) -> Debug {
-        self.clone().append_score(o).clone()
+    fn add(mut self, o: Score) -> Debug {
+        self.append_score(o).clone()
     }
 }
 
 impl std::ops::Add<Color> for Debug {
     type Output = Debug;
 
-    fn add(self, o: Color) -> Debug {
-        self.clone().append_turn(o).clone()
+    fn add(mut self, o: Color) -> Debug {
+        self.append_turn(o).clone()
     }
 }
 
 impl std::ops::Add<Ply> for Debug {
     type Output = Debug;
 
-    fn add(self, o: Ply) -> Debug {
-        self.clone().append_ply(o).clone()
+    fn add(mut self, o: Ply) -> Debug {
+        self.append_ply(o).clone()
     }
 }
 

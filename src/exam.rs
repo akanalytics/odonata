@@ -34,7 +34,7 @@ impl Exam {
         let mut exam = Exam {
             name: String::from(name),
             positions,
-            engine: engine,
+            engine,
             //algo: algo.set_timing_method(TimeControl::NodeCount(1_000_000)).clone(),
             ..Exam::default()
         };

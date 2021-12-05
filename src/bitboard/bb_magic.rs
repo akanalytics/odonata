@@ -238,7 +238,7 @@ impl Magic {
     // Steffan Westcott's innovation.
     #[inline]
     fn snoob(set: u64, subset: u64) -> u64 {
-        return (subset.wrapping_sub(set)) & set;
+        (subset.wrapping_sub(set)) & set
     }
 
     // Taken from Tord Romstad's example Looking for Magics code.
@@ -258,7 +258,7 @@ impl Magic {
         for f in (1..=(fl - 1)).rev() {
             result |= 1_u64 << (f + rk * 8);
         }
-        return result;
+        result
     }
 
     // Also taken from Tord Romstad's example Looking for Magics code.
@@ -294,7 +294,7 @@ impl Magic {
             r -= 1;
             f -= 1;
         }
-        return result;
+        result
     }
 
     // Likewise.
@@ -338,7 +338,7 @@ impl Magic {
             }
             f -= 1;
         }
-        return result;
+        result
     }
 
     // Likewise. At this point I'll be banned from all ICGA tournaments.
@@ -387,7 +387,7 @@ impl Magic {
             r -= 1;
             f -= 1;
         }
-        return result;
+        result
     }
 
     // fn PrintU64(board: u64)

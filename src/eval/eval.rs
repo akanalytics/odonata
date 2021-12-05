@@ -202,7 +202,7 @@ pub struct SimpleScorer {
 
 impl Default for SimpleScorer {
     fn default() -> Self {
-        let me = Self {
+        Self {
             mb: MaterialBalance::default(),
             pst: Pst::default(),
             // pmvt: Pmvt::default(),
@@ -275,8 +275,7 @@ impl Default for SimpleScorer {
             //     .. Default::default()
             // },
             // defends: Default::default(),
-        };
-        me
+        }
     }
 }
 
@@ -393,7 +392,7 @@ impl SimpleScorer {
         // board.color_us() == Color::Black => minimising
         // +ve contempt => -ve score => aim for draw => opponent stronger than us
         let contempt = self.contempt as i32 * board.color_us().chooser_wb(self.contempt_penalty, -self.contempt_penalty);
-        return Score::from_f32(contempt.interpolate(board.phase(&self.phaser)) as f32);
+        Score::from_f32(contempt.interpolate(board.phase(&self.phaser)) as f32)
 
         // FIXME! v33
         // let signum = 1 - (node.ply % 2) * 2; // ply=0 => 1  ply=1=> -1
@@ -677,14 +676,14 @@ impl Board {
     #[inline]
     pub fn eval_move_see(&self, eval: &SimpleScorer, mv: &Move) -> Score {
         SEE.increment();
-        Score::from_cp(eval.see.eval_move_see(self, &mv))
+        Score::from_cp(eval.see.eval_move_see(self, mv))
     }
 
     #[inline]
     pub fn eval_move_material(&self, eval: &SimpleScorer, mv: &Move) -> Score {
         MOVE.increment();
         // FIXME! far too slow (-7 ELO)
-        Score::from_cp(eval.eval_move_material(&mv).interpolate(self.phase(&eval.phaser)) as i32)
+        Score::from_cp(eval.eval_move_material(mv).interpolate(self.phase(&eval.phaser)) as i32)
     }
 
     #[inline]

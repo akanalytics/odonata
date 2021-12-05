@@ -140,11 +140,11 @@ impl NullMovePruning {
 impl Algo {
     #[inline]
     pub fn nmp(&mut self, b: &Board, n: &Node, eval: Score) -> Option<Score> {
-        if self.minmax || !self.nmp.allow(&b, &n, eval, &self.pv_table) {
+        if self.minmax || !self.nmp.allow(b, n, eval, &self.pv_table) {
             return None;
         }
 
-        let r = self.nmp.depth_reduction(eval, b, &n);
+        let r = self.nmp.depth_reduction(eval, b, n);
         let mv = Move::NULL_MOVE;
         let mut child_board = b.make_move(&mv);
         self.current_variation.push(mv);

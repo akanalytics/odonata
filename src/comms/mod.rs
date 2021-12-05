@@ -6,8 +6,6 @@ pub mod uci;
 use crate::comms::bench::Bench;
 use crate::comms::uci::Uci;
 use clap::{App, Arg};
-// use crate::logger;
-use crate::infra::parsed_config::ParsedConfig;
 use crate::infra::version::Version;
 use crate::search::timecontrol::TimeControl;
 
@@ -72,10 +70,10 @@ pub fn main() -> Result<(), String> {
 
     // logger::init_logging();
 
-    if let Some(filename) = matches.value_of("config") {
-        let config = ParsedConfig::read_from_file(filename)?;
-        ParsedConfig::set_global(config);
-    }
+    // if let Some(filename) = matches.value_of("config") {
+    //     let config = ParsedConfig::read_from_file(filename)?;
+    //     ParsedConfig::set_global(config);
+    // }
     if matches.is_present("profile") {
         Bench::profile_me();
     } else if let Some(depth) = matches.value_of("perft") {

@@ -157,7 +157,7 @@ impl Algo {
             || self.mte.probable_timeout(depth)
             || self.stats.depth >= self.ids.end_ply
             || self.stats.depth >= MAX_PLY / 2
-            || (self.restrictions.exclude_moves.len() == 0 && (self.search_stats().score().is_mate() || self.pv().is_empty()))
+            || (self.restrictions.exclude_moves.is_empty() && (self.search_stats().score().is_mate() || self.pv().is_empty()))
         // pv.empty = draw
     }
 }

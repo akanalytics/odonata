@@ -104,7 +104,7 @@ pub struct Uci {
 impl Component for Uci {
     fn new_game(&mut self) {
         self.engine.lock().unwrap().set_state(State::NewGame);
-        self.engine.lock().unwrap().algo.set_callback(|sp| Self::uci_info(sp));
+        self.engine.lock().unwrap().algo.set_callback(Self::uci_info);
     }
 
     fn new_position(&mut self) {
@@ -119,6 +119,7 @@ impl Default for Uci {
     }
 }
 
+#[allow(clippy::useless_format)]
 impl Uci {
     pub fn new() -> Uci {
         let engine = Arc::new(Mutex::new(Engine::new()));
@@ -132,7 +133,7 @@ impl Uci {
             strict_error_handling: false,
         };
         uci.engine.lock().unwrap().set_position(Position::from_board(uci.board.clone()));
-        uci.engine.lock().unwrap().algo.set_callback(|sp| Self::uci_info(sp));
+        uci.engine.lock().unwrap().algo.set_callback(Self::uci_info);
         uci
     }
 
@@ -152,8 +153,8 @@ impl Uci {
         println!("Please see {} for updates,", Version::HOMEPAGE);
         println!("releases and licence details.");
         println!("Commands...");
-        println!("{:<10} {}", "uci", "enter uci protocol mode");
-        println!("{:<10} {}", "quit", "quit the program");
+        println!("{:<10} enter uci protocol mode", "uci");
+        println!("{:<10} quit the program", "quit");
     }
 
     pub fn run(&mut self) {
@@ -278,7 +279,7 @@ impl Uci {
 
     fn uci_sleep(&mut self, words: &[&str]) -> Result<()> {
         let time = words.first().ok_or(anyhow!("Must specify a sleep time"))?;
-        let time = time.parse::<u64>().or(Err(anyhow!("Sleep time {} must be numeric", time)))?;
+        let time = time.parse::<u64>().or_else(|_|Err(anyhow!("Sleep time {} must be numeric", time)))?;
         let millis = Duration::from_millis(time);
         thread::sleep(millis);
         Ok(())
@@ -287,7 +288,7 @@ impl Uci {
     fn uci_perft(&mut self, words: &[&str]) -> Result<()> {
         self.engine.lock().unwrap().search_stop();
         let depth = words.first().ok_or(anyhow!("Must specify a depth"))?;
-        let depth = depth.parse::<u32>().or(Err(anyhow!("Depth {} must be numeric", depth)))?;
+        let depth = depth.parse::<u32>().or_else(|_| Err(anyhow!("Depth {} must be numeric", depth)))?;
         let mut board = Catalog::starting_board();
         for d in 1..=depth {
             let t = Instant::now();
@@ -314,8 +315,8 @@ impl Uci {
                 let capture = mv.capture_square().uci();
                 let ep = mv.ep().uci();
                 // pseudo_legal=b.is_pseudo_legal_move(&mv);
-                let legal = b.is_legal_move(&mv);
-                let san = if legal { b.to_san(&mv) } else { "???".to_string() };
+                let legal = b.is_legal_move(mv);
+                let san = if legal { b.to_san(mv) } else { "???".to_string() };
                 let rook_move = mv.rook_move().uci();
                 let is_ep = mv.is_ep_capture();
                 let is_castle = mv.is_castle();
@@ -342,8 +343,8 @@ impl Uci {
     fn ext_uci_static_eval(&mut self, arg: &Args) -> Result<()> {
         let mut b = Board::new_empty();
         Self::parse_fen(arg, &mut b)?;
-        let mut eval = SimpleScorer::new();
-        let score = b.eval(&mut eval, &Node::root(0));
+        let eval = SimpleScorer::new();
+        let score = b.eval(&eval, &Node::root(0));
         Self::print(&format!("result:{}", score));
         Ok(())
     }
@@ -383,7 +384,7 @@ impl Uci {
         pos.set(Tag::SuppliedVariation(variation));
         self.board = pos.supplied_variation().apply_to(pos.board());
         self.engine.lock().unwrap().set_position(pos);
-        self.engine.lock().unwrap().algo.set_callback(|sp| Self::uci_info(sp));
+        self.engine.lock().unwrap().algo.set_callback(Self::uci_info);
         Ok(())
     }
 
@@ -415,7 +416,7 @@ impl Uci {
         let mut b = board.clone();
         if let Some(index) = index {
             for mv in args.words[(index + 1)..].iter() {
-                let mv = b.parse_uci_move(&mv)?;
+                let mv = b.parse_uci_move(mv)?;
                 b = b.make_move(&mv);
                 variation.push(mv)
             }
@@ -428,7 +429,7 @@ impl Uci {
         let index = args.index_of("searchmoves");
         if let Some(index) = index {
             for mv in args.words[(index + 1)..].iter() {
-                let mv = board.parse_uci_move(&mv)?;
+                let mv = board.parse_uci_move(mv)?;
                 movelist.push(mv)
             }
         }
@@ -608,7 +609,7 @@ impl Uci {
             info!("Configuring (setoption) {} with:<{}>", name, value);
             if name == "Config" {
                 let mut kvs = HashMap::new();
-                let statements = value.split(";").collect_vec();
+                let statements = value.split(';').collect_vec();
                 for s in statements {
                     let s = s.trim();
                     if !s.is_empty() {
@@ -628,7 +629,7 @@ impl Uci {
             // let c = ParsedConfig::new().set(&name, &value);
             // self.configure(&c);
             self.engine.lock().unwrap().set_position(Position::from_board(self.board.clone()));
-            self.engine.lock().unwrap().algo.set_callback(|sp| Self::uci_info(sp));
+            self.engine.lock().unwrap().algo.set_callback(Self::uci_info);
         } else {
             self.uci_option_button(s)?;
         };
@@ -649,7 +650,7 @@ impl Uci {
         let engine = self.engine.lock().unwrap();
         let text = toml::to_string(&*engine)?;
         Self::print(&format!("# start configuration:\n{}", text));
-        Self::print(&format!("# end configuration:\n"));
+        Self::print(&format!("# end configuration:"));
         Ok(())
     }
 
