@@ -75,7 +75,7 @@ impl Algo {
             return score;
         }
         let score = self.qsearch_see(*mv, Bitboard::EMPTY, ply, 0, board, alpha, beta);
-        debug_assert!(self.task_control.is_cancelled() || score > -Score::INFINITY);
+        debug_assert!(self.controller.is_cancelled() || score > -Score::INFINITY);
         score
     }
 
@@ -195,7 +195,7 @@ impl Algo {
 
             let mut child = board.make_move(&mv);
             self.current_variation.push(mv);
-            self.explainer.start(&self.current_variation);
+            self.explainer.start(&node, &self.current_variation);
             // delta prune on the move - FIXME - think about delta prune when checks
             if !in_check && board.eval_move_material(&self.eval, &mv) + standing_pat <= alpha && !child.is_in_check(child.color_us())
             // = will_check_them

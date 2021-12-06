@@ -164,7 +164,6 @@ impl Engine {
 
     pub fn search_start(&mut self) {
         debug!("resize?? {}", self.algo.tt.requires_resize());
-        self.algo.task_control.set_running();
         let t = Instant::now();
         for i in 0..self.thread_count {
             let builder = thread::Builder::new().name(format!("S{}", i)).stack_size(800_000);
@@ -179,7 +178,7 @@ impl Engine {
 
             if i >= 1 {
                 algo.max_depth += 8;
-                algo.task_control.progress_callback = None;
+                algo.controller.progress_callback = None;
                 algo.set_timing_method(TimeControl::Infinite);
             }
             if i == 1 {
@@ -203,7 +202,7 @@ impl Engine {
     }
 
     pub fn search_stop(&mut self) {
-        self.algo.task_control.cancel();
+        self.algo.controller.cancel();
         self.algo.stats.user_cancelled = true;
         self.wait();
     }
@@ -228,7 +227,7 @@ impl Engine {
             if i == 0 {
                 self.algo = algo;
                 // self.algo.results = algo.results().clone();
-                self.algo.task_control.cancel();
+                self.algo.controller.cancel();
             }
         }
         let knps = self.algo.search_stats().all_threads_cumulative_knps();

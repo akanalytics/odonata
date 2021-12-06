@@ -10,7 +10,8 @@ use strum_macros::{Display, EnumCount, EnumIter};
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Display, Deserialize, EnumCount, EnumIter)]
 pub enum Event {
     Unknown,
-    Cancelled,
+    UserCancelled,
+    TimeUp,
 
     HashProbe,
     HashHit,

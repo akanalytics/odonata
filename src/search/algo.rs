@@ -72,6 +72,7 @@ pub struct Algo {
 
     pub counts: Counts,
     pub results: SearchResults,
+    pub controller: TaskControl<SearchResults>,
 
     #[serde(skip)]
     pub position: Position,
@@ -80,8 +81,6 @@ pub struct Algo {
     #[serde(skip)]
     pub max_depth: Ply,
 
-    #[serde(skip)]
-    pub task_control: TaskControl<SearchResults>,
     #[serde(skip)]
     pub stats: SearchStats,
     #[serde(skip)]
@@ -111,7 +110,7 @@ impl Algo {
     }
 
     pub fn set_callback(&mut self, callback: impl Fn(&SearchResults) + Send + Sync + 'static) -> &mut Self {
-        self.task_control.register_callback(callback);
+        self.controller.register_callback(callback);
         self
     }
 }
@@ -124,7 +123,7 @@ impl Component for Algo {
         match s {
             NewGame => self.new_game(),
             SetPosition => self.new_position(),
-            StartSearch => {}
+            StartSearch => {},
             StartDepthIteration(_) => self.new_iter(),
         }
 
@@ -154,6 +153,8 @@ impl Component for Algo {
         self.clock.set_state(s);
 
         self.counts.set_state(s);
+        self.results.set_state(s);
+        self.controller.set_state(s);
     }
 
     fn new_game(&mut self) {
@@ -161,14 +162,11 @@ impl Component for Algo {
         self.stats = SearchStats::new();
         self.pv_table = PvTable::default();
         self.current_variation = Variation::new();
-        self.task_control = TaskControl::default();
         self.max_depth = 0;
     }
 
     fn new_position(&mut self) {
         self.clock_checks = 0;
-        self.task_control = TaskControl::default();
-        self.task_control.set_running();
         self.stats = SearchStats::new();
         self.pv_table = PvTable::default();
         self.current_variation = Variation::new();
@@ -217,6 +215,7 @@ impl fmt::Display for Algo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "search position  : {}", self.position)?;
         writeln!(f, "starting board   : {}", self.board.to_fen())?;
+        writeln!(f, "time control     : {}", self.mte.time_control)?;
         writeln!(f, "material         : {}", self.board.material())?;
         writeln!(f, "phase            : {} %", self.board.phase(&self.eval.phaser))?;
         writeln!(f, "static eval      : {}", self.board.eval(&self.eval, &Node::root(0)))?;
@@ -227,7 +226,7 @@ impl fmt::Display for Algo {
         writeln!(f, "results          : {}", self.results_as_position())?;
         writeln!(f, "minmax           : {}", self.minmax)?;
         // write!(f, "\n[results]\n{}", self.results)?;
-        write!(f, "\n[task control]\n{}", self.task_control)?;
+        write!(f, "\n[task control]\n{}", self.controller)?;
         write!(f, "\n[move orderer]\n{}", self.move_orderer)?;
         write!(f, "\n[move time estimator]\n{}", self.mte)?;
         write!(f, "\n[nmp]\n{}", self.nmp)?;
@@ -278,7 +277,7 @@ impl Algo {
     pub fn report_progress(&self) {
         if self.stats.iteration().all_nodes() % 5_000_000 == 0 && self.stats.iteration().all_nodes() != 0 {
             let sp = SearchResults::with_report_progress(self);
-            self.task_control.invoke_callback(&sp);
+            self.controller.invoke_callback(&sp);
         }
     }
 
@@ -290,23 +289,22 @@ impl Algo {
                 ..SearchResults::default()
             };
 
-            self.task_control.invoke_callback(&sp);
+            self.controller.invoke_callback(&sp);
         }
     }
 
     pub fn set_position(&mut self, pos: Position) -> &mut Self {
-        self.set_state(State::SetPosition);
         self.repetition.push_position(&pos);
         self.board = pos.supplied_variation().apply_to(pos.board());
         self.tt.rewrite_pv(pos.board());
         self.position = pos;
+        self.set_state(State::SetPosition);
         self
     }
 
     pub fn search(&mut self) {
         self.set_state(State::StartSearch);
         self.search_iteratively();
-        debug!("\n\n\n=====Search completed=====\n{}", self);
     }
 
     #[inline]
@@ -332,25 +330,25 @@ impl Algo {
     }
 
     #[inline]
-    pub fn time_up_or_cancelled(&mut self, ply: Ply, force_check: bool) -> bool {
+    pub fn time_up_or_cancelled(&mut self, ply: Ply, force_check: bool) -> (bool, Event) {
         self.clock_checks += 1;
 
         // never cancel on ply=1, this way we always have a best move, and we detect mates
         if self.max_depth == 1 {
-            return false;
+            return (false, Event::Unknown);
         }
 
-        if self.task_control.is_cancelled() {
-            return true;
+        if self.controller.is_cancelled() {
+            return (true, Event::UserCancelled);
         }
 
         let time_up = self.mte.is_time_up(ply, &self.clock, force_check);
         if time_up {
             self.stats.completed = false;
-            self.stats.set_score(-Score::INFINITY, Event::Cancelled);
-            self.task_control.cancel();
+            self.stats.set_score(-Score::INFINITY, Event::TimeUp);
+            self.controller.cancel();
         }
-        time_up
+        (time_up, Event::TimeUp)
     }
 
     pub fn clear_move(&mut self, ply: Ply) {

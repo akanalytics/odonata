@@ -182,6 +182,7 @@ mod tests {
     use crate::search::engine::*;
     use crate::search::timecontrol::*;
     use crate::tags::Tag;
+    use test_log::test;
 
     #[test]
     fn test_repetition() {
@@ -264,7 +265,6 @@ mod tests {
         let mut b = Catalog::starting_board();
         let mut eng = Engine::new();
         eng.algo.set_callback(Uci::uci_info);
-        eng.algo.set_timing_method(TimeControl::Depth(5));
         eng.algo.repetition.new_game();
         let mvs = b.parse_uci_variation(s).unwrap();
         for mv in mvs.iter() {
@@ -273,7 +273,8 @@ mod tests {
         }
         eng.algo.set_position(Position::from_board(b));
         eng.algo.explainer.enabled = true;
-        eng.algo.explainer.vars.push(Variation::new());
+        eng.algo.explainer.add_variation_to_explain(Variation::new());
+        eng.algo.set_timing_method(TimeControl::Depth(5));
         eng.search();
         println!("{}", eng.algo.results_as_position());
         println!("{}", eng.algo.counts);

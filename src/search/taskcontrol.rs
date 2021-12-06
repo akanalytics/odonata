@@ -2,10 +2,22 @@ use std::fmt;
 use std::sync::atomic::{self, AtomicBool};
 use std::sync::Arc;
 use std::sync::Mutex;
+use serde::{Deserialize, Serialize};
+use crate::infra::component::{Component, State};
 
-#[derive(Clone, Default)]
+
+
+#[derive(Clone, Default, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
 pub struct TaskControl<TTaskProgress> {
+
+    pub log_dir: String,
+    
+    #[serde(skip)]
     pub progress_callback: Option<Arc<Mutex<dyn Fn(&TTaskProgress) + Send + Sync>>>,
+
+
+    #[serde(skip)]
     kill_switch: Arc<AtomicBool>,
     // has_been_cancelled: bool,
 }
@@ -23,13 +35,36 @@ impl<TTaskProgress> fmt::Display for TaskControl<TTaskProgress> {
     }
 }
 
+
+impl<TTaskProgress> Component for TaskControl<TTaskProgress>
+where TTaskProgress: Default {
+    fn new_iter(&mut self) {}
+
+    fn new_position(&mut self) {}
+
+    fn new_game(&mut self) {}
+
+
+    fn set_state(&mut self, s: State) {
+        use State::*;
+        match s {
+            NewGame => { *self = Self::default(); },
+            SetPosition => { *self = Self::default(); },
+            StartSearch => { self.set_running(); },
+            StartDepthIteration(_) => {},
+        }
+    }
+}
+
+
+
 impl<TTaskProgress> TaskControl<TTaskProgress> {
     #[inline]
     pub fn cancel(&mut self) {
         self.kill_switch.store(true, atomic::Ordering::Relaxed);
     }
 
-    pub fn set_running(&mut self) {
+    fn set_running(&mut self) {
         // self.has_been_cancelled = false;
         self.kill_switch.store(false, atomic::Ordering::Relaxed);
     }

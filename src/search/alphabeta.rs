@@ -59,9 +59,10 @@ impl Algo {
 
         let mut n = Node { ply, depth, alpha, beta };
 
-        if self.time_up_or_cancelled(ply, false) {
-            self.counts.inc(&n, Event::Cancelled);
-            return (-Score::INFINITY, Event::Cancelled);
+        let (cancelled, cat) = self.time_up_or_cancelled(ply, false);
+        if cancelled {
+            self.counts.inc(&n, cat);
+            return (-Score::INFINITY, cat);
         }
 
         debug_assert!(
@@ -147,7 +148,7 @@ impl Algo {
 
             if score > -Score::INFINITY {
                 if let Some(est_score) = self.can_prune_move(&mv, count, move_type, b, &child_board, eval, &n, ext) {
-                    self.explain_futility(&mv, move_type, est_score, n.alpha);
+                    self.explain_futility(&mv, move_type, est_score, &n);
                     self.stats.inc_fp_move(ply);
                     if score == -Score::INFINITY {
                         score = est_score;
@@ -160,7 +161,7 @@ impl Algo {
             }
             self.repetition.push_move(&mv, &child_board);
             self.current_variation.push(mv);
-            self.explainer.start(&self.current_variation);
+            self.explainer.start(&n, &self.current_variation);
             child_board.set_repetition_count(self.repetition.count(&child_board));
 
             let lmr = if !self.minmax {
@@ -205,11 +206,13 @@ impl Algo {
             }
             b.undo_move(&mv);
             self.current_variation.pop();
-            self.explainer.start(&self.current_variation);
+            self.explainer.start(&n, &self.current_variation);
             self.repetition.pop();
-            if ply > 1 && self.task_control.is_cancelled() {
-                return (-Score::INFINITY, Event::Cancelled);
+            if ply > 1 && (cat == Event::UserCancelled || cat== Event::TimeUp) {
+                self.explain_move(&mv, child_score, cat, &n);
+                return (-Score::INFINITY, cat);
             }
+            self.explain_move(&mv, child_score, cat, &n);
 
             // println!("move {} score {} alpha {} beta {}", mv, score, alpha, beta);
             if child_score > score {
@@ -217,7 +220,6 @@ impl Algo {
                 category = cat;
             }
             if child_score > n.alpha {
-                self.explain_raised_alpha(&mv, child_score, n.alpha);
                 n.alpha = child_score;
                 bm = mv;
                 nt = NodeType::ExactPv;
@@ -267,7 +269,7 @@ impl Algo {
         }
         let entry = TtNode { score, depth, nt, bm };
         self.tt.store(b.hash(), entry);
-        self.explain_node(&bm, nt, score, &self.pv_table.extract_pv_for(ply));
+        self.explain_node(&bm, nt, score, &n, &self.pv_table.extract_pv_for(ply));
         (score, category)
     }
 }

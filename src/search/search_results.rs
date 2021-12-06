@@ -233,7 +233,7 @@ impl SearchResults {
     }
 
     pub fn update_with_pv_change(&mut self, clock: &Clock, counts: &Counts, depth: Ply, score: Score, event: Event) {
-        if event != Event::Cancelled {
+        if event != Event::UserCancelled && event != Event::TimeUp {
             self.mode = SearchResultsMode::PvChange;
         } else {
             self.mode = SearchResultsMode::NodeCounts;

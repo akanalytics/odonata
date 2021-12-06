@@ -128,7 +128,7 @@ impl Algo {
 
                 // let results = &self.results;
                 self.results.snapshot_bests();
-                self.task_control.invoke_callback(&self.results);
+                self.controller.invoke_callback(&self.results);
                 let exit = self.exit_iteration(depth);
                 if exit {
                     break 'outer;
@@ -138,7 +138,7 @@ impl Algo {
             depth += self.ids.step_size
         }
         self.results.with_best_move();
-        self.task_control.invoke_callback(&self.results);
+        self.controller.invoke_callback(&self.results);
         debug!("\n\n\n=====Search completed=====\n{}", self);
         if self.results.bm().is_null() {
             info!("bm is null\n{}\n{:?}", self, self.results);

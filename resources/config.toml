@@ -44,6 +44,9 @@ ignore_draws = false
 enabled = true
 step_size = 1
 
+[controller]
+log_dir = "."
+
 
 [eval]
 material           = true
@@ -873,7 +876,7 @@ reduce_extensions = false
 
 [mte]
 branching_factor = 4.01
-moves_rem = 1
+moves_rem = 11
 move_overhead_ms = 7
 min_ply_for_estimation = 3
 perc_of_time_adv = 62
@@ -930,6 +933,9 @@ score_method = "GoodOverGoodAndBad"
 
 [explainer]
 enabled = false
+min_depth = 0
+max_additional_ply = 4
+
 
 [restrictions]
 enabled = true

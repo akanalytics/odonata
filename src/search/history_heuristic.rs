@@ -194,7 +194,7 @@ impl HistoryHeuristic {
         }
         use AccumulateMethod::*;
         let add = match self.alpha_method {
-            Power => 2 << ((n.depth / 4) / self.malus_factor),
+            Power => (2 << (n.depth / 4)) / self.malus_factor,
             Squared => n.depth * n.depth / self.malus_factor,
             Zero => 0,
         };
