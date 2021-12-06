@@ -19,7 +19,7 @@ pub struct WeightOf<T>(T, T)
 where
     T: Copy + Num;
 
-pub type Weight = WeightOf<i32>;
+pub type Weight = WeightOf<f32>;
 // pub type Weight = crate::eval::weight3::WeightOf<f32>;
 
 // private
@@ -61,7 +61,7 @@ impl<'de> Deserialize<'de> for WeightOf<f32> {
     where
         D: Deserializer<'de>,
     {
-        Deserialize::deserialize(deserializer).map(|WeightOfHelper { s, e }| WeightOf::<f32>::from_f32(s, e))
+        Deserialize::deserialize(deserializer).map(|WeightOfHelper { s, e }| WeightOf::<f32>(s, e))
     }
 }
 
