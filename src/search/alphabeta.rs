@@ -214,6 +214,10 @@ impl Algo {
             }
             self.explain_move(&mv, child_score, cat, &n);
 
+
+
+
+
             // println!("move {} score {} alpha {} beta {}", mv, score, alpha, beta);
             if child_score > score {
                 score = child_score;

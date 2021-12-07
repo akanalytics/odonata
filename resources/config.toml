@@ -875,12 +875,24 @@ alpha_numeric = false
 reduce_extensions = false
 
 [mte]
-branching_factor = 4.01
-moves_rem = 11
-move_overhead_ms = 7
+# 0.5.1
+# move_overhead_ms = 0
+# branching_factor = 12.625
+# moves_rem = 8
+
+# 0.5.5
+# branching_factor = 4.01
+# moves_rem = 11
+# move_overhead_ms = 7
+
+move_overhead_ms = 0
+branching_factor = 12.625
+moves_rem = 8
+
 min_ply_for_estimation = 3
 perc_of_time_adv = 62
 deterministic = false
+use_last_2_iters = false
 nodestime = 0
 check_every = 128
 

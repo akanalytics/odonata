@@ -332,12 +332,12 @@ mod tests {
             let position = Catalog::mate_in_2()[0].clone();
             let eval = SimpleScorer::new().set_position(false);
             let mut engine = Engine::new();
+            engine.set_position(position.clone());
             engine
                 .algo
                 .set_timing_method(TimeControl::Depth(3))
                 .set_eval(eval)
                 .set_callback(Uci::uci_info);
-            engine.set_position(position.clone());
             assert_eq!(engine.algo.repetition.prior_positions(), 1);
             engine.search();
             info!("{}", engine);

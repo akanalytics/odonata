@@ -247,12 +247,6 @@ mod tests {
     }
 
     #[test]
-    fn test_rep_bugn() {
-        test_rep_bug1();
-        test_rep_bug1();
-    }
-
-    #[test]
     fn test_rep_bug1() {
         let s = concat!(
             "e2e4 b8c6 b1c3 e7e5 g1f3 g8f6 d2d4 e5d4 f3d4 f8b4 c1g5 d8e7 f2f3 e8g8 ",
@@ -272,8 +266,8 @@ mod tests {
             eng.algo.repetition.push_move(&mv, &b);
         }
         eng.algo.set_position(Position::from_board(b));
-        eng.algo.explainer.enabled = true;
-        eng.algo.explainer.add_variation_to_explain(Variation::new());
+        // eng.algo.explainer.enabled = true;
+        // eng.algo.explainer.add_variation_to_explain(Variation::new());
         eng.algo.set_timing_method(TimeControl::Depth(5));
         eng.search();
         println!("{}", eng.algo.results_as_position());

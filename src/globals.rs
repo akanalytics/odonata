@@ -201,7 +201,7 @@ mod tests {
         assert_eq!(size_of::<TranspositionTable2>(), 16960, "TranspositionTable2");
         assert_eq!(size_of::<Killers>(), 32, "Killers");
         assert_eq!(size_of::<HistoryHeuristic>(), 32, "HistoryHeuristic");
-        assert_eq!(size_of::<SearchExplainer>(), 32, "SearchExplainer");
+        assert_eq!(size_of::<SearchExplainer>(), 48, "SearchExplainer");
         assert_eq!(size_of::<Restrictions>(), 1760, "Restrictions");
         assert_eq!(size_of::<Razor>(), 28, "Razor");
         assert_eq!(size_of::<Recognizer>(), 12, "Recognizer");

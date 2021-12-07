@@ -21,6 +21,7 @@ pub struct MoveTimeEstimator {
     pub deterministic: bool,
     pub nodestime: u64,
     check_every: u64,
+    use_last_2_iters: bool,
 
     #[serde(skip)]
     pub estimate_move_time: Duration,
@@ -57,15 +58,17 @@ impl Component for MoveTimeEstimator {
     }
 
     fn new_position(&mut self) {
-        self.estimate_move_time = Duration::default();
-        self.elapsed_search = Duration::default();
-        self.elapsed_iter = Duration::default();
-        self.time_control = TimeControl::default();
-        self.pondering = Arc::new(AtomicBool::from(false));
-        self.board = Board::default();
-        self.clock_checks = 0;
-        self.estimate_move_time = Duration::default();
-        self.prior_elapsed_iter = Duration::default();
+        *self = MoveTimeEstimator {
+            move_overhead_ms: self.move_overhead_ms,
+            min_ply_for_estimation: self.min_ply_for_estimation,
+            branching_factor: self.branching_factor,
+            perc_of_time_adv: self.perc_of_time_adv,
+            moves_rem: self.moves_rem,
+            deterministic: self.deterministic ,
+            nodestime: self.nodestime,
+            use_last_2_iters: self.use_last_2_iters,
+            ..Default::default()
+        };
     }
 }
 
@@ -79,6 +82,7 @@ impl Default for MoveTimeEstimator {
             moves_rem: 8,
             deterministic: false,
             nodestime: 0,
+            use_last_2_iters: true,
 
             estimate_move_time: Duration::default(),
             elapsed_search: Duration::default(),
@@ -165,7 +169,8 @@ impl MoveTimeEstimator {
             self.elapsed_search = Duration::from_millis(nodes / self.nodestime);
         }
 
-        self.estimate_move_time = Duration::from_millis(self.move_overhead_ms)
+        if self.use_last_2_iters {
+            self.estimate_move_time = Duration::from_millis(self.move_overhead_ms)
             + self.elapsed_search
             + self.elapsed_iter.mul_f32(self.branching_factor) / 2
             + self
@@ -173,6 +178,10 @@ impl MoveTimeEstimator {
                 .mul_f32(self.branching_factor)
                 .mul_f32(self.branching_factor)
                 / 2;
+        } else {
+            self.estimate_move_time =  Duration::from_millis(self.move_overhead_ms) + self.elapsed_search + self.elapsed_iter.mul_f32(self.branching_factor);
+        }
+
     }
 
     pub fn probable_timeout(&self, ply: Ply) -> bool {

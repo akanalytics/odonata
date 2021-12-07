@@ -650,7 +650,7 @@ impl Uci {
         let engine = self.engine.lock().unwrap();
         let text = toml::to_string(&*engine)?;
         Self::print(&format!("# start configuration:\n{}", text));
-        Self::print(&format!("# end configuration:"));
+        Self::print(&format!("# end of configuration:\n"));
         Ok(())
     }
 

@@ -127,7 +127,6 @@ impl Component for Algo {
             StartDepthIteration(_) => self.new_iter(),
         }
 
-        self.results.set_state(s);
         self.ids.set_state(s);
         self.eval.set_state(s);
         self.qsearch.set_state(s);
@@ -294,11 +293,11 @@ impl Algo {
     }
 
     pub fn set_position(&mut self, pos: Position) -> &mut Self {
+        self.set_state(State::SetPosition);
         self.repetition.push_position(&pos);
         self.board = pos.supplied_variation().apply_to(pos.board());
         self.tt.rewrite_pv(pos.board());
         self.position = pos;
-        self.set_state(State::SetPosition);
         self
     }
 
@@ -425,8 +424,8 @@ mod tests {
         println!("{}", algo.counts);
         assert_eq!(algo.clock.cumul_nodes(), 2933);
         assert_eq!(algo.counts.cumul(Event::DerivedLeaf), 2564);
-        assert_eq!(algo.counts.cumul(Event::NodeInterior), 336);
-        assert_eq!(algo.counts.cumul(Event::PercentBranchingFactor), 763);
+        assert_eq!(algo.counts.cumul(Event::NodeInterior), 357);
+        assert_eq!(algo.counts.cumul(Event::PercentBranchingFactor), 718);
     }
 
     #[test]

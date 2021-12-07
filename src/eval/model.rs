@@ -719,9 +719,9 @@ impl ModelSide {
             // those attacks on enemy that arent pawn defended and cant attack back
             let piece_non_pawn_defended_moves = match p {
                 Piece::Queen => (our_attacks & them).popcount(),
-                Piece::Rook => ((our_attacks & them) - r).popcount(),
-                Piece::Knight => ((our_attacks & them) - ni).popcount(),
-                Piece::Bishop => ((our_attacks & them) - bi).popcount(),
+                Piece::Rook => (our_attacks & them - r).popcount(),
+                Piece::Knight => (our_attacks & them - ni).popcount(),
+                Piece::Bishop => (our_attacks & them - bi).popcount(),
                 _ => 0,
             };
 
