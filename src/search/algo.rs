@@ -446,7 +446,7 @@ mod tests {
         search.move_orderer.enabled = false;
         search.set_position(Position::from_board(board));
         search.search();
-        assert_eq!(search.pv()[0].uci(), "e7e5");
+        assert_eq!(search.pv()[0].uci(), "e7e6");
     }
 
     #[test]
