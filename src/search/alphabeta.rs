@@ -120,21 +120,17 @@ impl Algo {
         if let Some(score) = self.standing_pat(b, &mut n, eval) {
             return (score, Event::PruneStandingPat);
         }
-
+        if let Some(beta) = self.nmp(b, &n, eval) {
+            return (beta, Event::PruneNullMovePrune);
+        }
         if let Some(alphabeta) = self.razor(*last_move, b, eval, &n) {
             return (alphabeta, Event::PruneRazor);
         }
 
-        if let Some(beta) = self.nmp(b, &n, eval) {
-            return (beta, Event::PruneNullMovePrune);
-        }
 
         let mut sorted_moves = self.move_orderer.get_sorted_moves(n, b, tt_mv);
         let mut count = 0;
         let mut quiets = 0;
-        // if n.ply <= 4 {
-        //     println!("ply {} lm {} a {} b {} eval {} pv {} board {} moves {}", n.ply, last_move, n.alpha, n.beta, eval, &self.pv_table.extract_pv_for(n.ply), b.to_fen(), b.legal_moves());
-        // }
         while let Some((move_type, mv)) = sorted_moves.next_move(b, self) {
             if self.restrictions.skip_move(ply, &mv) {
                 continue;
