@@ -67,6 +67,7 @@ impl Component for MoveTimeEstimator {
             deterministic: self.deterministic ,
             nodestime: self.nodestime,
             use_last_2_iters: self.use_last_2_iters,
+            time_control: self.time_control,
             ..Default::default()
         };
     }
