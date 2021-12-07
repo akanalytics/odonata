@@ -1344,6 +1344,48 @@ class Odonata:
 
 
 
+class TC:
+
+    def __init__(self, nodes: int = None, depth: int = None, millis: int = None):
+        self._nodes = nodes
+        self._depth = depth
+        self._millis = millis
+
+    @staticmethod
+    def millis(millis: int) -> TC:
+        return TC(millis=millis)
+
+    @staticmethod
+    def depth(depth: int) -> TC:
+        return TC(depth=depth)
+
+    @staticmethod
+    def nodes(nodes: int) -> TC:
+        return TC(nodes=nodes)
+
+    @staticmethod
+    def parse(s: str) -> TC:
+        """
+        depth=10
+        nodes=100k
+        def
+        st=0.1
+        millis=400
+        tc=40/5
+        tc=2+1
+        """
+        return TC(nodes=1)
+
+    def __str__(self) -> str:
+        if self._nodes:
+            return f"nodes={self._nodes:,}"
+        if self._depth:
+            return f"depth={self._depth}"
+        if self._millis:
+            return f"millis={self._millis:}"
+        return "unknown"
+
+
 class Engine:
     def __init__(self, instance: Optional[Odonata] = None, depth: Optional[int] = None, millis: Optional[int] = None, nodes: Optional[int] = None) -> None:
         if instance:
@@ -1363,6 +1405,12 @@ class Engine:
 
     def engine_version(self) -> str:
         return self._instance.engine_version()
+
+    def set_tc(self, tc: TC):
+        assert self._instance is not None
+        self._depth = tc._depth
+        self._node_count = tc._nodes
+        self._millis = tc._millis
 
     def set_option(self, key: str, value: Any):
         assert self._instance is not None
