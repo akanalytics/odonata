@@ -100,15 +100,15 @@ impl Algo {
                             self.report_refutation(n.ply);
                             return (Some(entry.score), None);
                         }
-                        if self.tt.allow_truncated_pv && entry.score > n.alpha {
-                            // nt = NodeType::Pv;
-                            // n.alpha = entry.score;
-                            self.record_truncated_move(n.ply, &entry.bm);
-                            // score = entry.score;
-                            // bm = entry.bm; // need to set bm as alpha raising mv might be skipped
-                            //             // tt_mv = Some(entry.bm); // might help with move ordering
-                            return (Some(entry.score), Some(entry.bm)); // else we just use the hash move for move ordering
-                        }
+                        // if self.tt.allow_truncated_pv && entry.score > n.alpha {
+                        //     // nt = NodeType::Pv;
+                        //     // n.alpha = entry.score;
+                        //     self.record_truncated_move(n.ply, &entry.bm);
+                        //     // score = entry.score;
+                        //     // bm = entry.bm; // need to set bm as alpha raising mv might be skipped
+                        //     //             // tt_mv = Some(entry.bm); // might help with move ordering
+                        //     return (Some(entry.score), Some(entry.bm)); // else we just use the hash move for move ordering
+                        // }
                         return (None, Some(entry.bm)); // else we just use the hash move for move ordering
                     }
                     NodeType::UpperAll => {
