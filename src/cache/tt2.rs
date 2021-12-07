@@ -32,6 +32,10 @@ impl Score {
     }
 
     pub fn unpack_16bits(bits: u64) -> Score {
+        if bits == 0 {
+            return -Score::INFINITY;
+        }
+
         let bytes = bits.to_le_bytes();
         let int = i16::from_le_bytes([bytes[0], bytes[1]]);
         Score::from_cp(int as i32)
