@@ -1,5 +1,7 @@
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
+use crate::bound::NodeType;
+use crate::cache::tt2::TtNode;
 use crate::eval::score::Score;
 use crate::mv::Move;
 use crate::pvtable::PvTable;
@@ -28,6 +30,7 @@ pub struct NullMovePruning {
     pub successive: bool,
     pub margin: Score,
     pub min_depth: Ply,
+    pub store_tt: bool,
     pub depth_reduction_strat: i64,
     pub a: f32,
     pub b: f32,
@@ -50,6 +53,7 @@ impl Default for NullMovePruning {
             successive: true,
             margin: Score::from_cp(-10000),
             min_depth: 2, // 1 means we still prune at frontier (depth=1)
+            store_tt: true, 
             depth_reduction_strat: 100,
             a: 2.7,
             b: 0.198,
@@ -150,11 +154,13 @@ impl Algo {
         self.current_variation.push(mv);
         self.explainer.start(n, &self.current_variation);
         self.stats.inc_nmp(n.ply);
+        let reduced_depth = n.depth - r - 1;
+
         let child_score = -self
             .alphabeta_recursive(
                 &mut child_board,
                 n.ply + 1,
-                n.depth - r - 1,
+                reduced_depth,
                 -n.beta,
                 -n.beta + Score::from_cp(1),
                 &mv,
@@ -168,6 +174,20 @@ impl Algo {
             self.counts.inc(n, Event::PruneNullMovePrune);
             self.report_refutation(n.ply);
             self.explain_nmp(child_score, n);
+
+            if self.nmp.store_tt {
+                // score is clamped as you cant mate on a null move. Note reduced depth too
+                let entry = TtNode {
+                    score: child_score.clamp_score(),
+                    depth: reduced_depth + 1,
+                    nt: NodeType::LowerCut,
+                    bm: Move::NULL_MOVE,
+                }; 
+                // remember this is the child board hash with child score, 
+                // but we store it as parent board and negative score and bound,
+                // and reduced_depth + 1
+                self.tt.store(b.hash(), entry);
+            }
             return Some(child_score);
         }
         None

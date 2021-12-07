@@ -799,6 +799,7 @@ successive = true
 margin = -10000
 min_depth = 2
 depth_reduction_strat = 100
+store_tt = true
 a = 2.7
 b = 0.198
 c = 0.00017

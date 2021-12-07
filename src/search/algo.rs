@@ -472,6 +472,9 @@ mod tests {
         println!("{}", search);
     }
 
+    
+
+
     #[test]
     fn bug06() -> Result<()> {
         // 11.Qd3       b3r1kr/ppppqppp/2nnp3/6b1/3PP1N1/2N5/PPP1BPPP/B2QR1KR w - - 1 11   acd 4; bm d1d3; ce 60; pv "d1d3 c6b4 d3d1";
@@ -494,6 +497,18 @@ mod tests {
         println!("{}", search);
         Ok(())
     }
+
+    #[test]
+    fn bug07() {
+        let pos = Position::parse_epd("8/4R3/8/8/8/3K4/1k6/8 b - - 18 10").unwrap();
+        let mut search = Algo::new();
+        search.set_timing_method(TimeControl::Depth(12)).set_callback(Uci::uci_info);
+        search.set_position(pos);
+        search.search();
+        println!("{}", search);
+    }
+
+
 
     #[test]
     #[ignore]

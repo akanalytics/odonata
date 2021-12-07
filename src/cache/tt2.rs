@@ -462,6 +462,7 @@ impl TranspositionTable2 {
 
     #[inline]
     pub fn store(&mut self, h: Hash, mut new_node: TtNode) {
+        debug_assert!(new_node.score > -Score::INFINITY);
         // FIXME maybe store QS results
         if !self.enabled && new_node.nt != NodeType::ExactPv || self.capacity() == 0 || new_node.depth < 0 {
             return;

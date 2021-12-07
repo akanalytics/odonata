@@ -123,8 +123,8 @@ impl Algo {
         if let Some(alphabeta) = self.razor(*last_move, b, eval, &n) {
             return (alphabeta, Event::PruneRazor);
         }
-        if let Some(beta) = self.nmp(b, &n, eval) {
-            return (beta, Event::PruneNullMovePrune);
+        if let Some(score) = self.nmp(b, &n, eval) {
+            return (score, Event::PruneNullMovePrune);
         }
 
 
@@ -267,8 +267,10 @@ impl Algo {
         } else {
             panic!("Node type {:?} ", nt);
         }
-        let entry = TtNode { score, depth, nt, bm };
-        self.tt.store(b.hash(), entry);
+        if score > -Score::INFINITY {
+            let entry = TtNode { score, depth, nt, bm };
+            self.tt.store(b.hash(), entry);
+        }
         self.explain_node(&bm, nt, score, &n, &self.pv_table.extract_pv_for(ply));
         (score, category)
     }

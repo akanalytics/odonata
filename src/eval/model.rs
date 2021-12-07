@@ -485,12 +485,17 @@ impl ModelSide {
                     self.endgame_metric2 = Self::king_distance(b);
                 }
 
-                TwoBishopsOppositeColorSquares(_) | KingMajorsVsKing(_) => {
+                TwoBishopsOppositeColorSquares(_)  => {
                     self.endgame_metric1 = 2 * Self::king_distance_to_any_corner(b, c);
                     self.endgame_metric2 = Self::king_distance(b);
                 }
-                _ => {}
-            }
+
+                KingMajorsVsKing(_) | _ =>  {
+                    self.endgame_metric1 = 2 * Self::king_distance_to_side(b, c);
+                    self.endgame_metric2 = Self::king_distance(b);
+                }
+
+        }
         }
     }
 

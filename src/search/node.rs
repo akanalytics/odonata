@@ -6,6 +6,7 @@ use crate::types::Ply;
 
 use strum::{EnumCount, IntoEnumIterator};
 use strum_macros::{Display, EnumCount, EnumIter};
+use std::fmt;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Display, Deserialize, EnumCount, EnumIter)]
 pub enum Event {
@@ -115,6 +116,13 @@ pub struct Node {
     pub depth: Ply,
     pub alpha: Score,
     pub beta: Score,
+}
+
+
+impl fmt::Display for Node {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "{:?}", self)
+    }
 }
 
 impl Node {
