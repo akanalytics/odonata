@@ -120,11 +120,11 @@ impl Algo {
         if let Some(score) = self.standing_pat(b, &mut n, eval) {
             return (score, Event::PruneStandingPat);
         }
-        if let Some(beta) = self.nmp(b, &n, eval) {
-            return (beta, Event::PruneNullMovePrune);
-        }
         if let Some(alphabeta) = self.razor(*last_move, b, eval, &n) {
             return (alphabeta, Event::PruneRazor);
+        }
+        if let Some(beta) = self.nmp(b, &n, eval) {
+            return (beta, Event::PruneNullMovePrune);
         }
 
 
@@ -287,7 +287,7 @@ mod tests {
         let positions = Catalog::mate_in_2();
         for (i, pos) in positions.iter().enumerate() {
             let mut search = Algo::new();
-            search.set_timing_method(TimeControl::Depth(5)).set_callback(Uci::uci_info);
+            search.set_timing_method(TimeControl::Depth(6)).set_callback(Uci::uci_info);
             // search.tt.enabled = false;
             search.set_position(pos.clone()).search();
             // println!("{}", search);

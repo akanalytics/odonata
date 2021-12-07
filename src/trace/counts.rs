@@ -71,20 +71,24 @@ impl fmt::Display for Counts {
             use std::io::Write;
             let table = Vec::new();
             let mut f = TabWriter::new(table).padding(1);
-            writeln!(f, "{}", self.enabled)?;
-            writeln!(f, "{}", self.iter)?;
-            let iter = self.iter;
-            for cn in Event::iter() {
-                for y in -1..self.len_ply(iter) as i32 {
-                    if y < 0 {
-                        write!(f, "{}\t", cn.name())?;
-                    } else if cn == Event::Unknown {
-                        write!(f, "{}\t", y)?;
-                    } else {
-                        write!(f, "{}\t", self.count(self.iter, y, cn))?;
+            writeln!(f, "enabled: {}", self.enabled)?;
+
+            let from = std::cmp::max(self.iter - 1, 0);
+            let to = self.iter;
+            for iter in from..=to {
+                writeln!(f, ".\niter: {}", iter)?;
+                for cn in Event::iter() {
+                    for y in -1..self.len_ply(iter) as i32 {
+                        if y < 0 {
+                            write!(f, "{}\t", cn.name())?;
+                        } else if cn == Event::Unknown {
+                            write!(f, "{}\t", y)?;
+                        } else {
+                            write!(f, "{}\t", self.count(iter, y, cn))?;
+                        }
                     }
+                    writeln!(f)?;
                 }
-                writeln!(f)?;
             }
             f.flush().unwrap();
             Ok(f.into_inner().unwrap())

@@ -37,6 +37,7 @@ pub enum Event {
     Pvs,
     Extension,
 
+    Aspiration0,
     Aspiration1,
     Aspiration2,
     Aspiration3,

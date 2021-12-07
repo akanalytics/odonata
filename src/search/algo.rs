@@ -225,36 +225,36 @@ impl fmt::Display for Algo {
         writeln!(f, "results          : {}", self.results_as_position())?;
         writeln!(f, "minmax           : {}", self.minmax)?;
         // write!(f, "\n[results]\n{}", self.results)?;
-        write!(f, "\n[task control]\n{}", self.controller)?;
-        write!(f, "\n[move orderer]\n{}", self.move_orderer)?;
-        write!(f, "\n[move time estimator]\n{}", self.mte)?;
-        write!(f, "\n[nmp]\n{}", self.nmp)?;
-        write!(f, "\n[futility]\n{}", self.futility)?;
-        write!(f, "\n[pvs]\n{}", self.pvs)?;
-        write!(f, "\n[extensions]\n{}", self.ext)?;
-        write!(f, "\n[reductions]\n{}", self.lmr)?;
-        write!(f, "\n[qsearch]\n{}", self.qsearch)?;
-        write!(f, "\n[eval]\n{}", self.eval)?;
-        write!(f, "\n[repetition]\n{}", self.repetition)?;
-        write!(f, "\n[tt]\n{}", self.tt)?;
+        writeln!(f, ".\n.\n[controller]\n{}", self.controller)?;
+        writeln!(f, ".\n.\n[move orderer]\n{}", self.move_orderer)?;
+        writeln!(f, ".\n.\n[move time estimator]\n{}", self.mte)?;
+        writeln!(f, ".\n.\n[nmp]\n{}", self.nmp)?;
+        writeln!(f, ".\n.\n[futility]\n{}", self.futility)?;
+        writeln!(f, ".\n.\n[pvs]\n{}", self.pvs)?;
+        writeln!(f, ".\n.\n[extensions]\n{}", self.ext)?;
+        writeln!(f, ".\n.\n[reductions]\n{}", self.lmr)?;
+        writeln!(f, ".\n.\n[qsearch]\n{}", self.qsearch)?;
+        writeln!(f, ".\n.\n[eval]\n{}", self.eval)?;
+        writeln!(f, ".\n.\n[repetition]\n{}", self.repetition)?;
+        writeln!(f, ".\n.\n[tt]\n{}", self.tt)?;
         writeln!(f, "tt nodes")?;
         self.tt.fmt_nodes(f, &self.board)?;
-        write!(f, "\n[killers]\n{}", self.killers)?;
-        write!(f, "\n[history]\n{}", self.history)?;
-        write!(f, "\n[stats]\n{}", self.stats)?;
-        write!(f, "\n[iterative deepening]\n{}", self.ids)?;
-        write!(f, "\n[global counts]\n{}", counts::GLOBAL_COUNTS)?;
-        write!(f, "\n[pvtable]\n{}", self.pv_table)?;
-        write!(f, "\n[explainer]\n{}", self.explainer)?;
+        writeln!(f, ".\n.\n[killers]\n{}", self.killers)?;
+        writeln!(f, ".\n.\n[history]\n{}", self.history)?;
+        writeln!(f, ".\n.\n[stats]\n{}", self.stats)?;
+        writeln!(f, ".\n.\n[iterative deepening]\n{}", self.ids)?;
+        writeln!(f, ".\n.\n[global counts]\n{}", counts::GLOBAL_COUNTS)?;
+        writeln!(f, ".\n.\n[pvtable]\n{}", self.pv_table)?;
+        writeln!(f, ".\n.\n[explainer]\n{}", self.explainer)?;
 
-        write!(f, "\n[restrictions]\n{}", self.restrictions)?;
-        write!(f, "\n[razor]\n{}", self.razor)?;
-        write!(f, "\n[recognizer]\n{}", self.recognizer)?;
-        write!(f, "\n[aspiration]\n{:}", self.aspiration)?;
-        write!(f, "\n[clock]\n{:}", self.clock)?;
+        writeln!(f, ".\n.\n[restrictions]\n{}", self.restrictions)?;
+        writeln!(f, ".\n.\n[razor]\n{}", self.razor)?;
+        writeln!(f, ".\n.\n[recognizer]\n{}", self.recognizer)?;
+        writeln!(f, ".\n.\n[aspiration]\n{:}", self.aspiration)?;
+        writeln!(f, ".\n.\n[clock]\n{:}", self.clock)?;
 
-        write!(f, "\n[counts]\n{}", self.counts)?;
-        write!(f, "\n[results]\n{}", self.results)?;
+        writeln!(f, ".\n.\n[counts]\n{}", self.counts)?;
+        writeln!(f, ".\n.\n[results]\n{}", self.results)?;
         Ok(())
     }
 }

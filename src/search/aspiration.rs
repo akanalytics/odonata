@@ -44,6 +44,7 @@ impl Algo {
     pub fn aspiration(&mut self, b: &mut Board, n: &mut Node) -> (Score, Event) {
         let score = self.results.best_score;
         if n.depth <= self.aspiration.min_depth || !self.aspiration.enabled || !score.is_numeric() {
+            self.counts.inc(n, Event::Aspiration0);
             self.run_alphabeta(b, n)
         } else {
             let mut aspiration_count = 0;
@@ -67,6 +68,7 @@ impl Algo {
 
                 let (new_score, event) = self.run_alphabeta(b, &mut n1);
                 if new_score == -Score::INFINITY {
+                    // no legal moves available
                     break (new_score, event);
                 }
                 if new_score.is_mate() {
