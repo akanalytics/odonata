@@ -486,7 +486,7 @@ impl ModelSide {
                 }
 
                 TwoBishopsOppositeColorSquares(_) | KingMajorsVsKing(_) => {
-                    self.endgame_metric1 = 2 * Self::king_distance_to_side(b, c);
+                    self.endgame_metric1 = 2 * Self::king_distance_to_any_corner(b, c);
                     self.endgame_metric2 = Self::king_distance(b);
                 }
                 _ => {}
@@ -512,6 +512,20 @@ impl ModelSide {
             let m1 = std::cmp::min(r, f);
             let m2 = std::cmp::min(7 - r, 7 - f);
             std::cmp::min(m1, m2)
+        } else {
+            0
+        }
+    }
+
+    fn king_distance_to_any_corner(b: &Board, c: Color) -> i32 {
+        let k = b.kings() & b.color(c);
+        if k.popcount() == 1 {
+            let ksq = k.square();
+            let d1 = PreCalc::default().chebyshev_distance(Square::A1, ksq);
+            let d2 = PreCalc::default().chebyshev_distance(Square::A8, ksq);
+            let d3 = PreCalc::default().chebyshev_distance(Square::H1, ksq);
+            let d4 = PreCalc::default().chebyshev_distance(Square::H8, ksq);
+            std::cmp::min(std::cmp::min(d1, d2), std::cmp::min(d3, d4)) as i32
         } else {
             0
         }
