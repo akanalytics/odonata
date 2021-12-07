@@ -885,14 +885,20 @@ reduce_extensions = false
 # moves_rem = 11
 # move_overhead_ms = 7
 
+# 0.5.6
+# branching_factor = 5.01
+# moves_rem = 12
+# move_overhead_ms = 0
+# use_last_2_iters=false
+
 move_overhead_ms = 0
-branching_factor = 12.625
-moves_rem = 8
+branching_factor = 5.01
+moves_rem = 12
+use_last_2_iters = false
 
 min_ply_for_estimation = 3
 perc_of_time_adv = 62
 deterministic = false
-use_last_2_iters = false
 nodestime = 0
 check_every = 128
 
