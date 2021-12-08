@@ -209,11 +209,12 @@ pub struct OrderedMoveList {
     bad_captures: MoveList,
     index: usize,
     tt: Move,
+    last: Move,
     n: Node,
 }
 
 impl MoveOrderer {
-    pub fn get_sorted_moves(&self, n: Node, b: &Board, tt: Move) -> OrderedMoveList {
+    pub fn create_sorted_moves(&self, n: Node, b: &Board, tt: Move, last: Move) -> OrderedMoveList {
         OrderedMoveList {
             qsearch: n.is_qs(),
             is_in_check: b.is_in_check(b.color_us()),
@@ -225,6 +226,7 @@ impl MoveOrderer {
             index: 0,
             n,
             tt,
+            last
         }
     }
 }
@@ -762,7 +764,7 @@ mod tests {
 
         let positions = &Catalog::win_at_chess();
         for pos in positions {
-            let mut sorted_moves = orderer.get_sorted_moves(n, pos.board(), TT_MOVE);
+            let mut sorted_moves = orderer.create_sorted_moves(n, pos.board(), TT_MOVE);
             let mut moves = MoveList::new();
             while let Some((_stage, mv)) = sorted_moves.next_move(pos.board(), &mut algo) {
                 moves.push(mv);

@@ -128,7 +128,7 @@ impl Algo {
         }
 
 
-        let mut sorted_moves = self.move_orderer.get_sorted_moves(n, b, tt_mv);
+        let mut sorted_moves = self.move_orderer.create_sorted_moves(n, b, tt_mv, *last_move);
         let mut count = 0;
         let mut quiets = 0;
         while let Some((move_type, mv)) = sorted_moves.next_move(b, self) {

@@ -593,7 +593,7 @@ fn benchmark_ordering(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|pos| {
-                let mut sorted_moves = orderer.get_sorted_moves(node, pos.board(), TT_MOVE);
+                let mut sorted_moves = orderer.create_sorted_moves(node, pos.board(), TT_MOVE, Move::NULL_MOVE);
                 while let Some(mv) = sorted_moves.next_move(pos.board(), &mut algo) {
                     black_box(&mv);
                 }
@@ -606,7 +606,7 @@ fn benchmark_ordering(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|pos| {
-                let mut sorted_moves = orderer.get_sorted_moves(node, pos.board(), TT_MOVE);
+                let mut sorted_moves = orderer.create_sorted_moves(node, pos.board(), TT_MOVE, Move::NULL_MOVE);
                 while let Some(mv) = sorted_moves.next_move(pos.board(), &mut algo) {
                     black_box(&mv);
                 }
@@ -619,7 +619,7 @@ fn benchmark_ordering(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|pos| {
-                let mut sorted_moves = orderer.get_sorted_moves(node, pos.board(), TT_MOVE);
+                let mut sorted_moves = orderer.create_sorted_moves(node, pos.board(), TT_MOVE, Move::NULL_MOVE);
                 while let Some(mv) = sorted_moves.next_move(pos.board(), &mut algo) {
                     black_box(&mv);
                 }
