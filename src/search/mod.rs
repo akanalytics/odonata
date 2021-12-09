@@ -8,6 +8,7 @@ pub mod history_heuristic;
 pub mod iterative_deepening;
 pub mod killers;
 pub mod lmr;
+pub mod lmp;
 pub mod move_orderer;
 pub mod move_time_estimator;
 pub mod nmp;

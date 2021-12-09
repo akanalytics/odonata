@@ -34,6 +34,7 @@ pub enum Event {
     PruneFutilityD2,
     PruneFutilityD3,
 
+    Lmp,
     Lmr,
     Pvs,
     Extension,

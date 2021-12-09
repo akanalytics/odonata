@@ -35,6 +35,7 @@ use crate::variation::Variation;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+use super::lmp::Lmp;
 use super::node::Event;
 use super::search_explainer::SearchExplainer;
 use super::search_results::SearchResultsMode;
@@ -73,6 +74,7 @@ pub struct Algo {
     pub counts: Counts,
     pub results: SearchResults,
     pub controller: TaskControl<SearchResults>,
+    pub lmp: Lmp,
 
     #[serde(skip)]
     pub position: Position,
@@ -154,6 +156,7 @@ impl Component for Algo {
         self.counts.set_state(s);
         self.results.set_state(s);
         self.controller.set_state(s);
+        self.lmp.set_state(s);
     }
 
     fn new_game(&mut self) {

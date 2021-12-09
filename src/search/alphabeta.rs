@@ -138,6 +138,9 @@ impl Algo {
             self.counts.inc(&n, Event::Moves);
             self.counts.inc_move(&n, move_type);
             count += 1;
+            if !(mv.is_capture() || mv.is_promo()) {
+                quiets += 1;
+            }
             self.stats.inc_move(ply);
             let mut child_board = b.make_move(&mv);
             let ext = self.extend(b, &child_board, &mv, count, &n);
@@ -165,10 +168,10 @@ impl Algo {
             } else {
                 0
             };
-            if lmr > 0 {
-                quiets += 1;
-            }
 
+            if self.lmp(b, &mv, count, quiets, move_type, &child_board, &n, ext, lmr, tt_mv) {
+                continue;
+            }
             let pvs = self.pvs_permitted(nt, b, &n, count);
             let (mut child_score, mut cat) = if pvs {
                 debug_assert!(n.alpha.is_numeric());

@@ -856,6 +856,16 @@ near_promo_enabled = false
 near_promo_max_depth = 1
 pv_enabled = false
 
+[lmp]
+enabled = true
+first_move = false
+bad_captures = true
+promos = false
+killers = false
+in_check = false
+gives_check = false
+extensions = false
+
 [lmr]
 enabled = true
 first_move = false
@@ -864,16 +874,19 @@ bad_captures = true
 pawns = true
 promos = false
 killers = false
+in_check = false
+gives_check = false
 quiets1 = 20
 quiets2 = 35
 reduce_1_at_depth = 3
 reduce_2_at_depth = 7
 reduce_3_at_depth = 13
 reduce_4_at_depth = 17
+pv_reduce = 0
 # move_number = 5
 re_search = false
 alpha_numeric = false
-reduce_extensions = false
+extensions = false
 
 [mte]
 # 0.5.1

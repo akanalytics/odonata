@@ -19,15 +19,18 @@ pub struct Lmr {
     pawns: bool,
     promos: bool,
     killers: bool,
+    in_check: bool,
+    gives_check: bool,
     pub re_search: bool,
     alpha_numeric: bool,
-    reduce_extensions: bool,
+    extensions: bool,
     quiets1: i32,
     quiets2: i32,
     reduce_1_at_depth: Ply,
     reduce_2_at_depth: Ply,
     reduce_3_at_depth: Ply,
     reduce_4_at_depth: Ply,
+    pv_reduce: Ply,
     iir: bool,
 }
 
@@ -55,13 +58,16 @@ impl Default for Lmr {
             pawns: true,
             promos: false,
             killers: false,
-            reduce_extensions: false,
+            in_check: true,
+            gives_check: true,
+            extensions: false,
             quiets1: 20,
             quiets2: 30,
             reduce_1_at_depth: 3,
             reduce_2_at_depth: 7,
             reduce_3_at_depth: 13,
             reduce_4_at_depth: 17,
+            pv_reduce: 0,
             iir: false,
         }
     }
@@ -115,9 +121,6 @@ impl Algo {
         if !self.lmr.enabled {
             return 0;
         }
-        if ext != 0 {
-            return 0;
-        }
         if n.is_qs() {
             return 0;
         }
@@ -136,11 +139,16 @@ impl Algo {
             _ => 0,
         };
 
+        reduce += match n.is_pv() {
+            true => self.lmr.pv_reduce,
+            _ => 0,
+        };
+
         if !self.lmr.first_move && mv_num <= 1 {
             return 0;
         }
 
-        if reduce == 0 {
+        if reduce <= 0 {
             return 0;
         }
 
@@ -159,7 +167,10 @@ impl Algo {
         if self.lmr.only_nt_all && nt != NodeType::UpperAll {
             return 0;
         }
-        if before.is_in_check(before.color_us()) || after.is_in_check(after.color_us()) {
+        if !self.lmr.extensions && ext > 0
+            || !self.lmr.in_check && before.is_in_check(before.color_us())
+            || !self.lmr.gives_check && after.is_in_check(after.color_us())
+        {
             return 0;
         }
         if self.lmr.alpha_numeric && !n.alpha.is_numeric() {
