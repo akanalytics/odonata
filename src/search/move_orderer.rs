@@ -251,7 +251,7 @@ impl OrderedMoveList {
             // we dont sort killers
             // || move_type == 'b' as b is sorted by reverse anyway due to push and they are bad captures
             {
-                Self::sort_one_capture_move(self.index, &mut self.moves);
+                Self::sort_one_capture_move(self.index, &mut self.moves, self.last);
             }
             if move_type == MoveType::GoodCaptureUpfrontSorted || move_type == MoveType::GoodCapture {
                 let mv = &self.moves[self.index];
@@ -262,7 +262,7 @@ impl OrderedMoveList {
                     algo.move_orderer.see_cutoff
                 };
                 let see_cutoff = see_cutoff.as_i16() as i32;
-                if see < see_cutoff || see == see_cutoff && self.qsearch && self.n.depth >= -1 {
+                if see < see_cutoff || see == see_cutoff && self.qsearch && self.n.depth < -1 {
                     self.bad_captures.push(*mv);
                     self.index += 1;
                     return self.next_move(b, algo);
@@ -283,12 +283,12 @@ impl OrderedMoveList {
     }
 
     #[inline]
-    fn sort_one_capture_move(i: usize, moves: &mut MoveList) {
+    fn sort_one_capture_move(i: usize, moves: &mut MoveList, last: Move ) {
         if let Some(j) = moves
             .iter()
             .enumerate()
             .skip(i)
-            .max_by_key(|(_n, &mv)| mv.mvv_lva_score())
+            .max_by_key(|(_n, &mv)| mv.mvv_lva_score() - if mv.to() == last.to() { 1 } else { 0 })
             .map(|(n, _mv)| n)
         {
             moves.swap(i, j);
@@ -315,6 +315,7 @@ impl OrderedMoveList {
         // println!("{}", self.move_orderer.order.chars().nth(pick.stage as usize).unwrap());
         let mt = self.ordering(algo)[self.stage];
         let all_moves = &mut self.all_moves;
+        let last = self.last;
         let moves = &mut self.moves;
         match mt {
             MoveType::Start => {}
@@ -335,7 +336,7 @@ impl OrderedMoveList {
             }
             MoveType::GoodCaptureUpfrontSorted => {
                 all_moves.iter().filter(|m| Move::is_capture(m)).for_each(|&m| moves.push(m));
-                moves.sort_by_cached_key(Move::mvv_lva_score);
+                moves.sort_by_cached_key(|m| Move::mvv_lva_score(m) + if m.to() == last.to() { 1 } else { 0 } );
                 moves.reverse();
                 if algo.move_orderer.thread == 1 && moves.len() >= 2 {
                     moves.swap(0, 1);
