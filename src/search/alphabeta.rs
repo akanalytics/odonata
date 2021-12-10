@@ -138,12 +138,13 @@ impl Algo {
             self.counts.inc(&n, Event::Moves);
             self.counts.inc_move(&n, move_type);
             count += 1;
-            if !(mv.is_capture() || mv.is_promo()) {
-                quiets += 1;
-            }
             self.stats.inc_move(ply);
             let mut child_board = b.make_move(&mv);
             let ext = self.extend(b, &child_board, &mv, count, &n);
+            let is_quiet = self.is_quiet(b, mv, count, move_type, &child_board, &n, ext);
+            if is_quiet {
+                quiets += 1;
+            }
 
             if score > -Score::INFINITY {
                 if let Some(est_score) = self.can_prune_move(&mv, count, move_type, b, &child_board, eval, &n, ext) {
@@ -158,20 +159,21 @@ impl Algo {
                     continue;
                 }
             }
-            self.repetition.push_move(&mv, &child_board);
-            self.current_variation.push(mv);
-            self.explainer.start(&n, &self.current_variation);
-            child_board.set_repetition_count(self.repetition.count(&child_board));
-
             let lmr = if !self.minmax {
                 self.lmr(b, &mv, count, quiets, move_type, &child_board, &n, nt, ext, tt_mv)
             } else {
                 0
             };
 
-            if self.lmp(b, &mv, count, quiets, move_type, &child_board, &n, ext, lmr, tt_mv) {
+            if self.can_lmp(is_quiet, quiets, &n) {
                 continue;
             }
+
+            self.repetition.push_move(&mv, &child_board);
+            self.current_variation.push(mv);
+            self.explainer.start(&n, &self.current_variation);
+            child_board.set_repetition_count(self.repetition.count(&child_board));
+
             let pvs = self.pvs_permitted(nt, b, &n, count);
             let (mut child_score, mut cat) = if pvs {
                 debug_assert!(n.alpha.is_numeric());
