@@ -865,12 +865,12 @@ killers = false
 in_check = false
 gives_check = false
 extensions = false
-a = 4
-b = 0.32
+a = 4.07
+b = 0.33
 c = 1.56
-pa = 4.5
-pb = 2.0
-pc = 1.0
+pa = 5.63
+pb = 1.18
+pc = 1.28
 
 [lmr]
 enabled = true
