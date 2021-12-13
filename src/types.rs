@@ -6,6 +6,7 @@ use std::fmt;
 use strum_macros::{Display, EnumCount};
 
 pub const MAX_PLY: Ply = 128;
+pub const LEN_PLY: usize = MAX_PLY as usize;
 pub const MAX_LEGAL_MOVES: usize = 218;
 
 pub type Ply = i32;
