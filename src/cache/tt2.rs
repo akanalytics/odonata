@@ -32,9 +32,9 @@ impl Score {
     }
 
     pub fn unpack_16bits(bits: u64) -> Score {
-        if bits == 0 {
-            return -Score::INFINITY;
-        }
+        // if bits == 0 {
+        //     return -Score::INFINITY;
+        // }
 
         let bytes = bits.to_le_bytes();
         let int = i16::from_le_bytes([bytes[0], bytes[1]]);
@@ -462,12 +462,17 @@ impl TranspositionTable2 {
 
     #[inline]
     pub fn store(&mut self, h: Hash, mut new_node: TtNode) {
-        debug_assert!(new_node.score > -Score::INFINITY);
         // FIXME maybe store QS results
         if !self.enabled && new_node.nt != NodeType::ExactPv || self.capacity() == 0 || new_node.depth < 0 {
             return;
         }
-        debug_assert!(new_node.nt != NodeType::Unused, "Cannot store unsed nodes in tt");
+        debug_assert!(new_node.nt != NodeType::Unused, "Cannot store unused nodes in tt");
+        debug_assert!(
+            new_node.score.is_numeric_or_mate(),
+            "Cannot store score {} in tt\n{}",
+            new_node.score,
+            new_node
+        );
 
         // probe by hash not board so any "conditions" are bypassed
         let mut bucket_to_overwrite = None;
@@ -561,7 +566,7 @@ impl TranspositionTable2 {
             if self.current_age == old_age && old_node.nt == NodeType::ExactPv {
                 self.pv_overwrites.increment();
             }
-            debug_assert!(new_node.score > -Score::INFINITY);
+            debug_assert!(new_node.score > -Score::INFINITY && new_node.score < Score::INFINITY);
             debug_assert!(
                 new_node.nt != NodeType::ExactPv || !new_node.bm.is_null(),
                 "bm is null at {:?} mv {:?}",
@@ -580,8 +585,7 @@ impl TranspositionTable2 {
     }
 
     pub fn delete(&mut self, _h: Hash) {
-        if !self.enabled || self.capacity() == 0 {
-        }
+        if !self.enabled || self.capacity() == 0 {}
         // self.deletes.increment();
         // self.table.delete(h);
     }
@@ -597,6 +601,14 @@ impl TranspositionTable2 {
                 self.bad_hash.increment();
                 return None;
             }
+            debug_assert!(
+                tt_node.score.is_numeric_or_mate(),
+                "tt_node {}\nboard {:#}\nply: {}\ndepth: {}",
+                tt_node,
+                board,
+                ply,
+                depth
+            );
             assert!(
                 tt_node.bm.is_null() || (board.is_pseudo_legal_move(&tt_node.bm) && board.is_legal_move(&tt_node.bm)),
                 "{} {} {:?}",
