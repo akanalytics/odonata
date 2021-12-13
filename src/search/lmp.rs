@@ -112,7 +112,7 @@ impl Algo {
         }
 
         let is_pv = n.is_pv();
-        if is_pv && quiets <= ((self.lmp.a + self.lmp.b * n.depth as f32 + self.lmp.c * (n.depth * n.depth) as f32) * 2.0) as i32{
+        if is_pv && quiets <= (self.lmp.pa + self.lmp.pb * n.depth as f32 + self.lmp.pc * (n.depth * n.depth) as f32) as i32{
             return false;
         }
 
