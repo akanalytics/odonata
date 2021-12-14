@@ -78,8 +78,8 @@ pub fn main() -> Result<(), String> {
     if matches.subcommand_name() == Some("bench") {
         let mut uci = Uci::new();
         uci.prelude.push("position startpos".to_string());
-        uci.prelude.push("go movetime 4000".to_string());
-        uci.prelude.push("bench".to_string());
+        uci.prelude.push("go depth 16".to_string());
+        //uci.prelude.push("bench".to_string());
         uci.prelude.push("quit".to_string());
         uci.run();
 
