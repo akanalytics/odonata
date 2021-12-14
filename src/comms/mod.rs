@@ -79,7 +79,7 @@ pub fn main() -> Result<(), String> {
         let mut uci = Uci::new();
         uci.prelude.push("position startpos".to_string());
         uci.prelude.push("go depth 16".to_string());
-        //uci.prelude.push("bench".to_string());
+        uci.prelude.push("bench".to_string());
         uci.prelude.push("quit".to_string());
         uci.run();
 
