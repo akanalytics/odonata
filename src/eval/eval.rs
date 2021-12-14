@@ -636,7 +636,19 @@ impl SimpleScorer {
         scorer
     }
 
-    pub fn w_eval_some(&self, b: &Board, switches: Switches) -> Score {
+    pub fn w_eval_some(&self, b: &Board, mut switches: Switches) -> Score {
+        if !self.position {
+            switches -= Switches::POSITION;
+        }
+        if !self.safety {
+            switches -= Switches::SAFETY;
+        }
+        if !self.mobility {
+            switches -= Switches::MOBILITY;
+        }
+        if !self.pawn {
+            switches -= Switches::PAWN;
+        }
         let model = Model::from_board(b, switches);
         let mut scorer = ModelScore::new(b.phase(&self.phaser));
         self.predict(&model, &mut scorer);

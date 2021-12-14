@@ -40,6 +40,9 @@ use super::node::Event;
 use super::search_explainer::SearchExplainer;
 use super::search_results::SearchResultsMode;
 
+
+
+
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Algo {

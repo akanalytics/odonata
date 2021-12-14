@@ -15,3 +15,18 @@ MemFOrget
 ParsedConfoig
 ConfigFiles
 Better lower Bound or tighter upper bound in TT (check before replace)
+
+0.5.8
+Connected pawns 2 by2 less than 4 by 1
+Fixed: Passed pawn eval broken...!
+Partial passed pawn
+Protected (by another pawn) passed pawn (=non isolated passed pawn)
+Win bonus for exchanging when ahead/behind 
+2k5/p1p2ppp/1p2n3/3qN3/3P4/2P5/P1Q2PPP/6K1 b - - 4 26 false mate
+8/8/8/8/8/p1k5/8/1K6 b - - 11 77 - postpone draw when could win as long as possible
+8/5k2/8/4KP2/8/8/4R2p/7r b - - 0 1 ; am Ke4 excessive pruning
+
+
+Reduce bad captures by more
+Count node type bitfield, 
+

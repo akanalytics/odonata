@@ -1,5 +1,5 @@
 use crate::cache::tt2::TranspositionTable2;
-use crate::infra::component::{Component, State};
+use crate::infra::component::{Component, State, FEATURE};
 use crate::infra::resources::RESOURCE_DIR;
 use crate::position::Position;
 use crate::search::algo::Algo;
@@ -16,6 +16,9 @@ use std::collections::HashMap;
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 use std::{fmt, mem};
+use std::sync::atomic::{Ordering};
+
+
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -23,6 +26,7 @@ pub struct Engine {
     pub shared_tt: bool,
     pub thread_count: u32,
     pub config_filename: String,
+    pub feature: bool,
 
     #[serde(flatten)]
     pub algo: Algo,
@@ -44,6 +48,7 @@ impl Default for Engine {
         Engine {
             config_filename: DEFAULT_CONFIG_FILE.to_string(),
             shared_tt: true,
+            feature: false,
             tuner: Tuning::default(),
             algo: Algo::default(),
             engine_init_time: Instant::now().elapsed(),
@@ -71,6 +76,7 @@ impl fmt::Display for Engine {
         writeln!(f, "config filename  : {}", self.config_filename)?;
         writeln!(f, "threads          : {}", self.thread_count)?;
         writeln!(f, "shared tt        : {}", self.shared_tt)?;
+        writeln!(f, "feature          : {}", self.feature)?;
         writeln!(f, "tuner            : {:?}", self.tuner)?;
         writeln!(f, "engine init time : {}", Formatting::duration(self.engine_init_time))?;
         writeln!(f, "search init time : {}", Formatting::duration(self.search_init_time))?;
@@ -145,6 +151,7 @@ impl Engine {
             },
             ..engine
         };
+        FEATURE.store(engine.feature, Ordering::SeqCst);
         Ok(())
     }
 

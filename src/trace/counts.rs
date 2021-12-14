@@ -1,13 +1,39 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::sync::atomic::{AtomicU64, Ordering};
 use tabwriter::TabWriter;
 
 use crate::infra::component::Component;
 use crate::search::node::{Event, Node};
-use crate::types::{Ply, MAX_PLY, MoveType};
+use crate::types::{MoveType, Ply, LEN_PLY, MAX_PLY};
 use strum::IntoEnumIterator;
 
 // const MAX_PLY: Ply = 6;
+
+#[derive(Debug, Default)]
+struct ClonableAtomicU64(AtomicU64);
+
+impl Clone for ClonableAtomicU64 {
+    fn clone(&self) -> Self {
+        Self(AtomicU64::new(self.0.load(Ordering::SeqCst)))
+    }
+}
+
+impl ClonableAtomicU64 {
+    pub fn get(&self) -> u64 {
+        self.0.load(Ordering::Relaxed)
+    }
+}
+
+thread_local! {
+    static COUNTS: Counts = Counts::default();
+}
+
+impl Event {
+    pub fn incr_by_ply(&self, y: Ply) {
+        COUNTS.with(|c| c.data[c.iter as usize][y as usize][self.index()].0.fetch_add(1, Ordering::Relaxed));
+    }
+}
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -18,7 +44,7 @@ pub struct Counts {
     iter: Ply,
 
     #[serde(skip)]
-    counts: Box<[[[u64; Event::len()]; MAX_PLY as usize]; MAX_PLY as usize]>,
+    data: Vec<Vec<Vec<ClonableAtomicU64>>>,
 }
 
 impl Default for Counts {
@@ -26,7 +52,7 @@ impl Default for Counts {
         Self {
             enabled: true,
             iter: 0,
-            counts: Box::new([[[0; Event::len()]; MAX_PLY as usize]; MAX_PLY as usize]),
+            data: vec![vec![vec![ClonableAtomicU64::default(); Event::len()]; LEN_PLY]; LEN_PLY],
         }
     }
 }
@@ -117,8 +143,7 @@ impl Counts {
         self.inc_by_ply(n.ply, cn);
     }
 
-    pub fn inc_move(&mut self, n: &Node, mt: MoveType) {
-
+    pub fn inc_move(&self, n: &Node, mt: MoveType) {
         let event = match mt {
             MoveType::Start => Event::MoveStart,
             MoveType::Hash => Event::MoveHash,
@@ -145,9 +170,9 @@ impl Counts {
 
     #[inline]
     pub fn len_ply(&self, iter: Ply) -> usize {
-        self.counts[iter as usize]
+        self.data[iter as usize]
             .iter()
-            .rposition(|x| x.iter().max() != Some(&0))
+            .rposition(|x| x.iter().map(ClonableAtomicU64::get).max() != Some(0))
             .unwrap_or_default()
             + 1
     }
@@ -197,19 +222,23 @@ impl Counts {
             PercentAspiration1 => return Self::percent(self.count(i, y, Aspiration1), self.count(i, y, DerivedAspiration)),
             DerivedAspiration => {
                 return self.count(i, y, Aspiration1)
-                    + self.count(i, y, Aspiration2) + self.count(i, y, Aspiration3) + self.count(i, y, AspirationN)
+                    + self.count(i, y, Aspiration2)
+                    + self.count(i, y, Aspiration3)
+                    + self.count(i, y, AspirationN)
             }
             _ => {}
         }
-        self.counts[i as usize][y as usize][cn.index()]
+        self.data[i as usize][y as usize][cn.index()].get()
     }
 
     #[inline]
     #[allow(unused_variables)]
-    pub fn inc_by_ply(&mut self, y: Ply, cn: Event) {
+    pub fn inc_by_ply(&self, y: Ply, cn: Event) {
         #[cfg(not(feature = "remove_metrics"))]
         {
-            self.counts[self.iter as usize][y as usize][cn as usize] += 1;
+            self.data[self.iter as usize][y as usize][cn as usize]
+                .0
+                .fetch_add(1, Ordering::Relaxed);
         }
     }
 }
@@ -241,5 +270,19 @@ mod tests {
         assert_eq!(counters.total(2, Event::DerivedLeaf), 3);
         assert_eq!(counters.cumul(Event::DerivedLeaf), 4);
         assert_eq!(counters.cumul(Event::PercentBranchingFactor), 400);
+    }
+
+    #[test]
+    fn test_thread_local_counts() {
+        Event::HashProbe.incr_by_ply(0);
+        Event::HashProbe.incr_by_ply(1);
+        Event::MovePromo.incr_by_ply(2);
+        Event::MovePromo.incr_by_ply(2);
+        Event::MovePromo.incr_by_ply(2);
+
+        COUNTS.with(|c| {
+            println!("{}", c);
+            assert_eq!(c.count(0, 2, Event::MovePromo), 3);
+        });
     }
 }

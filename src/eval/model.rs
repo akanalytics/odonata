@@ -1,4 +1,5 @@
 use std::fmt;
+use std::sync::atomic::Ordering;
 
 use crate::bitboard::castling::CastlingRights;
 use crate::bitboard::precalc::BitboardDefault;
@@ -10,6 +11,7 @@ use crate::eval::score::Score;
 use crate::eval::switches::Switches;
 use crate::eval::weight::Weight;
 use crate::globals::constants::{FILE_D, FILE_E};
+use crate::infra::component::FEATURE;
 use crate::types::Color;
 use crate::types::Piece;
 use crate::utils::Formatting;
@@ -440,8 +442,14 @@ impl ModelSide {
         if sw.contains(Switches::MATERIAL) {
             m.init_material(b, c, mat, eg);
         }
-        if eg != EndGame::Unknown {
-            return m;
+        if FEATURE.load(Ordering::SeqCst) {
+            if eg.try_winner().is_some() {
+                return m;
+            }
+        } else {
+            if eg != EndGame::Unknown {
+                return m;
+            }
         }
         if sw.contains(Switches::POSITION) {
             m.init_position(b, c, mat);
@@ -495,7 +503,7 @@ impl ModelSide {
                     self.endgame_metric2 = Self::king_distance(b);
                 }
 
-        }
+            }
         }
     }
 
@@ -824,8 +832,9 @@ mod tests {
         for p in positions {
             let model = Model::from_board(p.board(), Switches::ALL_SCORING);
             if let Tag::Comment(_n, s) = p.tag("c0") {
+                info!("position {} c0 {}", p, s);
                 let map = s.split_vars_int();
-                assert_eq!(model.white.isolated_pawns, map["isolated"], "{}", p);
+                assert_eq!(model.white.isolated_pawns, map["isolated"], "{}\n{:?}", p, model);
                 assert_eq!(model.white.doubled_pawns, map["doubled"], "{}", p);
                 assert_eq!(model.white.passed_pawns, map["passed"], "{}", p);
             }

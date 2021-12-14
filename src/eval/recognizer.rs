@@ -55,6 +55,7 @@ impl Algo {
 
         self.counts.inc(n, Event::HashProbe);
         if let Some(entry) = self.tt.probe_by_board(b, n.ply, n.depth) {
+            debug_assert!(entry.score.is_numeric_or_mate());
             self.counts.inc(n, Event::HashHit);
 
             // FIXME! v33
@@ -129,7 +130,8 @@ impl Algo {
 
         // not found
         let (score, mv) = self.wdl_detection(b, n);
-        if score.is_some() {
+        if let Some(s) = score {
+            debug_assert!(s.is_numeric_or_mate());
             return (score, mv);
         }
 

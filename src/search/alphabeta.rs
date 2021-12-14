@@ -40,6 +40,9 @@ impl Algo {
         };
         self.results.set_pv(category, &pv);
         self.results.score = score;
+        if node.alpha == -Score::INFINITY && node.beta == Score::INFINITY {
+            debug_assert!(score.is_numeric_or_mate(), "Score was inf\n{}", self);
+        }
 
         self.stats.record_iteration(self.max_depth, category, pv);
         (score, category)
@@ -102,7 +105,10 @@ impl Algo {
 
         let mut tt_mv = Move::NULL_MOVE;
         match self.lookup(b, &mut n) {
-            (Some(ab), None) => return (ab, Event::HashHit), // alpha, beta or a terminal node
+            (Some(ab), None) => {
+                debug_assert!(ab.is_numeric_or_mate(), "lookup returned {}", ab);
+                return (ab, Event::HashHit);
+            }, // alpha, beta or a terminal node
             (None, Some(bm)) => tt_mv = bm,
             (Some(s), Some(mv)) => {
                 tt_mv = mv;
@@ -126,7 +132,6 @@ impl Algo {
         if let Some(score) = self.nmp(b, &n, eval) {
             return (score, Event::PruneNullMovePrune);
         }
-
 
         let mut sorted_moves = self.move_orderer.create_sorted_moves(n, b, tt_mv, *last_move);
         let mut count = 0;
@@ -209,17 +214,22 @@ impl Algo {
             self.current_variation.pop();
             self.explainer.start(&n, &self.current_variation);
             self.repetition.pop();
-            if ply > 1 && (cat == Event::UserCancelled || cat== Event::TimeUp) {
+            if cat == Event::UserCancelled || cat == Event::TimeUp {
                 self.explain_move(&mv, child_score, cat, &n);
                 return (-Score::INFINITY, cat);
             }
             self.explain_move(&mv, child_score, cat, &n);
 
-
-
-
-
             // println!("move {} score {} alpha {} beta {}", mv, score, alpha, beta);
+            debug_assert!(
+                !(child_score == -Score::INFINITY && count == 1),
+                "board: {}\nmove: {}\ncat: {}\nlmr: {}\npvs: {}",
+                b,
+                mv,
+                cat,
+                lmr,
+                pvs
+            );
             if child_score > score {
                 score = child_score;
                 category = cat;
@@ -272,10 +282,23 @@ impl Algo {
         } else {
             panic!("Node type {:?} ", nt);
         }
-        if score > -Score::INFINITY {
+        // aspiration search fails dont get stored
+        if score > -Score::INFINITY && score < Score::INFINITY {
             let entry = TtNode { score, depth, nt, bm };
             self.tt.store(b.hash(), entry);
         }
+        debug_assert!(
+            n.alpha != -Score::INFINITY || n.beta != Score::INFINITY || score.is_numeric_or_mate(),
+            "alpha/beta full width with score: {} node {}\ncat: {} count: {} quiets: {}\nbm: {}\nnt: {}\nboard: {:#}",
+            score,
+            n,
+            category,
+            count,
+            quiets,
+            bm,
+            nt,
+            b,
+        );
         self.explain_node(&bm, nt, score, &n, &self.pv_table.extract_pv_for(ply));
         (score, category)
     }

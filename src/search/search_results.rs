@@ -82,9 +82,7 @@ impl Component for SearchResults {
 
 impl fmt::Display for SearchResults {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{}", toml::to_string_pretty(self).unwrap())?;
-        writeln!(f, "pv {}", self.pv)?;
-        writeln!(f, "best pv {}", self.best_pv)?;
+        writeln!(f, "{:#?}", self)?;
         Ok(())
     }
 }

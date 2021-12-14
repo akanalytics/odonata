@@ -21,6 +21,7 @@ impl PreCalc {
     }
 }
 
+
 pub struct PreCalc {
     king_moves: [Bitboard; 64],
     knight_moves: [Bitboard; 64],
