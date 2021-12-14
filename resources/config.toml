@@ -32,6 +32,7 @@ shared_tt = true
 thread_count = 1
 config_filename = "config.toml"
 minmax = false
+feature = false
 
 [tuner]
 ignore_known_outcomes = true
