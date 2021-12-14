@@ -215,6 +215,7 @@ impl Uci {
             "board" | "b" => self.uci_board(),
             "eval" | "." => self.ext_uci_explain_eval(),
             "settings" => self.ext_uci_show_config(),
+            "bench" => self.ext_uci_bench(),
 
             _ if self.is_json_request(&input) => self.json_method(&input),
 
@@ -651,6 +652,15 @@ impl Uci {
         let text = toml::to_string(&*engine)?;
         Self::print(&format!("# start configuration:\n{}", text));
         Self::print(&format!("# end of configuration:\n"));
+        Ok(())
+    }
+
+    fn ext_uci_bench(&mut self) -> Result<()> {
+        Self::print(&format!("# benchmark:\n"));
+        self.engine.lock().unwrap().search_stop();
+        let engine = self.engine.lock().unwrap();
+        Self::print(&format!("NODES {}", engine.algo.clock.cumul_nodes()));
+        Self::print(&format!("NPS {}", engine.algo.clock.cumul_knps_all_threads() * 1000));
         Ok(())
     }
 
