@@ -1,5 +1,4 @@
 use std::fmt;
-use std::sync::atomic::Ordering;
 
 use crate::bitboard::castling::CastlingRights;
 use crate::bitboard::precalc::BitboardDefault;
@@ -11,7 +10,6 @@ use crate::eval::score::Score;
 use crate::eval::switches::Switches;
 use crate::eval::weight::Weight;
 use crate::globals::constants::{FILE_D, FILE_E};
-use crate::infra::component::FEATURE;
 use crate::types::Color;
 use crate::types::Piece;
 use crate::utils::Formatting;
@@ -442,14 +440,8 @@ impl ModelSide {
         if sw.contains(Switches::MATERIAL) {
             m.init_material(b, c, mat, eg);
         }
-        if FEATURE.load(Ordering::SeqCst) {
-            if eg.try_winner().is_some() {
-                return m;
-            }
-        } else {
-            if eg != EndGame::Unknown {
-                return m;
-            }
+        if eg.try_winner().is_some() {
+            return m;
         }
         if sw.contains(Switches::POSITION) {
             m.init_position(b, c, mat);
