@@ -139,7 +139,7 @@ impl Algo {
         }
         self.results.with_best_move();
         self.controller.invoke_callback(&self.results);
-        debug!("\n\n\n=====Search completed=====\n{}", self);
+        // debug!("\n\n\n=====Search completed=====\n{}", self);
         if self.results.bm().is_null() {
             error!("bm is null\n{}\n{:?}", self, self.results);
         }

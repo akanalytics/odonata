@@ -99,7 +99,7 @@ impl fmt::Display for Counts {
             let mut f = TabWriter::new(table).padding(1);
             writeln!(f, "enabled: {}", self.enabled)?;
 
-            let from = std::cmp::max(self.iter - 1, 0);
+            let from = 0; // std::cmp::max(self.iter - 1, 0);
             let to = self.iter;
             for iter in from..=to {
                 writeln!(f, ".\niter: {}", iter)?;

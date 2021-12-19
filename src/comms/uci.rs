@@ -661,6 +661,7 @@ impl Uci {
         let engine = self.engine.lock().unwrap();
         Self::print(&format!("NODES {}", engine.algo.clock.cumul_nodes()));
         Self::print(&format!("NPS {}", engine.algo.clock.cumul_knps_all_threads() * 1000));
+        info!("{}", engine);
         Ok(())
     }
 
