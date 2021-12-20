@@ -22,6 +22,7 @@ pub fn main() -> Result<(), String> {
         //         .multiple(true)
         //         .help("sets the level of logging verbosity: eg -vv or -vvv"),
         // )
+        .subcommand(App::new("bench").about("execute benchmarks for OpenBench"))
         .arg(
             Arg::with_name("config")
                 .short("c")
@@ -82,11 +83,20 @@ pub fn main() -> Result<(), String> {
 
     // logger::init_logging();
 
-    if let Some(filename) = matches.value_of("config") {
-        let config = ParsedConfig::read_from_file(filename)?;
-        ParsedConfig::set_global(config);
+    // if let Some(filename) = matches.value_of("config") {
+    //     let config = ParsedConfig::read_from_file(filename)?;
+    //     ParsedConfig::set_global(config);
+    // }
+    if matches.subcommand_name() == Some("bench") {
+        let mut uci = Uci::new();
+        uci.prelude.push("position startpos".to_string());
+        uci.prelude.push("go depth 16".to_string());
+        uci.prelude.push("bench".to_string());
+        uci.prelude.push("quit".to_string());
+        uci.run();
+
     }
-    if matches.is_present("profile") {
+    else if matches.is_present("profile") {
         Bench::profile_me();
     } else if let Some(depth) = matches.value_of("perft") {
         let depth = depth.parse::<u32>().map_err(|e| e.to_string())?;
