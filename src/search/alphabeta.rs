@@ -129,7 +129,7 @@ impl Algo {
             return (beta, Category::PruneNullMovePrune);
         }
 
-        let mut sorted_moves = self.move_orderer.get_sorted_moves(n, b, tt_mv);
+        let mut sorted_moves = self.move_orderer.create_sorted_moves(n, b, tt_mv, *last_move);
         let mut count = 0;
         let mut quiets = 0;
         while let Some((move_type, mv)) = sorted_moves.next_move(b, self) {
@@ -137,6 +137,9 @@ impl Algo {
                 continue;
             }
             count += 1;
+            if !(mv.is_capture() || mv.is_promo()) {
+                quiets += 1;
+            }
             self.stats.inc_move(ply);
             let mut child_board = b.make_move(&mv);
             let ext = self.extend(
@@ -188,8 +191,9 @@ impl Algo {
             } else {
                 0
             };
-            if lmr > 0 {
-                quiets += 1;
+
+            if self.lmp(b, &mv, count, quiets, move_type, &child_board, &n, ext, lmr, tt_mv) {
+                continue;
             }
 
             let pvs = !self.minmax

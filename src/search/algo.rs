@@ -37,6 +37,7 @@ use crate::clock::Clock;
 
 
 use super::node::Category;
+use super::lmp::Lmp;
 use super::search_explainer::SearchExplainer;
 use super::search_results::SearchResultsMode;
 
@@ -71,8 +72,8 @@ pub struct Algo {
     pub recognizer: Recognizer,
     pub aspiration: Aspiration,
     pub counts: Counts,
-
     pub tt: TranspositionTable2,
+    pub lmp: Lmp,
 
     #[serde(skip)]
     pub results: SearchResults,

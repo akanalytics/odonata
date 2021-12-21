@@ -221,12 +221,13 @@ pub struct OrderedMoveList {
     all_moves: MoveList,
     bad_captures: MoveList,
     index: usize,
-    tt: Move,
     n: Node,
+    tt: Move,
+    last: Move,
 }
 
 impl MoveOrderer {
-    pub fn get_sorted_moves(&self, n: Node, b: &Board, tt: Move) -> OrderedMoveList {
+    pub fn create_sorted_moves(&self, n: Node, b: &Board, tt: Move, last: Move) -> OrderedMoveList {
         OrderedMoveList {
             qsearch: n.is_qs(),
             is_in_check: b.is_in_check(b.color_us()),
@@ -238,6 +239,7 @@ impl MoveOrderer {
             index: 0,
             n,
             tt,
+            last,
         }
     }
 }
@@ -267,7 +269,7 @@ impl OrderedMoveList {
             // we dont sort killers
             // || move_type == 'b' as b is sorted by reverse anyway due to push and they are bad captures
             {
-                Self::sort_one_capture_move(self.index, &mut self.moves);
+                Self::sort_one_capture_move(self.index, &mut self.moves, self.last);
             }
             if move_type == MoveType::GoodCaptureUpfrontSorted || move_type == MoveType::GoodCapture {
                 let mv = &self.moves[self.index];
@@ -296,12 +298,12 @@ impl OrderedMoveList {
 
 
     #[inline]
-    fn sort_one_capture_move(i: usize, moves: &mut MoveList) {
+    fn sort_one_capture_move(i: usize, moves: &mut MoveList, last: Move ) {
         if let Some(j) = moves
             .iter()
             .enumerate()
             .skip(i)
-            .max_by_key(|(_n, &mv)| mv.mvv_lva_score())
+            .max_by_key(|(_n, &mv)| mv.mvv_lva_score() - if mv.to() == last.to() { 0 } else { 0 })
             .map(|(n, _mv)| n)
         {
             moves.swap(i, j);
@@ -335,6 +337,7 @@ impl OrderedMoveList {
         let mt = self.ordering(algo)[self.stage];
         let all_moves = &mut self.all_moves;
         let moves = &mut self.moves;
+        let last = self.last;
         match mt 
         {
             MoveType::Start => {}
@@ -357,11 +360,8 @@ impl OrderedMoveList {
 
             }
             MoveType::GoodCaptureUpfrontSorted => {
-                all_moves
-                    .iter()
-                    .filter(|m| Move::is_capture(m))
-                    .for_each(|&m| moves.push(m));
-                moves.sort_by_cached_key(Move::mvv_lva_score);
+                all_moves.iter().filter(|m| Move::is_capture(m)).for_each(|&m| moves.push(m));
+                moves.sort_by_cached_key(|m| Move::mvv_lva_score(m) + if m.to() == last.to() { 0 } else { 0 } );
                 moves.reverse();
                 if algo.move_orderer.thread == 1 && moves.len() >= 2 {
                     moves.swap(0, 1);
@@ -794,7 +794,7 @@ mod tests {
 
         let positions = &Catalog::win_at_chess();
         for pos in positions {
-            let mut sorted_moves = orderer.get_sorted_moves(n, pos.board(), TT_MOVE);
+            let mut sorted_moves = orderer.create_sorted_moves(n, pos.board(), TT_MOVE, Move::NULL_MOVE);
             let mut moves = MoveList::new();
             while let Some((_stage,mv)) = sorted_moves.next_move(pos.board(), &mut algo) {
                 moves.push(mv);                 
