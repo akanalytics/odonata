@@ -112,6 +112,7 @@ impl Algo {
     pub fn search_iteratively(&mut self) {
         // self.new_search();
         self.ids.calc_range(&self.mte.time_control);
+        self.task_control.set_running();
         let mut depth = self.ids.start_ply;
         'outer: loop {
             self.restrictions.exclude_moves.clear();
