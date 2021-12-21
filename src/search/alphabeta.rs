@@ -137,20 +137,15 @@ impl Algo {
                 continue;
             }
             count += 1;
-            if !(mv.is_capture() || mv.is_promo()) {
-                quiets += 1;
-            }
             self.stats.inc_move(ply);
             let mut child_board = b.make_move(&mv);
-            let ext = self.extend(
-                b,
-                &child_board,
-                &mv,
-                count,
-                &n,
-            );
+            let ext = self.extend(b, &child_board, &mv, count, &n);
+            let is_quiet = self.is_quiet(b, mv, count, move_type, &child_board, &n, ext);
+            if is_quiet {
+                quiets += 1;
+            }
 
-           if score > -Score::INFINITY {
+            if score > -Score::INFINITY {
                 if let Some(est_score) = self.can_prune_move(&mv, count, move_type, b, &child_board, eval, &n, ext) {
                     self.explain_futility(&mv, move_type, est_score, n.alpha);
                     self.stats.inc_fp_move(ply);
@@ -163,10 +158,9 @@ impl Algo {
                     continue;
                 }
             }
-            self.repetition.push_move(&mv, &child_board);
-            self.current_variation.push(mv);
-            self.explainer.start(&self.current_variation);
-            child_board.set_repetition_count(self.repetition.count(&child_board));
+            // self.repetition.push_move(&mv, &child_board);
+            // self.current_variation.push(mv);
+            // child_board.set_repetition_count(self.repetition.count(&child_board));
             debug_assert!(
                 n.alpha < n.beta || self.minmax,
                 "alpha={}, beta={}, minmax={}",
@@ -192,40 +186,33 @@ impl Algo {
                 0
             };
 
-            if self.lmp(b, &mv, count, quiets, move_type, &child_board, &n, ext, lmr, tt_mv) {
+            if self.can_lmp(is_quiet, quiets, &n) {
                 continue;
             }
 
-            let pvs = !self.minmax
-                && self.pvs_permitted(
-                    nt,
-                    b,
-                    &n,
-                    count,
-                );
-            let (mut child_score, mut cat) = 
-                if pvs {
-                    debug_assert!(n.alpha.is_numeric());
-                    self.stats.inc_pvs_move(ply);
-                    // using [alpha, alpha + 1]
-                    self.alphabeta_recursive(
-                        &mut child_board,
-                        ply + 1,
-                        depth + ext - lmr - 1,
-                        -n.alpha - Score::from_cp(1),
-                        -n.alpha,
-                        &mv,
-                    )
-                } else {
-                    self.alphabeta_recursive(
-                        &mut child_board,
-                        ply + 1,
-                        depth + ext - lmr - 1,
-                        -n.beta,
-                        -n.alpha,
-                        &mv,
-                    )
-                };
+
+            self.repetition.push_move(&mv, &child_board);
+            self.current_variation.push(mv);
+            self.explainer.start(&self.current_variation);
+            // self.explainer.start(&n, &self.current_variation);
+            child_board.set_repetition_count(self.repetition.count(&child_board));
+
+            let pvs = self.pvs_permitted(nt, b, &n, count);
+            let (mut child_score, mut cat) = if pvs {
+                debug_assert!(n.alpha.is_numeric());
+                self.stats.inc_pvs_move(ply);
+                // using [alpha, alpha + 1]
+                self.alphabeta_recursive(
+                    &mut child_board,
+                    ply + 1,
+                    depth + ext - lmr - 1,
+                    -n.alpha - Score::from_cp(1),
+                    -n.alpha,
+                    &mv,
+                )
+            } else {
+                self.alphabeta_recursive(&mut child_board, ply + 1, depth + ext - lmr - 1, -n.beta, -n.alpha, &mv)
+            };
             child_score = -child_score;
 
             if (lmr > 0 && self.lmr.re_search || pvs) && child_score > score && child_score < n.beta

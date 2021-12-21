@@ -19,6 +19,12 @@ pub struct Lmp {
     in_check: bool,
     gives_check: bool,
     extensions: bool,
+    a: f32,
+    b: f32,
+    c: f32,
+    pa: f32,
+    pb: f32,
+    pc: f32,
 }
 
 impl Default for Lmp {
@@ -27,12 +33,18 @@ impl Default for Lmp {
             enabled: true,
             first_move: false,
             alpha_numeric: false,
-            bad_captures: true,
+            bad_captures: false,
             promos: false,
             killers: false,
             in_check: false,
             gives_check: false,
             extensions: false,
+            a: 2.5,
+            b: 1.0,
+            c: 0.5,
+            pa: 4.5,
+            pb: 2.0,
+            pc: 1.0,
         }
     }
 }
@@ -47,23 +59,17 @@ impl Component for Lmp {
 
 impl Algo {
     #[inline]
-    pub fn lmp(
+    pub fn is_quiet(
         &mut self,
         before: &Board,
-        _mv: &Move,
+        _mv: Move,
         mv_num: u32,
-        quiets: i32,
         stage: MoveType,
         after: &Board,
         n: &Node,
         ext: Ply,
-        reduction: Ply,
-        _tt_mv: Move,
     ) -> bool {
-        if !self.lmp.enabled {
-            return false;
-        }
-        if n.is_qs() || n.is_root() || reduction == 0 {
+        if n.is_qs() || n.is_root() {
             return false;
         }
 
@@ -90,16 +96,22 @@ impl Algo {
             return false;
         }
 
+        true
+    }
+
+    pub fn can_lmp(&mut self, is_quiet: bool, quiets: i32, n: &Node) -> bool {
+        if !self.lmp.enabled || !is_quiet {
+            return false;
+        }
         if self.lmp.alpha_numeric && !n.alpha.is_numeric() {
+            return false;
+        }
+        if quiets <= (self.lmp.a + self.lmp.b * n.depth as f32 + self.lmp.c * (n.depth * n.depth) as f32) as i32{
             return false;
         }
 
         let is_pv = n.is_pv();
-
-        if quiets <= (4 + n.depth * n.depth) / 2 {
-            return false;
-        }
-        if is_pv && quiets <= 4 + n.depth * n.depth {
+        if is_pv && quiets <= ((self.lmp.a + self.lmp.b * n.depth as f32 + self.lmp.c * (n.depth * n.depth) as f32) * 2.0) as i32{
             return false;
         }
 

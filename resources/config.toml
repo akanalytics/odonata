@@ -851,12 +851,18 @@ pv_enabled = false
 [lmp]
 enabled = true
 first_move = false
-bad_captures = true
+bad_captures = false
 promos = false
 killers = false
 in_check = false
 gives_check = false
 extensions = false
+a = 4
+b = 0.32
+c = 1.56
+pa = 4.5
+pb = 2.0
+pc = 1.0
 
 [lmr]
 enabled = true
