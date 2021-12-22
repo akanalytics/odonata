@@ -140,13 +140,14 @@ impl Algo {
             return Some(n.beta);
         }
 
-        if eval < n.alpha - margin {
+        if eval <= n.alpha - margin {
             if n.depth <= 2 {
                 // drop straight into qsearch
                 self.counts.inc(n, Category::PruneRazor);
                 return Some(self.alphabeta_recursive(b, n.ply, 0, n.alpha, n.beta, &last_move).0);
             } else {
-                let score = self.alphabeta_recursive(b, n.ply, 0, n.alpha, n.alpha + Score::from_cp(1), &last_move).0;
+                // pvs search around {alpha - margin}
+                let score = self.alphabeta_recursive(b, n.ply, 0, n.alpha - margin, n.alpha - margin + Score::from_cp(1), &last_move).0;
                 if score < n.alpha - margin {
                     self.counts.inc(n, Category::PruneRazor);
                     return Some(n.alpha);

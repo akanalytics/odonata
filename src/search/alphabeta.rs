@@ -116,17 +116,17 @@ impl Algo {
         // static eval
         let eval = b.eval_some(&self.eval, Switches::ALL_SCORING);
 
-        // razoring
-        if let Some(alphabeta) = self.razor(*last_move, b, eval, &n) {
-            return (alphabeta, Category::PruneRazor);
-        }
-
         if let Some(fut_score) = self.standing_pat(b, &mut n, eval) {
             return (fut_score, Category::PruneStandingPat);
         }
 
         if let Some(beta) = self.nmp(b, &n, eval) {
             return (beta, Category::PruneNullMovePrune);
+        }
+
+        // razoring
+        if let Some(alphabeta) = self.razor(*last_move, b, eval, &n) {
+            return (alphabeta, Category::PruneRazor);
         }
 
         let mut sorted_moves = self.move_orderer.create_sorted_moves(n, b, tt_mv, *last_move);
