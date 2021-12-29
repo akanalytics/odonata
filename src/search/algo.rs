@@ -36,8 +36,8 @@ use serde::{Deserialize, Serialize};
 use crate::clock::Clock;
 
 
-use super::node::Category;
 use super::lmp::Lmp;
+use super::node::Event;
 use super::search_explainer::SearchExplainer;
 use super::search_results::SearchResultsMode;
 
@@ -50,11 +50,11 @@ pub struct Algo {
     pub clock: Clock,
     pub analyse_mode: bool, // tries to find full PV etc
 
+    pub ids: IterativeDeepening,
+    pub eval: SimpleScorer,
     pub qsearch: QSearch,
     pub nmp: NullMovePruning,
     pub futility: Futility,
-    pub ids: IterativeDeepening,
-    pub eval: SimpleScorer,
 
     pub pvs: Pvs,
     pub ext: Extensions,
@@ -395,7 +395,7 @@ impl Algo {
         let time_up = self.mte.is_time_up(ply, &self.clock);
         if time_up {
             self.stats.completed = false;
-            self.stats.set_score(-Score::INFINITY, Category::Cancelled);
+            self.stats.set_score(-Score::INFINITY, Event::Cancelled);
             self.task_control.cancel();
         }
         time_up

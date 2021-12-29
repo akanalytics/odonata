@@ -3,7 +3,7 @@ use std::fmt;
 use tabwriter::TabWriter;
 
 use crate::infra::component::Component;
-use crate::search::node::{Category, Node};
+use crate::search::node::{Event, Node};
 use crate::types::{Ply, MAX_PLY};
 use strum::IntoEnumIterator;
 
@@ -18,7 +18,7 @@ pub struct Counts {
     iter: Ply,
 
     #[serde(skip)]
-    counts: Box<[[[u64; Category::len()]; MAX_PLY as usize]; MAX_PLY as usize]>,
+    counts: Box<[[[u64; Event::len()]; MAX_PLY as usize]; MAX_PLY as usize]>,
 }
 
 impl Default for Counts {
@@ -26,7 +26,7 @@ impl Default for Counts {
         Self {
             enabled: true,
             iter: 0,
-            counts: Box::new([[[0; Category::len()]; MAX_PLY as usize]; MAX_PLY as usize]),
+            counts: Box::new([[[0; Event::len()]; MAX_PLY as usize]; MAX_PLY as usize]),
         }
     }
 }
@@ -74,11 +74,11 @@ impl fmt::Display for Counts {
             writeln!(f, "{}", self.enabled)?;
             writeln!(f, "{}", self.iter)?;
             let iter = self.iter;
-            for cn in Category::iter() {
+            for cn in Event::iter() {
                 for y in -1..self.len_ply(iter) as i32 {
                     if y < 0 {
                         write!(f, "{}\t", cn.name())?;
-                    } else if cn == Category::Unknown {
+                    } else if cn == Event::Unknown {
                         write!(f, "{}\t", y)?;
                     } else {
                         write!(f, "{}\t", self.count(self.iter, y, cn))?;
@@ -109,7 +109,7 @@ impl Component for Counts {
 }
 
 impl Counts {
-    pub fn inc(&mut self, n: &Node, cn: Category) {
+    pub fn inc(&mut self, n: &Node, cn: Event) {
         self.inc_by_ply(n.ply, cn);
     }
 
@@ -126,8 +126,8 @@ impl Counts {
             + 1
     }
 
-    pub fn count(&self, i: Ply, y: Ply, cn: Category) -> u64 {
-        use crate::search::node::Category::*;
+    pub fn count(&self, i: Ply, y: Ply, cn: Event) -> u64 {
+        use crate::search::node::Event::*;
         match cn {
             DerivedLeaf => {
                 return self.count(i, y, NodeLeafDraw)
@@ -178,7 +178,7 @@ impl Counts {
 
     #[inline]
     #[allow(unused_variables)]
-    pub fn inc_by_ply(&mut self, y: Ply, cn: Category) {
+    pub fn inc_by_ply(&mut self, y: Ply, cn: Event) {
         #[cfg(not(feature = "remove_metrics"))]
         {
             self.counts[self.iter as usize][y as usize][cn as usize] += 1;
@@ -194,7 +194,7 @@ mod tests {
     fn test_counts() {
         let mut counters = Counts::default();
 
-        counters.inc_by_ply(4, Category::PruneRazor);
+        counters.inc_by_ply(4, Event::PruneRazor);
         println!("{:#?}", counters);
         println!("{}", counters);
         // Count::Razor.inc(4);

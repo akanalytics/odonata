@@ -1,6 +1,6 @@
 use crate::infra::component::Component;
 use crate::eval::weight::Weight;
-use crate::material::Material;
+use crate::domain::material::Material;
 use crate::mv::Move;
 use crate::types::{Color, Piece, ScoreWdl};
 use static_init::dynamic;

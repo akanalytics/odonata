@@ -18,7 +18,7 @@ use std::rc::Rc;
 pub struct Game {
     starting_pos: Position,
     board: Board,
-    tags: Tags,
+    // tags: Tags,
     moves: Variation,
     annotations: Vec<Tags>,
     event: String,

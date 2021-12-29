@@ -9,7 +9,7 @@ use std::cmp::{max, min};
 use std::fmt;
 use serde::{Deserialize, Serialize};
 
-use super::node::Category;
+use super::node::Event;
 
 
 
@@ -55,7 +55,7 @@ impl Algo {
         &mut self,
         b: &mut Board,
         n: &mut Node,
-    ) -> (Score, Category) {
+    ) -> (Score, Event) {
 
         if n.depth <= self.aspiration.min_depth || !self.aspiration.enabled {
 			return self.run_alphabeta(b, n);
@@ -84,13 +84,13 @@ impl Algo {
                 }
 
                 if new_score <= alpha1 && alpha1 > n.alpha { 
-                    self.counts.inc(n, Category::AspirationFailLow);
+                    self.counts.inc(n, Event::AspirationFailLow);
                     alpha1 = new_score - delta;
                     // beta1 = new_score; // beta1; // score;
                 }
                 else if new_score >= beta1 && beta1 < n.beta { 
                     // alpha1 = new_score; // alpha1; //score;
-                    self.counts.inc(n, Category::AspirationFailHigh);
+                    self.counts.inc(n, Event::AspirationFailHigh);
                     beta1 = new_score + delta;
                 }
                 else {
@@ -99,10 +99,10 @@ impl Algo {
                 } 
             };
             match aspiration_count {
-                1 => self.counts.inc(n, Category::Aspiration1),
-                2 => self.counts.inc(n, Category::Aspiration2),
-                3 => self.counts.inc(n, Category::Aspiration3),
-                _ => self.counts.inc(n, Category::AspirationN),
+                1 => self.counts.inc(n, Event::Aspiration1),
+                2 => self.counts.inc(n, Event::Aspiration2),
+                3 => self.counts.inc(n, Event::Aspiration3),
+                _ => self.counts.inc(n, Event::AspirationN),
             }
             return ret;
         }

@@ -8,7 +8,7 @@ use crate::eval::score::Score;
 use crate::eval::switches::Switches;
 use crate::eval::weight::Weight;
 use crate::globals::constants::{FILE_D, FILE_E};
-use crate::material::Material;
+use crate::domain::material::Material;
 use crate::types::Color;
 use crate::types::Piece;
 use crate::utils::Formatting;

@@ -558,23 +558,24 @@ impl Uci {
         ops
     }
 
-    fn uci_option_button(&mut self, name: &str) {
+    fn uci_option_button(&mut self, name: &str) -> Result<()> {
         let name = name.trim();
         info!("Actioning (setoption) {}", name);
         if name == "Explain_Eval" {
-            let _res = self.ext_uci_explain_eval();
+            self.ext_uci_explain_eval()?;
         } else if name == "Explain_Last_Search" {
-            let _res = self.uci_explain_last_search();
+            self.uci_explain_last_search()?;
         } else if name == "Explain_Quiesce" {
-            let _res = self.ext_uci_explain_eval();
+            self.ext_uci_explain_eval()?;
         } else if name == "Show_Config" {
-            let _res = self.ext_uci_show_config();
+            self.ext_uci_show_config()?;
         } else if name == "Clear Hash" {
             Self::print("Clearing hash");
-            let _res = self.uci_newgame();
+            self.uci_newgame()?;
         } else {
             warn!("Unknown action '{}'", name);
         }
+        Ok(())
     }
 
     fn uci_option_name_value(&mut self, name: &str, value: &str) -> Result<()> {
@@ -601,7 +602,7 @@ impl Uci {
         } else if name == "Ponder" {
             // pondering determined by "go ponder", so no variable to track
         } else if name == "Config_File" {
-            if !value.is_empty() {
+            if !value.is_empty() && value != "config.toml" {
                 engine.config_filename = value.to_string();                        
                 use figment::providers::{Format, Toml};
                 use figment::{Figment};
@@ -657,7 +658,7 @@ impl Uci {
             self.engine.lock().unwrap().set_position(Position::from_board(self.board.clone()));
             self.engine.lock().unwrap().algo.set_callback(|sp| Self::uci_info(sp));
         } else {
-            self.uci_option_button(s);
+            self.uci_option_button(s)?;
         };
         Ok(())
     }
@@ -677,6 +678,7 @@ impl Uci {
     }
     
     fn ext_uci_show_config(&mut self) -> Result<()> {
+        Self::print(&format!("# show configuration:\n"));
         self.engine.lock().unwrap().search_stop();
         let engine = self.engine.lock().unwrap();
         let text = toml::to_string(&*engine)?;
@@ -708,7 +710,7 @@ impl Uci {
         self.engine.lock().unwrap().search_stop();
         Self::print("search");
         Self::print(&format!("{}", self.board));
-        Self::print(&format!("{}", self.engine.lock().unwrap().algo));
+        Self::print(&format!("{}", self.engine.lock().unwrap()));
         Ok(())
     }
 

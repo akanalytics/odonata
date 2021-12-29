@@ -10,7 +10,7 @@ use crate::search::node::Node;
 use crate::types::{Ply, MAX_PLY};
 use crate::eval::switches::Switches;
 
-use super::node::Category;
+use super::node::Event;
 
 
 pub struct AlphaBeta;
@@ -24,7 +24,7 @@ impl Algo {
     //     depth <= 0
     // }
 
-    pub fn run_alphabeta(&mut self, board: &mut Board, node: &mut Node) -> (Score, Category) {
+    pub fn run_alphabeta(&mut self, board: &mut Board, node: &mut Node) -> (Score, Event) {
         let depth = node.depth;
         self.max_depth = depth;
         self.stats.depth = depth;
@@ -63,13 +63,13 @@ impl Algo {
         alpha: Score,
         beta: Score,
         last_move: &Move,
-    ) -> (Score, Category) {
+    ) -> (Score, Event) {
         self.clear_move(ply);
         self.report_progress();
         self.clock.incr_node_count();
 
         if self.time_up_or_cancelled(ply, false) {
-            return (-Score::INFINITY, Category::Cancelled);
+            return (-Score::INFINITY, Event::Cancelled);
         }
 
         let mut n = Node {
@@ -80,16 +80,16 @@ impl Algo {
         };
 
         if n.is_zw() {
-            self.counts.inc(&n, Category::NodeTypeZw);
+            self.counts.inc(&n, Event::NodeTypeZw);
             self.stats.inc_zw_nodes(ply);
         }
         if n.is_qs() {
-            self.counts.inc(&n, Category::Quiesce);
+            self.counts.inc(&n, Event::Quiesce);
         }
 
 
         let mut score = -Score::INFINITY;
-        let mut category = Category::Unknown;
+        let mut category = Event::Unknown;
         let mut bm = Move::NULL_MOVE;
         let mut nt = NodeType::UpperAll;
 
@@ -97,18 +97,18 @@ impl Algo {
         if ply > 0 && b.draw_outcome().is_some() {
         // if board.draw_outcome().is_some() {
             self.stats.inc_leaf_nodes(&n);
-            self.counts.inc(&n, Category::NodeLeafDraw);
-            return (b.eval_draw(&mut self.eval, &n), Category::NodeLeafDraw); // will return a draw score
+            self.counts.inc(&n, Event::NodeLeafDraw);
+            return (b.eval_draw(&mut self.eval, &n), Event::NodeLeafDraw); // will return a draw score
         }
 
         let mut tt_mv = Move::NULL_MOVE;
         match self.lookup(b, &mut n) {
-            (Some(ab), None) => return (ab, Category::HashHit),  // alpha, beta or a terminal node
+            (Some(ab), None) => return (ab, Event::HashHit),  // alpha, beta or a terminal node
             (None, Some(bm)) => tt_mv = bm,
             (Some(s), Some(mv)) => { tt_mv = mv; score = s; bm = mv},
             _ => {},
         }                
-        self.counts.inc(&n, Category::NodeInterior);
+        self.counts.inc(&n, Event::NodeInterior);
         self.stats.inc_interior_nodes(&n);
 
 
@@ -116,17 +116,17 @@ impl Algo {
         // static eval
         let eval = b.eval_some(&self.eval, Switches::ALL_SCORING);
 
+        // razoring
+        if let Some(alphabeta) = self.razor(*last_move, b, eval, &n) {
+            return (alphabeta, Event::PruneRazor);
+        }
+
         if let Some(fut_score) = self.standing_pat(b, &mut n, eval) {
-            return (fut_score, Category::PruneStandingPat);
+            return (fut_score, Event::PruneStandingPat);
         }
 
         if let Some(beta) = self.nmp(b, &n, eval) {
-            return (beta, Category::PruneNullMovePrune);
-        }
-
-        // razoring
-        if let Some(alphabeta) = self.razor(*last_move, b, eval, &n) {
-            return (alphabeta, Category::PruneRazor);
+            return (beta, Event::PruneNullMovePrune);
         }
 
         let mut sorted_moves = self.move_orderer.create_sorted_moves(n, b, tt_mv, *last_move);
@@ -221,10 +221,10 @@ impl Algo {
                 self.stats.inc_pvs_research(ply);
                 let res = self.alphabeta_recursive(&mut child_board, ply + 1, depth + ext - 1, -n.beta, -n.alpha, &mv);
                 if lmr > 0 && self.lmr.re_search {
-                    self.counts.inc(&n, Category::LmrReSearch);
+                    self.counts.inc(&n, Event::LmrReSearch);
                 }
                 if pvs {
-                    self.counts.inc(&n, Category::PvsReSearch);
+                    self.counts.inc(&n, Event::PvsReSearch);
                 } 
                 child_score = -res.0;
                 cat = res.1;
@@ -234,7 +234,7 @@ impl Algo {
             self.explainer.start(&self.current_variation);
             self.repetition.pop();
             if ply > 1 && self.task_control.is_cancelled() {
-                return (-Score::INFINITY, Category::Cancelled);
+                return (-Score::INFINITY, Event::Cancelled);
             }
 
             // println!("move {} score {} alpha {} beta {}", mv, score, alpha, beta);
@@ -266,16 +266,16 @@ impl Algo {
         }
 
         if count == 0 {
-            self.counts.inc(&n, Category::NodeLeafStalemate);
+            self.counts.inc(&n, Event::NodeLeafStalemate);
             self.stats.inc_leaf_nodes(&n);
             if n.is_qs() {
                 return (b.eval(
                     &mut self.eval,
                     &n,
-                ), Category::Quiesce);
+                ), Event::Quiesce);
             }
             else {
-                self.counts.inc(&n, Category::NodeLeafStalemate);
+                self.counts.inc(&n, Event::NodeLeafStalemate);
                 return 
                 // FIXME VER:0.4.14
                 // (board.eval_draw(&mut self.eval, &n),
@@ -283,19 +283,19 @@ impl Algo {
                 &mut self.eval,
                 &n,
                 ), 
-                Category::NodeLeafStalemate);
+                Event::NodeLeafStalemate);
             }
         } else if nt == NodeType::UpperAll {
             self.stats.inc_node_all(ply);
-            self.counts.inc(&n, Category::NodeInteriorAll);
+            self.counts.inc(&n, Event::NodeInteriorAll);
             // nothing
         } else if nt == NodeType::LowerCut {
             debug_assert!(!bm.is_null());
-            self.counts.inc(&n, Category::NodeInteriorCut);
+            self.counts.inc(&n, Event::NodeInteriorCut);
 
         } else if nt == NodeType::ExactPv {
             self.stats.inc_node_pv(ply);
-            self.counts.inc(&n, Category::NodeInteriorPv);
+            self.counts.inc(&n, Event::NodeInteriorPv);
             // self.record_new_pv(ply, &bm, false);
             debug_assert!(!bm.is_null())
         } else {

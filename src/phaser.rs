@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::infra::component::Component;
-use crate::material::Material;
+use crate::domain::material::Material;
 use crate::Piece;
 
 use std::cmp;

@@ -7,7 +7,6 @@ use crate::comms::bench::Bench;
 use crate::comms::uci::Uci;
 use clap::{App, Arg};
 // use crate::logger;
-use crate::infra::parsed_config::ParsedConfig;
 use crate::infra::version::Version;
 use crate::search::timecontrol::TimeControl;
 

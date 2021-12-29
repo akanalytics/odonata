@@ -5,7 +5,7 @@ use crate::infra::component::Component;
 use crate::mv::Move;
 use crate::search::node::Node;
 use crate::types::{MoveType, Ply};
-use crate::search::node::{Category};
+use crate::search::node::{Event};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -189,7 +189,7 @@ impl Algo {
         }
 
         self.stats.inc_red_lmr(n.ply);
-        self.counts.inc(n, Category::Lmr);
+        self.counts.inc(n, Event::Lmr);
         reduce
     }
 }

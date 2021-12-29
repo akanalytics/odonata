@@ -316,7 +316,7 @@ impl fmt::Debug for TranspositionTable2 {
 impl fmt::Display for TranspositionTable2 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "{}", toml::to_string_pretty(self).unwrap())?;
-        // writeln!(f, "table            : {}", self.table.len())?;
+        writeln!(f, "table capacity   : {}", self.table.capacity())?;
         // writeln!(f, "entry: pv        : {}", self.count_of(NodeType::ExactPv))?;
         // writeln!(f, "entry: cut       : {}", self.count_of(NodeType::LowerCut))?;
         // writeln!(f, "entry: all       : {}", self.count_of(NodeType::UpperAll))?;
@@ -360,24 +360,31 @@ impl fmt::Display for TranspositionTable2 {
 impl Component for TranspositionTable2 {
 
     fn new_game(&mut self) {
-        if self.requires_resize() {
-            let capacity = SharedTable::convert_mb_to_capacity(self.mb);
-            info!("tt resized so capacity is now {} with {} buckets", capacity, self.buckets);
-            let mut table = SharedTable::default();
-            table.resize(capacity, self.buckets, self.aligned);
-            self.table = Arc::new(table);
-        }
+        self.resize_if_required();
         self.current_age = 10;
         self.table.clear()
     }
 
     fn new_position(&mut self) {
+        self.resize_if_required();
         self.next_generation();
     }
 
 }
 
 impl TranspositionTable2 {
+
+
+    fn resize_if_required(&mut self) {
+        if self.requires_resize() {
+            let capacity = SharedTable::convert_mb_to_capacity(self.mb);
+            info!("tt resized so capacity is now {} with {} buckets", capacity, self.buckets);
+            let mut table = SharedTable::default();
+            table.resize(capacity, self.buckets, self.aligned);
+            self.table = Arc::new(table);
+            self.current_age = 10;
+        }
+    }
 
     pub fn rewrite_pv(&self, b: &Board) {
         if self.rewrite_pv {
@@ -451,8 +458,15 @@ impl TranspositionTable2 {
         self.table.capacity()
     }
 
+    #[inline]
+    fn age_of(b: &Bucket) -> u8 {
+        (b.data() & 255) as u8
+    }
+
+
     pub fn hashfull_per_mille(&self) -> u32 {
-        (self.table.utilization() as u128 * 1000 / (1 + self.table.capacity()) as u128) as u32
+        let count = self.table.iter().take(200).filter(|&b| Self::age_of(b) == self.current_age).count();
+        count as u32 * 1000 / 200
     }
 
     #[inline]
@@ -747,9 +761,9 @@ mod tests {
         let moves = tt1.extract_pv_and_score(&board).0;
         info!("After extract");
         assert_eq!(moves.uci(), "");
-        assert_eq!(tt1.table.utilization(), 0);
+        assert_eq!(tt1.table.percent_utilized(), 0);
         manipulate(&mut tt1);
-        assert_eq!(tt1.table.utilization(), 2);
+        assert_eq!(tt1.table.percent_utilized(), 2);
         tt1.new_game();
         assert!(tt1.probe_by_hash(123).is_none());
 
@@ -763,9 +777,9 @@ mod tests {
             println!("{}", tt2);
         }
         println!("Dropped tt2 ...{}", Arc::strong_count(&tt1.table));
-        assert_eq!(tt1.table.utilization(), 0);
+        assert_eq!(tt1.table.percent_utilized(), 0);
         manipulate(&mut tt1);
-        assert_eq!(tt1.table.utilization(), 2);
+        assert_eq!(tt1.table.percent_utilized(), 2);
         tt1.new_game();
         assert!(tt1.probe_by_hash(123).is_none());
 

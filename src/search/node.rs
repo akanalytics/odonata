@@ -9,7 +9,7 @@ use strum::{IntoEnumIterator, EnumCount};
 
 
 #[derive(Copy, Clone, Debug, PartialEq,Eq, Serialize, Display, Deserialize, EnumCount, EnumIter)]
-pub enum Category {
+pub enum Event {
     Unknown,
     Cancelled,
     Quiesce,
@@ -67,10 +67,10 @@ pub enum Category {
 
 
 
-impl Category {
+impl Event {
     #[inline]
     pub const fn len() -> usize {
-        Category::COUNT as usize
+        Event::COUNT as usize
     }
 
     #[inline]
@@ -81,7 +81,7 @@ impl Category {
 
     #[inline]
     pub fn from(i: usize) -> Self {
-        Category::iter().nth(i).unwrap()
+        Event::iter().nth(i).unwrap()
     }
 
     #[inline]

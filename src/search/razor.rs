@@ -3,7 +3,7 @@ use crate::board::Board;
 use crate::infra::component::Component;
 use crate::eval::score::Score;
 use crate::mv::Move;
-use crate::search::node::{Node, Category};
+use crate::search::node::{Node, Event};
 use crate::types::{MoveType, MoveTypes, Ply};
 use std::fmt;
 use serde::{Deserialize, Serialize};
@@ -136,20 +136,20 @@ impl Algo {
         });
 
         if self.razor.beta_enabled && eval > n.beta + margin {
-            self.counts.inc(n, Category::PruneRazor);
+            self.counts.inc(n, Event::PruneRazor);
             return Some(n.beta);
         }
 
         if eval <= n.alpha - margin {
             if n.depth <= 2 {
                 // drop straight into qsearch
-                self.counts.inc(n, Category::PruneRazor);
+                self.counts.inc(n, Event::PruneRazor);
                 return Some(self.alphabeta_recursive(b, n.ply, 0, n.alpha, n.beta, &last_move).0);
             } else {
                 // pvs search around {alpha - margin}
                 let score = self.alphabeta_recursive(b, n.ply, 0, n.alpha - margin, n.alpha - margin + Score::from_cp(1), &last_move).0;
                 if score < n.alpha - margin {
-                    self.counts.inc(n, Category::PruneRazor);
+                    self.counts.inc(n, Event::PruneRazor);
                     return Some(n.alpha);
                 }
             }

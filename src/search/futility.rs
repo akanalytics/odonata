@@ -2,7 +2,7 @@
 use crate::{Algo, Bitboard};
 use crate::board::Board;
 use crate::eval::weight::Weight;
-use crate::search::node::{Node, Category};
+use crate::search::node::{Node, Event};
 use crate::mv::Move;
 use crate::eval::score::Score;
 use crate::eval::switches::Switches;
@@ -112,7 +112,7 @@ impl Algo {
         }
 
         if standing_pat >= n.beta && !b.is_in_check(b.color_us()) {
-            self.counts.inc(n, Category::PruneStandingPat);
+            self.counts.inc(n, Event::PruneStandingPat);
             return Some(standing_pat);
         }
 
@@ -206,10 +206,10 @@ impl Algo {
         let est_score = eval + margin + gain;
         if est_score <= n.alpha {
             let category = match n.depth {
-                d if d <= 0 => Category::PruneFutilityD0,
-                1 => Category::PruneFutilityD1,
-                2 => Category::PruneFutilityD2,
-                _ => Category::PruneFutilityD3,
+                d if d <= 0 => Event::PruneFutilityD0,
+                1 => Event::PruneFutilityD1,
+                2 => Event::PruneFutilityD2,
+                _ => Event::PruneFutilityD3,
             };
             self.counts.inc(n, category);
             return Some(est_score);
