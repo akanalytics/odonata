@@ -68,9 +68,9 @@ impl Algo {
             if entry.depth >= n.depth && !(self.repetition.avoid_tt_on_repeats && b.repetition_count().total > 0) {
             //if entry.draft >= draft  && (ply >= 1 || self.tt.allow_tt_at_root) && !(b.repetition_count().total > 0 && self.repetition.avoid_tt_on_repeats)
 
-                if n.ply == 0 && self.restrictions.is_none() {
-                    return (Some(entry.score), Some(entry.bm))
-                }
+                // if n.ply == 0 && self.restrictions.is_none() {
+                //     return (Some(entry.score), Some(entry.bm))
+                // }
 
                 // if entry.draft >= draft && !(b.repetition_count().total > 1 && self.repetition.avoid_tt_on_repeats)
                 match entry.nt {
@@ -144,7 +144,7 @@ impl Algo {
     }
 
     #[inline]
-    pub fn wdl_detection(&mut self, b: &mut Board, n: &mut Node) -> (Option<Score>, Option<Move>) {
+    pub fn wdl_detection(&mut self, b: &Board, n: &mut Node) -> (Option<Score>, Option<Move>) {
 
         if !self.recognizer.enabled  || n.depth < self.recognizer.min_depth  || n.ply == 0 {
             return (None, None)
@@ -164,7 +164,7 @@ impl Algo {
         // }
 
         if let Some(c) = endgame.cannot_win() {
-            self.counts.inc(n, Event::RecogCannotWin);
+            self.counts.inc(n, Event::RecogMaybeWin);
             let draw = b.eval_draw(&mut self.eval, &n); // will return a draw score
             if b.color_us() == c {
                 if  draw <= n.alpha {
@@ -181,17 +181,17 @@ impl Algo {
         }
 
         // its a helpmate or draw like KNkn, so search just a tiny depth then let eval do its job
-        if endgame.is_draw() {
+        if endgame.is_likely_draw() {
             self.counts.inc(n, Event::RecogHelpmateOrDraw);
-            if n.depth > self.recognizer.terminal_depth {
+            if n.depth > self.recognizer.terminal_depth && !n.is_qs() {
                 n.depth = self.recognizer.terminal_depth;
             }
         }
 
 
         if let Some(_color) = endgame.try_winner() {
-            self.counts.inc(n, Event::RecogMaybeWin);
-            if n.depth > self.recognizer.terminal_depth {
+            // already counted as cannot wins
+            if n.depth > self.recognizer.terminal_depth && !n.is_qs() {
                 n.depth = self.recognizer.terminal_depth;
             }
         }
@@ -202,13 +202,25 @@ impl Algo {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Position, search::{engine::Engine, timecontrol::TimeControl}};
+    use crate::{Position, eval::endgame::EndGame, search::{engine::Engine, node::Node, timecontrol::TimeControl}};
     use test_env_log::test;
 
     #[test]
-    fn test_recognizer() {
+    fn test_recog_simple() {
+        let mut engine = Engine::new();
+        let pos = Position::parse_epd("k7/1p6/3N4/8/8/8/1K6/B6N w - - 0 1").unwrap();
+        let mut n = Node::root(4); 
+        n.ply = 1;
+        let eg = EndGame::from_board(pos.board());
+        let res = engine.algo.wdl_detection(pos.board(), &mut n);
+        println!("{:?}\nEndGame: {:?}\n{}", res, eg, engine.algo.counts);
+    }
+
+    #[test]
+    fn test_recog_pos() {
+
         // let pos = Position::parse_epd("8/NN6/8/8/8/2K2nk1/4P3/8 w - - 0 1; id 'RECOG.01'; am e2f3; bm Nd6;c0 'white shouldnt take knight as recapture of pawn makes it KNN v k'").unwrap();
-        let pos = Position::parse_epd("k7/1p6/3N4/8/8/8/6N1/K6B w - - 5 1; id 'RECOG.02'; bm Nxb7; c0 'white should take pawn to leave KBN v k'").unwrap();
+        let pos = Position::parse_epd("k7/1p6/3N4/8/8/8/1K6/B6N w - - 0 1; id 'RECOG.02'; bm Nxb7; c0 'white should take pawn to leave KBN v k'").unwrap();
         // let pos = Position::parse_epd("k7/8/K1p5/8/3N4/8/6N1/7B w - - 5 1; id 'RECOG.03'; am Nxc6; bm Kb6; c0 'white shouldnt take pawn c4 as triggers stalemate'").unwrap();
         // let pos = Position::parse_epd("k6K/8/2pN4/8/3N4/8/8/8 w - - 5 1;  id 'RECOG.04'; bm Nxc6; c0 'white should force stalemate'").unwrap();
         let mut engine = Engine::new();

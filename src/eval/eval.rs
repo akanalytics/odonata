@@ -213,6 +213,8 @@ pub struct SimpleScorer {
     pub contempt_penalty: Weight,
     pub tempo_bonus: Weight,
     pub win_bonus: Weight,
+    pub win_metric: Weight,
+
     // pub attacks: PieceArray<PieceArray<Weight>>, 
     // pub defends: PieceArray<PieceArray<Weight>> , 
 
@@ -247,6 +249,7 @@ impl Default for SimpleScorer {
             min_depth_mob: 1,
             contempt_penalty: Weight::from_i32(-30, 0), // typically -ve
             win_bonus: Weight::from_i32(250, 250), 
+            win_metric: Weight::from_i32(1, 1), 
 
             center_attacks: Weight::from_i32(1, 0),
             undefended_sq: Weight::from_i32(4, 3),
@@ -484,12 +487,29 @@ impl SimpleScorer {
                 self.rook_pair,
             );
 
+            let winner = m.endgame.try_winner();
             scorer.material(
                 "win bonus",
-                (m.winner == Some(Color::White)) as i32,
-                (m.winner == Some(Color::Black)) as i32,
+                (winner == Some(Color::White)) as i32,
+                (winner == Some(Color::Black)) as i32,
                 self.win_bonus,
             );
+
+            if winner.is_some() {
+                scorer.material(
+                    "win metric1",
+                    w.endgame_metric1 as i32,
+                    b.endgame_metric1 as i32,
+                    self.win_metric,
+                );
+                scorer.material(
+                    "win metric2",
+                    w.endgame_metric2 as i32,
+                    b.endgame_metric2 as i32,
+                    self.win_metric,
+                );
+                return scorer.interpolate("interpolate");
+            }
         }
 
         // position

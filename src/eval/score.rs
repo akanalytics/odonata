@@ -79,6 +79,11 @@ impl Score {
     }
 
     #[inline]
+    pub const fn is_numeric_or_mate(&self) -> bool {
+        self.cp > -Self::INF && self.cp < Self::INF
+    }
+
+    #[inline]
     pub fn clamp_score(&self) -> Score {
         Self::from_cp(self.cp.clamp(-20000, 20000) as i32) 
     }

@@ -105,12 +105,13 @@ impl Algo {
                 if outcome.is_draw() {
                     return Some(self.eval.w_eval_draw(b, n));
                 }
+                // depth 0: we have considered a full width move search to get here so a winning 
+                // result is valid. Beyond depth 0 it is not.
                 if let Some(c) = outcome.winning_color() {
                     return Some(c.chooser_wb(Score::white_win(n.ply), Score::white_loss(n.ply)));
                 }
             }
         }
-
         if standing_pat >= n.beta && !b.is_in_check(b.color_us()) {
             self.counts.inc(n, Event::PruneStandingPat);
             return Some(standing_pat);

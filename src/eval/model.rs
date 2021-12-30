@@ -2,6 +2,7 @@ use std::fmt;
 
 use crate::bitboard::castling::CastlingRights;
 use crate::bitboard::precalc::BitboardDefault;
+use crate::bitboard::square::Square;
 use crate::board::multiboard::Multiboard;
 use crate::board::Board;
 use crate::eval::score::Score;
@@ -12,7 +13,7 @@ use crate::domain::material::Material;
 use crate::types::Color;
 use crate::types::Piece;
 use crate::utils::Formatting;
-use crate::Bitboard;
+use crate::{Bitboard, PreCalc};
 // use arrayvec::ArrayVec;
 
 use super::endgame::EndGame;
@@ -23,7 +24,7 @@ pub struct Model {
     pub switches: Switches,
     pub turn: Color,
     pub mat: Material,
-    pub winner: Option<Color>,
+    pub endgame: EndGame,
     pub multiboard: Multiboard,
 
     pub white: ModelSide,
@@ -32,6 +33,9 @@ pub struct Model {
 
 #[derive(Clone, Default, Debug)]
 pub struct ModelSide {
+    pub endgame_metric1: i32,
+    pub endgame_metric2: i32,
+
     // bishops
     pub has_bishop_pair: bool,
     pub fianchetti: i32,
@@ -420,14 +424,15 @@ impl Model {
 
     pub fn from_board(b: &Board, switches: Switches) -> Self {
         let material = b.material();
+        let endgame = EndGame::from_board(b);
         Self {
             switches,
             turn: b.color_us(),
             multiboard: b.multiboard().clone(),
             mat: material,
-            white: ModelSide::from_board(b, Color::White, &material, switches),
-            black: ModelSide::from_board(b, Color::Black, &material, switches),
-            winner: EndGame::from_board(b).try_winner(), 
+            white: ModelSide::from_board(b, Color::White, &material, endgame, switches),
+            black: ModelSide::from_board(b, Color::Black, &material, endgame, switches),
+            endgame, 
         }
     }
 }
@@ -439,10 +444,13 @@ impl ModelSide {
     }
 
     #[inline]
-    pub fn from_board(b: &Board, c: Color, mat: &Material, sw: Switches) -> Self {
+    pub fn from_board(b: &Board, c: Color, mat: &Material, eg: EndGame, sw: Switches) -> Self {
         let mut m = Self::default();
         if sw.contains(Switches::MATERIAL) {
-            m.init_material(b, c, mat);
+            m.init_material(b, c, mat, eg);
+        }
+        if eg != EndGame::Unknown {
+            return m;
         }
         if sw.contains(Switches::POSITION) {
             m.init_position(b, c, mat);
@@ -461,7 +469,7 @@ impl ModelSide {
     }
 
     #[inline]
-    fn init_material(&mut self, _b: &Board, c: Color, m: &Material) {
+    fn init_material(&mut self, b: &Board, c: Color, m: &Material, eg: EndGame) {
         self.has_bishop_pair = m.counts(c, Piece::Bishop) >= 2;
         self.has_rook_pair = m.counts(c, Piece::Rook) >= 2;
         // let has_pawns = m.counts(c, Piece::Pawn) >= 1;
@@ -477,7 +485,70 @@ impl ModelSide {
         // if net > 0 & has_pawns {
         //     lead = net 
         // }
+        if eg.try_winner() == Some(c.opposite()) {
+            // c = losing colour - the winning side doesnt get a score (just the negative of the loser)
+            use EndGame::*;
+            match eg {
+                BishopKnightVsKing(_) => {
+                    self.endgame_metric1 = 4 * Self::king_distance_to_bishops_corner(b, c);
+                    self.endgame_metric2 = 1 * Self::king_distance(b);
+                },
+
+                TwoBishopsOppositeColorSquares(_) | KingMajorsVsKing(_) => {
+                    self.endgame_metric1 = 2 * Self::king_distance_to_side(b, c);
+                    self.endgame_metric2 = 1 * Self::king_distance(b);
+                }
+                _ => {},
+            }
+        }
     }
+
+    fn king_distance(b: &Board) -> i32 {
+        let wk = b.kings() & b.white();
+        let bk = b.kings() & b.black();
+        if wk.popcount() == 1 && bk.popcount() == 1 {
+            PreCalc::default().chebyshev_distance(wk.square(), bk.square()) as i32
+        } else {
+            0
+        }
+    }
+
+    fn king_distance_to_side(b: &Board, c: Color) -> i32 {
+        let k = b.kings() & b.color(c);
+        if k.popcount() == 1 {
+            let r = k.square().rank_index() as i32;
+            let f = k.square().file_index() as i32;
+            let m1 = std::cmp::min(r,f);
+            let m2 = std::cmp::min(7-r,7-f);
+            std::cmp::min(m1, m2)
+        } else {
+            0
+        }
+    }
+
+    fn king_distance_to_bishops_corner(b: &Board, c: Color) -> i32 {
+        let k = b.kings() & b.color(c);
+        let bis = b.bishops();
+        let corner1;
+        let corner2;
+        if bis.intersects(Bitboard::WHITE_SQUARES) {
+            corner1 = Square::H1;
+            corner2 = Square::A8;
+        } else {
+            corner1 = Square::A1;
+            corner2 = Square::H8;
+        };
+
+        if k.popcount() == 1 {
+            let ksq = k.square();
+            let d1 = PreCalc::default().chebyshev_distance(corner1, ksq);
+            let d2 = PreCalc::default().chebyshev_distance(corner2, ksq);
+            std::cmp::min(d1, d2) as i32
+        } else {
+            0
+        }
+    }
+
 
     #[inline]
     fn init_position(&mut self, b: &Board, c: Color, m: &Material) {

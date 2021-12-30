@@ -141,9 +141,8 @@ impl Counts {
             }
             DerivedRecog => {
                 return self.count(i, y, RecogImmediateDraw)
-                    + self.count(i, y, RecogCannotWin)
-                    + self.count(i, y, RecogHelpmateOrDraw)
                     + self.count(i, y, RecogMaybeWin)
+                    + self.count(i, y, RecogHelpmateOrDraw)
             }
             PercentPvsReSearch => {
                 return (self.count(i, y, PvsReSearch) as f32

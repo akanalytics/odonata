@@ -19,9 +19,8 @@ pub enum Event {
     PercentHashHit,
 
     RecogImmediateDraw,
-    RecogCannotWin,
-    RecogHelpmateOrDraw,
     RecogMaybeWin,
+    RecogHelpmateOrDraw,
     DerivedRecog,
 
     PruneRazor,

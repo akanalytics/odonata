@@ -22,16 +22,23 @@ use crate::types::Color;
     BishopKnightVsKing(Color), // win
     TwoBishopsOppositeColorSquares(Color),  // win
     TwoBishopsSameColorSquares,  // draw but not automatic 
+    KingMajorsVsKing(Color), // win
 }
 
+impl Default for EndGame {
+    fn default() -> Self { EndGame::Unknown }
+}
+
+
 impl EndGame {
-    pub fn is_draw(&self) -> bool {
+    pub fn is_likely_draw(&self) -> bool {
         use EndGame::*;
         match self {
             Unknown => false,
-            BishopKnightVsKing(_) => false,
-            TwoBishopsOppositeColorSquares(_) => false,
-            _ => true,
+            KingMinorVsKingMinor => true,
+            TwoKnightsVsKing => true,  
+            TwoBishopsSameColorSquares => true,
+            _ => false,
         }
     }
 
@@ -40,6 +47,7 @@ impl EndGame {
         match self {
             // c has pawns so opponent cant win 
             KingMinorVsKingPawns(c) => Some(c.opposite()),  
+            KingMajorsVsKing(c) => Some(c.opposite()),  
             _ => None,
         }
     }
@@ -55,16 +63,27 @@ impl EndGame {
         }
     }
 
-    /// immediately declared draw
+    /// should be a win unless piece can be captures immediately
     pub fn try_winner(&self) -> Option<Color> {
         use EndGame::*;
         match self {
             BishopKnightVsKing(c) => Some(*c), // win
             TwoBishopsOppositeColorSquares(c) => Some(*c),  // win
+            KingMajorsVsKing(c) => Some(*c),  // win
             _ => None,
         }
     }
     pub fn from_board(b: &Board) -> Self {
+
+        if b.pawns().is_empty() && (b.rooks().any() || b.queens().any()) {
+            if (b.black() - b.kings()).is_empty() {
+                return EndGame::KingMajorsVsKing(Color::White);
+            }
+            if (b.white() - b.kings()).is_empty() {
+                return EndGame::KingMajorsVsKing(Color::Black);
+            }
+        }
+
         // If both sides have any one of the following, 
         // and there are no pawns on the board:
         // 1. A lone king
@@ -110,18 +129,19 @@ impl EndGame {
             return EndGame::KingMinorVsKing;
         }
 
-        // 2 minor pieces
-        if wb + bb == 0 && (wn == 0 && bn == 2 || wn == 2 && bn == 0 ) {
+
+        // no bishops
+        if wb + bb == 0 && (wn == 0 && bn >= 2 || wn >= 2 && bn == 0 ) {
             return EndGame::TwoKnightsVsKing;
         }
         if wn + wb == 1 && bn + bb == 1 {
             return EndGame::KingMinorVsKingMinor;
         }
 
-        if wn ==1 && wb == 1 && bn + bb == 0 {
+        if wn >= 1 && wb >= 1 && bn + bb == 0 {
             return EndGame::BishopKnightVsKing(Color::White);
         } 
-        if bn == 1 && bb == 1 && wn + wb == 0 {
+        if bn >= 1 && bb >= 1 && wn + wb == 0 {
             return EndGame::BishopKnightVsKing(Color::Black);
         } 
 
@@ -140,6 +160,7 @@ impl EndGame {
         return EndGame::Unknown;
 
     }
+
 }
 
 #[cfg(test)]
@@ -220,5 +241,30 @@ mod tests {
         assert_eq!(eg, EndGame::KingMinorVsKingPawns(Color::Black));
         assert_eq!(eg.cannot_win(), Some(Color::White));
         
+        let b = Board::parse_fen("Q7/1K6/8/8/8/8/6k1/8 b - - 0 1").unwrap();
+        let eg = EndGame::from_board(&b);
+        assert_eq!(eg, EndGame::KingMajorsVsKing(Color::White));
+        assert_eq!(eg.cannot_win(), Some(Color::Black));
+        assert_eq!(eg.try_winner(), Some(Color::White));
+
+        let b = Board::parse_fen("R7/1K6/8/8/8/8/6k1/8 b - - 0 1").unwrap();
+        let eg = EndGame::from_board(&b);
+        assert_eq!(eg, EndGame::KingMajorsVsKing(Color::White));
+        assert_eq!(eg.cannot_win(), Some(Color::Black));
+        assert_eq!(eg.try_winner(), Some(Color::White));
+
+        let b = Board::parse_fen("r7/1k6/8/8/8/8/6K1/8 b - - 0 1").unwrap();
+        let eg = EndGame::from_board(&b);
+        assert_eq!(eg, EndGame::KingMajorsVsKing(Color::Black));
+        assert_eq!(eg.cannot_win(), Some(Color::White));
+        assert_eq!(eg.try_winner(), Some(Color::Black));
+
+        let b = Board::parse_fen("r7/1k6/8/8/8/8/6K1/B7 b - - 0 1").unwrap();
+        let eg = EndGame::from_board(&b);
+        assert_eq!(eg, EndGame::Unknown);
+
+        let b = Board::parse_fen("Q7/1K6/8/8/8/8/6kp/8 b - - 0 1").unwrap();
+        let eg = EndGame::from_board(&b);
+        assert_eq!(eg, EndGame::Unknown);
     }
 }
