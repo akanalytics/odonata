@@ -449,9 +449,10 @@ impl ModelSide {
         if sw.contains(Switches::MATERIAL) {
             m.init_material(b, c, mat, eg);
         }
-        if eg != EndGame::Unknown {
-            return m;
-        }
+        
+        // if eg.try_winner().is_some() {
+        //     return m;
+        // }
         if sw.contains(Switches::POSITION) {
             m.init_position(b, c, mat);
         }
@@ -483,24 +484,29 @@ impl ModelSide {
         //     + m.counts_piece(Piece::Queen) * Piece::Queen.centipawns();
         // net *= c.chooser_wb(1, -1);
         // if net > 0 & has_pawns {
-        //     lead = net 
+        //     lead = net
         // }
-        if eg.try_winner() == Some(c.opposite()) {
-            // c = losing colour - the winning side doesnt get a score (just the negative of the loser)
-            use EndGame::*;
-            match eg {
-                BishopKnightVsKing(_) => {
-                    self.endgame_metric1 = 4 * Self::king_distance_to_bishops_corner(b, c);
-                    self.endgame_metric2 = 1 * Self::king_distance(b);
-                },
+        // if eg.try_winner() == Some(c.opposite()) {
+        //     // c = losing colour - the winning side doesnt get a score (just the negative of the loser)
+        //     use EndGame::*;
+        //     match eg {
+        //         BishopKnightVsKing(_) => {
+        //             self.endgame_metric1 = 4 * Self::king_distance_to_bishops_corner(b, c);
+        //             self.endgame_metric2 = Self::king_distance(b);
+        //         }
 
-                TwoBishopsOppositeColorSquares(_) | KingMajorsVsKing(_) => {
-                    self.endgame_metric1 = 2 * Self::king_distance_to_side(b, c);
-                    self.endgame_metric2 = 1 * Self::king_distance(b);
-                }
-                _ => {},
-            }
-        }
+        //         TwoBishopsOppositeColorSquares(_)  => {
+        //             self.endgame_metric1 = 2 * Self::king_distance_to_any_corner(b, c);
+        //             self.endgame_metric2 = Self::king_distance(b);
+        //         }
+
+        //         KingMajorsVsKing(_) | _ =>  {
+        //             self.endgame_metric1 = 2 * Self::king_distance_to_side(b, c);
+        //             self.endgame_metric2 = Self::king_distance(b);
+        //         }
+
+        //     }
+        // }
     }
 
     fn king_distance(b: &Board) -> i32 {
@@ -518,9 +524,23 @@ impl ModelSide {
         if k.popcount() == 1 {
             let r = k.square().rank_index() as i32;
             let f = k.square().file_index() as i32;
-            let m1 = std::cmp::min(r,f);
-            let m2 = std::cmp::min(7-r,7-f);
+            let m1 = std::cmp::min(r, f);
+            let m2 = std::cmp::min(7 - r, 7 - f);
             std::cmp::min(m1, m2)
+        } else {
+            0
+        }
+    }
+
+    fn king_distance_to_any_corner(b: &Board, c: Color) -> i32 {
+        let k = b.kings() & b.color(c);
+        if k.popcount() == 1 {
+            let ksq = k.square();
+            let d1 = PreCalc::default().chebyshev_distance(Square::A1, ksq);
+            let d2 = PreCalc::default().chebyshev_distance(Square::A8, ksq);
+            let d3 = PreCalc::default().chebyshev_distance(Square::H1, ksq);
+            let d4 = PreCalc::default().chebyshev_distance(Square::H8, ksq);
+            std::cmp::min(std::cmp::min(d1, d2), std::cmp::min(d3, d4)) as i32
         } else {
             0
         }

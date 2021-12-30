@@ -8,3 +8,17 @@ test freshen_on_fetch at 75s
 
 0.4.20
 history heuristic overflow "/"100 ?
+
+
+
+
+-----------------
+
+32 -> 33 pvs search around alpha-margin, tt return , nmp before razor
+33 -> 34 refactor. razor before nmp
+
+32 -> 34 +24 @1s
+
+34 -> 35 (Elo +8) Win bonus 250 -> 350
+
+34 -> 35 Eval metrics on bishops / rooks etc 
