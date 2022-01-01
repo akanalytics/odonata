@@ -450,9 +450,9 @@ impl ModelSide {
             m.init_material(b, c, mat, eg);
         }
         
-        // if eg.try_winner().is_some() {
-        //     return m;
-        // }
+        if eg.try_winner().is_some() {
+            return m;
+        }
         if sw.contains(Switches::POSITION) {
             m.init_position(b, c, mat);
         }
@@ -486,27 +486,27 @@ impl ModelSide {
         // if net > 0 & has_pawns {
         //     lead = net
         // }
-        // if eg.try_winner() == Some(c.opposite()) {
-        //     // c = losing colour - the winning side doesnt get a score (just the negative of the loser)
-        //     use EndGame::*;
-        //     match eg {
-        //         BishopKnightVsKing(_) => {
-        //             self.endgame_metric1 = 4 * Self::king_distance_to_bishops_corner(b, c);
-        //             self.endgame_metric2 = Self::king_distance(b);
-        //         }
+        if eg.try_winner() == Some(c.opposite()) {
+            // c = losing colour - the winning side doesnt get a score (just the negative of the loser)
+            use EndGame::*;
+            match eg {
+                BishopKnightVsKing(_) => {
+                    self.endgame_metric1 = 4 * Self::king_distance_to_bishops_corner(b, c);
+                    self.endgame_metric2 = Self::king_distance(b);
+                }
 
-        //         TwoBishopsOppositeColorSquares(_)  => {
-        //             self.endgame_metric1 = 2 * Self::king_distance_to_any_corner(b, c);
-        //             self.endgame_metric2 = Self::king_distance(b);
-        //         }
+                TwoBishopsOppositeColorSquares(_)  => {
+                    self.endgame_metric1 = 2 * Self::king_distance_to_any_corner(b, c);
+                    self.endgame_metric2 = Self::king_distance(b);
+                }
 
-        //         KingMajorsVsKing(_) | _ =>  {
-        //             self.endgame_metric1 = 2 * Self::king_distance_to_side(b, c);
-        //             self.endgame_metric2 = Self::king_distance(b);
-        //         }
+                KingMajorsVsKing(_) | _ =>  {
+                    self.endgame_metric1 = 2 * Self::king_distance_to_side(b, c);
+                    self.endgame_metric2 = Self::king_distance(b);
+                }
 
-        //     }
-        // }
+            }
+        }
     }
 
     fn king_distance(b: &Board) -> i32 {

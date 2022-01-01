@@ -480,6 +480,7 @@ impl TranspositionTable2 {
             "Cannot store unsed nodes in tt"
         );
 
+        debug_assert!(new_node.score > -Score::INFINITY && new_node.score < Score::INFINITY, "infinite score at {}", new_node);
         // probe by hash not board so any "conditions" are bypassed
         let mut bucket_to_overwrite = None;
         let buckets = self.table.buckets(h);
@@ -567,7 +568,6 @@ impl TranspositionTable2 {
             if self.current_age == old_age && old_node.nt == NodeType::ExactPv {
                 self.pv_overwrites.increment();
             }
-            debug_assert!(new_node.score > -Score::INFINITY && new_node.score < Score::INFINITY);
             debug_assert!(
                 new_node.nt != NodeType::ExactPv || !new_node.bm.is_null(),
                 "bm is null at {:?} mv {:?}",

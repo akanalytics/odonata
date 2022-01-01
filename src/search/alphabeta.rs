@@ -64,6 +64,8 @@ impl Algo {
         beta: Score,
         last_move: &Move,
     ) -> (Score, Event) {
+
+
         self.clear_move(ply);
         self.report_progress();
         self.clock.incr_node_count();
@@ -78,6 +80,7 @@ impl Algo {
             alpha,
             beta,
         };
+        debug_assert!(alpha < beta, "alpha >= beta {:?} {} {}", n, b, last_move);
 
         if n.is_zw() {
             self.counts.inc(&n, Event::NodeTypeZw);
@@ -303,6 +306,7 @@ impl Algo {
         }
 
         let entry = TtNode { score, depth, nt, bm, };
+        debug_assert!(score.is_numeric_or_mate(), "Infinite score {} {:?} {} cat {} count {} quiets {}", entry, n, b, category, count, quiets);
         self.tt.store(b.hash(), entry);
         // self.explain_node(&bm, nt, score, &self.pv_table.extract_pv_for(ply));
         (score, category)
