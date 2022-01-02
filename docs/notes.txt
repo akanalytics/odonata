@@ -30,3 +30,10 @@ Win bonus for exchanging when ahead/behind
 Reduce bad captures by more
 Count node type bitfield, 
 
+
+
+eval
+====
+Queen attacks near king ++
+Half open near king?
+Board as nearby pawn in king safety

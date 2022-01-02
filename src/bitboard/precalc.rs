@@ -147,8 +147,14 @@ impl PreCalc {
 
     // king moves - see https://www.chessprogramming.org/Distance
     #[inline]
-    pub fn chebyshev_distance(&self, s1: Square, s2: Square) -> u32 {
+    pub fn chebyshev_distance(&self, s1: Square, s2: Square) -> i32 {
         Square::calc_chebyshev_distance(s1, s2)
+    }
+
+    // king moves - see https://www.chessprogramming.org/Distance
+    #[inline]
+    pub fn manhattan_distance(&self, s1: Square, s2: Square) -> i32 {
+        Square::calc_manhattan_distance(s1, s2)
     }
 
     pub fn within_chebyshev_distance_inclusive(&self, s1: Square, d: u32) -> Bitboard {

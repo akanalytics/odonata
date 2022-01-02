@@ -63,10 +63,6 @@ impl Default for Extensions {
 
 impl Algo {
     #[inline]
-    pub fn extend_at_leaf(&self, _before: &Board) -> i32 {
-        0
-    }
-
     #[inline]
     pub fn extend(&mut self, before: &Board, after: &Board, mv: &Move, mv_num: u32, n: &Node) -> Ply {
         let mut ext = 0;

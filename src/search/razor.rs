@@ -83,8 +83,6 @@ impl Default for Razor {
     }
 }
 
-// look for beta cuts by using a null move and null window search around beta
-// works for moves that are just "too good to be true"
 impl Razor {
     #[inline]
     fn can_razor(&self, b: &Board, n: &Node) -> bool {
@@ -120,9 +118,9 @@ impl Razor {
 
 impl Algo {
     #[inline]
-    pub fn razor(&mut self, last_move: Move, b: &mut Board, eval: Score, n: &Node) -> Option<Score> {
+    pub fn razor(&mut self, last_move: Move, b: &mut Board, eval: Score, n: &Node) -> Result<Option<Score>,Event> {
         if !self.razor.can_razor(b, n) {
-            return None;
+            return Ok(None);
         }
 
         let margin = Score::from_cp(match n.depth {
@@ -134,27 +132,27 @@ impl Algo {
 
         if self.razor.beta_enabled && eval > n.beta + margin {
             self.counts.inc(n, Event::PruneRazor);
-            return Some(n.beta);
+            return Ok(Some(n.beta));
         }
 
         if eval <= n.alpha - margin {
             if n.depth <= 2 {
                 // drop straight into qsearch
                 self.counts.inc(n, Event::PruneRazor);
-                return Some(self.alphabeta_recursive(b, n.ply, 0, n.alpha, n.beta, &last_move).0);
+                return Ok(Some(self.alphabeta_recursive(b, n.ply, 0, n.alpha, n.beta, &last_move)?.0));
             } else {
                 // pvs search around {alpha - margin}
                 let score = self
-                    .alphabeta_recursive(b, n.ply, 0, n.alpha - margin, n.alpha - margin + Score::from_cp(1), &last_move)
+                    .alphabeta_recursive(b, n.ply, 0, n.alpha - margin, n.alpha - margin + Score::from_cp(1), &last_move)?
                     .0;
                 // fail low (-inf) or alpha-margin
                 if score <= n.alpha - margin {
                     self.counts.inc(n, Event::PruneRazor);
-                    return Some(n.alpha);  
+                    return Ok(Some(n.alpha));  
                 }
             }
         }
-        None
+        Ok(None)
     }
 }
 

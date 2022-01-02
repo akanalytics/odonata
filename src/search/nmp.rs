@@ -143,9 +143,9 @@ impl NullMovePruning {
 
 impl Algo {
     #[inline]
-    pub fn nmp(&mut self, b: &Board, n: &Node, eval: Score) -> Option<Score> {
+    pub fn nmp(&mut self, b: &Board, n: &Node, eval: Score) -> Result<Option<Score>, Event> {
         if self.minmax || !self.nmp.allow(b, n, eval, &self.pv_table) {
-            return None;
+            return Ok(None);
         }
 
         let r = self.nmp.depth_reduction(eval, b, n);
@@ -164,7 +164,7 @@ impl Algo {
                 -n.beta,
                 -n.beta + Score::from_cp(1),
                 &mv,
-            )
+            )?
             .0;
         b.undo_move(&mv);
         self.current_variation.pop();
@@ -188,9 +188,9 @@ impl Algo {
                 // and reduced_depth + 1
                 self.tt.store(b.hash(), entry);
             }
-            return Some(child_score);
+            return Ok(Some(child_score));
         }
-        None
+        Ok(None)
     }
 }
 

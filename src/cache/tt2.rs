@@ -658,10 +658,7 @@ impl TranspositionTable2 {
             // probe by hash to avoid all the board filters (ply etc)
             let entry = self.probe_by_hash(board.hash());
             if let Some(entry) = entry {
-                // we need to be careful, the root node could be written as a Cut node of equal depth
-                // and although opponent shouldn't have let us get there, they did!
-                // FIXED!
-                if entry.nt == NodeType::ExactPv || entry.nt == NodeType::LowerCut {
+                if entry.nt == NodeType::ExactPv {
                     mv = &entry.bm;
                     if !mv.is_null() && board.is_pseudo_legal_move(mv) && board.is_legal_move(mv) {
                         board = board.make_move(mv);

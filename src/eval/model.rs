@@ -476,23 +476,33 @@ impl ModelSide {
         // if net > 0 & has_pawns {
         //     lead = net
         // }
-        if eg.try_winner() == Some(c.opposite()) {
+        let winning = c.opposite();
+        if eg.try_winner() == Some(winning) {
             // c = losing colour - the winning side doesnt get a score (just the negative of the loser)
             use EndGame::*;
             match eg {
                 BishopKnightVsKing(_) => {
-                    self.endgame_metric1 = 4 * Self::king_distance_to_bishops_corner(b, c);
-                    self.endgame_metric2 = Self::king_distance(b);
+                    use std::cmp::max;
+                    let ksq = (b.kings() & b.color(c)).square();
+                    let wksq = (b.kings() & b.color(winning)).square();
+                    self.endgame_metric1 = 40 * Self::king_distance_to_bishops_corner(b, ksq, wksq);
+                    let king_distance = Self::king_distance(b);
+                    let ksq = (b.kings() & b.color(c)).square();
+                    let nsq = (b.knights() & b.color(winning)).square();
+                    let bsq = (b.bishops() & b.color(winning)).square();
+                    let knight_distance = max(0, PreCalc::default().chebyshev_distance(nsq, ksq));
+                    let bishop_distance = max(0, PreCalc::default().chebyshev_distance(bsq, ksq));
+                    self.endgame_metric2 = 20 * king_distance + 2 * bishop_distance + 3 * knight_distance + 2 * Self::king_distance_to_side(b, c);
                 }
 
                 TwoBishopsOppositeColorSquares(_)  => {
-                    self.endgame_metric1 = 2 * Self::king_distance_to_any_corner(b, c);
-                    self.endgame_metric2 = Self::king_distance(b);
+                    self.endgame_metric1 = 20 * Self::king_distance_to_any_corner(b, c);
+                    self.endgame_metric2 = 10 * Self::king_distance(b);
                 }
 
                 KingMajorsVsKing(_) | _ =>  {
-                    self.endgame_metric1 = 2 * Self::king_distance_to_side(b, c);
-                    self.endgame_metric2 = Self::king_distance(b);
+                    self.endgame_metric1 = 20 * Self::king_distance_to_side(b, c);
+                    self.endgame_metric2 = 10 * Self::king_distance(b);
                 }
 
             }
@@ -502,27 +512,25 @@ impl ModelSide {
     fn king_distance(b: &Board) -> i32 {
         let wk = b.kings() & b.white();
         let bk = b.kings() & b.black();
-        if wk.popcount() == 1 && bk.popcount() == 1 {
-            PreCalc::default().chebyshev_distance(wk.square(), bk.square()) as i32
-        } else {
-            0
-        }
+        PreCalc::default().chebyshev_distance(wk.square(), bk.square())
     }
 
     fn king_distance_to_side(b: &Board, c: Color) -> i32 {
+        use std::cmp::min;
         let k = b.kings() & b.color(c);
         if k.popcount() == 1 {
             let r = k.square().rank_index() as i32;
             let f = k.square().file_index() as i32;
-            let m1 = std::cmp::min(r, f);
-            let m2 = std::cmp::min(7 - r, 7 - f);
-            std::cmp::min(m1, m2)
+            let m1 = min(r, f);
+            let m2 = min(7 - r, 7 - f);
+            min(m1, m2)
         } else {
             0
         }
     }
 
     fn king_distance_to_any_corner(b: &Board, c: Color) -> i32 {
+        use std::cmp::min;
         let k = b.kings() & b.color(c);
         if k.popcount() == 1 {
             let ksq = k.square();
@@ -530,33 +538,64 @@ impl ModelSide {
             let d2 = PreCalc::default().chebyshev_distance(Square::A8, ksq);
             let d3 = PreCalc::default().chebyshev_distance(Square::H1, ksq);
             let d4 = PreCalc::default().chebyshev_distance(Square::H8, ksq);
-            std::cmp::min(std::cmp::min(d1, d2), std::cmp::min(d3, d4)) as i32
+            min(min(d1, d2), min(d3, d4))
         } else {
             0
         }
     }
 
-    fn king_distance_to_bishops_corner(b: &Board, c: Color) -> i32 {
-        let k = b.kings() & b.color(c);
+    fn king_distance_to_bishops_corner(b: &Board, ksq: Square, wksq: Square) -> i32 {
         let bis = b.bishops();
-        let corner1;
-        let corner2;
+        let bad_corner1;
+        let bad_corner2;
+        // let gd_corner1;
+        // let gd_corner2;
+        // for losing king, these are undesirable corners
         if bis.intersects(Bitboard::WHITE_SQUARES) {
-            corner1 = Square::H1;
-            corner2 = Square::A8;
+            bad_corner1 = Square::H1;
+            bad_corner2 = Square::A8;
+            // gd_corner1 = Square::A1;
+            // gd_corner2 = Square::H8;
+        
         } else {
-            corner1 = Square::A1;
-            corner2 = Square::H8;
+            bad_corner1 = Square::A1;
+            bad_corner2 = Square::H8;
+            // gd_corner1 = Square::H1;
+            // gd_corner2 = Square::A8;
         };
 
-        if k.popcount() == 1 {
-            let ksq = k.square();
-            let d1 = PreCalc::default().chebyshev_distance(corner1, ksq);
-            let d2 = PreCalc::default().chebyshev_distance(corner2, ksq);
-            std::cmp::min(d1, d2) as i32
+        // losing king distance to bad corner
+        let bad_d1 = PreCalc::default().manhattan_distance(bad_corner1, ksq);
+        let gd_d1 = PreCalc::default().manhattan_distance(bad_corner1, wksq);
+        let bad_d2 = PreCalc::default().manhattan_distance(bad_corner2, ksq);
+        let gd_d2 = PreCalc::default().manhattan_distance(bad_corner2, wksq);
+
+        let d1 = if bad_d1 < gd_d1 {
+            bad_d1
         } else {
-            0
-        }
+            bad_d1
+        };
+        let d2 = if bad_d2 < gd_d2 {
+            bad_d2
+        } else {
+            bad_d1
+        };
+        let dist = std::cmp::min(d1, d2);
+        dist
+        // let gd_d1 = PreCalc::default().chebyshev_distance(gd_corner1, ksq);
+        // let gd_d2 = PreCalc::default().chebyshev_distance(gd_corner2, ksq);
+        // let gd_dist = if gd_d1 < gd_d2 {
+        //     PreCalc::default().chebyshev_distance(gd_corner1, wksq)
+        // } else {
+        //     PreCalc::default().chebyshev_distance(gd_corner2, wksq)
+        // };
+        // // give a bonus for winning king being nearer the nearest corner
+        // if gd_dist < std::cmp::min(gd_d1, gd_d2) {
+        //     dist - 1
+        // } else {
+        //     dist
+        // }
+
     }
 
     #[inline]

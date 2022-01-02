@@ -219,11 +219,17 @@ impl Square {
     }
 
     // king moves - see https://www.chessprogramming.org/Distance
-    pub fn calc_chebyshev_distance(s1: Square, s2: Square) -> u32 {
+    pub fn calc_chebyshev_distance(s1: Square, s2: Square) -> i32 {
         i32::max(
             i32::abs(s1.rank_index() as i32 - s2.rank_index() as i32),
             i32::abs(s1.file_index() as i32 - s2.file_index() as i32),
-        ) as u32
+        )
+    }
+
+    //  see https://www.chessprogramming.org/Distance
+    pub fn calc_manhattan_distance(s1: Square, s2: Square) -> i32 {
+        i32::abs(s1.rank_index() as i32 - s2.rank_index() as i32) +
+        i32::abs(s1.file_index() as i32 - s2.file_index() as i32)
     }
 
     /// flip vertical - https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating

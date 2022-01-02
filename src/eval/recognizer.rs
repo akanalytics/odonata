@@ -69,8 +69,6 @@ impl Algo {
                 // if entry.draft >= draft && !(b.repetition_count().total > 1 && self.repetition.avoid_tt_on_repeats)
                 match entry.nt {
                     NodeType::ExactPv => {
-                        // previously this position raised alpha, but didnt trigger a cut
-                        // no point going through moves as we know what the max score is
                         if entry.score >= n.beta {
                             self.stats.inc_node_cut(n.ply, MoveType::Hash, -1);
                             self.stats.inc_leaf_tt_nodes(n.ply);
@@ -83,7 +81,7 @@ impl Algo {
                             return (Some(entry.score), None);
                         }
 
-                        if self.tt.allow_truncated_pv && entry.score > n.alpha {
+                        if self.tt.allow_truncated_pv && self.mte.time_sensitive() && entry.score > n.alpha {
                             self.record_truncated_move(n.ply, &entry.bm);
                             self.stats.inc_leaf_tt_nodes(n.ply);
                             return (Some(entry.score), None);

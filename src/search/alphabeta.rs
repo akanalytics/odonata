@@ -30,9 +30,12 @@ impl Algo {
         self.pv_table = PvTable::new(MAX_PLY as usize);
         debug_assert!(self.current_variation.len() == 0);
 
-        let (score, category) = self.alphabeta_recursive(board, node.ply, self.max_depth, node.alpha, node.beta, &Move::NULL_MOVE);
+        let (score, category) = match self.alphabeta_recursive(board, node.ply, self.max_depth, node.alpha, node.beta, &Move::NULL_MOVE) {
+            Ok((score, category)) => (score, category),
+            Err(category) => (-Score::INFINITY, category)
+        };
         self.stats.set_score(score, category);
-        debug_assert!(self.current_variation.len() == 0);
+        debug_assert!(self.current_variation.len() == 0 || category == Event::UserCancelled || category == Event::TimeUp);
         let (pv, _score) = if self.tt.use_tt_for_pv {
             self.tt.extract_pv_and_score(board)
         } else {
@@ -40,8 +43,8 @@ impl Algo {
         };
         self.results.set_pv(category, &pv);
         self.results.score = score;
-        if node.alpha == -Score::INFINITY && node.beta == Score::INFINITY {
-            debug_assert!(score.is_numeric_or_mate(), "Score was inf\n{}", self);
+        if node.alpha == -Score::INFINITY && node.beta == Score::INFINITY && category != Event::TimeUp && category != Event::UserCancelled  {
+            debug_assert!(score.is_numeric_or_mate(), "Score was inf: node {:?} cat {} \n{}", node, category, self);
         }
 
         self.stats.record_iteration(self.max_depth, category, pv);
@@ -56,7 +59,7 @@ impl Algo {
         alpha: Score,
         beta: Score,
         last_move: &Move,
-    ) -> (Score, Event) {
+    ) -> Result<(Score, Event), Event> {
         self.clear_move(ply);
         self.report_progress();
 
@@ -65,7 +68,7 @@ impl Algo {
         let (cancelled, cat) = self.time_up_or_cancelled(ply, false);
         if cancelled {
             self.counts.inc(&n, cat);
-            return (-Score::INFINITY, cat);
+            return Err(cat);
         }
 
         debug_assert!(
@@ -100,14 +103,14 @@ impl Algo {
             // if board.draw_outcome().is_some() {
             self.stats.inc_leaf_nodes(&n);
             self.counts.inc(&n, Event::NodeLeafDraw);
-            return (b.eval_draw(&mut self.eval, &n), Event::NodeLeafDraw); // will return a draw score
+            return Ok((b.eval_draw(&mut self.eval, &n), Event::NodeLeafDraw)); // will return a draw score
         }
 
         let mut tt_mv = Move::NULL_MOVE;
         match self.lookup(b, &mut n) {
             (Some(ab), None) => {
                 debug_assert!(ab.is_numeric_or_mate(), "lookup returned {}", ab);
-                return (ab, Event::HashHit);
+                return Ok((ab, Event::HashHit));
             }, // alpha, beta or a terminal node
             (None, Some(bm)) => tt_mv = bm,
             (Some(s), Some(mv)) => {
@@ -124,13 +127,13 @@ impl Algo {
         let eval = b.eval_some(&self.eval, Switches::ALL_SCORING);
 
         if let Some(score) = self.standing_pat(b, &mut n, eval) {
-            return (score, Event::PruneStandingPat);
+            return Ok((score, Event::PruneStandingPat));
         }
-        if let Some(alphabeta) = self.razor(*last_move, b, eval, &n) {
-            return (alphabeta, Event::PruneRazor);
+        if let Some(alphabeta) = self.razor(*last_move, b, eval, &n)? {
+            return Ok((alphabeta, Event::PruneRazor));
         }
-        if let Some(score) = self.nmp(b, &n, eval) {
-            return (score, Event::PruneNullMovePrune);
+        if let Some(score) = self.nmp(b, &n, eval)? {
+            return Ok((score, Event::PruneNullMovePrune));
         }
 
         let mut sorted_moves = self.move_orderer.create_sorted_moves(n, b, tt_mv, *last_move);
@@ -191,16 +194,16 @@ impl Algo {
                     -n.alpha - Score::from_cp(1),
                     -n.alpha,
                     &mv,
-                )
+                )?
             } else {
-                self.alphabeta_recursive(&mut child_board, ply + 1, depth + ext - lmr - 1, -n.beta, -n.alpha, &mv)
+                self.alphabeta_recursive(&mut child_board, ply + 1, depth + ext - lmr - 1, -n.beta, -n.alpha, &mv)?
             };
             child_score = -child_score;
 
             if (lmr > 0 && self.lmr.re_search || pvs) && child_score > score && child_score < n.beta {
                 // research with full window without reduction in depth
                 self.stats.inc_pvs_research(ply);
-                let res = self.alphabeta_recursive(&mut child_board, ply + 1, depth + ext - 1, -n.beta, -n.alpha, &mv);
+                let res = self.alphabeta_recursive(&mut child_board, ply + 1, depth + ext - 1, -n.beta, -n.alpha, &mv)?;
                 if lmr > 0 && self.lmr.re_search {
                     self.counts.inc(&n, Event::LmrReSearch);
                 }
@@ -214,10 +217,6 @@ impl Algo {
             self.current_variation.pop();
             self.explainer.start(&n, &self.current_variation);
             self.repetition.pop();
-            if cat == Event::UserCancelled || cat == Event::TimeUp {
-                self.explain_move(&mv, child_score, cat, &n);
-                return (-Score::INFINITY, cat);
-            }
             self.explain_move(&mv, child_score, cat, &n);
 
             // println!("move {} score {} alpha {} beta {}", mv, score, alpha, beta);
@@ -259,12 +258,12 @@ impl Algo {
             self.stats.inc_leaf_nodes(&n);
             if n.is_qs() {
                 self.counts.inc(&n, Event::NodeLeafQuietEval);
-                return (b.eval(&self.eval, &n), Event::NodeLeafQuietEval);
+                return Ok((b.eval(&self.eval, &n), Event::NodeLeafQuietEval));
             } else {
                 self.counts.inc(&n, Event::NodeLeafStalemate);
                 // FIXME VER:0.4.14
                 // (board.eval_draw(&mut self.eval, &n),
-                return (b.eval(&self.eval, &n), Event::NodeLeafStalemate);
+                return Ok((b.eval(&self.eval, &n), Event::NodeLeafStalemate));
             }
         }
         if nt == NodeType::UpperAll {
@@ -300,7 +299,7 @@ impl Algo {
             b,
         );
         self.explain_node(&bm, nt, score, &n, &self.pv_table.extract_pv_for(ply));
-        (score, category)
+        Ok((score, category))
     }
 }
 

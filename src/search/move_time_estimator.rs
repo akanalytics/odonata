@@ -158,6 +158,21 @@ impl MoveTimeEstimator {
         self.pondering.load(atomic::Ordering::SeqCst)
     }
 
+    /// For some time controls we aren't worried about node counts or search times, so we 
+    /// can avoid optimizations elsewhere
+    pub fn time_sensitive(&self) -> bool {
+        match self.time_control {
+            TimeControl::DefaultTime => true,
+            TimeControl::Depth(_max_ply) => false, 
+            TimeControl::SearchTime(_duration) => true,
+            TimeControl::NodeCount(_max_nodes) => true,
+            TimeControl::Infinite => false,
+            TimeControl::MateIn(_) => false,
+            TimeControl::RemainingTime { .. } => true,
+        }
+    }
+
+
     pub fn estimate_iteration(&mut self, _ply: Ply, clock: &Clock) {
         // debug_assert!(search_stats.depth() >= ply-1, "ensure we have enough stats");
         self.prior_elapsed_iter = self.elapsed_iter;
