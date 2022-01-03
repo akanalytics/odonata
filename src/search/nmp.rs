@@ -163,7 +163,7 @@ impl Algo {
                 reduced_depth,
                 -n.beta,
                 -n.beta + Score::from_cp(1),
-                &mv,
+                mv,
             )?
             .0;
         b.undo_move(&mv);

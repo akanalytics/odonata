@@ -32,7 +32,7 @@ impl See {
     //
     // using n=b=325 rather than n=325, b=350 gives +6 Elo
     //
-    pub fn eval_move_see(&self, board: &Board, mv: &Move) -> i32 {
+    pub fn eval_move_see(&self, board: &Board, mv: Move) -> i32 {
         debug_assert!(!mv.is_null());
         debug_assert!(board.us().contains(mv.from().as_bb()));
         debug_assert!(board.them().contains(mv.capture_square().as_bb()));

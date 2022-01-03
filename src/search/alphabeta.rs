@@ -30,7 +30,7 @@ impl Algo {
         self.pv_table = PvTable::new(MAX_PLY as usize);
         debug_assert!(self.current_variation.len() == 0);
 
-        let (score, category) = match self.alphabeta_recursive(board, node.ply, self.max_depth, node.alpha, node.beta, &Move::NULL_MOVE) {
+        let (score, category) = match self.alphabeta_recursive(board, node.ply, self.max_depth, node.alpha, node.beta, Move::NULL_MOVE) {
             Ok((score, category)) => (score, category),
             Err(category) => (-Score::INFINITY, category)
         };
@@ -58,7 +58,7 @@ impl Algo {
         depth: Ply,
         alpha: Score,
         beta: Score,
-        last_move: &Move,
+        last_move: Move,
     ) -> Result<(Score, Event), Event> {
         self.clear_move(ply);
         self.report_progress();
@@ -129,14 +129,14 @@ impl Algo {
         if let Some(score) = self.standing_pat(b, &mut n, eval) {
             return Ok((score, Event::PruneStandingPat));
         }
-        if let Some(alphabeta) = self.razor(*last_move, b, eval, &n)? {
+        if let Some(alphabeta) = self.razor(last_move, b, eval, &n)? {
             return Ok((alphabeta, Event::PruneRazor));
         }
         if let Some(score) = self.nmp(b, &n, eval)? {
             return Ok((score, Event::PruneNullMovePrune));
         }
 
-        let mut sorted_moves = self.move_orderer.create_sorted_moves(n, b, tt_mv, *last_move);
+        let mut sorted_moves = self.move_orderer.create_sorted_moves(n, b, tt_mv, last_move);
         let mut count = 0;
         let mut quiets = 0;
         while let Some((move_type, mv)) = sorted_moves.next_move(b, self) {
@@ -148,7 +148,7 @@ impl Algo {
             count += 1;
             self.stats.inc_move(ply);
             let mut child_board = b.make_move(&mv);
-            let ext = self.extend(b, &child_board, &mv, count, &n);
+            let ext = self.extend(b, &child_board, mv, count, &n, last_move);
             let is_quiet = self.is_quiet(b, mv, count, move_type, &child_board, &n, ext);
             if is_quiet {
                 quiets += 1;
@@ -193,17 +193,17 @@ impl Algo {
                     depth + ext - lmr - 1,
                     -n.alpha - Score::from_cp(1),
                     -n.alpha,
-                    &mv,
+                    mv,
                 )?
             } else {
-                self.alphabeta_recursive(&mut child_board, ply + 1, depth + ext - lmr - 1, -n.beta, -n.alpha, &mv)?
+                self.alphabeta_recursive(&mut child_board, ply + 1, depth + ext - lmr - 1, -n.beta, -n.alpha, mv)?
             };
             child_score = -child_score;
 
             if (lmr > 0 && self.lmr.re_search || pvs) && child_score > score && child_score < n.beta {
                 // research with full window without reduction in depth
                 self.stats.inc_pvs_research(ply);
-                let res = self.alphabeta_recursive(&mut child_board, ply + 1, depth + ext - 1, -n.beta, -n.alpha, &mv)?;
+                let res = self.alphabeta_recursive(&mut child_board, ply + 1, depth + ext - 1, -n.beta, -n.alpha, mv)?;
                 if lmr > 0 && self.lmr.re_search {
                     self.counts.inc(&n, Event::LmrReSearch);
                 }

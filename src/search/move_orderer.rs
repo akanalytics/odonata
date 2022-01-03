@@ -254,7 +254,7 @@ impl OrderedMoveList {
                 Self::sort_one_capture_move(self.index, &mut self.moves, self.last);
             }
             if move_type == MoveType::GoodCaptureUpfrontSorted || move_type == MoveType::GoodCapture {
-                let mv = &self.moves[self.index];
+                let mv = self.moves[self.index];
                 let see = algo.eval.see.eval_move_see(b, mv);
                 let see_cutoff = if self.qsearch {
                     algo.qsearch.see_cutoff
@@ -263,7 +263,7 @@ impl OrderedMoveList {
                 };
                 let see_cutoff = see_cutoff.as_i16() as i32;
                 if see < see_cutoff || see == see_cutoff && self.qsearch && self.n.depth < -1 {
-                    self.bad_captures.push(*mv);
+                    self.bad_captures.push(mv);
                     self.index += 1;
                     return self.next_move(b, algo);
                 }

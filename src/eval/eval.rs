@@ -686,7 +686,7 @@ impl Board {
     }
 
     #[inline]
-    pub fn eval_move_see(&self, eval: &SimpleScorer, mv: &Move) -> Score {
+    pub fn eval_move_see(&self, eval: &SimpleScorer, mv: Move) -> Score {
         SEE.increment();
         Score::from_cp(eval.see.eval_move_see(self, mv))
     }

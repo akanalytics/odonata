@@ -26,6 +26,11 @@ pub struct Extensions {
     promo_max_depth: Ply,
     near_promo_enabled: bool,
     near_promo_max_depth: Ply,
+
+    recapture_enabled: bool,
+    recapture_same_square: bool,
+    recapture_only_pv_node: bool, 
+
     pv_enabled: bool,
 }
 
@@ -52,9 +57,13 @@ impl Default for Extensions {
 
             promo_enabled: false,
             promo_max_depth: 1,
-
             near_promo_enabled: false,
             near_promo_max_depth: 1,
+
+
+            recapture_enabled: false,
+            recapture_same_square: true,
+            recapture_only_pv_node: true,
 
             pv_enabled: false,
         }
@@ -63,8 +72,7 @@ impl Default for Extensions {
 
 impl Algo {
     #[inline]
-    #[inline]
-    pub fn extend(&mut self, before: &Board, after: &Board, mv: &Move, mv_num: u32, n: &Node) -> Ply {
+    pub fn extend(&mut self, before: &Board, after: &Board, mv: Move, mv_num: u32, n: &Node, last: Move) -> Ply {
         let mut ext = 0;
         if !self.ext.enabled || n.is_qs() {
             return 0;
@@ -95,6 +103,12 @@ impl Algo {
             && mv.mover_piece() == Piece::Pawn
             && mv.to().is_in(Bitboard::RANK_7 | Bitboard::RANK_2)
         {
+            ext += 1;
+        }
+
+        if self.ext.recapture_enabled && mv.is_capture() && last.is_capture() &&
+        (!self.ext.recapture_same_square || mv.to() == last.to()) &&
+        (!self.ext.recapture_only_pv_node || n.is_pv()) {
             ext += 1;
         }
 

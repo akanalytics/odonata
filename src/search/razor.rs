@@ -139,11 +139,11 @@ impl Algo {
             if n.depth <= 2 {
                 // drop straight into qsearch
                 self.counts.inc(n, Event::PruneRazor);
-                return Ok(Some(self.alphabeta_recursive(b, n.ply, 0, n.alpha, n.beta, &last_move)?.0));
+                return Ok(Some(self.alphabeta_recursive(b, n.ply, 0, n.alpha, n.beta, last_move)?.0));
             } else {
                 // pvs search around {alpha - margin}
                 let score = self
-                    .alphabeta_recursive(b, n.ply, 0, n.alpha - margin, n.alpha - margin + Score::from_cp(1), &last_move)?
+                    .alphabeta_recursive(b, n.ply, 0, n.alpha - margin, n.alpha - margin + Score::from_cp(1), last_move)?
                     .0;
                 // fail low (-inf) or alpha-margin
                 if score <= n.alpha - margin {

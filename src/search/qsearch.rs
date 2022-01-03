@@ -166,7 +166,7 @@ impl Algo {
             if !in_check && !mv.is_ep_capture() && mv.to().as_bb().disjoint(recaptures) {
                 // apply a see > 0 filter unless
                 // e/p or in_check (see <0 may be only evasion) or a recapture
-                let score = board.eval_move_see(&self.eval, &mv);
+                let score = board.eval_move_see(&self.eval, mv);
                 let winning = false;
                 // allow 8 matched attackers
                 if score < self.qsearch.see_cutoff || score == self.qsearch.see_cutoff && (winning || depth >= -1) {

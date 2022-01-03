@@ -855,6 +855,11 @@ promo_enabled = false
 promo_max_depth = 1
 near_promo_enabled = false
 near_promo_max_depth = 1
+
+recapture_enabled = false
+recapture_same_square = true
+recapture_only_pv_node = false
+
 pv_enabled = false
 
 [lmp]
