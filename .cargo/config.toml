@@ -1,5 +1,7 @@
 [alias]
-#test-threading = t test_threading --release -- --ignored --nocapture
+xx = "check"
+
+# test-threading = t test_threading --release -- --ignored --nocapture
 
 
 #perf perf record -e task-clock,cycles,instructions,cache-references,cache-misses --call-graph dwarf -F 99 --output=perf.data  ./target/release/odonata --perft 5
@@ -24,5 +26,17 @@
 #rustflags = ["-Ctarget-feature=+crt-static"]
 # rustflags = ["-C target-cpu=native"]
 
+# [build]
+#rustflags = ["-Ctarget-cpu=native", "-C", "linker=clang", "-C", "link-arg=-fuse-ld=/usr/local/bin/mold"] #, "-C", "features=fast"]
+
+#rustflags = ["-Ctarget-cpu=native", "-C", "linker=clang", "-C", "link-arg=-fuse-ld=/usr/local/bin/mold", "-Z", "print-link-args"] #, "-C", "features=fast"]
+# [target.x86_64-unknown-linux-gnu]
+# linker = "clang"
+# rustflags = ["-C", "link-arg=-fuse-ld=/usr/local/bin/mold"]
+
+# [target.x86_64-unknown-linux-musl]
+# linker = "clang"
+# rustflags = ["-C", "link-arg=-fuse-ld=/usr/local/bin/mold", "-Z", "print-link-args"]
 
 
+# export RUSTFLAGS="-Clinker=clang -Clink-arg=-fuse-ld=/usr/local/bin/mold -Zprint-link-args"
