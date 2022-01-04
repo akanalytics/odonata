@@ -62,7 +62,7 @@ pub fn main() -> Result<(), String> {
                 .help("analyse a series of test positions with using a given depth, nodes, st or tc")
                 .long("search")
                 .value_name("time control")
-                .default_value("nodes=1000000") // "st=0.300"
+                .default_value("nodes=100000") // "st=0.300"
                 .takes_value(true),
         )
         .get_matches();
