@@ -128,7 +128,7 @@ impl MoveTimeEstimator {
         self.clock_checks += 1;
 
         // only do this every 128th call to avoid expensive time computation
-        if !force_check && self.clock_checks % self.check_every != 0 {
+        if self.time_sensitive() && !force_check && self.clock_checks % self.check_every != 0 {
             return false;
         }
 
@@ -142,7 +142,7 @@ impl MoveTimeEstimator {
             TimeControl::DefaultTime => false,
             TimeControl::Depth(_max_ply) => false, // ply > max_ply,  // dont cause an abort on last iteration
             TimeControl::SearchTime(duration) => 10 * elapsed > duration * 9 && !self.pondering(),
-            TimeControl::NodeCount(max_nodes) => clock.elapsed_search().1 > max_nodes - self.check_every,
+            TimeControl::NodeCount(max_nodes) => clock.elapsed_search().1 >= max_nodes,
             TimeControl::Infinite => false,
             TimeControl::MateIn(_) => false,
             TimeControl::RemainingTime { .. } => elapsed > self.allotted() && !self.pondering(),
@@ -165,7 +165,7 @@ impl MoveTimeEstimator {
             TimeControl::DefaultTime => true,
             TimeControl::Depth(_max_ply) => false, 
             TimeControl::SearchTime(_duration) => true,
-            TimeControl::NodeCount(_max_nodes) => true,
+            TimeControl::NodeCount(_max_nodes) => false,
             TimeControl::Infinite => false,
             TimeControl::MateIn(_) => false,
             TimeControl::RemainingTime { .. } => true,
