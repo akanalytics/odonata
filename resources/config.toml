@@ -844,6 +844,7 @@ min_depth = 2
 [ext]
 enabled = true
 max_extend = 1
+
 gives_check_enabled = true
 in_check_enabled = false
 check_max_depth = 2
@@ -851,6 +852,7 @@ check_max_phase = 100
 check_only_captures = false
 check_see = false
 check_see_threshold = 0
+
 promo_enabled = false
 promo_max_depth = 1
 near_promo_enabled = false
@@ -859,6 +861,7 @@ near_promo_max_depth = 1
 recapture_enabled = false
 recapture_same_square = true
 recapture_only_pv_node = false
+recapture_max_depth = 1
 
 pv_enabled = false
 
@@ -870,6 +873,7 @@ promos = false
 killers = false
 in_check = false
 gives_check = false
+pawns = true
 extensions = false
 a = 4.07
 b = 0.33
@@ -895,9 +899,11 @@ reduce_2_at_depth = 7
 reduce_3_at_depth = 13
 reduce_4_at_depth = 17
 pv_reduce = 0
+bad_captures_reduce = 0
 # move_number = 5
 re_search = false
 alpha_numeric = false
+beta_numeric = false
 extensions = false
 
 [mte]

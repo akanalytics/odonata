@@ -2,7 +2,7 @@ use crate::eval::score::Score;
 use crate::infra::component::Component;
 use crate::mv::Move;
 use crate::search::node::Node;
-use crate::types::Ply;
+use crate::types::{Ply, MoveType};
 use crate::{board::Board, Algo};
 use crate::{Bitboard, Piece};
 use serde::{Deserialize, Serialize};
@@ -29,7 +29,8 @@ pub struct Extensions {
 
     recapture_enabled: bool,
     recapture_same_square: bool,
-    recapture_only_pv_node: bool, 
+    recapture_only_pv_node: bool,
+    recapture_max_depth: Ply,
 
     pv_enabled: bool,
 }
@@ -60,10 +61,10 @@ impl Default for Extensions {
             near_promo_enabled: false,
             near_promo_max_depth: 1,
 
-
             recapture_enabled: false,
             recapture_same_square: true,
-            recapture_only_pv_node: true,
+            recapture_only_pv_node: false,
+            recapture_max_depth: 3,
 
             pv_enabled: false,
         }
@@ -72,7 +73,7 @@ impl Default for Extensions {
 
 impl Algo {
     #[inline]
-    pub fn extend(&mut self, before: &Board, after: &Board, mv: Move, mv_num: u32, n: &Node, last: Move) -> Ply {
+    pub fn extend(&mut self, before: &Board, after: &Board, mv: Move, mt: MoveType, mv_num: u32, n: &Node, last: Move) -> Ply {
         let mut ext = 0;
         if !self.ext.enabled || n.is_qs() {
             return 0;
@@ -83,7 +84,7 @@ impl Algo {
         if self.ext.gives_check_enabled && after.is_in_check(after.color_us())
             || self.ext.in_check_enabled && before.is_in_check(before.color_us())
         {
-            #[allow(clippy::collapsible_else_if)]            
+            #[allow(clippy::collapsible_else_if)]
             if n.depth <= self.ext.check_max_depth
                 && after.phase(&self.eval.phaser) <= self.ext.check_max_phase
                 && (!self.ext.check_only_captures || mv.is_capture())
@@ -106,9 +107,16 @@ impl Algo {
             ext += 1;
         }
 
-        if self.ext.recapture_enabled && mv.is_capture() && last.is_capture() &&
-        (!self.ext.recapture_same_square || mv.to() == last.to()) &&
-        (!self.ext.recapture_only_pv_node || n.is_pv()) {
+        if self.ext.recapture_enabled
+            && mv.is_capture()
+            && last.is_capture()
+            && (!self.ext.recapture_same_square || mv.to() == last.to())
+            && (!self.ext.recapture_only_pv_node || n.is_pv())
+            && n.depth <= self.ext.recapture_max_depth
+            && ( MoveType::GoodCapture | MoveType::GoodCaptureUpfrontSorted).contains(mt)
+            && mv.capture_piece().centipawns() < last.capture_piece().centipawns() // proxy for last = GoodCapture
+
+        {
             ext += 1;
         }
 

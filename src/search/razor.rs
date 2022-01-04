@@ -118,7 +118,7 @@ impl Razor {
 
 impl Algo {
     #[inline]
-    pub fn razor(&mut self, last_move: Move, b: &mut Board, eval: Score, n: &Node) -> Result<Option<Score>,Event> {
+    pub fn razor(&mut self, last_move: Move, b: &mut Board, eval: Score, n: &Node) -> Result<Option<Score>, Event> {
         if !self.razor.can_razor(b, n) {
             return Ok(None);
         }
@@ -139,16 +139,16 @@ impl Algo {
             if n.depth <= 2 {
                 // drop straight into qsearch
                 self.counts.inc(n, Event::PruneRazor);
-                return Ok(Some(self.alphabeta_recursive(b, n.ply, 0, n.alpha, n.beta, last_move)?.0));
+                let (score, _event) = self.alphabeta_recursive(b, n.ply, 0, n.alpha, n.beta, last_move)?;
+                return Ok(Some(score));
             } else {
                 // pvs search around {alpha - margin}
-                let score = self
-                    .alphabeta_recursive(b, n.ply, 0, n.alpha - margin, n.alpha - margin + Score::from_cp(1), last_move)?
-                    .0;
+                let (score, _event) =
+                    self.alphabeta_recursive(b, n.ply, 0, n.alpha - margin, n.alpha - margin + Score::from_cp(1), last_move)?;
                 // fail low (-inf) or alpha-margin
                 if score <= n.alpha - margin {
                     self.counts.inc(n, Event::PruneRazor);
-                    return Ok(Some(n.alpha));  
+                    return Ok(Some(n.alpha));
                 }
             }
         }

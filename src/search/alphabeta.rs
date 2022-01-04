@@ -148,7 +148,7 @@ impl Algo {
             count += 1;
             self.stats.inc_move(ply);
             let mut child_board = b.make_move(&mv);
-            let ext = self.extend(b, &child_board, mv, count, &n, last_move);
+            let ext = self.extend(b, &child_board, mv, move_type, count, &n, last_move);
             let is_quiet = self.is_quiet(b, mv, count, move_type, &child_board, &n, ext);
             if is_quiet {
                 quiets += 1;
@@ -168,7 +168,7 @@ impl Algo {
                 }
             }
             let lmr = if !self.minmax {
-                self.lmr(b, &mv, count, quiets, move_type, &child_board, &n, nt, ext, tt_mv)
+                self.lmr(b, mv, count, quiets, move_type, &child_board, &n, nt, ext, tt_mv)
             } else {
                 0
             };

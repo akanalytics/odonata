@@ -6,6 +6,7 @@ use crate::search::node::Event;
 use crate::search::node::Node;
 use crate::types::{MoveType, Ply};
 use crate::Algo;
+use crate::Piece;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -23,6 +24,7 @@ pub struct Lmr {
     gives_check: bool,
     pub re_search: bool,
     alpha_numeric: bool,
+    beta_numeric: bool,
     extensions: bool,
     quiets1: i32,
     quiets2: i32,
@@ -31,6 +33,7 @@ pub struct Lmr {
     reduce_3_at_depth: Ply,
     reduce_4_at_depth: Ply,
     pv_reduce: Ply,
+    bad_captures_reduce: Ply,
     iir: bool,
 }
 
@@ -53,6 +56,7 @@ impl Default for Lmr {
             first_move: false,
             only_nt_all: false,
             alpha_numeric: false,
+            beta_numeric: false,
             re_search: false,
             bad_captures: true,
             pawns: true,
@@ -68,6 +72,7 @@ impl Default for Lmr {
             reduce_3_at_depth: 13,
             reduce_4_at_depth: 17,
             pv_reduce: 0,
+            bad_captures_reduce: 0,
             iir: false,
         }
     }
@@ -108,7 +113,7 @@ impl Algo {
     pub fn lmr(
         &mut self,
         before: &Board,
-        _mv: &Move,
+        mv: Move,
         mv_num: u32,
         quiets: i32,
         stage: MoveType,
@@ -139,6 +144,25 @@ impl Algo {
             _ => 0,
         };
 
+        // if mv.mover_piece() == Piece::Pawn
+        //     && (before.line_pieces() | before.knights()).popcount() <= 1
+        //     && mv.to().rank_index_as_white(before.color_us()) >= 6
+        // {
+        //     // return 0;
+        //    reduce -= 1;
+        // }
+
+        reduce += match stage {
+            _ if mv.mover_piece() == Piece::Pawn
+                && (before.line_pieces() | before.knights()).is_empty()
+                && mv.to().rank_index_as_white(before.color_us()) >= 6 =>
+            {
+                0
+            }
+            MoveType::BadCapture => self.lmr.bad_captures_reduce,
+            _ => 0,
+        };
+
         reduce += match n.is_pv() {
             true => self.lmr.pv_reduce,
             _ => 0,
@@ -158,6 +182,9 @@ impl Algo {
         {
             return 0;
         }
+        if !self.lmr.pawns && mv.mover_piece() == Piece::Pawn {
+            return 0;
+        }
         if !self.lmr.promos && stage == MoveType::Promo
             || !self.lmr.killers && stage == MoveType::Killer
             || !self.lmr.bad_captures && stage == MoveType::BadCapture
@@ -174,6 +201,10 @@ impl Algo {
             return 0;
         }
         if self.lmr.alpha_numeric && !n.alpha.is_numeric() {
+            return 0;
+        }
+
+        if self.lmr.beta_numeric && !n.beta.is_numeric() {
             return 0;
         }
 

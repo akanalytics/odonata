@@ -1,3 +1,4 @@
+use crate::Piece;
 use crate::board::Board;
 use crate::infra::component::Component;
 use crate::mv::Move;
@@ -15,6 +16,7 @@ pub struct Lmp {
     first_move: bool,
     alpha_numeric: bool,
     bad_captures: bool,
+    pawns: bool,
     promos: bool,
     killers: bool,
     in_check: bool,
@@ -35,6 +37,7 @@ impl Default for Lmp {
             first_move: false,
             alpha_numeric: false,
             bad_captures: false,
+            pawns: true,
             promos: false,
             killers: false,
             in_check: false,
@@ -63,7 +66,7 @@ impl Algo {
     pub fn is_quiet(
         &mut self,
         before: &Board,
-        _mv: Move,
+        mv: Move,
         mv_num: u32,
         stage: MoveType,
         after: &Board,
@@ -84,6 +87,11 @@ impl Algo {
         {
             return false;
         }
+
+        if !self.lmp.pawns && mv.mover_piece() == Piece::Pawn {
+            return false;
+        }
+
         if !self.lmp.promos && stage == MoveType::Promo
             || !self.lmp.killers && stage == MoveType::Killer
             || !self.lmp.bad_captures && stage == MoveType::BadCapture
