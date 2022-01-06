@@ -654,7 +654,7 @@ impl Bitboard {
     }
 
     #[inline]
-    pub fn last_square(self) -> Square {
+    pub const fn last_square(self) -> Square {
         debug_assert!(!self.is_empty(), "bb.last_square on empty");
         let msb = self.0.leading_zeros();
         debug_assert!(msb < 64);
@@ -662,7 +662,7 @@ impl Bitboard {
     }
 
     #[inline]
-    pub fn first_square(self) -> Square {
+    pub const fn first_square(self) -> Square {
         debug_assert!(!self.is_empty(), "bb.first_square on empty");
         // LSB
         let sq = self.0.trailing_zeros();
@@ -682,13 +682,13 @@ impl Bitboard {
     }
 
     #[inline]
-    pub fn last(self) -> Self {
+    pub const fn last(self) -> Self {
         debug_assert!(!self.is_empty(), "bb.last on empty");
         Bitboard(1 << self.last_square().index()) // MSb
     }
 
     #[inline]
-    pub fn first(self) -> Self {
+    pub const fn first(self) -> Self {
         debug_assert!(!self.is_empty(), "bb.first on empty");
         Bitboard(1 << self.first_square().index()) // LSb
     }
@@ -776,6 +776,7 @@ pub struct PowerSetIterator {
 }
 
 impl PowerSetIterator {
+    #[inline]
     const fn new(d: Bitboard) -> Self {
         Self {
             n: Bitboard::EMPTY,

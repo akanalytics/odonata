@@ -16,8 +16,9 @@ pub struct Aspiration {
     pub enabled: bool,
     pub min_depth: Ply,
     pub window: Score,
-    pub max_window: Score,
-    pub multiplier: i32,
+    pub max_iter: i32,
+    pub multiplier1: f32,
+    pub multiplier2: f32,
 }
 
 impl Component for Aspiration {
@@ -33,9 +34,10 @@ impl Default for Aspiration {
         Aspiration {
             enabled: true,
             min_depth: 4,
-            window: Score::from_cp(100),
-            max_window: Score::from_cp(1200),
-            multiplier: 4,
+            window: Score::from_cp(55),
+            max_iter: 2,
+            multiplier1: 3.2,
+            multiplier2: 4.0,
         }
     }
 }
@@ -48,12 +50,12 @@ impl Algo {
             self.run_alphabeta(b, n)
         } else {
             let mut aspiration_count = 0;
-            let mut delta = self.aspiration.window;
-            let mut alpha1 = score - delta;
-            let mut beta1 = score + delta;
+            let mut delta = ((4 + n.ply / 4) * self.aspiration.window.as_i16() as i32) as f32 / 6.0;
+            let mut alpha1 = score - Score::from_f32(delta);
+            let mut beta1 = score + Score::from_f32(delta);
             let ret = loop {
                 aspiration_count += 1;
-                if delta > self.aspiration.max_window {
+                if aspiration_count > self.aspiration.max_iter {
                     break self.run_alphabeta(b, n);
                 }
                 alpha1 = max(n.alpha, alpha1);
@@ -64,8 +66,6 @@ impl Algo {
                     beta: beta1,
                     ..*n
                 };
-                delta = self.aspiration.multiplier * delta;
-
                 let (new_score, event) = self.run_alphabeta(b, &mut n1);
                 if new_score == -Score::INFINITY {
                     // no legal moves available
@@ -74,15 +74,20 @@ impl Algo {
                 if new_score.is_mate() {
                     break self.run_alphabeta(b, n);
                 }
+                delta = match aspiration_count {
+                    1 => self.aspiration.multiplier1,
+                    _ => self.aspiration.multiplier2,
+                } * delta;
+
 
                 if new_score <= alpha1 && alpha1 > n.alpha {
                     self.counts.inc(n, Event::AspirationFailLow);
-                    alpha1 = new_score - delta;
-                    // beta1 = new_score; // beta1; // score;
+                    alpha1 = new_score - Score::from_f32(delta);
+                    beta1 = new_score; // beta1; // score;
                 } else if new_score >= beta1 && beta1 < n.beta {
-                    // alpha1 = new_score; // alpha1; //score;
+                    alpha1 = new_score; // alpha1; //score;
                     self.counts.inc(n, Event::AspirationFailHigh);
-                    beta1 = new_score + delta;
+                    beta1 = new_score + Score::from_f32(delta);
                 } else {
                     // info!("Found {:?} in search window {} {}", new_score, alpha1, beta1);
                     break (new_score, event);

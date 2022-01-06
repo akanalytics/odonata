@@ -37,7 +37,7 @@ use std::fmt;
 
 use super::lmp::Lmp;
 use super::node::Event;
-use super::search_explainer::SearchExplainer;
+use super::explainer::Explainer;
 use super::search_results::SearchResultsMode;
 
 
@@ -66,7 +66,7 @@ pub struct Algo {
     pub tt: TranspositionTable2,
     pub killers: Killers,
     pub history: HistoryHeuristic,
-    pub explainer: SearchExplainer,
+    pub explainer: Explainer,
 
     pub restrictions: Restrictions,
     pub razor: Razor,

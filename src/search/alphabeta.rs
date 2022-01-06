@@ -126,14 +126,14 @@ impl Algo {
         // static eval
         let eval = b.eval_some(&self.eval, Switches::ALL_SCORING);
 
-        if let Some(score) = self.standing_pat(b, &mut n, eval) {
-            return Ok((score, Event::PruneStandingPat));
+        if let Some(s) = self.standing_pat(b, &mut n, eval) {
+            return Ok((s, Event::PruneStandingPat));
         }
         if let Some(alphabeta) = self.razor(last_move, b, eval, &n)? {
             return Ok((alphabeta, Event::PruneRazor));
         }
-        if let Some(score) = self.nmp(b, &n, eval)? {
-            return Ok((score, Event::PruneNullMovePrune));
+        if let Some(s) = self.nmp(b, &n, eval)? {
+            return Ok((s, Event::PruneNullMovePrune));
         }
 
         let mut sorted_moves = self.move_orderer.create_sorted_moves(n, b, tt_mv, last_move);
@@ -229,6 +229,7 @@ impl Algo {
                 lmr,
                 pvs
             );
+
             if child_score > score {
                 score = child_score;
                 category = cat;

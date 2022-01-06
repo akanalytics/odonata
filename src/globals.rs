@@ -148,7 +148,7 @@ mod tests {
     use crate::search::qsearch::QSearch;
     use crate::search::razor::Razor;
     use crate::search::restrictions::Restrictions;
-    use crate::search::search_explainer::SearchExplainer;
+    use crate::search::explainer::Explainer;
     use crate::search::searchstats::*;
     use crate::tags::*;
     use crate::trace::counts::Counts;
@@ -201,7 +201,7 @@ mod tests {
         assert_eq!(size_of::<TranspositionTable2>(), 16960, "TranspositionTable2");
         assert_eq!(size_of::<Killers>(), 32, "Killers");
         assert_eq!(size_of::<HistoryHeuristic>(), 32, "HistoryHeuristic");
-        assert_eq!(size_of::<SearchExplainer>(), 48, "SearchExplainer");
+        assert_eq!(size_of::<Explainer>(), 48, "SearchExplainer");
         assert_eq!(size_of::<Restrictions>(), 1760, "Restrictions");
         assert_eq!(size_of::<Razor>(), 28, "Razor");
         assert_eq!(size_of::<Recognizer>(), 12, "Recognizer");

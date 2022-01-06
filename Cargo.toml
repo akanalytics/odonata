@@ -1,13 +1,13 @@
 [package]
 name = "odonata"
-version = "0.5.12"
+version = "0.5.13"
 license = "GPL-3.0+"
 homepage = "https://github.com/akanalytics/odonata"
 authors = [
     "andy watkins <andy@webcalculator.com>",
     "mark raistrick <mark.raistrick@gmail.com>",
 ]
-edition = "2018"
+edition = "2021"
 description = """
 A simple UCI compliant chess engine
 """
@@ -104,10 +104,10 @@ debug = true  # allow profiling of the  main executable
 [profile.tournament]
 #panic = "abort"
 inherits = "release"
-lto = true
+lto = false
 opt-level = 3
-incremental = false
-codegen-units = 1
+incremental = true
+codegen-units = 256
 
 [profile.stable]
 inherits = "tournament"
