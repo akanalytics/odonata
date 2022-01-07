@@ -37,7 +37,7 @@ use std::fmt;
 
 use super::lmp::Lmp;
 use super::node::Event;
-use super::explainer::Explainer;
+use super::search_explainer::Explainer;
 use super::search_results::SearchResultsMode;
 
 
@@ -129,6 +129,7 @@ impl Component for Algo {
             NewGame => self.new_game(),
             SetPosition => self.new_position(),
             StartSearch => {},
+            EndSearch => {},
             StartDepthIteration(_) => self.new_iter(),
         }
 
@@ -310,6 +311,7 @@ impl Algo {
     pub fn search(&mut self) {
         self.set_state(State::StartSearch);
         self.search_iteratively();
+        self.set_state(State::EndSearch);
     }
 
     #[inline]

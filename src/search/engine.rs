@@ -90,6 +90,7 @@ impl Component for Engine {
         match s {
             NewGame | SetPosition => self.threads.clear(),
             StartSearch => {}
+            EndSearch => {}
             StartDepthIteration(_) => {}
         }
         self.algo.set_state(s);

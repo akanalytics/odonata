@@ -13,12 +13,15 @@ use super::node::Event;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Aspiration {
-    pub enabled: bool,
-    pub min_depth: Ply,
-    pub window: Score,
-    pub max_iter: i32,
-    pub multiplier1: f32,
-    pub multiplier2: f32,
+    enabled: bool,
+    min_depth: Ply,
+    window: Score,
+    max_iter: i32,
+    max_window: Score,
+    multiplier1: f32,
+    multiplier2: f32,
+    change_both_bounds: bool, 
+    fail_soft: bool,
 }
 
 impl Component for Aspiration {
@@ -34,10 +37,13 @@ impl Default for Aspiration {
         Aspiration {
             enabled: true,
             min_depth: 4,
-            window: Score::from_cp(55),
-            max_iter: 2,
-            multiplier1: 3.2,
+            window: Score::from_cp(100),
+            max_iter: 4,
+            max_window: Score::from_cp(1200),
+            multiplier1: 4.0,
             multiplier2: 4.0,
+            change_both_bounds: false, 
+            fail_soft: true, 
         }
     }
 }
@@ -50,12 +56,13 @@ impl Algo {
             self.run_alphabeta(b, n)
         } else {
             let mut aspiration_count = 0;
-            let mut delta = ((4 + n.ply / 4) * self.aspiration.window.as_i16() as i32) as f32 / 6.0;
+            // let mut delta = ((4 + n.ply / 4) * self.aspiration.window.as_i16() as i32) as f32 / 6.0;
+            let mut delta = self.aspiration.window.as_i16() as f32;
             let mut alpha1 = score - Score::from_f32(delta);
             let mut beta1 = score + Score::from_f32(delta);
             let ret = loop {
                 aspiration_count += 1;
-                if aspiration_count > self.aspiration.max_iter {
+                if aspiration_count > self.aspiration.max_iter || delta > self.aspiration.max_window.as_i16() as f32 {
                     break self.run_alphabeta(b, n);
                 }
                 alpha1 = max(n.alpha, alpha1);
@@ -82,12 +89,24 @@ impl Algo {
 
                 if new_score <= alpha1 && alpha1 > n.alpha {
                     self.counts.inc(n, Event::AspirationFailLow);
-                    alpha1 = new_score - Score::from_f32(delta);
-                    beta1 = new_score; // beta1; // score;
+                    if self.aspiration.fail_soft {
+                        alpha1 = new_score - Score::from_f32(delta);
+                    } else {
+                        alpha1 = alpha1 - Score::from_f32(delta);
+                    }
+                    if self.aspiration.change_both_bounds {
+                        beta1 = new_score; 
+                    }
                 } else if new_score >= beta1 && beta1 < n.beta {
-                    alpha1 = new_score; // alpha1; //score;
+                    if self.aspiration.change_both_bounds {
+                        alpha1 = new_score; 
+                    }
                     self.counts.inc(n, Event::AspirationFailHigh);
-                    beta1 = new_score + Score::from_f32(delta);
+                    if self.aspiration.fail_soft {
+                        beta1 = new_score + Score::from_f32(delta);
+                    } else {
+                        beta1 = beta1 + Score::from_f32(delta);
+                    }
                 } else {
                     // info!("Found {:?} in search window {} {}", new_score, alpha1, beta1);
                     break (new_score, event);

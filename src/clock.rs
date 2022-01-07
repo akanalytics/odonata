@@ -58,6 +58,7 @@ impl Component for Clock {
             NewGame => self.new_game(),
             SetPosition => self.new_position(),
             StartSearch => *self = Self::default(),
+            EndSearch => {},
             StartDepthIteration(_) => self.new_iter(),
         }
     }

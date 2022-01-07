@@ -51,6 +51,7 @@ where TTaskProgress: Default {
             NewGame => { *self = Self::default(); },
             SetPosition => { *self = Self::default(); },
             StartSearch => { self.set_running(); },
+            EndSearch => { self.set_running(); },
             StartDepthIteration(_) => {},
         }
     }

@@ -777,12 +777,13 @@ half_way_score = 3200
 
 [aspiration]
 enabled = true
+fail_soft = false
+change_both_bounds = false
 min_depth = 4
-window = 55
-# max_window = 1200
-# multiplier = 4
-max_iter = 2
-multiplier1 = 3.2
+window = 100
+max_window = 1200
+max_iter = 16
+multiplier1 = 4.0
 multiplier2 = 4.0
 
 
@@ -956,6 +957,7 @@ avoid_tt_on_repeats = false
 enabled = true
 aging = true
 use_tt_for_pv = false
+use_tt_for_eval = false
 allow_truncated_pv = true
 buckets = 2
 aligned = false
@@ -986,6 +988,7 @@ score_method = "GoodOverGoodAndBad"
 
 [explainer]
 enabled = false
+is_explaining = false
 min_depth = 0
 max_additional_ply = 4
 

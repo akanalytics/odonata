@@ -17,7 +17,7 @@ pub mod pvs;
 pub mod qsearch;
 pub mod razor;
 pub mod restrictions;
-pub mod explainer;
+pub mod search_explainer;
 pub mod search_results;
 pub mod searchstats;
 pub mod stack;

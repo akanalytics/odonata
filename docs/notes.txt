@@ -27,6 +27,10 @@ Win bonus for exchanging when ahead/behind
 8/5k2/8/4KP2/8/8/4R2p/7r b - - 0 1 ; am Ke4 excessive pruning
 
 
+
+
+Todo
+====
 Reduce bad captures by more
 Count node type bitfield, 
 
@@ -37,3 +41,9 @@ eval
 Queen attacks near king ++
 Half open near king?
 Board as nearby pawn in king safety
+
+
+tuning
+======
+use_tt_for_eval
+tune aspiration

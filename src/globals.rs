@@ -148,7 +148,7 @@ mod tests {
     use crate::search::qsearch::QSearch;
     use crate::search::razor::Razor;
     use crate::search::restrictions::Restrictions;
-    use crate::search::explainer::Explainer;
+    use crate::search::search_explainer::Explainer;
     use crate::search::searchstats::*;
     use crate::tags::*;
     use crate::trace::counts::Counts;

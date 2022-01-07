@@ -10,6 +10,7 @@ pub enum State {
     NewGame,
     SetPosition,
     StartSearch,
+    EndSearch,
     StartDepthIteration(i32),
 }
 
@@ -20,6 +21,7 @@ pub trait Component {
             NewGame => self.new_game(),
             SetPosition => self.new_position(),
             StartSearch => {}
+            EndSearch => {}
             StartDepthIteration(_) => self.new_iter(),
         }
     }

@@ -51,6 +51,9 @@ impl Algo {
         (score, category)
     }
 
+    // score >= beta fail high
+    // score <= alpha fail low
+    // for [alpha-1, a] a score of either bound indicates fail low or high
     pub fn alphabeta_recursive(
         &mut self,
         b: &mut Board,
@@ -124,8 +127,21 @@ impl Algo {
         self.stats.inc_interior_nodes(&n);
 
         // static eval
-        let eval = b.eval_some(&self.eval, Switches::ALL_SCORING);
-
+        let mut eval = b.eval_some(&self.eval, Switches::ALL_SCORING);
+        
+        if self.tt.use_tt_for_eval {
+            if let Some(entry) = self.tt.probe_by_board(b, n.ply, n.depth) {
+                // if entry.depth >= n.depth {
+                    if entry.nt == NodeType::ExactPv {
+                        eval = entry.score;
+                    } else if entry.nt == NodeType::LowerCut && entry.score > eval  {
+                        eval = entry.score;
+                    } if entry.nt == NodeType::UpperAll && entry.score < eval  {
+                        eval = entry.score;
+                    }
+                // }
+            }
+        }
         if let Some(s) = self.standing_pat(b, &mut n, eval) {
             return Ok((s, Event::PruneStandingPat));
         }
@@ -200,7 +216,13 @@ impl Algo {
             };
             child_score = -child_score;
 
-            if (lmr > 0 && self.lmr.re_search || pvs) && child_score > score && child_score < n.beta {
+            // window was [alpha, alpha + 1]
+            // child_score >= beta => fail high as we are fail-soft
+            // child_score <= alpha => fail low
+            // alpha < child_score < score < beta and search upper bound was beta/!pvs then skip as too low
+            // alpha < child_score < score < beta and search upper bound was alpha+1/pvs => failed high so research
+            // if (lmr > 0 && self.lmr.re_search || pvs) && child_score > score && child_score < n.beta {
+            if (lmr > 0 && self.lmr.re_search || pvs) && child_score < n.beta && child_score > n.alpha && (child_score >= score || pvs) {
                 // research with full window without reduction in depth
                 self.stats.inc_pvs_research(ply);
                 let res = self.alphabeta_recursive(&mut child_board, ply + 1, depth + ext - 1, -n.beta, -n.alpha, mv)?;
