@@ -777,7 +777,7 @@ half_way_score = 3200
 
 [aspiration]
 enabled = true
-fail_soft = false
+fail_soft = true
 change_both_bounds = false
 min_depth = 4
 window = 100
