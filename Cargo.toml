@@ -1,6 +1,6 @@
 [package]
 name = "odonata"
-version = "0.5.13"
+version = "0.5.14"
 license = "GPL-3.0+"
 homepage = "https://github.com/akanalytics/odonata"
 authors = [
@@ -54,8 +54,7 @@ anyhow = "1.0"
 figment = { version = "0.10.6", features = ["env", "toml", "test"] }
 toml = "0.5.8"
 tabwriter = "1.2.1"
-treeline = "0.1.0"
-
+rose_tree = "0.3.0"
 
 [dev-dependencies]
 criterion = "0.3"

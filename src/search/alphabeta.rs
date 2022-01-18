@@ -30,6 +30,7 @@ impl Algo {
         self.pv_table = PvTable::new(MAX_PLY as usize);
         debug_assert!(self.current_variation.len() == 0);
 
+
         let (score, category) = match self.alphabeta_recursive(board, node.ply, self.max_depth, node.alpha, node.beta, Move::NULL_MOVE) {
             Ok((score, category)) => (score, category),
             Err(category) => (-Score::INFINITY, category)
@@ -81,6 +82,7 @@ impl Algo {
             n.beta,
             self.minmax
         );
+
 
         self.clock.inc_nodes();
         self.counts.inc(&n, Event::Clock);
@@ -171,8 +173,7 @@ impl Algo {
             }
 
             if score > -Score::INFINITY {
-                if let Some(est_score) = self.can_prune_move(&mv, count, move_type, b, &child_board, eval, &n, ext) {
-                    self.explain_futility(&mv, move_type, est_score, &n);
+                if let Some(est_score) = self.can_prune_move(mv, count, move_type, b, &child_board, eval, &n, ext) {
                     self.stats.inc_fp_move(ply);
                     if score == -Score::INFINITY {
                         score = est_score;
@@ -195,7 +196,7 @@ impl Algo {
 
             self.repetition.push_move(&mv, &child_board);
             self.current_variation.push(mv);
-            self.explainer.start(&n, &self.current_variation);
+            // self.explainer.start(&n, &self.current_variation);
             child_board.set_repetition_count(self.repetition.count(&child_board));
 
             let pvs = self.pvs_permitted(nt, b, &n, count);
@@ -237,9 +238,8 @@ impl Algo {
             }
             b.undo_move(&mv);
             self.current_variation.pop();
-            self.explainer.start(&n, &self.current_variation);
             self.repetition.pop();
-            self.explain_move(&mv, child_score, cat, &n);
+            self.explain_move(mv, child_score, cat, &n);
 
             // println!("move {} score {} alpha {} beta {}", mv, score, alpha, beta);
             debug_assert!(
@@ -321,7 +321,7 @@ impl Algo {
             nt,
             b,
         );
-        self.explain_node(&bm, nt, score, &n, &self.pv_table.extract_pv_for(ply));
+        self.explain_node(bm, nt, score, &n, &self.pv_table.extract_pv_for(ply));
         Ok((score, category))
     }
 }

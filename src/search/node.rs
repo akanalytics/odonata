@@ -88,6 +88,12 @@ pub enum Event {
     PercentLmrReSearch,
 }
 
+impl Default for Event {
+    fn default() -> Self {
+        Event::Unknown
+    }
+}
+
 impl Event {
     #[inline]
     pub const fn len() -> usize {
@@ -111,7 +117,7 @@ impl Event {
     }
 }
 
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct Node {
     pub ply: Ply,
     pub depth: Ply,
@@ -122,7 +128,7 @@ pub struct Node {
 
 impl fmt::Display for Node {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{:?}", self)
+        write!(f, "{}/{} a:{} b:{}", self.ply, self.depth, self.alpha, self.beta)
     }
 }
 

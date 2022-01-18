@@ -195,7 +195,7 @@ impl Algo {
 
             let mut child = board.make_move(&mv);
             self.current_variation.push(mv);
-            self.explainer.start(&node, &self.current_variation);
+            // self.explainer.start(&node, &self.current_variation);
             // delta prune on the move - FIXME - think about delta prune when checks
             if !in_check && board.eval_move_material(&self.eval, &mv) + standing_pat <= alpha && !child.is_in_check(child.color_us())
             // = will_check_them

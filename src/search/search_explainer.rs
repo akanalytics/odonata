@@ -1,3 +1,4 @@
+use crate::Board;
 // use crate::Bitboard;
 // use crate::board::Board;
 use crate::{bound::NodeType, types::Ply};
@@ -12,21 +13,20 @@ use crate::variation::Variation;
 use crate::infra::component::{Component, State};
 // use crate::{debug, logger::LogInit};
 use super::node::{Event, Node};
+use crate::domain::tree::{SearchTree, SearchTreeWeight};
 use crate::types::MoveType;
 use anyhow::{Context, Result};
+use fmt::{Debug, Display};
+use rose_tree::NodeIndex;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
-use treeline::Tree;
-use fmt::{Debug,Display};
 
 // static SEARCH_COUNTER: AtomicU32 = AtomicU32::new(0);
 // SEARCH_COUNTER.fetch_add(1, Ordering::SeqCst);
-
-
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -37,58 +37,14 @@ pub struct Explainer {
     is_explaining: bool,
 
     #[serde(skip)]
+    iter: i32,
+
+    #[serde(skip)]
     vars: Vec<Variation>,
 
     #[serde(skip)]
-    tree: Arc<Mutex<SearchTree<Move>>>,
+    tree: Option<SearchTree>,
 }
-
-
-// inspired by https://crates.io/crates/treeline (License MIT)
-
-
-#[derive(Debug, Default, Clone)]
-struct SearchTree<E: Clone + Debug + Default + Display> {
-    root: E,
-    leaves: Vec<SearchTree<E>>,
-}
-
-impl<D:Clone + Debug + Default + Display> SearchTree<D> {
-    fn display_leaves(f: &mut fmt::Formatter, leaves: &[SearchTree<D>], spaces: Vec<bool>) -> fmt::Result {
-        for (i, leaf) in leaves.iter().enumerate() {
-            let last = i >= leaves.len() - 1;
-            // print single line
-            for s in &spaces {
-                if *s {
-                    write!(f, "    ")?;
-                } else {
-                    write!(f, "|   ")?;
-                }
-            }
-            if last {
-                writeln!(f, "└── {}", leaf.root)?;
-            } else {
-                writeln!(f, "├── {}", leaf.root)?;
-            }
-
-            // recurse
-            if !leaf.leaves.is_empty() {
-                let mut clone = spaces.clone();
-                clone.push(last);
-                Self::display_leaves(f, &leaf.leaves, clone)?;
-            }
-        }
-        write!(f, "")
-    }
-}
-
-impl<D: Clone + Debug + Default + Display> Display for SearchTree<D> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{}", self.root)?;
-        Self::display_leaves(f, &self.leaves, Vec::new())
-    }
-}
-
 
 impl Component for Explainer {
     fn new_iter(&mut self) {}
@@ -102,7 +58,7 @@ impl Component for Explainer {
         match s {
             NewGame | SetPosition => {
                 self.is_explaining = false;
-                self.vars.clear();
+                // self.vars.clear();
             }
             StartSearch => {}
             EndSearch => {
@@ -110,7 +66,10 @@ impl Component for Explainer {
                     self.write_explanation().unwrap();
                 }
             }
-            StartDepthIteration(_) => {}
+            StartDepthIteration(iter) => {
+                self.iter = iter;
+                self.tree = None;
+            },
         }
     }
 }
@@ -122,8 +81,9 @@ impl Default for Explainer {
             is_explaining: false,
             min_depth: 0,
             max_additional_ply: 4,
-            vars: Vec::new(),
-            tree: Default::default(),
+            iter: 0,
+            vars: vec![Variation::new()],
+            tree: None,
         }
     }
 }
@@ -143,34 +103,45 @@ impl Explainer {
     }
 
     fn write_explanation(&mut self) -> Result<()> {
-        let mut writer: BufWriter<File> = self.open_file()?;
-
-        writer.flush()?;
+        // if its been "started" write a file
+        if self.tree.is_some() {
+            let mut writer: BufWriter<File> = self.open_file()?;
+            let tree = self.tree.take().unwrap();
+            writeln!(writer, "Initial position {}", tree.initial_position.to_fen())?;
+            writeln!(writer, "{}", tree.tree)?;
+            writer.flush()?;
+        }
         Ok(())
     }
 
     pub fn open_file(&mut self) -> Result<BufWriter<File>> {
-        let filename = format!("explain.csv"); // SEARCH_COUNTER.load(Ordering::SeqCst));
+        let filename = format!("explain-{:02}.csv", self.iter); // SEARCH_COUNTER.load(Ordering::SeqCst));
+        println!("Opening file {} for explainer", filename);
         let f = File::create(&filename).with_context(|| format!("Failed to open file {}", &filename))?;
         let writer = BufWriter::new(f);
-        println!("*****Opened {}", filename);
         Ok(writer)
     }
 
     #[inline]
-    pub fn start(&mut self, n: &Node, current: &Variation) {
-        if self.enabled {
-            self.is_explaining = self.enabled
-                && n.depth >= self.min_depth
-                && (self
-                    .vars
-                    .iter()
-                    .any(|v| current.starts_with(v) && current.len() <= v.len() + self.max_additional_ply as usize)
-                    || self.vars.is_empty());
-            if self.is_explaining {
-                // println!("Explaining {}", self.variation);
+    pub fn explaining(&mut self, n: &Node, var: &Variation) -> Option<&mut SearchTreeWeight> {
+        if self.enabled
+            && n.depth >= self.min_depth
+            && (self
+                .vars
+                .iter()
+                .inspect(|x| println!("about to check var: {}", x))
+                .any(|v| var.starts_with(v) && var.len() <= v.len() + self.max_additional_ply as usize))
+        {
+            println!("Explaining {}", var);
+            if self.tree.is_none() {
+                let tree = SearchTree::new(Board::default());
+                self.tree = Some(tree);
             }
+            if let Some(tree) = &mut self.tree {
+                return Some(tree.get_or_insert(var));
+            };
         }
+        None
     }
 
     #[inline]
@@ -186,110 +157,79 @@ fn header(_n: &Node, var: &Variation) -> String {
 
 impl Algo {
     #[inline]
-    pub fn explain_futility(&mut self, mv: &Move, move_type: MoveType, estimated: Score, n: &Node) {
-        if !self.explainer.enabled || !self.explainer.is_explaining {
-            return;
+    pub fn explain_futility(&mut self, mv: Move, move_type: MoveType, estimated: Score, n: &Node, e: Event) {
+        if let Some(w) = self.explainer.explaining(n, &self.current_variation.append(mv)) {
+            w.score = estimated;
+            w.node = *n;
+            w.event = e;
         }
-
-        // if let Some(w) = &self.explainer.writer {
-        //     writeln!(
-        //         w.lock().unwrap(),
-        //         "{} futile move {} of type {} scores an estimated {} against {}",
-        //         header(n, self.var()),
-        //         mv,
-        //         move_type,
-        //         estimated,
-        //         n.alpha
-        //     )
-        //     .unwrap();
-        // }
     }
 
     #[inline]
-    pub fn explain_move(&self, mv: &Move, child_score: Score, cat: Event, n: &Node) {
-        if !self.explainer.enabled || !self.explainer.is_explaining {
-            return;
+    pub fn explain_move(&mut self, mv: Move, child_score: Score, cat: Event, n: &Node) {
+        if let Some(w) = self.explainer.explaining(n, &self.current_variation.append(mv)) {
+            // let bound = match child_score {
+            //     d if d >= n.beta => Event::NodeInteriorCut,
+            //     d if d > n.alpha => Event::NodeInteriorPv,
+            //     _ => Event::NodeInteriorAll,
+            // };
+            w.score = child_score;
+            w.node = *n;
+            w.event = cat;
         }
-
-        let (text, bound) = match child_score {
-            d if d >= n.beta => ("beta cutoff", n.beta),
-            d if d > n.alpha => ("raised alpha", n.alpha),
-            _ => ("failed low", n.alpha),
-        };
-        // if let Some(w) = &self.explainer.writer {
-        //     writeln!(
-        //         w.lock().unwrap(),
-        //         "{} move {} scored {} and {} {} cat {}",
-        //         header(n, self.var()),
-        //         mv,
-        //         child_score,
-        //         text,
-        //         bound,
-        //         cat
-        //     )
-        //     .unwrap();
-        // }
     }
 
     #[inline]
-    pub fn explain_nmp(&self, child_score: Score, n: &Node) {
-        if !self.explainer.enabled || !self.explainer.is_explaining {
-            return;
+    pub fn explain_nmp(&mut self, child_score: Score, n: &Node) {
+        if let Some(w) = self.explainer.explaining(n, &self.current_variation) {
+            w.score = child_score;
+            w.node = *n;
+            w.event = Event::PruneNullMovePrune;
         }
-        // if let Some(w) = &self.explainer.writer {
-        //     writeln!(
-        //         w.lock().unwrap(),
-        //         "{} null move scored {} and cutoff beta at {}",
-        //         header(n, self.var()),
-        //         child_score,
-        //         n.beta
-        //     )
-        //     .unwrap();
-        // }
     }
 
     #[inline]
-    pub fn explain_node(&self, bm: &Move, nt: NodeType, score: Score, n: &Node, pv: &Variation) {
-        if !self.explainer.enabled || !self.explainer.is_explaining {
-            return;
+    pub fn explain_node(&mut self, bm: Move, nt: NodeType, score: Score, n: &Node, _pv: &Variation) {
+        if let Some(w) = self.explainer.explaining(n, &self.current_variation) {
+            w.score = score;
+            w.node = *n;
+            w.nt = nt;
         }
-        // if let Some(w) = &self.explainer.writer {
-        //     writeln!(
-        //         w.lock().unwrap(),
-        //         "{} best move {} scored {} at node type {} pv {}",
-        //         header(n, self.var()),
-        //         bm,
-        //         score,
-        //         nt,
-        //         pv
-        //     )
-        //     .unwrap();
-        // }
-        let tree = self.explainer.tree.lock();
+        if let Some(w) = self.explainer.explaining(n, &self.current_variation.append(bm)) {
+            w.is_best_move = true;
+            debug!("{}: {} setting best move to {}", self.explainer.iter, &self.current_variation, bm);
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::catalog::Catalog;
+    use crate::search::{engine::Engine, timecontrol::TimeControl};
     use crate::test_log::test;
-    use crate::{
-        search::{engine::Engine, timecontrol::TimeControl},
-        Position,
-    };
 
     #[test]
     fn test_explainer() {
         let mut eng = Engine::new();
-        let pos = Position::parse_epd("r1b1k2r/1p3p1p/p2p4/6B1/1q1np3/2Q5/PPP1BPPP/1R2K2R w Kkq - 1 15").unwrap();
-        let _var = pos.board().parse_san_variation("").unwrap();
+        eng.algo.explainer.enabled = true;
+        assert_eq!(eng.algo.explainer.vars.len(), 1);
+
+        let pos = Catalog::starting_position();
+        // let pos = Position::parse_epd("r1b1k2r/1p3p1p/p2p4/6B1/1q1np3/2Q5/PPP1BPPP/1R2K2R w Kkq - 1 15").unwrap();
+        // let var = pos.board().parse_san_variation("").unwrap();
         // eng.algo.explainer.add_variation_to_explain(var);
 
-        // let var = pos.board().parse_san_variation("Qxc3").unwrap();
-        // eng.algo.explainer.add_variation_to_explain(var);
+        let v1 = pos.board().parse_san_variation("b2b4").unwrap();
+        eng.algo.explainer.add_variation_to_explain(v1.clone());
+        assert_eq!(eng.algo.explainer.vars.len(), 2);
+
+        assert!(eng.algo.explainer.vars.iter().any(|v| v1.starts_with(v)));
 
         eng.set_position(pos);
-        eng.algo.set_timing_method(TimeControl::Depth(2));
+        eng.algo.set_timing_method(TimeControl::Depth(3));
+
         eng.search();
+        println!("{:?}", eng.algo.explainer);
         // warn!("{}", eng);
     }
 }

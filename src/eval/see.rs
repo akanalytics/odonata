@@ -116,7 +116,7 @@ mod tests {
             let b = pos.board();
             let mv = pos.sm()?;
             let ce = pos.ce()?;
-            assert_eq!(see.eval_move_see(&b, &mv), ce, "pos {}", pos);
+            assert_eq!(see.eval_move_see(&b, mv), ce, "pos {}", pos);
         }
         Ok(())
     }

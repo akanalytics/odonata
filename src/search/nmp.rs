@@ -152,7 +152,7 @@ impl Algo {
         let mv = Move::NULL_MOVE;
         let mut child_board = b.make_move(&mv);
         self.current_variation.push(mv);
-        self.explainer.start(n, &self.current_variation);
+        // self.explainer.start(n, &self.current_variation);
         self.stats.inc_nmp(n.ply);
         let reduced_depth = n.depth - r - 1;
 
@@ -168,7 +168,7 @@ impl Algo {
             .0;
         b.undo_move(&mv);
         self.current_variation.pop();
-        self.explainer.start(n, &self.current_variation);
+        // self.explainer.start(n, &self.current_variation);
         if child_score >= n.beta {
             self.stats.inc_node_cut(n.ply, MoveType::Null, -1);
             self.counts.inc(n, Event::PruneNullMovePrune);

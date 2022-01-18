@@ -154,7 +154,7 @@ impl Algo {
     #[inline]
     pub fn can_prune_move(
         &mut self,
-        mv: &Move,
+        mv: Move,
         mv_num: u32,
         mt: MoveType,
         before: &Board,
@@ -208,7 +208,7 @@ impl Algo {
         });
 
         // not a capture or promo => gain = 0
-        let gain = before.eval_move_material(&self.eval, mv);
+        let gain = before.eval_move_material(&self.eval, &mv);
 
         // fail low pruning
         let est_score = eval + margin + gain;
@@ -220,6 +220,7 @@ impl Algo {
                 _ => Event::PruneFutilityD3,
             };
             self.counts.inc(n, category);
+            self.explain_futility(mv, mt, est_score, &n, category);
             return Some(est_score);
         }
         None

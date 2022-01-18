@@ -32,8 +32,30 @@ impl Variation {
         &EMPTY
     }
 
+    #[inline]
+    pub fn moves(&self) -> impl Iterator<Item=&Move> {
+        self.moves.iter()
+    }
+
+
     pub fn uci(&self) -> String {
         self.moves.iter().map(|mv| mv.uci()).collect::<Vec<String>>().join(" ")
+    }
+
+    /// variation without last move or None if empty
+    pub fn stem(&self) -> Option<Variation> {
+        if self.moves.len() > 0 {
+            let moves = self.moves[0..self.moves.len()-1].to_owned();
+            Some( Variation { moves } )
+        } else {
+            None
+        }
+    }
+
+    pub fn append(&self, mv: Move) -> Variation {
+        let mut var = self.clone();
+        var.push(mv);
+        var
     }
 
     #[inline]
