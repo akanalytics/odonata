@@ -19,10 +19,39 @@ pub struct Tree<N> {
     root: NodeIndex,
 }
 
-impl<N> Tree<N>
-where
-    N: Display,
-{
+// impl<N> Tree<N>
+// where
+//     N: Display,
+// {
+//     fn display_leaves(&self, f: &mut fmt::Formatter, leaves: &Vec<NodeIndex>, spaces: Vec<bool>) -> fmt::Result {
+//         for (i, &leaf) in leaves.iter().rev().enumerate() {
+//             let last = i >= leaves.len() - 1;
+//             let mut clone = spaces.clone();
+//             // print single line
+//             for s in &spaces {
+//                 if *s {
+//                     write!(f, "    ")?;
+//                 } else {
+//                     write!(f, "|   ")?;
+//                 }
+//             }
+//             if last {
+//                 writeln!(f, "└── {}", self[leaf])?;
+//             } else {
+//                 writeln!(f, "├── {}", self[leaf])?;
+//             }
+
+//             // recurse
+//             if self.rose_tree.children(leaf).count() > 0 {
+//                 clone.push(last);
+//                 self.display_leaves(f, &self.children(leaf).collect_vec(), clone)?;
+//             }
+//         }
+//         write!(f, "")
+//     }
+// }
+
+impl Tree<SearchTreeWeight> {
     fn display_leaves(&self, f: &mut fmt::Formatter, leaves: &Vec<NodeIndex>, spaces: Vec<bool>) -> fmt::Result {
         for (i, &leaf) in leaves.iter().rev().enumerate() {
             let last = i >= leaves.len() - 1;
@@ -36,10 +65,39 @@ where
                 }
             }
             if last {
-                writeln!(f, "└── {}", self[leaf])?;
+                write!(f, "└── ")?;
             } else {
-                writeln!(f, "├── {}", self[leaf])?;
+                write!(f, "├── ")?;
             }
+
+            let w = &self[leaf];
+            write!(f, "{}{}", w.mv, if w.is_best_move { "*" } else { " " })?;
+
+            for _ in spaces.len()..5 {
+                write!(f, "    ")?;
+            }
+            writeln!(
+                f,
+                "{:>5} {:>2} [{:>4},{:>4}] {} {}",
+                w.score.to_string(),
+                w.node.depth,
+                w.node.alpha.to_string(),
+                w.node.beta.to_string(),
+                w.nt,
+                w.event,
+            )?;
+
+            if last && self.rose_tree.children(leaf).count() == 0 {
+                for s in &spaces {
+                    if *s {
+                        write!(f, "    ")?;
+                    } else {
+                        write!(f, "|   ")?;
+                    }
+                }
+                // writeln!(f, "{} {} {}", "----", i, leaves.len())?;
+                writeln!(f)?;
+            }    
 
             // recurse
             if self.rose_tree.children(leaf).count() > 0 {
@@ -51,10 +109,7 @@ where
     }
 }
 
-impl<N> Display for Tree<N>
-where
-    N: Display,
-{
+impl Display for Tree<SearchTreeWeight> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let root = self.root();
         writeln!(f, "{}", self.rose_tree.node_weight(root).unwrap())?;
@@ -206,7 +261,7 @@ mod tests {
                 .collect_vec(),
             vec!["Dog".to_owned(), "Root".to_owned()]
         );
-        println!("Tree:\n{}", tree);
+        // println!("Tree:\n{}", tree);
     }
 
     #[test]

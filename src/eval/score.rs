@@ -266,7 +266,7 @@ impl std::ops::Neg for Score {
 impl fmt::Display for Score {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.is_numeric() {
-            write!(f, "{} cp", self.cp)
+            write!(f, "{}", self.cp)
         } else if self.cp == -Self::INF {
             f.write_str("-inf")
         } else if self.cp == i16::MAX {
@@ -478,7 +478,7 @@ impl fmt::Display for Score2 {
         match self {
             Self::MinusInf => f.write_str("-inf"),
             Self::WhiteLoss { ply } => write!(f, "win({})", ply),
-            Self::Cp(cp) => write!(f, "{} cp", cp),
+            Self::Cp(cp) => write!(f, "{}", cp),
             Self::WhiteWin { minus_ply } => write!(f, "loss({})", -minus_ply),
             Self::PlusInf => f.write_str("+inf"),
         }
@@ -552,6 +552,16 @@ mod tests {
         assert!(Score::from_cp(1000).win_probability() > 0.95);
         assert!(Score::from_cp(-1000).win_probability() < 0.05);
         assert!((-Score::INFINITY).win_probability() < 0.001);
+    }
+
+    #[test]
+    fn test_score_fmt() {
+        assert_eq!(format!("{}", Score::from_cp(1000)), "1000");
+        assert_eq!(format!("{}", Score::INFINITY), "+inf");
+        assert_eq!(format!("{}", Score::white_win(2)), "win(2)");
+        assert_eq!(format!("{}", Score::white_loss(3)), "loss(3)");
+        assert_eq!(format!("{:>8}", Score::white_loss(3)), "loss(3)");
+        assert_eq!(format!("{:>8}", Score::white_loss(3).to_string()), " loss(3)");
     }
 
     #[test]

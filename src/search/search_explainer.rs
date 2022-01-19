@@ -16,14 +16,11 @@ use super::node::{Event, Node};
 use crate::domain::tree::{SearchTree, SearchTreeWeight};
 use crate::types::MoveType;
 use anyhow::{Context, Result};
-use fmt::{Debug, Display};
-use rose_tree::NodeIndex;
+use fmt::Debug;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fs::File;
 use std::io::{BufWriter, Write};
-use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::{Arc, Mutex};
 
 // static SEARCH_COUNTER: AtomicU32 = AtomicU32::new(0);
 // SEARCH_COUNTER.fetch_add(1, Ordering::SeqCst);
@@ -69,7 +66,7 @@ impl Component for Explainer {
             StartDepthIteration(iter) => {
                 self.iter = iter;
                 self.tree = None;
-            },
+            }
         }
     }
 }
@@ -157,7 +154,7 @@ fn header(_n: &Node, var: &Variation) -> String {
 
 impl Algo {
     #[inline]
-    pub fn explain_futility(&mut self, mv: Move, move_type: MoveType, estimated: Score, n: &Node, e: Event) {
+    pub fn explain_futility(&mut self, mv: Move, _move_type: MoveType, estimated: Score, n: &Node, e: Event) {
         if let Some(w) = self.explainer.explaining(n, &self.current_variation.append(mv)) {
             w.score = estimated;
             w.node = *n;
@@ -195,9 +192,12 @@ impl Algo {
             w.node = *n;
             w.nt = nt;
         }
-        if let Some(w) = self.explainer.explaining(n, &self.current_variation.append(bm)) {
-            w.is_best_move = true;
-            debug!("{}: {} setting best move to {}", self.explainer.iter, &self.current_variation, bm);
+        if nt == NodeType::ExactPv {
+            if let Some(w) = self.explainer.explaining(n, &self.current_variation.append(bm)) {
+                w.is_best_move = true;
+                w.nt = nt;
+                debug!("{}: {} setting best move to {}", self.explainer.iter, &self.current_variation, bm);
+            }
         }
     }
 }
@@ -226,7 +226,7 @@ mod tests {
         assert!(eng.algo.explainer.vars.iter().any(|v| v1.starts_with(v)));
 
         eng.set_position(pos);
-        eng.algo.set_timing_method(TimeControl::Depth(3));
+        eng.algo.set_timing_method(TimeControl::Depth(6));
 
         eng.search();
         println!("{:?}", eng.algo.explainer);
