@@ -147,56 +147,64 @@ impl Explainer {
     }
 }
 
-fn header(_n: &Node, var: &Variation) -> String {
-    let strings: Vec<String> = var.iter().map(Move::to_string).collect();
-    format!("{:<26}", strings.join("."))
-}
+// fn header(_n: &Node, var: &Variation) -> String {
+//     let strings: Vec<String> = var.iter().map(Move::to_string).collect();
+//     format!("{:<26}", strings.join("."))
+// }
 
 impl Algo {
     #[inline]
     pub fn explain_futility(&mut self, mv: Move, _move_type: MoveType, estimated: Score, n: &Node, e: Event) {
-        if let Some(w) = self.explainer.explaining(n, &self.current_variation.append(mv)) {
-            w.score = estimated;
-            w.node = *n;
-            w.event = e;
+        if self.explainer.enabled {
+            if let Some(w) = self.explainer.explaining(n, &self.current_variation.append(mv)) {
+                w.score = estimated;
+                w.node = *n;
+                w.event = e;
+            }
         }
     }
 
     #[inline]
     pub fn explain_move(&mut self, mv: Move, child_score: Score, cat: Event, n: &Node) {
-        if let Some(w) = self.explainer.explaining(n, &self.current_variation.append(mv)) {
-            // let bound = match child_score {
-            //     d if d >= n.beta => Event::NodeInteriorCut,
-            //     d if d > n.alpha => Event::NodeInteriorPv,
-            //     _ => Event::NodeInteriorAll,
-            // };
-            w.score = child_score;
-            w.node = *n;
-            w.event = cat;
+        if self.explainer.enabled {
+            if let Some(w) = self.explainer.explaining(n, &self.current_variation.append(mv)) {
+                // let bound = match child_score {
+                //     d if d >= n.beta => Event::NodeInteriorCut,
+                //     d if d > n.alpha => Event::NodeInteriorPv,
+                //     _ => Event::NodeInteriorAll,
+                // };
+                w.score = child_score;
+                w.node = *n;
+                w.event = cat;
+            }
         }
     }
 
     #[inline]
     pub fn explain_nmp(&mut self, child_score: Score, n: &Node) {
-        if let Some(w) = self.explainer.explaining(n, &self.current_variation) {
-            w.score = child_score;
-            w.node = *n;
-            w.event = Event::PruneNullMovePrune;
+        if self.explainer.enabled {
+            if let Some(w) = self.explainer.explaining(n, &self.current_variation) {
+                w.score = child_score;
+                w.node = *n;
+                w.event = Event::PruneNullMovePrune;
+            }
         }
     }
 
     #[inline]
     pub fn explain_node(&mut self, bm: Move, nt: NodeType, score: Score, n: &Node, _pv: &Variation) {
-        if let Some(w) = self.explainer.explaining(n, &self.current_variation) {
-            w.score = score;
-            w.node = *n;
-            w.nt = nt;
-        }
-        if nt == NodeType::ExactPv {
-            if let Some(w) = self.explainer.explaining(n, &self.current_variation.append(bm)) {
-                w.is_best_move = true;
+        if self.explainer.enabled {
+            if let Some(w) = self.explainer.explaining(n, &self.current_variation) {
+                w.score = score;
+                w.node = *n;
                 w.nt = nt;
-                debug!("{}: {} setting best move to {}", self.explainer.iter, &self.current_variation, bm);
+            }
+            if nt == NodeType::ExactPv {
+                if let Some(w) = self.explainer.explaining(n, &self.current_variation.append(bm)) {
+                    w.is_best_move = true;
+                    w.nt = nt;
+                    debug!("{}: {} setting best move to {}", self.explainer.iter, &self.current_variation, bm);
+                }
             }
         }
     }
