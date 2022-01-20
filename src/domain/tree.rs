@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use rose_tree::{NodeIndex, RoseTree};
+// use rose_tree::{NodeIndex, };
 use std::fmt;
 use std::fmt::{Debug, Display};
 
@@ -10,46 +10,22 @@ use crate::mv::Move;
 use crate::search::node::Event;
 use crate::search::node::Node;
 use crate::variation::Variation;
+use petgraph::graph::NodeIndex;
 
-// inspired by https://crates.io/crates/treeline (License MIT)
+// copied/inspired by https://crates.io/crates/treeline (License MIT)
+// and
+// https://github.com/mitchmindtree/rose_tree-rs 
+// (licence Apache https://github.com/mitchmindtree/rose_tree-rs/blob/master/LICENSE-APACHE)
+
+pub type PetGraph<N> = petgraph::Graph<N, (), petgraph::Directed, u32>;
+
 
 #[derive(Debug, Clone)]
 pub struct Tree<N> {
-    rose_tree: RoseTree<N>,
+    graph: PetGraph<N>,
     root: NodeIndex,
 }
 
-// impl<N> Tree<N>
-// where
-//     N: Display,
-// {
-//     fn display_leaves(&self, f: &mut fmt::Formatter, leaves: &Vec<NodeIndex>, spaces: Vec<bool>) -> fmt::Result {
-//         for (i, &leaf) in leaves.iter().rev().enumerate() {
-//             let last = i >= leaves.len() - 1;
-//             let mut clone = spaces.clone();
-//             // print single line
-//             for s in &spaces {
-//                 if *s {
-//                     write!(f, "    ")?;
-//                 } else {
-//                     write!(f, "|   ")?;
-//                 }
-//             }
-//             if last {
-//                 writeln!(f, "└── {}", self[leaf])?;
-//             } else {
-//                 writeln!(f, "├── {}", self[leaf])?;
-//             }
-
-//             // recurse
-//             if self.rose_tree.children(leaf).count() > 0 {
-//                 clone.push(last);
-//                 self.display_leaves(f, &self.children(leaf).collect_vec(), clone)?;
-//             }
-//         }
-//         write!(f, "")
-//     }
-// }
 
 impl Tree<SearchTreeWeight> {
     fn display_leaves(&self, f: &mut fmt::Formatter, leaves: &Vec<NodeIndex>, spaces: Vec<bool>) -> fmt::Result {
@@ -87,7 +63,7 @@ impl Tree<SearchTreeWeight> {
                 w.event,
             )?;
 
-            if last && self.rose_tree.children(leaf).count() == 0 {
+            if last && self.children(leaf).count() == 0 {
                 for s in &spaces {
                     if *s {
                         write!(f, "    ")?;
@@ -97,10 +73,10 @@ impl Tree<SearchTreeWeight> {
                 }
                 // writeln!(f, "{} {} {}", "----", i, leaves.len())?;
                 writeln!(f)?;
-            }    
+            }
 
             // recurse
-            if self.rose_tree.children(leaf).count() > 0 {
+            if self.children(leaf).count() > 0 {
                 clone.push(last);
                 self.display_leaves(f, &self.children(leaf).collect_vec(), clone)?;
             }
@@ -112,8 +88,8 @@ impl Tree<SearchTreeWeight> {
 impl Display for Tree<SearchTreeWeight> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let root = self.root();
-        writeln!(f, "{}", self.rose_tree.node_weight(root).unwrap())?;
-        let leaves = self.rose_tree.children(root).collect();
+        writeln!(f, "{}", self.graph.node_weight(root).unwrap())?;
+        let leaves = self.children(root).collect();
         self.display_leaves(f, &leaves, Vec::new())
     }
 }
@@ -123,27 +99,36 @@ where
     N: Default,
 {
     fn default() -> Self {
-        let (rose_tree, root) = RoseTree::new(Default::default());
-        Self { rose_tree, root }
+        Self::new(Default::default())
     }
 }
 
 impl<N> Tree<N> {
-    fn new(root: N) -> Self {
-        let (rose_tree, root) = RoseTree::new(root);
-        Self { rose_tree, root }
+    // fn new(root: N) -> Self {
+    //     let (rose_tree, root) = RoseTree::new(root);
+    //     Self { rose_tree, root }
+    // }
+
+    pub fn new(root: N) -> Self {
+        let mut graph = PetGraph::with_capacity(1, 1);
+        let root = graph.add_node(root);
+        Self { graph, root }
     }
 
     fn root(&self) -> NodeIndex {
         self.root
     }
 
+    /// Add a child node to the node at the given NodeIndex.
+    /// Returns an index into the child's position within the tree.
     fn add_child(&mut self, parent: NodeIndex, kid: N) -> NodeIndex {
-        self.rose_tree.add_child(parent, kid)
+        let kid = self.graph.add_node(kid);
+        self.graph.add_edge(parent, kid, ());
+        kid
     }
 
     fn children(&self, parent: NodeIndex) -> impl Iterator<Item = NodeIndex> + '_ {
-        self.rose_tree.children(parent)
+        self.graph.neighbors_directed(parent, petgraph::Outgoing)
     }
 }
 
@@ -151,14 +136,14 @@ impl<N> std::ops::Index<NodeIndex> for Tree<N> {
     type Output = N;
     #[inline]
     fn index(&self, i: NodeIndex) -> &Self::Output {
-        self.rose_tree.node_weight(i).unwrap()
+        self.graph.node_weight(i).unwrap()
     }
 }
 
 impl<N> std::ops::IndexMut<NodeIndex> for Tree<N> {
     #[inline]
     fn index_mut(&mut self, i: NodeIndex) -> &mut Self::Output {
-        self.rose_tree.node_weight_mut(i).unwrap()
+        self.graph.node_weight_mut(i).unwrap()
     }
 }
 
@@ -246,21 +231,21 @@ mod tests {
         let mut tree = Tree::new(String::from("Root"));
         let root = tree.root();
         let cat = tree.add_child(root, "Cat".into());
-        assert_eq!(tree.rose_tree.children(cat).count(), 0);
+        assert_eq!(tree.children(cat).count(), 0);
         let _mouse = tree.add_child(root, "Mouse".into());
         let dog = tree.add_child(root, "Dog".into());
         assert_eq!(tree[dog], "Dog".to_owned());
         tree.add_child(dog, "Bark".to_owned());
-        let woof = tree.add_child(dog, "Woof".to_owned());
+        let _woof = tree.add_child(dog, "Woof".to_owned());
         assert_eq!(tree.children(dog).count(), 2);
         assert_eq!(tree.children(root).count(), 3);
-        assert_eq!(
-            tree.rose_tree
-                .parent_recursion(woof)
-                .map(|i| tree.rose_tree[i].clone())
-                .collect_vec(),
-            vec!["Dog".to_owned(), "Root".to_owned()]
-        );
+        // assert_eq!(
+        //     tree.rose_tree
+        //         .parent_recursion(woof)
+        //         .map(|i| tree.rose_tree[i].clone())
+        //         .collect_vec(),
+        //     vec!["Dog".to_owned(), "Root".to_owned()]
+        // );
         // println!("Tree:\n{}", tree);
     }
 
