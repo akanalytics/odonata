@@ -27,6 +27,8 @@ Win bonus for exchanging when ahead/behind
 8/5k2/8/4KP2/8/8/4R2p/7r b - - 0 1 ; am Ke4 excessive pruning
 
 
+0.5.13
+Investigate -8 Elo 0.5.12 -> 0.5.13
 
 
 Todo
