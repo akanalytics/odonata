@@ -25,7 +25,7 @@ pub struct Model {
     pub turn: Color,
     pub mat: Material,
     pub endgame: EndGame,
-    pub multiboard: Multiboard,
+    pub multiboard: Board,
 
     pub white: ModelSide,
     pub black: ModelSide,
@@ -419,7 +419,7 @@ impl Model {
         Self {
             switches,
             turn: b.color_us(),
-            multiboard: b.multiboard().clone(),
+            multiboard: b.clone(),
             mat: material,
             white: ModelSide::from_board(b, Color::White, &material, endgame, switches),
             black: ModelSide::from_board(b, Color::Black, &material, endgame, switches),

@@ -477,7 +477,7 @@ impl SimpleScorer {
                 scorer.position(black, 0, 1, b);
                 // sum = sum + w - b;
             }
-            scorer.position("fianchetti", w.fianchetti, b.fianchetti, self.fianchetto);
+            scorer.position("fianchetto", w.fianchetti, b.fianchetti, self.fianchetto);
             scorer.position(
                 "bishop color pawns",
                 w.bishop_color_pawns,
@@ -487,9 +487,9 @@ impl SimpleScorer {
             scorer.position("bishop outposts", w.bishop_outposts, b.bishop_outposts, self.bishop_outposts);
             scorer.position("knight forks", w.knight_forks, b.knight_forks, self.knight_forks);
             scorer.position("knight outposts", w.knight_outposts, b.knight_outposts, self.knight_outposts);
-            scorer.position("doubled rook", w.doubled_rooks, b.doubled_rooks, self.doubled_rooks);
+            scorer.position("doubled rooks", w.doubled_rooks, b.doubled_rooks, self.doubled_rooks);
             scorer.position(
-                "doubled rook of",
+                "doubled rooks open file",
                 w.doubled_rooks_open_file,
                 b.doubled_rooks_open_file,
                 self.doubled_rooks_open_file,
@@ -502,7 +502,7 @@ impl SimpleScorer {
             );
 
             scorer.position(
-                "queen early",
+                "queen early develop",
                 w.queen_early_develop,
                 b.queen_early_develop,
                 self.queen_early_develop,
@@ -514,11 +514,11 @@ impl SimpleScorer {
 
         // pawn structure
         if self.pawn && m.switches.contains(Switches::PAWN) {
-            scorer.pawn("doubled", w.doubled_pawns, b.doubled_pawns, self.pawn_doubled);
-            scorer.pawn("isolated", w.isolated_pawns, b.isolated_pawns, self.pawn_isolated);
-            scorer.pawn("passed", w.passed_pawns, b.passed_pawns, self.pawn_passed);
-            scorer.pawn("passed.r6", w.passed_pawns_on_r6, b.passed_pawns_on_r6, self.pawn_passed_r6);
-            scorer.pawn("passed.r5", w.passed_pawns_on_r5, b.passed_pawns_on_r5, self.pawn_passed_r5);
+            scorer.pawn("pawn doubled", w.doubled_pawns, b.doubled_pawns, self.pawn_doubled);
+            scorer.pawn("pawn isolated", w.isolated_pawns, b.isolated_pawns, self.pawn_isolated);
+            scorer.pawn("pawn passed", w.passed_pawns, b.passed_pawns, self.pawn_passed);
+            scorer.pawn("pawn passed r6", w.passed_pawns_on_r6, b.passed_pawns_on_r6, self.pawn_passed_r6);
+            scorer.pawn("pawn passed r5", w.passed_pawns_on_r5, b.passed_pawns_on_r5, self.pawn_passed_r5);
             scorer.pawn("passers on rim", w.passers_on_rim, b.passers_on_rim, self.passers_on_rim);
             scorer.pawn("blockaded", w.blockaded, b.blockaded, self.blockaded);
             scorer.pawn(
@@ -533,7 +533,7 @@ impl SimpleScorer {
                 b.rooks_behind_passer,
                 self.rooks_behind_passer,
             );
-            scorer.pawn("rammed pawns with knights", w.rammed_pawns, b.rammed_pawns, self.rammed_pawns);
+            scorer.pawn("rammed pawns", w.rammed_pawns, b.rammed_pawns, self.rammed_pawns);
             scorer.pawn("space", w.space, b.space, self.space);
         }
 
@@ -542,8 +542,8 @@ impl SimpleScorer {
         // king safety
         if self.safety && m.switches.contains(Switches::SAFETY) {
             // scorer.safety("nearby pawns", w.nearby_pawns, b.nearby_pawns, self.pawn_shield);
-            scorer.safety("adjacent shield", w.adjacent_shield, b.adjacent_shield, self.pawn_adjacent_shield);
-            scorer.safety("nearby shield", w.nearby_shield, b.nearby_shield, self.pawn_nearby_shield);
+            scorer.safety("pawn adjacent shield", w.adjacent_shield, b.adjacent_shield, self.pawn_adjacent_shield);
+            scorer.safety("pawn nearby shield", w.nearby_shield, b.nearby_shield, self.pawn_nearby_shield);
             scorer.safety(
                 "open files near king",
                 w.open_files_near_king,
@@ -571,17 +571,17 @@ impl SimpleScorer {
             // scorer.position("black mob", 0, 1, bl);
 
             scorer.mobility("center attacks", w.center_attacks, b.center_attacks, self.center_attacks);
-            scorer.mobility("move", w.move_squares, b.move_squares, self.undefended_sq);
+            scorer.mobility("undefended sq", w.move_squares, b.move_squares, self.undefended_sq);
             scorer.mobility(
-                "undef piece",
+                "undefended piece",
                 w.non_pawn_defended_moves,
                 b.non_pawn_defended_moves,
                 self.undefended_piece,
             );
 
-            scorer.mobility("trapped", w.fully_trapped_pieces, b.fully_trapped_pieces, self.trapped_piece);
+            scorer.mobility("trapped piece", w.fully_trapped_pieces, b.fully_trapped_pieces, self.trapped_piece);
             scorer.mobility(
-                "part trapped",
+                "partially trapped piece",
                 w.partially_trapped_pieces,
                 b.partially_trapped_pieces,
                 self.partially_trapped_piece,
@@ -624,7 +624,7 @@ impl SimpleScorer {
             // }
         }
         if self.tempo && m.switches.contains(Switches::TEMPO) {
-            scorer.tempo("tempo", w.has_tempo as i32, b.has_tempo as i32, self.tempo_bonus);
+            scorer.tempo("tempo bonus", w.has_tempo as i32, b.has_tempo as i32, self.tempo_bonus);
         }
         scorer.interpolate("interpolate");
     }

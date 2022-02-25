@@ -21,6 +21,9 @@ pub mod movegen;
 pub mod multiboard;
 pub mod rules;
 
+unsafe impl Send for Board {}
+unsafe impl Sync for Board {}
+
 #[derive(Clone, PartialEq, Eq, DeserializeFromStr)]
 pub struct Board {
     multiboard: Multiboard,

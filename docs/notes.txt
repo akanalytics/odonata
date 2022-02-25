@@ -49,3 +49,10 @@ tuning
 ======
 use_tt_for_eval
 tune aspiration
+
+
+pandas
+======
+
+df.loc[:,['A', 'B']] = df.loc[:,['A', 'B']].multiply(df.loc[:, 'C'], axis="index")
+
