@@ -5,9 +5,9 @@ pub mod uci;
 
 use crate::comms::bench::Bench;
 use crate::comms::uci::Uci;
-use clap::{App, Arg};
 use crate::infra::version::Version;
 use crate::search::timecontrol::TimeControl;
+use clap::{App, Arg};
 
 pub fn main() -> Result<(), String> {
     let matches = App::new(Version::NAME)
@@ -69,6 +69,7 @@ pub fn main() -> Result<(), String> {
 
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
 
+
     // logger::init_logging();
 
     // if let Some(filename) = matches.value_of("config") {
@@ -82,9 +83,7 @@ pub fn main() -> Result<(), String> {
         uci.prelude.push("bench".to_string());
         uci.prelude.push("quit".to_string());
         uci.run();
-
-    }
-    else if matches.is_present("profile") {
+    } else if matches.is_present("profile") {
         Bench::profile_me();
     } else if let Some(depth) = matches.value_of("perft") {
         let depth = depth.parse::<u32>().map_err(|e| e.to_string())?;
@@ -114,4 +113,3 @@ pub fn main() -> Result<(), String> {
     }
     Ok(())
 }
-

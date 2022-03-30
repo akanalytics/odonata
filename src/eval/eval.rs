@@ -477,7 +477,7 @@ impl SimpleScorer {
                 scorer.position(black, 0, 1, b);
                 // sum = sum + w - b;
             }
-            scorer.position("fianchetto", w.fianchetti, b.fianchetti, self.fianchetto);
+            scorer.position("fianchetto", w.fianchetto, b.fianchetto, self.fianchetto);
             scorer.position(
                 "bishop color pawns",
                 w.bishop_color_pawns,
@@ -631,7 +631,7 @@ impl SimpleScorer {
 
     pub fn w_eval_explain(&self, b: &Board) -> ExplainScorer {
         let model = Model::from_board(b, Switches::ALL_SCORING);
-        let mut scorer = ExplainScorer::new(b.phase(&self.phaser));
+        let mut scorer = ExplainScorer::new(b.phase(&self.phaser), b.fifty_halfmove_clock());
         self.predict(&model, &mut scorer);
         scorer
     }
@@ -650,7 +650,7 @@ impl SimpleScorer {
             switches -= Switches::PAWN;
         }
         let model = Model::from_board(b, switches);
-        let mut scorer = ModelScore::new(b.phase(&self.phaser));
+        let mut scorer = ModelScore::new(b.phase(&self.phaser), b.fifty_halfmove_clock());
         self.predict(&model, &mut scorer);
         Score::from_cp(scorer.as_score().as_i16() as i32 / self.quantum * self.quantum)
     }

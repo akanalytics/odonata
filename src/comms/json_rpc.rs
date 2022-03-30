@@ -5,6 +5,7 @@ use crate::infra::version::Version;
 use crate::position::Position;
 use crate::search::engine::Engine;
 use crate::tags::Tag;
+use crate::tuning::Tuning;
 use anyhow::Context;
 use itertools::Itertools;
 // // use crate::{info, logger::LogInit};
@@ -136,8 +137,8 @@ impl Rpc for RpcImpl {
             .with_context(|| format!("Failed to open file {}", &filename))
             .map_err(to_rpc_error)?;
         let mut f = BufWriter::new(f);
-        let eng = self.engine.lock().unwrap();
-        let line_count = eng.tuner.write_model(&eng, &mut f).map_err(to_rpc_error)?;
+        let mut eng = self.engine.lock().unwrap();
+        let line_count = Tuning::write_training_data(&mut eng, &mut f).map_err(to_rpc_error)?;
 
         Ok(line_count)
     }
@@ -169,7 +170,8 @@ impl Rpc for RpcImpl {
 #[cfg(test)]
 mod tests {
     use super::*;
-
+    use test_log::test;
+    
     #[test]
     fn test_json_rpc() {
         let mut rpc = JsonRpc::new(Arc::new(Mutex::new(Engine::new())));
@@ -186,7 +188,7 @@ mod tests {
     #[test]
     fn position_download_test() -> anyhow::Result<()> {
         let rpc = RpcImpl::new(Arc::new(Mutex::new(Engine::new())));
-        rpc.position_upload("../odonata-extras/epd/quiet-labeled-small-odonata-5ms.epd".to_string())?;
+        rpc.position_upload("../odonata-extras/output/combo.epd".to_string())?;
         let lines = rpc.position_download_model("/tmp/test.csv".to_string())?;
         assert!(lines > 0);
         Ok(())

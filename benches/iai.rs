@@ -122,7 +122,7 @@ fn iai_model_build() {
 }
 
 fn iai_model_predict() {
-    let mut model_score = ModelScore::new(50);
+    let mut model_score = ModelScore::new(50, 100);
     ENGINE.read().algo.eval.predict(black_box(&MODEL.read()), &mut model_score);
     black_box(());
 }
@@ -130,7 +130,7 @@ fn iai_model_predict() {
 fn iai_build_model_and_eval_model() {
     let eval = SimpleScorer::new();
     let pos = Catalog::starting_position();
-    let mut model_score = ModelScore::new(50);
+    let mut model_score = ModelScore::new(50, 100);
     for _ in 0..10000 {
         let model = black_box(Model::from_board(pos.board(), Switches::ALL_SCORING));
         eval.predict(black_box(&model), &mut model_score);
@@ -142,7 +142,7 @@ fn iai_eval_model() {
     let eval = SimpleScorer::new();
     let pos = Catalog::starting_position();
     let model = Model::from_board(pos.board(), Switches::ALL_SCORING);
-    let mut model_score = ModelScore::new(50);
+    let mut model_score = ModelScore::new(50, 100);
     for _ in 0..10000 {
         eval.predict(black_box(&model), &mut model_score);
         black_box(());

@@ -9,16 +9,20 @@ use crate::eval::weight::Weight;
 use crate::infra::component::Component;
 use crate::position::Position;
 use crate::search::engine::Engine;
+use crate::search::timecontrol::TimeControl;
 use crate::tags::Tag;
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use rayon::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
+use std::fmt;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Tuning {
+    pub search_depth: i32,
     pub ignore_known_outcomes: bool,
+    pub ignore_endgames: bool,
     pub multi_threading_min_positions: usize,
     pub ignore_draws: bool,
     pub logistic_steepness_k: Weight,
@@ -33,7 +37,9 @@ pub struct Tuning {
 impl Default for Tuning {
     fn default() -> Self {
         Tuning {
+            search_depth: -1,
             ignore_known_outcomes: true,
+            ignore_endgames: true,
             multi_threading_min_positions: 20000,
             models_and_outcomes: Default::default(),
             boards: Default::default(),
@@ -47,6 +53,14 @@ impl Component for Tuning {
     fn new_game(&mut self) {}
 
     fn new_position(&mut self) {}
+}
+
+
+impl fmt::Display for Tuning {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "{}", toml::to_string_pretty(self).unwrap())?;
+        Ok(())
+    }
 }
 
 impl Tuning {
@@ -66,6 +80,12 @@ impl Tuning {
                 continue;
             }
             let model = Model::from_board(pos.board(), Switches::ALL_SCORING);
+            if self.ignore_endgames
+                && (model.endgame.try_winner().is_some() || model.endgame.is_likely_draw() || model.endgame.is_immediately_declared_draw())
+            {
+                trace!("Discarding known endgame position {}", pos);
+                continue;
+            }
             let (outcome, outcome_str) = self.calc_player_win_prob_from_pos(pos);
             if self.ignore_draws && outcome_str == "1/2-1/2" {
                 continue;
@@ -89,25 +109,67 @@ impl Tuning {
         panic!("Unable to find result comment c9 in {}", pos);
     }
 
-    pub fn write_model<W: Write>(&self, engine: &Engine, writer: &mut W) -> Result<i32> {
-        let eval = &engine.algo.eval;
+    pub fn write_training_data<W: Write>(engine: &mut Engine, writer: &mut W) -> Result<i32> {
         let mut line_count = 0;
-        for (model, outcome) in self.models_and_outcomes.iter() {
-            // if outcome > &0.25 && outcome < &0.75 {
-            //     continue;
-            // }
-            let phase = model.mat.phase(&eval.phaser);
-            let mut w_score = ExplainScorer::new(phase);
-            eval.predict(model, &mut w_score);
-            if line_count == 0 {
-                #[allow(clippy::write_literal)]
-                writeln!(writer, "{}{}, {}, {}", w_score.as_csv(ReportLine::Header), "phase", "outcome", "fen")?;
-            }
-            writeln!(writer, "{}{}, {}, {}", w_score.as_csv(ReportLine::Body), phase, outcome, model.multiboard.to_fen())?;
+        engine.algo.set_callback(|_| {}); // turn off uci_info output of doing zillions of searches
+        for i in 0..engine.tuner.models_and_outcomes.len() {
+            let result = Self::write_single_training_data(engine, writer, i)
+                .with_context(|| format!("Failed on line {i} {}", engine.tuner.models_and_outcomes[i].0.multiboard.to_fen()));
+            if let Err(e) = result {
+                info!("write_training_data returns error");
+                error!("Error in write_single_training_data {}", e);
+                return Err(e);
+            }                
             line_count += 1;
         }
+        info!("write_training_data returns {line_count}");
         writer.flush()?;
         Ok(line_count)
+    }
+
+    pub fn write_single_training_data<W: Write>(engine: &mut Engine, writer: &mut W, i: usize) -> Result<()> {
+        if i % 500 == 0 {
+            info!("Processed {i} positions");
+        }
+        let ce = if engine.tuner.search_depth > 0 {
+            engine.new_position();
+            engine.set_position(Position::from_board(engine.tuner.models_and_outcomes[i].0.multiboard.clone()));
+            engine.algo.set_timing_method(TimeControl::Depth(engine.tuner.search_depth));
+            debug!("Searching using\n{engine}");
+            engine.search();
+            engine.algo.score().as_i16()
+        } else {
+            0
+        };
+        let (model, outcome) = &engine.tuner.models_and_outcomes[i];
+        // if outcome > &0.25 && outcome < &0.75 {
+        //     continue;
+        // }
+        let phase = model.mat.phase(&engine.algo.eval.phaser);
+        let mut w_score = ExplainScorer::new(phase, model.multiboard.fifty_halfmove_clock());
+        engine.algo.eval.predict(&model, &mut w_score);
+        if i == 0 {
+            #[allow(clippy::write_literal)]
+            writeln!(
+                writer,
+                "{}{}, {}, {}, {}",
+                w_score.as_csv(ReportLine::Header),
+                "phase",
+                "outcome",
+                "ce",
+                "fen"
+            )?;
+        }
+        writeln!(
+            writer,
+            "{}{}, {}, {}, {}",
+            w_score.as_csv(ReportLine::Body),
+            phase,
+            outcome,
+            ce,
+            model.multiboard.to_fen()
+        )?;
+        Ok(())
     }
 
     pub fn calculate_mean_square_error(&self, engine: &Engine) -> Result<f32> {
@@ -118,7 +180,7 @@ impl Tuning {
             // estimate result by looking at centipawn evaluation
             let (model, outcome) = pair;
             let phase = model.mat.phase(&eval.phaser);
-            let mut w_score = ModelScore::new(phase);
+            let mut w_score = ModelScore::new(phase, model.multiboard.fifty_halfmove_clock());
             eval.predict(model, &mut w_score);
             // let score = w_score.as_f32() / (2.0 + (phase as f32 - 50.0) / 50.0);
             // let score = w_score.as_f32();

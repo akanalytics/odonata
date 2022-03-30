@@ -67,7 +67,7 @@ impl Algo {
                 }
                 alpha1 = max(n.alpha, alpha1);
                 beta1 = min(n.beta, beta1);
-                info!("Search window {} {}", alpha1, beta1);
+                debug!("Search window {} {}", alpha1, beta1);
                 let mut n1 = Node {
                     alpha: alpha1,
                     beta: beta1,

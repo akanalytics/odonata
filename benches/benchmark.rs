@@ -686,7 +686,7 @@ fn benchmark_eval(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|p| {
-                let mut model_score = ModelScore::new(phaser.phase(&p.board().material()));
+                let mut model_score = ModelScore::new(phaser.phase(&p.board().material()), p.board().fifty_halfmove_clock());
                 black_box(ef.predict(&Model::from_board(p.board(), Switches::ALL_SCORING), &mut model_score));
             });
             t.elapsed() / positions.len() as u32

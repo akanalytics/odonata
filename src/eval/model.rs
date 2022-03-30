@@ -3,7 +3,6 @@ use std::fmt;
 use crate::bitboard::castling::CastlingRights;
 use crate::bitboard::precalc::BitboardDefault;
 use crate::bitboard::square::Square;
-use crate::board::multiboard::Multiboard;
 use crate::board::Board;
 use crate::domain::material::Material;
 use crate::eval::score::Score;
@@ -38,7 +37,7 @@ pub struct ModelSide {
 
     // bishops
     pub has_bishop_pair: bool,
-    pub fianchetti: i32,
+    pub fianchetto: i32,
     pub bishop_color_pawns: i32,
     pub bishop_outposts: i32,
 
@@ -132,9 +131,9 @@ pub enum ReportLine {
 }
 
 impl ExplainScorer {
-    pub fn new(phase: i32) -> Self {
+    pub fn new(phase: i32, drawish: i32) -> Self {
         Self {
-            delegate: ModelScore::new(phase),
+            delegate: ModelScore::new(phase, drawish),
             ..Self::default()
         }
     }
@@ -327,6 +326,7 @@ impl fmt::Display for ExplainScorer {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ModelScore {
     phase: i32,
+    drawish: i32,  
     material: Weight,
     position: Weight,
     pawn: Weight,
@@ -338,8 +338,8 @@ pub struct ModelScore {
 }
 
 impl ModelScore {
-    pub fn new(phase: i32) -> Self {
-        Self { phase, ..Self::default() }
+    pub fn new(phase: i32, drawish: i32) -> Self {
+        Self { phase, drawish, ..Self::default() }
     }
 
     pub fn as_f32(&self) -> f32 {
@@ -394,7 +394,7 @@ impl Scorer for ModelScore {
 
     #[inline]
     fn interpolate(&mut self, _attr: &str) {
-        self.interpolated = self.total().interpolate(self.phase) as f32;
+        self.interpolated = self.total().interpolate(self.phase) as f32 * (100-self.drawish) as f32 / 100.0;
     }
 
     #[inline]
@@ -623,7 +623,7 @@ impl ModelSide {
             && (b.pawns() & us).disjoint(no_pawns)
             && (b.kings() & us).contains(king)
         {
-            self.fianchetti += 1
+            self.fianchetto += 1
         }
 
         if m.counts(c, Piece::Bishop) == 1 {

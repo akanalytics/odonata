@@ -7,7 +7,7 @@ use crate::search::timecontrol::TimeControl;
 use crate::trace::stat::Stat;
 use crate::tuning::Tuning;
 use crate::utils::Formatting;
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use figment::providers::{Format, Toml};
 use figment::value::{Dict, Map};
 use figment::{Error, Figment, Metadata, Profile, Provider};
@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
-use std::{fmt, mem};
+use std::{fmt, mem, panic};
 use std::sync::atomic::{Ordering};
 
 
@@ -38,7 +38,7 @@ pub struct Engine {
     #[serde(skip)]
     pub search_init_time: Duration,
     #[serde(skip)]
-    threads: Vec<JoinHandle<Algo>>,
+    threads: Vec<JoinHandle<Result<Algo>>>,
 }
 
 const DEFAULT_CONFIG_FILE: &str = "config.toml";
@@ -77,7 +77,7 @@ impl fmt::Display for Engine {
         writeln!(f, "threads          : {}", self.thread_count)?;
         writeln!(f, "shared tt        : {}", self.shared_tt)?;
         writeln!(f, "feature          : {}", self.feature)?;
-        writeln!(f, "tuner            : {:?}", self.tuner)?;
+        writeln!(f, "tuner            : {}", self.tuner)?;
         writeln!(f, "engine init time : {}", Formatting::duration(self.engine_init_time))?;
         writeln!(f, "search init time : {}", Formatting::duration(self.search_init_time))?;
         write!(f, "\n[algo]\n{}", self.algo)
@@ -119,6 +119,16 @@ impl Provider for Engine {
 
 impl Engine {
     pub fn new() -> Self {
+        // use backtrace::Backtrace;
+        // panic::set_hook(Box::new(|panic_info| {
+        //     error!("panic occured: {:?}", panic_info.payload().downcast_ref::<String>().unwrap());
+        //     error!("{:?}", Backtrace::new());
+        //     std::process::exit(1);
+        //     // panic!("Panic!!!!")
+        // }));
+    
+
+
         let toml = RESOURCE_DIR.get_file("config.toml").unwrap().contents_utf8().unwrap();
 
         let toml = Toml::string(toml);
@@ -200,9 +210,13 @@ impl Engine {
                 algo.ids.start_ply = 2;
             }
             let cl = move || {
-                Stat::set_this_thread_index(i as usize);
-                algo.search();
-                algo
+                let result = panic::catch_unwind(|| {
+                    Stat::set_this_thread_index(i as usize);
+                    algo.search();
+                    algo
+                });
+                result.map_err(|e| anyhow!("Anyhow {:?}",e))
+
             };
             self.threads.push(builder.spawn(cl).unwrap());
         }
@@ -219,8 +233,14 @@ impl Engine {
         let mut nodes = 0;
         for (i, t) in self.threads.drain(..).enumerate() {
             let algo = t.join().unwrap();
-            // debug!("Thread returned {}", algo); // t.thread().name().unwrap(),
-            info!(
+            let algo = match algo {
+                Ok(algo) => algo,
+                Err(e) => {
+                    warn!("Thread returned {:?}", e); // t.thread().name().unwrap(),
+                    panic!("Thread returned {:?}", e);
+                }
+            };
+            debug!(
                 "thread {:>3} {:>5} {:>8} {:>10} {:>10} {:>10}   {:<48}",
                 i, // thread::current().name().unwrap(),
                 algo.results.bm().to_string(),
@@ -239,11 +259,11 @@ impl Engine {
             }
         }
         let knps = self.algo.search_stats().all_threads_cumulative_knps();
-        info!(
+        debug!(
             "{:>3} {:>5} {:>8}        {:>10}      {:>5}     {:5}   {:>48}",
             "", "", "", "---------", "-----", "", "",
         );
-        info!(
+        debug!(
             "{:>3} {:>5} {:>8}   nodes{:>10} knps {:>5} (avg knps {})",
             "",
             "",
