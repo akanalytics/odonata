@@ -1445,7 +1445,7 @@ class Engine:
         return int(self._results[-1]['seldepth'])
 
     def centipawns(self) -> int:
-        return int(self._results[-1].get('centipawns') or '0')
+        return int(self._results[-1].get('cp') or '0')
 
     def mate_in(self) -> Optional[str]:
         return self._results[-1].get('mate')

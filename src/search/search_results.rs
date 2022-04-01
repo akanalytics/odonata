@@ -13,6 +13,7 @@ use crate::trace::counts::Counts;
 use crate::types::Ply;
 use crate::variation::Variation;
 use crate::{Algo, MoveList, Position, SearchStats};
+use crate::outcome::Outcome;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -60,6 +61,7 @@ pub struct SearchResults {
     
     #[serde(skip)] pub best_score: Score,
     #[serde(skip)] pub best_pv: Variation,
+    #[serde(skip)] pub outcome: Outcome,
     // pub refutation: Option<Move>,
     // pub currline: Option<MoveList>,
 }
@@ -137,8 +139,9 @@ impl SearchResults {
         }
     }
 
-    pub fn with_best_move(&mut self) {
+    pub fn with_best_move(&mut self, outcome: &Outcome) {
         self.mode = SearchResultsMode::BestMove;
+        self.outcome = *outcome;
     }
 
     pub fn old_with_best_move(sr: &SearchResults) -> Self {

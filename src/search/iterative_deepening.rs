@@ -137,10 +137,10 @@ impl Algo {
             }
             depth += self.ids.step_size
         }
-        self.results.with_best_move();
+        self.results.with_best_move(&self.board.outcome());
         self.controller.invoke_callback(&self.results);
         // debug!("\n\n\n=====Search completed=====\n{}", self);
-        if self.results.bm().is_null() {
+        if self.max_depth > 0 && !self.results.outcome.is_game_over() && self.results.bm().is_null() {
             error!("bm is null\n{}\n{:?}", self, self.results);
         }
 
