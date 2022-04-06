@@ -29,6 +29,7 @@ extern crate regex;
 extern crate log;
 
 // pub mod logger;
+pub mod prelude;
 pub mod bitboard;
 pub mod board;
 pub mod bound;

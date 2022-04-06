@@ -127,7 +127,7 @@ impl Rpc for RpcImpl {
             code: jsonrpc_core::ErrorCode::InternalError,
             data: None,
         })?;
-        let uploaded_count = engine.tuner.upload_positions(&positions);
+        let uploaded_count = engine.tuner.upload_positions(&positions).map_err(to_rpc_error)?;
         info!("Uploaded {} positions", uploaded_count);
         Ok(uploaded_count as i32)
     }
@@ -162,7 +162,7 @@ impl Rpc for RpcImpl {
     }
 
     fn static_eval_explain(&self, board: Board) -> Result<String> {
-        let explanation = self.engine.lock().unwrap().algo.eval.w_eval_explain(&board);
+        let explanation = self.engine.lock().unwrap().algo.eval.w_eval_explain(&board, false);
         Ok(explanation.to_string())
     }
 }

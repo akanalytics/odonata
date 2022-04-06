@@ -9,6 +9,7 @@ use crate::pvtable::PvTable;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
 use crate::types::{Ply, MAX_PLY};
+use crate::prelude::*;
 
 use super::node::Event;
 
@@ -64,6 +65,9 @@ impl Algo {
         beta: Score,
         last_move: Move,
     ) -> Result<(Score, Event), Event> {
+        profile_method!(alphabeta_recursive);
+        // hprof::enter("alphabeta");
+
         self.clear_move(ply);
         self.report_progress();
 
@@ -92,8 +96,13 @@ impl Algo {
             self.counts.inc(&n, Event::NodeTypeZw);
             self.stats.inc_zw_nodes(ply);
         }
+        let _g;
+        // let _qsearch : firestorm::internal::SpanGuard;
         if n.is_qs() {
             self.counts.inc(&n, Event::NodeTypeQuiesce);
+            profile_section!(qsearch);     
+            // hprof::enter("qsearch");
+            _g = qsearch;
         } else {
             self.counts.inc(&n, Event::NodeInterior);
         }

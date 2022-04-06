@@ -1,3 +1,4 @@
+use crate::bitboard::square::Square;
 use crate::board::Board;
 use crate::eval::material_balance::MaterialBalance;
 use crate::eval::model::ModelScore;
@@ -14,6 +15,7 @@ use crate::phaser::Phaser;
 use crate::search::node::Node;
 use crate::trace::stat::{ArrayStat, Stat};
 use crate::types::{Color, Piece};
+use crate::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use std::fmt;
@@ -463,20 +465,34 @@ impl SimpleScorer {
         // position
         if self.position && m.switches.contains(Switches::POSITION) {
             let board = &m.multiboard;
-            // let mut sum = Weight::zero();
-            for &p in &Piece::ALL_BAR_NONE {
-                let w = (board.pieces(p) & board.white()).flip_vertical();
-                let b = board.pieces(p) & board.black();
+            if !m.csv {
+                // let mut sum = Weight::zero();
+                for &p in &Piece::ALL_BAR_NONE {
+                    let w = (board.pieces(p) & board.white()).flip_vertical();
+                    let b = board.pieces(p) & board.black();
 
-                let w = w.squares().map(|sq| self.pst.pst(p, sq)).sum::<Weight>();
-                let b = b.squares().map(|sq| self.pst.pst(p, sq)).sum::<Weight>();
+                    let w = w.squares().map(|sq| self.pst.pst(p, sq)).sum::<Weight>();
+                    let b = b.squares().map(|sq| self.pst.pst(p, sq)).sum::<Weight>();
 
-                let black = ["pst none", "pst p", "pst n", "pst b", "pst r", "pst q", "pst k"][p];
-                let white = ["pst none", "pst P", "pst N", "pst B", "pst R", "pst Q", "pst K"][p];
-                scorer.position(white, 1, 0, w);
-                scorer.position(black, 0, 1, b);
-                // sum = sum + w - b;
+                    let black = ["pst none", "pst p", "pst n", "pst b", "pst r", "pst q", "pst k"][p];
+                    let white = ["pst none", "pst P", "pst N", "pst B", "pst R", "pst Q", "pst K"][p];
+                    scorer.position(white, 1, 0, w);
+                    scorer.position(black, 0, 1, b);
+                    // sum = sum + w - b;
+                }
+            } else {
+                for &p in &Piece::ALL_BAR_NONE {
+                    let w = (board.pieces(p) & board.white()).flip_vertical();
+                    let b = board.pieces(p) & board.black();
+
+                    for sq in Square::all() {
+                        let label = format!("pst.{}.{}", p.to_lower_char(), sq.uci());
+                        scorer.position(&label, sq.is_in(w) as i32, sq.is_in(b) as i32, self.pst.pst(p, sq));
+                    }
+                }
             }
+
+
             scorer.position("fianchetto", w.fianchetto, b.fianchetto, self.fianchetto);
             scorer.position(
                 "bishop color pawns",
@@ -629,8 +645,9 @@ impl SimpleScorer {
         scorer.interpolate("interpolate");
     }
 
-    pub fn w_eval_explain(&self, b: &Board) -> ExplainScorer {
-        let model = Model::from_board(b, Switches::ALL_SCORING);
+    pub fn w_eval_explain(&self, b: &Board, csv: bool) -> ExplainScorer {
+        let mut model = Model::from_board(b, Switches::ALL_SCORING);
+        model.csv = csv;
         let mut scorer = ExplainScorer::new(b.phase(&self.phaser), b.fifty_halfmove_clock());
         self.predict(&model, &mut scorer);
         scorer
@@ -706,6 +723,8 @@ impl Board {
 
     #[inline]
     pub fn eval_some(&self, eval: &SimpleScorer, sw: Switches) -> Score {
+        profile_fn!(board.eval_some);
+        // let _g = hprof::enter("eval some");
         ALL.increment();
         self.signum() * eval.w_eval_some(self, sw)
     }
@@ -730,22 +749,22 @@ mod tests {
         let board = Catalog::starting_board();
         let eval = &mut SimpleScorer::new();
         eval.tempo = false;
-        info!("starting\n{}", eval.w_eval_explain(&board));
+        info!("starting\n{}", eval.w_eval_explain(&board, false));
         assert_eq!(board.eval(eval, &Node::root(0)), Score::from_cp(0));
 
         let board_w = Catalog::white_starting_position();
-        info!("white starting\n{}", eval.w_eval_explain(&board_w));
+        info!("white starting\n{}", eval.w_eval_explain(&board_w, false));
         assert_eq!(board_w.phase(&eval.phaser), 50);
         eval.set_switches(false);
         eval.material = true;
         eval.contempt = true;
-        info!("\n{}", eval.w_eval_explain(&board_w));
+        info!("\n{}", eval.w_eval_explain(&board_w, false));
         let score = board_w.eval(eval, &Node::root(0));
         assert!(score > Score::from_cp(5048));
         assert!(score < Score::from_cp(8048));
 
         let board_b = Catalog::black_starting_position();
-        info!("\n{}", eval.w_eval_explain(&board_b));
+        info!("\n{}", eval.w_eval_explain(&board_b, false));
         assert_eq!(eval.w_eval_some(&board_b, Switches::ALL_SCORING), score.negate());
     }
 
@@ -775,7 +794,7 @@ mod tests {
             bd.eval(&eval, &Node::root(0)),
             Score::from_f32(eval.pst.pawn_r7.e() as f32),
             "{}",
-            eval.w_eval_explain(&bd)
+            eval.w_eval_explain(&bd, false)
         );
 
         let bd = Board::parse_fen("8/4p3/8/8/8/8/8/8 w - - 0 1").unwrap().as_board();
@@ -786,8 +805,8 @@ mod tests {
         let w = Catalog::white_starting_position();
         assert_eq!(w.phase(&eval.phaser), 50);
         let score = w.eval(&eval, &Node::root(0));
-        assert!(score < Score::from_cp(-105), "{}", eval.w_eval_explain(&w));
-        assert!(score > Score::from_cp(-122), "{}", eval.w_eval_explain(&w));
+        assert!(score < Score::from_cp(-105), "{}", eval.w_eval_explain(&w, false));
+        assert!(score > Score::from_cp(-122), "{}", eval.w_eval_explain(&w, false));
 
         let b = Catalog::black_starting_position();
         assert_eq!(w.eval(&eval, &Node::root(0)), eval.w_eval_some(&b, Switches::ALL_SCORING).negate());
@@ -846,7 +865,7 @@ mod tests {
             eval.w_eval_some(&b, Switches::ALL_SCORING),
             Score::from_cp(3),
             "{}",
-            eval.w_eval_explain(&b).to_string()
+            eval.w_eval_explain(&b, false).to_string()
         );
 
         eval.pawn_doubled = Weight::zero();
@@ -855,7 +874,7 @@ mod tests {
             eval.w_eval_some(&b, Switches::ALL_SCORING),
             Score::from_cp(-1),
             "{}",
-            eval.w_eval_explain(&b).to_string()
+            eval.w_eval_explain(&b, false).to_string()
         );
     }
 
@@ -869,21 +888,21 @@ mod tests {
         eval.pawn_adjacent_shield = Weight::zero();
         eval.pawn_nearby_shield = Weight::zero();
         eval.attacks_near_king = Weight::zero();
-        info!("{}\n{}", b, eval.w_eval_explain(&b));
+        info!("{}\n{}", b, eval.w_eval_explain(&b, false));
 
         let e1 = eval.w_eval_some(&b, Switches::ALL_SCORING);
         eval.pawn_adjacent_shield = Weight::from_i32(50, 50);
         let e2 = eval.w_eval_some(&b, Switches::ALL_SCORING);
-        assert_eq!((e2 - e1), Score::from_cp(100), "{}", eval.w_eval_explain(&b)); // 2 pawns adjacent
+        assert_eq!((e2 - e1), Score::from_cp(100), "{}", eval.w_eval_explain(&b, false)); // 2 pawns adjacent
 
         eval.pawn_nearby_shield = Weight::from_i32(150, 150);
         let e3 = eval.w_eval_some(&b, Switches::ALL_SCORING);
-        assert_eq!(e3 - e2, Score::from_cp(150), "{}", eval.w_eval_explain(&b)); // 2 pawns adjacent, 1 nearby
+        assert_eq!(e3 - e2, Score::from_cp(150), "{}", eval.w_eval_explain(&b, false)); // 2 pawns adjacent, 1 nearby
 
         eval.attacks_near_king = Weight::from_i32(-75, -75);
         let att = eval.w_eval_some(&b, Switches::ALL_SCORING);
         assert_eq!((att - e3), Score::from_cp(75)); // 1 attack on nearby pawn
-        info!("{}\n{}", b, eval.w_eval_explain(&b));
+        info!("{}\n{}", b, eval.w_eval_explain(&b, false));
     }
 
     #[test]
@@ -892,7 +911,7 @@ mod tests {
         let b = pos.board();
         let mut eval = SimpleScorer::default();
         eval.mb.enabled = false;
-        let explain = eval.w_eval_explain(b);
+        let explain = eval.w_eval_explain(b, false);
         println!("{}", explain);
     }
 
@@ -905,7 +924,7 @@ mod tests {
         for pos in Catalog::win_at_chess() {
             let b = pos.board();
             let _score = b.signum() * b.eval(&eval, &node);
-            let explain = eval.w_eval_explain(b);
+            let explain = eval.w_eval_explain(b, false);
             info!("\n{}\n{}", pos, explain);
         }
     }

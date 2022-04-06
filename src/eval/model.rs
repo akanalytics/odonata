@@ -28,6 +28,7 @@ pub struct Model {
 
     pub white: ModelSide,
     pub black: ModelSide,
+    pub csv: bool,
 }
 
 #[derive(Clone, Default, Debug)]
@@ -142,7 +143,7 @@ impl ExplainScorer {
     }
 
     pub fn as_csv(&self, line: ReportLine) -> String {
-        let mut output = String::new();
+        let mut output = String::with_capacity(6000);
         for (i, _sw) in Switches::all_scoring().iter().enumerate() {
             let vec = vec![&self.mat, &self.pos, &self.mob, &self.paw, &self.saf, &self.con, &self.tem][i];
             for (attr, w, b, wt) in vec {
@@ -424,6 +425,7 @@ impl Model {
             white: ModelSide::from_board(b, Color::White, &material, endgame, switches),
             black: ModelSide::from_board(b, Color::Black, &material, endgame, switches),
             endgame,
+            csv: false, 
         }
     }
 }
@@ -887,9 +889,17 @@ mod tests {
         for (i, p) in positions.iter().enumerate() {
             // let model = Model::from_board(p.board(), Switches::ALL_SCORING);
             if i == 0 {
-                info!("\n{}", eval.w_eval_explain(&p.board()).as_csv(ReportLine::Header));
+                info!("\n{}", eval.w_eval_explain(&p.board(), false).as_csv(ReportLine::Header));
             }
-            info!("\n{}", eval.w_eval_explain(&p.board()).as_csv(ReportLine::Body));
+            info!("\n{}", eval.w_eval_explain(&p.board(), false).as_csv(ReportLine::Body));
+        }
+        for (i, p) in positions.iter().enumerate() {
+            let model = eval.w_eval_explain(&p.board(), true);
+
+            if i == 0 {
+                info!("\n{}", model.as_csv(ReportLine::Header));
+            }
+            info!("\n{}", model.as_csv(ReportLine::Body));
         }
     }
 }

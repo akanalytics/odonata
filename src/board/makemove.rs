@@ -4,6 +4,7 @@ use crate::cache::hasher::Hasher;
 use crate::mv::Move;
 use crate::types::{Piece, Repeats};
 use crate::variation::Variation;
+use crate::prelude::*;
 
 use std::cell::Cell;
 
@@ -76,6 +77,9 @@ impl MoveMaker for Board {
     }
 
     fn make_move(&self, m: &Move) -> Board {
+        profile_method!("make_move");
+        // let _g = hprof::enter("make_move");
+
         // either we're moving to an empty square or its a capture
         debug_assert!(
             m.is_null() || ((self.white() | self.black()) & m.to().as_bb()).is_empty() || m.is_capture(),

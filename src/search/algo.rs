@@ -34,6 +34,7 @@ use crate::types::Ply;
 use crate::variation::Variation;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use crate::prelude::*;
 
 use super::lmp::Lmp;
 use super::node::Event;
@@ -309,9 +310,19 @@ impl Algo {
     }
 
     pub fn search(&mut self) {
-        self.set_state(State::StartSearch);
-        self.search_iteratively();
-        self.set_state(State::EndSearch);
+        {
+            profile_method!(search);
+            // hprof::profiler().disable();
+            // let _g = hprof::enter("search");
+
+            self.set_state(State::StartSearch);
+            self.search_iteratively();
+            self.set_state(State::EndSearch);
+        }
+        if firestorm::enabled() {
+            firestorm::save("./flames/").map_err(|e| e.to_string()).unwrap();
+        }     
+        // hprof::profiler().print_timing();   
     }
 
     #[inline]

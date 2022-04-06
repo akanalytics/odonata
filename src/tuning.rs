@@ -1,9 +1,11 @@
 use std::io::Write;
 
+use crate::Color;
 use crate::eval::model::ExplainScorer;
 use crate::eval::model::Model;
 use crate::eval::model::ModelScore;
 use crate::eval::model::ReportLine;
+use crate::eval::score::Score;
 use crate::eval::switches::Switches;
 use crate::eval::weight::Weight;
 use crate::infra::component::Component;
@@ -17,9 +19,20 @@ use serde::Deserialize;
 use serde::Serialize;
 use std::fmt;
 
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub enum RegressionType {
+    LinearOnCp,
+    LogisticOnOutcome,
+    LogisticOnCp,
+}
+
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Tuning {
+    pub regression_type: RegressionType,
     pub search_depth: i32,
     pub ignore_known_outcomes: bool,
     pub ignore_endgames: bool,
@@ -37,6 +50,7 @@ pub struct Tuning {
 impl Default for Tuning {
     fn default() -> Self {
         Tuning {
+            regression_type: RegressionType::LogisticOnOutcome,
             search_depth: -1,
             ignore_known_outcomes: true,
             ignore_endgames: true,
@@ -73,27 +87,56 @@ impl Tuning {
         self.boards.clear();
     }
 
-    pub fn upload_positions(&mut self, positions: &[Position]) -> usize {
+    pub fn upload_positions(&mut self, positions: &[Position]) -> Result<usize> {
         for pos in positions {
             if self.ignore_known_outcomes && pos.board().outcome().is_game_over() {
                 trace!("Discarding drawn/checkmate position {}", pos);
                 continue;
             }
-            let model = Model::from_board(pos.board(), Switches::ALL_SCORING);
+            let mut model = Model::from_board(pos.board(), Switches::ALL_SCORING);
+            model.csv = true;
+
             if self.ignore_endgames
                 && (model.endgame.try_winner().is_some() || model.endgame.is_likely_draw() || model.endgame.is_immediately_declared_draw())
             {
                 trace!("Discarding known endgame position {}", pos);
                 continue;
             }
-            let (outcome, outcome_str) = self.calc_player_win_prob_from_pos(pos);
-            if self.ignore_draws && outcome_str == "1/2-1/2" {
-                continue;
+            match self.regression_type {
+                RegressionType::LogisticOnCp => {
+                    if let Tag::Comment(_n, s) = pos.tag("c6") {
+                        let mut w_score: f32 = s.parse()?;
+                        // epd ce is from active placer
+                        if pos.board().color_us() == Color::Black {
+                            w_score = -w_score;
+                        }
+                        let k = self.logistic_steepness_k.interpolate(50) as f32;
+                        let win_prob_estimate = Score::from_f32(w_score).win_probability_using_k(k);
+    
+                        self.models_and_outcomes.push((model, win_prob_estimate));
+                    }
+                }
+                RegressionType::LogisticOnOutcome => {
+                    let (outcome, outcome_str) = self.calc_player_win_prob_from_pos(pos);
+                    if self.ignore_draws && outcome_str == "1/2-1/2" {
+                        continue;
+                    }
+                    self.models_and_outcomes.push((model, outcome));
+                }
+                RegressionType::LinearOnCp => {
+                    if let Tag::Comment(_n, s) = pos.tag("c6") {
+                        let mut outcome: f32 = s.parse()?;
+                        // epd ce is from active placer
+                        if pos.board().color_us() == Color::Black {
+                            outcome = -outcome;
+                        }
+                        self.models_and_outcomes.push((model, outcome));
+                    }
+                }
             }
-            self.models_and_outcomes.push((model, outcome));
             self.boards.push(pos.clone());
         }
-        self.models_and_outcomes.len()
+        Ok(self.models_and_outcomes.len())
     }
 
     pub fn calc_player_win_prob_from_pos(&self, pos: &Position) -> (f32, String) {
@@ -175,7 +218,6 @@ impl Tuning {
     pub fn calculate_mean_square_error(&self, engine: &Engine) -> Result<f32> {
         let eval = &engine.algo.eval;
         let logistic_steepness_k = self.logistic_steepness_k; // so that closure does not capture engine/tuner
-
         let closure = |pair: &(Model, f32)| {
             // estimate result by looking at centipawn evaluation
             let (model, outcome) = pair;
@@ -184,11 +226,19 @@ impl Tuning {
             eval.predict(model, &mut w_score);
             // let score = w_score.as_f32() / (2.0 + (phase as f32 - 50.0) / 50.0);
             // let score = w_score.as_f32();
-            let k = logistic_steepness_k.interpolate(phase) as f32;
-            let win_prob_estimate = w_score.as_score().win_probability_using_k(k);
-            let win_prob_actual = *outcome;
-            let diff = win_prob_estimate - win_prob_actual;
-            diff * diff
+            match self.regression_type {
+                RegressionType::LogisticOnOutcome | RegressionType::LogisticOnCp => {
+                    let k = logistic_steepness_k.interpolate(phase) as f32;
+                    let win_prob_estimate = w_score.as_score().win_probability_using_k(k);
+                    let win_prob_actual = *outcome;
+                    let diff = win_prob_estimate - win_prob_actual;
+                    diff * diff
+                }
+                RegressionType::LinearOnCp => {
+                        let diff = w_score.as_score().as_i16() as f32 - outcome;
+                        diff * diff
+                    }
+                }
         };
 
         let total_diff_squared: f32 = match self.models_and_outcomes.len() {
@@ -231,7 +281,7 @@ mod tests {
         let mut engine = Engine::new();
         engine
             .tuner
-            .upload_positions(&Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-small.epd").unwrap());
+            .upload_positions(&Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-small.epd").unwrap()).unwrap();
         //tuning.positions = Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-small.epd").unwrap();
         // tuning.positions = Position::parse_epd_file("../odonata-extras/epd/com15.epd")?;
         // tuning.positions = Catalog::bratko_kopec();
@@ -250,7 +300,7 @@ mod tests {
     fn test_quick_tuning() {
         info!("Starting quick tuning...");
         let mut tuning = Tuning::new();
-        tuning.upload_positions(&Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-small.epd").unwrap());
+        tuning.upload_positions(&Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-small.epd").unwrap()).unwrap();
 
         let engine = Engine::new();
         let diffs = tuning.calculate_mean_square_error(&engine).unwrap();
