@@ -242,13 +242,31 @@ r1r5/2N1n1kb/2nB1b1p/3p2p1/6q1/P2pQ3/3N1PPP/1RR3K1 b - - 11 37 acd 6;
 
     pub fn pawn_structure() -> Vec<Position> {
         let str = r#"
-        k7/p7/P7/8/8/8/P7/K7 w - - 0 1 id 'PAWN.01'; c0 'isolated=2;passed=0;doubled=1'; c1 'isolated=1;passed=0;doubled=0';
-        k7/p5p1/8/7P/8/3p4/P2P4/K7 w - - 0 1 'PAWN.02'; c0 'isolated=3;passed=0;doubled=0'; c1 'isolated=3;passed=0;doubled=0';
-        k7/p5p1/8/7P/3P2p1/3p4/P2PP3/K7 w - - 0 1 'PAWN.03'; c0 'isolated=2;passed=1;doubled=1'; c1 'isolated=4;passed=1;doubled=1';
-        2k5/ppp2ppp/8/4P3/P7/3p4/PP5P/K7 b - - 0 1 id 'PAWN.04'; c0 'isolated=2;passed=0;doubled=1'; c1 'isolated=0;passed=1;doubled=0';
-        2k5/ppp2p1p/5p2/5p1P/3P3P/3P3P/P2P3P/K7 w - - 0 1 id 'PAWN.05'; c0 'isolated=8;passed=0;doubled=5'; c1 'isolated=4;passed=3;doubled=2';
-        k7/p2p3p/3p3p/3p3p/5P1p/5P2/PPP2P1P/2K5 b - - 0 1 id 'PAWN.06'; c0 'isolated=4;passed=3;doubled=2'; c1 'isolated=8;passed=0;doubled=5';
-        8/5k2/8/6KP/2n1P3/5P2/8/8 b - - 0 85 id 'PAWN.07'; c0 'isolated=1;passed=3;doubled=0'; c1 'isolated=0;passed=0;doubled=0';       
+        k7/p7/P7/8/8/8/P7/K7 w - - 0 1 id 'PAWN.01'; c0 'isolated'; c1 '2'; c2 '1';
+        k7/p7/P7/8/8/8/P7/K7 w - - 0 1 id 'PAWN.01'; c0 'passed';   c1 '0'; c2 '0';
+        k7/p7/P7/8/8/8/P7/K7 w - - 0 1 id 'PAWN.01'; c0 'doubled';  c1 '1'; c2 '0';
+        k7/p5p1/8/7P/8/3p4/P2P4/K7 w - - 0 1 id 'PAWN.02'; c0 'isolated'; c1 '3'; c2 '3';
+        k7/p5p1/8/7P/8/3p4/P2P4/K7 w - - 0 1 id 'PAWN.02'; c0 'passed';   c1 '0'; c2 '0';
+        k7/p5p1/8/7P/8/3p4/P2P4/K7 w - - 0 1 id 'PAWN.02'; c0 'doubled';  c1 '0'; c2 '0';
+        k7/p5p1/8/7P/3P2p1/3p4/P2PP3/K7 w - - 0 1 id 'PAWN.03'; c0 'isolated'; c1 '2'; c2 '4';
+        k7/p5p1/8/7P/3P2p1/3p4/P2PP3/K7 w - - 0 1 id 'PAWN.03'; c0 'passed';   c1 '1'; c2 '1';
+        k7/p5p1/8/7P/3P2p1/3p4/P2PP3/K7 w - - 0 1 id 'PAWN.03'; c0 'doubled';  c1 '1'; c2 '1';
+        2k5/ppp2ppp/8/4P3/P7/3p4/PP5P/K7 b - - 0 1 id 'PAWN.04'; c0 'isolated'; c1 '2'; c2 '0';
+        2k5/ppp2ppp/8/4P3/P7/3p4/PP5P/K7 b - - 0 1 id 'PAWN.04'; c0 'passed';   c1 '0'; c2 '1';
+        2k5/ppp2ppp/8/4P3/P7/3p4/PP5P/K7 b - - 0 1 id 'PAWN.04'; c0 'doubled';  c1 '1'; c2 '0';
+        2k5/ppp2p1p/5p2/5p1P/3P3P/3P3P/P2P3P/K7 w - - 0 1 id 'PAWN.05'; c0 'isolated'; c1 '8'; c2 '4'; 
+        2k5/ppp2p1p/5p2/5p1P/3P3P/3P3P/P2P3P/K7 w - - 0 1 id 'PAWN.05'; c0 'passed';   c1 '0'; c2 '3'; 
+        2k5/ppp2p1p/5p2/5p1P/3P3P/3P3P/P2P3P/K7 w - - 0 1 id 'PAWN.05'; c0 'doubled';  c1 '5'; c2 '2'; 
+        k7/p2p3p/3p3p/3p3p/5P1p/5P2/PPP2P1P/2K5 b - - 0 1 id 'PAWN.06'; c0 'isolated'; c1 '4'; c2 '8';
+        k7/p2p3p/3p3p/3p3p/5P1p/5P2/PPP2P1P/2K5 b - - 0 1 id 'PAWN.06'; c0 'passed';   c1 '3'; c2 '0';
+        k7/p2p3p/3p3p/3p3p/5P1p/5P2/PPP2P1P/2K5 b - - 0 1 id 'PAWN.06'; c0 'doubled';  c1 '2'; c2 '5';
+        k7/p5p1/4P3/8/3P4/3p4/P2PP1p1/K7 w - - 0 1 id 'PAWN.07'; c0 'passed_r5';  c1 '0'; c2 '0';
+        k7/p5p1/4P3/8/3P4/3p4/P2PP1p1/K7 w - - 0 1 id 'PAWN.07'; c0 'passed_r6';  c1 '1'; c2 '0';
+        k7/p5p1/4P3/8/3P4/3p4/P2PP1p1/K7 w - - 0 1 id 'PAWN.07'; c0 'passed_r7';  c1 '0'; c2 '1';
+        k7/3p4/PPp3P1/1p3P2/4P3/8/6pp/K7 w - - 0 1 id 'PAWN.08'; c0 'connected_r67';   c1 '1'; c2 '0';
+        k7/3p4/PPp3P1/1p3P2/4P3/8/6pp/K7 w - - 0 1 id 'PAWN.08'; c0 'connected_r345';  c1 '1'; c2 '2';
+        k7/3p4/PPp3P1/1p3P2/4P3/8/6pp/K7 w - - 0 1 id 'PAWN.08'; c0 'backward_half_open';  c1 '0'; c2 '0';
+        k7/8/8/5p2/6p1/6Pp/7P/K7 w - - 0 1 id 'PAWN.09'; c0 'backward_half_open';  c1 '0'; c2 '1';
 "#;
         let positions = Position::parse_many_epd(str.lines()).unwrap();
         positions
@@ -279,9 +297,9 @@ K7/7r/8/8/8/8/8/rr5k w - - 0 1
             dm 32;
             acd 23;
             id 'Lasker-Reichhelm Position Fine#70';",
-        ];
+            ];
         Position::parse_many_epd(strs).unwrap()
-    }
+  }
 
     pub fn pins() -> Vec<Position> {
         let str = r#"

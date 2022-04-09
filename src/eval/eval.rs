@@ -149,6 +149,7 @@ pub struct SimpleScorer {
     pub pawn_doubled: Weight,
     pub pawn_isolated: Weight,
     pub pawn_passed: Weight,
+    pub pawn_passed_r7: Weight,
     pub pawn_passed_r6: Weight,
     pub pawn_passed_r5: Weight,
     pub passers_on_rim: Weight,
@@ -157,6 +158,11 @@ pub struct SimpleScorer {
     pub rooks_behind_passer: Weight,
     pub space: Weight,
     pub rammed_pawns: Weight,
+    pub pawn_connected_r67: Weight,
+    pub pawn_connected_r345: Weight,
+    pub pawn_duo_r67: Weight,
+    pub pawn_duo_r2345: Weight,
+    pub backward_half_open: Weight,
 
     pub bishop_pair: Weight,
     pub fianchetto: Weight,
@@ -252,12 +258,18 @@ impl Default for SimpleScorer {
             pawn_passed: Weight::from_i32(15, 28),
             pawn_passed_r5: Weight::from_i32(1, 50),
             pawn_passed_r6: Weight::from_i32(8, 94),
+            pawn_passed_r7: Weight::from_i32(50, 200),
             passers_on_rim: Weight::from_i32(-10, -10),
             blockaded: Weight::from_i32(-10, -10),
             blockaded_passers: Weight::from_i32(-10, -10),
             space: Weight::from_i32(1, 1),
             rammed_pawns: Weight::from_i32(-10, -10),
             rooks_behind_passer: Weight::from_i32(0, 10),
+            pawn_connected_r67: Weight::from_i32(10, 10),
+            pawn_connected_r345: Weight::from_i32(10, 10),
+            pawn_duo_r67: Weight::from_i32(10, 10),
+            pawn_duo_r2345: Weight::from_i32(10, 10),
+            backward_half_open: Weight::from_i32(-10, -10),
 
             tempo_bonus: Weight::from_i32(40, 50),
             pawn_adjacent_shield: Weight::from_i32(44, -15),
@@ -318,7 +330,9 @@ impl fmt::Display for SimpleScorer {
         // writeln!(f, "pawn.shield      : {}", self.pawn_shield)?;
         writeln!(f, "pawn.doubled     : {}", self.pawn_doubled)?;
         writeln!(f, "pawn.passed      : {}", self.pawn_passed)?;
-        writeln!(f, "pawn.passed.r7   : {}", self.pawn_passed_r6)?;
+        writeln!(f, "pawn.passed.r5   : {}", self.pawn_passed_r5)?;
+        writeln!(f, "pawn.passed.r6   : {}", self.pawn_passed_r6)?;
+        writeln!(f, "pawn.passed.r7   : {}", self.pawn_passed_r7)?;
         writeln!(f, "pawn.isolated    : {}", self.pawn_isolated)?;
 
         writeln!(f, "bishop pair      : {}", self.bishop_pair)?;
@@ -533,6 +547,7 @@ impl SimpleScorer {
             scorer.pawn("pawn doubled", w.doubled_pawns, b.doubled_pawns, self.pawn_doubled);
             scorer.pawn("pawn isolated", w.isolated_pawns, b.isolated_pawns, self.pawn_isolated);
             scorer.pawn("pawn passed", w.passed_pawns, b.passed_pawns, self.pawn_passed);
+            scorer.pawn("pawn passed r7", w.passed_pawns_on_r7, b.passed_pawns_on_r7, self.pawn_passed_r7);
             scorer.pawn("pawn passed r6", w.passed_pawns_on_r6, b.passed_pawns_on_r6, self.pawn_passed_r6);
             scorer.pawn("pawn passed r5", w.passed_pawns_on_r5, b.passed_pawns_on_r5, self.pawn_passed_r5);
             scorer.pawn("passers on rim", w.passers_on_rim, b.passers_on_rim, self.passers_on_rim);
@@ -551,6 +566,12 @@ impl SimpleScorer {
             );
             scorer.pawn("rammed pawns", w.rammed_pawns, b.rammed_pawns, self.rammed_pawns);
             scorer.pawn("space", w.space, b.space, self.space);
+            scorer.pawn("pawn connected r67", w.pawn_connected_r67, b.pawn_connected_r67, self.pawn_connected_r67);
+            scorer.pawn("pawn connected r345", w.pawn_connected_r345, b.pawn_connected_r345, self.pawn_connected_r345);
+
+            scorer.pawn("pawn duo r67", w.pawn_duo_r67, b.pawn_duo_r67, self.pawn_duo_r67);
+            scorer.pawn("pawn duo r2345", w.pawn_duo_r2345, b.pawn_duo_r2345, self.pawn_duo_r2345);
+            scorer.pawn("backward half open", w.backward_half_open, b.backward_half_open, self.backward_half_open);
         }
 
         //  bishop

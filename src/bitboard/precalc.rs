@@ -242,6 +242,19 @@ impl PreCalc {
         // }
     }
 
+    /// rear span = column of squares strictly behind a pawn
+    #[inline]
+    pub fn pawn_rear_span(&self, c: Color, pawn_sq: Square) -> Bitboard {
+        self.pawn_front_span[c.opposite()][pawn_sq]
+        // let pawn = pawn_sq.as_bb();
+        // let atts = pawn.shift(c.pawn_capture_east()) | pawn.shift(c.pawn_capture_west());
+        // if c == Color::White {
+        //     (pawn | atts).fill_north()
+        // } else {
+        //     (pawn | atts).fill_south()
+        // }
+    }
+
     /// attack span = 1 or 2 columns of squares attacked and those in front of squares attacked
     #[inline]
     pub fn pawn_attack_span(&self, c: Color, pawn_sq: Square) -> Bitboard {
@@ -273,6 +286,11 @@ impl PreCalc {
         pawns - non_isolated
     }
 
+    /// duo pawns have neighdours to the immediate east or west
+    #[inline]
+    pub fn pawn_duos(&self, pawns: Bitboard) -> Bitboard {
+        (pawns.shift(Dir::E) | pawns.shift(Dir::W)) & pawns
+    }
     // fn pawn_ep_captures(
     //     &self,
     //     pawns: Bitboard,

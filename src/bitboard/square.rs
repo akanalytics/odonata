@@ -155,7 +155,7 @@ impl Square {
         if self.is_null() {
             "-".to_string()
         } else {
-            format!("{}{}", self.file_char(), self.rank_char())
+            [self.file_char(), self.rank_char()].iter().collect()
         }
     }
 

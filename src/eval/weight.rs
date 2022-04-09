@@ -19,7 +19,7 @@ pub struct WeightOf<T>(T, T)
 where
     T: Copy + Num;
 
-pub type Weight = WeightOf<i32>;
+pub type Weight = WeightOf<f32>;
 // pub type Weight = crate::eval::weight3::WeightOf<f32>;
 
 

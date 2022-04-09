@@ -182,7 +182,7 @@ mod tests {
         let eg = EndGame::from_board(&b);
         assert_eq!(eg, EndGame::KingMinorVsKingMinor);
         let mut eval = SimpleScorer::default();
-        assert!(eval.win_bonus.e() > 0);
+        assert!(eval.win_bonus.e() as f32 > 0.0);
         eval.win_bonus = Weight::from_i32(100, 100);
         let sc_wi_bonus = b.eval_some(&eval, Switches::MATERIAL);
         eval.win_bonus = Weight::zero();

@@ -57,3 +57,11 @@ pandas
 
 df.loc[:,['A', 'B']] = df.loc[:,['A', 'B']].multiply(df.loc[:, 'C'], axis="index")
 
+
+tuning
+======
+100,000 rows MSE => 7m with threading, 20m without  (x3)
+1m rows 21m w/ threading (x6)
+1m rows x 1000 iter 3m04s  vs 34s  (x6)  
+
+Threading costs 40%

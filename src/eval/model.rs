@@ -63,14 +63,21 @@ pub struct ModelSide {
     // pawn structure
     pub doubled_pawns: i32,
     pub isolated_pawns: i32,
-    pub passed_pawns: i32,       // includes passed pawns on r7
-    pub passed_pawns_on_r6: i32, // r7 by definition are passed
+    pub passed_pawns: i32,       
+    pub passed_pawns_on_r7: i32, // r7 by definition are passed
+    pub passed_pawns_on_r6: i32, // 
     pub passed_pawns_on_r5: i32,
     pub passers_on_rim: i32,    // files a & h
     pub blockaded: i32,         // enemy in front of pawn
     pub blockaded_passers: i32, // passed pawn with enemy right in front
     pub space: i32,             // empty squares behind rammed pawns
     pub rammed_pawns: i32,
+    pub pawn_connected_r67: i32,
+    pub pawn_connected_r345: i32,
+    pub pawn_duo_r67: i32,
+    pub pawn_duo_r2345: i32,
+    pub backward_half_open: i32, 
+
 
     // king safety
     pub king_tropism_d1: i32,
@@ -670,6 +677,12 @@ impl ModelSide {
         self.isolated_pawns = bbd.isolated_pawns(b.color(c) & b.pawns()).popcount();
         let them = b.color(c.opposite());
         let us = b.color(c);
+        let (pawn_atts_e, pawn_atts_w) = bbd.pawn_attacks(b.pawns() & us, c);     
+        let pawn_atts = pawn_atts_e | pawn_atts_w;
+        let pawn_duos = bbd.pawn_duos(b.pawns() & us);
+
+        let (enemy_pawn_atts_e, enemy_pawn_atts_w) = bbd.pawn_attacks(b.pawns() & them, c.opposite());     
+        let enemy_pawn_atts = enemy_pawn_atts_e | enemy_pawn_atts_w;
 
         for p in (b.pawns() & us).squares() {
             // self.doubled_pawns += is_doubled as i32;
@@ -677,9 +690,11 @@ impl ModelSide {
             let is_passed = (bbd.pawn_front_span_union_attack_span(c, p) & b.pawns() & them).is_empty();
             self.passed_pawns += is_passed as i32;
 
+            let rank7 = c.chooser_wb(Bitboard::RANK_7, Bitboard::RANK_2);
             let rank6 = c.chooser_wb(Bitboard::RANK_6, Bitboard::RANK_3);
             let rank5 = c.chooser_wb(Bitboard::RANK_5, Bitboard::RANK_4);
             // all pawns on r7 are passed as an opponent pawn cannot be on rank 8
+            self.passed_pawns_on_r7 += (is_passed && p.is_in(rank7)) as i32;
             self.passed_pawns_on_r6 += (is_passed && p.is_in(rank6)) as i32;
             self.passed_pawns_on_r5 += (is_passed && p.is_in(rank5)) as i32;
             self.passers_on_rim += (is_passed && p.is_in(Bitboard::RIM)) as i32;
@@ -687,8 +702,33 @@ impl ModelSide {
             self.blockaded_passers += (bbd.pawn_stop(c, p).intersects(them) && is_passed) as i32;
             self.rooks_behind_passer += (is_passed && (bbd.pawn_front_span(c.opposite(), p) & b.rooks() & us).any()) as i32;
             let rammed = bbd.pawn_stop(c, p).intersects(them & b.pawns());
-            self.space += (rammed as i32) * p.rank_index_as_white(c) as i32 * (1 + p.is_in(FILE_D | FILE_E) as i32);
+            let rank_index = p.rank_index_as_white(c) as i32;
+            self.space += (rammed as i32) * rank_index * (1 + p.is_in(FILE_D | FILE_E) as i32);
             self.rammed_pawns += rammed as i32;
+            if p.is_in(pawn_atts) {
+                match rank_index {
+                    5 | 6 => self.pawn_connected_r67 += 1,
+                    _ => self.pawn_connected_r345 += 1,
+                }
+            }
+            if p.is_in(pawn_duos) {
+                match rank_index {
+                    5 | 6 => self.pawn_duo_r67 += 1,
+                    _ => self.pawn_duo_r2345 += 1,
+                }
+            } else {
+                // half open backward pawns - cannot be defended by other pawns and cannot move fwd
+                if bbd.pawn_attack_span(c.opposite(), p).disjoint(b.pawns() & us) 
+                    && 
+                    bbd.pawn_stop(c, p).intersects(enemy_pawn_atts)
+                {
+                    // we already know from duo-else-clause there is no pawn either side too
+                    if (bbd.pawn_front_span(c, p) & b.pawns() & them).is_empty() {
+                    // && ((b.queens() | b.rooks()) & them).any() {
+                        self.backward_half_open += 1;
+                    }
+                }
+            }
         }
         self.doubled_pawns = bbd.doubled_pawns(us & b.pawns()).popcount();
         // lots of rammed pawns and having a knight an advantage
@@ -857,28 +897,58 @@ mod tests {
     use crate::eval::eval::SimpleScorer;
     use crate::tags::Tag;
     use crate::test_log::test;
-    use crate::utils::StringUtils;
+    // use crate::utils::StringUtils;
 
     #[test]
-    fn test_model() {
+    fn test_model_pawn() {
         let positions = Catalog::pawn_structure();
-        for p in positions {
+        let mut comparisons = 0;
+        for p in &positions {
             let model = Model::from_board(p.board(), Switches::ALL_SCORING);
-            if let Tag::Comment(_n, s) = p.tag("c0") {
-                info!("position {} c0 {}", p, s);
-                let map = s.split_vars_int();
-                assert_eq!(model.white.isolated_pawns, map["isolated"], "{}\n{:?}", p, model);
-                assert_eq!(model.white.doubled_pawns, map["doubled"], "{}", p);
-                assert_eq!(model.white.passed_pawns, map["passed"], "{}", p);
-            }
-            if let Tag::Comment(_n, s) = p.tag("c1") {
-                let map = s.split_vars_int();
-                assert_eq!(model.black.isolated_pawns, map["isolated"], "{}", p);
-                assert_eq!(model.black.doubled_pawns, map["doubled"], "{}", p);
-                assert_eq!(model.black.passed_pawns, map["passed"], "{}", p);
+            if let Tag::Comment(_n, var_name) = p.tag("c0") {
+                info!("position {} c0 {}", p, var_name);
+                if let Tag::Comment(_n, white) = p.tag("c1") {
+                    if let Tag::Comment(_n, black) = p.tag("c2") {
+                        let (w, b) = match var_name.as_str() {
+                            "isolated" => (model.white.isolated_pawns, model.black.isolated_pawns),
+                            "passed" => (model.white.passed_pawns, model.black.passed_pawns),
+                            "passed_r7" => (model.white.passed_pawns_on_r7, model.black.passed_pawns_on_r7),
+                            "passed_r6" => (model.white.passed_pawns_on_r6, model.black.passed_pawns_on_r6),
+                            "passed_r5" => (model.white.passed_pawns_on_r5, model.black.passed_pawns_on_r5),
+                            "doubled" => (model.white.doubled_pawns, model.black.doubled_pawns),
+                            "connected_r67" => (model.white.pawn_connected_r67, model.black.pawn_connected_r67),
+                            "connected_r345" => (model.white.pawn_connected_r345, model.black.pawn_connected_r345),
+                            "backward_half_open" => (model.white.backward_half_open, model.black.backward_half_open),
+                            _ => unreachable!(),
+                        };
+                        assert_eq!(w, white.parse::<i32>().unwrap(), "{}\n{:?}", p, model);
+                        assert_eq!(b, black.parse::<i32>().unwrap(), "{}\n{:?}", p, model);
+                        comparisons += 1;
+                    }
+                }
             }
         }
+        assert_eq!(comparisons, positions.len());
     }
+
+            //         // let map = s.split_vars_int();
+            //     assert_eq!(model.white.isolated_pawns, map["isolated"], "{}\n{:?}", p, model);
+            //     assert_eq!(model.white.doubled_pawns, map["doubled"], "{}\n{:?}", p, model);
+            //     assert_eq!(model.white.passed_pawns, map["passed"], "{}", p);
+            //     assert_eq!(model.white.pawn_connected_r67, map["con67"], "{}", p);
+            //     assert_eq!(model.white.pawn_connected_r345, map["con345"], "{}\n{:?}", p, model);
+            //     assert_eq!(model.white.backward_half_open, map["backward"], "{}\n{:?}", p, model);
+            // }
+            // if let Tag::Comment(_n, s) = p.tag("c1") {
+            //     let map = s.split_vars_int();
+            //     assert_eq!(model.black.isolated_pawns, map["isolated"], "{}", p);
+            //     assert_eq!(model.black.doubled_pawns, map["doubled"], "{}", p);
+            //     assert_eq!(model.black.passed_pawns, map["passed"], "{}", p);
+            //     if map.contains_key("con67") {
+            //         assert_eq!(model.black.pawn_connected_r67, map["con67"], "{}", p);
+            //         assert_eq!(model.black.pawn_connected_r345, map["con345"], "{}", p);
+            //         assert_eq!(model.black.backward_half_open, map["backward"], "{}", p);
+            //     }
 
     #[test]
     fn model_csv_test() {

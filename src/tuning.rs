@@ -93,8 +93,7 @@ impl Tuning {
                 trace!("Discarding drawn/checkmate position {}", pos);
                 continue;
             }
-            let mut model = Model::from_board(pos.board(), Switches::ALL_SCORING);
-            model.csv = true;
+            let model = Model::from_board(pos.board(), Switches::ALL_SCORING);
 
             if self.ignore_endgames
                 && (model.endgame.try_winner().is_some() || model.endgame.is_likely_draw() || model.endgame.is_immediately_declared_draw())
@@ -188,6 +187,8 @@ impl Tuning {
         // if outcome > &0.25 && outcome < &0.75 {
         //     continue;
         // }
+        let mut model = model.clone();
+        model.csv = true;
         let phase = model.mat.phase(&engine.algo.eval.phaser);
         let mut w_score = ExplainScorer::new(phase, model.multiboard.fifty_halfmove_clock());
         engine.algo.eval.predict(&model, &mut w_score);
@@ -263,6 +264,8 @@ impl Tuning {
 
 #[cfg(test)]
 mod tests {
+    use std::{io::BufWriter, fs::File};
+
     use super::*;
     use crate::eval::weight::Weight;
     use test_log::test;
@@ -276,7 +279,29 @@ mod tests {
 
     #[ignore]
     #[test]
-    fn test_tuning() {
+    fn test_tuning_mse() {
+        info!("Starting...");
+        let mut engine = Engine::new();
+        engine
+            .tuner
+            .upload_positions(&Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-combo.epd").unwrap()).unwrap();
+        //tuning.positions = Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-small.epd").unwrap();
+        // tuning.positions = Position::parse_epd_file("../odonata-extras/epd/com15.epd")?;
+        // tuning.positions = Catalog::bratko_kopec();
+        println!("Loaded\n");
+
+        for n in (-120..120).step_by(1) {
+            let value = n;
+            engine.algo.eval.mb.enabled = false;
+            engine.algo.eval.pawn_isolated = Weight::from_i32(0, value);
+            let diffs = engine.tuner.calculate_mean_square_error(&engine).unwrap();
+            println!("{}, {}", value, diffs);
+        }
+    }
+
+    #[ignore]
+    #[test]
+    fn test_tuning_csv() {
         info!("Starting...");
         let mut engine = Engine::new();
         engine
@@ -287,17 +312,16 @@ mod tests {
         // tuning.positions = Catalog::bratko_kopec();
         println!("Loaded\n");
 
-        for n in (-100..140).step_by(10) {
-            let value = n;
-            engine.algo.eval.mb.enabled = false;
-            engine.algo.eval.pawn_isolated = Weight::from_i32(0, value);
-            let diffs = engine.tuner.calculate_mean_square_error(&engine).unwrap();
-            println!("{}, {}", value, diffs);
-        }
+        let filename = "/tmp/test_training_data.csv";
+        let f = File::create(&filename).with_context(|| format!("Failed to open file {}", &filename)).unwrap();
+        let mut f = BufWriter::new(f);
+        let line_count = Tuning::write_training_data(&mut engine, &mut f).unwrap();
+        println!(" lines proicessed: {line_count}");
     }
 
+
     #[test]
-    fn test_quick_tuning() {
+    fn test_quick_tuning_mse() {
         info!("Starting quick tuning...");
         let mut tuning = Tuning::new();
         tuning.upload_positions(&Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-small.epd").unwrap()).unwrap();
