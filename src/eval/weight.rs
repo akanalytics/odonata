@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::iter;
 
+use crate::phaser::Phase;
 use crate::utils::Formatting;
 use serde::{Deserializer, Serializer};
 
@@ -121,8 +122,8 @@ where
     i32: AsPrimitive<T>,
 {
     #[inline]
-    pub fn interpolate(self, phase: i32) -> T {
-        ((100 - phase).as_() * self.s() + phase.as_() * self.e()) / 100.as_()
+    pub fn interpolate(self, phase: Phase) -> T {
+        ((100 - phase.0).as_() * self.s() + phase.0.as_() * self.e()) / 100.as_()
     }
 }
 
@@ -253,6 +254,8 @@ mod tests {
         // info!("{}", toml::to_string_pretty(&Weight::default()).unwrap());
     }
 }
+
+
 
 // This impl 42% slower
 

@@ -147,22 +147,32 @@ pub struct SimpleScorer {
     // pub defended_non_pawn: Weight,
     // pub xrayed: Weight,
     pub pawn_doubled: Weight,
+    pub pawn_directly_doubled: Weight,
     pub pawn_isolated: Weight,
+    pub semi_isolated: Weight,
     pub pawn_passed: Weight,
     pub pawn_passed_r7: Weight,
     pub pawn_passed_r6: Weight,
     pub pawn_passed_r5: Weight,
+    pub pawn_passed_r4: Weight,
     pub passers_on_rim: Weight,
+    pub candidate_passed_pawn: Weight,
     pub blockaded: Weight,
     pub blockaded_passers: Weight,
     pub rooks_behind_passer: Weight,
+    pub enemy_rook_on_passer: Weight,
     pub space: Weight,
     pub rammed_pawns: Weight,
     pub pawn_connected_r67: Weight,
     pub pawn_connected_r345: Weight,
+    pub passed_connected_r67: Weight,
+    pub passed_connected_r345: Weight,
     pub pawn_duo_r67: Weight,
     pub pawn_duo_r2345: Weight,
+    pub passed_duo_r67: Weight,
+    pub passed_duo_r2345: Weight,
     pub backward_half_open: Weight,
+    pub backward: Weight,
 
     pub bishop_pair: Weight,
     pub fianchetto: Weight,
@@ -182,13 +192,17 @@ pub struct SimpleScorer {
     // pub pawn_shield: Weight,
     pub pawn_adjacent_shield: Weight,
     pub pawn_nearby_shield: Weight,
+    pub king_safety_bonus: Weight,
     pub open_files_near_king: Weight,
     pub attacks_near_king: Weight,
     pub tropism_d1: Weight,
     pub tropism_d2: Weight,
     pub tropism_d3: Weight,
+    pub tropism_d4: Weight,
+    pub king_trapped_on_back_rank: Weight,
 
     pub castling_rights: Weight,
+    pub uncastled: Weight,
 
     pub contempt_penalty: Weight,
     pub tempo_bonus: Weight,
@@ -254,33 +268,47 @@ impl Default for SimpleScorer {
             queen_early_develop: Weight::from_i32(0, 0),
 
             pawn_doubled: Weight::from_i32(19, -35),
+            pawn_directly_doubled: Weight::from_i32(19, -35),
             pawn_isolated: Weight::from_i32(-35, -5),
+            semi_isolated: Weight::from_i32(-35, -5),
             pawn_passed: Weight::from_i32(15, 28),
-            pawn_passed_r5: Weight::from_i32(1, 50),
-            pawn_passed_r6: Weight::from_i32(8, 94),
             pawn_passed_r7: Weight::from_i32(50, 200),
+            pawn_passed_r6: Weight::from_i32(8, 94),
+            pawn_passed_r5: Weight::from_i32(1, 50),
+            pawn_passed_r4: Weight::from_i32(1, 50),
             passers_on_rim: Weight::from_i32(-10, -10),
+            candidate_passed_pawn: Weight::from_i32(10, 10),
             blockaded: Weight::from_i32(-10, -10),
             blockaded_passers: Weight::from_i32(-10, -10),
             space: Weight::from_i32(1, 1),
             rammed_pawns: Weight::from_i32(-10, -10),
             rooks_behind_passer: Weight::from_i32(0, 10),
+            enemy_rook_on_passer: Weight::from_i32(0, 10),
             pawn_connected_r67: Weight::from_i32(10, 10),
             pawn_connected_r345: Weight::from_i32(10, 10),
+            passed_connected_r67: Weight::from_i32(10, 10),
+            passed_connected_r345: Weight::from_i32(10, 10),
             pawn_duo_r67: Weight::from_i32(10, 10),
             pawn_duo_r2345: Weight::from_i32(10, 10),
+            passed_duo_r67: Weight::from_i32(10, 10),
+            passed_duo_r2345: Weight::from_i32(10, 10),
             backward_half_open: Weight::from_i32(-10, -10),
+            backward: Weight::from_i32(-10, -10),
 
             tempo_bonus: Weight::from_i32(40, 50),
             pawn_adjacent_shield: Weight::from_i32(44, -15),
             pawn_nearby_shield: Weight::from_i32(42, -14),
+            king_safety_bonus: Weight::from_i32(42, -14),
             open_files_near_king: Weight::from_i32(-6, -1),
             attacks_near_king: Weight::from_i32(-8, -2),
             tropism_d1: Weight::from_i32(-40, 29),
             tropism_d2: Weight::from_i32(-28, 11),
             tropism_d3: Weight::from_i32(-5, 2),
+            tropism_d4: Weight::from_i32(-5, 2),
+            king_trapped_on_back_rank: Weight::from_i32(-5, 2),
 
             castling_rights: Weight::from_i32(0, 0),
+            uncastled: Weight::from_i32(0, 0),
             // attacks: PieceArray {
             //     q: PieceArray {
             //         r: Weight::from_i32(-1, -2),
@@ -545,12 +573,16 @@ impl SimpleScorer {
         // pawn structure
         if self.pawn && m.switches.contains(Switches::PAWN) {
             scorer.pawn("pawn doubled", w.doubled_pawns, b.doubled_pawns, self.pawn_doubled);
+            scorer.pawn("pawn directly doubled", w.pawn_directly_doubled, b.pawn_directly_doubled, self.pawn_directly_doubled);
             scorer.pawn("pawn isolated", w.isolated_pawns, b.isolated_pawns, self.pawn_isolated);
+            scorer.pawn("semi isolated", w.semi_isolated, b.semi_isolated, self.semi_isolated);
             scorer.pawn("pawn passed", w.passed_pawns, b.passed_pawns, self.pawn_passed);
             scorer.pawn("pawn passed r7", w.passed_pawns_on_r7, b.passed_pawns_on_r7, self.pawn_passed_r7);
             scorer.pawn("pawn passed r6", w.passed_pawns_on_r6, b.passed_pawns_on_r6, self.pawn_passed_r6);
             scorer.pawn("pawn passed r5", w.passed_pawns_on_r5, b.passed_pawns_on_r5, self.pawn_passed_r5);
+            scorer.pawn("pawn passed r4", w.passed_pawns_on_r4, b.passed_pawns_on_r4, self.pawn_passed_r4);
             scorer.pawn("passers on rim", w.passers_on_rim, b.passers_on_rim, self.passers_on_rim);
+            scorer.pawn("candidate passed pawn", w.candidate_passed_pawn, b.candidate_passed_pawn, self.candidate_passed_pawn);
             scorer.pawn("blockaded", w.blockaded, b.blockaded, self.blockaded);
             scorer.pawn(
                 "blockaded passers",
@@ -564,14 +596,25 @@ impl SimpleScorer {
                 b.rooks_behind_passer,
                 self.rooks_behind_passer,
             );
+            scorer.pawn(
+                "enemy rook on passer",
+                w.enemy_rook_on_passer,
+                b.enemy_rook_on_passer,
+                self.enemy_rook_on_passer,
+            );
             scorer.pawn("rammed pawns", w.rammed_pawns, b.rammed_pawns, self.rammed_pawns);
             scorer.pawn("space", w.space, b.space, self.space);
             scorer.pawn("pawn connected r67", w.pawn_connected_r67, b.pawn_connected_r67, self.pawn_connected_r67);
             scorer.pawn("pawn connected r345", w.pawn_connected_r345, b.pawn_connected_r345, self.pawn_connected_r345);
+            scorer.pawn("passed connected r67", w.passed_connected_r67, b.passed_connected_r67, self.passed_connected_r67);
+            scorer.pawn("passed connected r345", w.passed_connected_r345, b.passed_connected_r345, self.passed_connected_r345);
 
             scorer.pawn("pawn duo r67", w.pawn_duo_r67, b.pawn_duo_r67, self.pawn_duo_r67);
             scorer.pawn("pawn duo r2345", w.pawn_duo_r2345, b.pawn_duo_r2345, self.pawn_duo_r2345);
+            scorer.pawn("passed duo r67", w.passed_duo_r67, b.passed_duo_r67, self.passed_duo_r67);
+            scorer.pawn("passed duo r2345", w.passed_duo_r2345, b.passed_duo_r2345, self.passed_duo_r2345);
             scorer.pawn("backward half open", w.backward_half_open, b.backward_half_open, self.backward_half_open);
+            scorer.pawn("backward", w.backward, b.backward, self.backward);
         }
 
         //  bishop
@@ -581,6 +624,7 @@ impl SimpleScorer {
             // scorer.safety("nearby pawns", w.nearby_pawns, b.nearby_pawns, self.pawn_shield);
             scorer.safety("pawn adjacent shield", w.adjacent_shield, b.adjacent_shield, self.pawn_adjacent_shield);
             scorer.safety("pawn nearby shield", w.nearby_shield, b.nearby_shield, self.pawn_nearby_shield);
+            scorer.safety("king safety bonus", w.king_safety_bonus, b.king_safety_bonus, self.king_safety_bonus);
             scorer.safety(
                 "open files near king",
                 w.open_files_near_king,
@@ -590,17 +634,21 @@ impl SimpleScorer {
             scorer.safety("tropism d1", w.king_tropism_d1, b.king_tropism_d1, self.tropism_d1);
             scorer.safety("tropism d2", w.king_tropism_d2, b.king_tropism_d2, self.tropism_d2);
             scorer.safety("tropism d3", w.king_tropism_d3, b.king_tropism_d3, self.tropism_d3);
+            scorer.safety("tropism d4", w.king_tropism_d4, b.king_tropism_d4, self.tropism_d4);
+            scorer.safety("king trapped on back rank", w.king_trapped_on_back_rank, b.king_trapped_on_back_rank, self.king_trapped_on_back_rank);
+
             scorer.safety(
                 "attacks near king",
                 w.attacks_on_opponent_king_area,
                 b.attacks_on_opponent_king_area,
                 self.attacks_near_king,
             );
-            scorer.safety("castling rights", w.castling_sides, b.castling_sides, self.castling_rights);
+            scorer.safety("castling rights", w.castling_rights, b.castling_rights, self.castling_rights);
+            scorer.safety("uncastled", w.uncastled, b.uncastled, self.uncastled);
         }
 
         // mobility
-        if scorer.phase() <= self.mobility_phase_disable as i32 && self.mobility && m.switches.contains(Switches::MOBILITY) {
+        if scorer.phase().0 <= self.mobility_phase_disable as i32 && self.mobility && m.switches.contains(Switches::MOBILITY) {
             // let wh = m.white.mv.iter().map(|(p, count)| self.pmvt.w_eval_mob(*p, *count)).sum();
             // let bl = m.black.mv.iter().map(|(p, count)| self.pmvt.w_eval_mob(*p, *count)).sum();
 

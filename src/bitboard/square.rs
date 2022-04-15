@@ -6,6 +6,9 @@ use std::fmt;
 #[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Square(u8);
 
+
+
+
 impl Default for Square {
     #[inline]
     fn default() -> Self {
@@ -140,15 +143,15 @@ impl Square {
     }
 
     #[inline]
-    pub fn file_char(self) -> char {
+    pub const fn file_char(self) -> char {
         let x = self.0 % 8;
-        char::from(b'a' + x as u8)
+        (b'a' + x as u8) as char
     }
 
     #[inline]
-    pub fn rank_char(self) -> char {
+    pub const fn rank_char(self) -> char {
         let y = self.0 / 8;
-        char::from(b'1' + y as u8)
+        (b'1' + y as u8) as char
     }
 
     pub fn uci(self) -> String {
@@ -300,6 +303,8 @@ mod tests {
     #[test]
     fn test_square() {
         assert_eq!(a1.first_square(), Square(0));
+        assert_eq!(a1 < b3, true);
+        assert_eq!(a2 < a1, false);
         assert_eq!(a1.first_square().rank_index(), 0);
         assert_eq!(b1.first_square().file_index(), 1);
         assert_eq!(c7.first_square().index(), 6 * 8 + 2);

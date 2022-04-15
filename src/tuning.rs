@@ -9,6 +9,7 @@ use crate::eval::score::Score;
 use crate::eval::switches::Switches;
 use crate::eval::weight::Weight;
 use crate::infra::component::Component;
+use crate::phaser::Phase;
 use crate::position::Position;
 use crate::search::engine::Engine;
 use crate::search::timecontrol::TimeControl;
@@ -39,6 +40,7 @@ pub struct Tuning {
     pub multi_threading_min_positions: usize,
     pub ignore_draws: bool,
     pub logistic_steepness_k: Weight,
+    pub consolidate: bool,
 
     #[serde(skip)]
     pub models_and_outcomes: Vec<(Model, f32)>,
@@ -59,6 +61,7 @@ impl Default for Tuning {
             boards: Default::default(),
             logistic_steepness_k: Weight::from_i32(4, 4),
             ignore_draws: false,
+            consolidate: false,
         }
     }
 }
@@ -109,7 +112,7 @@ impl Tuning {
                         if pos.board().color_us() == Color::Black {
                             w_score = -w_score;
                         }
-                        let k = self.logistic_steepness_k.interpolate(50) as f32;
+                        let k = self.logistic_steepness_k.interpolate(Phase(50)) as f32;
                         let win_prob_estimate = Score::from_f32(w_score).win_probability_using_k(k);
     
                         self.models_and_outcomes.push((model, win_prob_estimate));
@@ -192,12 +195,13 @@ impl Tuning {
         let phase = model.mat.phase(&engine.algo.eval.phaser);
         let mut w_score = ExplainScorer::new(phase, model.multiboard.fifty_halfmove_clock());
         engine.algo.eval.predict(&model, &mut w_score);
+        let consolidate = engine.tuner.consolidate;
         if i == 0 {
             #[allow(clippy::write_literal)]
             writeln!(
                 writer,
-                "{}{}, {}, {}, {}",
-                w_score.as_csv(ReportLine::Header),
+                "{}{},{},{},{}",
+                w_score.as_csv(ReportLine::Header, consolidate),
                 "phase",
                 "outcome",
                 "ce",
@@ -207,8 +211,8 @@ impl Tuning {
         writeln!(
             writer,
             "{}{}, {}, {}, {}",
-            w_score.as_csv(ReportLine::Body),
-            phase,
+            w_score.as_csv(ReportLine::Body, consolidate),
+            phase.0,
             outcome,
             ce,
             model.multiboard.to_fen()

@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::iter;
 
+use crate::phaser::Phase;
 use crate::utils::Formatting;
 use serde::{Deserializer, Serializer};
 
@@ -12,6 +13,11 @@ use serde::{Deserializer, Serializer};
 // eval/position           time:   [159.77 ns 160.45 ns 161.25 ns]
 //                         change: [-51.630% -50.540% -49.410%] (p = 0.00 < 0.05)
 //                         Performance has improved.
+
+
+
+
+pub type Weight = WeightOf<f32>;
 
 // essntially models the score bonus for s=start or e=end of game
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
@@ -116,11 +122,11 @@ where
     i32: AsPrimitive<T>,
 {
     #[inline]
-    pub fn interpolate(self, phase: i32) -> T {
-        if phase <= 50 {
-            ((50 - phase).as_() * self.s() + phase.as_() * self.m()) / 50.as_()
+    pub fn interpolate(self, phase: Phase) -> T {
+        if phase.0 <= 50 {
+            ((50 - phase.0).as_() * self.s() + phase.0.as_() * self.m()) / 50.as_()
         } else {
-            ((50 - (phase - 50)).as_() * self.m() + (phase - 50).as_() * self.e()) / 50.as_()
+            ((50 - (phase.0 - 50)).as_() * self.m() + (phase.0 - 50).as_() * self.e()) / 50.as_()
         }
     }
 }

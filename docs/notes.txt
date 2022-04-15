@@ -65,3 +65,11 @@ tuning
 1m rows x 1000 iter 3m04s  vs 34s  (x6)  
 
 Threading costs 40%
+
+
+sqlite ../output/model.db
+mode 
+drop table if exists MODEL;
+.import --csv  ../output/model-king_safety.csv MODEL
+select fen, outcome, king_trapped_on_back_rank from MODEL where king_trapped_on_back_rank != 0 limit 10;
+.mode box

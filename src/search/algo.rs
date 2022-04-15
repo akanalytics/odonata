@@ -224,7 +224,7 @@ impl fmt::Display for Algo {
         writeln!(f, "starting board   : {}", self.board.to_fen())?;
         writeln!(f, "time control     : {}", self.mte.time_control)?;
         writeln!(f, "material         : {}", self.board.material())?;
-        writeln!(f, "phase            : {} %", self.board.phase(&self.eval.phaser))?;
+        writeln!(f, "phase            : {} %", self.board.phase(&self.eval.phaser).0)?;
         writeln!(f, "static eval      : {}", self.board.eval(&self.eval, &Node::root(0)))?;
         // writeln!(f, "bm               : {}", self.results.bm())?;
         writeln!(f, "score            : {}", self.score())?;

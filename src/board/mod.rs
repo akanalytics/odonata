@@ -156,6 +156,11 @@ impl Board {
     }
 
     #[inline]
+    pub fn rooks_or_queens(&self) -> Bitboard {
+        self.multiboard.rooks() | self.multiboard.queens()
+    }
+
+    #[inline]
     pub fn queens(&self) -> Bitboard {
         self.multiboard.queens()
     }

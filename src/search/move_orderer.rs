@@ -2,6 +2,7 @@ use crate::board::Board;
 use crate::infra::component::Component;
 use crate::movelist::MoveList;
 use crate::mv::Move;
+use crate::phaser::Phase;
 use crate::search::algo::Algo;
 use crate::search::stack::Stack;
 use crate::trace::stat::{ArrayPlyStat, PlyStat};
@@ -102,7 +103,7 @@ impl fmt::Display for MoveOrderer {
 
 impl MoveOrderer {
     #[inline]
-    pub fn quiet_score(&self, mv: &Move, algo: &Algo, phase: i32, c: Color) -> i32 {
+    pub fn quiet_score(&self, mv: &Move, algo: &Algo, phase: Phase, c: Color) -> i32 {
         let mut score = 0;
         if mv.is_promo() {
             if mv.promo_piece() == Piece::Knight {

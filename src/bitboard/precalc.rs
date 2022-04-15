@@ -157,6 +157,8 @@ impl PreCalc {
         Square::calc_manhattan_distance(s1, s2)
     }
 
+
+    #[inline]
     pub fn within_chebyshev_distance_inclusive(&self, s1: Square, d: u32) -> Bitboard {
         if d >= 8 {
             Bitboard::all()
@@ -267,6 +269,11 @@ impl PreCalc {
         self.pawn_front_span[c][pawn_sq] | self.pawn_attack_span[c][pawn_sq]
     }
 
+    #[inline]
+    pub fn neighbouring_files(&self, sq: Square) -> Bitboard {
+        sq.file() | sq.file().shift(Dir::E) | sq.file().shift(Dir::W)
+    }
+
     /// square in front of pawn (or empty)
     #[inline]
     pub fn pawn_stop(&self, c: Color, pawn_sq: Square) -> Bitboard {
@@ -282,7 +289,7 @@ impl PreCalc {
     pub fn isolated_pawns(&self, pawns: Bitboard) -> Bitboard {
         let closed = !self.open_files(pawns);
         // non-isolated pawns have a closed (wt their color) file next to them on one side
-        let non_isolated = pawns & closed.shift(Dir::E) | pawns & closed.shift(Dir::W);
+        let non_isolated = (pawns & closed.shift(Dir::E)) | (pawns & closed.shift(Dir::W));
         pawns - non_isolated
     }
 

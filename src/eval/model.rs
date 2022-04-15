@@ -8,7 +8,7 @@ use crate::domain::material::Material;
 use crate::eval::score::Score;
 use crate::eval::switches::Switches;
 use crate::eval::weight::Weight;
-use crate::globals::constants::{FILE_D, FILE_E};
+use crate::phaser::Phase;
 use crate::types::Color;
 use crate::types::Piece;
 use crate::utils::Formatting;
@@ -52,7 +52,8 @@ pub struct ModelSide {
     pub doubled_rooks: i32,
     pub doubled_rooks_open_file: i32,
     pub enemy_pawns_on_rook_rank: i32,
-    pub rooks_behind_passer: i32, // passed pawn with a rook behind
+    pub rooks_behind_passer: i32,
+    pub enemy_rook_on_passer: i32,
 
     pub queens_on_open_files: i32,
     pub queen_early_develop: i32,
@@ -62,33 +63,45 @@ pub struct ModelSide {
 
     // pawn structure
     pub doubled_pawns: i32,
+    pub pawn_directly_doubled: i32,
     pub isolated_pawns: i32,
-    pub passed_pawns: i32,       
+    pub semi_isolated: i32,
+    pub passed_pawns: i32,
     pub passed_pawns_on_r7: i32, // r7 by definition are passed
-    pub passed_pawns_on_r6: i32, // 
+    pub passed_pawns_on_r6: i32, //
     pub passed_pawns_on_r5: i32,
-    pub passers_on_rim: i32,    // files a & h
+    pub passed_pawns_on_r4: i32,
+    pub passers_on_rim: i32, // files a & h
+    pub candidate_passed_pawn: i32,
     pub blockaded: i32,         // enemy in front of pawn
     pub blockaded_passers: i32, // passed pawn with enemy right in front
     pub space: i32,             // empty squares behind rammed pawns
     pub rammed_pawns: i32,
     pub pawn_connected_r67: i32,
     pub pawn_connected_r345: i32,
+    pub passed_connected_r67: i32,
+    pub passed_connected_r345: i32,
     pub pawn_duo_r67: i32,
     pub pawn_duo_r2345: i32,
-    pub backward_half_open: i32, 
-
+    pub passed_duo_r67: i32,
+    pub passed_duo_r2345: i32,
+    pub backward_half_open: i32,
+    pub backward: i32,
 
     // king safety
     pub king_tropism_d1: i32,
     pub king_tropism_d2: i32,
     pub king_tropism_d3: i32,
+    pub king_tropism_d4: i32,
     pub adjacent_shield: i32,
     pub nearby_shield: i32,
     pub open_files_near_king: i32,
+    pub king_trapped_on_back_rank: i32,
     pub attacks_on_opponent_king_area: i32,
+    pub king_safety_bonus: i32, 
 
-    pub castling_sides: i32, // 0,1 or 2
+    pub castling_rights: i32, // 0,1 or 2
+    pub uncastled: i32,
 
     // mobility
     pub move_squares: i32,
@@ -118,7 +131,7 @@ pub trait Scorer {
     fn contempt(&mut self, attr: &str, w_value: i32, b_value: i32, score: Weight);
     fn interpolate(&mut self, attr: &str);
     fn total(&self) -> Weight;
-    fn phase(&self) -> i32;
+    fn phase(&self) -> Phase;
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -139,7 +152,7 @@ pub enum ReportLine {
 }
 
 impl ExplainScorer {
-    pub fn new(phase: i32, drawish: i32) -> Self {
+    pub fn new(phase: Phase, drawish: i32) -> Self {
         Self {
             delegate: ModelScore::new(phase, drawish),
             ..Self::default()
@@ -149,27 +162,36 @@ impl ExplainScorer {
         self.delegate.as_score()
     }
 
-    pub fn as_csv(&self, line: ReportLine) -> String {
-        let mut output = String::with_capacity(6000);
+    pub fn as_csv(&self, line: ReportLine, consolidated: bool) -> String {
+        let mut output = String::with_capacity(1000);
         for (i, _sw) in Switches::all_scoring().iter().enumerate() {
             let vec = vec![&self.mat, &self.pos, &self.mob, &self.paw, &self.saf, &self.con, &self.tem][i];
             for (attr, w, b, wt) in vec {
                 let (attr, w, b, _wt) = (attr, *w, *b, *wt);
-                let field_s = match line {
-                    ReportLine::Header => format!("{}.s", attr.replace(" ", "_")),
-                    ReportLine::Body => {
-                        format!("{}", (w - b) as f32 * (100 - self.delegate.phase) as f32 / 100.0)
-                    }
-                };
-                output.push_str(&field_s);
-                output.push_str(", ");
+                if consolidated {
+                    let field = match line {
+                        ReportLine::Header => format!("{}", attr.replace(" ", "_")),
+                        ReportLine::Body => (w - b).to_string(),
+                    };
+                    output.push_str(&field);
+                    output.push(',');
+                } else {
+                    let field_s = match line {
+                        ReportLine::Header => format!("{}.s", attr.replace(" ", "_")),
+                        ReportLine::Body => {
+                            format!("{}", (w - b) as f32 * (100 - self.delegate.phase.0) as f32 / 100.0)
+                        }
+                    };
+                    output.push_str(&field_s);
+                    output.push_str(", ");
 
-                let field_e = match line {
-                    ReportLine::Header => format!("{}.e", attr.replace(" ", "_")),
-                    ReportLine::Body => format!("{}", (w - b) as f32 * self.delegate.phase as f32 / 100.0),
-                };
-                output.push_str(&field_e);
-                output.push_str(", ");
+                    let field_e = match line {
+                        ReportLine::Header => format!("{}.e", attr.replace(" ", "_")),
+                        ReportLine::Body => format!("{}", (w - b) as f32 * self.delegate.phase.0 as f32 / 100.0),
+                    };
+                    output.push_str(&field_e);
+                    output.push_str(", ");
+                }
             }
         }
         output
@@ -234,7 +256,7 @@ impl Scorer for ExplainScorer {
     }
 
     #[inline]
-    fn phase(&self) -> i32 {
+    fn phase(&self) -> Phase {
         self.delegate.phase()
     }
 }
@@ -320,7 +342,7 @@ impl fmt::Display for ExplainScorer {
             "",
             "",
             "",
-            self.phase()
+            self.phase().0
         )?;
         writeln!(
             f,
@@ -333,8 +355,8 @@ impl fmt::Display for ExplainScorer {
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ModelScore {
-    phase: i32,
-    drawish: i32,  
+    phase: Phase,
+    drawish: i32,
     material: Weight,
     position: Weight,
     pawn: Weight,
@@ -346,8 +368,12 @@ pub struct ModelScore {
 }
 
 impl ModelScore {
-    pub fn new(phase: i32, drawish: i32) -> Self {
-        Self { phase, drawish, ..Self::default() }
+    pub fn new(phase: Phase, drawish: i32) -> Self {
+        Self {
+            phase,
+            drawish,
+            ..Self::default()
+        }
     }
 
     pub fn as_f32(&self) -> f32 {
@@ -402,7 +428,7 @@ impl Scorer for ModelScore {
 
     #[inline]
     fn interpolate(&mut self, _attr: &str) {
-        self.interpolated = self.total().interpolate(self.phase) as f32 * (100-self.drawish) as f32 / 100.0;
+        self.interpolated = self.total().interpolate(self.phase) as f32 * (100 - self.drawish) as f32 / 100.0;
     }
 
     #[inline]
@@ -411,7 +437,7 @@ impl Scorer for ModelScore {
     }
 
     #[inline]
-    fn phase(&self) -> i32 {
+    fn phase(&self) -> Phase {
         self.phase
     }
 }
@@ -432,7 +458,7 @@ impl Model {
             white: ModelSide::from_board(b, Color::White, &material, endgame, switches),
             black: ModelSide::from_board(b, Color::Black, &material, endgame, switches),
             endgame,
-            csv: false, 
+            csv: false,
         }
     }
 }
@@ -501,19 +527,19 @@ impl ModelSide {
                     let bsq = (b.bishops() & b.color(winning)).square();
                     let knight_distance = max(0, PreCalc::default().chebyshev_distance(nsq, ksq));
                     let bishop_distance = max(0, PreCalc::default().chebyshev_distance(bsq, ksq));
-                    self.endgame_metric2 = 20 * king_distance + 2 * bishop_distance + 3 * knight_distance + 2 * Self::king_distance_to_side(b, c);
+                    self.endgame_metric2 =
+                        20 * king_distance + 2 * bishop_distance + 3 * knight_distance + 2 * Self::king_distance_to_side(b, c);
                 }
 
-                TwoBishopsOppositeColorSquares(_)  => {
+                TwoBishopsOppositeColorSquares(_) => {
                     self.endgame_metric1 = 20 * Self::king_distance_to_any_corner(b, c);
                     self.endgame_metric2 = 10 * Self::king_distance(b);
                 }
 
-                KingMajorsVsKing(_) | _ =>  {
+                KingMajorsVsKing(_) | _ => {
                     self.endgame_metric1 = 20 * Self::king_distance_to_side(b, c);
                     self.endgame_metric2 = 10 * Self::king_distance(b);
                 }
-
             }
         }
     }
@@ -565,7 +591,6 @@ impl ModelSide {
             bad_corner2 = Square::A8;
             // gd_corner1 = Square::A1;
             // gd_corner2 = Square::H8;
-        
         } else {
             bad_corner1 = Square::A1;
             bad_corner2 = Square::H8;
@@ -579,16 +604,8 @@ impl ModelSide {
         let bad_d2 = PreCalc::default().manhattan_distance(bad_corner2, ksq);
         let gd_d2 = PreCalc::default().manhattan_distance(bad_corner2, wksq);
 
-        let d1 = if bad_d1 < gd_d1 {
-            bad_d1
-        } else {
-            bad_d1
-        };
-        let d2 = if bad_d2 < gd_d2 {
-            bad_d2
-        } else {
-            bad_d1
-        };
+        let d1 = if bad_d1 < gd_d1 { bad_d1 } else { bad_d1 };
+        let d2 = if bad_d2 < gd_d2 { bad_d2 } else { bad_d1 };
         let dist = std::cmp::min(d1, d2);
         dist
         // let gd_d1 = PreCalc::default().chebyshev_distance(gd_corner1, ksq);
@@ -604,7 +621,6 @@ impl ModelSide {
         // } else {
         //     dist
         // }
-
     }
 
     #[inline]
@@ -666,45 +682,163 @@ impl ModelSide {
         self.has_tempo = b.color_us() == c;
     }
 
+    // front span - strictly in front
+    // front fill - inclusive in front
+
     // isolated pawns have no neighbours of same color. Doubled pawns that are isolated count as two
     // doubled pawns are doubled or tripled or more. Two pawns count as one doubled. Three as two doubled.
     // passed. No neighbouring pawns of opposite colour ahead
     // rammed pawns have an opposing pawn directly in front
+
+    // Open Pawns - have no mechanical obstruction - an opponent pawn in front.
+    //                     They are at least half-free or even free passers
+    //
+    // - Passed Pawn       not counting rear of a doubled pawn.
+    //                     front span disjoint from all other pawns, as well as the front fill disjoint
+    //                     from opponent pawn attacks
+    // -- Unstoppable
+    // -- Protected  another (not nec passed pawn) is chained
+    // -- Connected        duo or chain with another passed pawn
+    // -- Outside          Seprated by several files
+    //
+
+    // - Candidate Passed Pawn
+
+    // a pawn on a half-open file, which, if the board had only pawns on it, would eventually become
+    // a passed pawn by moving forward. Whereas this definition is obvious for a human,
+    // in a form presented above it would require no less than a separate recursive search routine.
+    // For that reason, computers have to use approximations of that rule.
+    // One possibility is to define a pawn as a candidate, if no square on its path is controlled
+    // by more enemy pawns than own pawns.
+
+    // Phalanx = Duo or more (same rank)
+    // Connected = Phalanx or Chain
+    // Doubled Pawn - types
+    // Faker - a "faked" candidate with more opponent sentries than own helpers
+    // Hidden Passed Pawn
+    // Sentry - is a pawn controlling the square lying on the path or front span of an opponent's pawn,
+    //          thereby preventing it from becoming a passed pawn
+
+    // Weak Pawns - pawns not defended and not defensible by the pawns of the same color, whose stop square is also not covered by a friendly pawn.
+    // - Isolated Pawn - no neighbouring pawns of same colour
+    // - Isolated Pawn (half open) - even weker if rooks around
+    // - Backward Pawn
+    // - Overly advanced
+    // - Hanging Pawns -  are an open, half-isolated duo. It means that they are standing next to each other on the adjacent half-open files, usually on the fourth rank, mutually protecting their stop squares.
+
     #[inline]
     fn init_pawns(&mut self, b: &Board, c: Color) {
+        let us = b.color(c);
+        let them = b.color(c.opposite());
         let bbd = BitboardDefault::default();
         // self.doubled_pawns = bbd.doubled_pawns(b.color(c) & b.pawns()).popcount();
-        self.isolated_pawns = bbd.isolated_pawns(b.color(c) & b.pawns()).popcount();
-        let them = b.color(c.opposite());
-        let us = b.color(c);
-        let (pawn_atts_e, pawn_atts_w) = bbd.pawn_attacks(b.pawns() & us, c);     
+        let isolated_pawns = bbd.isolated_pawns(us & b.pawns());
+        self.isolated_pawns = isolated_pawns.popcount();
+        let (pawn_atts_e, pawn_atts_w) = bbd.pawn_attacks(b.pawns() & us, c);
         let pawn_atts = pawn_atts_e | pawn_atts_w;
         let pawn_duos = bbd.pawn_duos(b.pawns() & us);
+        let doubled_pawns = bbd.doubled_pawns(us & b.pawns());
+        let isolated_doubled_pawns = (bbd.doubled_pawns(us & b.pawns()) & isolated_pawns).popcount();
+        self.enemy_rook_on_passer = isolated_doubled_pawns;
+        self.doubled_pawns = doubled_pawns.popcount() - isolated_doubled_pawns;
 
-        let (enemy_pawn_atts_e, enemy_pawn_atts_w) = bbd.pawn_attacks(b.pawns() & them, c.opposite());     
+        let (enemy_pawn_atts_e, enemy_pawn_atts_w) = bbd.pawn_attacks(b.pawns() & them, c.opposite());
         let enemy_pawn_atts = enemy_pawn_atts_e | enemy_pawn_atts_w;
 
         for p in (b.pawns() & us).squares() {
             // self.doubled_pawns += is_doubled as i32;
             // we still count doubled pawns as passed pawns (since 0.3.37)
+            let rank_index = p.rank_index_as_white(c) as i32;
+            let pawn_stop = bbd.pawn_stop(c, p);
+            // use pawns not pawns&them so we only count front of doubled pawns (+8 elo in sp)
             let is_passed = (bbd.pawn_front_span_union_attack_span(c, p) & b.pawns() & them).is_empty();
-            self.passed_pawns += is_passed as i32;
-
-            let rank7 = c.chooser_wb(Bitboard::RANK_7, Bitboard::RANK_2);
-            let rank6 = c.chooser_wb(Bitboard::RANK_6, Bitboard::RANK_3);
-            let rank5 = c.chooser_wb(Bitboard::RANK_5, Bitboard::RANK_4);
+            // self.passed_pawns += is_passed as i32;
+            // let rank7 = c.chooser_wb(Bitboard::RANK_7, Bitboard::RANK_2);
+            // let rank6 = c.chooser_wb(Bitboard::RANK_6, Bitboard::RANK_3);
+            // let rank5 = c.chooser_wb(Bitboard::RANK_5, Bitboard::RANK_4);
             // all pawns on r7 are passed as an opponent pawn cannot be on rank 8
-            self.passed_pawns_on_r7 += (is_passed && p.is_in(rank7)) as i32;
-            self.passed_pawns_on_r6 += (is_passed && p.is_in(rank6)) as i32;
-            self.passed_pawns_on_r5 += (is_passed && p.is_in(rank5)) as i32;
             self.passers_on_rim += (is_passed && p.is_in(Bitboard::RIM)) as i32;
-            self.blockaded += bbd.pawn_stop(c, p).intersects(them) as i32;
-            self.blockaded_passers += (bbd.pawn_stop(c, p).intersects(them) && is_passed) as i32;
+            self.blockaded += pawn_stop.intersects(them) as i32;
+            self.blockaded_passers += (pawn_stop.intersects(them) && is_passed) as i32;
             self.rooks_behind_passer += (is_passed && (bbd.pawn_front_span(c.opposite(), p) & b.rooks() & us).any()) as i32;
             let rammed = bbd.pawn_stop(c, p).intersects(them & b.pawns());
-            let rank_index = p.rank_index_as_white(c) as i32;
-            self.space += (rammed as i32) * rank_index * (1 + p.is_in(FILE_D | FILE_E) as i32);
             self.rammed_pawns += rammed as i32;
+
+            // // old let is_passed = (bbd.pawn_front_span_union_attack_span(c, p) & b.pawns()).is_empty();
+            // let blockaded = pawn_stop.intersects(them);
+
+            // if p.is_in(doubled_pawns) && pawn_stop.intersects(doubled_pawns) {
+            //     self.doubled_pawns -=1;
+            //     self.pawn_directly_doubled +=1;
+            // }
+
+            // let _semi_isolated =
+            // if !p.is_in(isolated_pawns)
+            //     &&
+            //     (
+            //         ((bbd.neighbouring_files(p) & bbd.within_chebyshev_distance_inclusive(p, 3)) - p.as_bb())
+            //         & b.pawns() & us
+            //     ).is_empty() {
+            //         self.semi_isolated += 1;
+            //         true
+            // } else {
+            //     false
+            // };
+
+            // candidate passers
+            // if !is_passed
+            //     &&
+            //     (bbd.pawn_front_span(c, p) & b.pawns() & them).is_empty() && p.rank_index_as_white(c) >= 5 {
+            //         let mut ours = (bbd.pawn_attack_span(c.opposite(),p) & b.pawns() & us & bbd.within_chebyshev_distance_inclusive(p, 2)).popcount();
+            //         ours += ((p.as_bb().shift(Dir::E) | p.as_bb().shift(Dir::W)) & b.pawns() & us).popcount();
+            //         let theirs = (bbd.pawn_attack_span(c, p) & b.pawns() & them).popcount();
+            //         if ours >= theirs {
+            //             self.candidate_passed_pawn += 1;
+            //         }
+            // }
+            // self.enemy_rook_on_passer += (!p.is_in(isolated_pawns)) as i32;
+
+            // passers
+            if is_passed {
+                match rank_index {
+                    6 => self.passed_pawns_on_r7 += 1,
+                    5 => self.passed_pawns_on_r6 += 1,
+                    4 => self.passed_pawns_on_r5 += 1,
+                    3 => self.passed_pawns_on_r4 += 1,
+                    _ => self.passed_pawns += 1,
+                }
+            }
+            //     self.passers_on_rim += p.is_in(Bitboard::RIM) as i32;
+            //     self.blockaded_passers += blockaded as i32;
+            //     let no_pawns_behind = (bbd.pawn_front_span(c.opposite(), p) & b.pawns()).is_empty();
+            //     self.rooks_behind_passer += (no_pawns_behind && (bbd.pawn_front_span(c.opposite(), p) & b.rooks_or_queens() & us).any()) as i32;
+            //     if p.is_in(pawn_atts) || p.is_in(pawn_duos)  {
+            //         match rank_index {
+            //             4 | 5 | 6 => self.passed_connected_r67 += 1,
+            //             _ => {}, // self.passed_connected_r345 += 1,
+            //         }
+            //     }
+            //     //     match rank_index {
+            //     //         // 4 | 5 | 6 => self.passed_connected_r67 += 1,
+            //     //         _ => self.passed_connected_r345 += 1,
+            //     //     }
+            //     // }
+            //     // if p.is_in(pawn_duos) {
+            //     //     match rank_index {
+            //     //         // 5 | 6 => self.passed_connected_r67 += 1,
+            //     //         _ => self.passed_connected_r345 += 1,
+            //     //     }
+            //     // }
+            //     // if !p.is_in(isolated_pawns)
+            //     //     &&
+            //     //     (((bbd.neighbouring_files(p) & bbd.within_chebyshev_distance_inclusive(p, 3)) - p.as_bb()) & b.pawns() & us).is_empty() {
+            //     //     self.semi_isolated += 1;
+            //     // }
+            //     continue;
+            // }
+            // self.blockaded += blockaded as i32;
+            // let rammed = pawn_stop.intersects(them & b.pawns());
+            // self.space += (rammed as i32) * rank_index * (1 + p.is_in(FILE_D | FILE_E) as i32);
             if p.is_in(pawn_atts) {
                 match rank_index {
                     5 | 6 => self.pawn_connected_r67 += 1,
@@ -718,58 +852,146 @@ impl ModelSide {
                 }
             } else {
                 // half open backward pawns - cannot be defended by other pawns and cannot move fwd
-                if bbd.pawn_attack_span(c.opposite(), p).disjoint(b.pawns() & us) 
-                    && 
-                    bbd.pawn_stop(c, p).intersects(enemy_pawn_atts)
-                {
+                if pawn_stop.intersects(enemy_pawn_atts) && bbd.pawn_attack_span(c.opposite(), p).disjoint(b.pawns() & us) {
                     // we already know from duo-else-clause there is no pawn either side too
                     if (bbd.pawn_front_span(c, p) & b.pawns() & them).is_empty() {
-                    // && ((b.queens() | b.rooks()) & them).any() {
+                        //  &&
+                        //  (b.rooks_or_queens() & them).any() { //
                         self.backward_half_open += 1;
+                    } else {
+                        self.backward += 1;
                     }
                 }
             }
         }
-        self.doubled_pawns = bbd.doubled_pawns(us & b.pawns()).popcount();
+        // self.doubled_pawns = bbd.doubled_pawns(us & b.pawns()).popcount();
         // lots of rammed pawns and having a knight an advantage
         self.rammed_pawns = self.rammed_pawns * self.rammed_pawns * (b.knights() & us).any() as i32;
     }
 
     #[inline]
     fn init_king_safety(&mut self, b: &Board, c: Color) {
-        let p = b.pawns() & b.color(c);
-        let k = b.kings() & b.color(c);
+        let us = b.color(c);
+        let them = b.color(c.opposite());
+        let p = b.pawns() & us;
+        let k = b.kings() & us;
         let ksq = k.square();
         let bb = BitboardDefault::default();
         if k.any() {
+            self.castling_rights = b.castling().contains(CastlingRights::king_side_right(c)) as i32
+                + b.castling().contains(CastlingRights::queen_side_right(c)) as i32;
+
+            if bb
+                .within_chebyshev_distance_inclusive(Square::E8, 1)
+                .or(bb.within_chebyshev_distance_inclusive(Square::E1, 1))
+                .contains(k)
+            {
+                self.uncastled = 1
+            }
+
+            // if (b.rooks_or_queens() & them).any() {
             let p_fr_att_span = bb.pawn_front_span_union_attack_span(c, ksq);
             let d1 = bb.within_chebyshev_distance_inclusive(ksq, 1);
             let d2 = bb.within_chebyshev_distance_inclusive(ksq, 2);
             let d3 = bb.within_chebyshev_distance_inclusive(ksq, 3);
+            let d4 = bb.within_chebyshev_distance_inclusive(ksq, 4);
 
+            // if (b.rooks_or_queens() & them).any() {
             //self.nearby_pawns = (p & k_att).popcount();
             self.adjacent_shield = (p & p_fr_att_span & d1).popcount();
             self.nearby_shield = (p & p_fr_att_span & d2).popcount() - self.adjacent_shield;
-            let them = b.color(c.opposite());
+            // }
             self.king_tropism_d1 = (d1 & (b.pawns() | b.kings()) & them).popcount()
                 + (d1 & (b.knights() | b.bishops()) & them).popcount() * 2
-                + (d1 & (b.rooks() | b.queens()) & them).popcount() * 4;
+                + (d1 & (b.rooks()) & them).popcount() * 4
+                + (d1 & (b.queens()) & them).popcount() * 4;
 
             self.king_tropism_d2 = (d2 & (b.pawns() | b.kings()) & them).popcount()
                 + (d2 & (b.knights() | b.bishops()) & them).popcount() * 2
-                + (d2 & (b.rooks() | b.queens()) & them).popcount() * 4;
+                + (d2 & (b.rooks()) & them).popcount() * 4
+                + (d2 & (b.queens()) & them).popcount() * 4;
 
             self.king_tropism_d3 = (d3 & (b.pawns() | b.kings()) & them).popcount()
                 + (d3 & (b.knights() | b.bishops()) & them).popcount() * 2
-                + (d3 & (b.rooks() | b.queens()) & them).popcount() * 4;
+                + (d3 & (b.rooks()) & them).popcount() * 4
+                + (d3 & (b.queens()) & them).popcount() * 4;
 
-            self.open_files_near_king = (p_fr_att_span & bb.open_files(b.pawns())).popcount();
+            self.king_tropism_d4 = (d4 & (b.pawns() | b.kings()) & them).popcount()
+                + (d3 & (b.knights() | b.bishops()) & them).popcount() * 2
+                + (d3 & (b.rooks()) & them).popcount() * 4
+                + (d3 & (b.queens()) & them).popcount() * 4;
+
+            
+            if b.queens().any() {
+                self.king_safety_bonus = self.adjacent_shield + self.nearby_shield;
+            }
+            // self.king_tropism_d4 = (ksq.
+            // self.king_tropism_d2 = (d2 & (b.pawns() | b.kings()) & them).popcount()
+            //     + (d2 & (b.knights() | b.bishops()) & them).popcount() * 2
+            //     + (d2 & (b.rooks()) & them).popcount() * 3
+            //     + (d2 & (b.queens()) & them).popcount() * 5;
+
+            // self.king_tropism_d3 = (d3 & (b.pawns() | b.kings()) & them).popcount()
+            //     + (d3 & (b.knights() | b.bishops()) & them).popcount() * 2
+            //     + (d3 & (b.rooks()) & them).popcount() * 3
+            //     + (d3 & (b.queens()) & them).popcount() * 5;
+
+            self.open_files_near_king = (d1 & ksq.rank() & bb.open_files(b.pawns())).popcount();
+
+            if b.rooks_or_queens().any()
+                && k.intersects(Bitboard::RANKS_18)
+                // && Bitboard::RANKS_18 & ksq.rank() & us == k
+                && (d1 - Bitboard::RANKS_18 - b.occupied()).is_empty()
+            {
+                self.king_trapped_on_back_rank = 1;
+            }
+            // }
             // FIXME Urgent!
             // self.open_files_near_king = (d1 & bb.open_files(b.pawns()) & ksq.rank()).popcount();
+
+            // we give a castling bonus if either yet to castle or we have achieved the aim of
+            // castling by having king before (or after) both rooks or pawns < 6 per side
+            // if ( b.castling().contains(CastlingRights::king_side_right(c)) &&
+            //     b.castling().contains(CastlingRights::queen_side_right(c)))
+            //     ||
+            //     ((b.rooks() & b.us()).any() &&
+            //     (ksq < (b.rooks() & b.us()).first_square()  || ksq > (b.rooks() & b.us()).last_square() ))
+            //     ||
+            //     b.pawns().popcount() < 10 {
+            //         self.castling_sides = 1;
+            //     }
+            // if (b.castling().contains(CastlingRights::king_side_right(c)) &&
+            // b.castling().contains(CastlingRights::queen_side_right(c)))
+            // ||
+
+            //     ||
+            //       ( b.castling().contains(CastlingRights::king_side_right(c)) ||
+            //     b.castling().contains(CastlingRights::queen_side_right(c)))
+
+            //     {
+            //     self.castling_position = std::cmp::max((b.pawns() & Bitboard::RANKS_27).popcount() - 6, 0);
+            // }
+            // if self.adjacent_shield + self.nearby_shield >= 2
+            //         &&
+            //         ((b.rooks() & us).popcount() == 2
+            //         &&
+            //         (ksq.file_index() < (b.rooks() & us).first_square().file_index()  || ksq.file_index() > (b.rooks() & us).last_square().file_index() ))
+            //     ||
+            //     self.adjacent_shield + self.nearby_shield >= 2
+            //         &&
+            //         ((b.rooks() & us).popcount() == 1 && (3 - (b.rooks() & us).first_square().file_index()) >= ksq.file_index() )
+            //         {
+            //         self.castling_position = 1; //std::cmp::max((b.pawns() & Bitboard::RANKS_27).popcount() - 6, 0);
+            // }
         }
 
-        self.castling_sides = b.castling().contains(CastlingRights::king_side_right(c)) as i32
-            + b.castling().contains(CastlingRights::queen_side_right(c)) as i32;
+        //  if ( b.castling().contains(CastlingRights::king_side_right(c)) &&
+        // b.castling().contains(CastlingRights::queen_side_right(c))) {
+        //     self.castling_rights = 1
+        // }
+        // ||
+        // (Bitboard::E1.or(Bitboard::E8)).contains(k)
+        // ||
     }
 
     #[inline]
@@ -897,6 +1119,7 @@ mod tests {
     use crate::eval::eval::SimpleScorer;
     use crate::tags::Tag;
     use crate::test_log::test;
+    use crate::BoardBuf;
     // use crate::utils::StringUtils;
 
     #[test]
@@ -931,24 +1154,47 @@ mod tests {
         assert_eq!(comparisons, positions.len());
     }
 
-            //         // let map = s.split_vars_int();
-            //     assert_eq!(model.white.isolated_pawns, map["isolated"], "{}\n{:?}", p, model);
-            //     assert_eq!(model.white.doubled_pawns, map["doubled"], "{}\n{:?}", p, model);
-            //     assert_eq!(model.white.passed_pawns, map["passed"], "{}", p);
-            //     assert_eq!(model.white.pawn_connected_r67, map["con67"], "{}", p);
-            //     assert_eq!(model.white.pawn_connected_r345, map["con345"], "{}\n{:?}", p, model);
-            //     assert_eq!(model.white.backward_half_open, map["backward"], "{}\n{:?}", p, model);
-            // }
-            // if let Tag::Comment(_n, s) = p.tag("c1") {
-            //     let map = s.split_vars_int();
-            //     assert_eq!(model.black.isolated_pawns, map["isolated"], "{}", p);
-            //     assert_eq!(model.black.doubled_pawns, map["doubled"], "{}", p);
-            //     assert_eq!(model.black.passed_pawns, map["passed"], "{}", p);
-            //     if map.contains_key("con67") {
-            //         assert_eq!(model.black.pawn_connected_r67, map["con67"], "{}", p);
-            //         assert_eq!(model.black.pawn_connected_r345, map["con345"], "{}", p);
-            //         assert_eq!(model.black.backward_half_open, map["backward"], "{}", p);
-            //     }
+    //         // let map = s.split_vars_int();
+    //     assert_eq!(model.white.isolated_pawns, map["isolated"], "{}\n{:?}", p, model);
+    //     assert_eq!(model.white.doubled_pawns, map["doubled"], "{}\n{:?}", p, model);
+    //     assert_eq!(model.white.passed_pawns, map["passed"], "{}", p);
+    //     assert_eq!(model.white.pawn_connected_r67, map["con67"], "{}", p);
+    //     assert_eq!(model.white.pawn_connected_r345, map["con345"], "{}\n{:?}", p, model);
+    //     assert_eq!(model.white.backward_half_open, map["backward"], "{}\n{:?}", p, model);
+    // }
+    // if let Tag::Comment(_n, s) = p.tag("c1") {
+    //     let map = s.split_vars_int();
+    //     assert_eq!(model.black.isolated_pawns, map["isolated"], "{}", p);
+    //     assert_eq!(model.black.doubled_pawns, map["doubled"], "{}", p);
+    //     assert_eq!(model.black.passed_pawns, map["passed"], "{}", p);
+    //     if map.contains_key("con67") {
+    //         assert_eq!(model.black.pawn_connected_r67, map["con67"], "{}", p);
+    //         assert_eq!(model.black.pawn_connected_r345, map["con345"], "{}", p);
+    //         assert_eq!(model.black.backward_half_open, map["backward"], "{}", p);
+    //     }
+
+    #[test]
+    fn king_safety_test() {
+        let bb = BitboardDefault::default();
+        let b = Board::parse_fen("6k1/r4ppp/1q1bb3/8/3p4/1P3B2/P2BQPPP/R5K1 w - - 0 1").unwrap();
+        let wk = b.kings() & b.white();
+        let wksq = wk.square();
+        let wd1 = bb.within_chebyshev_distance_inclusive(wksq, 1);
+        let bk = b.kings() & b.black();
+        let bksq = bk.square();
+        let bd1 = bb.within_chebyshev_distance_inclusive(bksq, 1);
+        assert_eq!(
+            b.rooks_or_queens().any()
+                && (Bitboard::RANKS_18 & wksq.rank() & b.white() == wk)
+                && (wd1 - Bitboard::RANKS_18 - b.occupied()).is_empty(),
+            false,
+            "white"
+        );
+
+        assert_eq!(b.rooks_or_queens().any(), true);
+        assert_eq!((Bitboard::RANKS_18 & bksq.rank() & b.black() == bk), true);
+        assert_eq!((bd1 - Bitboard::RANKS_18 - b.occupied()).is_empty(), true);
+    }
 
     #[test]
     fn model_csv_test() {
@@ -959,17 +1205,17 @@ mod tests {
         for (i, p) in positions.iter().enumerate() {
             // let model = Model::from_board(p.board(), Switches::ALL_SCORING);
             if i == 0 {
-                info!("\n{}", eval.w_eval_explain(&p.board(), false).as_csv(ReportLine::Header));
+                info!("\n{}", eval.w_eval_explain(&p.board(), false).as_csv(ReportLine::Header, true));
             }
-            info!("\n{}", eval.w_eval_explain(&p.board(), false).as_csv(ReportLine::Body));
+            info!("\n{}", eval.w_eval_explain(&p.board(), false).as_csv(ReportLine::Body, true));
         }
         for (i, p) in positions.iter().enumerate() {
             let model = eval.w_eval_explain(&p.board(), true);
 
             if i == 0 {
-                info!("\n{}", model.as_csv(ReportLine::Header));
+                info!("\n{}", model.as_csv(ReportLine::Header, true));
             }
-            info!("\n{}", model.as_csv(ReportLine::Body));
+            info!("\n{}", model.as_csv(ReportLine::Body, true));
         }
     }
 }

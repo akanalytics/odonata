@@ -3,6 +3,7 @@ use crate::eval::model::{ModelScore, Scorer};
 use crate::eval::weight::Weight;
 use crate::infra::component::Component;
 use crate::mv::Move;
+use crate::phaser::Phase;
 use crate::types::{Color, Piece, ScoreWdl};
 use anyhow::{anyhow, bail, Result};
 use serde::{Deserialize, Serialize};
@@ -425,7 +426,7 @@ impl MaterialBalance {
                 }
                 // adj means that drawish positions still incentivise a material gain
                 // use pahse end
-                let mut scorer = ModelScore::new(100, 100);
+                let mut scorer = ModelScore::new(Phase(100), 100);
                 self.w_eval_material_without_balance(mat, &mut scorer);
                 let adj = scorer.total().e() as f32;
                 cp = cp.clamp(-5000.0 + adj, 5000.0 + adj);

@@ -258,7 +258,7 @@ impl Piece {
     }
 
     #[inline]
-    pub fn to_upper_char(&self) -> char {
+    pub const fn to_upper_char(&self) -> char {
         match self {
             Piece::None => '.',
             Piece::Pawn => 'P',
@@ -271,7 +271,7 @@ impl Piece {
     }
 
     #[inline]
-    pub fn to_lower_char(&self) -> char {
+    pub const fn to_lower_char(&self) -> char {
         self.to_upper_char().to_ascii_lowercase()
     }
 

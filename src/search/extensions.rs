@@ -86,7 +86,7 @@ impl Algo {
         {
             #[allow(clippy::collapsible_else_if)]
             if n.depth <= self.ext.check_max_depth
-                && after.phase(&self.eval.phaser) <= self.ext.check_max_phase
+                && after.phase(&self.eval.phaser).0 <= self.ext.check_max_phase
                 && (!self.ext.check_only_captures || mv.is_capture())
                 && (!self.ext.check_see || self.eval.see.eval_move_see(before, mv) >= self.ext.check_see_threshold.as_i16() as i32)
             {
