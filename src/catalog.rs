@@ -310,6 +310,15 @@ k2r4/8/3B4/3B4/3KQr2/5n2/8/8 w - - 0 1 id "PIN.02"; c0 "Pins"; Sq e4;
         positions
     }
 
+    pub fn discovered_check() -> Vec<Position> {
+        let str = r#"
+        k2N1R1b/8/n4N2/8/Rr1K1P1b/2R5/5n2/q5b1 w - - 0 1 id "DC.01"; c0 "Discovered checks"; Sq f2;
+        k2N1R1b/8/n4N2/8/Rr1K1P1b/2R5/5n2/q5b1 b - - 0 1 id "DC.01"; c0 "Discovered checks"; Sq d8;
+"#;
+        let positions = Position::parse_many_epd(str.lines()).unwrap();
+        positions
+    }
+
     pub fn recogs() -> Vec<Position> {
         let str = r#"
 8/NN6/8/8/8/2K2nk1/4P3/8 w - - 0 1; id 'RECOG.01'; am e2f3; am exf3; c0 'white shouldnt take knight as recapture of pawn makes it KNN v k';

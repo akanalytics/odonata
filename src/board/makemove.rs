@@ -98,7 +98,7 @@ impl MoveMaker for Board {
             repetition_count: Cell::new(Repeats::default()),
             threats_to: [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())],
             checkers_of: [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())],
-            pinned: Cell::<_>::new(Bitboard::niche()),
+            pinned: [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())],
             // material: Cell::<_>::new(self.material()),
             // moves: self.moves.clone(),
             multiboard: self.multiboard.clone(),

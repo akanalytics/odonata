@@ -561,6 +561,7 @@ impl Bitboard {
         bb
     }
 
+    // the set of files containing the bitboard
     #[inline]
     pub fn file_flood(self) -> Bitboard {
         self.fill_north() | self.fill_south() | self

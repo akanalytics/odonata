@@ -3,7 +3,9 @@ use crate::bitboard::precalc::BitboardDefault;
 use crate::board::Board;
 use crate::types::Color;
 
-pub struct BoardCalcs;
+pub struct BoardCalcs {
+
+}
 
 impl BoardCalcs {
     // no king on board => no attackers
@@ -18,28 +20,32 @@ impl BoardCalcs {
     }
 
     #[inline]
-    pub fn pinned(b: &Board, us: Color) -> Bitboard {
-        let kings = b.kings() & b.color(us);
+    pub fn pinned_and_unmaskers(b: &Board, king_color: Color) -> (Bitboard, Bitboard) {
+        let kings = b.kings() & b.color(king_color);
         if kings.is_empty() {
-            return Bitboard::empty();
+            return Default::default();
         };
-        let color_us = b.color(us);
-        let color_them = b.color(us.opposite());
+        let color_us = b.color(king_color);
+        let color_them = b.color(king_color.opposite());
         let king_sq = kings.square();
 
-        let xray_checkers = Self::attacked_by(kings, Bitboard::EMPTY, b) & b.them();
+        let xray_checkers = Self::attacked_by(kings, Bitboard::EMPTY, b) & color_them;
         let mut pinned = Bitboard::empty();
+        let mut unmaskers = Bitboard::empty();
         for ch in xray_checkers.squares() {
             let ray = BitboardDefault::default().strictly_between(ch, king_sq);
             if ray.disjoint(color_them) && (ray & color_us).popcount() == 1 {
                 pinned |= ray & color_us;
+            } else if ray.disjoint(color_us) && (ray & color_them).popcount() == 1 {
+                unmaskers |= ray & color_them;
             }
         }
-        pinned
+        (pinned, unmaskers)
     }
 
+    /// all attacks
     #[inline]
-    pub fn threats_to(board: &Board, us: Color, occ: Bitboard) -> Bitboard {
+    pub fn all_attacks_on(board: &Board, us: Color, occ: Bitboard) -> Bitboard {
         let opponent = us.opposite();
         let pawns = board.pawns() & board.color(opponent);
         let knights = board.knights() & board.color(opponent);
@@ -141,7 +147,7 @@ mod tests {
         let board = Board::parse_fen("k5r1/3q1p2/4b2r/1n6/6pp/b2N3n/8/K1QR4 w - - 0 1")
             .unwrap()
             .as_board();
-        let bb = BoardCalcs::threats_to(&board, Color::White, board.occupied());
+        let bb = BoardCalcs::all_attacks_on(&board, Color::White, board.occupied());
         println!("{}", !bb);
         assert_eq!(
             !bb,
@@ -161,8 +167,19 @@ mod tests {
     fn test_pinned() {
         let positions = Catalog::pins();
         for pos in positions {
-            let pins = BoardCalcs::pinned(pos.board(), pos.board().color_us());
+            let pins = BoardCalcs::pinned_and_unmaskers(pos.board(), pos.board().color_us()).0;
             assert_eq!(pins, pos.sq().unwrap(), "{}", pos.board());
+        }
+    }
+
+    #[test]
+    fn test_discovered_check() {
+        let positions = Catalog::discovered_check();
+        for pos in positions {
+            let unmaskers = BoardCalcs::pinned_and_unmaskers(pos.board(), pos.board().color_us()).1;            
+            assert_eq!(unmaskers, pos.sq().unwrap(), "{}", pos.board());
+            let unmaskers = BoardCalcs::pinned_and_unmaskers(pos.board(), pos.board().color_us()).1;            
+            assert_eq!(unmaskers, pos.sq().unwrap(), "{}", pos.board());
         }
     }
 }

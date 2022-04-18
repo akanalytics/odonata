@@ -159,7 +159,7 @@ impl Tuning {
         engine.algo.set_callback(|_| {}); // turn off uci_info output of doing zillions of searches
         for i in 0..engine.tuner.models_and_outcomes.len() {
             let result = Self::write_single_training_data(engine, writer, i)
-                .with_context(|| format!("Failed on line {i} {}", engine.tuner.models_and_outcomes[i].0.multiboard.to_fen()));
+                .with_context(|| format!("Failed on line {i} {}", engine.tuner.models_and_outcomes[i].0.board.to_fen()));
             if let Err(e) = result {
                 info!("write_training_data returns error");
                 error!("Error in write_single_training_data {}", e);
@@ -178,7 +178,7 @@ impl Tuning {
         }
         let ce = if engine.tuner.search_depth > 0 {
             engine.new_position();
-            engine.set_position(Position::from_board(engine.tuner.models_and_outcomes[i].0.multiboard.clone()));
+            engine.set_position(Position::from_board(engine.tuner.models_and_outcomes[i].0.board.clone()));
             engine.algo.set_timing_method(TimeControl::Depth(engine.tuner.search_depth));
             debug!("Searching using\n{engine}");
             engine.search();
@@ -193,7 +193,7 @@ impl Tuning {
         let mut model = model.clone();
         model.csv = true;
         let phase = model.mat.phase(&engine.algo.eval.phaser);
-        let mut w_score = ExplainScorer::new(phase, model.multiboard.fifty_halfmove_clock());
+        let mut w_score = ExplainScorer::new(phase, model.board.fifty_halfmove_clock());
         engine.algo.eval.predict(&model, &mut w_score);
         let consolidate = engine.tuner.consolidate;
         if i == 0 {
@@ -215,7 +215,7 @@ impl Tuning {
             phase.0,
             outcome,
             ce,
-            model.multiboard.to_fen()
+            model.board.to_fen()
         )?;
         Ok(())
     }
@@ -227,7 +227,7 @@ impl Tuning {
             // estimate result by looking at centipawn evaluation
             let (model, outcome) = pair;
             let phase = model.mat.phase(&eval.phaser);
-            let mut w_score = ModelScore::new(phase, model.multiboard.fifty_halfmove_clock());
+            let mut w_score = ModelScore::new(phase, model.board.fifty_halfmove_clock());
             eval.predict(model, &mut w_score);
             // let score = w_score.as_f32() / (2.0 + (phase as f32 - 50.0) / 50.0);
             // let score = w_score.as_f32();

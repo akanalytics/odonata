@@ -4,6 +4,7 @@ use crate::bitboard::castling::CastlingRights;
 use crate::bitboard::precalc::BitboardDefault;
 use crate::bitboard::square::Square;
 use crate::board::Board;
+use crate::board::boardcalcs::BoardCalcs;
 use crate::domain::material::Material;
 use crate::eval::score::Score;
 use crate::eval::switches::Switches;
@@ -24,7 +25,7 @@ pub struct Model {
     pub turn: Color,
     pub mat: Material,
     pub endgame: EndGame,
-    pub multiboard: Board,
+    pub board: Board,
 
     pub white: ModelSide,
     pub black: ModelSide,
@@ -96,9 +97,16 @@ pub struct ModelSide {
     pub adjacent_shield: i32,
     pub nearby_shield: i32,
     pub open_files_near_king: i32,
+    pub open_files_adjacent_king: i32,
+    pub rq_on_open_files_near_king: i32,
     pub king_trapped_on_back_rank: i32,
     pub attacks_on_opponent_king_area: i32,
     pub king_safety_bonus: i32, 
+    pub checkers: i32, 
+    pub pieces_near_king: i32, 
+    pub pinned_near_king: i32, 
+    pub pinned_far: i32, 
+    pub discovered_checks: i32, 
 
     pub castling_rights: i32, // 0,1 or 2
     pub uncastled: i32,
@@ -453,7 +461,7 @@ impl Model {
         Self {
             switches,
             turn: b.color_us(),
-            multiboard: b.clone(),
+            board: b.clone(),
             mat: material,
             white: ModelSide::from_board(b, Color::White, &material, endgame, switches),
             black: ModelSide::from_board(b, Color::Black, &material, endgame, switches),
@@ -468,6 +476,7 @@ impl ModelSide {
     pub fn new() -> Self {
         Self::default()
     }
+
 
     #[inline]
     pub fn from_board(b: &Board, c: Color, mat: &Material, eg: EndGame, sw: Switches) -> Self {
@@ -872,79 +881,93 @@ impl ModelSide {
     #[inline]
     fn init_king_safety(&mut self, b: &Board, c: Color) {
         let us = b.color(c);
+        let k = b.kings() & us;
+        if k.is_empty() {
+            return;
+        }
         let them = b.color(c.opposite());
         let p = b.pawns() & us;
-        let k = b.kings() & us;
         let ksq = k.square();
         let bb = BitboardDefault::default();
-        if k.any() {
-            self.castling_rights = b.castling().contains(CastlingRights::king_side_right(c)) as i32
-                + b.castling().contains(CastlingRights::queen_side_right(c)) as i32;
+        self.castling_rights = b.castling().contains(CastlingRights::king_side_right(c)) as i32
+            + b.castling().contains(CastlingRights::queen_side_right(c)) as i32;
 
-            if bb
-                .within_chebyshev_distance_inclusive(Square::E8, 1)
-                .or(bb.within_chebyshev_distance_inclusive(Square::E1, 1))
-                .contains(k)
-            {
-                self.uncastled = 1
-            }
+        if bb
+            .within_chebyshev_distance_inclusive(Square::E8, 1)
+            .or(bb.within_chebyshev_distance_inclusive(Square::E1, 1))
+            .contains(k)
+        {
+            self.uncastled = 1
+        }
 
-            // if (b.rooks_or_queens() & them).any() {
-            let p_fr_att_span = bb.pawn_front_span_union_attack_span(c, ksq);
-            let d1 = bb.within_chebyshev_distance_inclusive(ksq, 1);
-            let d2 = bb.within_chebyshev_distance_inclusive(ksq, 2);
-            let d3 = bb.within_chebyshev_distance_inclusive(ksq, 3);
-            let d4 = bb.within_chebyshev_distance_inclusive(ksq, 4);
+        // if (b.rooks_or_queens() & them).any() {
+        let p_fr_att_span = bb.pawn_front_span_union_attack_span(c, ksq);
+        let d1 = bb.within_chebyshev_distance_inclusive(ksq, 1);
+        let d2 = bb.within_chebyshev_distance_inclusive(ksq, 2);
+        let d3 = bb.within_chebyshev_distance_inclusive(ksq, 3);
+        let d4 = bb.within_chebyshev_distance_inclusive(ksq, 4);
 
-            // if (b.rooks_or_queens() & them).any() {
-            //self.nearby_pawns = (p & k_att).popcount();
-            self.adjacent_shield = (p & p_fr_att_span & d1).popcount();
-            self.nearby_shield = (p & p_fr_att_span & d2).popcount() - self.adjacent_shield;
-            // }
-            self.king_tropism_d1 = (d1 & (b.pawns() | b.kings()) & them).popcount()
-                + (d1 & (b.knights() | b.bishops()) & them).popcount() * 2
-                + (d1 & (b.rooks()) & them).popcount() * 4
-                + (d1 & (b.queens()) & them).popcount() * 4;
+        // if (b.rooks_or_queens() & them).any() {
+        //self.nearby_pawns = (p & k_att).popcount();
+        self.adjacent_shield = (p & p_fr_att_span & d1).popcount();
+        self.nearby_shield = (p & p_fr_att_span & d2).popcount() - self.adjacent_shield;
+        // }
+        self.king_tropism_d1 = (d1 & (b.pawns() | b.kings()) & them).popcount()
+            + (d1 & (b.knights() | b.bishops()) & them).popcount() * 2
+            + (d1 & (b.rooks()) & them).popcount() * 4
+            + (d1 & (b.queens()) & them).popcount() * 4;
 
-            self.king_tropism_d2 = (d2 & (b.pawns() | b.kings()) & them).popcount()
-                + (d2 & (b.knights() | b.bishops()) & them).popcount() * 2
-                + (d2 & (b.rooks()) & them).popcount() * 4
-                + (d2 & (b.queens()) & them).popcount() * 4;
+        self.king_tropism_d2 = (d2 & (b.pawns() | b.kings()) & them).popcount()
+            + (d2 & (b.knights() | b.bishops()) & them).popcount() * 2
+            + (d2 & (b.rooks()) & them).popcount() * 4
+            + (d2 & (b.queens()) & them).popcount() * 4;
 
-            self.king_tropism_d3 = (d3 & (b.pawns() | b.kings()) & them).popcount()
-                + (d3 & (b.knights() | b.bishops()) & them).popcount() * 2
-                + (d3 & (b.rooks()) & them).popcount() * 4
-                + (d3 & (b.queens()) & them).popcount() * 4;
+        self.king_tropism_d3 = (d3 & (b.pawns() | b.kings()) & them).popcount()
+            + (d3 & (b.knights() | b.bishops()) & them).popcount() * 2
+            + (d3 & (b.rooks()) & them).popcount() * 4
+            + (d3 & (b.queens()) & them).popcount() * 4;
 
-            self.king_tropism_d4 = (d4 & (b.pawns() | b.kings()) & them).popcount()
-                + (d3 & (b.knights() | b.bishops()) & them).popcount() * 2
-                + (d3 & (b.rooks()) & them).popcount() * 4
-                + (d3 & (b.queens()) & them).popcount() * 4;
+        self.king_tropism_d4 = (d4 & (b.pawns() | b.kings()) & them).popcount()
+            + (d3 & (b.knights() | b.bishops()) & them).popcount() * 2
+            + (d3 & (b.rooks()) & them).popcount() * 4
+            + (d3 & (b.queens()) & them).popcount() * 4;
 
-            
-            if b.queens().any() {
-                self.king_safety_bonus = self.adjacent_shield + self.nearby_shield;
-            }
-            // self.king_tropism_d4 = (ksq.
-            // self.king_tropism_d2 = (d2 & (b.pawns() | b.kings()) & them).popcount()
-            //     + (d2 & (b.knights() | b.bishops()) & them).popcount() * 2
-            //     + (d2 & (b.rooks()) & them).popcount() * 3
-            //     + (d2 & (b.queens()) & them).popcount() * 5;
+        
+        if b.queens().any() {
+            self.king_safety_bonus = self.adjacent_shield + self.nearby_shield;
+        }
+        // self.king_tropism_d4 = (ksq.
+        // self.king_tropism_d2 = (d2 & (b.pawns() | b.kings()) & them).popcount()
+        //     + (d2 & (b.knights() | b.bishops()) & them).popcount() * 2
+        //     + (d2 & (b.rooks()) & them).popcount() * 3
+        //     + (d2 & (b.queens()) & them).popcount() * 5;
 
-            // self.king_tropism_d3 = (d3 & (b.pawns() | b.kings()) & them).popcount()
-            //     + (d3 & (b.knights() | b.bishops()) & them).popcount() * 2
-            //     + (d3 & (b.rooks()) & them).popcount() * 3
-            //     + (d3 & (b.queens()) & them).popcount() * 5;
+        // self.king_tropism_d3 = (d3 & (b.pawns() | b.kings()) & them).popcount()
+        //     + (d3 & (b.knights() | b.bishops()) & them).popcount() * 2
+        //     + (d3 & (b.rooks()) & them).popcount() * 3
+        //     + (d3 & (b.queens()) & them).popcount() * 5;
 
-            self.open_files_near_king = (d1 & ksq.rank() & bb.open_files(b.pawns())).popcount();
+        let open_files_near_king = d3 & ksq.rank() & bb.open_files(b.pawns());
+        self.open_files_near_king = (open_files_near_king).popcount();
+        self.open_files_adjacent_king = (d1 & ksq.rank() & bb.open_files(b.pawns())).popcount();
+        self.rq_on_open_files_near_king = (open_files_near_king.file_flood() & b.rooks_or_queens() & them).popcount();
 
-            if b.rooks_or_queens().any()
-                && k.intersects(Bitboard::RANKS_18)
-                // && Bitboard::RANKS_18 & ksq.rank() & us == k
-                && (d1 - Bitboard::RANKS_18 - b.occupied()).is_empty()
-            {
-                self.king_trapped_on_back_rank = 1;
-            }
+        if b.rooks_or_queens().any()
+            && k.intersects(Bitboard::RANKS_18)
+            // && Bitboard::RANKS_18 & ksq.rank() & us == k
+            && (d1 - Bitboard::RANKS_18 - b.occupied()).is_empty()
+        {
+            self.king_trapped_on_back_rank = 1;
+        }
+
+        self.checkers = b.checkers_of(c).popcount();
+        //        self.attacks_on_opponent_king_area += (our_raw_attacks & bb.within_chebyshev_distance_inclusive(ksq, 1)).popcount();
+   
+        self.pieces_near_king = (d2 & b.occupied() & us & (b.queens() & b.knights())).popcount();
+        self.pinned_near_king = (b.pinned(c) & d1).popcount();
+        self.pinned_far = (b.pinned(c)).popcount() - self.pinned_near_king;
+        self.discovered_checks = (BoardCalcs::pinned_and_unmaskers(b, c).1 - b.pawns()).popcount();
+
             // }
             // FIXME Urgent!
             // self.open_files_near_king = (d1 & bb.open_files(b.pawns()) & ksq.rank()).popcount();
@@ -983,7 +1006,6 @@ impl ModelSide {
             //         {
             //         self.castling_position = 1; //std::cmp::max((b.pawns() & Bitboard::RANKS_27).popcount() - 6, 0);
             // }
-        }
 
         //  if ( b.castling().contains(CastlingRights::king_side_right(c)) &&
         // b.castling().contains(CastlingRights::queen_side_right(c))) {
@@ -1025,7 +1047,7 @@ impl ModelSide {
 
             // non-pawn-defended empty or oppoent sq
             // include "attacking" our own pieces
-            let our_raw_attacks = bb.non_pawn_attacks(c, p, Bitboard::empty(), occ, sq);
+            let our_raw_attacks = bb.attacks(c, p, Bitboard::empty(), occ, sq);
 
             let our_attacks = our_raw_attacks - pa;
             self.center_attacks += (our_attacks & Bitboard::CENTER_16_SQ).popcount();

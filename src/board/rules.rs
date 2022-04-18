@@ -37,7 +37,7 @@ impl Rules {
         let occ = b.occupied();
         let king_sq = (b.kings() & us).square();
         let king_att = attack_gen.king_attacks(king_sq);
-        let king_danger = BoardCalcs::threats_to(b, b.color_us(), occ - our_kings);
+        let king_danger = BoardCalcs::all_attacks_on(b, b.color_us(), occ - our_kings);
         let attacks = (king_att & !us) - king_danger;
         for to in attacks.squares() {
             if to.is_in(them) {
@@ -70,20 +70,20 @@ impl Rules {
             // Block checker -> to & piece not pinned & (xrays to checker excl)
             let blocking = gen.between(king_sq, the_checker) | checkers; // "| checkers" is for knight checkers
             for &p in Piece::ALL_BAR_KING.iter() {
-                for fr in (b.pieces(p) & us & !b.pinned()).squares() {
-                    let attacks = blocking & gen.non_pawn_attacks(b.color_us(), p, us, them, fr) & !us;
+                for fr in (b.pieces(p) & us & !b.pinned(b.color_us())).squares() {
+                    let attacks = blocking & gen.attacks(b.color_us(), p, us, them, fr) & !us;
                     Self::add_moves(attacks, p, fr, b, moves);
                 }
             }
             Self::add_moves_en_passant(b, moves);
             Self::king_legal(b, moves);
         } else {
-            let pinned = b.pinned();
+            let pinned = b.pinned(b.color_us());
             let king_sq = if pinned.is_empty() { Square::null() } else { our_kings.square() };
             for &p in Piece::ALL_BAR_KING.iter() {
                 // not in check
                 for fr in (b.pieces(p) & us).squares() {
-                    let attacks = gen.non_pawn_attacks(b.color_us(), p, us, them, fr) & !us;
+                    let attacks = gen.attacks(b.color_us(), p, us, them, fr) & !us;
                     if !fr.is_in(pinned) {
                         // all non pinned pieces
                         Self::add_moves(attacks, p, fr, b, moves);
@@ -113,11 +113,11 @@ impl Rules {
             // any non-pinned pawn can capture the checker
             if capture_sq == checkers {
                 let fr_e = to.shift(them.pawn_capture_west());
-                if (fr_e & b.pawns() & b.us() & !b.pinned()).any() {
+                if (fr_e & b.pawns() & b.us() & !b.pinned(b.color_us())).any() {
                     moves.push(Move::new_ep_capture(fr_e.square(), to.square(), capture_sq.square()));
                 }
                 let fr_w = to.shift(them.pawn_capture_east());
-                if (fr_w & b.pawns() & b.us() & !b.pinned()).any() {
+                if (fr_w & b.pawns() & b.us() & !b.pinned(b.color_us())).any() {
                     moves.push(Move::new_ep_capture(fr_w.square(), to.square(), capture_sq.square()));
                 }
             }

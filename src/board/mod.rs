@@ -36,7 +36,7 @@ pub struct Board {
     hash: Hash,
     threats_to: [Cell<Bitboard>; Color::len()],
     checkers_of: [Cell<Bitboard>; Color::len()],
-    pinned: Cell<Bitboard>,
+    pinned: [Cell<Bitboard>; Color::len()],
     // material: Cell<Material>,
     // interior mutability (precludes copy trait)
     // moves: MoveList,
@@ -100,7 +100,7 @@ impl Board {
     fn calculate_internals(&mut self) {
         self.hash = Hasher::default().hash_board(self);
         // self.material.set(Material::niche());
-        self.pinned.set(Bitboard::niche());
+        self.pinned = [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())];
         self.threats_to = [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())];
         self.checkers_of = [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())];
     }
@@ -328,7 +328,8 @@ impl fmt::Display for Board {
             for &p in Piece::ALL_BAR_NONE.iter() {
                 writeln!(f, "Pieces: {}{}\n{}\n", p.to_upper_char(), p.to_lower_char(), self.pieces(p))?;
             }
-            writeln!(f, "Pinned:\n{}\n", self.pinned.get())?;
+            writeln!(f, "Pinned on white king:\n{}\n", self.pinned[Color::White].get())?;
+            writeln!(f, "Pinned on black king:\n{}\n", self.pinned[Color::Black].get())?;
             writeln!(f, "Checkers of white:\n{}\n", self.checkers_of[Color::White].get())?;
             writeln!(f, "Checkers of black:\n{}\n", self.checkers_of[Color::Black].get())?;
             writeln!(f, "Threats to white:\n{}\n", self.threats_to[Color::White].get())?;
@@ -352,7 +353,7 @@ impl Default for Board {
             repetition_count: Cell::<_>::new(Repeats::default()),
             threats_to: [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())],
             checkers_of: [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())],
-            pinned: Cell::<_>::new(Bitboard::niche()),
+            pinned: [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())],
             // material: Cell::<_>::new(Material::niche()),
             hash: 0,
             // moves: MoveList,

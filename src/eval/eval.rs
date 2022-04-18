@@ -194,15 +194,22 @@ pub struct SimpleScorer {
     pub pawn_nearby_shield: Weight,
     pub king_safety_bonus: Weight,
     pub open_files_near_king: Weight,
+    pub open_files_adjacent_king: Weight,
     pub attacks_near_king: Weight,
     pub tropism_d1: Weight,
     pub tropism_d2: Weight,
     pub tropism_d3: Weight,
     pub tropism_d4: Weight,
     pub king_trapped_on_back_rank: Weight,
+    pub rq_on_open_files_near_king: Weight,
 
     pub castling_rights: Weight,
     pub uncastled: Weight,
+    pub checkers: Weight,
+    pub pieces_near_king: Weight,
+    pub pinned_near_king: Weight,
+    pub pinned_far: Weight,
+    pub discovered_checks: Weight,
 
     pub contempt_penalty: Weight,
     pub tempo_bonus: Weight,
@@ -300,16 +307,23 @@ impl Default for SimpleScorer {
             pawn_nearby_shield: Weight::from_i32(42, -14),
             king_safety_bonus: Weight::from_i32(42, -14),
             open_files_near_king: Weight::from_i32(-6, -1),
+            open_files_adjacent_king: Weight::from_i32(-6, -1),
             attacks_near_king: Weight::from_i32(-8, -2),
             tropism_d1: Weight::from_i32(-40, 29),
             tropism_d2: Weight::from_i32(-28, 11),
             tropism_d3: Weight::from_i32(-5, 2),
             tropism_d4: Weight::from_i32(-5, 2),
             king_trapped_on_back_rank: Weight::from_i32(-5, 2),
+            checkers: Weight::from_i32(-5, 2),
+            rq_on_open_files_near_king: Weight::from_i32(-5, 2),            
 
             castling_rights: Weight::from_i32(0, 0),
             uncastled: Weight::from_i32(0, 0),
-            // attacks: PieceArray {
+            pieces_near_king: Weight::from_i32(0, 0),
+            pinned_near_king: Weight::from_i32(0, 0),
+            pinned_far: Weight::from_i32(0, 0),
+            discovered_checks: Weight::from_i32(0, 0),
+                    // attacks: PieceArray {
             //     q: PieceArray {
             //         r: Weight::from_i32(-1, -2),
             //         .. Default::default()
@@ -506,7 +520,7 @@ impl SimpleScorer {
 
         // position
         if self.position && m.switches.contains(Switches::POSITION) {
-            let board = &m.multiboard;
+            let board = &m.board;
             if !m.csv {
                 // let mut sum = Weight::zero();
                 for &p in &Piece::ALL_BAR_NONE {
@@ -631,11 +645,18 @@ impl SimpleScorer {
                 b.open_files_near_king,
                 self.open_files_near_king,
             );
+            scorer.safety(
+                "open files adjacent king",
+                w.open_files_adjacent_king,
+                b.open_files_adjacent_king,
+                self.open_files_adjacent_king,
+            );
             scorer.safety("tropism d1", w.king_tropism_d1, b.king_tropism_d1, self.tropism_d1);
             scorer.safety("tropism d2", w.king_tropism_d2, b.king_tropism_d2, self.tropism_d2);
             scorer.safety("tropism d3", w.king_tropism_d3, b.king_tropism_d3, self.tropism_d3);
             scorer.safety("tropism d4", w.king_tropism_d4, b.king_tropism_d4, self.tropism_d4);
             scorer.safety("king trapped on back rank", w.king_trapped_on_back_rank, b.king_trapped_on_back_rank, self.king_trapped_on_back_rank);
+            scorer.safety("rq on open files near king", w.rq_on_open_files_near_king, b.rq_on_open_files_near_king, self.rq_on_open_files_near_king);
 
             scorer.safety(
                 "attacks near king",
@@ -645,6 +666,11 @@ impl SimpleScorer {
             );
             scorer.safety("castling rights", w.castling_rights, b.castling_rights, self.castling_rights);
             scorer.safety("uncastled", w.uncastled, b.uncastled, self.uncastled);
+            scorer.safety("checkers", w.checkers, b.checkers, self.checkers);
+            scorer.safety("pieces near king", w.pieces_near_king, b.pieces_near_king, self.pieces_near_king);
+            scorer.safety("pinned near king", w.pinned_near_king, b.pinned_near_king, self.pinned_near_king);
+            scorer.safety("pinned far", w.pinned_far, b.pinned_far, self.pinned_far);
+            scorer.safety("discovered checks", w.discovered_checks, b.discovered_checks, self.discovered_checks);
         }
 
         // mobility
@@ -804,6 +830,7 @@ mod tests {
     use super::*;
     use crate::board::boardbuf::BoardBuf;
     use crate::catalog::Catalog;
+    use crate::phaser::Phase;
     use crate::test_log::test;
     use toml;
 
@@ -823,7 +850,7 @@ mod tests {
 
         let board_w = Catalog::white_starting_position();
         info!("white starting\n{}", eval.w_eval_explain(&board_w, false));
-        assert_eq!(board_w.phase(&eval.phaser), 50);
+        assert_eq!(board_w.phase(&eval.phaser), Phase(50));
         eval.set_switches(false);
         eval.material = true;
         eval.contempt = true;
@@ -858,7 +885,7 @@ mod tests {
         let bd = Board::parse_fen("8/P7/8/8/8/8/8/8 w - - 0 1").unwrap().as_board();
         eval.set_switches(false);
         eval.position = true;
-        assert_eq!(bd.phase(&eval.phaser), 100);
+        assert_eq!(bd.phase(&eval.phaser), Phase(100));
         assert_eq!(
             bd.eval(&eval, &Node::root(0)),
             Score::from_f32(eval.pst.pawn_r7.e() as f32),
@@ -867,12 +894,12 @@ mod tests {
         );
 
         let bd = Board::parse_fen("8/4p3/8/8/8/8/8/8 w - - 0 1").unwrap().as_board();
-        assert_eq!(bd.phase(&eval.phaser), 100);
+        assert_eq!(bd.phase(&eval.phaser), Phase(100));
 
         assert_eq!(bd.eval(&eval, &Node::root(0)), Score::from_cp(0));
 
         let w = Catalog::white_starting_position();
-        assert_eq!(w.phase(&eval.phaser), 50);
+        assert_eq!(w.phase(&eval.phaser), Phase(50));
         let score = w.eval(&eval, &Node::root(0));
         assert!(score < Score::from_cp(-105), "{}", eval.w_eval_explain(&w, false));
         assert!(score > Score::from_cp(-122), "{}", eval.w_eval_explain(&w, false));

@@ -184,7 +184,7 @@ impl PreCalc {
     }
 
     #[inline]
-    pub fn non_pawn_attacks(&self, c: Color, p: Piece, us: Bitboard, them: Bitboard, from: Square) -> Bitboard {
+    pub fn attacks(&self, c: Color, p: Piece, us: Bitboard, them: Bitboard, from: Square) -> Bitboard {
         match p {
             Piece::Bishop => self.bishop_attacks(us | them, from),
             Piece::Rook => self.rook_attacks(us | them, from),

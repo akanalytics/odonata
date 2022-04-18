@@ -27,11 +27,11 @@ impl Board {
     }
 
     #[inline]
-    pub fn pinned(&self) -> Bitboard {
-        let mut pi = self.pinned.get();
+    pub fn pinned(&self, king_color: Color) -> Bitboard {
+        let mut pi = self.pinned[king_color].get();
         if pi == Bitboard::niche() {
-            pi = BoardCalcs::pinned(self, self.color_us());
-            self.pinned.set(pi);
+            pi = BoardCalcs::pinned_and_unmaskers(self, king_color).0;
+            self.pinned[king_color].set(pi);
         }
         pi
     }
@@ -53,11 +53,11 @@ impl Board {
     }
 
     #[inline]
-    pub fn threats_to(&self, c: Color) -> Bitboard {
-        let mut th = self.threats_to[c].get();
+    pub fn all_attacks_on(&self, defender: Color) -> Bitboard {
+        let mut th = self.threats_to[defender].get();
         if th == Bitboard::niche() {
-            th = BoardCalcs::threats_to(self, c, self.occupied());
-            self.threats_to[c].set(th);
+            th = BoardCalcs::all_attacks_on(self, defender, self.occupied());
+            self.threats_to[defender].set(th);
         }
         th
     }
@@ -119,7 +119,7 @@ impl Board {
         }
         // check piece move
         let precalc = BitboardDefault::default();
-        let destinations = precalc.non_pawn_attacks(self.color_us(), m.mover_piece(), self.us(), self.them(), m.from());
+        let destinations = precalc.attacks(self.color_us(), m.mover_piece(), self.us(), self.them(), m.from());
         if !m.to().is_in(destinations | self.en_passant()) && !m.is_castle() {
             return false;
         }

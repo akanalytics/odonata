@@ -496,8 +496,8 @@ fn board_calcs(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             bams.iter().cycle_n(n).for_each(|bam| {
-                black_box(BoardCalcs::threats_to(black_box(&bam.0), Color::White, bam.0.occupied()));
-                black_box(BoardCalcs::threats_to(black_box(&bam.0), Color::Black, bam.0.occupied()));
+                black_box(BoardCalcs::all_attacks_on(black_box(&bam.0), Color::White, bam.0.occupied()));
+                black_box(BoardCalcs::all_attacks_on(black_box(&bam.0), Color::Black, bam.0.occupied()));
             });
             t.elapsed() / 2 / positions.len() as u32
         })
@@ -507,8 +507,8 @@ fn board_calcs(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             bams.iter().cycle_n(n).for_each(|bam| {
-                black_box(&bam.0.threats_to(Color::White));
-                black_box(&bam.0.threats_to(Color::Black));
+                black_box(&bam.0.all_attacks_on(Color::White));
+                black_box(&bam.0.all_attacks_on(Color::Black));
             });
             t.elapsed() / 2 / positions.len() as u32
         })
@@ -518,8 +518,8 @@ fn board_calcs(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             bams.iter().cycle_n(n).for_each(|bam| {
-                black_box(&bam.0.clone().threats_to(Color::White));
-                black_box(&bam.0.clone().threats_to(Color::Black));
+                black_box(&bam.0.clone().all_attacks_on(Color::White));
+                black_box(&bam.0.clone().all_attacks_on(Color::Black));
             });
             t.elapsed() / 2 / positions.len() as u32
         })

@@ -136,7 +136,7 @@ mod tests {
     fn test_phase() -> Result<()> {
         let mut phaser = Phaser::default();
         assert_eq!(Phaser::ALL_PIECES, 6400);
-        assert_eq!(Catalog::starting_board().phase(&phaser), Phase::from_i32(100, 0));
+        assert_eq!(Catalog::starting_board().phase(&phaser), Phase(0));
         let board100 = Board::parse_fen("7k/8/8/8/8/8/8/7K b - - 45 100")?;
         let board100_too = Board::parse_fen("7k/pppppppp/8/8/8/8/PPPPPPPP/7K b - - 45 100")?;
         let board73 = Board::parse_fen("6qk/8/8/8/8/8/8/6QK b - - 45 100")?;
