@@ -832,6 +832,7 @@ mod tests {
     use crate::catalog::Catalog;
     use crate::phaser::Phase;
     use crate::test_log::test;
+    use crate::infra::profiler::Profiler;
     use toml;
 
     #[test]
@@ -1024,4 +1025,23 @@ mod tests {
             info!("\n{}\n{}", pos, explain);
         }
     }
+
+    #[test]
+    fn bench_eval() {
+        let mut eval = SimpleScorer::default();
+        eval.mb.enabled = false;
+        let mut prof = Profiler::new("bench_eval".into());
+        let node = Node::root(0);
+        let mut total_score = Score::zero();
+        for pos in Catalog::win_at_chess() {
+            let b = pos.board();
+            prof.start();
+            let score = b.signum() * b.eval(&eval, &node);
+            prof.stop();
+            total_score = total_score + score;
+            println!("{:>6.0} {}", score.as_i16(), pos);
+        }
+        println!("{:>6.0} {}", total_score.as_i16(), "total");
+    }
+
 }

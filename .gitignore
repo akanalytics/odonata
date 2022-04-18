@@ -29,7 +29,10 @@ perf.data*
 flamegraph*.svg
 flame.svg
 cachegrind.out.*
+/flames
 
+# debugging output
+explain-*.csv
 
 # binaries
 odonata-*-linux-*

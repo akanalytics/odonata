@@ -14,6 +14,7 @@ use std::fmt::{self, Write};
 use std::iter::*;
 use std::str::FromStr;
 
+pub mod analysis;
 pub mod boardbuf;
 pub mod boardcalcs;
 pub mod makemove;

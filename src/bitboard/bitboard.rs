@@ -82,7 +82,7 @@ impl Dir {
     }
 
     #[inline]
-    pub fn rotate(self) -> u32 {
+    pub fn bits_to_rotate(self) -> u32 {
         [8, 9, 1, 64 - 7, 64 - 8, 64 - 9, 64 - 1, 7][self]
 
         // match self {
@@ -515,9 +515,26 @@ impl Bitboard {
     }
 
     #[inline]
-    pub fn shift(self, dir: Dir) -> Bitboard {
-        let bb = self.sub(dir.mask());
-        Bitboard(bb.0.rotate_left(dir.rotate()))
+    pub const fn shift(self, dir: Dir) -> Bitboard {
+        // let bb = self.sub(dir.mask());
+        // Bitboard(bb.0.rotate_left(dir.bits_to_rotate()))
+
+        let (rotation,mask) = match dir {
+            Dir::N => (8,Bitboard::RANK_8),
+            Dir::NE => (9,Bitboard::RANK_8.or(Bitboard::FILE_H)),
+            Dir::E => (1,Bitboard::FILE_H),
+            Dir::SE => (64-7,Bitboard::RANK_1.or(Bitboard::FILE_H)),
+            Dir::S => (64-8,Bitboard::RANK_1),
+            Dir::SW => (64-9,Bitboard::RANK_1.or(Bitboard::FILE_A)),
+            Dir::W => (64-1,Bitboard::FILE_A),
+            Dir::NW => (7,Bitboard::RANK_8.or(Bitboard::FILE_A)),
+            _ => unreachable!()
+        } ;
+        let bb = self.sub(mask);
+        Bitboard(bb.0.rotate_left(rotation))
+
+        // let bb = self.sub(dir.mask());
+        // Bitboard(bb.0.rotate_left(dir.bits_to_rotate()))
         // if dir.shift() > 0 {
         //     Bitboard(bb.0 << dir.shift())
         // } else {
@@ -834,6 +851,26 @@ impl Iterator for BitIterator {
     }
 }
 
+impl ExactSizeIterator for BitIterator {
+
+    #[inline]
+    fn len(&self) -> usize { 
+        self.bb.popcount() as usize
+    }
+
+    // #[inline]
+    // fn is_empty(&self) -> bool {
+    //     self.bb.is_empty()
+    // }
+    // #[inline]
+    // fn count(self) -> usize {
+    //     self.bb.popcount() as usize
+    // }
+}
+
+
+
+
 impl fmt::Display for Bitboard {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         for r in (0..8).rev() {
@@ -872,6 +909,15 @@ impl Iterator for Squares {
         (bitcount, Some(bitcount))
     }
 }
+
+impl ExactSizeIterator for Squares {
+
+    #[inline]
+    fn len(&self) -> usize { 
+        self.bb.popcount() as usize
+    }
+}
+
 
 #[cfg(test)]
 mod tests {

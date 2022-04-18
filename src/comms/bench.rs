@@ -61,7 +61,7 @@ impl Bench {
         // println!("\nstatistics\n{}", counts::GLOBAL_COUNTS);
     }
 
-    pub fn search(tc: TimeControl, threads: Option<u32>) {
+    pub fn search(tc: TimeControl, threads: Option<u32>) -> u128 {
         let mut engine = Engine::new();
         if let Some(threads) = threads {
             engine.thread_count = threads;
@@ -136,5 +136,24 @@ impl Bench {
         println!("total nodes   : {}", Formatting::u128(total_nodes));
         println!("total time    : {}", Formatting::duration(total_time));
         println!("score         : {}", score);
+        total_nodes
     }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use test_log::test;    
+    use crate::infra::profiler::Profiler;
+
+    #[test]
+    fn bench_bk() {
+        let mut prof = Profiler::new("bench_search (per node)".into());
+        prof.start();
+        let total_nodes = Bench::search(TimeControl::NodeCount(1000), None);
+        prof.stop();
+        prof.set_iters(total_nodes as u64);
+    }
+
 }
