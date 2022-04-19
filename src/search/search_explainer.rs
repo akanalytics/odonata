@@ -126,10 +126,9 @@ impl Explainer {
             && (self
                 .vars
                 .iter()
-                .inspect(|x| println!("about to check var: {}", x))
+                // .inspect(|x| println!("about to check var: {}", x))
                 .any(|v| var.starts_with(v) && var.len() <= v.len() + self.max_additional_ply as usize))
         {
-            println!("Explaining {}", var);
             if self.tree.is_none() {
                 let tree = SearchTree::new(Board::default());
                 self.tree = Some(tree);

@@ -109,7 +109,7 @@ impl Algo {
     }
 
     pub fn can_lmp(&mut self, is_quiet: bool, quiets: i32, n: &Node) -> bool {
-        if !self.lmp.enabled || !is_quiet {
+        if !self.lmp.enabled || self.minmax || !is_quiet {
             return false;
         }
         if self.lmp.alpha_numeric && !n.alpha.is_numeric() {

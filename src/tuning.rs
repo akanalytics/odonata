@@ -39,8 +39,8 @@ pub struct Tuning {
     pub ignore_endgames: bool,
     pub multi_threading_min_positions: usize,
     pub ignore_draws: bool,
-    pub logistic_steepness_k: Weight,
     pub consolidate: bool,
+    pub logistic_steepness_k: Weight,
 
     #[serde(skip)]
     pub models_and_outcomes: Vec<(Model, f32)>,

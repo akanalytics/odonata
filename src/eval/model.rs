@@ -137,7 +137,7 @@ pub trait Scorer {
     fn safety(&mut self, attr: &str, w_value: i32, b_value: i32, score: Weight);
     fn tempo(&mut self, attr: &str, w_value: i32, b_value: i32, score: Weight);
     fn contempt(&mut self, attr: &str, w_value: i32, b_value: i32, score: Weight);
-    fn interpolate(&mut self, attr: &str);
+    fn interpolate_and_scale(&mut self, attr: &str);
     fn total(&self) -> Weight;
     fn phase(&self) -> Phase;
 }
@@ -254,8 +254,8 @@ impl Scorer for ExplainScorer {
     }
 
     #[inline]
-    fn interpolate(&mut self, _attr: &str) {
-        self.delegate.interpolate(_attr);
+    fn interpolate_and_scale(&mut self, _attr: &str) {
+        self.delegate.interpolate_and_scale(_attr);
     }
 
     #[inline]
@@ -277,7 +277,7 @@ impl fmt::Display for ExplainScorer {
 
         writeln!(
             f,
-            "{:>20} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |   {:<15}",
+            "{:>27} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |   {:<15}",
             "attr", "w", "w mg", "w eg", "int", "mg", "eg", "b", "b mg", "b eg", "wt"
         )?;
         for (i, sw) in Switches::all_scoring().iter().enumerate() {
@@ -286,7 +286,7 @@ impl fmt::Display for ExplainScorer {
                 let (attr, w, b, wt) = (attr, *w, *b, *wt);
                 writeln!(
                     f,
-                    "{:>20} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |   {:<15}",
+                    "{:>27} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |   {:<15}",
                     attr,
                     w,
                     pad((w * wt).s()),
@@ -300,19 +300,19 @@ impl fmt::Display for ExplainScorer {
                     wt.to_string()
                 )?;
             }
-            if !sw.intersects(Switches::TEMPO | Switches::CONTEMPT) {
+            if true { // !sw.intersects(Switches::TEMPO | Switches::CONTEMPT) {
                 let attr = sw.name();
                 let wwt: Weight = vec.iter().map(|&(_, w, _b, wt)| w * wt).sum();
                 let bwt: Weight = vec.iter().map(|&(_, _w, b, wt)| b * wt).sum();
                 let twt: Weight = vec.iter().map(|&(_, w, b, wt)| w * wt - b * wt).sum();
                 writeln!(
                     f,
-                    "{:>20} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |   {:<15}",
+                    "{:>27} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |   {:<15}",
                     "", "-----", "-----", "-----", "-----", "-----", "-----", "-----", "-----", "-----", ""
                 )?;
                 writeln!(
                     f,
-                    "{:>20} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |   {:<15}",
+                    "{:>27} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |   {:<15}",
                     attr,
                     "",
                     pad(wwt.s()),
@@ -327,19 +327,19 @@ impl fmt::Display for ExplainScorer {
                 )?;
                 writeln!(
                     f,
-                    "{:>20} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |   {:<15}",
+                    "{:>27} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |   {:<15}",
                     "", "", "", "", "", "", "", "", "", "", ""
                 )?;
             }
         }
         writeln!(
             f,
-            "{:>20} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |   {:<15}",
+            "{:>27} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |   {:<15}",
             "", "-----", "-----", "-----", "=====", "-----", "-----", "-----", "-----", "-----", "=========="
         )?;
         writeln!(
             f,
-            "{:>20} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |      Phase{:>3} %",
+            "{:>27} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |      Phase{:>3} %",
             "EVALUATION",
             "",
             "",
@@ -354,7 +354,7 @@ impl fmt::Display for ExplainScorer {
         )?;
         writeln!(
             f,
-            "{:>20} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |   {:<15}",
+            "{:>27} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |   {:<15}",
             "", "", "", "", "=====", "-----", "-----", "", "", "", "=========="
         )?;
         Ok(())
@@ -435,7 +435,7 @@ impl Scorer for ModelScore {
     }
 
     #[inline]
-    fn interpolate(&mut self, _attr: &str) {
+    fn interpolate_and_scale(&mut self, _attr: &str) {
         self.interpolated = self.total().interpolate(self.phase) as f32 * (100 - self.drawish) as f32 / 100.0;
     }
 
@@ -1160,6 +1160,7 @@ mod tests {
                             "passed_r7" => (model.white.passed_pawns_on_r7, model.black.passed_pawns_on_r7),
                             "passed_r6" => (model.white.passed_pawns_on_r6, model.black.passed_pawns_on_r6),
                             "passed_r5" => (model.white.passed_pawns_on_r5, model.black.passed_pawns_on_r5),
+                            "passed_r4" => (model.white.passed_pawns_on_r4, model.black.passed_pawns_on_r4),
                             "doubled" => (model.white.doubled_pawns, model.black.doubled_pawns),
                             "connected_r67" => (model.white.pawn_connected_r67, model.black.pawn_connected_r67),
                             "connected_r345" => (model.white.pawn_connected_r345, model.black.pawn_connected_r345),

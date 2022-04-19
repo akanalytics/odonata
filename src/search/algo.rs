@@ -430,22 +430,7 @@ mod tests {
         assert_eq!(algo.counts.cumul(Event::PercentBranchingFactor), 2114);
     }
 
-    #[test]
-    fn test_node() {
-        let mut eval = SimpleScorer::new().set_position(false);
-        eval.mobility = false;
-        let mut algo = Algo::new();
-        algo.set_eval(eval);
-        algo.move_orderer.enabled = false;
-        algo.set_position(Catalog::starting_position());
-        algo.set_timing_method(TimeControl::Depth(4));
-        algo.search();
-        println!("{}", algo.counts);
-        assert_eq!(algo.clock.cumul_nodes(), 2933);
-        assert_eq!(algo.counts.cumul(Event::DerivedLeaf), 2564);
-        assert_eq!(algo.counts.cumul(Event::NodeInterior), 357);
-        assert_eq!(algo.counts.cumul(Event::PercentBranchingFactor), 718);
-    }
+
 
     #[test]
     fn test_display_algo() {

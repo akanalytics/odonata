@@ -339,7 +339,6 @@ impl Algo {
 mod tests {
     use super::*;
     use crate::catalog::*;
-    use crate::comms::uci::Uci;
     use crate::search::timecontrol::*;
     use anyhow::Result;
 
@@ -348,7 +347,7 @@ mod tests {
         let positions = Catalog::mate_in_2();
         for (i, pos) in positions.iter().enumerate() {
             let mut search = Algo::new();
-            search.set_timing_method(TimeControl::Depth(6)).set_callback(Uci::uci_info);
+            search.set_timing_method(TimeControl::Depth(8)); // .set_callback(Uci::uci_info);
             // search.tt.enabled = false;
             search.set_position(pos.clone()).search();
             // println!("{}", search);

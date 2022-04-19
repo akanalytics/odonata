@@ -47,7 +47,7 @@ impl Profiler {
     pub fn print(&mut self) {
         let counts = self.group.read().unwrap();
         println!(
-            "{:<25}\t{:<15}\t{:<15}\t{:<15}\t{:<15}\t{:<15}\n{:<25}\t{:<15}\t{:<15}\t{:<15}\t{:<15}\t{:.2}\n",
+            "PROF: {:<25}\t{:<15}\t{:<15}\t{:<15}\t{:<15}\t{:<15}\nPROF: {:<25}\t{:<15}\t{:<15}\t{:<15}\t{:<15}\t{:.2}\n",
             "name",
             "iters",
             "cycles",

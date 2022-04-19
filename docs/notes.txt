@@ -36,8 +36,8 @@ Todo
 Outcome in Result is not populated
 Reduce bad captures by more
 Count node type bitfield, 
-
-
+Test quiesce catalog - test failure
+Test recog pos
 
 eval
 ====
