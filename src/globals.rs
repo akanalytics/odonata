@@ -125,7 +125,7 @@ mod tests {
     use crate::cache::hasher::*;
     use crate::cache::tt2::*;
     use crate::clock::Clock;
-    use crate::eval::eval::SimpleScorer;
+    use crate::eval::eval::Eval;
     use crate::eval::recognizer::Recognizer;
     use crate::eval::score::*;
     use crate::movelist::*;
@@ -191,7 +191,7 @@ mod tests {
         assert_eq!(size_of::<NullMovePruning>(), 32, "NullMovePruning");
         assert_eq!(size_of::<Futility>(), 36, "Futility");
         assert_eq!(size_of::<IterativeDeepening>(), 40, "IterativeDeepening");
-        assert_eq!(size_of::<SimpleScorer>(), 4360, "SimpleScorer");
+        assert_eq!(size_of::<Eval>(), 4360, "SimpleScorer");
         assert_eq!(size_of::<Pvs>(), 8, "Pvs");
         assert_eq!(size_of::<Extensions>(), 40, "Extensions");
         assert_eq!(size_of::<Lmr>(), 48, "Lmr");

@@ -164,7 +164,7 @@ mod tests {
     use crate::eval::switches::Switches;
     use crate::{
         board::boardbuf::*,
-        eval::{eval::SimpleScorer, weight::Weight},
+        eval::{eval::Eval, weight::Weight},
     };
     use test_log::test;
 
@@ -181,7 +181,7 @@ mod tests {
         let b = Board::parse_fen("k7/8/3n4/8/8/8/8/K6N w - - 0 1").unwrap();
         let eg = EndGame::from_board(&b);
         assert_eq!(eg, EndGame::KingMinorVsKingMinor);
-        let mut eval = SimpleScorer::default();
+        let mut eval = Eval::default();
         assert!(eval.win_bonus.e() as f32 > 0.0);
         eval.win_bonus = Weight::from_i32(100, 100);
         let sc_wi_bonus = b.eval_some(&eval, Switches::MATERIAL);
@@ -196,7 +196,7 @@ mod tests {
         let b = Board::parse_fen("k7/8/8/8/8/8/6BB/K7 w - - 0 1").unwrap();
         let eg = EndGame::from_board(&b);
         assert_eq!(eg, EndGame::TwoBishopsOppositeColorSquares(Color::White));
-        let mut eval = SimpleScorer::default();
+        let mut eval = Eval::default();
         eval.win_bonus = Weight::from_i32(100, 100);
         let sc_wi_bonus = b.eval_some(&eval, Switches::MATERIAL);
         eval.win_bonus = Weight::zero();
@@ -206,7 +206,7 @@ mod tests {
         let b = Board::parse_fen("kbb5/8/8/8/8/8/6BB/K7 w - - 0 1").unwrap();
         let eg = EndGame::from_board(&b);
         assert_eq!(eg, EndGame::Unknown);
-        let mut eval = SimpleScorer::default();
+        let mut eval = Eval::default();
         eval.win_bonus = Weight::from_i32(100, 100);
         let sc_wi_bonus = b.eval_some(&eval, Switches::MATERIAL);
         eval.win_bonus = Weight::zero();
@@ -216,7 +216,7 @@ mod tests {
         let b = Board::parse_fen("kbb5/8/8/8/8/8/8/K7 w - - 0 1").unwrap();
         let eg = EndGame::from_board(&b);
         assert_eq!(eg, EndGame::TwoBishopsOppositeColorSquares(Color::Black));
-        let mut eval = SimpleScorer::default();
+        let mut eval = Eval::default();
         eval.win_bonus = Weight::from_i32(100, 100);
         let sc_wi_bonus = b.eval_some(&eval, Switches::MATERIAL);
         eval.win_bonus = Weight::zero();

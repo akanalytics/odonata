@@ -2,6 +2,8 @@ pub mod endgame;
 pub mod eval;
 pub mod material_balance;
 pub mod model;
+pub mod scorer;
+pub mod feature;
 pub mod pmvt;
 pub mod pst;
 pub mod recognizer;

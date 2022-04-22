@@ -97,14 +97,16 @@ codegen-units = 256
 [profile.dev]
 opt-level = 3
 incremental = true
-debug = false  # allow profiling of the  main executable 
+debug = true  # allow profiling of the  main executable 
 split-debuginfo = "unpacked"
 codegen-units = 256
 
 [profile.test]
 opt-level = 3
+incremental = false
 debug = true  # allow profiling of the  main executable 
 codegen-units = 256
+split-debuginfo = "off"  # for hotspot profiler disassembly
 
 [profile.release]
 opt-level = 3
@@ -119,6 +121,7 @@ inherits = "release"
 opt-level = 3
 incremental = true
 codegen-units = 1
+debug = false
 split-debuginfo = "unpacked"
 
 [profile.stable]

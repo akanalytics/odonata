@@ -115,9 +115,9 @@ impl Rpc for RpcImpl {
 
     // empty file is clear
     fn position_upload(&self, filename: String) -> Result<i32> {
-        let mut engine = self.engine.lock().unwrap();
+        let mut eng = self.engine.lock().unwrap();
         if filename.is_empty() {
-            engine.tuner.clear();
+            eng.tuner.clear();
             info!("Cleared tuner positions");
             return Ok(0);
         }
@@ -127,7 +127,7 @@ impl Rpc for RpcImpl {
             code: jsonrpc_core::ErrorCode::InternalError,
             data: None,
         })?;
-        let uploaded_count = engine.tuner.upload_positions(&positions).map_err(to_rpc_error)?;
+        let uploaded_count = Tuning::upload_positions(&mut eng, &positions).map_err(to_rpc_error)?;
         info!("Uploaded {} positions", uploaded_count);
         Ok(uploaded_count as i32)
     }

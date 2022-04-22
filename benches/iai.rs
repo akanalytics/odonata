@@ -1,5 +1,5 @@
 use odonata::catalog::*;
-use odonata::eval::eval::SimpleScorer;
+use odonata::eval::eval::Eval;
 use odonata::eval::model::Model;
 use odonata::eval::model::ModelScore;
 use odonata::eval::switches::Switches;
@@ -128,7 +128,7 @@ fn iai_model_predict() {
 }
 
 fn iai_build_model_and_eval_model() {
-    let eval = SimpleScorer::new();
+    let eval = Eval::new();
     let pos = Catalog::starting_position();
     let mut model_score = ModelScore::new(50, 100);
     for _ in 0..10000 {
@@ -139,7 +139,7 @@ fn iai_build_model_and_eval_model() {
 }
 
 fn iai_eval_model() {
-    let eval = SimpleScorer::new();
+    let eval = Eval::new();
     let pos = Catalog::starting_position();
     let model = Model::from_board(pos.board(), Switches::ALL_SCORING);
     let mut model_score = ModelScore::new(50, 100);

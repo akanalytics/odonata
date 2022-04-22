@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::eval::eval::SimpleScorer;
+use crate::eval::eval::Eval;
 use crate::eval::score::Score;
 use crate::eval::switches::Switches;
 use crate::eval::weight::Weight;
@@ -244,7 +244,7 @@ impl Algo {
         self.futility.prune_remaining
     }
 
-    pub fn can_prune_all_moves(&self, b: &Board, measure: FutilityMeasure, node: &Node, eval: &SimpleScorer) -> Option<Score> {
+    pub fn can_prune_all_moves(&self, b: &Board, measure: FutilityMeasure, node: &Node, eval: &Eval) -> Option<Score> {
         if !self.futility.beta_enabled {
             return None;
         }

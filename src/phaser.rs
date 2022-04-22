@@ -11,6 +11,11 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Default)]
 pub struct Phase(pub i32);
 
+impl fmt::Display for Phase {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}%",self.0)
+    }
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]

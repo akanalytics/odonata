@@ -169,11 +169,11 @@ mod tests {
     #[test]
     #[ignore]
     fn single_game() {
-        let eval_w = SimpleScorer::new();
+        let eval_w = Eval::new();
         let mut white = Algo::new();
         white.set_timing_method(TimeControl::Depth(6)).set_eval(eval_w);
 
-        let mut eval_b = SimpleScorer::new();
+        let mut eval_b = Eval::new();
         eval_b.mobility = false;
         let mut black = Algo::new();
         black.set_timing_method(TimeControl::Depth(6)).set_eval(eval_b);

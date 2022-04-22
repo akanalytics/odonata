@@ -1,3 +1,71 @@
+
+eval
+
+# not always called!!!
+score(Index, white,black)
+eg (rook_pair_enum_index, wrooks.popcount(), wrooks.popcount())
+
+
+
+DotProduct for Tally
+
+score += (white - black) * EvalArray[index]
+score.interp
+
+
+
+DotProduct for TallyExplainer
+
+Print name  white, black, Weight, interp, scale
+
+
+
+
+
+
+
+
+DotProduct for TallyFeatureMatrix
+
+FeatureName- > Index
+Store (feature and index) - if not seen before ++index and store Name->Index
+
+
+
+
+Get Weights by name
+Names into indexes.
+DotProduct Feature.Weights
+
+
+
+
+
+Eval struct
+Big Enum
+Name <-> Number
+with serialization by name <-- flattened into struct
+
+and lookup (fast) by Number  <--- big match statement
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 0.4.14
 structure not (score, cat)
 sort out draws with moves == 0

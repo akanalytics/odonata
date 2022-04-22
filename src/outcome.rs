@@ -1,6 +1,9 @@
 use crate::board::Board;
 use crate::types::{Color, ScoreWdl};
 use std::fmt;
+use anyhow::{Result, anyhow};
+
+
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Outcome {
@@ -84,7 +87,18 @@ impl Outcome {
         }
         String::from("*")
     }
+
+    pub fn try_from_pgn(s: &str) -> Result<Outcome> {
+        match s {
+            "1/2-1/2" => Ok(Outcome::DrawRule50),
+            "1-0" => Ok(Outcome::WinWhite),
+            "0-1" => Ok(Outcome::WinBlack),
+            "*" => Ok(Outcome::InProgress),
+            _ => Err(anyhow!("Unknown outcome token '{}'", s))
+        }
+    }
 }
+
 
 // does not detect repetition counts
 impl Board {

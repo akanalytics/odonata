@@ -1,19 +1,15 @@
-use std::fmt;
-
 use crate::bitboard::castling::CastlingRights;
 use crate::bitboard::precalc::BitboardDefault;
 use crate::bitboard::square::Square;
-use crate::board::Board;
 use crate::board::boardcalcs::BoardCalcs;
+use crate::board::Board;
 use crate::domain::material::Material;
-use crate::eval::score::Score;
 use crate::eval::switches::Switches;
-use crate::eval::weight::Weight;
 use crate::phaser::Phase;
 use crate::types::Color;
 use crate::types::Piece;
-use crate::utils::Formatting;
 use crate::{Bitboard, PreCalc};
+use std::fmt::Debug;
 // use arrayvec::ArrayVec;
 
 use super::endgame::EndGame;
@@ -26,6 +22,7 @@ pub struct Model {
     pub mat: Material,
     pub endgame: EndGame,
     pub board: Board,
+    pub phase: Phase, 
 
     pub white: ModelSide,
     pub black: ModelSide,
@@ -101,12 +98,12 @@ pub struct ModelSide {
     pub rq_on_open_files_near_king: i32,
     pub king_trapped_on_back_rank: i32,
     pub attacks_on_opponent_king_area: i32,
-    pub king_safety_bonus: i32, 
-    pub checkers: i32, 
-    pub pieces_near_king: i32, 
-    pub pinned_near_king: i32, 
-    pub pinned_far: i32, 
-    pub discovered_checks: i32, 
+    pub king_safety_bonus: i32,
+    pub checkers: i32,
+    pub pieces_near_king: i32,
+    pub pinned_near_king: i32,
+    pub pinned_far: i32,
+    pub discovered_checks: i32,
 
     pub castling_rights: i32, // 0,1 or 2
     pub uncastled: i32,
@@ -120,342 +117,28 @@ pub struct ModelSide {
     pub defended_non_pawn: i32,
     pub xrayed: i32,
     // pub mv: ArrayVec<(Piece, i32), 32>,
-    pub attacks: [[i32; Piece::ALL.len()]; Piece::ALL.len()],
-    pub defends: [[i32; Piece::ALL.len()]; Piece::ALL.len()],
+    // pub attacks: [[i32; Piece::ALL.len()]; Piece::ALL.len()],
+    // pub defends: [[i32; Piece::ALL.len()]; Piece::ALL.len()],
 
     // other
     pub has_tempo: bool,
 }
 
-pub trait Scorer {
-    // fn set_multiplier(&mut self, m: i32);
-    fn annotate(&mut self, annotation: &str);
-    fn material(&mut self, attr: &str, w_value: i32, b_value: i32, score: Weight);
-    fn position(&mut self, attr: &str, w_value: i32, b_value: i32, score: Weight);
-    fn pawn(&mut self, attr: &str, w_value: i32, b_value: i32, score: Weight);
-    fn mobility(&mut self, attr: &str, w_value: i32, b_value: i32, score: Weight);
-    fn safety(&mut self, attr: &str, w_value: i32, b_value: i32, score: Weight);
-    fn tempo(&mut self, attr: &str, w_value: i32, b_value: i32, score: Weight);
-    fn contempt(&mut self, attr: &str, w_value: i32, b_value: i32, score: Weight);
-    fn interpolate_and_scale(&mut self, attr: &str);
-    fn total(&self) -> Weight;
-    fn phase(&self) -> Phase;
-}
-
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct ExplainScorer {
-    mat: Vec<(String, i32, i32, Weight)>,
-    pos: Vec<(String, i32, i32, Weight)>,
-    paw: Vec<(String, i32, i32, Weight)>,
-    mob: Vec<(String, i32, i32, Weight)>,
-    saf: Vec<(String, i32, i32, Weight)>,
-    tem: Vec<(String, i32, i32, Weight)>,
-    con: Vec<(String, i32, i32, Weight)>,
-    delegate: ModelScore,
-}
-
-pub enum ReportLine {
-    Header,
-    Body,
-}
-
-impl ExplainScorer {
-    pub fn new(phase: Phase, drawish: i32) -> Self {
-        Self {
-            delegate: ModelScore::new(phase, drawish),
-            ..Self::default()
-        }
-    }
-    pub fn as_score(&self) -> Score {
-        self.delegate.as_score()
-    }
-
-    pub fn as_csv(&self, line: ReportLine, consolidated: bool) -> String {
-        let mut output = String::with_capacity(1000);
-        for (i, _sw) in Switches::all_scoring().iter().enumerate() {
-            let vec = vec![&self.mat, &self.pos, &self.mob, &self.paw, &self.saf, &self.con, &self.tem][i];
-            for (attr, w, b, wt) in vec {
-                let (attr, w, b, _wt) = (attr, *w, *b, *wt);
-                if consolidated {
-                    let field = match line {
-                        ReportLine::Header => format!("{}", attr.replace(" ", "_")),
-                        ReportLine::Body => (w - b).to_string(),
-                    };
-                    output.push_str(&field);
-                    output.push(',');
-                } else {
-                    let field_s = match line {
-                        ReportLine::Header => format!("{}.s", attr.replace(" ", "_")),
-                        ReportLine::Body => {
-                            format!("{}", (w - b) as f32 * (100 - self.delegate.phase.0) as f32 / 100.0)
-                        }
-                    };
-                    output.push_str(&field_s);
-                    output.push_str(", ");
-
-                    let field_e = match line {
-                        ReportLine::Header => format!("{}.e", attr.replace(" ", "_")),
-                        ReportLine::Body => format!("{}", (w - b) as f32 * self.delegate.phase.0 as f32 / 100.0),
-                    };
-                    output.push_str(&field_e);
-                    output.push_str(", ");
-                }
-            }
-        }
-        output
-    }
-}
-
-impl Scorer for ExplainScorer {
-    #[inline]
-    fn annotate(&mut self, _annotation: &str) {}
-
-    // fn set_multiplier(&mut self, mult: i32) {
-    //     self.delegate.set_multiplier(mult);
-    // }
-    #[inline]
-    fn material(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
-        self.mat.push((_attr.to_string(), w_value, b_value, score));
-        self.delegate.material(_attr, w_value, b_value, score);
-    }
-    #[inline]
-    fn position(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
-        self.pos.push((_attr.to_string(), w_value, b_value, score));
-        self.delegate.position(_attr, w_value, b_value, score);
-    }
-    #[inline]
-    fn pawn(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
-        self.paw.push((_attr.to_string(), w_value, b_value, score));
-        self.delegate.pawn(_attr, w_value, b_value, score);
-    }
-
-    #[inline]
-    fn mobility(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
-        self.mob.push((_attr.to_string(), w_value, b_value, score));
-        self.delegate.mobility(_attr, w_value, b_value, score);
-    }
-
-    #[inline]
-    fn safety(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
-        self.saf.push((_attr.to_string(), w_value, b_value, score));
-        self.delegate.safety(_attr, w_value, b_value, score);
-    }
-
-    #[inline]
-    fn tempo(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
-        self.tem.push((_attr.to_string(), w_value, b_value, score));
-        self.delegate.tempo(_attr, w_value, b_value, score);
-    }
-
-    #[inline]
-    fn contempt(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
-        self.con.push((_attr.to_string(), w_value, b_value, score));
-        self.delegate.contempt(_attr, w_value, b_value, score);
-    }
-
-    #[inline]
-    fn interpolate_and_scale(&mut self, _attr: &str) {
-        self.delegate.interpolate_and_scale(_attr);
-    }
-
-    #[inline]
-    fn total(&self) -> Weight {
-        self.delegate.total()
-    }
-
-    #[inline]
-    fn phase(&self) -> Phase {
-        self.delegate.phase()
-    }
-}
-
-impl fmt::Display for ExplainScorer {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fn pad<T: Into<f64>>(t: T) -> String {
-            Formatting::decimal(2, t)
-        }
-
-        writeln!(
-            f,
-            "{:>27} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |   {:<15}",
-            "attr", "w", "w mg", "w eg", "int", "mg", "eg", "b", "b mg", "b eg", "wt"
-        )?;
-        for (i, sw) in Switches::all_scoring().iter().enumerate() {
-            let vec = vec![&self.mat, &self.pos, &self.mob, &self.paw, &self.saf, &self.con, &self.tem][i];
-            for (attr, w, b, wt) in vec {
-                let (attr, w, b, wt) = (attr, *w, *b, *wt);
-                writeln!(
-                    f,
-                    "{:>27} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |   {:<15}",
-                    attr,
-                    w,
-                    pad((w * wt).s()),
-                    pad((w * wt).e()),
-                    pad(((w * wt) - (b * wt)).interpolate(self.phase())),
-                    pad((w * wt).s() - (b * wt).s()),
-                    pad((w * wt).e() - (b * wt).e()),
-                    b,
-                    pad((b * wt).s()),
-                    pad((b * wt).e()),
-                    wt.to_string()
-                )?;
-            }
-            if true { // !sw.intersects(Switches::TEMPO | Switches::CONTEMPT) {
-                let attr = sw.name();
-                let wwt: Weight = vec.iter().map(|&(_, w, _b, wt)| w * wt).sum();
-                let bwt: Weight = vec.iter().map(|&(_, _w, b, wt)| b * wt).sum();
-                let twt: Weight = vec.iter().map(|&(_, w, b, wt)| w * wt - b * wt).sum();
-                writeln!(
-                    f,
-                    "{:>27} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |   {:<15}",
-                    "", "-----", "-----", "-----", "-----", "-----", "-----", "-----", "-----", "-----", ""
-                )?;
-                writeln!(
-                    f,
-                    "{:>27} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |   {:<15}",
-                    attr,
-                    "",
-                    pad(wwt.s()),
-                    pad(wwt.e()),
-                    pad(twt.interpolate(self.phase())),
-                    pad(twt.s()),
-                    pad(twt.e()),
-                    "",
-                    pad(bwt.s()),
-                    pad(bwt.e()),
-                    ""
-                )?;
-                writeln!(
-                    f,
-                    "{:>27} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |   {:<15}",
-                    "", "", "", "", "", "", "", "", "", "", ""
-                )?;
-            }
-        }
-        writeln!(
-            f,
-            "{:>27} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |   {:<15}",
-            "", "-----", "-----", "-----", "=====", "-----", "-----", "-----", "-----", "-----", "=========="
-        )?;
-        writeln!(
-            f,
-            "{:>27} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |      Phase{:>3} %",
-            "EVALUATION",
-            "",
-            "",
-            "",
-            pad(self.total().interpolate(self.phase())),
-            pad(self.total().s()),
-            pad(self.total().e()),
-            "",
-            "",
-            "",
-            self.phase().0
-        )?;
-        writeln!(
-            f,
-            "{:>27} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |   {:<15}",
-            "", "", "", "", "=====", "-----", "-----", "", "", "", "=========="
-        )?;
-        Ok(())
-    }
-}
-
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct ModelScore {
-    phase: Phase,
-    drawish: i32,
-    material: Weight,
-    position: Weight,
-    pawn: Weight,
-    mobility: Weight,
-    safety: Weight,
-    tempo: Weight,
-    contempt: Weight,
-    interpolated: f32,
-}
-
-impl ModelScore {
-    pub fn new(phase: Phase, drawish: i32) -> Self {
-        Self {
-            phase,
-            drawish,
-            ..Self::default()
-        }
-    }
-
-    pub fn as_f32(&self) -> f32 {
-        self.interpolated
-    }
-
-    pub fn as_score(&self) -> Score {
-        Score::from_cp(self.interpolated.round() as i32)
-    }
-}
-
-impl Scorer for ModelScore {
-    #[inline]
-    fn annotate(&mut self, _annotation: &str) {}
-
-    // #[inline]
-    // fn set_multiplier(&mut self, mult: i32) {
-    //     self.mult = mult;
-    // }
-
-    #[inline]
-    fn material(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
-        self.material += (w_value - b_value) * score;
-    }
-    #[inline]
-    fn position(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
-        self.position += (w_value - b_value) * score;
-    }
-    #[inline]
-    fn pawn(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
-        self.pawn += (w_value - b_value) * score;
-    }
-    #[inline]
-    fn mobility(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
-        self.mobility += (w_value - b_value) * score;
-    }
-
-    #[inline]
-    fn safety(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
-        self.safety += (w_value - b_value) * score;
-    }
-
-    #[inline]
-    fn tempo(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
-        self.tempo += (w_value - b_value) * score;
-    }
-
-    #[inline]
-    fn contempt(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
-        self.contempt += (w_value - b_value) * score;
-    }
-
-    #[inline]
-    fn interpolate_and_scale(&mut self, _attr: &str) {
-        self.interpolated = self.total().interpolate(self.phase) as f32 * (100 - self.drawish) as f32 / 100.0;
-    }
-
-    #[inline]
-    fn total(&self) -> Weight {
-        self.material + self.position + self.pawn + self.mobility + self.safety + self.tempo + self.contempt
-    }
-
-    #[inline]
-    fn phase(&self) -> Phase {
-        self.phase
-    }
-}
 
 impl Model {
     pub fn new() -> Self {
         Self::default()
     }
 
-    pub fn from_board(b: &Board, switches: Switches) -> Self {
+    pub fn phase(&self) -> Phase {
+        self.phase
+    }
+
+    pub fn drawish(&self) -> i32 {
+        self.board.fifty_halfmove_clock()
+    }
+
+    pub fn from_board(b: &Board, phase: Phase, switches: Switches) -> Self {
         let material = b.material();
         let endgame = EndGame::from_board(b);
         Self {
@@ -466,6 +149,7 @@ impl Model {
             white: ModelSide::from_board(b, Color::White, &material, endgame, switches),
             black: ModelSide::from_board(b, Color::Black, &material, endgame, switches),
             endgame,
+            phase,
             csv: false,
         }
     }
@@ -476,7 +160,6 @@ impl ModelSide {
     pub fn new() -> Self {
         Self::default()
     }
-
 
     #[inline]
     pub fn from_board(b: &Board, c: Color, mat: &Material, eg: EndGame, sw: Switches) -> Self {
@@ -932,7 +615,6 @@ impl ModelSide {
             + (d3 & (b.rooks()) & them).popcount() * 4
             + (d3 & (b.queens()) & them).popcount() * 4;
 
-        
         if b.queens().any() {
             self.king_safety_bonus = self.adjacent_shield + self.nearby_shield;
         }
@@ -962,50 +644,50 @@ impl ModelSide {
 
         self.checkers = b.checkers_of(c).popcount();
         //        self.attacks_on_opponent_king_area += (our_raw_attacks & bb.within_chebyshev_distance_inclusive(ksq, 1)).popcount();
-   
+
         self.pieces_near_king = (d2 & b.occupied() & us & (b.queens() & b.knights())).popcount();
         self.pinned_near_king = (b.pinned(c) & d1).popcount();
         self.pinned_far = (b.pinned(c)).popcount() - self.pinned_near_king;
         self.discovered_checks = (BoardCalcs::pinned_and_unmaskers(b, c).1 - b.pawns()).popcount();
 
-            // }
-            // FIXME Urgent!
-            // self.open_files_near_king = (d1 & bb.open_files(b.pawns()) & ksq.rank()).popcount();
+        // }
+        // FIXME Urgent!
+        // self.open_files_near_king = (d1 & bb.open_files(b.pawns()) & ksq.rank()).popcount();
 
-            // we give a castling bonus if either yet to castle or we have achieved the aim of
-            // castling by having king before (or after) both rooks or pawns < 6 per side
-            // if ( b.castling().contains(CastlingRights::king_side_right(c)) &&
-            //     b.castling().contains(CastlingRights::queen_side_right(c)))
-            //     ||
-            //     ((b.rooks() & b.us()).any() &&
-            //     (ksq < (b.rooks() & b.us()).first_square()  || ksq > (b.rooks() & b.us()).last_square() ))
-            //     ||
-            //     b.pawns().popcount() < 10 {
-            //         self.castling_sides = 1;
-            //     }
-            // if (b.castling().contains(CastlingRights::king_side_right(c)) &&
-            // b.castling().contains(CastlingRights::queen_side_right(c)))
-            // ||
+        // we give a castling bonus if either yet to castle or we have achieved the aim of
+        // castling by having king before (or after) both rooks or pawns < 6 per side
+        // if ( b.castling().contains(CastlingRights::king_side_right(c)) &&
+        //     b.castling().contains(CastlingRights::queen_side_right(c)))
+        //     ||
+        //     ((b.rooks() & b.us()).any() &&
+        //     (ksq < (b.rooks() & b.us()).first_square()  || ksq > (b.rooks() & b.us()).last_square() ))
+        //     ||
+        //     b.pawns().popcount() < 10 {
+        //         self.castling_sides = 1;
+        //     }
+        // if (b.castling().contains(CastlingRights::king_side_right(c)) &&
+        // b.castling().contains(CastlingRights::queen_side_right(c)))
+        // ||
 
-            //     ||
-            //       ( b.castling().contains(CastlingRights::king_side_right(c)) ||
-            //     b.castling().contains(CastlingRights::queen_side_right(c)))
+        //     ||
+        //       ( b.castling().contains(CastlingRights::king_side_right(c)) ||
+        //     b.castling().contains(CastlingRights::queen_side_right(c)))
 
-            //     {
-            //     self.castling_position = std::cmp::max((b.pawns() & Bitboard::RANKS_27).popcount() - 6, 0);
-            // }
-            // if self.adjacent_shield + self.nearby_shield >= 2
-            //         &&
-            //         ((b.rooks() & us).popcount() == 2
-            //         &&
-            //         (ksq.file_index() < (b.rooks() & us).first_square().file_index()  || ksq.file_index() > (b.rooks() & us).last_square().file_index() ))
-            //     ||
-            //     self.adjacent_shield + self.nearby_shield >= 2
-            //         &&
-            //         ((b.rooks() & us).popcount() == 1 && (3 - (b.rooks() & us).first_square().file_index()) >= ksq.file_index() )
-            //         {
-            //         self.castling_position = 1; //std::cmp::max((b.pawns() & Bitboard::RANKS_27).popcount() - 6, 0);
-            // }
+        //     {
+        //     self.castling_position = std::cmp::max((b.pawns() & Bitboard::RANKS_27).popcount() - 6, 0);
+        // }
+        // if self.adjacent_shield + self.nearby_shield >= 2
+        //         &&
+        //         ((b.rooks() & us).popcount() == 2
+        //         &&
+        //         (ksq.file_index() < (b.rooks() & us).first_square().file_index()  || ksq.file_index() > (b.rooks() & us).last_square().file_index() ))
+        //     ||
+        //     self.adjacent_shield + self.nearby_shield >= 2
+        //         &&
+        //         ((b.rooks() & us).popcount() == 1 && (3 - (b.rooks() & us).first_square().file_index()) >= ksq.file_index() )
+        //         {
+        //         self.castling_position = 1; //std::cmp::max((b.pawns() & Bitboard::RANKS_27).popcount() - 6, 0);
+        // }
 
         //  if ( b.castling().contains(CastlingRights::king_side_right(c)) &&
         // b.castling().contains(CastlingRights::queen_side_right(c))) {
@@ -1138,18 +820,20 @@ impl ModelSide {
 mod tests {
     use super::*;
     use crate::catalog::Catalog;
-    use crate::eval::eval::SimpleScorer;
+    use crate::eval::eval::Eval;
     use crate::tags::Tag;
     use crate::test_log::test;
     use crate::BoardBuf;
+    use crate::eval::scorer::ReportLine;
     // use crate::utils::StringUtils;
 
     #[test]
     fn test_model_pawn() {
+        let phaser = &Eval::new().phaser;
         let positions = Catalog::pawn_structure();
         let mut comparisons = 0;
         for p in &positions {
-            let model = Model::from_board(p.board(), Switches::ALL_SCORING);
+            let model = Model::from_board(p.board(), p.board().phase(phaser), Switches::ALL_SCORING);
             if let Tag::Comment(_n, var_name) = p.tag("c0") {
                 info!("position {} c0 {}", p, var_name);
                 if let Tag::Comment(_n, white) = p.tag("c1") {
@@ -1221,7 +905,7 @@ mod tests {
 
     #[test]
     fn model_csv_test() {
-        let eval = &mut SimpleScorer::new();
+        let eval = &mut Eval::new();
         eval.tempo = false;
 
         let positions = Catalog::example_game();

@@ -309,7 +309,7 @@ mod tests {
         // let pos = &Catalog::quiesc         e()[1];
         // let mut b = pos.board().clone(); //.color_flip();
         debug!("position {}", pos);
-        let mut eval = SimpleScorer::new();
+        let mut eval = Eval::new();
         eval.position = false;
         eval.mobility = false;
         eval.phasing = false;

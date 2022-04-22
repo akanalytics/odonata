@@ -3,7 +3,7 @@ use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::catalog::Catalog;
 use crate::comms::json_rpc::JsonRpc;
-use crate::eval::eval::SimpleScorer;
+use crate::eval::eval::Eval;
 use crate::infra::component::{Component, State};
 use crate::infra::version::Version;
 use crate::movelist::MoveList;
@@ -344,7 +344,7 @@ impl Uci {
     fn ext_uci_static_eval(&mut self, arg: &Args) -> Result<()> {
         let mut b = Board::new_empty();
         Self::parse_fen(arg, &mut b)?;
-        let eval = SimpleScorer::new();
+        let eval = Eval::new();
         let score = b.eval(&eval, &Node::root(0));
         Self::print(&format!("result:{}", score));
         Ok(())

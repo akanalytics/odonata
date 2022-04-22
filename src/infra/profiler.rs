@@ -46,6 +46,7 @@ impl Profiler {
     #[inline]
     pub fn print(&mut self) {
         let counts = self.group.read().unwrap();
+        self.iters = std::cmp::max(1, self.iters);
         println!(
             "PROF: {:<25}\t{:<15}\t{:<15}\t{:<15}\t{:<15}\t{:<15}\nPROF: {:<25}\t{:<15}\t{:<15}\t{:<15}\t{:<15}\t{:.2}\n",
             "name",
@@ -67,5 +68,68 @@ impl Profiler {
 impl Drop for Profiler {
     fn drop(&mut self) {
         self.print()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use iai::black_box;
+
+    use super::*;
+    use crate::test_log::test;
+
+    #[derive(Default)]
+    struct Struct {
+        a0: i32,
+        a1: i32,
+        a2: i32,
+        a3: i32,
+        a4: i32,
+        a5: i32,
+        a6: i32,
+        a7: i32,
+    }
+
+    #[derive(Default)]
+    struct Array {
+        a: [i32; 8],
+    }
+
+    #[test]
+    fn bench_simple_struct() {
+        let mut prof1 = Profiler::new("struct access".into());
+
+        for _iter in 0..100 {
+            let mut s = Struct::default();
+            prof1.start();
+            s.a0 = black_box(0);
+            s.a1 = black_box(1);
+            s.a2 = black_box(2);
+            s.a3 = black_box(3);
+            s.a4 = black_box(4);
+            s.a5 = black_box(5);
+            s.a6 = black_box(6);
+            s.a7 = black_box(7);
+            prof1.stop();
+        }
+    }
+
+    #[test]
+    fn bench_simple_array() {
+        let mut prof2 = Profiler::new("array access".into());
+        for _iter in 0..100 {
+            let mut a = Array::default();
+            prof2.start();
+            a.a[0] = black_box(0);
+            a.a[1] = black_box(1);
+            a.a[2] = black_box(2);
+            a.a[3] = black_box(3);
+            a.a[4] = black_box(4);
+            a.a[5] = black_box(5);
+            a.a[6] = black_box(6);
+            a.a[7] = black_box(7);
+            prof2.stop();
+        }
     }
 }

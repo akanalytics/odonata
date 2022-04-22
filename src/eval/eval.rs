@@ -1,8 +1,8 @@
 use crate::bitboard::square::Square;
 use crate::board::Board;
 use crate::eval::material_balance::MaterialBalance;
-use crate::eval::model::ModelScore;
-use crate::eval::model::Scorer;
+use crate::eval::scorer::{ModelScore,ExplainScorer};
+use crate::eval::scorer::Scorer;
 use crate::eval::pst::Pst;
 use crate::eval::score::Score;
 use crate::eval::see::See;
@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 
 use std::fmt;
 
-use super::model::{ExplainScorer, Model};
+use super::model::{Model};
 
 // RunningTotal
 //
@@ -126,7 +126,7 @@ impl<T> std::ops::IndexMut<Piece> for PieceArray<T> {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
-pub struct SimpleScorer {
+pub struct Eval {
     pub material: bool,
     pub position: bool,
     pub mobility: bool,
@@ -229,7 +229,7 @@ pub struct SimpleScorer {
     pub mb: MaterialBalance,
 }
 
-impl Default for SimpleScorer {
+impl Default for Eval {
     fn default() -> Self {
         Self {
             mb: MaterialBalance::default(),
@@ -335,7 +335,7 @@ impl Default for SimpleScorer {
     }
 }
 
-impl Component for SimpleScorer {
+impl Component for Eval {
     fn new_game(&mut self) {
         self.mb.new_game();
         self.phaser.new_game();
@@ -349,7 +349,7 @@ impl Component for SimpleScorer {
     }
 }
 
-impl fmt::Display for SimpleScorer {
+impl fmt::Display for Eval {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "[material balance]\n{}", self.mb)?;
         writeln!(f, "[phaser]\n{}", self.phaser)?;
@@ -405,7 +405,7 @@ impl fmt::Display for SimpleScorer {
 }
 
 // builder methods
-impl SimpleScorer {
+impl Eval {
     pub fn new() -> Self {
         Self::default()
     }
@@ -426,7 +426,7 @@ impl SimpleScorer {
     }
 }
 
-impl SimpleScorer {
+impl Eval {
     pub fn w_tempo_adjustment(&self, us: Color) -> Weight {
         // axiom: we're white
         // white to move => advantage, black to move means white has a disadvantage
@@ -479,6 +479,7 @@ impl SimpleScorer {
     }
 
     pub fn predict(&self, m: &Model, scorer: &mut impl Scorer) {
+        scorer.set_phase(m.phase());
         if m.mat.is_insufficient() && m.switches.contains(Switches::INSUFFICIENT_MATERIAL) {
             if m.switches.contains(Switches::CONTEMPT) {
                 let contempt = m.turn.chooser_wb(1, 0);
@@ -741,9 +742,9 @@ impl SimpleScorer {
     }
 
     pub fn w_eval_explain(&self, b: &Board, csv: bool) -> ExplainScorer {
-        let mut model = Model::from_board(b, Switches::ALL_SCORING);
+        let mut model = Model::from_board(b, b.phase(&self.phaser), Switches::ALL_SCORING);
         model.csv = csv;
-        let mut scorer = ExplainScorer::new(b.phase(&self.phaser), b.fifty_halfmove_clock());
+        let mut scorer = ExplainScorer::new();
         self.predict(&model, &mut scorer);
         scorer
     }
@@ -761,8 +762,8 @@ impl SimpleScorer {
         if !self.pawn {
             switches -= Switches::PAWN;
         }
-        let model = Model::from_board(b, switches);
-        let mut scorer = ModelScore::new(b.phase(&self.phaser), b.fifty_halfmove_clock());
+        let model = Model::from_board(b, b.phase(&self.phaser), switches);
+        let mut scorer = ModelScore::new();
         self.predict(&model, &mut scorer);
         Score::from_cp(scorer.as_score().as_i16() as i32 / self.quantum * self.quantum)
     }
@@ -787,37 +788,37 @@ impl Board {
     }
 
     #[inline]
-    pub fn eval_qsearch(&self, eval: &mut SimpleScorer, nd: &Node) -> Score {
+    pub fn eval_qsearch(&self, eval: &mut Eval, nd: &Node) -> Score {
         QUIESCENCE.increment();
         self.signum() * eval.w_eval_qsearch(self, nd)
     }
 
     #[inline]
-    pub fn eval_draw(&self, eval: &mut SimpleScorer, nd: &Node) -> Score {
+    pub fn eval_draw(&self, eval: &mut Eval, nd: &Node) -> Score {
         self.signum() * eval.w_eval_draw(self, nd)
     }
 
     #[inline]
-    pub fn eval_move_see(&self, eval: &SimpleScorer, mv: Move) -> Score {
+    pub fn eval_move_see(&self, eval: &Eval, mv: Move) -> Score {
         SEE.increment();
         Score::from_cp(eval.see.eval_move_see(self, mv))
     }
 
     #[inline]
-    pub fn eval_move_material(&self, eval: &SimpleScorer, mv: &Move) -> Score {
+    pub fn eval_move_material(&self, eval: &Eval, mv: &Move) -> Score {
         MOVE.increment();
         // FIXME! far too slow (-7 ELO)
         Score::from_cp(eval.eval_move_material(mv).interpolate(self.phase(&eval.phaser)) as i32)
     }
 
     #[inline]
-    pub fn eval(&self, eval: &SimpleScorer, nd: &Node) -> Score {
+    pub fn eval(&self, eval: &Eval, nd: &Node) -> Score {
         ALL.increment();
         self.signum() * eval.w_evaluate(self, nd)
     }
 
     #[inline]
-    pub fn eval_some(&self, eval: &SimpleScorer, sw: Switches) -> Score {
+    pub fn eval_some(&self, eval: &Eval, sw: Switches) -> Score {
         profile_fn!(board.eval_some);
         // let _g = hprof::enter("eval some");
         ALL.increment();
@@ -837,14 +838,14 @@ mod tests {
 
     #[test]
     fn eval_serde_test() {
-        info!("\n{}", toml::to_string(&SimpleScorer::default()).unwrap());
+        info!("\n{}", toml::to_string(&Eval::default()).unwrap());
         // info!("\n{}", toml::to_string_pretty(&SimpleScorer::default()).unwrap());
     }
 
     #[test]
     fn test_score_material() {
         let board = Catalog::starting_board();
-        let eval = &mut SimpleScorer::new();
+        let eval = &mut Eval::new();
         eval.tempo = false;
         info!("starting\n{}", eval.w_eval_explain(&board, false));
         assert_eq!(board.eval(eval, &Node::root(0)), Score::from_cp(0));
@@ -881,7 +882,7 @@ mod tests {
 
     #[test]
     fn test_score_position() {
-        let mut eval = SimpleScorer::new();
+        let mut eval = Eval::new();
 
         let bd = Board::parse_fen("8/P7/8/8/8/8/8/8 w - - 0 1").unwrap().as_board();
         eval.set_switches(false);
@@ -915,7 +916,7 @@ mod tests {
 
     #[test]
     fn test_score_mobility() {
-        let mut eval = SimpleScorer::new();
+        let mut eval = Eval::new();
         eval.pawn_doubled = Weight::from_i32(-1, -1);
         eval.pawn_isolated = Weight::zero();
         eval.mobility_phase_disable = 101;
@@ -978,7 +979,7 @@ mod tests {
 
     #[test]
     fn test_score_safety() {
-        let mut eval = SimpleScorer::new();
+        let mut eval = Eval::new();
         let b = Board::parse_fen("r7/8/8/8/8/1P6/PP6/K7 w - - 0 1").unwrap().as_board();
 
         eval.set_switches(false);
@@ -1008,14 +1009,16 @@ mod tests {
         eval.pawn_adjacent_shield = Weight::zero();
         eval.pawn_nearby_shield = Weight::zero();
         let att = eval.w_eval_some(&b, Switches::ALL_SCORING);
-        assert_eq!(att - e1, Score::from_cp(75), "{} {:?}", eval.w_eval_explain(&b, false), Model::from_board(&b, Switches::ALL_SCORING)); // 1 attack on nearby pawn
+        assert_eq!(att - e1, Score::from_cp(75), "{} {:?}", 
+            eval.w_eval_explain(&b, false), 
+            Model::from_board(&b, b.phase(&eval.phaser),Switches::ALL_SCORING)); // 1 attack on nearby pawn
     }
 
     #[test]
     fn test_eval_bug1() {
         let pos = &Catalog::bratko_kopec()[0];
         let b = pos.board();
-        let mut eval = SimpleScorer::default();
+        let mut eval = Eval::default();
         eval.mb.enabled = false;
         let explain = eval.w_eval_explain(b, false);
         println!("{}", explain);
@@ -1024,7 +1027,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_eval_various() {
-        let mut eval = SimpleScorer::default();
+        let mut eval = Eval::default();
         eval.mb.enabled = false;
         let node = Node::root(0);
         for pos in Catalog::win_at_chess() {
@@ -1037,7 +1040,7 @@ mod tests {
 
     #[test]
     fn bench_eval() {
-        let mut eval = SimpleScorer::default();
+        let mut eval = Eval::default();
         eval.mb.enabled = false;
         let mut prof = Profiler::new("bench_eval".into());
         let node = Node::root(0);

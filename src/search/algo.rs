@@ -1,7 +1,7 @@
 use crate::board::Board;
 use crate::cache::tt2::TranspositionTable2;
 use crate::clock::Clock;
-use crate::eval::eval::SimpleScorer;
+use crate::eval::eval::Eval;
 use crate::eval::recognizer::Recognizer;
 use crate::eval::score::Score;
 use crate::globals::counts;
@@ -52,7 +52,7 @@ pub struct Algo {
     pub analyse_mode: bool, // tries to find full PV etc
 
     pub ids: IterativeDeepening,
-    pub eval: SimpleScorer,
+    pub eval: Eval,
     pub qsearch: QSearch,
     pub nmp: NullMovePruning,
     pub futility: Futility,
@@ -105,7 +105,7 @@ impl Algo {
         Algo::default()
     }
 
-    pub fn set_eval(&mut self, eval: SimpleScorer) -> &mut Self {
+    pub fn set_eval(&mut self, eval: Eval) -> &mut Self {
         self.eval = eval;
         self
     }
@@ -404,7 +404,7 @@ mod tests {
     #[test]
     fn test_minmax() {
         let pos = Catalog::starting_position();
-        let eval = SimpleScorer::new().set_position(false);
+        let eval = Eval::new().set_position(false);
         let mut algo = Algo::new();
         algo.set_position(pos);
         algo.qsearch.enabled = false;
@@ -458,7 +458,7 @@ mod tests {
     fn jons_chess_problem() {
         let pos = Position::parse_epd("2r2k2/5pp1/3p1b1p/2qPpP2/1p2B2P/pP3P2/2P1R3/2KRQ3 b - - 0 1").unwrap();
         println!("{}", pos);
-        let eval = SimpleScorer::new().set_position(false);
+        let eval = Eval::new().set_position(false);
         let mut search = Algo::new();
         search.set_timing_method(TimeControl::Depth(9)).set_eval(eval); 
         search.set_position(pos);

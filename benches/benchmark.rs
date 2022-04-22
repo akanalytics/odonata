@@ -634,9 +634,9 @@ fn benchmark_ordering(c: &mut Criterion) {
 fn benchmark_eval(c: &mut Criterion) {
     let mut group = c.benchmark_group("eval");
     let positions = &Catalog::win_at_chess();
-    let ef = &mut SimpleScorer::new();
+    let ef = &mut Eval::new();
     let phaser = Phaser::default();
-    let ef_no_pos = &mut SimpleScorer::new().set_position(false);
+    let ef_no_pos = &mut Eval::new().set_position(false);
     group.bench_function("material", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();

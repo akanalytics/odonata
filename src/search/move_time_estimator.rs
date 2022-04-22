@@ -269,7 +269,7 @@ mod tests {
     #[test]
     fn test_mate_with_tc() {
         let position = &Catalog::mate_in_2()[0];
-        let eval = SimpleScorer::new().set_position(false);
+        let eval = Eval::new().set_position(false);
         let mut search = Algo::new()
             .set_timing_method(TimeControl::Depth(3))
             .set_eval(eval)
