@@ -27,6 +27,8 @@ junk/**
 # profiling output
 perf.data*
 perf*.data
+firefox.perf
+*.folded
 flamegraph*.svg
 flame.svg
 cachegrind.out.*

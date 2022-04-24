@@ -127,7 +127,7 @@ impl Rpc for RpcImpl {
             code: jsonrpc_core::ErrorCode::InternalError,
             data: None,
         })?;
-        let uploaded_count = Tuning::upload_positions(&mut eng, &positions).map_err(to_rpc_error)?;
+        let uploaded_count = Tuning::upload_positions(&mut eng, positions).map_err(to_rpc_error)?;
         info!("Uploaded {} positions", uploaded_count);
         Ok(uploaded_count as i32)
     }

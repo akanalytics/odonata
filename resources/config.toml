@@ -46,6 +46,7 @@ search_depth = 0
 ignore_known_outcomes = true
 ignore_endgames = true
 multi_threading_min_positions = 20000
+threads = 31
 logistic_steepness_k = { s = 4, e = 4 }
 ignore_draws = false
 consolidate = false

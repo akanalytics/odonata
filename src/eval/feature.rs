@@ -1,22 +1,47 @@
+use itertools::Itertools;
 use std::fmt;
 
-use itertools::Itertools;
-
-use crate::eval::score::Score;
 use crate::eval::weight::Weight;
 use crate::outcome::Outcome;
 use crate::phaser::Phase;
 
 #[derive(Default, Clone, Debug)]
+pub struct Sparse {
+    index: u16,
+    value: i16,
+}
+
+impl Sparse {
+    #[inline(always)]
+    pub const fn new(value: i16, index: u16) -> Self {
+        Sparse { index, value }
+    }
+
+    #[inline]
+    pub const fn index(&self) -> usize {
+        self.index as usize
+    }
+
+    #[inline]
+    pub const fn value(&self) -> i16 {
+        self.value
+    }
+}
+
+#[derive(Default, Clone, Debug)]
 pub struct FeatureVector {
-    pub values: Vec<(i32, usize)>,
+    pub values: Vec<Sparse>,
     pub outcome: Outcome,
     pub phase: Phase,
 }
 
 impl FeatureVector {
+    #[inline]
     pub fn value(&self, index: usize) -> Option<i32> {
-        self.values.iter().find(|(_val, i)| index == *i).map(|(v, _i)| *v)
+        self.values
+            .iter()
+            .find(|&sparse| index == sparse.index() as usize)
+            .map(|sparse| sparse.value() as i32)
     }
 }
 
@@ -28,7 +53,18 @@ pub struct FeatureMatrix {
 
 #[derive(Default, Clone)]
 pub struct WeightsVector {
-    pub weights: Vec<(String, Weight)>,
+    pub weights: Vec<Weight>,
+    pub names: Vec<String>,
+}
+
+impl fmt::Display for WeightsVector {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        assert!(self.weights.len() == self.names.len());
+        for (i, weight) in self.weights.iter().enumerate() {
+            writeln!(f, "{} = {}", self.names[i], weight)?
+        }
+        Ok(())
+    }
 }
 
 impl FeatureMatrix {
@@ -36,15 +72,27 @@ impl FeatureMatrix {
         Self::default()
     }
 
-    pub fn dot_product(&self, fv: &FeatureVector, wv: &WeightsVector) -> Score {
+    #[inline]
+    pub fn dot_product(&self, fv: &FeatureVector, wv: &WeightsVector) -> f32 {
         // debug_assert!(self.feature_names.len() == wv.weights.len());
-        let mut dp = Weight::zero();
-        for (feature_value, index) in &fv.values {
-            dp += *feature_value * wv.weights[*index].1;
+        let mut s = 0.0;
+        let mut e = 0.0;
+        for sparse in &fv.values {
+            // dp += *feature_value * unsafe{ wv.weights.get_unchecked(*index as usize) }.1.s();
+            let w = unsafe { wv.weights.get_unchecked(sparse.index()) };
+            s += sparse.value() as f32 * w.s();
+            e += sparse.value() as f32 * w.e();
             // debug!("{index:>3} {:>27}: {} x {} ", self.feature_names[*index], feature_value, wv.weights[*index].1)
         }
+
+        // let (s, e) = fv.values.iter().fold((0.0_f32, 0.0_f32), |(ss, se), sparse| {
+        //     let (ws, we) = unsafe { wv.weights.get_unchecked(sparse.index() as usize) }.as_tuple();
+        //     (ss + sparse.value() as f32 * ws, se + sparse.value() as f32 * we)
+        // });
+
         // debug!("total {dp}");
-        Score::from_cp(dp.interpolate(fv.phase).round() as i32)
+        // Score::from_cp(dp.interpolate(fv.phase).round() as i32)
+        Weight::from_f32(s, e).interpolate(fv.phase)
     }
 }
 
@@ -54,6 +102,26 @@ impl fmt::Debug for FeatureMatrix {
             .field("feature_names", &self.feature_names.iter().enumerate().collect_vec())
             .field("#features", &self.feature_vectors.len())
             .finish()
+    }
+}
+
+trait CsvDisplay {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result;
+}
+
+impl CsvDisplay for FeatureMatrix {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "{}", self.feature_names.iter().join(","))?;
+        for r in self.feature_vectors.iter() {
+            for (c, _name) in self.feature_names.iter().enumerate() {
+                match r.value(c as usize) {
+                    Some(v) => write!(f, "{},", v),
+                    None => write!(f, "0,"),
+                }?;
+            }
+            writeln!(f)?;
+        }
+        Ok(())
     }
 }
 
@@ -88,20 +156,40 @@ mod tests {
     use super::*;
     use crate::test_log::test;
 
-    #[test]
-    fn test_feature_matrix() {
+    fn create_feature_matrix() -> FeatureMatrix {
         let mut fm = FeatureMatrix::new();
         fm.feature_names = vec!["wheels".into(), "passengers".into(), "windows".into()];
         fm.feature_vectors.push(FeatureVector {
-            values: vec![(4, 0), (3, 1), (5, 2)],
+            values: Default::default(),
             outcome: Outcome::WinBlack,
             phase: Phase(30),
         }); // car
+        fm.feature_vectors[0].values.push(Sparse::new(4, 0));
+        fm.feature_vectors[0].values.push(Sparse::new(3, 1));
+        fm.feature_vectors[0].values.push(Sparse::new(5, 2));
+
         fm.feature_vectors.push(FeatureVector {
-            values: vec![(2, 0), (1, 1)],
+            values: Default::default(),
             outcome: Outcome::WinBlack,
             phase: Phase(30),
         }); // motorbike
+        fm.feature_vectors[1].values.push(Sparse::new(2, 0));
+        fm.feature_vectors[1].values.push(Sparse::new(1, 1));
+        fm
+    }
+
+    #[test]
+    fn test_feature_matrix() {
+        let fm = create_feature_matrix();
         println!("{}", fm);
+    }
+
+    fn test_csv_feature_matrix() {
+        let _fm = create_feature_matrix();
+        let buf = String::new();
+        // let mut formatter = std::fmt::Formatter::new(&mut buf);
+        // fmt::Display::fmt(self, &mut formatter)
+        //         .expect("a Display implementation returned an error unexpectedly");
+        println!("to sting csv:\n{buf}");
     }
 }

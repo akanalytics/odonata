@@ -149,11 +149,11 @@ mod tests {
 
     #[test]
     fn bench_bk() {
-        let mut prof = Profiler::new("bench_search (per node)".into());
+        let mut prof = Profiler::new("bench_search (per 1000 node)".into());
         prof.start();
-        let total_nodes = Bench::search(TimeControl::NodeCount(1000), None);
+        let total_nodes = Bench::search(TimeControl::NodeCount(1000000), None);
         prof.stop();
-        prof.set_iters(total_nodes as u64);
+        prof.set_iters((total_nodes / 1000) as u64);
     }
 
 }

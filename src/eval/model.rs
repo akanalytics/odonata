@@ -16,8 +16,8 @@ use super::endgame::EndGame;
 
 #[derive(Clone, Default, Debug)]
 pub struct Model {
-    // material
     pub switches: Switches,
+    pub csv: bool,
     pub turn: Color,
     pub mat: Material,
     pub endgame: EndGame,
@@ -26,7 +26,6 @@ pub struct Model {
 
     pub white: ModelSide,
     pub black: ModelSide,
-    pub csv: bool,
 }
 
 #[derive(Clone, Default, Debug)]

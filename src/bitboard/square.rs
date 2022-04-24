@@ -6,9 +6,6 @@ use std::fmt;
 #[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Square(u8);
 
-
-
-
 impl Default for Square {
     #[inline]
     fn default() -> Self {
@@ -154,11 +151,22 @@ impl Square {
         (b'1' + y as u8) as char
     }
 
-    pub fn uci(self) -> String {
+    pub fn uci(self) -> &'static str {
+        // if self.is_null() {
+        //     "-".to_string()
+        // } else {
+        //     [self.file_char(), self.rank_char()].iter().collect()
+        // }
         if self.is_null() {
-            "-".to_string()
+            "-"
         } else {
-            [self.file_char(), self.rank_char()].iter().collect()
+            static UCIS: [&str; 64] = [
+                "a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1", "a2", "b2", "c2", "d2", "e2", "f2", "g2", "h2", "a3", "b3", "c3", "d3",
+                "e3", "f3", "g3", "h3", "a4", "b4", "c4", "d4", "e4", "f4", "g4", "h4", "a5", "b5", "c5", "d5", "e5", "f5", "g5", "h5",
+                "a6", "b6", "c6", "d6", "e6", "f6", "g6", "h6", "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7", "a8", "b8", "c8", "d8",
+                "e8", "f8", "g8", "h8",
+            ];
+            UCIS[self.index()]
         }
     }
 
@@ -231,8 +239,7 @@ impl Square {
 
     //  see https://www.chessprogramming.org/Distance
     pub fn calc_manhattan_distance(s1: Square, s2: Square) -> i32 {
-        i32::abs(s1.rank_index() as i32 - s2.rank_index() as i32) +
-        i32::abs(s1.file_index() as i32 - s2.file_index() as i32)
+        i32::abs(s1.rank_index() as i32 - s2.rank_index() as i32) + i32::abs(s1.file_index() as i32 - s2.file_index() as i32)
     }
 
     /// flip vertical - https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating
@@ -299,6 +306,7 @@ mod tests {
 
     use super::*;
     use crate::globals::constants::*;
+    use crate::infra::profiler::*;
 
     #[test]
     fn test_square() {
@@ -368,5 +376,32 @@ mod tests {
 
         assert_eq!(Square::calc_between(f1.square(), h3.square()), f1 | g2 | h3);
         assert_eq!(Square::calc_strictly_between(f1.square(), h3.square()), g2);
+    }
+
+    #[test]
+    fn test_square_uci() {
+        let mut s = String::new();
+        for sq in Bitboard::all().squares() {
+            s.push_str(&format!("\"{}{}\", ", sq.file_char(), sq.rank_char()));
+        }
+        println!("s = [ {s} ]");
+        assert_eq!(Square::null().uci(), "-");
+        assert_eq!(a1.square().uci(), "a1");
+        assert_eq!(b2.square().uci(), "b2");
+        assert_eq!(c3.square().uci(), "c3");
+        assert_eq!(b5.square().uci(), "b5");
+        assert_eq!(c5.square().uci(), "c5");
+        assert_eq!(e5.square().uci(), "e5");
+        assert_eq!(h8.square().uci(), "h8");
+    }
+
+    #[test]
+    fn bench_square_uci() {
+        let mut p = Profiler::new("square_uci".into());
+        p.start();
+        for sq in Bitboard::all().squares() {
+            black_box(&sq.uci());
+        }
+        p.stop();
     }
 }

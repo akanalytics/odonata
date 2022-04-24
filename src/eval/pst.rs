@@ -57,7 +57,7 @@ impl Serialize for Pst {
         for (i, &p) in Piece::ALL_BAR_NONE.iter().enumerate() {
             let map = &mut [&mut h.p, &mut h.n, &mut h.b, &mut h.r, &mut h.q, &mut h.k][i];
             for sq in Square::all() {
-                map.insert(sq.uci(), self.array[p][sq]);
+                map.insert(sq.uci().to_string(), self.array[p][sq]);
             }
         }
         h.serialize(serializer)

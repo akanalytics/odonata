@@ -18,10 +18,13 @@ use crate::search::timecontrol::TimeControl;
 use crate::tags::Tag;
 use crate::Color;
 use anyhow::{bail, Context, Result};
+use itertools::Itertools;
 use rayon::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
 use std::fmt;
+
+use std::sync::Arc;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -40,6 +43,7 @@ pub struct Tuning {
     pub ignore_known_outcomes: bool,
     pub ignore_endgames: bool,
     pub multi_threading_min_positions: usize,
+    pub threads: usize,
     pub ignore_draws: bool,
     pub consolidate: bool,
     pub logistic_steepness_k: Weight,
@@ -65,6 +69,7 @@ impl Default for Tuning {
             ignore_known_outcomes: true,
             ignore_endgames: true,
             multi_threading_min_positions: 20000,
+            threads: 32,
             models_and_outcomes: Default::default(),
             feature_matrix: Default::default(),
             boards: Default::default(),
@@ -90,6 +95,7 @@ impl fmt::Debug for Tuning {
             .field("ignore_known_outcomes", &self.ignore_known_outcomes)
             .field("ignore_endgames", &self.ignore_endgames)
             .field("multi_threading_min_positions", &self.multi_threading_min_positions)
+            .field("threads", &self.threads)
             .field("ignore_draws", &self.ignore_draws)
             .field("consolidate", &self.consolidate)
             .field("logistic_steepness_k", &self.logistic_steepness_k)
@@ -117,11 +123,13 @@ impl Tuning {
         self.boards.clear();
     }
 
-    pub fn upload_positions(eng: &mut Engine, positions: &[Position]) -> Result<usize> {
+    pub fn upload_positions(eng: &mut Engine, positions: Vec<Position>) -> Result<usize> {
         // let mut eng.tuner.feature_matrix = FeatureMatrix::default();
         for (i, pos) in positions.iter().enumerate() {
             let ph = eng.algo.eval.phaser.phase(&pos.board().material());
             let mut model = Model::from_board(pos.board(), ph, Switches::ALL_SCORING);
+
+            // set CSV flag so that feature weights get calculated
             model.csv = eng.tuner.regression_type == RegressionType::LogisticOnOutcomeSparse;
 
             if i == 0 {
@@ -186,8 +194,10 @@ impl Tuning {
                     }
                 }
             }
-            eng.tuner.boards.push(pos.clone());
+            // eng.tuner.boards.push(*pos);
         }
+        eng.tuner.boards = positions;
+
         let lines = if RegressionType::LogisticOnOutcomeSparse == eng.tuner.regression_type {
             info!("Loaded sparse lines");
             eng.tuner.feature_matrix.feature_vectors.len()
@@ -285,13 +295,15 @@ impl Tuning {
             let mut scorer = ExplainScorer::new();
             engine.algo.eval.predict(&self.model, &mut scorer);
             let weight_vector = scorer.weights_vector();
+            info!("Weights = {}", weight_vector);
             // let mut diff_squared: f32 = 0.0;
 
             let closure = |pair: (usize, &FeatureVector)| {
-                let (i, fv) = pair;
+                let (_i, fv) = pair;
+                // let fv = pair;
                 let w_score = self.feature_matrix.dot_product(&fv, &weight_vector);
                 let k = logistic_steepness_k.interpolate(fv.phase) as f32;
-                let win_prob_estimate = w_score.win_probability_using_k(k);
+                let win_prob_estimate = Score::win_probability_from_cp_and_k(w_score, k);
                 let win_prob_actual = match fv.outcome {
                     Outcome::WinWhite => 1.0,
                     Outcome::WinBlack => 0.0,
@@ -313,9 +325,8 @@ impl Tuning {
                     self.feature_matrix.feature_vectors.iter().enumerate().map(closure).sum()
                 }
                 l => {
-                    info!("Calculating mse (sparse) on {} positions using several threads", l);
-                    // use rayon on larger sized files
-                    self.feature_matrix.feature_vectors.par_iter().enumerate().map(closure).sum()
+                    info!("Calculating mse (sparse) on {} positions using multi thread", l);
+                    self.calc_sparse(closure)
                 }
             };
 
@@ -376,16 +387,68 @@ impl Tuning {
         info!("Calculated mse as {}", mse);
         Ok(mse)
     }
+
+    fn calc_sparse(&self, f: impl Copy + Sync + Send + Fn((usize, &FeatureVector)) -> f32) -> f32 {
+        info!("Calculating mse (sparse) on positions using several threads");
+        // use rayon on larger sized files
+        // self.feature_matrix.feature_vectors.par_iter().enumerate().map(closure).sum()
+        let v = &self.feature_matrix.feature_vectors;
+        if self.threads == 0 {
+            panic!("At least one thread required.");
+        }
+        if self.threads > v.len() {
+            panic!("More threads than items in vector.");
+        }
+        if v.len() == 0 {
+            return 0.0;
+        }
+
+        // divide round up
+        let items_per_thread = (v.len() - 1) / self.threads + 1;
+
+        let arc = Arc::new(v);
+        // let mut threads = Vec::with_capacity(nb_threads);
+
+        // // this channel will be use to send values (partial sums) for threads
+        // let (sender, receiver) = mpsc::channel::<T>();
+        let thread_sum = std::sync::Mutex::new(0.0_f32);
+        let vec = (0..self.threads).collect_vec();
+        let slice = &vec[..];
+        rayon::scope(|s| {
+            for i in slice {
+                s.spawn(|_s| {
+                    let data = arc.clone();
+                    let from = *i * items_per_thread;
+                    let to = std::cmp::min(from + items_per_thread, data.len());
+                    let mut sum = 0.0;
+                    for v in &data[from..to] {
+                        sum += f((0, v));
+                    }
+                    let mut ts = thread_sum.lock().unwrap();
+                    *ts = *ts + sum;
+                });
+            }
+        });
+        let x = *thread_sum.lock().unwrap();
+        x
+    }
 }
+// let mut sum = 0.0;
+// for t in threads {
+//     sum += t.join().expect("panic in worker thread");
+// }
+// sum
+
+// parallel_fold(self.feature_matrix.feature_vectors.clone(), 0.0, closure, 20)
 
 #[cfg(test)]
 mod tests {
     use std::{fs::File, io::BufWriter, time::Instant};
 
     use super::*;
+    use crate::utils::Formatting;
     use crate::{eval::weight::Weight, infra::profiler::Profiler};
     use test_log::test;
-    use crate::utils::Formatting;
 
     #[test]
     fn tuning_serde_test() {
@@ -404,7 +467,7 @@ mod tests {
         engine.tuner.regression_type = RegressionType::LogisticOnOutcomeSparse;
         Tuning::upload_positions(
             &mut engine,
-            &Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-combo.epd").unwrap(),
+            Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-combo.epd").unwrap(),
         )
         .unwrap();
 
@@ -424,7 +487,12 @@ mod tests {
             println!("{}, {}", value, diffs);
         }
         let time = Instant::now() - start;
-        println!("Time {} for {} iters, {} per iter.", Formatting::duration(time), iters, Formatting::duration(time/iters));
+        println!(
+            "Time {} for {} iters, {} per iter.",
+            Formatting::duration(time),
+            iters,
+            Formatting::duration(time / iters)
+        );
     }
 
     #[ignore]
@@ -434,7 +502,7 @@ mod tests {
         let mut engine = Engine::new();
         Tuning::upload_positions(
             &mut engine,
-            &Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-small.epd").unwrap(),
+            Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-small.epd").unwrap(),
         )
         .unwrap();
         //tuning.positions = Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-small.epd").unwrap();
@@ -452,27 +520,27 @@ mod tests {
     }
 
     #[test]
-    fn test_quick_tuning_mse() {
+    fn bench_mse() {
         info!("Starting quick tuning...");
         let file = "../odonata-extras/epd/quiet-labeled-small.epd";
+
         let mut eng1 = Engine::new();
         eng1.tuner.regression_type = RegressionType::LogisticOnOutcome;
-        Tuning::upload_positions(&mut eng1, &Position::parse_epd_file(file).unwrap()).unwrap();
-        let mut prof1 = Profiler::new("mse1".into());
+        Tuning::upload_positions(&mut eng1, Position::parse_epd_file(file).unwrap()).unwrap();
+        let mut prof1 = Profiler::new("mse dense".into());
         prof1.start();
         let diffs1 = eng1.tuner.calculate_mean_square_error(&eng1).unwrap();
         prof1.stop();
 
-        // println!("{:#?}", eng1.tuner);
-        // println!("{:#?}", eng1.algo.eval);
-
         let mut eng2 = Engine::new();
         eng2.tuner.regression_type = RegressionType::LogisticOnOutcomeSparse;
-        Tuning::upload_positions(&mut eng2, &Position::parse_epd_file(file).unwrap()).unwrap();
-        let mut prof2 = Profiler::new("mse2".into());
+        Tuning::upload_positions(&mut eng2, Position::parse_epd_file(file).unwrap()).unwrap();
+        let mut prof2 = Profiler::new("mse sparse".into());
         prof2.start();
         let diffs2 = eng2.tuner.calculate_mean_square_error(&eng2).unwrap();
         prof2.stop();
+        println!("{:#?}", eng2.tuner.feature_matrix);
+        println!("{:#?}", eng2.tuner.model);
 
         // compare calcs
 
@@ -492,6 +560,6 @@ mod tests {
         // println!("{:#?}", eng2.tuner.model);
         // println!("{:#?}", eng2.algo.eval);
 
-        assert_eq!(diffs1, diffs2);
+        assert!((diffs1 - diffs2).abs() < 0.00001);
     }
 }

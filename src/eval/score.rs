@@ -8,6 +8,8 @@ use std::fmt;
 //     bound: NodeType,
 // }
 
+
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Score {
@@ -179,14 +181,29 @@ impl Score {
     // }
 
     // https://www.chessprogramming.org/Pawn_Advantage,_Win_Percentage,_and_Elo
+    #[inline]
     pub fn win_probability_from_cp_and_k(centipawns: f32, k: f32) -> f32 {
         1.0 / (1.0 + 10_f32.powf(-centipawns / (k * 100.0)))
     }
 
+
+
+    #[inline]
+    pub fn win_probability_from_cp_and_k_fast(centipawns: f32, k: f32) -> f32 {
+        #[inline]
+        fn pow10(b: f32) -> f32 {
+            const LOG_OF_10: f32 = 2.302585125;  // ln(10.0)
+            fast_math::exp(b * LOG_OF_10)
+        }
+        1.0 / (1.0 + pow10(-centipawns / (k * 100.0)))
+    }
+
+    #[inline]
     pub fn win_probability(self) -> f32 {
         self.win_probability_using_k(4.0)
     }
 
+    #[inline]
     pub fn win_probability_using_k(self, k: f32) -> f32 {
         if self.is_numeric() {
             Self::win_probability_from_cp_and_k(self.cp as f32, k)
@@ -342,7 +359,7 @@ impl Score2 {
             #[allow(clippy::erasing_op)]
             Score2::cp(tempo * 0)
         } else {
-            #[allow(clippy::erasing_op)]            
+            #[allow(clippy::erasing_op)]
             Score2::cp(-tempo * 0)
         }
     }
@@ -494,7 +511,11 @@ impl fmt::Display for Score2 {
 
 #[cfg(test)]
 mod tests {
+    use iai::black_box;
+
+    use crate::infra::profiler::Profiler;
     use super::*;
+
 
     #[test]
     fn test_score() {
@@ -570,6 +591,32 @@ mod tests {
             let s = Score::from_cp(cp);
             let wp = s.win_probability();
             println!("wp[cp]: {},{}", s, wp);
+        }
+    }
+
+    #[test]
+    fn bench_exp() {
+        // b^x = e^(x*log(b))
+        let mut p = Profiler::new("standard_exp".into());
+        p.start();
+        for cp in (-1000..1000).step_by(100) {
+            black_box(Score::win_probability_from_cp_and_k(cp as f32, 4.0));
+        }
+        p.stop();
+
+        let mut p = Profiler::new("fast_exp".into());
+        p.start();
+        for cp in (-1000..1000).step_by(100) {
+            black_box(Score::win_probability_from_cp_and_k_fast(cp as f32, 4.0));
+        }
+        p.stop();
+
+        for cp in (-1000..1000).step_by(100) {
+            let fast = Score::win_probability_from_cp_and_k_fast(cp as f32, 4.0);
+            let slow = Score::win_probability_from_cp_and_k(cp as f32, 4.0);
+
+            println!("{} {}", fast, slow);
+            assert!((fast - slow).abs() < 0.01);
         }
     }
 }

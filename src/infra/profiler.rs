@@ -1,12 +1,16 @@
 use crate::utils::Formatting;
 use perf_event::{events::Hardware, Builder, Counter, Group};
 
+pub use iai::black_box;
+
 pub struct Profiler {
     group: Group,
     name: String,
     iters: u64,
     ins: Counter,
     branch_misses: Counter,
+    cache_misses: Counter,
+    cache_refs: Counter,
     cycles: Counter,
 }
 
@@ -17,12 +21,16 @@ impl Profiler {
         let cycles = Builder::new().group(&mut group).kind(Hardware::CPU_CYCLES).build().unwrap();
         let ins = Builder::new().group(&mut group).kind(Hardware::INSTRUCTIONS).build().unwrap();
         let branch_misses = Builder::new().group(&mut group).kind(Hardware::BRANCH_MISSES).build().unwrap();
+        let cache_misses = Builder::new().group(&mut group).kind(Hardware::CACHE_MISSES).build().unwrap();
+        let cache_refs = Builder::new().group(&mut group).kind(Hardware::CACHE_REFERENCES).build().unwrap();
         Profiler {
             name,
             group,
             ins,
             cycles,
             branch_misses,
+            cache_misses,
+            cache_refs,
             iters: 0,
         }
     }
@@ -48,19 +56,20 @@ impl Profiler {
         let counts = self.group.read().unwrap();
         self.iters = std::cmp::max(1, self.iters);
         println!(
-            "PROF: {:<25}\t{:<15}\t{:<15}\t{:<15}\t{:<15}\t{:<15}\nPROF: {:<25}\t{:<15}\t{:<15}\t{:<15}\t{:<15}\t{:.2}\n",
-            "name",
-            "iters",
-            "cycles",
-            "instructions",
-            "branch misses",
-            "cycles/ins",
+            "PROF: {:<25}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}",
+            "name", "iters", "cycles", "instructions", "branch-misses", "cache-misses", "cache-refs", "cycles-per-ins", "cache-hit-%",
+        );
+        println!(
+            "PROF: {:<25}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15.2}\t{:>15.2}\n",
             self.name,
             self.iters,
             Formatting::u128((counts[&self.cycles] / self.iters).into()),
             Formatting::u128((counts[&self.ins] / self.iters).into()),
             Formatting::u128((counts[&self.branch_misses] / self.iters).into()),
-            (counts[&self.cycles] as f64 / counts[&self.ins] as f64)
+            Formatting::u128((counts[&self.cache_misses] / self.iters).into()),
+            Formatting::u128((counts[&self.cache_refs] / self.iters).into()),
+            (counts[&self.cycles] as f64 / counts[&self.ins] as f64),
+            100.0 - (counts[&self.cache_misses] as f64 * 100.0 / counts[&self.cache_refs] as f64)
         );
     }
 }
@@ -98,7 +107,7 @@ mod tests {
 
     #[test]
     fn bench_simple_struct() {
-        let mut prof1 = Profiler::new("struct access".into());
+        let mut prof1 = Profiler::new("struct_access".into());
 
         for _iter in 0..100 {
             let mut s = Struct::default();
@@ -117,7 +126,7 @@ mod tests {
 
     #[test]
     fn bench_simple_array() {
-        let mut prof2 = Profiler::new("array access".into());
+        let mut prof2 = Profiler::new("array_access".into());
         for _iter in 0..100 {
             let mut a = Array::default();
             prof2.start();

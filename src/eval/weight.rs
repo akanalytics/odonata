@@ -114,6 +114,12 @@ where
     pub fn e(self) -> T {
         self.1
     }
+
+    #[inline]
+    pub fn as_tuple(self) -> (T, T) {
+        (self.0, self.1)
+    }
+
 }
 // impl<T> WeightOf<T> where T: Copy + Num + std::ops::Sub<T, Output=T> + std::ops::Div<i32, Output=T>, i32: std::ops::Mul<T, Output=T>  {
 impl<T> WeightOf<T>
@@ -196,16 +202,26 @@ where
     }
 }
 
-impl<T> std::ops::Mul<WeightOf<T>> for i32
-where
-    T: 'static + Copy + Num,
-    i32: AsPrimitive<T>,
+// impl<T> std::ops::Mul<WeightOf<T>> for i32
+// where
+//     T: 'static + Copy + Num,
+//     i32: AsPrimitive<T>,
+// {
+//     type Output = WeightOf<T>;
+
+//     #[inline]
+//     fn mul(self, o: WeightOf<T>) -> WeightOf<T> {
+//         WeightOf::<T>(self.as_() * o.s(), self.as_() * o.e())
+//     }
+// }
+
+impl std::ops::Mul<WeightOf::<f32>> for i32
 {
-    type Output = WeightOf<T>;
+    type Output = WeightOf<f32>;
 
     #[inline]
-    fn mul(self, o: WeightOf<T>) -> WeightOf<T> {
-        WeightOf::<T>(self.as_() * o.s(), self.as_() * o.e())
+    fn mul(self, o: WeightOf<f32>) -> WeightOf<f32> {
+        WeightOf::<f32>(self as f32 * o.s(), self as f32 * o.e())
     }
 }
 

@@ -73,7 +73,7 @@ mod tests {
         let board = Board::parse_fen("rnbqkbnr/pppp1ppp/4p3/3N4/8/8/PPPPPPPP/R1BQKBNR b KQkq - 1 2").unwrap();
         let analysis = Analysis::of(&board);
         let bbd = BitboardDefault::default();
-        let mut prof = Profiler::new("analysis_test".into());
+        let mut prof = Profiler::new("king_attacks".into());
         for _ in 0..100 {
             prof.start();
             let ka = analysis.king_attacks(Color::White);

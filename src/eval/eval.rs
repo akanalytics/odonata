@@ -1,10 +1,10 @@
 use crate::bitboard::square::Square;
 use crate::board::Board;
 use crate::eval::material_balance::MaterialBalance;
-use crate::eval::scorer::{ModelScore,ExplainScorer};
-use crate::eval::scorer::Scorer;
 use crate::eval::pst::Pst;
 use crate::eval::score::Score;
+use crate::eval::scorer::Scorer;
+use crate::eval::scorer::{ExplainScorer, ModelScore};
 use crate::eval::see::See;
 use crate::eval::switches::Switches;
 use crate::eval::weight::Weight;
@@ -12,15 +12,15 @@ use crate::globals::counts;
 use crate::infra::component::Component;
 use crate::mv::Move;
 use crate::phaser::Phaser;
+use crate::prelude::*;
 use crate::search::node::Node;
 use crate::trace::stat::{ArrayStat, Stat};
 use crate::types::{Color, Piece};
-use crate::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use std::fmt;
 
-use super::model::{Model};
+use super::model::Model;
 
 // RunningTotal
 //
@@ -315,7 +315,7 @@ impl Default for Eval {
             tropism_d4: Weight::from_i32(-5, 2),
             king_trapped_on_back_rank: Weight::from_i32(-5, 2),
             checkers: Weight::from_i32(-5, 2),
-            rq_on_open_files_near_king: Weight::from_i32(-5, 2),            
+            rq_on_open_files_near_king: Weight::from_i32(-5, 2),
 
             castling_rights: Weight::from_i32(0, 0),
             uncastled: Weight::from_i32(0, 0),
@@ -323,7 +323,7 @@ impl Default for Eval {
             pinned_near_king: Weight::from_i32(0, 0),
             pinned_far: Weight::from_i32(0, 0),
             discovered_checks: Weight::from_i32(0, 0),
-                    // attacks: PieceArray {
+            // attacks: PieceArray {
             //     q: PieceArray {
             //         r: Weight::from_i32(-1, -2),
             //         .. Default::default()
@@ -543,12 +543,22 @@ impl Eval {
                     let b = board.pieces(p) & board.black();
 
                     for sq in Square::all() {
+                        // let u8s = vec![
+                        //     'p' as u8,
+                        //     's' as u8,
+                        //     't' as u8,
+                        //     '.' as u8,
+                        //     p.to_lower_char() as u8,
+                        //     '.' as u8,
+                        //     sq.uci().as_bytes()[0],
+                        //     sq.uci().as_bytes()[1],
+                        // ];
                         let label = format!("pst.{}.{}", p.to_lower_char(), sq.uci());
+                        // let label = std::str::from_utf8(&u8s).unwrap();
                         scorer.position(&label, sq.is_in(w) as i32, sq.is_in(b) as i32, self.pst.pst(p, sq));
                     }
                 }
             }
-
 
             scorer.position("fianchetto", w.fianchetto, b.fianchetto, self.fianchetto);
             scorer.position(
@@ -588,7 +598,12 @@ impl Eval {
         // pawn structure
         if self.pawn && m.switches.contains(Switches::PAWN) {
             scorer.pawn("pawn doubled", w.doubled_pawns, b.doubled_pawns, self.pawn_doubled);
-            scorer.pawn("pawn directly doubled", w.pawn_directly_doubled, b.pawn_directly_doubled, self.pawn_directly_doubled);
+            scorer.pawn(
+                "pawn directly doubled",
+                w.pawn_directly_doubled,
+                b.pawn_directly_doubled,
+                self.pawn_directly_doubled,
+            );
             scorer.pawn("pawn isolated", w.isolated_pawns, b.isolated_pawns, self.pawn_isolated);
             scorer.pawn("semi isolated", w.semi_isolated, b.semi_isolated, self.semi_isolated);
             scorer.pawn("pawn passed", w.passed_pawns, b.passed_pawns, self.pawn_passed);
@@ -597,7 +612,12 @@ impl Eval {
             scorer.pawn("pawn passed r5", w.passed_pawns_on_r5, b.passed_pawns_on_r5, self.pawn_passed_r5);
             scorer.pawn("pawn passed r4", w.passed_pawns_on_r4, b.passed_pawns_on_r4, self.pawn_passed_r4);
             scorer.pawn("passers on rim", w.passers_on_rim, b.passers_on_rim, self.passers_on_rim);
-            scorer.pawn("candidate passed pawn", w.candidate_passed_pawn, b.candidate_passed_pawn, self.candidate_passed_pawn);
+            scorer.pawn(
+                "candidate passed pawn",
+                w.candidate_passed_pawn,
+                b.candidate_passed_pawn,
+                self.candidate_passed_pawn,
+            );
             scorer.pawn("blockaded", w.blockaded, b.blockaded, self.blockaded);
             scorer.pawn(
                 "blockaded passers",
@@ -619,16 +639,41 @@ impl Eval {
             );
             scorer.pawn("rammed pawns", w.rammed_pawns, b.rammed_pawns, self.rammed_pawns);
             scorer.pawn("space", w.space, b.space, self.space);
-            scorer.pawn("pawn connected r67", w.pawn_connected_r67, b.pawn_connected_r67, self.pawn_connected_r67);
-            scorer.pawn("pawn connected r345", w.pawn_connected_r345, b.pawn_connected_r345, self.pawn_connected_r345);
-            scorer.pawn("passed connected r67", w.passed_connected_r67, b.passed_connected_r67, self.passed_connected_r67);
-            scorer.pawn("passed connected r345", w.passed_connected_r345, b.passed_connected_r345, self.passed_connected_r345);
+            scorer.pawn(
+                "pawn connected r67",
+                w.pawn_connected_r67,
+                b.pawn_connected_r67,
+                self.pawn_connected_r67,
+            );
+            scorer.pawn(
+                "pawn connected r345",
+                w.pawn_connected_r345,
+                b.pawn_connected_r345,
+                self.pawn_connected_r345,
+            );
+            scorer.pawn(
+                "passed connected r67",
+                w.passed_connected_r67,
+                b.passed_connected_r67,
+                self.passed_connected_r67,
+            );
+            scorer.pawn(
+                "passed connected r345",
+                w.passed_connected_r345,
+                b.passed_connected_r345,
+                self.passed_connected_r345,
+            );
 
             scorer.pawn("pawn duo r67", w.pawn_duo_r67, b.pawn_duo_r67, self.pawn_duo_r67);
             scorer.pawn("pawn duo r2345", w.pawn_duo_r2345, b.pawn_duo_r2345, self.pawn_duo_r2345);
             scorer.pawn("passed duo r67", w.passed_duo_r67, b.passed_duo_r67, self.passed_duo_r67);
             scorer.pawn("passed duo r2345", w.passed_duo_r2345, b.passed_duo_r2345, self.passed_duo_r2345);
-            scorer.pawn("backward half open", w.backward_half_open, b.backward_half_open, self.backward_half_open);
+            scorer.pawn(
+                "backward half open",
+                w.backward_half_open,
+                b.backward_half_open,
+                self.backward_half_open,
+            );
             scorer.pawn("backward", w.backward, b.backward, self.backward);
         }
 
@@ -637,9 +682,19 @@ impl Eval {
         // king safety
         if self.safety && m.switches.contains(Switches::SAFETY) {
             // scorer.safety("nearby pawns", w.nearby_pawns, b.nearby_pawns, self.pawn_shield);
-            scorer.safety("pawn adjacent shield", w.adjacent_shield, b.adjacent_shield, self.pawn_adjacent_shield);
+            scorer.safety(
+                "pawn adjacent shield",
+                w.adjacent_shield,
+                b.adjacent_shield,
+                self.pawn_adjacent_shield,
+            );
             scorer.safety("pawn nearby shield", w.nearby_shield, b.nearby_shield, self.pawn_nearby_shield);
-            scorer.safety("king safety bonus", w.king_safety_bonus, b.king_safety_bonus, self.king_safety_bonus);
+            scorer.safety(
+                "king safety bonus",
+                w.king_safety_bonus,
+                b.king_safety_bonus,
+                self.king_safety_bonus,
+            );
             scorer.safety(
                 "open files near king",
                 w.open_files_near_king,
@@ -656,8 +711,18 @@ impl Eval {
             scorer.safety("tropism d2", w.king_tropism_d2, b.king_tropism_d2, self.tropism_d2);
             scorer.safety("tropism d3", w.king_tropism_d3, b.king_tropism_d3, self.tropism_d3);
             scorer.safety("tropism d4", w.king_tropism_d4, b.king_tropism_d4, self.tropism_d4);
-            scorer.safety("king trapped on back rank", w.king_trapped_on_back_rank, b.king_trapped_on_back_rank, self.king_trapped_on_back_rank);
-            scorer.safety("rq on open files near king", w.rq_on_open_files_near_king, b.rq_on_open_files_near_king, self.rq_on_open_files_near_king);
+            scorer.safety(
+                "king trapped on back rank",
+                w.king_trapped_on_back_rank,
+                b.king_trapped_on_back_rank,
+                self.king_trapped_on_back_rank,
+            );
+            scorer.safety(
+                "rq on open files near king",
+                w.rq_on_open_files_near_king,
+                b.rq_on_open_files_near_king,
+                self.rq_on_open_files_near_king,
+            );
 
             scorer.safety(
                 "attacks near king",
@@ -671,7 +736,12 @@ impl Eval {
             scorer.safety("pieces near king", w.pieces_near_king, b.pieces_near_king, self.pieces_near_king);
             scorer.safety("pinned near king", w.pinned_near_king, b.pinned_near_king, self.pinned_near_king);
             scorer.safety("pinned far", w.pinned_far, b.pinned_far, self.pinned_far);
-            scorer.safety("discovered checks", w.discovered_checks, b.discovered_checks, self.discovered_checks);
+            scorer.safety(
+                "discovered checks",
+                w.discovered_checks,
+                b.discovered_checks,
+                self.discovered_checks,
+            );
         }
 
         // mobility
@@ -685,7 +755,7 @@ impl Eval {
             scorer.mobility("center attacks", w.center_attacks, b.center_attacks, self.center_attacks);
             scorer.mobility("undefended sq", w.move_squares, b.move_squares, self.undefended_sq);
             scorer.mobility(
-                "undefended piece", 
+                "undefended piece",
                 w.non_pawn_defended_moves,
                 b.non_pawn_defended_moves,
                 self.undefended_piece,
@@ -831,9 +901,9 @@ mod tests {
     use super::*;
     use crate::board::boardbuf::BoardBuf;
     use crate::catalog::Catalog;
+    use crate::infra::profiler::Profiler;
     use crate::phaser::Phase;
     use crate::test_log::test;
-    use crate::infra::profiler::Profiler;
     use toml;
 
     #[test]
@@ -1009,9 +1079,13 @@ mod tests {
         eval.pawn_adjacent_shield = Weight::zero();
         eval.pawn_nearby_shield = Weight::zero();
         let att = eval.w_eval_some(&b, Switches::ALL_SCORING);
-        assert_eq!(att - e1, Score::from_cp(75), "{} {:?}", 
-            eval.w_eval_explain(&b, false), 
-            Model::from_board(&b, b.phase(&eval.phaser),Switches::ALL_SCORING)); // 1 attack on nearby pawn
+        assert_eq!(
+            att - e1,
+            Score::from_cp(75),
+            "{} {:?}",
+            eval.w_eval_explain(&b, false),
+            Model::from_board(&b, b.phase(&eval.phaser), Switches::ALL_SCORING)
+        ); // 1 attack on nearby pawn
     }
 
     #[test]
@@ -1055,5 +1129,4 @@ mod tests {
         }
         println!("{:>6.0} {}", total_score.as_i16(), "total");
     }
-
 }

@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::{phaser::Phase, outcome::Outcome, utils::Formatting};
 
-use super::{weight::Weight, switches::Switches, feature::{FeatureVector, WeightsVector}, score::Score};
+use super::{weight::Weight, switches::Switches, feature::{FeatureVector, WeightsVector, Sparse}, score::Score};
 
 pub trait Scorer {
     // fn set_multiplier(&mut self, m: i32);
@@ -42,6 +42,8 @@ impl ExplainScorer {
     pub fn new() -> Self {
         Self {
             delegate: ModelScore::new(),
+            pos: Vec::with_capacity(32),
+            mat: Vec::with_capacity(6),
             ..Self::default()
         }
     }
@@ -97,7 +99,7 @@ impl ExplainScorer {
                 let (_attr, w, b, _wt) = (attr, *w, *b, *wt);
                 // sparse!
                 if (w - b) != 0 {
-                    fv.values.push((w - b, index));
+                    fv.values.push(Sparse::new((w - b).try_into().unwrap(), index));
                 }
                 index += 1;
             }
@@ -111,7 +113,7 @@ impl ExplainScorer {
             let vec = vec![&self.mat, &self.pos, &self.mob, &self.paw, &self.saf, &self.con, &self.tem][i];
             for (attr, w, b, wt) in vec {
                 let (attr, _w, _b, _wt) = (attr, *w, *b, *wt);
-                v.push(attr.clone());
+                v.push(attr.to_owned());
             }
         }
         v
@@ -123,7 +125,8 @@ impl ExplainScorer {
             let vec = vec![&self.mat, &self.pos, &self.mob, &self.paw, &self.saf, &self.con, &self.tem][i];
             for (attr, w, b, wt) in vec {
                 let (attr, _w, _b, wt) = (attr, *w, *b, *wt);
-                weights_vec.weights.push((attr.clone(), wt));
+                weights_vec.weights.push(wt);
+                weights_vec.names.push(attr.to_owned());
             }
         }
         weights_vec
