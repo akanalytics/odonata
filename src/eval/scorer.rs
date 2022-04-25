@@ -30,6 +30,7 @@ pub struct ExplainScorer {
     tem: Vec<(String, i32, i32, Weight)>,
     con: Vec<(String, i32, i32, Weight)>,
     delegate: ModelScore,
+    fen: String,
 }
 
 pub enum ReportLine {
@@ -39,8 +40,9 @@ pub enum ReportLine {
 
 
 impl ExplainScorer {
-    pub fn new() -> Self {
+    pub fn new(fen: String) -> Self {
         Self {
+            fen, 
             delegate: ModelScore::new(),
             pos: Vec::with_capacity(32),
             mat: Vec::with_capacity(6),
@@ -88,13 +90,14 @@ impl ExplainScorer {
         output
     }
 
-    pub fn feature_vector(&self, o: Outcome) -> FeatureVector {
+    pub fn into_feature_vector(self, o: Outcome) -> FeatureVector {
         let mut fv = FeatureVector::default();
         fv.phase = self.phase();
         fv.outcome = o;
+        fv.fen = self.fen;
         let mut index = 0;
         for (i, _sw) in Switches::all_scoring().iter().enumerate() {
-            let vec = vec![&self.mat, &self.pos, &self.mob, &self.paw, &self.saf, &self.con, &self.tem][i];
+            let vec = vec![&self.mat, &self.mob, &self.paw, &self.saf, &self.con, &self.tem, &self.pos][i];
             for (attr, w, b, wt) in vec {
                 let (_attr, w, b, _wt) = (attr, *w, *b, *wt);
                 // sparse!
@@ -110,10 +113,10 @@ impl ExplainScorer {
     pub fn feature_names(&self) -> Vec<String> {
         let mut v = Vec::new();
         for (i, _sw) in Switches::all_scoring().iter().enumerate() {
-            let vec = vec![&self.mat, &self.pos, &self.mob, &self.paw, &self.saf, &self.con, &self.tem][i];
+            let vec = vec![&self.mat, &self.mob, &self.paw, &self.saf, &self.con, &self.tem, &self.pos][i];
             for (attr, w, b, wt) in vec {
                 let (attr, _w, _b, _wt) = (attr, *w, *b, *wt);
-                v.push(attr.to_owned());
+                v.push(attr.replace(" ", "_"));
             }
         }
         v
@@ -122,7 +125,7 @@ impl ExplainScorer {
     pub fn weights_vector(&self) -> WeightsVector {
         let mut weights_vec = WeightsVector::default();
         for (i, _sw) in Switches::all_scoring().iter().enumerate() {
-            let vec = vec![&self.mat, &self.pos, &self.mob, &self.paw, &self.saf, &self.con, &self.tem][i];
+            let vec = vec![&self.mat, &self.mob, &self.paw, &self.saf, &self.con, &self.tem, &self.pos][i];
             for (attr, w, b, wt) in vec {
                 let (attr, _w, _b, wt) = (attr, *w, *b, *wt);
                 weights_vec.weights.push(wt);

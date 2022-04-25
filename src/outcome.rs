@@ -88,6 +88,17 @@ impl Outcome {
         String::from("*")
     }
 
+    pub fn as_win_fraction(self) -> f32 {
+        if self.is_draw() {
+            return 0.5;
+        } else if self.winning_color() == Some(Color::White) {
+            return 1.0;
+        } else if self.winning_color() == Some(Color::Black) {
+            return 0.0;
+        }
+        unreachable!("Expected win, draw or loss, but found in progress outcome")
+    }
+
     pub fn try_from_pgn(s: &str) -> Result<Outcome> {
         match s {
             "1/2-1/2" => Ok(Outcome::DrawRule50),

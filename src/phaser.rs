@@ -13,7 +13,7 @@ pub struct Phase(pub i32);
 
 impl fmt::Display for Phase {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}%",self.0)
+        write!(f, "{}",self.0)
     }
 }
 

@@ -31,14 +31,16 @@ use std::sync::Arc;
 pub enum RegressionType {
     LinearOnCp,
     LogisticOnOutcome,
-    LogisticOnOutcomeSparse,
     LogisticOnCp,
 }
+
+
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Tuning {
     pub regression_type: RegressionType,
+    pub sparse: bool,
     pub search_depth: i32,
     pub ignore_known_outcomes: bool,
     pub ignore_endgames: bool,
@@ -65,6 +67,7 @@ impl Default for Tuning {
     fn default() -> Self {
         Tuning {
             regression_type: RegressionType::LogisticOnOutcome,
+            sparse: true,
             search_depth: -1,
             ignore_known_outcomes: true,
             ignore_endgames: true,
@@ -91,6 +94,7 @@ impl fmt::Debug for Tuning {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Tuning")
             .field("regression_type", &self.regression_type)
+            .field("sparse", &self.sparse)
             .field("search_depth", &self.search_depth)
             .field("ignore_known_outcomes", &self.ignore_known_outcomes)
             .field("ignore_endgames", &self.ignore_endgames)
@@ -128,15 +132,16 @@ impl Tuning {
         for (i, pos) in positions.iter().enumerate() {
             let ph = eng.algo.eval.phaser.phase(&pos.board().material());
             let mut model = Model::from_board(pos.board(), ph, Switches::ALL_SCORING);
+            model.csv = eng.tuner.sparse;
 
             // set CSV flag so that feature weights get calculated
-            model.csv = eng.tuner.regression_type == RegressionType::LogisticOnOutcomeSparse;
-
+            
             if i == 0 {
                 eng.tuner.model = model.clone();
-                let mut scorer = ExplainScorer::new();
+                let mut scorer = ExplainScorer::new(String::new());
                 eng.algo.eval.predict(&model, &mut scorer);
                 eng.tuner.feature_matrix.feature_names = scorer.feature_names();
+                info!("Regression type {:?}", eng.tuner.regression_type);
             }
 
             if eng.tuner.ignore_known_outcomes && pos.board().outcome().is_game_over() {
@@ -149,8 +154,8 @@ impl Tuning {
                 trace!("Discarding known endgame position {}", pos);
                 continue;
             }
-            match eng.tuner.regression_type {
-                RegressionType::LogisticOnCp => {
+            match (eng.tuner.regression_type, eng.tuner.sparse) {
+                (RegressionType::LogisticOnCp, _) => {
                     if let Tag::Comment(_n, s) = pos.tag("c6") {
                         let mut w_score: f32 = s.parse()?;
                         // epd ce is from active placer
@@ -163,27 +168,27 @@ impl Tuning {
                         eng.tuner.models_and_outcomes.push((model, win_prob_estimate));
                     }
                 }
-                RegressionType::LogisticOnOutcome => {
+                (RegressionType::LogisticOnOutcome,false) => {
                     let (outcome, outcome_str) = eng.tuner.calc_player_win_prob_from_pos(pos);
                     if eng.tuner.ignore_draws && outcome_str == "1/2-1/2" {
                         continue;
                     }
                     eng.tuner.models_and_outcomes.push((model, outcome));
                 }
-                RegressionType::LogisticOnOutcomeSparse => {
+                (RegressionType::LogisticOnOutcome, true) => {
                     let (_outcome, outcome_str) = eng.tuner.calc_player_win_prob_from_pos(pos);
                     let o = Outcome::try_from_pgn(&outcome_str)?;
                     if eng.tuner.ignore_draws && outcome_str == "1/2-1/2" {
                         continue;
                     }
-                    let mut w_scorer = ExplainScorer::new();
+                    let mut w_scorer = ExplainScorer::new(pos.board().to_fen());
                     eng.algo.eval.predict(&model, &mut w_scorer);
                     let _consolidate = eng.tuner.consolidate;
-                    let fv = w_scorer.feature_vector(o);
+                    let fv = w_scorer.into_feature_vector(o);
                     eng.tuner.feature_matrix.feature_vectors.push(fv);
                 }
 
-                RegressionType::LinearOnCp => {
+                (RegressionType::LinearOnCp, _) => {
                     if let Tag::Comment(_n, s) = pos.tag("c6") {
                         let mut outcome: f32 = s.parse()?;
                         // epd ce is from active placer
@@ -198,7 +203,7 @@ impl Tuning {
         }
         eng.tuner.boards = positions;
 
-        let lines = if RegressionType::LogisticOnOutcomeSparse == eng.tuner.regression_type {
+        let lines = if eng.tuner.sparse {
             info!("Loaded sparse lines");
             eng.tuner.feature_matrix.feature_vectors.len()
         } else {
@@ -221,24 +226,28 @@ impl Tuning {
         panic!("Unable to find result comment c9 in {}", pos);
     }
 
-    pub fn write_training_data<W: Write>(engine: &mut Engine, writer: &mut W) -> Result<i32> {
-        let mut line_count = 0;
-        engine.algo.set_callback(|_| {}); // turn off uci_info output of doing zillions of searches
-        for i in 0..engine.tuner.models_and_outcomes.len() {
-            let result = Self::write_single_training_data(engine, writer, i)
-                .with_context(|| format!("Failed on line {i} {}", engine.tuner.models_and_outcomes[i].0.board.to_fen()));
-            if let Err(e) = result {
-                info!("write_training_data returns error");
-                error!("Error in write_single_training_data {}", e);
-                return Err(e);
-            }
-            line_count += 1;
-        }
-        info!("write_training_data returns {line_count}");
-        writer.flush()?;
-        Ok(line_count)
-    }
 
+    pub fn write_training_data<W: Write>(engine: &mut Engine, writer: &mut W) -> Result<i32> {
+        if engine.tuner.sparse {
+            engine.tuner.feature_matrix.write_csv(writer) 
+        } else {
+            let mut line_count = 0;
+            engine.algo.set_callback(|_| {}); // turn off uci_info output of doing zillions of searches
+            for i in 0..engine.tuner.models_and_outcomes.len() {
+                let result = Self::write_single_training_data(engine, writer, i)
+                    .with_context(|| format!("Failed on line {i} {}", engine.tuner.models_and_outcomes[i].0.board.to_fen()));
+                if let Err(e) = result {
+                    info!("write_training_data returns error");
+                    error!("Error in write_single_training_data {}", e);
+                    return Err(e);
+                }
+                line_count += 1;
+            }
+            info!("write_training_data returns {line_count}");
+            writer.flush()?;
+            Ok(line_count)
+        }
+    }
     pub fn write_single_training_data<W: Write>(engine: &mut Engine, writer: &mut W, i: usize) -> Result<()> {
         if i % 500 == 0 {
             info!("Processed {i} positions");
@@ -259,7 +268,8 @@ impl Tuning {
         // }
         let mut model = model.clone();
         model.csv = true;
-        let mut w_score = ExplainScorer::new();
+        let fen = model.board.to_fen();
+        let mut w_score = ExplainScorer::new(fen.clone());
         engine.algo.eval.predict(&model, &mut w_score);
         let consolidate = engine.tuner.consolidate;
 
@@ -277,12 +287,12 @@ impl Tuning {
         }
         writeln!(
             writer,
-            "{}{}, {}, {}, {}",
+            "{}{},{},{},{}",
             w_score.as_csv(ReportLine::Body, consolidate),
             model.phase.0,
             outcome,
             ce,
-            model.board.to_fen()
+            fen,
         )?;
         Ok(())
     }
@@ -291,8 +301,8 @@ impl Tuning {
         let eval = &engine.algo.eval;
         let logistic_steepness_k = self.logistic_steepness_k; // so that closure does not capture engine/tuner
         let mse: f32;
-        if RegressionType::LogisticOnOutcomeSparse == self.regression_type {
-            let mut scorer = ExplainScorer::new();
+        if self.sparse {
+            let mut scorer = ExplainScorer::new(String::new());
             engine.algo.eval.predict(&self.model, &mut scorer);
             let weight_vector = scorer.weights_vector();
             info!("Weights = {}", weight_vector);
@@ -345,7 +355,7 @@ impl Tuning {
             // let score = w_score.as_f32() / (2.0 + (phase as f32 - 50.0) / 50.0);
             // let score = w_score.as_f32();
             match self.regression_type {
-                RegressionType::LogisticOnOutcome | RegressionType::LogisticOnCp | RegressionType::LogisticOnOutcomeSparse => {
+                RegressionType::LogisticOnOutcome | RegressionType::LogisticOnCp => {
                     let k = logistic_steepness_k.interpolate(phase) as f32;
                     let win_prob_estimate = w_score.as_score().win_probability_using_k(k);
                     let win_prob_actual = *outcome;
@@ -464,7 +474,8 @@ mod tests {
         let mut engine = Engine::new();
         engine.tuner.multi_threading_min_positions = 10000000;
 
-        engine.tuner.regression_type = RegressionType::LogisticOnOutcomeSparse;
+        engine.tuner.regression_type = RegressionType::LogisticOnOutcome;
+        engine.tuner.sparse = true;
         Tuning::upload_positions(
             &mut engine,
             Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-combo.epd").unwrap(),
@@ -525,7 +536,7 @@ mod tests {
         let file = "../odonata-extras/epd/quiet-labeled-small.epd";
 
         let mut eng1 = Engine::new();
-        eng1.tuner.regression_type = RegressionType::LogisticOnOutcome;
+        eng1.tuner.sparse = false;
         Tuning::upload_positions(&mut eng1, Position::parse_epd_file(file).unwrap()).unwrap();
         let mut prof1 = Profiler::new("mse dense".into());
         prof1.start();
@@ -533,7 +544,7 @@ mod tests {
         prof1.stop();
 
         let mut eng2 = Engine::new();
-        eng2.tuner.regression_type = RegressionType::LogisticOnOutcomeSparse;
+        eng2.tuner.sparse = true;
         Tuning::upload_positions(&mut eng2, Position::parse_epd_file(file).unwrap()).unwrap();
         let mut prof2 = Profiler::new("mse sparse".into());
         prof2.start();

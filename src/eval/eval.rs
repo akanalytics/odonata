@@ -519,8 +519,44 @@ impl Eval {
             }
         }
 
+
         // position
         if self.position && m.switches.contains(Switches::POSITION) {
+            scorer.position("fianchetto", w.fianchetto, b.fianchetto, self.fianchetto);
+            scorer.position(
+                "bishop color pawns",
+                w.bishop_color_pawns,
+                b.bishop_color_pawns,
+                self.bishop_color_pawns,
+            );
+            scorer.position("bishop outposts", w.bishop_outposts, b.bishop_outposts, self.bishop_outposts);
+            scorer.position("knight forks", w.knight_forks, b.knight_forks, self.knight_forks);
+            scorer.position("knight outposts", w.knight_outposts, b.knight_outposts, self.knight_outposts);
+            scorer.position("doubled rooks", w.doubled_rooks, b.doubled_rooks, self.doubled_rooks);
+            scorer.position(
+                "doubled rooks open file",
+                w.doubled_rooks_open_file,
+                b.doubled_rooks_open_file,
+                self.doubled_rooks_open_file,
+            );
+            scorer.position(
+                "enemy pawns on rook rank",
+                w.enemy_pawns_on_rook_rank,
+                b.enemy_pawns_on_rook_rank,
+                self.enemy_pawns_on_rook_rank,
+            );
+
+            scorer.position(
+                "queen early develop",
+                w.queen_early_develop,
+                b.queen_early_develop,
+                self.queen_early_develop,
+            );
+
+            // scorer.position("pst", 1, 0, w.psq.iter().map(|(p,sq)| self.pst(*p, *sq)).sum::<Weight>());
+            // scorer.position("pst", 0, 1, b.psq.iter().map(|(p,sq)| self.pst(*p, *sq)).sum::<Weight>());
+        }
+
             let board = &m.board;
             if !m.csv {
                 // let mut sum = Weight::zero();
@@ -559,41 +595,6 @@ impl Eval {
                     }
                 }
             }
-
-            scorer.position("fianchetto", w.fianchetto, b.fianchetto, self.fianchetto);
-            scorer.position(
-                "bishop color pawns",
-                w.bishop_color_pawns,
-                b.bishop_color_pawns,
-                self.bishop_color_pawns,
-            );
-            scorer.position("bishop outposts", w.bishop_outposts, b.bishop_outposts, self.bishop_outposts);
-            scorer.position("knight forks", w.knight_forks, b.knight_forks, self.knight_forks);
-            scorer.position("knight outposts", w.knight_outposts, b.knight_outposts, self.knight_outposts);
-            scorer.position("doubled rooks", w.doubled_rooks, b.doubled_rooks, self.doubled_rooks);
-            scorer.position(
-                "doubled rooks open file",
-                w.doubled_rooks_open_file,
-                b.doubled_rooks_open_file,
-                self.doubled_rooks_open_file,
-            );
-            scorer.position(
-                "enemy pawns on rook rank",
-                w.enemy_pawns_on_rook_rank,
-                b.enemy_pawns_on_rook_rank,
-                self.enemy_pawns_on_rook_rank,
-            );
-
-            scorer.position(
-                "queen early develop",
-                w.queen_early_develop,
-                b.queen_early_develop,
-                self.queen_early_develop,
-            );
-
-            // scorer.position("pst", 1, 0, w.psq.iter().map(|(p,sq)| self.pst(*p, *sq)).sum::<Weight>());
-            // scorer.position("pst", 0, 1, b.psq.iter().map(|(p,sq)| self.pst(*p, *sq)).sum::<Weight>());
-        }
 
         // pawn structure
         if self.pawn && m.switches.contains(Switches::PAWN) {
@@ -814,7 +815,7 @@ impl Eval {
     pub fn w_eval_explain(&self, b: &Board, csv: bool) -> ExplainScorer {
         let mut model = Model::from_board(b, b.phase(&self.phaser), Switches::ALL_SCORING);
         model.csv = csv;
-        let mut scorer = ExplainScorer::new();
+        let mut scorer = ExplainScorer::new(b.to_fen());
         self.predict(&model, &mut scorer);
         scorer
     }

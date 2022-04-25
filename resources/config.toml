@@ -42,6 +42,7 @@ feature = false
 
 [tuner]
 regression_type = "LogisticOnOutcome"
+sparse = true
 search_depth = 0 
 ignore_known_outcomes = true
 ignore_endgames = true

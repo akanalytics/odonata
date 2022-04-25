@@ -1,9 +1,11 @@
 use itertools::Itertools;
 use std::fmt;
+use std::io::Write;
 
 use crate::eval::weight::Weight;
 use crate::outcome::Outcome;
 use crate::phaser::Phase;
+use anyhow::Result;
 
 #[derive(Default, Clone, Debug)]
 pub struct Sparse {
@@ -33,11 +35,12 @@ pub struct FeatureVector {
     pub values: Vec<Sparse>,
     pub outcome: Outcome,
     pub phase: Phase,
+    pub fen: String,
 }
 
 impl FeatureVector {
     #[inline]
-    pub fn value(&self, index: usize) -> Option<i32> {
+    pub fn value_nth(&self, index: usize) -> Option<i32> {
         self.values
             .iter()
             .find(|&sparse| index == sparse.index() as usize)
@@ -105,23 +108,23 @@ impl fmt::Debug for FeatureMatrix {
     }
 }
 
-trait CsvDisplay {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result;
-}
+// trait CsvDisplay {
+//     fn write_csv<W: Write>(&self, w: &mut W) -> Result<()>;
+// }
 
-impl CsvDisplay for FeatureMatrix {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{}", self.feature_names.iter().join(","))?;
+impl FeatureMatrix {
+    pub fn write_csv<W: Write>(&self, f: &mut W) -> Result<i32> {
+        writeln!(f, "{},phase,outcome,ce,fen", self.feature_names.iter().join(","))?;
         for r in self.feature_vectors.iter() {
             for (c, _name) in self.feature_names.iter().enumerate() {
-                match r.value(c as usize) {
+                match r.value_nth(c as usize) {
                     Some(v) => write!(f, "{},", v),
                     None => write!(f, "0,"),
                 }?;
             }
-            writeln!(f)?;
+            writeln!(f, "{},{},{},{}", r.phase, r.outcome.as_win_fraction(), 0, r.fen)?;
         }
-        Ok(())
+        Ok(self.feature_vectors.len() as i32)
     }
 }
 
@@ -140,7 +143,7 @@ impl fmt::Display for FeatureMatrix {
                     continue;
                 }
                 let fv = &self.feature_vectors[c];
-                match fv.value(r as usize) {
+                match fv.value_nth(r as usize) {
                     Some(v) => write!(f, "{:>6}", v),
                     None => write!(f, "{:>6}", "-"),
                 }?;
@@ -153,6 +156,8 @@ impl fmt::Display for FeatureMatrix {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Cursor;
+
     use super::*;
     use crate::test_log::test;
 
@@ -163,7 +168,8 @@ mod tests {
             values: Default::default(),
             outcome: Outcome::WinBlack,
             phase: Phase(30),
-        }); // car
+            fen: "car".to_owned(),
+        }); 
         fm.feature_vectors[0].values.push(Sparse::new(4, 0));
         fm.feature_vectors[0].values.push(Sparse::new(3, 1));
         fm.feature_vectors[0].values.push(Sparse::new(5, 2));
@@ -172,24 +178,35 @@ mod tests {
             values: Default::default(),
             outcome: Outcome::WinBlack,
             phase: Phase(30),
-        }); // motorbike
-        fm.feature_vectors[1].values.push(Sparse::new(2, 0));
+            fen: "motorbike".to_owned(),
+        }); 
         fm.feature_vectors[1].values.push(Sparse::new(1, 1));
+        fm.feature_vectors[1].values.push(Sparse::new(2, 0));
         fm
     }
 
     #[test]
     fn test_feature_matrix() {
         let fm = create_feature_matrix();
+        assert_eq!(fm.feature_vectors[0].value_nth(0), Some(4)); 
+        assert_eq!(fm.feature_vectors[0].value_nth(1), Some(3)); 
+        assert_eq!(fm.feature_vectors[0].value_nth(2), Some(5)); 
+        assert_eq!(fm.feature_vectors[0].value_nth(3), None); 
+
+        assert_eq!(fm.feature_vectors[1].value_nth(2), None); 
         println!("{}", fm);
     }
 
-    fn test_csv_feature_matrix() {
-        let _fm = create_feature_matrix();
-        let buf = String::new();
+    #[test]
+    fn test_csv_feature_matrix() -> Result<()> {
+        let fm = create_feature_matrix();
+        let buf = Vec::new();
+        let mut w = Cursor::new(buf);
+        let lines = fm.write_csv(&mut w)?;
         // let mut formatter = std::fmt::Formatter::new(&mut buf);
         // fmt::Display::fmt(self, &mut formatter)
         //         .expect("a Display implementation returned an error unexpectedly");
-        println!("to sting csv:\n{buf}");
+        println!("to string csv wrote {lines} of body\n{}", std::str::from_utf8(w.get_ref()).unwrap());
+        Ok(())
     }
 }

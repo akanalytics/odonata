@@ -335,9 +335,9 @@ impl ModelSide {
         let king = c.chooser_wb(W_KING, B_KING);
 
         if (b.bishops() & us).intersects(bishop)
-            && (b.pawns() & us).contains(pawns)
+            && (b.pawns() & us & pawns).popcount() >= 3
             && (b.pawns() & us).disjoint(no_pawns)
-            && (b.kings() & us).contains(king)
+            && (b.kings() & us).intersects(king)
         {
             self.fianchetto += 1
         }
@@ -644,7 +644,7 @@ impl ModelSide {
         self.checkers = b.checkers_of(c).popcount();
         //        self.attacks_on_opponent_king_area += (our_raw_attacks & bb.within_chebyshev_distance_inclusive(ksq, 1)).popcount();
 
-        self.pieces_near_king = (d2 & b.occupied() & us & (b.queens() & b.knights())).popcount();
+        self.pieces_near_king = (d2 & b.occupied() & us & (b.queens() | b.knights())).popcount();
         self.pinned_near_king = (b.pinned(c) & d1).popcount();
         self.pinned_far = (b.pinned(c)).popcount() - self.pinned_near_king;
         self.discovered_checks = (BoardCalcs::pinned_and_unmaskers(b, c).1 - b.pawns()).popcount();
