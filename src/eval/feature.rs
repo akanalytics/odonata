@@ -7,28 +7,13 @@ use crate::outcome::Outcome;
 use crate::phaser::Phase;
 use anyhow::Result;
 
+
 #[derive(Default, Clone, Debug)]
 pub struct Sparse {
     index: u16,
     value: i16,
 }
 
-impl Sparse {
-    #[inline(always)]
-    pub const fn new(value: i16, index: u16) -> Self {
-        Sparse { index, value }
-    }
-
-    #[inline]
-    pub const fn index(&self) -> usize {
-        self.index as usize
-    }
-
-    #[inline]
-    pub const fn value(&self) -> i16 {
-        self.value
-    }
-}
 
 #[derive(Default, Clone, Debug)]
 pub struct FeatureVector {
@@ -58,6 +43,24 @@ pub struct FeatureMatrix {
 pub struct WeightsVector {
     pub weights: Vec<Weight>,
     pub names: Vec<String>,
+}
+
+
+impl Sparse {
+    #[inline(always)]
+    pub const fn new(value: i16, index: u16) -> Self {
+        Sparse { index, value }
+    }
+
+    #[inline]
+    pub const fn index(&self) -> usize {
+        self.index as usize
+    }
+
+    #[inline]
+    pub const fn value(&self) -> i16 {
+        self.value
+    }
 }
 
 impl fmt::Display for WeightsVector {

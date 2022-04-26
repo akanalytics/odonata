@@ -7,6 +7,8 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use std::fmt;
 
+
+
 #[derive(Clone)]
 // #[serde(from="PstProxy", into="PstProxy")]
 pub struct Pst {
@@ -16,6 +18,7 @@ pub struct Pst {
     pub pawn_r7: Weight,
     pub rook_edge: Weight,
 
+    // serialize and deserialize explicitly written, via helper class
     array: [[Weight; 64]; Piece::len()],
 }
 

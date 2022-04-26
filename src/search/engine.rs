@@ -152,16 +152,16 @@ impl Engine {
         }
         let engine: Engine = fig.extract().context(format!("error in {:?}", map))?;
         let mut tuner = Tuning::default();
-        mem::swap(&mut tuner.models_and_outcomes, &mut self.tuner.models_and_outcomes);
         mem::swap(&mut tuner.feature_matrix, &mut self.tuner.feature_matrix);
-        mem::swap(&mut tuner.boards, &mut self.tuner.boards);
-        mem::swap(&mut tuner.model, &mut self.tuner.model);
+        // mem::swap(&mut tuner.models_and_outcomes, &mut self.tuner.models_and_outcomes);
+        // mem::swap(&mut tuner.boards, &mut self.tuner.boards);
+        // mem::swap(&mut tuner.model, &mut self.tuner.model);
         *self = Engine {
             tuner: Tuning {
-                boards: tuner.boards,
-                models_and_outcomes: tuner.models_and_outcomes,
+                // boards: tuner.boards,
+                // models_and_outcomes: tuner.models_and_outcomes,
                 feature_matrix: tuner.feature_matrix,
-                model: tuner.model,
+                // model: tuner.model,
                 ..engine.tuner
             },
             ..engine

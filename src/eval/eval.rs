@@ -124,6 +124,37 @@ impl<T> std::ops::IndexMut<Piece> for PieceArray<T> {
     }
 }
 
+
+use strum::EnumCount;
+// use strum_macros::*;
+
+#[derive(Debug, strum_macros::EnumDiscriminants, strum_macros::IntoStaticStr, strum_macros::EnumCount, strum_macros::Display)]
+#[strum(serialize_all = "snake_case")]
+#[strum_discriminants(vis())]
+pub enum FeatureIndex {
+    PawnCount,
+    BishopCount,
+    Pst(Square)
+}
+
+
+impl FeatureIndex {
+    pub fn index(&self) -> usize {
+        use crate::eval::eval::FeatureIndex::*;
+        match self {
+            Pst(sq) => FeatureIndex::COUNT - 1 + sq.index(), // -1 as we dont count PST itself
+            _ => FeatureIndexDiscriminants::from(self) as usize,
+        }
+    }
+
+    pub fn name(&self) -> &'static str {
+        self.into()
+    }
+}
+
+
+
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Eval {
@@ -898,6 +929,8 @@ impl Board {
 }
 
 #[cfg(test)]
+
+
 mod tests {
     use super::*;
     use crate::board::boardbuf::BoardBuf;
@@ -907,6 +940,15 @@ mod tests {
     use crate::test_log::test;
     use toml;
 
+    #[test]
+    fn bench_feature_index() {
+        assert_eq!(FeatureIndex::PawnCount.index(), 0);
+        assert_eq!(FeatureIndex::BishopCount.index(), 1);
+        assert_eq!(FeatureIndex::Pst(Square::A1).index(), 2);
+        assert_eq!(FeatureIndex::Pst(Square::H8).index(), 65);
+    }
+    
+    
     #[test]
     fn eval_serde_test() {
         info!("\n{}", toml::to_string(&Eval::default()).unwrap());
