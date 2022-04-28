@@ -125,16 +125,88 @@ impl<T> std::ops::IndexMut<Piece> for PieceArray<T> {
 }
 
 
-use strum::EnumCount;
+// use strum::EnumCount;
 // use strum_macros::*;
 
-#[derive(Debug, strum_macros::EnumDiscriminants, strum_macros::IntoStaticStr, strum_macros::EnumCount, strum_macros::Display)]
+#[derive(Clone, Copy, Debug, strum_macros::EnumDiscriminants, strum_macros::IntoStaticStr, strum_macros::EnumCount, strum_macros::Display)]
 #[strum(serialize_all = "snake_case")]
 #[strum_discriminants(vis())]
 pub enum FeatureIndex {
-    PawnCount,
-    BishopCount,
-    Pst(Square)
+    PawnDoubled,
+    PawnDirectlyDoubled,
+    PawnIsolated,
+    SemiIsolated,
+    PawnPassed,
+    PawnPassedR7,
+    PawnPassedR6,
+    PawnPassedR5,
+    PawnPassedR4,
+    PassersOnRim,
+    CandidatePassedPawn,
+    Blockaded,
+    BlockadedPassers,
+    RooksBehindPasser,
+    EnemyRookOnPasser,
+    Space,
+    RammedPawns,
+    PawnConnectedR67,
+    PawnConnectedR345,
+    PassedConnectedR67,
+    PassedConnectedR345,
+    PawnDuoR67,
+    PawnDuoR2345,
+    PassedDuoR67,
+    PassedDuoR2345,
+    BackwardHalfOpen,
+    Backward,
+
+    BishopPair,
+    RookPair,
+    WinBonus,
+
+    CenterAttacks,
+    UndefendedSq,
+    UndefendedPiece,
+    TrappedPiece,
+    PartiallyTrappedPiece,
+    RookOpenFile,
+    QueenOpenFile,
+
+    Fianchetto,
+    BishopOutposts,
+    BishopColorPawns,
+    KnightForks,
+    KnightOutposts,
+    DoubledRooks,
+    DoubledRooksOpenFile,
+    EnemyPawnsOnRookRank,
+    QueenEarlyDevelop,
+
+    PawnAdjacentShield,
+    PawnNearbyShield,
+    KingSafetyBonus,
+    OpenFilesNearKing,
+    OpenFilesAdjacentKing,
+    AttacksNearKing,
+    TropismD1,
+    TropismD2,
+    TropismD3,
+    TropismD4,
+    KingTrappedOnBackRank,
+    RqOnOpenFilesNearKing,
+    CastlingRights,
+    Uncastled,
+    Checkers,
+    PiecesNearKing,
+    PinnedNearKing,
+    PinnedFar,
+    DiscoveredChecks,
+
+    ContemptPenalty,
+    TempoBonus,
+    WinMetric,
+    Pst(Square),
+    Piece(Piece)
 }
 
 
@@ -142,16 +214,34 @@ impl FeatureIndex {
     pub fn index(&self) -> usize {
         use crate::eval::eval::FeatureIndex::*;
         match self {
-            Pst(sq) => FeatureIndex::COUNT - 1 + sq.index(), // -1 as we dont count PST itself
+            Pst(sq) => FeatureIndexDiscriminants::from(self) as usize + sq.index(), 
+            Piece(p) => FeatureIndexDiscriminants::from(self) as usize + p.index(), 
             _ => FeatureIndexDiscriminants::from(self) as usize,
         }
     }
 
-    pub fn name(&self) -> &'static str {
-        self.into()
+    pub fn name(&self) -> String {
+        use crate::eval::eval::FeatureIndex::*;
+        match self {
+            Pst(sq) => format!("{}.{}", self, sq.uci()) , 
+            Piece(p) => format!("{}.{}", self, p.to_lower_char()) , 
+            _ => self.to_string(),
+        }
+        
+    }
+    pub fn category(&self) -> String {
+        match self {
+            x if x.index() <= FeatureIndex::Backward.index() => "Pawn".to_string(),
+            x if x.index() <= FeatureIndex::WinBonus.index() => "Material".to_string(),
+            x if x.index() <= FeatureIndex::QueenOpenFile.index() => "Mobility".to_string(),
+            x if x.index() <= FeatureIndex::QueenEarlyDevelop.index() => "Position".to_string(),
+            x if x.index() <= FeatureIndex::DiscoveredChecks.index() => "Safety".to_string(),
+            FeatureIndex::Piece(_) => "Material".to_string(),
+            FeatureIndex::Pst(_) => "Position".to_string(),
+            _ => "Tempo".to_string(),
+        }
     }
 }
-
 
 
 
@@ -170,6 +260,7 @@ pub struct Eval {
     pub quantum: i32,
 
     pub min_depth_mob: u8,
+
     pub center_attacks: Weight,
     pub undefended_sq: Weight,
     pub undefended_piece: Weight,
@@ -509,7 +600,7 @@ impl Eval {
         self.w_eval_some(board, Switches::ALL_SCORING | Switches::INSUFFICIENT_MATERIAL)
     }
 
-    pub fn predict(&self, m: &Model, scorer: &mut impl Scorer) {
+    pub fn  predict(&self, m: &Model, scorer: &mut impl Scorer) {
         scorer.set_phase(m.phase());
         if m.mat.is_insufficient() && m.switches.contains(Switches::INSUFFICIENT_MATERIAL) {
             if m.switches.contains(Switches::CONTEMPT) {
@@ -941,11 +1032,12 @@ mod tests {
     use toml;
 
     #[test]
-    fn bench_feature_index() {
-        assert_eq!(FeatureIndex::PawnCount.index(), 0);
-        assert_eq!(FeatureIndex::BishopCount.index(), 1);
-        assert_eq!(FeatureIndex::Pst(Square::A1).index(), 2);
-        assert_eq!(FeatureIndex::Pst(Square::H8).index(), 65);
+    fn test_feature_index() {
+        assert_eq!(FeatureIndex::CenterAttacks.index(), 0);
+        assert_eq!(FeatureIndex::TrappedPiece.index(), 3);
+        assert_eq!(FeatureIndex::Pst(Square::A1).index(), FeatureIndex::WinMetric.index() + 1);
+        assert_eq!(FeatureIndex::CenterAttacks.name(), "center_attacks");
+        assert_eq!(FeatureIndex::Pst(Square::A1).name(), "pst.a1");
     }
     
     

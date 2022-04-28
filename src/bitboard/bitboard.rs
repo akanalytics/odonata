@@ -515,6 +515,16 @@ impl Bitboard {
     }
 
     #[inline]
+    pub const fn two_or_more(self) -> bool {
+        self.popcount() >= 2
+    }
+
+    #[inline]
+    pub const fn exactly_one(self) -> bool {
+        self.popcount() == 1
+    }
+
+    #[inline]
     pub const fn shift(self, dir: Dir) -> Bitboard {
         // let bb = self.sub(dir.mask());
         // Bitboard(bb.0.rotate_left(dir.bits_to_rotate()))

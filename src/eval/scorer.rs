@@ -1,13 +1,16 @@
 use std::fmt;
 
-use crate::{phaser::Phase, outcome::Outcome, utils::Formatting};
+use crate::{phaser::Phase, outcome::Outcome, utils::Formatting, Color};
 
-use super::{weight::Weight, switches::Switches, feature::{FeatureVector, WeightsVector, Sparse}, score::Score};
+use super::{weight::Weight, switches::Switches, feature::{FeatureVector, WeightsVector, Sparse}, score::Score, eval::FeatureIndex};
 
 pub trait Scorer {
     // fn set_multiplier(&mut self, m: i32);
     fn annotate(&mut self, annotation: &str);
+    fn csv(&self) -> bool;
     fn material(&mut self, attr: &str, w_value: i32, b_value: i32, score: Weight);
+    fn accumulate(&mut self, i: FeatureIndex, w_value: i32, b_value: i32, score: Weight);
+    fn accum(&mut self, c: Color, i: FeatureIndex, value: i32, score: Weight);
     fn position(&mut self, attr: &str, w_value: i32, b_value: i32, score: Weight);
     fn pawn(&mut self, attr: &str, w_value: i32, b_value: i32, score: Weight);
     fn mobility(&mut self, attr: &str, w_value: i32, b_value: i32, score: Weight);
@@ -31,6 +34,7 @@ pub struct ExplainScorer {
     con: Vec<(String, i32, i32, Weight)>,
     delegate: ModelScore,
     fen: String,
+    pub csv: bool,
 }
 
 pub enum ReportLine {
@@ -140,9 +144,38 @@ impl Scorer for ExplainScorer {
     #[inline]
     fn annotate(&mut self, _annotation: &str) {}
 
+
+    fn csv(&self) -> bool {
+        self.csv
+    }
+
     // fn set_multiplier(&mut self, mult: i32) {
     //     self.delegate.set_multiplier(mult);
     // }
+    #[inline]
+    fn accum(&mut self, c: Color, i: FeatureIndex, value: i32, score: Weight) {
+        if c == Color::White {
+            self.accumulate(i, value, 0, score);
+            // self.delegate.accum(c, i, value,score);
+        } else {
+            self.accumulate(i, 0, value, score);
+            // self.delegate.accum(c, i, value, score);
+        }
+    }
+
+    #[inline]
+    fn accumulate(&mut self, i: FeatureIndex, w_value: i32, b_value: i32, score: Weight) {
+        match i.category().as_str() {
+            "Pawn" => &mut self.paw,
+            "Material" => &mut self.mat,
+            "Position" => &mut self.pos,
+            "Safety" => &mut self.saf,
+            "Mobility" => &mut self.mob,
+            _ => &mut self.tem,
+        }.push((i.name(), w_value, b_value, score));
+        self.delegate.accumulate(i, w_value, b_value, score);
+    }
+
     #[inline]
     fn material(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
         self.mat.push((_attr.to_string(), w_value, b_value, score));
@@ -335,6 +368,23 @@ impl Scorer for ModelScore {
     // fn set_multiplier(&mut self, mult: i32) {
     //     self.mult = mult;
     // }
+
+    fn csv(&self) -> bool {
+        false
+    }
+
+    fn accum(&mut self, c: Color, _i: FeatureIndex, value: i32, score: Weight) {
+        if c == Color::White {
+            self.tempo += (value - 0) * score;
+        } else {
+            self.tempo += (0 - value) * score;
+        }
+    }
+
+    fn accumulate(&mut self, _i: FeatureIndex, w_value: i32, b_value: i32, score: Weight) {
+        self.tempo += (w_value - b_value) * score;
+    }
+
 
     #[inline]
     fn material(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
