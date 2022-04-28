@@ -7,8 +7,8 @@ use crate::eval::feature::FeatureVector;
 use crate::eval::model::Model;
 use crate::eval::score::Score;
 use crate::eval::scorer::ExplainScorer;
-use crate::eval::scorer::ModelScore;
-use crate::eval::scorer::ReportLine;
+// use crate::eval::scorer::ModelScore;
+// use crate::eval::scorer::ReportLine;
 use crate::eval::scorer::Scorer;
 use crate::eval::switches::Switches;
 use crate::eval::weight::Weight;
@@ -17,12 +17,10 @@ use crate::outcome::Outcome;
 use crate::phaser::Phase;
 use crate::position::Position;
 use crate::search::engine::Engine;
-use crate::search::timecontrol::TimeControl;
 use crate::tags::Tag;
-use crate::Color;
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Result};
 use itertools::Itertools;
-use rayon::prelude::*;
+// use rayon::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
 use std::fmt;
@@ -35,6 +33,8 @@ pub enum RegressionType {
     LinearOnCp,
     LogisticOnOutcome,
     LogisticOnCp,
+    CrossEntropy,
+    CumulativeLogisticLink,
 }
 
 
@@ -135,7 +135,7 @@ impl Tuning {
         model_and_accum( eng, &board, Phase(0), &mut scorer);
         eng.tuner.feature_matrix.feature_names = scorer.feature_names();
 
-        for (i, pos) in positions.iter().enumerate() {
+        for (_i, pos) in positions.iter().enumerate() {
             let ph = eng.algo.eval.phaser.phase(&pos.board().material());
             let mut model = Model::from_board(pos.board(), ph, Switches::ALL_SCORING);
             model.csv = eng.tuner.sparse;
@@ -181,7 +181,7 @@ impl Tuning {
                 //     }
                 //     eng.tuner.models_and_outcomes.push((model, outcome));
                 // }
-                (RegressionType::LogisticOnOutcome, true) => {
+                (_, true) => {
                     let (_outcome, outcome_str) = eng.tuner.calc_player_win_prob_from_pos(pos);
                     let o = Outcome::try_from_pgn(&outcome_str)?;
                     if eng.tuner.ignore_draws && outcome_str == "1/2-1/2" {
@@ -300,18 +300,19 @@ impl Tuning {
     // }
 
     pub fn calculate_mean_square_error(&self, eng: &Engine) -> Result<f32> {
-        let eval = &eng.algo.eval;
+        let _eval = &eng.algo.eval;
         let logistic_steepness_k = self.logistic_steepness_k; // so that closure does not capture engine/tuner
         let mse: f32;
         let mut scorer = ExplainScorer::new(String::new());
         let board = Catalog::starting_board();
         model_and_accum( eng, &board, Phase(0), &mut scorer);
         let weight_vector = scorer.weights_vector();
-        info!("Weights = {}", weight_vector);
+        trace!("Weights = {}", weight_vector);
+        let regression_type = eng.tuner.regression_type;
         // let mut diff_squared: f32 = 0.0;
 
         let closure = |pair: (usize, &FeatureVector)| {
-            let (_i, fv) = pair;
+            let (i, fv) = pair;
             // let fv = pair;
             let w_score = self.feature_matrix.dot_product(&fv, &weight_vector);
             let k = logistic_steepness_k.interpolate(fv.phase) as f32;
@@ -322,12 +323,38 @@ impl Tuning {
                 Outcome::DrawRule50 => 0.5,
                 _ => unreachable!(),
             };
-            let diff = win_prob_estimate - win_prob_actual;
-            let diff_squared = diff * diff;
-            // if i < 10 {
-            //     debug!("Sparse : {} {} {} {}", win_prob_estimate, win_prob_actual, w_score, fv.phase);
-            // }
-            diff_squared
+            let cost = match regression_type {
+                RegressionType::LogisticOnOutcome => {
+                    let diff = win_prob_estimate - win_prob_actual;
+                    diff * diff
+                },
+                RegressionType::CrossEntropy => {
+                    match fv.outcome {
+                        Outcome::WinWhite => -f32::ln(win_prob_estimate),
+                        Outcome::WinBlack => -f32::ln(1.0 - win_prob_estimate),
+                        Outcome::DrawRule50 | _ => 0.0,
+
+                    }
+                }
+                RegressionType::CumulativeLogisticLink => {
+                    match fv.outcome {
+                        Outcome::WinWhite => -f32::ln(win_prob_estimate),
+                        Outcome::WinBlack => -f32::ln(1.0 - win_prob_estimate),
+                        Outcome::DrawRule50 => -f32::ln( 1.0 - f32::abs(win_prob_estimate - 0.5)) ,
+                        _ => 0.0,
+
+                    }
+                }
+                _ => unreachable!(),
+            };
+            if cost.is_infinite() || cost.is_nan()  {
+                debug!("Sparse : {} {} {} {} {} {} {}", i, win_prob_estimate, win_prob_actual, w_score, fv.phase, cost, fv.fen);
+            }
+            if cost.is_infinite() || cost.is_nan()  {
+                0.0
+            } else {
+                cost
+            }
         };
 
         let total_diff_squared: f32 = match self.feature_matrix.feature_vectors.len() {
@@ -459,6 +486,7 @@ mod tests {
     use super::*;
     use crate::utils::Formatting;
     use crate::{eval::weight::Weight, infra::profiler::Profiler};
+    use anyhow::Context;
     use test_log::test;
 
     #[test]
@@ -475,7 +503,7 @@ mod tests {
         let mut engine = Engine::new();
         engine.tuner.multi_threading_min_positions = 10000000;
 
-        engine.tuner.regression_type = RegressionType::LogisticOnOutcome;
+        engine.tuner.regression_type = RegressionType::CrossEntropy;
         engine.tuner.sparse = true;
         Tuning::upload_positions(
             &mut engine,
