@@ -19,6 +19,7 @@ pub enum CatalogSuite {
     Iq81,
     Tricky,
     Checkmate,
+    Famous,
     EndGame,
     Pin,
     Recogs,
@@ -215,6 +216,7 @@ r1r5/2N1n1kb/2nB1b1p/3p2p1/6q1/P2pQ3/3N1PPP/1RR3K1 b - - 11 37 acd 6;
             CatalogSuite::Iq81 => Self::iq(),
             CatalogSuite::Tricky => Self::tricky(),
             CatalogSuite::Checkmate => Self::checkmates(),
+            CatalogSuite::Famous => Self::famous(),
             CatalogSuite::EndGame => Self::end_games(),
             CatalogSuite::Pin => Self::pins(),
             CatalogSuite::Recogs => Self::recogs(),
@@ -291,6 +293,21 @@ K7/7r/8/8/8/8/8/rr5k w - - 0 1
     }
 
     pub fn end_games() -> Vec<Position> {
+        // avoid king on side/corner, so distance win-metrics are calculated
+        let strs = &[
+            "8/1k6/8/8/8/2K4R/8/8 w - - 0 1 id 'KRK';",
+            "8/1K6/8/8/8/2k4r/8/8 w - - 0 1 id 'krK';",
+            "8/1k6/8/8/8/2K4Q/8/8 w - - 0 1 id 'KQK';",
+            "8/1k6/8/8/8/2K3BB/8/8 w - - 0 1 id 'KBBK';",
+            "8/1K6/8/8/8/2k3bb/8/8 w - - 0 1 id 'kbbK';",
+            "8/1k6/8/8/8/2K3BN/8/8 w - - 0 1 id 'KBNK';",
+            "8/1K6/8/8/8/2k3bn/8/8 w - - 0 1 id 'kbnK';",
+            "8/1k6/8/8/8/2K3NN/8/8 w - - 0 1 id 'KNNK';",
+            ];
+        Position::parse_many_epd(strs).unwrap()
+  }
+
+  pub fn famous() -> Vec<Position> {
         // http://wtharvey.com/m8n2.txt
         let strs = &[
             // https://www.stmintz.com/ccc/index.php?id=14581

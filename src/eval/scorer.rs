@@ -1,8 +1,14 @@
 use std::fmt;
 
-use crate::{phaser::Phase, outcome::Outcome, utils::Formatting, Color};
+use crate::{outcome::Outcome, phaser::Phase, utils::Formatting, Color};
 
-use super::{weight::Weight, switches::Switches, feature::{FeatureVector, WeightsVector, Sparse}, score::Score, eval::FeatureIndex};
+use super::{
+    eval::FeatureIndex,
+    feature::{FeatureVector, Sparse, WeightsVector},
+    score::Score,
+    switches::Switches,
+    weight::Weight,
+};
 
 pub trait Scorer {
     // fn set_multiplier(&mut self, m: i32);
@@ -42,18 +48,16 @@ pub enum ReportLine {
     Body,
 }
 
-
 impl ExplainScorer {
     pub fn new(fen: String) -> Self {
         Self {
-            fen, 
+            fen,
             delegate: ModelScore::new(),
             pos: Vec::with_capacity(32),
             mat: Vec::with_capacity(6),
             ..Self::default()
         }
     }
-
 
     pub fn as_score(&self) -> Score {
         self.delegate.as_score()
@@ -144,7 +148,6 @@ impl Scorer for ExplainScorer {
     #[inline]
     fn annotate(&mut self, _annotation: &str) {}
 
-
     fn csv(&self) -> bool {
         self.csv
     }
@@ -165,14 +168,28 @@ impl Scorer for ExplainScorer {
 
     #[inline]
     fn accumulate(&mut self, i: FeatureIndex, w_value: i32, b_value: i32, score: Weight) {
-        match i.category().as_str() {
+        let cat = match i.category().as_str() {
             "Pawn" => &mut self.paw,
             "Material" => &mut self.mat,
             "Position" => &mut self.pos,
             "Safety" => &mut self.saf,
             "Mobility" => &mut self.mob,
             _ => &mut self.tem,
-        }.push((i.name(), w_value, b_value, score));
+        };
+        // if i.index() >= cat.len() {
+        //     cat.resize(i.index() + 1, (String::new(), 0, 0, Weight::zero()));
+        // }
+        // let old_w = cat[i.index()].1;
+        // let old_b = cat[i.index()].2;
+        // cat[i.index()] = (i.name(), w_value + old_w, b_value + old_b, score);
+
+        if let Some(index) = cat.iter().position(|e| e.0 == i.name()) {
+            let old_w = cat[index].1;
+            let old_b = cat[index].2;
+            cat[index] = (i.name(), w_value + old_w, b_value + old_b, score);
+        } else {
+            cat.push((i.name(), w_value, b_value, score));
+        }
         self.delegate.accumulate(i, w_value, b_value, score);
     }
 
@@ -252,21 +269,23 @@ impl fmt::Display for ExplainScorer {
             let vec = vec![&self.mat, &self.pos, &self.mob, &self.paw, &self.saf, &self.con, &self.tem][i];
             for (attr, w, b, wt) in vec {
                 let (attr, w, b, wt) = (attr, *w, *b, *wt);
-                writeln!(
-                    f,
-                    "{:>27} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |   {:<15}",
-                    attr,
-                    w,
-                    pad((w * wt).s()),
-                    pad((w * wt).e()),
-                    pad(((w * wt) - (b * wt)).interpolate(self.phase())),
-                    pad((w * wt).s() - (b * wt).s()),
-                    pad((w * wt).e() - (b * wt).e()),
-                    b,
-                    pad((b * wt).s()),
-                    pad((b * wt).e()),
-                    wt.to_string()
-                )?;
+                if w != 0 || b != 0 {
+                    writeln!(
+                        f,
+                        "{:>27} | {:>7} {:>7} {:>7} | {:>7}  {:>7} {:>7} | {:>7} {:>7} {:>7} |   {:<15}",
+                        attr,
+                        w,
+                        pad((w * wt).s()),
+                        pad((w * wt).e()),
+                        pad(((w * wt) - (b * wt)).interpolate(self.phase())),
+                        pad((w * wt).s() - (b * wt).s()),
+                        pad((w * wt).e() - (b * wt).e()),
+                        b,
+                        pad((b * wt).s()),
+                        pad((b * wt).e()),
+                        wt.to_string()
+                    )?;
+                }
             }
             if true {
                 // !sw.intersects(Switches::TEMPO | Switches::CONTEMPT) {
@@ -346,9 +365,7 @@ pub struct ModelScore {
 
 impl ModelScore {
     pub fn new() -> Self {
-        Self {
-            ..Self::default()
-        }
+        Self { ..Self::default() }
     }
 
     pub fn as_f32(&self) -> f32 {
@@ -384,7 +401,6 @@ impl Scorer for ModelScore {
     fn accumulate(&mut self, _i: FeatureIndex, w_value: i32, b_value: i32, score: Weight) {
         self.tempo += (w_value - b_value) * score;
     }
-
 
     #[inline]
     fn material(&mut self, _attr: &str, w_value: i32, b_value: i32, score: Weight) {
@@ -436,5 +452,48 @@ impl Scorer for ModelScore {
     #[inline]
     fn phase(&self) -> Phase {
         self.phase
+    }
+}
+
+mod tests {
+    use super::*;
+    use crate::catalog::Catalog;
+    use crate::eval::eval::Eval;
+    use crate::eval::model::Model;
+    use crate::eval::scorer::{ExplainScorer, ModelScore, ReportLine};
+    use crate::eval::scorer2::Scorer2;
+    use crate::eval::switches::Switches;
+    use crate::phaser::Phaser;
+    use crate::test_log::test;
+    use comfy_table::{Table, Cell, Color};
+    // use crate::utils::StringUtils;
+
+    #[test]
+    fn test_explain() {
+        let positions = Catalog::bratko_kopec();
+        let end_games = Catalog::end_games();
+        let eval = Eval::new();
+        let phaser = Phaser::default();
+        let mut table = Table::new();
+        table.set_header(vec!["old", "new"]);
+        for pos in positions.iter().chain(end_games.iter()) {
+            let b = pos.board();
+            let mut scorer1 = ExplainScorer::new(b.to_fen());
+            scorer1.set_phase(b.phase(&phaser));
+            let mut model = Model::from_board(b, b.phase(&phaser), Switches::ALL_SCORING);
+            model.csv = false;
+            eval.predict(&model, &mut scorer1);
+
+            let mut scorer2 = ExplainScorer::new(b.to_fen());
+            Scorer2::score(&mut scorer2, &b, &eval, &phaser);
+            table.add_row(vec![scorer1.to_string(), scorer2.to_string()]);
+            if scorer1.total() != scorer2.total() {
+                table.add_row(vec![
+                        Cell::new("Fail!").bg(Color::Red)
+                        ]);
+                break;
+            }
+        }
+        println!("{table}");
     }
 }

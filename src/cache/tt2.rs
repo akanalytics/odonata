@@ -832,7 +832,7 @@ mod tests {
         algo.set_callback(Uci::uci_info);
         algo.set_timing_method(TimeControl::Depth(33));
         algo.new_game();
-        for pos in Catalog::end_games().iter() {
+        for pos in Catalog::famous().iter() {
             algo.new_game();
             algo.set_position(pos.clone()).search();
             assert_eq!(algo.results.bm().uci(), pos.bm()?.uci(), "{}\n{}", pos, algo);

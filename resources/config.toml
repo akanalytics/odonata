@@ -129,7 +129,8 @@ castling_rights           = { s =   43.17, e =  -17.01 }
 uncastled                 = { s =  -70.25, e =    6.69 }
 tempo_bonus               = { s =   28.34, e =   57.44 }
 win_bonus                 = { s =  350.00, e =  600.00 }
-win_metric                = { s =    1.00, e =    1.00 }
+win_metric1               = { s =    1.00, e =    1.00 }
+win_metric2               = { s =    1.00, e =    1.00 }
 
 [eval.pst]
 p.a1 = { s =    0.00, e =    0.00 }

@@ -204,7 +204,8 @@ pub enum FeatureIndex {
 
     ContemptPenalty,
     TempoBonus,
-    WinMetric,
+    WinMetric1,
+    WinMetric2,
     Pst(Square),
     Piece(Piece)
 }
@@ -336,7 +337,8 @@ pub struct Eval {
     pub contempt_penalty: Weight,
     pub tempo_bonus: Weight,
     pub win_bonus: Weight,
-    pub win_metric: Weight,
+    pub win_metric1: Weight,
+    pub win_metric2: Weight,
 
     // pub attacks: PieceArray<PieceArray<Weight>>,
     // pub defends: PieceArray<PieceArray<Weight>> ,
@@ -372,7 +374,8 @@ impl Default for Eval {
             min_depth_mob: 1,
             contempt_penalty: Weight::from_i32(-30, 0), // typically -ve
             win_bonus: Weight::from_i32(250, 250),
-            win_metric: Weight::from_i32(1, 1),
+            win_metric1: Weight::from_i32(1, 1),
+            win_metric2: Weight::from_i32(1, 1),
 
             center_attacks: Weight::from_i32(1, 0),
             undefended_sq: Weight::from_i32(4, 3),
@@ -635,8 +638,8 @@ impl Eval {
             );
 
             if winner.is_some() {
-                scorer.material("win metric1", w.endgame_metric1 as i32, b.endgame_metric1 as i32, self.win_metric);
-                scorer.material("win metric2", w.endgame_metric2 as i32, b.endgame_metric2 as i32, self.win_metric);
+                scorer.material("win metric1", w.endgame_metric1 as i32, b.endgame_metric1 as i32, self.win_metric1);
+                scorer.material("win metric2", w.endgame_metric2 as i32, b.endgame_metric2 as i32, self.win_metric2);
                 return scorer.interpolate_and_scale("interpolate");
             }
         }
@@ -1035,7 +1038,7 @@ mod tests {
     fn test_feature_index() {
         assert_eq!(FeatureIndex::CenterAttacks.index(), 0);
         assert_eq!(FeatureIndex::TrappedPiece.index(), 3);
-        assert_eq!(FeatureIndex::Pst(Square::A1).index(), FeatureIndex::WinMetric.index() + 1);
+        assert_eq!(FeatureIndex::Pst(Square::A1).index(), FeatureIndex::WinMetric2.index() + 1);
         assert_eq!(FeatureIndex::CenterAttacks.name(), "center_attacks");
         assert_eq!(FeatureIndex::Pst(Square::A1).name(), "pst.a1");
     }

@@ -3,18 +3,19 @@ use crate::bitboard::precalc::BitboardDefault;
 use crate::bitboard::square::Square;
 use crate::board::boardcalcs::BoardCalcs;
 use crate::board::Board;
+use crate::eval::endgame::EndGame;
 use crate::eval::eval::{Eval, FeatureIndex};
 use crate::phaser::Phaser;
 use crate::types::Color::{self, *};
 use crate::types::Piece;
 use crate::types::Piece::*;
-use crate::Bitboard;
+use crate::{Bitboard, PreCalc};
 
 use super::scorer::Scorer;
 use super::weight::Weight;
 
 #[derive(Default)]
-struct Scorer2;
+pub struct Scorer2;
 
 impl Scorer2 {
     #[inline]
@@ -25,14 +26,17 @@ impl Scorer2 {
     #[inline]
     pub fn score(scorer: &mut impl Scorer, b: &Board, e: &Eval, ph: &Phaser) {
         Scorer2::material(scorer, b, e);
-        Scorer2::pst(scorer, b, e);
-        Scorer2::other(scorer, b, e);
-        Scorer2::pawns(White, scorer, b, e);
-        Scorer2::pawns(Black, scorer, b, e);
-        Scorer2::king_safety(White, scorer, b, e);
-        Scorer2::king_safety(Black, scorer, b, e);
-        Scorer2::mobility(White, scorer, b, e);
-        Scorer2::mobility(Black, scorer, b, e);
+        if !Self::endgame(scorer, b, e) {
+            Scorer2::position(scorer, b, e);
+            Scorer2::pst(scorer, b, e);
+            Scorer2::other(scorer, b, e);
+            Scorer2::pawns(White, scorer, b, e);
+            Scorer2::pawns(Black, scorer, b, e);
+            Scorer2::king_safety(White, scorer, b, e);
+            Scorer2::king_safety(Black, scorer, b, e);
+            Scorer2::mobility(White, scorer, b, e);
+            Scorer2::mobility(Black, scorer, b, e);
+            }
         scorer.set_phase(b.phase(ph));
         scorer.interpolate_and_scale("interpolate");
     }
@@ -73,6 +77,10 @@ impl Scorer2 {
 
         // let us = b.color(c);
 
+    }
+
+
+    pub fn position(scorer: &mut impl Scorer, b: &Board, eval: &Eval) {
         // fianchetto (short)
         const W_BISHOP: Bitboard = Bitboard::G2;
         const W_KING: Bitboard = Bitboard::F1.or(Bitboard::G1).or(Bitboard::H1);
@@ -101,7 +109,7 @@ impl Scorer2 {
         scorer.accumulate(FeatureIndex::Fianchetto, fianchetto(White), fianchetto(Black), eval.fianchetto);
 
         let bishop_color_pawns = |c: Color| {
-            if m.counts(c, Piece::Bishop) == 1 {
+            if (b.bishops() & b.color(c)).exactly_one() {
                 if Bitboard::WHITE_SQUARES.contains(b.bishops() & b.color(c)) {
                     return (b.pawns() & b.color(c) & Bitboard::WHITE_SQUARES).popcount()
                         - (b.pawns() & b.color(c) & Bitboard::BLACK_SQUARES).popcount();
@@ -136,6 +144,139 @@ impl Scorer2 {
             queen_early_develop(Black),
             eval.queen_early_develop,
         );
+    }
+
+    fn endgame(scorer: &mut impl Scorer, b: &Board, eval: &Eval) -> bool {
+        let endgame = EndGame::from_board(b);
+
+        if let Some(winner) = endgame.try_winner() {
+            // c = losing colour - the winning side doesnt get a score (just the negative of the loser)
+            let (metric1, metric2) = Self::end_game_metrics(winner, b, endgame);
+            // if winner == Color::White {
+                scorer.accum(winner, FeatureIndex::WinMetric1, -metric1, eval.win_metric1);
+                scorer.accum(winner, FeatureIndex::WinMetric2, -metric2, eval.win_metric2);
+                scorer.accum(winner, FeatureIndex::WinBonus, 1, eval.win_bonus);
+            // } else {
+            //     scorer.accum(FeatureIndex::WinMetric1, 0, -metric1, eval.win_metric1);
+            //     scorer.accum(FeatureIndex::WinMetric2, 0, -metric2, eval.win_metric2);
+            //     scorer.accum(FeatureIndex::WinBonus, 0, 1, eval.win_bonus);
+            // }
+            return true;
+        }
+        false
+    }
+
+    fn end_game_metrics(winner: Color, b: &Board, eg: EndGame) -> (i32, i32) {
+        use crate::eval::endgame::EndGame::*;
+        let loser = winner.opposite();
+        match eg {
+            BishopKnightVsKing(_) => {
+                use std::cmp::max;
+                let ksq = (b.kings() & b.color(loser)).square();
+                let wksq = (b.kings() & b.color(winner)).square();
+                let endgame_metric1 = 40 * Self::king_distance_to_bishops_corner(b, ksq, wksq);
+                let king_distance = Self::king_distance(b);
+                let ksq = (b.kings() & b.color(loser)).square();
+                let nsq = (b.knights() & b.color(winner)).square();
+                let bsq = (b.bishops() & b.color(winner)).square();
+                let knight_distance = max(0, PreCalc::default().chebyshev_distance(nsq, ksq));
+                let bishop_distance = max(0, PreCalc::default().chebyshev_distance(bsq, ksq));
+                let endgame_metric2 =
+                    20 * king_distance + 2 * bishop_distance + 3 * knight_distance + 2 * Self::king_distance_to_side(b, loser);
+                (endgame_metric1, endgame_metric2)
+            }
+
+            TwoBishopsOppositeColorSquares(_) => {
+                let endgame_metric1 = 20 * Self::king_distance_to_any_corner(b, loser);
+                let endgame_metric2 = 10 * Self::king_distance(b);
+                (endgame_metric1, endgame_metric2)
+            }
+
+            KingMajorsVsKing(_) | _ => {
+                let endgame_metric1 = 20 * Self::king_distance_to_side(b, loser);
+                let endgame_metric2 = 10 * Self::king_distance(b);
+                (endgame_metric1, endgame_metric2)
+            }
+        }
+    }
+
+    fn king_distance(b: &Board) -> i32 {
+        let wk = b.kings() & b.white();
+        let bk = b.kings() & b.black();
+        PreCalc::default().chebyshev_distance(wk.square(), bk.square())
+    }
+
+    fn king_distance_to_side(b: &Board, c: Color) -> i32 {
+        use std::cmp::min;
+        let k = b.kings() & b.color(c);
+        if k.popcount() == 1 {
+            let r = k.square().rank_index() as i32;
+            let f = k.square().file_index() as i32;
+            let m1 = min(r, f);
+            let m2 = min(7 - r, 7 - f);
+            min(m1, m2)
+        } else {
+            0
+        }
+    }
+
+    fn king_distance_to_any_corner(b: &Board, c: Color) -> i32 {
+        use std::cmp::min;
+        let k = b.kings() & b.color(c);
+        if k.popcount() == 1 {
+            let ksq = k.square();
+            let d1 = PreCalc::default().chebyshev_distance(Square::A1, ksq);
+            let d2 = PreCalc::default().chebyshev_distance(Square::A8, ksq);
+            let d3 = PreCalc::default().chebyshev_distance(Square::H1, ksq);
+            let d4 = PreCalc::default().chebyshev_distance(Square::H8, ksq);
+            min(min(d1, d2), min(d3, d4))
+        } else {
+            0
+        }
+    }
+
+    fn king_distance_to_bishops_corner(b: &Board, ksq: Square, wksq: Square) -> i32 {
+        let bis = b.bishops();
+        let bad_corner1;
+        let bad_corner2;
+        // let gd_corner1;
+        // let gd_corner2;
+        // for losing king, these are undesirable corners
+        if bis.intersects(Bitboard::WHITE_SQUARES) {
+            bad_corner1 = Square::H1;
+            bad_corner2 = Square::A8;
+            // gd_corner1 = Square::A1;
+            // gd_corner2 = Square::H8;
+        } else {
+            bad_corner1 = Square::A1;
+            bad_corner2 = Square::H8;
+            // gd_corner1 = Square::H1;
+            // gd_corner2 = Square::A8;
+        };
+
+        // losing king distance to bad corner
+        let bad_d1 = PreCalc::default().manhattan_distance(bad_corner1, ksq);
+        let gd_d1 = PreCalc::default().manhattan_distance(bad_corner1, wksq);
+        let bad_d2 = PreCalc::default().manhattan_distance(bad_corner2, ksq);
+        let gd_d2 = PreCalc::default().manhattan_distance(bad_corner2, wksq);
+
+        let d1 = if bad_d1 < gd_d1 { bad_d1 } else { bad_d1 };
+        let d2 = if bad_d2 < gd_d2 { bad_d2 } else { bad_d1 };
+        let dist = std::cmp::min(d1, d2);
+        dist
+        // let gd_d1 = PreCalc::default().chebyshev_distance(gd_corner1, ksq);
+        // let gd_d2 = PreCalc::default().chebyshev_distance(gd_corner2, ksq);
+        // let gd_dist = if gd_d1 < gd_d2 {
+        //     PreCalc::default().chebyshev_distance(gd_corner1, wksq)
+        // } else {
+        //     PreCalc::default().chebyshev_distance(gd_corner2, wksq)
+        // };
+        // // give a bonus for winning king being nearer the nearest corner
+        // if gd_dist < std::cmp::min(gd_d1, gd_d2) {
+        //     dist - 1
+        // } else {
+        //     dist
+        // }
     }
 
     pub fn pst(s: &mut impl Scorer, b: &Board, e: &Eval) {
