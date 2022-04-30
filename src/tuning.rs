@@ -4,13 +4,12 @@ use crate::Board;
 use crate::catalog::Catalog;
 use crate::eval::feature::FeatureMatrix;
 use crate::eval::feature::FeatureVector;
-use crate::eval::model::Model;
 use crate::eval::score::Score;
 use crate::eval::scorer::ExplainScorer;
 // use crate::eval::scorer::ModelScore;
 // use crate::eval::scorer::ReportLine;
 use crate::eval::scorer::Scorer;
-use crate::eval::switches::Switches;
+use crate::eval::scorer2::Scorer2;
 use crate::eval::weight::Weight;
 use crate::infra::component::Component;
 use crate::outcome::Outcome;
@@ -107,11 +106,12 @@ impl fmt::Display for Tuning {
 }
 
 
-fn model_and_accum( eng: &Engine, b: &Board, p: Phase, scorer: &mut impl Scorer){ 
-    let mut model = Model::from_board(b, p, Switches::ALL_SCORING);
-    model.csv = eng.tuner.sparse;
+fn model_and_accum( eng: &Engine, b: &Board, _p: Phase, scorer: &mut impl Scorer){ 
+    // let mut model = Model::from_board(b, p, Switches::ALL_SCORING);
+    // model.csv = eng.tuner.sparse;
     // let mut scorer = ExplainScorer::new(String::new());
-    eng.algo.eval.predict(&model, scorer);
+    // eng.algo.eval.predict(&model, scorer);
+    Scorer2::score(scorer, b, &eng.algo.eval, &eng.algo.eval.phaser)
 }
 
 
@@ -131,14 +131,14 @@ impl Tuning {
     pub fn upload_positions(eng: &mut Engine, positions: Vec<Position>) -> Result<usize> {
         // let mut eng.tuner.feature_matrix = FeatureMatrix::default();
         let board = Catalog::starting_board();
-        let mut scorer = ExplainScorer::new(String::new());
+        let mut scorer = ExplainScorer::new(String::new(), true);
         model_and_accum( eng, &board, Phase(0), &mut scorer);
         eng.tuner.feature_matrix.feature_names = scorer.feature_names();
 
         for (_i, pos) in positions.iter().enumerate() {
             let ph = eng.algo.eval.phaser.phase(&pos.board().material());
-            let mut model = Model::from_board(pos.board(), ph, Switches::ALL_SCORING);
-            model.csv = eng.tuner.sparse;
+            // let mut model = Model::from_board(pos.board(), ph, Switches::ALL_SCORING);
+            // model.csv = eng.tuner.sparse;
 
             // set CSV flag so that feature weights get calculated
             
@@ -187,7 +187,7 @@ impl Tuning {
                     if eng.tuner.ignore_draws && outcome_str == "1/2-1/2" {
                         continue;
                     }
-                    let mut w_scorer = ExplainScorer::new(pos.board().to_fen());
+                    let mut w_scorer = ExplainScorer::new(pos.board().to_fen(), true);
                     model_and_accum(eng, pos.board(), ph, &mut w_scorer);
                     // eng.algo.eval.predict(&model, &mut w_scorer);
                     // let _consolidate = eng.tuner.consolidate;
@@ -303,7 +303,7 @@ impl Tuning {
         let _eval = &eng.algo.eval;
         let logistic_steepness_k = self.logistic_steepness_k; // so that closure does not capture engine/tuner
         let mse: f32;
-        let mut scorer = ExplainScorer::new(String::new());
+        let mut scorer = ExplainScorer::new(String::new(), true);
         let board = Catalog::starting_board();
         model_and_accum( eng, &board, Phase(0), &mut scorer);
         let weight_vector = scorer.weights_vector();

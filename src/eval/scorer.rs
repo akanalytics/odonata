@@ -49,12 +49,13 @@ pub enum ReportLine {
 }
 
 impl ExplainScorer {
-    pub fn new(fen: String) -> Self {
+    pub fn new(fen: String, csv: bool ) -> Self {
         Self {
             fen,
             delegate: ModelScore::new(),
             pos: Vec::with_capacity(32),
             mat: Vec::with_capacity(6),
+            csv,
             ..Self::default()
         }
     }
@@ -455,12 +456,13 @@ impl Scorer for ModelScore {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::catalog::Catalog;
     use crate::eval::eval::Eval;
     use crate::eval::model::Model;
-    use crate::eval::scorer::{ExplainScorer, ModelScore, ReportLine};
+    use crate::eval::scorer::{ExplainScorer};
     use crate::eval::scorer2::Scorer2;
     use crate::eval::switches::Switches;
     use crate::phaser::Phaser;
@@ -478,13 +480,13 @@ mod tests {
         table.set_header(vec!["old", "new"]);
         for pos in positions.iter().chain(end_games.iter()) {
             let b = pos.board();
-            let mut scorer1 = ExplainScorer::new(b.to_fen());
+            let mut scorer1 = ExplainScorer::new(b.to_fen(), false);
             scorer1.set_phase(b.phase(&phaser));
             let mut model = Model::from_board(b, b.phase(&phaser), Switches::ALL_SCORING);
             model.csv = false;
             eval.predict(&model, &mut scorer1);
 
-            let mut scorer2 = ExplainScorer::new(b.to_fen());
+            let mut scorer2 = ExplainScorer::new(b.to_fen(), false);
             Scorer2::score(&mut scorer2, &b, &eval, &phaser);
             table.add_row(vec![scorer1.to_string(), scorer2.to_string()]);
             if scorer1.total() != scorer2.total() {

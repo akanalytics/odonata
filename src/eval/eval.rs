@@ -21,6 +21,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use super::model::Model;
+use super::scorer2::Scorer2;
 
 // RunningTotal
 //
@@ -937,11 +938,12 @@ impl Eval {
         scorer.interpolate_and_scale("interpolate");
     }
 
-    pub fn w_eval_explain(&self, b: &Board, csv: bool) -> ExplainScorer {
-        let mut model = Model::from_board(b, b.phase(&self.phaser), Switches::ALL_SCORING);
-        model.csv = csv;
-        let mut scorer = ExplainScorer::new(b.to_fen());
-        self.predict(&model, &mut scorer);
+    pub fn w_eval_explain(&self, b: &Board, _csv: bool) -> ExplainScorer {
+        // let mut model = Model::from_board(b, b.phase(&self.phaser), Switches::ALL_SCORING);
+        // model.csv = csv;
+        let mut scorer = ExplainScorer::new(b.to_fen(), false);
+        Scorer2::score(&mut scorer, b, self, &self.phaser);
+        // self.predict(&model, &mut scorer);
         scorer
     }
 
@@ -958,9 +960,11 @@ impl Eval {
         if !self.pawn {
             switches -= Switches::PAWN;
         }
-        let model = Model::from_board(b, b.phase(&self.phaser), switches);
+
+        // let model = Model::from_board(b, b.phase(&self.phaser), switches);
         let mut scorer = ModelScore::new();
-        self.predict(&model, &mut scorer);
+        Scorer2::score(&mut scorer, b, self, &self.phaser);
+        // predict(&model, &mut scorer);
         Score::from_cp(scorer.as_score().as_i16() as i32 / self.quantum * self.quantum)
     }
 

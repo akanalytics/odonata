@@ -36,7 +36,7 @@ impl Scorer2 {
             Scorer2::king_safety(Black, scorer, b, e);
             Scorer2::mobility(White, scorer, b, e);
             Scorer2::mobility(Black, scorer, b, e);
-            }
+        }
         scorer.set_phase(b.phase(ph));
         scorer.interpolate_and_scale("interpolate");
     }
@@ -76,9 +76,7 @@ impl Scorer2 {
         );
 
         // let us = b.color(c);
-
     }
-
 
     pub fn position(scorer: &mut impl Scorer, b: &Board, eval: &Eval) {
         // fianchetto (short)
@@ -153,15 +151,19 @@ impl Scorer2 {
             // c = losing colour - the winning side doesnt get a score (just the negative of the loser)
             let (metric1, metric2) = Self::end_game_metrics(winner, b, endgame);
             // if winner == Color::White {
-                scorer.accum(winner, FeatureIndex::WinMetric1, -metric1, eval.win_metric1);
-                scorer.accum(winner, FeatureIndex::WinMetric2, -metric2, eval.win_metric2);
-                scorer.accum(winner, FeatureIndex::WinBonus, 1, eval.win_bonus);
+            scorer.accum(winner, FeatureIndex::WinMetric1, -metric1, eval.win_metric1);
+            scorer.accum(winner, FeatureIndex::WinMetric2, -metric2, eval.win_metric2);
+            scorer.accum(winner, FeatureIndex::WinBonus, 1, eval.win_bonus);
             // } else {
             //     scorer.accum(FeatureIndex::WinMetric1, 0, -metric1, eval.win_metric1);
             //     scorer.accum(FeatureIndex::WinMetric2, 0, -metric2, eval.win_metric2);
             //     scorer.accum(FeatureIndex::WinBonus, 0, 1, eval.win_bonus);
             // }
             return true;
+        } else {
+            scorer.accumulate(FeatureIndex::WinMetric1, 0, 0, eval.win_metric1);
+            scorer.accumulate(FeatureIndex::WinMetric2, 0, 0, eval.win_metric2);
+            scorer.accumulate(FeatureIndex::WinBonus, 0, 0, eval.win_bonus);
         }
         false
     }
@@ -925,7 +927,7 @@ mod tests {
     use crate::catalog::Catalog;
     use crate::eval::eval::Eval;
     use crate::eval::model::Model;
-    use crate::eval::scorer::{ExplainScorer, ModelScore, ReportLine};
+    use crate::eval::scorer::{ExplainScorer, ReportLine};
     use crate::eval::switches::Switches;
     use crate::infra::profiler::*;
     use crate::phaser::Phaser;
@@ -940,14 +942,14 @@ mod tests {
         let phaser = Phaser::default();
         for pos in &positions {
             let b = pos.board();
-            let mut scorer1 = ExplainScorer::new(b.to_fen());
+            let mut scorer1 = ExplainScorer::new(b.to_fen(), false);
             scorer1.set_phase(b.phase(&phaser));
             let mut model = Model::from_board(b, b.phase(&phaser), Switches::ALL_SCORING);
             model.csv = false;
             eval.predict(&model, &mut scorer1);
             black_box(&scorer1);
 
-            let mut scorer2 = ExplainScorer::new(b.to_fen());
+            let mut scorer2 = ExplainScorer::new(b.to_fen(), false);
             Scorer2::score(&mut scorer2, &b, &eval, &phaser);
             black_box(&scorer2);
             let w1 = scorer1.total();
@@ -962,7 +964,7 @@ mod tests {
     #[test]
     fn bench_scoring() {
         fn bench_old(b: &Board, p: &Phaser, e: &Eval, pr: &mut Profiler) -> Weight {
-            let mut scorer1 = ExplainScorer::new(b.to_fen());
+            let mut scorer1 = ExplainScorer::new(b.to_fen(), false);
             // let mut scorer1 = ModelScore::new();
             scorer1.set_phase(b.phase(p));
             pr.start();
@@ -978,7 +980,7 @@ mod tests {
         }
 
         fn bench_new(b: &Board, ph: &Phaser, e: &Eval, pr: &mut Profiler) -> Weight {
-            let mut scorer2 = ExplainScorer::new(b.to_fen());
+            let mut scorer2 = ExplainScorer::new(b.to_fen(), false);
             // scorer2.csv = false;
             // let mut scorer2 = ModelScore::new();
 
