@@ -8,8 +8,8 @@ use crate::eval::score::Score;
 use crate::eval::scorer::ExplainScorer;
 // use crate::eval::scorer::ModelScore;
 // use crate::eval::scorer::ReportLine;
-use crate::eval::scorer::Scorer;
-use crate::eval::scorer2::Scorer2;
+use crate::eval::scorer::ScorerBase;
+use crate::eval::calc::Calc;
 use crate::eval::weight::Weight;
 use crate::infra::component::Component;
 use crate::outcome::Outcome;
@@ -106,12 +106,12 @@ impl fmt::Display for Tuning {
 }
 
 
-fn model_and_accum( eng: &Engine, b: &Board, _p: Phase, scorer: &mut impl Scorer){ 
+fn model_and_accum( eng: &Engine, b: &Board, _p: Phase, scorer: &mut impl ScorerBase){ 
     // let mut model = Model::from_board(b, p, Switches::ALL_SCORING);
     // model.csv = eng.tuner.sparse;
     // let mut scorer = ExplainScorer::new(String::new());
     // eng.algo.eval.predict(&model, scorer);
-    Scorer2::score(scorer, b, &eng.algo.eval, &eng.algo.eval.phaser)
+    Calc::score(scorer, b, &eng.algo.eval, &eng.algo.eval.phaser)
 }
 
 

@@ -20,59 +20,8 @@ use serde::{Deserialize, Serialize};
 
 use std::fmt;
 
+use super::calc::Calc;
 use super::model::Model;
-use super::scorer2::Scorer2;
-
-// RunningTotal
-//
-// accumulate (desc, count, weight)  => multiply and tunning total
-//
-
-// ExplainStore
-//
-// accumulate(desc, count, weight) => stores them
-//
-// reaccumulate ?? use array of weights??
-//
-
-// mobility
-// array of 32 pieces with mobility counts & piece type
-// loop through and add   mobbonus[piece][count]
-//
-// mv.r.0
-// mv.r.1
-// mv.r.2
-// mv.r.3
-// bonus.r.6.def
-// bonus.r.6.mv
-
-// eval1 = bl.scoring.material(p=300, b=400, n=700)
-// eval2 = bl.scoring.position(endgame)
-
-// for m in legal_moves:
-//     bl.evaluate(m)
-//     bl.evaluate(board + m)
-//     score1 = eval1(board + m)
-//     print(score1)::write_str
-// '''
-//         w     b  total
-// pawns   3     5   -200
-// bishops 1     5   -400
-// total   -     -   1100
-// '''
-// print(score1.total)
-// print(score1 + score2)
-// '''
-//              w     b  total
-// pawns        3     5   -200
-// bishops      1     5   -400
-// passed pawns 4     0     50
-// total        -     -   1100
-
-// EndGame/Midgame and interp
-// Tempo
-// default scores
-// position is by white/black as directional
 
 // https://www.chessprogramming.org/Simplified_Evaluation_Function
 
@@ -85,19 +34,6 @@ pub static SEE: Stat = Stat::new("SEE");
 pub static MOVE: Stat = Stat::new("MOVE");
 
 pub static EVAL_COUNTS: ArrayStat = ArrayStat(&[&ALL, &QUIESCENCE, &MATERIAL, &POSITION, &MOBILITY, &SEE, &MOVE]);
-
-// pub trait Scorable<Strategy> {
-//     fn signum(&self) -> i32;
-
-//     fn eval_move_see(&self, eval: &SimpleScorer, mv: &Move) -> Score;
-//     fn eval_move_material(&self, eval: &SimpleScorer, mv: &Move) -> Score;
-
-//     fn eval(&self, eval: &SimpleScorer) -> Score;
-//     fn eval_qsearch(&self, eval: &SimpleScorer) -> Score;
-//     fn eval_material(&self, eval: &SimpleScorer) -> Score;
-//     fn eval_position(&self, eval: &SimpleScorer) -> Score;
-//     fn eval_mobility(&self, eval: &SimpleScorer) -> Score;
-// }
 
 #[derive(Clone, Copy, Default, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -125,14 +61,15 @@ impl<T> std::ops::IndexMut<Piece> for PieceArray<T> {
     }
 }
 
-
 // use strum::EnumCount;
 // use strum_macros::*;
 
-#[derive(Clone, Copy, Debug, strum_macros::EnumDiscriminants, strum_macros::IntoStaticStr, strum_macros::EnumCount, strum_macros::Display)]
+#[derive(
+    Clone, Copy, PartialEq, Debug, strum_macros::EnumDiscriminants, strum_macros::IntoStaticStr, strum_macros::EnumCount, strum_macros::Display,
+)]
 #[strum(serialize_all = "snake_case")]
 #[strum_discriminants(vis())]
-pub enum FeatureIndex {
+pub enum Feature {
     PawnDoubled,
     PawnDirectlyDoubled,
     PawnIsolated,
@@ -207,45 +144,40 @@ pub enum FeatureIndex {
     TempoBonus,
     WinMetric1,
     WinMetric2,
-    Pst(Square),
-    Piece(Piece)
+    Pst(Piece, Square),
+    Piece(Piece),
 }
 
-
-impl FeatureIndex {
+impl Feature {
     pub fn index(&self) -> usize {
-        use crate::eval::eval::FeatureIndex::*;
         match self {
-            Pst(sq) => FeatureIndexDiscriminants::from(self) as usize + sq.index(), 
-            Piece(p) => FeatureIndexDiscriminants::from(self) as usize + p.index(), 
-            _ => FeatureIndexDiscriminants::from(self) as usize,
+            Feature::Pst(p, sq) => FeatureDiscriminants::from(Feature::WinMetric2) as usize + 1 + p.index() * Square::len() + sq.index(),
+            Feature::Piece(p) => FeatureDiscriminants::from(Feature::WinMetric2) as usize + 1 + Square::len() * Piece::len() + p.index(),
+            _ => FeatureDiscriminants::from(self) as usize,
         }
     }
 
     pub fn name(&self) -> String {
-        use crate::eval::eval::FeatureIndex::*;
+        use crate::eval::eval::Feature::*;
         match self {
-            Pst(sq) => format!("{}.{}", self, sq.uci()) , 
-            Piece(p) => format!("{}.{}", self, p.to_lower_char()) , 
+            Pst(p, sq) => format!("{}.{}.{}", self, p.to_lower_char(), sq.uci()),
+            Piece(p) => format!("{}.{}", self, p.to_lower_char()),
             _ => self.to_string(),
         }
-        
     }
     pub fn category(&self) -> String {
         match self {
-            x if x.index() <= FeatureIndex::Backward.index() => "Pawn".to_string(),
-            x if x.index() <= FeatureIndex::WinBonus.index() => "Material".to_string(),
-            x if x.index() <= FeatureIndex::QueenOpenFile.index() => "Mobility".to_string(),
-            x if x.index() <= FeatureIndex::QueenEarlyDevelop.index() => "Position".to_string(),
-            x if x.index() <= FeatureIndex::DiscoveredChecks.index() => "Safety".to_string(),
-            FeatureIndex::Piece(_) => "Material".to_string(),
-            FeatureIndex::Pst(_) => "Position".to_string(),
+            x if x.index() <= Feature::Backward.index() => "Pawn".to_string(),
+            x if x.index() <= Feature::WinBonus.index() => "Material".to_string(),
+            x if x.index() <= Feature::QueenOpenFile.index() => "Mobility".to_string(),
+            x if x.index() <= Feature::QueenEarlyDevelop.index() => "Position".to_string(),
+            x if x.index() <= Feature::DiscoveredChecks.index() => "Safety".to_string(),
+            Feature::Piece(_) => "Material".to_string(),
+            Feature::Pst(_, _) => "Position".to_string(),
             _ => "Tempo".to_string(),
         }
     }
 }
-
-
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -604,7 +536,7 @@ impl Eval {
         self.w_eval_some(board, Switches::ALL_SCORING | Switches::INSUFFICIENT_MATERIAL)
     }
 
-    pub fn  predict(&self, m: &Model, scorer: &mut impl Scorer) {
+    pub fn predict(&self, m: &Model, scorer: &mut impl Scorer) {
         scorer.set_phase(m.phase());
         if m.mat.is_insufficient() && m.switches.contains(Switches::INSUFFICIENT_MATERIAL) {
             if m.switches.contains(Switches::CONTEMPT) {
@@ -645,7 +577,6 @@ impl Eval {
             }
         }
 
-
         // position
         if self.position && m.switches.contains(Switches::POSITION) {
             scorer.position("fianchetto", w.fianchetto, b.fianchetto, self.fianchetto);
@@ -683,44 +614,44 @@ impl Eval {
             // scorer.position("pst", 0, 1, b.psq.iter().map(|(p,sq)| self.pst(*p, *sq)).sum::<Weight>());
         }
 
-            let board = &m.board;
-            if !m.csv {
-                // let mut sum = Weight::zero();
-                for &p in &Piece::ALL_BAR_NONE {
-                    let w = (board.pieces(p) & board.white()).flip_vertical();
-                    let b = board.pieces(p) & board.black();
+        let board = &m.board;
+        if !m.csv {
+            // let mut sum = Weight::zero();
+            for &p in &Piece::ALL_BAR_NONE {
+                let w = (board.pieces(p) & board.white()).flip_vertical();
+                let b = board.pieces(p) & board.black();
 
-                    let w = w.squares().map(|sq| self.pst.pst(p, sq)).sum::<Weight>();
-                    let b = b.squares().map(|sq| self.pst.pst(p, sq)).sum::<Weight>();
+                let w = w.squares().map(|sq| self.pst.pst(p, sq)).sum::<Weight>();
+                let b = b.squares().map(|sq| self.pst.pst(p, sq)).sum::<Weight>();
 
-                    let black = ["pst none", "pst p", "pst n", "pst b", "pst r", "pst q", "pst k"][p];
-                    let white = ["pst none", "pst P", "pst N", "pst B", "pst R", "pst Q", "pst K"][p];
-                    scorer.position(white, 1, 0, w);
-                    scorer.position(black, 0, 1, b);
-                    // sum = sum + w - b;
-                }
-            } else {
-                for &p in &Piece::ALL_BAR_NONE {
-                    let w = (board.pieces(p) & board.white()).flip_vertical();
-                    let b = board.pieces(p) & board.black();
+                let black = ["pst none", "pst p", "pst n", "pst b", "pst r", "pst q", "pst k"][p];
+                let white = ["pst none", "pst P", "pst N", "pst B", "pst R", "pst Q", "pst K"][p];
+                scorer.position(white, 1, 0, w);
+                scorer.position(black, 0, 1, b);
+                // sum = sum + w - b;
+            }
+        } else {
+            for &p in &Piece::ALL_BAR_NONE {
+                let w = (board.pieces(p) & board.white()).flip_vertical();
+                let b = board.pieces(p) & board.black();
 
-                    for sq in Square::all() {
-                        // let u8s = vec![
-                        //     'p' as u8,
-                        //     's' as u8,
-                        //     't' as u8,
-                        //     '.' as u8,
-                        //     p.to_lower_char() as u8,
-                        //     '.' as u8,
-                        //     sq.uci().as_bytes()[0],
-                        //     sq.uci().as_bytes()[1],
-                        // ];
-                        let label = format!("pst.{}.{}", p.to_lower_char(), sq.uci());
-                        // let label = std::str::from_utf8(&u8s).unwrap();
-                        scorer.position(&label, sq.is_in(w) as i32, sq.is_in(b) as i32, self.pst.pst(p, sq));
-                    }
+                for sq in Square::all() {
+                    // let u8s = vec![
+                    //     'p' as u8,
+                    //     's' as u8,
+                    //     't' as u8,
+                    //     '.' as u8,
+                    //     p.to_lower_char() as u8,
+                    //     '.' as u8,
+                    //     sq.uci().as_bytes()[0],
+                    //     sq.uci().as_bytes()[1],
+                    // ];
+                    let label = format!("pst.{}.{}", p.to_lower_char(), sq.uci());
+                    // let label = std::str::from_utf8(&u8s).unwrap();
+                    scorer.position(&label, sq.is_in(w) as i32, sq.is_in(b) as i32, self.pst.pst(p, sq));
                 }
             }
+        }
 
         // pawn structure
         if self.pawn && m.switches.contains(Switches::PAWN) {
@@ -942,7 +873,7 @@ impl Eval {
         // let mut model = Model::from_board(b, b.phase(&self.phaser), Switches::ALL_SCORING);
         // model.csv = csv;
         let mut scorer = ExplainScorer::new(b.to_fen(), false);
-        Scorer2::score(&mut scorer, b, self, &self.phaser);
+        Calc::score(&mut scorer, b, self, &self.phaser);
         // self.predict(&model, &mut scorer);
         scorer
     }
@@ -963,7 +894,7 @@ impl Eval {
 
         // let model = Model::from_board(b, b.phase(&self.phaser), switches);
         let mut scorer = ModelScore::new();
-        Scorer2::score(&mut scorer, b, self, &self.phaser);
+        Calc::score(&mut scorer, b, self, &self.phaser);
         // predict(&model, &mut scorer);
         Score::from_cp(scorer.as_score().as_i16() as i32 / self.quantum * self.quantum)
     }
@@ -1028,7 +959,6 @@ impl Board {
 
 #[cfg(test)]
 
-
 mod tests {
     use super::*;
     use crate::board::boardbuf::BoardBuf;
@@ -1040,14 +970,22 @@ mod tests {
 
     #[test]
     fn test_feature_index() {
-        assert_eq!(FeatureIndex::CenterAttacks.index(), 0);
-        assert_eq!(FeatureIndex::TrappedPiece.index(), 3);
-        assert_eq!(FeatureIndex::Pst(Square::A1).index(), FeatureIndex::WinMetric2.index() + 1);
-        assert_eq!(FeatureIndex::CenterAttacks.name(), "center_attacks");
-        assert_eq!(FeatureIndex::Pst(Square::A1).name(), "pst.a1");
+        assert_eq!(Feature::PawnDoubled.index(), 0);
+        assert_eq!(Feature::PawnDirectlyDoubled.index(), 1);
+        let last = Feature::WinMetric2.index();
+        let first_sq = Feature::Pst(Piece::Pawn, Square::A1).index();
+        let last_sq = Feature::Pst(Piece::Pawn, Square::H8).index();
+        let first_piece = Feature::Piece(Piece::None).index();
+        let last_piece = Feature::Piece(Piece::King).index();
+        assert_eq!(first_sq, last + 1);
+        assert_eq!(last_sq, first_sq + 63);
+        assert_eq!(first_piece, last_sq + 1);
+        assert_eq!(last_piece, first_piece + 6);
+
+        assert_eq!(Feature::CenterAttacks.name(), "center_attacks");
+        assert_eq!(Feature::Pst(Piece::Pawn, Square::A1).name(), "pst.p.a1");
     }
-    
-    
+
     #[test]
     fn eval_serde_test() {
         info!("\n{}", toml::to_string(&Eval::default()).unwrap());
@@ -1077,20 +1015,6 @@ mod tests {
         info!("\n{}", eval.w_eval_explain(&board_b, false));
         assert_eq!(eval.w_eval_some(&board_b, Switches::ALL_SCORING), score.negate());
     }
-
-    // #[test]
-    // fn test_eval_configure() {
-    //     let mut eval = SimpleScorer::new();
-    //     eval.configure(&ParsedConfig::new().set("eval.b.s", "700"));
-    //     assert_eq!(
-    //         Score::from_f32(eval.mb.piece_weights[Piece::Bishop].s()),
-    //         Score::from_cp(700)
-    //     );
-
-    //     let mut eval = SimpleScorer::new();
-    //     eval.configure(&ParsedConfig::new().set("eval.position", "false"));
-    //     assert_eq!(eval.position, false);
-    // }
 
     #[test]
     fn test_score_position() {
