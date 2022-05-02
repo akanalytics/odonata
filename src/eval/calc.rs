@@ -22,8 +22,9 @@ impl Calc {
         Self::default()
     }
 
+
     #[inline]
-    pub fn score(scorer: &mut impl ScorerBase, b: &Board, e: &Eval, ph: &Phaser) {
+    pub fn score(scorer: &mut impl ScorerBase, b: &Board, e: &Eval, _phaser: &Phaser) {
         Calc::material(scorer, b, e);
         if !Self::endgame(scorer, b, e) {
             Calc::position(scorer, b, e);

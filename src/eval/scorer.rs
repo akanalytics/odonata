@@ -1,6 +1,8 @@
-use std::fmt;
+use std::{fmt, io::Write};
 
-use comfy_table::{Cell, Row, Table, CellAlignment, presets};
+use comfy_table::{presets, Cell, CellAlignment, Row, Table};
+use anyhow::Result;
+use itertools::Itertools;
 
 use crate::{outcome::Outcome, phaser::Phase, utils::Formatting, Color};
 
@@ -20,7 +22,14 @@ pub trait ScorerBase {
 
 #[derive(Clone, Debug, Default)]
 pub struct TotalScore {
+    phase: Phase,
     total: Weight,
+}
+
+impl TotalScore {
+    pub fn new(phase: Phase) -> Self {
+        Self { phase, ..Self::default() }
+    }
 }
 
 impl ScorerBase for TotalScore {
@@ -45,7 +54,20 @@ impl ScorerBase for TotalScore {
 
 #[derive(Clone, Debug, Default)]
 pub struct ExplainScore {
+    outcome: Outcome,
+    fen: String,
+    phase: Phase,
     vec: Vec<(Feature, i32, i32, Weight)>,
+}
+
+impl ExplainScore {
+    pub fn new(phase: Phase, fen: String) -> Self {
+        Self { phase, fen, ..Self::default() }
+    }
+
+    pub fn set_outcome(&mut self, o: Outcome) {
+        self.outcome = o;        
+    }
 }
 
 impl ScorerBase for ExplainScore {
@@ -75,34 +97,73 @@ impl ScorerBase for ExplainScore {
     }
 }
 
+
+impl ExplainScore {
+    fn feature_value(&self, i: Feature) -> Option<i32> {
+        self.vec
+            .iter()
+            .find(|&e| i == e.0)
+            .map(|e| (e.1 - e.2) as i32)
+    } 
+
+    pub fn write_csv<'a, W: Write>(iter: impl Iterator<Item=&'a ExplainScore>, f: &mut W) -> Result<i32> {
+        writeln!(f, "{},phase,outcome,ce,fen", Feature::all().iter().map(|f| f.name()).join(","))?;
+        let mut count = 0;
+        for r in iter {
+            count += 1;
+            for c in &Feature::all() {
+                match r.feature_value(*c) {
+                    Some(v) => write!(f, "{},", v),
+                    None => write!(f, "0,"),
+                }?;
+            }
+            writeln!(f, "{},{},{},{}", r.phase, r.outcome.as_win_fraction(), 0, r.fen)?;
+        }
+        Ok(count)
+    }
+}
+
+
+// TODO! Move to 'tabled' crate
 impl fmt::Display for ExplainScore {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+
+        fn fp(decimal: f32) -> Cell {
+            Cell::new(Formatting::decimal(2, decimal).to_string())
+        }
+
+        fn int(int: i32) -> Cell {
+            Cell::new(int.to_string())
+        }
+
         let mut tab = Table::new();
         let row = Row::from(vec!["attr", "w#", "w mg", "w eg", "int", "mg", "eg", "b#", "b mg", "b eg", "wt"]);
         tab.load_preset(presets::ASCII_BORDERS_ONLY_CONDENSED).set_header(row);
-        tab.column_iter_mut().skip(1).for_each(|c| c.set_cell_alignment(CellAlignment::Right));
-        tab.get_column_mut(1).unwrap().set_padding((1,2));
-        tab.get_column_mut(4).unwrap().set_padding((1,2));
-        tab.get_column_mut(7).unwrap().set_padding((1,2));
+        tab.column_iter_mut()
+            .skip(1)
+            .for_each(|c| c.set_cell_alignment(CellAlignment::Right));
+        tab.get_column_mut(1).unwrap().set_padding((1, 2));
+        tab.get_column_mut(4).unwrap().set_padding((1, 2));
+        tab.get_column_mut(7).unwrap().set_padding((1, 2));
         let mut tot = Weight::zero();
         let mut grand_tot = Weight::zero();
         let mut iter = self.vec.iter().peekable();
-        while let Some((i, w, b, wt)) = iter.next() {            
+        while let Some((i, w, b, wt)) = iter.next() {
             let mut row = Row::new();
             row.add_cell(Cell::new(i.name()));
-            row.add_cell(Cell::new(w));
-            row.add_cell(Cell::new((*w * *wt).s()));
-            row.add_cell(Cell::new((*w * *wt).e()));
-            row.add_cell(Cell::new("int"));
+            row.add_cell(int(*w));
+            row.add_cell(fp((*w * *wt).s()));
+            row.add_cell(fp((*w * *wt).e()));
+            row.add_cell(fp((*w * *wt).interpolate(self.phase)));
             tot += (w - b) * *wt;
-            row.add_cell(Cell::new((*w * *wt).s() - (*b * *wt).s()));
-            row.add_cell(Cell::new((*w * *wt).s() - (*b * *wt).e()));
-            row.add_cell(Cell::new(b));
-            row.add_cell(Cell::new((*b * *wt).s()));
-            row.add_cell(Cell::new((*b * *wt).e()));
+            row.add_cell(fp((*w * *wt).s() - (*b * *wt).s()));
+            row.add_cell(fp((*w * *wt).s() - (*b * *wt).e()));
+            row.add_cell(int(*b));
+            row.add_cell(fp((*b * *wt).s()));
+            row.add_cell(fp((*b * *wt).e()));
             row.add_cell(Cell::new(wt));
             tab.add_row(row);
-            if let Some((j, _,_,_)) = iter.peek() {
+            if let Some((j, _, _, _)) = iter.peek() {
                 if i.category() == j.category() {
                     continue;
                 }
@@ -110,9 +171,9 @@ impl fmt::Display for ExplainScore {
             let mut row = Row::new();
             row.add_cell(Cell::new(i.category()));
             row.add_cell("".into()).add_cell("".into()).add_cell("".into());
-            row.add_cell("int".into());
-            row.add_cell(Cell::new(tot.s()));
-            row.add_cell(Cell::new(tot.e()));
+            row.add_cell(fp((tot).interpolate(self.phase)));
+            row.add_cell(fp(tot.s()));
+            row.add_cell(fp(tot.e()));
             tab.add_row(row);
             grand_tot += tot;
             tot = Weight::zero();
@@ -121,11 +182,11 @@ impl fmt::Display for ExplainScore {
         let mut row = Row::new();
         row.add_cell(Cell::new("Total"));
         row.add_cell("".into()).add_cell("".into()).add_cell("".into());
-        row.add_cell("int".into());
-        row.add_cell(Cell::new(grand_tot.s()));
-        row.add_cell(Cell::new(grand_tot.e()));
+        row.add_cell(fp((grand_tot).interpolate(self.phase)));
+        row.add_cell(fp(grand_tot.s()));
+        row.add_cell(fp(grand_tot.e()));
         tab.add_row(row);
-    tab.fmt(f)?;
+        tab.fmt(f)?;
         Ok(())
     }
 }
@@ -609,7 +670,7 @@ mod tests {
             let mut scorer2 = ExplainScorer::new(b.to_fen(), false);
             Calc::score(&mut scorer2, &b, &eval, &phaser);
 
-            let mut scorer3 = ExplainScore::default();
+            let mut scorer3 = ExplainScore::new(b.phase(&phaser), pos.board().to_fen());
             Calc::score(&mut scorer3, &b, &eval, &phaser);
 
             table.add_row(vec![scorer1.to_string(), scorer2.to_string(), scorer3.to_string()]);

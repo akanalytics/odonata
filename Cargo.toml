@@ -1,6 +1,6 @@
 [package]
 name = "odonata"
-version = "0.5.26"
+version = "0.5.27"
 license = "GPL-3.0+"
 homepage = "https://github.com/akanalytics/odonata"
 authors = [
@@ -50,7 +50,7 @@ enumflags2 = { version = "0.7", features = ["serde"] }
 tracing = "0.1"
 tracing-subscriber = "0.2"                         # = { version="0.2", features=["fmt", "env-filter", "ansi", "registry"]}
 # tracing-log = "0.1"
-anyhow = "1.0"
+anyhow = { version = "1.0", features = ["backtrace"] }
 figment = { version = "0.10.6", features = ["env", "toml", "test"] }
 toml = "0.5.8"
 tabwriter = "1.2.1"

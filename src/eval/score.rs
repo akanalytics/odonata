@@ -237,7 +237,7 @@ impl std::ops::Add for Score {
                 return self; // if self is an infinite or mate then adding cp/mp makes no difference
             }
         }
-        panic!("Can only add centipawns not {} + {}", self, other);
+        panic!("Can only add centipawns: can't add {} + {}", self, other);
     }
 }
 
@@ -270,7 +270,7 @@ impl std::ops::Sub for Score {
                 return self; // if self is an infinite or mate then subtracting cp/mp makes no difference
             }
         }
-        panic!("Can only subtract centipawns not {} - {}", self, other);
+        panic!("Can only subtract centipawns: can't subtract {} - {}", self, other);
     }
 }
 

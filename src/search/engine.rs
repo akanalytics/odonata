@@ -219,6 +219,12 @@ impl Engine {
                     algo.search();
                     algo
                 });
+                if let Err(ref error) = result {
+                    if let Some(e) = error.downcast_ref::<anyhow::Error>() {
+                        error!("Thrae panic returned {:?}", e);
+                        error!("Backtrace {:?}", e.source());
+                    }
+                }
                 result.map_err(|e| anyhow!("Anyhow {:?}",e))
 
             };

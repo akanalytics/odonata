@@ -5,6 +5,7 @@ use crate::catalog::Catalog;
 use crate::eval::feature::FeatureMatrix;
 use crate::eval::feature::FeatureVector;
 use crate::eval::score::Score;
+use crate::eval::scorer::ExplainScore;
 use crate::eval::scorer::ExplainScorer;
 // use crate::eval::scorer::ModelScore;
 // use crate::eval::scorer::ReportLine;
@@ -37,12 +38,20 @@ pub enum RegressionType {
 }
 
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub enum Method {
+    Sparse,
+    Dense,
+    New,
+}
+
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Tuning {
     pub regression_type: RegressionType,
-    pub sparse: bool,
+    pub method: Method,
     pub search_depth: i32,
     pub ignore_known_outcomes: bool,
     pub ignore_endgames: bool,
@@ -58,6 +67,8 @@ pub struct Tuning {
     #[serde(skip)]
     pub feature_matrix: FeatureMatrix,
 
+    #[serde(skip)]
+    pub explains: Vec<ExplainScore>,
     // #[serde(skip)]
     // pub boards: Vec<Position>,
 
@@ -69,16 +80,17 @@ impl Default for Tuning {
     fn default() -> Self {
         Tuning {
             regression_type: RegressionType::LogisticOnOutcome,
-            sparse: true,
+            method: Method::Sparse,
             search_depth: -1,
             ignore_known_outcomes: true,
             ignore_endgames: true,
             multi_threading_min_positions: 20000,
             threads: 32,
             // models_and_outcomes: Default::default(),
-            feature_matrix: Default::default(),
-            // boards: Default::default(),
             logistic_steepness_k: Weight::from_i32(4, 4),
+            feature_matrix: Default::default(),
+            explains: Default::default(),
+            // boards: Default::default(),
             ignore_draws: false,
             consolidate: false,
             // model: Model::default(),
@@ -160,7 +172,7 @@ impl Tuning {
             //     trace!("Discarding known endgame position {}", pos);
             //     continue;
             // }
-            match (eng.tuner.regression_type, eng.tuner.sparse) {
+            match (eng.tuner.regression_type, eng.tuner.method) {
                 // (RegressionType::LogisticOnCp, _) => {
                 //     if let Tag::Comment(_n, s) = pos.tag("c6") {
                 //         let mut w_score: f32 = s.parse()?;
@@ -181,7 +193,7 @@ impl Tuning {
                 //     }
                 //     eng.tuner.models_and_outcomes.push((model, outcome));
                 // }
-                (_, true) => {
+                (_, Method::Sparse) => {
                     let (_outcome, outcome_str) = eng.tuner.calc_player_win_prob_from_pos(pos);
                     let o = Outcome::try_from_pgn(&outcome_str)?;
                     if eng.tuner.ignore_draws && outcome_str == "1/2-1/2" {
@@ -193,6 +205,20 @@ impl Tuning {
                     // let _consolidate = eng.tuner.consolidate;
                     let fv = w_scorer.into_feature_vector(o);
                     eng.tuner.feature_matrix.feature_vectors.push(fv);
+                }
+                (_, Method::New) => {
+                    let (_outcome, outcome_str) = eng.tuner.calc_player_win_prob_from_pos(pos);
+                    let o = Outcome::try_from_pgn(&outcome_str)?;
+                    if eng.tuner.ignore_draws && outcome_str == "1/2-1/2" {
+                        continue;
+                    }
+                    let ph = eng.algo.eval.phaser.phase(&pos.board().material());
+                    let mut explain = ExplainScore::new(ph, pos.board().to_fen());
+                    Calc::score(&mut explain, pos.board(), &eng.algo.eval, &eng.algo.eval.phaser);
+                    explain.set_outcome(o);
+                    // eng.algo.eval.predict(&model, &mut w_scorer);
+                    // let _consolidate = eng.tuner.consolidate;
+                    eng.tuner.explains.push(explain);
                 }
                 (_,_) => unreachable!("Unexpected regression type or dense")
                 // (RegressionType::LinearOnCp, _) => {
@@ -212,7 +238,7 @@ impl Tuning {
 
         // let lines = if eng.tuner.sparse {
         info!("Loaded sparse lines");
-        Ok(eng.tuner.feature_matrix.feature_vectors.len())
+        Ok(positions.len())
     }
 
     pub fn calc_player_win_prob_from_pos(&self, pos: &Position) -> (f32, String) {
@@ -229,9 +255,14 @@ impl Tuning {
     }
 
 
-    pub fn write_training_data<W: Write>(engine: &mut Engine, writer: &mut W) -> Result<i32> {
+    pub fn write_training_data<W: Write>(eng: &mut Engine, writer: &mut W) -> Result<i32> {
         // if engine.tuner.sparse {
-        engine.tuner.feature_matrix.write_csv(writer) 
+            match eng.tuner.method {
+                Method::Sparse => eng.tuner.feature_matrix.write_csv(writer),
+                Method::New => ExplainScore::write_csv(eng.tuner.explains.iter(), writer),
+                _ => unreachable!("Bad tuning method"),
+            }
+             
         // } else {
         //     let mut line_count = 0;
         //     engine.algo.set_callback(|_| {}); // turn off uci_info output of doing zillions of searches
@@ -504,7 +535,7 @@ mod tests {
         engine.tuner.multi_threading_min_positions = 10000000;
 
         engine.tuner.regression_type = RegressionType::CrossEntropy;
-        engine.tuner.sparse = true;
+        engine.tuner.method = Method::Sparse;
         Tuning::upload_positions(
             &mut engine,
             Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-combo.epd").unwrap(),
@@ -539,9 +570,10 @@ mod tests {
     #[test]
     fn test_tuning_csv() {
         info!("Starting...");
-        let mut engine = Engine::new();
+        let mut eng = Engine::new();
+        eng.tuner.method = Method::New;
         Tuning::upload_positions(
-            &mut engine,
+            &mut eng,
             Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-small.epd").unwrap(),
         )
         .unwrap();
@@ -555,7 +587,7 @@ mod tests {
             .with_context(|| format!("Failed to open file {}", &filename))
             .unwrap();
         let mut f = BufWriter::new(f);
-        let line_count = Tuning::write_training_data(&mut engine, &mut f).unwrap();
+        let line_count = Tuning::write_training_data(&mut eng, &mut f).unwrap();
         println!(" lines proicessed: {line_count}");
     }
 
@@ -573,7 +605,7 @@ mod tests {
         // prof1.stop();
 
         let mut eng2 = Engine::new();
-        eng2.tuner.sparse = true;
+        eng2.tuner.method = Method::Sparse;
         Tuning::upload_positions(&mut eng2, Position::parse_epd_file(file).unwrap()).unwrap();
         let mut prof2 = Profiler::new("mse sparse".into());
         prof2.start();

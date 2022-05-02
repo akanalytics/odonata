@@ -17,11 +17,13 @@ use crate::search::node::Node;
 use crate::trace::stat::{ArrayStat, Stat};
 use crate::types::{Color, Piece};
 use serde::{Deserialize, Serialize};
+use strum::IntoEnumIterator;
 
 use std::fmt;
 
 use super::calc::Calc;
 use super::model::Model;
+use super::scorer::{TotalScore, ScorerBase};
 
 // https://www.chessprogramming.org/Simplified_Evaluation_Function
 
@@ -65,7 +67,7 @@ impl<T> std::ops::IndexMut<Piece> for PieceArray<T> {
 // use strum_macros::*;
 
 #[derive(
-    Clone, Copy, PartialEq, Debug, strum_macros::EnumDiscriminants, strum_macros::IntoStaticStr, strum_macros::EnumCount, strum_macros::Display,
+    Clone, Copy, PartialEq, Debug, strum_macros::EnumDiscriminants, strum_macros::IntoStaticStr, strum_macros::EnumCount, strum_macros::EnumIter, strum_macros::Display,
 )]
 #[strum(serialize_all = "snake_case")]
 #[strum_discriminants(vis())]
@@ -151,10 +153,32 @@ pub enum Feature {
 impl Feature {
     pub fn index(&self) -> usize {
         match self {
-            Feature::Pst(p, sq) => FeatureDiscriminants::from(Feature::WinMetric2) as usize + 1 + p.index() * Square::len() + sq.index(),
-            Feature::Piece(p) => FeatureDiscriminants::from(Feature::WinMetric2) as usize + 1 + Square::len() * Piece::len() + p.index(),
+            Feature::Pst(p, sq) => FeatureDiscriminants::from(Feature::WinMetric2) as usize + 1 + (p.index()-1) * Square::len() + sq.index(),
+            Feature::Piece(p) => FeatureDiscriminants::from(Feature::WinMetric2) as usize + 1 + Square::len() * (Piece::len() - 1) + (p.index() -1),
             _ => FeatureDiscriminants::from(self) as usize,
         }
+    }
+
+    pub fn all() -> Vec<Feature> {
+        let mut features = Vec::<Feature>::new();
+        for f in Feature::iter() {
+            match f {
+                Feature::Pst(_,_) => {
+                    for p in Piece::ALL_BAR_NONE {
+                        for sq in Square::all() {
+                            features.push( Feature::Pst(p, sq));
+                        }
+                    }
+                }
+                Feature::Piece(_) => {
+                    for p in Piece::ALL_BAR_KING {
+                        features.push( Feature::Piece(p));
+                    }
+                }
+                _ => features.push(f)
+            }
+        }
+        features
     }
 
     pub fn name(&self) -> String {
@@ -485,6 +509,7 @@ impl Eval {
 }
 
 impl Eval {
+    
     pub fn w_tempo_adjustment(&self, us: Color) -> Weight {
         // axiom: we're white
         // white to move => advantage, black to move means white has a disadvantage
@@ -893,10 +918,11 @@ impl Eval {
         }
 
         // let model = Model::from_board(b, b.phase(&self.phaser), switches);
-        let mut scorer = ModelScore::new();
+        let ph = b.phase(&self.phaser);
+        let mut scorer = TotalScore::new(ph);
         Calc::score(&mut scorer, b, self, &self.phaser);
         // predict(&model, &mut scorer);
-        Score::from_cp(scorer.as_score().as_i16() as i32 / self.quantum * self.quantum)
+        Score::from_cp(scorer.total().interpolate(ph) as i32 / self.quantum * self.quantum)
     }
 
     // // updated on capture & promo
@@ -974,16 +1000,17 @@ mod tests {
         assert_eq!(Feature::PawnDirectlyDoubled.index(), 1);
         let last = Feature::WinMetric2.index();
         let first_sq = Feature::Pst(Piece::Pawn, Square::A1).index();
-        let last_sq = Feature::Pst(Piece::Pawn, Square::H8).index();
-        let first_piece = Feature::Piece(Piece::None).index();
+        let last_sq = Feature::Pst(Piece::King, Square::H8).index();
+        let first_piece = Feature::Piece(Piece::Pawn).index();
         let last_piece = Feature::Piece(Piece::King).index();
         assert_eq!(first_sq, last + 1);
-        assert_eq!(last_sq, first_sq + 63);
+        assert_eq!(last_sq, first_sq + 6 * 64 - 1);
         assert_eq!(first_piece, last_sq + 1);
-        assert_eq!(last_piece, first_piece + 6);
+        assert_eq!(last_piece, first_piece + 6 - 1);
 
         assert_eq!(Feature::CenterAttacks.name(), "center_attacks");
         assert_eq!(Feature::Pst(Piece::Pawn, Square::A1).name(), "pst.p.a1");
+        assert!(Feature::all().len() > 64 * 6 + 6 + Feature::WinBonus.index());
     }
 
     #[test]
