@@ -159,12 +159,12 @@ mod tests {
     use std::time::Duration;
 
     #[test]
-    fn sizes() {
+    fn test_sizes() {
         assert_eq!(size_of::<Piece>(), 1, "Piece");
         assert_eq!(size_of::<Color>(), 1, "Color");
         assert_eq!(size_of::<Ply>(), 4, "Ply");
         assert_eq!(size_of::<CastlingRights>(), 1, "CastlingRights");
-        assert_eq!(size_of::<Square>(), 1, "Square");
+        assert_eq!(size_of::<Square>(), 2, "Square");
         assert_eq!(size_of::<Score>(), 2, "Score");
         assert_eq!(size_of::<Move>(), 4, "Move");
         assert_eq!(size_of::<Bitboard>(), 8, "Bitboard");
@@ -185,13 +185,13 @@ mod tests {
         assert_eq!(size_of::<PreCalc>(), 75784, "PreCalc");
         assert_eq!(size_of::<Magic>(), 719264, "Magic");
         assert_eq!(size_of::<Hasher>(), 7296, "Hasher");
-        assert_eq!(size_of::<Algo>(), 26048, "Algo");
+        assert_eq!(size_of::<Algo>(), 26112, "Algo");
         assert_eq!(size_of::<QSearch>(), 12, "QSearch");
         assert_eq!(size_of::<Clock>(), 64, "Clock");
         assert_eq!(size_of::<NullMovePruning>(), 32, "NullMovePruning");
         assert_eq!(size_of::<Futility>(), 36, "Futility");
         assert_eq!(size_of::<IterativeDeepening>(), 40, "IterativeDeepening");
-        assert_eq!(size_of::<Eval>(), 4360, "SimpleScorer");
+        assert_eq!(size_of::<Eval>(), 4408, "SimpleScorer");
         assert_eq!(size_of::<Pvs>(), 8, "Pvs");
         assert_eq!(size_of::<Extensions>(), 40, "Extensions");
         assert_eq!(size_of::<Lmr>(), 48, "Lmr");

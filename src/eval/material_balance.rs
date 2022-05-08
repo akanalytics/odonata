@@ -1,5 +1,5 @@
 use crate::domain::material::Material;
-use crate::eval::scorer::{ModelScore, Scorer, ScorerBase};
+use crate::eval::scorer::{ModelScore, Scorer};
 use crate::eval::weight::Weight;
 use crate::infra::component::Component;
 use crate::mv::Move;

@@ -4,7 +4,7 @@ use std::cmp;
 use std::fmt;
 
 #[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
-pub struct Square(u8);
+pub struct Square(u16);
 
 impl Default for Square {
     #[inline]
@@ -85,7 +85,7 @@ impl Square {
     #[inline]
     pub const fn from_u8(i: u8) -> Square {
         // debug_assert!(i <= 64);
-        Square(i)
+        Square(i as u16)
     }
 
     #[inline]
@@ -95,7 +95,7 @@ impl Square {
 
     #[inline]
     pub const fn null() -> Square {
-        Square(64u8)
+        Square(64u16)
     }
 
     #[inline]
@@ -110,17 +110,17 @@ impl Square {
 
     #[inline]
     pub const fn from_u32(i: u32) -> Square {
-        Square(i as u8)
+        Square(i as u16)
     }
 
     #[inline]
-    pub fn from_bb(bb: Bitboard) -> Square {
+    pub const fn from_bb(bb: Bitboard) -> Square {
         bb.square()
     }
 
     #[inline]
     pub const fn as_bb(self) -> Bitboard {
-        Bitboard::from_sq(self.0)
+        Bitboard::from_sq(self.0 )
     }
 
     #[inline]
@@ -130,13 +130,13 @@ impl Square {
 
     #[inline]
     pub const fn is_null(self) -> bool {
-        self.0 == 64u8
+        self.0 == 64u16
     }
 
     #[inline]
-    pub fn shift(self, dir: Dir) -> Square {
+    pub const fn shift(self, dir: Dir) -> Square {
         debug_assert!(self.0 as i8 + dir.shift() >= 0 && self.0 as i8 + dir.shift() < 64);
-        Square((self.0 as i8 + dir.shift()) as u8)
+        Square((self.0 as i8 + dir.shift()) as u16)
     }
 
     #[inline]
@@ -171,12 +171,12 @@ impl Square {
     }
 
     #[inline]
-    pub fn file(self) -> Bitboard {
+    pub const fn file(self) -> Bitboard {
         Bitboard::FILES[self.file_index()]
     }
 
     #[inline]
-    pub fn rank(self) -> Bitboard {
+    pub const fn rank(self) -> Bitboard {
         Bitboard::RANKS[self.rank_index()]
     }
 

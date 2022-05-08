@@ -575,7 +575,7 @@ fn benchmark_ordering(c: &mut Criterion) {
             movelists.iter().enumerate().cycle_n(n).for_each(|(i, ml)| {
                 let pos = &positions[i];
                 for mv in ml.iter() {
-                    see.eval_move_see(pos.board(), mv);
+                    see.eval_move_see(pos.board(), &mv);
                     count += 1;
                 }
             });
@@ -682,16 +682,16 @@ fn benchmark_eval(c: &mut Criterion) {
             t.elapsed() / positions.len() as u32
         })
     });
-    group.bench_function("all_model_eval", |b| {
-        b.iter_custom(|n| {
-            let t = Instant::now();
-            positions.iter().cycle_n(n).for_each(|p| {
-                let mut model_score = ModelScore::new(phaser.phase(&p.board().material()), p.board().fifty_halfmove_clock());
-                black_box(ef.predict(&Model::from_board(p.board(), Switches::ALL_SCORING), &mut model_score));
-            });
-            t.elapsed() / positions.len() as u32
-        })
-    });
+    // group.bench_function("all_model_eval", |b| {
+    //     b.iter_custom(|n| {
+    //         let t = Instant::now();
+    //         positions.iter().cycle_n(n).for_each(|p| {
+    //             let mut model_score = ModelScore::new(phaser.phase(&p.board().material()), p.board().fifty_halfmove_clock());
+    //             black_box(ef.predict(&Model::from_board(p.board(), Switches::ALL_SCORING), &mut model_score));
+    //         });
+    //         t.elapsed() / positions.len() as u32
+    //     })
+    // });
     group.bench_function("qsearch", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();

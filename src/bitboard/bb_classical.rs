@@ -61,7 +61,7 @@ impl ClassicalBitboard {
         });
         for sq in 0..64_usize {
             for &dir in Dir::ALL.iter() {
-                let bb = Bitboard::from_sq(sq as u8);
+                let bb = Bitboard::from_sq(sq as u16);
                 let mask = bb.rays(dir);
                 classical.rays[sq][dir] = mask;
                 classical.king_moves[sq] |= bb.shift(dir);

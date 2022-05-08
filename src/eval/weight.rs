@@ -23,8 +23,6 @@ where
 pub type Weight = WeightOf<f32>;
 // pub type Weight = crate::eval::weight3::WeightOf<f32>;
 
-
-
 // private
 #[derive(Serialize, Deserialize)]
 struct WeightOfHelper {
@@ -46,7 +44,11 @@ impl Serialize for WeightOf<i32> {
     where
         S: Serializer,
     {
-        WeightOfHelper { s: self.0 as f32, e: self.1 as f32 }.serialize(serializer)
+        WeightOfHelper {
+            s: self.0 as f32,
+            e: self.1 as f32,
+        }
+        .serialize(serializer)
     }
 }
 
@@ -119,7 +121,6 @@ where
     pub fn as_tuple(self) -> (T, T) {
         (self.0, self.1)
     }
-
 }
 // impl<T> WeightOf<T> where T: Copy + Num + std::ops::Sub<T, Output=T> + std::ops::Div<i32, Output=T>, i32: std::ops::Mul<T, Output=T>  {
 impl<T> WeightOf<T>
@@ -163,7 +164,16 @@ where
     T: Copy + Num + fmt::Display + Into<f64>,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "({}, {})", Formatting::decimal(2, self.s()), Formatting::decimal(2, self.e()))
+        let precision = match f.precision() {
+            Some(p) => p,
+            None => 2,
+        };
+        write!(
+            f,
+            "({}, {})",
+            Formatting::decimal(precision, self.s()),
+            Formatting::decimal(precision, self.e())
+        )
     }
 }
 
@@ -191,10 +201,19 @@ where
         Self(self.s() + o.s(), self.e() + o.e())
     }
 }
-impl<T> std::ops::AddAssign for WeightOf<T>
-where
-    T: Copy + Num + std::ops::AddAssign,
-{
+
+// impl<T> std::ops::AddAssign for WeightOf<T>
+// where
+//     T: Copy + Num + std::ops::AddAssign,
+// {
+//     #[inline]
+//     fn add_assign(&mut self, o: Self) {
+//         self.0 += o.s();
+//         self.1 += o.e();
+//     }
+// }
+
+impl std::ops::AddAssign for WeightOf<f32> {
     #[inline]
     fn add_assign(&mut self, o: Self) {
         self.0 += o.s();
@@ -215,8 +234,7 @@ where
 //     }
 // }
 
-impl std::ops::Mul<WeightOf::<f32>> for i32
-{
+impl std::ops::Mul<WeightOf<f32>> for i32 {
     type Output = WeightOf<f32>;
 
     #[inline]
@@ -270,8 +288,6 @@ mod tests {
         // info!("{}", toml::to_string_pretty(&Weight::default()).unwrap());
     }
 }
-
-
 
 // This impl 42% slower
 

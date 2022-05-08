@@ -56,7 +56,7 @@ where
 pub struct Formatting;
 
 impl Formatting {
-    pub fn decimal<F: Into<f64>>(decimal_places: u32, n: F) -> String {
+    pub fn decimal<F: Into<f64>>(decimal_places: usize, n: F) -> String {
         match decimal_places {
             0 => format_num!(".0f", n),
             1 => format_num!(".1f", n),

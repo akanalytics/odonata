@@ -412,7 +412,7 @@ impl ModelSide {
 
     // Weak Pawns - pawns not defended and not defensible by the pawns of the same color, whose stop square is also not covered by a friendly pawn.
     // - Isolated Pawn - no neighbouring pawns of same colour
-    // - Isolated Pawn (half open) - even weker if rooks around
+    // - Isolated Pawn (half open) - even weaker if rooks around
     // - Backward Pawn
     // - Overly advanced
     // - Hanging Pawns -  are an open, half-isolated duo. It means that they are standing next to each other on the adjacent half-open files, usually on the fourth rank, mutually protecting their stop squares.

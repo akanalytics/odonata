@@ -1,7 +1,7 @@
-use std::{fmt, io::Write};
+use std::{fmt, fmt::Display, io::Write};
 
-use comfy_table::{presets, Cell, CellAlignment, Row, Table};
 use anyhow::Result;
+use comfy_table::{presets, Cell, CellAlignment, Row, Table};
 use itertools::Itertools;
 
 use crate::{outcome::Outcome, phaser::Phase, utils::Formatting, Color};
@@ -17,70 +17,84 @@ use super::{
 pub trait ScorerBase {
     fn accumulate(&mut self, i: Feature, w_value: i32, b_value: i32, wt: Weight);
     fn accum(&mut self, c: Color, i: Feature, value: i32, score: Weight);
-    fn total(&self) -> Weight;
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct TotalScore {
-    phase: Phase,
+#[derive(Debug)]
+pub struct TotalScore<'a> {
+    weights: &'a [Weight],
+    _phase: Phase,
     total: Weight,
 }
 
-impl TotalScore {
-    pub fn new(phase: Phase) -> Self {
-        Self { phase, ..Self::default() }
+impl<'a> TotalScore<'a> {
+    #[inline]
+    pub fn new(weights: &'a Vec<Weight>, _phase: Phase) -> Self {
+        Self {
+            weights,
+            _phase,
+            total: Weight::zero(),
+        }
+    }
+
+    #[inline]
+    pub fn total(&self) -> Weight {
+        self.total
     }
 }
 
-impl ScorerBase for TotalScore {
+impl<'a> ScorerBase for TotalScore<'a> {
     #[inline]
-    fn accumulate(&mut self, _i: Feature, w_value: i32, b_value: i32, wt: Weight) {
-        self.total += (w_value - b_value) * wt;
+    fn accumulate(&mut self, i: Feature, w_value: i32, b_value: i32, _wt: Weight) {
+        self.total += (w_value - b_value) * self.weights[i.index()];
     }
 
     #[inline]
     fn accum(&mut self, c: Color, i: Feature, value: i32, wt: Weight) {
-        if c == Color::White {
-            self.accumulate(i, value, 0, wt);
-        } else {
-            self.accumulate(i, 0, value, wt);
+        match c {
+            Color::White => self.accumulate(i, value, 0, wt),
+            Color::Black => self.accumulate(i, 0, value, wt),
         }
-    }
-
-    fn total(&self) -> Weight {
-        self.total
     }
 }
 
 #[derive(Clone, Debug, Default)]
 pub struct ExplainScore {
-    outcome: Outcome,
-    fen: String,
-    phase: Phase,
-    vec: Vec<(Feature, i32, i32, Weight)>,
+    pub outcome: Outcome,
+    pub fen: String,
+    pub phase: Phase,
+    vec: Vec<(Feature, i32, i32, i32)>,
+    weights: Option<WeightsVector>,
 }
 
 impl ExplainScore {
     pub fn new(phase: Phase, fen: String) -> Self {
-        Self { phase, fen, ..Self::default() }
+        Self {
+            phase,
+            fen,
+            ..Self::default()
+        }
     }
 
     pub fn set_outcome(&mut self, o: Outcome) {
-        self.outcome = o;        
+        self.outcome = o;
+    }
+
+    pub fn set_weights(&mut self, wts: WeightsVector) {
+        self.weights = Some(wts);
     }
 }
 
 impl ScorerBase for ExplainScore {
     #[inline]
-    fn accumulate(&mut self, i: Feature, w_value: i32, b_value: i32, wt: Weight) {
+    fn accumulate(&mut self, i: Feature, w_value: i32, b_value: i32, _wt: Weight) {
         if w_value != 0 || b_value != 0 {
             if let Some(index) = self.vec.iter().position(|e| e.0 == i) {
                 let old_w = self.vec[index].1;
                 let old_b = self.vec[index].2;
-                self.vec[index] = (i, w_value + old_w, b_value + old_b, wt);
+                self.vec[index] = (i, w_value + old_w, b_value + old_b, i.index() as i32);
                 return;
             }
-            self.vec.push((i, w_value, b_value, wt));
+            self.vec.push((i, w_value, b_value, i.index() as i32));
         }
     }
     #[inline]
@@ -91,28 +105,45 @@ impl ScorerBase for ExplainScore {
             self.accumulate(i, 0, value, score);
         }
     }
-
-    fn total(&self) -> Weight {
-        self.vec.iter().map(|e| (e.1 - e.2) * e.3).sum()
-    }
 }
 
-
 impl ExplainScore {
-    fn feature_value(&self, i: Feature) -> Option<i32> {
-        self.vec
-            .iter()
-            .find(|&e| i == e.0)
-            .map(|e| (e.1 - e.2) as i32)
-    } 
+    pub fn dot_product(&self, wv: &WeightsVector) -> Weight {
+        self.vec.iter().map(|e| (e.1 - e.2) * *unsafe { wv.weights.get_unchecked(e.3 as usize) }).sum()
+    }
 
-    pub fn write_csv<'a, W: Write>(iter: impl Iterator<Item=&'a ExplainScore>, f: &mut W) -> Result<i32> {
+    fn value(&self, i: Feature) -> Option<i32> {
+        self.vec.iter().find(|&e| i == e.0).map(|e| (e.1 - e.2) as i32)
+    }
+
+    pub fn discard_balanced_features(&mut self) {
+        let mut i = 0;
+        while i < self.vec.len() {
+            let e = &self.vec[i];
+            if e.1 == e.2 {
+                self.vec.remove(i);
+                // your code here
+            } else {
+                i += 1;
+            }
+        }
+        // self.vec.drain_filter(|e| (e.1 != e.2));
+    }
+
+    pub fn total(&self) -> Weight {
+        match self.weights {
+            None => self.vec.iter().map(|e| (e.1 - e.2)).sum::<i32>() * Weight::new(1.0, 1.0),
+            Some(ref wv) => self.vec.iter().map(|e| (e.1 - e.2) * wv.weights[e.0.index()]).sum(),
+        }
+    }
+
+    pub fn write_csv<'a, W: Write>(iter: impl Iterator<Item = &'a ExplainScore>, f: &mut W) -> Result<i32> {
         writeln!(f, "{},phase,outcome,ce,fen", Feature::all().iter().map(|f| f.name()).join(","))?;
         let mut count = 0;
         for r in iter {
             count += 1;
             for c in &Feature::all() {
-                match r.feature_value(*c) {
+                match r.value(*c) {
                     Some(v) => write!(f, "{},", v),
                     None => write!(f, "0,"),
                 }?;
@@ -123,11 +154,9 @@ impl ExplainScore {
     }
 }
 
-
 // TODO! Move to 'tabled' crate
-impl fmt::Display for ExplainScore {
+impl Display for ExplainScore {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-
         fn fp(decimal: f32) -> Cell {
             Cell::new(Formatting::decimal(2, decimal).to_string())
         }
@@ -148,19 +177,24 @@ impl fmt::Display for ExplainScore {
         let mut tot = Weight::zero();
         let mut grand_tot = Weight::zero();
         let mut iter = self.vec.iter().peekable();
-        while let Some((i, w, b, wt)) = iter.next() {
+        while let Some((i, w, b, _index)) = iter.next() {
+            let wt = if let Some(ref wv) = self.weights {
+                wv.weights[i.index()]
+            } else {
+                Weight::new(1.0, 1.0)
+            };
             let mut row = Row::new();
             row.add_cell(Cell::new(i.name()));
             row.add_cell(int(*w));
-            row.add_cell(fp((*w * *wt).s()));
-            row.add_cell(fp((*w * *wt).e()));
-            row.add_cell(fp((*w * *wt).interpolate(self.phase)));
-            tot += (w - b) * *wt;
-            row.add_cell(fp((*w * *wt).s() - (*b * *wt).s()));
-            row.add_cell(fp((*w * *wt).s() - (*b * *wt).e()));
+            row.add_cell(fp((*w * wt).s()));
+            row.add_cell(fp((*w * wt).e()));
+            row.add_cell(fp((*w * wt).interpolate(self.phase)));
+            tot += (w - b) * wt;
+            row.add_cell(fp((*w * wt).s() - (*b * wt).s()));
+            row.add_cell(fp((*w * wt).s() - (*b * wt).e()));
             row.add_cell(int(*b));
-            row.add_cell(fp((*b * *wt).s()));
-            row.add_cell(fp((*b * *wt).e()));
+            row.add_cell(fp((*b * wt).s()));
+            row.add_cell(fp((*b * wt).e()));
             row.add_cell(Cell::new(wt));
             tab.add_row(row);
             if let Some((j, _, _, _)) = iter.peek() {
@@ -321,16 +355,16 @@ impl ExplainScorer {
         }
         weights_vec
     }
+    #[inline]
+    pub fn total(&self) -> Weight {
+        self.delegate.total()
+    }
 }
 
 impl ScorerBase for ExplainScorer {
     // fn set_multiplier(&mut self, mult: i32) {
     //     self.delegate.set_multiplier(mult);
     // }
-    #[inline]
-    fn total(&self) -> Weight {
-        self.delegate.total()
-    }
 
     #[inline]
     fn accum(&mut self, c: Color, i: Feature, value: i32, score: Weight) {
@@ -553,16 +587,17 @@ impl ModelScore {
     }
 
     pub fn as_score(&self) -> Score {
-        Score::from_cp(self.interpolated.round() as i32)
+        Score::from_cp(self.interpolated as i32)
+        // Score::from_cp(self.interpolated.round() as i32)
+    }
+
+    #[inline]
+    pub fn total(&self) -> Weight {
+        self.material + self.position + self.pawn + self.mobility + self.safety + self.tempo + self.contempt
     }
 }
 
 impl ScorerBase for ModelScore {
-    #[inline]
-    fn total(&self) -> Weight {
-        self.material + self.position + self.pawn + self.mobility + self.safety + self.tempo + self.contempt
-    }
-
     fn accum(&mut self, c: Color, _i: Feature, value: i32, score: Weight) {
         if c == Color::White {
             self.tempo += (value - 0) * score;
@@ -642,11 +677,11 @@ mod tests {
     use super::*;
     use crate::catalog::Catalog;
     use crate::eval::calc::Calc;
-    use crate::eval::eval::Eval;
     use crate::eval::model::Model;
     use crate::eval::scorer::ExplainScorer;
     use crate::eval::switches::Switches;
     use crate::phaser::Phaser;
+    use crate::search::engine::Engine;
     use crate::test_log::test;
     use comfy_table::{Cell, Color, Table};
     // use crate::utils::StringUtils;
@@ -655,10 +690,12 @@ mod tests {
     fn test_explain() {
         let positions = Catalog::bratko_kopec();
         let end_games = Catalog::end_games();
-        let eval = Eval::new();
+        let mut eng = Engine::new();
+        let eval = &mut eng.algo.eval;
+        eval.populate_feature_weights();
         let phaser = Phaser::default();
         let mut table = Table::new();
-        table.set_header(vec!["old", "new"]);
+        table.set_header(vec!["old", "TotalScore", "ExplainScore"]);
         for pos in positions.iter().chain(end_games.iter()) {
             let b = pos.board();
             let mut scorer1 = ExplainScorer::new(b.to_fen(), false);
@@ -667,14 +704,20 @@ mod tests {
             model.csv = false;
             eval.predict(&model, &mut scorer1);
 
-            let mut scorer2 = ExplainScorer::new(b.to_fen(), false);
+            let mut scorer2 = TotalScore::new(&eval.feature_weights, b.phase(&phaser));
             Calc::score(&mut scorer2, &b, &eval, &phaser);
 
             let mut scorer3 = ExplainScore::new(b.phase(&phaser), pos.board().to_fen());
+            scorer3.set_weights(eval.weights_vector());
             Calc::score(&mut scorer3, &b, &eval, &phaser);
 
-            table.add_row(vec![scorer1.to_string(), scorer2.to_string(), scorer3.to_string()]);
-            if scorer1.total() != scorer2.total() || scorer2.total() != scorer3.total() {
+            table.add_row(vec![scorer1.to_string(), scorer2.total().to_string(), scorer3.to_string()]);
+            if scorer1.total().to_string() != scorer2.total().to_string() || scorer2.total().to_string() != scorer3.total().to_string() {
+                table.add_row(vec![
+                    format!("{:.6}", scorer1.total()),
+                    format!("{:.6}", scorer2.total()),
+                    format!("{:.6}", scorer3.total()),
+                ]);
                 table.add_row(vec![Cell::new("Fail!").bg(Color::Red)]);
                 break;
             }

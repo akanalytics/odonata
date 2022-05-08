@@ -170,6 +170,7 @@ mod tests {
 
     #[test]
     fn test_endgame() {
+        use crate::eval::eval::Attr::*;
         let b = Board::parse_fen("k7/1p6/3N4/8/8/8/6N1/K6B w - - 0 1").unwrap();
         let eg = EndGame::from_board(&b);
         assert_eq!(eg, EndGame::Unknown);
@@ -183,9 +184,9 @@ mod tests {
         assert_eq!(eg, EndGame::KingMinorVsKingMinor);
         let mut eval = Eval::default();
         assert!(eval.win_bonus.e() as f32 > 0.0);
-        eval.win_bonus = Weight::from_i32(100, 100);
+        eval.set_weight(WinBonus.into(), Weight::from_i32(100, 100));
         let sc_wi_bonus = b.eval_some(&eval, Switches::MATERIAL);
-        eval.win_bonus = Weight::zero();
+        eval.set_weight(WinBonus.into(), Weight::zero());
         let sc_wo_bonus = b.eval_some(&eval, Switches::MATERIAL);
         assert_eq!(sc_wi_bonus - sc_wo_bonus, Score::from_cp(0));
 
@@ -197,9 +198,9 @@ mod tests {
         let eg = EndGame::from_board(&b);
         assert_eq!(eg, EndGame::TwoBishopsOppositeColorSquares(Color::White));
         let mut eval = Eval::default();
-        eval.win_bonus = Weight::from_i32(100, 100);
+        eval.set_weight(WinBonus.into(), Weight::from_i32(100, 100));
         let sc_wi_bonus = b.eval_some(&eval, Switches::MATERIAL);
-        eval.win_bonus = Weight::zero();
+        eval.set_weight(WinBonus.into(), Weight::zero());
         let sc_wo_bonus = b.eval_some(&eval, Switches::MATERIAL);
         assert_eq!(sc_wi_bonus - sc_wo_bonus, Score::from_cp(100));
 
@@ -207,9 +208,9 @@ mod tests {
         let eg = EndGame::from_board(&b);
         assert_eq!(eg, EndGame::Unknown);
         let mut eval = Eval::default();
-        eval.win_bonus = Weight::from_i32(100, 100);
+        eval.set_weight(WinBonus.into(), Weight::from_i32(100, 100));
         let sc_wi_bonus = b.eval_some(&eval, Switches::MATERIAL);
-        eval.win_bonus = Weight::zero();
+        eval.set_weight(WinBonus.into(), Weight::zero());
         let sc_wo_bonus = b.eval_some(&eval, Switches::MATERIAL);
         assert_eq!(sc_wi_bonus - sc_wo_bonus, Score::from_cp(0));
 
@@ -217,9 +218,9 @@ mod tests {
         let eg = EndGame::from_board(&b);
         assert_eq!(eg, EndGame::TwoBishopsOppositeColorSquares(Color::Black));
         let mut eval = Eval::default();
-        eval.win_bonus = Weight::from_i32(100, 100);
+        eval.set_weight(WinBonus.into(), Weight::from_i32(100, 100));
         let sc_wi_bonus = b.eval_some(&eval, Switches::MATERIAL);
-        eval.win_bonus = Weight::zero();
+        eval.set_weight(WinBonus.into(), Weight::zero());
         let sc_wo_bonus = b.eval_some(&eval, Switches::MATERIAL);
         assert_eq!(sc_wi_bonus - sc_wo_bonus, Score::from_cp(-100));
 

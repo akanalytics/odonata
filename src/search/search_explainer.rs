@@ -216,7 +216,7 @@ mod tests {
     use crate::test_log::test;
 
     #[test]
-    fn test_explainer() {
+    fn test_search_explainer() {
         let mut eng = Engine::new();
         eng.algo.explainer.enabled = true;
         assert_eq!(eng.algo.explainer.vars.len(), 1);

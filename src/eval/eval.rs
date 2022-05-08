@@ -3,27 +3,33 @@ use crate::board::Board;
 use crate::eval::material_balance::MaterialBalance;
 use crate::eval::pst::Pst;
 use crate::eval::score::Score;
+use crate::eval::scorer::ExplainScorer;
 use crate::eval::scorer::Scorer;
-use crate::eval::scorer::{ExplainScorer, ModelScore};
 use crate::eval::see::See;
 use crate::eval::switches::Switches;
 use crate::eval::weight::Weight;
 use crate::globals::counts;
 use crate::infra::component::Component;
+use crate::infra::component::State;
 use crate::mv::Move;
 use crate::phaser::Phaser;
 use crate::prelude::*;
 use crate::search::node::Node;
 use crate::trace::stat::{ArrayStat, Stat};
 use crate::types::{Color, Piece};
+
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 
+use std::collections::HashMap;
 use std::fmt;
 
 use super::calc::Calc;
+use super::feature::WeightsVector;
 use super::model::Model;
-use super::scorer::{TotalScore, ScorerBase};
+
+
+use super::scorer::{TotalScore};
 
 // https://www.chessprogramming.org/Simplified_Evaluation_Function
 
@@ -63,15 +69,15 @@ impl<T> std::ops::IndexMut<Piece> for PieceArray<T> {
     }
 }
 
-// use strum::EnumCount;
-// use strum_macros::*;
+use strum_macros::Display;
+use strum_macros::EnumCount;
+use strum_macros::EnumDiscriminants;
+use strum_macros::EnumIter;
+use strum_macros::IntoStaticStr;
 
-#[derive(
-    Clone, Copy, PartialEq, Debug, strum_macros::EnumDiscriminants, strum_macros::IntoStaticStr, strum_macros::EnumCount, strum_macros::EnumIter, strum_macros::Display,
-)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Debug, IntoStaticStr, EnumCount, EnumIter, Display)]
 #[strum(serialize_all = "snake_case")]
-#[strum_discriminants(vis())]
-pub enum Feature {
+pub enum Attr {
     PawnDoubled,
     PawnDirectlyDoubled,
     PawnIsolated,
@@ -146,36 +152,68 @@ pub enum Feature {
     TempoBonus,
     WinMetric1,
     WinMetric2,
+}
+
+impl Default for Attr {
+    fn default() -> Self {
+        Attr::PawnDoubled
+    }
+}
+
+impl Attr {
+    pub const fn as_feature(&self) -> Feature {
+        Feature::Discrete(*self)
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Debug, EnumDiscriminants, IntoStaticStr, EnumCount, EnumIter, Display)]
+#[strum(serialize_all = "snake_case")]
+#[strum_discriminants(vis())]
+pub enum Feature {
+    Discrete(Attr),
     Pst(Piece, Square),
     Piece(Piece),
 }
 
+impl From<Attr> for Feature {
+    fn from(a: Attr) -> Self {
+        Feature::Discrete(a)
+    }
+}
+
 impl Feature {
-    pub fn index(&self) -> usize {
+    pub const fn index(&self) -> usize {
         match self {
-            Feature::Pst(p, sq) => FeatureDiscriminants::from(Feature::WinMetric2) as usize + 1 + (p.index()-1) * Square::len() + sq.index(),
-            Feature::Piece(p) => FeatureDiscriminants::from(Feature::WinMetric2) as usize + 1 + Square::len() * (Piece::len() - 1) + (p.index() -1),
-            _ => FeatureDiscriminants::from(self) as usize,
+            Feature::Discrete(f) => *f as usize,
+            Feature::Pst(p, sq) => Attr::WinMetric2 as usize + 1 + (p.index() - 1) * Square::len() + sq.index(),
+            Feature::Piece(p) => Attr::WinMetric2 as usize + 1 + Square::len() * (Piece::len() - 1) + (p.index() - 1),
         }
     }
 
+    pub const fn len() -> usize {
+        Feature::Piece(Piece::Queen).index() + 1
+    }
     pub fn all() -> Vec<Feature> {
         let mut features = Vec::<Feature>::new();
         for f in Feature::iter() {
             match f {
-                Feature::Pst(_,_) => {
+                Feature::Discrete(_) => {
+                    for a in Attr::iter() {
+                        features.push(Feature::Discrete(a));
+                    }
+                }
+                Feature::Pst(_, _) => {
                     for p in Piece::ALL_BAR_NONE {
                         for sq in Square::all() {
-                            features.push( Feature::Pst(p, sq));
+                            features.push(Feature::Pst(p, sq));
                         }
                     }
                 }
                 Feature::Piece(_) => {
                     for p in Piece::ALL_BAR_KING {
-                        features.push( Feature::Piece(p));
+                        features.push(Feature::Piece(p));
                     }
                 }
-                _ => features.push(f)
             }
         }
         features
@@ -186,16 +224,16 @@ impl Feature {
         match self {
             Pst(p, sq) => format!("{}.{}.{}", self, p.to_lower_char(), sq.uci()),
             Piece(p) => format!("{}.{}", self, p.to_lower_char()),
-            _ => self.to_string(),
+            Discrete(f) => f.to_string(),
         }
     }
     pub fn category(&self) -> String {
         match self {
-            x if x.index() <= Feature::Backward.index() => "Pawn".to_string(),
-            x if x.index() <= Feature::WinBonus.index() => "Material".to_string(),
-            x if x.index() <= Feature::QueenOpenFile.index() => "Mobility".to_string(),
-            x if x.index() <= Feature::QueenEarlyDevelop.index() => "Position".to_string(),
-            x if x.index() <= Feature::DiscoveredChecks.index() => "Safety".to_string(),
+            Feature::Discrete(x) if x <= &Attr::Backward => "Pawn".to_string(),
+            Feature::Discrete(x) if x <= &Attr::WinBonus => "Material".to_string(),
+            Feature::Discrete(x) if x <= &Attr::QueenOpenFile => "Mobility".to_string(),
+            Feature::Discrete(x) if x <= &Attr::QueenEarlyDevelop => "Position".to_string(),
+            Feature::Discrete(x) if x <= &Attr::DiscoveredChecks => "Safety".to_string(),
             Feature::Piece(_) => "Material".to_string(),
             Feature::Pst(_, _) => "Position".to_string(),
             _ => "Tempo".to_string(),
@@ -218,6 +256,16 @@ pub struct Eval {
     pub quantum: i32,
 
     pub min_depth_mob: u8,
+
+    pub pst: Pst,
+    // pub pmvt: Pmvt,
+    pub phaser: Phaser,
+    pub see: See,
+    pub mb: MaterialBalance,
+    pub discrete: HashMap<String, Weight>,
+
+    #[serde(skip)]
+    pub feature_weights: Vec<Weight>,
 
     pub center_attacks: Weight,
     pub undefended_sq: Weight,
@@ -296,25 +344,21 @@ pub struct Eval {
     pub win_bonus: Weight,
     pub win_metric1: Weight,
     pub win_metric2: Weight,
-
     // pub attacks: PieceArray<PieceArray<Weight>>,
     // pub defends: PieceArray<PieceArray<Weight>> ,
 
     // pub cache: TranspositionTable,
     // pub qcache: TranspositionTable,
     // pub depth: Ply,
-    pub pst: Pst,
-    // pub pmvt: Pmvt,
-    pub phaser: Phaser,
-    pub see: See,
-    pub mb: MaterialBalance,
 }
 
 impl Default for Eval {
     fn default() -> Self {
-        Self {
+        let mut s = Self {
             mb: MaterialBalance::default(),
             pst: Pst::default(),
+            feature_weights: Vec::new(),
+            discrete: HashMap::new(),
             // pmvt: Pmvt::default(),
             phaser: Phaser::default(),
             see: See::default(),
@@ -330,9 +374,10 @@ impl Default for Eval {
             quantum: 1,
             min_depth_mob: 1,
             contempt_penalty: Weight::from_i32(-30, 0), // typically -ve
-            win_bonus: Weight::from_i32(250, 250),
+            win_bonus: Weight::from_i32(251, 252),
             win_metric1: Weight::from_i32(1, 1),
             win_metric2: Weight::from_i32(1, 1),
+            tempo_bonus: Weight::from_i32(40, 50),
 
             center_attacks: Weight::from_i32(1, 0),
             undefended_sq: Weight::from_i32(4, 3),
@@ -384,7 +429,6 @@ impl Default for Eval {
             backward_half_open: Weight::from_i32(-10, -10),
             backward: Weight::from_i32(-10, -10),
 
-            tempo_bonus: Weight::from_i32(40, 50),
             pawn_adjacent_shield: Weight::from_i32(44, -15),
             pawn_nearby_shield: Weight::from_i32(42, -14),
             king_safety_bonus: Weight::from_i32(42, -14),
@@ -413,22 +457,39 @@ impl Default for Eval {
             //     .. Default::default()
             // },
             // defends: Default::default(),
+        };
+        for f in Feature::all() {
+            s.discrete.insert(f.name(), Weight::zero());
         }
+        s.populate_feature_weights();
+        s
     }
 }
 
 impl Component for Eval {
-    fn new_game(&mut self) {
-        self.mb.new_game();
-        self.phaser.new_game();
-        self.see.new_game();
+    fn set_state(&mut self, s: State) {
+        use State::*;
+        match s {
+            NewGame => {
+                self.mb.new_game();
+                self.phaser.new_game();
+                self.see.new_game();
+            }
+            SetPosition => {
+                self.mb.new_position();
+                self.phaser.new_position();
+                self.see.new_position();
+            }
+            StartSearch => {
+                self.populate_feature_weights();
+            }
+            EndSearch => {}
+            StartDepthIteration(_) => {}
+        }
     }
+    fn new_game(&mut self) {}
 
-    fn new_position(&mut self) {
-        self.mb.new_position();
-        self.phaser.new_position();
-        self.see.new_position();
-    }
+    fn new_position(&mut self) {}
 }
 
 impl fmt::Display for Eval {
@@ -445,39 +506,39 @@ impl fmt::Display for Eval {
         writeln!(f, "phasing          : {}", self.phasing)?;
         writeln!(f, "mob.phase.disable: {}", self.mobility_phase_disable)?;
         writeln!(f, "mob.min.depth    : {}", self.min_depth_mob)?;
-        writeln!(f, "undefended.piece : {}", self.undefended_piece)?;
-        writeln!(f, "undefended.sq    : {}", self.undefended_sq)?;
-        writeln!(f, "trapped.piece    : {}", self.trapped_piece)?;
-        writeln!(f, "part.trap.piece  : {}", self.partially_trapped_piece)?;
-        // writeln!(f, "defended.non.pawn: {}", self.defended_non_pawn)?;
-        writeln!(f, "castling.rights  : {}", self.castling_rights)?;
-        // writeln!(f, "pawn.shield      : {}", self.pawn_shield)?;
-        writeln!(f, "pawn.doubled     : {}", self.pawn_doubled)?;
-        writeln!(f, "pawn.passed      : {}", self.pawn_passed)?;
-        writeln!(f, "pawn.passed.r5   : {}", self.pawn_passed_r5)?;
-        writeln!(f, "pawn.passed.r6   : {}", self.pawn_passed_r6)?;
-        writeln!(f, "pawn.passed.r7   : {}", self.pawn_passed_r7)?;
-        writeln!(f, "pawn.isolated    : {}", self.pawn_isolated)?;
+        // writeln!(f, "undefended.piece : {}", self.undefended_piece)?;
+        // writeln!(f, "undefended.sq    : {}", self.undefended_sq)?;
+        // writeln!(f, "trapped.piece    : {}", self.trapped_piece)?;
+        // writeln!(f, "part.trap.piece  : {}", self.partially_trapped_piece)?;
+        // // writeln!(f, "defended.non.pawn: {}", self.defended_non_pawn)?;
+        // writeln!(f, "castling.rights  : {}", self.castling_rights)?;
+        // // writeln!(f, "pawn.shield      : {}", self.pawn_shield)?;
+        // writeln!(f, "pawn.doubled     : {}", self.pawn_doubled)?;
+        // writeln!(f, "pawn.passed      : {}", self.pawn_passed)?;
+        // writeln!(f, "pawn.passed.r5   : {}", self.pawn_passed_r5)?;
+        // writeln!(f, "pawn.passed.r6   : {}", self.pawn_passed_r6)?;
+        // writeln!(f, "pawn.passed.r7   : {}", self.pawn_passed_r7)?;
+        // writeln!(f, "pawn.isolated    : {}", self.pawn_isolated)?;
 
-        writeln!(f, "bishop pair      : {}", self.bishop_pair)?;
-        writeln!(f, "rook pair        : {}", self.rook_pair)?;
-        writeln!(f, "fianchetto       : {}", self.fianchetto)?;
-        writeln!(f, "bishop outposts  : {}", self.bishop_outposts)?;
-        writeln!(f, "knight outposts  : {}", self.knight_outposts)?;
-        writeln!(f, "knight forks     : {}", self.knight_forks)?;
-        writeln!(f, "doubled.rook     : {}", self.doubled_rooks)?;
-        writeln!(f, "doubled.rook.open: {}", self.doubled_rooks_open_file)?;
+        // writeln!(f, "bishop pair      : {}", self.bishop_pair)?;
+        // writeln!(f, "rook pair        : {}", self.rook_pair)?;
+        // writeln!(f, "fianchetto       : {}", self.fianchetto)?;
+        // writeln!(f, "bishop outposts  : {}", self.bishop_outposts)?;
+        // writeln!(f, "knight outposts  : {}", self.knight_outposts)?;
+        // writeln!(f, "knight forks     : {}", self.knight_forks)?;
+        // writeln!(f, "doubled.rook     : {}", self.doubled_rooks)?;
+        // writeln!(f, "doubled.rook.open: {}", self.doubled_rooks_open_file)?;
 
-        writeln!(f, "rook.open.file   : {}", self.rook_open_file)?;
+        // writeln!(f, "rook.open.file   : {}", self.rook_open_file)?;
 
-        writeln!(f, "queen.open.file  : {}", self.queen_open_file)?;
-        writeln!(f, "pawn.nearby      : {}", self.pawn_nearby_shield)?;
-        writeln!(f, "pawn.adjacent    : {}", self.pawn_adjacent_shield)?;
-        writeln!(f, "tropism.d1       : {}", self.tropism_d1)?;
-        writeln!(f, "tropism.d2       : {}", self.tropism_d2)?;
-        writeln!(f, "tropism.d3       : {}", self.tropism_d3)?;
-        writeln!(f, "contempt penalty : {}", self.contempt_penalty)?;
-        writeln!(f, "tempo bonus      : {}", self.tempo_bonus)?;
+        // writeln!(f, "queen.open.file  : {}", self.queen_open_file)?;
+        // writeln!(f, "pawn.nearby      : {}", self.pawn_nearby_shield)?;
+        // writeln!(f, "pawn.adjacent    : {}", self.pawn_adjacent_shield)?;
+        // writeln!(f, "tropism.d1       : {}", self.tropism_d1)?;
+        // writeln!(f, "tropism.d2       : {}", self.tropism_d2)?;
+        // writeln!(f, "tropism.d3       : {}", self.tropism_d3)?;
+        // writeln!(f, "contempt penalty : {}", self.contempt_penalty)?;
+        // writeln!(f, "tempo bonus      : {}", self.tempo_bonus)?;
         writeln!(f, "eval stats\n{}", EVAL_COUNTS)?;
         // writeln!(f, "cache\n{}", self.cache)?;
         // writeln!(f, "qcache\n{}", self.qcache)?;
@@ -490,6 +551,23 @@ impl fmt::Display for Eval {
 impl Eval {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn populate_feature_weights(&mut self) {
+        info!("Populating feature weights");
+        self.feature_weights.resize(Feature::len(), Weight::zero());
+        Feature::all().iter().for_each(|f| {
+            self.feature_weights[f.index()] = match f {
+                Feature::Discrete(_i) => {
+                    *self
+                        .discrete
+                        .get(&f.name())
+                        .expect(&format!("Missing discrete eval param {} in {:?}", f.name(), self.discrete))
+                }
+                Feature::Pst(p, sq) => self.pst.pst(*p, *sq),
+                Feature::Piece(p) => self.mb.piece_weights[*p],
+            }
+        });
     }
 
     pub fn set_switches(&mut self, enabled: bool) {
@@ -509,14 +587,30 @@ impl Eval {
 }
 
 impl Eval {
-    
+    pub fn weights_vector(&self) -> WeightsVector {
+        WeightsVector {
+            names: Vec::new(),
+            weights: self.feature_weights.clone(),
+        }
+    }
+
+    pub(crate) fn weight(&self, f: &Feature) -> Weight {
+        self.feature_weights[f.index()]
+    }
+
+    pub fn set_weight(&mut self, f: Feature, wt: Weight) {
+        self.feature_weights[f.index()] = wt;
+    }
+
     pub fn w_tempo_adjustment(&self, us: Color) -> Weight {
         // axiom: we're white
         // white to move => advantage, black to move means white has a disadvantage
+        let tempo_bonus = self.weight(&Attr::TempoBonus.into());
+
         if us == Color::White {
-            self.tempo_bonus
+            tempo_bonus
         } else {
-            -self.tempo_bonus
+            -tempo_bonus
         }
     }
 
@@ -532,7 +626,8 @@ impl Eval {
         // +ve contempt => +ve score => aim for draw => opponent stronger than us
         // board.color_us() == Color::Black => minimising
         // +ve contempt => -ve score => aim for draw => opponent stronger than us
-        let contempt = self.contempt as i32 * board.color_us().chooser_wb(self.contempt_penalty, -self.contempt_penalty);
+        let contempt = self.weight(&Attr::ContemptPenalty.into());
+        let contempt = self.contempt as i32 * board.color_us().chooser_wb(contempt, -contempt);
         Score::from_f32(contempt.interpolate(board.phase(&self.phaser)) as f32)
 
         // FIXME! v33
@@ -917,12 +1012,42 @@ impl Eval {
             switches -= Switches::PAWN;
         }
 
+
+        // error!("===== {}",b.to_fen());
         // let model = Model::from_board(b, b.phase(&self.phaser), switches);
         let ph = b.phase(&self.phaser);
-        let mut scorer = TotalScore::new(ph);
+        let mut scorer = TotalScore::new(&self.feature_weights, ph);
         Calc::score(&mut scorer, b, self, &self.phaser);
-        // predict(&model, &mut scorer);
-        Score::from_cp(scorer.total().interpolate(ph) as i32 / self.quantum * self.quantum)
+        let score1 = Score::from_cp(scorer.total().interpolate(ph) as i32 / self.quantum * self.quantum);
+
+
+        // let model = Model::from_board(b, ph, switches);
+        // let mut scorer2 = ModelScore::new();
+        // self.predict(&model, &mut scorer2);
+        // let score2 = scorer2.as_score();
+        // if score1 != score2 {
+        //     let mut scorer1 = ExplainScorer::new(b.to_fen(), false);
+        //     scorer1.set_phase(ph);
+        //     let mut model = Model::from_board(b, ph, Switches::ALL_SCORING);
+        //     model.csv = false;
+        //     self.predict(&model, &mut scorer1);
+
+        //     let mut scorer2 = ExplainScorer::new(b.to_fen(), false);
+        //     Calc::score(&mut scorer2, &b, self, &self.phaser);
+
+        //     let mut scorer3 = ExplainScore::new(ph, b.to_fen());
+        //     Calc::score(&mut scorer3, &b, self, &self.phaser);
+
+
+        //     let mut table = Table::new();
+        //     table.set_header(vec!["old", "new"]);
+        //     table.add_row(vec![scorer1.to_string(), scorer2.to_string(), scorer3.to_string()]);
+        //     error!("{}\ns1: {score1} s2: {score2}\n{}", b.to_fen(), table);
+        // // } else {
+        // //     error!("Scores agree for {}", b.to_fen());
+        // }
+        score1
+
     }
 
     // // updated on capture & promo
@@ -991,14 +1116,17 @@ mod tests {
     use crate::catalog::Catalog;
     use crate::infra::profiler::Profiler;
     use crate::phaser::Phase;
+    use crate::search::engine::Engine;
     use crate::test_log::test;
+    use anyhow::Result;
+    use iai::black_box;
     use toml;
 
     #[test]
     fn test_feature_index() {
-        assert_eq!(Feature::PawnDoubled.index(), 0);
-        assert_eq!(Feature::PawnDirectlyDoubled.index(), 1);
-        let last = Feature::WinMetric2.index();
+        assert_eq!(Feature::Discrete(Attr::PawnDoubled).index(), 0);
+        assert_eq!(Feature::Discrete(Attr::PawnDirectlyDoubled).index(), 1);
+        let last = Feature::Discrete(Attr::WinMetric2).index();
         let first_sq = Feature::Pst(Piece::Pawn, Square::A1).index();
         let last_sq = Feature::Pst(Piece::King, Square::H8).index();
         let first_piece = Feature::Piece(Piece::Pawn).index();
@@ -1008,15 +1136,18 @@ mod tests {
         assert_eq!(first_piece, last_sq + 1);
         assert_eq!(last_piece, first_piece + 6 - 1);
 
-        assert_eq!(Feature::CenterAttacks.name(), "center_attacks");
+        assert_eq!(Feature::Discrete(Attr::CenterAttacks).name(), "center_attacks");
         assert_eq!(Feature::Pst(Piece::Pawn, Square::A1).name(), "pst.p.a1");
-        assert!(Feature::all().len() > 64 * 6 + 6 + Feature::WinBonus.index());
+        // assert!(Feature::all().len() > 64 * 6 + 6 + Feature::WinBonus.index());
     }
 
     #[test]
-    fn eval_serde_test() {
-        info!("\n{}", toml::to_string(&Eval::default()).unwrap());
+    fn eval_serde_test() -> Result<()> {
+        let eval = Eval::default();
+        info!("\n{}", toml::to_string_pretty(&eval)?);
+        // info!("{:#?}", v);
         // info!("\n{}", toml::to_string_pretty(&SimpleScorer::default()).unwrap());
+        Ok(())
     }
 
     #[test]
@@ -1051,12 +1182,6 @@ mod tests {
         eval.set_switches(false);
         eval.position = true;
         assert_eq!(bd.phase(&eval.phaser), Phase(100));
-        assert_eq!(
-            bd.eval(&eval, &Node::root(0)),
-            Score::from_f32(eval.pst.pawn_r7.e() as f32),
-            "{}",
-            eval.w_eval_explain(&bd, false)
-        );
 
         let bd = Board::parse_fen("8/4p3/8/8/8/8/8/8 w - - 0 1").unwrap().as_board();
         assert_eq!(bd.phase(&eval.phaser), Phase(100));
@@ -1071,10 +1196,6 @@ mod tests {
 
         let b = Catalog::black_starting_position();
         assert_eq!(w.eval(&eval, &Node::root(0)), eval.w_eval_some(&b, Switches::ALL_SCORING).negate());
-
-        // from blacks perspective to negate
-        let bd = Board::parse_fen("8/8/8/8/8/8/p7/8 b - - 0 1").unwrap().as_board();
-        assert_eq!(bd.eval(&eval, &Node::root(0)), Score::from_f32(eval.pst.pawn_r7.e() as f32));
     }
 
     #[test]
@@ -1192,21 +1313,17 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
-    fn test_eval_various() {
-        let mut eval = Eval::default();
-        eval.mb.enabled = false;
-        let node = Node::root(0);
-        for pos in Catalog::win_at_chess() {
-            let b = pos.board();
-            let _score = b.signum() * b.eval(&eval, &node);
-            let explain = eval.w_eval_explain(b, false);
-            info!("\n{}\n{}", pos, explain);
+    fn test_eval_indexing() {
+        let mut eng = Engine::new();
+        eng.algo.eval.populate_feature_weights();
+        for i in Feature::all().iter() {
+            let wt = eng.algo.eval.weight(i);
+            println!("{} {:<20} = {}", i.index(), i.name(), wt);
         }
     }
 
     #[test]
-    fn bench_eval() {
+    fn prof_eval() {
         let mut eval = Eval::default();
         eval.mb.enabled = false;
         let mut prof = Profiler::new("bench_eval".into());
@@ -1221,5 +1338,24 @@ mod tests {
             println!("{:>6.0} {}", score.as_i16(), pos);
         }
         println!("{:>6.0} {}", total_score.as_i16(), "total");
+    }
+
+    #[ignore]
+    #[test]
+    fn bench_eval() {
+        let positions = Catalog::win_at_chess();
+        for _ in 0..150000 {
+            let mut eval = Eval::default();
+            eval.mb.enabled = false;
+            let node = Node::root(0);
+            let mut total_score = Score::zero();
+            for pos in &positions {
+                let b = pos.board();
+                let score = b.signum() * b.eval(&eval, &node);
+                total_score = total_score + score;
+                // println!("{:>6.0} {}", score.as_i16(), pos);
+            }
+            black_box(total_score);
+        }
     }
 }

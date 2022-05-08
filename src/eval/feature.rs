@@ -39,7 +39,7 @@ pub struct FeatureMatrix {
     pub feature_vectors: Vec<FeatureVector>,
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct WeightsVector {
     pub weights: Vec<Weight>,
     pub names: Vec<String>,

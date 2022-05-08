@@ -67,8 +67,77 @@ position           = true
 safety             = true
 mobility           = true
 pawn               = true
+pawn_doubled               = { s =    3.28, e =  -37.29 }
+pawn_directly_doubled      = { s =    0.00, e =    0.00 }
+pawn_isolated              = { s =  -17.93, e =   14.57 }
+semi_isolated              = { s =    0.00, e =    0.00 }
+pawn_passed                = { s =   -6.46, e =  -10.46 }
+pawn_passed_r7             = { s =    0.00, e =  474.84 }
+pawn_passed_r6             = { s =  -28.95, e =  251.46 }
+pawn_passed_r5             = { s =   -0.91, e =  108.35 }
+pawn_passed_r4             = { s =  -26.05, e =   44.27 }
+passers_on_rim             = { s =   12.54, e =   11.86 }
+candidate_passed_pawn      = { s =    0.00, e =    0.00 }
+blockaded                  = { s =   -2.74, e =  -30.57 }
+blockaded_passers          = { s =   10.93, e =  -78.37 }
+rooks_behind_passer        = { s =   22.82, e =    8.32 }
+enemy_rook_on_passer       = { s =   14.03, e =  -79.77 }
+space                      = { s =    0.00, e =    0.00 }
+rammed_pawns               = { s =   -0.37, e =    9.62 }
+pawn_connected_r67         = { s =   22.47, e =   25.79 }
+pawn_connected_r345        = { s =   23.96, e =   16.40 }
+passed_connected_r67       = { s =    0.00, e =    0.00 }
+passed_connected_r345      = { s =    0.00, e =    0.00 }
+pawn_duo_r67               = { s =   52.09, e =   63.94 }
+pawn_duo_r2345             = { s =    9.04, e =    4.20 }
+passed_duo_r67             = { s =    0.00, e =    0.00 }
+passed_duo_r2345           = { s =    0.00, e =    0.00 }
+backward_half_open         = { s =  -19.68, e =  -28.74 }
+backward                   = { s =   -1.61, e =   -9.71 }
+bishop_pair                = { s =   35.46, e =   90.61 }
+rook_pair                  = { s =  132.21, e =  -77.47 }
+center_attacks             = { s =    4.94, e =    2.57 }
+undefended_sq              = { s =    2.53, e =    7.24 }
+undefended_piece           = { s =    3.01, e =   45.92 }
+trapped_piece              = { s =  -17.53, e =  -44.26 }
+partially_trapped_piece    = { s =   -6.06, e =  -14.27 }
+rook_open_file             = { s =   50.53, e =   -9.68 }
+queen_open_file            = { s =  -29.75, e =   43.19 }
+fianchetto                 = { s =   10.60, e =   22.15 }
+bishop_outposts            = { s =   33.68, e =   23.16 }
+bishop_color_pawns         = { s =   -3.30, e =   -6.49 }
+knight_forks               = { s =   -4.00, e =   76.69 }
+knight_outposts            = { s =   29.23, e =   37.96 }
+doubled_rooks              = { s =   45.99, e =    0.00 }
+doubled_rooks_open_file    = { s =  -18.64, e =   17.08 }
+enemy_pawns_on_rook_rank   = { s =  -20.79, e =   10.10 }
+queen_early_develop        = { s =   -4.14, e =   27.20 }
+pawn_adjacent_shield       = { s =   16.18, e =  -15.16 }
+pawn_nearby_shield         = { s =    9.99, e =  -15.33 }
+king_safety_bonus          = { s =    6.70, e =   32.73 }
+open_files_near_king       = { s =  -16.14, e =  -32.76 }
+open_files_adjacent_king   = { s =  -29.08, e =  -13.45 }
+attacks_near_king          = { s =   10.81, e =   -0.39 }
+tropism_d1                 = { s =  -26.05, e =   27.18 }
+tropism_d2                 = { s =  -16.40, e =    9.15 }
+tropism_d3                 = { s =   -8.73, e =   -0.88 }
+tropism_d4                 = { s =   -1.92, e =    2.31 }
+king_trapped_on_back_rank  = { s =    7.58, e =  -55.29 }
+rq_on_open_files_near_king = { s =   -3.74, e =   -4.24 }
+castling_rights            = { s =   41.85, e =  -18.83 }
+uncastled                  = { s =  -76.91, e =   26.83 }
+checkers                   = { s = -118.38, e =  -68.64 }
+pieces_near_king           = { s =   14.44, e =    0.18 }
+pinned_near_king           = { s =   -5.90, e =   22.60 }
+pinned_far                 = { s =  -24.04, e =  -26.36 }
+discovered_checks          = { s = -108.81, e = -152.87 }
+tempo_bonus                = { s =   30.20, e =   64.34 }
+contempt_penalty           = { s =  -30.00, e =    0.00 }
+win_bonus                  = { s =  350.00, e =  600.00 }
+win_metric1                = { s =    1.00, e =    1.00 }
+win_metric2                = { s =    1.00, e =    1.00 }
 
-
+[eval.discrete]
 # tuned
 pawn_doubled               = { s =    3.28, e =  -37.29 }
 pawn_directly_doubled      = { s =    0.00, e =    0.00 }
@@ -134,6 +203,7 @@ pieces_near_king           = { s =   14.44, e =    0.18 }
 pinned_near_king           = { s =   -5.90, e =   22.60 }
 pinned_far                 = { s =  -24.04, e =  -26.36 }
 discovered_checks          = { s = -108.81, e = -152.87 }
+contempt_penalty           = { s =  -30.00, e =    0.00 }
 tempo_bonus                = { s =   30.20, e =   64.34 }
 win_bonus                  = { s =  350.00, e =  600.00 }
 win_metric1                = { s =    1.00, e =    1.00 }

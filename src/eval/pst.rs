@@ -13,10 +13,6 @@ use std::fmt;
 // #[serde(from="PstProxy", into="PstProxy")]
 pub struct Pst {
     pub enabled: bool,
-    pub pawn_r5: Weight,
-    pub pawn_r6: Weight,
-    pub pawn_r7: Weight,
-    pub rook_edge: Weight,
 
     // serialize and deserialize explicitly written, via helper class
     array: [[Weight; 64]; Piece::len()],
@@ -26,11 +22,6 @@ impl Default for Pst {
     fn default() -> Self {
         let mut me = Self {
             enabled: true,
-            pawn_r5: Weight::from_i32(14, 32),
-            pawn_r6: Weight::from_i32(-14, 168),
-            pawn_r7: Weight::from_i32(103, 224),
-            rook_edge: Weight::from_i32(28, 13),
-
             array: [[Weight::default(); 64]; Piece::len()],
         };
         me.init_pst();
@@ -134,7 +125,6 @@ impl Component for Pst {
 impl fmt::Display for Pst {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "enabled          : {}", self.enabled)?;
-        writeln!(f, "rook_edge        : {}", self.rook_edge)?;
         for &p in &Piece::ALL_BAR_NONE {
             for phase in ["s", "e"] {
                 writeln!(f, "PST: {}.{}", p, phase)?;
@@ -182,31 +172,25 @@ impl Pst {
     }
 
     fn init_pst(&mut self) {
-        let r5 = self.pawn_r5.s() as i32;
-        let r6 = self.pawn_r6.s() as i32;
-        let r7 = self.pawn_r7.s() as i32;
 
         #[rustfmt::skip]
         let pawn_pst_mg: [i32; 64] = [
         0,  0,  0,  0,  0,  0,  0,  0,
-        r7, r7, r7, r7, r7, r7, r7, r7,
-        r6, r6, r6, r6, r6, r6, r6, r6,
-        r5, r5, r5,r5+5,r5+5, r5, r5, r5,
+        0,0,0,0,0,0,0,0,
+        0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 ,
+        0 , 0 , 0 ,0 +5,0 +5, 0 , 0 , 0 ,
         -9, 0,  0, 20, 20, -5,  -5, -9,
         -5,-5, -9,  0,  0, -9, -5, -5,
         4, 15, 15,-35,-35, 15, 15,  4,
         0,  0,  0,  0,  0,  0,  0,  0];
 
-        let r5 = self.pawn_r5.e() as i32;
-        let r6 = self.pawn_r6.e() as i32;
-        let r7 = self.pawn_r7.e() as i32;
         // FIXME! file A and H
         #[rustfmt::skip]
         let pawn_pst_eg: [i32; 64] = [
         0,  0,  0,  0,  0,  0,  0,  0,
-        r7, r7, r7, r7, r7, r7, r7, r7,
-        r6, r6, r6, r6, r6, r6, r6, r6,
-        r5, r5, r5, r5, r5, r5, r5, r5,
+    0,0,0,0,0,0,0,0,
+        0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 ,
+        0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 ,
         10, 10, 10, 10, 10, 10, 10, 10,
         5,  5,  5,  5,  5,  5,  5,  5,
         0,  0,  0,  0,  0,  0,  0,  0,
@@ -267,7 +251,7 @@ impl Pst {
         -5,  0,  0,  0,  0,  0,  0, -5,
         0,  0,  3,  7,  7,  5,  0,  0];
 
-        let a = self.rook_edge.e() as i32;
+        let a = 0;
         #[rustfmt::skip]
         let rook_pst_eg: [i32; 64] = [
         a,  a,  a,  a,  a,  a,  a,  a,

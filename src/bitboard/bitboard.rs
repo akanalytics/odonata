@@ -488,7 +488,7 @@ impl Bitboard {
     }
 
     #[inline]
-    pub const fn from_sq(index: u8) -> Bitboard {
+    pub const fn from_sq(index: u16) -> Bitboard {
         let bit = 1 << index;
         Bitboard(bit)
     }
