@@ -1,7 +1,6 @@
 pub mod endgame;
 pub mod eval;
 pub mod material_balance;
-pub mod model;
 pub mod scorer;
 pub mod calc;
 pub mod feature;

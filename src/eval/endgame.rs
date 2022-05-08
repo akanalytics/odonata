@@ -160,6 +160,7 @@ impl EndGame {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::eval::eval::Attr;
     use crate::eval::score::Score;
     use crate::eval::switches::Switches;
     use crate::{
@@ -183,7 +184,7 @@ mod tests {
         let eg = EndGame::from_board(&b);
         assert_eq!(eg, EndGame::KingMinorVsKingMinor);
         let mut eval = Eval::default();
-        assert!(eval.win_bonus.e() as f32 > 0.0);
+        assert!(eval.weight(&Attr::WinBonus.into()).e() as f32 > 0.0);
         eval.set_weight(WinBonus.into(), Weight::from_i32(100, 100));
         let sc_wi_bonus = b.eval_some(&eval, Switches::MATERIAL);
         eval.set_weight(WinBonus.into(), Weight::zero());

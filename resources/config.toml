@@ -67,6 +67,8 @@ position           = true
 safety             = true
 mobility           = true
 pawn               = true
+
+[eval.discrete]
 pawn_doubled               = { s =    3.28, e =  -37.29 }
 pawn_directly_doubled      = { s =    0.00, e =    0.00 }
 pawn_isolated              = { s =  -17.93, e =   14.57 }
@@ -132,82 +134,11 @@ pinned_near_king           = { s =   -5.90, e =   22.60 }
 pinned_far                 = { s =  -24.04, e =  -26.36 }
 discovered_checks          = { s = -108.81, e = -152.87 }
 tempo_bonus                = { s =   30.20, e =   64.34 }
-contempt_penalty           = { s =  -30.00, e =    0.00 }
 win_bonus                  = { s =  350.00, e =  600.00 }
+contempt_penalty           = { s =  -30.00, e =    0.00 }
 win_metric1                = { s =    1.00, e =    1.00 }
 win_metric2                = { s =    1.00, e =    1.00 }
 
-[eval.discrete]
-# tuned
-pawn_doubled               = { s =    3.28, e =  -37.29 }
-pawn_directly_doubled      = { s =    0.00, e =    0.00 }
-pawn_isolated              = { s =  -17.93, e =   14.57 }
-semi_isolated              = { s =    0.00, e =    0.00 }
-pawn_passed                = { s =   -6.46, e =  -10.46 }
-pawn_passed_r7             = { s =    0.00, e =  474.84 }
-pawn_passed_r6             = { s =  -28.95, e =  251.46 }
-pawn_passed_r5             = { s =   -0.91, e =  108.35 }
-pawn_passed_r4             = { s =  -26.05, e =   44.27 }
-passers_on_rim             = { s =   12.54, e =   11.86 }
-candidate_passed_pawn      = { s =    0.00, e =    0.00 }
-blockaded                  = { s =   -2.74, e =  -30.57 }
-blockaded_passers          = { s =   10.93, e =  -78.37 }
-rooks_behind_passer        = { s =   22.82, e =    8.32 }
-enemy_rook_on_passer       = { s =   14.03, e =  -79.77 }
-space                      = { s =    0.00, e =    0.00 }
-rammed_pawns               = { s =   -0.37, e =    9.62 }
-pawn_connected_r67         = { s =   22.47, e =   25.79 }
-pawn_connected_r345        = { s =   23.96, e =   16.40 }
-passed_connected_r67       = { s =    0.00, e =    0.00 }
-passed_connected_r345      = { s =    0.00, e =    0.00 }
-pawn_duo_r67               = { s =   52.09, e =   63.94 }
-pawn_duo_r2345             = { s =    9.04, e =    4.20 }
-passed_duo_r67             = { s =    0.00, e =    0.00 }
-passed_duo_r2345           = { s =    0.00, e =    0.00 }
-backward_half_open         = { s =  -19.68, e =  -28.74 }
-backward                   = { s =   -1.61, e =   -9.71 }
-bishop_pair                = { s =   35.46, e =   90.61 }
-rook_pair                  = { s =  132.21, e =  -77.47 }
-center_attacks             = { s =    4.94, e =    2.57 }
-undefended_sq              = { s =    2.53, e =    7.24 }
-undefended_piece           = { s =    3.01, e =   45.92 }
-trapped_piece              = { s =  -17.53, e =  -44.26 }
-partially_trapped_piece    = { s =   -6.06, e =  -14.27 }
-rook_open_file             = { s =   50.53, e =   -9.68 }
-queen_open_file            = { s =  -29.75, e =   43.19 }
-fianchetto                 = { s =   10.60, e =   22.15 }
-bishop_outposts            = { s =   33.68, e =   23.16 }
-bishop_color_pawns         = { s =   -3.30, e =   -6.49 }
-knight_forks               = { s =   -4.00, e =   76.69 }
-knight_outposts            = { s =   29.23, e =   37.96 }
-doubled_rooks              = { s =   45.99, e =    0.00 }
-doubled_rooks_open_file    = { s =  -18.64, e =   17.08 }
-enemy_pawns_on_rook_rank   = { s =  -20.79, e =   10.10 }
-queen_early_develop        = { s =   -4.14, e =   27.20 }
-pawn_adjacent_shield       = { s =   16.18, e =  -15.16 }
-pawn_nearby_shield         = { s =    9.99, e =  -15.33 }
-king_safety_bonus          = { s =    6.70, e =   32.73 }
-open_files_near_king       = { s =  -16.14, e =  -32.76 }
-open_files_adjacent_king   = { s =  -29.08, e =  -13.45 }
-attacks_near_king          = { s =   10.81, e =   -0.39 }
-tropism_d1                 = { s =  -26.05, e =   27.18 }
-tropism_d2                 = { s =  -16.40, e =    9.15 }
-tropism_d3                 = { s =   -8.73, e =   -0.88 }
-tropism_d4                 = { s =   -1.92, e =    2.31 }
-king_trapped_on_back_rank  = { s =    7.58, e =  -55.29 }
-rq_on_open_files_near_king = { s =   -3.74, e =   -4.24 }
-castling_rights            = { s =   41.85, e =  -18.83 }
-uncastled                  = { s =  -76.91, e =   26.83 }
-checkers                   = { s = -118.38, e =  -68.64 }
-pieces_near_king           = { s =   14.44, e =    0.18 }
-pinned_near_king           = { s =   -5.90, e =   22.60 }
-pinned_far                 = { s =  -24.04, e =  -26.36 }
-discovered_checks          = { s = -108.81, e = -152.87 }
-contempt_penalty           = { s =  -30.00, e =    0.00 }
-tempo_bonus                = { s =   30.20, e =   64.34 }
-win_bonus                  = { s =  350.00, e =  600.00 }
-win_metric1                = { s =    1.00, e =    1.00 }
-win_metric2                = { s =    1.00, e =    1.00 }
 
 [eval.pst]
 p.a1                   = { s =    0.00, e =    0.00 }
@@ -595,263 +526,6 @@ k.f8                   = { s =  -50.14, e =  -35.11 }
 k.g8                   = { s =    0.00, e =  -89.32 }
 k.h8                   = { s =   10.86, e = -180.25 }
 
-# [eval.pmvt]
-# b.0 = { s =  0, e = 0 }
-# b.1 = { s =  0, e = 0 }
-# b.2 = { s =  0, e = 0 }
-# b.3 = { s =  0, e = 0 }
-# b.4 = { s =  0, e = 0 }
-# b.5 = { s =  0, e = 0 }
-# b.6 = { s =  0, e = 0 }
-# b.7 = { s =  0, e = 0 }
-# b.8 = { s =  0, e = 0 }
-# b.9 = { s =  0, e = 0 }
-# b.10 = { s =  0, e = 0 }
-# b.11 = { s =  0, e = 0 }
-# b.12 = { s =  0, e = 0 }
-# b.13 = { s =  0, e = 0 }
-# b.14 = { s =  0, e = 0 }
-# b.15 = { s =  0, e = 0 }
-# b.16 = { s =  0, e = 0 }
-# b.17 = { s =  0, e = 0 }
-# b.18 = { s =  0, e = 0 }
-# b.19 = { s =  0, e = 0 }
-
-# n.0 = { s =  0, e = 0 }
-# n.1 = { s =  0, e = 0 }
-# n.2 = { s =  0, e = 0 }
-# n.3 = { s =  0, e = 0 }
-# n.4 = { s =  0, e = 0 }
-# n.5 = { s =  0, e = 0 }
-# n.6 = { s =  0, e = 0 }
-# n.7 = { s =  0, e = 0 }
-# n.8 = { s =  0, e = 0 }
-# n.9 = { s =  0, e = 0 }
-# n.10 = { s =  0, e = 0 }
-# n.11 = { s =  0, e = 0 }
-# n.12 = { s =  0, e = 0 }
-# n.13 = { s =  0, e = 0 }
-# n.14 = { s =  0, e = 0 }
-# n.15 = { s =  0, e = 0 }
-# n.16 = { s =  0, e = 0 }
-# n.17 = { s =  0, e = 0 }
-# n.18 = { s =  0, e = 0 }
-# n.19 = { s =  0, e = 0 }
-
-
-# r.0 = { s =  0, e = 0 }
-# r.1 = { s =  0, e = 0 }
-# r.2 = { s =  0, e = 0 }
-# r.3 = { s =  0, e = 0 }
-# r.4 = { s =  0, e = 0 }
-# r.5 = { s =  0, e = 0 }
-# r.6 = { s =  0, e = 0 }
-# r.7 = { s =  0, e = 0 }
-# r.8 = { s =  0, e = 0 }
-# r.9 = { s =  0, e = 0 }
-# r.10 = { s =  0, e = 0 }
-# r.11 = { s =  0, e = 0 }
-# r.12 = { s =  0, e = 0 }
-# r.13 = { s =  0, e = 0 }
-# r.14 = { s =  0, e = 0 }
-# r.15 = { s =  0, e = 0 }
-# r.16 = { s =  0, e = 0 }
-# r.17 = { s =  0, e = 0 }
-# r.18 = { s =  0, e = 0 }
-# r.19 = { s =  0, e = 0 }
-
-
-# q.0 = { s =  0, e = 0 }
-# q.1 = { s =  0, e = 0 }
-# q.2 = { s =  0, e = 0 }
-# q.3 = { s =  0, e = 0 }
-# q.4 = { s =  0, e = 0 }
-# q.5 = { s =  0, e = 0 }
-# q.6 = { s =  0, e = 0 }
-# q.7 = { s =  0, e = 0 }
-# q.8 = { s =  0, e = 0 }
-# q.9 = { s =  0, e = 0 }
-# q.10 = { s =  0, e = 0 }
-# q.11 = { s =  0, e = 0 }
-# q.12 = { s =  0, e = 0 }
-# q.13 = { s =  0, e = 0 }
-# q.14 = { s =  0, e = 0 }
-# q.15 = { s =  0, e = 0 }
-# q.16 = { s =  0, e = 0 }
-# q.17 = { s =  0, e = 0 }
-# q.18 = { s =  0, e = 0 }
-# q.19 = { s =  0, e = 0 }
-
-
-
-# [eval.attacks.p]
-# p = [0.1, 0.2]
-# n = [0.0, 0.0]
-# b = [0.0, 0.0]
-# r = [0.0, 0.0]
-# q = [0.0, 0.0]
-# k = [0.0, 0.0]
-
-# [eval.attacks.n]
-# p = [0.0, 0.3]
-# n = [0.0, 0.0]
-# b = [0.0, 0.0]
-# r = [0.0, 0.0]
-# q = [0.0, 0.0]
-# k = [0.0, 0.0]
-
-# [eval.attacks.b]
-# p = [0.0, 0.0]
-# n = [0.0, 0.0]
-# b = [0.0, 0.0]
-# r = [0.0, 0.0]
-# q = [0.0, 0.0]
-# k = [0.0, 0.0]
-
-# [eval.attacks.r]
-# p = [0.0, 0.0]
-# n = [0.0, 0.0]
-# b = [0.0, 0.0]
-# r = [0.0, 0.0]
-# q = [0.0, 0.0]
-# k = [0.0, 0.0]
-
-# [eval.attacks.q]
-# p = [0.0, 0.0]
-# n = [0.0, 0.0]
-# b = [0.0, 0.0]
-# r = [0.0, 0.0]
-# q = [0.0, 0.0]
-# k = [0.0, 0.0]
-
-# [eval.attacks.k]
-# p = [0.0, 0.0]
-# n = [0.0, 0.0]
-# b = [0.0, 0.0]
-# r = [0.0, 0.0]
-# q = [0.0, 0.0]
-# k = [0.0, 0.0]
-
-# [eval.defends.p]
-# p = [0.0, 0.0]
-# n = [0.0, 0.0]
-# b = [0.0, 0.0]
-# r = [0.0, 0.0]
-# q = [0.0, 0.0]
-# k = [0.0, 0.0]
-
-# [eval.defends.n]
-# p = [0.0, 0.0]
-# n = [0.0, 0.0]
-# b = [0.0, 0.0]
-# r = [0.0, 0.0]
-# q = [0.0, 0.0]
-# k = [0.0, 0.0]
-
-# [eval.defends.b]
-# p = [0.0, 0.0]
-# n = [0.0, 0.0]
-# b = [0.0, 0.0]
-# r = [0.0, 0.0]
-# q = [0.0, 0.0]
-# k = [0.0, 0.0]
-
-# [eval.defends.r]
-# p = [0.0, 0.0]
-# n = [0.0, 0.0]
-# b = [0.0, 0.0]
-# r = [0.0, 0.0]
-# q = [0.0, 0.0]
-# k = [0.0, 0.0]
-
-# [eval.defends.q]
-# p = [0.0, 0.0]
-# n = [0.0, 0.0]
-# b = [0.0, 0.0]
-# r = [0.0, 0.0]
-# q = [0.0, 0.0]
-# k = [0.0, 0.0]
-
-# [eval.defends.k]
-# p = [0.0, 0.0]
-# n = [0.0, 0.0]
-# b = [0.0, 0.0]
-# r = [0.0, 0.0]
-# q = [0.0, 0.0]
-# k = [0.0, 0.0]
-
-# attacks.p.p               = [   0,   0]
-# defends.p.p               = [   8.68,   11.21]
-# attacks.p.n               = [  10.64,    8.40]
-# defends.p.n               = [   8.19,   15.23]
-# attacks.p.b               = [  10.28,   12.50]
-# defends.p.b               = [   9.47,   10.94]
-# attacks.p.r               = [  14.52,   11.58]
-# defends.p.r               = [   7.76,    9.05]
-# attacks.p.q               = [   8.42,   13.97]
-# defends.p.q               = [   8.65,    8.79]
-# attacks.p.k               = [   8.52,   12.53]
-# defends.p.k               = [   8.98,   10.90]
-# attacks.n.p               = [  -5.61,  -10.47]
-# defends.n.p               = [  -0.24,   12.19]
-# attacks.n.n               = [   8.36,    8.02]
-# defends.n.n               = [   4.76,    4.81]
-# attacks.n.b               = [  42.29,   42.49]
-# defends.n.b               = [   5.67,    1.58]
-# attacks.n.r               = [ 105.87,    6.41]
-# defends.n.r               = [   8.00,   -3.61]
-# attacks.n.q               = [  49.43,   -0.50]
-# defends.n.q               = [   9.91,  -18.53]
-# attacks.n.k               = [ 187.11,   -9.77]
-# defends.n.k               = [   4.88,   -0.39]
-# attacks.b.p               = [  -5.84,   -7.82]
-# defends.b.p               = [   3.84,    2.11]
-# attacks.b.n               = [  26.01,   29.04]
-# defends.b.n               = [  11.25,   22.76]
-# attacks.b.b               = [  10.61,   10.38]
-# defends.b.b               = [  12.94,    7.63]
-# attacks.b.r               = [  67.62,   -8.06]
-# defends.b.r               = [   1.84,   18.60]
-# attacks.b.q               = [  91.87,   11.12]
-# defends.b.q               = [  15.07,    1.44]
-# attacks.b.k               = [  91.04,   73.46]
-# defends.b.k               = [   7.57,    2.30]
-# attacks.r.p               = [ -11.63,    0.91]
-# defends.r.p               = [  -9.15,    9.73]
-# attacks.r.n               = [   3.06,   17.31]
-# defends.r.n               = [   8.15,   19.15]
-# attacks.r.b               = [  20.48,    5.23]
-# defends.r.b               = [  12.57,   17.38]
-# attacks.r.r               = [  11.14,   11.35]
-# defends.r.r               = [   1.14,   13.71]
-# attacks.r.q               = [  99.04,  -17.16]
-# defends.r.q               = [  15.97,   24.39]
-# attacks.r.k               = [ 268.09,  -25.06]
-# defends.r.k               = [  11.53,   -6.96]
-# attacks.q.p               = [  -0.74,   -8.18]
-# defends.q.p               = [   2.72,   -0.02]
-# attacks.q.n               = [   0.22,    2.63]
-# defends.q.n               = [   9.58,   10.15]
-# attacks.q.b               = [   1.41,   26.16]
-# defends.q.b               = [   5.03,   16.53]
-# attacks.q.r               = [  11.43,  -34.40]
-# defends.q.r               = [   2.11,    8.43]
-# attacks.q.q               = [  11.38,   10.63]
-# defends.q.q               = [-239.84, -145.59]
-# attacks.q.k               = [  97.67,  115.74]
-# defends.q.k               = [  -4.67,  -24.98]
-# attacks.k.p               = [  12.76,   15.32]
-# defends.k.p               = [  12.74,   11.81]
-# attacks.k.n               = [  11.42,   11.58]
-# defends.k.n               = [  11.65,   11.75]
-# attacks.k.b               = [  12.21,    8.58]
-# defends.k.b               = [  12.68,    8.58]
-# attacks.k.r               = [  11.11,   12.00]
-# defends.k.r               = [  11.16,   12.59]
-# attacks.k.q               = [  12.02,   11.71]
-# defends.k.q               = [   9.32,   14.62]
-# attacks.k.k               = [  11.86,   12.76]    
-# defends.k.k               = [  10.60,   0
 
 [eval.mb]
 enabled = false
@@ -863,11 +537,11 @@ draws_only = false
 min_games = 50
 max_pawns = 5
 trade_factor = 2
-p = { s =  100.00, e =  189.42 }
-n = { s =  489.24, e =  465.60 }
-b = { s =  508.41, e =  520.11 }
-r = { s =  543.85, e =  994.71 }
-q = { s = 1381.12, e = 1677.75 }
+p                       = { s =  100.00, e =  189.42 }
+n                       = { s =  489.24, e =  465.60 }
+b                       = { s =  508.41, e =  520.11 }
+r                       = { s =  543.85, e =  994.71 }
+q                       = { s = 1381.12, e = 1677.75 }
 
 
 [eval.mb.balances]

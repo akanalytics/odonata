@@ -25,33 +25,32 @@ impl Calc {
 
 
     #[inline]
-    pub fn score(scorer: &mut impl ScorerBase, b: &Board, e: &Eval, _phaser: &Phaser) {
-        Calc::material(scorer, b, e);
-        if !Self::endgame(scorer, b, e) {
-            Calc::position(scorer, b, e);
-            Calc::pst(scorer, b, e);
-            Calc::other(scorer, b, e);
-            Calc::pawns(White, scorer, b, e);
-            Calc::pawns(Black, scorer, b, e);
-            Calc::king_safety(White, scorer, b, e);
-            Calc::king_safety(Black, scorer, b, e);
-            Calc::mobility(White, scorer, b, e);
-            Calc::mobility(Black, scorer, b, e);
+    pub fn score(scorer: &mut impl ScorerBase, b: &Board, _e: &Eval, _phaser: &Phaser) {
+        Calc::material(scorer, b);
+        if !Self::endgame(scorer, b) {
+            Calc::position(scorer, b);
+            Calc::pst(scorer, b);
+            Calc::other(scorer, b);
+            Calc::pawns(White, scorer, b);
+            Calc::pawns(Black, scorer, b);
+            Calc::king_safety(White, scorer, b);
+            Calc::king_safety(Black, scorer, b);
+            Calc::mobility(White, scorer, b);
+            Calc::mobility(Black, scorer, b);
         }
         // scorer.set_phase(b.phase(ph));
         // scorer.interpolate_and_scale("interpolate");
     }
 
-    fn other(s: &mut impl ScorerBase, b: &Board, e: &Eval) {
+    fn other(s: &mut impl ScorerBase, b: &Board) {
         s.accumulate(
             Attr::TempoBonus.as_feature(),
             (b.color_us() == White) as i32,
             (b.color_us() == Black) as i32,
-            e.tempo_bonus,
         );
     }
 
-    fn material(scorer: &mut impl ScorerBase, b: &Board, eval: &Eval) {
+    fn material(scorer: &mut impl ScorerBase, b: &Board) {
         let m = b.material();
 
         Piece::ALL_BAR_KING.iter().for_each(|&p| {
@@ -59,7 +58,6 @@ impl Calc {
                 Feature::Piece(p),
                 m.counts(Color::White, p),
                 m.counts(Color::Black, p),
-                eval.mb.piece_weights[p],
             )
         });
 
@@ -67,19 +65,17 @@ impl Calc {
             Attr::BishopPair.as_feature(),
             (m.counts(White, Bishop) >= 2) as i32,
             (m.counts(Black, Bishop) >= 2) as i32,
-            eval.bishop_pair,
         );
         scorer.accumulate(
             Attr::RookPair.as_feature(),
             (m.counts(White, Rook) >= 2) as i32,
             (m.counts(Black, Rook) >= 2) as i32,
-            eval.rook_pair,
         );
 
         // let us = b.color(c);
     }
 
-    fn position(scorer: &mut impl ScorerBase, b: &Board, eval: &Eval) {
+    fn position(scorer: &mut impl ScorerBase, b: &Board) {
         // fianchetto (short)
         const W_BISHOP: Bitboard = Bitboard::G2;
         const W_KING: Bitboard = Bitboard::F1.or(Bitboard::G1).or(Bitboard::H1);
@@ -105,7 +101,7 @@ impl Calc {
                 && (b.pawns() & us).disjoint(no_pawns)
                 && (b.kings() & us).intersects(king)) as i32
         };
-        scorer.accumulate(Attr::Fianchetto.as_feature(), fianchetto(White), fianchetto(Black), eval.fianchetto);
+        scorer.accumulate(Attr::Fianchetto.as_feature(), fianchetto(White), fianchetto(Black));
 
         let bishop_color_pawns = |c: Color| {
             if (b.bishops() & b.color(c)).exactly_one() {
@@ -123,7 +119,6 @@ impl Calc {
             Attr::BishopColorPawns.as_feature(),
             bishop_color_pawns(White),
             bishop_color_pawns(Black),
-            eval.bishop_color_pawns,
         );
 
         // if queen has moved but other pieces havent (FIXME! not quite exactly right (QxQ))
@@ -141,31 +136,31 @@ impl Calc {
             Attr::QueenEarlyDevelop.as_feature(),
             queen_early_develop(White),
             queen_early_develop(Black),
-            eval.queen_early_develop,
         );
     }
 
-    fn endgame(scorer: &mut impl ScorerBase, b: &Board, eval: &Eval) -> bool {
+    fn endgame(scorer: &mut impl ScorerBase, b: &Board) -> bool {
         let endgame = EndGame::from_board(b);
 
         if let Some(winner) = endgame.try_winner() {
             // c = losing colour - the winning side doesnt get a score (just the negative of the loser)
             let (metric1, metric2) = Self::end_game_metrics(winner, b, endgame);
             // if winner == Color::White {
-            scorer.accum(winner, Attr::WinMetric1.as_feature(), -metric1, eval.win_metric1);
-            scorer.accum(winner, Attr::WinMetric2.as_feature(), -metric2, eval.win_metric2);
-            scorer.accum(winner, Attr::WinBonus.as_feature(), 1, eval.win_bonus);
+            scorer.accum(winner, Attr::WinMetric1.as_feature(), -metric1);
+            scorer.accum(winner, Attr::WinMetric2.as_feature(), -metric2);
+            scorer.accum(winner, Attr::WinBonus.as_feature(), 1);
             // } else {
             //     scorer.accum(FeatureIndex::WinMetric1, 0, -metric1, eval.win_metric1);
             //     scorer.accum(FeatureIndex::WinMetric2, 0, -metric2, eval.win_metric2);
             //     scorer.accum(FeatureIndex::WinBonus, 0, 1, eval.win_bonus);
             // }
             return true;
-        } else {
-            scorer.accumulate(Attr::WinMetric1.as_feature(), 0, 0, eval.win_metric1);
-            scorer.accumulate(Attr::WinMetric2.as_feature(), 0, 0, eval.win_metric2);
-            scorer.accumulate(Attr::WinBonus.as_feature(), 0, 0, eval.win_bonus);
-        }
+        } 
+        // else {
+        //     // scorer.accumulate(Attr::WinMetric1.as_feature(), 0, 0);
+        //     // scorer.accumulate(Attr::WinMetric2.as_feature(), 0, 0);
+        //     // scorer.accumulate(Attr::WinBonus.as_feature(), 0, 0);
+        // }
         false
     }
 
@@ -282,7 +277,7 @@ impl Calc {
         // }
     }
 
-    fn pst(s: &mut impl ScorerBase, b: &Board, e: &Eval) {
+    fn pst(s: &mut impl ScorerBase, b: &Board) {
     // if s.csv() {
         for &p in &Piece::ALL_BAR_NONE {
             let w = (b.pieces(p) & b.white()).flip_vertical();
@@ -301,7 +296,7 @@ impl Calc {
                 // ];
                 // let label = format!("pst.{}.{}", p.to_lower_char(), sq.uci());
                 // let label = std::str::from_utf8(&u8s).unwrap();
-                s.accumulate(Feature::Pst(p, sq), sq.is_in(w) as i32, sq.is_in(b) as i32, e.pst.pst(p, sq));
+                s.accumulate(Feature::Pst(p, sq), sq.is_in(w) as i32, sq.is_in(b) as i32);
             }
         }
         // } else {
@@ -366,7 +361,7 @@ impl Calc {
     // - Hanging Pawns -  are an open, half-isolated duo. It means that they are standing next to each other on the adjacent half-open files, usually on the fourth rank, mutually protecting their stop squares.
 
     #[inline]
-    fn pawns(c: Color, scorer: &mut impl ScorerBase, b: &Board, eval: &Eval) {
+    fn pawns(c: Color, scorer: &mut impl ScorerBase, b: &Board) {
         let us = b.color(c);
         let them = b.color(c.opposite());
         let bbd = BitboardDefault::default();
@@ -533,57 +528,53 @@ impl Calc {
         // lots of rammed pawns and having a knight an advantage
         rammed_pawns = rammed_pawns * rammed_pawns * (b.knights() & us).any() as i32;
 
-        scorer.accum(c, Attr::PawnDoubled.as_feature(), doubled_pawns, eval.pawn_doubled);
+        scorer.accum(c, Attr::PawnDoubled.as_feature(), doubled_pawns);
         scorer.accum(
             c,
             Attr::PawnDirectlyDoubled.as_feature(),
             _pawn_directly_doubled,
-            eval.pawn_directly_doubled,
         );
-        scorer.accum(c, Attr::PawnIsolated.as_feature(), isolated_pawns, eval.pawn_isolated);
-        scorer.accum(c, Attr::SemiIsolated.as_feature(), _semi_isolated, eval.semi_isolated);
-        scorer.accum(c, Attr::PawnPassed.as_feature(), passed_pawns, eval.pawn_passed);
-        scorer.accum(c, Attr::PawnPassedR7.as_feature(), passed_pawns_on_r7, eval.pawn_passed_r7);
-        scorer.accum(c, Attr::PawnPassedR6.as_feature(), passed_pawns_on_r6, eval.pawn_passed_r6);
-        scorer.accum(c, Attr::PawnPassedR5.as_feature(), passed_pawns_on_r5, eval.pawn_passed_r5);
-        scorer.accum(c, Attr::PawnPassedR4.as_feature(), passed_pawns_on_r4, eval.pawn_passed_r4);
-        scorer.accum(c, Attr::PassersOnRim.as_feature(), passers_on_rim, eval.passers_on_rim);
+        scorer.accum(c, Attr::PawnIsolated.as_feature(), isolated_pawns);
+        scorer.accum(c, Attr::SemiIsolated.as_feature(), _semi_isolated);
+        scorer.accum(c, Attr::PawnPassed.as_feature(), passed_pawns);
+        scorer.accum(c, Attr::PawnPassedR7.as_feature(), passed_pawns_on_r7);
+        scorer.accum(c, Attr::PawnPassedR6.as_feature(), passed_pawns_on_r6);
+        scorer.accum(c, Attr::PawnPassedR5.as_feature(), passed_pawns_on_r5);
+        scorer.accum(c, Attr::PawnPassedR4.as_feature(), passed_pawns_on_r4);
+        scorer.accum(c, Attr::PassersOnRim.as_feature(), passers_on_rim);
         scorer.accum(
             c,
             Attr::CandidatePassedPawn.as_feature(),
             _candidate_passed_pawn,
-            eval.candidate_passed_pawn,
         );
-        scorer.accum(c, Attr::Blockaded.as_feature(), blockaded, eval.blockaded);
-        scorer.accum(c, Attr::BlockadedPassers.as_feature(), blockaded_passers, eval.blockaded_passers);
-        scorer.accum(c, Attr::RooksBehindPasser.as_feature(), rooks_behind_passer, eval.rooks_behind_passer);
-        scorer.accum(c, Attr::EnemyRookOnPasser.as_feature(), enemy_rook_on_passer, eval.enemy_rook_on_passer);
-        scorer.accum(c, Attr::RammedPawns.as_feature(), rammed_pawns, eval.rammed_pawns);
-        scorer.accum(c, Attr::Space.as_feature(), _space, eval.space);
-        scorer.accum(c, Attr::PawnConnectedR67.as_feature(), pawn_connected_r67, eval.pawn_connected_r67);
-        scorer.accum(c, Attr::PawnConnectedR345.as_feature(), pawn_connected_r345, eval.pawn_connected_r345);
+        scorer.accum(c, Attr::Blockaded.as_feature(), blockaded);
+        scorer.accum(c, Attr::BlockadedPassers.as_feature(), blockaded_passers);
+        scorer.accum(c, Attr::RooksBehindPasser.as_feature(), rooks_behind_passer);
+        scorer.accum(c, Attr::EnemyRookOnPasser.as_feature(), enemy_rook_on_passer);
+        scorer.accum(c, Attr::RammedPawns.as_feature(), rammed_pawns);
+        scorer.accum(c, Attr::Space.as_feature(), _space);
+        scorer.accum(c, Attr::PawnConnectedR67.as_feature(), pawn_connected_r67);
+        scorer.accum(c, Attr::PawnConnectedR345.as_feature(), pawn_connected_r345);
         scorer.accum(
             c,
             Attr::PassedConnectedR67.as_feature(),
             _passed_connected_r67,
-            eval.passed_connected_r67,
         );
         scorer.accum(
             c,
             Attr::PassedConnectedR345.as_feature(),
             _passed_connected_r345,
-            eval.passed_connected_r345,
         );
-        scorer.accum(c, Attr::PawnDuoR67.as_feature(), pawn_duo_r67, eval.pawn_duo_r67);
-        scorer.accum(c, Attr::PawnDuoR2345.as_feature(), pawn_duo_r2345, eval.pawn_duo_r2345);
-        scorer.accum(c, Attr::PassedDuoR67.as_feature(), _passed_duo_r67, eval.passed_duo_r67);
-        scorer.accum(c, Attr::PassedDuoR2345.as_feature(), _passed_duo_r2345, eval.passed_duo_r2345);
-        scorer.accum(c, Attr::BackwardHalfOpen.as_feature(), backward_half_open, eval.backward_half_open);
-        scorer.accum(c, Attr::Backward.as_feature(), backward, eval.backward);
+        scorer.accum(c, Attr::PawnDuoR67.as_feature(), pawn_duo_r67);
+        scorer.accum(c, Attr::PawnDuoR2345.as_feature(), pawn_duo_r2345);
+        scorer.accum(c, Attr::PassedDuoR67.as_feature(), _passed_duo_r67);
+        scorer.accum(c, Attr::PassedDuoR2345.as_feature(), _passed_duo_r2345);
+        scorer.accum(c, Attr::BackwardHalfOpen.as_feature(), backward_half_open);
+        scorer.accum(c, Attr::Backward.as_feature(), backward);
     }
 
     #[inline]
-    fn king_safety(c: Color, s: &mut impl ScorerBase, b: &Board, e: &Eval) {
+    fn king_safety(c: Color, s: &mut impl ScorerBase, b: &Board) {
         let us = b.color(c);
         let k = b.kings() & us;
         if k.is_empty() {
@@ -662,40 +653,37 @@ impl Calc {
         let pinned_near_king = (b.pinned(c) & d1).popcount();
         let pinned_far = (b.pinned(c)).popcount() - pinned_near_king;
         let discovered_checks = (BoardCalcs::pinned_and_unmaskers(b, c).1 - b.pawns()).popcount();
-        s.accum(c, Attr::PawnAdjacentShield.as_feature(), adjacent_shield, e.pawn_adjacent_shield);
-        s.accum(c, Attr::PawnNearbyShield.as_feature(), nearby_shield, e.pawn_nearby_shield);
-        s.accum(c, Attr::KingSafetyBonus.as_feature(), king_safety_bonus, e.king_safety_bonus);
-        s.accum(c, Attr::OpenFilesNearKing.as_feature(), open_files_near_king, e.open_files_near_king);
+        s.accum(c, Attr::PawnAdjacentShield.as_feature(), adjacent_shield);
+        s.accum(c, Attr::PawnNearbyShield.as_feature(), nearby_shield);
+        s.accum(c, Attr::KingSafetyBonus.as_feature(), king_safety_bonus);
+        s.accum(c, Attr::OpenFilesNearKing.as_feature(), open_files_near_king);
         s.accum(
             c,
             Attr::OpenFilesAdjacentKing.as_feature(),
             open_files_adjacent_king,
-            e.open_files_adjacent_king,
         );
-        s.accum(c, Attr::TropismD1.as_feature(), king_tropism_d1, e.tropism_d1);
-        s.accum(c, Attr::TropismD2.as_feature(), king_tropism_d2, e.tropism_d2);
-        s.accum(c, Attr::TropismD3.as_feature(), king_tropism_d3, e.tropism_d3);
-        s.accum(c, Attr::TropismD4.as_feature(), king_tropism_d4, e.tropism_d4);
+        s.accum(c, Attr::TropismD1.as_feature(), king_tropism_d1);
+        s.accum(c, Attr::TropismD2.as_feature(), king_tropism_d2);
+        s.accum(c, Attr::TropismD3.as_feature(), king_tropism_d3);
+        s.accum(c, Attr::TropismD4.as_feature(), king_tropism_d4);
         s.accum(
             c,
             Attr::KingTrappedOnBackRank.as_feature(),
             king_trapped_on_back_rank,
-            e.king_trapped_on_back_rank,
         );
         s.accum(
             c,
             Attr::RqOnOpenFilesNearKing.as_feature(),
             rq_on_open_files_near_king,
-            e.rq_on_open_files_near_king,
         );
 
-        s.accum(c, Attr::CastlingRights.as_feature(), castling_rights, e.castling_rights);
-        s.accum(c, Attr::Uncastled.as_feature(), uncastled, e.uncastled);
-        s.accum(c, Attr::Checkers.as_feature(), checkers, e.checkers);
-        s.accum(c, Attr::PiecesNearKing.as_feature(), pieces_near_king, e.pieces_near_king);
-        s.accum(c, Attr::PinnedNearKing.as_feature(), pinned_near_king, e.pinned_near_king);
-        s.accum(c, Attr::PinnedFar.as_feature(), pinned_far, e.pinned_far);
-        s.accum(c, Attr::DiscoveredChecks.as_feature(), discovered_checks, e.discovered_checks);
+        s.accum(c, Attr::CastlingRights.as_feature(), castling_rights);
+        s.accum(c, Attr::Uncastled.as_feature(), uncastled);
+        s.accum(c, Attr::Checkers.as_feature(), checkers);
+        s.accum(c, Attr::PiecesNearKing.as_feature(), pieces_near_king);
+        s.accum(c, Attr::PinnedNearKing.as_feature(), pinned_near_king);
+        s.accum(c, Attr::PinnedFar.as_feature(), pinned_far);
+        s.accum(c, Attr::DiscoveredChecks.as_feature(), discovered_checks);
 
         // }
         // FIXME Urgent!
@@ -745,7 +733,7 @@ impl Calc {
         // ||
     }
 
-    fn mobility(c: Color, s: &mut impl ScorerBase, b: &Board, e: &Eval) {
+    fn mobility(c: Color, s: &mut impl ScorerBase, b: &Board) {
         let bb = BitboardDefault::default();
         let us = b.color(c);
         let open_files = bb.open_files(b.pawns());
@@ -877,34 +865,31 @@ impl Calc {
         // scorer.position("white mob", 1, 0, wh);
         // scorer.position("black mob", 0, 1, bl);
 
-        s.accum(c, Attr::AttacksNearKing.as_feature(), attacks_on_opponent_king_area, e.attacks_near_king);
-        s.accum(c, Attr::CenterAttacks.as_feature(), center_attacks, e.center_attacks);
-        s.accum(c, Attr::UndefendedSq.as_feature(), move_squares, e.undefended_sq);
-        s.accum(c, Attr::UndefendedPiece.as_feature(), non_pawn_defended_moves, e.undefended_piece);
-        s.accum(c, Attr::TrappedPiece.as_feature(), fully_trapped_pieces, e.trapped_piece);
+        s.accum(c, Attr::AttacksNearKing.as_feature(), attacks_on_opponent_king_area);
+        s.accum(c, Attr::CenterAttacks.as_feature(), center_attacks);
+        s.accum(c, Attr::UndefendedSq.as_feature(), move_squares);
+        s.accum(c, Attr::UndefendedPiece.as_feature(), non_pawn_defended_moves);
+        s.accum(c, Attr::TrappedPiece.as_feature(), fully_trapped_pieces);
         s.accum(
             c,
             Attr::PartiallyTrappedPiece.as_feature(),
             partially_trapped_pieces,
-            e.partially_trapped_piece,
         );
-        s.accum(c, Attr::RookOpenFile.as_feature(), rooks_on_open_files, e.rook_open_file);
-        s.accum(c, Attr::QueenOpenFile.as_feature(), queens_on_open_files, e.queen_open_file);
-        s.accum(c, Attr::BishopOutposts.as_feature(), bishop_outposts, e.bishop_outposts);
-        s.accum(c, Attr::KnightForks.as_feature(), knight_forks, e.knight_forks);
-        s.accum(c, Attr::KnightOutposts.as_feature(), knight_outposts, e.knight_outposts);
+        s.accum(c, Attr::RookOpenFile.as_feature(), rooks_on_open_files);
+        s.accum(c, Attr::QueenOpenFile.as_feature(), queens_on_open_files);
+        s.accum(c, Attr::BishopOutposts.as_feature(), bishop_outposts);
+        s.accum(c, Attr::KnightForks.as_feature(), knight_forks);
+        s.accum(c, Attr::KnightOutposts.as_feature(), knight_outposts);
         s.accum(
             c,
             Attr::EnemyPawnsOnRookRank.as_feature(),
             enemy_pawns_on_rook_rank,
-            e.enemy_pawns_on_rook_rank,
         );
-        s.accum(c, Attr::DoubledRooks.as_feature(), doubled_rooks, e.doubled_rooks);
+        s.accum(c, Attr::DoubledRooks.as_feature(), doubled_rooks);
         s.accum(
             c,
             Attr::DoubledRooksOpenFile.as_feature(),
             doubled_rooks_open_file,
-            e.doubled_rooks_open_file,
         );
 
         // s.mobility(
@@ -927,9 +912,7 @@ mod tests {
     use super::*;
     use crate::catalog::Catalog;
     use crate::eval::eval::Eval;
-    use crate::eval::model::Model;
-    use crate::eval::scorer::{ExplainScorer, ReportLine, ExplainScore, Scorer};
-    use crate::eval::switches::Switches;
+    use crate::eval::scorer::{ExplainScore, TotalScore};
     use crate::eval::weight::Weight;
     use crate::infra::profiler::*;
     use crate::phaser::Phaser;
@@ -944,18 +927,18 @@ mod tests {
         let phaser = Phaser::default();
         for pos in &positions {
             let b = pos.board();
-            let mut scorer1 = ExplainScorer::new(b.to_fen(), false);
-            scorer1.set_phase(b.phase(&phaser));
-            let mut model = Model::from_board(b, b.phase(&phaser), Switches::ALL_SCORING);
-            model.csv = false;
-            eval.predict(&model, &mut scorer1);
-            black_box(&scorer1);
-            let w1 = scorer1.total();
+            // let mut scorer1 = ExplainScorer::new(b.to_fen(), false);
+            // scorer1.set_phase(b.phase(&phaser));
+            // let mut model = Model::from_board(b, b.phase(&phaser), Switches::ALL_SCORING);
+            // model.csv = false;
+            // eval.predict(&model, &mut scorer1);
+            // black_box(&scorer1);
+            // let w1 = scorer1.total();
 
-            let mut scorer2 = ExplainScorer::new(b.to_fen(), false);
-            Calc::score(&mut scorer2, &b, &eval, &phaser);
-            black_box(&scorer2);
-            let w2 = scorer2.total();
+            // let mut scorer2 = ExplainScorer::new(b.to_fen(), false);
+            // Calc::score(&mut scorer2, &b, &eval, &phaser);
+            // black_box(&scorer2);
+            // let w2 = scorer2.total();
 
             let mut scorer3 = ExplainScore::default();
             Calc::score(&mut scorer3, &b, &eval, &phaser);
@@ -963,38 +946,38 @@ mod tests {
             let w3 = scorer3.total();
 
             // assert_eq!(w1, w2, "{}\n", pos);
-            assert_eq!(w1, w2, "{}\n{}\n===========\n{}\n", pos, scorer1, scorer2);
-            assert_eq!(w1, w3, "{}\n{}\n===========\n{}\n", pos, scorer1, scorer3);
+            // assert_eq!(w1, w2, "{}\n{}\n===========\n{}\n", pos, scorer1, scorer2);
+            // assert_eq!(w1, w3, "{}\n{}\n===========\n{}\n", pos, scorer1, scorer3);
         }
     }
 
     #[ignore]
     #[test]
     fn bench_scoring() {
-        fn bench_old(b: &Board, p: &Phaser, e: &Eval, pr: &mut Profiler) -> Weight {
-            let mut scorer1 = ExplainScorer::new(b.to_fen(), false);
-            // let mut scorer1 = ModelScore::new();
-            scorer1.set_phase(b.phase(p));
-            pr.start();
-            for _ in 0..1000 {
-                let mut model = Model::from_board(b, b.phase(p), Switches::ALL_SCORING);
-                model.csv = false;
-                e.predict(&model, &mut scorer1);
-                black_box(&scorer1);
-                // scorer1 = ExplainScorer::new(b.to_fen());
-            }
-            pr.stop();
-            scorer1.total()
-        }
+        // fn bench_old(b: &Board, p: &Phaser, e: &Eval, pr: &mut Profiler) -> Weight {
+        //     let mut scorer1 = ExplainScorer::new(b.to_fen(), false);
+        //     // let mut scorer1 = ModelScore::new();
+        //     scorer1.set_phase(b.phase(p));
+        //     pr.start();
+        //     for _ in 0..1000 {
+        //         let mut model = Model::from_board(b, b.phase(p), Switches::ALL_SCORING);
+        //         model.csv = false;
+        //         e.predict(&model, &mut scorer1);
+        //         black_box(&scorer1);
+        //         // scorer1 = ExplainScorer::new(b.to_fen());
+        //     }
+        //     pr.stop();
+        //     scorer1.total()
+        // }
 
-        fn bench_new(b: &Board, ph: &Phaser, e: &Eval, pr: &mut Profiler) -> Weight {
-            let mut scorer2 = ExplainScorer::new(b.to_fen(), false);
+        fn bench_new(b: &Board, phr: &Phaser, e: &Eval, pr: &mut Profiler) -> Weight {
+            let mut scorer2 = TotalScore::new(&e.feature_weights, b.phase(phr));
             // scorer2.csv = false;
             // let mut scorer2 = ModelScore::new();
 
             pr.start();
             for _ in 0..1000 {
-                Calc::score(&mut scorer2, &b, &e, ph);
+                Calc::score(&mut scorer2, &b, &e, phr);
                 black_box(&scorer2);
                 // scorer2 = ExplainScorer::new(b.to_fen());
             }
@@ -1006,10 +989,10 @@ mod tests {
         let mut prof_new = Profiler::new("new".into());
         let positions = Catalog::example_game();
         let eval = Eval::new();
-        let phaser = Phaser::default();
+        let phr = Phaser::default();
         for pos in &positions {
-            let _w1 = bench_old(&pos.board(), &phaser, &eval, &mut prof_old);
-            let _w2 = bench_new(&pos.board(), &phaser, &eval, &mut prof_new);
+            // let _w1 = bench_old(&pos.board(), &phaser, &eval, &mut prof_old);
+            let _w2 = bench_new(&pos.board(), &phr, &eval, &mut prof_new);
         }
     }
 
@@ -1098,26 +1081,26 @@ mod tests {
         assert_eq!((bd1 - Bitboard::RANKS_18 - b.occupied()).is_empty(), true);
     }
 
-    #[test]
-    fn model_csv_test() {
-        let eval = &mut Eval::new();
-        eval.tempo = false;
+    // #[test]
+    // fn model_csv_test() {
+    //     let eval = &mut Eval::new();
+    //     eval.tempo = false;
 
-        let positions = Catalog::example_game();
-        for (i, p) in positions.iter().enumerate() {
-            // let model = Model::from_board(p.board(), Switches::ALL_SCORING);
-            if i == 0 {
-                info!("\n{}", eval.w_eval_explain(&p.board(), false).as_csv(ReportLine::Header, true));
-            }
-            info!("\n{}", eval.w_eval_explain(&p.board(), false).as_csv(ReportLine::Body, true));
-        }
-        for (i, p) in positions.iter().enumerate() {
-            let model = eval.w_eval_explain(&p.board(), true);
+    //     let positions = Catalog::example_game();
+    //     for (i, p) in positions.iter().enumerate() {
+    //         // let model = Model::from_board(p.board(), Switches::ALL_SCORING);
+    //         if i == 0 {
+    //             info!("\n{}", eval.w_eval_explain(&p.board(), false).as_csv(ReportLine::Header, true));
+    //         }
+    //         info!("\n{}", eval.w_eval_explain(&p.board(), false).as_csv(ReportLine::Body, true));
+    //     }
+    //     for (i, p) in positions.iter().enumerate() {
+    //         let model = eval.w_eval_explain(&p.board(), true);
 
-            if i == 0 {
-                info!("\n{}", model.as_csv(ReportLine::Header, true));
-            }
-            info!("\n{}", model.as_csv(ReportLine::Body, true));
-        }
-    }
+    //         if i == 0 {
+    //             info!("\n{}", model.as_csv(ReportLine::Header, true));
+    //         }
+    //         info!("\n{}", model.as_csv(ReportLine::Body, true));
+    //     }
+    // }
 }

@@ -1,14 +1,10 @@
 use std::io::Write;
 
-use crate::catalog::Catalog;
 use crate::eval::feature::FeatureMatrix;
 use crate::eval::feature::FeatureVector;
 use crate::eval::score::Score;
 use crate::eval::scorer::ExplainScore;
-use crate::eval::scorer::ExplainScorer;
 use crate::Board;
-// use crate::eval::scorer::ModelScore;
-// use crate::eval::scorer::ReportLine;
 use crate::eval::calc::Calc;
 use crate::eval::scorer::ScorerBase;
 use crate::eval::weight::Weight;
@@ -18,7 +14,7 @@ use crate::phaser::Phase;
 use crate::position::Position;
 use crate::search::engine::Engine;
 use crate::tags::Tag;
-use anyhow::{bail, Result};
+use anyhow::{Result};
 use itertools::Itertools;
 // use rayon::prelude::*;
 use serde::Deserialize;
@@ -134,13 +130,13 @@ impl Tuning {
 
     pub fn upload_positions(eng: &mut Engine, positions: Vec<Position>) -> Result<usize> {
         // let mut eng.tuner.feature_matrix = FeatureMatrix::default();
-        let board = Catalog::starting_board();
-        let mut scorer = ExplainScorer::new(String::new(), true);
-        model_and_accum(eng, &board, Phase(0), &mut scorer);
-        eng.tuner.feature_matrix.feature_names = scorer.feature_names();
+        // let board = Catalog::starting_board();
+        // let mut scorer = ExplainScorer::new(String::new(), true);
+        // model_and_accum(eng, &board, Phase(0), &mut scorer);
+        // eng.tuner.feature_matrix.feature_names = scorer.feature_names();
 
         for (_i, pos) in positions.iter().enumerate() {
-            let ph = eng.algo.eval.phaser.phase(&pos.board().material());
+            // let ph = eng.algo.eval.phaser.phase(&pos.board().material());
             // let mut model = Model::from_board(pos.board(), ph, Switches::ALL_SCORING);
             // model.csv = eng.tuner.sparse;
 
@@ -186,17 +182,17 @@ impl Tuning {
                 //     eng.tuner.models_and_outcomes.push((model, outcome));
                 // }
                 (_, Method::Sparse) => {
-                    let (_outcome, outcome_str) = eng.tuner.calc_player_win_prob_from_pos(pos);
-                    let o = Outcome::try_from_pgn(&outcome_str)?;
-                    if eng.tuner.ignore_draws && outcome_str == "1/2-1/2" {
-                        continue;
-                    }
-                    let mut w_scorer = ExplainScorer::new(pos.board().to_fen(), true);
-                    model_and_accum(eng, pos.board(), ph, &mut w_scorer);
-                    // eng.algo.eval.predict(&model, &mut w_scorer);
-                    // let _consolidate = eng.tuner.consolidate;
-                    let fv = w_scorer.into_feature_vector(o);
-                    eng.tuner.feature_matrix.feature_vectors.push(fv);
+                    // let (_outcome, outcome_str) = eng.tuner.calc_player_win_prob_from_pos(pos);
+                    // let o = Outcome::try_from_pgn(&outcome_str)?;
+                    // if eng.tuner.ignore_draws && outcome_str == "1/2-1/2" {
+                    //     continue;
+                    // }
+                    // let mut w_scorer = ExplainScorer::new(pos.board().to_fen(), true);
+                    // model_and_accum(eng, pos.board(), ph, &mut w_scorer);
+                    // // eng.algo.eval.predict(&model, &mut w_scorer);
+                    // // let _consolidate = eng.tuner.consolidate;
+                    // let fv = w_scorer.into_feature_vector(o);
+                    // eng.tuner.feature_matrix.feature_vectors.push(fv);
                 }
                 (_, Method::New) => {
                     let (_outcome, outcome_str) = eng.tuner.calc_player_win_prob_from_pos(pos);
@@ -259,57 +255,57 @@ impl Tuning {
         let eval = &eng.algo.eval;
         let logistic_steepness_k = self.logistic_steepness_k; // so that closure does not capture engine/tuner
         let mse: f32;
-        let mut scorer = ExplainScorer::new(String::new(), true);
-        let board = Catalog::starting_board();
-        model_and_accum(eng, &board, Phase(0), &mut scorer);
-        let weight_vector = scorer.weights_vector();
+        // let mut scorer = ExplainScorer::new(String::new(), true);
+        // let board = Catalog::starting_board();
+        // model_and_accum(eng, &board, Phase(0), &mut scorer);
+        // let weight_vector = scorer.weights_vector();
         let eval_weight_vector = eval.weights_vector();
-        trace!("Weights = {}", weight_vector);
+        // trace!("Weights = {}", weight_vector);
         let regression_type = eng.tuner.regression_type;
         // let mut diff_squared: f32 = 0.0;
 
-        let closure_fv = |pair: (usize, &FeatureVector)| {
-            let (i, fv) = pair;
-            // let fv = pair;
-            let w_score = self.feature_matrix.dot_product(&fv, &weight_vector);
-            let k = logistic_steepness_k.interpolate(fv.phase) as f32;
-            let win_prob_estimate = Score::win_probability_from_cp_and_k(w_score, k);
-            let win_prob_actual = match fv.outcome {
-                Outcome::WinWhite => 1.0,
-                Outcome::WinBlack => 0.0,
-                Outcome::DrawRule50 => 0.5,
-                _ => unreachable!(),
-            };
-            let cost = match regression_type {
-                RegressionType::LogisticOnOutcome => {
-                    let diff = win_prob_estimate - win_prob_actual;
-                    diff * diff
-                }
-                RegressionType::CrossEntropy => match fv.outcome {
-                    Outcome::WinWhite => -f32::ln(win_prob_estimate),
-                    Outcome::WinBlack => -f32::ln(1.0 - win_prob_estimate),
-                    Outcome::DrawRule50 | _ => 0.0,
-                },
-                RegressionType::CumulativeLogisticLink => match fv.outcome {
-                    Outcome::WinWhite => -f32::ln(win_prob_estimate),
-                    Outcome::WinBlack => -f32::ln(1.0 - win_prob_estimate),
-                    Outcome::DrawRule50 => -f32::ln(1.0 - f32::abs(win_prob_estimate - 0.5)),
-                    _ => 0.0,
-                },
-                _ => unreachable!(),
-            };
-            if cost.is_infinite() || cost.is_nan() {
-                debug!(
-                    "Sparse : {} {} {} {} {} {} {}",
-                    i, win_prob_estimate, win_prob_actual, w_score, fv.phase, cost, fv.fen
-                );
-            }
-            if cost.is_infinite() || cost.is_nan() {
-                0.0
-            } else {
-                cost
-            }
-        };
+        // let closure_fv = |pair: (usize, &FeatureVector)| {
+        //     let (i, fv) = pair;
+        //     // let fv = pair;
+        //     let w_score = self.feature_matrix.dot_product(&fv, &weight_vector);
+        //     let k = logistic_steepness_k.interpolate(fv.phase) as f32;
+        //     let win_prob_estimate = Score::win_probability_from_cp_and_k(w_score, k);
+        //     let win_prob_actual = match fv.outcome {
+        //         Outcome::WinWhite => 1.0,
+        //         Outcome::WinBlack => 0.0,
+        //         Outcome::DrawRule50 => 0.5,
+        //         _ => unreachable!(),
+        //     };
+        //     let cost = match regression_type {
+        //         RegressionType::LogisticOnOutcome => {
+        //             let diff = win_prob_estimate - win_prob_actual;
+        //             diff * diff
+        //         }
+        //         RegressionType::CrossEntropy => match fv.outcome {
+        //             Outcome::WinWhite => -f32::ln(win_prob_estimate),
+        //             Outcome::WinBlack => -f32::ln(1.0 - win_prob_estimate),
+        //             Outcome::DrawRule50 | _ => 0.0,
+        //         },
+        //         RegressionType::CumulativeLogisticLink => match fv.outcome {
+        //             Outcome::WinWhite => -f32::ln(win_prob_estimate),
+        //             Outcome::WinBlack => -f32::ln(1.0 - win_prob_estimate),
+        //             Outcome::DrawRule50 => -f32::ln(1.0 - f32::abs(win_prob_estimate - 0.5)),
+        //             _ => 0.0,
+        //         },
+        //         _ => unreachable!(),
+        //     };
+        //     if cost.is_infinite() || cost.is_nan() {
+        //         debug!(
+        //             "Sparse : {} {} {} {} {} {} {}",
+        //             i, win_prob_estimate, win_prob_actual, w_score, fv.phase, cost, fv.fen
+        //         );
+        //     }
+        //     if cost.is_infinite() || cost.is_nan() {
+        //         0.0
+        //     } else {
+        //         cost
+        //     }
+        // };
 
         let closure_es = |pair: (usize, &ExplainScore)| {
             let (i, es) = pair;
@@ -355,30 +351,30 @@ impl Tuning {
             }
         };
 
-        if eng.tuner.method == Method::New {
-            let l = self.explains.len();
-            info!("Calculating mse (new) on {} positions using single thread", l);
-            let total_diff_squared: f32 = self.explains.iter().enumerate().map(closure_es).sum();
-            mse = total_diff_squared / l as f32;
-            info!("Calculated (new) mse as {}", mse);
-            return Ok(mse);
-        } else {
-            let total_diff_squared: f32 = match self.feature_matrix.feature_vectors.len() {
-                0 => bail!("No (sparse) tuning positions loaded or remain after filtering"),
-                l if l < self.multi_threading_min_positions => {
-                    info!("Calculating mse (sparse) on {} positions using single thread", l);
-                    self.feature_matrix.feature_vectors.iter().enumerate().map(closure_fv).sum()
-                }
-                l => {
-                    info!("Calculating mse (sparse) on {} positions using multi thread", l);
-                    self.calc_sparse(closure_fv)
-                }
-            };
+    // if eng.tuner.method == Method::New {
+        let l = self.explains.len();
+        info!("Calculating mse (new) on {} positions using single thread", l);
+        let total_diff_squared: f32 = self.explains.iter().enumerate().map(closure_es).sum();
+        mse = total_diff_squared / l as f32;
+        info!("Calculated (new) mse as {}", mse);
+        return Ok(mse);
+        // } else {
+        //     let total_diff_squared: f32 = match self.feature_matrix.feature_vectors.len() {
+        //         0 => bail!("No (sparse) tuning positions loaded or remain after filtering"),
+        //         l if l < self.multi_threading_min_positions => {
+        //             info!("Calculating mse (sparse) on {} positions using single thread", l);
+        //             self.feature_matrix.feature_vectors.iter().enumerate().map(closure_fv).sum()
+        //         }
+        //         l => {
+        //             info!("Calculating mse (sparse) on {} positions using multi thread", l);
+        //             self.calc_sparse(closure_fv)
+        //         }
+        //     };
 
-            mse = total_diff_squared / self.feature_matrix.feature_vectors.len() as f32;
-            info!("Calculated mse as {}", mse);
-            return Ok(mse);
-        }
+        //     mse = total_diff_squared / self.feature_matrix.feature_vectors.len() as f32;
+        //     info!("Calculated mse as {}", mse);
+        //     return Ok(mse);
+        // }
     }
 
     fn calc_sparse(&self, f: impl Copy + Sync + Send + Fn((usize, &FeatureVector)) -> f32) -> f32 {
@@ -439,6 +435,7 @@ mod tests {
     use std::{fs::File, io::BufWriter, time::Instant};
 
     use super::*;
+    use crate::eval::eval::Attr;
     use crate::utils::Formatting;
     use crate::{eval::weight::Weight, infra::profiler::Profiler};
     use anyhow::Context;
@@ -476,7 +473,7 @@ mod tests {
         for n in (-120..120).step_by(1) {
             let value = n;
             engine.algo.eval.mb.enabled = false;
-            engine.algo.eval.pawn_isolated = Weight::from_i32(0, value);
+            engine.algo.eval.set_weight(Attr::PawnIsolated.into(), Weight::from_i32(0, value));
             iters += 1;
             let diffs = engine.tuner.calculate_mean_square_error(&engine).unwrap();
             println!("{}, {}", value, diffs);

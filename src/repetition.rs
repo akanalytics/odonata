@@ -177,6 +177,7 @@ mod tests {
     use super::*;
     use crate::catalog::*;
     use crate::comms::uci::Uci;
+    use crate::eval::eval::Attr;
     use crate::eval::weight::Weight;
     use crate::search::algo::*;
     use crate::search::engine::*;
@@ -278,7 +279,7 @@ mod tests {
     #[ignore]
     fn test_rep_bug2() {
         let mut engine = Engine::new();
-        engine.algo.eval.contempt_penalty = Weight::from_i32(-30, -30);
+        engine.algo.eval.set_weight(Attr::ContemptPenalty.into(),Weight::from_i32(-30, -30));
 
         let pos3 = Catalog::draws()[3].clone();
 

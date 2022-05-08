@@ -15,8 +15,6 @@ use odonata::cache::tt2::*;
 use odonata::catalog::*;
 use odonata::domain::material::*;
 use odonata::eval::eval::*;
-use odonata::eval::model::Model;
-use odonata::eval::model::ModelScore;
 use odonata::eval::score::*;
 use odonata::eval::see::See;
 use odonata::eval::switches::Switches;

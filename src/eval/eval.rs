@@ -3,8 +3,6 @@ use crate::board::Board;
 use crate::eval::material_balance::MaterialBalance;
 use crate::eval::pst::Pst;
 use crate::eval::score::Score;
-use crate::eval::scorer::ExplainScorer;
-use crate::eval::scorer::Scorer;
 use crate::eval::see::See;
 use crate::eval::switches::Switches;
 use crate::eval::weight::Weight;
@@ -26,9 +24,9 @@ use std::fmt;
 
 use super::calc::Calc;
 use super::feature::WeightsVector;
-use super::model::Model;
 
 
+use super::scorer::ExplainScore;
 use super::scorer::{TotalScore};
 
 // https://www.chessprogramming.org/Simplified_Evaluation_Function
@@ -267,89 +265,6 @@ pub struct Eval {
     #[serde(skip)]
     pub feature_weights: Vec<Weight>,
 
-    pub center_attacks: Weight,
-    pub undefended_sq: Weight,
-    pub undefended_piece: Weight,
-    pub trapped_piece: Weight,
-    pub partially_trapped_piece: Weight,
-    // pub defended_non_pawn: Weight,
-    // pub xrayed: Weight,
-    pub pawn_doubled: Weight,
-    pub pawn_directly_doubled: Weight,
-    pub pawn_isolated: Weight,
-    pub semi_isolated: Weight,
-    pub pawn_passed: Weight,
-    pub pawn_passed_r7: Weight,
-    pub pawn_passed_r6: Weight,
-    pub pawn_passed_r5: Weight,
-    pub pawn_passed_r4: Weight,
-    pub passers_on_rim: Weight,
-    pub candidate_passed_pawn: Weight,
-    pub blockaded: Weight,
-    pub blockaded_passers: Weight,
-    pub rooks_behind_passer: Weight,
-    pub enemy_rook_on_passer: Weight,
-    pub space: Weight,
-    pub rammed_pawns: Weight,
-    pub pawn_connected_r67: Weight,
-    pub pawn_connected_r345: Weight,
-    pub passed_connected_r67: Weight,
-    pub passed_connected_r345: Weight,
-    pub pawn_duo_r67: Weight,
-    pub pawn_duo_r2345: Weight,
-    pub passed_duo_r67: Weight,
-    pub passed_duo_r2345: Weight,
-    pub backward_half_open: Weight,
-    pub backward: Weight,
-
-    pub bishop_pair: Weight,
-    pub fianchetto: Weight,
-    pub bishop_outposts: Weight,
-    pub bishop_color_pawns: Weight,
-    pub knight_forks: Weight,
-    pub knight_outposts: Weight,
-
-    pub rook_pair: Weight,
-    pub doubled_rooks: Weight,
-    pub doubled_rooks_open_file: Weight,
-    pub rook_open_file: Weight,
-    pub enemy_pawns_on_rook_rank: Weight,
-    pub queen_open_file: Weight,
-    pub queen_early_develop: Weight,
-
-    // pub pawn_shield: Weight,
-    pub pawn_adjacent_shield: Weight,
-    pub pawn_nearby_shield: Weight,
-    pub king_safety_bonus: Weight,
-    pub open_files_near_king: Weight,
-    pub open_files_adjacent_king: Weight,
-    pub attacks_near_king: Weight,
-    pub tropism_d1: Weight,
-    pub tropism_d2: Weight,
-    pub tropism_d3: Weight,
-    pub tropism_d4: Weight,
-    pub king_trapped_on_back_rank: Weight,
-    pub rq_on_open_files_near_king: Weight,
-
-    pub castling_rights: Weight,
-    pub uncastled: Weight,
-    pub checkers: Weight,
-    pub pieces_near_king: Weight,
-    pub pinned_near_king: Weight,
-    pub pinned_far: Weight,
-    pub discovered_checks: Weight,
-
-    pub contempt_penalty: Weight,
-    pub tempo_bonus: Weight,
-    pub win_bonus: Weight,
-    pub win_metric1: Weight,
-    pub win_metric2: Weight,
-    // pub attacks: PieceArray<PieceArray<Weight>>,
-    // pub defends: PieceArray<PieceArray<Weight>> ,
-
-    // pub cache: TranspositionTable,
-    // pub qcache: TranspositionTable,
-    // pub depth: Ply,
 }
 
 impl Default for Eval {
@@ -373,90 +288,6 @@ impl Default for Eval {
             mobility_phase_disable: 101,
             quantum: 1,
             min_depth_mob: 1,
-            contempt_penalty: Weight::from_i32(-30, 0), // typically -ve
-            win_bonus: Weight::from_i32(251, 252),
-            win_metric1: Weight::from_i32(1, 1),
-            win_metric2: Weight::from_i32(1, 1),
-            tempo_bonus: Weight::from_i32(40, 50),
-
-            center_attacks: Weight::from_i32(1, 0),
-            undefended_sq: Weight::from_i32(4, 3),
-            undefended_piece: Weight::from_i32(-3, 49),
-            trapped_piece: Weight::from_i32(-17, -22),
-            partially_trapped_piece: Weight::from_i32(-7, -15),
-            // defended_non_pawn: Weight::from_i32(0, 0),
-            // xrayed: Weight::from_i32(0, 0),
-            bishop_pair: Weight::from_i32(62, 58),
-            fianchetto: Weight::from_i32(55, 27),
-            bishop_outposts: Weight::from_i32(0, 0),
-            bishop_color_pawns: Weight::from_i32(55, 27),
-            knight_forks: Weight::from_i32(0, 0),
-            knight_outposts: Weight::from_i32(0, 0),
-            rook_pair: Weight::from_i32(-1, -1),
-            rook_open_file: Weight::from_i32(59, -4),
-            enemy_pawns_on_rook_rank: Weight::from_i32(1, 1),
-            doubled_rooks: Weight::from_i32(18, 48),
-            doubled_rooks_open_file: Weight::from_i32(17, 17),
-
-            queen_open_file: Weight::from_i32(-19, 37),
-            queen_early_develop: Weight::from_i32(0, 0),
-
-            pawn_doubled: Weight::from_i32(19, -35),
-            pawn_directly_doubled: Weight::from_i32(19, -35),
-            pawn_isolated: Weight::from_i32(-35, -5),
-            semi_isolated: Weight::from_i32(-35, -5),
-            pawn_passed: Weight::from_i32(15, 28),
-            pawn_passed_r7: Weight::from_i32(50, 200),
-            pawn_passed_r6: Weight::from_i32(8, 94),
-            pawn_passed_r5: Weight::from_i32(1, 50),
-            pawn_passed_r4: Weight::from_i32(1, 50),
-            passers_on_rim: Weight::from_i32(-10, -10),
-            candidate_passed_pawn: Weight::from_i32(10, 10),
-            blockaded: Weight::from_i32(-10, -10),
-            blockaded_passers: Weight::from_i32(-10, -10),
-            space: Weight::from_i32(1, 1),
-            rammed_pawns: Weight::from_i32(-10, -10),
-            rooks_behind_passer: Weight::from_i32(0, 10),
-            enemy_rook_on_passer: Weight::from_i32(0, 10),
-            pawn_connected_r67: Weight::from_i32(10, 10),
-            pawn_connected_r345: Weight::from_i32(10, 10),
-            passed_connected_r67: Weight::from_i32(10, 10),
-            passed_connected_r345: Weight::from_i32(10, 10),
-            pawn_duo_r67: Weight::from_i32(10, 10),
-            pawn_duo_r2345: Weight::from_i32(10, 10),
-            passed_duo_r67: Weight::from_i32(10, 10),
-            passed_duo_r2345: Weight::from_i32(10, 10),
-            backward_half_open: Weight::from_i32(-10, -10),
-            backward: Weight::from_i32(-10, -10),
-
-            pawn_adjacent_shield: Weight::from_i32(44, -15),
-            pawn_nearby_shield: Weight::from_i32(42, -14),
-            king_safety_bonus: Weight::from_i32(42, -14),
-            open_files_near_king: Weight::from_i32(-6, -1),
-            open_files_adjacent_king: Weight::from_i32(-6, -1),
-            attacks_near_king: Weight::from_i32(-8, -2),
-            tropism_d1: Weight::from_i32(-40, 29),
-            tropism_d2: Weight::from_i32(-28, 11),
-            tropism_d3: Weight::from_i32(-5, 2),
-            tropism_d4: Weight::from_i32(-5, 2),
-            king_trapped_on_back_rank: Weight::from_i32(-5, 2),
-            checkers: Weight::from_i32(-5, 2),
-            rq_on_open_files_near_king: Weight::from_i32(-5, 2),
-
-            castling_rights: Weight::from_i32(0, 0),
-            uncastled: Weight::from_i32(0, 0),
-            pieces_near_king: Weight::from_i32(0, 0),
-            pinned_near_king: Weight::from_i32(0, 0),
-            pinned_far: Weight::from_i32(0, 0),
-            discovered_checks: Weight::from_i32(0, 0),
-            // attacks: PieceArray {
-            //     q: PieceArray {
-            //         r: Weight::from_i32(-1, -2),
-            //         .. Default::default()
-            //     },
-            //     .. Default::default()
-            // },
-            // defends: Default::default(),
         };
         for f in Feature::all() {
             s.discrete.insert(f.name(), Weight::zero());
@@ -656,343 +487,12 @@ impl Eval {
         self.w_eval_some(board, Switches::ALL_SCORING | Switches::INSUFFICIENT_MATERIAL)
     }
 
-    pub fn predict(&self, m: &Model, scorer: &mut impl Scorer) {
-        scorer.set_phase(m.phase());
-        if m.mat.is_insufficient() && m.switches.contains(Switches::INSUFFICIENT_MATERIAL) {
-            if m.switches.contains(Switches::CONTEMPT) {
-                let contempt = m.turn.chooser_wb(1, 0);
-                scorer.contempt("insufficient mat", contempt, 1 - contempt, self.contempt_penalty);
-            }
-            return;
-        }
 
-        // material
-        if self.material && m.switches.contains(Switches::MATERIAL) {
-            if self.mb.enabled {
-                self.mb.w_eval_material(&m.mat, scorer);
-            } else {
-                self.mb.w_eval_material_without_balance(&m.mat, scorer);
-            }
-        };
 
-        let w = &m.white;
-        let b = &m.black;
-
-        if self.material && m.switches.contains(Switches::MATERIAL) {
-            scorer.material("bishop pair", w.has_bishop_pair as i32, b.has_bishop_pair as i32, self.bishop_pair);
-            scorer.material("rook pair", w.has_rook_pair as i32, b.has_rook_pair as i32, self.rook_pair);
-
-            let winner = m.endgame.try_winner();
-            scorer.material(
-                "win bonus",
-                (winner == Some(Color::White)) as i32,
-                (winner == Some(Color::Black)) as i32,
-                self.win_bonus,
-            );
-
-            if winner.is_some() {
-                scorer.material("win metric1", w.endgame_metric1 as i32, b.endgame_metric1 as i32, self.win_metric1);
-                scorer.material("win metric2", w.endgame_metric2 as i32, b.endgame_metric2 as i32, self.win_metric2);
-                return scorer.interpolate_and_scale("interpolate");
-            }
-        }
-
-        // position
-        if self.position && m.switches.contains(Switches::POSITION) {
-            scorer.position("fianchetto", w.fianchetto, b.fianchetto, self.fianchetto);
-            scorer.position(
-                "bishop color pawns",
-                w.bishop_color_pawns,
-                b.bishop_color_pawns,
-                self.bishop_color_pawns,
-            );
-            scorer.position("bishop outposts", w.bishop_outposts, b.bishop_outposts, self.bishop_outposts);
-            scorer.position("knight forks", w.knight_forks, b.knight_forks, self.knight_forks);
-            scorer.position("knight outposts", w.knight_outposts, b.knight_outposts, self.knight_outposts);
-            scorer.position("doubled rooks", w.doubled_rooks, b.doubled_rooks, self.doubled_rooks);
-            scorer.position(
-                "doubled rooks open file",
-                w.doubled_rooks_open_file,
-                b.doubled_rooks_open_file,
-                self.doubled_rooks_open_file,
-            );
-            scorer.position(
-                "enemy pawns on rook rank",
-                w.enemy_pawns_on_rook_rank,
-                b.enemy_pawns_on_rook_rank,
-                self.enemy_pawns_on_rook_rank,
-            );
-
-            scorer.position(
-                "queen early develop",
-                w.queen_early_develop,
-                b.queen_early_develop,
-                self.queen_early_develop,
-            );
-
-            // scorer.position("pst", 1, 0, w.psq.iter().map(|(p,sq)| self.pst(*p, *sq)).sum::<Weight>());
-            // scorer.position("pst", 0, 1, b.psq.iter().map(|(p,sq)| self.pst(*p, *sq)).sum::<Weight>());
-        }
-
-        let board = &m.board;
-        if !m.csv {
-            // let mut sum = Weight::zero();
-            for &p in &Piece::ALL_BAR_NONE {
-                let w = (board.pieces(p) & board.white()).flip_vertical();
-                let b = board.pieces(p) & board.black();
-
-                let w = w.squares().map(|sq| self.pst.pst(p, sq)).sum::<Weight>();
-                let b = b.squares().map(|sq| self.pst.pst(p, sq)).sum::<Weight>();
-
-                let black = ["pst none", "pst p", "pst n", "pst b", "pst r", "pst q", "pst k"][p];
-                let white = ["pst none", "pst P", "pst N", "pst B", "pst R", "pst Q", "pst K"][p];
-                scorer.position(white, 1, 0, w);
-                scorer.position(black, 0, 1, b);
-                // sum = sum + w - b;
-            }
-        } else {
-            for &p in &Piece::ALL_BAR_NONE {
-                let w = (board.pieces(p) & board.white()).flip_vertical();
-                let b = board.pieces(p) & board.black();
-
-                for sq in Square::all() {
-                    // let u8s = vec![
-                    //     'p' as u8,
-                    //     's' as u8,
-                    //     't' as u8,
-                    //     '.' as u8,
-                    //     p.to_lower_char() as u8,
-                    //     '.' as u8,
-                    //     sq.uci().as_bytes()[0],
-                    //     sq.uci().as_bytes()[1],
-                    // ];
-                    let label = format!("pst.{}.{}", p.to_lower_char(), sq.uci());
-                    // let label = std::str::from_utf8(&u8s).unwrap();
-                    scorer.position(&label, sq.is_in(w) as i32, sq.is_in(b) as i32, self.pst.pst(p, sq));
-                }
-            }
-        }
-
-        // pawn structure
-        if self.pawn && m.switches.contains(Switches::PAWN) {
-            scorer.pawn("pawn doubled", w.doubled_pawns, b.doubled_pawns, self.pawn_doubled);
-            scorer.pawn(
-                "pawn directly doubled",
-                w.pawn_directly_doubled,
-                b.pawn_directly_doubled,
-                self.pawn_directly_doubled,
-            );
-            scorer.pawn("pawn isolated", w.isolated_pawns, b.isolated_pawns, self.pawn_isolated);
-            scorer.pawn("semi isolated", w.semi_isolated, b.semi_isolated, self.semi_isolated);
-            scorer.pawn("pawn passed", w.passed_pawns, b.passed_pawns, self.pawn_passed);
-            scorer.pawn("pawn passed r7", w.passed_pawns_on_r7, b.passed_pawns_on_r7, self.pawn_passed_r7);
-            scorer.pawn("pawn passed r6", w.passed_pawns_on_r6, b.passed_pawns_on_r6, self.pawn_passed_r6);
-            scorer.pawn("pawn passed r5", w.passed_pawns_on_r5, b.passed_pawns_on_r5, self.pawn_passed_r5);
-            scorer.pawn("pawn passed r4", w.passed_pawns_on_r4, b.passed_pawns_on_r4, self.pawn_passed_r4);
-            scorer.pawn("passers on rim", w.passers_on_rim, b.passers_on_rim, self.passers_on_rim);
-            scorer.pawn(
-                "candidate passed pawn",
-                w.candidate_passed_pawn,
-                b.candidate_passed_pawn,
-                self.candidate_passed_pawn,
-            );
-            scorer.pawn("blockaded", w.blockaded, b.blockaded, self.blockaded);
-            scorer.pawn(
-                "blockaded passers",
-                w.blockaded_passers,
-                b.blockaded_passers,
-                self.blockaded_passers,
-            );
-            scorer.pawn(
-                "rooks behind passer",
-                w.rooks_behind_passer,
-                b.rooks_behind_passer,
-                self.rooks_behind_passer,
-            );
-            scorer.pawn(
-                "enemy rook on passer",
-                w.enemy_rook_on_passer,
-                b.enemy_rook_on_passer,
-                self.enemy_rook_on_passer,
-            );
-            scorer.pawn("rammed pawns", w.rammed_pawns, b.rammed_pawns, self.rammed_pawns);
-            scorer.pawn("space", w.space, b.space, self.space);
-            scorer.pawn(
-                "pawn connected r67",
-                w.pawn_connected_r67,
-                b.pawn_connected_r67,
-                self.pawn_connected_r67,
-            );
-            scorer.pawn(
-                "pawn connected r345",
-                w.pawn_connected_r345,
-                b.pawn_connected_r345,
-                self.pawn_connected_r345,
-            );
-            scorer.pawn(
-                "passed connected r67",
-                w.passed_connected_r67,
-                b.passed_connected_r67,
-                self.passed_connected_r67,
-            );
-            scorer.pawn(
-                "passed connected r345",
-                w.passed_connected_r345,
-                b.passed_connected_r345,
-                self.passed_connected_r345,
-            );
-
-            scorer.pawn("pawn duo r67", w.pawn_duo_r67, b.pawn_duo_r67, self.pawn_duo_r67);
-            scorer.pawn("pawn duo r2345", w.pawn_duo_r2345, b.pawn_duo_r2345, self.pawn_duo_r2345);
-            scorer.pawn("passed duo r67", w.passed_duo_r67, b.passed_duo_r67, self.passed_duo_r67);
-            scorer.pawn("passed duo r2345", w.passed_duo_r2345, b.passed_duo_r2345, self.passed_duo_r2345);
-            scorer.pawn(
-                "backward half open",
-                w.backward_half_open,
-                b.backward_half_open,
-                self.backward_half_open,
-            );
-            scorer.pawn("backward", w.backward, b.backward, self.backward);
-        }
-
-        //  bishop
-
-        // king safety
-        if self.safety && m.switches.contains(Switches::SAFETY) {
-            // scorer.safety("nearby pawns", w.nearby_pawns, b.nearby_pawns, self.pawn_shield);
-            scorer.safety(
-                "pawn adjacent shield",
-                w.adjacent_shield,
-                b.adjacent_shield,
-                self.pawn_adjacent_shield,
-            );
-            scorer.safety("pawn nearby shield", w.nearby_shield, b.nearby_shield, self.pawn_nearby_shield);
-            scorer.safety(
-                "king safety bonus",
-                w.king_safety_bonus,
-                b.king_safety_bonus,
-                self.king_safety_bonus,
-            );
-            scorer.safety(
-                "open files near king",
-                w.open_files_near_king,
-                b.open_files_near_king,
-                self.open_files_near_king,
-            );
-            scorer.safety(
-                "open files adjacent king",
-                w.open_files_adjacent_king,
-                b.open_files_adjacent_king,
-                self.open_files_adjacent_king,
-            );
-            scorer.safety("tropism d1", w.king_tropism_d1, b.king_tropism_d1, self.tropism_d1);
-            scorer.safety("tropism d2", w.king_tropism_d2, b.king_tropism_d2, self.tropism_d2);
-            scorer.safety("tropism d3", w.king_tropism_d3, b.king_tropism_d3, self.tropism_d3);
-            scorer.safety("tropism d4", w.king_tropism_d4, b.king_tropism_d4, self.tropism_d4);
-            scorer.safety(
-                "king trapped on back rank",
-                w.king_trapped_on_back_rank,
-                b.king_trapped_on_back_rank,
-                self.king_trapped_on_back_rank,
-            );
-            scorer.safety(
-                "rq on open files near king",
-                w.rq_on_open_files_near_king,
-                b.rq_on_open_files_near_king,
-                self.rq_on_open_files_near_king,
-            );
-
-            scorer.safety(
-                "attacks near king",
-                w.attacks_on_opponent_king_area,
-                b.attacks_on_opponent_king_area,
-                self.attacks_near_king,
-            );
-            scorer.safety("castling rights", w.castling_rights, b.castling_rights, self.castling_rights);
-            scorer.safety("uncastled", w.uncastled, b.uncastled, self.uncastled);
-            scorer.safety("checkers", w.checkers, b.checkers, self.checkers);
-            scorer.safety("pieces near king", w.pieces_near_king, b.pieces_near_king, self.pieces_near_king);
-            scorer.safety("pinned near king", w.pinned_near_king, b.pinned_near_king, self.pinned_near_king);
-            scorer.safety("pinned far", w.pinned_far, b.pinned_far, self.pinned_far);
-            scorer.safety(
-                "discovered checks",
-                w.discovered_checks,
-                b.discovered_checks,
-                self.discovered_checks,
-            );
-        }
-
-        // mobility
-        if scorer.phase().0 <= self.mobility_phase_disable as i32 && self.mobility && m.switches.contains(Switches::MOBILITY) {
-            // let wh = m.white.mv.iter().map(|(p, count)| self.pmvt.w_eval_mob(*p, *count)).sum();
-            // let bl = m.black.mv.iter().map(|(p, count)| self.pmvt.w_eval_mob(*p, *count)).sum();
-
-            // scorer.position("white mob", 1, 0, wh);
-            // scorer.position("black mob", 0, 1, bl);
-
-            scorer.mobility("center attacks", w.center_attacks, b.center_attacks, self.center_attacks);
-            scorer.mobility("undefended sq", w.move_squares, b.move_squares, self.undefended_sq);
-            scorer.mobility(
-                "undefended piece",
-                w.non_pawn_defended_moves,
-                b.non_pawn_defended_moves,
-                self.undefended_piece,
-            );
-
-            scorer.mobility("trapped piece", w.fully_trapped_pieces, b.fully_trapped_pieces, self.trapped_piece);
-            scorer.mobility(
-                "partially trapped piece",
-                w.partially_trapped_pieces,
-                b.partially_trapped_pieces,
-                self.partially_trapped_piece,
-            );
-            // scorer.mobility(
-            //     "defended non pawn",
-            //     w.defended_non_pawn,
-            //     b.defended_non_pawn,
-            //     self.defended_non_pawn,
-            // );
-            // scorer.mobility(
-            //     "xrayed",
-            //     w.xrayed,
-            //     b.xrayed,
-            //     self.xrayed,
-            // );
-            scorer.mobility("rook open file", w.rooks_on_open_files, b.rooks_on_open_files, self.rook_open_file);
-            scorer.mobility(
-                "queen open file",
-                w.queens_on_open_files,
-                b.queens_on_open_files,
-                self.queen_open_file,
-            );
-
-            // for &a in Piece::ALL_BAR_NONE.iter() {
-            //     for &p in Piece::ALL_BAR_NONE.iter() {
-            //         scorer.mobility(
-            //             "attacks",
-            //             w.attacks[a][p],
-            //             b.attacks[a][p],
-            //             self.attacks[a][p],
-            //         );
-            //         scorer.mobility(
-            //             "defends",
-            //             w.defends[a][p],
-            //             b.defends[a][p],
-            //             self.defends[a][p],
-            //         );
-            //     }
-            // }
-        }
-        if self.tempo && m.switches.contains(Switches::TEMPO) {
-            scorer.tempo("tempo bonus", w.has_tempo as i32, b.has_tempo as i32, self.tempo_bonus);
-        }
-        scorer.interpolate_and_scale("interpolate");
-    }
-
-    pub fn w_eval_explain(&self, b: &Board, _csv: bool) -> ExplainScorer {
+    pub fn w_eval_explain(&self, b: &Board, _csv: bool) -> ExplainScore {
         // let mut model = Model::from_board(b, b.phase(&self.phaser), Switches::ALL_SCORING);
         // model.csv = csv;
-        let mut scorer = ExplainScorer::new(b.to_fen(), false);
+        let mut scorer = ExplainScore::new(b.phase(&self.phaser), b.to_fen());
         Calc::score(&mut scorer, b, self, &self.phaser);
         // self.predict(&model, &mut scorer);
         scorer
@@ -1019,42 +519,10 @@ impl Eval {
         let mut scorer = TotalScore::new(&self.feature_weights, ph);
         Calc::score(&mut scorer, b, self, &self.phaser);
         let score1 = Score::from_cp(scorer.total().interpolate(ph) as i32 / self.quantum * self.quantum);
-
-
-        // let model = Model::from_board(b, ph, switches);
-        // let mut scorer2 = ModelScore::new();
-        // self.predict(&model, &mut scorer2);
-        // let score2 = scorer2.as_score();
-        // if score1 != score2 {
-        //     let mut scorer1 = ExplainScorer::new(b.to_fen(), false);
-        //     scorer1.set_phase(ph);
-        //     let mut model = Model::from_board(b, ph, Switches::ALL_SCORING);
-        //     model.csv = false;
-        //     self.predict(&model, &mut scorer1);
-
-        //     let mut scorer2 = ExplainScorer::new(b.to_fen(), false);
-        //     Calc::score(&mut scorer2, &b, self, &self.phaser);
-
-        //     let mut scorer3 = ExplainScore::new(ph, b.to_fen());
-        //     Calc::score(&mut scorer3, &b, self, &self.phaser);
-
-
-        //     let mut table = Table::new();
-        //     table.set_header(vec!["old", "new"]);
-        //     table.add_row(vec![scorer1.to_string(), scorer2.to_string(), scorer3.to_string()]);
-        //     error!("{}\ns1: {score1} s2: {score2}\n{}", b.to_fen(), table);
-        // // } else {
-        // //     error!("Scores agree for {}", b.to_fen());
-        // }
         score1
 
     }
 
-    // // updated on capture & promo
-    // #[inline]
-    // pub fn w_eval_material(&self, mat: &Material) -> Weight {
-    //     self.mb.w_eval_material(mat)
-    // }
 
     /// the value of the capture or promotion (or both for promo capture)
     #[inline]
@@ -1198,109 +666,45 @@ mod tests {
         assert_eq!(w.eval(&eval, &Node::root(0)), eval.w_eval_some(&b, Switches::ALL_SCORING).negate());
     }
 
-    #[test]
-    fn test_score_mobility() {
-        let mut eval = Eval::new();
-        eval.pawn_doubled = Weight::from_i32(-1, -1);
-        eval.pawn_isolated = Weight::zero();
-        eval.mobility_phase_disable = 101;
-        let b = Catalog::starting_board();
-        eval.set_switches(false);
-        eval.mobility = true;
-        assert_eq!(eval.w_eval_some(&b, Switches::ALL_SCORING), Score::from_cp(0));
-    }
+
 
     // #[test]
-    // fn test_score_pawn() {
-    //     let mut eval = SimpleScorer::new();
-    //     eval.pawn_doubled = Weight::from_i32(-1, -1);
-    //     eval.pawn_isolated = Weight::zero();
-    //     eval.pawn_isolated = Weight::zero();
-    //     eval.mobility_phase_disable = 101;
-    //     let _b = Catalog::starting_board();
-    //     eval.set_switches(false);
-    //     eval.pawn = true;
-    //     // 1xw 4xb doubled pawns, 1xw 2xb isolated pawns, 1xb passed pawn
-    //     let b = Board::parse_fen("8/pppp1p1p/pppp4/8/8/2P5/PPP4P/8 b - - 0 1").unwrap().as_board();
-    //     eval.pawn_doubled = Weight::from_i32(-1, -1);
-    //     eval.pawn_isolated = Weight::zero();
-    //     eval.pawn_passed = Weight::zero();
-    //     assert_eq!(eval.w_eval_some(&b, Switches::ALL_SCORING), Score::from_cp(-1 - -4));
+    // fn test_score_safety() {
+    //     let mut eval = Eval::new();
+    //     let b = Board::parse_fen("r7/8/8/8/8/1P6/PP6/K7 w - - 0 1").unwrap().as_board();
 
-    //     eval.pawn_doubled = Weight::zero();
-    //     eval.pawn_isolated = Weight::from_i32(-1, -1);
-    //     eval.pawn_passed = Weight::zero();
-    //     assert_eq!(eval.w_eval_some(&b, Switches::ALL_SCORING), Score::from_cp(-1 - -2));
+    //     eval.pawn_adjacent_shield = Weight::zero();
+    //     eval.pawn_nearby_shield = Weight::zero();
+    //     eval.attacks_near_king = Weight::zero();
+    //     eval.undefended_sq = Weight::zero();
+    //     eval.undefended_piece = Weight::zero();
+    //     eval.king_trapped_on_back_rank = Weight::zero();
+    //     eval.open_files_near_king = Weight::zero();
+    //     info!("{}\n{}", b, eval.w_eval_explain(&b, false));
 
-    //     eval.pawn_doubled = Weight::zero();
-    //     eval.pawn_isolated = Weight::zero();
-    //     eval.pawn_passed = Weight::from_i32(10, 10);
-    //     assert_eq!(eval.w_eval_some(&b, Switches::ALL_SCORING), Score::from_cp(0 - 10));
+    //     let e1 = eval.w_eval_some(&b, Switches::ALL_SCORING);
+    //     assert_eq!(e1, Score::from_cp(0), "{}", eval.w_eval_explain(&b, false)); // baseline
 
-    //     // 1xw (-1) 3xb doubled (+3), 1xb (+1) tripled pawns  2xw 1xb isolated
-    //     let b = Board::parse_fen("8/pppp3p/ppp5/p7/8/2P5/PPP1P1P1/8 b - - 0 1").unwrap().as_board();
+    //     eval.pawn_adjacent_shield = Weight::from_i32(50, 50);
+    //     let e2 = eval.w_eval_some(&b, Switches::ALL_SCORING);
+    //     assert_eq!((e2 - e1), Score::from_cp(100), "{}", eval.w_eval_explain(&b, false)); // 2 pawns adjacent
 
-    //     eval.pawn_doubled = Weight::from_i32(-1, -1);
-    //     eval.pawn_isolated = Weight::zero();
-    //     eval.set_switches(false);
-    //     eval.pawn = true;
+    //     eval.pawn_nearby_shield = Weight::from_i32(150, 150);
+    //     let e3 = eval.w_eval_some(&b, Switches::ALL_SCORING);
+    //     assert_eq!(e3 - e2, Score::from_cp(150), "{}", eval.w_eval_explain(&b, false)); // 2 pawns adjacent, 1 nearby
+
+    //     eval.attacks_near_king = Weight::from_i32(-75, -75);
+    //     eval.pawn_adjacent_shield = Weight::zero();
+    //     eval.pawn_nearby_shield = Weight::zero();
+    //     let att = eval.w_eval_some(&b, Switches::ALL_SCORING);
     //     assert_eq!(
-    //         eval.w_eval_some(&b, Switches::ALL_SCORING),
-    //         Score::from_cp(3),
-    //         "{}",
-    //         eval.w_eval_explain(&b, false).to_string()
-    //     );
-
-    //     eval.pawn_doubled = Weight::zero();
-    //     eval.pawn_isolated = Weight::from_i32(-1, -1);
-    //     assert_eq!(
-    //         eval.w_eval_some(&b, Switches::ALL_SCORING),
-    //         Score::from_cp(-1),
-    //         "{}",
-    //         eval.w_eval_explain(&b, false).to_string()
-    //     );
+    //         att - e1,
+    //         Score::from_cp(75),
+    //         "{} {:?}",
+    //         eval.w_eval_explain(&b, false),
+    //         Model::from_board(&b, b.phase(&eval.phaser), Switches::ALL_SCORING)
+    //     ); // 1 attack on nearby pawn
     // }
-
-    #[test]
-    fn test_score_safety() {
-        let mut eval = Eval::new();
-        let b = Board::parse_fen("r7/8/8/8/8/1P6/PP6/K7 w - - 0 1").unwrap().as_board();
-
-        eval.set_switches(false);
-        eval.safety = true;
-        eval.mobility = true; // for "attacks near king" calculated in mobility (wrong category) not king safety
-        eval.pawn_adjacent_shield = Weight::zero();
-        eval.pawn_nearby_shield = Weight::zero();
-        eval.attacks_near_king = Weight::zero();
-        eval.undefended_sq = Weight::zero();
-        eval.undefended_piece = Weight::zero();
-        eval.king_trapped_on_back_rank = Weight::zero();
-        eval.open_files_near_king = Weight::zero();
-        info!("{}\n{}", b, eval.w_eval_explain(&b, false));
-
-        let e1 = eval.w_eval_some(&b, Switches::ALL_SCORING);
-        assert_eq!(e1, Score::from_cp(0), "{}", eval.w_eval_explain(&b, false)); // baseline
-
-        eval.pawn_adjacent_shield = Weight::from_i32(50, 50);
-        let e2 = eval.w_eval_some(&b, Switches::ALL_SCORING);
-        assert_eq!((e2 - e1), Score::from_cp(100), "{}", eval.w_eval_explain(&b, false)); // 2 pawns adjacent
-
-        eval.pawn_nearby_shield = Weight::from_i32(150, 150);
-        let e3 = eval.w_eval_some(&b, Switches::ALL_SCORING);
-        assert_eq!(e3 - e2, Score::from_cp(150), "{}", eval.w_eval_explain(&b, false)); // 2 pawns adjacent, 1 nearby
-
-        eval.attacks_near_king = Weight::from_i32(-75, -75);
-        eval.pawn_adjacent_shield = Weight::zero();
-        eval.pawn_nearby_shield = Weight::zero();
-        let att = eval.w_eval_some(&b, Switches::ALL_SCORING);
-        assert_eq!(
-            att - e1,
-            Score::from_cp(75),
-            "{} {:?}",
-            eval.w_eval_explain(&b, false),
-            Model::from_board(&b, b.phase(&eval.phaser), Switches::ALL_SCORING)
-        ); // 1 attack on nearby pawn
-    }
 
     #[test]
     fn test_eval_bug1() {
