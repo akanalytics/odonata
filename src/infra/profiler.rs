@@ -56,11 +56,11 @@ impl Profiler {
         let counts = self.group.read().unwrap();
         self.iters = std::cmp::max(1, self.iters);
         println!(
-            "PROF: {:<25}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}",
+            "PROFH: {:<25}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}",
             "name", "iters", "cycles", "instructions", "branch-misses", "cache-misses", "cache-refs", "cycles-per-ins", "cache-hit-%",
         );
         println!(
-            "PROF: {:<25}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15.2}\t{:>15.2}\n",
+            "PROFD: {:<25}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15.2}\t{:>15.2}\n",
             self.name,
             self.iters,
             Formatting::u128((counts[&self.cycles] / self.iters).into()),
