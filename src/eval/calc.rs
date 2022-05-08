@@ -23,7 +23,6 @@ impl Calc {
         Self::default()
     }
 
-
     #[inline]
     pub fn score(scorer: &mut impl ScorerBase, b: &Board, _e: &Eval, _phaser: &Phaser) {
         Calc::material(scorer, b);
@@ -53,13 +52,9 @@ impl Calc {
     fn material(scorer: &mut impl ScorerBase, b: &Board) {
         let m = b.material();
 
-        Piece::ALL_BAR_KING.iter().for_each(|&p| {
-            scorer.accumulate(
-                Feature::Piece(p),
-                m.counts(Color::White, p),
-                m.counts(Color::Black, p),
-            )
-        });
+        Piece::ALL_BAR_KING
+            .iter()
+            .for_each(|&p| scorer.accumulate(Feature::Piece(p), m.counts(Color::White, p), m.counts(Color::Black, p)));
 
         scorer.accumulate(
             Attr::BishopPair.as_feature(),
@@ -155,7 +150,7 @@ impl Calc {
             //     scorer.accum(FeatureIndex::WinBonus, 0, 1, eval.win_bonus);
             // }
             return true;
-        } 
+        }
         // else {
         //     // scorer.accumulate(Attr::WinMetric1.as_feature(), 0, 0);
         //     // scorer.accumulate(Attr::WinMetric2.as_feature(), 0, 0);
@@ -278,7 +273,7 @@ impl Calc {
     }
 
     fn pst(s: &mut impl ScorerBase, b: &Board) {
-    // if s.csv() {
+        // if s.csv() {
         for &p in &Piece::ALL_BAR_NONE {
             let w = (b.pieces(p) & b.white()).flip_vertical();
             let b = b.pieces(p) & b.black();
@@ -529,11 +524,7 @@ impl Calc {
         rammed_pawns = rammed_pawns * rammed_pawns * (b.knights() & us).any() as i32;
 
         scorer.accum(c, Attr::PawnDoubled.as_feature(), doubled_pawns);
-        scorer.accum(
-            c,
-            Attr::PawnDirectlyDoubled.as_feature(),
-            _pawn_directly_doubled,
-        );
+        scorer.accum(c, Attr::PawnDirectlyDoubled.as_feature(), _pawn_directly_doubled);
         scorer.accum(c, Attr::PawnIsolated.as_feature(), isolated_pawns);
         scorer.accum(c, Attr::SemiIsolated.as_feature(), _semi_isolated);
         scorer.accum(c, Attr::PawnPassed.as_feature(), passed_pawns);
@@ -542,11 +533,7 @@ impl Calc {
         scorer.accum(c, Attr::PawnPassedR5.as_feature(), passed_pawns_on_r5);
         scorer.accum(c, Attr::PawnPassedR4.as_feature(), passed_pawns_on_r4);
         scorer.accum(c, Attr::PassersOnRim.as_feature(), passers_on_rim);
-        scorer.accum(
-            c,
-            Attr::CandidatePassedPawn.as_feature(),
-            _candidate_passed_pawn,
-        );
+        scorer.accum(c, Attr::CandidatePassedPawn.as_feature(), _candidate_passed_pawn);
         scorer.accum(c, Attr::Blockaded.as_feature(), blockaded);
         scorer.accum(c, Attr::BlockadedPassers.as_feature(), blockaded_passers);
         scorer.accum(c, Attr::RooksBehindPasser.as_feature(), rooks_behind_passer);
@@ -555,16 +542,8 @@ impl Calc {
         scorer.accum(c, Attr::Space.as_feature(), _space);
         scorer.accum(c, Attr::PawnConnectedR67.as_feature(), pawn_connected_r67);
         scorer.accum(c, Attr::PawnConnectedR345.as_feature(), pawn_connected_r345);
-        scorer.accum(
-            c,
-            Attr::PassedConnectedR67.as_feature(),
-            _passed_connected_r67,
-        );
-        scorer.accum(
-            c,
-            Attr::PassedConnectedR345.as_feature(),
-            _passed_connected_r345,
-        );
+        scorer.accum(c, Attr::PassedConnectedR67.as_feature(), _passed_connected_r67);
+        scorer.accum(c, Attr::PassedConnectedR345.as_feature(), _passed_connected_r345);
         scorer.accum(c, Attr::PawnDuoR67.as_feature(), pawn_duo_r67);
         scorer.accum(c, Attr::PawnDuoR2345.as_feature(), pawn_duo_r2345);
         scorer.accum(c, Attr::PassedDuoR67.as_feature(), _passed_duo_r67);
@@ -657,25 +636,13 @@ impl Calc {
         s.accum(c, Attr::PawnNearbyShield.as_feature(), nearby_shield);
         s.accum(c, Attr::KingSafetyBonus.as_feature(), king_safety_bonus);
         s.accum(c, Attr::OpenFilesNearKing.as_feature(), open_files_near_king);
-        s.accum(
-            c,
-            Attr::OpenFilesAdjacentKing.as_feature(),
-            open_files_adjacent_king,
-        );
+        s.accum(c, Attr::OpenFilesAdjacentKing.as_feature(), open_files_adjacent_king);
         s.accum(c, Attr::TropismD1.as_feature(), king_tropism_d1);
         s.accum(c, Attr::TropismD2.as_feature(), king_tropism_d2);
         s.accum(c, Attr::TropismD3.as_feature(), king_tropism_d3);
         s.accum(c, Attr::TropismD4.as_feature(), king_tropism_d4);
-        s.accum(
-            c,
-            Attr::KingTrappedOnBackRank.as_feature(),
-            king_trapped_on_back_rank,
-        );
-        s.accum(
-            c,
-            Attr::RqOnOpenFilesNearKing.as_feature(),
-            rq_on_open_files_near_king,
-        );
+        s.accum(c, Attr::KingTrappedOnBackRank.as_feature(), king_trapped_on_back_rank);
+        s.accum(c, Attr::RqOnOpenFilesNearKing.as_feature(), rq_on_open_files_near_king);
 
         s.accum(c, Attr::CastlingRights.as_feature(), castling_rights);
         s.accum(c, Attr::Uncastled.as_feature(), uncastled);
@@ -870,27 +837,15 @@ impl Calc {
         s.accum(c, Attr::UndefendedSq.as_feature(), move_squares);
         s.accum(c, Attr::UndefendedPiece.as_feature(), non_pawn_defended_moves);
         s.accum(c, Attr::TrappedPiece.as_feature(), fully_trapped_pieces);
-        s.accum(
-            c,
-            Attr::PartiallyTrappedPiece.as_feature(),
-            partially_trapped_pieces,
-        );
+        s.accum(c, Attr::PartiallyTrappedPiece.as_feature(), partially_trapped_pieces);
         s.accum(c, Attr::RookOpenFile.as_feature(), rooks_on_open_files);
         s.accum(c, Attr::QueenOpenFile.as_feature(), queens_on_open_files);
         s.accum(c, Attr::BishopOutposts.as_feature(), bishop_outposts);
         s.accum(c, Attr::KnightForks.as_feature(), knight_forks);
         s.accum(c, Attr::KnightOutposts.as_feature(), knight_outposts);
-        s.accum(
-            c,
-            Attr::EnemyPawnsOnRookRank.as_feature(),
-            enemy_pawns_on_rook_rank,
-        );
+        s.accum(c, Attr::EnemyPawnsOnRookRank.as_feature(), enemy_pawns_on_rook_rank);
         s.accum(c, Attr::DoubledRooks.as_feature(), doubled_rooks);
-        s.accum(
-            c,
-            Attr::DoubledRooksOpenFile.as_feature(),
-            doubled_rooks_open_file,
-        );
+        s.accum(c, Attr::DoubledRooksOpenFile.as_feature(), doubled_rooks_open_file);
 
         // s.mobility(
         //     "defended non pawn",
@@ -943,7 +898,7 @@ mod tests {
             let mut scorer3 = ExplainScore::default();
             Calc::score(&mut scorer3, &b, &eval, &phaser);
             black_box(&scorer3);
-            let w3 = scorer3.total();
+            let _w3 = scorer3.total();
 
             // assert_eq!(w1, w2, "{}\n", pos);
             // assert_eq!(w1, w2, "{}\n{}\n===========\n{}\n", pos, scorer1, scorer2);
@@ -985,7 +940,7 @@ mod tests {
             scorer2.total()
         }
 
-        let mut prof_old = Profiler::new("old".into());
+        let _prof_old = Profiler::new("old".into());
         let mut prof_new = Profiler::new("new".into());
         let positions = Catalog::example_game();
         let eval = Eval::new();

@@ -284,7 +284,7 @@ mod tests {
             search.search_stats().iteration().all_nodes()
         );
         assert!(
-            search.search_stats().iteration().all_nodes() >= 146,
+            search.search_stats().iteration().all_nodes() >= 100,
             "nodes {}",
             search.search_stats().iteration().all_nodes()
         );

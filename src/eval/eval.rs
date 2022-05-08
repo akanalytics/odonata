@@ -580,10 +580,8 @@ impl Board {
 
 mod tests {
     use super::*;
-    use crate::board::boardbuf::BoardBuf;
     use crate::catalog::Catalog;
     use crate::infra::profiler::Profiler;
-    use crate::phaser::Phase;
     use crate::search::engine::Engine;
     use crate::test_log::test;
     use anyhow::Result;
@@ -618,93 +616,8 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn test_score_material() {
-        let board = Catalog::starting_board();
-        let eval = &mut Eval::new();
-        eval.tempo = false;
-        info!("starting\n{}", eval.w_eval_explain(&board, false));
-        assert_eq!(board.eval(eval, &Node::root(0)), Score::from_cp(0));
-
-        let board_w = Catalog::white_starting_position();
-        info!("white starting\n{}", eval.w_eval_explain(&board_w, false));
-        assert_eq!(board_w.phase(&eval.phaser), Phase(50));
-        eval.set_switches(false);
-        eval.material = true;
-        eval.contempt = true;
-        info!("\n{}", eval.w_eval_explain(&board_w, false));
-        let score = board_w.eval(eval, &Node::root(0));
-        assert!(score > Score::from_cp(5048));
-        assert!(score < Score::from_cp(8048));
-
-        let board_b = Catalog::black_starting_position();
-        info!("\n{}", eval.w_eval_explain(&board_b, false));
-        assert_eq!(eval.w_eval_some(&board_b, Switches::ALL_SCORING), score.negate());
-    }
-
-    #[test]
-    fn test_score_position() {
-        let mut eval = Eval::new();
-
-        let bd = Board::parse_fen("8/P7/8/8/8/8/8/8 w - - 0 1").unwrap().as_board();
-        eval.set_switches(false);
-        eval.position = true;
-        assert_eq!(bd.phase(&eval.phaser), Phase(100));
-
-        let bd = Board::parse_fen("8/4p3/8/8/8/8/8/8 w - - 0 1").unwrap().as_board();
-        assert_eq!(bd.phase(&eval.phaser), Phase(100));
-
-        assert_eq!(bd.eval(&eval, &Node::root(0)), Score::from_cp(0));
-
-        let w = Catalog::white_starting_position();
-        assert_eq!(w.phase(&eval.phaser), Phase(50));
-        let score = w.eval(&eval, &Node::root(0));
-        assert!(score < Score::from_cp(-105), "{}", eval.w_eval_explain(&w, false));
-        assert!(score > Score::from_cp(-122), "{}", eval.w_eval_explain(&w, false));
-
-        let b = Catalog::black_starting_position();
-        assert_eq!(w.eval(&eval, &Node::root(0)), eval.w_eval_some(&b, Switches::ALL_SCORING).negate());
-    }
 
 
-
-    // #[test]
-    // fn test_score_safety() {
-    //     let mut eval = Eval::new();
-    //     let b = Board::parse_fen("r7/8/8/8/8/1P6/PP6/K7 w - - 0 1").unwrap().as_board();
-
-    //     eval.pawn_adjacent_shield = Weight::zero();
-    //     eval.pawn_nearby_shield = Weight::zero();
-    //     eval.attacks_near_king = Weight::zero();
-    //     eval.undefended_sq = Weight::zero();
-    //     eval.undefended_piece = Weight::zero();
-    //     eval.king_trapped_on_back_rank = Weight::zero();
-    //     eval.open_files_near_king = Weight::zero();
-    //     info!("{}\n{}", b, eval.w_eval_explain(&b, false));
-
-    //     let e1 = eval.w_eval_some(&b, Switches::ALL_SCORING);
-    //     assert_eq!(e1, Score::from_cp(0), "{}", eval.w_eval_explain(&b, false)); // baseline
-
-    //     eval.pawn_adjacent_shield = Weight::from_i32(50, 50);
-    //     let e2 = eval.w_eval_some(&b, Switches::ALL_SCORING);
-    //     assert_eq!((e2 - e1), Score::from_cp(100), "{}", eval.w_eval_explain(&b, false)); // 2 pawns adjacent
-
-    //     eval.pawn_nearby_shield = Weight::from_i32(150, 150);
-    //     let e3 = eval.w_eval_some(&b, Switches::ALL_SCORING);
-    //     assert_eq!(e3 - e2, Score::from_cp(150), "{}", eval.w_eval_explain(&b, false)); // 2 pawns adjacent, 1 nearby
-
-    //     eval.attacks_near_king = Weight::from_i32(-75, -75);
-    //     eval.pawn_adjacent_shield = Weight::zero();
-    //     eval.pawn_nearby_shield = Weight::zero();
-    //     let att = eval.w_eval_some(&b, Switches::ALL_SCORING);
-    //     assert_eq!(
-    //         att - e1,
-    //         Score::from_cp(75),
-    //         "{} {:?}",
-    //         eval.w_eval_explain(&b, false),
-    //         Model::from_board(&b, b.phase(&eval.phaser), Switches::ALL_SCORING)
-    //     ); // 1 attack on nearby pawn
-    // }
 
     #[test]
     fn test_eval_bug1() {

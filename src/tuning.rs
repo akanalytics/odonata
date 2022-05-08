@@ -1,11 +1,10 @@
 use std::io::Write;
 
+use crate::eval::calc::Calc;
 use crate::eval::feature::FeatureMatrix;
 use crate::eval::feature::FeatureVector;
 use crate::eval::score::Score;
 use crate::eval::scorer::ExplainScore;
-use crate::Board;
-use crate::eval::calc::Calc;
 use crate::eval::scorer::ScorerBase;
 use crate::eval::weight::Weight;
 use crate::infra::component::Component;
@@ -14,7 +13,8 @@ use crate::phaser::Phase;
 use crate::position::Position;
 use crate::search::engine::Engine;
 use crate::tags::Tag;
-use anyhow::{Result};
+use crate::Board;
+use anyhow::Result;
 use itertools::Itertools;
 // use rayon::prelude::*;
 use serde::Deserialize;
@@ -36,9 +36,9 @@ pub enum RegressionType {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub enum Method {
+    New,
     Sparse,
     Dense,
-    New,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -55,38 +55,28 @@ pub struct Tuning {
     pub consolidate: bool,
     pub logistic_steepness_k: Weight,
 
-    // #[serde(skip)]
-    // pub models_and_outcomes: Vec<(Model, f32)>,
     #[serde(skip)]
     pub feature_matrix: FeatureMatrix,
 
     #[serde(skip)]
     pub explains: Vec<ExplainScore>,
-    // #[serde(skip)]
-    // pub boards: Vec<Position>,
-
-    // #[serde(skip)]
-    // pub model: Model,
 }
 
 impl Default for Tuning {
     fn default() -> Self {
         Tuning {
             regression_type: RegressionType::LogisticOnOutcome,
-            method: Method::Sparse,
+            method: Method::New,
             search_depth: -1,
             ignore_known_outcomes: true,
             ignore_endgames: true,
             multi_threading_min_positions: 20000,
             threads: 32,
-            // models_and_outcomes: Default::default(),
             logistic_steepness_k: Weight::from_i32(4, 4),
             feature_matrix: Default::default(),
             explains: Default::default(),
-            // boards: Default::default(),
             ignore_draws: false,
             consolidate: false,
-            // model: Model::default(),
         }
     }
 }
@@ -129,27 +119,7 @@ impl Tuning {
     }
 
     pub fn upload_positions(eng: &mut Engine, positions: Vec<Position>) -> Result<usize> {
-        // let mut eng.tuner.feature_matrix = FeatureMatrix::default();
-        // let board = Catalog::starting_board();
-        // let mut scorer = ExplainScorer::new(String::new(), true);
-        // model_and_accum(eng, &board, Phase(0), &mut scorer);
-        // eng.tuner.feature_matrix.feature_names = scorer.feature_names();
-
         for (_i, pos) in positions.iter().enumerate() {
-            // let ph = eng.algo.eval.phaser.phase(&pos.board().material());
-            // let mut model = Model::from_board(pos.board(), ph, Switches::ALL_SCORING);
-            // model.csv = eng.tuner.sparse;
-
-            // set CSV flag so that feature weights get calculated
-
-            // if i == 0 {
-            //     eng.tuner.model = model.clone();
-            //     let mut scorer = ExplainScorer::new(String::new());
-            //     eng.algo.eval.predict(&model, &mut scorer);
-            //     eng.tuner.feature_matrix.feature_names = scorer.feature_names();
-            //     info!("Regression type {:?}", eng.tuner.regression_type);
-            // }
-
             if eng.tuner.ignore_known_outcomes && pos.board().outcome().is_game_over() {
                 trace!("Discarding drawn/checkmate position {}", pos);
                 continue;
@@ -160,72 +130,21 @@ impl Tuning {
             //     trace!("Discarding known endgame position {}", pos);
             //     continue;
             // }
-            match (eng.tuner.regression_type, eng.tuner.method) {
-                // (RegressionType::LogisticOnCp, _) => {
-                //     if let Tag::Comment(_n, s) = pos.tag("c6") {
-                //         let mut w_score: f32 = s.parse()?;
-                //         // epd ce is from active placer
-                //         if pos.board().color_us() == Color::Black {
-                //             w_score = -w_score;
-                //         }
-                //         let k = eng.tuner.logistic_steepness_k.interpolate(Phase(50)) as f32;
-                //         let win_prob_estimate = Score::from_f32(w_score).win_probability_using_k(k);
-
-                //         eng.tuner.models_and_outcomes.push((model, win_prob_estimate));
-                //     }
-                // }
-                // (RegressionType::LogisticOnOutcome,false) => {
-                //     let (outcome, outcome_str) = eng.tuner.calc_player_win_prob_from_pos(pos);
-                //     if eng.tuner.ignore_draws && outcome_str == "1/2-1/2" {
-                //         continue;
-                //     }
-                //     eng.tuner.models_and_outcomes.push((model, outcome));
-                // }
-                (_, Method::Sparse) => {
-                    // let (_outcome, outcome_str) = eng.tuner.calc_player_win_prob_from_pos(pos);
-                    // let o = Outcome::try_from_pgn(&outcome_str)?;
-                    // if eng.tuner.ignore_draws && outcome_str == "1/2-1/2" {
-                    //     continue;
-                    // }
-                    // let mut w_scorer = ExplainScorer::new(pos.board().to_fen(), true);
-                    // model_and_accum(eng, pos.board(), ph, &mut w_scorer);
-                    // // eng.algo.eval.predict(&model, &mut w_scorer);
-                    // // let _consolidate = eng.tuner.consolidate;
-                    // let fv = w_scorer.into_feature_vector(o);
-                    // eng.tuner.feature_matrix.feature_vectors.push(fv);
-                }
-                (_, Method::New) => {
-                    let (_outcome, outcome_str) = eng.tuner.calc_player_win_prob_from_pos(pos);
-                    let o = Outcome::try_from_pgn(&outcome_str)?;
-                    if eng.tuner.ignore_draws && outcome_str == "1/2-1/2" {
-                        continue;
-                    }
-                    let ph = eng.algo.eval.phaser.phase(&pos.board().material());
-                    let mut explain = ExplainScore::new(ph, pos.board().to_fen());
-                    Calc::score(&mut explain, pos.board(), &eng.algo.eval, &eng.algo.eval.phaser);
-                    explain.set_outcome(o);
-                    // eng.algo.eval.predict(&model, &mut w_scorer);
-                    // let _consolidate = eng.tuner.consolidate;
-                    explain.discard_balanced_features();
-                    eng.tuner.explains.push(explain);
-                }
-                (_, _) => unreachable!("Unexpected regression type or dense"), // (RegressionType::LinearOnCp, _) => {
-                                                                               //     if let Tag::Comment(_n, s) = pos.tag("c6") {
-                                                                               //         let mut outcome: f32 = s.parse()?;
-                                                                               //         // epd ce is from active placer
-                                                                               //         if pos.board().color_us() == Color::Black {
-                                                                               //             outcome = -outcome;
-                                                                               //         }
-                                                                               //         eng.tuner.models_and_outcomes.push((model, outcome));
-                                                                               //     }
-                                                                               // }
+            let (_outcome, outcome_str) = eng.tuner.calc_player_win_prob_from_pos(pos);
+            let o = Outcome::try_from_pgn(&outcome_str)?;
+            if eng.tuner.ignore_draws && outcome_str == "1/2-1/2" {
+                continue;
             }
-            // eng.tuner.boards.push(*pos);
+            let ph = eng.algo.eval.phaser.phase(&pos.board().material());
+            let mut explain = ExplainScore::new(ph, pos.board().to_fen());
+            Calc::score(&mut explain, pos.board(), &eng.algo.eval, &eng.algo.eval.phaser);
+            explain.set_outcome(o);
+            // eng.algo.eval.predict(&model, &mut w_scorer);
+            // let _consolidate = eng.tuner.consolidate;
+            explain.discard_balanced_features();
+            eng.tuner.explains.push(explain);
         }
-        //  eng.tuner.boards = positions;
-
-        // let lines = if eng.tuner.sparse {
-        info!("Loaded lines using method {:?}", eng.tuner.method);
+        info!("Loaded {} positions", positions.len());
         Ok(positions.len())
     }
 
@@ -243,12 +162,7 @@ impl Tuning {
     }
 
     pub fn write_training_data<W: Write>(eng: &mut Engine, writer: &mut W) -> Result<i32> {
-        // if engine.tuner.sparse {
-        match eng.tuner.method {
-            Method::Sparse => eng.tuner.feature_matrix.write_csv(writer),
-            Method::New => ExplainScore::write_csv(eng.tuner.explains.iter(), writer),
-            Method::Dense => unreachable!("Bad tuning method"),
-        }
+        ExplainScore::write_csv(eng.tuner.explains.iter(), writer)
     }
 
     pub fn calculate_mean_square_error(&self, eng: &Engine) -> Result<f32> {
@@ -351,7 +265,7 @@ impl Tuning {
             }
         };
 
-    // if eng.tuner.method == Method::New {
+        // if eng.tuner.method == Method::New {
         let l = self.explains.len();
         info!("Calculating mse (new) on {} positions using single thread", l);
         let total_diff_squared: f32 = self.explains.iter().enumerate().map(closure_es).sum();
@@ -514,7 +428,6 @@ mod tests {
 
     #[test]
     fn bench_mse() {
-        info!("Starting quick tuning...");
         let file = "../odonata-extras/epd/quiet-labeled-small.epd";
 
         let mut eng1 = Engine::new();
@@ -525,39 +438,6 @@ mod tests {
         prof1.start();
         let diffs1 = eng1.tuner.calculate_mean_square_error(&eng1).unwrap();
         prof1.stop();
-        println!("");
-
-        let mut eng2 = Engine::new();
-        eng2.tuner.multi_threading_min_positions = 3_000_000;
-        eng2.tuner.method = Method::Sparse;
-        Tuning::upload_positions(&mut eng2, Position::parse_epd_file(file).unwrap()).unwrap();
-        let mut prof2 = Profiler::new("mse sparse".into());
-        prof2.start();
-        let diffs2 = eng2.tuner.calculate_mean_square_error(&eng2).unwrap();
-        prof2.stop();
-        println!("{diffs1} {diffs2}");
-        assert_eq!(0.09556198, diffs2);
-        // println!("{:#?}", eng2.tuner.feature_matrix);
-        // println!("{:#?}", eng2.tuner.model);
-
-        // compare calcs
-
-        // let model1 = &eng1.tuner.models_and_outcomes[1].0;
-        // let mut scorer1 = ExplainScorer::new();
-        // eng1.algo.eval.predict(model1, &mut scorer1);
-        // println!("Scorer1{}\n\n", scorer1);
-
-        // let mut scorer2 = ExplainScorer::new();
-        // let mut fm = FeatureMatrix::default();
-        // eng2.algo.eval.predict(model1, &mut scorer2);
-        // fm.feature_names = scorer2.feature_names();
-        // let fv = scorer2.feature_vector(Outcome::DrawRule50);
-        // fm.feature_vectors.push(fv);
-        // println!("{}", fm);
-
-        // println!("{:#?}", eng2.tuner.model);
-        // println!("{:#?}", eng2.algo.eval);
-
-        // assert!((diffs1 - diffs2).abs() < 0.00001);
+        println!("MSE {diffs1}");
     }
 }

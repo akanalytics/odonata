@@ -402,26 +402,26 @@ impl MaterialBalance {
         for (mat, wdl) in sorted_raw_stats.iter() {
             let pawns = mat.counts(Color::White, Piece::Pawn) + mat.counts(Color::Black, Piece::Pawn);
             if wdl.total() >= self.min_games && pawns <= self.max_pawns {
-                let mut cp;
-                if wdl.w + wdl.d <= 5 {
-                    // certain losing position
-                    cp = -8000.0;
-                    // let trade_down_penalty = self.trade_factor /100 * mat.phase(); // bigger if less material
-                    // cp -= trade_down_penalty as i16;
-                } else if wdl.l + wdl.d <= 5 {
-                    // certain winning position
-                    cp = 8000.0;
-                    // let trade_down_bonus = self.trade_factor /100 * mat.phase(); // bigger if less material
-                    // cp += trade_down_bonus as i16;
-                } else {
-                    let elo = wdl.elo();
-                    // straight 1-1 approximation
-                    cp = elo;
-                    // not needed as we use a NICHE value for not present
-                    // if cp == 0 {
-                    //     cp = 1;
-                    // }
-                }
+                // let mut cp;
+                // if wdl.w + wdl.d <= 5 {
+                //     // certain losing position
+                //     cp = -8000.0;
+                //     // let trade_down_penalty = self.trade_factor /100 * mat.phase(); // bigger if less material
+                //     // cp -= trade_down_penalty as i16;
+                // } else if wdl.l + wdl.d <= 5 {
+                //     // certain winning position
+                //     cp = 8000.0;
+                //     // let trade_down_bonus = self.trade_factor /100 * mat.phase(); // bigger if less material
+                //     // cp += trade_down_bonus as i16;
+                // } else {
+                //     let elo = wdl.elo();
+                //     // straight 1-1 approximation
+                //     cp = elo;
+                //     // not needed as we use a NICHE value for not present
+                //     // if cp == 0 {
+                //     //     cp = 1;
+                //     // }
+                // }
                 // adj means that drawish positions still incentivise a material gain
                 // use pahse end Phase(100), 100
                 // let mut scorer = TotalScore::new(eval);

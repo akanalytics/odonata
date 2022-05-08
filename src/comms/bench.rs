@@ -151,7 +151,7 @@ mod tests {
     fn bench_bk() {
         let mut prof = Profiler::new("bench_search-(per-k-node)".into());
         prof.start();
-        let total_nodes = Bench::search(TimeControl::NodeCount(1000000), None);
+        let total_nodes = Bench::search(TimeControl::NodeCount(100000), None);
         prof.stop();
         prof.set_iters((total_nodes / 1000) as u64);
     }
