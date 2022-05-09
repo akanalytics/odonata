@@ -2,26 +2,19 @@ use std::io::Write;
 
 use crate::eval::calc::Calc;
 use crate::eval::feature::FeatureMatrix;
-use crate::eval::feature::FeatureVector;
 use crate::eval::score::Score;
 use crate::eval::scorer::ExplainScore;
-use crate::eval::scorer::ScorerBase;
 use crate::eval::weight::Weight;
 use crate::infra::component::Component;
 use crate::outcome::Outcome;
-use crate::phaser::Phase;
 use crate::position::Position;
 use crate::search::engine::Engine;
 use crate::tags::Tag;
-use crate::Board;
 use anyhow::Result;
-use itertools::Itertools;
 // use rayon::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
 use std::fmt;
-
-use std::sync::Arc;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -100,13 +93,13 @@ impl fmt::Display for Tuning {
     }
 }
 
-fn model_and_accum(eng: &Engine, b: &Board, _p: Phase, scorer: &mut impl ScorerBase) {
-    // let mut model = Model::from_board(b, p, Switches::ALL_SCORING);
-    // model.csv = eng.tuner.sparse;
-    // let mut scorer = ExplainScorer::new(String::new());
-    // eng.algo.eval.predict(&model, scorer);
-    Calc::score(scorer, b, &eng.algo.eval, &eng.algo.eval.phaser)
-}
+// fn model_and_accum(eng: &Engine, b: &Board, _p: Phase, scorer: &mut impl ScorerBase) {
+//     // let mut model = Model::from_board(b, p, Switches::ALL_SCORING);
+//     // model.csv = eng.tuner.sparse;
+//     // let mut scorer = ExplainScorer::new(String::new());
+//     // eng.algo.eval.predict(&model, scorer);
+//     Calc::score(scorer, b, &eng.algo.eval, &eng.algo.eval.phaser)
+// }
 
 impl Tuning {
     pub fn new() -> Self {
@@ -291,50 +284,50 @@ impl Tuning {
         // }
     }
 
-    fn calc_sparse(&self, f: impl Copy + Sync + Send + Fn((usize, &FeatureVector)) -> f32) -> f32 {
-        info!("Calculating mse (sparse) on positions using several threads");
-        // use rayon on larger sized files
-        // self.feature_matrix.feature_vectors.par_iter().enumerate().map(closure).sum()
-        let v = &self.feature_matrix.feature_vectors;
-        if self.threads == 0 {
-            panic!("At least one thread required.");
-        }
-        if self.threads > v.len() {
-            panic!("More threads than items in vector.");
-        }
-        if v.len() == 0 {
-            return 0.0;
-        }
+    // fn calc_sparse(&self, f: impl Copy + Sync + Send + Fn((usize, &FeatureVector)) -> f32) -> f32 {
+    //     info!("Calculating mse (sparse) on positions using several threads");
+    //     // use rayon on larger sized files
+    //     // self.feature_matrix.feature_vectors.par_iter().enumerate().map(closure).sum()
+    //     let v = &self.feature_matrix.feature_vectors;
+    //     if self.threads == 0 {
+    //         panic!("At least one thread required.");
+    //     }
+    //     if self.threads > v.len() {
+    //         panic!("More threads than items in vector.");
+    //     }
+    //     if v.len() == 0 {
+    //         return 0.0;
+    //     }
 
-        // divide round up
-        let items_per_thread = (v.len() - 1) / self.threads + 1;
+    //     // divide round up
+    //     let items_per_thread = (v.len() - 1) / self.threads + 1;
 
-        let arc = Arc::new(v);
-        // let mut threads = Vec::with_capacity(nb_threads);
+    //     let arc = Arc::new(v);
+    //     // let mut threads = Vec::with_capacity(nb_threads);
 
-        // // this channel will be use to send values (partial sums) for threads
-        // let (sender, receiver) = mpsc::channel::<T>();
-        let thread_sum = std::sync::Mutex::new(0.0_f32);
-        let vec = (0..self.threads).collect_vec();
-        let slice = &vec[..];
-        rayon::scope(|s| {
-            for i in slice {
-                s.spawn(|_s| {
-                    let data = arc.clone();
-                    let from = *i * items_per_thread;
-                    let to = std::cmp::min(from + items_per_thread, data.len());
-                    let mut sum = 0.0;
-                    for v in &data[from..to] {
-                        sum += f((0, v));
-                    }
-                    let mut ts = thread_sum.lock().unwrap();
-                    *ts = *ts + sum;
-                });
-            }
-        });
-        let x = *thread_sum.lock().unwrap();
-        x
-    }
+    //     // // this channel will be use to send values (partial sums) for threads
+    //     // let (sender, receiver) = mpsc::channel::<T>();
+    //     let thread_sum = std::sync::Mutex::new(0.0_f32);
+    //     let vec = (0..self.threads).collect_vec();
+    //     let slice = &vec[..];
+    //     rayon::scope(|s| {
+    //         for i in slice {
+    //             s.spawn(|_s| {
+    //                 let data = arc.clone();
+    //                 let from = *i * items_per_thread;
+    //                 let to = std::cmp::min(from + items_per_thread, data.len());
+    //                 let mut sum = 0.0;
+    //                 for v in &data[from..to] {
+    //                     sum += f((0, v));
+    //                 }
+    //                 let mut ts = thread_sum.lock().unwrap();
+    //                 *ts = *ts + sum;
+    //             });
+    //         }
+    //     });
+    //     let x = *thread_sum.lock().unwrap();
+    //     x
+    // }
 }
 // let mut sum = 0.0;
 // for t in threads {
