@@ -860,9 +860,9 @@ impl Calc {
                     if sq.is_in(our_pa) {
                         knight_outpost_pawn_defended += 1;
                     }
-                    // if bb.pawn_stop(c, sq).intersects(their_p) {
-                    //     knight_outpost_rook_safe += 1;
-                    // }
+                    if bb.pawn_stop(c, sq).intersects(their_p) {
+                        knight_outpost_rook_safe += 1;
+                    }
                 }
             }
             if p == Piece::Rook {
@@ -875,9 +875,9 @@ impl Calc {
                 // treat the piece as a pawn and make sure its attack span is clear of enemy pawns
                 // and is on enemy half of board
                 if bb.pawn_attack_span(c, sq).disjoint(their_p)
-                    && ((sq.rank_index() >= 4 && c == Color::White) || (sq.rank_index() <= 4 && c == Color::Black))
-                    && sq.is_in(our_pa)
-                    && !sq.is_in(Bitboard::RIM)
+                && sq.rank_index_as_white(c) >= 4
+                && sq.is_in(our_pa)
+                && sq.is_in(Bitboard::FILE_C | Bitboard::FILE_D | Bitboard::FILE_E | Bitboard::FILE_F)
                 {
                     bishop_outposts += (p == Piece::Bishop) as i32;
                 }
@@ -915,6 +915,28 @@ impl Calc {
         // let doubled_rooks = ((b.rooks() & us).two_or_more()
         //     && (b.rooks() & us).first_square().file_index() == (b.rooks() & us).last_square().file_index())
         //     as i32;
+
+        // let bishop_color_pawns = |c: Color| {
+        //     if (b.bishops() & b.color(c)).exactly_one() {
+        //         if Bitboard::WHITE_SQUARES.contains(b.bishops() & b.color(c)) {
+        //             return (b.pawns() & b.color(c) & Bitboard::WHITE_SQUARES).popcount()
+        //                 - (b.pawns() & b.color(c) & Bitboard::BLACK_SQUARES).popcount();
+        //         } else if Bitboard::BLACK_SQUARES.contains(b.bishops() & b.color(c)) {
+        //             return (b.pawns() & b.color(c) & Bitboard::BLACK_SQUARES).popcount()
+        //                 - (b.pawns() & b.color(c) & Bitboard::WHITE_SQUARES).popcount();
+        //         }
+        //     }
+        //     0
+        // };
+        // scorer.accumulate(
+        //     Attr::BishopColorPawns.as_feature(),
+        //     bishop_color_pawns(White),
+        //     bishop_color_pawns(Black),
+        // );
+
+
+
+
         let doubled_rooks = ((b.rooks() & us).two_or_more()
             && (b.rooks() & us).first_square().file_index() == (b.rooks() & us).last_square().file_index())
             as i32;
