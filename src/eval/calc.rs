@@ -731,15 +731,13 @@ impl Calc {
         // ||
     }
 
-    fn mobility3(c: Color, s: &mut impl ScorerBase, b: &Board) {
+    // OLD
+    fn mobility(c: Color, s: &mut impl ScorerBase, b: &Board) {
         let bb = BitboardDefault::default();
         let us = b.color(c);
         let open_files = bb.open_files(b.pawns());
-        let doubled_rooks = ((b.rooks() & us).two_or_more()
-            && (b.rooks() & us).first_square().file_index() == (b.rooks() & us).last_square().file_index())
-            as i32;
-        let doubled_rooks_open_file = (doubled_rooks == 1 && (open_files & b.rooks() & us).popcount() >= 2) as i32;
-        let rooks_on_open_files = (open_files & us & b.rooks()).popcount();
+        let semi_open_files = bb.open_files(b.pawns() & us) - open_files; // free of our pawns
+
         let queens_on_open_files = (open_files & us & b.queens()).popcount();
         let their = c.opposite();
         let them = b.color(their);
@@ -758,14 +756,23 @@ impl Calc {
         let k = b.kings() & them;
         let ksq = k.square();
 
+        let mut connected_rooks = false;
+
+        let mut knight_outpost = 0;
+        let mut knight_outpost_rook_safe = 0;
+        let mut knight_outpost_pawn_defended = 0;
+        let mut knight_attacks_center = 0;
+        let mut knight_forks = 0;
+        let mut knight_connected = false;
+
+
+
         let mut partially_trapped_pieces = 0;
         let mut fully_trapped_pieces = 0;
         let mut enemy_pawns_on_rook_rank = 0;
         let mut attacks_on_opponent_king_area = 0;
         let mut move_squares = 0;
         let mut non_pawn_defended_moves = 0;
-        let mut knight_outposts = 0;
-        let mut knight_forks = 0;
         let mut bishop_outposts = 0;
         let mut center_attacks = 0;
         for sq in ((b.knights() | b.bishops() | b.rooks() | b.queens()) & us).squares() {
@@ -842,12 +849,27 @@ impl Calc {
                         knight_forks += 1;
                     }
                 }
+                knight_connected |= (our_raw_attacks & b.knights() & us).any();
+
+                if bb.pawn_attack_span(c, sq).disjoint(their_p)
+                    && sq.rank_index_as_white(c) >= 4
+                    && !sq.is_in(Bitboard::RIM)
+                {
+                    // knight_outpost += 1;
+                    if sq.is_in(our_pa) {
+                        knight_outpost_pawn_defended += 1;
+                    }
+                    // if bb.pawn_stop(c, sq).intersects(their_p) {
+                    //     knight_outpost_rook_safe += 1;
+                    // }
+                }
             }
             if p == Piece::Rook {
                 enemy_pawns_on_rook_rank += (Bitboard::RANKS[sq.rank_index()] & b.pawns() & them).popcount();
+                connected_rooks |= (our_raw_attacks & b.rooks() & us).any();
             }
 
-            if p == Piece::Knight || p == Piece::Bishop {
+            if p == Piece::Bishop {
                 // outposts
                 // treat the piece as a pawn and make sure its attack span is clear of enemy pawns
                 // and is on enemy half of board
@@ -855,9 +877,7 @@ impl Calc {
                     && ((sq.rank_index() >= 4 && c == Color::White) || (sq.rank_index() <= 4 && c == Color::Black))
                     && sq.is_in(our_pa)
                     && !sq.is_in(Bitboard::RIM)
-
                 {
-                    knight_outposts += (p == Piece::Knight) as i32;
                     bishop_outposts += (p == Piece::Bishop) as i32;
                 }
             }
@@ -888,20 +908,51 @@ impl Calc {
         //     pawns_count(Black),
         // );
 
+        //
+        // Rook
+        //
+        // let doubled_rooks = ((b.rooks() & us).two_or_more()
+        //     && (b.rooks() & us).first_square().file_index() == (b.rooks() & us).last_square().file_index())
+        //     as i32;
+        let doubled_rooks = ((b.rooks() & us).two_or_more()
+            && (b.rooks() & us).first_square().file_index() == (b.rooks() & us).last_square().file_index())
+            as i32;
+        s.accum(c, Attr::DoubledRooks.as_feature(), doubled_rooks);
+
+        let rook_on_open_file = open_files & us & b.rooks();
+        s.set_bits(Attr::RookOpenFile.into(), rook_on_open_file);
+        s.accum(c, Attr::RookOpenFile.as_feature(), rook_on_open_file.popcount());
+
+        let rook_semi_open_file = semi_open_files & us & b.rooks();
+        s.set_bits(Attr::RookSemiOpenFile.into(), rook_semi_open_file);
+        s.accum(c, Attr::RookSemiOpenFile.as_feature(), rook_semi_open_file.popcount());
+
+        let doubled_rooks_open_file = (doubled_rooks == 1 && rook_on_open_file.popcount() >= 2) as i32;
+        s.accum(c, Attr::DoubledRooksOpenFile.as_feature(), doubled_rooks_open_file);
+
+        s.accum(c, Attr::ConnectedRooks.as_feature(), connected_rooks as i32);
+        s.accum(c, Attr::EnemyPawnsOnRookRank.as_feature(), enemy_pawns_on_rook_rank);
+        // s.accum(c, Attr::RookTrapped.as_feature(), rook_trapped);
+
+        s.accum(c, Attr::KnightOutpost.as_feature(), knight_outpost);
+        s.accum(
+            c,
+            Attr::KnightOutpostPawnDefended.as_feature(),
+            knight_outpost_pawn_defended,
+        );
+        s.accum(c, Attr::KnightOutpostRookSafe.as_feature(), knight_outpost_rook_safe);
+        s.accum(c, Attr::KnightConnected.as_feature(), knight_connected as i32);
+        s.accum(c, Attr::KnightAttacksCenter.as_feature(), knight_attacks_center);
+
         s.accum(c, Attr::AttacksNearKing.as_feature(), attacks_on_opponent_king_area);
         s.accum(c, Attr::CenterAttacks.as_feature(), center_attacks);
         s.accum(c, Attr::UndefendedSq.as_feature(), move_squares);
         s.accum(c, Attr::UndefendedPiece.as_feature(), non_pawn_defended_moves);
         s.accum(c, Attr::TrappedPiece.as_feature(), fully_trapped_pieces);
         s.accum(c, Attr::PartiallyTrappedPiece.as_feature(), partially_trapped_pieces);
-        s.accum(c, Attr::RookOpenFile.as_feature(), rooks_on_open_files);
         s.accum(c, Attr::QueenOpenFile.as_feature(), queens_on_open_files);
         s.accum(c, Attr::BishopOutposts.as_feature(), bishop_outposts);
         s.accum(c, Attr::KnightForks.as_feature(), knight_forks);
-        s.accum(c, Attr::KnightOutpost.as_feature(), knight_outposts);
-        s.accum(c, Attr::EnemyPawnsOnRookRank.as_feature(), enemy_pawns_on_rook_rank);
-        s.accum(c, Attr::DoubledRooks.as_feature(), doubled_rooks);
-        s.accum(c, Attr::DoubledRooksOpenFile.as_feature(), doubled_rooks_open_file);
 
         // s.mobility(
         //     "defended non pawn",
@@ -917,7 +968,10 @@ impl Calc {
         // );
     }
 
-    fn mobility(c: Color, s: &mut impl ScorerBase, b: &Board) {
+    //
+    // NEW
+    //
+    fn mobility2(c: Color, s: &mut impl ScorerBase, b: &Board) {
         let bb = BitboardDefault::default();
         let us = b.color(c);
         let opponent = c.opposite();
@@ -1007,9 +1061,8 @@ impl Calc {
                             knight_forks += 1;
                         }
                     }
-                    if bb.pawn_attack_span(c, sq).disjoint(their_p)
-                        && sq.rank_index_as_white(c) >= 4
-                        // && !sq.is_in(Bitboard::RIM)
+                    if bb.pawn_attack_span(c, sq).disjoint(their_p) && sq.rank_index_as_white(c) >= 4
+                    // && !sq.is_in(Bitboard::RIM)
                     {
                         // knight_outpost += 1;
                         if sq.is_in(our_pa) {
