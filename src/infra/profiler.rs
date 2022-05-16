@@ -8,18 +8,24 @@ pub struct Profiler {
     name: String,
     iters: u64,
     ins: Counter,
+    branches: Counter,
     branch_misses: Counter,
     cache_misses: Counter,
     cache_refs: Counter,
-    cycles: Counter,
+    // cycles: Counter,
 }
 
 impl Profiler {
     #[inline]
     pub fn new(name: String) -> Profiler {
         let mut group = Group::new().unwrap();
-        let cycles = Builder::new().group(&mut group).kind(Hardware::CPU_CYCLES).build().unwrap();
+        // let cycles = Builder::new().group(&mut group).kind(Hardware::CPU_CYCLES).build().unwrap();
         let ins = Builder::new().group(&mut group).kind(Hardware::INSTRUCTIONS).build().unwrap();
+        let branches = Builder::new()
+            .group(&mut group)
+            .kind(Hardware::BRANCH_INSTRUCTIONS)
+            .build()
+            .unwrap();
         let branch_misses = Builder::new().group(&mut group).kind(Hardware::BRANCH_MISSES).build().unwrap();
         let cache_misses = Builder::new().group(&mut group).kind(Hardware::CACHE_MISSES).build().unwrap();
         let cache_refs = Builder::new().group(&mut group).kind(Hardware::CACHE_REFERENCES).build().unwrap();
@@ -27,7 +33,8 @@ impl Profiler {
             name,
             group,
             ins,
-            cycles,
+            // cycles,
+            branches,
             branch_misses,
             cache_misses,
             cache_refs,
@@ -56,19 +63,31 @@ impl Profiler {
         let counts = self.group.read().unwrap();
         self.iters = std::cmp::max(1, self.iters);
         println!(
-            "PROFH: {:<25}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}",
-            "name", "iters", "cycles", "instructions", "branch-misses", "cache-misses", "cache-refs", "cycles-per-ins", "cache-hit-%",
+            "PROFH: {:<25}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}",
+            "name",
+            "iters",
+            "cycles",
+            "instructions",
+            "branches",
+            "branch-misses",
+            "cache-misses",
+            "cache-refs",
+            "cycles-per-ins",
+            "cache-hit-%",
         );
         println!(
-            "PROFD: {:<25}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15.2}\t{:>15.2}\n",
+            "PROFD: {:<25}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15.2}\t{:>15.2}\n",
             self.name,
             self.iters,
-            Formatting::u128((counts[&self.cycles] / self.iters).into()),
+            Formatting::u128((0u32).into()),
+            // Formatting::u128((counts[&self.cycles] / self.iters).into()),
             Formatting::u128((counts[&self.ins] / self.iters).into()),
+            Formatting::u128((counts[&self.branches] / self.iters).into()),
             Formatting::u128((counts[&self.branch_misses] / self.iters).into()),
             Formatting::u128((counts[&self.cache_misses] / self.iters).into()),
             Formatting::u128((counts[&self.cache_refs] / self.iters).into()),
-            (counts[&self.cycles] as f64 / counts[&self.ins] as f64),
+            // (counts[&self.cycles] as f64 / counts[&self.ins] as f64),
+            Formatting::u128((0u32).into()),
             100.0 - (counts[&self.cache_misses] as f64 * 100.0 / counts[&self.cache_refs] as f64)
         );
     }

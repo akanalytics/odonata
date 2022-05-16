@@ -427,20 +427,20 @@ impl Calc {
             //     self.pawn_directly_doubled +=1;
             // }
 
-            // let _semi_isolated = if !p.is_in(isolated_pawns_bb)
-            //     && (((bbd.neighbouring_files(p) & bbd.within_chebyshev_distance_inclusive(p, 2))
-            //         - p.as_bb()
-            //         - p.file())
-            //         & b.pawns()
-            //         & us)
-            //         .is_empty()
-            // {
-            //     // semi_isolated += 1;
-            //     scorer.set_bits(Attr::SemiIsolated.into(), p.as_bb());
-            //     true
-            // } else {
-            //     false
-            // };
+            let _semi_isolated = if !p.is_in(isolated_pawns_bb)
+                && (((bbd.neighbouring_files(p) & bbd.within_chebyshev_distance_inclusive(p, 2))
+                    - p.as_bb()
+                    - p.file())
+                    & b.pawns()
+                    & us)
+                    .is_empty()
+            {
+                // semi_isolated += 1;
+                scorer.set_bits(Attr::SemiIsolated.into(), p.as_bb());
+                true
+            } else {
+                false
+            };
 
             // candidate passers
             // if !is_passed
@@ -731,192 +731,6 @@ impl Calc {
         // ||
     }
 
-    fn mobility3(c: Color, s: &mut impl ScorerBase, b: &Board) {
-        let bb = BitboardDefault::default();
-        let us = b.color(c);
-        let open_files = bb.open_files(b.pawns());
-        let doubled_rooks = ((b.rooks() & us).two_or_more()
-            && (b.rooks() & us).first_square().file_index() == (b.rooks() & us).last_square().file_index())
-            as i32;
-        let doubled_rooks_open_file = (doubled_rooks == 1 && (open_files & b.rooks() & us).popcount() >= 2) as i32;
-        let rooks_on_open_files = (open_files & us & b.rooks()).popcount();
-        let queens_on_open_files = (open_files & us & b.queens()).popcount();
-        let their = c.opposite();
-        let them = b.color(their);
-        let occ = them | us;
-        let their_p = b.pawns() & them;
-        let our_p = b.pawns() & us;
-        let (pe, pw) = bb.pawn_attacks(their_p, their);
-        let (ope, opw) = bb.pawn_attacks(our_p, c);
-        let pa = pe | pw;
-        let our_pa = ope | opw;
-        let bi = b.bishops() & them;
-        let ni = b.knights() & them;
-        let r = b.rooks() & them;
-        // let q = b.queens() & them;
-
-        let k = b.kings() & them;
-        let ksq = k.square();
-
-        let mut partially_trapped_pieces = 0;
-        let mut fully_trapped_pieces = 0;
-        let mut enemy_pawns_on_rook_rank = 0;
-        let mut attacks_on_opponent_king_area = 0;
-        let mut move_squares = 0;
-        let mut non_pawn_defended_moves = 0;
-        let mut knight_outposts = 0;
-        let mut knight_forks = 0;
-        let mut bishop_outposts = 0;
-        let mut center_attacks = 0;
-        for sq in ((b.knights() | b.bishops() | b.rooks() | b.queens()) & us).squares() {
-            let p = b.piece_at(sq.as_bb());
-
-            // non-pawn-defended empty or oppoent sq
-            // include "attacking" our own pieces
-            let our_raw_attacks = bb.attacks(c, p, Bitboard::empty(), occ, sq);
-
-            let our_attacks = our_raw_attacks - pa;
-            center_attacks += (our_attacks & Bitboard::CENTER_16_SQ).popcount();
-            let piece_move_squares = (our_attacks - occ).popcount();
-            // let our_xray_attacks = bb.non_pawn_attacks(c, p, us - our_p, them, sq);
-
-            // FIXME v0.3.33 version
-            // Piece::Queen => (our_attacks & occ - q - r - bi).popcount(),
-            // Piece::Rook => (our_attacks & occ - r).popcount(),
-            // Piece::Knight => (our_attacks & occ - ni).popcount(),
-            // Piece::Bishop => (our_attacks & occ - bi - q).popcount(),
-
-            // those attacks on enemy that arent pawn defended and cant attack back
-            let piece_non_pawn_defended_moves = match p {
-                Piece::Queen => (our_attacks & them).popcount(),
-                Piece::Rook => (our_attacks & them - r).popcount(),
-                Piece::Knight => (our_attacks & them - ni).popcount(),
-                Piece::Bishop => (our_attacks & them - bi).popcount(),
-                _ => 0,
-            };
-
-            // self.attacks[p][Piece::Pawn] += (our_raw_attacks & b.pawns() & them).popcount();
-            // self.attacks[p][Piece::Knight] += (our_raw_attacks & b.knights() & them).popcount();
-            // self.attacks[p][Piece::Bishop] += (our_raw_attacks & b.bishops() & them).popcount();
-            // self.attacks[p][Piece::Rook] += (our_raw_attacks & b.rooks() & them).popcount();
-            // self.attacks[p][Piece::Queen] += (our_raw_attacks & b.queens() & them).popcount();
-            // self.attacks[p][Piece::King] += (our_raw_attacks & b.kings() & them).popcount();
-
-            // self.defends[p][Piece::Pawn] += (our_raw_attacks & b.pawns() & us).popcount();
-            // self.defends[p][Piece::Knight] += (our_raw_attacks & b.knights() & us).popcount();
-            // self.defends[p][Piece::Bishop] += (our_raw_attacks & b.bishops() & us).popcount();
-            // self.defends[p][Piece::Rook] += (our_raw_attacks & b.rooks() & us).popcount();
-            // self.defends[p][Piece::Queen] += (our_raw_attacks & b.queens() & us).popcount();
-            // self.defends[p][Piece::King] += (our_raw_attacks & b.kings() & us).popcount();
-            // self.xrayed = match p {
-            //     Piece::Queen => (our_xray_attacks & them - q).popcount(),
-            //     Piece::Rook => (our_xray_attacks & them - r).popcount(),
-            //     Piece::Knight => (our_xray_attacks & them - ni).popcount(),
-            //     Piece::Bishop => (our_xray_attacks & them - bi).popcount(),
-            //     _ => 0,
-            // };
-            // self.defended_non_pawn = ((our_raw_attacks|opa) & us).popcount();
-
-            // trapped piece
-            if piece_move_squares + piece_non_pawn_defended_moves == 1 {
-                partially_trapped_pieces += 1;
-            }
-            if piece_move_squares + piece_non_pawn_defended_moves == 0 {
-                fully_trapped_pieces += 1;
-            }
-            // self.mv.push((p, our_attacks.popcount()));
-            move_squares += piece_move_squares;
-            non_pawn_defended_moves += piece_non_pawn_defended_moves;
-
-            if k.any() {
-                attacks_on_opponent_king_area +=
-                    (our_raw_attacks & bb.within_chebyshev_distance_inclusive(ksq, 1)).popcount();
-            }
-            if p == Piece::Knight {
-                // knight forks
-                for sq in (our_raw_attacks).squares() {
-                    let atts = bb.knight_attacks(sq);
-                    if (atts & them & (b.queens() | b.rooks() | b.bishops() | b.kings())).popcount() >= 2
-                        && b.color_us() == c
-                    {
-                        knight_forks += 1;
-                    }
-                }
-            }
-            if p == Piece::Rook {
-                enemy_pawns_on_rook_rank += (Bitboard::RANKS[sq.rank_index()] & b.pawns() & them).popcount();
-            }
-
-            if p == Piece::Knight || p == Piece::Bishop {
-                // outposts
-                // treat the piece as a pawn and make sure its attack span is clear of enemy pawns
-                // and is on enemy half of board
-                if bb.pawn_attack_span(c, sq).disjoint(their_p)
-                    && ((sq.rank_index() >= 4 && c == Color::White) || (sq.rank_index() <= 4 && c == Color::Black))
-                    && sq.is_in(our_pa)
-                    && !sq.is_in(Bitboard::RIM)
-
-                {
-                    knight_outposts += (p == Piece::Knight) as i32;
-                    bishop_outposts += (p == Piece::Bishop) as i32;
-                }
-            }
-        }
-        // let wh = m.white.mv.iter().map(|(p, count)| self.pmvt.w_eval_mob(*p, *count)).sum();
-        // let bl = m.black.mv.iter().map(|(p, count)| self.pmvt.w_eval_mob(*p, *count)).sum();
-
-        // scorer.position("white mob", 1, 0, wh);
-        // scorer.position("black mob", 0, 1, bl);
-
-        // let pawns_count = |c: Color| {
-        //     let wp = b.pawns() & b.color(c) & Bitboard::WHITE_SQUARES;
-        //     let bp = b.pawns() & b.color(c) & Bitboard::BLACK_SQUARES;
-        //     let bishops = b.bishops() & b.color(c);
-
-        //     let mut pawn_count = 0;
-        //     if bishops.intersects(Bitboard::WHITE_SQUARES) {
-        //         pawn_count += wp.popcount();
-        //     }
-        //     if bishops.intersects(Bitboard::BLACK_SQUARES) {
-        //         pawn_count += bp.popcount();
-        //     }
-        //     pawn_count
-        // };
-        // s.accumulate(
-        //     Attr::BishopColorPawns.as_feature(),
-        //     pawns_count(White),
-        //     pawns_count(Black),
-        // );
-
-        s.accum(c, Attr::AttacksNearKing.as_feature(), attacks_on_opponent_king_area);
-        s.accum(c, Attr::CenterAttacks.as_feature(), center_attacks);
-        s.accum(c, Attr::UndefendedSq.as_feature(), move_squares);
-        s.accum(c, Attr::UndefendedPiece.as_feature(), non_pawn_defended_moves);
-        s.accum(c, Attr::TrappedPiece.as_feature(), fully_trapped_pieces);
-        s.accum(c, Attr::PartiallyTrappedPiece.as_feature(), partially_trapped_pieces);
-        s.accum(c, Attr::RookOpenFile.as_feature(), rooks_on_open_files);
-        s.accum(c, Attr::QueenOpenFile.as_feature(), queens_on_open_files);
-        s.accum(c, Attr::BishopOutposts.as_feature(), bishop_outposts);
-        s.accum(c, Attr::KnightForks.as_feature(), knight_forks);
-        s.accum(c, Attr::KnightOutpost.as_feature(), knight_outposts);
-        s.accum(c, Attr::EnemyPawnsOnRookRank.as_feature(), enemy_pawns_on_rook_rank);
-        s.accum(c, Attr::DoubledRooks.as_feature(), doubled_rooks);
-        s.accum(c, Attr::DoubledRooksOpenFile.as_feature(), doubled_rooks_open_file);
-
-        // s.mobility(
-        //     "defended non pawn",
-        //     defended_non_pawn,
-        // defended_non_pawn,
-        //     eval.defended_non_pawn,
-        // );
-        // s.mobility(
-        //     "xrayed",
-        //     xrayed,
-        // xrayed,
-        //     eval.xrayed,
-        // );
-    }
-
     fn mobility(c: Color, s: &mut impl ScorerBase, b: &Board) {
         let bb = BitboardDefault::default();
         let us = b.color(c);
@@ -998,7 +812,7 @@ impl Calc {
             match p {
                 Piece::Knight => {
                     knight_attacks_center += (our_raw_attacks & Bitboard::CENTER_4_SQ).popcount();
-                    knight_connected |= (our_raw_attacks & b.knights() & us).any();
+                    // knight_connected |= (our_raw_attacks & b.knights() & us).any();
                     for sq in (our_raw_attacks).squares() {
                         let atts = bb.knight_attacks(sq);
                         if (atts & them & (b.queens() | b.bishops() | b.rooks() | b.kings())).popcount() >= 2
@@ -1009,7 +823,7 @@ impl Calc {
                     }
                     if bb.pawn_attack_span(c, sq).disjoint(their_p)
                         && sq.rank_index_as_white(c) >= 4
-                        // && !sq.is_in(Bitboard::RIM)
+                        && !sq.is_in(Bitboard::RIM)
                     {
                         // knight_outpost += 1;
                         if sq.is_in(our_pa) {
@@ -1056,8 +870,8 @@ impl Calc {
             move_squares += piece_move_squares;
             non_pawn_defended_moves += asym_attacks;
 
-            // double_attacks |= ((our_raw_attacks & them) - us) & all_attacks;
-            // all_attacks |= (our_raw_attacks & them) - us;
+            double_attacks |= ((our_raw_attacks & them) - us) & all_attacks;
+            all_attacks |= (our_raw_attacks & them) - us;
 
             if k.any() {
                 attacks_on_opponent_king_area +=
@@ -1088,25 +902,25 @@ impl Calc {
         //
         // Bishop
         //
-        // let pawns_count = |c: Color| {
-        //     let wp = b.pawns() & b.color(c) & Bitboard::WHITE_SQUARES;
-        //     let bp = b.pawns() & b.color(c) & Bitboard::BLACK_SQUARES;
-        //     let bishops = b.bishops() & b.color(c);
+        let pawns_count = |c: Color| {
+            let wp = b.pawns() & b.color(c) & Bitboard::WHITE_SQUARES;
+            let bp = b.pawns() & b.color(c) & Bitboard::BLACK_SQUARES;
+            let bishops = b.bishops() & b.color(c);
 
-        //     let mut pawn_count = 0;
-        //     if bishops.intersects(Bitboard::WHITE_SQUARES) {
-        //         pawn_count += wp.popcount();
-        //     }
-        //     if bishops.intersects(Bitboard::BLACK_SQUARES) {
-        //         pawn_count += bp.popcount();
-        //     }
-        //     pawn_count
-        // };
-        // s.accumulate(
-        //     Attr::BishopColorPawns.as_feature(),
-        //     pawns_count(White),
-        //     pawns_count(Black),
-        // );
+            let mut pawn_count = 0;
+            if bishops.intersects(Bitboard::WHITE_SQUARES) {
+                pawn_count += wp.popcount();
+            }
+            if bishops.intersects(Bitboard::BLACK_SQUARES) {
+                pawn_count += bp.popcount();
+            }
+            pawn_count
+        };
+        s.accumulate(
+            Attr::BishopColorPawns.as_feature(),
+            pawns_count(White),
+            pawns_count(Black),
+        );
         s.accum(c, Attr::BishopOutposts.as_feature(), bishop_outposts);
         s.accum(c, Attr::BishopTrapped.as_feature(), bishop_trapped);
 

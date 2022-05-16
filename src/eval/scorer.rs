@@ -1,16 +1,17 @@
-use std::{fmt, fmt::Display, io::Write};
+use std::{fmt, fmt::Display, io::Write, collections::HashMap};
 
 use anyhow::Result;
 use comfy_table::{presets, Cell, CellAlignment, Row, Table};
 use itertools::Itertools;
 
-use crate::{outcome::Outcome, phaser::Phase, utils::Formatting, Color};
+use crate::{outcome::Outcome, phaser::Phase, utils::Formatting, Bitboard, Color};
 
 use super::{eval::Feature, feature::WeightsVector, weight::Weight};
 
 pub trait ScorerBase {
     fn accumulate(&mut self, i: Feature, w_value: i32, b_value: i32);
     fn accum(&mut self, c: Color, i: Feature, value: i32);
+    fn set_bits(&mut self, i: Feature, bits: Bitboard);
 }
 
 #[derive(Debug)]
@@ -49,6 +50,9 @@ impl<'a> ScorerBase for TotalScore<'a> {
             Color::Black => self.accumulate(i, 0, value),
         }
     }
+
+    #[inline]
+    fn set_bits(&mut self, _i: Feature, _bits: Bitboard) {}
 }
 
 #[derive(Clone, Debug, Default)]
@@ -58,6 +62,7 @@ pub struct ExplainScore {
     pub phase: Phase,
     vec: Vec<(Feature, i32, i32, i32)>,
     weights: Option<WeightsVector>,
+    bitboards: HashMap<Feature, Bitboard>,
 }
 
 impl ExplainScore {
@@ -99,6 +104,16 @@ impl ScorerBase for ExplainScore {
             self.accumulate(i, 0, value);
         }
     }
+    #[inline]
+    fn set_bits(&mut self, i: Feature, bits: Bitboard) {
+        if bits.any() {
+            if let Some(v) = self.bitboards.get_mut(&i) {
+                v.insert(bits);
+            } else {
+                self.bitboards.insert(i, bits);
+            }
+        }
+    }
 }
 
 impl ExplainScore {
@@ -109,7 +124,7 @@ impl ExplainScore {
             .sum()
     }
 
-    fn value(&self, i: Feature) -> Option<i32> {
+    pub fn value(&self, i: Feature) -> Option<i32> {
         self.vec.iter().find(|&e| i == e.0).map(|e| (e.1 - e.2) as i32)
     }
 
@@ -218,6 +233,18 @@ impl Display for ExplainScore {
         row.add_cell(fp(grand_tot.e()));
         tab.add_row(row);
         tab.fmt(f)?;
+        f.write_str(&self.fen)?;
+        if f.alternate() {
+            let mut tab = Table::new();
+            for y in &self.bitboards.iter().chunks(5) {
+                let mut row = Row::new(); 
+                for (i, bb) in y {
+                    row.add_cell(format!("{}\n{bb:#}",i.name()).into());
+                }
+                tab.add_row(row);
+            }
+            tab.fmt(f)?;
+        }
         Ok(())
     }
 }

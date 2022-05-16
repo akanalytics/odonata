@@ -128,14 +128,14 @@ impl fmt::Display for Pst {
         for &p in &Piece::ALL_BAR_NONE {
             for phase in ["s", "e"] {
                 writeln!(f, "PST: {}.{}", p, phase)?;
-                for rank in (0..8).rev() {
+                for rank in 0..8 {
                     for file in 0..8 {
                         let sq = Square::from_xy(file, rank);
                         let sq = sq.flip_vertical(); // white is stored upside down
                         let wt = self.array[p][sq];
                         let score = if phase == "s" { wt.s() } else { wt.e() };
                         let s = format!("{:>4}", score);
-                        write!(f, "{:>6},", s)?;
+                        write!(f, "{:>7},", s)?;
                     }
                     writeln!(f)?;
                 }

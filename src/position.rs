@@ -17,6 +17,8 @@ use std::io::{self, BufRead};
 use std::path::Path;
 // // use crate::{info, logger::LogInit};
 use anyhow::{anyhow, bail, Context, Result};
+use once_cell::sync::Lazy;
+use regex::Regex;
 use serde::{ser::SerializeMap, Deserialize, Serialize, Serializer};
 
 use std::fmt;
@@ -87,6 +89,8 @@ impl Serialize for Position {
     }
 }
 
+static REGEX_CR_PLUS_WS: Lazy<Regex> = Lazy::new(|| Regex::new(r#"\s*\n\s*"#).unwrap());
+
 /// builder methods
 impl Position {
     pub fn from_board(board: Board) -> Self {
@@ -100,6 +104,10 @@ impl Position {
     /// 4. Half move clock
     /// 5. Full move counter
     pub fn parse_epd(epd: &str) -> Result<Self> {
+        // replace \n followed by whitespace with "/"
+        let epd = epd.trim_start();
+        let epd = REGEX_CR_PLUS_WS.replace_all(epd, "/");
+        let epd = epd.as_ref();
         let words = epd.split_whitespace().collect::<Vec<_>>();
         if words.len() < 4 {
             bail!("Must specify at least 4 parts in EPD '{}'", epd);
@@ -420,7 +428,24 @@ mod tests {
         Ok(())
     }
 
+
     #[test]
+    fn test_parse_multiline_epd() -> Result<()> {
+        let s = r"
+        K....... 
+        PPP.....
+        ........
+        ........
+        ........
+        ........
+        ppppp...
+        rnbqk... w KQkq - 0 1";
+        let pos = Position::parse_epd(s)?;
+        assert_eq!(pos.board().to_fen(), "K7/PPP5/8/8/8/8/ppppp3/rnbqk3 w KQkq - 0 1");
+        Ok(())
+    }
+
+        #[test]
     fn test_pos_basics() -> Result<()> {
         let mut pos = Position::default();
         *pos.board_mut() = Board::parse_fen(Catalog::STARTING_POSITION_FEN).unwrap();

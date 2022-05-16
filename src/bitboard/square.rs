@@ -3,7 +3,7 @@ use crate::types::Color;
 use std::cmp;
 use std::fmt;
 
-#[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
+#[derive(Copy, Hash, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Square(u16);
 
 impl Default for Square {

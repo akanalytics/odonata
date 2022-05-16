@@ -671,7 +671,7 @@ impl Uci {
         let s = eval.w_eval_explain(&self.board, false);
         Self::print(&format!("Board:\n{}", &self.board));
         Self::print(&format!("Material advantage: {}", &self.board.material().advantage()));
-        Self::print(&format!("Eval:\n{}", s));
+        Self::print(&format!("Eval:\n{:#}", s));
         Ok(())
     }
 

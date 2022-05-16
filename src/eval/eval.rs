@@ -73,7 +73,7 @@ use strum_macros::EnumDiscriminants;
 use strum_macros::EnumIter;
 use strum_macros::IntoStaticStr;
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, Debug, IntoStaticStr, EnumCount, EnumIter, Display)]
+#[derive(Clone, Copy, Eq, Hash, PartialEq, PartialOrd, Debug, IntoStaticStr, EnumCount, EnumIter, Display)]
 #[strum(serialize_all = "snake_case")]
 pub enum Attr {
     PawnDoubled,
@@ -90,7 +90,7 @@ pub enum Attr {
     Blockaded,
     BlockadedPassers,
     RooksBehindPasser,
-    EnemyRookOnPasser,
+    PawnIsolatedDoubled,
     Space,
     RammedPawns,
     PawnConnectedR67,
@@ -109,22 +109,40 @@ pub enum Attr {
     WinBonus,
 
     CenterAttacks,
+    DoubleAttacks,
     UndefendedSq,
     UndefendedPiece,
     TrappedPiece,
     PartiallyTrappedPiece,
     RookOpenFile,
-    QueenOpenFile,
+    RookSemiOpenFile,
+
+    KnightForks,
+    KnightOutpost,
+    KnightOutpostPawnDefended,
+    KnightOutpostRookSafe,
+    KnightConnected,
+    KnightAttacksCenter,
+    KnightTrapped,
+
+
 
     Fianchetto,
     BishopOutposts,
     BishopColorPawns,
-    KnightForks,
-    KnightOutposts,
+    BishopTrapped,
+
+
     DoubledRooks,
+    ConnectedRooks,
     DoubledRooksOpenFile,
     EnemyPawnsOnRookRank,
+    RookTrapped,
+
     QueenEarlyDevelop,
+    QueenOpenFile,
+    QueenTrapped,
+
 
     PawnAdjacentShield,
     PawnNearbyShield,
@@ -164,7 +182,7 @@ impl Attr {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Debug, EnumDiscriminants, IntoStaticStr, EnumCount, EnumIter, Display)]
+#[derive(Clone, Copy, Eq, Hash, PartialEq, Debug, EnumDiscriminants, IntoStaticStr, EnumCount, EnumIter, Display)]
 #[strum(serialize_all = "snake_case")]
 #[strum_discriminants(vis())]
 pub enum Feature {
@@ -643,7 +661,7 @@ mod tests {
     fn prof_eval() {
         let mut eval = Eval::default();
         eval.mb.enabled = false;
-        let mut prof = Profiler::new("bench_eval".into());
+        let mut prof = Profiler::new("prof_eval".into());
         let node = Node::root(0);
         let mut total_score = Score::zero();
         for pos in Catalog::win_at_chess() {

@@ -106,9 +106,11 @@ impl Tuning {
         Tuning::default()
     }
 
+    /// free the memory associated with prior tuning runs
     pub fn clear(&mut self) {
-        // self.models_and_outcomes.clear();
-        self.feature_matrix.feature_vectors.clear();
+        self.feature_matrix.feature_vectors = Vec::new();
+        self.feature_matrix.feature_names = Vec::new();
+        self.explains = Vec::new();
     }
 
     pub fn upload_positions(eng: &mut Engine, positions: Vec<Position>) -> Result<usize> {

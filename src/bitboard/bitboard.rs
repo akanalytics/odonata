@@ -472,6 +472,12 @@ impl Bitboard {
     }
 
     #[inline]
+    /// self if true else Empty
+    pub const fn only_if(&self, b: bool) -> Bitboard {
+        Bitboard(self.0 * (b as u64))
+    }
+
+    #[inline]
     pub const fn contains(self, o: Bitboard) -> bool {
         self.0 & o.0 == o.0
     }

@@ -132,7 +132,7 @@ mod tests {
     fn test_perft() {
         for (mut board, perfts) in Catalog::perfts() {
             for (depth, &expected) in perfts.iter().enumerate() {
-                if depth <= 2 {
+                if depth <= 4 {
                     let now = Instant::now();
                     let count = Perft::perft(&mut board, depth as u32);
                     assert_eq!(count, expected, "fen {} perft({})", board.to_fen(), depth);

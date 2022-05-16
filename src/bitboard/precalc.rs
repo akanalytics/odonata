@@ -27,6 +27,7 @@ pub struct PreCalc {
     knight_moves: [Bitboard; 64],
     pawn_front_span: [[Bitboard; 64]; 2],
     pawn_push: [[Bitboard; 64]; 2],
+    pawn_double_push: [[Bitboard; 64]; 2],
     pawn_capture_east: [[Bitboard; 64]; 2],
     pawn_capture_west: [[Bitboard; 64]; 2],
     pawn_attack_span: [[Bitboard; 64]; 2],
@@ -44,6 +45,7 @@ impl PreCalc {
             knight_moves: [Bitboard::EMPTY; 64],
             pawn_front_span: [[Bitboard::EMPTY; 64]; 2],
             pawn_push: [[Bitboard::EMPTY; 64]; 2],
+            pawn_double_push: [[Bitboard::EMPTY; 64]; 2],
             pawn_capture_east: [[Bitboard::EMPTY; 64]; 2],
             pawn_capture_west: [[Bitboard::EMPTY; 64]; 2],
             pawn_attack_span: [[Bitboard::EMPTY; 64]; 2],
@@ -66,6 +68,7 @@ impl PreCalc {
             for pawn in Square::all() {
                 self.pawn_front_span[c][pawn] = pawn.as_bb().rays(c.forward());
                 self.pawn_push[c][pawn] = pawn.as_bb().shift(c.forward());
+                self.pawn_double_push[c][pawn] = pawn.as_bb().shift(c.forward()).shift(c.forward());
                 let e = pawn.as_bb().shift(c.pawn_capture_east());
                 let w = pawn.as_bb().shift(c.pawn_capture_west());
                 self.pawn_capture_east[c][pawn] = e;
@@ -200,7 +203,7 @@ impl PreCalc {
     pub fn pawn_attacks_ext(&self, c: Color, us: Bitboard, them: Bitboard, fr: Square) -> Bitboard {
         let empty = !(us | them);
         let single = self.pawn_push[c][fr] & empty;
-        let double = single.shift(c.forward()) & empty & c.double_push_dest_rank();
+        let double = self.pawn_double_push[c][fr].only_if(single.any()) & empty & c.double_push_dest_rank();
         let capture = them & (self.pawn_capture_east[c][fr] | self.pawn_capture_west[c][fr]);
         single | double | capture
     }
@@ -278,6 +281,11 @@ impl PreCalc {
     #[inline]
     pub fn pawn_stop(&self, c: Color, pawn_sq: Square) -> Bitboard {
         self.pawn_push[c][pawn_sq]
+    }
+
+    /// square 2 in front of pawn (or empty). excludes single push square
+    pub fn pawn_double_stop(&self, c: Color, pawn_sq: Square) -> Bitboard {
+        self.pawn_double_push[c][pawn_sq]
     }
 
     #[inline]
