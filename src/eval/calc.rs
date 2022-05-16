@@ -853,7 +853,8 @@ impl Calc {
 
                 if bb.pawn_attack_span(c, sq).disjoint(their_p)
                     && sq.rank_index_as_white(c) >= 4
-                    && !sq.is_in(Bitboard::RIM)
+                    // && !sq.is_in(Bitboard::RIM)
+                    && sq.is_in(Bitboard::FILE_C | Bitboard::FILE_D | Bitboard::FILE_E | Bitboard::FILE_F)
                 {
                     // knight_outpost += 1;
                     if sq.is_in(our_pa) {
