@@ -40,6 +40,9 @@ pub struct Explainer {
     vars: Vec<Variation>,
 
     #[serde(skip)]
+    why_not: Option<Variation>,
+
+    #[serde(skip)]
     tree: Option<SearchTree>,
 }
 
@@ -80,6 +83,7 @@ impl Default for Explainer {
             max_additional_ply: 4,
             iter: 0,
             vars: vec![Variation::new()],
+            why_not: None, 
             tree: None,
         }
     }
@@ -96,6 +100,12 @@ impl Explainer {
     pub fn add_variation_to_explain(&mut self, var: Variation) {
         if self.enabled {
             self.vars.push(var);
+        }
+    }
+
+    pub fn why_not(&mut self, var: Variation) {
+        if self.enabled {
+            self.why_not = Some(var);
         }
     }
 
@@ -119,15 +129,20 @@ impl Explainer {
         Ok(writer)
     }
 
+    /// if explaining this variation (ie this node's var is an extension of one of the variations configured,
+    /// but not beyond max_additional_ply),
+    /// then return a SearchTreeWeight to be populated, else None
     #[inline]
     pub fn explaining(&mut self, n: &Node, var: &Variation) -> Option<&mut SearchTreeWeight> {
-        if self.enabled
-            && n.depth >= self.min_depth
-            && (self
+        if !self.enabled
+            || n.depth < self.min_depth {
+                return None;
+            }
+        if self
                 .vars
                 .iter()
                 // .inspect(|x| println!("about to check var: {}", x))
-                .any(|v| var.starts_with(v) && var.len() <= v.len() + self.max_additional_ply as usize))
+                .any(|v| var.starts_with(v) && var.len() <= v.len() + self.max_additional_ply as usize)
         {
             if self.tree.is_none() {
                 let tree = SearchTree::new(Board::default());

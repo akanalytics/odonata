@@ -916,23 +916,23 @@ impl Calc {
         //     && (b.rooks() & us).first_square().file_index() == (b.rooks() & us).last_square().file_index())
         //     as i32;
 
-        // let bishop_color_pawns = |c: Color| {
-        //     if (b.bishops() & b.color(c)).exactly_one() {
-        //         if Bitboard::WHITE_SQUARES.contains(b.bishops() & b.color(c)) {
-        //             return (b.pawns() & b.color(c) & Bitboard::WHITE_SQUARES).popcount()
-        //                 - (b.pawns() & b.color(c) & Bitboard::BLACK_SQUARES).popcount();
-        //         } else if Bitboard::BLACK_SQUARES.contains(b.bishops() & b.color(c)) {
-        //             return (b.pawns() & b.color(c) & Bitboard::BLACK_SQUARES).popcount()
-        //                 - (b.pawns() & b.color(c) & Bitboard::WHITE_SQUARES).popcount();
-        //         }
-        //     }
-        //     0
-        // };
-        // scorer.accumulate(
-        //     Attr::BishopColorPawns.as_feature(),
-        //     bishop_color_pawns(White),
-        //     bishop_color_pawns(Black),
-        // );
+        let bishop_color_pawns = |c: Color| {
+            if (b.bishops() & b.color(c)).exactly_one() {
+                if Bitboard::WHITE_SQUARES.contains(b.bishops() & b.color(c)) {
+                    return (b.pawns() & b.color(c) & Bitboard::WHITE_SQUARES).popcount()
+                        - (b.pawns() & b.color(c) & Bitboard::BLACK_SQUARES).popcount();
+                } else if Bitboard::BLACK_SQUARES.contains(b.bishops() & b.color(c)) {
+                    return (b.pawns() & b.color(c) & Bitboard::BLACK_SQUARES).popcount()
+                        - (b.pawns() & b.color(c) & Bitboard::WHITE_SQUARES).popcount();
+                }
+            }
+            0
+        };
+        s.accumulate(
+            Attr::BishopColorPawns.as_feature(),
+            bishop_color_pawns(White),
+            bishop_color_pawns(Black),
+        );
 
 
 
