@@ -17,7 +17,7 @@ use serde::{Deserializer, Serializer};
 
 
 
-pub type Weight = WeightOf<f32>;
+pub type _Weight = WeightOf<f32>;
 
 // essntially models the score bonus for s=start or e=end of game
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]

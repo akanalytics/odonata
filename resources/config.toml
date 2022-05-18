@@ -617,7 +617,6 @@ margin_qs = 0
 margin1 = 100
 margin2 = 250
 margin3 = 1500
-eval_switches = 255
 move_types_forbidden = 0
 
 [results]

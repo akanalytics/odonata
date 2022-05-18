@@ -90,7 +90,7 @@ impl fmt::Debug for Pmvt {
 }
 
 impl Pmvt {
-    pub fn new() -> Self {
+    pub fn _new() -> Self {
         Self::default()
     }
 
