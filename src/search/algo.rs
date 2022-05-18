@@ -222,7 +222,7 @@ impl fmt::Display for Algo {
         writeln!(f, "time control     : {}", self.mte.time_control)?;
         writeln!(f, "material         : {}", self.board.material())?;
         writeln!(f, "phase            : {} %", self.board.phase(&self.eval.phaser).0)?;
-        writeln!(f, "static eval      : {}", self.board.eval(&self.eval, &Node::root(0)))?;
+        writeln!(f, "static eval      : {}", self.board.eval_with_outcome(&self.eval, &Node::root(0)))?;
         // writeln!(f, "bm               : {}", self.results.bm())?;
         writeln!(f, "score            : {}", self.score())?;
         writeln!(f, "analyse mode     : {}", self.analyse_mode)?;
@@ -401,7 +401,6 @@ mod tests {
     #[test]
     fn test_minmax() {
         let pos = Catalog::starting_position();
-        let eval = Eval::new().set_position(false);
         let mut algo = Algo::new();
         algo.set_position(pos);
         algo.qsearch_disabled = true;
@@ -414,6 +413,7 @@ mod tests {
         algo.lmr.enabled = false;
         algo.ext.enabled = false;
         algo.minmax = true;
+        let eval = Eval::new();
         algo.set_eval(eval);
         algo.set_timing_method(TimeControl::Depth(3));
         algo.search();
@@ -455,8 +455,8 @@ mod tests {
     fn jons_chess_problem() {
         let pos = Position::parse_epd("2r2k2/5pp1/3p1b1p/2qPpP2/1p2B2P/pP3P2/2P1R3/2KRQ3 b - - 0 1").unwrap();
         println!("{}", pos);
-        let eval = Eval::new().set_position(false);
         let mut search = Algo::new();
+        let eval = Eval::new();
         search.set_timing_method(TimeControl::Depth(9)).set_eval(eval); 
         search.set_position(pos);
         search.search();

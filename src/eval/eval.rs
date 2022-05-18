@@ -4,7 +4,6 @@ use crate::eval::material_balance::MaterialBalance;
 use crate::eval::pst::Pst;
 use crate::eval::score::Score;
 use crate::eval::see::See;
-use crate::eval::switches::Switches;
 use crate::eval::weight::Weight;
 use crate::globals::counts;
 use crate::infra::component::Component;
@@ -25,9 +24,8 @@ use std::fmt;
 use super::calc::Calc;
 use super::feature::WeightsVector;
 
-
 use super::scorer::ExplainScore;
-use super::scorer::{TotalScore};
+use super::scorer::TotalScore;
 
 // https://www.chessprogramming.org/Simplified_Evaluation_Function
 
@@ -40,32 +38,6 @@ pub static SEE: Stat = Stat::new("SEE");
 pub static MOVE: Stat = Stat::new("MOVE");
 
 pub static EVAL_COUNTS: ArrayStat = ArrayStat(&[&ALL, &QUIESCENCE, &MATERIAL, &POSITION, &MOBILITY, &SEE, &MOVE]);
-
-#[derive(Clone, Copy, Default, Debug, Serialize, Deserialize)]
-#[serde(default, deny_unknown_fields)]
-pub struct PieceArray<T> {
-    pub p: T,
-    pub n: T,
-    pub b: T,
-    pub r: T,
-    pub q: T,
-    pub k: T,
-}
-
-impl<T> std::ops::Index<Piece> for PieceArray<T> {
-    type Output = T;
-    #[inline]
-    fn index(&self, i: Piece) -> &Self::Output {
-        [&self.p, &self.n, &self.b, &self.r, &self.q, &self.k][i.index() - 1]
-    }
-}
-
-impl<T> std::ops::IndexMut<Piece> for PieceArray<T> {
-    #[inline]
-    fn index_mut(&mut self, p: Piece) -> &mut Self::Output {
-        [&mut self.p, &mut self.n, &mut self.b, &mut self.r, &mut self.q, &mut self.k][p.index() - 1]
-    }
-}
 
 use strum_macros::Display;
 use strum_macros::EnumCount;
@@ -125,13 +97,10 @@ pub enum Attr {
     KnightAttacksCenter,
     KnightTrapped,
 
-
-
     Fianchetto,
     BishopOutposts,
     BishopColorPawns,
     BishopTrapped,
-
 
     DoubledRooks,
     ConnectedRooks,
@@ -142,7 +111,6 @@ pub enum Attr {
     QueenEarlyDevelop,
     QueenOpenFile,
     QueenTrapped,
-
 
     PawnAdjacentShield,
     PawnNearbyShield,
@@ -260,18 +228,9 @@ impl Feature {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Eval {
-    pub material: bool,
-    pub position: bool,
-    pub mobility: bool,
-    pub pawn: bool,
-    pub safety: bool,
-    pub contempt: bool,
-    pub tempo: bool,
     pub phasing: bool,
     pub mobility_phase_disable: u8,
     pub quantum: i32,
-
-    pub min_depth_mob: u8,
 
     pub pst: Pst,
     pub phaser: Phaser,
@@ -281,7 +240,6 @@ pub struct Eval {
 
     #[serde(skip)]
     pub feature_weights: Vec<Weight>,
-
 }
 
 impl Default for Eval {
@@ -293,17 +251,9 @@ impl Default for Eval {
             discrete: HashMap::new(),
             phaser: Phaser::default(),
             see: See::default(),
-            mobility: true,
-            position: true,
-            material: true,
-            pawn: true,
-            safety: true,
-            contempt: true,
-            tempo: true,
             phasing: true,
             mobility_phase_disable: 101,
             quantum: 1,
-            min_depth_mob: 1,
         };
         for f in Feature::all() {
             s.discrete.insert(f.name(), Weight::zero());
@@ -343,16 +293,8 @@ impl fmt::Display for Eval {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "[material balance]\n{}", self.mb)?;
         writeln!(f, "[phaser]\n{}", self.phaser)?;
-        writeln!(f, "material         : {}", self.material)?;
-        writeln!(f, "position         : {}", self.position)?;
-        writeln!(f, "mobility         : {}", self.mobility)?;
-        writeln!(f, "pawn             : {}", self.pawn)?;
-        writeln!(f, "safety           : {}", self.safety)?;
-        writeln!(f, "contempt         : {}", self.contempt)?;
-        writeln!(f, "tempo            : {}", self.tempo)?;
         writeln!(f, "phasing          : {}", self.phasing)?;
         writeln!(f, "mob.phase.disable: {}", self.mobility_phase_disable)?;
-        writeln!(f, "mob.min.depth    : {}", self.min_depth_mob)?;
         writeln!(f, "eval stats\n{}", EVAL_COUNTS)?;
         Ok(())
     }
@@ -369,31 +311,15 @@ impl Eval {
         self.feature_weights.resize(Feature::len(), Weight::zero());
         Feature::all().iter().for_each(|f| {
             self.feature_weights[f.index()] = match f {
-                Feature::Discrete(_i) => {
-                    *self
-                        .discrete
-                        .get(&f.name())
-                        .expect(&format!("Missing discrete eval param {} in {:?}", f.name(), self.discrete))
-                }
+                Feature::Discrete(_i) => *self.discrete.get(&f.name()).expect(&format!(
+                    "Missing discrete eval param {} in {:?}",
+                    f.name(),
+                    self.discrete
+                )),
                 Feature::Pst(p, sq) => self.pst.pst(*p, *sq),
                 Feature::Piece(p) => self.mb.piece_weights[*p],
             }
         });
-    }
-
-    pub fn set_switches(&mut self, enabled: bool) {
-        self.material = enabled;
-        self.position = enabled;
-        self.mobility = enabled;
-        self.safety = enabled;
-        self.pawn = enabled;
-        self.contempt = enabled;
-        self.tempo = enabled;
-    }
-
-    pub fn set_position(&mut self, enabled: bool) -> Self {
-        self.position = enabled;
-        self.clone()
     }
 }
 
@@ -438,11 +364,11 @@ impl Eval {
         // board.color_us() == Color::Black => minimising
         // +ve contempt => -ve score => aim for draw => opponent stronger than us
         let contempt = self.weight(&Attr::ContemptPenalty.into());
-        let contempt = self.contempt as i32 * board.color_us().chooser_wb(contempt, -contempt);
+        let contempt = board.color_us().chooser_wb(contempt, -contempt);
         Score::from_f32(contempt.interpolate(board.phase(&self.phaser)) as f32)
     }
 
-    pub fn w_evaluate(&self, board: &Board, node: &Node) -> Score {
+    pub fn w_evaluate_with_outcome(&self, board: &Board, node: &Node) -> Score {
         counts::EVAL_COUNT.increment();
         let outcome = board.outcome();
         if outcome.is_game_over() {
@@ -453,16 +379,8 @@ impl Eval {
                 return c.chooser_wb(Score::white_win(node.ply), Score::white_loss(node.ply));
             }
         }
-        self.w_eval_some(board, Switches::ALL_SCORING)
+        self.w_eval_some(board)
     }
-
-    // we dont care about stalemates or checkmates
-    pub fn w_eval_qsearch(&self, board: &Board, _node: &Node) -> Score {
-        counts::QEVAL_COUNT.increment();
-        self.w_eval_some(board, Switches::ALL_SCORING | Switches::INSUFFICIENT_MATERIAL)
-    }
-
-
 
     pub fn w_eval_explain(&self, b: &Board, _csv: bool) -> ExplainScore {
         let mut scorer = ExplainScore::new(b.phase(&self.phaser), b.to_fen());
@@ -470,31 +388,13 @@ impl Eval {
         scorer
     }
 
-    pub fn w_eval_some(&self, b: &Board, mut switches: Switches) -> Score {
-        if !self.position {
-            switches -= Switches::POSITION;
-        }
-        if !self.safety {
-            switches -= Switches::SAFETY;
-        }
-        if !self.mobility {
-            switches -= Switches::MOBILITY;
-        }
-        if !self.pawn {
-            switches -= Switches::PAWN;
-        }
-
-
-        // error!("===== {}",b.to_fen());
-        // let model = Model::from_board(b, b.phase(&self.phaser), switches);
+    fn w_eval_some(&self, b: &Board) -> Score {
         let ph = b.phase(&self.phaser);
         let mut scorer = TotalScore::new(&self.feature_weights, ph);
         Calc::score(&mut scorer, b, self, &self.phaser);
         let score1 = Score::from_cp(scorer.total().interpolate(ph) as i32 / self.quantum * self.quantum);
         score1
-
     }
-
 
     /// the value of the capture or promotion (or both for promo capture)
     #[inline]
@@ -508,7 +408,6 @@ impl Board {
     fn signum(&self) -> i32 {
         self.color_us().chooser_wb(1, -1)
     }
-
 
     #[inline]
     pub fn eval_draw(&self, eval: &mut Eval, nd: &Node) -> Score {
@@ -529,17 +428,17 @@ impl Board {
     }
 
     #[inline]
-    pub fn eval(&self, eval: &Eval, nd: &Node) -> Score {
+    pub fn eval_with_outcome(&self, eval: &Eval, nd: &Node) -> Score {
         ALL.increment();
-        self.signum() * eval.w_evaluate(self, nd)
+        self.signum() * eval.w_evaluate_with_outcome(self, nd)
     }
 
     #[inline]
-    pub fn eval_some(&self, eval: &Eval, sw: Switches) -> Score {
+    pub fn eval_some(&self, eval: &Eval) -> Score {
         profile_fn!(board.eval_some);
         // let _g = hprof::enter("eval some");
         ALL.increment();
-        self.signum() * eval.w_eval_some(self, sw)
+        self.signum() * eval.w_eval_some(self)
     }
 }
 
@@ -548,6 +447,7 @@ impl Board {
 mod tests {
     use super::*;
     use crate::catalog::Catalog;
+    use crate::infra::black_box;
     use crate::infra::profiler::*;
     use crate::search::engine::Engine;
     use crate::test_log::test;
@@ -582,9 +482,6 @@ mod tests {
         Ok(())
     }
 
-
-
-
     #[test]
     fn test_eval_bug1() {
         let pos = &Catalog::bratko_kopec()[0];
@@ -615,7 +512,7 @@ mod tests {
         for pos in Catalog::win_at_chess() {
             let b = pos.board();
             prof.start();
-            let score = b.signum() * b.eval(&eval, &node);
+            let score = b.signum() * b.eval_with_outcome(&eval, &node);
             prof.stop();
             total_score = total_score + score;
             println!("{:>6.0} {}", score.as_i16(), pos);
@@ -634,7 +531,7 @@ mod tests {
             let mut total_score = Score::zero();
             for pos in &positions {
                 let b = pos.board();
-                let score = b.signum() * b.eval(&eval, &node);
+                let score = b.signum() * b.eval_with_outcome(&eval, &node);
                 total_score = total_score + score;
                 // println!("{:>6.0} {}", score.as_i16(), pos);
             }

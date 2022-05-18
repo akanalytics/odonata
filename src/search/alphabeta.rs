@@ -3,7 +3,6 @@ use crate::board::Board;
 use crate::bound::NodeType;
 use crate::cache::tt2::TtNode;
 use crate::eval::score::Score;
-use crate::eval::switches::Switches;
 use crate::mv::Move;
 use crate::pvtable::PvTable;
 use crate::search::algo::Algo;
@@ -138,7 +137,7 @@ impl Algo {
         self.stats.inc_interior_nodes(&n);
 
         // static eval
-        let mut eval = b.eval_some(&self.eval, Switches::ALL_SCORING);
+        let mut eval = b.eval_some(&self.eval);
         
         if self.tt.use_tt_for_eval {
             if let Some(entry) = self.tt.probe_by_board(b, n.ply, n.depth) {
@@ -290,12 +289,12 @@ impl Algo {
             self.stats.inc_leaf_nodes(&n);
             if n.is_qs() {
                 self.counts.inc(&n, Event::NodeLeafQuietEval);
-                return Ok((b.eval(&self.eval, &n), Event::NodeLeafQuietEval));
+                return Ok((b.eval_with_outcome(&self.eval, &n), Event::NodeLeafQuietEval));
             } else {
                 self.counts.inc(&n, Event::NodeLeafStalemate);
                 // FIXME VER:0.4.14
                 // (board.eval_draw(&mut self.eval, &n),
-                return Ok((b.eval(&self.eval, &n), Event::NodeLeafStalemate));
+                return Ok((b.eval_with_outcome(&self.eval, &n), Event::NodeLeafStalemate));
             }
         }
         if nt == NodeType::UpperAll {

@@ -1219,6 +1219,7 @@ mod tests {
     use crate::eval::scorer::{ExplainScore, TotalScore};
     use crate::eval::weight::Weight;
     use crate::infra::profiler::*;
+    use crate::infra::black_box;
     use crate::phaser::Phaser;
     use crate::test_log::test;
     use crate::{BoardBuf, Position};

@@ -345,7 +345,7 @@ impl Uci {
         let mut b = Board::new_empty();
         Self::parse_fen(arg, &mut b)?;
         let eval = Eval::new();
-        let score = b.eval(&eval, &Node::root(0));
+        let score = b.eval_with_outcome(&eval, &Node::root(0));
         Self::print(&format!("result:{}", score));
         Ok(())
     }
@@ -882,31 +882,30 @@ mod tests {
     fn test_uci_config_file() {
         let mut uci = Uci::new();
         // uci.uci_option_name_value("Config_File", "../odonata/resources/Xconfig.toml").unwrap();
-        assert_eq!(uci.engine.lock().unwrap().algo.eval.position, true);
+        assert_eq!(uci.engine.lock().unwrap().algo.eval.quantum, 1);
         uci.prelude
             .push("setoption name Config_File value ../odonata/resources/config.toml".into());
         uci.prelude.push("setoption name Show_Config".into());
         uci.prelude.push("quit".into());
         uci.run();
-        assert_eq!(uci.engine.lock().unwrap().algo.eval.position, true);
+        assert_eq!(uci.engine.lock().unwrap().algo.eval.quantum, 1);
     }
 
     #[test]
     fn test_uci_setoption() {
         let mut uci = Uci::new();
         let _bishop = uci.engine.lock().unwrap().algo.eval.mb.piece_weights[Piece::Bishop];
-        assert_eq!(uci.engine.lock().unwrap().algo.eval.position, true);
         uci.prelude.push("setoption name Config value eval.mb.b.s=700".into());
         uci.prelude
             .push("setoption name Config value eval.mb.n = { s=400, e = 429 }".into());
-        uci.prelude.push("setoption name Config value eval.position=false".into());
+        uci.prelude.push("setoption name Config value eval.quantum=2".into());
         uci.prelude.push("setoption name Explain_Eval".into());
         uci.prelude.push("setoption name Config value eval.pst.p.a2.s = 10".into());
         uci.prelude.push("setoption name Show_Config".into());
         uci.prelude.push("quit".into());
         uci.run();
         let eval = &uci.engine.lock().unwrap().algo.eval;
-        assert_eq!(eval.position, false);
+        assert_eq!(eval.quantum, 2);
         assert_eq!(eval.mb.piece_weights[Piece::Knight].s() as i32, 400);
         assert_eq!(eval.mb.piece_weights[Piece::Knight].e() as i32, 429);
         assert_eq!(eval.mb.piece_weights[Piece::Bishop].s() as i32, 700);

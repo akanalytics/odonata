@@ -515,6 +515,7 @@ impl fmt::Display for Score2 {
 #[cfg(test)]
 mod tests {
     use crate::infra::profiler::*;
+    use crate::infra::black_box;
     use super::*;
 
 

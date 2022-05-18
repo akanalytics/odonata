@@ -2,14 +2,6 @@ use crate::utils::Formatting;
 use perf_event::{events::Hardware, Builder, Counter, Group};
 
 
-// from iai/bencher/criterion etc - the "standard" black_box def
-pub fn black_box<T>(dummy: T) -> T {
-    unsafe {
-        let ret = std::ptr::read_volatile(&dummy);
-        std::mem::forget(dummy);
-        ret
-    }
-}
 
 pub struct Profiler {
     group: Group,
@@ -111,6 +103,7 @@ impl Drop for Profiler {
 mod tests {
 
     use super::*;
+    use crate::infra::black_box;
     use crate::test_log::test;
 
     #[derive(Default)]

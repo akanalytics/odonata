@@ -318,15 +318,13 @@ mod tests {
     #[test]
     fn engine_init_test() {
         let mut engine = Engine::new();
-        assert_eq!(engine.algo.eval.position, true);
+        assert_eq!(engine.algo.eval.quantum, 1);
         eprintln!("{}", toml::to_string(&engine).unwrap());
-        engine.configment("eval.position", "false").unwrap();
+        engine.configment("eval.quantum", "1").unwrap();
         eprintln!("{}", engine);
-        assert_eq!(engine.algo.eval.position, false);
-        assert_eq!(engine.algo.eval.safety, true);
-        engine.configment("eval.safety", "true").unwrap();
-        assert_eq!(engine.algo.eval.safety, true);
-        assert!(engine.configment("eval1.safety", "true").is_err());
+        assert_eq!(engine.algo.eval.quantum, 1);
+        engine.configment("eval.quantum", "2").unwrap();
+        assert_eq!(engine.algo.eval.quantum, 2);
     }
 
     #[test]
@@ -371,9 +369,10 @@ mod tests {
     fn test_mate_in_2_ids() {
         for &id in &[true, false] {
             let position = Catalog::mate_in_2()[0].clone();
-            let eval = Eval::new().set_position(false);
             let mut engine = Engine::new();
             engine.set_position(position.clone());
+            let eval = Eval::new();
+
             engine
                 .algo
                 .set_timing_method(TimeControl::Depth(3))

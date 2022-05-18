@@ -145,7 +145,6 @@ mod tests {
     use crate::search::nmp::NullMovePruning;
     use crate::search::node::*;
     use crate::search::pvs::Pvs;
-    use crate::search::qsearch::QSearch;
     use crate::search::razor::Razor;
     use crate::search::restrictions::Restrictions;
     use crate::search::search_explainer::Explainer;
@@ -186,7 +185,6 @@ mod tests {
         assert_eq!(size_of::<Magic>(), 719264, "Magic");
         assert_eq!(size_of::<Hasher>(), 7296, "Hasher");
         assert_eq!(size_of::<Algo>(), 25600, "Algo");
-        assert_eq!(size_of::<QSearch>(), 12, "QSearch");
         assert_eq!(size_of::<Clock>(), 64, "Clock");
         assert_eq!(size_of::<NullMovePruning>(), 32, "NullMovePruning");
         assert_eq!(size_of::<Futility>(), 36, "Futility");

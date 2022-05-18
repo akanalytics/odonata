@@ -64,7 +64,7 @@ impl Component for MoveTimeEstimator {
             branching_factor: self.branching_factor,
             perc_of_time_adv: self.perc_of_time_adv,
             moves_rem: self.moves_rem,
-            deterministic: self.deterministic ,
+            deterministic: self.deterministic,
             nodestime: self.nodestime,
             use_last_2_iters: self.use_last_2_iters,
             time_control: self.time_control,
@@ -110,14 +110,22 @@ impl fmt::Display for MoveTimeEstimator {
         writeln!(f, "const moves rem. : {}", self.moves_rem)?;
         writeln!(f, "% of time adv    : {}", self.perc_of_time_adv)?;
         writeln!(f, "allotted for mv  : {}", Formatting::duration(self.allotted()))?;
-        writeln!(f, "time estimate    : {}", Formatting::duration(self.estimate_move_time))?;
+        writeln!(
+            f,
+            "time estimate    : {}",
+            Formatting::duration(self.estimate_move_time)
+        )?;
         writeln!(f, "deterministic    : {}", self.deterministic)?;
         writeln!(f, "nodestime        : {}", self.nodestime)?;
         writeln!(f, "check every      : {}", self.check_every)?;
         writeln!(f, "clock checks     : {}", self.clock_checks)?;
         writeln!(f, "elapsed search   : {}", Formatting::duration(self.elapsed_search))?;
         writeln!(f, "elapsed iter     : {}", Formatting::duration(self.elapsed_iter))?;
-        writeln!(f, "prior elap iter  : {}", Formatting::duration(self.prior_elapsed_iter))?;
+        writeln!(
+            f,
+            "prior elap iter  : {}",
+            Formatting::duration(self.prior_elapsed_iter)
+        )?;
         Ok(())
     }
 }
@@ -158,12 +166,12 @@ impl MoveTimeEstimator {
         self.pondering.load(atomic::Ordering::SeqCst)
     }
 
-    /// For some time controls we aren't worried about node counts or search times, so we 
+    /// For some time controls we aren't worried about node counts or search times, so we
     /// can avoid optimizations elsewhere
     pub fn time_sensitive(&self) -> bool {
         match self.time_control {
             TimeControl::DefaultTime => true,
-            TimeControl::Depth(_max_ply) => false, 
+            TimeControl::Depth(_max_ply) => false,
             TimeControl::SearchTime(_duration) => true,
             TimeControl::NodeCount(_max_nodes) => false,
             TimeControl::Infinite => false,
@@ -171,7 +179,6 @@ impl MoveTimeEstimator {
             TimeControl::RemainingTime { .. } => true,
         }
     }
-
 
     pub fn estimate_iteration(&mut self, _ply: Ply, clock: &Clock) {
         // debug_assert!(search_stats.depth() >= ply-1, "ensure we have enough stats");
@@ -187,17 +194,18 @@ impl MoveTimeEstimator {
 
         if self.use_last_2_iters {
             self.estimate_move_time = Duration::from_millis(self.move_overhead_ms)
-            + self.elapsed_search
-            + self.elapsed_iter.mul_f32(self.branching_factor) / 2
-            + self
-                .prior_elapsed_iter
-                .mul_f32(self.branching_factor)
-                .mul_f32(self.branching_factor)
-                / 2;
+                + self.elapsed_search
+                + self.elapsed_iter.mul_f32(self.branching_factor) / 2
+                + self
+                    .prior_elapsed_iter
+                    .mul_f32(self.branching_factor)
+                    .mul_f32(self.branching_factor)
+                    / 2;
         } else {
-            self.estimate_move_time =  Duration::from_millis(self.move_overhead_ms) + self.elapsed_search + self.elapsed_iter.mul_f32(self.branching_factor);
+            self.estimate_move_time = Duration::from_millis(self.move_overhead_ms)
+                + self.elapsed_search
+                + self.elapsed_iter.mul_f32(self.branching_factor);
         }
-
     }
 
     pub fn probable_timeout(&self, ply: Ply) -> bool {
@@ -269,7 +277,7 @@ mod tests {
     #[test]
     fn test_mate_with_tc() {
         let position = &Catalog::mate_in_2()[0];
-        let eval = Eval::new().set_position(false);
+        let eval = Eval::new();
         let mut search = Algo::new()
             .set_timing_method(TimeControl::Depth(3))
             .set_eval(eval)

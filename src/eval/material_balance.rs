@@ -12,7 +12,32 @@ use std::fs::File;
 use std::io::{self, BufRead};
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
-use super::eval::PieceArray;
+#[derive(Clone, Copy, Default, Debug, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct PieceArray<T> {
+    pub p: T,
+    pub n: T,
+    pub b: T,
+    pub r: T,
+    pub q: T,
+    pub k: T,
+}
+
+impl<T> std::ops::Index<Piece> for PieceArray<T> {
+    type Output = T;
+    #[inline]
+    fn index(&self, i: Piece) -> &Self::Output {
+        [&self.p, &self.n, &self.b, &self.r, &self.q, &self.k][i.index() - 1]
+    }
+}
+
+impl<T> std::ops::IndexMut<Piece> for PieceArray<T> {
+    #[inline]
+    fn index_mut(&mut self, p: Piece) -> &mut Self::Output {
+        [&mut self.p, &mut self.n, &mut self.b, &mut self.r, &mut self.q, &mut self.k][p.index() - 1]
+    }
+}
+
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -637,36 +662,34 @@ mod tests {
     #[ignore]
     fn test_score_balance() {
         let eval = &mut Eval::new();
-        eval.set_switches(false);
-        eval.material = true;
         let n = &Node::root(0);
         let board = Board::parse_fen("K7/P7/8/8/8/8/8/k7 w - - 0 1").unwrap();
-        assert_eq!(board.eval(eval, n), Score::from_cp(282));
+        assert_eq!(board.eval_with_outcome(eval, n), Score::from_cp(282));
 
         let board = Board::parse_fen("k7/p7/8/8/8/8/8/K7 w - - 0 1").unwrap();
-        assert_eq!(board.eval(eval, n), -Score::from_cp(282));
+        assert_eq!(board.eval_with_outcome(eval, n), -Score::from_cp(282));
 
         let board = Board::parse_fen("K7/PPPPPPPP/8/8/8/8/8/k7 w - - 0 1").unwrap();
-        assert_eq!(board.eval(eval, n), Score::from_cp(800));
+        assert_eq!(board.eval_with_outcome(eval, n), Score::from_cp(800));
 
         let board = Board::parse_fen("K7/PPPPP3/8/8/8/8/8/k7 w - - 0 1").unwrap();
-        assert_eq!(board.eval(eval, n), Score::from_cp(500));
+        assert_eq!(board.eval_with_outcome(eval, n), Score::from_cp(500));
 
         // losing a pawn from 5P to 4P increases score from 500 to 5400
         let board = Board::parse_fen("K7/PPPP4/8/8/8/8/8/k7 w - - 0 1").unwrap();
-        assert_eq!(board.eval(eval, n), Score::from_cp(5400));
+        assert_eq!(board.eval_with_outcome(eval, n), Score::from_cp(5400));
 
         let board = Board::parse_fen("K7/PPP5/8/8/8/8/8/k7 w - - 0 1").unwrap();
-        assert_eq!(board.eval(eval, n), Score::from_cp(5300));
+        assert_eq!(board.eval_with_outcome(eval, n), Score::from_cp(5300));
 
         let board = Board::parse_fen("K7/PP6/8/8/8/8/8/k7 w - - 0 1").unwrap();
-        assert_eq!(board.eval(eval, n), Score::from_cp(735));
+        assert_eq!(board.eval_with_outcome(eval, n), Score::from_cp(735));
 
         // black exchanges knight for a bishop
         let board = Board::parse_fen("8/2p3p1/3r1pk1/R2Prnp1/P5P1/4BK2/R4P1P/8 b - - 0 50").unwrap();
-        assert_eq!(board.eval(eval, n), Score::from_cp(-100));
+        assert_eq!(board.eval_with_outcome(eval, n), Score::from_cp(-100));
         let board = Board::parse_fen("8/2p3p1/3r1pk1/R2Pr1p1/P5P1/4PK2/R6P/8 b - - 0 51").unwrap();
-        assert_eq!(board.eval(eval, n), Score::from_cp(-100));
+        assert_eq!(board.eval_with_outcome(eval, n), Score::from_cp(-100));
     }
 }
 

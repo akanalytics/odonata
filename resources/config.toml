@@ -62,11 +62,7 @@ log_dir = "."
 
 
 [eval]
-material           = true
-position           = true
-safety             = true
-mobility           = true
-pawn               = true
+quantum = 1
 
 [eval.discrete]
 

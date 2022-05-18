@@ -17,7 +17,6 @@ use odonata::domain::material::*;
 use odonata::eval::eval::*;
 use odonata::eval::score::*;
 use odonata::eval::see::See;
-use odonata::eval::switches::Switches;
 use odonata::globals::constants::*;
 use odonata::infra::component::*;
 use odonata::movelist::*;
@@ -40,7 +39,7 @@ use criterion::measurement::Measurement;
 use criterion::*;
 use log::*;
 
-use iai::black_box;
+use odonata::infra::black_box;
 
 criterion_group!(
     benches,
@@ -70,7 +69,6 @@ criterion_group!(
     benchmark_array,
     bench_insufficient_material,
     bench_pvtable,
-    cache_eval,
     bench_shared_mem,
 );
 
@@ -572,8 +570,8 @@ fn benchmark_ordering(c: &mut Criterion) {
             let t = Instant::now();
             movelists.iter().enumerate().cycle_n(n).for_each(|(i, ml)| {
                 let pos = &positions[i];
-                for mv in ml.iter() {
-                    see.eval_move_see(pos.board(), &mv);
+                for mv in ml.iter().filter(|&mv| mv.is_capture()) {
+                    see.eval_move_see(pos.board(), *mv);
                     count += 1;
                 }
             });
@@ -633,13 +631,13 @@ fn benchmark_eval(c: &mut Criterion) {
     let mut group = c.benchmark_group("eval");
     let positions = &Catalog::win_at_chess();
     let ef = &mut Eval::new();
-    let phaser = Phaser::default();
+    let _phaser = Phaser::default();
     let ef_no_pos = &mut Eval::new().set_position(false);
     group.bench_function("material", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|p| {
-                black_box(p.board().eval_some(black_box(ef), Switches::MATERIAL));
+                black_box(p.board().eval_some(black_box(ef)));
             });
             t.elapsed() / positions.len() as u32
         })
@@ -648,7 +646,7 @@ fn benchmark_eval(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|p| {
-                black_box(p.board().eval_some(black_box(ef), Switches::POSITION));
+                black_box(p.board().eval_some(black_box(ef)));
             });
             t.elapsed() / positions.len() as u32
         })
@@ -657,7 +655,7 @@ fn benchmark_eval(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|p| {
-                black_box(p.board().eval_some(black_box(ef), Switches::MOBILITY));
+                black_box(p.board().eval_some(black_box(ef)));
             });
             t.elapsed() / positions.len() as u32
         })
@@ -666,7 +664,7 @@ fn benchmark_eval(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|p| {
-                black_box(p.board().eval_some(black_box(ef), Switches::SAFETY));
+                black_box(p.board().eval_some(black_box(ef)));
             });
             t.elapsed() / positions.len() as u32
         })
@@ -675,7 +673,7 @@ fn benchmark_eval(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|p| {
-                black_box(p.board().eval(black_box(ef), &Node::root(0)));
+                black_box(p.board().eval_with_outcome(black_box(ef), &Node::root(0)));
             });
             t.elapsed() / positions.len() as u32
         })
@@ -694,7 +692,7 @@ fn benchmark_eval(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|p| {
-                black_box(p.board().eval(black_box(ef_no_pos), &Node::root(0)));
+                black_box(p.board().eval_with_outcome(black_box(ef_no_pos), &Node::root(0)));
             });
             t.elapsed() / positions.len() as u32
         })
@@ -746,8 +744,8 @@ fn benchmark_attacks(c: &mut Criterion) {
             let mut count = 0;
             positions.iter().cycle_n(n).for_each(|p| {
                 count += 2;
-                black_box(BoardCalcs::pinned(p.board(), Color::White));
-                black_box(BoardCalcs::pinned(p.board(), Color::Black));
+                black_box(BoardCalcs::pinned_and_unmaskers(p.board(), Color::White)).0;
+                black_box(BoardCalcs::pinned_and_unmaskers(p.board(), Color::Black)).0;
             });
             t.elapsed() / (count as u32 / n as u32)
         })
@@ -1112,7 +1110,8 @@ fn benchmark_thread(c: &mut Criterion) {
 
     group.bench_function("search-1t", |b| {
         b.iter(|| {
-            let mut algo1 = Algo::new().set_timing_method(TimeControl::Depth(6)).build();
+            let mut algo1 = Algo::new();
+            algo1.set_timing_method(TimeControl::Depth(6));
             algo1.new_game();
 
             black_box({
@@ -1123,11 +1122,13 @@ fn benchmark_thread(c: &mut Criterion) {
     });
     group.bench_function("search-2t", |b| {
         b.iter(|| {
-            let mut algo1 = Algo::new().set_timing_method(TimeControl::Depth(6)).build();
+            let mut algo1 = Algo::new();
+            algo1.set_timing_method(TimeControl::Depth(6));
             algo1.board = pos.board().clone();
             algo1.new_game();
 
-            let mut algo2 = Algo::new().set_timing_method(TimeControl::Depth(6)).build();
+            let mut algo2 = Algo::new();
+            algo2.set_timing_method(TimeControl::Depth(6));
             algo2.board = pos.board().clone();
             algo2.new_game();
 
@@ -1209,7 +1210,8 @@ fn benchmark_search(c: &mut Criterion) {
     let mut group = c.benchmark_group("search");
     group.sample_size(10);
     let pos = Catalog::test_position();
-    let mut algo = Algo::new().set_timing_method(TimeControl::Depth(5)).build();
+    let mut algo = Algo::new();
+    algo.set_timing_method(TimeControl::Depth(5));
     group.bench_function("test(5)", |b| {
         b.iter(|| {
             // let eval = SimpleScorer::new().set_position(false);
@@ -1233,7 +1235,8 @@ fn benchmark_search(c: &mut Criterion) {
     });
 
     let pos = Catalog::mate_in_2()[0].clone();
-    let mut algo1 = Algo::new().set_timing_method(TimeControl::Depth(3)).build();
+    let mut algo1 = Algo::new();
+    algo1.set_timing_method(TimeControl::Depth(3));
     algo1.ids.enabled = false;
     group.bench_function("mate_in_2_ab", |b| {
         b.iter(|| {
@@ -1246,7 +1249,8 @@ fn benchmark_search(c: &mut Criterion) {
         });
     });
     let pos = Catalog::mate_in_2()[0].clone();
-    let mut algo2 = Algo::new().set_timing_method(TimeControl::Depth(3)).build();
+    let mut algo2 = Algo::new();
+    algo2.set_timing_method(TimeControl::Depth(3));
     group.bench_function("mate_in_2_ab_ids", |b| {
         b.iter(|| {
             algo2.new_game();
@@ -1264,7 +1268,7 @@ fn benchmark_search(c: &mut Criterion) {
 //     let mut group = c.benchmark_group("mate2");
 //     group.sample_size(20);
 //     let board = Catalog::mate_in_2()[0].board().clone();
-//     let mut algo1 = Algo::new().set_timing_method(TimeControl::Depth(3)).build();
+//     let mut algo1 = Algo::new().set_timing_method(TimeControl::Depth(3));
 //     algo1.ids.enabled = false;
 //     group.bench_function("mate_in_2_ab", |b| {
 //         b.iter(|| {
@@ -1274,7 +1278,7 @@ fn benchmark_search(c: &mut Criterion) {
 //         });
 //     });
 //     let board = Catalog::mate_in_2()[0].board().clone();
-//     let mut algo2 = Algo::new().set_timing_method(TimeControl::Depth(3)).build();
+//     let mut algo2 = Algo::new().set_timing_method(TimeControl::Depth(3));
 //     group.bench_function("mate_in_2_ab_ids", |b| {
 //         b.iter(|| {
 //             algo2.new_game();
@@ -1360,36 +1364,36 @@ fn bench_shared_mem(c: &mut Criterion) {
     group.finish();
 }
 
-fn cache_eval(c: &mut Criterion) {
-    let mut group = c.benchmark_group("cache_eval");
-    group.sample_size(10);
+// fn cache_eval(c: &mut Criterion) {
+//     let mut group = c.benchmark_group("cache_eval");
+//     group.sample_size(10);
 
-    let positions = &Catalog::bratko_kopec()[..3];
-    group.bench_function("cache_eval_on", |b| {
-        b.iter_custom(|n| {
-            let t = Instant::now();
-            positions.iter().cycle_n(n).for_each(|p| {
-                let mut algo = Algo::new().set_timing_method(TimeControl::Depth(4)).build();
-                algo.set_position(p.clone());
-                algo.search();
-            });
-            t.elapsed() / positions.len() as u32
-        });
-    });
-    group.bench_function("cache_eval_off", |b| {
-        b.iter_custom(|n| {
-            let t = Instant::now();
-            positions.iter().cycle_n(n).for_each(|p| {
-                let mut algo = Algo::new().set_timing_method(TimeControl::Depth(4)).build();
-                //algo.eval.cache.enabled = false;
-                algo.set_position(p.clone());
-                algo.search();
-            });
-            t.elapsed() / positions.len() as u32
-        });
-    });
-    group.finish();
-}
+//     let positions = &Catalog::bratko_kopec()[..3];
+//     group.bench_function("cache_eval_on", |b| {
+//         b.iter_custom(|n| {
+//             let t = Instant::now();
+//             positions.iter().cycle_n(n).for_each(|p| {
+//                 let mut algo = Algo::new().set_timing_method(TimeControl::Depth(4));
+//                 algo.set_position(p.clone());
+//                 algo.search();
+//             });
+//             t.elapsed() / positions.len() as u32
+//         });
+//     });
+//     // group.bench_function("cache_eval_off", |b| {
+//     //     b.iter_custom(|n| {
+//     //         let t = Instant::now();
+//     //         positions.iter().cycle_n(n).for_each(|p| {
+//     //             let mut algo = Algo::new().set_timing_method(TimeControl::Depth(4));
+//     //             //algo.eval.cache.enabled = false;
+//     //             algo.set_position(p.clone());
+//     //             algo.search();
+//     //         });
+//     //         t.elapsed() / positions.len() as u32
+//     //     });
+//     // });
+//     // group.finish();
+// }
 
 fn bench_moveordering(c: &mut Criterion) {
     let a1a2 = Move::new_quiet(Piece::Queen, a1.square(), a2.square());

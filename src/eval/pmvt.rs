@@ -95,7 +95,7 @@ impl Pmvt {
     }
 
     #[inline]
-    pub fn w_eval_mob(&self, p: Piece, count: i32) -> Weight {
+    pub fn _w_eval_mob(&self, p: Piece, count: i32) -> Weight {
         self.mv[p][std::cmp::min(count, 19) as usize]
     }
 }

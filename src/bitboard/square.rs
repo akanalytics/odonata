@@ -307,6 +307,7 @@ mod tests {
     use super::*;
     use crate::globals::constants::*;
     use crate::infra::profiler::*;
+    use crate::infra::black_box;
 
     #[test]
     fn test_square() {

@@ -5,7 +5,7 @@ use std::iter::*;
 bitflags! {
     #[derive(Serialize, Deserialize)]
     #[serde(transparent)]
-    pub struct Switches: u16 {
+    struct Switches: u16 {
         const NONE = 0;
         const MATERIAL = 1 << 0;
         const MATERIAL_BALANCE = 1 << 1;

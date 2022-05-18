@@ -36,6 +36,7 @@ impl See {
         debug_assert!(!mv.is_null());
         debug_assert!(board.us().contains(mv.from().as_bb()));
         debug_assert!(board.them().contains(mv.capture_square().as_bb()));
+        debug_assert!(mv.is_capture());
 
         let bb = PreCalc::default();
         let mut gain: [i32; 40] = [0; 40];

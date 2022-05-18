@@ -173,8 +173,7 @@ mod tests {
         let mut white = Algo::new();
         white.set_timing_method(TimeControl::Depth(6)).set_eval(eval_w);
 
-        let mut eval_b = Eval::new();
-        eval_b.mobility = false;
+        let eval_b = Eval::new();
         let mut black = Algo::new();
         black.set_timing_method(TimeControl::Depth(6)).set_eval(eval_b);
 
