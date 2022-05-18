@@ -24,6 +24,7 @@ pub struct MoveOrderer {
     pub tt_bm: bool,
     pub mvv_lva: bool,
     pub see_cutoff: Score,
+    pub qsearch_see_cutoff: Score,
     pub order: Vec<MoveType>,
     pub qorder: Vec<MoveType>,
     pub qorder_evasions: Vec<MoveType>,
@@ -72,7 +73,8 @@ impl Default for MoveOrderer {
             prior_bm: false,
             tt_bm: true,
             mvv_lva: true,
-            see_cutoff: Score::from_cp(1),
+            see_cutoff: Score::from_cp(0),
+            qsearch_see_cutoff: Score::from_cp(1),
             thread: 0,
             count_pv: PlyStat::new("order pv"),
             count_bm: PlyStat::new("order bm"),
@@ -93,6 +95,7 @@ impl fmt::Display for MoveOrderer {
         writeln!(f, "tt bm            : {}", self.tt_bm)?;
         writeln!(f, "mvv_lva          : {}", self.mvv_lva)?;
         writeln!(f, "see_cutoff       : {}", self.see_cutoff)?;
+        writeln!(f, "qs_see_cutoff    : {}", self.qsearch_see_cutoff)?;
         writeln!(f, "order            : {}", MoveType::slice_to_string(&self.order))?;
         writeln!(f, "qorder           : {}", MoveType::slice_to_string(&self.qorder))?;
         writeln!(f, "thread           : {}", self.thread)?;
@@ -257,8 +260,13 @@ impl OrderedMoveList {
             if move_type == MoveType::GoodCaptureUpfrontSorted || move_type == MoveType::GoodCapture {
                 let mv = self.moves[self.index];
                 let see = algo.eval.see.eval_move_see(b, mv);
-                let see_cutoff = algo.move_orderer.see_cutoff.as_i16() as i32;
-                if see < see_cutoff || see == see_cutoff && self.qsearch && self.n.depth < -1 {
+                let see_cutoff = if self.qsearch {
+                    algo.move_orderer.qsearch_see_cutoff
+                } else {
+                    algo.move_orderer.see_cutoff
+                };
+                let see_cutoff = see_cutoff.as_i16() as i32;
+                 if see < see_cutoff || see == see_cutoff && self.qsearch && self.n.depth < -1 {
                     self.bad_captures.push(mv);
                     self.index += 1;
                     return self.next_move(b, algo);
