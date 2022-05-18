@@ -519,16 +519,15 @@ impl MaterialBalance {
                 continue;
             }
             let maybe_other_cp = self.derived_load(other.hash());
-            let other_cp;
-            if let Some(cp) = maybe_other_cp {
-                other_cp = cp as i32;
-            } else {
-                let weight: Weight = Piece::ALL_BAR_KING
-                    .iter()
-                    .map(|&p| (other.counts(Color::White, p) - other.counts(Color::Black, p)) * self.piece_weights[p])
-                    .sum();
-                other_cp = std::cmp::max(weight.s() as i32, weight.e() as i32) as i32;
-            }
+            let other_cp =  if let Some(cp) = maybe_other_cp {
+                    cp as i32
+                } else {
+                    let weight: Weight = Piece::ALL_BAR_KING
+                        .iter()
+                        .map(|&p| (other.counts(Color::White, p) - other.counts(Color::Black, p)) * self.piece_weights[p])
+                        .sum();
+                    std::cmp::max(weight.s() as i32, weight.e() as i32) as i32
+                };
 
             // losing material - ensure lesser entries consistent
             let mut new_cp = cp;

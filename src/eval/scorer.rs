@@ -170,7 +170,7 @@ impl ExplainScore {
 impl Display for ExplainScore {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fn fp(decimal: f32) -> Cell {
-            Cell::new(Formatting::decimal(2, decimal).to_string())
+            Cell::new(Formatting::decimal(2, decimal))
         }
 
         fn int(int: i32) -> Cell {

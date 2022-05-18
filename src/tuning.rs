@@ -82,7 +82,7 @@ impl Component for Tuning {
 
 impl fmt::Debug for Tuning {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.to_string())
+        write!(f, "{}", self)
     }
 }
 
@@ -163,7 +163,6 @@ impl Tuning {
     pub fn calculate_mean_square_error(&self, eng: &Engine) -> Result<f32> {
         let eval = &eng.algo.eval;
         let logistic_steepness_k = self.logistic_steepness_k; // so that closure does not capture engine/tuner
-        let mse: f32;
         // let mut scorer = ExplainScorer::new(String::new(), true);
         // let board = Catalog::starting_board();
         // model_and_accum(eng, &board, Phase(0), &mut scorer);
@@ -237,7 +236,8 @@ impl Tuning {
                 RegressionType::CrossEntropy => match es.outcome {
                     Outcome::WinWhite => -f32::ln(win_prob_estimate),
                     Outcome::WinBlack => -f32::ln(1.0 - win_prob_estimate),
-                    Outcome::DrawRule50 | _ => 0.0,
+                    Outcome::DrawRule50 => 0.0,
+                    _ => 0.0,
                 },
                 RegressionType::CumulativeLogisticLink => match es.outcome {
                     Outcome::WinWhite => -f32::ln(win_prob_estimate),
@@ -264,9 +264,9 @@ impl Tuning {
         let l = self.explains.len();
         info!("Calculating mse (new) on {} positions using single thread", l);
         let total_diff_squared: f32 = self.explains.iter().enumerate().map(closure_es).sum();
-        mse = total_diff_squared / l as f32;
+        let mse = total_diff_squared / l as f32;
         info!("Calculated (new) mse as {}", mse);
-        return Ok(mse);
+        Ok(mse)
         // } else {
         //     let total_diff_squared: f32 = match self.feature_matrix.feature_vectors.len() {
         //         0 => bail!("No (sparse) tuning positions loaded or remain after filtering"),

@@ -192,7 +192,7 @@ impl Score {
     pub fn win_probability_from_cp_and_k_fast(centipawns: f32, k: f32) -> f32 {
         #[inline]
         fn pow10(b: f32) -> f32 {
-            const LOG_OF_10: f32 = 2.302585125;  // ln(10.0)
+            const LOG_OF_10: f32 = 2.302_585_125;  // ln(10.0)
             fast_math::exp(b * LOG_OF_10)
         }
         1.0 / (1.0 + pow10(-centipawns / (k * 100.0)))

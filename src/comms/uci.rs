@@ -614,7 +614,7 @@ impl Uci {
                 for s in statements {
                     let s = s.trim();
                     if !s.is_empty() {
-                        if let Some((name, value)) = s.split_once("=") {
+                        if let Some((name, value)) = s.split_once('=') {
                             kvs.insert(name.trim().to_string(), value.trim().to_string());
                         } else {
                             // bail!("Expected key=value but '{}' found instead", s)

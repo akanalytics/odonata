@@ -48,14 +48,14 @@ impl Parse {
                       //  Wikipedia:
                       //    Castling is indicated by the special notations 0-0 (for kingside castling) and 0-0-0 (queenside castling).
                       //    While the FIDE standard [5] is to use the digit zero (0-0 and 0-0-0), PGN uses the uppercase letter O (O-O and O-O-O).[6]
-        let mut s = orig.replace("0", "O");
+        let mut s = orig.replace('0', "O");
 
         // Checkmate at the completion of moves is represented by the symbol "#" in standard FIDE notation and PGN.
         // The word mate is commonly used instead; occasionally a double dagger (‡)
         s = s.replace("mate", "#");
-        s = s.replace("‡", "#");
-        s = s.replace("?", "");
-        s = s.replace("!", "");
+        s = s.replace('‡', "#");
+        s = s.replace('?', "");
+        s = s.replace('!', "");
 
         // strip whitespace
         s = s.replace(" ", "");

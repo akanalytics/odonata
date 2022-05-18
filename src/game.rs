@@ -149,7 +149,7 @@ impl fmt::Display for Game {
         }
         let mut moves = self.starting_pos.board().to_san_variation(&self.moves, Some(&self.annotations));
         if !f.alternate() {
-            moves = moves.replace("\n", " ");
+            moves = moves.replace('\n', " ");
         }
         writeln!(f, "{} {}", moves, self.outcome.as_pgn())?;
         Ok(())

@@ -1,4 +1,9 @@
 #![cfg_attr(debug_assertions, allow(dead_code))]
+#![warn(clippy::all)]
+#![warn(clippy::correctness)]
+#![warn(clippy::style)]
+#![warn(clippy::complexity)]
+#![warn(clippy::perf)]
 
 extern crate test_log;
 
@@ -29,7 +34,6 @@ extern crate regex;
 extern crate log;
 
 // pub mod logger;
-pub mod prelude;
 pub mod bitboard;
 pub mod board;
 pub mod bound;
@@ -51,6 +55,7 @@ pub mod parse;
 pub mod perft;
 pub mod phaser;
 pub mod position;
+pub mod prelude;
 pub mod pvtable;
 pub mod repetition;
 pub mod search;

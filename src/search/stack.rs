@@ -21,8 +21,7 @@ where
 
 impl<T> Default for Stack<T>
 where
-    T: Default,
-    T: Clone,
+    T: Default + Clone,
 {
     fn default() -> Self {
         Stack {
@@ -38,7 +37,7 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for t in &self.items[0..self.size] {
-            t.fmt(f)?
+            t.fmt(f)?;
         }
         Ok(())
     }

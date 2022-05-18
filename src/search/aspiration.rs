@@ -81,10 +81,10 @@ impl Algo {
                 if new_score.is_mate() {
                     break self.run_alphabeta(b, n);
                 }
-                delta = match aspiration_count {
+                delta *= match aspiration_count {
                     1 => self.aspiration.multiplier1,
                     _ => self.aspiration.multiplier2,
-                } * delta;
+                };
 
 
                 if new_score <= alpha1 && alpha1 > n.alpha {

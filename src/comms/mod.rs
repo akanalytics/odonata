@@ -93,7 +93,7 @@ pub fn main() -> Result<(), String> {
         Bench::perft_cat(depth);
     } else if matches.occurrences_of("search") > 0 {
         let tc = matches.value_of("search").unwrap();
-        let tc = TimeControl::parse(tc).map_err(|e| e.to_string())?;
+        let tc = TimeControl::parse(tc).map_err(|e| e)?;
         let str = matches.value_of("threads");
         let threads = if let Some(str) = str {
             Some(str.parse::<u32>().map_err(|e| e.to_string())?)

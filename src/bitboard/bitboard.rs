@@ -782,7 +782,7 @@ impl Bitboard {
     }
 
     pub fn parse_squares(s: &str) -> Result<Bitboard> {
-        let s = s.replace(",", " ");
+        let s = s.replace(',', " ");
         let mut bb = Bitboard::empty();
         for sq_str in s.split_ascii_whitespace() {
             let sq = Self::parse_square(sq_str)?;

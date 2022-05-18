@@ -146,7 +146,7 @@ impl Algo {
                         eval = entry.score;
                     } else if entry.nt == NodeType::LowerCut && entry.score > eval  {
                         eval = entry.score;
-                    } if entry.nt == NodeType::UpperAll && entry.score < eval  {
+                    } else if entry.nt == NodeType::UpperAll && entry.score < eval  {
                         eval = entry.score;
                     }
                 // }

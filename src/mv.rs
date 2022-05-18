@@ -265,8 +265,8 @@ impl Move {
             return String::from("0000");
         }
         let mut res = String::new();
-        res.push_str(&self.from().uci());
-        res.push_str(&self.to().uci());
+        res.push_str(self.from().uci());
+        res.push_str(self.to().uci());
         if self.is_promo() {
             res.push(self.promo_piece().to_char(Some(Color::Black)));
         }
@@ -276,12 +276,11 @@ impl Move {
     pub fn parse_uci(mover: Piece, s: &str) -> Result<Move> {
         let from = Bitboard::parse_square(s.take_slice(0..2))?;
         let to = Bitboard::parse_square(s.take_slice(2..4))?;
-        let promo;
-        if let Some(ch) = s.take_char_at(4) {
-            promo = Piece::from_char(ch)?;
+        let promo = if let Some(ch) = s.take_char_at(4) {
+            Piece::from_char(ch)?
         } else {
-            promo = Piece::None;
-        }
+            Piece::None
+        };
         Ok(Move::new(from, to, Square::null(), mover, Piece::None, promo, CastlingRights::NONE))
     }
 }

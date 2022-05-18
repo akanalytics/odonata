@@ -28,7 +28,7 @@ pub struct Tree<N> {
 
 
 impl Tree<SearchTreeWeight> {
-    fn display_leaves(&self, f: &mut fmt::Formatter, leaves: &Vec<NodeIndex>, spaces: Vec<bool>) -> fmt::Result {
+    fn display_leaves(&self, f: &mut fmt::Formatter, leaves: &[NodeIndex], spaces: Vec<bool>) -> fmt::Result {
         for (i, &leaf) in leaves.iter().rev().enumerate() {
             let last = i >= leaves.len() - 1;
             let mut clone = spaces.clone();
@@ -89,7 +89,7 @@ impl Display for Tree<SearchTreeWeight> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let root = self.root();
         writeln!(f, "{}", self.graph.node_weight(root).unwrap())?;
-        let leaves = self.children(root).collect();
+        let leaves = self.children(root).collect_vec();
         self.display_leaves(f, &leaves, Vec::new())
     }
 }
@@ -202,7 +202,7 @@ impl SearchTree {
     }
 
     pub fn get_or_insert(&mut self, var: &Variation) -> &mut SearchTreeWeight {
-        if let Some(n) = self.find(&var) {
+        if let Some(n) = self.find(var) {
             return &mut self.tree[n];
         }
         if let Some(stem) = var.stem() {
@@ -217,7 +217,7 @@ impl SearchTree {
             }
         }
         let root = self.tree.root();
-        return &mut self.tree[root];
+        &mut self.tree[root]
     }
 }
 

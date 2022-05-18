@@ -392,8 +392,7 @@ impl Eval {
         let ph = b.phase(&self.phaser);
         let mut scorer = TotalScore::new(&self.feature_weights, ph);
         Calc::score(&mut scorer, b, self, &self.phaser);
-        let score1 = Score::from_cp(scorer.total().interpolate(ph) as i32 / self.quantum * self.quantum);
-        score1
+        Score::from_cp(scorer.total().interpolate(ph) as i32 / self.quantum * self.quantum)
     }
 
     /// the value of the capture or promotion (or both for promo capture)
@@ -517,7 +516,7 @@ mod tests {
             total_score = total_score + score;
             println!("{:>6.0} {}", score.as_i16(), pos);
         }
-        println!("{:>6.0} {}", total_score.as_i16(), "total");
+        println!("{:>6.0} {:<}", total_score.as_i16(), "total");
     }
 
     #[ignore]

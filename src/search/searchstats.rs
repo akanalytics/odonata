@@ -3,7 +3,7 @@ use crate::eval::score::Score;
 use crate::types::{MoveType, Ply, MAX_PLY};
 use crate::utils::Formatting;
 use crate::variation::Variation;
-use format_num::*;
+use format_num::format_num;
 use std::cmp;
 use std::fmt;
 use std::sync::atomic::{AtomicU64, Ordering};

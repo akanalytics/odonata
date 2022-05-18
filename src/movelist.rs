@@ -373,7 +373,7 @@ impl Board {
 
     pub fn parse_uci_movelist(&self, s: &str) -> Result<MoveList> {
         let mut moves = MoveList::new();
-        let s = s.replace(",", " ");
+        let s = s.replace(',', " ");
         let s = strip_move_numbers(&s);
         for mv in s.split_ascii_whitespace() {
             moves.push(self.parse_uci_move(mv)?);
@@ -384,7 +384,7 @@ impl Board {
     pub fn parse_uci_variation(&self, s: &str) -> Result<Variation> {
         let mut board = self.clone();
         let mut moves = Variation::new();
-        let s = s.replace(",", " ");
+        let s = s.replace(',', " ");
         let s = strip_move_numbers(&s);
         for mv in s.split_ascii_whitespace() {
             let mv = board.parse_uci_move(mv)?;
@@ -400,7 +400,7 @@ impl Board {
 
     pub fn parse_san_movelist(&self, s: &str) -> Result<MoveList> {
         let mut moves = MoveList::new();
-        let s = s.replace(",", " ");
+        let s = s.replace(',', " ");
         let s = strip_move_numbers(&s);
         for mv in s.split_ascii_whitespace() {
             moves.push(self.parse_san_move(mv)?);
@@ -411,7 +411,7 @@ impl Board {
     pub fn parse_san_variation(&self, s: &str) -> Result<Variation> {
         let mut board = self.clone();
         let mut moves = Variation::new();
-        let s = s.replace(",", " ");
+        let s = s.replace(',', " ");
         let s = strip_move_numbers(&s);
         for mv in s.split_ascii_whitespace() {
             let mv = board.parse_san_move(mv)?;
@@ -456,14 +456,14 @@ impl Board {
             } else if rank_pieces == 1 {
                 s.push(mv.from().rank_char());
             } else {
-                s += &mv.from().uci();
+                s += mv.from().uci();
             }
         }
 
         if mv.is_capture() {
             s.push('x');
         }
-        s += &mv.to().uci();
+        s += mv.to().uci();
         if mv.is_ep_capture() {
             s += " e.p.";
         }

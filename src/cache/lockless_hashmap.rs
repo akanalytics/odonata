@@ -67,7 +67,7 @@ impl SharedTable {
             self.vec = aligned_vec(capacity + buckets)
         } else {
             self.vec = Vec::with_capacity(capacity + buckets);
-            self.vec.resize_with(capacity + buckets, || Bucket::default());
+            self.vec.resize_with(capacity + buckets, Bucket::default);
         };
         debug!(
             "New transposition table with capacity {} mask {:x} len {:x}",

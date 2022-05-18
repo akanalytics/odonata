@@ -174,11 +174,12 @@ impl Calc {
                 (endgame_metric1, endgame_metric2)
             }
 
-            KingMajorsVsKing(_) | _ => {
+            KingMajorsVsKing(_) => {
                 let endgame_metric1 = 20 * Self::king_distance_to_side(b, loser);
                 let endgame_metric2 = 10 * Self::king_distance(b);
                 (endgame_metric1, endgame_metric2)
             }
+            _ => unreachable!(),
         }
     }
 
@@ -244,8 +245,7 @@ impl Calc {
 
         let d1 = if bad_d1 < gd_d1 { bad_d1 } else { bad_d1 };
         let d2 = if bad_d2 < gd_d2 { bad_d2 } else { bad_d1 };
-        let dist = std::cmp::min(d1, d2);
-        dist
+        std::cmp::min(d1, d2)
         // let gd_d1 = PreCalc::default().chebyshev_distance(gd_corner1, ksq);
         // let gd_d2 = PreCalc::default().chebyshev_distance(gd_corner2, ksq);
         // let gd_dist = if gd_d1 < gd_d2 {
@@ -1090,7 +1090,7 @@ impl Calc {
                         //     knight_outpost_rook_safe += 1;
                         // }
                     }
-                    asym_attacks = (our_attacks & them - ni).popcount();
+                    asym_attacks = ((our_attacks & them) - ni).popcount();
                     // knight_trapped += (piece_move_squares + asym_attacks == 0) as i32;
                 }
                 Piece::Bishop => {
@@ -1100,14 +1100,14 @@ impl Calc {
                     {
                         bishop_outposts += 1;
                     }
-                    asym_attacks = (our_attacks & them - bi).popcount();
+                    asym_attacks = ((our_attacks & them) - bi).popcount();
                     // bishop_trapped += (piece_move_squares + asym_attacks == 0) as i32;
                 }
                 Piece::Rook => {
                     // connected_rooks |= (our_raw_attacks & b.rooks() & us).any();
                     enemy_pawns_on_rook_rank +=
                         (sq.rank() & b.pawns() & them & Bitboard::home_half(opponent)).popcount() as i32;
-                    asym_attacks = (our_attacks & them - r).popcount();
+                    asym_attacks = ((our_attacks & them) - r).popcount();
                     // rook_trapped += (piece_move_squares + asym_attacks == 0) as i32;
                 }
                 Piece::Queen => {

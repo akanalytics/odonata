@@ -1,9 +1,7 @@
 use crate::board::Board;
 use crate::types::{Color, ScoreWdl};
+use anyhow::{anyhow, Result};
 use std::fmt;
-use anyhow::{Result, anyhow};
-
-
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Outcome {
@@ -105,11 +103,10 @@ impl Outcome {
             "1-0" => Ok(Outcome::WinWhite),
             "0-1" => Ok(Outcome::WinBlack),
             "*" => Ok(Outcome::InProgress),
-            _ => Err(anyhow!("Unknown outcome token '{}'", s))
+            _ => Err(anyhow!("Unknown outcome token '{}'", s)),
         }
     }
 }
-
 
 // does not detect repetition counts
 impl Board {

@@ -30,11 +30,10 @@ impl<'a> Default for Analysis<'a> {
 
 impl<'a> Analysis<'a> {
     pub fn of(board: &'a Board) -> Analysis {
-        let a = Self {
+        Self {
             board,
             ..Default::default()
-        };
-        a
+        }
     }
 
     #[inline]

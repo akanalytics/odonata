@@ -44,7 +44,7 @@ impl Variation {
 
     /// variation without last move or None if empty
     pub fn stem(&self) -> Option<Variation> {
-        if self.moves.len() > 0 {
+        if !self.moves.is_empty() {
             let moves = self.moves[0..self.moves.len()-1].to_owned();
             Some( Variation { moves } )
         } else {
