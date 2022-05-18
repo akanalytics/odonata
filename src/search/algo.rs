@@ -22,7 +22,6 @@ use crate::search::move_time_estimator::MoveTimeEstimator;
 use crate::search::nmp::NullMovePruning;
 use crate::search::node::Node;
 use crate::search::pvs::Pvs;
-use crate::search::qsearch::QSearch;
 use crate::search::razor::Razor;
 use crate::search::restrictions::Restrictions;
 use crate::search::search_results::SearchResults;
@@ -50,10 +49,10 @@ pub struct Algo {
     pub minmax: bool,
     pub show_refutations: bool,
     pub analyse_mode: bool, // tries to find full PV etc
+    pub qsearch_disabled: bool,
 
     pub ids: IterativeDeepening,
     pub eval: Eval,
-    pub qsearch: QSearch,
     pub nmp: NullMovePruning,
     pub futility: Futility,
 
@@ -136,7 +135,6 @@ impl Component for Algo {
 
         self.ids.set_state(s);
         self.eval.set_state(s);
-        self.qsearch.set_state(s);
         self.nmp.set_state(s);
         self.futility.set_state(s);
 
@@ -194,7 +192,6 @@ impl fmt::Debug for Algo {
             .field("depth", &self.max_depth)
             .field("ids", &self.ids)
             .field("eval", &self.eval)
-            .field("qsearch", &self.qsearch)
             .field("nmp", &self.nmp)
             .field("futility", &self.futility)
             .field("pvs", &self.pvs)
@@ -229,6 +226,7 @@ impl fmt::Display for Algo {
         // writeln!(f, "bm               : {}", self.results.bm())?;
         writeln!(f, "score            : {}", self.score())?;
         writeln!(f, "analyse mode     : {}", self.analyse_mode)?;
+        writeln!(f, "qsearch          : {}", self.qsearch_disabled)?;
         writeln!(f, "depth            : {}", self.max_depth)?;
         writeln!(f, "results          : {}", self.results_as_position())?;
         writeln!(f, "minmax           : {}", self.minmax)?;
@@ -241,7 +239,6 @@ impl fmt::Display for Algo {
         writeln!(f, ".\n.\n[pvs]\n{}", self.pvs)?;
         writeln!(f, ".\n.\n[extensions]\n{}", self.ext)?;
         writeln!(f, ".\n.\n[reductions]\n{}", self.lmr)?;
-        writeln!(f, ".\n.\n[qsearch]\n{}", self.qsearch)?;
         writeln!(f, ".\n.\n[eval]\n{}", self.eval)?;
         writeln!(f, ".\n.\n[repetition]\n{}", self.repetition)?;
         writeln!(f, ".\n.\n[tt]\n{}", self.tt)?;
@@ -407,7 +404,7 @@ mod tests {
         let eval = Eval::new().set_position(false);
         let mut algo = Algo::new();
         algo.set_position(pos);
-        algo.qsearch.enabled = false;
+        algo.qsearch_disabled = true;
         algo.ids.enabled = false;
         algo.futility.alpha_enabled = false;
         algo.futility.beta_enabled = false;

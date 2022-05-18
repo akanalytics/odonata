@@ -249,55 +249,7 @@ impl Display for ExplainScore {
     }
 }
 
-// pub enum ReportLine {
-//     Header,
-//     Body,
-// }
 
-// pub fn into_feature_vector(self, o: Outcome) -> FeatureVector {
-//     let mut fv = FeatureVector::default();
-//     fv.phase = self.phase();
-//     fv.outcome = o;
-//     fv.fen = self.fen;
-//     let mut index = 0;
-//     for (i, _sw) in Switches::all_scoring().iter().enumerate() {
-//         let vec = vec![&self.mat, &self.mob, &self.paw, &self.saf, &self.con, &self.tem, &self.pos][i];
-//         for (attr, w, b, wt) in vec {
-//             let (_attr, w, b, _wt) = (attr, *w, *b, *wt);
-//             // sparse!
-//             if (w - b) != 0 {
-//                 fv.values.push(Sparse::new((w - b).try_into().unwrap(), index));
-//             }
-//             index += 1;
-//         }
-//     }
-//     fv
-// }
-// // fv.push(attr.replace(" ", "_")),
-// pub fn feature_names(&self) -> Vec<String> {
-//     let mut v = Vec::new();
-//     for (i, _sw) in Switches::all_scoring().iter().enumerate() {
-//         let vec = vec![&self.mat, &self.mob, &self.paw, &self.saf, &self.con, &self.tem, &self.pos][i];
-//         for (attr, w, b, wt) in vec {
-//             let (attr, _w, _b, _wt) = (attr, *w, *b, *wt);
-//             v.push(attr.replace(" ", "_"));
-//         }
-//     }
-//     v
-// }
-
-// pub fn weights_vector(&self) -> WeightsVector {
-//     let mut weights_vec = WeightsVector::default();
-//     for (i, _sw) in Switches::all_scoring().iter().enumerate() {
-//         let vec = vec![&self.mat, &self.mob, &self.paw, &self.saf, &self.con, &self.tem, &self.pos][i];
-//         for (attr, w, b, wt) in vec {
-//             let (attr, _w, _b, wt) = (attr, *w, *b, *wt);
-//             weights_vec.weights.push(wt);
-//             weights_vec.names.push(attr.to_owned());
-//         }
-//     }
-//     weights_vec
-// }
 
 #[cfg(test)]
 mod tests {

@@ -14,7 +14,6 @@ pub mod move_time_estimator;
 pub mod nmp;
 pub mod node;
 pub mod pvs;
-pub mod qsearch;
 pub mod razor;
 pub mod restrictions;
 pub mod search_explainer;

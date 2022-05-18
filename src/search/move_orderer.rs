@@ -72,7 +72,7 @@ impl Default for MoveOrderer {
             prior_bm: false,
             tt_bm: true,
             mvv_lva: true,
-            see_cutoff: Score::zero(),
+            see_cutoff: Score::from_cp(1),
             thread: 0,
             count_pv: PlyStat::new("order pv"),
             count_bm: PlyStat::new("order bm"),
@@ -257,12 +257,7 @@ impl OrderedMoveList {
             if move_type == MoveType::GoodCaptureUpfrontSorted || move_type == MoveType::GoodCapture {
                 let mv = self.moves[self.index];
                 let see = algo.eval.see.eval_move_see(b, mv);
-                let see_cutoff = if self.qsearch {
-                    algo.qsearch.see_cutoff
-                } else {
-                    algo.move_orderer.see_cutoff
-                };
-                let see_cutoff = see_cutoff.as_i16() as i32;
+                let see_cutoff = algo.move_orderer.see_cutoff.as_i16() as i32;
                 if see < see_cutoff || see == see_cutoff && self.qsearch && self.n.depth < -1 {
                     self.bad_captures.push(mv);
                     self.index += 1;

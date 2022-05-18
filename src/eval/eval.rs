@@ -274,7 +274,6 @@ pub struct Eval {
     pub min_depth_mob: u8,
 
     pub pst: Pst,
-    // pub pmvt: Pmvt,
     pub phaser: Phaser,
     pub see: See,
     pub mb: MaterialBalance,
@@ -292,7 +291,6 @@ impl Default for Eval {
             pst: Pst::default(),
             feature_weights: Vec::new(),
             discrete: HashMap::new(),
-            // pmvt: Pmvt::default(),
             phaser: Phaser::default(),
             see: See::default(),
             mobility: true,
@@ -355,43 +353,7 @@ impl fmt::Display for Eval {
         writeln!(f, "phasing          : {}", self.phasing)?;
         writeln!(f, "mob.phase.disable: {}", self.mobility_phase_disable)?;
         writeln!(f, "mob.min.depth    : {}", self.min_depth_mob)?;
-        // writeln!(f, "undefended.piece : {}", self.undefended_piece)?;
-        // writeln!(f, "undefended.sq    : {}", self.undefended_sq)?;
-        // writeln!(f, "trapped.piece    : {}", self.trapped_piece)?;
-        // writeln!(f, "part.trap.piece  : {}", self.partially_trapped_piece)?;
-        // // writeln!(f, "defended.non.pawn: {}", self.defended_non_pawn)?;
-        // writeln!(f, "castling.rights  : {}", self.castling_rights)?;
-        // // writeln!(f, "pawn.shield      : {}", self.pawn_shield)?;
-        // writeln!(f, "pawn.doubled     : {}", self.pawn_doubled)?;
-        // writeln!(f, "pawn.passed      : {}", self.pawn_passed)?;
-        // writeln!(f, "pawn.passed.r5   : {}", self.pawn_passed_r5)?;
-        // writeln!(f, "pawn.passed.r6   : {}", self.pawn_passed_r6)?;
-        // writeln!(f, "pawn.passed.r7   : {}", self.pawn_passed_r7)?;
-        // writeln!(f, "pawn.isolated    : {}", self.pawn_isolated)?;
-
-        // writeln!(f, "bishop pair      : {}", self.bishop_pair)?;
-        // writeln!(f, "rook pair        : {}", self.rook_pair)?;
-        // writeln!(f, "fianchetto       : {}", self.fianchetto)?;
-        // writeln!(f, "bishop outposts  : {}", self.bishop_outposts)?;
-        // writeln!(f, "knight outposts  : {}", self.knight_outposts)?;
-        // writeln!(f, "knight forks     : {}", self.knight_forks)?;
-        // writeln!(f, "doubled.rook     : {}", self.doubled_rooks)?;
-        // writeln!(f, "doubled.rook.open: {}", self.doubled_rooks_open_file)?;
-
-        // writeln!(f, "rook.open.file   : {}", self.rook_open_file)?;
-
-        // writeln!(f, "queen.open.file  : {}", self.queen_open_file)?;
-        // writeln!(f, "pawn.nearby      : {}", self.pawn_nearby_shield)?;
-        // writeln!(f, "pawn.adjacent    : {}", self.pawn_adjacent_shield)?;
-        // writeln!(f, "tropism.d1       : {}", self.tropism_d1)?;
-        // writeln!(f, "tropism.d2       : {}", self.tropism_d2)?;
-        // writeln!(f, "tropism.d3       : {}", self.tropism_d3)?;
-        // writeln!(f, "contempt penalty : {}", self.contempt_penalty)?;
-        // writeln!(f, "tempo bonus      : {}", self.tempo_bonus)?;
         writeln!(f, "eval stats\n{}", EVAL_COUNTS)?;
-        // writeln!(f, "cache\n{}", self.cache)?;
-        // writeln!(f, "qcache\n{}", self.qcache)?;
-
         Ok(())
     }
 }
@@ -478,11 +440,6 @@ impl Eval {
         let contempt = self.weight(&Attr::ContemptPenalty.into());
         let contempt = self.contempt as i32 * board.color_us().chooser_wb(contempt, -contempt);
         Score::from_f32(contempt.interpolate(board.phase(&self.phaser)) as f32)
-
-        // FIXME! v33
-        // let signum = 1 - (node.ply % 2) * 2; // ply=0 => 1  ply=1=> -1
-        // let contempt = signum * self.contempt + board.signum();
-        // return Score::from_cp(contempt);
     }
 
     pub fn w_evaluate(&self, board: &Board, node: &Node) -> Score {
@@ -508,11 +465,8 @@ impl Eval {
 
 
     pub fn w_eval_explain(&self, b: &Board, _csv: bool) -> ExplainScore {
-        // let mut model = Model::from_board(b, b.phase(&self.phaser), Switches::ALL_SCORING);
-        // model.csv = csv;
         let mut scorer = ExplainScore::new(b.phase(&self.phaser), b.to_fen());
         Calc::score(&mut scorer, b, self, &self.phaser);
-        // self.predict(&model, &mut scorer);
         scorer
     }
 
@@ -555,11 +509,6 @@ impl Board {
         self.color_us().chooser_wb(1, -1)
     }
 
-    #[inline]
-    pub fn eval_qsearch(&self, eval: &mut Eval, nd: &Node) -> Score {
-        QUIESCENCE.increment();
-        self.signum() * eval.w_eval_qsearch(self, nd)
-    }
 
     #[inline]
     pub fn eval_draw(&self, eval: &mut Eval, nd: &Node) -> Score {
@@ -599,11 +548,10 @@ impl Board {
 mod tests {
     use super::*;
     use crate::catalog::Catalog;
-    use crate::infra::profiler::Profiler;
+    use crate::infra::profiler::*;
     use crate::search::engine::Engine;
     use crate::test_log::test;
     use anyhow::Result;
-    use iai::black_box;
     use toml;
 
     #[test]

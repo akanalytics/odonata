@@ -579,16 +579,6 @@ multiplier1 = 4.0
 multiplier2 = 4.0
 
 
-[qsearch]
-enabled = true
-only_on_capture = false
-promos = false
-ignore_see_fails = true
-see_cutoff = 1
-max_ply = 10
-coarse_delta_prune = 1000
-switches = 1279
-
 [nmp]
 enabled = true
 recursive = true
@@ -736,7 +726,7 @@ prior_pv = true
 prior_bm = false
 tt_bm = true
 mvv_lva = true
-see_cutoff = 0
+see_cutoff = 1
 order = ["Start", "Hash", "Initialize", "GoodCaptureUpfrontSorted", "Killer", "Promo", "Quiet", "BadCapture", "End"]
 qorder = ["Start", "Initialize", "GoodCapture", "End"]
 qorder_evasions = ["Start", "Initialize", "Evasion", "End"]

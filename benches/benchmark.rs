@@ -690,15 +690,6 @@ fn benchmark_eval(c: &mut Criterion) {
     //         t.elapsed() / positions.len() as u32
     //     })
     // });
-    group.bench_function("qsearch", |b| {
-        b.iter_custom(|n| {
-            let t = Instant::now();
-            positions.iter().cycle_n(n).for_each(|p| {
-                black_box(p.board().eval_qsearch(black_box(ef), &Node::root(0)));
-            });
-            t.elapsed() / positions.len() as u32
-        })
-    });
     group.bench_function("all_less_pos", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();

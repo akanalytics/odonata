@@ -1,6 +1,6 @@
 [package]
 name = "odonata"
-version = "0.5.41"
+version = "0.5.42"
 license = "GPL-3.0+"
 homepage = "https://github.com/akanalytics/odonata"
 authors = [
@@ -66,7 +66,6 @@ comfy-table = "5.0.1"
 
 [dev-dependencies]
 criterion = "0.3"
-iai = "0.1"
 # criterion-linux-perf = "0.1" # https://crates.io/crates/criterion-linux-perf
 perf-event = "0.4.7"
 # firestorm = { version="0.5", features=["enable_system_time"] }
@@ -79,10 +78,6 @@ chrono = { version = "0.4", optional = true, default-features = false, features 
 ] }
 include_dir = "0.6"
 
-
-[[bench]]
-name = "iai"
-harness = false
 
 [[bench]]
 name = "benchmark"

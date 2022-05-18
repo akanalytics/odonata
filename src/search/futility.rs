@@ -1,7 +1,6 @@
 use crate::board::Board;
 use crate::eval::eval::Eval;
 use crate::eval::score::Score;
-use crate::eval::switches::Switches;
 use crate::eval::weight::Weight;
 use crate::infra::component::Component;
 use crate::mv::Move;
@@ -32,7 +31,6 @@ pub struct Futility {
     margin1: i32,
     margin2: i32,
     margin3: i32,
-    eval_switches: Switches,
     move_types_forbidden: MoveTypes,
 }
 
@@ -61,7 +59,6 @@ impl Default for Futility {
             margin1: 100,
             margin2: 250,
             margin3: 1500,
-            eval_switches: Switches::ALL_SCORING,
             move_types_forbidden: MoveTypes::EMPTY, // MoveType::Hash | MoveType::Killer, // HK
         }
     }
@@ -113,7 +110,7 @@ impl Algo {
             n.alpha = standing_pat;
         }
 
-        if !self.qsearch.enabled {
+        if self.qsearch_disabled {
             self.counts.inc(n, Event::NodeLeafQuietEval);
             return Some(standing_pat);
         }
