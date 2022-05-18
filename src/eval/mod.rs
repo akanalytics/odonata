@@ -9,6 +9,5 @@ mod pst;
 pub mod recognizer;
 pub mod score;
 pub mod see;
-mod switches;
 pub mod weight;
 mod weight3;
