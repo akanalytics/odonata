@@ -102,7 +102,10 @@ impl EndGame {
             Kkr | Kkq | Kkbn | KkBb | Kkjj | Kkjm => WhiteLoss,
 
             // Guesses
-            KPkp | KMkp | KPkm => Draw,
+            KPkp => Draw,
+
+            KMkp => WhiteLossOrDraw,
+            KPkm  => WhiteWinOrDraw,
 
             KQkp => WhiteWin,
             KPkq => WhiteLoss,
@@ -124,12 +127,12 @@ impl EndGame {
             KRkQ => UnknownOutcome,
             KQkQ => UnknownOutcome,
 
-            KPPk => UnknownOutcome,
-            Kkpp => UnknownOutcome,
-            KNPk => UnknownOutcome,
-            Kknp => UnknownOutcome,
-            KBPk => UnknownOutcome,
-            Kkbp => UnknownOutcome,
+            KPPk => WhiteWin,
+            Kkpp => WhiteLoss,
+            KNPk => WhiteWinOrDraw,
+            Kknp => WhiteLossOrDraw,
+            KBPk => WhiteWinOrDraw,
+            Kkbp => WhiteLossOrDraw,
         }
     }
 
@@ -278,31 +281,29 @@ impl EndGame {
                     return EndGame::KPkm;
                 }
             }
+            // wb + wn + bb + bn == 0
+            if wq == 1 && bp == 1 {
+                return EndGame::KQkp;
+            }
+            if bq == 1 && wp == 1 {
+                return EndGame::KPkq;
+            }
+            if wr == 1 && bp == 1 {
+                return EndGame::KRkp;
+            }
+            if br == 1 && wp == 1 {
+                return EndGame::KPkr;
+            }
         }
-        assert!(wp+bp+wq+bq+wr+br + 1 > 0);
-        //     // wb + wn + bb + bn == 0
-        //     if wq == 1 && bp == 1 {
-        //         return EndGame::KQkp;
-        //     }
-        //     if bq == 1 && wp == 1 {
-        //         return EndGame::KPkq;
-        //     }
-        //     if wr == 1 && bp == 1 {
-        //         return EndGame::KRkp;
-        //     }
-        //     if br == 1 && wp == 1 {
-        //         return EndGame::KPkr;
-        //     }
-        // }
-        // if n_pawns == 2 {
-        //     if wp == 2 {
-        //         return EndGame::KPPk;
-        //     }
-        //     if bp == 2 {
-        //         return EndGame::Kkpp;
-        //     }
-        //     return EndGame::KPkp;
-        // }
+        if n_pawns == 2 {
+            if wp == 2 {
+                return EndGame::KPPk;
+            }
+            if bp == 2 {
+                return EndGame::Kkpp;
+            }
+            return EndGame::KPkp;
+        }
         Self::Unknown
     }
 }

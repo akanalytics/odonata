@@ -126,17 +126,18 @@ impl Calc {
 
         if let Some(winner) = endgame.try_winner(b) {
             // c = losing colour - the winning side doesnt get a score (just the negative of the loser)
-            let (metric1, metric2) = Self::end_game_metrics(winner, b, endgame);
-            // if winner == Color::White {
-            scorer.accum(winner, Attr::WinMetric1.as_feature(), -metric1);
-            scorer.accum(winner, Attr::WinMetric2.as_feature(), -metric2);
-            scorer.accum(winner, Attr::WinBonus.as_feature(), 1);
-            // } else {
-            //     scorer.accum(FeatureIndex::WinMetric1, 0, -metric1, eval.win_metric1);
-            //     scorer.accum(FeatureIndex::WinMetric2, 0, -metric2, eval.win_metric2);
-            //     scorer.accum(FeatureIndex::WinBonus, 0, 1, eval.win_bonus);
-            // }
-            return true;
+            if let Some((metric1, metric2)) = Self::end_game_metrics(winner, b, endgame) {
+                // if winner == Color::White {
+                scorer.accum(winner, Attr::WinMetric1.as_feature(), -metric1);
+                scorer.accum(winner, Attr::WinMetric2.as_feature(), -metric2);
+                scorer.accum(winner, Attr::WinBonus.as_feature(), 1);
+                // } else {
+                //     scorer.accum(FeatureIndex::WinMetric1, 0, -metric1, eval.win_metric1);
+                //     scorer.accum(FeatureIndex::WinMetric2, 0, -metric2, eval.win_metric2);
+                //     scorer.accum(FeatureIndex::WinBonus, 0, 1, eval.win_bonus);
+                // }
+                return true;
+            }
         }
         // else {
         //     // scorer.accumulate(Attr::WinMetric1.as_feature(), 0, 0);
@@ -146,7 +147,7 @@ impl Calc {
         false
     }
 
-    fn end_game_metrics(winner: Color, b: &Board, eg: EndGame) -> (i32, i32) {
+    fn end_game_metrics(winner: Color, b: &Board, eg: EndGame) -> Option<(i32, i32)> {
         use crate::eval::endgame::EndGame::*;
         let loser = winner.opposite();
         match eg {
@@ -165,21 +166,21 @@ impl Calc {
                     + 2 * bishop_distance
                     + 3 * knight_distance
                     + 2 * Self::king_distance_to_side(b, loser);
-                (endgame_metric1, endgame_metric2)
+                Some( (endgame_metric1, endgame_metric2) )
             }
 
-            KBbk |KkBb => {
+            KBbk | KkBb => {
                 let endgame_metric1 = 20 * Self::king_distance_to_any_corner(b, loser);
                 let endgame_metric2 = 10 * Self::king_distance(b);
-                (endgame_metric1, endgame_metric2)
+                Some((endgame_metric1, endgame_metric2))
             }
 
             KRk | Kkr | KQk | Kkq => {
                 let endgame_metric1 = 20 * Self::king_distance_to_side(b, loser);
                 let endgame_metric2 = 10 * Self::king_distance(b);
-                (endgame_metric1, endgame_metric2)
+                Some((endgame_metric1, endgame_metric2))
             }
-            _ => unreachable!(),
+            _ => Option::None,
         }
     }
 
@@ -1079,9 +1080,10 @@ impl Calc {
                             knight_forks += 1;
                         }
                     }
-                    if bb.pawn_attack_span(c, sq).disjoint(their_p) && sq.rank_index_as_white(c) >= 4
-                    && sq.is_in(Bitboard::FILE_C | Bitboard::FILE_D | Bitboard::FILE_E | Bitboard::FILE_F)
-    {
+                    if bb.pawn_attack_span(c, sq).disjoint(their_p)
+                        && sq.rank_index_as_white(c) >= 4
+                        && sq.is_in(Bitboard::FILE_C | Bitboard::FILE_D | Bitboard::FILE_E | Bitboard::FILE_F)
+                    {
                         // knight_outpost += 1;
                         if sq.is_in(our_pa) {
                             knight_outpost_pawn_defended += 1;
@@ -1194,7 +1196,6 @@ impl Calc {
         s.accum(c, Attr::EnemyPawnsOnRookRank.as_feature(), enemy_pawns_on_rook_rank);
         s.accum(c, Attr::RookTrapped.as_feature(), rook_trapped);
 
-
         //
         // General
         //
@@ -1218,8 +1219,8 @@ mod tests {
     use crate::eval::eval::Eval;
     use crate::eval::scorer::{ExplainScore, TotalScore};
     use crate::eval::weight::Weight;
-    use crate::infra::profiler::*;
     use crate::infra::black_box;
+    use crate::infra::profiler::*;
     use crate::phaser::Phaser;
     use crate::test_log::test;
     use crate::{BoardBuf, Position};
