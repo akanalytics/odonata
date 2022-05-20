@@ -124,7 +124,7 @@ impl Calc {
     fn endgame(scorer: &mut impl ScorerBase, b: &Board) -> bool {
         let endgame = EndGame::from_board(b);
 
-        if let Some(winner) = endgame.try_winner() {
+        if let Some(winner) = endgame.try_winner(b) {
             // c = losing colour - the winning side doesnt get a score (just the negative of the loser)
             let (metric1, metric2) = Self::end_game_metrics(winner, b, endgame);
             // if winner == Color::White {
@@ -150,7 +150,7 @@ impl Calc {
         use crate::eval::endgame::EndGame::*;
         let loser = winner.opposite();
         match eg {
-            BishopKnightVsKing(_) => {
+            KBNk | Kkbn => {
                 use std::cmp::max;
                 let ksq = (b.kings() & b.color(loser)).square();
                 let wksq = (b.kings() & b.color(winner)).square();
@@ -168,13 +168,13 @@ impl Calc {
                 (endgame_metric1, endgame_metric2)
             }
 
-            TwoBishopsOppositeColorSquares(_) => {
+            KBbk |KkBb => {
                 let endgame_metric1 = 20 * Self::king_distance_to_any_corner(b, loser);
                 let endgame_metric2 = 10 * Self::king_distance(b);
                 (endgame_metric1, endgame_metric2)
             }
 
-            KingMajorsVsKing(_) => {
+            KRk | Kkr | KQk | Kkq => {
                 let endgame_metric1 = 20 * Self::king_distance_to_side(b, loser);
                 let endgame_metric2 = 10 * Self::king_distance(b);
                 (endgame_metric1, endgame_metric2)

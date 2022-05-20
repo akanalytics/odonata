@@ -1,4 +1,4 @@
-use super::endgame::EndGame;
+use super::endgame::{EndGame, LikelyOutcome};
 use super::score::Score;
 use crate::board::Board;
 use crate::bound::NodeType;
@@ -7,6 +7,7 @@ use crate::mv::Move;
 use crate::search::algo::Algo;
 use crate::search::node::{Event, Node};
 use crate::types::{MoveType, Ply};
+use crate::Color;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -143,49 +144,52 @@ impl Algo {
         }
         let endgame = EndGame::from_board(b);
 
-        if endgame.is_immediately_declared_draw() {
-            let draw = b.eval_draw(&mut self.eval, n); // will return a draw score
-            self.counts.inc(n, Event::RecogImmediateDraw);
-            self.stats.inc_leaf_nodes(n);
-            return (Some(draw), None);
-        }
-
         // if b.draw_outcome().is_some()  {
         //     let draw = b.eval_draw(&mut self.eval, &n); // will return a draw score
         //     return (Some(draw), None)
         // }
 
-        if let Some(c) = endgame.cannot_win() {
-            self.counts.inc(n, Event::RecogMaybeWin);
-            let draw = b.eval_draw(&mut self.eval, n); // will return a draw score
-            if b.color_us() == c {
-                if draw <= n.alpha {
-                    return (Some(draw), None);
-                }
-                n.beta = draw;
-            }
-            if b.color_them() == c {
-                if draw >= n.beta {
-                    return (Some(draw), None);
-                }
-                n.alpha = draw;
-            }
-        }
 
         // its a helpmate or draw like KNkn, so search just a tiny depth then let eval do its job
-        if endgame.is_likely_draw() {
-            self.counts.inc(n, Event::RecogHelpmateOrDraw);
-            if n.depth > self.recognizer.terminal_depth && !n.is_qs() {
-                n.depth = self.recognizer.terminal_depth;
+        match endgame.likely_outcome(b) {
+            LikelyOutcome::DrawImmediate => {
+                let draw = b.eval_draw(&mut self.eval, n); // will return a draw score
+                self.counts.inc(n, Event::RecogImmediateDraw);
+                self.stats.inc_leaf_nodes(n);
+                return (Some(draw), None);
             }
+
+            LikelyOutcome::Draw | LikelyOutcome::WhiteWin | LikelyOutcome::WhiteLoss => {
+                self.counts.inc(n, Event::RecogHelpmateOrDraw);
+                if n.depth > self.recognizer.terminal_depth && !n.is_qs() {
+                    n.depth = self.recognizer.terminal_depth;
+                }
+            }
+            lo @ (LikelyOutcome::WhiteWinOrDraw | LikelyOutcome::WhiteLossOrDraw) => {
+                self.counts.inc(n, Event::RecogMaybeWin);
+                let draw = b.eval_draw(&mut self.eval, n); // will return a draw score
+                if b.color_us() == Color::White && lo == LikelyOutcome::WhiteLossOrDraw
+                    || b.color_us() == Color::Black && lo == LikelyOutcome::WhiteWinOrDraw
+                {
+                    if draw <= n.alpha {
+                        // if we are the side that cannot win, fail low, score at most a draw
+                        return (Some(draw), None);
+                    }
+                    n.beta = draw;
+                }
+                if b.color_us() == Color::White && lo == LikelyOutcome::WhiteWinOrDraw
+                    || b.color_us() == Color::Black && lo == LikelyOutcome::WhiteLossOrDraw
+                {
+                    // if they cannot win, score is at least a draw.
+                    if draw >= n.beta {
+                        return (Some(draw), None);
+                    }
+                    n.alpha = draw;
+                }
+            }
+            LikelyOutcome::UnknownOutcome => {}
         }
 
-        if let Some(_color) = endgame.try_winner() {
-            // already counted as cannot wins
-            if n.depth > self.recognizer.terminal_depth && !n.is_qs() {
-                n.depth = self.recognizer.terminal_depth;
-            }
-        }
         (None, None)
     }
 }

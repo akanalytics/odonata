@@ -18,7 +18,11 @@ impl fmt::Display for Material {
         for &c in &Color::ALL {
             // write!(f, "{}: ", c)?;
             for &p in Piece::ALL_BAR_NONE.iter().rev() {
-                write!(f, "{}", p.to_char(Some(c)).to_string().repeat(self.counts(c, p) as usize))?;
+                write!(
+                    f,
+                    "{}",
+                    p.to_char(Some(c)).to_string().repeat(self.counts(c, p) as usize)
+                )?;
             }
         }
         Ok(())
@@ -255,7 +259,8 @@ impl Material {
     }
 
     // 236196
-    pub const HASH_VALUES: usize = (((((((((((2 + 1) * 3 + 2) * 3 + 2) * 3 + 2) * 3 + 2) * 3) + 2) * 3) + 2) * 9 + 8) * 9) + 8 + 1;
+    pub const HASH_VALUES: usize =
+        (((((((((((2 + 1) * 3 + 2) * 3 + 2) * 3 + 2) * 3 + 2) * 3) + 2) * 3) + 2) * 9 + 8) * 9) + 8 + 1;
 
     // hash of no material = 0
     pub fn hash(&self) -> usize {

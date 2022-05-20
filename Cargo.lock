@@ -898,7 +898,7 @@ dependencies = [
 
 [[package]]
 name = "odonata"
-version = "0.5.44"
+version = "0.5.45"
 dependencies = [
  "anyhow",
  "arrayvec",
