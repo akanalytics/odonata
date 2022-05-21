@@ -1,6 +1,12 @@
-use crate::board::Board;
+
+use crate::trace::stat::{Stat, SliceStat};
+use crate::{board::Board};
 use crate::types::Color;
 use crate::Bitboard;
+use strum_macros::{Display, EnumCount};
+use strum_macros::EnumIter;
+use strum_macros::IntoStaticStr;
+use strum::IntoEnumIterator;
 
 /// Recognize several known end games, and determine
 /// (a) what the action should be in search (stop / continue / reduce depth)
@@ -23,7 +29,7 @@ pub enum LikelyOutcome {
     WhiteLoss,
 }
 
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug, IntoStaticStr, EnumCount, EnumIter, Display)]
 pub enum EndGame {
     Unknown, // for when its too costly to work out who wins
     // 1v1
@@ -81,6 +87,19 @@ pub enum EndGame {
     KJJk, // win
     Kkjj, // win
 }
+
+use static_init::dynamic;
+#[dynamic]
+static ENDGAME_COUNTS: Vec<Stat> =  {
+    let mut vec = vec![];
+    for eg in EndGame::iter() {
+        let s: &'static str = eg.into();
+        vec.push(Stat::new(s));
+    }
+    vec
+};
+
+
 
 impl Default for EndGame {
     fn default() -> Self {
@@ -178,7 +197,17 @@ impl EndGame {
         }
     }
 
+    pub fn counts_to_string() -> String {
+        format!("{}", SliceStat(&ENDGAME_COUNTS[..]))
+    }
+
     pub fn from_board(b: &Board) -> Self {
+        let eg = Self::private_ctor(b);
+        ENDGAME_COUNTS[eg as usize].increment();
+        eg
+    }
+
+    fn private_ctor(b: &Board) -> Self {
         let n_pieces = b.occupied().popcount();
 
         if n_pieces >= 5 {
@@ -385,7 +414,7 @@ impl EndGame {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::board::boardbuf::*;
+    use crate::{board::boardbuf::*};
     use test_log::test;
 
     #[test]
@@ -429,7 +458,7 @@ mod tests {
         let b = Board::parse_fen("8/k7/1p6/3N4/8/8/8/K7 w - - 5 1").unwrap();
         let eg = EndGame::from_board(&b);
         assert_eq!(eg, EndGame::KMkp);
-        assert_eq!(eg.likely_outcome(&b), LikelyOutcome::Draw);
+        assert_eq!(eg.likely_outcome(&b), LikelyOutcome::WhiteLossOrDraw);
 
         let b = Board::parse_fen("Q7/1K6/8/8/8/8/6k1/8 b - - 0 1").unwrap();
         let eg = EndGame::from_board(&b);
@@ -455,6 +484,8 @@ mod tests {
 
         let b = Board::parse_fen("Q7/1K6/8/8/8/8/6kp/8 b - - 0 1").unwrap();
         let eg = EndGame::from_board(&b);
-        assert_eq!(eg, EndGame::Unknown);
+        assert_eq!(eg, EndGame::KQkp);
+
+        println!("{}", EndGame::counts_to_string() );
     }
 }

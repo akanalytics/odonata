@@ -1,5 +1,6 @@
 use crate::types::Ply;
 use crate::types::MAX_PLY;
+use crate::utils::Formatting;
 use std::fmt;
 use std::sync::atomic::{AtomicI64, AtomicUsize, Ordering};
 
@@ -20,6 +21,21 @@ impl Clone for Stat {
         Stat::new(self.name)
     }
 }
+
+pub struct SliceStat<'a>(pub &'a [Stat]);
+
+impl fmt::Display for SliceStat<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "{:<20} {:>11}", "name", "value")?;
+        writeln!(f, "{:<20} {:>11}", "--------------------", "-----------")?;
+        for s in self.0.iter() {
+            writeln!(f, "{:<20} {:>11}", s.name(), Formatting::u128(s.get() as u128))?;
+        }
+        Ok(())
+    }
+}
+
+
 
 #[derive(Debug, Default)]
 pub struct PlyStat {
@@ -44,11 +60,13 @@ impl fmt::Display for ArrayStat<'_> {
         writeln!(f, "{:<20} {:>11}", "name", "value")?;
         writeln!(f, "{:<20} {:>11}", "--------------------", "-----------")?;
         for s in self.0.iter() {
-            writeln!(f, "{:<20} {:>11}", s.name(), s.get())?;
+            writeln!(f, "{:<20} {:>11}", s.name(), Formatting::u128(s.get() as u128))?;
         }
         Ok(())
     }
 }
+
+
 
 impl Stat {
     pub fn set_this_thread_index(index: usize) {
@@ -157,7 +175,7 @@ impl PlyStat {
         0
     }
 
-    fn display(f: &mut fmt::Formatter, stats: &[&PlyStat]) -> fmt::Result {
+    pub fn display(f: &mut fmt::Formatter, stats: &[&PlyStat]) -> fmt::Result {
         let max_len = stats.iter().map(|ps| ps.len()).max().unwrap();
         Self::fmt_header(f, stats)?;
         Self::fmt_underline(f, stats)?;
