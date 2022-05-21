@@ -1,12 +1,11 @@
-
-use crate::trace::stat::{Stat, SliceStat};
-use crate::{board::Board};
+use crate::board::Board;
+use crate::trace::stat::{SliceStat, Stat};
 use crate::types::Color;
 use crate::Bitboard;
-use strum_macros::{Display, EnumCount};
+use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 use strum_macros::IntoStaticStr;
-use strum::IntoEnumIterator;
+use strum_macros::{Display, EnumCount};
 
 /// Recognize several known end games, and determine
 /// (a) what the action should be in search (stop / continue / reduce depth)
@@ -55,16 +54,18 @@ pub enum EndGame {
 
     // 2v km
     KMkm, // draw but not automatic (helpmate)
-    KRkm, // ??
-    KMkr, // ??
+    KRkb, // ??
+    KRkn, // ??
+    KBkr, // ??
+    KNkr, // ??
     KQkm, // ??
     KMkq, // ??
 
     // 2v k+major
     KRkr, // ??
     KQkr, // ??
-    KRkQ, // ??
-    KQkQ, // ??
+    KRkq, // ??
+    KQkq, // ??
 
     // 3v k
     KPPk, // ??
@@ -86,11 +87,14 @@ pub enum EndGame {
     Kkjm, // win
     KJJk, // win
     Kkjj, // win
+
+    KPPPk, // win
+    Kkppp, // win
 }
 
 use static_init::dynamic;
 #[dynamic]
-static ENDGAME_COUNTS: Vec<Stat> =  {
+static ENDGAME_COUNTS: Vec<Stat> = {
     let mut vec = vec![];
     for eg in EndGame::iter() {
         let s: &'static str = eg.into();
@@ -98,8 +102,6 @@ static ENDGAME_COUNTS: Vec<Stat> =  {
     }
     vec
 };
-
-
 
 impl Default for EndGame {
     fn default() -> Self {
@@ -124,7 +126,7 @@ impl EndGame {
             KPkp => Draw,
 
             KMkp => WhiteLossOrDraw,
-            KPkm  => WhiteWinOrDraw,
+            KPkm => WhiteWinOrDraw,
 
             KQkp => WhiteWin,
             KPkq => WhiteLoss,
@@ -136,18 +138,24 @@ impl EndGame {
             KPk => WhiteWinOrDraw,
             Kkp => WhiteLossOrDraw,
 
-            KRkm => UnknownOutcome,
-            KMkr => UnknownOutcome,
-            KQkm => UnknownOutcome,
-            KMkq => UnknownOutcome,
+            KRkb => Draw, // usually
+            KRkn => Draw, // usually
+            KBkr => Draw, // usually
+            KNkr => Draw, // usually
+            KQkm => WhiteWin,
+            KMkq => WhiteLoss,
 
             KRkr => UnknownOutcome,
-            KQkr => UnknownOutcome,
-            KRkQ => UnknownOutcome,
-            KQkQ => UnknownOutcome,
+            KQkr => WhiteWin,
+            KRkq => WhiteLoss,
+            KQkq => UnknownOutcome,
 
             KPPk => WhiteWin,
             Kkpp => WhiteLoss,
+
+            KPPPk => WhiteWin,
+            Kkppp => WhiteLoss,
+
             KNPk => WhiteWinOrDraw,
             Kknp => WhiteLossOrDraw,
             KBPk => WhiteWinOrDraw,
@@ -207,8 +215,23 @@ impl EndGame {
         eg
     }
 
+    #[inline]
     fn private_ctor(b: &Board) -> Self {
         let n_pieces = b.occupied().popcount();
+
+        if n_pieces >= 6 {
+            return Self::Unknown;
+        }
+
+        let wp = (b.pawns() & b.white()).popcount();
+        let bp = (b.pawns() & b.black()).popcount();
+        let n_pawns = wp + bp;
+        if wp == 3 {
+            return Self::KPPPk;
+        }
+        if bp == 3 {
+            return Self::Kkppp;
+        }
 
         if n_pieces >= 5 {
             return Self::Unknown;
@@ -254,8 +277,9 @@ impl EndGame {
                 return EndGame::Kkp;
             }
         }
-
+        // 
         // now assume we have 4 pieces
+        //
         if wn + wb == 1 && bn + bb == 1 {
             return EndGame::KMkm;
         }
@@ -294,9 +318,6 @@ impl EndGame {
                 }
             }
         }
-        let n_pawns = b.pawns().popcount();
-        let wp = (b.pawns() & b.white()).popcount();
-        let bp = (b.pawns() & b.black()).popcount();
         let wq = (b.queens() & b.white()).popcount();
         let bq = (b.queens() & b.black()).popcount();
         let wr = (b.rooks() & b.white()).popcount();
@@ -332,6 +353,18 @@ impl EndGame {
                 return EndGame::Kkpp;
             }
             return EndGame::KPkp;
+        }
+        if wr == 1 && bb == 1 {
+            return EndGame::KRkb;
+        }
+        if wr == 1 && bn == 1 {
+            return EndGame::KRkn;
+        }
+        if br == 1 && wb == 1 {
+            return EndGame::KBkr;
+        }
+        if br == 1 && wn == 1 {
+            return EndGame::KNkr;
         }
         Self::Unknown
     }
@@ -414,7 +447,7 @@ impl EndGame {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{board::boardbuf::*};
+    use crate::board::boardbuf::*;
     use test_log::test;
 
     #[test]
@@ -486,6 +519,6 @@ mod tests {
         let eg = EndGame::from_board(&b);
         assert_eq!(eg, EndGame::KQkp);
 
-        println!("{}", EndGame::counts_to_string() );
+        println!("{}", EndGame::counts_to_string());
     }
 }

@@ -125,25 +125,18 @@ impl Calc {
         let endgame = EndGame::from_board(b);
 
         if let Some(winner) = endgame.try_winner(b) {
-            // c = losing colour - the winning side doesnt get a score (just the negative of the loser)
             if let Some((metric1, metric2)) = Self::end_game_metrics(winner, b, endgame) {
-                // if winner == Color::White {
                 scorer.accum(winner, Attr::WinMetric1.as_feature(), -metric1);
                 scorer.accum(winner, Attr::WinMetric2.as_feature(), -metric2);
+
+                // win specific scoring, so we award win_bonus as other features will be ignored
                 scorer.accum(winner, Attr::WinBonus.as_feature(), 1);
-                // } else {
-                //     scorer.accum(FeatureIndex::WinMetric1, 0, -metric1, eval.win_metric1);
-                //     scorer.accum(FeatureIndex::WinMetric2, 0, -metric2, eval.win_metric2);
-                //     scorer.accum(FeatureIndex::WinBonus, 0, 1, eval.win_bonus);
-                // }
-                return true;
+                return true; 
             }
+            // award a win bonus even if we dont have win-specific scoring
+            scorer.accum(winner, Attr::WinBonus.as_feature(), 1);
+            return false;  // TODO! we have a winner, but no specific win scoring. Do we still use just material
         }
-        // else {
-        //     // scorer.accumulate(Attr::WinMetric1.as_feature(), 0, 0);
-        //     // scorer.accumulate(Attr::WinMetric2.as_feature(), 0, 0);
-        //     // scorer.accumulate(Attr::WinBonus.as_feature(), 0, 0);
-        // }
         false
     }
 

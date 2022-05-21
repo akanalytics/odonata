@@ -205,7 +205,7 @@ impl Material {
         advantage
     }
 
-    pub fn is_insufficient2(bd: &Board) -> bool {
+    pub fn is_insufficient_old(bd: &Board) -> bool {
         // If both sides have any one of the following, and there are no pawns on the board:
         // 1. A lone king
         // 2. a king and bishop
