@@ -96,11 +96,11 @@ impl Phaser {
 
         let mut phase = TOTAL_PHASE;
 
-        phase -= mat.counts_piece(Piece::Pawn) * PAWN_PHASE;
-        phase -= mat.counts_piece(Piece::Knight) * KNIGHT_PHASE;
-        phase -= mat.counts_piece(Piece::Bishop) * BISHOP_PHASE;
-        phase -= mat.counts_piece(Piece::Rook) * ROOK_PHASE;
-        phase -= mat.counts_piece(Piece::Queen) * QUEEN_PHASE;
+        phase -= mat.count_piece(Piece::Pawn) * PAWN_PHASE;
+        phase -= mat.count_piece(Piece::Knight) * KNIGHT_PHASE;
+        phase -= mat.count_piece(Piece::Bishop) * BISHOP_PHASE;
+        phase -= mat.count_piece(Piece::Rook) * ROOK_PHASE;
+        phase -= mat.count_piece(Piece::Queen) * QUEEN_PHASE;
 
         if phase < 0 {
             phase = 0;

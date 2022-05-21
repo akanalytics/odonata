@@ -54,17 +54,17 @@ impl Calc {
 
         Piece::ALL_BAR_KING
             .iter()
-            .for_each(|&p| scorer.accumulate(Feature::Piece(p), m.counts(Color::White, p), m.counts(Color::Black, p)));
+            .for_each(|&p| scorer.accumulate(Feature::Piece(p), m.count(Color::White, p), m.count(Color::Black, p)));
 
         scorer.accumulate(
             Attr::BishopPair.as_feature(),
-            (m.counts(White, Bishop) >= 2) as i32,
-            (m.counts(Black, Bishop) >= 2) as i32,
+            (m.count(White, Bishop) >= 2) as i32,
+            (m.count(Black, Bishop) >= 2) as i32,
         );
         scorer.accumulate(
             Attr::RookPair.as_feature(),
-            (m.counts(White, Rook) >= 2) as i32,
-            (m.counts(Black, Rook) >= 2) as i32,
+            (m.count(White, Rook) >= 2) as i32,
+            (m.count(Black, Rook) >= 2) as i32,
         );
 
         // let us = b.color(c);

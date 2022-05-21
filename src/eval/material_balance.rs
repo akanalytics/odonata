@@ -320,8 +320,8 @@ impl MaterialBalance {
             if let Some(cp) = cp {
                 count += 1;
                 let mut mat = Material::maybe_from_hash(hash);
-                *mat.counts_mut(Color::White, Piece::King) = 0;
-                *mat.counts_mut(Color::Black, Piece::King) = 0;
+                mat.set_count(Color::White, Piece::King, 0);
+                mat.set_count(Color::Black, Piece::King ,0);
                 info!("{:>10} {:>32} {}", cp, mat.to_string(), hash);
             }
         }
@@ -425,7 +425,7 @@ impl MaterialBalance {
         let mut sorted_raw_stats = RAW_STATS.clone();
         sorted_raw_stats.sort_by_cached_key(|(mat, _score)| mat.to_string().len() as i32 * 20000 + mat.centipawns());
         for (mat, wdl) in sorted_raw_stats.iter() {
-            let pawns = mat.counts(Color::White, Piece::Pawn) + mat.counts(Color::Black, Piece::Pawn);
+            let pawns = mat.count(Color::White, Piece::Pawn) + mat.count(Color::Black, Piece::Pawn);
             if wdl.total() >= self.min_games && pawns <= self.max_pawns {
                 // let mut cp;
                 // if wdl.w + wdl.d <= 5 {
@@ -524,7 +524,7 @@ impl MaterialBalance {
                 } else {
                     let weight: Weight = Piece::ALL_BAR_KING
                         .iter()
-                        .map(|&p| (other.counts(Color::White, p) - other.counts(Color::Black, p)) * self.piece_weights[p])
+                        .map(|&p| (other.count(Color::White, p) - other.count(Color::Black, p)) * self.piece_weights[p])
                         .sum();
                     std::cmp::max(weight.s() as i32, weight.e() as i32) as i32
                 };

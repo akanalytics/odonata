@@ -249,7 +249,7 @@ impl Piece {
     }
 
     #[inline]
-    pub fn is_line_piece(&self) -> bool {
+    pub const fn is_line_piece(&self) -> bool {
         #[allow(clippy::match_like_matches_macro)]
         match self {
             Piece::Bishop | Piece::Rook | Piece::Queen => true,
@@ -309,10 +309,10 @@ impl Piece {
     }
 
     #[inline]
-    pub fn to_char(&self, c: Option<Color>) -> char {
+    pub const fn to_char(&self, c: Option<Color>) -> char {
         match c {
             None => self.to_upper_char(),
-            Some(c) if c == Color::White => self.to_upper_char(),
+            Some(Color::White) => self.to_upper_char(),
             Some(_) => self.to_upper_char().to_ascii_lowercase(),
         }
     }

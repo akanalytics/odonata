@@ -7,6 +7,16 @@ use std::cmp;
 use std::fmt;
 use std::ops;
 
+
+
+
+// K  Q   R   B   N    P
+// 1 11 111 111 111 1111
+
+
+
+
+
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub struct Material {
     // counts[color][piece] = #
@@ -21,7 +31,7 @@ impl fmt::Display for Material {
                 write!(
                     f,
                     "{}",
-                    p.to_char(Some(c)).to_string().repeat(self.counts(c, p) as usize)
+                    p.to_char(Some(c)).to_string().repeat(self.count(c, p) as usize)
                 )?;
             }
         }
@@ -45,7 +55,7 @@ impl ops::Neg for &Material {
 
         for &c in &Color::ALL {
             for &p in &Piece::ALL_BAR_NONE {
-                *m.counts_mut(c, p) = -self.counts(c, p);
+                m.set_count(c, p, -self.count(c, p));
             }
         }
         m
@@ -60,7 +70,7 @@ impl<'a, 'b> ops::Sub<&'b Material> for &'a Material {
 
         for &c in &Color::ALL {
             for &p in &Piece::ALL_BAR_NONE {
-                *m.counts_mut(c, p) = self.counts(c, p) - other.counts(c, p);
+                m.set_count(c, p, self.count(c, p) - other.count(c, p));
             }
         }
         m
@@ -75,14 +85,14 @@ impl cmp::PartialOrd for Material {
         if Piece::ALL_BAR_NONE
             .iter()
             .cartesian_product(&Color::ALL)
-            .all(|(&p, &c)| self.counts(c, p) >= other.counts(c, p))
+            .all(|(&p, &c)| self.count(c, p) >= other.count(c, p))
         {
             return Some(cmp::Ordering::Greater);
         }
         if Piece::ALL_BAR_NONE
             .iter()
             .cartesian_product(&Color::ALL)
-            .all(|(&p, &c)| self.counts(c, p) <= other.counts(c, p))
+            .all(|(&p, &c)| self.count(c, p) <= other.count(c, p))
         {
             return Some(cmp::Ordering::Less);
         }
@@ -109,6 +119,7 @@ impl Material {
     #[inline]
     pub fn from_piece_str(s: &str) -> Result<Material> {
         let mut m: Material = Material::new();
+
         for ch in s.chars() {
             let p = Piece::from_char(ch)?;
             let c = Color::from_piece_char(ch)?;
@@ -117,32 +128,47 @@ impl Material {
         Ok(m)
     }
 
+    // pub const fn from_piece_bytes(bytes: &[u8]) -> Result<Material> {
+    //     let mut m: Material = Material::new();
+    //     let mut i = 0;
+    //     while i < bytes.len() {
+    //         let p = match Piece::from_char(bytes[i] as char) {
+    //             Ok(p) => p,
+    //             Err(e) => {return Err(e); },
+    //         };
+    //         let c = match Color::from_piece_char(bytes[i] as char) {
+    //             Ok(c) => c,
+    //             Err(e) => {return Err(e); },
+    //         };
+    //         m.counts[c.index()][p.index()] = 1;
+    //         i += 1;
+    //     };
+    //     Ok(m)
+    // }
+
     #[inline]
     pub fn total_count(&self) -> i32 {
-        Piece::ALL_BAR_NONE
-            .iter()
-            .map(|&p| self.counts(Color::White, p) + self.counts(Color::Black, p))
-            .sum::<i32>()
+        Piece::ALL_BAR_NONE.iter().map(|&p| self.count_piece(p)).sum::<i32>()
     }
 
     #[inline]
-    pub fn counts(&self, c: Color, p: Piece) -> i32 {
+    pub fn count(&self, c: Color, p: Piece) -> i32 {
         self.counts[c][p]
     }
 
     #[inline]
-    pub fn counts_piece(&self, p: Piece) -> i32 {
-        self.counts[Color::White][p] + self.counts[Color::Black][p]
+    pub fn set_count(&mut self, c: Color, p: Piece, v: i32) {
+        self.counts[c][p] = v;
+    }
+
+    #[inline]
+    pub fn count_piece(&self, p: Piece) -> i32 {
+        self.count(Color::White, p) + self.count(Color::Black, p)
     }
 
     #[inline]
     pub fn net_piece(&self, p: Piece) -> i32 {
-        self.counts[Color::White][p] - self.counts[Color::Black][p]
-    }
-
-    #[inline]
-    pub fn counts_mut(&mut self, c: Color, p: Piece) -> &mut i32 {
-        &mut self.counts[c][p]
+        self.count(Color::White, p) - self.count(Color::Black, p)
     }
 
     // #[inline]
@@ -153,10 +179,10 @@ impl Material {
     #[inline]
     pub fn minors_and_majors(&self) -> Material {
         let mut m = *self;
-        m.counts[Color::White][Piece::Pawn] = 0;
-        m.counts[Color::Black][Piece::Pawn] = 0;
-        m.counts[Color::White][Piece::King] = 0;
-        m.counts[Color::Black][Piece::King] = 0;
+        m.set_count(Color::White, Piece::Pawn, 0);
+        m.set_count(Color::Black, Piece::Pawn, 0);
+        m.set_count(Color::White, Piece::King, 0);
+        m.set_count(Color::Black, Piece::King, 0);
         m
     }
 
@@ -190,7 +216,7 @@ impl Material {
     pub fn centipawns(&self) -> i32 {
         Piece::ALL_BAR_KING
             .iter()
-            .map(|&p| p.centipawns() * (self.counts(Color::White, p) - self.counts(Color::Black, p)))
+            .map(|&p| p.centipawns() * self.net_piece(p))
             .sum::<i32>()
     }
 
@@ -198,9 +224,9 @@ impl Material {
     pub fn advantage(&self) -> Material {
         let mut advantage = *self;
         for &p in &Piece::ALL_BAR_NONE {
-            let common = cmp::min(advantage.counts[Color::White][p], advantage.counts[Color::Black][p]);
-            advantage.counts[Color::White][p] -= common;
-            advantage.counts[Color::Black][p] -= common;
+            let common = cmp::min(advantage.count(Color::White, p), advantage.count(Color::Black, p));
+            advantage.set_count(Color::White, p, advantage.count(Color::White, p) - common);
+            advantage.set_count(Color::Black, p, advantage.count(Color::Black, p) - common);
         }
         advantage
     }
@@ -219,7 +245,7 @@ impl Material {
         // can assume just bishops, knights and kings now
         let bishops_w = (bd.bishops() & bd.white()).popcount();
         let bishops_b = (bd.bishops() & bd.black()).popcount();
-        let knights = bd.bishops().popcount();
+        let knights = bd.knights().popcount();
         if bishops_w + bishops_b + knights <= 1 {
             return true; // cases 1, 2 & 3
         }
@@ -239,20 +265,20 @@ impl Material {
         // k=0, n=1, b=2, p=r=q=3. Then every total <= 2 is draw covers 1-3
         // no attempt to check for dead fortress like positions
         let (w, b) = (Color::White, Color::Black);
-        let ni = self.counts(w, Piece::Knight) + self.counts(b, Piece::Knight);
-        let bi = 2 * (self.counts(w, Piece::Bishop) + self.counts(b, Piece::Bishop));
+        let ni = self.count(w, Piece::Knight) + self.count(b, Piece::Knight);
+        let bi = 2 * (self.count(w, Piece::Bishop) + self.count(b, Piece::Bishop));
 
         let prq = 3
-            * (self.counts(w, Piece::Pawn)
-                + (self.counts(b, Piece::Pawn)
-                    + self.counts(w, Piece::Rook)
-                    + self.counts(b, Piece::Rook)
-                    + self.counts(w, Piece::Queen)
-                    + self.counts(b, Piece::Queen)));
+            * (self.count(w, Piece::Pawn)
+                + (self.count(b, Piece::Pawn)
+                    + self.count(w, Piece::Rook)
+                    + self.count(b, Piece::Rook)
+                    + self.count(w, Piece::Queen)
+                    + self.count(b, Piece::Queen)));
         if ni + bi + prq <= 2 {
             return true;
         }
-        if prq == 0 && self.counts(w, Piece::Bishop) == 1 && self.counts(b, Piece::Bishop) == 1 {
+        if prq == 0 && self.count(w, Piece::Bishop) == 1 && self.count(b, Piece::Bishop) == 1 {
             return true; //case 4
         }
         false
@@ -264,19 +290,19 @@ impl Material {
 
     // hash of no material = 0
     pub fn hash(&self) -> usize {
-        let wq = self.counts(Color::White, Piece::Queen) as i32;
-        let wr = self.counts(Color::White, Piece::Rook) as i32;
-        let wb = self.counts(Color::White, Piece::Bishop) as i32;
-        let wn = self.counts(Color::White, Piece::Knight) as i32;
-        let wp = self.counts(Color::White, Piece::Pawn) as i32;
+        let wq = self.count(Color::White, Piece::Queen) as i32;
+        let wr = self.count(Color::White, Piece::Rook) as i32;
+        let wb = self.count(Color::White, Piece::Bishop) as i32;
+        let wn = self.count(Color::White, Piece::Knight) as i32;
+        let wp = self.count(Color::White, Piece::Pawn) as i32;
         if !(0..=1).contains(&wq) || wr < 0 || wr > 2 || wb < 0 || wb > 2 || wn < 0 || wn > 2 || wp < 0 || wp > 8 {
             return 0;
         }
-        let bq = self.counts(Color::Black, Piece::Queen) as i32;
-        let br = self.counts(Color::Black, Piece::Rook) as i32;
-        let bb = self.counts(Color::Black, Piece::Bishop) as i32;
-        let bn = self.counts(Color::Black, Piece::Knight) as i32;
-        let bp = self.counts(Color::Black, Piece::Pawn) as i32;
+        let bq = self.count(Color::Black, Piece::Queen) as i32;
+        let br = self.count(Color::Black, Piece::Rook) as i32;
+        let bb = self.count(Color::Black, Piece::Bishop) as i32;
+        let bn = self.count(Color::Black, Piece::Knight) as i32;
+        let bp = self.count(Color::Black, Piece::Pawn) as i32;
         if !(0..=1).contains(&bq) || br < 0 || br > 2 || bb < 0 || bb > 2 || bn < 0 || bn > 2 || bp < 0 || bp > 8 {
             return 0;
         }
@@ -337,19 +363,19 @@ impl Material {
         debug_assert!(hash == 0);
 
         let mut m = Material::new();
-        m.counts[Color::White][Piece::Pawn] = wp as i32;
-        m.counts[Color::White][Piece::Knight] = wn as i32;
-        m.counts[Color::White][Piece::Bishop] = wb as i32;
-        m.counts[Color::White][Piece::Rook] = wr as i32;
-        m.counts[Color::White][Piece::Queen] = wq as i32;
-        m.counts[Color::White][Piece::King] = 1;
+        m.set_count(Color::White, Piece::Pawn, wp as i32);
+        m.set_count(Color::White, Piece::Knight, wn as i32);
+        m.set_count(Color::White, Piece::Bishop, wb as i32);
+        m.set_count(Color::White, Piece::Rook, wr as i32);
+        m.set_count(Color::White, Piece::Queen, wq as i32);
+        m.set_count(Color::White, Piece::King, 1);
 
-        m.counts[Color::Black][Piece::Pawn] = bp as i32;
-        m.counts[Color::Black][Piece::Knight] = bn as i32;
-        m.counts[Color::Black][Piece::Bishop] = bb as i32;
-        m.counts[Color::Black][Piece::Rook] = br as i32;
-        m.counts[Color::Black][Piece::Queen] = bq as i32;
-        m.counts[Color::Black][Piece::King] = 1;
+        m.set_count(Color::Black, Piece::Pawn, bp as i32);
+        m.set_count(Color::Black, Piece::Knight, bn as i32);
+        m.set_count(Color::Black, Piece::Bishop, bb as i32);
+        m.set_count(Color::Black, Piece::Rook, br as i32);
+        m.set_count(Color::Black, Piece::Queen, bq as i32);
+        m.set_count(Color::Black, Piece::King, 1);
         m
     }
 }
@@ -362,11 +388,15 @@ impl Material {
 
     pub fn make_move(&mut self, c: Color, m: &Move) {
         if m.is_promo() {
-            self.counts[c][Piece::Pawn] -= 1;
-            self.counts[c][m.promo_piece()] += 1;
+            self.set_count(c, Piece::Pawn, self.count(c, Piece::Pawn) - 1);
+            self.set_count(c, m.promo_piece(), self.count(c, m.promo_piece()) + 1);
         }
         if m.is_capture() {
-            self.counts[c.opposite()][m.capture_piece()] -= 1;
+            self.set_count(
+                c.opposite(),
+                m.capture_piece(),
+                self.count(c.opposite(), m.capture_piece()) - 1,
+            );
         }
     }
 }
@@ -376,15 +406,15 @@ mod tests {
     // use std::{cmp::Ordering, convert::TryFrom};
 
     use super::*;
-    use crate::catalog::Catalog;
+    use crate::{catalog::Catalog, infra::profiler::Profiler};
     // // use crate::{debug, logger::LogInit};
 
     #[test]
     fn test_material() {
         let board = Catalog::starting_board();
         let mat_full1 = Material::from_board(&board);
-        assert_eq!(mat_full1.counts(Color::White, Piece::King), 1);
-        assert_eq!(mat_full1.counts(Color::White, Piece::Pawn), 8);
+        assert_eq!(mat_full1.count(Color::White, Piece::King), 1);
+        assert_eq!(mat_full1.count(Color::White, Piece::Pawn), 8);
 
         let mat_full2 = Material::from_piece_str("PPPPPPPPNNBBRRQKppppppppnnbbrrqk").unwrap();
         assert_eq!(mat_full1, mat_full2);
@@ -402,7 +432,7 @@ mod tests {
 
         let mat0 = Material::new();
         // counts and comparisons
-        assert_eq!(mat0.counts(Color::White, Piece::Pawn), 0);
+        assert_eq!(mat0.count(Color::White, Piece::Pawn), 0);
         assert_ne!(mat0, mat_full1);
         assert_eq!(mat0, mat0);
         assert!(mat_full1 > mat0);
@@ -429,7 +459,7 @@ mod tests {
             .inspect(|x| {
                 debug!("iterating on... {:?}", x);
             })
-            .all(|(&p, &c)| mat_KBk.counts(c, p) <= mat_Kkn.counts(c, p));
+            .all(|(&p, &c)| mat_KBk.count(c, p) <= mat_Kkn.count(c, p));
 
         assert_eq!(mat_KBk.partial_cmp(&mat_Kkn), None);
         assert_eq!(mat_KBk < mat_Kkn, false);
@@ -492,5 +522,42 @@ mod tests {
 
         let mat_part = Material::from_piece_str("KQRBPPPPPkqrrnppppppp").unwrap();
         assert_eq!(Material::maybe_from_hash(mat_part.hash()), mat_part);
+    }
+    #[test]
+    fn bench_material() {
+        {
+            let mut prof = Profiler::new("material-ctor".into());
+            let mut prof2 = Profiler::new("material-im".into());
+            let board = Catalog::starting_board();
+
+            prof.start();
+            let m = Material::from_board(&board);
+            prof.stop();
+
+            prof2.start();
+            let c = m.total_count();
+            let im = m.is_insufficient();
+            prof2.stop();
+
+            assert_eq!(c, 32);
+            assert_eq!(im, false);
+        }
+        {
+            let mut prof = Profiler::new("material-manip".into());
+            let mut prof2 = Profiler::new("material-count".into());
+            let board = Catalog::starting_board();
+            let m = Material::from_board(&board);
+            prof.start();
+            let wp = m.color(Color::White).count_piece(Piece::Pawn);
+            let bb = m.color(Color::Black).count_piece(Piece::Bishop);
+            prof.stop();
+            prof2.start();
+            let wp2 = m.count(Color::White, Piece::Pawn);
+            prof2.stop();
+
+            assert_eq!(wp, 8);
+            assert_eq!(wp2, 8);
+            assert_eq!(bb, 2);
+        }
     }
 }
