@@ -1008,12 +1008,6 @@ fn bench_insufficient_material(c: &mut Criterion) {
             black_box(black_box(m).is_insufficient());
         });
     });
-    group.bench_function("insufficient_material2", |b| {
-        b.iter(|| {
-            black_box(Material::is_insufficient_old(black_box(bd)));
-        });
-    });
-    group.finish();
 }
 
 fn benchmark_thread(c: &mut Criterion) {

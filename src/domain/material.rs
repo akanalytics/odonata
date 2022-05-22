@@ -7,9 +7,6 @@ use std::cmp;
 use std::fmt;
 use std::ops;
 
-// K  Q   R   B   N    P
-// 1 11 111 111 111 1111
-
 type MaterialCount = u16;
 
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
@@ -25,7 +22,9 @@ impl fmt::Display for Material {
                 write!(
                     f,
                     "{}",
-                    p.to_char(Some(c)).to_string().repeat(self.count(c, p) as usize)
+                    p.to_char(Some(c))
+                        .to_string()
+                        .repeat(self.count(c, p) as usize)
                 )?;
             }
         }
@@ -126,10 +125,16 @@ impl Material {
     pub fn from_board(board: &Board) -> Material {
         let mut m = Material { ..Self::default() };
         for &p in &Piece::ALL_BAR_NONE {
-            // m.counts[Color::White][p] = (board.pieces(p) & board.white()).popcount() as MaterialCount;
-            // m.counts[Color::Black][p] = (board.pieces(p) & board.black()).popcount() as MaterialCount;
-            m.set_count(Color::White, p, (board.pieces(p) & board.white()).popcount());
-            m.set_count(Color::Black, p, (board.pieces(p) & board.black()).popcount());
+            m.set_count(
+                Color::White,
+                p,
+                (board.pieces(p) & board.white()).popcount(),
+            );
+            m.set_count(
+                Color::Black,
+                p,
+                (board.pieces(p) & board.black()).popcount(),
+            );
         }
         m
     }
@@ -156,7 +161,10 @@ impl Material {
 
     #[inline]
     pub fn total_count(&self) -> i32 {
-        Piece::ALL_BAR_NONE.iter().map(|&p| self.count_piece(p)).sum::<i32>()
+        Piece::ALL_BAR_NONE
+            .iter()
+            .map(|&p| self.count_piece(p))
+            .sum::<i32>()
     }
 
     pub fn total_count2(&self) -> i32 {
@@ -236,7 +244,10 @@ impl Material {
     pub fn advantage(&self) -> Material {
         let mut advantage = *self;
         for &p in &Piece::ALL_BAR_NONE {
-            let common = cmp::min(advantage.count(Color::White, p), advantage.count(Color::Black, p));
+            let common = cmp::min(
+                advantage.count(Color::White, p),
+                advantage.count(Color::Black, p),
+            );
             advantage.set_count(Color::White, p, advantage.count(Color::White, p) - common);
             advantage.set_count(Color::Black, p, advantage.count(Color::Black, p) - common);
         }
@@ -256,7 +267,10 @@ impl Material {
         let ni = self.count_piece(Piece::Knight);
         let bi = 2 * self.count_piece(Piece::Bishop);
 
-        let prq = 3 * (self.count_piece(Piece::Pawn) + self.count_piece(Piece::Rook) + self.count_piece(Piece::Queen));
+        let prq = 3
+            * (self.count_piece(Piece::Pawn)
+                + self.count_piece(Piece::Rook)
+                + self.count_piece(Piece::Queen));
         if ni + bi + prq <= 2 {
             return true;
         }
@@ -268,7 +282,9 @@ impl Material {
 
     // 236196
     pub const HASH_VALUES: usize =
-        (((((((((((2 + 1) * 3 + 2) * 3 + 2) * 3 + 2) * 3 + 2) * 3) + 2) * 3) + 2) * 9 + 8) * 9) + 8 + 1;
+        (((((((((((2 + 1) * 3 + 2) * 3 + 2) * 3 + 2) * 3 + 2) * 3) + 2) * 3) + 2) * 9 + 8) * 9)
+            + 8
+            + 1;
 
     // hash of no material = 0
     pub const fn hash(&self) -> usize {
@@ -460,7 +476,10 @@ mod tests {
         assert_eq!(mat_KBk.to_string(), "KBk".to_string());
         assert_eq!(mat_KBk.minors_and_majors().to_string(), "B".to_string());
         assert_eq!(mat_Kkn.to_string(), "Kkn".to_string());
-        assert_eq!(mat_full1.to_string(), "KQRRBBNNPPPPPPPPkqrrbbnnpppppppp".to_string());
+        assert_eq!(
+            mat_full1.to_string(),
+            "KQRRBBNNPPPPPPPPkqrrbbnnpppppppp".to_string()
+        );
 
         assert_eq!(mat_Kkn.black().to_string(), "kn".to_string());
         assert_eq!(mat_Kkn.white().to_string(), "K".to_string());
@@ -482,8 +501,14 @@ mod tests {
         assert_eq!(mat_PPP.centipawns(), 300);
         assert_eq!(mat_some.advantage().centipawns(), -275); // R+N-Q = -75, N-b=-0, 2x-P=-200
         let board = Catalog::starting_board();
-        assert_eq!(board.material().black().minors_and_majors().centipawns(), -3200);
-        assert_eq!(board.material().white().minors_and_majors().centipawns(), 3200);
+        assert_eq!(
+            board.material().black().minors_and_majors().centipawns(),
+            -3200
+        );
+        assert_eq!(
+            board.material().white().minors_and_majors().centipawns(),
+            3200
+        );
         assert_eq!(
             Material::from_piece_str("KkPPPPPppppp")
                 .unwrap()
@@ -515,28 +540,21 @@ mod tests {
     }
     #[test]
     fn bench_material() {
-        {
-            let mut prof = Profiler::new("material-ctor".into());
-            let mut prof2 = Profiler::new("material-total".into());
-            let mut prof3 = Profiler::new("material-insuff".into());
-            let board = Catalog::starting_board();
+        let board = Catalog::starting_board();
 
-            prof.start();
-            let m = black_box(Material::from_board(&board));
-            prof.stop();
+        Profiler::new("material-ctor".into()).benchmark(
+            || Material::from_board(&board), //
+        );
 
-            prof2.start();
-            let c = black_box(m.total_count());
-            prof2.stop();
+        let m = Material::from_board(&board);
+        Profiler::new("material-total".into()).benchmark(
+            || m.total_count(), //
+        );
 
-            prof3.start();
-            let im = black_box(m.is_insufficient());
-            prof3.stop();
+        Profiler::new("material-insuff".into()).benchmark(
+            || m.is_insufficient(), //
+        );
 
-
-            assert_eq!(c, 32);
-            assert_eq!(im, false);
-        }
         {
             let mut prof = Profiler::new("material-manip".into());
             let mut prof2 = Profiler::new("material-count".into());
