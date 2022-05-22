@@ -1,7 +1,8 @@
+use crate::bitboard::square::Square;
 use crate::board::Board;
 use crate::trace::stat::{SliceStat, Stat};
 use crate::types::Color;
-use crate::Bitboard;
+use crate::{Bitboard, PreCalc};
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 use strum_macros::IntoStaticStr;
@@ -164,6 +165,109 @@ impl EndGame {
         }
     }
 
+    // metrics we want to minimise as a checkmater
+    pub fn metrics(&self, winner: Color, b: &Board) -> Option<(i32, i32)> {
+        use crate::eval::endgame::EndGame::*;
+        let loser = winner.opposite();
+        match self {
+            KBNk | Kkbn => {
+                use std::cmp::max;
+                let ksq = (b.kings() & b.color(loser)).square();
+                let wksq = (b.kings() & b.color(winner)).square();
+                let endgame_metric1 = 40 * Self::king_distance_to_bishops_corner(b, ksq, wksq);
+                let king_distance = Self::king_distance(b);
+                let ksq = (b.kings() & b.color(loser)).square();
+                let nsq = (b.knights() & b.color(winner)).square();
+                let bsq = (b.bishops() & b.color(winner)).square();
+                let knight_distance = max(0, PreCalc::default().chebyshev_distance(nsq, ksq));
+                let bishop_distance = max(0, PreCalc::default().chebyshev_distance(bsq, ksq));
+                let endgame_metric2 = 20 * king_distance
+                    + 2 * bishop_distance
+                    + 3 * knight_distance
+                    + 2 * Self::king_distance_to_side(b, loser);
+                Some( (endgame_metric1, endgame_metric2) )
+            }
+
+            KBbk | KkBb => {
+                let endgame_metric1 = 20 * Self::king_distance_to_any_corner(b, loser);
+                let endgame_metric2 = 10 * Self::king_distance(b);
+                Some((endgame_metric1, endgame_metric2))
+            }
+
+            KRk | Kkr | KQk | Kkq => {
+                let endgame_metric1 = 20 * Self::king_distance_to_side(b, loser);
+                let endgame_metric2 = 10 * Self::king_distance(b);
+                Some((endgame_metric1, endgame_metric2))
+            }
+            _ => Option::None,
+        }
+    }
+
+
+    fn king_distance(b: &Board) -> i32 {
+        let wk = b.kings() & b.white();
+        let bk = b.kings() & b.black();
+        PreCalc::default().chebyshev_distance(wk.square(), bk.square())
+    }
+
+    fn king_distance_to_side(b: &Board, c: Color) -> i32 {
+        use std::cmp::min;
+        let k = b.kings() & b.color(c);
+        if k.popcount() == 1 {
+            let r = k.square().rank_index() as i32;
+            let f = k.square().file_index() as i32;
+            let m1 = min(r, f);
+            let m2 = min(7 - r, 7 - f);
+            min(m1, m2)
+        } else {
+            0
+        }
+    }
+
+    fn king_distance_to_any_corner(b: &Board, c: Color) -> i32 {
+        use std::cmp::min;
+        let k = b.kings() & b.color(c);
+        if k.popcount() == 1 {
+            let ksq = k.square();
+            let d1 = PreCalc::default().chebyshev_distance(Square::A1, ksq);
+            let d2 = PreCalc::default().chebyshev_distance(Square::A8, ksq);
+            let d3 = PreCalc::default().chebyshev_distance(Square::H1, ksq);
+            let d4 = PreCalc::default().chebyshev_distance(Square::H8, ksq);
+            min(min(d1, d2), min(d3, d4))
+        } else {
+            0
+        }
+    }
+
+    fn king_distance_to_bishops_corner(b: &Board, ksq: Square, wksq: Square) -> i32 {
+        let bis = b.bishops();
+        let bad_corner1;
+        let bad_corner2;
+        // let gd_corner1;
+        // let gd_corner2;
+        // for losing king, these are undesirable corners
+        if bis.intersects(Bitboard::WHITE_SQUARES) {
+            bad_corner1 = Square::H1;
+            bad_corner2 = Square::A8;
+            // gd_corner1 = Square::A1;
+            // gd_corner2 = Square::H8;
+        } else {
+            bad_corner1 = Square::A1;
+            bad_corner2 = Square::H8;
+            // gd_corner1 = Square::H1;
+            // gd_corner2 = Square::A8;
+        };
+
+        // losing king distance to bad corner
+        let bad_d1 = PreCalc::default().manhattan_distance(bad_corner1, ksq);
+        let gd_d1 = PreCalc::default().manhattan_distance(bad_corner1, wksq);
+        let bad_d2 = PreCalc::default().manhattan_distance(bad_corner2, ksq);
+        let gd_d2 = PreCalc::default().manhattan_distance(bad_corner2, wksq);
+
+        let d1 = if bad_d1 < gd_d1 { bad_d1 } else { bad_d1 };
+        let d2 = if bad_d2 < gd_d2 { bad_d2 } else { bad_d1 };
+        std::cmp::min(d1, d2)
+    }
 
     pub fn is_insufficient_material(bd: &Board) -> bool {
         // If both sides have any one of the following, and there are no pawns on the board:

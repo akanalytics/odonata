@@ -9,7 +9,7 @@ use crate::phaser::Phaser;
 use crate::types::Color::{self, *};
 use crate::types::Piece;
 use crate::types::Piece::*;
-use crate::{Bitboard, PreCalc};
+use crate::Bitboard;
 
 use super::eval::Attr;
 use super::scorer::ScorerBase;
@@ -67,7 +67,6 @@ impl Calc {
             (m.count(Black, Rook) >= 2) as i32,
         );
 
-        // let us = b.color(c);
     }
 
     fn position(scorer: &mut impl ScorerBase, b: &Board) {
@@ -125,7 +124,7 @@ impl Calc {
         let endgame = EndGame::from_board(b);
 
         if let Some(winner) = endgame.try_winner(b) {
-            if let Some((metric1, metric2)) = Self::end_game_metrics(winner, b, endgame) {
+            if let Some((metric1, metric2)) = endgame.metrics(winner, b) {
                 scorer.accum(winner, Attr::WinMetric1.as_feature(), -metric1);
                 scorer.accum(winner, Attr::WinMetric2.as_feature(), -metric2);
 
@@ -140,121 +139,8 @@ impl Calc {
         false
     }
 
-    fn end_game_metrics(winner: Color, b: &Board, eg: EndGame) -> Option<(i32, i32)> {
-        use crate::eval::endgame::EndGame::*;
-        let loser = winner.opposite();
-        match eg {
-            KBNk | Kkbn => {
-                use std::cmp::max;
-                let ksq = (b.kings() & b.color(loser)).square();
-                let wksq = (b.kings() & b.color(winner)).square();
-                let endgame_metric1 = 40 * Self::king_distance_to_bishops_corner(b, ksq, wksq);
-                let king_distance = Self::king_distance(b);
-                let ksq = (b.kings() & b.color(loser)).square();
-                let nsq = (b.knights() & b.color(winner)).square();
-                let bsq = (b.bishops() & b.color(winner)).square();
-                let knight_distance = max(0, PreCalc::default().chebyshev_distance(nsq, ksq));
-                let bishop_distance = max(0, PreCalc::default().chebyshev_distance(bsq, ksq));
-                let endgame_metric2 = 20 * king_distance
-                    + 2 * bishop_distance
-                    + 3 * knight_distance
-                    + 2 * Self::king_distance_to_side(b, loser);
-                Some( (endgame_metric1, endgame_metric2) )
-            }
 
-            KBbk | KkBb => {
-                let endgame_metric1 = 20 * Self::king_distance_to_any_corner(b, loser);
-                let endgame_metric2 = 10 * Self::king_distance(b);
-                Some((endgame_metric1, endgame_metric2))
-            }
-
-            KRk | Kkr | KQk | Kkq => {
-                let endgame_metric1 = 20 * Self::king_distance_to_side(b, loser);
-                let endgame_metric2 = 10 * Self::king_distance(b);
-                Some((endgame_metric1, endgame_metric2))
-            }
-            _ => Option::None,
-        }
-    }
-
-    fn king_distance(b: &Board) -> i32 {
-        let wk = b.kings() & b.white();
-        let bk = b.kings() & b.black();
-        PreCalc::default().chebyshev_distance(wk.square(), bk.square())
-    }
-
-    fn king_distance_to_side(b: &Board, c: Color) -> i32 {
-        use std::cmp::min;
-        let k = b.kings() & b.color(c);
-        if k.popcount() == 1 {
-            let r = k.square().rank_index() as i32;
-            let f = k.square().file_index() as i32;
-            let m1 = min(r, f);
-            let m2 = min(7 - r, 7 - f);
-            min(m1, m2)
-        } else {
-            0
-        }
-    }
-
-    fn king_distance_to_any_corner(b: &Board, c: Color) -> i32 {
-        use std::cmp::min;
-        let k = b.kings() & b.color(c);
-        if k.popcount() == 1 {
-            let ksq = k.square();
-            let d1 = PreCalc::default().chebyshev_distance(Square::A1, ksq);
-            let d2 = PreCalc::default().chebyshev_distance(Square::A8, ksq);
-            let d3 = PreCalc::default().chebyshev_distance(Square::H1, ksq);
-            let d4 = PreCalc::default().chebyshev_distance(Square::H8, ksq);
-            min(min(d1, d2), min(d3, d4))
-        } else {
-            0
-        }
-    }
-
-    fn king_distance_to_bishops_corner(b: &Board, ksq: Square, wksq: Square) -> i32 {
-        let bis = b.bishops();
-        let bad_corner1;
-        let bad_corner2;
-        // let gd_corner1;
-        // let gd_corner2;
-        // for losing king, these are undesirable corners
-        if bis.intersects(Bitboard::WHITE_SQUARES) {
-            bad_corner1 = Square::H1;
-            bad_corner2 = Square::A8;
-            // gd_corner1 = Square::A1;
-            // gd_corner2 = Square::H8;
-        } else {
-            bad_corner1 = Square::A1;
-            bad_corner2 = Square::H8;
-            // gd_corner1 = Square::H1;
-            // gd_corner2 = Square::A8;
-        };
-
-        // losing king distance to bad corner
-        let bad_d1 = PreCalc::default().manhattan_distance(bad_corner1, ksq);
-        let gd_d1 = PreCalc::default().manhattan_distance(bad_corner1, wksq);
-        let bad_d2 = PreCalc::default().manhattan_distance(bad_corner2, ksq);
-        let gd_d2 = PreCalc::default().manhattan_distance(bad_corner2, wksq);
-
-        let d1 = if bad_d1 < gd_d1 { bad_d1 } else { bad_d1 };
-        let d2 = if bad_d2 < gd_d2 { bad_d2 } else { bad_d1 };
-        std::cmp::min(d1, d2)
-        // let gd_d1 = PreCalc::default().chebyshev_distance(gd_corner1, ksq);
-        // let gd_d2 = PreCalc::default().chebyshev_distance(gd_corner2, ksq);
-        // let gd_dist = if gd_d1 < gd_d2 {
-        //     PreCalc::default().chebyshev_distance(gd_corner1, wksq)
-        // } else {
-        //     PreCalc::default().chebyshev_distance(gd_corner2, wksq)
-        // };
-        // // give a bonus for winning king being nearer the nearest corner
-        // if gd_dist < std::cmp::min(gd_d1, gd_d2) {
-        //     dist - 1
-        // } else {
-        //     dist
-        // }
-    }
-
+ 
     fn pst(s: &mut impl ScorerBase, b: &Board) {
         // if s.csv() {
         for &p in &Piece::ALL_BAR_NONE {
@@ -262,36 +148,9 @@ impl Calc {
             let b = b.pieces(p) & b.black();
 
             for sq in (w | b).squares() {
-                // let u8s = vec![
-                //     'p' as u8,
-                //     's' as u8,
-                //     't' as u8,
-                //     '.' as u8,
-                //     p.to_lower_char() as u8,
-                //     '.' as u8,
-                //     sq.uci().as_bytes()[0],
-                //     sq.uci().as_bytes()[1],
-                // ];
-                // let label = format!("pst.{}.{}", p.to_lower_char(), sq.uci());
-                // let label = std::str::from_utf8(&u8s).unwrap();
                 s.accumulate(Feature::Pst(p, sq), sq.is_in(w) as i32, sq.is_in(b) as i32);
             }
         }
-        // } else {
-        //     // let mut sum = Weight::zero();
-        //     for &p in &Piece::ALL_BAR_NONE {
-        //         let w = (b.pieces(p) & b.white()).flip_vertical();
-        //         let b = b.pieces(p) & b.black();
-
-        //         let w = w.squares().map(|sq| e.pst.pst(p, sq)).sum::<Weight>();
-        //         let b = b.squares().map(|sq| e.pst.pst(p, sq)).sum::<Weight>();
-
-        //         let black = ["pst none", "pst p", "pst n", "pst b", "pst r", "pst q", "pst k"][p];
-        //         let white = ["pst none", "pst P", "pst N", "pst B", "pst R", "pst Q", "pst K"][p];
-        //         s.accum(white, 1, 0, w);
-        //         s.accum(black, 0, 1, b);
-        //     }
-        // }
     }
 
     // front span - strictly in front
@@ -676,313 +535,8 @@ impl Calc {
         s.accum(c, Attr::PinnedNearKing.as_feature(), pinned_near_king);
         s.accum(c, Attr::PinnedFar.as_feature(), pinned_far);
         s.accum(c, Attr::DiscoveredChecks.as_feature(), discovered_checks);
-
-        // }
-        // FIXME Urgent!
-        // self.open_files_near_king = (d1 & bb.open_files(b.pawns()) & ksq.rank()).popcount();
-
-        // we give a castling bonus if either yet to castle or we have achieved the aim of
-        // castling by having king before (or after) both rooks or pawns < 6 per side
-        // if ( b.castling().contains(CastlingRights::king_side_right(c)) &&
-        //     b.castling().contains(CastlingRights::queen_side_right(c)))
-        //     ||
-        //     ((b.rooks() & b.us()).any() &&
-        //     (ksq < (b.rooks() & b.us()).first_square()  || ksq > (b.rooks() & b.us()).last_square() ))
-        //     ||
-        //     b.pawns().popcount() < 10 {
-        //         self.castling_sides = 1;
-        //     }
-        // if (b.castling().contains(CastlingRights::king_side_right(c)) &&
-        // b.castling().contains(CastlingRights::queen_side_right(c)))
-        // ||
-
-        //     ||
-        //       ( b.castling().contains(CastlingRights::king_side_right(c)) ||
-        //     b.castling().contains(CastlingRights::queen_side_right(c)))
-
-        //     {
-        //     self.castling_position = std::cmp::max((b.pawns() & Bitboard::RANKS_27).popcount() - 6, 0);
-        // }
-        // if self.adjacent_shield + self.nearby_shield >= 2
-        //         &&
-        //         ((b.rooks() & us).popcount() == 2
-        //         &&
-        //         (ksq.file_index() < (b.rooks() & us).first_square().file_index()  || ksq.file_index() > (b.rooks() & us).last_square().file_index() ))
-        //     ||
-        //     self.adjacent_shield + self.nearby_shield >= 2
-        //         &&
-        //         ((b.rooks() & us).popcount() == 1 && (3 - (b.rooks() & us).first_square().file_index()) >= ksq.file_index() )
-        //         {
-        //         self.castling_position = 1; //std::cmp::max((b.pawns() & Bitboard::RANKS_27).popcount() - 6, 0);
-        // }
-
-        //  if ( b.castling().contains(CastlingRights::king_side_right(c)) &&
-        // b.castling().contains(CastlingRights::queen_side_right(c))) {
-        //     self.castling_rights = 1
-        // }
-        // ||
-        // (Bitboard::E1.or(Bitboard::E8)).contains(k)
-        // ||
     }
 
-    // OLD
-    // fn _mobility_old(c: Color, s: &mut impl ScorerBase, b: &Board) {
-    //     let bb = BitboardDefault::default();
-    //     let us = b.color(c);
-    //     let open_files = bb.open_files(b.pawns());
-    //     let semi_open_files = bb.open_files(b.pawns() & us) - open_files; // free of our pawns
-
-    //     let queens_on_open_files = (open_files & us & b.queens()).popcount();
-    //     let their = c.opposite();
-    //     let them = b.color(their);
-    //     let occ = them | us;
-    //     let their_p = b.pawns() & them;
-    //     let our_p = b.pawns() & us;
-    //     let (pe, pw) = bb.pawn_attacks(their_p, their);
-    //     let (ope, opw) = bb.pawn_attacks(our_p, c);
-    //     let pa = pe | pw;
-    //     let our_pa = ope | opw;
-    //     let bi = b.bishops() & them;
-    //     let ni = b.knights() & them;
-    //     let r = b.rooks() & them;
-    //     // let q = b.queens() & them;
-
-    //     let k = b.kings() & them;
-    //     let ksq = k.square();
-
-    //     let mut connected_rooks = false;
-
-    //     let knight_outpost = 0;
-    //     let mut knight_outpost_rook_safe = 0;
-    //     let mut knight_outpost_pawn_defended = 0;
-    //     let knight_attacks_center = 0;
-    //     let mut knight_forks = 0;
-    //     let mut knight_connected = false;
-
-    //     let mut partially_trapped_pieces = 0;
-    //     let mut fully_trapped_pieces = 0;
-    //     let mut enemy_pawns_on_rook_rank = 0;
-    //     let mut attacks_on_opponent_king_area = 0;
-    //     let mut move_squares = 0;
-    //     let mut non_pawn_defended_moves = 0;
-    //     let mut bishop_outposts = 0;
-    //     let mut center_attacks = 0;
-    //     for sq in ((b.knights() | b.bishops() | b.rooks() | b.queens()) & us).squares() {
-    //         let p = b.piece_at(sq.as_bb());
-
-    //         // non-pawn-defended empty or oppoent sq
-    //         // include "attacking" our own pieces
-    //         let our_raw_attacks = bb.attacks(c, p, Bitboard::empty(), occ, sq);
-
-    //         let our_attacks = our_raw_attacks - pa;
-    //         center_attacks += (our_attacks & Bitboard::CENTER_16_SQ).popcount();
-    //         let piece_move_squares = (our_attacks - occ).popcount();
-    //         // let our_xray_attacks = bb.non_pawn_attacks(c, p, us - our_p, them, sq);
-
-    //         // FIXME v0.3.33 version
-    //         // Piece::Queen => (our_attacks & occ - q - r - bi).popcount(),
-    //         // Piece::Rook => (our_attacks & occ - r).popcount(),
-    //         // Piece::Knight => (our_attacks & occ - ni).popcount(),
-    //         // Piece::Bishop => (our_attacks & occ - bi - q).popcount(),
-
-    //         // those attacks on enemy that arent pawn defended and cant attack back
-    //         let piece_non_pawn_defended_moves = match p {
-    //             Piece::Queen => (our_attacks & them).popcount(),
-    //             Piece::Rook => (our_attacks & them - r).popcount(),
-    //             Piece::Knight => (our_attacks & them - ni).popcount(),
-    //             Piece::Bishop => (our_attacks & them - bi).popcount(),
-    //             _ => 0,
-    //         };
-
-    //         // self.attacks[p][Piece::Pawn] += (our_raw_attacks & b.pawns() & them).popcount();
-    //         // self.attacks[p][Piece::Knight] += (our_raw_attacks & b.knights() & them).popcount();
-    //         // self.attacks[p][Piece::Bishop] += (our_raw_attacks & b.bishops() & them).popcount();
-    //         // self.attacks[p][Piece::Rook] += (our_raw_attacks & b.rooks() & them).popcount();
-    //         // self.attacks[p][Piece::Queen] += (our_raw_attacks & b.queens() & them).popcount();
-    //         // self.attacks[p][Piece::King] += (our_raw_attacks & b.kings() & them).popcount();
-
-    //         // self.defends[p][Piece::Pawn] += (our_raw_attacks & b.pawns() & us).popcount();
-    //         // self.defends[p][Piece::Knight] += (our_raw_attacks & b.knights() & us).popcount();
-    //         // self.defends[p][Piece::Bishop] += (our_raw_attacks & b.bishops() & us).popcount();
-    //         // self.defends[p][Piece::Rook] += (our_raw_attacks & b.rooks() & us).popcount();
-    //         // self.defends[p][Piece::Queen] += (our_raw_attacks & b.queens() & us).popcount();
-    //         // self.defends[p][Piece::King] += (our_raw_attacks & b.kings() & us).popcount();
-    //         // self.xrayed = match p {
-    //         //     Piece::Queen => (our_xray_attacks & them - q).popcount(),
-    //         //     Piece::Rook => (our_xray_attacks & them - r).popcount(),
-    //         //     Piece::Knight => (our_xray_attacks & them - ni).popcount(),
-    //         //     Piece::Bishop => (our_xray_attacks & them - bi).popcount(),
-    //         //     _ => 0,
-    //         // };
-    //         // self.defended_non_pawn = ((our_raw_attacks|opa) & us).popcount();
-
-    //         // trapped piece
-    //         if piece_move_squares + piece_non_pawn_defended_moves == 1 {
-    //             partially_trapped_pieces += 1;
-    //         }
-    //         if piece_move_squares + piece_non_pawn_defended_moves == 0 {
-    //             fully_trapped_pieces += 1;
-    //         }
-    //         // self.mv.push((p, our_attacks.popcount()));
-    //         move_squares += piece_move_squares;
-    //         non_pawn_defended_moves += piece_non_pawn_defended_moves;
-
-    //         if k.any() {
-    //             attacks_on_opponent_king_area +=
-    //                 (our_raw_attacks & bb.within_chebyshev_distance_inclusive(ksq, 1)).popcount();
-    //         }
-    //         if p == Piece::Knight {
-    //             // knight forks
-    //             for sq in (our_raw_attacks).squares() {
-    //                 let atts = bb.knight_attacks(sq);
-    //                 if (atts & them & (b.queens() | b.rooks() | b.bishops() | b.kings())).popcount() >= 2
-    //                     && b.color_us() == c
-    //                 {
-    //                     knight_forks += 1;
-    //                 }
-    //             }
-    //             knight_connected |= (our_raw_attacks & b.knights() & us).any();
-
-    //             if bb.pawn_attack_span(c, sq).disjoint(their_p)
-    //                 && sq.rank_index_as_white(c) >= 4
-    //                 // && !sq.is_in(Bitboard::RIM)
-    //                 && sq.is_in(Bitboard::FILE_C | Bitboard::FILE_D | Bitboard::FILE_E | Bitboard::FILE_F)
-    //             {
-    //                 // knight_outpost += 1;
-    //                 if sq.is_in(our_pa) {
-    //                     knight_outpost_pawn_defended += 1;
-    //                 }
-    //                 if bb.pawn_stop(c, sq).intersects(their_p) {
-    //                     knight_outpost_rook_safe += 1;
-    //                 }
-    //             }
-    //         }
-    //         if p == Piece::Rook {
-    //             enemy_pawns_on_rook_rank += (Bitboard::RANKS[sq.rank_index()] & b.pawns() & them).popcount();
-    //             connected_rooks |= (our_raw_attacks & b.rooks() & us).any();
-    //         }
-
-    //         if p == Piece::Bishop {
-    //             // outposts
-    //             // treat the piece as a pawn and make sure its attack span is clear of enemy pawns
-    //             // and is on enemy half of board
-    //             if bb.pawn_attack_span(c, sq).disjoint(their_p)
-    //                 && sq.rank_index_as_white(c) >= 4
-    //                 && sq.is_in(our_pa)
-    //                 && sq.is_in(Bitboard::FILE_C | Bitboard::FILE_D | Bitboard::FILE_E | Bitboard::FILE_F)
-    //             {
-    //                 bishop_outposts += (p == Piece::Bishop) as i32;
-    //             }
-    //         }
-    //     }
-    //     // let wh = m.white.mv.iter().map(|(p, count)| self.pmvt.w_eval_mob(*p, *count)).sum();
-    //     // let bl = m.black.mv.iter().map(|(p, count)| self.pmvt.w_eval_mob(*p, *count)).sum();
-
-    //     // scorer.position("white mob", 1, 0, wh);
-    //     // scorer.position("black mob", 0, 1, bl);
-
-    //     // let pawns_count = |c: Color| {
-    //     //     let wp = b.pawns() & b.color(c) & Bitboard::WHITE_SQUARES;
-    //     //     let bp = b.pawns() & b.color(c) & Bitboard::BLACK_SQUARES;
-    //     //     let bishops = b.bishops() & b.color(c);
-
-    //     //     let mut pawn_count = 0;
-    //     //     if bishops.intersects(Bitboard::WHITE_SQUARES) {
-    //     //         pawn_count += wp.popcount();
-    //     //     }
-    //     //     if bishops.intersects(Bitboard::BLACK_SQUARES) {
-    //     //         pawn_count += bp.popcount();
-    //     //     }
-    //     //     pawn_count
-    //     // };
-    //     // s.accumulate(
-    //     //     Attr::BishopColorPawns.as_feature(),
-    //     //     pawns_count(White),
-    //     //     pawns_count(Black),
-    //     // );
-
-    //     //
-    //     // Rook
-    //     //
-    //     // let doubled_rooks = ((b.rooks() & us).two_or_more()
-    //     //     && (b.rooks() & us).first_square().file_index() == (b.rooks() & us).last_square().file_index())
-    //     //     as i32;
-
-    //     let bishop_color_pawns = |c: Color| {
-    //         if (b.bishops() & b.color(c)).exactly_one() {
-    //             if Bitboard::WHITE_SQUARES.contains(b.bishops() & b.color(c)) {
-    //                 return (b.pawns() & b.color(c) & Bitboard::WHITE_SQUARES).popcount()
-    //                     - (b.pawns() & b.color(c) & Bitboard::BLACK_SQUARES).popcount();
-    //             } else if Bitboard::BLACK_SQUARES.contains(b.bishops() & b.color(c)) {
-    //                 return (b.pawns() & b.color(c) & Bitboard::BLACK_SQUARES).popcount()
-    //                     - (b.pawns() & b.color(c) & Bitboard::WHITE_SQUARES).popcount();
-    //             }
-    //         }
-    //         0
-    //     };
-    //     s.accumulate(
-    //         Attr::BishopColorPawns.as_feature(),
-    //         bishop_color_pawns(White),
-    //         bishop_color_pawns(Black),
-    //     );
-
-    //     let doubled_rooks = ((b.rooks() & us).two_or_more()
-    //         && (b.rooks() & us).first_square().file_index() == (b.rooks() & us).last_square().file_index())
-    //         as i32;
-    //     s.accum(c, Attr::DoubledRooks.as_feature(), doubled_rooks);
-
-    //     let rook_on_open_file = open_files & us & b.rooks();
-    //     s.set_bits(Attr::RookOpenFile.into(), rook_on_open_file);
-    //     s.accum(c, Attr::RookOpenFile.as_feature(), rook_on_open_file.popcount());
-
-    //     let rook_semi_open_file = semi_open_files & us & b.rooks();
-    //     s.set_bits(Attr::RookSemiOpenFile.into(), rook_semi_open_file);
-    //     s.accum(c, Attr::RookSemiOpenFile.as_feature(), rook_semi_open_file.popcount());
-
-    //     let doubled_rooks_open_file = (doubled_rooks == 1 && rook_on_open_file.popcount() >= 2) as i32;
-    //     s.accum(c, Attr::DoubledRooksOpenFile.as_feature(), doubled_rooks_open_file);
-
-    //     s.accum(c, Attr::ConnectedRooks.as_feature(), connected_rooks as i32);
-    //     s.accum(c, Attr::EnemyPawnsOnRookRank.as_feature(), enemy_pawns_on_rook_rank);
-    //     // s.accum(c, Attr::RookTrapped.as_feature(), rook_trapped);
-
-    //     s.accum(c, Attr::KnightOutpost.as_feature(), knight_outpost);
-    //     s.accum(
-    //         c,
-    //         Attr::KnightOutpostPawnDefended.as_feature(),
-    //         knight_outpost_pawn_defended,
-    //     );
-    //     s.accum(c, Attr::KnightOutpostRookSafe.as_feature(), knight_outpost_rook_safe);
-    //     s.accum(c, Attr::KnightConnected.as_feature(), knight_connected as i32);
-    //     s.accum(c, Attr::KnightAttacksCenter.as_feature(), knight_attacks_center);
-
-    //     s.accum(c, Attr::AttacksNearKing.as_feature(), attacks_on_opponent_king_area);
-    //     s.accum(c, Attr::CenterAttacks.as_feature(), center_attacks);
-    //     s.accum(c, Attr::UndefendedSq.as_feature(), move_squares);
-    //     s.accum(c, Attr::UndefendedPiece.as_feature(), non_pawn_defended_moves);
-    //     s.accum(c, Attr::TrappedPiece.as_feature(), fully_trapped_pieces);
-    //     s.accum(c, Attr::PartiallyTrappedPiece.as_feature(), partially_trapped_pieces);
-    //     s.accum(c, Attr::QueenOpenFile.as_feature(), queens_on_open_files);
-    //     s.accum(c, Attr::BishopOutposts.as_feature(), bishop_outposts);
-    //     s.accum(c, Attr::KnightForks.as_feature(), knight_forks);
-
-    //     // s.mobility(
-    //     //     "defended non pawn",
-    //     //     defended_non_pawn,
-    //     // defended_non_pawn,
-    //     //     eval.defended_non_pawn,
-    //     // );
-    //     // s.mobility(
-    //     //     "xrayed",
-    //     //     xrayed,
-    //     // xrayed,
-    //     //     eval.xrayed,
-    //     // );
-    // }
-
-    //
-    // NEW
-    //
     fn mobility(c: Color, s: &mut impl ScorerBase, b: &Board) {
         let bb = BitboardDefault::default();
         let us = b.color(c);
