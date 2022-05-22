@@ -32,11 +32,11 @@ pub enum LikelyOutcome {
 pub enum EndGame {
     Unknown, // for when its too costly to work out who wins
     // 1v1
-    Kk, // automatic draw
+    Kk,
     // 2v1
     KMk, // automatic draw
     Kkm, // automatic draw
-    KRk, // win
+    KRk,
     Kkr, // win
     KQk, // win
     Kkq, // win
@@ -208,6 +208,7 @@ impl EndGame {
     pub fn counts_to_string() -> String {
         format!("{}", SliceStat(&ENDGAME_COUNTS[..]))
     }
+
 
     pub fn from_board(b: &Board) -> Self {
         let eg = Self::private_ctor(b);

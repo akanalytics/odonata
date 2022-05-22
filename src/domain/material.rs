@@ -7,20 +7,14 @@ use std::cmp;
 use std::fmt;
 use std::ops;
 
-
-
-
 // K  Q   R   B   N    P
 // 1 11 111 111 111 1111
 
-
-
-
+type MaterialCount = u16;
 
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub struct Material {
-    // counts[color][piece] = #
-    counts: [[i32; Piece::len()]; Color::len()],
+    counts: [[MaterialCount; Piece::len()]; Color::len()],
 }
 
 impl fmt::Display for Material {
@@ -101,18 +95,52 @@ impl cmp::PartialOrd for Material {
 }
 
 impl Material {
+
+
+    /// const constructor (which can panic)
+    /// eg const m: Material = Material::from_piece_bytes(b"PPPKk");
+    /// 
+    pub const fn from_piece_bytes(bytes: &[u8]) -> Material {
+        let mut m: Material = Material::new();
+        let mut i = 0;
+        while i < bytes.len() {
+            let ch = bytes[i] as char;
+            let p = match ch.to_ascii_uppercase() {
+                'P' => Piece::Pawn,
+                'N' => Piece::Knight,
+                'B' => Piece::Bishop,
+                'R' => Piece::Rook,
+                'Q' => Piece::Queen,
+                'K' => Piece::King,
+                _ => panic!("Invalid pieces in from_piece_bytes"),
+            };
+            let c = if ch.is_ascii_lowercase() {
+                Color::Black
+            } else {
+                Color::White
+            };
+            m.counts[c.index()][p.index()] += 1;
+            i += 1;
+        }
+        m
+    }
+
     pub fn from_board(board: &Board) -> Material {
         let mut m = Material { ..Self::default() };
         for &p in &Piece::ALL_BAR_NONE {
-            m.counts[Color::White][p] = (board.pieces(p) & board.white()).popcount() as i32;
-            m.counts[Color::Black][p] = (board.pieces(p) & board.black()).popcount() as i32;
+            // m.counts[Color::White][p] = (board.pieces(p) & board.white()).popcount() as MaterialCount;
+            // m.counts[Color::Black][p] = (board.pieces(p) & board.black()).popcount() as MaterialCount;
+            m.set_count(Color::White, p, (board.pieces(p) & board.white()).popcount());
+            m.set_count(Color::Black, p, (board.pieces(p) & board.black()).popcount());
         }
         m
     }
 
     #[inline]
-    pub fn new() -> Material {
-        Self::default()
+    pub const fn new() -> Material {
+        Material {
+            counts: [[0; Piece::len()]; Color::len()],
+        }
     }
 
     /// Material.from_piece_str("PPPBNRQKppbbqk")
@@ -123,42 +151,28 @@ impl Material {
         for ch in s.chars() {
             let p = Piece::from_char(ch)?;
             let c = Color::from_piece_char(ch)?;
-            m.counts[c][p] += 1;
+            m.set_count(c, p, m.count(c, p) + 1);
         }
         Ok(m)
     }
-
-    // pub const fn from_piece_bytes(bytes: &[u8]) -> Result<Material> {
-    //     let mut m: Material = Material::new();
-    //     let mut i = 0;
-    //     while i < bytes.len() {
-    //         let p = match Piece::from_char(bytes[i] as char) {
-    //             Ok(p) => p,
-    //             Err(e) => {return Err(e); },
-    //         };
-    //         let c = match Color::from_piece_char(bytes[i] as char) {
-    //             Ok(c) => c,
-    //             Err(e) => {return Err(e); },
-    //         };
-    //         m.counts[c.index()][p.index()] = 1;
-    //         i += 1;
-    //     };
-    //     Ok(m)
-    // }
 
     #[inline]
     pub fn total_count(&self) -> i32 {
         Piece::ALL_BAR_NONE.iter().map(|&p| self.count_piece(p)).sum::<i32>()
     }
 
+    pub fn total_count2(&self) -> i32 {
+        self.total_count()
+    }
+
     #[inline]
-    pub fn count(&self, c: Color, p: Piece) -> i32 {
-        self.counts[c][p]
+    pub const fn count(&self, c: Color, p: Piece) -> i32 {
+        self.counts[c.index()][p.index()] as i32
     }
 
     #[inline]
     pub fn set_count(&mut self, c: Color, p: Piece, v: i32) {
-        self.counts[c][p] = v;
+        self.counts[c][p] = v as MaterialCount;
     }
 
     #[inline]
@@ -289,13 +303,13 @@ impl Material {
         (((((((((((2 + 1) * 3 + 2) * 3 + 2) * 3 + 2) * 3 + 2) * 3) + 2) * 3) + 2) * 9 + 8) * 9) + 8 + 1;
 
     // hash of no material = 0
-    pub fn hash(&self) -> usize {
+    pub const fn hash(&self) -> usize {
         let wq = self.count(Color::White, Piece::Queen) as i32;
         let wr = self.count(Color::White, Piece::Rook) as i32;
         let wb = self.count(Color::White, Piece::Bishop) as i32;
         let wn = self.count(Color::White, Piece::Knight) as i32;
         let wp = self.count(Color::White, Piece::Pawn) as i32;
-        if !(0..=1).contains(&wq) || wr < 0 || wr > 2 || wb < 0 || wb > 2 || wn < 0 || wn > 2 || wp < 0 || wp > 8 {
+        if wq > 1 || wr < 0 || wr > 2 || wb < 0 || wb > 2 || wn < 0 || wn > 2 || wp < 0 || wp > 8 {
             return 0;
         }
         let bq = self.count(Color::Black, Piece::Queen) as i32;
@@ -303,7 +317,7 @@ impl Material {
         let bb = self.count(Color::Black, Piece::Bishop) as i32;
         let bn = self.count(Color::Black, Piece::Knight) as i32;
         let bp = self.count(Color::Black, Piece::Pawn) as i32;
-        if !(0..=1).contains(&bq) || br < 0 || br > 2 || bb < 0 || bb > 2 || bn < 0 || bn > 2 || bp < 0 || bp > 8 {
+        if bq > 1 || br < 0 || br > 2 || bb < 0 || bb > 2 || bn < 0 || bn > 2 || bp < 0 || bp > 8 {
             return 0;
         }
         // let w_hash = (((wq * 3 + wr) * 3 + wb) * 3 + wn) * 9 + wp;
@@ -406,7 +420,10 @@ mod tests {
     // use std::{cmp::Ordering, convert::TryFrom};
 
     use super::*;
-    use crate::{catalog::Catalog, infra::profiler::Profiler};
+    use crate::{
+        catalog::Catalog,
+        infra::{black_box, profiler::Profiler},
+    };
     // // use crate::{debug, logger::LogInit};
 
     #[test]
@@ -421,6 +438,10 @@ mod tests {
         assert_eq!(--mat_full1, mat_full2);
         assert_eq!(-&-&mat_full1, mat_full2);
         assert_eq!(mat_full2.total_count(), 32);
+
+        const M1: Material = Material::from_piece_bytes(b"PPPKk");
+        let m2 = Material::from_piece_str("KkPPP").unwrap();
+        assert_eq!(M1, m2);
 
         #[allow(non_snake_case)]
         let mat_KBk = Material::from_piece_str("KBk").unwrap();
@@ -519,6 +540,7 @@ mod tests {
         let mat_full = Material::from_board(&board);
         assert_eq!(Material::maybe_from_hash(mat_full.hash()), mat_full);
         assert_eq!(mat_full.hash(), Material::HASH_VALUES - 1);
+        assert_eq!(Material::HASH_VALUES, 236196);
 
         let mat_part = Material::from_piece_str("KQRBPPPPPkqrrnppppppp").unwrap();
         assert_eq!(Material::maybe_from_hash(mat_part.hash()), mat_part);
@@ -527,17 +549,21 @@ mod tests {
     fn bench_material() {
         {
             let mut prof = Profiler::new("material-ctor".into());
-            let mut prof2 = Profiler::new("material-im".into());
+            let mut prof2 = Profiler::new("material-total".into());
+            let mut prof3 = Profiler::new("material-insuff".into());
             let board = Catalog::starting_board();
 
             prof.start();
-            let m = Material::from_board(&board);
+            let m = black_box(Material::from_board(&board));
             prof.stop();
 
             prof2.start();
-            let c = m.total_count();
-            let im = m.is_insufficient();
+            let c = black_box(m.total_count());
             prof2.stop();
+
+            prof3.start();
+            let im = black_box(m.is_insufficient());
+            prof3.stop();
 
             assert_eq!(c, 32);
             assert_eq!(im, false);
@@ -548,11 +574,11 @@ mod tests {
             let board = Catalog::starting_board();
             let m = Material::from_board(&board);
             prof.start();
-            let wp = m.color(Color::White).count_piece(Piece::Pawn);
-            let bb = m.color(Color::Black).count_piece(Piece::Bishop);
+            let wp = black_box(m.color(Color::White).count_piece(Piece::Pawn));
+            let bb = black_box(m.color(Color::Black).count_piece(Piece::Bishop));
             prof.stop();
             prof2.start();
-            let wp2 = m.count(Color::White, Piece::Pawn);
+            let wp2 = black_box(m.count(Color::White, Piece::Pawn));
             prof2.stop();
 
             assert_eq!(wp, 8);
