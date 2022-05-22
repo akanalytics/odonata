@@ -34,62 +34,63 @@ pub enum EndGame {
     // 1v1
     Kk,
     // 2v1
-    KMk, // automatic draw
-    Kkm, // automatic draw
+    KMk,
+    Kkm,
     KRk,
-    Kkr, // win
-    KQk, // win
-    Kkq, // win
-    KPk, // ??
-    Kkp, // ??
+    Kkr,
+    KQk,
+    Kkq,
+    KPk,
+    Kkp,
 
     // 2v kp
-    KPkp, // ??
-    KMkp, // draw at best, color is winning/has pawns
-    KPkm, // draw at best, color is winning/has pawns
-    KRkp, // ??
-    KPkr, // ??
-    KQkp, // ??
-    KPkq, // ??
+    KPkp,
+    KMkp,
+    KPkm,
+    KRkp,
+    KPkr,
+    KQkp,
+
+    KPkq,
 
     // 2v km
-    KMkm, // draw but not automatic (helpmate)
-    KRkb, // ??
-    KRkn, // ??
-    KBkr, // ??
-    KNkr, // ??
-    KQkm, // ??
-    KMkq, // ??
+    KMkm,
+    KRkb,
+    KRkn,
+    KBkr,
+    KNkr,
+    KQkm,
+    KMkq,
 
     // 2v k+major
-    KRkr, // ??
-    KQkr, // ??
-    KRkq, // ??
-    KQkq, // ??
+    KRkr,
+    KQkr,
+    KRkq,
+    KQkq,
 
     // 3v k
-    KPPk, // ??
-    Kkpp, // ??
-    KNPk, // ??
-    Kknp, // ??
-    KBPk, // ??
-    Kkbp, // ??
+    KPPk,
+    Kkpp,
+    KNPk,
+    Kknp,
+    KBPk,
+    Kkbp,
 
-    KNNk, // draw but not automatic
-    Kknn, // draw but not automatic
-    KBNk, // win
-    Kkbn, // win
-    KBbk, // win
-    KBBk, // draw
-    KkBb, // win
-    Kkbb, // draw
-    KJMk, // win
-    Kkjm, // win
-    KJJk, // win
-    Kkjj, // win
+    KNNk,
+    Kknn,
+    KBNk,
+    Kkbn,
+    KBbk,
+    KBBk,
+    KkBb,
+    Kkbb,
+    KJMk,
+    Kkjm,
+    KJJk,
+    Kkjj,
 
-    KPPPk, // win
-    Kkppp, // win
+    KPPPk,
+    Kkppp,
 }
 
 use static_init::dynamic;
@@ -115,9 +116,9 @@ impl EndGame {
         use LikelyOutcome::*;
         match self {
             Unknown => UnknownOutcome,
-            Kk | KMk | Kkm => DrawImmediate,
+            Kk | KMk | Kkm | KNNk | Kknn => DrawImmediate,
 
-            KNNk | KMkm | Kknn | KBBk | Kkbb => Draw, // (helpmate?)
+            KMkm | KBBk | Kkbb => Draw, // (helpmate?)
 
             KRk | KQk | KBNk | KBbk | KJJk | KJMk => WhiteWin,
             Kkr | Kkq | Kkbn | KkBb | Kkjj | Kkjm => WhiteLoss,
@@ -163,38 +164,30 @@ impl EndGame {
         }
     }
 
-    // pub fn is_likely_draw(&self) -> bool {
-    //     use EndGame::*;
-    //     match self {
-    //         Unknown => false,
-    //         KMkm => true,
-    //         KNNk => true,
-    //         KBBk => true,
-    //         _ => false,
-    //     }
-    // }
 
-    // // the color that cannot win
-    // pub fn cannot_win(&self) -> Option<Color> {
-    //     use EndGame::*;
-    //     match self {
-    //         // c has pawns so opponent cant win
-    //         KMkp(c) => Some(c), // cannot win with a minor
-    //         KRk(c) => Some(c),
-    //         _ => None,
-    //     }
-    // }
-
-    // /// immediately declared draw
-    // pub fn is_immediately_declared_draw(&self) -> bool {
-    //     use EndGame::*;
-    //     #[allow(clippy::match_like_matches_macro)]
-    //     match self {
-    //         Kk => true,  // automatic draw
-    //         KMk => true, // automatic draw
-    //         _ => false,
-    //     }
-    // }
+    pub fn is_insufficient_material(bd: &Board) -> bool {
+        // If both sides have any one of the following, and there are no pawns on the board:
+        // 1. A lone king
+        // 2. a king and bishop
+        // 3. a king and knight
+        // 4. K+B v K+B (same color Bs)
+        //
+        // queens, rooks or pawns => can still checkmate
+        if bd.pawns().any() || bd.rooks().any() || bd.queens().any() {
+            return false;
+        }
+        // can assume just bishops, knights and kings now
+        let bishops_w = (bd.bishops() & bd.white()).popcount();
+        let bishops_b = (bd.bishops() & bd.black()).popcount();
+        let knights = bd.knights().popcount();
+        if bishops_w + bishops_b + knights <= 1 {
+            return true; // cases 1, 2 & 3
+        }
+        if knights == 0 && bishops_w == 1 && bishops_b == 1 {
+            return true; // FIXME: color of bishop  case 4
+        }
+        false
+    }
 
     /// should be a win unless piece can be captures immediately
     pub fn try_winner(&self, b: &Board) -> Option<Color> {
@@ -208,7 +201,6 @@ impl EndGame {
     pub fn counts_to_string() -> String {
         format!("{}", SliceStat(&ENDGAME_COUNTS[..]))
     }
-
 
     pub fn from_board(b: &Board) -> Self {
         let eg = Self::private_ctor(b);
@@ -278,7 +270,7 @@ impl EndGame {
                 return EndGame::Kkp;
             }
         }
-        // 
+        //
         // now assume we have 4 pieces
         //
         if wn + wb == 1 && bn + bb == 1 {
@@ -371,84 +363,14 @@ impl EndGame {
     }
 }
 
-//     // If both sides have any one of the following,
-//     // and there are no pawns on the board:
-//     // 1. A lone king
-//     // 2. a king and bishop
-//     // 3. a king and knight
-//     // 4. K+B v K+B (same color Bs)
-//     //
-//     // queens, rooks or pawns => can still checkmate
-//     if (b.rooks() | b.queens()).any() {
-//         return EndGame::Unknown;
-//     }
-
-//     // either size could win if both have pawns
-//     if (b.pawns() & b.black()).any() && (b.pawns() & b.white()).any() {
-//         return EndGame::Unknown;
-//     }
-
-//     if (b.pawns() & b.black()).any() && ((b.bishops() | b.knights()) & b.white()).popcount() <= 1 {
-//         return EndGame::KMkp(Color::White);
-//     }
-//     if (b.pawns() & b.white()).any() && ((b.bishops() | b.knights()) & b.black()).popcount() <= 1 {
-//         return EndGame::KMkp(Color::Black);
-//     }
-
-//     // pawns plus opponent has 2+ minors, so uncertain outcome
-//     if b.pawns().any() {
-//         return EndGame::Unknown;
-//     }
-
-//     // can assume just bishops, knights and kings now
-//     let wb = (b.bishops() & b.white()).popcount();
-//     let bb = (b.bishops() & b.black()).popcount();
-//     let wn = (b.knights() & b.white()).popcount();
-//     let bn = (b.knights() & b.black()).popcount();
-//     // 0 minor pieces
-//     if wb + bb + wn + bn == 0 {
-//         return EndGame::Kk;
-//     }
-
-//     // 1 minor pieces
-//     if wb + bb + wn + bn == 1 {
-//         return EndGame::KMk;
-//     }
-
-//     // no bishops
-//     if wb + bb == 0 && (wn == 0 && bn >= 2 || wn >= 2 && bn == 0) {
-//         return EndGame::KNNk;
-//     }
-//     if wn + wb == 1 && bn + bb == 1 {
-//         return EndGame::KMkm;
-//     }
-
-//     if wn >= 1 && wb >= 1 && bn + bb == 0 {
-//         return EndGame::KBNk(Color::White);
-//     }
-//     if bn >= 1 && bb >= 1 && wn + wb == 0 {
-//         return EndGame::KBNk(Color::Black);
-//     }
-
-//     if wn + bn == 0 && wb + bb == 2 {
-//         // bishops must below to same player as not king+minor endgame
-//         if (b.bishops() & Bitboard::WHITE_SQUARES).popcount() == 1 {
-//             if wb == 2 {
-//                 return EndGame::KBbk(Color::White);
-//             } else {
-//                 return EndGame::KBbk(Color::Black);
-//             }
-//         } else {
-//             return EndGame::KBBk;
-//         }
-//     }
-//     EndGame::Unknown
-// }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::board::boardbuf::*;
+    use crate::{
+        board::boardbuf::*,
+        infra::{black_box, profiler::Profiler},
+    };
     use test_log::test;
 
     #[test]
@@ -521,5 +443,35 @@ mod tests {
         assert_eq!(eg, EndGame::KQkp);
 
         println!("{}", EndGame::counts_to_string());
+    }
+
+    #[test]
+    fn bench_endgame() {
+        let mut prof1 = Profiler::new("endgame-ctor".into());
+        let mut prof2 = Profiler::new("outcome-enum".into());
+        let mut prof3 = Profiler::new("material-insuff".into());
+
+        let b1 = Board::parse_fen("k7/8/8/8/NN6/8/8/K7 w - - 0 1").unwrap();
+        let b2 = Board::parse_fen("k7/8/3N4/8/8/8/8/K61 w - - 0 1").unwrap();
+
+        prof1.start();
+        let lo1 = black_box(EndGame::from_board(&b1).likely_outcome(&b1));
+        let lo2 = black_box(EndGame::from_board(&b2).likely_outcome(&b2));
+        prof1.stop();
+
+        prof2.start();
+        let o1 = black_box(b1.material().is_insufficient());
+        let o2 = black_box(b2.material().is_insufficient());
+        prof2.stop();
+
+        prof3.start();
+        let _ = black_box(EndGame::is_insufficient_material(&b1));
+        let _ = black_box(EndGame::is_insufficient_material(&b2));
+        prof3.stop();
+
+        assert_eq!(o1, true);
+        assert_eq!(o2, true);
+        assert_eq!(lo1, LikelyOutcome::DrawImmediate);
+        assert_eq!(lo2, LikelyOutcome::DrawImmediate);
     }
 }

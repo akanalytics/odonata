@@ -95,11 +95,9 @@ impl cmp::PartialOrd for Material {
 }
 
 impl Material {
-
-
     /// const constructor (which can panic)
     /// eg const m: Material = Material::from_piece_bytes(b"PPPKk");
-    /// 
+    ///
     pub const fn from_piece_bytes(bytes: &[u8]) -> Material {
         let mut m: Material = Material::new();
         let mut i = 0;
@@ -245,30 +243,6 @@ impl Material {
         advantage
     }
 
-    pub fn is_insufficient_old(bd: &Board) -> bool {
-        // If both sides have any one of the following, and there are no pawns on the board:
-        // 1. A lone king
-        // 2. a king and bishop
-        // 3. a king and knight
-        // 4. K+B v K+B (same color Bs)
-        //
-        // queens, rooks or pawns => can still checkmate
-        if !(bd.pawns() | bd.rooks() | bd.queens()).is_empty() {
-            return false;
-        }
-        // can assume just bishops, knights and kings now
-        let bishops_w = (bd.bishops() & bd.white()).popcount();
-        let bishops_b = (bd.bishops() & bd.black()).popcount();
-        let knights = bd.knights().popcount();
-        if bishops_w + bishops_b + knights <= 1 {
-            return true; // cases 1, 2 & 3
-        }
-        if knights == 0 && bishops_w == 1 && bishops_b == 1 {
-            return true; // FIXME: color of bishop  case 4
-        }
-        false
-    }
-
     pub fn is_insufficient(&self) -> bool {
         // If both sides have any one of the following, and there are no pawns on the board:
         // 1. A lone king
@@ -279,16 +253,10 @@ impl Material {
         // k=0, n=1, b=2, p=r=q=3. Then every total <= 2 is draw covers 1-3
         // no attempt to check for dead fortress like positions
         let (w, b) = (Color::White, Color::Black);
-        let ni = self.count(w, Piece::Knight) + self.count(b, Piece::Knight);
-        let bi = 2 * (self.count(w, Piece::Bishop) + self.count(b, Piece::Bishop));
+        let ni = self.count_piece(Piece::Knight);
+        let bi = 2 * self.count_piece(Piece::Bishop);
 
-        let prq = 3
-            * (self.count(w, Piece::Pawn)
-                + (self.count(b, Piece::Pawn)
-                    + self.count(w, Piece::Rook)
-                    + self.count(b, Piece::Rook)
-                    + self.count(w, Piece::Queen)
-                    + self.count(b, Piece::Queen)));
+        let prq = 3 * (self.count_piece(Piece::Pawn) + self.count_piece(Piece::Rook) + self.count_piece(Piece::Queen));
         if ni + bi + prq <= 2 {
             return true;
         }
@@ -564,6 +532,7 @@ mod tests {
             prof3.start();
             let im = black_box(m.is_insufficient());
             prof3.stop();
+
 
             assert_eq!(c, 32);
             assert_eq!(im, false);
