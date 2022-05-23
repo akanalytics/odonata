@@ -27,7 +27,7 @@ pub struct Tree<N> {
 }
 
 
-impl Tree<SearchTreeWeight> {
+impl Tree<TreeNode> {
     fn display_leaves(&self, f: &mut fmt::Formatter, leaves: &[NodeIndex], spaces: Vec<bool>) -> fmt::Result {
         for (i, &leaf) in leaves.iter().rev().enumerate() {
             let last = i >= leaves.len() - 1;
@@ -52,6 +52,7 @@ impl Tree<SearchTreeWeight> {
             for _ in spaces.len()..5 {
                 write!(f, "    ")?;
             }
+
             writeln!(
                 f,
                 "{:>5} {:>2} [{:>4},{:>4}] {} {}",
@@ -85,7 +86,7 @@ impl Tree<SearchTreeWeight> {
     }
 }
 
-impl Display for Tree<SearchTreeWeight> {
+impl Display for Tree<TreeNode> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let root = self.root();
         writeln!(f, "{}", self.graph.node_weight(root).unwrap())?;
@@ -148,7 +149,7 @@ impl<N> std::ops::IndexMut<NodeIndex> for Tree<N> {
 }
 
 #[derive(Clone, PartialEq, Debug, Default)]
-pub struct SearchTreeWeight {
+pub struct TreeNode {
     mv: Move,
     pub node: Node,
     pub score: Score,
@@ -157,7 +158,7 @@ pub struct SearchTreeWeight {
     pub is_best_move: bool,
 }
 
-impl Display for SearchTreeWeight {
+impl Display for TreeNode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -175,7 +176,7 @@ impl Display for SearchTreeWeight {
 #[derive(Clone, Debug, Default)]
 pub struct SearchTree {
     pub initial_position: Board,
-    pub tree: Tree<SearchTreeWeight>,
+    pub tree: Tree<TreeNode>,
 }
 
 impl SearchTree {
@@ -201,16 +202,16 @@ impl SearchTree {
         Some(node)
     }
 
-    pub fn get_or_insert(&mut self, var: &Variation) -> &mut SearchTreeWeight {
+    pub fn get_or_insert(&mut self, var: &Variation) -> &mut TreeNode {
         if let Some(n) = self.find(var) {
             return &mut self.tree[n];
         }
         if let Some(stem) = var.stem() {
             self.get_or_insert(&stem);
             if let Some(n) = self.find(&stem) {
-                let w = SearchTreeWeight {
+                let w = TreeNode {
                     mv: var.last().unwrap_or(&Move::NULL_MOVE).to_owned(),
-                    ..SearchTreeWeight::default()
+                    ..TreeNode::default()
                 };
                 let new = self.tree.add_child(n, w);
                 return &mut self.tree[new];

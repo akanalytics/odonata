@@ -27,9 +27,9 @@ impl fmt::Display for NodeType {
             "{}",
             match self {
                 NodeType::Unused => "UN",
-                NodeType::UpperAll => "AU",
-                NodeType::LowerCut => "CL",
-                NodeType::ExactPv => "PV",
+                NodeType::UpperAll => "ALL",
+                NodeType::LowerCut => "CUT",
+                NodeType::ExactPv => "PV ",
             }
         )
     }

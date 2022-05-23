@@ -72,7 +72,7 @@ impl Algo {
 
         let mut n = Node { ply, depth, alpha, beta };
 
-        let (cancelled, cat) = self.time_up_or_cancelled(ply, false);
+        let (cancelled, mut cat) = self.time_up_or_cancelled(ply, false);
         if cancelled {
             self.counts.inc(&n, cat);
             return Err(cat);
@@ -299,14 +299,17 @@ impl Algo {
         }
         if nt == NodeType::UpperAll {
             self.stats.inc_node_all(ply);
-            self.counts.inc(&n, Event::NodeInteriorAll);
+            cat = Event::NodeInteriorAll;
+            self.counts.inc(&n, cat);
             // nothing
         } else if nt == NodeType::LowerCut {
             debug_assert!(!bm.is_null());
-            self.counts.inc(&n, Event::NodeInteriorCut);
+            cat = Event::NodeInteriorCut;
+            self.counts.inc(&n, cat);
         } else if nt == NodeType::ExactPv {
             self.stats.inc_node_pv(ply);
-            self.counts.inc(&n, Event::NodeInteriorPv);
+            cat = Event::NodeInteriorPv;
+            self.counts.inc(&n, cat);
             // self.record_new_pv(ply, &bm, false);
             debug_assert!(!bm.is_null())
         } else {
@@ -329,7 +332,7 @@ impl Algo {
             nt,
             b,
         );
-        self.explain_node(bm, nt, score, &n, &self.pv_table.extract_pv_for(ply));
+        self.explain_node(bm, nt, score, &n, cat, &self.pv_table.extract_pv_for(ply));
         Ok((score, category))
     }
 }
