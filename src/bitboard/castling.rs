@@ -47,7 +47,12 @@ impl<T> std::ops::IndexMut<CastlingRights> for [T] {
 impl CastlingRights {
     #[inline]
     pub fn iter() -> &'static [Self] {
-        &[Self::WHITE_KING, Self::WHITE_QUEEN, Self::BLACK_KING, Self::BLACK_QUEEN]
+        &[
+            Self::WHITE_KING,
+            Self::WHITE_QUEEN,
+            Self::BLACK_KING,
+            Self::BLACK_QUEEN,
+        ]
     }
 
     #[inline]
@@ -132,7 +137,8 @@ impl CastlingRights {
 
     #[inline]
     pub const fn rook_and_king_squares() -> Bitboard {
-        Bitboard::A1.or(Bitboard::A8.or(Bitboard::H1.or(Bitboard::H8.or(Bitboard::E1.or(Bitboard::E8)))))
+        Bitboard::A1
+            .or(Bitboard::A8.or(Bitboard::H1.or(Bitboard::H8.or(Bitboard::E1.or(Bitboard::E8)))))
     }
 
     #[inline]

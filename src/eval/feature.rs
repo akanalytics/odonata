@@ -7,13 +7,11 @@ use crate::outcome::Outcome;
 use crate::phaser::Phase;
 use anyhow::Result;
 
-
 #[derive(Default, Clone, Debug)]
 pub struct Sparse {
     index: u16,
     value: i16,
 }
-
 
 #[derive(Default, Clone, Debug)]
 pub struct FeatureVector {
@@ -44,7 +42,6 @@ pub struct WeightsVector {
     pub weights: Vec<Weight>,
     pub names: Vec<String>,
 }
-
 
 impl Sparse {
     #[inline(always)]
@@ -105,7 +102,10 @@ impl FeatureMatrix {
 impl fmt::Debug for FeatureMatrix {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("FeatureMatrix")
-            .field("feature_names", &self.feature_names.iter().enumerate().collect_vec())
+            .field(
+                "feature_names",
+                &self.feature_names.iter().enumerate().collect_vec(),
+            )
             .field("#features", &self.feature_vectors.len())
             .finish()
     }
@@ -117,7 +117,11 @@ impl fmt::Debug for FeatureMatrix {
 
 impl FeatureMatrix {
     pub fn write_csv<W: Write>(&self, f: &mut W) -> Result<i32> {
-        writeln!(f, "{},phase,outcome,ce,fen", self.feature_names.iter().join(","))?;
+        writeln!(
+            f,
+            "{},phase,outcome,ce,fen",
+            self.feature_names.iter().join(",")
+        )?;
         for r in self.feature_vectors.iter() {
             for (c, _name) in self.feature_names.iter().enumerate() {
                 match r.value_nth(c as usize) {
@@ -125,7 +129,14 @@ impl FeatureMatrix {
                     None => write!(f, "0,"),
                 }?;
             }
-            writeln!(f, "{},{},{},{}", r.phase, r.outcome.as_win_fraction(), 0, r.fen)?;
+            writeln!(
+                f,
+                "{},{},{},{}",
+                r.phase,
+                r.outcome.as_win_fraction(),
+                0,
+                r.fen
+            )?;
         }
         Ok(self.feature_vectors.len() as i32)
     }
@@ -172,7 +183,7 @@ mod tests {
             outcome: Outcome::WinBlack,
             phase: Phase(30),
             fen: "car".to_owned(),
-        }); 
+        });
         fm.feature_vectors[0].values.push(Sparse::new(4, 0));
         fm.feature_vectors[0].values.push(Sparse::new(3, 1));
         fm.feature_vectors[0].values.push(Sparse::new(5, 2));
@@ -182,7 +193,7 @@ mod tests {
             outcome: Outcome::WinBlack,
             phase: Phase(30),
             fen: "motorbike".to_owned(),
-        }); 
+        });
         fm.feature_vectors[1].values.push(Sparse::new(1, 1));
         fm.feature_vectors[1].values.push(Sparse::new(2, 0));
         fm
@@ -191,12 +202,12 @@ mod tests {
     #[test]
     fn test_feature_matrix() {
         let fm = create_feature_matrix();
-        assert_eq!(fm.feature_vectors[0].value_nth(0), Some(4)); 
-        assert_eq!(fm.feature_vectors[0].value_nth(1), Some(3)); 
-        assert_eq!(fm.feature_vectors[0].value_nth(2), Some(5)); 
-        assert_eq!(fm.feature_vectors[0].value_nth(3), None); 
+        assert_eq!(fm.feature_vectors[0].value_nth(0), Some(4));
+        assert_eq!(fm.feature_vectors[0].value_nth(1), Some(3));
+        assert_eq!(fm.feature_vectors[0].value_nth(2), Some(5));
+        assert_eq!(fm.feature_vectors[0].value_nth(3), None);
 
-        assert_eq!(fm.feature_vectors[1].value_nth(2), None); 
+        assert_eq!(fm.feature_vectors[1].value_nth(2), None);
         println!("{}", fm);
     }
 
@@ -209,7 +220,10 @@ mod tests {
         // let mut formatter = std::fmt::Formatter::new(&mut buf);
         // fmt::Display::fmt(self, &mut formatter)
         //         .expect("a Display implementation returned an error unexpectedly");
-        println!("to string csv wrote {lines} of body\n{}", std::str::from_utf8(w.get_ref()).unwrap());
+        println!(
+            "to string csv wrote {lines} of body\n{}",
+            std::str::from_utf8(w.get_ref()).unwrap()
+        );
         Ok(())
     }
 }

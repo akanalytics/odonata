@@ -7,18 +7,16 @@ use crate::search::timecontrol::TimeControl;
 use crate::trace::stat::Stat;
 use crate::tuning::Tuning;
 use crate::utils::Formatting;
-use anyhow::{Context, Result, anyhow};
+use anyhow::{anyhow, Context, Result};
 use figment::providers::{Format, Toml};
 use figment::value::{Dict, Map};
 use figment::{Error, Figment, Metadata, Profile, Provider};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::atomic::Ordering;
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 use std::{fmt, mem, panic};
-use std::sync::atomic::{Ordering};
-
-
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -78,8 +76,16 @@ impl fmt::Display for Engine {
         writeln!(f, "shared tt        : {}", self.shared_tt)?;
         writeln!(f, "feature          : {}", self.feature)?;
         writeln!(f, "tuner            : {}", self.tuner)?;
-        writeln!(f, "engine init time : {}", Formatting::duration(self.engine_init_time))?;
-        writeln!(f, "search init time : {}", Formatting::duration(self.search_init_time))?;
+        writeln!(
+            f,
+            "engine init time : {}",
+            Formatting::duration(self.engine_init_time)
+        )?;
+        writeln!(
+            f,
+            "search init time : {}",
+            Formatting::duration(self.search_init_time)
+        )?;
         write!(f, "\n[algo]\n{}", self.algo)
     }
 }
@@ -126,10 +132,12 @@ impl Engine {
         //     std::process::exit(1);
         //     // panic!("Panic!!!!")
         // }));
-    
 
-
-        let toml = RESOURCE_DIR.get_file("config.toml").unwrap().contents_utf8().unwrap();
+        let toml = RESOURCE_DIR
+            .get_file("config.toml")
+            .unwrap()
+            .contents_utf8()
+            .unwrap();
 
         let toml = Toml::string(toml);
         // let _engine = Self::default();
@@ -191,7 +199,9 @@ impl Engine {
         // debug!("resize?? {}", self.algo.tt.requires_resize());
         let t = Instant::now();
         for i in 0..self.thread_count {
-            let builder = thread::Builder::new().name(format!("S{}", i)).stack_size(800_000);
+            let builder = thread::Builder::new()
+                .name(format!("S{}", i))
+                .stack_size(800_000);
             let mut algo = self.algo.clone();
             if !self.shared_tt {
                 algo.tt = TranspositionTable2::default();
@@ -228,8 +238,7 @@ impl Engine {
                         error!("Backtrace {:?}", e.source());
                     }
                 }
-                result.map_err(|e| anyhow!("Anyhow {:?}",e))
-
+                result.map_err(|e| anyhow!("Anyhow {:?}", e))
             };
             self.threads.push(builder.spawn(cl).unwrap());
         }

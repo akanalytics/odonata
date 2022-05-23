@@ -2,7 +2,7 @@ use crate::eval::score::Score;
 use crate::infra::component::Component;
 use crate::mv::Move;
 use crate::search::node::Node;
-use crate::types::{Ply, MoveType};
+use crate::types::{MoveType, Ply};
 use crate::{board::Board, Algo};
 use crate::{Bitboard, Piece};
 use serde::{Deserialize, Serialize};
@@ -73,7 +73,16 @@ impl Default for Extensions {
 
 impl Algo {
     #[inline]
-    pub fn extend(&mut self, before: &Board, after: &Board, mv: Move, mt: MoveType, mv_num: u32, n: &Node, last: Move) -> Ply {
+    pub fn extend(
+        &mut self,
+        before: &Board,
+        after: &Board,
+        mv: Move,
+        mt: MoveType,
+        mv_num: u32,
+        n: &Node,
+        last: Move,
+    ) -> Ply {
         let mut ext = 0;
         if !self.ext.enabled || n.is_qs() {
             return 0;
@@ -88,7 +97,9 @@ impl Algo {
             if n.depth <= self.ext.check_max_depth
                 && after.phase(&self.eval.phaser).0 <= self.ext.check_max_phase
                 && (!self.ext.check_only_captures || mv.is_capture())
-                && (!self.ext.check_see || self.eval.see.eval_move_see(before, mv) >= self.ext.check_see_threshold.as_i16() as i32)
+                && (!self.ext.check_see
+                    || self.eval.see.eval_move_see(before, mv)
+                        >= self.ext.check_see_threshold.as_i16() as i32)
             {
                 // algo.search_stats().inc_ext_check(n.ply);
                 ext += 1;
@@ -113,9 +124,9 @@ impl Algo {
             && (!self.ext.recapture_same_square || mv.to() == last.to())
             && (!self.ext.recapture_only_pv_node || n.is_pv())
             && n.depth <= self.ext.recapture_max_depth
-            && ( MoveType::GoodCapture | MoveType::GoodCaptureUpfrontSorted).contains(mt)
-            && mv.capture_piece().centipawns() < last.capture_piece().centipawns() // proxy for last = GoodCapture
-
+            && (MoveType::GoodCapture | MoveType::GoodCaptureUpfrontSorted).contains(mt)
+            && mv.capture_piece().centipawns() < last.capture_piece().centipawns()
+        // proxy for last = GoodCapture
         {
             ext += 1;
         }
@@ -167,7 +178,9 @@ mod tests {
         for pos in positions {
             engine.new_game();
             let suggested_depth = pos.acd().unwrap();
-            engine.algo.set_timing_method(TimeControl::Depth(suggested_depth - 1));
+            engine
+                .algo
+                .set_timing_method(TimeControl::Depth(suggested_depth - 1));
             engine.algo.board = pos.board().clone();
 
             engine.search();
@@ -181,7 +194,12 @@ mod tests {
             results.tags_mut().remove(Tag::BM);
             results.tags_mut().remove(Tag::CE);
             results.tags_mut().remove(Tag::ACN);
-            println!("{:>12} {:>12} {}", Formatting::u128(nodes), Formatting::u128(node_count), results);
+            println!(
+                "{:>12} {:>12} {}",
+                Formatting::u128(nodes),
+                Formatting::u128(node_count),
+                results
+            );
         }
     }
 }

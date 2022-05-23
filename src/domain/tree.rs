@@ -14,11 +14,10 @@ use petgraph::graph::NodeIndex;
 
 // copied/inspired by https://crates.io/crates/treeline (License MIT)
 // and
-// https://github.com/mitchmindtree/rose_tree-rs 
+// https://github.com/mitchmindtree/rose_tree-rs
 // (licence Apache https://github.com/mitchmindtree/rose_tree-rs/blob/master/LICENSE-APACHE)
 
 pub type PetGraph<N> = petgraph::Graph<N, (), petgraph::Directed, u32>;
-
 
 #[derive(Debug, Clone)]
 pub struct Tree<N> {
@@ -26,9 +25,13 @@ pub struct Tree<N> {
     root: NodeIndex,
 }
 
-
 impl Tree<TreeNode> {
-    fn display_leaves(&self, f: &mut fmt::Formatter, leaves: &[NodeIndex], spaces: Vec<bool>) -> fmt::Result {
+    fn display_leaves(
+        &self,
+        f: &mut fmt::Formatter,
+        leaves: &[NodeIndex],
+        spaces: Vec<bool>,
+    ) -> fmt::Result {
         for (i, &leaf) in leaves.iter().rev().enumerate() {
             let last = i >= leaves.len() - 1;
             let mut clone = spaces.clone();
@@ -46,23 +49,14 @@ impl Tree<TreeNode> {
                 write!(f, "├── ")?;
             }
 
-            let w = &self[leaf];
-            write!(f, "{}{}", w.mv, if w.is_best_move { "*" } else { " " })?;
+            let node = &self[leaf];
+            write!(f, "{}{}", node.mv, if node.is_best_move { "*" } else { " " })?;
 
             for _ in spaces.len()..5 {
                 write!(f, "    ")?;
             }
 
-            writeln!(
-                f,
-                "{:>5} {:>2} [{:>4},{:>4}] {} {}",
-                w.score.to_string(),
-                w.node.depth,
-                w.node.alpha.to_string(),
-                w.node.beta.to_string(),
-                w.nt,
-                w.event,
-            )?;
+            writeln!(f, "{}", node)?;
 
             if last && self.children(leaf).count() == 0 {
                 for s in &spaces {
@@ -83,6 +77,19 @@ impl Tree<TreeNode> {
             }
         }
         write!(f, "")
+    }
+
+
+    fn variation(&self, leaf: NodeIndex) -> Variation {
+        let mut vec = Vec::new();
+        while let Some(parent) = self.parent(leaf) {
+            let TreeNode { mv, ..}  = self[parent];
+            vec.push(mv);
+        }
+        vec.reverse();
+        let mut var = Variation::new();
+        var.extend_from_slice(&vec);
+        var
     }
 }
 
@@ -128,6 +135,10 @@ impl<N> Tree<N> {
         kid
     }
 
+    fn parent(&self, child: NodeIndex) -> Option<NodeIndex> {
+        self.graph.neighbors_directed(child, petgraph::Incoming).last()
+    }
+
     fn children(&self, parent: NodeIndex) -> impl Iterator<Item = NodeIndex> + '_ {
         self.graph.neighbors_directed(parent, petgraph::Outgoing)
     }
@@ -153,7 +164,9 @@ pub struct TreeNode {
     mv: Move,
     pub node: Node,
     pub score: Score,
+    pub eval: Score,
     pub event: Event,
+    pub cause: Event,
     pub nt: NodeType,
     pub is_best_move: bool,
 }
@@ -162,14 +175,27 @@ impl Display for TreeNode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "{}{} {} {} {} {}",
-            self.mv,
-            if self.is_best_move { "*" } else { " " },
-            self.score,
-            self.node,
-            self.event,
-            self.nt
+            "S:{:>5} E:{:>5} D:{:>2} [{:>4},{:>4}] {:<3} {:<20} {:<20}",
+            self.score.to_string(),
+            self.eval.to_string(),
+            self.node.depth,
+            self.node.alpha.to_string(),
+            self.node.beta.to_string(),
+            self.nt.to_string(),
+            self.event.to_string(),
+            self.cause.to_string(),
         )
+
+        // write!(
+        //     f,
+        //     "{}{} {} {} {} {}",
+        //     self.mv,
+        //     if self.is_best_move { "*" } else { " " },
+        //     self.score,
+        //     self.node,
+        //     self.event,
+        //     self.nt
+        // )
     }
 }
 

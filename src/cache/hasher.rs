@@ -38,7 +38,14 @@ impl fmt::Display for Hasher {
             for c in &Color::ALL {
                 for p in &Piece::ALL_BAR_NONE {
                     for sq in 0..64 {
-                        writeln!(f, "[{}][{}][{:2}] = {:x}", c, p, sq, self.squares[c.index()][p.index()][sq])?;
+                        writeln!(
+                            f,
+                            "[{}][{}][{:2}] = {:x}",
+                            c,
+                            p,
+                            sq,
+                            self.squares[c.index()][p.index()][sq]
+                        )?;
                     }
                 }
             }
@@ -189,7 +196,11 @@ impl Hasher {
         }
 
         if m.mover_piece() == Piece::Pawn && m.is_pawn_double_push() {
-            debug_assert!(!m.ep().is_null(), "e/p square must be set for pawn double push {:?}", m);
+            debug_assert!(
+                !m.ep().is_null(),
+                "e/p square must be set for pawn double push {:?}",
+                m
+            );
             hash ^= self.ep[m.ep().file_index()];
         }
         if m.is_promo() {
@@ -209,7 +220,10 @@ impl Hasher {
         //  if a piece moves FROM the kings squares, both castling rights are lost
         //  possible with a rook x rook capture that both sides lose castling rights
         // hash ^= self.castling[m.castling_side()];
-        if !m.is_null() && (m.from().as_bb() | m.to().as_bb()).intersects(CastlingRights::rook_and_king_squares()) {
+        if !m.is_null()
+            && (m.from().as_bb() | m.to().as_bb())
+                .intersects(CastlingRights::rook_and_king_squares())
+        {
             if (m.from() == e1.square() || m.from() == a1.square() || m.to() == a1.square())
                 && pre_move.castling().contains(CastlingRights::WHITE_QUEEN)
             {
@@ -270,17 +284,23 @@ mod tests {
         assert_eq!(a1.first_square().index(), 0);
         assert_eq!(g1.first_square().index(), 6);
         assert_eq!(h3.first_square().index(), 23);
-        let hash_a1a2 =
-            hasher1.squares[Color::White.index()][Piece::Rook.index()][0] ^ hasher1.squares[Color::White.index()][Piece::Rook.index()][8];
+        let hash_a1a2 = hasher1.squares[Color::White.index()][Piece::Rook.index()][0]
+            ^ hasher1.squares[Color::White.index()][Piece::Rook.index()][8];
         assert_eq!(hash_a1a2, 4947796874932763259);
-        assert_eq!(hash_a1a2 ^ hasher1.ep[0] ^ hasher1.side, 17278715166005629523);
+        assert_eq!(
+            hash_a1a2 ^ hasher1.ep[0] ^ hasher1.side,
+            17278715166005629523
+        );
 
         // g1h3 hash
         let hash_g1h3 = hasher1.squares[Color::White.index()][Piece::Knight.index()][6]
             ^ hasher1.squares[Color::White.index()][Piece::Knight.index()][23];
         assert_eq!(hash_g1h3, 2343180499638894504);
         assert_eq!(hash_g1h3 ^ hasher1.side, 5987230143978898519);
-        assert_eq!(hash_g1h3 ^ hasher1.ep[0] ^ hasher1.side, 10080444449497094016);
+        assert_eq!(
+            hash_g1h3 ^ hasher1.ep[0] ^ hasher1.side,
+            10080444449497094016
+        );
     }
 
     #[test]
@@ -328,7 +348,14 @@ mod tests {
                 let hash_mv = hasher.hash_move(m, b);
                 let hash_bd2 = hasher.hash_board(&bd2);
                 // println!("Move: {:#} = {}", m, hash_mv);
-                assert_eq!(hash_bd1 ^ hash_mv, hash_bd2, "board1:{:#}\nmv:{:#}\nboard2:{:#}", b, m, bd2);
+                assert_eq!(
+                    hash_bd1 ^ hash_mv,
+                    hash_bd2,
+                    "board1:{:#}\nmv:{:#}\nboard2:{:#}",
+                    b,
+                    m,
+                    bd2
+                );
                 let res = perft_with_hash(&bd2, depth - 1, hasher);
                 count += res;
             }

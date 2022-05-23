@@ -60,7 +60,9 @@ impl Algo {
             self.counts.inc(n, Event::HashHit);
 
             // FIXME! v33
-            if entry.depth >= n.depth && !(self.repetition.avoid_tt_on_repeats && b.repetition_count().total > 0) {
+            if entry.depth >= n.depth
+                && !(self.repetition.avoid_tt_on_repeats && b.repetition_count().total > 0)
+            {
                 //if entry.draft >= draft  && (ply >= 1 || self.tt.allow_tt_at_root) && !(b.repetition_count().total > 0 && self.repetition.avoid_tt_on_repeats)
 
                 // if n.ply == 0 && self.restrictions.is_none() {
@@ -82,7 +84,10 @@ impl Algo {
                             return (Some(entry.score), None);
                         }
 
-                        if self.tt.allow_truncated_pv && self.mte.time_sensitive() && entry.score > n.alpha {
+                        if self.tt.allow_truncated_pv
+                            && self.mte.time_sensitive()
+                            && entry.score > n.alpha
+                        {
                             self.record_truncated_move(n.ply, &entry.bm);
                             self.stats.inc_leaf_tt_nodes(n.ply);
                             return (Some(entry.score), None);
@@ -148,7 +153,6 @@ impl Algo {
         //     let draw = b.eval_draw(&mut self.eval, &n); // will return a draw score
         //     return (Some(draw), None)
         // }
-
 
         // its a helpmate or draw like KNkn, so search just a tiny depth then let eval do its job
         match endgame.likely_outcome(b) {

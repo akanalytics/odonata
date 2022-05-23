@@ -42,10 +42,13 @@ impl fmt::Display for CatalogSuite {
 }
 
 impl Catalog {
-    pub const STARTING_POSITION_FEN: &'static str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    pub const STARTING_POSITION_FEN: &'static str =
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
     pub fn starting_board() -> Board {
-        Board::parse_fen(Self::STARTING_POSITION_FEN).unwrap().as_board()
+        Board::parse_fen(Self::STARTING_POSITION_FEN)
+            .unwrap()
+            .as_board()
     }
 
     pub fn starting_position() -> Position {
@@ -287,8 +290,12 @@ K7/7r/8/8/8/8/8/rr5k w - - 0 1
 
     pub fn stalemates() -> [Board; 2] {
         [
-            Board::parse_fen("k7/8/1Q6/8/8/8/8/7K b - - 0 1").unwrap().as_board(),
-            Board::parse_fen("K7/7r/8/8/8/8/8/1r5k w - - 0 1").unwrap().as_board(),
+            Board::parse_fen("k7/8/1Q6/8/8/8/8/7K b - - 0 1")
+                .unwrap()
+                .as_board(),
+            Board::parse_fen("K7/7r/8/8/8/8/8/1r5k w - - 0 1")
+                .unwrap()
+                .as_board(),
         ]
     }
 
@@ -303,11 +310,11 @@ K7/7r/8/8/8/8/8/rr5k w - - 0 1
             "8/1k6/8/8/8/2K3BN/8/8 w - - 0 1 id 'KBNK';",
             "8/1K6/8/8/8/2k3bn/8/8 w - - 0 1 id 'kbnK';",
             "8/1k6/8/8/8/2K3NN/8/8 w - - 0 1 id 'KNNK';",
-            ];
+        ];
         Position::parse_many_epd(strs).unwrap()
-  }
+    }
 
-  pub fn famous() -> Vec<Position> {
+    pub fn famous() -> Vec<Position> {
         // http://wtharvey.com/m8n2.txt
         let strs = &[
             // https://www.stmintz.com/ccc/index.php?id=14581
@@ -316,9 +323,9 @@ K7/7r/8/8/8/8/8/rr5k w - - 0 1
             dm 32;
             acd 23;
             id 'Lasker-Reichhelm Position Fine#70';",
-            ];
+        ];
         Position::parse_many_epd(strs).unwrap()
-  }
+    }
 
     pub fn pins() -> Vec<Position> {
         let str = r#"
@@ -1060,9 +1067,11 @@ b2b1r1k/3R1ppp/4qP2/4p1PQ/4P3/5B2/4N1K1/8 w - - bm g6; id "WAC.300";
     pub fn perft_kiwipete() -> (Board, Vec<u64>) {
         // https://www.chessprogramming.org/Perft_Results
         (
-            Board::parse_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
-                .unwrap()
-                .as_board(),
+            Board::parse_fen(
+                "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+            )
+            .unwrap()
+            .as_board(),
             vec![1, 48, 2039, 97_862, 4_085_603, 193_690_690, 8_031_647_685],
         )
     }
@@ -1073,12 +1082,22 @@ b2b1r1k/3R1ppp/4qP2/4p1PQ/4P3/5B2/4N1K1/8 w - - bm g6; id "WAC.300";
             Board::parse_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1 id 'CPW PERFT#3'")
                 .unwrap()
                 .as_board(),
-            vec![1, 14, 191, 2812, 43_238, 674_624, 11_030_083, 178_633_661, 3_009_794_393],
+            vec![
+                1,
+                14,
+                191,
+                2812,
+                43_238,
+                674_624,
+                11_030_083,
+                178_633_661,
+                3_009_794_393,
+            ],
         )
     }
 
     // FIXME! awful structure
-    #[allow(clippy::vec_init_then_push)]    
+    #[allow(clippy::vec_init_then_push)]
     pub fn perfts() -> Vec<(Board, Vec<u64>)> {
         let mut vec = Vec::new();
         // https://www.chessprogramming.org/Perft_Results
@@ -1091,14 +1110,26 @@ b2b1r1k/3R1ppp/4qP2/4p1PQ/4P3/5B2/4N1K1/8 w - - bm g6; id "WAC.300";
         vec.push(Self::perft_kiwipete());
         // http://www.rocechess.ch/perft.html
         vec.push((
-            Board::parse_fen("n1n5/PPPk4/8/8/8/8/4Kppp/5N1N b - - 0 1").unwrap().as_board(),
+            Board::parse_fen("n1n5/PPPk4/8/8/8/8/4Kppp/5N1N b - - 0 1")
+                .unwrap()
+                .as_board(),
             vec![1, 24, 496, 9_483, 182_838, 3_605_103, 71_179_139],
         ));
         vec.push((
             Board::parse_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1 id 'CPW PERFT#3'")
                 .unwrap()
                 .as_board(),
-            vec![1, 14, 191, 2812, 43_238, 674_624, 11_030_083, 178_633_661, 3_009_794_393],
+            vec![
+                1,
+                14,
+                191,
+                2812,
+                43_238,
+                674_624,
+                11_030_083,
+                178_633_661,
+                3_009_794_393,
+            ],
         ));
         vec.push(Self::perft_cpw_number3());
         vec.push((
@@ -1120,9 +1151,11 @@ b2b1r1k/3R1ppp/4qP2/4p1PQ/4P3/5B2/4N1K1/8 w - - bm g6; id "WAC.300";
             vec![1, 44, 1486, 62379, 2_103_487, 89_941_194],
         ));
         vec.push((
-            Board::parse_fen("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10")
-                .unwrap()
-                .as_board(),
+            Board::parse_fen(
+                "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
+            )
+            .unwrap()
+            .as_board(),
             vec![1, 46, 2079, 89_890, 3_894_594, 164_075_551, 6_923_051_137],
         ));
         vec.push((
@@ -1179,10 +1212,22 @@ b2b1r1k/3R1ppp/4qP2/4p1PQ/4P3/5B2/4N1K1/8 w - - bm g6; id "WAC.300";
         let bb = bb * 2;
         chars[bw] = 'B';
         chars[bb] = 'B';
-        let q = (0..8).into_iter().filter(|&x| chars[x] == '.').nth(q).unwrap();
+        let q = (0..8)
+            .into_iter()
+            .filter(|&x| chars[x] == '.')
+            .nth(q)
+            .unwrap();
         chars[q] = 'Q';
-        let n1 = (0..8).into_iter().filter(|&x| chars[x] == '.').nth(n1).unwrap();
-        let n2 = (0..8).into_iter().filter(|&x| chars[x] == '.').nth(n2).unwrap();
+        let n1 = (0..8)
+            .into_iter()
+            .filter(|&x| chars[x] == '.')
+            .nth(n1)
+            .unwrap();
+        let n2 = (0..8)
+            .into_iter()
+            .filter(|&x| chars[x] == '.')
+            .nth(n2)
+            .unwrap();
         chars[n1] = 'N';
         chars[n2] = 'N';
         let r1 = (0..8).into_iter().position(|x| chars[x] == '.').unwrap();
@@ -1195,7 +1240,8 @@ b2b1r1k/3R1ppp/4qP2/4p1PQ/4P3/5B2/4N1K1/8 w - - bm g6; id "WAC.300";
         b.set(RANK_1, &chars.iter().collect::<String>()).unwrap();
         b.set(RANK_2, "PPPPPPPP").unwrap();
         b.set(RANK_7, "pppppppp").unwrap();
-        b.set(RANK_8, &chars.iter().collect::<String>().to_lowercase()).unwrap();
+        b.set(RANK_8, &chars.iter().collect::<String>().to_lowercase())
+            .unwrap();
         b.set_castling(CastlingRights::ALL);
         let mut pos = Position::from_board(b);
         pos.set(Tag::Id(format!("Chess960(SP{})", id)));
@@ -1210,7 +1256,10 @@ mod tests {
 
     #[test]
     fn test_serde() {
-        assert_eq!(serde_json::to_string(&CatalogSuite::WinAtChess).unwrap(), r#""WinAtChess""#);
+        assert_eq!(
+            serde_json::to_string(&CatalogSuite::WinAtChess).unwrap(),
+            r#""WinAtChess""#
+        );
     }
 
     #[test]

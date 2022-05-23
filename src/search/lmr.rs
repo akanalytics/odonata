@@ -177,7 +177,12 @@ impl Algo {
         }
 
         // has to be one of these
-        if !(MoveType::QuietUnsorted | MoveType::Quiet | MoveType::Remaining | MoveType::Killer | MoveType::Promo | MoveType::BadCapture)
+        if !(MoveType::QuietUnsorted
+            | MoveType::Quiet
+            | MoveType::Remaining
+            | MoveType::Killer
+            | MoveType::Promo
+            | MoveType::BadCapture)
             .contains(stage)
         {
             return 0;

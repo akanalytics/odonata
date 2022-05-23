@@ -183,7 +183,10 @@ impl Algo {
         }
 
         // position wise, passed pawn promos make a huge impact so exclude them
-        if self.futility.avoid_promos && mv.mover_piece() == Piece::Pawn && mv.to().rank_index_as_white(before.color_us()) >= 6 {
+        if self.futility.avoid_promos
+            && mv.mover_piece() == Piece::Pawn
+            && mv.to().rank_index_as_white(before.color_us()) >= 6
+        {
             return None;
         }
 
@@ -241,24 +244,35 @@ impl Algo {
         self.futility.prune_remaining
     }
 
-    pub fn can_prune_all_moves(&self, b: &Board, measure: FutilityMeasure, node: &Node, eval: &Eval) -> Option<Score> {
+    pub fn can_prune_all_moves(
+        &self,
+        b: &Board,
+        measure: FutilityMeasure,
+        node: &Node,
+        eval: &Eval,
+    ) -> Option<Score> {
         if !self.futility.beta_enabled {
             return None;
         }
         let phase = b.phase(&eval.phaser);
-        let maximum_opp_piece = if let Some((piece, _)) = b.most_valuable_piece_except_king(b.them()) {
-            eval.mb.piece_weights[piece]
-        } else {
-            Weight::zero() // all they have is a king
-        };
+        let maximum_opp_piece =
+            if let Some((piece, _)) = b.most_valuable_piece_except_king(b.them()) {
+                eval.mb.piece_weights[piece]
+            } else {
+                Weight::zero() // all they have is a king
+            };
 
         let near_promos = Bitboard::RANKS_27; // .or(Bitboard::RANKS_36);
-        let promo_value = if (b.pawns() & b.us() & Bitboard::home_half(b.color_them()) & near_promos).any() {
-            eval.mb.piece_weights[Piece::Queen] - eval.mb.piece_weights[Piece::Pawn]
-        } else {
-            Weight::zero() // no promos possible
-        };
-        let gain = cmp::max(maximum_opp_piece.interpolate(phase) as i32, promo_value.interpolate(phase) as i32);
+        let promo_value =
+            if (b.pawns() & b.us() & Bitboard::home_half(b.color_them()) & near_promos).any() {
+                eval.mb.piece_weights[Piece::Queen] - eval.mb.piece_weights[Piece::Pawn]
+            } else {
+                Weight::zero() // no promos possible
+            };
+        let gain = cmp::max(
+            maximum_opp_piece.interpolate(phase) as i32,
+            promo_value.interpolate(phase) as i32,
+        );
 
         // fail low pruning
         let est_score = measure.eval + measure.margin + Score::from_cp(gain);

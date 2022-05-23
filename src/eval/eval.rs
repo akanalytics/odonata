@@ -37,7 +37,15 @@ pub static MOBILITY: Stat = Stat::new("MOBILITY");
 pub static SEE: Stat = Stat::new("SEE");
 pub static MOVE: Stat = Stat::new("MOVE");
 
-pub static EVAL_COUNTS: ArrayStat = ArrayStat(&[&ALL, &QUIESCENCE, &MATERIAL, &POSITION, &MOBILITY, &SEE, &MOVE]);
+pub static EVAL_COUNTS: ArrayStat = ArrayStat(&[
+    &ALL,
+    &QUIESCENCE,
+    &MATERIAL,
+    &POSITION,
+    &MOBILITY,
+    &SEE,
+    &MOVE,
+]);
 
 use strum_macros::Display;
 use strum_macros::EnumCount;
@@ -45,7 +53,9 @@ use strum_macros::EnumDiscriminants;
 use strum_macros::EnumIter;
 use strum_macros::IntoStaticStr;
 
-#[derive(Clone, Copy, Eq, Hash, PartialEq, PartialOrd, Debug, IntoStaticStr, EnumCount, EnumIter, Display)]
+#[derive(
+    Clone, Copy, Eq, Hash, PartialEq, PartialOrd, Debug, IntoStaticStr, EnumCount, EnumIter, Display,
+)]
 #[strum(serialize_all = "snake_case")]
 pub enum Attr {
     PawnDoubled,
@@ -150,7 +160,19 @@ impl Attr {
     }
 }
 
-#[derive(Clone, Copy, Eq, Hash, PartialEq, Debug, EnumDiscriminants, IntoStaticStr, EnumCount, EnumIter, Display)]
+#[derive(
+    Clone,
+    Copy,
+    Eq,
+    Hash,
+    PartialEq,
+    Debug,
+    EnumDiscriminants,
+    IntoStaticStr,
+    EnumCount,
+    EnumIter,
+    Display,
+)]
 #[strum(serialize_all = "snake_case")]
 #[strum_discriminants(vis())]
 pub enum Feature {
@@ -169,8 +191,12 @@ impl Feature {
     pub const fn index(&self) -> usize {
         match self {
             Feature::Discrete(f) => *f as usize,
-            Feature::Pst(p, sq) => Attr::WinMetric2 as usize + 1 + (p.index() - 1) * Square::len() + sq.index(),
-            Feature::Piece(p) => Attr::WinMetric2 as usize + 1 + Square::len() * (Piece::len() - 1) + (p.index() - 1),
+            Feature::Pst(p, sq) => {
+                Attr::WinMetric2 as usize + 1 + (p.index() - 1) * Square::len() + sq.index()
+            }
+            Feature::Piece(p) => {
+                Attr::WinMetric2 as usize + 1 + Square::len() * (Piece::len() - 1) + (p.index() - 1)
+            }
         }
     }
 
@@ -423,7 +449,10 @@ impl Board {
     pub fn eval_move_material(&self, eval: &Eval, mv: &Move) -> Score {
         MOVE.increment();
         // FIXME! far too slow (-7 ELO)
-        Score::from_cp(eval.eval_move_material(mv).interpolate(self.phase(&eval.phaser)) as i32)
+        Score::from_cp(
+            eval.eval_move_material(mv)
+                .interpolate(self.phase(&eval.phaser)) as i32,
+        )
     }
 
     #[inline]
@@ -467,7 +496,10 @@ mod tests {
         assert_eq!(first_piece, last_sq + 1);
         assert_eq!(last_piece, first_piece + 6 - 1);
 
-        assert_eq!(Feature::Discrete(Attr::CenterAttacks).name(), "center_attacks");
+        assert_eq!(
+            Feature::Discrete(Attr::CenterAttacks).name(),
+            "center_attacks"
+        );
         assert_eq!(Feature::Pst(Piece::Pawn, Square::A1).name(), "pst.p.a1");
         // assert!(Feature::all().len() > 64 * 6 + 6 + Feature::WinBonus.index());
     }

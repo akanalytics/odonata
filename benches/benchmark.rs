@@ -82,7 +82,10 @@ criterion_main!(benches);
 
 fn bb_calcs(c: &mut Criterion) {
     let mut group = c.benchmark_group("bb_calcs");
-    let bbs: Vec<Bitboard> = (0..64).into_iter().map(|sq| Bitboard::from_sq(sq)).collect();
+    let bbs: Vec<Bitboard> = (0..64)
+        .into_iter()
+        .map(|sq| Bitboard::from_sq(sq))
+        .collect();
 
     group.bench_function("first_square", |b| {
         b.iter_custom(|n| {
@@ -283,7 +286,12 @@ fn sq_calcs(c: &mut Criterion) {
             let t = Instant::now();
             for _ in 0..n {
                 for s1 in Bitboard::all().squares() {
-                    black_box(Bitboard::all().squares().map(|s2| black_box(bb.between(s1, s2))).count());
+                    black_box(
+                        Bitboard::all()
+                            .squares()
+                            .map(|s2| black_box(bb.between(s1, s2)))
+                            .count(),
+                    );
                 }
             }
             t.elapsed() / (64 * 64) as u32
@@ -397,7 +405,10 @@ fn board_calcs(c: &mut Criterion) {
         })
     });
 
-    let bams: Vec<(Board, Move)> = positions.iter().map(|p| (p.board().clone(), p.bm().unwrap()[0])).collect();
+    let bams: Vec<(Board, Move)> = positions
+        .iter()
+        .map(|p| (p.board().clone(), p.bm().unwrap()[0]))
+        .collect();
     group.bench_function("will_check_them", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
@@ -436,7 +447,10 @@ fn board_calcs(c: &mut Criterion) {
         })
     });
 
-    let bams: Vec<(Board, Move)> = positions.iter().map(|p| (p.board().clone(), p.bm().unwrap()[0])).collect();
+    let bams: Vec<(Board, Move)> = positions
+        .iter()
+        .map(|p| (p.board().clone(), p.bm().unwrap()[0]))
+        .collect();
     group.bench_function("make_move + hash + clone", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
@@ -467,7 +481,10 @@ fn board_calcs(c: &mut Criterion) {
         })
     });
 
-    let bams: Vec<(Board, Move)> = positions.iter().map(|p| (p.board().clone(), p.bm().unwrap()[0])).collect();
+    let bams: Vec<(Board, Move)> = positions
+        .iter()
+        .map(|p| (p.board().clone(), p.bm().unwrap()[0]))
+        .collect();
     group.bench_function("hash_move", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
@@ -477,7 +494,10 @@ fn board_calcs(c: &mut Criterion) {
             t.elapsed() / positions.len() as u32
         })
     });
-    let bams: Vec<(Board, Move)> = positions.iter().map(|p| (p.board().clone(), p.bm().unwrap()[0])).collect();
+    let bams: Vec<(Board, Move)> = positions
+        .iter()
+        .map(|p| (p.board().clone(), p.bm().unwrap()[0]))
+        .collect();
     group.bench_function("hash_board", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
@@ -487,19 +507,33 @@ fn board_calcs(c: &mut Criterion) {
             t.elapsed() / positions.len() as u32
         })
     });
-    let bams: Vec<(Board, Move)> = positions.iter().map(|p| (p.board().clone(), p.bm().unwrap()[0])).collect();
+    let bams: Vec<(Board, Move)> = positions
+        .iter()
+        .map(|p| (p.board().clone(), p.bm().unwrap()[0]))
+        .collect();
     group.bench_function("threats_to raw", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
             bams.iter().cycle_n(n).for_each(|bam| {
-                black_box(BoardCalcs::all_attacks_on(black_box(&bam.0), Color::White, bam.0.occupied()));
-                black_box(BoardCalcs::all_attacks_on(black_box(&bam.0), Color::Black, bam.0.occupied()));
+                black_box(BoardCalcs::all_attacks_on(
+                    black_box(&bam.0),
+                    Color::White,
+                    bam.0.occupied(),
+                ));
+                black_box(BoardCalcs::all_attacks_on(
+                    black_box(&bam.0),
+                    Color::Black,
+                    bam.0.occupied(),
+                ));
             });
             t.elapsed() / 2 / positions.len() as u32
         })
     });
     group.bench_function("threats_to (memoise)", |b| {
-        let bams: Vec<(Board, Move)> = positions.iter().map(|p| (p.board().clone(), p.bm().unwrap()[0])).collect();
+        let bams: Vec<(Board, Move)> = positions
+            .iter()
+            .map(|p| (p.board().clone(), p.bm().unwrap()[0]))
+            .collect();
         b.iter_custom(|n| {
             let t = Instant::now();
             bams.iter().cycle_n(n).for_each(|bam| {
@@ -509,7 +543,10 @@ fn board_calcs(c: &mut Criterion) {
             t.elapsed() / 2 / positions.len() as u32
         })
     });
-    let bams: Vec<(Board, Move)> = positions.iter().map(|p| (p.board().clone(), p.bm().unwrap()[0])).collect();
+    let bams: Vec<(Board, Move)> = positions
+        .iter()
+        .map(|p| (p.board().clone(), p.bm().unwrap()[0]))
+        .collect();
     group.bench_function("threats_to + clone", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
@@ -589,7 +626,8 @@ fn benchmark_ordering(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|pos| {
-                let mut sorted_moves = orderer.create_sorted_moves(node, pos.board(), TT_MOVE, Move::NULL_MOVE);
+                let mut sorted_moves =
+                    orderer.create_sorted_moves(node, pos.board(), TT_MOVE, Move::NULL_MOVE);
                 while let Some(mv) = sorted_moves.next_move(pos.board(), &mut algo) {
                     black_box(&mv);
                 }
@@ -602,7 +640,8 @@ fn benchmark_ordering(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|pos| {
-                let mut sorted_moves = orderer.create_sorted_moves(node, pos.board(), TT_MOVE, Move::NULL_MOVE);
+                let mut sorted_moves =
+                    orderer.create_sorted_moves(node, pos.board(), TT_MOVE, Move::NULL_MOVE);
                 while let Some(mv) = sorted_moves.next_move(pos.board(), &mut algo) {
                     black_box(&mv);
                 }
@@ -615,7 +654,8 @@ fn benchmark_ordering(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|pos| {
-                let mut sorted_moves = orderer.create_sorted_moves(node, pos.board(), TT_MOVE, Move::NULL_MOVE);
+                let mut sorted_moves =
+                    orderer.create_sorted_moves(node, pos.board(), TT_MOVE, Move::NULL_MOVE);
                 while let Some(mv) = sorted_moves.next_move(pos.board(), &mut algo) {
                     black_box(&mv);
                 }
@@ -632,7 +672,7 @@ fn benchmark_eval(c: &mut Criterion) {
     let positions = &Catalog::win_at_chess();
     let ef = &mut Eval::new();
     let _phaser = Phaser::default();
-    let ef_no_pos = &mut Eval::new().set_position(false);
+    let ef_no_pos = &mut Eval::new();
     group.bench_function("material", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
@@ -692,7 +732,10 @@ fn benchmark_eval(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|p| {
-                black_box(p.board().eval_with_outcome(black_box(ef_no_pos), &Node::root(0)));
+                black_box(
+                    p.board()
+                        .eval_with_outcome(black_box(ef_no_pos), &Node::root(0)),
+                );
             });
             t.elapsed() / positions.len() as u32
         })
@@ -957,7 +1000,12 @@ fn benchmark_attacks(c: &mut Criterion) {
 fn bench_logging(c: &mut Criterion) {
     c.bench_function("logging", |b| {
         b.iter(|| {
-            black_box(debug!("The cat sat on the mat and counted {} {} {}", 1, 2, black_box(3)));
+            black_box(debug!(
+                "The cat sat on the mat and counted {} {} {}",
+                1,
+                2,
+                black_box(3)
+            ));
         });
     });
 }
@@ -978,8 +1026,16 @@ fn bench_chooser_wb(c: &mut Criterion) {
     let black = Color::Black;
     c.bench_function("chooser_wb_ref", |b| {
         b.iter(|| {
-            black_box(chooser_wb(black_box(white), &Bitboard::RANK_4, &Bitboard::RANK_5));
-            black_box(chooser_wb(black_box(black), &Bitboard::RANK_4, &Bitboard::RANK_5));
+            black_box(chooser_wb(
+                black_box(white),
+                &Bitboard::RANK_4,
+                &Bitboard::RANK_5,
+            ));
+            black_box(chooser_wb(
+                black_box(black),
+                &Bitboard::RANK_4,
+                &Bitboard::RANK_5,
+            ));
         });
     });
 }
@@ -1340,7 +1396,9 @@ fn bench_shared_mem(c: &mut Criterion) {
 
     const N: usize = 200_000;
     let mut vec = Vec::with_capacity(N);
-    (0..N).into_iter().for_each(|i| vec.push(AtomicU64::new(i as u64)));
+    (0..N)
+        .into_iter()
+        .for_each(|i| vec.push(AtomicU64::new(i as u64)));
     let atomic_array = vec.into_boxed_slice();
     let mut rng = thread_rng();
     let mut shuf: Vec<usize> = (0..N).map(|i| i).collect();
@@ -1349,8 +1407,13 @@ fn bench_shared_mem(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             (0..100_000).cycle_n(n).for_each(|i| {
-                black_box(atomic_array[black_box(shuf[i as usize])].store(black_box(1), Ordering::Relaxed));
-                black_box(atomic_array[black_box(shuf[N - 1 - i as usize])].load(Ordering::Relaxed));
+                black_box(
+                    atomic_array[black_box(shuf[i as usize])]
+                        .store(black_box(1), Ordering::Relaxed),
+                );
+                black_box(
+                    atomic_array[black_box(shuf[N - 1 - i as usize])].load(Ordering::Relaxed),
+                );
             });
             t.elapsed() / (2 * 100_000) as u32
         });

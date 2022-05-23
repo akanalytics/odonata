@@ -204,7 +204,8 @@ impl SlidingPieceAttacks for Magic {
     #[inline]
     fn bishop_attacks(&self, occ: Bitboard, sq: Square) -> Bitboard {
         let occ = occ.bits();
-        let bits = self.MagicTable[(BISHOP_OFFSET[sq] + (((occ & self.BishopMask[sq]).wrapping_mul(BISHOP_MAGIC[sq])) >> 55) as usize)];
+        let bits = self.MagicTable[(BISHOP_OFFSET[sq]
+            + (((occ & self.BishopMask[sq]).wrapping_mul(BISHOP_MAGIC[sq])) >> 55) as usize)];
         Bitboard::from_u64(bits)
     }
 
@@ -212,7 +213,8 @@ impl SlidingPieceAttacks for Magic {
     fn rook_attacks(&self, occ: Bitboard, sq: Square) -> Bitboard {
         let occ = occ.bits();
         // debug_assert!(sq >= 0 && sq <= 63);
-        let bits = self.MagicTable[(RookOffset[sq] + (((occ & self.RookMask[sq]).wrapping_mul(ROOK_MAGIC[sq])) >> 52) as usize)];
+        let bits = self.MagicTable[(RookOffset[sq]
+            + (((occ & self.RookMask[sq]).wrapping_mul(ROOK_MAGIC[sq])) >> 52) as usize)];
         Bitboard::from_u64(bits)
     }
 
@@ -415,8 +417,10 @@ impl Magic {
         // Pawns
         for sq in 0..64 {
             let from = 1 << sq;
-            magic.PawnMask[WHITE as usize][sq] = ((from << 7) & !FileHMask) | ((from << 9) & !FileAMask);
-            magic.PawnMask[BLACK as usize][sq] = ((from >> 7) & !FileAMask) | ((from >> 9) & !FileHMask);
+            magic.PawnMask[WHITE as usize][sq] =
+                ((from << 7) & !FileHMask) | ((from << 9) & !FileAMask);
+            magic.PawnMask[BLACK as usize][sq] =
+                ((from >> 7) & !FileAMask) | ((from >> 9) & !FileHMask);
         }
 
         // Knights
@@ -438,7 +442,8 @@ impl Magic {
             magic.BishopMask[sq] = Self::calc_bishop_mask(sq as i32);
 
             loop {
-                let i = BISHOP_OFFSET[sq] + (((b & magic.BishopMask[sq]).wrapping_mul(BISHOP_MAGIC[sq])) >> 55) as usize;
+                let i = BISHOP_OFFSET[sq]
+                    + (((b & magic.BishopMask[sq]).wrapping_mul(BISHOP_MAGIC[sq])) >> 55) as usize;
                 magic.MagicTable[i] = Self::calc_bishop_attacks(sq as i32, b);
                 b = Self::snoob(magic.BishopMask[sq], b);
                 if b == 0 {
@@ -453,7 +458,8 @@ impl Magic {
             magic.RookMask[sq] = Self::calc_rook_mask(sq as i32);
 
             loop {
-                let i = RookOffset[sq] + (((b & magic.RookMask[sq]).wrapping_mul(ROOK_MAGIC[sq])) >> 52) as usize;
+                let i = RookOffset[sq]
+                    + (((b & magic.RookMask[sq]).wrapping_mul(ROOK_MAGIC[sq])) >> 52) as usize;
                 magic.MagicTable[i] = Self::calc_rook_attacks(sq as i32, b);
                 b = Self::snoob(magic.RookMask[sq], b);
                 if b == 0 {
@@ -527,8 +533,18 @@ mod tests {
 
         for sq in Bitboard::all().squares() {
             let occ = b5 | f3 | g4 | h4;
-            assert_eq!(mg.bishop_attacks(occ, sq), cb.bishop_attacks(occ, sq), "square {:?}", sq.as_bb());
-            assert_eq!(mg.rook_attacks(occ, sq), cb.rook_attacks(occ, sq), "square {:?}", sq.as_bb());
+            assert_eq!(
+                mg.bishop_attacks(occ, sq),
+                cb.bishop_attacks(occ, sq),
+                "square {:?}",
+                sq.as_bb()
+            );
+            assert_eq!(
+                mg.rook_attacks(occ, sq),
+                cb.rook_attacks(occ, sq),
+                "square {:?}",
+                sq.as_bb()
+            );
         }
     }
 
@@ -553,7 +569,12 @@ mod tests {
             for d in sq.diag().power_set_iter() {
                 for ad in sq.anti_diag().power_set_iter() {
                     let occ = d | ad;
-                    assert_eq!(mg.bishop_attacks(occ, sq), cb.bishop_attacks(occ, sq), "square {:?}", sq.as_bb());
+                    assert_eq!(
+                        mg.bishop_attacks(occ, sq),
+                        cb.bishop_attacks(occ, sq),
+                        "square {:?}",
+                        sq.as_bb()
+                    );
                 }
             }
         }

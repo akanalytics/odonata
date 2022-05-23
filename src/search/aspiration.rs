@@ -20,7 +20,7 @@ pub struct Aspiration {
     max_window: Score,
     multiplier1: f32,
     multiplier2: f32,
-    change_both_bounds: bool, 
+    change_both_bounds: bool,
     fail_soft: bool,
 }
 
@@ -42,8 +42,8 @@ impl Default for Aspiration {
             max_window: Score::from_cp(1200),
             multiplier1: 4.0,
             multiplier2: 4.0,
-            change_both_bounds: false, 
-            fail_soft: true, 
+            change_both_bounds: false,
+            fail_soft: true,
         }
     }
 }
@@ -62,7 +62,9 @@ impl Algo {
             let mut beta1 = score + Score::from_f32(delta);
             let ret = loop {
                 aspiration_count += 1;
-                if aspiration_count > self.aspiration.max_iter || delta > self.aspiration.max_window.as_i16() as f32 {
+                if aspiration_count > self.aspiration.max_iter
+                    || delta > self.aspiration.max_window.as_i16() as f32
+                {
                     break self.run_alphabeta(b, n);
                 }
                 alpha1 = max(n.alpha, alpha1);
@@ -86,7 +88,6 @@ impl Algo {
                     _ => self.aspiration.multiplier2,
                 };
 
-
                 if new_score <= alpha1 && alpha1 > n.alpha {
                     self.counts.inc(n, Event::AspirationFailLow);
                     if self.aspiration.fail_soft {
@@ -95,11 +96,11 @@ impl Algo {
                         alpha1 = alpha1 - Score::from_f32(delta);
                     }
                     if self.aspiration.change_both_bounds {
-                        beta1 = new_score; 
+                        beta1 = new_score;
                     }
                 } else if new_score >= beta1 && beta1 < n.beta {
                     if self.aspiration.change_both_bounds {
-                        alpha1 = new_score; 
+                        alpha1 = new_score;
                     }
                     self.counts.inc(n, Event::AspirationFailHigh);
                     if self.aspiration.fail_soft {
@@ -151,7 +152,9 @@ mod tests {
         for pos in positions {
             engine.new_game();
             let suggested_depth = pos.acd().unwrap();
-            engine.algo.set_timing_method(TimeControl::Depth(suggested_depth - 1));
+            engine
+                .algo
+                .set_timing_method(TimeControl::Depth(suggested_depth - 1));
             engine.set_position(pos.clone());
 
             engine.search();
@@ -165,7 +168,12 @@ mod tests {
             results.tags_mut().remove(Tag::BM);
             results.tags_mut().remove(Tag::CE);
             results.tags_mut().remove(Tag::ACN);
-            println!("{:>12} {:>12} {}", Formatting::u128(nodes), Formatting::u128(node_count), results);
+            println!(
+                "{:>12} {:>12} {}",
+                Formatting::u128(nodes),
+                Formatting::u128(node_count),
+                results
+            );
         }
     }
 }

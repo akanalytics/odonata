@@ -6,8 +6,8 @@ use crate::board::boardcalcs::BoardCalcs;
 use crate::board::Board;
 use crate::movelist::MoveList;
 use crate::mv::Move;
-use crate::types::Piece;
 use crate::prelude::*;
+use crate::types::Piece;
 
 pub struct Rules;
 
@@ -41,7 +41,12 @@ impl Rules {
         let attacks = (king_att & !us) - king_danger;
         for to in attacks.squares() {
             if to.is_in(them) {
-                moves.push(Move::new_capture(Piece::King, king_sq, to, b.piece_at(to.as_bb())));
+                moves.push(Move::new_capture(
+                    Piece::King,
+                    king_sq,
+                    to,
+                    b.piece_at(to.as_bb()),
+                ));
             } else {
                 moves.push(Move::new_quiet(Piece::King, king_sq, to));
             }
@@ -79,7 +84,11 @@ impl Rules {
             Self::king_legal(b, moves);
         } else {
             let pinned = b.pinned(b.color_us());
-            let king_sq = if pinned.is_empty() { Square::null() } else { our_kings.square() };
+            let king_sq = if pinned.is_empty() {
+                Square::null()
+            } else {
+                our_kings.square()
+            };
             for &p in Piece::ALL_BAR_KING.iter() {
                 // not in check
                 for fr in (b.pieces(p) & us).squares() {
@@ -114,11 +123,19 @@ impl Rules {
             if capture_sq == checkers {
                 let fr_e = to.shift(them.pawn_capture_west());
                 if (fr_e & b.pawns() & b.us() & !b.pinned(b.color_us())).any() {
-                    moves.push(Move::new_ep_capture(fr_e.square(), to.square(), capture_sq.square()));
+                    moves.push(Move::new_ep_capture(
+                        fr_e.square(),
+                        to.square(),
+                        capture_sq.square(),
+                    ));
                 }
                 let fr_w = to.shift(them.pawn_capture_east());
                 if (fr_w & b.pawns() & b.us() & !b.pinned(b.color_us())).any() {
-                    moves.push(Move::new_ep_capture(fr_w.square(), to.square(), capture_sq.square()));
+                    moves.push(Move::new_ep_capture(
+                        fr_w.square(),
+                        to.square(),
+                        capture_sq.square(),
+                    ));
                 }
             }
         } else if checkers.popcount() == 0 {
@@ -150,7 +167,7 @@ impl Rules {
                 }
             }
         } else {
-            #[allow(clippy::collapsible_else_if)]            
+            #[allow(clippy::collapsible_else_if)]
             if Bitboard::PROMO_RANKS.contains(dests) {
                 Self::add_moves_pawn_promo(dests, fr, b, moves);
             } else {

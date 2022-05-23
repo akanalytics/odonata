@@ -54,7 +54,14 @@ impl Version {
         s += &format!("compiled at  : {}\n", built_info::BUILT_TIME_UTC);
         s += &format!("compiler     : {}\n", built_info::RUSTC_VERSION);
         s += &format!("features     : {}\n", built_info::FEATURES_STR);
-        s += &format!("debug asserts: {}\n", if cfg!(debug_assertions) { "enabled" } else { "disabled" });
+        s += &format!(
+            "debug asserts: {}\n",
+            if cfg!(debug_assertions) {
+                "enabled"
+            } else {
+                "disabled"
+            }
+        );
         s
     }
 }

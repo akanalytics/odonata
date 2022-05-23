@@ -84,6 +84,10 @@ mod tests {
         nt.trace("Hello").trace(&32).trace(&45);
 
         let lt = LoggingTracer;
-        lt.trace("45=").trace(&45).trace("and 32=").trace(&32).trace("\n");
+        lt.trace("45=")
+            .trace(&45)
+            .trace("and 32=")
+            .trace(&32)
+            .trace("\n");
     }
 }

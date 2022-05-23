@@ -84,7 +84,9 @@ impl Default for SearchStats {
             user_cancelled: false,
             total: NodeStats::default(),
             cumulative: NodeStats::default(),
-            plies: std::iter::repeat(NodeStats::new()).take(MAX_PLY as usize).collect(),
+            plies: std::iter::repeat(NodeStats::new())
+                .take(MAX_PLY as usize)
+                .collect(),
             pv: Variation::default(),
             score: Score::default(),
             category: Event::Unknown,
@@ -112,7 +114,8 @@ impl SearchStats {
     fn inc_all_nodes(&mut self) {
         self.this_thread_node_count += 1;
         if self.this_thread_node_count % 1024 == 0 {
-            self.all_threads_node_count.fetch_add(1024, Ordering::Relaxed);
+            self.all_threads_node_count
+                .fetch_add(1024, Ordering::Relaxed);
         }
     }
 
@@ -133,7 +136,9 @@ impl SearchStats {
     }
 
     pub fn new_iteration(&mut self) {
-        self.plies_mut().iter_mut().for_each(|s| s.clear_node_stats());
+        self.plies_mut()
+            .iter_mut()
+            .for_each(|s| s.clear_node_stats());
         self.total.clear_node_stats();
         self.score = Score::default();
         self.completed = false;
@@ -366,7 +371,8 @@ impl SearchStats {
     pub fn cuts_on_first_move(&self) -> f32 {
         let cuts_in_movegen: u64 = self.plies.iter().map(|stats| stats.cut_in_movegen).sum();
 
-        let cuts_total_first_move: u64 = self.plies.iter().map(|stats| stats.cut_on_first_move).sum();
+        let cuts_total_first_move: u64 =
+            self.plies.iter().map(|stats| stats.cut_on_first_move).sum();
         (cuts_total_first_move as f32) / (cuts_in_movegen as f32)
     }
 }
@@ -483,7 +489,11 @@ impl NodeStats {
     }
 
     pub fn all_nodes(&self) -> u64 {
-        self.interior_nodes + self.leaf_nodes + self.leaf_tt_nodes + self.q_interior_nodes + self.q_leaf_nodes
+        self.interior_nodes
+            + self.leaf_nodes
+            + self.leaf_tt_nodes
+            + self.q_interior_nodes
+            + self.q_leaf_nodes
     }
 }
 
@@ -601,7 +611,8 @@ impl NodeStats {
             nmp_perc = self.nmp * 100 / cmp::max(1, self.regular_nodes()) as u64,
             cut_move_hash = self.cut_move_perc(MoveType::Hash),
             cut_move_null = self.cut_move_perc(MoveType::Null),
-            cut_move_cap = self.cut_move_perc(MoveType::GoodCapture) + self.cut_move_perc(MoveType::GoodCaptureUpfrontSorted),
+            cut_move_cap = self.cut_move_perc(MoveType::GoodCapture)
+                + self.cut_move_perc(MoveType::GoodCaptureUpfrontSorted),
             cut_move_killer = self.cut_move_perc(MoveType::Killer),
             cut_move_other = self.cut_move_perc(MoveType::Promo)
                 + self.cut_move_perc(MoveType::Quiet)
@@ -610,7 +621,10 @@ impl NodeStats {
                 + self.cut_move_perc(MoveType::Unsorted)
                 + self.cut_move_perc(MoveType::Capture),
             pvs = self.pvs * 100 / cmp::max(1, self.mv) as u64,
-            res = format_num!(".2f", self.pvs_research as f64 * 100.0 / cmp::max(1, self.mv) as f64),
+            res = format_num!(
+                ".2f",
+                self.pvs_research as f64 * 100.0 / cmp::max(1, self.mv) as f64
+            ),
             fp = self.fp * 100 / cmp::max(1, self.mv) as u64,
             ec = self.ext_check * 100 / cmp::max(1, self.mv) as u64,
             lmr = self.red_lmr * 100 / cmp::max(1, self.mv) as u64,

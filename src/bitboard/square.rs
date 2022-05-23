@@ -120,7 +120,7 @@ impl Square {
 
     #[inline]
     pub const fn as_bb(self) -> Bitboard {
-        Bitboard::from_sq(self.0 )
+        Bitboard::from_sq(self.0)
     }
 
     #[inline]
@@ -161,10 +161,11 @@ impl Square {
             "-"
         } else {
             static UCIS: [&str; 64] = [
-                "a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1", "a2", "b2", "c2", "d2", "e2", "f2", "g2", "h2", "a3", "b3", "c3", "d3",
-                "e3", "f3", "g3", "h3", "a4", "b4", "c4", "d4", "e4", "f4", "g4", "h4", "a5", "b5", "c5", "d5", "e5", "f5", "g5", "h5",
-                "a6", "b6", "c6", "d6", "e6", "f6", "g6", "h6", "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7", "a8", "b8", "c8", "d8",
-                "e8", "f8", "g8", "h8",
+                "a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1", "a2", "b2", "c2", "d2", "e2", "f2",
+                "g2", "h2", "a3", "b3", "c3", "d3", "e3", "f3", "g3", "h3", "a4", "b4", "c4", "d4",
+                "e4", "f4", "g4", "h4", "a5", "b5", "c5", "d5", "e5", "f5", "g5", "h5", "a6", "b6",
+                "c6", "d6", "e6", "f6", "g6", "h6", "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7",
+                "a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8",
             ];
             UCIS[self.index()]
         }
@@ -239,7 +240,8 @@ impl Square {
 
     //  see https://www.chessprogramming.org/Distance
     pub fn calc_manhattan_distance(s1: Square, s2: Square) -> i32 {
-        i32::abs(s1.rank_index() as i32 - s2.rank_index() as i32) + i32::abs(s1.file_index() as i32 - s2.file_index() as i32)
+        i32::abs(s1.rank_index() as i32 - s2.rank_index() as i32)
+            + i32::abs(s1.file_index() as i32 - s2.file_index() as i32)
     }
 
     /// flip vertical - https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating
@@ -306,8 +308,8 @@ mod tests {
 
     use super::*;
     use crate::globals::constants::*;
-    use crate::infra::profiler::*;
     use crate::infra::black_box;
+    use crate::infra::profiler::*;
 
     #[test]
     fn test_square() {
@@ -345,16 +347,40 @@ mod tests {
     #[test]
     fn test_bounding_rectangle() {
         assert_eq!(cmp::min(a1.square(), b2.square()), a1.square());
-        assert_eq!(Bitboard::all() - b2.square().rank().rays(Dir::N), RANK_1 | RANK_2);
-        assert_eq!(Square::bounding_rectangle(a1.square(), b2.square()), a1 | a2 | b1 | b2);
-        assert_eq!(Square::bounding_rectangle(b2.square(), a1.square()), a1 | a2 | b1 | b2);
+        assert_eq!(
+            Bitboard::all() - b2.square().rank().rays(Dir::N),
+            RANK_1 | RANK_2
+        );
+        assert_eq!(
+            Square::bounding_rectangle(a1.square(), b2.square()),
+            a1 | a2 | b1 | b2
+        );
+        assert_eq!(
+            Square::bounding_rectangle(b2.square(), a1.square()),
+            a1 | a2 | b1 | b2
+        );
         assert_eq!(Square::bounding_rectangle(a1.square(), a1.square()), a1);
         assert_eq!(Square::bounding_rectangle(c3.square(), c3.square()), c3);
-        assert_eq!(Square::bounding_rectangle(a1.square(), h8.square()), Bitboard::all());
-        assert_eq!(Square::bounding_rectangle(b2.square(), b5.square()), b2 | b3 | b4 | b5);
-        assert_eq!(Square::bounding_rectangle(b5.square(), b2.square()), b2 | b3 | b4 | b5);
-        assert_eq!(Square::bounding_rectangle(c5.square(), e5.square()), c5 | d5 | e5);
-        assert_eq!(Square::bounding_rectangle(e5.square(), c5.square()), c5 | d5 | e5);
+        assert_eq!(
+            Square::bounding_rectangle(a1.square(), h8.square()),
+            Bitboard::all()
+        );
+        assert_eq!(
+            Square::bounding_rectangle(b2.square(), b5.square()),
+            b2 | b3 | b4 | b5
+        );
+        assert_eq!(
+            Square::bounding_rectangle(b5.square(), b2.square()),
+            b2 | b3 | b4 | b5
+        );
+        assert_eq!(
+            Square::bounding_rectangle(c5.square(), e5.square()),
+            c5 | d5 | e5
+        );
+        assert_eq!(
+            Square::bounding_rectangle(e5.square(), c5.square()),
+            c5 | d5 | e5
+        );
     }
 
     #[test]
@@ -362,15 +388,24 @@ mod tests {
         assert_eq!(Square::calc_line_through(b6.square(), b8.square()), FILE_B);
         assert_eq!(Square::calc_line_through(b5.square(), d5.square()), RANK_5);
         assert_eq!(Square::calc_line_through(a2.square(), b1.square()), a2 | b1);
-        assert_eq!(Square::calc_line_through(f1.square(), g2.square()), f1 | g2 | h3);
+        assert_eq!(
+            Square::calc_line_through(f1.square(), g2.square()),
+            f1 | g2 | h3
+        );
         assert_eq!(Square::calc_line_through(f1.square(), f1.square()), f1);
-        assert_eq!(Square::calc_line_through(f1.square(), g3.square()), Bitboard::empty());
+        assert_eq!(
+            Square::calc_line_through(f1.square(), g3.square()),
+            Bitboard::empty()
+        );
     }
 
     #[test]
     fn test_betweens() {
         assert_eq!(Square::calc_between(b6.square(), b6.square()), b6);
-        assert_eq!(Square::calc_strictly_between(b6.square(), b6.square()), Bitboard::empty());
+        assert_eq!(
+            Square::calc_strictly_between(b6.square(), b6.square()),
+            Bitboard::empty()
+        );
 
         assert_eq!(Square::calc_between(b6.square(), b8.square()), b6 | b7 | b8);
         assert_eq!(Square::calc_strictly_between(b6.square(), b8.square()), b7);

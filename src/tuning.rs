@@ -132,7 +132,12 @@ impl Tuning {
             }
             let ph = eng.algo.eval.phaser.phase(&pos.board().material());
             let mut explain = ExplainScore::new(ph, pos.board().to_fen());
-            Calc::score(&mut explain, pos.board(), &eng.algo.eval, &eng.algo.eval.phaser);
+            Calc::score(
+                &mut explain,
+                pos.board(),
+                &eng.algo.eval,
+                &eng.algo.eval.phaser,
+            );
             explain.set_outcome(o);
             // eng.algo.eval.predict(&model, &mut w_scorer);
             // let _consolidate = eng.tuner.consolidate;
@@ -163,10 +168,10 @@ impl Tuning {
     pub fn calculate_mean_square_error(&self, eng: &Engine) -> Result<f32> {
         let eval = &eng.algo.eval;
         let logistic_steepness_k = self.logistic_steepness_k; // so that closure does not capture engine/tuner
-        // let mut scorer = ExplainScorer::new(String::new(), true);
-        // let board = Catalog::starting_board();
-        // model_and_accum(eng, &board, Phase(0), &mut scorer);
-        // let weight_vector = scorer.weights_vector();
+                                                              // let mut scorer = ExplainScorer::new(String::new(), true);
+                                                              // let board = Catalog::starting_board();
+                                                              // model_and_accum(eng, &board, Phase(0), &mut scorer);
+                                                              // let weight_vector = scorer.weights_vector();
         let eval_weight_vector = eval.weights_vector();
         // trace!("Weights = {}", weight_vector);
         let regression_type = eng.tuner.regression_type;
@@ -262,7 +267,10 @@ impl Tuning {
 
         // if eng.tuner.method == Method::New {
         let l = self.explains.len();
-        info!("Calculating mse (new) on {} positions using single thread", l);
+        info!(
+            "Calculating mse (new) on {} positions using single thread",
+            l
+        );
         let total_diff_squared: f32 = self.explains.iter().enumerate().map(closure_es).sum();
         let mse = total_diff_squared / l as f32;
         info!("Calculated (new) mse as {}", mse);
@@ -382,7 +390,10 @@ mod tests {
         for n in (-120..120).step_by(1) {
             let value = n;
             engine.algo.eval.mb.enabled = false;
-            engine.algo.eval.set_weight(Attr::PawnIsolated.into(), Weight::from_i32(0, value));
+            engine
+                .algo
+                .eval
+                .set_weight(Attr::PawnIsolated.into(), Weight::from_i32(0, value));
             iters += 1;
             let diffs = engine.tuner.calculate_mean_square_error(&engine).unwrap();
             println!("{}, {}", value, diffs);

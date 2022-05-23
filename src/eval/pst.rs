@@ -7,8 +7,6 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use std::fmt;
 
-
-
 #[derive(Clone)]
 // #[serde(from="PstProxy", into="PstProxy")]
 pub struct Pst {
@@ -105,7 +103,9 @@ impl Into<PstProxy> for Pst {
     fn into(self) -> PstProxy {
         let mut pp = PstProxy::default();
         for (i, &p) in Piece::ALL_BAR_NONE.iter().enumerate() {
-            let b = &mut [&mut pp.p, &mut pp.n, &mut pp.b, &mut pp.r, &mut pp.q, &mut pp.k][i];
+            let b = &mut [
+                &mut pp.p, &mut pp.n, &mut pp.b, &mut pp.r, &mut pp.q, &mut pp.k,
+            ][i];
             for sq in Square::all() {
                 b[sq.rank_index()][sq.file_index()] = self.array[p][sq];
             }
@@ -148,7 +148,9 @@ impl fmt::Display for Pst {
 
 impl fmt::Debug for Pst {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Pst").field("enabled", &self.enabled).finish()
+        f.debug_struct("Pst")
+            .field("enabled", &self.enabled)
+            .finish()
     }
 }
 
@@ -172,7 +174,6 @@ impl Pst {
     }
 
     fn init_pst(&mut self) {
-
         #[rustfmt::skip]
         let pawn_pst_mg: [i32; 64] = [
         0,  0,  0,  0,  0,  0,  0,  0,
@@ -328,7 +329,8 @@ impl Pst {
 
         for &p in &Piece::ALL_BAR_NONE {
             for sq in Square::all() {
-                self.array[p][sq] = Weight::from_i32(square_values_mg[p][sq], square_values_eg[p][sq]);
+                self.array[p][sq] =
+                    Weight::from_i32(square_values_mg[p][sq], square_values_eg[p][sq]);
             }
         }
     }
@@ -368,9 +370,18 @@ mod tests {
         let _text = toml::to_string(&eng).unwrap();
         // eprintln!("toml\n{}", text);
         // let lookup = c1.weight("eval.pst.p.a2", &Weight::from_i32(1, 1));
-        assert_eq!(eng.algo.eval.pst.pst(Piece::Pawn, Square::A2).s(), Weight::from_f32(6.5, 7.5).s());
-        assert_eq!(eng.algo.eval.pst.pst(Piece::Pawn, Square::A2).e(), Weight::from_f32(6.5, 7.5).e());
+        assert_eq!(
+            eng.algo.eval.pst.pst(Piece::Pawn, Square::A2).s(),
+            Weight::from_f32(6.5, 7.5).s()
+        );
+        assert_eq!(
+            eng.algo.eval.pst.pst(Piece::Pawn, Square::A2).e(),
+            Weight::from_f32(6.5, 7.5).e()
+        );
         eng.configment("eval.pst.p.a2.e", "8.5").unwrap();
-        assert_eq!(eng.algo.eval.pst.pst(Piece::Pawn, Square::A2).e(), Weight::from_f32(6.5, 8.5).e());
+        assert_eq!(
+            eng.algo.eval.pst.pst(Piece::Pawn, Square::A2).e(),
+            Weight::from_f32(6.5, 8.5).e()
+        );
     }
 }

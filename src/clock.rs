@@ -58,7 +58,7 @@ impl Component for Clock {
             NewGame => self.new_game(),
             SetPosition => self.new_position(),
             StartSearch => *self = Self::default(),
-            EndSearch => {},
+            EndSearch => {}
             StartDepthIteration(_) => self.new_iter(),
         }
     }
@@ -81,13 +81,41 @@ impl Component for Clock {
 
 impl fmt::Display for Clock {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "search time      : {}", Formatting::duration(self.elapsed_search().0))?;
-        writeln!(f, "search nodes     : {}", Formatting::u128(self.elapsed_search().1 as u128))?;
-        writeln!(f, "search knps      : {}", Formatting::u128(self.cumul_knps_all_threads() as u128))?;
-        writeln!(f, "iter time        : {}", Formatting::duration(self.elapsed_iter().0))?;
-        writeln!(f, "iter nodes       : {}", Formatting::u128(self.elapsed_iter().1 as u128))?;
-        writeln!(f, "cumul nodes      : {}", Formatting::u128(self.cumul_nodes() as u128))?;
-        writeln!(f, "cumul nodes all  : {}", Formatting::u128(self.cumul_nodes_all_threads() as u128))?;
+        writeln!(
+            f,
+            "search time      : {}",
+            Formatting::duration(self.elapsed_search().0)
+        )?;
+        writeln!(
+            f,
+            "search nodes     : {}",
+            Formatting::u128(self.elapsed_search().1 as u128)
+        )?;
+        writeln!(
+            f,
+            "search knps      : {}",
+            Formatting::u128(self.cumul_knps_all_threads() as u128)
+        )?;
+        writeln!(
+            f,
+            "iter time        : {}",
+            Formatting::duration(self.elapsed_iter().0)
+        )?;
+        writeln!(
+            f,
+            "iter nodes       : {}",
+            Formatting::u128(self.elapsed_iter().1 as u128)
+        )?;
+        writeln!(
+            f,
+            "cumul nodes      : {}",
+            Formatting::u128(self.cumul_nodes() as u128)
+        )?;
+        writeln!(
+            f,
+            "cumul nodes all  : {}",
+            Formatting::u128(self.cumul_nodes_all_threads() as u128)
+        )?;
         // writeln!(f, "leaf nodes       : {}", Formatting::u128(self.cumul_leaf_nodes() as u128))?;
         Ok(())
     }
@@ -96,7 +124,9 @@ impl fmt::Display for Clock {
 impl Clock {
     #[inline]
     pub fn cumul_nodes(&self) -> u64 {
-        self.nodes[self.thread_index as usize].0.load(Ordering::Relaxed)
+        self.nodes[self.thread_index as usize]
+            .0
+            .load(Ordering::Relaxed)
     }
 
     // #[inline]
@@ -120,7 +150,9 @@ impl Clock {
 
     #[inline]
     pub fn inc_nodes(&self) {
-        self.nodes[self.thread_index as usize].0.fetch_add(1, Ordering::Relaxed);
+        self.nodes[self.thread_index as usize]
+            .0
+            .fetch_add(1, Ordering::Relaxed);
     }
 
     // #[inline]
@@ -130,11 +162,17 @@ impl Clock {
 
     #[inline]
     pub fn elapsed_search(&self) -> (Duration, u64) {
-        (self.start_search.0.elapsed(), self.cumul_nodes() - self.start_search.1)
+        (
+            self.start_search.0.elapsed(),
+            self.cumul_nodes() - self.start_search.1,
+        )
     }
 
     #[inline]
     pub fn elapsed_iter(&self) -> (Duration, u64) {
-        (self.start_iter.0.elapsed(), self.cumul_nodes() - self.start_iter.1)
+        (
+            self.start_iter.0.elapsed(),
+            self.cumul_nodes() - self.start_iter.1,
+        )
     }
 }

@@ -1,4 +1,3 @@
-use crate::Piece;
 use crate::board::Board;
 use crate::infra::component::Component;
 use crate::mv::Move;
@@ -6,6 +5,7 @@ use crate::search::node::Event;
 use crate::search::node::Node;
 use crate::types::{MoveType, Ply};
 use crate::Algo;
+use crate::Piece;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -82,7 +82,12 @@ impl Algo {
         }
 
         // has to be one of these
-        if !(MoveType::QuietUnsorted | MoveType::Quiet | MoveType::Remaining | MoveType::Killer | MoveType::Promo | MoveType::BadCapture)
+        if !(MoveType::QuietUnsorted
+            | MoveType::Quiet
+            | MoveType::Remaining
+            | MoveType::Killer
+            | MoveType::Promo
+            | MoveType::BadCapture)
             .contains(stage)
         {
             return false;
@@ -115,12 +120,20 @@ impl Algo {
         if self.lmp.alpha_numeric && !n.alpha.is_numeric() {
             return false;
         }
-        if quiets <= (self.lmp.a + self.lmp.b * n.depth as f32 + self.lmp.c * (n.depth * n.depth) as f32) as i32{
+        if quiets
+            <= (self.lmp.a + self.lmp.b * n.depth as f32 + self.lmp.c * (n.depth * n.depth) as f32)
+                as i32
+        {
             return false;
         }
 
         let is_pv = n.is_pv();
-        if is_pv && quiets <= (self.lmp.pa + self.lmp.pb * n.depth as f32 + self.lmp.pc * (n.depth * n.depth) as f32) as i32{
+        if is_pv
+            && quiets
+                <= (self.lmp.pa
+                    + self.lmp.pb * n.depth as f32
+                    + self.lmp.pc * (n.depth * n.depth) as f32) as i32
+        {
             return false;
         }
 

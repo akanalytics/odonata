@@ -165,7 +165,15 @@ impl Move {
 
     #[inline]
     pub fn new_quiet(p: Piece, from: Square, to: Square) -> Move {
-        Move::new(from, to, Square::null(), p, Piece::None, Piece::None, CastlingRights::NONE)
+        Move::new(
+            from,
+            to,
+            Square::null(),
+            p,
+            Piece::None,
+            Piece::None,
+            CastlingRights::NONE,
+        )
     }
 
     #[inline]
@@ -220,32 +228,80 @@ impl Move {
 
     #[inline]
     pub fn new_double_push(from: Square, to: Square, ep: Square) -> Move {
-        Move::new(from, to, ep, Piece::Pawn, Piece::None, Piece::None, CastlingRights::NONE)
+        Move::new(
+            from,
+            to,
+            ep,
+            Piece::Pawn,
+            Piece::None,
+            Piece::None,
+            CastlingRights::NONE,
+        )
     }
 
     #[inline]
     pub fn new_capture(p: Piece, from: Square, to: Square, captured: Piece) -> Move {
-        Move::new(from, to, Square::null(), p, captured, Piece::None, CastlingRights::NONE)
+        Move::new(
+            from,
+            to,
+            Square::null(),
+            p,
+            captured,
+            Piece::None,
+            CastlingRights::NONE,
+        )
     }
 
     #[inline]
     pub fn new_ep_capture(from: Square, to: Square, captured_sq: Square) -> Move {
-        Move::new(from, to, captured_sq, Piece::Pawn, Piece::Pawn, Piece::None, CastlingRights::NONE)
+        Move::new(
+            from,
+            to,
+            captured_sq,
+            Piece::Pawn,
+            Piece::Pawn,
+            Piece::None,
+            CastlingRights::NONE,
+        )
     }
 
     #[inline]
     pub fn new_promo(from: Square, to: Square, promo: Piece) -> Move {
-        Move::new(from, to, Square::null(), Piece::Pawn, Piece::None, promo, CastlingRights::NONE)
+        Move::new(
+            from,
+            to,
+            Square::null(),
+            Piece::Pawn,
+            Piece::None,
+            promo,
+            CastlingRights::NONE,
+        )
     }
 
     #[inline]
     pub fn new_promo_capture(from: Square, to: Square, promo: Piece, capture: Piece) -> Move {
-        Move::new(from, to, Square::null(), Piece::Pawn, capture, promo, CastlingRights::NONE)
+        Move::new(
+            from,
+            to,
+            Square::null(),
+            Piece::Pawn,
+            capture,
+            promo,
+            CastlingRights::NONE,
+        )
     }
 
     #[inline]
     pub fn new_castle(king_from: Square, king_to: Square, castle: CastlingRights) -> Move {
-        Move::new(king_from, king_to, Square::null(), Piece::King, Piece::None, Piece::None, castle)
+        Move::new(
+            king_from,
+            king_to,
+            Square::null(),
+            Piece::King,
+            Piece::None,
+            Piece::None,
+            castle,
+        )
     }
 
     #[inline]
@@ -281,7 +337,15 @@ impl Move {
         } else {
             Piece::None
         };
-        Ok(Move::new(from, to, Square::null(), mover, Piece::None, promo, CastlingRights::NONE))
+        Ok(Move::new(
+            from,
+            to,
+            Square::null(),
+            mover,
+            Piece::None,
+            promo,
+            CastlingRights::NONE,
+        ))
     }
 }
 

@@ -29,7 +29,7 @@ impl fmt::Display for NodeType {
                 NodeType::Unused => "UN",
                 NodeType::UpperAll => "ALL",
                 NodeType::LowerCut => "CUT",
-                NodeType::ExactPv => "PV ",
+                NodeType::ExactPv => "PV",
             }
         )
     }

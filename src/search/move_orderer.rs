@@ -96,10 +96,22 @@ impl fmt::Display for MoveOrderer {
         writeln!(f, "mvv_lva          : {}", self.mvv_lva)?;
         writeln!(f, "see_cutoff       : {}", self.see_cutoff)?;
         writeln!(f, "qs_see_cutoff    : {}", self.qsearch_see_cutoff)?;
-        writeln!(f, "order            : {}", MoveType::slice_to_string(&self.order))?;
-        writeln!(f, "qorder           : {}", MoveType::slice_to_string(&self.qorder))?;
+        writeln!(
+            f,
+            "order            : {}",
+            MoveType::slice_to_string(&self.order)
+        )?;
+        writeln!(
+            f,
+            "qorder           : {}",
+            MoveType::slice_to_string(&self.qorder)
+        )?;
         writeln!(f, "thread           : {}", self.thread)?;
-        writeln!(f, "{}", ArrayPlyStat(&[&self.count_pv, &self.count_bm, &self.count_tt_bm]))?;
+        writeln!(
+            f,
+            "{}",
+            ArrayPlyStat(&[&self.count_pv, &self.count_bm, &self.count_tt_bm])
+        )?;
         Ok(())
     }
 }
@@ -130,7 +142,11 @@ impl MoveOrderer {
 
         score += algo.history.history_heuristic_bonus(c, mv);
 
-        score += algo.eval.pst.w_eval_square(c, mv.mover_piece(), mv.to()).interpolate(phase) as i32;
+        score += algo
+            .eval
+            .pst
+            .w_eval_square(c, mv.mover_piece(), mv.to())
+            .interpolate(phase) as i32;
         // score -= algo.eval.w_eval_square(c, mv.mover_piece(), mv.from()).interpolate(phase);
         -score
     }
@@ -151,7 +167,9 @@ impl Algo {
             // }
         }
 
-        if self.move_orderer.prior_pv && Self::order_from_prior_pv(movelist, &self.current_variation, self.pv()) {
+        if self.move_orderer.prior_pv
+            && Self::order_from_prior_pv(movelist, &self.current_variation, self.pv())
+        {
             self.move_orderer.count_pv.add(ply, 1);
         }
         // if self.move_orderer.prior_bm {
@@ -230,7 +248,7 @@ impl MoveOrderer {
             index: 0,
             n,
             tt,
-            last
+            last,
         }
     }
 }
@@ -257,7 +275,8 @@ impl OrderedMoveList {
             {
                 Self::sort_one_capture_move(self.index, &mut self.moves, self.last);
             }
-            if move_type == MoveType::GoodCaptureUpfrontSorted || move_type == MoveType::GoodCapture {
+            if move_type == MoveType::GoodCaptureUpfrontSorted || move_type == MoveType::GoodCapture
+            {
                 let mv = self.moves[self.index];
                 let see = algo.eval.see.eval_move_see(b, mv);
                 let see_cutoff = if self.qsearch {
@@ -266,7 +285,7 @@ impl OrderedMoveList {
                     algo.move_orderer.see_cutoff
                 };
                 let see_cutoff = see_cutoff.as_i16() as i32;
-                 if see < see_cutoff || see == see_cutoff && self.qsearch && self.n.depth < -1 {
+                if see < see_cutoff || see == see_cutoff && self.qsearch && self.n.depth < -1 {
                     self.bad_captures.push(mv);
                     self.index += 1;
                     return self.next_move(b, algo);
@@ -287,7 +306,7 @@ impl OrderedMoveList {
     }
 
     #[inline]
-    fn sort_one_capture_move(i: usize, moves: &mut MoveList, last: Move ) {
+    fn sort_one_capture_move(i: usize, moves: &mut MoveList, last: Move) {
         if let Some(j) = moves
             .iter()
             .enumerate()
@@ -339,8 +358,13 @@ impl OrderedMoveList {
                 algo.order_moves(self.n.ply, moves, &None);
             }
             MoveType::GoodCaptureUpfrontSorted => {
-                all_moves.iter().filter(|m| Move::is_capture(m)).for_each(|&m| moves.push(m));
-                moves.sort_by_cached_key(|m| Move::mvv_lva_score(m) + if m.to() == last.to() { 0 } else { 0 } );
+                all_moves
+                    .iter()
+                    .filter(|m| Move::is_capture(m))
+                    .for_each(|&m| moves.push(m));
+                moves.sort_by_cached_key(|m| {
+                    Move::mvv_lva_score(m) + if m.to() == last.to() { 0 } else { 0 }
+                });
                 moves.reverse();
                 if algo.move_orderer.thread == 1 && moves.len() >= 2 {
                     moves.swap(0, 1);
@@ -348,7 +372,10 @@ impl OrderedMoveList {
             }
             // Good Captures (sorted later)
             MoveType::GoodCapture => {
-                all_moves.iter().filter(|m| Move::is_capture(m)).for_each(|&m| moves.push(m));
+                all_moves
+                    .iter()
+                    .filter(|m| Move::is_capture(m))
+                    .for_each(|&m| moves.push(m));
             }
 
             // Killers
@@ -391,7 +418,14 @@ impl OrderedMoveList {
                     .filter(|m| !Move::is_capture(m) && !Move::is_promo(m))
                     .for_each(|&m| moves.push(m));
                 // algo.order_moves(self.ply, moves, &None);
-                moves.sort_by_cached_key(|mv| algo.move_orderer.quiet_score(mv, algo, b.phase(&algo.eval.phaser), b.color_us()));
+                moves.sort_by_cached_key(|mv| {
+                    algo.move_orderer.quiet_score(
+                        mv,
+                        algo,
+                        b.phase(&algo.eval.phaser),
+                        b.color_us(),
+                    )
+                });
                 if algo.move_orderer.thread == 1 && moves.len() >= 2 {
                     moves.swap(0, 1);
                 }
@@ -414,7 +448,10 @@ impl OrderedMoveList {
             }
             // Captures
             MoveType::Capture => {
-                all_moves.iter().filter(|m| Move::is_capture(m)).for_each(|&m| moves.push(m));
+                all_moves
+                    .iter()
+                    .filter(|m| Move::is_capture(m))
+                    .for_each(|&m| moves.push(m));
                 moves.sort_unstable_by_key(Move::mvv_lva_score);
                 moves.reverse();
                 if algo.move_orderer.thread == 1 && moves.len() >= 2 {
@@ -769,7 +806,8 @@ mod tests {
 
         let positions = &Catalog::win_at_chess();
         for pos in positions {
-            let mut sorted_moves = orderer.create_sorted_moves(n, pos.board(), TT_MOVE, Move::NULL_MOVE);
+            let mut sorted_moves =
+                orderer.create_sorted_moves(n, pos.board(), TT_MOVE, Move::NULL_MOVE);
             let mut moves = MoveList::new();
             while let Some((_stage, mv)) = sorted_moves.next_move(pos.board(), &mut algo) {
                 moves.push(mv);
@@ -811,7 +849,9 @@ mod tests {
             let suggested_depth = pos.acd().unwrap();
             // engine.algo.set_timing_method(TimeControl::NodeCount(200000));
 
-            engine.algo.set_timing_method(TimeControl::Depth(suggested_depth - 1));
+            engine
+                .algo
+                .set_timing_method(TimeControl::Depth(suggested_depth - 1));
             engine.search();
             let mut results = engine.algo.results_as_position().clone();
             let nodes = results.acn().unwrap();
@@ -823,7 +863,12 @@ mod tests {
             results.tags_mut().remove(Tag::BM);
             results.tags_mut().remove(Tag::CE);
             results.tags_mut().remove(Tag::ACN);
-            println!("{:>12} {:>12} {}", Formatting::u128(nodes), Formatting::u128(nodes_cumul), results);
+            println!(
+                "{:>12} {:>12} {}",
+                Formatting::u128(nodes),
+                Formatting::u128(nodes_cumul),
+                results
+            );
         }
     }
 }

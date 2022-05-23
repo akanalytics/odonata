@@ -85,7 +85,9 @@ impl fmt::Display for Pmvt {
 
 impl fmt::Debug for Pmvt {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Pst").field("enabled", &self.enabled).finish()
+        f.debug_struct("Pst")
+            .field("enabled", &self.enabled)
+            .finish()
     }
 }
 

@@ -8,8 +8,6 @@ use std::fmt;
 //     bound: NodeType,
 // }
 
-
-
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Score {
@@ -38,7 +36,9 @@ impl Score {
             "centipawns {} out of range",
             centipawn
         );
-        Score { cp: centipawn as i16 }
+        Score {
+            cp: centipawn as i16,
+        }
         // Score { cp: centipawn.clamp(-Self::INF as i32, Self::INF as i32) as i16 }  // adds 4% to eval
     }
 
@@ -49,7 +49,9 @@ impl Score {
             "centipawns {} out of range",
             centipawn
         );
-        Score { cp: centipawn as i16 }
+        Score {
+            cp: centipawn as i16,
+        }
         // Score { cp: centipawn.clamp(-Self::INF as i32, Self::INF as i32) as i16 }  // adds 4% to eval
     }
 
@@ -186,13 +188,11 @@ impl Score {
         1.0 / (1.0 + 10_f32.powf(-centipawns / (k * 100.0)))
     }
 
-
-
     #[inline]
     pub fn win_probability_from_cp_and_k_fast(centipawns: f32, k: f32) -> f32 {
         #[inline]
         fn pow10(b: f32) -> f32 {
-            const LOG_OF_10: f32 = 2.302_585_125;  // ln(10.0)
+            const LOG_OF_10: f32 = 2.302_585_125; // ln(10.0)
             fast_math::exp(b * LOG_OF_10)
         }
         1.0 / (1.0 + pow10(-centipawns / (k * 100.0)))
@@ -221,9 +221,6 @@ impl Default for Score {
         -Self::INFINITY
     }
 }
-
-
-
 
 impl std::ops::Add for Score {
     type Output = Self;
@@ -270,7 +267,10 @@ impl std::ops::Sub for Score {
                 return self; // if self is an infinite or mate then subtracting cp/mp makes no difference
             }
         }
-        panic!("Can only subtract centipawns: can't subtract {} - {}", self, other);
+        panic!(
+            "Can only subtract centipawns: can't subtract {} - {}",
+            self, other
+        );
     }
 }
 
@@ -369,7 +369,12 @@ impl Score2 {
 
     /// Outcome must be game ending else panic
     #[inline]
-    pub fn score_from_outcome(contempt: i32, o: Outcome, us: Color, total_half_moves: Ply) -> Score2 {
+    pub fn score_from_outcome(
+        contempt: i32,
+        o: Outcome,
+        us: Color,
+        total_half_moves: Ply,
+    ) -> Score2 {
         if o.is_draw() {
             // draw score is +ve for playing a stronger opponent (we want a draw), neg for weaker
             //
@@ -390,7 +395,9 @@ impl Score2 {
                 Score2::WhiteWin {
                     minus_ply: -total_half_moves,
                 },
-                Score2::WhiteLoss { ply: total_half_moves },
+                Score2::WhiteLoss {
+                    ply: total_half_moves,
+                },
             );
         }
         panic!("Tried to final score a non-final board outcome:{}", o);
@@ -409,7 +416,10 @@ impl Score2 {
     }
 
     pub fn is_mate(&self) -> bool {
-        matches!(self, Self::WhiteLoss { ply: _ } | Self::WhiteWin { minus_ply: _ })
+        matches!(
+            self,
+            Self::WhiteLoss { ply: _ } | Self::WhiteWin { minus_ply: _ }
+        )
     }
 
     #[inline]
@@ -514,10 +524,9 @@ impl fmt::Display for Score2 {
 
 #[cfg(test)]
 mod tests {
-    use crate::infra::profiler::*;
-    use crate::infra::black_box;
     use super::*;
-
+    use crate::infra::black_box;
+    use crate::infra::profiler::*;
 
     #[test]
     fn test_score() {
@@ -550,14 +559,26 @@ mod tests {
         assert!(Score::from_cp(100) > Score::from_cp(0));
 
         // addition
-        assert_eq!(Score::from_cp(100) + Score::from_cp(150), Score::from_cp(250));
+        assert_eq!(
+            Score::from_cp(100) + Score::from_cp(150),
+            Score::from_cp(250)
+        );
         assert_eq!((-Score::INFINITY) + Score::from_cp(150), (-Score::INFINITY));
-        assert_eq!(Score::white_win(1) + Score::from_cp(150), Score::white_win(1));
+        assert_eq!(
+            Score::white_win(1) + Score::from_cp(150),
+            Score::white_win(1)
+        );
 
         // subtraction
-        assert_eq!(Score::from_cp(100) - Score::from_cp(150), Score::from_cp(-50));
+        assert_eq!(
+            Score::from_cp(100) - Score::from_cp(150),
+            Score::from_cp(-50)
+        );
         assert_eq!((-Score::INFINITY) - Score::from_cp(150), (-Score::INFINITY));
-        assert_eq!(Score::white_win(1) - Score::from_cp(150), Score::white_win(1));
+        assert_eq!(
+            Score::white_win(1) - Score::from_cp(150),
+            Score::white_win(1)
+        );
 
         assert_eq!(2 * Score::from_cp(100), Score::from_cp(200));
         assert_eq!(-2 * Score::from_cp(200), Score::from_cp(-400));
@@ -584,7 +605,10 @@ mod tests {
         assert_eq!(format!("{}", Score::white_win(2)), "win(2)");
         assert_eq!(format!("{}", Score::white_loss(3)), "loss(3)");
         assert_eq!(format!("{:>8}", Score::white_loss(3)), "loss(3)");
-        assert_eq!(format!("{:>8}", Score::white_loss(3).to_string()), " loss(3)");
+        assert_eq!(
+            format!("{:>8}", Score::white_loss(3).to_string()),
+            " loss(3)"
+        );
     }
 
     #[test]

@@ -65,8 +65,14 @@ impl Game {
                 panic!("Error on board {} {:#}", e, self.board);
             };
 
-            let player = if self.board.color_us() == Color::White { white } else { black };
-            player.set_position(Position::from_board(self.board.clone())).search();
+            let player = if self.board.color_us() == Color::White {
+                white
+            } else {
+                black
+            };
+            player
+                .set_position(Position::from_board(self.board.clone()))
+                .search();
             let mv = player.results.bm();
             let tags = player.results_as_position().tags().clone();
             if player.score() == -Score::INFINITY {
@@ -147,7 +153,10 @@ impl fmt::Display for Game {
             writeln!(f, "[FEN \"{}\"]", self.starting_pos.board().to_fen())?;
             writeln!(f, "[SetUp \"1\"]")?;
         }
-        let mut moves = self.starting_pos.board().to_san_variation(&self.moves, Some(&self.annotations));
+        let mut moves = self
+            .starting_pos
+            .board()
+            .to_san_variation(&self.moves, Some(&self.annotations));
         if !f.alternate() {
             moves = moves.replace('\n', " ");
         }
@@ -171,11 +180,15 @@ mod tests {
     fn single_game() {
         let eval_w = Eval::new();
         let mut white = Algo::new();
-        white.set_timing_method(TimeControl::Depth(6)).set_eval(eval_w);
+        white
+            .set_timing_method(TimeControl::Depth(6))
+            .set_eval(eval_w);
 
         let eval_b = Eval::new();
         let mut black = Algo::new();
-        black.set_timing_method(TimeControl::Depth(6)).set_eval(eval_b);
+        black
+            .set_timing_method(TimeControl::Depth(6))
+            .set_eval(eval_b);
 
         let pos = Catalog::starting_position();
         let mut game = Game::new();
@@ -273,8 +286,16 @@ mod tests {
                 gm2.outcome()
             );
             if gm1.outcome() == Outcome::DrawRule75 || gm2.outcome() == Outcome::DrawRule75 {
-                print!("mat.score:{:>4} mat:{}  ", gm1.board.material().centipawns(), gm1.board.material());
-                print!("mat.score:{:>4} mat:{}  ", gm2.board.material().centipawns(), gm2.board.material());
+                print!(
+                    "mat.score:{:>4} mat:{}  ",
+                    gm1.board.material().centipawns(),
+                    gm1.board.material()
+                );
+                print!(
+                    "mat.score:{:>4} mat:{}  ",
+                    gm2.board.material().centipawns(),
+                    gm2.board.material()
+                );
             }
             println!();
             if (id + 1) % 10 == 0 {
@@ -286,7 +307,8 @@ mod tests {
 
     #[test]
     fn test_bug1() {
-        let pos = Position::parse_epd("1rk2qRr/8/B3P3/B4QN1/P4p2/2K1PP1P/P7/R2N4 b - - 0 38").unwrap();
+        let pos =
+            Position::parse_epd("1rk2qRr/8/B3P3/B4QN1/P4p2/2K1PP1P/P7/R2N4 b - - 0 38").unwrap();
         let tc = TimeControl::SearchTime(Duration::from_millis(100));
         let mut white = Algo::new();
         white.set_timing_method(tc);
@@ -299,13 +321,21 @@ mod tests {
 
     #[test]
     fn test_bug2() {
-        let pos1 = Position::parse_epd("1r3rbQ/p1p1kp2/4pn2/2Pp4/2n3p1/1P1N4/2P1PPPP/q2K1RBB w - - 0 23").unwrap();
+        let pos1 =
+            Position::parse_epd("1r3rbQ/p1p1kp2/4pn2/2Pp4/2n3p1/1P1N4/2P1PPPP/q2K1RBB w - - 0 23")
+                .unwrap();
         // let tc = TimeControl::SearchTime(Duration::from_millis(140));
         let tc = TimeControl::from_remaining_time(Duration::from_millis(1750));
         let mut white = Algo::new();
         let _black = Algo::new();
-        white.set_position(pos1.clone()).set_timing_method(tc).search();
-        white.set_position(pos1.clone()).set_timing_method(tc).search();
+        white
+            .set_position(pos1.clone())
+            .set_timing_method(tc)
+            .search();
+        white
+            .set_position(pos1.clone())
+            .set_timing_method(tc)
+            .search();
         white.set_position(pos1).set_timing_method(tc).search();
         // let b2 = b1.make_move(&black.bm());
         //white.search(&b2);

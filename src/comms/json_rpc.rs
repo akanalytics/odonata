@@ -34,7 +34,9 @@ pub struct JsonRpc {
 
 impl JsonRpc {
     pub fn new(engine: Arc<Mutex<Engine>>) -> JsonRpc {
-        let mut me = JsonRpc { io: <IoHandler>::new() };
+        let mut me = JsonRpc {
+            io: <IoHandler>::new(),
+        };
         let rpc = RpcImpl::new(engine);
         me.io.extend_with(rpc.to_delegate());
 
@@ -145,7 +147,10 @@ impl Rpc for RpcImpl {
 
     fn tuning_mean_squared_error(&self) -> Result<f32> {
         let eng = self.engine.lock().unwrap();
-        let mse = eng.tuner.calculate_mean_square_error(&eng).map_err(to_rpc_error)?;
+        let mse = eng
+            .tuner
+            .calculate_mean_square_error(&eng)
+            .map_err(to_rpc_error)?;
         Ok(mse)
     }
 
@@ -162,7 +167,13 @@ impl Rpc for RpcImpl {
     }
 
     fn static_eval_explain(&self, board: Board) -> Result<String> {
-        let explanation = self.engine.lock().unwrap().algo.eval.w_eval_explain(&board, false);
+        let explanation = self
+            .engine
+            .lock()
+            .unwrap()
+            .algo
+            .eval
+            .w_eval_explain(&board, false);
         Ok(explanation.to_string())
     }
 }
@@ -171,7 +182,7 @@ impl Rpc for RpcImpl {
 mod tests {
     use super::*;
     use test_log::test;
-    
+
     #[test]
     fn test_json_rpc() {
         let mut rpc = JsonRpc::new(Arc::new(Mutex::new(Engine::new())));

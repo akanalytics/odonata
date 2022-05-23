@@ -16,7 +16,14 @@ pub struct Exam {
 
 impl fmt::Display for Exam {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} {}/{} ({:.02}%)", self.name, self.score, self.out_of, self.percentage())
+        write!(
+            f,
+            "{} {}/{} ({:.02}%)",
+            self.name,
+            self.score,
+            self.out_of,
+            self.percentage()
+        )
     }
 }
 
@@ -28,7 +35,9 @@ impl Exam {
     pub fn take_exam(name: &str, positions: Vec<Position>) -> Exam {
         let mut engine = Engine::new();
         // algo.set_timing_method(TimeControl::Depth(5));
-        engine.algo.set_timing_method(TimeControl::NodeCount(1_000_000));
+        engine
+            .algo
+            .set_timing_method(TimeControl::NodeCount(1_000_000));
         // engine.algo.set_timing_method(TimeControl::from_move_time_millis(1900));
 
         let mut exam = Exam {

@@ -30,9 +30,17 @@ impl Bench {
             let t = Instant::now();
             let p = Perft::perft(&mut board, d);
             let elapsed = t.elapsed();
-            println!("perft({}) = {:<14} in {}", d, p, Formatting::duration(elapsed));
+            println!(
+                "perft({}) = {:<14} in {}",
+                d,
+                p,
+                Formatting::duration(elapsed)
+            );
             if d == depth {
-                println!("\n{} nodes/sec", Formatting::f64(p as f64 / elapsed.as_secs_f64()));
+                println!(
+                    "\n{} nodes/sec",
+                    Formatting::f64(p as f64 / elapsed.as_secs_f64())
+                );
             }
         }
         // println!("\nstatistics\n{}", counts::GLOBAL_COUNTS);
@@ -55,7 +63,10 @@ impl Bench {
                 d, total, p.captures, p.en_passant, p.castles, p.promos, time
             );
             if d == depth {
-                println!("\n{} nodes/sec", Formatting::f64(total as f64 / elapsed.as_secs_f64()));
+                println!(
+                    "\n{} nodes/sec",
+                    Formatting::f64(total as f64 / elapsed.as_secs_f64())
+                );
             }
         }
         // println!("\nstatistics\n{}", counts::GLOBAL_COUNTS);
@@ -84,7 +95,9 @@ impl Bench {
             engine.set_position(pos.clone());
             if tc == TimeControl::DefaultTime {
                 let suggested_depth = pos.acd().unwrap();
-                engine.algo.set_timing_method(TimeControl::Depth(suggested_depth));
+                engine
+                    .algo
+                    .set_timing_method(TimeControl::Depth(suggested_depth));
             } else {
                 engine.algo.set_timing_method(tc);
             }
@@ -140,12 +153,11 @@ impl Bench {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use test_log::test;    
     use crate::infra::profiler::Profiler;
+    use test_log::test;
 
     #[test]
     fn bench_bk() {
@@ -155,5 +167,4 @@ mod tests {
         prof.stop();
         prof.set_iters((total_nodes / 1000) as u64);
     }
-
 }

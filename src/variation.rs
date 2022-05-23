@@ -33,20 +33,23 @@ impl Variation {
     }
 
     #[inline]
-    pub fn moves(&self) -> impl Iterator<Item=&Move> {
+    pub fn moves(&self) -> impl Iterator<Item = &Move> {
         self.moves.iter()
     }
 
-
     pub fn uci(&self) -> String {
-        self.moves.iter().map(|mv| mv.uci()).collect::<Vec<String>>().join(" ")
+        self.moves
+            .iter()
+            .map(|mv| mv.uci())
+            .collect::<Vec<String>>()
+            .join(" ")
     }
 
     /// variation without last move or None if empty
     pub fn stem(&self) -> Option<Variation> {
         if !self.moves.is_empty() {
-            let moves = self.moves[0..self.moves.len()-1].to_owned();
-            Some( Variation { moves } )
+            let moves = self.moves[0..self.moves.len() - 1].to_owned();
+            Some(Variation { moves })
         } else {
             None
         }
@@ -67,7 +70,12 @@ impl Variation {
         } else if ply < self.moves.len() {
             self.moves.truncate(ply);
         } else {
-            debug_assert!(ply > self.moves.len(), "Assert {} > {}", ply, self.moves.len());
+            debug_assert!(
+                ply > self.moves.len(),
+                "Assert {} > {}",
+                ply,
+                self.moves.len()
+            );
             let len = ply - self.moves.len();
             for _ in 0..len {
                 self.moves.push(*mv);

@@ -64,7 +64,9 @@ impl Serialize for Board {
 
 impl fmt::Debug for Board {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Board").field("fen", &self.to_fen()).finish()
+        f.debug_struct("Board")
+            .field("fen", &self.to_fen())
+            .finish()
     }
 }
 
@@ -101,9 +103,18 @@ impl Board {
     fn calculate_internals(&mut self) {
         self.hash = Hasher::default().hash_board(self);
         // self.material.set(Material::niche());
-        self.pinned = [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())];
-        self.threats_to = [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())];
-        self.checkers_of = [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())];
+        self.pinned = [
+            Cell::<_>::new(Bitboard::niche()),
+            Cell::<_>::new(Bitboard::niche()),
+        ];
+        self.threats_to = [
+            Cell::<_>::new(Bitboard::niche()),
+            Cell::<_>::new(Bitboard::niche()),
+        ];
+        self.checkers_of = [
+            Cell::<_>::new(Bitboard::niche()),
+            Cell::<_>::new(Bitboard::niche()),
+        ];
     }
 
     #[inline]
@@ -290,7 +301,12 @@ impl Board {
     pub fn to_fen(&self) -> String {
         let b = self.clone();
 
-        let mut fen = Bitboard::RANKS.iter().rev().map(|&r| b.get(r)).collect::<Vec<String>>().join("/");
+        let mut fen = Bitboard::RANKS
+            .iter()
+            .rev()
+            .map(|&r| b.get(r))
+            .collect::<Vec<String>>()
+            .join("/");
 
         // replace continguous empties by a count
         for i in (1..=8).rev() {
@@ -327,14 +343,44 @@ impl fmt::Display for Board {
             writeln!(f, "Rep count: {:x}", self.repetition_count().total)?;
             writeln!(f, "White:\n{}\nBlack:\n{}\n", self.white(), self.black())?;
             for &p in Piece::ALL_BAR_NONE.iter() {
-                writeln!(f, "Pieces: {}{}\n{}\n", p.to_upper_char(), p.to_lower_char(), self.pieces(p))?;
+                writeln!(
+                    f,
+                    "Pieces: {}{}\n{}\n",
+                    p.to_upper_char(),
+                    p.to_lower_char(),
+                    self.pieces(p)
+                )?;
             }
-            writeln!(f, "Pinned on white king:\n{}\n", self.pinned[Color::White].get())?;
-            writeln!(f, "Pinned on black king:\n{}\n", self.pinned[Color::Black].get())?;
-            writeln!(f, "Checkers of white:\n{}\n", self.checkers_of[Color::White].get())?;
-            writeln!(f, "Checkers of black:\n{}\n", self.checkers_of[Color::Black].get())?;
-            writeln!(f, "Threats to white:\n{}\n", self.threats_to[Color::White].get())?;
-            writeln!(f, "Threats to black:\n{}\n", self.threats_to[Color::Black].get())?;
+            writeln!(
+                f,
+                "Pinned on white king:\n{}\n",
+                self.pinned[Color::White].get()
+            )?;
+            writeln!(
+                f,
+                "Pinned on black king:\n{}\n",
+                self.pinned[Color::Black].get()
+            )?;
+            writeln!(
+                f,
+                "Checkers of white:\n{}\n",
+                self.checkers_of[Color::White].get()
+            )?;
+            writeln!(
+                f,
+                "Checkers of black:\n{}\n",
+                self.checkers_of[Color::Black].get()
+            )?;
+            writeln!(
+                f,
+                "Threats to white:\n{}\n",
+                self.threats_to[Color::White].get()
+            )?;
+            writeln!(
+                f,
+                "Threats to black:\n{}\n",
+                self.threats_to[Color::Black].get()
+            )?;
         }
 
         Ok(())
@@ -352,9 +398,18 @@ impl Default for Board {
             fifty_clock: Default::default(),
             fullmove_number: 1,
             repetition_count: Cell::<_>::new(Repeats::default()),
-            threats_to: [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())],
-            checkers_of: [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())],
-            pinned: [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())],
+            threats_to: [
+                Cell::<_>::new(Bitboard::niche()),
+                Cell::<_>::new(Bitboard::niche()),
+            ],
+            checkers_of: [
+                Cell::<_>::new(Bitboard::niche()),
+                Cell::<_>::new(Bitboard::niche()),
+            ],
+            pinned: [
+                Cell::<_>::new(Bitboard::niche()),
+                Cell::<_>::new(Bitboard::niche()),
+            ],
             // material: Cell::<_>::new(Material::niche()),
             hash: 0,
             // moves: MoveList,
@@ -380,7 +435,10 @@ mod tests {
             "\"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\""
         );
         assert_eq!(
-            serde_json::from_str::<Board>("\"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\"").unwrap(),
+            serde_json::from_str::<Board>(
+                "\"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\""
+            )
+            .unwrap(),
             board1
         );
     }
@@ -402,8 +460,12 @@ mod tests {
         );
         assert_eq!(board2.color_flip().to_fen(), board1.to_fen());
 
-        let board1 = Board::parse_fen("rnb1k2r/pp3ppp/4p3/3pB3/2pPn3/2P1PN2/q1P1QPPP/2KR1B1R b kq - 1 11").unwrap();
-        let board2 = Board::parse_fen("2kr1b1r/Q1p1qppp/2p1pn2/2PpN3/3Pb3/4P3/PP3PPP/RNB1K2R w KQ - 1 11").unwrap();
+        let board1 =
+            Board::parse_fen("rnb1k2r/pp3ppp/4p3/3pB3/2pPn3/2P1PN2/q1P1QPPP/2KR1B1R b kq - 1 11")
+                .unwrap();
+        let board2 =
+            Board::parse_fen("2kr1b1r/Q1p1qppp/2p1pn2/2PpN3/3Pb3/4P3/PP3PPP/RNB1K2R w KQ - 1 11")
+                .unwrap();
         assert_eq!(
             board1.color_flip().to_fen(),
             board2.to_fen(),

@@ -53,7 +53,8 @@ impl TryFrom<HashMap<String, String>> for Position {
             if k == "fen" {
                 continue;
             }
-            let tag = Tag::parse(p.board(), k, v).with_context(|| format!("in tag '{}' with value '{}'", k, v))?;
+            let tag = Tag::parse(p.board(), k, v)
+                .with_context(|| format!("in tag '{}' with value '{}'", k, v))?;
             p.set(tag);
         }
         Ok(p)
@@ -94,7 +95,10 @@ static REGEX_CR_PLUS_WS: Lazy<Regex> = Lazy::new(|| Regex::new(r#"\s*\n\s*"#).un
 /// builder methods
 impl Position {
     pub fn from_board(board: Board) -> Self {
-        Self { board, ..Self::default() }
+        Self {
+            board,
+            ..Self::default()
+        }
     }
 
     /// 0. Piece placement
@@ -103,6 +107,8 @@ impl Position {
     /// 3. E/P square
     /// 4. Half move clock
     /// 5. Full move counter
+    /// 
+    // TODO! allow newlines replaced by / only in fen, thereafter just ignore
     pub fn parse_epd(epd: &str) -> Result<Self> {
         // replace \n followed by whitespace with "/"
         let epd = epd.trim_start();
@@ -121,7 +127,8 @@ impl Position {
         if words[3] == "-" {
             pos.board.set_en_passant(Bitboard::EMPTY)
         } else {
-            pos.board.set_en_passant(Bitboard::parse_square(words[3])?.as_bb())
+            pos.board
+                .set_en_passant(Bitboard::parse_square(words[3])?.as_bb())
         };
 
         let mut remaining = StringUtils::trim_first_n_words(epd, 4);
@@ -169,7 +176,8 @@ impl Position {
         P: AsRef<Path>,
         P: Clone,
     {
-        let file = File::open(filename.clone()).context(format!("{}", filename.as_ref().display()))?;
+        let file =
+            File::open(filename.clone()).context(format!("{}", filename.as_ref().display()))?;
         let lines = io::BufReader::new(file).lines();
         let mut vec = Vec::<Position>::new();
         let mut epd_count = 0;
@@ -183,7 +191,11 @@ impl Position {
                 }
             }
         }
-        info!("Read {} epds from {:?}", epd_count, filename.as_ref().display());
+        info!(
+            "Read {} epds from {:?}",
+            epd_count,
+            filename.as_ref().display()
+        );
         Ok(vec)
     }
 }
@@ -256,7 +268,7 @@ impl Position {
         if let Tag::Pv(v) = self.tag(Tag::PV) {
             Ok(v.clone())
         } else {
-            panic!();
+            panic!("Expected pv tag in EPD {}", self);
         }
     }
 
@@ -423,11 +435,13 @@ mod tests {
         let epds = Position::parse_many_epd(strs)?;
         assert_eq!(epds.len(), 2);
         assert_eq!(epds[0].pv()?.len(), 3);
-        assert_eq!(epds[0].tag("c0"), &Tag::Comment(0, "Henry Buckle vs NN, London, 1840".to_string()));
+        assert_eq!(
+            epds[0].tag("c0"),
+            &Tag::Comment(0, "Henry Buckle vs NN, London, 1840".to_string())
+        );
         assert_eq!(epds[1].pv()?.len(), 3);
         Ok(())
     }
-
 
     #[test]
     fn test_parse_multiline_epd() -> Result<()> {
@@ -441,11 +455,14 @@ mod tests {
         ppppp...
         rnbqk... w KQkq - 0 1";
         let pos = Position::parse_epd(s)?;
-        assert_eq!(pos.board().to_fen(), "K7/PPP5/8/8/8/8/ppppp3/rnbqk3 w KQkq - 0 1");
+        assert_eq!(
+            pos.board().to_fen(),
+            "K7/PPP5/8/8/8/8/ppppp3/rnbqk3 w KQkq - 0 1"
+        );
         Ok(())
     }
 
-        #[test]
+    #[test]
     fn test_pos_basics() -> Result<()> {
         let mut pos = Position::default();
         *pos.board_mut() = Board::parse_fen(Catalog::STARTING_POSITION_FEN).unwrap();
@@ -494,7 +511,10 @@ mod tests {
             r#"{"fen":"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1","bm":"e4"}"#
         );
         assert_eq!(
-            serde_json::from_str::<Position>(r#"{"bm":"e2e4","fen":"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"}"#).unwrap(),
+            serde_json::from_str::<Position>(
+                r#"{"bm":"e2e4","fen":"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"}"#
+            )
+            .unwrap(),
             pos
         );
         Ok(())

@@ -152,7 +152,8 @@ impl SlidingPieceAttacks for Hyperbola {
 
     #[inline]
     fn bishop_attacks(&self, occ: Bitboard, from: Square) -> Bitboard {
-        self.hyperbola(occ, from, self.mask[from].diag) | self.hyperbola(occ, from, self.mask[from].anti_diag)
+        self.hyperbola(occ, from, self.mask[from].diag)
+            | self.hyperbola(occ, from, self.mask[from].anti_diag)
     }
 }
 
@@ -207,8 +208,18 @@ mod tests {
 
         for sq in Bitboard::all().squares() {
             let occ = b5 | f3 | g4 | h4;
-            assert_eq!(hq.bishop_attacks(occ, sq), cb.bishop_attacks(occ, sq), "square {:?}", sq.as_bb());
-            assert_eq!(hq.rook_attacks(occ, sq), cb.rook_attacks(occ, sq), "square {:?}", sq.as_bb());
+            assert_eq!(
+                hq.bishop_attacks(occ, sq),
+                cb.bishop_attacks(occ, sq),
+                "square {:?}",
+                sq.as_bb()
+            );
+            assert_eq!(
+                hq.rook_attacks(occ, sq),
+                cb.rook_attacks(occ, sq),
+                "square {:?}",
+                sq.as_bb()
+            );
         }
     }
 
@@ -233,7 +244,12 @@ mod tests {
             for d in sq.diag().power_set_iter() {
                 for ad in sq.anti_diag().power_set_iter() {
                     let occ = d | ad;
-                    assert_eq!(hq.bishop_attacks(occ, sq), cb.bishop_attacks(occ, sq), "square {:?}", sq.as_bb());
+                    assert_eq!(
+                        hq.bishop_attacks(occ, sq),
+                        cb.bishop_attacks(occ, sq),
+                        "square {:?}",
+                        sq.as_bb()
+                    );
                 }
             }
         }

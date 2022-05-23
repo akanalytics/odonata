@@ -155,12 +155,7 @@ impl Explainer {
     /// but not beyond max_additional_ply),
     /// then return a SearchTreeWeight to be populated, else None
     #[inline]
-    pub fn explaining(
-        &mut self,
-        n: &Node,
-        var: &Variation,
-        e: Event,
-    ) -> Option<&mut TreeNode> {
+    pub fn explaining(&mut self, n: &Node, var: &Variation, e: Event) -> Option<&mut TreeNode> {
         if !self.enabled || n.depth < self.min_depth {
             return None;
         }
@@ -192,8 +187,7 @@ impl Explainer {
         // OR
         // b. see if we are explaining the whole tree
         if self.why_not.is_none()
-            &&  
-            self
+            && self
                 .vars
                 .iter()
                 // .inspect(|x| println!("about to check var: {}", x))
@@ -242,6 +236,7 @@ impl Algo {
                 w.score = estimated;
                 w.node = *n;
                 w.event = e;
+                w.cause = e;
             }
         }
     }
@@ -271,7 +266,10 @@ impl Algo {
         if self.explainer.enabled {
             let e = Event::PruneNullMovePrune;
             if let Some(w) = self.explainer.explaining(n, &self.current_variation, e) {
-                info!("Explain null move prune in {n} on {}", self.current_variation);
+                info!(
+                    "Explain null move prune in {n} on {}",
+                    self.current_variation
+                );
                 w.score = child_score;
                 w.node = *n;
                 w.event = e;
@@ -285,15 +283,20 @@ impl Algo {
         bm: Move,
         nt: NodeType,
         score: Score,
+        eval: Score,
         n: &Node,
         e: Event,
         pv: &Variation,
     ) {
         if self.explainer.enabled {
             if let Some(w) = self.explainer.explaining(n, &self.current_variation, e) {
-                info!("Explain node in {n} with {nt} on {} with pv {pv}", self.current_variation);
+                info!(
+                    "Explain node in {n} with {nt} on {} with pv {pv}",
+                    self.current_variation
+                );
                 w.score = score;
                 w.node = *n;
+                w.eval = eval;
                 w.nt = nt;
             }
             if nt == NodeType::ExactPv {
@@ -362,9 +365,9 @@ mod tests {
             // "##,
             .parse_san_variation(
                 // r##"Bf1 Rb2
-                // Qf3 Rxb3 
-                // g4 c2 
-                // Nxc2 Rxf3 
+                // Qf3 Rxb3
+                // g4 c2
+                // Nxc2 Rxf3
                 // "##,
                 r##"Rc4 Rb2
                 Rc7 Qxb3 

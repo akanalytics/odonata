@@ -1,4 +1,4 @@
-use std::{fmt, fmt::Display, io::Write, collections::HashMap};
+use std::{collections::HashMap, fmt, fmt::Display, io::Write};
 
 use anyhow::Result;
 use comfy_table::{presets, Cell, CellAlignment, Row, Table};
@@ -125,7 +125,10 @@ impl ExplainScore {
     }
 
     pub fn value(&self, i: Feature) -> Option<i32> {
-        self.vec.iter().find(|&e| i == e.0).map(|e| (e.1 - e.2) as i32)
+        self.vec
+            .iter()
+            .find(|&e| i == e.0)
+            .map(|e| (e.1 - e.2) as i32)
     }
 
     pub fn discard_balanced_features(&mut self) {
@@ -145,12 +148,23 @@ impl ExplainScore {
     pub fn total(&self) -> Weight {
         match self.weights {
             None => self.vec.iter().map(|e| (e.1 - e.2)).sum::<i32>() * Weight::new(1.0, 1.0),
-            Some(ref wv) => self.vec.iter().map(|e| (e.1 - e.2) * wv.weights[e.0.index()]).sum(),
+            Some(ref wv) => self
+                .vec
+                .iter()
+                .map(|e| (e.1 - e.2) * wv.weights[e.0.index()])
+                .sum(),
         }
     }
 
-    pub fn write_csv<'a, W: Write>(iter: impl Iterator<Item = &'a ExplainScore>, f: &mut W) -> Result<i32> {
-        writeln!(f, "{},phase,outcome,ce,fen", Feature::all().iter().map(|f| f.name()).join(","))?;
+    pub fn write_csv<'a, W: Write>(
+        iter: impl Iterator<Item = &'a ExplainScore>,
+        f: &mut W,
+    ) -> Result<i32> {
+        writeln!(
+            f,
+            "{},phase,outcome,ce,fen",
+            Feature::all().iter().map(|f| f.name()).join(",")
+        )?;
         let mut count = 0;
         for r in iter {
             count += 1;
@@ -160,7 +174,14 @@ impl ExplainScore {
                     None => write!(f, "0,"),
                 }?;
             }
-            writeln!(f, "{},{},{},{}", r.phase, r.outcome.as_win_fraction(), 0, r.fen)?;
+            writeln!(
+                f,
+                "{},{},{},{}",
+                r.phase,
+                r.outcome.as_win_fraction(),
+                0,
+                r.fen
+            )?;
         }
         Ok(count)
     }
@@ -178,8 +199,11 @@ impl Display for ExplainScore {
         }
 
         let mut tab = Table::new();
-        let row = Row::from(vec!["attr", "w#", "w mg", "w eg", "int", "mg", "eg", "b#", "b mg", "b eg", "wt"]);
-        tab.load_preset(presets::ASCII_BORDERS_ONLY_CONDENSED).set_header(row);
+        let row = Row::from(vec![
+            "attr", "w#", "w mg", "w eg", "int", "mg", "eg", "b#", "b mg", "b eg", "wt",
+        ]);
+        tab.load_preset(presets::ASCII_BORDERS_ONLY_CONDENSED)
+            .set_header(row);
         tab.column_iter_mut()
             .skip(1)
             .for_each(|c| c.set_cell_alignment(CellAlignment::Right));
@@ -216,7 +240,9 @@ impl Display for ExplainScore {
             }
             let mut row = Row::new();
             row.add_cell(Cell::new(i.category()));
-            row.add_cell("".into()).add_cell("".into()).add_cell("".into());
+            row.add_cell("".into())
+                .add_cell("".into())
+                .add_cell("".into());
             row.add_cell(fp((tot).interpolate(self.phase)));
             row.add_cell(fp(tot.s()));
             row.add_cell(fp(tot.e()));
@@ -227,7 +253,9 @@ impl Display for ExplainScore {
         }
         let mut row = Row::new();
         row.add_cell(Cell::new("Total"));
-        row.add_cell("".into()).add_cell("".into()).add_cell("".into());
+        row.add_cell("".into())
+            .add_cell("".into())
+            .add_cell("".into());
         row.add_cell(fp((grand_tot).interpolate(self.phase)));
         row.add_cell(fp(grand_tot.s()));
         row.add_cell(fp(grand_tot.e()));
@@ -237,9 +265,9 @@ impl Display for ExplainScore {
         if f.alternate() {
             let mut tab = Table::new();
             for y in &self.bitboards.iter().chunks(5) {
-                let mut row = Row::new(); 
+                let mut row = Row::new();
                 for (i, bb) in y {
-                    row.add_cell(format!("{}\n{bb:#}",i.name()).into());
+                    row.add_cell(format!("{}\n{bb:#}", i.name()).into());
                 }
                 tab.add_row(row);
             }
@@ -248,8 +276,6 @@ impl Display for ExplainScore {
         Ok(())
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -284,7 +310,10 @@ mod tests {
 
             table.add_row(vec![scorer2.total().to_string(), scorer3.to_string()]);
             if scorer2.total().to_string() != scorer3.total().to_string() {
-                table.add_row(vec![format!("{:.6}", scorer2.total()), format!("{:.6}", scorer3.total())]);
+                table.add_row(vec![
+                    format!("{:.6}", scorer2.total()),
+                    format!("{:.6}", scorer3.total()),
+                ]);
                 table.add_row(vec![Cell::new("Fail!").bg(Color::Red)]);
                 break;
             }

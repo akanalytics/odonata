@@ -53,7 +53,7 @@ impl Default for NullMovePruning {
             successive: true,
             margin: Score::from_cp(-10000),
             min_depth: 2, // 1 means we still prune at frontier (depth=1)
-            store_tt: true, 
+            store_tt: true,
             depth_reduction_strat: 100,
             a: 2.7,
             b: 0.198,
@@ -122,7 +122,11 @@ impl NullMovePruning {
             3 => 3,
             4 => 2 + n.depth / 4 + min((eval - n.beta).as_i16() as i32 / 128, 3),
             5 => 3 + n.depth / 4 + min((eval - n.beta).as_i16() as i32 / 128, 3),
-            100 => f32::round(self.a + n.depth as f32 * self.b + f32::min((eval - n.beta).as_i16() as f32 * self.c, 3.0)) as i32,
+            100 => f32::round(
+                self.a
+                    + n.depth as f32 * self.b
+                    + f32::min((eval - n.beta).as_i16() as f32 * self.c, 3.0),
+            ) as i32,
 
             // classical adaptive null move pruning reduction
             200 => {
@@ -182,8 +186,8 @@ impl Algo {
                     depth: reduced_depth + 1,
                     nt: NodeType::LowerCut,
                     bm: Move::NULL_MOVE,
-                }; 
-                // remember this is the child board hash with child score, 
+                };
+                // remember this is the child board hash with child score,
                 // but we store it as parent board and negative score and bound,
                 // and reduced_depth + 1
                 self.tt.store(b.hash(), entry);

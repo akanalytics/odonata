@@ -109,7 +109,11 @@ impl fmt::Display for MoveTimeEstimator {
         writeln!(f, "branching factor : {}", self.branching_factor)?;
         writeln!(f, "const moves rem. : {}", self.moves_rem)?;
         writeln!(f, "% of time adv    : {}", self.perc_of_time_adv)?;
-        writeln!(f, "allotted for mv  : {}", Formatting::duration(self.allotted()))?;
+        writeln!(
+            f,
+            "allotted for mv  : {}",
+            Formatting::duration(self.allotted())
+        )?;
         writeln!(
             f,
             "time estimate    : {}",
@@ -119,8 +123,16 @@ impl fmt::Display for MoveTimeEstimator {
         writeln!(f, "nodestime        : {}", self.nodestime)?;
         writeln!(f, "check every      : {}", self.check_every)?;
         writeln!(f, "clock checks     : {}", self.clock_checks)?;
-        writeln!(f, "elapsed search   : {}", Formatting::duration(self.elapsed_search))?;
-        writeln!(f, "elapsed iter     : {}", Formatting::duration(self.elapsed_iter))?;
+        writeln!(
+            f,
+            "elapsed search   : {}",
+            Formatting::duration(self.elapsed_search)
+        )?;
+        writeln!(
+            f,
+            "elapsed iter     : {}",
+            Formatting::duration(self.elapsed_iter)
+        )?;
         writeln!(
             f,
             "prior elap iter  : {}",
@@ -245,7 +257,9 @@ impl MoveTimeEstimator {
                 movestogo: _,
             } => {
                 let (time_us, inc) = our_color.chooser_wb((wtime, winc), (btime, binc));
-                let (time_them, _inc) = our_color.opposite().chooser_wb((wtime, winc), (btime, binc));
+                let (time_them, _inc) = our_color
+                    .opposite()
+                    .chooser_wb((wtime, winc), (btime, binc));
                 let time_adv = if time_us > time_them {
                     time_us - time_them
                 } else {

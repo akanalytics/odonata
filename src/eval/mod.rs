@@ -1,13 +1,13 @@
+pub mod calc;
 pub mod endgame;
 pub mod eval;
-mod material_balance;
-pub mod scorer;
-pub mod calc;
 pub mod feature;
+mod material_balance;
 mod pmvt;
 mod pst;
 pub mod recognizer;
 pub mod score;
+pub mod scorer;
 pub mod see;
 pub mod weight;
 mod weight3;

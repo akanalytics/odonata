@@ -35,7 +35,11 @@ impl Serialize for WeightOf<f32> {
     where
         S: Serializer,
     {
-        WeightOfHelper { s: self.0, e: self.1 }.serialize(serializer)
+        WeightOfHelper {
+            s: self.0,
+            e: self.1,
+        }
+        .serialize(serializer)
     }
 }
 
@@ -57,7 +61,8 @@ impl<'de> Deserialize<'de> for WeightOf<i32> {
     where
         D: Deserializer<'de>,
     {
-        Deserialize::deserialize(deserializer).map(|WeightOfHelper { s, e }| WeightOf::<i32>::from_f32(s, e))
+        Deserialize::deserialize(deserializer)
+            .map(|WeightOfHelper { s, e }| WeightOf::<i32>::from_f32(s, e))
     }
 }
 

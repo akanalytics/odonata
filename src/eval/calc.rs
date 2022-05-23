@@ -52,9 +52,13 @@ impl Calc {
     fn material(scorer: &mut impl ScorerBase, b: &Board) {
         let m = b.material();
 
-        Piece::ALL_BAR_KING
-            .iter()
-            .for_each(|&p| scorer.accumulate(Feature::Piece(p), m.count(Color::White, p), m.count(Color::Black, p)));
+        Piece::ALL_BAR_KING.iter().for_each(|&p| {
+            scorer.accumulate(
+                Feature::Piece(p),
+                m.count(Color::White, p),
+                m.count(Color::Black, p),
+            )
+        });
 
         scorer.accumulate(
             Attr::BishopPair.as_feature(),
@@ -66,7 +70,6 @@ impl Calc {
             (m.count(White, Rook) >= 2) as i32,
             (m.count(Black, Rook) >= 2) as i32,
         );
-
     }
 
     fn position(scorer: &mut impl ScorerBase, b: &Board) {
@@ -99,7 +102,11 @@ impl Calc {
                 && (b.pawns() & us).disjoint(no_pawns)
                 && (b.kings() & us).intersects(king)) as i32
         };
-        scorer.accumulate(Attr::Fianchetto.as_feature(), fianchetto(White), fianchetto(Black));
+        scorer.accumulate(
+            Attr::Fianchetto.as_feature(),
+            fianchetto(White),
+            fianchetto(Black),
+        );
 
         // if queen has moved but other pieces havent (FIXME! not quite exactly right (QxQ))
         let queen_early_develop = |c: Color| {
@@ -130,17 +137,15 @@ impl Calc {
 
                 // win specific scoring, so we award win_bonus as other features will be ignored
                 scorer.accum(winner, Attr::WinBonus.as_feature(), 1);
-                return true; 
+                return true;
             }
             // award a win bonus even if we dont have win-specific scoring
             scorer.accum(winner, Attr::WinBonus.as_feature(), 1);
-            return false;  // TODO! we have a winner, but no specific win scoring. Do we still use just material
+            return false; // TODO! we have a winner, but no specific win scoring. Do we still use just material
         }
         false
     }
 
-
- 
     fn pst(s: &mut impl ScorerBase, b: &Board) {
         // if s.csv() {
         for &p in &Piece::ALL_BAR_NONE {
@@ -215,9 +220,13 @@ impl Calc {
 
         // let enemy_rook_on_passer = pawn_isolated_doubled;
         let doubled_pawns = doubled_pawns_bb.popcount() - pawn_isolated_doubled;
-        scorer.set_bits(Attr::PawnDoubled.into(), doubled_pawns_bb - pawn_isolated_doubled_bb);
+        scorer.set_bits(
+            Attr::PawnDoubled.into(),
+            doubled_pawns_bb - pawn_isolated_doubled_bb,
+        );
 
-        let (enemy_pawn_atts_e, enemy_pawn_atts_w) = bbd.pawn_attacks(b.pawns() & them, c.opposite());
+        let (enemy_pawn_atts_e, enemy_pawn_atts_w) =
+            bbd.pawn_attacks(b.pawns() & them, c.opposite());
         let enemy_pawn_atts = enemy_pawn_atts_e | enemy_pawn_atts_w;
 
         let mut passed_pawns_on_r7 = 0;
@@ -252,7 +261,8 @@ impl Calc {
             let rank_index = p.rank_index_as_white(c) as i32;
             let pawn_stop = bbd.pawn_stop(c, p);
             // use pawns not pawns&them so we only count front of doubled pawns (+8 elo in sp)
-            let is_passed = (bbd.pawn_front_span_union_attack_span(c, p) & b.pawns() & them).is_empty();
+            let is_passed =
+                (bbd.pawn_front_span_union_attack_span(c, p) & b.pawns() & them).is_empty();
             // self.passed_pawns += is_passed as i32;
             // let rank7 = c.chooser_wb(Bitboard::RANK_7, Bitboard::RANK_2);
             // let rank6 = c.chooser_wb(Bitboard::RANK_6, Bitboard::RANK_3);
@@ -260,15 +270,20 @@ impl Calc {
             // all pawns on r7 are passed as an opponent pawn cannot be on rank 8
             let is_passer_on_rim = is_passed && p.is_in(Bitboard::RIM);
             passers_on_rim += is_passer_on_rim as i32;
-            scorer.set_bits(Attr::PassersOnRim.into(), p.as_bb().only_if(is_passer_on_rim));
+            scorer.set_bits(
+                Attr::PassersOnRim.into(),
+                p.as_bb().only_if(is_passer_on_rim),
+            );
 
             let is_blockaded = pawn_stop.intersects(them);
             blockaded += is_blockaded as i32;
             blockaded_passers += (is_blockaded && is_passed) as i32;
-            rooks_behind_passer += (is_passed && (bbd.pawn_front_span(c.opposite(), p) & b.rooks() & us).any()) as i32;
+            rooks_behind_passer +=
+                (is_passed && (bbd.pawn_front_span(c.opposite(), p) & b.rooks() & us).any()) as i32;
 
             let rammed = bbd.pawn_stop(c, p).intersects(them & b.pawns());
-            let _nearly_rammed = bbd.pawn_double_stop(c, p).intersects(them & b.pawns()) || is_blockaded;
+            let _nearly_rammed =
+                bbd.pawn_double_stop(c, p).intersects(them & b.pawns()) || is_blockaded;
             rammed_pawns += rammed as i32;
             scorer.set_bits(Attr::RammedPawns.into(), p.as_bb().only_if(rammed));
 
@@ -377,7 +392,9 @@ impl Calc {
             } else {
                 // half open backward pawns - cannot be defended by other pawns and cannot move fwd
                 if pawn_stop.intersects(enemy_pawn_atts)
-                    && bbd.pawn_attack_span(c.opposite(), p).disjoint(b.pawns() & us)
+                    && bbd
+                        .pawn_attack_span(c.opposite(), p)
+                        .disjoint(b.pawns() & us)
                 {
                     // we already know from duo-else-clause there is no pawn either side too
                     if (bbd.pawn_front_span(c, p) & b.pawns() & them).is_empty() {
@@ -404,7 +421,11 @@ impl Calc {
         // };
 
         scorer.accum(c, Attr::PawnDoubled.as_feature(), doubled_pawns);
-        scorer.accum(c, Attr::PawnDirectlyDoubled.as_feature(), _pawn_directly_doubled);
+        scorer.accum(
+            c,
+            Attr::PawnDirectlyDoubled.as_feature(),
+            _pawn_directly_doubled,
+        );
         scorer.accum(c, Attr::PawnIsolated.as_feature(), isolated_pawns);
         scorer.accum(c, Attr::SemiIsolated.as_feature(), semi_isolated);
         scorer.accum(c, Attr::PawnPassed.as_feature(), passed_pawns);
@@ -413,17 +434,33 @@ impl Calc {
         scorer.accum(c, Attr::PawnPassedR5.as_feature(), passed_pawns_on_r5);
         scorer.accum(c, Attr::PawnPassedR4.as_feature(), passed_pawns_on_r4);
         scorer.accum(c, Attr::PassersOnRim.as_feature(), passers_on_rim);
-        scorer.accum(c, Attr::CandidatePassedPawn.as_feature(), candidate_passed_pawn);
+        scorer.accum(
+            c,
+            Attr::CandidatePassedPawn.as_feature(),
+            candidate_passed_pawn,
+        );
         scorer.accum(c, Attr::Blockaded.as_feature(), blockaded);
         scorer.accum(c, Attr::BlockadedPassers.as_feature(), blockaded_passers);
         scorer.accum(c, Attr::RooksBehindPasser.as_feature(), rooks_behind_passer);
-        scorer.accum(c, Attr::PawnIsolatedDoubled.as_feature(), pawn_isolated_doubled);
+        scorer.accum(
+            c,
+            Attr::PawnIsolatedDoubled.as_feature(),
+            pawn_isolated_doubled,
+        );
         scorer.accum(c, Attr::RammedPawns.as_feature(), rammed_pawns);
         scorer.accum(c, Attr::Space.as_feature(), space);
         scorer.accum(c, Attr::PawnConnectedR67.as_feature(), pawn_connected_r67);
         scorer.accum(c, Attr::PawnConnectedR345.as_feature(), pawn_connected_r345);
-        scorer.accum(c, Attr::PassedConnectedR67.as_feature(), _passed_connected_r67);
-        scorer.accum(c, Attr::PassedConnectedR345.as_feature(), _passed_connected_r345);
+        scorer.accum(
+            c,
+            Attr::PassedConnectedR67.as_feature(),
+            _passed_connected_r67,
+        );
+        scorer.accum(
+            c,
+            Attr::PassedConnectedR345.as_feature(),
+            _passed_connected_r345,
+        );
         scorer.accum(c, Attr::PawnDuoR67.as_feature(), pawn_duo_r67);
         scorer.accum(c, Attr::PawnDuoR2345.as_feature(), pawn_duo_r2345);
         scorer.accum(c, Attr::PassedDuoR67.as_feature(), _passed_duo_r67);
@@ -502,12 +539,14 @@ impl Calc {
         let open_files_near_king_bb = d3 & ksq.rank() & bb.open_files(b.pawns());
         let open_files_near_king = (open_files_near_king_bb).popcount();
         let open_files_adjacent_king = (d1 & ksq.rank() & bb.open_files(b.pawns())).popcount();
-        let rq_on_open_files_near_king = (open_files_near_king_bb.file_flood() & b.rooks_or_queens() & them).popcount();
+        let rq_on_open_files_near_king =
+            (open_files_near_king_bb.file_flood() & b.rooks_or_queens() & them).popcount();
 
         let king_trapped_on_back_rank = (b.rooks_or_queens().any()
             && k.intersects(Bitboard::RANKS_18)
             // && Bitboard::RANKS_18 & ksq.rank() & us == k
-            && (d1 - Bitboard::RANKS_18 - b.occupied()).is_empty()) as i32;
+            && (d1 - Bitboard::RANKS_18 - b.occupied()).is_empty())
+            as i32;
 
         let checkers = b.checkers_of(c).popcount();
         //        self.attacks_on_opponent_king_area += (our_raw_attacks & bb.within_chebyshev_distance_inclusive(ksq, 1)).popcount();
@@ -519,14 +558,30 @@ impl Calc {
         s.accum(c, Attr::PawnAdjacentShield.as_feature(), adjacent_shield);
         s.accum(c, Attr::PawnNearbyShield.as_feature(), nearby_shield);
         s.accum(c, Attr::KingSafetyBonus.as_feature(), king_safety_bonus);
-        s.accum(c, Attr::OpenFilesNearKing.as_feature(), open_files_near_king);
-        s.accum(c, Attr::OpenFilesAdjacentKing.as_feature(), open_files_adjacent_king);
+        s.accum(
+            c,
+            Attr::OpenFilesNearKing.as_feature(),
+            open_files_near_king,
+        );
+        s.accum(
+            c,
+            Attr::OpenFilesAdjacentKing.as_feature(),
+            open_files_adjacent_king,
+        );
         s.accum(c, Attr::TropismD1.as_feature(), king_tropism_d1);
         s.accum(c, Attr::TropismD2.as_feature(), king_tropism_d2);
         s.accum(c, Attr::TropismD3.as_feature(), king_tropism_d3);
         s.accum(c, Attr::TropismD4.as_feature(), king_tropism_d4);
-        s.accum(c, Attr::KingTrappedOnBackRank.as_feature(), king_trapped_on_back_rank);
-        s.accum(c, Attr::RqOnOpenFilesNearKing.as_feature(), rq_on_open_files_near_king);
+        s.accum(
+            c,
+            Attr::KingTrappedOnBackRank.as_feature(),
+            king_trapped_on_back_rank,
+        );
+        s.accum(
+            c,
+            Attr::RqOnOpenFilesNearKing.as_feature(),
+            rq_on_open_files_near_king,
+        );
 
         s.accum(c, Attr::CastlingRights.as_feature(), castling_rights);
         s.accum(c, Attr::Uncastled.as_feature(), uncastled);
@@ -621,7 +676,9 @@ impl Calc {
                     knight_connected |= (our_raw_attacks & b.knights() & us).any();
                     for sq in (our_raw_attacks).squares() {
                         let atts = bb.knight_attacks(sq);
-                        if (atts & them & (b.queens() | b.bishops() | b.rooks() | b.kings())).popcount() >= 2
+                        if (atts & them & (b.queens() | b.bishops() | b.rooks() | b.kings()))
+                            .popcount()
+                            >= 2
                             && b.color_us() == c
                         {
                             knight_forks += 1;
@@ -629,7 +686,12 @@ impl Calc {
                     }
                     if bb.pawn_attack_span(c, sq).disjoint(their_p)
                         && sq.rank_index_as_white(c) >= 4
-                        && sq.is_in(Bitboard::FILE_C | Bitboard::FILE_D | Bitboard::FILE_E | Bitboard::FILE_F)
+                        && sq.is_in(
+                            Bitboard::FILE_C
+                                | Bitboard::FILE_D
+                                | Bitboard::FILE_E
+                                | Bitboard::FILE_F,
+                        )
                     {
                         // knight_outpost += 1;
                         if sq.is_in(our_pa) {
@@ -655,7 +717,8 @@ impl Calc {
                 Piece::Rook => {
                     // connected_rooks |= (our_raw_attacks & b.rooks() & us).any();
                     enemy_pawns_on_rook_rank +=
-                        (sq.rank() & b.pawns() & them & Bitboard::home_half(opponent)).popcount() as i32;
+                        (sq.rank() & b.pawns() & them & Bitboard::home_half(opponent)).popcount()
+                            as i32;
                     asym_attacks = ((our_attacks & them) - r).popcount();
                     // rook_trapped += (piece_move_squares + asym_attacks == 0) as i32;
                 }
@@ -695,9 +758,21 @@ impl Calc {
             Attr::KnightOutpostPawnDefended.as_feature(),
             knight_outpost_pawn_defended,
         );
-        s.accum(c, Attr::KnightOutpostRookSafe.as_feature(), knight_outpost_rook_safe);
-        s.accum(c, Attr::KnightConnected.as_feature(), knight_connected as i32);
-        s.accum(c, Attr::KnightAttacksCenter.as_feature(), knight_attacks_center);
+        s.accum(
+            c,
+            Attr::KnightOutpostRookSafe.as_feature(),
+            knight_outpost_rook_safe,
+        );
+        s.accum(
+            c,
+            Attr::KnightConnected.as_feature(),
+            knight_connected as i32,
+        );
+        s.accum(
+            c,
+            Attr::KnightAttacksCenter.as_feature(),
+            knight_attacks_center,
+        );
         s.accum(c, Attr::KnightTrapped.as_feature(), knight_trapped);
 
         //
@@ -727,9 +802,10 @@ impl Calc {
         // Rook
         //
         let doubled_rooks = ((b.rooks() & us).two_or_more()
-            && (b.rooks() & us).first_square().file_index() == (b.rooks() & us).last_square().file_index())
-            as i32;
-        let doubled_rooks_open_file = (doubled_rooks == 1 && (open_files & b.rooks() & us).popcount() >= 2) as i32;
+            && (b.rooks() & us).first_square().file_index()
+                == (b.rooks() & us).last_square().file_index()) as i32;
+        let doubled_rooks_open_file =
+            (doubled_rooks == 1 && (open_files & b.rooks() & us).popcount() >= 2) as i32;
         let rook_on_open_file = (open_files & us & b.rooks()).popcount();
         s.accum(c, Attr::RookOpenFile.as_feature(), rook_on_open_file);
 
@@ -739,8 +815,16 @@ impl Calc {
         s.set_bits(Attr::RookOpenFile.into(), open_files & us & b.rooks());
         s.accum(c, Attr::ConnectedRooks.as_feature(), connected_rooks as i32);
         s.accum(c, Attr::DoubledRooks.as_feature(), doubled_rooks);
-        s.accum(c, Attr::DoubledRooksOpenFile.as_feature(), doubled_rooks_open_file);
-        s.accum(c, Attr::EnemyPawnsOnRookRank.as_feature(), enemy_pawns_on_rook_rank);
+        s.accum(
+            c,
+            Attr::DoubledRooksOpenFile.as_feature(),
+            doubled_rooks_open_file,
+        );
+        s.accum(
+            c,
+            Attr::EnemyPawnsOnRookRank.as_feature(),
+            enemy_pawns_on_rook_rank,
+        );
         s.accum(c, Attr::RookTrapped.as_feature(), rook_trapped);
 
         //
@@ -748,12 +832,24 @@ impl Calc {
         //
         // s.set_bits(Attr::DoubleAttacks.into(), double_attacks);
         // s.accum(c, Attr::DoubleAttacks.as_feature(), double_attacks.popcount());
-        s.accum(c, Attr::AttacksNearKing.as_feature(), attacks_on_opponent_king_area);
+        s.accum(
+            c,
+            Attr::AttacksNearKing.as_feature(),
+            attacks_on_opponent_king_area,
+        );
         s.accum(c, Attr::CenterAttacks.as_feature(), center_attacks);
         s.accum(c, Attr::UndefendedSq.as_feature(), move_squares);
-        s.accum(c, Attr::UndefendedPiece.as_feature(), non_pawn_defended_moves);
+        s.accum(
+            c,
+            Attr::UndefendedPiece.as_feature(),
+            non_pawn_defended_moves,
+        );
         s.accum(c, Attr::TrappedPiece.as_feature(), fully_trapped_pieces);
-        s.accum(c, Attr::PartiallyTrappedPiece.as_feature(), partially_trapped_pieces);
+        s.accum(
+            c,
+            Attr::PartiallyTrappedPiece.as_feature(),
+            partially_trapped_pieces,
+        );
         s.accum(c, Attr::QueenOpenFile.as_feature(), queens_on_open_files);
         s.accum(c, Attr::QueenTrapped.as_feature(), queen_trapped);
     }
@@ -855,7 +951,10 @@ mod tests {
             let e = Eval::new();
             let phr = Phaser::default();
             let pos = Position::parse_epd(s).unwrap();
-            let mut sc = ExplainScore::new(pos.board().phase(&phr), format!("{:#}", pos.board().to_string()));
+            let mut sc = ExplainScore::new(
+                pos.board().phase(&phr),
+                format!("{:#}", pos.board().to_string()),
+            );
             Calc::score(&mut sc, pos.board(), &e, &phr);
             sc
         }

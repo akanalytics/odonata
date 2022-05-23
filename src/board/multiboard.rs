@@ -137,7 +137,10 @@ impl Multiboard {
     #[inline]
     pub fn color_flip(&self) -> Multiboard {
         let mut mb = self.clone();
-        mb.colors = [self.colors[1].flip_vertical(), self.colors[0].flip_vertical()];
+        mb.colors = [
+            self.colors[1].flip_vertical(),
+            self.colors[0].flip_vertical(),
+        ];
         mb.pieces.iter_mut().for_each(|bb| *bb = bb.flip_vertical());
         mb
     }

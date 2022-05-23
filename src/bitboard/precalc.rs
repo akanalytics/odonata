@@ -21,7 +21,6 @@ impl PreCalc {
     }
 }
 
-
 pub struct PreCalc {
     king_moves: [Bitboard; 64],
     knight_moves: [Bitboard; 64],
@@ -160,7 +159,6 @@ impl PreCalc {
         Square::calc_manhattan_distance(s1, s2)
     }
 
-
     #[inline]
     pub fn within_chebyshev_distance_inclusive(&self, s1: Square, d: u32) -> Bitboard {
         if d >= 8 {
@@ -187,11 +185,20 @@ impl PreCalc {
     }
 
     #[inline]
-    pub fn attacks(&self, c: Color, p: Piece, us: Bitboard, them: Bitboard, from: Square) -> Bitboard {
+    pub fn attacks(
+        &self,
+        c: Color,
+        p: Piece,
+        us: Bitboard,
+        them: Bitboard,
+        from: Square,
+    ) -> Bitboard {
         match p {
             Piece::Bishop => self.bishop_attacks(us | them, from),
             Piece::Rook => self.rook_attacks(us | them, from),
-            Piece::Queen => self.rook_attacks(us | them, from) | self.bishop_attacks(us | them, from),
+            Piece::Queen => {
+                self.rook_attacks(us | them, from) | self.bishop_attacks(us | them, from)
+            }
             Piece::King => self.king_attacks(from),
             Piece::Knight => self.knight_attacks(from),
             Piece::Pawn => self.pawn_attacks_ext(c, us, them, from),
@@ -203,7 +210,8 @@ impl PreCalc {
     pub fn pawn_attacks_ext(&self, c: Color, us: Bitboard, them: Bitboard, fr: Square) -> Bitboard {
         let empty = !(us | them);
         let single = self.pawn_push[c][fr] & empty;
-        let double = self.pawn_double_push[c][fr].only_if(single.any()) & empty & c.double_push_dest_rank();
+        let double =
+            self.pawn_double_push[c][fr].only_if(single.any()) & empty & c.double_push_dest_rank();
         let capture = them & (self.pawn_capture_east[c][fr] | self.pawn_capture_west[c][fr]);
         single | double | capture
     }
@@ -217,7 +225,10 @@ impl PreCalc {
 
     #[inline]
     pub fn pawn_attacks(&self, pawns: Bitboard, c: Color) -> (Bitboard, Bitboard) {
-        (pawns.shift(c.pawn_capture_east()), pawns.shift(c.pawn_capture_west()))
+        (
+            pawns.shift(c.pawn_capture_east()),
+            pawns.shift(c.pawn_capture_west()),
+        )
     }
 
     #[inline]
@@ -377,29 +388,41 @@ mod tests {
         // assert_eq!(west, g6);
 
         let pawns = b2 | b4 | c5 | c6 | d3 | d7 | h5;
-        assert_eq!(BitboardDefault::default().doubled_pawns(pawns), b4 | c6 | d7);
+        assert_eq!(
+            BitboardDefault::default().doubled_pawns(pawns),
+            b4 | c6 | d7
+        );
 
-        assert_eq!(BitboardDefault::default().open_files(pawns), FILE_A | FILE_E | FILE_F | FILE_G);
+        assert_eq!(
+            BitboardDefault::default().open_files(pawns),
+            FILE_A | FILE_E | FILE_F | FILE_G
+        );
         assert_eq!(BitboardDefault::default().isolated_pawns(pawns), h5);
         assert_eq!(BitboardDefault::default().isolated_pawns(opponent), d3 | g5);
 
-        let calced = BitboardDefault::default().pawn_front_span_union_attack_span(Color::White, Square::B2);
-        let expect = (Bitboard::FILE_A | Bitboard::FILE_B | Bitboard::FILE_C) - (Bitboard::RANK_1 | Bitboard::RANK_2);
+        let calced =
+            BitboardDefault::default().pawn_front_span_union_attack_span(Color::White, Square::B2);
+        let expect = (Bitboard::FILE_A | Bitboard::FILE_B | Bitboard::FILE_C)
+            - (Bitboard::RANK_1 | Bitboard::RANK_2);
         println!("{}\n{}", calced, expect);
         assert_eq!(calced, expect);
 
-        let calced = BitboardDefault::default().pawn_front_span_union_attack_span(Color::White, Square::A2);
+        let calced =
+            BitboardDefault::default().pawn_front_span_union_attack_span(Color::White, Square::A2);
         let expect = (Bitboard::FILE_A | Bitboard::FILE_B) - (Bitboard::RANK_1 | Bitboard::RANK_2);
         println!("{}\n{}", calced, expect);
         assert_eq!(calced, expect);
 
-        let calced = BitboardDefault::default().pawn_front_span_union_attack_span(Color::White, Square::H8);
+        let calced =
+            BitboardDefault::default().pawn_front_span_union_attack_span(Color::White, Square::H8);
         let expect = Bitboard::EMPTY;
         println!("{}\n{}", calced, expect);
         assert_eq!(calced, expect);
 
-        let calced = BitboardDefault::default().pawn_front_span_union_attack_span(Color::Black, Square::D7);
-        let expect = (Bitboard::FILE_C | Bitboard::FILE_D | Bitboard::FILE_E) - (Bitboard::RANK_8 | Bitboard::RANK_7);
+        let calced =
+            BitboardDefault::default().pawn_front_span_union_attack_span(Color::Black, Square::D7);
+        let expect = (Bitboard::FILE_C | Bitboard::FILE_D | Bitboard::FILE_E)
+            - (Bitboard::RANK_8 | Bitboard::RANK_7);
         println!("{}\n{}", calced, expect);
         assert_eq!(calced, expect);
     }
@@ -415,16 +438,32 @@ mod tests {
 
         assert_eq!(bb.strictly_between(a1.square(), a3.square()), a2);
         assert_eq!(bb.strictly_between(a3.square(), a1.square()), a2);
-        assert_eq!(bb.strictly_between(a1.square(), a8.square()), FILE_A - a1 - a8);
-        assert_eq!(bb.strictly_between(a1.square(), a1.square()), Bitboard::empty());
-        assert_eq!(bb.strictly_between(a1.square(), b2.square()), Bitboard::empty());
+        assert_eq!(
+            bb.strictly_between(a1.square(), a8.square()),
+            FILE_A - a1 - a8
+        );
+        assert_eq!(
+            bb.strictly_between(a1.square(), a1.square()),
+            Bitboard::empty()
+        );
+        assert_eq!(
+            bb.strictly_between(a1.square(), b2.square()),
+            Bitboard::empty()
+        );
     }
 
     #[test]
     fn test_within_chebyshev_distance_inclusive() {
         let bb = BitboardDefault::default();
-        assert_eq!(bb.within_chebyshev_distance_inclusive(d4.square(), 4), Bitboard::all());
-        assert_eq!(bb.within_chebyshev_distance_inclusive(a4.square(), 2).popcount(), 15);
+        assert_eq!(
+            bb.within_chebyshev_distance_inclusive(d4.square(), 4),
+            Bitboard::all()
+        );
+        assert_eq!(
+            bb.within_chebyshev_distance_inclusive(a4.square(), 2)
+                .popcount(),
+            15
+        );
         info!("{}", bb.within_chebyshev_distance_inclusive(c3.square(), 3));
     }
 }

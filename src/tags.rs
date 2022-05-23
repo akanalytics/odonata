@@ -279,7 +279,12 @@ impl Tags {
         let ops: Vec<&str> = Self::split_into_tags(tags_str);
         for op in ops {
             let words: Vec<&str> = Self::split_into_words(op);
-            debug_assert!(!words.is_empty(), "no words parsing EPD operation '{}' from '{}'", op, tags_str);
+            debug_assert!(
+                !words.is_empty(),
+                "no words parsing EPD operation '{}' from '{}'",
+                op,
+                tags_str
+            );
             let tag = Tag::parse(board, words[0], words[1..].join(" ").as_str())?;
             // map.insert.to_string(), words[1..].join(" ").to_string());
             tags.set(tag);
@@ -290,14 +295,26 @@ impl Tags {
     fn split_into_tags(s: &str) -> Vec<&str> {
         REGEX_SPLIT_TAGS
             .captures_iter(s)
-            .map(|cap| cap.get(1).or_else(|| cap.get(2)).or_else(|| cap.get(3)).unwrap().as_str())
+            .map(|cap| {
+                cap.get(1)
+                    .or_else(|| cap.get(2))
+                    .or_else(|| cap.get(3))
+                    .unwrap()
+                    .as_str()
+            })
             .collect()
     }
 
     fn split_into_words(s: &str) -> Vec<&str> {
         REGEX_SPLIT_WORDS
             .captures_iter(s)
-            .map(|cap| cap.get(1).or_else(|| cap.get(2)).or_else(|| cap.get(3)).unwrap().as_str())
+            .map(|cap| {
+                cap.get(1)
+                    .or_else(|| cap.get(2))
+                    .or_else(|| cap.get(3))
+                    .unwrap()
+                    .as_str()
+            })
             .collect()
     }
 }
@@ -370,10 +387,16 @@ mod tests {
     #[test]
     fn test_split_into_tags() {
         let vec = Tags::split_into_tags(r#"cat"meo;w";"mouse";"toad;;;;;;" ;zebra;"#);
-        assert_eq!(vec, vec!["cat\"meo;w\"", "\"mouse\"", "\"toad;;;;;;\" ", "zebra"]);
+        assert_eq!(
+            vec,
+            vec!["cat\"meo;w\"", "\"mouse\"", "\"toad;;;;;;\" ", "zebra"]
+        );
 
         let vec = Tags::split_into_tags(r#"cat'meo;w';'mouse';'toad;;;;;;' ;zebra;"#);
-        assert_eq!(vec, vec!["cat\'meo;w\'", "\'mouse\'", "\'toad;;;;;;\' ", "zebra"]);
+        assert_eq!(
+            vec,
+            vec!["cat\'meo;w\'", "\'mouse\'", "\'toad;;;;;;\' ", "zebra"]
+        );
 
         let vec = Tags::split_into_tags(r#";cat;mouse;toad;;;;;;sheep;zebra"#);
         assert_eq!(vec, vec!["cat", "mouse", "toad", "sheep"]);
@@ -431,7 +454,10 @@ mod tests {
         tags.set(Tag::AnalysisCountSeconds(4));
         tags.set(Tag::Id("Hello World".to_string()));
         tags.set(Tag::Comment(1, "Hello World2".to_string()));
-        assert_eq!(tags.to_string(), " acd 3; acs 4; c1 \"Hello World2\"; id \"Hello World\";");
+        assert_eq!(
+            tags.to_string(),
+            " acd 3; acs 4; c1 \"Hello World2\"; id \"Hello World\";"
+        );
         assert_eq!(
             jsonrpc_core::to_string(&tags).unwrap(),
             r#"{"acd":"3","acs":"4","c1":"Hello World2","id":"Hello World"}"#

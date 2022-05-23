@@ -114,11 +114,20 @@ impl Parse {
             if !src_rank.is_empty() && lm.from().uci().take_substring(1, 1) != src_rank {
                 continue;
             }
-            if !piece.is_empty() && board.piece_at(lm.from().as_bb()).to_upper_char().to_string() != piece {
+            if !piece.is_empty()
+                && board
+                    .piece_at(lm.from().as_bb())
+                    .to_upper_char()
+                    .to_string()
+                    != piece
+            {
                 continue;
             }
             // SAN promos are upper case eg "=Q" "=B"
-            if !promo.is_empty() && "=".to_string() + &lm.promo_piece().to_char(Some(Color::White)).to_string() != promo {
+            if !promo.is_empty()
+                && "=".to_string() + &lm.promo_piece().to_char(Some(Color::White)).to_string()
+                    != promo
+            {
                 continue;
             }
             // lm is castle but s isnt
@@ -134,7 +143,11 @@ impl Parse {
             matching_moves.push(*lm);
         }
         if matching_moves.is_empty() {
-            bail!("Move {} is invalid - not a legal move for board {}", orig, board.to_fen());
+            bail!(
+                "Move {} is invalid - not a legal move for board {}",
+                orig,
+                board.to_fen()
+            );
         }
         if matching_moves.len() > 1 {
             bail!(

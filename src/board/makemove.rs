@@ -2,9 +2,9 @@ use crate::bitboard::bitboard::Bitboard;
 use crate::board::Board;
 use crate::cache::hasher::Hasher;
 use crate::mv::Move;
+use crate::prelude::*;
 use crate::types::{Piece, Repeats};
 use crate::variation::Variation;
-use crate::prelude::*;
 
 use std::cell::Cell;
 
@@ -82,7 +82,9 @@ impl MoveMaker for Board {
 
         // either we're moving to an empty square or its a capture
         debug_assert!(
-            m.is_null() || ((self.white() | self.black()) & m.to().as_bb()).is_empty() || m.is_capture(),
+            m.is_null()
+                || ((self.white() | self.black()) & m.to().as_bb()).is_empty()
+                || m.is_capture(),
             "Non-empty to:sq for non-capture {:?} board \n{} white \n{} black\n{}",
             m,
             self,
@@ -96,9 +98,18 @@ impl MoveMaker for Board {
             fullmove_number: self.fullmove_number + self.turn.chooser_wb(0, 1),
             fifty_clock: self.fifty_clock + 1,
             repetition_count: Cell::new(Repeats::default()),
-            threats_to: [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())],
-            checkers_of: [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())],
-            pinned: [Cell::<_>::new(Bitboard::niche()), Cell::<_>::new(Bitboard::niche())],
+            threats_to: [
+                Cell::<_>::new(Bitboard::niche()),
+                Cell::<_>::new(Bitboard::niche()),
+            ],
+            checkers_of: [
+                Cell::<_>::new(Bitboard::niche()),
+                Cell::<_>::new(Bitboard::niche()),
+            ],
+            pinned: [
+                Cell::<_>::new(Bitboard::niche()),
+                Cell::<_>::new(Bitboard::niche()),
+            ],
             // material: Cell::<_>::new(self.material()),
             // moves: self.moves.clone(),
             multiboard: self.multiboard.clone(),
@@ -111,11 +122,18 @@ impl MoveMaker for Board {
             b.fifty_clock = 0;
             if m.is_ep_capture() {
                 // ep capture is like capture but with capture piece on *ep* square not *dest*
-                b.multiboard.remove_piece(m.ep().as_bb(), m.capture_piece(), b.turn);
+                b.multiboard
+                    .remove_piece(m.ep().as_bb(), m.capture_piece(), b.turn);
             } else {
                 // regular capture
-                debug_assert!(m.capture_piece() != Piece::King, "king captured by move {} on board \n{}", m, self);
-                b.multiboard.remove_piece(m.to().as_bb(), m.capture_piece(), b.turn);
+                debug_assert!(
+                    m.capture_piece() != Piece::King,
+                    "king captured by move {} on board \n{}",
+                    m,
+                    self
+                );
+                b.multiboard
+                    .remove_piece(m.to().as_bb(), m.capture_piece(), b.turn);
             }
         }
 
@@ -135,7 +153,8 @@ impl MoveMaker for Board {
 
         if m.is_promo() {
             // fifty clock handled by pawn move above;
-            b.multiboard.change_piece(m.to().as_bb(), Piece::Pawn, m.promo_piece());
+            b.multiboard
+                .change_piece(m.to().as_bb(), Piece::Pawn, m.promo_piece());
             // pawn has already moved
         }
 
@@ -146,7 +165,8 @@ impl MoveMaker for Board {
 
             let (rook_from, rook_to) = m.rook_move_from_to();
             // let rook_from_to = rook_from.as_bb() ^ rook_to.as_bb();
-            b.multiboard.move_piece(rook_from.as_bb(), rook_to.as_bb(), Piece::Rook, self.turn)
+            b.multiboard
+                .move_piece(rook_from.as_bb(), rook_to.as_bb(), Piece::Rook, self.turn)
         }
 
         // castling *rights*
@@ -203,7 +223,10 @@ mod tests {
         assert_eq!(board.total_halfmoves(), 0);
 
         let board = board.make_move(&mov);
-        assert_eq!(board.to_fen(), "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1");
+        assert_eq!(
+            board.to_fen(),
+            "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
+        );
         assert_eq!(board.total_halfmoves(), 1);
 
         let board = board.make_move(&board.parse_uci_move("a7a6").unwrap());
@@ -232,7 +255,9 @@ mod tests {
 
     #[test]
     fn test_try_move_promotion() {
-        let mut board = Board::parse_fen("8/P7/8/8/8/8/7k/K7 w - - 0 0 id 'promos #1'").unwrap().as_board();
+        let mut board = Board::parse_fen("8/P7/8/8/8/8/7k/K7 w - - 0 0 id 'promos #1'")
+            .unwrap()
+            .as_board();
         board = board.make_move(&board.parse_uci_move("a7a8q").unwrap());
         assert_eq!(board.get(a8), "Q");
         assert_eq!(board.get(a7), ".");
@@ -266,19 +291,28 @@ mod tests {
         assert_eq!(board.total_halfmoves(), 1);
 
         let board = board.make_move(&board.parse_uci_move("e8g8").unwrap());
-        assert_eq!(board.to_fen(), "r4rk1/pppppppp/8/8/8/8/PPPPPPPP/R4RK1 w - - 2 2");
+        assert_eq!(
+            board.to_fen(),
+            "r4rk1/pppppppp/8/8/8/8/PPPPPPPP/R4RK1 w - - 2 2"
+        );
         assert_eq!(board.total_halfmoves(), 2);
 
         // castle queens side
         let board = Board::parse_fen(epd).unwrap().as_board();
         let board = board.make_move(&board.parse_uci_move("e1c1").unwrap());
         let board = board.make_move(&board.parse_uci_move("e8c8").unwrap());
-        assert_eq!(board.to_fen(), "2kr3r/pppppppp/8/8/8/8/PPPPPPPP/2KR3R w - - 2 2");
+        assert_eq!(
+            board.to_fen(),
+            "2kr3r/pppppppp/8/8/8/8/PPPPPPPP/2KR3R w - - 2 2"
+        );
 
         // rook moves queens side for w and then b, losing q-side castling rights
         let board = Board::parse_fen(epd).unwrap().as_board();
         let board = board.make_move(&board.parse_uci_move("a1b1").unwrap());
         let board = board.make_move(&board.parse_uci_move("a8b8").unwrap());
-        assert_eq!(board.to_fen(), "1r2k2r/pppppppp/8/8/8/8/PPPPPPPP/1R2K2R w Kk - 2 2");
+        assert_eq!(
+            board.to_fen(),
+            "1r2k2r/pppppppp/8/8/8/8/PPPPPPPP/1R2K2R w Kk - 2 2"
+        );
     }
 }

@@ -8,6 +8,7 @@ use crate::globals::counts;
 use crate::infra::component::{Component, State};
 use crate::mv::Move;
 use crate::position::Position;
+use crate::prelude::*;
 use crate::pvtable::PvTable;
 use crate::repetition::Repetition;
 use crate::search::aspiration::Aspiration;
@@ -33,15 +34,11 @@ use crate::types::Ply;
 use crate::variation::Variation;
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use crate::prelude::*;
 
 use super::lmp::Lmp;
 use super::node::Event;
 use super::search_explainer::Explainer;
 use super::search_results::SearchResultsMode;
-
-
-
 
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -114,7 +111,10 @@ impl Algo {
         self
     }
 
-    pub fn set_callback(&mut self, callback: impl Fn(&SearchResults) + Send + Sync + 'static) -> &mut Self {
+    pub fn set_callback(
+        &mut self,
+        callback: impl Fn(&SearchResults) + Send + Sync + 'static,
+    ) -> &mut Self {
         self.controller.register_callback(callback);
         self
     }
@@ -128,8 +128,8 @@ impl Component for Algo {
         match s {
             NewGame => self.new_game(),
             SetPosition => self.new_position(),
-            StartSearch => {},
-            EndSearch => {},
+            StartSearch => {}
+            EndSearch => {}
             StartDepthIteration(_) => self.new_iter(),
         }
 
@@ -221,8 +221,16 @@ impl fmt::Display for Algo {
         writeln!(f, "starting board   : {}", self.board.to_fen())?;
         writeln!(f, "time control     : {}", self.mte.time_control)?;
         writeln!(f, "material         : {}", self.board.material())?;
-        writeln!(f, "phase            : {} %", self.board.phase(&self.eval.phaser).0)?;
-        writeln!(f, "static eval      : {}", self.board.eval_with_outcome(&self.eval, &Node::root(0)))?;
+        writeln!(
+            f,
+            "phase            : {} %",
+            self.board.phase(&self.eval.phaser).0
+        )?;
+        writeln!(
+            f,
+            "static eval      : {}",
+            self.board.eval_with_outcome(&self.eval, &Node::root(0))
+        )?;
         // writeln!(f, "bm               : {}", self.results.bm())?;
         writeln!(f, "score            : {}", self.score())?;
         writeln!(f, "analyse mode     : {}", self.analyse_mode)?;
@@ -279,7 +287,9 @@ impl Algo {
     }
 
     pub fn report_progress(&self) {
-        if self.stats.iteration().all_nodes() % 5_000_000 == 0 && self.stats.iteration().all_nodes() != 0 {
+        if self.stats.iteration().all_nodes() % 5_000_000 == 0
+            && self.stats.iteration().all_nodes() != 0
+        {
             let sp = SearchResults::with_report_progress(self);
             self.controller.invoke_callback(&sp);
         }
@@ -317,9 +327,11 @@ impl Algo {
             self.set_state(State::EndSearch);
         }
         if firestorm::enabled() {
-            firestorm::save("./flames/").map_err(|e| e.to_string()).unwrap();
-        }     
-        // hprof::profiler().print_timing();   
+            firestorm::save("./flames/")
+                .map_err(|e| e.to_string())
+                .unwrap();
+        }
+        // hprof::profiler().print_timing();
     }
 
     #[inline]
@@ -418,7 +430,10 @@ mod tests {
         algo.set_timing_method(TimeControl::Depth(3));
         algo.search();
         println!("{}", algo);
-        assert_eq!(algo.clock.cumul_nodes(), algo.clock.cumul_nodes_all_threads());
+        assert_eq!(
+            algo.clock.cumul_nodes(),
+            algo.clock.cumul_nodes_all_threads()
+        );
         assert_eq!(algo.clock.cumul_nodes(), 1 + 20 + 400 + 8902);
         assert_eq!(
             algo.counts.cumul(Event::NodeInterior) + algo.counts.cumul(Event::DerivedLeaf),
@@ -426,8 +441,6 @@ mod tests {
         );
         assert_eq!(algo.counts.cumul(Event::PercentBranchingFactor), 2114);
     }
-
-
 
     #[test]
     fn test_display_algo() {
@@ -453,11 +466,15 @@ mod tests {
     #[test]
     #[ignore]
     fn jons_chess_problem() {
-        let pos = Position::parse_epd("2r2k2/5pp1/3p1b1p/2qPpP2/1p2B2P/pP3P2/2P1R3/2KRQ3 b - - 0 1").unwrap();
+        let pos =
+            Position::parse_epd("2r2k2/5pp1/3p1b1p/2qPpP2/1p2B2P/pP3P2/2P1R3/2KRQ3 b - - 0 1")
+                .unwrap();
         println!("{}", pos);
         let mut search = Algo::new();
         let eval = Eval::new();
-        search.set_timing_method(TimeControl::Depth(9)).set_eval(eval); 
+        search
+            .set_timing_method(TimeControl::Depth(9))
+            .set_eval(eval);
         search.set_position(pos);
         search.search();
         println!("{}", search);
@@ -467,34 +484,64 @@ mod tests {
     fn bug05() {
         let pos = Position::parse_epd("8/8/3N4/4B3/6p1/5k1p/4n2P/7K b - - 75 93 ").unwrap();
         let mut search = Algo::new();
-        search.set_timing_method(TimeControl::Depth(8)).set_callback(Uci::uci_info);
+        search
+            .set_timing_method(TimeControl::Depth(8))
+            .set_callback(Uci::uci_info);
         search.set_position(pos);
         search.search();
         println!("{}", search);
     }
-
-    
-
 
     #[test]
     fn bug06() -> Result<()> {
         // 11.Qd3       b3r1kr/ppppqppp/2nnp3/6b1/3PP1N1/2N5/PPP1BPPP/B2QR1KR w - - 1 11   acd 4; bm d1d3; ce 60; pv "d1d3 c6b4 d3d1";
         // 11... Nb4    b3r1kr/ppppqppp/2nnp3/6b1/3PP1N1/2NQ4/PPP1BPPP/B3R1KR b - - 2 11   acd 4; bm c6b4; ce 30; pv "c6b4 d3d1 b4c6";
         let mut search = Algo::new();
-        let pos06 = Position::parse_epd("b1q1r1kr/ppppbppp/2nnp3/4N3/3P4/2N1P3/PPP2PPP/BQ2RBKR w - - 2 6")?;
-        let pos07 = Position::parse_epd("b2qr1kr/ppppbppp/2nnp3/4N3/3P4/2NBP3/PPP2PPP/BQ2R1KR w - - 4 7")?;
-        let pos08 = Position::parse_epd("b2qr1kr/pppp1ppp/2nnpb2/4N3/3P4/2NBP3/PPP2PPP/B2QR1KR w - - 6 8")?;
-        let pos09 = Position::parse_epd("b2qr1kr/ppppbppp/2nnp3/8/3P2N1/2NBP3/PPP2PPP/B2QR1KR w - - 8 9")?;
-        let pos10 = Position::parse_epd("b2qr1kr/pppp1ppp/2nnp3/6b1/3P2N1/2N1P3/PPP1BPPP/B2QR1KR w - - 10 10")?;
-        let pos11 = Position::parse_epd("b3r1kr/ppppqppp/2nnp3/6b1/3PP1N1/2N5/PPP1BPPP/B2QR1KR w - - 1 11")?;
-        let pos12 = Position::parse_epd("b3r1kr/ppppqppp/3np3/6b1/1n1PP1N1/2NQ4/PPP1BPPP/B3R1KR w - - 3 12")?;
-        search.set_position(pos06).set_timing_method(TimeControl::Depth(3)).search();
-        search.set_position(pos07).set_timing_method(TimeControl::Depth(3)).search();
-        search.set_position(pos08).set_timing_method(TimeControl::Depth(3)).search();
-        search.set_position(pos09).set_timing_method(TimeControl::Depth(3)).search();
-        search.set_position(pos10).set_timing_method(TimeControl::Depth(3)).search();
-        search.set_position(pos11).set_timing_method(TimeControl::Depth(3)).search();
-        search.set_position(pos12).set_timing_method(TimeControl::Depth(3)).search();
+        let pos06 =
+            Position::parse_epd("b1q1r1kr/ppppbppp/2nnp3/4N3/3P4/2N1P3/PPP2PPP/BQ2RBKR w - - 2 6")?;
+        let pos07 =
+            Position::parse_epd("b2qr1kr/ppppbppp/2nnp3/4N3/3P4/2NBP3/PPP2PPP/BQ2R1KR w - - 4 7")?;
+        let pos08 =
+            Position::parse_epd("b2qr1kr/pppp1ppp/2nnpb2/4N3/3P4/2NBP3/PPP2PPP/B2QR1KR w - - 6 8")?;
+        let pos09 =
+            Position::parse_epd("b2qr1kr/ppppbppp/2nnp3/8/3P2N1/2NBP3/PPP2PPP/B2QR1KR w - - 8 9")?;
+        let pos10 = Position::parse_epd(
+            "b2qr1kr/pppp1ppp/2nnp3/6b1/3P2N1/2N1P3/PPP1BPPP/B2QR1KR w - - 10 10",
+        )?;
+        let pos11 = Position::parse_epd(
+            "b3r1kr/ppppqppp/2nnp3/6b1/3PP1N1/2N5/PPP1BPPP/B2QR1KR w - - 1 11",
+        )?;
+        let pos12 = Position::parse_epd(
+            "b3r1kr/ppppqppp/3np3/6b1/1n1PP1N1/2NQ4/PPP1BPPP/B3R1KR w - - 3 12",
+        )?;
+        search
+            .set_position(pos06)
+            .set_timing_method(TimeControl::Depth(3))
+            .search();
+        search
+            .set_position(pos07)
+            .set_timing_method(TimeControl::Depth(3))
+            .search();
+        search
+            .set_position(pos08)
+            .set_timing_method(TimeControl::Depth(3))
+            .search();
+        search
+            .set_position(pos09)
+            .set_timing_method(TimeControl::Depth(3))
+            .search();
+        search
+            .set_position(pos10)
+            .set_timing_method(TimeControl::Depth(3))
+            .search();
+        search
+            .set_position(pos11)
+            .set_timing_method(TimeControl::Depth(3))
+            .search();
+        search
+            .set_position(pos12)
+            .set_timing_method(TimeControl::Depth(3))
+            .search();
         println!("{}", search);
         Ok(())
     }
@@ -503,19 +550,19 @@ mod tests {
     fn bug07() {
         let pos = Position::parse_epd("8/4R3/8/8/8/3K4/1k6/8 b - - 18 10").unwrap();
         let mut search = Algo::new();
-        search.set_timing_method(TimeControl::Depth(12)).set_callback(Uci::uci_info);
+        search
+            .set_timing_method(TimeControl::Depth(12))
+            .set_callback(Uci::uci_info);
         search.set_position(pos);
         search.search();
         println!("{}", search);
     }
 
-
-
     #[test]
     #[ignore]
     fn test_truncated_pv() {
         let mut algo = Algo::new();
-            //             .set_timing_method(TimeControl::from_move_time_millis(1000))
+        //             .set_timing_method(TimeControl::from_move_time_millis(1000))
         algo.set_timing_method(TimeControl::Depth(7));
         // algo.repetition.avoid_tt_on_repeats = false;
         // algo.tt.min_ply = 2;

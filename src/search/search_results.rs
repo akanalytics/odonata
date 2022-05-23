@@ -8,12 +8,12 @@ use crate::clock::Clock;
 use crate::eval::score::Score;
 use crate::infra::component::Component;
 use crate::mv::Move;
+use crate::outcome::Outcome;
 use crate::tags::Tag;
 use crate::trace::counts::Counts;
 use crate::types::Ply;
 use crate::variation::Variation;
 use crate::{Algo, MoveList, Position, SearchStats};
-use crate::outcome::Outcome;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -228,12 +228,25 @@ impl SearchResults {
 
         // check PV for validity
         if !board.is_legal_variation(stats.pv()) {
-            debug_assert!(false, "PV  {} is invalid on board {}\n{:?}", stats.pv(), board, stats.pv(),);
+            debug_assert!(
+                false,
+                "PV  {} is invalid on board {}\n{:?}",
+                stats.pv(),
+                board,
+                stats.pv(),
+            );
             self.pv.truncate(1);
         }
     }
 
-    pub fn update_with_pv_change(&mut self, clock: &Clock, counts: &Counts, depth: Ply, score: Score, event: Event) {
+    pub fn update_with_pv_change(
+        &mut self,
+        clock: &Clock,
+        counts: &Counts,
+        depth: Ply,
+        score: Score,
+        event: Event,
+    ) {
         if event != Event::UserCancelled && event != Event::TimeUp {
             self.mode = SearchResultsMode::PvChange;
         } else {
@@ -251,7 +264,10 @@ impl SearchResults {
 
         // check PV for validity
         if !self.board.is_legal_variation(&self.pv) {
-            error!("PV  {} is invalid on board {}\n{:?}\n", self.pv, self.board, self.pv);
+            error!(
+                "PV  {} is invalid on board {}\n{:?}\n",
+                self.pv, self.board, self.pv
+            );
             self.pv.truncate(1);
         }
     }
@@ -261,7 +277,9 @@ impl SearchResults {
         pos.set(Tag::Pv(self.best_pv.clone()));
         if self.best_pv.len() > 0 {
             pos.set(Tag::SuppliedMove(self.best_pv[0]));
-            pos.set(Tag::BestMoves(MoveList::from_iter(iter::once(self.best_pv[0]))));
+            pos.set(Tag::BestMoves(MoveList::from_iter(iter::once(
+                self.best_pv[0],
+            ))));
         }
         pos.set(Tag::CentipawnEvaluation(self.best_score.as_i16() as i32));
         pos.set(Tag::AnalysisCountDepth(self.depth));

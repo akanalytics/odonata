@@ -13,7 +13,7 @@ pub struct Phase(pub i32);
 
 impl fmt::Display for Phase {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}",self.0)
+        write!(f, "{}", self.0)
     }
 }
 
@@ -63,7 +63,8 @@ impl Phaser {
     fn simple_method(&self, mat: &Material) -> Phase {
         let cp = cmp::min(
             Self::ALL_PIECES,
-            mat.white().minors_and_majors().centipawns() - mat.black().minors_and_majors().centipawns(),
+            mat.white().minors_and_majors().centipawns()
+                - mat.black().minors_and_majors().centipawns(),
         );
 
         let percentage = cp * 100 / Self::ALL_PIECES;
@@ -73,7 +74,8 @@ impl Phaser {
     fn complex_method(&self, mat: &Material) -> Phase {
         let cp = cmp::min(
             Self::ALL_PIECES,
-            mat.white().minors_and_majors().centipawns() - mat.black().minors_and_majors().centipawns(),
+            mat.white().minors_and_majors().centipawns()
+                - mat.black().minors_and_majors().centipawns(),
         );
         let percentage = if cp > self.half_way_score {
             // interpolate between 50 and 100
@@ -82,7 +84,7 @@ impl Phaser {
             cp * 50 / self.half_way_score
         };
 
-        Phase(100- percentage)
+        Phase(100 - percentage)
     }
 
     fn cpw_method(&self, mat: &Material) -> Phase {
@@ -92,7 +94,11 @@ impl Phaser {
         const ROOK_PHASE: i32 = 2;
         const QUEEN_PHASE: i32 = 4;
 
-        const TOTAL_PHASE: i32 = PAWN_PHASE * 16 + KNIGHT_PHASE * 4 + BISHOP_PHASE * 4 + ROOK_PHASE * 4 + QUEEN_PHASE * 2;
+        const TOTAL_PHASE: i32 = PAWN_PHASE * 16
+            + KNIGHT_PHASE * 4
+            + BISHOP_PHASE * 4
+            + ROOK_PHASE * 4
+            + QUEEN_PHASE * 2;
 
         let mut phase = TOTAL_PHASE;
 
@@ -158,14 +164,14 @@ mod tests {
         // cpw's method
         assert_eq!(phaser.cpw_method(&board100.material()), Phase(100));
         assert_eq!(phaser.cpw_method(&board100_too.material()), Phase(100));
-        assert_eq!(phaser.cpw_method(&board73.material()), Phase( 67));
-        assert_eq!(phaser.cpw_method(&board42.material()), Phase( 33));
+        assert_eq!(phaser.cpw_method(&board73.material()), Phase(67));
+        assert_eq!(phaser.cpw_method(&board42.material()), Phase(33));
         assert_eq!(phaser.cpw_method(&board0.material()), Phase(0));
 
         // complex method
         assert_eq!(phaser.complex_method(&board100.material()), Phase(100));
         assert_eq!(phaser.complex_method(&board100_too.material()), Phase(100));
-        assert_eq!(phaser.complex_method(&board73.material()), Phase( 72));
+        assert_eq!(phaser.complex_method(&board73.material()), Phase(72));
         assert_eq!(phaser.complex_method(&board42.material()), Phase(41));
         assert_eq!(phaser.complex_method(&board0.material()), Phase(0));
 
@@ -173,7 +179,7 @@ mod tests {
         phaser.half_way_score = 6500 / 4; // rapid decline at first
         assert_eq!(phaser.complex_method(&board100.material()), Phase(100));
         assert_eq!(phaser.complex_method(&board100_too.material()), Phase(100));
-        assert_eq!(phaser.complex_method(&board73.material()), Phase( 49)); // 73 -> 49
+        assert_eq!(phaser.complex_method(&board73.material()), Phase(49)); // 73 -> 49
         assert_eq!(phaser.complex_method(&board42.material()), Phase(28)); // 42 -> 28
         assert_eq!(phaser.complex_method(&board0.material()), Phase(0));
 

@@ -49,7 +49,9 @@ impl Default for Restrictions {
 impl Restrictions {
     #[inline]
     pub fn skip_move(&self, ply: Ply, mv: &Move) -> bool {
-        if self.enabled && ply == 0 && (!self.include_moves.is_empty() && !self.include_moves.contains(mv))
+        if self.enabled
+            && ply == 0
+            && (!self.include_moves.is_empty() && !self.include_moves.contains(mv))
             || (!self.exclude_moves.is_empty() && self.exclude_moves.contains(mv))
         {
             return true;

@@ -243,7 +243,11 @@ mod tests {
         for mv in mvs.iter() {
             b = b.make_move(&mv);
             algo.repetition.push_move(&mv, &b);
-            println!("rep count = {} hash = {:x}", algo.repetition.count(&b).total, b.hash());
+            println!(
+                "rep count = {} hash = {:x}",
+                algo.repetition.count(&b).total,
+                b.hash()
+            );
         }
     }
 
@@ -279,7 +283,10 @@ mod tests {
     #[ignore]
     fn test_rep_bug2() {
         let mut engine = Engine::new();
-        engine.algo.eval.set_weight(Attr::ContemptPenalty.into(),Weight::from_i32(-30, -30));
+        engine
+            .algo
+            .eval
+            .set_weight(Attr::ContemptPenalty.into(), Weight::from_i32(-30, -30));
 
         let pos3 = Catalog::draws()[3].clone();
 

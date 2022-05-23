@@ -197,7 +197,11 @@ mod tests {
         assert_eq!(size_of::<MoveTimeEstimator>(), 344, "MoveTimeEstimator");
         assert_eq!(size_of::<MoveOrderer>(), 240, "MoveOrderer");
         assert_eq!(size_of::<Repetition>(), 40, "Repetition");
-        assert_eq!(size_of::<TranspositionTable2>(), 16960, "TranspositionTable2");
+        assert_eq!(
+            size_of::<TranspositionTable2>(),
+            16960,
+            "TranspositionTable2"
+        );
         assert_eq!(size_of::<Killers>(), 32, "Killers");
         assert_eq!(size_of::<HistoryHeuristic>(), 32, "HistoryHeuristic");
         assert_eq!(size_of::<Explainer>(), 272, "SearchExplainer");

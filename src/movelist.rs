@@ -185,14 +185,18 @@ pub struct MoveList {
 impl Default for MoveList {
     #[inline]
     fn default() -> Self {
-        Self { moves: ArrayVec::new() }
+        Self {
+            moves: ArrayVec::new(),
+        }
     }
 }
 
 impl Clone for MoveList {
     #[inline]
     fn clone(&self) -> Self {
-        MoveList { moves: self.moves.clone() }
+        MoveList {
+            moves: self.moves.clone(),
+        }
     }
 }
 // impl Clone for MoveList {
@@ -320,7 +324,10 @@ impl MoveList {
     }
 
     pub fn uci(&self) -> String {
-        self.iter().map(|mv| mv.uci()).collect::<Vec<String>>().join(" ")
+        self.iter()
+            .map(|mv| mv.uci())
+            .collect::<Vec<String>>()
+            .join(" ")
     }
 }
 
@@ -368,7 +375,11 @@ impl Board {
                 return Ok(m);
             }
         }
-        Err(anyhow!("Move {} is not legal for board {}", mv, self.to_fen()))
+        Err(anyhow!(
+            "Move {} is not legal for board {}",
+            mv,
+            self.to_fen()
+        ))
     }
 
     pub fn parse_uci_movelist(&self, s: &str) -> Result<MoveList> {
@@ -480,7 +491,12 @@ impl Board {
     pub fn to_san_movelist(&self, moves: &MoveList) -> String {
         let mut v = Vec::new();
         for mv in moves.iter() {
-            debug_assert!(self.is_legal_move(mv), "mv {} is illegal for board {}", mv, self.to_fen());
+            debug_assert!(
+                self.is_legal_move(mv),
+                "mv {} is illegal for board {}",
+                mv,
+                self.to_fen()
+            );
             v.push(self.to_san(mv));
         }
         v.join(" ")
@@ -490,7 +506,12 @@ impl Board {
         let mut s = String::new();
         let mut board = self.clone();
         for (i, mv) in moves.iter().enumerate() {
-            debug_assert!(board.is_legal_move(mv), "mv {} is illegal for board {}", mv, board.to_fen());
+            debug_assert!(
+                board.is_legal_move(mv),
+                "mv {} is illegal for board {}",
+                mv,
+                board.to_fen()
+            );
             if i % 2 == 0 {
                 if i != 0 {
                     s += "\n";
@@ -646,7 +667,9 @@ mod tests {
         let s2: String = san.split_whitespace().collect();
         assert_eq!(s1, s2);
 
-        let board = Board::parse_fen("rnbqkbnr/pp2ppp1/2pp3p/8/3P1B2/8/PPPNPPPP/R2QKBNR w KQkq - 0 4").unwrap();
+        let board =
+            Board::parse_fen("rnbqkbnr/pp2ppp1/2pp3p/8/3P1B2/8/PPPNPPPP/R2QKBNR w KQkq - 0 4")
+                .unwrap();
         println!("{}", board.legal_moves());
         let mv = board.parse_uci_move("g1f3")?;
         assert_eq!(board.to_san(&mv), "Ngf3");

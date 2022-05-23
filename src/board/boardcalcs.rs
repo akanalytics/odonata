@@ -3,9 +3,7 @@ use crate::bitboard::precalc::BitboardDefault;
 use crate::board::Board;
 use crate::types::Color;
 
-pub struct BoardCalcs {
-
-}
+pub struct BoardCalcs {}
 
 impl BoardCalcs {
     // no king on board => no attackers
@@ -151,13 +149,33 @@ mod tests {
         println!("{}", !bb);
         assert_eq!(
             !bb,
-            a1 | b1 | d1 | e1 | f1 | h1 | c2 | d2 | e2 | g2 | h2 | e3 | a4 | e4 | a5 | e5 | a6 | b6 | h6 | g8
+            a1 | b1
+                | d1
+                | e1
+                | f1
+                | h1
+                | c2
+                | d2
+                | e2
+                | g2
+                | h2
+                | e3
+                | a4
+                | e4
+                | a5
+                | e5
+                | a6
+                | b6
+                | h6
+                | g8
         );
     }
 
     #[test]
     fn test_attacked_by() {
-        let board = Board::parse_fen("5Q2/8/7p/4P1p1/8/3NK1P1/8/8 w - - 0 1").unwrap().as_board();
+        let board = Board::parse_fen("5Q2/8/7p/4P1p1/8/3NK1P1/8/8 w - - 0 1")
+            .unwrap()
+            .as_board();
         let bb = BoardCalcs::attacked_by(f4, board.white() | board.black(), &board);
         println!("{}", bb);
         assert_eq!(bb, g3 | g5 | e3 | d3 | f8);
@@ -176,9 +194,9 @@ mod tests {
     fn test_discovered_check() {
         let positions = Catalog::discovered_check();
         for pos in positions {
-            let unmaskers = BoardCalcs::pinned_and_unmaskers(pos.board(), pos.board().color_us()).1;            
+            let unmaskers = BoardCalcs::pinned_and_unmaskers(pos.board(), pos.board().color_us()).1;
             assert_eq!(unmaskers, pos.sq().unwrap(), "{}", pos.board());
-            let unmaskers = BoardCalcs::pinned_and_unmaskers(pos.board(), pos.board().color_us()).1;            
+            let unmaskers = BoardCalcs::pinned_and_unmaskers(pos.board(), pos.board().color_us()).1;
             assert_eq!(unmaskers, pos.sq().unwrap(), "{}", pos.board());
         }
     }

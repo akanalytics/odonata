@@ -226,9 +226,22 @@ impl Piece {
         Piece::King,
     ];
 
-    pub const ALL_BAR_NONE: [Piece; 6] = [Piece::Pawn, Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen, Piece::King];
+    pub const ALL_BAR_NONE: [Piece; 6] = [
+        Piece::Pawn,
+        Piece::Knight,
+        Piece::Bishop,
+        Piece::Rook,
+        Piece::Queen,
+        Piece::King,
+    ];
 
-    pub const ALL_BAR_KING: [Piece; 5] = [Piece::Pawn, Piece::Knight, Piece::Bishop, Piece::Rook, Piece::Queen];
+    pub const ALL_BAR_KING: [Piece; 5] = [
+        Piece::Pawn,
+        Piece::Knight,
+        Piece::Bishop,
+        Piece::Rook,
+        Piece::Queen,
+    ];
 
     // pub fn to_upper_char(self) -> &char {
     //     ".PNBRQK".as_bytes()[self as usize] as char
@@ -485,7 +498,10 @@ impl MoveType {
     }
 
     pub fn vec_from_string(move_types: &str) -> Result<Vec<MoveType>, String> {
-        move_types.chars().map(MoveType::from_char).collect::<Result<Vec<_>, _>>()
+        move_types
+            .chars()
+            .map(MoveType::from_char)
+            .collect::<Result<Vec<_>, _>>()
     }
 }
 
@@ -506,7 +522,10 @@ mod tests {
         assert_eq!(Color::parse("w").unwrap(), Color::White);
         assert_eq!(Color::parse("b").unwrap(), Color::Black);
         assert_eq!(Color::from_piece_char('n').unwrap(), Color::Black);
-        assert_eq!(Color::parse("B").unwrap_err().to_string(), "Invalid color: 'B'".to_string());
+        assert_eq!(
+            Color::parse("B").unwrap_err().to_string(),
+            "Invalid color: 'B'".to_string()
+        );
         assert_eq!(Piece::King.to_char(Some(Color::Black)), 'k');
         assert_eq!(Piece::King.to_char(None), 'K');
         let array = [1, 2];
@@ -518,7 +537,10 @@ mod tests {
     fn test_serde() {
         //let color = json!({"color" : "b"});
         assert_eq!(serde_json::to_string(&Color::Black).unwrap(), "\"b\"");
-        assert_eq!(serde_json::from_str::<Color>("\"w\"").unwrap(), Color::White);
+        assert_eq!(
+            serde_json::from_str::<Color>("\"w\"").unwrap(),
+            Color::White
+        );
     }
 
     #[test]
@@ -544,7 +566,10 @@ mod tests {
         assert_eq!(-wdl138, ScoreWdl::new(309, 206, 109));
 
         // checked by https://www.3dkingdoms.com/chess/elo.htm
-        assert_eq!(format!("{:.02}", ScoreWdl::new(217, 77, 184).elo()), "24.02");
+        assert_eq!(
+            format!("{:.02}", ScoreWdl::new(217, 77, 184).elo()),
+            "24.02"
+        );
     }
 
     #[test]

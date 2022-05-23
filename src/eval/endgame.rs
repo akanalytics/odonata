@@ -185,7 +185,7 @@ impl EndGame {
                     + 2 * bishop_distance
                     + 3 * knight_distance
                     + 2 * Self::king_distance_to_side(b, loser);
-                Some( (endgame_metric1, endgame_metric2) )
+                Some((endgame_metric1, endgame_metric2))
             }
 
             KBbk | KkBb => {
@@ -202,7 +202,6 @@ impl EndGame {
             _ => Option::None,
         }
     }
-
 
     fn king_distance(b: &Board) -> i32 {
         let wk = b.kings() & b.white();
@@ -466,7 +465,6 @@ impl EndGame {
         Self::Unknown
     }
 }
-
 
 #[cfg(test)]
 mod tests {

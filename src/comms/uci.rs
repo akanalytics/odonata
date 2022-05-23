@@ -106,7 +106,11 @@ pub struct Uci {
 impl Component for Uci {
     fn new_game(&mut self) {
         self.engine.lock().unwrap().set_state(State::NewGame);
-        self.engine.lock().unwrap().algo.set_callback(Self::uci_info);
+        self.engine
+            .lock()
+            .unwrap()
+            .algo
+            .set_callback(Self::uci_info);
     }
 
     fn new_position(&mut self) {
@@ -134,7 +138,10 @@ impl Uci {
             prelude: Vec::default(),
             strict_error_handling: false,
         };
-        uci.engine.lock().unwrap().set_position(Position::from_board(uci.board.clone()));
+        uci.engine
+            .lock()
+            .unwrap()
+            .set_position(Position::from_board(uci.board.clone()));
         uci.engine.lock().unwrap().algo.set_callback(Self::uci_info);
         uci
     }
@@ -284,7 +291,9 @@ impl Uci {
 
     fn uci_sleep(&mut self, words: &[&str]) -> Result<()> {
         let time = words.first().ok_or(anyhow!("Must specify a sleep time"))?;
-        let time = time.parse::<u64>().or_else(|_|Err(anyhow!("Sleep time {} must be numeric", time)))?;
+        let time = time
+            .parse::<u64>()
+            .or_else(|_| Err(anyhow!("Sleep time {} must be numeric", time)))?;
         let millis = Duration::from_millis(time);
         thread::sleep(millis);
         Ok(())
@@ -293,7 +302,9 @@ impl Uci {
     fn uci_perft(&mut self, words: &[&str]) -> Result<()> {
         self.engine.lock().unwrap().search_stop();
         let depth = words.first().ok_or(anyhow!("Must specify a depth"))?;
-        let depth = depth.parse::<u32>().or_else(|_| Err(anyhow!("Depth {} must be numeric", depth)))?;
+        let depth = depth
+            .parse::<u32>()
+            .or_else(|_| Err(anyhow!("Depth {} must be numeric", depth)))?;
         let mut board = Catalog::starting_board();
         for d in 1..=depth {
             let t = Instant::now();
@@ -321,7 +332,11 @@ impl Uci {
                 let ep = mv.ep().uci();
                 // pseudo_legal=b.is_pseudo_legal_move(&mv);
                 let legal = b.is_legal_move(mv);
-                let san = if legal { b.to_san(mv) } else { "???".to_string() };
+                let san = if legal {
+                    b.to_san(mv)
+                } else {
+                    "???".to_string()
+                };
                 let rook_move = mv.rook_move().uci();
                 let is_ep = mv.is_ep_capture();
                 let is_castle = mv.is_castle();
@@ -355,7 +370,10 @@ impl Uci {
     }
 
     fn json_method(&mut self, request: &str) -> Result<()> {
-        let response = self.json_rpc.invoke(request).ok_or(anyhow!("json rpc error"))?;
+        let response = self
+            .json_rpc
+            .invoke(request)
+            .ok_or(anyhow!("json rpc error"))?;
         Self::print(&format!("{}", response));
         Ok(())
     }
@@ -389,7 +407,11 @@ impl Uci {
         pos.set(Tag::SuppliedVariation(variation));
         self.board = pos.supplied_variation().apply_to(pos.board());
         self.engine.lock().unwrap().set_position(pos);
-        self.engine.lock().unwrap().algo.set_callback(Self::uci_info);
+        self.engine
+            .lock()
+            .unwrap()
+            .algo
+            .set_callback(Self::uci_info);
         Ok(())
     }
 
@@ -497,7 +519,12 @@ impl Uci {
         };
 
         self.engine.lock().unwrap().algo.set_timing_method(tc);
-        self.engine.lock().unwrap().algo.mte.set_shared_ponder(ponder);
+        self.engine
+            .lock()
+            .unwrap()
+            .algo
+            .mte
+            .set_shared_ponder(ponder);
         // restrict search to this moves only
         // Example: After "position startpos" and "go infinite searchmoves e2e4 d2d4"
         // the engine should only search the two moves e2e4 and d2d4 in the initial position
@@ -525,7 +552,10 @@ impl Uci {
             "option name MultiPV type spin default {} min 1 max 64",
             engine.algo.restrictions.multi_pv_count
         ));
-        ops.push(format!("option name Hash type spin default {} min 0 max 4000", engine.algo.tt.mb));
+        ops.push(format!(
+            "option name Hash type spin default {} min 0 max 4000",
+            engine.algo.tt.mb
+        ));
         ops.push("option name UCI_AnalyseMode type check default false".to_string());
         ops.push("option name Ponder type check default false".to_string());
         ops.push("option name Clear Hash type button".to_string());
@@ -533,7 +563,10 @@ impl Uci {
         ops.push("option name Explain_Last_Search type button".to_string());
         ops.push("option name Explain_Quiesce type button".to_string());
         ops.push("option name Show_Config type button".to_string());
-        ops.push(format!("option name Config_File type string default {}", engine.config_filename));
+        ops.push(format!(
+            "option name Config_File type string default {}",
+            engine.config_filename
+        ));
         ops.push("option name Config type string default \"\"".to_string());
         ops
     }
@@ -593,9 +626,13 @@ impl Uci {
                 if !path.is_file() {
                     bail!("Config_File '{}' not found", engine.config_filename);
                 }
-                let fig = Figment::new().merge(&*engine).merge(Toml::file(&engine.config_filename));
+                let fig = Figment::new()
+                    .merge(&*engine)
+                    .merge(Toml::file(&engine.config_filename));
 
-                let new: Engine = fig.extract().context(format!("error in config file {}", &engine.config_filename))?;
+                let new: Engine = fig
+                    .extract()
+                    .context(format!("error in config file {}", &engine.config_filename))?;
                 *engine = new;
             }
         } else {
@@ -606,8 +643,14 @@ impl Uci {
 
     fn uci_setoption(&mut self, input: &str) -> Result<()> {
         self.engine.lock().unwrap().search_stop();
-        let s = input.strip_prefix("setoption").ok_or(anyhow!("missing setoption"))?.trim();
-        let s = s.strip_prefix("name").ok_or(anyhow!("missing 'name' from setoption"))?.trim();
+        let s = input
+            .strip_prefix("setoption")
+            .ok_or(anyhow!("missing setoption"))?
+            .trim();
+        let s = s
+            .strip_prefix("name")
+            .ok_or(anyhow!("missing 'name' from setoption"))?
+            .trim();
         let name_value = s.rsplit_once("value");
         if let Some((name, value)) = name_value {
             let (name, value) = (name.trim(), value.trim());
@@ -633,8 +676,15 @@ impl Uci {
             // self.engine = Arc::new(Mutex::new(new_engine));
             // let c = ParsedConfig::new().set(&name, &value);
             // self.configure(&c);
-            self.engine.lock().unwrap().set_position(Position::from_board(self.board.clone()));
-            self.engine.lock().unwrap().algo.set_callback(Self::uci_info);
+            self.engine
+                .lock()
+                .unwrap()
+                .set_position(Position::from_board(self.board.clone()));
+            self.engine
+                .lock()
+                .unwrap()
+                .algo
+                .set_callback(Self::uci_info);
         } else {
             self.uci_option_button(s)?;
         };
@@ -664,7 +714,10 @@ impl Uci {
         self.engine.lock().unwrap().search_stop();
         let engine = self.engine.lock().unwrap();
         Self::print(&format!("NODES {}", engine.algo.clock.cumul_nodes()));
-        Self::print(&format!("NPS {}", engine.algo.clock.cumul_knps_all_threads() * 1000));
+        Self::print(&format!(
+            "NPS {}",
+            engine.algo.clock.cumul_knps_all_threads() * 1000
+        ));
         info!("{}", engine);
         Ok(())
     }
@@ -674,7 +727,10 @@ impl Uci {
         let eval = &self.engine.lock().unwrap().algo.eval;
         let s = eval.w_eval_explain(&self.board, false);
         Self::print(&format!("Board:\n{}", &self.board));
-        Self::print(&format!("Material advantage: {}", &self.board.material().advantage()));
+        Self::print(&format!(
+            "Material advantage: {}",
+            &self.board.material().advantage()
+        ));
         Self::print(&format!("Eval:\n{:#}", s));
         Ok(())
     }
@@ -807,7 +863,8 @@ struct Args {
 impl Args {
     pub fn parse(s: &str) -> Args {
         Args {
-            /* line: String::from(s), */ words: s.split_whitespace().map(|s| s.to_string()).collect(),
+            /* line: String::from(s), */
+            words: s.split_whitespace().map(|s| s.to_string()).collect(),
         }
     }
 
@@ -899,12 +956,15 @@ mod tests {
     fn test_uci_setoption() {
         let mut uci = Uci::new();
         let _bishop = uci.engine.lock().unwrap().algo.eval.mb.piece_weights[Piece::Bishop];
-        uci.prelude.push("setoption name Config value eval.mb.b.s=700".into());
+        uci.prelude
+            .push("setoption name Config value eval.mb.b.s=700".into());
         uci.prelude
             .push("setoption name Config value eval.mb.n = { s=400, e = 429 }".into());
-        uci.prelude.push("setoption name Config value eval.quantum=2".into());
+        uci.prelude
+            .push("setoption name Config value eval.quantum=2".into());
         uci.prelude.push("setoption name Explain_Eval".into());
-        uci.prelude.push("setoption name Config value eval.pst.p.a2.s = 10".into());
+        uci.prelude
+            .push("setoption name Config value eval.pst.p.a2.s = 10".into());
         uci.prelude.push("setoption name Show_Config".into());
         uci.prelude.push("quit".into());
         uci.run();
@@ -926,10 +986,14 @@ mod tests {
         assert_eq!(uci.board, Catalog::starting_board());
 
         let mut uci = Uci::new();
-        uci.prelude.push("position fen k7/8/8/8/8/8/8/7k w - - 0 2".into());
+        uci.prelude
+            .push("position fen k7/8/8/8/8/8/8/7k w - - 0 2".into());
         uci.prelude.push("quit".into());
         uci.run();
-        assert_eq!(uci.board, Board::parse_fen("k7/8/8/8/8/8/8/7k w - - 0 2").unwrap());
+        assert_eq!(
+            uci.board,
+            Board::parse_fen("k7/8/8/8/8/8/8/7k w - - 0 2").unwrap()
+        );
 
         let mut uci = Uci::new();
         uci.prelude.push("position startpos moves a2a3 a7a6".into());

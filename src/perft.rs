@@ -125,7 +125,12 @@ mod tests {
     #[test]
     fn test_perft_1() {
         let (board, perfts) = &Catalog::perfts()[1];
-        assert_eq!(board.legal_moves().len() as u64, perfts[1], "{}", board.legal_moves());
+        assert_eq!(
+            board.legal_moves().len() as u64,
+            perfts[1],
+            "{}",
+            board.legal_moves()
+        );
     }
 
     #[test]

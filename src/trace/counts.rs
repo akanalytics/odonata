@@ -31,7 +31,11 @@ thread_local! {
 
 impl Event {
     pub fn incr_by_ply(&self, y: Ply) {
-        COUNTS.with(|c| c.data[c.iter as usize][y as usize][self.index()].0.fetch_add(1, Ordering::Relaxed));
+        COUNTS.with(|c| {
+            c.data[c.iter as usize][y as usize][self.index()]
+                .0
+                .fetch_add(1, Ordering::Relaxed)
+        });
     }
 }
 
@@ -184,7 +188,9 @@ impl Counts {
     pub fn cumul(&self, cn: Event) -> u64 {
         use crate::search::node::Event::*;
         match cn {
-            PercentBranchingFactor => self.cumul(DerivedLeaf) * 100 / std::cmp::max(1, self.cumul(NodeInterior)),
+            PercentBranchingFactor => {
+                self.cumul(DerivedLeaf) * 100 / std::cmp::max(1, self.cumul(NodeInterior))
+            }
             _ => (0..MAX_PLY).map(|i| self.total(i, cn)).sum(),
         }
     }
@@ -211,15 +217,35 @@ impl Counts {
             }
 
             // just node pruning
-            DerivedPrunedInterior => return self.count(i, y, PruneRazor) + self.count(i, y, PruneNullMovePrune),
-            DerivedRecog => {
-                return self.count(i, y, RecogImmediateDraw) + self.count(i, y, RecogMaybeWin) + self.count(i, y, RecogHelpmateOrDraw)
+            DerivedPrunedInterior => {
+                return self.count(i, y, PruneRazor) + self.count(i, y, PruneNullMovePrune)
             }
-            PercentPvsReSearch => return Self::percent(self.count(i, y, PvsReSearch), self.count(i, y, Pvs)),
-            PercentLmrReSearch => return Self::percent(self.count(i, y, LmrReSearch), self.count(i, y, Lmr)),
-            PercentPrunedInterior => return Self::percent(self.count(i, y, DerivedPrunedInterior), self.count(i, y, NodeInterior)),
-            PercentHashHit => return Self::percent(self.count(i, y, HashHit), self.count(i, y, HashProbe)),
-            PercentAspiration1 => return Self::percent(self.count(i, y, Aspiration1), self.count(i, y, DerivedAspiration)),
+            DerivedRecog => {
+                return self.count(i, y, RecogImmediateDraw)
+                    + self.count(i, y, RecogMaybeWin)
+                    + self.count(i, y, RecogHelpmateOrDraw)
+            }
+            PercentPvsReSearch => {
+                return Self::percent(self.count(i, y, PvsReSearch), self.count(i, y, Pvs))
+            }
+            PercentLmrReSearch => {
+                return Self::percent(self.count(i, y, LmrReSearch), self.count(i, y, Lmr))
+            }
+            PercentPrunedInterior => {
+                return Self::percent(
+                    self.count(i, y, DerivedPrunedInterior),
+                    self.count(i, y, NodeInterior),
+                )
+            }
+            PercentHashHit => {
+                return Self::percent(self.count(i, y, HashHit), self.count(i, y, HashProbe))
+            }
+            PercentAspiration1 => {
+                return Self::percent(
+                    self.count(i, y, Aspiration1),
+                    self.count(i, y, DerivedAspiration),
+                )
+            }
             DerivedAspiration => {
                 return self.count(i, y, Aspiration1)
                     + self.count(i, y, Aspiration2)

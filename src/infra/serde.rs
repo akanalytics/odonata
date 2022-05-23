@@ -15,7 +15,9 @@ where
         FlexibleBool::Boolean(b) => Ok(b),
         FlexibleBool::Int(i) => match i {
             0 | 1 => Ok(i != 0),
-            _ => Err(serde::de::Error::custom("Only 0 or 1 can represent booleans")),
+            _ => Err(serde::de::Error::custom(
+                "Only 0 or 1 can represent booleans",
+            )),
         },
     }
 }

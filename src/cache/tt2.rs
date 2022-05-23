@@ -95,7 +95,9 @@ impl Move {
                 Move::new_quiet(mover, from, to)
             } else if promo == Piece::None {
                 if is_pawn_double_push {
-                    let ep = BitboardDefault::default().strictly_between(from, to).square();
+                    let ep = BitboardDefault::default()
+                        .strictly_between(from, to)
+                        .square();
                     Move::new_double_push(from, to, ep)
                 } else {
                     Move::new_quiet(Piece::Pawn, from, to)
@@ -191,7 +193,14 @@ impl fmt::Display for TtNode {
                 self.nt
             )
         } else {
-            write!(f, "{} scoring {} draft {} type {}", self.bm.uci(), self.score, self.depth, self.nt)
+            write!(
+                f,
+                "{} scoring {} draft {} type {}",
+                self.bm.uci(),
+                self.score,
+                self.depth,
+                self.nt
+            )
         }
     }
 }
@@ -321,12 +330,21 @@ impl fmt::Display for TranspositionTable2 {
         // writeln!(f, "entry: cut       : {}", self.count_of(NodeType::LowerCut))?;
         // writeln!(f, "entry: all       : {}", self.count_of(NodeType::UpperAll))?;
         // writeln!(f, "entry: unused    : {}", self.count_of(NodeType::Unused))?;
-        let tot = self.hits.get() + self.misses.get() + self.collisions.get() + self.exclusions.get();
+        let tot =
+            self.hits.get() + self.misses.get() + self.collisions.get() + self.exclusions.get();
         let tot = cmp::max(1, tot);
         writeln!(f, "% hits           : {}", 100 * self.hits.get() / tot)?;
         writeln!(f, "% misses         : {}", 100 * self.misses.get() / tot)?;
-        writeln!(f, "% collisions     : {}", 100 * self.collisions.get() / tot)?;
-        writeln!(f, "% exclusions     : {}", 100 * self.exclusions.get() / tot)?;
+        writeln!(
+            f,
+            "% collisions     : {}",
+            100 * self.collisions.get() / tot
+        )?;
+        writeln!(
+            f,
+            "% exclusions     : {}",
+            100 * self.exclusions.get() / tot
+        )?;
         // for i in 0..10 {
         //     writeln!(
         //         f,
@@ -373,7 +391,10 @@ impl TranspositionTable2 {
     fn resize_if_required(&mut self) {
         if self.requires_resize() {
             let capacity = SharedTable::convert_mb_to_capacity(self.mb);
-            info!("tt resized so capacity is now {} with {} buckets", capacity, self.buckets);
+            info!(
+                "tt resized so capacity is now {} with {} buckets",
+                capacity, self.buckets
+            );
             let mut table = SharedTable::default();
             table.resize(capacity, self.buckets, self.aligned);
             self.table = Arc::new(table);
@@ -458,17 +479,28 @@ impl TranspositionTable2 {
     }
 
     pub fn hashfull_per_mille(&self) -> u32 {
-        let count = self.table.iter().take(200).filter(|&b| Self::age_of(b) == self.current_age).count();
+        let count = self
+            .table
+            .iter()
+            .take(200)
+            .filter(|&b| Self::age_of(b) == self.current_age)
+            .count();
         count as u32 * 1000 / 200
     }
 
     #[inline]
     pub fn store(&mut self, h: Hash, mut new_node: TtNode) {
         // FIXME maybe store QS results
-        if !self.enabled && new_node.nt != NodeType::ExactPv || self.capacity() == 0 || new_node.depth < 0 {
+        if !self.enabled && new_node.nt != NodeType::ExactPv
+            || self.capacity() == 0
+            || new_node.depth < 0
+        {
             return;
         }
-        debug_assert!(new_node.nt != NodeType::Unused, "Cannot store unused nodes in tt");
+        debug_assert!(
+            new_node.nt != NodeType::Unused,
+            "Cannot store unused nodes in tt"
+        );
         debug_assert!(
             new_node.score.is_numeric_or_mate(),
             "Cannot store score {} in tt\n{}",
@@ -543,7 +575,8 @@ impl TranspositionTable2 {
             (Replacement::AgeTypeDepth, _) => {
                 self.current_age > old_age
                     || self.current_age == old_age
-                        && (new_node.nt > old_node.nt || new_node.nt == old_node.nt && new_node.depth >= old_node.depth)
+                        && (new_node.nt > old_node.nt
+                            || new_node.nt == old_node.nt && new_node.depth >= old_node.depth)
             }
             (Replacement::AgeDepthType, _) => {
                 self.current_age > old_age
@@ -599,7 +632,10 @@ impl TranspositionTable2 {
         }
         let tt_node = self.probe_by_hash(board.hash());
         if let Some(tt_node) = tt_node {
-            if !tt_node.bm.is_null() && !board.is_pseudo_legal_move(&tt_node.bm) && !board.is_legal_move(&tt_node.bm) {
+            if !tt_node.bm.is_null()
+                && !board.is_pseudo_legal_move(&tt_node.bm)
+                && !board.is_legal_move(&tt_node.bm)
+            {
                 self.bad_hash.increment();
                 return None;
             }
@@ -612,7 +648,9 @@ impl TranspositionTable2 {
                 depth
             );
             assert!(
-                tt_node.bm.is_null() || (board.is_pseudo_legal_move(&tt_node.bm) && board.is_legal_move(&tt_node.bm)),
+                tt_node.bm.is_null()
+                    || (board.is_pseudo_legal_move(&tt_node.bm)
+                        && board.is_legal_move(&tt_node.bm)),
                 "{} {} {:?}",
                 board.to_fen(),
                 tt_node.bm.uci(),
@@ -833,7 +871,13 @@ mod tests {
         for pos in Catalog::famous().iter() {
             algo.new_game();
             algo.set_position(pos.clone()).search();
-            assert_eq!(algo.results.bm().uci(), pos.bm()?.uci(), "{}\n{}", pos, algo);
+            assert_eq!(
+                algo.results.bm().uci(),
+                pos.bm()?.uci(),
+                "{}\n{}",
+                pos,
+                algo
+            );
         }
         Ok(())
     }
@@ -855,7 +899,13 @@ mod tests {
             let pv = algo.tt.extract_pv_and_score(pos.board()).0;
 
             // No reason acd = pv length as pv line may be reduced due to lmr etc.
-            assert!(pv.len() >= (d as usize) - 1, "algo.pv={} pv={}\n{}", algo.pv(), pv, algo);
+            assert!(
+                pv.len() >= (d as usize) - 1,
+                "algo.pv={} pv={}\n{}",
+                algo.pv(),
+                pv,
+                algo
+            );
             // certainly pv can be longer as it has qsearch
             // assert!(
             //     pv.len() <= d as usize,

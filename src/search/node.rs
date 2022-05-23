@@ -4,11 +4,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::types::Ply;
 
+use std::fmt;
 use strum::{EnumCount, IntoEnumIterator};
 use strum_macros::{Display, EnumCount, EnumIter};
-use std::fmt;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Display, Deserialize, EnumCount, EnumIter)]
+#[derive(
+    Copy, Clone, Debug, PartialEq, Eq, Serialize, Display, Deserialize, EnumCount, EnumIter,
+)]
 pub enum Event {
     Unknown,
     UserCancelled,
@@ -125,10 +127,13 @@ pub struct Node {
     pub beta: Score,
 }
 
-
 impl fmt::Display for Node {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} D:{} a:{} b:{}", self.ply, self.depth, self.alpha, self.beta)
+        write!(
+            f,
+            "{} D:{} a:{} b:{}",
+            self.ply, self.depth, self.alpha, self.beta
+        )
     }
 }
 
@@ -160,7 +165,9 @@ impl Node {
 
     #[inline]
     pub fn is_zw(&self) -> bool {
-        self.alpha.is_numeric() && self.beta.is_numeric() && self.alpha.as_i16() + 1 == self.beta.as_i16()
+        self.alpha.is_numeric()
+            && self.beta.is_numeric()
+            && self.alpha.as_i16() + 1 == self.beta.as_i16()
     }
 
     #[inline]

@@ -1,8 +1,5 @@
 use std::sync::atomic::AtomicBool;
 
-
-
-
 pub static FEATURE: AtomicBool = AtomicBool::new(false);
 
 #[derive(Copy, Clone, Debug)]

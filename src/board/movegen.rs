@@ -106,20 +106,33 @@ impl Board {
                 return false;
             }
             let pp = m.promo_piece();
-            if pp != Piece::Queen && pp != Piece::Rook && pp != Piece::Bishop && pp != Piece::Knight {
+            if pp != Piece::Queen && pp != Piece::Rook && pp != Piece::Bishop && pp != Piece::Knight
+            {
                 return false;
             }
         }
 
-        if m.mover_piece().is_line_piece() && (BitboardDefault::default().strictly_between(m.from(), m.to()) & self.occupied()).any() {
+        if m.mover_piece().is_line_piece()
+            && (BitboardDefault::default().strictly_between(m.from(), m.to()) & self.occupied())
+                .any()
+        {
             return false;
         }
-        if m.mover_piece() == Piece::Pawn && (BitboardDefault::default().strictly_between(m.from(), m.to()) & self.occupied()).any() {
+        if m.mover_piece() == Piece::Pawn
+            && (BitboardDefault::default().strictly_between(m.from(), m.to()) & self.occupied())
+                .any()
+        {
             return false;
         }
         // check piece move
         let precalc = BitboardDefault::default();
-        let destinations = precalc.attacks(self.color_us(), m.mover_piece(), self.us(), self.them(), m.from());
+        let destinations = precalc.attacks(
+            self.color_us(),
+            m.mover_piece(),
+            self.us(),
+            self.them(),
+            m.from(),
+        );
         if !m.to().is_in(destinations | self.en_passant()) && !m.is_castle() {
             return false;
         }
@@ -233,7 +246,8 @@ mod tests {
 
     #[test]
     fn test_pseudo_legal_moves() -> Result<()> {
-        let mut buf = Board::parse_piece_placement("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap();
+        let mut buf =
+            Board::parse_piece_placement("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap();
         buf.set(a2, ".")?;
         buf.set(d2, ".")?;
         buf.set(d4, "P")?;
@@ -247,7 +261,9 @@ mod tests {
 
     #[test]
     fn pawn_moves() {
-        let board = Board::parse_fen("8/8/8/8/8/8/P7/8 w - - 0 0 id 'lone P'").unwrap().as_board();
+        let board = Board::parse_fen("8/8/8/8/8/8/P7/8 w - - 0 0 id 'lone P'")
+            .unwrap()
+            .as_board();
         let mut moves = board.legal_moves();
         println!("{}\n{:#?}", board, moves);
         assert_eq!(moves.len(), 2);
@@ -259,13 +275,20 @@ mod tests {
         let mut moves = board.legal_moves();
         assert_eq!(moves.sort().to_string(), "a7a5, a7a6");
 
-        let board = Board::parse_fen("8/8/8/8/8/p7/P7/8 w - - 0 0 id PP").unwrap().as_board();
+        let board = Board::parse_fen("8/8/8/8/8/p7/P7/8 w - - 0 0 id PP")
+            .unwrap()
+            .as_board();
         let mut moves = board.legal_moves();
         assert_eq!(moves.sort().to_string(), "");
 
-        let board = Board::parse_fen("8/8/8/8/8/8/PPP5/8 w - - 0 0 id PPP").unwrap().as_board();
+        let board = Board::parse_fen("8/8/8/8/8/8/PPP5/8 w - - 0 0 id PPP")
+            .unwrap()
+            .as_board();
         let mut moves = board.legal_moves();
-        assert_eq!(moves.sort().to_string(), "a2a3, a2a4, b2b3, b2b4, c2c3, c2c4");
+        assert_eq!(
+            moves.sort().to_string(),
+            "a2a3, a2a4, b2b3, b2b4, c2c3, c2c4"
+        );
 
         let board = Board::parse_fen("8/8/8/8/8/p1p5/1P6/8 w - - 0 0 id P 'capture white'")
             .unwrap()
@@ -279,7 +302,9 @@ mod tests {
         let mut moves = board.legal_moves();
         assert_eq!(moves.sort().to_string(), "b7a6, b7b5, b7b6, b7c6");
 
-        let board = Board::parse_fen("8/8/p6p/1N6/8/8/8/8 b - - 0 0 id 'PxN black'").unwrap().as_board();
+        let board = Board::parse_fen("8/8/p6p/1N6/8/8/8/8 b - - 0 0 id 'PxN black'")
+            .unwrap()
+            .as_board();
         let mut moves = board.legal_moves();
         assert_eq!(moves.sort().to_string(), "a6a5, a6b5, h6h5");
     }
@@ -294,12 +319,17 @@ mod tests {
         let board = Board::parse_fen("8/8/8/PpP5/8/8/8/8 w - b6 0 0 id 'en passant #2'")
             .unwrap()
             .as_board();
-        assert_eq!(board.legal_moves().sort().to_string(), "a5a6, a5b6, c5b6, c5c6");
+        assert_eq!(
+            board.legal_moves().sort().to_string(),
+            "a5a6, a5b6, c5b6, c5c6"
+        );
     }
 
     #[test]
     fn pawn_promotions() {
-        let board = Board::parse_fen("8/P7/8/8/8/8/7k/K7 w - - 0 0 id 'promos #1'").unwrap().as_board();
+        let board = Board::parse_fen("8/P7/8/8/8/8/7k/K7 w - - 0 0 id 'promos #1'")
+            .unwrap()
+            .as_board();
         assert_eq!(
             board.legal_moves().sort().to_string(),
             "a1a2, a1b1, a1b2, a7a8b, a7a8n, a7a8q, a7a8r"
@@ -308,7 +338,9 @@ mod tests {
 
     #[test]
     fn rook_moves() {
-        let board = Board::parse_fen("8/8/8/8/8/8/8/R7 w - - 0 0 id 'R'").unwrap().as_board();
+        let board = Board::parse_fen("8/8/8/8/8/8/8/R7 w - - 0 0 id 'R'")
+            .unwrap()
+            .as_board();
         assert_eq!(
             board.legal_moves().sort().to_string(),
             "a1a2, a1a3, a1a4, a1a5, a1a6, a1a7, a1a8, a1b1, a1c1, a1d1, a1e1, a1f1, a1g1, a1h1"
@@ -333,7 +365,9 @@ mod tests {
 
     #[test]
     fn knight_moves() {
-        let board = Board::parse_fen("8/8/8/3N4/8/8/8/8 w - - 0 0 id 'N d5'").unwrap().as_board();
+        let board = Board::parse_fen("8/8/8/3N4/8/8/8/8 w - - 0 0 id 'N d5'")
+            .unwrap()
+            .as_board();
         assert_eq!(
             board.legal_moves().sort().to_string(),
             "d5b4, d5b6, d5c3, d5c7, d5e3, d5e7, d5f4, d5f6"
@@ -342,10 +376,17 @@ mod tests {
 
     #[test]
     fn bishop_moves() {
-        let board = Board::parse_fen("8/8/8/8/8/8/8/B7 w - - 0 0 id 'B a1'").unwrap().as_board();
-        assert_eq!(board.legal_moves().sort().to_string(), "a1b2, a1c3, a1d4, a1e5, a1f6, a1g7, a1h8");
+        let board = Board::parse_fen("8/8/8/8/8/8/8/B7 w - - 0 0 id 'B a1'")
+            .unwrap()
+            .as_board();
+        assert_eq!(
+            board.legal_moves().sort().to_string(),
+            "a1b2, a1c3, a1d4, a1e5, a1f6, a1g7, a1h8"
+        );
 
-        let board = Board::parse_fen("8/8/8/8/8/8/1B6/8 w - - 0 0 id 'B b2'").unwrap().as_board();
+        let board = Board::parse_fen("8/8/8/8/8/8/1B6/8 w - - 0 0 id 'B b2'")
+            .unwrap()
+            .as_board();
         assert_eq!(
             board.legal_moves().sort().to_string(),
             "b2a1, b2a3, b2c1, b2c3, b2d4, b2e5, b2f6, b2g7, b2h8"
@@ -354,9 +395,10 @@ mod tests {
 
     #[test]
     fn moves_in_check() {
-        let board = Board::parse_fen("rnbqkbnr/pppp1ppp/4p3/3N4/8/8/PPPPPPPP/R1BQKBNR b KQkq - 1 2")
-            .unwrap()
-            .as_board();
+        let board =
+            Board::parse_fen("rnbqkbnr/pppp1ppp/4p3/3N4/8/8/PPPPPPPP/R1BQKBNR b KQkq - 1 2")
+                .unwrap()
+                .as_board();
         assert!(board.en_passant().is_empty());
         // FIXME! assert b1.validate_move(Move.parse('e8e7'))
         // assert!(board.pseudo_legal_moves().contains(Move.parse("e8e7")));
@@ -413,13 +455,23 @@ mod tests {
         // https://lichess.org/editor/8/8/8/8/8/8/6r1/7K
         let fen = "8/8/8/8/8/8/6r1/7K w - - 0 0 id 'rook+king'";
         let board = Board::parse_fen(fen).unwrap().as_board();
-        assert_eq!(board.legal_moves().sort().to_string(), "h1g2", "{:#}", board);
+        assert_eq!(
+            board.legal_moves().sort().to_string(),
+            "h1g2",
+            "{:#}",
+            board
+        );
         let mov_h1g2 = board.parse_uci_move("h1g2")?;
         assert_eq!(board.is_legal_move(&mov_h1g2), true);
         println!("{}", counts::GLOBAL_COUNTS);
 
         for b in Catalog::stalemates().iter() {
-            assert_eq!(b.legal_moves().to_string(), "".to_string(), "{}", b.to_fen());
+            assert_eq!(
+                b.legal_moves().to_string(),
+                "".to_string(),
+                "{}",
+                b.to_fen()
+            );
         }
 
         let board = Catalog::starting_board();
@@ -445,10 +497,22 @@ mod tests {
         let a3sq = a3.square();
         let a6sq = a6.square();
         let a7sq = a7.square();
-        assert_eq!(b.is_pseudo_legal_move(&Move::new_quiet(Piece::Pawn, a2sq, a3sq)), true);
-        assert_eq!(b.is_pseudo_legal_move(&Move::new_quiet(Piece::Bishop, a2sq, a3sq)), false);
-        assert_eq!(b.is_pseudo_legal_move(&Move::new_quiet(Piece::Pawn, a7sq, a6sq)), false);
-        assert_eq!(b.is_pseudo_legal_move(&Move::new_quiet(Piece::Pawn, a7sq, a6sq)), false);
+        assert_eq!(
+            b.is_pseudo_legal_move(&Move::new_quiet(Piece::Pawn, a2sq, a3sq)),
+            true
+        );
+        assert_eq!(
+            b.is_pseudo_legal_move(&Move::new_quiet(Piece::Bishop, a2sq, a3sq)),
+            false
+        );
+        assert_eq!(
+            b.is_pseudo_legal_move(&Move::new_quiet(Piece::Pawn, a7sq, a6sq)),
+            false
+        );
+        assert_eq!(
+            b.is_pseudo_legal_move(&Move::new_quiet(Piece::Pawn, a7sq, a6sq)),
+            false
+        );
         assert_eq!(
             b.is_pseudo_legal_move(&Move::new_capture(Piece::Pawn, a2sq, a3sq, Piece::Pawn)),
             false
@@ -461,7 +525,9 @@ mod tests {
 
     #[test]
     fn test_is_legal_variation() {
-        let b = Board::from_str("b3r1kr/ppppqppp/3np3/6b1/1n1PP1N1/2NQ4/PPP1BPPP/B3R1KR w - - 3 12").unwrap();
+        let b =
+            Board::from_str("b3r1kr/ppppqppp/3np3/6b1/1n1PP1N1/2NQ4/PPP1BPPP/B3R1KR w - - 3 12")
+                .unwrap();
         let var = b.parse_uci_variation("d3d1 b4c6 e2c4").unwrap();
         assert_eq!(var.len(), 3);
         assert!(b.is_legal_variation(&var));

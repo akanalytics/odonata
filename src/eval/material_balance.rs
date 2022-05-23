@@ -34,10 +34,16 @@ impl<T> std::ops::Index<Piece> for PieceArray<T> {
 impl<T> std::ops::IndexMut<Piece> for PieceArray<T> {
     #[inline]
     fn index_mut(&mut self, p: Piece) -> &mut Self::Output {
-        [&mut self.p, &mut self.n, &mut self.b, &mut self.r, &mut self.q, &mut self.k][p.index() - 1]
+        [
+            &mut self.p,
+            &mut self.n,
+            &mut self.b,
+            &mut self.r,
+            &mut self.q,
+            &mut self.k,
+        ][p.index() - 1]
     }
 }
-
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -71,7 +77,9 @@ impl Default for MaterialBalance {
             min_games: 50,
             max_pawns: 5,
             trade_factor: 2,
-            balances: Balances { entries: HashMap::new() },
+            balances: Balances {
+                entries: HashMap::new(),
+            },
 
             piece_weights: PieceArray {
                 p: Weight::from_i32(100, 150),
@@ -321,7 +329,7 @@ impl MaterialBalance {
                 count += 1;
                 let mut mat = Material::maybe_from_hash(hash);
                 mat.set_count(Color::White, Piece::King, 0);
-                mat.set_count(Color::Black, Piece::King ,0);
+                mat.set_count(Color::Black, Piece::King, 0);
                 info!("{:>10} {:>32} {}", cp, mat.to_string(), hash);
             }
         }
@@ -423,7 +431,9 @@ impl MaterialBalance {
             RAW_STATS.len()
         );
         let mut sorted_raw_stats = RAW_STATS.clone();
-        sorted_raw_stats.sort_by_cached_key(|(mat, _score)| mat.to_string().len() as i32 * 20000 + mat.centipawns());
+        sorted_raw_stats.sort_by_cached_key(|(mat, _score)| {
+            mat.to_string().len() as i32 * 20000 + mat.centipawns()
+        });
         for (mat, wdl) in sorted_raw_stats.iter() {
             let pawns = mat.count(Color::White, Piece::Pawn) + mat.count(Color::Black, Piece::Pawn);
             if wdl.total() >= self.min_games && pawns <= self.max_pawns {
@@ -480,9 +490,15 @@ impl MaterialBalance {
             }
         }
         if self.consistency_adjust {
-            info!("Material balance consistency: pass {} adjusted {} items \n", pass, adjustments);
+            info!(
+                "Material balance consistency: pass {} adjusted {} items \n",
+                pass, adjustments
+            );
         } else {
-            info!("Material balance consistency: pass {} reported on {} items \n", pass, adjustments);
+            info!(
+                "Material balance consistency: pass {} reported on {} items \n",
+                pass, adjustments
+            );
         }
     }
 
@@ -519,15 +535,18 @@ impl MaterialBalance {
                 continue;
             }
             let maybe_other_cp = self.derived_load(other.hash());
-            let other_cp =  if let Some(cp) = maybe_other_cp {
-                    cp as i32
-                } else {
-                    let weight: Weight = Piece::ALL_BAR_KING
-                        .iter()
-                        .map(|&p| (other.count(Color::White, p) - other.count(Color::Black, p)) * self.piece_weights[p])
-                        .sum();
-                    std::cmp::max(weight.s() as i32, weight.e() as i32) as i32
-                };
+            let other_cp = if let Some(cp) = maybe_other_cp {
+                cp as i32
+            } else {
+                let weight: Weight = Piece::ALL_BAR_KING
+                    .iter()
+                    .map(|&p| {
+                        (other.count(Color::White, p) - other.count(Color::Black, p))
+                            * self.piece_weights[p]
+                    })
+                    .sum();
+                std::cmp::max(weight.s() as i32, weight.e() as i32) as i32
+            };
 
             // losing material - ensure lesser entries consistent
             let mut new_cp = cp;
@@ -646,7 +665,10 @@ mod tests {
 
     #[test]
     fn mb_serde_test() {
-        info!("\n{}", toml::to_string(&MaterialBalance::default()).unwrap());
+        info!(
+            "\n{}",
+            toml::to_string(&MaterialBalance::default()).unwrap()
+        );
         // info!("\n{}", toml::to_string_pretty(&SimpleScorer::default()).unwrap());
     }
 
@@ -685,7 +707,8 @@ mod tests {
         assert_eq!(board.eval_with_outcome(eval, n), Score::from_cp(735));
 
         // black exchanges knight for a bishop
-        let board = Board::parse_fen("8/2p3p1/3r1pk1/R2Prnp1/P5P1/4BK2/R4P1P/8 b - - 0 50").unwrap();
+        let board =
+            Board::parse_fen("8/2p3p1/3r1pk1/R2Prnp1/P5P1/4BK2/R4P1P/8 b - - 0 50").unwrap();
         assert_eq!(board.eval_with_outcome(eval, n), Score::from_cp(-100));
         let board = Board::parse_fen("8/2p3p1/3r1pk1/R2Pr1p1/P5P1/4PK2/R6P/8 b - - 0 51").unwrap();
         assert_eq!(board.eval_with_outcome(eval, n), Score::from_cp(-100));

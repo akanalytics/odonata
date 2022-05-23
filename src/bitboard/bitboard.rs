@@ -54,7 +54,16 @@ impl Dir {
         // mask: Bitboard::RANK_8.or(Bitboard::FILE_A),
     };
 
-    pub const ALL: [Self; 8] = [Self::N, Self::NE, Self::E, Self::SE, Self::S, Self::SW, Self::W, Self::NW];
+    pub const ALL: [Self; 8] = [
+        Self::N,
+        Self::NE,
+        Self::E,
+        Self::SE,
+        Self::S,
+        Self::SW,
+        Self::W,
+        Self::NW,
+    ];
 
     #[inline]
     pub const fn shift(self) -> i8 {
@@ -276,8 +285,12 @@ impl Bitboard {
     pub const RANKS_36: Bitboard = Bitboard::RANK_3.or(Bitboard::RANK_6);
     pub const RANKS_45: Bitboard = Bitboard::RANK_4.or(Bitboard::RANK_5);
     pub const CENTER_4_SQ: Bitboard = Bitboard::RANKS_45.and(Bitboard::FILE_D.or(Bitboard::FILE_E));
-    pub const CENTER_16_SQ: Bitboard =
-        (Bitboard::RANKS_45.or(Bitboard::RANKS_36)).and(Bitboard::FILE_C.or(Bitboard::FILE_D).or(Bitboard::FILE_E).or(Bitboard::FILE_F));
+    pub const CENTER_16_SQ: Bitboard = (Bitboard::RANKS_45.or(Bitboard::RANKS_36)).and(
+        Bitboard::FILE_C
+            .or(Bitboard::FILE_D)
+            .or(Bitboard::FILE_E)
+            .or(Bitboard::FILE_F),
+    );
 }
 
 impl fmt::Binary for Bitboard {
@@ -535,17 +548,17 @@ impl Bitboard {
         // let bb = self.sub(dir.mask());
         // Bitboard(bb.0.rotate_left(dir.bits_to_rotate()))
 
-        let (rotation,mask) = match dir {
-            Dir::N => (8,Bitboard::RANK_8),
-            Dir::NE => (9,Bitboard::RANK_8.or(Bitboard::FILE_H)),
-            Dir::E => (1,Bitboard::FILE_H),
-            Dir::SE => (64-7,Bitboard::RANK_1.or(Bitboard::FILE_H)),
-            Dir::S => (64-8,Bitboard::RANK_1),
-            Dir::SW => (64-9,Bitboard::RANK_1.or(Bitboard::FILE_A)),
-            Dir::W => (64-1,Bitboard::FILE_A),
-            Dir::NW => (7,Bitboard::RANK_8.or(Bitboard::FILE_A)),
-            _ => unreachable!()
-        } ;
+        let (rotation, mask) = match dir {
+            Dir::N => (8, Bitboard::RANK_8),
+            Dir::NE => (9, Bitboard::RANK_8.or(Bitboard::FILE_H)),
+            Dir::E => (1, Bitboard::FILE_H),
+            Dir::SE => (64 - 7, Bitboard::RANK_1.or(Bitboard::FILE_H)),
+            Dir::S => (64 - 8, Bitboard::RANK_1),
+            Dir::SW => (64 - 9, Bitboard::RANK_1.or(Bitboard::FILE_A)),
+            Dir::W => (64 - 1, Bitboard::FILE_A),
+            Dir::NW => (7, Bitboard::RANK_8.or(Bitboard::FILE_A)),
+            _ => unreachable!(),
+        };
         let bb = self.sub(mask);
         Bitboard(bb.0.rotate_left(rotation))
 
@@ -628,8 +641,14 @@ impl Bitboard {
     #[inline]
     pub fn home_half(c: Color) -> Self {
         c.chooser_wb(
-            Bitboard::RANK_1.or(Bitboard::RANK_2).or(Bitboard::RANK_3).or(Bitboard::RANK_4),
-            Bitboard::RANK_5.or(Bitboard::RANK_6).or(Bitboard::RANK_7).or(Bitboard::RANK_8),
+            Bitboard::RANK_1
+                .or(Bitboard::RANK_2)
+                .or(Bitboard::RANK_3)
+                .or(Bitboard::RANK_4),
+            Bitboard::RANK_5
+                .or(Bitboard::RANK_6)
+                .or(Bitboard::RANK_7)
+                .or(Bitboard::RANK_8),
         )
     }
 
@@ -744,14 +763,20 @@ impl Bitboard {
     }
 
     pub fn files_string(self) -> String {
-        let mut files: Vec<char> = self.iter().map(|bb| bb.first_square().file_char()).collect();
+        let mut files: Vec<char> = self
+            .iter()
+            .map(|bb| bb.first_square().file_char())
+            .collect();
         files.sort_unstable();
         files.dedup();
         files.iter().collect()
     }
 
     pub fn ranks_string(self) -> String {
-        let mut ranks: Vec<char> = self.iter().map(|bb| bb.first_square().rank_char()).collect();
+        let mut ranks: Vec<char> = self
+            .iter()
+            .map(|bb| bb.first_square().rank_char())
+            .collect();
         ranks.sort_unstable();
         ranks.dedup();
         ranks.iter().collect()
@@ -868,9 +893,8 @@ impl Iterator for BitIterator {
 }
 
 impl ExactSizeIterator for BitIterator {
-
     #[inline]
-    fn len(&self) -> usize { 
+    fn len(&self) -> usize {
         self.bb.popcount() as usize
     }
 
@@ -884,15 +908,16 @@ impl ExactSizeIterator for BitIterator {
     // }
 }
 
-
-
-
 impl fmt::Display for Bitboard {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         for r in (0..8).rev() {
             for f in 0..8 {
                 let bit = 1 << (r * 8 + f);
-                fmt.write_str(if self.contains(Bitboard(bit)) { "1 " } else { ". " })?;
+                fmt.write_str(if self.contains(Bitboard(bit)) {
+                    "1 "
+                } else {
+                    ". "
+                })?;
             }
             fmt.write_char('\n')?;
         }
@@ -927,13 +952,11 @@ impl Iterator for Squares {
 }
 
 impl ExactSizeIterator for Squares {
-
     #[inline]
-    fn len(&self) -> usize { 
+    fn len(&self) -> usize {
         self.bb.popcount() as usize
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -960,7 +983,10 @@ mod tests {
             (Bitboard::FILE_A | Bitboard::RANK_8)
         );
         assert_eq!((1u64 << 63) >> 63, 1);
-        assert_eq!(Bitboard::BLACK_SQUARES | Bitboard::WHITE_SQUARES, Bitboard::all());
+        assert_eq!(
+            Bitboard::BLACK_SQUARES | Bitboard::WHITE_SQUARES,
+            Bitboard::all()
+        );
         assert!(Bitboard::BLACK_SQUARES.contains(a1));
         assert_eq!(1_u64.wrapping_shl(64), 1_u64);
         // assert_eq!(Bitboard::from_sq(64), Bitboard::EMPTY);
@@ -1007,19 +1033,43 @@ mod tests {
         assert_eq!(Bitboard::parse_square("h8").unwrap(), h8.square());
 
         assert_eq!(Bitboard::parse_squares("h8 h1").unwrap(), h8 | h1);
-        assert_eq!(Bitboard::parse_squares("a1, a2,a3  ").unwrap(), a1 | a2 | a3);
+        assert_eq!(
+            Bitboard::parse_squares("a1, a2,a3  ").unwrap(),
+            a1 | a2 | a3
+        );
         assert_eq!(Bitboard::parse_squares("").unwrap(), Bitboard::empty());
     }
 
     #[test]
     fn test_parse_fail() {
-        assert_eq!(Bitboard::parse_file("9").unwrap_err().to_string(), "Invalid file '9'");
-        assert_eq!(Bitboard::parse_file("").unwrap_err().to_string(), "Invalid file ''");
-        assert_eq!(Bitboard::parse_rank("a").unwrap_err().to_string(), "Invalid rank 'a'");
-        assert_eq!(Bitboard::parse_square("aa").unwrap_err().to_string(), "Invalid rank 'a'");
-        assert_eq!(Bitboard::parse_square("11").unwrap_err().to_string(), "Invalid file '1'");
-        assert_eq!(Bitboard::parse_square("").unwrap_err().to_string(), "Invalid square ''");
-        assert_eq!(Bitboard::parse_square("abc").unwrap_err().to_string(), "Invalid square 'abc'");
+        assert_eq!(
+            Bitboard::parse_file("9").unwrap_err().to_string(),
+            "Invalid file '9'"
+        );
+        assert_eq!(
+            Bitboard::parse_file("").unwrap_err().to_string(),
+            "Invalid file ''"
+        );
+        assert_eq!(
+            Bitboard::parse_rank("a").unwrap_err().to_string(),
+            "Invalid rank 'a'"
+        );
+        assert_eq!(
+            Bitboard::parse_square("aa").unwrap_err().to_string(),
+            "Invalid rank 'a'"
+        );
+        assert_eq!(
+            Bitboard::parse_square("11").unwrap_err().to_string(),
+            "Invalid file '1'"
+        );
+        assert_eq!(
+            Bitboard::parse_square("").unwrap_err().to_string(),
+            "Invalid square ''"
+        );
+        assert_eq!(
+            Bitboard::parse_square("abc").unwrap_err().to_string(),
+            "Invalid square 'abc'"
+        );
     }
 
     #[test]
@@ -1080,7 +1130,10 @@ mod tests {
         assert_eq!(a1b2.uci(), "a1+b2");
         assert_eq!(format!("{}", a1b2), ". . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. . . . . . . . \n. 1 . . . . . . \n1 . . . . . . . \n");
         assert_eq!(format!("{:?}", a1b2), "A1 | B2");
-        assert_eq!(format!("{:?}", Bitboard::FILE_A), "A1 | A2 | A3 | A4 | A5 | A6 | A7 | A8 | FILE_A");
+        assert_eq!(
+            format!("{:?}", Bitboard::FILE_A),
+            "A1 | A2 | A3 | A4 | A5 | A6 | A7 | A8 | FILE_A"
+        );
         // assert_eq!(format!("{:?}", Bitboard::EDGES), "");
         assert_eq!(format!("{:b}", a1b2), "1000000001");
     }
@@ -1117,8 +1170,17 @@ mod tests {
 
         let power_sets = Bitboard::FILE_A.power_set_iter();
         assert_eq!(power_sets.clone().count(), 1 << 8);
-        assert_eq!(power_sets.clone().fold(Bitboard::EMPTY, |acc, bb| acc | bb), Bitboard::FILE_A);
-        assert_eq!(power_sets.clone().filter(|bb| bb.popcount() == 2).count(), 7 * 8 / 2);
-        assert_eq!(power_sets.clone().filter(|bb| bb.popcount() == 7).count(), 8);
+        assert_eq!(
+            power_sets.clone().fold(Bitboard::EMPTY, |acc, bb| acc | bb),
+            Bitboard::FILE_A
+        );
+        assert_eq!(
+            power_sets.clone().filter(|bb| bb.popcount() == 2).count(),
+            7 * 8 / 2
+        );
+        assert_eq!(
+            power_sets.clone().filter(|bb| bb.popcount() == 7).count(),
+            8
+        );
     }
 }

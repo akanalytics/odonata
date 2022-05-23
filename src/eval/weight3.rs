@@ -14,9 +14,6 @@ use serde::{Deserializer, Serializer};
 //                         change: [-51.630% -50.540% -49.410%] (p = 0.00 < 0.05)
 //                         Performance has improved.
 
-
-
-
 pub type _Weight = WeightOf<f32>;
 
 // essntially models the score bonus for s=start or e=end of game
@@ -59,7 +56,9 @@ where
     where
         D: Deserializer<'de>,
     {
-        Deserialize::deserialize(deserializer).map(|WeightOfHelper::<T> { s, m, e }| WeightOf::<T>(s, m.unwrap_or((s + e) / 2.as_()), e))
+        Deserialize::deserialize(deserializer).map(|WeightOfHelper::<T> { s, m, e }| {
+            WeightOf::<T>(s, m.unwrap_or((s + e) / 2.as_()), e)
+        })
     }
 }
 

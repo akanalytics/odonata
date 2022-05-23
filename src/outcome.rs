@@ -36,7 +36,11 @@ impl Outcome {
     pub fn is_draw(self) -> bool {
         !matches!(
             self,
-            Self::InProgress | Self::WinWhite | Self::WinBlack | Self::WinOnTimeWhite | Self::WinOnTimeBlack
+            Self::InProgress
+                | Self::WinWhite
+                | Self::WinBlack
+                | Self::WinOnTimeWhite
+                | Self::WinOnTimeBlack
         )
     }
 
@@ -187,8 +191,14 @@ mod tests {
 
     #[test]
     fn test_checkmate() {
-        assert_eq!(Catalog::checkmates()[0].board().outcome(), Outcome::WinWhite);
-        assert_eq!(Catalog::checkmates()[1].board().outcome(), Outcome::WinBlack);
+        assert_eq!(
+            Catalog::checkmates()[0].board().outcome(),
+            Outcome::WinWhite
+        );
+        assert_eq!(
+            Catalog::checkmates()[1].board().outcome(),
+            Outcome::WinBlack
+        );
     }
 
     #[test]

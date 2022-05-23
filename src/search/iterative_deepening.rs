@@ -67,9 +67,19 @@ impl fmt::Display for IterativeDeepening {
         NodeStats::fmt_underline(f)?;
         writeln!(f, " {:>8} {:<11}", "--------", "-----------")?;
         for iter in self.iterations.iter() {
-            write!(f, "D{:<2} {:>4} ", iter.depth, if iter.interrupted() { "PART" } else { "FULL" })?;
+            write!(
+                f,
+                "D{:<2} {:>4} ",
+                iter.depth,
+                if iter.interrupted() { "PART" } else { "FULL" }
+            )?;
             iter.iteration().fmt_data(f)?;
-            writeln!(f, " {:>8} {:<11}", iter.score().to_string(), iter.pv().to_string())?;
+            writeln!(
+                f,
+                " {:>8} {:<11}",
+                iter.score().to_string(),
+                iter.pv().to_string()
+            )?;
         }
         if let Some(last) = self.iterations.last() {
             write!(f, "{:>3} {:>4} ", "---", "----")?;
@@ -114,7 +124,8 @@ impl Algo {
                 self.aspiration(&mut self.board.clone(), &mut Node::root(depth));
                 // self.stats.clock.start_ply();
                 self.mte.estimate_iteration(depth + 1, &self.clock);
-                self.stats.record_time_estimate(depth + 1, &self.mte.estimate_move_time);
+                self.stats
+                    .record_time_estimate(depth + 1, &self.mte.estimate_move_time);
                 self.ids.iterations.push(self.search_stats().clone());
 
                 if self.search_stats().interrupted() {
@@ -123,8 +134,13 @@ impl Algo {
                     counts::SEARCH_IDS_COMPLETES.increment();
                 }
 
-                self.results
-                    .with_pv_change(&self.board, &self.clock, &self.stats, &self.restrictions, &self.tt);
+                self.results.with_pv_change(
+                    &self.board,
+                    &self.clock,
+                    &self.stats,
+                    &self.restrictions,
+                    &self.tt,
+                );
 
                 // let results = &self.results;
                 self.results.snapshot_bests();
@@ -133,14 +149,17 @@ impl Algo {
                 if exit {
                     break 'outer;
                 }
-                self.restrictions.exclude_moves.push(self.results.initial_move());
+                self.restrictions
+                    .exclude_moves
+                    .push(self.results.initial_move());
             }
             depth += self.ids.step_size
         }
         self.results.with_best_move(&self.board.outcome());
         self.controller.invoke_callback(&self.results);
         // debug!("\n\n\n=====Search completed=====\n{}", self);
-        if self.max_depth > 0 && !self.results.outcome.is_game_over() && self.results.bm().is_null() {
+        if self.max_depth > 0 && !self.results.outcome.is_game_over() && self.results.bm().is_null()
+        {
             error!("bm is null\n{}\n{:?}", self, self.results);
         }
 
@@ -157,7 +176,8 @@ impl Algo {
             || self.mte.probable_timeout(depth)
             || self.stats.depth >= self.ids.end_ply
             || self.stats.depth >= MAX_PLY / 2
-            || (self.restrictions.exclude_moves.is_empty() && (self.search_stats().score().is_mate() || self.pv().is_empty()))
+            || (self.restrictions.exclude_moves.is_empty()
+                && (self.search_stats().score().is_mate() || self.pv().is_empty()))
         // pv.empty = draw
     }
 }
