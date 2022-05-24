@@ -44,6 +44,9 @@ pub struct Explainer {
 
     #[serde(skip)]
     tree: Option<SearchTree>,
+
+    #[serde(skip)]
+    board: Board,
 }
 
 impl Component for Explainer {
@@ -83,6 +86,7 @@ impl Default for Explainer {
     fn default() -> Self {
         Explainer {
             enabled: false,
+            board: Default::default(),
             is_explaining: false,
             min_depth: 0,
             max_additional_ply: 4,
@@ -108,6 +112,10 @@ impl Explainer {
         }
     }
 
+    pub fn set_board(&mut self, b: Board) {
+        self.board = b;
+    }
+
     pub fn why_not(&mut self, var: Variation) {
         if self.enabled {
             self.why_not = Some(var);
@@ -127,7 +135,7 @@ impl Explainer {
                 "Initial position {}",
                 tree.initial_position.to_fen()
             )?;
-            writeln!(writer, "{}", tree.tree)?;
+            writeln!(writer, "{}", tree)?;
             writer.flush()?;
         }
         Ok(())
@@ -174,7 +182,7 @@ impl Explainer {
                 }
             {
                 if self.tree.is_none() {
-                    let tree = SearchTree::new(Board::default());
+                    let tree = SearchTree::new(self.board.clone());
                     self.tree = Some(tree);
                 }
                 return Some(self.tree.as_mut().unwrap().get_or_insert(var));
@@ -187,16 +195,26 @@ impl Explainer {
         // OR
         // b. see if we are explaining the whole tree
         if self.why_not.is_none()
-            && self
+            && 
+            // current variation is an extension of one of the tracked variations
+            // OR 
+            // current variation is the start of a tracked variation
+            (self
                 .vars
                 .iter()
                 // .inspect(|x| println!("about to check var: {}", x))
                 .any(|v| {
                     var.starts_with(v) && var.len() <= v.len() + self.max_additional_ply as usize
                 })
+    || 
+                self
+                .vars
+                .iter()
+                // .inspect(|x| println!("about to check var: {}", x))
+                .any(|v| { v.starts_with(var) }))
         {
             if self.tree.is_none() {
-                let tree = SearchTree::new(Board::default());
+                let tree = SearchTree::new(self.board.clone());
                 self.tree = Some(tree);
             }
             if let Some(tree) = &mut self.tree {
@@ -221,6 +239,7 @@ impl Algo {
     #[inline]
     pub fn explain_futility(
         &mut self,
+        b: &Board,
         mv: Move,
         _move_type: MoveType,
         estimated: Score,
@@ -233,7 +252,7 @@ impl Algo {
                 .explaining(n, &self.current_variation.append(mv), e)
             {
                 info!("Explain Futility {mv} in {n} on {}", self.current_variation);
-                w.score = estimated;
+                w.score = b.white_score(estimated);
                 w.node = *n;
                 w.event = e;
                 w.cause = e;
@@ -242,7 +261,17 @@ impl Algo {
     }
 
     #[inline]
-    pub fn explain_move(&mut self, mv: Move, child_score: Score, e: Event, n: &Node) {
+    pub fn explain_move(
+        &mut self,
+        b: &Board,
+        mv: Move,
+        child_score: Score,
+        e: Event,
+        n: &Node,
+        count: u32,
+        ext: i32,
+        red: i32,
+    ) {
         if self.explainer.enabled {
             if let Some(w) = self
                 .explainer
@@ -254,15 +283,18 @@ impl Algo {
                 //     _ => Event::NodeInteriorAll,
                 // };
                 info!("Explain move {mv} in {n} on {}", self.current_variation);
-                w.score = child_score;
+                w.score = b.white_score(child_score);
                 w.node = *n;
                 w.event = e;
+                w.count = count;
+                w.ext = ext;
+                w.red = red;
             }
         }
     }
 
     #[inline]
-    pub fn explain_nmp(&mut self, child_score: Score, n: &Node) {
+    pub fn explain_nmp(&mut self, b: &Board, child_score: Score, n: &Node) {
         if self.explainer.enabled {
             let e = Event::PruneNullMovePrune;
             if let Some(w) = self.explainer.explaining(n, &self.current_variation, e) {
@@ -270,7 +302,7 @@ impl Algo {
                     "Explain null move prune in {n} on {}",
                     self.current_variation
                 );
-                w.score = child_score;
+                w.score = b.white_score(child_score);
                 w.node = *n;
                 w.event = e;
             }
@@ -280,6 +312,7 @@ impl Algo {
     #[inline]
     pub fn explain_node(
         &mut self,
+        b: &Board,
         bm: Move,
         nt: NodeType,
         score: Score,
@@ -294,9 +327,9 @@ impl Algo {
                     "Explain node in {n} with {nt} on {} with pv {pv}",
                     self.current_variation
                 );
-                w.score = score;
+                w.score = b.white_score(score);
                 w.node = *n;
-                w.eval = eval;
+                w.eval = b.white_score(eval);
                 w.nt = nt;
             }
             if nt == NodeType::ExactPv {
@@ -318,8 +351,7 @@ impl Algo {
 
 #[cfg(test)]
 mod tests {
-    use crate::catalog::Catalog;
-    use crate::comms::uci::Uci;
+
     use crate::search::{engine::Engine, timecontrol::TimeControl};
     use crate::test_log::test;
     use crate::Position;
@@ -328,60 +360,57 @@ mod tests {
     fn test_search_explainer_tree() {
         let mut eng = Engine::new();
         eng.algo.explainer.enabled = true;
+        eng.algo.explainer.max_additional_ply = 6;
         assert_eq!(eng.algo.explainer.vars.len(), 1);
 
-        let pos = Catalog::starting_position();
+        eng.algo.set_timing_method(TimeControl::Depth(8));
+        let pos = Position::parse_epd("r5k1/3bB1bp/1p1p2p1/3P4/4R3/qNp3PP/r4PB1/3QN1K1 w - - 1 31")
+            .unwrap();
         // let pos = Position::parse_epd("r1b1k2r/1p3p1p/p2p4/6B1/1q1np3/2Q5/PPP1BPPP/1R2K2R w Kkq - 1 15").unwrap();
         // let var = pos.board().parse_san_variation("").unwrap();
         // eng.algo.explainer.add_variation_to_explain(var);
 
-        let v1 = pos.board().parse_san_variation("b2b4").unwrap();
+        let v1 = pos.board().parse_san_variation("h4 Rb2").unwrap();
+        eng.set_position(pos);
+        eng.algo.explainer.vars.clear();
         eng.algo.explainer.add_variation_to_explain(v1.clone());
-        assert_eq!(eng.algo.explainer.vars.len(), 2);
-
-        assert!(eng.algo.explainer.vars.iter().any(|v| v1.starts_with(v)));
-
-        eng.set_position(pos);
-        eng.algo.set_timing_method(TimeControl::Depth(6));
-
-        eng.search();
-        println!("{:?}", eng.algo.explainer);
-        // warn!("{}", eng);
-    }
-
-    #[test]
-    fn test_search_explainer_whynot() {
-        let mut eng = Engine::new();
-        let pos = Position::parse_epd("r5k1/3bB1bp/1p1p2p1/3P4/4R3/qNp3PP/r4PB1/3QN1K1 w - - 1 31")
-            .unwrap();
-        let var = pos
-            .board()
-            // r##"Bf1 Rb2
-            // Qf3 Rxb3
-            // g4 c2
-            // Nxc2 Rxf3
-            // Nxa3 Rfxa3
-            // Bxd6
-            // "##,
-            .parse_san_variation(
-                // r##"Bf1 Rb2
-                // Qf3 Rxb3
-                // g4 c2
-                // Nxc2 Rxf3
-                // "##,
-                r##"Rc4 Rb2
-                Rc7 Qxb3 
-                Qxb3 Rxb3 
-                "##,
-            )
-            .unwrap();
-        eng.set_position(pos);
-        eng.algo.explainer.why_not = Some(var);
-        eng.algo.explainer.enabled = true;
-        eng.algo.tt.enabled = false;
-        eng.algo.set_callback(Uci::uci_info);
-        eng.algo.set_timing_method(TimeControl::Depth(9));
         eng.search();
         println!("{}", eng.algo.results_as_position());
     }
 }
+
+// #[test]
+// fn test_search_explainer_whynot() {
+//     let mut eng = Engine::new();
+//     let pos = Position::parse_epd("r5k1/3bB1bp/1p1p2p1/3P4/4R3/qNp3PP/r4PB1/3QN1K1 w - - 1 31")
+//         .unwrap();
+//     let var = pos
+//         .board()
+//         // r##"Bf1 Rb2
+//         // Qf3 Rxb3
+//         // g4 c2
+//         // Nxc2 Rxf3
+//         // Nxa3 Rfxa3
+//         // Bxd6
+//         // "##,
+//         .parse_san_variation(
+//             // r##"Bf1 Rb2
+//             // Qf3 Rxb3
+//             // g4 c2
+//             // Nxc2 Rxf3
+//             // "##,
+//             r##"Rc4"##,
+//             //  Rb2
+//             // Rc7 Qxb3
+//             // Qxb3 Rxb3
+//             // "##,
+//         )
+//         .unwrap();
+//     eng.set_position(pos);
+//     eng.algo.explainer.why_not = Some(var);
+//     eng.algo.explainer.enabled = true;
+//     eng.algo.tt.enabled = false;
+//     eng.algo.set_callback(Uci::uci_info);
+//     eng.algo.set_timing_method(TimeControl::Depth(9));
+//     eng.search();
+//     println!("{}", eng.algo.results_as_position());

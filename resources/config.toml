@@ -768,7 +768,7 @@ score_method = "GoodOverGoodAndBad"
 enabled = false
 is_explaining = false
 min_depth = 0
-max_additional_ply = 4
+max_additional_ply = 5
 
 
 [restrictions]

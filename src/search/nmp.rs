@@ -177,7 +177,7 @@ impl Algo {
             self.stats.inc_node_cut(n.ply, MoveType::Null, -1);
             self.counts.inc(n, Event::PruneNullMovePrune);
             self.report_refutation(n.ply);
-            self.explain_nmp(child_score, n);
+            self.explain_nmp(b, child_score, n);
 
             if self.nmp.store_tt {
                 // score is clamped as you cant mate on a null move. Note reduced depth too

@@ -416,7 +416,7 @@ mod tests {
                 //assert_eq!(engine.algo.search_stats().total().nodes(), 7749); // no ids no mvvlva
             }
             assert_eq!(engine.algo.pv_table.extract_pv(), position.pv().unwrap());
-            assert_eq!(engine.algo.score(), Score::white_win(3));
+            assert_eq!(engine.algo.score(), Score::we_win_in(3));
             assert_eq!(engine.algo.repetition.prior_positions(), 1);
             info!("{}", engine.algo.results_as_position());
         }

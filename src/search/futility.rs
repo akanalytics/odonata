@@ -91,13 +91,17 @@ impl Algo {
             if outcome.is_game_over() {
                 if outcome.is_draw() {
                     self.counts.inc(n, Event::NodeLeafDraw);
-                    return Some(self.eval.w_eval_draw(b, n));
+                    return Some(b.pov_score(self.eval.w_eval_draw(b, n)));
                 }
                 // depth 0: we have considered a full width move search to get here so a winning
                 // result is valid. Beyond depth 0 it is not.
                 if let Some(c) = outcome.winning_color() {
                     self.counts.inc(n, Event::NodeLeafWinLoss);
-                    return Some(c.chooser_wb(Score::white_win(n.ply), Score::white_loss(n.ply)));
+                    if c == b.color_us() {
+                        return Some(Score::we_win_in(n.ply));
+                    } else {
+                        return Some(Score::we_lose_in(n.ply));
+                    }
                 }
             }
         }
@@ -220,7 +224,7 @@ impl Algo {
                 _ => Event::PruneFutilityD3,
             };
             self.counts.inc(n, category);
-            self.explain_futility(mv, mt, est_score, &n, category);
+            self.explain_futility(&before, mv, mt, est_score, &n, category);
             return Some(est_score);
         }
         None

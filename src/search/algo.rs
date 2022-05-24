@@ -309,6 +309,7 @@ impl Algo {
 
     pub fn set_position(&mut self, pos: Position) -> &mut Self {
         self.set_state(State::SetPosition);
+        self.explainer.set_board(pos.board().clone());
         self.repetition.push_position(&pos);
         self.board = pos.supplied_variation().apply_to(pos.board());
         self.tt.rewrite_pv(pos.board());

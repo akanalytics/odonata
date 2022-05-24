@@ -5,12 +5,13 @@ use std::fmt::{Debug, Display};
 
 use crate::board::Board;
 use crate::bound::NodeType;
-use crate::eval::score::Score;
+use crate::eval::score::WhiteScore;
 use crate::mv::Move;
 use crate::search::node::Event;
 use crate::search::node::Node;
 use crate::variation::Variation;
 use petgraph::graph::NodeIndex;
+
 
 // copied/inspired by https://crates.io/crates/treeline (License MIT)
 // and
@@ -29,8 +30,10 @@ impl Tree<TreeNode> {
     fn display_leaves(
         &self,
         f: &mut fmt::Formatter,
+        b: &Board, 
         leaves: &[NodeIndex],
         spaces: Vec<bool>,
+        var: &mut Variation,
     ) -> fmt::Result {
         for (i, &leaf) in leaves.iter().rev().enumerate() {
             let last = i >= leaves.len() - 1;
@@ -56,7 +59,8 @@ impl Tree<TreeNode> {
                 write!(f, "    ")?;
             }
 
-            writeln!(f, "{}", node)?;
+            var.push(node.mv);
+            writeln!(f, "{}  --> {}", node, var.to_san(b))?;
 
             if last && self.children(leaf).count() == 0 {
                 for s in &spaces {
@@ -73,32 +77,34 @@ impl Tree<TreeNode> {
             // recurse
             if self.children(leaf).count() > 0 {
                 clone.push(last);
-                self.display_leaves(f, &self.children(leaf).collect_vec(), clone)?;
+                self.display_leaves(f, b, &self.children(leaf).collect_vec(), clone, var)?;
             }
+            var.pop();
         }
         write!(f, "")
     }
 
 
-    fn variation(&self, leaf: NodeIndex) -> Variation {
-        let mut vec = Vec::new();
-        while let Some(parent) = self.parent(leaf) {
-            let TreeNode { mv, ..}  = self[parent];
-            vec.push(mv);
-        }
-        vec.reverse();
-        let mut var = Variation::new();
-        var.extend_from_slice(&vec);
-        var
-    }
-}
+    // fn variation(&self, leaf: NodeIndex) -> Variation {
+    //     let mut vec = Vec::new();
+    //     while let Some(parent) = self.parent(leaf) {
+    //         let TreeNode { mv, ..}  = self[parent];
+    //         vec.push(mv);
+    //     }
+    //     vec.reverse();
+    //     let mut var = Variation::new();
+    //     var.extend_from_slice(&vec);
+    //     var
+    // }
 
-impl Display for Tree<TreeNode> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+
+ 
+    fn write(&self, f: &mut fmt::Formatter, b: &Board) -> fmt::Result {
         let root = self.root();
         writeln!(f, "{}", self.graph.node_weight(root).unwrap())?;
         let leaves = self.children(root).collect_vec();
-        self.display_leaves(f, &leaves, Vec::new())
+        let mut var = Variation::new();
+        self.display_leaves(f, b, &leaves, Vec::new(), &mut var )
     }
 }
 
@@ -135,7 +141,7 @@ impl<N> Tree<N> {
         kid
     }
 
-    fn parent(&self, child: NodeIndex) -> Option<NodeIndex> {
+    fn _parent(&self, child: NodeIndex) -> Option<NodeIndex> {
         self.graph.neighbors_directed(child, petgraph::Incoming).last()
     }
 
@@ -162,9 +168,12 @@ impl<N> std::ops::IndexMut<NodeIndex> for Tree<N> {
 #[derive(Clone, PartialEq, Debug, Default)]
 pub struct TreeNode {
     mv: Move,
+    pub count: u32,
+    pub ext: i32,
+    pub red: i32,
     pub node: Node,
-    pub score: Score,
-    pub eval: Score,
+    pub score: WhiteScore,
+    pub eval: WhiteScore,
     pub event: Event,
     pub cause: Event,
     pub nt: NodeType,
@@ -175,10 +184,12 @@ impl Display for TreeNode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "S:{:>5} E:{:>5} D:{:>2} [{:>4},{:>4}] {:<3} {:<20} {:<20}",
+            "#{:<3} S:{:>5} E:{:>5} D:{:>2}{:<5} [{:>4},{:>4}] {:<3} {:<20} {:<20}",
+            self.count.to_string(),
             self.score.to_string(),
             self.eval.to_string(),
             self.node.depth,
+            format!("[{}/{}]", self.ext, self.red),
             self.node.alpha.to_string(),
             self.node.beta.to_string(),
             self.nt.to_string(),
@@ -203,6 +214,12 @@ impl Display for TreeNode {
 pub struct SearchTree {
     pub initial_position: Board,
     pub tree: Tree<TreeNode>,
+}
+
+impl Display for SearchTree {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.tree.write(f, &self.initial_position)
+    }
 }
 
 impl SearchTree {
@@ -251,7 +268,7 @@ impl SearchTree {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{bitboard::square::Square, catalog::Catalog, test_log::test};
+    use crate::{bitboard::square::Square, catalog::Catalog, test_log::test, eval::score::Score};
 
     #[test]
     fn test_generic_tree() {
@@ -287,14 +304,14 @@ mod tests {
             alpha: Score::from_cp(4),
             ..Node::default()
         };
-        println!("Tree1:\n{}", st.tree);
+        println!("Tree1:\n{}", st);
 
         var.push(Move::new_quiet(Pawn, Square::H7, Square::H6));
         st.get_or_insert(&var).node = Node {
             alpha: Score::from_cp(5),
             ..Node::default()
         };
-        println!("Tree:2\n{}", st.tree);
+        println!("Tree:2\n{}", st);
     }
 }
 

@@ -969,64 +969,15 @@ mod tests {
             .P.P...p
             ........ w KQkq - 1 1",
         );
-        assert_eq!(sc.value(Attr::PawnDoubled.into()), Some(1));
-        assert_eq!(sc.value(Attr::PawnIsolatedDoubled.into()), Some(1));
-        assert_eq!(sc.value(Attr::PawnPassed.into()), Some(4 - 2));
-        assert_eq!(sc.value(Attr::PassersOnRim.into()), Some(2 - 1));
-        assert_eq!(sc.value(Attr::SemiIsolated.into()), Some(3));
-        assert_eq!(sc.value(Attr::PawnPassedR7.into()), Some(1 - 1));
-        assert_eq!(sc.value(Attr::PawnPassedR6.into()), Some(2 - 0));
+        assert_eq!(sc.value(Attr::PawnDoubled.into()), 1);
+        assert_eq!(sc.value(Attr::PawnIsolatedDoubled.into()), 1);
+        assert_eq!(sc.value(Attr::PawnPassed.into()), 4 - 2);
+        assert_eq!(sc.value(Attr::PassersOnRim.into()), 2 - 1);
+        assert_eq!(sc.value(Attr::PawnPassedR7.into()), 1 - 1);
+        assert_eq!(sc.value(Attr::PawnPassedR6.into()), 2 - 0);
+        assert_eq!(sc.value(Attr::SemiIsolated.into()), 0); // semi-isolated not used
         println!("{sc:#}");
-        // let phaser = &Eval::new().phaser;
-        // let positions = Catalog::pawn_structure();
-        // let mut comparisons = 0;
-        // for p in &positions {
-        //     let model = Model::from_board(p.board(), p.board().phase(phaser), Switches::ALL_SCORING);
-        //     if let Tag::Comment(_n, var_name) = p.tag("c0") {
-        //         info!("position {} c0 {}", p, var_name);
-        //         if let Tag::Comment(_n, white) = p.tag("c1") {
-        //             if let Tag::Comment(_n, black) = p.tag("c2") {
-        //                 let (w, b) = match var_name.as_str() {
-        //                     "isolated" => (model.white.isolated_pawns, model.black.isolated_pawns),
-        //                     "passed" => (model.white.passed_pawns, model.black.passed_pawns),
-        //                     "passed_r7" => (model.white.passed_pawns_on_r7, model.black.passed_pawns_on_r7),
-        //                     "passed_r6" => (model.white.passed_pawns_on_r6, model.black.passed_pawns_on_r6),
-        //                     "passed_r5" => (model.white.passed_pawns_on_r5, model.black.passed_pawns_on_r5),
-        //                     "passed_r4" => (model.white.passed_pawns_on_r4, model.black.passed_pawns_on_r4),
-        //                     "doubled" => (model.white.doubled_pawns, model.black.doubled_pawns),
-        //                     "connected_r67" => (model.white.pawn_connected_r67, model.black.pawn_connected_r67),
-        //                     "connected_r345" => (model.white.pawn_connected_r345, model.black.pawn_connected_r345),
-        //                     "backward_half_open" => (model.white.backward_half_open, model.black.backward_half_open),
-        //                     _ => unreachable!(),
-        //                 };
-        //                 assert_eq!(w, white.parse::<i32>().unwrap(), "{}\n{:?}", p, model);
-        //                 assert_eq!(b, black.parse::<i32>().unwrap(), "{}\n{:?}", p, model);
-        //                 comparisons += 1;
-        //             }
-        //         }
-        //     }
-        // }
-        // assert_eq!(comparisons, positions.len());
     }
-
-    //         // let map = s.split_vars_int();
-    //     assert_eq!(model.white.isolated_pawns, map["isolated"], "{}\n{:?}", p, model);
-    //     assert_eq!(model.white.doubled_pawns, map["doubled"], "{}\n{:?}", p, model);
-    //     assert_eq!(model.white.passed_pawns, map["passed"], "{}", p);
-    //     assert_eq!(model.white.pawn_connected_r67, map["con67"], "{}", p);
-    //     assert_eq!(model.white.pawn_connected_r345, map["con345"], "{}\n{:?}", p, model);
-    //     assert_eq!(model.white.backward_half_open, map["backward"], "{}\n{:?}", p, model);
-    // }
-    // if let Tag::Comment(_n, s) = p.tag("c1") {
-    //     let map = s.split_vars_int();
-    //     assert_eq!(model.black.isolated_pawns, map["isolated"], "{}", p);
-    //     assert_eq!(model.black.doubled_pawns, map["doubled"], "{}", p);
-    //     assert_eq!(model.black.passed_pawns, map["passed"], "{}", p);
-    //     if map.contains_key("con67") {
-    //         assert_eq!(model.black.pawn_connected_r67, map["con67"], "{}", p);
-    //         assert_eq!(model.black.pawn_connected_r345, map["con345"], "{}", p);
-    //         assert_eq!(model.black.backward_half_open, map["backward"], "{}", p);
-    //     }
 
     #[test]
     fn king_safety_test() {
@@ -1050,27 +1001,5 @@ mod tests {
         assert_eq!((Bitboard::RANKS_18 & bksq.rank() & b.black() == bk), true);
         assert_eq!((bd1 - Bitboard::RANKS_18 - b.occupied()).is_empty(), true);
     }
-
-    // #[test]
-    // fn model_csv_test() {
-    //     let eval = &mut Eval::new();
-    //     eval.tempo = false;
-
-    //     let positions = Catalog::example_game();
-    //     for (i, p) in positions.iter().enumerate() {
-    //         // let model = Model::from_board(p.board(), Switches::ALL_SCORING);
-    //         if i == 0 {
-    //             info!("\n{}", eval.w_eval_explain(&p.board(), false).as_csv(ReportLine::Header, true));
-    //         }
-    //         info!("\n{}", eval.w_eval_explain(&p.board(), false).as_csv(ReportLine::Body, true));
-    //     }
-    //     for (i, p) in positions.iter().enumerate() {
-    //         let model = eval.w_eval_explain(&p.board(), true);
-
-    //         if i == 0 {
-    //             info!("\n{}", model.as_csv(ReportLine::Header, true));
-    //         }
-    //         info!("\n{}", model.as_csv(ReportLine::Body, true));
-    //     }
-    // }
 }
+

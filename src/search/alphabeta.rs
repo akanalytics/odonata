@@ -304,7 +304,7 @@ impl Algo {
             b.undo_move(&mv);
             self.current_variation.pop();
             self.repetition.pop();
-            self.explain_move(mv, child_score, cat, &n);
+            self.explain_move(&b, mv, child_score, cat, &n, count, ext, lmr);
 
             // println!("move {} score {} alpha {} beta {}", mv, score, alpha, beta);
             debug_assert!(
@@ -400,7 +400,7 @@ impl Algo {
             nt,
             b,
         );
-        self.explain_node(bm, nt, score, eval, &n, cat, &self.pv_table.extract_pv_for(ply));
+        self.explain_node(&b, bm, nt, score, eval, &n, cat, &self.pv_table.extract_pv_for(ply));
         Ok((score, category))
     }
 }

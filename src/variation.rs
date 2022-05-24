@@ -5,6 +5,7 @@ use crate::types::Ply;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
 
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Variation {
     moves: Vec<Move>,
@@ -53,6 +54,19 @@ impl Variation {
         } else {
             None
         }
+    }
+
+    pub fn to_san(&self, b: &Board) -> String {
+        let mut b2 = b.clone();
+        let mut s = Vec::new();
+        for mv in &self.moves  {
+            if !b2.is_pseudo_legal_move(mv) || !b2.is_legal_move(mv) {
+                panic!("Move {mv} in {} is not legal for board {}", self, b.to_fen());
+            }
+            s.push(b2.to_san(mv));            
+            b2 = b2.make_move(mv);
+        }   
+        s.join(" ")
     }
 
     pub fn append(&self, mv: Move) -> Variation {

@@ -124,11 +124,11 @@ impl ExplainScore {
             .sum()
     }
 
-    pub fn value(&self, i: Feature) -> Option<i32> {
+    pub fn value(&self, i: Feature) -> i32 {
         self.vec
             .iter()
             .find(|&e| i == e.0)
-            .map(|e| (e.1 - e.2) as i32)
+            .map(|e| (e.1 - e.2) as i32).unwrap_or_default()
     }
 
     pub fn discard_balanced_features(&mut self) {
@@ -169,10 +169,7 @@ impl ExplainScore {
         for r in iter {
             count += 1;
             for c in &Feature::all() {
-                match r.value(*c) {
-                    Some(v) => write!(f, "{},", v),
-                    None => write!(f, "0,"),
-                }?;
+                write!(f, "{},", r.value(*c))?;
             }
             writeln!(
                 f,

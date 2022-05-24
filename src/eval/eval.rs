@@ -24,6 +24,7 @@ use std::fmt;
 use super::calc::Calc;
 use super::feature::WeightsVector;
 
+use super::score::WhiteScore;
 use super::scorer::ExplainScore;
 use super::scorer::TotalScore;
 
@@ -377,7 +378,7 @@ impl Eval {
         }
     }
 
-    pub fn w_eval_draw(&self, board: &Board, _node: &Node) -> Score {
+    pub fn w_eval_draw(&self, board: &Board, node: &Node) -> WhiteScore {
         // draw score is +ve for playing a stronger opponent (we want a draw), neg for weaker
         //
         //  Engine Col   |  search ply   |  value to searcher   | Score to white
@@ -389,12 +390,15 @@ impl Eval {
         // +ve contempt => +ve score => aim for draw => opponent stronger than us
         // board.color_us() == Color::Black => minimising
         // +ve contempt => -ve score => aim for draw => opponent stronger than us
-        let contempt = self.weight(&Attr::ContemptPenalty.into());
-        let contempt = board.color_us().chooser_wb(contempt, -contempt);
-        Score::from_f32(contempt.interpolate(board.phase(&self.phaser)) as f32)
+        let contempt_weight = self.weight(&Attr::ContemptPenalty.into());
+        let mut contempt_pov = Score::from_f32(contempt_weight.interpolate(board.phase(&self.phaser)));
+        if (node.ply % 2) == 1 {
+            contempt_pov = -contempt_pov;
+        }
+        board.white_score(contempt_pov)
     }
 
-    pub fn w_evaluate_with_outcome(&self, board: &Board, node: &Node) -> Score {
+    pub fn w_evaluate_with_outcome(&self, board: &Board, node: &Node) -> WhiteScore {
         counts::EVAL_COUNT.increment();
         let outcome = board.outcome();
         if outcome.is_game_over() {
@@ -402,7 +406,11 @@ impl Eval {
                 return self.w_eval_draw(board, node);
             }
             if let Some(c) = outcome.winning_color() {
-                return c.chooser_wb(Score::white_win(node.ply), Score::white_loss(node.ply));
+                if board.color_us() == c {
+                    return board.white_score(Score::we_win_in(node.ply));
+                } else {
+                    return board.white_score(Score::we_lose_in(node.ply));
+                }
             }
         }
         self.w_eval_some(board)
@@ -414,11 +422,11 @@ impl Eval {
         scorer
     }
 
-    fn w_eval_some(&self, b: &Board) -> Score {
+    fn w_eval_some(&self, b: &Board) -> WhiteScore {
         let ph = b.phase(&self.phaser);
         let mut scorer = TotalScore::new(&self.feature_weights, ph);
         Calc::score(&mut scorer, b, self, &self.phaser);
-        Score::from_cp(scorer.total().interpolate(ph) as i32 / self.quantum * self.quantum)
+        WhiteScore(Score::from_cp(scorer.total().interpolate(ph) as i32 / self.quantum * self.quantum))
     }
 
     /// the value of the capture or promotion (or both for promo capture)
@@ -430,13 +438,18 @@ impl Eval {
 
 impl Board {
     #[inline]
-    fn signum(&self) -> i32 {
-        self.color_us().chooser_wb(1, -1)
+    pub fn pov_score(&self, ws: WhiteScore) -> Score {
+        self.color_us().chooser_wb(1, -1) * ws.0
+    }
+
+    #[inline]
+    pub fn white_score(&self, pov_score: Score) -> WhiteScore {
+        WhiteScore(self.color_us().chooser_wb(1, -1) * pov_score)
     }
 
     #[inline]
     pub fn eval_draw(&self, eval: &mut Eval, nd: &Node) -> Score {
-        self.signum() * eval.w_eval_draw(self, nd)
+        self.pov_score(eval.w_eval_draw(self, nd))
     }
 
     #[inline]
@@ -458,7 +471,7 @@ impl Board {
     #[inline]
     pub fn eval_with_outcome(&self, eval: &Eval, nd: &Node) -> Score {
         ALL.increment();
-        self.signum() * eval.w_evaluate_with_outcome(self, nd)
+        self.pov_score(eval.w_evaluate_with_outcome(self, nd))
     }
 
     #[inline]
@@ -466,7 +479,7 @@ impl Board {
         profile_fn!(board.eval_some);
         // let _g = hprof::enter("eval some");
         ALL.increment();
-        self.signum() * eval.w_eval_some(self)
+        self.pov_score(eval.w_eval_some(self))
     }
 }
 
@@ -539,16 +552,16 @@ mod tests {
         eval.mb.enabled = false;
         let mut prof = Profiler::new("prof_eval".into());
         let node = Node::root(0);
-        let mut total_score = Score::zero();
+        let mut total_score = 0;
         for pos in Catalog::win_at_chess() {
             let b = pos.board();
             prof.start();
-            let score = b.signum() * b.eval_with_outcome(&eval, &node);
+            let score = b.white_score(b.eval_with_outcome(&eval, &node));
             prof.stop();
-            total_score = total_score + score;
-            println!("{:>6.0} {}", score.as_i16(), pos);
+            println!("{:>6.0} {}", score.as_white_cp(), pos);
+            total_score = total_score + score.as_white_cp();
         }
-        println!("{:>6.0} {:<}", total_score.as_i16(), "total");
+        println!("{:>6.0} {:<}", total_score, "total");
     }
 
     #[ignore]
@@ -559,11 +572,11 @@ mod tests {
             let mut eval = Eval::default();
             eval.mb.enabled = false;
             let node = Node::root(0);
-            let mut total_score = Score::zero();
+            let mut total_score = 0;
             for pos in &positions {
                 let b = pos.board();
-                let score = b.signum() * b.eval_with_outcome(&eval, &node);
-                total_score = total_score + score;
+                let score = b.white_score(b.eval_with_outcome(&eval, &node));
+                total_score = total_score + score.as_white_cp();
                 // println!("{:>6.0} {}", score.as_i16(), pos);
             }
             black_box(total_score);

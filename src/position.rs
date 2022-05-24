@@ -165,7 +165,7 @@ impl Position {
         for item in iter {
             let s = item.as_ref();
             if !s.is_empty() {
-                vec.push(Self::parse_epd(s).context(format!("in epd {}", s))?);
+                vec.push(Self::parse_epd(&s.replace('\n', " ")).context(format!("in epd {}", s))?);
             }
         }
         Ok(vec)
