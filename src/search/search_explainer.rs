@@ -305,6 +305,7 @@ impl Algo {
                 w.score = b.white_score(child_score);
                 w.node = *n;
                 w.event = e;
+                w.cause = Event::Unknown;
             }
         }
     }

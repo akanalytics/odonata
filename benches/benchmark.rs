@@ -787,8 +787,8 @@ fn benchmark_attacks(c: &mut Criterion) {
             let mut count = 0;
             positions.iter().cycle_n(n).for_each(|p| {
                 count += 2;
-                black_box(BoardCalcs::pinned_and_unmaskers(p.board(), Color::White)).0;
-                black_box(BoardCalcs::pinned_and_unmaskers(p.board(), Color::Black)).0;
+                black_box(BoardCalcs::pinned_and_discoverers(p.board(), Color::White)).0;
+                black_box(BoardCalcs::pinned_and_discoverers(p.board(), Color::Black)).0;
             });
             t.elapsed() / (count as u32 / n as u32)
         })

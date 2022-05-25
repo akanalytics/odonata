@@ -11,11 +11,15 @@ use std::cmp;
 #[serde(default, deny_unknown_fields)]
 pub struct See {
     pub enabled: bool,
+    pub promo: bool,
 }
 
 impl Default for See {
     fn default() -> Self {
-        Self { enabled: true }
+        Self {
+            enabled: true,
+            promo: false,
+        }
     }
 }
 
@@ -34,9 +38,9 @@ impl See {
     //
     pub fn eval_move_see(&self, board: &Board, mv: Move) -> i32 {
         debug_assert!(!mv.is_null());
+        debug_assert!(mv.is_capture());
         debug_assert!(board.us().contains(mv.from().as_bb()));
         debug_assert!(board.them().contains(mv.capture_square().as_bb()));
-        debug_assert!(mv.is_capture());
 
         let bb = PreCalc::default();
         let mut gain: [i32; 40] = [0; 40];
@@ -103,7 +107,7 @@ impl See {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::catalog::Catalog;
+    use crate::{catalog::Catalog, eval::eval::Eval, Position};
     // use crate::movelist::MoveValidator;
     use anyhow::Result;
 
@@ -119,6 +123,91 @@ mod tests {
             let ce = pos.ce()?;
             assert_eq!(see.eval_move_see(&b, mv), ce, "pos {}", pos);
         }
+        Ok(())
+    }
+
+    #[test]
+    fn test_see2() -> Result<()> {
+        let e = Eval::new();
+
+        let b = Position::parse_epd(
+            r"
+            .......k
+            ........
+            ........
+            ..r.....
+            ..R.....
+            ........
+            ........
+            K....... w - - 1 1",
+        )?
+        .board()
+        .clone();
+        let mv = b.parse_san_move("Rc5")?;
+        let see = e.see.eval_move_see(&b, mv);
+        assert_eq!(see, Piece::Rook.centipawns());
+
+        let b = Position::parse_epd(
+            r"
+            .......k
+            ........
+            ...b....
+            ..r.....
+            .B......
+            ........
+            ........
+            K....... w - - 1 1",
+        )?
+        .board()
+        .clone();
+        let mv = b.parse_san_move("Bc5")?;
+        let see = e.see.eval_move_see(&b, mv);
+        assert_eq!(see, Piece::Rook.centipawns() - Piece::Bishop.centipawns());
+
+        //
+        // without promos, we just appear to be a rook up
+        let b = Position::parse_epd(
+            r"
+            .r.....k
+            P.......
+            ........
+            ........
+            ........
+            ........
+            ........
+            K....... w - - 1 1",
+        )?
+        .board()
+        .clone();
+        let mut e2 = Eval::new();
+        e2.see.promo = false;
+
+        //
+        // without promos, we just appear to be a rook up as promo'd
+        // "pawn" is not retaken
+        let mv = b.parse_san_move("b8=Q")?;
+        let see = e2.see.eval_move_see(&b, mv);
+        assert_eq!(see, Piece::Rook.centipawns());
+
+        let b = Position::parse_epd(
+            r"
+            .r.....k
+            PR.n....
+            ........
+            ........
+            ........
+            ........
+            ........
+            K....... w - - 1 1",
+        )?
+        .board()
+        .clone();
+        let mut e2 = Eval::new();
+        e2.see.promo = false;
+        let mv = b.parse_san_move("b8=Q")?;
+        let see = e2.see.eval_move_see(&b, mv);
+        assert_eq!(see, Piece::Rook.centipawns());
+
         Ok(())
     }
 }

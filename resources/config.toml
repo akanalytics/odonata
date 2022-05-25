@@ -64,6 +64,12 @@ log_dir = "."
 [eval]
 quantum = 1
 
+
+[eval.see]
+enabled=true
+promo=false
+
+
 [eval.discrete]
 
 pawn_doubled                 = { s =   -2.72, e =  -35.60 }
@@ -721,6 +727,7 @@ prior_pv = true
 prior_bm = false
 tt_bm = true
 mvv_lva = true
+discovered_checks = true
 see_cutoff = 0
 qsearch_see_cutoff = 1
 order = ["Start", "Hash", "Initialize", "GoodCaptureUpfrontSorted", "Killer", "Promo", "Quiet", "BadCapture", "End"]

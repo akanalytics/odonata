@@ -405,7 +405,7 @@ impl std::ops::Sub for ScoreWdl {
 }
 
 #[enumflags2::bitflags]
-#[repr(u16)]
+#[repr(u32)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq, EnumCount, Display, Serialize, Deserialize)]
 pub enum MoveType {
     Start,
@@ -418,6 +418,7 @@ pub enum MoveType {
     GoodCaptureUpfrontSorted,
     Killer,
     Promo,
+    QueenPromo,
     Evasion,
     Quiet,
     QuietUnsorted,
@@ -455,6 +456,7 @@ impl MoveType {
             MoveType::GoodCaptureUpfrontSorted => 'G',
             MoveType::Killer => 'K',
             MoveType::Promo => 'P',
+            MoveType::QueenPromo => 'p',
             MoveType::Evasion => 'V',
             MoveType::Quiet => 'q',
             MoveType::QuietUnsorted => 'Q',
@@ -476,6 +478,7 @@ impl MoveType {
             'G' => Ok(MoveType::GoodCaptureUpfrontSorted),
             'K' => Ok(MoveType::Killer),
             'P' => Ok(MoveType::Promo),
+            'p' => Ok(MoveType::QueenPromo),
             'V' => Ok(MoveType::Evasion),
             'q' => Ok(MoveType::Quiet),
             'Q' => Ok(MoveType::QuietUnsorted),

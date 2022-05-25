@@ -110,6 +110,10 @@ impl MoveMaker for Board {
                 Cell::<_>::new(Bitboard::niche()),
                 Cell::<_>::new(Bitboard::niche()),
             ],
+            discoverer: [
+                Cell::<_>::new(Bitboard::niche()),
+                Cell::<_>::new(Bitboard::niche()),
+            ],
             // material: Cell::<_>::new(self.material()),
             // moves: self.moves.clone(),
             multiboard: self.multiboard.clone(),

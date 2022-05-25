@@ -248,6 +248,15 @@ impl std::ops::Mul<WeightOf<f32>> for i32 {
     }
 }
 
+impl std::ops::Mul<WeightOf<f32>> for i16 {
+    type Output = WeightOf<f32>;
+
+    #[inline]
+    fn mul(self, o: WeightOf<f32>) -> WeightOf<f32> {
+        WeightOf::<f32>(self as f32 * o.s(), self as f32 * o.e())
+    }
+}
+
 // impl<T> std::ops::Mul<WeightOf<T>> for i32 where T: Copy + Num, i32: std::ops::Mul<T,Output=T>  {
 //     type Output = WeightOf<T>;
 

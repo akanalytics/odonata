@@ -18,7 +18,7 @@ impl BoardCalcs {
     }
 
     #[inline]
-    pub fn pinned_and_unmaskers(b: &Board, king_color: Color) -> (Bitboard, Bitboard) {
+    pub fn pinned_and_discoverers(b: &Board, king_color: Color) -> (Bitboard, Bitboard) {
         let kings = b.kings() & b.color(king_color);
         if kings.is_empty() {
             return Default::default();
@@ -29,16 +29,16 @@ impl BoardCalcs {
 
         let xray_checkers = Self::attacked_by(kings, Bitboard::EMPTY, b) & color_them;
         let mut pinned = Bitboard::empty();
-        let mut unmaskers = Bitboard::empty();
+        let mut discoverers = Bitboard::empty();
         for ch in xray_checkers.squares() {
             let ray = BitboardDefault::default().strictly_between(ch, king_sq);
             if ray.disjoint(color_them) && (ray & color_us).popcount() == 1 {
                 pinned |= ray & color_us;
             } else if ray.disjoint(color_us) && (ray & color_them).popcount() == 1 {
-                unmaskers |= ray & color_them;
+                discoverers |= ray & color_them;
             }
         }
-        (pinned, unmaskers)
+        (pinned, discoverers)
     }
 
     /// all attacks
@@ -185,7 +185,7 @@ mod tests {
     fn test_pinned() {
         let positions = Catalog::pins();
         for pos in positions {
-            let pins = BoardCalcs::pinned_and_unmaskers(pos.board(), pos.board().color_us()).0;
+            let pins = BoardCalcs::pinned_and_discoverers(pos.board(), pos.board().color_us()).0;
             assert_eq!(pins, pos.sq().unwrap(), "{}", pos.board());
         }
     }
@@ -194,10 +194,10 @@ mod tests {
     fn test_discovered_check() {
         let positions = Catalog::discovered_check();
         for pos in positions {
-            let unmaskers = BoardCalcs::pinned_and_unmaskers(pos.board(), pos.board().color_us()).1;
-            assert_eq!(unmaskers, pos.sq().unwrap(), "{}", pos.board());
-            let unmaskers = BoardCalcs::pinned_and_unmaskers(pos.board(), pos.board().color_us()).1;
-            assert_eq!(unmaskers, pos.sq().unwrap(), "{}", pos.board());
+            let discoverers = BoardCalcs::pinned_and_discoverers(pos.board(), pos.board().color_us()).1;
+            assert_eq!(discoverers, pos.sq().unwrap(), "{}", pos.board());
+            let discoverers = BoardCalcs::pinned_and_discoverers(pos.board(), pos.board().color_us()).1;
+            assert_eq!(discoverers, pos.sq().unwrap(), "{}", pos.board());
         }
     }
 }

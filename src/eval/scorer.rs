@@ -4,7 +4,7 @@ use anyhow::Result;
 use comfy_table::{presets, Cell, CellAlignment, Row, Table};
 use itertools::Itertools;
 
-use crate::{outcome::Outcome, phaser::Phase, utils::Formatting, Bitboard, Color};
+use crate::{outcome::Outcome, phaser::Phase, utils::Formatting, Bitboard, Color, Piece};
 
 use super::{eval::Feature, feature::WeightsVector, weight::Weight};
 
@@ -37,10 +37,23 @@ impl<'a> TotalScore<'a> {
     }
 }
 
+pub fn profile() {
+
+    let a = vec![Weight::default();100];
+    let mut ts = TotalScore::new(&a, Phase::default());
+    let f = TotalScore::accumulate;
+    
+    f(&mut ts, Feature::Piece(Piece::Pawn), 3,2);
+
+    println!("{:?}", ts);
+}
+
+
 impl<'a> ScorerBase for TotalScore<'a> {
-    #[inline]
+    #[inline(never)]
     fn accumulate(&mut self, i: Feature, w_value: i32, b_value: i32) {
-        self.total += (w_value - b_value) * self.weights[i.index()];
+
+        self.total += (w_value as i16  - b_value as i16 ) * self.weights[i.index()];
     }
 
     #[inline]
@@ -54,6 +67,9 @@ impl<'a> ScorerBase for TotalScore<'a> {
     #[inline]
     fn set_bits(&mut self, _i: Feature, _bits: Bitboard) {}
 }
+
+
+
 
 #[derive(Clone, Debug, Default)]
 pub struct ExplainScore {
@@ -82,6 +98,7 @@ impl ExplainScore {
         self.weights = Some(wts);
     }
 }
+
 
 impl ScorerBase for ExplainScore {
     #[inline]

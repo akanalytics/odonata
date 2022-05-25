@@ -38,6 +38,7 @@ pub struct Board {
     threats_to: [Cell<Bitboard>; Color::len()],
     checkers_of: [Cell<Bitboard>; Color::len()],
     pinned: [Cell<Bitboard>; Color::len()],
+    discoverer: [Cell<Bitboard>; Color::len()],
     // material: Cell<Material>,
     // interior mutability (precludes copy trait)
     // moves: MoveList,
@@ -104,6 +105,10 @@ impl Board {
         self.hash = Hasher::default().hash_board(self);
         // self.material.set(Material::niche());
         self.pinned = [
+            Cell::<_>::new(Bitboard::niche()),
+            Cell::<_>::new(Bitboard::niche()),
+        ];
+        self.discoverer = [
             Cell::<_>::new(Bitboard::niche()),
             Cell::<_>::new(Bitboard::niche()),
         ];
@@ -407,6 +412,10 @@ impl Default for Board {
                 Cell::<_>::new(Bitboard::niche()),
             ],
             pinned: [
+                Cell::<_>::new(Bitboard::niche()),
+                Cell::<_>::new(Bitboard::niche()),
+            ],
+            discoverer: [
                 Cell::<_>::new(Bitboard::niche()),
                 Cell::<_>::new(Bitboard::niche()),
             ],

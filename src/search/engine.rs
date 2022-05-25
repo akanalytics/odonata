@@ -305,6 +305,7 @@ mod tests {
     use crate::comms::uci::Uci;
     use crate::eval::eval::*;
     use crate::eval::score::*;
+    use crate::infra::black_box;
     use crate::utils::Formatting;
     use std::time;
     use test_log::test;
@@ -372,6 +373,25 @@ mod tests {
         engine.algo.set_callback(Uci::uci_info);
         engine.search();
         println!("{}", engine);
+    }
+
+    #[ignore]
+    #[test]
+    fn profile_search() {
+        let positions = Catalog::example_game();
+        let mut engine = Engine::new();
+        for _ in 0..1 {
+            for pos in &positions {
+                engine.set_position(pos.clone());
+                engine
+                    .algo
+                    .set_timing_method(TimeControl::SearchTime(Duration::from_millis(30)));
+                engine.algo.search();
+                let results = engine.algo.results_as_position();
+                black_box(results);
+                // println!("{}", results);
+            }
+        }
     }
 
     #[test]

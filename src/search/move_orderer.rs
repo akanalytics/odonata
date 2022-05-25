@@ -8,7 +8,6 @@ use crate::search::stack::Stack;
 use crate::trace::stat::{ArrayPlyStat, PlyStat};
 use crate::types::{Color, MoveType, Piece, Ply};
 use crate::variation::Variation;
-// use crate::{debug, logger::LogInit};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -23,6 +22,7 @@ pub struct MoveOrderer {
     pub prior_bm: bool,
     pub tt_bm: bool,
     pub mvv_lva: bool,
+    pub discovered_checks: bool,
     pub see_cutoff: Score,
     pub qsearch_see_cutoff: Score,
     pub order: Vec<MoveType>,
@@ -71,6 +71,7 @@ impl Default for MoveOrderer {
             enabled: true,
             prior_pv: true,
             prior_bm: false,
+            discovered_checks: false,
             tt_bm: true,
             mvv_lva: true,
             see_cutoff: Score::from_cp(0),
@@ -285,10 +286,17 @@ impl OrderedMoveList {
                     algo.move_orderer.see_cutoff
                 };
                 let see_cutoff = see_cutoff.as_i16() as i32;
+
                 if see < see_cutoff || see == see_cutoff && self.qsearch && self.n.depth < -1 {
-                    self.bad_captures.push(mv);
-                    self.index += 1;
-                    return self.next_move(b, algo);
+                    if !(algo.move_orderer.discovered_checks
+                        && mv
+                            .from()
+                            .is_in(b.discoverer(b.color_them())))
+                    {
+                        self.bad_captures.push(mv);
+                        self.index += 1;
+                        return self.next_move(b, algo);
+                    }
                 }
             }
             let some = Some((move_type, self.moves[self.index]));
@@ -360,7 +368,7 @@ impl OrderedMoveList {
             MoveType::GoodCaptureUpfrontSorted => {
                 all_moves
                     .iter()
-                    .filter(|m| Move::is_capture(m))
+                    .filter(|&m| Move::is_capture(m))
                     .for_each(|&m| moves.push(m));
                 moves.sort_by_cached_key(|m| {
                     Move::mvv_lva_score(m) + if m.to() == last.to() { 0 } else { 0 }
@@ -374,7 +382,7 @@ impl OrderedMoveList {
             MoveType::GoodCapture => {
                 all_moves
                     .iter()
-                    .filter(|m| Move::is_capture(m))
+                    .filter(|&m| Move::is_capture(m))
                     .for_each(|&m| moves.push(m));
             }
 
@@ -393,7 +401,17 @@ impl OrderedMoveList {
             MoveType::Promo => {
                 all_moves
                     .iter()
-                    .filter(|m| Move::is_promo(m) && !Move::is_capture(m))
+                    .filter(|&m| Move::is_promo(m) && !Move::is_capture(m))
+                    .for_each(|&m| moves.push(m));
+                // algo.order_moves(self.ply, moves, &None);
+            }
+
+            MoveType::QueenPromo => {
+                all_moves
+                    .iter()
+                    .filter(|&m| {
+                        Move::is_promo(m) && m.promo_piece() == Piece::Queen && !Move::is_capture(m)
+                    })
                     .for_each(|&m| moves.push(m));
                 // algo.order_moves(self.ply, moves, &None);
             }

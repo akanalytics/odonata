@@ -295,6 +295,7 @@ impl Component for Eval {
         use State::*;
         match s {
             NewGame => {
+                self.populate_feature_weights();
                 self.mb.new_game();
                 self.phaser.new_game();
                 self.see.new_game();
@@ -305,7 +306,6 @@ impl Component for Eval {
                 self.see.new_position();
             }
             StartSearch => {
-                self.populate_feature_weights();
             }
             EndSearch => {}
             StartDepthIteration(_) => {}
@@ -336,7 +336,7 @@ impl Eval {
     pub fn populate_feature_weights(&mut self) {
         info!("Populating feature weights");
         self.feature_weights.resize(Feature::len(), Weight::zero());
-        Feature::all().iter().for_each(|f| {
+        for f in &Feature::all() {
             self.feature_weights[f.index()] = match f {
                 Feature::Discrete(_i) => *self.discrete.get(&f.name()).expect(&format!(
                     "Missing discrete eval param {} in {:?}",
@@ -346,7 +346,7 @@ impl Eval {
                 Feature::Pst(p, sq) => self.pst.pst(*p, *sq),
                 Feature::Piece(p) => self.mb.piece_weights[*p],
             }
-        });
+        };
     }
 }
 

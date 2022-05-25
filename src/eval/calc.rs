@@ -1,7 +1,6 @@
 use crate::bitboard::castling::CastlingRights;
 use crate::bitboard::precalc::BitboardDefault;
 use crate::bitboard::square::Square;
-use crate::board::boardcalcs::BoardCalcs;
 use crate::board::Board;
 use crate::eval::endgame::EndGame;
 use crate::eval::eval::{Eval, Feature};
@@ -554,7 +553,7 @@ impl Calc {
         let pieces_near_king = (d2 & b.occupied() & us & (b.queens() | b.knights())).popcount();
         let pinned_near_king = (b.pinned(c) & d1).popcount();
         let pinned_far = (b.pinned(c)).popcount() - pinned_near_king;
-        let discovered_checks = (BoardCalcs::pinned_and_unmaskers(b, c).1 - b.pawns()).popcount();
+        let discovered_checks = (b.discoverer(c) - b.pawns()).popcount();
         s.accum(c, Attr::PawnAdjacentShield.as_feature(), adjacent_shield);
         s.accum(c, Attr::PawnNearbyShield.as_feature(), nearby_shield);
         s.accum(c, Attr::KingSafetyBonus.as_feature(), king_safety_bonus);

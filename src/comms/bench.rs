@@ -11,6 +11,8 @@ use std::time::{Duration, Instant};
 
 pub struct Bench;
 
+
+
 impl Bench {
     pub fn profile_me() {
         let _engine = Engine::new();
