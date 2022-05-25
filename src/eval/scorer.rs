@@ -50,7 +50,7 @@ pub fn profile() {
 
 
 impl<'a> ScorerBase for TotalScore<'a> {
-    #[inline(never)]
+    #[inline]
     fn accumulate(&mut self, i: Feature, w_value: i32, b_value: i32) {
 
         self.total += (w_value as i16  - b_value as i16 ) * self.weights[i.index()];
