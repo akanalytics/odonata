@@ -589,7 +589,7 @@ mod tests {
             "HCB".to_string(),
             MoveType::to_string(MoveType::Capture | MoveType::Hash | MoveType::BadCapture)
         );
-        assert_eq!(MoveType::COUNT, 16);
+        assert_eq!(MoveType::COUNT, 17);
         assert_eq!(MoveType::Start.index(), 0);
         assert_eq!(MoveType::End.index(), 15);
         Ok(())

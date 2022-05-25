@@ -176,7 +176,7 @@ mod tests {
         assert_eq!(size_of::<Tag>(), 880, "Tag");
         assert_eq!(size_of::<Variation>(), 24, "Variation");
         assert_eq!(size_of::<MoveList>(), 876, "MoveList");
-        assert_eq!(size_of::<Board>(), 152, "Board");
+        assert_eq!(size_of::<Board>(), 168, "Board");
         assert_eq!(size_of::<Position>(), 200, "Position");
         assert_eq!(size_of::<NodeStats>(), 336, "NodeStats");
         assert_eq!(size_of::<SearchStats>(), 800, "SearchStats");
