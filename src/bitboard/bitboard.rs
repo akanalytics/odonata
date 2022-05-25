@@ -243,12 +243,6 @@ impl Bitboard {
 
     // const EDGES:Self = Self::FILE_A.or(Self::FILE_H).or(Self::RANK_1).or(Self::RANK_8);
 
-    /// All of RANK 1 plus RANK 8
-    ///```
-    /// use odonata::bitboard::bitboard::Bitboard;
-    /// assert!(Bitboard::PROMO_RANKS.contains(Bitboard::A1));
-    /// assert!(Bitboard::PROMO_RANKS.contains(Bitboard::H8));
-    ///```
 
     pub const RANKS: [Self; 8] = [
         Self::RANK_1,
@@ -310,6 +304,13 @@ impl Bitboard {
     pub const WHITE_SQUARES: Bitboard = Bitboard(0x55aa55aa55aa55aa_u64);
     pub const BLACK_SQUARES: Bitboard = Bitboard(0xaa55aa55aa55aa55_u64);
     pub const RIM: Bitboard = Bitboard::FILE_A.or(Bitboard::FILE_H);
+
+    /// All of RANK 1 plus RANK 8
+    ///```
+    /// use odonata::bitboard::bitboard::Bitboard;
+    /// assert!(Bitboard::RANKS_18.contains(Bitboard::A1));
+    /// assert!(Bitboard::RANKS_18.contains(Bitboard::H8));
+    ///```
     pub const RANKS_18: Bitboard = Bitboard::RANK_1.or(Bitboard::RANK_8);
     pub const RANKS_27: Bitboard = Bitboard::RANK_2.or(Bitboard::RANK_7);
     pub const RANKS_36: Bitboard = Bitboard::RANK_3.or(Bitboard::RANK_6);
