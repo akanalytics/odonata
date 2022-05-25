@@ -142,7 +142,8 @@ impl Engine {
         let toml = Toml::string(toml);
         // let _engine = Self::default();
         // engine.configure(&ParsedConfig::global());
-        let engine: Engine = Figment::new().merge(toml).extract().unwrap();
+        let mut engine: Engine = Figment::new().merge(toml).extract().unwrap();
+        engine.algo.eval.populate_feature_weights();
         engine
     }
 

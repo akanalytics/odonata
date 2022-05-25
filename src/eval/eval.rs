@@ -295,7 +295,6 @@ impl Component for Eval {
         use State::*;
         match s {
             NewGame => {
-                self.populate_feature_weights();
                 self.mb.new_game();
                 self.phaser.new_game();
                 self.see.new_game();
@@ -538,8 +537,7 @@ mod tests {
 
     #[test]
     fn test_eval_indexing() {
-        let mut eng = Engine::new();
-        eng.algo.eval.populate_feature_weights();
+        let eng = Engine::new();
         for i in Feature::all().iter() {
             let wt = eng.algo.eval.weight(i);
             println!("{} {:<20} = {}", i.index(), i.name(), wt);
@@ -547,10 +545,10 @@ mod tests {
     }
 
     #[test]
-    fn prof_eval() {
+    fn bench_eval() {
         let mut eval = Eval::default();
         eval.mb.enabled = false;
-        let mut prof = Profiler::new("prof_eval".into());
+        let mut prof = Profiler::new("bench_eval".into());
         let node = Node::root(0);
         let mut total_score = 0;
         for pos in Catalog::win_at_chess() {
@@ -566,7 +564,7 @@ mod tests {
 
     #[ignore]
     #[test]
-    fn bench_eval() {
+    fn profile_eval() {
         let positions = Catalog::win_at_chess();
         for _ in 0..150000 {
             let mut eval = Eval::default();
