@@ -1,6 +1,6 @@
 [package]
 name = "odonata"
-version = "0.5.50"
+version = "0.5.51"
 license = "GPL-3.0+"
 homepage = "https://github.com/akanalytics/odonata"
 authors = [

@@ -241,6 +241,36 @@ impl Bitboard {
     pub const G8: Bitboard = Bitboard(1 << 62);
     pub const H8: Bitboard = Bitboard(1 << 63);
 
+    // const EDGES:Self = Self::FILE_A.or(Self::FILE_H).or(Self::RANK_1).or(Self::RANK_8);
+
+    /// All of RANK 1 plus RANK 8
+    ///```
+    /// use odonata::bitboard::bitboard::Bitboard;
+    /// assert!(Bitboard::PROMO_RANKS.contains(Bitboard::A1));
+    /// assert!(Bitboard::PROMO_RANKS.contains(Bitboard::H8));
+    ///```
+
+    pub const RANKS: [Self; 8] = [
+        Self::RANK_1,
+        Self::RANK_2,
+        Self::RANK_3,
+        Self::RANK_4,
+        Self::RANK_5,
+        Self::RANK_6,
+        Self::RANK_7,
+        Self::RANK_8,
+    ];
+    pub const FILES: [Self; 8] = [
+        Self::FILE_A,
+        Self::FILE_B,
+        Self::FILE_C,
+        Self::FILE_D,
+        Self::FILE_E,
+        Self::FILE_F,
+        Self::FILE_G,
+        Self::FILE_H,
+    ];
+
     pub const FILE_A: Bitboard = Bitboard(
         Self::A1.bits()
             | Self::A2.bits()
@@ -291,6 +321,18 @@ impl Bitboard {
             .or(Bitboard::FILE_E)
             .or(Bitboard::FILE_F),
     );
+    pub const RANKS_234567: Self = Self::RANK_2
+        .or(Self::RANK_3)
+        .or(Self::RANK_4)
+        .or(Self::RANK_5)
+        .or(Self::RANK_6)
+        .or(Self::RANK_7);
+    pub const RANKS_1_3456_8: Self = Self::RANK_1
+        .or(Self::RANK_3)
+        .or(Self::RANK_4)
+        .or(Self::RANK_5)
+        .or(Self::RANK_6)
+        .or(Self::RANK_8);
 }
 
 impl fmt::Binary for Bitboard {
@@ -413,37 +455,6 @@ impl ops::BitXorAssign for Bitboard {
 }
 
 impl Bitboard {
-    // const EDGES:Self = Self::FILE_A.or(Self::FILE_H).or(Self::RANK_1).or(Self::RANK_8);
-
-    /// All of RANK 1 plus RANK 8
-    ///```
-    /// use odonata::bitboard::bitboard::Bitboard;
-    /// assert!(Bitboard::PROMO_RANKS.contains(Bitboard::A1));
-    /// assert!(Bitboard::PROMO_RANKS.contains(Bitboard::H8));
-    ///```
-    pub const PROMO_RANKS: Self = Self::RANK_1.or(Self::RANK_8);
-
-    pub const RANKS: [Self; 8] = [
-        Self::RANK_1,
-        Self::RANK_2,
-        Self::RANK_3,
-        Self::RANK_4,
-        Self::RANK_5,
-        Self::RANK_6,
-        Self::RANK_7,
-        Self::RANK_8,
-    ];
-    pub const FILES: [Self; 8] = [
-        Self::FILE_A,
-        Self::FILE_B,
-        Self::FILE_C,
-        Self::FILE_D,
-        Self::FILE_E,
-        Self::FILE_F,
-        Self::FILE_G,
-        Self::FILE_H,
-    ];
-
     #[inline]
     pub const fn all() -> Bitboard {
         Bitboard(u64::MAX)

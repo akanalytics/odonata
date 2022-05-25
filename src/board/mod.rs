@@ -271,12 +271,39 @@ impl Board {
 
     #[inline]
     pub fn least_valuable_piece(&self, region: Bitboard) -> Bitboard {
+        // cannot use b.turn as this flips during see!
         // the king is an attacker too!
-        for &p in &Piece::ALL_BAR_NONE {
-            if self.pieces(p).intersects(region) {
-                return (self.pieces(p) & region).first();
-            }
+        let non_promo_pawns =
+            (self.pawns() & self.white() & region & (Bitboard::all().xor(Bitboard::RANK_7)))
+                | (self.pawns() & self.black() & region & (Bitboard::all().xor(Bitboard::RANK_2)));
+        if non_promo_pawns.any() {
+            return non_promo_pawns.first();
         }
+        let p = self.knights() & region;
+        if p.any() {
+            return p.first();
+        }
+        let p = self.bishops() & region;
+        if p.any() {
+            return p.first();
+        }
+        let p = self.rooks() & region;
+        if p.any() {
+            return p.first();
+        }
+        let promo_pawns = (self.pawns() & region) - non_promo_pawns;
+        if promo_pawns.any() {
+            return promo_pawns.first();
+        }
+        let p = self.queens() & region;
+        if p.any() {
+            return p.first();
+        }
+        let p = self.kings() & region;
+        if p.any() {
+            return p.first();
+        }
+
         Bitboard::EMPTY
     }
 

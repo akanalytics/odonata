@@ -110,8 +110,8 @@ impl Calc {
         // if queen has moved but other pieces havent (FIXME! not quite exactly right (QxQ))
         let queen_early_develop = |c: Color| {
             let us = b.color(c);
-            if (us & b.queens() & Bitboard::FILE_D & Bitboard::PROMO_RANKS).is_empty() {
-                (us & Bitboard::PROMO_RANKS
+            if (us & b.queens() & Bitboard::FILE_D & Bitboard::RANKS_18).is_empty() {
+                (us & Bitboard::RANKS_18
                     & ((b.bishops() & (Bitboard::FILE_C.or(Bitboard::FILE_F)))
                         | (b.knights() & (Bitboard::FILE_B.or(Bitboard::FILE_G)))))
                 .popcount()

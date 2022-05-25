@@ -168,7 +168,7 @@ impl Rules {
             }
         } else {
             #[allow(clippy::collapsible_else_if)]
-            if Bitboard::PROMO_RANKS.contains(dests) {
+            if Bitboard::RANKS_18.contains(dests) {
                 Self::add_moves_pawn_promo(dests, fr, b, moves);
             } else {
                 for to in dests.squares() {

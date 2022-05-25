@@ -111,7 +111,7 @@ impl Board {
             }
         }
         if m.is_promo() {
-            if !m.to().as_bb().intersects(Bitboard::PROMO_RANKS) {
+            if !m.to().as_bb().intersects(Bitboard::RANKS_18) {
                 // TODO! exact promo rank for white/black
                 return false;
             }
