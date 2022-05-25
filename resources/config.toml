@@ -731,7 +731,7 @@ discovered_checks = true
 see_cutoff = 0
 qsearch_see_cutoff = 1
 order = ["Start", "Hash", "Initialize", "GoodCaptureUpfrontSorted", "Killer", "Promo", "Quiet", "BadCapture", "End"]
-qorder = ["Start", "Initialize", "GoodCapture", "End"]
+qorder = ["Start", "Initialize", "GoodCapture", "Promo", "End"]
 qorder_evasions = ["Start", "Initialize", "Evasion", "End"]
 
 [repetition]
