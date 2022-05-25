@@ -234,7 +234,7 @@ mod tests {
         e2.see.promo = false;
         let mv = b.parse_san_move("Qxb8")?;
         let see = e2.see.eval_move_see(&b, mv);
-        assert_eq!(see, 2 * Piece::Rook.centipawns() - Piece::Queen().centipawns());
+        assert_eq!(see, 2 * Piece::Rook.centipawns() - Piece::Queen.centipawns());
         Ok(())
     }
 }
