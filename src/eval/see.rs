@@ -59,7 +59,8 @@ impl See {
             // check for a pawn promo during capture
             if mover == Piece::Pawn && to.intersects(Bitboard::RANKS_18) {
                 mover = Piece::Queen;
-                gain[d] += MaterialBalance::CLASSICAL_WEIGHTS[Piece::Queen].s() as i32; // TODO not quite right coz of pawn loss
+                gain[d] += MaterialBalance::CLASSICAL_WEIGHTS[Piece::Queen].s() as i32;
+                // TODO not quite right coz of pawn loss
             }
             attackers_bw -= from;
             occ -= from;
@@ -173,7 +174,7 @@ mod tests {
         //
         // without promos, we just appear to be a rook up
         // but we are a rook+queen less a pawn up
-                let b = Position::parse_epd(
+        let b = Position::parse_epd(
             r"
             .r.....k
             P.......
@@ -216,7 +217,7 @@ mod tests {
         assert_eq!(see, Piece::Rook.centipawns() + Piece::Knight.centipawns());
 
         //
-        // Qxr (+r), rxQ (-Q), nxr (+r) (+2r-q)  
+        // Qxr (+r), rxQ (-Q), nxr (+r) (+2r-q)
         let b = Position::parse_epd(
             r"
             .r...r.k
@@ -234,7 +235,10 @@ mod tests {
         e2.see.promo = false;
         let mv = b.parse_san_move("Qxb8")?;
         let see = e2.see.eval_move_see(&b, mv);
-        assert_eq!(see, 2 * Piece::Rook.centipawns() - Piece::Queen.centipawns());
+        assert_eq!(
+            see,
+            2 * Piece::Rook.centipawns() - Piece::Queen.centipawns()
+        );
         Ok(())
     }
 }
