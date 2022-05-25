@@ -591,7 +591,7 @@ mod tests {
         );
         assert_eq!(MoveType::COUNT, 17);
         assert_eq!(MoveType::Start.index(), 0);
-        assert_eq!(MoveType::End.index(), 15);
+        assert_eq!(MoveType::End.index(), 16);
         Ok(())
     }
 
