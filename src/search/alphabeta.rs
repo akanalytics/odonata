@@ -4,7 +4,6 @@ use crate::bound::NodeType;
 use crate::cache::tt2::TtNode;
 use crate::eval::score::Score;
 use crate::mv::Move;
-use crate::prelude::*;
 use crate::pvtable::PvTable;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
@@ -14,14 +13,7 @@ use super::node::Event;
 
 pub struct AlphaBeta;
 
-// terminology
-// ply is moves made. so ply 3 means w-> b-> w-> after which we score position
-//
 impl Algo {
-    // #[inline]
-    // pub fn is_leaf(&self, _ply: Ply, depth: Ply) -> bool {
-    //     depth <= 0
-    // }
 
     pub fn run_alphabeta(&mut self, board: &mut Board, node: &mut Node) -> (Score, Event) {
         let depth = node.depth;
@@ -30,7 +22,7 @@ impl Algo {
         self.pv_table = PvTable::new(MAX_PLY as usize);
         debug_assert!(self.current_variation.len() == 0);
 
-        let (score, category) = match self.alphabeta_recursive(
+        let (score, category) = match self.alphabeta(
             board,
             node.ply,
             self.max_depth,
@@ -75,7 +67,7 @@ impl Algo {
     // score >= beta fail high
     // score <= alpha fail low
     // for [alpha-1, a] a score of either bound indicates fail low or high
-    pub fn alphabeta_recursive(
+    pub fn alphabeta(
         &mut self,
         b: &mut Board,
         ply: Ply,
@@ -84,8 +76,6 @@ impl Algo {
         beta: Score,
         last_move: Move,
     ) -> Result<(Score, Event), Event> {
-        profile_method!(alphabeta_recursive);
-        // hprof::enter("alphabeta");
 
         self.clear_move(ply);
         self.report_progress();
@@ -119,13 +109,8 @@ impl Algo {
             self.counts.inc(&n, Event::NodeTypeZw);
             self.stats.inc_zw_nodes(ply);
         }
-        let _g;
-        // let _qsearch : firestorm::internal::SpanGuard;
         if n.is_qs() {
             self.counts.inc(&n, Event::NodeTypeQuiesce);
-            profile_section!(qsearch);
-            // hprof::enter("qsearch");
-            _g = qsearch;
         } else {
             self.counts.inc(&n, Event::NodeInterior);
         }
@@ -220,7 +205,7 @@ impl Algo {
                     continue;
                 }
             }
-            let lmr = if !self.minmax {
+            let lmr =if  !n.is_pv() && !self.minmax {
                 self.lmr(
                     b,
                     mv,
@@ -237,7 +222,7 @@ impl Algo {
                 0
             };
 
-            if self.can_lmp(is_quiet, quiets, &n) {
+            if !n.is_pv() && self.can_lmp(is_quiet, quiets, &n) {
                 continue;
             }
 
@@ -246,45 +231,24 @@ impl Algo {
             // self.explainer.start(&n, &self.current_variation);
             child_board.set_repetition_count(self.repetition.count(&child_board));
 
-            let pvs = self.pvs_permitted(nt, b, &n, count);
-            let (mut child_score, mut cat) = if pvs {
-                debug_assert!(n.alpha.is_numeric());
-                self.stats.inc_pvs_move(ply);
-                // using [alpha, alpha + 1]
-                self.alphabeta_recursive(
-                    &mut child_board,
-                    ply + 1,
-                    depth + ext - lmr - 1,
-                    -n.alpha - Score::from_cp(1),
-                    -n.alpha,
-                    mv,
-                )?
-            } else {
-                self.alphabeta_recursive(
-                    &mut child_board,
-                    ply + 1,
-                    depth + ext - lmr - 1,
-                    -n.beta,
-                    -n.alpha,
-                    mv,
-                )?
-            };
-            child_score = -child_score;
 
-            // window was [alpha, alpha + 1]
-            // child_score >= beta => fail high as we are fail-soft
-            // child_score <= alpha => fail low
-            // alpha < child_score < score < beta and search upper bound was beta/!pvs then skip as too low
-            // alpha < child_score < score < beta and search upper bound was alpha+1/pvs => failed high so research
-            // if (lmr > 0 && self.lmr.re_search || pvs) && child_score > score && child_score < n.beta {
-            if (lmr > 0 && self.lmr.re_search || pvs)
-                && child_score < n.beta
-                && child_score > n.alpha
-                && (child_score >= score || pvs)
-            {
-                // research with full window without reduction in depth
-                self.stats.inc_pvs_research(ply);
-                let res = self.alphabeta_recursive(
+            // if first move:
+            //    a,b with ext.
+            // else
+            //    node logic around reductions. Node No ext. Not in check. No mate in eval/a/b
+            //    node lofic around eval improving. is Pv (not zw)
+            //    move: hash, killer, counter
+            //
+
+            // let pvs = self.pvs_permitted(nt, b, &n, count);
+
+            // let pvs = 
+            let mut s = n.alpha + Score::from_cp(1);
+            debug_assert!(s > n.alpha);
+            let mut ev; //  = Event::Unknown;
+
+            if count  == 1 || n.is_qs() {
+                (s, ev) = self.alphabeta(
                     &mut child_board,
                     ply + 1,
                     depth + ext - 1,
@@ -292,37 +256,146 @@ impl Algo {
                     -n.alpha,
                     mv,
                 )?;
-                if lmr > 0 && self.lmr.re_search {
-                    self.counts.inc(&n, Event::LmrReSearch);
+                s = -s;
+            } else {
+                (s, ev) = self.alphabeta(
+                    &mut child_board,
+                    ply + 1,
+                    depth + ext - lmr - 1,
+                    -n.alpha - Score::from_cp(1),
+                    -n.alpha,
+                    mv,
+                )?;
+                s = -s;
+                // full window
+                if s > n.alpha && !(lmr == 0 && n.is_zw()) {
+                    (s, ev) = self.alphabeta(
+                        &mut child_board,
+                        ply + 1,
+                        depth + ext - 1,
+                        -n.beta,
+                        -n.alpha,
+                        mv,
+                    )?;
+                    s = -s;
                 }
-                if pvs {
-                    self.counts.inc(&n, Event::PvsReSearch);
-                }
-                child_score = -res.0;
-                cat = res.1;
             }
+                //     // using [alpha, alpha + 1]
+            //     debug_assert!(n.alpha.is_numeric());
+            //     self.stats.inc_pvs_move(ply);
+            //     (s, ev) = self.alphabeta(
+            //         &mut child_board,
+            //         ply + 1,
+            //         depth + ext - lmr - 1,
+            //         -n.alpha - Score::from_cp(1),
+            //         -n.alpha,
+            //         mv,
+            //     )?;
+            //     s = -s;
+            // } 
+
+            let cat = ev;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            // (s,ev) = if pvs {
+            //     debug_assert!(n.alpha.is_numeric());
+            //     self.stats.inc_pvs_move(ply);
+            //     // using [alpha, alpha + 1]
+            //     self.alphabeta(
+            //         &mut child_board,
+            //         ply + 1,
+            //         depth + ext - lmr - 1,
+            //         -n.alpha - Score::from_cp(1),
+            //         -n.alpha,
+            //         mv,
+            //     )?
+            // } else {
+            //     self.alphabeta(
+            //         &mut child_board,
+            //         ply + 1,
+            //         depth + ext - lmr - 1,
+            //         -n.beta,
+            //         -n.alpha,
+            //         mv,
+            //     )?
+            // };
+            // s = -s;
+
+            // // window was [alpha, alpha + 1]
+            // // child_score >= beta => fail high as we are fail-soft
+            // // child_score <= alpha => fail low
+            // // alpha < child_score < score < beta and search upper bound was beta/!pvs then skip as too low
+            // // alpha < child_score < score < beta and search upper bound was alpha+1/pvs => failed high so research
+            // // if (lmr > 0 && self.lmr.re_search || pvs) && child_score > score && child_score < n.beta {
+            // if (lmr > 0 && self.lmr.re_search || pvs)
+            //     && s < n.beta
+            //     && s > n.alpha
+            //     && (s >= score || pvs)
+            // {
+            //     // research with full window without reduction in depth
+            //     self.stats.inc_pvs_research(ply);
+            //     let res = self.alphabeta(
+            //         &mut child_board,
+            //         ply + 1,
+            //         depth + ext - 1,
+            //         -n.beta,
+            //         -n.alpha,
+            //         mv,
+            //     )?;
+            //     ev = res.1;
+            //     s = -res.0
+            // }
+            if lmr > 0 && self.lmr.re_search {
+                self.counts.inc(&n, Event::LmrReSearch);
+            }
+            // if pvs {
+            //     self.counts.inc(&n, Event::PvsReSearch);
+            // }
+            //     child_score = -res.0;
+            //     cat = res.1;
+            // }
+            // cat = ev;
             b.undo_move(&mv);
             self.current_variation.pop();
             self.repetition.pop();
-            self.explain_move(&b, mv, child_score, cat, &n, count, ext, lmr);
+            self.explain_move(&b, mv, s, cat, &n, count, ext, lmr);
 
             // println!("move {} score {} alpha {} beta {}", mv, score, alpha, beta);
-            debug_assert!(
-                !(child_score == -Score::INFINITY && count == 1),
-                "board: {}\nmove: {}\ncat: {}\nlmr: {}\npvs: {}",
-                b,
-                mv,
-                cat,
-                lmr,
-                pvs
-            );
+            // debug_assert!(
+            //     !(s == -Score::INFINITY && count == 1),
+            //     "board: {}\nmove: {}\ncat: {}\nlmr: {}\npvs: {}",
+            //     b,
+            //     mv,
+            //     cat,
+            //     lmr,
+            //     pvs
+            // );
 
-            if child_score > score {
-                score = child_score;
+            if s > score {
+                score = s;
                 category = cat;
             }
-            if child_score > n.alpha {
-                n.alpha = child_score;
+            if s > n.alpha {
+                n.alpha = s;
                 bm = mv;
                 nt = NodeType::ExactPv;
                 debug_assert!(b.is_pseudo_legal_move(&bm), "bm {} on board {}", bm, b);

@@ -52,7 +52,7 @@ pub struct Lmr {
 
 impl Default for Lmr {
     fn default() -> Self {
-        Lmr {
+        let me = Lmr {
             enabled: true,
             first_move: false,
             only_nt_all: false,
@@ -76,7 +76,9 @@ impl Default for Lmr {
             pv_reduce: 0,
             bad_captures_reduce: 0,
             iir: false,
-        }
+        };
+
+        me
     }
 }
 
@@ -87,6 +89,11 @@ impl Component for Lmr {
 
     fn new_position(&mut self) {}
 }
+
+
+
+
+
 
 // from CPW
 //
@@ -132,6 +139,13 @@ impl Algo {
             return 0;
         }
 
+        if !self.lmr.first_move && mv_num <= 1 {
+            return 0;
+        }
+
+        // let mut reduce = self.lmr.lmr_lookup[n.depth as usize][mv_num as usize];
+
+
         let mut reduce = match n.depth {
             d if d >= self.lmr.reduce_4_at_depth => 4,
             d if d >= self.lmr.reduce_3_at_depth => 3,
@@ -170,9 +184,7 @@ impl Algo {
             _ => 0,
         };
 
-        if !self.lmr.first_move && mv_num <= 1 {
-            return 0;
-        }
+ 
 
         if reduce <= 0 {
             return 0;

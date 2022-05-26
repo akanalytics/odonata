@@ -17,6 +17,16 @@ pub struct Score {
 }
 
 
+pub trait ToScore {
+    fn cp(self) -> Score;
+}
+
+impl ToScore for i32 {
+    fn cp(self) -> Score {
+        Score::from_cp(self)
+    }
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
 pub struct WhiteScore(pub Score);
 

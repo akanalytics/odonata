@@ -161,7 +161,7 @@ impl Algo {
         let reduced_depth = n.depth - r - 1;
 
         let child_score = -self
-            .alphabeta_recursive(
+            .alphabeta(
                 &mut child_board,
                 n.ply + 1,
                 reduced_depth,
