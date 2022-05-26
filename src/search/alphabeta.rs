@@ -208,7 +208,7 @@ impl Algo {
 
             if score > -Score::INFINITY {
                 if let Some(est_score) =
-                    self.can_prune_move(mv, count, move_type, b, &child_board, eval, &n, ext)
+                    self.can_futility_prune_move(mv, count, move_type, b, &child_board, eval, &n, ext)
                 {
                     self.stats.inc_fp_move(ply);
                     if score == -Score::INFINITY {

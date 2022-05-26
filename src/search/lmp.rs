@@ -17,10 +17,11 @@ pub struct Lmp {
     alpha_numeric: bool,
     bad_captures: bool,
     pawns: bool,
-    promos: bool,
+    max_pawn_rank: u8,
     killers: bool,
     in_check: bool,
     gives_check: bool,
+    discoverer: bool, 
     extensions: bool,
     a: f32,
     b: f32,
@@ -38,9 +39,10 @@ impl Default for Lmp {
             alpha_numeric: false,
             bad_captures: false,
             pawns: true,
-            promos: false,
+            max_pawn_rank: 6, // forbid promo pawns on 7th
             killers: false,
             in_check: false,
+            discoverer: false,
             gives_check: false,
             extensions: false,
             a: 2.5,
@@ -97,14 +99,21 @@ impl Algo {
             return false;
         }
 
-        if !self.lmp.promos && stage == MoveType::Promo
-            || !self.lmp.killers && stage == MoveType::Killer
+        if !self.lmp.killers && stage == MoveType::Killer
             || !self.lmp.bad_captures && stage == MoveType::BadCapture
         {
             return false;
         }
+        if mv.mover_piece() == Piece::Pawn
+            && mv.from().rank_number_as_white(before.color_us()) > self.lmp.max_pawn_rank as usize
+        {
+            return false;
+        }
+
         if !self.lmp.extensions && ext > 0
             || !self.lmp.in_check && before.is_in_check(before.color_us())
+            || !self.lmp.discoverer && mv.from().is_in(before.discoverer(before.color_them()))
+            // gives check a more precise and costly version of discoverers
             || !self.lmp.gives_check && after.is_in_check(after.color_us())
         {
             return false;

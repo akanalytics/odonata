@@ -18,10 +18,11 @@ pub struct Lmr {
     only_nt_all: bool,
     bad_captures: bool,
     pawns: bool,
-    promos: bool,
+    max_pawn_rank: u8,
     killers: bool,
     in_check: bool,
     gives_check: bool,
+    discoverer: bool,
     pub re_search: bool,
     alpha_numeric: bool,
     beta_numeric: bool,
@@ -60,10 +61,11 @@ impl Default for Lmr {
             re_search: false,
             bad_captures: true,
             pawns: true,
-            promos: false,
+            max_pawn_rank: 6,  // dont allow promos
             killers: false,
             in_check: true,
-            gives_check: true,
+            gives_check: false,
+            discoverer: false,
             extensions: false,
             quiets1: 20,
             quiets2: 30,
@@ -153,12 +155,12 @@ impl Algo {
         // }
 
         reduce += match stage {
-            _ if mv.mover_piece() == Piece::Pawn
-                && (before.line_pieces() | before.knights()).is_empty()
-                && mv.to().rank_index_as_white(before.color_us()) >= 6 =>
-            {
-                0
-            }
+            // _ if mv.mover_piece() == Piece::Pawn
+            //     && (before.line_pieces() | before.knights()).is_empty()
+            //     && mv.to().rank_index_as_white(before.color_us()) >= 6 =>
+            // {
+            //     0
+            // }
             MoveType::BadCapture => self.lmr.bad_captures_reduce,
             _ => 0,
         };
@@ -190,9 +192,13 @@ impl Algo {
         if !self.lmr.pawns && mv.mover_piece() == Piece::Pawn {
             return 0;
         }
-        if !self.lmr.promos && stage == MoveType::Promo
-            || !self.lmr.killers && stage == MoveType::Killer
+        if !self.lmr.killers && stage == MoveType::Killer
             || !self.lmr.bad_captures && stage == MoveType::BadCapture
+        {
+            return 0;
+        }
+        if mv.mover_piece() == Piece::Pawn
+            && mv.from().rank_number_as_white(before.color_us()) > self.lmr.max_pawn_rank as usize
         {
             return 0;
         }
@@ -201,7 +207,10 @@ impl Algo {
         }
         if !self.lmr.extensions && ext > 0
             || !self.lmr.in_check && before.is_in_check(before.color_us())
-            || !self.lmr.gives_check && after.is_in_check(after.color_us())
+            || !self.lmr.discoverer && mv.from().is_in(before.discoverer(before.color_them()))
+            || 
+            // gives check a more precise and costly version of discoverers
+            !self.lmr.gives_check && after.is_in_check(after.color_us()) 
         {
             return 0;
         }

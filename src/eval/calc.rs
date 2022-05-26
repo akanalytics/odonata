@@ -257,7 +257,7 @@ impl Calc {
         for p in (b.pawns() & us).squares() {
             // self.doubled_pawns += is_doubled as i32;
             // we still count doubled pawns as passed pawns (since 0.3.37)
-            let rank_index = p.rank_index_as_white(c) as i32;
+            let rank_num = p.rank_number_as_white(c) as i32;
             let pawn_stop = bbd.pawn_stop(c, p);
             // use pawns not pawns&them so we only count front of doubled pawns (+8 elo in sp)
             let is_passed =
@@ -326,11 +326,11 @@ impl Calc {
             if is_passed {
                 passed_pawns += 1;
                 scorer.set_bits(Attr::PawnPassed.into(), p.as_bb());
-                match rank_index {
-                    6 => passed_pawns_on_r7 += 1,
-                    5 => passed_pawns_on_r6 += 1,
-                    4 => passed_pawns_on_r5 += 1,
-                    3 => passed_pawns_on_r4 += 1,
+                match rank_num {
+                    7 => passed_pawns_on_r7 += 1,
+                    6 => passed_pawns_on_r6 += 1,
+                    5 => passed_pawns_on_r5 += 1,
+                    4 => passed_pawns_on_r4 += 1,
                     _ => {}
                 }
             }
@@ -372,8 +372,8 @@ impl Calc {
             // }
 
             if p.is_in(pawn_atts) {
-                match rank_index {
-                    5 | 6 => {
+                match rank_num {
+                    6 | 7 => {
                         pawn_connected_r67 += 1;
                         scorer.set_bits(Attr::PawnConnectedR67.into(), p.as_bb());
                     }
@@ -384,8 +384,8 @@ impl Calc {
                 }
             }
             if p.is_in(pawn_duos) {
-                match rank_index {
-                    5 | 6 => pawn_duo_r67 += 1,
+                match rank_num {
+                    6 | 7 => pawn_duo_r67 += 1,
                     _ => pawn_duo_r2345 += 1,
                 }
             } else {
@@ -684,7 +684,7 @@ impl Calc {
                         }
                     }
                     if bb.pawn_attack_span(c, sq).disjoint(their_p)
-                        && sq.rank_index_as_white(c) >= 4
+                        && sq.is_in(Bitboard::home_half(opponent))
                         && sq.is_in(
                             Bitboard::FILE_C
                                 | Bitboard::FILE_D
@@ -705,7 +705,7 @@ impl Calc {
                 }
                 Piece::Bishop => {
                     if bb.pawn_attack_span(c, sq).disjoint(their_p)
-                        && sq.rank_index_as_white(c) >= 4
+                        && sq.is_in(Bitboard::home_half(opponent))
                         && sq.is_in(our_pa)
                     {
                         bishop_outposts += 1;

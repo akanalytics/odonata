@@ -20,11 +20,11 @@ pub struct Futility {
     pub alpha_enabled: bool,
     pub beta_enabled: bool,
     prune_remaining: bool,
-    avoid_in_check: bool,
-    avoid_giving_check: bool,
+    in_check: bool,
+    giving_check: bool,
+    discoverer: bool, 
     first_move: bool,
-    avoid_promos: bool,
-    promo_margin: bool,
+    max_pawn_rank: u8,
     max_depth: Ply,
     max_depth_captures: Ply,
     margin_qs: i32,
@@ -48,11 +48,11 @@ impl Default for Futility {
             alpha_enabled: true,
             beta_enabled: false,
             prune_remaining: false,
-            avoid_in_check: false,
-            avoid_giving_check: true,
+            in_check: true,
+            giving_check: false,
+            discoverer: false,
             first_move: false,
-            avoid_promos: false,
-            promo_margin: false,
+            max_pawn_rank: 7,
             max_depth: 2, // not sure > 2 really makes sense
             max_depth_captures: 2,
             margin_qs: 0,
@@ -122,7 +122,7 @@ impl Algo {
     }
 
     #[inline]
-    pub fn can_prune_at_node(&self, b: &Board, node: &Node) -> bool {
+    pub fn can_futility_prune_at_node(&self, b: &Board, node: &Node) -> bool {
         if (!self.futility.alpha_enabled && !self.futility.beta_enabled)
             ||
             node.ply == 0   // dont prune at root node
@@ -137,7 +137,7 @@ impl Algo {
             ||
             node.is_pv()  // VER:0.4.14
             ||
-            (self.futility.avoid_in_check && b.is_in_check(b.color_us()))
+            (!self.futility.in_check && b.is_in_check(b.color_us()))
         {
             return false;
         }
@@ -153,7 +153,7 @@ impl Algo {
     // changes the score dramatically - so futility pruning at depth = 1/2 is not without downside
     //
     #[inline]
-    pub fn can_prune_move(
+    pub fn can_futility_prune_move(
         &mut self,
         mv: Move,
         mv_num: u32,
@@ -182,14 +182,18 @@ impl Algo {
             return None;
         }
 
-        if self.futility.avoid_giving_check && after.is_in_check(after.color_us()) {
+        if !self.futility.discoverer && mv.from().is_in(before.discoverer(before.color_them())) {
+            return None;
+        }
+
+        // gives check a more precise and costly version of discoverers
+        if !self.futility.giving_check && after.is_in_check(after.color_us()) {
             return None;
         }
 
         // position wise, passed pawn promos make a huge impact so exclude them
-        if self.futility.avoid_promos
-            && mv.mover_piece() == Piece::Pawn
-            && mv.to().rank_index_as_white(before.color_us()) >= 6
+        if mv.mover_piece() == Piece::Pawn
+            && mv.from().rank_number_as_white(before.color_us()) > self.futility.max_pawn_rank as usize
         {
             return None;
         }
@@ -198,7 +202,7 @@ impl Algo {
             return None;
         }
 
-        if !self.can_prune_at_node(before, n) {
+        if !self.can_futility_prune_at_node(before, n) {
             return None;
         }
 

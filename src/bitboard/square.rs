@@ -255,11 +255,11 @@ impl Square {
         (self.0 / 8) as usize
     }
 
-    // if white: just the rank_index
-    // if black: 7 - rank_index
+    // if white: just the rank NUMBER (1..8) not index
+    // if black: 7 - rank_index (ie 8..1)
     #[inline]
-    pub const fn rank_index_as_white(self, c: Color) -> usize {
-        (((c as i32) * 7) ^ (self.0 >> 3) as i32) as usize
+    pub const fn rank_number_as_white(self, c: Color) -> usize {
+        (((c as u16) * 7) ^ (self.0 >> 3)) as usize + 1
     }
 
     #[inline]
@@ -320,12 +320,12 @@ mod tests {
         assert_eq!(b1.first_square().file_index(), 1);
         assert_eq!(c7.first_square().index(), 6 * 8 + 2);
         assert_eq!(c7.first_square().rank_index(), 6);
-        assert_eq!(c7.first_square().rank_index_as_white(Color::White), 6);
-        assert_eq!(c7.first_square().rank_index_as_white(Color::Black), 1);
+        assert_eq!(c7.first_square().rank_number_as_white(Color::White), 7);
+        assert_eq!(c7.first_square().rank_number_as_white(Color::Black), 2);
         for y in 0..8 {
             assert_eq!(
-                Square::from_xy(0, y).rank_index_as_white(Color::Black),
-                7 - Square::from_xy(0, y).rank_index_as_white(Color::White)
+                Square::from_xy(0, y).rank_number_as_white(Color::Black),
+                9 - Square::from_xy(0, y).rank_number_as_white(Color::White)
             );
         }
         assert_eq!(c7.first_square().file_index(), 2);
