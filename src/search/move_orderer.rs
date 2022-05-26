@@ -818,7 +818,6 @@ mod tests {
     fn test_ordered_movelist() {
         let orderer = MoveOrderer::new();
         let mut algo = Algo::new();
-        const PLY: Ply = 3;
         const TT_MOVE: Move = Move::NULL_MOVE;
         let n = Node::root(3);
 

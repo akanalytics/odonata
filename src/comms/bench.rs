@@ -163,10 +163,11 @@ mod tests {
 
     #[test]
     fn bench_bk() {
+        let mut total_nodes= 0;
         let mut prof = Profiler::new("bench_bk-(per-k-node)".into());
-        prof.start();
-        let total_nodes = Bench::search(TimeControl::NodeCount(100000), None);
-        prof.stop();
+        prof.benchmark(
+            || total_nodes += Bench::search(TimeControl::NodeCount(100000), None)
+        );
         prof.set_iters((total_nodes / 1000) as u64);
     }
 }

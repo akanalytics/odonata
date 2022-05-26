@@ -290,8 +290,29 @@ where
     }
 }
 
+// ----------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #[cfg(test)]
 mod tests {
+    use crate::infra::{profiler::Profiler, black_box};
+
     use super::*;
     use test_log::test;
     use toml;
@@ -301,13 +322,51 @@ mod tests {
         info!("{}", toml::to_string(&Weight::default()).unwrap());
         // info!("{}", toml::to_string_pretty(&Weight::default()).unwrap());
     }
+
+    #[test]
+    fn bench_weight() {
+        let w = black_box(Weight::new(5.5, 6.6));
+        Profiler::new("weight::new".into()).benchmark(|| Weight::new(32.5, 56.9));
+        Profiler::new("weight::add".into()).benchmark(|| w + Weight::new(black_box(32.5), 56.9));
+        Profiler::new("weight::mul".into()).benchmark(|| 3_i32 * Weight::new(black_box(32.5), 56.9));
+        Profiler::new("weight::s/e".into()).benchmark(|| w.s() + w.e());
+    }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // This impl 42% slower
 
 // essntially models the score bonus for s=start or e=end of game
 // #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+
 // pub struct WeightOf(i64);
+
 
 // // #[inline]
 // // pub const fn w(s: i32, e: i32) -> WeightOf {
