@@ -2,6 +2,7 @@ pub mod algo;
 pub mod alphabeta;
 pub mod aspiration;
 pub mod engine;
+pub mod counter_move;
 pub mod extensions;
 pub mod futility;
 pub mod history_heuristic;

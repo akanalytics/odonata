@@ -1,10 +1,7 @@
-use crate::eval::score::Score;
 use crate::infra::component::Component;
-use crate::mv::Move;
 use crate::search::node::Node;
-use crate::types::{MoveType, Ply};
+use crate::types::Ply;
 use crate::{board::Board, Algo};
-use crate::{Bitboard, Piece};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -15,24 +12,7 @@ use super::node::Event;
 pub struct Extensions {
     pub enabled: bool,
     max_extend: Ply,
-    gives_check_enabled: bool,
     in_check_enabled: bool,
-    check_max_depth: Ply,
-    check_max_phase: i32,
-    check_see: bool,
-    check_see_threshold: Score,
-    check_only_captures: bool,
-    promo_enabled: bool,
-    promo_max_depth: Ply,
-    near_promo_enabled: bool,
-    near_promo_max_depth: Ply,
-
-    recapture_enabled: bool,
-    recapture_same_square: bool,
-    recapture_only_pv_node: bool,
-    recapture_max_depth: Ply,
-
-    pv_enabled: bool,
 }
 
 impl Component for Extensions {
@@ -48,88 +28,43 @@ impl Default for Extensions {
         Extensions {
             enabled: true,
             max_extend: 1,
-            gives_check_enabled: true,
-            in_check_enabled: false,
-            check_max_depth: 2,
-            check_max_phase: 100,
-            check_see: false,
-            check_see_threshold: Score::zero(),
-            check_only_captures: false,
-
-            promo_enabled: false,
-            promo_max_depth: 1,
-            near_promo_enabled: false,
-            near_promo_max_depth: 1,
-
-            recapture_enabled: false,
-            recapture_same_square: true,
-            recapture_only_pv_node: false,
-            recapture_max_depth: 3,
-
-            pv_enabled: false,
+            in_check_enabled: true,
         }
     }
 }
 
 impl Algo {
     #[inline]
-    pub fn extend(
-        &mut self,
-        before: &Board,
-        after: &Board,
-        mv: Move,
-        mt: MoveType,
-        mv_num: u32,
-        n: &Node,
-        last: Move,
-    ) -> Ply {
+    pub fn extensions(&mut self, b: &Board, n: &Node) -> Ply {
         let mut ext = 0;
         if !self.ext.enabled || n.is_qs() {
             return 0;
         }
-        if self.ext.pv_enabled && n.depth == 1 && mv_num == 1 {
-            ext += 1;
-        }
-        if self.ext.gives_check_enabled && after.is_in_check(after.color_us())
-            || self.ext.in_check_enabled && before.is_in_check(before.color_us())
-        {
-            #[allow(clippy::collapsible_else_if)]
-            if n.depth <= self.ext.check_max_depth
-                && after.phase(&self.eval.phaser).0 <= self.ext.check_max_phase
-                && (!self.ext.check_only_captures || mv.is_capture())
-                && (!self.ext.check_see
-                    || self.eval.see.eval_move_see(before, mv)
-                        >= self.ext.check_see_threshold.as_i16() as i32)
-            {
-                // algo.search_stats().inc_ext_check(n.ply);
-                ext += 1;
-            }
-        }
 
-        if self.ext.promo_enabled && mv.is_promo() && n.depth <= self.ext.promo_max_depth {
+        if self.ext.in_check_enabled && b.is_in_check(b.color_us()) {
             ext += 1;
         }
 
-        if self.ext.near_promo_enabled
-            && n.depth <= self.ext.near_promo_max_depth
-            && mv.mover_piece() == Piece::Pawn
-            && mv.to().is_in(Bitboard::RANK_7 | Bitboard::RANK_2)
-        {
-            ext += 1;
-        }
+        // if self.ext.near_promo_enabled
+        //     && n.depth <= self.ext.near_promo_max_depth
+        //     && mv.mover_piece() == Piece::Pawn
+        //     && mv.to().is_in(Bitboard::RANK_7 | Bitboard::RANK_2)
+        // {
+        //     ext += 1;
+        // }
 
-        if self.ext.recapture_enabled
-            && mv.is_capture()
-            && last.is_capture()
-            && (!self.ext.recapture_same_square || mv.to() == last.to())
-            && (!self.ext.recapture_only_pv_node || n.is_pv())
-            && n.depth <= self.ext.recapture_max_depth
-            && (MoveType::GoodCapture | MoveType::GoodCaptureUpfrontSorted).contains(mt)
-            && mv.capture_piece().centipawns() < last.capture_piece().centipawns()
-        // proxy for last = GoodCapture
-        {
-            ext += 1;
-        }
+        // if self.ext.recapture_enabled
+        //     && mv.is_capture()
+        //     && last.is_capture()
+        //     && (!self.ext.recapture_same_square || mv.to() == last.to())
+        //     && (!self.ext.recapture_only_pv_node || n.is_pv())
+        //     && n.depth <= self.ext.recapture_max_depth
+        //     && (MoveType::GoodCapture | MoveType::GoodCaptureUpfrontSorted).contains(mt)
+        //     && mv.capture_piece().centipawns() < last.capture_piece().centipawns()
+        // // proxy for last = GoodCapture
+        // {
+        //     ext += 1;
+        // }
 
         // (before.them() & before.pawns() & before.color_them().chooser_wb(Bitboard::RANK_6, Bitboard::RANK_3)).any()
         // && n.ply % 2 == 0

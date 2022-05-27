@@ -5,30 +5,6 @@ impl Version {
     pub const AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
     pub const NAME: &'static str = env!("CARGO_PKG_NAME");
     pub const HOMEPAGE: &'static str = env!("CARGO_PKG_HOMEPAGE");
-    pub const IMAGE: &'static str = r##"
-                          .-.
-                         ()I()
-                    "==.__:-:__.=="
-                   "==.__/~|~\__.=="
-                   "==._(  Y  )_.=="
-        .-'~~""~=--...,__\/|\/__,...--=~""~~'-.
-       (               ..=\=/=..               )
-        `'-.        ,.-"`;/=\ ;"-.,_        .-'`
-            `~"-=-~` .-~` |=| `~-. `~-=-"~`
-                 .-~`    /|=|\    `~-.
-              .~`       / |=| \       `~.
-          .-~`        .'  |=|  `.        `~-.
-        (`     _,.-="`    |=|    `"=-.,_     `)
-         `~"~"`           |=|           `"~"~`
-                          |=|
-                          |=|
-                          |=|
-                          /=\
-                          \=/
-                           ^
-        
-"##;
-
     pub const SMALL_IMAGE: &'static str = r##"
  ()
 %=====
@@ -83,7 +59,6 @@ mod tests {
         assert_eq!(Version::NAME, "odonata");
         assert_eq!(Version::HOMEPAGE.is_empty(), false);
         println!("authors      : {}", Version::AUTHORS);
-        println!("image        : {}", Version::IMAGE);
         println!("version      : {}", Version::VERSION);
         println!("name         : {}", Version::NAME);
         println!("homepage     : {}", Version::HOMEPAGE);

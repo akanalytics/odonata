@@ -155,6 +155,7 @@ impl Counts {
             MoveType::GoodCapture => Event::MoveGoodCapture,
             MoveType::GoodCaptureUpfrontSorted => Event::MoveGoodCaptureUpfrontSorted,
             MoveType::Killer => Event::MoveKiller,
+            MoveType::CounterMove => Event::CounterMove,
             MoveType::Null => Event::MoveNull,
             MoveType::Promo => Event::MovePromo,
             MoveType::QueenPromo => Event::MovePromo,

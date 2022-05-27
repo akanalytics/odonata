@@ -130,8 +130,8 @@ impl Drop for Profiler {
 mod tests {
 
     use super::*;
-    use crate::infra::black_box;
     use crate::test_log::test;
+    use crate::{infra::black_box, trace::stat::Stat};
 
     #[derive(Default)]
     struct Struct {
@@ -156,16 +156,19 @@ mod tests {
 
         for _iter in 0..100 {
             let mut s = Struct::default();
-            prof1.start();
-            s.a0 = black_box(0);
-            s.a1 = black_box(1);
-            s.a2 = black_box(2);
-            s.a3 = black_box(3);
-            s.a4 = black_box(4);
-            s.a5 = black_box(5);
-            s.a6 = black_box(6);
-            s.a7 = black_box(7);
-            prof1.stop();
+            prof1.benchmark(
+                #[inline]
+                || {
+                    s.a0 = black_box(0);
+                    s.a1 = black_box(1);
+                    s.a2 = black_box(2);
+                    s.a3 = black_box(3);
+                    s.a4 = black_box(4);
+                    s.a5 = black_box(5);
+                    s.a6 = black_box(6);
+                    s.a7 = black_box(7);
+                },
+            )
         }
     }
 
@@ -174,16 +177,59 @@ mod tests {
         let mut prof2 = Profiler::new("array_access".into());
         for _iter in 0..100 {
             let mut a = Array::default();
-            prof2.start();
-            a.a[0] = black_box(0);
-            a.a[1] = black_box(1);
-            a.a[2] = black_box(2);
-            a.a[3] = black_box(3);
-            a.a[4] = black_box(4);
-            a.a[5] = black_box(5);
-            a.a[6] = black_box(6);
-            a.a[7] = black_box(7);
-            prof2.stop();
+            prof2.benchmark(|| {
+                a.a[0] = black_box(0);
+                a.a[1] = black_box(1);
+                a.a[2] = black_box(2);
+                a.a[3] = black_box(3);
+                a.a[4] = black_box(4);
+                a.a[5] = black_box(5);
+                a.a[6] = black_box(6);
+                a.a[7] = black_box(7);
+            })
         }
+    }
+
+    use std::cell::Cell;
+    use thread_local::ThreadLocal;
+
+    thread_local! {
+        static COUNTER1: Cell<u64> = Cell::new(0);
+    }
+
+    static COUNTER2: Stat = Stat::new("Counter");
+
+    // let COUNTER3: ThreadLocal<Cell<u64>> = ThreadLocal::new();
+
+
+    #[test]
+    fn bench_thread_local() {
+        // thread_local macro
+        let mut pr = Profiler::new("thread_local!".into());
+        for _iter in 0..10001 {
+            pr.benchmark(|| COUNTER1.with(|c| c.set(c.get() + 1)));
+        }
+        assert_eq!(COUNTER1.with(|c| c.get()), 10001);
+
+        // Stat struct
+        let mut pr = Profiler::new("Stat".into());
+        for _iter in 0..10002 {
+            pr.benchmark(|| COUNTER2.increment())
+        }
+        assert_eq!(COUNTER2.get(), 10002);
+
+        #[allow(non_snake_case)]
+        let COUNTER3 = ThreadLocal::new();
+
+        let mut pr = Profiler::new("ThreadLocal".into());
+        for _iter in 0..10003 {
+            pr.benchmark(|| {
+                let cell = COUNTER3.get_or(|| Cell::new(0));
+                let count = cell.get() + 1;
+                cell.set(count);
+                count
+            })
+        }
+        assert_eq!(COUNTER3.get_or(|| Cell::new(0)).get(), 10003);
     }
 }

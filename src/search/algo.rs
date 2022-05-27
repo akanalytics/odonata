@@ -35,6 +35,7 @@ use crate::variation::Variation;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+use super::counter_move::CounterMove;
 use super::lmp::Lmp;
 use super::node::Event;
 use super::search_explainer::Explainer;
@@ -75,6 +76,7 @@ pub struct Algo {
     pub results: SearchResults,
     pub controller: TaskControl<SearchResults>,
     pub lmp: Lmp,
+    pub counter_move: CounterMove,
 
     #[serde(skip)]
     pub position: Position,
@@ -160,6 +162,7 @@ impl Component for Algo {
         self.results.set_state(s);
         self.controller.set_state(s);
         self.lmp.set_state(s);
+        self.counter_move.set_state(s);
     }
 
     fn new_game(&mut self) {
@@ -208,6 +211,7 @@ impl fmt::Debug for Algo {
             .field("razor", &self.razor)
             .field("recognizer", &self.recognizer)
             .field("aspiration", &self.aspiration)
+            .field("counter_move", &self.counter_move)
             .field("clock", &self.clock)
             .field("counts", &self.counts)
             .field("results", &self.results)
@@ -265,6 +269,7 @@ impl fmt::Display for Algo {
         writeln!(f, ".\n.\n[recognizer]\n{}", self.recognizer)?;
         writeln!(f, ".\n.\n[aspiration]\n{:}", self.aspiration)?;
         writeln!(f, ".\n.\n[clock]\n{:}", self.clock)?;
+        writeln!(f, ".\n.\n[counter_move]\n{:}", self.counter_move)?;
 
         writeln!(f, ".\n.\n[counts]\n{}", self.counts)?;
         writeln!(f, ".\n.\n[results]\n{}", self.results)?;

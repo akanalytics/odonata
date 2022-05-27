@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use super::node::Node;
-use crate::eval::score::Score;
+use crate::eval::score::{Score, ToScore};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -23,6 +23,13 @@ pub struct MoveOrderer {
     pub tt_bm: bool,
     pub mvv_lva: bool,
     pub discovered_checks: bool,
+    pub is_counter_move_sort_bonus: f32,
+    pub has_counter_move_sort_bonus: f32,
+    pub promo_sort_bonus: f32,
+    pub promo_queen_sort_bonus: f32,
+    pub castle_sort_bonus: f32,
+    pub pst_sort_factor: f32,
+    pub hh_sort_factor: f32,
     pub see_cutoff: Score,
     pub qsearch_see_cutoff: Score,
     pub order: Vec<MoveType>,
@@ -74,8 +81,15 @@ impl Default for MoveOrderer {
             discovered_checks: false,
             tt_bm: true,
             mvv_lva: true,
-            see_cutoff: Score::from_cp(0),
-            qsearch_see_cutoff: Score::from_cp(1),
+            see_cutoff: 0.cp(),
+            is_counter_move_sort_bonus: 1000.0,
+            has_counter_move_sort_bonus: 900.0,
+            promo_sort_bonus: 1200.0,
+            promo_queen_sort_bonus: 500.0,
+            castle_sort_bonus: 500.0,
+            pst_sort_factor: 1.0,
+            hh_sort_factor: 5.0,
+            qsearch_see_cutoff: 1.cp(),
             thread: 0,
             count_pv: PlyStat::new("order pv"),
             count_bm: PlyStat::new("order bm"),
@@ -119,37 +133,49 @@ impl fmt::Display for MoveOrderer {
 
 impl MoveOrderer {
     #[inline]
-    pub fn quiet_score(&self, mv: &Move, algo: &Algo, phase: Phase, c: Color) -> i32 {
-        let mut score = 0;
+    pub fn quiet_score(&self, mv: Move, algo: &Algo, phase: Phase, c: Color, parent: Move) -> i32 {
+        let mut score = 0.0;
         if mv.is_promo() {
-            if mv.promo_piece() == Piece::Knight {
-                score += 1500;
-            } else {
-                score += 2000;
+            score += self.promo_sort_bonus;
+            if mv.promo_piece() == Piece::Queen {
+                score += self.promo_queen_sort_bonus;
             }
         }
         if mv.is_castle() {
-            score += 1000;
+            score += self.castle_sort_bonus;
         }
         // if mv.mover_piece() == Piece::Pawn {
         //     score += 0;
         // }
         // score += mv.mover_piece().centipawns();
         if c == Color::White {
-            score += mv.to().rank_index() as i32;
+            score += mv.to().rank_index() as f32;
         } else {
-            score -= mv.to().rank_index() as i32;
+            score -= mv.to().rank_index() as f32;
         }
 
-        score += algo.history.history_heuristic_bonus(c, mv);
+        score += self.hh_sort_factor * algo.history.history_heuristic_bonus(c, &mv) as f32;
 
-        score += algo
-            .eval
-            .pst
-            .w_eval_square(c, mv.mover_piece(), mv.to())
-            .interpolate(phase) as i32;
+        if algo.counter_move.counter_move_unchecked(c, parent) == Some(mv) {
+            score += self.is_counter_move_sort_bonus;
+        }
+        if self.has_counter_move_sort_bonus > -10000.0
+            && algo
+                .counter_move
+                .counter_move_unchecked(c.opposite(), mv)
+                .is_some()
+        {
+            score += self.has_counter_move_sort_bonus;
+        }
+
+        score += self.pst_sort_factor
+            * algo
+                .eval
+                .pst
+                .w_eval_square(c, mv.mover_piece(), mv.to())
+                .interpolate(phase);
         // score -= algo.eval.w_eval_square(c, mv.mover_piece(), mv.from()).interpolate(phase);
-        -score
+        -score as i32
     }
 }
 
@@ -289,9 +315,7 @@ impl OrderedMoveList {
 
                 if see < see_cutoff || see == see_cutoff && self.qsearch && self.n.depth < -1 {
                     if !(algo.move_orderer.discovered_checks
-                        && mv
-                            .from()
-                            .is_in(b.discoverer(b.color_them())))
+                        && mv.from().is_in(b.discoverer(b.color_them())))
                     {
                         self.bad_captures.push(mv);
                         self.index += 1;
@@ -397,6 +421,14 @@ impl OrderedMoveList {
                 }
             }
 
+            // CounterMove
+            MoveType::CounterMove => {
+                if let Some(mv) = algo.counter_move.counter_move_for(b, last) {
+                    moves.push(mv);
+                }
+                all_moves.retain(|m| !moves.contains(m));
+            }
+
             // Promos
             MoveType::Promo => {
                 all_moves
@@ -436,12 +468,13 @@ impl OrderedMoveList {
                     .filter(|m| !Move::is_capture(m) && !Move::is_promo(m))
                     .for_each(|&m| moves.push(m));
                 // algo.order_moves(self.ply, moves, &None);
-                moves.sort_by_cached_key(|mv| {
+                moves.sort_by_cached_key(|&mv| {
                     algo.move_orderer.quiet_score(
                         mv,
                         algo,
                         b.phase(&algo.eval.phaser),
                         b.color_us(),
+                        last,
                     )
                 });
                 if algo.move_orderer.thread == 1 && moves.len() >= 2 {

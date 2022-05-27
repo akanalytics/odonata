@@ -631,26 +631,7 @@ min_depth = 2
 [ext]
 enabled = true
 max_extend = 1
-
-gives_check_enabled = true
-in_check_enabled = false
-check_max_depth = 2
-check_max_phase = 100
-check_only_captures = false
-check_see = false
-check_see_threshold = 0
-
-promo_enabled = false
-promo_max_depth = 1
-near_promo_enabled = false
-near_promo_max_depth = 1
-
-recapture_enabled = false
-recapture_same_square = true
-recapture_only_pv_node = false
-recapture_max_depth = 1
-
-pv_enabled = false
+in_check_enabled = true
 
 [lmp]
 enabled = true
@@ -735,6 +716,13 @@ qsearch_see_cutoff = 1
 order = ["Start", "Hash", "Initialize", "GoodCaptureUpfrontSorted", "Killer", "Promo", "Quiet", "BadCapture", "End"]
 qorder = ["Start", "Initialize", "GoodCapture", "Promo", "End"]
 qorder_evasions = ["Start", "Initialize", "Evasion", "End"]
+is_counter_move_sort_bonus = 0.0
+has_counter_move_sort_bonus = -20000.0
+promo_sort_bonus = 2000.0
+castle_sort_bonus = 1000.0
+promo_queen_sort_bonus = -500.0
+pst_sort_factor = 1.0
+hh_sort_factor = 1.0
 
 [repetition]
 enabled = true
@@ -761,6 +749,12 @@ preserve_bm = false
 enabled = true
 clear_every_move = false
 use_ply_below = true
+
+[counter_move]
+enabled = true
+clear_every_move = false
+
+
 
 [history]
 enabled = true

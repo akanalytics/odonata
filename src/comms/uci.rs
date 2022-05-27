@@ -3,9 +3,7 @@ use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::catalog::Catalog;
 use crate::comms::json_rpc::JsonRpc;
-use crate::eval::endgame::EndGame;
 use crate::eval::eval::Eval;
-use crate::globals::counts::GLOBAL_COUNTS;
 use crate::infra::component::{Component, State};
 use crate::infra::version::Version;
 use crate::movelist::MoveList;
@@ -276,8 +274,8 @@ impl Uci {
         Self::print("info string stopped...");
         self.running = false;
         // info!("{}", self.algo);
-        warn!("{}", EndGame::counts_to_string());
-        warn!("{}", GLOBAL_COUNTS);
+        // warn!("{}", EndGame::counts_to_string());
+        // warn!("{}", GLOBAL_COUNTS);
         Ok(())
     }
 

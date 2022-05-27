@@ -71,6 +71,7 @@ pub enum Event {
     MoveGoodCapture,
     MoveGoodCaptureUpfrontSorted,
     MoveKiller,
+    CounterMove,
     MovePromo,
     MoveEvasion,
     MoveQuiet,

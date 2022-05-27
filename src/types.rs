@@ -417,6 +417,7 @@ pub enum MoveType {
     GoodCapture,
     GoodCaptureUpfrontSorted,
     Killer,
+    CounterMove,
     Promo,
     QueenPromo,
     Evasion,
@@ -455,6 +456,7 @@ impl MoveType {
             MoveType::GoodCapture => 'g',
             MoveType::GoodCaptureUpfrontSorted => 'G',
             MoveType::Killer => 'K',
+            MoveType::CounterMove => 'c',
             MoveType::Promo => 'P',
             MoveType::QueenPromo => 'p',
             MoveType::Evasion => 'V',
@@ -477,6 +479,7 @@ impl MoveType {
             'g' => Ok(MoveType::GoodCapture),
             'G' => Ok(MoveType::GoodCaptureUpfrontSorted),
             'K' => Ok(MoveType::Killer),
+            'c' => Ok(MoveType::CounterMove),
             'P' => Ok(MoveType::Promo),
             'p' => Ok(MoveType::QueenPromo),
             'V' => Ok(MoveType::Evasion),
@@ -589,9 +592,9 @@ mod tests {
             "HCB".to_string(),
             MoveType::to_string(MoveType::Capture | MoveType::Hash | MoveType::BadCapture)
         );
-        assert_eq!(MoveType::COUNT, 17);
+        assert_eq!(MoveType::COUNT, 18);
         assert_eq!(MoveType::Start.index(), 0);
-        assert_eq!(MoveType::End.index(), 16);
+        assert_eq!(MoveType::End.index(), 17);
         Ok(())
     }
 

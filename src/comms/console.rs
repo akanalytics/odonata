@@ -27,9 +27,6 @@ impl Console {
                 Some(&"quit") => {
                     break;
                 }
-                Some(&"pic") => {
-                    Self::pic();
-                }
                 Some(&"help") => {
                     Self::help();
                 }
@@ -49,23 +46,16 @@ impl Console {
         println!();
         println!("{} {}\n", Version::NAME, Version::VERSION);
         println!("{}", Version::small_splash());
+        println!(
+            "Please see {} for updates,\nreleases and licence details. ",
+            Version::HOMEPAGE
+        );
         println!();
         println!("Commands...");
         println!("{:<10} enter uci protocol mode", "uci");
         println!("{:<10} quit the program", "quit");
-        println!("{:<10} nice dragonfly image", "pic");
         println!("{:<10} display (this) help", "help");
         println!();
     }
 
-    pub fn pic() {
-        println!();
-        println!("{}", Version::IMAGE);
-        println!();
-        println!(
-            "Please see {} for updates,\nreleases and licence details. Image by jgs.",
-            Version::HOMEPAGE
-        );
-        println!();
-    }
 }

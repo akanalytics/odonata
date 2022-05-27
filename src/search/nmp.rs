@@ -2,7 +2,7 @@ use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::bound::NodeType;
 use crate::cache::tt2::TtNode;
-use crate::eval::score::Score;
+use crate::eval::score::{Score, ToScore};
 use crate::mv::Move;
 use crate::pvtable::PvTable;
 use crate::search::algo::Algo;
@@ -163,10 +163,12 @@ impl Algo {
         let child_score = -self
             .alphabeta(
                 &mut child_board,
-                n.ply + 1,
-                reduced_depth,
-                -n.beta,
-                -n.beta + Score::from_cp(1),
+                Node {
+                    ply: n.ply + 1,
+                    depth: reduced_depth,
+                    alpha: -n.beta,
+                    beta: -n.beta + 1.cp(),
+                },
                 mv,
             )?
             .0;

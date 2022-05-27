@@ -898,7 +898,7 @@ dependencies = [
 
 [[package]]
 name = "odonata"
-version = "0.5.55"
+version = "0.5.56"
 dependencies = [
  "anyhow",
  "arrayvec",
@@ -937,6 +937,7 @@ dependencies = [
  "strum_macros 0.21.1",
  "tabwriter",
  "test-log",
+ "thread_local",
  "toml",
  "tracing",
  "tracing-subscriber",
