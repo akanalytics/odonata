@@ -27,6 +27,7 @@ pub struct MoveOrderer {
     pub has_counter_move_sort_bonus: f32,
     pub promo_sort_bonus: f32,
     pub promo_queen_sort_bonus: f32,
+    pub promo_knight_sort_bonus: f32,
     pub castle_sort_bonus: f32,
     pub pst_sort_factor: f32,
     pub hh_sort_factor: f32,
@@ -86,6 +87,7 @@ impl Default for MoveOrderer {
             has_counter_move_sort_bonus: 900.0,
             promo_sort_bonus: 1200.0,
             promo_queen_sort_bonus: 500.0,
+            promo_knight_sort_bonus: 500.0,
             castle_sort_bonus: 500.0,
             pst_sort_factor: 1.0,
             hh_sort_factor: 5.0,
@@ -139,6 +141,9 @@ impl MoveOrderer {
             score += self.promo_sort_bonus;
             if mv.promo_piece() == Piece::Queen {
                 score += self.promo_queen_sort_bonus;
+            }
+            if mv.promo_piece() == Piece::Knight {
+                score += self.promo_knight_sort_bonus;
             }
         }
         if mv.is_castle() {
