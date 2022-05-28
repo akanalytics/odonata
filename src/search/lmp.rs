@@ -71,6 +71,7 @@ impl Algo {
         mv: Move,
         mv_num: u32,
         stage: MoveType,
+        after: &Board,
         n: &Node,
         ext: Ply,
     ) -> bool {
@@ -112,8 +113,8 @@ impl Algo {
         if !self.lmp.extensions && ext > 0
             || !self.lmp.in_check && before.is_in_check(before.color_us())
             || !self.lmp.discoverer && mv.from().is_in(before.discoverer(before.color_them()))
-            // // gives check a more precise and costly version of discoverers
-            // || !self.lmp.gives_check && after.is_in_check(after.color_us())
+            // gives check a more precise and costly version of discoverers
+            || !self.lmp.gives_check && after.is_in_check(after.color_us())
         {
             return false;
         }

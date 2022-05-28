@@ -53,10 +53,8 @@ where
         use State::*;
         match s {
             NewGame => {
-                *self = Self::default();
             }
             SetPosition => {
-                *self = Self::default();
             }
             StartSearch => {
                 self.set_running();

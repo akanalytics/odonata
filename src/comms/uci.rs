@@ -104,17 +104,9 @@ pub struct Uci {
 impl Component for Uci {
     fn new_game(&mut self) {
         self.engine.lock().unwrap().set_state(State::NewGame);
-        self.engine
-            .lock()
-            .unwrap()
-            .algo
-            .set_callback(Self::uci_info);
     }
 
-    fn new_position(&mut self) {
-        // self.engine.lock().unwrap().new_position();
-        // self.engine.lock().unwrap().algo.set_callback(|sp| Self::uci_info(sp));
-    }
+    fn new_position(&mut self) {}
 }
 
 impl Default for Uci {
@@ -148,6 +140,11 @@ impl Uci {
         info!("<< {}", receive);
     }
 
+    fn print_info_string(send: &str) {
+        info!(">> {}", send);
+        println!("info string {}", send.replace("\n", "\ninfo string "));
+    }
+
     fn print(send: &str) {
         info!(">> {}", send);
         println!("{}", send);
@@ -170,7 +167,7 @@ impl Uci {
         while self.running {
             self.readline_and_execute();
         }
-        // Self::print("info string exiting...");
+        // Self::print("exiting...");
         // io::stdout().flush().ok();
     }
 
@@ -230,7 +227,7 @@ impl Uci {
         };
         if let Err(s) = res {
             warn!("uci error '{:#}'", s);
-            Self::print(&format!("info string error '{:#}'", s));
+            Self::print_info_string(&format!("error '{:#}'", s));
             if self.strict_error_handling {
                 self.uci_quit().unwrap();
             }
@@ -243,14 +240,12 @@ impl Uci {
     }
 
     fn uci_debug(&mut self, words: &[&str]) -> Result<()> {
-        self.debug = match words.first().copied() {
+        match words.first().copied() {
             Some("on") => {
-                Self::print("info string debug on");
-                true
+                self.set_debug(true);
             }
             Some("off") => {
-                Self::print("info string debug off");
-                false
+                self.set_debug(false);
             }
             _ => bail!("unknown debug option"),
         };
@@ -269,9 +264,9 @@ impl Uci {
     }
 
     fn uci_quit(&mut self) -> Result<()> {
-        Self::print("info string quitting...");
+        Self::print_info_string("quitting...");
         self.engine.lock().unwrap().search_stop();
-        Self::print("info string stopped...");
+        Self::print_info_string("stopped...");
         self.running = false;
         // info!("{}", self.algo);
         // warn!("{}", EndGame::counts_to_string());
@@ -308,7 +303,7 @@ impl Uci {
             let t = Instant::now();
             let p = Perft::perft(&mut board, d);
             Self::print(&format!(
-                "info string perft({}) = {:<12} in {}",
+                "perft({}) = {:<12} in {}",
                 d,
                 p,
                 Formatting::duration(t.elapsed())
@@ -353,7 +348,7 @@ impl Uci {
                 bail!("Empty variation. Move not specificed");
             }
         } else {
-            Self::print("result:from 00 to 00 capture 00 ep - legal False san ??? rook_move 0000 is_ep False is_castle False");
+            Self::print_info_string("result:from 00 to 00 capture 00 ep - legal False san ??? rook_move 0000 is_ep False is_castle False");
         }
         Ok(())
     }
@@ -405,11 +400,6 @@ impl Uci {
         pos.set(Tag::SuppliedVariation(variation));
         self.board = pos.supplied_variation().apply_to(pos.board());
         self.engine.lock().unwrap().set_position(pos);
-        self.engine
-            .lock()
-            .unwrap()
-            .algo
-            .set_callback(Self::uci_info);
         Ok(())
     }
 
@@ -489,6 +479,12 @@ impl Uci {
         // search until the "stop" command. Do not exit the search without being told so in this mode!
         let infinite = args.contain("infinite");
 
+        if self.debug {
+            // debug mode we clear hash / history etc every search
+            Self::print_info_string("Debug enabled, clearing history and transposition tables...");
+            self.uci_newgame()?;
+        }
+
         let tc = if infinite {
             TimeControl::Infinite
         } else if let Some(depth) = depth {
@@ -540,7 +536,7 @@ impl Uci {
         let mut ops: Vec<String> = Vec::new();
 
         // ops.push(format!("option name UCI_EngineAbout type string default {} {}", Version::NAME, Version::HOMEPAGE));
-        ops.push("option name debug type check default false".to_string());
+        ops.push("option name Debug type check default false".to_string());
         ops.push(format!(
             "option name Threads type spin default {} min 1 max 16",
             engine.thread_count
@@ -589,15 +585,37 @@ impl Uci {
         Ok(())
     }
 
+    fn set_debug(&mut self, enable: bool) {
+        let mut engine = self.engine.lock().unwrap();
+        if enable {
+            Self::print_info_string("debug mode on");
+            self.debug = true;
+            engine.algo.set_callback(|sr| {
+                if matches!(sr.mode, SearchResultsMode::BestMove) {
+                    Self::print_info_string(&format!("pv {}", sr.best_pv.to_san(&sr.board)));
+                    Self::print_info_string(&format!("board {}", sr.board.to_fen()));
+                    Self::print_info_string(&format!("{}", sr.best_pv.apply_to(&sr.board)));
+                }
+                Self::uci_info(sr);
+            });
+        } else {
+            Self::print_info_string("debug mode off");
+            engine.algo.set_callback(Self::uci_info);
+            self.debug = false;
+        }
+    }
+
     fn uci_option_name_value(&mut self, name: &str, value: &str) -> Result<()> {
+        if name == "Debug" {
+            self.set_debug(value == "true");
+            return Ok(());
+        }
         let mut engine = self.engine.lock().unwrap();
         let value = if value == "\"\"" { "" } else { value };
 
         // handle specific name/value uci options
         // FIXME! as hardcoding names of variables
-        if name == "debug" {
-            self.debug = value == "true";
-        } else if name == "Threads" {
+        if name == "Threads" {
             engine.configment("thread_count", value)?;
         } else if name == "MultiPV" {
             engine.configment("restrictions.multi_pv_count", value)?;
@@ -636,6 +654,8 @@ impl Uci {
         } else {
             bail!("Unknown option name '{}' value '{}'", name, value);
         }
+        drop(engine);
+        self.set_debug(self.debug); // set the info calback again
         Ok(())
     }
 
@@ -678,11 +698,6 @@ impl Uci {
                 .lock()
                 .unwrap()
                 .set_position(Position::from_board(self.board.clone()));
-            self.engine
-                .lock()
-                .unwrap()
-                .algo
-                .set_callback(Self::uci_info);
         } else {
             self.uci_option_button(s)?;
         };
@@ -780,7 +795,7 @@ impl Uci {
         if var.len() > 1 {
             output = format!("{} ponder {}", output, var[1].uci());
         }
-        Self::print(&output)
+        Self::print(&output);
     }
 }
 

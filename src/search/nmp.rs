@@ -161,17 +161,15 @@ impl Algo {
         let reduced_depth = n.depth - r - 1;
 
         let child_score = -self
-            .alphabeta(
-                &mut child_board,
-                Node {
-                    ply: n.ply + 1,
-                    depth: reduced_depth,
-                    alpha: -n.beta,
-                    beta: -n.beta + 1.cp(),
-                },
-                mv,
-            )?
-            .0;
+        .alphabeta(
+            &mut child_board,
+            n.ply + 1,
+            reduced_depth,
+            -n.beta,
+            -n.beta + 1.cp(),
+            mv,
+        )?
+        .0;
         b.undo_move(&mv);
         self.current_variation.pop();
         // self.explainer.start(n, &self.current_variation);

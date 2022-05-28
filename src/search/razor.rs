@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::eval::score::Score;
+use crate::eval::score::{Score, ToScore};
 use crate::infra::component::Component;
 use crate::mv::Move;
 use crate::search::node::{Event, Node};
@@ -141,28 +141,25 @@ impl Algo {
             return Ok(Some(n.beta));
         }
 
-
         // theres no make move here, so no negamax a/b and sign reversals
         if eval <= n.alpha - margin {
             if n.depth <= 2 {
                 // drop straight into qsearch
                 self.counts.inc(n, Event::PruneRazor);
-                let (s, _e) = self.alphabeta(b, Node { depth: 0, .. *n }, last_move)?;
-                return Ok(Some(s));
+                let (score, _event) = self.alphabeta(b, n.ply, 0, n.alpha, n.beta, last_move)?;
+                return Ok(Some(score));
             } else {
                 // pvs search around {alpha - margin}
-                let (s, _e) = self.alphabeta(
+                let (score, _event) = self.alphabeta(
                     b,
-                    Node {
-                        ply: n.ply,
-                        depth: 0,
-                        alpha: n.alpha - margin,
-                        beta: n.alpha - margin + Score::from_cp(1),
-                    },
+                    n.ply,
+                    0,
+                    n.alpha - margin,
+                    n.alpha - margin + 1.cp(),
                     last_move,
                 )?;
                 // fail low (-inf) or alpha-margin
-                if s <= n.alpha - margin {
+                if score <= n.alpha - margin {
                     self.counts.inc(n, Event::PruneRazor);
                     return Ok(Some(n.alpha));
                 }

@@ -159,6 +159,7 @@ impl Algo {
         mv_num: u32,
         mt: MoveType,
         before: &Board,
+        after: &Board,
         eval: Score,
         n: &Node,
         ext: Ply,
@@ -185,10 +186,11 @@ impl Algo {
             return None;
         }
 
-        // // gives check a more precise and costly version of discoverers
-        // if !self.futility.giving_check && after.is_in_check(after.color_us()) {
-        //     return None;
-        // }
+
+        // gives check a more precise and costly version of discoverers
+        if !self.futility.giving_check && after.is_in_check(after.color_us()) {
+            return None;
+        }
 
         // position wise, passed pawn promos make a huge impact so exclude them
         if mv.mover_piece() == Piece::Pawn

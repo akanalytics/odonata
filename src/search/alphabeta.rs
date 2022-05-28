@@ -2,25 +2,34 @@ use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::bound::NodeType;
 use crate::cache::tt2::TtNode;
-use crate::eval::score::{Score, ToScore};
+use crate::eval::score::Score;
 use crate::mv::Move;
 use crate::pvtable::PvTable;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
-use crate::types::MAX_PLY;
+use crate::types::{Ply, MAX_PLY};
 
 use super::node::Event;
 
 pub struct AlphaBeta;
 
 impl Algo {
-    pub fn run_alphabeta(&mut self, board: &mut Board, n: &mut Node) -> (Score, Event) {
-        self.max_depth = n.depth;
-        self.stats.depth = n.depth;
+
+    pub fn run_alphabeta(&mut self, board: &mut Board, node: &mut Node) -> (Score, Event) {
+        let depth = node.depth;
+        self.max_depth = depth;
+        self.stats.depth = depth;
         self.pv_table = PvTable::new(MAX_PLY as usize);
         debug_assert!(self.current_variation.len() == 0);
 
-        let (score, category) = match self.alphabeta(board, *n, Move::NULL_MOVE) {
+        let (score, category) = match self.alphabeta(
+            board,
+            node.ply,
+            self.max_depth,
+            node.alpha,
+            node.beta,
+            Move::NULL_MOVE,
+        ) {
             Ok((score, category)) => (score, category),
             Err(category) => (-Score::INFINITY, category),
         };
@@ -37,15 +46,15 @@ impl Algo {
         };
         self.results.set_pv(category, &pv);
         self.results.score = score;
-        if n.alpha == -Score::INFINITY
-            && n.beta == Score::INFINITY
+        if node.alpha == -Score::INFINITY
+            && node.beta == Score::INFINITY
             && category != Event::TimeUp
             && category != Event::UserCancelled
         {
             debug_assert!(
                 score.is_numeric_or_mate(),
                 "Score was inf: node {:?} cat {} \n{}",
-                n,
+                node,
                 category,
                 self
             );
@@ -61,13 +70,24 @@ impl Algo {
     pub fn alphabeta(
         &mut self,
         b: &mut Board,
-        mut n: Node,
+        ply: Ply,
+        depth: Ply,
+        alpha: Score,
+        beta: Score,
         last_move: Move,
     ) -> Result<(Score, Event), Event> {
-        self.clear_move(n.ply);
+
+        self.clear_move(ply);
         self.report_progress();
 
-        let (cancelled, mut cat) = self.time_up_or_cancelled(n.ply, false);
+        let mut n = Node {
+            ply,
+            depth,
+            alpha,
+            beta,
+        };
+
+        let (cancelled, mut cat) = self.time_up_or_cancelled(ply, false);
         if cancelled {
             self.counts.inc(&n, cat);
             return Err(cat);
@@ -87,7 +107,7 @@ impl Algo {
 
         if n.is_zw() {
             self.counts.inc(&n, Event::NodeTypeZw);
-            self.stats.inc_zw_nodes(n.ply);
+            self.stats.inc_zw_nodes(ply);
         }
         if n.is_qs() {
             self.counts.inc(&n, Event::NodeTypeQuiesce);
@@ -101,15 +121,12 @@ impl Algo {
         let mut nt = NodeType::UpperAll;
 
         // we dont draw at root, as otherwise it wont play a move if insufficient-material draw [v32]
-        if n.ply > 0 && b.draw_outcome().is_some() {
+        if ply > 0 && b.draw_outcome().is_some() {
             // if board.draw_outcome().is_some() {
             self.stats.inc_leaf_nodes(&n);
             self.counts.inc(&n, Event::NodeLeafDraw);
             return Ok((b.eval_draw(&mut self.eval, &n), Event::NodeLeafDraw)); // will return a draw score
         }
-
-        let ext = self.extensions(b, &n);
-        n.depth += ext;
 
         let mut tt_mv = Move::NULL_MOVE;
         match self.lookup(b, &mut n) {
@@ -160,27 +177,25 @@ impl Algo {
         let mut count = 0;
         let mut quiets = 0;
         while let Some((move_type, mv)) = sorted_moves.next_move(b, self) {
-            if self.restrictions.skip_move(n.ply, &mv) {
+            if self.restrictions.skip_move(ply, &mv) {
                 continue;
             }
             self.counts.inc(&n, Event::Moves);
             self.counts.inc_move(&n, move_type);
             count += 1;
-            self.stats.inc_move(n.ply);
-
-            let is_quiet = self.is_quiet(b, mv, count, move_type, &n, ext);
+            self.stats.inc_move(ply);
+            let mut child_board = b.make_move(&mv);
+            let ext = self.extend(b, &child_board, mv, move_type, count, &n, last_move);
+            let is_quiet = self.is_quiet(b, mv, count, move_type, &child_board, &n, ext);
             if is_quiet {
                 quiets += 1;
-            }
-            if !n.is_pv() && self.can_lmp(is_quiet, quiets, &n) {
-                continue;
             }
 
             if score > -Score::INFINITY {
                 if let Some(est_score) =
-                    self.can_futility_prune_move(mv, count, move_type, b, eval, &n, ext)
+                    self.can_futility_prune_move(mv, count, move_type, b, &child_board, eval, &n, ext)
                 {
-                    self.stats.inc_fp_move(n.ply);
+                    self.stats.inc_fp_move(ply);
                     if score == -Score::INFINITY {
                         score = est_score;
                     }
@@ -190,18 +205,32 @@ impl Algo {
                     continue;
                 }
             }
-
-            let mut b2 = b.make_move(&mv);
-            self.repetition.push_move(&mv, &b2);
-            self.current_variation.push(mv);
-            // self.explainer.start(&n, &self.current_variation);
-            b2.set_repetition_count(self.repetition.count(&b2));
-
-            let r = if !n.is_pv() && !self.minmax {
-                self.lmr(b, mv, count, quiets, move_type, &b2, &n, nt, ext, tt_mv)
+            let lmr =if  !n.is_pv() && !self.minmax {
+                self.lmr(
+                    b,
+                    mv,
+                    count,
+                    quiets,
+                    move_type,
+                    &child_board,
+                    &n,
+                    nt,
+                    ext,
+                    tt_mv,
+                )
             } else {
                 0
             };
+
+            if !n.is_pv() && self.can_lmp(is_quiet, quiets, &n) {
+                continue;
+            }
+
+            self.repetition.push_move(&mv, &child_board);
+            self.current_variation.push(mv);
+            // self.explainer.start(&n, &self.current_variation);
+            child_board.set_repetition_count(self.repetition.count(&child_board));
+
 
             // if first move:
             //    a,b with ext.
@@ -213,56 +242,153 @@ impl Algo {
 
             // let pvs = self.pvs_permitted(nt, b, &n, count);
 
-            // let pvs =
+            // let pvs = 
             let mut s = n.alpha + Score::from_cp(1);
-            debug_assert!(s > n.alpha, "S > alpha failed for {} > {}", s, n.alpha);
+            debug_assert!(s > n.alpha);
             let mut ev; //  = Event::Unknown;
 
-            if count == 1 || n.is_qs() {
+            if count  == 1 || n.is_qs() {
                 (s, ev) = self.alphabeta(
-                    &mut b2,
-                    Node {
-                        ply: n.ply + 1,
-                        depth: n.depth - 1,
-                        alpha: -n.beta,
-                        beta: -n.alpha,
-                    },
+                    &mut child_board,
+                    ply + 1,
+                    depth + ext - 1,
+                    -n.beta,
+                    -n.alpha,
                     mv,
                 )?;
                 s = -s;
             } else {
                 (s, ev) = self.alphabeta(
-                    &mut b2,
-                    Node {
-                        ply: n.ply + 1,
-                        depth: n.depth - r - 1,
-                        alpha: -n.alpha - 1.cp(),
-                        beta: -n.alpha,
-                    },
+                    &mut child_board,
+                    ply + 1,
+                    depth + ext - lmr - 1,
+                    -n.alpha - Score::from_cp(1),
+                    -n.alpha,
                     mv,
                 )?;
                 s = -s;
                 // full window
-                if s > n.alpha && !(r == 0 && n.is_zw()) {
+                if s > n.alpha && !(lmr == 0 && n.is_zw()) {
                     (s, ev) = self.alphabeta(
-                        &mut b2,
-                        Node {
-                            ply: n.ply + 1,
-                            depth: n.depth - 1,
-                            alpha: -n.beta,
-                            beta: -n.alpha,
-                        },
+                        &mut child_board,
+                        ply + 1,
+                        depth + ext - 1,
+                        -n.beta,
+                        -n.alpha,
                         mv,
                     )?;
                     s = -s;
                 }
             }
+                //     // using [alpha, alpha + 1]
+            //     debug_assert!(n.alpha.is_numeric());
+            //     self.stats.inc_pvs_move(ply);
+            //     (s, ev) = self.alphabeta(
+            //         &mut child_board,
+            //         ply + 1,
+            //         depth + ext - lmr - 1,
+            //         -n.alpha - Score::from_cp(1),
+            //         -n.alpha,
+            //         mv,
+            //     )?;
+            //     s = -s;
+            // } 
+
             let cat = ev;
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            // (s,ev) = if pvs {
+            //     debug_assert!(n.alpha.is_numeric());
+            //     self.stats.inc_pvs_move(ply);
+            //     // using [alpha, alpha + 1]
+            //     self.alphabeta(
+            //         &mut child_board,
+            //         ply + 1,
+            //         depth + ext - lmr - 1,
+            //         -n.alpha - Score::from_cp(1),
+            //         -n.alpha,
+            //         mv,
+            //     )?
+            // } else {
+            //     self.alphabeta(
+            //         &mut child_board,
+            //         ply + 1,
+            //         depth + ext - lmr - 1,
+            //         -n.beta,
+            //         -n.alpha,
+            //         mv,
+            //     )?
+            // };
+            // s = -s;
+
+            // // window was [alpha, alpha + 1]
+            // // child_score >= beta => fail high as we are fail-soft
+            // // child_score <= alpha => fail low
+            // // alpha < child_score < score < beta and search upper bound was beta/!pvs then skip as too low
+            // // alpha < child_score < score < beta and search upper bound was alpha+1/pvs => failed high so research
+            // // if (lmr > 0 && self.lmr.re_search || pvs) && child_score > score && child_score < n.beta {
+            // if (lmr > 0 && self.lmr.re_search || pvs)
+            //     && s < n.beta
+            //     && s > n.alpha
+            //     && (s >= score || pvs)
+            // {
+            //     // research with full window without reduction in depth
+            //     self.stats.inc_pvs_research(ply);
+            //     let res = self.alphabeta(
+            //         &mut child_board,
+            //         ply + 1,
+            //         depth + ext - 1,
+            //         -n.beta,
+            //         -n.alpha,
+            //         mv,
+            //     )?;
+            //     ev = res.1;
+            //     s = -res.0
+            // }
+            if lmr > 0 && self.lmr.re_search {
+                self.counts.inc(&n, Event::LmrReSearch);
+            }
+            // if pvs {
+            //     self.counts.inc(&n, Event::PvsReSearch);
+            // }
+            //     child_score = -res.0;
+            //     cat = res.1;
+            // }
+            // cat = ev;
             b.undo_move(&mv);
             self.current_variation.pop();
             self.repetition.pop();
-            self.explain_move(&b, mv, s, cat, &n, count, ext, r);
+            self.explain_move(&b, mv, s, cat, &n, count, ext, lmr);
+
+            // println!("move {} score {} alpha {} beta {}", mv, score, alpha, beta);
+            // debug_assert!(
+            //     !(s == -Score::INFINITY && count == 1),
+            //     "board: {}\nmove: {}\ncat: {}\nlmr: {}\npvs: {}",
+            //     b,
+            //     mv,
+            //     cat,
+            //     lmr,
+            //     pvs
+            // );
 
             if s > score {
                 score = s;
@@ -274,16 +400,15 @@ impl Algo {
                 nt = NodeType::ExactPv;
                 debug_assert!(b.is_pseudo_legal_move(&bm), "bm {} on board {}", bm, b);
                 self.history.raised_alpha(&n, b, &mv);
-                self.record_move(n.ply, &mv);
+                self.record_move(ply, &mv);
             } else {
                 self.history.duff(&n, b, &mv);
             }
 
             if n.alpha >= n.beta && !self.minmax {
                 nt = NodeType::LowerCut;
-                self.stats
-                    .inc_node_cut(n.ply, move_type, (count - 1) as i32);
-                self.killers.store(n.ply, &mv);
+                self.stats.inc_node_cut(ply, move_type, (count - 1) as i32);
+                self.killers.store(ply, &mv);
                 self.history.beta_cutoff(&n, b, &mv);
                 self.counter_move.store(b.color_us(), last_move, mv);
                 self.report_refutation(n.ply);
@@ -310,7 +435,7 @@ impl Algo {
             }
         }
         if nt == NodeType::UpperAll {
-            self.stats.inc_node_all(n.ply);
+            self.stats.inc_node_all(ply);
             cat = Event::NodeInteriorAll;
             self.counts.inc(&n, cat);
             // nothing
@@ -319,7 +444,7 @@ impl Algo {
             cat = Event::NodeInteriorCut;
             self.counts.inc(&n, cat);
         } else if nt == NodeType::ExactPv {
-            self.stats.inc_node_pv(n.ply);
+            self.stats.inc_node_pv(ply);
             cat = Event::NodeInteriorPv;
             self.counts.inc(&n, cat);
             // self.record_new_pv(ply, &bm, false);
@@ -331,7 +456,7 @@ impl Algo {
         if score > -Score::INFINITY && score < Score::INFINITY {
             let entry = TtNode {
                 score,
-                depth: n.depth,
+                depth,
                 nt,
                 bm,
             };
@@ -349,16 +474,7 @@ impl Algo {
             nt,
             b,
         );
-        self.explain_node(
-            &b,
-            bm,
-            nt,
-            score,
-            eval,
-            &n,
-            cat,
-            &self.pv_table.extract_pv_for(n.ply),
-        );
+        self.explain_node(&b, bm, nt, score, eval, &n, cat, &self.pv_table.extract_pv_for(ply));
         Ok((score, category))
     }
 }
