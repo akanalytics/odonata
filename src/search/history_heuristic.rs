@@ -2,7 +2,7 @@ use crate::bitboard::bitboard::Bitboard;
 use crate::board::Board;
 use crate::infra::component::Component;
 use crate::mv::Move;
-use crate::types::{Color, Piece};
+use crate::types::{Color, Piece, Ply};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -52,6 +52,9 @@ pub struct HistoryHeuristic {
     duff_method: AccumulateMethod,
     score_method: ScoreMethod,
     board: HistoryBoard,
+    min_depth: Ply,
+    max_ply: Ply,
+
 
     #[serde(skip)]
     history: Box<[[[[Tally; 64]; 64]; Piece::len()]; 2]>,
@@ -74,6 +77,8 @@ impl Default for HistoryHeuristic {
             enabled: true,
             // clear_every_move: true,
             scale: 1,
+            min_depth: 4,
+            max_ply: 5,
             age_factor: 4,
             malus_factor: 10,
             alpha_method: AccumulateMethod::Squared,
@@ -122,8 +127,8 @@ impl HistoryHeuristic {
     }
 
     #[inline]
-    pub fn history_heuristic_bonus(&self, c: Color, mv: &Move) -> i32 {
-        if !self.enabled {
+    pub fn history_heuristic_bonus(&self, c: Color, mv: &Move, n: &Node) -> i32 {
+        if !self.enabled || n.depth < self.min_depth || n.ply > self.max_ply {
             return 0;
         }
         use HistoryBoard::*;
@@ -159,7 +164,7 @@ impl HistoryHeuristic {
 
     #[inline]
     pub fn raised_alpha(&mut self, n: &Node, b: &Board, mv: &Move) {
-        if !self.enabled || mv.is_capture() {
+        if !self.enabled || mv.is_capture() || n.depth < self.min_depth || n.ply > self.max_ply {
             return;
         }
         use AccumulateMethod::*;
@@ -176,7 +181,7 @@ impl HistoryHeuristic {
 
     #[inline]
     pub fn beta_cutoff(&mut self, n: &Node, b: &Board, mv: &Move) {
-        if !self.enabled || mv.is_capture() {
+        if !self.enabled || mv.is_capture() || n.depth < self.min_depth || n.ply > self.max_ply {
             return;
         }
         use AccumulateMethod::*;
@@ -193,7 +198,7 @@ impl HistoryHeuristic {
 
     #[inline]
     pub fn duff(&mut self, n: &Node, b: &Board, mv: &Move) {
-        if !self.enabled || mv.is_capture() {
+        if !self.enabled || mv.is_capture() || n.depth < self.min_depth || n.ply > self.max_ply {
             return;
         }
         use AccumulateMethod::*;

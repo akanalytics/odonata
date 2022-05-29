@@ -732,9 +732,17 @@ mvv_lva = true
 discovered_checks = true
 see_cutoff = 0
 qsearch_see_cutoff = 1
-order = ["Start", "Hash", "Initialize", "GoodCaptureUpfrontSorted", "Killer", "Promo", "Quiet", "BadCapture", "End"]
+order = ["Start", "Hash", "Initialize", "GoodCaptureUpfrontSorted", "Killer", "Quiet", "BadCapture", "End"]
 qorder = ["Start", "Initialize", "GoodCapture", "Promo", "End"]
 qorder_evasions = ["Start", "Initialize", "Evasion", "End"]
+is_counter_move_sort_bonus = 0.0
+has_counter_move_sort_bonus = -20000.0
+promo_sort_bonus = 20000.0
+castle_sort_bonus = 1000.0
+promo_queen_sort_bonus = 0.0
+promo_knight_sort_bonus = -500.0
+pst_sort_factor = 1.0
+hh_sort_factor = 1.0
 
 [repetition]
 enabled = true
@@ -764,12 +772,17 @@ use_ply_below = true
 
 [counter_move]
 enabled = true
-clear_every_move = false
+clear_every_move = true
+age_factor = 10
+min_depth = 4
+max_ply = 128
 
 
 
 [history]
 enabled = true
+min_depth = 0
+max_ply = 128
 scale = 1
 age_factor = 4
 malus_factor = 10
