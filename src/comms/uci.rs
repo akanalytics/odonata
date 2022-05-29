@@ -12,7 +12,7 @@ use crate::perft::Perft;
 use crate::position::Position;
 use crate::search::engine::Engine;
 use crate::search::node::Node;
-use crate::search::search_results::{SearchResults, SearchResultsMode};
+use crate::search::search_results::{SearchProgress, SearchProgressMode};
 use crate::search::timecontrol::TimeControl;
 use crate::tags::Tag;
 use crate::types::Ply;
@@ -591,7 +591,7 @@ impl Uci {
             Self::print_info_string("debug mode on");
             self.debug = true;
             engine.algo.set_callback(|sr| {
-                if matches!(sr.mode, SearchResultsMode::BestMove) {
+                if matches!(sr.mode, SearchProgressMode::BestMove) {
                     Self::print_info_string(&format!("pv {}", sr.best_pv.to_san(&sr.board)));
                     Self::print_info_string(&format!("board {}", sr.board.to_fen()));
                     Self::print_info_string(&format!("{}", sr.best_pv.apply_to(&sr.board)));
@@ -776,8 +776,8 @@ impl Uci {
         Ok(())
     }
 
-    pub fn uci_info(sr: &SearchResults) {
-        if let SearchResultsMode::BestMove = sr.mode {
+    pub fn uci_info(sr: &SearchProgress) {
+        if let SearchProgressMode::BestMove = sr.mode {
             Self::print_bm_and_ponder(&sr.best_pv);
         } else {
             Self::print(&format!("info {}", UciInfo(sr)));
@@ -799,15 +799,15 @@ impl Uci {
     }
 }
 
-struct UciInfo<'a>(&'a SearchResults);
+struct UciInfo<'a>(&'a SearchProgress);
 
 impl<'a> fmt::Display for UciInfo<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let SearchResultsMode::Refutation = self.0.mode {
+        if let SearchProgressMode::Refutation = self.0.mode {
             let strings: Vec<String> = self.0.best_pv.iter().map(Move::to_string).collect();
             write!(f, "refutation {}", strings.join(" "))?;
         }
-        if let SearchResultsMode::PvChange = self.0.mode {
+        if let SearchProgressMode::PvChange = self.0.mode {
             write!(f, "depth {} ", self.0.depth)?;
             write!(f, "seldepth {} ", self.0.seldepth)?;
 
@@ -842,7 +842,7 @@ impl<'a> fmt::Display for UciInfo<'a> {
                 write!(f, "pv {}", strings.join(" "))?;
             }
         }
-        if let SearchResultsMode::NodeCounts = self.0.mode {
+        if let SearchProgressMode::NodeCounts = self.0.mode {
             // write!(f, "depth {} ", self.0.depth)?;
             // write!(f, "seldepth {} ", self.0.seldepth)?;
 

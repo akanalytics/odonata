@@ -25,7 +25,7 @@ use crate::search::node::Node;
 use crate::search::pvs::Pvs;
 use crate::search::razor::Razor;
 use crate::search::restrictions::Restrictions;
-use crate::search::search_results::SearchResults;
+use crate::search::search_results::SearchProgress;
 use crate::search::searchstats::SearchStats;
 use crate::search::taskcontrol::TaskControl;
 use crate::search::timecontrol::TimeControl;
@@ -39,7 +39,7 @@ use super::counter_move::CounterMove;
 use super::lmp::Lmp;
 use super::node::Event;
 use super::search_explainer::Explainer;
-use super::search_results::SearchResultsMode;
+use super::search_results::SearchProgressMode;
 
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -73,8 +73,8 @@ pub struct Algo {
     pub clock: Clock,
 
     pub counts: Counts,
-    pub results: SearchResults,
-    pub controller: TaskControl<SearchResults>,
+    pub results: SearchProgress,
+    pub controller: TaskControl<SearchProgress>,
     pub lmp: Lmp,
     pub counter_move: CounterMove,
 
@@ -115,7 +115,7 @@ impl Algo {
 
     pub fn set_callback(
         &mut self,
-        callback: impl Fn(&SearchResults) + Send + Sync + 'static,
+        callback: impl Fn(&SearchProgress) + Send + Sync + 'static,
     ) -> &mut Self {
         self.controller.register_callback(callback);
         self
@@ -295,17 +295,17 @@ impl Algo {
         if self.stats.iteration().all_nodes() % 5_000_000 == 0
             && self.stats.iteration().all_nodes() != 0
         {
-            let sp = SearchResults::with_report_progress(self);
+            let sp = SearchProgress::with_report_progress(self);
             self.controller.invoke_callback(&sp);
         }
     }
 
     pub fn report_refutation(&self, ply: Ply) {
         if self.show_refutations && ply < 4 {
-            let sp = SearchResults {
+            let sp = SearchProgress {
                 pv: self.pv_table.extract_pv_for(ply),
-                mode: SearchResultsMode::Refutation,
-                ..SearchResults::default()
+                mode: SearchProgressMode::Refutation,
+                ..SearchProgress::default()
             };
 
             self.controller.invoke_callback(&sp);

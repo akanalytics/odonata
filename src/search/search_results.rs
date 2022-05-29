@@ -19,14 +19,14 @@ use std::fmt;
 
 /// essentially all the data needed for UCI info status updates or for a decent progress bar
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum SearchResultsMode {
+pub enum SearchProgressMode {
     BestMove,
     Refutation,
     PvChange,
     NodeCounts,
 }
 
-impl Default for SearchResultsMode {
+impl Default for SearchProgressMode {
     fn default() -> Self {
         Self::PvChange
     }
@@ -35,12 +35,12 @@ impl Default for SearchResultsMode {
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 #[rustfmt::skip]
-pub struct SearchResults {
+pub struct SearchProgress {
     pub take_move_from_part_ply: bool,
 
     
     #[serde(skip)] pub board: Board,
-    #[serde(skip)] pub mode: SearchResultsMode,
+    #[serde(skip)] pub mode: SearchProgressMode,
     #[serde(skip)] pub depth: Ply,
     #[serde(skip)] pub seldepth: Ply,
     #[serde(skip)] pub time_millis: Option<u64>,
@@ -66,7 +66,7 @@ pub struct SearchResults {
     // pub currline: Option<MoveList>,
 }
 
-impl Component for SearchResults {
+impl Component for SearchProgress {
     fn new_game(&mut self) {
         self.new_position();
     }
@@ -82,17 +82,17 @@ impl Component for SearchResults {
     }
 }
 
-impl fmt::Display for SearchResults {
+impl fmt::Display for SearchProgress {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "{:#?}", self)?;
         Ok(())
     }
 }
 
-impl SearchResults {
+impl SearchProgress {
     pub fn with_report_progress(algo: &Algo) -> Self {
-        SearchResults {
-            mode: SearchResultsMode::NodeCounts,
+        SearchProgress {
+            mode: SearchProgressMode::NodeCounts,
             board: algo.board.clone(),
             nodes: Some(algo.clock.cumul_nodes_all_threads()),
             nodes_thread: Some(algo.clock.cumul_nodes()),
@@ -140,13 +140,13 @@ impl SearchResults {
     }
 
     pub fn with_best_move(&mut self, outcome: &Outcome) {
-        self.mode = SearchResultsMode::BestMove;
+        self.mode = SearchProgressMode::BestMove;
         self.outcome = *outcome;
     }
 
-    pub fn old_with_best_move(sr: &SearchResults) -> Self {
-        SearchResults {
-            mode: SearchResultsMode::BestMove,
+    pub fn old_with_best_move(sr: &SearchProgress) -> Self {
+        SearchProgress {
+            mode: SearchProgressMode::BestMove,
             best_score: sr.score,
             best_pv: sr.pv.clone(),
             ..sr.clone()
@@ -155,8 +155,8 @@ impl SearchResults {
 
     pub fn old_with_pv_change(algo: &Algo) -> Self {
         let stats = algo.search_stats();
-        let sr = SearchResults {
-            mode: SearchResultsMode::PvChange,
+        let sr = SearchProgress {
+            mode: SearchProgressMode::PvChange,
             board: algo.board.clone(),
             multi_pv_index: algo.restrictions.multi_pv_index(),
             multi_pv_index_of: algo.restrictions.multi_pv_count,
@@ -221,9 +221,9 @@ impl SearchResults {
         self.hashfull_per_mille = Some(tt.hashfull_per_mille());
         self.branching_factor = Some(stats.branching_factor());
         if self.score.is_numeric_or_mate() {
-            self.mode = SearchResultsMode::PvChange;
+            self.mode = SearchProgressMode::PvChange;
         } else {
-            self.mode = SearchResultsMode::NodeCounts;
+            self.mode = SearchProgressMode::NodeCounts;
         }
 
         // check PV for validity
@@ -248,9 +248,9 @@ impl SearchResults {
         event: Event,
     ) {
         if event != Event::UserCancelled && event != Event::TimeUp {
-            self.mode = SearchResultsMode::PvChange;
+            self.mode = SearchProgressMode::PvChange;
         } else {
-            self.mode = SearchResultsMode::NodeCounts;
+            self.mode = SearchProgressMode::NodeCounts;
         }
 
         self.event = Some(event);
