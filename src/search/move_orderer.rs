@@ -135,7 +135,42 @@ impl fmt::Display for MoveOrderer {
 
 impl MoveOrderer {
     #[inline]
-    pub fn quiet_score(&self, n: &Node, mv: Move, algo: &Algo, phase: Phase, c: Color, parent: Move) -> i32 {
+    pub fn quiet_score(&self, n: &Node, mv: Move, algo: &Algo, phase: Phase, c: Color, _parent: Move) -> i32 {
+        let mut score = 0;
+        if mv.is_promo() {
+            if mv.promo_piece() == Piece::Knight {
+                score += 1500;
+            } else {
+                score += 2000;
+            }
+        }
+        if mv.is_castle() {
+            score += 1000;
+        }
+        // if mv.mover_piece() == Piece::Pawn {
+        //     score += 0;
+        // }
+        // score += mv.mover_piece().centipawns();
+        if c == Color::White {
+            score += mv.to().rank_index() as i32;
+        } else {
+            score -= mv.to().rank_index() as i32;
+        }
+
+        score += algo.history.history_heuristic_bonus(c, &mv, n);
+
+        score += algo
+            .eval
+            .pst
+            .w_eval_square(c, mv.mover_piece(), mv.to())
+            .interpolate(phase) as i32;
+        // score -= algo.eval.w_eval_square(c, mv.mover_piece(), mv.from()).interpolate(phase);
+        -score
+    }
+
+
+    #[inline]
+    pub fn quiet_score2(&self, n: &Node, mv: Move, algo: &Algo, phase: Phase, c: Color, parent: Move) -> i32 {
         let mut score = 0.0;
         if mv.is_promo() {
             score += self.promo_sort_bonus;

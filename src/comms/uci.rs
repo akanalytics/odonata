@@ -12,7 +12,7 @@ use crate::perft::Perft;
 use crate::position::Position;
 use crate::search::engine::Engine;
 use crate::search::node::Node;
-use crate::search::search_results::{SearchProgress, SearchProgressMode};
+use crate::search::search_progress::{SearchProgress, SearchProgressMode};
 use crate::search::timecontrol::TimeControl;
 use crate::tags::Tag;
 use crate::types::Ply;

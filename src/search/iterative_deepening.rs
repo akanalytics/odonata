@@ -1,3 +1,4 @@
+use crate::eval::score::Score;
 use crate::globals::counts;
 use crate::infra::component::{Component, State};
 use crate::search::algo::Algo;
@@ -5,6 +6,7 @@ use crate::search::node::Node;
 use crate::search::searchstats::{NodeStats, SearchStats};
 use crate::search::timecontrol::TimeControl;
 use crate::types::{Ply, MAX_PLY};
+use crate::variation::Variation;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -113,7 +115,10 @@ impl IterativeDeepening {
 
 impl Algo {
     pub fn search_iteratively(&mut self) {
-        // self.new_search();
+
+        self.results.board = self.board.clone();
+        self.results.multi_pv.resize(self.restrictions.multi_pv_count, (Variation::new(), Score::zero()));
+
         self.ids.calc_range(&self.mte.time_control);
         let mut depth = self.ids.start_ply;
         'outer: loop {
@@ -134,7 +139,7 @@ impl Algo {
                     counts::SEARCH_IDS_COMPLETES.increment();
                 }
 
-                self.results.with_pv_change(
+                self.progress.with_pv_change(
                     &self.board,
                     &self.clock,
                     &self.stats,
@@ -143,33 +148,65 @@ impl Algo {
                 );
 
                 // let results = &self.results;
-                self.results.snapshot_bests();
-                self.controller.invoke_callback(&self.results);
+                self.progress.snapshot_bests();
+                self.controller.invoke_callback(&self.progress);
                 let exit = self.exit_iteration(depth);
+
+                // results
+                self.results.multi_pv[self.restrictions.multi_pv_index()] = (self.stats.pv().clone(),self.stats.score());
+                self.results.nodes = self.clock.cumul_nodes_all_threads();
+                self.results.nodes_thread = self.clock.cumul_nodes();
+                self.results.nps = self.clock.cumul_knps_all_threads() * 1000;
+                self.results.depth = self.stats.depth();
+                self.results.seldepth = self.stats.selective_depth();
+                self.results.time_millis = self.clock.elapsed_search().0.as_millis() as u64;
+                self.results.hashfull_per_mille = self.tt.hashfull_per_mille();
+                self.results.branching_factor = self.stats.branching_factor();
+
+
                 if exit {
                     break 'outer;
                 }
                 self.restrictions
                     .exclude_moves
-                    .push(self.results.initial_move());
+                    .push(self.progress.initial_move());
             }
             depth += self.ids.step_size
         }
-        self.results.with_best_move(&self.board.outcome());
-        self.controller.invoke_callback(&self.results);
-        // debug!("\n\n\n=====Search completed=====\n{}", self);
-        if self.max_depth > 0 && !self.results.outcome.is_game_over() && self.results.bm().is_null()
-        {
-            error!("bm is null\n{}\n{:?}", self, self.results);
-        }
 
+
+        self.progress.with_best_move(&self.board.outcome());
+        self.controller.invoke_callback(&self.progress);
+        // debug!("\n\n\n=====Search completed=====\n{}", self);
+        if self.max_depth > 0
+            && !self.progress.outcome.is_game_over()
+            && self.progress.bm().is_null()
+        {
+            error!("bm is null\n{}\n{:?}", self, self.progress);
+        }
+    }
+
+        // let stats = algo.search_stats();
+        // self.results = SearchResults {
+        //     board: algo.position.board().clone(),
+        //     pv: stats.pv().clone(),
+        //     score: stats.score(),
+        //     nodes: algo.clock.cumul_nodes_all_threads(),
+        //     nodes_thread: algo.clock.cumul_nodes(),
+        //     nps: algo.clock.cumul_knps_all_threads() * 1000,
+        //     depth: stats.depth(),
+        //     seldepth: stats.selective_depth(),
+        //     time_millis: algo.clock.elapsed_search().0.as_millis() as u64,
+        //     hashfull_per_mille: algo.tt.hashfull_per_mille(),
+        //     branching_factor: stats.branching_factor(),
+        //     ..Default::default()
+        // }
         // self.results.with_best_move();
         // self.task_control.invoke_callback(&self.results);
         // debug!("\n\n\n=====Search completed=====\n{}", self);
         // if self.results.bm().is_null() {
         //     error!("bm is null\n{}\n{:?}", self, self.results);
         // }
-    }
 
     pub fn exit_iteration(&self, depth: Ply) -> bool {
         self.search_stats().interrupted()
@@ -177,7 +214,7 @@ impl Algo {
             || self.stats.depth >= self.ids.end_ply
             || self.stats.depth >= MAX_PLY / 2
             || (self.restrictions.exclude_moves.is_empty()
-                && (self.search_stats().score().is_mate() || self.pv().is_empty()))
+                && (self.search_stats().score().is_mate() ))
         // pv.empty = draw
     }
 }

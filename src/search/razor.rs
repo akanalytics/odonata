@@ -102,7 +102,7 @@ impl Razor {
         if !n.alpha.is_numeric() {
             return false;
         }
-        if !self.pv_nodes && n.is_pv() {
+        if !self.pv_nodes && n.is_fw() {
             return false;
         }
         if b.is_in_check(b.color_us()) {
@@ -118,7 +118,7 @@ impl Razor {
 
 impl Algo {
     #[inline]
-    pub fn razor(
+    pub fn razor_node(
         &mut self,
         last_move: Move,
         b: &mut Board,

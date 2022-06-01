@@ -25,7 +25,7 @@ use crate::search::node::Node;
 use crate::search::pvs::Pvs;
 use crate::search::razor::Razor;
 use crate::search::restrictions::Restrictions;
-use crate::search::search_results::SearchProgress;
+use crate::search::search_progress::SearchProgress;
 use crate::search::searchstats::SearchStats;
 use crate::search::taskcontrol::TaskControl;
 use crate::search::timecontrol::TimeControl;
@@ -39,12 +39,12 @@ use super::counter_move::CounterMove;
 use super::lmp::Lmp;
 use super::node::Event;
 use super::search_explainer::Explainer;
-use super::search_results::SearchProgressMode;
+use super::search_progress::SearchProgressMode;
+use super::search_results::SearchResults;
 
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Algo {
-    pub minmax: bool,
     pub show_refutations: bool,
     pub analyse_mode: bool, // tries to find full PV etc
     pub qsearch_disabled: bool,
@@ -73,13 +73,18 @@ pub struct Algo {
     pub clock: Clock,
 
     pub counts: Counts,
-    pub results: SearchProgress,
+    pub progress: SearchProgress,
     pub controller: TaskControl<SearchProgress>,
     pub lmp: Lmp,
     pub counter_move: CounterMove,
 
     #[serde(skip)]
     pub position: Position,
+
+
+    #[serde(skip)]
+    pub results: SearchResults,
+
     #[serde(skip)]
     pub board: Board,
     #[serde(skip)]
@@ -159,7 +164,7 @@ impl Component for Algo {
         self.clock.set_state(s);
 
         self.counts.set_state(s);
-        self.results.set_state(s);
+        self.progress.set_state(s);
         self.controller.set_state(s);
         self.lmp.set_state(s);
         self.counter_move.set_state(s);
@@ -190,7 +195,6 @@ impl fmt::Debug for Algo {
             .field("analyse_mode", &self.analyse_mode)
             //.field("pv", &self.pv)
             .field("depth", &self.max_depth)
-            .field("minmax", &self.minmax)
             .field("search_stats", &self.stats)
             .field("depth", &self.max_depth)
             .field("ids", &self.ids)
@@ -214,7 +218,7 @@ impl fmt::Debug for Algo {
             .field("counter_move", &self.counter_move)
             .field("clock", &self.clock)
             .field("counts", &self.counts)
-            .field("results", &self.results)
+            .field("results", &self.progress)
             .finish()
     }
 }
@@ -241,7 +245,6 @@ impl fmt::Display for Algo {
         writeln!(f, "qsearch          : {}", self.qsearch_disabled)?;
         writeln!(f, "depth            : {}", self.max_depth)?;
         writeln!(f, "results          : {}", self.results_as_position())?;
-        writeln!(f, "minmax           : {}", self.minmax)?;
         // write!(f, "\n[results]\n{}", self.results)?;
         writeln!(f, ".\n.\n[controller]\n{}", self.controller)?;
         writeln!(f, ".\n.\n[move orderer]\n{}", self.move_orderer)?;
@@ -272,7 +275,7 @@ impl fmt::Display for Algo {
         writeln!(f, ".\n.\n[counter_move]\n{:}", self.counter_move)?;
 
         writeln!(f, ".\n.\n[counts]\n{}", self.counts)?;
-        writeln!(f, ".\n.\n[results]\n{}", self.results)?;
+        writeln!(f, ".\n.\n[results]\n{}", self.progress)?;
         Ok(())
     }
 }
@@ -346,15 +349,19 @@ impl Algo {
     }
 
     pub fn results_as_position(&self) -> Position {
-        self.results.to_pos()
+        self.results.to_position()
     }
 
     pub fn score(&self) -> Score {
-        self.search_stats().score()
+        self.results.score()
+    }
+
+    pub fn best_move(&self) -> Move {
+        self.results.best_move().unwrap_or(Move::NULL_MOVE)
     }
 
     pub fn pv(&self) -> &Variation {
-        self.search_stats().pv()
+        &self.results.pv()
     }
 
     pub fn ponder_hit(&mut self) {
@@ -417,38 +424,6 @@ mod tests {
     }
 
     #[test]
-    fn test_minmax() {
-        let pos = Catalog::starting_position();
-        let mut algo = Algo::new();
-        algo.set_position(pos);
-        algo.qsearch_disabled = true;
-        algo.ids.enabled = false;
-        algo.futility.alpha_enabled = false;
-        algo.futility.beta_enabled = false;
-        algo.nmp.enabled = false;
-        algo.tt.enabled = false;
-        algo.pvs.enabled = false;
-        algo.lmr.enabled = false;
-        algo.ext.enabled = false;
-        algo.minmax = true;
-        let eval = Eval::new();
-        algo.set_eval(eval);
-        algo.set_timing_method(TimeControl::Depth(3));
-        algo.search();
-        println!("{}", algo);
-        assert_eq!(
-            algo.clock.cumul_nodes(),
-            algo.clock.cumul_nodes_all_threads()
-        );
-        assert_eq!(algo.clock.cumul_nodes(), 1 + 20 + 400 + 8902);
-        assert_eq!(
-            algo.counts.cumul(Event::NodeInterior) + algo.counts.cumul(Event::DerivedLeaf),
-            1 + 20 + 400 + 8902 /* + 197_281 */
-        );
-        assert_eq!(algo.counts.cumul(Event::PercentBranchingFactor), 2114);
-    }
-
-    #[test]
     fn test_display_algo() {
         let mut algo = Algo::new();
         algo.set_timing_method(TimeControl::Depth(1));
@@ -466,7 +441,7 @@ mod tests {
         search.move_orderer.enabled = false;
         search.set_position(Position::from_board(board));
         search.search();
-        assert_eq!(search.pv()[0].uci(), "d7d5");
+        assert_eq!(search.best_move().uci(), "d7d5");
     }
 
     #[test]

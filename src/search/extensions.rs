@@ -122,7 +122,7 @@ impl Algo {
             && mv.is_capture()
             && last.is_capture()
             && (!self.ext.recapture_same_square || mv.to() == last.to())
-            && (!self.ext.recapture_only_pv_node || n.is_pv())
+            && (!self.ext.recapture_only_pv_node || n.is_fw())
             && n.depth <= self.ext.recapture_max_depth
             && (MoveType::GoodCapture | MoveType::GoodCaptureUpfrontSorted).contains(mt)
             && mv.capture_piece().centipawns() < last.capture_piece().centipawns()

@@ -24,6 +24,10 @@ pub struct Futility {
     giving_check: bool,
     discoverer: bool, 
     first_move: bool,
+    prune_extensions: bool,
+    prune_fw_node: bool,
+    prune_alpha_mate: bool,
+    prune_beta_mate: bool,
     max_pawn_rank: u8,
     max_depth: Ply,
     max_depth_captures: Ply,
@@ -52,6 +56,10 @@ impl Default for Futility {
             giving_check: false,
             discoverer: false,
             first_move: false,
+            prune_extensions: false,
+            prune_fw_node: false,
+            prune_alpha_mate: false,
+            prune_beta_mate: false,
             max_pawn_rank: 7,
             max_depth: 2, // not sure > 2 really makes sense
             max_depth_captures: 2,
@@ -131,11 +139,11 @@ impl Algo {
             // ||
             node.depth > self.max_depth // dont prune too far away from leaf nodes
             ||
-            node.alpha.is_mate()  // dont prune if either alpha or beta is a mate score
+            (!self.futility.prune_alpha_mate && node.alpha.is_mate())  
             ||
-            node.beta.is_mate()
+            (!self.futility.prune_beta_mate && node.beta.is_mate())  
             ||
-            node.is_pv()  // VER:0.4.14
+            (!self.futility.prune_fw_node && node.is_fw())  // VER:0.4.14
             ||
             (!self.futility.in_check && b.is_in_check(b.color_us()))
         {
@@ -167,7 +175,7 @@ impl Algo {
         if !self.futility.alpha_enabled {
             return None;
         }
-        if ext != 0 {
+        if !self.futility.prune_extensions && ext != 0 {
             return None;
         }
         if self.futility.move_types_forbidden.contains(mt) {
@@ -181,6 +189,14 @@ impl Algo {
         if !n.alpha.is_numeric() {
             return None;
         }
+
+        // we allow mate scores as we clamp the
+        //  results of eval (which could be a mate score 
+        // if taken from tt)
+        // 
+        // if !eval.is_numeric() {
+        //     return None;
+        // }
 
         if !self.futility.discoverer && mv.from().is_in(before.discoverer(before.color_them())) {
             return None;
@@ -220,7 +236,7 @@ impl Algo {
         let gain = before.eval_move_material(&self.eval, &mv);
 
         // fail low pruning
-        let est_score = eval + margin + gain;
+        let est_score = eval.clamp_score() + margin + gain;
         if est_score <= n.alpha {
             let category = match n.depth {
                 d if d <= 0 => Event::PruneFutilityD0,

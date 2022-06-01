@@ -18,6 +18,7 @@ pub mod pvs;
 pub mod razor;
 pub mod restrictions;
 pub mod search_explainer;
+pub mod search_progress;
 pub mod search_results;
 pub mod searchstats;
 pub mod stack;

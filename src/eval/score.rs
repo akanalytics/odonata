@@ -7,15 +7,11 @@ use std::fmt;
 //     bound: NodeType,
 // }
 
-
-
-
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Score {
     cp: i16,
 }
-
 
 pub trait ToScore {
     fn cp(self) -> Score;
@@ -51,7 +47,6 @@ impl fmt::Display for WhiteScore {
         }
     }
 }
-
 
 // WHITE LOSS IN 0<=N< MAX_PLY   is  -Self::INF + 1 + N
 // WHITE WIN IN 0<=N< MAX_PLY   is  i16::MAX -1 - N
@@ -122,7 +117,7 @@ impl Score {
     }
 
     #[inline]
-    pub const fn is_numeric_or_mate(&self) -> bool {
+    pub const fn is_finite(&self) -> bool {
         self.cp > -Self::INF && self.cp < Self::INF
     }
 
@@ -264,16 +259,15 @@ impl Default for Score {
 impl std::ops::Add for Score {
     type Output = Self;
 
+    // we allow adding of 1 to a mate score (null window around mate)
     #[inline]
-    fn add(self, other: Self) -> Self {
-        if let Some(s2) = other.cp() {
-            if let Some(s1) = self.cp() {
-                return Score::from_cp(s1 as i32 + s2 as i32);
-            } else {
-                return self; // if self is an infinite or mate then adding cp/mp makes no difference
-            }
-        }
-        panic!("Can only add centipawns: can't add {} + {}", self, other);
+    fn add(self, o: Self) -> Self {
+        debug_assert!(o.is_numeric(), "cannot add scores {self} + {o}");
+        debug_assert!(
+            self.is_numeric() || self.is_mate() && (o.as_i16() == 1 || o.as_i16() == -1),
+            "cannot add scores {self} + {o}"
+        );
+        return Score { cp: self.cp + o.cp };
     }
 }
 
@@ -281,15 +275,10 @@ impl std::ops::Mul<Score> for i32 {
     type Output = Score;
 
     #[inline]
-    fn mul(self, other: Score) -> Score {
-        if other.is_numeric() {
-            Score::from_cp(self * other.cp as i32)
-        } else if self > 0 {
-            other
-        } else if self < 0 {
-            other.negate()
-        } else {
-            Score::from_cp(0)
+    fn mul(self, o: Score) -> Score {
+        debug_assert!(o.is_numeric(), "Score {o} cannot be multipled by {self}");
+        Score {
+            cp: self as i16 * o.cp,
         }
     }
 }
@@ -298,18 +287,16 @@ impl std::ops::Sub for Score {
     type Output = Self;
 
     #[inline]
-    fn sub(self, other: Self) -> Self {
-        if let Some(s2) = other.cp() {
-            if let Some(s1) = self.cp() {
-                return Score::from_cp(s1 as i32 - s2 as i32);
-            } else {
-                return self; // if self is an infinite or mate then subtracting cp/mp makes no difference
-            }
-        }
-        panic!(
-            "Can only subtract centipawns: can't subtract {} - {}",
-            self, other
+    fn sub(self, o: Self) -> Self {
+        debug_assert!(
+            self.is_finite() && o.is_finite(),
+            "Score {self} + {o} cannot subtract infinities"
         );
+        debug_assert!(
+            !self.is_mate() && !o.is_mate(),
+            "Score {self} - {o} subtraction with mate scores"
+        );
+        Score { cp: self.cp - o.cp }
     }
 }
 
@@ -337,7 +324,6 @@ impl fmt::Display for Score {
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -372,6 +358,7 @@ mod tests {
         assert!((-Score::INFINITY) < Score::INFINITY);
         assert_eq!((-Score::INFINITY).is_mate(), false);
         assert_eq!(Score::we_win_in(1).is_mate(), true);
+        assert_eq!(Score::we_lose_in(3).is_mate(), true);
         assert!(Score::from_cp(-5) < Score::from_cp(5));
         assert!(Score::from_cp(5) < Score::we_win_in(0));
         assert!(Score::from_cp(100) > Score::from_cp(0));
@@ -381,32 +368,22 @@ mod tests {
             Score::from_cp(100) + Score::from_cp(150),
             Score::from_cp(250)
         );
-        assert_eq!((-Score::INFINITY) + Score::from_cp(150), (-Score::INFINITY));
-        assert_eq!(
-            Score::we_win_in(1) + Score::from_cp(150),
-            Score::we_win_in(1)
-        );
 
         // subtraction
         assert_eq!(
             Score::from_cp(100) - Score::from_cp(150),
             Score::from_cp(-50)
         );
-        assert_eq!((-Score::INFINITY) - Score::from_cp(150), (-Score::INFINITY));
-        assert_eq!(
-            Score::we_win_in(1) - Score::from_cp(150),
-            Score::we_win_in(1)
-        );
 
         assert_eq!(2 * Score::from_cp(100), Score::from_cp(200));
         assert_eq!(-2 * Score::from_cp(200), Score::from_cp(-400));
-        assert_eq!(-2 * (-Score::INFINITY), Score::INFINITY);
-        assert_eq!(-2 * Score::INFINITY, (-Score::INFINITY));
-        assert_eq!(1 * Score::INFINITY, Score::INFINITY);
-        assert_eq!(-1 * Score::we_win_in(2), Score::we_lose_in(2));
-        // changes sign bit not magnitude
-        assert_eq!(-3 * Score::we_win_in(2), Score::we_lose_in(2));
-        assert_eq!(1 * Score::we_win_in(2), Score::we_win_in(2));
+        // assert_eq!(-2 * (-Score::INFINITY), Score::INFINITY);
+        // assert_eq!(-2 * Score::INFINITY, (-Score::INFINITY));
+        // assert_eq!(1 * Score::INFINITY, Score::INFINITY);
+        // assert_eq!(-1 * Score::we_win_in(2), Score::we_lose_in(2));
+        // // changes sign bit not magnitude
+        // assert_eq!(-3 * Score::we_win_in(2), Score::we_lose_in(2));
+        // assert_eq!(1 * Score::we_win_in(2), Score::we_win_in(2));
         assert!(Score::we_win_in(1) < Score::INFINITY);
         assert!(Score::we_win_in(0) == Score::we_win_in(0));
         assert!(Score::from_cp(0).win_probability() > 0.499);
@@ -414,6 +391,27 @@ mod tests {
         assert!(Score::from_cp(1000).win_probability() > 0.95);
         assert!(Score::from_cp(-1000).win_probability() < 0.05);
         assert!((-Score::INFINITY).win_probability() < 0.001);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_score_panic1() {
+        assert_eq!((-Score::INFINITY) + Score::from_cp(150), (-Score::INFINITY));
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_score_panic2() {
+        assert_eq!(
+            Score::we_win_in(1) + Score::from_cp(150),
+            Score::we_win_in(1)
+        );
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_score_panic3() {
+        assert_eq!(-2 * (-Score::INFINITY), Score::INFINITY);
     }
 
     #[test]

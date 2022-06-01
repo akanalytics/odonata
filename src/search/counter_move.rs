@@ -86,8 +86,8 @@ impl CounterMove {
         }
     }
 
-    #[inline]
     /// returns a percent 0-100
+    #[inline]
     pub fn counter_move_unchecked(&self, c: Color, parent: Move, child: Move, n: &Node) -> i32 {
         if !self.enabled || n.depth < self.min_depth || n.ply > self.max_ply {
             return 0;

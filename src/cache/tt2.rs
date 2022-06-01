@@ -502,7 +502,7 @@ impl TranspositionTable2 {
             "Cannot store unused nodes in tt"
         );
         debug_assert!(
-            new_node.score.is_numeric_or_mate(),
+            new_node.score.is_finite(),
             "Cannot store score {} in tt\n{}",
             new_node.score,
             new_node
@@ -640,7 +640,7 @@ impl TranspositionTable2 {
                 return None;
             }
             debug_assert!(
-                tt_node.score.is_numeric_or_mate(),
+                tt_node.score.is_finite(),
                 "tt_node {}\nboard {:#}\nply: {}\ndepth: {}",
                 tt_node,
                 board,
@@ -872,7 +872,7 @@ mod tests {
             algo.new_game();
             algo.set_position(pos.clone()).search();
             assert_eq!(
-                algo.results.bm().uci(),
+                algo.progress.bm().uci(),
                 pos.bm()?.uci(),
                 "{}\n{}",
                 pos,

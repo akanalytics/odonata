@@ -14,6 +14,7 @@ use std::fmt;
 pub struct Lmp {
     pub enabled: bool,
     first_move: bool,
+    fw_node: bool, 
     alpha_numeric: bool,
     bad_captures: bool,
     pawns: bool,
@@ -21,7 +22,7 @@ pub struct Lmp {
     killers: bool,
     in_check: bool,
     gives_check: bool,
-    discoverer: bool, 
+    discoverer: bool,
     extensions: bool,
     a: f32,
     b: f32,
@@ -36,6 +37,7 @@ impl Default for Lmp {
         Lmp {
             enabled: true,
             first_move: false,
+            fw_node: false, 
             alpha_numeric: false,
             bad_captures: false,
             pawns: true,
@@ -69,17 +71,12 @@ impl Algo {
         &mut self,
         before: &Board,
         mv: Move,
-        mv_num: u32,
         stage: MoveType,
         after: &Board,
         n: &Node,
         ext: Ply,
     ) -> bool {
         if n.is_qs() || n.is_root() {
-            return false;
-        }
-
-        if !self.lmp.first_move && mv_num <= 1 {
             return false;
         }
 
@@ -122,10 +119,19 @@ impl Algo {
         true
     }
 
-    pub fn can_lmp(&mut self, is_quiet: bool, quiets: i32, n: &Node) -> bool {
-        if !self.lmp.enabled || self.minmax || !is_quiet {
+    pub fn can_lmp_move(&mut self, mv_num: u32, is_quiet: bool, quiets: i32, n: &Node) -> bool {
+        if !self.lmp.enabled || !is_quiet {
             return false;
         }
+
+        if !self.lmp.first_move && mv_num <= 1 {
+            return false;
+        }
+
+        if !self.lmp.fw_node && n.is_fw() {
+            return false;
+        }
+
         if self.lmp.alpha_numeric && !n.alpha.is_numeric() {
             return false;
         }
@@ -136,7 +142,7 @@ impl Algo {
             return false;
         }
 
-        let is_pv = n.is_pv();
+        let is_pv = n.is_fw();
         if is_pv
             && quiets
                 <= (self.lmp.pa

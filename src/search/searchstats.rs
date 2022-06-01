@@ -483,7 +483,7 @@ impl NodeStats {
         // OR
         //    q_interior_nodes + q_leaf_nodes
         //
-        // but not both (minmax is different!)
+        // but not both
         //
         self.interior_nodes + self.leaf_nodes + self.leaf_tt_nodes + self.leaf_qsearch_nodes
     }

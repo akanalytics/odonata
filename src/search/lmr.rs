@@ -15,6 +15,7 @@ use std::fmt;
 pub struct Lmr {
     pub enabled: bool,
     first_move: bool,
+    fw_node: bool,
     only_nt_all: bool,
     bad_captures: bool,
     pawns: bool,
@@ -55,6 +56,7 @@ impl Default for Lmr {
         let me = Lmr {
             enabled: true,
             first_move: false,
+            fw_node: false,
             only_nt_all: false,
             alpha_numeric: false,
             beta_numeric: false,
@@ -143,6 +145,9 @@ impl Algo {
             return 0;
         }
 
+        if !self.lmr.fw_node && n.is_fw() {
+            return 0;
+        }
         // let mut reduce = self.lmr.lmr_lookup[n.depth as usize][mv_num as usize];
 
 
@@ -179,7 +184,7 @@ impl Algo {
             _ => 0,
         };
 
-        reduce += match n.is_pv() {
+        reduce += match n.is_fw() {
             true => self.lmr.pv_reduce,
             _ => 0,
         };

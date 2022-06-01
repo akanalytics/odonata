@@ -172,7 +172,7 @@ impl Node {
     }
 
     #[inline]
-    pub fn is_pv(&self) -> bool {
+    pub fn is_fw(&self) -> bool {
         !self.is_zw()
     }
 

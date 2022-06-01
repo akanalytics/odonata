@@ -13,6 +13,7 @@ use super::node::Event;
 pub struct Pvs {
     pub enabled: bool,
     pub min_depth: Ply,
+    pub min_ply: Ply,
 }
 
 impl Component for Pvs {
@@ -28,6 +29,7 @@ impl Default for Pvs {
         Pvs {
             enabled: true,
             min_depth: 2,
+            min_ply: 0, 
         }
     }
 }
@@ -35,26 +37,32 @@ impl Default for Pvs {
 // once we have an alpha raising move, search remainder using null window and see if they raise alpha (or cut)
 // re-search full-window if they do, to get a score
 impl Algo {
-    pub fn pvs_permitted(&mut self, nt: NodeType, _b: &Board, n: &Node, mv_num: u32) -> bool {
-        if !self.pvs.enabled || self.minmax {
+    pub fn pvs_permitted(&mut self, _nt: NodeType, _b: &Board, n: &Node, mv_num: u32) -> bool {
+        if !self.pvs.enabled {
             return false;
         }
         if mv_num <= 1 {
             return false;
         }
+
+        if n.ply < self.pvs.min_ply {
+            return false;
+        }
+
+        // includes QS
         if n.depth < self.pvs.min_depth {
             return false;
         }
-        if nt != NodeType::ExactPv {
-            return false;
-        }
-        if !n.alpha.is_numeric() {
-            return false;
-        }
-        if n.is_zw() {
-            // no PVS in PVS search
-            return false;
-        }
+        // if nt != NodeType::ExactPv {
+        //     return false;
+        // }
+        // if !n.alpha.is_numeric() {
+        //     return false;
+        // }
+        // if n.is_zw() {
+        //     // no PVS in PVS search
+        //     return false;
+        // }
         self.counts.inc(n, Event::Pvs);
         true
     }

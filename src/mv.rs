@@ -12,9 +12,17 @@ use std::fmt;
 use std::str::FromStr;
 
 // FIXME: public methods
-#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, SerializeDisplay, DeserializeFromStr)]
+#[derive(Default, Copy, Clone, PartialEq, Eq, SerializeDisplay, DeserializeFromStr)]
 pub struct Move {
     bits: u32,
+}
+
+impl fmt::Debug for Move {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Move")
+            .field("uci", &self.uci())
+            .finish()
+    }
 }
 
 // piece

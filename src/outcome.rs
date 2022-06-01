@@ -1,11 +1,13 @@
 use crate::board::Board;
 use crate::types::{Color, ScoreWdl};
 use anyhow::{anyhow, Result};
+use serde::{Serialize, Deserialize};
 use std::fmt;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Outcome {
-    InProgress,
+    // see http://www.saremba.de/chessgml/standards/pgn/pgn-complete.htm#c9.8.1
+    Unterminated,
     WinWhite,
     WinBlack,
     WinOnTimeWhite,
@@ -17,11 +19,12 @@ pub enum Outcome {
     DrawInsufficientMaterial,
     DrawRule50,
     DrawRule75,
+    Abandoned,
 }
 
 impl Default for Outcome {
     fn default() -> Self {
-        Self::InProgress
+        Self::Unterminated
     }
 }
 
@@ -36,7 +39,7 @@ impl Outcome {
     pub fn is_draw(self) -> bool {
         !matches!(
             self,
-            Self::InProgress
+            Self::Unterminated
                 | Self::WinWhite
                 | Self::WinBlack
                 | Self::WinOnTimeWhite
@@ -65,7 +68,7 @@ impl Outcome {
 
     #[inline]
     pub fn is_game_over(self) -> bool {
-        self != Self::InProgress
+        self != Self::Unterminated
     }
 
     pub fn as_wdl(self) -> ScoreWdl {
@@ -106,7 +109,7 @@ impl Outcome {
             "1/2-1/2" => Ok(Outcome::DrawRule50),
             "1-0" => Ok(Outcome::WinWhite),
             "0-1" => Ok(Outcome::WinBlack),
-            "*" => Ok(Outcome::InProgress),
+            "*" => Ok(Outcome::Unterminated),
             _ => Err(anyhow!("Unknown outcome token '{}'", s)),
         }
     }
@@ -124,12 +127,12 @@ impl Board {
                 // white to play and in check with no moves => black win
                 return color_to_play.chooser_wb(Outcome::WinBlack, Outcome::WinWhite);
             } else {
-                return Outcome::InProgress;
+                return Outcome::Unterminated;
             }
         } else if !self.has_legal_moves() {
             return Outcome::DrawStalemate;
         }
-        Outcome::InProgress
+        Outcome::Unterminated
     }
 
     pub fn draw_outcome(&self) -> Option<Outcome> {
@@ -169,7 +172,7 @@ impl Board {
         if self.fifty_halfmove_clock() >= 2 * 50 {
             return Outcome::DrawRule50;
         }
-        Outcome::InProgress
+        Outcome::Unterminated
     }
 }
 
@@ -180,9 +183,9 @@ mod tests {
 
     #[test]
     fn test_outcome() {
-        assert_eq!(Outcome::InProgress.to_string(), "InProgress");
-        assert_eq!(format!("{}", Outcome::InProgress), "InProgress");
-        assert_eq!(format!("{}", Outcome::InProgress), "InProgress");
+        assert_eq!(Outcome::Unterminated.to_string(), "Unterminated");
+        assert_eq!(format!("{}", Outcome::Unterminated), "Unterminated");
+        assert_eq!(format!("{}", Outcome::Unterminated), "Unterminated");
         assert_eq!(Outcome::WinBlack.is_draw(), false);
         assert_eq!(Outcome::WinBlack.winning_color(), Some(Color::Black));
         assert_eq!(Outcome::WinBlack.winning_color(), Some(Color::Black));

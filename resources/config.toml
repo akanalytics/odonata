@@ -37,7 +37,6 @@
 shared_tt = true
 thread_count = 1
 config_filename = "config.toml"
-minmax = false
 feature = false
 
 [tuner]
@@ -56,6 +55,7 @@ consolidate = false
 [ids]
 enabled = true
 step_size = 1
+
 
 [controller]
 log_dir = "."
@@ -607,26 +607,26 @@ move_types_forbidden = 994
 [futility]
 alpha_enabled = true
 beta_enabled = false
-prune_remaining = false
 in_check = true
 discoverer = false
 giving_check = false
 first_move = false
+prune_extensions = false
+prune_fw_node = true
+prune_alpha_mate = false
+prune_beta_mate = false
 max_pawn_rank = 5
 max_depth = 2
 max_depth_captures = 2
+prune_remaining = false
 margin_qs = 0
 margin1 = 100
 margin2 = 250
 margin3 = 1500
 move_types_forbidden = 0
 
-[results]
-take_move_from_part_ply = false
 
-[pvs]
-enabled = true
-min_depth = 2
+
 
 [ext]
 enabled = true
@@ -652,16 +652,24 @@ recapture_max_depth = 1
 
 pv_enabled = false
 
+[pvs]
+enabled = true
+min_depth = 2
+min_ply = 0
+# qs = false
+# first_move = false
+
 [lmp]
 enabled = true
-first_move = false
+pawns = true
+first_move = true
+fw_node = false
 bad_captures = false
 max_pawn_rank = 6
 killers = false
 discoverer = false
 in_check = false
 gives_check = false
-pawns = true
 extensions = false
 a = 4.07
 b = 0.33
@@ -672,11 +680,12 @@ pc = 1.28
 
 [lmr]
 enabled = true
-first_move = false
-only_nt_all = false
 bad_captures = true
 pawns = true
 max_pawn_rank = 6
+first_move = true
+fw_node = false
+only_nt_all = false
 killers = false
 in_check = false
 discoverer = false
@@ -732,12 +741,22 @@ mvv_lva = true
 discovered_checks = true
 see_cutoff = 0
 qsearch_see_cutoff = 1
-order = ["Start", "Hash", "Initialize", "GoodCaptureUpfrontSorted", "Killer", "Quiet", "BadCapture", "End"]
+order = ["Start", "Hash", "Initialize", "GoodCaptureUpfrontSorted", "Killer", "Promo", "Quiet", "BadCapture", "End"]
 qorder = ["Start", "Initialize", "GoodCapture", "Promo", "End"]
 qorder_evasions = ["Start", "Initialize", "Evasion", "End"]
+
+# is_counter_move_sort_bonus = 1200.0
+# has_counter_move_sort_bonus = -20000.0
+# promo_sort_bonus = 2100.0
+# castle_sort_bonus = 1200.0
+# hh_sort_factor = 1600.0
+# promo_queen_sort_bonus = 60.0
+# promo_knight_sort_bonus = 0.0
+# pst_sort_factor = 1.0
+
 is_counter_move_sort_bonus = 0.0
 has_counter_move_sort_bonus = -20000.0
-promo_sort_bonus = 20000.0
+promo_sort_bonus = 2000.0
 castle_sort_bonus = 1000.0
 promo_queen_sort_bonus = 0.0
 promo_knight_sort_bonus = -500.0
@@ -771,8 +790,8 @@ clear_every_move = false
 use_ply_below = true
 
 [counter_move]
-enabled = true
-clear_every_move = true
+enabled = false
+clear_every_move = false
 age_factor = 10
 min_depth = 4
 max_ply = 128

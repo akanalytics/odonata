@@ -438,12 +438,14 @@ impl Eval {
 impl Board {
     #[inline]
     pub fn pov_score(&self, ws: WhiteScore) -> Score {
-        self.color_us().chooser_wb(1, -1) * ws.0
+        // avoid multiply on a possible mate score
+        self.color_us().chooser_wb(ws.0, -ws.0)
     }
 
     #[inline]
     pub fn white_score(&self, pov_score: Score) -> WhiteScore {
-        WhiteScore(self.color_us().chooser_wb(1, -1) * pov_score)
+        // avoid multiply on a possible mate score
+        WhiteScore(self.color_us().chooser_wb(pov_score, -pov_score))
     }
 
     #[inline]

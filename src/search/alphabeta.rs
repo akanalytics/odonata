@@ -14,7 +14,6 @@ use super::node::Event;
 pub struct AlphaBeta;
 
 impl Algo {
-
     pub fn run_alphabeta(&mut self, board: &mut Board, node: &mut Node) -> (Score, Event) {
         let depth = node.depth;
         self.max_depth = depth;
@@ -44,15 +43,15 @@ impl Algo {
         } else {
             (self.pv_table.extract_pv(), Some(Score::default()))
         };
-        self.results.set_pv(category, &pv);
-        self.results.score = score;
+        self.progress.set_pv(category, &pv);
+        self.progress.score = score;
         if node.alpha == -Score::INFINITY
             && node.beta == Score::INFINITY
             && category != Event::TimeUp
             && category != Event::UserCancelled
         {
             debug_assert!(
-                score.is_numeric_or_mate(),
+                score.is_finite(),
                 "Score was inf: node {:?} cat {} \n{}",
                 node,
                 category,
@@ -76,7 +75,6 @@ impl Algo {
         beta: Score,
         last_move: Move,
     ) -> Result<(Score, Event), Event> {
-
         self.clear_move(ply);
         self.report_progress();
 
@@ -86,20 +84,13 @@ impl Algo {
             alpha,
             beta,
         };
+        debug_assert!(n.alpha < n.beta, "alpha={}, beta={}", n.alpha, n.beta,);
 
         let (cancelled, mut cat) = self.time_up_or_cancelled(ply, false);
         if cancelled {
             self.counts.inc(&n, cat);
             return Err(cat);
         }
-
-        debug_assert!(
-            n.alpha < n.beta || self.minmax,
-            "alpha={}, beta={}, minmax={}",
-            n.alpha,
-            n.beta,
-            self.minmax
-        );
 
         self.clock.inc_nodes();
         self.counts.inc(&n, Event::Clock);
@@ -131,7 +122,7 @@ impl Algo {
         let mut tt_mv = Move::NULL_MOVE;
         match self.lookup(b, &mut n) {
             (Some(ab), None) => {
-                debug_assert!(ab.is_numeric_or_mate(), "lookup returned {}", ab);
+                debug_assert!(ab.is_finite(), "lookup returned {}", ab);
                 return Ok((ab, Event::HashHit));
             } // alpha, beta or a terminal node
             (None, Some(bm)) => tt_mv = bm,
@@ -164,10 +155,10 @@ impl Algo {
         if let Some(s) = self.standing_pat(b, &mut n, eval) {
             return Ok((s, Event::PruneStandingPat));
         }
-        if let Some(alphabeta) = self.razor(last_move, b, eval, &n)? {
+        if let Some(alphabeta) = self.razor_node(last_move, b, eval, &n)? {
             return Ok((alphabeta, Event::PruneRazor));
         }
-        if let Some(s) = self.nmp(b, &n, eval)? {
+        if let Some(s) = self.nmp_node(b, &n, eval)? {
             return Ok((s, Event::PruneNullMovePrune));
         }
 
@@ -186,18 +177,25 @@ impl Algo {
             self.stats.inc_move(ply);
             let mut child_board = b.make_move(&mv);
             let ext = self.extend(b, &child_board, mv, move_type, count, &n, last_move);
-            let is_quiet = self.is_quiet(b, mv, count, move_type, &child_board, &n, ext);
+            let is_quiet = self.is_quiet(b, mv, move_type, &child_board, &n, ext);
             if is_quiet {
                 quiets += 1;
             }
 
             if score > -Score::INFINITY {
-                if let Some(est_score) =
-                    self.can_futility_prune_move(mv, count, move_type, b, &child_board, eval, &n, ext)
-                {
+                if let Some(est) = self.can_futility_prune_move(
+                    mv,
+                    count,
+                    move_type,
+                    b,
+                    &child_board,
+                    eval,
+                    &n,
+                    ext,
+                ) {
                     self.stats.inc_fp_move(ply);
                     if score == -Score::INFINITY {
-                        score = est_score;
+                        score = est;
                     }
                     if self.can_prune_remaining_moves(b, move_type, &n) {
                         break;
@@ -205,24 +203,19 @@ impl Algo {
                     continue;
                 }
             }
-            let lmr =if  !n.is_pv() && !self.minmax {
-                self.lmr(
-                    b,
-                    mv,
-                    count,
-                    quiets,
-                    move_type,
-                    &child_board,
-                    &n,
-                    nt,
-                    ext,
-                    tt_mv,
-                )
-            } else {
-                0
-            };
-
-            if !n.is_pv() && self.can_lmp(is_quiet, quiets, &n) {
+            let lmr = self.lmr(
+                b,
+                mv,
+                count,
+                quiets,
+                move_type,
+                &child_board,
+                &n,
+                nt,
+                ext,
+                tt_mv,
+            );
+            if self.can_lmp_move(count, is_quiet, quiets, &n) {
                 continue;
             }
 
@@ -230,7 +223,6 @@ impl Algo {
             self.current_variation.push(mv);
             // self.explainer.start(&n, &self.current_variation);
             child_board.set_repetition_count(self.repetition.count(&child_board));
-
 
             // if first move:
             //    a,b with ext.
@@ -242,12 +234,12 @@ impl Algo {
 
             // let pvs = self.pvs_permitted(nt, b, &n, count);
 
-            // let pvs = 
+            // let pvs =
             let mut s = n.alpha + Score::from_cp(1);
             debug_assert!(s > n.alpha);
             let mut ev; //  = Event::Unknown;
 
-            if count  == 1 || n.is_qs() {
+            if !self.pvs_permitted(nt, b, &n, count){
                 (s, ev) = self.alphabeta(
                     &mut child_board,
                     ply + 1,
@@ -262,7 +254,7 @@ impl Algo {
                     &mut child_board,
                     ply + 1,
                     depth + ext - lmr - 1,
-                    -n.alpha - Score::from_cp(1),
+                    -n.alpha + Score::from_cp(-1),
                     -n.alpha,
                     mv,
                 )?;
@@ -280,7 +272,7 @@ impl Algo {
                     s = -s;
                 }
             }
-                //     // using [alpha, alpha + 1]
+            //     // using [alpha, alpha + 1]
             //     debug_assert!(n.alpha.is_numeric());
             //     self.stats.inc_pvs_move(ply);
             //     (s, ev) = self.alphabeta(
@@ -292,29 +284,9 @@ impl Algo {
             //         mv,
             //     )?;
             //     s = -s;
-            // } 
+            // }
 
             let cat = ev;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
             // (s,ev) = if pvs {
             //     debug_assert!(n.alpha.is_numeric());
@@ -405,7 +377,7 @@ impl Algo {
                 self.history.duff(&n, b, &mv);
             }
 
-            if n.alpha >= n.beta && !self.minmax {
+            if n.alpha >= n.beta {
                 nt = NodeType::LowerCut;
                 self.stats.inc_node_cut(ply, move_type, (count - 1) as i32);
                 self.killers.store(ply, &mv);
@@ -463,7 +435,7 @@ impl Algo {
             self.tt.store(b.hash(), entry);
         }
         debug_assert!(
-            n.alpha != -Score::INFINITY || n.beta != Score::INFINITY || score.is_numeric_or_mate(),
+            n.alpha != -Score::INFINITY || n.beta != Score::INFINITY || score.is_finite(),
             "alpha/beta full width with score: {} node {}\ncat: {} count: {} quiets: {}\nbm: {}\nnt: {}\nboard: {:#}",
             score,
             n,
@@ -474,7 +446,16 @@ impl Algo {
             nt,
             b,
         );
-        self.explain_node(&b, bm, nt, score, eval, &n, cat, &self.pv_table.extract_pv_for(ply));
+        self.explain_node(
+            &b,
+            bm,
+            nt,
+            score,
+            eval,
+            &n,
+            cat,
+            &self.pv_table.extract_pv_for(ply),
+        );
         Ok((score, category))
     }
 }
@@ -490,21 +471,23 @@ mod tests {
     fn test_2_mates() -> Result<()> {
         let positions = Catalog::mate_in_2();
         for (i, pos) in positions.iter().enumerate() {
-            let mut search = Algo::new();
-            search.set_timing_method(TimeControl::Depth(8)); // .set_callback(Uci::uci_info);
-                                                             // search.tt.enabled = false;
-            search.set_position(pos.clone()).search();
+            let mut algo = Algo::new();
+            algo.set_callback(crate::comms::uci::Uci::uci_info);
+            // search.tt.enabled = false;
+            algo.set_position(pos.clone()).search();
+            algo.set_timing_method(TimeControl::Depth(11));
             // println!("{}", search);
             assert_eq!(
-                search.pv().to_string(),
+                algo.pv().to_string(),
                 pos.pv()?.to_string(),
-                "#{} {}",
+                "#{} {}\n{}",
                 i,
-                pos
+                pos,
+                algo,
             );
-            assert_eq!(search.score().is_mate(), true);
-            println!("Mate in {}", search.score().mate_in().unwrap());
-            assert_eq!(search.score().mate_in(), Some(2), "#{} {}", i, pos);
+            assert_eq!(algo.score().is_mate(), true);
+            println!("#{i} gives mate in {}", algo.score().mate_in().unwrap());
+            assert_eq!(algo.score().mate_in(), Some(2), "#{} {}", i, pos);
         }
         Ok(())
     }
@@ -545,7 +528,7 @@ mod tests {
                     pos
                 );
             }
-            println!("Mate in {}", search.score().mate_in().unwrap());
+            println!("#{i} gives mate in {}", search.score().mate_in().unwrap());
             assert_eq!(search.score().mate_in(), Some(4), "#{} {}", i, pos);
         }
         Ok(())

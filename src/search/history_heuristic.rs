@@ -127,8 +127,8 @@ impl HistoryHeuristic {
     }
 
     #[inline]
-    pub fn history_heuristic_bonus(&self, c: Color, mv: &Move, n: &Node) -> i32 {
-        if !self.enabled || n.depth < self.min_depth || n.ply > self.max_ply {
+    pub fn history_heuristic_bonus(&self, c: Color, mv: &Move, _n: &Node) -> i32 {
+        if !self.enabled {
             return 0;
         }
         use HistoryBoard::*;

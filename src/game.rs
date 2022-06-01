@@ -73,7 +73,7 @@ impl Game {
             player
                 .set_position(Position::from_board(self.board.clone()))
                 .search();
-            let mv = player.results.bm();
+            let mv = player.progress.bm();
             let tags = player.results_as_position().tags().clone();
             if player.score() == -Score::INFINITY {
                 print!("{}", player);
@@ -340,6 +340,6 @@ mod tests {
         // let b2 = b1.make_move(&black.bm());
         //white.search(&b2);
         println!("{}", white);
-        assert_eq!(white.results.bm().uci(), "d3c1");
+        assert_eq!(white.progress.bm().uci(), "d3c1");
     }
 }

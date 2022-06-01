@@ -1,3 +1,5 @@
+use serde::{Serialize, Deserialize};
+
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::mv::Move;
@@ -6,7 +8,7 @@ use std::fmt;
 use std::ops::{Deref, DerefMut};
 
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Variation {
     moves: Vec<Move>,
 }
@@ -19,6 +21,16 @@ impl Default for Variation {
         }
     }
 }
+
+
+impl fmt::Debug for Variation {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Variation")
+            .field("moves", &self.uci())
+            .finish()
+    }
+}
+
 
 pub static EMPTY: Variation = Variation { moves: Vec::new() };
 

@@ -76,9 +76,12 @@ impl NullMovePruning {
         if node.depth < self.min_depth {
             return false;
         }
-        if !node.beta.is_numeric() {
+        if !node.beta.is_numeric()  {
             return false;
         }
+        // if !eval.is_numeric()  {
+        //     return false;
+        // }
         if ((b.line_pieces() | b.knights()) & b.us()).is_empty() {
             return false;
         }
@@ -147,8 +150,8 @@ impl NullMovePruning {
 
 impl Algo {
     #[inline]
-    pub fn nmp(&mut self, b: &Board, n: &Node, eval: Score) -> Result<Option<Score>, Event> {
-        if self.minmax || !self.nmp.allow(b, n, eval, &self.pv_table) {
+    pub fn nmp_node(&mut self, b: &Board, n: &Node, eval: Score) -> Result<Option<Score>, Event> {
+        if !self.nmp.allow(b, n, eval, &self.pv_table) {
             return Ok(None);
         }
 

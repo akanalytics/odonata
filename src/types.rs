@@ -575,7 +575,7 @@ mod tests {
         assert_eq!(
             format!("{:.02}", ScoreWdl::new(217, 77, 184).elo()),
             "24.02"
-        );
+            );
     }
 
     #[test]
@@ -594,7 +594,7 @@ mod tests {
         );
         assert_eq!(MoveType::COUNT, 18);
         assert_eq!(MoveType::Start.index(), 0);
-        assert_eq!(MoveType::End.index(), 17);
+        assert_eq!(MoveType::End.index(), 16);
         Ok(())
     }
 

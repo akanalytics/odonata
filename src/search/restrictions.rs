@@ -9,7 +9,7 @@ use std::fmt;
 #[serde(default, deny_unknown_fields)]
 pub struct Restrictions {
     pub enabled: bool,
-    pub multi_pv_count: u32,
+    pub multi_pv_count: usize,
 
     #[serde(skip)]
     pub include_moves: MoveList,
@@ -63,8 +63,8 @@ impl Restrictions {
         self.exclude_moves.is_empty() && self.include_moves.is_empty()
     }
 
-    pub fn multi_pv_index(&self) -> u32 {
-        self.exclude_moves.len() as u32
+    pub fn multi_pv_index(&self) -> usize {
+        self.exclude_moves.len()
     }
 }
 
