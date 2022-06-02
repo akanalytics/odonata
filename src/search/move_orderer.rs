@@ -498,6 +498,28 @@ impl OrderedMoveList {
                 }
             }
 
+            MoveType::QuietOrPromo => {
+                all_moves
+                    .iter()
+                    .filter(|&m| !Move::is_capture(m))
+                    .for_each(|&m| moves.push(m));
+                // algo.order_moves(self.ply, moves, &None);
+                let ph = b.phase(&algo.eval.phaser);
+                moves.sort_by_cached_key(|&mv| {
+                    algo.move_orderer.quiet_score(
+                        &self.n, 
+                        mv,
+                        algo,
+                        ph,
+                        b.color_us(),
+                        last,
+                    )
+                });
+                if algo.move_orderer.thread == 1 && moves.len() >= 2 {
+                    moves.swap(0, 1);
+                }
+            }
+
             // sorted quiets
             MoveType::Quiet => {
                 all_moves

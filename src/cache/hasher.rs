@@ -2,7 +2,7 @@ use crate::bitboard::castling::CastlingRights;
 use crate::bitboard::square::Square;
 use crate::board::Board;
 use crate::globals::constants::*;
-use crate::globals::counts;
+use crate::infra::metric::*;
 use crate::mv::Move;
 use crate::types::{Color, Hash, Piece};
 use rand::{Rng, SeedableRng};
@@ -144,7 +144,7 @@ impl Hasher {
     }
 
     pub fn hash_board(&self, b: &Board) -> Hash {
-        counts::BOARD_HASH_COUNT.increment();
+        Metric::HashBoard.record();
         let mut hash = b.color_us().chooser_wb(0, self.side);
         // hash ^= self.castling[b.castling()];
 
@@ -172,7 +172,7 @@ impl Hasher {
 
     pub fn hash_move(&self, m: &Move, pre_move: &Board) -> Hash {
         let mut hash = self.side;
-        counts::MOVE_HASH_COUNT.increment();
+        Metric::HashMove.record();
         // either we're moving to an empty square or its a capture
         let us = pre_move.color_us();
         let them = pre_move.color_them();

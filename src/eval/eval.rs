@@ -5,7 +5,7 @@ use crate::eval::pst::Pst;
 use crate::eval::score::Score;
 use crate::eval::see::See;
 use crate::eval::weight::Weight;
-use crate::globals::counts;
+use crate::infra::metric::*;
 use crate::infra::component::Component;
 use crate::infra::component::State;
 use crate::mv::Move;
@@ -398,7 +398,7 @@ impl Eval {
     }
 
     pub fn w_evaluate_with_outcome(&self, board: &Board, node: &Node) -> WhiteScore {
-        counts::EVAL_COUNT.increment();
+        Metric::Eval.record();
         let outcome = board.outcome();
         if outcome.is_game_over() {
             if outcome.is_draw() {

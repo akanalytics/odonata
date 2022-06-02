@@ -13,6 +13,42 @@ use strum::EnumCount;
 
 use super::node::{Event, Node};
 
+// stats.null_move_prune += 1;
+// stats.null_move_prune[depth] += 1
+// stats.null_move_prune[ply] += 1
+//
+// stats.null_move_prune.incr(node)
+// Stats::incr(node, &mut null_move_prune)
+// stats.incr(node, Stats::NullMovePrune)
+// GLOBAL_STATS.incr(node, Stats::NullMovePrune)
+//
+// THREAD_STATS.record(NodeCounter::NullMovePrune, node)
+// THREAD_STATS.record(Counter::MakeMove)
+// THREAD_STATS.record(Hdr::LegalMoves(legal_moves_count))
+// THREAD_STATS.record(NodeHdr::CutAtMove(node, mv_num))
+// THREAD_STATS.record(Timing::Eval, elapsed)
+//
+// GLOBAL.lock().add(THREAD_STATS.get());
+//
+//
+// within stats
+// Stats::NullMovePrune.total(self) + Stats::NullMovePrune.by_ply(self)
+
+
+// pub fn metrics(m: Metric) {
+//     THREAD_STATS.with(|s| s.borrow_mut().record(m));
+// }
+
+// use std::cell::RefMut;
+
+// pub fn metrics() -> RefMut<'_, Metrics> {
+//     THREAD_STATS.with(|s| s.borrow_mut())
+// }
+
+// pub fn test2() {
+//     metrics().make_moves += 1;
+// }
+
 #[derive(Clone, Debug)]
 pub struct SearchStats {
     all_threads_node_count: Arc<AtomicU64>,

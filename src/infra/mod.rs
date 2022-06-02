@@ -4,6 +4,7 @@ pub mod resources;
 pub mod serde;
 pub mod tracer;
 pub mod version;
+pub mod metric;
 
 #[cfg(test)]
 pub mod profiler;

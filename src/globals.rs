@@ -85,31 +85,31 @@ pub mod constants {
     pub const RANK_8: Bitboard = Bitboard::RANK_8;
 }
 
-pub mod counts {
-    use crate::trace::stat::{ArrayStat, Stat};
+// pub mod counts {
+//     use crate::trace::stat::{ArrayStat, Stat};
 
-    pub static EVAL_CACHE_COUNT: Stat = Stat::new("EVAL CACHE COUNT");
-    pub static EVAL_COUNT: Stat = Stat::new("EVAL COUNT");
-    pub static QEVAL_CACHE_COUNT: Stat = Stat::new("QEVAL CACHE COUNT");
-    pub static QEVAL_COUNT: Stat = Stat::new("QEVAL COUNT");
-    pub static LEGAL_MOVE_COUNT: Stat = Stat::new("LEGAL_MOVE COUNT");
-    pub static MOVE_HASH_COUNT: Stat = Stat::new("MOVE HASH COUNT");
-    pub static BOARD_HASH_COUNT: Stat = Stat::new("BOARD HASH COUNT");
-    pub static SEARCH_IDS_COMPLETES: Stat = Stat::new("IDS COMPLETES");
-    pub static SEARCH_IDS_TIMEOUTS: Stat = Stat::new("IDS TIMEOUTS");
+//     pub static EVAL_CACHE_COUNT: Stat = Stat::new("EVAL CACHE COUNT");
+//     pub static EVAL_COUNT: Stat = Stat::new("EVAL COUNT");
+//     pub static QEVAL_CACHE_COUNT: Stat = Stat::new("QEVAL CACHE COUNT");
+//     pub static QEVAL_COUNT: Stat = Stat::new("QEVAL COUNT");
+//     pub static LEGAL_MOVE_COUNT: Stat = Stat::new("LEGAL_MOVE COUNT");
+//     pub static MOVE_HASH_COUNT: Stat = Stat::new("MOVE HASH COUNT");
+//     pub static BOARD_HASH_COUNT: Stat = Stat::new("BOARD HASH COUNT");
+//     pub static SEARCH_IDS_COMPLETES: Stat = Stat::new("IDS COMPLETES");
+//     pub static SEARCH_IDS_TIMEOUTS: Stat = Stat::new("IDS TIMEOUTS");
 
-    pub static GLOBAL_COUNTS: ArrayStat = ArrayStat(&[
-        &EVAL_CACHE_COUNT,
-        &QEVAL_CACHE_COUNT,
-        &EVAL_COUNT,
-        &QEVAL_COUNT,
-        &LEGAL_MOVE_COUNT,
-        &MOVE_HASH_COUNT,
-        &BOARD_HASH_COUNT,
-        &SEARCH_IDS_COMPLETES,
-        &SEARCH_IDS_TIMEOUTS,
-    ]);
-}
+//     pub static GLOBAL_COUNTS: ArrayStat = ArrayStat(&[
+//         &EVAL_CACHE_COUNT,
+//         &QEVAL_CACHE_COUNT,
+//         &EVAL_COUNT,
+//         &QEVAL_COUNT,
+//         &LEGAL_MOVE_COUNT,
+//         &MOVE_HASH_COUNT,
+//         &BOARD_HASH_COUNT,
+//         &SEARCH_IDS_COMPLETES,
+//         &SEARCH_IDS_TIMEOUTS,
+//     ]);
+// }
 
 #[cfg(test)]
 mod tests {

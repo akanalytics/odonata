@@ -1,8 +1,12 @@
 use std::{collections::HashMap, fmt, fmt::Display, io::Write};
 
 use anyhow::Result;
-use comfy_table::{presets, Cell, CellAlignment, Row, Table};
 use itertools::Itertools;
+use tabled::{
+    builder::Builder,
+    object::{Columns, Segment},
+    Alignment, Modify, Padding, Style,
+};
 
 use crate::{outcome::Outcome, phaser::Phase, utils::Formatting, Bitboard, Color, Piece};
 
@@ -38,22 +42,19 @@ impl<'a> TotalScore<'a> {
 }
 
 pub fn profile() {
-
-    let a = vec![Weight::default();100];
+    let a = vec![Weight::default(); 100];
     let mut ts = TotalScore::new(&a, Phase::default());
     let f = TotalScore::accumulate;
-    
-    f(&mut ts, Feature::Piece(Piece::Pawn), 3,2);
+
+    f(&mut ts, Feature::Piece(Piece::Pawn), 3, 2);
 
     println!("{:?}", ts);
 }
 
-
 impl<'a> ScorerBase for TotalScore<'a> {
     #[inline]
     fn accumulate(&mut self, i: Feature, w_value: i32, b_value: i32) {
-
-        self.total += (w_value as i16  - b_value as i16 ) * self.weights[i.index()];
+        self.total += (w_value as i16 - b_value as i16) * self.weights[i.index()];
     }
 
     #[inline]
@@ -67,9 +68,6 @@ impl<'a> ScorerBase for TotalScore<'a> {
     #[inline]
     fn set_bits(&mut self, _i: Feature, _bits: Bitboard) {}
 }
-
-
-
 
 #[derive(Clone, Debug, Default)]
 pub struct ExplainScore {
@@ -98,7 +96,6 @@ impl ExplainScore {
         self.weights = Some(wts);
     }
 }
-
 
 impl ScorerBase for ExplainScore {
     #[inline]
@@ -145,7 +142,8 @@ impl ExplainScore {
         self.vec
             .iter()
             .find(|&e| i == e.0)
-            .map(|e| (e.1 - e.2) as i32).unwrap_or_default()
+            .map(|e| (e.1 - e.2) as i32)
+            .unwrap_or_default()
     }
 
     pub fn discard_balanced_features(&mut self) {
@@ -204,26 +202,19 @@ impl ExplainScore {
 // TODO! Move to 'tabled' crate
 impl Display for ExplainScore {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fn fp(decimal: f32) -> Cell {
-            Cell::new(Formatting::decimal(2, decimal))
+        fn fp(decimal: f32) -> String {
+            Formatting::decimal(2, decimal)
         }
 
-        fn int(int: i32) -> Cell {
-            Cell::new(int.to_string())
+        fn int(int: i32) -> String {
+            int.to_string()
         }
 
-        let mut tab = Table::new();
-        let row = Row::from(vec![
+        let mut builder = Builder::default().set_columns([
             "attr", "w#", "w mg", "w eg", "int", "mg", "eg", "b#", "b mg", "b eg", "wt",
         ]);
-        tab.load_preset(presets::ASCII_BORDERS_ONLY_CONDENSED)
-            .set_header(row);
-        tab.column_iter_mut()
-            .skip(1)
-            .for_each(|c| c.set_cell_alignment(CellAlignment::Right));
-        tab.get_column_mut(1).unwrap().set_padding((1, 2));
-        tab.get_column_mut(4).unwrap().set_padding((1, 2));
-        tab.get_column_mut(7).unwrap().set_padding((1, 2));
+        let style = Style::github_markdown().top('-').bottom('-').top('-');
+
         let mut tot = Weight::zero();
         let mut grand_tot = Weight::zero();
         let mut iter = self.vec.iter().peekable();
@@ -233,58 +224,67 @@ impl Display for ExplainScore {
             } else {
                 Weight::new(1.0, 1.0)
             };
-            let mut row = Row::new();
-            row.add_cell(Cell::new(i.name()));
-            row.add_cell(int(*w));
-            row.add_cell(fp((*w * wt).s()));
-            row.add_cell(fp((*w * wt).e()));
-            row.add_cell(fp((*w * wt).interpolate(self.phase)));
+            let mut row = vec![];
+            row.push(i.name());
+            row.push(int(*w));
+            row.push(fp((*w * wt).s()));
+            row.push(fp((*w * wt).e()));
+            row.push(fp((*w * wt).interpolate(self.phase)));
             tot += (w - b) * wt;
-            row.add_cell(fp((*w * wt).s() - (*b * wt).s()));
-            row.add_cell(fp((*w * wt).s() - (*b * wt).e()));
-            row.add_cell(int(*b));
-            row.add_cell(fp((*b * wt).s()));
-            row.add_cell(fp((*b * wt).e()));
-            row.add_cell(Cell::new(wt));
-            tab.add_row(row);
+            row.push(fp((*w * wt).s() - (*b * wt).s()));
+            row.push(fp((*w * wt).s() - (*b * wt).e()));
+            row.push(int(*b));
+            row.push(fp((*b * wt).s()));
+            row.push(fp((*b * wt).e()));
+            row.push(wt.to_string());
+            builder = builder.add_record(row);
             if let Some((j, _, _, _)) = iter.peek() {
                 if i.category() == j.category() {
                     continue;
                 }
             }
-            let mut row = Row::new();
-            row.add_cell(Cell::new(i.category()));
-            row.add_cell("".into())
-                .add_cell("".into())
-                .add_cell("".into());
-            row.add_cell(fp((tot).interpolate(self.phase)));
-            row.add_cell(fp(tot.s()));
-            row.add_cell(fp(tot.e()));
-            tab.add_row(row);
+            let mut row = vec![];
+            row.push(i.category());
+            row.push("".into());
+            row.push("".into());
+            row.push("".into());
+            row.push(fp((tot).interpolate(self.phase)));
+            row.push(fp(tot.s()));
+            row.push(fp(tot.e()));
+            builder = builder.add_record(row);
             grand_tot += tot;
             tot = Weight::zero();
-            tab.add_row(Row::new()); // blank row
+            builder = builder.add_record(vec![""]); // blank row
         }
-        let mut row = Row::new();
-        row.add_cell(Cell::new("Total"));
-        row.add_cell("".into())
-            .add_cell("".into())
-            .add_cell("".into());
-        row.add_cell(fp((grand_tot).interpolate(self.phase)));
-        row.add_cell(fp(grand_tot.s()));
-        row.add_cell(fp(grand_tot.e()));
-        tab.add_row(row);
+        let mut row = vec![];
+        row.push("Total".to_owned());
+        row.push("".into());
+        row.push("".into());
+        row.push("".into());
+        row.push(fp((grand_tot).interpolate(self.phase)));
+        row.push(fp(grand_tot.s()));
+        row.push(fp(grand_tot.e()));
+        builder = builder.add_record(row);
+        let mut tab = builder.build();
+        tab = tab
+            .with(Modify::new(Segment::all()).with(Alignment::right()))
+            .with(Modify::new(Columns::single(1)).with(Padding::new(4, 1, 0, 0)))
+            .with(Modify::new(Columns::single(4)).with(Padding::new(4, 1, 0, 0)))
+            .with(Modify::new(Columns::single(7)).with(Padding::new(4, 1, 0, 0)))
+            .with(style);
         tab.fmt(f)?;
         f.write_str(&self.fen)?;
+
         if f.alternate() {
-            let mut tab = Table::new();
+            let mut builder = Builder::new();
             for y in &self.bitboards.iter().chunks(5) {
-                let mut row = Row::new();
+                let mut row = vec![];
                 for (i, bb) in y {
-                    row.add_cell(format!("{}\n{bb:#}", i.name()).into());
+                    row.push(format!("{}\n{bb:#}", i.name()));
                 }
-                tab.add_row(row);
+                builder = builder.add_record(row);
             }
+            let tab = builder.build();
             tab.fmt(f)?;
         }
         Ok(())
@@ -299,7 +299,6 @@ mod tests {
     use crate::phaser::Phaser;
     use crate::search::engine::Engine;
     use crate::test_log::test;
-    use comfy_table::{Cell, Color, Table};
     // use crate::utils::StringUtils;
 
     #[test]
@@ -310,8 +309,7 @@ mod tests {
         let eval = &mut eng.algo.eval;
         eval.populate_feature_weights();
         let phaser = Phaser::default();
-        let mut table = Table::new();
-        table.set_header(vec!["old", "TotalScore", "ExplainScore"]);
+        let mut builder = Builder::new().set_columns(["old", "TotalScore", "ExplainScore"]);
         for pos in positions.iter().chain(end_games.iter()) {
             let b = pos.board();
 
@@ -322,16 +320,18 @@ mod tests {
             scorer3.set_weights(eval.weights_vector());
             Calc::score(&mut scorer3, &b, &eval, &phaser);
 
-            table.add_row(vec![scorer2.total().to_string(), scorer3.to_string()]);
+            builder = builder.add_record([scorer2.total().to_string(), scorer3.to_string()]);
             if scorer2.total().to_string() != scorer3.total().to_string() {
-                table.add_row(vec![
-                    format!("{:.6}", scorer2.total()),
-                    format!("{:.6}", scorer3.total()),
-                ]);
-                table.add_row(vec![Cell::new("Fail!").bg(Color::Red)]);
+                builder = builder
+                    .add_record([
+                        format!("{:.6}", scorer2.total()),
+                        format!("{:.6}", scorer3.total()),
+                    ])
+                    .add_record(["Fail!", ""]);
                 break;
             }
         }
+        let table = builder.build();
         println!("{table}");
     }
 }

@@ -212,7 +212,7 @@ mod tests {
         assert_eq!(COUNTER1.with(|c| c.get()), 10001);
 
         // Stat struct
-        let mut pr = Profiler::new("Stat".into());
+        let mut pr = Profiler::new("thread-Stat".into());
         for _iter in 0..10002 {
             pr.benchmark(|| COUNTER2.increment())
         }

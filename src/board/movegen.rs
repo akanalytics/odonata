@@ -4,7 +4,7 @@ use crate::board::boardcalcs::BoardCalcs;
 use crate::board::makemove::MoveMaker;
 use crate::board::rules::Rules;
 use crate::board::Board;
-use crate::globals::counts;
+use crate::infra::metric::*;
 use crate::movelist::MoveList;
 use crate::mv::Move;
 use crate::types::{Color, Piece};
@@ -225,13 +225,13 @@ impl Board {
 
     #[inline]
     pub fn legal_moves_into(&self, moves: &mut MoveList) {
-        counts::LEGAL_MOVE_COUNT.increment();
+        Metric::MoveGen.record();
         Rules::legals_for(self, moves);
     }
 
     #[inline]
     pub fn legal_moves(&self) -> MoveList {
-        counts::LEGAL_MOVE_COUNT.increment();
+        Metric::MoveGen.record();
         let mut moves = MoveList::new();
         Rules::legals_for(self, &mut moves);
         moves
@@ -477,7 +477,7 @@ mod tests {
         );
         let mov_h1g2 = board.parse_uci_move("h1g2")?;
         assert_eq!(board.is_legal_move(&mov_h1g2), true);
-        println!("{}", counts::GLOBAL_COUNTS);
+        println!("{}", Metrics::to_string());
 
         for b in Catalog::stalemates().iter() {
             assert_eq!(

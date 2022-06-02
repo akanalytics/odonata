@@ -75,6 +75,7 @@ pub enum Event {
     MovePromo,
     MoveEvasion,
     MoveQuiet,
+    MoveQuietOrPromo,
     MoveQuietUnsorted,
     MoveBadCapture,
     MoveRemaining,

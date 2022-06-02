@@ -1,5 +1,5 @@
 use crate::eval::score::Score;
-use crate::globals::counts;
+use crate::infra::metric::*;
 use crate::infra::component::{Component, State};
 use crate::search::algo::Algo;
 use crate::search::node::Node;
@@ -134,9 +134,9 @@ impl Algo {
                 self.ids.iterations.push(self.search_stats().clone());
 
                 if self.search_stats().interrupted() {
-                    counts::SEARCH_IDS_TIMEOUTS.increment();
+                    Metric::IterationTimeout.record();
                 } else {
-                    counts::SEARCH_IDS_COMPLETES.increment();
+                    Metric::IterationComplete.record();
                 }
 
                 self.progress.with_pv_change(

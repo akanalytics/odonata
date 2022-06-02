@@ -741,27 +741,27 @@ mvv_lva = true
 discovered_checks = true
 see_cutoff = 0
 qsearch_see_cutoff = 1
-order = ["Start", "Hash", "Initialize", "GoodCaptureUpfrontSorted", "Killer", "Promo", "Quiet", "BadCapture", "End"]
+order = ["Start", "Hash", "Initialize", "GoodCaptureUpfrontSorted", "Killer", "QuietOrPromo", "BadCapture", "End"]
 qorder = ["Start", "Initialize", "GoodCapture", "Promo", "End"]
 qorder_evasions = ["Start", "Initialize", "Evasion", "End"]
 
-# is_counter_move_sort_bonus = 1200.0
-# has_counter_move_sort_bonus = -20000.0
-# promo_sort_bonus = 2100.0
-# castle_sort_bonus = 1200.0
-# hh_sort_factor = 1600.0
-# promo_queen_sort_bonus = 60.0
-# promo_knight_sort_bonus = 0.0
-# pst_sort_factor = 1.0
-
-is_counter_move_sort_bonus = 0.0
+is_counter_move_sort_bonus = 1200.0
 has_counter_move_sort_bonus = -20000.0
-promo_sort_bonus = 2000.0
-castle_sort_bonus = 1000.0
-promo_queen_sort_bonus = 0.0
-promo_knight_sort_bonus = -500.0
+promo_sort_bonus = 2100.0
+castle_sort_bonus = 1200.0
+hh_sort_factor = 1600.0
+promo_queen_sort_bonus = 60.0
+promo_knight_sort_bonus = 0.0
 pst_sort_factor = 1.0
-hh_sort_factor = 1.0
+
+# is_counter_move_sort_bonus = 0.0
+# has_counter_move_sort_bonus = -20000.0
+# promo_sort_bonus = 2000.0
+# castle_sort_bonus = 1000.0
+# promo_queen_sort_bonus = 0.0
+# promo_knight_sort_bonus = -500.0
+# pst_sort_factor = 1.0
+# hh_sort_factor = 1.0
 
 [repetition]
 enabled = true
@@ -790,7 +790,7 @@ clear_every_move = false
 use_ply_below = true
 
 [counter_move]
-enabled = false
+enabled = true
 clear_every_move = false
 age_factor = 10
 min_depth = 4

@@ -161,6 +161,7 @@ impl Counts {
             MoveType::QueenPromo => Event::MovePromo,
             MoveType::Evasion => Event::MoveEvasion,
             MoveType::Quiet => Event::MoveQuiet,
+            MoveType::QuietOrPromo => Event::MoveQuietOrPromo,
             MoveType::QuietUnsorted => Event::MoveQuietUnsorted,
             MoveType::BadCapture => Event::MoveBadCapture,
             MoveType::Remaining => Event::MoveRemaining,

@@ -4,8 +4,8 @@ use crate::clock::Clock;
 use crate::eval::eval::Eval;
 use crate::eval::recognizer::Recognizer;
 use crate::eval::score::Score;
-use crate::globals::counts;
 use crate::infra::component::{Component, State};
+use crate::infra::metric::Metrics;
 use crate::mv::Move;
 use crate::position::Position;
 use crate::prelude::*;
@@ -263,7 +263,7 @@ impl fmt::Display for Algo {
         writeln!(f, ".\n.\n[history]\n{}", self.history)?;
         writeln!(f, ".\n.\n[stats]\n{}", self.stats)?;
         writeln!(f, ".\n.\n[iterative deepening]\n{}", self.ids)?;
-        writeln!(f, ".\n.\n[global counts]\n{}", counts::GLOBAL_COUNTS)?;
+        writeln!(f, ".\n.\n[global counts]\n{}", Metrics::to_string())?;
         writeln!(f, ".\n.\n[pvtable]\n{}", self.pv_table)?;
         writeln!(f, ".\n.\n[explainer]\n{}", self.explainer)?;
 
