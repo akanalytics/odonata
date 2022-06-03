@@ -2,7 +2,6 @@ use crate::board::Board;
 use crate::bound::NodeType;
 use crate::infra::component::Component;
 use crate::mv::Move;
-use crate::search::node::Event;
 use crate::search::node::Node;
 use crate::types::{MoveType, Ply};
 use crate::Algo;
@@ -239,8 +238,8 @@ impl Algo {
             return 0;
         }
 
-        self.stats.inc_red_lmr(n.ply);
-        self.counts.inc(n, Event::Lmr);
+        // self.stats.inc_red_lmr(n.ply);
+        // self.counts.inc(n, Event::Lmr);
         reduce
     }
 }

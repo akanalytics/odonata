@@ -128,6 +128,7 @@ mod tests {
     use crate::eval::eval::Eval;
     use crate::eval::recognizer::Recognizer;
     use crate::eval::score::*;
+    use crate::infra::metric::Metrics;
     use crate::movelist::*;
     use crate::mv::*;
     use crate::position::*;
@@ -212,5 +213,6 @@ mod tests {
         assert_eq!(size_of::<Counts>(), 32, "Counts");
         assert_eq!(size_of::<SearchStats>(), 832, "SearchStats");
         assert_eq!(size_of::<PvTable>(), 32, "PvTable");
+        assert_eq!(size_of::<Metrics>(), 32, "Metrics");
     }
 }

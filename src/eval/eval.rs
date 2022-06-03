@@ -10,7 +10,6 @@ use crate::infra::component::Component;
 use crate::infra::component::State;
 use crate::mv::Move;
 use crate::phaser::Phaser;
-use crate::prelude::*;
 use crate::search::node::Node;
 use crate::trace::stat::{ArrayStat, Stat};
 use crate::types::{Color, Piece};
@@ -477,7 +476,7 @@ impl Board {
 
     #[inline]
     pub fn eval_some(&self, eval: &Eval) -> Score {
-        profile_fn!(board.eval_some);
+        // profile_fn!(board.eval_some);
         // let _g = hprof::enter("eval some");
         ALL.increment();
         self.pov_score(eval.w_eval_some(self))

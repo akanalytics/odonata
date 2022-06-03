@@ -741,7 +741,7 @@ mvv_lva = true
 discovered_checks = true
 see_cutoff = 0
 qsearch_see_cutoff = 1
-order = ["Start", "Hash", "Initialize", "GoodCaptureUpfrontSorted", "Killer", "QuietOrPromo", "BadCapture", "End"]
+order = ["Start", "Hash", "Initialize", "GoodCaptureUpfrontSorted", "Killer", "Promo", "Quiet", "BadCapture", "End"]
 qorder = ["Start", "Initialize", "GoodCapture", "Promo", "End"]
 qorder_evasions = ["Start", "Initialize", "Evasion", "End"]
 
@@ -772,6 +772,7 @@ enabled = true
 aging = true
 use_tt_for_pv = false
 use_tt_for_eval = false
+tt_for_eval_depth = 0
 allow_truncated_pv = true
 buckets = 2
 aligned = false

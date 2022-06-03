@@ -3,6 +3,7 @@ use crate::board::Board;
 use crate::bound::NodeType;
 use crate::cache::tt2::TtNode;
 use crate::eval::score::{Score, ToScore};
+use crate::infra::metric::Metric;
 use crate::mv::Move;
 use crate::pvtable::PvTable;
 use crate::search::algo::Algo;
@@ -11,7 +12,7 @@ use crate::search::node::{Event, Node};
 use crate::infra::component::Component;
 use crate::variation::Variation;
 // use crate::{debug, logger::LogInit};
-use crate::types::{MoveType, Ply};
+use crate::types::{Ply};
 use serde::{Deserialize, Serialize};
 use std::cmp::min;
 use std::fmt;
@@ -76,7 +77,7 @@ impl NullMovePruning {
         if node.depth < self.min_depth {
             return false;
         }
-        if !node.beta.is_numeric()  {
+        if !node.beta.is_numeric() {
             return false;
         }
         // if !eval.is_numeric()  {
@@ -118,6 +119,7 @@ impl NullMovePruning {
 
     #[inline]
     pub fn depth_reduction(&self, eval: Score, b: &Board, n: &Node) -> Ply {
+        let eval = if eval.is_numeric() { eval } else { n.beta };
         match self.depth_reduction_strat {
             0 => 0,
             1 => 1,
@@ -160,30 +162,32 @@ impl Algo {
         let mut child_board = b.make_move(&mv);
         self.current_variation.push(mv);
         // self.explainer.start(n, &self.current_variation);
-        self.stats.inc_nmp(n.ply);
+        Metric::NullMovePruneAttempt(*n).record();
+        // self.stats.inc_nmp(n.ply);
         let reduced_depth = n.depth - r - 1;
 
         let child_score = -self
-        .alphabeta(
-            &mut child_board,
-            n.ply + 1,
-            reduced_depth,
-            -n.beta,
-            -n.beta + 1.cp(),
-            mv,
-        )?
-        .0;
+            .alphabeta(
+                &mut child_board,
+                n.ply + 1,
+                reduced_depth,
+                -n.beta,
+                -n.beta + 1.cp(),
+                mv,
+            )?
+            .0;
         b.undo_move(&mv);
         self.current_variation.pop();
         // self.explainer.start(n, &self.current_variation);
         if child_score >= n.beta {
-            self.stats.inc_node_cut(n.ply, MoveType::Null, -1);
-            self.counts.inc(n, Event::PruneNullMovePrune);
+            // self.stats.inc_node_cut(n.ply, MoveType::Null, -1);
+            // self.counts.inc(n, Event::PruneNullMovePrune);
             self.report_refutation(n.ply);
             self.explain_nmp(b, child_score, n);
 
             if self.nmp.store_tt {
                 // score is clamped as you cant mate on a null move. Note reduced depth too
+                Metric::TtStore(*n).record();
                 let entry = TtNode {
                     score: child_score.clamp_score(),
                     depth: reduced_depth + 1,

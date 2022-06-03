@@ -1,6 +1,6 @@
 [package]
 name = "odonata"
-version = "0.5.60"
+version = "0.5.61"
 license = "GPL-3.0+"
 homepage = "https://github.com/akanalytics/odonata"
 authors = [
@@ -57,13 +57,14 @@ tabwriter = "1.2.1"
 # rose_tree = "0.3.0"
 petgraph = "0.6.0"
 backtrace = "0.3.64"
-firestorm = "0.5.0"
+# firestorm = "0.5.0"
 fast-math = "0.1.1"
 thread_local = "1.1.4"
 # firestorm = { version="0.5", features=["enable_system_time"] }
 # firestorm = { version="0.5", features=["enable_cpu_time"] }
 # hprof = "0.1.3"
 tabled = "0.7.0"
+hdrhist = "0.5.0"
 
 [dev-dependencies]
 criterion = "0.3"

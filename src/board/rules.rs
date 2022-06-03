@@ -6,7 +6,6 @@ use crate::board::boardcalcs::BoardCalcs;
 use crate::board::Board;
 use crate::movelist::MoveList;
 use crate::mv::Move;
-use crate::prelude::*;
 use crate::types::Piece;
 
 pub struct Rules;
@@ -54,7 +53,7 @@ impl Rules {
     }
 
     pub fn legals_for(b: &Board, moves: &mut MoveList) {
-        profile_method!("move generation");
+        // profile_method!("move generation");
         // let _g = hprof::enter("move generation");
 
         let us = b.us();

@@ -1,5 +1,6 @@
 use crate::board::Board;
 use crate::infra::component::Component;
+use crate::infra::metric::Metric;
 use crate::movelist::MoveList;
 use crate::mv::Move;
 use crate::phaser::Phase;
@@ -342,6 +343,7 @@ impl OrderedMoveList {
             if move_type == MoveType::GoodCaptureUpfrontSorted || move_type == MoveType::GoodCapture
             {
                 let mv = self.moves[self.index];
+                Metric::EvalSee(self.n).record();
                 let see = algo.eval.see.eval_move_see(b, mv);
                 let see_cutoff = if self.qsearch {
                     algo.move_orderer.qsearch_see_cutoff

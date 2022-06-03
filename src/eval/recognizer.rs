@@ -3,10 +3,11 @@ use super::score::Score;
 use crate::board::Board;
 use crate::bound::NodeType;
 use crate::infra::component::Component;
+use crate::infra::metric::Metric;
 use crate::mv::Move;
 use crate::search::algo::Algo;
 use crate::search::node::{Event, Node};
-use crate::types::{MoveType, Ply};
+use crate::types::{Ply};
 use crate::Color;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -54,10 +55,12 @@ impl Algo {
         //     return (score,mv);
         // }
 
+        Metric::TtProbe(*n).record();
         self.counts.inc(n, Event::HashProbe);
         if let Some(entry) = self.tt.probe_by_board(b, n.ply, n.depth) {
             debug_assert!(entry.score.is_finite());
             self.counts.inc(n, Event::HashHit);
+            Metric::TtHit(*n).record();
 
             // FIXME! v33
             if entry.depth >= n.depth
@@ -73,14 +76,19 @@ impl Algo {
                 match entry.nt {
                     NodeType::ExactPv => {
                         if entry.score >= n.beta {
-                            self.stats.inc_node_cut(n.ply, MoveType::Hash, -1);
-                            self.stats.inc_leaf_tt_nodes(n.ply);
+                            // self.stats.inc_node_cut(n.ply, MoveType::Hash, -1);
+                            Metric::TtPv(*n).record();
+                            Metric::NodeCut(*n).record();
+                            // self.stats.inc_node_cut(n.ply, MoveType::Hash, -1);
+                            // self.stats.inc_leaf_tt_nodes(n.ply);
                             self.report_refutation(n.ply);
                             return (Some(entry.score), None);
                         }
                         if entry.score <= n.alpha {
-                            self.stats.inc_node_all(n.ply);
-                            self.stats.inc_leaf_tt_nodes(n.ply);
+                            Metric::TtPv(*n).record();
+                            Metric::NodeAll(*n).record();
+                            // self.stats.inc_node_all(n.ply);
+                            // self.stats.inc_leaf_tt_nodes(n.ply);
                             return (Some(entry.score), None);
                         }
 
@@ -89,7 +97,8 @@ impl Algo {
                             && entry.score > n.alpha
                         {
                             self.record_truncated_move(n.ply, &entry.bm);
-                            self.stats.inc_leaf_tt_nodes(n.ply);
+                            // self.stats.inc_leaf_tt_nodes(n.ply);
+                            Metric::TtPv(*n).record();
                             return (Some(entry.score), None);
                         }
                         return (None, Some(entry.bm)); // else we just use the hash move for move ordering
@@ -99,10 +108,11 @@ impl Algo {
                         // not all child nodes were scored, so score is a lower bound
                         // FIXME: probably dont set alpha just the hinted mv and re-search the node
                         if entry.score >= n.beta {
-                            self.stats.inc_node_cut(n.ply, MoveType::Hash, -1);
+                            // self.stats.inc_node_cut(n.ply, MoveType::Hash, -1);
                             // self.record_truncated_move(ply, &entry.bm);
-                            self.stats.inc_leaf_tt_nodes(n.ply);
+                            // self.stats.inc_leaf_tt_nodes(n.ply);
                             self.report_refutation(n.ply);
+                            Metric::TtCut(*n).record();
                             return (Some(entry.score), None);
                         }
                         // if self.tt.allow_truncated_pv && entry.score > n.alpha {
@@ -121,7 +131,8 @@ impl Algo {
                         // if the score is still below alpha, this too is an ALL node
                         if entry.score <= n.alpha {
                             // self.record_truncated_move(ply, &entry.bm);
-                            self.stats.inc_leaf_tt_nodes(n.ply);
+                            // self.stats.inc_leaf_tt_nodes(n.ply);
+                            Metric::TtAll(*n).record();
                             return (Some(entry.score), None);
                         }
                     }
@@ -159,18 +170,22 @@ impl Algo {
             LikelyOutcome::DrawImmediate => {
                 let draw = b.eval_draw(&mut self.eval, n); // will return a draw score
                 self.counts.inc(n, Event::RecogImmediateDraw);
-                self.stats.inc_leaf_nodes(n);
+                // self.stats.inc_leaf_nodes(n);
+                Metric::Leaf(*n).record();
+                Metric::EvalEgDraw(*n).record();
                 return (Some(draw), None);
             }
 
             LikelyOutcome::Draw | LikelyOutcome::WhiteWin | LikelyOutcome::WhiteLoss => {
                 self.counts.inc(n, Event::RecogHelpmateOrDraw);
+                Metric::EvalEgKnown(*n).record();
                 if n.depth > self.recognizer.terminal_depth && !n.is_qs() {
                     n.depth = self.recognizer.terminal_depth;
                 }
             }
             lo @ (LikelyOutcome::WhiteWinOrDraw | LikelyOutcome::WhiteLossOrDraw) => {
                 self.counts.inc(n, Event::RecogMaybeWin);
+                Metric::EvalEgMaybe(*n).record();
                 let draw = b.eval_draw(&mut self.eval, n); // will return a draw score
                 if b.color_us() == Color::White && lo == LikelyOutcome::WhiteLossOrDraw
                     || b.color_us() == Color::Black && lo == LikelyOutcome::WhiteWinOrDraw

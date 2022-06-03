@@ -1,5 +1,6 @@
 use crate::cache::tt2::TranspositionTable2;
 use crate::infra::component::{Component, State, FEATURE};
+use crate::infra::metric::Metrics;
 use crate::infra::resources::RESOURCE_DIR;
 use crate::mv::Move;
 use crate::position::Position;
@@ -232,6 +233,7 @@ impl Engine {
                 let result = panic::catch_unwind(|| {
                     Stat::set_this_thread_index(i as usize);
                     algo.search();
+                    Metrics::add_thread_local_to_global();
                     algo
                 });
                 if let Err(ref error) = result {
@@ -366,15 +368,14 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn example_search() {
         let pos = Catalog::test_position();
         let mut engine = Engine::new();
         engine.set_position(pos);
-        engine.algo.set_timing_method(TimeControl::Depth(8));
+        engine.algo.set_timing_method(TimeControl::Depth(10));
         engine.algo.set_callback(Uci::uci_info);
         engine.search();
-        println!("{}", engine);
+        println!("{}", Metrics::to_string());
     }
 
     #[ignore]

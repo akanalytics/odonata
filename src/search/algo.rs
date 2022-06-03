@@ -8,7 +8,6 @@ use crate::infra::component::{Component, State};
 use crate::infra::metric::Metrics;
 use crate::mv::Move;
 use crate::position::Position;
-use crate::prelude::*;
 use crate::pvtable::PvTable;
 use crate::repetition::Repetition;
 use crate::search::aspiration::Aspiration;
@@ -92,6 +91,7 @@ pub struct Algo {
 
     #[serde(skip)]
     pub stats: SearchStats,
+    
     #[serde(skip)]
     pub pv_table: PvTable,
 
@@ -327,7 +327,7 @@ impl Algo {
 
     pub fn search(&mut self) {
         {
-            profile_method!(search);
+            // profile_method!(search);
             // hprof::profiler().disable();
             // let _g = hprof::enter("search");
 
@@ -335,11 +335,11 @@ impl Algo {
             self.search_iteratively();
             self.set_state(State::EndSearch);
         }
-        if firestorm::enabled() {
-            firestorm::save("./flames/")
-                .map_err(|e| e.to_string())
-                .unwrap();
-        }
+        // if firestorm::enabled() {
+        //     firestorm::save("./flames/")
+        //         .map_err(|e| e.to_string())
+        //         .unwrap();
+        // }
         // hprof::profiler().print_timing();
     }
 

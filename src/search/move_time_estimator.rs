@@ -275,10 +275,6 @@ impl MoveTimeEstimator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::catalog::*;
-    use crate::comms::uci::*;
-    use crate::eval::eval::*;
-    use crate::search::algo::*;
 
     #[test]
     fn test_display_mte() {
@@ -288,28 +284,4 @@ mod tests {
         println!("{:#?}", mte);
     }
 
-    #[test]
-    fn test_mate_with_tc() {
-        let position = &Catalog::mate_in_2()[0];
-        let eval = Eval::new();
-        let mut search = Algo::new()
-            .set_timing_method(TimeControl::Depth(3))
-            .set_eval(eval)
-            .set_callback(Uci::uci_info)
-            .clone();
-        search.mte.deterministic = true;
-        search.set_position(position.clone()).search();
-        println!("{}", search);
-        assert!(
-            search.search_stats().iteration().all_nodes() < 117500,
-            "nodes {}",
-            search.search_stats().iteration().all_nodes()
-        );
-        assert!(
-            search.search_stats().iteration().all_nodes() >= 100,
-            "nodes {}",
-            search.search_stats().iteration().all_nodes()
-        );
-        assert_eq!(search.score().mate_in(), Some(2));
-    }
 }

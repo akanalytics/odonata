@@ -167,9 +167,9 @@ impl SearchStats {
         self.clock = Clock3::new();
     }
 
-    pub fn elapsed_search(&self) -> Duration {
-        self.clock.elapsed_search()
-    }
+    // pub fn elapsed_search(&self) -> Duration {
+    //     self.clock.elapsed_search()
+    // }
 
     pub fn new_iteration(&mut self) {
         self.plies_mut()
@@ -235,31 +235,31 @@ impl SearchStats {
         self.cumulative.accumulate(&self.total);
     }
 
-    #[inline]
-    pub fn inc_leaf_nodes(&mut self, n: &Node) {
-        self.inc_all_nodes();
-        if n.depth >= 0 {
-            self.total.leaf_nodes += 1;
-            self.plies[n.ply as usize].leaf_nodes += 1;
-        }
-        if n.depth <= 0 {
-            self.total.q_leaf_nodes += 1;
-            self.plies[n.ply as usize].q_leaf_nodes += 1;
-        }
-    }
+    // #[inline]
+    // fn inc_leaf_nodes(&mut self, n: &Node) {
+    //     self.inc_all_nodes();
+    //     if n.depth >= 0 {
+    //         self.total.leaf_nodes += 1;
+    //         self.plies[n.ply as usize].leaf_nodes += 1;
+    //     }
+    //     if n.depth <= 0 {
+    //         self.total.q_leaf_nodes += 1;
+    //         self.plies[n.ply as usize].q_leaf_nodes += 1;
+    //     }
+    // }
 
-    #[inline]
-    pub fn inc_leaf_tt_nodes(&mut self, sel_ply: Ply) {
-        self.inc_all_nodes();
-        self.total.leaf_tt_nodes += 1;
-        self.plies[sel_ply as usize].leaf_tt_nodes += 1;
-    }
+    // #[inline]
+    // fn inc_leaf_tt_nodes(&mut self, sel_ply: Ply) {
+    //     self.inc_all_nodes();
+    //     self.total.leaf_tt_nodes += 1;
+    //     self.plies[sel_ply as usize].leaf_tt_nodes += 1;
+    // }
 
-    #[inline]
-    pub fn inc_leaf_qsearch_nodes(&mut self, ply: Ply) {
-        self.total.leaf_qsearch_nodes += 1;
-        self.plies[ply as usize].leaf_qsearch_nodes += 1;
-    }
+    // #[inline]
+    // fn inc_leaf_qsearch_nodes(&mut self, ply: Ply) {
+    //     self.total.leaf_qsearch_nodes += 1;
+    //     self.plies[ply as usize].leaf_qsearch_nodes += 1;
+    // }
 
     #[inline]
     pub fn inc_zw_nodes(&mut self, ply: Ply) {
@@ -303,50 +303,50 @@ impl SearchStats {
         }
     }
 
-    #[inline]
-    pub fn inc_node_pv(&mut self, ply: Ply) {
-        self.plies[ply as usize].node_pv += 1;
-    }
+    // #[inline]
+    // fn inc_node_pv(&mut self, ply: Ply) {
+    //     self.plies[ply as usize].node_pv += 1;
+    // }
 
-    #[inline]
-    pub fn inc_node_all(&mut self, ply: Ply) {
-        self.plies[ply as usize].node_all += 1;
-    }
+    // #[inline]
+    // fn inc_node_all(&mut self, ply: Ply) {
+    //     self.plies[ply as usize].node_all += 1;
+    // }
 
-    #[inline]
-    pub fn inc_nmp(&mut self, ply: Ply) {
-        self.plies[ply as usize].nmp += 1;
-    }
+    // #[inline]
+    // fn inc_nmp(&mut self, ply: Ply) {
+    //     self.plies[ply as usize].nmp += 1;
+    // }
 
-    #[inline]
-    pub fn inc_fp_move(&mut self, ply: Ply) {
-        self.plies[ply as usize].fp += 1;
-    }
+    // #[inline]
+    // fn inc_fp_move(&mut self, ply: Ply) {
+    //     self.plies[ply as usize].fp += 1;
+    // }
 
-    #[inline]
-    pub fn inc_pvs_move(&mut self, ply: Ply) {
-        self.plies[ply as usize].pvs += 1;
-    }
+    // #[inline]
+    // fn inc_pvs_move(&mut self, ply: Ply) {
+    //     self.plies[ply as usize].pvs += 1;
+    // }
 
-    #[inline]
-    pub fn inc_move(&mut self, ply: Ply) {
-        self.plies[ply as usize].mv += 1;
-    }
+    // #[inline]
+    // pub fn inc_move(&mut self, ply: Ply) {
+    //     self.plies[ply as usize].mv += 1;
+    // }
 
-    #[inline]
-    pub fn inc_ext_check(&mut self, ply: Ply) {
-        self.plies[ply as usize].ext_check += 1;
-    }
+    // #[inline]
+    // fn inc_ext_check(&mut self, ply: Ply) {
+    //     self.plies[ply as usize].ext_check += 1;
+    // }
 
-    #[inline]
-    pub fn inc_red_lmr(&mut self, ply: Ply) {
-        self.plies[ply as usize].red_lmr += 1;
-    }
+    // #[inline]
+    // fn inc_red_lmr(&mut self, ply: Ply) {
+    //     self.plies[ply as usize].red_lmr += 1;
+    // }
 
-    #[inline]
-    pub fn inc_pvs_research(&mut self, ply: Ply) {
-        self.plies[ply as usize].pvs_research += 1;
-    }
+    // #[inline]
+    // fn inc_pvs_research(&mut self, ply: Ply) {
+    //     self.plies[ply as usize].pvs_research += 1;
+    // }
 
     #[inline]
     pub fn stats_mut(&mut self, ply: Ply) -> &mut NodeStats {
@@ -699,9 +699,9 @@ mod tests {
         node.ply = 2;
 
         let mut search = SearchStats::default();
-        search.inc_leaf_nodes(&node);
-        search.inc_leaf_nodes(&node);
-        search.inc_leaf_tt_nodes(1);
+        // search.inc_leaf_nodes(&node);
+        // search.inc_leaf_nodes(&node);
+        // search.inc_leaf_tt_nodes(1);
         search.inc_node_cut(2, MoveType::GoodCapture, 0);
         search.inc_interior_nodes(&node);
         println!("{}", search);

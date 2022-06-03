@@ -406,12 +406,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "firestorm"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d3d6188b8804df28032815ea256b6955c9625c24da7525f387a7af02fbb8f01"
-
-[[package]]
 name = "fixedbitset"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -565,6 +559,12 @@ name = "hashbrown"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
+
+[[package]]
+name = "hdrhist"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "51b22edfb537aaffec56e77d3116a1dd0a0fa8bb5a8bd7d6d4a522132c9bb383"
 
 [[package]]
 name = "heck"
@@ -829,7 +829,7 @@ dependencies = [
 
 [[package]]
 name = "odonata"
-version = "0.5.60"
+version = "0.5.61"
 dependencies = [
  "anyhow",
  "arrayvec",
@@ -844,8 +844,8 @@ dependencies = [
  "env_logger",
  "fast-math",
  "figment",
- "firestorm",
  "format_num",
+ "hdrhist",
  "include_dir",
  "itertools",
  "jsonrpc-core",
