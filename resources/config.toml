@@ -662,7 +662,7 @@ min_ply = 0
 [lmp]
 enabled = true
 pawns = true
-first_move = true
+first_move = false
 fw_node = false
 bad_captures = false
 max_pawn_rank = 6
@@ -683,7 +683,7 @@ enabled = true
 bad_captures = true
 pawns = true
 max_pawn_rank = 6
-first_move = true
+first_move = false
 fw_node = false
 only_nt_all = false
 killers = false

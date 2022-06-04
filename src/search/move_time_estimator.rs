@@ -1,6 +1,7 @@
 use crate::board::Board;
 use crate::clock::Clock;
 use crate::infra::component::Component;
+use crate::infra::metric::Metric;
 use crate::search::timecontrol::TimeControl;
 use crate::types::Ply;
 use crate::utils::Formatting;
@@ -192,7 +193,7 @@ impl MoveTimeEstimator {
         }
     }
 
-    pub fn estimate_iteration(&mut self, _ply: Ply, clock: &Clock) {
+    pub fn estimate_iteration(&mut self, ply: Ply, clock: &Clock) {
         // debug_assert!(search_stats.depth() >= ply-1, "ensure we have enough stats");
         self.prior_elapsed_iter = self.elapsed_iter;
         self.elapsed_iter = clock.elapsed_iter().0;
@@ -218,6 +219,8 @@ impl MoveTimeEstimator {
                 + self.elapsed_search
                 + self.elapsed_iter.mul_f32(self.branching_factor);
         }
+        Metric::IterEst(ply, self.estimate_move_time).record();
+        Metric::IterAllotted(ply, self.allotted()).record();
     }
 
     pub fn probable_timeout(&self, ply: Ply) -> bool {
@@ -240,7 +243,7 @@ impl MoveTimeEstimator {
     }
 
     fn allotted(&self) -> Duration {
-        let zero = Duration::from_secs(0);
+        let zero = Duration::ZERO;
         match self.time_control {
             TimeControl::DefaultTime => zero,
             TimeControl::Depth(_) => zero,
@@ -283,5 +286,4 @@ mod tests {
         println!("{:?}", mte);
         println!("{:#?}", mte);
     }
-
 }

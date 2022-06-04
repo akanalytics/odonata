@@ -80,9 +80,9 @@ impl NullMovePruning {
         if !node.beta.is_numeric() {
             return false;
         }
-        // if !eval.is_numeric()  {
-        //     return false;
-        // }
+        if !eval.is_numeric()  {
+            return false;
+        }
         if ((b.line_pieces() | b.knights()) & b.us()).is_empty() {
             return false;
         }
@@ -119,7 +119,7 @@ impl NullMovePruning {
 
     #[inline]
     pub fn depth_reduction(&self, eval: Score, b: &Board, n: &Node) -> Ply {
-        let eval = if eval.is_numeric() { eval } else { n.beta };
+        // let eval = if eval.is_numeric() { eval } else { n.beta };
         match self.depth_reduction_strat {
             0 => 0,
             1 => 1,

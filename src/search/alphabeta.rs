@@ -15,7 +15,7 @@ use super::node::Event;
 pub struct AlphaBeta;
 
 impl Algo {
-    pub fn run_alphabeta(&mut self, board: &mut Board, node: &mut Node) -> (Score, Event) {
+    pub fn alphabeta_root_search(&mut self, board: &mut Board, node: &mut Node) -> (Score, Event) {
         let depth = node.depth;
         self.max_depth = depth;
         self.stats.depth = depth;
@@ -33,6 +33,13 @@ impl Algo {
             Ok((score, category)) => (score, category),
             Err(category) => (-Score::INFINITY, category),
         };
+
+        if self.controller.is_cancelled() {
+            Metric::IterationTimeout.record();
+        } else {
+            Metric::IterationComplete.record();
+        }
+
         self.stats.set_score(score, category);
         debug_assert!(
             self.current_variation.len() == 0
@@ -259,39 +266,55 @@ impl Algo {
                        // debug_assert!(s > n.alpha);
             let mut ev; //  = Event::Unknown;
 
-            if !self.pvs_permitted(nt, b, &n, count) {
+            if n.is_fw() && !self.pvs_permitted(nt, b, &n, count) {
+                Metric::SearchFwFd(n).record();
                 (s, ev) = self.alphabeta(
                     &mut child_board,
                     ply + 1,
-                    depth + ext - lmr - 1,
+                    depth + ext - 1,
                     -n.beta,
                     -n.alpha,
                     mv,
                 )?;
                 s = -s;
-                // full depth
-                if s > n.alpha && !(lmr == 0) {
-                    Metric::ReSearch(n).record();
+                // // full depth
+                // if s > n.alpha && !(lmr == 0) {
+                //     Metric::ReSearch(n).record();
+                //     (s, ev) = self.alphabeta(
+                //         &mut child_board,
+                //         ply + 1,
+                //         depth + ext - 1,
+                //         -n.beta,
+                //         -n.alpha,
+                //         mv,
+                //     )?;
+                //     s = -s;
+                // }
+            } else {
+                if lmr > 0 {
+                    Metric::SearchZwRd(n).record();
+                    (s, ev) = self.alphabeta(
+                        &mut child_board,
+                        ply + 1,
+                        depth + ext - lmr - 1,
+                        -n.alpha + Score::from_cp(-1),
+                        -n.alpha,
+                        mv,
+                    )?;
+                    s = -s;
+                } else {
+                    Metric::SearchZwFd(n).record();
                     (s, ev) = self.alphabeta(
                         &mut child_board,
                         ply + 1,
                         depth + ext - 1,
-                        -n.beta,
+                        -n.alpha + Score::from_cp(-1),
                         -n.alpha,
                         mv,
                     )?;
                     s = -s;
                 }
-            } else {
-                (s, ev) = self.alphabeta(
-                    &mut child_board,
-                    ply + 1,
-                    depth + ext - lmr - 1,
-                    -n.alpha + Score::from_cp(-1),
-                    -n.alpha,
-                    mv,
-                )?;
-                s = -s;
+                // // adds nothing!
                 // // full width, red dep
                 // if s > n.alpha && !(lmr == 0) {
                 //     (s, ev) = self.alphabeta(
@@ -304,9 +327,10 @@ impl Algo {
                 //     )?;
                 //     s = -s;
                 // }
+
                 // full depth, zw
                 if s > n.alpha && !(lmr == 0) {
-                    Metric::ReSearch(n).record();
+                    Metric::ReSearchZwFd(n).record();
                     (s, ev) = self.alphabeta(
                         &mut child_board,
                         ply + 1,
@@ -317,9 +341,10 @@ impl Algo {
                     )?;
                     s = -s;
                 }
+
                 // full window
                 if s > n.alpha && !(lmr == 0 && n.is_zw()) {
-                    Metric::ReSearch(n).record();
+                    Metric::ReSearchFwFd(n).record();
                     (s, ev) = self.alphabeta(
                         &mut child_board,
                         ply + 1,

@@ -1,14 +1,14 @@
-use crate::eval::score::Score;
-use crate::infra::metric::*;
 use crate::infra::component::{Component, State};
+use crate::infra::metric::Metric;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
 use crate::search::searchstats::{NodeStats, SearchStats};
 use crate::search::timecontrol::TimeControl;
 use crate::types::{Ply, MAX_PLY};
-use crate::variation::Variation;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+
+use super::search_results::SearchResults;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -115,29 +115,24 @@ impl IterativeDeepening {
 
 impl Algo {
     pub fn search_iteratively(&mut self) {
-
-        self.results.board = self.board.clone();
-        self.results.multi_pv.resize(self.restrictions.multi_pv_count, (Variation::new(), Score::zero()));
+        // self.results.board = self.board.clone();
 
         self.ids.calc_range(&self.mte.time_control);
-        let mut depth = self.ids.start_ply;
+        let mut ply = self.ids.start_ply;
+        let mut multi_pv = Vec::new();
+        let mut last_good_results = Vec::new();
+
         'outer: loop {
-            self.set_state(State::StartDepthIteration(depth));
+            self.set_state(State::StartDepthIteration(ply));
+            let t = Metric::timing_start();
             self.stats.new_iteration();
-
-            for _multi_pv_index in 0..self.restrictions.multi_pv_count {
-                self.aspiration(&mut self.board.clone(), &mut Node::root(depth));
-                // self.stats.clock.start_ply();
-                self.mte.estimate_iteration(depth + 1, &self.clock);
+            multi_pv.resize_with(self.restrictions.multi_pv_count, Default::default);
+            for i in 0..self.restrictions.multi_pv_count {
+                self.aspirated_search(&mut self.board.clone(), &mut Node::root(ply));
+                self.mte.estimate_iteration(ply + 1, &self.clock);
                 self.stats
-                    .record_time_estimate(depth + 1, &self.mte.estimate_move_time);
+                    .record_time_estimate(ply + 1, &self.mte.estimate_move_time);
                 self.ids.iterations.push(self.search_stats().clone());
-
-                if self.search_stats().interrupted() {
-                    Metric::IterationTimeout.record();
-                } else {
-                    Metric::IterationComplete.record();
-                }
 
                 self.progress.with_pv_change(
                     &self.board,
@@ -150,30 +145,29 @@ impl Algo {
                 // let results = &self.results;
                 self.progress.snapshot_bests();
                 self.controller.invoke_callback(&self.progress);
-                let exit = self.exit_iteration(depth);
+                let exit = self.exit_iteration(ply);
 
                 // results
-                self.results.multi_pv[self.restrictions.multi_pv_index()] = (self.stats.pv().clone(),self.stats.score());
-                self.results.nodes = self.clock.cumul_nodes_all_threads();
-                self.results.nodes_thread = self.clock.cumul_nodes();
-                self.results.nps = self.clock.cumul_knps_all_threads() * 1000;
-                self.results.depth = self.stats.depth();
-                self.results.seldepth = self.stats.selective_depth();
-                self.results.time_millis = self.clock.elapsed_search().0.as_millis() as u64;
-                self.results.hashfull_per_mille = self.tt.hashfull_per_mille();
-                self.results.branching_factor = self.stats.branching_factor();
-
+                multi_pv[i] = (self.stats.pv().clone(), self.stats.score());
 
                 if exit {
                     break 'outer;
                 }
-                self.restrictions
-                    .exclude_moves
-                    .push(self.progress.initial_move());
+                if let Some(&mv) = multi_pv[i].0.first() {
+                    self.restrictions.exclude_moves.push(mv);
+                }
             }
-            depth += self.ids.step_size
+            Metric::IterAct(ply, t.elapsed()).record();
+            last_good_results = std::mem::take(&mut multi_pv);
+            ply += self.ids.step_size
         }
 
+        self.results = SearchResults::new(self);
+        if self.time_up_or_cancelled(ply, false).0 {
+            self.results.multi_pv = last_good_results;
+        } else {
+            self.results.multi_pv = multi_pv;
+        }
 
         self.progress.with_best_move(&self.board.outcome());
         self.controller.invoke_callback(&self.progress);
@@ -186,35 +180,13 @@ impl Algo {
         }
     }
 
-        // let stats = algo.search_stats();
-        // self.results = SearchResults {
-        //     board: algo.position.board().clone(),
-        //     pv: stats.pv().clone(),
-        //     score: stats.score(),
-        //     nodes: algo.clock.cumul_nodes_all_threads(),
-        //     nodes_thread: algo.clock.cumul_nodes(),
-        //     nps: algo.clock.cumul_knps_all_threads() * 1000,
-        //     depth: stats.depth(),
-        //     seldepth: stats.selective_depth(),
-        //     time_millis: algo.clock.elapsed_search().0.as_millis() as u64,
-        //     hashfull_per_mille: algo.tt.hashfull_per_mille(),
-        //     branching_factor: stats.branching_factor(),
-        //     ..Default::default()
-        // }
-        // self.results.with_best_move();
-        // self.task_control.invoke_callback(&self.results);
-        // debug!("\n\n\n=====Search completed=====\n{}", self);
-        // if self.results.bm().is_null() {
-        //     error!("bm is null\n{}\n{:?}", self, self.results);
-        // }
-
-    pub fn exit_iteration(&self, depth: Ply) -> bool {
-        self.search_stats().interrupted()
-            || self.mte.probable_timeout(depth)
-            || self.stats.depth >= self.ids.end_ply
-            || self.stats.depth >= MAX_PLY / 2
+    pub fn exit_iteration(&mut self, ply: Ply) -> bool {
+        self.time_up_or_cancelled(ply, false).0
+            || self.mte.probable_timeout(ply)
+            || ply >= self.ids.end_ply
+            || ply >= MAX_PLY / 2
             || (self.restrictions.exclude_moves.is_empty()
-                && (self.search_stats().score().is_mate() ))
+                && (self.search_stats().score().is_mate()))
         // pv.empty = draw
     }
 }

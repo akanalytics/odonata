@@ -49,11 +49,11 @@ impl Default for Aspiration {
 }
 
 impl Algo {
-    pub fn aspiration(&mut self, b: &mut Board, n: &mut Node) -> (Score, Event) {
+    pub fn aspirated_search(&mut self, b: &mut Board, n: &mut Node) -> (Score, Event) {
         let score = self.progress.best_score;
         if n.depth <= self.aspiration.min_depth || !self.aspiration.enabled || !score.is_numeric() {
             self.counts.inc(n, Event::Aspiration0);
-            self.run_alphabeta(b, n)
+            self.alphabeta_root_search(b, n)
         } else {
             let mut aspiration_count = 0;
             // let mut delta = ((4 + n.ply / 4) * self.aspiration.window.as_i16() as i32) as f32 / 6.0;
@@ -65,7 +65,7 @@ impl Algo {
                 if aspiration_count > self.aspiration.max_iter
                     || delta > self.aspiration.max_window.as_i16() as f32
                 {
-                    break self.run_alphabeta(b, n);
+                    break self.alphabeta_root_search(b, n);
                 }
                 alpha1 = max(n.alpha, alpha1);
                 beta1 = min(n.beta, beta1);
@@ -75,13 +75,13 @@ impl Algo {
                     beta: beta1,
                     ..*n
                 };
-                let (new_score, event) = self.run_alphabeta(b, &mut n1);
+                let (new_score, event) = self.alphabeta_root_search(b, &mut n1);
                 if new_score == -Score::INFINITY {
                     // no legal moves available
                     break (new_score, event);
                 }
                 if new_score.is_mate() {
-                    break self.run_alphabeta(b, n);
+                    break self.alphabeta_root_search(b, n);
                 }
                 delta *= match aspiration_count {
                     1 => self.aspiration.multiplier1,

@@ -1,15 +1,17 @@
 use crate::search::node::Node;
+use crate::types::Ply;
 use crate::utils::Formatting;
 use hdrhist::HDRHist;
 use static_init::dynamic;
 use std::cell::RefCell;
 use std::cmp::{max, min};
 use std::ops::AddAssign;
+use std::time::{Duration, Instant};
 use std::{fmt, iter};
 use tabled::builder::Builder;
-use tabled::object::{Rows, Segment};
+use tabled::object::{Columns, Rows, Segment};
 use tabled::style::Border;
-use tabled::{Alignment, MaxWidth, Modify, Style};
+use tabled::{Alignment, Modify, Rotate, Style};
 
 #[derive()]
 pub struct Histogram(HDRHist);
@@ -73,6 +75,32 @@ impl AddAssign<&NodeCounter> for NodeCounter {
 }
 
 #[derive(Default, Debug)]
+pub struct TimePlyCounter([Duration; 32]);
+
+impl TimePlyCounter {
+    pub fn set(&mut self, y: Ply, dur: Duration) {
+        self.0[min(y, 31) as usize] = dur;
+    }
+
+    // -1 => total
+    pub fn for_ply(&self, y: isize) -> Duration {
+        if y >= 0 {
+            self.0[min(y, 31) as usize]
+        } else {
+            self.0.iter().sum()
+        }
+    }
+}
+
+impl AddAssign<&TimePlyCounter> for TimePlyCounter {
+    fn add_assign(&mut self, rhs: &TimePlyCounter) {
+        for i in 0..self.0.len() {
+            self.0[i] += rhs.0[i];
+        }
+    }
+}
+
+#[derive(Default, Debug)]
 pub struct Metrics {
     pub make_move: u64,
     pub move_gen: u64,
@@ -119,7 +147,15 @@ pub struct Metrics {
     pub late_move_reduce: NodeCounter,
     pub check_extend: NodeCounter,
 
-    pub re_search: NodeCounter,
+    pub search_fwfd: NodeCounter,
+    pub search_zwrd: NodeCounter,
+    pub search_zwfd: NodeCounter,
+    pub re_search_zwfd: NodeCounter,
+    pub re_search_fwfd: NodeCounter,
+
+    pub iter_est: TimePlyCounter,
+    pub iter_act: TimePlyCounter,
+    pub iter_allotted: TimePlyCounter,
     // counters: Vec<u64>,
     // node_counters: Vec<(Vec<u64>, Vec<u64>)>, // ply and depth
     // histograms: Vec<Histogram>,
@@ -175,7 +211,15 @@ impl Metrics {
             LateMoveReduce(ref n) => self.late_move_reduce.incr(n),
             CheckExtend(ref n) => self.check_extend.incr(n),
 
-            ReSearch(ref n) => self.re_search.incr(n),
+            SearchFwFd(ref n) => self.search_fwfd.incr(n),
+            SearchZwRd(ref n) => self.search_zwrd.incr(n),
+            SearchZwFd(ref n) => self.search_zwfd.incr(n),
+            ReSearchZwFd(ref n) => self.re_search_zwfd.incr(n),
+            ReSearchFwFd(ref n) => self.re_search_fwfd.incr(n),
+
+            IterEst(ply, dur) => self.iter_est.set(ply, dur),
+            IterAct(ply, dur) => self.iter_act.set(ply, dur),
+            IterAllotted(ply, dur) => self.iter_allotted.set(ply, dur),
         }
     }
 
@@ -225,7 +269,15 @@ impl Metrics {
         self.late_move_reduce += &o.late_move_reduce;
         self.check_extend += &o.check_extend;
 
-        self.re_search += &o.re_search;
+        self.search_fwfd += &o.search_fwfd;
+        self.search_zwrd += &o.search_zwrd;
+        self.search_zwfd += &o.search_zwfd;
+        self.re_search_zwfd += &o.re_search_zwfd;
+        self.re_search_fwfd += &o.re_search_fwfd;
+
+        self.iter_est += &o.iter_est;
+        self.iter_act += &o.iter_act;
+        self.iter_allotted += &o.iter_allotted;
     }
 
     pub fn to_string() -> String {
@@ -288,21 +340,44 @@ pub enum Metric {
     LateMoveReduce(Node),
     CheckExtend(Node),
 
-    ReSearch(Node),
+    SearchFwFd(Node),
+    SearchZwRd(Node),
+    SearchZwFd(Node),
+    ReSearchZwFd(Node),
+    ReSearchFwFd(Node),
+
+    IterEst(Ply, Duration),
+    IterAct(Ply, Duration),
+    IterAllotted(Ply, Duration),
 }
 
 impl fmt::Display for Metrics {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fn i(i: u64) -> String {
+            if i > 0 {
+                Formatting::u128(i as u128)
+            } else {
+                String::new()
+            }
+        }
+        fn d(dur: Duration) -> String {
+            if dur > Duration::ZERO {
+                Formatting::duration(dur)
+            } else {
+                String::new()
+            }
+        }
+
         let style = Style::github_markdown().bottom('-');
         let tab = Builder::default()
             .set_columns(["Counter", "Value"])
-            .add_record(["Make move", &self.make_move.to_string()])
-            .add_record(["Move gen", &self.move_gen.to_string()])
-            .add_record(["Hash board", &self.hash_board.to_string()])
-            .add_record(["Hash move", &self.hash_move.to_string()])
-            .add_record(["Eval", &self.eval.to_string()])
-            .add_record(["Iter complete", &self.iter_complete.to_string()])
-            .add_record(["Iter timeout", &self.iter_timeout.to_string()])
+            .add_record(["Make move", &i(self.make_move)])
+            .add_record(["Move gen", &i(self.move_gen)])
+            .add_record(["Hash board", &i(self.hash_board)])
+            .add_record(["Hash move", &i(self.hash_move)])
+            .add_record(["Eval", &i(self.eval)])
+            .add_record(["Iter complete", &i(self.iter_complete)])
+            .add_record(["Iter timeout", &i(self.iter_timeout)])
             .build()
             .with(style)
             .with(Modify::new(Rows::single(0)).with(Border::default().top('-')))
@@ -337,7 +412,8 @@ impl fmt::Display for Metrics {
             "Eg w/l",
             "Eg maybe",
             "Eval see",
-            // pruning
+            // pruning/etx
+            "NMP try",
             "NMP",
             "Razor",
             "Pat",
@@ -345,56 +421,72 @@ impl fmt::Display for Metrics {
             "LMP",
             "LMR",
             "Chk Ext",
-            "Re- Srch",
+            // search and re-search
+            "Search FwFd",
+            "Search ZwRd",
+            "Search ZwFd",
+            "Re-search ZwFd",
+            "Re-search FwFd",
+            // timings
+            "Iter Est",
+            "Iter Act",
+            "Iter Alloc",
             // "Depth", "Interior", "Leaf", "QS Int", "QS Leaf",
         ]);
 
-        fn s(i: u64) -> String {
-            Formatting::u128(i as u128)
-        }
         let total = iter::once(-1);
         for y in (0..iters).chain(total) {
             let _d = iters - 1 - y;
             b = b.add_record([
-                if y > 0 {
-                    s(y as u64)
+                if y >= 0 {
+                    y.to_string()
                 } else {
                     "Total".to_string()
                 },
                 // node 1
-                s(self.interior.for_ply(y)),
-                s(self.leaf.for_ply(y)),
-                s(self.qs_interior.for_ply(y)),
-                s(self.qs_leaf.for_ply(y)),
+                i(self.interior.for_ply(y)),
+                i(self.leaf.for_ply(y)),
+                i(self.qs_interior.for_ply(y)),
+                i(self.qs_leaf.for_ply(y)),
                 // node 2
-                s(self.node_cut.for_ply(y)),
-                s(self.node_all.for_ply(y)),
-                s(self.node_pv.for_ply(y)),
-                s(self.node_zw.for_ply(y)),
+                i(self.node_cut.for_ply(y)),
+                i(self.node_all.for_ply(y)),
+                i(self.node_pv.for_ply(y)),
+                i(self.node_zw.for_ply(y)),
                 // TT
-                s(self.tt_hit.for_ply(y)),
-                s(self.tt_probe.for_ply(y)),
-                s(self.tt_store.for_ply(y)),
-                s(self.tt_cut.for_ply(y)),
-                s(self.tt_all.for_ply(y)),
-                s(self.tt_pv.for_ply(y)),
-                s(self.moves.for_ply(y)),
+                i(self.tt_hit.for_ply(y)),
+                i(self.tt_probe.for_ply(y)),
+                i(self.tt_store.for_ply(y)),
+                i(self.tt_cut.for_ply(y)),
+                i(self.tt_all.for_ply(y)),
+                i(self.tt_pv.for_ply(y)),
+                i(self.moves.for_ply(y)),
                 // eval
-                s(self.eval_from_tt.for_ply(y)),
-                s(self.eval_calc.for_ply(y)),
-                s(self.eval_eg_draw.for_ply(y)),
-                s(self.eval_eg_win.for_ply(y)),
-                s(self.eval_eg_maybe.for_ply(y)),
-                s(self.eval_see.for_ply(y)),
-                // prune
-                s(self.null_move_prune.for_ply(y)),
-                s(self.razor_prune.for_ply(y)),
-                s(self.standing_pat_prune.for_ply(y)),
-                s(self.futility_prune.for_ply(y)),
-                s(self.late_move_prune.for_ply(y)),
-                s(self.late_move_reduce.for_ply(y)),
-                s(self.check_extend.for_ply(y)),
-                s(self.re_search.for_ply(y)),
+                i(self.eval_from_tt.for_ply(y)),
+                i(self.eval_calc.for_ply(y)),
+                i(self.eval_eg_draw.for_ply(y)),
+                i(self.eval_eg_win.for_ply(y)),
+                i(self.eval_eg_maybe.for_ply(y)),
+                i(self.eval_see.for_ply(y)),
+                // prune+extend
+                i(self.null_move_prune_attempt.for_ply(y)),
+                i(self.null_move_prune.for_ply(y)),
+                i(self.razor_prune.for_ply(y)),
+                i(self.standing_pat_prune.for_ply(y)),
+                i(self.futility_prune.for_ply(y)),
+                i(self.late_move_prune.for_ply(y)),
+                i(self.late_move_reduce.for_ply(y)),
+                i(self.check_extend.for_ply(y)),
+                // search and re-search
+                i(self.search_fwfd.for_ply(y)),
+                i(self.search_zwrd.for_ply(y)),
+                i(self.search_zwfd.for_ply(y)),
+                i(self.re_search_zwfd.for_ply(y)),
+                i(self.re_search_fwfd.for_ply(y)),
+                // timings
+                d(self.iter_est.for_ply(y)),
+                d(self.iter_act.for_ply(y)),
+                d(self.iter_allotted.for_ply(y)),
                 // d as u64,
                 // self.interior.1[d],
                 // self.leaf.1[d],
@@ -403,13 +495,20 @@ impl fmt::Display for Metrics {
             ]);
         }
         let style = Style::github_markdown().bottom('-');
-        let table = b
-            .build()
-            .with(style)
+        b.build()
             .with(Modify::new(Rows::single(0)).with(Border::default().top('-')))
             .with(Modify::new(Segment::all()).with(Alignment::right()))
-            .with(Modify::new(Rows::single(0)).with(MaxWidth::wrapping(5).keep_words()));
-        table.fmt(f)?;
+            // .with(Modify::new(Rows::single(0)).with(MaxWidth::wrapping(5).keep_words()))
+            .with(Rotate::Left)
+            .with(Rotate::Top)
+            .with(style)
+            .with(Modify::new(Columns::single(0)).with(Alignment::left()))
+            .with(Modify::new(Rows::single(9)).with(Border::default().top('-')))
+            .with(Modify::new(Rows::single(15)).with(Border::default().top('-')))
+            .with(Modify::new(Rows::single(22)).with(Border::default().top('-')))
+            .with(Modify::new(Rows::single(30)).with(Border::default().top('-')))
+            .with(Modify::new(Rows::single(35)).with(Border::default().top('-')))
+            .fmt(f)?;
         Ok(())
     }
 }
@@ -420,6 +519,16 @@ impl Metric {
     pub fn record(&self) {
         // #[cfg(not(feature="remove_metrics"))]
         THREAD_METRICS.with(|s| s.borrow_mut().record_metric(self));
+    }
+
+    #[allow(unused_variables)]
+    #[inline]
+    pub fn timing_start() -> Instant {
+        // #[cfg(not(feature="remove_metrics"))]
+        Instant::now()
+
+        // #[cfg(feature="remove_metrics")]
+        // Instant::ZERO
     }
 }
 

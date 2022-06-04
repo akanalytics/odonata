@@ -269,7 +269,10 @@ impl Engine {
             debug!(
                 "thread {:>3} {:>5} {:>8} {:>10} {:>10} {:>10}   {:<48}",
                 i, // thread::current().name().unwrap(),
-                algo.results.best_move().unwrap_or(Move::NULL_MOVE).to_string(),
+                algo.results
+                    .best_move()
+                    .unwrap_or(Move::NULL_MOVE)
+                    .to_string(),
                 algo.score().to_string(),
                 algo.stats.cumulative().all_nodes(),
                 algo.stats.cumulative_knps(),
@@ -305,6 +308,7 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Color;
     use crate::catalog::*;
     use crate::comms::uci::Uci;
     use crate::eval::eval::*;
@@ -372,7 +376,14 @@ mod tests {
         let pos = Catalog::test_position();
         let mut engine = Engine::new();
         engine.set_position(pos);
-        engine.algo.set_timing_method(TimeControl::Depth(10));
+        engine.algo.set_timing_method(TimeControl::RemainingTime {
+            our_color: Color::White,
+            wtime: Duration::from_secs(15),
+            btime: Duration::from_secs(15),
+            winc: Duration::ZERO,
+            binc: Duration::ZERO,
+            movestogo: 20,
+        });
         engine.algo.set_callback(Uci::uci_info);
         engine.search();
         println!("{}", Metrics::to_string());

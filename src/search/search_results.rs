@@ -6,7 +6,7 @@ use crate::outcome::Outcome;
 use crate::tags::Tag;
 use crate::types::Ply;
 use crate::variation::Variation;
-use crate::{Board, MoveList, Position};
+use crate::{Board, MoveList, Position, Algo};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -37,6 +37,29 @@ impl fmt::Display for SearchResults {
 }
 
 impl SearchResults {
+    pub fn new(algo: &Algo) -> Self {
+        SearchResults {
+            board: algo.board.clone(),
+            outcome: Outcome::Unterminated,
+            tbhits: 0,
+            nodes : algo.clock.cumul_nodes_all_threads(),
+            nodes_thread : algo.clock.cumul_nodes(),
+            nps : algo.clock.cumul_knps_all_threads() * 1000,
+            depth : algo.stats.depth(),
+            seldepth : algo.stats.selective_depth(),
+            time_millis : algo.clock.elapsed_search().0.as_millis() as u64,
+            hashfull_per_mille : algo.tt.hashfull_per_mille(),
+            branching_factor : algo.stats.branching_factor(),
+            multi_pv: Default::default(),
+        }
+    // [algo.restrictions.multi_pv_index()] = (algo.stats.pv().clone(), algo.stats.score()),
+}
+
+
+
+
+
+
     /// outcome could be abandoned or win/draw reason
     pub fn best_move(&self) -> Result<Move, Outcome> {
         if self.pv().len() > 0 {
