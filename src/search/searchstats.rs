@@ -72,7 +72,7 @@ pub struct SearchStats {
 impl fmt::Display for SearchStats {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "depth            : {}", self.depth)?;
-        writeln!(f, "pv               : {}", self.pv())?;
+        writeln!(f, "pv               : {}", self.pv)?;
         writeln!(f, "score            : {}", self.score)?;
         writeln!(f, "category         : {:?}", self.category)?;
         writeln!(f, "clock (elapsed)  : {}", Formatting::duration(self.clock.elapsed_search()))?;
@@ -159,9 +159,9 @@ impl SearchStats {
         !self.completed
     }
 
-    pub fn pv(&self) -> &Variation {
-        &self.pv
-    }
+    // pub fn pv(&self) -> &Variation {
+    //     &self.pv
+    // }
 
     pub fn restart_clocks(&mut self) {
         self.clock = Clock3::new();

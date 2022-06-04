@@ -82,6 +82,10 @@ impl TimePlyCounter {
         self.0[min(y, 31) as usize] = dur;
     }
 
+    pub fn add(&mut self, y: Ply, dur: Duration) {
+        self.0[min(y, 31) as usize] += dur;
+    }
+
     // -1 => total
     pub fn for_ply(&self, y: isize) -> Duration {
         if y >= 0 {
@@ -109,6 +113,9 @@ pub struct Metrics {
     pub eval: u64,
     pub iter_complete: u64,
     pub iter_timeout: u64,
+    pub timing_eval: TimePlyCounter,
+    pub timing_move_gen: TimePlyCounter,
+
 
     pub tt_hit: NodeCounter,
     pub tt_probe: NodeCounter,
@@ -156,6 +163,7 @@ pub struct Metrics {
     pub iter_est: TimePlyCounter,
     pub iter_act: TimePlyCounter,
     pub iter_allotted: TimePlyCounter,
+
     // counters: Vec<u64>,
     // node_counters: Vec<(Vec<u64>, Vec<u64>)>, // ply and depth
     // histograms: Vec<Histogram>,
@@ -174,6 +182,9 @@ impl Metrics {
             IterationComplete => self.iter_complete += 1,
             IterationTimeout => self.iter_timeout += 1,
             LegalMoves(i) => self.make_move += i as u64,
+
+            TimingEval(start) => self.timing_eval.add(0, start.elapsed()),
+            TimingMoveGen(start) => self.timing_move_gen.add(0, start.elapsed()),
 
             TtHit(ref n) => self.tt_hit.incr(n),
             TtProbe(ref n) => self.tt_probe.incr(n),
@@ -218,8 +229,9 @@ impl Metrics {
             ReSearchFwFd(ref n) => self.re_search_fwfd.incr(n),
 
             IterEst(ply, dur) => self.iter_est.set(ply, dur),
-            IterAct(ply, dur) => self.iter_act.set(ply, dur),
+            IterActual(ply, dur) => self.iter_act.set(ply, dur),
             IterAllotted(ply, dur) => self.iter_allotted.set(ply, dur),
+
         }
     }
 
@@ -232,6 +244,8 @@ impl Metrics {
         self.iter_complete += o.iter_complete;
         self.iter_timeout += o.iter_timeout;
         self.make_move += o.make_move;
+        self.timing_eval += &o.timing_eval;
+        self.timing_move_gen += &o.timing_move_gen;
 
         self.tt_hit += &o.tt_hit;
         self.tt_probe += &o.tt_probe;
@@ -278,6 +292,7 @@ impl Metrics {
         self.iter_est += &o.iter_est;
         self.iter_act += &o.iter_act;
         self.iter_allotted += &o.iter_allotted;
+
     }
 
     pub fn to_string() -> String {
@@ -303,6 +318,8 @@ pub enum Metric {
     IterationTimeout,
     IterationComplete,
     LegalMoves(u32),
+    TimingEval(Instant),
+    TimingMoveGen(Instant),
 
     Interior(Node),
     Leaf(Node),
@@ -347,8 +364,9 @@ pub enum Metric {
     ReSearchFwFd(Node),
 
     IterEst(Ply, Duration),
-    IterAct(Ply, Duration),
+    IterActual(Ply, Duration),
     IterAllotted(Ply, Duration),
+
 }
 
 impl fmt::Display for Metrics {
@@ -378,6 +396,8 @@ impl fmt::Display for Metrics {
             .add_record(["Eval", &i(self.eval)])
             .add_record(["Iter complete", &i(self.iter_complete)])
             .add_record(["Iter timeout", &i(self.iter_timeout)])
+            .add_record(["Timing Eval", &d(self.timing_eval.for_ply(0))])
+            .add_record(["Timing MoveGen", &d(self.timing_move_gen.for_ply(0))])
             .build()
             .with(style)
             .with(Modify::new(Rows::single(0)).with(Border::default().top('-')))
@@ -431,6 +451,7 @@ impl fmt::Display for Metrics {
             "Iter Est",
             "Iter Act",
             "Iter Alloc",
+
             // "Depth", "Interior", "Leaf", "QS Int", "QS Leaf",
         ]);
 
@@ -487,6 +508,7 @@ impl fmt::Display for Metrics {
                 d(self.iter_est.for_ply(y)),
                 d(self.iter_act.for_ply(y)),
                 d(self.iter_allotted.for_ply(y)),
+
                 // d as u64,
                 // self.interior.1[d],
                 // self.leaf.1[d],
@@ -517,7 +539,7 @@ impl Metric {
     #[allow(unused_variables)]
     #[inline]
     pub fn record(&self) {
-        // #[cfg(not(feature="remove_metrics"))]
+        #[cfg(not(feature="remove_metrics"))]
         THREAD_METRICS.with(|s| s.borrow_mut().record_metric(self));
     }
 

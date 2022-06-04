@@ -738,7 +738,7 @@ impl Uci {
     fn ext_uci_explain_eval(&mut self) -> Result<()> {
         self.engine.lock().unwrap().search_stop();
         let eval = &self.engine.lock().unwrap().algo.eval;
-        let s = eval.w_eval_explain(&self.board, false);
+        let s = eval.w_eval_explain(&self.board);
         Self::print(&format!("Board:\n{}", &self.board));
         Self::print(&format!(
             "Material advantage: {}",

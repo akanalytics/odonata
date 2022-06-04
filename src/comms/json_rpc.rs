@@ -173,7 +173,7 @@ impl Rpc for RpcImpl {
             .unwrap()
             .algo
             .eval
-            .w_eval_explain(&board, false);
+            .w_eval_explain(&board);
         Ok(explanation.to_string())
     }
 }

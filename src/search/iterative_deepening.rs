@@ -1,8 +1,8 @@
+use crate::eval::score::Score;
 use crate::infra::component::{Component, State};
 use crate::infra::metric::Metric;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
-use crate::search::searchstats::{NodeStats, SearchStats};
 use crate::search::timecontrol::TimeControl;
 use crate::types::{Ply, MAX_PLY};
 use serde::{Deserialize, Serialize};
@@ -23,8 +23,8 @@ pub struct IterativeDeepening {
     #[serde(skip)]
     pub end_ply: Ply,
 
-    #[serde(skip)]
-    iterations: Vec<SearchStats>,
+    // #[serde(skip)]
+    // iterations: Vec<SearchStats>,
 }
 
 impl Component for IterativeDeepening {
@@ -35,7 +35,7 @@ impl Component for IterativeDeepening {
     fn new_position(&mut self) {
         self.start_ply = 1;
         self.end_ply = MAX_PLY - 1;
-        self.iterations.clear();
+        // self.iterations.clear();
     }
 }
 
@@ -48,7 +48,7 @@ impl Default for IterativeDeepening {
 
             start_ply: 1,
             end_ply: MAX_PLY - 1,
-            iterations: Vec::new(),
+            // iterations: Vec::new(),
         }
     }
 }
@@ -60,37 +60,37 @@ impl fmt::Display for IterativeDeepening {
         writeln!(f, "step_size        : {}", self.step_size)?;
         writeln!(f, "start_ply        : {}", self.start_ply)?;
         writeln!(f, "end_ply          : {}", self.end_ply)?;
-        writeln!(f, "iterations       : {}", self.iterations.len())?;
-        write!(f, "{:>3} {:>4} ", "dep", "stat")?;
-        NodeStats::fmt_header(f)?;
-        writeln!(f, " {:>8} {:<11}", "score", "pv")?;
+        // writeln!(f, "iterations       : {}", self.iterations.len())?;
+        // write!(f, "{:>3} {:>4} ", "dep", "stat")?;
+        // NodeStats::fmt_header(f)?;
+        // writeln!(f, " {:>8} {:<11}", "score", "pv")?;
 
-        write!(f, "{:>3} {:>4} ", "---", "----")?;
-        NodeStats::fmt_underline(f)?;
-        writeln!(f, " {:>8} {:<11}", "--------", "-----------")?;
-        for iter in self.iterations.iter() {
-            write!(
-                f,
-                "D{:<2} {:>4} ",
-                iter.depth,
-                if iter.interrupted() { "PART" } else { "FULL" }
-            )?;
-            iter.iteration().fmt_data(f)?;
-            writeln!(
-                f,
-                " {:>8} {:<11}",
-                iter.score().to_string(),
-                iter.pv().to_string()
-            )?;
-        }
-        if let Some(last) = self.iterations.last() {
-            write!(f, "{:>3} {:>4} ", "---", "----")?;
-            NodeStats::fmt_underline(f)?;
-            writeln!(f, " {:>8} {:<11}", "--------", "-----------")?;
-            write!(f, "{:>8} ", "cumul")?;
-            last.cumulative().fmt_data(f)?;
-            writeln!(f, " {:>8} {:<11}", "-", "-")?;
-        }
+        // write!(f, "{:>3} {:>4} ", "---", "----")?;
+        // NodeStats::fmt_underline(f)?;
+        // writeln!(f, " {:>8} {:<11}", "--------", "-----------")?;
+        // for iter in self.iterations.iter() {
+        //     write!(
+        //         f,
+        //         "D{:<2} {:>4} ",
+        //         iter.depth,
+        //         if iter.interrupted() { "PART" } else { "FULL" }
+        //     )?;
+        //     iter.iteration().fmt_data(f)?;
+        //     writeln!(
+        //         f,
+        //         " {:>8} {:<11}",
+        //         iter.score().to_string(),
+        //         "".to_string() // iter.pv().to_string()
+        //     )?;
+        // }
+        // if let Some(last) = self.iterations.last() {
+        //     write!(f, "{:>3} {:>4} ", "---", "----")?;
+        //     NodeStats::fmt_underline(f)?;
+        //     writeln!(f, " {:>8} {:<11}", "--------", "-----------")?;
+        //     write!(f, "{:>8} ", "cumul")?;
+        //     last.cumulative().fmt_data(f)?;
+        //     writeln!(f, " {:>8} {:<11}", "-", "-")?;
+        // }
         Ok(())
     }
 }
@@ -115,12 +115,10 @@ impl IterativeDeepening {
 
 impl Algo {
     pub fn search_iteratively(&mut self) {
-        // self.results.board = self.board.clone();
-
         self.ids.calc_range(&self.mte.time_control);
         let mut ply = self.ids.start_ply;
         let mut multi_pv = Vec::new();
-        let mut last_good_results = Vec::new();
+        let mut last_good_multi_pv = Vec::new();
 
         'outer: loop {
             self.set_state(State::StartDepthIteration(ply));
@@ -128,27 +126,29 @@ impl Algo {
             self.stats.new_iteration();
             multi_pv.resize_with(self.restrictions.multi_pv_count, Default::default);
             for i in 0..self.restrictions.multi_pv_count {
-                self.aspirated_search(&mut self.board.clone(), &mut Node::root(ply));
+                let score = self
+                    .aspirated_search(&mut self.board.clone(), &mut Node::root(ply))
+                    .0;
                 self.mte.estimate_iteration(ply + 1, &self.clock);
-                self.stats
-                    .record_time_estimate(ply + 1, &self.mte.estimate_move_time);
-                self.ids.iterations.push(self.search_stats().clone());
-
+                // self.stats
+                //     .record_time_estimate(ply + 1, &self.mte.estimate_move_time);
+                // self.ids.iterations.push(self.search_stats().clone());
+                let pv = self.pv_table.extract_pv();
                 self.progress.with_pv_change(
                     &self.board,
                     &self.clock,
-                    &self.stats,
                     &self.restrictions,
                     &self.tt,
+                    &self.pv_table,
+                    ply,
+                    score,
                 );
 
-                // let results = &self.results;
                 self.progress.snapshot_bests();
                 self.controller.invoke_callback(&self.progress);
-                let exit = self.exit_iteration(ply);
+                let exit = self.exit_iteration(ply, score);
 
-                // results
-                multi_pv[i] = (self.stats.pv().clone(), self.stats.score());
+                multi_pv[i] = (pv.clone(), score);
 
                 if exit {
                     break 'outer;
@@ -157,21 +157,20 @@ impl Algo {
                     self.restrictions.exclude_moves.push(mv);
                 }
             }
-            Metric::IterAct(ply, t.elapsed()).record();
-            last_good_results = std::mem::take(&mut multi_pv);
+            Metric::IterActual(ply, t.elapsed()).record();
+            last_good_multi_pv = std::mem::take(&mut multi_pv);
             ply += self.ids.step_size
         }
 
         self.results = SearchResults::new(self);
         if self.time_up_or_cancelled(ply, false).0 {
-            self.results.multi_pv = last_good_results;
+            self.results.multi_pv = last_good_multi_pv;
         } else {
             self.results.multi_pv = multi_pv;
         }
 
         self.progress.with_best_move(&self.board.outcome());
         self.controller.invoke_callback(&self.progress);
-        // debug!("\n\n\n=====Search completed=====\n{}", self);
         if self.max_depth > 0
             && !self.progress.outcome.is_game_over()
             && self.progress.bm().is_null()
@@ -180,13 +179,12 @@ impl Algo {
         }
     }
 
-    pub fn exit_iteration(&mut self, ply: Ply) -> bool {
+    pub fn exit_iteration(&mut self, ply: Ply, s: Score) -> bool {
         self.time_up_or_cancelled(ply, false).0
             || self.mte.probable_timeout(ply)
             || ply >= self.ids.end_ply
             || ply >= MAX_PLY / 2
-            || (self.restrictions.exclude_moves.is_empty()
-                && (self.search_stats().score().is_mate()))
+            || (self.restrictions.exclude_moves.is_empty() && s.is_mate())
         // pv.empty = draw
     }
 }

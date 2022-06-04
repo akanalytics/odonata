@@ -9,11 +9,12 @@ use crate::eval::score::Score;
 use crate::infra::component::Component;
 use crate::mv::Move;
 use crate::outcome::Outcome;
+use crate::pvtable::PvTable;
 use crate::tags::Tag;
 use crate::trace::counts::Counts;
 use crate::types::Ply;
 use crate::variation::Variation;
-use crate::{Algo, MoveList, Position, SearchStats};
+use crate::{Algo, MoveList, Position};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -56,7 +57,7 @@ pub struct SearchProgress {
     #[serde(skip)] pub nps: Option<u64>,
     #[serde(skip)] pub tbhits: Option<u64>,
     #[serde(skip)] pub cpuload_per_mille: Option<u32>,
-    #[serde(skip)] pub branching_factor: Option<f32>,
+    // #[serde(skip)] pub branching_factor: Option<f32>,
     #[serde(skip)] pub event: Option<Event>,
     
     #[serde(skip)] pub best_score: Score,
@@ -153,29 +154,6 @@ impl SearchProgress {
         }
     }
 
-    pub fn old_with_pv_change(algo: &Algo) -> Self {
-        let stats = algo.search_stats();
-        let sr = SearchProgress {
-            mode: SearchProgressMode::PvChange,
-            board: algo.board.clone(),
-            multi_pv_index: algo.restrictions.multi_pv_index(),
-            multi_pv_index_of: algo.restrictions.multi_pv_count,
-            pv: stats.pv().clone(),
-            best_pv: stats.pv().clone(),
-            score: stats.score(),
-            best_score: stats.score(),
-            nodes: Some(stats.all_threads_cumulative_total_nodes()),
-            nodes_thread: Some(stats.cumulative_nodes()),
-            nps: Some(stats.all_threads_cumulative_knps() * 1000),
-            depth: stats.depth(),
-            seldepth: stats.selective_depth(),
-            time_millis: Some(stats.cumulative_time_as_millis() as u64),
-            hashfull_per_mille: Some(algo.tt.hashfull_per_mille()),
-            branching_factor: Some(stats.branching_factor()),
-            ..Default::default()
-        };
-        sr
-    }
 
     pub fn snapshot_bests(&mut self) {
         if self.score.is_finite() {
@@ -201,25 +179,27 @@ impl SearchProgress {
         &mut self,
         board: &Board,
         clock: &Clock,
-        stats: &SearchStats,
         restrictions: &Restrictions,
         tt: &TranspositionTable2,
+        pv_table: &PvTable,
+        ply: Ply,
+        score: Score,
     ) {
         self.board = board.clone();
         self.multi_pv_index = restrictions.multi_pv_index();
         self.multi_pv_index_of = restrictions.multi_pv_count;
-        self.pv = stats.pv().clone();
+        self.pv = pv_table.extract_pv();
         // self.best_pv = stats.pv().clone();
-        self.score = stats.score();
+        self.score = score;
         // self.best_score = stats.score();
         self.nodes = Some(clock.cumul_nodes_all_threads());
         self.nodes_thread = Some(clock.cumul_nodes());
         self.nps = Some(clock.cumul_knps_all_threads() * 1000);
-        self.depth = stats.depth();
-        self.seldepth = stats.selective_depth();
+        self.depth = ply;
+        self.seldepth = pv_table.selective_depth();
         self.time_millis = Some(clock.elapsed_search().0.as_millis() as u64);
         self.hashfull_per_mille = Some(tt.hashfull_per_mille());
-        self.branching_factor = Some(stats.branching_factor());
+        // self.branching_factor = Some(stats.branching_factor());
         if self.score.is_finite() {
             self.mode = SearchProgressMode::PvChange;
         } else {
@@ -227,13 +207,13 @@ impl SearchProgress {
         }
 
         // check PV for validity
-        if !board.is_legal_variation(stats.pv()) {
+        if !board.is_legal_variation(&self.pv) {
             debug_assert!(
                 false,
                 "PV  {} is invalid on board {}\n{:?}",
-                stats.pv(),
+                self.pv,
                 board,
-                stats.pv(),
+                self.pv,
             );
             self.pv.truncate(1);
         }
@@ -242,7 +222,7 @@ impl SearchProgress {
     pub fn update_with_pv_change(
         &mut self,
         clock: &Clock,
-        counts: &Counts,
+        _counts: &Counts,
         depth: Ply,
         score: Score,
         event: Event,
@@ -260,7 +240,7 @@ impl SearchProgress {
         self.nodes_thread = Some(clock.cumul_nodes());
         self.nps = Some(clock.cumul_knps_all_threads() * 1000);
         self.time_millis = Some(clock.elapsed_search().0.as_millis() as u64);
-        self.branching_factor = Some(counts.cumul(Event::PercentBranchingFactor) as f32 / 100.0);
+        // self.branching_factor = Some(counts.cumul(Event::PercentBranchingFactor) as f32 / 100.0);
 
         // check PV for validity
         if !self.board.is_legal_variation(&self.pv) {
@@ -288,9 +268,9 @@ impl SearchProgress {
         if let Some(nodes) = self.nodes_thread {
             pos.set(Tag::AnalysisCountNodes(nodes as u128));
         }
-        if let Some(bf) = self.branching_factor {
-            pos.set(Tag::BranchingFactorPercent((100.0 * bf) as u32));
-        }
+        // if let Some(bf) = self.branching_factor {
+        //     pos.set(Tag::BranchingFactorPercent((100.0 * bf) as u32));
+        // }
         pos
     }
 }

@@ -80,6 +80,11 @@ impl PvTable {
         // }
     }
 
+
+    pub fn selective_depth(&self) -> Ply {
+        (self.size - 1) as i32
+    }
+
     pub fn extract_pv_for(&self, ply: Ply) -> Variation {
         let mut res = Variation::new();
         if let Some(pv) = self.matrix[ply as usize].get(0..self.size) {

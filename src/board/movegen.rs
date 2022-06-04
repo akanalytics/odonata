@@ -237,11 +237,6 @@ impl Board {
         moves
     }
 
-    pub fn legal_capture_moves(&self) -> MoveList {
-        let mut moves = self.legal_moves();
-        moves.retain(|m| m.is_capture() || m.is_promo());
-        moves
-    }
 }
 
 #[cfg(test)]

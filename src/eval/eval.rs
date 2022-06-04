@@ -396,25 +396,25 @@ impl Eval {
         board.white_score(contempt_pov)
     }
 
-    pub fn w_evaluate_with_outcome(&self, board: &Board, node: &Node) -> WhiteScore {
+    fn w_evaluate_with_outcome(&self, board: &Board, n: &Node) -> WhiteScore {
         Metric::Eval.record();
         let outcome = board.outcome();
         if outcome.is_game_over() {
             if outcome.is_draw() {
-                return self.w_eval_draw(board, node);
+                return self.w_eval_draw(board, n);
             }
             if let Some(c) = outcome.winning_color() {
                 if board.color_us() == c {
-                    return board.white_score(Score::we_win_in(node.ply));
+                    return board.white_score(Score::we_win_in(n.ply));
                 } else {
-                    return board.white_score(Score::we_lose_in(node.ply));
+                    return board.white_score(Score::we_lose_in(n.ply));
                 }
             }
         }
         self.w_eval_some(board)
     }
 
-    pub fn w_eval_explain(&self, b: &Board, _csv: bool) -> ExplainScore {
+    pub fn w_eval_explain(&self, b: &Board) -> ExplainScore {
         let mut scorer = ExplainScore::new(b.phase(&self.phaser), b.to_fen());
         Calc::score(&mut scorer, b, self, &self.phaser);
         scorer
@@ -532,7 +532,7 @@ mod tests {
         let b = pos.board();
         let mut eval = Eval::default();
         eval.mb.enabled = false;
-        let explain = eval.w_eval_explain(b, false);
+        let explain = eval.w_eval_explain(b);
         println!("{}", explain);
     }
 
