@@ -116,7 +116,6 @@ pub struct Metrics {
     pub timing_eval: TimePlyCounter,
     pub timing_move_gen: TimePlyCounter,
 
-
     pub tt_hit: NodeCounter,
     pub tt_probe: NodeCounter,
     pub tt_store: NodeCounter,
@@ -146,7 +145,9 @@ pub struct Metrics {
     // pub cut_move: NodeHistogram,
     pub null_move_prune_attempt: NodeCounter,
     pub null_move_prune: NodeCounter,
-    pub razor_prune: NodeCounter,
+    pub razor_prune_d2: NodeCounter,
+    pub razor_prune_d3: NodeCounter,
+    pub razor_prune_fail: NodeCounter,
     pub standing_pat_prune: NodeCounter,
     pub futility_prune: NodeCounter,
     pub late_move_prune: NodeCounter,
@@ -163,7 +164,6 @@ pub struct Metrics {
     pub iter_est: TimePlyCounter,
     pub iter_act: TimePlyCounter,
     pub iter_allotted: TimePlyCounter,
-
     // counters: Vec<u64>,
     // node_counters: Vec<(Vec<u64>, Vec<u64>)>, // ply and depth
     // histograms: Vec<Histogram>,
@@ -171,8 +171,10 @@ pub struct Metrics {
 }
 
 impl Metrics {
-    pub fn record_metric(&mut self, m: &Metric) {
+    #[allow(dead_code)]
+    fn record_metric(&mut self, m: &Metric) {
         use Metric::*;
+        // unwraps safe as None only used if configured off, in which case this logioc not called
         match *m {
             MakeMove => self.make_move += 1,
             MoveGen => self.move_gen += 1,
@@ -183,8 +185,8 @@ impl Metrics {
             IterationTimeout => self.iter_timeout += 1,
             LegalMoves(i) => self.make_move += i as u64,
 
-            TimingEval(start) => self.timing_eval.add(0, start.elapsed()),
-            TimingMoveGen(start) => self.timing_move_gen.add(0, start.elapsed()),
+            TimingEval(start) => self.timing_eval.add(0, start.unwrap().elapsed()),
+            TimingMoveGen(start) => self.timing_move_gen.add(0, start.unwrap().elapsed()),
 
             TtHit(ref n) => self.tt_hit.incr(n),
             TtProbe(ref n) => self.tt_probe.incr(n),
@@ -214,7 +216,9 @@ impl Metrics {
 
             NullMovePruneAttempt(ref n) => self.null_move_prune_attempt.incr(n),
             NullMovePrune(ref n) => self.null_move_prune.incr(n),
-            RazorPrune(ref n) => self.razor_prune.incr(n),
+            RazorPruneD2(ref n) => self.razor_prune_d2.incr(n),
+            RazorPruneD3(ref n) => self.razor_prune_d3.incr(n),
+            RazorPruneFail(ref n) => self.razor_prune_fail.incr(n),
             StandingPatPrune(ref n) => self.standing_pat_prune.incr(n),
             FutilityPrune(ref n) => self.futility_prune.incr(n),
             LateMovePrune(ref n) => self.late_move_prune.incr(n),
@@ -229,9 +233,8 @@ impl Metrics {
             ReSearchFwFd(ref n) => self.re_search_fwfd.incr(n),
 
             IterEst(ply, dur) => self.iter_est.set(ply, dur),
-            IterActual(ply, dur) => self.iter_act.set(ply, dur),
+            IterActual(ply, start) => self.iter_act.set(ply, start.unwrap().elapsed()),
             IterAllotted(ply, dur) => self.iter_allotted.set(ply, dur),
-
         }
     }
 
@@ -275,7 +278,9 @@ impl Metrics {
 
         self.null_move_prune_attempt += &o.null_move_prune_attempt;
         self.null_move_prune += &o.null_move_prune;
-        self.razor_prune += &o.razor_prune;
+        self.razor_prune_d2 += &o.razor_prune_d2;
+        self.razor_prune_d3 += &o.razor_prune_d3;
+        self.razor_prune_fail += &o.razor_prune_fail;
         self.standing_pat_prune += &o.standing_pat_prune;
         self.futility_prune += &o.futility_prune;
         self.late_move_prune += &o.late_move_prune;
@@ -292,7 +297,6 @@ impl Metrics {
         self.iter_est += &o.iter_est;
         self.iter_act += &o.iter_act;
         self.iter_allotted += &o.iter_allotted;
-
     }
 
     pub fn to_string() -> String {
@@ -318,8 +322,8 @@ pub enum Metric {
     IterationTimeout,
     IterationComplete,
     LegalMoves(u32),
-    TimingEval(Instant),
-    TimingMoveGen(Instant),
+    TimingEval(Option<Instant>),
+    TimingMoveGen(Option<Instant>),
 
     Interior(Node),
     Leaf(Node),
@@ -349,7 +353,9 @@ pub enum Metric {
 
     NullMovePruneAttempt(Node),
     NullMovePrune(Node),
-    RazorPrune(Node),
+    RazorPruneD2(Node),
+    RazorPruneD3(Node),
+    RazorPruneFail(Node),
     StandingPatPrune(Node),
     FutilityPrune(Node),
     LateMovePrune(Node),
@@ -364,9 +370,8 @@ pub enum Metric {
     ReSearchFwFd(Node),
 
     IterEst(Ply, Duration),
-    IterActual(Ply, Duration),
+    IterActual(Ply, Option<Instant>),
     IterAllotted(Ply, Duration),
-
 }
 
 impl fmt::Display for Metrics {
@@ -435,7 +440,9 @@ impl fmt::Display for Metrics {
             // pruning/etx
             "NMP try",
             "NMP",
-            "Razor",
+            "Razor D2",
+            "Razor D3",
+            "Razor Fail",
             "Pat",
             "Fut",
             "LMP",
@@ -451,7 +458,6 @@ impl fmt::Display for Metrics {
             "Iter Est",
             "Iter Act",
             "Iter Alloc",
-
             // "Depth", "Interior", "Leaf", "QS Int", "QS Leaf",
         ]);
 
@@ -492,7 +498,9 @@ impl fmt::Display for Metrics {
                 // prune+extend
                 i(self.null_move_prune_attempt.for_ply(y)),
                 i(self.null_move_prune.for_ply(y)),
-                i(self.razor_prune.for_ply(y)),
+                i(self.razor_prune_d2.for_ply(y)),
+                i(self.razor_prune_d3.for_ply(y)),
+                i(self.razor_prune_fail.for_ply(y)),
                 i(self.standing_pat_prune.for_ply(y)),
                 i(self.futility_prune.for_ply(y)),
                 i(self.late_move_prune.for_ply(y)),
@@ -508,7 +516,6 @@ impl fmt::Display for Metrics {
                 d(self.iter_est.for_ply(y)),
                 d(self.iter_act.for_ply(y)),
                 d(self.iter_allotted.for_ply(y)),
-
                 // d as u64,
                 // self.interior.1[d],
                 // self.leaf.1[d],
@@ -528,29 +535,36 @@ impl fmt::Display for Metrics {
             .with(Modify::new(Rows::single(9)).with(Border::default().top('-')))
             .with(Modify::new(Rows::single(15)).with(Border::default().top('-')))
             .with(Modify::new(Rows::single(22)).with(Border::default().top('-')))
-            .with(Modify::new(Rows::single(30)).with(Border::default().top('-')))
-            .with(Modify::new(Rows::single(35)).with(Border::default().top('-')))
+            .with(Modify::new(Rows::single(32)).with(Border::default().top('-')))
+            .with(Modify::new(Rows::single(37)).with(Border::default().top('-')))
             .fmt(f)?;
         Ok(())
     }
 }
 
+#[dynamic]
+static EPOCH: Instant = Instant::now();
+
 impl Metric {
     #[allow(unused_variables)]
     #[inline]
     pub fn record(&self) {
-        #[cfg(not(feature="remove_metrics"))]
+        #[cfg(not(feature = "remove_metrics"))]
         THREAD_METRICS.with(|s| s.borrow_mut().record_metric(self));
     }
 
     #[allow(unused_variables)]
     #[inline]
-    pub fn timing_start() -> Instant {
-        // #[cfg(not(feature="remove_metrics"))]
-        Instant::now()
-
-        // #[cfg(feature="remove_metrics")]
-        // Instant::ZERO
+    pub fn timing_start() -> Option<Instant> {
+    // with metrics 39,302,656,127
+    // no metrics   36,113,825,832
+    // no metrics   35,733,319,464 but "instant=" #[dynamic] static EPOCH: Instant = Instant::now();
+    // no metrics   35,683,293,565 but with option instant 
+    if cfg!(feature = "remove_metrics") {
+            None
+        } else {
+            Some(Instant::now())
+        }
     }
 }
 

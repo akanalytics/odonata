@@ -175,7 +175,6 @@ impl Algo {
             return Ok((s, Event::PruneStandingPat));
         }
         if let Some(alphabeta) = self.razor_node(last_move, b, eval, &n)? {
-            Metric::RazorPrune(n).record();
             return Ok((alphabeta, Event::PruneRazor));
         }
         if let Some(s) = self.nmp_node(b, &n, eval)? {

@@ -1,6 +1,7 @@
 use crate::board::Board;
 use crate::eval::score::{Score, ToScore};
 use crate::infra::component::Component;
+use crate::infra::metric::Metric;
 use crate::mv::Move;
 use crate::search::node::{Event, Node};
 use crate::types::{MoveType, MoveTypes, Ply};
@@ -147,6 +148,7 @@ impl Algo {
                 // drop straight into qsearch
                 self.counts.inc(n, Event::PruneRazor);
                 let (score, _event) = self.alphabeta(b, n.ply, 0, n.alpha, n.beta, last_move)?;
+                Metric::RazorPruneD2(*n).record();
                 return Ok(Some(score));
             } else {
                 // pvs search around {alpha - margin}
@@ -161,8 +163,10 @@ impl Algo {
                 // fail low (-inf) or alpha-margin
                 if score <= n.alpha - margin {
                     self.counts.inc(n, Event::PruneRazor);
+                    Metric::RazorPruneD3(*n).record();
                     return Ok(Some(n.alpha));
                 }
+                Metric::RazorPruneFail(*n).record();
             }
         }
         Ok(None)
