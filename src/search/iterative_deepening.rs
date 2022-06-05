@@ -1,6 +1,6 @@
 use crate::eval::score::Score;
 use crate::infra::component::{Component, State};
-use crate::infra::metric::Metric;
+use crate::infra::metric::{Metric, Metrics};
 use crate::search::algo::Algo;
 use crate::search::node::Node;
 use crate::search::timecontrol::TimeControl;
@@ -121,6 +121,7 @@ impl Algo {
         let mut last_good_multi_pv = Vec::new();
 
         'outer: loop {
+            Metrics::flush_thread_local();
             self.set_state(State::StartDepthIteration(ply));
             let t = Metric::timing_start();
             self.stats.new_iteration();

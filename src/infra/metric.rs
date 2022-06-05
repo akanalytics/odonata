@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 use std::{fmt, iter};
 use tabled::builder::Builder;
 use tabled::object::{Columns, Rows, Segment};
-use tabled::style::Border;
+use tabled::style::{Border, BorderText};
 use tabled::{Alignment, Modify, Rotate, Style};
 
 #[derive()]
@@ -46,7 +46,7 @@ impl NodeHistogram {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct NodeCounter([u64; 32], [u64; 32]);
 
 impl NodeCounter {
@@ -74,7 +74,7 @@ impl AddAssign<&NodeCounter> for NodeCounter {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct TimePlyCounter([Duration; 32]);
 
 impl TimePlyCounter {
@@ -104,66 +104,67 @@ impl AddAssign<&TimePlyCounter> for TimePlyCounter {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct Metrics {
-    pub make_move: u64,
-    pub move_gen: u64,
-    pub hash_board: u64,
-    pub hash_move: u64,
-    pub eval: u64,
-    pub iter_complete: u64,
-    pub iter_timeout: u64,
-    pub timing_eval: TimePlyCounter,
-    pub timing_move_gen: TimePlyCounter,
+    name: String,
+    make_move: u64,
+    move_gen: u64,
+    hash_board: u64,
+    hash_move: u64,
+    eval: u64,
+    iter_complete: u64,
+    iter_timeout: u64,
+    timing_eval: TimePlyCounter,
+    timing_move_gen: TimePlyCounter,
 
-    pub tt_hit: NodeCounter,
-    pub tt_probe: NodeCounter,
-    pub tt_store: NodeCounter,
-    pub tt_cut: NodeCounter,
-    pub tt_all: NodeCounter,
-    pub tt_pv: NodeCounter,
+    tt_hit: NodeCounter,
+    tt_probe: NodeCounter,
+    tt_store: NodeCounter,
+    tt_cut: NodeCounter,
+    tt_all: NodeCounter,
+    tt_pv: NodeCounter,
 
-    pub interior: NodeCounter,
-    pub leaf: NodeCounter,
-    pub qs_interior: NodeCounter,
-    pub qs_leaf: NodeCounter,
+    interior: NodeCounter,
+    leaf: NodeCounter,
+    qs_interior: NodeCounter,
+    qs_leaf: NodeCounter,
 
-    pub moves: NodeCounter,
+    moves: NodeCounter,
 
-    pub eval_from_tt: NodeCounter,
-    pub eval_calc: NodeCounter,
-    pub eval_eg_draw: NodeCounter,
-    pub eval_eg_win: NodeCounter,
-    pub eval_eg_maybe: NodeCounter,
-    pub eval_see: NodeCounter,
+    eval_from_tt: NodeCounter,
+    eval_calc: NodeCounter,
+    eval_eg_draw: NodeCounter,
+    eval_eg_win: NodeCounter,
+    eval_eg_maybe: NodeCounter,
+    eval_see: NodeCounter,
 
-    pub node_cut: NodeCounter,
-    pub node_all: NodeCounter,
-    pub node_pv: NodeCounter,
-    pub node_zw: NodeCounter,
+    node_cut: NodeCounter,
+    node_all: NodeCounter,
+    node_pv: NodeCounter,
+    node_zw: NodeCounter,
 
-    // pub cut_move: NodeHistogram,
-    pub null_move_prune_attempt: NodeCounter,
-    pub null_move_prune: NodeCounter,
-    pub razor_prune_d2: NodeCounter,
-    pub razor_prune_d3: NodeCounter,
-    pub razor_prune_fail: NodeCounter,
-    pub standing_pat_prune: NodeCounter,
-    pub futility_prune: NodeCounter,
-    pub late_move_prune: NodeCounter,
+    // cut_move: NodeHistogram,
+    null_move_prune_attempt: NodeCounter,
+    null_move_prune: NodeCounter,
+    razor_prune_d2: NodeCounter,
+    razor_prune_d3: NodeCounter,
+    razor_prune_fail: NodeCounter,
+    standing_pat_prune: NodeCounter,
+    futility_prune: NodeCounter,
+    late_move_prune: NodeCounter,
 
-    pub late_move_reduce: NodeCounter,
-    pub check_extend: NodeCounter,
+    late_move_reduce: NodeCounter,
+    check_extend: NodeCounter,
 
-    pub search_fwfd: NodeCounter,
-    pub search_zwrd: NodeCounter,
-    pub search_zwfd: NodeCounter,
-    pub re_search_zwfd: NodeCounter,
-    pub re_search_fwfd: NodeCounter,
+    search_fwfd: NodeCounter,
+    search_zwrd: NodeCounter,
+    search_zwfd: NodeCounter,
+    re_search_zwfd: NodeCounter,
+    re_search_fwfd: NodeCounter,
 
-    pub iter_est: TimePlyCounter,
-    pub iter_act: TimePlyCounter,
-    pub iter_allotted: TimePlyCounter,
+    iter_est: TimePlyCounter,
+    iter_act: TimePlyCounter,
+    iter_allotted: TimePlyCounter,
     // counters: Vec<u64>,
     // node_counters: Vec<(Vec<u64>, Vec<u64>)>, // ply and depth
     // histograms: Vec<Histogram>,
@@ -171,6 +172,10 @@ pub struct Metrics {
 }
 
 impl Metrics {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     #[allow(dead_code)]
     fn record_metric(&mut self, m: &Metric) {
         use Metric::*;
@@ -300,14 +305,20 @@ impl Metrics {
     }
 
     pub fn to_string() -> String {
-        let tl = THREAD_METRICS.with(|tm| format!("{}", &*tm.borrow()));
-        format!("{}\n\n{}", tl, &*GLOBAL_METRICS.read())
+        let tl = METRICS_THREAD.with(|tm| format!("{}", &*tm.borrow()));
+        format!(
+            "{}\n\n{}\n\n{}",
+            tl,
+            &*METRICS_LAST_ITER.read(),
+            &*METRICS_TOTAL.read()
+        )
     }
 
-    pub fn add_thread_local_to_global() {
-        THREAD_METRICS.with(|tm| {
-            GLOBAL_METRICS.write().add(&*tm.borrow());
-            *tm.borrow_mut() = Metrics::default();
+    pub fn flush_thread_local() {
+        METRICS_THREAD.with(|tm| {
+            METRICS_TOTAL.write().add(&*tm.borrow());
+            *METRICS_LAST_ITER.write() = std::mem::take(&mut tm.borrow_mut());
+            // *tm.borrow_mut() = Metrics::new();
         });
     }
 }
@@ -392,7 +403,7 @@ impl fmt::Display for Metrics {
         }
 
         let style = Style::github_markdown().bottom('-');
-        let tab = Builder::default()
+        Builder::default()
             .set_columns(["Counter", "Value"])
             .add_record(["Make move", &i(self.make_move)])
             .add_record(["Move gen", &i(self.move_gen)])
@@ -406,9 +417,10 @@ impl fmt::Display for Metrics {
             .build()
             .with(style)
             .with(Modify::new(Rows::single(0)).with(Border::default().top('-')))
-            .with(Modify::new(Segment::all()).with(Alignment::right()));
-        tab.fmt(f)?;
-
+            .with(Modify::new(Segment::all()).with(Alignment::right()))
+            // .with(BorderText::first(&self.name))
+            .fmt(f)?;
+        writeln!(f)?;
         let iters = 32_isize;
         let mut b = Builder::default().set_columns([
             "Ply",
@@ -525,18 +537,19 @@ impl fmt::Display for Metrics {
         }
         let style = Style::github_markdown().bottom('-');
         b.build()
-            .with(Modify::new(Rows::single(0)).with(Border::default().top('-')))
             .with(Modify::new(Segment::all()).with(Alignment::right()))
             // .with(Modify::new(Rows::single(0)).with(MaxWidth::wrapping(5).keep_words()))
             .with(Rotate::Left)
             .with(Rotate::Top)
             .with(style)
+            .with(Modify::new(Rows::single(0)).with(Border::default().top('-')))
             .with(Modify::new(Columns::single(0)).with(Alignment::left()))
             .with(Modify::new(Rows::single(9)).with(Border::default().top('-')))
             .with(Modify::new(Rows::single(15)).with(Border::default().top('-')))
             .with(Modify::new(Rows::single(22)).with(Border::default().top('-')))
             .with(Modify::new(Rows::single(32)).with(Border::default().top('-')))
             .with(Modify::new(Rows::single(37)).with(Border::default().top('-')))
+            .with(BorderText::first(&self.name))
             .fmt(f)?;
         Ok(())
     }
@@ -550,17 +563,17 @@ impl Metric {
     #[inline]
     pub fn record(&self) {
         #[cfg(not(feature = "remove_metrics"))]
-        THREAD_METRICS.with(|s| s.borrow_mut().record_metric(self));
+        METRICS_THREAD.with(|s| s.borrow_mut().record_metric(self));
     }
 
     #[allow(unused_variables)]
     #[inline]
     pub fn timing_start() -> Option<Instant> {
-    // with metrics 39,302,656,127
-    // no metrics   36,113,825,832
-    // no metrics   35,733,319,464 but "instant=" #[dynamic] static EPOCH: Instant = Instant::now();
-    // no metrics   35,683,293,565 but with option instant 
-    if cfg!(feature = "remove_metrics") {
+        // with metrics 39,302,656,127
+        // no metrics   36,113,825,832
+        // no metrics   35,733,319,464 but "instant=" #[dynamic] static EPOCH: Instant = Instant::now();
+        // no metrics   35,683,293,565 but with option instant
+        if cfg!(feature = "remove_metrics") {
             None
         } else {
             Some(Instant::now())
@@ -569,11 +582,14 @@ impl Metric {
 }
 
 thread_local! {
-    pub static THREAD_METRICS: RefCell<Metrics>  = RefCell::new(Metrics::default());
+    pub static METRICS_THREAD: RefCell<Metrics>  = RefCell::new(Metrics::new());
 }
 
 #[dynamic(lazy)]
-static mut GLOBAL_METRICS: Metrics = Metrics::default();
+static mut METRICS_TOTAL: Metrics = Metrics::new();
+
+#[dynamic(lazy)]
+static mut METRICS_LAST_ITER: Metrics = Metrics::new();
 
 #[cfg(test)]
 mod tests {
@@ -590,15 +606,15 @@ mod tests {
             ..Node::default()
         })
         .record();
-        THREAD_METRICS.with(|tm| {
-            println!("1. global    \n{}", *GLOBAL_METRICS.read());
+        METRICS_THREAD.with(|tm| {
+            println!("1. global    \n{}", *METRICS_TOTAL.read());
             println!("thread local \n{}", tm.borrow());
         });
 
-        Metrics::add_thread_local_to_global();
+        Metrics::flush_thread_local();
 
-        THREAD_METRICS.with(|tm| {
-            println!("2. global    \n{}", *GLOBAL_METRICS.read());
+        METRICS_THREAD.with(|tm| {
+            println!("2. global    \n{}", *METRICS_TOTAL.read());
             println!("thread local \n{}", tm.borrow());
         });
     }

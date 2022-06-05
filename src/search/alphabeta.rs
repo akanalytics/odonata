@@ -497,10 +497,10 @@ impl Algo {
             self.counts.inc(&n, cat);
             // nothing
         } else if nt == NodeType::LowerCut {
+            Metric::NodeCut(n).record();
             debug_assert!(!bm.is_null());
             cat = Event::NodeInteriorCut;
             self.counts.inc(&n, cat);
-            Metric::NodeCut(n).record();
         } else if nt == NodeType::ExactPv {
             Metric::NodePv(n).record();
             // self.stats.inc_node_pv(ply);

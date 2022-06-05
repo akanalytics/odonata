@@ -67,7 +67,7 @@ impl Component for Clock {
     }
 
     fn new_iter(&mut self) {
-        self.start_iter = (Instant::now(), self.cumul_nodes());
+        self.start_iter = (Instant::now(), self.cumul_nodes_this_thread());
     }
 
     fn set_thread_index(&mut self, thread_index: u32) {
@@ -109,7 +109,7 @@ impl fmt::Display for Clock {
         writeln!(
             f,
             "cumul nodes      : {}",
-            Formatting::u128(self.cumul_nodes() as u128)
+            Formatting::u128(self.cumul_nodes_this_thread() as u128)
         )?;
         writeln!(
             f,
@@ -122,8 +122,14 @@ impl fmt::Display for Clock {
 }
 
 impl Clock {
+    pub fn restart_elapsed_search_clock(&mut self) {
+        self.start_search.0 = Instant::now();
+        self.start_search.1 = 0;
+    }
+
+
     #[inline]
-    pub fn cumul_nodes(&self) -> u64 {
+    pub fn cumul_nodes_this_thread(&self) -> u64 {
         self.nodes[self.thread_index as usize]
             .0
             .load(Ordering::Relaxed)
@@ -141,6 +147,10 @@ impl Clock {
 
     pub fn cumul_knps_all_threads(&self) -> u64 {
         self.cumul_nodes_all_threads() / (1 + self.elapsed_search().0.as_millis() as u64)
+    }
+
+    pub fn cumul_knps_this_thread(&self) -> u64 {
+        self.cumul_nodes_this_thread() / (1 + self.elapsed_search().0.as_millis() as u64)
     }
 
     // pub fn branching_factor(&self) -> f32 {
@@ -164,7 +174,7 @@ impl Clock {
     pub fn elapsed_search(&self) -> (Duration, u64) {
         (
             self.start_search.0.elapsed(),
-            self.cumul_nodes() - self.start_search.1,
+            self.cumul_nodes_this_thread() - self.start_search.1,
         )
     }
 
@@ -172,7 +182,7 @@ impl Clock {
     pub fn elapsed_iter(&self) -> (Duration, u64) {
         (
             self.start_iter.0.elapsed(),
-            self.cumul_nodes() - self.start_iter.1,
+            self.cumul_nodes_this_thread() - self.start_iter.1,
         )
     }
 }

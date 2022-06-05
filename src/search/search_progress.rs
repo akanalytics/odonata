@@ -96,7 +96,7 @@ impl SearchProgress {
             mode: SearchProgressMode::NodeCounts,
             board: algo.board.clone(),
             nodes: Some(algo.clock.cumul_nodes_all_threads()),
-            nodes_thread: Some(algo.clock.cumul_nodes()),
+            nodes_thread: Some(algo.clock.cumul_nodes_this_thread()),
             nps: Some(algo.clock.cumul_knps_all_threads() * 1000),
             hashfull_per_mille: Some(algo.tt.hashfull_per_mille()),
             time_millis: Some(algo.clock.elapsed_search().0.as_millis() as u64),
@@ -193,7 +193,7 @@ impl SearchProgress {
         self.score = score;
         // self.best_score = stats.score();
         self.nodes = Some(clock.cumul_nodes_all_threads());
-        self.nodes_thread = Some(clock.cumul_nodes());
+        self.nodes_thread = Some(clock.cumul_nodes_this_thread());
         self.nps = Some(clock.cumul_knps_all_threads() * 1000);
         self.depth = ply;
         self.seldepth = pv_table.selective_depth();
@@ -237,7 +237,7 @@ impl SearchProgress {
         self.score = score;
         self.depth = depth;
         self.nodes = Some(clock.cumul_nodes_all_threads());
-        self.nodes_thread = Some(clock.cumul_nodes());
+        self.nodes_thread = Some(clock.cumul_nodes_this_thread());
         self.nps = Some(clock.cumul_knps_all_threads() * 1000);
         self.time_millis = Some(clock.elapsed_search().0.as_millis() as u64);
         // self.branching_factor = Some(counts.cumul(Event::PercentBranchingFactor) as f32 / 100.0);

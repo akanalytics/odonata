@@ -726,7 +726,7 @@ impl Uci {
         Self::print(&format!("# benchmark:\n"));
         self.engine.lock().unwrap().search_stop();
         let engine = self.engine.lock().unwrap();
-        Self::print(&format!("NODES {}", engine.algo.clock.cumul_nodes()));
+        Self::print(&format!("NODES {}", engine.algo.clock.cumul_nodes_this_thread()));
         Self::print(&format!(
             "NPS {}",
             engine.algo.clock.cumul_knps_all_threads() * 1000

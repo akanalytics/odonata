@@ -166,6 +166,7 @@ impl Algo {
         // self.stats.inc_nmp(n.ply);
         let reduced_depth = n.depth - r - 1;
 
+        // we increment ply so that history tables etc work correctly
         let child_score = -self
             .alphabeta(
                 &mut child_board,

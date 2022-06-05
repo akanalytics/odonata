@@ -195,7 +195,6 @@ impl fmt::Debug for Algo {
             .field("analyse_mode", &self.analyse_mode)
             //.field("pv", &self.pv)
             .field("depth", &self.max_depth)
-            .field("search_stats", &self.stats)
             .field("depth", &self.max_depth)
             .field("ids", &self.ids)
             .field("eval", &self.eval)
@@ -295,8 +294,8 @@ impl Algo {
     }
 
     pub fn report_progress(&self) {
-        if self.stats.iteration().all_nodes() % 5_000_000 == 0
-            && self.stats.iteration().all_nodes() != 0
+        if self.clock.cumul_nodes_this_thread() % 5_000_000 == 0
+            && self.clock.cumul_nodes_this_thread() != 0
         {
             let sp = SearchProgress::with_report_progress(self);
             self.controller.invoke_callback(&sp);
@@ -343,11 +342,6 @@ impl Algo {
         // hprof::profiler().print_timing();
     }
 
-    #[inline]
-    pub fn search_stats(&self) -> &SearchStats {
-        &self.stats
-    }
-
     pub fn results_as_position(&self) -> Position {
         self.results.to_position()
     }
@@ -364,10 +358,6 @@ impl Algo {
         &self.results.pv()
     }
 
-    pub fn ponder_hit(&mut self) {
-        self.mte.set_shared_ponder(false);
-        self.stats.restart_clocks();
-    }
 
     #[inline]
     pub fn time_up_or_cancelled(&mut self, ply: Ply, force_check: bool) -> (bool, Event) {
