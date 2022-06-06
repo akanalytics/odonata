@@ -151,7 +151,6 @@ mod tests {
     use crate::search::search_explainer::Explainer;
     use crate::search::searchstats::*;
     use crate::tags::*;
-    use crate::trace::counts::Counts;
     use crate::types::*;
     use crate::variation::*;
     use crate::Algo;
@@ -210,7 +209,6 @@ mod tests {
         assert_eq!(size_of::<Razor>(), 28, "Razor");
         assert_eq!(size_of::<Recognizer>(), 12, "Recognizer");
         assert_eq!(size_of::<Aspiration>(), 24, "Aspiration");
-        assert_eq!(size_of::<Counts>(), 32, "Counts");
         assert_eq!(size_of::<SearchStats>(), 832, "SearchStats");
         assert_eq!(size_of::<PvTable>(), 32, "PvTable");
         assert_eq!(size_of::<Metrics>(), 32, "Metrics");

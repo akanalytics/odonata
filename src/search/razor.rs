@@ -142,7 +142,6 @@ impl Algo {
         });
 
         if self.razor.beta_enabled && eval > n.beta + margin {
-            self.counts.inc(n, Event::PruneRazor);
             return Ok(Some(n.beta));
         }
 
@@ -150,7 +149,6 @@ impl Algo {
         if eval <= n.alpha - margin {
             if n.depth <= 2 {
                 // drop straight into qsearch
-                self.counts.inc(n, Event::PruneRazor);
                 let (score, _event) = self.alphabeta(b, n.ply, 0, n.alpha, n.beta, last_move)?;
                 Metric::RazorPruneD2(*n).record();
                 return Ok(Some(score));
@@ -176,7 +174,6 @@ impl Algo {
 
                 // fail low (-inf) or alpha-margin
                 if score <= n.alpha - margin {
-                    self.counts.inc(n, Event::PruneRazor);
                     Metric::RazorPruneD3(*n).record();
                     return Ok(Some(n.alpha));
                 }
@@ -189,7 +186,7 @@ impl Algo {
 
 impl fmt::Display for Razor {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{:#?}", self)?;
+        writeln!(f, "{}", toml::to_string(self).unwrap())?;
         Ok(())
     }
 }

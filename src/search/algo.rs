@@ -28,7 +28,6 @@ use crate::search::search_progress::SearchProgress;
 use crate::search::searchstats::SearchStats;
 use crate::search::taskcontrol::TaskControl;
 use crate::search::timecontrol::TimeControl;
-use crate::trace::counts::Counts;
 use crate::types::Ply;
 use crate::variation::Variation;
 use serde::{Deserialize, Serialize};
@@ -71,7 +70,6 @@ pub struct Algo {
     pub aspiration: Aspiration,
     pub clock: Clock,
 
-    pub counts: Counts,
     pub progress: SearchProgress,
     pub controller: TaskControl<SearchProgress>,
     pub lmp: Lmp,
@@ -163,7 +161,6 @@ impl Component for Algo {
         self.aspiration.set_state(s);
         self.clock.set_state(s);
 
-        self.counts.set_state(s);
         self.progress.set_state(s);
         self.controller.set_state(s);
         self.lmp.set_state(s);
@@ -216,7 +213,6 @@ impl fmt::Debug for Algo {
             .field("aspiration", &self.aspiration)
             .field("counter_move", &self.counter_move)
             .field("clock", &self.clock)
-            .field("counts", &self.counts)
             .field("results", &self.progress)
             .finish()
     }
@@ -244,7 +240,6 @@ impl fmt::Display for Algo {
         writeln!(f, "qsearch          : {}", self.qsearch_disabled)?;
         writeln!(f, "depth            : {}", self.max_depth)?;
         writeln!(f, "results          : {}", self.results_as_position())?;
-        // write!(f, "\n[results]\n{}", self.results)?;
         writeln!(f, ".\n.\n[controller]\n{}", self.controller)?;
         writeln!(f, ".\n.\n[move orderer]\n{}", self.move_orderer)?;
         writeln!(f, ".\n.\n[move time estimator]\n{}", self.mte)?;
@@ -262,7 +257,6 @@ impl fmt::Display for Algo {
         writeln!(f, ".\n.\n[history]\n{}", self.history)?;
         writeln!(f, ".\n.\n[stats]\n{}", self.stats)?;
         writeln!(f, ".\n.\n[iterative deepening]\n{}", self.ids)?;
-        writeln!(f, ".\n.\n[global counts]\n{}", Metrics::to_string())?;
         writeln!(f, ".\n.\n[pvtable]\n{}", self.pv_table)?;
         writeln!(f, ".\n.\n[explainer]\n{}", self.explainer)?;
 
@@ -273,8 +267,9 @@ impl fmt::Display for Algo {
         writeln!(f, ".\n.\n[clock]\n{:}", self.clock)?;
         writeln!(f, ".\n.\n[counter_move]\n{:}", self.counter_move)?;
 
-        writeln!(f, ".\n.\n[counts]\n{}", self.counts)?;
-        writeln!(f, ".\n.\n[results]\n{}", self.progress)?;
+        // writeln!(f, ".\n.\n[results]\n{}", self.progress)?;
+        write!(f, "\n[results]\n{}", self.results)?;
+        writeln!(f, ".\n.\n[metrics]\n{}", Metrics::to_string())?;
         Ok(())
     }
 }

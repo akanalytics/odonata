@@ -16,6 +16,7 @@ pub struct AlphaBeta;
 
 impl Algo {
     pub fn alphabeta_root_search(&mut self, board: &mut Board, node: &mut Node) -> (Score, Event) {
+        let t = Metric::timing_start();
         let depth = node.depth;
         self.max_depth = depth;
         self.stats.depth = depth;
@@ -68,6 +69,7 @@ impl Algo {
         }
 
         self.stats.record_iteration(self.max_depth, category, pv);
+        Metric::TimingSearchRoot(t).record();
         (score, category)
     }
 
@@ -96,24 +98,19 @@ impl Algo {
 
         let (cancelled, mut cat) = self.time_up_or_cancelled(ply, false);
         if cancelled {
-            self.counts.inc(&n, cat);
             return Err(cat);
         }
 
         self.clock.inc_nodes();
-        self.counts.inc(&n, Event::Clock);
         // self.results.set_seldepth(&n);
 
         if n.is_zw() {
-            self.counts.inc(&n, Event::NodeTypeZw);
             // self.stats.inc_zw_nodes(ply);
             Metric::NodeZw(n).record();
         }
         if n.is_qs() {
             Metric::QsInterior(n).record();
-            self.counts.inc(&n, Event::NodeTypeQuiesce);
         } else {
-            self.counts.inc(&n, Event::NodeInterior);
             Metric::Interior(n).record();
         }
 
@@ -127,7 +124,6 @@ impl Algo {
             // if board.draw_outcome().is_some() {
             // self.stats.inc_leaf_nodes(&n);
             Metric::Leaf(n).record();
-            self.counts.inc(&n, Event::NodeLeafDraw);
             return Ok((b.eval_draw(&mut self.eval, &n), Event::NodeLeafDraw)); // will return a draw score
         }
 
@@ -191,8 +187,6 @@ impl Algo {
             if self.restrictions.skip_move(ply, &mv) {
                 continue;
             }
-            self.counts.inc(&n, Event::Moves);
-            self.counts.inc_move(&n, move_type);
             count += 1;
             // self.stats.inc_move(ply);
             Metric::Moves(n).record();
@@ -419,12 +413,6 @@ impl Algo {
             //     ev = res.1;
             //     s = -res.0
             // }
-            // if lmr > 0 && self.lmr.re_search {
-            //     self.counts.inc(&n, Event::LmrReSearch);
-            // }
-            // if pvs {
-            //     self.counts.inc(&n, Event::PvsReSearch);
-            // }
             //     child_score = -res.0;
             //     cat = res.1;
             // }
@@ -475,13 +463,13 @@ impl Algo {
             // self.stats.inc_leaf_nodes(&n);
             Metric::Leaf(n).record();
             if n.is_qs() {
-                self.counts.inc(&n, Event::NodeLeafQuietEval);
+                // self.counts.inc(&n, Event::NodeLeafQuietEval);
                 return Ok((
                     b.eval_with_outcome(&self.eval, &n),
                     Event::NodeLeafQuietEval,
                 ));
             } else {
-                self.counts.inc(&n, Event::NodeLeafStalemate);
+                // self.counts.inc(&n, Event::NodeLeafStalemate);
                 // FIXME VER:0.4.14
                 // (board.eval_draw(&mut self.eval, &n),
                 return Ok((
@@ -494,18 +482,15 @@ impl Algo {
             Metric::NodeAll(n).record();
             // self.stats.inc_node_all(ply);
             cat = Event::NodeInteriorAll;
-            self.counts.inc(&n, cat);
             // nothing
         } else if nt == NodeType::LowerCut {
             Metric::NodeCut(n).record();
             debug_assert!(!bm.is_null());
             cat = Event::NodeInteriorCut;
-            self.counts.inc(&n, cat);
         } else if nt == NodeType::ExactPv {
             Metric::NodePv(n).record();
             // self.stats.inc_node_pv(ply);
             cat = Event::NodeInteriorPv;
-            self.counts.inc(&n, cat);
             // self.record_new_pv(ply, &bm, false);
             debug_assert!(!bm.is_null())
         } else {

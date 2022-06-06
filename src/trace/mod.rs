@@ -1,4 +1,3 @@
-pub mod counts;
 pub mod stat;
 
 #[macro_use]

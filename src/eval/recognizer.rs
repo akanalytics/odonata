@@ -6,8 +6,8 @@ use crate::infra::component::Component;
 use crate::infra::metric::Metric;
 use crate::mv::Move;
 use crate::search::algo::Algo;
-use crate::search::node::{Event, Node};
-use crate::types::{Ply};
+use crate::search::node::Node;
+use crate::types::Ply;
 use crate::Color;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -38,7 +38,7 @@ impl Component for Recognizer {
 
 impl fmt::Display for Recognizer {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{:#?}", self)?;
+        writeln!(f, "{}", toml::to_string_pretty(self).unwrap())?;
         Ok(())
     }
 }
@@ -56,10 +56,8 @@ impl Algo {
         // }
 
         Metric::TtProbe(*n).record();
-        self.counts.inc(n, Event::HashProbe);
         if let Some(entry) = self.tt.probe_by_board(b, n.ply, n.depth) {
             debug_assert!(entry.score.is_finite());
-            self.counts.inc(n, Event::HashHit);
             Metric::TtHit(*n).record();
 
             // FIXME! v33
@@ -169,22 +167,19 @@ impl Algo {
         match endgame.likely_outcome(b) {
             LikelyOutcome::DrawImmediate => {
                 let draw = b.eval_draw(&mut self.eval, n); // will return a draw score
-                self.counts.inc(n, Event::RecogImmediateDraw);
-                // self.stats.inc_leaf_nodes(n);
+                                                           // self.stats.inc_leaf_nodes(n);
                 Metric::Leaf(*n).record();
                 Metric::EvalEgDraw(*n).record();
                 return (Some(draw), None);
             }
 
             LikelyOutcome::Draw | LikelyOutcome::WhiteWin | LikelyOutcome::WhiteLoss => {
-                self.counts.inc(n, Event::RecogHelpmateOrDraw);
                 Metric::EvalEgKnown(*n).record();
                 if n.depth > self.recognizer.terminal_depth && !n.is_qs() {
                     n.depth = self.recognizer.terminal_depth;
                 }
             }
             lo @ (LikelyOutcome::WhiteWinOrDraw | LikelyOutcome::WhiteLossOrDraw) => {
-                self.counts.inc(n, Event::RecogMaybeWin);
                 Metric::EvalEgMaybe(*n).record();
                 let draw = b.eval_draw(&mut self.eval, n); // will return a draw score
                 if b.color_us() == Color::White && lo == LikelyOutcome::WhiteLossOrDraw
@@ -230,7 +225,7 @@ mod tests {
         n.ply = 1;
         let eg = EndGame::from_board(pos.board());
         let res = engine.algo.wdl_detection(pos.board(), &mut n);
-        println!("{:?}\nEndGame: {:?}\n{}", res, eg, engine.algo.counts);
+        println!("{:?}\nEndGame: {:?}", res, eg);
     }
 
     // #[test]

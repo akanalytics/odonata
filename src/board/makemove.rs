@@ -1,6 +1,7 @@
 use crate::bitboard::bitboard::Bitboard;
 use crate::board::Board;
 use crate::cache::hasher::Hasher;
+use crate::infra::metric::Metric;
 use crate::mv::Move;
 use crate::types::{Piece, Repeats};
 use crate::variation::Variation;
@@ -76,9 +77,7 @@ impl MoveMaker for Board {
     }
 
     fn make_move(&self, m: &Move) -> Board {
-        // profile_method!("make_move");
-        // let _g = hprof::enter("make_move");
-
+        let t = Metric::timing_start();
         // either we're moving to an empty square or its a capture
         debug_assert!(
             m.is_null()
@@ -181,6 +180,8 @@ impl MoveMaker for Board {
 
         let move_hash = Hasher::default().hash_move(m, self);
         b.hash = self.hash ^ move_hash;
+
+        Metric::TimingMakeMove(t).record();
 
         debug_assert!(
             b.hash == Hasher::default().hash_board(&b),

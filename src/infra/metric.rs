@@ -113,8 +113,11 @@ pub struct Metrics {
     eval: u64,
     iter_complete: u64,
     iter_timeout: u64,
-    timing_eval: TimePlyCounter,
-    timing_move_gen: TimePlyCounter,
+    t_eval: TimePlyCounter,
+    t_move_gen: TimePlyCounter,
+    t_make_move: TimePlyCounter,
+    timing_search_root: TimePlyCounter,
+    t_sort_moves: TimePlyCounter,
 
     tt_hit: NodeCounter,
     tt_probe: NodeCounter,
@@ -160,6 +163,11 @@ pub struct Metrics {
     search_zwfd: NodeCounter,
     re_search_zwfd: NodeCounter,
     re_search_fwfd: NodeCounter,
+    aspiration_none: NodeCounter,
+    aspiration_1: NodeCounter,
+    aspiration_2: NodeCounter,
+    aspiration_3: NodeCounter,
+    aspiration_n: NodeCounter,
 
     iter_est: TimePlyCounter,
     iter_act: TimePlyCounter,
@@ -189,8 +197,11 @@ impl Metrics {
             IterationTimeout => self.iter_timeout += 1,
             LegalMoves(i) => self.make_move += i as u64,
 
-            TimingEval(start) => self.timing_eval.add(0, start.unwrap().elapsed()),
-            TimingMoveGen(start) => self.timing_move_gen.add(0, start.unwrap().elapsed()),
+            TimingEval(start) => self.t_eval.add(0, start.unwrap().elapsed()),
+            TimingMoveGen(start) => self.t_move_gen.add(0, start.unwrap().elapsed()),
+            TimingMakeMove(start) => self.t_make_move.add(0, start.unwrap().elapsed()),
+            TimingSearchRoot(start) => self.timing_search_root.add(0, start.unwrap().elapsed()),
+            TimingSortMoves(start) => self.t_sort_moves.add(0, start.unwrap().elapsed()),
 
             TtHit(ref n) => self.tt_hit.incr(n),
             TtProbe(ref n) => self.tt_probe.incr(n),
@@ -239,6 +250,26 @@ impl Metrics {
             IterEst(ply, dur) => self.iter_est.set(ply, dur),
             IterActual(ply, start) => self.iter_act.set(ply, start.unwrap().elapsed()),
             IterAllotted(ply, dur) => self.iter_allotted.set(ply, dur),
+            AspirationNone(ref n) => self.aspiration_none.incr(&Node {
+                ply: n.depth,
+                ..Node::default()
+            }),
+            Aspiration1(ref n) => self.aspiration_1.incr(&Node {
+                ply: n.depth,
+                ..Node::default()
+            }),
+            Aspiration2(ref n) => self.aspiration_2.incr(&Node {
+                ply: n.depth,
+                ..Node::default()
+            }),
+            Aspiration3(ref n) => self.aspiration_3.incr(&Node {
+                ply: n.depth,
+                ..Node::default()
+            }),
+            AspirationN(ref n) => self.aspiration_n.incr(&Node {
+                ply: n.depth,
+                ..Node::default()
+            }),
         }
     }
 
@@ -251,8 +282,11 @@ impl Metrics {
         self.iter_complete += o.iter_complete;
         self.iter_timeout += o.iter_timeout;
         self.make_move += o.make_move;
-        self.timing_eval += &o.timing_eval;
-        self.timing_move_gen += &o.timing_move_gen;
+        self.t_eval += &o.t_eval;
+        self.t_move_gen += &o.t_move_gen;
+        self.t_make_move += &o.t_make_move;
+        self.timing_search_root += &o.timing_search_root;
+        self.t_sort_moves += &o.t_sort_moves;
 
         self.tt_hit += &o.tt_hit;
         self.tt_probe += &o.tt_probe;
@@ -297,6 +331,11 @@ impl Metrics {
         self.search_zwfd += &o.search_zwfd;
         self.re_search_zwfd += &o.re_search_zwfd;
         self.re_search_fwfd += &o.re_search_fwfd;
+        self.aspiration_none += &o.aspiration_none;
+        self.aspiration_1 += &o.aspiration_1;
+        self.aspiration_2 += &o.aspiration_2;
+        self.aspiration_3 += &o.aspiration_3;
+        self.aspiration_n += &o.aspiration_n;
 
         self.iter_est += &o.iter_est;
         self.iter_act += &o.iter_act;
@@ -304,14 +343,11 @@ impl Metrics {
     }
 
     pub fn to_string() -> String {
-        let tl = METRICS_THREAD.with(|tm| format!("{}", &*tm.borrow()));
+        // let tl = METRICS_THREAD.with(|tm| format!("{}", &*tm.borrow()));
         format!(
-            "Thead\n{}\n\n\
-            Last Iter\n{}\n\n\
-            Global\n{}",
-            tl,
+            "Global\n{}\n\nLast Iter\n{}",
+            &*METRICS_TOTAL.read(),
             &*METRICS_LAST_ITER.read(),
-            &*METRICS_TOTAL.read()
         )
     }
 
@@ -319,7 +355,6 @@ impl Metrics {
         METRICS_THREAD.with(|tm| {
             METRICS_TOTAL.write().add(&*tm.borrow());
             *METRICS_LAST_ITER.write() = std::mem::take(&mut tm.borrow_mut());
-            // *tm.borrow_mut() = Metrics::new();
         });
     }
 }
@@ -336,6 +371,9 @@ pub enum Metric {
     LegalMoves(u32),
     TimingEval(Option<Instant>),
     TimingMoveGen(Option<Instant>),
+    TimingMakeMove(Option<Instant>),
+    TimingSearchRoot(Option<Instant>),
+    TimingSortMoves(Option<Instant>),
 
     Interior(Node),
     Leaf(Node),
@@ -384,6 +422,11 @@ pub enum Metric {
     IterEst(Ply, Duration),
     IterActual(Ply, Option<Instant>),
     IterAllotted(Ply, Duration),
+    AspirationNone(Node),
+    Aspiration1(Node),
+    Aspiration2(Node),
+    Aspiration3(Node),
+    AspirationN(Node),
 }
 
 impl fmt::Display for Metrics {
@@ -403,7 +446,19 @@ impl fmt::Display for Metrics {
             }
         }
 
+        fn pd(dur: Duration, total: Duration) -> String {
+            if dur > Duration::ZERO && !total.is_zero() {
+                format!(
+                    "{}%",
+                    Formatting::decimal(1, dur.as_secs_f32() * 100.0 / total.as_secs_f32())
+                )
+            } else {
+                String::new()
+            }
+        }
+
         let style = Style::github_markdown().bottom('-');
+        let tot = self.timing_search_root.for_ply(0);
         Builder::default()
             .set_columns(["Counter", "Value"])
             .add_record(["Make move", &i(self.make_move)])
@@ -413,12 +468,20 @@ impl fmt::Display for Metrics {
             .add_record(["Eval", &i(self.eval)])
             .add_record(["Iter complete", &i(self.iter_complete)])
             .add_record(["Iter timeout", &i(self.iter_timeout)])
-            .add_record(["Timing Eval", &d(self.timing_eval.for_ply(0))])
-            .add_record(["Timing MoveGen", &d(self.timing_move_gen.for_ply(0))])
+            .add_record(["Time SearchRoot", &d(tot)])
+            .add_record(["Timing SearchRoot", &pd(tot, tot)])
+            .add_record(["Timing Eval", &pd(self.t_eval.for_ply(0), tot)])
+            .add_record(["Timing MoveGen", &pd(self.t_move_gen.for_ply(0), tot)])
+            .add_record(["Timing MakeMove", &pd(self.t_make_move.for_ply(0), tot)])
+            .add_record([
+                "Timing SortMoves-MM",
+                &pd(self.t_sort_moves.for_ply(0).saturating_sub(self.t_make_move.for_ply(0)), tot),
+            ])
             .build()
             .with(style)
             .with(Modify::new(Rows::single(0)).with(Border::default().top('-')))
             .with(Modify::new(Segment::all()).with(Alignment::right()))
+            .with(Modify::new(Columns::single(0)).with(Alignment::left()))
             .fmt(f)?;
         writeln!(f)?;
         let iters = 32_isize;
@@ -466,11 +529,15 @@ impl fmt::Display for Metrics {
             "Search ZwFd",
             "Re-search ZwFd",
             "Re-search FwFd",
-            // timings
+            // Per iter
             "Iter Est",
             "Iter Act",
             "Iter Alloc",
-            // "Depth", "Interior", "Leaf", "QS Int", "QS Leaf",
+            "Aspiration None",
+            "Aspiration 1",
+            "Aspiration 2",
+            "Aspiration 3",
+            "Aspiration N",
         ]);
 
         let total = iter::once(-1);
@@ -524,10 +591,15 @@ impl fmt::Display for Metrics {
                 i(self.search_zwfd.for_ply(y)),
                 i(self.re_search_zwfd.for_ply(y)),
                 i(self.re_search_fwfd.for_ply(y)),
-                // timings
+                // per iter
                 d(self.iter_est.for_ply(y)),
                 d(self.iter_act.for_ply(y)),
                 d(self.iter_allotted.for_ply(y)),
+                i(self.aspiration_none.for_ply(y)),
+                i(self.aspiration_1.for_ply(y)),
+                i(self.aspiration_2.for_ply(y)),
+                i(self.aspiration_3.for_ply(y)),
+                i(self.aspiration_n.for_ply(y)),
                 // d as u64,
                 // self.interior.1[d],
                 // self.leaf.1[d],

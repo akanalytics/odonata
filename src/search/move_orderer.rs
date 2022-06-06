@@ -319,7 +319,7 @@ impl MoveOrderer {
 }
 
 impl OrderedMoveList {
-    pub fn ordering<'a>(&self, algo: &'a Algo) -> &'a Vec<MoveType> {
+    fn ordering<'a>(&self, algo: &'a Algo) -> &'a Vec<MoveType> {
         if self.qsearch {
             if self.is_in_check {
                 &algo.move_orderer.qorder_evasions
@@ -331,7 +331,16 @@ impl OrderedMoveList {
         }
     }
 
+
+
     pub fn next_move(&mut self, b: &Board, algo: &mut Algo) -> Option<(MoveType, Move)> {
+        let t = Metric::timing_start();
+        let m = self.calc_next_move_(b, algo);
+        Metric::TimingSortMoves(t).record();
+        m
+    }
+
+    fn calc_next_move_(&mut self, b: &Board, algo: &mut Algo) -> Option<(MoveType, Move)> {
         let move_type = self.ordering(algo)[self.stage];
         if self.index < self.moves.len() {
             if move_type == MoveType::GoodCapture || move_type == MoveType::Capture
@@ -358,7 +367,7 @@ impl OrderedMoveList {
                     {
                         self.bad_captures.push(mv);
                         self.index += 1;
-                        return self.next_move(b, algo);
+                        return self.calc_next_move_(b, algo);
                     }
                 }
             }
@@ -372,7 +381,7 @@ impl OrderedMoveList {
             self.index = 0;
             self.stage += 1;
             self.gen(b, algo);
-            self.next_move(b, algo)
+            self.calc_next_move_(b, algo)
         }
     }
 

@@ -11,7 +11,6 @@ use crate::mv::Move;
 use crate::outcome::Outcome;
 use crate::pvtable::PvTable;
 use crate::tags::Tag;
-use crate::trace::counts::Counts;
 use crate::types::Ply;
 use crate::variation::Variation;
 use crate::{Algo, MoveList, Position};
@@ -85,7 +84,7 @@ impl Component for SearchProgress {
 
 impl fmt::Display for SearchProgress {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{:#?}", self)?;
+        writeln!(f, "{}", toml::to_string_pretty(self).unwrap())?;
         Ok(())
     }
 }
@@ -222,7 +221,6 @@ impl SearchProgress {
     pub fn update_with_pv_change(
         &mut self,
         clock: &Clock,
-        _counts: &Counts,
         depth: Ply,
         score: Score,
         event: Event,

@@ -1,6 +1,7 @@
 use crate::board::Board;
 use crate::eval::score::Score;
 use crate::infra::component::Component;
+use crate::infra::metric::Metric;
 use crate::search::node::Node;
 use crate::types::Ply;
 use crate::Algo;
@@ -52,7 +53,7 @@ impl Algo {
     pub fn aspirated_search(&mut self, b: &mut Board, n: &mut Node) -> (Score, Event) {
         let score = self.progress.best_score;
         if n.depth <= self.aspiration.min_depth || !self.aspiration.enabled || !score.is_numeric() {
-            self.counts.inc(n, Event::Aspiration0);
+            Metric::AspirationNone(*n).record();
             self.alphabeta_root_search(b, n)
         } else {
             let mut aspiration_count = 0;
@@ -89,7 +90,6 @@ impl Algo {
                 };
 
                 if new_score <= alpha1 && alpha1 > n.alpha {
-                    self.counts.inc(n, Event::AspirationFailLow);
                     if self.aspiration.fail_soft {
                         alpha1 = new_score - Score::from_f32(delta);
                     } else {
@@ -102,7 +102,6 @@ impl Algo {
                     if self.aspiration.change_both_bounds {
                         alpha1 = new_score;
                     }
-                    self.counts.inc(n, Event::AspirationFailHigh);
                     if self.aspiration.fail_soft {
                         beta1 = new_score + Score::from_f32(delta);
                     } else {
@@ -114,10 +113,10 @@ impl Algo {
                 }
             };
             match aspiration_count {
-                1 => self.counts.inc(n, Event::Aspiration1),
-                2 => self.counts.inc(n, Event::Aspiration2),
-                3 => self.counts.inc(n, Event::Aspiration3),
-                _ => self.counts.inc(n, Event::AspirationN),
+                1 => Metric::Aspiration1(*n).record(),
+                2 => Metric::Aspiration2(*n).record(),
+                3 => Metric::Aspiration3(*n).record(),
+                _ => Metric::AspirationN(*n).record(),
             }
             ret
         }
@@ -126,7 +125,7 @@ impl Algo {
 
 impl fmt::Display for Aspiration {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{:#?}", self)?;
+        writeln!(f, "{}", toml::to_string_pretty(self).unwrap())?;
         Ok(())
     }
 }

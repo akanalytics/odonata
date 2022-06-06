@@ -1,7 +1,6 @@
 use crate::board::Board;
 use crate::infra::component::Component;
 use crate::mv::Move;
-use crate::search::node::Event;
 use crate::search::node::Node;
 use crate::types::{MoveType, Ply};
 use crate::Algo;
@@ -152,7 +151,6 @@ impl Algo {
             return false;
         }
 
-        self.counts.inc(n, Event::Lmp);
         true
     }
 }

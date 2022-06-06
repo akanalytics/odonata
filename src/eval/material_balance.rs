@@ -194,7 +194,7 @@ impl Component for MaterialBalance {
 impl fmt::Display for MaterialBalance {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "enabled          : {}", self.enabled)?;
-        writeln!(f, "piece_weights    : {:#?}", self.piece_weights)?;
+        writeln!(f, "piece_weights    : {}", toml::to_string(&self.piece_weights).unwrap())?;
         writeln!(f, "filename         : {}", self.filename)?;
         writeln!(f, "consistency_rep  : {}", self.consistency_report)?;
         writeln!(f, "consistency_adj  : {}", self.consistency_adjust)?;

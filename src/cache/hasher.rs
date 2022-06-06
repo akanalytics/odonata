@@ -171,8 +171,8 @@ impl Hasher {
     }
 
     pub fn hash_move(&self, m: &Move, pre_move: &Board) -> Hash {
-        let mut hash = self.side;
         Metric::HashMove.record();
+        let mut hash = self.side;
         // either we're moving to an empty square or its a capture
         let us = pre_move.color_us();
         let them = pre_move.color_them();

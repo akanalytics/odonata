@@ -276,7 +276,6 @@ mod tests {
         eng.algo.set_timing_method(TimeControl::Depth(5));
         eng.search();
         println!("{}", eng.algo.results_as_position());
-        println!("{}", eng.algo.counts);
     }
 
     #[test]

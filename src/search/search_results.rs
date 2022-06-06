@@ -17,16 +17,14 @@ pub struct SearchResults {
     pub depth: Ply,
     pub seldepth: Ply,
     pub time_millis: u64,
-    // pub pv: Variation,
-    pub multi_pv: Vec<(Variation, Score)>,
     pub nodes: u64,
     pub nodes_thread: u64,
-    // pub score: Score,
     pub nps: u64,
     pub tbhits: u64,
     pub branching_factor: f32,
     pub hashfull_per_mille: u32,
     pub outcome: Outcome,
+    pub multi_pv: Vec<(Variation, Score)>,
 }
 
 impl fmt::Display for SearchResults {

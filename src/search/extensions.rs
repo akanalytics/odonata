@@ -8,7 +8,6 @@ use crate::{Bitboard, Piece};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-use super::node::Event;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -143,9 +142,6 @@ impl Algo {
         //     extend += self.ext.promo_extend;
         // }
         let ext = std::cmp::min(ext, self.ext.max_extend);
-        if ext > 0 {
-            self.counts.inc(n, Event::Extension);
-        }
         ext
     }
 }

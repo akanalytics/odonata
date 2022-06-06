@@ -383,7 +383,7 @@ mod tests {
         });
         engine.algo.set_callback(Uci::uci_info);
         engine.search();
-        println!("{}", Metrics::to_string());
+        println!("{}", engine);
     }
 
     #[ignore]

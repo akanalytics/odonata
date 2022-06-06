@@ -6,7 +6,6 @@ use crate::{board::Board, Algo};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-use super::node::Event;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -63,7 +62,6 @@ impl Algo {
         //     // no PVS in PVS search
         //     return false;
         // }
-        self.counts.inc(n, Event::Pvs);
         true
     }
 }
