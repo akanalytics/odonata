@@ -1,4 +1,6 @@
 use crate::board::Board;
+use crate::bound::NodeType;
+use crate::cache::tt2::TtNode;
 use crate::eval::score::{Score, ToScore};
 use crate::infra::component::Component;
 use crate::infra::metric::Metric;
@@ -45,6 +47,7 @@ use std::fmt;
 pub struct Razor {
     pub enabled: bool,
     pub beta_enabled: bool,
+    pub store_tt: bool,
     pub pv_nodes: bool,
     pub min_opponents: i32,
     pub max_depth: Ply,
@@ -67,6 +70,7 @@ impl Default for Razor {
         Self {
             enabled: true,
             beta_enabled: true,
+            store_tt: true,
             pv_nodes: false,
             min_opponents: 4,
             max_depth: 3, // 1 means we still prune at frontier (depth=1)
@@ -160,6 +164,16 @@ impl Algo {
                     n.alpha - margin + 1.cp(),
                     last_move,
                 )?;
+                if self.razor.store_tt {
+                    let entry = TtNode {
+                        score: score.clamp_score(),
+                        depth: 1,
+                        nt: NodeType::UpperAll,
+                        bm: Move::NULL_MOVE,
+                    };
+                    self.tt.store(b.hash(), entry);
+                }
+
                 // fail low (-inf) or alpha-margin
                 if score <= n.alpha - margin {
                     self.counts.inc(n, Event::PruneRazor);

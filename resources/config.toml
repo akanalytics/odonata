@@ -599,6 +599,7 @@ enabled = true
 max_depth = 3
 min_opponents = 4
 pv_nodes = false
+store_tt = true
 margin1 = 94
 margin2 = 381
 margin3 = 873

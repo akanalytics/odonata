@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 use std::{fmt, iter};
 use tabled::builder::Builder;
 use tabled::object::{Columns, Rows, Segment};
-use tabled::style::{Border, BorderText};
+use tabled::style::Border;
 use tabled::{Alignment, Modify, Rotate, Style};
 
 #[derive()]
@@ -106,7 +106,6 @@ impl AddAssign<&TimePlyCounter> for TimePlyCounter {
 
 #[derive(Default, Debug, Clone)]
 pub struct Metrics {
-    name: String,
     make_move: u64,
     move_gen: u64,
     hash_board: u64,
@@ -307,7 +306,9 @@ impl Metrics {
     pub fn to_string() -> String {
         let tl = METRICS_THREAD.with(|tm| format!("{}", &*tm.borrow()));
         format!(
-            "{}\n\n{}\n\n{}",
+            "Thead\n{}\n\n\
+            Last Iter\n{}\n\n\
+            Global\n{}",
             tl,
             &*METRICS_LAST_ITER.read(),
             &*METRICS_TOTAL.read()
@@ -418,7 +419,6 @@ impl fmt::Display for Metrics {
             .with(style)
             .with(Modify::new(Rows::single(0)).with(Border::default().top('-')))
             .with(Modify::new(Segment::all()).with(Alignment::right()))
-            // .with(BorderText::first(&self.name))
             .fmt(f)?;
         writeln!(f)?;
         let iters = 32_isize;
@@ -549,7 +549,6 @@ impl fmt::Display for Metrics {
             .with(Modify::new(Rows::single(22)).with(Border::default().top('-')))
             .with(Modify::new(Rows::single(32)).with(Border::default().top('-')))
             .with(Modify::new(Rows::single(37)).with(Border::default().top('-')))
-            .with(BorderText::first(&self.name))
             .fmt(f)?;
         Ok(())
     }
