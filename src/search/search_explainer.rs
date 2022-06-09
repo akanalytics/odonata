@@ -176,7 +176,7 @@ impl Explainer {
                     | Event::PruneFutilityD1
                     | Event::PruneFutilityD2
                     | Event::PruneFutilityD3 => true,
-                    Event::PruneNullMovePrune => true,
+                    Event::NmpSuccess => true,
                     Event::NodeInteriorCut => true,
                     _ => true,
                 }
@@ -296,7 +296,7 @@ impl Algo {
     #[inline]
     pub fn explain_nmp(&mut self, b: &Board, child_score: Score, n: &Node) {
         if self.explainer.enabled {
-            let e = Event::PruneNullMovePrune;
+            let e = Event::NmpSuccess;
             if let Some(w) = self.explainer.explaining(n, &self.current_variation, e) {
                 info!(
                     "Explain null move prune in {n} on {}",

@@ -150,7 +150,7 @@ impl Algo {
             if n.depth <= 2 {
                 // drop straight into qsearch
                 let (score, _event) = self.alphabeta(b, n.ply, 0, n.alpha, n.beta, last_move)?;
-                Metric::RazorPruneD2(*n).record();
+                Metric::incr_node(n, Event::RazorD3Success);
                 return Ok(Some(score));
             } else {
                 // pvs search around {alpha - margin}
@@ -174,10 +174,10 @@ impl Algo {
 
                 // fail low (-inf) or alpha-margin
                 if score <= n.alpha - margin {
-                    Metric::RazorPruneD3(*n).record();
+                    Metric::incr_node(n, Event::RazorD3Success);
                     return Ok(Some(n.alpha));
                 }
-                Metric::RazorPruneFail(*n).record();
+                Metric::incr_node(n, Event::RazorFail);
             }
         }
         Ok(None)

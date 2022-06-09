@@ -11,6 +11,8 @@ use std::sync::atomic::{self, AtomicBool};
 use std::sync::Arc;
 use std::time::Duration;
 
+use super::node::Event;
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct MoveTimeEstimator {
@@ -219,8 +221,8 @@ impl MoveTimeEstimator {
                 + self.elapsed_search
                 + self.elapsed_iter.mul_f32(self.branching_factor);
         }
-        Metric::IterEst(ply, self.estimate_move_time).record();
-        Metric::IterAllotted(ply, self.allotted()).record();
+        Metric::elapsed(ply, self.estimate_move_time, Event::DurationIterEst);
+        Metric::elapsed(ply, self.allotted(), Event::DurationIterAllotted);
     }
 
     pub fn probable_timeout(&self, ply: Ply) -> bool {

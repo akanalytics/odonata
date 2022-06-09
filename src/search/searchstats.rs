@@ -228,7 +228,7 @@ impl SearchStats {
     pub fn record_iteration(&mut self, ply: Ply, category: Event, pv: Variation) {
         let ply = ply as usize;
         self.plies[ply].elapsed = self.clock.elapsed_ply();
-        self.completed = category != Event::UserCancelled && category != Event::TimeUp;
+        self.completed = category != Event::UserCancelled && category != Event::SearchTimeUp;
         if self.completed {
             self.pv = pv;
         }

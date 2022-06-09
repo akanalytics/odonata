@@ -46,6 +46,7 @@ pub struct Algo {
     pub show_refutations: bool,
     pub analyse_mode: bool, // tries to find full PV etc
     pub qsearch_disabled: bool,
+    pub debug: bool,
 
     pub ids: IterativeDeepening,
     pub eval: Eval,
@@ -191,7 +192,7 @@ impl fmt::Debug for Algo {
             .field("board", &self.board)
             .field("analyse_mode", &self.analyse_mode)
             //.field("pv", &self.pv)
-            .field("depth", &self.max_depth)
+            .field("debug", &self.debug)
             .field("depth", &self.max_depth)
             .field("ids", &self.ids)
             .field("eval", &self.eval)
@@ -235,6 +236,7 @@ impl fmt::Display for Algo {
             self.board.eval_with_outcome(&self.eval, &Node::root(0))
         )?;
         // writeln!(f, "bm               : {}", self.results.bm())?;
+        writeln!(f, "debug            : {}", self.debug)?;
         writeln!(f, "score            : {}", self.score())?;
         writeln!(f, "analyse mode     : {}", self.analyse_mode)?;
         writeln!(f, "qsearch          : {}", self.qsearch_disabled)?;
@@ -370,10 +372,10 @@ impl Algo {
         let time_up = self.mte.is_time_up(ply, &self.clock, force_check);
         if time_up {
             self.stats.completed = false;
-            self.stats.set_score(-Score::INFINITY, Event::TimeUp);
+            self.stats.set_score(-Score::INFINITY, Event::SearchTimeUp);
             self.controller.cancel();
         }
-        (time_up, Event::TimeUp)
+        (time_up, Event::SearchTimeUp)
     }
 
     pub fn clear_move(&mut self, ply: Ply) {

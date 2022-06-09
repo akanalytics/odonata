@@ -6,7 +6,7 @@ use crate::infra::component::Component;
 use crate::infra::metric::Metric;
 use crate::mv::Move;
 use crate::search::algo::Algo;
-use crate::search::node::Node;
+use crate::search::node::{Event, Node};
 use crate::types::Ply;
 use crate::Color;
 use serde::{Deserialize, Serialize};
@@ -55,10 +55,10 @@ impl Algo {
         //     return (score,mv);
         // }
 
-        Metric::TtProbe(*n).record();
+        Metric::incr_node(n, Event::TtProbeNode);
         if let Some(entry) = self.tt.probe_by_board(b, n.ply, n.depth) {
             debug_assert!(entry.score.is_finite());
-            Metric::TtHit(*n).record();
+            Metric::incr_node(n, Event::TtHitNode);
 
             // FIXME! v33
             if entry.depth >= n.depth
@@ -75,28 +75,29 @@ impl Algo {
                     NodeType::ExactPv => {
                         if entry.score >= n.beta {
                             // self.stats.inc_node_cut(n.ply, MoveType::Hash, -1);
-                            Metric::TtPv(*n).record();
-                            Metric::NodeCut(*n).record();
+                            Metric::incr_node(&n, Event::TtPv);
+                            Metric::incr_node(&n, Event::NodeInteriorCut);
                             // self.stats.inc_node_cut(n.ply, MoveType::Hash, -1);
                             // self.stats.inc_leaf_tt_nodes(n.ply);
                             self.report_refutation(n.ply);
                             return (Some(entry.score), None);
                         }
                         if entry.score <= n.alpha {
-                            Metric::TtPv(*n).record();
-                            Metric::NodeAll(*n).record();
+                            Metric::incr_node(&n, Event::TtPv);
+                            Metric::incr_node(&n, Event::NodeInteriorAll);
                             // self.stats.inc_node_all(n.ply);
                             // self.stats.inc_leaf_tt_nodes(n.ply);
                             return (Some(entry.score), None);
                         }
 
                         if self.tt.allow_truncated_pv
+                            && !self.debug
                             && self.mte.time_sensitive()
                             && entry.score > n.alpha
                         {
                             self.record_truncated_move(n.ply, &entry.bm);
                             // self.stats.inc_leaf_tt_nodes(n.ply);
-                            Metric::TtPv(*n).record();
+                            Metric::incr_node(&n, Event::TtPv);
                             return (Some(entry.score), None);
                         }
                         return (None, Some(entry.bm)); // else we just use the hash move for move ordering
@@ -110,7 +111,8 @@ impl Algo {
                             // self.record_truncated_move(ply, &entry.bm);
                             // self.stats.inc_leaf_tt_nodes(n.ply);
                             self.report_refutation(n.ply);
-                            Metric::TtCut(*n).record();
+                            Metric::incr_node(&n, Event::TtCut);
+                            Metric::incr_node(&n, Event::NodeInteriorCut);
                             return (Some(entry.score), None);
                         }
                         // if self.tt.allow_truncated_pv && entry.score > n.alpha {
@@ -130,7 +132,8 @@ impl Algo {
                         if entry.score <= n.alpha {
                             // self.record_truncated_move(ply, &entry.bm);
                             // self.stats.inc_leaf_tt_nodes(n.ply);
-                            Metric::TtAll(*n).record();
+                            Metric::incr_node(&n, Event::TtAll);
+                            Metric::incr_node(&n, Event::NodeInteriorAll);
                             return (Some(entry.score), None);
                         }
                     }
@@ -157,6 +160,7 @@ impl Algo {
             return (None, None);
         }
         let endgame = EndGame::from_board(b);
+        Metric::inc_endgame(endgame);
 
         // if b.draw_outcome().is_some()  {
         //     let draw = b.eval_draw(&mut self.eval, &n); // will return a draw score
@@ -168,19 +172,18 @@ impl Algo {
             LikelyOutcome::DrawImmediate => {
                 let draw = b.eval_draw(&mut self.eval, n); // will return a draw score
                                                            // self.stats.inc_leaf_nodes(n);
-                Metric::Leaf(*n).record();
-                Metric::EvalEgDraw(*n).record();
+                Metric::incr_node(n, Event::EndgameDraw);
                 return (Some(draw), None);
             }
 
             LikelyOutcome::Draw | LikelyOutcome::WhiteWin | LikelyOutcome::WhiteLoss => {
-                Metric::EvalEgKnown(*n).record();
+                Metric::incr_node(n, Event::EndgameKnown);
                 if n.depth > self.recognizer.terminal_depth && !n.is_qs() {
                     n.depth = self.recognizer.terminal_depth;
                 }
             }
             lo @ (LikelyOutcome::WhiteWinOrDraw | LikelyOutcome::WhiteLossOrDraw) => {
-                Metric::EvalEgMaybe(*n).record();
+                Metric::incr_node(n, Event::EndgameWinOrDraw);
                 let draw = b.eval_draw(&mut self.eval, n); // will return a draw score
                 if b.color_us() == Color::White && lo == LikelyOutcome::WhiteLossOrDraw
                     || b.color_us() == Color::Black && lo == LikelyOutcome::WhiteWinOrDraw

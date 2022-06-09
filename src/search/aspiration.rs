@@ -53,7 +53,7 @@ impl Algo {
     pub fn aspirated_search(&mut self, b: &mut Board, n: &mut Node) -> (Score, Event) {
         let score = self.progress.best_score;
         if n.depth <= self.aspiration.min_depth || !self.aspiration.enabled || !score.is_numeric() {
-            Metric::AspirationNone(*n).record();
+            Metric::incr_node(n, Event::AspirationNone);
             self.alphabeta_root_search(b, n)
         } else {
             let mut aspiration_count = 0;
@@ -113,10 +113,10 @@ impl Algo {
                 }
             };
             match aspiration_count {
-                1 => Metric::Aspiration1(*n).record(),
-                2 => Metric::Aspiration2(*n).record(),
-                3 => Metric::Aspiration3(*n).record(),
-                _ => Metric::AspirationN(*n).record(),
+                1 => Metric::incr_node(n, Event::Aspiration1),
+                2 => Metric::incr_node(n, Event::Aspiration2),
+                3 => Metric::incr_node(n, Event::Aspiration3),
+                _ => Metric::incr_node(n, Event::AspirationN),
             }
             ret
         }

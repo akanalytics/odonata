@@ -1,6 +1,7 @@
 use crate::board::Board;
 use crate::bound::NodeType;
 use crate::infra::component::Component;
+use crate::infra::metric::Metric;
 use crate::mv::Move;
 use crate::search::node::Node;
 use crate::types::{MoveType, Ply};
@@ -8,6 +9,8 @@ use crate::Algo;
 use crate::Piece;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+
+use super::node::Event;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -240,7 +243,10 @@ impl Algo {
 
         // self.stats.inc_red_lmr(n.ply);
         // self.counts.inc(n, Event::Lmr);
-        reduce
+        if reduce > 0 {
+            Metric::incr_node(n, Event::LateMoveReduce)
+        }
+    reduce
     }
 }
 

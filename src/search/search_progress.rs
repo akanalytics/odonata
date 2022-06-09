@@ -225,7 +225,7 @@ impl SearchProgress {
         score: Score,
         event: Event,
     ) {
-        if event != Event::UserCancelled && event != Event::TimeUp {
+        if event != Event::UserCancelled && event != Event::SearchTimeUp {
             self.mode = SearchProgressMode::PvChange;
         } else {
             self.mode = SearchProgressMode::NodeCounts;

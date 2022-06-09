@@ -1,11 +1,12 @@
 use crate::infra::component::Component;
+use crate::infra::metric::Metric;
 use crate::mv::Move;
 use crate::types::{Color, Piece, Ply};
 use crate::Bitboard;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-use super::node::Node;
+use super::node::{Node, Event};
 
 #[derive(Clone, Copy, Debug, Default)]
 struct MoveTally {
@@ -95,12 +96,15 @@ impl CounterMove {
         let mt = &self.counter_moves[c][parent.mover_piece()][parent.to()];
         let total = mt.count1 + mt.count2 + mt.count3 + 1;
         if mt.mv1 == child {
+            Metric::incr(Event::CounterMove);
             return (100 * mt.count1 / total) as i32;
         }
         if mt.mv2 == child {
+            Metric::incr(Event::CounterMove);
             return (100 * mt.count2 / total) as i32;
         }
         if mt.mv3 == child {
+            Metric::incr(Event::CounterMove);
             return (100 * mt.count3 / total) as i32;
         }
         return 0;

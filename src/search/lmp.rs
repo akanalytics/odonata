@@ -1,5 +1,6 @@
 use crate::board::Board;
 use crate::infra::component::Component;
+use crate::infra::metric::Metric;
 use crate::mv::Move;
 use crate::search::node::Node;
 use crate::types::{MoveType, Ply};
@@ -7,6 +8,8 @@ use crate::Algo;
 use crate::Piece;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+
+use super::node::Event;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -151,6 +154,7 @@ impl Algo {
             return false;
         }
 
+        Metric::incr_node(n, Event::LmpSuccess);
         true
     }
 }

@@ -240,15 +240,21 @@ impl Uci {
     }
 
     fn uci_debug(&mut self, words: &[&str]) -> Result<()> {
-        match words.first().copied() {
-            Some("on") => {
-                self.set_debug(true);
-            }
-            Some("off") => {
-                self.set_debug(false);
-            }
+        let is_debug = match words.first().copied() {
+            Some("on") => true,
+            Some("off") => false,
             _ => bail!("unknown debug option"),
         };
+        self.debug = is_debug;
+        let mut eng = self.engine.lock().unwrap();
+        if is_debug {
+            Self::print("setting debug mode on");
+        } else {
+            Self::print("setting debug mode off");
+        }
+        eng.configment("debug", if self.debug { "true" } else { "false" })?;
+        eng.algo.set_callback(Self::uci_info);
+
         Ok(())
     }
 
@@ -536,7 +542,7 @@ impl Uci {
         let mut ops: Vec<String> = Vec::new();
 
         // ops.push(format!("option name UCI_EngineAbout type string default {} {}", Version::NAME, Version::HOMEPAGE));
-        ops.push("option name Debug type check default false".to_string());
+        // ops.push("option name Debug type check default false".to_string());
         ops.push(format!(
             "option name Threads type spin default {} min 1 max 16",
             engine.thread_count
@@ -585,77 +591,59 @@ impl Uci {
         Ok(())
     }
 
-    fn set_debug(&mut self, enable: bool) {
-        let mut engine = self.engine.lock().unwrap();
-        if enable {
-            Self::print_info_string("debug mode on");
-            self.debug = true;
-            engine.algo.set_callback(|sr| {
-                if matches!(sr.mode, SearchProgressMode::BestMove) {
-                    Self::print_info_string(&format!("pv {}", sr.best_pv.to_san(&sr.board)));
-                    Self::print_info_string(&format!("board {}", sr.board.to_fen()));
-                    Self::print_info_string(&format!("{}", sr.best_pv.apply_to(&sr.board)));
-                }
-                Self::uci_info(sr);
-            });
-        } else {
-            Self::print_info_string("debug mode off");
-            engine.algo.set_callback(Self::uci_info);
-            self.debug = false;
-        }
-    }
 
     fn uci_option_name_value(&mut self, name: &str, value: &str) -> Result<()> {
-        if name == "Debug" {
-            self.set_debug(value == "true");
-            return Ok(());
-        }
-        let mut engine = self.engine.lock().unwrap();
+        // if name == "Debug" {
+        //     self.debug = value == "true";
+        // }
+        let mut eng = self.engine.lock().unwrap();
         let value = if value == "\"\"" { "" } else { value };
-
-        // handle specific name/value uci options
-        // FIXME! as hardcoding names of variables
+        // if name == "Debug" {
+        //     engine.configment("debug", value)?;
+        // } else
         if name == "Threads" {
-            engine.configment("thread_count", value)?;
+            eng.configment("thread_count", value)?;
         } else if name == "MultiPV" {
-            engine.configment("restrictions.multi_pv_count", value)?;
+            eng.configment("restrictions.multi_pv_count", value)?;
         } else if name == "nodestime" {
-            engine.configment("mte.nodestime", value)?;
+            eng.configment("mte.nodestime", value)?;
         } else if name == "Hash" {
-            engine.configment("tt.mb", value)?;
-            engine.algo.tt.set_state(State::NewGame);
+            eng.configment("tt.mb", value)?;
+            eng.algo.tt.set_state(State::NewGame);
         } else if name == "UCI_AnalyseMode" {
-            engine.configment("analyse_mode", value)?;
+            eng.configment("analyse_mode", value)?;
         } else if name == "UCI_ShowRefutations" {
-            engine.configment("show_refutations", value)?;
+            eng.configment("show_refutations", value)?;
         } else if name == "Ponder" {
             // pondering determined by "go ponder", so no variable to track
         } else if name == "Config_File" {
             if !value.is_empty() && value != "config.toml" {
-                engine.config_filename = value.to_string();
+                eng.config_filename = value.to_string();
                 use anyhow::Context;
                 use figment::providers::{Format, Toml};
                 use figment::Figment;
                 use std::path::Path;
                 // use toml;
-                let path = Path::new(&engine.config_filename);
+                let path = Path::new(&eng.config_filename);
                 if !path.is_file() {
-                    bail!("Config_File '{}' not found", engine.config_filename);
+                    bail!("Config_File '{}' not found", eng.config_filename);
                 }
                 let fig = Figment::new()
-                    .merge(&*engine)
-                    .merge(Toml::file(&engine.config_filename));
+                    .merge(&*eng)
+                    .merge(Toml::file(&eng.config_filename));
 
                 let new: Engine = fig
                     .extract()
-                    .context(format!("error in config file {}", &engine.config_filename))?;
-                *engine = new;
+                    .context(format!("error in config file {}", &eng.config_filename))?;
+                *eng = new;
             }
         } else {
             bail!("Unknown option name '{}' value '{}'", name, value);
         }
-        drop(engine);
-        self.set_debug(self.debug); // set the info calback again
+        eng.algo.set_callback(Self::uci_info);
+        drop(eng);
+
+        // self.set_debug(self.debug); // set the info calback again
         Ok(())
     }
 
@@ -726,7 +714,10 @@ impl Uci {
         Self::print(&format!("# benchmark:\n"));
         self.engine.lock().unwrap().search_stop();
         let engine = self.engine.lock().unwrap();
-        Self::print(&format!("NODES {}", engine.algo.clock.cumul_nodes_this_thread()));
+        Self::print(&format!(
+            "NODES {}",
+            engine.algo.clock.cumul_nodes_this_thread()
+        ));
         Self::print(&format!(
             "NPS {}",
             engine.algo.clock.cumul_knps_all_threads() * 1000
@@ -749,10 +740,12 @@ impl Uci {
     }
 
     fn uci_explain_last_search(&mut self) -> Result<()> {
-        self.engine.lock().unwrap().search_stop();
+        let mut eng = self.engine.lock().unwrap();
+        eng.search_stop();
         Self::print("search");
         Self::print(&format!("{}", self.board));
-        Self::print(&format!("{}", self.engine.lock().unwrap()));
+        Self::print(&format!("{}", eng));
+        Self::print(&format!("{}", eng.algo.results.explain(&eng.algo.eval)));
         Ok(())
     }
 

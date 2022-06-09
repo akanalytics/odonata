@@ -38,6 +38,7 @@ shared_tt = true
 thread_count = 1
 config_filename = "config.toml"
 feature = false
+debug = false
 
 [tuner]
 regression_type = "LogisticOnOutcome"
@@ -746,14 +747,33 @@ order = ["Start", "Hash", "Initialize", "GoodCaptureUpfrontSorted", "Killer", "P
 qorder = ["Start", "Initialize", "GoodCapture", "Promo", "End"]
 qorder_evasions = ["Start", "Initialize", "Evasion", "End"]
 
-is_counter_move_sort_bonus = 1200.0
+discovered_check_sort_bonus = 0
+rank_index_sort_bonus = 0
+knight_pseudo_mobility = 0
+bishop_pseudo_mobility = 0
+queen_pseudo_mobility = 0
+is_counter_move_sort_bonus = 0.0
 has_counter_move_sort_bonus = -20000.0
-promo_sort_bonus = 2100.0
-castle_sort_bonus = 1200.0
-hh_sort_factor = 1600.0
-promo_queen_sort_bonus = 60.0
+promo_sort_bonus = 0.0
+castle_sort_bonus = 0.0
+hh_sort_factor = 1000
+promo_queen_sort_bonus = 0.0
 promo_knight_sort_bonus = 0.0
-pst_sort_factor = 1.0
+pst_sort_factor = 0.0
+
+# discovered_check_sort_bonus = 0
+# rank_index_sort_bonus = 0
+# knight_pseudo_mobility = 0
+# bishop_pseudo_mobility = 0
+# queen_pseudo_mobility = 0
+# is_counter_move_sort_bonus = 1200.0
+# has_counter_move_sort_bonus = -20000.0
+# promo_sort_bonus = 2100.0
+# castle_sort_bonus = 1200.0
+# hh_sort_factor = 1600.0
+# promo_queen_sort_bonus = 60.0
+# promo_knight_sort_bonus = 0.0
+# pst_sort_factor = 1.0
 
 # is_counter_move_sort_bonus = 0.0
 # has_counter_move_sort_bonus = -20000.0

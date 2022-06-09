@@ -8,6 +8,7 @@ use crate::types::{Ply, MAX_PLY};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+use super::node::Event;
 use super::search_results::SearchResults;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -158,7 +159,7 @@ impl Algo {
                     self.restrictions.exclude_moves.push(mv);
                 }
             }
-            Metric::IterActual(ply, t).record();
+            Metric::elapsed(ply, t.unwrap().elapsed(), Event::DurationIterActual);
             last_good_multi_pv = std::mem::take(&mut multi_pv);
             ply += self.ids.step_size
         }

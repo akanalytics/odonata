@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
@@ -6,7 +6,6 @@ use crate::mv::Move;
 use crate::types::Ply;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
-
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Variation {
@@ -22,7 +21,6 @@ impl Default for Variation {
     }
 }
 
-
 impl fmt::Debug for Variation {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Variation")
@@ -30,7 +28,6 @@ impl fmt::Debug for Variation {
             .finish()
     }
 }
-
 
 pub static EMPTY: Variation = Variation { moves: Vec::new() };
 
@@ -71,13 +68,17 @@ impl Variation {
     pub fn to_san(&self, b: &Board) -> String {
         let mut b2 = b.clone();
         let mut s = Vec::new();
-        for mv in &self.moves  {
-            if !b2.is_pseudo_legal_move(mv) || !b2.is_legal_move(mv) {
-                panic!("Move {mv} in {} is not legal for board {}", self, b.to_fen());
+        for mv in &self.moves {
+            if !b2.is_pseudo_legal_and_legal_move(*mv) {
+                panic!(
+                    "Move {mv} in {} is not legal for board {}",
+                    self,
+                    b.to_fen()
+                );
             }
-            s.push(b2.to_san(mv));            
+            s.push(b2.to_san(mv));
             b2 = b2.make_move(mv);
-        }   
+        }
         s.join(" ")
     }
 

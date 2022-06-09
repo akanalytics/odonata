@@ -3,6 +3,7 @@ use crate::eval::eval::Eval;
 use crate::eval::score::Score;
 use crate::eval::weight::Weight;
 use crate::infra::component::Component;
+use crate::infra::metric::Metric;
 use crate::mv::Move;
 use crate::search::node::{Event, Node};
 use crate::{Algo, Bitboard};
@@ -22,7 +23,7 @@ pub struct Futility {
     prune_remaining: bool,
     in_check: bool,
     giving_check: bool,
-    discoverer: bool, 
+    discoverer: bool,
     first_move: bool,
     prune_extensions: bool,
     prune_fw_node: bool,
@@ -98,20 +99,24 @@ impl Algo {
             let outcome = b.outcome();
             if outcome.is_game_over() {
                 if outcome.is_draw() {
+                    Metric::incr_node(&n, Event::StandingPatSuccess);
                     return Some(b.pov_score(self.eval.w_eval_draw(b, n)));
                 }
                 // depth 0: we have considered a full width move search to get here so a winning
                 // result is valid. Beyond depth 0 it is not.
                 if let Some(c) = outcome.winning_color() {
                     if c == b.color_us() {
+                        Metric::incr_node(&n, Event::StandingPatSuccess);
                         return Some(Score::we_win_in(n.ply));
                     } else {
+                        Metric::incr_node(&n, Event::StandingPatSuccess);
                         return Some(Score::we_lose_in(n.ply));
                     }
                 }
             }
         }
         if standing_pat >= n.beta && !b.is_in_check(b.color_us()) {
+            Metric::incr_node(&n, Event::StandingPatSuccess);
             return Some(standing_pat);
         }
 
@@ -120,29 +125,38 @@ impl Algo {
         }
 
         if self.qsearch_disabled {
+            Metric::incr_node(&n, Event::StandingPatSuccess);
             return Some(standing_pat);
         }
         None
     }
 
     #[inline]
-    pub fn can_futility_prune_at_node(&self, b: &Board, node: &Node) -> bool {
-        if (!self.futility.alpha_enabled && !self.futility.beta_enabled)
-            ||
-            node.ply == 0   // dont prune at root node
-            ||
+    pub fn can_futility_prune_at_node(&self, b: &Board, n: &Node) -> bool {
+        if (!self.futility.alpha_enabled && !self.futility.beta_enabled) || n.ply == 0 {
+            // dont prune at root node
             // node.alpha + Score::from_cp(1) == node.beta // not in PVS
-            // ||
-            node.depth > self.max_depth // dont prune too far away from leaf nodes
-            ||
-            (!self.futility.prune_alpha_mate && node.alpha.is_mate())  
-            ||
-            (!self.futility.prune_beta_mate && node.beta.is_mate())  
-            ||
-            (!self.futility.prune_fw_node && node.is_fw())  // VER:0.4.14
-            ||
-            (!self.futility.in_check && b.is_in_check(b.color_us()))
+            return false;
+        }
+        if n.depth > self.max_depth {
+            // dont prune too far away from leaf nodes
+            Metric::incr_node(&n, Event::PruneFutilityDeclineMaxDepth);
+            return false;
+        }
+
+        if (!self.futility.prune_alpha_mate && n.alpha.is_mate())
+            || (!self.futility.prune_beta_mate && n.beta.is_mate())
         {
+            Metric::incr_node(&n, Event::PruneFutilityDeclineMateBound);
+            return false;
+        }
+        if !self.futility.prune_fw_node && n.is_fw() {
+            // VER:0.4.14
+            Metric::incr_node(&n, Event::PruneFutilityDeclineFwWindow);
+            return false;
+        }
+        if !self.futility.in_check && b.is_in_check(b.color_us()) {
+            Metric::incr_node(&n, Event::PruneFutilityDeclineInCheck);
             return false;
         }
         true
@@ -171,7 +185,10 @@ impl Algo {
         if !self.futility.alpha_enabled {
             return None;
         }
+
+        Metric::incr_node(n, Event::PruneFutilityConsider);
         if !self.futility.prune_extensions && ext != 0 {
+            Metric::incr_node(n, Event::PruneFutilityDeclineExt);
             return None;
         }
         if self.futility.move_types_forbidden.contains(mt) {
@@ -179,35 +196,40 @@ impl Algo {
         }
 
         if !self.futility.first_move && mv_num <= 1 {
+            Metric::incr_node(n, Event::PruneFutilityDeclineFirstMove);
             return None;
         }
 
         if !n.alpha.is_numeric() {
+            Metric::incr_node(n, Event::PruneFutilityDeclineMateBound);
             return None;
         }
 
         // we allow mate scores as we clamp the
-        //  results of eval (which could be a mate score 
+        //  results of eval (which could be a mate score
         // if taken from tt)
-        // 
+        //
         // if !eval.is_numeric() {
         //     return None;
         // }
 
         if !self.futility.discoverer && mv.from().is_in(before.discoverer(before.color_them())) {
+            Metric::incr_node(n, Event::PruneFutilityDeclineDiscoverer);
             return None;
         }
 
-
         // gives check a more precise and costly version of discoverers
         if !self.futility.giving_check && after.is_in_check(after.color_us()) {
+            Metric::incr_node(n, Event::PruneFutilityDeclineGivesCheck);
             return None;
         }
 
         // position wise, passed pawn promos make a huge impact so exclude them
         if mv.mover_piece() == Piece::Pawn
-            && mv.from().rank_number_as_white(before.color_us()) > self.futility.max_pawn_rank as usize
+            && mv.from().rank_number_as_white(before.color_us())
+                > self.futility.max_pawn_rank as usize
         {
+            Metric::incr_node(n, Event::PruneFutilityDeclinePawnMaxRank);
             return None;
         }
 
@@ -241,7 +263,11 @@ impl Algo {
                 _ => Event::PruneFutilityD3,
             };
             self.explain_futility(&before, mv, mt, est_score, &n, category);
+            Metric::incr_node(n, category);
+
             return Some(est_score);
+        } else {
+            Metric::incr_node(n, Event::PruneFutilityFail);
         }
         None
     }

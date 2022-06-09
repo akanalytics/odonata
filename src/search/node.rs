@@ -4,21 +4,56 @@ use serde::{Deserialize, Serialize};
 
 use crate::types::Ply;
 
+use std::convert::AsRef;
 use std::fmt;
 use strum::{EnumCount, IntoEnumIterator};
+use strum_macros::AsRefStr;
 use strum_macros::{Display, EnumCount, EnumIter};
 
 #[derive(
-    Copy, Clone, Debug, PartialEq, Eq, Serialize, Display, Deserialize, EnumCount, EnumIter,
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    Serialize,
+    Display,
+    Deserialize,
+    EnumCount,
+    EnumIter,
+    AsRefStr,
 )]
+#[strum(serialize_all = "title_case")]
 pub enum Event {
     Unknown,
     UserCancelled,
-    TimeUp,
+    SearchTimeUp,
+    SearchComplete,
+
+    TimingSearchRoot,
+    TimingEval,
+    TimingMoveGen,
+    TimingMakeMove,
+    TimingSortMoves,
+    TimingPseudoLegalAndLegal,
+    TimingTtProbe,
+    TimingTtStore,
+
+    MakeMove,
+    MoveGen,
+    CalcHashBoard,
+    CalcHashMove,
+    EvalSee,
+    EvalStatic,
+    EndgameDraw,
+    EndgameKnown,
+    EndgameWinOrDraw,
 
     HashProbe,
     HashHit,
     PercentHashHit,
+
+    MoveCount,
 
     RecogImmediateDraw,
     RecogMaybeWin,
@@ -26,22 +61,50 @@ pub enum Event {
     DerivedRecog,
 
     PruneRazor,
-    PruneStandingPat,
-    PruneNullMovePrune,
+    RazorD2Success,
+    RazorD3Success,
+    RazorFail,
+
+    StandingPatSuccess,
+
+    NmpConsider,
+    NmpDeclineDepth,
+    NmpDeclineBetaNumeric,
+    NmpDeclineEvalNumeric,
+    NmpDeclineEvalMargin,
+    NmpDeclineMaterial,
+    NmpDeclineInCheck,
+    NmpDeclineSuccessive,
+    NmpDeclineRecursive,
+    NmpAttempt,
+    NmpSuccess,
+    NmpFail,
+
     DerivedPrunedInterior,
     PercentPrunedInterior,
 
+    PruneFutilityConsider,
+    PruneFutilityDeclineExt,
+    PruneFutilityDeclineFirstMove,
+    PruneFutilityDeclineMateBound,
+    PruneFutilityDeclineGivesCheck,
+    PruneFutilityDeclineInCheck,
+    PruneFutilityDeclineDiscoverer,
+    PruneFutilityDeclinePawnMaxRank,
+    PruneFutilityDeclineMaxDepth,
+    PruneFutilityDeclineFwWindow,
+    PruneFutilityFail,
     PruneFutilityD0,
     PruneFutilityD1,
     PruneFutilityD2,
     PruneFutilityD3,
 
-    Lmp,
-    Lmr,
+    LmpSuccess,
+    LateMoveReduce,
     Pvs,
     Extension,
 
-    Aspiration0,
+    AspirationNone,
     Aspiration1,
     Aspiration2,
     Aspiration3,
@@ -58,10 +121,37 @@ pub enum Event {
     DerivedLeaf,
     PercentBranchingFactor,
 
+    NodeTotal,
+    NodeQs,
     NodeInterior,
     NodeInteriorAll,
+    NodeZw,
     NodeInteriorCut,
     NodeInteriorPv,
+
+    TtHitNode,
+    TtHitEvalNode,
+    TtProbeNode,
+    TtStoreNode,
+    TtCollision,
+    TtInsert,
+    TtUpdate,
+    TtPvOverwrite,
+    TtIllegalMove,
+
+    TtCut,
+    TtAll,
+    TtPv,
+
+    SearchFwFd,
+    SearchZwRd,
+    SearchZwFd,
+    ReSearchZwFd,
+    ReSearchFwFd,
+
+
+
+    MoveSortCounterMove,
 
     Moves,
     MoveStart,
@@ -82,6 +172,11 @@ pub enum Event {
     MoveUnsorted,
     MoveCapture,
     MoveEnd,
+
+    DurationIterEst,
+    DurationIterAllotted,
+    DurationIterActual,
+
 
     Clock,
     NodeTypeQuiesce,
@@ -105,8 +200,8 @@ impl Event {
     }
 
     #[inline]
-    pub fn name(&self) -> String {
-        self.to_string()
+    pub fn name(&self) -> &str {
+        self.as_ref()
         // toml::to_string(self).unwrap()
     }
 

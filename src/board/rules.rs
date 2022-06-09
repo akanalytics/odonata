@@ -7,6 +7,7 @@ use crate::board::Board;
 use crate::infra::metric::Metric;
 use crate::movelist::MoveList;
 use crate::mv::Move;
+use crate::search::node::Event;
 use crate::types::Piece;
 
 pub struct Rules;
@@ -109,7 +110,8 @@ impl Rules {
             Self::king_legal(b, moves);
             Self::castles(b, moves);
         }
-        Metric::TimingMoveGen(t).record();
+        Metric::profile(t, Event::TimingMoveGen);
+
     }
 
     pub fn add_moves_en_passant(b: &Board, moves: &mut MoveList) {

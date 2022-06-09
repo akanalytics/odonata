@@ -71,7 +71,7 @@ impl Killers {
 
     fn legal_moves_for_single_ply(&self, y: Ply, b: &Board, moves: &mut MoveList) {
         for m in self.killers[y as usize].iter() {
-            if !m.is_null() && b.is_pseudo_legal_move(m) && b.is_legal_move(m) {
+            if !m.is_null() && b.is_pseudo_legal_and_legal_move(*m) {
                 debug_assert!(b.validate().is_ok(), "board:{} is not valid", b);
                 debug_assert!(
                     b.legal_moves().iter().any(|mv| mv == m),

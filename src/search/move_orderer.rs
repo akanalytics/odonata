@@ -1,3 +1,4 @@
+use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::infra::component::Component;
 use crate::infra::metric::Metric;
@@ -9,10 +10,11 @@ use crate::search::stack::Stack;
 use crate::trace::stat::{ArrayPlyStat, PlyStat};
 use crate::types::{Color, MoveType, Piece, Ply};
 use crate::variation::Variation;
+use crate::{Bitboard, PreCalc};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-use super::node::Node;
+use super::node::{Node, Event};
 use crate::eval::score::{Score, ToScore};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -24,8 +26,13 @@ pub struct MoveOrderer {
     pub tt_bm: bool,
     pub mvv_lva: bool,
     pub discovered_checks: bool,
+    pub discovered_check_sort_bonus: f32,
+    pub rank_index_sort_bonus: f32,
     pub is_counter_move_sort_bonus: f32,
     pub has_counter_move_sort_bonus: f32,
+    pub knight_pseudo_mobility: f32,
+    pub bishop_pseudo_mobility: f32,
+    pub queen_pseudo_mobility: f32,
     pub promo_sort_bonus: f32,
     pub promo_queen_sort_bonus: f32,
     pub promo_knight_sort_bonus: f32,
@@ -84,6 +91,11 @@ impl Default for MoveOrderer {
             tt_bm: true,
             mvv_lva: true,
             see_cutoff: 0.cp(),
+            discovered_check_sort_bonus: 0.0,
+            rank_index_sort_bonus: 0.0,
+            knight_pseudo_mobility: 0.0,
+            bishop_pseudo_mobility: 0.0,
+            queen_pseudo_mobility: 0.0,
             is_counter_move_sort_bonus: 1000.0,
             has_counter_move_sort_bonus: 900.0,
             promo_sort_bonus: 1200.0,
@@ -135,43 +147,69 @@ impl fmt::Display for MoveOrderer {
 }
 
 impl MoveOrderer {
+    // #[inline]
+    // pub fn quiet_score_old(
+    //     &self,
+    //     n: &Node,
+    //     mv: Move,
+    //     algo: &Algo,
+    //     phase: Phase,
+    //     c: Color,
+    //     _parent: Move,
+    // ) -> i32 {
+    //     let mut score = 0;
+
+    //     if mv.is_promo() {
+    //         if mv.promo_piece() == Piece::Knight {
+    //             score += 1500;
+    //         } else {
+    //             score += 2000;
+    //         }
+    //     }
+    //     if mv.is_castle() {
+    //         score += 1000;
+    //     }
+    //     // if mv.mover_piece() == Piece::Pawn {
+    //     //     score += 0;
+    //     // }
+    //     // score += mv.mover_piece().centipawns();
+    //     if c == Color::White {
+    //         score += mv.to().rank_index() as i32;
+    //     } else {
+    //         score -= mv.to().rank_index() as i32;
+    //     }
+
+    //     score += algo.history.history_heuristic_bonus(c, &mv, n);
+
+    //     score += algo
+    //         .eval
+    //         .pst
+    //         .w_eval_square(c, mv.mover_piece(), mv.to())
+    //         .interpolate(phase) as i32;
+    //     // score -= algo.eval.w_eval_square(c, mv.mover_piece(), mv.from()).interpolate(phase);
+    //     -score
+    // }
+
+    // # PLAYER                  :  RATING  ERROR  POINTS  PLAYED   (%)  CFS(%)    W    D    L  D(%)
+    // 1 0.5.65:mohsf=10000      :      67     26   633.5    1044  60.7     100  549  169  326  16.2
+    // 2 0.5.65:moicmsb=10000    :       0   ----   522.5    1042  50.1      55  430  185  427  17.8
+    // 3 0.5.65:morisb=10000     :      -2     26   519.0    1041  49.9      77  433  172  436  16.5
+    // 4 0.5.65:mokpm=10000      :     -11     25   504.5    1042  48.4      63  416  177  449  17.0
+    // 5 0.5.65:modcsb=10000     :     -15     25   497.0    1041  47.7      70  415  164  462  15.8
+    // 6 0.5.65:moqpm=10000      :     -22     26   485.5    1042  46.6      51  394  183  465  17.6
+    // 7 0.5.65:                 :     -23     26   485.0    1042  46.5     ---  398  174  470  16.7
+
     #[inline]
-    pub fn quiet_score(&self, n: &Node, mv: Move, algo: &Algo, phase: Phase, c: Color, _parent: Move) -> i32 {
-        let mut score = 0;
-        if mv.is_promo() {
-            if mv.promo_piece() == Piece::Knight {
-                score += 1500;
-            } else {
-                score += 2000;
-            }
-        }
-        if mv.is_castle() {
-            score += 1000;
-        }
-        // if mv.mover_piece() == Piece::Pawn {
-        //     score += 0;
-        // }
-        // score += mv.mover_piece().centipawns();
-        if c == Color::White {
-            score += mv.to().rank_index() as i32;
-        } else {
-            score -= mv.to().rank_index() as i32;
-        }
-
-        score += algo.history.history_heuristic_bonus(c, &mv, n);
-
-        score += algo
-            .eval
-            .pst
-            .w_eval_square(c, mv.mover_piece(), mv.to())
-            .interpolate(phase) as i32;
-        // score -= algo.eval.w_eval_square(c, mv.mover_piece(), mv.from()).interpolate(phase);
-        -score
-    }
-
-
-    #[inline]
-    pub fn quiet_score2(&self, n: &Node, mv: Move, algo: &Algo, phase: Phase, c: Color, parent: Move) -> i32 {
+    pub fn quiet_score(
+        &self,
+        n: &Node,
+        mv: Move,
+        algo: &Algo,
+        phase: Phase,
+        c: Color,
+        b: &Board,
+        parent: Move,
+    ) -> i32 {
         let mut score = 0.0;
         if mv.is_promo() {
             score += self.promo_sort_bonus;
@@ -185,19 +223,65 @@ impl MoveOrderer {
         if mv.is_castle() {
             score += self.castle_sort_bonus;
         }
+
+        // if mv.from().is_in(b.discoverer(b.color_them())) {
+        //     score += self.discovered_check_sort_bonus;
+        // }
+
+        if b.make_move(&mv).is_in_check(c.opposite()) {
+            score += self.discovered_check_sort_bonus;
+        }
+
+        // pseudo mobility sort-scoring for knights (easiest).
+        // the sort-score is just used to order moves.
+        //
+        // Formula: (count of attacked squares in move-to) less (count of attacked squares in move-from)
+        // multiplied by a knight_pseudo_mobility factor (say 1000)
+        //
+        // so moving a knight from a1 to b3 scores 1000 * (6 - 2) = +4000
+        //
+        // for comparison other sort-scoring factors/bonuses are
+        // a. promo +2100,
+        // b. castling +1200,
+        // c. move is a counter-move to opponent's move +1200
+        //
+        if mv.mover_piece() == Piece::Knight {
+            score += self.knight_pseudo_mobility
+                * (PreCalc::default().knight_attacks(mv.to()).popcount()
+                    - PreCalc::default().knight_attacks(mv.from()).popcount())
+                    as f32
+        }
+        if mv.mover_piece() == Piece::Bishop {
+            score += self.bishop_pseudo_mobility
+                * (PreCalc::default()
+                    .bishop_attacks(Bitboard::EMPTY, mv.to())
+                    .popcount()
+                    - PreCalc::default()
+                        .bishop_attacks(Bitboard::EMPTY, mv.from())
+                        .popcount()) as f32
+        }
+        if mv.mover_piece() == Piece::Queen {
+            score += self.queen_pseudo_mobility
+                * (PreCalc::default()
+                    .bishop_attacks(Bitboard::EMPTY, mv.to())
+                    .popcount()
+                    - PreCalc::default()
+                        .bishop_attacks(Bitboard::EMPTY, mv.from())
+                        .popcount()) as f32
+        }
         // if mv.mover_piece() == Piece::Pawn {
         //     score += 0;
         // }
         // score += mv.mover_piece().centipawns();
-        if c == Color::White {
-            score += mv.to().rank_index() as f32;
-        } else {
-            score -= mv.to().rank_index() as f32;
-        }
+        score += self.rank_index_sort_bonus * mv.to().rank_number_as_white(c) as f32;
 
         score += self.hh_sort_factor * algo.history.history_heuristic_bonus(c, &mv, n) as f32;
 
-        score += algo.counter_move.counter_move_unchecked(c, parent, mv, n) as f32 * self.is_counter_move_sort_bonus;
+        let cm = algo.counter_move.counter_move_unchecked(c, parent, mv, n);
+        if cm > 0 {
+            Metric::incr_node(n, Event::MoveSortCounterMove);
+            score += cm as f32 * self.is_counter_move_sort_bonus;
+        }
         // if self.has_counter_move_sort_bonus > -10000.0
         //     && algo
         //         .counter_move
@@ -331,12 +415,11 @@ impl OrderedMoveList {
         }
     }
 
-
-
     pub fn next_move(&mut self, b: &Board, algo: &mut Algo) -> Option<(MoveType, Move)> {
         let t = Metric::timing_start();
         let m = self.calc_next_move_(b, algo);
-        Metric::TimingSortMoves(t).record();
+        Metric::profile(t, Event::TimingSortMoves);
+
         m
     }
 
@@ -352,7 +435,7 @@ impl OrderedMoveList {
             if move_type == MoveType::GoodCaptureUpfrontSorted || move_type == MoveType::GoodCapture
             {
                 let mv = self.moves[self.index];
-                Metric::EvalSee(self.n).record();
+                Metric::incr_node(&self.n, Event::EvalSee);
                 let see = algo.eval.see.eval_move_see(b, mv);
                 let see_cutoff = if self.qsearch {
                     algo.move_orderer.qsearch_see_cutoff
@@ -517,14 +600,8 @@ impl OrderedMoveList {
                 // algo.order_moves(self.ply, moves, &None);
                 let ph = b.phase(&algo.eval.phaser);
                 moves.sort_by_cached_key(|&mv| {
-                    algo.move_orderer.quiet_score(
-                        &self.n, 
-                        mv,
-                        algo,
-                        ph,
-                        b.color_us(),
-                        last,
-                    )
+                    algo.move_orderer
+                        .quiet_score(&self.n, mv, algo, ph, b.color_us(), b, last)
                 });
                 if algo.move_orderer.thread == 1 && moves.len() >= 2 {
                     moves.swap(0, 1);
@@ -540,11 +617,12 @@ impl OrderedMoveList {
                 // algo.order_moves(self.ply, moves, &None);
                 moves.sort_by_cached_key(|&mv| {
                     algo.move_orderer.quiet_score(
-                        &self.n, 
+                        &self.n,
                         mv,
                         algo,
                         b.phase(&algo.eval.phaser),
                         b.color_us(),
+                        b,
                         last,
                     )
                 });

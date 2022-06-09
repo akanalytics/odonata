@@ -67,41 +67,52 @@ impl Default for NullMovePruning {
 // works for moves that are just "too good to be true"
 impl NullMovePruning {
     #[inline]
-    pub fn allow(&self, b: &Board, node: &Node, eval: Score, pv_table: &PvTable) -> bool {
+    pub fn allow(&self, b: &Board, n: &Node, eval: Score, pv_table: &PvTable) -> bool {
         if !self.enabled {
             return false;
         }
-        if node.ply == 0 {
+        if n.ply <= 0 {
             return false; // no null move at root, might mean no moves (with move restrictions too!)
         }
-        if node.depth < self.min_depth {
+
+        Metric::incr_node(n, Event::NmpConsider);
+
+        if n.depth < self.min_depth {
+            Metric::incr_node(n, Event::NmpDeclineDepth);
             return false;
         }
-        if !node.beta.is_numeric() {
+        if !n.beta.is_numeric() {
+            Metric::incr_node(n, Event::NmpDeclineBetaNumeric);
             return false;
         }
         if !eval.is_numeric()  {
+            Metric::incr_node(n, Event::NmpDeclineEvalNumeric);
             return false;
         }
         if ((b.line_pieces() | b.knights()) & b.us()).is_empty() {
+            Metric::incr_node(n, Event::NmpDeclineMaterial);
             return false;
         }
         // if node.alpha == node.beta - Score::from_cp(1) {
         //     // no NMP in PVS search
         //     return false;
         // }
-        if eval < node.beta + self.margin {
+        if eval < n.beta + self.margin {
+            Metric::incr_node(n, Event::NmpDeclineEvalMargin);
             return false;
         }
 
         if b.is_in_check(b.color_us()) {
+            Metric::incr_node(n, Event::NmpDeclineInCheck);
             return false;
         }
-        let var = pv_table.extract_pv_for(node.ply);
+        let var = pv_table.extract_pv_for(n.ply);
         if self.recursive && !self.successive && Self::last_move_is_null_move(&var) {
+            Metric::incr_node(n, Event::NmpDeclineSuccessive);
             return false;
         }
         if !self.recursive && Self::contains_null_move(&var) {
+            Metric::incr_node(n, Event::NmpDeclineRecursive);
             return false;
         }
         true
@@ -162,8 +173,7 @@ impl Algo {
         let mut child_board = b.make_move(&mv);
         self.current_variation.push(mv);
         // self.explainer.start(n, &self.current_variation);
-        Metric::NullMovePruneAttempt(*n).record();
-        // self.stats.inc_nmp(n.ply);
+        Metric::incr_node(n, Event::NmpAttempt);
         let reduced_depth = n.depth - r - 1;
 
         // we increment ply so that history tables etc work correctly
@@ -188,7 +198,7 @@ impl Algo {
 
             if self.nmp.store_tt {
                 // score is clamped as you cant mate on a null move. Note reduced depth too
-                Metric::TtStore(*n).record();
+                Metric::incr_node(n, Event::TtStoreNode);
                 let entry = TtNode {
                     score: child_score.clamp_score(),
                     depth: reduced_depth + 1,
@@ -200,8 +210,10 @@ impl Algo {
                 // and reduced_depth + 1
                 self.tt.store(b.hash(), entry);
             }
+            Metric::incr_node(n, Event::NmpSuccess);
             return Ok(Some(child_score));
         }
+        Metric::incr_node(n, Event::NmpFail);
         Ok(None)
     }
 }

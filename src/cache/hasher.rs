@@ -4,6 +4,7 @@ use crate::board::Board;
 use crate::globals::constants::*;
 use crate::infra::metric::*;
 use crate::mv::Move;
+use crate::search::node::Event;
 use crate::types::{Color, Hash, Piece};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
@@ -144,7 +145,8 @@ impl Hasher {
     }
 
     pub fn hash_board(&self, b: &Board) -> Hash {
-        Metric::HashBoard.record();
+        Metric::incr(Event::CalcHashBoard);
+
         let mut hash = b.color_us().chooser_wb(0, self.side);
         // hash ^= self.castling[b.castling()];
 
@@ -171,7 +173,7 @@ impl Hasher {
     }
 
     pub fn hash_move(&self, m: &Move, pre_move: &Board) -> Hash {
-        Metric::HashMove.record();
+        Metric::incr(Event::CalcHashMove);
         let mut hash = self.side;
         // either we're moving to an empty square or its a capture
         let us = pre_move.color_us();

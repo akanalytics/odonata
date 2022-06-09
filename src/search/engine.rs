@@ -370,7 +370,7 @@ mod tests {
 
     #[test]
     fn example_search() {
-        let pos = Catalog::test_position();
+        let pos = Position::parse_epd("5R2/5ppk/5P2/4B2p/4r3/8/PK6/8 b - - 0 1").unwrap();
         let mut engine = Engine::new();
         engine.set_position(pos);
         engine.algo.set_timing_method(TimeControl::RemainingTime {

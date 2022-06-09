@@ -50,13 +50,13 @@ impl FromStr for Move {
 }
 
 impl Move {
+    const OFFSET_FROM: i32 = 0;
+    const OFFSET_TO: i32 = 6;
+    const OFFSET_EP: i32 = 12; // 7 bits
     const OFFSET_MOVER: i32 = 19;
     const OFFSET_CAPTURE: i32 = 22;
     const OFFSET_PROMO: i32 = 25;
     const OFFSET_CASTLE: i32 = 28;
-    const OFFSET_FROM: i32 = 0;
-    const OFFSET_TO: i32 = 6;
-    const OFFSET_EP: i32 = 12; // 7 bits
 
     #[inline]
     pub const fn new(

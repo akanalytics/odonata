@@ -8,12 +8,12 @@ use crate::bound::NodeType;
 use crate::cache::lockless_hashmap::{Bucket, SharedTable};
 use crate::eval::score::Score;
 use crate::infra::component::Component;
+use crate::infra::metric::Metric;
 use crate::mv::Move;
-use crate::trace::stat::{ArrayStat, Stat};
+use crate::search::node::Event;
 use crate::types::{Hash, Piece, Ply};
 use crate::variation::Variation;
 use serde::{Deserialize, Serialize};
-use std::cmp;
 use std::fmt;
 use std::sync::Arc;
 
@@ -257,17 +257,6 @@ pub struct TranspositionTable2 {
     preserve_bm: bool,
 
     #[rustfmt::skip] #[serde(skip)] pub current_age: u8,
-    #[rustfmt::skip] #[serde(skip)] pub hits: Stat,
-    #[rustfmt::skip] #[serde(skip)] pub misses: Stat,
-    #[rustfmt::skip] #[serde(skip)] pub collisions: Stat,
-    #[rustfmt::skip] #[serde(skip)] pub bad_hash: Stat,
-    #[rustfmt::skip] #[serde(skip)] pub exclusions: Stat,
-    #[rustfmt::skip] #[serde(skip)] pub inserts: Stat,
-    #[rustfmt::skip] #[serde(skip)] pub updates: Stat,
-    #[rustfmt::skip] #[serde(skip)] pub pv_overwrites: Stat,
-    // #[rustfmt::skip] #[serde(skip)] pub deletes: Stat,
-    // #[rustfmt::skip] #[serde(skip)] pub fail_priority: Stat,
-    // #[rustfmt::skip] #[serde(skip)] pub fail_ownership: Stat,
 }
 
 impl Default for TranspositionTable2 {
@@ -291,15 +280,6 @@ impl Default for TranspositionTable2 {
             freshen_on_fetch: true,
             replacement: Replacement::AgeTypeDepth,
             preserve_bm: false,
-
-            hits: Stat::new("hits"),
-            misses: Stat::new("misses"),
-            collisions: Stat::new("collisions"),
-            exclusions: Stat::new("exclusions"),
-            bad_hash: Stat::new("bad_hash"),
-            inserts: Stat::new("inserts"),
-            updates: Stat::new("updates"),
-            pv_overwrites: Stat::new("pv overwrites"),
             // deletes: Stat::new("deletes"),
             // fail_priority: Stat::new("ins fail priority"),
             // fail_ownership: Stat::new("ins fail owner"),
@@ -332,21 +312,6 @@ impl fmt::Display for TranspositionTable2 {
         // writeln!(f, "entry: cut       : {}", self.count_of(NodeType::LowerCut))?;
         // writeln!(f, "entry: all       : {}", self.count_of(NodeType::UpperAll))?;
         // writeln!(f, "entry: unused    : {}", self.count_of(NodeType::Unused))?;
-        let tot =
-            self.hits.get() + self.misses.get() + self.collisions.get() + self.exclusions.get();
-        let tot = cmp::max(1, tot);
-        writeln!(f, "% hits           : {}", 100 * self.hits.get() / tot)?;
-        writeln!(f, "% misses         : {}", 100 * self.misses.get() / tot)?;
-        writeln!(
-            f,
-            "% collisions     : {}",
-            100 * self.collisions.get() / tot
-        )?;
-        writeln!(
-            f,
-            "% exclusions     : {}",
-            100 * self.exclusions.get() / tot
-        )?;
         // for i in 0..10 {
         //     writeln!(
         //         f,
@@ -355,23 +320,6 @@ impl fmt::Display for TranspositionTable2 {
         //         self.count_of_age(self.current_age - i)
         //     )?;
         // }
-        writeln!(
-            f,
-            "tt stats\n{}",
-            ArrayStat(&[
-                &self.hits,
-                &self.misses,
-                &self.collisions,
-                &self.exclusions,
-                &self.bad_hash,
-                &self.inserts,
-                &self.updates,
-                &self.pv_overwrites,
-                // &self.fail_priority,
-                // &self.fail_ownership,
-                // &self.deletes,
-            ])
-        )?;
         Ok(())
     }
 }
@@ -499,6 +447,7 @@ impl TranspositionTable2 {
         {
             return;
         }
+        let t = Metric::timing_start();
         debug_assert!(
             new_node.nt != NodeType::Unused,
             "Cannot store unused nodes in tt"
@@ -601,7 +550,7 @@ impl TranspositionTable2 {
         if replace {
             // new.hash != old.hash &&
             if self.current_age == old_age && old_node.nt == NodeType::ExactPv {
-                self.pv_overwrites.increment();
+                Metric::incr(Event::TtPvOverwrite);
             }
             debug_assert!(new_node.score > -Score::INFINITY && new_node.score < Score::INFINITY);
             debug_assert!(
@@ -619,6 +568,8 @@ impl TranspositionTable2 {
         } else {
             // self.fail_priority.increment();
         }
+        Metric::profile(t, Event::TimingTtStore);
+
     }
 
     pub fn delete(&mut self, _h: Hash) {
@@ -632,13 +583,11 @@ impl TranspositionTable2 {
         if !self.enabled || self.capacity() == 0 || ply < self.min_ply || depth < self.min_depth {
             return None;
         }
+        let t = Metric::timing_start();
         let tt_node = self.probe_by_hash(board.hash());
         if let Some(tt_node) = tt_node {
-            if !tt_node.bm.is_null()
-                && !board.is_pseudo_legal_move(&tt_node.bm)
-                && !board.is_legal_move(&tt_node.bm)
-            {
-                self.bad_hash.increment();
+            if !tt_node.bm.is_null() && !board.is_pseudo_legal_and_legal_move(tt_node.bm) {
+                Metric::incr(Event::TtIllegalMove);
                 return None;
             }
             debug_assert!(
@@ -650,15 +599,14 @@ impl TranspositionTable2 {
                 depth
             );
             assert!(
-                tt_node.bm.is_null()
-                    || (board.is_pseudo_legal_move(&tt_node.bm)
-                        && board.is_legal_move(&tt_node.bm)),
+                tt_node.bm.is_null() || board.is_pseudo_legal_and_legal_move(tt_node.bm),
                 "{} {} {:?}",
                 board.to_fen(),
                 tt_node.bm.uci(),
                 tt_node.bm
             );
         }
+        Metric::profile(t, Event::TimingTtProbe);
         tt_node
     }
 
@@ -668,15 +616,13 @@ impl TranspositionTable2 {
         //     return None;
         // }
         if let Some((data, bucket)) = self.table.probe(h) {
-            self.hits.increment();
             let new_data = (data & !255) | (self.current_age as u64 & 255);
             if self.freshen_on_fetch {
                 bucket.write(h, new_data);
             }
             Some(TtNode::unpack(data).0)
         } else {
-            self.misses.increment();
-            self.collisions.increment();
+            Metric::incr(Event::TtCollision);
             None
         }
     }
@@ -702,7 +648,7 @@ impl TranspositionTable2 {
             if let Some(entry) = entry {
                 if entry.nt == NodeType::ExactPv {
                     mv = &entry.bm;
-                    if !mv.is_null() && board.is_pseudo_legal_move(mv) && board.is_legal_move(mv) {
+                    if !mv.is_null() && board.is_pseudo_legal_and_legal_move(*mv) {
                         board = board.make_move(mv);
                         nodes.push(entry);
                         continue;

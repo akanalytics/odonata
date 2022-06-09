@@ -5,8 +5,8 @@
 // use tracing::metadata::LevelFilter;
 // use tracing_subscriber::{Registry, fmt};
 // use tracing_subscriber::fmt::{format, layer};
-use std::io;
-use tracing_subscriber::{EnvFilter, FmtSubscriber}; // , reload::Handle};
+// use std::io;
+// use tracing_subscriber::{EnvFilter, FmtSubscriber}; // , reload::Handle};
                                                     // use tracing::subscriber::Subscriber;
                                                     //use tracing_subscriber::layer::Layer;
                                                     // use tracing_subscriber::layer::Layered;
@@ -28,23 +28,23 @@ pub struct LogInit;
 //     handle: Handle<EnvFilter, Formatter>,
 // }
 
-pub fn init_logging() {
-    let builder = FmtSubscriber::builder()
-        .with_ansi(true)
-        .with_writer(io::stderr)
-        .with_env_filter(EnvFilter::from_default_env())
-        .with_filter_reloading();
+// pub fn init_logging() {
+//     let builder = FmtSubscriber::builder()
+//         .with_ansi(true)
+//         .with_writer(io::stderr)
+//         .with_env_filter(EnvFilter::from_default_env())
+//         .with_filter_reloading();
 
-    //    let reload_handle = builder.reload_handle();
+//     //    let reload_handle = builder.reload_handle();
 
-    builder.init();
+//     builder.init();
 
-    // let dispatch = Dispatch::new(builder.finish());
+//     // let dispatch = Dispatch::new(builder.finish());
 
-    // let t = builder.downcast_ref::<ReloadHandle>();
+//     // let t = builder.downcast_ref::<ReloadHandle>();
 
-    // reload_handle
-}
+//     // reload_handle
+// }
 
 // let rh = ReloadHandle {
 //     handle: reload_handle,

@@ -3,6 +3,7 @@ use crate::board::Board;
 use crate::cache::hasher::Hasher;
 use crate::infra::metric::Metric;
 use crate::mv::Move;
+use crate::search::node::Event;
 use crate::types::{Piece, Repeats};
 use crate::variation::Variation;
 
@@ -77,6 +78,7 @@ impl MoveMaker for Board {
     }
 
     fn make_move(&self, m: &Move) -> Board {
+        Metric::incr(Event::MakeMove);
         let t = Metric::timing_start();
         // either we're moving to an empty square or its a capture
         debug_assert!(
@@ -181,7 +183,8 @@ impl MoveMaker for Board {
         let move_hash = Hasher::default().hash_move(m, self);
         b.hash = self.hash ^ move_hash;
 
-        Metric::TimingMakeMove(t).record();
+        Metric::profile(t, Event::TimingMakeMove);
+
 
         debug_assert!(
             b.hash == Hasher::default().hash_board(&b),

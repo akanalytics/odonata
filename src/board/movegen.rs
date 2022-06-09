@@ -86,6 +86,13 @@ impl Board {
         self.checkers_of(king_color).intersects(them)
     }
 
+    pub fn is_pseudo_legal_and_legal_move(&self, m: Move) -> bool {
+        let t = Metric::timing_start();
+        let ret = self.is_pseudo_legal_move(&m) && self.is_legal_move(&m);
+        Metric::profile(t, Event::TimingPseudoLegalAndLegal);
+        ret
+    }
+
     pub fn is_pseudo_legal_move(&self, m: &Move) -> bool {
         if !m.from().is_in(self.us()) {
             return false;
@@ -225,13 +232,13 @@ impl Board {
 
     #[inline]
     pub fn legal_moves_into(&self, moves: &mut MoveList) {
-        Metric::MoveGen.record();
+        Metric::incr(Event::MoveGen);
         Rules::legals_for(self, moves);
     }
 
     #[inline]
     pub fn legal_moves(&self) -> MoveList {
-        Metric::MoveGen.record();
+        Metric::incr(Event::MoveGen);
         let mut moves = MoveList::new();
         Rules::legals_for(self, &mut moves);
         moves

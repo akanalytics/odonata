@@ -5,13 +5,11 @@ use crate::eval::pst::Pst;
 use crate::eval::score::Score;
 use crate::eval::see::See;
 use crate::eval::weight::Weight;
-use crate::infra::metric::*;
 use crate::infra::component::Component;
 use crate::infra::component::State;
 use crate::mv::Move;
 use crate::phaser::Phaser;
 use crate::search::node::Node;
-use crate::trace::stat::{ArrayStat, Stat};
 use crate::types::{Color, Piece};
 
 use serde::{Deserialize, Serialize};
@@ -29,23 +27,7 @@ use super::scorer::TotalScore;
 
 // https://www.chessprogramming.org/Simplified_Evaluation_Function
 
-pub static ALL: Stat = Stat::new("ALL");
-pub static QUIESCENCE: Stat = Stat::new("QUIESCENCE");
-pub static MATERIAL: Stat = Stat::new("MATERIAL");
-pub static POSITION: Stat = Stat::new("POSITION");
-pub static MOBILITY: Stat = Stat::new("MOBILITY");
-pub static SEE: Stat = Stat::new("SEE");
-pub static MOVE: Stat = Stat::new("MOVE");
 
-pub static EVAL_COUNTS: ArrayStat = ArrayStat(&[
-    &ALL,
-    &QUIESCENCE,
-    &MATERIAL,
-    &POSITION,
-    &MOBILITY,
-    &SEE,
-    &MOVE,
-]);
 
 use strum_macros::Display;
 use strum_macros::EnumCount;
@@ -320,7 +302,6 @@ impl fmt::Display for Eval {
         writeln!(f, "[phaser]\n{}", self.phaser)?;
         writeln!(f, "phasing          : {}", self.phasing)?;
         writeln!(f, "mob.phase.disable: {}", self.mobility_phase_disable)?;
-        writeln!(f, "eval stats\n{}", EVAL_COUNTS)?;
         Ok(())
     }
 }
@@ -397,7 +378,6 @@ impl Eval {
     }
 
     fn w_evaluate_with_outcome(&self, board: &Board, n: &Node) -> WhiteScore {
-        Metric::Eval.record();
         let outcome = board.outcome();
         if outcome.is_game_over() {
             if outcome.is_draw() {
@@ -454,13 +434,11 @@ impl Board {
 
     #[inline]
     pub fn eval_move_see(&self, eval: &Eval, mv: Move) -> Score {
-        SEE.increment();
         Score::from_cp(eval.see.eval_move_see(self, mv))
     }
 
     #[inline]
     pub fn eval_move_material(&self, eval: &Eval, mv: &Move) -> Score {
-        MOVE.increment();
         // FIXME! far too slow (-7 ELO)
         Score::from_cp(
             eval.eval_move_material(mv)
@@ -470,7 +448,6 @@ impl Board {
 
     #[inline]
     pub fn eval_with_outcome(&self, eval: &Eval, nd: &Node) -> Score {
-        ALL.increment();
         self.pov_score(eval.w_evaluate_with_outcome(self, nd))
     }
 
@@ -478,7 +455,6 @@ impl Board {
     pub fn eval_some(&self, eval: &Eval) -> Score {
         // profile_fn!(board.eval_some);
         // let _g = hprof::enter("eval some");
-        ALL.increment();
         self.pov_score(eval.w_eval_some(self))
     }
 }
