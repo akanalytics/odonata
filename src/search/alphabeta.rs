@@ -137,7 +137,7 @@ impl Algo {
 
         let mut score = -Score::INFINITY;
         let mut category = Event::Unknown;
-        let mut bm = Move::NULL_MOVE;
+        let mut bm = None;
         let mut nt = NodeType::UpperAll;
 
         // we dont draw at root, as otherwise it wont play a move if insufficient-material draw [v32]
@@ -155,8 +155,10 @@ impl Algo {
             (None, Some(bm)) => tt_mv = bm,
             (Some(s), Some(mv)) => {
                 tt_mv = mv;
-                score = s;
-                bm = mv;
+                if !mv.is_null() {
+                    bm = Some(mv);
+                    score = s;
+                }
                 category = Event::HashHit;
             }
             _ => {}
@@ -193,7 +195,7 @@ impl Algo {
                 quiets += 1;
             }
 
-            if score > -Score::INFINITY {
+            if let Some(_) = bm {
                 if let Some(est) = self.can_futility_prune_move(
                     mv,
                     count,
@@ -226,7 +228,7 @@ impl Algo {
                 ext,
                 tt_mv,
             );
-            if self.can_lmp_move(count, is_quiet, quiets, &n) {
+            if bm.is_some() && self.can_lmp_move(count, is_quiet, quiets, &n) {
                 continue;
             }
 
@@ -377,12 +379,12 @@ impl Algo {
             if s > score {
                 score = s;
                 category = cat;
+                bm = Some(mv);
             }
             if s > n.alpha {
                 n.alpha = s;
-                bm = mv;
                 nt = NodeType::ExactPv;
-                debug_assert!(b.is_pseudo_legal_move(&bm), "bm {} on board {}", bm, b);
+                debug_assert!(b.is_pseudo_legal_move(&bm.unwrap()), "bm {} on board {}", bm.unwrap(), b);
                 self.history.raised_alpha(&n, b, &mv);
                 self.record_move(ply, &mv);
             } else {
@@ -419,10 +421,10 @@ impl Algo {
             cat = Event::NodeInteriorAll;
         } else if nt == NodeType::LowerCut {
             cat = Event::NodeInteriorCut;
-            debug_assert!(!bm.is_null());
+            // debug_assert!(bm.is_null());
         } else if nt == NodeType::ExactPv {
             cat = Event::NodeInteriorPv;
-            debug_assert!(!bm.is_null())
+            debug_assert!(bm.is_some())
         } else {
             panic!("Node type {:?} ", nt);
         }
@@ -433,7 +435,7 @@ impl Algo {
                 score,
                 depth,
                 nt,
-                bm,
+                bm: bm.unwrap_or_default(),
             };
             Metric::incr_node(&n, Event::TtStoreNode);
             self.tt.store(b.hash(), entry);
@@ -446,13 +448,13 @@ impl Algo {
             category,
             count,
             quiets,
-            bm,
+            bm.unwrap_or_default(),
             nt,
             b,
         );
         self.explain_node(
             &b,
-            bm,
+            bm.unwrap_or_default(),
             nt,
             score,
             eval,
