@@ -1,6 +1,6 @@
 [package]
 name = "odonata"
-version = "0.5.65"
+version = "0.5.66"
 license = "GPL-3.0+"
 homepage = "https://github.com/akanalytics/odonata"
 authors = [
@@ -63,7 +63,8 @@ thread_local = "1.1.4"
 # firestorm = { version="0.5", features=["enable_system_time"] }
 # firestorm = { version="0.5", features=["enable_cpu_time"] }
 # hprof = "0.1.3"
-tabled = "0.7.0"
+# tabled = "0.7.0"
+tabled = { git = "https://github.com/zhiburt/tabled", branch = "master" }
 # hdrhist = "0.5.0"
 
 

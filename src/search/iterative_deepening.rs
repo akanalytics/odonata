@@ -159,7 +159,9 @@ impl Algo {
                     self.restrictions.exclude_moves.push(mv);
                 }
             }
-            Metric::elapsed(ply, t.unwrap().elapsed(), Event::DurationIterActual);
+            if let Some(t) = t {
+                Metric::elapsed(ply, t.elapsed(), Event::DurationIterActual);
+            }
             last_good_multi_pv = std::mem::take(&mut multi_pv);
             ply += self.ids.step_size
         }

@@ -14,7 +14,7 @@ use crate::{Bitboard, PreCalc};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-use super::node::{Node, Event};
+use super::node::{Node, Event, Timing};
 use crate::eval::score::{Score, ToScore};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -418,7 +418,7 @@ impl OrderedMoveList {
     pub fn next_move(&mut self, b: &Board, algo: &mut Algo) -> Option<(MoveType, Move)> {
         let t = Metric::timing_start();
         let m = self.calc_next_move_(b, algo);
-        Metric::profile(t, Event::TimingSortMoves);
+        Metric::profile(t, Timing::TimingSortMoves);
 
         m
     }

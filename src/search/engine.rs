@@ -10,7 +10,7 @@ use crate::trace::stat::Stat;
 use crate::tuning::Tuning;
 use crate::utils::Formatting;
 use anyhow::{anyhow, Context, Result};
-use figment::providers::{Format, Toml};
+use figment::providers::{Env, Format, Toml};
 use figment::value::{Dict, Map};
 use figment::{Error, Figment, Metadata, Profile, Provider};
 use serde::{Deserialize, Serialize};
@@ -144,7 +144,11 @@ impl Engine {
         let toml = Toml::string(toml);
         // let _engine = Self::default();
         // engine.configure(&ParsedConfig::global());
-        let mut engine: Engine = Figment::new().merge(toml).extract().unwrap();
+        let mut engine: Engine = Figment::new()
+            .merge(toml)
+            .merge(Env::prefixed("odonata_var_").split("__"))
+            .extract()
+            .unwrap();
         engine.algo.eval.populate_feature_weights();
         engine
     }
@@ -156,7 +160,9 @@ impl Engine {
     }
 
     pub fn configment_many(&mut self, map: HashMap<String, String>) -> Result<()> {
-        let mut fig = Figment::new().merge(&*self);
+        let mut fig = Figment::new()
+            .merge(&*self)
+            .merge(Env::prefixed("odonata_var_").split("__"));
 
         for (k, v) in map.iter() {
             fig = fig.merge(Toml::string(&format!("{} = {}", k, v)));
@@ -307,7 +313,6 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Color;
     use crate::catalog::*;
     use crate::comms::uci::Uci;
     use crate::infra::black_box;
@@ -373,14 +378,16 @@ mod tests {
         let pos = Position::parse_epd("5R2/5ppk/5P2/4B2p/4r3/8/PK6/8 b - - 0 1").unwrap();
         let mut engine = Engine::new();
         engine.set_position(pos);
-        engine.algo.set_timing_method(TimeControl::RemainingTime {
-            our_color: Color::White,
-            wtime: Duration::from_secs(15),
-            btime: Duration::from_secs(15),
-            winc: Duration::ZERO,
-            binc: Duration::ZERO,
-            movestogo: 20,
-        });
+        engine.algo.set_timing_method(TimeControl::Depth(18));
+        // use crate::Color;
+        // engine.algo.set_timing_method(TimeControl::RemainingTime {
+        //     our_color: Color::White,
+        //     wtime: Duration::from_secs(15),
+        //     btime: Duration::from_secs(15),
+        //     winc: Duration::ZERO,
+        //     binc: Duration::ZERO,
+        //     movestogo: 20,
+        // });
         engine.algo.set_callback(Uci::uci_info);
         engine.search();
         println!("{}", engine);

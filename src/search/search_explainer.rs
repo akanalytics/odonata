@@ -172,10 +172,10 @@ impl Explainer {
         if let Some(ref why_not) = self.why_not {
             if why_not.starts_with(var) // if weve pruned part of the why_not
                 && match e {
-                    Event::PruneFutilityD0
-                    | Event::PruneFutilityD1
-                    | Event::PruneFutilityD2
-                    | Event::PruneFutilityD3 => true,
+                    Event::FutilityD0
+                    | Event::FutilityD1
+                    | Event::FutilityD2
+                    | Event::FutilityD3 => true,
                     Event::NmpSuccess => true,
                     Event::NodeInteriorCut => true,
                     _ => true,

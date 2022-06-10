@@ -6,7 +6,7 @@ use crate::eval::endgame::EndGame;
 use crate::eval::eval::{Eval, Feature};
 use crate::infra::metric::Metric;
 use crate::phaser::Phaser;
-use crate::search::node::Event;
+use crate::search::node::{Timing};
 use crate::types::Color::{self, *};
 use crate::types::Piece;
 use crate::types::Piece::*;
@@ -41,7 +41,7 @@ impl Calc {
         }
         // scorer.set_phase(b.phase(ph));
         // scorer.interpolate_and_scale("interpolate");
-        Metric::profile(t, Event::TimingEval);
+        Metric::profile(t, Timing::TimingEval);
     }
 
     fn other(s: &mut impl ScorerBase, b: &Board) {

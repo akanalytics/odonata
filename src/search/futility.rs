@@ -140,23 +140,23 @@ impl Algo {
         }
         if n.depth > self.max_depth {
             // dont prune too far away from leaf nodes
-            Metric::incr_node(&n, Event::PruneFutilityDeclineMaxDepth);
+            Metric::incr_node(&n, Event::FutilityDeclineMaxDepth);
             return false;
         }
 
         if (!self.futility.prune_alpha_mate && n.alpha.is_mate())
             || (!self.futility.prune_beta_mate && n.beta.is_mate())
         {
-            Metric::incr_node(&n, Event::PruneFutilityDeclineMateBound);
+            Metric::incr_node(&n, Event::FutilityDeclineMateBound);
             return false;
         }
         if !self.futility.prune_fw_node && n.is_fw() {
             // VER:0.4.14
-            Metric::incr_node(&n, Event::PruneFutilityDeclineFwWindow);
+            Metric::incr_node(&n, Event::FutilityDeclineFwWindow);
             return false;
         }
         if !self.futility.in_check && b.is_in_check(b.color_us()) {
-            Metric::incr_node(&n, Event::PruneFutilityDeclineInCheck);
+            Metric::incr_node(&n, Event::FutilityDeclineInCheck);
             return false;
         }
         true
@@ -186,9 +186,9 @@ impl Algo {
             return None;
         }
 
-        Metric::incr_node(n, Event::PruneFutilityConsider);
+        Metric::incr_node(n, Event::FutilityConsider);
         if !self.futility.prune_extensions && ext != 0 {
-            Metric::incr_node(n, Event::PruneFutilityDeclineExt);
+            Metric::incr_node(n, Event::FutilityDeclineExt);
             return None;
         }
         if self.futility.move_types_forbidden.contains(mt) {
@@ -196,12 +196,12 @@ impl Algo {
         }
 
         if !self.futility.first_move && mv_num <= 1 {
-            Metric::incr_node(n, Event::PruneFutilityDeclineFirstMove);
+            Metric::incr_node(n, Event::FutilityDeclineFirstMove);
             return None;
         }
 
         if !n.alpha.is_numeric() {
-            Metric::incr_node(n, Event::PruneFutilityDeclineMateBound);
+            Metric::incr_node(n, Event::FutilityDeclineMateBound);
             return None;
         }
 
@@ -214,13 +214,13 @@ impl Algo {
         // }
 
         if !self.futility.discoverer && mv.from().is_in(before.discoverer(before.color_them())) {
-            Metric::incr_node(n, Event::PruneFutilityDeclineDiscoverer);
+            Metric::incr_node(n, Event::FutilityDeclineDiscoverer);
             return None;
         }
 
         // gives check a more precise and costly version of discoverers
         if !self.futility.giving_check && after.is_in_check(after.color_us()) {
-            Metric::incr_node(n, Event::PruneFutilityDeclineGivesCheck);
+            Metric::incr_node(n, Event::FutilityDeclineGivesCheck);
             return None;
         }
 
@@ -229,7 +229,7 @@ impl Algo {
             && mv.from().rank_number_as_white(before.color_us())
                 > self.futility.max_pawn_rank as usize
         {
-            Metric::incr_node(n, Event::PruneFutilityDeclinePawnMaxRank);
+            Metric::incr_node(n, Event::FutilityDeclinePawnMaxRank);
             return None;
         }
 
@@ -257,17 +257,17 @@ impl Algo {
         let est_score = eval.clamp_score() + margin + gain;
         if est_score <= n.alpha {
             let category = match n.depth {
-                d if d <= 0 => Event::PruneFutilityD0,
-                1 => Event::PruneFutilityD1,
-                2 => Event::PruneFutilityD2,
-                _ => Event::PruneFutilityD3,
+                d if d <= 0 => Event::FutilityD0,
+                1 => Event::FutilityD1,
+                2 => Event::FutilityD2,
+                _ => Event::FutilityD3,
             };
             self.explain_futility(&before, mv, mt, est_score, &n, category);
             Metric::incr_node(n, category);
 
             return Some(est_score);
         } else {
-            Metric::incr_node(n, Event::PruneFutilityFail);
+            Metric::incr_node(n, Event::FutilityFail);
         }
         None
     }

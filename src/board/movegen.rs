@@ -7,6 +7,7 @@ use crate::board::Board;
 use crate::infra::metric::*;
 use crate::movelist::MoveList;
 use crate::mv::Move;
+use crate::search::node::Timing;
 use crate::types::{Color, Piece};
 
 trait MoveGen {}
@@ -89,7 +90,7 @@ impl Board {
     pub fn is_pseudo_legal_and_legal_move(&self, m: Move) -> bool {
         let t = Metric::timing_start();
         let ret = self.is_pseudo_legal_move(&m) && self.is_legal_move(&m);
-        Metric::profile(t, Event::TimingPseudoLegalAndLegal);
+        Metric::profile(t, Timing::TimingPseudoLegalAndLegal);
         ret
     }
 

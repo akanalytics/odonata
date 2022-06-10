@@ -3,7 +3,7 @@ use crate::board::Board;
 use crate::cache::hasher::Hasher;
 use crate::infra::metric::Metric;
 use crate::mv::Move;
-use crate::search::node::Event;
+use crate::search::node::{Event, Timing};
 use crate::types::{Piece, Repeats};
 use crate::variation::Variation;
 
@@ -183,7 +183,7 @@ impl MoveMaker for Board {
         let move_hash = Hasher::default().hash_move(m, self);
         b.hash = self.hash ^ move_hash;
 
-        Metric::profile(t, Event::TimingMakeMove);
+        Metric::profile(t, Timing::TimingMakeMove);
 
 
         debug_assert!(

@@ -1,5 +1,5 @@
 use crate::eval::endgame::EndGame;
-use crate::search::node::Node;
+use crate::search::node::{Node, Timing};
 use crate::types::Ply;
 use crate::utils::Formatting;
 use static_init::dynamic;
@@ -11,10 +11,11 @@ use std::{fmt, iter};
 use strum::{EnumCount, IntoEnumIterator};
 use tabled::builder::Builder;
 use tabled::object::{Columns, Rows, Segment};
-use tabled::style::Border;
-use tabled::{Alignment, Modify, Rotate, Style};
+use tabled::style::{Border, BorderText};
+use tabled::{Alignment, Modify, Style};
 
 pub use crate::search::node::Event;
+use strum::EnumMessage;
 
 // #[derive()]
 // pub struct Histogram(HDRHist);
@@ -58,16 +59,13 @@ impl Default for ArrayCounter<{ EndGame::COUNT }, u64> {
     }
 }
 
-// impl Default for ArrayCounter<{ Event::COUNT }, u64> {
-//     fn default() -> Self {
-//         Self([0; Event::COUNT])
-//     }
-// }
+impl<T: Default + Copy> Default for ArrayCounter<{ Timing::COUNT }, T> {
+    fn default() -> Self {
+        Self([T::default(); Timing::COUNT])
+    }
+}
 
-impl<T> Default for ArrayCounter<{ Event::COUNT }, T>
-where
-    T: Default + Copy,
-{
+impl<T: Default + Copy> Default for ArrayCounter<{ Event::COUNT }, T> {
     fn default() -> Self {
         Self([T::default(); Event::COUNT])
     }
@@ -77,7 +75,7 @@ impl<const N: usize, T> AddAssign<&ArrayCounter<{ N }, T>> for ArrayCounter<{ N 
 where
     for<'a> T: AddAssign<&'a T>,
 {
-    fn add_assign(&mut self, rhs: &ArrayCounter<{ N }, T>) {
+    fn add_assign(&mut self, rhs: &Self) {
         for i in 0..self.0.len() {
             self.0[i] += &rhs.0[i];
         }
@@ -113,7 +111,7 @@ impl NodeCounter {
 }
 
 impl AddAssign<&NodeCounter> for NodeCounter {
-    fn add_assign(&mut self, rhs: &NodeCounter) {
+    fn add_assign(&mut self, rhs: &Self) {
         for i in 0..self.0.len() {
             self.0[i] += rhs.0[i];
             self.1[i] += rhs.1[i];
@@ -144,7 +142,7 @@ impl TimePlyCounter {
 }
 
 impl AddAssign<&TimePlyCounter> for TimePlyCounter {
-    fn add_assign(&mut self, rhs: &TimePlyCounter) {
+    fn add_assign(&mut self, rhs: &Self) {
         for i in 0..self.0.len() {
             self.0[i] += rhs.0[i];
         }
@@ -152,7 +150,7 @@ impl AddAssign<&TimePlyCounter> for TimePlyCounter {
 }
 
 #[derive(Default, Debug, Clone, Copy)]
-pub struct ProfilerCounter(Duration, u32);
+pub struct ProfilerCounter(Duration, u64);
 
 impl ProfilerCounter {
     pub fn record(&mut self, dur: Duration) {
@@ -161,7 +159,7 @@ impl ProfilerCounter {
     }
 
     pub fn average(&self) -> Duration {
-        self.0 / self.1
+        self.0 / self.1 as u32
     }
 
     pub fn total(&self) -> Duration {
@@ -170,7 +168,7 @@ impl ProfilerCounter {
 }
 
 impl AddAssign<&ProfilerCounter> for ProfilerCounter {
-    fn add_assign(&mut self, rhs: &ProfilerCounter) {
+    fn add_assign(&mut self, rhs: &Self) {
         self.0 += rhs.0;
         self.1 += rhs.1;
     }
@@ -180,86 +178,9 @@ impl AddAssign<&ProfilerCounter> for ProfilerCounter {
 pub struct Metrics {
     events: ArrayCounter<{ Event::len() }, u64>,
     nodes: ArrayCounter<{ Event::len() }, NodeCounter>,
-    profilers: ArrayCounter<{ Event::len() }, ProfilerCounter>,
+    profilers: ArrayCounter<{ Timing::COUNT }, ProfilerCounter>,
     durations: ArrayCounter<{ Event::len() }, TimePlyCounter>,
     endgame: ArrayCounter<{ EndGame::COUNT }, u64>,
-
-    // make_move: u64,
-    // move_gen: u64,
-    // hash_board: u64,
-    // hash_move: u64,
-    // eval: u64,
-    // iter_complete: u64,
-    // iter_timeout: u64,
-    // t_eval: TimePlyCounter,
-    // t_move_gen: TimePlyCounter,
-    // t_make_move: TimePlyCounter,
-    // timing_search_root: TimePlyCounter,
-    // t_sort_moves: TimePlyCounter,
-    // tt_collision: u64,
-    // tt_insert: u64,
-    // tt_update: u64,
-    // tt_pv_overwrite: u64,
-    // tt_illegal_move: u64,
-
-
-    // tt_hit: NodeCounter,
-    // tt_probe: NodeCounter,
-    // tt_store: NodeCounter,
-    // tt_cut: NodeCounter,
-    // tt_all: NodeCounter,
-    // tt_pv: NodeCounter,
-
-    // interior: NodeCounter,
-    // leaf: NodeCounter,
-    // qs_interior: NodeCounter,
-    // qs_leaf: NodeCounter,
-
-    // moves: NodeCounter,
-
-    // eval_from_tt: NodeCounter,
-    // eval_calc: NodeCounter,
-    // eval_eg_draw: NodeCounter,
-    // eval_eg_win: NodeCounter,
-    // eval_eg_maybe: NodeCounter,
-    // eval_see: NodeCounter,
-
-    // node_cut: NodeCounter,
-    // node_all: NodeCounter,
-    // node_pv: NodeCounter,
-    // node_zw: NodeCounter,
-
-    // // cut_move: NodeHistogram,
-    // null_move_prune_attempt: NodeCounter,
-    // null_move_prune: NodeCounter,
-    // razor_prune_d2: NodeCounter,
-    // razor_prune_d3: NodeCounter,
-    // razor_prune_fail: NodeCounter,
-    // standing_pat_prune: NodeCounter,
-    // futility_prune: NodeCounter,
-    // late_move_prune: NodeCounter,
-
-    // late_move_reduce: NodeCounter,
-    // check_extend: NodeCounter,
-
-    // search_fwfd: NodeCounter,
-    // search_zwrd: NodeCounter,
-    // search_zwfd: NodeCounter,
-    // re_search_zwfd: NodeCounter,
-    // re_search_fwfd: NodeCounter,
-    // aspiration_none: NodeCounter,
-    // aspiration_1: NodeCounter,
-    // aspiration_2: NodeCounter,
-    // aspiration_3: NodeCounter,
-    // aspiration_n: NodeCounter,
-
-    // iter_est: TimePlyCounter,
-    // iter_act: TimePlyCounter,
-    // iter_allotted: TimePlyCounter,
-    // counters: Vec<u64>,
-    // node_counters: Vec<(Vec<u64>, Vec<u64>)>, // ply and depth
-    // histograms: Vec<Histogram>,
-    // timings: Vec<Duration>,
 }
 
 impl Metrics {
@@ -267,154 +188,12 @@ impl Metrics {
         Self::default()
     }
 
-    #[allow(dead_code)]
-    fn record_metric(&mut self, m: &Metric) {
-        use Metric::*;
-        // unwraps safe as None only used if configured off, in which case this logioc not called
-        // match *m {
-            // MakeMove => self.make_move += 1,
-            // MoveGen => self.move_gen += 1,
-            // HashBoard => self.hash_board += 1,
-            // HashMove => self.hash_move += 1,
-            // Eval => self.eval += 1,
-            // IterationComplete => self.iter_complete += 1,
-            // IterationTimeout => self.iter_timeout += 1,
-            // LegalMoves(i) => self.make_move += i as u64,
-            // EndGame(eg) => self.endgame.0[eg as usize] += 1,
-
-            // TimingEval(start) => self.t_eval.add(0, start.unwrap().elapsed()),
-            // TimingMoveGen(start) => self.t_move_gen.add(0, start.unwrap().elapsed()),
-            // TimingMakeMove(start) => self.t_make_move.add(0, start.unwrap().elapsed()),
-            // TimingSearchRoot(start) => self.timing_search_root.add(0, start.unwrap().elapsed()),
-            // TimingSortMoves(start) => self.t_sort_moves.add(0, start.unwrap().elapsed()),
-
-            // TtHit(ref n) => self.tt_hit.incr(n),
-            // TtProbe(ref n) => self.tt_probe.incr(n),
-            // TtStore(ref n) => self.tt_store.incr(n),
-            // TtCut(ref n) => self.tt_cut.incr(n),
-            // TtAll(ref n) => self.tt_all.incr(n),
-            // TtPv(ref n) => self.tt_pv.incr(n),
-
-            // Interior(ref n) => self.interior.incr(n),
-            // Leaf(ref n) => self.leaf.incr(n),
-            // QsInterior(ref n) => self.qs_interior.incr(n),
-            // QsLeaf(ref n) => self.qs_leaf.incr(n),
-
-            // Moves(ref n) => self.moves.incr(n),
-
-            // EvalFromTt(ref n) => self.eval_from_tt.incr(n),
-            // EvalCalc(ref n) => self.eval_calc.incr(n),
-            // EvalEgDraw(ref n) => self.eval_eg_draw.incr(n),
-            // EvalEgKnown(ref n) => self.eval_eg_win.incr(n),
-            // EvalEgMaybe(ref n) => self.eval_eg_maybe.incr(n),
-            // EvalSee(ref n) => self.eval_see.incr(n),
-
-            // NodeCut(ref n) => self.node_cut.incr(n),
-            // NodeAll(ref n) => self.node_all.incr(n),
-            // NodePv(ref n) => self.node_pv.incr(n),
-            // NodeZw(ref n) => self.node_zw.incr(n),
-
-            // RazorPruneD2(ref n) => self.razor_prune_d2.incr(n),
-            // RazorPruneD3(ref n) => self.razor_prune_d3.incr(n),
-            // RazorPruneFail(ref n) => self.razor_prune_fail.incr(n),
-            // StandingPatPrune(ref n) => self.standing_pat_prune.incr(n),
-            // FutilityPrune(ref n) => self.futility_prune.incr(n),
-            // LateMovePrune(ref n) => self.late_move_prune.incr(n),
-
-            // LateMoveReduce(ref n) => self.late_move_reduce.incr(n),
-            // CheckExtend(ref n) => self.check_extend.incr(n),
-
-            // SearchFwFd(ref n) => self.search_fwfd.incr(n),
-            // SearchZwRd(ref n) => self.search_zwrd.incr(n),
-            // SearchZwFd(ref n) => self.search_zwfd.incr(n),
-            // ReSearchZwFd(ref n) => self.re_search_zwfd.incr(n),
-            // ReSearchFwFd(ref n) => self.re_search_fwfd.incr(n),
-
-            // IterEst(ply, dur) => self.iter_est.set(ply, dur),
-            // IterActual(ply, start) => self.iter_act.set(ply, start.unwrap().elapsed()),
-            // IterAllotted(ply, dur) => self.iter_allotted.set(ply, dur),
-        // }
-    }
-
-    pub fn add(&mut self, o: &Metrics) {
+    pub fn add(&mut self, o: &Self) {
         self.events += &o.events;
         self.nodes += &o.nodes;
         self.profilers += &o.profilers;
         self.durations += &o.durations;
         self.endgame += &o.endgame;
-
-        // self.make_move += o.make_move;
-        // self.move_gen += o.move_gen;
-        // self.hash_board += o.hash_board;
-        // self.hash_move += o.hash_move;
-        // self.eval += o.eval;
-        // self.iter_complete += o.iter_complete;
-        // self.iter_timeout += o.iter_timeout;
-        // self.make_move += o.make_move;
-        // self.t_eval += &o.t_eval;
-        // self.t_move_gen += &o.t_move_gen;
-        // self.t_make_move += &o.t_make_move;
-        // self.timing_search_root += &o.timing_search_root;
-        // self.t_sort_moves += &o.t_sort_moves;
-        // self.tt_collision += &o.tt_collision;
-        // self.tt_insert += &o.tt_insert;
-        // self.tt_update += &o.tt_update;
-        // self.tt_pv_overwrite += &o.tt_pv_overwrite;
-        // self.tt_illegal_move += &o.tt_illegal_move;
-
-
-        // self.tt_hit += &o.tt_hit;
-        // self.tt_probe += &o.tt_probe;
-        // self.tt_store += &o.tt_store;
-        // self.tt_cut += &o.tt_cut;
-        // self.tt_all += &o.tt_all;
-        // self.tt_pv += &o.tt_pv;
-
-        // self.interior += &o.interior;
-        // self.leaf += &o.leaf;
-        // self.qs_interior += &o.qs_interior;
-        // self.qs_leaf += &o.qs_leaf;
-
-        // self.moves += &o.moves;
-
-        // self.eval_from_tt += &o.eval_from_tt;
-        // self.eval_calc += &o.eval_calc;
-        // self.eval_eg_draw += &o.eval_eg_draw;
-        // self.eval_eg_win += &o.eval_eg_win;
-        // self.eval_eg_maybe += &o.eval_eg_maybe;
-        // self.eval_see += &o.eval_see;
-
-        // self.node_cut += &o.node_cut;
-        // self.node_all += &o.node_all;
-        // self.node_pv += &o.node_pv;
-        // self.node_zw += &o.node_zw;
-
-        // self.null_move_prune_attempt += &o.null_move_prune_attempt;
-        // self.null_move_prune += &o.null_move_prune;
-        // self.razor_prune_d2 += &o.razor_prune_d2;
-        // self.razor_prune_d3 += &o.razor_prune_d3;
-        // self.razor_prune_fail += &o.razor_prune_fail;
-        // self.standing_pat_prune += &o.standing_pat_prune;
-        // self.futility_prune += &o.futility_prune;
-        // self.late_move_prune += &o.late_move_prune;
-
-        // self.late_move_reduce += &o.late_move_reduce;
-        // self.check_extend += &o.check_extend;
-
-        // self.search_fwfd += &o.search_fwfd;
-        // self.search_zwrd += &o.search_zwrd;
-        // self.search_zwfd += &o.search_zwfd;
-        // self.re_search_zwfd += &o.re_search_zwfd;
-        // self.re_search_fwfd += &o.re_search_fwfd;
-        // self.aspiration_none += &o.aspiration_none;
-        // self.aspiration_1 += &o.aspiration_1;
-        // self.aspiration_2 += &o.aspiration_2;
-        // self.aspiration_3 += &o.aspiration_3;
-        // self.aspiration_n += &o.aspiration_n;
-
-        // self.iter_est += &o.iter_est;
-        // self.iter_act += &o.iter_act;
-        // self.iter_allotted += &o.iter_allotted;
     }
 
     pub fn to_string() -> String {
@@ -435,86 +214,7 @@ impl Metrics {
 }
 
 #[must_use]
-pub enum Metric {
-    MakeMove,
-    MoveGen,
-    HashBoard,
-    HashMove,
-    Eval,
-    IterationTimeout,
-    IterationComplete,
-    LegalMoves(u32),
-    EndGame(EndGame),
-    TimingEval(Option<Instant>),
-    TimingMoveGen(Option<Instant>),
-    TimingMakeMove(Option<Instant>),
-    TimingSearchRoot(Option<Instant>),
-    TimingSortMoves(Option<Instant>),
-
-    Interior(Node),
-    Leaf(Node),
-    QsInterior(Node),
-    QsLeaf(Node),
-
-    NodeCut(Node),
-    NodeAll(Node),
-    NodePv(Node),
-    NodeZw(Node),
-
-    Moves(Node),
-
-    TtHit(Node),
-    TtProbe(Node),
-    TtStore(Node),
-    TtCut(Node),
-    TtAll(Node),
-    TtPv(Node),
-
-    EvalFromTt(Node),
-    EvalCalc(Node),
-    EvalEgDraw(Node),
-    EvalEgKnown(Node),
-    EvalEgMaybe(Node),
-    EvalSee(Node),
-
-    RazorPruneD2(Node),
-    RazorPruneD3(Node),
-    RazorPruneFail(Node),
-    StandingPatPrune(Node),
-    FutilityPrune(Node),
-    LateMovePrune(Node),
-
-    LateMoveReduce(Node),
-    CheckExtend(Node),
-
-    SearchFwFd(Node),
-    SearchZwRd(Node),
-    SearchZwFd(Node),
-    ReSearchZwFd(Node),
-    ReSearchFwFd(Node),
-
-    IterEst(Ply, Duration),
-    IterActual(Ply, Option<Instant>),
-    IterAllotted(Ply, Duration),
-}
-
-impl Metrics {
-    fn rows(&self, events: &[Event]) -> Vec<Vec<String>> {
-        let mut rows = Vec::new();
-        for e in events {
-            let mut v = vec![];
-            v.push(e.name().to_string());
-            let total = iter::once(-1);
-            let iters = 32_isize;
-
-            for ply in (0..iters).chain(total) {
-                v.push(self.nodes.0[e.index()].for_ply(ply).to_string())
-            }
-            rows.push(v);
-        }
-        rows
-    }
-}
+pub enum Metric {}
 
 impl fmt::Display for Metrics {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -525,7 +225,7 @@ impl fmt::Display for Metrics {
                 String::new()
             }
         }
-        fn d(dur: Duration) -> String {
+        fn _d(dur: Duration) -> String {
             if dur > Duration::ZERO {
                 Formatting::duration(dur)
             } else {
@@ -546,33 +246,11 @@ impl fmt::Display for Metrics {
 
         let style = Style::github_markdown().bottom('-');
         // let tot = self.timing_search_root.for_ply(0);
-        let mut b = Builder::default()
-            .set_columns(["Counter", "Value"]);
-            // .add_record(["Eval", &i(self.eval)])
-            // .add_record(["Time SearchRoot", &d(tot)])
-            // .add_record(["Timing SearchRoot", &pd(tot, tot)])
-            // .add_record(["Timing Eval", &pd(self.t_eval.for_ply(0), tot)])
-            // .add_record(["Timing MoveGen", &pd(self.t_move_gen.for_ply(0), tot)])
-            // .add_record(["Timing MakeMove", &pd(self.t_make_move.for_ply(0), tot)])
-            // .add_record([
-            //     "Timing SortMoves-MM",
-            //     &pd(
-            //         self.t_sort_moves
-            //             .for_ply(0)
-            //             .saturating_sub(self.t_make_move.for_ply(0)),
-            //         tot,
-            //     ),
-            // ]);
+        let mut b = Builder::default().set_columns(["Counter", "Value"]);
 
         for e in Event::iter() {
             if self.events.0[e.index()] != 0 {
                 b = b.add_record([e.name(), &i(self.events.0[e.index()])]);
-            }
-        }
-        for e in Event::iter() {
-            let tot = self.profilers.0[Event::TimingSearchRoot.index()].total();
-            if self.profilers.0[e.index()].1 != 0 {
-                b = b.add_record([e.name(), &pd(self.profilers.0[e.index()].total(), tot)]);
             }
         }
         for eg in EndGame::iter() {
@@ -580,7 +258,7 @@ impl fmt::Display for Metrics {
         }
         let mut t = b
             .build()
-            .with(style)
+            .with(style.clone())
             .with(Modify::new(Rows::single(0)).with(Border::default().top('-')))
             .with(Modify::new(Segment::all()).with(Alignment::right()))
             .with(Modify::new(Columns::single(0)).with(Alignment::left()));
@@ -590,7 +268,31 @@ impl fmt::Display for Metrics {
         t.fmt(f)?;
         writeln!(f)?;
 
-        let mut b = Builder::default();
+        let mut b = Builder::default().set_columns(["Counter", "Time %", "Count"]);
+        for e in Timing::iter() {
+            let tot = self.profilers.0[Timing::TimingSearchRoot as usize].total();
+            if self.profilers.0[e.index()].1 != 0 {
+                b = b.add_record([
+                    e.as_ref(),
+                    &pd(self.profilers.0[e.index()].total(), tot),
+                    &i(self.profilers.0[e.index()].1),
+                ]);
+            }
+        }
+        let t = b
+            .build()
+            .with(style.clone())
+            .with(Modify::new(Rows::single(0)).with(Border::default().top('-')))
+            .with(Modify::new(Segment::all()).with(Alignment::right()))
+            .with(Modify::new(Columns::single(0)).with(Alignment::left()));
+        t.fmt(f)?;
+        writeln!(f)?;
+
+        let mut cols = vec!["Counter \\ Ply".into()];
+        cols.extend((0..32_u32).map(|u| u.to_string()));
+        cols.push("Total".into());
+
+        let mut b = Builder::default().set_columns(cols);
         for e in Event::iter() {
             if self.nodes.0[e.index()].for_ply(-1) == 0 {
                 continue;
@@ -601,180 +303,34 @@ impl fmt::Display for Metrics {
             let iters = 32_isize;
 
             for ply in (0..iters).chain(total) {
-                v.push(self.nodes.0[e.index()].for_ply(ply).to_string())
+                v.push(i(self.nodes.0[e.index()].for_ply(ply)))
             }
             b = b.add_record(v);
-
         }
 
-        // for r in self
-        //     .rows(&[Event::EvalStatic, Event::NmpConsider])
-        //     .iter()
-        // {
-        //     b = b.add_record(r);
-        // }
-
-        // .set_columns([
-        //     "Ply",
-        //     // node 1
-        //     "Interior",
-        //     Event::NodeTotal.name(),
-        //     "Leaf",
-        //     "QS Int",
-        //     "QS Leaf",
-        //     // node 2
-        //     "Cut",
-        //     "All",
-        //     "Pv",
-        //     "ZW",
-        //     // TT
-        //     Event::TtProbeNode.name(),
-        //     Event::TtHitNode.name(),
-        //     Event::TtStoreNode.name(),
-        //     "TT cut",
-        //     "TT all",
-        //     "TT pv",
-        //     "Moves",
-        //     // evals
-        //     "Eval tt",
-        //     "Eval calc",
-        //     "Eg draw",
-        //     "Eg w/l",
-        //     "Eg maybe",
-        //     "Eval see",
-        //     // pruning/etx
-        //     Event::NmpConsider.name(),
-        //     Event::NmpDeclineDepth.name(),
-        //     Event::NmpDeclineBetaNumeric.name(),
-        //     Event::NmpDeclineEvalNumeric.name(),
-        //     Event::NmpDeclineEvalMargin.name(),
-        //     Event::NmpDeclineMaterial.name(),
-        //     Event::NmpDeclineInCheck.name(),
-        //     Event::NmpDeclineSuccessive.name(),
-        //     Event::NmpDeclineRecursive.name(),
-        //     Event::NmpAttempt.name(),
-        //     Event::NmpSuccess.name(),
-        //     Event::NmpFail.name(),
-        //     "Razor D2",
-        //     "Razor D3",
-        //     "Razor Fail",
-        //     "Pat",
-        //     "Fut",
-        //     Event::LmpSuccess.name(),
-        //     "LMR",
-        //     "Chk Ext",
-        //     // search and re-search
-        //     "Search FwFd",
-        //     "Search ZwRd",
-        //     "Search ZwFd",
-        //     "Re-search ZwFd",
-        //     "Re-search FwFd",
-        //     // Per iter
-        //     "Iter Est",
-        //     "Iter Act",
-        //     "Iter Alloc",
-        //     Event::AspirationNone.name(),
-        //     Event::Aspiration1.name(),
-        //     Event::Aspiration2.name(),
-        //     Event::Aspiration3.name(),
-        //     Event::AspirationN.name(),
-        // ]);
-
-        // let total = iter::once(-1);
-        // for y in (0..iters).chain(total) {
-        //     let _d = iters - 1 - y;
-        //     b = b.add_record([
-        //         if y >= 0 {
-        //             y.to_string()
-        //         } else {
-        //             "Total".to_string()
-        //         },
-        //         // node 1
-        //         i(self.interior.for_ply(y)),
-        //         i(self.nodes.0[Event::NodeTotal.index()].for_ply(y)),
-        //         i(self.leaf.for_ply(y)),
-        //         i(self.qs_interior.for_ply(y)),
-        //         i(self.qs_leaf.for_ply(y)),
-        //         // node 2
-        //         i(self.node_cut.for_ply(y)),
-        //         i(self.node_all.for_ply(y)),
-        //         i(self.node_pv.for_ply(y)),
-        //         i(self.node_zw.for_ply(y)),
-        //         // TT
-        //         i(self.nodes.0[Event::TtProbeNode.index()].for_ply(y)),
-        //         i(self.nodes.0[Event::TtHitNode.index()].for_ply(y)),
-        //         i(self.nodes.0[Event::TtStoreNode.index()].for_ply(y)),
-        //         i(self.tt_cut.for_ply(y)),
-        //         i(self.tt_all.for_ply(y)),
-        //         i(self.tt_pv.for_ply(y)),
-        //         i(self.moves.for_ply(y)),
-        //         // eval
-        //         i(self.eval_from_tt.for_ply(y)),
-        //         i(self.eval_calc.for_ply(y)),
-        //         i(self.eval_eg_draw.for_ply(y)),
-        //         i(self.eval_eg_win.for_ply(y)),
-        //         i(self.eval_eg_maybe.for_ply(y)),
-        //         i(self.eval_see.for_ply(y)),
-        //         // prune+extend
-        //         i(self.nodes.0[Event::NmpConsider.index()].for_ply(y)),
-        //         i(self.nodes.0[Event::NmpDeclineDepth.index()].for_ply(y)),
-        //         i(self.nodes.0[Event::NmpDeclineBetaNumeric.index()].for_ply(y)),
-        //         i(self.nodes.0[Event::NmpDeclineEvalNumeric.index()].for_ply(y)),
-        //         i(self.nodes.0[Event::NmpDeclineEvalMargin.index()].for_ply(y)),
-        //         i(self.nodes.0[Event::NmpDeclineMaterial.index()].for_ply(y)),
-        //         i(self.nodes.0[Event::NmpDeclineInCheck.index()].for_ply(y)),
-        //         i(self.nodes.0[Event::NmpDeclineSuccessive.index()].for_ply(y)),
-        //         i(self.nodes.0[Event::NmpDeclineRecursive.index()].for_ply(y)),
-        //         i(self.nodes.0[Event::NmpAttempt.index()].for_ply(y)),
-        //         i(self.nodes.0[Event::NmpSuccess.index()].for_ply(y)),
-        //         i(self.nodes.0[Event::NmpFail.index()].for_ply(y)),
-        //         i(self.razor_prune_d2.for_ply(y)),
-        //         i(self.razor_prune_d3.for_ply(y)),
-        //         i(self.razor_prune_fail.for_ply(y)),
-        //         i(self.standing_pat_prune.for_ply(y)),
-        //         i(self.futility_prune.for_ply(y)),
-        //         i(self.nodes.0[Event::LmpSuccess.index()].for_ply(y)),
-        //         i(self.late_move_reduce.for_ply(y)),
-        //         i(self.check_extend.for_ply(y)),
-        //         // search and re-search
-        //         i(self.search_fwfd.for_ply(y)),
-        //         i(self.search_zwrd.for_ply(y)),
-        //         i(self.search_zwfd.for_ply(y)),
-        //         i(self.re_search_zwfd.for_ply(y)),
-        //         i(self.re_search_fwfd.for_ply(y)),
-        //         // per iter
-        //         d(self.iter_est.for_ply(y)),
-        //         d(self.iter_act.for_ply(y)),
-        //         d(self.iter_allotted.for_ply(y)),
-        //         i(self.nodes.0[Event::AspirationNone.index()].for_ply(y)),
-        //         i(self.nodes.0[Event::Aspiration1.index()].for_ply(y)),
-        //         i(self.nodes.0[Event::Aspiration2.index()].for_ply(y)),
-        //         i(self.nodes.0[Event::Aspiration3.index()].for_ply(y)),
-        //         i(self.nodes.0[Event::AspirationN.index()].for_ply(y)),
-        //         // d as u64,
-        //         // self.interior.1[d],
-        //         // self.leaf.1[d],
-        //         // self.qs_interior.1[d],
-        //         // self.qs_leaf.1[d],
-        //     ]);
-        // }
         let style = Style::github_markdown().bottom('-');
-        b.build()
+        let mut tab = b
+            .build()
             .with(Modify::new(Segment::all()).with(Alignment::right()))
             // .with(Modify::new(Rows::single(0)).with(MaxWidth::wrapping(5).keep_words()))
             // .with(Rotate::Left)
             // .with(Rotate::Top)
             .with(style)
             .with(Modify::new(Rows::single(0)).with(Border::default().top('-')))
-            .with(Modify::new(Columns::single(0)).with(Alignment::left()))
-            // nodes
-            .with(Modify::new(Rows::single(9)).with(Border::default().top('-')))
-            // TT
-            .with(Modify::new(Rows::single(15)).with(Border::default().top('-')))
-            .with(Modify::new(Rows::single(22)).with(Border::default().top('-')))
-            .with(Modify::new(Rows::single(32)).with(Border::default().top('-')))
-            .with(Modify::new(Rows::single(37)).with(Border::default().top('-')))
-            .fmt(f)?;
+            .with(Modify::new(Columns::single(0)).with(Alignment::left()));
+        // nodes
+
+        for (i, e) in Event::iter()
+            .filter(|e| self.nodes.0[e.index()].for_ply(-1) != 0)
+            .enumerate()
+        {
+            if let Some(msg) = e.get_message() {
+                tab = tab
+                    .with(Modify::new(Rows::single(i + 1)).with(Border::default().top('-')))
+                    .with(BorderText::new(i + 1, "-----".to_string() + msg));
+            }
+        }
+        tab.fmt(f)?;
         Ok(())
     }
 }
@@ -783,13 +339,6 @@ impl fmt::Display for Metrics {
 static EPOCH: Instant = Instant::now();
 
 impl Metric {
-    #[allow(unused_variables)]
-    #[inline]
-    pub fn record(&self) {
-        #[cfg(not(feature = "remove_metrics"))]
-        METRICS_THREAD.with(|s| s.borrow_mut().record_metric(self));
-    }
-
     #[allow(unused_variables)]
     #[inline]
     pub fn inc_endgame(eg: EndGame) {
@@ -813,10 +362,10 @@ impl Metric {
 
     #[allow(unused_variables)]
     #[inline]
-    pub fn profile(start: Option<Instant>, e: Event) {
+    pub fn profile(start: Option<Instant>, e: Timing) {
         #[cfg(not(feature = "remove_metrics"))]
         METRICS_THREAD
-            .with(|s| s.borrow_mut().profilers.0[e.index()].record(start.unwrap().elapsed()));
+            .with(|s| s.borrow_mut().profilers.0[e as usize].record(start.unwrap().elapsed()));
     }
 
     #[allow(unused_variables)]

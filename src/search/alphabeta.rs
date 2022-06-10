@@ -7,7 +7,7 @@ use crate::infra::metric::Metric;
 use crate::mv::Move;
 use crate::pvtable::PvTable;
 use crate::search::algo::Algo;
-use crate::search::node::Node;
+use crate::search::node::{Node, Timing};
 use crate::types::{Ply, MAX_PLY};
 
 use super::node::Event;
@@ -69,7 +69,7 @@ impl Algo {
         }
 
         self.stats.record_iteration(self.max_depth, category, pv);
-        Metric::profile(t, Event::TimingSearchRoot);
+        Metric::profile(t, Timing::TimingSearchRoot);
         (score, category)
     }
 

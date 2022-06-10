@@ -1,35 +1,19 @@
 use crate::eval::score::Score;
 // use crate::board::Board;
-use serde::{Deserialize, Serialize};
 
 use crate::types::Ply;
 
 use std::convert::AsRef;
 use std::fmt;
 use strum::{EnumCount, IntoEnumIterator};
-use strum_macros::AsRefStr;
+use strum_macros::{AsRefStr, EnumMessage};
 use strum_macros::{Display, EnumCount, EnumIter};
 
 #[derive(
-    Copy,
-    Clone,
-    Debug,
-    PartialEq,
-    Eq,
-    Serialize,
-    Display,
-    Deserialize,
-    EnumCount,
-    EnumIter,
-    AsRefStr,
+    Copy, Clone, Debug, PartialEq, Eq, Display, EnumCount, EnumMessage, EnumIter, AsRefStr,
 )]
 #[strum(serialize_all = "title_case")]
-pub enum Event {
-    Unknown,
-    UserCancelled,
-    SearchTimeUp,
-    SearchComplete,
-
+pub enum Timing {
     TimingSearchRoot,
     TimingEval,
     TimingMoveGen,
@@ -38,28 +22,61 @@ pub enum Event {
     TimingPseudoLegalAndLegal,
     TimingTtProbe,
     TimingTtStore,
+}
+
+impl Timing {
+    #[inline]
+    pub fn index(&self) -> usize {
+        *self as usize
+    }
+}
+#[derive(
+    Copy, Clone, Debug, PartialEq, Eq, Display, EnumCount, EnumMessage, EnumIter, AsRefStr,
+)]
+#[strum(serialize_all = "title_case")]
+pub enum Event {
+    Unknown,
+    UserCancelled,
+    SearchTimeUp,
+    SearchComplete,
 
     MakeMove,
     MoveGen,
     CalcHashBoard,
     CalcHashMove,
-    EvalSee,
-    EvalStatic,
-    EndgameDraw,
-    EndgameKnown,
-    EndgameWinOrDraw,
 
     HashProbe,
     HashHit,
     PercentHashHit,
 
-    MoveCount,
+    #[strum(message = "Node Counts")]
+    NodeTotal,
+    NodeQs,
+    NodeInterior,
+    NodeInteriorAll,
+    NodeZw,
+    NodeInteriorCut,
+    NodeInteriorPv,
 
+    EvalSee,
+    EvalStatic,
+
+    EndgameDraw,
+    EndgameKnown,
+    EndgameWinOrDraw,
     RecogImmediateDraw,
     RecogMaybeWin,
     RecogHelpmateOrDraw,
-    DerivedRecog,
 
+    #[strum(message = "Move ordering")]
+    MoveSortCounterMove,
+    MoveCount,
+
+    DerivedRecog,
+    DerivedPrunedInterior,
+    PercentPrunedInterior,
+
+    #[strum(message = "Prune node: Razoring")]
     PruneRazor,
     RazorD2Success,
     RazorD3Success,
@@ -67,6 +84,7 @@ pub enum Event {
 
     StandingPatSuccess,
 
+    #[strum(message = "Prune node: Null Move")]
     NmpConsider,
     NmpDeclineDepth,
     NmpDeclineBetaNumeric,
@@ -80,30 +98,33 @@ pub enum Event {
     NmpSuccess,
     NmpFail,
 
-    DerivedPrunedInterior,
-    PercentPrunedInterior,
+    #[strum(message = "Prune move: Futility Prune")]
+    FutilityConsider,
+    FutilityDeclineExt,
+    FutilityDeclineFirstMove,
+    FutilityDeclineMateBound,
+    FutilityDeclineGivesCheck,
+    FutilityDeclineInCheck,
+    FutilityDeclineDiscoverer,
+    FutilityDeclinePawnMaxRank,
+    FutilityDeclineMaxDepth,
+    FutilityDeclineFwWindow,
+    FutilityFail,
+    FutilityD0,
+    FutilityD1,
+    FutilityD2,
+    FutilityD3,
 
-    PruneFutilityConsider,
-    PruneFutilityDeclineExt,
-    PruneFutilityDeclineFirstMove,
-    PruneFutilityDeclineMateBound,
-    PruneFutilityDeclineGivesCheck,
-    PruneFutilityDeclineInCheck,
-    PruneFutilityDeclineDiscoverer,
-    PruneFutilityDeclinePawnMaxRank,
-    PruneFutilityDeclineMaxDepth,
-    PruneFutilityDeclineFwWindow,
-    PruneFutilityFail,
-    PruneFutilityD0,
-    PruneFutilityD1,
-    PruneFutilityD2,
-    PruneFutilityD3,
-
+    #[strum(message = "Prune move: Late Move Prune")]
     LmpSuccess,
+
+    #[strum(message = "Late Move Reduce")]
     LateMoveReduce,
+
     Pvs,
     Extension,
 
+    #[strum(message = "Aspiration")]
     AspirationNone,
     Aspiration1,
     Aspiration2,
@@ -114,6 +135,13 @@ pub enum Event {
     DerivedAspiration,
     PercentAspiration1,
 
+    #[strum(message = "PVS")]
+    SearchFwFd,
+    SearchZwRd,
+    SearchZwFd,
+    ReSearchZwFd,
+    ReSearchFwFd,
+
     NodeLeafQuietEval,
     NodeLeafDraw,
     NodeLeafWinLoss,
@@ -121,14 +149,7 @@ pub enum Event {
     DerivedLeaf,
     PercentBranchingFactor,
 
-    NodeTotal,
-    NodeQs,
-    NodeInterior,
-    NodeInteriorAll,
-    NodeZw,
-    NodeInteriorCut,
-    NodeInteriorPv,
-
+    #[strum(message = "Hash table")]
     TtHitNode,
     TtHitEvalNode,
     TtProbeNode,
@@ -142,16 +163,6 @@ pub enum Event {
     TtCut,
     TtAll,
     TtPv,
-
-    SearchFwFd,
-    SearchZwRd,
-    SearchZwFd,
-    ReSearchZwFd,
-    ReSearchFwFd,
-
-
-
-    MoveSortCounterMove,
 
     Moves,
     MoveStart,
@@ -176,7 +187,6 @@ pub enum Event {
     DurationIterEst,
     DurationIterAllotted,
     DurationIterActual,
-
 
     Clock,
     NodeTypeQuiesce,

@@ -77,6 +77,7 @@ impl NullMovePruning {
 
         Metric::incr_node(n, Event::NmpConsider);
 
+        // definitely no point doing nmp at depth 0 as we do stabding pat in QS anyway
         if n.depth < self.min_depth {
             Metric::incr_node(n, Event::NmpDeclineDepth);
             return false;
@@ -174,7 +175,7 @@ impl Algo {
         self.current_variation.push(mv);
         // self.explainer.start(n, &self.current_variation);
         Metric::incr_node(n, Event::NmpAttempt);
-        let reduced_depth = n.depth - r - 1;
+        let reduced_depth = std::cmp::max(n.depth - r - 1, 0);
 
         // we increment ply so that history tables etc work correctly
         let child_score = -self

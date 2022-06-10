@@ -127,6 +127,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a4a45a46ab1f2412e53d3a0ade76ffad2025804294569aae387231a0cd6e0899"
 
 [[package]]
+name = "bytecount"
+version = "0.6.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c676a478f63e9fa2dd5368a42f28bba0d6c560b775f38583c8bbaa7fcd67c9c"
+
+[[package]]
 name = "cargo-lock"
 version = "7.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -814,7 +820,7 @@ dependencies = [
 
 [[package]]
 name = "odonata"
-version = "0.5.65"
+version = "0.5.66"
 dependencies = [
  "anyhow",
  "arrayvec",
@@ -870,9 +876,9 @@ checksum = "0ab1bc2a289d34bd04a330323ac98a1b4bc82c9d9fcb1e66b63caa84da26b575"
 [[package]]
 name = "papergrid"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "608b6444acf7f5ea39e8bd06dd6037e34a4b5ddfb29ae840edad49ea798e9e79"
+source = "git+https://github.com/zhiburt/tabled?branch=master#8118737fb61387a32c1c47bbbe6ec6d8212aea26"
 dependencies = [
+ "bytecount",
  "unicode-width",
 ]
 
@@ -1345,8 +1351,7 @@ dependencies = [
 [[package]]
 name = "tabled"
 version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2407502760ccfd538f2fb1f843dd87b6daf1a17848d57bc5a25617e408ef4c7a"
+source = "git+https://github.com/zhiburt/tabled?branch=master#8118737fb61387a32c1c47bbbe6ec6d8212aea26"
 dependencies = [
  "papergrid",
  "tabled_derive",
@@ -1355,8 +1360,7 @@ dependencies = [
 [[package]]
 name = "tabled_derive"
 version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "278ea3921cee8c5a69e0542998a089f7a14fa43c9c4e4f9951295da89bd0c943"
+source = "git+https://github.com/zhiburt/tabled?branch=master#8118737fb61387a32c1c47bbbe6ec6d8212aea26"
 dependencies = [
  "proc-macro2",
  "quote",

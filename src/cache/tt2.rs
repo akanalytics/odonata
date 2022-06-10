@@ -10,7 +10,7 @@ use crate::eval::score::Score;
 use crate::infra::component::Component;
 use crate::infra::metric::Metric;
 use crate::mv::Move;
-use crate::search::node::Event;
+use crate::search::node::{Event, Timing};
 use crate::types::{Hash, Piece, Ply};
 use crate::variation::Variation;
 use serde::{Deserialize, Serialize};
@@ -568,7 +568,7 @@ impl TranspositionTable2 {
         } else {
             // self.fail_priority.increment();
         }
-        Metric::profile(t, Event::TimingTtStore);
+        Metric::profile(t, Timing::TimingTtStore);
 
     }
 
@@ -606,7 +606,7 @@ impl TranspositionTable2 {
                 tt_node.bm
             );
         }
-        Metric::profile(t, Event::TimingTtProbe);
+        Metric::profile(t, Timing::TimingTtProbe);
         tt_node
     }
 

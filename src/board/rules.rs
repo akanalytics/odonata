@@ -7,7 +7,7 @@ use crate::board::Board;
 use crate::infra::metric::Metric;
 use crate::movelist::MoveList;
 use crate::mv::Move;
-use crate::search::node::Event;
+use crate::search::node::{Timing};
 use crate::types::Piece;
 
 pub struct Rules;
@@ -110,7 +110,7 @@ impl Rules {
             Self::king_legal(b, moves);
             Self::castles(b, moves);
         }
-        Metric::profile(t, Event::TimingMoveGen);
+        Metric::profile(t, Timing::TimingMoveGen);
 
     }
 
