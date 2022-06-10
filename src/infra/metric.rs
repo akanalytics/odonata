@@ -1,5 +1,5 @@
 use crate::eval::endgame::EndGame;
-use crate::search::node::{Node, Timing};
+use crate::search::node::{Counter, Node, Timing};
 use crate::types::Ply;
 use crate::utils::Formatting;
 use static_init::dynamic;
@@ -56,6 +56,12 @@ pub struct ArrayCounter<const N: usize, T>([T; N]);
 impl Default for ArrayCounter<{ EndGame::COUNT }, u64> {
     fn default() -> Self {
         Self([0; EndGame::COUNT])
+    }
+}
+
+impl Default for ArrayCounter<{ Counter::COUNT }, u64> {
+    fn default() -> Self {
+        Self([0; Counter::COUNT])
     }
 }
 
@@ -176,7 +182,7 @@ impl AddAssign<&ProfilerCounter> for ProfilerCounter {
 
 #[derive(Default, Debug, Clone)]
 pub struct Metrics {
-    events: ArrayCounter<{ Event::len() }, u64>,
+    counters: ArrayCounter<{ Counter::COUNT }, u64>,
     nodes: ArrayCounter<{ Event::len() }, NodeCounter>,
     profilers: ArrayCounter<{ Timing::COUNT }, ProfilerCounter>,
     durations: ArrayCounter<{ Event::len() }, TimePlyCounter>,
@@ -189,7 +195,7 @@ impl Metrics {
     }
 
     pub fn add(&mut self, o: &Self) {
-        self.events += &o.events;
+        self.counters += &o.counters;
         self.nodes += &o.nodes;
         self.profilers += &o.profilers;
         self.durations += &o.durations;
@@ -245,14 +251,33 @@ impl fmt::Display for Metrics {
         }
 
         let style = Style::github_markdown().bottom('-');
-        // let tot = self.timing_search_root.for_ply(0);
+
+        //
+        // Counter
+        //
         let mut b = Builder::default().set_columns(["Counter", "Value"]);
 
-        for e in Event::iter() {
-            if self.events.0[e.index()] != 0 {
-                b = b.add_record([e.name(), &i(self.events.0[e.index()])]);
+        for e in Counter::iter() {
+            if self.counters.0[e.index()] != 0 {
+                b = b.add_record([e.as_ref(), &i(self.counters.0[e.index()])]);
             }
         }
+        let mut t = b
+            .build()
+            .with(style.clone())
+            .with(Modify::new(Rows::single(0)).with(Border::default().top('-')))
+            .with(Modify::new(Segment::all()).with(Alignment::right()))
+            .with(Modify::new(Columns::single(0)).with(Alignment::left()));
+        for i in (0..t.shape().0).step_by(5) {
+            t = t.with(Modify::new(Rows::single(i)).with(Border::default().top('-')));
+        }
+        t.fmt(f)?;
+        writeln!(f)?;
+
+        //
+        // Endgame
+        //
+        let mut b = Builder::default().set_columns(["Counter", "Value"]);
         for eg in EndGame::iter() {
             b = b.add_record([&eg.to_string(), &i(self.endgame.0[eg as usize])]);
         }
@@ -348,9 +373,9 @@ impl Metric {
 
     #[allow(unused_variables)]
     #[inline]
-    pub fn incr(e: Event) {
+    pub fn incr(e: Counter) {
         #[cfg(not(feature = "remove_metrics"))]
-        METRICS_THREAD.with(|s| s.borrow_mut().events.0[e.index()] += 1);
+        METRICS_THREAD.with(|s| s.borrow_mut().counters.0[e.index()] += 1);
     }
 
     #[allow(unused_variables)]
@@ -395,7 +420,7 @@ thread_local! {
 }
 
 #[dynamic(lazy)]
-static mut METRICS_TOTAL: Box<Metrics> = Box::new(Metrics::new());
+pub static mut METRICS_TOTAL: Box<Metrics> = Box::new(Metrics::new());
 
 #[dynamic(lazy)]
 static mut METRICS_LAST_ITER: Box<Metrics> = Box::new(Metrics::new());
@@ -407,8 +432,8 @@ mod tests {
 
     #[test]
     fn test_metrics() {
-        Metric::incr(Event::MakeMove);
-        Metric::incr(Event::MakeMove);
+        Metric::incr(Counter::MakeMove);
+        Metric::incr(Counter::MakeMove);
         Metric::incr_node(
             &Node {
                 ply: 1,

@@ -47,6 +47,7 @@ pub struct Algo {
     pub analyse_mode: bool, // tries to find full PV etc
     pub qsearch_disabled: bool,
     pub debug: bool,
+    pub show_metrics_on_exit: bool, 
 
     pub ids: IterativeDeepening,
     pub eval: Eval,

@@ -74,7 +74,7 @@ pub struct ExplainScore {
     pub outcome: Outcome,
     pub fen: String,
     pub phase: Phase,
-    vec: Vec<(Feature, i32, i32, i32)>,
+    vec: Vec<(Feature, i32, i32, i32)>, // w-val, b-val, feature-index
     weights: Option<WeightsVector>,
     bitboards: HashMap<Feature, Bitboard>,
 }
@@ -101,6 +101,7 @@ impl ScorerBase for ExplainScore {
     #[inline]
     fn accumulate(&mut self, i: Feature, w_value: i32, b_value: i32) {
         if w_value != 0 || b_value != 0 {
+            // see if weve seen this feature before
             if let Some(index) = self.vec.iter().position(|e| e.0 == i) {
                 let old_w = self.vec[index].1;
                 let old_b = self.vec[index].2;
@@ -112,10 +113,9 @@ impl ScorerBase for ExplainScore {
     }
     #[inline]
     fn accum(&mut self, c: Color, i: Feature, value: i32) {
-        if c == Color::White {
-            self.accumulate(i, value, 0);
-        } else {
-            self.accumulate(i, 0, value);
+        match c {
+            Color::White => self.accumulate(i, value, 0),
+            Color::Black => self.accumulate(i, 0, value),
         }
     }
     #[inline]
@@ -142,8 +142,19 @@ impl ExplainScore {
         self.vec
             .iter()
             .find(|&e| i == e.0)
-            .map(|e| (e.1 - e.2) as i32)
+            .map(|e| (e.1 - e.2))
             .unwrap_or_default()
+    }
+
+    pub fn score_for_category(&self, s: &str) -> f32 {
+        match self.weights {
+            None => 0.0,
+            Some(ref wv) => self
+                .vec
+                .iter()
+                .filter(|&e| s == &e.0.category())
+                .map(|e| (e.1 - e.2) * wv.weights[e.0.index()]).sum::<Weight>().interpolate(self.phase)
+        }
     }
 
     pub fn discard_balanced_features(&mut self) {
@@ -226,16 +237,20 @@ impl Display for ExplainScore {
             };
             let mut row = vec![];
             row.push(i.name());
+
             row.push(int(*w));
             row.push(fp((*w * wt).s()));
             row.push(fp((*w * wt).e()));
-            row.push(fp((*w * wt).interpolate(self.phase)));
+
+            row.push(fp(((w - b) * wt).interpolate(self.phase)));
             tot += (w - b) * wt;
             row.push(fp((*w * wt).s() - (*b * wt).s()));
-            row.push(fp((*w * wt).s() - (*b * wt).e()));
+            row.push(fp((*w * wt).e() - (*b * wt).e()));
+
             row.push(int(*b));
             row.push(fp((*b * wt).s()));
             row.push(fp((*b * wt).e()));
+
             row.push(wt.to_string());
             builder = builder.add_record(row);
             if let Some((j, _, _, _)) = iter.peek() {

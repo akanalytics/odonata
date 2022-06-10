@@ -5,6 +5,7 @@ use crate::catalog::Catalog;
 use crate::comms::json_rpc::JsonRpc;
 use crate::eval::eval::Eval;
 use crate::infra::component::{Component, State};
+use crate::infra::metric::METRICS_TOTAL;
 use crate::infra::version::Version;
 use crate::movelist::MoveList;
 use crate::mv::Move;
@@ -271,12 +272,15 @@ impl Uci {
 
     fn uci_quit(&mut self) -> Result<()> {
         Self::print_info_string("quitting...");
-        self.engine.lock().unwrap().search_stop();
+        let mut eng = self.engine.lock().unwrap();
+        eng.search_stop();
         Self::print_info_string("stopped...");
         self.running = false;
         // info!("{}", self.algo);
         // warn!("{}", EndGame::counts_to_string());
-        // warn!("{}", GLOBAL_COUNTS);
+        if eng.algo.show_metrics_on_exit {
+            warn!("{}", *METRICS_TOTAL.read());
+        }
         Ok(())
     }
 

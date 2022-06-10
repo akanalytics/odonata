@@ -619,7 +619,7 @@ impl Calc {
         // general
         let mut partially_trapped_pieces = 0;
         let mut fully_trapped_pieces = 0;
-        let mut attacks_on_opponent_king_area = 0;
+        let mut attacks_near_king = 0;
         let mut move_squares = 0;
         let mut non_pawn_defended_moves = 0;
         let mut center_attacks = 0;
@@ -746,7 +746,7 @@ impl Calc {
             all_attacks |= (our_raw_attacks & them) - us;
 
             if k.any() {
-                attacks_on_opponent_king_area +=
+                attacks_near_king +=
                     (our_raw_attacks & bb.within_chebyshev_distance_inclusive(ksq, 1)).popcount();
             }
         }
@@ -838,7 +838,7 @@ impl Calc {
         s.accum(
             c,
             Attr::AttacksNearKing.as_feature(),
-            attacks_on_opponent_king_area,
+            attacks_near_king,
         );
         s.accum(c, Attr::CenterAttacks.as_feature(), center_attacks);
         s.accum(c, Attr::UndefendedSq.as_feature(), move_squares);

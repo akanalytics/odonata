@@ -246,7 +246,7 @@ pub struct Eval {
     pub mb: MaterialBalance,
     pub discrete: HashMap<String, Weight>,
 
-    #[serde(skip)]
+#[serde(skip)]
     pub feature_weights: Vec<Weight>,
 }
 
@@ -302,6 +302,7 @@ impl fmt::Display for Eval {
         writeln!(f, "[phaser]\n{}", self.phaser)?;
         writeln!(f, "phasing          : {}", self.phasing)?;
         writeln!(f, "mob.phase.disable: {}", self.mobility_phase_disable)?;
+        writeln!(f, "wts: {} {} {}", self.feature_weights[0], self.feature_weights[1], self.feature_weights[2], )?;
         Ok(())
     }
 }
@@ -313,7 +314,7 @@ impl Eval {
     }
 
     pub fn populate_feature_weights(&mut self) {
-        info!("Populating feature weights");
+        warn!("Populating feature weights");
         self.feature_weights.resize(Feature::len(), Weight::zero());
         for f in &Feature::all() {
             self.feature_weights[f.index()] = match f {
@@ -396,6 +397,7 @@ impl Eval {
 
     pub fn w_eval_explain(&self, b: &Board) -> ExplainScore {
         let mut scorer = ExplainScore::new(b.phase(&self.phaser), b.to_fen());
+        scorer.set_weights(self.weights_vector());
         Calc::score(&mut scorer, b, self, &self.phaser);
         scorer
     }

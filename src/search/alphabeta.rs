@@ -7,7 +7,7 @@ use crate::infra::metric::Metric;
 use crate::mv::Move;
 use crate::pvtable::PvTable;
 use crate::search::algo::Algo;
-use crate::search::node::{Node, Timing};
+use crate::search::node::{Node, Timing, Counter};
 use crate::types::{Ply, MAX_PLY};
 
 use super::node::Event;
@@ -36,9 +36,9 @@ impl Algo {
         };
 
         if self.controller.is_cancelled() {
-            Metric::incr(Event::SearchTimeUp);
+            Metric::incr(Counter::SearchTimeUp);
         } else {
-            Metric::incr(Event::SearchComplete);
+            Metric::incr(Counter::SearchComplete);
         }
 
         self.stats.set_score(score, category);

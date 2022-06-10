@@ -30,13 +30,12 @@ impl Timing {
         *self as usize
     }
 }
+
 #[derive(
     Copy, Clone, Debug, PartialEq, Eq, Display, EnumCount, EnumMessage, EnumIter, AsRefStr,
 )]
 #[strum(serialize_all = "title_case")]
-pub enum Event {
-    Unknown,
-    UserCancelled,
+pub enum Counter {
     SearchTimeUp,
     SearchComplete,
 
@@ -44,6 +43,32 @@ pub enum Event {
     MoveGen,
     CalcHashBoard,
     CalcHashMove,
+    MatchedCounterMove,
+    TtCollision,
+    TtInsert,
+    TtUpdate,
+    TtPvOverwrite,
+    TtIllegalMove,
+
+}
+
+impl Counter {
+    #[inline]
+    pub fn index(&self) -> usize {
+        *self as usize
+    }
+}
+
+
+#[derive(
+    Copy, Clone, Debug, PartialEq, Eq, Display, EnumCount, EnumMessage, EnumIter, AsRefStr,
+)]
+#[strum(serialize_all = "title_case")]
+pub enum Event {
+    Unknown,
+    SearchTimeUp,
+    SearchComplete,
+    UserCancelled,
 
     HashProbe,
     HashHit,
@@ -154,11 +179,6 @@ pub enum Event {
     TtHitEvalNode,
     TtProbeNode,
     TtStoreNode,
-    TtCollision,
-    TtInsert,
-    TtUpdate,
-    TtPvOverwrite,
-    TtIllegalMove,
 
     TtCut,
     TtAll,
