@@ -828,7 +828,7 @@ see_prune_discovered_check = false
 even_exchange_max_ply = 2
 max_ply = 16
 delta_prune = true
-delta_prune_margin = 2000
+delta_prune_margin = 1000
 checks_max_ply = 2
 recapture_score = 0
 

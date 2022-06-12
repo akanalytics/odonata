@@ -91,9 +91,11 @@ pub enum Event {
     #[strum(message = "QS")]
     NodeQs,
     NodeQsInterior,
+    NodeQsZw,
     NodeQsCut,
     NodeQsPv,
     NodeQsAll,
+    NodeQsAllVeryLow,    
     NodeQsInCheck,
     QsStandingPatPrune,
     QsMoveCount,

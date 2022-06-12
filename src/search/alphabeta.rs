@@ -15,9 +15,11 @@ use super::node::Event;
 pub struct AlphaBeta;
 
 impl Algo {
-    pub fn alphabeta_root_search(&mut self, board: &mut Board, node: &mut Node) -> (Score, Event) {
+    pub fn alphabeta_root_search(&mut self, board: &mut Board, n: &mut Node) -> (Score, Event) {
+        debug_assert!(n.alpha < n.beta);
+
         let t = Metric::timing_start();
-        let depth = node.depth;
+        let depth = n.depth;
         self.max_depth = depth;
         self.stats.depth = depth;
         self.pv_table = PvTable::new(MAX_PLY as usize);
@@ -25,10 +27,10 @@ impl Algo {
 
         let (score, category) = match self.alphabeta(
             board,
-            node.ply,
+            n.ply,
             self.max_depth,
-            node.alpha,
-            node.beta,
+            n.alpha,
+            n.beta,
             Move::NULL_MOVE,
         ) {
             Ok((score, category)) => (score, category),
@@ -54,15 +56,15 @@ impl Algo {
         };
         self.progress.set_pv(category, &pv);
         self.progress.score = score;
-        if node.alpha == -Score::INFINITY
-            && node.beta == Score::INFINITY
+        if n.alpha == -Score::INFINITY
+            && n.beta == Score::INFINITY
             && category != Event::SearchTimeUp
             && category != Event::UserCancelled
         {
             debug_assert!(
                 score.is_finite(),
                 "Score was inf: node {:?} cat {} \n{}",
-                node,
+                n,
                 category,
                 self
             );
@@ -107,6 +109,9 @@ impl Algo {
         beta: Score,
         last_move: Move,
     ) -> Result<(Score, Event), Event> {
+        debug_assert!(alpha < beta);
+        debug_assert!(ply >= 0);
+
         self.clear_move(ply);
         self.report_progress();
 
@@ -272,16 +277,35 @@ impl Algo {
                 // }
             } else {
                 if lmr > 0 {
-                    Metric::incr_node(&n, Event::SearchZwRd);
-                    (s, ev) = self.alphabeta(
-                        &mut child_board,
-                        ply + 1,
-                        depth + ext - lmr - 1,
-                        -n.alpha + Score::from_cp(-1),
-                        -n.alpha,
+                    ev = Event::FutilityD0;
+                    if let Some(est) = self.can_futility_prune_move(
                         mv,
-                    )?;
-                    s = -s;
+                        count,
+                        move_type,
+                        b,
+                        &child_board,
+                        eval,
+                        &Node {
+                            ply: ply + 1,
+                            depth: depth + ext - lmr - 1,
+                            alpha: n.alpha,
+                            beta: n.alpha + Score::from_cp(1),
+                        },
+                        ext,
+                    ) {
+                        s = est;
+                    } else {
+                        Metric::incr_node(&n, Event::SearchZwRd);
+                        (s, ev) = self.alphabeta(
+                            &mut child_board,
+                            ply + 1,
+                            depth + ext - lmr - 1,
+                            -n.alpha + Score::from_cp(-1),
+                            -n.alpha,
+                            mv,
+                        )?;
+                        s = -s;
+                    }
                 } else {
                     Metric::incr_node(&n, Event::SearchZwFd);
                     (s, ev) = self.alphabeta(

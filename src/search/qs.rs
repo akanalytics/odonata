@@ -65,8 +65,14 @@ impl Algo {
     // we should not return a mate score, as only captures have been considered,
     // and a mate score might cut a genuine mate score elsewhere
     pub fn qs(&mut self, mut n: Node, bd: &mut Board, lm: Option<Move>) -> Score {
+        debug_assert!(n.alpha < n.beta, "{n}");
+        debug_assert!(n.ply >= 0);
+        debug_assert!(n.depth <= 0);
 
         Metric::incr_node(&n, Event::NodeQs);
+        if n.is_zw() {
+            Metric::incr_node(&n, Event::NodeQsZw);
+        }
 
         if !self.qs.enabled {
             return bd.static_eval(&self.eval);
@@ -90,6 +96,7 @@ impl Algo {
         } else {
             Metric::incr_node(&n, Event::NodeQsInCheck);
         }
+
         let moves = bd.legal_moves();
         let capture_only = |mv: &&Move| in_check || mv.is_capture();
         let incl_promo = |mv: &&Move| in_check || mv.is_capture() || mv.is_promo();
@@ -142,9 +149,7 @@ impl Algo {
                     let score = bd.eval_move_see(&self.eval, mv);
                     Metric::profile(t, Timing::TimingQsSee);
 
-                    if score == 0.cp() && n.ply <= self.qs.even_exchange_max_ply
-                        || score < 0.cp()
-                    {
+                    if score == 0.cp() && n.ply <= self.qs.even_exchange_max_ply || score < 0.cp() {
                         Metric::incr_node(&n, Event::QsSeePruneMove);
                         continue;
                     }
@@ -152,6 +157,18 @@ impl Algo {
             }
 
             let mut child = bd.make_move(&mv);
+            // if bs.is_some() {
+            //     let s = -self.qs(
+            //         Node {
+            //             ply: n.ply + 1,
+            //             depth: n.depth - 1,
+            //             alpha: -n.beta,
+            //             beta: -n.alpha,
+            //         },
+            //         &mut child,
+            //         Some(mv),
+            //     );    
+            // }
             let s = -self.qs(
                 Node {
                     ply: n.ply + 1,
@@ -166,7 +183,7 @@ impl Algo {
             if bs.is_none() || s > bs.unwrap() {
                 bs = Some(s);
             }
-            if s > n.beta {
+            if s >= n.beta {
                 Self::trace(n, s, mv, "mv is cut");
                 Metric::incr_node(&n, Event::NodeQsCut);
                 return s.clamp_score();
@@ -180,10 +197,13 @@ impl Algo {
             }
         }
 
-        if bs >= Some(n.alpha) {
-            Metric::incr_node(&n, Event::NodeQsPv);
-        } else {
+        if bs < Some(n.alpha) {
             Metric::incr_node(&n, Event::NodeQsAll);
+            if bs < Some(n.alpha - 200.cp()) && n.is_zw() {
+                Metric::incr_node(&n, Event::NodeQsAllVeryLow);
+            }
+        } else {
+            Metric::incr_node(&n, Event::NodeQsPv);
         }
         bs.unwrap_or(n.alpha).clamp_score()
     }
