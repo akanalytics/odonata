@@ -7,7 +7,7 @@ use crate::infra::metric::Metric;
 use crate::mv::Move;
 use crate::pvtable::PvTable;
 use crate::search::algo::Algo;
-use crate::search::node::{Node, Timing, Counter};
+use crate::search::node::{Counter, Node, Timing};
 use crate::types::{Ply, MAX_PLY};
 
 use super::node::Event;
@@ -127,16 +127,17 @@ impl Algo {
         // self.results.set_seldepth(&n);
 
         if n.is_qs() {
-            return Ok((self.qs(n, b, Some(last_move)), Event::NodeQs));
+            Metric::incr_node(&n, Event::NodeLeafQs);
+            let t = Metric::timing_start();
+            // QS starts from ply=0
+            let s = self.qs(Node { ply: 0, ..n }, b, Some(last_move));
+            Metric::profile(t, Timing::TimingQs);
+            return Ok((s, Event::NodeLeafQs));
         }
 
-        if n.is_qs() {
-            Metric::incr_node(&n, Event::NodeQs);
-        } else {
-            Metric::incr_node(&n, Event::NodeTotal);
-            if n.is_zw() {
-                Metric::incr_node(&n, Event::NodeZw);
-            }
+        Metric::incr_node(&n, Event::NodeTotal);
+        if n.is_zw() {
+            Metric::incr_node(&n, Event::NodeZw);
         }
 
         let mut score = -Score::INFINITY;
@@ -388,7 +389,12 @@ impl Algo {
             if s > n.alpha {
                 n.alpha = s;
                 nt = NodeType::ExactPv;
-                debug_assert!(b.is_pseudo_legal_move(&bm.unwrap()), "bm {} on board {}", bm.unwrap(), b);
+                debug_assert!(
+                    b.is_pseudo_legal_move(&bm.unwrap()),
+                    "bm {} on board {}",
+                    bm.unwrap(),
+                    b
+                );
                 self.history.raised_alpha(&n, b, &mv);
                 self.record_move(ply, &mv);
             } else {

@@ -53,29 +53,29 @@ use strum::EnumMessage;
 #[derive(Debug, Clone)]
 pub struct ArrayCounter<const N: usize, T>([T; N]);
 
-impl Default for ArrayCounter<{ EndGame::COUNT }, u64> {
+// impl Default for ArrayCounter<{ EndGame::COUNT }, u64> {
+//     fn default() -> Self {
+//         Self([0; EndGame::COUNT])
+//     }
+// }
+
+// impl Default for ArrayCounter<{ Counter::COUNT }, u64> {
+//     fn default() -> Self {
+//         Self([0; Counter::COUNT])
+//     }
+// }
+
+impl<const N:usize, T: Default + Copy> Default for ArrayCounter<{ N }, T> {
     fn default() -> Self {
-        Self([0; EndGame::COUNT])
+        Self([T::default(); N])
     }
 }
 
-impl Default for ArrayCounter<{ Counter::COUNT }, u64> {
-    fn default() -> Self {
-        Self([0; Counter::COUNT])
-    }
-}
-
-impl<T: Default + Copy> Default for ArrayCounter<{ Timing::COUNT }, T> {
-    fn default() -> Self {
-        Self([T::default(); Timing::COUNT])
-    }
-}
-
-impl<T: Default + Copy> Default for ArrayCounter<{ Event::COUNT }, T> {
-    fn default() -> Self {
-        Self([T::default(); Event::COUNT])
-    }
-}
+// impl<T: Default + Copy> Default for ArrayCounter<{ Event::COUNT }, T> {
+//     fn default() -> Self {
+//         Self([T::default(); Event::COUNT])
+//     }
+// }
 
 impl<const N: usize, T> AddAssign<&ArrayCounter<{ N }, T>> for ArrayCounter<{ N }, T>
 where
@@ -352,7 +352,7 @@ impl fmt::Display for Metrics {
             if let Some(msg) = e.get_message() {
                 tab = tab
                     .with(Modify::new(Rows::single(i + 1)).with(Border::default().top('-')))
-                    .with(BorderText::new(i + 1, "-----".to_string() + msg));
+                    .with(BorderText::new(i + 1, "-".repeat(20) + msg));
             }
         }
         tab.fmt(f)?;

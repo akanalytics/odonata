@@ -22,6 +22,11 @@ pub enum Timing {
     TimingPseudoLegalAndLegal,
     TimingTtProbe,
     TimingTtStore,
+
+    TimingQs,
+    TimingQsEval,
+    TimingQsSee,
+    TimingQsMoveSort,
 }
 
 impl Timing {
@@ -76,13 +81,27 @@ pub enum Event {
 
     #[strum(message = "Node Counts")]
     NodeTotal,
-    NodeQs,
+    NodeLeafQs,
     NodeInterior,
     NodeInteriorAll,
     NodeZw,
     NodeInteriorCut,
     NodeInteriorPv,
 
+    #[strum(message = "QS")]
+    NodeQs,
+    NodeQsInterior,
+    NodeQsCut,
+    NodeQsPv,
+    NodeQsAll,
+    NodeQsInCheck,
+    QsStandingPatPrune,
+    QsMoveCount,
+    QsSeePruneMove,
+    QsDeltaPruneMove,
+
+
+    #[strum(message = "Eval")]
     EvalSee,
     EvalStatic,
 
@@ -307,9 +326,4 @@ impl Node {
         self.depth <= 0
     }
 
-    /// first ply of QS is qs_ply=0, next is qs_ply=1 etc
-    #[inline]
-    pub fn qs_ply(&self) -> Ply {
-        -self.depth
-    }
 }

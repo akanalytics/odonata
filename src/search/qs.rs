@@ -1,6 +1,7 @@
 use crate::board::Board;
 use crate::eval::score::{Score, ToScore};
 use crate::infra::component::Component;
+use crate::infra::metric::Metric;
 use crate::movelist::MoveList;
 use crate::mv::Move;
 use crate::search::algo::Algo;
@@ -9,6 +10,8 @@ use crate::Piece;
 use crate::{board::makemove::MoveMaker, types::Ply};
 use serde::{Deserialize, Serialize};
 use std::fmt;
+
+use super::node::{Event, Timing};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -62,14 +65,21 @@ impl Algo {
     // we should not return a mate score, as only captures have been considered,
     // and a mate score might cut a genuine mate score elsewhere
     pub fn qs(&mut self, mut n: Node, bd: &mut Board, lm: Option<Move>) -> Score {
+
+        Metric::incr_node(&n, Event::NodeQs);
+
         if !self.qs.enabled {
             return bd.static_eval(&self.eval);
         }
 
+        let t = Metric::timing_start();
         let in_check = bd.is_in_check(bd.color_us());
         let pat = bd.static_eval(&self.eval);
+        Metric::profile(t, Timing::TimingQsEval);
+
         if !in_check {
             if pat >= n.beta {
+                Metric::incr_node(&n, Event::QsStandingPatPrune);
                 Self::trace(n, pat, Move::NULL_MOVE, "standing pat");
                 return pat.clamp_score();
             }
@@ -77,6 +87,8 @@ impl Algo {
                 Self::trace(n, pat, Move::NULL_MOVE, "alpha raised");
                 n.alpha = pat;
             }
+        } else {
+            Metric::incr_node(&n, Event::NodeQsInCheck);
         }
         let moves = bd.legal_moves();
         let capture_only = |mv: &&Move| in_check || mv.is_capture();
@@ -87,6 +99,9 @@ impl Algo {
                 || mv.is_promo() && Some(mv.promo_piece()) == self.qs.promo_piece
         };
 
+        Metric::incr_node(&n, Event::NodeQsInterior);
+
+        let t = Metric::timing_start();
         let mut moves: MoveList = match (self.qs.promos, self.qs.promo_piece) {
             (false, _) => moves.iter().filter(capture_only).cloned().collect(),
             (true, None) => moves.iter().filter(incl_promo).cloned().collect(),
@@ -106,25 +121,34 @@ impl Algo {
                 }
         });
         moves.reverse();
+        Metric::profile(t, Timing::TimingQsMoveSort);
+
         let mut bs = None;
         for &mv in moves.iter() {
-            if !in_check && mv.is_capture() {
-                if self.qs.see_prune_discovered_check || !bd.maybe_gives_discovered_check(mv) {
-                    let score = bd.eval_move_see(&self.eval, mv);
-                    if score == 0.cp() && n.qs_ply() <= self.qs.even_exchange_max_ply
-                        || score < 0.cp()
-                    {
-                        continue;
-                    }
-                }
-            }
+            Metric::incr_node(&n, Event::QsMoveCount);
             if !in_check
                 && pat.is_numeric()
                 && self.qs.delta_prune
                 && bd.eval_move_material(&self.eval, &mv) + self.qs.delta_prune_margin + pat
                     <= n.alpha
             {
+                Metric::incr_node(&n, Event::QsDeltaPruneMove);
                 continue;
+            }
+
+            if !in_check && mv.is_capture() {
+                if self.qs.see_prune_discovered_check || !bd.maybe_gives_discovered_check(mv) {
+                    let t = Metric::timing_start();
+                    let score = bd.eval_move_see(&self.eval, mv);
+                    Metric::profile(t, Timing::TimingQsSee);
+
+                    if score == 0.cp() && n.ply <= self.qs.even_exchange_max_ply
+                        || score < 0.cp()
+                    {
+                        Metric::incr_node(&n, Event::QsSeePruneMove);
+                        continue;
+                    }
+                }
             }
 
             let mut child = bd.make_move(&mv);
@@ -144,6 +168,7 @@ impl Algo {
             }
             if s > n.beta {
                 Self::trace(n, s, mv, "mv is cut");
+                Metric::incr_node(&n, Event::NodeQsCut);
                 return s.clamp_score();
             }
             if s > n.alpha {
@@ -155,6 +180,11 @@ impl Algo {
             }
         }
 
+        if bs >= Some(n.alpha) {
+            Metric::incr_node(&n, Event::NodeQsPv);
+        } else {
+            Metric::incr_node(&n, Event::NodeQsAll);
+        }
         bs.unwrap_or(n.alpha).clamp_score()
     }
 
