@@ -14,6 +14,7 @@ pub mod move_orderer;
 pub mod move_time_estimator;
 pub mod nmp;
 pub mod node;
+pub mod qs;
 pub mod pvs;
 pub mod razor;
 pub mod restrictions;

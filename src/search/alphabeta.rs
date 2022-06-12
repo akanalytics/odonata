@@ -76,7 +76,7 @@ impl Algo {
     #[inline]
     fn static_eval(&self, b: &Board, n: &Node) -> Score {
         Metric::incr_node(n, Event::EvalStatic);
-        let mut eval = b.eval_some(&self.eval);
+        let mut eval = b.static_eval(&self.eval);
 
         if self.tt.use_tt_for_eval {
             if let Some(entry) = self.tt.probe_by_board(b, n.ply, 1) {
@@ -125,6 +125,10 @@ impl Algo {
 
         self.clock.inc_nodes();
         // self.results.set_seldepth(&n);
+
+        if n.is_qs() {
+            return Ok((self.qs(n, b, Some(last_move)), Event::NodeQs));
+        }
 
         if n.is_qs() {
             Metric::incr_node(&n, Event::NodeQs);

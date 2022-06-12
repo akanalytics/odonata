@@ -446,7 +446,7 @@ impl OrderedMoveList {
 
                 if see < see_cutoff || see == see_cutoff && self.qsearch && self.n.depth < -1 {
                     if !(algo.move_orderer.discovered_checks
-                        && mv.from().is_in(b.discoverer(b.color_them())))
+                        && b.maybe_gives_discovered_check(mv))
                     {
                         self.bad_captures.push(mv);
                         self.index += 1;

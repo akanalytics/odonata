@@ -111,7 +111,7 @@ impl Algo {
 
         if !self.lmp.extensions && ext > 0
             || !self.lmp.in_check && before.is_in_check(before.color_us())
-            || !self.lmp.discoverer && mv.from().is_in(before.discoverer(before.color_them()))
+            || !self.lmp.discoverer && before.maybe_gives_discovered_check(mv)
             // gives check a more precise and costly version of discoverers
             || !self.lmp.gives_check && after.is_in_check(after.color_us())
         {

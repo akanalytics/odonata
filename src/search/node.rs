@@ -306,4 +306,10 @@ impl Node {
     pub fn is_qs(&self) -> bool {
         self.depth <= 0
     }
+
+    /// first ply of QS is qs_ply=0, next is qs_ply=1 etc
+    #[inline]
+    pub fn qs_ply(&self) -> Ply {
+        -self.depth
+    }
 }

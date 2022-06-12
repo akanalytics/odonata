@@ -170,7 +170,7 @@ impl fmt::Display for Color {
 }
 
 // #[repr(u8)]
-#[derive(Copy, Hash, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Hash, Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub enum Piece {
     None = 0,
     Pawn,

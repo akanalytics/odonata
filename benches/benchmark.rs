@@ -677,7 +677,7 @@ fn benchmark_eval(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|p| {
-                black_box(p.board().eval_some(black_box(ef)));
+                black_box(p.board().static_eval(black_box(ef)));
             });
             t.elapsed() / positions.len() as u32
         })
@@ -686,7 +686,7 @@ fn benchmark_eval(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|p| {
-                black_box(p.board().eval_some(black_box(ef)));
+                black_box(p.board().static_eval(black_box(ef)));
             });
             t.elapsed() / positions.len() as u32
         })
@@ -695,7 +695,7 @@ fn benchmark_eval(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|p| {
-                black_box(p.board().eval_some(black_box(ef)));
+                black_box(p.board().static_eval(black_box(ef)));
             });
             t.elapsed() / positions.len() as u32
         })
@@ -704,7 +704,7 @@ fn benchmark_eval(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|p| {
-                black_box(p.board().eval_some(black_box(ef)));
+                black_box(p.board().static_eval(black_box(ef)));
             });
             t.elapsed() / positions.len() as u32
         })

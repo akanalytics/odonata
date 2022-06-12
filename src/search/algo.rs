@@ -36,6 +36,7 @@ use std::fmt;
 use super::counter_move::CounterMove;
 use super::lmp::Lmp;
 use super::node::Event;
+use super::qs::Qs;
 use super::search_explainer::Explainer;
 use super::search_progress::SearchProgressMode;
 use super::search_results::SearchResults;
@@ -76,6 +77,7 @@ pub struct Algo {
     pub controller: TaskControl<SearchProgress>,
     pub lmp: Lmp,
     pub counter_move: CounterMove,
+    pub qs: Qs,
 
     #[serde(skip)]
     pub position: Position,
@@ -167,6 +169,7 @@ impl Component for Algo {
         self.controller.set_state(s);
         self.lmp.set_state(s);
         self.counter_move.set_state(s);
+        self.qs.set_state(s);
     }
 
     fn new_game(&mut self) {
@@ -214,6 +217,7 @@ impl fmt::Debug for Algo {
             .field("recognizer", &self.recognizer)
             .field("aspiration", &self.aspiration)
             .field("counter_move", &self.counter_move)
+            .field("qs", &self.qs)
             .field("clock", &self.clock)
             .field("results", &self.progress)
             .finish()
@@ -269,6 +273,7 @@ impl fmt::Display for Algo {
         writeln!(f, ".\n.\n[aspiration]\n{:}", self.aspiration)?;
         writeln!(f, ".\n.\n[clock]\n{:}", self.clock)?;
         writeln!(f, ".\n.\n[counter_move]\n{:}", self.counter_move)?;
+        writeln!(f, ".\n.\n[qs]\n{:}", self.qs)?;
 
         // writeln!(f, ".\n.\n[results]\n{}", self.progress)?;
         write!(f, "\n[results]\n{}", self.results)?;

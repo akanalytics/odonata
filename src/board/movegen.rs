@@ -51,6 +51,12 @@ impl Board {
         di
     }
 
+    pub fn maybe_gives_discovered_check(&self, mv: Move) -> bool {
+        debug_assert!(self.is_legal_move(&mv));
+        let their_king_color = self.color_them();
+        mv.from().is_in(self.discoverer(their_king_color))
+    }
+
     pub fn will_check_them(&self, mv: &Move) -> bool {
         debug_assert!(self.is_legal_move(mv));
         let their_king_color = self.color_them();

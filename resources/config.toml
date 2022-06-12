@@ -819,6 +819,18 @@ age_factor = 10
 min_depth = 4
 max_ply = 128
 
+[qs]
+enabled = true
+only_on_capture = false
+promos = true
+promo_piece = "Queen"
+see_prune_discovered_check = false
+even_exchange_max_ply = 2
+max_ply = 16
+delta_prune = true
+delta_prune_margin = 2000
+checks_max_ply = 2
+recapture_score = 0
 
 
 [history]

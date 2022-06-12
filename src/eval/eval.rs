@@ -454,7 +454,7 @@ impl Board {
     }
 
     #[inline]
-    pub fn eval_some(&self, eval: &Eval) -> Score {
+    pub fn static_eval(&self, eval: &Eval) -> Score {
         // profile_fn!(board.eval_some);
         // let _g = hprof::enter("eval some");
         self.pov_score(eval.w_eval_some(self))
