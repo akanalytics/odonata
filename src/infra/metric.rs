@@ -17,12 +17,11 @@ use tabled::{Alignment, Modify, Style};
 pub use crate::search::node::Event;
 use strum::EnumMessage;
 
-
 //
 // ArrayOf
 //
 #[derive(Debug, Clone)]
-pub struct ArrayOf<const N: usize, T>([T; N]);
+struct ArrayOf<const N: usize, T>([T; N]);
 
 impl<const N: usize, T: Default + Copy> Default for ArrayOf<{ N }, T> {
     fn default() -> Self {
@@ -45,26 +44,25 @@ impl<const N: usize> ArrayOf<N, u64>
 where
     [u64; N]: Default,
 {
-    pub fn incr(&mut self, i: usize) {
+    fn incr(&mut self, i: usize) {
         self.0[min(i, N - 1) as usize] += 1;
     }
 }
-
 
 //
 // Node counter
 //
 #[derive(Default, Debug, Clone, Copy)]
-pub struct NodeCounter([u64; 32], [u64; 32]);
+struct NodeCounter([u64; 32], [u64; 32]);
 
 impl NodeCounter {
-    pub fn incr(&mut self, n: &Node) {
+    fn incr(&mut self, n: &Node) {
         self.0[min(n.ply, 31) as usize] += 1;
         self.1[min(max(n.depth, 0), 31) as usize] += 1;
     }
 
     // -1 => total
-    pub fn for_ply(&self, y: isize) -> u64 {
+    fn for_ply(&self, y: isize) -> u64 {
         if y >= 0 {
             self.0[min(y, 31) as usize]
         } else {
@@ -86,19 +84,19 @@ impl AddAssign<&NodeCounter> for NodeCounter {
 // DurationCounter
 //
 #[derive(Default, Debug, Clone, Copy)]
-pub struct DurationCounter([Duration; 32]);
+struct DurationCounter([Duration; 32]);
 
 impl DurationCounter {
-    pub fn set(&mut self, y: Ply, dur: Duration) {
+    fn set(&mut self, y: Ply, dur: Duration) {
         self.0[min(y, 31) as usize] = dur;
     }
 
-    pub fn add(&mut self, y: Ply, dur: Duration) {
+    fn add(&mut self, y: Ply, dur: Duration) {
         self.0[min(y, 31) as usize] += dur;
     }
 
     // -1 => total
-    pub fn for_ply(&self, y: isize) -> Duration {
+    fn for_ply(&self, y: isize) -> Duration {
         if y >= 0 {
             self.0[min(y, 31) as usize]
         } else {
@@ -115,24 +113,23 @@ impl AddAssign<&DurationCounter> for DurationCounter {
     }
 }
 
-
 //
 // Profile Counter
 //
 #[derive(Default, Debug, Clone, Copy)]
-pub struct ProfilerCounter(Duration, u64);
+struct ProfilerCounter(Duration, u64);
 
 impl ProfilerCounter {
-    pub fn record(&mut self, dur: Duration) {
+    fn record(&mut self, dur: Duration) {
         self.0 += dur;
         self.1 += 1;
     }
 
-    pub fn average(&self) -> Duration {
+    fn average(&self) -> Duration {
         self.0 / self.1 as u32
     }
 
-    pub fn total(&self) -> Duration {
+    fn total(&self) -> Duration {
         self.0
     }
 }
@@ -154,7 +151,7 @@ pub struct Metrics {
 }
 
 impl Metrics {
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self::default()
     }
 
@@ -181,8 +178,57 @@ impl Metrics {
             **METRICS_LAST_ITER.write() = std::mem::take(&mut tm.borrow_mut());
         });
     }
-}
 
+    #[allow(unused_variables)]
+    #[inline]
+    pub fn inc_endgame(eg: EndGame) {
+        #[cfg(not(feature = "remove_metrics"))]
+        METRICS_THREAD.with(|s| s.borrow_mut().endgame.0[eg as usize] += 1);
+    }
+
+    #[allow(unused_variables)]
+    #[inline]
+    pub fn incr(e: Counter) {
+        #[cfg(not(feature = "remove_metrics"))]
+        METRICS_THREAD.with(|s| s.borrow_mut().counters.0[e.index()] += 1);
+    }
+
+    #[allow(unused_variables)]
+    #[inline]
+    pub fn incr_node(n: &Node, e: Event) {
+        #[cfg(not(feature = "remove_metrics"))]
+        METRICS_THREAD.with(|s| s.borrow_mut().nodes.0[e.index()].incr(n));
+    }
+
+    #[allow(unused_variables)]
+    #[inline]
+    pub fn profile(start: Option<Instant>, e: Timing) {
+        #[cfg(not(feature = "remove_metrics"))]
+        METRICS_THREAD
+            .with(|s| s.borrow_mut().profilers.0[e as usize].record(start.unwrap().elapsed()));
+    }
+
+    #[allow(unused_variables)]
+    #[inline]
+    pub fn elapsed(ply: Ply, dur: Duration, e: Event) {
+        #[cfg(not(feature = "remove_metrics"))]
+        METRICS_THREAD.with(|s| s.borrow_mut().durations.0[e.index()].set(ply, dur));
+    }
+
+    #[allow(unused_variables)]
+    #[inline]
+    pub fn timing_start() -> Option<Instant> {
+        // with metrics 39,302,656,127
+        // no metrics   36,113,825,832
+        // no metrics   35,733,319,464 but "instant=" #[dynamic] static EPOCH: Instant = Instant::now();
+        // no metrics   35,683,293,565 but with option instant
+        if cfg!(feature = "remove_metrics") {
+            None
+        } else {
+            Some(Instant::now())
+        }
+    }
+}
 
 impl fmt::Display for Metrics {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -319,58 +365,6 @@ impl fmt::Display for Metrics {
         }
         tab.fmt(f)?;
         Ok(())
-    }
-}
-
-impl Metrics {
-    #[allow(unused_variables)]
-    #[inline]
-    pub fn inc_endgame(eg: EndGame) {
-        #[cfg(not(feature = "remove_metrics"))]
-        METRICS_THREAD.with(|s| s.borrow_mut().endgame.0[eg as usize] += 1);
-    }
-
-    #[allow(unused_variables)]
-    #[inline]
-    pub fn incr(e: Counter) {
-        #[cfg(not(feature = "remove_metrics"))]
-        METRICS_THREAD.with(|s| s.borrow_mut().counters.0[e.index()] += 1);
-    }
-
-    #[allow(unused_variables)]
-    #[inline]
-    pub fn incr_node(n: &Node, e: Event) {
-        #[cfg(not(feature = "remove_metrics"))]
-        METRICS_THREAD.with(|s| s.borrow_mut().nodes.0[e.index()].incr(n));
-    }
-
-    #[allow(unused_variables)]
-    #[inline]
-    pub fn profile(start: Option<Instant>, e: Timing) {
-        #[cfg(not(feature = "remove_metrics"))]
-        METRICS_THREAD
-            .with(|s| s.borrow_mut().profilers.0[e as usize].record(start.unwrap().elapsed()));
-    }
-
-    #[allow(unused_variables)]
-    #[inline]
-    pub fn elapsed(ply: Ply, dur: Duration, e: Event) {
-        #[cfg(not(feature = "remove_metrics"))]
-        METRICS_THREAD.with(|s| s.borrow_mut().durations.0[e.index()].set(ply, dur));
-    }
-
-    #[allow(unused_variables)]
-    #[inline]
-    pub fn timing_start() -> Option<Instant> {
-        // with metrics 39,302,656,127
-        // no metrics   36,113,825,832
-        // no metrics   35,733,319,464 but "instant=" #[dynamic] static EPOCH: Instant = Instant::now();
-        // no metrics   35,683,293,565 but with option instant
-        if cfg!(feature = "remove_metrics") {
-            None
-        } else {
-            Some(Instant::now())
-        }
     }
 }
 
