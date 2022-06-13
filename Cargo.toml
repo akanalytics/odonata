@@ -1,6 +1,6 @@
 [package]
 name = "odonata"
-version = "0.5.67"
+version = "0.5.68"
 license = "GPL-3.0+"
 homepage = "https://github.com/akanalytics/odonata"
 authors = [
@@ -21,58 +21,43 @@ build = "build.rs"
 
 [dependencies]
 test-log = "0.2"
-clap = "2.33"
+clap = "3.1.18"
 bitflags = "1.2"
 arrayvec = "0.7"
 once_cell = "1.7"
 regex = "1.4"
 rand = "0.8"
 rand_chacha = "0.3"
-env_logger = "0.8"
+env_logger = "0.9"
 log = { version = "0.4", features = ["release_max_level_debug"] }
-# lazy_static = "1.4"
 crossbeam-utils = "0.8.8" #{ git = "https://github.com/crossbeam-rs/crossbeam" }
-# ctor = "0.1"
 static_init = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_with = "1.9"
 jsonrpc-core = "17.1"
 jsonrpc-derive = "17.1"
-strum = "0.21"
-strum_macros = "0.21"
+strum = "0.24"
+strum_macros = "0.24"
 format_num = "0.1"
 itertools = "0.10"
 rayon = "1.5"
 num-traits = "0.2"
-include_dir = "0.6"
+include_dir = "0.7.2"
 enumflags2 = { version = "0.7", features = ["serde"] }
-# tracing = "0.1"
-# tracing-subscriber = "0.2"                         # = { version="0.2", features=["fmt", "env-filter", "ansi", "registry"]}
-# tracing-log = "0.1"
 anyhow = { version = "1.0", features = ["backtrace"] }
 figment = { version = "0.10.6", features = ["env", "toml", "test"] }
 toml = "0.5.8"
-#tabwriter = "1.2.1"
-# rose_tree = "0.3.0"
 petgraph = "0.6.0"
 backtrace = "0.3.64"
-# firestorm = "0.5.0"
-fast-math = "0.1.1"
 thread_local = "1.1.4"
-# firestorm = { version="0.5", features=["enable_system_time"] }
-# firestorm = { version="0.5", features=["enable_cpu_time"] }
-# hprof = "0.1.3"
 # tabled = "0.7.0"
 tabled = { git = "https://github.com/zhiburt/tabled", branch = "master" }
-# hdrhist = "0.5.0"
 
 
 [dev-dependencies]
 criterion = "0.3"
-# criterion-linux-perf = "0.1" # https://crates.io/crates/criterion-linux-perf
 perf-event = "0.4.7"
-# firestorm = { version="0.5", features=["enable_system_time"] }
 
 
 [build-dependencies]

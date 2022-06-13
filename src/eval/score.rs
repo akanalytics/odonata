@@ -205,16 +205,6 @@ impl Score {
         Score { cp: -self.cp }
     }
 
-    // #[inline]
-    // pub fn negate(self) -> Score {
-    //     match self {
-    //         Self::MinusInf => Self::PlusInf,
-    //         -Self::INF+1.. -Self::INF+1+MAX_PLY => Self::white_win(self.ply_loss()),
-    //         i16::MAX-1-MAX_PLY .. i16::MAX-1=> Self::white_loss(self.ply_win()),,
-    //         Self::PlusInf => Self::MinusInf,
-    //         _ => Self::cp(-self.cp),
-    //     }
-    // }
 
     // https://www.chessprogramming.org/Pawn_Advantage,_Win_Percentage,_and_Elo
     #[inline]
@@ -222,15 +212,16 @@ impl Score {
         1.0 / (1.0 + 10_f32.powf(-centipawns / (k * 100.0)))
     }
 
-    #[inline]
-    pub fn win_probability_from_cp_and_k_fast(centipawns: f32, k: f32) -> f32 {
-        #[inline]
-        fn pow10(b: f32) -> f32 {
-            const LOG_OF_10: f32 = 2.302_585_125; // ln(10.0)
-            fast_math::exp(b * LOG_OF_10)
-        }
-        1.0 / (1.0 + pow10(-centipawns / (k * 100.0)))
-    }
+
+    // #[inline]
+    // pub fn win_probability_from_cp_and_k_fast(centipawns: f32, k: f32) -> f32 {
+    //     #[inline]
+    //     fn pow10(b: f32) -> f32 {
+    //         const LOG_OF_10: f32 = 2.302_585_125; // ln(10.0)
+    //         fast_math::exp(b * LOG_OF_10)
+    //     }
+    //     1.0 / (1.0 + pow10(-centipawns / (k * 100.0)))
+    // }
 
     #[inline]
     pub fn win_probability(self) -> f32 {
@@ -446,19 +437,19 @@ mod tests {
         }
         p.stop();
 
-        let mut p = Profiler::new("fast_exp".into());
-        p.start();
-        for cp in (-1000..1000).step_by(100) {
-            black_box(Score::win_probability_from_cp_and_k_fast(cp as f32, 4.0));
-        }
-        p.stop();
+        // let mut p = Profiler::new("fast_exp".into());
+        // p.start();
+        // for cp in (-1000..1000).step_by(100) {
+        //     black_box(Score::win_probability_from_cp_and_k_fast(cp as f32, 4.0));
+        // }
+        // p.stop();
 
-        for cp in (-1000..1000).step_by(100) {
-            let fast = Score::win_probability_from_cp_and_k_fast(cp as f32, 4.0);
-            let slow = Score::win_probability_from_cp_and_k(cp as f32, 4.0);
+        // for cp in (-1000..1000).step_by(100) {
+        //     let fast = Score::win_probability_from_cp_and_k_fast(cp as f32, 4.0);
+        //     let slow = Score::win_probability_from_cp_and_k(cp as f32, 4.0);
 
-            println!("{} {}", fast, slow);
-            assert!((fast - slow).abs() < 0.01);
-        }
+        //     println!("{} {}", fast, slow);
+        //     assert!((fast - slow).abs() < 0.01);
+        // }
     }
 }

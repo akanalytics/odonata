@@ -7,10 +7,10 @@ use crate::comms::bench::Bench;
 use crate::comms::uci::Uci;
 use crate::infra::version::Version;
 use crate::search::timecontrol::TimeControl;
-use clap::{App, Arg};
+use clap::{Command, Arg};
 
 pub fn main() -> Result<(), String> {
-    let matches = App::new(Version::NAME)
+    let matches = Command::new(Version::NAME)
         .version(Version::VERSION)
         .about(&*Version::small_splash())
         // .arg(
@@ -19,61 +19,61 @@ pub fn main() -> Result<(), String> {
         //         .multiple(true)
         //         .help("sets the level of logging verbosity: eg -vv or -vvv"),
         // )
-        .subcommand(App::new("bench").about("execute benchmarks for OpenBench"))
+        .subcommand(Command::new("bench").about("execute benchmarks for OpenBench"))
         .arg(
-            Arg::with_name("config")
-                .short("c")
+            Arg::new("config")
+                .short('c')
                 .long("config")
                 .value_name("FILE")
                 .help("specifies a custom config file")
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("uci")
+            Arg::new("uci")
                 .help("show uci settings and exit")
-                .short("u")
+                .short('u')
                 .long("uci"),
         )
         .arg(
-            Arg::with_name("strict")
+            Arg::new("strict")
                 .help("illegal uci commands and settings are fatal - useful for cutechess-cli")
-                .short("s")
+                .short('s')
                 .long("strict"),
         )
         .arg(
-            Arg::with_name("perft")
+            Arg::new("perft")
                 .help("runs perft from standard chess opening position")
                 .long("perft")
                 .value_name("depth")
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("profile")
+            Arg::new("profile")
                 .help("runs code to assist with profiling")
                 .long("profile"),
         )
         .arg(
-            Arg::with_name("threads")
+            Arg::new("threads")
                 .help("sets the number of threads to use")
                 .long("threads")
                 .value_name("n")
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("perft_cat")
+            Arg::new("perft_cat")
                 .help("runs perft with category breakdown from standard chess opening position")
                 .long("perft_cat")
                 .value_name("depth")
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("search")
+            Arg::new("search")
                 .help(
                     "analyse a series of test positions with using a given depth, nodes, st or tc",
                 )
                 .long("search")
                 .value_name("time control")
-                .default_value("nodes=100000") // "st=0.300"
+                .default_missing_value("nodes=100000") // "st=0.300"
                 .takes_value(true),
         )
         .get_matches();

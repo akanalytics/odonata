@@ -239,7 +239,7 @@ impl fmt::Display for Metrics {
                 String::new()
             }
         }
-        fn _d(dur: Duration) -> String {
+        fn d(dur: Duration) -> String {
             if dur > Duration::ZERO {
                 Formatting::duration(dur)
             } else {
@@ -301,7 +301,10 @@ impl fmt::Display for Metrics {
         t.fmt(f)?;
         writeln!(f)?;
 
-        let mut b = Builder::default().set_columns(["Counter", "Time %", "Count"]);
+        //
+        //Profilers
+        //
+        let mut b = Builder::default().set_columns(["Counter", "Time %", "Count", "Average", "Total"]);
         for e in Timing::iter() {
             let tot = self.profilers.0[Timing::TimingSearchRoot as usize].total();
             if self.profilers.0[e.index()].1 != 0 {
@@ -309,6 +312,8 @@ impl fmt::Display for Metrics {
                     e.as_ref(),
                     &pd(self.profilers.0[e.index()].total(), tot),
                     &i(self.profilers.0[e.index()].1),
+                    &d(self.profilers.0[e.index()].average()),
+                    &d(self.profilers.0[e.index()].total()),
                 ]);
             }
         }

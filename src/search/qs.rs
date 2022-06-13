@@ -203,7 +203,7 @@ impl Algo {
 
         if bs < Some(n.alpha) {
             Metrics::incr_node(&n, Event::NodeQsAll);
-            if bs < Some(n.alpha - 200.cp()) && n.is_zw() {
+            if n.alpha.is_numeric() && bs < Some(n.alpha - 200.cp()) {
                 Metrics::incr_node(&n, Event::NodeQsAllVeryLow);
             }
         } else {
