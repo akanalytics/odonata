@@ -1,7 +1,7 @@
 use crate::board::Board;
 use crate::bound::NodeType;
 use crate::infra::component::Component;
-use crate::infra::metric::Metric;
+use crate::infra::metric::Metrics;
 use crate::mv::Move;
 use crate::search::node::Node;
 use crate::types::{MoveType, Ply};
@@ -244,7 +244,7 @@ impl Algo {
         // self.stats.inc_red_lmr(n.ply);
         // self.counts.inc(n, Event::Lmr);
         if reduce > 0 {
-            Metric::incr_node(n, Event::LateMoveReduce)
+            Metrics::incr_node(n, Event::LateMoveReduce)
         }
     reduce
     }

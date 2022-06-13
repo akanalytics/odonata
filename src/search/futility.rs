@@ -3,7 +3,7 @@ use crate::eval::eval::Eval;
 use crate::eval::score::Score;
 use crate::eval::weight::Weight;
 use crate::infra::component::Component;
-use crate::infra::metric::Metric;
+use crate::infra::metric::Metrics;
 use crate::mv::Move;
 use crate::search::node::{Event, Node};
 use crate::{Algo, Bitboard};
@@ -99,24 +99,24 @@ impl Algo {
             let outcome = b.outcome();
             if outcome.is_game_over() {
                 if outcome.is_draw() {
-                    Metric::incr_node(&n, Event::StandingPatSuccess);
+                    Metrics::incr_node(&n, Event::StandingPatSuccess);
                     return Some(b.pov_score(self.eval.w_eval_draw(b, n)));
                 }
                 // depth 0: we have considered a full width move search to get here so a winning
                 // result is valid. Beyond depth 0 it is not.
                 if let Some(c) = outcome.winning_color() {
                     if c == b.color_us() {
-                        Metric::incr_node(&n, Event::StandingPatSuccess);
+                        Metrics::incr_node(&n, Event::StandingPatSuccess);
                         return Some(Score::we_win_in(n.ply));
                     } else {
-                        Metric::incr_node(&n, Event::StandingPatSuccess);
+                        Metrics::incr_node(&n, Event::StandingPatSuccess);
                         return Some(Score::we_lose_in(n.ply));
                     }
                 }
             }
         }
         if standing_pat >= n.beta && !b.is_in_check(b.color_us()) {
-            Metric::incr_node(&n, Event::StandingPatSuccess);
+            Metrics::incr_node(&n, Event::StandingPatSuccess);
             return Some(standing_pat);
         }
 
@@ -125,7 +125,7 @@ impl Algo {
         }
 
         if self.qsearch_disabled {
-            Metric::incr_node(&n, Event::StandingPatSuccess);
+            Metrics::incr_node(&n, Event::StandingPatSuccess);
             return Some(standing_pat);
         }
         None
@@ -140,23 +140,23 @@ impl Algo {
         }
         if n.depth > self.max_depth {
             // dont prune too far away from leaf nodes
-            Metric::incr_node(&n, Event::FutilityDeclineMaxDepth);
+            Metrics::incr_node(&n, Event::FutilityDeclineMaxDepth);
             return false;
         }
 
         if (!self.futility.prune_alpha_mate && n.alpha.is_mate())
             || (!self.futility.prune_beta_mate && n.beta.is_mate())
         {
-            Metric::incr_node(&n, Event::FutilityDeclineMateBound);
+            Metrics::incr_node(&n, Event::FutilityDeclineMateBound);
             return false;
         }
         if !self.futility.prune_fw_node && n.is_fw() {
             // VER:0.4.14
-            Metric::incr_node(&n, Event::FutilityDeclineFwWindow);
+            Metrics::incr_node(&n, Event::FutilityDeclineFwWindow);
             return false;
         }
         if !self.futility.in_check && b.is_in_check(b.color_us()) {
-            Metric::incr_node(&n, Event::FutilityDeclineInCheck);
+            Metrics::incr_node(&n, Event::FutilityDeclineInCheck);
             return false;
         }
         true
@@ -186,9 +186,9 @@ impl Algo {
             return None;
         }
 
-        Metric::incr_node(n, Event::FutilityConsider);
+        Metrics::incr_node(n, Event::FutilityConsider);
         if !self.futility.prune_extensions && ext != 0 {
-            Metric::incr_node(n, Event::FutilityDeclineExt);
+            Metrics::incr_node(n, Event::FutilityDeclineExt);
             return None;
         }
         if self.futility.move_types_forbidden.contains(mt) {
@@ -196,12 +196,12 @@ impl Algo {
         }
 
         if !self.futility.first_move && mv_num <= 1 {
-            Metric::incr_node(n, Event::FutilityDeclineFirstMove);
+            Metrics::incr_node(n, Event::FutilityDeclineFirstMove);
             return None;
         }
 
         if !n.alpha.is_numeric() {
-            Metric::incr_node(n, Event::FutilityDeclineMateBound);
+            Metrics::incr_node(n, Event::FutilityDeclineMateBound);
             return None;
         }
 
@@ -214,13 +214,13 @@ impl Algo {
         // }
 
         if !self.futility.discoverer && mv.from().is_in(before.discoverer(before.color_them())) {
-            Metric::incr_node(n, Event::FutilityDeclineDiscoverer);
+            Metrics::incr_node(n, Event::FutilityDeclineDiscoverer);
             return None;
         }
 
         // gives check a more precise and costly version of discoverers
         if !self.futility.giving_check && after.is_in_check(after.color_us()) {
-            Metric::incr_node(n, Event::FutilityDeclineGivesCheck);
+            Metrics::incr_node(n, Event::FutilityDeclineGivesCheck);
             return None;
         }
 
@@ -229,7 +229,7 @@ impl Algo {
             && mv.from().rank_number_as_white(before.color_us())
                 > self.futility.max_pawn_rank as usize
         {
-            Metric::incr_node(n, Event::FutilityDeclinePawnMaxRank);
+            Metrics::incr_node(n, Event::FutilityDeclinePawnMaxRank);
             return None;
         }
 
@@ -263,11 +263,11 @@ impl Algo {
                 _ => Event::FutilityD3,
             };
             self.explain_futility(&before, mv, mt, est_score, &n, category);
-            Metric::incr_node(n, category);
+            Metrics::incr_node(n, category);
 
             return Some(est_score);
         } else {
-            Metric::incr_node(n, Event::FutilityFail);
+            Metrics::incr_node(n, Event::FutilityFail);
         }
         None
     }

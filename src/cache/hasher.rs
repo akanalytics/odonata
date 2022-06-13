@@ -145,7 +145,7 @@ impl Hasher {
     }
 
     pub fn hash_board(&self, b: &Board) -> Hash {
-        Metric::incr(Counter::CalcHashBoard);
+        Metrics::incr(Counter::CalcHashBoard);
 
         let mut hash = b.color_us().chooser_wb(0, self.side);
         // hash ^= self.castling[b.castling()];
@@ -173,7 +173,7 @@ impl Hasher {
     }
 
     pub fn hash_move(&self, m: &Move, pre_move: &Board) -> Hash {
-        Metric::incr(Counter::CalcHashMove);
+        Metrics::incr(Counter::CalcHashMove);
         let mut hash = self.side;
         // either we're moving to an empty square or its a capture
         let us = pre_move.color_us();

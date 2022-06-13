@@ -1,7 +1,7 @@
 use crate::board::Board;
 use crate::clock::Clock;
 use crate::infra::component::Component;
-use crate::infra::metric::Metric;
+use crate::infra::metric::Metrics;
 use crate::search::timecontrol::TimeControl;
 use crate::types::Ply;
 use crate::utils::Formatting;
@@ -221,8 +221,8 @@ impl MoveTimeEstimator {
                 + self.elapsed_search
                 + self.elapsed_iter.mul_f32(self.branching_factor);
         }
-        Metric::elapsed(ply, self.estimate_move_time, Event::DurationIterEst);
-        Metric::elapsed(ply, self.allotted(), Event::DurationIterAllotted);
+        Metrics::elapsed(ply, self.estimate_move_time, Event::DurationIterEst);
+        Metrics::elapsed(ply, self.allotted(), Event::DurationIterAllotted);
     }
 
     pub fn probable_timeout(&self, ply: Ply) -> bool {

@@ -8,7 +8,7 @@ use crate::bound::NodeType;
 use crate::cache::lockless_hashmap::{Bucket, SharedTable};
 use crate::eval::score::Score;
 use crate::infra::component::Component;
-use crate::infra::metric::Metric;
+use crate::infra::metric::Metrics;
 use crate::mv::Move;
 use crate::search::node::{Timing, Counter};
 use crate::types::{Hash, Piece, Ply};
@@ -447,7 +447,7 @@ impl TranspositionTable2 {
         {
             return;
         }
-        let t = Metric::timing_start();
+        let t = Metrics::timing_start();
         debug_assert!(
             new_node.nt != NodeType::Unused,
             "Cannot store unused nodes in tt"
@@ -550,7 +550,7 @@ impl TranspositionTable2 {
         if replace {
             // new.hash != old.hash &&
             if self.current_age == old_age && old_node.nt == NodeType::ExactPv {
-                Metric::incr(Counter::TtPvOverwrite);
+                Metrics::incr(Counter::TtPvOverwrite);
             }
             debug_assert!(new_node.score > -Score::INFINITY && new_node.score < Score::INFINITY);
             debug_assert!(
@@ -568,7 +568,7 @@ impl TranspositionTable2 {
         } else {
             // self.fail_priority.increment();
         }
-        Metric::profile(t, Timing::TimingTtStore);
+        Metrics::profile(t, Timing::TimingTtStore);
 
     }
 
@@ -583,11 +583,11 @@ impl TranspositionTable2 {
         if !self.enabled || self.capacity() == 0 || ply < self.min_ply || depth < self.min_depth {
             return None;
         }
-        let t = Metric::timing_start();
+        let t = Metrics::timing_start();
         let tt_node = self.probe_by_hash(board.hash());
         if let Some(tt_node) = tt_node {
             if !tt_node.bm.is_null() && !board.is_pseudo_legal_and_legal_move(tt_node.bm) {
-                Metric::incr(Counter::TtIllegalMove);
+                Metrics::incr(Counter::TtIllegalMove);
                 return None;
             }
             debug_assert!(
@@ -606,7 +606,7 @@ impl TranspositionTable2 {
                 tt_node.bm
             );
         }
-        Metric::profile(t, Timing::TimingTtProbe);
+        Metrics::profile(t, Timing::TimingTtProbe);
         tt_node
     }
 
@@ -622,7 +622,7 @@ impl TranspositionTable2 {
             }
             Some(TtNode::unpack(data).0)
         } else {
-            Metric::incr(Counter::TtCollision);
+            Metrics::incr(Counter::TtCollision);
             None
         }
     }

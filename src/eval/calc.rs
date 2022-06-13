@@ -4,7 +4,7 @@ use crate::bitboard::square::Square;
 use crate::board::Board;
 use crate::eval::endgame::EndGame;
 use crate::eval::eval::{Eval, Feature};
-use crate::infra::metric::Metric;
+use crate::infra::metric::Metrics;
 use crate::phaser::Phaser;
 use crate::search::node::{Timing};
 use crate::types::Color::{self, *};
@@ -26,7 +26,7 @@ impl Calc {
 
     #[inline]
     pub fn score(scorer: &mut impl ScorerBase, b: &Board, _e: &Eval, _phaser: &Phaser) {
-        let t = Metric::timing_start();
+        let t = Metrics::timing_start();
         Calc::material(scorer, b);
         if !Self::endgame(scorer, b) {
             Calc::position(scorer, b);
@@ -41,7 +41,7 @@ impl Calc {
         }
         // scorer.set_phase(b.phase(ph));
         // scorer.interpolate_and_scale("interpolate");
-        Metric::profile(t, Timing::TimingEval);
+        Metrics::profile(t, Timing::TimingEval);
     }
 
     fn other(s: &mut impl ScorerBase, b: &Board) {

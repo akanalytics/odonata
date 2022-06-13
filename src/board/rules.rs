@@ -4,7 +4,7 @@ use crate::bitboard::precalc::BitboardDefault;
 use crate::bitboard::square::Square;
 use crate::board::boardcalcs::BoardCalcs;
 use crate::board::Board;
-use crate::infra::metric::Metric;
+use crate::infra::metric::Metrics;
 use crate::movelist::MoveList;
 use crate::mv::Move;
 use crate::search::node::{Timing};
@@ -55,7 +55,7 @@ impl Rules {
     }
 
     pub fn legals_for(b: &Board, moves: &mut MoveList) {
-        let t = Metric::timing_start();
+        let t = Metrics::timing_start();
         // profile_method!("move generation");
         // let _g = hprof::enter("move generation");
 
@@ -110,7 +110,7 @@ impl Rules {
             Self::king_legal(b, moves);
             Self::castles(b, moves);
         }
-        Metric::profile(t, Timing::TimingMoveGen);
+        Metrics::profile(t, Timing::TimingMoveGen);
 
     }
 

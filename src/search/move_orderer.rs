@@ -1,7 +1,7 @@
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::infra::component::Component;
-use crate::infra::metric::Metric;
+use crate::infra::metric::Metrics;
 use crate::movelist::MoveList;
 use crate::mv::Move;
 use crate::phaser::Phase;
@@ -279,7 +279,7 @@ impl MoveOrderer {
 
         let cm = algo.counter_move.counter_move_unchecked(c, parent, mv, n);
         if cm > 0 {
-            Metric::incr_node(n, Event::MoveSortCounterMove);
+            Metrics::incr_node(n, Event::MoveSortCounterMove);
             score += cm as f32 * self.is_counter_move_sort_bonus;
         }
         // if self.has_counter_move_sort_bonus > -10000.0
@@ -416,9 +416,9 @@ impl OrderedMoveList {
     }
 
     pub fn next_move(&mut self, b: &Board, algo: &mut Algo) -> Option<(MoveType, Move)> {
-        let t = Metric::timing_start();
+        let t = Metrics::timing_start();
         let m = self.calc_next_move_(b, algo);
-        Metric::profile(t, Timing::TimingSortMoves);
+        Metrics::profile(t, Timing::TimingSortMoves);
 
         m
     }
@@ -435,7 +435,7 @@ impl OrderedMoveList {
             if move_type == MoveType::GoodCaptureUpfrontSorted || move_type == MoveType::GoodCapture
             {
                 let mv = self.moves[self.index];
-                Metric::incr_node(&self.n, Event::EvalSee);
+                Metrics::incr_node(&self.n, Event::EvalSee);
                 let see = algo.eval.see.eval_move_see(b, mv);
                 let see_cutoff = if self.qsearch {
                     algo.move_orderer.qsearch_see_cutoff

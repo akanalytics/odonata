@@ -1,5 +1,5 @@
 use crate::infra::component::Component;
-use crate::infra::metric::Metric;
+use crate::infra::metric::Metrics;
 use crate::mv::Move;
 use crate::types::{Color, Piece, Ply};
 use crate::Bitboard;
@@ -96,15 +96,15 @@ impl CounterMove {
         let mt = &self.counter_moves[c][parent.mover_piece()][parent.to()];
         let total = mt.count1 + mt.count2 + mt.count3 + 1;
         if mt.mv1 == child {
-            Metric::incr(Counter::MatchedCounterMove);
+            Metrics::incr(Counter::MatchedCounterMove);
             return (100 * mt.count1 / total) as i32;
         }
         if mt.mv2 == child {
-            Metric::incr(Counter::MatchedCounterMove);
+            Metrics::incr(Counter::MatchedCounterMove);
             return (100 * mt.count2 / total) as i32;
         }
         if mt.mv3 == child {
-            Metric::incr(Counter::MatchedCounterMove);
+            Metrics::incr(Counter::MatchedCounterMove);
             return (100 * mt.count3 / total) as i32;
         }
         return 0;

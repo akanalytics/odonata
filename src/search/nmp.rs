@@ -3,7 +3,7 @@ use crate::board::Board;
 use crate::bound::NodeType;
 use crate::cache::tt2::TtNode;
 use crate::eval::score::{Score, ToScore};
-use crate::infra::metric::Metric;
+use crate::infra::metric::Metrics;
 use crate::mv::Move;
 use crate::pvtable::PvTable;
 use crate::search::algo::Algo;
@@ -75,23 +75,23 @@ impl NullMovePruning {
             return false; // no null move at root, might mean no moves (with move restrictions too!)
         }
 
-        Metric::incr_node(n, Event::NmpConsider);
+        Metrics::incr_node(n, Event::NmpConsider);
 
         // definitely no point doing nmp at depth 0 as we do stabding pat in QS anyway
         if n.depth < self.min_depth {
-            Metric::incr_node(n, Event::NmpDeclineDepth);
+            Metrics::incr_node(n, Event::NmpDeclineDepth);
             return false;
         }
         if !n.beta.is_numeric() {
-            Metric::incr_node(n, Event::NmpDeclineBetaNumeric);
+            Metrics::incr_node(n, Event::NmpDeclineBetaNumeric);
             return false;
         }
         if !eval.is_numeric()  {
-            Metric::incr_node(n, Event::NmpDeclineEvalNumeric);
+            Metrics::incr_node(n, Event::NmpDeclineEvalNumeric);
             return false;
         }
         if ((b.line_pieces() | b.knights()) & b.us()).is_empty() {
-            Metric::incr_node(n, Event::NmpDeclineMaterial);
+            Metrics::incr_node(n, Event::NmpDeclineMaterial);
             return false;
         }
         // if node.alpha == node.beta - Score::from_cp(1) {
@@ -99,21 +99,21 @@ impl NullMovePruning {
         //     return false;
         // }
         if eval < n.beta + self.margin {
-            Metric::incr_node(n, Event::NmpDeclineEvalMargin);
+            Metrics::incr_node(n, Event::NmpDeclineEvalMargin);
             return false;
         }
 
         if b.is_in_check(b.color_us()) {
-            Metric::incr_node(n, Event::NmpDeclineInCheck);
+            Metrics::incr_node(n, Event::NmpDeclineInCheck);
             return false;
         }
         let var = pv_table.extract_pv_for(n.ply);
         if self.recursive && !self.successive && Self::last_move_is_null_move(&var) {
-            Metric::incr_node(n, Event::NmpDeclineSuccessive);
+            Metrics::incr_node(n, Event::NmpDeclineSuccessive);
             return false;
         }
         if !self.recursive && Self::contains_null_move(&var) {
-            Metric::incr_node(n, Event::NmpDeclineRecursive);
+            Metrics::incr_node(n, Event::NmpDeclineRecursive);
             return false;
         }
         true
@@ -174,7 +174,7 @@ impl Algo {
         let mut child_board = b.make_move(&mv);
         self.current_variation.push(mv);
         // self.explainer.start(n, &self.current_variation);
-        Metric::incr_node(n, Event::NmpAttempt);
+        Metrics::incr_node(n, Event::NmpAttempt);
         let reduced_depth = std::cmp::max(n.depth - r - 1, 0);
 
         // we increment ply so that history tables etc work correctly
@@ -199,7 +199,7 @@ impl Algo {
 
             if self.nmp.store_tt {
                 // score is clamped as you cant mate on a null move. Note reduced depth too
-                Metric::incr_node(n, Event::TtStoreNode);
+                Metrics::incr_node(n, Event::TtStoreNode);
                 let entry = TtNode {
                     score: child_score.clamp_score(),
                     depth: reduced_depth + 1,
@@ -211,10 +211,10 @@ impl Algo {
                 // and reduced_depth + 1
                 self.tt.store(b.hash(), entry);
             }
-            Metric::incr_node(n, Event::NmpSuccess);
+            Metrics::incr_node(n, Event::NmpSuccess);
             return Ok(Some(child_score));
         }
-        Metric::incr_node(n, Event::NmpFail);
+        Metrics::incr_node(n, Event::NmpFail);
         Ok(None)
     }
 }

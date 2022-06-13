@@ -90,8 +90,8 @@ pub enum Event {
 
     #[strum(message = "QS")]
     NodeQs,
-    NodeQsInterior,
     NodeQsZw,
+    NodeQsInterior,
     NodeQsCut,
     NodeQsPv,
     NodeQsAll,

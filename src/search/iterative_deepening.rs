@@ -1,6 +1,6 @@
 use crate::eval::score::Score;
 use crate::infra::component::{Component, State};
-use crate::infra::metric::{Metric, Metrics};
+use crate::infra::metric::Metrics;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
 use crate::search::timecontrol::TimeControl;
@@ -24,8 +24,6 @@ pub struct IterativeDeepening {
     #[serde(skip)]
     pub end_ply: Ply,
 
-    // #[serde(skip)]
-    // iterations: Vec<SearchStats>,
 }
 
 impl Component for IterativeDeepening {
@@ -61,37 +59,6 @@ impl fmt::Display for IterativeDeepening {
         writeln!(f, "step_size        : {}", self.step_size)?;
         writeln!(f, "start_ply        : {}", self.start_ply)?;
         writeln!(f, "end_ply          : {}", self.end_ply)?;
-        // writeln!(f, "iterations       : {}", self.iterations.len())?;
-        // write!(f, "{:>3} {:>4} ", "dep", "stat")?;
-        // NodeStats::fmt_header(f)?;
-        // writeln!(f, " {:>8} {:<11}", "score", "pv")?;
-
-        // write!(f, "{:>3} {:>4} ", "---", "----")?;
-        // NodeStats::fmt_underline(f)?;
-        // writeln!(f, " {:>8} {:<11}", "--------", "-----------")?;
-        // for iter in self.iterations.iter() {
-        //     write!(
-        //         f,
-        //         "D{:<2} {:>4} ",
-        //         iter.depth,
-        //         if iter.interrupted() { "PART" } else { "FULL" }
-        //     )?;
-        //     iter.iteration().fmt_data(f)?;
-        //     writeln!(
-        //         f,
-        //         " {:>8} {:<11}",
-        //         iter.score().to_string(),
-        //         "".to_string() // iter.pv().to_string()
-        //     )?;
-        // }
-        // if let Some(last) = self.iterations.last() {
-        //     write!(f, "{:>3} {:>4} ", "---", "----")?;
-        //     NodeStats::fmt_underline(f)?;
-        //     writeln!(f, " {:>8} {:<11}", "--------", "-----------")?;
-        //     write!(f, "{:>8} ", "cumul")?;
-        //     last.cumulative().fmt_data(f)?;
-        //     writeln!(f, " {:>8} {:<11}", "-", "-")?;
-        // }
         Ok(())
     }
 }
@@ -124,7 +91,7 @@ impl Algo {
         'outer: loop {
             Metrics::flush_thread_local();
             self.set_state(State::StartDepthIteration(ply));
-            let t = Metric::timing_start();
+            let t = Metrics::timing_start();
             self.stats.new_iteration();
             multi_pv.resize_with(self.restrictions.multi_pv_count, Default::default);
             for i in 0..self.restrictions.multi_pv_count {
@@ -160,7 +127,7 @@ impl Algo {
                 }
             }
             if let Some(t) = t {
-                Metric::elapsed(ply, t.elapsed(), Event::DurationIterActual);
+                Metrics::elapsed(ply, t.elapsed(), Event::DurationIterActual);
             }
             last_good_multi_pv = std::mem::take(&mut multi_pv);
             ply += self.ids.step_size

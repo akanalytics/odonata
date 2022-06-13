@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::infra::component::Component;
-use crate::infra::metric::Metric;
+use crate::infra::metric::Metrics;
 use crate::mv::Move;
 use crate::search::node::Node;
 use crate::types::{MoveType, Ply};
@@ -154,7 +154,7 @@ impl Algo {
             return false;
         }
 
-        Metric::incr_node(n, Event::LmpSuccess);
+        Metrics::incr_node(n, Event::LmpSuccess);
         true
     }
 }

@@ -3,7 +3,7 @@ use crate::bound::NodeType;
 use crate::cache::tt2::TtNode;
 use crate::eval::score::{Score, ToScore};
 use crate::infra::component::Component;
-use crate::infra::metric::Metric;
+use crate::infra::metric::Metrics;
 use crate::mv::Move;
 use crate::search::node::{Event, Node};
 use crate::types::{MoveType, MoveTypes, Ply};
@@ -150,7 +150,7 @@ impl Algo {
             if n.depth <= 2 {
                 // drop straight into qsearch
                 let (score, _event) = self.alphabeta(b, n.ply, 0, n.alpha, n.beta, last_move)?;
-                Metric::incr_node(n, Event::RazorD3Success);
+                Metrics::incr_node(n, Event::RazorD3Success);
                 return Ok(Some(score));
             } else {
                 // pvs search around {alpha - margin}
@@ -174,10 +174,10 @@ impl Algo {
 
                 // fail low (-inf) or alpha-margin
                 if score <= n.alpha - margin {
-                    Metric::incr_node(n, Event::RazorD3Success);
+                    Metrics::incr_node(n, Event::RazorD3Success);
                     return Ok(Some(n.alpha));
                 }
-                Metric::incr_node(n, Event::RazorFail);
+                Metrics::incr_node(n, Event::RazorFail);
             }
         }
         Ok(None)

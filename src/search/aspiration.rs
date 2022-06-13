@@ -1,7 +1,7 @@
 use crate::board::Board;
 use crate::eval::score::Score;
 use crate::infra::component::Component;
-use crate::infra::metric::Metric;
+use crate::infra::metric::Metrics;
 use crate::search::node::Node;
 use crate::types::Ply;
 use crate::Algo;
@@ -53,7 +53,7 @@ impl Algo {
     pub fn aspirated_search(&mut self, b: &mut Board, n: &mut Node) -> (Score, Event) {
         let score = self.progress.best_score;
         if n.depth <= self.aspiration.min_depth || !self.aspiration.enabled || !score.is_numeric() {
-            Metric::incr_node(n, Event::AspirationNone);
+            Metrics::incr_node(n, Event::AspirationNone);
             self.alphabeta_root_search(b, n)
         } else {
             let mut aspiration_count = 0;
@@ -113,10 +113,10 @@ impl Algo {
                 }
             };
             match aspiration_count {
-                1 => Metric::incr_node(n, Event::Aspiration1),
-                2 => Metric::incr_node(n, Event::Aspiration2),
-                3 => Metric::incr_node(n, Event::Aspiration3),
-                _ => Metric::incr_node(n, Event::AspirationN),
+                1 => Metrics::incr_node(n, Event::Aspiration1),
+                2 => Metrics::incr_node(n, Event::Aspiration2),
+                3 => Metrics::incr_node(n, Event::Aspiration3),
+                _ => Metrics::incr_node(n, Event::AspirationN),
             }
             ret
         }

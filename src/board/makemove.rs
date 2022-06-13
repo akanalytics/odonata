@@ -1,9 +1,9 @@
 use crate::bitboard::bitboard::Bitboard;
 use crate::board::Board;
 use crate::cache::hasher::Hasher;
-use crate::infra::metric::Metric;
+use crate::infra::metric::Metrics;
 use crate::mv::Move;
-use crate::search::node::{Timing, Counter};
+use crate::search::node::{Counter, Timing};
 use crate::types::{Piece, Repeats};
 use crate::variation::Variation;
 
@@ -78,8 +78,8 @@ impl MoveMaker for Board {
     }
 
     fn make_move(&self, m: &Move) -> Board {
-        Metric::incr(Counter::MakeMove);
-        let t = Metric::timing_start();
+        Metrics::incr(Counter::MakeMove);
+        let t = Metrics::timing_start();
         // either we're moving to an empty square or its a capture
         debug_assert!(
             m.is_null()
@@ -183,8 +183,7 @@ impl MoveMaker for Board {
         let move_hash = Hasher::default().hash_move(m, self);
         b.hash = self.hash ^ move_hash;
 
-        Metric::profile(t, Timing::TimingMakeMove);
-
+        Metrics::profile(t, Timing::TimingMakeMove);
 
         debug_assert!(
             b.hash == Hasher::default().hash_board(&b),
@@ -195,17 +194,6 @@ impl MoveMaker for Board {
             b.hash,
             Hasher::default().hash_board(&b),
         );
-
-        // b.material.get_mut().make_move(self.color_us(), m);
-        // debug_assert!(
-        //     b.material() == Material::from_board(&b),
-        //     "\n{}.make_move({}) = \n{} inconsistent incremental material {} (should be {})",
-        //     self,
-        //     m,
-        //     b,
-        //     b.material(),
-        //     Material::from_board(&b),
-        // );
 
         b
     }
@@ -219,7 +207,6 @@ mod tests {
     use crate::board::boardbuf::BoardBuf;
     use crate::board::*;
     use crate::catalog::*;
-    // use crate::movelist::MoveValidator;
     use crate::globals::constants::*;
 
     #[test]

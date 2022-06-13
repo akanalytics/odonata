@@ -17,67 +17,20 @@ use tabled::{Alignment, Modify, Style};
 pub use crate::search::node::Event;
 use strum::EnumMessage;
 
-// #[derive()]
-// pub struct Histogram(HDRHist);
 
-// #[derive(Default, Debug)]
-// pub struct NodeHistogram([Histogram; 32], [Histogram; 32]);
-
-// impl Default for Histogram {
-//     fn default() -> Self {
-//         Self(HDRHist::new())
-//     }
-// }
-
-// impl fmt::Debug for Histogram {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         f.debug_tuple("Histogram")
-//             // .field(&self.0.summary_string())
-//             .finish()
-//     }
-// }
-
-// impl Histogram {
-//     pub fn add_value(&mut self, v: u64) {
-//         self.0.add_value(v);
-//     }
-// }
-
-// impl NodeHistogram {
-//     pub fn add_value(&mut self, n: &Node, v: u64) {
-//         self.0[min(n.ply, 31) as usize].add_value(v);
-//         self.1[min(max(n.depth, 0), 31) as usize].add_value(v);
-//     }
-// }
-
+//
+// ArrayOf
+//
 #[derive(Debug, Clone)]
-pub struct ArrayCounter<const N: usize, T>([T; N]);
+pub struct ArrayOf<const N: usize, T>([T; N]);
 
-// impl Default for ArrayCounter<{ EndGame::COUNT }, u64> {
-//     fn default() -> Self {
-//         Self([0; EndGame::COUNT])
-//     }
-// }
-
-// impl Default for ArrayCounter<{ Counter::COUNT }, u64> {
-//     fn default() -> Self {
-//         Self([0; Counter::COUNT])
-//     }
-// }
-
-impl<const N:usize, T: Default + Copy> Default for ArrayCounter<{ N }, T> {
+impl<const N: usize, T: Default + Copy> Default for ArrayOf<{ N }, T> {
     fn default() -> Self {
         Self([T::default(); N])
     }
 }
 
-// impl<T: Default + Copy> Default for ArrayCounter<{ Event::COUNT }, T> {
-//     fn default() -> Self {
-//         Self([T::default(); Event::COUNT])
-//     }
-// }
-
-impl<const N: usize, T> AddAssign<&ArrayCounter<{ N }, T>> for ArrayCounter<{ N }, T>
+impl<const N: usize, T> AddAssign<&ArrayOf<{ N }, T>> for ArrayOf<{ N }, T>
 where
     for<'a> T: AddAssign<&'a T>,
 {
@@ -88,7 +41,7 @@ where
     }
 }
 
-impl<const N: usize> ArrayCounter<N, u64>
+impl<const N: usize> ArrayOf<N, u64>
 where
     [u64; N]: Default,
 {
@@ -97,6 +50,10 @@ where
     }
 }
 
+
+//
+// Node counter
+//
 #[derive(Default, Debug, Clone, Copy)]
 pub struct NodeCounter([u64; 32], [u64; 32]);
 
@@ -125,10 +82,13 @@ impl AddAssign<&NodeCounter> for NodeCounter {
     }
 }
 
+//
+// DurationCounter
+//
 #[derive(Default, Debug, Clone, Copy)]
-pub struct TimePlyCounter([Duration; 32]);
+pub struct DurationCounter([Duration; 32]);
 
-impl TimePlyCounter {
+impl DurationCounter {
     pub fn set(&mut self, y: Ply, dur: Duration) {
         self.0[min(y, 31) as usize] = dur;
     }
@@ -147,7 +107,7 @@ impl TimePlyCounter {
     }
 }
 
-impl AddAssign<&TimePlyCounter> for TimePlyCounter {
+impl AddAssign<&DurationCounter> for DurationCounter {
     fn add_assign(&mut self, rhs: &Self) {
         for i in 0..self.0.len() {
             self.0[i] += rhs.0[i];
@@ -155,6 +115,10 @@ impl AddAssign<&TimePlyCounter> for TimePlyCounter {
     }
 }
 
+
+//
+// Profile Counter
+//
 #[derive(Default, Debug, Clone, Copy)]
 pub struct ProfilerCounter(Duration, u64);
 
@@ -182,11 +146,11 @@ impl AddAssign<&ProfilerCounter> for ProfilerCounter {
 
 #[derive(Default, Debug, Clone)]
 pub struct Metrics {
-    counters: ArrayCounter<{ Counter::COUNT }, u64>,
-    nodes: ArrayCounter<{ Event::len() }, NodeCounter>,
-    profilers: ArrayCounter<{ Timing::COUNT }, ProfilerCounter>,
-    durations: ArrayCounter<{ Event::len() }, TimePlyCounter>,
-    endgame: ArrayCounter<{ EndGame::COUNT }, u64>,
+    counters: ArrayOf<{ Counter::COUNT }, u64>,
+    nodes: ArrayOf<{ Event::len() }, NodeCounter>,
+    profilers: ArrayOf<{ Timing::COUNT }, ProfilerCounter>,
+    durations: ArrayOf<{ Event::len() }, DurationCounter>,
+    endgame: ArrayOf<{ EndGame::COUNT }, u64>,
 }
 
 impl Metrics {
@@ -219,8 +183,6 @@ impl Metrics {
     }
 }
 
-#[must_use]
-pub enum Metric {}
 
 impl fmt::Display for Metrics {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -360,10 +322,7 @@ impl fmt::Display for Metrics {
     }
 }
 
-#[dynamic]
-static EPOCH: Instant = Instant::now();
-
-impl Metric {
+impl Metrics {
     #[allow(unused_variables)]
     #[inline]
     pub fn inc_endgame(eg: EndGame) {
@@ -432,9 +391,9 @@ mod tests {
 
     #[test]
     fn test_metrics() {
-        Metric::incr(Counter::MakeMove);
-        Metric::incr(Counter::MakeMove);
-        Metric::incr_node(
+        Metrics::incr(Counter::MakeMove);
+        Metrics::incr(Counter::MakeMove);
+        Metrics::incr_node(
             &Node {
                 ply: 1,
                 depth: 5,
