@@ -1,5 +1,5 @@
 use crate::bits::bitboard::{Bitboard, Dir, Squares};
-use crate::types::Color;
+use crate::piece::Color;
 use std::cmp;
 use std::fmt;
 

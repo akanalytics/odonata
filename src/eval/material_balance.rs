@@ -2,7 +2,7 @@ use crate::domain::material::Material;
 use crate::eval::weight::Weight;
 use crate::infra::component::Component;
 use crate::mv::Move;
-use crate::types::{Color, Piece, ScoreWdl};
+use crate::piece::{Color, Piece, ScoreWdl};
 use anyhow::{anyhow, bail, Result};
 use serde::{Deserialize, Serialize};
 use static_init::dynamic;
@@ -655,8 +655,7 @@ fn data(m: &mut RawStatsVec, s: &str, w: i32, d: i32, l: i32) {
 mod tests {
     use super::*;
     // use crate::{debug, info, logger::LogInit};
-    use crate::board::boardbuf::BoardBuf;
-    use crate::board::Board;
+    use crate::types::Board;
     use crate::eval::eval::Eval;
     use crate::eval::score::Score;
     use crate::search::node::Node;

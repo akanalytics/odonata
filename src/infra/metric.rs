@@ -1,6 +1,6 @@
 use crate::eval::endgame::EndGame;
 use crate::search::node::{Counter, Node, Timing};
-use crate::types::Ply;
+use crate::piece::Ply;
 use crate::utils::Formatting;
 use static_init::dynamic;
 use std::cell::RefCell;

@@ -117,7 +117,7 @@ mod tests {
     use crate::bits::castling::*;
     use crate::bits::precalc::*;
     use crate::bits::square::*;
-    use crate::board::*;
+    use crate::types::*;
     use crate::bound::NodeType;
     use crate::cache::hasher::*;
     use crate::cache::tt2::*;
@@ -148,7 +148,7 @@ mod tests {
     use crate::search::search_explainer::Explainer;
     use crate::search::searchstats::*;
     use crate::tags::*;
-    use crate::types::*;
+    use crate::piece::*;
     use crate::variation::*;
     use crate::Algo;
     use std::mem::size_of;

@@ -1,6 +1,4 @@
-use crate::board::boardbuf::BoardBuf;
-use crate::board::makemove::MoveMaker;
-use crate::board::Board;
+use crate::types::Board;
 use crate::catalog::Catalog;
 // use crate::movelist::MoveValidator;
 use crate::eval::score::Score;
@@ -9,7 +7,7 @@ use crate::other::outcome::Outcome;
 use crate::position::Position;
 use crate::search::algo::Algo;
 use crate::tags::Tags;
-use crate::types::Color;
+use crate::piece::Color;
 use crate::variation::Variation;
 use std::fmt;
 use std::rc::Rc;
@@ -172,7 +170,7 @@ mod tests {
     use crate::eval::eval::*;
     use crate::infra::component::Component;
     use crate::search::timecontrol::*;
-    use crate::types::ScoreWdl;
+    use crate::piece::ScoreWdl;
     use std::time::Duration;
 
     #[test]

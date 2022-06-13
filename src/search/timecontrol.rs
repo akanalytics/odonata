@@ -1,4 +1,4 @@
-use crate::types::{Color, Ply};
+use crate::piece::{Color, Ply};
 use crate::utils::Formatting;
 use std::fmt;
 use std::str::FromStr;

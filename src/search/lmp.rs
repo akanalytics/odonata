@@ -1,9 +1,9 @@
-use crate::board::Board;
+use crate::types::Board;
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
 use crate::mv::Move;
 use crate::search::node::Node;
-use crate::types::{MoveType, Ply};
+use crate::piece::{MoveType, Ply};
 use crate::Algo;
 use crate::Piece;
 use serde::{Deserialize, Serialize};

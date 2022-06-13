@@ -1,5 +1,5 @@
 use crate::bits::square::Square;
-use crate::board::Board;
+use crate::types::Board;
 use crate::eval::material_balance::MaterialBalance;
 use crate::eval::pst::Pst;
 use crate::eval::score::Score;
@@ -10,7 +10,7 @@ use crate::infra::component::State;
 use crate::mv::Move;
 use crate::phaser::Phaser;
 use crate::search::node::Node;
-use crate::types::{Color, Piece};
+use crate::piece::{Color, Piece};
 
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;

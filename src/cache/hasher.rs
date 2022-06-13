@@ -1,11 +1,11 @@
 use crate::bits::castling::CastlingRights;
 use crate::bits::square::Square;
-use crate::board::Board;
+use crate::types::Board;
 use crate::globals::constants::*;
 use crate::infra::metric::*;
 use crate::mv::Move;
 use crate::search::node::{Counter};
-use crate::types::{Color, Hash, Piece};
+use crate::piece::{Color, Hash, Piece};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
 use static_init::dynamic;
@@ -255,7 +255,7 @@ impl Hasher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::board::makemove::MoveMaker;
+    
     use crate::catalog::Catalog;
 
     #[test]

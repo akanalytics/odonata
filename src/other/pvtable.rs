@@ -1,7 +1,7 @@
 use crate::mv::Move;
 use crate::variation::Variation;
 
-use crate::types::{Ply, MAX_PLY};
+use crate::piece::{Ply, MAX_PLY};
 use std::fmt;
 
 #[derive(Debug, Clone)]
@@ -118,7 +118,7 @@ impl fmt::Display for PvTable {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::*;
+    use crate::piece::*;
 
     #[test]
     fn test_pv_table() {

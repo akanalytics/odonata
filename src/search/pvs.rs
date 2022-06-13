@@ -1,8 +1,8 @@
 use crate::bound::NodeType;
 use crate::infra::component::Component;
 use crate::search::node::Node;
-use crate::types::Ply;
-use crate::{board::Board, Algo};
+use crate::piece::Ply;
+use crate::{types::Board, Algo};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 

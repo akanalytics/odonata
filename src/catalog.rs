@@ -1,7 +1,6 @@
 use crate::bits::bitboard::Bitboard;
 use crate::bits::castling::CastlingRights;
-use crate::board::boardbuf::BoardBuf;
-use crate::board::Board;
+use crate::types::Board;
 use crate::globals::constants::*;
 use crate::position::Position;
 use crate::tags::Tag;

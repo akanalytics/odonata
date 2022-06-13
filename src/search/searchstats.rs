@@ -1,6 +1,6 @@
 use crate::clock3::Clock3;
 use crate::eval::score::Score;
-use crate::types::{MoveType, Ply, MAX_PLY};
+use crate::piece::{MoveType, Ply, MAX_PLY};
 use crate::utils::Formatting;
 use crate::variation::Variation;
 use format_num::format_num;
@@ -686,7 +686,7 @@ impl fmt::Display for NodeStats {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::MoveType;
+    use crate::piece::MoveType;
 
     #[test]
     fn test_display_stats() {

@@ -1,13 +1,13 @@
 use crate::bits::{CastlingRights, PreCalc, Square};
-use crate::board::Board;
+use crate::types::Board;
 use crate::eval::endgame::EndGame;
 use crate::eval::eval::{Eval, Feature};
 use crate::infra::metric::Metrics;
 use crate::phaser::Phaser;
 use crate::search::node::Timing;
-use crate::types::Color::{self, *};
-use crate::types::Piece;
-use crate::types::Piece::*;
+use crate::piece::Color::{self, *};
+use crate::piece::Piece;
+use crate::piece::Piece::*;
 use crate::Bitboard;
 
 use super::eval::Attr;
@@ -863,7 +863,7 @@ mod tests {
     use crate::infra::profiler::*;
     use crate::phaser::Phaser;
     use crate::test_log::test;
-    use crate::{BoardBuf, Position};
+    use crate::{Position};
     // use crate::utils::StringUtils;
 
     #[test]

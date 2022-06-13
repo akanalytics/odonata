@@ -1,6 +1,6 @@
 use crate::bits::bitboard::Bitboard;
 use crate::bits::square::Square;
-use crate::types::Color;
+use crate::piece::Color;
 use anyhow::{bail, Result};
 use std::fmt;
 use std::iter::*;

@@ -1,4 +1,4 @@
-use crate::board::Board;
+use crate::types::Board;
 use crate::cache::tt2::TranspositionTable2;
 use crate::clock::Clock;
 use crate::eval::eval::Eval;
@@ -27,7 +27,7 @@ use crate::search::restrictions::Restrictions;
 use crate::search::search_progress::SearchProgress;
 use crate::search::taskcontrol::TaskControl;
 use crate::search::timecontrol::TimeControl;
-use crate::types::Ply;
+use crate::piece::Ply;
 use crate::variation::Variation;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -394,11 +394,11 @@ impl Algo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::board::boardbuf::*;
+    use crate::types::boardbuf::*;
     use crate::catalog::*;
     use crate::comms::uci::Uci;
     use crate::eval::eval::*;
-    use crate::types::*;
+    use crate::piece::*;
     use anyhow::*;
     use test_log::test;
     use toml;

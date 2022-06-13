@@ -1,4 +1,4 @@
-use crate::types::{Color, Piece};
+use crate::piece::{Color, Piece};
 // use crate::bitboard::bb_classical::ClassicalBitboard;
 use crate::bits::bb_hyperbola::Hyperbola;
 use crate::bits::bb_sliders::SlidingPieceAttacks;

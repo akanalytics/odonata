@@ -1,6 +1,4 @@
-use crate::board::boardbuf::BoardBuf;
-use crate::board::makemove::MoveMaker;
-use crate::board::Board;
+use crate::types::Board;
 use crate::catalog::Catalog;
 use crate::comms::json_rpc::JsonRpc;
 use crate::eval::eval::Eval;
@@ -16,7 +14,7 @@ use crate::search::node::Node;
 use crate::search::search_progress::{SearchProgress, SearchProgressMode};
 use crate::search::timecontrol::TimeControl;
 use crate::tags::Tag;
-use crate::types::Ply;
+use crate::piece::Ply;
 use crate::utils::Formatting;
 use crate::variation::Variation;
 use std::collections::HashMap;
@@ -902,7 +900,7 @@ impl Args {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::Piece;
+    use crate::piece::Piece;
     use std::thread;
     use test_log::test;
 

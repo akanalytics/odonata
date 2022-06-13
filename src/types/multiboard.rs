@@ -1,5 +1,5 @@
 use crate::bits::bitboard::Bitboard;
-use crate::types::{Color, Piece};
+use crate::piece::{Color, Piece};
 
 #[derive(Clone, Debug, PartialEq, Default, Eq)]
 pub struct Multiboard {

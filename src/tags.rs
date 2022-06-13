@@ -1,8 +1,8 @@
 use crate::bits::bitboard::Bitboard;
-use crate::board::Board;
+use crate::types::Board;
 use crate::movelist::MoveList;
 use crate::mv::Move;
-use crate::types::Ply;
+use crate::piece::Ply;
 use crate::utils::Formatting;
 use crate::variation::Variation;
 use anyhow::{anyhow, Result};

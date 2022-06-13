@@ -2,8 +2,8 @@ use crate::bits::bitboard::Bitboard;
 use crate::bits::castling::CastlingRights;
 use crate::bits::precalc::PreCalc;
 use crate::bits::square::Square;
-use crate::board::makemove::MoveMaker;
-use crate::board::Board;
+
+use crate::types::Board;
 use crate::bound::NodeType;
 use crate::cache::lockless_hashmap::{Bucket, SharedTable};
 use crate::eval::score::Score;
@@ -11,7 +11,7 @@ use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
 use crate::mv::Move;
 use crate::search::node::{Counter, Timing};
-use crate::types::{Hash, Piece, Ply};
+use crate::piece::{Hash, Piece, Ply};
 use crate::variation::Variation;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -695,7 +695,7 @@ mod tests {
     use crate::search::algo::*;
     use crate::search::engine::Engine;
     use crate::search::timecontrol::*;
-    use crate::types::*;
+    use crate::piece::*;
     use test_log::test;
 
     fn entry123() -> TtNode {

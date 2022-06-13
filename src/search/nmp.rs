@@ -1,5 +1,5 @@
-use crate::board::makemove::MoveMaker;
-use crate::board::Board;
+
+use crate::types::Board;
 use crate::bound::NodeType;
 use crate::cache::tt2::TtNode;
 use crate::eval::score::{Score, ToScore};
@@ -12,7 +12,7 @@ use crate::search::node::{Event, Node};
 use crate::infra::component::Component;
 use crate::variation::Variation;
 // use crate::{debug, logger::LogInit};
-use crate::types::{Ply};
+use crate::piece::{Ply};
 use serde::{Deserialize, Serialize};
 use std::cmp::min;
 use std::fmt;

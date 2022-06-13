@@ -1,9 +1,9 @@
-use crate::board::Board;
+use crate::types::Board;
 use crate::eval::score::Score;
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
 use crate::search::node::Node;
-use crate::types::Ply;
+use crate::piece::Ply;
 use crate::Algo;
 use serde::{Deserialize, Serialize};
 use std::cmp::{max, min};

@@ -1,6 +1,6 @@
 use crate::eval::weight::Weight;
 use crate::infra::component::Component;
-use crate::types::Piece;
+use crate::piece::Piece;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use std::fmt;

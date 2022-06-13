@@ -1,6 +1,6 @@
 use super::Board;
 use crate::bits::bitboard::Bitboard;
-use crate::types::Color;
+use crate::piece::Color;
 use crate::PreCalc;
 use static_init::dynamic;
 
@@ -67,7 +67,7 @@ mod tests {
     use super::*;
     use crate::bits::square::Square;
     use crate::infra::profiler::Profiler;
-    use crate::{bits::precalc::PreCalc, BoardBuf};
+    use crate::{bits::precalc::PreCalc};
     use test_log::test;
 
     #[test]

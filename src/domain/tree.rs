@@ -3,7 +3,7 @@ use itertools::Itertools;
 use std::fmt;
 use std::fmt::{Debug, Display};
 
-use crate::board::Board;
+use crate::types::Board;
 use crate::bound::NodeType;
 use crate::eval::score::WhiteScore;
 use crate::mv::Move;
@@ -295,7 +295,7 @@ mod tests {
 
     #[test]
     fn test_search_tree() {
-        use crate::types::Piece::*;
+        use crate::piece::Piece::*;
         let mut st = SearchTree::new(Catalog::starting_board());
         let mut var = Variation::new();
 

@@ -1,8 +1,8 @@
 use crate::bits::bitboard::Bitboard;
-use crate::board::Board;
+use crate::types::Board;
 use crate::infra::component::Component;
 use crate::mv::Move;
-use crate::types::{Color, Piece, Ply};
+use crate::piece::{Color, Piece, Ply};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 

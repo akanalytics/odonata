@@ -1,5 +1,5 @@
-use crate::board::Board;
-use crate::types::{Color, ScoreWdl};
+use crate::types::Board;
+use crate::piece::{Color, ScoreWdl};
 use anyhow::{anyhow, Result};
 use serde::{Serialize, Deserialize};
 use std::fmt;

@@ -1,7 +1,7 @@
 use crate::infra::component::Component;
 use crate::movelist::MoveList;
 use crate::mv::Move;
-use crate::types::Ply;
+use crate::piece::Ply;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 

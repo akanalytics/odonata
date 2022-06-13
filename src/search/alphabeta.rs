@@ -1,5 +1,5 @@
-use crate::board::makemove::MoveMaker;
-use crate::board::Board;
+
+use crate::types::Board;
 use crate::bound::NodeType;
 use crate::cache::tt2::TtNode;
 use crate::eval::score::Score;
@@ -8,7 +8,7 @@ use crate::mv::Move;
 use crate::other::pvtable::PvTable;
 use crate::search::algo::Algo;
 use crate::search::node::{Counter, Node, Timing};
-use crate::types::{Ply, MAX_PLY};
+use crate::piece::{Ply, MAX_PLY};
 
 use super::node::Event;
 

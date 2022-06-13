@@ -1,5 +1,5 @@
-use crate::board::makemove::MoveMaker;
-use crate::board::Board;
+
+use crate::types::Board;
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
 use crate::movelist::MoveList;
@@ -8,7 +8,7 @@ use crate::phaser::Phase;
 use crate::search::algo::Algo;
 use crate::search::stack::Stack;
 use crate::trace::stat::{ArrayPlyStat, PlyStat};
-use crate::types::{Color, MoveType, Piece, Ply};
+use crate::piece::{Color, MoveType, Piece, Ply};
 use crate::variation::Variation;
 use crate::{Bitboard, PreCalc};
 use serde::{Deserialize, Serialize};
@@ -799,7 +799,7 @@ mod tests {
     use crate::search::engine::*;
     use crate::search::timecontrol::*;
     use crate::tags::*;
-    use crate::types::*;
+    use crate::piece::*;
     use crate::utils::*;
     // use crate::search::timecontrol::*;
 

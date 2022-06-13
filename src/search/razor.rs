@@ -1,4 +1,4 @@
-use crate::board::Board;
+use crate::types::Board;
 use crate::bound::NodeType;
 use crate::cache::tt2::TtNode;
 use crate::eval::score::{Score, ToScore};
@@ -6,7 +6,7 @@ use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
 use crate::mv::Move;
 use crate::search::node::{Event, Node};
-use crate::types::{MoveType, MoveTypes, Ply};
+use crate::piece::{MoveType, MoveTypes, Ply};
 use crate::Algo;
 use serde::{Deserialize, Serialize};
 use std::fmt;

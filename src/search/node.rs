@@ -1,7 +1,7 @@
 use crate::eval::score::Score;
 // use crate::board::Board;
 
-use crate::types::Ply;
+use crate::piece::Ply;
 
 use std::convert::AsRef;
 use std::fmt;

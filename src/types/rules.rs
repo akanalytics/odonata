@@ -2,13 +2,13 @@ use crate::bits::bitboard::{Bitboard, Dir};
 use crate::bits::castling::CastlingRights;
 use crate::bits::precalc::PreCalc;
 use crate::bits::square::Square;
-use crate::board::boardcalcs::BoardCalcs;
-use crate::board::Board;
+use crate::types::boardcalcs::BoardCalcs;
+use crate::types::Board;
 use crate::infra::metric::Metrics;
 use crate::movelist::MoveList;
 use crate::mv::Move;
 use crate::search::node::{Timing};
-use crate::types::Piece;
+use crate::piece::Piece;
 
 pub struct Rules;
 
@@ -358,8 +358,8 @@ impl Rules {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::board::boardbuf::*;
-    use crate::board::*;
+    use crate::types::boardbuf::*;
+    use crate::types::*;
 
     #[test]
     fn test_king_legal() {

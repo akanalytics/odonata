@@ -1,5 +1,5 @@
 use crate::bits::square::Square;
-use crate::types::Color;
+use crate::piece::Color;
 use anyhow::{anyhow, Result};
 use std::fmt::{self, Write};
 use std::ops;

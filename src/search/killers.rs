@@ -1,11 +1,10 @@
-use crate::board::Board;
+use crate::types::Board;
 use crate::infra::component::Component;
 // use crate::{debug, logger::LogInit};
-use crate::board::boardbuf::BoardBuf;
 use crate::movelist::MoveList;
 use crate::mv::Move;
-use crate::types::Ply;
-use crate::types::MAX_PLY;
+use crate::piece::Ply;
+use crate::piece::MAX_PLY;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 

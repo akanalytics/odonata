@@ -1,9 +1,9 @@
-use crate::board::Board;
+use crate::types::Board;
 use crate::clock::Clock;
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
 use crate::search::timecontrol::TimeControl;
-use crate::types::Ply;
+use crate::piece::Ply;
 use crate::utils::Formatting;
 use serde::{Deserialize, Serialize};
 use std::fmt;

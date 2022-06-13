@@ -1,4 +1,4 @@
-use crate::board::Board;
+use crate::types::Board;
 use crate::eval::eval::Eval;
 use crate::eval::score::Score;
 use crate::eval::weight::Weight;
@@ -8,7 +8,7 @@ use crate::mv::Move;
 use crate::search::node::{Event, Node};
 use crate::{Algo, Bitboard};
 // use crate::{debug, logger::LogInit};
-use crate::types::{MoveType, MoveTypes, Piece, Ply};
+use crate::piece::{MoveType, MoveTypes, Piece, Ply};
 use serde::{Deserialize, Serialize};
 use std::{cmp, fmt};
 

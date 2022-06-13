@@ -1,8 +1,8 @@
 use crate::bits::bitboard::Bitboard;
-use crate::board::Board;
+use crate::types::Board;
 use crate::movelist::MoveList;
 use crate::mv::Move;
-use crate::types::Color;
+use crate::piece::Color;
 use crate::utils::StringUtils;
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -168,9 +168,8 @@ impl Parse {
 mod tests {
 
     use super::*;
-    use crate::board::makemove::MoveMaker;
+    
     use crate::catalog::Catalog;
-    use crate::BoardBuf;
 
     #[test]
     fn test_parse_move() {

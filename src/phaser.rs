@@ -1,4 +1,4 @@
-use crate::board::Board;
+use crate::types::Board;
 use crate::domain::material::Material;
 use crate::infra::component::Component;
 use crate::Piece;
@@ -139,7 +139,6 @@ impl Board {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::board::boardbuf::BoardBuf;
     use crate::catalog::Catalog;
     use anyhow::Result;
 

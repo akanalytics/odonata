@@ -1,4 +1,4 @@
-use crate::types::{Ply, MAX_PLY};
+use crate::piece::{Ply, MAX_PLY};
 use std::fmt;
 use std::ops;
 

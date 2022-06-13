@@ -2,7 +2,7 @@ use std::iter::{self, FromIterator};
 
 use super::node::{Event, Node};
 use super::restrictions::Restrictions;
-use crate::board::Board;
+use crate::types::Board;
 use crate::cache::tt2::TranspositionTable2;
 use crate::clock::Clock;
 use crate::eval::score::Score;
@@ -11,7 +11,7 @@ use crate::mv::Move;
 use crate::other::outcome::Outcome;
 use crate::other::pvtable::PvTable;
 use crate::tags::Tag;
-use crate::types::Ply;
+use crate::piece::Ply;
 use crate::variation::Variation;
 use crate::{Algo, MoveList, Position};
 use serde::{Deserialize, Serialize};

@@ -4,7 +4,7 @@ use crate::infra::metric::Metrics;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
 use crate::search::timecontrol::TimeControl;
-use crate::types::{Ply, MAX_PLY};
+use crate::piece::{Ply, MAX_PLY};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 

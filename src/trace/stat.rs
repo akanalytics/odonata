@@ -1,5 +1,5 @@
-use crate::types::Ply;
-use crate::types::MAX_PLY;
+use crate::piece::Ply;
+use crate::piece::MAX_PLY;
 use crate::utils::Formatting;
 use std::fmt;
 use std::sync::atomic::{AtomicI64, AtomicUsize, Ordering};

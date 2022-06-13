@@ -5,7 +5,7 @@ use crate::eval::score::Score;
 use crate::mv::Move;
 use crate::other::outcome::Outcome;
 use crate::tags::Tag;
-use crate::types::Ply;
+use crate::piece::Ply;
 use crate::variation::Variation;
 use crate::{Algo, Board, MoveList, Position};
 use serde::{Deserialize, Serialize};

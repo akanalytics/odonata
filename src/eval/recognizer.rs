@@ -1,13 +1,13 @@
 use super::endgame::{EndGame, LikelyOutcome};
 use super::score::Score;
-use crate::board::Board;
+use crate::types::Board;
 use crate::bound::NodeType;
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
 use crate::mv::Move;
 use crate::search::algo::Algo;
 use crate::search::node::{Event, Node};
-use crate::types::Ply;
+use crate::piece::Ply;
 use crate::Color;
 use serde::{Deserialize, Serialize};
 use std::fmt;

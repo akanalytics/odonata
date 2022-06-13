@@ -1,7 +1,7 @@
 use crate::bits::square::Square;
-use crate::board::Board;
+use crate::types::Board;
 use crate::trace::stat::{SliceStat, Stat};
-use crate::types::Color;
+use crate::piece::Color;
 use crate::{Bitboard, PreCalc};
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
@@ -470,7 +470,7 @@ impl EndGame {
 mod tests {
     use super::*;
     use crate::{
-        board::boardbuf::*,
+        types::boardbuf::*,
         infra::{black_box, profiler::Profiler},
     };
     use test_log::test;

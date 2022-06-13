@@ -1,9 +1,9 @@
-use crate::board::makemove::MoveMaker;
-use crate::board::Board;
+
+use crate::types::Board;
 use crate::infra::component::Component;
 use crate::mv::Move;
 use crate::position::Position;
-use crate::types::{Hash, Piece, Repeats};
+use crate::piece::{Hash, Piece, Repeats};
 use crate::variation::Variation;
 // use crate::{debug, logger::LogInit};
 use serde::{Deserialize, Serialize};

@@ -1,10 +1,10 @@
-use crate::board::makemove::MoveMaker;
-use crate::board::Board;
+
+use crate::types::Board;
 use crate::mv::Move;
 use crate::parse::Parse;
 use crate::tags::Tags;
-use crate::types::MAX_LEGAL_MOVES;
-use crate::types::{Color, Piece};
+use crate::piece::MAX_LEGAL_MOVES;
+use crate::piece::{Color, Piece};
 use crate::variation::Variation;
 use anyhow::{anyhow, Result};
 use arrayvec::ArrayVec;
@@ -553,7 +553,7 @@ mod tests {
     use super::*;
     use crate::bits::castling::*;
     use crate::bits::square::*;
-    use crate::board::boardbuf::*;
+    use crate::types::boardbuf::*;
     use crate::catalog::Catalog;
     use crate::globals::constants::*;
 

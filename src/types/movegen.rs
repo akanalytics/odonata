@@ -1,14 +1,12 @@
 use crate::bits::bitboard::Bitboard;
 use crate::bits::precalc::PreCalc;
-use crate::board::boardcalcs::BoardCalcs;
-use crate::board::makemove::MoveMaker;
-use crate::board::rules::Rules;
-use crate::board::Board;
 use crate::infra::metric::*;
 use crate::movelist::MoveList;
 use crate::mv::Move;
-use crate::search::node::{Timing, Counter};
-use crate::types::{Color, Piece};
+use crate::piece::Piece;
+use crate::search::node::{Counter, Timing};
+use crate::types::rules::Rules;
+use crate::types::Board;
 
 trait MoveGen {}
 
@@ -21,78 +19,6 @@ trait MoveGen {}
 // fn threats_to(&self, c: Color) -> Bitboard;
 
 impl Board {
-    // all pieces of either color attacking a region
-    #[inline]
-    pub fn attacked_by(&self, targets: Bitboard) -> Bitboard {
-        BoardCalcs::attacked_by(targets, self.occupied(), self)
-    }
-
-    #[inline]
-    pub fn pinned(&self, king_color: Color) -> Bitboard {
-        let mut pi = self.pinned[king_color].get();
-        if pi == Bitboard::niche() {
-            let pd = BoardCalcs::pinned_and_discoverers(self, king_color);
-            self.pinned[king_color].set(pd.0);
-            self.discoverer[king_color].set(pd.1);
-            pi = pd.0;
-        }
-        pi
-    }
-
-    #[inline]
-    pub fn discoverer(&self, king_color: Color) -> Bitboard {
-        let mut di = self.discoverer[king_color].get();
-        if di == Bitboard::niche() {
-            let pd = BoardCalcs::pinned_and_discoverers(self, king_color);
-            self.pinned[king_color].set(pd.0);
-            self.discoverer[king_color].set(pd.1);
-            di = pd.1;
-        }
-        di
-    }
-
-    pub fn maybe_gives_discovered_check(&self, mv: Move) -> bool {
-        debug_assert!(self.is_legal_move(&mv));
-        let their_king_color = self.color_them();
-        mv.from().is_in(self.discoverer(their_king_color))
-    }
-
-    pub fn will_check_them(&self, mv: &Move) -> bool {
-        debug_assert!(self.is_legal_move(mv));
-        let their_king_color = self.color_them();
-        self.make_move(mv).is_in_check(their_king_color)
-    }
-
-    #[inline]
-    pub fn checkers_of(&self, king_color: Color) -> Bitboard {
-        let mut ch = self.checkers_of[king_color].get();
-        if ch == Bitboard::niche() {
-            ch = BoardCalcs::checkers_of(self, king_color);
-            self.checkers_of[king_color].set(ch);
-        }
-        ch
-    }
-
-    #[inline]
-    pub fn all_attacks_on(&self, defender: Color) -> Bitboard {
-        let mut th = self.threats_to[defender].get();
-        if th == Bitboard::niche() {
-            th = BoardCalcs::all_attacks_on(self, defender, self.occupied());
-            self.threats_to[defender].set(th);
-        }
-        th
-    }
-
-    pub fn has_legal_moves(&self) -> bool {
-        !self.legal_moves().is_empty()
-    }
-
-    /// called with is_in_check( board.turn() ) to see if currently in check
-    pub fn is_in_check(&self, king_color: Color) -> bool {
-        let them = self.color(king_color.opposite());
-        self.checkers_of(king_color).intersects(them)
-    }
-
     pub fn is_pseudo_legal_and_legal_move(&self, m: Move) -> bool {
         let t = Metrics::timing_start();
         let ret = self.is_pseudo_legal_move(&m) && self.is_legal_move(&m);
@@ -141,14 +67,12 @@ impl Board {
         }
 
         if m.mover_piece().is_line_piece()
-            && (PreCalc::default().strictly_between(m.from(), m.to()) & self.occupied())
-                .any()
+            && (PreCalc::default().strictly_between(m.from(), m.to()) & self.occupied()).any()
         {
             return false;
         }
         if m.mover_piece() == Piece::Pawn
-            && (PreCalc::default().strictly_between(m.from(), m.to()) & self.occupied())
-                .any()
+            && (PreCalc::default().strictly_between(m.from(), m.to()) & self.occupied()).any()
         {
             return false;
         }
@@ -250,16 +174,17 @@ impl Board {
         Rules::legals_for(self, &mut moves);
         moves
     }
-
 }
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use super::*;
-    use crate::board::boardbuf::*;
-    use crate::board::*;
-    use crate::catalog::*;
+    use crate::{catalog::*, Color};
     use crate::globals::constants::*;
+    use crate::types::*;
+    use anyhow::Result;
     extern crate env_logger;
     // use crate::movelist::MoveValidator;
 
@@ -444,7 +369,7 @@ mod tests {
 
         let fen = "k7/8/8/8/8/8/7K/7B w - - 0 0 id 'check Bishop #2'";
         let board = Board::parse_fen(fen).unwrap().as_board();
-        assert_eq!(board.is_in_check(Color::Black), true);
+        assert_eq!(board.is_in_check(crate::Color::Black), true);
 
         let fen = "k7/8/2p5/8/8/8/7K/7B w - - 0 0 id 'check blocked bishop #3'";
         let board = Board::parse_fen(fen).unwrap().as_board();

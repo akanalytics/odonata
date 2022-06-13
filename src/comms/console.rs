@@ -1,4 +1,4 @@
-use crate::board::Board;
+use crate::types::Board;
 use crate::comms::uci::Uci;
 use crate::infra::version::Version;
 use crate::search::algo::Algo;

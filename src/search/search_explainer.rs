@@ -1,7 +1,7 @@
 use crate::Board;
 // use crate::Bitboard;
 // use crate::board::Board;
-use crate::{bound::NodeType, types::Ply};
+use crate::{bound::NodeType, piece::Ply};
 // use crate::eval::weight::Weight;
 // use crate::search::node::Node;
 use crate::eval::score::Score;
@@ -14,7 +14,7 @@ use crate::infra::component::{Component, State};
 // use crate::{debug, logger::LogInit};
 use super::node::{Event, Node};
 use crate::domain::tree::{SearchTree, TreeNode};
-use crate::types::MoveType;
+use crate::piece::MoveType;
 use anyhow::{Context, Result};
 use fmt::Debug;
 use serde::{Deserialize, Serialize};

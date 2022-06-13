@@ -1,4 +1,4 @@
-use crate::types::Hash;
+use crate::piece::Hash;
 use std::mem;
 use std::sync::atomic::{AtomicU64, Ordering};
 

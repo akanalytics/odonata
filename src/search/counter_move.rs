@@ -1,7 +1,7 @@
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
 use crate::mv::Move;
-use crate::types::{Color, Piece, Ply};
+use crate::piece::{Color, Piece, Ply};
 use crate::Bitboard;
 use serde::{Deserialize, Serialize};
 use std::fmt;

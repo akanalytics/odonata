@@ -1,6 +1,6 @@
-use crate::board::Board;
+use crate::types::Board;
 use crate::mv::Move;
-use crate::types::{Color, Piece};
+use crate::piece::{Color, Piece};
 use anyhow::Result;
 use itertools::Itertools;
 use std::cmp;
