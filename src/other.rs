@@ -7,7 +7,7 @@
 // pub mod globals;
 // pub mod movelist;
 // pub mod mv;
-// pub mod outcome;
+pub mod outcome;
 // pub mod parse;
 // pub mod perft;
 // pub mod phaser;

@@ -8,7 +8,7 @@ use tabled::{
     Alignment, Modify, Padding, Style,
 };
 
-use crate::{outcome::Outcome, phaser::Phase, utils::Formatting, Bitboard, Color, Piece};
+use crate::{other::outcome::Outcome, phaser::Phase, utils::Formatting, Bitboard, Color, Piece};
 
 use super::{eval::Feature, feature::WeightsVector, weight::Weight};
 
@@ -153,7 +153,9 @@ impl ExplainScore {
                 .vec
                 .iter()
                 .filter(|&e| s == &e.0.category())
-                .map(|e| (e.1 - e.2) * wv.weights[e.0.index()]).sum::<Weight>().interpolate(self.phase)
+                .map(|e| (e.1 - e.2) * wv.weights[e.0.index()])
+                .sum::<Weight>()
+                .interpolate(self.phase),
         }
     }
 

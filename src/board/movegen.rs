@@ -1,5 +1,5 @@
 use crate::bits::bitboard::Bitboard;
-use crate::bits::precalc::BitboardDefault;
+use crate::bits::precalc::PreCalc;
 use crate::board::boardcalcs::BoardCalcs;
 use crate::board::makemove::MoveMaker;
 use crate::board::rules::Rules;
@@ -141,19 +141,19 @@ impl Board {
         }
 
         if m.mover_piece().is_line_piece()
-            && (BitboardDefault::default().strictly_between(m.from(), m.to()) & self.occupied())
+            && (PreCalc::default().strictly_between(m.from(), m.to()) & self.occupied())
                 .any()
         {
             return false;
         }
         if m.mover_piece() == Piece::Pawn
-            && (BitboardDefault::default().strictly_between(m.from(), m.to()) & self.occupied())
+            && (PreCalc::default().strictly_between(m.from(), m.to()) & self.occupied())
                 .any()
         {
             return false;
         }
         // check piece move
-        let precalc = BitboardDefault::default();
+        let precalc = PreCalc::default();
         let destinations = precalc.attacks(
             self.color_us(),
             m.mover_piece(),
@@ -210,7 +210,7 @@ impl Board {
         // their pieces wont have moved, but they may have been taken
         // we rely on self.pieces & them NOT being affected by our move other than by capture
 
-        let attack_gen = BitboardDefault::default();
+        let attack_gen = PreCalc::default();
         let occ = us | them;
         if (attack_gen.rook_attacks(occ, sq) & (self.rooks() | self.queens()) & them).any() {
             return false;

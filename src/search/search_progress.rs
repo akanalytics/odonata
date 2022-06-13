@@ -8,7 +8,7 @@ use crate::clock::Clock;
 use crate::eval::score::Score;
 use crate::infra::component::Component;
 use crate::mv::Move;
-use crate::outcome::Outcome;
+use crate::other::outcome::Outcome;
 use crate::other::pvtable::PvTable;
 use crate::tags::Tag;
 use crate::types::Ply;

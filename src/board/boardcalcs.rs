@@ -1,5 +1,5 @@
 use crate::bits::bitboard::Bitboard;
-use crate::bits::precalc::BitboardDefault;
+use crate::bits::precalc::PreCalc;
 use crate::board::Board;
 use crate::types::Color;
 
@@ -31,7 +31,7 @@ impl BoardCalcs {
         let mut pinned = Bitboard::empty();
         let mut discoverers = Bitboard::empty();
         for ch in xray_checkers.squares() {
-            let ray = BitboardDefault::default().strictly_between(ch, king_sq);
+            let ray = PreCalc::default().strictly_between(ch, king_sq);
             if ray.disjoint(color_them) && (ray & color_us).popcount() == 1 {
                 pinned |= ray & color_us;
             } else if ray.disjoint(color_us) && (ray & color_them).popcount() == 1 {
@@ -52,7 +52,7 @@ impl BoardCalcs {
         let queens = board.queens() & board.color(opponent);
         let kings = board.kings() & board.color(opponent);
 
-        let attack_gen = BitboardDefault::default();
+        let attack_gen = PreCalc::default();
         let (east, west) = attack_gen.pawn_attacks(pawns, opponent);
         let mut threats = east | west;
 
@@ -89,7 +89,7 @@ impl BoardCalcs {
         let queens = board.queens();
         let kings = board.kings();
 
-        let attack_gen = BitboardDefault::default();
+        let attack_gen = PreCalc::default();
         let white = attack_gen.pawn_attackers(targets, Color::White) & pawns & board.white();
         let black = attack_gen.pawn_attackers(targets, Color::Black) & pawns & board.black();
         let mut attackers = white | black;

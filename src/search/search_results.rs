@@ -3,7 +3,7 @@ use std::iter::{self, FromIterator};
 use crate::eval::eval::Eval;
 use crate::eval::score::Score;
 use crate::mv::Move;
-use crate::outcome::Outcome;
+use crate::other::outcome::Outcome;
 use crate::tags::Tag;
 use crate::types::Ply;
 use crate::variation::Variation;

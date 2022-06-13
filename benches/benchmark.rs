@@ -281,7 +281,7 @@ fn sq_calcs(c: &mut Criterion) {
     // let bbs: Vec<Bitboard> = (0..64).into_iter().map(|sq| Bitboard::from_sq(sq)).collect();
 
     group.bench_function("between", |b| {
-        let bb = BitboardDefault::default();
+        let bb = PreCalc::default();
         b.iter_custom(|n| {
             let t = Instant::now();
             for _ in 0..n {

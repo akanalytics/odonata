@@ -6,7 +6,7 @@ use crate::eval::score::Score;
 use crate::eval::scorer::ExplainScore;
 use crate::eval::weight::Weight;
 use crate::infra::component::Component;
-use crate::outcome::Outcome;
+use crate::other::outcome::Outcome;
 use crate::position::Position;
 use crate::search::engine::Engine;
 use crate::tags::Tag;

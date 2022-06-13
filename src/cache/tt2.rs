@@ -1,6 +1,6 @@
 use crate::bits::bitboard::Bitboard;
 use crate::bits::castling::CastlingRights;
-use crate::bits::precalc::BitboardDefault;
+use crate::bits::precalc::PreCalc;
 use crate::bits::square::Square;
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
@@ -88,14 +88,14 @@ impl Move {
             from = Square::from_xy(file as u32, rank);
         }
 
-        if mover == Piece::King && BitboardDefault::default().chebyshev_distance(from, to) > 1 {
+        if mover == Piece::King && PreCalc::default().chebyshev_distance(from, to) > 1 {
             Move::new_castle(from, to, CastlingRights::from_king_move(to))
         } else if capture == Piece::None {
             if mover != Piece::Pawn {
                 Move::new_quiet(mover, from, to)
             } else if promo == Piece::None {
                 if is_pawn_double_push {
-                    let ep = BitboardDefault::default()
+                    let ep = PreCalc::default()
                         .strictly_between(from, to)
                         .square();
                     Move::new_double_push(from, to, ep)

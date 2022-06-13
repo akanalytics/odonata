@@ -1,6 +1,6 @@
 use crate::bits::bitboard::{Bitboard, Dir};
 use crate::bits::castling::CastlingRights;
-use crate::bits::precalc::BitboardDefault;
+use crate::bits::precalc::PreCalc;
 use crate::bits::square::Square;
 use crate::board::boardcalcs::BoardCalcs;
 use crate::board::Board;
@@ -33,7 +33,7 @@ impl Rules {
         if our_kings.is_empty() {
             return;
         }
-        let attack_gen = BitboardDefault::default();
+        let attack_gen = PreCalc::default();
         let them = b.them();
         let occ = b.occupied();
         let king_sq = (b.kings() & us).square();
@@ -70,7 +70,7 @@ impl Rules {
             return Self::king_legal(b, moves);
         }
         let the_checker = checkers.square();
-        let gen = BitboardDefault::default();
+        let gen = PreCalc::default();
         if checkers.popcount() == 1 {
             let king_sq = our_kings.square();
             // Captr checker -> capture-sq & piece not pinned & (checker)
@@ -202,7 +202,7 @@ impl Rules {
     }
 
     // pub fn non_pawn(p: Piece, b: &Board, moves: &mut MoveList) {
-    //     let attack_gen = BitboardDefault::default();
+    //     let attack_gen = PreCalc::default();
     //     let us = b.us();
     //     for fr in (b.pieces(p) & us).squares() {
     //         let attacks = attack_gen.non_pawn_attacks(b.color_us(), p, b.us(), b.them(), fr) & !us;
@@ -259,7 +259,7 @@ impl Rules {
     }
 
     // pub fn pawn_promos(b: &Board, moves: &mut MoveList) {
-    //     let attack_gen = BitboardDefault::default();
+    //     let attack_gen = PreCalc::default();
     //     let c = b.color_us();
     //     let occ = b.occupied();
     //     let us = b.us();
@@ -277,7 +277,7 @@ impl Rules {
 
     // pub fn pawn_push(b: &Board, moves: &mut MoveList) {
     //     // non-promoted single-push pawns
-    //     let attack_gen = BitboardDefault::default();
+    //     let attack_gen = PreCalc::default();
     //     let c = b.color_us();
     //     let occ = b.occupied();
     //     let us = b.us();
@@ -300,7 +300,7 @@ impl Rules {
     // }
 
     // pub fn pawn_captures_incl_promo(b: &Board, moves: &mut MoveList) {
-    //     let attack_gen = BitboardDefault::default();
+    //     let attack_gen = PreCalc::default();
     //     let c = b.color_us();
     //     let us = b.us();
     //     let them = b.them();

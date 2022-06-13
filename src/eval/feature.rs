@@ -3,7 +3,7 @@ use std::fmt;
 use std::io::Write;
 
 use crate::eval::weight::Weight;
-use crate::outcome::Outcome;
+use crate::other::outcome::Outcome;
 use crate::phaser::Phase;
 use anyhow::Result;
 

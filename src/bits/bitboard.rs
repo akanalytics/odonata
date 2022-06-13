@@ -307,7 +307,7 @@ impl Bitboard {
 
     /// All of RANK 1 plus RANK 8
     ///```
-    /// use odonata::bitboard::bitboard::Bitboard;
+    /// use odonata::bits::Bitboard;
     /// assert!(Bitboard::RANKS_18.contains(Bitboard::A1));
     /// assert!(Bitboard::RANKS_18.contains(Bitboard::H8));
     ///```

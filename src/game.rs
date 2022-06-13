@@ -5,7 +5,7 @@ use crate::catalog::Catalog;
 // use crate::movelist::MoveValidator;
 use crate::eval::score::Score;
 use crate::mv::Move;
-use crate::outcome::Outcome;
+use crate::other::outcome::Outcome;
 use crate::position::Position;
 use crate::search::algo::Algo;
 use crate::tags::Tags;

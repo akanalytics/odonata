@@ -1,12 +1,10 @@
-use crate::bits::castling::CastlingRights;
-use crate::bits::precalc::BitboardDefault;
-use crate::bits::square::Square;
+use crate::bits::{CastlingRights, PreCalc, Square};
 use crate::board::Board;
 use crate::eval::endgame::EndGame;
 use crate::eval::eval::{Eval, Feature};
 use crate::infra::metric::Metrics;
 use crate::phaser::Phaser;
-use crate::search::node::{Timing};
+use crate::search::node::Timing;
 use crate::types::Color::{self, *};
 use crate::types::Piece;
 use crate::types::Piece::*;
@@ -209,7 +207,7 @@ impl Calc {
     fn pawns(c: Color, scorer: &mut impl ScorerBase, b: &Board) {
         let us = b.color(c);
         let them = b.color(c.opposite());
-        let bbd = BitboardDefault::default();
+        let bbd = PreCalc::default();
         // self.doubled_pawns = bbd.doubled_pawns(b.color(c) & b.pawns()).popcount();
         let isolated_pawns_bb = bbd.isolated_pawns(us & b.pawns());
         let isolated_pawns = isolated_pawns_bb.popcount();
@@ -482,7 +480,7 @@ impl Calc {
         let them = b.color(c.opposite());
         let p = b.pawns() & us;
         let ksq = k.square();
-        let bb = BitboardDefault::default();
+        let bb = PreCalc::default();
         let castling_rights = b.castling().contains(CastlingRights::king_side_right(c)) as i32
             + b.castling().contains(CastlingRights::queen_side_right(c)) as i32;
 
@@ -596,7 +594,7 @@ impl Calc {
     }
 
     fn mobility(c: Color, s: &mut impl ScorerBase, b: &Board) {
-        let bb = BitboardDefault::default();
+        let bb = PreCalc::default();
         let us = b.color(c);
         let opponent = c.opposite();
         let them = b.color(opponent);
@@ -835,11 +833,7 @@ impl Calc {
         //
         // s.set_bits(Attr::DoubleAttacks.into(), double_attacks);
         // s.accum(c, Attr::DoubleAttacks.as_feature(), double_attacks.popcount());
-        s.accum(
-            c,
-            Attr::AttacksNearKing.as_feature(),
-            attacks_near_king,
-        );
+        s.accum(c, Attr::AttacksNearKing.as_feature(), attacks_near_king);
         s.accum(c, Attr::CenterAttacks.as_feature(), center_attacks);
         s.accum(c, Attr::UndefendedSq.as_feature(), move_squares);
         s.accum(
@@ -984,7 +978,7 @@ mod tests {
 
     #[test]
     fn king_safety_test() {
-        let bb = BitboardDefault::default();
+        let bb = PreCalc::default();
         let b = Board::parse_fen("6k1/r4ppp/1q1bb3/8/3p4/1P3B2/P2BQPPP/R5K1 w - - 0 1").unwrap();
         let wk = b.kings() & b.white();
         let wksq = wk.square();
@@ -1005,4 +999,3 @@ mod tests {
         assert_eq!((bd1 - Bitboard::RANKS_18 - b.occupied()).is_empty(), true);
     }
 }
-
