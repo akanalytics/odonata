@@ -67,11 +67,11 @@ impl SearchResults {
             nodes: algo.clock.cumul_nodes_all_threads(),
             nodes_thread: algo.clock.cumul_nodes_this_thread(),
             nps: algo.clock.cumul_knps_all_threads() * 1000,
-            depth: algo.stats.depth(),
+            depth: 0, // algo.stats.depth(),
             seldepth: algo.pv_table.selective_depth(),
             time_millis: algo.clock.elapsed_search().0.as_millis() as u64,
             hashfull_per_mille: algo.tt.hashfull_per_mille(),
-            branching_factor: algo.stats.branching_factor(),
+            branching_factor: 0.0, // algo.stats.branching_factor(),
             multi_pv: Default::default(),
         }
     }

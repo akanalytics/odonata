@@ -21,7 +21,7 @@ impl Algo {
         let t = Metrics::timing_start();
         let depth = n.depth;
         self.max_depth = depth;
-        self.stats.depth = depth;
+        // self.stats.depth = depth;
         self.pv_table = PvTable::new(MAX_PLY as usize);
         debug_assert!(self.current_variation.len() == 0);
 
@@ -43,7 +43,6 @@ impl Algo {
             Metrics::incr(Counter::SearchComplete);
         }
 
-        self.stats.set_score(score, category);
         debug_assert!(
             self.current_variation.len() == 0
                 || category == Event::UserCancelled
@@ -70,7 +69,7 @@ impl Algo {
             );
         }
 
-        self.stats.record_iteration(self.max_depth, category, pv);
+        // self.stats.record_iteration(self.max_depth, category, pv);
         Metrics::profile(t, Timing::TimingSearchRoot);
         (score, category)
     }
@@ -520,10 +519,10 @@ mod tests {
             assert_eq!(
                 algo.pv().to_string(),
                 pos.pv()?.to_string(),
-                "#{} {}\n{}",
+                "#{} Expected: {}\nSearch: {}",
                 i,
                 pos,
-                algo,
+                algo.pv().to_string()
             );
             assert_eq!(algo.score().is_mate(), true);
             println!("#{i} gives mate in {}", algo.score().mate_in().unwrap());

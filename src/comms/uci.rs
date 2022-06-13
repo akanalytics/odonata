@@ -645,7 +645,6 @@ impl Uci {
             bail!("Unknown option name '{}' value '{}'", name, value);
         }
         eng.algo.set_callback(Self::uci_info);
-        drop(eng);
 
         // self.set_debug(self.debug); // set the info calback again
         Ok(())
@@ -678,10 +677,11 @@ impl Uci {
                         }
                     }
                 }
-                let mut engine = self.engine.lock().unwrap();
-                engine.configment_many(kvs)?
+                let mut eng = self.engine.lock().unwrap();
+                eng.configment_many(kvs)?;
+                eng.algo.set_callback(Self::uci_info);
             } else {
-                self.uci_option_name_value(name, value)?
+                self.uci_option_name_value(name, value)?;
             }
             // self.engine = Arc::new(Mutex::new(new_engine));
             // let c = ParsedConfig::new().set(&name, &value);
@@ -693,6 +693,7 @@ impl Uci {
         } else {
             self.uci_option_button(s)?;
         };
+
         Ok(())
     }
 

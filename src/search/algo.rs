@@ -25,7 +25,6 @@ use crate::search::pvs::Pvs;
 use crate::search::razor::Razor;
 use crate::search::restrictions::Restrictions;
 use crate::search::search_progress::SearchProgress;
-use crate::search::searchstats::SearchStats;
 use crate::search::taskcontrol::TaskControl;
 use crate::search::timecontrol::TimeControl;
 use crate::types::Ply;
@@ -91,9 +90,6 @@ pub struct Algo {
     #[serde(skip)]
     pub max_depth: Ply,
 
-    #[serde(skip)]
-    pub stats: SearchStats,
-    
     #[serde(skip)]
     pub pv_table: PvTable,
 
@@ -174,7 +170,6 @@ impl Component for Algo {
 
     fn new_game(&mut self) {
         self.clock_checks = 0;
-        self.stats = SearchStats::new();
         self.pv_table = PvTable::default();
         self.current_variation = Variation::new();
         self.max_depth = 0;
@@ -182,7 +177,6 @@ impl Component for Algo {
 
     fn new_position(&mut self) {
         self.clock_checks = 0;
-        self.stats = SearchStats::new();
         self.pv_table = PvTable::default();
         self.current_variation = Variation::new();
         self.max_depth = 0;
@@ -262,7 +256,6 @@ impl fmt::Display for Algo {
         self.tt.fmt_nodes(f, &self.board)?;
         writeln!(f, ".\n.\n[killers]\n{}", self.killers)?;
         writeln!(f, ".\n.\n[history]\n{}", self.history)?;
-        writeln!(f, ".\n.\n[stats]\n{}", self.stats)?;
         writeln!(f, ".\n.\n[iterative deepening]\n{}", self.ids)?;
         writeln!(f, ".\n.\n[pvtable]\n{}", self.pv_table)?;
         writeln!(f, ".\n.\n[explainer]\n{}", self.explainer)?;
@@ -377,8 +370,8 @@ impl Algo {
 
         let time_up = self.mte.is_time_up(ply, &self.clock, force_check);
         if time_up {
-            self.stats.completed = false;
-            self.stats.set_score(-Score::INFINITY, Event::SearchTimeUp);
+            // self.stats.completed = false;
+            // self.stats.set_score(-Score::INFINITY, Event::SearchTimeUp);
             self.controller.cancel();
         }
         (time_up, Event::SearchTimeUp)

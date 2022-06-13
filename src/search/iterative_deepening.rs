@@ -92,7 +92,7 @@ impl Algo {
             Metrics::flush_thread_local();
             self.set_state(State::StartDepthIteration(ply));
             let t = Metrics::timing_start();
-            self.stats.new_iteration();
+            // self.stats.new_iteration();
             multi_pv.resize_with(self.restrictions.multi_pv_count, Default::default);
             for i in 0..self.restrictions.multi_pv_count {
                 let score = self
