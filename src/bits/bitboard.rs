@@ -1,4 +1,4 @@
-use crate::bitboard::square::Square;
+use crate::bits::square::Square;
 use crate::types::Color;
 use anyhow::{anyhow, Result};
 use std::fmt::{self, Write};

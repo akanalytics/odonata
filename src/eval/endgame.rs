@@ -1,4 +1,4 @@
-use crate::bitboard::square::Square;
+use crate::bits::square::Square;
 use crate::board::Board;
 use crate::trace::stat::{SliceStat, Stat};
 use crate::types::Color;

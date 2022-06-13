@@ -1,4 +1,4 @@
-use crate::bitboard::bitboard::{Bitboard, Dir};
+use crate::bits::bitboard::{Bitboard, Dir};
 use anyhow::{anyhow, bail, Result};
 use enumflags2::BitFlags;
 use serde::{Deserialize, Serialize};

@@ -1,4 +1,4 @@
-use crate::bitboard::bitboard::Bitboard;
+use crate::bits::bitboard::Bitboard;
 use crate::types::{Color, Piece};
 
 #[derive(Clone, Debug, PartialEq, Default, Eq)]

@@ -1,6 +1,6 @@
-use crate::bitboard::bitboard::Bitboard;
-use crate::bitboard::castling::CastlingRights;
-use crate::bitboard::square::Square;
+use crate::bits::bitboard::Bitboard;
+use crate::bits::castling::CastlingRights;
+use crate::bits::square::Square;
 use crate::board::boardbuf::BoardBuf;
 use crate::board::multiboard::Multiboard;
 use crate::cache::hasher::Hasher;

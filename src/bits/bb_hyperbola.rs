@@ -1,6 +1,6 @@
-use crate::bitboard::bb_sliders::SlidingPieceAttacks;
-use crate::bitboard::bitboard::{Bitboard, Dir};
-use crate::bitboard::square::Square;
+use crate::bits::bb_sliders::SlidingPieceAttacks;
+use crate::bits::bitboard::{Bitboard, Dir};
+use crate::bits::square::Square;
 use static_init::dynamic;
 
 // #[ctor]
@@ -160,8 +160,14 @@ impl SlidingPieceAttacks for Hyperbola {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bitboard::bb_classical::ClassicalBitboard;
+    use crate::bits::bb_classical::ClassicalBitboard;
     use crate::globals::constants::*;
+
+    #[test]
+    fn test_size() {
+        assert_eq!(std::mem::size_of::<Hyperbola>(), 5632, "Hyperbola");
+    }
+
 
     #[test]
     fn test_rook_attacks() {

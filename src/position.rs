@@ -1,4 +1,4 @@
-use crate::bitboard::bitboard::Bitboard;
+use crate::bits::bitboard::Bitboard;
 use crate::board::boardbuf::BoardBuf;
 use crate::board::Board;
 use crate::mv::Move;
@@ -6,7 +6,7 @@ use crate::variation::Variation;
 
 use crate::movelist::MoveList;
 // use crate::movelist::MoveValidator;
-use crate::bitboard::castling::CastlingRights;
+use crate::bits::castling::CastlingRights;
 use crate::tags::{Tag, Tags};
 use crate::types::{Color, Ply};
 use crate::utils::StringUtils;

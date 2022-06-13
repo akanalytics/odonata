@@ -1,5 +1,5 @@
-use crate::bitboard::bitboard::Bitboard;
-use crate::bitboard::precalc::BitboardDefault;
+use crate::bits::bitboard::Bitboard;
+use crate::bits::precalc::BitboardDefault;
 use crate::board::Board;
 use crate::types::Color;
 

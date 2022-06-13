@@ -1,10 +1,10 @@
-use odonata::bitboard::bb_classical::ClassicalBitboard;
-use odonata::bitboard::bb_hyperbola::Hyperbola;
-use odonata::bitboard::bb_magic::*;
-use odonata::bitboard::bb_sliders::*;
-use odonata::bitboard::bitboard::*;
-use odonata::bitboard::precalc::*;
-use odonata::bitboard::square::*;
+use odonata::bits::bb_classical::ClassicalBitboard;
+use odonata::bits::bb_hyperbola::Hyperbola;
+use odonata::bits::bb_magic::*;
+use odonata::bits::bb_sliders::*;
+use odonata::bits::bitboard::*;
+use odonata::bits::precalc::*;
+use odonata::bits::square::*;
 use odonata::board::boardcalcs::*;
 use odonata::board::makemove::*;
 use odonata::board::rules::*;

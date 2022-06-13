@@ -1,5 +1,5 @@
-use crate::bitboard::castling::CastlingRights;
-use crate::bitboard::square::Square;
+use crate::bits::castling::CastlingRights;
+use crate::bits::square::Square;
 use crate::board::Board;
 use crate::globals::constants::*;
 use crate::infra::metric::*;

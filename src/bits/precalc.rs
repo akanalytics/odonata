@@ -1,9 +1,9 @@
 use crate::types::{Color, Piece};
 // use crate::bitboard::bb_classical::ClassicalBitboard;
-use crate::bitboard::bb_hyperbola::Hyperbola;
-use crate::bitboard::bb_sliders::SlidingPieceAttacks;
-use crate::bitboard::bitboard::{Bitboard, Dir};
-use crate::bitboard::square::Square;
+use crate::bits::bb_hyperbola::Hyperbola;
+use crate::bits::bb_sliders::SlidingPieceAttacks;
+use crate::bits::bitboard::{Bitboard, Dir};
+use crate::bits::square::Square;
 use static_init::dynamic;
 
 pub type BitboardDefault = PreCalc;

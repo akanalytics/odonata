@@ -8,7 +8,7 @@ use crate::infra::component::{Component, State};
 use crate::infra::metric::Metrics;
 use crate::mv::Move;
 use crate::position::Position;
-use crate::pvtable::PvTable;
+use crate::other::pvtable::PvTable;
 use crate::repetition::Repetition;
 use crate::search::aspiration::Aspiration;
 use crate::search::extensions::Extensions;

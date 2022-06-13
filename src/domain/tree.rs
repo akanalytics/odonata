@@ -268,7 +268,7 @@ impl SearchTree {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{bitboard::square::Square, catalog::Catalog, test_log::test, eval::score::Score};
+    use crate::{bits::square::Square, catalog::Catalog, test_log::test, eval::score::Score};
 
     #[test]
     fn test_generic_tree() {

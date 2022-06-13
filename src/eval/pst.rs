@@ -1,4 +1,4 @@
-use crate::bitboard::square::Square;
+use crate::bits::square::Square;
 use crate::eval::weight::Weight;
 use crate::infra::component::Component;
 use crate::types::{Color, Piece};

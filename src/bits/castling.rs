@@ -1,5 +1,5 @@
-use crate::bitboard::bitboard::Bitboard;
-use crate::bitboard::square::Square;
+use crate::bits::bitboard::Bitboard;
+use crate::bits::square::Square;
 use crate::types::Color;
 use anyhow::{bail, Result};
 use std::fmt;

@@ -1,5 +1,5 @@
 use super::Board;
-use crate::bitboard::bitboard::Bitboard;
+use crate::bits::bitboard::Bitboard;
 use crate::types::Color;
 use crate::PreCalc;
 use static_init::dynamic;
@@ -65,9 +65,9 @@ impl<'a> Analysis<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bitboard::square::Square;
+    use crate::bits::square::Square;
     use crate::infra::profiler::Profiler;
-    use crate::{bitboard::precalc::BitboardDefault, BoardBuf};
+    use crate::{bits::precalc::BitboardDefault, BoardBuf};
     use test_log::test;
 
     #[test]

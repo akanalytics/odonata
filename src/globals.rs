@@ -1,7 +1,7 @@
 #[allow(non_upper_case_globals)]
 #[allow(dead_code)]
 pub mod constants {
-    use crate::bitboard::bitboard::Bitboard;
+    use crate::bits::bitboard::Bitboard;
     pub const a1: Bitboard = Bitboard::A1;
     pub const b1: Bitboard = Bitboard::B1;
     pub const c1: Bitboard = Bitboard::C1;
@@ -113,13 +113,10 @@ pub mod constants {
 
 #[cfg(test)]
 mod tests {
-    use crate::bitboard::bb_classical::*;
-    use crate::bitboard::bb_hyperbola::*;
-    use crate::bitboard::bb_magic::*;
-    use crate::bitboard::bitboard::*;
-    use crate::bitboard::castling::*;
-    use crate::bitboard::precalc::*;
-    use crate::bitboard::square::*;
+    use crate::bits::bitboard::*;
+    use crate::bits::castling::*;
+    use crate::bits::precalc::*;
+    use crate::bits::square::*;
     use crate::board::*;
     use crate::bound::NodeType;
     use crate::cache::hasher::*;
@@ -132,7 +129,7 @@ mod tests {
     use crate::movelist::*;
     use crate::mv::*;
     use crate::position::*;
-    use crate::pvtable::PvTable;
+    use crate::other::pvtable::PvTable;
     use crate::repetition::Repetition;
     use crate::search::aspiration::Aspiration;
     use crate::search::extensions::Extensions;
@@ -180,10 +177,7 @@ mod tests {
         assert_eq!(size_of::<Position>(), 216, "Position");
         assert_eq!(size_of::<NodeStats>(), 360, "NodeStats");
         assert_eq!(size_of::<SearchStats>(), 848, "SearchStats");
-        assert_eq!(size_of::<ClassicalBitboard>(), 5120, "ClassicalBitboard");
-        assert_eq!(size_of::<Hyperbola>(), 5632, "Hyperbola");
         assert_eq!(size_of::<PreCalc>(), 76808, "PreCalc");
-        assert_eq!(size_of::<Magic>(), 719264, "Magic");
         assert_eq!(size_of::<Hasher>(), 7296, "Hasher");
         assert_eq!(size_of::<Algo>(), 8424, "Algo");
         assert_eq!(size_of::<Clock>(), 64, "Clock");

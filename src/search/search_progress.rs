@@ -9,7 +9,7 @@ use crate::eval::score::Score;
 use crate::infra::component::Component;
 use crate::mv::Move;
 use crate::outcome::Outcome;
-use crate::pvtable::PvTable;
+use crate::other::pvtable::PvTable;
 use crate::tags::Tag;
 use crate::types::Ply;
 use crate::variation::Variation;

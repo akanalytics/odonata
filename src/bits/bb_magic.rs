@@ -37,9 +37,9 @@
 
 #![allow(non_upper_case_globals)]
 
-use crate::bitboard::bb_sliders::SlidingPieceAttacks;
-use crate::bitboard::bitboard::Bitboard;
-use crate::bitboard::square::Square;
+use crate::bits::bb_sliders::SlidingPieceAttacks;
+use crate::bits::bitboard::Bitboard;
+use crate::bits::square::Square;
 // use once_cell::sync::Lazy;
 use static_init::dynamic;
 
@@ -487,10 +487,15 @@ impl Magic {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bitboard::bb_classical::ClassicalBitboard;
-    use crate::bitboard::bb_sliders::SlidingPieceAttacks;
-    use crate::bitboard::bitboard::Bitboard;
+    use crate::bits::bb_classical::ClassicalBitboard;
+    use crate::bits::bb_sliders::SlidingPieceAttacks;
+    use crate::bits::bitboard::Bitboard;
     use crate::globals::constants::*;
+
+    #[test]
+    fn test_size() {
+        assert_eq!(std::mem::size_of::<Magic>(), 719264, "Magic");
+    }
 
     #[test]
     fn test_magic_rook_attacks() {

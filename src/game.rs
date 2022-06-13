@@ -168,7 +168,7 @@ impl fmt::Display for Game {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bitboard::castling::CastlingRights;
+    use crate::bits::castling::CastlingRights;
     use crate::eval::eval::*;
     use crate::infra::component::Component;
     use crate::search::timecontrol::*;

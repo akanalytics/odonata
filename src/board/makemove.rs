@@ -1,4 +1,4 @@
-use crate::bitboard::bitboard::Bitboard;
+use crate::bits::bitboard::Bitboard;
 use crate::board::Board;
 use crate::cache::hasher::Hasher;
 use crate::infra::metric::Metrics;

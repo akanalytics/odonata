@@ -1,6 +1,6 @@
 use super::Board;
-use crate::bitboard::bitboard::Bitboard;
-use crate::bitboard::castling::CastlingRights;
+use crate::bits::bitboard::Bitboard;
+use crate::bits::castling::CastlingRights;
 use crate::cache::hasher::Hasher;
 use crate::types::{Color, Piece};
 use anyhow::{bail, Context, Result};

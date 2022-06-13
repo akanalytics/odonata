@@ -6,3 +6,4 @@ pub mod bitboard;
 pub mod castling;
 pub mod precalc;
 pub mod square;
+

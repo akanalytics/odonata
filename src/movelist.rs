@@ -551,8 +551,8 @@ fn strip_move_numbers(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bitboard::castling::*;
-    use crate::bitboard::square::*;
+    use crate::bits::castling::*;
+    use crate::bits::square::*;
     use crate::board::boardbuf::*;
     use crate::catalog::Catalog;
     use crate::globals::constants::*;

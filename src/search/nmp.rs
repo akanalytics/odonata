@@ -5,7 +5,7 @@ use crate::cache::tt2::TtNode;
 use crate::eval::score::{Score, ToScore};
 use crate::infra::metric::Metrics;
 use crate::mv::Move;
-use crate::pvtable::PvTable;
+use crate::other::pvtable::PvTable;
 use crate::search::algo::Algo;
 use crate::search::node::{Event, Node};
 // use crate::eval::score::Score;

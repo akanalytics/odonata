@@ -1,6 +1,6 @@
-use crate::bitboard::castling::CastlingRights;
-use crate::bitboard::precalc::BitboardDefault;
-use crate::bitboard::square::Square;
+use crate::bits::castling::CastlingRights;
+use crate::bits::precalc::BitboardDefault;
+use crate::bits::square::Square;
 use crate::board::Board;
 use crate::eval::endgame::EndGame;
 use crate::eval::eval::{Eval, Feature};

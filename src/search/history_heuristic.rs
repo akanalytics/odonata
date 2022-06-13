@@ -1,4 +1,4 @@
-use crate::bitboard::bitboard::Bitboard;
+use crate::bits::bitboard::Bitboard;
 use crate::board::Board;
 use crate::infra::component::Component;
 use crate::mv::Move;
@@ -216,7 +216,7 @@ impl HistoryHeuristic {
 
 #[cfg(test)]
 mod tests {
-    use crate::bitboard::square::Square;
+    use crate::bits::square::Square;
     use test_log::test;
 
     use super::*;

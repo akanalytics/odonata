@@ -1,4 +1,4 @@
-use crate::bitboard::square::Square;
+use crate::bits::square::Square;
 use crate::board::Board;
 use crate::eval::material_balance::MaterialBalance;
 use crate::eval::pst::Pst;

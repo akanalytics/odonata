@@ -34,7 +34,8 @@ extern crate regex;
 extern crate log;
 
 // pub mod logger;
-pub mod bitboard;
+pub mod other;
+pub mod bits;
 pub mod board;
 pub mod bound;
 pub mod cache;
@@ -56,7 +57,6 @@ pub mod perft;
 pub mod phaser;
 pub mod position;
 pub mod prelude;
-pub mod pvtable;
 pub mod repetition;
 pub mod search;
 pub mod tags;
@@ -66,8 +66,8 @@ pub mod types;
 pub mod utils;
 pub mod variation;
 
-pub use crate::bitboard::bitboard::Bitboard;
-pub use crate::bitboard::precalc::PreCalc;
+pub use crate::bits::bitboard::Bitboard;
+pub use crate::bits::precalc::PreCalc;
 pub use crate::board::boardbuf::BoardBuf;
 pub use crate::board::Board;
 pub use crate::exam::Exam;

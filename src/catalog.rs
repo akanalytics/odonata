@@ -1,5 +1,5 @@
-use crate::bitboard::bitboard::Bitboard;
-use crate::bitboard::castling::CastlingRights;
+use crate::bits::bitboard::Bitboard;
+use crate::bits::castling::CastlingRights;
 use crate::board::boardbuf::BoardBuf;
 use crate::board::Board;
 use crate::globals::constants::*;

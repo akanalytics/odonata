@@ -790,8 +790,8 @@ impl OrderedMoveList {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bitboard::castling::*;
-    use crate::bitboard::square::*;
+    use crate::bits::castling::*;
+    use crate::bits::square::*;
     use crate::catalog::Catalog;
     use crate::globals::constants::*;
     use crate::movelist::*;

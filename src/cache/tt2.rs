@@ -1,7 +1,7 @@
-use crate::bitboard::bitboard::Bitboard;
-use crate::bitboard::castling::CastlingRights;
-use crate::bitboard::precalc::BitboardDefault;
-use crate::bitboard::square::Square;
+use crate::bits::bitboard::Bitboard;
+use crate::bits::castling::CastlingRights;
+use crate::bits::precalc::BitboardDefault;
+use crate::bits::square::Square;
 use crate::board::makemove::MoveMaker;
 use crate::board::Board;
 use crate::bound::NodeType;

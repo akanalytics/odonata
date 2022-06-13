@@ -1,7 +1,6 @@
-use crate::bitboard::bb_sliders::SlidingPieceAttacks;
-use crate::bitboard::bitboard::{Bitboard, Dir};
-use crate::bitboard::square::Square;
-// use once_cell::sync::Lazy;
+use crate::bits::bb_sliders::SlidingPieceAttacks;
+use crate::bits::bitboard::{Bitboard, Dir};
+use crate::bits::square::Square;
 use static_init::dynamic;
 
 // inspired by https://www.chessprogramming.org/Hiding_the_Implementation
@@ -12,36 +11,10 @@ pub struct ClassicalBitboard {
     knight_moves: [Bitboard; 64],
 }
 
-// #[ctor]
-// fn init_module() {
-//     ClassicalBitboard::init();
-// }
 
-// static mut STATIC_INSTANCE: *const ClassicalBitboard = std::ptr::null();
-
-// impl ClassicalBitboard {
-//     pub fn init() {
-//         let me = Self::new();
-//         unsafe {
-//             // leak the value, so it will never be dropped or freed
-//             STATIC_INSTANCE = Box::leak(me) as *const Self;
-//         }
-//     }
-
-//     // doesnt impl Default as too large to copy by value
-//     #[inline]
-//     pub fn default() -> &'static Self {
-//         unsafe {
-//             &*STATIC_INSTANCE
-//         }
-//     }
-// }
 
 #[dynamic(lazy)]
 static STATIC_INSTANCE: Box<ClassicalBitboard> = ClassicalBitboard::new();
-
-// #[dynamic]
-// static STATIC_INSTANCE: Box<ClassicalBitboard> = ClassicalBitboard::new();
 
 impl ClassicalBitboard {
     // doesnt impl Default as too large to copy by value
@@ -66,7 +39,7 @@ impl ClassicalBitboard {
                 classical.rays[sq][dir] = mask;
                 classical.king_moves[sq] |= bb.shift(dir);
 
-                // for example a night attack might be step N followed by step NE
+                // for example a knight attack might be step N followed by step NE
                 let next_dir = dir.rotate_clockwise();
                 classical.knight_moves[sq] |= bb.shift(dir).shift(next_dir);
             }
@@ -87,9 +60,6 @@ impl ClassicalBitboard {
         } else {
             blockers.last_square()
         };
-        // println!("attcks::: dir:{}, from:sq:{} blockers: {:?} blocker_sq:{} \n",  dir.index, from_sq, blockers, blocker_sq);
-        // println!("blockers:\n{} \nattacks:\n{} \n",blockers, attacks);
-        // println!("minus\n{}\n", self.attacks[blocker_sq][dir.index]);
         // remove attacks from blocker sq and beyond
         attacks - self.rays[blocker_sq][dir]
     }
@@ -121,6 +91,14 @@ impl SlidingPieceAttacks for ClassicalBitboard {
 mod tests {
     use super::*;
     use crate::globals::constants::*;
+    
+    #[test]
+    fn test_size() {
+        assert_eq!(std::mem::size_of::<ClassicalBitboard>(), 5120, "ClassicalBitboard");
+    }
+    
+
+
 
     #[test]
     fn test_rays() {

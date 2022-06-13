@@ -1,4 +1,4 @@
-use crate::bitboard::bitboard::{Bitboard, Dir, Squares};
+use crate::bits::bitboard::{Bitboard, Dir, Squares};
 use crate::types::Color;
 use std::cmp;
 use std::fmt;
