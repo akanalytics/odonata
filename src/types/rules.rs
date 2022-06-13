@@ -358,7 +358,6 @@ impl Rules {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::boardbuf::*;
     use crate::types::*;
 
     #[test]

@@ -470,7 +470,6 @@ impl EndGame {
 mod tests {
     use super::*;
     use crate::{
-        types::boardbuf::*,
         infra::{black_box, profiler::Profiler},
     };
     use test_log::test;

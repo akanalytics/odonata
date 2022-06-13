@@ -135,7 +135,6 @@ impl BoardCalcs {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::boardbuf::*;
     use crate::types::*;
     use crate::catalog::*;
     use crate::globals::constants::*;

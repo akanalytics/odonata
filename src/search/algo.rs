@@ -394,7 +394,6 @@ impl Algo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::boardbuf::*;
     use crate::catalog::*;
     use crate::comms::uci::Uci;
     use crate::eval::eval::*;

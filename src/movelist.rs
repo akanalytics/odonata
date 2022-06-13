@@ -553,7 +553,6 @@ mod tests {
     use super::*;
     use crate::bits::castling::*;
     use crate::bits::square::*;
-    use crate::types::boardbuf::*;
     use crate::catalog::Catalog;
     use crate::globals::constants::*;
 

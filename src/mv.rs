@@ -383,7 +383,6 @@ impl fmt::Display for Move {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::boardbuf::*;
     use crate::catalog::Catalog;
     // use crate::movelist::MoveValidator;
 

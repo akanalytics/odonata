@@ -8,7 +8,6 @@ use crate::mv::Move;
 use crate::piece::{Color, Hash, Piece, Ply, Repeats};
 use crate::search::node::{Counter, Timing};
 
-use crate::types::multiboard::Multiboard;
 use crate::variation::Variation;
 use anyhow::Result;
 use anyhow::{bail, Context};
@@ -26,7 +25,9 @@ unsafe impl Sync for Board {}
 
 #[derive(Clone, PartialEq, Eq, DeserializeFromStr)]
 pub struct Board {
-    multiboard: Multiboard,
+    pieces: [Bitboard; Piece::len()],
+    colors: [Bitboard; Color::len()],
+
     castling: CastlingRights,
     en_passant: Bitboard,
     turn: Color,
@@ -83,10 +84,130 @@ impl Board {
     }
 
     #[inline]
-    pub fn multiboard(&self) -> &Multiboard {
-        &self.multiboard
+    pub fn pieces(&self, p: Piece) -> Bitboard {
+        self.pieces[p]
     }
 
+    #[inline]
+    pub fn line_pieces(&self) -> Bitboard {
+        self.rooks() | self.bishops() | self.queens()
+    }
+
+    #[inline]
+    pub fn non_line_pieces(&self) -> Bitboard {
+        self.pawns() | self.knights() | self.kings()
+    }
+
+    #[inline]
+    pub fn pawns(&self) -> Bitboard {
+        self.pieces(Piece::Pawn)
+    }
+
+    #[inline]
+    pub fn knights(&self) -> Bitboard {
+        self.pieces(Piece::Knight)
+    }
+
+    #[inline]
+    pub fn bishops(&self) -> Bitboard {
+        self.pieces(Piece::Bishop)
+    }
+
+    #[inline]
+    pub fn rooks(&self) -> Bitboard {
+        self.pieces(Piece::Rook)
+    }
+
+    #[inline]
+    pub fn queens(&self) -> Bitboard {
+        self.pieces(Piece::Queen)
+    }
+
+    #[inline]
+    pub fn rooks_or_queens(&self) -> Bitboard {
+        self.rooks() | self.queens()
+    }
+
+    #[inline]
+    pub fn kings(&self) -> Bitboard {
+        self.pieces(Piece::King)
+    }
+
+    #[inline]
+    pub fn color(&self, c: Color) -> Bitboard {
+        self.colors[c.index()]
+    }
+
+    #[inline]
+    pub fn occupied(&self) -> Bitboard {
+        self.black() | self.white()
+    }
+
+    #[inline]
+    pub fn white(&self) -> Bitboard {
+        self.colors[Color::White.index()]
+    }
+
+    #[inline]
+    pub fn black(&self) -> Bitboard {
+        self.colors[Color::Black.index()]
+    }
+
+    #[inline]
+    pub fn piece_at(&self, sq: Bitboard) -> Piece {
+        debug_assert!(sq != Bitboard::EMPTY);
+        for &p in &Piece::ALL_BAR_NONE {
+            if self.pieces(p).contains(sq) {
+                return p;
+            }
+        }
+        Piece::None
+    }
+
+    #[inline]
+    pub fn remove_piece(&mut self, sq: Bitboard, p: Piece, c: Color) {
+        self.pieces[p].remove(sq);
+        self.colors[c].remove(sq);
+    }
+
+    #[inline]
+    pub fn move_piece(&mut self, from_sq: Bitboard, to_sq: Bitboard, p: Piece, c: Color) {
+        self.pieces[p] ^= from_sq | to_sq;
+        self.colors[c] ^= from_sq | to_sq;
+    }
+
+    #[inline]
+    pub fn change_piece(&mut self, sq: Bitboard, from: Piece, to: Piece) {
+        self.pieces[from].remove(sq);
+        self.pieces[to].insert(sq);
+    }
+
+    #[inline]
+    pub fn set_piece_at(&mut self, sq: Bitboard, p: Piece) {
+        for bb in self.pieces.iter_mut() {
+            bb.remove(sq);
+        }
+        // self.0.pieces(p).remove(sq);
+        if p != Piece::None {
+            self.pieces[p].insert(sq);
+        }
+        self.calculate_internals();
+    }
+
+    #[inline]
+    pub fn set_color_at(&mut self, sq: Bitboard, c: Option<Color>) {
+        if let Some(c) = c {
+            self.colors[c.opposite()].remove(sq);
+            self.colors[c].insert(sq);
+        } else {
+            self.colors[Color::White].remove(sq);
+            self.colors[Color::Black].remove(sq);
+        }
+        self.calculate_internals();
+    }
+}
+
+impl Board {
     #[inline]
     pub fn repetition_count(&self) -> Repeats {
         self.repetition_count.get()
@@ -126,81 +247,6 @@ impl Board {
     #[inline]
     pub fn castling(&self) -> CastlingRights {
         self.castling
-    }
-
-    #[inline]
-    pub fn pieces(&self, p: Piece) -> Bitboard {
-        self.multiboard.pieces(p)
-    }
-
-    // #[inline]
-    // pub fn pieces_mut(&mut self, p: Piece) -> &mut Bitboard {
-    //     &self.pieces[p as usize]
-    // }
-
-    #[inline]
-    pub fn line_pieces(&self) -> Bitboard {
-        self.multiboard.line_pieces()
-    }
-
-    #[inline]
-    pub fn non_line_pieces(&self) -> Bitboard {
-        self.multiboard.non_line_pieces()
-    }
-
-    #[inline]
-    pub fn pawns(&self) -> Bitboard {
-        self.multiboard.pawns()
-    }
-
-    #[inline]
-    pub fn knights(&self) -> Bitboard {
-        self.multiboard.knights()
-    }
-
-    #[inline]
-    pub fn bishops(&self) -> Bitboard {
-        self.multiboard.bishops()
-    }
-
-    #[inline]
-    pub fn rooks(&self) -> Bitboard {
-        self.multiboard.rooks()
-    }
-
-    #[inline]
-    pub fn rooks_or_queens(&self) -> Bitboard {
-        self.multiboard.rooks() | self.multiboard.queens()
-    }
-
-    #[inline]
-    pub fn queens(&self) -> Bitboard {
-        self.multiboard.queens()
-    }
-
-    #[inline]
-    pub fn kings(&self) -> Bitboard {
-        self.multiboard.kings()
-    }
-
-    #[inline]
-    pub fn color(&self, c: Color) -> Bitboard {
-        self.multiboard.color(c)
-    }
-
-    #[inline]
-    pub fn occupied(&self) -> Bitboard {
-        self.multiboard.occupied()
-    }
-
-    #[inline]
-    pub fn white(&self) -> Bitboard {
-        self.multiboard.white()
-    }
-
-    #[inline]
-    pub fn black(&self) -> Bitboard {
-        self.multiboard.black()
     }
 
     #[inline]
@@ -255,17 +301,6 @@ impl Board {
     }
 
     #[inline]
-    pub fn piece_at(&self, sq: Bitboard) -> Piece {
-        debug_assert!(sq != Bitboard::EMPTY);
-        for &p in &Piece::ALL_BAR_NONE {
-            if self.pieces(p).contains(sq) {
-                return p;
-            }
-        }
-        Piece::None
-    }
-
-    #[inline]
     pub fn least_valuable_piece(&self, region: Bitboard) -> Bitboard {
         // cannot use b.turn as this flips during see!
         // the king is an attacker too!
@@ -317,7 +352,11 @@ impl Board {
     // https://www.chessprogramming.org/Color_Flipping
     pub fn color_flip(&self) -> Board {
         let mut b = self.clone();
-        b.multiboard = self.multiboard.color_flip();
+        b.colors = [
+            self.colors[1].flip_vertical(),
+            self.colors[0].flip_vertical(),
+        ];
+        b.pieces.iter_mut().for_each(|bb| *bb = bb.flip_vertical());
         b.turn = self.turn.opposite();
         b.en_passant = self.en_passant().flip_vertical();
         b.castling = self.castling.color_flip();
@@ -354,13 +393,7 @@ impl Board {
             count = self.fullmove_number()
         )
     }
-
-
-
-
-
 }
-
 
 impl Board {
     // all pieces of either color attacking a region
@@ -436,7 +469,6 @@ impl Board {
     }
 }
 
-
 impl fmt::Display for Board {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_char('\n')?;
@@ -500,7 +532,8 @@ impl Default for Board {
     #[inline]
     fn default() -> Self {
         Board {
-            multiboard: Multiboard::default(),
+            pieces: Default::default(),
+            colors: Default::default(),
             castling: CastlingRights::NONE,
             en_passant: Default::default(),
             turn: Default::default(),
@@ -561,16 +594,6 @@ impl Board {
         self.calculate_internals();
     }
 
-    fn set_piece_at(&mut self, sq: Bitboard, p: Piece) {
-        self.multiboard.set_piece_at(sq, p);
-        self.calculate_internals();
-    }
-
-    fn set_color_at(&mut self, sq: Bitboard, c: Color) {
-        self.multiboard.set_color_at(sq, Some(c));
-        self.calculate_internals();
-    }
-
     fn color_at(&self, at: Bitboard) -> Option<Color> {
         if self.color(Color::White).contains(at) {
             return Some(Color::White);
@@ -606,10 +629,10 @@ impl Board {
             self.set_piece_at(sq, p);
             if p != Piece::None {
                 let c = Color::from_piece_char(ch)?;
-                self.set_color_at(sq, c);
+                self.set_color_at(sq, Some(c));
             } else {
                 // FIXME: broken approach - null color??
-                self.multiboard.set_color_at(sq, None);
+                self.set_color_at(sq, None);
             }
         }
         self.calculate_internals();
@@ -711,10 +734,6 @@ impl Board {
     }
 }
 
-
-
-
-
 impl Board {
     // fn make_move_ext(&mut self, mv: &MoveExt) {
     //     let them = self.turn.opposite();
@@ -811,7 +830,8 @@ impl Board {
             ],
             // material: Cell::<_>::new(self.material()),
             // moves: self.moves.clone(),
-            multiboard: self.multiboard.clone(),
+            pieces: self.pieces.clone(),
+            colors: self.colors.clone(),
             ..*self
         };
 
@@ -821,8 +841,7 @@ impl Board {
             b.fifty_clock = 0;
             if m.is_ep_capture() {
                 // ep capture is like capture but with capture piece on *ep* square not *dest*
-                b.multiboard
-                    .remove_piece(m.ep().as_bb(), m.capture_piece(), b.turn);
+                b.remove_piece(m.ep().as_bb(), m.capture_piece(), b.turn);
             } else {
                 // regular capture
                 debug_assert!(
@@ -831,16 +850,14 @@ impl Board {
                     m,
                     self
                 );
-                b.multiboard
-                    .remove_piece(m.to().as_bb(), m.capture_piece(), b.turn);
+                b.remove_piece(m.to().as_bb(), m.capture_piece(), b.turn);
             }
         }
 
         // clear one bit and set another for the move using xor
         if !m.is_null() {
             // let from_to_bits = m.from().as_bb() | m.to().as_bb();
-            b.multiboard
-                .move_piece(m.from().as_bb(), m.to().as_bb(), m.mover_piece(), self.turn);
+            b.move_piece(m.from().as_bb(), m.to().as_bb(), m.mover_piece(), self.turn);
         }
 
         if m.mover_piece() == Piece::Pawn {
@@ -852,8 +869,7 @@ impl Board {
 
         if m.is_promo() {
             // fifty clock handled by pawn move above;
-            b.multiboard
-                .change_piece(m.to().as_bb(), Piece::Pawn, m.promo_piece());
+            b.change_piece(m.to().as_bb(), Piece::Pawn, m.promo_piece());
             // pawn has already moved
         }
 
@@ -864,8 +880,7 @@ impl Board {
 
             let (rook_from, rook_to) = m.rook_move_from_to();
             // let rook_from_to = rook_from.as_bb() ^ rook_to.as_bb();
-            b.multiboard
-                .move_piece(rook_from.as_bb(), rook_to.as_bb(), Piece::Rook, self.turn)
+            b.move_piece(rook_from.as_bb(), rook_to.as_bb(), Piece::Rook, self.turn)
         }
 
         // castling *rights*
@@ -895,24 +910,6 @@ impl Board {
 
     pub fn undo_move(&self, _m: &Move) {}
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 #[cfg(test)]
 mod tests {
@@ -1107,7 +1104,6 @@ mod tests {
         );
         Ok(())
     }
-
 
     #[test]
     fn test_make_move() -> Result<()> {
