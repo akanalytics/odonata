@@ -10,7 +10,7 @@ use crate::eval::score::Score;
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
 use crate::mv::Move;
-use crate::search::node::{Timing, Counter};
+use crate::search::node::{Counter, Timing};
 use crate::types::{Hash, Piece, Ply};
 use crate::variation::Variation;
 use serde::{Deserialize, Serialize};
@@ -256,7 +256,8 @@ pub struct TranspositionTable2 {
     replacement: Replacement,
     preserve_bm: bool,
 
-    #[rustfmt::skip] #[serde(skip)] pub current_age: u8,
+    #[serde(skip)]
+    pub current_age: u8,
 }
 
 impl Default for TranspositionTable2 {
@@ -569,7 +570,6 @@ impl TranspositionTable2 {
             // self.fail_priority.increment();
         }
         Metrics::profile(t, Timing::TimingTtStore);
-
     }
 
     pub fn delete(&mut self, _h: Hash) {
