@@ -1,6 +1,45 @@
-use crate::piece::Hash;
+use crate::piece::{Hash, Ply};
+use std::cell::Cell;
 use std::mem;
 use std::sync::atomic::{AtomicU64, Ordering};
+
+
+
+#[derive(Default)]
+pub struct SimpleCache<T> {
+    data: [Cell<Option<T>>; 32],
+    hash: [Cell<Hash>; 32],
+}
+
+
+impl<T: Copy> SimpleCache<T> {
+    #[inline]
+    pub fn probe(&self, ply: Ply, hash: Hash) -> Option<T> {
+        if self.hash[ply as usize].get() == hash {
+            self.data[ply as usize].get()
+        } else  {
+            None
+        }
+    }
+
+    #[inline]
+    pub fn store(&self, ply: Ply, hash: Hash, t: T) {
+        self.hash[ply as usize].set(hash);
+        self.data[ply as usize].set(Some(t));
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 #[derive(Default)]
 pub struct Bucket {
