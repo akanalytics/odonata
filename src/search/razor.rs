@@ -5,8 +5,8 @@ use crate::eval::score::{Score, ToScore};
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
 use crate::mv::Move;
-use crate::search::node::{Event, Node};
 use crate::piece::{MoveType, MoveTypes, Ply};
+use crate::search::node::{Event, Node};
 use crate::Algo;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -95,26 +95,34 @@ impl Razor {
             return false;
         }
         if n.ply == 0 {
-            return false; // no null move at root, might mean no moves (with move restrictions too!)
+            return false; // no razor at root, might mean no moves (with move restrictions too!)
         }
+        Metrics::incr_node(n, Event::RazorConsider);
+
         // no razoring in qs or too far from horizon
         if n.is_qs() || n.depth > self.max_depth {
-            return false;
-        }
-        if !n.beta.is_numeric() {
+            Metrics::incr_node(n, Event::RazorDeclineDepth);
             return false;
         }
         if !n.alpha.is_numeric() {
+            Metrics::incr_node(n, Event::RazorDeclineAlphaNumeric);
+            return false;
+        }
+        if !n.beta.is_numeric() {
+            Metrics::incr_node(n, Event::RazorDeclineBetaNumeric);
             return false;
         }
         if !self.pv_nodes && n.is_fw() {
+            Metrics::incr_node(n, Event::RazorDeclinePvNode);
             return false;
         }
         if b.is_in_check(b.color_us()) {
+            Metrics::incr_node(n, Event::RazorDeclineInCheck);
             return false;
         }
         // "Scalable Search in Computer Chess" limited razoring p43
         if n.depth > 2 && self.min_opponents > 0 && b.them().popcount() < self.min_opponents {
+            Metrics::incr_node(n, Event::RazorDeclineMinOpponents);
             return false;
         }
         true
@@ -141,7 +149,14 @@ impl Algo {
             _ => unreachable!(),
         });
 
+        let event = match n.depth {
+            1 => Event::RazorD1Success,
+            2 => Event::RazorD2Success,
+            3 => Event::RazorD3Success,
+            _ => unreachable!(),
+        };
         if self.razor.beta_enabled && eval > n.beta + margin {
+            Metrics::incr_node(n, event);
             return Ok(Some(n.beta));
         }
 
@@ -150,7 +165,7 @@ impl Algo {
             if n.depth <= 2 {
                 // drop straight into qsearch
                 let (score, _event) = self.alphabeta(b, n.ply, 0, n.alpha, n.beta, last_move)?;
-                Metrics::incr_node(n, Event::RazorD3Success);
+                Metrics::incr_node(n, event);
                 return Ok(Some(score));
             } else {
                 // pvs search around {alpha - margin}
@@ -174,11 +189,13 @@ impl Algo {
 
                 // fail low (-inf) or alpha-margin
                 if score <= n.alpha - margin {
-                    Metrics::incr_node(n, Event::RazorD3Success);
+                    Metrics::incr_node(n, event);
                     return Ok(Some(n.alpha));
                 }
                 Metrics::incr_node(n, Event::RazorFail);
             }
+        } else {
+            Metrics::incr_node(n, Event::RazorDeclineMargin);
         }
         Ok(None)
     }

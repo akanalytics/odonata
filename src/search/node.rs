@@ -82,6 +82,8 @@ pub enum Event {
     HashProbe,
     HashHit,
     PercentHashHit,
+    EvalCacheHit,
+    EvalCacheMiss,
 
     #[strum(message = "Node Counts")]
     NodeTotal,
@@ -101,6 +103,7 @@ pub enum Event {
     NodeQsAll,
     NodeQsAllVeryLow,    
     NodeQsInCheck,
+    QsEvalStatic,
     QsStandingPatPrune,
     QsMoveCount,
     QsSeePruneMove,
@@ -127,7 +130,16 @@ pub enum Event {
     PercentPrunedInterior,
 
     #[strum(message = "Prune node: Razoring")]
+    RazorConsider,
+    RazorDeclineDepth,
+    RazorDeclineAlphaNumeric,
+    RazorDeclineBetaNumeric,
+    RazorDeclinePvNode,
+    RazorDeclineInCheck,
+    RazorDeclineMinOpponents,
+    RazorDeclineMargin,
     PruneRazor,
+    RazorD1Success,
     RazorD2Success,
     RazorD3Success,
     RazorFail,

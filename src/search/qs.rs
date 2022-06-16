@@ -82,6 +82,8 @@ impl Algo {
 
         let t = Metrics::timing_start();
         let in_check = bd.is_in_check(bd.color_us());
+
+        Metrics::incr_node(&n, Event::QsEvalStatic);
         let pat = bd.static_eval(&self.eval);
         Metrics::profile(t, Timing::TimingQsEval);
 

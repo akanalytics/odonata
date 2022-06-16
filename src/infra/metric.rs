@@ -69,6 +69,15 @@ impl NodeCounter {
             self.0.iter().sum()
         }
     }
+
+    // -1 => total
+    fn for_depth(&self, y: isize) -> u64 {
+        if y >= 0 {
+            self.1[min(y, 31) as usize]
+        } else {
+            self.1.iter().sum()
+        }
+    }
 }
 
 impl AddAssign<&NodeCounter> for NodeCounter {
@@ -285,7 +294,7 @@ impl fmt::Display for Metrics {
                             + self.counters.0[Counter::EvalCacheMiss.index()],
                     ),
                     _ if self.counters.0[e.index()] != 0 => i(self.counters.0[e.index()]),
-                    _ => String::new()
+                    _ => String::new(),
                 },
             ]);
         }
@@ -346,49 +355,67 @@ impl fmt::Display for Metrics {
         t.fmt(f)?;
         writeln!(f)?;
 
-        let mut cols = vec!["Counter \\ Ply".into()];
-        cols.extend((0..32_u32).map(|u| u.to_string()));
-        cols.push("Total".into());
+        //
+        // ply/depth tables
+        //
+        let generate_table = |corner: &str, by_ply: bool| {
+            let mut cols = vec![corner.into()];
+            cols.extend((0..32_u32).map(|u| u.to_string()));
+            cols.push("Total".into());
 
-        let mut b = Builder::default().set_columns(cols);
-        for e in Event::iter() {
-            if self.nodes.0[e.index()].for_ply(-1) == 0 {
-                continue;
+            let mut b = Builder::default().set_columns(cols);
+            for e in Event::iter() {
+                if self.nodes.0[e.index()].for_ply(-1) == 0 {
+                    continue;
+                }
+                let mut v = vec![];
+                v.push(e.name().to_string());
+                let total = iter::once(-1);
+                let iters = 32_isize;
+
+                for ply in (0..iters).chain(total) {
+                    v.push(i(if by_ply {
+                        self.nodes.0[e.index()].for_ply(ply)
+                    } else {
+                        self.nodes.0[e.index()].for_depth(ply)
+                    }))
+                }
+                b = b.add_record(v);
             }
-            let mut v = vec![];
-            v.push(e.name().to_string());
-            let total = iter::once(-1);
-            let iters = 32_isize;
 
-            for ply in (0..iters).chain(total) {
-                v.push(i(self.nodes.0[e.index()].for_ply(ply)))
+            let style = Style::github_markdown().bottom('-');
+            let mut tab = b
+                .build()
+                .with(Modify::new(Segment::all()).with(Alignment::right()))
+                // .with(Modify::new(Rows::single(0)).with(MaxWidth::wrapping(5).keep_words()))
+                // .with(Rotate::Left)
+                // .with(Rotate::Top)
+                .with(style)
+                .with(Modify::new(Rows::single(0)).with(Border::default().top('-')))
+                .with(Modify::new(Columns::single(0)).with(Alignment::left()));
+            // nodes
+
+            for (i, e) in Event::iter()
+                .filter(|e| {
+                    if by_ply {
+                        self.nodes.0[e.index()].for_ply(-1) != 0
+                    } else {
+                        self.nodes.0[e.index()].for_depth(-1) != 0
+                    }
+                })
+                .enumerate()
+            {
+                if let Some(msg) = e.get_message() {
+                    tab = tab
+                        .with(Modify::new(Rows::single(i + 1)).with(Border::default().top('-')))
+                        .with(BorderText::new(i + 1, "-".repeat(20) + msg));
+                }
             }
-            b = b.add_record(v);
-        }
+            tab
+        };
 
-        let style = Style::github_markdown().bottom('-');
-        let mut tab = b
-            .build()
-            .with(Modify::new(Segment::all()).with(Alignment::right()))
-            // .with(Modify::new(Rows::single(0)).with(MaxWidth::wrapping(5).keep_words()))
-            // .with(Rotate::Left)
-            // .with(Rotate::Top)
-            .with(style)
-            .with(Modify::new(Rows::single(0)).with(Border::default().top('-')))
-            .with(Modify::new(Columns::single(0)).with(Alignment::left()));
-        // nodes
-
-        for (i, e) in Event::iter()
-            .filter(|e| self.nodes.0[e.index()].for_ply(-1) != 0)
-            .enumerate()
-        {
-            if let Some(msg) = e.get_message() {
-                tab = tab
-                    .with(Modify::new(Rows::single(i + 1)).with(Border::default().top('-')))
-                    .with(BorderText::new(i + 1, "-".repeat(20) + msg));
-            }
-        }
-        tab.fmt(f)?;
+        generate_table("Counter \\ Ply", true).fmt(f)?;
+        generate_table("Counter \\ Depth", false).fmt(f)?;
         Ok(())
     }
 }

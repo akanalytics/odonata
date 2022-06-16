@@ -13,6 +13,7 @@ use crate::mv::Move;
 use crate::phaser::Phaser;
 use crate::piece::{Color, Piece};
 use crate::search::node::Counter;
+use crate::search::node::Event;
 use crate::search::node::Node;
 
 use serde::{Deserialize, Serialize};
@@ -433,9 +434,11 @@ impl Eval {
         let key = b.hash() as usize % self.cache_size;
         if let Some(score) = self.cache.probe(key, b.hash()) {
             Metrics::incr(Counter::EvalCacheHit);
+            Metrics::incr_node(&Node { ply: b.ply(), ..Node::default() }, Event::EvalCacheHit);
             score
         } else {
             Metrics::incr(Counter::EvalCacheMiss);
+            Metrics::incr_node(&Node { ply: b.ply(), ..Node::default() }, Event::EvalCacheMiss);
             let s = self.w_eval_no_cache(b);
             self.cache.store(key, b.hash(), s);
             s

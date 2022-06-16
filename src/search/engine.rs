@@ -212,7 +212,7 @@ impl Engine {
         for i in 0..self.thread_count {
             let builder = thread::Builder::new()
                 .name(format!("S{}", i))
-                .stack_size(800_000);
+                .stack_size(1_000_000);
             let mut algo = self.algo.clone();
             if !self.shared_tt {
                 algo.tt = TranspositionTable2::default();
