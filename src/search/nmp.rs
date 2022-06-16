@@ -1,5 +1,5 @@
 
-use crate::types::Board;
+use crate::board::Board;
 use crate::bound::NodeType;
 use crate::cache::tt2::TtNode;
 use crate::eval::score::{Score, ToScore};
@@ -188,7 +188,7 @@ impl Algo {
                 mv,
             )?
             .0;
-        b.undo_move(&mv);
+        // b.undo_move(&mv);
         self.current_variation.pop();
         // self.explainer.start(n, &self.current_variation);
         if child_score >= n.beta {

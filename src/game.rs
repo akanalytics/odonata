@@ -1,4 +1,4 @@
-use crate::types::Board;
+use crate::board::Board;
 use crate::catalog::Catalog;
 // use crate::movelist::MoveValidator;
 use crate::eval::score::Score;

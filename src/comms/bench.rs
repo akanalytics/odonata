@@ -164,10 +164,26 @@ mod tests {
     #[test]
     fn bench_bk() {
         let mut total_nodes= 0;
-        let mut prof = Profiler::new("bench_bk-(per-k-node)".into());
+        let mut prof = Profiler::new("bench_bratko".into());
         prof.benchmark(
             || total_nodes += Bench::search(TimeControl::NodeCount(100000), None)
         );
         prof.set_iters((total_nodes / 1000) as u64);
     }
+
+    #[test]
+    fn bench_search() {
+        let pos = Catalog::test_position();
+        let mut eng = Engine::new();
+        eng.set_position(pos);
+        eng.algo.set_timing_method(TimeControl::Depth(5));
+        let mut prof = Profiler::new("bench_search".into());
+        prof.benchmark(
+            || { eng.algo.search(); eng.algo.results }
+        );
+    }
+
+
+
+
 }

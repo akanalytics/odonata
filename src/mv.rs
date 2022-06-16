@@ -1,7 +1,7 @@
 use crate::bits::bitboard::Bitboard;
 use crate::bits::castling::CastlingRights;
 use crate::bits::square::Square;
-use crate::types::Board;
+use crate::board::Board;
 use crate::globals::constants::*;
 use crate::piece::{Color, Piece};
 use crate::utils::StringUtils;

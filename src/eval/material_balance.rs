@@ -655,7 +655,7 @@ fn data(m: &mut RawStatsVec, s: &str, w: i32, d: i32, l: i32) {
 mod tests {
     use super::*;
     // use crate::{debug, info, logger::LogInit};
-    use crate::types::Board;
+    use crate::board::Board;
     use crate::eval::eval::Eval;
     use crate::eval::score::Score;
     use crate::search::node::Node;

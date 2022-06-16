@@ -1,4 +1,4 @@
-use crate::types::Board;
+use crate::board::Board;
 use crate::mv::Move;
 use crate::piece::{Color, Piece};
 use anyhow::Result;

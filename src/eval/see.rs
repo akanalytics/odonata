@@ -1,5 +1,5 @@
-use crate::types::boardcalcs::BoardCalcs;
-use crate::types::Board;
+use crate::board::BoardCalcs;
+use crate::board::Board;
 use crate::eval::material_balance::MaterialBalance;
 use crate::infra::component::Component;
 use crate::mv::Move;

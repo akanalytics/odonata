@@ -1,5 +1,5 @@
 
-use crate::types::Board;
+use crate::board::Board;
 use crate::movelist::MoveList;
 
 #[derive(Default, Copy, Clone, Debug, PartialEq, Eq)]

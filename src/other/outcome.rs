@@ -1,4 +1,4 @@
-use crate::types::Board;
+use crate::board::Board;
 use crate::piece::{Color, ScoreWdl};
 use anyhow::{anyhow, Result};
 use serde::{Serialize, Deserialize};

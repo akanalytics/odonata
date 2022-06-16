@@ -1,5 +1,5 @@
 
-use crate::types::Board;
+use crate::board::Board;
 use crate::infra::component::Component;
 use crate::mv::Move;
 use crate::position::Position;

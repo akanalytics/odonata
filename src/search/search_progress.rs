@@ -2,7 +2,7 @@ use std::iter::{self, FromIterator};
 
 use super::node::{Event, Node};
 use super::restrictions::Restrictions;
-use crate::types::Board;
+use crate::board::Board;
 use crate::cache::tt2::TranspositionTable2;
 use crate::clock::Clock;
 use crate::eval::score::Score;

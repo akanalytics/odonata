@@ -1,4 +1,4 @@
-use crate::types::Board;
+use crate::board::Board;
 use crate::eval::score::{Score, ToScore};
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
@@ -182,7 +182,7 @@ impl Algo {
                 &mut child,
                 Some(mv),
             );
-            bd.undo_move(&mv);
+            // bd.undo_move(&mv);
             if bs.is_none() || s > bs.unwrap() {
                 bs = Some(s);
             }

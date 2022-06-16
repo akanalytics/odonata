@@ -1,6 +1,6 @@
 use crate::bits::bitboard::Bitboard;
 use crate::bits::precalc::PreCalc;
-use crate::types::Board;
+use crate::board::Board;
 use crate::piece::Color;
 
 pub struct BoardCalcs {}
@@ -135,7 +135,6 @@ impl BoardCalcs {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::*;
     use crate::catalog::*;
     use crate::globals::constants::*;
 

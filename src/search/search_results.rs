@@ -7,7 +7,7 @@ use crate::other::outcome::Outcome;
 use crate::tags::Tag;
 use crate::piece::Ply;
 use crate::variation::Variation;
-use crate::{Algo, Board, MoveList, Position};
+use crate::{Algo, board::Board, MoveList, Position};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use tabled::builder::Builder;

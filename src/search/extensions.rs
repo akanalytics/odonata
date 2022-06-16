@@ -3,7 +3,7 @@ use crate::infra::component::Component;
 use crate::mv::Move;
 use crate::search::node::Node;
 use crate::piece::{MoveType, Ply};
-use crate::{types::Board, Algo};
+use crate::{board::Board, Algo};
 use crate::{Bitboard, Piece};
 use serde::{Deserialize, Serialize};
 use std::fmt;

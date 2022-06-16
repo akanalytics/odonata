@@ -1,6 +1,6 @@
 use super::endgame::{EndGame, LikelyOutcome};
 use super::score::Score;
-use crate::types::Board;
+use crate::board::Board;
 use crate::bound::NodeType;
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;

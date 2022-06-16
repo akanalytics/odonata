@@ -2,8 +2,8 @@ use crate::bits::bitboard::{Bitboard, Dir};
 use crate::bits::castling::CastlingRights;
 use crate::bits::precalc::PreCalc;
 use crate::bits::square::Square;
-use crate::types::boardcalcs::BoardCalcs;
-use crate::types::Board;
+use crate::board::boardcalcs::BoardCalcs;
+use crate::board::Board;
 use crate::infra::metric::Metrics;
 use crate::movelist::MoveList;
 use crate::mv::Move;
@@ -358,7 +358,6 @@ impl Rules {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::*;
 
     #[test]
     fn test_king_legal() {

@@ -3,7 +3,7 @@ use crate::bits::castling::CastlingRights;
 use crate::bits::precalc::PreCalc;
 use crate::bits::square::Square;
 
-use crate::types::Board;
+use crate::board::Board;
 use crate::bound::NodeType;
 use crate::cache::lockless_hashmap::{Bucket, SharedTable};
 use crate::eval::score::Score;

@@ -5,10 +5,9 @@ use crate::movelist::MoveList;
 use crate::mv::Move;
 use crate::piece::Piece;
 use crate::search::node::{Counter, Timing};
-use crate::types::rules::Rules;
-use crate::types::Board;
+use crate::board::rules::Rules;
+use crate::board::Board;
 
-trait MoveGen {}
 
 // fn is_in_check(&self, king_color: Color) -> bool;
 // fn will_check_them(&self, mv: &Move) -> bool;
@@ -183,7 +182,6 @@ mod tests {
     use super::*;
     use crate::{catalog::*, Color};
     use crate::globals::constants::*;
-    use crate::types::*;
     use anyhow::Result;
     extern crate env_logger;
     // use crate::movelist::MoveValidator;

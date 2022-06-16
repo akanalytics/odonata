@@ -1,4 +1,4 @@
-use crate::types::Board;
+use crate::board::Board;
 use crate::cache::tt2::TranspositionTable2;
 use crate::clock::Clock;
 use crate::eval::eval::Eval;

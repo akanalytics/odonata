@@ -1,4 +1,4 @@
-use crate::types::Board;
+use crate::board::Board;
 use crate::bound::NodeType;
 use crate::cache::tt2::TtNode;
 use crate::eval::score::{Score, ToScore};

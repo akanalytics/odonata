@@ -63,10 +63,10 @@ pub mod tuning;
 pub mod piece;
 pub mod utils;
 pub mod variation;
+pub mod board;
 
 pub use crate::bits::bitboard::Bitboard;
 pub use crate::bits::precalc::PreCalc;
-pub use crate::types::Board;
 pub use crate::exam::Exam;
 pub use crate::movelist::MoveList;
 pub use crate::position::Position;

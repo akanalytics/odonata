@@ -1,4 +1,4 @@
-use crate::types::Board;
+use crate::board::Board;
 use crate::catalog::Catalog;
 use crate::comms::json_rpc::JsonRpc;
 use crate::eval::eval::Eval;

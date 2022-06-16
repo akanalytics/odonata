@@ -1,5 +1,5 @@
 use crate::bits::square::Square;
-use crate::types::Board;
+use crate::board::Board;
 use crate::trace::stat::{SliceStat, Stat};
 use crate::piece::Color;
 use crate::{Bitboard, PreCalc};

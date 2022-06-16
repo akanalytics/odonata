@@ -1,5 +1,5 @@
 use crate::bits::{CastlingRights, PreCalc, Square};
-use crate::types::Board;
+use crate::board::Board;
 use crate::eval::endgame::EndGame;
 use crate::eval::eval::{Eval, Feature};
 use crate::infra::metric::Metrics;

@@ -1,5 +1,6 @@
 use crate::bits::square::Square;
-use crate::types::Board;
+use crate::board::Board;
+use crate::cache::lockless_hashmap::SimpleCache;
 use crate::eval::material_balance::MaterialBalance;
 use crate::eval::pst::Pst;
 use crate::eval::score::Score;
@@ -246,7 +247,10 @@ pub struct Eval {
     pub mb: MaterialBalance,
     pub discrete: HashMap<String, Weight>,
 
-#[serde(skip)]
+    #[serde(skip)]
+    cache: Box<SimpleCache<WhiteScore, 100000>>,
+
+    #[serde(skip)]
     pub feature_weights: Vec<Weight>,
 }
 
@@ -262,6 +266,7 @@ impl Default for Eval {
             phasing: true,
             mobility_phase_disable: 101,
             quantum: 1,
+            cache: Default::default(),
         };
         for f in Feature::all() {
             s.discrete.insert(f.name(), Weight::zero());
@@ -314,7 +319,7 @@ impl Eval {
     }
 
     pub fn populate_feature_weights(&mut self) {
-        warn!("Populating feature weights");
+        info!("Populating feature weights");
         self.feature_weights.resize(Feature::len(), Weight::zero());
         for f in &Feature::all() {
             self.feature_weights[f.index()] = match f {
@@ -403,10 +408,16 @@ impl Eval {
     }
 
     fn w_eval_some(&self, b: &Board) -> WhiteScore {
-        let ph = b.phase(&self.phaser);
-        let mut scorer = TotalScore::new(&self.feature_weights, ph);
-        Calc::score(&mut scorer, b, self, &self.phaser);
-        WhiteScore(Score::from_cp(scorer.total().interpolate(ph) as i32 / self.quantum * self.quantum))
+        if let Some(score) = self.cache.probe((b.hash() % 100000) as i32, b.hash()) {
+            score
+        } else {
+            let ph = b.phase(&self.phaser);
+            let mut scorer = TotalScore::new(&self.feature_weights, ph);
+            Calc::score(&mut scorer, b, self, &self.phaser);
+            let score = WhiteScore(Score::from_cp(scorer.total().interpolate(ph) as i32 / self.quantum * self.quantum));
+            self.cache.store((b.hash() % 100000) as i32, b.hash(), score)            ;
+            score
+        }
     }
 
     /// the value of the capture or promotion (or both for promo capture)

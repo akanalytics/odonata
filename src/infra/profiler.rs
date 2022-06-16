@@ -231,5 +231,16 @@ mod tests {
             })
         }
         assert_eq!(COUNTER3.get_or(|| Cell::new(0)).get(), 10003);
+
+        use crate::bits::Bitboard;
+        let mut pr = Profiler::new("bitboard".into());
+        for _iter in 0..10004 {
+            pr.benchmark(|| {
+                let bb = Bitboard::RANK_1;
+                let count1 = (bb & Bitboard::FILE_A).popcount();
+                let count2 = (black_box(Bitboard::RANK_3) & Bitboard::FILE_A).popcount();
+                count1 + count2
+            })
+        }
     }
 }

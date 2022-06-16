@@ -117,7 +117,7 @@ mod tests {
     use crate::bits::castling::*;
     use crate::bits::precalc::*;
     use crate::bits::square::*;
-    use crate::types::*;
+    use crate::board::Board;
     use crate::bound::NodeType;
     use crate::cache::hasher::*;
     use crate::cache::tt2::*;
@@ -165,6 +165,8 @@ mod tests {
         assert_eq!(size_of::<Score>(), 2, "Score");
         assert_eq!(size_of::<Move>(), 4, "Move");
         assert_eq!(size_of::<Bitboard>(), 8, "Bitboard");
+        assert_eq!(size_of::<Board>(), 168, "Board");
+        assert_eq!(size_of::<Option<Bitboard>>(), 8, "Bitboard");
         assert_eq!(size_of::<String>(), 24, "String");
         assert_eq!(size_of::<Duration>(), 16, "Duration");
         assert_eq!(size_of::<Node>(), 12, "Node");
@@ -173,7 +175,6 @@ mod tests {
         assert_eq!(size_of::<Tag>(), 880, "Tag");
         assert_eq!(size_of::<Variation>(), 24, "Variation");
         assert_eq!(size_of::<MoveList>(), 876, "MoveList");
-        assert_eq!(size_of::<Board>(), 168, "Board");
         assert_eq!(size_of::<Position>(), 216, "Position");
         assert_eq!(size_of::<NodeStats>(), 360, "NodeStats");
         assert_eq!(size_of::<SearchStats>(), 848, "SearchStats");

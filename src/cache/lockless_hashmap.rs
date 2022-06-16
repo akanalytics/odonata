@@ -3,21 +3,33 @@ use std::cell::Cell;
 use std::mem;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-
-
-#[derive(Default)]
-pub struct SimpleCache<T> {
-    data: [Cell<Option<T>>; 32],
-    hash: [Cell<Hash>; 32],
+#[derive(Clone, Debug)]
+pub struct SimpleCache<T: Copy, const N: usize> {
+    data: [Cell<Option<T>>; N],
+    hash: [Cell<Hash>; N],
 }
 
+impl<T: Copy, const N: usize> Default for SimpleCache<T, N> {
+    fn default() -> Self {
+        // const INIT: Cell<Option<T>> = Cell::new(None);
+        Self {
+            data: [Self::INIT_DATA; N],
+            hash: [Self::INIT_HASH; N],
+        }
+    }
+}
 
-impl<T: Copy> SimpleCache<T> {
+impl<T: Copy, const N: usize> SimpleCache<T, N> {
+
+    // work around for array initilization > 32
+    const INIT_DATA: Cell<Option<T>> = Cell::new(None);
+    const INIT_HASH: Cell<Hash> = Cell::new(0);
+
     #[inline]
     pub fn probe(&self, ply: Ply, hash: Hash) -> Option<T> {
         if self.hash[ply as usize].get() == hash {
             self.data[ply as usize].get()
-        } else  {
+        } else {
             None
         }
     }
@@ -28,18 +40,6 @@ impl<T: Copy> SimpleCache<T> {
         self.data[ply as usize].set(Some(t));
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 #[derive(Default)]
 pub struct Bucket {

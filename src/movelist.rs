@@ -1,5 +1,5 @@
 
-use crate::types::Board;
+use crate::board::Board;
 use crate::mv::Move;
 use crate::parse::Parse;
 use crate::tags::Tags;

@@ -3,7 +3,7 @@ use itertools::Itertools;
 use std::fmt;
 use std::fmt::{Debug, Display};
 
-use crate::types::Board;
+use crate::board::Board;
 use crate::bound::NodeType;
 use crate::eval::score::WhiteScore;
 use crate::mv::Move;

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 
-use crate::types::Board;
+use crate::board::Board;
 use crate::mv::Move;
 use crate::piece::Ply;
 use std::fmt;

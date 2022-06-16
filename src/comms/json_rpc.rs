@@ -1,4 +1,4 @@
-use crate::types::Board;
+use crate::board::Board;
 use crate::catalog::{Catalog, CatalogSuite};
 use crate::infra::version::built_info;
 use crate::infra::version::Version;

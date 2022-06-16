@@ -1,5 +1,5 @@
 
-use crate::types::Board;
+use crate::board::Board;
 use crate::bound::NodeType;
 use crate::cache::tt2::TtNode;
 use crate::eval::score::Score;
@@ -399,7 +399,7 @@ impl Algo {
             // };
             // s = -s;
 
-            b.undo_move(&mv);
+            // b.undo_move(&mv);
             self.current_variation.pop();
             self.repetition.pop();
             self.explain_move(&b, mv, s, cat, &n, count, ext, lmr);

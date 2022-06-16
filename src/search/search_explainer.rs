@@ -1,4 +1,4 @@
-use crate::Board;
+use crate::board::Board;
 // use crate::Bitboard;
 // use crate::board::Board;
 use crate::{bound::NodeType, piece::Ply};
