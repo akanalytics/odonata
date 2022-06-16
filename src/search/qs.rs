@@ -41,7 +41,7 @@ impl Default for Qs {
             enabled: true,
             only_on_capture: false,
             delta_prune_discovered_check: true,
-            delta_prune_gives_check: true,
+            delta_prune_gives_check: false,
             delta_prune_near_promos: true,
             see_prune_discovered_check: false,
             see_prune_gives_check: true,
