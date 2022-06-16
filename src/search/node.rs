@@ -55,6 +55,10 @@ pub enum Counter {
     TtPvOverwrite,
     TtIllegalMove,
 
+    EvalCacheHit,
+    EvalCacheMiss,
+    EvalCachePercent,
+
 }
 
 impl Counter {

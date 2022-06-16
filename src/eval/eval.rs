@@ -1,6 +1,6 @@
 use crate::bits::square::Square;
 use crate::board::Board;
-use crate::cache::lockless_hashmap::SimpleCache;
+use crate::cache::lockless_hashmap::VecCache;
 use crate::eval::material_balance::MaterialBalance;
 use crate::eval::pst::Pst;
 use crate::eval::score::Score;
@@ -8,10 +8,12 @@ use crate::eval::see::See;
 use crate::eval::weight::Weight;
 use crate::infra::component::Component;
 use crate::infra::component::State;
+use crate::infra::metric::Metrics;
 use crate::mv::Move;
 use crate::phaser::Phaser;
-use crate::search::node::Node;
 use crate::piece::{Color, Piece};
+use crate::search::node::Counter;
+use crate::search::node::Node;
 
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
@@ -27,8 +29,6 @@ use super::scorer::ExplainScore;
 use super::scorer::TotalScore;
 
 // https://www.chessprogramming.org/Simplified_Evaluation_Function
-
-
 
 use strum_macros::Display;
 use strum_macros::EnumCount;
@@ -246,9 +246,10 @@ pub struct Eval {
     pub see: See,
     pub mb: MaterialBalance,
     pub discrete: HashMap<String, Weight>,
+    cache_size: usize,
 
     #[serde(skip)]
-    cache: Box<SimpleCache<WhiteScore, 100000>>,
+    cache: VecCache<WhiteScore>,
 
     #[serde(skip)]
     pub feature_weights: Vec<Weight>,
@@ -256,6 +257,7 @@ pub struct Eval {
 
 impl Default for Eval {
     fn default() -> Self {
+        const DEFAULT_CACHE_SIZE: usize = 10_000;
         let mut s = Self {
             mb: MaterialBalance::default(),
             pst: Pst::default(),
@@ -266,7 +268,8 @@ impl Default for Eval {
             phasing: true,
             mobility_phase_disable: 101,
             quantum: 1,
-            cache: Default::default(),
+            cache_size: DEFAULT_CACHE_SIZE,
+            cache: VecCache::with_capacity(DEFAULT_CACHE_SIZE),
         };
         for f in Feature::all() {
             s.discrete.insert(f.name(), Weight::zero());
@@ -281,6 +284,7 @@ impl Component for Eval {
         use State::*;
         match s {
             NewGame => {
+                self.cache = VecCache::with_capacity(self.cache_size);
                 self.mb.new_game();
                 self.phaser.new_game();
                 self.see.new_game();
@@ -290,8 +294,7 @@ impl Component for Eval {
                 self.phaser.new_position();
                 self.see.new_position();
             }
-            StartSearch => {
-            }
+            StartSearch => {}
             EndSearch => {}
             StartDepthIteration(_) => {}
         }
@@ -303,11 +306,17 @@ impl Component for Eval {
 
 impl fmt::Display for Eval {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "cache size       : {}", self.cache_size)?;
+        writeln!(f, "utilization (‰)  : {}", self.cache.hashfull_per_mille())?;
         writeln!(f, "[material balance]\n{}", self.mb)?;
         writeln!(f, "[phaser]\n{}", self.phaser)?;
         writeln!(f, "phasing          : {}", self.phasing)?;
         writeln!(f, "mob.phase.disable: {}", self.mobility_phase_disable)?;
-        writeln!(f, "wts: {} {} {}", self.feature_weights[0], self.feature_weights[1], self.feature_weights[2], )?;
+        writeln!(
+            f,
+            "wts: {} {} {}",
+            self.feature_weights[0], self.feature_weights[1], self.feature_weights[2],
+        )?;
         Ok(())
     }
 }
@@ -331,7 +340,7 @@ impl Eval {
                 Feature::Pst(p, sq) => self.pst.pst(*p, *sq),
                 Feature::Piece(p) => self.mb.piece_weights[*p],
             }
-        };
+        }
     }
 }
 
@@ -376,7 +385,8 @@ impl Eval {
         // board.color_us() == Color::Black => minimising
         // +ve contempt => -ve score => aim for draw => opponent stronger than us
         let contempt_weight = self.weight(&Attr::ContemptPenalty.into());
-        let mut contempt_pov = Score::from_f32(contempt_weight.interpolate(board.phase(&self.phaser)));
+        let mut contempt_pov =
+            Score::from_f32(contempt_weight.interpolate(board.phase(&self.phaser)));
         if (node.ply % 2) == 1 {
             contempt_pov = -contempt_pov;
         }
@@ -407,16 +417,28 @@ impl Eval {
         scorer
     }
 
+    fn w_eval_no_cache(&self, b: &Board) -> WhiteScore {
+        let ph = b.phase(&self.phaser);
+        let mut scorer = TotalScore::new(&self.feature_weights, ph);
+        Calc::score(&mut scorer, b, self, &self.phaser);
+        WhiteScore(Score::from_cp(
+            scorer.total().interpolate(ph) as i32 / self.quantum * self.quantum,
+        ))
+    }
+
     fn w_eval_some(&self, b: &Board) -> WhiteScore {
-        if let Some(score) = self.cache.probe((b.hash() % 100000) as i32, b.hash()) {
+        if self.cache_size == 0 {
+            return self.w_eval_no_cache(b);
+        }
+        let key = b.hash() as usize % self.cache_size;
+        if let Some(score) = self.cache.probe(key, b.hash()) {
+            Metrics::incr(Counter::EvalCacheHit);
             score
         } else {
-            let ph = b.phase(&self.phaser);
-            let mut scorer = TotalScore::new(&self.feature_weights, ph);
-            Calc::score(&mut scorer, b, self, &self.phaser);
-            let score = WhiteScore(Score::from_cp(scorer.total().interpolate(ph) as i32 / self.quantum * self.quantum));
-            self.cache.store((b.hash() % 100000) as i32, b.hash(), score)            ;
-            score
+            Metrics::incr(Counter::EvalCacheMiss);
+            let s = self.w_eval_no_cache(b);
+            self.cache.store(key, b.hash(), s);
+            s
         }
     }
 

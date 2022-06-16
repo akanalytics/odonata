@@ -65,6 +65,7 @@ log_dir = "."
 
 [eval]
 quantum = 1
+cache_size = 10_000
 
 
 [eval.see]

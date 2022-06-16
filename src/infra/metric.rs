@@ -1,6 +1,6 @@
 use crate::eval::endgame::EndGame;
-use crate::search::node::{Counter, Node, Timing};
 use crate::piece::Ply;
+use crate::search::node::{Counter, Node, Timing};
 use crate::utils::Formatting;
 use static_init::dynamic;
 use std::cell::RefCell;
@@ -44,9 +44,9 @@ impl<const N: usize> ArrayOf<N, u64>
 where
     [u64; N]: Default,
 {
-    fn incr(&mut self, i: usize) {
-        self.0[min(i, N - 1) as usize] += 1;
-    }
+    // fn incr(&mut self, i: usize) {
+    //     self.0[min(i, N - 1) as usize] += 1;
+    // }
 }
 
 //
@@ -91,18 +91,18 @@ impl DurationCounter {
         self.0[min(y, 31) as usize] = dur;
     }
 
-    fn add(&mut self, y: Ply, dur: Duration) {
-        self.0[min(y, 31) as usize] += dur;
-    }
+    // fn add(&mut self, y: Ply, dur: Duration) {
+    //     self.0[min(y, 31) as usize] += dur;
+    // }
 
-    // -1 => total
-    fn for_ply(&self, y: isize) -> Duration {
-        if y >= 0 {
-            self.0[min(y, 31) as usize]
-        } else {
-            self.0.iter().sum()
-        }
-    }
+    // // -1 => total
+    // fn for_ply(&self, y: isize) -> Duration {
+    //     if y >= 0 {
+    //         self.0[min(y, 31) as usize]
+    //     } else {
+    //         self.0.iter().sum()
+    //     }
+    // }
 }
 
 impl AddAssign<&DurationCounter> for DurationCounter {
@@ -120,7 +120,7 @@ impl AddAssign<&DurationCounter> for DurationCounter {
 struct ProfilerCounter(Duration, u64);
 
 impl ProfilerCounter {
-    fn record(&mut self, dur: Duration) {
+    pub fn record(&mut self, dur: Duration) {
         self.0 += dur;
         self.1 += 1;
     }
@@ -239,6 +239,16 @@ impl fmt::Display for Metrics {
                 String::new()
             }
         }
+        fn perc(i: u64, total: u64) -> String {
+            if total > 0 {
+                format!(
+                    "{}%",
+                    Formatting::decimal(1, i as f32 * 100.0 / total as f32)
+                )
+            } else {
+                String::new()
+            }
+        }
         fn d(dur: Duration) -> String {
             if dur > Duration::ZERO {
                 Formatting::duration(dur)
@@ -266,9 +276,18 @@ impl fmt::Display for Metrics {
         let mut b = Builder::default().set_columns(["Counter", "Value"]);
 
         for e in Counter::iter() {
-            if self.counters.0[e.index()] != 0 {
-                b = b.add_record([e.as_ref(), &i(self.counters.0[e.index()])]);
-            }
+            b = b.add_record([
+                e.as_ref(),
+                &match e {
+                    Counter::EvalCachePercent => perc(
+                        self.counters.0[Counter::EvalCacheHit.index()],
+                        self.counters.0[Counter::EvalCacheHit.index()]
+                            + self.counters.0[Counter::EvalCacheMiss.index()],
+                    ),
+                    _ if self.counters.0[e.index()] != 0 => i(self.counters.0[e.index()]),
+                    _ => String::new()
+                },
+            ]);
         }
         let mut t = b
             .build()
@@ -304,7 +323,8 @@ impl fmt::Display for Metrics {
         //
         //Profilers
         //
-        let mut b = Builder::default().set_columns(["Counter", "Time %", "Count", "Average", "Total"]);
+        let mut b =
+            Builder::default().set_columns(["Counter", "Time %", "Count", "Average", "Total"]);
         for e in Timing::iter() {
             let tot = self.profilers.0[Timing::TimingSearchRoot as usize].total();
             if self.profilers.0[e.index()].1 != 0 {

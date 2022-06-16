@@ -1,43 +1,123 @@
-use crate::piece::{Hash, Ply};
+use crate::piece::Hash;
 use std::cell::Cell;
 use std::mem;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+// #[derive(Clone, Debug)]
+// pub struct ArrayCache<T: Copy, const N: usize> {
+//     data: [Cell<Option<T>>; N],
+//     hash: [Cell<Hash>; N],
+// }
+
+// impl<T: Copy, const N: usize> Default for ArrayCache<T, N> {
+//     fn default() -> Self {
+//         // const INIT: Cell<Option<T>> = Cell::new(None);
+//         Self {
+//             data: [Self::INIT_DATA; N],
+//             hash: [Self::INIT_HASH; N],
+//         }
+//     }
+// }
+
+// impl<T: Copy, const N: usize> ArrayCache<T, N> {
+//     // work around for array initilization > 32
+//     const INIT_DATA: Cell<Option<T>> = Cell::new(None);
+//     const INIT_HASH: Cell<Hash> = Cell::new(0);
+
+//     #[inline]
+//     pub fn probe(&self, key: usize, hash: Hash) -> Option<T> {
+//         if self.hash[key].get() == hash {
+//             self.data[key].get()
+//         } else {
+//             None
+//         }
+//     }
+
+//     #[inline]
+//     pub fn store(&self, key: usize, hash: Hash, t: T) {
+//         self.hash[key].set(hash);
+//         self.data[key].set(Some(t));
+//     }
+
+//     pub fn hashfull_per_mille(&self) -> u32 {
+//         let count = self
+//             .data
+//             .iter()
+//             .take(200)
+//             .filter(|&c| c.get().is_some())
+//             .count();
+//         count as u32 * 1000 / std::cmp::min(self.data.len() as u32, 200)
+//     }
+
+//     pub fn clear(&self) {
+//         self.data.iter().for_each(|c| c.set(None));
+//         self.hash.iter().for_each(|c| c.set(Hash::default()));
+//     }
+// }
+
 #[derive(Clone, Debug)]
-pub struct SimpleCache<T: Copy, const N: usize> {
-    data: [Cell<Option<T>>; N],
-    hash: [Cell<Hash>; N],
+pub struct VecCache<T: Copy> {
+    array: Vec<(Cell<Hash>, Cell<Option<T>>)>,
 }
 
-impl<T: Copy, const N: usize> Default for SimpleCache<T, N> {
+impl<T: Copy> Default for VecCache<T> {
     fn default() -> Self {
         // const INIT: Cell<Option<T>> = Cell::new(None);
-        Self {
-            data: [Self::INIT_DATA; N],
-            hash: [Self::INIT_HASH; N],
-        }
+        Self { array: vec![] }
     }
 }
 
-impl<T: Copy, const N: usize> SimpleCache<T, N> {
-
+impl<T: Copy> VecCache<T> {
     // work around for array initilization > 32
-    const INIT_DATA: Cell<Option<T>> = Cell::new(None);
-    const INIT_HASH: Cell<Hash> = Cell::new(0);
+    const INIT: (Cell<Hash>, Cell<Option<T>>) = (Cell::new(0), Cell::new(None));
+
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            array: vec![Self::INIT; capacity],
+        }
+    }
+
+    pub fn capacity(&self) -> usize {
+        self.array.len()
+    }
+
+    pub fn with_size_bytes(bytes: usize) -> Self {
+        let capacity = bytes / std::mem::size_of_val(&Self::INIT);
+        Self {
+            array: vec![Self::INIT; capacity],
+        }
+    }
 
     #[inline]
-    pub fn probe(&self, ply: Ply, hash: Hash) -> Option<T> {
-        if self.hash[ply as usize].get() == hash {
-            self.data[ply as usize].get()
+    pub fn probe(&self, key: usize, hash: Hash) -> Option<T> {
+        if self.array[key].0.get() == hash {
+            self.array[key].1.get()
         } else {
             None
         }
     }
 
     #[inline]
-    pub fn store(&self, ply: Ply, hash: Hash, t: T) {
-        self.hash[ply as usize].set(hash);
-        self.data[ply as usize].set(Some(t));
+    pub fn store(&self, key: usize, hash: Hash, t: T) {
+        self.array[key].0.set(hash);
+        self.array[key].1.set(Some(t));
+    }
+
+    pub fn hashfull_per_mille(&self) -> u32 {
+        let count = self
+            .array
+            .iter()
+            .take(200)
+            .filter(|&c| c.1.get().is_some())
+            .count();
+        count as u32 * 1000 / std::cmp::min(self.array.len() as u32, 200)
+    }
+
+    pub fn clear(&self) {
+        self.array.iter().for_each(|c| {
+            c.1.set(None);
+            c.0.set(Hash::default())
+        });
     }
 }
 
@@ -191,11 +271,14 @@ fn aligned_vec(capacity: usize) -> Vec<Bucket> {
 
 #[cfg(test)]
 mod tests {
+    use crate::eval::score::WhiteScore;
+
     use super::*;
     use std::mem::size_of;
 
     #[test]
     fn tt_size() {
         assert_eq!(size_of::<AlignToCacheLine>(), 64, "AlignToCacheLine");
+        assert_eq!(VecCache::<WhiteScore>::with_size_bytes(300_000).capacity(),18750);
     }
 }

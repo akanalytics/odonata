@@ -2,10 +2,9 @@ use crate::bits::bitboard::Bitboard;
 use crate::bits::castling::CastlingRights;
 use crate::bits::square::Square;
 use crate::cache::hasher::Hasher;
-use crate::cache::lockless_hashmap::SimpleCache;
 use crate::domain::material::Material;
 use crate::mv::Move;
-use crate::piece::{Color, Hash, Piece, Ply, Repeats, LEN_PLY};
+use crate::piece::{Color, Hash, Piece, Ply, Repeats};
 use anyhow::Result;
 use anyhow::{bail, Context};
 use serde::{Serialize, Serializer};
@@ -411,14 +410,14 @@ impl Board {
 // thread_local! {
 //     static CACHE: [SimpleCache<Bitboard>;2] = Default::default();
 // }
-#[derive(Default)]
-struct CacheX([SimpleCache<Bitboard, LEN_PLY >;2]);
+// #[derive(Default)]
+// struct CacheX([ArrayCache<Bitboard, LEN_PLY >;2]);
 
-unsafe impl Sync for CacheX {}
+// unsafe impl Sync for CacheX {}
 
-use static_init::dynamic;
-#[dynamic]
-static CACHE: CacheX = Default::default();
+// use static_init::dynamic;
+// #[dynamic]
+// static CACHE: CacheX = Default::default();
 
 
 

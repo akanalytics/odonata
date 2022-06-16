@@ -144,13 +144,14 @@ impl Engine {
         let toml = Toml::string(toml);
         // let _engine = Self::default();
         // engine.configure(&ParsedConfig::global());
-        let mut engine: Engine = Figment::new()
+        // let mut engine: Engine = Engine::default();
+        let mut eng: Engine = Figment::new()
             .merge(toml)
-            .merge(Env::prefixed("odonata_var_").split("__"))
+            //     .merge(Env::prefixed("odonata_var_").split("__"))
             .extract()
             .unwrap();
-        engine.algo.eval.populate_feature_weights();
-        engine
+        eng.configment_many(HashMap::new()).unwrap();
+        eng
     }
 
     pub fn configment(&mut self, key: &str, value: &str) -> Result<()> {
@@ -186,7 +187,8 @@ impl Engine {
             ..engine
         };
         FEATURE.store(engine.feature, Ordering::SeqCst);
-        self.algo.eval.populate_feature_weights();
+        // self.algo.eval.populate_feature_weights();
+        self.set_state(State::NewGame);
         Ok(())
     }
 
@@ -375,7 +377,10 @@ mod tests {
 
     #[test]
     fn example_search() {
-        let pos = Position::parse_epd("2rqr2k/pp4bp/2np1pp1/5b2/2BP4/2N1B3/PP3PPP/2RQR1K1 w - - 10 17 acd:15;").unwrap();
+        let pos = Position::parse_epd(
+            "2rqr2k/pp4bp/2np1pp1/5b2/2BP4/2N1B3/PP3PPP/2RQR1K1 w - - 10 17 acd:15;",
+        )
+        .unwrap();
         let mut engine = Engine::new();
         engine.set_position(pos);
         engine.algo.set_timing_method(TimeControl::Depth(10));
