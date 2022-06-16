@@ -75,8 +75,8 @@ pub struct Algo {
     pub progress: SearchProgress,
     pub controller: TaskControl<SearchProgress>,
     pub lmp: Lmp,
-    pub counter_move: CounterMove,
     pub qs: Qs,
+    pub counter_move: CounterMove,
 
     #[serde(skip)]
     pub position: Position,

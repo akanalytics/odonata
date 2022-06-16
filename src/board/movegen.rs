@@ -18,6 +18,7 @@ use crate::board::Board;
 // fn threats_to(&self, c: Color) -> Bitboard;
 
 impl Board {
+
     pub fn is_pseudo_legal_and_legal_move(&self, m: Move) -> bool {
         let t = Metrics::timing_start();
         let ret = self.is_pseudo_legal_move(&m) && self.is_legal_move(&m);

@@ -255,8 +255,8 @@ impl Square {
         (self.0 / 8) as usize
     }
 
-    // if white: just the rank NUMBER (1..8) not index
-    // if black: 7 - rank_index (ie 8..1)
+    /// if white: just the rank NUMBER (1..8) not index
+    /// if black: 7 - rank_index (ie 8..1)
     #[inline]
     pub const fn rank_number_as_white(self, c: Color) -> usize {
         (((c as u16) * 7) ^ (self.0 >> 3)) as usize + 1

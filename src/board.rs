@@ -459,7 +459,7 @@ impl Board {
         mv.from().is_in(self.discoverer(their_king_color))
     }
 
-    pub fn will_check_them(&self, mv: &Move) -> bool {
+    pub fn gives_check(&self, mv: &Move) -> bool {
         debug_assert!(self.is_legal_move(mv));
         let their_king_color = self.color_them();
         self.make_move(mv).is_in_check(their_king_color)

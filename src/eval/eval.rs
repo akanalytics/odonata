@@ -241,13 +241,13 @@ pub struct Eval {
     pub phasing: bool,
     pub mobility_phase_disable: u8,
     pub quantum: i32,
+    cache_size: usize,
 
     pub pst: Pst,
     pub phaser: Phaser,
     pub see: See,
     pub mb: MaterialBalance,
     pub discrete: HashMap<String, Weight>,
-    cache_size: usize,
 
     #[serde(skip)]
     cache: VecCache<WhiteScore>,
@@ -286,6 +286,7 @@ impl Component for Eval {
         match s {
             NewGame => {
                 self.cache = VecCache::with_capacity(self.cache_size);
+                self.populate_feature_weights();
                 self.mb.new_game();
                 self.phaser.new_game();
                 self.see.new_game();

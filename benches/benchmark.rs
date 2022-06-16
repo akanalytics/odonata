@@ -413,7 +413,7 @@ fn board_calcs(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             bams.iter().cycle_n(n).for_each(|bam| {
-                black_box(bam.0.will_check_them(&bam.1));
+                black_box(bam.0.gives_check(&bam.1));
             });
             t.elapsed() / positions.len() as u32
         })

@@ -1,13 +1,14 @@
 use crate::board::Board;
+use crate::eval::endgame::EndGame;
 use crate::eval::score::{Score, ToScore};
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
 use crate::movelist::MoveList;
 use crate::mv::Move;
+use crate::piece::Ply;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
 use crate::Piece;
-use crate::piece::Ply;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -21,8 +22,12 @@ pub struct Qs {
     pub promos: bool,
     pub promo_piece: Option<Piece>,
     pub checks_max_ply: Ply,
+    pub delta_prune_discovered_check: bool,
+    pub delta_prune_gives_check: bool,
+    pub delta_prune_near_promos: bool,
     pub see_prune_discovered_check: bool,
-    pub see_prune_gives_check: bool, 
+    pub see_prune_gives_check: bool,
+    pub see_prune_near_promos: bool,
     pub even_exchange_max_ply: Ply,
     pub max_ply: u16,
     pub delta_prune: bool,
@@ -35,8 +40,12 @@ impl Default for Qs {
         Qs {
             enabled: true,
             only_on_capture: false,
-            see_prune_discovered_check: true,
-            see_prune_gives_check: false,
+            delta_prune_discovered_check: true,
+            delta_prune_gives_check: true,
+            delta_prune_near_promos: true,
+            see_prune_discovered_check: false,
+            see_prune_gives_check: true,
+            see_prune_near_promos: true,
             even_exchange_max_ply: 2,
             promos: false,
             promo_piece: Some(Piece::Queen),
@@ -74,6 +83,10 @@ impl Algo {
         Metrics::incr_node(&n, Event::NodeQs);
         if n.is_zw() {
             Metrics::incr_node(&n, Event::NodeQsZw);
+        }
+
+        if EndGame::is_insufficient_material(&bd) {
+            return Score::DRAW;
         }
 
         if !self.qs.enabled {
@@ -140,6 +153,9 @@ impl Algo {
             if !in_check
                 && pat.is_numeric()
                 && self.qs.delta_prune
+                && (self.qs.delta_prune_discovered_check || !bd.maybe_gives_discovered_check(mv))
+                && (self.qs.delta_prune_gives_check || !bd.gives_check(&mv))
+                && (self.qs.delta_prune_near_promos || !mv.is_near_promo())
                 && bd.eval_move_material(&self.eval, &mv) + self.qs.delta_prune_margin + pat
                     <= n.alpha
             {
@@ -147,33 +163,23 @@ impl Algo {
                 continue;
             }
 
-            if !in_check && mv.is_capture() {
-                if self.qs.see_prune_discovered_check || !bd.maybe_gives_discovered_check(mv)
-                {
-                    let t = Metrics::timing_start();
-                    let score = bd.eval_move_see(&self.eval, mv);
-                    Metrics::profile(t, Timing::TimingQsSee);
+            if !in_check
+                && mv.is_capture()
+                && (self.qs.see_prune_discovered_check || !bd.maybe_gives_discovered_check(mv))
+                && (self.qs.see_prune_gives_check || !bd.gives_check(&mv))
+                && (self.qs.see_prune_near_promos || !mv.is_near_promo())
+            {
+                let t = Metrics::timing_start();
+                let score = bd.eval_move_see(&self.eval, mv);
+                Metrics::profile(t, Timing::TimingQsSee);
 
-                    if score == 0.cp() && n.ply <= self.qs.even_exchange_max_ply || score < 0.cp() {
-                        Metrics::incr_node(&n, Event::QsSeePruneMove);
-                        continue;
-                    }
+                if score == 0.cp() && n.ply <= self.qs.even_exchange_max_ply || score < 0.cp() {
+                    Metrics::incr_node(&n, Event::QsSeePruneMove);
+                    continue;
                 }
             }
 
             let mut child = bd.make_move(&mv);
-            // if bs.is_some() {
-            //     let s = -self.qs(
-            //         Node {
-            //             ply: n.ply + 1,
-            //             depth: n.depth - 1,
-            //             alpha: -n.beta,
-            //             beta: -n.alpha,
-            //         },
-            //         &mut child,
-            //         Some(mv),
-            //     );
-            // }
             let s = -self.qs(
                 Node {
                     ply: n.ply + 1,

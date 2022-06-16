@@ -19,9 +19,7 @@ pub struct Move {
 
 impl fmt::Debug for Move {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Move")
-            .field("uci", &self.uci())
-            .finish()
+        f.debug_struct("Move").field("uci", &self.uci()).finish()
     }
 }
 
@@ -129,6 +127,16 @@ impl Move {
     #[inline]
     pub fn is_promo(&self) -> bool {
         self.promo_piece() != Piece::None
+    }
+
+    #[inline]
+    pub fn is_near_promo(&self) -> bool {
+        let c = if self.from() < self.to() {
+            Color::White
+        } else {
+            Color::Black
+        };
+        self.promo_piece() == Piece::Pawn && self.to().rank_number_as_white(c) == 7
     }
 
     #[inline]

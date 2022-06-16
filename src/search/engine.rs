@@ -33,10 +33,13 @@ pub struct Engine {
 
     pub tuner: Tuning,
 
+
     #[serde(skip)]
     pub engine_init_time: Duration,
+
     #[serde(skip)]
     pub search_init_time: Duration,
+
     #[serde(skip)]
     threads: Vec<JoinHandle<Result<Algo>>>,
 }
@@ -325,8 +328,13 @@ mod tests {
     #[test]
     fn engine_serde_test() {
         let engine1 = Engine::new();
+        let text1 = toml::Value::try_from(&engine1).unwrap();
+        println!("toml\n{:#?}", text1);
+
+        toml::to_string(&engine1.algo.qs).unwrap();
         let text1 = toml::to_string(&engine1).unwrap();
-        // eprintln!("toml\n{}", text1);
+        eprintln!("toml\n{:?}", text1);
+
 
         let engine2: Engine = toml::from_str(&text1).unwrap();
         let _text2 = toml::to_string(&engine2).unwrap();

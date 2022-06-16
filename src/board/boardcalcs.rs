@@ -41,6 +41,7 @@ impl BoardCalcs {
         (pinned, discoverers)
     }
 
+
     /// all attacks
     #[inline]
     pub fn all_attacks_on(board: &Board, us: Color, occ: Bitboard) -> Bitboard {

@@ -53,10 +53,10 @@ where
 // Node counter
 //
 #[derive(Default, Debug, Clone, Copy)]
-struct NodeCounter([u64; 32], [u64; 32]);
+pub struct NodeCounter([u64; 32], [u64; 32]);
 
 impl NodeCounter {
-    fn incr(&mut self, n: &Node) {
+    pub fn incr(&mut self, n: &Node) {
         self.0[min(n.ply, 31) as usize] += 1;
         self.1[min(max(n.depth, 0), 31) as usize] += 1;
     }
@@ -93,10 +93,10 @@ impl AddAssign<&NodeCounter> for NodeCounter {
 // DurationCounter
 //
 #[derive(Default, Debug, Clone, Copy)]
-struct DurationCounter([Duration; 32]);
+pub struct DurationCounter([Duration; 32]);
 
 impl DurationCounter {
-    fn set(&mut self, y: Ply, dur: Duration) {
+    pub fn set(&mut self, y: Ply, dur: Duration) {
         self.0[min(y, 31) as usize] = dur;
     }
 
@@ -126,7 +126,7 @@ impl AddAssign<&DurationCounter> for DurationCounter {
 // Profile Counter
 //
 #[derive(Default, Debug, Clone, Copy)]
-struct ProfilerCounter(Duration, u64);
+pub struct ProfilerCounter(Duration, u64);
 
 impl ProfilerCounter {
     pub fn record(&mut self, dur: Duration) {
