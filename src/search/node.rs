@@ -106,8 +106,11 @@ pub enum Event {
     QsEvalStatic,
     QsStandingPatPrune,
     QsMoveCount,
+    QsMoveCountAtPvNode,
+    QsMoveCountAtCutNode,
     QsSeePruneMove,
     QsDeltaPruneMove,
+    QsDeltaPruneNode,
 
 
     #[strum(message = "Eval")]
@@ -159,6 +162,19 @@ pub enum Event {
     NmpAttempt,
     NmpSuccess,
     NmpFail,
+
+    #[strum(message = "Prune move: Rev Fut Prune")]
+    RevFutConsider,
+    RevFutDeclineExt,
+    RevFutDeclineMateBound,
+    RevFutDeclineZugzwang,
+    RevFutDeclineGivesCheck,
+    RevFutDeclineInCheck,
+    RevFutDeclinePawnMaxRank,
+    RevFutDeclineMaxDepth,
+    RevFutDeclineFwWindow,
+    RevFutFail,
+    RevFutPrune,
 
     #[strum(message = "Prune move: Futility Prune")]
     FutilityConsider,

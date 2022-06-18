@@ -1,4 +1,3 @@
-
 use crate::board::Board;
 use crate::bound::NodeType;
 use crate::cache::tt2::TtNode;
@@ -6,9 +5,9 @@ use crate::eval::score::Score;
 use crate::infra::metric::Metrics;
 use crate::mv::Move;
 use crate::other::pvtable::PvTable;
+use crate::piece::{Ply, MAX_PLY};
 use crate::search::algo::Algo;
 use crate::search::node::{Counter, Node, Timing};
-use crate::piece::{Ply, MAX_PLY};
 
 use super::node::Event;
 
@@ -176,8 +175,17 @@ impl Algo {
         // static eval
         let eval = self.static_eval(b, &n);
 
-        if let Some(s) = self.standing_pat(b, &mut n, eval) {
-            return Ok((s, Event::StandingPatSuccess));
+        // use crate::eval::score::ToScore;
+        // if self.show_metrics_on_exit
+        //     && n.depth < 7 && n.beta.is_numeric()
+        //     && !b.is_in_check(b.color_us()) && n.is_zw()
+        //     && eval - n.depth * 110_i32.cp() >= n.beta
+        // {
+        //     return Ok((eval - n.depth * 110_i32.cp(), Event::StandingPatSuccess));
+        // }
+
+        if let Some(s) = self.reverse_fut(b, eval, &n, 0) {
+            return Ok((s, Event::RevFutPrune));
         }
         if let Some(alphabeta) = self.razor_node(last_move, b, eval, &n)? {
             return Ok((alphabeta, Event::PruneRazor));

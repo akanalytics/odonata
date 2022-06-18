@@ -36,6 +36,7 @@ use super::counter_move::CounterMove;
 use super::lmp::Lmp;
 use super::node::Event;
 use super::qs::Qs;
+use super::reverse_futility::ReverseFutility;
 use super::search_explainer::Explainer;
 use super::search_progress::SearchProgressMode;
 use super::search_results::SearchResults;
@@ -53,6 +54,7 @@ pub struct Algo {
     pub eval: Eval,
     pub nmp: NullMovePruning,
     pub futility: Futility,
+    pub rev_fut: ReverseFutility,
 
     pub pvs: Pvs,
     pub ext: Extensions,
@@ -142,6 +144,7 @@ impl Component for Algo {
         self.eval.set_state(s);
         self.nmp.set_state(s);
         self.futility.set_state(s);
+        self.rev_fut.set_state(s);
 
         self.pvs.set_state(s);
         self.ext.set_state(s);
@@ -196,6 +199,7 @@ impl fmt::Debug for Algo {
             .field("eval", &self.eval)
             .field("nmp", &self.nmp)
             .field("futility", &self.futility)
+            .field("rev_fut", &self.rev_fut)
             .field("pvs", &self.pvs)
             .field("extensions", &self.ext)
             .field("lmr", &self.lmr)
@@ -246,6 +250,7 @@ impl fmt::Display for Algo {
         writeln!(f, ".\n.\n[move time estimator]\n{}", self.mte)?;
         writeln!(f, ".\n.\n[nmp]\n{}", self.nmp)?;
         writeln!(f, ".\n.\n[futility]\n{}", self.futility)?;
+        writeln!(f, ".\n.\n[rev_fut]\n{}", self.rev_fut)?;
         writeln!(f, ".\n.\n[pvs]\n{}", self.pvs)?;
         writeln!(f, ".\n.\n[extensions]\n{}", self.ext)?;
         writeln!(f, ".\n.\n[reductions]\n{}", self.lmr)?;

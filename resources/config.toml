@@ -630,8 +630,19 @@ margin2 = 250
 margin3 = 1500
 move_types_forbidden = 0
 
-
-
+[rev_fut]
+enabled = true
+in_check = false
+prune_zugzwang = false
+prune_extensions = false
+prune_fw_node = false
+prune_alpha_mate = true
+prune_beta_mate = false
+max_depth = 3
+margin1 = 90
+margin2 = 180
+margin3 = 300
+margin_ply = 100
 
 [ext]
 enabled = true
@@ -835,7 +846,8 @@ see_prune_near_promos = true
 even_exchange_max_ply = 2
 max_ply = 16
 delta_prune = true
-delta_prune_margin = 1000
+delta_prune_move_margin = 200
+delta_prune_node_margin = 2000
 checks_max_ply = 2
 recapture_score = 0
 

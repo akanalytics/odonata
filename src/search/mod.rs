@@ -5,6 +5,7 @@ pub mod engine;
 pub mod counter_move;
 pub mod extensions;
 pub mod futility;
+pub mod reverse_futility;
 pub mod history_heuristic;
 pub mod iterative_deepening;
 pub mod killers;

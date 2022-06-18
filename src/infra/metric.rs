@@ -56,9 +56,9 @@ where
 pub struct NodeCounter([u64; 32], [u64; 32]);
 
 impl NodeCounter {
-    pub fn incr(&mut self, n: &Node) {
-        self.0[min(n.ply, 31) as usize] += 1;
-        self.1[min(max(n.depth, 0), 31) as usize] += 1;
+    pub fn add(&mut self, n: &Node, i: u64) {
+        self.0[min(n.ply, 31) as usize] += i;
+        self.1[min(max(n.depth, 0), 31) as usize] += i;
     }
 
     // -1 => total
@@ -206,7 +206,14 @@ impl Metrics {
     #[inline]
     pub fn incr_node(n: &Node, e: Event) {
         #[cfg(not(feature = "remove_metrics"))]
-        METRICS_THREAD.with(|s| s.borrow_mut().nodes.0[e.index()].incr(n));
+        METRICS_THREAD.with(|s| s.borrow_mut().nodes.0[e.index()].add(n, 1));
+    }
+
+    #[allow(unused_variables)]
+    #[inline]
+    pub fn add_node(n: &Node, e: Event, i: u64) {
+        #[cfg(not(feature = "remove_metrics"))]
+        METRICS_THREAD.with(|s| s.borrow_mut().nodes.0[e.index()].add(n, i));
     }
 
     #[allow(unused_variables)]
