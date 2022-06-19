@@ -199,54 +199,30 @@ impl Algo {
             .create_sorted_moves(n, b, tt_mv, last_move);
         let mut count = 0;
         let mut quiets = 0;
-        while let Some((move_type, mv)) = sorted_moves.next_move(b, self) {
+        while let Some((mt, mv)) = sorted_moves.next_move(b, self) {
             if self.restrictions.skip_move(ply, &mv) {
                 continue;
             }
-            count += 1;
             Metrics::incr_node(&n, Event::MoveCount);
             let mut child_board = b.make_move(&mv);
-            let ext = self.extend(b, &child_board, mv, move_type, count, &n, last_move);
-            let is_quiet = self.is_quiet(b, mv, move_type, &child_board, &n, ext);
+            let ext = self.extend(b, &child_board, mv, mt, count, &n, last_move);
+            let is_quiet = self.is_quiet(b, mv, mt, &child_board, &n, ext);
             if is_quiet {
                 quiets += 1;
             }
 
-            if let Some(_) = bm {
-                if let Some(est) = self.can_futility_prune_move(
-                    mv,
-                    count,
-                    move_type,
-                    b,
-                    &child_board,
-                    eval,
-                    &n,
-                    ext,
-                ) {
-                    // self.stats.inc_fp_move(ply);
-                    if score == -Score::INFINITY {
-                        score = est;
-                    }
-                    if self.can_prune_remaining_moves(b, move_type, &n) {
+            if bm.is_some() {
+                if let Some(_est) =
+                    self.can_futility_prune_move(mv, count, mt, b, &child_board, eval, &n, ext)
+                {
+                    if self.can_prune_remaining_moves(b, mt, &n) {
                         break;
                     }
                     continue;
                 }
-            }
-            let lmr = self.lmr(
-                b,
-                mv,
-                count,
-                quiets,
-                move_type,
-                &child_board,
-                &n,
-                nt,
-                ext,
-                tt_mv,
-            );
-            if bm.is_some() && self.can_lmp_move(count, is_quiet, quiets, &n) {
-                continue;
+                if self.can_lmp_move(b, count, is_quiet, quiets, &n, mv) {
+                    continue;
+                }
             }
 
             self.repetition.push_move(&mv, &child_board);
@@ -258,6 +234,9 @@ impl Algo {
                        // debug_assert!(s > n.alpha);
             let mut ev; //  = Event::Unknown;
 
+
+            count += 1;
+            let lmr = self.lmr(b, mv, count, quiets, mt, &child_board, &n, nt, ext, tt_mv);
             if n.is_fw() && !self.pvs_permitted(nt, b, &n, count) {
                 Metrics::incr_node(&n, Event::SearchFwFd);
                 (s, ev) = self.alphabeta(
@@ -288,7 +267,7 @@ impl Algo {
                     if let Some(est) = self.can_futility_prune_move(
                         mv,
                         count,
-                        move_type,
+                        mt,
                         b,
                         &child_board,
                         eval,
@@ -382,30 +361,6 @@ impl Algo {
             // }
 
             let cat = ev;
-
-            // (s,ev) = if pvs {
-            //     debug_assert!(n.alpha.is_numeric());
-            //     self.stats.inc_pvs_move(ply);
-            //     // using [alpha, alpha + 1]
-            //     self.alphabeta(
-            //         &mut child_board,
-            //         ply + 1,
-            //         depth + ext - lmr - 1,
-            //         -n.alpha - Score::from_cp(1),
-            //         -n.alpha,
-            //         mv,
-            //     )?
-            // } else {
-            //     self.alphabeta(
-            //         &mut child_board,
-            //         ply + 1,
-            //         depth + ext - lmr - 1,
-            //         -n.beta,
-            //         -n.alpha,
-            //         mv,
-            //     )?
-            // };
-            // s = -s;
 
             // b.undo_move(&mv);
             self.current_variation.pop();

@@ -612,7 +612,7 @@ move_types_forbidden = 994
 [futility]
 alpha_enabled = true
 beta_enabled = false
-in_check = true
+in_check = false
 discoverer = false
 giving_check = false
 first_move = false
@@ -696,29 +696,30 @@ pc = 1.28
 
 [lmr]
 enabled = true
+strat = 1
+table_intercept = 0.12
+table_gradient = 0.5
+table_aspect = 1.32
 bad_captures = true
+killers = true
 pawns = true
-max_pawn_rank = 6
 first_move = false
-fw_node = false
+fw_node = true
+max_pawn_rank = 6
 only_nt_all = false
-killers = false
 in_check = false
 discoverer = false
 gives_check = false
-quiets1 = 20
-quiets2 = 35
-reduce_1_at_depth = 3
-reduce_2_at_depth = 7
-reduce_3_at_depth = 13
-reduce_4_at_depth = 17
-pv_reduce = 0
-bad_captures_reduce = 0
+reduce_bad_capture = 0
+reduce_killer = -0.85
+reduce_pv = -0.97
+reduce_hash = 0
+min_remaining_depth = 0
 # move_number = 5
-re_search = false
 alpha_numeric = false
 beta_numeric = false
 extensions = false
+iir = 5.0
 
 [mte]
 # 0.5.1
@@ -856,7 +857,8 @@ recapture_score = 0
 enabled = true
 min_depth = 0
 max_ply = 128
-scale = 1
+alpha = 1
+beta = 1
 age_factor = 4
 malus_factor = 10
 board = "PieceTo"

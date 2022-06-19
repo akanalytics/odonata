@@ -121,7 +121,7 @@ impl Algo {
         true
     }
 
-    pub fn can_lmp_move(&mut self, mv_num: u32, is_quiet: bool, quiets: i32, n: &Node) -> bool {
+    pub fn can_lmp_move(&mut self, _bd: &Board, mv_num: u32, is_quiet: bool, quiets: i32, n: &Node, _mv: Move) -> bool {
         if !self.lmp.enabled || !is_quiet {
             return false;
         }
@@ -137,6 +137,14 @@ impl Algo {
         if self.lmp.alpha_numeric && !n.alpha.is_numeric() {
             return false;
         }
+
+        // if n.depth > 4 || mv_num <= n.depth as u32 * 3 + 3 {
+        //     return false;
+        // } 
+
+        // if bd.is_in_check(bd.color_us()) || bd.maybe_gives_discovered_check(mv) || bd.gives_check(&mv) {
+        //     return false;
+        // }
         if quiets
             <= (self.lmp.a + self.lmp.b * n.depth as f32 + self.lmp.c * (n.depth * n.depth) as f32)
                 as i32

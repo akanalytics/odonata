@@ -44,8 +44,9 @@ struct Tally {
 #[serde(default, deny_unknown_fields)]
 pub struct HistoryHeuristic {
     enabled: bool,
-    scale: i32,
     age_factor: i32,
+    alpha: i32,
+    beta: i32,
     malus_factor: i32,
     alpha_method: AccumulateMethod,
     beta_method: AccumulateMethod,
@@ -76,11 +77,12 @@ impl Default for HistoryHeuristic {
         HistoryHeuristic {
             enabled: true,
             // clear_every_move: true,
-            scale: 1,
             min_depth: 4,
             max_ply: 5,
             age_factor: 4,
             malus_factor: 10,
+            alpha: 1,
+            beta: 1,
             alpha_method: AccumulateMethod::Squared,
             beta_method: AccumulateMethod::Squared,
             duff_method: AccumulateMethod::Squared,
@@ -95,7 +97,6 @@ impl fmt::Display for HistoryHeuristic {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "enabled          : {}", self.enabled)?;
         writeln!(f, "age.factor       : {}", self.age_factor)?;
-        writeln!(f, "scale            : {}", self.scale)?;
         // writeln!(f, "clear.every.move : {}", self.clear_every_move)?;
         // for c in Color::ALL {
         //     for p in Piece::ALL_BAR_NONE {
@@ -113,7 +114,7 @@ impl fmt::Display for HistoryHeuristic {
 }
 
 impl HistoryHeuristic {
-    pub fn adjust_by_factor(&mut self, age_factor: i32) {
+    fn adjust_by_factor(&mut self, age_factor: i32) {
         for c in Color::ALL {
             for p in Piece::ALL_BAR_NONE {
                 for fr in Bitboard::all().squares() {
@@ -168,7 +169,7 @@ impl HistoryHeuristic {
             return;
         }
         use AccumulateMethod::*;
-        let add = match self.alpha_method {
+        let add = self.alpha * match self.alpha_method {
             Power => 2 << (n.depth / 4),
             Squared => n.depth * n.depth,
             Zero => 0,
@@ -185,7 +186,7 @@ impl HistoryHeuristic {
             return;
         }
         use AccumulateMethod::*;
-        let add = match self.alpha_method {
+        let add = self.beta * match self.alpha_method {
             Power => 2 << (n.depth / 4),
             Squared => n.depth * n.depth,
             Zero => 0,

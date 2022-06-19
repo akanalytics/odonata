@@ -16,6 +16,10 @@ use super::node::Event;
 #[serde(default, deny_unknown_fields)]
 pub struct Lmr {
     pub enabled: bool,
+    strat: u32,
+    table_intercept: f32,
+    table_gradient: f32,
+    table_aspect: f32,
     first_move: bool,
     fw_node: bool,
     only_nt_all: bool,
@@ -26,19 +30,17 @@ pub struct Lmr {
     in_check: bool,
     gives_check: bool,
     discoverer: bool,
-    pub re_search: bool,
     alpha_numeric: bool,
     beta_numeric: bool,
     extensions: bool,
-    quiets1: i32,
-    quiets2: i32,
-    reduce_1_at_depth: Ply,
-    reduce_2_at_depth: Ply,
-    reduce_3_at_depth: Ply,
-    reduce_4_at_depth: Ply,
-    pv_reduce: Ply,
-    bad_captures_reduce: Ply,
-    iir: bool,
+    reduce_pv: f32,
+    reduce_killer: f32,
+    reduce_bad_capture: f32,
+    reduce_hash: f32,
+    min_remaining_depth: i32,
+    iir: f32,
+    #[serde(skip)]
+    table: Box<[[f32; 64]; 64]>,
 }
 
 // WAC @ 1m nodes
@@ -57,12 +59,15 @@ impl Default for Lmr {
     fn default() -> Self {
         let me = Lmr {
             enabled: true,
+            strat: 1,
+            table_intercept: 0.6,
+            table_gradient: 0.4, 
+            table_aspect: 1.2,
             first_move: false,
             fw_node: false,
             only_nt_all: false,
             alpha_numeric: false,
             beta_numeric: false,
-            re_search: false,
             bad_captures: true,
             pawns: true,
             max_pawn_rank: 6,  // dont allow promos
@@ -71,26 +76,37 @@ impl Default for Lmr {
             gives_check: false,
             discoverer: false,
             extensions: false,
-            quiets1: 20,
-            quiets2: 30,
-            reduce_1_at_depth: 3,
-            reduce_2_at_depth: 7,
-            reduce_3_at_depth: 13,
-            reduce_4_at_depth: 17,
-            pv_reduce: 0,
-            bad_captures_reduce: 0,
-            iir: false,
+            reduce_pv: -1.0,
+            reduce_killer: -1.0,
+            reduce_bad_capture: 0.0,
+            reduce_hash: -1.0,
+            min_remaining_depth: 1,
+            iir: 5.0,
+            table: Box::new([[0.0; 64]; 64]),
+
         };
 
         me
     }
 }
 
+
 impl Component for Lmr {
     fn new_game(&mut self) {
-        self.new_position();
+        // initialize table
+        // formula1 is known as stockfish style: http://www.talkchess.com/forum3/viewtopic.php?t=65273
+        let formula1 = |depth: Ply, mv: usize|  (self.table_intercept + f32::ln(depth as f32) * f32::ln(mv as f32 * self.table_aspect) * self.table_gradient);
+        let formula2 = |depth: Ply, mv: usize|  if (depth-1)*(mv as i32 - 2) < 80 {  0 } else {1} as f32;
+        for depth in 1..64 {
+            for mv in 2..64 {
+                self.table[depth][mv] = match self.strat {
+                    1 => formula1(depth as Ply, mv),
+                    2 => formula2(depth as Ply, mv),
+                    _ => 0.0,
+                };
+            }
+        }
     }
-
     fn new_position(&mut self) {}
 }
 
@@ -128,7 +144,7 @@ impl Algo {
         before: &Board,
         mv: Move,
         mv_num: u32,
-        quiets: i32,
+        _quiets: i32,
         stage: MoveType,
         after: &Board,
         n: &Node,
@@ -150,74 +166,43 @@ impl Algo {
         if !self.lmr.fw_node && n.is_fw() {
             return 0;
         }
-        // let mut reduce = self.lmr.lmr_lookup[n.depth as usize][mv_num as usize];
+
+        if n.depth <= self.lmr.min_remaining_depth || mv.is_capture() {
+            return 0;
+        }
 
 
-        let mut reduce = match n.depth {
-            d if d >= self.lmr.reduce_4_at_depth => 4,
-            d if d >= self.lmr.reduce_3_at_depth => 3,
-            d if d >= self.lmr.reduce_2_at_depth => 2,
-            d if d >= self.lmr.reduce_1_at_depth => 1,
-            _ => 0,
-        };
 
-        reduce += match quiets {
-            q if q >= self.lmr.quiets2 => 2,
-            q if q >= self.lmr.quiets1 => 1,
-            _ => 0,
-        };
-
-        // if mv.mover_piece() == Piece::Pawn
-        //     && (before.line_pieces() | before.knights()).popcount() <= 1
-        //     && mv.to().rank_index_as_white(before.color_us()) >= 6
-        // {
-        //     // return 0;
-        //    reduce -= 1;
-        // }
+        let mut reduce = self.lmr.table[n.depth.min(63) as usize][mv_num.min(63) as usize];
 
         reduce += match stage {
-            // _ if mv.mover_piece() == Piece::Pawn
-            //     && (before.line_pieces() | before.knights()).is_empty()
-            //     && mv.to().rank_index_as_white(before.color_us()) >= 6 =>
-            // {
-            //     0
-            // }
-            MoveType::BadCapture => self.lmr.bad_captures_reduce,
-            _ => 0,
+            MoveType::BadCapture => self.lmr.reduce_bad_capture,
+            MoveType::Killer => self.lmr.reduce_killer,
+            MoveType::Hash => self.lmr.reduce_hash,
+            _ => 0.0,
         };
 
         reduce += match n.is_fw() {
-            true => self.lmr.pv_reduce,
-            _ => 0,
+            true => self.lmr.reduce_pv,
+            _ => 0.0,
         };
 
- 
-
-        if reduce <= 0 {
-            return 0;
-        }
-
-        // has to be one of these
-        if !(MoveType::QuietUnsorted
-            | MoveType::Quiet
-            | MoveType::Remaining
-            | MoveType::Killer
-            | MoveType::Promo
-            | MoveType::BadCapture)
-            .contains(stage)
+        if mv.mover_piece() == Piece::Pawn
+            && mv.from().rank_number_as_white(before.color_us()) > self.lmr.max_pawn_rank as usize
         {
-            return 0;
+            reduce = 0.0;
         }
+
+        // depth - lmr - 1 >= min_remaining_depth
+        // => lmr <= depth - 1 - min_remaining_depth
+        let reduce = (reduce as i32).clamp(0, n.depth - 1 - self.lmr.min_remaining_depth);
+
+
         if !self.lmr.pawns && mv.mover_piece() == Piece::Pawn {
             return 0;
         }
         if !self.lmr.killers && stage == MoveType::Killer
             || !self.lmr.bad_captures && stage == MoveType::BadCapture
-        {
-            return 0;
-        }
-        if mv.mover_piece() == Piece::Pawn
-            && mv.from().rank_number_as_white(before.color_us()) > self.lmr.max_pawn_rank as usize
         {
             return 0;
         }
@@ -241,8 +226,6 @@ impl Algo {
             return 0;
         }
 
-        // self.stats.inc_red_lmr(n.ply);
-        // self.counts.inc(n, Event::Lmr);
         if reduce > 0 {
             Metrics::incr_node(n, Event::LateMoveReduce)
         }
