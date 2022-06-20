@@ -851,6 +851,8 @@ delta_prune_move_margin = 200
 delta_prune_node_margin = 2000
 checks_max_ply = 2
 recapture_score = 0
+probe_tt = true
+use_hash_move = true
 
 
 [history]
@@ -861,6 +863,7 @@ alpha = 1
 beta = 1
 age_factor = 4
 malus_factor = 10
+variation = false
 board = "PieceTo"
 alpha_method = "Squared"
 beta_method = "Squared"

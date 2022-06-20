@@ -1,4 +1,5 @@
 use crate::board::Board;
+use crate::bound::NodeType;
 use crate::eval::endgame::EndGame;
 use crate::eval::score::{Score, ToScore};
 use crate::infra::component::Component;
@@ -34,6 +35,8 @@ pub struct Qs {
     pub delta_prune_move_margin: Score,
     pub delta_prune_node_margin: Score,
     pub recapture_score: i32,
+    pub probe_tt: bool,
+    pub use_hash_move: bool,
 }
 
 impl Default for Qs {
@@ -56,6 +59,8 @@ impl Default for Qs {
             delta_prune_node_margin: Score::from_cp(2000),
             checks_max_ply: 2,
             recapture_score: 0,
+            probe_tt: true,
+            use_hash_move: true,
         }
     }
 }
@@ -82,7 +87,7 @@ impl Algo {
         debug_assert!(n.ply >= 0);
         debug_assert!(n.depth <= 0);
 
-        let orig_alpha = n.alpha; 
+        let orig_alpha = n.alpha;
 
         Metrics::incr_node(&n, Event::NodeQs);
         if n.is_zw() {
@@ -101,8 +106,41 @@ impl Algo {
 
         Metrics::incr_node(&n, Event::QsEvalStatic);
         let t = Metrics::timing_start();
-        let pat = bd.static_eval(&self.eval);
+        let mut pat = bd.static_eval(&self.eval);
         Metrics::profile(t, Timing::TimingQsEval);
+
+        let mut hm = Move::NULL_MOVE;
+        if self.qs.probe_tt {
+            Metrics::incr_node(&n, Event::QsTtProbe);
+            if let Some(tt) = self.tt.probe_by_hash(bd.hash()) {
+                debug_assert!(tt.score.is_finite());
+                Metrics::incr_node(&n, Event::QsTtHit);
+                match tt.nt {
+                    NodeType::ExactPv => {
+                        return tt.score;
+                    }
+                    NodeType::UpperAll => {
+                        if tt.score <= n.alpha {
+                            return tt.score;
+                        };
+                        pat = pat.min(tt.score)
+                    }
+                    NodeType::LowerCut => {
+                        if tt.score >= n.beta {
+                            return tt.score;
+                        };
+                        pat = pat.max(tt.score);
+                    }
+                    NodeType::Unused => unreachable!(),
+                }
+                if self.qs.use_hash_move {
+                    hm = tt.bm;
+                }
+            }
+        }
+        // let pat = pat.unwrap_or_else(|| {
+        //     pat
+        // });
 
         if !in_check {
             if pat >= n.beta {
@@ -156,6 +194,11 @@ impl Algo {
                     } else {
                         0
                     }
+                } else {
+                    0
+                }
+                + if hm == *m {
+                    10000
                 } else {
                     0
                 }
@@ -236,7 +279,6 @@ impl Algo {
         } else {
             Metrics::incr_node(&n, Event::NodeQsPv);
             Metrics::add_node(&n, Event::QsMoveCountAtPvNode, unpruned_move);
-
         }
         bs.unwrap_or(n.alpha).clamp_score()
     }

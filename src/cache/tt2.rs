@@ -610,7 +610,7 @@ impl TranspositionTable2 {
         tt_node
     }
 
-    fn probe_by_hash(&self, h: Hash) -> Option<TtNode> {
+    pub fn probe_by_hash(&self, h: Hash) -> Option<TtNode> {
         // debug!("Probe by hash");
         // if !self.enabled || self.capacity() == 0 {
         //     return None;

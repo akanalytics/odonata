@@ -3,6 +3,7 @@ use crate::board::Board;
 use crate::infra::component::Component;
 use crate::mv::Move;
 use crate::piece::{Color, Piece, Ply};
+use crate::variation::Variation;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -36,18 +37,19 @@ enum ScoreMethod {
 
 #[derive(Clone, Copy, Debug, Default)]
 struct Tally {
-    good: i32,
-    bad: i32,
+    good: i64,
+    bad: i64,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct HistoryHeuristic {
     enabled: bool,
-    age_factor: i32,
-    alpha: i32,
-    beta: i32,
-    malus_factor: i32,
+    age_factor: i64,
+    alpha: i64,
+    beta: i64,
+    malus_factor: i64,
+    variation: bool,
     alpha_method: AccumulateMethod,
     beta_method: AccumulateMethod,
     duff_method: AccumulateMethod,
@@ -81,6 +83,7 @@ impl Default for HistoryHeuristic {
             max_ply: 5,
             age_factor: 4,
             malus_factor: 10,
+            variation: false,
             alpha: 1,
             beta: 1,
             alpha_method: AccumulateMethod::Squared,
@@ -114,7 +117,7 @@ impl fmt::Display for HistoryHeuristic {
 }
 
 impl HistoryHeuristic {
-    fn adjust_by_factor(&mut self, age_factor: i32) {
+    fn adjust_by_factor(&mut self, age_factor: i64) {
         for c in Color::ALL {
             for p in Piece::ALL_BAR_NONE {
                 for fr in Bitboard::all().squares() {
@@ -139,15 +142,15 @@ impl HistoryHeuristic {
             PieceFromTo => self.history[c][mv.mover_piece()][mv.from()][mv.to()],
         };
         use ScoreMethod::*;
-        match self.score_method {
+        (match self.score_method {
             GoodLessBad => tally.good - tally.bad,
             GoodOverGoodAndBad => {
-                (tally.good as f32 / (1 + tally.good + tally.bad) as f32 * 500.0) as i32
+                (tally.good as f32 / (1 + tally.good + tally.bad) as f32 * 500.0) as i64
             }
             GoodLessBadOverGoodAndBad => {
                 100 * (tally.good - tally.bad) / ((1 + tally.good + tally.bad) * 100)
             }
-        }
+        }) as i32
     }
 
     #[inline]
@@ -169,15 +172,25 @@ impl HistoryHeuristic {
             return;
         }
         use AccumulateMethod::*;
-        let add = self.alpha * match self.alpha_method {
+        let add = self.alpha * (match self.alpha_method {
             Power => 2 << (n.depth / 4),
             Squared => n.depth * n.depth,
             Zero => 0,
-        };
-        if i32::checked_add(self.get_mut(b.color_us(), mv).good, add).is_none() {
+        }) as i64;
+        if i64::checked_add(self.get_mut(b.color_us(), mv).good, add).is_none() {
             self.adjust_by_factor(2);
         }
         self.get_mut(b.color_us(), mv).good += add
+    }
+
+    #[inline]
+    pub fn beta_variation(&mut self, n: &Node, b: &Board, var: &Variation, mv: Move) {
+        self.beta_cutoff(n, b, &mv);
+        if self.variation {
+            for m in var.iter().rev().skip(1).step_by(2).take(3) {
+                self.beta_cutoff(n, b, m);
+            }
+        }
     }
 
     #[inline]
@@ -186,12 +199,12 @@ impl HistoryHeuristic {
             return;
         }
         use AccumulateMethod::*;
-        let add = self.beta * match self.alpha_method {
+        let add = self.beta * (match self.alpha_method {
             Power => 2 << (n.depth / 4),
             Squared => n.depth * n.depth,
             Zero => 0,
-        };
-        if i32::checked_add(self.get_mut(b.color_us(), mv).good, add).is_none() {
+        }) as i64;
+        if i64::checked_add(self.get_mut(b.color_us(), mv).good, add).is_none() {
             self.adjust_by_factor(2);
         }
         self.get_mut(b.color_us(), mv).good += add
@@ -203,12 +216,12 @@ impl HistoryHeuristic {
             return;
         }
         use AccumulateMethod::*;
-        let add = match self.alpha_method {
-            Power => (2 << (n.depth / 4)) / self.malus_factor,
-            Squared => n.depth * n.depth / self.malus_factor,
+        let add = (match self.alpha_method {
+            Power => (2 << (n.depth / 4)) / self.malus_factor as i32,
+            Squared => n.depth * n.depth / self.malus_factor as i32,
             Zero => 0,
-        };
-        if i32::checked_add(self.get_mut(b.color_us(), mv).bad, add).is_none() {
+        }) as i64;
+        if i64::checked_add(self.get_mut(b.color_us(), mv).bad, add).is_none() {
             self.adjust_by_factor(2);
         }
         self.get_mut(b.color_us(), mv).bad += add

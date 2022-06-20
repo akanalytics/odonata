@@ -104,6 +104,8 @@ pub enum Event {
     NodeQsAllVeryLow,    
     NodeQsInCheck,
     QsEvalStatic,
+    QsTtProbe,
+    QsTtHit,
     QsStandingPatPrune,
     QsMoveCount,
     QsMoveCountAtPvNode,
