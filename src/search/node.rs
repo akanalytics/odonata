@@ -13,6 +13,23 @@ use strum_macros::{Display, EnumCount, EnumIter};
     Copy, Clone, Debug, PartialEq, Eq, Display, EnumCount, EnumMessage, EnumIter, AsRefStr,
 )]
 #[strum(serialize_all = "title_case")]
+pub enum Histograms {
+    EvalCacheNodeCount,
+}
+
+impl Histograms {
+    #[inline]
+    pub fn index(&self) -> usize {
+        *self as usize
+    }
+}
+
+
+
+#[derive(
+    Copy, Clone, Debug, PartialEq, Eq, Display, EnumCount, EnumMessage, EnumIter, AsRefStr,
+)]
+#[strum(serialize_all = "title_case")]
 pub enum Timing {
     TimingSearchRoot,
     TimingEval,

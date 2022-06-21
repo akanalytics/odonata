@@ -1,7 +1,9 @@
 use crate::eval::endgame::EndGame;
 use crate::piece::Ply;
-use crate::search::node::{Counter, Node, Timing};
+use crate::search::node::{Counter, Histograms, Node, Timing};
 use crate::utils::Formatting;
+use hdrhist::HDRHist;
+use itertools::Itertools;
 use static_init::dynamic;
 use std::cell::RefCell;
 use std::cmp::{max, min};
@@ -17,15 +19,58 @@ use tabled::{Alignment, Modify, Style};
 pub use crate::search::node::Event;
 use strum::EnumMessage;
 
+#[derive(Clone)]
+struct Histogram(HDRHist);
+
+impl Default for Histogram {
+    fn default() -> Self {
+        Self(HDRHist::new())
+    }
+}
+
+impl Histogram {
+    pub fn add_value(&mut self, c: u64) {
+        self.0.add_value(c);
+    }
+}
+
+impl fmt::Debug for Histogram {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("Histogram")
+            // .field(&self.0.summary_string())
+            .finish()
+    }
+}
+
+impl AddAssign<&Histogram> for Histogram {
+    fn add_assign(&mut self, rhs: &Self) {
+        self.0 = HDRHist::combined(self.0.clone(), rhs.0.clone()).clone();
+    }
+}
+
+// impl Histogram {
+//     pub fn add_value(&mut self, v: u64) {
+//         self.0.add_value(v);
+//     }
+// }
+
+// impl NodeHistogram {
+//     pub fn add_value(&mut self, n: &Node, v: u64) {
+//         self.0[min(n.ply, 31) as usize].add_value(v);
+//         self.1[min(max(n.depth, 0), 31) as usize].add_value(v);
+//     }
+// }
+
 //
 // ArrayOf
 //
 #[derive(Debug, Clone)]
 struct ArrayOf<const N: usize, T>([T; N]);
 
-impl<const N: usize, T: Default + Copy> Default for ArrayOf<{ N }, T> {
+impl<const N: usize, T: Default> Default for ArrayOf<{ N }, T> {
     fn default() -> Self {
-        Self([T::default(); N])
+        // Self([T::default(); N])
+        Self([(); N].map(|_| T::default())) // no copy needed
     }
 }
 
@@ -150,13 +195,27 @@ impl AddAssign<&ProfilerCounter> for ProfilerCounter {
     }
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct Metrics {
     counters: ArrayOf<{ Counter::COUNT }, u64>,
-    nodes: ArrayOf<{ Event::len() }, NodeCounter>,
+    nodes: Vec<NodeCounter>,
     profilers: ArrayOf<{ Timing::COUNT }, ProfilerCounter>,
     durations: ArrayOf<{ Event::len() }, DurationCounter>,
     endgame: ArrayOf<{ EndGame::COUNT }, u64>,
+    histograms: Vec<Histogram>,
+}
+
+impl Default for Metrics {
+    fn default() -> Self {
+        Self {
+            nodes: vec![NodeCounter::default(); Event::len()],
+            counters: Default::default(),
+            profilers: Default::default(),
+            durations: Default::default(),
+            endgame: Default::default(),
+            histograms: vec![Default::default(); 1],
+        }
+    }
 }
 
 impl Metrics {
@@ -166,10 +225,16 @@ impl Metrics {
 
     pub fn add(&mut self, o: &Self) {
         self.counters += &o.counters;
-        self.nodes += &o.nodes;
         self.profilers += &o.profilers;
         self.durations += &o.durations;
         self.endgame += &o.endgame;
+
+        for (n1, n2) in self.nodes.iter_mut().zip(&o.nodes) {
+            *n1 += &n2;
+        }
+        for (n1, n2) in self.histograms.iter_mut().zip(&o.histograms) {
+            *n1 += &n2;
+        }
     }
 
     pub fn to_string() -> String {
@@ -190,6 +255,13 @@ impl Metrics {
 
     #[allow(unused_variables)]
     #[inline]
+    pub fn add_value(v: u64, h: Histograms) {
+        #[cfg(not(feature = "remove_metrics"))]
+        METRICS_THREAD.with(|s| s.borrow_mut().histograms[h as usize].add_value(v));
+    }
+
+    #[allow(unused_variables)]
+    #[inline]
     pub fn inc_endgame(eg: EndGame) {
         #[cfg(not(feature = "remove_metrics"))]
         METRICS_THREAD.with(|s| s.borrow_mut().endgame.0[eg as usize] += 1);
@@ -206,14 +278,14 @@ impl Metrics {
     #[inline]
     pub fn incr_node(n: &Node, e: Event) {
         #[cfg(not(feature = "remove_metrics"))]
-        METRICS_THREAD.with(|s| s.borrow_mut().nodes.0[e.index()].add(n, 1));
+        METRICS_THREAD.with(|s| s.borrow_mut().nodes[e.index()].add(n, 1));
     }
 
     #[allow(unused_variables)]
     #[inline]
     pub fn add_node(n: &Node, e: Event, i: u64) {
         #[cfg(not(feature = "remove_metrics"))]
-        METRICS_THREAD.with(|s| s.borrow_mut().nodes.0[e.index()].add(n, i));
+        METRICS_THREAD.with(|s| s.borrow_mut().nodes[e.index()].add(n, i));
     }
 
     #[allow(unused_variables)]
@@ -254,6 +326,9 @@ impl fmt::Display for Metrics {
             } else {
                 String::new()
             }
+        }
+        fn dec(i: f64) -> String {
+            Formatting::decimal(2, i)
         }
         fn perc(i: u64, total: u64) -> String {
             if total > 0 {
@@ -337,6 +412,41 @@ impl fmt::Display for Metrics {
         writeln!(f)?;
 
         //
+        // Histograms
+        //
+        let mut b =
+            Builder::default().set_columns(["Histogram", "Q1", "Q2", "Q3", "Q4", "Summary"]);
+        for x in Histograms::iter() {
+            let qs = self.histograms[x as usize]
+                .0
+                .quantiles([0.25_f64, 0.5, 0.75, 1.0].into_iter())
+                .collect_vec();
+            b = b.add_record([
+                &x.to_string(),
+                &i(qs[0].1),
+                &i(qs[1].1),
+                &i(qs[2].1),
+                &i(qs[3].1),
+                &self.histograms[x as usize]
+                    .0
+                    .ccdf()
+                    .map(|(a, b, c)| format!("{a:>6} {} {c}", Formatting::decimal(2, b)))
+                    .join("\n"),
+            ]);
+        }
+        let mut t = b
+            .build()
+            .with(style.clone())
+            .with(Modify::new(Rows::single(0)).with(Border::default().top('-')))
+            .with(Modify::new(Segment::all()).with(Alignment::right()))
+            .with(Modify::new(Columns::single(0)).with(Alignment::left()));
+        for i in (0..t.shape().0).step_by(5) {
+            t = t.with(Modify::new(Rows::single(i)).with(Border::default().top('-')));
+        }
+        t.fmt(f)?;
+        writeln!(f)?;
+
+        //
         //Profilers
         //
         let mut b =
@@ -372,7 +482,7 @@ impl fmt::Display for Metrics {
 
             let mut b = Builder::default().set_columns(cols);
             for e in Event::iter() {
-                if self.nodes.0[e.index()].for_ply(-1) == 0 {
+                if self.nodes[e.index()].for_ply(-1) == 0 {
                     continue;
                 }
                 let mut v = vec![];
@@ -382,9 +492,9 @@ impl fmt::Display for Metrics {
 
                 for ply in (0..iters).chain(total) {
                     v.push(i(if by_ply {
-                        self.nodes.0[e.index()].for_ply(ply)
+                        self.nodes[e.index()].for_ply(ply)
                     } else {
-                        self.nodes.0[e.index()].for_depth(ply)
+                        self.nodes[e.index()].for_depth(ply)
                     }))
                 }
                 b = b.add_record(v);
@@ -405,9 +515,9 @@ impl fmt::Display for Metrics {
             for (i, e) in Event::iter()
                 .filter(|e| {
                     if by_ply {
-                        self.nodes.0[e.index()].for_ply(-1) != 0
+                        self.nodes[e.index()].for_ply(-1) != 0
                     } else {
-                        self.nodes.0[e.index()].for_depth(-1) != 0
+                        self.nodes[e.index()].for_depth(-1) != 0
                     }
                 })
                 .enumerate()

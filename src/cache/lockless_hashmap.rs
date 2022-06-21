@@ -71,7 +71,7 @@ impl<T: Copy> VecCache<T> {
     // work around for array initilization > 32
     const INIT: (Cell<Hash>, Cell<Option<T>>) = (Cell::new(0), Cell::new(None));
 
-    pub fn with_capacity(capacity: usize) -> Self {
+    pub fn with_size(capacity: usize) -> Self {
         Self {
             array: vec![Self::INIT; capacity],
         }

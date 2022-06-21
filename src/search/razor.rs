@@ -121,7 +121,7 @@ impl Razor {
             return false;
         }
         // "Scalable Search in Computer Chess" limited razoring p43
-        if n.depth > 2 && self.min_opponents > 0 && b.them().popcount() < self.min_opponents {
+        if self.min_opponents > 0 && n.depth > 2 && b.them().popcount() < self.min_opponents {
             Metrics::incr_node(n, Event::RazorDeclineMinOpponents);
             return false;
         }
@@ -190,7 +190,11 @@ impl Algo {
                 // fail low (-inf) or alpha-margin
                 if score <= n.alpha - margin {
                     Metrics::incr_node(n, event);
-                    return Ok(Some(n.alpha));
+                    if self.fail_soft {
+                        return Ok(Some(score));
+                    } else {
+                        return Ok(Some(n.alpha));
+                    }
                 }
                 Metrics::incr_node(n, Event::RazorFail);
             }

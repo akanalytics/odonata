@@ -14,11 +14,13 @@ use crate::phaser::Phaser;
 use crate::piece::{Color, Piece};
 use crate::search::node::Counter;
 use crate::search::node::Event;
+use crate::search::node::Histograms;
 use crate::search::node::Node;
 
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 
+use std::cell::Cell;
 use std::collections::HashMap;
 use std::fmt;
 
@@ -253,6 +255,12 @@ pub struct Eval {
     cache: VecCache<WhiteScore>,
 
     #[serde(skip)]
+    node_counts: Vec<Cell<u64>>,
+
+    #[serde(skip)]
+    node_count: Cell<u64>,
+
+    #[serde(skip)]
     pub feature_weights: Vec<Weight>,
 }
 
@@ -270,7 +278,9 @@ impl Default for Eval {
             mobility_phase_disable: 101,
             quantum: 1,
             cache_size: DEFAULT_CACHE_SIZE,
-            cache: VecCache::with_capacity(DEFAULT_CACHE_SIZE),
+            cache: VecCache::with_size(DEFAULT_CACHE_SIZE),
+            node_counts: vec![Cell::new(0); DEFAULT_CACHE_SIZE],
+            node_count: Cell::new(0),
         };
         for f in Feature::all() {
             s.discrete.insert(f.name(), Weight::zero());
@@ -285,7 +295,8 @@ impl Component for Eval {
         use State::*;
         match s {
             NewGame => {
-                self.cache = VecCache::with_capacity(self.cache_size);
+                self.cache = VecCache::with_size(self.cache_size);
+                self.node_counts = vec![Cell::new(0); self.cache_size];
                 self.populate_feature_weights();
                 self.mb.new_game();
                 self.phaser.new_game();
@@ -432,16 +443,41 @@ impl Eval {
         if self.cache_size == 0 {
             return self.w_eval_no_cache(b);
         }
+        #[cfg(not(feature = "remove_metrics"))]
+        self.node_count.set(self.node_count.get() + 1);
+
         let key = b.hash() as usize % self.cache_size;
         if let Some(score) = self.cache.probe(key, b.hash()) {
             Metrics::incr(Counter::EvalCacheHit);
-            Metrics::incr_node(&Node { ply: b.ply(), ..Node::default() }, Event::EvalCacheHit);
+            Metrics::incr_node(
+                &Node {
+                    ply: b.ply(),
+                    ..Node::default()
+                },
+                Event::EvalCacheHit,
+            );
+
+            #[cfg(not(feature = "remove_metrics"))]
+            Metrics::add_value(
+                self.node_count.get() - self.node_counts[key].get(),
+                Histograms::EvalCacheNodeCount,
+            );
             score
         } else {
             Metrics::incr(Counter::EvalCacheMiss);
-            Metrics::incr_node(&Node { ply: b.ply(), ..Node::default() }, Event::EvalCacheMiss);
+            Metrics::incr_node(
+                &Node {
+                    ply: b.ply(),
+                    ..Node::default()
+                },
+                Event::EvalCacheMiss,
+            );
             let s = self.w_eval_no_cache(b);
             self.cache.store(key, b.hash(), s);
+
+            #[cfg(not(feature = "remove_metrics"))]
+            self.node_counts[key].set(self.node_count.get());
+
             s
         }
     }

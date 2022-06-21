@@ -391,7 +391,7 @@ mod tests {
         .unwrap();
         let mut engine = Engine::new();
         engine.set_position(pos);
-        engine.algo.set_timing_method(TimeControl::Depth(10));
+        engine.algo.set_timing_method(TimeControl::Depth(14));
         // use crate::Color;
         // engine.algo.set_timing_method(TimeControl::RemainingTime {
         //     our_color: Color::White,
@@ -402,7 +402,7 @@ mod tests {
         //     movestogo: 20,
         // });
         engine.algo.set_callback(Uci::uci_info);
-        engine.search();
+        engine.algo.search();
         println!("{}", engine);
     }
 

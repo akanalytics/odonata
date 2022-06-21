@@ -150,12 +150,12 @@ impl Algo {
         }
     }
 
-    pub fn exit_iteration(&mut self, ply: Ply, s: Score) -> bool {
+    pub fn exit_iteration(&mut self, ply: Ply, _s: Score) -> bool {
         self.time_up_or_cancelled(ply, false).0
             || self.mte.probable_timeout(ply)
             || ply >= self.ids.end_ply
             || ply >= MAX_PLY / 2
-            || (self.restrictions.exclude_moves.is_empty() && s.is_mate())
+            // || (self.restrictions.exclude_moves.is_empty() && s.is_mate())
         // pv.empty = draw
     }
 }

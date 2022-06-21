@@ -569,6 +569,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
 
 [[package]]
+name = "hdrhist"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "51b22edfb537aaffec56e77d3116a1dd0a0fa8bb5a8bd7d6d4a522132c9bb383"
+
+[[package]]
 name = "heck"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -832,7 +838,7 @@ dependencies = [
 
 [[package]]
 name = "odonata"
-version = "0.5.74"
+version = "0.5.75"
 dependencies = [
  "anyhow",
  "arrayvec",
@@ -847,6 +853,7 @@ dependencies = [
  "env_logger",
  "figment",
  "format_num",
+ "hdrhist",
  "include_dir 0.6.2",
  "include_dir 0.7.2",
  "itertools",
