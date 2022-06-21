@@ -45,16 +45,16 @@ use std::fmt;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Razor {
-    pub enabled: bool,
-    pub beta_enabled: bool,
-    pub store_tt: bool,
-    pub pv_nodes: bool,
-    pub min_opponents: i32,
-    pub max_depth: Ply,
-    pub margin1: i32,
-    pub margin2: i32,
-    pub margin3: i32,
-    pub move_types_forbidden: MoveTypes,
+    enabled: bool,
+    beta_enabled: bool,
+    store_tt: bool,
+    pv_nodes: bool,
+    min_opponents: i32,
+    max_depth: Ply,
+    margin1: i32,
+    margin2: i32,
+    margin3: i32,
+    move_types_forbidden: MoveTypes,
 }
 
 impl Component for Razor {
@@ -90,7 +90,7 @@ impl Default for Razor {
 
 impl Razor {
     #[inline]
-    fn can_razor(&self, b: &Board, n: &Node) -> bool {
+    fn can_razor(&self, bd: &Board, n: &Node) -> bool {
         if !self.enabled {
             return false;
         }
@@ -116,12 +116,12 @@ impl Razor {
             Metrics::incr_node(n, Event::RazorDeclinePvNode);
             return false;
         }
-        if b.is_in_check(b.color_us()) {
+        if bd.is_in_check(bd.color_us()) {
             Metrics::incr_node(n, Event::RazorDeclineInCheck);
             return false;
         }
         // "Scalable Search in Computer Chess" limited razoring p43
-        if self.min_opponents > 0 && n.depth > 2 && b.them().popcount() < self.min_opponents {
+        if self.min_opponents > 0 && n.depth > 2 && bd.them().popcount() < self.min_opponents {
             Metrics::incr_node(n, Event::RazorDeclineMinOpponents);
             return false;
         }
@@ -190,11 +190,7 @@ impl Algo {
                 // fail low (-inf) or alpha-margin
                 if score <= n.alpha - margin {
                     Metrics::incr_node(n, event);
-                    if self.fail_soft {
-                        return Ok(Some(score));
-                    } else {
-                        return Ok(Some(n.alpha));
-                    }
+                    return Ok(Some(score + margin));
                 }
                 Metrics::incr_node(n, Event::RazorFail);
             }

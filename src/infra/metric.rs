@@ -29,6 +29,7 @@ impl Default for Histogram {
 }
 
 impl Histogram {
+    #[allow(dead_code)]
     pub fn add_value(&mut self, c: u64) {
         self.0.add_value(c);
     }
@@ -48,18 +49,6 @@ impl AddAssign<&Histogram> for Histogram {
     }
 }
 
-// impl Histogram {
-//     pub fn add_value(&mut self, v: u64) {
-//         self.0.add_value(v);
-//     }
-// }
-
-// impl NodeHistogram {
-//     pub fn add_value(&mut self, n: &Node, v: u64) {
-//         self.0[min(n.ply, 31) as usize].add_value(v);
-//         self.1[min(max(n.depth, 0), 31) as usize].add_value(v);
-//     }
-// }
 
 //
 // ArrayOf
@@ -327,9 +316,6 @@ impl fmt::Display for Metrics {
                 String::new()
             }
         }
-        fn dec(i: f64) -> String {
-            Formatting::decimal(2, i)
-        }
         fn perc(i: u64, total: u64) -> String {
             if total > 0 {
                 format!(
@@ -427,11 +413,11 @@ impl fmt::Display for Metrics {
                 &i(qs[1].1),
                 &i(qs[2].1),
                 &i(qs[3].1),
-                &self.histograms[x as usize]
-                    .0
-                    .ccdf()
-                    .map(|(a, b, c)| format!("{a:>6} {} {c}", Formatting::decimal(2, b)))
-                    .join("\n"),
+                // &self.histograms[x as usize]
+                //     .0
+                //     .ccdf()
+                //     .map(|(a, b, c)| format!("{a:>6} {} {c}", Formatting::decimal(2, b)))
+                //     .join("\n"),
             ]);
         }
         let mut t = b

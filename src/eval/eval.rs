@@ -14,7 +14,6 @@ use crate::phaser::Phaser;
 use crate::piece::{Color, Piece};
 use crate::search::node::Counter;
 use crate::search::node::Event;
-use crate::search::node::Histograms;
 use crate::search::node::Node;
 
 use serde::{Deserialize, Serialize};
@@ -460,7 +459,7 @@ impl Eval {
             #[cfg(not(feature = "remove_metrics"))]
             Metrics::add_value(
                 self.node_count.get() - self.node_counts[key].get(),
-                Histograms::EvalCacheNodeCount,
+                crate::search::node::Histograms::EvalCacheNodeCount,
             );
             score
         } else {

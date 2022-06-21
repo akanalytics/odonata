@@ -188,7 +188,7 @@ impl Algo {
             return Ok((s, Event::RevFutPrune));
         }
         if let Some(alphabeta) = self.razor_node(last_move, b, eval, &n)? {
-            return Ok((alphabeta, Event::PruneRazor));
+            return Ok((alphabeta, Event::RazorSuccess));
         }
         if let Some(s) = self.nmp_node(b, &n, eval)? {
             return Ok((s, Event::NmpSuccess));

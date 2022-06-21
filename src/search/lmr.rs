@@ -163,11 +163,19 @@ impl Algo {
             return 0;
         }
 
+
         if !self.lmr.fw_node && n.is_fw() {
             return 0;
         }
 
-        if n.depth <= self.lmr.min_remaining_depth || mv.is_capture() {
+        if n.depth <= self.lmr.min_remaining_depth {
+            return 0
+        }
+
+        Metrics::incr_node(n, Event::LmrConsider);
+
+        if mv.is_capture() {
+            Metrics::incr_node(n, Event::LmrDeclineCapture);
             return 0;
         }
 
@@ -190,6 +198,7 @@ impl Algo {
         if mv.mover_piece() == Piece::Pawn
             && mv.from().rank_number_as_white(before.color_us()) > self.lmr.max_pawn_rank as usize
         {
+            Metrics::incr_node(n, Event::LmrDeclinePawnRank);
             reduce = 0.0;
         }
 
@@ -204,6 +213,7 @@ impl Algo {
         if !self.lmr.killers && stage == MoveType::Killer
             || !self.lmr.bad_captures && stage == MoveType::BadCapture
         {
+            Metrics::incr_node(n, Event::LmrDeclineKiller);
             return 0;
         }
         if self.lmr.only_nt_all && nt != NodeType::UpperAll {
@@ -226,16 +236,22 @@ impl Algo {
             return 0;
         }
 
-        if reduce > 0 {
-            Metrics::incr_node(n, Event::LateMoveReduce)
+        match reduce {
+            1 => Metrics::incr_node(n, Event::LmrD1),
+            2 => Metrics::incr_node(n, Event::LmrD2),
+            3 => Metrics::incr_node(n, Event::LmrD3),
+            4 => Metrics::incr_node(n, Event::LmrD4),
+            5.. => Metrics::incr_node(n, Event::LmrDN),
+            _ => {},
         }
+
     reduce
     }
 }
 
 impl fmt::Display for Lmr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{:#?}", self)?;
+        writeln!(f, "{}", toml::to_string_pretty(self).unwrap())?;
         Ok(())
     }
 }

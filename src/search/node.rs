@@ -160,7 +160,7 @@ pub enum Event {
     RazorDeclineInCheck,
     RazorDeclineMinOpponents,
     RazorDeclineMargin,
-    PruneRazor,
+    RazorSuccess,
     RazorD1Success,
     RazorD2Success,
     RazorD3Success,
@@ -213,10 +213,27 @@ pub enum Event {
     FutilityD3,
 
     #[strum(message = "Prune move: Late Move Prune")]
+    LmpConsider,
+    LmpDeclineMateBound,
+    LmpDeclineMoveNum,
+    LmpDeclineFormula,
+    LmpDeclineGivesCheck,
+    LmpDeclineInCheck,
+    LmpDeclineMaxDepth,
+    LmpDeclineFwWindow,
     LmpSuccess,
 
     #[strum(message = "Late Move Reduce")]
-    LateMoveReduce,
+    LmrConsider,
+    LmrDeclineCapture,
+    LmrDeclineKiller,
+    LmrDeclinePawnRank,
+    Lmr,
+    LmrD1,
+    LmrD2,
+    LmrD3,
+    LmrD4,
+    LmrDN,
 
     Pvs,
     Extension,

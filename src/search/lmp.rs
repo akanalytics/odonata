@@ -2,8 +2,8 @@ use crate::board::Board;
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
 use crate::mv::Move;
-use crate::search::node::Node;
 use crate::piece::{MoveType, Ply};
+use crate::search::node::Node;
 use crate::Algo;
 use crate::Piece;
 use serde::{Deserialize, Serialize};
@@ -16,7 +16,7 @@ use super::node::Event;
 pub struct Lmp {
     pub enabled: bool,
     first_move: bool,
-    fw_node: bool, 
+    fw_node: bool,
     alpha_numeric: bool,
     bad_captures: bool,
     pawns: bool,
@@ -39,7 +39,7 @@ impl Default for Lmp {
         Lmp {
             enabled: true,
             first_move: false,
-            fw_node: false, 
+            fw_node: false,
             alpha_numeric: false,
             bad_captures: false,
             pawns: true,
@@ -121,44 +121,54 @@ impl Algo {
         true
     }
 
-    pub fn can_lmp_move(&mut self, _bd: &Board, mv_num: u32, is_quiet: bool, quiets: i32, n: &Node, _mv: Move) -> bool {
+    pub fn can_lmp_move(
+        &mut self,
+        bd: &Board,
+        mv_num: u32,
+        is_quiet: bool,
+        quiets: i32,
+        n: &Node,
+        mv: Move,
+    ) -> bool {
         if !self.lmp.enabled || !is_quiet {
             return false;
         }
+
+        Metrics::incr_node(n, Event::LmpConsider);
 
         if !self.lmp.first_move && mv_num <= 1 {
             return false;
         }
 
         if !self.lmp.fw_node && n.is_fw() {
+            Metrics::incr_node(n, Event::LmpDeclineFwWindow);
             return false;
         }
 
         if self.lmp.alpha_numeric && !n.alpha.is_numeric() {
+            Metrics::incr_node(n, Event::LmpDeclineMateBound);
             return false;
         }
 
-        // if n.depth > 4 || mv_num <= n.depth as u32 * 3 + 3 {
-        //     return false;
-        // } 
+        if n.depth > 4 {
+            Metrics::incr_node(n, Event::LmpDeclineMaxDepth);
+            return false;
+        }
 
-        // if bd.is_in_check(bd.color_us()) || bd.maybe_gives_discovered_check(mv) || bd.gives_check(&mv) {
-        //     return false;
-        // }
+        if bd.is_in_check(bd.color_us()) {
+            Metrics::incr_node(n, Event::LmpDeclineInCheck);
+            return false;
+        }
+
+        if bd.maybe_gives_discovered_check(mv) || bd.gives_check(&mv) {
+            Metrics::incr_node(n, Event::LmpDeclineGivesCheck);
+            return false;
+        }
         if quiets
             <= (self.lmp.a + self.lmp.b * n.depth as f32 + self.lmp.c * (n.depth * n.depth) as f32)
                 as i32
         {
-            return false;
-        }
-
-        let is_pv = n.is_fw();
-        if is_pv
-            && quiets
-                <= (self.lmp.pa
-                    + self.lmp.pb * n.depth as f32
-                    + self.lmp.pc * (n.depth * n.depth) as f32) as i32
-        {
+            Metrics::incr_node(n, Event::LmpDeclineFormula);
             return false;
         }
 
