@@ -806,6 +806,7 @@ avoid_tt_on_repeats = false
 [tt]
 enabled = true
 aging = true
+persistent = true
 use_tt_for_pv = false
 use_tt_for_eval = false
 tt_for_eval_depth = 0

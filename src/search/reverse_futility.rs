@@ -101,7 +101,7 @@ impl Algo {
         });
 
         if eval - margin >= n.beta {
-            Metrics::incr_node(n, Event::RevFutPrune);
+            Metrics::incr_node(n, Event::RevFutSuccess);
             return Some(eval - margin);
         }
         Metrics::incr_node(n, Event::RevFutFail);

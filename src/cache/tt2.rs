@@ -241,6 +241,7 @@ pub struct TranspositionTable2 {
 
     pub enabled: bool,
     aging: bool,
+    persistent: bool,
     pub use_tt_for_pv: bool,
     pub use_tt_for_eval: bool,
     pub tt_for_eval_depth: i32,
@@ -271,6 +272,7 @@ impl Default for TranspositionTable2 {
             tt_for_eval_depth: 2,
             mb: 8,
             aging: true,
+            persistent: true,
             buckets: 2,
             aligned: false,
             current_age: 10, // to allow us to look back
@@ -353,6 +355,10 @@ impl TranspositionTable2 {
         }
     }
 
+    fn clear(&mut self) {
+        self.table.clear();
+    }
+
     pub fn rewrite_pv(&self, b: &Board) {
         if self.rewrite_pv {
             let _pv = self.extract_pv_and_score(b);
@@ -372,6 +378,9 @@ impl TranspositionTable2 {
         //     info!("Resizing tt");
         //     self.new_game();
         // } else {
+        if !self.persistent {
+            self.clear()
+        }
         if self.aging {
             self.current_age = self.current_age.wrapping_add(1);
             debug!("aging tt to age {}", self.current_age);

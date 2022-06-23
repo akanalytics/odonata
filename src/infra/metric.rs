@@ -1,5 +1,6 @@
 use crate::eval::endgame::EndGame;
-use crate::piece::Ply;
+use crate::mv::Move;
+use crate::piece::{MoveType, Ply};
 use crate::search::node::{Counter, Histograms, Node, Timing};
 use crate::utils::Formatting;
 use hdrhist::HDRHist;
@@ -48,7 +49,6 @@ impl AddAssign<&Histogram> for Histogram {
         self.0 = HDRHist::combined(self.0.clone(), rhs.0.clone()).clone();
     }
 }
-
 
 //
 // ArrayOf
@@ -265,6 +265,49 @@ impl Metrics {
 
     #[allow(unused_variables)]
     #[inline]
+    pub fn classify_move(n: &Node, mv: Move, mt: MoveType) {
+        #[cfg(not(feature = "remove_metrics"))]
+        {
+            let ev = match mt {
+                MoveType::GoodCapture => Event::MoveGoodCapture,
+                MoveType::GoodCaptureUpfrontSorted => Event::MoveGoodCapture,
+                MoveType::Hash => Event::MoveHash,
+                MoveType::Killer => Event::MoveKiller,
+                MoveType::BadCapture => Event::MoveBadCapture,
+                MoveType::Quiet => Event::MoveQuiet,
+                _ => Event::MoveOther,
+            };
+
+            Self::incr_node(n, ev);
+
+            if mv.is_null() {
+                Self::incr_node(n, Event::MoveNull);
+                return;
+            }
+            if mv.is_promo() {
+                Self::incr_node(n, Event::MovePromo)
+            }
+            if mv.is_capture() {
+                Self::incr_node(n, Event::MoveCapture)
+            }
+        }
+        #[cfg(not(feature = "remove_metrics"))]
+        {
+            use crate::Piece;
+            match mv.mover_piece() {
+                Piece::Pawn => Self::incr_node(n, Event::MovePawn),
+                Piece::Knight => Self::incr_node(n, Event::MoveKnight),
+                Piece::Bishop => Self::incr_node(n, Event::MoveBishop),
+                Piece::Rook => Self::incr_node(n, Event::MoveRook),
+                Piece::Queen => Self::incr_node(n, Event::MoveQueen),
+                Piece::King => Self::incr_node(n, Event::MoveKing),
+                _ => unreachable!(),
+            }
+        }
+    }
+
+    #[allow(unused_variables)]
+    #[inline]
     pub fn incr_node(n: &Node, e: Event) {
         #[cfg(not(feature = "remove_metrics"))]
         METRICS_THREAD.with(|s| s.borrow_mut().nodes[e.index()].add(n, 1));
@@ -322,6 +365,13 @@ impl fmt::Display for Metrics {
                     "{}%",
                     Formatting::decimal(1, i as f32 * 100.0 / total as f32)
                 )
+            } else {
+                String::new()
+            }
+        }
+        fn dec(x: u64, y: u64) -> String {
+            if y > 0 {
+                format!("{}", Formatting::decimal(2, x as f32 / y as f32))
             } else {
                 String::new()
             }
@@ -468,22 +518,65 @@ impl fmt::Display for Metrics {
 
             let mut b = Builder::default().set_columns(cols);
             for e in Event::iter() {
-                if self.nodes[e.index()].for_ply(-1) == 0 {
-                    continue;
-                }
                 let mut v = vec![];
                 v.push(e.name().to_string());
                 let total = iter::once(-1);
                 let iters = 32_isize;
 
                 for ply in (0..iters).chain(total) {
-                    v.push(i(if by_ply {
+                    let num = if by_ply {
                         self.nodes[e.index()].for_ply(ply)
                     } else {
                         self.nodes[e.index()].for_depth(ply)
-                    }))
+                    };
+
+                    let s = match e {
+                        Event::TtHitRate => perc(
+                            self.nodes[Event::TtHitNode.index()].for_ply(ply),
+                            self.nodes[Event::TtProbeNode.index()].for_ply(ply),
+                        ),
+                        Event::NodeNmpPerc => perc(
+                            self.nodes[Event::NmpSuccess.index()].for_ply(ply),
+                            self.nodes[Event::NodeInterior.index()].for_ply(ply),
+                        ),
+                        Event::NodeRazorPerc => perc(
+                            self.nodes[Event::RazorSuccess.index()].for_ply(ply),
+                            self.nodes[Event::NodeInterior.index()].for_ply(ply),
+                        ),
+                        Event::NodeRevFutPerc => perc(
+                            self.nodes[Event::RevFutSuccess.index()].for_ply(ply),
+                            self.nodes[Event::NodeInterior.index()].for_ply(ply),
+                        ),
+                        Event::MeanBranchingFactor => {
+                            if self.nodes[Event::NodeTotal.index()].for_ply(ply) > 0 {
+                                dec(
+                                    (0..=ply)
+                                        .map(|y| self.nodes[Event::NodeTotal.index()].for_ply(y))
+                                        .sum(),
+                                    (0..=ply)
+                                        .map(|y| self.nodes[Event::NodeInterior.index()].for_ply(y))
+                                        .sum(),
+                                )
+                            } else {
+                                String::new()
+                            }
+                        }
+                        Event::EffectiveBranchingFactor => dec(
+                            self.nodes[Event::NodeTotal.index()].for_ply(ply),
+                            if ply >= 1 {
+                                self.nodes[Event::NodeTotal.index()].for_ply(ply - 1)
+                            } else {
+                                0
+                            },
+                        ),
+                        _ => i(num),
+                    };
+                    v.push(s);
                 }
-                b = b.add_record(v);
+                // only add row if non-empty
+                if v.iter().any(|s| !s.is_empty()) {
+                    b = b.add_record(v);
+                }
             }
 
             let style = Style::github_markdown().bottom('-');
@@ -498,14 +591,15 @@ impl fmt::Display for Metrics {
                 .with(Modify::new(Columns::single(0)).with(Alignment::left()));
             // nodes
 
+            // loop through again adding some titles
             for (i, e) in Event::iter()
-                .filter(|e| {
-                    if by_ply {
-                        self.nodes[e.index()].for_ply(-1) != 0
-                    } else {
-                        self.nodes[e.index()].for_depth(-1) != 0
-                    }
-                })
+                // .filter(|e| {
+                //     if by_ply {
+                //         self.nodes[e.index()].for_ply(-1) != 0
+                //     } else {
+                //         self.nodes[e.index()].for_depth(-1) != 0
+                //     }
+                // })
                 .enumerate()
             {
                 if let Some(msg) = e.get_message() {

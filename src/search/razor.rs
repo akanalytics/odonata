@@ -156,6 +156,7 @@ impl Algo {
             _ => unreachable!(),
         };
         if self.razor.beta_enabled && eval > n.beta + margin {
+            Metrics::incr_node(n, Event::RazorSuccess);
             Metrics::incr_node(n, event);
             return Ok(Some(n.beta));
         }
@@ -165,6 +166,7 @@ impl Algo {
             if n.depth <= 2 {
                 // drop straight into qsearch
                 let (score, _event) = self.alphabeta(b, n.ply, 0, n.alpha, n.beta, last_move)?;
+                Metrics::incr_node(n, Event::RazorSuccess);
                 Metrics::incr_node(n, event);
                 return Ok(Some(score));
             } else {
@@ -189,6 +191,7 @@ impl Algo {
 
                 // fail low (-inf) or alpha-margin
                 if score <= n.alpha - margin {
+                    Metrics::incr_node(n, Event::RazorSuccess);
                     Metrics::incr_node(n, event);
                     return Ok(Some(score + margin));
                 }

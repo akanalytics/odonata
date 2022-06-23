@@ -126,7 +126,11 @@ impl Algo {
             return Err(cat);
         }
 
+        Metrics::incr_node(&n, Event::NodeTotal);
         self.clock.inc_nodes();
+        if n.is_zw() {
+            Metrics::incr_node(&n, Event::NodeZw);
+        }
         // self.results.set_seldepth(&n);
 
         if n.is_qs() {
@@ -138,10 +142,7 @@ impl Algo {
             return Ok((s, Event::NodeLeafQs));
         }
 
-        Metrics::incr_node(&n, Event::NodeTotal);
-        if n.is_zw() {
-            Metrics::incr_node(&n, Event::NodeZw);
-        }
+        Metrics::incr_node(&n, Event::NodeInterior);
 
         let mut score = -Score::INFINITY;
         let mut category = Event::Unknown;
@@ -175,17 +176,8 @@ impl Algo {
         // static eval
         let eval = self.static_eval(b, &n);
 
-        // use crate::eval::score::ToScore;
-        // if self.show_metrics_on_exit
-        //     && n.depth < 7 && n.beta.is_numeric()
-        //     && !b.is_in_check(b.color_us()) && n.is_zw()
-        //     && eval - n.depth * 110_i32.cp() >= n.beta
-        // {
-        //     return Ok((eval - n.depth * 110_i32.cp(), Event::StandingPatSuccess));
-        // }
-
         if let Some(s) = self.reverse_fut(b, eval, &n, 0) {
-            return Ok((s, Event::RevFutPrune));
+            return Ok((s, Event::RevFutSuccess));
         }
         if let Some(alphabeta) = self.razor_node(last_move, b, eval, &n)? {
             return Ok((alphabeta, Event::RazorSuccess));
@@ -204,6 +196,7 @@ impl Algo {
                 continue;
             }
             Metrics::incr_node(&n, Event::MoveCount);
+            Metrics::classify_move(&n, mv, mt);
             let mut child_board = b.make_move(&mv);
             let ext = self.extend(b, &child_board, mv, mt, count, &n, last_move);
             let is_quiet = self.is_quiet(b, mv, mt, &child_board, &n, ext);

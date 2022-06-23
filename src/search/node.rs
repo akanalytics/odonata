@@ -104,32 +104,21 @@ pub enum Event {
 
     #[strum(message = "Node Counts")]
     NodeTotal,
+    NodeNmpPerc,
+    NodeRazorPerc,
+    NodeRevFutPerc,
+    NodeZw,
     NodeLeafQs,
+    NodeLeafDraw,
+    NodeLeafWinLoss,
+    NodeLeafStalemate,
     NodeInterior,
     NodeInteriorAll,
-    NodeZw,
     NodeInteriorCut,
     NodeInteriorPv,
+    MeanBranchingFactor,
+    EffectiveBranchingFactor,
 
-    #[strum(message = "QS")]
-    NodeQs,
-    NodeQsZw,
-    NodeQsInterior,
-    NodeQsCut,
-    NodeQsPv,
-    NodeQsAll,
-    NodeQsAllVeryLow,    
-    NodeQsInCheck,
-    QsEvalStatic,
-    QsTtProbe,
-    QsTtHit,
-    QsStandingPatPrune,
-    QsMoveCount,
-    QsMoveCountAtPvNode,
-    QsMoveCountAtCutNode,
-    QsSeePruneMove,
-    QsDeltaPruneMove,
-    QsDeltaPruneNode,
 
 
     #[strum(message = "Eval")]
@@ -143,9 +132,38 @@ pub enum Event {
     RecogMaybeWin,
     RecogHelpmateOrDraw,
 
-    #[strum(message = "Move ordering")]
-    MoveSortCounterMove,
+    #[strum(message = "Moves")]
     MoveCount,
+
+    MovePawn,
+    MoveBishop,
+    MoveKnight,
+    MoveRook,
+    MoveQueen,
+    MoveKing,
+
+    // MoveStart,
+    #[strum(message = "Move type")]
+    MoveHash,
+    // MoveInitialize,
+    MoveNull,
+    MoveCapture,
+    MoveGoodCapture,
+    MoveBadCapture,
+    // MoveGoodCaptureUpfrontSorted,
+    MoveKiller,
+    MoveSortCounterMove,
+    MovePromo,
+    MoveQuiet,
+    MoveOther,
+
+    // CounterMove,
+    // MoveEvasion,
+    // MoveQuietOrPromo,
+    // MoveQuietUnsorted,
+    // MoveRemaining,
+    // MoveUnsorted,
+    // MoveEnd,
 
     DerivedRecog,
     DerivedPrunedInterior,
@@ -182,18 +200,16 @@ pub enum Event {
     NmpSuccess,
     NmpFail,
 
-    #[strum(message = "Prune move: Rev Fut Prune")]
+    #[strum(message = "Prune node: Rev Fut Prune")]
     RevFutConsider,
     RevFutDeclineExt,
     RevFutDeclineMateBound,
     RevFutDeclineZugzwang,
-    RevFutDeclineGivesCheck,
     RevFutDeclineInCheck,
-    RevFutDeclinePawnMaxRank,
     RevFutDeclineMaxDepth,
     RevFutDeclineFwWindow,
     RevFutFail,
-    RevFutPrune,
+    RevFutSuccess,
 
     #[strum(message = "Prune move: Futility Prune")]
     FutilityConsider,
@@ -257,9 +273,6 @@ pub enum Event {
     ReSearchFwFd,
 
     NodeLeafQuietEval,
-    NodeLeafDraw,
-    NodeLeafWinLoss,
-    NodeLeafStalemate,
     DerivedLeaf,
     PercentBranchingFactor,
 
@@ -267,31 +280,14 @@ pub enum Event {
     TtHitNode,
     TtHitEvalNode,
     TtProbeNode,
+    TtHitRate,
     TtStoreNode,
 
     TtCut,
     TtAll,
     TtPv,
 
-    Moves,
-    MoveStart,
-    MoveHash,
-    MoveInitialize,
-    MoveNull,
-    MoveGoodCapture,
-    MoveGoodCaptureUpfrontSorted,
-    MoveKiller,
-    CounterMove,
-    MovePromo,
-    MoveEvasion,
-    MoveQuiet,
-    MoveQuietOrPromo,
-    MoveQuietUnsorted,
-    MoveBadCapture,
-    MoveRemaining,
-    MoveUnsorted,
-    MoveCapture,
-    MoveEnd,
+
 
     DurationIterEst,
     DurationIterAllotted,
@@ -304,6 +300,27 @@ pub enum Event {
     LmrReSearch,
     PercentPvsReSearch,
     PercentLmrReSearch,
+
+    #[strum(message = "QS")]
+    NodeQs,
+    NodeQsZw,
+    NodeQsInterior,
+    NodeQsCut,
+    NodeQsPv,
+    NodeQsAll,
+    NodeQsAllVeryLow,    
+    NodeQsInCheck,
+    QsEvalStatic,
+    QsTtProbe,
+    QsTtHit,
+    QsStandingPatPrune,
+    QsMoveCount,
+    QsMoveCountAtPvNode,
+    QsMoveCountAtCutNode,
+    QsSeePruneMove,
+    QsDeltaPruneMove,
+    QsDeltaPruneNode,
+
 }
 
 impl Default for Event {
