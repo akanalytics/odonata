@@ -619,6 +619,15 @@ impl Bitboard {
         bb
     }
 
+    #[inline]
+    // if bitboard comtains both blacka nd white whole board is returned
+    pub fn squares_of_matching_color(self) -> Bitboard {
+        Bitboard::WHITE_SQUARES.only_if(self.intersects(Bitboard::WHITE_SQUARES))
+        |
+        Bitboard::BLACK_SQUARES.only_if(self.intersects(Bitboard::BLACK_SQUARES))
+    }
+
+
     // the set of files containing the bitboard
     #[inline]
     pub fn file_flood(self) -> Bitboard {
@@ -1000,6 +1009,9 @@ mod tests {
             Bitboard::all()
         );
         assert!(Bitboard::BLACK_SQUARES.contains(a1));
+        assert_eq!(Bitboard::A1.squares_of_matching_color(), Bitboard::BLACK_SQUARES);
+        assert_eq!(Bitboard::B1.squares_of_matching_color(), Bitboard::WHITE_SQUARES);
+        assert_eq!((a1|b1).squares_of_matching_color(), Bitboard::all());
         assert_eq!(1_u64.wrapping_shl(64), 1_u64);
         // assert_eq!(Bitboard::from_sq(64), Bitboard::EMPTY);
     }

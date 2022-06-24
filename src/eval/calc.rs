@@ -4,10 +4,10 @@ use crate::eval::endgame::EndGame;
 use crate::eval::eval::{Eval, Feature};
 use crate::infra::metric::Metrics;
 use crate::phaser::Phaser;
-use crate::search::node::Timing;
 use crate::piece::Color::{self, *};
 use crate::piece::Piece;
 use crate::piece::Piece::*;
+use crate::search::node::Timing;
 use crate::Bitboard;
 
 use super::eval::Attr;
@@ -254,7 +254,9 @@ impl Calc {
         let mut blockaded = 0;
         let mut blockaded_passers = 0;
         let mut rooks_behind_passer = 0;
-        let mut rammed_pawns = 0;
+        // let mut rammed_pawns = 0;
+        let mut closedness = 0;
+        let mut bishop_color_rammed_pawns = 0;
 
         for p in (b.pawns() & us).squares() {
             // self.doubled_pawns += is_doubled as i32;
@@ -282,10 +284,18 @@ impl Calc {
             rooks_behind_passer +=
                 (is_passed && (bbd.pawn_front_span(c.opposite(), p) & b.rooks() & us).any()) as i32;
 
-            let rammed = bbd.pawn_stop(c, p).intersects(them & b.pawns());
+            let rammed = pawn_stop.intersects(them & b.pawns());
+            if rammed & p.is_in((b.bishops() & us).squares_of_matching_color()) {
+                bishop_color_rammed_pawns += 1 + (p.as_bb() | pawn_stop).intersects(Bitboard::CENTER_16_SQ) as i32;
+            }
             let _nearly_rammed =
                 bbd.pawn_double_stop(c, p).intersects(them & b.pawns()) || is_blockaded;
-            rammed_pawns += rammed as i32;
+            // rammed_pawns += rammed as i32;
+            closedness += rammed as i32;
+            // try and ensure closedness is symmetric
+            if p.is_in(Bitboard::CENTER_16_SQ) || pawn_stop.intersects(Bitboard::CENTER_16_SQ) {
+                closedness += rammed as i32;
+            }
             scorer.set_bits(Attr::RammedPawns.into(), p.as_bb().only_if(rammed));
 
             // // old let is_passed = (bbd.pawn_front_span_union_attack_span(c, p) & b.pawns()).is_empty();
@@ -412,8 +422,17 @@ impl Calc {
         }
         // self.doubled_pawns = bbd.doubled_pawns(us & b.pawns()).popcount();
         // lots of rammed pawns and having a knight an advantage
-        rammed_pawns = rammed_pawns * rammed_pawns * (b.knights() & us).any() as i32;
+        // rammed_pawns = rammed_pawns * rammed_pawns * (b.knights() & us).any() as i32;
 
+        let bishops_far_pawns = ((b.pawns() & Bitboard::FILE_A.or(Bitboard::FILE_B)).any()
+            && (b.pawns() & Bitboard::FILE_G.or(Bitboard::FILE_H)).any()
+            && b.queens().is_empty()
+            && b.rooks().is_empty()) as i32
+            * (b.bishops() & us).popcount();
+
+        let knight_closedness = closedness * closedness * (b.knights() & us).popcount();
+        let bishop_closedness = closedness * closedness * (b.bishops() & us).popcount();
+        let rook_closedness = closedness * closedness * (b.rooks() & us).popcount();
         // space adjustment
         // space = match b.pawns().popcount() {
         //     10.. => space,
@@ -421,6 +440,16 @@ impl Calc {
         //     _ => 0,
         // };
 
+        scorer.accum(c, Attr::BishopFarPawns.as_feature(), bishops_far_pawns);
+        scorer.accum(
+            c,
+            Attr::BishopColorRammedPawns.as_feature(),
+            bishop_color_rammed_pawns,
+        );
+        scorer.accum(c, Attr::Closedness.as_feature(), closedness * closedness);
+        scorer.accum(c, Attr::KnightClosedness.as_feature(), knight_closedness);
+        scorer.accum(c, Attr::BishopClosedness.as_feature(), bishop_closedness);
+        scorer.accum(c, Attr::RookClosedness.as_feature(), rook_closedness);
         scorer.accum(c, Attr::PawnDoubled.as_feature(), doubled_pawns);
         scorer.accum(
             c,
@@ -448,7 +477,7 @@ impl Calc {
             Attr::PawnIsolatedDoubled.as_feature(),
             pawn_isolated_doubled,
         );
-        scorer.accum(c, Attr::RammedPawns.as_feature(), rammed_pawns);
+        // scorer.accum(c, Attr::RammedPawns.as_feature(), rammed_pawns);
         scorer.accum(c, Attr::Space.as_feature(), space);
         scorer.accum(c, Attr::PawnConnectedR67.as_feature(), pawn_connected_r67);
         scorer.accum(c, Attr::PawnConnectedR345.as_feature(), pawn_connected_r345);
@@ -503,22 +532,22 @@ impl Calc {
         // }
         let king_tropism_d1 = (d1 & (b.pawns() | b.kings()) & them).popcount()
             + (d1 & (b.knights() | b.bishops()) & them).popcount() * 2
-            + (d1 & (b.rooks()) & them).popcount() * 4
+            + (d1 & (b.rooks()) & them).popcount() * 2
             + (d1 & (b.queens()) & them).popcount() * 4;
 
         let king_tropism_d2 = (d2 & (b.pawns() | b.kings()) & them).popcount()
             + (d2 & (b.knights() | b.bishops()) & them).popcount() * 2
-            + (d2 & (b.rooks()) & them).popcount() * 4
+            + (d2 & (b.rooks()) & them).popcount() * 2
             + (d2 & (b.queens()) & them).popcount() * 4;
 
         let king_tropism_d3 = (d3 & (b.pawns() | b.kings()) & them).popcount()
             + (d3 & (b.knights() | b.bishops()) & them).popcount() * 2
-            + (d3 & (b.rooks()) & them).popcount() * 4
+            + (d3 & (b.rooks()) & them).popcount() * 2
             + (d3 & (b.queens()) & them).popcount() * 4;
 
         let king_tropism_d4 = (d4 & (b.pawns() | b.kings()) & them).popcount()
             + (d3 & (b.knights() | b.bishops()) & them).popcount() * 2
-            + (d3 & (b.rooks()) & them).popcount() * 4
+            + (d3 & (b.rooks()) & them).popcount() * 2
             + (d3 & (b.queens()) & them).popcount() * 4;
 
         let king_safety_bonus = if b.queens().any() {
@@ -556,6 +585,11 @@ impl Calc {
         let pinned_near_king = (b.pinned(c) & d1).popcount();
         let pinned_far = (b.pinned(c)).popcount() - pinned_near_king;
         let discovered_checks = (b.discoverer(c) - b.pawns()).popcount();
+        let tempo_safety_d12 = if b.color_them() == c {
+            king_tropism_d1 + king_tropism_d2 + open_files_adjacent_king + open_files_near_king
+        } else {
+            0
+        };
         s.accum(c, Attr::PawnAdjacentShield.as_feature(), adjacent_shield);
         s.accum(c, Attr::PawnNearbyShield.as_feature(), nearby_shield);
         s.accum(c, Attr::KingSafetyBonus.as_feature(), king_safety_bonus);
@@ -569,6 +603,7 @@ impl Calc {
             Attr::OpenFilesAdjacentKing.as_feature(),
             open_files_adjacent_king,
         );
+        s.accum(c, Attr::TempoSafety.as_feature(), tempo_safety_d12);
         s.accum(c, Attr::TropismD1.as_feature(), king_tropism_d1);
         s.accum(c, Attr::TropismD2.as_feature(), king_tropism_d2);
         s.accum(c, Attr::TropismD3.as_feature(), king_tropism_d3);
@@ -618,6 +653,7 @@ impl Calc {
         let mut partially_trapped_pieces = 0;
         let mut fully_trapped_pieces = 0;
         let mut attacks_near_king = 0;
+        // let mut moves_near_king = 0;
         let mut move_squares = 0;
         let mut non_pawn_defended_moves = 0;
         let mut center_attacks = 0;
@@ -744,11 +780,15 @@ impl Calc {
             all_attacks |= (our_raw_attacks & them) - us;
 
             if k.any() {
+                // moves_near_king += (our_raw_attacks
+                //     & bb.within_chebyshev_distance_inclusive(ksq, 1)
+                //     & !b.occupied())
+                // .popcount();
                 attacks_near_king +=
                     (our_raw_attacks & bb.within_chebyshev_distance_inclusive(ksq, 1)).popcount();
             }
         }
-
+        // let double_attacks_near_king = double_attacks & bb.within_chebyshev_distance_inclusive(ksq, 1);
         //
         // knight
         //
@@ -833,7 +873,13 @@ impl Calc {
         //
         // s.set_bits(Attr::DoubleAttacks.into(), double_attacks);
         // s.accum(c, Attr::DoubleAttacks.as_feature(), double_attacks.popcount());
+        // s.accum(
+        //     c,
+        //     Attr::DoubleAttacksNearKing.as_feature(),
+        //     double_attacks_near_king.popcount(),
+        // );
         s.accum(c, Attr::AttacksNearKing.as_feature(), attacks_near_king);
+        // s.accum(c, Attr::MovesNearKing.as_feature(), moves_near_king);
         s.accum(c, Attr::CenterAttacks.as_feature(), center_attacks);
         s.accum(c, Attr::UndefendedSq.as_feature(), move_squares);
         s.accum(
@@ -863,7 +909,7 @@ mod tests {
     use crate::infra::profiler::*;
     use crate::phaser::Phaser;
     use crate::test_log::test;
-    use crate::{Position};
+    use crate::Position;
     // use crate::utils::StringUtils;
 
     #[test]

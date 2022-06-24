@@ -611,8 +611,8 @@ impl fmt::Display for Metrics {
             tab
         };
 
-        generate_table("Counter \\ Ply", true).fmt(f)?;
         generate_table("Counter \\ Depth", false).fmt(f)?;
+        generate_table("Counter \\ Ply", true).fmt(f)?;
         Ok(())
     }
 }

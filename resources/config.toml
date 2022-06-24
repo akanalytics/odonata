@@ -1,37 +1,48 @@
+# weight file:              ../output/weight/1124-weights-2w.toml
+# Odonata version:          odonata 0.6.3 built on Thu, 23 Jun 2022 22:32:16 +0000
+
+# Run: 1124
+# Training files              ['../epd/quiet-labeled.epd', '../epd/quiet-labeled-odo.epd']
+# Odonata                     odonata 0.6.3 built on Thu, 23 Jun 2022 22:32:16 +0000
+# Odonata path                ../engines/odonata/odonata-stable
+# Download file:              ../output/weight/1124-model.csv
+# Method:                     New
 #
-# Run: 210
-# Training file ../output/combo.epd (500k quiet-labelled, 500k odonata tourney)
-#     baseline = {
-#         'eval.material': "true",
-#         'eval.position': "true",
-#         'eval.safety': "true",
-#         'eval.mobility': "true",
-#         'eval.pawn': "true",   # pawn structure is off in odonata 0.3.35
-#         'eval.mb.enabled': "false",
-#         'eval.phaser.method': "\"SO\"",
-#         'eval.contempt_penalty.s': "-30",
-#         'eval.contempt_penalty.m': "-10",
-#         'eval.contempt_penalty.e': "0",
-#         "tuner.ignore_draws": "false",
-#         "tuner.ignore_known_outcomes": "true",
-#         "tuner.ignore_endgames": "true",
-#         "tuner.search_depth": "0",
-#         'tuner.logistic_steepness_k.s': "4",
-#         'tuner.logistic_steepness_k.m': "5",
-#         'tuner.logistic_steepness_k.e': "6",
-#     }
-#  reg = LogisticRegression(
-#    penalty="l1", solver= "liblinear", fit_intercept = True, 
-#    tol=1e-4, class_weight=wt,  C=0.25, max_iter=1000, n_jobs = jobs)
+# Baseline:
+# eval.mb.enabled          : false
+# eval.phaser.method       : "SO"
+# eval.discrete.contempt_penalty.s: -30
+# eval.discrete.contempt_penalty.m: -10
+# eval.discrete.contempt_penalty.e: 0
+# tuner.regression_type    : "LogisticOnOutcome"
+# tuner.method             : "New"
+# tuner.ignore_draws       : false
+# tuner.ignore_known_outcomes: true
+# tuner.ignore_endgames    : true
+# tuner.consolidate        : true
+# tuner.search_depth       : 0
+# tuner.logistic_steepness_k.s: 4
+# tuner.logistic_steepness_k.m: 5
+# tuner.logistic_steepness_k.e: 6
+#
+# Train
+# epd files                : ['../epd/quiet-labeled.epd', '../epd/quiet-labeled-odo.epd']
+# Upload positions:         26.94 secs for 0 654311 lines
+# Download model file:      30.50 secs for 2070403 lines
+# Download file:            ../output/weight/1124-model.csv
 
-# weight file:         ../output/weights-2w-king_safety_rq.toml
-# Odonata version:     odonata 0.5.22 built on Thu, 14 Apr 2022 15:32:28 +0000
+# prepare model data time:  21.07 secs
 
+#
 # Metrics
-# lam                 : 4.00000
-# mean_squared_error  : 0.12419
-# mean_absolute_error : 0.12419
-# r2_score            : 0.50221
+# Test train split:         7.63 secs
+# model csv load time       24.57 secs
+# Model fit time:           119.54 secs
+# Model predict time:       0.79 secs
+# lam                      : 4.00000
+# mean_squared_error       : 0.12222
+# mean_absolute_error      : 0.12222
+# r2_score                 : 0.51008
 
 
 shared_tt = true
@@ -74,83 +85,92 @@ promo=false
 
 
 [eval.discrete]
-
-pawn_doubled                 = { s =   -2.72, e =  -35.60 }
+pawn_doubled                 = { s =   -3.46, e =  -36.79 }
 pawn_directly_doubled        = { s =    0.00, e =    0.00 }
-pawn_isolated                = { s =  -16.20, e =   13.44 }
+pawn_isolated                = { s =  -16.16, e =   13.90 }
 semi_isolated                = { s =    0.00, e =    0.00 }
-pawn_passed                  = { s =   -6.98, e =   -9.75 }
-pawn_passed_r7               = { s =    0.00, e =  451.60 }
-pawn_passed_r6               = { s =  -20.94, e =  245.05 }
-pawn_passed_r5               = { s =    3.97, e =  111.22 }
-pawn_passed_r4               = { s =  -18.10, e =   50.96 }
-passers_on_rim               = { s =    5.19, e =   12.89 }
+pawn_passed                  = { s =   -3.80, e =  -11.02 }
+pawn_passed_r7               = { s =    0.00, e =  439.86 }
+pawn_passed_r6               = { s =  -19.45, e =  236.84 }
+pawn_passed_r5               = { s =    4.33, e =  108.71 }
+pawn_passed_r4               = { s =  -15.66, e =   48.71 }
+passers_on_rim               = { s =    2.74, e =   12.49 }
 candidate_passed_pawn        = { s =    0.00, e =    0.00 }
-blockaded                    = { s =   -2.90, e =  -28.76 }
-blockaded_passers            = { s =   12.77, e =  -72.43 }
-rooks_behind_passer          = { s =   30.69, e =   12.26 }
-pawn_isolated_doubled        = { s =    6.98, e =  -74.62 }
+blockaded                    = { s =   -2.29, e =  -26.04 }
+blockaded_passers            = { s =    7.03, e =  -68.13 }
+rooks_behind_passer          = { s =   28.90, e =   13.35 }
+pawn_isolated_doubled        = { s =    5.70, e =  -74.43 }
 space                        = { s =    0.00, e =    0.00 }
-rammed_pawns                 = { s =    0.00, e =    9.43 }
-pawn_connected_r67           = { s =   23.95, e =   23.76 }
-pawn_connected_r345          = { s =   22.74, e =   15.37 }
+rammed_pawns                 = { s =    0.00, e =    0.00 }
+pawn_connected_r67           = { s =   20.71, e =   23.83 }
+pawn_connected_r345          = { s =   22.39, e =   15.52 }
 passed_connected_r67         = { s =    0.00, e =    0.00 }
 passed_connected_r345        = { s =    0.00, e =    0.00 }
-pawn_duo_r67                 = { s =   46.96, e =   59.89 }
-pawn_duo_r2345               = { s =    8.34, e =    3.36 }
+pawn_duo_r67                 = { s =   90.16, e =   46.17 }
+pawn_duo_r2345               = { s =    8.30, e =    3.98 }
 passed_duo_r67               = { s =    0.00, e =    0.00 }
 passed_duo_r2345             = { s =    0.00, e =    0.00 }
-backward_half_open           = { s =  -19.69, e =  -27.34 }
-backward                     = { s =   -2.09, e =   -8.60 }
-bishop_pair                  = { s =   31.28, e =   83.08 }
-rook_pair                    = { s =  123.68, e =  -74.31 }
-center_attacks               = { s =    4.08, e =    2.61 }
-double_attacks               = { s =   -6.64, e =   14.82 }
-undefended_sq                = { s =    1.83, e =    6.50 }
-undefended_piece             = { s =    1.42, e =   40.44 }
-trapped_piece                = { s =  -17.28, e =  -40.79 }
-partially_trapped_piece      = { s =   -5.70, e =  -11.41 }
-rook_open_file               = { s =   57.51, e =   -6.56 }
-rook_semi_open_file          = { s =   22.48, e =    7.26 }
-knight_forks                 = { s =   -0.22, e =   93.22 }
+backward_half_open           = { s =  -18.84, e =  -25.99 }
+backward                     = { s =   -2.63, e =   -8.61 }
+bishop_pair                  = { s =   29.52, e =   81.22 }
+rook_pair                    = { s =  109.11, e =  -63.73 }
+closedness                   = { s =    0.00, e =    0.00 }
+center_attacks               = { s =    4.19, e =    3.01 }
+double_attacks               = { s =    0.00, e =    0.00 }
+undefended_sq                = { s =    1.89, e =    5.72 }
+undefended_piece             = { s =    0.84, e =   38.75 }
+trapped_piece                = { s =  -16.12, e =  -41.32 }
+partially_trapped_piece      = { s =   -5.61, e =  -11.32 }
+rook_open_file               = { s =   55.23, e =   -4.00 }
+rook_semi_open_file          = { s =   22.42, e =    9.32 }
+knight_closedness            = { s =   -1.16, e =    4.50 }
+knight_forks                 = { s =   -0.29, e =   88.07 }
 knight_outpost               = { s =    0.00, e =    0.00 }
-knight_outpost_pawn_defended = { s =   19.49, e =   56.02 }
+knight_outpost_pawn_defended = { s =   10.31, e =   66.79 }
 knight_outpost_rook_safe     = { s =    0.00, e =    0.00 }
-knight_connected             = { s =    0.00, e =    0.00 }
-knight_attacks_center        = { s =   48.28, e =   13.95 }
+knight_connected             = { s =    6.44, e =   17.15 }
+knight_attacks_center        = { s =   55.06, e =   18.13 }
 knight_trapped               = { s =    0.00, e =    0.00 }
-fianchetto                   = { s =    9.42, e =   28.80 }
-bishop_outposts              = { s =   34.77, e =   11.19 }
-bishop_color_pawns           = { s =    0.00, e =    0.00 }
+fianchetto                   = { s =   10.04, e =   25.37 }
+bishop_outposts              = { s =   37.81, e =   20.08 }
+bishop_color_pawns           = { s =   -1.93, e =   -1.51 }
+bishop_color_rammed_pawns    = { s =    4.38, e =  -13.44 }
+bishop_far_pawns             = { s =    0.00, e =   26.06 }
 bishop_trapped               = { s =    0.00, e =    0.00 }
-doubled_rooks                = { s =   29.85, e =    0.00 }
+bishop_closedness            = { s =   -2.08, e =    2.26 }
+rook_closedness              = { s =   -2.40, e =    2.99 }
+doubled_rooks                = { s =   29.01, e =    4.66 }
 connected_rooks              = { s =    0.00, e =    0.00 }
-doubled_rooks_open_file      = { s =   -6.93, e =   18.10 }
-enemy_pawns_on_rook_rank     = { s =  -25.21, e =   13.39 }
+doubled_rooks_open_file      = { s =   -5.78, e =    8.50 }
+enemy_pawns_on_rook_rank     = { s =  -21.51, e =   12.11 }
 rook_trapped                 = { s =    0.00, e =    0.00 }
-queen_early_develop          = { s =   -5.78, e =   28.90 }
-queen_open_file              = { s =  -27.61, e =   40.82 }
+queen_early_develop          = { s =   -7.03, e =   32.10 }
+queen_open_file              = { s =  -28.78, e =   42.46 }
 queen_trapped                = { s =    0.00, e =    0.00 }
-pawn_adjacent_shield         = { s =   14.23, e =  -14.06 }
-pawn_nearby_shield           = { s =    8.64, e =  -14.65 }
-king_safety_bonus            = { s =    6.58, e =   29.80 }
-open_files_near_king         = { s =  -14.80, e =  -30.73 }
-open_files_adjacent_king     = { s =  -27.86, e =  -12.49 }
-attacks_near_king            = { s =    9.59, e =   -0.17 }
-tropism_d1                   = { s =  -23.74, e =   25.55 }
-tropism_d2                   = { s =  -15.33, e =    8.67 }
-tropism_d3                   = { s =   -8.32, e =   -0.68 }
-tropism_d4                   = { s =   -1.89, e =    2.09 }
-king_trapped_on_back_rank    = { s =    7.26, e =  -51.80 }
-rq_on_open_files_near_king   = { s =   -3.01, e =   -4.47 }
-castling_rights              = { s =   39.35, e =  -17.43 }
-uncastled                    = { s =  -69.78, e =   24.44 }
-checkers                     = { s = -111.95, e =  -64.37 }
-pieces_near_king             = { s =   13.78, e =   -1.03 }
-pinned_near_king             = { s =   -6.45, e =   22.43 }
-pinned_far                   = { s =  -21.66, e =  -21.66 }
-discovered_checks            = { s = -101.48, e = -144.06 }
-tempo_bonus                  = { s =   25.82, e =   58.19 }
+pawn_adjacent_shield         = { s =   12.24, e =  -12.46 }
+pawn_nearby_shield           = { s =    6.51, e =  -12.90 }
+king_safety_bonus            = { s =    7.27, e =   28.60 }
+open_files_near_king         = { s =   -9.94, e =  -27.96 }
+open_files_adjacent_king     = { s =  -21.74, e =  -10.01 }
+attacks_near_king            = { s =    9.73, e =   -1.21 }
+double_attacks_near_king     = { s =    0.00, e =    0.00 }
+moves_near_king              = { s =    0.00, e =    0.00 }
+tempo_safety                 = { s =  -13.40, e =   -1.94 }
+tropism_d1                   = { s =  -17.14, e =   34.30 }
+tropism_d2                   = { s =  -12.71, e =   11.61 }
+tropism_d3                   = { s =   -9.00, e =   -0.44 }
+tropism_d4                   = { s =   -1.41, e =    1.32 }
+king_trapped_on_back_rank    = { s =    6.83, e =  -51.26 }
+rq_on_open_files_near_king   = { s =   -4.52, e =   -2.14 }
+castling_rights              = { s =   37.69, e =  -17.22 }
+uncastled                    = { s =  -63.24, e =   28.71 }
+checkers                     = { s = -128.19, e =  -69.67 }
+pieces_near_king             = { s =   12.65, e =    0.00 }
+pinned_near_king             = { s =   -6.56, e =   20.85 }
+pinned_far                   = { s =  -21.71, e =  -19.40 }
+discovered_checks            = { s = -106.42, e = -138.46 }
+tempo_bonus                  = { s =   20.91, e =   35.19 }
+
 win_bonus                  = { s =  350.00, e =  600.00 }
 contempt_penalty           = { s =  -30.00, e =    0.00 }
 win_metric1                = { s =    1.00, e =    1.00 }

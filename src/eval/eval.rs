@@ -74,6 +74,7 @@ pub enum Attr {
     BishopPair,
     RookPair,
     WinBonus,
+    Closedness,
 
     CenterAttacks,
     DoubleAttacks,
@@ -84,6 +85,7 @@ pub enum Attr {
     RookOpenFile,
     RookSemiOpenFile,
 
+    KnightClosedness,
     KnightForks,
     KnightOutpost,
     KnightOutpostPawnDefended,
@@ -95,8 +97,12 @@ pub enum Attr {
     Fianchetto,
     BishopOutposts,
     BishopColorPawns,
+    BishopColorRammedPawns,
+    BishopFarPawns,
     BishopTrapped,
+    BishopClosedness,
 
+    RookClosedness,
     DoubledRooks,
     ConnectedRooks,
     DoubledRooksOpenFile,
@@ -113,6 +119,9 @@ pub enum Attr {
     OpenFilesNearKing,
     OpenFilesAdjacentKing,
     AttacksNearKing,
+    DoubleAttacksNearKing,
+    MovesNearKing,
+    TempoSafety,
     TropismD1,
     TropismD2,
     TropismD3,
