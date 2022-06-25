@@ -133,6 +133,12 @@ impl Algo {
         }
         // self.results.set_seldepth(&n);
 
+
+
+        if let Some(s) = self.mate_distance(&mut n) {
+            return Ok((s, Event::MateDistSuccess));
+        }
+
         if n.is_qs() {
             Metrics::incr_node(&n, Event::NodeLeafQs);
             let t = Metrics::timing_start();

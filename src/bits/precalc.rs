@@ -6,7 +6,6 @@ use crate::bits::bitboard::{Bitboard, Dir};
 use crate::bits::square::Square;
 use static_init::dynamic;
 
-
 pub type BestSlidingPieceAttacks = Hyperbola;
 
 #[dynamic]
@@ -316,6 +315,14 @@ impl PreCalc {
     pub fn pawn_duos(&self, pawns: Bitboard) -> Bitboard {
         (pawns.shift(Dir::E) | pawns.shift(Dir::W)) & pawns
     }
+
+    // distant neighbours are same rank but seperated by one file
+    #[inline]
+    pub fn pawn_distant_neighbours(&self, pawns: Bitboard) -> Bitboard {
+        let open = self.open_files(pawns);
+        ((pawns.shift(Dir::E) & open).shift(Dir::E) | (pawns.shift(Dir::W) & open).shift(Dir::W))
+            & pawns
+    }
     // fn pawn_ep_captures(
     //     &self,
     //     pawns: Bitboard,
@@ -387,10 +394,7 @@ mod tests {
         // assert_eq!(west, g6);
 
         let pawns = b2 | b4 | c5 | c6 | d3 | d7 | h5;
-        assert_eq!(
-            PreCalc::default().doubled_pawns(pawns),
-            b4 | c6 | d7
-        );
+        assert_eq!(PreCalc::default().doubled_pawns(pawns), b4 | c6 | d7);
 
         assert_eq!(
             PreCalc::default().open_files(pawns),
@@ -399,27 +403,23 @@ mod tests {
         assert_eq!(PreCalc::default().isolated_pawns(pawns), h5);
         assert_eq!(PreCalc::default().isolated_pawns(opponent), d3 | g5);
 
-        let calced =
-            PreCalc::default().pawn_front_span_union_attack_span(Color::White, Square::B2);
+        let calced = PreCalc::default().pawn_front_span_union_attack_span(Color::White, Square::B2);
         let expect = (Bitboard::FILE_A | Bitboard::FILE_B | Bitboard::FILE_C)
             - (Bitboard::RANK_1 | Bitboard::RANK_2);
         println!("{}\n{}", calced, expect);
         assert_eq!(calced, expect);
 
-        let calced =
-            PreCalc::default().pawn_front_span_union_attack_span(Color::White, Square::A2);
+        let calced = PreCalc::default().pawn_front_span_union_attack_span(Color::White, Square::A2);
         let expect = (Bitboard::FILE_A | Bitboard::FILE_B) - (Bitboard::RANK_1 | Bitboard::RANK_2);
         println!("{}\n{}", calced, expect);
         assert_eq!(calced, expect);
 
-        let calced =
-            PreCalc::default().pawn_front_span_union_attack_span(Color::White, Square::H8);
+        let calced = PreCalc::default().pawn_front_span_union_attack_span(Color::White, Square::H8);
         let expect = Bitboard::EMPTY;
         println!("{}\n{}", calced, expect);
         assert_eq!(calced, expect);
 
-        let calced =
-            PreCalc::default().pawn_front_span_union_attack_span(Color::Black, Square::D7);
+        let calced = PreCalc::default().pawn_front_span_union_attack_span(Color::Black, Square::D7);
         let expect = (Bitboard::FILE_C | Bitboard::FILE_D | Bitboard::FILE_E)
             - (Bitboard::RANK_8 | Bitboard::RANK_7);
         println!("{}\n{}", calced, expect);

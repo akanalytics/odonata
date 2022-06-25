@@ -2,12 +2,11 @@ use crate::board::Board;
 use crate::eval::score::Score;
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
+use crate::piece::Ply;
 use crate::search::node::{Event, Node};
 use crate::Algo;
-use crate::piece::Ply;
 use serde::{Deserialize, Serialize};
 use std::fmt;
-
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -17,6 +16,7 @@ pub struct ReverseFutility {
     prune_zugzwang: bool,
     prune_extensions: bool,
     prune_fw_node: bool,
+    prune_eval_mate: bool,
     prune_alpha_mate: bool,
     prune_beta_mate: bool,
     max_depth: Ply,
@@ -42,7 +42,8 @@ impl Default for ReverseFutility {
             prune_zugzwang: false,
             prune_extensions: false,
             prune_fw_node: false,
-            prune_alpha_mate: false,
+            prune_eval_mate: false,
+            prune_alpha_mate: true,
             prune_beta_mate: false,
             max_depth: 6,
             margin1: 100,
@@ -67,8 +68,9 @@ impl Algo {
             return None;
         }
 
-        if (!self.rev_fut.prune_alpha_mate && n.alpha.is_mate())
-            || (!self.rev_fut.prune_beta_mate && n.beta.is_mate())
+        if !self.rev_fut.prune_eval_mate && eval.is_mate()
+            || !self.rev_fut.prune_alpha_mate && n.alpha.is_mate()
+            || !self.rev_fut.prune_beta_mate && n.beta.is_mate()
         {
             Metrics::incr_node(&n, Event::RevFutDeclineMateBound);
             return None;
@@ -88,7 +90,7 @@ impl Algo {
         }
 
         // just king + pawns
-        if !self.rev_fut.prune_zugzwang && (bd.us() - bd.pawns()).popcount() <= 1 {  
+        if !self.rev_fut.prune_zugzwang && (bd.us() - bd.pawns()).popcount() <= 1 {
             Metrics::incr_node(n, Event::RevFutDeclineZugzwang);
             return None;
         }

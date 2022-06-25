@@ -214,6 +214,7 @@ impl Calc {
         let (pawn_atts_e, pawn_atts_w) = bbd.pawn_attacks(b.pawns() & us, c);
         let pawn_atts = pawn_atts_e | pawn_atts_w;
         let pawn_duos = bbd.pawn_duos(b.pawns() & us);
+        let distant_neighbours = bbd.pawn_distant_neighbours(b.pawns() & us);
         let doubled_pawns_bb = bbd.doubled_pawns(us & b.pawns());
         let pawn_isolated_doubled_bb = bbd.doubled_pawns(us & b.pawns()) & isolated_pawns_bb;
         scorer.set_bits(Attr::PawnIsolatedDoubled.into(), pawn_isolated_doubled_bb);
@@ -257,6 +258,9 @@ impl Calc {
         // let mut rammed_pawns = 0;
         let mut closedness = 0;
         let mut bishop_color_rammed_pawns = 0;
+        let mut pawn_distant_neighbours_r7 = 0;
+        let mut pawn_distant_neighbours_r6 = 0;
+        let mut pawn_distant_neighbours_r5 = 0;
 
         for p in (b.pawns() & us).squares() {
             // self.doubled_pawns += is_doubled as i32;
@@ -286,7 +290,8 @@ impl Calc {
 
             let rammed = pawn_stop.intersects(them & b.pawns());
             if rammed & p.is_in((b.bishops() & us).squares_of_matching_color()) {
-                bishop_color_rammed_pawns += 1 + (p.as_bb() | pawn_stop).intersects(Bitboard::CENTER_16_SQ) as i32;
+                bishop_color_rammed_pawns +=
+                    1 + (p.as_bb() | pawn_stop).intersects(Bitboard::CENTER_16_SQ) as i32;
             }
             let _nearly_rammed =
                 bbd.pawn_double_stop(c, p).intersects(them & b.pawns()) || is_blockaded;
@@ -395,6 +400,15 @@ impl Calc {
                     }
                 }
             }
+            if p.is_in(distant_neighbours) {
+                match rank_num {
+                    7 => pawn_distant_neighbours_r7 += 1,
+                    6 => pawn_distant_neighbours_r6 += 1,
+                    5 => pawn_distant_neighbours_r5 += 1,
+                    _ => {},
+                }
+            }
+
             if p.is_in(pawn_duos) {
                 match rank_num {
                     6 | 7 => pawn_duo_r67 += 1,
@@ -424,10 +438,9 @@ impl Calc {
         // lots of rammed pawns and having a knight an advantage
         // rammed_pawns = rammed_pawns * rammed_pawns * (b.knights() & us).any() as i32;
 
-        let bishops_far_pawns = ((b.pawns() & Bitboard::FILE_A.or(Bitboard::FILE_B)).any()
+        let bishop_far_pawns = ((b.pawns() & Bitboard::FILE_A.or(Bitboard::FILE_B)).any()
             && (b.pawns() & Bitboard::FILE_G.or(Bitboard::FILE_H)).any()
-            && b.queens().is_empty()
-            && b.rooks().is_empty()) as i32
+            && b.rooks_or_queens().is_empty()) as i32
             * (b.bishops() & us).popcount();
 
         let knight_closedness = closedness * closedness * (b.knights() & us).popcount();
@@ -440,7 +453,7 @@ impl Calc {
         //     _ => 0,
         // };
 
-        scorer.accum(c, Attr::BishopFarPawns.as_feature(), bishops_far_pawns);
+        scorer.accum(c, Attr::BishopFarPawns.as_feature(), bishop_far_pawns);
         scorer.accum(
             c,
             Attr::BishopColorRammedPawns.as_feature(),
@@ -458,6 +471,9 @@ impl Calc {
         );
         scorer.accum(c, Attr::PawnIsolated.as_feature(), isolated_pawns);
         scorer.accum(c, Attr::SemiIsolated.as_feature(), semi_isolated);
+        scorer.accum(c, Attr::PawnDistantNeighboursR7.as_feature(), pawn_distant_neighbours_r7);
+        scorer.accum(c, Attr::PawnDistantNeighboursR6.as_feature(), pawn_distant_neighbours_r6);
+        scorer.accum(c, Attr::PawnDistantNeighboursR5.as_feature(), pawn_distant_neighbours_r5);
         scorer.accum(c, Attr::PawnPassed.as_feature(), passed_pawns);
         scorer.accum(c, Attr::PawnPassedR7.as_feature(), passed_pawns_on_r7);
         scorer.accum(c, Attr::PawnPassedR6.as_feature(), passed_pawns_on_r6);

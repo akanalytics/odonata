@@ -180,21 +180,21 @@ mod tests {
         assert_eq!(size_of::<SearchStats>(), 848, "SearchStats");
         assert_eq!(size_of::<PreCalc>(), 76808, "PreCalc");
         assert_eq!(size_of::<Hasher>(), 7296, "Hasher");
-        assert_eq!(size_of::<Algo>(), 8424, "Algo");
+        assert_eq!(size_of::<Algo>(), 8552, "Algo");
         assert_eq!(size_of::<Clock>(), 64, "Clock");
         assert_eq!(size_of::<NullMovePruning>(), 32, "NullMovePruning");
         assert_eq!(size_of::<Futility>(), 40, "Futility");
         assert_eq!(size_of::<IterativeDeepening>(), 16, "IterativeDeepening");
-        assert_eq!(size_of::<Eval>(), 3848, "SimpleScorer");
+        assert_eq!(size_of::<Eval>(), 3912, "SimpleScorer");
         assert_eq!(size_of::<Pvs>(), 12, "Pvs");
         assert_eq!(size_of::<Extensions>(), 40, "Extensions");
-        assert_eq!(size_of::<Lmr>(), 48, "Lmr");
+        assert_eq!(size_of::<Lmr>(), 64, "Lmr");
         assert_eq!(size_of::<MoveTimeEstimator>(), 360, "MoveTimeEstimator");
         assert_eq!(size_of::<MoveOrderer>(), 296, "MoveOrderer");
         assert_eq!(size_of::<Repetition>(), 40, "Repetition");
         assert_eq!(size_of::<TranspositionTable2>(), 56, "TranspositionTable2");
         assert_eq!(size_of::<Killers>(), 32, "Killers");
-        assert_eq!(size_of::<HistoryHeuristic>(), 40, "HistoryHeuristic");
+        assert_eq!(size_of::<HistoryHeuristic>(), 56, "HistoryHeuristic");
         assert_eq!(size_of::<Explainer>(), 456, "SearchExplainer");
         assert_eq!(size_of::<Restrictions>(), 1768, "Restrictions");
         assert_eq!(size_of::<Razor>(), 28, "Razor");
@@ -202,6 +202,6 @@ mod tests {
         assert_eq!(size_of::<Aspiration>(), 24, "Aspiration");
         assert_eq!(size_of::<SearchStats>(), 848, "SearchStats");
         assert_eq!(size_of::<PvTable>(), 32, "PvTable");
-        assert_eq!(size_of::<Metrics>(), 134912, "Metrics");
+        assert_eq!(size_of::<Metrics>(), 90952, "Metrics");
     }
 }

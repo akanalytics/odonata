@@ -200,6 +200,10 @@ pub enum Event {
     NmpSuccess,
     NmpFail,
 
+    #[strum(message = "Prune node: Mate distance")]
+    MateDistConsider,
+    MateDistSuccess,
+
     #[strum(message = "Prune node: Rev Fut Prune")]
     RevFutConsider,
     RevFutDeclineExt,

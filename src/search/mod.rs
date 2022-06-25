@@ -13,6 +13,7 @@ pub mod lmp;
 pub mod lmr;
 pub mod move_orderer;
 pub mod move_time_estimator;
+pub mod mate_distance;
 pub mod nmp;
 pub mod node;
 pub mod qs;
