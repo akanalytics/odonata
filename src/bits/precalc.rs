@@ -324,12 +324,14 @@ impl PreCalc {
             & pawns
     }
 
-
     #[inline]
-    pub fn adjacent_and_nearby_pawn_shield(&self, king_color: Color, king_sq: Square ) -> (Bitboard, Bitboard) {
-
+    pub fn adjacent_and_nearby_pawn_shield(
+        &self,
+        king_color: Color,
+        king_sq: Square,
+    ) -> (Bitboard, Bitboard) {
         // take the sheild sq as  away from the side if the king is on the side
-        let ssq  = if king_sq.is_in(Bitboard::FILE_A) {
+        let ssq = if king_sq.is_in(Bitboard::FILE_A) {
             king_sq.shift(Dir::E)
         } else if king_sq.is_in(Bitboard::FILE_H) {
             king_sq.shift(Dir::W)
@@ -337,8 +339,16 @@ impl PreCalc {
             king_sq
         };
         let adjacent = self.within_chebyshev_distance_inclusive(ssq, 1);
-        let d2 = self.within_chebyshev_distance_inclusive(ssq, 2);
-        let nearby = self.pawn_front_span_union_attack_span(king_color, ssq) & d2 - adjacent;
+
+        // allow R3 pawns if king on backrank. Excluding non-backrank prevents king lurches 
+        //  into "safe space" to claim addition R3 pawns as shield pawns.
+
+        let nearby = if king_sq.is_in(Bitboard::RANKS_18) {
+            let d2 = self.within_chebyshev_distance_inclusive(ssq, 2);
+            (self.pawn_front_span_union_attack_span(king_color, ssq) & d2) - adjacent
+        } else {
+            Bitboard::EMPTY
+        };
         (adjacent, nearby)
     }
 
@@ -490,22 +500,42 @@ mod tests {
         let bb = PreCalc::default();
         let a: Bitboard = "8/8/8/8/8/8/5XXX/5XXX".parse().unwrap();
         let n: Bitboard = "8/8/8/8/8/5XXX/8/8".parse().unwrap();
-        assert_eq!(bb.adjacent_and_nearby_pawn_shield(Color::White, Square::G1), (a, n));
-        assert_eq!(bb.adjacent_and_nearby_pawn_shield(Color::White, Square::H1), (a, n));
+        assert_eq!(
+            bb.adjacent_and_nearby_pawn_shield(Color::White, Square::G1),
+            (a, n)
+        );
+        assert_eq!(
+            bb.adjacent_and_nearby_pawn_shield(Color::White, Square::H1),
+            (a, n)
+        );
 
         let a: Bitboard = "8/8/8/8/8/8/XXX5/XXX5".parse().unwrap();
         let n: Bitboard = "8/8/8/8/8/XXX5/8/8".parse().unwrap();
-        assert_eq!(bb.adjacent_and_nearby_pawn_shield(Color::White, Square::A1), (a, n));
-        assert_eq!(bb.adjacent_and_nearby_pawn_shield(Color::White, Square::B1), (a, n));
+        assert_eq!(
+            bb.adjacent_and_nearby_pawn_shield(Color::White, Square::A1),
+            (a, n)
+        );
+        assert_eq!(
+            bb.adjacent_and_nearby_pawn_shield(Color::White, Square::B1),
+            (a, n)
+        );
 
         let a: Bitboard = "XXX5/XXX5/8/8/8/8/8/8".parse().unwrap();
         let n: Bitboard = "8/8/XXX5/8/8/8/8/8".parse().unwrap();
-        assert_eq!(bb.adjacent_and_nearby_pawn_shield(Color::Black, Square::A8), (a, n));
-        assert_eq!(bb.adjacent_and_nearby_pawn_shield(Color::Black, Square::B8), (a, n));
+        assert_eq!(
+            bb.adjacent_and_nearby_pawn_shield(Color::Black, Square::A8),
+            (a, n)
+        );
+        assert_eq!(
+            bb.adjacent_and_nearby_pawn_shield(Color::Black, Square::B8),
+            (a, n)
+        );
 
         let a: Bitboard = "8/8/.XXX4/.XXX4/.XXX4/8/8/8".parse().unwrap();
-        let n: Bitboard = "8/.XXX4/8/8/8/8/8/8".parse().unwrap();
-        assert_eq!(bb.adjacent_and_nearby_pawn_shield(Color::White, Square::C5), (a, n));
+        let n: Bitboard = "8/8/8/8/8/8/8/8".parse().unwrap(); // no rank 3 if off backline
+        assert_eq!(
+            bb.adjacent_and_nearby_pawn_shield(Color::White, Square::C5),
+            (a, n)
+        );
     }
-
 }

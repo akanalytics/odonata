@@ -140,6 +140,16 @@ impl Color {
     }
 
     #[inline]
+    pub fn rank_as_white_index(self, index: usize) -> Bitboard {
+        [Bitboard::RANKS[index], Bitboard::RANKS[7 - index]][self]
+    }
+
+    #[inline]
+    pub fn rank_as_white_num(self, num: usize) -> Bitboard {
+        [Bitboard::RANKS[num - 1], Bitboard::RANKS[8 - num]][self]
+    }
+
+    #[inline]
     pub fn opposite(self) -> Color {
         [Color::Black, Color::White][self]
     }
@@ -578,7 +588,7 @@ mod tests {
         assert_eq!(
             format!("{:.02}", ScoreWdl::new(217, 77, 184).elo()),
             "24.02"
-            );
+        );
     }
 
     #[test]

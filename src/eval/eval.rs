@@ -89,7 +89,7 @@ pub enum Attr {
     RookSemiOpenFile,
 
     KnightClosedness,
-    KnightForks,
+    TempoKnightForks,
     KnightOutpost,
     KnightOutpostPawnDefended,
     KnightOutpostRookSafe,
@@ -120,6 +120,12 @@ pub enum Attr {
     PawnNearbyShield,
     PawnShieldFaulty,
     KingSafetyBonus,
+    StormBlocked,
+    StormBlockedR3,
+    StormBlockedR4,
+    StormUnblocked,
+    StormUnblockedR23,
+
     OpenFilesNearKing,
     OpenFilesAdjacentKing,
     AttacksNearKing,

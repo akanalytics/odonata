@@ -204,7 +204,7 @@ impl Calc {
     // - Hanging Pawns -  are an open, half-isolated duo. It means that they are standing next to each other on the adjacent half-open files, usually on the fourth rank, mutually protecting their stop squares.
 
     #[inline]
-    fn pawns(c: Color, scorer: &mut impl ScorerBase, b: &Board) {
+    fn pawns(c: Color, s: &mut impl ScorerBase, b: &Board) {
         let us = b.color(c);
         let them = b.color(c.opposite());
         let bbd = PreCalc::default();
@@ -217,12 +217,12 @@ impl Calc {
         let distant_neighbours = bbd.pawn_distant_neighbours(b.pawns() & us);
         let doubled_pawns_bb = bbd.doubled_pawns(us & b.pawns());
         let pawn_isolated_doubled_bb = bbd.doubled_pawns(us & b.pawns()) & isolated_pawns_bb;
-        scorer.set_bits(Attr::PawnIsolatedDoubled.into(), pawn_isolated_doubled_bb);
+        s.set_bits(Attr::PawnIsolatedDoubled.into(), pawn_isolated_doubled_bb);
         let pawn_isolated_doubled = pawn_isolated_doubled_bb.popcount();
 
         // let enemy_rook_on_passer = pawn_isolated_doubled;
         let doubled_pawns = doubled_pawns_bb.popcount() - pawn_isolated_doubled;
-        scorer.set_bits(
+        s.set_bits(
             Attr::PawnDoubled.into(),
             doubled_pawns_bb - pawn_isolated_doubled_bb,
         );
@@ -277,10 +277,7 @@ impl Calc {
             // all pawns on r7 are passed as an opponent pawn cannot be on rank 8
             let is_passer_on_rim = is_passed && p.is_in(Bitboard::RIM);
             passers_on_rim += is_passer_on_rim as i32;
-            scorer.set_bits(
-                Attr::PassersOnRim.into(),
-                p.as_bb().iff(is_passer_on_rim),
-            );
+            s.set_bits(Attr::PassersOnRim.into(), p.as_bb().iff(is_passer_on_rim));
 
             let is_blockaded = pawn_stop.intersects(them);
             blockaded += is_blockaded as i32;
@@ -301,7 +298,7 @@ impl Calc {
             if p.is_in(Bitboard::CENTER_16_SQ) || pawn_stop.intersects(Bitboard::CENTER_16_SQ) {
                 closedness += rammed as i32;
             }
-            scorer.set_bits(Attr::RammedPawns.into(), p.as_bb().iff(rammed));
+            s.set_bits(Attr::RammedPawns.into(), p.as_bb().iff(rammed));
 
             // // old let is_passed = (bbd.pawn_front_span_union_attack_span(c, p) & b.pawns()).is_empty();
             // let blockaded = pawn_stop.intersects(them);
@@ -342,7 +339,7 @@ impl Calc {
             // passers
             if is_passed {
                 passed_pawns += 1;
-                scorer.set_bits(Attr::PawnPassed.into(), p.as_bb());
+                s.set_bits(Attr::PawnPassed.into(), p.as_bb());
                 match rank_num {
                     7 => passed_pawns_on_r7 += 1,
                     6 => passed_pawns_on_r6 += 1,
@@ -392,11 +389,11 @@ impl Calc {
                 match rank_num {
                     6 | 7 => {
                         pawn_connected_r67 += 1;
-                        scorer.set_bits(Attr::PawnConnectedR67.into(), p.as_bb());
+                        s.set_bits(Attr::PawnConnectedR67.into(), p.as_bb());
                     }
                     _ => {
                         pawn_connected_r345 += 1;
-                        scorer.set_bits(Attr::PawnConnectedR345.into(), p.as_bb());
+                        s.set_bits(Attr::PawnConnectedR345.into(), p.as_bb());
                     }
                 }
             }
@@ -405,7 +402,7 @@ impl Calc {
                     7 => pawn_distant_neighbours_r7 += 1,
                     6 => pawn_distant_neighbours_r6 += 1,
                     5 => pawn_distant_neighbours_r5 += 1,
-                    _ => {},
+                    _ => {}
                 }
             }
 
@@ -426,10 +423,10 @@ impl Calc {
                         //  &&
                         //  (b.rooks_or_queens() & them).any() { //
                         backward_half_open += 1;
-                        scorer.set_bits(Attr::BackwardHalfOpen.into(), p.as_bb());
+                        s.set_bits(Attr::BackwardHalfOpen.into(), p.as_bb());
                     } else {
                         backward += 1;
-                        scorer.set_bits(Attr::Backward.into(), p.as_bb());
+                        s.set_bits(Attr::Backward.into(), p.as_bb());
                     }
                 }
             }
@@ -453,66 +450,78 @@ impl Calc {
         //     _ => 0,
         // };
 
-        scorer.accum(c, Attr::BishopFarPawns.as_feature(), bishop_far_pawns);
-        scorer.accum(
+        s.accum(c, Attr::BishopFarPawns.as_feature(), bishop_far_pawns);
+        s.accum(
             c,
             Attr::BishopColorRammedPawns.as_feature(),
             bishop_color_rammed_pawns,
         );
-        scorer.accum(c, Attr::Closedness.as_feature(), closedness * closedness);
-        scorer.accum(c, Attr::KnightClosedness.as_feature(), knight_closedness);
-        scorer.accum(c, Attr::BishopClosedness.as_feature(), bishop_closedness);
-        scorer.accum(c, Attr::RookClosedness.as_feature(), rook_closedness);
-        scorer.accum(c, Attr::PawnDoubled.as_feature(), doubled_pawns);
-        scorer.accum(
+        s.accum(c, Attr::Closedness.as_feature(), closedness * closedness);
+        s.accum(c, Attr::KnightClosedness.as_feature(), knight_closedness);
+        s.accum(c, Attr::BishopClosedness.as_feature(), bishop_closedness);
+        s.accum(c, Attr::RookClosedness.as_feature(), rook_closedness);
+        s.accum(c, Attr::PawnDoubled.as_feature(), doubled_pawns);
+        s.accum(
             c,
             Attr::PawnDirectlyDoubled.as_feature(),
             _pawn_directly_doubled,
         );
-        scorer.accum(c, Attr::PawnIsolated.as_feature(), isolated_pawns);
-        scorer.accum(c, Attr::SemiIsolated.as_feature(), semi_isolated);
-        scorer.accum(c, Attr::PawnDistantNeighboursR7.as_feature(), pawn_distant_neighbours_r7);
-        scorer.accum(c, Attr::PawnDistantNeighboursR6.as_feature(), pawn_distant_neighbours_r6);
-        scorer.accum(c, Attr::PawnDistantNeighboursR5.as_feature(), pawn_distant_neighbours_r5);
-        scorer.accum(c, Attr::PawnPassed.as_feature(), passed_pawns);
-        scorer.accum(c, Attr::PawnPassedR7.as_feature(), passed_pawns_on_r7);
-        scorer.accum(c, Attr::PawnPassedR6.as_feature(), passed_pawns_on_r6);
-        scorer.accum(c, Attr::PawnPassedR5.as_feature(), passed_pawns_on_r5);
-        scorer.accum(c, Attr::PawnPassedR4.as_feature(), passed_pawns_on_r4);
-        scorer.accum(c, Attr::PassersOnRim.as_feature(), passers_on_rim);
-        scorer.accum(
+        s.accum(c, Attr::PawnIsolated.as_feature(), isolated_pawns);
+        s.accum(c, Attr::SemiIsolated.as_feature(), semi_isolated);
+        s.accum(
+            c,
+            Attr::PawnDistantNeighboursR7.as_feature(),
+            pawn_distant_neighbours_r7,
+        );
+        s.accum(
+            c,
+            Attr::PawnDistantNeighboursR6.as_feature(),
+            pawn_distant_neighbours_r6,
+        );
+        s.accum(
+            c,
+            Attr::PawnDistantNeighboursR5.as_feature(),
+            pawn_distant_neighbours_r5,
+        );
+        s.accum(c, Attr::PawnPassed.as_feature(), passed_pawns);
+        s.accum(c, Attr::PawnPassedR7.as_feature(), passed_pawns_on_r7);
+        s.accum(c, Attr::PawnPassedR6.as_feature(), passed_pawns_on_r6);
+        s.accum(c, Attr::PawnPassedR5.as_feature(), passed_pawns_on_r5);
+        s.accum(c, Attr::PawnPassedR4.as_feature(), passed_pawns_on_r4);
+        s.accum(c, Attr::PassersOnRim.as_feature(), passers_on_rim);
+        s.accum(
             c,
             Attr::CandidatePassedPawn.as_feature(),
             candidate_passed_pawn,
         );
-        scorer.accum(c, Attr::Blockaded.as_feature(), blockaded);
-        scorer.accum(c, Attr::BlockadedPassers.as_feature(), blockaded_passers);
-        scorer.accum(c, Attr::RooksBehindPasser.as_feature(), rooks_behind_passer);
-        scorer.accum(
+        s.accum(c, Attr::Blockaded.as_feature(), blockaded);
+        s.accum(c, Attr::BlockadedPassers.as_feature(), blockaded_passers);
+        s.accum(c, Attr::RooksBehindPasser.as_feature(), rooks_behind_passer);
+        s.accum(
             c,
             Attr::PawnIsolatedDoubled.as_feature(),
             pawn_isolated_doubled,
         );
         // scorer.accum(c, Attr::RammedPawns.as_feature(), rammed_pawns);
-        scorer.accum(c, Attr::Space.as_feature(), space);
-        scorer.accum(c, Attr::PawnConnectedR67.as_feature(), pawn_connected_r67);
-        scorer.accum(c, Attr::PawnConnectedR345.as_feature(), pawn_connected_r345);
-        scorer.accum(
+        s.accum(c, Attr::Space.as_feature(), space);
+        s.accum(c, Attr::PawnConnectedR67.as_feature(), pawn_connected_r67);
+        s.accum(c, Attr::PawnConnectedR345.as_feature(), pawn_connected_r345);
+        s.accum(
             c,
             Attr::PassedConnectedR67.as_feature(),
             _passed_connected_r67,
         );
-        scorer.accum(
+        s.accum(
             c,
             Attr::PassedConnectedR345.as_feature(),
             _passed_connected_r345,
         );
-        scorer.accum(c, Attr::PawnDuoR67.as_feature(), pawn_duo_r67);
-        scorer.accum(c, Attr::PawnDuoR2345.as_feature(), pawn_duo_r2345);
-        scorer.accum(c, Attr::PassedDuoR67.as_feature(), _passed_duo_r67);
-        scorer.accum(c, Attr::PassedDuoR2345.as_feature(), _passed_duo_r2345);
-        scorer.accum(c, Attr::BackwardHalfOpen.as_feature(), backward_half_open);
-        scorer.accum(c, Attr::Backward.as_feature(), backward);
+        s.accum(c, Attr::PawnDuoR67.as_feature(), pawn_duo_r67);
+        s.accum(c, Attr::PawnDuoR2345.as_feature(), pawn_duo_r2345);
+        s.accum(c, Attr::PassedDuoR67.as_feature(), _passed_duo_r67);
+        s.accum(c, Attr::PassedDuoR2345.as_feature(), _passed_duo_r2345);
+        s.accum(c, Attr::BackwardHalfOpen.as_feature(), backward_half_open);
+        s.accum(c, Attr::Backward.as_feature(), backward);
     }
 
     #[inline]
@@ -534,7 +543,7 @@ impl Calc {
             .or(bb.within_chebyshev_distance_inclusive(Square::E1, 1))
             .contains(k)) as i32;
 
-        // 
+        //
         // tropism
         //
         let d1 = bb.within_chebyshev_distance_inclusive(ksq, 1);
@@ -560,22 +569,69 @@ impl Calc {
             + (d3 & (b.knights() | b.bishops()) & them).popcount() * 2
             + (d3 & (b.rooks()) & them).popcount() * 2
             + (d3 & (b.queens()) & them).popcount() * 4;
+        s.accum(c, Attr::TropismD1.as_feature(), king_tropism_d1);
+        s.accum(c, Attr::TropismD2.as_feature(), king_tropism_d2);
+        s.accum(c, Attr::TropismD3.as_feature(), king_tropism_d3);
+        s.accum(c, Attr::TropismD4.as_feature(), king_tropism_d4);
 
-        // 
+        //
         // pawn shield
         //
         let (adjacent, nearby) = bb.adjacent_and_nearby_pawn_shield(c, ksq);
         let adjacent_shield = (p & adjacent).popcount();
-        s.set_bits(Attr::PawnAdjacentShield.into(), adjacent);
+        s.set_bits(Attr::PawnAdjacentShield.into(), adjacent & p);
         let nearby_shield = (p & nearby).popcount();
-        s.set_bits(Attr::PawnNearbyShield.into(), nearby);
-        let isolated_shield = bb.isolated_pawns(b.pawns() & us) & (adjacent | nearby);
-
+        s.set_bits(Attr::PawnNearbyShield.into(), nearby & p);
+        let isolated_shield = bb.isolated_pawns(p) & (adjacent | nearby);
+        s.accum(c, Attr::PawnAdjacentShield.as_feature(), adjacent_shield);
+        s.accum(c, Attr::PawnNearbyShield.as_feature(), nearby_shield);
+        s.accum(
+            c,
+            Attr::PawnShieldFaulty.as_feature(),
+            isolated_shield.popcount(),
+        );
         let king_safety_bonus = if b.queens().any() {
             adjacent_shield + nearby_shield
         } else {
             0
         };
+        s.accum(c, Attr::KingSafetyBonus.as_feature(), king_safety_bonus);
+
+        //
+        // storming pawms - from POV of defending king color c
+        //
+        // ranks 4-7
+        let storm_ranks = Bitboard::home_half(c.opposite())
+            .shift(c.backward())
+            .shift(c.backward())
+            .shift(c.backward());
+        let storm_files = ksq.kq_side();
+        let storm = storm_ranks & storm_files;
+        let storming_pawns = b.pawns() & them & storm;
+        let blocked = storming_pawns & (b.pawns() & us).shift(c.forward());
+        let unblocked = storming_pawns - blocked;
+        s.set_bits(Attr::StormBlocked.into(), blocked);
+        s.set_bits(Attr::StormUnblocked.into(), unblocked);
+        let blocked_r3 = blocked & c.rank_as_white_num(3);
+        let blocked_r4 = blocked & c.rank_as_white_num(4);
+        let unblocked_r23 = unblocked & (c.rank_as_white_num(2) | c.rank_as_white_num(3));
+        s.accum(
+            c,
+            Attr::StormBlocked.as_feature(),
+            blocked.popcount() - blocked_r3.popcount() - blocked_r4.popcount(),
+        );
+        s.accum(c, Attr::StormBlockedR3.as_feature(), blocked_r3.popcount());
+        s.accum(c, Attr::StormBlockedR4.as_feature(), blocked_r4.popcount());
+        s.accum(
+            c,
+            Attr::StormUnblocked.as_feature(),
+            unblocked.popcount() - unblocked_r23.popcount(),
+        );
+        s.accum(
+            c,
+            Attr::StormUnblockedR23.as_feature(),
+            unblocked_r23.popcount(),
+        );
 
         let open_files_near_king_bb = d3 & ksq.rank() & bb.open_files(b.pawns());
         let open_files_near_king = (open_files_near_king_bb).popcount();
@@ -596,15 +652,12 @@ impl Calc {
         let pinned_near_king = (b.pinned(c) & d1).popcount();
         let pinned_far = (b.pinned(c)).popcount() - pinned_near_king;
         let discovered_checks = (b.discoverer(c) - b.pawns()).popcount();
+
         let tempo_safety_d12 = if b.color_them() == c {
             king_tropism_d1 + king_tropism_d2 + open_files_adjacent_king + open_files_near_king
         } else {
             0
         };
-        s.accum(c, Attr::PawnAdjacentShield.as_feature(), adjacent_shield);
-        s.accum(c, Attr::PawnNearbyShield.as_feature(), nearby_shield);
-        s.accum(c, Attr::PawnShieldFaulty.as_feature(), isolated_shield.popcount());
-        s.accum(c, Attr::KingSafetyBonus.as_feature(), king_safety_bonus);
         s.accum(
             c,
             Attr::OpenFilesNearKing.as_feature(),
@@ -616,10 +669,6 @@ impl Calc {
             open_files_adjacent_king,
         );
         s.accum(c, Attr::TempoSafety.as_feature(), tempo_safety_d12);
-        s.accum(c, Attr::TropismD1.as_feature(), king_tropism_d1);
-        s.accum(c, Attr::TropismD2.as_feature(), king_tropism_d2);
-        s.accum(c, Attr::TropismD3.as_feature(), king_tropism_d3);
-        s.accum(c, Attr::TropismD4.as_feature(), king_tropism_d4);
         s.accum(
             c,
             Attr::KingTrappedOnBackRank.as_feature(),
@@ -704,6 +753,9 @@ impl Calc {
         // queen
         let queen_trapped = 0;
         let queens_on_open_files = (open_files & us & b.queens()).popcount();
+        let (adjacent, nearby) = bb.adjacent_and_nearby_pawn_shield(opponent, ksq);
+        let pawn_shield = adjacent | nearby;
+        // let pawn_shield = bb.within_chebyshev_distance_inclusive(ksq, 1);
 
         for sq in ((b.knights() | b.rooks() | b.bishops() | b.queens()) & us).squares() {
             let p = b.piece_at(sq.as_bb());
@@ -791,20 +843,32 @@ impl Calc {
             double_attacks |= ((our_raw_attacks & them) - us) & all_attacks;
             all_attacks |= (our_raw_attacks & them) - us;
 
-            if k.any() {
-                // moves_near_king += (our_raw_attacks
-                //     & bb.within_chebyshev_distance_inclusive(ksq, 1)
-                //     & !b.occupied())
-                // .popcount();
-                attacks_near_king +=
-                    (our_raw_attacks & bb.within_chebyshev_distance_inclusive(ksq, 1)).popcount();
-            }
+            // moves_near_king += (our_raw_attacks
+            //     & bb.within_chebyshev_distance_inclusive(ksq, 1)
+            //     & !b.occupied())
+            // .popcount();
+            attacks_near_king +=
+                (our_raw_attacks & pawn_shield & !us).any() as i32 * (p.centipawns() / 64);
+            // * match p {
+            //     Piece::Bishop => 10,
+            //     Piece::Knight => 20,
+            //     Piece::Rook => 30,
+            //     Piece::Queen => 50,
+            //     _ => unreachable!(),
+            // };
+            s.set_bits(
+                Attr::AttacksNearKing.as_feature(),
+                our_raw_attacks & pawn_shield,
+            );
         }
+
+        s.accum(c, Attr::AttacksNearKing.as_feature(), attacks_near_king);
+
         // let double_attacks_near_king = double_attacks & bb.within_chebyshev_distance_inclusive(ksq, 1);
         //
         // knight
         //
-        s.accum(c, Attr::KnightForks.as_feature(), knight_forks);
+        s.accum(c, Attr::TempoKnightForks.as_feature(), knight_forks);
         s.accum(c, Attr::KnightOutpost.as_feature(), knight_outpost);
         s.accum(
             c,
@@ -890,7 +954,6 @@ impl Calc {
         //     Attr::DoubleAttacksNearKing.as_feature(),
         //     double_attacks_near_king.popcount(),
         // );
-        s.accum(c, Attr::AttacksNearKing.as_feature(), attacks_near_king);
         // s.accum(c, Attr::MovesNearKing.as_feature(), moves_near_king);
         s.accum(c, Attr::CenterAttacks.as_feature(), center_attacks);
         s.accum(c, Attr::UndefendedSq.as_feature(), move_squares);

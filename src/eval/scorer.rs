@@ -290,7 +290,7 @@ impl Display for ExplainScore {
             .with(Modify::new(Columns::single(7)).with(Padding::new(4, 1, 0, 0)))
             .with(style);
         tab.fmt(f)?;
-        f.write_str(&self.fen)?;
+        writeln!(f, "{}", &self.fen)?;
 
         if f.alternate() {
             let mut builder = Builder::new();
