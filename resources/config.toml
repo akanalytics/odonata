@@ -152,6 +152,7 @@ queen_open_file              = { s =  -29.11, e =   42.90 }
 queen_trapped                = { s =    0.00, e =    0.00 }
 pawn_adjacent_shield         = { s =   12.28, e =  -12.42 }
 pawn_nearby_shield           = { s =    6.49, e =  -12.82 }
+pawn_shield_faulty           = { s =    6.49, e =  -12.82 }
 king_safety_bonus            = { s =    7.45, e =   28.80 }
 open_files_near_king         = { s =  -10.11, e =  -28.22 }
 open_files_adjacent_king     = { s =  -21.89, e =  -10.09 }

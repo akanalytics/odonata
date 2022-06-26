@@ -1,8 +1,6 @@
-use crate::board::Board;
 use crate::eval::score::Score;
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
-use crate::piece::Ply;
 use crate::search::node::{Event, Node};
 use crate::Algo;
 use serde::{Deserialize, Serialize};

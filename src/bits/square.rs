@@ -151,6 +151,7 @@ impl Square {
         (b'1' + y as u8) as char
     }
 
+
     pub fn uci(self) -> &'static str {
         // if self.is_null() {
         //     "-".to_string()
@@ -180,6 +181,13 @@ impl Square {
     pub const fn rank(self) -> Bitboard {
         Bitboard::RANKS[self.rank_index()]
     }
+
+    // either the king or queen side
+    #[inline]
+    pub const fn kq_side(self) -> Bitboard {
+        self.as_bb().flood_kq_sides()
+    }
+
 
     #[inline]
     pub fn diag(self) -> Bitboard {
@@ -332,6 +340,9 @@ mod tests {
         assert_eq!(Square::all().count(), 64);
         assert_eq!(Square::all().next(), Some(Square(0)));
         assert_eq!(!Bitboard::all(), Bitboard::empty());
+        assert_eq!(Square::A1.kq_side().popcount(), 32);
+        assert!(Square::A1.kq_side().contains(Bitboard::B2));
+        assert!(Square::E8.kq_side().contains(Bitboard::H1));
         // assert_eq!(Square::null().as_bb(), Bitboard::empty());
     }
 

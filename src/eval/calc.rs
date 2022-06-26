@@ -279,7 +279,7 @@ impl Calc {
             passers_on_rim += is_passer_on_rim as i32;
             scorer.set_bits(
                 Attr::PassersOnRim.into(),
-                p.as_bb().only_if(is_passer_on_rim),
+                p.as_bb().iff(is_passer_on_rim),
             );
 
             let is_blockaded = pawn_stop.intersects(them);
@@ -301,7 +301,7 @@ impl Calc {
             if p.is_in(Bitboard::CENTER_16_SQ) || pawn_stop.intersects(Bitboard::CENTER_16_SQ) {
                 closedness += rammed as i32;
             }
-            scorer.set_bits(Attr::RammedPawns.into(), p.as_bb().only_if(rammed));
+            scorer.set_bits(Attr::RammedPawns.into(), p.as_bb().iff(rammed));
 
             // // old let is_passed = (bbd.pawn_front_span_union_attack_span(c, p) & b.pawns()).is_empty();
             // let blockaded = pawn_stop.intersects(them);
@@ -534,18 +534,13 @@ impl Calc {
             .or(bb.within_chebyshev_distance_inclusive(Square::E1, 1))
             .contains(k)) as i32;
 
-        // if (b.rooks_or_queens() & them).any() {
-        let p_fr_att_span = bb.pawn_front_span_union_attack_span(c, ksq);
+        // 
+        // tropism
+        //
         let d1 = bb.within_chebyshev_distance_inclusive(ksq, 1);
         let d2 = bb.within_chebyshev_distance_inclusive(ksq, 2);
         let d3 = bb.within_chebyshev_distance_inclusive(ksq, 3);
         let d4 = bb.within_chebyshev_distance_inclusive(ksq, 4);
-
-        // if (b.rooks_or_queens() & them).any() {
-        //self.nearby_pawns = (p & k_att).popcount();
-        let adjacent_shield = (p & p_fr_att_span & d1).popcount();
-        let nearby_shield = (p & p_fr_att_span & d2).popcount() - adjacent_shield;
-        // }
         let king_tropism_d1 = (d1 & (b.pawns() | b.kings()) & them).popcount()
             + (d1 & (b.knights() | b.bishops()) & them).popcount() * 2
             + (d1 & (b.rooks()) & them).popcount() * 2
@@ -566,21 +561,21 @@ impl Calc {
             + (d3 & (b.rooks()) & them).popcount() * 2
             + (d3 & (b.queens()) & them).popcount() * 4;
 
+        // 
+        // pawn shield
+        //
+        let (adjacent, nearby) = bb.adjacent_and_nearby_pawn_shield(c, ksq);
+        let adjacent_shield = (p & adjacent).popcount();
+        s.set_bits(Attr::PawnAdjacentShield.into(), adjacent);
+        let nearby_shield = (p & nearby).popcount();
+        s.set_bits(Attr::PawnNearbyShield.into(), nearby);
+        let isolated_shield = bb.isolated_pawns(b.pawns() & us) & (adjacent | nearby);
+
         let king_safety_bonus = if b.queens().any() {
             adjacent_shield + nearby_shield
         } else {
             0
         };
-        // self.king_tropism_d4 = (ksq.
-        // self.king_tropism_d2 = (d2 & (b.pawns() | b.kings()) & them).popcount()
-        //     + (d2 & (b.knights() | b.bishops()) & them).popcount() * 2
-        //     + (d2 & (b.rooks()) & them).popcount() * 3
-        //     + (d2 & (b.queens()) & them).popcount() * 5;
-
-        // self.king_tropism_d3 = (d3 & (b.pawns() | b.kings()) & them).popcount()
-        //     + (d3 & (b.knights() | b.bishops()) & them).popcount() * 2
-        //     + (d3 & (b.rooks()) & them).popcount() * 3
-        //     + (d3 & (b.queens()) & them).popcount() * 5;
 
         let open_files_near_king_bb = d3 & ksq.rank() & bb.open_files(b.pawns());
         let open_files_near_king = (open_files_near_king_bb).popcount();
@@ -608,6 +603,7 @@ impl Calc {
         };
         s.accum(c, Attr::PawnAdjacentShield.as_feature(), adjacent_shield);
         s.accum(c, Attr::PawnNearbyShield.as_feature(), nearby_shield);
+        s.accum(c, Attr::PawnShieldFaulty.as_feature(), isolated_shield.popcount());
         s.accum(c, Attr::KingSafetyBonus.as_feature(), king_safety_bonus);
         s.accum(
             c,

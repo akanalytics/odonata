@@ -269,7 +269,7 @@ impl Default for TranspositionTable2 {
             use_tt_for_pv: false,
             allow_truncated_pv: false,
             use_tt_for_eval: true,
-            tt_for_eval_depth: 2,
+            tt_for_eval_depth: 0,
             mb: 8,
             aging: true,
             persistent: true,

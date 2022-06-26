@@ -123,7 +123,7 @@ pub enum Event {
 
     #[strum(message = "Eval")]
     EvalSee,
-    EvalStatic,
+    InteriorEvalStatic,
 
     EndgameDraw,
     EndgameKnown,
@@ -283,6 +283,7 @@ pub enum Event {
     #[strum(message = "Hash table")]
     TtHitNode,
     TtHitEvalNode,
+    TtMissEvalNode,
     TtProbeNode,
     TtHitRate,
     TtStoreNode,

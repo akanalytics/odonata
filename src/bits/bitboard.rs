@@ -1,8 +1,10 @@
 use crate::bits::square::Square;
 use crate::piece::Color;
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, bail, Context, Result};
+use itertools::Itertools;
 use std::fmt::{self, Write};
 use std::ops;
+use std::str::FromStr;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 
@@ -243,7 +245,6 @@ impl Bitboard {
 
     // const EDGES:Self = Self::FILE_A.or(Self::FILE_H).or(Self::RANK_1).or(Self::RANK_8);
 
-
     pub const RANKS: [Self; 8] = [
         Self::RANK_1,
         Self::RANK_2,
@@ -304,6 +305,15 @@ impl Bitboard {
     pub const WHITE_SQUARES: Bitboard = Bitboard(0x55aa55aa55aa55aa_u64);
     pub const BLACK_SQUARES: Bitboard = Bitboard(0xaa55aa55aa55aa55_u64);
     pub const RIM: Bitboard = Bitboard::FILE_A.or(Bitboard::FILE_H);
+
+    pub const QUEENS_SIDE: Bitboard = Bitboard::FILE_A
+        .or(Bitboard::FILE_B)
+        .or(Bitboard::FILE_C)
+        .or(Bitboard::FILE_D);
+    pub const KINGS_SIDE: Bitboard = Bitboard::FILE_E
+        .or(Bitboard::FILE_F)
+        .or(Bitboard::FILE_G)
+        .or(Bitboard::FILE_H);
 
     /// All of RANK 1 plus RANK 8
     ///```
@@ -497,8 +507,8 @@ impl Bitboard {
     }
 
     #[inline]
-    /// self if true else Empty
-    pub const fn only_if(&self, b: bool) -> Bitboard {
+    /// self if and only iff true else Empty
+    pub const fn iff(&self, b: bool) -> Bitboard {
         Bitboard(self.0 * (b as u64))
     }
 
@@ -622,11 +632,9 @@ impl Bitboard {
     #[inline]
     // if bitboard comtains both blacka nd white whole board is returned
     pub fn squares_of_matching_color(self) -> Bitboard {
-        Bitboard::WHITE_SQUARES.only_if(self.intersects(Bitboard::WHITE_SQUARES))
-        |
-        Bitboard::BLACK_SQUARES.only_if(self.intersects(Bitboard::BLACK_SQUARES))
+        Bitboard::WHITE_SQUARES.iff(self.intersects(Bitboard::WHITE_SQUARES))
+            | Bitboard::BLACK_SQUARES.iff(self.intersects(Bitboard::BLACK_SQUARES))
     }
-
 
     // the set of files containing the bitboard
     #[inline]
@@ -671,6 +679,16 @@ impl Bitboard {
                 .or(Bitboard::RANK_7)
                 .or(Bitboard::RANK_8),
         )
+    }
+
+    /// returns king or queens or both sides of the board depending on where region sits
+    #[inline]
+    pub const fn flood_kq_sides(self) -> Self {
+        let is_queens_side = self.intersects(Self::QUEENS_SIDE);
+        let is_kings_side = self.intersects(Self::KINGS_SIDE);
+        Self::QUEENS_SIDE
+            .iff(is_queens_side)
+            .or(Self::KINGS_SIDE.iff(is_kings_side))
     }
 
     // bitflags & doesnt seem to be declared const
@@ -847,6 +865,33 @@ impl Bitboard {
     }
 }
 
+impl FromStr for Bitboard {
+    type Err = anyhow::Error;
+
+    /// parse a fen-like bitboard consistening of 1..8 for numbers of 0's (or '.' or '0' for a 0) and X's for 1's
+    /// eg "8/8/8/8/8/8/8/5XXX"
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut s = s.to_string();
+        for i in 1..=8 {
+            s = s.replace(i.to_string().as_str(), "0".repeat(i).as_str());
+        }
+        s = s.replace('.', "0").replace('X', "1");
+
+        let mut r: Vec<&str> = s.rsplit('/').collect();
+        if r.iter().any(|r| r.chars().count() != 8) || r.len() != 8 {
+            bail!("Expected 8 ranks of 8 bits in bitboard string {}", s);
+        }
+        let bin = r
+            .iter_mut()
+            .map(|s| s.chars().rev().collect::<String>())
+            .rev() 
+            .join("");
+        let bits =
+            u64::from_str_radix(&bin, 2).with_context(|| format!("with contents {}", bin))?;
+        Ok(Bitboard::from_u64(bits))
+    }
+}
+
 // https://www.chessprogramming.org/Traversing_Subsets_of_a_Set
 #[derive(Copy, Clone, Debug)]
 pub struct PowerSetIterator {
@@ -1009,10 +1054,22 @@ mod tests {
             Bitboard::all()
         );
         assert!(Bitboard::BLACK_SQUARES.contains(a1));
-        assert_eq!(Bitboard::A1.squares_of_matching_color(), Bitboard::BLACK_SQUARES);
-        assert_eq!(Bitboard::B1.squares_of_matching_color(), Bitboard::WHITE_SQUARES);
-        assert_eq!((a1|b1).squares_of_matching_color(), Bitboard::all());
+        assert_eq!(
+            Bitboard::A1.squares_of_matching_color(),
+            Bitboard::BLACK_SQUARES
+        );
+        assert_eq!(
+            Bitboard::B1.squares_of_matching_color(),
+            Bitboard::WHITE_SQUARES
+        );
+        assert_eq!((a1 | b1).squares_of_matching_color(), Bitboard::all());
         assert_eq!(1_u64.wrapping_shl(64), 1_u64);
+        assert_eq!(Bitboard::A1.flood_kq_sides().popcount(), 32);
+        assert!(Bitboard::A1.flood_kq_sides().contains(Bitboard::D8));
+        assert_eq!(
+            (Bitboard::A1 | Bitboard::H1).flood_kq_sides().popcount(),
+            64
+        );
         // assert_eq!(Bitboard::from_sq(64), Bitboard::EMPTY);
     }
 
@@ -1062,6 +1119,14 @@ mod tests {
             a1 | a2 | a3
         );
         assert_eq!(Bitboard::parse_squares("").unwrap(), Bitboard::empty());
+        assert_eq!(
+            Bitboard::from_str("8/8/8/8/8/8/8/8").unwrap(),
+            Bitboard::EMPTY
+        );
+        assert_eq!(
+            Bitboard::from_str("X7/8/8/8/8/8/8/7X").unwrap(),
+            Bitboard::H1 | Bitboard::A8
+        );
     }
 
     #[test]

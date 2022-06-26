@@ -118,6 +118,7 @@ pub enum Attr {
 
     PawnAdjacentShield,
     PawnNearbyShield,
+    PawnShieldFaulty,
     KingSafetyBonus,
     OpenFilesNearKing,
     OpenFilesAdjacentKing,

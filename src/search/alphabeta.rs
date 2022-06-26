@@ -75,11 +75,11 @@ impl Algo {
 
     #[inline]
     fn static_eval(&self, b: &Board, n: &Node) -> Score {
-        Metrics::incr_node(n, Event::EvalStatic);
+        Metrics::incr_node(n, Event::InteriorEvalStatic);
         let mut eval = b.static_eval(&self.eval);
 
         if self.tt.use_tt_for_eval {
-            if let Some(entry) = self.tt.probe_by_board(b, n.ply, 1) {
+            if let Some(entry) = self.tt.probe_by_hash(b.hash()) {
                 if entry.depth >= self.tt.tt_for_eval_depth {
                     if entry.nt == NodeType::ExactPv {
                         Metrics::incr_node(n, Event::TtHitEvalNode);
@@ -90,6 +90,8 @@ impl Algo {
                     } else if entry.nt == NodeType::UpperAll && entry.score < eval {
                         Metrics::incr_node(n, Event::TtHitEvalNode);
                         eval = entry.score;
+                    } else {
+                        Metrics::incr_node(n, Event::TtMissEvalNode);
                     }
                     // }
                 }
