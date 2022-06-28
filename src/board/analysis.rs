@@ -6,36 +6,30 @@ use crate::bits::Square;
 use crate::piece::Color;
 use crate::PreCalc;
 use itertools::Itertools;
-use static_init::dynamic;
 use tabled::builder::Builder;
 
-#[dynamic(lazy)]
-static EMPTY: Board = Board::default();
-
 #[derive(Debug)]
-pub struct Analysis<'a> {
-    board: &'a Board,
-
+pub struct Analysis {
     sliders: Bitboard,
+    knights: Bitboard,
     attacks: [Bitboard; Square::len()],
 }
 
 // todo use occupied.popcount to index.
 
-impl<'a> Default for Analysis<'a> {
+impl Default for Analysis {
     fn default() -> Self {
         Self {
-            board: &EMPTY,
             sliders: Bitboard::empty(),
+            knights: Bitboard::empty(),
             attacks: [(); Square::len()].map(|_| Bitboard::default()),
         }
     }
 }
 
-impl Display for Analysis<'_> {
+impl Display for Analysis {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let mut builder = Builder::new();
-        writeln!(f, "{}", self.board);
         for squares in &self.sliders.squares().enumerate().chunks(5) {
             let mut row = vec![];
             for (_i, sq) in squares {
@@ -49,12 +43,12 @@ impl Display for Analysis<'_> {
     }
 }
 
-impl<'a> Analysis<'a> {
+impl Analysis {
     #[inline]
-    pub fn of(b: &'a Board) -> Self {
+    pub fn of(b: &Board) -> Self {
         let bb = PreCalc::default();
         let mut me = Self {
-            board: &b,
+            knights: b.knights(),
             sliders: b.line_pieces(),
             attacks: [(); Square::len()].map(|_| Bitboard::default()),
         };
@@ -74,7 +68,7 @@ impl<'a> Analysis<'a> {
     }
 }
 
-impl<'a> Analysis<'a> {
+impl Analysis {
     pub fn knight_attacks(&self, knights: Bitboard) -> Bitboard {
         knights.squares().fold(Bitboard::empty(), |a, sq| {
             a | PreCalc::default().knight_attacks(sq)
