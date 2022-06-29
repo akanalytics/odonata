@@ -1,4 +1,5 @@
 use crate::bits::{CastlingRights, PreCalc, Square};
+use crate::board::analysis::Analysis;
 use crate::board::Board;
 use crate::eval::endgame::EndGame;
 use crate::eval::eval::{Eval, Feature};
@@ -13,36 +14,183 @@ use crate::Bitboard;
 use super::eval::Attr;
 use super::scorer::ScorerBase;
 
-#[derive(Default)]
-pub struct Calc;
+#[derive(Copy, Clone, Debug)]
+pub struct ColorPiece {
+    c: Color,
+    p: Piece,
+}
 
-impl Calc {
-    #[inline]
-    pub fn new() -> Self {
-        Self::default()
+impl ColorPiece {
+    pub const fn len() -> usize {
+        Color::len() * Piece::len()
     }
 
+    pub const fn index(&self) -> usize {
+        self.c.index() + self.p.index() * Color::len()
+    }
+
+    pub const fn all() -> [ColorPiece; ColorPiece::len()] {
+        [
+            Self { c: White, p: None },
+            Self { c: White, p: Pawn },
+            Self {
+                c: White,
+                p: Knight,
+            },
+            Self {
+                c: White,
+                p: Bishop,
+            },
+            Self { c: White, p: Rook },
+            Self { c: White, p: Queen },
+            Self { c: White, p: King },
+            Self { c: Black, p: None },
+            Self { c: Black, p: Pawn },
+            Self {
+                c: Black,
+                p: Knight,
+            },
+            Self {
+                c: Black,
+                p: Bishop,
+            },
+            Self { c: Black, p: Rook },
+            Self { c: Black, p: Queen },
+            Self { c: Black, p: King },
+        ]
+    }
+}
+
+trait White {
+    const PAWN: ColorPiece = ColorPiece {
+        c: Color::White,
+        p: Piece::Pawn,
+    };
+}
+
+// #[derive(Default)]
+// pub struct Calc {
+//     attacks: [Bitboard; ColorPiece::len()],
+// }
+
+// impl Display for Calc {
+//     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+//         let mut builder = Builder::new();
+//         for y in &self.attacks.iter().enumerate().chunks(5) {
+//             let mut row = vec![];
+//             for (i, bb) in y {
+//                 row.push(format!("{:?}\n{bb:#}", ColorPiece::all()[i]));
+//             }
+//             builder = builder.add_record(row);
+//         }
+//         let tab = builder.build();
+//         tab.fmt(f)?;
+//         Ok(())
+//     }
+// }
+
+// impl Calc {
+//     #[inline]
+//     pub fn new(b: &Board) -> Self {
+//         let bb = PreCalc::default();
+//         let occ = b.occupied();
+
+//         Calc {
+//             attacks: [
+//                 Bitboard::EMPTY,
+//                 bb.all_attacks(Color::White, Piece::Pawn, b.pawns() & b.white(), occ),
+//                 bb.all_attacks(Color::White, Piece::Knight, b.knights() & b.white(), occ),
+//                 bb.all_attacks(Color::White, Piece::Bishop, b.bishops() & b.white(), occ),
+//                 bb.all_attacks(Color::White, Piece::Rook, b.rooks() & b.white(), occ),
+//                 bb.all_attacks(Color::White, Piece::Queen, b.queens() & b.white(), occ),
+//                 bb.all_attacks(Color::White, Piece::King, b.kings() & b.white(), occ),
+//                 Bitboard::EMPTY,
+//                 bb.all_attacks(Color::Black, Piece::Pawn, b.pawns() & b.black(), occ),
+//                 bb.all_attacks(Color::Black, Piece::Knight, b.knights() & b.black(), occ),
+//                 bb.all_attacks(Color::Black, Piece::Bishop, b.bishops() & b.black(), occ),
+//                 bb.all_attacks(Color::Black, Piece::Rook, b.rooks() & b.black(), occ),
+//                 bb.all_attacks(Color::Black, Piece::Queen, b.queens() & b.black(), occ),
+//                 bb.all_attacks(Color::Black, Piece::King, b.kings() & b.black(), occ),
+//             ],
+//         }
+//     }
+// }
+
+#[derive(Debug)]
+pub struct Calc<'a> {
+    analysis: Analysis<'a>,
+    // a: &'a (),
+}
+
+impl<'a> Calc<'a> {
     #[inline]
-    pub fn score(scorer: &mut impl ScorerBase, b: &Board, _e: &Eval, _phaser: &Phaser) {
+    pub fn new(b: &'a Board) -> Self {
+        Self {
+            // a: &(),
+            analysis: Analysis::of(b),
+            // analysis: Default::default(),
+        }
+    }
+}
+
+// impl Display for Calc {
+//     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+//         let mut builder = Builder::new();
+//         for y in &self.attacks.iter().enumerate().chunks(5) {
+//             let mut row = vec![];
+//             for (i, bb) in y {
+//                 row.push(format!("{:?}\n{bb:#}", ColorPiece::all()[i]));
+//             }
+//             builder = builder.add_record(row);
+//         }
+//         let tab = builder.build();
+//         tab.fmt(f)?;
+//         Ok(())
+//     }
+// }
+impl<'a> Calc<'a> {
+    // 0, 1, 3, 8
+    #[inline]
+    pub fn linear(x: u32, n: i32) -> (i32, i32, i32, i32) {
+        match x {
+            0 => (16 * n, 0, 0, 0),
+            1 => (0, 16 * n, 0, 0),
+            2 => (0, 8 * n, 8 * n, 0),
+            3 => (0, 0, 16 * n, 0),
+            4 => (0, 0, 13 * n, 3 * n),
+            5 => (0, 0, 10 * n, 6 * n),
+            6 => (0, 0, 7 * n, 9 * n),
+            7 => (0, 0, 4 * n, 12 * n),
+            8 => (0, 0, 0, 16 * n),
+            9 => (0, 0, 0, 16 * n),
+            10 => (0, 0, 0, 16 * n),
+            _ => (0, 0, 0, 16 * n),
+        }
+    }
+}
+
+impl<'a> Calc<'a> {
+    #[inline]
+    pub fn score(&mut self, scorer: &mut impl ScorerBase, b: &Board, _e: &Eval, _phaser: &Phaser) {
         let t = Metrics::timing_start();
-        Calc::material(scorer, b);
-        if !Self::endgame(scorer, b) {
-            Calc::position(scorer, b);
-            Calc::pst(scorer, b);
-            Calc::other(scorer, b);
-            Calc::pawns(White, scorer, b);
-            Calc::pawns(Black, scorer, b);
-            Calc::king_safety(White, scorer, b);
-            Calc::king_safety(Black, scorer, b);
-            Calc::mobility(White, scorer, b);
-            Calc::mobility(Black, scorer, b);
+        self.material(scorer, b);
+        if !self.endgame(scorer, b) {
+            self.position(scorer, b);
+            self.pst(scorer, b);
+            self.other(scorer, b);
+            self.pawns(White, scorer, b);
+            self.pawns(Black, scorer, b);
+            self.king_safety(White, scorer, b);
+            self.king_safety(Black, scorer, b);
+            self.mobility(White, scorer, b);
+            self.mobility(Black, scorer, b);
         }
         // scorer.set_phase(b.phase(ph));
         // scorer.interpolate_and_scale("interpolate");
         Metrics::profile(t, Timing::TimingEval);
     }
 
-    fn other(s: &mut impl ScorerBase, b: &Board) {
+    fn other(&mut self, s: &mut impl ScorerBase, b: &Board) {
         s.accumulate(
             Attr::TempoBonus.as_feature(),
             (b.color_us() == White) as i32,
@@ -50,7 +198,7 @@ impl Calc {
         );
     }
 
-    fn material(scorer: &mut impl ScorerBase, b: &Board) {
+    fn material(&mut self, scorer: &mut impl ScorerBase, b: &Board) {
         let m = b.material();
 
         Piece::ALL_BAR_KING.iter().for_each(|&p| {
@@ -73,7 +221,7 @@ impl Calc {
         );
     }
 
-    fn position(scorer: &mut impl ScorerBase, b: &Board) {
+    fn position(&mut self, scorer: &mut impl ScorerBase, b: &Board) {
         // fianchetto (short)
         const W_BISHOP: Bitboard = Bitboard::G2;
         const W_KING: Bitboard = Bitboard::F1.or(Bitboard::G1).or(Bitboard::H1);
@@ -128,7 +276,7 @@ impl Calc {
         );
     }
 
-    fn endgame(scorer: &mut impl ScorerBase, b: &Board) -> bool {
+    fn endgame(&mut self, scorer: &mut impl ScorerBase, b: &Board) -> bool {
         let endgame = EndGame::from_board(b);
 
         if let Some(winner) = endgame.try_winner(b) {
@@ -147,7 +295,7 @@ impl Calc {
         false
     }
 
-    fn pst(s: &mut impl ScorerBase, b: &Board) {
+    fn pst(&mut self, s: &mut impl ScorerBase, b: &Board) {
         // if s.csv() {
         for &p in &Piece::ALL_BAR_NONE {
             let w = (b.pieces(p) & b.white()).flip_vertical();
@@ -204,14 +352,14 @@ impl Calc {
     // - Hanging Pawns -  are an open, half-isolated duo. It means that they are standing next to each other on the adjacent half-open files, usually on the fourth rank, mutually protecting their stop squares.
 
     #[inline]
-    fn pawns(c: Color, s: &mut impl ScorerBase, b: &Board) {
+    fn pawns(&mut self, c: Color, s: &mut impl ScorerBase, b: &Board) {
         let us = b.color(c);
         let them = b.color(c.opposite());
         let bbd = PreCalc::default();
         // self.doubled_pawns = bbd.doubled_pawns(b.color(c) & b.pawns()).popcount();
         let isolated_pawns_bb = bbd.isolated_pawns(us & b.pawns());
         let isolated_pawns = isolated_pawns_bb.popcount();
-        let (pawn_atts_e, pawn_atts_w) = bbd.pawn_attacks(b.pawns() & us, c);
+        let (pawn_atts_e, pawn_atts_w) = bbd.pawn_attacks_ew(b.pawns() & us, c);
         let pawn_atts = pawn_atts_e | pawn_atts_w;
         let pawn_duos = bbd.pawn_duos(b.pawns() & us);
         let distant_neighbours = bbd.pawn_distant_neighbours(b.pawns() & us);
@@ -228,7 +376,7 @@ impl Calc {
         );
 
         let (enemy_pawn_atts_e, enemy_pawn_atts_w) =
-            bbd.pawn_attacks(b.pawns() & them, c.opposite());
+            bbd.pawn_attacks_ew(b.pawns() & them, c.opposite());
         let enemy_pawn_atts = enemy_pawn_atts_e | enemy_pawn_atts_w;
 
         let mut passed_pawns_on_r7 = 0;
@@ -525,7 +673,7 @@ impl Calc {
     }
 
     #[inline]
-    fn king_safety(c: Color, s: &mut impl ScorerBase, b: &Board) {
+    fn king_safety(&mut self, c: Color, s: &mut impl ScorerBase, b: &Board) {
         let us = b.color(c);
         let k = b.kings() & us;
         if k.is_empty() {
@@ -689,34 +837,38 @@ impl Calc {
         s.accum(c, Attr::DiscoveredChecks.as_feature(), discovered_checks);
     }
 
-    fn mobility(c: Color, s: &mut impl ScorerBase, b: &Board) {
+    fn mobility(&mut self, c: Color, s: &mut impl ScorerBase, b: &Board) {
         let bb = PreCalc::default();
         let us = b.color(c);
+        let not_us = !us;
         let opponent = c.opposite();
         let them = b.color(opponent);
-        let occ = them | us;
+        // let occ = them | us;
+        // let unoccupied = !occ;
         let open_files = bb.open_files(b.pawns());
         let semi_open_files = bb.open_files(b.pawns() & us) - open_files; // free of our pawns
         let their_p = b.pawns() & them;
         let our_p = b.pawns() & us;
-        let (pe, pw) = bb.pawn_attacks(their_p, opponent);
-        let (ope, opw) = bb.pawn_attacks(our_p, c);
+        let (pe, pw) = bb.pawn_attacks_ew(their_p, opponent);
+        let (ope, opw) = bb.pawn_attacks_ew(our_p, c);
         let pa = pe | pw;
         let our_pa = ope | opw;
         let bi = b.bishops() & them;
         let ni = b.knights() & them;
         let r = b.rooks() & them;
+        let q = b.queens() & them;
 
         let k = b.kings() & them;
         let ksq = k.square();
 
         // general
         let mut partially_trapped_pieces = 0;
-        let mut fully_trapped_pieces = 0;
+        // let mut fully_trapped_pieces = 0;
         let mut attacks_near_king = 0;
         // let mut moves_near_king = 0;
         let mut move_squares = 0;
-        let mut non_pawn_defended_moves = 0;
+        let mut undefended_piece = 0;
+        let mut defends_own = 0;
         let mut center_attacks = 0;
         let mut all_attacks = Bitboard::empty();
         let mut double_attacks = Bitboard::empty();
@@ -739,43 +891,53 @@ impl Calc {
         let mut knight_outpost_pawn_defended = 0;
         let mut knight_forks = 0;
         let mut knight_attacks_center = 0;
-        let knight_trapped = 0;
+        let mut knight_trapped = 0;
 
         // bishop
         let mut bishop_outposts = 0;
-        let bishop_trapped = 0;
+        let mut bishop_trapped = 0;
 
         // rook
         let mut enemy_pawns_on_rook_rank = 0;
         let connected_rooks = false;
-        let rook_trapped = 0;
+        let mut rook_trapped = 0;
 
         // queen
-        let queen_trapped = 0;
+        let mut queen_trapped = 0;
         let queens_on_open_files = (open_files & us & b.queens()).popcount();
         let (adjacent, nearby) = bb.adjacent_and_nearby_pawn_shield(opponent, ksq);
         let pawn_shield = adjacent | nearby;
         // let pawn_shield = bb.within_chebyshev_distance_inclusive(ksq, 1);
+
+        let all_attacks_from_them = self.analysis.all_attacks_from(them);
 
         for sq in ((b.knights() | b.rooks() | b.bishops() | b.queens()) & us).squares() {
             let p = b.piece_at(sq.as_bb());
 
             // non-pawn-defended empty or oppoent sq
             // include "attacking" our own pieces
-            let our_raw_attacks = bb.attacks(c, p, Bitboard::empty(), occ, sq);
+            // let our_raw_attacks = bb.attacks(c, p, Bitboard::empty(), occ, sq);
+            // let our_raw_attacks = self.analysis.attacks_and_defends(sq);
 
-            let our_attacks = our_raw_attacks - us - pa;
-            center_attacks += (our_attacks & Bitboard::CENTER_16_SQ).popcount();
+            // let our_attacks = our_raw_attacks - us - pa;
 
-            let piece_move_squares = (our_attacks - occ).popcount();
+            // let piece_move_squares = (our_attacks - occ).popcount();
 
             // those attacks on enemy that arent pawn defended and cant attack back
-            let asym_attacks;
+            // let asym_attacks;
+            let attack_defend = self.analysis.attacks_and_defends_from(sq);
+            let see_attacks;
             match p {
                 Piece::Knight => {
-                    knight_attacks_center += (our_raw_attacks & Bitboard::CENTER_4_SQ).popcount();
-                    knight_connected |= (our_raw_attacks & b.knights() & us).any();
-                    for sq in (our_raw_attacks).squares() {
+                    // cant move to a square occupied by us
+                    // unoccupied and will be captured
+                    // can move where we take a piece of equal or greater value
+                    see_attacks = attack_defend
+                        & not_us
+                        & ((not_us & !pa) | (bi | ni | r | q));
+                    knight_attacks_center += (see_attacks & Bitboard::CENTER_4_SQ).popcount();
+                    knight_connected |= (attack_defend & b.knights() & us).any();
+                    for sq in (attack_defend).squares() {
                         let atts = bb.knight_attacks(sq);
                         if (atts & them & (b.queens() | b.bishops() | b.rooks() | b.kings()))
                             .popcount()
@@ -802,63 +964,66 @@ impl Calc {
                         //     knight_outpost_rook_safe += 1;
                         // }
                     }
-                    asym_attacks = ((our_attacks & them) - ni).popcount();
-                    // knight_trapped += (piece_move_squares + asym_attacks == 0) as i32;
+                    // asym_attacks = ((our_attacks & them) - ni).popcount();
+                    knight_trapped += see_attacks.is_empty() as i32;
                 }
                 Piece::Bishop => {
+                    see_attacks = attack_defend
+                        & not_us
+                        & ((not_us & !pa) | (bi | ni | r | q));
                     if bb.pawn_attack_span(c, sq).disjoint(their_p)
                         && sq.is_in(Bitboard::home_half(opponent))
                         && sq.is_in(our_pa)
                     {
                         bishop_outposts += 1;
                     }
-                    asym_attacks = ((our_attacks & them) - bi).popcount();
-                    // bishop_trapped += (piece_move_squares + asym_attacks == 0) as i32;
+                    bishop_trapped += see_attacks.is_empty() as i32;
                 }
                 Piece::Rook => {
+                    let atts = self.analysis.all_attacks_from((b.bishops() | b.knights() | b.pawns()) & them);
+                    see_attacks =
+                        attack_defend & not_us & ((not_us & !atts) | (r | q));
                     // connected_rooks |= (our_raw_attacks & b.rooks() & us).any();
                     enemy_pawns_on_rook_rank +=
                         (sq.rank() & b.pawns() & them & Bitboard::home_half(opponent)).popcount()
                             as i32;
-                    asym_attacks = ((our_attacks & them) - r).popcount();
-                    // rook_trapped += (piece_move_squares + asym_attacks == 0) as i32;
+                    rook_trapped += see_attacks.is_empty() as i32;
                 }
                 Piece::Queen => {
-                    asym_attacks = (our_attacks & them).popcount();
-                    // queen_trapped += (piece_move_squares + asym_attacks == 0) as i32;
+                    see_attacks = attack_defend & not_us & ((not_us & !all_attacks_from_them) | q);
+                    queen_trapped += see_attacks.is_empty() as i32;
                 }
                 _ => unreachable!(),
             };
+
+            center_attacks += (see_attacks & Bitboard::CENTER_16_SQ).popcount();
+            defends_own += (attack_defend & us).popcount();
+            s.set_bits(Attr::DefendsOwn.as_feature(), attack_defend & us);
+            let undefended_bb =
+                attack_defend & (their_p | bi | ni | r | q) & !all_attacks_from_them;
+            undefended_piece += undefended_bb.popcount();
+            s.set_bits(Attr::UndefendedPiece.as_feature(), undefended_bb);
+
             // trapped piece
-            if piece_move_squares + asym_attacks == 1 {
+            if see_attacks.popcount() == 1 {
                 partially_trapped_pieces += 1;
+                s.set_bits(Attr::PartiallyTrappedPiece.into(), sq.as_bb());
             }
-            if piece_move_squares == 0 {
-                fully_trapped_pieces += 1;
+            if see_attacks.popcount() == 0 {
+                // fully_trapped_pieces += 1;
+                s.set_bits(Attr::TrappedPiece.into(), sq.as_bb());
             }
-            // self.mv.push((p, our_attacks.popcount()));
-            move_squares += piece_move_squares;
-            non_pawn_defended_moves += asym_attacks;
 
-            double_attacks |= ((our_raw_attacks & them) - us) & all_attacks;
-            all_attacks |= (our_raw_attacks & them) - us;
+            move_squares += see_attacks.popcount();
 
-            // moves_near_king += (our_raw_attacks
-            //     & bb.within_chebyshev_distance_inclusive(ksq, 1)
-            //     & !b.occupied())
-            // .popcount();
+            double_attacks |= ((attack_defend & them) - us) & all_attacks;
+            all_attacks |= (attack_defend & them) - us;
+
             attacks_near_king +=
-                (our_raw_attacks & pawn_shield & !us).any() as i32 * (p.centipawns() / 64);
-            // * match p {
-            //     Piece::Bishop => 10,
-            //     Piece::Knight => 20,
-            //     Piece::Rook => 30,
-            //     Piece::Queen => 50,
-            //     _ => unreachable!(),
-            // };
+                (attack_defend & pawn_shield & !us).any() as i32 * (p.centipawns() / 64);
             s.set_bits(
                 Attr::AttacksNearKing.as_feature(),
-                our_raw_attacks & pawn_shield,
+                attack_defend & pawn_shield & !us,
             );
         }
 
@@ -880,11 +1045,7 @@ impl Calc {
             Attr::KnightOutpostRookSafe.as_feature(),
             knight_outpost_rook_safe,
         );
-        s.accum(
-            c,
-            Attr::KnightConnected.as_feature(),
-            knight_connected as i32,
-        );
+        s.accum(c, Attr::KnightConnected.into(), knight_connected as i32);
         s.accum(
             c,
             Attr::KnightAttacksCenter.as_feature(),
@@ -947,7 +1108,7 @@ impl Calc {
         //
         // General
         //
-        // s.set_bits(Attr::DoubleAttacks.into(), double_attacks);
+        s.set_bits(Attr::DoubleAttacks.into(), double_attacks);
         // s.accum(c, Attr::DoubleAttacks.as_feature(), double_attacks.popcount());
         // s.accum(
         //     c,
@@ -960,9 +1121,15 @@ impl Calc {
         s.accum(
             c,
             Attr::UndefendedPiece.as_feature(),
-            non_pawn_defended_moves,
+            undefended_piece * undefended_piece,
         );
-        s.accum(c, Attr::TrappedPiece.as_feature(), fully_trapped_pieces);
+        s.accum(
+            c,
+            Attr::TempoUndefendedPiece.as_feature(),
+            (b.color_us() == c) as i32 * undefended_piece * undefended_piece,
+        );
+        s.accum(c, Attr::DefendsOwn.as_feature(), defends_own);
+        // s.accum(c, Attr::TrappedPiece.as_feature(), fully_trapped_pieces);
         s.accum(
             c,
             Attr::PartiallyTrappedPiece.as_feature(),
@@ -1008,7 +1175,7 @@ mod tests {
             // let w2 = scorer2.total();
 
             let mut scorer3 = ExplainScore::default();
-            Calc::score(&mut scorer3, &b, &eval, &phaser);
+            Calc::new(&b).score(&mut scorer3, &b, &eval, &phaser);
             black_box(&scorer3);
             let _w3 = scorer3.total();
 
@@ -1044,7 +1211,7 @@ mod tests {
 
             pr.start();
             for _ in 0..1000 {
-                Calc::score(&mut scorer2, &b, &e, phr);
+                Calc::new(&b).score(&mut scorer2, &b, &e, phr);
                 black_box(&scorer2);
                 // scorer2 = ExplainScorer::new(b.to_fen());
             }
@@ -1073,7 +1240,7 @@ mod tests {
                 pos.board().phase(&phr),
                 format!("{:#}", pos.board().to_string()),
             );
-            Calc::score(&mut sc, pos.board(), &e, &phr);
+            Calc::new(&pos.board()).score(&mut sc, pos.board(), &e, &phr);
             sc
         }
         let sc = score_for(

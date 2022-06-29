@@ -54,7 +54,7 @@ impl BoardCalcs {
         let kings = board.kings() & board.color(opponent);
 
         let attack_gen = PreCalc::default();
-        let (east, west) = attack_gen.pawn_attacks(pawns, opponent);
+        let (east, west) = attack_gen.pawn_attacks_ew(pawns, opponent);
         let mut threats = east | west;
 
         for p in knights.iter() {

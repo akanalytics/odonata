@@ -132,7 +132,7 @@ impl Tuning {
             }
             let ph = eng.algo.eval.phaser.phase(&pos.board().material());
             let mut explain = ExplainScore::new(ph, pos.board().to_fen());
-            Calc::score(
+            Calc::new(&pos.board()).score(
                 &mut explain,
                 pos.board(),
                 &eng.algo.eval,
@@ -154,7 +154,7 @@ impl Tuning {
                 "1/2-1/2" => 0.5,
                 "1-0" => 1.0,
                 "0-1" => 0.0,
-                _ => unreachable!(),
+                prob => panic!("Unexpected match outcome {}", prob),
             };
             return (pos.board().color_us().chooser_wb(prob, prob), s.clone());
         }

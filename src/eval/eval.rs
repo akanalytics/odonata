@@ -83,13 +83,13 @@ pub enum Attr {
     DoubleAttacks,
     UndefendedSq,
     UndefendedPiece,
+    DefendsOwn,
     TrappedPiece,
     PartiallyTrappedPiece,
     RookOpenFile,
     RookSemiOpenFile,
 
     KnightClosedness,
-    TempoKnightForks,
     KnightOutpost,
     KnightOutpostPawnDefended,
     KnightOutpostRookSafe,
@@ -131,7 +131,6 @@ pub enum Attr {
     AttacksNearKing,
     DoubleAttacksNearKing,
     MovesNearKing,
-    TempoSafety,
     TropismD1,
     TropismD2,
     TropismD3,
@@ -145,9 +144,12 @@ pub enum Attr {
     PinnedNearKing,
     PinnedFar,
     DiscoveredChecks,
+    TempoBonus,
+    TempoKnightForks,
+    TempoSafety,
+    TempoUndefendedPiece,
 
     ContemptPenalty,
-    TempoBonus,
     WinMetric1,
     WinMetric2,
 }
@@ -444,14 +446,14 @@ impl Eval {
     pub fn w_eval_explain(&self, b: &Board) -> ExplainScore {
         let mut scorer = ExplainScore::new(b.phase(&self.phaser), b.to_fen());
         scorer.set_weights(self.weights_vector());
-        Calc::score(&mut scorer, b, self, &self.phaser);
+        Calc::new(&b).score(&mut scorer, b, self, &self.phaser);
         scorer
     }
 
     fn w_eval_no_cache(&self, b: &Board) -> WhiteScore {
         let ph = b.phase(&self.phaser);
         let mut scorer = TotalScore::new(&self.feature_weights, ph);
-        Calc::score(&mut scorer, b, self, &self.phaser);
+        Calc::new(&b).score(&mut scorer, b, self, &self.phaser);
         WhiteScore(Score::from_cp(
             scorer.total().interpolate(ph) as i32 / self.quantum * self.quantum,
         ))

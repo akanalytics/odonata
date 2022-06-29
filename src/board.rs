@@ -99,6 +99,7 @@ impl Board {
         self.pieces[p]
     }
 
+    // bishops, rooks and queens
     #[inline]
     pub fn line_pieces(&self) -> Bitboard {
         self.rooks() | self.bishops() | self.queens()

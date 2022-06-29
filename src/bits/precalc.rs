@@ -182,6 +182,52 @@ impl PreCalc {
         self.knight_moves[from]
     }
 
+    pub fn all_pawn_attacks_ext(&self, c: Color, pawns: Bitboard, them: Bitboard) -> Bitboard {
+        pawns.squares().fold(Bitboard::empty(), |a, sq| {
+            a | self.pawn_attacks_ext(c, pawns, them, sq)
+        })
+    }
+
+    pub fn all_knight_attacks(&self, knights: Bitboard) -> Bitboard {
+        knights
+            .squares()
+            .fold(Bitboard::empty(), |a, sq| a | self.knight_attacks(sq))
+    }
+
+    pub fn all_king_attacks(&self, kings: Bitboard) -> Bitboard {
+        self.king_attacks(kings.first_square())
+    }
+
+    pub fn all_bishop_attacks(&self, bishops: Bitboard, occ: Bitboard) -> Bitboard {
+        bishops
+            .squares()
+            .fold(Bitboard::EMPTY, |a, sq| a | self.bishop_attacks(occ, sq))
+    }
+
+    pub fn all_rook_attacks(&self, rooks: Bitboard, occ: Bitboard) -> Bitboard {
+        rooks
+            .squares()
+            .fold(Bitboard::EMPTY, |a, sq| a | self.rook_attacks(occ, sq))
+    }
+
+    pub fn all_queen_attacks(&self, queens: Bitboard, occ: Bitboard) -> Bitboard {
+        queens.squares().fold(Bitboard::EMPTY, |a, sq| {
+            a | self.rook_attacks(occ, sq) | self.bishop_attacks(occ, sq)
+        })
+    }
+
+    pub fn all_attacks(&self, c: Color, p: Piece, us: Bitboard, occ: Bitboard) -> Bitboard {
+        match p {
+            Piece::Bishop => self.all_bishop_attacks(us, occ),
+            Piece::Rook => self.all_rook_attacks(us, occ),
+            Piece::Queen => self.all_queen_attacks(us, occ),
+            Piece::King => self.all_king_attacks(us),
+            Piece::Knight => self.all_knight_attacks(us),
+            Piece::Pawn => self.all_pawn_attacks_ext(c, us, occ),
+            _ => unreachable!(),
+        }
+    }
+
     #[inline]
     pub fn attacks(
         &self,
@@ -222,11 +268,21 @@ impl PreCalc {
     // }
 
     #[inline]
-    pub fn pawn_attacks(&self, pawns: Bitboard, c: Color) -> (Bitboard, Bitboard) {
+    pub fn pawn_attacks_ew(&self, pawns: Bitboard, c: Color) -> (Bitboard, Bitboard) {
         (
             pawns.shift(c.pawn_capture_east()),
             pawns.shift(c.pawn_capture_west()),
         )
+    }
+
+    #[inline]
+    pub fn pawn_attacks_from(&self, c: Color, pawns: Bitboard) -> Bitboard {
+        pawns.shift(c.pawn_capture_east()) | pawns.shift(c.pawn_capture_west())
+    }
+
+    #[inline]
+    pub fn pawn_attacks_from_sq(&self, c: Color, pawn: Square) -> Bitboard {
+        pawn.as_bb().shift(c.pawn_capture_east()) | pawn.as_bb().shift(c.pawn_capture_west())
     }
 
     #[inline]
@@ -340,7 +396,7 @@ impl PreCalc {
         };
         let adjacent = self.within_chebyshev_distance_inclusive(ssq, 1);
 
-        // allow R3 pawns if king on backrank. Excluding non-backrank prevents king lurches 
+        // allow R3 pawns if king on backrank. Excluding non-backrank prevents king lurches
         //  into "safe space" to claim addition R3 pawns as shield pawns.
 
         let nearby = if king_sq.is_in(Bitboard::RANKS_18) {
@@ -412,7 +468,7 @@ mod tests {
         // let double = c4;
         // assert_eq!(pawn_single_push, single | double);
 
-        let (pawn_capture_e, pawn_capture_w) = bb.pawn_attacks(pawns_w, Color::White);
+        let (pawn_capture_e, pawn_capture_w) = bb.pawn_attacks_ew(pawns_w, Color::White);
         assert_eq!(pawn_capture_e & opponent, d3);
 
         assert_eq!(pawn_capture_w & opponent, a4 | g5);

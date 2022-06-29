@@ -4,33 +4,36 @@ use super::Board;
 use crate::bits::bitboard::Bitboard;
 use crate::bits::Square;
 use crate::piece::Color;
-use crate::PreCalc;
+use crate::{Piece, PreCalc};
 use itertools::Itertools;
+use static_init::dynamic;
 use tabled::builder::Builder;
 
+#[dynamic(lazy)]
+static EMPTY: Board = Board::default();
+
 #[derive(Debug)]
-pub struct Analysis {
-    sliders: Bitboard,
-    knights: Bitboard,
+pub struct Analysis<'a> {
+    board: &'a Board,
     attacks: [Bitboard; Square::len()],
 }
 
 // todo use occupied.popcount to index.
 
-impl Default for Analysis {
+impl<'a> Default for Analysis<'a> {
     fn default() -> Self {
         Self {
-            sliders: Bitboard::empty(),
-            knights: Bitboard::empty(),
+            board: &EMPTY,
             attacks: [(); Square::len()].map(|_| Bitboard::default()),
         }
     }
 }
 
-impl Display for Analysis {
+impl Display for Analysis<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let mut builder = Builder::new();
-        for squares in &self.sliders.squares().enumerate().chunks(5) {
+        writeln!(f, "{}", self.board)?;
+        for squares in &self.board.line_pieces().squares().enumerate().chunks(5) {
             let mut row = vec![];
             for (_i, sq) in squares {
                 row.push(format!("{}\n{:#}", sq, self.attacks[sq]));
@@ -43,19 +46,18 @@ impl Display for Analysis {
     }
 }
 
-impl Analysis {
+impl<'a> Analysis<'a> {
     #[inline]
-    pub fn of(b: &Board) -> Self {
+    pub fn of(b: &'a Board) -> Self {
         let bb = PreCalc::default();
         let mut me = Self {
-            knights: b.knights(),
-            sliders: b.line_pieces(),
+            board: &b,
             attacks: [(); Square::len()].map(|_| Bitboard::default()),
         };
         let occ = b.occupied();
 
         let us = Bitboard::empty();
-        for sq in b.occupied().squares() {
+        for sq in b.line_pieces().squares() {
             let c = if sq.is_in(b.white()) {
                 Color::White
             } else {
@@ -68,22 +70,84 @@ impl Analysis {
     }
 }
 
-impl Analysis {
+impl<'a> Analysis<'a> {
+    #[inline]
     pub fn knight_attacks(&self, knights: Bitboard) -> Bitboard {
         knights.squares().fold(Bitboard::empty(), |a, sq| {
             a | PreCalc::default().knight_attacks(sq)
         })
     }
 
+    #[inline]
     pub fn king_attacks(&self, kings: Bitboard) -> Bitboard {
-        PreCalc::default().king_attacks(kings.first_square())
+        kings.squares().fold(Bitboard::empty(), |a, sq| {
+            a | PreCalc::default().king_attacks(sq)
+        })
     }
 
-    pub fn slider_attacks(&self, sliders: Bitboard) -> Bitboard {
-        sliders
+    #[inline]
+    pub fn attacks_and_defends_from(&self, sq: Square) -> Bitboard {
+        match self.board.piece_at(sq.as_bb()) {
+            Piece::Bishop | Piece::Rook | Piece::Queen => self.attacks[sq],
+            Piece::Knight => PreCalc::default().knight_attacks(sq),
+            Piece::King => PreCalc::default().king_attacks(sq),
+            Piece::Pawn => PreCalc::default()
+                .pawn_attacks_from_sq(self.board.color_at(sq.as_bb()).unwrap(), sq),
+            Piece::None => unreachable!(),
+        }
+    }
+
+    #[inline]
+    pub fn all_attacks_from(&self, from_region: Bitboard) -> Bitboard {
+        from_region
             .squares()
             .fold(Bitboard::EMPTY, |a, sq| a | self.attacks[sq])
+            | self.knight_attacks(self.board.knights() & from_region)
+            | self.king_attacks(self.board.kings() & from_region)
+            | PreCalc::default().pawn_attacks_from(
+                Color::White,
+                self.board.pawns() & from_region & self.board.white(),
+            )
+            | PreCalc::default().pawn_attacks_from(
+                Color::Black,
+                self.board.pawns() & from_region & self.board.black(),
+            )
     }
+
+    // pub fn attackers_of(&self, to: Square) -> Bitboard {
+    //     self.board
+    //         .line_pieces()
+    //         .squares()
+    //         .fold(Bitboard::empty(), |attackers, from| {
+    //             attackers | from.as_bb().iff(to.is_in(self.attacks[from]))
+    //         })
+    //         | PreCalc::default().knight_attacks(to) & self.board.knights()
+    //         | PreCalc::default().king_attacks(to) & self.board.kings()
+    //         | PreCalc::default().pawn_attackers(to.as_bb(), Color::White)
+    //         | PreCalc::default().pawn_attackers(to.as_bb(), Color::Black)
+    // }
+
+    // #[inline]
+    // fn slider_attacks(&self, c: Color, p: Piece) -> Bitboard {
+    //     self.board.pieces(p)
+    //         & self
+    //             .board
+    //             .color(c)
+    //             .squares()
+    //             .fold(Bitboard::EMPTY, |a, sq| a | self.attacks[sq])
+    //             - self.board.color(c)
+    // }
+
+    // #[inline]
+    // fn slider_defends(&self, c: Color, p: Piece) -> Bitboard {
+    //     self.board.pieces(p)
+    //         & self
+    //             .board
+    //             .color(c)
+    //             .squares()
+    //             .fold(Bitboard::EMPTY, |a, sq| a | self.attacks[sq])
+    //         & self.board.color(c)
+    // }
 }
 
 // #[derive(Clone, Debug, PartialEq, Eq)]
@@ -165,16 +229,14 @@ mod tests {
         let bbd = PreCalc::default();
         let mut prof = Profiler::new("king_attacks".into());
         for _ in 0..100 {
-            prof.start();
-            let ka = analysis.king_attacks(b.kings() & b.white());
-            prof.stop();
-            assert_eq!(
-                ka,
-                bbd.within_chebyshev_distance_inclusive(Square::E1, 1) - Bitboard::E1
-            );
+            prof.benchmark(|| analysis.king_attacks((b.kings() & b.white()).first_square()));
+            // assert_eq!(
+            //     ka,
+            //     bbd.within_chebyshev_distance_inclusive(Square::E1, 1) - Bitboard::E1
+            // );
         }
         assert_eq!(
-            analysis.king_attacks(b.kings() & b.black()),
+            analysis.king_attacks((b.kings() & b.black()).first_square()),
             bbd.within_chebyshev_distance_inclusive(Square::E8, 1) - Bitboard::E8
         );
     }
@@ -187,9 +249,7 @@ mod tests {
         // let bbd = PreCalc::default();
         let mut prof = Profiler::new("knight_attacks".into());
         for _ in 0..100 {
-            prof.start();
-            let _ka = analysis.slider_attacks(b.knights() & b.white());
-            prof.stop();
+            prof.benchmark(|| analysis.slider_attacks(Color::White, Piece::Knight));
         }
     }
 }

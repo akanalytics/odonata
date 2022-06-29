@@ -122,8 +122,10 @@ center_attacks               = { s =    4.26, e =    3.08 }
 double_attacks               = { s =    0.00, e =    0.00 }
 undefended_sq                = { s =    2.22, e =    6.30 }
 undefended_piece             = { s =    1.69, e =   41.34 }
+defends_own             = { s =    1.69, e =   41.34 }
 trapped_piece                = { s =  -15.94, e =  -44.20 }
 partially_trapped_piece      = { s =   -5.44, e =  -11.84 }
+
 rook_open_file               = { s =   58.03, e =   -4.09 }
 rook_semi_open_file          = { s =   22.66, e =   11.55 }
 knight_closedness            = { s =   -1.27, e =    4.79 }
@@ -179,6 +181,7 @@ discovered_checks            = { s = -111.49, e = -141.60 }
 tempo_bonus                  = { s =   22.39, e =   36.67 }
 tempo_knight_forks           = { s =   -0.48, e =   93.21 }
 tempo_safety                 = { s =  -14.14, e =   -2.18 }
+tempo_undefended_piece       = { s =  -14.14, e =   -2.18 }
 
 
 win_bonus                  = { s =  350.00, e =  600.00 }
