@@ -1,19 +1,19 @@
-# weight file:              ../output/weight/1138-not-us-r23-weights-2w.toml
-# Odonata version:          odonata 0.6.8 built on Sun, 26 Jun 2022 17:42:05 +0000
+# weight file:              ../output/weight/1160-revert-weights-2w.toml
+# Odonata version:          odonata 0.6.9 built on Fri, 01 Jul 2022 12:49:51 +0000
 
-# Run: 1138-not-us-r23
+# Run: 1160-revert
 # Training files              ['../epd/quiet-labeled.epd', '../epd/quiet-labeled-odo.epd']
-# Odonata                     odonata 0.6.8 built on Sun, 26 Jun 2022 17:42:05 +0000
+# Odonata                     odonata 0.6.9 built on Fri, 01 Jul 2022 12:49:51 +0000
 # Odonata path                ../engines/odonata/odonata-stable
-# Download file:              ../output/weight/1138-not-us-r23-model.csv
+# Download file:              ../output/weight/1160-revert-model.csv
 # Method:                     New
 #
 # Baseline:
 # eval.mb.enabled          : false
 # eval.phaser.method       : "SO"
-# contempt_penalty.s: -30
-# contempt_penalty.m: -10
-# contempt_penalty.e: 0
+# eval.discrete.contempt_penalty.s: -30
+# eval.discrete.contempt_penalty.m: -10
+# eval.discrete.contempt_penalty.e: 0
 # tuner.regression_type    : "LogisticOnOutcome"
 # tuner.method             : "New"
 # tuner.ignore_draws       : false
@@ -27,22 +27,22 @@
 #
 # Train
 # epd files                : ['../epd/quiet-labeled.epd', '../epd/quiet-labeled-odo.epd']
-# Upload positions:         28.06 secs for 0 654311 lines
-# Download model file:      32.57 secs for 2070403 lines
-# Download file:            ../output/weight/1138-not-us-r23-model.csv
+# Upload positions:         28.95 secs for 0 654311 lines
+# Download model file:      35.04 secs for 2070403 lines
+# Download file:            ../output/weight/1160-revert-model.csv
 
-# prepare model data time:  21.17 secs
+# prepare model data time:  24.40 secs
 
 #
 # Metrics
-# Test train split:         7.71 secs
-# model csv load time       25.29 secs
-# Model fit time:           116.88 secs
-# Model predict time:       0.86 secs
+# Test train split:         9.30 secs
+# model csv load time       27.17 secs
+# Model fit time:           177.33 secs
+# Model predict time:       0.78 secs
 # lam                      : 4.00000
-# mean_squared_error       : 0.12191
-# mean_absolute_error      : 0.12191
-# r2_score                 : 0.51132
+# mean_squared_error       : 0.12185
+# mean_absolute_error      : 0.12185
+# r2_score                 : 0.51154
 
 
 shared_tt = true
