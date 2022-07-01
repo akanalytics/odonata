@@ -5,7 +5,7 @@ use crate::eval::score::Score;
 use crate::infra::metric::Metrics;
 use crate::mv::Move;
 use crate::other::pvtable::PvTable;
-use crate::piece::{Ply, MAX_PLY, MoveType};
+use crate::piece::{Ply, MAX_PLY};
 use crate::search::algo::Algo;
 use crate::search::node::{Counter, Node, Timing};
 

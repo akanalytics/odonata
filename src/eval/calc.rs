@@ -124,11 +124,11 @@ pub struct Calc<'a> {
 
 impl<'a> Calc<'a> {
     #[inline]
-    pub fn new(b: &'a Board) -> Self {
+    pub fn new(_b: &'a Board) -> Self {
         Self {
             // a: &(),
-            analysis: Analysis::of(b),
-            // analysis: Default::default(),
+            // analysis: Analysis::of(b),
+            analysis: Default::default(),
         }
     }
 }
@@ -854,8 +854,6 @@ impl<'a> Calc<'a> {
         let ni = b.knights() & them;
         let r = b.rooks() & them;
 
-        let k = b.kings() & them;
-        let ksq = k.square();
 
         // general
         let mut partially_trapped_pieces = 0;
@@ -900,7 +898,14 @@ impl<'a> Calc<'a> {
         // queen
         let queen_trapped = 0;
         let queens_on_open_files = (open_files & us & b.queens()).popcount();
-        let (adjacent, nearby) = bb.adjacent_and_nearby_pawn_shield(opponent, ksq);
+
+        let k = b.kings() & them;
+        
+        let (adjacent, nearby) =  if k.any() {
+            bb.adjacent_and_nearby_pawn_shield(opponent, k.square())
+        } else {
+            (Bitboard::empty(), Bitboard::empty())
+        };
         let pawn_shield = adjacent | nearby;
         // let pawn_shield = bb.within_chebyshev_distance_inclusive(ksq, 1);
 

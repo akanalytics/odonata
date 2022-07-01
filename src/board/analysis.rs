@@ -129,16 +129,16 @@ impl<'a> Analysis<'a> {
     //         | PreCalc::default().pawn_attackers(to.as_bb(), Color::Black)
     // }
 
-    // #[inline]
-    // fn slider_attacks(&self, c: Color, p: Piece) -> Bitboard {
-    //     self.board.pieces(p)
-    //         & self
-    //             .board
-    //             .color(c)
-    //             .squares()
-    //             .fold(Bitboard::EMPTY, |a, sq| a | self.attacks[sq])
-    //             - self.board.color(c)
-    // }
+    #[inline]
+    pub fn slider_attacks(&self, c: Color, p: Piece) -> Bitboard {
+        self.board.pieces(p)
+            & self
+                .board
+                .color(c)
+                .squares()
+                .fold(Bitboard::EMPTY, |a, sq| a | self.attacks[sq])
+                - self.board.color(c)
+    }
 
     // #[inline]
     // fn slider_defends(&self, c: Color, p: Piece) -> Bitboard {
@@ -231,14 +231,14 @@ mod tests {
         let bbd = PreCalc::default();
         let mut prof = Profiler::new("king_attacks".into());
         for _ in 0..100 {
-            prof.benchmark(|| analysis.king_attacks((b.kings() & b.white()).first_square()));
+            prof.benchmark(|| analysis.king_attacks(b.kings() & b.white()));
             // assert_eq!(
             //     ka,
             //     bbd.within_chebyshev_distance_inclusive(Square::E1, 1) - Bitboard::E1
             // );
         }
         assert_eq!(
-            analysis.king_attacks((b.kings() & b.black()).first_square()),
+            analysis.king_attacks(b.kings() & b.black()),
             bbd.within_chebyshev_distance_inclusive(Square::E8, 1) - Bitboard::E8
         );
     }

@@ -202,6 +202,6 @@ mod tests {
         assert_eq!(size_of::<Aspiration>(), 24, "Aspiration");
         assert_eq!(size_of::<SearchStats>(), 848, "SearchStats");
         assert_eq!(size_of::<PvTable>(), 32, "PvTable");
-        assert_eq!(size_of::<Metrics>(), 90952, "Metrics");
+        assert_eq!(size_of::<Metrics>(), 92488, "Metrics");
     }
 }
