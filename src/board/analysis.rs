@@ -73,9 +73,11 @@ impl<'a> Analysis<'a> {
 impl<'a> Analysis<'a> {
     #[inline]
     pub fn knight_attacks(&self, knights: Bitboard) -> Bitboard {
-        knights.squares().fold(Bitboard::empty(), |a, sq| {
-            a | PreCalc::default().knight_attacks(sq)
-        })
+        (knights - self.board.pinned(Color::White) - self.board.pinned(Color::Black))
+            .squares()
+            .fold(Bitboard::empty(), |a, sq| {
+                a | PreCalc::default().knight_attacks(sq)
+            })
     }
 
     #[inline]

@@ -115,16 +115,51 @@ passed_duo_r67               = { s =    0.00, e =    0.00 }
 passed_duo_r2345             = { s =    0.00, e =    0.00 }
 backward_half_open           = { s =  -20.59, e =  -27.61 }
 backward                     = { s =   -3.81, e =   -7.63 }
+
 bishop_pair                  = { s =   29.81, e =   85.76 }
 rook_pair                    = { s =  108.66, e =  -65.25 }
+
 closedness                   = { s =    0.00, e =    0.00 }
 center_attacks               = { s =    4.26, e =    3.08 }
 double_attacks               = { s =    0.00, e =    0.00 }
 undefended_sq                = { s =    2.22, e =    6.30 }
 undefended_piece             = { s =    1.69, e =   41.34 }
-defends_own             = { s =    1.69, e =   41.34 }
+defends_own                  = { s =    1.69, e =   41.34 }
+
+knight_moves1                  = { s =    1.69, e =   41.34 }
+knight_moves2                  = { s =    1.69, e =   41.34 }
+knight_moves3                  = { s =    1.69, e =   41.34 }
+knight_moves4                  = { s =    1.69, e =   41.34 }
+knight_moves5                  = { s =    1.69, e =   41.34 }
+knight_moves6                  = { s =    1.69, e =   41.34 }
+
+bishop_moves1                  = { s =    1.69, e =   41.34 }
+bishop_moves2                  = { s =    1.69, e =   41.34 }
+bishop_moves3                  = { s =    1.69, e =   41.34 }
+bishop_moves4                  = { s =    1.69, e =   41.34 }
+bishop_moves5                  = { s =    1.69, e =   41.34 }
+bishop_moves6                  = { s =    1.69, e =   41.34 }
+
+rook_moves1                  = { s =    1.69, e =   41.34 }
+rook_moves2                  = { s =    1.69, e =   41.34 }
+rook_moves3                  = { s =    1.69, e =   41.34 }
+rook_moves4                  = { s =    1.69, e =   41.34 }
+rook_moves5                  = { s =    1.69, e =   41.34 }
+rook_moves6                  = { s =    1.69, e =   41.34 }
+
+queen_moves1                  = { s =    1.69, e =   41.34 }
+queen_moves2                  = { s =    1.69, e =   41.34 }
+queen_moves3                  = { s =    1.69, e =   41.34 }
+queen_moves4                  = { s =    1.69, e =   41.34 }
+queen_moves5                  = { s =    1.69, e =   41.34 }
+queen_moves6                  = { s =    1.69, e =   41.34 }
+
 trapped_piece                = { s =  -15.94, e =  -44.20 }
 partially_trapped_piece      = { s =   -5.44, e =  -11.84 }
+bishop_trapped               = { s =    0.00, e =    0.00 }
+rook_trapped                 = { s =    0.00, e =    0.00 }
+knight_trapped               = { s =    0.00, e =    0.00 }
+queen_trapped                = { s =    0.00, e =    0.00 }
 
 rook_open_file               = { s =   58.03, e =   -4.09 }
 rook_semi_open_file          = { s =   22.66, e =   11.55 }
@@ -134,23 +169,23 @@ knight_outpost_pawn_defended = { s =   11.00, e =   69.47 }
 knight_outpost_rook_safe     = { s =    0.00, e =    0.00 }
 knight_connected             = { s =    6.82, e =   20.10 }
 knight_attacks_center        = { s =   42.29, e =   17.16 }
-knight_trapped               = { s =    0.00, e =    0.00 }
+
 fianchetto                   = { s =    9.75, e =   29.60 }
 bishop_outposts              = { s =   40.05, e =   21.62 }
 bishop_color_pawns           = { s =   -2.09, e =   -1.46 }
 bishop_color_rammed_pawns    = { s =    4.92, e =  -14.80 }
 bishop_far_pawns             = { s =    0.00, e =   26.53 }
-bishop_trapped               = { s =    0.00, e =    0.00 }
 bishop_closedness            = { s =   -2.27, e =    2.54 }
+
 rook_closedness              = { s =   -2.63, e =    3.23 }
 doubled_rooks                = { s =   31.66, e =    3.45 }
 connected_rooks              = { s =    0.00, e =    0.00 }
 doubled_rooks_open_file      = { s =   -9.51, e =   13.21 }
 enemy_pawns_on_rook_rank     = { s =  -23.32, e =   12.42 }
-rook_trapped                 = { s =    0.00, e =    0.00 }
+
 queen_early_develop          = { s =   -7.32, e =   34.44 }
 queen_open_file              = { s =  -30.28, e =   44.64 }
-queen_trapped                = { s =    0.00, e =    0.00 }
+
 pawn_adjacent_shield         = { s =    3.56, e =    1.82 }
 pawn_nearby_shield           = { s =    2.09, e =  -11.33 }
 pawn_shield_faulty           = { s =  -21.49, e =   16.86 }
