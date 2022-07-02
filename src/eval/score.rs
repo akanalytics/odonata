@@ -151,12 +151,12 @@ impl Score {
     }
 
     #[inline]
-    fn ply_loss(&self) -> Ply {
+    pub fn ply_loss(&self) -> Ply {
         (self.cp + Self::INF - 1) as Ply
     }
 
     #[inline]
-    fn ply_win(&self) -> Ply {
+    pub fn ply_win(&self) -> Ply {
         (i16::MAX - 1 - self.cp) as Ply
     }
 
@@ -258,7 +258,7 @@ impl std::ops::Add for Score {
             self.is_numeric() || self.is_mate() && (o.as_i16() == 1 || o.as_i16() == -1),
             "cannot add scores {self} + {o}"
         );
-        return Score { cp: self.cp + o.cp };
+        return Score { cp: self.cp.saturating_add(o.cp) };
     }
 }
 
@@ -269,7 +269,7 @@ impl std::ops::Mul<Score> for i32 {
     fn mul(self, o: Score) -> Score {
         debug_assert!(o.is_numeric(), "Score {o} cannot be multipled by {self}");
         Score {
-            cp: self as i16 * o.cp,
+            cp: (self as i16).saturating_mul(o.cp),
         }
     }
 }
@@ -287,7 +287,7 @@ impl std::ops::Sub for Score {
             !self.is_mate() && !o.is_mate(),
             "Score {self} - {o} subtraction with mate scores"
         );
-        Score { cp: self.cp - o.cp }
+        Score { cp: self.cp.saturating_sub(o.cp) }
     }
 }
 

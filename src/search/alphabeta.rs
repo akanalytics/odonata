@@ -80,20 +80,22 @@ impl Algo {
 
         if self.tt.use_tt_for_eval {
             if let Some(entry) = self.tt.probe_by_hash(b.hash()) {
+                let score = entry.score.as_score(n.ply);
                 if entry.depth >= self.tt.tt_for_eval_depth {
                     if entry.nt == NodeType::ExactPv {
                         Metrics::incr_node(n, Event::TtHitEvalNode);
-                        eval = entry.score;
-                    } else if entry.nt == NodeType::LowerCut && entry.score > eval {
+                        eval = score;
+                    } else if entry.nt == NodeType::LowerCut && score > eval {
                         Metrics::incr_node(n, Event::TtHitEvalNode);
-                        eval = entry.score;
-                    } else if entry.nt == NodeType::UpperAll && entry.score < eval {
+                        eval = score;
+                    } else if entry.nt == NodeType::UpperAll && score < eval {
                         Metrics::incr_node(n, Event::TtHitEvalNode);
-                        eval = entry.score;
+                        eval = score;
                     } else {
                         Metrics::incr_node(n, Event::TtMissEvalNode);
                     }
                     // }
+                    // eval = eval.clamp_score();
                 }
             }
         }
@@ -135,11 +137,12 @@ impl Algo {
         }
         // self.results.set_seldepth(&n);
 
-
-
         if let Some(s) = self.mate_distance(&mut n) {
             return Ok((s, Event::MateDistSuccess));
         }
+
+
+
 
         if n.is_qs() {
             Metrics::incr_node(&n, Event::NodeLeafQs);
@@ -430,7 +433,7 @@ impl Algo {
         // aspiration search fails dont get stored
         if score > -Score::INFINITY && score < Score::INFINITY {
             let entry = TtNode {
-                score,
+                score: score.as_tt_score(n.ply),
                 depth,
                 nt,
                 bm: bm.unwrap_or_default(),

@@ -113,23 +113,24 @@ impl Algo {
         if self.qs.probe_tt {
             Metrics::incr_node(&n, Event::QsTtProbe);
             if let Some(tt) = self.tt.probe_by_hash(bd.hash()) {
-                debug_assert!(tt.score.is_finite());
+                let score = tt.score.as_score(n.ply);
+                debug_assert!(score.is_finite());
                 Metrics::incr_node(&n, Event::QsTtHit);
                 match tt.nt {
                     NodeType::ExactPv => {
-                        return tt.score;
+                        return score;
                     }
                     NodeType::UpperAll => {
-                        if tt.score <= n.alpha {
-                            return tt.score;
+                        if score <= n.alpha {
+                            return score;
                         };
-                        pat = pat.min(tt.score)
+                        pat = pat.min(score)
                     }
                     NodeType::LowerCut => {
-                        if tt.score >= n.beta {
-                            return tt.score;
+                        if score >= n.beta {
+                            return score;
                         };
-                        pat = pat.max(tt.score);
+                        pat = pat.max(score);
                     }
                     NodeType::Unused => unreachable!(),
                 }

@@ -146,7 +146,6 @@ mod tests {
     use crate::search::razor::Razor;
     use crate::search::restrictions::Restrictions;
     use crate::search::search_explainer::Explainer;
-    use crate::search::searchstats::*;
     use crate::tags::*;
     use crate::piece::*;
     use crate::variation::*;
@@ -176,8 +175,6 @@ mod tests {
         assert_eq!(size_of::<Variation>(), 24, "Variation");
         assert_eq!(size_of::<MoveList>(), 876, "MoveList");
         assert_eq!(size_of::<Position>(), 216, "Position");
-        assert_eq!(size_of::<NodeStats>(), 360, "NodeStats");
-        assert_eq!(size_of::<SearchStats>(), 848, "SearchStats");
         assert_eq!(size_of::<PreCalc>(), 76808, "PreCalc");
         assert_eq!(size_of::<Hasher>(), 7296, "Hasher");
         assert_eq!(size_of::<Algo>(), 8552, "Algo");
@@ -200,7 +197,6 @@ mod tests {
         assert_eq!(size_of::<Razor>(), 28, "Razor");
         assert_eq!(size_of::<Recognizer>(), 12, "Recognizer");
         assert_eq!(size_of::<Aspiration>(), 24, "Aspiration");
-        assert_eq!(size_of::<SearchStats>(), 848, "SearchStats");
         assert_eq!(size_of::<PvTable>(), 32, "PvTable");
         assert_eq!(size_of::<Metrics>(), 92488, "Metrics");
     }

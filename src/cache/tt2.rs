@@ -10,35 +10,58 @@ use crate::eval::score::Score;
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
 use crate::mv::Move;
-use crate::search::node::{Counter, Timing};
 use crate::piece::{Hash, Piece, Ply};
+use crate::search::node::{Counter, Timing};
 use crate::variation::Variation;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::sync::Arc;
 
-#[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct TtNode {
-    pub score: Score,
+    pub score: TtScore,
     pub depth: Ply,
     pub nt: NodeType,
     pub bm: Move,
 }
 
+/// TtScore has mate scores relative to current ply, NOT to root board
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub struct TtScore(Score);
+
 impl Score {
+    #[inline]
+    pub fn as_tt_score(&self, ply: Ply) -> TtScore {
+        TtScore(match *self {
+            s if s >= Score::we_win_in(0) => Score::we_win_in(self.ply_win() - ply),
+            s if s <= Score::we_lose_in(0) => Score::we_lose_in(self.ply_loss() - ply),
+            _ => *self
+        })
+    }
+}
+
+impl TtScore {
+    #[inline]
+    pub fn as_score(&self, ply: Ply) -> Score {
+        match self.0 {
+            s if s >= Score::we_win_in(0) => Score::we_win_in(s.ply_win() + ply),
+            s if s <= Score::we_lose_in(0) => Score::we_lose_in(s.ply_loss() + ply),
+            _ => self.0
+        }
+    }
     pub fn pack_16bits(&self) -> u64 {
-        let bytes = self.as_i16().to_le_bytes();
+        let bytes = self.0.as_i16().to_le_bytes();
         u64::from_le_bytes([bytes[0], bytes[1], 0, 0, 0, 0, 0, 0])
     }
 
-    pub fn unpack_16bits(bits: u64) -> Score {
+    pub fn unpack_16bits(bits: u64) -> TtScore {
         // if bits == 0 {
         //     return -Score::INFINITY;
         // }
 
         let bytes = bits.to_le_bytes();
         let int = i16::from_le_bytes([bytes[0], bytes[1]]);
-        Score::from_cp(int as i32)
+        TtScore(Score::from_cp(int as i32))
     }
 }
 
@@ -95,9 +118,7 @@ impl Move {
                 Move::new_quiet(mover, from, to)
             } else if promo == Piece::None {
                 if is_pawn_double_push {
-                    let ep = PreCalc::default()
-                        .strictly_between(from, to)
-                        .square();
+                    let ep = PreCalc::default().strictly_between(from, to).square();
                     Move::new_double_push(from, to, ep)
                 } else {
                     Move::new_quiet(Piece::Pawn, from, to)
@@ -167,7 +188,7 @@ impl TtNode {
     pub fn unpack(bits: u64) -> (TtNode, u8) {
         let draft = (bits >> 8) & 255;
         let node_type = NodeType::unpack_2bits((bits >> 16) & 3);
-        let score = Score::unpack_16bits((bits >> 18) & ((2 << 16) - 1));
+        let score = TtScore::unpack_16bits((bits >> 18) & ((2 << 16) - 1));
         let bm = Move::unpack_20bits(bits >> 34);
         (
             TtNode {
@@ -188,7 +209,7 @@ impl fmt::Display for TtNode {
                 f,
                 "{:>6} {:>10} {:>3} {:>2}",
                 self.bm.uci(),
-                self.score.to_string(),
+                self.score.0.to_string(),
                 self.depth,
                 self.nt
             )
@@ -197,7 +218,7 @@ impl fmt::Display for TtNode {
                 f,
                 "{} scoring {} draft {} type {}",
                 self.bm.uci(),
-                self.score,
+                self.score.0,
                 self.depth,
                 self.nt
             )
@@ -463,9 +484,9 @@ impl TranspositionTable2 {
             "Cannot store unused nodes in tt"
         );
         debug_assert!(
-            new_node.score.is_finite(),
+            new_node.score.0.is_finite(),
             "Cannot store score {} in tt\n{}",
-            new_node.score,
+            new_node.score.0,
             new_node
         );
 
@@ -562,7 +583,9 @@ impl TranspositionTable2 {
             if self.current_age == old_age && old_node.nt == NodeType::ExactPv {
                 Metrics::incr(Counter::TtPvOverwrite);
             }
-            debug_assert!(new_node.score > -Score::INFINITY && new_node.score < Score::INFINITY);
+            debug_assert!(
+                new_node.score.0 > -Score::INFINITY && new_node.score.0 < Score::INFINITY
+            );
             debug_assert!(
                 new_node.nt != NodeType::ExactPv || !new_node.bm.is_null(),
                 "bm is null at {:?} mv {:?}",
@@ -600,7 +623,7 @@ impl TranspositionTable2 {
                 return None;
             }
             debug_assert!(
-                tt_node.score.is_finite(),
+                tt_node.score.0.is_finite(),
                 "tt_node {}\nboard {:#}\nply: {}\ndepth: {}",
                 tt_node,
                 board,
@@ -640,7 +663,7 @@ impl TranspositionTable2 {
         let mut var = Variation::new();
         let nodes = self.extract_nodes(b);
         nodes.iter().for_each(|n| var.push(n.bm));
-        let score = nodes.first().map(|n| n.score);
+        let score = nodes.first().map(|n| n.score.0); // score at root is same as WrtRoot
         (var, score)
     }
 
@@ -701,15 +724,15 @@ mod tests {
     use crate::catalog::*;
     use crate::comms::uci::*;
     use crate::globals::constants::*;
+    use crate::piece::*;
     use crate::search::algo::*;
     use crate::search::engine::Engine;
     use crate::search::timecontrol::*;
-    use crate::piece::*;
     use test_log::test;
 
     fn entry123() -> TtNode {
         TtNode {
-            score: Score::from_cp(300),
+            score: TtScore(Score::from_cp(300)),
             depth: 2,
             nt: NodeType::ExactPv,
             bm: Move::new_quiet(Piece::Pawn, b7.square(), b6.square()),
@@ -718,7 +741,7 @@ mod tests {
 
     fn entry456() -> TtNode {
         TtNode {
-            score: Score::from_cp(200),
+            score: TtScore(Score::from_cp(200)),
             depth: 3,
             nt: NodeType::ExactPv,
             bm: Move::new_quiet(Piece::Pawn, a2.square(), a3.square()),
@@ -727,7 +750,7 @@ mod tests {
 
     fn entry456b() -> TtNode {
         TtNode {
-            score: Score::from_cp(201),
+            score: TtScore(Score::from_cp(201)),
             depth: 4,
             nt: NodeType::ExactPv,
             bm: Move::new(
@@ -740,6 +763,18 @@ mod tests {
                 CastlingRights::NONE,
             ),
         }
+    }
+
+    #[test]
+    fn test_tt_score() {
+        assert_eq!(
+            Score::we_lose_in(5).as_tt_score(3).as_score(3),
+            Score::we_lose_in(5)
+        );
+        assert_eq!(
+            Score::we_win_in(5).as_tt_score(3).as_score(3),
+            Score::we_win_in(5)
+        );
     }
 
     #[test]

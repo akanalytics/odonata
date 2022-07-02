@@ -681,7 +681,7 @@ first_move = false
 prune_extensions = false
 prune_fw_node = true
 prune_alpha_mate = false
-prune_beta_mate = false
+prune_beta_mate = true
 max_pawn_rank = 5
 max_depth = 2
 max_depth_captures = 2
@@ -694,7 +694,8 @@ move_types_forbidden = 0
 
 [mate_dist]
 enabled = true
-
+raise_alpha = true
+reduce_beta = true
 
 [rev_fut]
 enabled = true
@@ -703,7 +704,7 @@ prune_zugzwang = false
 prune_extensions = false
 prune_fw_node = false
 prune_alpha_mate = true
-prune_beta_mate = false
+prune_beta_mate = true
 prune_eval_mate = false
 max_depth = 3
 margin1 = 90

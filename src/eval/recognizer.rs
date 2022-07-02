@@ -57,7 +57,8 @@ impl Algo {
 
         Metrics::incr_node(n, Event::TtProbeNode);
         if let Some(entry) = self.tt.probe_by_board(b, n.ply, n.depth) {
-            debug_assert!(entry.score.is_finite());
+            let score = entry.score.as_score(n.ply);
+            debug_assert!(score.is_finite());
             Metrics::incr_node(n, Event::TtHitNode);
 
             // FIXME! v33
@@ -73,32 +74,32 @@ impl Algo {
                 // if entry.draft >= draft && !(b.repetition_count().total > 1 && self.repetition.avoid_tt_on_repeats)
                 match entry.nt {
                     NodeType::ExactPv => {
-                        if entry.score >= n.beta {
+                        if score >= n.beta {
                             // self.stats.inc_node_cut(n.ply, MoveType::Hash, -1);
                             Metrics::incr_node(&n, Event::TtPv);
                             Metrics::incr_node(&n, Event::NodeInteriorCut);
                             // self.stats.inc_node_cut(n.ply, MoveType::Hash, -1);
                             // self.stats.inc_leaf_tt_nodes(n.ply);
                             self.report_refutation(n.ply);
-                            return (Some(entry.score), None);
+                            return (Some(score), None);
                         }
-                        if entry.score <= n.alpha {
+                        if score <= n.alpha {
                             Metrics::incr_node(&n, Event::TtPv);
                             Metrics::incr_node(&n, Event::NodeInteriorAll);
                             // self.stats.inc_node_all(n.ply);
                             // self.stats.inc_leaf_tt_nodes(n.ply);
-                            return (Some(entry.score), None);
+                            return (Some(score), None);
                         }
 
                         if self.tt.allow_truncated_pv
                             && !self.debug
                             && self.mte.time_sensitive()
-                            && entry.score > n.alpha
+                            && score > n.alpha
                         {
                             self.record_truncated_move(n.ply, &entry.bm);
                             // self.stats.inc_leaf_tt_nodes(n.ply);
                             Metrics::incr_node(&n, Event::TtPv);
-                            return (Some(entry.score), None);
+                            return (Some(score), None);
                         }
                         return (None, Some(entry.bm)); // else we just use the hash move for move ordering
                     }
@@ -106,14 +107,14 @@ impl Algo {
                         // previously this position raised alpha (sufficiently to cause a cut).
                         // not all child nodes were scored, so score is a lower bound
                         // FIXME: probably dont set alpha just the hinted mv and re-search the node
-                        if entry.score >= n.beta {
+                        if score >= n.beta {
                             // self.stats.inc_node_cut(n.ply, MoveType::Hash, -1);
                             // self.record_truncated_move(ply, &entry.bm);
                             // self.stats.inc_leaf_tt_nodes(n.ply);
                             self.report_refutation(n.ply);
                             Metrics::incr_node(&n, Event::TtCut);
                             Metrics::incr_node(&n, Event::NodeInteriorCut);
-                            return (Some(entry.score), None);
+                            return (Some(score), None);
                         }
                         // if self.tt.allow_truncated_pv && entry.score > n.alpha {
                         //     // nt = NodeType::Pv;
@@ -129,12 +130,12 @@ impl Algo {
                     NodeType::UpperAll => {
                         // previously this position didnt raise alpha, the score is an upper bound
                         // if the score is still below alpha, this too is an ALL node
-                        if entry.score <= n.alpha {
+                        if score <= n.alpha {
                             // self.record_truncated_move(ply, &entry.bm);
                             // self.stats.inc_leaf_tt_nodes(n.ply);
                             Metrics::incr_node(&n, Event::TtAll);
                             Metrics::incr_node(&n, Event::NodeInteriorAll);
-                            return (Some(entry.score), None);
+                            return (Some(score), None);
                         }
                     }
                     NodeType::Unused => unreachable!(),

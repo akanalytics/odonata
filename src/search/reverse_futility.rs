@@ -68,13 +68,19 @@ impl Algo {
             return None;
         }
 
-        if !self.rev_fut.prune_eval_mate && eval.is_mate()
-            || !self.rev_fut.prune_alpha_mate && n.alpha.is_mate()
-            || !self.rev_fut.prune_beta_mate && n.beta.is_mate()
-        {
-            Metrics::incr_node(&n, Event::RevFutDeclineMateBound);
+        if !self.rev_fut.prune_eval_mate && eval.is_mate() {
+            Metrics::incr_node(&n, Event::RevFutDeclineEvalMateBound);
             return None;
         }
+        if !self.rev_fut.prune_alpha_mate && n.alpha.is_mate() {
+            Metrics::incr_node(&n, Event::RevFutDeclineAlphaMateBound);
+            return None;
+        }
+        if !self.rev_fut.prune_beta_mate && n.beta.is_mate() {
+            Metrics::incr_node(&n, Event::RevFutDeclineBetaMateBound);
+            return None;
+        }
+
         if !self.rev_fut.prune_fw_node && n.is_fw() {
             Metrics::incr_node(&n, Event::RevFutDeclineFwWindow);
             return None;

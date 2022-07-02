@@ -386,12 +386,14 @@ mod tests {
     #[test]
     fn example_search() {
         let pos = Position::parse_epd(
-            "2rqr2k/pp4bp/2np1pp1/5b2/2BP4/2N1B3/PP3PPP/2RQR1K1 w - - 10 17 acd:15;",
+            "k7/8/8/4b3/8/4p3/8/K6N w - - 0 23"
+            // "2rqr2k/pp4bp/2np1pp1/5b2/2BP4/2N1B3/PP3PPP/2RQR1K1 w - - 10 17 acd:15;",
         )
         .unwrap();
+        
         let mut engine = Engine::new();
         engine.set_position(pos);
-        engine.algo.set_timing_method(TimeControl::Depth(14));
+        engine.algo.set_timing_method(TimeControl::Depth(15));
         // use crate::Color;
         // engine.algo.set_timing_method(TimeControl::RemainingTime {
         //     our_color: Color::White,

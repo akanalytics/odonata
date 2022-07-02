@@ -10,6 +10,8 @@ use std::fmt;
 #[serde(default, deny_unknown_fields)]
 pub struct MateDistance {
     pub enabled: bool,
+    pub raise_alpha: bool,
+    pub reduce_beta: bool,
 }
 
 impl Component for MateDistance {
@@ -24,6 +26,8 @@ impl Default for MateDistance {
     fn default() -> Self {
         MateDistance {
             enabled: true,
+            raise_alpha: true,
+            reduce_beta: true,
         }
     }
 }
@@ -31,22 +35,22 @@ impl Default for MateDistance {
 impl Algo {
     #[inline]
     pub fn mate_distance(&mut self, n: &mut Node) -> Option<Score> {
-        if !self.rev_fut.enabled {
+        if !self.mate_dist.enabled {
             return None;
         }
 
         Metrics::incr_node(n, Event::MateDistConsider);
+        if self.mate_dist.raise_alpha {
+            n.alpha = std::cmp::max(n.alpha, Score::we_lose_in(n.ply));
+        }
+        if self.mate_dist.reduce_beta {
+            n.beta = std::cmp::min(n.beta, Score::we_win_in(n.ply));
+        }
 
-
-        n.alpha = std::cmp::max(n.alpha, Score::we_lose_in(n.ply));
-        //  win_in(3) > win_in(5), so beta cant be lowered  
-        // on an increase in ply
-        // n.beta = std::cmp::min(n.beta, Score::we_win_in(n.ply));
         if n.alpha >= n.beta {
             Metrics::incr_node(&n, Event::MateDistSuccess);
             return Some(n.alpha);
         }
-
         None
     }
 }

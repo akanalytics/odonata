@@ -181,7 +181,7 @@ impl Algo {
                 )?;
                 if self.razor.store_tt {
                     let entry = TtNode {
-                        score: score.clamp_score(),
+                        score: score.clamp_score().as_tt_score(n.ply),
                         depth: 1,
                         nt: NodeType::UpperAll,
                         bm: Move::NULL_MOVE,

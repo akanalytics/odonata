@@ -207,7 +207,9 @@ pub enum Event {
     #[strum(message = "Prune node: Rev Fut Prune")]
     RevFutConsider,
     RevFutDeclineExt,
-    RevFutDeclineMateBound,
+    RevFutDeclineAlphaMateBound,
+    RevFutDeclineBetaMateBound,
+    RevFutDeclineEvalMateBound,
     RevFutDeclineZugzwang,
     RevFutDeclineInCheck,
     RevFutDeclineMaxDepth,

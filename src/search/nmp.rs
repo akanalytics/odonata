@@ -201,7 +201,7 @@ impl Algo {
                 // score is clamped as you cant mate on a null move. Note reduced depth too
                 Metrics::incr_node(n, Event::TtStoreNode);
                 let entry = TtNode {
-                    score: child_score.clamp_score(),
+                    score: child_score.clamp_score().as_tt_score(n.ply),
                     depth: reduced_depth + 1,
                     nt: NodeType::LowerCut,
                     bm: Move::NULL_MOVE,
