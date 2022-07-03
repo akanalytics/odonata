@@ -5,10 +5,9 @@ use odonata::bits::bb_sliders::*;
 use odonata::bits::bitboard::*;
 use odonata::bits::precalc::*;
 use odonata::bits::square::*;
-use odonata::types::boardcalcs::*;
-use odonata::types::makemove::*;
-use odonata::types::rules::*;
-use odonata::types::*;
+use odonata::board::Board;
+use odonata::board::BoardCalcs;
+use odonata::board::rules::Rules;
 use odonata::bound::NodeType;
 use odonata::cache::hasher::*;
 use odonata::cache::tt2::*;
@@ -21,9 +20,9 @@ use odonata::globals::constants::*;
 use odonata::infra::component::*;
 use odonata::movelist::*;
 use odonata::mv::*;
+use odonata::other::pvtable::PvTable;
 use odonata::perft::Perft;
 use odonata::phaser::Phaser;
-use odonata::pvtable::*;
 use odonata::search::algo::Algo;
 use odonata::search::move_orderer::*;
 use odonata::search::node::Node;
@@ -433,7 +432,7 @@ fn board_calcs(c: &mut Criterion) {
 
     group.bench_function("tt_store", |b| {
         let entry = TtNode {
-            score: Score::from_cp(100),
+            score: Score::from_cp(100).as_tt_score(0),
             depth: 1,
             nt: NodeType::ExactPv,
             bm: Move::NULL_MOVE,
