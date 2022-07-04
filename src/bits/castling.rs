@@ -1,3 +1,4 @@
+use crate::PreCalc;
 use crate::bits::bitboard::Bitboard;
 use crate::bits::square::Square;
 use crate::piece::Color;
@@ -123,12 +124,12 @@ impl CastlingRights {
     }
 
     #[inline]
-    pub fn king_side_squares(c: Color) -> Bitboard {
+    pub fn king_side_move_squares(c: Color) -> Bitboard {
         c.chooser_wb(Bitboard::F1.or(Bitboard::G1), Bitboard::F8.or(Bitboard::G8))
     }
 
     #[inline]
-    pub fn queen_side_squares(c: Color) -> Bitboard {
+    pub fn queen_side_move_squares(c: Color) -> Bitboard {
         c.chooser_wb(
             Bitboard::D1.or(Bitboard::C1).or(Bitboard::B1),
             Bitboard::D8.or(Bitboard::C8).or(Bitboard::B8),
@@ -141,13 +142,19 @@ impl CastlingRights {
             .or(Bitboard::A8.or(Bitboard::H1.or(Bitboard::H8.or(Bitboard::E1.or(Bitboard::E8)))))
     }
 
+
+    #[inline]
+    pub fn is_castling(from: Square, to: Square) -> bool {
+        PreCalc::default().chebyshev_distance(from, to) > 1
+    }
+
     #[inline]
     pub fn from_king_move(to: Square) -> CastlingRights {
-        match to.as_bb() {
-            Bitboard::G1 => CastlingRights::WHITE_QUEEN,
-            Bitboard::C1 => CastlingRights::WHITE_QUEEN,
-            Bitboard::G8 => CastlingRights::BLACK_KING,
-            Bitboard::C8 => CastlingRights::BLACK_KING,
+        match to {
+            Square::G1 => CastlingRights::WHITE_QUEEN,
+            Square::C1 => CastlingRights::WHITE_QUEEN,
+            Square::G8 => CastlingRights::BLACK_KING,
+            Square::C8 => CastlingRights::BLACK_KING,
             _ => {
                 unreachable!("king move-to for castling");
             }

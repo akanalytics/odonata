@@ -4,7 +4,7 @@ use crate::board::Board;
 use crate::bound::NodeType;
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
-use crate::mv::Move;
+use crate::mv::MoveDetail;
 use crate::search::algo::Algo;
 use crate::search::node::{Event, Node};
 use crate::piece::Ply;
@@ -45,7 +45,7 @@ impl fmt::Display for Recognizer {
 
 impl Algo {
     #[inline]
-    pub fn lookup(&mut self, b: &mut Board, n: &mut Node) -> (Option<Score>, Option<Move>) {
+    pub fn lookup(&mut self, b: &mut Board, n: &mut Node) -> (Option<Score>, Option<MoveDetail>) {
         if n.ply == 0 {
             return (None, None);
         }
@@ -156,7 +156,7 @@ impl Algo {
     }
 
     #[inline]
-    pub fn wdl_detection(&mut self, b: &Board, n: &mut Node) -> (Option<Score>, Option<Move>) {
+    pub fn wdl_detection(&mut self, b: &Board, n: &mut Node) -> (Option<Score>, Option<MoveDetail>) {
         if !self.recognizer.enabled || n.depth < self.recognizer.min_depth || n.ply == 0 {
             return (None, None);
         }

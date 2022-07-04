@@ -1,7 +1,7 @@
 use crate::board::Board;
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
-use crate::mv::Move;
+use crate::mv::MoveDetail;
 use crate::piece::{MoveType, Ply};
 use crate::search::node::Node;
 use crate::Algo;
@@ -72,7 +72,7 @@ impl Algo {
     pub fn is_quiet(
         &mut self,
         before: &Board,
-        mv: Move,
+        mv: MoveDetail,
         stage: MoveType,
         after: &Board,
         n: &Node,
@@ -128,7 +128,7 @@ impl Algo {
         is_quiet: bool,
         quiets: i32,
         n: &Node,
-        mv: Move,
+        mv: MoveDetail,
     ) -> bool {
         if !self.lmp.enabled || !is_quiet {
             return false;

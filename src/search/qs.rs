@@ -5,7 +5,7 @@ use crate::eval::score::{Score, ToScore};
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
 use crate::movelist::MoveList;
-use crate::mv::Move;
+use crate::mv::MoveDetail;
 use crate::piece::Ply;
 use crate::search::algo::Algo;
 use crate::search::node::Node;
@@ -82,7 +82,7 @@ impl Algo {
     // if the move results in a position which after quiesce, is potentially a mate,
     // we should not return a mate score, as only captures have been considered,
     // and a mate score might cut a genuine mate score elsewhere
-    pub fn qs(&mut self, mut n: Node, bd: &mut Board, lm: Option<Move>) -> Score {
+    pub fn qs(&mut self, mut n: Node, bd: &mut Board, lm: Option<MoveDetail>) -> Score {
         debug_assert!(n.alpha < n.beta, "{n}");
         debug_assert!(n.ply >= 0);
         debug_assert!(n.depth <= 0);
@@ -109,7 +109,7 @@ impl Algo {
         let mut pat = bd.static_eval(&self.eval);
         Metrics::profile(t, Timing::TimingQsEval);
 
-        let mut hm = Move::NULL_MOVE;
+        let mut hm = MoveDetail::NULL_MOVE;
         if self.qs.probe_tt {
             Metrics::incr_node(&n, Event::QsTtProbe);
             if let Some(tt) = self.tt.probe_by_hash(bd.hash()) {
@@ -146,11 +146,11 @@ impl Algo {
         if !in_check {
             if pat >= n.beta {
                 Metrics::incr_node(&n, Event::QsStandingPatPrune);
-                Self::trace(n, pat, Move::NULL_MOVE, "standing pat");
+                Self::trace(n, pat, MoveDetail::NULL_MOVE, "standing pat");
                 return pat.clamp_score();
             }
             if pat > n.alpha {
-                Self::trace(n, pat, Move::NULL_MOVE, "alpha raised");
+                Self::trace(n, pat, MoveDetail::NULL_MOVE, "alpha raised");
                 n.alpha = pat;
             }
             // coarse delta prune - where margin bigger than any possible move
@@ -170,9 +170,9 @@ impl Algo {
         }
 
         let moves = bd.legal_moves();
-        let capture_only = |mv: &&Move| in_check || mv.is_capture();
-        let incl_promo = |mv: &&Move| in_check || mv.is_capture() || mv.is_promo();
-        let some_promos = |mv: &&Move| {
+        let capture_only = |mv: &&MoveDetail| in_check || mv.is_capture();
+        let incl_promo = |mv: &&MoveDetail| in_check || mv.is_capture() || mv.is_promo();
+        let some_promos = |mv: &&MoveDetail| {
             in_check
                 || mv.is_capture()
                 || mv.is_promo() && Some(mv.promo_piece()) == self.qs.promo_piece
@@ -188,7 +188,7 @@ impl Algo {
         };
 
         moves.sort_by_cached_key(|m| {
-            Move::mvv_lva_score(m)
+            MoveDetail::mvv_lva_score(m)
                 + if let Some(lm) = lm {
                     if m.to() == lm.to() {
                         self.qs.recapture_score
@@ -286,7 +286,7 @@ impl Algo {
 
     #[inline]
     #[allow(unused_variables)]
-    fn trace(n: Node, eval: Score, mv: Move, comment: &str) {
+    fn trace(n: Node, eval: Score, mv: MoveDetail, comment: &str) {
         // warn!("{:<25}  {:<6}  {mv:<5}  {comment}", n.to_string(), eval.to_string());
     }
 }

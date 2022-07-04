@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::eval::score::Score;
-use crate::mv::Move;
+use crate::mv::MoveDetail;
 use crate::search::node::Node;
 use crate::piece::{Color, Ply};
 use std::fmt;
@@ -21,7 +21,7 @@ impl Board {
 }
 
 impl Debug {
-    fn append_move(&mut self, mv: &Move) -> &mut Debug {
+    fn append_move(&mut self, mv: &MoveDetail) -> &mut Debug {
         self.items.push(self.board.to_san(mv));
         self
     }
@@ -67,10 +67,10 @@ impl fmt::Display for Debug {
     }
 }
 
-impl std::ops::Add<&Move> for Debug {
+impl std::ops::Add<&MoveDetail> for Debug {
     type Output = Debug;
 
-    fn add(mut self, other: &Move) -> Debug {
+    fn add(mut self, other: &MoveDetail) -> Debug {
         self.append_move(other).clone()
     }
 }

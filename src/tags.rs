@@ -1,7 +1,7 @@
 use crate::bits::bitboard::Bitboard;
 use crate::board::Board;
 use crate::movelist::MoveList;
-use crate::mv::Move;
+use crate::mv::MoveDetail;
 use crate::piece::Ply;
 use crate::utils::Formatting;
 use crate::variation::Variation;
@@ -47,11 +47,11 @@ pub enum Tag {
     DirectMate(u32),
     FullMoveNumber(u32),
     HalfMoveClock(u32),
-    PredictedMove(Move),
+    PredictedMove(MoveDetail),
     RepititionCount(u32),
     Result(String),
     NoOp(String),
-    SuppliedMove(Move),
+    SuppliedMove(MoveDetail),
     SuppliedVariation(Variation),
     Squares(Bitboard),
     Timestamp(String, String),

@@ -9,7 +9,7 @@ use crate::cache::lockless_hashmap::{Bucket, SharedTable};
 use crate::eval::score::Score;
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
-use crate::mv::Move;
+use crate::mv::MoveDetail;
 use crate::piece::{Hash, Piece, Ply};
 use crate::search::node::{Counter, Timing};
 use crate::variation::Variation;
@@ -22,7 +22,7 @@ pub struct TtNode {
     pub score: TtScore,
     pub depth: Ply,
     pub nt: NodeType,
-    pub bm: Move,
+    pub bm: MoveDetail,
 }
 
 /// TtScore has mate scores relative to current ply, NOT to root board
@@ -65,7 +65,7 @@ impl TtScore {
     }
 }
 
-impl Move {
+impl MoveDetail {
     pub fn pack_20bits(&self) -> u64 {
         if self.is_null() {
             return 0;
@@ -91,9 +91,9 @@ impl Move {
         bits
     }
 
-    pub fn unpack_20bits(bits: u64) -> Move {
+    pub fn unpack_20bits(bits: u64) -> MoveDetail {
         if bits == 0 {
-            return Move::NULL_MOVE;
+            return MoveDetail::NULL_MOVE;
         }
         let capture = Piece::from_index((bits >> 12) as usize & 7);
         let mover = Piece::from_index((bits >> 15) as usize & 7);
@@ -111,30 +111,30 @@ impl Move {
             from = Square::from_xy(file as u32, rank);
         }
 
-        if mover == Piece::King && PreCalc::default().chebyshev_distance(from, to) > 1 {
-            Move::new_castle(from, to, CastlingRights::from_king_move(to))
+        if mover == Piece::King && CastlingRights::is_castling(from, to) {
+            MoveDetail::new_castle(from, to, CastlingRights::from_king_move(to))
         } else if capture == Piece::None {
             if mover != Piece::Pawn {
-                Move::new_quiet(mover, from, to)
+                MoveDetail::new_quiet(mover, from, to)
             } else if promo == Piece::None {
                 if is_pawn_double_push {
                     let ep = PreCalc::default().strictly_between(from, to).square();
-                    Move::new_double_push(from, to, ep)
+                    MoveDetail::new_double_push(from, to, ep)
                 } else {
-                    Move::new_quiet(Piece::Pawn, from, to)
+                    MoveDetail::new_quiet(Piece::Pawn, from, to)
                 }
             } else {
-                Move::new_promo(from, to, promo)
+                MoveDetail::new_promo(from, to, promo)
             }
         } else if mover != Piece::Pawn {
-            Move::new_capture(mover, from, to, capture)
+            MoveDetail::new_capture(mover, from, to, capture)
         } else if is_ep_capture {
             let capture_sq = Square::from_xy(to.file_index() as u32, from.rank_index() as u32);
-            Move::new_ep_capture(from, to, capture_sq)
+            MoveDetail::new_ep_capture(from, to, capture_sq)
         } else if promo != Piece::None {
-            Move::new_promo_capture(from, to, promo, capture)
+            MoveDetail::new_promo_capture(from, to, promo, capture)
         } else {
-            Move::new_capture(mover, from, to, capture)
+            MoveDetail::new_capture(mover, from, to, capture)
         }
     }
 }
@@ -189,7 +189,7 @@ impl TtNode {
         let draft = (bits >> 8) & 255;
         let node_type = NodeType::unpack_2bits((bits >> 16) & 3);
         let score = TtScore::unpack_16bits((bits >> 18) & ((2 << 16) - 1));
-        let bm = Move::unpack_20bits(bits >> 34);
+        let bm = MoveDetail::unpack_20bits(bits >> 34);
         (
             TtNode {
                 depth: draft as i32,
@@ -735,7 +735,7 @@ mod tests {
             score: TtScore(Score::from_cp(300)),
             depth: 2,
             nt: NodeType::ExactPv,
-            bm: Move::new_quiet(Piece::Pawn, b7.square(), b6.square()),
+            bm: MoveDetail::new_quiet(Piece::Pawn, b7.square(), b6.square()),
         }
     }
 
@@ -744,7 +744,7 @@ mod tests {
             score: TtScore(Score::from_cp(200)),
             depth: 3,
             nt: NodeType::ExactPv,
-            bm: Move::new_quiet(Piece::Pawn, a2.square(), a3.square()),
+            bm: MoveDetail::new_quiet(Piece::Pawn, a2.square(), a3.square()),
         }
     }
 
@@ -753,7 +753,7 @@ mod tests {
             score: TtScore(Score::from_cp(201)),
             depth: 4,
             nt: NodeType::ExactPv,
-            bm: Move::new(
+            bm: MoveDetail::new(
                 a1.square(),
                 a2.square(),
                 Square::null(),

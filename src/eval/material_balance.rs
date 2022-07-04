@@ -1,7 +1,7 @@
 use crate::domain::material::Material;
 use crate::eval::weight::Weight;
 use crate::infra::component::Component;
-use crate::mv::Move;
+use crate::mv::MoveDetail;
 use crate::piece::{Color, Piece, ScoreWdl};
 use anyhow::{anyhow, bail, Result};
 use serde::{Deserialize, Serialize};
@@ -271,7 +271,7 @@ impl MaterialBalance {
     // }
 
     #[inline]
-    pub fn eval_move_material(&self, mv: &Move) -> Weight {
+    pub fn eval_move_material(&self, mv: &MoveDetail) -> Weight {
         let mut score = Weight::zero();
         if mv.is_capture() {
             score += self.piece_weights[mv.capture_piece()];

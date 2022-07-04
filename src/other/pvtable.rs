@@ -1,4 +1,4 @@
-use crate::mv::Move;
+use crate::mv::MoveDetail;
 use crate::variation::Variation;
 
 use crate::piece::{Ply, MAX_PLY};
@@ -6,7 +6,7 @@ use std::fmt;
 
 #[derive(Debug, Clone)]
 pub struct PvTable {
-    matrix: Vec<Vec<Move>>,
+    matrix: Vec<Vec<MoveDetail>>,
     size: usize,
 }
 
@@ -48,16 +48,16 @@ impl PvTable {
             size: 0,
         };
         for (r, row) in pvc.matrix.iter_mut().enumerate() {
-            row.resize_with(MAX_PLY as usize - r as usize, Move::new_null)
+            row.resize_with(MAX_PLY as usize - r as usize, MoveDetail::new_null)
             // row.extend( vec![Move::new(); r+1] );
         }
         pvc
     }
-    pub fn set(&mut self, ply: Ply, m: &Move, terminal_move: bool) {
+    pub fn set(&mut self, ply: Ply, m: &MoveDetail, terminal_move: bool) {
         let p = ply as usize;
         self.matrix[p][0] = *m;
         if terminal_move {
-            self.matrix[p][1..].fill(Move::NULL_MOVE);
+            self.matrix[p][1..].fill(MoveDetail::NULL_MOVE);
         }
         if self.size <= p {
             self.size = p + 1;
@@ -123,9 +123,9 @@ mod tests {
     #[test]
     fn test_pv_table() {
         let mut pvc = PvTable::default();
-        let a1h1 = Move::parse_uci(Piece::Bishop, "a1h1").unwrap();
-        let b1h1 = Move::parse_uci(Piece::Bishop, "b1h1").unwrap();
-        let c1h1 = Move::parse_uci(Piece::Bishop, "c1h1").unwrap();
+        let a1h1 = MoveDetail::parse_uci(Piece::Bishop, "a1h1").unwrap();
+        let b1h1 = MoveDetail::parse_uci(Piece::Bishop, "b1h1").unwrap();
+        let c1h1 = MoveDetail::parse_uci(Piece::Bishop, "c1h1").unwrap();
         pvc.set(0, &a1h1, false);
         pvc.set(1, &b1h1, false);
         assert_eq!(
@@ -139,18 +139,18 @@ mod tests {
         println!("{}", pvc);
         assert_eq!(pvc.matrix[0][0], a1h1);
         assert_eq!(pvc.matrix[0][1], b1h1);
-        assert_eq!(pvc.matrix[0][2], Move::NULL_MOVE);
+        assert_eq!(pvc.matrix[0][2], MoveDetail::NULL_MOVE);
 
         assert_eq!(pvc.matrix[1][0], b1h1);
         assert_eq!(pvc.matrix[2][0], c1h1);
 
-        let c1h2 = Move::parse_uci(Piece::Bishop, "c1h2").unwrap();
+        let c1h2 = MoveDetail::parse_uci(Piece::Bishop, "c1h2").unwrap();
         pvc.propagate_from(2);
         pvc.set(2, &c1h2, false);
         println!("{}", pvc);
         assert_eq!(pvc.matrix[0][0], a1h1);
         assert_eq!(pvc.matrix[0][1], b1h1);
-        assert_eq!(pvc.matrix[0][2], Move::NULL_MOVE);
+        assert_eq!(pvc.matrix[0][2], MoveDetail::NULL_MOVE);
 
         assert_eq!(pvc.matrix[1][0], b1h1);
         assert_eq!(pvc.matrix[1][1], c1h1);
@@ -162,7 +162,7 @@ mod tests {
         // set a truncated pv
         pvc.set(1, &c1h2, true);
         assert_eq!(pvc.matrix[1][0], c1h2);
-        assert_eq!(pvc.matrix[1][1], Move::NULL_MOVE);
+        assert_eq!(pvc.matrix[1][1], MoveDetail::NULL_MOVE);
         pvc.propagate_from(1);
         pvc.set(0, &a1h1, false);
         assert_eq!(pvc.extract_pv().len(), 2);

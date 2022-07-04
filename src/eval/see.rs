@@ -2,7 +2,7 @@ use crate::board::BoardCalcs;
 use crate::board::Board;
 use crate::eval::material_balance::MaterialBalance;
 use crate::infra::component::Component;
-use crate::mv::Move;
+use crate::mv::MoveDetail;
 use crate::{Bitboard, Piece, PreCalc};
 use serde::{Deserialize, Serialize};
 use std::cmp;
@@ -36,7 +36,7 @@ impl See {
     //
     // using n=b=325 rather than n=325, b=350 gives +6 Elo
     //
-    pub fn eval_move_see(&self, board: &Board, mv: Move) -> i32 {
+    pub fn eval_move_see(&self, board: &Board, mv: MoveDetail) -> i32 {
         debug_assert!(!mv.is_null());
         debug_assert!(mv.is_capture());
         debug_assert!(board.us().contains(mv.from().as_bb()));

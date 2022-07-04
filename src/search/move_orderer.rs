@@ -3,7 +3,7 @@ use crate::board::Board;
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
 use crate::movelist::MoveList;
-use crate::mv::Move;
+use crate::mv::MoveDetail;
 use crate::phaser::Phase;
 use crate::search::algo::Algo;
 use crate::search::stack::Stack;
@@ -203,12 +203,12 @@ impl MoveOrderer {
     pub fn quiet_score(
         &self,
         n: &Node,
-        mv: Move,
+        mv: MoveDetail,
         algo: &Algo,
         phase: Phase,
         c: Color,
         b: &Board,
-        parent: Move,
+        parent: MoveDetail,
     ) -> i32 {
         let mut score = 0.0;
         if mv.is_promo() {
@@ -302,14 +302,14 @@ impl MoveOrderer {
 }
 
 impl Algo {
-    pub fn order_moves(&mut self, ply: Ply, movelist: &mut MoveList, tt_mv: &Option<Move>) {
+    pub fn order_moves(&mut self, ply: Ply, movelist: &mut MoveList, tt_mv: &Option<MoveDetail>) {
         if !self.move_orderer.enabled {
             return;
         }
 
         if self.move_orderer.mvv_lva {
             // movelist.sort_unstable_by_key(|m| -m.mvv_lva_score() );
-            movelist.sort_unstable_by_key(Move::mvv_lva_score);
+            movelist.sort_unstable_by_key(MoveDetail::mvv_lva_score);
             movelist.reverse();
             // if self.move_orderer.thread == 1 && movelist.len() >= 2 {
             //     movelist.swap(0, 1);
@@ -379,13 +379,13 @@ pub struct OrderedMoveList {
     all_moves: MoveList,
     bad_captures: MoveList,
     index: usize,
-    tt: Move,
-    last: Move,
+    tt: MoveDetail,
+    last: MoveDetail,
     n: Node,
 }
 
 impl MoveOrderer {
-    pub fn create_sorted_moves(&self, n: Node, b: &Board, tt: Move, last: Move) -> OrderedMoveList {
+    pub fn create_sorted_moves(&self, n: Node, b: &Board, tt: MoveDetail, last: MoveDetail) -> OrderedMoveList {
         OrderedMoveList {
             qsearch: n.is_qs(),
             is_in_check: b.is_in_check(b.color_us()),
@@ -415,7 +415,7 @@ impl OrderedMoveList {
         }
     }
 
-    pub fn next_move(&mut self, b: &Board, algo: &mut Algo) -> Option<(MoveType, Move)> {
+    pub fn next_move(&mut self, b: &Board, algo: &mut Algo) -> Option<(MoveType, MoveDetail)> {
         let t = Metrics::timing_start();
         let m = self.calc_next_move_(b, algo);
         Metrics::profile(t, Timing::TimingSortMoves);
@@ -423,7 +423,7 @@ impl OrderedMoveList {
         m
     }
 
-    fn calc_next_move_(&mut self, b: &Board, algo: &mut Algo) -> Option<(MoveType, Move)> {
+    fn calc_next_move_(&mut self, b: &Board, algo: &mut Algo) -> Option<(MoveType, MoveDetail)> {
         let move_type = self.ordering(algo)[self.stage];
         if self.index < self.moves.len() {
             if move_type == MoveType::GoodCapture || move_type == MoveType::Capture
@@ -469,7 +469,7 @@ impl OrderedMoveList {
     }
 
     #[inline]
-    fn sort_one_capture_move(i: usize, moves: &mut MoveList, last: Move) {
+    fn sort_one_capture_move(i: usize, moves: &mut MoveList, last: MoveDetail) {
         if let Some(j) = moves
             .iter()
             .enumerate()
@@ -523,10 +523,10 @@ impl OrderedMoveList {
             MoveType::GoodCaptureUpfrontSorted => {
                 all_moves
                     .iter()
-                    .filter(|&m| Move::is_capture(m))
+                    .filter(|&m| MoveDetail::is_capture(m))
                     .for_each(|&m| moves.push(m));
                 moves.sort_by_cached_key(|m| {
-                    Move::mvv_lva_score(m) + if m.to() == last.to() { 0 } else { 0 }
+                    MoveDetail::mvv_lva_score(m) + if m.to() == last.to() { 0 } else { 0 }
                 });
                 moves.reverse();
                 if algo.move_orderer.thread == 1 && moves.len() >= 2 {
@@ -537,7 +537,7 @@ impl OrderedMoveList {
             MoveType::GoodCapture => {
                 all_moves
                     .iter()
-                    .filter(|&m| Move::is_capture(m))
+                    .filter(|&m| MoveDetail::is_capture(m))
                     .for_each(|&m| moves.push(m));
             }
 
@@ -564,7 +564,7 @@ impl OrderedMoveList {
             MoveType::Promo => {
                 all_moves
                     .iter()
-                    .filter(|&m| Move::is_promo(m) && !Move::is_capture(m))
+                    .filter(|&m| MoveDetail::is_promo(m) && !MoveDetail::is_capture(m))
                     .for_each(|&m| moves.push(m));
                 // algo.order_moves(self.ply, moves, &None);
             }
@@ -573,7 +573,7 @@ impl OrderedMoveList {
                 all_moves
                     .iter()
                     .filter(|&m| {
-                        Move::is_promo(m) && m.promo_piece() == Piece::Queen && !Move::is_capture(m)
+                        MoveDetail::is_promo(m) && m.promo_piece() == Piece::Queen && !MoveDetail::is_capture(m)
                     })
                     .for_each(|&m| moves.push(m));
                 // algo.order_moves(self.ply, moves, &None);
@@ -582,7 +582,7 @@ impl OrderedMoveList {
             MoveType::QuietUnsorted => {
                 all_moves
                     .iter()
-                    .filter(|m| !Move::is_capture(m) && !Move::is_promo(m))
+                    .filter(|m| !MoveDetail::is_capture(m) && !MoveDetail::is_promo(m))
                     .for_each(|&m| moves.push(m));
                 // algo.order_moves(self.ply, moves, &None);
                 // moves.sort_unstable_by_key(Move::mvv_lva_score);
@@ -595,7 +595,7 @@ impl OrderedMoveList {
             MoveType::QuietOrPromo => {
                 all_moves
                     .iter()
-                    .filter(|&m| !Move::is_capture(m))
+                    .filter(|&m| !MoveDetail::is_capture(m))
                     .for_each(|&m| moves.push(m));
                 // algo.order_moves(self.ply, moves, &None);
                 let ph = b.phase(&algo.eval.phaser);
@@ -612,7 +612,7 @@ impl OrderedMoveList {
             MoveType::Quiet => {
                 all_moves
                     .iter()
-                    .filter(|m| !Move::is_capture(m) && !Move::is_promo(m))
+                    .filter(|m| !MoveDetail::is_capture(m) && !MoveDetail::is_promo(m))
                     .for_each(|&m| moves.push(m));
                 // algo.order_moves(self.ply, moves, &None);
                 moves.sort_by_cached_key(|&mv| {
@@ -650,9 +650,9 @@ impl OrderedMoveList {
             MoveType::Capture => {
                 all_moves
                     .iter()
-                    .filter(|m| Move::is_capture(m))
+                    .filter(|m| MoveDetail::is_capture(m))
                     .for_each(|&m| moves.push(m));
-                moves.sort_unstable_by_key(Move::mvv_lva_score);
+                moves.sort_unstable_by_key(MoveDetail::mvv_lva_score);
                 moves.reverse();
                 if algo.move_orderer.thread == 1 && moves.len() >= 2 {
                     moves.swap(0, 1);
@@ -805,7 +805,7 @@ mod tests {
 
     #[test]
     fn test_prior_pv() {
-        let a1a2 = Move::new(
+        let a1a2 = MoveDetail::new(
             a1.square(),
             a2.square(),
             Square::null(),
@@ -814,7 +814,7 @@ mod tests {
             Piece::None,
             CastlingRights::NONE,
         );
-        let a1a3 = Move::new(
+        let a1a3 = MoveDetail::new(
             a1.square(),
             a3.square(),
             Square::null(),
@@ -823,7 +823,7 @@ mod tests {
             Piece::None,
             CastlingRights::NONE,
         );
-        let a1a4 = Move::new(
+        let a1a4 = MoveDetail::new(
             a1.square(),
             a4.square(),
             Square::null(),
@@ -832,7 +832,7 @@ mod tests {
             Piece::None,
             CastlingRights::NONE,
         );
-        let b1a2 = Move::new(
+        let b1a2 = MoveDetail::new(
             b1.square(),
             a2.square(),
             Square::null(),
@@ -841,7 +841,7 @@ mod tests {
             Piece::None,
             CastlingRights::NONE,
         );
-        let b1a3 = Move::new(
+        let b1a3 = MoveDetail::new(
             b1.square(),
             a3.square(),
             Square::null(),
@@ -850,7 +850,7 @@ mod tests {
             Piece::None,
             CastlingRights::NONE,
         );
-        let b1a4 = Move::new(
+        let b1a4 = MoveDetail::new(
             b1.square(),
             a4.square(),
             Square::null(),
@@ -859,7 +859,7 @@ mod tests {
             Piece::None,
             CastlingRights::NONE,
         );
-        let c1c2 = Move::new(
+        let c1c2 = MoveDetail::new(
             c1.square(),
             c2.square(),
             Square::null(),
@@ -1000,13 +1000,13 @@ mod tests {
     fn test_ordered_movelist() {
         let orderer = MoveOrderer::new();
         let mut algo = Algo::new();
-        const TT_MOVE: Move = Move::NULL_MOVE;
+        const TT_MOVE: MoveDetail = MoveDetail::NULL_MOVE;
         let n = Node::root(3);
 
         let positions = &Catalog::win_at_chess();
         for pos in positions {
             let mut sorted_moves =
-                orderer.create_sorted_moves(n, pos.board(), TT_MOVE, Move::NULL_MOVE);
+                orderer.create_sorted_moves(n, pos.board(), TT_MOVE, MoveDetail::NULL_MOVE);
             let mut moves = MoveList::new();
             while let Some((_stage, mv)) = sorted_moves.next_move(pos.board(), &mut algo) {
                 moves.push(mv);

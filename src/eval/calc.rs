@@ -277,6 +277,13 @@ impl<'a> Calc<'a> {
     fn endgame(&mut self, scorer: &mut impl ScorerBase, b: &Board) -> bool {
         let endgame = EndGame::from_board(b);
 
+        // match endgame.likely_outcome(b) {
+        //     LikelyOutcome::DrawImmediate | LikelyOutcome::Draw => return true,
+        //     _ => {},
+        // };
+
+        // self.material(scorer, b);
+
         if let Some(winner) = endgame.try_winner(b) {
             if let Some((metric1, metric2)) = endgame.metrics(winner, b) {
                 scorer.accum(winner, Attr::WinMetric1.as_feature(), -metric1);

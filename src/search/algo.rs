@@ -6,7 +6,7 @@ use crate::eval::recognizer::Recognizer;
 use crate::eval::score::Score;
 use crate::infra::component::{Component, State};
 use crate::infra::metric::Metrics;
-use crate::mv::Move;
+use crate::mv::MoveDetail;
 use crate::position::Position;
 use crate::other::pvtable::PvTable;
 use crate::repetition::Repetition;
@@ -356,8 +356,8 @@ impl Algo {
         self.results.score()
     }
 
-    pub fn best_move(&self) -> Move {
-        self.results.best_move().unwrap_or(Move::NULL_MOVE)
+    pub fn best_move(&self) -> MoveDetail {
+        self.results.best_move().unwrap_or(MoveDetail::NULL_MOVE)
     }
 
     pub fn pv(&self) -> &Variation {
@@ -388,15 +388,15 @@ impl Algo {
     }
 
     pub fn clear_move(&mut self, ply: Ply) {
-        self.pv_table.set(ply, &Move::NULL_MOVE, true);
+        self.pv_table.set(ply, &MoveDetail::NULL_MOVE, true);
     }
 
-    pub fn record_move(&mut self, ply: Ply, mv: &Move) {
+    pub fn record_move(&mut self, ply: Ply, mv: &MoveDetail) {
         self.pv_table.set(ply, mv, false);
         self.pv_table.propagate_from(ply + 1);
     }
 
-    pub fn record_truncated_move(&mut self, ply: Ply, mv: &Move) {
+    pub fn record_truncated_move(&mut self, ply: Ply, mv: &MoveDetail) {
         self.pv_table.set(ply, mv, true);
     }
 }

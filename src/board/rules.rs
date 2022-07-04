@@ -6,7 +6,7 @@ use crate::board::boardcalcs::BoardCalcs;
 use crate::board::Board;
 use crate::infra::metric::Metrics;
 use crate::movelist::MoveList;
-use crate::mv::Move;
+use crate::mv::MoveDetail;
 use crate::search::node::{Timing};
 use crate::piece::Piece;
 
@@ -42,14 +42,14 @@ impl Rules {
         let attacks = (king_att & !us) - king_danger;
         for to in attacks.squares() {
             if to.is_in(them) {
-                moves.push(Move::new_capture(
+                moves.push(MoveDetail::new_capture(
                     Piece::King,
                     king_sq,
                     to,
                     b.piece_at(to.as_bb()),
                 ));
             } else {
-                moves.push(Move::new_quiet(Piece::King, king_sq, to));
+                moves.push(MoveDetail::new_quiet(Piece::King, king_sq, to));
             }
         }
     }
@@ -127,7 +127,7 @@ impl Rules {
             if capture_sq == checkers {
                 let fr_e = to.shift(them.pawn_capture_west());
                 if (fr_e & b.pawns() & b.us() & !b.pinned(b.color_us())).any() {
-                    moves.push(Move::new_ep_capture(
+                    moves.push(MoveDetail::new_ep_capture(
                         fr_e.square(),
                         to.square(),
                         capture_sq.square(),
@@ -135,7 +135,7 @@ impl Rules {
                 }
                 let fr_w = to.shift(them.pawn_capture_east());
                 if (fr_w & b.pawns() & b.us() & !b.pinned(b.color_us())).any() {
-                    moves.push(Move::new_ep_capture(
+                    moves.push(MoveDetail::new_ep_capture(
                         fr_w.square(),
                         to.square(),
                         capture_sq.square(),
@@ -152,7 +152,7 @@ impl Rules {
                 //     continue;
                 // }
                 // special case: will removing the capture piece AND moving the pawn result in check
-                let m = Move::new_ep_capture(fr, to.square(), capture_sq.square());
+                let m = MoveDetail::new_ep_capture(fr, to.square(), capture_sq.square());
                 if b.is_legal_move(&m) {
                     moves.push(m);
                 }
@@ -165,9 +165,9 @@ impl Rules {
         if p != Piece::Pawn {
             for to in dests.squares() {
                 if to.is_in(b.them()) {
-                    moves.push(Move::new_capture(p, fr, to, b.piece_at(to.as_bb())))
+                    moves.push(MoveDetail::new_capture(p, fr, to, b.piece_at(to.as_bb())))
                 } else {
-                    moves.push(Move::new_quiet(p, fr, to))
+                    moves.push(MoveDetail::new_quiet(p, fr, to))
                 }
             }
         } else {
@@ -176,7 +176,7 @@ impl Rules {
                 Self::add_moves_pawn_promo(dests, fr, b, moves);
             } else {
                 for to in dests.squares() {
-                    moves.push(Move::new_pawn_move(fr, to, b));
+                    moves.push(MoveDetail::new_pawn_move(fr, to, b));
                 }
             }
         }
@@ -188,15 +188,15 @@ impl Rules {
             if to.is_in(b.them()) {
                 // try and pre-sort promos by likely usefulness
                 let cap = b.piece_at(to.as_bb());
-                moves.push(Move::new_promo_capture(fr, to, Piece::Queen, cap));
-                moves.push(Move::new_promo_capture(fr, to, Piece::Knight, cap));
-                moves.push(Move::new_promo_capture(fr, to, Piece::Rook, cap));
-                moves.push(Move::new_promo_capture(fr, to, Piece::Bishop, cap));
+                moves.push(MoveDetail::new_promo_capture(fr, to, Piece::Queen, cap));
+                moves.push(MoveDetail::new_promo_capture(fr, to, Piece::Knight, cap));
+                moves.push(MoveDetail::new_promo_capture(fr, to, Piece::Rook, cap));
+                moves.push(MoveDetail::new_promo_capture(fr, to, Piece::Bishop, cap));
             } else {
-                moves.push(Move::new_promo(fr, to, Piece::Queen));
-                moves.push(Move::new_promo(fr, to, Piece::Knight));
-                moves.push(Move::new_promo(fr, to, Piece::Rook));
-                moves.push(Move::new_promo(fr, to, Piece::Bishop));
+                moves.push(MoveDetail::new_promo(fr, to, Piece::Queen));
+                moves.push(MoveDetail::new_promo(fr, to, Piece::Knight));
+                moves.push(MoveDetail::new_promo(fr, to, Piece::Rook));
+                moves.push(MoveDetail::new_promo(fr, to, Piece::Bishop));
             }
         }
     }
@@ -224,12 +224,12 @@ impl Rules {
         let rights = b.castling();
 
         let right = CastlingRights::king_side_right(c);
-        if rights.contains(right) && !CastlingRights::king_side_squares(c).intersects(occ) {
+        if rights.contains(right) && !CastlingRights::king_side_move_squares(c).intersects(occ) {
             let rook_to = king.shift(Dir::E);
             let king_to = rook_to.shift(Dir::E);
             let king_moves = king | rook_to | king_to;
             if BoardCalcs::attacked_by(king_moves, occ, b).disjoint(them) {
-                let m = Move::new_castle(
+                let m = MoveDetail::new_castle(
                     king_sq,
                     king_to.square(),
                     // king_to.square().shift(Dir::E),
@@ -241,14 +241,14 @@ impl Rules {
         }
 
         let right = CastlingRights::queen_side_right(c);
-        if rights.contains(right) && !CastlingRights::queen_side_squares(c).intersects(occ) {
+        if rights.contains(right) && !CastlingRights::queen_side_move_squares(c).intersects(occ) {
             let rook_to = king.shift(Dir::W);
             let king_to = rook_to.shift(Dir::W);
             let king_moves = king | rook_to | king_to;
             if BoardCalcs::attacked_by(king_moves, occ, b).disjoint(them) {
                 let king_to = king_to.square();
                 // let rook_from = king_to.shift(Dir::W).shift(Dir::W);
-                let m = Move::new_castle(
+                let m = MoveDetail::new_castle(
                     king_sq, king_to, // rook_from,
                     // rook_to.square(),
                     right,

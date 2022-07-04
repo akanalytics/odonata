@@ -1,6 +1,6 @@
 [package]
 name = "odonata"
-version = "0.6.10"
+version = "0.6.11"
 license = "GPL-3.0+"
 homepage = "https://github.com/akanalytics/odonata"
 authors = [
@@ -89,8 +89,8 @@ split-debuginfo = "unpacked"
 codegen-units = 256
 
 [profile.test]
-opt-level = 3
-incremental = false
+opt-level = 2
+incremental = true
 debug = true  # allow profiling of the  main executable 
 codegen-units = 256
 split-debuginfo = "off"  # for hotspot profiler disassembly

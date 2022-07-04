@@ -6,7 +6,7 @@ use std::fmt::{Debug, Display};
 use crate::board::Board;
 use crate::bound::NodeType;
 use crate::eval::score::WhiteScore;
-use crate::mv::Move;
+use crate::mv::MoveDetail;
 use crate::search::node::Event;
 use crate::search::node::Node;
 use crate::variation::Variation;
@@ -167,7 +167,7 @@ impl<N> std::ops::IndexMut<NodeIndex> for Tree<N> {
 
 #[derive(Clone, PartialEq, Debug, Default)]
 pub struct TreeNode {
-    mv: Move,
+    mv: MoveDetail,
     pub count: u32,
     pub ext: i32,
     pub red: i32,
@@ -253,7 +253,7 @@ impl SearchTree {
             self.get_or_insert(&stem);
             if let Some(n) = self.find(&stem) {
                 let w = TreeNode {
-                    mv: var.last().unwrap_or(&Move::NULL_MOVE).to_owned(),
+                    mv: var.last().unwrap_or(&MoveDetail::NULL_MOVE).to_owned(),
                     ..TreeNode::default()
                 };
                 let new = self.tree.add_child(n, w);
@@ -299,14 +299,14 @@ mod tests {
         let mut st = SearchTree::new(Catalog::starting_board());
         let mut var = Variation::new();
 
-        var.push(Move::new_quiet(Pawn, Square::H2, Square::H3));
+        var.push(MoveDetail::new_quiet(Pawn, Square::H2, Square::H3));
         st.get_or_insert(&var).node = Node {
             alpha: Score::from_cp(4),
             ..Node::default()
         };
         println!("Tree1:\n{}", st);
 
-        var.push(Move::new_quiet(Pawn, Square::H7, Square::H6));
+        var.push(MoveDetail::new_quiet(Pawn, Square::H7, Square::H6));
         st.get_or_insert(&var).node = Node {
             alpha: Score::from_cp(5),
             ..Node::default()

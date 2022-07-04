@@ -3,7 +3,7 @@ use crate::bound::NodeType;
 use crate::cache::tt2::TtNode;
 use crate::eval::score::Score;
 use crate::infra::metric::Metrics;
-use crate::mv::Move;
+use crate::mv::MoveDetail;
 use crate::other::pvtable::PvTable;
 use crate::piece::{Ply, MAX_PLY};
 use crate::search::algo::Algo;
@@ -30,7 +30,7 @@ impl Algo {
             self.max_depth,
             n.alpha,
             n.beta,
-            Move::NULL_MOVE,
+            MoveDetail::NULL_MOVE,
         ) {
             Ok((score, category)) => (score, category),
             Err(category) => (-Score::INFINITY, category),
@@ -109,7 +109,7 @@ impl Algo {
         depth: Ply,
         alpha: Score,
         beta: Score,
-        last_move: Move,
+        last_move: MoveDetail,
     ) -> Result<(Score, Event), Event> {
         debug_assert!(alpha < beta);
         debug_assert!(ply >= 0);
@@ -141,9 +141,6 @@ impl Algo {
             return Ok((s, Event::MateDistSuccess));
         }
 
-
-
-
         if n.is_qs() {
             Metrics::incr_node(&n, Event::NodeLeafQs);
             let t = Metrics::timing_start();
@@ -166,7 +163,7 @@ impl Algo {
             return Ok((b.eval_draw(&mut self.eval, &n), Event::NodeLeafDraw)); // will return a draw score
         }
 
-        let mut tt_mv = Move::NULL_MOVE;
+        let mut tt_mv = MoveDetail::NULL_MOVE;
         match self.lookup(b, &mut n) {
             (Some(ab), None) => {
                 debug_assert!(ab.is_finite(), "lookup returned {}", ab);
@@ -237,7 +234,6 @@ impl Algo {
             let mut s; //= n.alpha + Score::from_cp(1);
                        // debug_assert!(s > n.alpha);
             let mut ev; //  = Event::Unknown;
-
 
             count += 1;
             let lmr = self.lmr(b, mv, count, quiets, mt, &child_board, &n, nt, ext, tt_mv);
@@ -396,7 +392,8 @@ impl Algo {
                 // self.stats.inc_node_cut(ply, move_type, (count - 1) as i32);
                 self.killers.store(ply, &mv);
                 // self.history.beta_cutoff(&n, b, &mv);
-                self.history.beta_variation(&n, b, &self.current_variation, mv);
+                self.history
+                    .beta_variation(&n, b, &self.current_variation, mv);
                 self.counter_move.store(b.color_us(), last_move, mv, &n);
                 self.report_refutation(n.ply);
                 break;

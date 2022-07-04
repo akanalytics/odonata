@@ -4,7 +4,7 @@ use crate::eval::score::Score;
 use crate::eval::weight::Weight;
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
-use crate::mv::Move;
+use crate::mv::MoveDetail;
 use crate::search::node::{Event, Node};
 use crate::{Algo, Bitboard};
 // use crate::{debug, logger::LogInit};
@@ -173,7 +173,7 @@ impl Algo {
     #[inline]
     pub fn can_futility_prune_move(
         &mut self,
-        mv: Move,
+        mv: MoveDetail,
         mv_num: u32,
         mt: MoveType,
         before: &Board,

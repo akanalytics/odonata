@@ -7,7 +7,7 @@ use crate::cache::tt2::TranspositionTable2;
 use crate::clock::Clock;
 use crate::eval::score::Score;
 use crate::infra::component::Component;
-use crate::mv::Move;
+use crate::mv::MoveDetail;
 use crate::other::outcome::Outcome;
 use crate::other::pvtable::PvTable;
 use crate::tags::Tag;
@@ -50,7 +50,7 @@ pub struct SearchProgress {
     #[serde(skip)] pub nodes: Option<u64>,
     #[serde(skip)] pub nodes_thread: Option<u64>,
     #[serde(skip)] pub score: Score,
-    #[serde(skip)] pub currmove: Option<Move>,
+    #[serde(skip)] pub currmove: Option<MoveDetail>,
     #[serde(skip)] pub currmovenumber_from_1: Option<u32>,
     #[serde(skip)] pub hashfull_per_mille: Option<u32>,
     #[serde(skip)] pub nps: Option<u64>,
@@ -110,19 +110,19 @@ impl SearchProgress {
     //     }
     // }
 
-    pub fn bm(&self) -> Move {
+    pub fn bm(&self) -> MoveDetail {
         if self.best_pv.len() >= 1 {
             return self.best_pv[0];
         }
-        Move::NULL_MOVE
+        MoveDetail::NULL_MOVE
     }
 
     // for multi pv the pv and the best_pv are very different
-    pub fn initial_move(&self) -> Move {
+    pub fn initial_move(&self) -> MoveDetail {
         if self.pv.len() >= 1 {
             return self.pv[0];
         }
-        Move::NULL_MOVE
+        MoveDetail::NULL_MOVE
     }
 
     pub fn set_pv(&mut self, event: Event, pv: &Variation) {

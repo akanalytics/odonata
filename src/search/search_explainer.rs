@@ -5,7 +5,7 @@ use crate::{bound::NodeType, piece::Ply};
 // use crate::eval::weight::Weight;
 // use crate::search::node::Node;
 use crate::eval::score::Score;
-use crate::mv::Move;
+use crate::mv::MoveDetail;
 use crate::search::algo::Algo;
 use crate::variation::Variation;
 // use crate::eval::switches::Switches;
@@ -168,6 +168,8 @@ impl Explainer {
             return None;
         }
 
+        debug_assert!(self.board.is_legal_variation(&var));
+
         // a. see if we are explaining why one variation not taken
         if let Some(ref why_not) = self.why_not {
             if why_not.starts_with(var) // if weve pruned part of the why_not
@@ -240,7 +242,7 @@ impl Algo {
     pub fn explain_futility(
         &mut self,
         b: &Board,
-        mv: Move,
+        mv: MoveDetail,
         _move_type: MoveType,
         estimated: Score,
         n: &Node,
@@ -264,7 +266,7 @@ impl Algo {
     pub fn explain_move(
         &mut self,
         b: &Board,
-        mv: Move,
+        mv: MoveDetail,
         child_score: Score,
         e: Event,
         n: &Node,
@@ -314,7 +316,7 @@ impl Algo {
     pub fn explain_node(
         &mut self,
         b: &Board,
-        bm: Move,
+        bm: MoveDetail,
         nt: NodeType,
         score: Score,
         eval: Score,
@@ -375,7 +377,7 @@ mod tests {
         eng.set_position(pos);
         eng.algo.explainer.vars.clear();
         eng.algo.explainer.add_variation_to_explain(v1.clone());
-        eng.search();
+        eng.algo.search();
         println!("{}", eng.algo.results_as_position());
     }
 }

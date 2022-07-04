@@ -1,6 +1,6 @@
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
-use crate::mv::Move;
+use crate::mv::MoveDetail;
 use crate::piece::{Color, Piece, Ply};
 use crate::Bitboard;
 use serde::{Deserialize, Serialize};
@@ -10,11 +10,11 @@ use super::node::{Node, Counter};
 
 #[derive(Clone, Copy, Debug, Default)]
 struct MoveTally {
-    mv1: Move,
+    mv1: MoveDetail,
     count1: i64,
-    mv2: Move,
+    mv2: MoveDetail,
     count2: i64,
-    mv3: Move,
+    mv3: MoveDetail,
     count3: i64,
 }
 
@@ -89,7 +89,7 @@ impl CounterMove {
 
     /// returns a percent 0-100
     #[inline]
-    pub fn counter_move_unchecked(&self, c: Color, parent: Move, child: Move, n: &Node) -> i32 {
+    pub fn counter_move_unchecked(&self, c: Color, parent: MoveDetail, child: MoveDetail, n: &Node) -> i32 {
         if !self.enabled || n.depth < self.min_depth || n.ply > self.max_ply {
             return 0;
         }
@@ -112,7 +112,7 @@ impl CounterMove {
 
     /// The color is the player of the move being stored
     #[inline]
-    pub fn store(&mut self, c: Color, parent: Move, mv: Move, n: &Node) {
+    pub fn store(&mut self, c: Color, parent: MoveDetail, mv: MoveDetail, n: &Node) {
         if !self.enabled || mv.is_capture() || mv.is_castle() || n.depth < self.min_depth || n.ply > self.max_ply {
             return;
         }

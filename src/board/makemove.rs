@@ -3,7 +3,7 @@ use crate::board::Board;
 use crate::cache::hasher::Hasher;
 use crate::infra::black_box;
 use crate::infra::metric::Metrics;
-use crate::mv::Move;
+use crate::mv::MoveDetail;
 use crate::piece::{Piece, Repeats};
 use crate::search::node::{Counter, Timing};
 use crate::variation::Variation;
@@ -72,7 +72,7 @@ impl Board {
         b
     }
 
-    pub fn make_move(&self, m: &Move) -> Board {
+    pub fn make_move(&self, m: &MoveDetail) -> Board {
         Metrics::incr(Counter::MakeMove);
         let t = Metrics::timing_start();
         // either we're moving to an empty square or its a capture
@@ -190,7 +190,7 @@ impl Board {
         b
     }
 
-    pub fn make_move_new(&self, m: &Move) -> Board {
+    pub fn make_move_new(&self, m: &MoveDetail) -> Board {
         Metrics::incr(Counter::MakeMove);
         let t = Metrics::timing_start();
         // either we're moving to an empty square or its a capture
@@ -250,7 +250,7 @@ impl Board {
     }
 
     #[inline]
-    pub fn do_move(&mut self, m: Move) {
+    pub fn do_move(&mut self, m: MoveDetail) {
         let mut b = self;
         let move_hash = Hasher::default().hash_move(&m, b);
         b.hash = b.hash ^ move_hash;
@@ -323,7 +323,7 @@ impl Board {
         // b.castling ^= m.castling_side();
     }
 
-    pub fn undo_move(&mut self, m: Move) {
+    pub fn undo_move(&mut self, m: MoveDetail) {
         if true {
             let mut b = self;
             let move_hash = Hasher::default().hash_move(&m, b);

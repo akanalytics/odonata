@@ -4,7 +4,7 @@ use crate::cache::tt2::TtNode;
 use crate::eval::score::{Score, ToScore};
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
-use crate::mv::Move;
+use crate::mv::MoveDetail;
 use crate::piece::{MoveType, MoveTypes, Ply};
 use crate::search::node::{Event, Node};
 use crate::Algo;
@@ -133,7 +133,7 @@ impl Algo {
     #[inline]
     pub fn razor_node(
         &mut self,
-        last_move: Move,
+        last_move: MoveDetail,
         b: &mut Board,
         eval: Score,
         n: &Node,
@@ -184,7 +184,7 @@ impl Algo {
                         score: score.clamp_score().as_tt_score(n.ply),
                         depth: 1,
                         nt: NodeType::UpperAll,
-                        bm: Move::NULL_MOVE,
+                        bm: MoveDetail::NULL_MOVE,
                     };
                     self.tt.store(b.hash(), entry);
                 }
@@ -193,7 +193,8 @@ impl Algo {
                 if score <= n.alpha - margin {
                     Metrics::incr_node(n, Event::RazorSuccess);
                     Metrics::incr_node(n, event);
-                    return Ok(Some(score + margin));
+                    // score could be a mate score here so clamp
+                    return Ok(Some(score.clamp_score() + margin));
                 }
                 Metrics::incr_node(n, Event::RazorFail);
             }

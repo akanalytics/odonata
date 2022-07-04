@@ -1,7 +1,7 @@
 use crate::bits::bitboard::Bitboard;
 use crate::board::Board;
 use crate::movelist::MoveList;
-use crate::mv::Move;
+use crate::mv::MoveDetail;
 use crate::piece::Color;
 use crate::utils::StringUtils;
 use once_cell::sync::Lazy;
@@ -42,7 +42,7 @@ static REGEX_SAN: Lazy<Regex> = Lazy::new(|| {
 });
 
 impl Parse {
-    pub fn move_san(s: &str, board: &Board) -> Result<Move> {
+    pub fn move_san(s: &str, board: &Board) -> Result<MoveDetail> {
         let orig = s; // save original string
                       //  convert 0's to O's
                       //  Wikipedia:

@@ -6,7 +6,7 @@ use crate::infra::component::{Component, State};
 use crate::infra::metric::METRICS_TOTAL;
 use crate::infra::version::Version;
 use crate::movelist::MoveList;
-use crate::mv::Move;
+use crate::mv::MoveDetail;
 use crate::perft::Perft;
 use crate::position::Position;
 use crate::search::engine::Engine;
@@ -785,7 +785,7 @@ impl Uci {
             var[0]
         } else {
             info!("---> Null  best move");
-            Move::NULL_MOVE
+            MoveDetail::NULL_MOVE
         };
         let mut output = format!("bestmove {}", bm.uci());
         if var.len() > 1 {
@@ -800,7 +800,7 @@ struct UciInfo<'a>(&'a SearchProgress);
 impl<'a> fmt::Display for UciInfo<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let SearchProgressMode::Refutation = self.0.mode {
-            let strings: Vec<String> = self.0.best_pv.iter().map(Move::to_string).collect();
+            let strings: Vec<String> = self.0.best_pv.iter().map(MoveDetail::to_string).collect();
             write!(f, "refutation {}", strings.join(" "))?;
         }
         if let SearchProgressMode::PvChange = self.0.mode {
@@ -834,7 +834,7 @@ impl<'a> fmt::Display for UciInfo<'a> {
                 if self.0.multi_pv_index_of > 1 {
                     write!(f, "multipv {} ", self.0.multi_pv_index + 1)?;
                 }
-                let strings: Vec<String> = self.0.pv.iter().map(Move::to_string).collect();
+                let strings: Vec<String> = self.0.pv.iter().map(MoveDetail::to_string).collect();
                 write!(f, "pv {}", strings.join(" "))?;
             }
         }

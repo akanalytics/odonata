@@ -3,7 +3,7 @@ use crate::bits::castling::CastlingRights;
 use crate::bits::square::Square;
 use crate::cache::hasher::Hasher;
 use crate::domain::material::Material;
-use crate::mv::Move;
+use crate::mv::MoveDetail;
 use crate::piece::{Color, Hash, Piece, Ply, Repeats};
 use anyhow::Result;
 use anyhow::{bail, Context};
@@ -175,6 +175,17 @@ impl Board {
         }
         Piece::None
     }
+
+    #[inline]
+    pub fn piece_on(&self, sq: Square) -> Option<Piece> {
+        for &p in &Piece::ALL_BAR_NONE {
+            if sq.is_in(self.pieces(p)) {
+                return Some(p)
+            }
+        }
+        None
+    }
+
 
     #[inline]
     pub fn remove_piece(&mut self, sq: Bitboard, p: Piece, c: Color) {
@@ -454,13 +465,13 @@ impl Board {
     }
 
     #[inline]
-    pub fn maybe_gives_discovered_check(&self, mv: Move) -> bool {
+    pub fn maybe_gives_discovered_check(&self, mv: MoveDetail) -> bool {
         debug_assert!(self.is_legal_move(&mv));
         let their_king_color = self.color_them();
         mv.from().is_in(self.discoverer(their_king_color))
     }
 
-    pub fn gives_check(&self, mv: &Move) -> bool {
+    pub fn gives_check(&self, mv: &MoveDetail) -> bool {
         debug_assert!(self.is_legal_move(mv));
         let their_king_color = self.color_them();
         self.make_move(mv).is_in_check(their_king_color)
