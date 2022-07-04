@@ -2,7 +2,7 @@ use crate::bits::bitboard::Bitboard;
 use crate::bits::precalc::PreCalc;
 use crate::infra::metric::*;
 use crate::movelist::MoveList;
-use crate::mv::MoveDetail;
+use crate::mv::Move;
 use crate::piece::Piece;
 use crate::search::node::{Counter, Timing};
 use crate::board::rules::Rules;
@@ -19,14 +19,14 @@ use crate::board::Board;
 
 impl Board {
 
-    pub fn is_pseudo_legal_and_legal_move(&self, m: MoveDetail) -> bool {
+    pub fn is_pseudo_legal_and_legal_move(&self, m: Move) -> bool {
         let t = Metrics::timing_start();
         let ret = self.is_pseudo_legal_move(&m) && self.is_legal_move(&m);
         Metrics::profile(t, Timing::TimingPseudoLegalAndLegal);
         ret
     }
 
-    pub fn is_pseudo_legal_move(&self, m: &MoveDetail) -> bool {
+    pub fn is_pseudo_legal_move(&self, m: &Move) -> bool {
         if !m.from().is_in(self.us()) {
             return false;
         }
@@ -91,7 +91,7 @@ impl Board {
         true
     }
 
-    pub fn is_legal_variation(&self, moves: &[MoveDetail]) -> bool {
+    pub fn is_legal_variation(&self, moves: &[Move]) -> bool {
         if let Some(&m) = moves.first() {
             if !m.is_null() && !self.is_pseudo_legal_and_legal_move(m) {
                 return false;
@@ -103,7 +103,7 @@ impl Board {
     }
 
     // the move is pseudo legal
-    pub fn is_legal_move(&self, mv: &MoveDetail) -> bool {
+    pub fn is_legal_move(&self, mv: &Move) -> bool {
         // castling and kings moves already done above
         let mut us = self.us();
         let mut kings = self.kings() & us;
@@ -445,23 +445,23 @@ mod tests {
         let a6sq = a6.square();
         let a7sq = a7.square();
         assert_eq!(
-            b.is_pseudo_legal_move(&MoveDetail::new_quiet(Piece::Pawn, a2sq, a3sq)),
+            b.is_pseudo_legal_move(&Move::new_quiet(Piece::Pawn, a2sq, a3sq)),
             true
         );
         assert_eq!(
-            b.is_pseudo_legal_move(&MoveDetail::new_quiet(Piece::Bishop, a2sq, a3sq)),
+            b.is_pseudo_legal_move(&Move::new_quiet(Piece::Bishop, a2sq, a3sq)),
             false
         );
         assert_eq!(
-            b.is_pseudo_legal_move(&MoveDetail::new_quiet(Piece::Pawn, a7sq, a6sq)),
+            b.is_pseudo_legal_move(&Move::new_quiet(Piece::Pawn, a7sq, a6sq)),
             false
         );
         assert_eq!(
-            b.is_pseudo_legal_move(&MoveDetail::new_quiet(Piece::Pawn, a7sq, a6sq)),
+            b.is_pseudo_legal_move(&Move::new_quiet(Piece::Pawn, a7sq, a6sq)),
             false
         );
         assert_eq!(
-            b.is_pseudo_legal_move(&MoveDetail::new_capture(Piece::Pawn, a2sq, a3sq, Piece::Pawn)),
+            b.is_pseudo_legal_move(&Move::new_capture(Piece::Pawn, a2sq, a3sq, Piece::Pawn)),
             false
         );
         for mv in b.legal_moves().iter() {

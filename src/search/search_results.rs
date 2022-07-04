@@ -2,7 +2,7 @@ use std::iter::{self, FromIterator};
 
 use crate::eval::eval::Eval;
 use crate::eval::score::Score;
-use crate::mv::MoveDetail;
+use crate::mv::Move;
 use crate::other::outcome::Outcome;
 use crate::tags::Tag;
 use crate::piece::Ply;
@@ -81,7 +81,7 @@ impl SearchResults {
     }
 
     /// outcome could be abandoned or win/draw reason
-    pub fn best_move(&self) -> Result<MoveDetail, Outcome> {
+    pub fn best_move(&self) -> Result<Move, Outcome> {
         if self.pv().len() > 0 {
             Ok(self.pv()[0])
         } else {

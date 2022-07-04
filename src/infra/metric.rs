@@ -1,5 +1,5 @@
 use crate::eval::endgame::EndGame;
-use crate::mv::MoveDetail;
+use crate::mv::Move;
 use crate::piece::{MoveType, Ply};
 use crate::search::node::{Counter, Histograms, Node, Timing};
 use crate::utils::Formatting;
@@ -265,7 +265,7 @@ impl Metrics {
 
     #[allow(unused_variables)]
     #[inline]
-    pub fn classify_move(n: &Node, mv: MoveDetail, mt: MoveType) {
+    pub fn classify_move(n: &Node, mv: Move, mt: MoveType) {
         #[cfg(not(feature = "remove_metrics"))]
         {
             let ev = match mt {

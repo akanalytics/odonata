@@ -1,7 +1,7 @@
 use crate::bits::bitboard::Bitboard;
 use crate::board::Board;
 use crate::infra::component::Component;
-use crate::mv::MoveDetail;
+use crate::mv::Move;
 use crate::piece::{Color, Piece, Ply};
 use crate::variation::Variation;
 use serde::{Deserialize, Serialize};
@@ -131,7 +131,7 @@ impl HistoryHeuristic {
     }
 
     #[inline]
-    pub fn history_heuristic_bonus(&self, c: Color, mv: &MoveDetail, _n: &Node) -> i32 {
+    pub fn history_heuristic_bonus(&self, c: Color, mv: &Move, _n: &Node) -> i32 {
         if !self.enabled {
             return 0;
         }
@@ -154,7 +154,7 @@ impl HistoryHeuristic {
     }
 
     #[inline]
-    fn get_mut(&mut self, c: Color, mv: &MoveDetail) -> &mut Tally {
+    fn get_mut(&mut self, c: Color, mv: &Move) -> &mut Tally {
         if !self.enabled {
             return &mut self.history[c][0][0][0];
         }
@@ -167,7 +167,7 @@ impl HistoryHeuristic {
     }
 
     #[inline]
-    pub fn raised_alpha(&mut self, n: &Node, b: &Board, mv: &MoveDetail) {
+    pub fn raised_alpha(&mut self, n: &Node, b: &Board, mv: &Move) {
         if !self.enabled || mv.is_capture() || n.depth < self.min_depth || n.ply > self.max_ply {
             return;
         }
@@ -184,7 +184,7 @@ impl HistoryHeuristic {
     }
 
     #[inline]
-    pub fn beta_variation(&mut self, n: &Node, b: &Board, var: &Variation, mv: MoveDetail) {
+    pub fn beta_variation(&mut self, n: &Node, b: &Board, var: &Variation, mv: Move) {
         self.beta_cutoff(n, b, &mv);
         if self.variation {
             for m in var.iter().rev().skip(1).step_by(2).take(3) {
@@ -194,7 +194,7 @@ impl HistoryHeuristic {
     }
 
     #[inline]
-    pub fn beta_cutoff(&mut self, n: &Node, b: &Board, mv: &MoveDetail) {
+    pub fn beta_cutoff(&mut self, n: &Node, b: &Board, mv: &Move) {
         if !self.enabled || mv.is_capture() || n.depth < self.min_depth || n.ply > self.max_ply {
             return;
         }
@@ -211,7 +211,7 @@ impl HistoryHeuristic {
     }
 
     #[inline]
-    pub fn duff(&mut self, n: &Node, b: &Board, mv: &MoveDetail) {
+    pub fn duff(&mut self, n: &Node, b: &Board, mv: &Move) {
         if !self.enabled || mv.is_capture() || n.depth < self.min_depth || n.ply > self.max_ply {
             return;
         }
@@ -249,17 +249,17 @@ mod tests {
         let mut hh = HistoryHeuristic::default();
         hh.get_mut(
             Color::White,
-            &MoveDetail::new_quiet(Piece::Pawn, Square::A1, Square::H8),
+            &Move::new_quiet(Piece::Pawn, Square::A1, Square::H8),
         );
         hh.get_mut(
             Color::White,
-            &MoveDetail::new_quiet(Piece::Pawn, Square::A1, Square::H8),
+            &Move::new_quiet(Piece::Pawn, Square::A1, Square::H8),
         )
         .good = 1;
         assert_eq!(
             hh.get_mut(
                 Color::White,
-                &MoveDetail::new_quiet(Piece::Pawn, Square::A1, Square::H8)
+                &Move::new_quiet(Piece::Pawn, Square::A1, Square::H8)
             )
             .good,
             1

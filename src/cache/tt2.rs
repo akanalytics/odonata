@@ -5,7 +5,7 @@ use crate::cache::lockless_hashmap::{Bucket, SharedTable};
 use crate::eval::score::Score;
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
-use crate::mv::{Move, MoveDetail};
+use crate::mv::{BareMove, Move};
 use crate::piece::{Hash, Piece, Ply};
 use crate::search::node::{Counter, Timing};
 use crate::variation::Variation;
@@ -18,7 +18,7 @@ pub struct TtNode {
     pub score: TtScore,
     pub depth: Ply,
     pub nt: NodeType,
-    pub bm: Move,
+    pub bm: BareMove,
 }
 
 /// TtScore has mate scores relative to current ply, NOT to root board
@@ -59,7 +59,7 @@ impl TtScore {
     }
 }
 
-impl Move {
+impl BareMove {
     pub fn pack_20bits(&self) -> u64 {
         if self.is_null() {
             return 0;
@@ -73,7 +73,7 @@ impl Move {
             }
     }
 
-    pub fn unpack_20bits(bits: u64) -> Move {
+    pub fn unpack_20bits(bits: u64) -> BareMove {
         // works for null move
         let from = Square::from_u32(bits as u32 & 63);
         let to = Square::from_u32((bits >> 6) as u32 & 63);
@@ -82,7 +82,7 @@ impl Move {
             0 => None,
             pi => Some(Piece::from_index(pi as usize)),
         };
-        Move { to, from, promo }
+        BareMove { to, from, promo }
     }
 }
 // pub fn unpack_12bits_part1(bits: U64, b: &Board) -> (Square, Square, Piece) {
@@ -136,7 +136,7 @@ impl TtNode {
         let draft = (bits >> 8) & 255;
         let node_type = NodeType::unpack_2bits((bits >> 16) & 3);
         let score = TtScore::unpack_16bits((bits >> 18) & ((2 << 16) - 1));
-        let bm = Move::unpack_20bits(bits >> 34);
+        let bm = BareMove::unpack_20bits(bits >> 34);
         (
             TtNode {
                 depth: draft as i32,
@@ -148,14 +148,14 @@ impl TtNode {
         )
     }
 
-    pub fn validate_move(&self, bd: &Board) -> MoveDetail {
+    pub fn validate_move(&self, bd: &Board) -> Move {
         if self.bm.is_null() {
-            MoveDetail::NULL_MOVE
+            Move::NULL_MOVE
         } else {
-            let mv = bd.move_detail(self.bm);
+            let mv = bd.augment_move(self.bm);
             if !bd.is_pseudo_legal_and_legal_move(mv) {
                 Metrics::incr(Counter::TtIllegalMove);
-                MoveDetail::NULL_MOVE
+                Move::NULL_MOVE
             } else {
                 mv
             }
@@ -667,7 +667,7 @@ mod tests {
             score: TtScore(Score::from_cp(300)),
             depth: 2,
             nt: NodeType::ExactPv,
-            bm: MoveDetail::new_quiet(Piece::Pawn, b7.square(), b6.square()).to_inner(),
+            bm: Move::new_quiet(Piece::Pawn, b7.square(), b6.square()).to_inner(),
         }
     }
 
@@ -676,7 +676,7 @@ mod tests {
             score: TtScore(Score::from_cp(200)),
             depth: 3,
             nt: NodeType::ExactPv,
-            bm: MoveDetail::new_quiet(Piece::Pawn, a2.square(), a3.square()).to_inner(),
+            bm: Move::new_quiet(Piece::Pawn, a2.square(), a3.square()).to_inner(),
         }
     }
 
@@ -685,7 +685,7 @@ mod tests {
             score: TtScore(Score::from_cp(201)),
             depth: 4,
             nt: NodeType::ExactPv,
-            bm: MoveDetail::new(
+            bm: Move::new(
                 a1.square(),
                 a2.square(),
                 Square::null(),

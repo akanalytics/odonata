@@ -3,7 +3,7 @@ use crate::bits::castling::CastlingRights;
 use crate::bits::square::Square;
 use crate::cache::hasher::Hasher;
 use crate::domain::material::Material;
-use crate::mv::MoveDetail;
+use crate::mv::Move;
 use crate::piece::{Color, Hash, Piece, Ply, Repeats};
 use anyhow::Result;
 use anyhow::{bail, Context};
@@ -465,13 +465,13 @@ impl Board {
     }
 
     #[inline]
-    pub fn maybe_gives_discovered_check(&self, mv: MoveDetail) -> bool {
+    pub fn maybe_gives_discovered_check(&self, mv: Move) -> bool {
         debug_assert!(self.is_legal_move(&mv));
         let their_king_color = self.color_them();
         mv.from().is_in(self.discoverer(their_king_color))
     }
 
-    pub fn gives_check(&self, mv: &MoveDetail) -> bool {
+    pub fn gives_check(&self, mv: &Move) -> bool {
         debug_assert!(self.is_legal_move(mv));
         let their_king_color = self.color_them();
         self.make_move(mv).is_in_check(their_king_color)

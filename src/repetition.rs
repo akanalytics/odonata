@@ -1,7 +1,7 @@
 
 use crate::board::Board;
 use crate::infra::component::Component;
-use crate::mv::MoveDetail;
+use crate::mv::Move;
 use crate::position::Position;
 use crate::piece::{Hash, Piece, Repeats};
 use crate::variation::Variation;
@@ -94,7 +94,7 @@ impl Repetition {
         self.prior_positions.len()
     }
 
-    pub fn push_move(&mut self, mv: &MoveDetail, post_move: &Board) {
+    pub fn push_move(&mut self, mv: &Move, post_move: &Board) {
         if !self.enabled {
             return;
         }

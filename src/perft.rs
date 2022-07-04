@@ -1,7 +1,7 @@
 
 use crate::board::Board;
 use crate::movelist::MoveList;
-use crate::mv::MoveDetail;
+use crate::mv::Move;
 
 #[derive(Default, Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Perft {
@@ -17,7 +17,7 @@ pub struct Perft {
 
 
 impl Perft {
-    pub fn perft_fn(board: &mut Board, depth: u32, f: &mut dyn FnMut(&Board, MoveDetail) ) {
+    pub fn perft_fn(board: &mut Board, depth: u32, f: &mut dyn FnMut(&Board, Move) ) {
         if depth == 0 {
             return;
         }
@@ -147,7 +147,7 @@ mod tests {
                 if depth <= 4 {
                     let now = Instant::now();
                     let mut count = 0;
-                    let mut func = |_:&Board,_: MoveDetail| *&mut count += 1;
+                    let mut func = |_:&Board,_: Move| *&mut count += 1;
                     Perft::perft_fn(&mut board, depth as u32, &mut func );
                     println!(
                         "perft({depth})={count} in {time} millis (expected {expected})",

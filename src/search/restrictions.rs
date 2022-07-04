@@ -1,6 +1,6 @@
 use crate::infra::component::Component;
 use crate::movelist::MoveList;
-use crate::mv::MoveDetail;
+use crate::mv::Move;
 use crate::piece::Ply;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -48,7 +48,7 @@ impl Default for Restrictions {
 // works for moves that are just "too good to be true"
 impl Restrictions {
     #[inline]
-    pub fn skip_move(&self, ply: Ply, mv: &MoveDetail) -> bool {
+    pub fn skip_move(&self, ply: Ply, mv: &Move) -> bool {
         if self.enabled
             && ply == 0
             && (!self.include_moves.is_empty() && !self.include_moves.contains(mv))

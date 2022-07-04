@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::mv::MoveDetail;
+use crate::mv::Move;
 use crate::piece::{Color, Piece};
 use anyhow::Result;
 use itertools::Itertools;
@@ -384,7 +384,7 @@ impl Material {
         Self::default()
     }
 
-    pub fn make_move(&mut self, c: Color, m: &MoveDetail) {
+    pub fn make_move(&mut self, c: Color, m: &Move) {
         if m.is_promo() {
             self.set_count(c, Piece::Pawn, self.count(c, Piece::Pawn) - 1);
             self.set_count(c, m.promo_piece(), self.count(c, m.promo_piece()) + 1);

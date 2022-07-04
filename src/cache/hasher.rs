@@ -3,7 +3,7 @@ use crate::bits::square::Square;
 use crate::board::Board;
 use crate::globals::constants::*;
 use crate::infra::metric::*;
-use crate::mv::MoveDetail;
+use crate::mv::Move;
 use crate::search::node::{Counter};
 use crate::piece::{Color, Hash, Piece};
 use rand::{Rng, SeedableRng};
@@ -172,7 +172,7 @@ impl Hasher {
         hash
     }
 
-    pub fn hash_move(&self, m: &MoveDetail, pre_move: &Board) -> Hash {
+    pub fn hash_move(&self, m: &Move, pre_move: &Board) -> Hash {
         Metrics::incr(Counter::CalcHashMove);
         let mut hash = self.side;
         // either we're moving to an empty square or its a capture

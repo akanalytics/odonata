@@ -1,6 +1,6 @@
 use crate::bits::bitboard::Bitboard;
 use crate::board::Board;
-use crate::mv::MoveDetail;
+use crate::mv::Move;
 use crate::variation::Variation;
 
 use crate::movelist::MoveList;
@@ -295,7 +295,7 @@ impl Position {
         }
     }
 
-    pub fn sm(&self) -> Result<MoveDetail> {
+    pub fn sm(&self) -> Result<Move> {
         if let Tag::SuppliedMove(mv) = self.tag(Tag::SM) {
             Ok(*mv)
         } else {

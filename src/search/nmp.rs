@@ -4,7 +4,7 @@ use crate::bound::NodeType;
 use crate::cache::tt2::{TtNode, TtScore};
 use crate::eval::score::{Score, ToScore};
 use crate::infra::metric::Metrics;
-use crate::mv::MoveDetail;
+use crate::mv::Move;
 use crate::other::pvtable::PvTable;
 use crate::search::algo::Algo;
 use crate::search::node::{Event, Node};
@@ -126,7 +126,7 @@ impl NullMovePruning {
 
     #[inline]
     pub fn last_move_is_null_move(var: &Variation) -> bool {
-        var.last() == Some(&MoveDetail::NULL_MOVE)
+        var.last() == Some(&Move::NULL_MOVE)
     }
 
     #[inline]
@@ -170,7 +170,7 @@ impl Algo {
         }
 
         let r = self.nmp.depth_reduction(eval, b, n);
-        let mv = MoveDetail::NULL_MOVE;
+        let mv = Move::NULL_MOVE;
         let mut child_board = b.make_move(&mv);
         self.current_variation.push(mv);
         // self.explainer.start(n, &self.current_variation);
@@ -204,7 +204,7 @@ impl Algo {
                     score: TtScore::new(child_score.clamp_score(), n.ply),
                     depth: reduced_depth + 1,
                     nt: NodeType::LowerCut,
-                    bm: MoveDetail::NULL_MOVE.to_inner(),
+                    bm: Move::NULL_MOVE.to_inner(),
                 };
                 // remember this is the child board hash with child score,
                 // but we store it as parent board and negative score and bound,

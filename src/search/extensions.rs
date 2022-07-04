@@ -1,6 +1,6 @@
 use crate::eval::score::Score;
 use crate::infra::component::Component;
-use crate::mv::MoveDetail;
+use crate::mv::Move;
 use crate::search::node::Node;
 use crate::piece::{MoveType, Ply};
 use crate::{board::Board, Algo};
@@ -76,11 +76,11 @@ impl Algo {
         &mut self,
         before: &Board,
         after: &Board,
-        mv: MoveDetail,
+        mv: Move,
         mt: MoveType,
         mv_num: u32,
         n: &Node,
-        last: MoveDetail,
+        last: Move,
     ) -> Ply {
         let mut ext = 0;
         if !self.ext.enabled || n.is_qs() {

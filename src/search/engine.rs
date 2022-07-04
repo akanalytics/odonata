@@ -2,7 +2,7 @@ use crate::cache::tt2::TranspositionTable2;
 use crate::infra::component::{Component, State, FEATURE};
 use crate::infra::metric::Metrics;
 use crate::infra::resources::RESOURCE_DIR;
-use crate::mv::MoveDetail;
+use crate::mv::Move;
 use crate::position::Position;
 use crate::search::algo::Algo;
 use crate::search::timecontrol::TimeControl;
@@ -281,7 +281,7 @@ impl Engine {
                 i, // thread::current().name().unwrap(),
                 algo.results
                     .best_move()
-                    .unwrap_or(MoveDetail::NULL_MOVE)
+                    .unwrap_or(Move::NULL_MOVE)
                     .to_string(),
                 algo.score().to_string(),
                 algo.clock.cumul_nodes_this_thread(),

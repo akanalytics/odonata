@@ -1,6 +1,6 @@
 
 use crate::board::Board;
-use crate::mv::MoveDetail;
+use crate::mv::Move;
 use crate::parse::Parse;
 use crate::tags::Tags;
 use crate::piece::MAX_LEGAL_MOVES;
@@ -179,7 +179,7 @@ use std::fmt;
 // moves: ArrayVec::new(),
 #[derive(Debug, PartialEq, Eq)]
 pub struct MoveList {
-    moves: ArrayVec<MoveDetail, MAX_LEGAL_MOVES>,
+    moves: ArrayVec<Move, MAX_LEGAL_MOVES>,
 }
 
 impl Default for MoveList {
@@ -216,9 +216,9 @@ impl Clone for MoveList {
 //     }
 // }
 
-impl std::iter::FromIterator<MoveDetail> for MoveList {
+impl std::iter::FromIterator<Move> for MoveList {
     #[inline]
-    fn from_iter<I: IntoIterator<Item = MoveDetail>>(iter: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = Move>>(iter: I) -> Self {
         let mut ml = MoveList::new();
         for mv in iter {
             ml.push(mv);
@@ -240,22 +240,22 @@ impl MoveList {
     }
 
     #[inline]
-    pub fn contains(&self, m: &MoveDetail) -> bool {
+    pub fn contains(&self, m: &Move) -> bool {
         self.moves.contains(m)
     }
 
     #[inline]
-    pub fn iter(&self) -> impl Iterator<Item = &MoveDetail> + '_ {
+    pub fn iter(&self) -> impl Iterator<Item = &Move> + '_ {
         self.moves.iter()
     }
 
     #[inline]
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut MoveDetail> + '_ {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Move> + '_ {
         self.moves.iter_mut()
     }
 
     #[inline]
-    pub fn push(&mut self, mv: MoveDetail) {
+    pub fn push(&mut self, mv: Move) {
         debug_assert!(self.len() < MAX_LEGAL_MOVES);
         #[cfg(feature = "unchecked_indexing")]
         unsafe {
@@ -280,7 +280,7 @@ impl MoveList {
     #[inline]
     pub fn retain<F>(&mut self, f: F)
     where
-        F: FnMut(&mut MoveDetail) -> bool,
+        F: FnMut(&mut Move) -> bool,
     {
         self.moves.retain(f);
     }
@@ -288,7 +288,7 @@ impl MoveList {
     #[inline]
     pub fn sort_unstable_by_key<K, F>(&mut self, f: F)
     where
-        F: FnMut(&MoveDetail) -> K,
+        F: FnMut(&Move) -> K,
         K: Ord,
     {
         self.moves.sort_unstable_by_key(f)
@@ -297,7 +297,7 @@ impl MoveList {
     #[inline]
     pub fn sort_by_cached_key<K, F>(&mut self, f: F)
     where
-        F: FnMut(&MoveDetail) -> K,
+        F: FnMut(&Move) -> K,
         K: Ord,
     {
         self.moves.sort_by_cached_key(f)
@@ -309,7 +309,7 @@ impl MoveList {
     }
 
     #[inline]
-    pub fn extend<T: IntoIterator<Item = MoveDetail>>(&mut self, iter: T) {
+    pub fn extend<T: IntoIterator<Item = Move>>(&mut self, iter: T) {
         self.moves.extend(iter);
     }
 
@@ -332,7 +332,7 @@ impl MoveList {
 }
 
 impl std::ops::Index<usize> for MoveList {
-    type Output = MoveDetail;
+    type Output = Move;
 
     #[inline]
     fn index(&self, i: usize) -> &Self::Output {
@@ -347,7 +347,7 @@ impl fmt::Display for MoveList {
                 writeln!(f, "{:#}", mv)?;
             }
         } else {
-            let strings: Vec<String> = self.iter().map(MoveDetail::to_string).collect();
+            let strings: Vec<String> = self.iter().map(Move::to_string).collect();
             f.write_str(&strings.join(", "))?
         }
         Ok(())
@@ -368,7 +368,7 @@ impl fmt::Display for MoveList {
 // }
 
 impl Board {
-    pub fn parse_uci_move(&self, mv: &str) -> Result<MoveDetail> {
+    pub fn parse_uci_move(&self, mv: &str) -> Result<Move> {
         let moves = self.legal_moves();
         for &m in moves.iter() {
             if m.uci() == mv {
@@ -405,7 +405,7 @@ impl Board {
         Ok(moves)
     }
 
-    pub fn parse_san_move(&self, mv: &str) -> Result<MoveDetail> {
+    pub fn parse_san_move(&self, mv: &str) -> Result<Move> {
         Parse::move_san(mv, self)
     }
 
@@ -432,7 +432,7 @@ impl Board {
         Ok(moves)
     }
 
-    pub fn to_san(&self, mv: &MoveDetail) -> String {
+    pub fn to_san(&self, mv: &Move) -> String {
         if mv.is_castle() {
             if mv.castling_side().is_king_side() {
                 return String::from("O-O");
@@ -558,7 +558,7 @@ mod tests {
 
     #[test]
     fn test_movelist() -> Result<()> {
-        let move_a1b2 = MoveDetail::new(
+        let move_a1b2 = Move::new(
             a1.square(),
             b2.square(),
             Square::null(),
@@ -567,7 +567,7 @@ mod tests {
             Piece::None,
             CastlingRights::NONE,
         );
-        let promo_a7a8 = MoveDetail::new(
+        let promo_a7a8 = Move::new(
             a7.square(),
             a8.square(),
             Square::null(),

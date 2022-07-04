@@ -4,7 +4,7 @@ use crate::cache::tt2::{TtNode, TtScore};
 use crate::eval::score::{Score, ToScore};
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
-use crate::mv::MoveDetail;
+use crate::mv::Move;
 use crate::piece::{MoveType, MoveTypes, Ply};
 use crate::search::node::{Event, Node};
 use crate::Algo;
@@ -133,7 +133,7 @@ impl Algo {
     #[inline]
     pub fn razor_node(
         &mut self,
-        last_move: MoveDetail,
+        last_move: Move,
         b: &mut Board,
         eval: Score,
         n: &Node,
@@ -184,7 +184,7 @@ impl Algo {
                         score: TtScore::new(score.clamp_score(), n.ply),
                         depth: 1,
                         nt: NodeType::UpperAll,
-                        bm: MoveDetail::NULL_MOVE.to_inner(),
+                        bm: Move::NULL_MOVE.to_inner(),
                     };
                     self.tt.store(b.hash(), entry);
                 }

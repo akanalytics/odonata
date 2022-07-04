@@ -162,7 +162,7 @@ mod tests {
         assert_eq!(size_of::<CastlingRights>(), 1, "CastlingRights");
         assert_eq!(size_of::<Square>(), 2, "Square");
         assert_eq!(size_of::<Score>(), 2, "Score");
-        assert_eq!(size_of::<MoveDetail>(), 4, "Move");
+        assert_eq!(size_of::<Move>(), 4, "Move");
         assert_eq!(size_of::<Bitboard>(), 8, "Bitboard");
         assert_eq!(size_of::<Board>(), 168, "Board");
         assert_eq!(size_of::<Option<Bitboard>>(), 16, "Bitboard");

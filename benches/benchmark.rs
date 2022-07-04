@@ -404,7 +404,7 @@ fn board_calcs(c: &mut Criterion) {
         })
     });
 
-    let bams: Vec<(Board, MoveDetail)> = positions
+    let bams: Vec<(Board, Move)> = positions
         .iter()
         .map(|p| (p.board().clone(), p.bm().unwrap()[0]))
         .collect();
@@ -435,7 +435,7 @@ fn board_calcs(c: &mut Criterion) {
             score: TtScore::new(Score::from_cp(100), 0),
             depth: 1,
             nt: NodeType::ExactPv,
-            bm: MoveDetail::NULL_MOVE,
+            bm: Move::NULL_MOVE,
         };
         b.iter_custom(|n| {
             let t = Instant::now();
@@ -446,7 +446,7 @@ fn board_calcs(c: &mut Criterion) {
         })
     });
 
-    let bams: Vec<(Board, MoveDetail)> = positions
+    let bams: Vec<(Board, Move)> = positions
         .iter()
         .map(|p| (p.board().clone(), p.bm().unwrap()[0]))
         .collect();
@@ -480,7 +480,7 @@ fn board_calcs(c: &mut Criterion) {
         })
     });
 
-    let bams: Vec<(Board, MoveDetail)> = positions
+    let bams: Vec<(Board, Move)> = positions
         .iter()
         .map(|p| (p.board().clone(), p.bm().unwrap()[0]))
         .collect();
@@ -493,7 +493,7 @@ fn board_calcs(c: &mut Criterion) {
             t.elapsed() / positions.len() as u32
         })
     });
-    let bams: Vec<(Board, MoveDetail)> = positions
+    let bams: Vec<(Board, Move)> = positions
         .iter()
         .map(|p| (p.board().clone(), p.bm().unwrap()[0]))
         .collect();
@@ -506,7 +506,7 @@ fn board_calcs(c: &mut Criterion) {
             t.elapsed() / positions.len() as u32
         })
     });
-    let bams: Vec<(Board, MoveDetail)> = positions
+    let bams: Vec<(Board, Move)> = positions
         .iter()
         .map(|p| (p.board().clone(), p.bm().unwrap()[0]))
         .collect();
@@ -529,7 +529,7 @@ fn board_calcs(c: &mut Criterion) {
         })
     });
     group.bench_function("threats_to (memoise)", |b| {
-        let bams: Vec<(Board, MoveDetail)> = positions
+        let bams: Vec<(Board, Move)> = positions
             .iter()
             .map(|p| (p.board().clone(), p.bm().unwrap()[0]))
             .collect();
@@ -542,7 +542,7 @@ fn board_calcs(c: &mut Criterion) {
             t.elapsed() / 2 / positions.len() as u32
         })
     });
-    let bams: Vec<(Board, MoveDetail)> = positions
+    let bams: Vec<(Board, Move)> = positions
         .iter()
         .map(|p| (p.board().clone(), p.bm().unwrap()[0]))
         .collect();
@@ -586,7 +586,7 @@ fn benchmark_ordering(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             movelists.iter().cycle_n(n).for_each(|ml| {
-                black_box(black_box(ml.clone()).sort_unstable_by_key(MoveDetail::mvv_lva_score));
+                black_box(black_box(ml.clone()).sort_unstable_by_key(Move::mvv_lva_score));
             });
             t.elapsed() / movelists.len() as u32
         })
@@ -595,7 +595,7 @@ fn benchmark_ordering(c: &mut Criterion) {
         b.iter_custom(|n| {
             let t = Instant::now();
             movelists.iter().cycle_n(n).for_each(|ml| {
-                black_box(black_box(ml.clone()).sort_by_cached_key(MoveDetail::mvv_lva_score));
+                black_box(black_box(ml.clone()).sort_by_cached_key(Move::mvv_lva_score));
             });
             t.elapsed() / movelists.len() as u32
         })
@@ -619,14 +619,14 @@ fn benchmark_ordering(c: &mut Criterion) {
     // const PLY: Ply = 3;
     let node = Node::root(3);
 
-    const TT_MOVE: MoveDetail = MoveDetail::NULL_MOVE;
+    const TT_MOVE: Move = Move::NULL_MOVE;
     orderer.order = MoveType::vec_from_string("SHIGKPQBE").unwrap();
     group.bench_function("SHIGKPQBE", |b| {
         b.iter_custom(|n| {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|pos| {
                 let mut sorted_moves =
-                    orderer.create_sorted_moves(node, pos.board(), TT_MOVE, MoveDetail::NULL_MOVE);
+                    orderer.create_sorted_moves(node, pos.board(), TT_MOVE, Move::NULL_MOVE);
                 while let Some(mv) = sorted_moves.next_move(pos.board(), &mut algo) {
                     black_box(&mv);
                 }
@@ -640,7 +640,7 @@ fn benchmark_ordering(c: &mut Criterion) {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|pos| {
                 let mut sorted_moves =
-                    orderer.create_sorted_moves(node, pos.board(), TT_MOVE, MoveDetail::NULL_MOVE);
+                    orderer.create_sorted_moves(node, pos.board(), TT_MOVE, Move::NULL_MOVE);
                 while let Some(mv) = sorted_moves.next_move(pos.board(), &mut algo) {
                     black_box(&mv);
                 }
@@ -654,7 +654,7 @@ fn benchmark_ordering(c: &mut Criterion) {
             let t = Instant::now();
             positions.iter().cycle_n(n).for_each(|pos| {
                 let mut sorted_moves =
-                    orderer.create_sorted_moves(node, pos.board(), TT_MOVE, MoveDetail::NULL_MOVE);
+                    orderer.create_sorted_moves(node, pos.board(), TT_MOVE, Move::NULL_MOVE);
                 while let Some(mv) = sorted_moves.next_move(pos.board(), &mut algo) {
                     black_box(&mv);
                 }
@@ -1081,7 +1081,7 @@ fn benchmark_thread(c: &mut Criterion) {
     // let board3 = Catalog::perft_cpw_number3().0.clone();
 
     //let hasher = Hasher::new(1);
-    let cl = |_h: &Hasher, board: &Board, mv: &MoveDetail| {
+    let cl = |_h: &Hasher, board: &Board, mv: &Move| {
         // let moves = board.legal_moves();
         // let hasher = Hasher::default();
         for _i in 1..1_000_000 {
@@ -1377,7 +1377,7 @@ fn bench_pvtable(c: &mut Criterion) {
     c.bench_function("pv_table", |b| {
         b.iter(|| {
             for i in 1..7 {
-                pv_table.set(i, black_box(&MoveDetail::new_null()), false);
+                pv_table.set(i, black_box(&Move::new_null()), false);
                 pv_table.propagate_from(i);
             }
         });
@@ -1452,13 +1452,13 @@ fn bench_shared_mem(c: &mut Criterion) {
 // }
 
 fn bench_moveordering(c: &mut Criterion) {
-    let a1a2 = MoveDetail::new_quiet(Piece::Queen, a1.square(), a2.square());
-    let a1a3 = MoveDetail::new_quiet(Piece::Queen, a1.square(), a3.square());
-    let a1a4 = MoveDetail::new_quiet(Piece::Queen, a1.square(), a4.square());
-    let b1a2 = MoveDetail::new_quiet(Piece::Queen, b1.square(), a2.square());
-    let b1a3 = MoveDetail::new_quiet(Piece::Queen, b1.square(), a3.square());
-    let b1a4 = MoveDetail::new_quiet(Piece::Queen, b1.square(), a4.square());
-    let c1c2 = MoveDetail::new_quiet(Piece::Queen, c1.square(), c2.square());
+    let a1a2 = Move::new_quiet(Piece::Queen, a1.square(), a2.square());
+    let a1a3 = Move::new_quiet(Piece::Queen, a1.square(), a3.square());
+    let a1a4 = Move::new_quiet(Piece::Queen, a1.square(), a4.square());
+    let b1a2 = Move::new_quiet(Piece::Queen, b1.square(), a2.square());
+    let b1a3 = Move::new_quiet(Piece::Queen, b1.square(), a3.square());
+    let b1a4 = Move::new_quiet(Piece::Queen, b1.square(), a4.square());
+    let c1c2 = Move::new_quiet(Piece::Queen, c1.square(), c2.square());
     let mut movelists = vec![MoveList::new(); 100];
     for i in 0..100 {
         movelists[i].extend(vec![b1a2, b1a3, b1a4, a1a3, a1a4, a1a2]);

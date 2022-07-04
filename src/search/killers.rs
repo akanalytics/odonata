@@ -2,7 +2,7 @@ use crate::board::Board;
 use crate::infra::component::Component;
 // use crate::{debug, logger::LogInit};
 use crate::movelist::MoveList;
-use crate::mv::MoveDetail;
+use crate::mv::Move;
 use crate::piece::Ply;
 use crate::piece::MAX_PLY;
 use serde::{Deserialize, Serialize};
@@ -16,7 +16,7 @@ pub struct Killers {
     use_ply_below: bool,
 
     #[serde(skip)]
-    killers: Vec<[MoveDetail; 2]>,
+    killers: Vec<[Move; 2]>,
 }
 
 impl Default for Killers {
@@ -25,24 +25,24 @@ impl Default for Killers {
             enabled: true,
             clear_every_move: false,
             use_ply_below: true,
-            killers: vec![[MoveDetail::new_null(); 2]; MAX_PLY as usize],
+            killers: vec![[Move::new_null(); 2]; MAX_PLY as usize],
         }
     }
 }
 
 impl Component for Killers {
     fn new_game(&mut self) {
-        self.killers.fill([MoveDetail::new_null(); 2]);
+        self.killers.fill([Move::new_null(); 2]);
     }
 
     fn new_position(&mut self) {
         if self.clear_every_move {
-            self.killers.fill([MoveDetail::new_null(); 2]);
+            self.killers.fill([Move::new_null(); 2]);
         } else {
             self.killers.remove(0);
-            self.killers.push([MoveDetail::new_null(); 2]);
+            self.killers.push([Move::new_null(); 2]);
             self.killers.remove(0);
-            self.killers.push([MoveDetail::new_null(); 2]);
+            self.killers.push([Move::new_null(); 2]);
         }
     }
 }
@@ -84,7 +84,7 @@ impl Killers {
         }
     }
 
-    pub fn store(&mut self, y: Ply, m: &MoveDetail) {
+    pub fn store(&mut self, y: Ply, m: &Move) {
         // killers are quiet
         if !self.enabled || m.is_castle() || m.is_capture() {
             return;

@@ -2,7 +2,7 @@ use crate::board::Board;
 use crate::bound::NodeType;
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
-use crate::mv::MoveDetail;
+use crate::mv::Move;
 use crate::search::node::Node;
 use crate::piece::{MoveType, Ply};
 use crate::Algo;
@@ -142,7 +142,7 @@ impl Algo {
     pub fn lmr(
         &mut self,
         before: &Board,
-        mv: MoveDetail,
+        mv: Move,
         mv_num: u32,
         _quiets: i32,
         stage: MoveType,
@@ -150,7 +150,7 @@ impl Algo {
         n: &Node,
         nt: NodeType,
         ext: Ply,
-        _tt_mv: MoveDetail,
+        _tt_mv: Move,
     ) -> Ply {
         if !self.lmr.enabled {
             return 0;

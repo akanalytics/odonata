@@ -9,7 +9,7 @@ use crate::eval::weight::Weight;
 use crate::infra::component::Component;
 use crate::infra::component::State;
 use crate::infra::metric::Metrics;
-use crate::mv::MoveDetail;
+use crate::mv::Move;
 use crate::phaser::Phaser;
 use crate::piece::{Color, Piece};
 use crate::search::node::Counter;
@@ -528,7 +528,7 @@ impl Eval {
 
     /// the value of the capture or promotion (or both for promo capture)
     #[inline]
-    pub fn eval_move_material(&self, mv: &MoveDetail) -> Weight {
+    pub fn eval_move_material(&self, mv: &Move) -> Weight {
         self.mb.eval_move_material(mv)
     }
 }
@@ -552,12 +552,12 @@ impl Board {
     }
 
     #[inline]
-    pub fn eval_move_see(&self, eval: &Eval, mv: MoveDetail) -> Score {
+    pub fn eval_move_see(&self, eval: &Eval, mv: Move) -> Score {
         Score::from_cp(eval.see.eval_move_see(self, mv))
     }
 
     #[inline]
-    pub fn eval_move_material(&self, eval: &Eval, mv: &MoveDetail) -> Score {
+    pub fn eval_move_material(&self, eval: &Eval, mv: &Move) -> Score {
         // FIXME! far too slow (-7 ELO)
         Score::from_cp(
             eval.eval_move_material(mv)

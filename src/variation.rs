@@ -2,14 +2,14 @@ use serde::{Deserialize, Serialize};
 
 
 use crate::board::Board;
-use crate::mv::MoveDetail;
+use crate::mv::Move;
 use crate::piece::Ply;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Variation {
-    moves: Vec<MoveDetail>,
+    moves: Vec<Move>,
 }
 
 impl Default for Variation {
@@ -43,7 +43,7 @@ impl Variation {
     }
 
     #[inline]
-    pub fn moves(&self) -> impl Iterator<Item = &MoveDetail> {
+    pub fn moves(&self) -> impl Iterator<Item = &Move> {
         self.moves.iter()
     }
 
@@ -82,14 +82,14 @@ impl Variation {
         s.join(" ")
     }
 
-    pub fn append(&self, mv: MoveDetail) -> Variation {
+    pub fn append(&self, mv: Move) -> Variation {
         let mut var = self.clone();
         var.push(mv);
         var
     }
 
     #[inline]
-    pub fn set_last_move(&mut self, ply: Ply, mv: &MoveDetail) {
+    pub fn set_last_move(&mut self, ply: Ply, mv: &Move) {
         let ply = ply as usize;
         // root node is ply 0, so len==ply, so ply 1 gets stored in 0th element
         if self.moves.len() == ply && ply > 0 {
@@ -121,7 +121,7 @@ impl Variation {
 }
 
 impl Deref for Variation {
-    type Target = Vec<MoveDetail>;
+    type Target = Vec<Move>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -143,7 +143,7 @@ impl fmt::Display for Variation {
                 writeln!(f, "{:#}", mv)?;
             }
         } else {
-            let strings: Vec<String> = self.moves.iter().map(MoveDetail::to_string).collect();
+            let strings: Vec<String> = self.moves.iter().map(Move::to_string).collect();
             f.write_str(&strings.join(", "))?
         }
         Ok(())

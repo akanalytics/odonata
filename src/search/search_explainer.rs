@@ -5,7 +5,7 @@ use crate::{bound::NodeType, piece::Ply};
 // use crate::eval::weight::Weight;
 // use crate::search::node::Node;
 use crate::eval::score::Score;
-use crate::mv::MoveDetail;
+use crate::mv::Move;
 use crate::search::algo::Algo;
 use crate::variation::Variation;
 // use crate::eval::switches::Switches;
@@ -242,7 +242,7 @@ impl Algo {
     pub fn explain_futility(
         &mut self,
         b: &Board,
-        mv: MoveDetail,
+        mv: Move,
         _move_type: MoveType,
         estimated: Score,
         n: &Node,
@@ -266,7 +266,7 @@ impl Algo {
     pub fn explain_move(
         &mut self,
         b: &Board,
-        mv: MoveDetail,
+        mv: Move,
         child_score: Score,
         e: Event,
         n: &Node,
@@ -316,7 +316,7 @@ impl Algo {
     pub fn explain_node(
         &mut self,
         b: &Board,
-        bm: MoveDetail,
+        bm: Move,
         nt: NodeType,
         score: Score,
         eval: Score,

@@ -2,7 +2,7 @@ use crate::board::Board;
 use crate::catalog::Catalog;
 // use crate::movelist::MoveValidator;
 use crate::eval::score::Score;
-use crate::mv::MoveDetail;
+use crate::mv::Move;
 use crate::other::outcome::Outcome;
 use crate::position::Position;
 use crate::search::algo::Algo;
@@ -26,7 +26,7 @@ pub struct Game {
     name_w: String,
     name_b: String,
     outcome: Outcome,
-    callback: Option<Rc<dyn Fn(&Game, &MoveDetail, &Tags)>>,
+    callback: Option<Rc<dyn Fn(&Game, &Move, &Tags)>>,
 }
 
 impl Game {
@@ -40,7 +40,7 @@ impl Game {
         self
     }
 
-    pub fn set_callback(&mut self, callback: impl Fn(&Game, &MoveDetail, &Tags) + 'static) -> &mut Self {
+    pub fn set_callback(&mut self, callback: impl Fn(&Game, &Move, &Tags) + 'static) -> &mut Self {
         self.callback = Some(Rc::new(callback));
         self
     }
@@ -57,7 +57,7 @@ impl Game {
         }
     }
 
-    pub fn choose_move(&mut self, white: &mut Algo, black: &mut Algo) -> MoveDetail {
+    pub fn choose_move(&mut self, white: &mut Algo, black: &mut Algo) -> Move {
         if !self.board.outcome().is_game_over() {
             if let Err(e) = self.board.validate() {
                 panic!("Error on board {} {:#}", e, self.board);
@@ -82,10 +82,10 @@ impl Game {
             }
             return mv;
         }
-        MoveDetail::new_null()
+        Move::new_null()
     }
 
-    pub fn record_move(&mut self, mv: &MoveDetail, tags: &Tags) {
+    pub fn record_move(&mut self, mv: &Move, tags: &Tags) {
         self.print_move(mv, tags);
         self.moves.push(*mv);
         self.annotations.push(tags.clone());
@@ -93,7 +93,7 @@ impl Game {
         self.outcome = self.board.outcome();
     }
 
-    pub fn print_move(&self, mv: &MoveDetail, tags: &Tags) {
+    pub fn print_move(&self, mv: &Move, tags: &Tags) {
         println!(
             "{:>2}.{:<8}  {}  {}",
             self.board.fullmove_number(),
@@ -191,7 +191,7 @@ mod tests {
         let pos = Catalog::starting_position();
         let mut game = Game::new();
         game.set_starting_pos(pos);
-        let callback = |gm: &Game, mv: &MoveDetail, tags: &Tags| gm.print_move(mv, tags);
+        let callback = |gm: &Game, mv: &Move, tags: &Tags| gm.print_move(mv, tags);
         game.set_callback(callback);
         game.play(&mut white, &mut black);
         println!("{}", game);
