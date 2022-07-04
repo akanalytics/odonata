@@ -1,15 +1,11 @@
-use crate::bits::bitboard::Bitboard;
-use crate::bits::castling::CastlingRights;
-use crate::bits::precalc::PreCalc;
 use crate::bits::square::Square;
-
 use crate::board::Board;
 use crate::bound::NodeType;
 use crate::cache::lockless_hashmap::{Bucket, SharedTable};
 use crate::eval::score::Score;
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
-use crate::mv::MoveDetail;
+use crate::mv::{Move, MoveDetail};
 use crate::piece::{Hash, Piece, Ply};
 use crate::search::node::{Counter, Timing};
 use crate::variation::Variation;
@@ -22,31 +18,29 @@ pub struct TtNode {
     pub score: TtScore,
     pub depth: Ply,
     pub nt: NodeType,
-    pub bm: MoveDetail,
+    pub bm: Move,
 }
 
 /// TtScore has mate scores relative to current ply, NOT to root board
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct TtScore(Score);
 
-impl Score {
+impl TtScore {
     #[inline]
-    pub fn as_tt_score(&self, ply: Ply) -> TtScore {
-        TtScore(match *self {
-            s if s >= Score::we_win_in(0) => Score::we_win_in(self.ply_win() - ply),
-            s if s <= Score::we_lose_in(0) => Score::we_lose_in(self.ply_loss() - ply),
-            _ => *self
+    pub fn new(s: Score, ply: Ply) -> TtScore {
+        TtScore(match s {
+            s if s >= Score::we_win_in(0) => Score::we_win_in(s.ply_win() - ply),
+            s if s <= Score::we_lose_in(0) => Score::we_lose_in(s.ply_loss() - ply),
+            _ => s,
         })
     }
-}
 
-impl TtScore {
     #[inline]
     pub fn as_score(&self, ply: Ply) -> Score {
         match self.0 {
             s if s >= Score::we_win_in(0) => Score::we_win_in(s.ply_win() + ply),
             s if s <= Score::we_lose_in(0) => Score::we_lose_in(s.ply_loss() + ply),
-            _ => self.0
+            _ => self.0,
         }
     }
     pub fn pack_16bits(&self) -> u64 {
@@ -65,77 +59,30 @@ impl TtScore {
     }
 }
 
-impl MoveDetail {
+impl Move {
     pub fn pack_20bits(&self) -> u64 {
         if self.is_null() {
             return 0;
         }
-        let to = self.to();
-        let mut from = self.from();
-        if self.is_promo() {
-            // the rank of to-sq pawn promo can be deduced from the to-sq,
-            // so we use from-rank as a store the promo piece
-            let file = from.file_index();
-            let rank = self.promo_piece().index();
-            from = Square::from_xy(file as u32, rank as u32);
-        }
-        #[allow(clippy::identity_op)]
-        let mut bits = (from.index() as u64) << 0; // 0-63 bits 0-5
-        bits |= (to.index() as u64) << 6; // 0-63 bits 6-11
-        let capture = self.capture_piece();
-        let mover = self.mover_piece();
-        bits |= (capture.index() as u64 & 7) << 12; //bits 12-14
-        bits |= (mover.index() as u64 & 7) << 15; // bits 15-17
-        bits |= (self.is_pawn_double_push() as u64 & 1) << 18;
-        bits |= (self.is_ep_capture() as u64 & 1) << 19;
-        bits
+        self.from().index() as u64
+            + ((self.to().index() as u64) << 6)
+            + if let Some(p) = self.promo() {
+                (p.index() as u64) << 12
+            } else {
+                0
+            }
     }
 
-    pub fn unpack_20bits(bits: u64) -> MoveDetail {
-        if bits == 0 {
-            return MoveDetail::NULL_MOVE;
-        }
-        let capture = Piece::from_index((bits >> 12) as usize & 7);
-        let mover = Piece::from_index((bits >> 15) as usize & 7);
-        let is_pawn_double_push = (bits >> 18) & 1 == 1;
-        let is_ep_capture = (bits >> 19) & 1 == 1;
-
-        let mut from = Square::from_u32(bits as u32 & 63);
+    pub fn unpack_20bits(bits: u64) -> Move {
+        // works for null move
+        let from = Square::from_u32(bits as u32 & 63);
         let to = Square::from_u32((bits >> 6) as u32 & 63);
-        let mut promo = Piece::None;
-        if mover == Piece::Pawn && to.as_bb().intersects(Bitboard::RANK_8 | Bitboard::RANK_1) {
-            // its a pawn promo, from encodes the promo-piece
-            let file = from.file_index();
-            promo = Piece::from_index(from.rank_index());
-            let rank = if to.rank_index() == 7 { 6 } else { 1 }; // 7->6 and 0->1
-            from = Square::from_xy(file as u32, rank);
-        }
-
-        if mover == Piece::King && CastlingRights::is_castling(from, to) {
-            MoveDetail::new_castle(from, to, CastlingRights::from_king_move(to))
-        } else if capture == Piece::None {
-            if mover != Piece::Pawn {
-                MoveDetail::new_quiet(mover, from, to)
-            } else if promo == Piece::None {
-                if is_pawn_double_push {
-                    let ep = PreCalc::default().strictly_between(from, to).square();
-                    MoveDetail::new_double_push(from, to, ep)
-                } else {
-                    MoveDetail::new_quiet(Piece::Pawn, from, to)
-                }
-            } else {
-                MoveDetail::new_promo(from, to, promo)
-            }
-        } else if mover != Piece::Pawn {
-            MoveDetail::new_capture(mover, from, to, capture)
-        } else if is_ep_capture {
-            let capture_sq = Square::from_xy(to.file_index() as u32, from.rank_index() as u32);
-            MoveDetail::new_ep_capture(from, to, capture_sq)
-        } else if promo != Piece::None {
-            MoveDetail::new_promo_capture(from, to, promo, capture)
-        } else {
-            MoveDetail::new_capture(mover, from, to, capture)
-        }
+        let piece_index = (bits >> 12) & 7;
+        let promo = match piece_index {
+            0 => None,
+            pi => Some(Piece::from_index(pi as usize)),
+        };
+        Move { to, from, promo }
     }
 }
 // pub fn unpack_12bits_part1(bits: U64, b: &Board) -> (Square, Square, Piece) {
@@ -189,7 +136,7 @@ impl TtNode {
         let draft = (bits >> 8) & 255;
         let node_type = NodeType::unpack_2bits((bits >> 16) & 3);
         let score = TtScore::unpack_16bits((bits >> 18) & ((2 << 16) - 1));
-        let bm = MoveDetail::unpack_20bits(bits >> 34);
+        let bm = Move::unpack_20bits(bits >> 34);
         (
             TtNode {
                 depth: draft as i32,
@@ -200,6 +147,20 @@ impl TtNode {
             (bits & 255) as u8,
         )
     }
+
+    pub fn validate_move(&self, bd: &Board) -> MoveDetail {
+        if self.bm.is_null() {
+            MoveDetail::NULL_MOVE
+        } else {
+            let mv = bd.move_detail(self.bm);
+            if !bd.is_pseudo_legal_and_legal_move(mv) {
+                Metrics::incr(Counter::TtIllegalMove);
+                MoveDetail::NULL_MOVE
+            } else {
+                mv
+            }
+        }
+    }
 }
 
 impl fmt::Display for TtNode {
@@ -208,7 +169,7 @@ impl fmt::Display for TtNode {
             write!(
                 f,
                 "{:>6} {:>10} {:>3} {:>2}",
-                self.bm.uci(),
+                self.bm,
                 self.score.0.to_string(),
                 self.depth,
                 self.nt
@@ -217,10 +178,7 @@ impl fmt::Display for TtNode {
             write!(
                 f,
                 "{} scoring {} draft {} type {}",
-                self.bm.uci(),
-                self.score.0,
-                self.depth,
-                self.nt
+                self.bm, self.score.0, self.depth, self.nt
             )
         }
     }
@@ -387,9 +345,9 @@ impl TranspositionTable2 {
     }
 
     pub fn fmt_nodes(&self, f: &mut fmt::Formatter, b: &Board) -> fmt::Result {
-        let nodes = self.extract_nodes(b);
-        for n in nodes {
-            writeln!(f, "{:#}", n)?
+        let (var, _) = self.extract_pv_and_score(b);
+        for mv in var.iter() {
+            writeln!(f, "{:#}", mv)?
         }
         Ok(())
     }
@@ -617,27 +575,6 @@ impl TranspositionTable2 {
         }
         let t = Metrics::timing_start();
         let tt_node = self.probe_by_hash(board.hash());
-        if let Some(tt_node) = tt_node {
-            if !tt_node.bm.is_null() && !board.is_pseudo_legal_and_legal_move(tt_node.bm) {
-                Metrics::incr(Counter::TtIllegalMove);
-                return None;
-            }
-            debug_assert!(
-                tt_node.score.0.is_finite(),
-                "tt_node {}\nboard {:#}\nply: {}\ndepth: {}",
-                tt_node,
-                board,
-                ply,
-                depth
-            );
-            assert!(
-                tt_node.bm.is_null() || board.is_pseudo_legal_and_legal_move(tt_node.bm),
-                "{} {} {:?}",
-                board.to_fen(),
-                tt_node.bm.uci(),
-                tt_node.bm
-            );
-        }
         Metrics::profile(t, Timing::TimingTtProbe);
         tt_node
     }
@@ -660,29 +597,23 @@ impl TranspositionTable2 {
     }
 
     pub fn extract_pv_and_score(&self, b: &Board) -> (Variation, Option<Score>) {
-        let mut var = Variation::new();
-        let nodes = self.extract_nodes(b);
-        nodes.iter().for_each(|n| var.push(n.bm));
-        let score = nodes.first().map(|n| n.score.0); // score at root is same as WrtRoot
-        (var, score)
-    }
-
-    // non recursive
-    fn extract_nodes(&self, b: &Board) -> Vec<TtNode> {
         let mut board = b.clone();
-        let mut nodes = Vec::new();
+        let mut var = Variation::new();
+        let mut score = None;
         // board = board.make_move(&first);
         // moves.push(*first);
-        let mut mv;
-        while nodes.len() < 50 {
+        while var.len() < 50 {
             // probe by hash to avoid all the board filters (ply etc)
             let entry = self.probe_by_hash(board.hash());
             if let Some(entry) = entry {
                 if entry.nt == NodeType::ExactPv {
-                    mv = &entry.bm;
-                    if !mv.is_null() && board.is_pseudo_legal_and_legal_move(*mv) {
-                        board = board.make_move(mv);
-                        nodes.push(entry);
+                    let mv = entry.validate_move(&board);
+                    if !mv.is_null() {
+                        board = board.make_move(&mv);
+                        var.push(mv);
+                        if score.is_none() {
+                            score = Some(entry.score.0); // score at root is same as WrtRoot
+                        }
                         continue;
                     } else {
                         debug_assert!(
@@ -704,23 +635,24 @@ impl TranspositionTable2 {
                             entry.nt,
                             board.to_fen()
                         );
-                        return nodes;
+                        break;
                     }
                 }
-                if nodes.is_empty() {
+                if var.is_empty() {
                     println!("root node is {:?}", entry.nt);
                 }
             }
             // println!("Unable to find hash {} after move {}", board.hash(), mv) ;
             break;
         }
-        nodes
+        (var, score)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::bits::CastlingRights;
     use crate::catalog::*;
     use crate::comms::uci::*;
     use crate::globals::constants::*;
@@ -735,7 +667,7 @@ mod tests {
             score: TtScore(Score::from_cp(300)),
             depth: 2,
             nt: NodeType::ExactPv,
-            bm: MoveDetail::new_quiet(Piece::Pawn, b7.square(), b6.square()),
+            bm: MoveDetail::new_quiet(Piece::Pawn, b7.square(), b6.square()).to_inner(),
         }
     }
 
@@ -744,7 +676,7 @@ mod tests {
             score: TtScore(Score::from_cp(200)),
             depth: 3,
             nt: NodeType::ExactPv,
-            bm: MoveDetail::new_quiet(Piece::Pawn, a2.square(), a3.square()),
+            bm: MoveDetail::new_quiet(Piece::Pawn, a2.square(), a3.square()).to_inner(),
         }
     }
 
@@ -761,18 +693,19 @@ mod tests {
                 Piece::None,
                 Piece::None,
                 CastlingRights::NONE,
-            ),
+            )
+            .to_inner(),
         }
     }
 
     #[test]
     fn test_tt_score() {
         assert_eq!(
-            Score::we_lose_in(5).as_tt_score(3).as_score(3),
+            TtScore::new(Score::we_lose_in(5), 3).as_score(3),
             Score::we_lose_in(5)
         );
         assert_eq!(
-            Score::we_win_in(5).as_tt_score(3).as_score(3),
+            TtScore::new(Score::we_win_in(5), 3).as_score(3),
             Score::we_win_in(5)
         );
     }

@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::bound::NodeType;
-use crate::cache::tt2::TtNode;
+use crate::cache::tt2::{TtNode, TtScore};
 use crate::eval::score::{Score, ToScore};
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
@@ -181,10 +181,10 @@ impl Algo {
                 )?;
                 if self.razor.store_tt {
                     let entry = TtNode {
-                        score: score.clamp_score().as_tt_score(n.ply),
+                        score: TtScore::new(score.clamp_score(), n.ply),
                         depth: 1,
                         nt: NodeType::UpperAll,
-                        bm: MoveDetail::NULL_MOVE,
+                        bm: MoveDetail::NULL_MOVE.to_inner(),
                     };
                     self.tt.store(b.hash(), entry);
                 }

@@ -432,7 +432,7 @@ fn board_calcs(c: &mut Criterion) {
 
     group.bench_function("tt_store", |b| {
         let entry = TtNode {
-            score: Score::from_cp(100).as_tt_score(0),
+            score: TtScore::new(Score::from_cp(100), 0),
             depth: 1,
             nt: NodeType::ExactPv,
             bm: MoveDetail::NULL_MOVE,

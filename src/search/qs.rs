@@ -135,7 +135,7 @@ impl Algo {
                     NodeType::Unused => unreachable!(),
                 }
                 if self.qs.use_hash_move {
-                    hm = tt.bm;
+                    hm = tt.validate_move(bd);
                 }
             }
         }

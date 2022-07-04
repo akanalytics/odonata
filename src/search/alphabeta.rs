@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::bound::NodeType;
-use crate::cache::tt2::TtNode;
+use crate::cache::tt2::{TtNode, TtScore};
 use crate::eval::score::Score;
 use crate::infra::metric::Metrics;
 use crate::mv::MoveDetail;
@@ -430,10 +430,10 @@ impl Algo {
         // aspiration search fails dont get stored
         if score > -Score::INFINITY && score < Score::INFINITY {
             let entry = TtNode {
-                score: score.as_tt_score(n.ply),
+                score: TtScore::new(score, n.ply),
                 depth,
                 nt,
-                bm: bm.unwrap_or_default(),
+                bm: bm.unwrap_or_default().to_inner(),
             };
             Metrics::incr_node(&n, Event::TtStoreNode);
             self.tt.store(b.hash(), entry);

@@ -96,12 +96,12 @@ impl Algo {
                             && self.mte.time_sensitive()
                             && score > n.alpha
                         {
-                            self.record_truncated_move(n.ply, &entry.bm);
+                            self.record_truncated_move(n.ply, &entry.validate_move(b));
                             // self.stats.inc_leaf_tt_nodes(n.ply);
                             Metrics::incr_node(&n, Event::TtPv);
                             return (Some(score), None);
                         }
-                        return (None, Some(entry.bm)); // else we just use the hash move for move ordering
+                        return (None, Some(entry.validate_move(b))); // else we just use the hash move for move ordering
                     }
                     NodeType::LowerCut => {
                         // previously this position raised alpha (sufficiently to cause a cut).
@@ -125,7 +125,7 @@ impl Algo {
                         //     //             // tt_mv = Some(entry.bm); // might help with move ordering
                         //     return (Some(entry.score), Some(entry.bm)); // else we just use the hash move for move ordering
                         // }
-                        return (None, Some(entry.bm)); // else we just use the hash move for move ordering
+                        return (None, Some(entry.validate_move(b))); // else we just use the hash move for move ordering
                     }
                     NodeType::UpperAll => {
                         // previously this position didnt raise alpha, the score is an upper bound
@@ -142,7 +142,7 @@ impl Algo {
                 }
             }
             // not enough draft - just use for move guidance
-            return (None, Some(entry.bm));
+            return (None, Some(entry.validate_move(b)));
         }
 
         // not found

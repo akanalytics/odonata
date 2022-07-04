@@ -43,11 +43,11 @@ use std::str::FromStr;
 
 // pub type MoveTypes = BitFlags<MoveType>;
 
-#[derive(Default, Copy, Clone, PartialEq, Eq)]
+#[derive(Default, Copy, Clone, PartialEq, Eq, Debug)]
 pub struct Move {
-    from: Square,
-    to: Square,
-    promo: Option<Piece>,
+    pub from: Square,
+    pub to: Square,
+    pub promo: Option<Piece>,
 }
 
 impl Move {
@@ -282,6 +282,14 @@ impl MoveDetail {
     #[inline]
     pub const fn promo_piece(&self) -> Piece {
         Piece::from_index((self.bits >> Self::OFFSET_PROMO) as usize & 7)
+    }
+
+    #[inline]
+    pub const fn promo(&self) -> Option<Piece> {
+        match (self.bits >> Self::OFFSET_PROMO) & 7 {
+            0 => None,
+            i => Some(Piece::from_index(i as usize)),
+        }
     }
 
     #[inline]

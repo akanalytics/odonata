@@ -1,7 +1,7 @@
 
 use crate::board::Board;
 use crate::bound::NodeType;
-use crate::cache::tt2::TtNode;
+use crate::cache::tt2::{TtNode, TtScore};
 use crate::eval::score::{Score, ToScore};
 use crate::infra::metric::Metrics;
 use crate::mv::MoveDetail;
@@ -201,10 +201,10 @@ impl Algo {
                 // score is clamped as you cant mate on a null move. Note reduced depth too
                 Metrics::incr_node(n, Event::TtStoreNode);
                 let entry = TtNode {
-                    score: child_score.clamp_score().as_tt_score(n.ply),
+                    score: TtScore::new(child_score.clamp_score(), n.ply),
                     depth: reduced_depth + 1,
                     nt: NodeType::LowerCut,
-                    bm: MoveDetail::NULL_MOVE,
+                    bm: MoveDetail::NULL_MOVE.to_inner(),
                 };
                 // remember this is the child board hash with child score,
                 // but we store it as parent board and negative score and bound,
