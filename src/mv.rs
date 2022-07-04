@@ -136,7 +136,14 @@ pub struct MoveDetail {
 
 impl fmt::Debug for MoveDetail {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Move").field("uci", &self.uci()).finish()
+        f.debug_struct("Move")
+            .field("from", &self.from())
+            .field("to", &self.to())
+            .field("mover", &self.mover_piece())
+            .field("captured", &self.capture_piece())
+            .field("castling", &self.castling_side())
+            .field("ep", &self.ep())
+            .finish()
     }
 }
 
@@ -515,7 +522,7 @@ impl fmt::Display for MoveDetail {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::catalog::Catalog;
+    use crate::{catalog::Catalog, perft::Perft};
     // use crate::movelist::MoveValidator;
 
     #[test]
@@ -590,25 +597,30 @@ mod tests {
     }
 
     #[test]
+    fn test_to_and_from_detail() {
+        let positions = Catalog::win_at_chess();
+        let mut count = 0;
+        for pos in positions {
+            let mut func = |bd: &Board, mv: MoveDetail| {
+                assert_eq!(bd.move_detail(mv.to_inner()), mv);
+                *&mut count += 1
+            };
+            Perft::perft_fn(&mut pos.board().clone(), 3, &mut func);
+        }
+        println!("Count = {count}");
+    }
+
+    #[test]
     fn test_mvv_lva() {
         let pxq = MoveDetail::new_capture(Piece::Pawn, Square::A1, Square::A2, Piece::Queen);
-
         let pxr = MoveDetail::new_capture(Piece::Pawn, Square::A1, Square::A2, Piece::Rook);
-
         let pxb = MoveDetail::new_capture(Piece::Pawn, Square::A1, Square::A2, Piece::Bishop);
-
         let pxn = MoveDetail::new_capture(Piece::Pawn, Square::A1, Square::A2, Piece::Knight);
-
         let pxp = MoveDetail::new_capture(Piece::Pawn, Square::A1, Square::A2, Piece::Pawn);
-
         let qxp = MoveDetail::new_capture(Piece::Queen, Square::A1, Square::A2, Piece::Pawn);
-
         let qxn = MoveDetail::new_capture(Piece::Queen, Square::A1, Square::A2, Piece::Knight);
-
         let qxb = MoveDetail::new_capture(Piece::Queen, Square::A1, Square::A2, Piece::Bishop);
-
         let qxr = MoveDetail::new_capture(Piece::Queen, Square::A1, Square::A2, Piece::Rook);
-
         let qxq = MoveDetail::new_capture(Piece::Queen, Square::A1, Square::A2, Piece::Queen);
 
         let pxq_q =

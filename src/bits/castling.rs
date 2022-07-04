@@ -151,10 +151,10 @@ impl CastlingRights {
     #[inline]
     pub fn from_king_move(to: Square) -> CastlingRights {
         match to {
-            Square::G1 => CastlingRights::WHITE_QUEEN,
+            Square::G1 => CastlingRights::WHITE_KING,
             Square::C1 => CastlingRights::WHITE_QUEEN,
             Square::G8 => CastlingRights::BLACK_KING,
-            Square::C8 => CastlingRights::BLACK_KING,
+            Square::C8 => CastlingRights::BLACK_QUEEN,
             _ => {
                 unreachable!("king move-to for castling");
             }

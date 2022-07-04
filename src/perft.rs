@@ -1,6 +1,7 @@
 
 use crate::board::Board;
 use crate::movelist::MoveList;
+use crate::mv::MoveDetail;
 
 #[derive(Default, Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Perft {
@@ -14,7 +15,24 @@ pub struct Perft {
     pub checkmates: u64,
 }
 
+
 impl Perft {
+    pub fn perft_fn(board: &mut Board, depth: u32, f: &mut dyn FnMut(&Board, MoveDetail) ) {
+        if depth == 0 {
+            return;
+        }
+        let mut moves = MoveList::new();
+        board.legal_moves_into(&mut moves);
+        if depth == 1 {
+            moves.iter().for_each(|mv| f(board, *mv));
+        } else {
+            for m in moves.iter() {
+                Self::perft_fn(&mut board.make_move(m), depth - 1, f);
+            }
+        }
+    }
+
+
     pub fn perft(board: &mut Board, depth: u32) -> u64 {
         if depth == 0 {
             return 1;
@@ -121,6 +139,28 @@ mod tests {
     use crate::catalog::Catalog;
     use std::time::Instant;
     use test_log::test;
+
+    #[test]
+    fn test_perft_fn() {
+        for (mut board, perfts) in Catalog::perfts() {
+            for (depth, &expected) in perfts.iter().enumerate().skip(1) {
+                if depth <= 4 {
+                    let now = Instant::now();
+                    let mut count = 0;
+                    let mut func = |_:&Board,_: MoveDetail| *&mut count += 1;
+                    Perft::perft_fn(&mut board, depth as u32, &mut func );
+                    println!(
+                        "perft({depth})={count} in {time} millis (expected {expected})",
+                        depth = depth,
+                        count = count,
+                        time = now.elapsed().as_millis(),
+                    );
+                    assert_eq!(count, expected, "fen {} perft({})", board.to_fen(), depth);
+                }
+                // assert_eq!(&count, expected, "fen: {}", board.to_fen());
+            }
+        }
+    }
 
     #[test]
     fn test_perft_1() {
