@@ -478,8 +478,8 @@ mod tests {
             let mut algo = Algo::new();
             algo.set_callback(crate::comms::uci::Uci::uci_info);
             // search.tt.enabled = false;
+            algo.set_timing_method(TimeControl::Depth(7));
             algo.set_position(pos.clone()).search();
-            algo.set_timing_method(TimeControl::Depth(11));
             // println!("{}", search);
             assert_eq!(
                 algo.pv().to_string(),

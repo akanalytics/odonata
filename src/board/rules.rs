@@ -46,7 +46,7 @@ impl Rules {
                     Piece::King,
                     king_sq,
                     to,
-                    b.piece_at(to.as_bb()),
+                    b.piece_unchecked(to),
                 ));
             } else {
                 moves.push(Move::new_quiet(Piece::King, king_sq, to));
@@ -165,7 +165,7 @@ impl Rules {
         if p != Piece::Pawn {
             for to in dests.squares() {
                 if to.is_in(b.them()) {
-                    moves.push(Move::new_capture(p, fr, to, b.piece_at(to.as_bb())))
+                    moves.push(Move::new_capture(p, fr, to, b.piece_unchecked(to)))
                 } else {
                     moves.push(Move::new_quiet(p, fr, to))
                 }
@@ -187,7 +187,7 @@ impl Rules {
         for to in dests.squares() {
             if to.is_in(b.them()) {
                 // try and pre-sort promos by likely usefulness
-                let cap = b.piece_at(to.as_bb());
+                let cap = b.piece_unchecked(to);
                 moves.push(Move::new_promo_capture(fr, to, Piece::Queen, cap));
                 moves.push(Move::new_promo_capture(fr, to, Piece::Knight, cap));
                 moves.push(Move::new_promo_capture(fr, to, Piece::Rook, cap));

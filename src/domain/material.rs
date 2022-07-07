@@ -22,7 +22,7 @@ impl fmt::Display for Material {
                 write!(
                     f,
                     "{}",
-                    p.to_char(Some(c))
+                    p.to_char(c)
                         .to_string()
                         .repeat(self.count(c, p) as usize)
                 )?;

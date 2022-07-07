@@ -44,7 +44,6 @@ pub struct Board {
     checkers_of: [Cell<Bitboard>; Color::len()],
     pinned: [Cell<Bitboard>; Color::len()],
     discoverer: [Cell<Bitboard>; Color::len()],
-    
 }
 
 impl Serialize for Board {
@@ -165,27 +164,35 @@ impl Board {
         self.colors[Color::Black.index()]
     }
 
+    // #[inline]
+    // pub fn piece_at(&self, sq: Bitboard) -> Piece {
+    //     debug_assert!(sq != Bitboard::EMPTY);
+    //     for &p in &Piece::ALL_BAR_NONE {
+    //         if self.pieces(p).contains(sq) {
+    //             return p;
+    //         }
+    //     }
+    //     Piece::None
+    // }
+
     #[inline]
-    pub fn piece_at(&self, sq: Bitboard) -> Piece {
-        debug_assert!(sq != Bitboard::EMPTY);
-        for &p in &Piece::ALL_BAR_NONE {
-            if self.pieces(p).contains(sq) {
-                return p;
-            }
+    pub fn piece(&self, sq: Square) -> Option<Piece> {
+        match sq {
+            _ if sq.is_in(self.pawns()) => Some(Piece::Pawn),
+            _ if sq.is_in(self.knights()) => Some(Piece::Knight),
+            _ if sq.is_in(self.bishops()) => Some(Piece::Bishop),
+            _ if sq.is_in(self.rooks()) => Some(Piece::Rook),
+            _ if sq.is_in(self.queens()) => Some(Piece::Queen),
+            _ if sq.is_in(self.kings()) => Some(Piece::King),
+            _ => None,
         }
-        Piece::None
     }
 
     #[inline]
-    pub fn piece_on(&self, sq: Square) -> Option<Piece> {
-        for &p in &Piece::ALL_BAR_NONE {
-            if sq.is_in(self.pieces(p)) {
-                return Some(p)
-            }
-        }
-        None
+    pub fn piece_unchecked(&self, sq: Square) -> Piece {
+        self.piece(sq)
+            .unwrap_or_else(|| panic!("No piece found on {} of {} ", sq, self.to_fen()))
     }
-
 
     #[inline]
     pub fn remove_piece(&mut self, sq: Bitboard, p: Piece, c: Color) {
@@ -206,13 +213,13 @@ impl Board {
     }
 
     #[inline]
-    pub fn set_piece_at(&mut self, sq: Bitboard, p: Piece) {
+    pub fn set_piece_at(&mut self, sq: Square, p: Option<Piece>) {
         for bb in self.pieces.iter_mut() {
-            bb.remove(sq);
+            bb.remove(sq.as_bb());
         }
         // self.0.pieces(p).remove(sq);
-        if p != Piece::None {
-            self.pieces[p].insert(sq);
+        if let Some(p) = p {
+            self.pieces[p].insert(sq.as_bb());
         }
         self.calculate_internals();
     }
@@ -418,7 +425,6 @@ impl Board {
     }
 }
 
-
 // thread_local! {
 //     static CACHE: [SimpleCache<Bitboard>;2] = Default::default();
 // }
@@ -430,8 +436,6 @@ impl Board {
 // use static_init::dynamic;
 // #[dynamic]
 // static CACHE: CacheX = Default::default();
-
-
 
 impl Board {
     // all pieces of either color attacking a region
@@ -476,7 +480,6 @@ impl Board {
         let their_king_color = self.color_them();
         self.make_move(mv).is_in_check(their_king_color)
     }
-
 
     #[inline]
     pub fn checkers_of(&self, king_color: Color) -> Bitboard {
@@ -591,7 +594,7 @@ impl Default for Board {
             castling: CastlingRights::NONE,
             en_passant: Default::default(),
             turn: Default::default(),
-            ply: 0, 
+            ply: 0,
             fifty_clock: Default::default(),
             fullmove_number: 1,
             repetition_count: Cell::<_>::new(Repeats::default()),
@@ -654,23 +657,40 @@ impl Board {
         self.calculate_internals();
     }
 
+    // #[inline]
+    // fn color_at(&self, at: Bitboard) -> Option<Color> {
+    //     if self.color(Color::White).contains(at) {
+    //         return Some(Color::White);
+    //     } else if self.color(Color::Black).contains(at) {
+    //         return Some(Color::Black);
+    //     }
+    //     None
+    // }
+
     #[inline]
-    fn color_at(&self, at: Bitboard) -> Option<Color> {
-        if self.color(Color::White).contains(at) {
+    fn color_of(&self, sq: Square) -> Option<Color> {
+        if sq.is_in(self.color(Color::White)) {
             return Some(Color::White);
-        } else if self.color(Color::Black).contains(at) {
+        } else if sq.is_in(self.color(Color::Black)) {
             return Some(Color::Black);
         }
         None
     }
 
+    #[inline]
+    fn color_of_unchecked(&self, sq: Square) -> Color {
+        self.color_of(sq)
+            .unwrap_or_else(|| panic!("No coloured piece at {} of {}", sq, self.to_fen()))
+    }
+
     pub fn get(&self, bb: Bitboard) -> String {
         let mut res = String::new();
-        for sq in bb.iter() {
-            let p = self.piece_at(sq);
+        for sq in bb.squares() {
+            let p = self.piece(sq);
             let ch = match p {
-                Piece::None => p.to_upper_char(),
-                _ => p.to_char(self.color_at(sq)),
+                // avoid calling unchecked that can recursively call to_fen
+                Some(p) => p.to_char(self.color_of(sq).unwrap()),
+                None => '.',
             };
             res.push(ch);
         }
@@ -685,15 +705,18 @@ impl Board {
                 pieces
             );
         }
-        for (sq, ch) in bb.iter().zip(pieces.chars()) {
-            let p = Piece::from_char(ch)?;
-            self.set_piece_at(sq, p);
-            if p != Piece::None {
-                let c = Color::from_piece_char(ch)?;
-                self.set_color_at(sq, Some(c));
-            } else {
-                // FIXME: broken approach - null color??
-                self.set_color_at(sq, None);
+        for (sq, ch) in bb.squares().zip(pieces.chars()) {
+            match ch {
+                '.' | ' ' => {
+                    self.set_piece_at(sq, None);
+                    self.set_color_at(sq.as_bb(), None);
+                }
+                _ => {
+                    let p = Piece::from_char(ch)?;
+                    self.set_piece_at(sq, Some(p));
+                    let c = Color::from_piece_char(ch)?;
+                    self.set_color_at(sq.as_bb(), Some(c));
+                }
             }
         }
         self.calculate_internals();
@@ -800,6 +823,8 @@ mod tests {
     use super::*;
     use crate::catalog::*;
     use crate::globals::constants::*;
+    use crate::infra::black_box;
+    use crate::infra::profiler::Profiler;
 
     #[test]
     fn test_serde() {
@@ -989,4 +1014,16 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn bench_board() {
+        let bd =
+            Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+
+        let mut prof1 = Profiler::new("board.piece".into());
+        for _ in 0..100 {
+            for sq in bd.occupied().squares() {
+                prof1.benchmark(|| bd.piece(black_box(sq)));
+            }
+        }
+    }
 }

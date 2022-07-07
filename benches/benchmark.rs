@@ -188,8 +188,8 @@ fn piece_to_upper_char(c: &mut Criterion) {
 fn piece_to_char(c: &mut Criterion) {
     c.bench_function("piece_to_char", |b| {
         b.iter(|| {
-            black_box(Piece::Pawn.to_char(Some(Color::White)));
-            black_box(Piece::Knight.to_char(Some(Color::Black)));
+            black_box(Piece::Pawn.to_char(Color::White));
+            black_box(Piece::Knight.to_char(Color::Black));
         });
     });
 }

@@ -52,22 +52,27 @@ pub struct BareMove {
 }
 
 impl BareMove {
+    #[inline]
     pub fn from(&self) -> Square {
         self.from
     }
 
+    #[inline]
     pub fn to(&self) -> Square {
         self.to
     }
 
+    #[inline]
     pub fn promo(&self) -> Option<Piece> {
         self.promo
     }
 
+    #[inline]
     pub fn is_null(&self) -> bool {
         self.to == self.from
     }
 
+    #[inline]
     pub const fn is_promo(&self) -> bool {
         self.promo.is_some()
     }
@@ -95,7 +100,7 @@ impl fmt::Display for BareMove {
         } else {
             write!(f, "{}{}", self.from().uci(), self.to().uci())?;
             if let Some(p) = self.promo {
-                write!(f, "{}", p.to_char(Some(Color::Black)))?
+                write!(f, "{}", p.to_char(Color::Black))?
             }
             Ok(())
         }
@@ -106,8 +111,8 @@ impl Board {
     pub fn augment_move(&self, mv: BareMove) -> Move {
         let from = mv.from();
         let to = mv.to();
-        let mover = self.piece_on(from).unwrap();
-        let capture_piece = self.piece_on(to);
+        let mover = self.piece(from).unwrap();
+        let capture_piece = self.piece(to);
         if mover == Piece::King && CastlingRights::is_castling(from, to) {
             let rights = CastlingRights::from_king_move(to);
             return Move::new_castle(from, to, rights);
@@ -382,7 +387,7 @@ impl Move {
     #[inline]
     pub fn new_pawn_move(from: Square, to: Square, b: &Board) -> Move {
         if to.is_in(b.them()) {
-            let cap = b.piece_at(to.as_bb());
+            let cap = b.piece_unchecked(to);
             Move::new_capture(Piece::Pawn, from, to, cap)
         } else {
             // its a push

@@ -320,7 +320,6 @@ impl Piece {
     #[inline]
     pub fn from_char(ch: char) -> Result<Piece> {
         Ok(match ch.to_ascii_uppercase() {
-            '.' | ' ' => Piece::None,
             'P' => Piece::Pawn,
             'N' => Piece::Knight,
             'B' => Piece::Bishop,
@@ -332,11 +331,10 @@ impl Piece {
     }
 
     #[inline]
-    pub const fn to_char(&self, c: Option<Color>) -> char {
+    pub const fn to_char(&self, c: Color) -> char {
         match c {
-            None => self.to_upper_char(),
-            Some(Color::White) => self.to_upper_char(),
-            Some(_) => self.to_upper_char().to_ascii_lowercase(),
+            Color::White => self.to_upper_char(),
+            Color::Black => self.to_upper_char().to_ascii_lowercase(),
         }
     }
 }
@@ -545,8 +543,8 @@ mod tests {
             Color::parse("B").unwrap_err().to_string(),
             "Invalid color: 'B'".to_string()
         );
-        assert_eq!(Piece::King.to_char(Some(Color::Black)), 'k');
-        assert_eq!(Piece::King.to_char(None), 'K');
+        assert_eq!(Piece::King.to_char(Color::Black), 'k');
+        assert_eq!(Piece::King.to_char(Color::White), 'K');
         let array = [1, 2];
         assert_eq!(array[Color::White], 1);
         assert_eq!(array[Color::Black], 2);
@@ -565,8 +563,8 @@ mod tests {
     #[test]
     fn piece() {
         assert_eq!(Piece::Pawn.to_upper_char(), 'P');
-        assert_eq!(Piece::King.to_char(Some(Color::Black)), 'k');
-        assert_eq!(Piece::King.to_char(None), 'K');
+        assert_eq!(Piece::King.to_char(Color::Black), 'k');
+        assert_eq!(Piece::King.to_char(Color::White), 'K');
         for i in 0..7 {
             assert_eq!(Piece::from_index(i).index(), i);
         }

@@ -30,14 +30,14 @@ impl Board {
         if !m.from().is_in(self.us()) {
             return false;
         }
-        if m.mover_piece() != self.piece_at(m.from().as_bb()) {
+        if m.mover_piece() != self.piece_unchecked(m.from()) {
             return false;
         }
         if !m.is_capture() {
             if m.to().is_in(self.occupied()) {
                 return false;
             }
-            if m.capture_piece() != Piece::None {
+            if m.is_capture() {
                 return false;
             }
         }
@@ -46,7 +46,7 @@ impl Board {
                 if !m.to().is_in(self.them()) {
                     return false;
                 }
-                if m.capture_piece() != self.piece_at(m.to().as_bb()) {
+                if m.capture_piece() != self.piece_unchecked(m.to()) {
                     // FIXME! allow capture of another type of piece?
                     return false;
                 }

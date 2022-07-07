@@ -63,7 +63,7 @@ impl<'a> Analysis<'a> {
             } else {
                 Color::Black
             };
-            let p = b.piece_at(sq.as_bb());
+            let p = b.piece_unchecked(sq);
             me.attacks[sq] = bb.attacks(c, p, us, occ, sq);
         }
         me
@@ -89,13 +89,13 @@ impl<'a> Analysis<'a> {
 
     #[inline]
     pub fn attacks_and_defends_from(&self, sq: Square) -> Bitboard {
-        match self.board.piece_at(sq.as_bb()) {
+        match self.board.piece_unchecked(sq) {
             Piece::Bishop | Piece::Rook | Piece::Queen => self.attacks[sq],
             Piece::Knight => PreCalc::default().knight_attacks(sq),
             Piece::King => PreCalc::default().king_attacks(sq),
             Piece::Pawn => PreCalc::default()
-                .pawn_attacks_from_sq(self.board.color_at(sq.as_bb()).unwrap(), sq),
-            Piece::None => unreachable!(),
+                .pawn_attacks_from_sq(self.board.color_of_unchecked(sq), sq),
+            _ => unreachable!(),
         }
     }
 

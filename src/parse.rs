@@ -114,18 +114,16 @@ impl Parse {
             if !src_rank.is_empty() && lm.from().uci().take_substring(1, 1) != src_rank {
                 continue;
             }
-            if !piece.is_empty()
-                && board
-                    .piece_at(lm.from().as_bb())
-                    .to_upper_char()
-                    .to_string()
-                    != piece
-            {
-                continue;
+            if !piece.is_empty() {
+                match board.piece(lm.from()) {
+                    None => continue,
+                    Some(p) if p.to_upper_char().to_string() != piece => continue,
+                    _ => {}
+                }
             }
             // SAN promos are upper case eg "=Q" "=B"
             if !promo.is_empty()
-                && "=".to_string() + &lm.promo_piece().to_char(Some(Color::White)).to_string()
+                && "=".to_string() + &lm.promo_piece().to_char(Color::White).to_string()
                     != promo
             {
                 continue;

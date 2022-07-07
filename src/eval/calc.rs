@@ -917,7 +917,7 @@ impl<'a> Calc<'a> {
         // let pawn_shield = bb.within_chebyshev_distance_inclusive(ksq, 1);
 
         for sq in ((b.knights() | b.rooks() | b.bishops() | b.queens()) & us).squares() {
-            let p = b.piece_at(sq.as_bb());
+            let p = b.piece_unchecked(sq);
 
             // non-pawn-defended empty or oppoent sq
             // include "attacking" our own pieces
