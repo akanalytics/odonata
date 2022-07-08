@@ -182,13 +182,13 @@ impl Hasher {
             hash ^= self.ep[pre_move.en_passant().first_square().file_index()];
         }
 
-        if m.is_capture() {
+        if let Some(c) = m.capture_piece() {
             if m.is_ep_capture() {
                 // ep capture is like capture but with capture piece on *ep* square not *dest*
-                hash ^= self.squares[them][m.capture_piece()][m.ep()];
+                hash ^= self.squares[them][c][m.ep()];
             } else {
                 // regular capture
-                hash ^= self.squares[them][m.capture_piece()][m.to()];
+                hash ^= self.squares[them][c][m.to()];
             }
         }
 

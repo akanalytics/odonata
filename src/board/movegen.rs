@@ -41,12 +41,12 @@ impl Board {
                 return false;
             }
         }
-        if m.is_capture() {
+        if let Some(c) = m.capture_piece() {
             if !m.is_ep_capture() {
                 if !m.to().is_in(self.them()) {
                     return false;
                 }
-                if m.capture_piece() != self.piece_unchecked(m.to()) {
+                if c != self.piece_unchecked(m.to()) {
                     // FIXME! allow capture of another type of piece?
                     return false;
                 }

@@ -164,17 +164,6 @@ impl Board {
         self.colors[Color::Black.index()]
     }
 
-    // #[inline]
-    // pub fn piece_at(&self, sq: Bitboard) -> Piece {
-    //     debug_assert!(sq != Bitboard::EMPTY);
-    //     for &p in &Piece::ALL_BAR_NONE {
-    //         if self.pieces(p).contains(sq) {
-    //             return p;
-    //         }
-    //     }
-    //     Piece::None
-    // }
-
     #[inline]
     pub fn piece(&self, sq: Square) -> Option<Piece> {
         match sq {

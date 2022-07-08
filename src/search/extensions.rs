@@ -1,13 +1,12 @@
 use crate::eval::score::Score;
 use crate::infra::component::Component;
 use crate::mv::Move;
-use crate::search::node::Node;
 use crate::piece::{MoveType, Ply};
+use crate::search::node::Node;
 use crate::{board::Board, Algo};
 use crate::{Bitboard, Piece};
 use serde::{Deserialize, Serialize};
 use std::fmt;
-
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -117,17 +116,20 @@ impl Algo {
             ext += 1;
         }
 
-        if self.ext.recapture_enabled
-            && mv.is_capture()
-            && last.is_capture()
-            && (!self.ext.recapture_same_square || mv.to() == last.to())
-            && (!self.ext.recapture_only_pv_node || n.is_fw())
-            && n.depth <= self.ext.recapture_max_depth
-            && (MoveType::GoodCapture | MoveType::GoodCaptureUpfrontSorted).contains(mt)
-            && mv.capture_piece().centipawns() < last.capture_piece().centipawns()
-        // proxy for last = GoodCapture
-        {
-            ext += 1;
+        if self.ext.recapture_enabled {
+            if let Some(cap) = mv.capture_piece() {
+                if let Some(last_cap) = last.capture_piece() {
+                    if (!self.ext.recapture_same_square || mv.to() == last.to())
+                        && (!self.ext.recapture_only_pv_node || n.is_fw())
+                        && n.depth <= self.ext.recapture_max_depth
+                        && (MoveType::GoodCapture | MoveType::GoodCaptureUpfrontSorted).contains(mt)
+                        && cap.centipawns() < last_cap.centipawns()
+                    // proxy for last = GoodCapture
+                    {
+                        ext += 1;
+                    }
+                }
+            }
         }
 
         // (before.them() & before.pawns() & before.color_them().chooser_wb(Bitboard::RANK_6, Bitboard::RANK_3)).any()

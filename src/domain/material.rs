@@ -22,9 +22,7 @@ impl fmt::Display for Material {
                 write!(
                     f,
                     "{}",
-                    p.to_char(c)
-                        .to_string()
-                        .repeat(self.count(c, p) as usize)
+                    p.to_char(c).to_string().repeat(self.count(c, p) as usize)
                 )?;
             }
         }
@@ -389,12 +387,8 @@ impl Material {
             self.set_count(c, Piece::Pawn, self.count(c, Piece::Pawn) - 1);
             self.set_count(c, m.promo_piece(), self.count(c, m.promo_piece()) + 1);
         }
-        if m.is_capture() {
-            self.set_count(
-                c.opposite(),
-                m.capture_piece(),
-                self.count(c.opposite(), m.capture_piece()) - 1,
-            );
+        if let Some(cap) = m.capture_piece() {
+            self.set_count(c.opposite(), cap, self.count(c.opposite(), cap) - 1);
         }
     }
 }

@@ -119,20 +119,20 @@ impl Board {
 
         // board.moves.push(*m);
 
-        if m.is_capture() {
+        if let Some(c) = m.capture_piece() {
             b.fifty_clock = 0;
             if m.is_ep_capture() {
                 // ep capture is like capture but with capture piece on *ep* square not *dest*
-                b.remove_piece(m.ep().as_bb(), m.capture_piece(), b.turn);
+                b.remove_piece(m.ep().as_bb(), c, b.turn);
             } else {
                 // regular capture
                 debug_assert!(
-                    m.capture_piece() != Piece::King,
+                    c != Piece::King,
                     "king captured by move {} on board \n{}",
                     m,
                     self
                 );
-                b.remove_piece(m.to().as_bb(), m.capture_piece(), b.turn);
+                b.remove_piece(m.to().as_bb(), c, b.turn);
             }
         }
 
@@ -259,20 +259,20 @@ impl Board {
         b.turn = b.turn.opposite();
         b.en_passant = Bitboard::EMPTY;
 
-        if m.is_capture() {
+        if let Some(c) = m.capture_piece() {
             b.fifty_clock = 0;
             if m.is_ep_capture() {
                 // ep capture is like capture but with capture piece on *ep* square not *dest*
-                b.remove_piece(m.ep().as_bb(), m.capture_piece(), b.turn);
+                b.remove_piece(m.ep().as_bb(), c, b.turn);
             } else {
                 // regular capture
                 debug_assert!(
-                    m.capture_piece() != Piece::King,
+                    c != Piece::King,
                     "king captured by move {} on board \n{}",
                     m,
                     b
                 );
-                b.remove_piece(m.to().as_bb(), m.capture_piece(), b.turn);
+                b.remove_piece(m.to().as_bb(), c, b.turn);
             }
         }
 
@@ -333,20 +333,20 @@ impl Board {
             b.turn = b.turn.opposite();
             b.en_passant = Bitboard::EMPTY;
 
-            if m.is_capture() {
+            if let Some(c) = m.capture_piece() {
                 b.fifty_clock = 0;
                 if m.is_ep_capture() {
                     // ep capture is like capture but with capture piece on *ep* square not *dest*
-                    b.remove_piece(m.ep().as_bb(), m.capture_piece(), b.turn);
+                    b.remove_piece(m.ep().as_bb(), c, b.turn);
                 } else {
                     // regular capture
                     debug_assert!(
-                        m.capture_piece() != Piece::King,
+                        c != Piece::King,
                         "king captured by move {} on board \n{}",
                         m,
                         b
                     );
-                    b.remove_piece(m.to().as_bb(), m.capture_piece(), b.turn);
+                    b.remove_piece(m.to().as_bb(), c, b.turn);
                 }
             }
 

@@ -273,8 +273,8 @@ impl MaterialBalance {
     #[inline]
     pub fn eval_move_material(&self, mv: &Move) -> Weight {
         let mut score = Weight::zero();
-        if mv.is_capture() {
-            score += self.piece_weights[mv.capture_piece()];
+        if let Some(cap) = mv.capture_piece() {
+            score += self.piece_weights[cap];
         }
         if mv.is_promo() {
             score += self.piece_weights[mv.promo_piece()] - self.piece_weights[Piece::Pawn];

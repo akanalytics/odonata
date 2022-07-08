@@ -211,10 +211,12 @@ impl Move {
         bits += (to.index() as u32 & 63) << Self::OFFSET_TO;
         bits += (mover.index() as u32) << Self::OFFSET_MOVER;
         bits += (Square::null().index() as u32 & 127) << Self::OFFSET_EP;
+        bits += 7 << Self::OFFSET_CAPTURE;
         Move { bits }
     }
 
     pub fn set_capture(&mut self, capture: Piece) {
+        self.bits &= !(7 << Self::OFFSET_CAPTURE);
         self.bits += (capture.index() as u32) << Self::OFFSET_CAPTURE;
     }
 
@@ -293,10 +295,7 @@ impl Move {
 
     #[inline]
     pub const fn is_promo(&self) -> bool {
-        match self.promo_piece() {
-            Piece::None => false,
-            _ => true,
-        }
+        (self.bits >> Self::OFFSET_PROMO) & 7 != 0
     }
 
     #[inline]
@@ -323,8 +322,11 @@ impl Move {
     }
 
     #[inline]
-    pub const fn capture_piece(&self) -> Piece {
-        Piece::from_index((self.bits >> Self::OFFSET_CAPTURE) as usize & 7)
+    pub const fn capture_piece(&self) -> Option<Piece> {
+        match (self.bits >> Self::OFFSET_CAPTURE) & 7 {
+            7 => None,
+            p => Some(Piece::from_index(p as usize)),
+        }
     }
 
     #[inline]
@@ -334,7 +336,7 @@ impl Move {
 
     #[inline]
     pub fn is_capture(&self) -> bool {
-        self.capture_piece() != Piece::None
+        self.capture_piece().is_some()
     }
 
     #[inline]
@@ -454,8 +456,8 @@ impl Move {
     #[inline]
     pub fn mvv_lva_score(&self) -> i32 {
         let mut score = 0;
-        if self.is_capture() {
-            score += self.capture_piece().centipawns() * 10 - self.mover_piece().centipawns() / 10;
+        if let Some(cap) = self.capture_piece() {
+            score += cap.centipawns() * 10 - self.mover_piece().centipawns() / 10;
         }
         if self.is_promo() {
             score += self.promo_piece().centipawns() * 10 - self.mover_piece().centipawns() / 10;
@@ -477,8 +479,8 @@ impl fmt::Display for Move {
             if !self.ep().is_null() {
                 write!(f, " ep:{}", self.ep().uci())?;
             }
-            if self.is_capture() {
-                write!(f, " c:{}", self.capture_piece())?;
+            if let Some(c) = self.capture_piece() {
+                write!(f, " c:{}", c)?;
             }
             if self.is_castle() {
                 write!(f, " cs:{}", self.castling_side())?;
@@ -507,7 +509,7 @@ mod tests {
         assert_eq!(move_castle.from(), Square::A1);
         assert_eq!(move_castle.to(), Square::B2);
         assert_eq!(move_castle.ep(), Square::null());
-        assert_eq!(move_castle.capture_piece(), Piece::None);
+        assert_eq!(move_castle.capture_piece(), None);
         assert_eq!(move_castle.promo_piece(), Piece::None);
         assert_eq!(move_castle.is_promo(), false);
         assert_eq!(move_castle.is_capture(), false);
@@ -575,7 +577,7 @@ mod tests {
 
         let p_q = Move::new_promo(Square::A1, Square::A2, Piece::Queen);
 
-        assert_eq!(qxr.capture_piece(), Piece::Rook);
+        assert_eq!(qxr.capture_piece(), Some(Piece::Rook));
         assert_eq!(qxr.mover_piece(), Piece::Queen);
 
         assert_eq!(pxq.mvv_lva_score(), 8990);
