@@ -1,10 +1,9 @@
-
 use crate::board::Board;
 use crate::mv::Move;
 use crate::parse::Parse;
-use crate::tags::Tags;
 use crate::piece::MAX_LEGAL_MOVES;
 use crate::piece::{Color, Piece};
+use crate::tags::Tags;
 use crate::variation::Variation;
 use anyhow::{anyhow, Result};
 use arrayvec::ArrayVec;
@@ -551,31 +550,13 @@ fn strip_move_numbers(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bits::castling::*;
-    use crate::bits::square::*;
     use crate::catalog::Catalog;
     use crate::globals::constants::*;
 
     #[test]
     fn test_movelist() -> Result<()> {
-        let move_a1b2 = Move::new(
-            a1.square(),
-            b2.square(),
-            Square::null(),
-            Piece::Bishop,
-            Piece::None,
-            Piece::None,
-            CastlingRights::NONE,
-        );
-        let promo_a7a8 = Move::new(
-            a7.square(),
-            a8.square(),
-            Square::null(),
-            Piece::Pawn,
-            Piece::None,
-            Piece::Queen,
-            CastlingRights::NONE,
-        );
+        let move_a1b2 = Move::new_quiet(Piece::Bishop, a1.square(), b2.square());
+        let promo_a7a8 = Move::new_promo(a7.square(), a8.square(), Piece::Queen);
 
         let mut moves = MoveList::new();
         assert_eq!(moves.iter().count(), 0);

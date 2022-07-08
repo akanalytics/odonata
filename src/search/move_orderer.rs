@@ -1,20 +1,19 @@
-
 use crate::board::Board;
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
 use crate::movelist::MoveList;
 use crate::mv::Move;
 use crate::phaser::Phase;
+use crate::piece::{Color, MoveType, Piece, Ply};
 use crate::search::algo::Algo;
 use crate::search::stack::Stack;
 use crate::trace::stat::{ArrayPlyStat, PlyStat};
-use crate::piece::{Color, MoveType, Piece, Ply};
 use crate::variation::Variation;
 use crate::{Bitboard, PreCalc};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-use super::node::{Node, Event, Timing};
+use super::node::{Event, Node, Timing};
 use crate::eval::score::{Score, ToScore};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -445,8 +444,7 @@ impl OrderedMoveList {
                 let see_cutoff = see_cutoff.as_i16() as i32;
 
                 if see < see_cutoff || see == see_cutoff && self.qsearch && self.n.depth < -1 {
-                    if !(algo.move_orderer.discovered_checks
-                        && b.maybe_gives_discovered_check(mv))
+                    if !(algo.move_orderer.discovered_checks && b.maybe_gives_discovered_check(mv))
                     {
                         self.bad_captures.push(mv);
                         self.index += 1;
@@ -790,84 +788,26 @@ impl OrderedMoveList {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bits::castling::*;
-    use crate::bits::square::*;
     use crate::catalog::Catalog;
     use crate::globals::constants::*;
     use crate::movelist::*;
+    use crate::piece::*;
     use crate::search::algo::*;
     use crate::search::engine::*;
     use crate::search::timecontrol::*;
     use crate::tags::*;
-    use crate::piece::*;
     use crate::utils::*;
     // use crate::search::timecontrol::*;
 
     #[test]
     fn test_prior_pv() {
-        let a1a2 = Move::new(
-            a1.square(),
-            a2.square(),
-            Square::null(),
-            Piece::Pawn,
-            Piece::None,
-            Piece::None,
-            CastlingRights::NONE,
-        );
-        let a1a3 = Move::new(
-            a1.square(),
-            a3.square(),
-            Square::null(),
-            Piece::Pawn,
-            Piece::None,
-            Piece::None,
-            CastlingRights::NONE,
-        );
-        let a1a4 = Move::new(
-            a1.square(),
-            a4.square(),
-            Square::null(),
-            Piece::Pawn,
-            Piece::None,
-            Piece::None,
-            CastlingRights::NONE,
-        );
-        let b1a2 = Move::new(
-            b1.square(),
-            a2.square(),
-            Square::null(),
-            Piece::Pawn,
-            Piece::None,
-            Piece::None,
-            CastlingRights::NONE,
-        );
-        let b1a3 = Move::new(
-            b1.square(),
-            a3.square(),
-            Square::null(),
-            Piece::Pawn,
-            Piece::None,
-            Piece::None,
-            CastlingRights::NONE,
-        );
-        let b1a4 = Move::new(
-            b1.square(),
-            a4.square(),
-            Square::null(),
-            Piece::Pawn,
-            Piece::None,
-            Piece::None,
-            CastlingRights::NONE,
-        );
-        let c1c2 = Move::new(
-            c1.square(),
-            c2.square(),
-            Square::null(),
-            Piece::Pawn,
-            Piece::None,
-            Piece::None,
-            CastlingRights::NONE,
-        );
+        let a1a2 = Move::new_quiet(Piece::Pawn, a1.square(), a2.square());
+        let a1a3 = Move::new_quiet(Piece::Pawn, a1.square(), a3.square());
+        let a1a4 = Move::new_quiet(Piece::Pawn, a1.square(), a4.square());
+        let b1a2 = Move::new_quiet(Piece::Pawn, b1.square(), a2.square());
+        let b1a3 = Move::new_quiet(Piece::Pawn, b1.square(), a3.square());
+        let b1a4 = Move::new_quiet(Piece::Pawn, b1.square(), a4.square());
+        let c1c2 = Move::new_quiet(Piece::Pawn, c1.square(), c2.square());
 
         let mut moves_orig = MoveList::new();
         moves_orig.extend(vec![b1a2, b1a3, b1a4, a1a3, a1a4, a1a2]);

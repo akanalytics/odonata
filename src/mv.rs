@@ -206,36 +206,54 @@ impl Move {
     }
 
     #[inline]
-    pub const fn new(
-        from: Square,
-        to: Square,
-        ep: Square,
-        mover: Piece,
-        capture: Piece,
-        promo: Piece,
-        castle_side: CastlingRights,
-    ) -> Move {
-        // debug_assert!(!from.is_null());
-        // debug_assert!(!to.is_null());
+    pub const fn new_quiet(mover: Piece, from: Square, to: Square) -> Move {
         let mut bits = (from.index() as u32 & 63) << Self::OFFSET_FROM;
         bits += (to.index() as u32 & 63) << Self::OFFSET_TO;
-        bits += (ep.index() as u32 & 127) << Self::OFFSET_EP;
         bits += (mover.index() as u32) << Self::OFFSET_MOVER;
-        bits += (capture.index() as u32) << Self::OFFSET_CAPTURE;
-        bits += (promo.index() as u32) << Self::OFFSET_PROMO;
-        bits += (castle_side.bits() as u32) << Self::OFFSET_CASTLE;
+        bits += (Square::null().index() as u32 & 127) << Self::OFFSET_EP;
         Move { bits }
     }
 
-    pub const NULL_MOVE: Move = Move::new(
-        Square::A1,
-        Square::A1,
-        Square::null(),
-        Piece::None,
-        Piece::None,
-        Piece::None,
-        CastlingRights::NONE,
-    );
+    pub fn set_capture(&mut self, capture: Piece) {
+        self.bits += (capture.index() as u32) << Self::OFFSET_CAPTURE;
+    }
+
+    pub fn set_promo(&mut self, promo: Piece) {
+        self.bits += (promo.index() as u32) << Self::OFFSET_PROMO;
+    }
+
+    pub fn set_en_passant(&mut self, ep_sq: Square) {
+        self.bits &= !(127 << Self::OFFSET_EP);
+        self.bits += (ep_sq.index() as u32 & 127) << Self::OFFSET_EP;
+    }
+
+    pub fn set_castling_side(&mut self, castle_side: CastlingRights) {
+        self.bits += (castle_side.bits() as u32) << Self::OFFSET_CASTLE;
+    }
+
+    // #[inline]
+    // pub const fn new(
+    //     from: Square,
+    //     to: Square,
+    //     ep: Square,
+    //     mover: Piece,
+    //     capture: Piece,
+    //     promo: Piece,
+    //     castle_side: CastlingRights,
+    // ) -> Move {
+    //     // debug_assert!(!from.is_null());
+    //     // debug_assert!(!to.is_null());
+    //     let mut bits = (from.index() as u32 & 63) << Self::OFFSET_FROM;
+    //     bits += (to.index() as u32 & 63) << Self::OFFSET_TO;
+    //     bits += (ep.index() as u32 & 127) << Self::OFFSET_EP;
+    //     bits += (mover.index() as u32) << Self::OFFSET_MOVER;
+    //     bits += (capture.index() as u32) << Self::OFFSET_CAPTURE;
+    //     bits += (promo.index() as u32) << Self::OFFSET_PROMO;
+    //     bits += (castle_side.bits() as u32) << Self::OFFSET_CASTLE;
+    //     Move { bits }
+    // }
+
+    pub const NULL_MOVE: Move = Move::new_quiet(Piece::Pawn, Square::A1, Square::A1);
 
     #[inline]
     pub fn new_null() -> Move {
@@ -270,7 +288,7 @@ impl Move {
 
     #[inline]
     pub const fn is_null(&self) -> bool {
-        self.mover_piece().index() == Piece::None.index()
+        self.to().index() == self.from().index()
     }
 
     #[inline]
@@ -340,19 +358,6 @@ impl Move {
     }
 
     #[inline]
-    pub fn new_quiet(p: Piece, from: Square, to: Square) -> Move {
-        Move::new(
-            from,
-            to,
-            Square::null(),
-            p,
-            Piece::None,
-            Piece::None,
-            CastlingRights::NONE,
-        )
-    }
-
-    #[inline]
     pub fn rook_move(&self) -> Move {
         if self.is_castle() {
             let (from, to) = self.rook_move_from_to();
@@ -404,80 +409,46 @@ impl Move {
 
     #[inline]
     pub fn new_double_push(from: Square, to: Square, ep: Square) -> Move {
-        Move::new(
-            from,
-            to,
-            ep,
-            Piece::Pawn,
-            Piece::None,
-            Piece::None,
-            CastlingRights::NONE,
-        )
+        let mut m = Move::new_quiet(Piece::Pawn, from, to);
+        m.set_en_passant(ep);
+        m
     }
 
     #[inline]
     pub fn new_capture(p: Piece, from: Square, to: Square, captured: Piece) -> Move {
-        Move::new(
-            from,
-            to,
-            Square::null(),
-            p,
-            captured,
-            Piece::None,
-            CastlingRights::NONE,
-        )
+        let mut m = Move::new_quiet(p, from, to);
+        m.set_capture(captured);
+        m
     }
 
     #[inline]
     pub fn new_ep_capture(from: Square, to: Square, captured_sq: Square) -> Move {
-        Move::new(
-            from,
-            to,
-            captured_sq,
-            Piece::Pawn,
-            Piece::Pawn,
-            Piece::None,
-            CastlingRights::NONE,
-        )
+        let mut m = Move::new_quiet(Piece::Pawn, from, to);
+        m.set_capture(Piece::Pawn);
+        m.set_en_passant(captured_sq);
+        m
     }
 
     #[inline]
     pub fn new_promo(from: Square, to: Square, promo: Piece) -> Move {
-        Move::new(
-            from,
-            to,
-            Square::null(),
-            Piece::Pawn,
-            Piece::None,
-            promo,
-            CastlingRights::NONE,
-        )
+        let mut m = Move::new_quiet(Piece::Pawn, from, to);
+        m.set_promo(promo);
+        m
     }
 
     #[inline]
     pub fn new_promo_capture(from: Square, to: Square, promo: Piece, capture: Piece) -> Move {
-        Move::new(
-            from,
-            to,
-            Square::null(),
-            Piece::Pawn,
-            capture,
-            promo,
-            CastlingRights::NONE,
-        )
+        let mut m = Move::new_quiet(Piece::Pawn, from, to);
+        m.set_promo(promo);
+        m.set_capture(capture);
+        m
     }
 
     #[inline]
-    pub fn new_castle(king_from: Square, king_to: Square, castle: CastlingRights) -> Move {
-        Move::new(
-            king_from,
-            king_to,
-            Square::null(),
-            Piece::King,
-            Piece::None,
-            Piece::None,
-            castle,
-        )
+    pub fn new_castle(king_from: Square, king_to: Square, castling_side: CastlingRights) -> Move {
+        let mut m = Move::new_quiet(Piece::King, king_from, king_to);
+        m.set_castling_side(castling_side);
+        m
     }
 
     #[inline]
@@ -530,15 +501,7 @@ mod tests {
     fn test_move() {
         assert_eq!(Move::new_null().to_string(), "0000");
 
-        let move_castle = Move::new(
-            a1.square(),
-            b2.square(),
-            Square::null(),
-            Piece::King,
-            Piece::None,
-            Piece::None,
-            CastlingRights::WHITE_QUEEN,
-        );
+        let move_castle = Move::new_castle(a1.square(), b2.square(), CastlingRights::WHITE_QUEEN);
 
         println!("{:#} {:b}", move_castle, move_castle.bits);
         assert_eq!(move_castle.from(), Square::A1);
@@ -551,15 +514,7 @@ mod tests {
         assert_eq!(move_castle.is_null(), false);
         assert_eq!(move_castle.castling_side(), CastlingRights::WHITE_QUEEN);
 
-        let move_a1b2 = Move::new(
-            a1.square(),
-            b2.square(),
-            Square::null(),
-            Piece::Bishop,
-            Piece::None,
-            Piece::None,
-            CastlingRights::NONE,
-        );
+        let move_a1b2 = Move::new_quiet(Piece::Bishop, a1.square(), b2.square());
 
         println!("{:#} {:b}", move_a1b2, move_a1b2.bits);
         assert_eq!(move_a1b2.from(), a1.square());
@@ -569,15 +524,7 @@ mod tests {
         assert_eq!(move_a1b2.ep(), Square::null());
         assert_eq!(move_a1b2.castling_side(), CastlingRights::NONE);
 
-        let promo_a7a8 = Move::new(
-            a7.square(),
-            a8.square(),
-            Square::null(),
-            Piece::Pawn,
-            Piece::None,
-            Piece::Queen,
-            CastlingRights::NONE,
-        );
+        let promo_a7a8 = Move::new_promo(a7.square(), a8.square(), Piece::Queen);
 
         assert_eq!(move_a1b2.to_string(), "a1b2");
         assert_eq!(promo_a7a8.to_string(), "a7a8q");
@@ -624,8 +571,7 @@ mod tests {
         let qxr = Move::new_capture(Piece::Queen, Square::A1, Square::A2, Piece::Rook);
         let qxq = Move::new_capture(Piece::Queen, Square::A1, Square::A2, Piece::Queen);
 
-        let pxq_q =
-            Move::new_promo_capture(Square::A1, Square::A2, Piece::Queen, Piece::Queen);
+        let pxq_q = Move::new_promo_capture(Square::A1, Square::A2, Piece::Queen, Piece::Queen);
 
         let p_q = Move::new_promo(Square::A1, Square::A2, Piece::Queen);
 

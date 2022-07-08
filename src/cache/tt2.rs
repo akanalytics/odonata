@@ -652,7 +652,6 @@ impl TranspositionTable2 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bits::CastlingRights;
     use crate::catalog::*;
     use crate::comms::uci::*;
     use crate::globals::constants::*;
@@ -685,16 +684,7 @@ mod tests {
             score: TtScore(Score::from_cp(201)),
             depth: 4,
             nt: NodeType::ExactPv,
-            bm: Move::new(
-                a1.square(),
-                a2.square(),
-                Square::null(),
-                Piece::Rook,
-                Piece::None,
-                Piece::None,
-                CastlingRights::NONE,
-            )
-            .to_inner(),
+            bm: Move::new_quiet(Piece::Rook, a1.square(), a2.square()).to_inner(),
         }
     }
 
