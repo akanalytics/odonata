@@ -210,12 +210,12 @@ impl MoveOrderer {
         parent: Move,
     ) -> i32 {
         let mut score = 0.0;
-        if mv.is_promo() {
+        if let Some(promo) = mv.promo() {
             score += self.promo_sort_bonus;
-            if mv.promo_piece() == Piece::Queen {
+            if promo == Piece::Queen {
                 score += self.promo_queen_sort_bonus;
             }
-            if mv.promo_piece() == Piece::Knight {
+            if promo == Piece::Knight {
                 score += self.promo_knight_sort_bonus;
             }
         }
@@ -570,9 +570,7 @@ impl OrderedMoveList {
             MoveType::QueenPromo => {
                 all_moves
                     .iter()
-                    .filter(|&m| {
-                        Move::is_promo(m) && m.promo_piece() == Piece::Queen && !Move::is_capture(m)
-                    })
+                    .filter(|&m| m.promo() == Some(Piece::Queen) && !Move::is_capture(m))
                     .for_each(|&m| moves.push(m));
                 // algo.order_moves(self.ply, moves, &None);
             }

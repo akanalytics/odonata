@@ -175,7 +175,7 @@ impl Algo {
         let some_promos = |mv: &&Move| {
             in_check
                 || mv.is_capture()
-                || mv.is_promo() && Some(mv.promo_piece()) == self.qs.promo_piece
+                || mv.promo() == self.qs.promo_piece
         };
 
         Metrics::incr_node(&n, Event::NodeQsInterior);

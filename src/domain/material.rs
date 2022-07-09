@@ -383,9 +383,9 @@ impl Material {
     }
 
     pub fn make_move(&mut self, c: Color, m: &Move) {
-        if m.is_promo() {
+        if let Some(promo) = m.promo() {
             self.set_count(c, Piece::Pawn, self.count(c, Piece::Pawn) - 1);
-            self.set_count(c, m.promo_piece(), self.count(c, m.promo_piece()) + 1);
+            self.set_count(c, promo, self.count(c, promo) + 1);
         }
         if let Some(cap) = m.capture_piece() {
             self.set_count(c.opposite(), cap, self.count(c.opposite(), cap) - 1);

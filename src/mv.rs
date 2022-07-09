@@ -197,11 +197,7 @@ impl Move {
         BareMove {
             from: self.from(),
             to: self.to(),
-            promo: if self.is_promo() {
-                Some(self.promo_piece())
-            } else {
-                None
-            },
+            promo: self.promo(),
         }
     }
 
@@ -305,13 +301,13 @@ impl Move {
         } else {
             Color::Black
         };
-        self.promo_piece() == Piece::Pawn && self.to().rank_number_as_white(c) == 7
+        self.mover_piece() == Piece::Pawn && self.to().rank_number_as_white(c) == 7
     }
 
-    #[inline]
-    pub const fn promo_piece(&self) -> Piece {
-        Piece::from_index((self.bits >> Self::OFFSET_PROMO) as usize & 7)
-    }
+    // #[inline]
+    // pub const fn promo_piece(&self) -> Piece {
+    //     Piece::from_index((self.bits >> Self::OFFSET_PROMO) as usize & 7)
+    // }
 
     #[inline]
     pub const fn promo(&self) -> Option<Piece> {
@@ -459,8 +455,8 @@ impl Move {
         if let Some(cap) = self.capture_piece() {
             score += cap.centipawns() * 10 - self.mover_piece().centipawns() / 10;
         }
-        if self.is_promo() {
-            score += self.promo_piece().centipawns() * 10 - self.mover_piece().centipawns() / 10;
+        if let Some(promo) = self.promo() {
+            score += promo.centipawns() * 10 - Piece::Pawn.centipawns() / 10;
         }
         score
     }
@@ -510,7 +506,7 @@ mod tests {
         assert_eq!(move_castle.to(), Square::B2);
         assert_eq!(move_castle.ep(), Square::null());
         assert_eq!(move_castle.capture_piece(), None);
-        assert_eq!(move_castle.promo_piece(), Piece::None);
+        assert_eq!(move_castle.promo(), None);
         assert_eq!(move_castle.is_promo(), false);
         assert_eq!(move_castle.is_capture(), false);
         assert_eq!(move_castle.is_null(), false);

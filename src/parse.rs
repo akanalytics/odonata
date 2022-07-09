@@ -122,11 +122,12 @@ impl Parse {
                 }
             }
             // SAN promos are upper case eg "=Q" "=B"
-            if !promo.is_empty()
-                && "=".to_string() + &lm.promo_piece().to_char(Color::White).to_string()
-                    != promo
-            {
-                continue;
+            if let Some(pp) = lm.promo() {
+                if !promo.is_empty()
+                    && "=".to_string() + &pp.to_char(Color::White).to_string() != promo
+                {
+                    continue;
+                }
             }
             // lm is castle but s isnt
             if lm.is_castle() && lm.castling_side().is_king_side() && s != "O-O"
@@ -166,7 +167,7 @@ impl Parse {
 mod tests {
 
     use super::*;
-    
+
     use crate::catalog::Catalog;
 
     #[test]

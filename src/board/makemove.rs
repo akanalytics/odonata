@@ -149,9 +149,9 @@ impl Board {
             }
         }
 
-        if m.is_promo() {
+        if let Some(promo) = m.promo() {
             // fifty clock handled by pawn move above;
-            b.change_piece(m.to().as_bb(), Piece::Pawn, m.promo_piece());
+            b.change_piece(m.to().as_bb(), Piece::Pawn, promo);
             // pawn has already moved
         }
 
@@ -294,9 +294,9 @@ impl Board {
             }
         }
 
-        if m.is_promo() {
+        if let Some(promo) = m.promo() {
             // fifty clock handled by pawn move above;
-            b.change_piece(m.to().as_bb(), Piece::Pawn, m.promo_piece());
+            b.change_piece(m.to().as_bb(), Piece::Pawn, promo);
             // pawn has already moved
         }
 
@@ -368,9 +368,9 @@ impl Board {
                 }
             }
 
-            if m.is_promo() {
+            if let Some(promo) = m.promo() {
                 // fifty clock handled by pawn move above;
-                b.change_piece(m.to().as_bb(), Piece::Pawn, m.promo_piece());
+                b.change_piece(m.to().as_bb(), Piece::Pawn, promo);
                 // pawn has already moved
             }
 

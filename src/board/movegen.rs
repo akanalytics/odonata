@@ -1,13 +1,12 @@
 use crate::bits::bitboard::Bitboard;
 use crate::bits::precalc::PreCalc;
+use crate::board::rules::Rules;
+use crate::board::Board;
 use crate::infra::metric::*;
 use crate::movelist::MoveList;
 use crate::mv::Move;
 use crate::piece::Piece;
 use crate::search::node::{Counter, Timing};
-use crate::board::rules::Rules;
-use crate::board::Board;
-
 
 // fn is_in_check(&self, king_color: Color) -> bool;
 // fn will_check_them(&self, mv: &Move) -> bool;
@@ -18,7 +17,6 @@ use crate::board::Board;
 // fn threats_to(&self, c: Color) -> Bitboard;
 
 impl Board {
-
     pub fn is_pseudo_legal_and_legal_move(&self, m: Move) -> bool {
         let t = Metrics::timing_start();
         let ret = self.is_pseudo_legal_move(&m) && self.is_legal_move(&m);
@@ -54,12 +52,11 @@ impl Board {
                 return false;
             }
         }
-        if m.is_promo() {
+        if let Some(pp) = m.promo() {
             if !m.to().as_bb().intersects(Bitboard::RANKS_18) {
                 // TODO! exact promo rank for white/black
                 return false;
             }
-            let pp = m.promo_piece();
             if pp != Piece::Queen && pp != Piece::Rook && pp != Piece::Bishop && pp != Piece::Knight
             {
                 return false;
@@ -181,8 +178,8 @@ mod tests {
     use std::str::FromStr;
 
     use super::*;
-    use crate::{catalog::*, Color};
     use crate::globals::constants::*;
+    use crate::{catalog::*, Color};
     use anyhow::Result;
     extern crate env_logger;
     // use crate::movelist::MoveValidator;

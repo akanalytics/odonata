@@ -477,9 +477,9 @@ impl Board {
         if mv.is_ep_capture() {
             s += " e.p.";
         }
-        if mv.is_promo() {
+        if let Some(promo) = mv.promo() {
             s.push('=');
-            s.push(mv.promo_piece().to_upper_char());
+            s.push(promo.to_upper_char());
         }
         if self.gives_check(mv) {
             s.push('+');
