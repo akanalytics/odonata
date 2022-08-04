@@ -64,9 +64,9 @@ impl BareMove {
         if self.is_null() {
             return 0;
         }
-        self.from().index() as u64
-            + ((self.to().index() as u64) << 6)
-            + if let Some(p) = self.promo() {
+        self.from.index() as u64
+            + ((self.to.index() as u64) << 6)
+            + if let Some(p) = self.promo {
                 (p.index() as u64) << 12
             } else {
                 0

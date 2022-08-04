@@ -58,28 +58,8 @@ impl BareMove {
     }
 
     #[inline]
-    pub fn from(&self) -> Square {
-        self.from
-    }
-
-    #[inline]
-    pub fn to(&self) -> Square {
-        self.to
-    }
-
-    #[inline]
-    pub fn promo(&self) -> Option<Piece> {
-        self.promo
-    }
-
-    #[inline]
     pub fn is_null(&self) -> bool {
         self.to == self.from
-    }
-
-    #[inline]
-    pub const fn is_promo(&self) -> bool {
-        self.promo.is_some()
     }
 }
 
@@ -103,7 +83,7 @@ impl fmt::Display for BareMove {
         if self.is_null() {
             write!(f, "0000")
         } else {
-            write!(f, "{}{}", self.from().uci(), self.to().uci())?;
+            write!(f, "{}{}", self.from.uci(), self.to.uci())?;
             if let Some(p) = self.promo {
                 write!(f, "{}", p.to_char(Color::Black))?
             }
@@ -114,15 +94,15 @@ impl fmt::Display for BareMove {
 
 impl Board {
     pub fn augment_move(&self, mv: BareMove) -> Move {
-        let from = mv.from();
-        let to = mv.to();
+        let from = mv.from;
+        let to = mv.to;
         let mover = self.piece(from).unwrap();
         let capture_piece = self.piece(to);
         if mover == Piece::King && CastlingRights::is_castling(from, to) {
             let rights = CastlingRights::from_king_move(to);
             return Move::new_castle(from, to, rights);
         }
-        if let Some(promo) = mv.promo() {
+        if let Some(promo) = mv.promo {
             if let Some(capture) = capture_piece {
                 return Move::new_promo_capture(from, to, promo, capture);
             } else {
