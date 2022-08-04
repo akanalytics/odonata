@@ -95,7 +95,6 @@ impl<'a> Analysis<'a> {
             Piece::King => PreCalc::default().king_attacks(sq),
             Piece::Pawn => PreCalc::default()
                 .pawn_attacks_from_sq(self.board.color_of_unchecked(sq), sq),
-            _ => unreachable!(),
         }
     }
 

@@ -435,7 +435,7 @@ fn board_calcs(c: &mut Criterion) {
             score: TtScore::new(Score::from_cp(100), 0),
             depth: 1,
             nt: NodeType::ExactPv,
-            bm: Move::NULL_MOVE,
+            bm: BareMove::null(),
         };
         b.iter_custom(|n| {
             let t = Instant::now();

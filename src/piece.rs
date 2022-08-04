@@ -182,7 +182,6 @@ impl fmt::Display for Color {
 // #[repr(u8)]
 #[derive(Copy, Hash, Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub enum Piece {
-    None = 0,
     Pawn,
     Knight,
     Bishop,
@@ -215,7 +214,7 @@ impl<T> std::ops::IndexMut<Piece> for [T] {
 impl Default for Piece {
     #[inline]
     fn default() -> Self {
-        Piece::None
+        Piece::King
     }
 }
 
@@ -226,17 +225,7 @@ impl fmt::Display for Piece {
 }
 
 impl Piece {
-    pub const ALL: [Piece; 7] = [
-        Piece::None,
-        Piece::Pawn,
-        Piece::Knight,
-        Piece::Bishop,
-        Piece::Rook,
-        Piece::Queen,
-        Piece::King,
-    ];
-
-    pub const ALL_BAR_NONE: [Piece; 6] = [
+    pub const ALL: [Piece; 6] = [
         Piece::Pawn,
         Piece::Knight,
         Piece::Bishop,
@@ -283,7 +272,6 @@ impl Piece {
     #[inline]
     pub const fn to_upper_char(&self) -> char {
         match self {
-            Piece::None => '.',
             Piece::Pawn => 'P',
             Piece::Knight => 'N',
             Piece::Bishop => 'B',
@@ -307,7 +295,6 @@ impl Piece {
     #[inline]
     pub const fn centipawns(&self) -> i32 {
         match self {
-            Piece::None => 0,
             Piece::Pawn => 100,
             Piece::Knight => 325,
             Piece::Bishop => 325,
@@ -565,7 +552,7 @@ mod tests {
         assert_eq!(Piece::Pawn.to_upper_char(), 'P');
         assert_eq!(Piece::King.to_char(Color::Black), 'k');
         assert_eq!(Piece::King.to_char(Color::White), 'K');
-        for i in 0..7 {
+        for i in 0..Piece::len() {
             assert_eq!(Piece::from_index(i).index(), i);
         }
     }

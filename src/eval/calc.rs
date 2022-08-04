@@ -31,7 +31,6 @@ impl ColorPiece {
 
     pub const fn all() -> [ColorPiece; ColorPiece::len()] {
         [
-            Self { c: White, p: None },
             Self { c: White, p: Pawn },
             Self {
                 c: White,
@@ -44,7 +43,6 @@ impl ColorPiece {
             Self { c: White, p: Rook },
             Self { c: White, p: Queen },
             Self { c: White, p: King },
-            Self { c: Black, p: None },
             Self { c: Black, p: Pawn },
             Self {
                 c: Black,
@@ -302,7 +300,7 @@ impl<'a> Calc<'a> {
 
     fn pst(&mut self, s: &mut impl ScorerBase, b: &Board) {
         // if s.csv() {
-        for &p in &Piece::ALL_BAR_NONE {
+        for &p in &Piece::ALL {
             let w = (b.pieces(p) & b.white()).flip_vertical();
             let b = b.pieces(p) & b.black();
 

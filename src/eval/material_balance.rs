@@ -27,7 +27,7 @@ impl<T> std::ops::Index<Piece> for PieceArray<T> {
     type Output = T;
     #[inline]
     fn index(&self, i: Piece) -> &Self::Output {
-        [&self.p, &self.n, &self.b, &self.r, &self.q, &self.k][i.index() - 1]
+        [&self.p, &self.n, &self.b, &self.r, &self.q, &self.k][i.index()]
     }
 }
 
@@ -41,7 +41,7 @@ impl<T> std::ops::IndexMut<Piece> for PieceArray<T> {
             &mut self.r,
             &mut self.q,
             &mut self.k,
-        ][p.index() - 1]
+        ][p.index()]
     }
 }
 

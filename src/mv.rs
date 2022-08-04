@@ -53,6 +53,11 @@ pub struct BareMove {
 
 impl BareMove {
     #[inline]
+    pub fn null() -> Self {
+        Default::default()
+    }
+
+    #[inline]
     pub fn from(&self) -> Square {
         self.from
     }

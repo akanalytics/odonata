@@ -46,7 +46,7 @@ impl Serialize for Pst {
         S: Serializer,
     {
         let mut h = PstHelper::default();
-        for (i, &p) in Piece::ALL_BAR_NONE.iter().enumerate() {
+        for (i, &p) in Piece::ALL.iter().enumerate() {
             let map = &mut [&mut h.p, &mut h.n, &mut h.b, &mut h.r, &mut h.q, &mut h.k][i];
             for sq in Square::all() {
                 map.insert(sq.uci().to_string(), self.array[p][sq]);
@@ -63,7 +63,7 @@ impl<'de> Deserialize<'de> for Pst {
     {
         let h: PstHelper = Deserialize::deserialize(deserializer)?;
         let mut pst = Pst::default();
-        for (i, &p) in Piece::ALL_BAR_NONE.iter().enumerate() {
+        for (i, &p) in Piece::ALL.iter().enumerate() {
             let map = [&h.p, &h.n, &h.b, &h.r, &h.q, &h.k][i];
             for (k, &v) in map.iter() {
                 let sq = Bitboard::parse_square(k).map_err(serde::de::Error::custom)?;
@@ -88,7 +88,7 @@ pub struct PstProxy {
 impl From<PstProxy> for Pst {
     fn from(pp: PstProxy) -> Self {
         let mut pst = Pst::default();
-        for (i, &p) in Piece::ALL_BAR_NONE.iter().enumerate() {
+        for (i, &p) in Piece::ALL.iter().enumerate() {
             let b = [&pp.p, &pp.n, &pp.b, &pp.r, &pp.q, &pp.k][i];
             for sq in Square::all() {
                 pst.array[p][sq] = b[sq.rank_index()][sq.file_index()];
@@ -102,7 +102,7 @@ impl From<PstProxy> for Pst {
 impl Into<PstProxy> for Pst {
     fn into(self) -> PstProxy {
         let mut pp = PstProxy::default();
-        for (i, &p) in Piece::ALL_BAR_NONE.iter().enumerate() {
+        for (i, &p) in Piece::ALL.iter().enumerate() {
             let b = &mut [
                 &mut pp.p, &mut pp.n, &mut pp.b, &mut pp.r, &mut pp.q, &mut pp.k,
             ][i];
@@ -125,7 +125,7 @@ impl Component for Pst {
 impl fmt::Display for Pst {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "enabled          : {}", self.enabled)?;
-        for &p in &Piece::ALL_BAR_NONE {
+        for &p in &Piece::ALL {
             for phase in ["s", "e"] {
                 writeln!(f, "PST: {}.{}", p, phase)?;
                 for rank in 0..8 {
@@ -310,7 +310,6 @@ impl Pst {
 
         let square_values_mg: [[i32; 64]; Piece::len()] = [
             pawn_pst_mg,
-            pawn_pst_mg,
             knight_pst_mg,
             bishop_pst_mg,
             rook_pst_mg,
@@ -319,7 +318,6 @@ impl Pst {
         ];
         let square_values_eg: [[i32; 64]; Piece::len()] = [
             pawn_pst_eg,
-            pawn_pst_eg,
             knight_pst_eg,
             bishop_pst_eg,
             rook_pst_eg,
@@ -327,7 +325,7 @@ impl Pst {
             king_pst_eg,
         ];
 
-        for &p in &Piece::ALL_BAR_NONE {
+        for &p in &Piece::ALL {
             for sq in Square::all() {
                 self.array[p][sq] =
                     Weight::from_i32(square_values_mg[p][sq], square_values_eg[p][sq]);

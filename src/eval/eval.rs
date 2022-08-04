@@ -222,10 +222,10 @@ impl Feature {
         match self {
             Feature::Discrete(f) => *f as usize,
             Feature::Pst(p, sq) => {
-                Attr::WinMetric2 as usize + 1 + (p.index() - 1) * Square::len() + sq.index()
+                Attr::WinMetric2 as usize + 1 + (p.index()) * Square::len() + sq.index()
             }
             Feature::Piece(p) => {
-                Attr::WinMetric2 as usize + 1 + Square::len() * (Piece::len() - 1) + (p.index() - 1)
+                Attr::WinMetric2 as usize + 1 + Square::len() * (Piece::len()) + (p.index())
             }
         }
     }
@@ -243,7 +243,7 @@ impl Feature {
                     }
                 }
                 Feature::Pst(_, _) => {
-                    for p in Piece::ALL_BAR_NONE {
+                    for p in Piece::ALL {
                         for sq in Square::all() {
                             features.push(Feature::Pst(p, sq));
                         }

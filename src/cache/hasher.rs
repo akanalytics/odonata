@@ -36,8 +36,8 @@ impl fmt::Display for Hasher {
         write!(f, "Zobrist({})", self.seed)?;
         if f.alternate() {
             writeln!(f)?;
-            for c in &Color::ALL {
-                for p in &Piece::ALL_BAR_NONE {
+            for c in Color::ALL {
+                for p in Piece::ALL {
                     for sq in 0..64 {
                         writeln!(
                             f,
@@ -45,7 +45,7 @@ impl fmt::Display for Hasher {
                             c,
                             p,
                             sq,
-                            self.squares[c.index()][p.index()][sq]
+                            self.squares[c][p][sq]
                         )?;
                     }
                 }
@@ -124,7 +124,7 @@ impl Hasher {
         // fill seems fine to use "On big-endian platforms this performs
         // byte-swapping to ensure portability of results from reproducible generators."
         for c in &Color::ALL {
-            for p in &Piece::ALL_BAR_NONE {
+            for p in &Piece::ALL {
                 rng.fill(&mut h.squares[c.index()][p.index()]);
             }
         }
@@ -159,7 +159,7 @@ impl Hasher {
         if !b.en_passant().is_empty() {
             hash ^= self.ep[b.en_passant().first_square().index() & 7];
         }
-        for &p in &Piece::ALL_BAR_NONE {
+        for &p in &Piece::ALL {
             for bb in b.pieces(p).iter() {
                 let sq = bb.first_square();
                 if b.color(Color::White).contains(bb) {

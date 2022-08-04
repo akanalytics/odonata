@@ -77,7 +77,7 @@ impl CounterMove {
 
     pub fn adjust_by_factor(&mut self, age_factor: i32) {
         for c in Color::ALL {
-            for p in Piece::ALL_BAR_NONE {
+            for p in Piece::ALL {
                 for to in Bitboard::all().squares() {
                     self.counter_moves[c][p][to].count1 *= age_factor as i64 / 128;
                     self.counter_moves[c][p][to].count1 *= age_factor as i64 / 128;

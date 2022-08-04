@@ -164,7 +164,7 @@ mod tests {
         assert_eq!(size_of::<Score>(), 2, "Score");
         assert_eq!(size_of::<Move>(), 4, "Move");
         assert_eq!(size_of::<Bitboard>(), 8, "Bitboard");
-        assert_eq!(size_of::<Board>(), 168, "Board");
+        assert_eq!(size_of::<Board>(), 160, "Board");
         assert_eq!(size_of::<Option<Bitboard>>(), 16, "Bitboard");
         assert_eq!(size_of::<String>(), 24, "String");
         assert_eq!(size_of::<Duration>(), 16, "Duration");

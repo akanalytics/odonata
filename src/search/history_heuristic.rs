@@ -102,7 +102,7 @@ impl fmt::Display for HistoryHeuristic {
         writeln!(f, "age.factor       : {}", self.age_factor)?;
         // writeln!(f, "clear.every.move : {}", self.clear_every_move)?;
         // for c in Color::ALL {
-        //     for p in Piece::ALL_BAR_NONE {
+        //     for p in Piece::ALL {
         //         writeln!(f, "{} {}", c, p.name())?;
         //         for sq in Bitboard::all().flip_vertical().squares() {
         //             write!(f, "{:>7}", self.history[c][p][sq])?;
@@ -119,7 +119,7 @@ impl fmt::Display for HistoryHeuristic {
 impl HistoryHeuristic {
     fn adjust_by_factor(&mut self, age_factor: i64) {
         for c in Color::ALL {
-            for p in Piece::ALL_BAR_NONE {
+            for p in Piece::ALL {
                 for fr in Bitboard::all().squares() {
                     for to in Bitboard::all().squares() {
                         self.history[c][p][fr][to].bad *= age_factor / 1024;

@@ -28,7 +28,7 @@ impl Serialize for Pmvt {
         S: Serializer,
     {
         let mut h = PstHelper::default();
-        for (i, &p) in Piece::ALL_BAR_NONE.iter().enumerate() {
+        for (i, &p) in Piece::ALL.iter().enumerate() {
             let map = &mut [&mut h.p, &mut h.n, &mut h.b, &mut h.r, &mut h.q, &mut h.k][i];
             for i in 0..20 {
                 map.insert(i.to_string(), self.mv[p][i]);
@@ -45,7 +45,7 @@ impl<'de> Deserialize<'de> for Pmvt {
     {
         let h: PstHelper = Deserialize::deserialize(deserializer)?;
         let mut pmvt = Pmvt::default();
-        for (i, &p) in Piece::ALL_BAR_NONE.iter().enumerate() {
+        for (i, &p) in Piece::ALL.iter().enumerate() {
             let map = [&h.p, &h.n, &h.b, &h.r, &h.q, &h.k][i];
             for (k, &v) in map.iter() {
                 let i: usize = k.parse().map_err(serde::de::Error::custom)?;
@@ -67,7 +67,7 @@ impl Component for Pmvt {
 impl fmt::Display for Pmvt {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "enabled          : {}", self.enabled)?;
-        for &p in &Piece::ALL_BAR_NONE {
+        for &p in &Piece::ALL {
             for phase in ["s", "e"] {
                 writeln!(f, "PMVT: {}.{}", p, phase)?;
                 for i in 0..20 {

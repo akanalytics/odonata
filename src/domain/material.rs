@@ -18,7 +18,7 @@ impl fmt::Display for Material {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for &c in &Color::ALL {
             // write!(f, "{}: ", c)?;
-            for &p in Piece::ALL_BAR_NONE.iter().rev() {
+            for &p in Piece::ALL.iter().rev() {
                 write!(
                     f,
                     "{}",
@@ -45,7 +45,7 @@ impl ops::Neg for &Material {
         let mut m = Material::new();
 
         for &c in &Color::ALL {
-            for &p in &Piece::ALL_BAR_NONE {
+            for &p in &Piece::ALL {
                 m.set_count(c, p, -self.count(c, p));
             }
         }
@@ -60,7 +60,7 @@ impl<'a, 'b> ops::Sub<&'b Material> for &'a Material {
         let mut m = Material::new();
 
         for &c in &Color::ALL {
-            for &p in &Piece::ALL_BAR_NONE {
+            for &p in &Piece::ALL {
                 m.set_count(c, p, self.count(c, p) - other.count(c, p));
             }
         }
@@ -73,14 +73,14 @@ impl cmp::PartialOrd for Material {
         if self == other {
             return Some(cmp::Ordering::Equal);
         }
-        if Piece::ALL_BAR_NONE
+        if Piece::ALL
             .iter()
             .cartesian_product(&Color::ALL)
             .all(|(&p, &c)| self.count(c, p) >= other.count(c, p))
         {
             return Some(cmp::Ordering::Greater);
         }
-        if Piece::ALL_BAR_NONE
+        if Piece::ALL
             .iter()
             .cartesian_product(&Color::ALL)
             .all(|(&p, &c)| self.count(c, p) <= other.count(c, p))
@@ -122,7 +122,7 @@ impl Material {
 
     pub fn from_board(board: &Board) -> Material {
         let mut m = Material { ..Self::default() };
-        for &p in &Piece::ALL_BAR_NONE {
+        for &p in &Piece::ALL {
             m.set_count(
                 Color::White,
                 p,
@@ -159,7 +159,7 @@ impl Material {
 
     #[inline]
     pub fn total_count(&self) -> i32 {
-        Piece::ALL_BAR_NONE
+        Piece::ALL
             .iter()
             .map(|&p| self.count_piece(p))
             .sum::<i32>()
@@ -241,7 +241,7 @@ impl Material {
     /// removes common material leaving only the advantage material
     pub fn advantage(&self) -> Material {
         let mut advantage = *self;
-        for &p in &Piece::ALL_BAR_NONE {
+        for &p in &Piece::ALL {
             let common = cmp::min(
                 advantage.count(Color::White, p),
                 advantage.count(Color::Black, p),
@@ -452,7 +452,7 @@ mod tests {
         // count KBk.count(W,B) >   Kkn.count(W, B)
 
         debug!("{:?} ... {:?}", mat_KBk, mat_Kkn);
-        let _b = Piece::ALL_BAR_NONE
+        let _b = Piece::ALL
             .iter()
             .cartesian_product(&Color::ALL)
             .inspect(|x| {

@@ -301,7 +301,6 @@ impl Metrics {
                 Piece::Rook => Self::incr_node(n, Event::MoveRook),
                 Piece::Queen => Self::incr_node(n, Event::MoveQueen),
                 Piece::King => Self::incr_node(n, Event::MoveKing),
-                _ => unreachable!(),
             }
         }
     }

@@ -224,7 +224,6 @@ impl PreCalc {
             Piece::King => self.all_king_attacks(us),
             Piece::Knight => self.all_knight_attacks(us),
             Piece::Pawn => self.all_pawn_attacks_ext(c, us, occ),
-            _ => unreachable!(),
         }
     }
 
@@ -246,7 +245,6 @@ impl PreCalc {
             Piece::King => self.king_attacks(from),
             Piece::Knight => self.knight_attacks(from),
             Piece::Pawn => self.pawn_attacks_ext(c, us, them, from),
-            _ => panic!(),
         }
     }
 

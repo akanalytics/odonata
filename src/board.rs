@@ -529,7 +529,7 @@ impl fmt::Display for Board {
             writeln!(f, "Hash: {:x}", self.hash())?;
             writeln!(f, "Rep count: {:x}", self.repetition_count().total)?;
             writeln!(f, "White:\n{}\nBlack:\n{}\n", self.white(), self.black())?;
-            for &p in Piece::ALL_BAR_NONE.iter() {
+            for &p in Piece::ALL.iter() {
                 writeln!(
                     f,
                     "Pieces: {}{}\n{}\n",
@@ -725,7 +725,7 @@ impl Board {
             );
         }
         let mut bb = Bitboard::all();
-        for &p in Piece::ALL_BAR_NONE.iter() {
+        for &p in Piece::ALL.iter() {
             bb &= self.pieces(p);
         }
         if !bb.is_empty() {
