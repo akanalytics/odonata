@@ -7,7 +7,7 @@ use crate::position::Position;
 use crate::search::algo::Algo;
 use crate::search::timecontrol::TimeControl;
 use crate::trace::stat::Stat;
-use crate::tuning::Tuning;
+use crate::tune::Tuning;
 use crate::utils::Formatting;
 use anyhow::{anyhow, Context, Result};
 use figment::providers::{Env, Format, Toml};

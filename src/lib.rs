@@ -58,7 +58,7 @@ pub mod repetition;
 pub mod search;
 pub mod tags;
 pub mod trace;
-pub mod tuning;
+pub mod tune;
 pub mod piece;
 pub mod utils;
 pub mod variation;

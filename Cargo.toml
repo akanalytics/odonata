@@ -1,6 +1,6 @@
 [package]
 name = "odonata"
-version = "0.6.13"
+version = "0.6.14"
 license = "GPL-3.0+"
 homepage = "https://github.com/akanalytics/odonata"
 authors = [
@@ -54,6 +54,7 @@ thread_local = "1.1.4"
 # tabled = "0.7.0"
 tabled = { git = "https://github.com/zhiburt/tabled", branch = "master" }
 hdrhist = "0.5.0"
+ndarray = "0.15.6"
 
 
 [dev-dependencies]

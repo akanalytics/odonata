@@ -5,7 +5,7 @@ use crate::infra::version::Version;
 use crate::position::Position;
 use crate::search::engine::Engine;
 use crate::tags::Tag;
-use crate::tuning::Tuning;
+use crate::tune::Tuning;
 use anyhow::Context;
 use itertools::Itertools;
 // // use crate::{info, logger::LogInit};
