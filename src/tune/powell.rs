@@ -7,7 +7,6 @@ pub struct Powell {
     ε: f32,
     verbose: bool,
     x0: Array1<f32>,
-    f: dyn Fn(Array1<f32>) -> f32,
 }
 //
 // https://home.cc.umanitoba.ca/~lovetrij/cECE7670/
@@ -62,7 +61,7 @@ pub struct Powell {
 // 20. end
 // 21. end
 
-pub struct Brent {
+pub struct Solver1D {
     max_iter: i32,
     ε: f32,
     verbose: bool,
@@ -73,7 +72,7 @@ pub struct Brent {
 
 // algo from https://github.com/scijs/minimize-golden-section-1d
 // license: MIT
-impl Brent {
+impl Solver1D {
     fn minimize(&self, f: impl Fn(f32) -> f32) -> f32 {
         #[allow(non_snake_case)]
         let PHI_RATIO: f32 = 2.0 / (1.0 + f32::sqrt(5.0));
@@ -149,13 +148,75 @@ impl Brent {
     }
 }
 
+impl Powell {
+    fn minimize(&self, f: impl Fn(ArrayView1<f32>) -> f32) -> Array1<f32> {
+        let max_iter = self.max_iter;
+        let ε = self.ε;
+        let verbose = self.verbose;
+
+        let solver_1d = Solver1D {
+            max_iter,
+            ε,
+            verbose,
+            x0: 0.0,
+            x_min: -100.0,
+            x_max: 100.0,
+        };
+        let n = self.n;
+        let x0 = &self.x0;
+        let mut s = vec![Array::zeros(n); n + 1];
+
+        // step 2
+        for i in 0..n {
+            s[i][i] = 1.0;
+        }
+
+        // step 3
+        let f1 = |λ: f32| f((x0 + λ * &s[n-1]).view());
+        let λ = solver_1d.minimize(f1);
+
+        // step 4
+        let mut x = x0 + λ * &s[n];
+        let mut converged = false;
+        let mut k = 0;
+
+        while !converged {
+            let y = x.clone();
+            k += 1;
+            for i in 0..n {
+                let f1 = |λ: f32| f( (&x + λ * &s[i]).view() );
+                let λ = solver_1d.minimize(f1);
+                x += &(λ * &s[i])
+            }
+            s[n] = &x - &y;
+            let f1 = |λ: f32| f( (&x + λ * &s[n]).view());
+            let λ = solver_1d.minimize(f1);
+            x += &(λ * &s[n]);
+            let fx = f(x.view());
+            let fy = f(y.view());
+            let err = (fx - fy).abs() / fx.max(1e-10);
+            if k > self.max_iter || err < self.ε {
+                converged = true;
+            } else {
+                for i in 0..n {
+                    s[i] = s[i + 1].clone();
+                }
+            }
+            if self.verbose {
+                println!("Iter {k} err = {err}");
+            }
+        }
+        x
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_1d() {
-        let solver = Brent {
+        let solver = Solver1D {
             max_iter: 100,
             ε: 1e-6,
             verbose: true,
@@ -170,66 +231,22 @@ mod tests {
         let x = solver.minimize(|x| f32::abs(x - 5.0));
         assert!(f32::abs(x - 5.0) < 1e-4);
     }
-}
 
-impl Powell {
-    fn solve(&self) {
-        let max_iter = self.max_iter;
-        let ε = self.ε;
-        let verbose = self.verbose;
-
-        let solver_1d = Brent {
-            max_iter,
-            ε,
-            verbose,
-            x0: 0.0,
-            x_min: -100.0,
-            x_max: 100.0,
+    #[test]
+    fn test_2d() {
+        let solver = Powell {
+            n: 2,
+            max_iter: 100,
+            ε: 1e-6,
+            verbose: true,
+            x0: array![0.0, 0.0],
+            // x_min: [-10.0, -10.0],
+            // x_max: [10.0, 10.0],
         };
-        let n = self.n;
-        let x0 = &self.x0;
-        let mut s = vec![Array::zeros(1); n + 1];
 
-        // step 2
-        for i in 0..n {
-            s[i][i] = 1.0;
-        }
+        let x = solver.minimize(|x| (x[0] - 3.0).abs() + (x[1] - 4.0).abs());
+        println!("x = {x}");
 
-        // step 3
-        let f1 = |λ: f32| (self.f)(x0 + λ * &s[n]);
-        let λ = solver_1d.minimize(&f1);
-
-        // step 4
-        let mut x = x0 + λ * &s[n];
-        let mut converged = false;
-        let mut k = 0;
-
-        while !converged {
-            let y = x.clone();
-            k += 1;
-            for i in 0..n {
-                let f1 = |λ: f32| (self.f)(&x + λ * &s[i]);
-                let λ = solver_1d.minimize(&f1);
-                x += &(λ * &s[i])
-            }
-            s[n] = &x - &y;
-            let f1 = |λ: f32| (self.f)(&x + λ * &s[n]);
-            let λ = solver_1d.minimize(&f1);
-            x += &(λ * &s[n]);
-            let fx = (self.f)(x.clone());
-            let fy = (self.f)(y.clone());
-            let err = (fx - fy).abs() / fx.max(1e-10);
-            if k > self.max_iter || err < self.ε {
-                converged = true;
-            } else {
-                for i in 0..n {
-                    s[i] = s[i + 1].clone();
-                }
-            }
-            if self.verbose {
-                println!("Iter {k} err = {err}");
-            }
-        }
     }
 }
 
