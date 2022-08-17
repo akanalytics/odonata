@@ -16,6 +16,7 @@ use crate::search::node::Counter;
 use crate::search::node::Event;
 use crate::search::node::Node;
 
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 
@@ -404,7 +405,7 @@ impl Eval {
 impl Eval {
     pub fn weights_vector(&self) -> WeightsVector {
         WeightsVector {
-            names: Vec::new(),
+            names: Feature::all().iter().map(|f| f.name()).collect_vec(),
             weights: self.feature_weights.clone(),
         }
     }

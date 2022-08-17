@@ -2,11 +2,11 @@ use ndarray::prelude::*;
 // use num_traits::Float;
 
 pub struct Powell {
-    n: usize,
-    max_iter: i32,
-    ε: f32,
-    verbose: bool,
-    x0: Array1<f32>,
+    pub n: usize,
+    pub max_iter: i32,
+    pub ε: f32,
+    pub verbose: bool,
+    pub x0: Array1<f32>,
 }
 //
 // https://home.cc.umanitoba.ca/~lovetrij/cECE7670/
@@ -73,7 +73,7 @@ pub struct Solver1D {
 // algo from https://github.com/scijs/minimize-golden-section-1d
 // license: MIT
 impl Solver1D {
-    fn minimize(&self, f: impl Fn(f32) -> f32) -> f32 {
+    pub fn minimize(&self, mut f: impl FnMut(f32) -> f32) -> f32 {
         #[allow(non_snake_case)]
         let PHI_RATIO: f32 = 2.0 / (1.0 + f32::sqrt(5.0));
         let ε = self.ε;
@@ -104,16 +104,19 @@ impl Solver1D {
                 f2 = f1;
                 x1 = x_max - PHI_RATIO * (x_max - x_min);
                 f1 = f(x1);
-            } else {
+                if self.verbose {
+                    println!(".{iter} f({x1}) = {f1}");
+                }
+                } else {
                 x_min = x1;
                 x1 = x2;
                 f1 = f2;
                 x2 = x_min + PHI_RATIO * (x_max - x_min);
                 f2 = f(x2);
-            }
-            if self.verbose {
-                println!("Iter {iter} f({x1}) = {f1}   f({x2}) = {f2}");
-            }
+                if self.verbose {
+                    println!(".{iter} f({x2}) = {f2}");
+                }
+                }
         }
 
         x_mid = 0.5 * (x_max + x_min);
@@ -131,7 +134,8 @@ impl Solver1D {
             //   status.converged = false;
             // }
             if self.verbose {
-                println!("Failed iters = {iter}  f1 = {f1} f2 = {f2}");
+                let ε = f32::abs(x_max - x_min);
+                println!("Failed iters = {iter}  f1 = {f1} f2 = {f2} x_min = {x_min} x_max = {x_max} ε = {ε} ");
             }
             return f32::NAN;
         }
@@ -142,14 +146,14 @@ impl Solver1D {
             _ => x_mid,
         };
         if self.verbose {
-            println!("Ans {ans}");
+            println!("1D minimise λ = {ans}");
         }
         ans
     }
 }
 
 impl Powell {
-    fn minimize(&self, f: impl Fn(ArrayView1<f32>) -> f32) -> Array1<f32> {
+    pub fn minimize(&self, mut f: impl FnMut(ArrayView1<f32>) -> f32) -> Array1<f32> {
         let max_iter = self.max_iter;
         let ε = self.ε;
         let verbose = self.verbose;
@@ -160,7 +164,7 @@ impl Powell {
             verbose,
             x0: 0.0,
             x_min: -100.0,
-            x_max: 100.0,
+            x_max: 4000.0,
         };
         let n = self.n;
         let x0 = &self.x0;
@@ -186,11 +190,32 @@ impl Powell {
             for i in 0..n {
                 let f1 = |λ: f32| f( (&x + λ * &s[i]).view() );
                 let λ = solver_1d.minimize(f1);
-                x += &(λ * &s[i])
+                x += &(λ * &s[i]);
+                if self.verbose {
+                    println!("Iter {k} i = {i} x = {x}");
+                }
+    
             }
-            s[n] = &x - &y;
+            s[n] = &x - &y;            
+
+            // normalize s[n]
+            let l2 = s[n].dot(&s[n]).sqrt();
+            s[n].map_inplace(|x| *x /= l2);
+
             let f1 = |λ: f32| f( (&x + λ * &s[n]).view());
-            let λ = solver_1d.minimize(f1);
+            let solver_1d_lam = Solver1D {
+                max_iter,
+                ε,
+                verbose,
+                x0: 0.5,
+                x_min: 0.0,
+                x_max: 1.0,
+            };
+    
+            let λ = solver_1d_lam.minimize(f1);
+            // if self.verbose {
+                println!("Iter {k} s[n] = {}  x = {x} y = {y} new x = {}", s[n], &x + λ * &s[n]);
+            // }
             x += &(λ * &s[n]);
             let fx = f(x.view());
             let fy = f(y.view());
@@ -203,7 +228,7 @@ impl Powell {
                 }
             }
             if self.verbose {
-                println!("Iter {k} err = {err}");
+                println!("Iter {k} x = {x} err = {err}");
             }
         }
         x

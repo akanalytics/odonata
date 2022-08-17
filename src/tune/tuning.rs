@@ -238,6 +238,9 @@ impl Tuning {
                     let diff = win_prob_estimate - win_prob_actual;
                     diff * diff
                 }
+                // p is prob of belonging to class 1, 1-p prob of class 0
+                // J(x)  = Sum     yi * log(pi) + (1-yi)*log(1-pi)
+                // white win:  win_prob_est close to zero => penalize with large positive cost
                 RegressionType::CrossEntropy => match es.outcome {
                     Outcome::WinWhite => -f32::ln(win_prob_estimate),
                     Outcome::WinBlack => -f32::ln(1.0 - win_prob_estimate),
@@ -352,10 +355,13 @@ mod tests {
     use std::{fs::File, io::BufWriter, time::Instant};
 
     use super::*;
-    use crate::eval::eval::Attr;
+    use crate::eval::eval::{Attr, Feature};
+    use crate::tune::powell::Powell;
     use crate::utils::Formatting;
+    use crate::Piece;
     use crate::{eval::weight::Weight, infra::profiler::Profiler};
     use anyhow::Context;
+    use ndarray::{ArrayBase, ArrayView1, s};
     use test_log::test;
 
     #[test]
@@ -376,7 +382,8 @@ mod tests {
         engine.tuner.method = Method::Sparse;
         Tuning::upload_positions(
             &mut engine,
-            Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-combo.epd").unwrap(),
+            // Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-combo.epd").unwrap(),
+            Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-small.epd").unwrap(),
         )
         .unwrap();
 
@@ -405,6 +412,100 @@ mod tests {
             iters,
             Formatting::duration(time / iters)
         );
+    }
+
+    #[ignore]
+    #[test]
+    fn test_solve_mse() {
+        info!("Starting...");
+        let mut engine = Engine::new();
+        engine.tuner.multi_threading_min_positions = 10000000;
+
+        engine.tuner.regression_type = RegressionType::CrossEntropy;
+        engine.tuner.method = Method::Sparse;
+        let npos = Tuning::upload_positions(
+            &mut engine,
+            // Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-combo.epd").unwrap(),
+            Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-small.epd").unwrap(),
+        )
+        .unwrap();
+        println!("Loaded {npos} positions\n");
+
+        engine.algo.eval.mb.enabled = false;
+        let start = Instant::now();
+        let n = {
+            let feature_weights = &mut engine.algo.eval.feature_weights;
+            feature_weights.len() * 2
+        };
+
+        // let n = 9;
+
+        let solver = Powell {
+            n,
+            max_iter: 300,
+            ε: 1e-3,
+            verbose: false,
+            x0: ArrayBase::zeros((n,)),
+            // x_min: [-10.0, -10.0],
+            // x_max: [10.0, 10.0],
+        };
+
+        // for (i, wt) in engine.algo.eval.feature_weights.iter().enumerate() {
+        //     solver.x0[2*i] = wt.s();
+        //     solver.x0[2*i+1] = wt.s();
+        // }
+
+        let mse_func = |x: ArrayView1<f32>| -> f32 {
+            for (i, wt) in engine.algo.eval.feature_weights.iter_mut().enumerate() {
+                *wt = Weight::from_f32(x[2*i], x[2*i+1]);
+            }
+            // engine.algo.eval.feature_weights[Feature::Piece(Piece::Queen).index()] =
+            //     Weight::from_f32(x[0], x[1]);
+            // engine.algo.eval.feature_weights[Feature::Piece(Piece::Rook).index()] =
+            //     Weight::from_f32(x[2], x[3]);
+            // engine.algo.eval.feature_weights[Feature::Piece(Piece::Bishop).index()] =
+            //     Weight::from_f32(x[4], x[5]);
+            // engine.algo.eval.feature_weights[Feature::Piece(Piece::Knight).index()] =
+            //     Weight::from_f32(x[6], x[7]);
+            // engine.algo.eval.feature_weights[Feature::Piece(Piece::Pawn).index()] =
+            //     Weight::from_f32(100., x[8]);
+            engine.algo.eval.feature_weights[Feature::Piece(Piece::Pawn).index()] =
+                Weight::from_f32(100., x[2*Feature::Piece(Piece::Pawn).index()+1]);
+
+            let diffs = engine.tuner.calculate_mean_square_error(&engine).unwrap();
+            let reg_lambda = 1e-5;
+            let reg = reg_lambda * x.slice(s![-10..]).fold(0. , |t,x| t + x.abs() );
+            // println!("mse({x}) = {diffs}");
+            diffs + reg
+        };
+
+        // let x = array![1700.0, 700.0];
+        // println!("f({x}) = {}", mse_func(x.view()));
+        // let x = array![1900.0, 900.0];
+        // println!("f({x}) = {}", mse_func(x.view()));
+        // let x = array![2900.0, 1900.0];
+        // println!("f({x}) = {}", mse_func(x.view()));
+        let x = solver.minimize(mse_func);
+        println!("x = {x}");
+
+        // let mut iters = 0;
+        // for n in (-120..120).step_by(1) {
+        //     let value = n;
+        //     engine.algo.eval.mb.enabled = false;
+        //     engine
+        //         .algo
+        //         .eval
+        //         .set_weight(Attr::PawnIsolated.into(), Weight::from_i32(0, value));
+        //     iters += 1;
+        // println!("{}, {}", value, diffs);
+        let _time = Instant::now() - start;
+        println!("{}", engine.algo.eval.weights_vector());
+        // println!(
+        //     "Time {} for {} iters, {} per iter.",
+        //     Formatting::duration(time),
+        //     iters,
+        //     Formatting::duration(time / iters)
+        // );
     }
 
     #[ignore]
