@@ -455,7 +455,7 @@ mod tests {
         //     solver.x0[2*i+1] = wt.s();
         // }
 
-        let mse_func = |x: ArrayView1<f32>| -> f32 {
+        let mut mse_func = |x: ArrayView1<f32>| -> f32 {
             for (i, wt) in engine.algo.eval.feature_weights.iter_mut().enumerate() {
                 *wt = Weight::from_f32(x[2*i], x[2*i+1]);
             }
@@ -469,12 +469,13 @@ mod tests {
             //     Weight::from_f32(x[6], x[7]);
             // engine.algo.eval.feature_weights[Feature::Piece(Piece::Pawn).index()] =
             //     Weight::from_f32(100., x[8]);
-            engine.algo.eval.feature_weights[Feature::Piece(Piece::Pawn).index()] =
-                Weight::from_f32(100., x[2*Feature::Piece(Piece::Pawn).index()+1]);
+            // engine.algo.eval.feature_weights[Feature::Piece(Piece::Pawn).index()] =
+            //     Weight::from_f32(100., x[2*Feature::Piece(Piece::Pawn).index()+1]);
 
             let diffs = engine.tuner.calculate_mean_square_error(&engine).unwrap();
-            let reg_lambda = 1e-5;
-            let reg = reg_lambda * x.slice(s![-10..]).fold(0. , |t,x| t + x.abs() );
+            let reg_lambda = 1e-7;
+            // let reg = reg_lambda * x.slice(s![0..-10]).fold(0.0 , |t,x| t + x.abs() );
+            let reg = reg_lambda * x.fold(0.0 , |t,x| t + x.abs() );
             // println!("mse({x}) = {diffs}");
             diffs + reg
         };
@@ -485,8 +486,9 @@ mod tests {
         // println!("f({x}) = {}", mse_func(x.view()));
         // let x = array![2900.0, 1900.0];
         // println!("f({x}) = {}", mse_func(x.view()));
-        let x = solver.minimize(mse_func);
+        let x = solver.minimize(&mut mse_func);
         println!("x = {x}");
+        println!("f(x) = {}", mse_func(x.view()));
 
         // let mut iters = 0;
         // for n in (-120..120).step_by(1) {

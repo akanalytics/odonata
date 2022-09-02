@@ -250,7 +250,7 @@ mod tests {
         // let bbd = PreCalc::default();
         let mut prof = Profiler::new("knight_attacks".into());
         for _ in 0..100 {
-            prof.benchmark(|| analysis.slider_attacks(Color::White, Piece::Knight));
+            prof.benchmark(|| analysis.knight_attacks(b.knights() & b.white()));
         }
     }
 }

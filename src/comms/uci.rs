@@ -12,7 +12,7 @@ use crate::position::Position;
 use crate::search::engine::Engine;
 use crate::search::node::Node;
 use crate::search::search_progress::{SearchProgress, SearchProgressMode};
-use crate::search::timecontrol::TimeControl;
+use crate::search::timecontrol::{TimeControl, RemainingTime};
 use crate::tags::Tag;
 use crate::piece::Ply;
 use crate::utils::Formatting;
@@ -462,6 +462,7 @@ impl Uci {
     fn uci_go(&mut self, args: &Args) -> Result<()> {
         self.engine.lock().unwrap().search_stop();
         let ponder = args.contain("ponder");
+        error!("Args: {}", args.words.join(" "));
 
         //  search x ply only
         let depth = args.int_after("depth");
@@ -507,15 +508,15 @@ impl Uci {
             let btime = btime.unwrap_or(0) as u64;
             let winc = winc.unwrap_or(0) as u64;
             let binc = binc.unwrap_or(0) as u64;
-            let movestogo = movestogo.unwrap_or(0) as u16;
-            TimeControl::RemainingTime {
+            let moves_to_go = movestogo.unwrap_or(0) as u16;
+            TimeControl::Fischer( RemainingTime {
                 our_color: self.board.color_us(),
                 wtime: Duration::from_millis(wtime as u64),
                 btime: Duration::from_millis(btime),
                 winc: Duration::from_millis(winc),
                 binc: Duration::from_millis(binc),
-                movestogo,
-            }
+                moves_to_go,
+            })
         } else {
             TimeControl::default()
         };

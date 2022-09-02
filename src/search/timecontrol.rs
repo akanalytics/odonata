@@ -4,6 +4,16 @@ use std::fmt;
 use std::str::FromStr;
 use std::time::Duration;
 
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub struct RemainingTime {
+    pub our_color: Color,
+    pub wtime: Duration,
+    pub btime: Duration,
+    pub winc: Duration,
+    pub binc: Duration,
+    pub moves_to_go: u16,
+}
+
 /// https://en.wikipedia.org/wiki/Time_control
 ///
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -14,14 +24,7 @@ pub enum TimeControl {
     NodeCount(u64),       // uci "nodes"
     Infinite,             // uci "infinite"
     MateIn(u32),          // uci "mate"
-    RemainingTime {
-        our_color: Color,
-        wtime: Duration,
-        btime: Duration,
-        winc: Duration,
-        binc: Duration,
-        movestogo: u16,
-    },
+    Fischer(RemainingTime),
 }
 
 impl fmt::Display for TimeControl {
@@ -37,14 +40,12 @@ impl fmt::Display for TimeControl {
             }
             TimeControl::Infinite => write!(f, "Infinite")?,
             TimeControl::MateIn(depth) => write!(f, "MateIn({})", depth)?,
-            TimeControl::RemainingTime {
+            TimeControl::Fischer(RemainingTime {
                 our_color,
                 wtime,
                 btime,
-                winc: _,
-                binc: _,
-                movestogo: _,
-            } => {
+                ..
+            }) => {
                 let duration = our_color.chooser_wb(wtime, btime);
                 write!(f, "RemainingTime({})", Formatting::duration(*duration))?;
             }
@@ -81,18 +82,12 @@ impl TimeControl {
             Ok(TimeControl::MateIn(depth))
         } else if let Some(tc) = tc.strip_prefix("tc=") {
             let time = tc.parse::<u64>().map_err(|e| e.to_string())?;
-            let wtime = Duration::from_secs(time);
-            let btime = Duration::from_secs(time);
-            let winc = Duration::from_secs(0);
-            let binc = Duration::from_secs(0);
-            Ok(TimeControl::RemainingTime {
-                our_color: Color::White,
-                wtime,
-                btime,
-                winc,
-                binc,
-                movestogo: 0,
-            })
+            let rt = RemainingTime {
+                wtime: Duration::from_secs(time),
+                btime: Duration::from_secs(time),
+                ..RemainingTime::default()
+            };
+            Ok(TimeControl::Fischer(rt))
         } else if let Some(tc) = tc.strip_prefix("depth=") {
             let depth = tc.parse::<i32>().map_err(|e| e.to_string())?;
             Ok(TimeControl::Depth(depth))
@@ -105,15 +100,11 @@ impl TimeControl {
     }
 
     pub fn from_remaining_time(d: Duration) -> Self {
-        let zero = Duration::default();
-        TimeControl::RemainingTime {
-            our_color: Color::White,
+        TimeControl::Fischer(RemainingTime {
             wtime: d,
             btime: d,
-            winc: zero,
-            binc: zero,
-            movestogo: 0,
-        }
+            ..Default::default()
+        })
     }
 
     pub fn from_move_time_millis(ms: u64) -> Self {
@@ -122,16 +113,7 @@ impl TimeControl {
     }
 
     pub fn from_game_time_secs(s: u64) -> Self {
-        let zero = Duration::default();
-        let d = Duration::from_secs(s);
-        TimeControl::RemainingTime {
-            our_color: Color::White,
-            wtime: d,
-            btime: d,
-            winc: zero,
-            binc: zero,
-            movestogo: 0,
-        }
+        Self::from_remaining_time(Duration::from_secs(s))
     }
 }
 

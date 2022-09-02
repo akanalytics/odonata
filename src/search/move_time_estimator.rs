@@ -2,8 +2,8 @@ use crate::board::Board;
 use crate::clock::Clock;
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
-use crate::search::timecontrol::TimeControl;
 use crate::piece::Ply;
+use crate::search::timecontrol::TimeControl;
 use crate::utils::Formatting;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -12,6 +12,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use super::node::Event;
+use super::timecontrol::RemainingTime;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -25,6 +26,7 @@ pub struct MoveTimeEstimator {
     pub nodestime: u64,
     check_every: u64,
     use_last_2_iters: bool,
+    use_moves_to_go: bool,
 
     #[serde(skip)]
     pub estimate_move_time: Duration,
@@ -87,6 +89,7 @@ impl Default for MoveTimeEstimator {
             deterministic: false,
             nodestime: 0,
             use_last_2_iters: true,
+            use_moves_to_go: false,
 
             estimate_move_time: Duration::default(),
             elapsed_search: Duration::default(),
@@ -168,7 +171,7 @@ impl MoveTimeEstimator {
             TimeControl::NodeCount(max_nodes) => clock.elapsed_search().1 >= max_nodes,
             TimeControl::Infinite => false,
             TimeControl::MateIn(_) => false,
-            TimeControl::RemainingTime { .. } => elapsed > self.allotted() && !self.pondering(),
+            TimeControl::Fischer { .. } => elapsed > self.allotted() && !self.pondering(),
         }
     }
 
@@ -191,7 +194,7 @@ impl MoveTimeEstimator {
             TimeControl::NodeCount(_max_nodes) => false,
             TimeControl::Infinite => false,
             TimeControl::MateIn(_) => false,
-            TimeControl::RemainingTime { .. } => true,
+            TimeControl::Fischer { .. } => true,
         }
     }
 
@@ -227,20 +230,55 @@ impl MoveTimeEstimator {
 
     pub fn probable_timeout(&self, ply: Ply) -> bool {
         match self.time_control {
-            TimeControl::RemainingTime {
-                our_color,
-                wtime,
-                btime,
-                winc,
-                binc,
-                movestogo: _,
-            } => {
-                let (_time, _inc) = our_color.chooser_wb((wtime, winc), (btime, binc));
+            TimeControl::Fischer(rt) => {
+                let (_time, _inc) = rt
+                    .our_color
+                    .chooser_wb((rt.wtime, rt.winc), (rt.btime, rt.binc));
                 self.estimate_move_time > self.allotted()
                     && !self.pondering.load(atomic::Ordering::SeqCst)
                     && ply >= self.min_ply_for_estimation
             }
             _ => false,
+        }
+    }
+
+    fn calc_from_remaining(&self, rt: &RemainingTime) -> Duration {
+        let (time_us, inc) = rt
+            .our_color
+            .chooser_wb((rt.wtime, rt.winc), (rt.btime, rt.binc));
+        let (time_them, _inc) = rt
+            .our_color
+            .opposite()
+            .chooser_wb((rt.wtime, rt.winc), (rt.btime, rt.binc));
+        let time_adv = if time_us > time_them {
+            time_us - time_them
+        } else {
+            Duration::ZERO
+        };
+        if !self.use_moves_to_go {
+            // warn!(
+            //     "MTE {} {} {} {} mtg {moves_to_go}",
+            //     Formatting::duration(wtime),
+            //     Formatting::duration(btime),
+            //     Formatting::duration(winc),
+            //     Formatting::duration(binc),
+            // );
+            (time_us + time_adv * self.perc_of_time_adv / 100) / self.moves_rem as u32 + inc
+                - Duration::from_millis(self.move_overhead_ms)
+        } else {
+            let remaining = time_us + time_adv * self.perc_of_time_adv / 100;
+            let per_move_a = remaining / rt.moves_to_go as u32;
+            let per_move_b = (remaining + inc) / self.moves_rem as u32;
+            // error!(
+            //     "MTE {} {} {} {} mtg {moves_to_go} pma {} pmb {}",
+            //     Formatting::duration(wtime),
+            //     Formatting::duration(btime),
+            //     Formatting::duration(winc),
+            //     Formatting::duration(binc),
+            //     Formatting::duration(per_move_a),
+            //     Formatting::duration(per_move_b)
+            // );
+            Duration::min(per_move_a, per_move_b)
         }
     }
 
@@ -253,26 +291,7 @@ impl MoveTimeEstimator {
             TimeControl::NodeCount(_) => zero,
             TimeControl::Infinite => zero,
             TimeControl::MateIn(_) => zero,
-            TimeControl::RemainingTime {
-                our_color,
-                wtime,
-                btime,
-                winc,
-                binc,
-                movestogo: _,
-            } => {
-                let (time_us, inc) = our_color.chooser_wb((wtime, winc), (btime, binc));
-                let (time_them, _inc) = our_color
-                    .opposite()
-                    .chooser_wb((wtime, winc), (btime, binc));
-                let time_adv = if time_us > time_them {
-                    time_us - time_them
-                } else {
-                    Duration::default()
-                };
-                (time_us + time_adv * self.perc_of_time_adv / 100) / self.moves_rem as u32 + inc
-                    - Duration::from_millis(self.move_overhead_ms)
-            }
+            TimeControl::Fischer(rt) => self.calc_from_remaining(&rt),
         }
     }
 }

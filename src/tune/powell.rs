@@ -153,7 +153,7 @@ impl Solver1D {
 }
 
 impl Powell {
-    pub fn minimize(&self, mut f: impl FnMut(ArrayView1<f32>) -> f32) -> Array1<f32> {
+    pub fn minimize(&self, f: &mut impl FnMut(ArrayView1<f32>) -> f32) -> Array1<f32> {
         let max_iter = self.max_iter;
         let ε = self.ε;
         let verbose = self.verbose;
@@ -269,7 +269,7 @@ mod tests {
             // x_max: [10.0, 10.0],
         };
 
-        let x = solver.minimize(|x| (x[0] - 3.0).abs() + (x[1] - 4.0).abs());
+        let x = solver.minimize(&mut|x| (x[0] - 3.0).abs() + (x[1] - 4.0).abs());
         println!("x = {x}");
 
     }
