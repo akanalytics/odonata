@@ -462,7 +462,7 @@ impl Uci {
     fn uci_go(&mut self, args: &Args) -> Result<()> {
         self.engine.lock().unwrap().search_stop();
         let ponder = args.contain("ponder");
-        error!("Args: {}", args.words.join(" "));
+        info!("uci go args: {}", args.words.join(" "));
 
         //  search x ply only
         let depth = args.int_after("depth");

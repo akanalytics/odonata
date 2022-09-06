@@ -65,7 +65,7 @@ pub struct Solver1D {
     max_iter: i32,
     ε: f32,
     verbose: bool,
-    x0: f32,
+    pub x0: f32,
     x_min: f32,
     x_max: f32,
 }

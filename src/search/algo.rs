@@ -116,7 +116,7 @@ impl Algo {
     }
 
     pub fn set_timing_method(&mut self, tm: TimeControl) -> &mut Self {
-        self.mte.time_control = tm;
+        self.mte.set_time_control(tm);
         self
     }
 
@@ -230,7 +230,7 @@ impl fmt::Display for Algo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "search position  : {}", self.position)?;
         writeln!(f, "starting board   : {}", self.board.to_fen())?;
-        writeln!(f, "time control     : {}", self.mte.time_control)?;
+        writeln!(f, "time control     : {}", self.mte.time_control())?;
         writeln!(f, "material         : {}", self.board.material())?;
         writeln!(
             f,

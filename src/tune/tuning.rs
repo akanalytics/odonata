@@ -355,13 +355,12 @@ mod tests {
     use std::{fs::File, io::BufWriter, time::Instant};
 
     use super::*;
-    use crate::eval::eval::{Attr, Feature};
+    use crate::eval::eval::Attr;
     use crate::tune::powell::Powell;
     use crate::utils::Formatting;
-    use crate::Piece;
     use crate::{eval::weight::Weight, infra::profiler::Profiler};
     use anyhow::Context;
-    use ndarray::{ArrayBase, ArrayView1, s};
+    use ndarray::{ArrayBase, ArrayView1};
     use test_log::test;
 
     #[test]

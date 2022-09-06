@@ -816,7 +816,7 @@ perc_of_time_adv = 62
 deterministic = false
 nodestime = 0
 check_every = 128
-use_moves_to_go = false
+use_moves_to_go = true
 
 [move_orderer]
 enabled = true

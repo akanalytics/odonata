@@ -83,7 +83,7 @@ impl IterativeDeepening {
 
 impl Algo {
     pub fn search_iteratively(&mut self) {
-        self.ids.calc_range(&self.mte.time_control);
+        self.ids.calc_range(&self.mte.time_control());
         let mut ply = self.ids.start_ply;
         let mut multi_pv = Vec::new();
         let mut last_good_multi_pv = Vec::new();

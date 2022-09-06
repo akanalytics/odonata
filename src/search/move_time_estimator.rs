@@ -17,28 +17,31 @@ use super::timecontrol::RemainingTime;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct MoveTimeEstimator {
-    pub branching_factor: f32,
+    branching_factor: f32,
     move_overhead_ms: u64,
     min_ply_for_estimation: Ply,
     perc_of_time_adv: u32,
     moves_rem: u16,
-    pub deterministic: bool,
-    pub nodestime: u64,
+    deterministic: bool,
+    nodestime: u64,
     check_every: u64,
     use_last_2_iters: bool,
     use_moves_to_go: bool,
 
     #[serde(skip)]
-    pub estimate_move_time: Duration,
+    time_control: TimeControl,
 
     #[serde(skip)]
-    pub elapsed_search: Duration,
+    fischer_increment: Option<Duration>,
 
     #[serde(skip)]
-    pub elapsed_iter: Duration,
+    estimate_move_time: Duration,
 
     #[serde(skip)]
-    pub time_control: TimeControl,
+    elapsed_search: Duration,
+
+    #[serde(skip)]
+    elapsed_iter: Duration,
 
     #[serde(skip)]
     pondering: Arc<AtomicBool>,
@@ -63,18 +66,8 @@ impl Component for MoveTimeEstimator {
     }
 
     fn new_position(&mut self) {
-        *self = MoveTimeEstimator {
-            move_overhead_ms: self.move_overhead_ms,
-            min_ply_for_estimation: self.min_ply_for_estimation,
-            branching_factor: self.branching_factor,
-            perc_of_time_adv: self.perc_of_time_adv,
-            moves_rem: self.moves_rem,
-            deterministic: self.deterministic,
-            nodestime: self.nodestime,
-            use_last_2_iters: self.use_last_2_iters,
-            time_control: self.time_control,
-            ..Default::default()
-        };
+        self.clock_checks = 0;
+        self.board = Board::default();
     }
 }
 
@@ -96,6 +89,7 @@ impl Default for MoveTimeEstimator {
             elapsed_iter: Duration::default(),
 
             time_control: TimeControl::default(),
+            fischer_increment: None,
             pondering: Arc::new(AtomicBool::from(false)),
             board: Board::default(),
             check_every: 128,
@@ -108,6 +102,11 @@ impl Default for MoveTimeEstimator {
 impl fmt::Display for MoveTimeEstimator {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "time_control     : {}", self.time_control)?;
+        writeln!(
+            f,
+            "fischer increment: {}",
+            Formatting::duration(self.fischer_increment.unwrap_or_default())
+        )?;
         writeln!(f, "pondering        : {}", self.pondering())?;
         // writeln!(f, "board            : {}", self.board.to_fen())?;
         writeln!(f, "move overhead ms : {}", self.move_overhead_ms)?;
@@ -149,6 +148,15 @@ impl fmt::Display for MoveTimeEstimator {
 }
 
 impl MoveTimeEstimator {
+    pub fn set_time_control(&mut self, tc: TimeControl) {
+        self.time_control = tc;
+        self.fischer_increment = None;
+    }
+
+    pub fn time_control(&self) -> &TimeControl {
+        &self.time_control
+    }
+
     #[inline]
     pub fn is_time_up(&mut self, _ply: Ply, clock: &Clock, force_check: bool) -> bool {
         self.clock_checks += 1;
@@ -180,7 +188,7 @@ impl MoveTimeEstimator {
         self.pondering.store(pondering, atomic::Ordering::SeqCst);
     }
 
-    pub fn pondering(&self) -> bool {
+    fn pondering(&self) -> bool {
         self.pondering.load(atomic::Ordering::SeqCst)
     }
 
@@ -203,6 +211,16 @@ impl MoveTimeEstimator {
         self.prior_elapsed_iter = self.elapsed_iter;
         self.elapsed_iter = clock.elapsed_iter().0;
         self.elapsed_search = clock.elapsed_search().0;
+
+        match self.time_control {
+            // on initial call capture the fischer increment
+            TimeControl::Fischer(rt) => {
+                if self.fischer_increment.is_none() {
+                    self.fischer_increment = Some(Duration::max(rt.wtime, rt.btime))
+                }
+            }
+            _ => {}
+        }
 
         // if in nodestime then convert nodes to time. nodestime is nodes per millisecond
         if self.nodestime > 0 {
@@ -267,8 +285,12 @@ impl MoveTimeEstimator {
                 - Duration::from_millis(self.move_overhead_ms)
         } else {
             let remaining = time_us + time_adv * self.perc_of_time_adv / 100;
-            let per_move_a = remaining / rt.moves_to_go as u32;
-            let per_move_b = (remaining + inc) / self.moves_rem as u32;
+            let per_move_a = remaining / u32::max(u32::max(rt.moves_to_go as u32 / 2, 1), self.moves_rem as u32);
+            let per_move_b = if rt.moves_to_go > 0 {
+                remaining + self.fischer_increment.unwrap_or_default()
+            } else {
+                remaining
+            } / self.moves_rem as u32;
             // error!(
             //     "MTE {} {} {} {} mtg {moves_to_go} pma {} pmb {}",
             //     Formatting::duration(wtime),
@@ -278,7 +300,8 @@ impl MoveTimeEstimator {
             //     Formatting::duration(per_move_a),
             //     Formatting::duration(per_move_b)
             // );
-            Duration::min(per_move_a, per_move_b)
+            Duration::min(per_move_a, per_move_b) + inc
+                - Duration::from_millis(self.move_overhead_ms)
         }
     }
 
