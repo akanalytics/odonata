@@ -45,7 +45,6 @@ pub mod comms;
 pub mod domain;
 pub mod eval;
 pub mod exam;
-pub mod game;
 pub mod globals;
 pub mod infra;
 pub mod movelist;

@@ -1,6 +1,7 @@
 use crate::board::Board;
 use crate::catalog::Catalog;
 use crate::comms::json_rpc::JsonRpc;
+use crate::domain::Player;
 use crate::eval::eval::Eval;
 use crate::infra::component::{Component, State};
 use crate::infra::metric::METRICS_TOTAL;
@@ -276,7 +277,7 @@ impl Uci {
         self.running = false;
         // info!("{}", self.algo);
         // warn!("{}", EndGame::counts_to_string());
-        if eng.algo.show_metrics_on_exit {
+        if eng.algo.controller.show_metrics_on_exit {
             warn!("{}", *METRICS_TOTAL.read());
         }
         Ok(())
@@ -560,6 +561,7 @@ impl Uci {
             engine.algo.tt.mb
         ));
         ops.push("option name UCI_AnalyseMode type check default false".to_string());
+        ops.push("option name UCI_Opponent type string default \"\"".to_string());
         ops.push("option name Ponder type check default false".to_string());
         ops.push("option name Clear Hash type button".to_string());
         ops.push("option name Explain_Eval type button".to_string());
@@ -615,6 +617,9 @@ impl Uci {
             eng.algo.tt.set_state(State::NewGame);
         } else if name == "UCI_AnalyseMode" {
             eng.configment("analyse_mode", value)?;
+        } else if name == "UCI_Opponent" {
+            let player: Player = value.parse()?;
+            warn!("UCI_Opponent {value} {player:?}");
         } else if name == "UCI_ShowRefutations" {
             eng.configment("show_refutations", value)?;
         } else if name == "Ponder" {

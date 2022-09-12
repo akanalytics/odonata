@@ -8,13 +8,15 @@ use crate::tags::Tag;
 use crate::piece::Ply;
 use crate::variation::Variation;
 use crate::{Algo, board::Board, MoveList, Position};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::fmt;
 use tabled::builder::Builder;
+use crate::search::timecontrol::TimeControl;
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug, Serialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct SearchResults {
+    #[serde(skip)]
     pub board: Board,
     pub depth: Ply,
     pub seldepth: Ply,
@@ -26,7 +28,11 @@ pub struct SearchResults {
     pub branching_factor: f32,
     pub hashfull_per_mille: u32,
     pub outcome: Outcome,
+
+    #[serde(skip)]
     pub multi_pv: Vec<(Variation, Score)>,
+
+    pub tc: TimeControl,
 }
 
 impl fmt::Display for SearchResults {
@@ -44,10 +50,11 @@ pub struct SearchResultsWithExplanation<'a> {
 impl fmt::Display for SearchResultsWithExplanation<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "{}", self.sr)?;
-        let mut bu = Builder::new().set_columns(["Score", "PV", "Explain"]);
+        let mut bu = Builder::new();
+        bu.set_columns(["Score", "PV", "Explain"]);
         for pv in &self.sr.multi_pv {
             let b = pv.0.apply_to(&self.sr.board);
-            bu = bu.add_record([
+            bu.add_record([
                 pv.1.to_string(),
                 pv.0.to_string(),
                 format!("{}\n{}", b, self.eval.w_eval_explain(&b)),
@@ -62,6 +69,7 @@ impl SearchResults {
     pub fn new(algo: &Algo) -> Self {
         SearchResults {
             board: algo.board.clone(),
+            tc: *algo.mte.time_control(),
             outcome: Outcome::Unterminated,
             tbhits: 0,
             nodes: algo.clock.cumul_nodes_all_threads(),

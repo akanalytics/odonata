@@ -49,8 +49,6 @@ shared_tt = true
 thread_count = 1
 config_filename = "config.toml"
 feature = false
-debug = false
-show_metrics_on_exit = false
 
 [tuner]
 regression_type = "LogisticOnOutcome"
@@ -72,7 +70,9 @@ step_size = 1
 
 [controller]
 log_dir = "."
-
+debug = false
+show_metrics_on_exit = false
+export_games = false
 
 [eval]
 quantum = 1

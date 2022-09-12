@@ -13,7 +13,7 @@ use crate::variation::Variation;
 use crate::infra::component::{Component, State};
 // use crate::{debug, logger::LogInit};
 use super::node::{Event, Node};
-use crate::domain::tree::{SearchTree, TreeNode};
+use crate::domain::{SearchTree, TreeNode};
 use crate::piece::MoveType;
 use anyhow::{Context, Result};
 use fmt::Debug;
@@ -78,6 +78,7 @@ impl Component for Explainer {
                 self.iter = iter;
                 self.tree = None;
             }
+            Shutdown => {}
         }
     }
 }

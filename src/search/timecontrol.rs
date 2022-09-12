@@ -1,10 +1,12 @@
+use serde::Serialize;
+
 use crate::piece::{Color, Ply};
 use crate::utils::Formatting;
 use std::fmt;
 use std::str::FromStr;
 use std::time::Duration;
 
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize)]
 pub struct RemainingTime {
     pub our_color: Color,
     pub wtime: Duration,
@@ -14,9 +16,22 @@ pub struct RemainingTime {
     pub moves_to_go: u16,
 }
 
+impl RemainingTime {
+    pub fn our_time_and_inc(&self) -> (Duration, Duration) {
+        self.our_color
+            .chooser_wb((self.wtime, self.winc), (self.btime, self.binc))
+    }
+
+    pub fn their_time_and_inc(&self) -> (Duration, Duration) {
+        self.our_color
+            .opposite()
+            .chooser_wb((self.wtime, self.winc), (self.btime, self.binc))
+    }
+}
+
 /// https://en.wikipedia.org/wiki/Time_control
 ///
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize)]
 pub enum TimeControl {
     DefaultTime,          // depth "recommended" by EPD position or otherwise
     Depth(Ply),           // uci "depth"
@@ -40,14 +55,9 @@ impl fmt::Display for TimeControl {
             }
             TimeControl::Infinite => write!(f, "Infinite")?,
             TimeControl::MateIn(depth) => write!(f, "MateIn({})", depth)?,
-            TimeControl::Fischer(RemainingTime {
-                our_color,
-                wtime,
-                btime,
-                ..
-            }) => {
-                let duration = our_color.chooser_wb(wtime, btime);
-                write!(f, "RemainingTime({})", Formatting::duration(*duration))?;
+            TimeControl::Fischer(rt) => {
+                let duration = rt.our_time_and_inc().0;
+                write!(f, "RemainingTime({})", Formatting::duration(duration))?;
             }
         }
         Ok(())

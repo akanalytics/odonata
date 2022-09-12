@@ -1,4 +1,4 @@
-use crate::domain::material::Material;
+use crate::domain::Material;
 use crate::eval::weight::Weight;
 use crate::infra::component::Component;
 use crate::mv::Move;

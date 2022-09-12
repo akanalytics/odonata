@@ -261,13 +261,8 @@ impl MoveTimeEstimator {
     }
 
     fn calc_from_remaining(&self, rt: &RemainingTime) -> Duration {
-        let (time_us, inc) = rt
-            .our_color
-            .chooser_wb((rt.wtime, rt.winc), (rt.btime, rt.binc));
-        let (time_them, _inc) = rt
-            .our_color
-            .opposite()
-            .chooser_wb((rt.wtime, rt.winc), (rt.btime, rt.binc));
+        let (time_us, inc) = rt.our_time_and_inc();
+        let (time_them, _inc) = rt.their_time_and_inc();
         let time_adv = if time_us > time_them {
             time_us - time_them
         } else {
@@ -285,12 +280,12 @@ impl MoveTimeEstimator {
                 - Duration::from_millis(self.move_overhead_ms)
         } else {
             let remaining = time_us + time_adv * self.perc_of_time_adv / 100;
-            let per_move_a = remaining / u32::max(u32::max(rt.moves_to_go as u32 / 2, 1), self.moves_rem as u32);
-            let per_move_b = if rt.moves_to_go > 0 {
-                remaining + self.fischer_increment.unwrap_or_default()
+            // let per_move_a = remaining / u32::max(u32::min(rt.moves_to_go as u32 / 2, 1), self.moves_rem as u32);
+            let per_move = if rt.moves_to_go > 0 {
+                remaining / u32::min(u32::max(rt.moves_to_go as u32, 2), self.moves_rem as u32)
             } else {
-                remaining
-            } / self.moves_rem as u32;
+                remaining / self.moves_rem as u32
+            };
             // error!(
             //     "MTE {} {} {} {} mtg {moves_to_go} pma {} pmb {}",
             //     Formatting::duration(wtime),
@@ -300,8 +295,7 @@ impl MoveTimeEstimator {
             //     Formatting::duration(per_move_a),
             //     Formatting::duration(per_move_b)
             // );
-            Duration::min(per_move_a, per_move_b) + inc
-                - Duration::from_millis(self.move_overhead_ms)
+            per_move + inc - Duration::from_millis(self.move_overhead_ms)
         }
     }
 

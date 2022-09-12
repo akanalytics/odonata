@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::domain::material::Material;
+use crate::domain::Material;
 use crate::infra::component::Component;
 use crate::Piece;
 

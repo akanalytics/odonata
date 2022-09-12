@@ -103,6 +103,7 @@ impl Component for Engine {
             StartSearch => {}
             EndSearch => {}
             StartDepthIteration(_) => {}
+            Shutdown => {}
         }
         self.algo.set_state(s);
         self.tuner.set_state(s);

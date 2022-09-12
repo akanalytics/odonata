@@ -105,7 +105,7 @@ impl Repetition {
     }
 
     // uses supplied variation
-    pub fn push_position(&mut self, pos: &Position) {
+    pub fn capture_all_prior_positions(&mut self, pos: &Position) {
         self.push_variation(pos.supplied_variation(), pos.board());
         self.root_index = self.prior_positions.len();
     }

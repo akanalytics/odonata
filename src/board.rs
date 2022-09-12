@@ -2,7 +2,7 @@ use crate::bits::bitboard::Bitboard;
 use crate::bits::castling::CastlingRights;
 use crate::bits::square::Square;
 use crate::cache::hasher::Hasher;
-use crate::domain::material::Material;
+use crate::domain::Material;
 use crate::mv::Move;
 use crate::piece::{Color, Hash, Piece, Ply, Repeats};
 use anyhow::Result;

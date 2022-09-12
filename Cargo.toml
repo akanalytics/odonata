@@ -1,6 +1,6 @@
 [package]
 name = "odonata"
-version = "0.6.14"
+version = "0.6.16"
 license = "GPL-3.0+"
 homepage = "https://github.com/akanalytics/odonata"
 authors = [
@@ -51,10 +51,13 @@ toml = "0.5.8"
 petgraph = "0.6.0"
 backtrace = "0.3.64"
 thread_local = "1.1.4"
-# tabled = "0.7.0"
-tabled = { git = "https://github.com/zhiburt/tabled", branch = "master" }
+tabled = "0.8.0"
+# tabled = { git = "https://github.com/zhiburt/tabled", branch = "master" }
 hdrhist = "0.5.0"
 ndarray = "0.15.6"
+csv = "1.1.6"
+chrono = { version = "0.4" }
+fslock = "0.2.1"
 
 
 [dev-dependencies]
@@ -64,9 +67,6 @@ perf-event = "0.4.7"
 
 [build-dependencies]
 built = { version = "0.5", features = ["chrono", "semver"] }
-chrono = { version = "0.4", optional = true, default-features = false, features = [
-    "clock",
-] }
 include_dir = "0.6"
 
 

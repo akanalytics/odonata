@@ -38,7 +38,7 @@ impl Display for Analysis<'_> {
             for (_i, sq) in squares {
                 row.push(format!("{}\n{:#}", sq, self.attacks[sq]));
             }
-            builder = builder.add_record(row);
+            builder.add_record(row);
         }
         let tab = builder.build();
         tab.fmt(f)?;

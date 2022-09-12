@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use super::node::Event;
-use super::search_results::SearchResults;
+use crate::domain::SearchResults;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -133,13 +133,18 @@ impl Algo {
             ply += self.ids.step_size
         }
 
-        self.results = SearchResults::new(self);
+        let mut results = SearchResults::new(self);
         if self.time_up_or_cancelled(ply, false).0 {
-            self.results.multi_pv = last_good_multi_pv;
+            results.multi_pv = last_good_multi_pv;
         } else {
-            self.results.multi_pv = multi_pv;
+            results.multi_pv = multi_pv;
         }
 
+        // record final outcome of search
+        self.game.record_search(results.clone());
+        self.results = results;
+
+        // report progress back to uci
         self.progress.with_best_move(&self.board.outcome());
         self.controller.invoke_callback(&self.progress);
         if self.max_depth > 0

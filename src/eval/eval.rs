@@ -355,6 +355,7 @@ impl Component for Eval {
             StartSearch => {}
             EndSearch => {}
             StartDepthIteration(_) => {}
+            Shutdown => {}
         }
     }
     fn new_game(&mut self) {}

@@ -9,6 +9,7 @@ pub enum State {
     StartSearch,
     EndSearch,
     StartDepthIteration(i32),
+    Shutdown,
 }
 
 pub trait Component {
@@ -20,6 +21,7 @@ pub trait Component {
             StartSearch => {}
             EndSearch => {}
             StartDepthIteration(_) => self.new_iter(),
+            Shutdown => {}
         }
     }
     fn new_game(&mut self);

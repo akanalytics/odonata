@@ -394,15 +394,16 @@ impl fmt::Display for Metrics {
             }
         }
 
-        let style = Style::github_markdown().bottom('-');
+        let style = Style::markdown().bottom('-');
 
         //
         // Counter
         //
-        let mut b = Builder::default().set_columns(["Counter", "Value"]);
+        let mut b = Builder::default();
+        b.set_columns(["Counter", "Value"]);
 
         for e in Counter::iter() {
-            b = b.add_record([
+            b.add_record([
                 e.as_ref(),
                 &match e {
                     Counter::EvalCachePercent => perc(
@@ -430,9 +431,10 @@ impl fmt::Display for Metrics {
         //
         // Endgame
         //
-        let mut b = Builder::default().set_columns(["Counter", "Value"]);
+        let mut b = Builder::default();
+        b.set_columns(["Counter", "Value"]);
         for eg in EndGame::iter() {
-            b = b.add_record([&eg.to_string(), &i(self.endgame.0[eg as usize])]);
+            b.add_record([&eg.to_string(), &i(self.endgame.0[eg as usize])]);
         }
         let mut t = b
             .build()
@@ -449,14 +451,14 @@ impl fmt::Display for Metrics {
         //
         // Histograms
         //
-        let mut b =
-            Builder::default().set_columns(["Histogram", "Q1", "Q2", "Q3", "Q4", "Summary"]);
+        let mut b = Builder::default();
+        b.set_columns(["Histogram", "Q1", "Q2", "Q3", "Q4", "Summary"]);
         for x in Histograms::iter() {
             let qs = self.histograms[x as usize]
                 .0
                 .quantiles([0.25_f64, 0.5, 0.75, 1.0].into_iter())
                 .collect_vec();
-            b = b.add_record([
+            b.add_record([
                 &x.to_string(),
                 &i(qs[0].1),
                 &i(qs[1].1),
@@ -484,12 +486,12 @@ impl fmt::Display for Metrics {
         //
         //Profilers
         //
-        let mut b =
-            Builder::default().set_columns(["Counter", "Time %", "Count", "Average", "Total"]);
+        let mut b = Builder::default();
+        b.set_columns(["Counter", "Time %", "Count", "Average", "Total"]);
         for e in Timing::iter() {
             let tot = self.profilers.0[Timing::TimingSearchRoot as usize].total();
             if self.profilers.0[e.index()].1 != 0 {
-                b = b.add_record([
+                b.add_record([
                     e.as_ref(),
                     &pd(self.profilers.0[e.index()].total(), tot),
                     &i(self.profilers.0[e.index()].1),
@@ -515,7 +517,8 @@ impl fmt::Display for Metrics {
             cols.extend((0..32_u32).map(|u| u.to_string()));
             cols.push("Total".into());
 
-            let mut b = Builder::default().set_columns(cols);
+            let mut b = Builder::default();
+            b.set_columns(cols);
             for e in Event::iter() {
                 let mut v = vec![];
                 v.push(e.name().to_string());
@@ -574,11 +577,11 @@ impl fmt::Display for Metrics {
                 }
                 // only add row if non-empty
                 if v.iter().any(|s| !s.is_empty()) {
-                    b = b.add_record(v);
+                    b.add_record(v);
                 }
             }
 
-            let style = Style::github_markdown().bottom('-');
+            let style = Style::markdown().bottom('-');
             let mut tab = b
                 .build()
                 .with(Modify::new(Segment::all()).with(Alignment::right()))

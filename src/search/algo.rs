@@ -1,14 +1,16 @@
 use crate::board::Board;
 use crate::cache::tt2::TranspositionTable2;
 use crate::clock::Clock;
+use crate::domain::Game;
 use crate::eval::eval::Eval;
 use crate::eval::recognizer::Recognizer;
 use crate::eval::score::Score;
 use crate::infra::component::{Component, State};
 use crate::infra::metric::Metrics;
 use crate::mv::Move;
-use crate::position::Position;
 use crate::other::pvtable::PvTable;
+use crate::piece::Ply;
+use crate::position::Position;
 use crate::repetition::Repetition;
 use crate::search::aspiration::Aspiration;
 use crate::search::extensions::Extensions;
@@ -27,7 +29,6 @@ use crate::search::restrictions::Restrictions;
 use crate::search::search_progress::SearchProgress;
 use crate::search::taskcontrol::TaskControl;
 use crate::search::timecontrol::TimeControl;
-use crate::piece::Ply;
 use crate::variation::Variation;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -40,7 +41,7 @@ use super::qs::Qs;
 use super::reverse_futility::ReverseFutility;
 use super::search_explainer::Explainer;
 use super::search_progress::SearchProgressMode;
-use super::search_results::SearchResults;
+use crate::domain::SearchResults;
 
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -48,8 +49,6 @@ pub struct Algo {
     pub show_refutations: bool,
     pub analyse_mode: bool, // tries to find full PV etc
     pub qsearch_disabled: bool,
-    pub debug: bool,
-    pub show_metrics_on_exit: bool, 
 
     pub ids: IterativeDeepening,
     pub eval: Eval,
@@ -85,9 +84,11 @@ pub struct Algo {
     #[serde(skip)]
     pub position: Position,
 
-
     #[serde(skip)]
     pub results: SearchResults,
+
+    #[serde(skip)]
+    pub game: Game,
 
     #[serde(skip)]
     pub board: Board,
@@ -140,6 +141,7 @@ impl Component for Algo {
             StartSearch => {}
             EndSearch => {}
             StartDepthIteration(_) => self.new_iter(),
+            Shutdown => self.controller.export_game(&self.game).unwrap(),
         }
 
         self.ids.set_state(s);
@@ -179,6 +181,9 @@ impl Component for Algo {
         self.pv_table = PvTable::default();
         self.current_variation = Variation::new();
         self.max_depth = 0;
+        self.controller.export_game(&self.game).unwrap();
+        self.game.clear_moves();
+        self.game.game_id = self.game.game_id + 1;
     }
 
     fn new_position(&mut self) {
@@ -196,7 +201,6 @@ impl fmt::Debug for Algo {
             .field("board", &self.board)
             .field("analyse_mode", &self.analyse_mode)
             //.field("pv", &self.pv)
-            .field("debug", &self.debug)
             .field("depth", &self.max_depth)
             .field("ids", &self.ids)
             .field("eval", &self.eval)
@@ -243,7 +247,6 @@ impl fmt::Display for Algo {
             self.board.eval_with_outcome(&self.eval, &Node::root(0))
         )?;
         // writeln!(f, "bm               : {}", self.results.bm())?;
-        writeln!(f, "debug            : {}", self.debug)?;
         writeln!(f, "score            : {}", self.score())?;
         writeln!(f, "analyse mode     : {}", self.analyse_mode)?;
         writeln!(f, "qsearch          : {}", self.qsearch_disabled)?;
@@ -323,7 +326,9 @@ impl Algo {
     pub fn set_position(&mut self, pos: Position) -> &mut Self {
         self.set_state(State::SetPosition);
         self.explainer.set_board(pos.board().clone());
-        self.repetition.push_position(&pos);
+        self.repetition.capture_all_prior_positions(&pos);
+        self.game.set_starting_pos(pos.clone());
+        self.game.capture_missing_moves(pos.supplied_variation());
         self.board = pos.supplied_variation().apply_to(pos.board());
         self.tt.rewrite_pv(pos.board());
         self.position = pos;
@@ -363,7 +368,6 @@ impl Algo {
     pub fn pv(&self) -> &Variation {
         &self.results.pv()
     }
-
 
     #[inline]
     pub fn time_up_or_cancelled(&mut self, ply: Ply, force_check: bool) -> (bool, Event) {

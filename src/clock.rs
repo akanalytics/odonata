@@ -60,6 +60,7 @@ impl Component for Clock {
             StartSearch => *self = Self::default(),
             EndSearch => {}
             StartDepthIteration(_) => self.new_iter(),
+            Shutdown => {}
         }
     }
     fn new_game(&mut self) {

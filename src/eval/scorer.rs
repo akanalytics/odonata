@@ -223,10 +223,11 @@ impl Display for ExplainScore {
             int.to_string()
         }
 
-        let mut builder = Builder::default().set_columns([
+        let mut builder = Builder::default();
+        builder.set_columns([
             "attr", "w#", "w mg", "w eg", "int", "mg", "eg", "b#", "b mg", "b eg", "wt",
         ]);
-        let style = Style::github_markdown().top('-').bottom('-').top('-');
+        let style = Style::markdown().top('-').bottom('-').top('-');
 
         let mut tot = Weight::zero();
         let mut grand_tot = Weight::zero();
@@ -254,7 +255,7 @@ impl Display for ExplainScore {
             row.push(fp((*b * wt).e()));
 
             row.push(wt.to_string());
-            builder = builder.add_record(row);
+            builder.add_record(row);
             if let Some((j, _, _, _)) = iter.peek() {
                 if i.category() == j.category() {
                     continue;
@@ -268,10 +269,10 @@ impl Display for ExplainScore {
             row.push(fp((tot).interpolate(self.phase)));
             row.push(fp(tot.s()));
             row.push(fp(tot.e()));
-            builder = builder.add_record(row);
+            builder.add_record(row);
             grand_tot += tot;
             tot = Weight::zero();
-            builder = builder.add_record(vec![""]); // blank row
+            builder.add_record(vec![""]); // blank row
         }
         let mut row = vec![];
         row.push("Total".to_owned());
@@ -281,7 +282,7 @@ impl Display for ExplainScore {
         row.push(fp((grand_tot).interpolate(self.phase)));
         row.push(fp(grand_tot.s()));
         row.push(fp(grand_tot.e()));
-        builder = builder.add_record(row);
+        builder.add_record(row);
         let mut tab = builder.build();
         tab = tab
             .with(Modify::new(Segment::all()).with(Alignment::right()))
@@ -290,7 +291,7 @@ impl Display for ExplainScore {
             .with(Modify::new(Columns::single(7)).with(Padding::new(4, 1, 0, 0)))
             .with(style);
         tab.fmt(f)?;
-        writeln!(f, "{}", &self.fen)?;
+        // writeln!(f, "\n{}", &self.fen)?;
 
         if f.alternate() {
             let mut builder = Builder::new();
@@ -299,7 +300,7 @@ impl Display for ExplainScore {
                 for (i, bb) in y {
                     row.push(format!("{}\n{bb:#}", i.name()));
                 }
-                builder = builder.add_record(row);
+                builder.add_record(row);
             }
             let tab = builder.build();
             tab.fmt(f)?;
@@ -326,7 +327,8 @@ mod tests {
         let eval = &mut eng.algo.eval;
         eval.populate_feature_weights();
         let phaser = Phaser::default();
-        let mut builder = Builder::new().set_columns(["old", "TotalScore", "ExplainScore"]);
+        let mut builder = Builder::new();
+        builder.set_columns(["old", "TotalScore", "ExplainScore"]);
         for pos in positions.iter().chain(end_games.iter()) {
             let b = pos.board();
 
@@ -337,9 +339,9 @@ mod tests {
             scorer3.set_weights(eval.weights_vector());
             Calc::new(&b).score(&mut scorer3, &b, &eval, &phaser);
 
-            builder = builder.add_record([scorer2.total().to_string(), scorer3.to_string()]);
+            builder.add_record([scorer2.total().to_string(), scorer3.to_string()]);
             if scorer2.total().to_string() != scorer3.total().to_string() {
-                builder = builder
+                builder
                     .add_record([
                         format!("{:.6}", scorer2.total()),
                         format!("{:.6}", scorer3.total()),
