@@ -2,7 +2,6 @@ use crate::domain::Game;
 use crate::infra::component::{Component, State};
 use anyhow::Context;
 use anyhow::Result;
-use chrono::prelude::*;
 use fslock::LockFile;
 use serde::{Deserialize, Serialize};
 use std::fs::OpenOptions;
@@ -25,7 +24,6 @@ pub struct TaskControl<TTaskProgress> {
 
     #[serde(skip)]
     kill_switch: Arc<AtomicBool>,
-    // has_been_cancelled: bool,
 }
 
 impl<TTaskProgress> fmt::Display for TaskControl<TTaskProgress> {
@@ -104,7 +102,7 @@ impl<TTaskProgress> TaskControl<TTaskProgress> {
             Ok(Box::new(io::sink()))
         } else {
             // let filename = format!("{}/game-{:06}.csv", self.log_dir, game_id);
-            let _dt = Local::now().format("%Y-%m-%d-%H-%M-%S.%.3f").to_string();
+            // let _dt = Local::now().format("%Y-%m-%d-%H-%M-%S.%.3f").to_string();
             // let dt = "1"; //
             let filename = format!("{}/games.txt", self.log_dir);
             info!("Opening file {} for game export", filename);
