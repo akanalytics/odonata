@@ -5,8 +5,6 @@ pub mod serde;
 pub mod tracer;
 pub mod version;
 pub mod metric;
-
-#[cfg(test)]
 pub mod profiler;
 
 // from iai/bencher/criterion etc - the "standard" black_box def

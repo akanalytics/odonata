@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 
 use crate::piece::{Color, Ply};
 use crate::utils::Formatting;
@@ -6,7 +6,7 @@ use std::fmt;
 use std::str::FromStr;
 use std::time::Duration;
 
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
 pub struct RemainingTime {
     pub our_color: Color,
     pub wtime: Duration,
@@ -135,6 +135,9 @@ mod tests {
     fn test_time_control() -> Result<(), String> {
         assert_eq!(TimeControl::parse("depth=3".into())?, TimeControl::Depth(3));
         println!("{}", TimeControl::parse("depth=3".into())?);
+
+        // let tc = TimeControl::parse("nodes=1000".into())?;
+        // assert!(toml::to_string_pretty(&tc).unwrap().len() > 0);
 
         assert_eq!(TimeControl::parse("def".into())?, TimeControl::DefaultTime);
         println!("{}", TimeControl::parse("def".into())?);

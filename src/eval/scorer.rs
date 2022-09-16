@@ -138,6 +138,13 @@ impl ExplainScore {
             .sum()
     }
 
+    // (index, net feature)
+    pub fn values(&self) -> impl Iterator<Item=(Feature, usize,i32)> + '_ {
+        self.vec
+            .iter()
+            .map(|e| (e.0, e.3 as usize, (e.1 - e.2)) )
+    }
+
     pub fn value(&self, i: Feature) -> i32 {
         self.vec
             .iter()

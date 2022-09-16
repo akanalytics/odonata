@@ -1,6 +1,8 @@
 use std::io::Write;
 
 use crate::eval::calc::Calc;
+use crate::eval::eval::Attr;
+use crate::eval::eval::Feature;
 use crate::eval::feature::FeatureMatrix;
 use crate::eval::score::Score;
 use crate::eval::scorer::ExplainScore;
@@ -28,6 +30,13 @@ pub enum RegressionType {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+pub enum Sigmoid {
+    Exponential,
+    WinProb,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub enum Method {
     New,
     Sparse,
@@ -38,6 +47,7 @@ pub enum Method {
 #[serde(default, deny_unknown_fields)]
 pub struct Tuning {
     pub regression_type: RegressionType,
+    pub sigmoid: Sigmoid,
     pub method: Method,
     pub search_depth: i32,
     pub ignore_known_outcomes: bool,
@@ -59,6 +69,7 @@ impl Default for Tuning {
     fn default() -> Self {
         Tuning {
             regression_type: RegressionType::LogisticOnOutcome,
+            sigmoid: Sigmoid::WinProb,
             method: Method::New,
             search_depth: -1,
             ignore_known_outcomes: true,
@@ -114,6 +125,8 @@ impl Tuning {
     }
 
     pub fn upload_positions(eng: &mut Engine, positions: Vec<Position>) -> Result<usize> {
+        let mut draws = 0;
+        let mut wins = 0;
         for (_i, pos) in positions.iter().enumerate() {
             if eng.tuner.ignore_known_outcomes && pos.board().outcome().is_game_over() {
                 trace!("Discarding drawn/checkmate position {}", pos);
@@ -128,6 +141,7 @@ impl Tuning {
             let (_outcome, outcome_str) = eng.tuner.calc_player_win_prob_from_pos(pos);
             let o = Outcome::try_from_pgn(&outcome_str)?;
             if eng.tuner.ignore_draws && outcome_str == "1/2-1/2" {
+                draws += 1;
                 continue;
             }
             let ph = eng.algo.eval.phaser.phase(&pos.board().material());
@@ -138,13 +152,17 @@ impl Tuning {
                 &eng.algo.eval,
                 &eng.algo.eval.phaser,
             );
+            if explain.value(Feature::Discrete(Attr::WinBonus)) != 0 {
+                wins += 1;
+                continue;
+            }
             explain.set_outcome(o);
             // eng.algo.eval.predict(&model, &mut w_scorer);
             // let _consolidate = eng.tuner.consolidate;
             explain.discard_balanced_features();
             eng.tuner.explains.push(explain);
         }
-        info!("Loaded {} positions", positions.len());
+        println!("Loaded {} positions ignoring draws {draws} and wins {wins}", positions.len());
         Ok(positions.len())
     }
 
@@ -223,10 +241,18 @@ impl Tuning {
         let closure_es = |pair: (usize, &ExplainScore)| {
             let (i, es) = pair;
             // let fv = pair;
-            let w_score = es.dot_product(&eval_weight_vector).interpolate(es.phase);
-
+            let mut w_score = es.dot_product(&eval_weight_vector).interpolate(es.phase);
+            w_score = w_score.clamp(-600.0, 600.0);
+            // if w_score > 10000.0 || w_score < -10000.0 {
+            //     error!("w_score:{w_score}\n{}\n\n{eval_weight_vector}", es);
+            // }
             let k = logistic_steepness_k.interpolate(es.phase) as f32;
-            let win_prob_estimate = Score::win_probability_from_cp_and_k(w_score, k);
+            let win_prob_estimate = match self.sigmoid {
+                Sigmoid::WinProb => Score::win_probability_from_cp_and_k(w_score, k),
+                // Sigmoid::Exponential if w_score > 300.0 => 1.0,
+                // Sigmoid::Exponential if w_score < -300.0 => 0.0,
+                Sigmoid::Exponential => Score::sigmoid(w_score / 100.0),
+            };
             let win_prob_actual = match es.outcome {
                 Outcome::WinWhite => 1.0,
                 Outcome::WinBlack => 0.0,
@@ -256,13 +282,13 @@ impl Tuning {
                 _ => unreachable!(),
             };
             if cost.is_infinite() || cost.is_nan() {
-                debug!(
-                    "Sparse : {} {} {} {} {} {} {}",
-                    i, win_prob_estimate, win_prob_actual, w_score, es.phase, cost, es.fen
+                error!(
+                    "Sparse : i:{i} est:{win_prob_estimate} act:{win_prob_actual} score:{w_score} {}% cost:{cost} {}",
+                    es.phase, es.fen
                 );
             }
             if cost.is_infinite() || cost.is_nan() {
-                0.0
+                panic!("Cost function NaN or infinite")
             } else {
                 cost
             }
@@ -355,12 +381,10 @@ mod tests {
     use std::{fs::File, io::BufWriter, time::Instant};
 
     use super::*;
-    use crate::eval::eval::Attr;
-    use crate::tune::powell::Powell;
+    use crate::eval::eval::{Attr};
     use crate::utils::Formatting;
     use crate::{eval::weight::Weight, infra::profiler::Profiler};
     use anyhow::Context;
-    use ndarray::{ArrayBase, ArrayView1};
     use test_log::test;
 
     #[test]
@@ -379,6 +403,7 @@ mod tests {
 
         engine.tuner.regression_type = RegressionType::CrossEntropy;
         engine.tuner.method = Method::Sparse;
+
         Tuning::upload_positions(
             &mut engine,
             // Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-combo.epd").unwrap(),
@@ -413,102 +438,8 @@ mod tests {
         );
     }
 
-    #[ignore]
-    #[test]
-    fn test_solve_mse() {
-        info!("Starting...");
-        let mut engine = Engine::new();
-        engine.tuner.multi_threading_min_positions = 10000000;
 
-        engine.tuner.regression_type = RegressionType::CrossEntropy;
-        engine.tuner.method = Method::Sparse;
-        let npos = Tuning::upload_positions(
-            &mut engine,
-            // Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-combo.epd").unwrap(),
-            Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-small.epd").unwrap(),
-        )
-        .unwrap();
-        println!("Loaded {npos} positions\n");
-
-        engine.algo.eval.mb.enabled = false;
-        let start = Instant::now();
-        let n = {
-            let feature_weights = &mut engine.algo.eval.feature_weights;
-            feature_weights.len() * 2
-        };
-
-        // let n = 9;
-
-        let solver = Powell {
-            n,
-            max_iter: 300,
-            ε: 1e-3,
-            verbose: false,
-            x0: ArrayBase::zeros((n,)),
-            // x_min: [-10.0, -10.0],
-            // x_max: [10.0, 10.0],
-        };
-
-        // for (i, wt) in engine.algo.eval.feature_weights.iter().enumerate() {
-        //     solver.x0[2*i] = wt.s();
-        //     solver.x0[2*i+1] = wt.s();
-        // }
-
-        let mut mse_func = |x: ArrayView1<f32>| -> f32 {
-            for (i, wt) in engine.algo.eval.feature_weights.iter_mut().enumerate() {
-                *wt = Weight::from_f32(x[2*i], x[2*i+1]);
-            }
-            // engine.algo.eval.feature_weights[Feature::Piece(Piece::Queen).index()] =
-            //     Weight::from_f32(x[0], x[1]);
-            // engine.algo.eval.feature_weights[Feature::Piece(Piece::Rook).index()] =
-            //     Weight::from_f32(x[2], x[3]);
-            // engine.algo.eval.feature_weights[Feature::Piece(Piece::Bishop).index()] =
-            //     Weight::from_f32(x[4], x[5]);
-            // engine.algo.eval.feature_weights[Feature::Piece(Piece::Knight).index()] =
-            //     Weight::from_f32(x[6], x[7]);
-            // engine.algo.eval.feature_weights[Feature::Piece(Piece::Pawn).index()] =
-            //     Weight::from_f32(100., x[8]);
-            // engine.algo.eval.feature_weights[Feature::Piece(Piece::Pawn).index()] =
-            //     Weight::from_f32(100., x[2*Feature::Piece(Piece::Pawn).index()+1]);
-
-            let diffs = engine.tuner.calculate_mean_square_error(&engine).unwrap();
-            let reg_lambda = 1e-7;
-            // let reg = reg_lambda * x.slice(s![0..-10]).fold(0.0 , |t,x| t + x.abs() );
-            let reg = reg_lambda * x.fold(0.0 , |t,x| t + x.abs() );
-            // println!("mse({x}) = {diffs}");
-            diffs + reg
-        };
-
-        // let x = array![1700.0, 700.0];
-        // println!("f({x}) = {}", mse_func(x.view()));
-        // let x = array![1900.0, 900.0];
-        // println!("f({x}) = {}", mse_func(x.view()));
-        // let x = array![2900.0, 1900.0];
-        // println!("f({x}) = {}", mse_func(x.view()));
-        let x = solver.minimize(&mut mse_func);
-        println!("x = {x}");
-        println!("f(x) = {}", mse_func(x.view()));
-
-        // let mut iters = 0;
-        // for n in (-120..120).step_by(1) {
-        //     let value = n;
-        //     engine.algo.eval.mb.enabled = false;
-        //     engine
-        //         .algo
-        //         .eval
-        //         .set_weight(Attr::PawnIsolated.into(), Weight::from_i32(0, value));
-        //     iters += 1;
-        // println!("{}, {}", value, diffs);
-        let _time = Instant::now() - start;
-        println!("{}", engine.algo.eval.weights_vector());
-        // println!(
-        //     "Time {} for {} iters, {} per iter.",
-        //     Formatting::duration(time),
-        //     iters,
-        //     Formatting::duration(time / iters)
-        // );
-    }
-
+  
     #[ignore]
     #[test]
     fn test_tuning_csv() {

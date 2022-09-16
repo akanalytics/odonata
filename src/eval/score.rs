@@ -212,6 +212,10 @@ impl Score {
         1.0 / (1.0 + 10_f32.powf(-centipawns / (k * 100.0)))
     }
 
+    #[inline]
+    pub fn sigmoid(centipawns: f32) -> f32 {
+        1.0 / (1.0 + f32::exp(-centipawns ))
+    }
 
     // #[inline]
     // pub fn win_probability_from_cp_and_k_fast(centipawns: f32, k: f32) -> f32 {

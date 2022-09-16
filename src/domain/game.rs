@@ -211,13 +211,12 @@ impl Game {
 
 #[cfg(test)]
 mod tests {
-    use tabled::Table;
 
     use crate::domain::SearchResults;
 
     #[test]
     fn test_game() {
-        let sr = SearchResults::default();
+        let _sr = SearchResults::default();
         // println!("{}", Table::new(vec![sr]).to_string())
     }
 }

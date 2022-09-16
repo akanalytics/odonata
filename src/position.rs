@@ -175,6 +175,7 @@ impl Position {
         P: AsRef<Path>,
         P: Clone,
     {
+        info!("Reading lines from {:?}", filename.as_ref().display());
         let file =
             File::open(filename.clone()).context(format!("{}", filename.as_ref().display()))?;
         let lines = io::BufReader::new(file).lines();

@@ -264,7 +264,7 @@ impl Feature {
         use crate::eval::eval::Feature::*;
         match self {
             Pst(p, sq) => format!("{}.{}.{}", self, p.to_lower_char(), sq.uci()),
-            Piece(p) => format!("{}.{}", self, p.to_lower_char()),
+            Piece(p) => format!("{}", p.to_lower_char()),
             Discrete(f) => f.to_string(),
         }
     }

@@ -52,13 +52,14 @@ feature = false
 
 [tuner]
 regression_type = "LogisticOnOutcome"
+sigmoid = "WinProb"
 method = "Sparse"
 search_depth = 0 
 ignore_known_outcomes = true
 ignore_endgames = true
 multi_threading_min_positions = 20000
 threads = 31
-logistic_steepness_k = { s = 4, e = 4 }
+logistic_steepness_k = { s = 1, e = 1 }
 ignore_draws = false
 consolidate = false
 
@@ -205,8 +206,6 @@ tempo_bonus                  = { s =   22.22, e =   36.22 }
 tempo_knight_forks           = { s =   -0.46, e =   92.04 }
 tempo_safety                 = { s =  -13.99, e =   -2.14 }
 tempo_undefended_piece       = { s =    0.00, e =    0.00 }
-
-
 
 win_bonus                  = { s =  350.00, e =  600.00 }
 contempt_penalty           = { s =  -30.00, e =    0.00 }

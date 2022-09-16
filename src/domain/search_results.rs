@@ -8,12 +8,12 @@ use crate::tags::Tag;
 use crate::piece::Ply;
 use crate::variation::Variation;
 use crate::{Algo, board::Board, MoveList, Position};
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 use std::fmt;
 use tabled::builder::Builder;
 use crate::search::timecontrol::TimeControl;
 
-#[derive(Clone, Default, Debug, Serialize)]
+#[derive(Clone, Default, Debug, Deserialize, Serialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct SearchResults {
     #[serde(skip)]
@@ -32,6 +32,7 @@ pub struct SearchResults {
     #[serde(skip)]
     pub multi_pv: Vec<(Variation, Score)>,
 
+    #[serde(skip)]
     pub tc: TimeControl,
 }
 

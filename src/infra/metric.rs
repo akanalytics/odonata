@@ -620,7 +620,7 @@ impl fmt::Display for Metrics {
 }
 
 thread_local! {
-    pub static METRICS_THREAD: RefCell<Metrics>  = RefCell::new(Metrics::new());
+    pub static METRICS_THREAD: RefCell<Box<Metrics>>  = RefCell::new(Box::new(Metrics::new()));
 }
 
 #[dynamic(lazy)]
