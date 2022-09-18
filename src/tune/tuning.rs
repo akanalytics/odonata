@@ -3,7 +3,6 @@ use std::io::Write;
 use crate::eval::calc::Calc;
 use crate::eval::eval::Attr;
 use crate::eval::eval::Feature;
-use crate::eval::feature::FeatureMatrix;
 use crate::eval::score::Score;
 use crate::eval::scorer::ExplainScore;
 use crate::eval::weight::Weight;
@@ -58,8 +57,6 @@ pub struct Tuning {
     pub consolidate: bool,
     pub logistic_steepness_k: Weight,
 
-    #[serde(skip)]
-    pub feature_matrix: FeatureMatrix,
 
     #[serde(skip)]
     pub explains: Vec<ExplainScore>,
@@ -77,7 +74,6 @@ impl Default for Tuning {
             multi_threading_min_positions: 20000,
             threads: 32,
             logistic_steepness_k: Weight::from_i32(4, 4),
-            feature_matrix: Default::default(),
             explains: Default::default(),
             ignore_draws: false,
             consolidate: false,
@@ -119,8 +115,8 @@ impl Tuning {
 
     /// free the memory associated with prior tuning runs
     pub fn clear(&mut self) {
-        self.feature_matrix.feature_vectors = Vec::new();
-        self.feature_matrix.feature_names = Vec::new();
+        // self.feature_matrix.feature_vectors = Vec::new();
+        // self.feature_matrix.feature_names = Vec::new();
         self.explains = Vec::new();
     }
 

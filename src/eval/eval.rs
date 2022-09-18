@@ -25,7 +25,6 @@ use std::collections::HashMap;
 use std::fmt;
 
 use super::calc::Calc;
-use super::feature::WeightsVector;
 
 use super::score::WhiteScore;
 use super::scorer::ExplainScore;
@@ -281,6 +280,25 @@ impl Feature {
         }
     }
 }
+
+
+
+#[derive(Default, Clone, Debug)]
+pub struct WeightsVector {
+    pub weights: Vec<Weight>,
+    pub names: Vec<String>,
+}
+
+impl fmt::Display for WeightsVector {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        assert!(self.weights.len() == self.names.len());
+        for (i, weight) in self.weights.iter().enumerate() {
+            writeln!(f, "{} = {}", self.names[i], weight)?
+        }
+        Ok(())
+    }
+}
+
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]

@@ -1,7 +1,6 @@
 pub mod calc;
 pub mod endgame;
 pub mod eval;
-pub mod feature;
 mod material_balance;
 mod pmvt;
 mod pst;

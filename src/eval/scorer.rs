@@ -10,7 +10,7 @@ use tabled::{
 
 use crate::{other::outcome::Outcome, phaser::Phase, utils::Formatting, Bitboard, Color, Piece};
 
-use super::{eval::Feature, feature::WeightsVector, weight::Weight};
+use super::{eval::Feature, eval::WeightsVector, weight::Weight};
 
 pub trait ScorerBase {
     fn accumulate(&mut self, i: Feature, w_value: i32, b_value: i32);
