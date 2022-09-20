@@ -262,7 +262,7 @@ impl Feature {
     pub fn name(&self) -> String {
         use crate::eval::eval::Feature::*;
         match self {
-            Pst(p, sq) => format!("{}.{}.{}", self, p.to_lower_char(), sq.uci()),
+            Pst(p, sq) => format!("{}.{}", p.to_lower_char(), sq.uci()),
             Piece(p) => format!("{}", p.to_lower_char()),
             Discrete(f) => f.to_string(),
         }
