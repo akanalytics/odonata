@@ -12,6 +12,7 @@ use crate::position::Position;
 use crate::search::engine::Engine;
 use crate::tags::Tag;
 use anyhow::Result;
+use itertools::Itertools;
 // use rayon::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
@@ -57,7 +58,6 @@ pub struct Tuning {
     pub consolidate: bool,
     pub logistic_steepness_k: Weight,
 
-
     #[serde(skip)]
     pub explains: Vec<ExplainScore>,
 }
@@ -95,7 +95,14 @@ impl fmt::Debug for Tuning {
 
 impl fmt::Display for Tuning {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{}", toml::to_string_pretty(self).unwrap())?;
+        if !f.alternate() {
+            writeln!(f, "{}", toml::to_string_pretty(self).unwrap())?;
+        } 
+        // else {
+        //     for (_s, name, v) in &self.filter_values(self.feature_vec(0), |s| s.starts_with("")) {
+        //         writeln!(f, "{fen} {name} = {v}", fen = self.fens()[0])?;
+        //     }
+        // }
         Ok(())
     }
 }
@@ -113,12 +120,57 @@ impl Tuning {
         Tuning::default()
     }
 
+    pub fn ncols(&self) -> usize {
+        2 * Feature::all().len()
+    }
+
+    pub fn nrows(&self) -> usize {
+        self.explains.len()
+    }
+
     /// free the memory associated with prior tuning runs
     pub fn clear(&mut self) {
         // self.feature_matrix.feature_vectors = Vec::new();
         // self.feature_matrix.feature_names = Vec::new();
         self.explains = Vec::new();
     }
+
+    pub fn fens(&self) -> Vec<String> {
+        self.explains
+            .iter()
+            .map(|ExplainScore { fen, .. }| fen.clone())
+            .collect_vec()
+    }
+
+    pub fn feature_names(&self) -> Vec<String> {
+        let s = Feature::all().into_iter().map(|f| f.name() + ".s");
+        let e = Feature::all().into_iter().map(|f| f.name() + ".e");
+        s.interleave(e).collect_vec()
+    }
+
+
+
+
+    pub fn sparse_feature_vec(&self, idx: usize) -> Vec<(usize, Feature, f32)> {
+        let ex = &self.explains[idx];
+        let s_w = Weight::from_f32(1., 0.).interpolate(ex.phase);
+        let e_w = Weight::from_f32(0., 1.).interpolate(ex.phase);
+
+        let s = ex.values().map(|(f, idx, i)| (2 * idx, f, i as f32 * s_w));
+        let e = ex
+            .values()
+            .map(|(f, idx, i)| (2 * idx + 1, f, i as f32 * e_w));
+        s.interleave(e).collect_vec()
+    }
+
+    pub fn feature_vec(&self, idx: usize) -> Vec<f32> {
+        let mut vec = vec![0.; self.ncols()];
+        self.sparse_feature_vec(idx)
+            .iter()
+            .for_each(|(i, _f, x)| vec[*i] = *x);
+        vec
+    }
+
 
     pub fn upload_positions(eng: &mut Engine, positions: Vec<Position>) -> Result<usize> {
         let mut draws = 0;
@@ -158,7 +210,10 @@ impl Tuning {
             explain.discard_balanced_features();
             eng.tuner.explains.push(explain);
         }
-        println!("Loaded {} positions ignoring draws {draws} and wins {wins}", positions.len());
+        println!(
+            "Loaded {} positions ignoring draws {draws} and wins {wins}",
+            positions.len()
+        );
         Ok(positions.len())
     }
 
@@ -190,49 +245,6 @@ impl Tuning {
         // trace!("Weights = {}", weight_vector);
         let regression_type = eng.tuner.regression_type;
         // let mut diff_squared: f32 = 0.0;
-
-        // let closure_fv = |pair: (usize, &FeatureVector)| {
-        //     let (i, fv) = pair;
-        //     // let fv = pair;
-        //     let w_score = self.feature_matrix.dot_product(&fv, &weight_vector);
-        //     let k = logistic_steepness_k.interpolate(fv.phase) as f32;
-        //     let win_prob_estimate = Score::win_probability_from_cp_and_k(w_score, k);
-        //     let win_prob_actual = match fv.outcome {
-        //         Outcome::WinWhite => 1.0,
-        //         Outcome::WinBlack => 0.0,
-        //         Outcome::DrawRule50 => 0.5,
-        //         _ => unreachable!(),
-        //     };
-        //     let cost = match regression_type {
-        //         RegressionType::LogisticOnOutcome => {
-        //             let diff = win_prob_estimate - win_prob_actual;
-        //             diff * diff
-        //         }
-        //         RegressionType::CrossEntropy => match fv.outcome {
-        //             Outcome::WinWhite => -f32::ln(win_prob_estimate),
-        //             Outcome::WinBlack => -f32::ln(1.0 - win_prob_estimate),
-        //             Outcome::DrawRule50 | _ => 0.0,
-        //         },
-        //         RegressionType::CumulativeLogisticLink => match fv.outcome {
-        //             Outcome::WinWhite => -f32::ln(win_prob_estimate),
-        //             Outcome::WinBlack => -f32::ln(1.0 - win_prob_estimate),
-        //             Outcome::DrawRule50 => -f32::ln(1.0 - f32::abs(win_prob_estimate - 0.5)),
-        //             _ => 0.0,
-        //         },
-        //         _ => unreachable!(),
-        //     };
-        //     if cost.is_infinite() || cost.is_nan() {
-        //         debug!(
-        //             "Sparse : {} {} {} {} {} {} {}",
-        //             i, win_prob_estimate, win_prob_actual, w_score, fv.phase, cost, fv.fen
-        //         );
-        //     }
-        //     if cost.is_infinite() || cost.is_nan() {
-        //         0.0
-        //     } else {
-        //         cost
-        //     }
-        // };
 
         let closure_es = |pair: (usize, &ExplainScore)| {
             let (i, es) = pair;
@@ -377,7 +389,7 @@ mod tests {
     use std::{fs::File, io::BufWriter, time::Instant};
 
     use super::*;
-    use crate::eval::eval::{Attr};
+    use crate::eval::eval::Attr;
     use crate::utils::Formatting;
     use crate::{eval::weight::Weight, infra::profiler::Profiler};
     use anyhow::Context;
@@ -388,6 +400,24 @@ mod tests {
         let tuner = Tuning::new();
         let text = toml::to_string(&tuner).unwrap();
         info!("{}", text);
+    }
+
+    #[test]
+    fn test_tuning_load() {
+        let mut eng = Engine::new();
+        let file = "../odonata-extras/epd/quiet-labeled-small.epd";
+        let _count =
+            Tuning::upload_positions(&mut eng, Position::parse_epd_file(file).unwrap()).unwrap();
+
+        println!("{len}", len = eng.tuner.feature_names().len());
+        eng.tuner
+            .sparse_feature_vec(0)
+            .iter()
+            .for_each(|x| println!("{x:?}"));
+
+        println!("{vec11} 1.5", vec11 = eng.tuner.feature_vec(0)[11]);
+        println!("{fv}", fv = eng.tuner.feature_vec(0).iter().join(":"));
+        println!("{tuning:#}", tuning = eng.tuner);
     }
 
     #[ignore]
@@ -434,8 +464,6 @@ mod tests {
         );
     }
 
-
-  
     #[ignore]
     #[test]
     fn test_tuning_csv() {

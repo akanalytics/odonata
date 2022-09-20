@@ -1,5 +1,5 @@
 mod game;
-mod material;
+pub mod material;
 mod player;
 mod search_results;
 mod tree;
