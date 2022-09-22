@@ -35,6 +35,7 @@ pub enum Timing {
     TimingEval,
     TimingMoveGen,
     TimingMakeMove,
+    TimingParseEpd,
     TimingSortMoves,
     TimingPseudoLegalAndLegal,
     TimingTtProbe,
@@ -44,6 +45,9 @@ pub enum Timing {
     TimingQsEval,
     TimingQsSee,
     TimingQsMoveSort,
+
+    TimimgTunerUploadPositions,
+    TimingTunerSolverLbfgs,
 }
 
 impl Timing {

@@ -7,9 +7,11 @@ use crate::eval::score::Score;
 use crate::eval::scorer::ExplainScore;
 use crate::eval::weight::Weight;
 use crate::infra::component::Component;
+use crate::infra::metric::Metrics;
 use crate::other::outcome::Outcome;
 use crate::position::Position;
 use crate::search::engine::Engine;
+use crate::search::node::Timing;
 use crate::tags::Tag;
 use anyhow::Result;
 use itertools::Itertools;
@@ -173,6 +175,7 @@ impl Tuning {
 
 
     pub fn upload_positions(eng: &mut Engine, positions: Vec<Position>) -> Result<usize> {
+        let t = Metrics::timing_start();
         let mut draws = 0;
         let mut wins = 0;
         for (_i, pos) in positions.iter().enumerate() {
@@ -210,6 +213,7 @@ impl Tuning {
             explain.discard_balanced_features();
             eng.tuner.explains.push(explain);
         }
+        Metrics::profile(t, Timing::TimimgTunerUploadPositions);
         println!(
             "Loaded {} positions ignoring draws {draws} and wins {wins}",
             positions.len()

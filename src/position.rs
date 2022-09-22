@@ -1,6 +1,8 @@
 use crate::bits::bitboard::Bitboard;
 use crate::board::Board;
+use crate::infra::metric::Metrics;
 use crate::mv::Move;
+use crate::search::node::Timing;
 use crate::variation::Variation;
 
 use crate::movelist::MoveList;
@@ -109,6 +111,7 @@ impl Position {
     /// 
     // TODO! allow newlines replaced by / only in fen, thereafter just ignore
     pub fn parse_epd(epd: &str) -> Result<Self> {
+        let t = Metrics::timing_start();
         // replace \n followed by whitespace with "/"
         let epd = epd.trim_start();
         let epd = REGEX_CR_PLUS_WS.replace_all(epd, "/");
@@ -143,6 +146,7 @@ impl Position {
             }
         }
         pos.tags = Tags::parse_tags(&pos.board, remaining)?;
+        Metrics::profile(t, Timing::TimingParseEpd);
         Ok(pos)
     }
 

@@ -15,7 +15,7 @@ use strum::{EnumCount, IntoEnumIterator};
 use tabled::builder::Builder;
 use tabled::object::{Columns, Rows, Segment};
 use tabled::style::{Border, BorderText};
-use tabled::{Alignment, Modify, Style};
+use tabled::{Alignment, Modify, Style, Table};
 
 pub use crate::search::node::Event;
 use strum::EnumMessage;
@@ -175,20 +175,25 @@ impl ProfilerCounter {
     fn total(&self) -> Duration {
         self.0
     }
-}
 
-impl AddAssign<&ProfilerCounter> for ProfilerCounter {
-    fn add_assign(&mut self, rhs: &Self) {
-        self.0 += rhs.0;
-        self.1 += rhs.1;
+    fn include(&mut self, new_profile: &Self) {
+        self.0 += new_profile.0;
+        self.1 += new_profile.1;
     }
 }
+
+// impl AddAssign<&ProfilerCounter> for ProfilerCounter {
+//     fn add_assign(&mut self, rhs: &Self) {
+//         self.0 += rhs.0;
+//         self.1 += rhs.1;
+//     }
+// }
 
 #[derive(Debug, Clone)]
 pub struct Metrics {
     counters: ArrayOf<{ Counter::COUNT }, u64>,
     nodes: Vec<NodeCounter>,
-    profilers: ArrayOf<{ Timing::COUNT }, ProfilerCounter>,
+    pub profilers: Vec<ProfilerCounter>,
     durations: ArrayOf<{ Event::len() }, DurationCounter>,
     endgame: ArrayOf<{ EndGame::COUNT }, u64>,
     histograms: Vec<Histogram>,
@@ -199,7 +204,7 @@ impl Default for Metrics {
         Self {
             nodes: vec![NodeCounter::default(); Event::len()],
             counters: Default::default(),
-            profilers: Default::default(),
+            profilers: vec![Default::default(); Timing::COUNT],
             durations: Default::default(),
             endgame: Default::default(),
             histograms: vec![Default::default(); 1],
@@ -212,12 +217,14 @@ impl Metrics {
         Self::default()
     }
 
-    pub fn add(&mut self, o: &Self) {
+    pub fn include(&mut self, o: &Self) {
         self.counters += &o.counters;
-        self.profilers += &o.profilers;
         self.durations += &o.durations;
         self.endgame += &o.endgame;
 
+        for (n1, n2) in self.profilers.iter_mut().zip(&o.profilers) {
+            n1.include(n2);
+        }
         for (n1, n2) in self.nodes.iter_mut().zip(&o.nodes) {
             *n1 += &n2;
         }
@@ -237,7 +244,7 @@ impl Metrics {
 
     pub fn flush_thread_local() {
         METRICS_THREAD.with(|tm| {
-            METRICS_TOTAL.write().add(&*tm.borrow());
+            METRICS_TOTAL.write().include(&*tm.borrow());
             **METRICS_LAST_ITER.write() = std::mem::take(&mut tm.borrow_mut());
         });
     }
@@ -324,7 +331,7 @@ impl Metrics {
     pub fn profile(start: Option<Instant>, e: Timing) {
         #[cfg(not(feature = "remove_metrics"))]
         METRICS_THREAD
-            .with(|s| s.borrow_mut().profilers.0[e as usize].record(start.unwrap().elapsed()));
+            .with(|s| s.borrow_mut().profilers[e as usize].record(start.unwrap().elapsed()));
     }
 
     #[allow(unused_variables)]
@@ -349,50 +356,89 @@ impl Metrics {
     }
 }
 
+
+fn i(i: u64) -> String {
+    if i > 0 {
+        Formatting::u128(i as u128)
+    } else {
+        String::new()
+    }
+}
+fn perc(i: u64, total: u64) -> String {
+    if total > 0 {
+        format!(
+            "{}%",
+            Formatting::decimal(1, i as f32 * 100.0 / total as f32)
+        )
+    } else {
+        String::new()
+    }
+}
+fn dec(x: u64, y: u64) -> String {
+    if y > 0 {
+        format!("{}", Formatting::decimal(2, x as f32 / y as f32))
+    } else {
+        String::new()
+    }
+}
+fn d(dur: Duration) -> String {
+    if dur > Duration::ZERO {
+        Formatting::duration(dur)
+    } else {
+        String::new()
+    }
+}
+
+fn pd(dur: Duration, total: Duration) -> String {
+    if dur > Duration::ZERO && !total.is_zero() {
+        format!(
+            "{}%",
+            Formatting::decimal(1, dur.as_secs_f32() * 100.0 / total.as_secs_f32())
+        )
+    } else {
+        String::new()
+    }
+}
+
+
+
+
+pub struct ProfilerCounters<'a>(pub &'a Vec<ProfilerCounter>);
+
+impl fmt::Display for ProfilerCounters<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        //
+        //Profilers
+        //
+        fn as_table(profilers: &[ProfilerCounter]) -> Table {
+            let mut b = Builder::default();
+            b.set_columns(["Counter", "Time %", "Count", "Average", "Total"]);
+            for e in Timing::iter() {
+                let tot = profilers[Timing::TimingSearchRoot as usize].total();
+                if profilers[e.index()].1 != 0 {
+                    b.add_record([
+                        e.as_ref(),
+                        &pd(profilers[e.index()].total(), tot),
+                        &i(profilers[e.index()].1),
+                        &d(profilers[e.index()].average()),
+                        &d(profilers[e.index()].total()),
+                    ]);
+                }
+            }
+            let style = Style::markdown().bottom('-');
+            b.build()
+                .with(style.clone())
+                .with(Modify::new(Rows::single(0)).with(Border::default().top('-')))
+                .with(Modify::new(Segment::all()).with(Alignment::right()))
+                .with(Modify::new(Columns::single(0)).with(Alignment::left()))
+        }
+        let t = as_table(&self.0);
+        writeln!(f, "{t}")
+    }
+}
+
 impl fmt::Display for Metrics {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fn i(i: u64) -> String {
-            if i > 0 {
-                Formatting::u128(i as u128)
-            } else {
-                String::new()
-            }
-        }
-        fn perc(i: u64, total: u64) -> String {
-            if total > 0 {
-                format!(
-                    "{}%",
-                    Formatting::decimal(1, i as f32 * 100.0 / total as f32)
-                )
-            } else {
-                String::new()
-            }
-        }
-        fn dec(x: u64, y: u64) -> String {
-            if y > 0 {
-                format!("{}", Formatting::decimal(2, x as f32 / y as f32))
-            } else {
-                String::new()
-            }
-        }
-        fn d(dur: Duration) -> String {
-            if dur > Duration::ZERO {
-                Formatting::duration(dur)
-            } else {
-                String::new()
-            }
-        }
-
-        fn pd(dur: Duration, total: Duration) -> String {
-            if dur > Duration::ZERO && !total.is_zero() {
-                format!(
-                    "{}%",
-                    Formatting::decimal(1, dur.as_secs_f32() * 100.0 / total.as_secs_f32())
-                )
-            } else {
-                String::new()
-            }
-        }
 
         let style = Style::markdown().bottom('-');
 
@@ -483,31 +529,7 @@ impl fmt::Display for Metrics {
         t.fmt(f)?;
         writeln!(f)?;
 
-        //
-        //Profilers
-        //
-        let mut b = Builder::default();
-        b.set_columns(["Counter", "Time %", "Count", "Average", "Total"]);
-        for e in Timing::iter() {
-            let tot = self.profilers.0[Timing::TimingSearchRoot as usize].total();
-            if self.profilers.0[e.index()].1 != 0 {
-                b.add_record([
-                    e.as_ref(),
-                    &pd(self.profilers.0[e.index()].total(), tot),
-                    &i(self.profilers.0[e.index()].1),
-                    &d(self.profilers.0[e.index()].average()),
-                    &d(self.profilers.0[e.index()].total()),
-                ]);
-            }
-        }
-        let t = b
-            .build()
-            .with(style.clone())
-            .with(Modify::new(Rows::single(0)).with(Border::default().top('-')))
-            .with(Modify::new(Segment::all()).with(Alignment::right()))
-            .with(Modify::new(Columns::single(0)).with(Alignment::left()));
-        t.fmt(f)?;
-        writeln!(f)?;
+        writeln!(f, "{}", ProfilerCounters(&self.profilers))?;
 
         //
         // ply/depth tables
@@ -636,6 +658,9 @@ mod tests {
 
     #[test]
     fn test_metrics() {
+        let t = Metrics::timing_start();
+        Metrics::profile(t, Timing::TimingMakeMove);
+
         Metrics::incr(Counter::MakeMove);
         Metrics::incr(Counter::MakeMove);
         Metrics::incr_node(
