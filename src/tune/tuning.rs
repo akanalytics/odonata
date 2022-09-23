@@ -52,8 +52,9 @@ pub struct Tuning {
     pub sigmoid: Sigmoid,
     pub method: Method,
     pub search_depth: i32,
-    pub ignore_known_outcomes: bool,
-    pub ignore_endgames: bool,
+    pub ignore_certain_endgames: bool,
+    pub max_eval: f32,
+    pub ignore_likely_endgames: bool,
     pub multi_threading_min_positions: usize,
     pub threads: usize,
     pub ignore_draws: bool,
@@ -71,8 +72,9 @@ impl Default for Tuning {
             sigmoid: Sigmoid::WinProb,
             method: Method::New,
             search_depth: -1,
-            ignore_known_outcomes: true,
-            ignore_endgames: true,
+            ignore_certain_endgames: true,
+            ignore_likely_endgames: true,
+            max_eval: 10_000.,
             multi_threading_min_positions: 20000,
             threads: 32,
             logistic_steepness_k: Weight::from_i32(4, 4),
@@ -99,7 +101,7 @@ impl fmt::Display for Tuning {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if !f.alternate() {
             writeln!(f, "{}", toml::to_string_pretty(self).unwrap())?;
-        } 
+        }
         // else {
         //     for (_s, name, v) in &self.filter_values(self.feature_vec(0), |s| s.starts_with("")) {
         //         writeln!(f, "{fen} {name} = {v}", fen = self.fens()[0])?;
@@ -150,9 +152,6 @@ impl Tuning {
         s.interleave(e).collect_vec()
     }
 
-
-
-
     pub fn sparse_feature_vec(&self, idx: usize) -> Vec<(usize, Feature, f32)> {
         let ex = &self.explains[idx];
         let s_w = Weight::from_f32(1., 0.).interpolate(ex.phase);
@@ -173,22 +172,19 @@ impl Tuning {
         vec
     }
 
-
     pub fn upload_positions(eng: &mut Engine, positions: Vec<Position>) -> Result<usize> {
         let t = Metrics::timing_start();
         let mut draws = 0;
-        let mut wins = 0;
+        let mut likely = 0;
+        let mut certain = 0;
+        let mut max_evals = 0;
         for (_i, pos) in positions.iter().enumerate() {
-            if eng.tuner.ignore_known_outcomes && pos.board().outcome().is_game_over() {
+            if eng.tuner.ignore_certain_endgames && pos.board().outcome().is_game_over() {
                 trace!("Discarding drawn/checkmate position {}", pos);
+                certain += 1;
                 continue;
             }
-            // if eng.tuner.ignore_endgames
-            //     && (model.endgame.try_winner().is_some() || model.endgame.is_likely_draw() || model.endgame.is_immediately_declared_draw())
-            // {
-            //     trace!("Discarding known endgame position {}", pos);
-            //     continue;
-            // }
+
             let (_outcome, outcome_str) = eng.tuner.calc_player_win_prob_from_pos(pos);
             let o = Outcome::try_from_pgn(&outcome_str)?;
             if eng.tuner.ignore_draws && outcome_str == "1/2-1/2" {
@@ -197,14 +193,21 @@ impl Tuning {
             }
             let ph = eng.algo.eval.phaser.phase(&pos.board().material());
             let mut explain = ExplainScore::new(ph, pos.board().to_fen());
+            explain.set_weights(eng.algo.eval.weights_vector());
             Calc::new(&pos.board()).score(
                 &mut explain,
                 pos.board(),
                 &eng.algo.eval,
                 &eng.algo.eval.phaser,
             );
-            if explain.value(Feature::Discrete(Attr::WinBonus)) != 0 {
-                wins += 1;
+            if eng.tuner.ignore_likely_endgames
+                && explain.value(Feature::Discrete(Attr::WinBonus)) != 0
+            {
+                likely += 1;
+                continue;
+            }
+            if explain.total().interpolate(ph).abs() > eng.tuner.max_eval {
+                max_evals += 1;
                 continue;
             }
             explain.set_outcome(o);
@@ -215,7 +218,7 @@ impl Tuning {
         }
         Metrics::profile(t, Timing::TimimgTunerUploadPositions);
         println!(
-            "Loaded {} positions ignoring draws {draws} and wins {wins}",
+            "Loaded {} positions ignoring draws {draws}, likely {likely}, certain {certain} and max evals {max_evals}",
             positions.len()
         );
         Ok(positions.len())
