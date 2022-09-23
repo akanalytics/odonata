@@ -191,7 +191,7 @@ impl ProfilerCounter {
 
 #[derive(Debug, Clone)]
 pub struct Metrics {
-    counters: ArrayOf<{ Counter::COUNT }, u64>,
+    pub counters: Vec<u64>,
     nodes: Vec<NodeCounter>,
     pub profilers: Vec<ProfilerCounter>,
     durations: ArrayOf<{ Event::len() }, DurationCounter>,
@@ -203,7 +203,7 @@ impl Default for Metrics {
     fn default() -> Self {
         Self {
             nodes: vec![NodeCounter::default(); Event::len()],
-            counters: Default::default(),
+            counters: vec![Default::default(); Counter::COUNT],
             profilers: vec![Default::default(); Timing::COUNT],
             durations: Default::default(),
             endgame: Default::default(),
@@ -218,9 +218,12 @@ impl Metrics {
     }
 
     pub fn include(&mut self, o: &Self) {
-        self.counters += &o.counters;
         self.durations += &o.durations;
         self.endgame += &o.endgame;
+
+        for (n1, n2) in self.counters.iter_mut().zip(&o.counters) {
+            *n1 += n2;
+        }
 
         for (n1, n2) in self.profilers.iter_mut().zip(&o.profilers) {
             n1.include(n2);
@@ -267,7 +270,7 @@ impl Metrics {
     #[inline]
     pub fn incr(e: Counter) {
         #[cfg(not(feature = "remove_metrics"))]
-        METRICS_THREAD.with(|s| s.borrow_mut().counters.0[e.index()] += 1);
+        METRICS_THREAD.with(|s| s.borrow_mut().counters[e.index()] += 1);
     }
 
     #[allow(unused_variables)]
@@ -453,11 +456,11 @@ impl fmt::Display for Metrics {
                 e.as_ref(),
                 &match e {
                     Counter::EvalCachePercent => perc(
-                        self.counters.0[Counter::EvalCacheHit.index()],
-                        self.counters.0[Counter::EvalCacheHit.index()]
-                            + self.counters.0[Counter::EvalCacheMiss.index()],
+                        self.counters[Counter::EvalCacheHit.index()],
+                        self.counters[Counter::EvalCacheHit.index()]
+                            + self.counters[Counter::EvalCacheMiss.index()],
                     ),
-                    _ if self.counters.0[e.index()] != 0 => i(self.counters.0[e.index()]),
+                    _ if self.counters[e.index()] != 0 => i(self.counters[e.index()]),
                     _ => String::new(),
                 },
             ]);

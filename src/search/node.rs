@@ -80,6 +80,9 @@ pub enum Counter {
     EvalCacheMiss,
     EvalCachePercent,
 
+    TunerGradient,
+    TunerCostFunction,
+    TunerMse,
 }
 
 impl Counter {
