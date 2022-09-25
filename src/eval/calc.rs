@@ -1150,8 +1150,6 @@ mod tests {
     #[test]
     fn test_scoring() {
         let positions = Catalog::example_game();
-        let eval = Eval::new();
-        let phaser = Phaser::default();
         for pos in &positions {
             let b = pos.board();
             // let mut scorer1 = ExplainScorer::new(b.to_fen(), false);
@@ -1168,7 +1166,7 @@ mod tests {
             // let w2 = scorer2.total();
 
             let mut scorer3 = ExplainScore::default();
-            Calc::new(&b).score(&mut scorer3, &b, &eval, &phaser);
+            Calc::new(&b).score(&mut scorer3, &b);
             black_box(&scorer3);
             let _w3 = scorer3.total();
 
@@ -1204,7 +1202,7 @@ mod tests {
 
             pr.start();
             for _ in 0..1000 {
-                Calc::new(&b).score(&mut scorer2, &b, &e, phr);
+                Calc::new(&b).score(&mut scorer2, &b);
                 black_box(&scorer2);
                 // scorer2 = ExplainScorer::new(b.to_fen());
             }
@@ -1233,7 +1231,7 @@ mod tests {
                 pos.board().phase(&phr),
                 format!("{:#}", pos.board().to_string()),
             );
-            Calc::new(&pos.board()).score(&mut sc, pos.board(), &e, &phr);
+            Calc::new(&pos.board()).score(&mut sc, pos.board());
             sc
         }
         let sc = score_for(

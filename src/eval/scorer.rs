@@ -340,11 +340,11 @@ mod tests {
             let b = pos.board();
 
             let mut scorer2 = TotalScore::new(&eval.feature_weights, b.phase(&phaser));
-            Calc::new(&b).score(&mut scorer2, &b, &eval, &phaser);
+            Calc::new(&b).score(&mut scorer2, &b);
 
             let mut scorer3 = ExplainScore::new(b.phase(&phaser), pos.board().to_fen());
             scorer3.set_weights(eval.weights_vector());
-            Calc::new(&b).score(&mut scorer3, &b, &eval, &phaser);
+            Calc::new(&b).score(&mut scorer3, &b);
 
             builder.add_record([scorer2.total().to_string(), scorer3.to_string()]);
             if scorer2.total().to_string() != scorer3.total().to_string() {

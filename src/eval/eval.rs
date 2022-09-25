@@ -628,7 +628,7 @@ mod tests {
             Feature::Discrete(Attr::CenterAttacks).name(),
             "center_attacks"
         );
-        assert_eq!(Feature::Pst(Piece::Pawn, Square::A1).name(), "pst.p.a1");
+        assert_eq!(Feature::Pst(Piece::Pawn, Square::A1).name(), "p.a1");
         // assert!(Feature::all().len() > 64 * 6 + 6 + Feature::WinBonus.index());
     }
 

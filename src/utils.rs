@@ -2,8 +2,15 @@ use format_num::*;
 use itertools::Itertools;
 use std::collections::HashMap;
 use std::fmt;
+use std::fs::File;
+use std::io::BufRead;
 use std::ops::{Bound, RangeBounds};
+use std::path::Path;
 use std::time::Duration;
+use anyhow::{Result, Context};
+
+use crate::infra::metric::Metrics;
+use crate::search::node::Timing;
 
 //
 // https://stackoverflow.com/questions/59413614/cycle-a-rust-iterator-a-given-number-of-times
@@ -51,6 +58,16 @@ where
             y => y,
         }
     }
+}
+
+pub fn read_file(filename: impl AsRef<Path> + Clone) -> Result<Vec<String>> {
+    info!("Reading lines from {:?}", filename.as_ref().display());
+    let t = Metrics::timing_start();
+    let file = File::open(filename.clone()).context(format!("{}", filename.as_ref().display()))?;
+    let lines = std::io::BufReader::new(file).lines();
+    let vec = lines.collect::<Result<Vec<String>, _>>()?;
+    Metrics::profile(t, Timing::TimingReadFile);
+    Ok(vec)
 }
 
 pub struct Formatting;

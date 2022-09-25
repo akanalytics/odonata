@@ -198,6 +198,6 @@ mod tests {
         assert_eq!(size_of::<Recognizer>(), 12, "Recognizer");
         assert_eq!(size_of::<Aspiration>(), 24, "Aspiration");
         assert_eq!(size_of::<PvTable>(), 32, "PvTable");
-        assert_eq!(size_of::<Metrics>(), 93512, "Metrics");
+        assert_eq!(size_of::<Metrics>(), 93152, "Metrics");
     }
 }
