@@ -5,23 +5,18 @@ use crate::mv::Move;
 use crate::search::node::Timing;
 use crate::variation::Variation;
 
-use crate::movelist::MoveList;
-// use crate::movelist::MoveValidator;
 use crate::bits::castling::CastlingRights;
-use crate::tags::{Tag, Tags};
+use crate::movelist::MoveList;
 use crate::piece::{Color, Ply};
+use crate::tags::{Tag, Tags};
 use crate::utils::StringUtils;
-use std::collections::HashMap;
-use std::convert::{Into, TryFrom};
-use std::fs::File;
-use std::io::{self, BufRead};
-use std::path::Path;
-// // use crate::{info, logger::LogInit};
 use anyhow::{anyhow, bail, Context, Result};
 use once_cell::sync::Lazy;
 use rayon::prelude::ParallelIterator;
 use regex::Regex;
 use serde::{ser::SerializeMap, Deserialize, Serialize, Serializer};
+use std::collections::HashMap;
+use std::convert::{Into, TryFrom};
 
 use std::fmt;
 
@@ -109,7 +104,7 @@ impl Position {
     /// 3. E/P square
     /// 4. Half move clock
     /// 5. Full move counter
-    /// 
+    ///
     // TODO! allow newlines replaced by / only in fen, thereafter just ignore
     pub fn parse_epd(epd: &str) -> Result<Self> {
         let t = Metrics::timing_start();
@@ -177,47 +172,21 @@ impl Position {
 
     pub fn parse_many_epd_threaded<I>(par_iter: I) -> Result<Vec<Position>>
     where
-        I: ParallelIterator<Item=String> {
-        // <<I as IntoIterator>::IntoIter as Iterator>::Item=String, {
-        par_iter.filter_map(|line: String| {
-        let s = line;
-        if !s.trim_start().starts_with('#') {
-            Some(Position::parse_epd(&s).context(format!("in epd {}", s)))
-        } else {
-            None
-        }
-    })
-    .collect::<Result<Vec<Position>>>()
-}
-
-    pub fn parse_epd_file<P>(filename: P) -> Result<Vec<Position>>
-    where
-        P: AsRef<Path>,
-        P: Clone,
+        I: ParallelIterator<Item = String>,
     {
-        info!("Reading lines from {:?}", filename.as_ref().display());
-        let file =
-            File::open(filename.clone()).context(format!("{}", filename.as_ref().display()))?;
-        let lines = io::BufReader::new(file).lines();
-        let mut vec = Vec::<Position>::new();
-        let mut epd_count = 0;
-        for (n, line) in lines.enumerate() {
-            let s = line?;
-            if !s.trim_start().starts_with('#') {
-                epd_count += 1;
-                vec.push(Self::parse_epd(&s).context(format!("in epd {}", s))?);
-                if n > 0 && n % 100000 == 0 {
-                    info!("Read {} lines from {:?}", n, filename.as_ref().display());
+        // <<I as IntoIterator>::IntoIter as Iterator>::Item=String, {
+        par_iter
+            .filter_map(|line: String| {
+                let s = line;
+                if !s.trim_start().starts_with('#') {
+                    Some(Position::parse_epd(&s).context(format!("in epd {}", s)))
+                } else {
+                    None
                 }
-            }
-        }
-        info!(
-            "Read {} epds from {:?}",
-            epd_count,
-            filename.as_ref().display()
-        );
-        Ok(vec)
+            })
+            .collect::<Result<Vec<Position>>>()
     }
+
 }
 
 impl fmt::Display for Position {
@@ -419,6 +388,7 @@ mod tests {
     use super::*;
     use crate::catalog::Catalog;
     use crate::globals::constants::*;
+    use crate::utils::read_file;
     use anyhow::Result;
 
     // FIXME!!!!
@@ -543,7 +513,7 @@ mod tests {
     #[test]
     fn test_parse_epd_file() -> Result<()> {
         // let positions = Position::parse_epd_file("../odonata-extras/epd/quiet-labeled.epd")?;
-        let positions = Position::parse_epd_file("../odonata-extras/epd/com15.epd")?;
+        let positions = Position::parse_many_epd(read_file("../odonata-extras/epd/com15.epd")?)?;
         for p in positions {
             println!(">> {}", p);
         }

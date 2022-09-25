@@ -6,6 +6,7 @@ use crate::position::Position;
 use crate::search::engine::Engine;
 use crate::tags::Tag;
 use crate::tune::Tuning;
+use crate::utils::read_file;
 use anyhow::Context;
 use itertools::Itertools;
 // // use crate::{info, logger::LogInit};
@@ -124,11 +125,9 @@ impl Rpc for RpcImpl {
             return Ok(0);
         }
         info!("Starting tuner upload from {}", &filename);
-        let positions = Position::parse_epd_file(&filename).map_err(|s| jsonrpc_core::Error {
-            message: format!("{} on uploading positions from '{}'", s, &filename),
-            code: jsonrpc_core::ErrorCode::InternalError,
-            data: None,
-        })?;
+        let positions = Position::parse_many_epd(read_file(filename).map_err(to_rpc_error)?)
+            .map_err(to_rpc_error)?;
+
         let uploaded_count = Tuning::upload_positions(&mut eng, positions).map_err(to_rpc_error)?;
         info!("Uploaded {} positions", uploaded_count);
         Ok(uploaded_count as i32)
@@ -167,13 +166,7 @@ impl Rpc for RpcImpl {
     }
 
     fn static_eval_explain(&self, board: Board) -> Result<String> {
-        let explanation = self
-            .engine
-            .lock()
-            .unwrap()
-            .algo
-            .eval
-            .w_eval_explain(&board);
+        let explanation = self.engine.lock().unwrap().algo.eval.w_eval_explain(&board);
         Ok(explanation.to_string())
     }
 }

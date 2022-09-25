@@ -408,7 +408,7 @@ mod tests {
 
     use super::*;
     use crate::eval::eval::Attr;
-    use crate::utils::Formatting;
+    use crate::utils::{read_file, Formatting};
     use crate::{eval::weight::Weight, infra::profiler::Profiler};
     use anyhow::Context;
     use test_log::test;
@@ -424,8 +424,11 @@ mod tests {
     fn test_tuning_load() {
         let mut eng = Engine::new();
         let file = "../odonata-extras/epd/quiet-labeled-small.epd";
-        let _count =
-            Tuning::upload_positions(&mut eng, Position::parse_epd_file(file).unwrap()).unwrap();
+        let _count = Tuning::upload_positions(
+            &mut eng,
+            Position::parse_many_epd(read_file(file).unwrap()).unwrap(),
+        )
+        .unwrap();
 
         println!("{len}", len = eng.tuner.feature_names().len());
         eng.tuner
@@ -442,16 +445,16 @@ mod tests {
     #[test]
     fn test_tuning_mse() {
         info!("Starting...");
-        let mut engine = Engine::new();
-        engine.tuner.multi_threading_min_positions = 10000000;
+        let mut eng = Engine::new();
+        eng.tuner.multi_threading_min_positions = 10000000;
 
-        engine.tuner.regression_type = RegressionType::CrossEntropy;
-        engine.tuner.method = Method::Sparse;
+        eng.tuner.regression_type = RegressionType::CrossEntropy;
+        eng.tuner.method = Method::Sparse;
 
-        Tuning::upload_positions(
-            &mut engine,
-            // Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-combo.epd").unwrap(),
-            Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-small.epd").unwrap(),
+        let file = "../odonata-extras/epd/quiet-labeled-small.epd";
+        let _count = Tuning::upload_positions(
+            &mut eng,
+            Position::parse_many_epd(read_file(file).unwrap()).unwrap(),
         )
         .unwrap();
 
@@ -464,13 +467,13 @@ mod tests {
         let mut iters = 0;
         for n in (-120..120).step_by(1) {
             let value = n;
-            engine.algo.eval.mb.enabled = false;
-            engine
+            eng.algo.eval.mb.enabled = false;
+            eng
                 .algo
                 .eval
                 .set_weight(Attr::PawnIsolated.into(), Weight::from_i32(0, value));
             iters += 1;
-            let diffs = engine.tuner.calculate_mean_square_error(&engine).unwrap();
+            let diffs = eng.tuner.calculate_mean_square_error(&eng).unwrap();
             println!("{}, {}", value, diffs);
         }
         let time = Instant::now() - start;
@@ -488,9 +491,10 @@ mod tests {
         info!("Starting...");
         let mut eng = Engine::new();
         eng.tuner.method = Method::New;
-        Tuning::upload_positions(
+        let file = "../odonata-extras/epd/quiet-labeled-small.epd";
+        let _count = Tuning::upload_positions(
             &mut eng,
-            Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-small.epd").unwrap(),
+            Position::parse_many_epd(read_file(file).unwrap()).unwrap(),
         )
         .unwrap();
         //tuning.positions = Position::parse_epd_file("../odonata-extras/epd/quiet-labeled-small.epd").unwrap();
@@ -509,12 +513,16 @@ mod tests {
 
     #[test]
     fn bench_mse() {
-        let file = "../odonata-extras/epd/quiet-labeled-small.epd";
 
         let mut eng1 = Engine::new();
         eng1.tuner.multi_threading_min_positions = 3_000_000;
         eng1.tuner.method = Method::New;
-        Tuning::upload_positions(&mut eng1, Position::parse_epd_file(file).unwrap()).unwrap();
+        let file = "../odonata-extras/epd/quiet-labeled-small.epd";
+        let _count = Tuning::upload_positions(
+            &mut eng1,
+            Position::parse_many_epd(read_file(file).unwrap()).unwrap(),
+        )
+        .unwrap();
         let mut prof1 = Profiler::new("mse new".into());
         prof1.start();
         let diffs1 = eng1.tuner.calculate_mean_square_error(&eng1).unwrap();
