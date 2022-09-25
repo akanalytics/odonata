@@ -19,6 +19,7 @@ use std::path::Path;
 // // use crate::{info, logger::LogInit};
 use anyhow::{anyhow, bail, Context, Result};
 use once_cell::sync::Lazy;
+use rayon::prelude::ParallelIterator;
 use regex::Regex;
 use serde::{ser::SerializeMap, Deserialize, Serialize, Serializer};
 
@@ -173,6 +174,21 @@ impl Position {
         }
         Ok(vec)
     }
+
+    pub fn parse_many_epd_threaded<I>(par_iter: I) -> Result<Vec<Position>>
+    where
+        I: ParallelIterator<Item=String> {
+        // <<I as IntoIterator>::IntoIter as Iterator>::Item=String, {
+        par_iter.filter_map(|line: String| {
+        let s = line;
+        if !s.trim_start().starts_with('#') {
+            Some(Position::parse_epd(&s).context(format!("in epd {}", s)))
+        } else {
+            None
+        }
+    })
+    .collect::<Result<Vec<Position>>>()
+}
 
     pub fn parse_epd_file<P>(filename: P) -> Result<Vec<Position>>
     where

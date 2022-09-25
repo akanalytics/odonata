@@ -36,6 +36,8 @@ pub enum Timing {
     TimingMoveGen,
     TimingMakeMove,
     TimingParseEpd,
+    TimingParseEpdThreaded,
+    TimingReadEpdFile,
     TimingSortMoves,
     TimingPseudoLegalAndLegal,
     TimingTtProbe,

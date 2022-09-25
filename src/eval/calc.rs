@@ -2,9 +2,8 @@ use crate::bits::{CastlingRights, PreCalc, Square};
 use crate::board::analysis::Analysis;
 use crate::board::Board;
 use crate::eval::endgame::EndGame;
-use crate::eval::eval::{Eval, Feature};
+use crate::eval::eval::Feature;
 use crate::infra::metric::Metrics;
-use crate::phaser::Phaser;
 use crate::piece::Color::{self, *};
 use crate::piece::Piece;
 use crate::piece::Piece::*;
@@ -167,7 +166,7 @@ impl<'a> Calc<'a> {
 
 impl<'a> Calc<'a> {
     #[inline]
-    pub fn score(&mut self, scorer: &mut impl ScorerBase, b: &Board, _e: &Eval, _phaser: &Phaser) {
+    pub fn score(&mut self, scorer: &mut impl ScorerBase, b: &Board) {
         let t = Metrics::timing_start();
         self.material(scorer, b);
         if !self.endgame(scorer, b) {

@@ -14,7 +14,11 @@ use crate::search::engine::Engine;
 use crate::search::node::Timing;
 use crate::tags::Tag;
 use anyhow::Result;
+use bitflags::_core::sync::atomic::AtomicU32;
+use bitflags::_core::sync::atomic::Ordering;
 use itertools::Itertools;
+use rayon::prelude::IndexedParallelIterator;
+use rayon::prelude::IntoParallelRefIterator;
 // use rayon::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
@@ -53,7 +57,7 @@ pub struct Tuning {
     pub method: Method,
     pub search_depth: i32,
     pub ignore_certain_endgames: bool,
-    pub max_eval: f32,
+    pub max_eval: Option<f32>,
     pub ignore_likely_endgames: bool,
     pub multi_threading_min_positions: usize,
     pub threads: usize,
@@ -74,7 +78,7 @@ impl Default for Tuning {
             search_depth: -1,
             ignore_certain_endgames: true,
             ignore_likely_endgames: true,
-            max_eval: 10_000.,
+            max_eval: None,
             multi_threading_min_positions: 20000,
             threads: 32,
             logistic_steepness_k: Weight::from_i32(4, 4),
@@ -174,52 +178,59 @@ impl Tuning {
 
     pub fn upload_positions(eng: &mut Engine, positions: Vec<Position>) -> Result<usize> {
         let t = Metrics::timing_start();
-        let mut draws = 0;
-        let mut likely = 0;
-        let mut certain = 0;
-        let mut max_evals = 0;
-        for (_i, pos) in positions.iter().enumerate() {
-            if eng.tuner.ignore_certain_endgames && pos.board().outcome().is_game_over() {
-                trace!("Discarding drawn/checkmate position {}", pos);
-                certain += 1;
-                continue;
-            }
+        let draws = AtomicU32::new(0);
+        let likely = AtomicU32::new(0);
+        let certain = AtomicU32::new(0);
+        let max_evals = AtomicU32::new(0);
+        use rayon::iter::ParallelIterator;
+        let weights_vec = eng.algo.eval.weights_vector();
+        eng.tuner.explains = positions
+            .par_iter()
+            .enumerate()
+            .filter_map(|(_i, pos)| {
+                if eng.tuner.ignore_certain_endgames && pos.board().outcome().is_game_over() {
+                    trace!("Discarding drawn/checkmate position {}", pos);
+                    certain.fetch_add(1, Ordering::Relaxed);
+                    return None;
+                }
 
-            let (_outcome, outcome_str) = eng.tuner.calc_player_win_prob_from_pos(pos);
-            let o = Outcome::try_from_pgn(&outcome_str)?;
-            if eng.tuner.ignore_draws && outcome_str == "1/2-1/2" {
-                draws += 1;
-                continue;
-            }
-            let ph = eng.algo.eval.phaser.phase(&pos.board().material());
-            let mut explain = ExplainScore::new(ph, pos.board().to_fen());
-            explain.set_weights(eng.algo.eval.weights_vector());
-            Calc::new(&pos.board()).score(
-                &mut explain,
-                pos.board(),
-                &eng.algo.eval,
-                &eng.algo.eval.phaser,
-            );
-            if eng.tuner.ignore_likely_endgames
-                && explain.value(Feature::Discrete(Attr::WinBonus)) != 0
-            {
-                likely += 1;
-                continue;
-            }
-            if explain.total().interpolate(ph).abs() > eng.tuner.max_eval {
-                max_evals += 1;
-                continue;
-            }
-            explain.set_outcome(o);
-            // eng.algo.eval.predict(&model, &mut w_scorer);
-            // let _consolidate = eng.tuner.consolidate;
-            explain.discard_balanced_features();
-            eng.tuner.explains.push(explain);
-        }
+                let (_outcome, outcome_str) = eng.tuner.calc_player_win_prob_from_pos(pos);
+                let o = Outcome::try_from_pgn(&outcome_str).unwrap();
+                if eng.tuner.ignore_draws && outcome_str == "1/2-1/2" {
+                    draws.fetch_add(1, Ordering::Relaxed);
+                    return None;
+                }
+                let ph = eng.algo.eval.phaser.phase(&pos.board().material());
+                let mut explain = ExplainScore::new(ph, pos.board().to_fen());
+                Calc::new(&pos.board()).score(&mut explain, pos.board());
+                if eng.tuner.ignore_likely_endgames
+                    && explain.value(Feature::Discrete(Attr::WinBonus)) != 0
+                {
+                    likely.fetch_add(1, Ordering::Relaxed);
+                    return None;
+                }
+                if let Some(max_eval) = eng.tuner.max_eval {
+                    explain.set_weights(weights_vec.clone()); ///////////
+                    if explain.total().interpolate(ph).abs() > max_eval {
+                        max_evals.fetch_add(1, Ordering::Relaxed);
+                        return None;
+                    }
+                }
+                explain.set_outcome(o);
+                // eng.algo.eval.predict(&model, &mut w_scorer);
+                // let _consolidate = eng.tuner.consolidate;
+                explain.discard_balanced_features();
+                Some(explain)
+            })
+            .collect();
         Metrics::profile(t, Timing::TimimgTunerUploadPositions);
         println!(
             "Loaded {} positions ignoring draws {draws}, likely {likely}, certain {certain} and max evals {max_evals}",
-            positions.len()
+            positions.len(),
+            draws = draws.load(Ordering::Relaxed),
+            likely = likely.load(Ordering::Relaxed),
+            certain = certain.load(Ordering::Relaxed),
+            max_evals = max_evals.load(Ordering::Relaxed),
         );
         Ok(positions.len())
     }
