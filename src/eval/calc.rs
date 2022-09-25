@@ -1224,7 +1224,6 @@ mod tests {
     #[test]
     fn test_model_pawn() {
         fn score_for(s: &str) -> ExplainScore {
-            let e = Eval::new();
             let phr = Phaser::default();
             let pos = Position::parse_epd(s).unwrap();
             let mut sc = ExplainScore::new(

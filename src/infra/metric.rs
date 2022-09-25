@@ -8,7 +8,6 @@ use itertools::Itertools;
 use static_init::dynamic;
 use std::cell::RefCell;
 use std::cmp::{max, min};
-use std::ops::AddAssign;
 use std::time::{Duration, Instant};
 use std::{fmt, iter};
 use strum::{EnumCount, IntoEnumIterator};
@@ -34,6 +33,9 @@ impl Histogram {
     pub fn add_value(&mut self, c: u64) {
         self.0.add_value(c);
     }
+    fn include(&mut self, rhs: &Self) {
+        self.0 = HDRHist::combined(self.0.clone(), rhs.0.clone()).clone();
+    }
 }
 
 impl fmt::Debug for Histogram {
@@ -44,44 +46,6 @@ impl fmt::Debug for Histogram {
     }
 }
 
-impl AddAssign<&Histogram> for Histogram {
-    fn add_assign(&mut self, rhs: &Self) {
-        self.0 = HDRHist::combined(self.0.clone(), rhs.0.clone()).clone();
-    }
-}
-
-//
-// ArrayOf
-//
-#[derive(Debug, Clone)]
-struct ArrayOf<const N: usize, T>([T; N]);
-
-impl<const N: usize, T: Default> Default for ArrayOf<{ N }, T> {
-    fn default() -> Self {
-        // Self([T::default(); N])
-        Self([(); N].map(|_| T::default())) // no copy needed
-    }
-}
-
-impl<const N: usize, T> AddAssign<&ArrayOf<{ N }, T>> for ArrayOf<{ N }, T>
-where
-    for<'a> T: AddAssign<&'a T>,
-{
-    fn add_assign(&mut self, rhs: &Self) {
-        for i in 0..self.0.len() {
-            self.0[i] += &rhs.0[i];
-        }
-    }
-}
-
-impl<const N: usize> ArrayOf<N, u64>
-where
-    [u64; N]: Default,
-{
-    // fn incr(&mut self, i: usize) {
-    //     self.0[min(i, N - 1) as usize] += 1;
-    // }
-}
 
 //
 // Node counter
@@ -112,16 +76,15 @@ impl NodeCounter {
             self.1.iter().sum()
         }
     }
-}
 
-impl AddAssign<&NodeCounter> for NodeCounter {
-    fn add_assign(&mut self, rhs: &Self) {
+    fn include(&mut self, rhs: &Self) {
         for i in 0..self.0.len() {
             self.0[i] += rhs.0[i];
             self.1[i] += rhs.1[i];
         }
     }
 }
+
 
 //
 // DurationCounter
@@ -146,15 +109,13 @@ impl DurationCounter {
     //         self.0.iter().sum()
     //     }
     // }
-}
-
-impl AddAssign<&DurationCounter> for DurationCounter {
-    fn add_assign(&mut self, rhs: &Self) {
+    fn include(&mut self, rhs: &Self) {
         for i in 0..self.0.len() {
             self.0[i] += rhs.0[i];
         }
     }
 }
+
 
 //
 // Profile Counter
@@ -182,31 +143,24 @@ impl ProfilerCounter {
     }
 }
 
-// impl AddAssign<&ProfilerCounter> for ProfilerCounter {
-//     fn add_assign(&mut self, rhs: &Self) {
-//         self.0 += rhs.0;
-//         self.1 += rhs.1;
-//     }
-// }
-
 #[derive(Debug, Clone)]
 pub struct Metrics {
     pub counters: Vec<u64>,
     nodes: Vec<NodeCounter>,
     pub profilers: Vec<ProfilerCounter>,
-    durations: ArrayOf<{ Event::len() }, DurationCounter>,
-    endgame: ArrayOf<{ EndGame::COUNT }, u64>,
+    durations: Vec<DurationCounter>,
+    endgame: Vec<u64>,
     histograms: Vec<Histogram>,
 }
 
 impl Default for Metrics {
     fn default() -> Self {
         Self {
-            nodes: vec![NodeCounter::default(); Event::len()],
+            nodes: vec![NodeCounter::default(); Event::COUNT],
             counters: vec![Default::default(); Counter::COUNT],
             profilers: vec![Default::default(); Timing::COUNT],
-            durations: Default::default(),
-            endgame: Default::default(),
+            durations: vec![Default::default(); Event::COUNT],
+            endgame: vec![Default::default(); EndGame::COUNT],
             histograms: vec![Default::default(); 1],
         }
     }
@@ -218,9 +172,13 @@ impl Metrics {
     }
 
     pub fn include(&mut self, o: &Self) {
-        self.durations += &o.durations;
-        self.endgame += &o.endgame;
+        for (n1, n2) in self.durations.iter_mut().zip(&o.durations) {
+            n1.include(n2);
+        }
 
+        for (n1, n2) in self.endgame.iter_mut().zip(&o.endgame) {
+            *n1 += n2;
+        }
         for (n1, n2) in self.counters.iter_mut().zip(&o.counters) {
             *n1 += n2;
         }
@@ -229,10 +187,10 @@ impl Metrics {
             n1.include(n2);
         }
         for (n1, n2) in self.nodes.iter_mut().zip(&o.nodes) {
-            *n1 += &n2;
+            n1.include(n2);
         }
         for (n1, n2) in self.histograms.iter_mut().zip(&o.histograms) {
-            *n1 += &n2;
+            n1.include(n2);
         }
     }
 
@@ -248,7 +206,7 @@ impl Metrics {
     pub fn flush_thread_local() {
         METRICS_THREAD.with(|tm| {
             METRICS_TOTAL.write().include(&*tm.borrow());
-            **METRICS_LAST_ITER.write() = std::mem::take(&mut tm.borrow_mut());
+            *METRICS_LAST_ITER.write() = std::mem::take(&mut tm.borrow_mut());
         });
     }
 
@@ -263,7 +221,7 @@ impl Metrics {
     #[inline]
     pub fn inc_endgame(eg: EndGame) {
         #[cfg(not(feature = "remove_metrics"))]
-        METRICS_THREAD.with(|s| s.borrow_mut().endgame.0[eg as usize] += 1);
+        METRICS_THREAD.with(|s| s.borrow_mut().endgame[eg as usize] += 1);
     }
 
     #[allow(unused_variables)]
@@ -341,7 +299,7 @@ impl Metrics {
     #[inline]
     pub fn elapsed(ply: Ply, dur: Duration, e: Event) {
         #[cfg(not(feature = "remove_metrics"))]
-        METRICS_THREAD.with(|s| s.borrow_mut().durations.0[e.index()].set(ply, dur));
+        METRICS_THREAD.with(|s| s.borrow_mut().durations[e.index()].set(ply, dur));
     }
 
     #[allow(unused_variables)]
@@ -358,7 +316,6 @@ impl Metrics {
         }
     }
 }
-
 
 fn i(i: u64) -> String {
     if i > 0 {
@@ -403,9 +360,6 @@ fn pd(dur: Duration, total: Duration) -> String {
     }
 }
 
-
-
-
 pub struct ProfilerCounters<'a>(pub &'a Vec<ProfilerCounter>);
 
 impl fmt::Display for ProfilerCounters<'_> {
@@ -442,7 +396,6 @@ impl fmt::Display for ProfilerCounters<'_> {
 
 impl fmt::Display for Metrics {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-
         let style = Style::markdown().bottom('-');
 
         //
@@ -483,7 +436,7 @@ impl fmt::Display for Metrics {
         let mut b = Builder::default();
         b.set_columns(["Counter", "Value"]);
         for eg in EndGame::iter() {
-            b.add_record([&eg.to_string(), &i(self.endgame.0[eg as usize])]);
+            b.add_record([&eg.to_string(), &i(self.endgame[eg as usize])]);
         }
         let mut t = b
             .build()
@@ -645,14 +598,14 @@ impl fmt::Display for Metrics {
 }
 
 thread_local! {
-    pub static METRICS_THREAD: RefCell<Box<Metrics>>  = RefCell::new(Box::new(Metrics::new()));
+    pub static METRICS_THREAD: RefCell<Metrics>  = RefCell::new(Metrics::new());
 }
 
 #[dynamic(lazy)]
-pub static mut METRICS_TOTAL: Box<Metrics> = Box::new(Metrics::new());
+pub static mut METRICS_TOTAL: Metrics = Metrics::new();
 
 #[dynamic(lazy)]
-static mut METRICS_LAST_ITER: Box<Metrics> = Box::new(Metrics::new());
+static mut METRICS_LAST_ITER: Metrics = Metrics::new();
 
 #[cfg(test)]
 mod tests {
