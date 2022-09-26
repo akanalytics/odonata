@@ -2,7 +2,7 @@ use crate::eval::endgame::EndGame;
 use crate::mv::Move;
 use crate::piece::{MoveType, Ply};
 use crate::search::node::{Counter, Histograms, Node, Timing};
-use crate::utils::Formatting;
+use crate::utils::{Formatting, Displayable};
 use hdrhist::HDRHist;
 use itertools::Itertools;
 use static_init::dynamic;
@@ -18,6 +18,9 @@ use tabled::{Alignment, Modify, Style, Table};
 
 pub use crate::search::node::Event;
 use strum::EnumMessage;
+
+
+
 
 #[derive(Clone)]
 struct Histogram(HDRHist);
@@ -45,7 +48,6 @@ impl fmt::Debug for Histogram {
             .finish()
     }
 }
-
 
 //
 // Node counter
@@ -85,7 +87,6 @@ impl NodeCounter {
     }
 }
 
-
 //
 // DurationCounter
 //
@@ -116,7 +117,6 @@ impl DurationCounter {
     }
 }
 
-
 //
 // Profile Counter
 //
@@ -145,9 +145,9 @@ impl ProfilerCounter {
 
 #[derive(Debug, Clone)]
 pub struct Metrics {
-    pub counters: Vec<u64>,
+    counters: Vec<u64>,
     nodes: Vec<NodeCounter>,
-    pub profilers: Vec<ProfilerCounter>,
+    profilers: Vec<ProfilerCounter>,
     durations: Vec<DurationCounter>,
     endgame: Vec<u64>,
     histograms: Vec<Histogram>,
@@ -165,6 +165,8 @@ impl Default for Metrics {
         }
     }
 }
+
+
 
 impl Metrics {
     fn new() -> Self {
@@ -201,6 +203,73 @@ impl Metrics {
             &*METRICS_TOTAL.read(),
             &*METRICS_LAST_ITER.read(),
         )
+    }
+
+
+
+    pub fn write_as_table(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        Self::write_profilers_as_table(f, &self.profilers)?;
+        Self::write_counters_as_table(f, &self.counters)
+    }
+
+    fn write_profilers_as_table(f: &mut fmt::Formatter, profs: &[ProfilerCounter]) -> fmt::Result {
+        //
+        //Profilers
+        //
+        fn as_table(profilers: &[ProfilerCounter]) -> Table {
+            let mut b = Builder::default();
+            b.set_columns(["Counter", "Time %", "Count", "Average", "Total"]);
+            for e in Timing::iter() {
+                let tot = profilers[Timing::TimingSearchRoot as usize].total();
+                if profilers[e.index()].1 != 0 {
+                    b.add_record([
+                        e.as_ref(),
+                        &pd(profilers[e.index()].total(), tot),
+                        &i(profilers[e.index()].1),
+                        &d(profilers[e.index()].average()),
+                        &d(profilers[e.index()].total()),
+                    ]);
+                }
+            }
+            let style = Style::markdown().bottom('-');
+            b.build()
+                .with(style.clone())
+                .with(Modify::new(Rows::single(0)).with(Border::default().top('-')))
+                .with(Modify::new(Segment::all()).with(Alignment::right()))
+                .with(Modify::new(Columns::single(0)).with(Alignment::left()))
+        }
+        let t = as_table(profs);
+        writeln!(f, "{t}")
+    }
+
+    fn write_counters_as_table(f: &mut fmt::Formatter, counters: &[u64]) -> fmt::Result {
+        let mut b = Builder::default();
+        b.set_columns(["Counter", "Value"]);
+
+        for e in Counter::iter() {
+            b.add_record([
+                e.as_ref(),
+                &match e {
+                    Counter::EvalCachePercent => perc(
+                        counters[Counter::EvalCacheHit.index()],
+                        counters[Counter::EvalCacheHit.index()]
+                            + counters[Counter::EvalCacheMiss.index()],
+                    ),
+                    _ if counters[e.index()] != 0 => i(counters[e.index()]),
+                    _ => String::new(),
+                },
+            ]);
+        }
+        let mut t = b
+            .build()
+            .with(Style::markdown().bottom('-'))
+            .with(Modify::new(Rows::single(0)).with(Border::default().top('-')))
+            .with(Modify::new(Segment::all()).with(Alignment::right()))
+            .with(Modify::new(Columns::single(0)).with(Alignment::left()));
+        for i in (0..t.shape().0).step_by(5) {
+            t = t.with(Modify::new(Rows::single(i)).with(Border::default().top('-')));
+        }
+        writeln!(f, "{t}")
     }
 
     pub fn flush_thread_local() {
@@ -360,75 +429,12 @@ fn pd(dur: Duration, total: Duration) -> String {
     }
 }
 
-pub struct ProfilerCounters<'a>(pub &'a Vec<ProfilerCounter>);
-
-impl fmt::Display for ProfilerCounters<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        //
-        //Profilers
-        //
-        fn as_table(profilers: &[ProfilerCounter]) -> Table {
-            let mut b = Builder::default();
-            b.set_columns(["Counter", "Time %", "Count", "Average", "Total"]);
-            for e in Timing::iter() {
-                let tot = profilers[Timing::TimingSearchRoot as usize].total();
-                if profilers[e.index()].1 != 0 {
-                    b.add_record([
-                        e.as_ref(),
-                        &pd(profilers[e.index()].total(), tot),
-                        &i(profilers[e.index()].1),
-                        &d(profilers[e.index()].average()),
-                        &d(profilers[e.index()].total()),
-                    ]);
-                }
-            }
-            let style = Style::markdown().bottom('-');
-            b.build()
-                .with(style.clone())
-                .with(Modify::new(Rows::single(0)).with(Border::default().top('-')))
-                .with(Modify::new(Segment::all()).with(Alignment::right()))
-                .with(Modify::new(Columns::single(0)).with(Alignment::left()))
-        }
-        let t = as_table(&self.0);
-        writeln!(f, "{t}")
-    }
-}
-
 impl fmt::Display for Metrics {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let style = Style::markdown().bottom('-');
 
-        //
-        // Counter
-        //
-        let mut b = Builder::default();
-        b.set_columns(["Counter", "Value"]);
-
-        for e in Counter::iter() {
-            b.add_record([
-                e.as_ref(),
-                &match e {
-                    Counter::EvalCachePercent => perc(
-                        self.counters[Counter::EvalCacheHit.index()],
-                        self.counters[Counter::EvalCacheHit.index()]
-                            + self.counters[Counter::EvalCacheMiss.index()],
-                    ),
-                    _ if self.counters[e.index()] != 0 => i(self.counters[e.index()]),
-                    _ => String::new(),
-                },
-            ]);
-        }
-        let mut t = b
-            .build()
-            .with(style.clone())
-            .with(Modify::new(Rows::single(0)).with(Border::default().top('-')))
-            .with(Modify::new(Segment::all()).with(Alignment::right()))
-            .with(Modify::new(Columns::single(0)).with(Alignment::left()));
-        for i in (0..t.shape().0).step_by(5) {
-            t = t.with(Modify::new(Rows::single(i)).with(Border::default().top('-')));
-        }
-        t.fmt(f)?;
-        writeln!(f)?;
+        
+        writeln!(f, "{d}", d = Displayable(|f| Self::write_counters_as_table(f, &self.counters)))?;
 
         //
         // Endgame
@@ -485,7 +491,7 @@ impl fmt::Display for Metrics {
         t.fmt(f)?;
         writeln!(f)?;
 
-        writeln!(f, "{}", ProfilerCounters(&self.profilers))?;
+        writeln!(f, "{d}", d = Displayable(|f| Self::write_profilers_as_table(f, &self.profilers)))?;
 
         //
         // ply/depth tables

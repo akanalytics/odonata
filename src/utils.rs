@@ -12,6 +12,17 @@ use anyhow::{Result, Context};
 use crate::infra::metric::Metrics;
 use crate::search::node::Timing;
 
+
+pub struct Displayable<T>(pub T) where T: Fn(&mut fmt::Formatter) -> fmt::Result;
+
+impl<T> fmt::Display for Displayable<T> where T: Fn(&mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0(f)
+    }
+}
+
+
+
 //
 // https://stackoverflow.com/questions/59413614/cycle-a-rust-iterator-a-given-number-of-times
 //
