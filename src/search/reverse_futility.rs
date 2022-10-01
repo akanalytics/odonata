@@ -20,6 +20,8 @@ pub struct ReverseFutility {
     prune_alpha_mate: bool,
     prune_beta_mate: bool,
     max_depth: Ply,
+    min_pieces: i32,
+    min_pieces_depth: Ply,
     margin1: i32,
     margin2: i32,
     margin3: i32,
@@ -46,6 +48,8 @@ impl Default for ReverseFutility {
             prune_alpha_mate: true,
             prune_beta_mate: false,
             max_depth: 6,
+            min_pieces: 0,
+            min_pieces_depth: 0,
             margin1: 100,
             margin2: 200,
             margin3: 300,
@@ -90,6 +94,11 @@ impl Algo {
             return None;
         }
 
+        if self.rev_fut.min_pieces > 0 && n.depth >= self.rev_fut.min_pieces_depth && bd.occupied().popcount() < self.rev_fut.min_pieces {
+            Metrics::incr_node(&n, Event::RevFutDeclineMinPieces);
+            return None;
+        }
+
         if !self.rev_fut.prune_extensions && ext != 0 {
             Metrics::incr_node(n, Event::RevFutDeclineExt);
             return None;
@@ -107,6 +116,11 @@ impl Algo {
             3 => self.rev_fut.margin3,
             d => self.rev_fut.margin3 + self.rev_fut.margin_ply * (d - 3),
         });
+        // if eval - margin >= n.beta 
+        //     && EndGame::from_board(bd).likely_outcome(bd) != LikelyOutcome::UnknownOutcome
+        // {
+        //     return None;
+        // }
 
         if eval - margin >= n.beta {
             Metrics::incr_node(n, Event::RevFutSuccess);

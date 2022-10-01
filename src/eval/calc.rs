@@ -1,8 +1,13 @@
+use std::sync::atomic::Ordering;
+
+use crate::bits::bitboard::Dir;
+use crate::bits::precalc::Pawns;
 use crate::bits::{CastlingRights, PreCalc, Square};
 use crate::board::analysis::Analysis;
 use crate::board::Board;
 use crate::eval::endgame::EndGame;
 use crate::eval::eval::Feature;
+use crate::infra::component::FEATURE;
 use crate::infra::metric::Metrics;
 use crate::piece::Color::{self, *};
 use crate::piece::Piece;
@@ -10,7 +15,8 @@ use crate::piece::Piece::*;
 use crate::search::node::Timing;
 use crate::Bitboard;
 
-use super::eval::Attr;
+use super::endgame::LikelyOutcome;
+use super::eval::{Attr, PawnStructure};
 use super::scorer::ScorerBase;
 
 #[derive(Copy, Clone, Debug)]
@@ -116,6 +122,7 @@ trait White {
 #[derive()]
 pub struct Calc<'a> {
     _analysis: Analysis<'a>,
+    pawn: PawnStructure,
     // a: &'a (),
 }
 
@@ -126,6 +133,7 @@ impl<'a> Calc<'a> {
             // a: &(),
             // analysis: Analysis::of(b),
             _analysis: Default::default(),
+            pawn: PawnStructure,
         }
     }
 }
@@ -145,24 +153,24 @@ impl<'a> Calc<'a> {
 //         Ok(())
 //     }
 // }
-impl<'a> Calc<'a> {
-    // 0, 1, 3, 8
-    #[inline]
-    pub fn linear(x: u32, n: i32) -> (i32, i32, i32, i32, i32, i32) {
-        match x {
-            0 => (16 * n, 0, 0, 0, 0, 0),
-            1 => (0, 16 * n, 0, 0, 0, 0),
-            2 => (0, 0, 16 * n, 0, 0, 0),
-            3 => (0, 0, 0, 16 * n, 0, 0),
-            4 => (0, 0, 0, 12 * n, 4 * n, 0),
-            5 => (0, 0, 0, 8 * n, 8 * n, 0),
-            6 => (0, 0, 0, 4 * n, 12 * n, 0),
-            7 => (0, 0, 0, 0, 16 * n, 0),
-            8 => (0, 0, 0, 0, 0, 16 * n),
-            _ => (0, 0, 0, 0, 0, 16 * n),
-        }
-    }
-}
+// impl<'a> Calc<'a> {
+//     // 0, 1, 3, 8
+//     #[inline]
+//     pub fn linear(x: u32, n: i32) -> (i32, i32, i32, i32, i32, i32) {
+//         match x {
+//             0 => (16 * n, 0, 0, 0, 0, 0),
+//             1 => (0, 16 * n, 0, 0, 0, 0),
+//             2 => (0, 0, 16 * n, 0, 0, 0),
+//             3 => (0, 0, 0, 16 * n, 0, 0),
+//             4 => (0, 0, 0, 12 * n, 4 * n, 0),
+//             5 => (0, 0, 0, 8 * n, 8 * n, 0),
+//             6 => (0, 0, 0, 4 * n, 12 * n, 0),
+//             7 => (0, 0, 0, 0, 16 * n, 0),
+//             8 => (0, 0, 0, 0, 0, 16 * n),
+//             _ => (0, 0, 0, 0, 0, 16 * n),
+//         }
+//     }
+// }
 
 impl<'a> Calc<'a> {
     #[inline]
@@ -170,11 +178,17 @@ impl<'a> Calc<'a> {
         let t = Metrics::timing_start();
         self.material(scorer, b);
         if !self.endgame(scorer, b) {
+            // let pawn_cache = UnsharedTable::<PawnStructure>::default();
+            // self.set_pawn_structure(&pawn_cache);
             self.position(scorer, b);
             self.pst(scorer, b);
             self.other(scorer, b);
-            self.pawns(White, scorer, b);
-            self.pawns(Black, scorer, b);
+            if FEATURE.load(Ordering::Relaxed) {
+                self.pawns_both(scorer, b);
+            } else {
+                self.pawns(White, scorer, b);
+                self.pawns(Black, scorer, b);
+            }
             self.king_safety(White, scorer, b);
             self.king_safety(Black, scorer, b);
             self.mobility(White, scorer, b);
@@ -294,6 +308,10 @@ impl<'a> Calc<'a> {
             scorer.accum(winner, Attr::WinBonus.as_feature(), 1);
             return false; // TODO! we have a winner, but no specific win scoring. Do we still use just material
         }
+        match endgame.likely_outcome(b) {
+            LikelyOutcome::Draw | LikelyOutcome::DrawImmediate => {}
+            _ => scorer.apply_scaling(1.),
+        };
         false
     }
 
@@ -346,12 +364,174 @@ impl<'a> Calc<'a> {
     // Sentry - is a pawn controlling the square lying on the path or front span of an opponent's pawn,
     //          thereby preventing it from becoming a passed pawn
 
-    // Weak Pawns - pawns not defended and not defensible by the pawns of the same color, whose stop square is also not covered by a friendly pawn.
+    // Weak Pawns - pawns not defended and not defensible by the pawns of the same color,
+    //              whose stop square is also not covered by a friendly pawn.
     // - Isolated Pawn - no neighbouring pawns of same colour
     // - Isolated Pawn (half open) - even weaker if rooks around
     // - Backward Pawn
     // - Overly advanced
     // - Hanging Pawns -  are an open, half-isolated duo. It means that they are standing next to each other on the adjacent half-open files, usually on the fourth rank, mutually protecting their stop squares.
+
+    fn pawns_both(&mut self, s: &mut impl ScorerBase, bd: &Board) {
+        use crate::globals::constants::*;
+        const BR_7: Bitboard = RANK_7.flip_vertical();
+        const BR_6: Bitboard = RANK_6.flip_vertical();
+        const BR_5: Bitboard = RANK_5.flip_vertical();
+        const BR_4: Bitboard = RANK_4.flip_vertical();
+        const R_67: Bitboard = RANK_6.or(RANK_7);
+        const BR_67: Bitboard = R_67.flip_vertical();
+        const R_345: Bitboard = RANK_3.or(RANK_4).or(RANK_5);
+        const BR_345: Bitboard = R_345.flip_vertical();
+        const R_2345: Bitboard = RANK_2.or(R_345);
+        const BR_2345: Bitboard = R_2345.flip_vertical();
+
+        #[inline]
+        fn net(s: &mut impl ScorerBase, attr: Attr, w: Bitboard, b: Bitboard) {
+            s.accumulate(attr.as_feature(), w.popcount(), b.popcount());
+        }
+
+        use crate::eval::eval::Attr::*;
+        let w = bd.white();
+        let b = bd.black();
+        let p = Pawns::new(bd.pawns() & w, bd.pawns() & b);
+
+        let is_far_pawns = (bd.pawns() & Bitboard::FILE_A.or(Bitboard::FILE_B)).any()
+            && (bd.pawns() & Bitboard::FILE_G.or(Bitboard::FILE_H)).any()
+            && bd.rooks_or_queens().is_empty();
+        let wbishops = (bd.bishops() & w).popcount();
+        let bbishops = (bd.bishops() & b).popcount();
+        s.accumulate(
+            Attr::BishopFarPawns.as_feature(),
+            is_far_pawns as i32 * wbishops,
+            is_far_pawns as i32 * bbishops,
+        );
+
+        let mut closedness = p.rammed.popcount();
+        // try and ensure closedness is symmetric
+        let centerish_rammed_pawns = (p.rammed & w) & Bitboard::CENTER_16_SQ
+            | (p.rammed & w).shift(Dir::N) & Bitboard::CENTER_16_SQ
+            | (p.rammed & b) & Bitboard::CENTER_16_SQ
+            | (p.rammed & b).shift(Dir::S) & Bitboard::CENTER_16_SQ;
+        closedness += centerish_rammed_pawns.popcount();
+        closedness = closedness * closedness;
+
+        // s.accum(c, Attr::Closedness, closedness);
+        s.accumulate(
+            Attr::KnightClosedness.into(),
+            (bd.knights() & w).popcount() * closedness,
+            (bd.knights() & b).popcount() * closedness,
+        );
+        s.accumulate(
+            Attr::BishopClosedness.into(),
+            (bd.bishops() & w).popcount() * closedness,
+            (bd.bishops() & b).popcount() * closedness,
+        );
+        s.accumulate(
+            Attr::RookClosedness.into(),
+            (bd.rooks() & w).popcount() * closedness,
+            (bd.rooks() & b).popcount() * closedness,
+        );
+
+        let bishop_color_rammed_pawns = p.bishop_colored_rammed(&bd);
+        net(
+            s,
+            BishopColorRammedPawns,
+            bishop_color_rammed_pawns & w,
+            bishop_color_rammed_pawns & b,
+        );
+        // double count those pawns near the center
+        net(
+            s,
+            BishopColorRammedPawns,
+            bishop_color_rammed_pawns & w & Bitboard::CENTER_16_SQ.shift(Dir::S),
+            bishop_color_rammed_pawns & b & Bitboard::CENTER_16_SQ.shift(Dir::N),
+        );
+
+        // doubled not isolated
+        net(
+            s,
+            Attr::PawnDoubled,
+            p.doubled & !p.isolated & w,
+            p.doubled & !p.isolated & b,
+        );
+        net(
+            s,
+            PawnIsolatedDoubled,
+            p.doubled & p.isolated & w,
+            p.doubled & p.isolated & b,
+        );
+        // s.accum(
+        //     c,
+        //     Attr::PawnDirectlyDoubled,
+        //     _pawn_directly_doubled,
+        // );
+        net(s, Attr::PawnWeak, p.weak & w, p.weak & b);
+        net(s, Attr::PawnIsolated, p.isolated & w, p.isolated & b);
+        // net(s, Attr::SemiIsolated, 0);
+        let dn = p.distant_neighbours;
+        net(s, PawnDistantNeighboursR7, dn & RANK_7 & w, dn & BR_7 & b);
+        net(s, PawnDistantNeighboursR6, dn & RANK_6 & w, dn & BR_6 & b);
+        net(s, PawnDistantNeighboursR5, dn & RANK_5 & w, dn & BR_5 & b);
+        net(s, PawnPassed, p.passed & w, p.passed & b);
+        net(s, PawnPassedR7, p.passed & RANK_7 & w, p.passed & BR_7 & b);
+        net(s, PawnPassedR6, p.passed & RANK_6 & w, p.passed & BR_6 & b);
+        net(s, PawnPassedR5, p.passed & RANK_5 & w, p.passed & BR_5 & b);
+        net(s, PawnPassedR4, p.passed & RANK_4 & w, p.passed & BR_4 & b);
+        net(
+            s,
+            PassersOnRim,
+            p.passed & Bitboard::RIM & w,
+            p.passed & Bitboard::RIM & w,
+        );
+        // net(s            c,
+        //     CandidatePassedPawn,
+        //     candidate_passed_pawn,
+        // );
+        let blockaded = p.blockaded(bd.occupied());
+        net(s, Blockaded, blockaded & w, blockaded & b);
+        net(
+            s,
+            BlockadedPassers,
+            blockaded & p.passed & w,
+            blockaded & p.passed & b,
+        );
+        let rbp = p.rooks_behind_passers(&bd);
+        net(s, RooksBehindPasser, rbp & w, rbp & b);
+        // scorer.accum(c, RammedPawns, rammed_pawns);
+        // net(s, Space, 0);
+        net(
+            s,
+            PawnConnectedR67,
+            p.connected & R_67 & w,
+            p.connected & BR_67 & b,
+        );
+        net(
+            s,
+            PawnConnectedR345,
+            p.connected & R_345 & w,
+            p.connected & BR_345 & b,
+        );
+        // net(s            c,
+        //     PassedConnectedR345,
+        //     _passed_connected_r345,
+        // );
+        net(s, PawnDuoR67, p.duos & R_67 & w, p.duos & BR_67 & b);
+        net(s, PawnDuoR2345, p.duos & R_2345 & w, p.duos & BR_2345 & b);
+        // net(s, PassedDuoR67, _passed_duo_r67);
+        // net(s, PassedDuoR2345, _passed_duo_r2345);
+        net(
+            s,
+            BackwardHalfOpen,
+            p.backward & p.half_open & w,
+            p.backward & p.half_open & b,
+        );
+        net(
+            s,
+            Backward,
+            p.backward & !p.half_open & w,
+            p.backward & !p.half_open & b,
+        );
+    }
 
     #[inline]
     fn pawns(&mut self, c: Color, s: &mut impl ScorerBase, b: &Board) {
@@ -359,12 +539,13 @@ impl<'a> Calc<'a> {
         let them = b.color(c.opposite());
         let bbd = PreCalc::default();
         // self.doubled_pawns = bbd.doubled_pawns(b.color(c) & b.pawns()).popcount();
-        let isolated_pawns_bb = bbd.isolated_pawns(us & b.pawns());
+        let isolated_pawns_bb = bbd.pawn_side_isolated(us & b.pawns());
         let isolated_pawns = isolated_pawns_bb.popcount();
         let (pawn_atts_e, pawn_atts_w) = bbd.pawn_attacks_ew(b.pawns() & us, c);
         let pawn_atts = pawn_atts_e | pawn_atts_w;
-        let pawn_duos = bbd.pawn_duos(b.pawns() & us);
-        let distant_neighbours = bbd.pawn_distant_neighbours(b.pawns() & us);
+        let all_pawn_att_spans = pawn_atts.fill_forward(c);
+        let pawn_duos = bbd.pawn_side_duos(b.pawns() & us);
+        let distant_neighbours = bbd.pawn_side_distant_neighbours(b.pawns() & us);
         let doubled_pawns_bb = bbd.doubled_pawns(us & b.pawns());
         let pawn_isolated_doubled_bb = bbd.doubled_pawns(us & b.pawns()) & isolated_pawns_bb;
         s.set_bits(Attr::PawnIsolatedDoubled.into(), pawn_isolated_doubled_bb);
@@ -390,8 +571,13 @@ impl<'a> Calc<'a> {
         let mut pawn_connected_r345 = 0;
         let mut pawn_duo_r67 = 0;
         let mut pawn_duo_r2345 = 0;
+
+        let mut weak = 0;
+
         let mut backward = 0;
         let mut backward_half_open = 0;
+        let semi_isolated = 0;
+
         let mut _passed_duo_r67 = 0;
         let mut _passed_duo_r2345 = 0;
         // let mut pawn_directly_doubled = 0;
@@ -399,7 +585,6 @@ impl<'a> Calc<'a> {
         let mut _pawn_directly_doubled = 0;
         let mut _passed_connected_r345 = 0;
         let mut _passed_connected_r67 = 0;
-        let semi_isolated = 0;
         let space = 0;
         let mut passers_on_rim = 0;
         let mut blockaded = 0;
@@ -420,6 +605,15 @@ impl<'a> Calc<'a> {
             // use pawns not pawns&them so we only count front of doubled pawns (+8 elo in sp)
             let is_passed =
                 (bbd.pawn_front_span_union_attack_span(c, p) & b.pawns() & them).is_empty();
+
+            // cannot be defended and cannot advance 1 square to be defended
+            // => other pawns attack spans so not overlap with stop sq, pawn itself, or rear span
+            // we dont count weak isolated pawns
+            let is_weak = (((bbd.pawn_rear_span(c, p) | p.as_bb() | pawn_stop)
+                & all_pawn_att_spans)
+                - isolated_pawns_bb)
+                .is_empty();
+
             // self.passed_pawns += is_passed as i32;
             // let rank7 = c.chooser_wb(Bitboard::RANK_7, Bitboard::RANK_2);
             // let rank6 = c.chooser_wb(Bitboard::RANK_6, Bitboard::RANK_3);
@@ -435,20 +629,24 @@ impl<'a> Calc<'a> {
             rooks_behind_passer +=
                 (is_passed && (bbd.pawn_front_span(c.opposite(), p) & b.rooks() & us).any()) as i32;
 
-            let rammed = pawn_stop.intersects(them & b.pawns());
-            if rammed & p.is_in((b.bishops() & us).squares_of_matching_color()) {
+            let is_rammed = pawn_stop.intersects(them & b.pawns());
+            if is_rammed & p.is_in((b.bishops() & us).squares_of_matching_color()) {
                 bishop_color_rammed_pawns +=
                     1 + (p.as_bb() | pawn_stop).intersects(Bitboard::CENTER_16_SQ) as i32;
             }
+
+            weak += (is_weak & is_rammed) as i32;
+            s.set_bits(Attr::PawnWeak.into(), p.as_bb().iff(is_weak & is_rammed));
+
             let _nearly_rammed =
                 bbd.pawn_double_stop(c, p).intersects(them & b.pawns()) || is_blockaded;
             // rammed_pawns += rammed as i32;
-            closedness += rammed as i32;
+            closedness += is_rammed as i32;
             // try and ensure closedness is symmetric
             if p.is_in(Bitboard::CENTER_16_SQ) || pawn_stop.intersects(Bitboard::CENTER_16_SQ) {
-                closedness += rammed as i32;
+                closedness += is_rammed as i32;
             }
-            s.set_bits(Attr::RammedPawns.into(), p.as_bb().iff(rammed));
+            s.set_bits(Attr::RammedPawns.into(), p.as_bb().iff(is_rammed));
 
             // // old let is_passed = (bbd.pawn_front_span_union_attack_span(c, p) & b.pawns()).is_empty();
             // let blockaded = pawn_stop.intersects(them);
@@ -616,6 +814,7 @@ impl<'a> Calc<'a> {
             Attr::PawnDirectlyDoubled.as_feature(),
             _pawn_directly_doubled,
         );
+        s.accum(c, Attr::PawnWeak.as_feature(), weak);
         s.accum(c, Attr::PawnIsolated.as_feature(), isolated_pawns);
         s.accum(c, Attr::SemiIsolated.as_feature(), semi_isolated);
         s.accum(
@@ -732,7 +931,7 @@ impl<'a> Calc<'a> {
         s.set_bits(Attr::PawnAdjacentShield.into(), adjacent & p);
         let nearby_shield = (p & nearby).popcount();
         s.set_bits(Attr::PawnNearbyShield.into(), nearby & p);
-        let isolated_shield = bb.isolated_pawns(p) & (adjacent | nearby);
+        let isolated_shield = bb.pawn_side_isolated(p) & (adjacent | nearby);
         s.accum(c, Attr::PawnAdjacentShield.as_feature(), adjacent_shield);
         s.accum(c, Attr::PawnNearbyShield.as_feature(), nearby_shield);
         s.accum(
@@ -839,7 +1038,6 @@ impl<'a> Calc<'a> {
         s.accum(c, Attr::DiscoveredChecks.as_feature(), discovered_checks);
     }
 
-
     fn mobility(&mut self, c: Color, s: &mut impl ScorerBase, b: &Board) {
         let bb = PreCalc::default();
         let us = b.color(c);
@@ -857,7 +1055,6 @@ impl<'a> Calc<'a> {
         let bi = b.bishops() & them;
         let ni = b.knights() & them;
         let r = b.rooks() & them;
-
 
         // general
         let mut partially_trapped_pieces = 0;
@@ -904,8 +1101,8 @@ impl<'a> Calc<'a> {
         let queens_on_open_files = (open_files & us & b.queens()).popcount();
 
         let k = b.kings() & them;
-        
-        let (adjacent, nearby) =  if k.any() {
+
+        let (adjacent, nearby) = if k.any() {
             bb.adjacent_and_nearby_pawn_shield(opponent, k.square())
         } else {
             (Bitboard::empty(), Bitboard::empty())
@@ -1127,10 +1324,6 @@ impl<'a> Calc<'a> {
         s.accum(c, Attr::QueenOpenFile.as_feature(), queens_on_open_files);
         s.accum(c, Attr::QueenTrapped.as_feature(), queen_trapped);
     }
-
-
-
-
 }
 
 #[cfg(test)]
@@ -1145,7 +1338,7 @@ mod tests {
     use crate::phaser::Phaser;
     use crate::test_log::test;
     use crate::Position;
-    // use crate::utils::StringUtils;
+    // use crate::infra::utils::StringUtils;
 
     #[test]
     fn test_scoring() {
@@ -1196,7 +1389,7 @@ mod tests {
         // }
 
         fn bench_new(b: &Board, phr: &Phaser, e: &Eval, pr: &mut Profiler) -> Weight {
-            let mut scorer2 = TotalScore::new(&e.feature_weights, b.phase(phr));
+            let mut scorer2 = TotalScore::new(&e.feature_weights, 1., b.phase(phr));
             // scorer2.csv = false;
             // let mut scorer2 = ModelScore::new();
 
@@ -1223,17 +1416,18 @@ mod tests {
 
     #[test]
     fn test_model_pawn() {
-        fn score_for(s: &str) -> ExplainScore {
+        fn score_for(pos: &Position) -> ExplainScore {
             let phr = Phaser::default();
-            let pos = Position::parse_epd(s).unwrap();
             let mut sc = ExplainScore::new(
                 pos.board().phase(&phr),
+                1.,
                 format!("{:#}", pos.board().to_string()),
             );
             Calc::new(&pos.board()).score(&mut sc, pos.board());
+            sc.fen = pos.board().to_fen();
             sc
         }
-        let sc = score_for(
+        let pos = Position::parse_epd(
             r"
             ........
             .....P..
@@ -1243,7 +1437,10 @@ mod tests {
             ........
             .P.P...p
             ........ w KQkq - 1 1",
-        );
+        )
+        .unwrap();
+        let sc = score_for(&pos);
+
         assert_eq!(sc.value(Attr::PawnDoubled.into()), 1);
         assert_eq!(sc.value(Attr::PawnIsolatedDoubled.into()), 1);
         assert_eq!(sc.value(Attr::PawnPassed.into()), 4 - 2);
@@ -1251,7 +1448,7 @@ mod tests {
         assert_eq!(sc.value(Attr::PawnPassedR7.into()), 1 - 1);
         assert_eq!(sc.value(Attr::PawnPassedR6.into()), 2 - 0);
         assert_eq!(sc.value(Attr::SemiIsolated.into()), 0); // semi-isolated not used
-        println!("{sc:#}");
+        println!("{pos}\n{sc:#}");
     }
 
     #[test]

@@ -74,23 +74,26 @@ impl Algo {
     }
 
     #[inline]
-    fn static_eval(&self, b: &Board, n: &Node) -> Score {
+    fn static_eval(&mut self, b: &Board, n: &Node) -> Score {
         Metrics::incr_node(n, Event::InteriorEvalStatic);
-        let mut eval = b.static_eval(&self.eval);
+        let old = self.eval.draw_scaling;
+        self.eval.draw_scaling = self.eval.draw_scaling_noisy;
+        let mut score = b.static_eval(&self.eval);
+        self.eval.draw_scaling = old;
 
         if self.tt.use_tt_for_eval {
             if let Some(entry) = self.tt.probe_by_hash(b.hash()) {
-                let score = entry.score.as_score(n.ply);
+                let lookup_score = entry.score.as_score(n.ply);
                 if entry.depth >= self.tt.tt_for_eval_depth {
                     if entry.nt == NodeType::ExactPv {
                         Metrics::incr_node(n, Event::TtHitEvalNode);
-                        eval = score;
-                    } else if entry.nt == NodeType::LowerCut && score > eval {
+                        score = lookup_score;
+                    } else if entry.nt == NodeType::LowerCut && lookup_score > score {
                         Metrics::incr_node(n, Event::TtHitEvalNode);
-                        eval = score;
-                    } else if entry.nt == NodeType::UpperAll && score < eval {
+                        score = lookup_score;
+                    } else if entry.nt == NodeType::UpperAll && lookup_score < score {
                         Metrics::incr_node(n, Event::TtHitEvalNode);
-                        eval = score;
+                        score = lookup_score;
                     } else {
                         Metrics::incr_node(n, Event::TtMissEvalNode);
                     }
@@ -99,7 +102,7 @@ impl Algo {
                 }
             }
         }
-        eval
+        score
     }
 
     pub fn alphabeta(

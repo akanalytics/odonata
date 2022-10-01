@@ -4,7 +4,7 @@ use std::fmt;
 use std::iter;
 
 use crate::phaser::Phase;
-use crate::utils::Formatting;
+use crate::infra::utils::Formatting;
 use serde::{Deserializer, Serializer};
 
 //

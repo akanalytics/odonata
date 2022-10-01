@@ -4,7 +4,7 @@ use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
 use crate::piece::Ply;
 use crate::search::timecontrol::TimeControl;
-use crate::utils::Formatting;
+use crate::infra::utils::Formatting;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::sync::atomic::{self, AtomicBool};
@@ -209,7 +209,7 @@ impl MoveTimeEstimator {
     pub fn estimate_iteration(&mut self, ply: Ply, clock: &Clock) {
         // debug_assert!(search_stats.depth() >= ply-1, "ensure we have enough stats");
         self.prior_elapsed_iter = self.elapsed_iter;
-        self.elapsed_iter = clock.elapsed_iter().0;
+        self.elapsed_iter = clock.elapsed_iter_this_thread().0;
         self.elapsed_search = clock.elapsed_search().0;
 
         match self.time_control {
@@ -224,7 +224,7 @@ impl MoveTimeEstimator {
 
         // if in nodestime then convert nodes to time. nodestime is nodes per millisecond
         if self.nodestime > 0 {
-            let nodes = clock.elapsed_iter().1;
+            let nodes = clock.elapsed_iter_this_thread().1;
             self.elapsed_search = Duration::from_millis(nodes / self.nodestime);
         }
 

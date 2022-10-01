@@ -9,7 +9,7 @@ use crate::bits::castling::CastlingRights;
 use crate::movelist::MoveList;
 use crate::piece::{Color, Ply};
 use crate::tags::{Tag, Tags};
-use crate::utils::StringUtils;
+use crate::infra::utils::StringUtils;
 use anyhow::{anyhow, bail, Context, Result};
 use once_cell::sync::Lazy;
 use rayon::prelude::ParallelIterator;
@@ -388,7 +388,7 @@ mod tests {
     use super::*;
     use crate::catalog::Catalog;
     use crate::globals::constants::*;
-    use crate::utils::read_file;
+    use crate::infra::utils::read_file;
     use anyhow::Result;
 
     // FIXME!!!!

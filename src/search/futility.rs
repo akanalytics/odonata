@@ -32,6 +32,8 @@ pub struct Futility {
     max_pawn_rank: u8,
     max_depth: Ply,
     max_depth_captures: Ply,
+    min_pieces: i32,
+    min_pieces_depth: Ply,
     margin_qs: i32,
     margin1: i32,
     margin2: i32,
@@ -61,6 +63,8 @@ impl Default for Futility {
             prune_fw_node: false,
             prune_alpha_mate: false,
             prune_beta_mate: false,
+            min_pieces: 0,
+            min_pieces_depth: 0,
             max_pawn_rank: 7,
             max_depth: 2, // not sure > 2 really makes sense
             max_depth_captures: 2,
@@ -159,6 +163,10 @@ impl Algo {
             Metrics::incr_node(&n, Event::FutilityDeclineInCheck);
             return false;
         }
+        if self.futility.min_pieces > 0 && n.depth >= self.futility.min_pieces_depth && b.occupied().popcount() < self.futility.min_pieces {
+            Metrics::incr_node(&n, Event::FutilityDeclineMinPieces);
+            return false;
+        }
         true
     }
 
@@ -252,6 +260,12 @@ impl Algo {
 
         // not a capture or promo => gain = 0
         let gain = before.eval_move_material(&self.eval, &mv);
+
+        // if est_score <= n.alpha
+        //     && EndGame::from_board(after).likely_outcome(after) != LikelyOutcome::UnknownOutcome
+        // {
+        //     return None;
+        // }
 
         // fail low pruning
         let est_score = eval.clamp_score() + margin + gain;

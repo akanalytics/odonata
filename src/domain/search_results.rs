@@ -2,16 +2,17 @@ use std::iter::{self, FromIterator};
 
 use crate::eval::eval::Eval;
 use crate::eval::score::Score;
+use crate::infra::utils::calculate_branching_factor_by_nodes_and_depth;
 use crate::mv::Move;
 use crate::other::outcome::Outcome;
-use crate::tags::Tag;
 use crate::piece::Ply;
+use crate::search::timecontrol::TimeControl;
+use crate::tags::Tag;
 use crate::variation::Variation;
-use crate::{Algo, board::Board, MoveList, Position};
-use serde::{Serialize, Deserialize};
+use crate::{board::Board, Algo, MoveList, Position};
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use tabled::builder::Builder;
-use crate::search::timecontrol::TimeControl;
 
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 #[serde(default, deny_unknown_fields)]
@@ -25,7 +26,7 @@ pub struct SearchResults {
     pub nodes_thread: u64,
     pub nps: u64,
     pub tbhits: u64,
-    pub branching_factor: f32,
+    pub bf: f32,
     pub hashfull_per_mille: u32,
     pub outcome: Outcome,
 
@@ -67,7 +68,10 @@ impl fmt::Display for SearchResultsWithExplanation<'_> {
 }
 
 impl SearchResults {
-    pub fn new(algo: &Algo) -> Self {
+    pub fn new(algo: &Algo, depth: Ply, multi_pv: Vec<(Variation, Score)>) -> Self {
+        let nodes_thread_last_iter  = algo.clock.elapsed_iter_this_thread().1;
+        let bf = calculate_branching_factor_by_nodes_and_depth(nodes_thread_last_iter, depth)
+            .unwrap_or_default() as f32;
         SearchResults {
             board: algo.board.clone(),
             tc: *algo.mte.time_control(),
@@ -76,12 +80,12 @@ impl SearchResults {
             nodes: algo.clock.cumul_nodes_all_threads(),
             nodes_thread: algo.clock.cumul_nodes_this_thread(),
             nps: algo.clock.cumul_knps_all_threads() * 1000,
-            depth: 0, // algo.stats.depth(),
+            depth,
             seldepth: algo.pv_table.selective_depth(),
             time_millis: algo.clock.elapsed_search().0.as_millis() as u64,
             hashfull_per_mille: algo.tt.hashfull_per_mille(),
-            branching_factor: 0.0, // algo.stats.branching_factor(),
-            multi_pv: Default::default(),
+            bf,
+            multi_pv,
         }
     }
 
@@ -135,9 +139,7 @@ impl SearchResults {
         pos.set(Tag::AnalysisCountDepth(self.depth));
         pos.set(Tag::AnalysisCountSelDepth(self.seldepth));
         pos.set(Tag::AnalysisCountNodes(self.nodes as u128));
-        pos.set(Tag::BranchingFactorPercent(
-            (100.0 * self.branching_factor) as u32,
-        ));
+        pos.set(Tag::BranchingFactorPercent((100.0 * self.bf) as u32));
         pos
     }
 }

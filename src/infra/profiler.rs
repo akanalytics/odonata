@@ -1,4 +1,4 @@
-use crate::utils::Formatting;
+use crate::infra::utils::Formatting;
 use perf_event::{events::Hardware, Builder, Counter, Group};
 
 use super::black_box;

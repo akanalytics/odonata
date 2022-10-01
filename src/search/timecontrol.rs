@@ -1,7 +1,7 @@
 use serde::{Serialize, Deserialize};
 
 use crate::piece::{Color, Ply};
-use crate::utils::Formatting;
+use crate::infra::utils::Formatting;
 use std::fmt;
 use std::str::FromStr;
 use std::time::Duration;

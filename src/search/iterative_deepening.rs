@@ -1,10 +1,10 @@
 use crate::eval::score::Score;
 use crate::infra::component::{Component, State};
 use crate::infra::metric::Metrics;
+use crate::piece::{Ply, MAX_PLY};
 use crate::search::algo::Algo;
 use crate::search::node::Node;
 use crate::search::timecontrol::TimeControl;
-use crate::piece::{Ply, MAX_PLY};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -23,7 +23,6 @@ pub struct IterativeDeepening {
 
     #[serde(skip)]
     pub end_ply: Ply,
-
 }
 
 impl Component for IterativeDeepening {
@@ -133,12 +132,11 @@ impl Algo {
             ply += self.ids.step_size
         }
 
-        let mut results = SearchResults::new(self);
-        if self.time_up_or_cancelled(ply, false).0 {
-            results.multi_pv = last_good_multi_pv;
+        let results = if self.time_up_or_cancelled(ply, false).0 {
+            SearchResults::new(self, ply - self.ids.step_size, last_good_multi_pv)
         } else {
-            results.multi_pv = multi_pv;
-        }
+            SearchResults::new(self, ply, multi_pv)
+        };
 
         // record final outcome of search
         self.game.record_search(results.clone());
@@ -160,7 +158,7 @@ impl Algo {
             || self.mte.probable_timeout(ply)
             || ply >= self.ids.end_ply
             || ply >= MAX_PLY / 2
-            // || (self.restrictions.exclude_moves.is_empty() && s.is_mate())
+        // || (self.restrictions.exclude_moves.is_empty() && s.is_mate())
         // pv.empty = draw
     }
 }

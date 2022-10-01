@@ -265,8 +265,8 @@ impl fmt::Display for Algo {
         writeln!(f, ".\n.\n[eval]\n{}", self.eval)?;
         writeln!(f, ".\n.\n[repetition]\n{}", self.repetition)?;
         writeln!(f, ".\n.\n[tt]\n{}", self.tt)?;
-        writeln!(f, "tt nodes")?;
-        self.tt.fmt_nodes(f, &self.board)?;
+        writeln!(f, "tt pv extract")?;
+        self.tt.fmt_extract_pv_and_score(f, &self.board)?;
         writeln!(f, ".\n.\n[killers]\n{}", self.killers)?;
         writeln!(f, ".\n.\n[history]\n{}", self.history)?;
         writeln!(f, ".\n.\n[iterative deepening]\n{}", self.ids)?;

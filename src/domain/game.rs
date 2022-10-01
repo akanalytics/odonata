@@ -131,7 +131,7 @@ impl Game {
                         time_millis: s.time_millis,
                         nodes_k: s.nodes / 1000,
                         nps_k: s.nps / 1000,
-                        branching_factor: s.branching_factor,
+                        branching_factor: s.bf,
                         hashfull: format!("{}%", s.hashfull_per_mille / 10),
                         mv: s.best_move().unwrap_or_default(),
                         score_pov: s.score(),

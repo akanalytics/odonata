@@ -59,7 +59,6 @@ pub mod tags;
 pub mod trace;
 pub mod tune;
 pub mod piece;
-pub mod utils;
 pub mod variation;
 pub mod board;
 

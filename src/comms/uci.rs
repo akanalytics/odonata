@@ -16,7 +16,7 @@ use crate::search::search_progress::{SearchProgress, SearchProgressMode};
 use crate::search::timecontrol::{TimeControl, RemainingTime};
 use crate::tags::Tag;
 use crate::piece::Ply;
-use crate::utils::Formatting;
+use crate::infra::utils::Formatting;
 use crate::variation::Variation;
 use std::collections::HashMap;
 use std::fmt;

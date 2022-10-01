@@ -5,7 +5,7 @@ use crate::search::engine::Engine;
 use crate::search::timecontrol::TimeControl;
 use crate::tags::Tag;
 // use env_logger;
-use crate::utils::Formatting;
+use crate::infra::utils::Formatting;
 // use crate::globals::counts;
 use std::time::{Duration, Instant};
 

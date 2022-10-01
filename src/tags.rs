@@ -3,7 +3,7 @@ use crate::board::Board;
 use crate::movelist::MoveList;
 use crate::mv::Move;
 use crate::piece::Ply;
-use crate::utils::Formatting;
+use crate::infra::utils::Formatting;
 use crate::variation::Variation;
 use anyhow::{anyhow, Result};
 use once_cell::sync::Lazy;

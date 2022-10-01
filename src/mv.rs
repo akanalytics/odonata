@@ -4,7 +4,7 @@ use crate::bits::square::Square;
 use crate::board::Board;
 use crate::globals::constants::*;
 use crate::piece::{Color, Piece};
-use crate::utils::StringUtils;
+use crate::infra::utils::StringUtils;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::fmt::{self};

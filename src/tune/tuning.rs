@@ -3,7 +3,7 @@ use std::io::Write;
 use crate::eval::calc::Calc;
 use crate::eval::eval::Attr;
 use crate::eval::eval::Feature;
-use crate::eval::score::Score;
+use crate::infra::utils::{win_probability_from_cp_and_k, sigmoid};
 use crate::eval::scorer::ExplainScore;
 use crate::eval::weight::Weight;
 use crate::infra::component::Component;
@@ -201,7 +201,7 @@ impl Tuning {
                     return None;
                 }
                 let ph = eng.algo.eval.phaser.phase(&pos.board().material());
-                let mut explain = ExplainScore::new(ph, pos.board().to_fen());
+                let mut explain = ExplainScore::new(ph, 1., pos.board().to_fen());
                 Calc::new(&pos.board()).score(&mut explain, pos.board());
                 if eng.tuner.ignore_likely_endgames
                     && explain.value(Feature::Discrete(Attr::WinBonus)) != 0
@@ -274,10 +274,10 @@ impl Tuning {
             // }
             let k = logistic_steepness_k.interpolate(es.phase) as f32;
             let win_prob_estimate = match self.sigmoid {
-                Sigmoid::WinProb => Score::win_probability_from_cp_and_k(w_score, k),
+                Sigmoid::WinProb => win_probability_from_cp_and_k(w_score, k),
                 // Sigmoid::Exponential if w_score > 300.0 => 1.0,
                 // Sigmoid::Exponential if w_score < -300.0 => 0.0,
-                Sigmoid::Exponential => Score::sigmoid(w_score / 100.0),
+                Sigmoid::Exponential => sigmoid(w_score / 100.0),
             };
             let win_prob_actual = match es.outcome {
                 Outcome::WinWhite => 1.0,
@@ -408,7 +408,7 @@ mod tests {
 
     use super::*;
     use crate::eval::eval::Attr;
-    use crate::utils::{read_file, Formatting};
+    use crate::infra::utils::{read_file, Formatting};
     use crate::{eval::weight::Weight, infra::profiler::Profiler};
     use anyhow::Context;
     use test_log::test;

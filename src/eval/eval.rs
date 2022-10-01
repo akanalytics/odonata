@@ -1,6 +1,6 @@
 use crate::bits::square::Square;
 use crate::board::Board;
-use crate::cache::lockless_hashmap::VecCache;
+use crate::cache::lockless_hashmap::UnsharedTable;
 use crate::eval::material_balance::MaterialBalance;
 use crate::eval::pst::Pst;
 use crate::eval::score::Score;
@@ -45,6 +45,7 @@ use strum_macros::IntoStaticStr;
 pub enum Attr {
     PawnDoubled,
     PawnDirectlyDoubled,
+    PawnWeak,
     PawnIsolated,
     SemiIsolated,
     PawnPassed,
@@ -281,8 +282,6 @@ impl Feature {
     }
 }
 
-
-
 #[derive(Default, Clone, Debug)]
 pub struct WeightsVector {
     pub weights: Vec<Weight>,
@@ -299,6 +298,8 @@ impl fmt::Display for WeightsVector {
     }
 }
 
+#[derive(Copy,Clone,Debug)]
+pub (super) struct PawnStructure;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -307,6 +308,8 @@ pub struct Eval {
     pub mobility_phase_disable: u8,
     pub quantum: i32,
     cache_size: usize,
+    pub draw_scaling: f32,
+    pub draw_scaling_noisy: f32,
 
     pub pst: Pst,
     pub phaser: Phaser,
@@ -315,7 +318,10 @@ pub struct Eval {
     pub discrete: HashMap<String, Weight>,
 
     #[serde(skip)]
-    cache: VecCache<WhiteScore>,
+    eval_cache: UnsharedTable<WhiteScore>,
+
+    #[serde(skip)]
+    pawn_cache: UnsharedTable<PawnStructure>,
 
     #[serde(skip)]
     node_counts: Vec<Cell<u64>>,
@@ -334,6 +340,8 @@ impl Default for Eval {
             mb: MaterialBalance::default(),
             pst: Pst::default(),
             feature_weights: Vec::new(),
+            draw_scaling: 1.,
+            draw_scaling_noisy: 1.,
             discrete: HashMap::new(),
             phaser: Phaser::default(),
             see: See::default(),
@@ -341,7 +349,8 @@ impl Default for Eval {
             mobility_phase_disable: 101,
             quantum: 1,
             cache_size: DEFAULT_CACHE_SIZE,
-            cache: VecCache::with_size(DEFAULT_CACHE_SIZE),
+            eval_cache: UnsharedTable::with_size(DEFAULT_CACHE_SIZE),
+            pawn_cache: UnsharedTable::with_size(DEFAULT_CACHE_SIZE),
             node_counts: vec![Cell::new(0); DEFAULT_CACHE_SIZE],
             node_count: Cell::new(0),
         };
@@ -358,7 +367,7 @@ impl Component for Eval {
         use State::*;
         match s {
             NewGame => {
-                self.cache = VecCache::with_size(self.cache_size);
+                self.eval_cache = UnsharedTable::with_size(self.cache_size);
                 self.node_counts = vec![Cell::new(0); self.cache_size];
                 self.populate_feature_weights();
                 self.mb.new_game();
@@ -384,7 +393,8 @@ impl Component for Eval {
 impl fmt::Display for Eval {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "cache size       : {}", self.cache_size)?;
-        writeln!(f, "utilization (‰)  : {}", self.cache.hashfull_per_mille())?;
+        writeln!(f, "draw scaling     : {}", self.draw_scaling)?;
+        writeln!(f, "utilization (‰)  : {}", self.eval_cache.hashfull_per_mille())?;
         writeln!(f, "[material balance]\n{}", self.mb)?;
         writeln!(f, "[phaser]\n{}", self.phaser)?;
         writeln!(f, "phasing          : {}", self.phasing)?;
@@ -488,7 +498,7 @@ impl Eval {
     }
 
     pub fn w_eval_explain(&self, b: &Board) -> ExplainScore {
-        let mut scorer = ExplainScore::new(b.phase(&self.phaser), b.to_fen());
+        let mut scorer = ExplainScore::new(b.phase(&self.phaser), self.draw_scaling, b.to_fen());
         scorer.set_weights(self.weights_vector());
         Calc::new(&b).score(&mut scorer, b);
         scorer
@@ -496,7 +506,7 @@ impl Eval {
 
     fn w_eval_no_cache(&self, b: &Board) -> WhiteScore {
         let ph = b.phase(&self.phaser);
-        let mut scorer = TotalScore::new(&self.feature_weights, ph);
+        let mut scorer = TotalScore::new(&self.feature_weights, self.draw_scaling, ph);
         Calc::new(&b).score(&mut scorer, b);
         WhiteScore(Score::from_cp(
             scorer.total().interpolate(ph) as i32 / self.quantum * self.quantum,
@@ -511,7 +521,7 @@ impl Eval {
         self.node_count.set(self.node_count.get() + 1);
 
         let key = b.hash() as usize % self.cache_size;
-        if let Some(score) = self.cache.probe(key, b.hash()) {
+        if let Some(score) = self.eval_cache.probe(key, b.hash()) {
             Metrics::incr(Counter::EvalCacheHit);
             Metrics::incr_node(
                 &Node {
@@ -537,7 +547,7 @@ impl Eval {
                 Event::EvalCacheMiss,
             );
             let s = self.w_eval_no_cache(b);
-            self.cache.store(key, b.hash(), s);
+            self.eval_cache.store(key, b.hash(), s);
 
             #[cfg(not(feature = "remove_metrics"))]
             self.node_counts[key].set(self.node_count.get());
@@ -607,6 +617,7 @@ mod tests {
     use crate::infra::profiler::*;
     use crate::search::engine::Engine;
     use crate::test_log::test;
+    use crate::Position;
     use anyhow::Result;
     use toml;
 
@@ -639,6 +650,52 @@ mod tests {
         // info!("{:#?}", v);
         // info!("\n{}", toml::to_string_pretty(&SimpleScorer::default()).unwrap());
         Ok(())
+    }
+
+    #[test]
+    fn test_draw_scaling() {
+        fn score_for(s: &str, draw_scaling: f32) -> ExplainScore {
+            let eng = Engine::new();
+            let phr = Phaser::default();
+            let pos = Position::parse_epd(s).unwrap();
+            let mut sc = ExplainScore::new(
+                pos.board().phase(&phr),
+                draw_scaling,
+                format!("{:#}", pos.board().to_string()),
+            );
+            sc.set_weights(eng.algo.eval.weights_vector());
+            Calc::new(&pos.board()).score(&mut sc, pos.board());
+            sc
+        }
+        let drawish = r"
+            ........
+            ........
+            ........
+            R.K.....
+            ........
+            ........
+            ........
+            .....n.k w KQkq - 1 1";
+
+        let winnish = r"
+            ........
+            ........
+            R.......
+            R.K.....
+            ........
+            ........
+            ........
+            .....n.k w KQkq - 1 1";
+
+        let unscaled = score_for(drawish, 1.).total();
+        let half = score_for(drawish, 0.25).total();
+        assert_eq!(0.25 * unscaled, half);
+        info!("{unscaled} {half}");
+
+        let unscaled = score_for(winnish, 1.).total();
+        let half = score_for(winnish, 0.5).total();
+        assert_eq!(1. * unscaled, half);
+        info!("{unscaled} {half}");
     }
 
     #[test]

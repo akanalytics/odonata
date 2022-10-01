@@ -1,17 +1,20 @@
 use crate::bits::square::Square;
 use crate::board::Board;
 use crate::bound::NodeType;
-use crate::cache::lockless_hashmap::{Bucket, SharedTable};
+use crate::cache::lockless_hashmap::HashEntry;
 use crate::eval::score::Score;
-use crate::infra::component::Component;
+use crate::infra::component::{Component, State};
 use crate::infra::metric::Metrics;
 use crate::mv::{BareMove, Move};
 use crate::piece::{Hash, Piece, Ply};
 use crate::search::node::{Counter, Timing};
 use crate::variation::Variation;
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::sync::Arc;
+
+use super::lockless_hashmap::{AlignedVec, SharedTable};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct TtNode {
@@ -211,12 +214,15 @@ enum Replacement {
     AgeBlend,
 }
 
+// type TABLE = AlignedVec<HashEntry>;
+type TABLE=SharedTable;
+
 // FIXME Mates as score
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 #[serde(default, deny_unknown_fields)]
 pub struct TranspositionTable2 {
     #[serde(skip)]
-    table: Arc<SharedTable>,
+    table: Arc<TABLE>,
 
     pub enabled: bool,
     aging: bool,
@@ -231,6 +237,8 @@ pub struct TranspositionTable2 {
     min_depth: Ply,
     buckets: usize,
     aligned: bool,
+    overlapping_buckets: bool,
+    cacheline_size: usize,
     rewrite_pv: bool,
     freshen_on_fetch: bool,
     replacement: Replacement,
@@ -243,7 +251,7 @@ pub struct TranspositionTable2 {
 impl Default for TranspositionTable2 {
     fn default() -> Self {
         Self {
-            table: Arc::new(SharedTable::default()),
+            table: Arc::new(TABLE::default()),
             enabled: true,
             use_tt_for_pv: false,
             allow_truncated_pv: false,
@@ -254,6 +262,8 @@ impl Default for TranspositionTable2 {
             persistent: true,
             buckets: 2,
             aligned: false,
+            cacheline_size: 128,
+            overlapping_buckets: false,
             current_age: 10, // to allow us to look back
             hmvc_horizon: 85,
             min_ply: 1, // search restrictions on ply=0
@@ -269,27 +279,35 @@ impl Default for TranspositionTable2 {
     }
 }
 
-impl fmt::Debug for TranspositionTable2 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("TranspositionTable")
-            // .field("pv_table", &self.pv_table.extract_pv().)
-            .field("enabled", &self.enabled)
-            .field("use.tt.for.pv", &self.use_tt_for_pv)
-            .field("allow.truncated.pv", &self.allow_truncated_pv)
-            .field("mb", &self.mb)
-            .field("buckets", &self.buckets)
-            .field("aligned", &self.aligned)
-            .field("hmvc.horizon", &self.hmvc_horizon)
-            .field("aging", &self.aging)
-            .field("current.age", &self.current_age)
-            .finish()
-    }
-}
+// impl fmt::Debug for TranspositionTable2 {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         f.debug_struct("TranspositionTable")
+//             // .field("pv_table", &self.pv_table.extract_pv().)
+//             .field("enabled", &self.enabled)
+//             .field("use.tt.for.pv", &self.use_tt_for_pv)
+//             .field("allow.truncated.pv", &self.allow_truncated_pv)
+//             .field("mb", &self.mb)
+//             .field("buckets", &self.buckets)
+//             .field("aligned", &self.aligned)
+//             .field("hmvc.horizon", &self.hmvc_horizon)
+//             .field("aging", &self.aging)
+//             .field("current.age", &self.current_age)
+//             .finish()
+//     }
+// }
 
 impl fmt::Display for TranspositionTable2 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{}", toml::to_string_pretty(self).unwrap())?;
-        writeln!(f, "table capacity   : {}", self.table.capacity())?;
+        writeln!(f, "{}", toml::to_string_pretty(&self).unwrap())?;
+        writeln!(
+            f,
+            "table:\n{}",
+            toml::to_string_pretty(self.table.as_ref())
+                .unwrap()
+                .lines()
+                .map(|s| "    ".to_string() + s)
+                .join("\n")
+        )?;
         // writeln!(f, "entry: pv        : {}", self.count_of(NodeType::ExactPv))?;
         // writeln!(f, "entry: cut       : {}", self.count_of(NodeType::LowerCut))?;
         // writeln!(f, "entry: all       : {}", self.count_of(NodeType::UpperAll))?;
@@ -307,35 +325,55 @@ impl fmt::Display for TranspositionTable2 {
 }
 
 impl Component for TranspositionTable2 {
-    fn new_game(&mut self) {
-        self.resize_if_required();
-        self.current_age = 10;
-        self.table.clear()
+    fn set_state(&mut self, s: State) {
+        use State::*;
+        match s {
+            NewGame => {
+                self.resize_if_required();
+                self.current_age = 10;
+                self.clear()
+            }
+            SetPosition => self.next_generation(),
+            StartSearch => self.resize_if_required(),
+            EndSearch => {}
+            StartDepthIteration(_) => {}
+            Shutdown => {}
+        }
     }
 
-    fn new_position(&mut self) {
-        self.resize_if_required();
-        self.next_generation();
-    }
+    fn new_game(&mut self) {}
+
+    fn new_position(&mut self) {}
 }
 
 impl TranspositionTable2 {
     fn resize_if_required(&mut self) {
         if self.requires_resize() {
-            let capacity = SharedTable::convert_mb_to_capacity(self.mb);
+            let capacity = TABLE::convert_mb_to_capacity(self.mb);
             info!(
                 "tt resized so capacity is now {} with {} buckets",
                 capacity, self.buckets
             );
-            let mut table = SharedTable::default();
-            table.resize(capacity, self.buckets, self.aligned);
+
+            warn!(
+                "In resize table with aligned = {} cap = {}",
+                self.aligned, capacity
+            );
+            let mut table = TABLE::default();
+            table.resize(
+                capacity,
+                self.buckets,
+                self.aligned,
+                self.overlapping_buckets,
+                self.cacheline_size,
+            );
             self.table = Arc::new(table);
             self.current_age = 10;
         }
     }
 
     fn clear(&mut self) {
-        self.table.clear();
+        self.table.iter().for_each(|he| he.set_empty());
     }
 
     pub fn rewrite_pv(&self, b: &Board) {
@@ -344,7 +382,7 @@ impl TranspositionTable2 {
         }
     }
 
-    pub fn fmt_nodes(&self, f: &mut fmt::Formatter, b: &Board) -> fmt::Result {
+    pub fn fmt_extract_pv_and_score(&self, f: &mut fmt::Formatter, b: &Board) -> fmt::Result {
         let (var, _) = self.extract_pv_and_score(b);
         for mv in var.iter() {
             writeln!(f, "{:#}", mv)?
@@ -368,7 +406,7 @@ impl TranspositionTable2 {
     }
 
     pub fn requires_resize(&self) -> bool {
-        let capacity = SharedTable::convert_mb_to_capacity(self.mb);
+        let capacity = TABLE::convert_mb_to_capacity(self.mb);
         debug!(
             "tt current capacity {} and {} mb implies capacity of {}",
             self.table.capacity(),
@@ -413,19 +451,22 @@ impl TranspositionTable2 {
     }
 
     #[inline]
-    fn age_of(b: &Bucket) -> u8 {
+    fn age_of(b: &HashEntry) -> u8 {
         (b.data() & 255) as u8
     }
 
     pub fn hashfull_per_mille(&self) -> u32 {
-        let count = self
-            .table
-            .iter()
-            .take(200)
-            .filter(|&b| Self::age_of(b) == self.current_age)
-            .count();
-        count as u32 * 1000 / 200
+        self.table.hashfull_per_mille()
     }
+
+    //     let count = self
+    //         .table
+    //         .iter()
+    //         .take(200)
+    //         .filter(|&b| Self::age_of(b) == self.current_age)
+    //         .count();
+    //     count as u32 * 1000 / 200
+    // }
 
     #[inline]
     pub fn store(&mut self, h: Hash, mut new_node: TtNode) {
@@ -450,7 +491,7 @@ impl TranspositionTable2 {
 
         // probe by hash not board so any "conditions" are bypassed
         let mut bucket_to_overwrite = None;
-        let buckets = self.table.buckets(h);
+        let buckets = self.table.bucket(h);
         // // FIXME! race condition here we dont worry about
         // if false && hash != h {
         //     self.table.utilization.increment();
@@ -472,7 +513,7 @@ impl TranspositionTable2 {
         for bucket in buckets.iter() {
             let key = bucket.key();
             let data = bucket.data();
-            if Bucket::has_hash(h, (key, data)) {
+            if HashEntry::has_hash(h, (key, data)) {
                 bucket_to_overwrite = Some(bucket);
                 match_type = MatchType::SameHash;
                 break;
@@ -483,7 +524,7 @@ impl TranspositionTable2 {
             for bucket in buckets.iter() {
                 let key = bucket.key();
                 let data = bucket.data();
-                if Bucket::is_empty(key, data) {
+                if HashEntry::is_empty(key, data) {
                     bucket_to_overwrite = Some(bucket);
                     match_type = MatchType::Empty;
                     break;
@@ -579,12 +620,28 @@ impl TranspositionTable2 {
         tt_node
     }
 
+    #[inline]
+    fn probe_raw(&self, h: Hash) -> Option<(u64, &HashEntry)> {
+        for entry in self.table.bucket(h) {
+            let key = entry.key();
+            let data = entry.data();
+            if HashEntry::is_empty(key, data) {
+                continue;
+            }
+            let hash = key ^ data;
+            if hash == h {
+                return Some((data, entry));
+            }
+        }
+        None
+    }
+
     pub fn probe_by_hash(&self, h: Hash) -> Option<TtNode> {
         // debug!("Probe by hash");
         // if !self.enabled || self.capacity() == 0 {
         //     return None;
         // }
-        if let Some((data, bucket)) = self.table.probe(h) {
+        if let Some((data, bucket)) = self.probe_raw(h) {
             let new_data = (data & !255) | (self.current_age as u64 & 255);
             if self.freshen_on_fetch {
                 bucket.write(h, new_data);
@@ -701,10 +758,10 @@ mod tests {
     }
 
     #[test]
-    fn test_tt2() {
+    fn test_tt() {
         let mut tt1 = TranspositionTable2::default();
         tt1.new_game();
-        info!("diplay\n{}", tt1);
+        info!("display\n{tt1}\ndebug\n{tt1:?}");
         info!("After new game");
         let board = Catalog::starting_board();
         let moves = tt1.extract_pv_and_score(&board).0;
@@ -770,7 +827,14 @@ mod tests {
 
         println!("{:?}", tt);
         println!("{}", tt);
-        assert_eq!(tt.hashfull_per_mille(), 0);
+        println!(
+            "utilization {}, capacity {}",
+            tt.table.utilization(),
+            tt.table.capacity()
+        );
+
+        // 1 entry in 200 is 5%%
+        assert_eq!(tt.hashfull_per_mille(), 5);
     }
 
     #[test]
@@ -816,10 +880,8 @@ mod tests {
             // No reason acd = pv length as pv line may be reduced due to lmr etc.
             assert!(
                 pv.len() >= (d as usize) - 1,
-                "algo.pv={} pv={}\n{}",
-                algo.pv(),
-                pv,
-                algo
+                "algo.pv=<{algopv}> ttpv=<{pv}>",
+                algopv = algo.pv(),
             );
             // certainly pv can be longer as it has qsearch
             // assert!(

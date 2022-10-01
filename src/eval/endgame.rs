@@ -92,6 +92,21 @@ pub enum EndGame {
 
     KPPPk,
     Kkppp,
+
+    KNNkn,
+    KNNkb,
+    KNknn,
+    KBknn,
+
+    KBBkn,
+    KBBkb,
+    KNkbb,
+    KBkbb,
+
+    KBNkn,
+    KBNkb,
+    KNkbn,
+    KBkbn,
 }
 
 use static_init::dynamic;
@@ -119,12 +134,14 @@ impl EndGame {
             Unknown => UnknownOutcome,
             Kk | KMk | Kkm | KNNk | Kknn => DrawImmediate,
 
-            KMkm | KBBk | Kkbb => Draw, // (helpmate?)
+            KMkm => Draw,
+            KBBk => Draw,
+            Kkbb => Draw, 
 
             KRk | KQk | KBNk | KBbk | KJJk | KJMk => WhiteWin,
             Kkr | Kkq | Kkbn | KkBb | Kkjj | Kkjm => WhiteLoss,
 
-            // Guesses
+            // // Guesses
             KPkp => Draw,
 
             KMkp => WhiteLossOrDraw,
@@ -136,7 +153,7 @@ impl EndGame {
             KRkp => UnknownOutcome,
             KPkr => UnknownOutcome,
 
-            //
+            // //
             KPk => WhiteWinOrDraw,
             Kkp => WhiteLossOrDraw,
 
@@ -147,10 +164,10 @@ impl EndGame {
             KQkm => WhiteWin,
             KMkq => WhiteLoss,
 
-            KRkr => UnknownOutcome,
+            // KRkr => UnknownOutcome,
             KQkr => WhiteWin,
             KRkq => WhiteLoss,
-            KQkq => UnknownOutcome,
+            // KQkq => UnknownOutcome,
 
             KPPk => WhiteWin,
             Kkpp => WhiteLoss,
@@ -162,6 +179,22 @@ impl EndGame {
             Kknp => WhiteLossOrDraw,
             KBPk => WhiteWinOrDraw,
             Kkbp => WhiteLossOrDraw,
+
+            // KNNkn => Draw,
+            // KNNkb => Draw,
+            // KNknn => Draw,
+            // KBknn => Draw,
+        
+            // KBBkn => Draw,
+            // KBBkb => Draw,
+            // KNkbb => Draw,
+            // KBkbb => Draw,
+
+            // KBNkn => Draw,
+            // KBNkb => Draw,
+            // KNkbn => Draw,
+            // KBkbn => Draw,
+            _ => UnknownOutcome,
         }
     }
 
@@ -319,23 +352,21 @@ impl EndGame {
             return Self::Unknown;
         }
 
-        let wp = (b.pawns() & b.white()).popcount();
-        let bp = (b.pawns() & b.black()).popcount();
-        let n_pawns = wp + bp;
-        if wp == 3 {
-            return Self::KPPPk;
-        }
-        if bp == 3 {
-            return Self::Kkppp;
-        }
-
-        if n_pieces >= 5 {
-            return Self::Unknown;
-        }
-
         if n_pieces == 2 {
             return Self::Kk;
         }
+
+
+        let wp = (b.pawns() & b.white()).popcount();
+        let bp = (b.pawns() & b.black()).popcount();
+        let n_pawns = wp + bp;
+        if wp == 3 && bp == 0 {
+            return Self::KPPPk;
+        }
+        if bp == 3 && wp == 0 {
+            return Self::Kkppp;
+        }
+
 
         if n_pieces == 3 {
             if b.rooks().any() {
@@ -360,6 +391,27 @@ impl EndGame {
         let wn = (b.knights() & b.white()).popcount();
         let bn = (b.knights() & b.black()).popcount();
         let bb = (b.bishops() & b.black()).popcount();
+        if n_pieces >= 5 && (b.rooks_or_queens().any() || b.pawns().any()) {
+            return Self::Unknown;
+        }
+        if n_pieces == 5  {
+            match (wn, wb, bn, bb) {
+            //     (2,0,1,0) => return EndGame::KNNkn,
+            //     (2,0,0,1) => return EndGame::KNNkb,
+            //     (1,0,2,0) => return EndGame::KNknn,
+            //     (0,1,2,0) => return EndGame::KBknn,
+            //     (1,1,1,0) => return EndGame::KBNkn,
+            //     (1,1,0,1) => return EndGame::KBNkb,
+            //     (1,0,1,1) => return EndGame::KNkbn,
+            //     (0,1,1,1) => return EndGame::KBkbn,
+            //     (0,2,1,0) => return EndGame::KBBkn,
+            //     (0,2,0,1) => return EndGame::KBBkb,
+            //     (1,0,0,2) => return EndGame::KNkbb,
+            //     (0,1,0,2) => return EndGame::KBkbb,
+                _ => return EndGame::Unknown,
+            }
+        }
+
         if n_pieces == 3 {
             if wb + wn > 0 {
                 return EndGame::KMk;
@@ -503,6 +555,16 @@ mod tests {
         let b = Board::parse_fen("kbb5/8/8/8/8/8/8/K7 w - - 0 1").unwrap();
         let eg = EndGame::from_board(&b);
         assert_eq!(eg, EndGame::KkBb);
+
+        let b = Board::parse_fen("kbb5/8/8/8/8/8/8/KN6 w - - 0 1").unwrap();
+        let eg = EndGame::from_board(&b);
+        assert_eq!(eg, EndGame::KNkbb);
+        assert_eq!(eg.likely_outcome(&b), LikelyOutcome::Draw);
+
+        let b = Board::parse_fen("knn5/8/8/8/8/8/8/KBB5 w - - 0 1").unwrap();
+        let eg = EndGame::from_board(&b);
+        assert_eq!(eg, EndGame::Unknown);
+
         let b = Board::parse_fen("kb1b4/8/8/8/8/8/8/K7 w - - 0 1").unwrap();
         let eg = EndGame::from_board(&b);
         assert_eq!(eg, EndGame::Kkbb);

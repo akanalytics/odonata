@@ -79,6 +79,10 @@ export_games = false
 [eval]
 quantum = 1
 cache_size = 10_000
+draw_scaling = 1.0
+draw_scaling_noisy = 1.0
+
+
 
 
 [eval.see]
@@ -119,6 +123,7 @@ promo=false
 [eval.discrete]
 pawn_doubled                   = { s =   -10.78, e =   -38.13 }
 pawn_directly_doubled          = { s =     0.00, e =     0.00 }
+pawn_weak                      = { s =     0.00, e =     0.00 }
 pawn_isolated                  = { s =   -15.10, e =    11.51 }
 semi_isolated                  = { s =     0.00, e =     0.00 }
 pawn_passed                    = { s =    -5.19, e =     3.85 }
@@ -692,6 +697,8 @@ enabled = true
 beta_enabled = true
 max_depth = 3
 min_opponents = 4
+min_pieces = 0
+min_pieces_depth = 1
 pv_nodes = false
 store_tt = true
 margin1 = 94
@@ -714,6 +721,8 @@ max_pawn_rank = 5
 max_depth = 2
 max_depth_captures = 2
 prune_remaining = false
+min_pieces = 0
+min_pieces_depth = 1
 margin_qs = 0
 margin1 = 100
 margin2 = 250
@@ -735,6 +744,8 @@ prune_alpha_mate = true
 prune_beta_mate = true
 prune_eval_mate = false
 max_depth = 3
+min_pieces = 0
+min_pieces_depth = 1
 margin1 = 90
 margin2 = 180
 margin3 = 300
@@ -909,7 +920,9 @@ use_tt_for_eval = false
 tt_for_eval_depth = 0
 allow_truncated_pv = true
 buckets = 2
-aligned = false
+aligned = true
+overlapping_buckets = false
+cacheline_size = 64
 mb = 8
 hmvc_horizon = 85
 min_ply = 1

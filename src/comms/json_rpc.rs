@@ -6,7 +6,7 @@ use crate::position::Position;
 use crate::search::engine::Engine;
 use crate::tags::Tag;
 use crate::tune::Tuning;
-use crate::utils::read_file;
+use crate::infra::utils::read_file;
 use anyhow::Context;
 use itertools::Itertools;
 // // use crate::{info, logger::LogInit};

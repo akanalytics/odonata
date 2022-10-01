@@ -3,7 +3,7 @@ use crate::board::Board;
 use crate::movelist::MoveList;
 use crate::mv::Move;
 use crate::piece::Color;
-use crate::utils::StringUtils;
+use crate::infra::utils::StringUtils;
 use once_cell::sync::Lazy;
 use regex::Regex;
 pub struct Parse;

@@ -6,6 +6,7 @@ pub mod tracer;
 pub mod version;
 pub mod metric;
 pub mod profiler;
+pub mod utils;
 
 // from iai/bencher/criterion etc - the "standard" black_box def
 pub fn black_box<T>(dummy: T) -> T {

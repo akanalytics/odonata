@@ -8,42 +8,45 @@ use tabled::{
     Alignment, Modify, Padding, Style,
 };
 
-use crate::{other::outcome::Outcome, phaser::Phase, utils::Formatting, Bitboard, Color, Piece};
+use crate::{other::outcome::Outcome, phaser::Phase, infra::utils::Formatting, Bitboard, Color, Piece, bits::precalc::Pawns, board::Board};
 
-use super::{eval::Feature, eval::WeightsVector, weight::Weight};
+use super::{eval::Feature, eval::{WeightsVector}, weight::Weight};
 
 pub trait ScorerBase {
     fn accumulate(&mut self, i: Feature, w_value: i32, b_value: i32);
     fn accum(&mut self, c: Color, i: Feature, value: i32);
     fn set_bits(&mut self, i: Feature, bits: Bitboard);
+    fn apply_scaling(&mut self, scaling: f32);
 }
 
 #[derive(Debug)]
 pub struct TotalScore<'a> {
     weights: &'a [Weight],
     _phase: Phase,
+    draw_scaling: f32,
     total: Weight,
 }
 
 impl<'a> TotalScore<'a> {
     #[inline]
-    pub fn new(weights: &'a Vec<Weight>, _phase: Phase) -> Self {
+    pub fn new(weights: &'a Vec<Weight>, draw_scaling: f32, _phase: Phase) -> Self {
         Self {
             weights,
             _phase,
+            draw_scaling,
             total: Weight::zero(),
         }
     }
 
     #[inline]
     pub fn total(&self) -> Weight {
-        self.total
+        self.draw_scaling * self.total
     }
 }
 
 pub fn profile() {
     let a = vec![Weight::default(); 100];
-    let mut ts = TotalScore::new(&a, Phase::default());
+    let mut ts = TotalScore::new(&a, 0.5, Phase::default());
     let f = TotalScore::accumulate;
 
     f(&mut ts, Feature::Piece(Piece::Pawn), 3, 2);
@@ -67,6 +70,11 @@ impl<'a> ScorerBase for TotalScore<'a> {
 
     #[inline]
     fn set_bits(&mut self, _i: Feature, _bits: Bitboard) {}
+
+    #[inline]
+    fn apply_scaling(&mut self, scaling: f32) {
+        self.draw_scaling = scaling;   
+    }
 }
 
 #[derive(Clone, Debug, Default)]
@@ -74,15 +82,17 @@ pub struct ExplainScore {
     pub outcome: Outcome,
     pub fen: String,
     pub phase: Phase,
+    pub draw_scaling: f32,
     vec: Vec<(Feature, i32, i32, i32)>, // w-val, b-val, feature-index
     weights: Option<WeightsVector>,
     bitboards: HashMap<Feature, Bitboard>,
 }
 
 impl ExplainScore {
-    pub fn new(phase: Phase, fen: String) -> Self {
+    pub fn new(phase: Phase, draw_scaling: f32, fen: String) -> Self {
         Self {
             phase,
+            draw_scaling,
             fen,
             ..Self::default()
         }
@@ -127,6 +137,11 @@ impl ScorerBase for ExplainScore {
                 self.bitboards.insert(i, bits);
             }
         }
+    }
+
+    #[inline]
+    fn apply_scaling(&mut self, scaling: f32) {
+        self.draw_scaling = scaling;   
     }
 }
 
@@ -181,14 +196,14 @@ impl ExplainScore {
     }
 
     pub fn total(&self) -> Weight {
-        match self.weights {
+        self.draw_scaling * match self.weights {
             None => self.vec.iter().map(|e| (e.1 - e.2)).sum::<i32>() * Weight::new(1.0, 1.0),
             Some(ref wv) => self
                 .vec
                 .iter()
                 .map(|e| (e.1 - e.2) * wv.weights[e.0.index()])
                 .sum(),
-        }
+        } 
     }
 
     pub fn write_csv<'a, W: Write>(
@@ -290,6 +305,27 @@ impl Display for ExplainScore {
         row.push(fp(grand_tot.s()));
         row.push(fp(grand_tot.e()));
         builder.add_record(row);
+
+        let mut row = vec![];
+        row.push("Scaling".to_owned());
+        row.push("".into());
+        row.push("".into());
+        row.push("".into());
+        row.push(fp(self.draw_scaling));
+        row.push("".into());
+        row.push("".into());
+        builder.add_record(row);
+
+        let mut row = vec![];
+        row.push("Scaled Total".to_owned());
+        row.push("".into());
+        row.push("".into());
+        row.push("".into());
+        row.push(fp((self.draw_scaling * grand_tot).interpolate(self.phase)));
+        row.push(fp(self.draw_scaling * grand_tot.s()));
+        row.push(fp(self.draw_scaling * grand_tot.e()));
+        builder.add_record(row);
+
         let mut tab = builder.build();
         tab = tab
             .with(Modify::new(Segment::all()).with(Alignment::right()))
@@ -311,7 +347,16 @@ impl Display for ExplainScore {
             }
             let tab = builder.build();
             tab.fmt(f)?;
+            writeln!(f)?;
+
+            writeln!(f, "Pawns:")?;
+            let b = Board::parse_fen(&self.fen).unwrap();
+            let pawns = Pawns::new(b.pawns() & b.white(), b.pawns() & b.black());
+            writeln!(f, "{pawns}")?;
+
+
         }
+
         Ok(())
     }
 }
@@ -324,7 +369,7 @@ mod tests {
     use crate::phaser::Phaser;
     use crate::search::engine::Engine;
     use crate::test_log::test;
-    // use crate::utils::StringUtils;
+    // use crate::infra::utils::StringUtils;
 
     #[test]
     fn test_explain() {
@@ -339,10 +384,10 @@ mod tests {
         for pos in positions.iter().chain(end_games.iter()) {
             let b = pos.board();
 
-            let mut scorer2 = TotalScore::new(&eval.feature_weights, b.phase(&phaser));
+            let mut scorer2 = TotalScore::new(&eval.feature_weights, 0.5, b.phase(&phaser));
             Calc::new(&b).score(&mut scorer2, &b);
 
-            let mut scorer3 = ExplainScore::new(b.phase(&phaser), pos.board().to_fen());
+            let mut scorer3 = ExplainScore::new(b.phase(&phaser), 0.25, pos.board().to_fen());
             scorer3.set_weights(eval.weights_vector());
             Calc::new(&b).score(&mut scorer3, &b);
 

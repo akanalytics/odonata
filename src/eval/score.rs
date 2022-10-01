@@ -1,6 +1,7 @@
 use crate::piece::{Ply, MAX_PLY};
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use crate::infra::utils::win_probability_from_cp_and_k;
 
 // pub struct ScoreBound {
 //     score: Score,
@@ -206,26 +207,6 @@ impl Score {
     }
 
 
-    // https://www.chessprogramming.org/Pawn_Advantage,_Win_Percentage,_and_Elo
-    #[inline]
-    pub fn win_probability_from_cp_and_k(centipawns: f32, k: f32) -> f32 {
-        1.0 / (1.0 + 10_f32.powf(-centipawns / (k * 100.0)))
-    }
-
-    #[inline]
-    pub fn sigmoid(centipawns: f32) -> f32 {
-        1.0 / (1.0 + f32::exp(-centipawns ))
-    }
-
-    // #[inline]
-    // pub fn win_probability_from_cp_and_k_fast(centipawns: f32, k: f32) -> f32 {
-    //     #[inline]
-    //     fn pow10(b: f32) -> f32 {
-    //         const LOG_OF_10: f32 = 2.302_585_125; // ln(10.0)
-    //         fast_math::exp(b * LOG_OF_10)
-    //     }
-    //     1.0 / (1.0 + pow10(-centipawns / (k * 100.0)))
-    // }
 
     #[inline]
     pub fn win_probability(self) -> f32 {
@@ -235,7 +216,7 @@ impl Score {
     #[inline]
     pub fn win_probability_using_k(self, k: f32) -> f32 {
         if self.is_numeric() {
-            Self::win_probability_from_cp_and_k(self.cp as f32, k)
+            win_probability_from_cp_and_k(self.cp as f32, k)
         } else if self.cp > 0 {
             1.0
         } else {
@@ -437,7 +418,7 @@ mod tests {
         let mut p = Profiler::new("standard_exp".into());
         p.start();
         for cp in (-1000..1000).step_by(100) {
-            black_box(Score::win_probability_from_cp_and_k(cp as f32, 4.0));
+            black_box(win_probability_from_cp_and_k(cp as f32, 4.0));
         }
         p.stop();
 

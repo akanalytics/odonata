@@ -8,7 +8,7 @@ use crate::search::algo::Algo;
 use crate::search::timecontrol::TimeControl;
 use crate::trace::stat::Stat;
 use crate::tune::Tuning;
-use crate::utils::Formatting;
+use crate::infra::utils::Formatting;
 use anyhow::{anyhow, Context, Result};
 use figment::providers::{Env, Format, Toml};
 use figment::value::{Dict, Map};
@@ -190,9 +190,8 @@ impl Engine {
             },
             ..engine
         };
-        FEATURE.store(engine.feature, Ordering::SeqCst);
+        FEATURE.store(engine.feature, Ordering::SeqCst);        
         // self.algo.eval.populate_feature_weights();
-        self.set_state(State::NewGame);
         Ok(())
     }
 
@@ -322,7 +321,7 @@ mod tests {
     use crate::catalog::*;
     use crate::comms::uci::Uci;
     use crate::infra::black_box;
-    use crate::utils::Formatting;
+    use crate::infra::utils::Formatting;
     use std::time;
     use test_log::test;
 

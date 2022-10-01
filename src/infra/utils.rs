@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use format_num::*;
 use itertools::Itertools;
 use std::collections::HashMap;
@@ -7,21 +8,121 @@ use std::io::BufRead;
 use std::ops::{Bound, RangeBounds};
 use std::path::Path;
 use std::time::Duration;
-use anyhow::{Result, Context};
 
 use crate::infra::metric::Metrics;
+use crate::piece::Ply;
 use crate::search::node::Timing;
 
+pub struct Displayable<T>(pub T)
+where
+    T: Fn(&mut fmt::Formatter) -> fmt::Result;
 
-pub struct Displayable<T>(pub T) where T: Fn(&mut fmt::Formatter) -> fmt::Result;
-
-impl<T> fmt::Display for Displayable<T> where T: Fn(&mut fmt::Formatter) -> fmt::Result {
+impl<T> fmt::Display for Displayable<T>
+where
+    T: Fn(&mut fmt::Formatter) -> fmt::Result,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0(f)
     }
 }
 
+// https://www.chessprogramming.org/Pawn_Advantage,_Win_Percentage,_and_Elo
+#[inline]
+pub fn win_probability_from_cp_and_k(centipawns: f32, k: f32) -> f32 {
+    1.0 / (1.0 + 10_f32.powf(-centipawns / (k * 100.0)))
+}
 
+#[inline]
+pub fn sigmoid(centipawns: f32) -> f32 {
+    1.0 / (1.0 + f32::exp(-centipawns))
+}
+
+// #[inline]
+// pub fn win_probability_from_cp_and_k_fast(centipawns: f32, k: f32) -> f32 {
+//     #[inline]
+//     fn pow10(b: f32) -> f32 {
+//         const LOG_OF_10: f32 = 2.302_585_125; // ln(10.0)
+//         fast_math::exp(b * LOG_OF_10)
+//     }
+//     1.0 / (1.0 + pow10(-centipawns / (k * 100.0)))
+// }
+
+// branching factor formulae:
+//
+//   N: Total number of nodes processed in this (lastest/highest depth) iteration
+//   d: Depth
+//   b*: Effective branching factor.
+//   N = b* + (b*)^2 + ... + (b*)^d
+//
+// gp summation formula:
+//
+//    Sn = a + ar + ar2 + ar3 +…+ arn-1
+//
+//    The formula to find the sum of n terms of GP is:
+//
+//    Sn = a[(rn – 1)/(r – 1)] if r ≠ 1 and r > 1
+//
+pub fn calculate_branching_factor_by_nodes_and_depth(
+    nodes: u64,
+    depth: Ply,
+) -> anyhow::Result<f64> {
+    let f = |r: f64| (1..=depth).map(|d: i32| r.powf(d as f64)).sum::<f64>() - nodes as f64;
+    anyhow::ensure!(
+        depth > 0 && nodes > 0,
+        "Depth {depth} and nodes {nodes} must be > 0"
+    );
+    let guess = (nodes as f64).powf(1.0 / depth as f64);
+    trace!("initial guess = {guess} on nodes = {nodes} depth = {depth}");
+    solver_bisection(&f, (0.0, guess), 40, 1e-6)
+}
+
+pub fn solver_bisection<FUNC>(
+    f: &FUNC,
+    mut interval: (f64, f64),
+    max_iters: usize,
+    epsilon: f64,
+) -> anyhow::Result<f64>
+where
+    FUNC: Fn(f64) -> f64,
+{
+    let mut f_0 = f(interval.0);
+    let mut error = 0.;
+
+    // ensure we started with valid bracket
+    anyhow::ensure!(
+        f_0 * f(interval.1) <= 0.,
+        "Window [{x},{y}] must bound root",
+        x = interval.0,
+        y = interval.1
+    );
+
+    for iter in 0..max_iters {
+        let mid = (interval.0 + interval.1) / 2.;
+        let f_mid = f(mid);
+
+        if f_0 * f_mid < 0. {
+            interval.1 = mid;
+        } else {
+            interval.0 = mid;
+            f_0 = f_mid;
+        }
+
+        error = (interval.1 - interval.0).abs();
+        trace!(
+            "iter {iter} [{x},{y}] f(x) = {fx}",
+            x = interval.0,
+            y = interval.1,
+            fx = f_mid
+        );
+        if error < epsilon {
+            return Ok(interval.0);
+        }
+    }
+    anyhow::bail!(
+        "Unable to find solution after {max_iters}, best so far is {x} with error {error}",
+        x = interval.0
+    );
+}
 
 //
 // https://stackoverflow.com/questions/59413614/cycle-a-rust-iterator-a-given-number-of-times
@@ -238,6 +339,7 @@ impl StringUtils for str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use test_log::test;
 
     #[test]
     fn test_split_off_first_word() {
@@ -338,5 +440,17 @@ mod tests {
         assert_eq!(Formatting::decimal(2, 0.0124 as f32).as_str(), "0.01");
         assert_eq!(Formatting::decimal(0, 4.0124).as_str(), "4");
         assert_eq!(Formatting::decimal(4, 4.012).as_str(), "4.0120");
+    }
+
+    #[test]
+    fn test_calculate_branching_factor() {
+        let bf = calculate_branching_factor_by_nodes_and_depth(14, 3).unwrap();
+        assert!((2.0 - bf).abs() < 0.001);
+
+        let bf = calculate_branching_factor_by_nodes_and_depth(30, 4).unwrap();
+        assert!((2.0 - bf).abs() < 0.001);
+
+        let bf = calculate_branching_factor_by_nodes_and_depth(500_000_000, 30).unwrap();
+        assert!(bf > 0.001);
     }
 }

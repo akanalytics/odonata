@@ -2,6 +2,7 @@ use crate::bits::square::Square;
 use crate::piece::Color;
 use anyhow::{anyhow, bail, Context, Result};
 use itertools::Itertools;
+use serde::{Deserialize, Serialize};
 use std::fmt::{self, Write};
 use std::ops;
 use std::str::FromStr;
@@ -173,7 +174,7 @@ impl<T> std::ops::IndexMut<Dir> for [T] {
     }
 }
 
-#[derive(Copy, Clone, Default, PartialOrd, PartialEq, Ord, Eq, Hash)]
+#[derive(Copy, Clone, Default, PartialOrd, PartialEq, Ord, Eq, Hash, Serialize, Deserialize)]
 pub struct Bitboard(u64);
 
 impl Bitboard {
@@ -287,18 +288,18 @@ impl Bitboard {
             | Self::H1.bits(),
     );
     pub const FILE_B: Bitboard = Bitboard(Self::FILE_A.bits() << 1);
-    pub const RANK_2: Bitboard = Bitboard(Self::RANK_1.bits() << 8);
     pub const FILE_C: Bitboard = Bitboard(Self::FILE_A.bits() << 2);
-    pub const RANK_3: Bitboard = Bitboard(Self::RANK_1.bits() << (2 * 8));
     pub const FILE_D: Bitboard = Bitboard(Self::FILE_A.bits() << 3);
-    pub const RANK_4: Bitboard = Bitboard(Self::RANK_1.bits() << (3 * 8));
     pub const FILE_E: Bitboard = Bitboard(Self::FILE_A.bits() << 4);
-    pub const RANK_5: Bitboard = Bitboard(Self::RANK_1.bits() << (4 * 8));
     pub const FILE_F: Bitboard = Bitboard(Self::FILE_A.bits() << 5);
-    pub const RANK_6: Bitboard = Bitboard(Self::RANK_1.bits() << (5 * 8));
     pub const FILE_G: Bitboard = Bitboard(Self::FILE_A.bits() << 6);
-    pub const RANK_7: Bitboard = Bitboard(Self::RANK_1.bits() << (6 * 8));
     pub const FILE_H: Bitboard = Bitboard(Self::FILE_A.bits() << 7);
+    pub const RANK_2: Bitboard = Bitboard(Self::RANK_1.bits() << 8);
+    pub const RANK_3: Bitboard = Bitboard(Self::RANK_1.bits() << (2 * 8));
+    pub const RANK_4: Bitboard = Bitboard(Self::RANK_1.bits() << (3 * 8));
+    pub const RANK_5: Bitboard = Bitboard(Self::RANK_1.bits() << (4 * 8));
+    pub const RANK_6: Bitboard = Bitboard(Self::RANK_1.bits() << (5 * 8));
+    pub const RANK_7: Bitboard = Bitboard(Self::RANK_1.bits() << (6 * 8));
     pub const RANK_8: Bitboard = Bitboard(Self::RANK_1.bits() << (7 * 8));
 
     // https://gekomad.github.io/Cinnamon/BitboardCalculator/
@@ -325,6 +326,7 @@ impl Bitboard {
     pub const RANKS_27: Bitboard = Bitboard::RANK_2.or(Bitboard::RANK_7);
     pub const RANKS_36: Bitboard = Bitboard::RANK_3.or(Bitboard::RANK_6);
     pub const RANKS_45: Bitboard = Bitboard::RANK_4.or(Bitboard::RANK_5);
+
     pub const CENTER_4_SQ: Bitboard = Bitboard::RANKS_45.and(Bitboard::FILE_D.or(Bitboard::FILE_E));
     pub const CENTER_16_SQ: Bitboard = (Bitboard::RANKS_45.or(Bitboard::RANKS_36)).and(
         Bitboard::FILE_C
@@ -593,7 +595,7 @@ impl Bitboard {
         // }
     }
 
-    // excludes the src squares themselves, but includes edge squares
+    /// rays exclude the src squares themselves, but includes edge squares
     #[inline]
     pub fn rays(self, dir: Dir) -> Bitboard {
         let mut sqs = self;
@@ -605,7 +607,7 @@ impl Bitboard {
         bb
     }
 
-    // inclusive, faster than ray - works on empty set
+    /// fills are inclusive of source square, f/aster than ray - works on empty set
     #[inline]
     pub fn fill_north(self) -> Bitboard {
         let mut bb = self;
@@ -627,6 +629,16 @@ impl Bitboard {
         bb |= Bitboard(bb.0 >> 16);
         bb |= Bitboard(bb.0 >> 8);
         bb
+    }
+
+    #[inline]
+    /// forward wrt pawn advance for that color
+    pub fn fill_forward(self, c: Color) -> Self {
+        if c == Color::White {
+            self.fill_north()
+        } else {
+            self.fill_south()
+        }
     }
 
     #[inline]
@@ -884,7 +896,7 @@ impl FromStr for Bitboard {
         let bin = r
             .iter_mut()
             .map(|s| s.chars().rev().collect::<String>())
-            .rev() 
+            .rev()
             .join("");
         let bits =
             u64::from_str_radix(&bin, 2).with_context(|| format!("with contents {}", bin))?;

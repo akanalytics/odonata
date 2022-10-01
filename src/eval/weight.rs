@@ -4,7 +4,7 @@ use std::fmt;
 use std::iter;
 
 use crate::phaser::Phase;
-use crate::utils::Formatting;
+use crate::infra::utils::Formatting;
 use serde::{Deserializer, Serializer};
 
 //
@@ -245,6 +245,15 @@ impl std::ops::Mul<WeightOf<f32>> for i32 {
     #[inline]
     fn mul(self, o: WeightOf<f32>) -> WeightOf<f32> {
         WeightOf::<f32>(self as f32 * o.s(), self as f32 * o.e())
+    }
+}
+
+impl std::ops::Mul<WeightOf<f32>> for f32 {
+    type Output = WeightOf<f32>;
+
+    #[inline]
+    fn mul(self, o: WeightOf<f32>) -> WeightOf<f32> {
+        WeightOf::<f32>(self * o.s(), self * o.e())
     }
 }
 

@@ -50,6 +50,8 @@ pub struct Razor {
     store_tt: bool,
     pv_nodes: bool,
     min_opponents: i32,
+    min_pieces: i32,
+    min_pieces_depth: Ply,
     max_depth: Ply,
     margin1: i32,
     margin2: i32,
@@ -73,6 +75,8 @@ impl Default for Razor {
             store_tt: true,
             pv_nodes: false,
             min_opponents: 4,
+            min_pieces: 0,
+            min_pieces_depth: 0,
             max_depth: 3, // 1 means we still prune at frontier (depth=1)
             margin1: 94,
             margin2: 381,
@@ -123,6 +127,10 @@ impl Razor {
         // "Scalable Search in Computer Chess" limited razoring p43
         if self.min_opponents > 0 && n.depth > 2 && bd.them().popcount() < self.min_opponents {
             Metrics::incr_node(n, Event::RazorDeclineMinOpponents);
+            return false;
+        }
+        if self.min_pieces > 0 && n.depth >= self.min_pieces_depth && bd.occupied().popcount() < self.min_pieces {
+            Metrics::incr_node(n, Event::RazorDeclineMinPieces);
             return false;
         }
         true

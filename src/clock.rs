@@ -1,5 +1,5 @@
 use crate::infra::component::{Component, State};
-use crate::utils::Formatting;
+use crate::infra::utils::Formatting;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -100,12 +100,12 @@ impl fmt::Display for Clock {
         writeln!(
             f,
             "iter time        : {}",
-            Formatting::duration(self.elapsed_iter().0)
+            Formatting::duration(self.elapsed_iter_this_thread().0)
         )?;
         writeln!(
             f,
             "iter nodes       : {}",
-            Formatting::u128(self.elapsed_iter().1 as u128)
+            Formatting::u128(self.elapsed_iter_this_thread().1 as u128)
         )?;
         writeln!(
             f,
@@ -130,6 +130,11 @@ impl Clock {
 
 
     #[inline]
+    /// cumulative accross all iterations
+    /// iter1: ply1_nodes 
+    /// iter2: (ply1_nodes) + ply1_nodes + ply2_nodes 
+    /// iter3: (ply1_nodes) + (ply1_nodes + ply2_nodes) + (ply1_nodes + ply2_nodes + ply3_nodes)
+    /// 
     pub fn cumul_nodes_this_thread(&self) -> u64 {
         self.nodes[self.thread_index as usize]
             .0
@@ -172,6 +177,7 @@ impl Clock {
     // }
 
     #[inline]
+    // since start of search 
     pub fn elapsed_search(&self) -> (Duration, u64) {
         (
             self.start_search.0.elapsed(),
@@ -180,7 +186,8 @@ impl Clock {
     }
 
     #[inline]
-    pub fn elapsed_iter(&self) -> (Duration, u64) {
+    // since start of play
+    pub fn elapsed_iter_this_thread(&self) -> (Duration, u64) {
         (
             self.start_iter.0.elapsed(),
             self.cumul_nodes_this_thread() - self.start_iter.1,

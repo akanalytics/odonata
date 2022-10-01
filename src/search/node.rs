@@ -186,6 +186,7 @@ pub enum Event {
     RazorDeclinePvNode,
     RazorDeclineInCheck,
     RazorDeclineMinOpponents,
+    RazorDeclineMinPieces,
     RazorDeclineMargin,
     RazorSuccess,
     RazorD1Success,
@@ -223,6 +224,7 @@ pub enum Event {
     RevFutDeclineInCheck,
     RevFutDeclineMaxDepth,
     RevFutDeclineFwWindow,
+    RevFutDeclineMinPieces,
     RevFutFail,
     RevFutSuccess,
 
@@ -237,6 +239,7 @@ pub enum Event {
     FutilityDeclinePawnMaxRank,
     FutilityDeclineMaxDepth,
     FutilityDeclineFwWindow,
+    FutilityDeclineMinPieces,
     FutilityFail,
     FutilityD0,
     FutilityD1,

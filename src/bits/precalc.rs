@@ -1,10 +1,17 @@
+use std::collections::HashMap;
+use std::fmt;
+
+use crate::board::Board;
 use crate::piece::{Color, Piece};
 // use crate::bitboard::bb_classical::ClassicalBitboard;
 use crate::bits::bb_hyperbola::Hyperbola;
 use crate::bits::bb_sliders::SlidingPieceAttacks;
 use crate::bits::bitboard::{Bitboard, Dir};
 use crate::bits::square::Square;
+use itertools::Itertools;
+use serde::{Deserialize, Serialize};
 use static_init::dynamic;
+use tabled::builder::Builder;
 
 pub type BestSlidingPieceAttacks = Hyperbola;
 
@@ -352,30 +359,35 @@ impl PreCalc {
     }
 
     #[inline]
+    // open(all_pawns) = open
+    // open(white_pawns) = open or white_half_open
+    // open(white) ^ open(all_pawns) = white_half_open
+    // (open(white) | open(black)) - open(all) = half open (any)
     pub fn open_files(&self, pawns: Bitboard) -> Bitboard {
         !pawns.fill_south().fill_north()
     }
 
     #[inline]
-    pub fn isolated_pawns(&self, pawns: Bitboard) -> Bitboard {
-        let closed = !self.open_files(pawns);
+    /// isolated pawns have no pawns of their colour on neighbouring file(s)
+    pub fn pawn_side_isolated(&self, side: Bitboard) -> Bitboard {
+        let closed = !self.open_files(side);
         // non-isolated pawns have a closed (wt their color) file next to them on one side
-        let non_isolated = (pawns & closed.shift(Dir::E)) | (pawns & closed.shift(Dir::W));
-        pawns - non_isolated
+        let non_isolated = (side & closed.shift(Dir::E)) | (side & closed.shift(Dir::W));
+        side - non_isolated
     }
 
     /// duo pawns have neighdours to the immediate east or west
     #[inline]
-    pub fn pawn_duos(&self, pawns: Bitboard) -> Bitboard {
-        (pawns.shift(Dir::E) | pawns.shift(Dir::W)) & pawns
+    pub fn pawn_side_duos(&self, side: Bitboard) -> Bitboard {
+        (side.shift(Dir::E) | side.shift(Dir::W)) & side
     }
 
     // distant neighbours are same rank but seperated by one file
     #[inline]
-    pub fn pawn_distant_neighbours(&self, pawns: Bitboard) -> Bitboard {
-        let open = self.open_files(pawns);
-        ((pawns.shift(Dir::E) & open).shift(Dir::E) | (pawns.shift(Dir::W) & open).shift(Dir::W))
-            & pawns
+    pub fn pawn_side_distant_neighbours(&self, side: Bitboard) -> Bitboard {
+        let open = self.open_files(side);
+        ((side.shift(Dir::E) & open).shift(Dir::E) | (side.shift(Dir::W) & open).shift(Dir::W))
+            & side
     }
 
     #[inline]
@@ -427,12 +439,133 @@ impl PreCalc {
     // }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Pawns {
+    pub white: Bitboard,
+    pub black: Bitboard,
+    pub open_files: Bitboard,
+    pub half_open: Bitboard,
+    pub isolated: Bitboard,
+    pub rammed: Bitboard,
+    pub white_outposts: Bitboard,
+    pub black_outposts: Bitboard,
+    pub passed: Bitboard,
+    pub weak: Bitboard, // but not isolated
+    pub connected: Bitboard,
+    pub duos: Bitboard,
+    pub distant_neighbours: Bitboard,
+    pub backward: Bitboard,
+    pub doubled: Bitboard,
+}
+
+// files are either closed, open or half-open
+impl Pawns {
+    #[inline]
+    pub fn new(wp: Bitboard, bp: Bitboard) -> Pawns {
+        let precalc = PreCalc::default();
+        let pawns = wp | bp;
+        let open_files = precalc.open_files(pawns);
+        let half_open = (precalc.open_files(wp) | precalc.open_files(bp)) ^ open_files;
+        let isolated = precalc.pawn_side_isolated(wp) | precalc.pawn_side_isolated(bp);
+        let rammed = wp.shift(Dir::N) & bp | bp.shift(Dir::S) & wp;
+        let doubled = precalc.doubled_pawns(wp) | precalc.doubled_pawns(bp);
+
+        let black_attacks = bp.shift(Dir::SW) | bp.shift(Dir::SE);
+        let white_outposts = !black_attacks.fill_south();
+
+        // todo counting doubles here! whage to "pawns"
+        let rays_north = wp.rays(Dir::N);
+        let rays_south = bp.rays(Dir::S);
+
+        let white_attacks = wp.shift(Dir::NW) | wp.shift(Dir::NE);
+        let black_outposts = !white_attacks.fill_north(); // cannot be defended by white
+
+        let passed = ((wp & white_outposts) - rays_south) | ((bp & black_outposts) - rays_north);
+
+        // cannot be defended and cannot advance 1 square to be defended
+        // => other pawns attack spans so not overlap with stop sq, pawn itself, or rear span
+        // we dont count weak isolated pawns
+        let weak =
+            (wp & black_outposts.shift(Dir::S) | bp & white_outposts.shift(Dir::N)) - isolated;
+
+        // connected pawns = those that are currently pawn defended
+        let connected = pawns & (wp & white_attacks | bp & black_attacks);
+
+        let duos =
+            (wp.shift(Dir::E) | wp.shift(Dir::W)) & wp | (bp.shift(Dir::E) | bp.shift(Dir::W)) & bp;
+
+        // distant neighbours are same rank but seperated by one file
+        let distant_neighbours =
+            precalc.pawn_side_distant_neighbours(wp) | precalc.pawn_side_distant_neighbours(bp);
+
+        // backward pawns - cannot be defended by other pawns and cannot move fwd because of a pawn attack
+        // and sq in fron not defended (ie not a duo)
+        let backward = (wp & black_outposts & black_attacks.shift(Dir::S)
+            | bp & white_outposts & white_attacks.shift(Dir::N))
+            - duos;
+
+        Pawns {
+            white: wp,
+            black: bp,
+            open_files,
+            half_open,
+            isolated,
+            rammed,
+            white_outposts,
+            black_outposts,
+            passed,
+            weak,      // but not isolated
+            connected, // defended
+            duos,
+            distant_neighbours,
+            backward,
+            doubled,
+        }
+    }
+
+    #[inline]
+    pub fn blockaded(&self, occupied: Bitboard) -> Bitboard {
+        occupied.shift(Dir::S) & self.white | occupied.shift(Dir::N) & self.black
+    }
+
+    #[inline]
+    pub fn rooks_behind_passers(&self, bd: &Board) -> Bitboard {
+        (self.passed & self.white).fill_south() & (bd.rooks() & bd.white())
+            | (self.passed & self.black).fill_south() & (bd.rooks() & bd.black())
+    }
+
+    #[inline]
+    pub fn bishop_colored_rammed(&self, bd: &Board) -> Bitboard {
+        self.rammed & self.white & (bd.bishops() & bd.white()).squares_of_matching_color()
+            | self.rammed & self.black & (bd.bishops() & bd.black()).squares_of_matching_color()
+    }
+}
+
+impl fmt::Display for Pawns {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
+        let mut builder = Builder::new();
+        let v = serde_json::value::to_value(self).unwrap();
+        let bitboards: HashMap<String, Bitboard> = serde_json::value::from_value(v).unwrap();
+        for y in &bitboards.iter().chunks(5) {
+            let mut row = vec![];
+            for (i, bb) in y {
+                row.push(format!("{}\n{bb:#}", i));
+            }
+            builder.add_record(row);
+        }
+        let tab = builder.build();
+        tab.fmt(f)?;
+        Ok(())
+    }
+}
+
+// let bbd = PreCalc::default();
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    // use crate::bitboard::bb_classical::ClassicalBitboard;
     use crate::globals::constants::*;
-    use crate::test_log::test;
+    use crate::{test_log::test, Position};
 
     #[test]
     fn test_king_attacks() {
@@ -456,10 +589,34 @@ mod tests {
 
     #[test]
     fn test_pawns() {
+        let b = Position::parse_epd(
+            r"
+            ........
+            .....P..
+            P....P..
+            P.p.....
+            ...p.p..
+            PP.....p
+            .PPPP..P
+            ........ w - - 1 1",
+        )
+        .unwrap()
+        .board()
+        .clone();
+
+        let pawns = Pawns::new(b.pawns() & b.white(), b.pawns() & b.black());
+        println!("{b}\n{pawns}");
+    }
+
+    #[test]
+    fn test_precalc_pawns() {
         let bb = PreCalc::default();
         let pawns_w = a2 | b3 | c2 | d7 | f5 | g4 | h4 | h5;
         let opponent = a4 | b4 | d3 | g5;
         let _occupied = pawns_w | opponent;
+
+        let pawns = Pawns::new(pawns_w, opponent);
+        println!("{pawns}");
 
         // let pawn_single_push = bb.pawn_pushes(occupied, pawns_w, Color::White);
         // let single = a3 | c3 | d8 | f6 | h6;
@@ -483,8 +640,8 @@ mod tests {
             PreCalc::default().open_files(pawns),
             FILE_A | FILE_E | FILE_F | FILE_G
         );
-        assert_eq!(PreCalc::default().isolated_pawns(pawns), h5);
-        assert_eq!(PreCalc::default().isolated_pawns(opponent), d3 | g5);
+        assert_eq!(PreCalc::default().pawn_side_isolated(pawns), h5);
+        assert_eq!(PreCalc::default().pawn_side_isolated(opponent), d3 | g5);
 
         let calced = PreCalc::default().pawn_front_span_union_attack_span(Color::White, Square::B2);
         let expect = (Bitboard::FILE_A | Bitboard::FILE_B | Bitboard::FILE_C)

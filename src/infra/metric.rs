@@ -2,7 +2,7 @@ use crate::eval::endgame::EndGame;
 use crate::mv::Move;
 use crate::piece::{MoveType, Ply};
 use crate::search::node::{Counter, Histograms, Node, Timing};
-use crate::utils::{Formatting, Displayable};
+use crate::infra::utils::{Formatting, Displayable};
 use hdrhist::HDRHist;
 use itertools::Itertools;
 use static_init::dynamic;
