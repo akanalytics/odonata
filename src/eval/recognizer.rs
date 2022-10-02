@@ -92,7 +92,6 @@ impl Algo {
                         }
 
                         if self.tt.allow_truncated_pv
-                            && !self.controller.debug
                             && self.mte.time_sensitive()
                             && score > n.alpha
                         {

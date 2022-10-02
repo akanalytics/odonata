@@ -277,7 +277,7 @@ impl Uci {
         self.running = false;
         // info!("{}", self.algo);
         // warn!("{}", EndGame::counts_to_string());
-        if eng.algo.controller.show_metrics_on_exit {
+        if eng.algo.explainer.show_metrics_on_exit {
             warn!("{}", *METRICS_TOTAL.read());
         }
         Ok(())

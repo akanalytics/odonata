@@ -214,8 +214,8 @@ enum Replacement {
     AgeBlend,
 }
 
-// type TABLE = AlignedVec<HashEntry>;
-type TABLE=SharedTable;
+type TABLE = AlignedVec<HashEntry>;
+// type TABLE=SharedTable;
 
 // FIXME Mates as score
 #[derive(Clone, Serialize, Deserialize, Debug)]

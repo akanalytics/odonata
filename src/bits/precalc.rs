@@ -459,6 +459,54 @@ pub struct Pawns {
 }
 
 // files are either closed, open or half-open
+
+// front span - strictly in front
+// front fill - inclusive in front
+
+// isolated pawns have no neighbours of same color. Doubled pawns that are isolated count as two
+// doubled pawns are doubled or tripled or more. Two pawns count as one doubled. Three as two doubled.
+// passed. No neighbouring pawns of opposite colour ahead
+// rammed pawns have an opposing pawn directly in front
+
+// Open Pawns - have no mechanical obstruction - an opponent pawn in front.
+//                     They are at least half-free or even free passers
+//
+// - Passed Pawn       not counting rear of a doubled pawn.
+//                     front span disjoint from all other pawns, as well as the front fill disjoint
+//                     from opponent pawn attacks
+// -- Unstoppable
+// -- Protected  another (not nec passed pawn) is chained
+// -- Connected        duo or chain with another passed pawn
+// -- Outside          Seprated by several files
+//
+
+// - Candidate Passed Pawn
+
+// a pawn on a half-open file, which, if the board had only pawns on it, would eventually become
+// a passed pawn by moving forward. Whereas this definition is obvious for a human,
+// in a form presented above it would require no less than a separate recursive search routine.
+// For that reason, computers have to use approximations of that rule.
+// One possibility is to define a pawn as a candidate, if no square on its path is controlled
+// by more enemy pawns than own pawns.
+
+// Phalanx = Duo or more (same rank)
+// Connected = Phalanx or Chain
+// Doubled Pawn - types
+// Faker - a "faked" candidate with more opponent sentries than own helpers
+// Hidden Passed Pawn
+// Sentry - is a pawn controlling the square lying on the path or front span of an opponent's pawn,
+//          thereby preventing it from becoming a passed pawn
+
+// Weak Pawns - pawns not defended and not defensible by the pawns of the same color,
+//              whose stop square is also not covered by a friendly pawn.
+// - Isolated Pawn - no neighbouring pawns of same colour
+// - Isolated Pawn (half open) - even weaker if rooks around
+// - Backward Pawn
+// - Overly advanced
+// - Hanging Pawns -  are an open, half-isolated duo. It means that they are standing next 
+//   to each other on the adjacent half-open files, usually on the fourth rank, 
+//   mutually protecting their stop squares.
+
 impl Pawns {
     #[inline]
     pub fn new(wp: Bitboard, bp: Bitboard) -> Pawns {
@@ -524,8 +572,8 @@ impl Pawns {
     }
 
     #[inline]
-    pub fn blockaded(&self, occupied: Bitboard) -> Bitboard {
-        occupied.shift(Dir::S) & self.white | occupied.shift(Dir::N) & self.black
+    pub fn blockaded_by_opponent(&self, bd: &Board) -> Bitboard {
+        bd.black().shift(Dir::S) & self.white | bd.white().shift(Dir::N) & self.black
     }
 
     #[inline]

@@ -44,6 +44,7 @@ impl fmt::Display for SearchResults {
     }
 }
 
+
 pub struct SearchResultsWithExplanation<'a> {
     sr: &'a SearchResults,
     eval: &'a Eval,

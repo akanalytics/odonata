@@ -13,13 +13,14 @@ use crate::variation::Variation;
 use crate::infra::component::{Component, State};
 // use crate::{debug, logger::LogInit};
 use super::node::{Event, Node};
-use crate::domain::{SearchTree, TreeNode};
+use crate::domain::{SearchTree, TreeNode, Game, search_results::SearchResultsWithExplanation};
 use crate::piece::MoveType;
 use anyhow::{Context, Result};
 use fmt::Debug;
+use fslock::LockFile;
 use serde::{Deserialize, Serialize};
-use std::fmt;
-use std::fs::File;
+use std::{fmt, io};
+use std::fs::{File, OpenOptions};
 use std::io::{BufWriter, Write};
 
 // static SEARCH_COUNTER: AtomicU32 = AtomicU32::new(0);
@@ -28,7 +29,14 @@ use std::io::{BufWriter, Write};
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Explainer {
-    pub enabled: bool,
+    pub explainer_enabled: bool,
+    pub show_pv_eval: bool,
+    pub show_metrics_on_exit: bool,
+    pub export_games: bool,
+    pub log_dir: String,
+    pub debug: bool,
+
+
     min_depth: Ply,
     max_additional_ply: Ply,
     is_explaining: bool,
@@ -65,7 +73,7 @@ impl Component for Explainer {
             }
             StartSearch => {}
             EndSearch => {
-                if self.enabled {
+                if self.explainer_enabled {
                     // if self.why_not.is_some() {
                     //     self.print_whynot_explanation();
                     // }
@@ -86,7 +94,12 @@ impl Component for Explainer {
 impl Default for Explainer {
     fn default() -> Self {
         Explainer {
-            enabled: false,
+            explainer_enabled: false,
+            show_pv_eval: false,
+            show_metrics_on_exit: false,
+            export_games: false,
+            log_dir: String::new(),
+            debug: false,            
             board: Default::default(),
             is_explaining: false,
             min_depth: 0,
@@ -101,14 +114,14 @@ impl Default for Explainer {
 
 impl fmt::Display for Explainer {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{:#?}", self)?;
+        writeln!(f, "{}", toml::to_string_pretty(&self).unwrap())?;
         Ok(())
     }
 }
 
 impl Explainer {
     pub fn add_variation_to_explain(&mut self, var: Variation) {
-        if self.enabled {
+        if self.explainer_enabled {
             self.vars.push(var);
         }
     }
@@ -118,10 +131,50 @@ impl Explainer {
     }
 
     pub fn why_not(&mut self, var: Variation) {
-        if self.enabled {
+        if self.explainer_enabled {
             self.why_not = Some(var);
         }
     }
+
+    pub fn show_pv_eval(&self, results: &SearchResultsWithExplanation) {
+        if self.show_pv_eval {
+        println!("Search results\n{results}");
+        }
+    }    
+
+    pub fn export_game(&self, g: &Game) -> Result<()> {
+        if self.export_games {
+            let mut lock_file = LockFile::open(&format!("{}/game.lock", self.log_dir))?;
+            lock_file.lock()?;
+            let mut w = self.game_writer(g.game_id)?;
+            writeln!(w, "# begin")?;
+            g.export(&mut w)?;
+            writeln!(w, "# end")?;
+            lock_file.unlock()?;
+        }
+        Ok(())
+    }
+
+    pub fn game_writer(&self, _game_id: u32) -> Result<Box<dyn Write>> {
+        if !self.export_games {
+            Ok(Box::new(io::sink()))
+        } else {
+            // let filename = format!("{}/game-{:06}.csv", self.log_dir, game_id);
+            // let _dt = Local::now().format("%Y-%m-%d-%H-%M-%S.%.3f").to_string();
+            // let dt = "1"; //
+            let filename = format!("{}/games.txt", self.log_dir);
+            info!("Opening file {} for game export", filename);
+            let f = OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&filename)
+                .with_context(|| format!("Failed to open file {}", &filename))?;
+            let writer = BufWriter::new(f);
+            Ok(Box::new(writer))
+        }
+    }
+
+
 
     fn write_explanation(&mut self) -> Result<()> {
         // if its been "started" write a file
@@ -165,7 +218,7 @@ impl Explainer {
     /// then return a SearchTreeWeight to be populated, else None
     #[inline]
     pub fn explaining(&mut self, n: &Node, var: &Variation, e: Event) -> Option<&mut TreeNode> {
-        if !self.enabled || n.depth < self.min_depth {
+        if !self.explainer_enabled || n.depth < self.min_depth {
             return None;
         }
 
@@ -249,7 +302,7 @@ impl Algo {
         n: &Node,
         e: Event,
     ) {
-        if self.explainer.enabled {
+        if self.explainer.explainer_enabled {
             if let Some(w) = self
                 .explainer
                 .explaining(n, &self.current_variation.append(mv), e)
@@ -275,7 +328,7 @@ impl Algo {
         ext: i32,
         red: i32,
     ) {
-        if self.explainer.enabled {
+        if self.explainer.explainer_enabled {
             if let Some(w) = self
                 .explainer
                 .explaining(n, &self.current_variation.append(mv), e)
@@ -298,7 +351,7 @@ impl Algo {
 
     #[inline]
     pub fn explain_nmp(&mut self, b: &Board, child_score: Score, n: &Node) {
-        if self.explainer.enabled {
+        if self.explainer.explainer_enabled {
             let e = Event::NmpSuccess;
             if let Some(w) = self.explainer.explaining(n, &self.current_variation, e) {
                 info!(
@@ -325,7 +378,7 @@ impl Algo {
         e: Event,
         pv: &Variation,
     ) {
-        if self.explainer.enabled {
+        if self.explainer.explainer_enabled {
             if let Some(w) = self.explainer.explaining(n, &self.current_variation, e) {
                 info!(
                     "Explain node in {n} with {nt} on {} with pv {pv}",
@@ -363,7 +416,7 @@ mod tests {
     #[test]
     fn test_search_explainer_tree() {
         let mut eng = Engine::new();
-        eng.algo.explainer.enabled = true;
+        eng.algo.explainer.explainer_enabled = true;
         eng.algo.explainer.max_additional_ply = 6;
         assert_eq!(eng.algo.explainer.vars.len(), 1);
 

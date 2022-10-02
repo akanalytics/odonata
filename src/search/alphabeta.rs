@@ -8,6 +8,7 @@ use crate::other::pvtable::PvTable;
 use crate::piece::{Ply, MAX_PLY};
 use crate::search::algo::Algo;
 use crate::search::node::{Counter, Node, Timing};
+use crate::variation::Variation;
 
 use super::node::Event;
 
@@ -15,6 +16,11 @@ pub struct AlphaBeta;
 
 impl Algo {
     pub fn alphabeta_root_search(&mut self, board: &mut Board, n: &mut Node) -> (Score, Event) {
+        self.clock_checks = 0;
+        self.pv_table = PvTable::default();
+        self.current_variation = Variation::new();
+        self.max_depth = 0;
+
         debug_assert!(n.alpha < n.beta);
 
         let t = Metrics::timing_start();

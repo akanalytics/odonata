@@ -99,7 +99,7 @@ pub struct Algo {
     pub pv_table: PvTable,
 
     #[serde(skip)]
-    clock_checks: u64,
+    pub clock_checks: u64,
 
     #[serde(skip)]
     pub current_variation: Variation,
@@ -139,9 +139,9 @@ impl Component for Algo {
             NewGame => self.new_game(),
             SetPosition => self.new_position(),
             StartSearch => {}
-            EndSearch => {}
+            EndSearch => self.explainer.show_pv_eval(&self.results.explain(&self.eval)),
             StartDepthIteration(_) => self.new_iter(),
-            Shutdown => self.controller.export_game(&self.game).unwrap(),
+            Shutdown => self.explainer.export_game(&self.game).unwrap(),
         }
 
         self.ids.set_state(s);
@@ -177,11 +177,7 @@ impl Component for Algo {
     }
 
     fn new_game(&mut self) {
-        self.clock_checks = 0;
-        self.pv_table = PvTable::default();
-        self.current_variation = Variation::new();
-        self.max_depth = 0;
-        self.controller.export_game(&self.game).unwrap();
+        self.explainer.export_game(&self.game).unwrap();
         self.game.clear_moves();
         self.game.game_id = self.game.game_id + 1;
     }

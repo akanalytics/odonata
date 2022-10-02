@@ -183,12 +183,12 @@ impl<'a> Calc<'a> {
             self.position(scorer, b);
             self.pst(scorer, b);
             self.other(scorer, b);
-            if FEATURE.load(Ordering::Relaxed) {
-                self.pawns_both(scorer, b);
-            } else {
-                self.pawns(White, scorer, b);
-                self.pawns(Black, scorer, b);
-            }
+            // if FEATURE.load(Ordering::Relaxed) {
+            self.pawns_both(scorer, b);
+            // } else {
+            //     self.pawns(White, scorer, b);
+            //     self.pawns(Black, scorer, b);
+            // }
             self.king_safety(White, scorer, b);
             self.king_safety(Black, scorer, b);
             self.mobility(White, scorer, b);
@@ -327,50 +327,6 @@ impl<'a> Calc<'a> {
         }
     }
 
-    // front span - strictly in front
-    // front fill - inclusive in front
-
-    // isolated pawns have no neighbours of same color. Doubled pawns that are isolated count as two
-    // doubled pawns are doubled or tripled or more. Two pawns count as one doubled. Three as two doubled.
-    // passed. No neighbouring pawns of opposite colour ahead
-    // rammed pawns have an opposing pawn directly in front
-
-    // Open Pawns - have no mechanical obstruction - an opponent pawn in front.
-    //                     They are at least half-free or even free passers
-    //
-    // - Passed Pawn       not counting rear of a doubled pawn.
-    //                     front span disjoint from all other pawns, as well as the front fill disjoint
-    //                     from opponent pawn attacks
-    // -- Unstoppable
-    // -- Protected  another (not nec passed pawn) is chained
-    // -- Connected        duo or chain with another passed pawn
-    // -- Outside          Seprated by several files
-    //
-
-    // - Candidate Passed Pawn
-
-    // a pawn on a half-open file, which, if the board had only pawns on it, would eventually become
-    // a passed pawn by moving forward. Whereas this definition is obvious for a human,
-    // in a form presented above it would require no less than a separate recursive search routine.
-    // For that reason, computers have to use approximations of that rule.
-    // One possibility is to define a pawn as a candidate, if no square on its path is controlled
-    // by more enemy pawns than own pawns.
-
-    // Phalanx = Duo or more (same rank)
-    // Connected = Phalanx or Chain
-    // Doubled Pawn - types
-    // Faker - a "faked" candidate with more opponent sentries than own helpers
-    // Hidden Passed Pawn
-    // Sentry - is a pawn controlling the square lying on the path or front span of an opponent's pawn,
-    //          thereby preventing it from becoming a passed pawn
-
-    // Weak Pawns - pawns not defended and not defensible by the pawns of the same color,
-    //              whose stop square is also not covered by a friendly pawn.
-    // - Isolated Pawn - no neighbouring pawns of same colour
-    // - Isolated Pawn (half open) - even weaker if rooks around
-    // - Backward Pawn
-    // - Overly advanced
-    // - Hanging Pawns -  are an open, half-isolated duo. It means that they are standing next to each other on the adjacent half-open files, usually on the fourth rank, mutually protecting their stop squares.
 
     fn pawns_both(&mut self, s: &mut impl ScorerBase, bd: &Board) {
         use crate::globals::constants::*;
@@ -406,12 +362,14 @@ impl<'a> Calc<'a> {
             is_far_pawns as i32 * bbishops,
         );
 
-        let mut closedness = p.rammed.popcount();
+        let mut closedness = p.rammed.popcount() / 2;
+
+        net(s, Attr::Closedness, p.rammed, p.rammed);
+
         // try and ensure closedness is symmetric
-        let centerish_rammed_pawns = (p.rammed & w) & Bitboard::CENTER_16_SQ
-            | (p.rammed & w).shift(Dir::N) & Bitboard::CENTER_16_SQ
-            | (p.rammed & b) & Bitboard::CENTER_16_SQ
-            | (p.rammed & b).shift(Dir::S) & Bitboard::CENTER_16_SQ;
+        let centerish_rammed_pawns =
+            p.rammed & w & (Bitboard::CENTER_16_SQ | Bitboard::CENTER_16_SQ.shift(Dir::S))
+                | p.rammed & b & (Bitboard::CENTER_16_SQ | Bitboard::CENTER_16_SQ.shift(Dir::N));
         closedness += centerish_rammed_pawns.popcount();
         closedness = closedness * closedness;
 
@@ -467,7 +425,7 @@ impl<'a> Calc<'a> {
         // );
         net(s, Attr::PawnWeak, p.weak & w, p.weak & b);
         net(s, Attr::PawnIsolated, p.isolated & w, p.isolated & b);
-        // net(s, Attr::SemiIsolated, 0);
+        net(s, Attr::SemiIsolated, Bitboard::EMPTY, Bitboard::EMPTY);
         let dn = p.distant_neighbours;
         net(s, PawnDistantNeighboursR7, dn & RANK_7 & w, dn & BR_7 & b);
         net(s, PawnDistantNeighboursR6, dn & RANK_6 & w, dn & BR_6 & b);
@@ -481,13 +439,13 @@ impl<'a> Calc<'a> {
             s,
             PassersOnRim,
             p.passed & Bitboard::RIM & w,
-            p.passed & Bitboard::RIM & w,
+            p.passed & Bitboard::RIM & b,
         );
         // net(s            c,
         //     CandidatePassedPawn,
         //     candidate_passed_pawn,
         // );
-        let blockaded = p.blockaded(bd.occupied());
+        let blockaded = p.blockaded_by_opponent(&bd);
         net(s, Blockaded, blockaded & w, blockaded & b);
         net(
             s,
@@ -498,7 +456,8 @@ impl<'a> Calc<'a> {
         let rbp = p.rooks_behind_passers(&bd);
         net(s, RooksBehindPasser, rbp & w, rbp & b);
         // scorer.accum(c, RammedPawns, rammed_pawns);
-        // net(s, Space, 0);
+        net(s, PawnIsolatedDoubled, Bitboard::EMPTY, Bitboard::EMPTY);
+        net(s, Space, Bitboard::EMPTY, Bitboard::EMPTY);
         net(
             s,
             PawnConnectedR67,
@@ -511,14 +470,12 @@ impl<'a> Calc<'a> {
             p.connected & R_345 & w,
             p.connected & BR_345 & b,
         );
-        // net(s            c,
-        //     PassedConnectedR345,
-        //     _passed_connected_r345,
-        // );
+        net(s, PassedConnectedR67, Bitboard::EMPTY, Bitboard::EMPTY);
+        net(s, PassedConnectedR345, Bitboard::EMPTY, Bitboard::EMPTY);
         net(s, PawnDuoR67, p.duos & R_67 & w, p.duos & BR_67 & b);
         net(s, PawnDuoR2345, p.duos & R_2345 & w, p.duos & BR_2345 & b);
-        // net(s, PassedDuoR67, _passed_duo_r67);
-        // net(s, PassedDuoR2345, _passed_duo_r2345);
+        net(s, PassedDuoR67, Bitboard::EMPTY, Bitboard::EMPTY);
+        net(s, PassedDuoR2345, Bitboard::EMPTY, Bitboard::EMPTY);
         net(
             s,
             BackwardHalfOpen,

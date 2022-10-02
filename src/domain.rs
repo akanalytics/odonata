@@ -1,7 +1,7 @@
 mod game;
 pub mod material;
 mod player;
-mod search_results;
+pub mod search_results;
 mod tree;
 
 pub use crate::domain::{

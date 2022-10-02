@@ -225,6 +225,10 @@ impl Engine {
             algo.set_thread_index(i);
             algo.move_orderer.thread = i;
 
+            if i == 0 {
+                algo.controller.set_running();
+
+            }
             if i >= 1 {
                 algo.max_depth += 8;
                 algo.controller.progress_callback = None;
