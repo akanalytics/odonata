@@ -1,5 +1,3 @@
-use std::sync::atomic::Ordering;
-
 use crate::bits::bitboard::Dir;
 use crate::bits::precalc::Pawns;
 use crate::bits::{CastlingRights, PreCalc, Square};
@@ -7,7 +5,6 @@ use crate::board::analysis::Analysis;
 use crate::board::Board;
 use crate::eval::endgame::EndGame;
 use crate::eval::eval::Feature;
-use crate::infra::component::FEATURE;
 use crate::infra::metric::Metrics;
 use crate::piece::Color::{self, *};
 use crate::piece::Piece;
@@ -178,6 +175,7 @@ impl<'a> Calc<'a> {
         let t = Metrics::timing_start();
         self.material(scorer, b);
         if !self.endgame(scorer, b) {
+            
             // let pawn_cache = UnsharedTable::<PawnStructure>::default();
             // self.set_pawn_structure(&pawn_cache);
             self.position(scorer, b);
@@ -327,7 +325,6 @@ impl<'a> Calc<'a> {
         }
     }
 
-
     fn pawns_both(&mut self, s: &mut impl ScorerBase, bd: &Board) {
         use crate::globals::constants::*;
         const BR_7: Bitboard = RANK_7.flip_vertical();
@@ -441,17 +438,23 @@ impl<'a> Calc<'a> {
             p.passed & Bitboard::RIM & w,
             p.passed & Bitboard::RIM & b,
         );
-        // net(s            c,
-        //     CandidatePassedPawn,
-        //     candidate_passed_pawn,
-        // );
-        let blockaded = p.blockaded_by_opponent(&bd);
-        net(s, Blockaded, blockaded & w, blockaded & b);
+        net(
+            s,
+            CandidatePassedPawn,
+            p.candidate_passed & w,
+            p.candidate_passed & b,
+        );
+        let blockaded_opponent = p.blockaded_opponent(&bd);
+        let blockaded_self = p.blockaded_self(&bd);
+        let blockaded_any = blockaded_self | blockaded_opponent;
+        // net(s, BlockadedOpponent, blockaded_opponent & w, blockaded_opponent & b);
+        // net(s, BlockadedSelf, blockaded_self & w, blockaded_self & b);
+        net(s, BlockadedAny, blockaded_any & w, blockaded_any & b);
         net(
             s,
             BlockadedPassers,
-            blockaded & p.passed & w,
-            blockaded & p.passed & b,
+            blockaded_opponent & p.passed & w,
+            blockaded_opponent & p.passed & b,
         );
         let rbp = p.rooks_behind_passers(&bd);
         net(s, RooksBehindPasser, rbp & w, rbp & b);
@@ -800,7 +803,7 @@ impl<'a> Calc<'a> {
             Attr::CandidatePassedPawn.as_feature(),
             candidate_passed_pawn,
         );
-        s.accum(c, Attr::Blockaded.as_feature(), blockaded);
+        s.accum(c, Attr::BlockadedOpponent.as_feature(), blockaded);
         s.accum(c, Attr::BlockadedPassers.as_feature(), blockaded_passers);
         s.accum(c, Attr::RooksBehindPasser.as_feature(), rooks_behind_passer);
         s.accum(

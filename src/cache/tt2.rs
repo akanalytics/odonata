@@ -14,7 +14,6 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::sync::Arc;
 
-use super::lockless_hashmap::{AlignedVec, SharedTable};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct TtNode {
@@ -214,7 +213,9 @@ enum Replacement {
     AgeBlend,
 }
 
+use super::lockless_hashmap::AlignedVec;
 type TABLE = AlignedVec<HashEntry>;
+// use super::lockless_hashmap::SharedTable;
 // type TABLE=SharedTable;
 
 // FIXME Mates as score
@@ -355,7 +356,7 @@ impl TranspositionTable2 {
                 capacity, self.buckets
             );
 
-            warn!(
+            info!(
                 "In resize table with aligned = {} cap = {}",
                 self.aligned, capacity
             );

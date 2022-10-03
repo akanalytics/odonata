@@ -447,9 +447,16 @@ pub struct Pawns {
     pub half_open: Bitboard,
     pub isolated: Bitboard,
     pub rammed: Bitboard,
+    pub white_double_attacks: Bitboard,
+    pub black_double_attacks: Bitboard,
+    pub white_single_attacks: Bitboard,
+    pub black_single_attacks: Bitboard,
+    pub white_controlled: Bitboard,
+    pub black_controlled: Bitboard,
     pub white_outposts: Bitboard,
     pub black_outposts: Bitboard,
     pub passed: Bitboard,
+    pub candidate_passed: Bitboard,
     pub weak: Bitboard, // but not isolated
     pub connected: Bitboard,
     pub duos: Bitboard,
@@ -503,8 +510,8 @@ pub struct Pawns {
 // - Isolated Pawn (half open) - even weaker if rooks around
 // - Backward Pawn
 // - Overly advanced
-// - Hanging Pawns -  are an open, half-isolated duo. It means that they are standing next 
-//   to each other on the adjacent half-open files, usually on the fourth rank, 
+// - Hanging Pawns -  are an open, half-isolated duo. It means that they are standing next
+//   to each other on the adjacent half-open files, usually on the fourth rank,
 //   mutually protecting their stop squares.
 
 impl Pawns {
@@ -532,9 +539,9 @@ impl Pawns {
 
         // cannot be defended and cannot advance 1 square to be defended
         // => other pawns attack spans so not overlap with stop sq, pawn itself, or rear span
-        // we dont count weak isolated pawns
+        // we do count weak isolated pawns
         let weak =
-            (wp & black_outposts.shift(Dir::S) | bp & white_outposts.shift(Dir::N)) - isolated;
+            wp & black_outposts.shift(Dir::S) | bp & white_outposts.shift(Dir::N);
 
         // connected pawns = those that are currently pawn defended
         let connected = pawns & (wp & white_attacks | bp & black_attacks);
@@ -552,6 +559,28 @@ impl Pawns {
             | bp & white_outposts & white_attacks.shift(Dir::N))
             - duos;
 
+        // One possibility is to define a pawn as a candidate, if no square on its path is controlled
+        // by more enemy pawns than own pawns.
+        let black_double_attacks = bp.shift(Dir::SW) & bp.shift(Dir::SE);
+        let black_single_attacks = black_attacks - black_double_attacks;
+        let white_double_attacks = bp.shift(Dir::NW) & bp.shift(Dir::NE);
+        let white_single_attacks = white_attacks - white_double_attacks;
+        let white_controlled = (white_double_attacks & !black_double_attacks)
+            | (white_single_attacks & !black_attacks);
+        let black_controlled = (black_double_attacks & !white_double_attacks)
+            | (black_single_attacks & !white_attacks);
+        let candidate_passed_w = !(rays_north & black_controlled).fill_south() & half_open & wp;
+        let candidate_passed_b = !(rays_south & white_controlled).fill_north() & half_open & bp;
+        let candidate_passed = (candidate_passed_w | candidate_passed_b) - passed;
+
+        //     (bbd.pawn_front_span(c, p) & b.pawns() & them).is_empty() && p.rank_index_as_white(c) >= 5 {
+        //         let mut ours = (bbd.pawn_attack_span(c.opposite(),p) & b.pawns() & us & bbd.within_chebyshev_distance_inclusive(p, 2)).popcount();
+        //         ours += ((p.as_bb().shift(Dir::E) | p.as_bb().shift(Dir::W)) & b.pawns() & us).popcount();
+        //         let theirs = (bbd.pawn_attack_span(c, p) & b.pawns() & them).popcount();
+        //         if ours >= theirs && p.rank_index_as_white(c) >= 4 {
+        //             candidate_passed_pawn += 1;
+        //         }
+
         Pawns {
             white: wp,
             black: bp,
@@ -559,10 +588,17 @@ impl Pawns {
             half_open,
             isolated,
             rammed,
+            white_double_attacks,
+            black_double_attacks,
+            white_single_attacks,
+            black_single_attacks,
+            white_controlled,
+            black_controlled,
             white_outposts,
             black_outposts,
             passed,
-            weak,      // but not isolated
+            candidate_passed,
+            weak,      // and maybe isolated
             connected, // defended
             duos,
             distant_neighbours,
@@ -572,8 +608,15 @@ impl Pawns {
     }
 
     #[inline]
-    pub fn blockaded_by_opponent(&self, bd: &Board) -> Bitboard {
+    pub fn blockaded_opponent(&self, bd: &Board) -> Bitboard {
         bd.black().shift(Dir::S) & self.white | bd.white().shift(Dir::N) & self.black
+        // bd.occupied().shift(Dir::S) & self.white | bd.occupied().shift(Dir::N) & self.black
+    }
+
+    #[inline]
+    pub fn blockaded_self(&self, bd: &Board) -> Bitboard {
+        // bd.black().shift(Dir::S) & self.white | bd.white().shift(Dir::N) & self.black
+        bd.white().shift(Dir::S) & self.white | bd.black().shift(Dir::N) & self.black
     }
 
     #[inline]

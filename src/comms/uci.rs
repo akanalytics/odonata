@@ -5,18 +5,18 @@ use crate::domain::Player;
 use crate::eval::eval::Eval;
 use crate::infra::component::{Component, State};
 use crate::infra::metric::METRICS_TOTAL;
+use crate::infra::utils::Formatting;
 use crate::infra::version::Version;
 use crate::movelist::MoveList;
 use crate::mv::Move;
 use crate::perft::Perft;
+use crate::piece::Ply;
 use crate::position::Position;
 use crate::search::engine::Engine;
 use crate::search::node::Node;
 use crate::search::search_progress::{SearchProgress, SearchProgressMode};
-use crate::search::timecontrol::{TimeControl, RemainingTime};
+use crate::search::timecontrol::{RemainingTime, TimeControl};
 use crate::tags::Tag;
-use crate::piece::Ply;
-use crate::infra::utils::Formatting;
 use crate::variation::Variation;
 use std::collections::HashMap;
 use std::fmt;
@@ -510,7 +510,7 @@ impl Uci {
             let winc = winc.unwrap_or(0) as u64;
             let binc = binc.unwrap_or(0) as u64;
             let moves_to_go = movestogo.unwrap_or(0) as u16;
-            TimeControl::Fischer( RemainingTime {
+            TimeControl::Fischer(RemainingTime {
                 our_color: self.board.color_us(),
                 wtime: Duration::from_millis(wtime as u64),
                 btime: Duration::from_millis(btime),
@@ -596,7 +596,6 @@ impl Uci {
         Ok(())
     }
 
-
     fn uci_option_name_value(&mut self, name: &str, value: &str) -> Result<()> {
         // if name == "Debug" {
         //     self.debug = value == "true";
@@ -619,7 +618,7 @@ impl Uci {
             eng.configment("analyse_mode", value)?;
         } else if name == "UCI_Opponent" {
             let player: Player = value.parse()?;
-            warn!("UCI_Opponent {value} {player:?}");
+            info!("UCI_Opponent {value} {player:?}");
         } else if name == "UCI_ShowRefutations" {
             eng.configment("show_refutations", value)?;
         } else if name == "Ponder" {
@@ -656,14 +655,18 @@ impl Uci {
 
     fn uci_setoption(&mut self, input: &str) -> Result<()> {
         self.engine.lock().unwrap().search_stop();
-        let s = input
+        let s1 = input
             .strip_prefix("setoption")
             .ok_or(anyhow!("missing setoption"))?
             .trim();
-        let s = s
-            .strip_prefix("name")
-            .ok_or(anyhow!("missing 'name' from setoption"))?
-            .trim();
+        let s = s1.strip_prefix("name");
+        let s = match s {
+            Some(remaining) => remaining.trim(),
+            // special case: Arena "forgets" to send "name" for set option name UCI_Opponent...
+            None if s1.contains("UCI_Opponent") => s1.trim(),
+            None => bail!("missing 'name' from setoption"),
+        };
+
         let name_value = s.rsplit_once("value");
         if let Some((name, value)) = name_value {
             let (name, value) = (name.trim(), value.trim());
@@ -782,7 +785,7 @@ impl Uci {
         if let SearchProgressMode::BestMove = sr.mode {
             Self::print_bm_and_ponder(&sr.best_pv);
         } else {
-            Self::print(&format!("info {}", UciInfo(sr)));
+            Self::print(&format!("info {}", UciInfo2(sr)));
         }
     }
 
@@ -801,9 +804,9 @@ impl Uci {
     }
 }
 
-struct UciInfo<'a>(&'a SearchProgress);
+struct UciInfo2<'a>(&'a SearchProgress);
 
-impl<'a> fmt::Display for UciInfo<'a> {
+impl<'a> fmt::Display for UciInfo2<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let SearchProgressMode::Refutation = self.0.mode {
             let strings: Vec<String> = self.0.best_pv.iter().map(Move::to_string).collect();

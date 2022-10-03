@@ -621,7 +621,7 @@ impl Bitboard {
         // Bitboard(bb8)
     }
 
-    // all points south inclusive - works on empty set
+    /// fills are inclusive of source square, f/aster than ray - works on empty set
     #[inline]
     pub fn fill_south(self) -> Bitboard {
         let mut bb = self;
