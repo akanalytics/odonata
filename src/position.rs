@@ -1,16 +1,18 @@
 use crate::bits::bitboard::Bitboard;
 use crate::board::Board;
+use crate::catalog::Catalog;
 use crate::infra::metric::Metrics;
 use crate::mv::Move;
 use crate::search::node::Timing;
 use crate::variation::Variation;
 
 use crate::bits::castling::CastlingRights;
+use crate::infra::utils::{StringUtils, Uci};
 use crate::movelist::MoveList;
 use crate::piece::{Color, Ply};
 use crate::tags::{Tag, Tags};
-use crate::infra::utils::StringUtils;
 use anyhow::{anyhow, bail, Context, Result};
+use itertools::Itertools;
 use once_cell::sync::Lazy;
 use rayon::prelude::ParallelIterator;
 use regex::Regex;
@@ -19,6 +21,7 @@ use std::collections::HashMap;
 use std::convert::{Into, TryFrom};
 
 use std::fmt;
+use std::iter::once;
 
 // http://jchecs.free.fr/pdf/EPDSpecification.pdf
 // BRATKO https://www.stmintz.com/ccc/index.php?id=20631
@@ -84,6 +87,53 @@ impl Serialize for Position {
             m.serialize_entry(k, &v)?;
         }
         m.end()
+    }
+}
+
+impl Uci for Position {
+    fn fmt_uci(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if self.board() == &Catalog::starting_board() {
+            write!(f, "position startpos")?;
+        } else {
+            write!(f, "position {fen}", fen = self.board().to_fen())?;
+        }
+        let var = self.supplied_variation();
+        if !var.is_empty() {
+            write!(f, " moves {}", var.to_uci())?;
+        }
+        Ok(())
+    }
+
+    fn parse_uci(s: &str) -> anyhow::Result<Self>
+    where
+        Self: Sized,
+    {
+        let mut words = s.split_whitespace();
+        let word = words.next();
+        if word != Some("position") {
+            bail!("expected 'position' at start of '{s}'")
+        }
+        let fen1 = words.next();
+        let board = if fen1 == Some("startpos") {
+            Catalog::starting_board()
+        } else if let Some(fen1) = fen1 {
+            let fen = once(fen1).chain(words.by_ref().take(5)).join(" ");
+            Board::parse_fen(&fen)?
+        } else {
+            bail!("expected fen/startpos after 'position' in '{s}'");
+        };
+        let moves = words.join(" ");
+        let var = if let Some(var_text) = moves.strip_prefix("moves ") {
+            Variation::parse_uci(&var_text.trim_start(), &board)?
+        } else if moves.trim().is_empty() {
+            Variation::new()
+        } else {
+            bail!("unexpected text '{moves}' at end of position '{s}'")
+        };
+        let mut pos = Position::from_board(board);
+        pos.set(Tag::SuppliedVariation(var));
+        pos.board = pos.supplied_variation().apply_to(pos.board());
+        Ok(pos)
     }
 }
 
@@ -186,7 +236,6 @@ impl Position {
             })
             .collect::<Result<Vec<Position>>>()
     }
-
 }
 
 impl fmt::Display for Position {
@@ -430,6 +479,19 @@ mod tests {
             &Tag::Comment(0, "Henry Buckle vs NN, London, 1840".to_string())
         );
         assert_eq!(epds[1].pv()?.len(), 3);
+        Ok(())
+    }
+    #[test]
+    fn test_position_uci() -> Result<()> {
+        let pos = Position::parse_uci("position startpos")?;
+        assert_eq!(pos.board(), &Catalog::starting_board());
+        assert_eq!(pos.supplied_variation(), Variation::empty());
+
+        // a7a6 on board of [starting pos + a2a3]
+        let bd2 = pos.board.make_move(&pos.board().parse_uci_move("a2a3")?);
+        let s2 = "position ".to_string() + &bd2.to_fen() + " moves a7a6";
+        let pos2 = Position::parse_uci(&s2)?;
+        assert_eq!(pos2.supplied_variation().to_uci(), "a7a6");
         Ok(())
     }
 

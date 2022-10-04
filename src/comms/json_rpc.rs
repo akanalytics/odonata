@@ -18,7 +18,7 @@ use std::io::BufWriter;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use super::uci::Uci;
+use super::uci::UciServer;
 
 fn to_rpc_error(err: impl Into<anyhow::Error>) -> jsonrpc_core::Error {
     jsonrpc_core::Error {
@@ -154,7 +154,7 @@ impl Rpc for RpcImpl {
     }
 
     fn options(&self) -> Result<String> {
-        let ops = Uci::uci_options(&self.engine.lock().unwrap());
+        let ops = UciServer::uci_options(&self.engine.lock().unwrap());
         Ok(ops.iter().join("\n"))
     }
 

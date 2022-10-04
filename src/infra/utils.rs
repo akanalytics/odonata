@@ -26,6 +26,15 @@ where
     }
 }
 
+pub trait Uci {
+    fn fmt_uci(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result;
+    fn parse_uci(s: &str) -> anyhow::Result<Self> where Self: Sized;
+
+    fn to_uci(&self) -> String {
+        Displayable(|fmt| self.fmt_uci(fmt)).to_string()
+    }
+}
+
 // https://www.chessprogramming.org/Pawn_Advantage,_Win_Percentage,_and_Elo
 #[inline]
 pub fn win_probability_from_cp_and_k(centipawns: f32, k: f32) -> f32 {

@@ -259,11 +259,16 @@ mod tests {
     use crate::catalog::Catalog;
 
     #[test]
-    fn test_hasher_display() {
+    #[ignore]
+    fn test_hasher_display_all() {
         // println!("{:?}", Hasher::new(1));
         println!("{}", Hasher::new(1));
         println!("{:#}", Hasher::new(1));
-        assert_eq!(format!("{:x}", Hasher::new(1).ep[7]), "fc31329afb42f9a7");
+    }
+
+    #[test]
+    fn test_hasher_display_single() {
+            assert_eq!(format!("{:x}", Hasher::new(1).ep[7]), "fc31329afb42f9a7");
     }
 
     #[test]

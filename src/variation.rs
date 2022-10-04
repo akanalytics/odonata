@@ -24,12 +24,15 @@ impl Default for Variation {
 impl fmt::Debug for Variation {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Variation")
-            .field("moves", &self.uci())
+            .field("moves", &self.to_uci())
             .finish()
     }
 }
 
 pub static EMPTY: Variation = Variation { moves: Vec::new() };
+
+
+
 
 impl Variation {
     #[inline]
@@ -47,12 +50,23 @@ impl Variation {
         self.moves.iter()
     }
 
-    pub fn uci(&self) -> String {
+    pub fn to_uci(&self) -> String {
         self.moves
             .iter()
             .map(|mv| mv.uci())
             .collect::<Vec<String>>()
             .join(" ")
+    }
+
+    pub fn parse_uci(s: &str, bd: &Board) -> anyhow::Result<Variation> {
+        let mut variation = Variation::new();
+        let mut b = bd.clone();
+        for word in s.split_whitespace() {
+            let mv = b.parse_uci_move(word)?;
+            b = b.make_move(&mv);
+            variation.push(mv)
+        }
+        Ok(variation)
     }
 
     /// variation without last move or None if empty
@@ -149,3 +163,22 @@ impl fmt::Display for Variation {
         Ok(())
     }
 }
+
+
+
+#[cfg(test)]
+mod tests {
+    use test_log::test;
+    use crate::catalog::Catalog;
+
+    use super::*;
+
+    #[test]
+    fn test_variation() -> anyhow::Result<()> {
+        let bd = Catalog::starting_board();
+        assert_eq!(Variation::parse_uci("a2a3", &bd)?.to_uci(), "a2a3");
+        assert_eq!(Variation::parse_uci("a2a3 a7a6", &bd)?.to_uci(), "a2a3 a7a6");
+        Ok(())
+    }
+}
+  

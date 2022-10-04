@@ -19,6 +19,7 @@ impl Profiler {
     #[inline]
     pub fn new(name: String) -> Profiler {
         let mut group = Group::new().unwrap();
+        // REF_CPU_CYCLES not supported on ZEN3
         let cycles = Builder::new()
             .group(&mut group)
             .kind(Hardware::CPU_CYCLES)
@@ -151,6 +152,27 @@ mod tests {
     }
 
     #[test]
+    fn bench_process() {
+        use std::process::Command;
+        let mut prof1 = Profiler::new("out_of_process_ls_l".into());
+        let mut prof2 = Profiler::new("out_of_process_ls_r".into());
+
+        prof1.benchmark(|| {
+            let _output = Command::new("ls")
+                .args(["-l", "-a"])
+                .output()
+                .expect("ls command failed to start");
+        });
+        prof2.benchmark(|| {
+            let _output = Command::new("ls")
+                .args(["-R", "-a"])
+                .output()
+                .expect("ls command failed to start");
+        });
+        println!();
+    }
+
+    #[test]
     fn bench_simple_struct() {
         let mut prof1 = Profiler::new("struct_access".into());
 
@@ -200,7 +222,6 @@ mod tests {
     static COUNTER2: Stat = Stat::new("Counter");
 
     // let COUNTER3: ThreadLocal<Cell<u64>> = ThreadLocal::new();
-
 
     #[test]
     fn bench_thread_local() {

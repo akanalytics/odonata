@@ -286,6 +286,7 @@ mod tests1 {
     use test_log::test;
 
     #[test]
+    #[ignore]
     fn test_aligned_vector() {
         type Item1 = (u64, u64, u64);
         let av = AlignedVec::<Item1>::new(10, 2, true, false, 64);

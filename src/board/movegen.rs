@@ -407,7 +407,7 @@ mod tests {
         );
         let mov_h1g2 = board.parse_uci_move("h1g2")?;
         assert_eq!(board.is_legal_move(&mov_h1g2), true);
-        println!("{}", Metrics::to_string());
+        // println!("{}", Metrics::to_string());
 
         for b in Catalog::stalemates().iter() {
             assert_eq!(

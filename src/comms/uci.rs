@@ -91,7 +91,7 @@ use std::thread;
 // gui -> engine: go...
 //
 #[derive(Debug)]
-pub struct Uci {
+pub struct UciServer {
     pub prelude: Vec<String>,
     pub strict_error_handling: bool,
     running: bool,
@@ -101,7 +101,7 @@ pub struct Uci {
     json_rpc: JsonRpc,
 }
 
-impl Component for Uci {
+impl Component for UciServer {
     fn new_game(&mut self) {
         self.engine.lock().unwrap().set_state(State::NewGame);
     }
@@ -109,17 +109,17 @@ impl Component for Uci {
     fn new_position(&mut self) {}
 }
 
-impl Default for Uci {
+impl Default for UciServer {
     fn default() -> Self {
-        Uci::new()
+        UciServer::new()
     }
 }
 
 #[allow(clippy::useless_format)]
-impl Uci {
-    pub fn new() -> Uci {
+impl UciServer {
+    pub fn new() -> UciServer {
         let engine = Arc::new(Mutex::new(Engine::new()));
-        let uci = Uci {
+        let uci = UciServer {
             board: Catalog::starting_board(),
             engine: Arc::clone(&engine),
             json_rpc: JsonRpc::new(Arc::clone(&engine)),
@@ -930,7 +930,7 @@ mod tests {
 
     #[test]
     fn test_uci() {
-        let mut uci = Uci::new();
+        let mut uci = UciServer::new();
         uci.prelude.push("isready".into());
         // uci.preamble.push("debug on".into());
         uci.prelude.push("debug off".into());
@@ -941,7 +941,7 @@ mod tests {
 
     #[test]
     fn test_uci_perft() {
-        let mut uci = Uci::new();
+        let mut uci = UciServer::new();
         uci.prelude.push("perft 1".into());
         uci.prelude.push("quit".into());
         uci.run();
@@ -949,7 +949,7 @@ mod tests {
 
     #[test]
     fn test_uci_helpers() {
-        let mut uci = Uci::new();
+        let mut uci = UciServer::new();
         uci.prelude.push("b".into());
         uci.prelude.push("?".into());
         uci.prelude.push(".".into());
@@ -959,7 +959,7 @@ mod tests {
 
     #[test]
     fn test_uci_config_file() {
-        let mut uci = Uci::new();
+        let mut uci = UciServer::new();
         // uci.uci_option_name_value("Config_File", "../odonata/resources/Xconfig.toml").unwrap();
         assert_eq!(uci.engine.lock().unwrap().algo.eval.quantum, 1);
         uci.prelude
@@ -972,7 +972,7 @@ mod tests {
 
     #[test]
     fn test_uci_setoption() {
-        let mut uci = Uci::new();
+        let mut uci = UciServer::new();
         let _bishop = uci.engine.lock().unwrap().algo.eval.mb.piece_weights[Piece::Bishop];
         uci.prelude
             .push("setoption name Config value eval.mb.b.s=700".into());
@@ -995,7 +995,7 @@ mod tests {
 
     #[test]
     fn test_uci_position() {
-        let mut uci = Uci::new();
+        let mut uci = UciServer::new();
         //uci.preamble.push("debug on".into());
         uci.prelude.push("position startpos".into());
         uci.prelude.push("display".into());
@@ -1003,7 +1003,7 @@ mod tests {
         uci.run();
         assert_eq!(uci.board, Catalog::starting_board());
 
-        let mut uci = Uci::new();
+        let mut uci = UciServer::new();
         uci.prelude
             .push("position fen k7/8/8/8/8/8/8/7k w - - 0 2".into());
         uci.prelude.push("quit".into());
@@ -1013,7 +1013,7 @@ mod tests {
             Board::parse_fen("k7/8/8/8/8/8/8/7k w - - 0 2").unwrap()
         );
 
-        let mut uci = Uci::new();
+        let mut uci = UciServer::new();
         uci.prelude.push("position startpos moves a2a3 a7a6".into());
         uci.prelude.push("quit".into());
         uci.run();
@@ -1024,7 +1024,7 @@ mod tests {
                 .to_fen()
         );
 
-        let mut uci = Uci::new();
+        let mut uci = UciServer::new();
         uci.prelude
             .push("position fen rnbqkbnr/1ppppppp/p7/8/8/P7/1PPPPPPP/RNBQKBNR w KQkq - 0 1 moves h2h3 h7h6".into());
         uci.prelude.push("quit".into());
@@ -1039,7 +1039,7 @@ mod tests {
 
     #[test]
     fn test_uci_go1() {
-        let mut uci = Uci::new();
+        let mut uci = UciServer::new();
         // uci.preamble.push("debug on".into());
         uci.prelude.push("position startpos moves d2d4".into());
         uci.prelude.push("go depth 1".into());
@@ -1050,7 +1050,7 @@ mod tests {
 
     #[test]
     fn test_uci_go2() {
-        let mut uci = Uci::new();
+        let mut uci = UciServer::new();
         uci.prelude.push("debug on".to_string());
         uci.prelude.push("position startpos moves d2d4".to_string());
         uci.prelude.push("go wtime 1000 btime 1000".to_string());
@@ -1068,8 +1068,8 @@ mod tests {
 
     #[test]
     fn test_ponder() {
-        let mut uci = Uci::new();
-        uci.prelude.push("debug on".to_string());
+        let mut uci = UciServer::new();
+        // uci.prelude.push("debug on".to_string());
         uci.prelude.push("position startpos".to_string());
         uci.prelude.push("go ponder movetime 1000".to_string());
         uci.prelude.push("sleep 300".to_string());

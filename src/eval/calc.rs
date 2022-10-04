@@ -119,7 +119,7 @@ trait White {
 #[derive()]
 pub struct Calc<'a> {
     _analysis: Analysis<'a>,
-    pawn: PawnStructure,
+    _pawn: PawnStructure,
     // a: &'a (),
 }
 
@@ -130,7 +130,7 @@ impl<'a> Calc<'a> {
             // a: &(),
             // analysis: Analysis::of(b),
             _analysis: Default::default(),
-            pawn: PawnStructure,
+            _pawn: PawnStructure,
         }
     }
 }
@@ -493,345 +493,345 @@ impl<'a> Calc<'a> {
         );
     }
 
-    #[inline]
-    fn pawns(&mut self, c: Color, s: &mut impl ScorerBase, b: &Board) {
-        let us = b.color(c);
-        let them = b.color(c.opposite());
-        let bbd = PreCalc::default();
-        // self.doubled_pawns = bbd.doubled_pawns(b.color(c) & b.pawns()).popcount();
-        let isolated_pawns_bb = bbd.pawn_side_isolated(us & b.pawns());
-        let isolated_pawns = isolated_pawns_bb.popcount();
-        let (pawn_atts_e, pawn_atts_w) = bbd.pawn_attacks_ew(b.pawns() & us, c);
-        let pawn_atts = pawn_atts_e | pawn_atts_w;
-        let all_pawn_att_spans = pawn_atts.fill_forward(c);
-        let pawn_duos = bbd.pawn_side_duos(b.pawns() & us);
-        let distant_neighbours = bbd.pawn_side_distant_neighbours(b.pawns() & us);
-        let doubled_pawns_bb = bbd.doubled_pawns(us & b.pawns());
-        let pawn_isolated_doubled_bb = bbd.doubled_pawns(us & b.pawns()) & isolated_pawns_bb;
-        s.set_bits(Attr::PawnIsolatedDoubled.into(), pawn_isolated_doubled_bb);
-        let pawn_isolated_doubled = pawn_isolated_doubled_bb.popcount();
+    // #[inline]
+    // fn _pawns(&mut self, c: Color, s: &mut impl ScorerBase, b: &Board) {
+    //     let us = b.color(c);
+    //     let them = b.color(c.opposite());
+    //     let bbd = PreCalc::default();
+    //     // self.doubled_pawns = bbd.doubled_pawns(b.color(c) & b.pawns()).popcount();
+    //     let isolated_pawns_bb = bbd.pawn_side_isolated(us & b.pawns());
+    //     let isolated_pawns = isolated_pawns_bb.popcount();
+    //     let (pawn_atts_e, pawn_atts_w) = bbd.pawn_attacks_ew(b.pawns() & us, c);
+    //     let pawn_atts = pawn_atts_e | pawn_atts_w;
+    //     let all_pawn_att_spans = pawn_atts.fill_forward(c);
+    //     let pawn_duos = bbd.pawn_side_duos(b.pawns() & us);
+    //     let distant_neighbours = bbd.pawn_side_distant_neighbours(b.pawns() & us);
+    //     let doubled_pawns_bb = bbd.doubled_pawns(us & b.pawns());
+    //     let pawn_isolated_doubled_bb = bbd.doubled_pawns(us & b.pawns()) & isolated_pawns_bb;
+    //     s.set_bits(Attr::PawnIsolatedDoubled.into(), pawn_isolated_doubled_bb);
+    //     let pawn_isolated_doubled = pawn_isolated_doubled_bb.popcount();
 
-        // let enemy_rook_on_passer = pawn_isolated_doubled;
-        let doubled_pawns = doubled_pawns_bb.popcount() - pawn_isolated_doubled;
-        s.set_bits(
-            Attr::PawnDoubled.into(),
-            doubled_pawns_bb - pawn_isolated_doubled_bb,
-        );
+    //     // let enemy_rook_on_passer = pawn_isolated_doubled;
+    //     let doubled_pawns = doubled_pawns_bb.popcount() - pawn_isolated_doubled;
+    //     s.set_bits(
+    //         Attr::PawnDoubled.into(),
+    //         doubled_pawns_bb - pawn_isolated_doubled_bb,
+    //     );
 
-        let (enemy_pawn_atts_e, enemy_pawn_atts_w) =
-            bbd.pawn_attacks_ew(b.pawns() & them, c.opposite());
-        let enemy_pawn_atts = enemy_pawn_atts_e | enemy_pawn_atts_w;
+    //     let (enemy_pawn_atts_e, enemy_pawn_atts_w) =
+    //         bbd.pawn_attacks_ew(b.pawns() & them, c.opposite());
+    //     let enemy_pawn_atts = enemy_pawn_atts_e | enemy_pawn_atts_w;
 
-        let mut passed_pawns_on_r7 = 0;
-        let mut passed_pawns_on_r6 = 0;
-        let mut passed_pawns_on_r5 = 0;
-        let mut passed_pawns_on_r4 = 0;
-        let mut passed_pawns = 0;
-        let mut pawn_connected_r67 = 0;
-        let mut pawn_connected_r345 = 0;
-        let mut pawn_duo_r67 = 0;
-        let mut pawn_duo_r2345 = 0;
+    //     let mut passed_pawns_on_r7 = 0;
+    //     let mut passed_pawns_on_r6 = 0;
+    //     let mut passed_pawns_on_r5 = 0;
+    //     let mut passed_pawns_on_r4 = 0;
+    //     let mut passed_pawns = 0;
+    //     let mut pawn_connected_r67 = 0;
+    //     let mut pawn_connected_r345 = 0;
+    //     let mut pawn_duo_r67 = 0;
+    //     let mut pawn_duo_r2345 = 0;
 
-        let mut weak = 0;
+    //     let mut weak = 0;
 
-        let mut backward = 0;
-        let mut backward_half_open = 0;
-        let semi_isolated = 0;
+    //     let mut backward = 0;
+    //     let mut backward_half_open = 0;
+    //     let semi_isolated = 0;
 
-        let mut _passed_duo_r67 = 0;
-        let mut _passed_duo_r2345 = 0;
-        // let mut pawn_directly_doubled = 0;
-        let candidate_passed_pawn = 0;
-        let mut _pawn_directly_doubled = 0;
-        let mut _passed_connected_r345 = 0;
-        let mut _passed_connected_r67 = 0;
-        let space = 0;
-        let mut passers_on_rim = 0;
-        let mut blockaded = 0;
-        let mut blockaded_passers = 0;
-        let mut rooks_behind_passer = 0;
-        // let mut rammed_pawns = 0;
-        let mut closedness = 0;
-        let mut bishop_color_rammed_pawns = 0;
-        let mut pawn_distant_neighbours_r7 = 0;
-        let mut pawn_distant_neighbours_r6 = 0;
-        let mut pawn_distant_neighbours_r5 = 0;
+    //     let mut _passed_duo_r67 = 0;
+    //     let mut _passed_duo_r2345 = 0;
+    //     // let mut pawn_directly_doubled = 0;
+    //     let candidate_passed_pawn = 0;
+    //     let mut _pawn_directly_doubled = 0;
+    //     let mut _passed_connected_r345 = 0;
+    //     let mut _passed_connected_r67 = 0;
+    //     let space = 0;
+    //     let mut passers_on_rim = 0;
+    //     let mut blockaded = 0;
+    //     let mut blockaded_passers = 0;
+    //     let mut rooks_behind_passer = 0;
+    //     // let mut rammed_pawns = 0;
+    //     let mut closedness = 0;
+    //     let mut bishop_color_rammed_pawns = 0;
+    //     let mut pawn_distant_neighbours_r7 = 0;
+    //     let mut pawn_distant_neighbours_r6 = 0;
+    //     let mut pawn_distant_neighbours_r5 = 0;
 
-        for p in (b.pawns() & us).squares() {
-            // self.doubled_pawns += is_doubled as i32;
-            // we still count doubled pawns as passed pawns (since 0.3.37)
-            let rank_num = p.rank_number_as_white(c) as i32;
-            let pawn_stop = bbd.pawn_stop(c, p);
-            // use pawns not pawns&them so we only count front of doubled pawns (+8 elo in sp)
-            let is_passed =
-                (bbd.pawn_front_span_union_attack_span(c, p) & b.pawns() & them).is_empty();
+    //     for p in (b.pawns() & us).squares() {
+    //         // self.doubled_pawns += is_doubled as i32;
+    //         // we still count doubled pawns as passed pawns (since 0.3.37)
+    //         let rank_num = p.rank_number_as_white(c) as i32;
+    //         let pawn_stop = bbd.pawn_stop(c, p);
+    //         // use pawns not pawns&them so we only count front of doubled pawns (+8 elo in sp)
+    //         let is_passed =
+    //             (bbd.pawn_front_span_union_attack_span(c, p) & b.pawns() & them).is_empty();
 
-            // cannot be defended and cannot advance 1 square to be defended
-            // => other pawns attack spans so not overlap with stop sq, pawn itself, or rear span
-            // we dont count weak isolated pawns
-            let is_weak = (((bbd.pawn_rear_span(c, p) | p.as_bb() | pawn_stop)
-                & all_pawn_att_spans)
-                - isolated_pawns_bb)
-                .is_empty();
+    //         // cannot be defended and cannot advance 1 square to be defended
+    //         // => other pawns attack spans so not overlap with stop sq, pawn itself, or rear span
+    //         // we dont count weak isolated pawns
+    //         let is_weak = (((bbd.pawn_rear_span(c, p) | p.as_bb() | pawn_stop)
+    //             & all_pawn_att_spans)
+    //             - isolated_pawns_bb)
+    //             .is_empty();
 
-            // self.passed_pawns += is_passed as i32;
-            // let rank7 = c.chooser_wb(Bitboard::RANK_7, Bitboard::RANK_2);
-            // let rank6 = c.chooser_wb(Bitboard::RANK_6, Bitboard::RANK_3);
-            // let rank5 = c.chooser_wb(Bitboard::RANK_5, Bitboard::RANK_4);
-            // all pawns on r7 are passed as an opponent pawn cannot be on rank 8
-            let is_passer_on_rim = is_passed && p.is_in(Bitboard::RIM);
-            passers_on_rim += is_passer_on_rim as i32;
-            s.set_bits(Attr::PassersOnRim.into(), p.as_bb().iff(is_passer_on_rim));
+    //         // self.passed_pawns += is_passed as i32;
+    //         // let rank7 = c.chooser_wb(Bitboard::RANK_7, Bitboard::RANK_2);
+    //         // let rank6 = c.chooser_wb(Bitboard::RANK_6, Bitboard::RANK_3);
+    //         // let rank5 = c.chooser_wb(Bitboard::RANK_5, Bitboard::RANK_4);
+    //         // all pawns on r7 are passed as an opponent pawn cannot be on rank 8
+    //         let is_passer_on_rim = is_passed && p.is_in(Bitboard::RIM);
+    //         passers_on_rim += is_passer_on_rim as i32;
+    //         s.set_bits(Attr::PassersOnRim.into(), p.as_bb().iff(is_passer_on_rim));
 
-            let is_blockaded = pawn_stop.intersects(them);
-            blockaded += is_blockaded as i32;
-            blockaded_passers += (is_blockaded && is_passed) as i32;
-            rooks_behind_passer +=
-                (is_passed && (bbd.pawn_front_span(c.opposite(), p) & b.rooks() & us).any()) as i32;
+    //         let is_blockaded = pawn_stop.intersects(them);
+    //         blockaded += is_blockaded as i32;
+    //         blockaded_passers += (is_blockaded && is_passed) as i32;
+    //         rooks_behind_passer +=
+    //             (is_passed && (bbd.pawn_front_span(c.opposite(), p) & b.rooks() & us).any()) as i32;
 
-            let is_rammed = pawn_stop.intersects(them & b.pawns());
-            if is_rammed & p.is_in((b.bishops() & us).squares_of_matching_color()) {
-                bishop_color_rammed_pawns +=
-                    1 + (p.as_bb() | pawn_stop).intersects(Bitboard::CENTER_16_SQ) as i32;
-            }
+    //         let is_rammed = pawn_stop.intersects(them & b.pawns());
+    //         if is_rammed & p.is_in((b.bishops() & us).squares_of_matching_color()) {
+    //             bishop_color_rammed_pawns +=
+    //                 1 + (p.as_bb() | pawn_stop).intersects(Bitboard::CENTER_16_SQ) as i32;
+    //         }
 
-            weak += (is_weak & is_rammed) as i32;
-            s.set_bits(Attr::PawnWeak.into(), p.as_bb().iff(is_weak & is_rammed));
+    //         weak += (is_weak & is_rammed) as i32;
+    //         s.set_bits(Attr::PawnWeak.into(), p.as_bb().iff(is_weak & is_rammed));
 
-            let _nearly_rammed =
-                bbd.pawn_double_stop(c, p).intersects(them & b.pawns()) || is_blockaded;
-            // rammed_pawns += rammed as i32;
-            closedness += is_rammed as i32;
-            // try and ensure closedness is symmetric
-            if p.is_in(Bitboard::CENTER_16_SQ) || pawn_stop.intersects(Bitboard::CENTER_16_SQ) {
-                closedness += is_rammed as i32;
-            }
-            s.set_bits(Attr::RammedPawns.into(), p.as_bb().iff(is_rammed));
+    //         let _nearly_rammed =
+    //             bbd.pawn_double_stop(c, p).intersects(them & b.pawns()) || is_blockaded;
+    //         // rammed_pawns += rammed as i32;
+    //         closedness += is_rammed as i32;
+    //         // try and ensure closedness is symmetric
+    //         if p.is_in(Bitboard::CENTER_16_SQ) || pawn_stop.intersects(Bitboard::CENTER_16_SQ) {
+    //             closedness += is_rammed as i32;
+    //         }
+    //         s.set_bits(Attr::RammedPawns.into(), p.as_bb().iff(is_rammed));
 
-            // // old let is_passed = (bbd.pawn_front_span_union_attack_span(c, p) & b.pawns()).is_empty();
-            // let blockaded = pawn_stop.intersects(them);
+    //         // // old let is_passed = (bbd.pawn_front_span_union_attack_span(c, p) & b.pawns()).is_empty();
+    //         // let blockaded = pawn_stop.intersects(them);
 
-            // if p.is_in(doubled_pawns) && pawn_stop.intersects(doubled_pawns) {
-            //     self.doubled_pawns -=1;
-            //     self.pawn_directly_doubled +=1;
-            // }
+    //         // if p.is_in(doubled_pawns) && pawn_stop.intersects(doubled_pawns) {
+    //         //     self.doubled_pawns -=1;
+    //         //     self.pawn_directly_doubled +=1;
+    //         // }
 
-            // let _semi_isolated = if !p.is_in(isolated_pawns_bb)
-            //     && (((bbd.neighbouring_files(p) & bbd.within_chebyshev_distance_inclusive(p, 2))
-            //         - p.as_bb()
-            //         - p.file())
-            //         & b.pawns()
-            //         & us)
-            //         .is_empty()
-            // {
-            //     // semi_isolated += 1;
-            //     scorer.set_bits(Attr::SemiIsolated.into(), p.as_bb());
-            //     true
-            // } else {
-            //     false
-            // };
+    //         // let _semi_isolated = if !p.is_in(isolated_pawns_bb)
+    //         //     && (((bbd.neighbouring_files(p) & bbd.within_chebyshev_distance_inclusive(p, 2))
+    //         //         - p.as_bb()
+    //         //         - p.file())
+    //         //         & b.pawns()
+    //         //         & us)
+    //         //         .is_empty()
+    //         // {
+    //         //     // semi_isolated += 1;
+    //         //     scorer.set_bits(Attr::SemiIsolated.into(), p.as_bb());
+    //         //     true
+    //         // } else {
+    //         //     false
+    //         // };
 
-            // candidate passers
-            // if !is_passed
-            //     &&
-            //     (bbd.pawn_front_span(c, p) & b.pawns() & them).is_empty() && p.rank_index_as_white(c) >= 5 {
-            //         let mut ours = (bbd.pawn_attack_span(c.opposite(),p) & b.pawns() & us & bbd.within_chebyshev_distance_inclusive(p, 2)).popcount();
-            //         ours += ((p.as_bb().shift(Dir::E) | p.as_bb().shift(Dir::W)) & b.pawns() & us).popcount();
-            //         let theirs = (bbd.pawn_attack_span(c, p) & b.pawns() & them).popcount();
-            //         if ours >= theirs && p.rank_index_as_white(c) >= 4 {
-            //             candidate_passed_pawn += 1;
-            //         }
-            // }
-            // self.enemy_rook_on_passer += (!p.is_in(isolated_pawns_bb)) as i32;
+    //         // candidate passers
+    //         // if !is_passed
+    //         //     &&
+    //         //     (bbd.pawn_front_span(c, p) & b.pawns() & them).is_empty() && p.rank_index_as_white(c) >= 5 {
+    //         //         let mut ours = (bbd.pawn_attack_span(c.opposite(),p) & b.pawns() & us & bbd.within_chebyshev_distance_inclusive(p, 2)).popcount();
+    //         //         ours += ((p.as_bb().shift(Dir::E) | p.as_bb().shift(Dir::W)) & b.pawns() & us).popcount();
+    //         //         let theirs = (bbd.pawn_attack_span(c, p) & b.pawns() & them).popcount();
+    //         //         if ours >= theirs && p.rank_index_as_white(c) >= 4 {
+    //         //             candidate_passed_pawn += 1;
+    //         //         }
+    //         // }
+    //         // self.enemy_rook_on_passer += (!p.is_in(isolated_pawns_bb)) as i32;
 
-            // passers
-            if is_passed {
-                passed_pawns += 1;
-                s.set_bits(Attr::PawnPassed.into(), p.as_bb());
-                match rank_num {
-                    7 => passed_pawns_on_r7 += 1,
-                    6 => passed_pawns_on_r6 += 1,
-                    5 => passed_pawns_on_r5 += 1,
-                    4 => passed_pawns_on_r4 += 1,
-                    _ => {}
-                }
-            }
-            //     self.passers_on_rim += p.is_in(Bitboard::RIM) as i32;
-            //     self.blockaded_passers += blockaded as i32;
-            //     let no_pawns_behind = (bbd.pawn_front_span(c.opposite(), p) & b.pawns()).is_empty();
-            //     self.rooks_behind_passer += (no_pawns_behind && (bbd.pawn_front_span(c.opposite(), p) & b.rooks_or_queens() & us).any()) as i32;
-            //     if p.is_in(pawn_atts) || p.is_in(pawn_duos)  {
-            //         match rank_index {
-            //             4 | 5 | 6 => self.passed_connected_r67 += 1,
-            //             _ => {}, // self.passed_connected_r345 += 1,
-            //         }
-            //     }
-            //     //     match rank_index {
-            //     //         // 4 | 5 | 6 => self.passed_connected_r67 += 1,
-            //     //         _ => self.passed_connected_r345 += 1,
-            //     //     }
-            //     // }
-            //     // if p.is_in(pawn_duos) {
-            //     //     match rank_index {
-            //     //         // 5 | 6 => self.passed_connected_r67 += 1,
-            //     //         _ => self.passed_connected_r345 += 1,
-            //     //     }
-            //     // }
-            //     // if !p.is_in(isolated_pawns_bb)
-            //     //     &&
-            //     //     (((bbd.neighbouring_files(p) & bbd.within_chebyshev_distance_inclusive(p, 3)) - p.as_bb()) & b.pawns() & us).is_empty() {
-            //     //     self.semi_isolated += 1;
-            //     // }
-            //     continue;
-            // }
-            // self.blockaded += blockaded as i32;
-            // let rammed = pawn_stop.intersects(them & b.pawns());
-            // self.space += (rammed as i32) * rank_index * (1 + p.is_in(FILE_D | FILE_E) as i32);
+    //         // passers
+    //         if is_passed {
+    //             passed_pawns += 1;
+    //             s.set_bits(Attr::PawnPassed.into(), p.as_bb());
+    //             match rank_num {
+    //                 7 => passed_pawns_on_r7 += 1,
+    //                 6 => passed_pawns_on_r6 += 1,
+    //                 5 => passed_pawns_on_r5 += 1,
+    //                 4 => passed_pawns_on_r4 += 1,
+    //                 _ => {}
+    //             }
+    //         }
+    //         //     self.passers_on_rim += p.is_in(Bitboard::RIM) as i32;
+    //         //     self.blockaded_passers += blockaded as i32;
+    //         //     let no_pawns_behind = (bbd.pawn_front_span(c.opposite(), p) & b.pawns()).is_empty();
+    //         //     self.rooks_behind_passer += (no_pawns_behind && (bbd.pawn_front_span(c.opposite(), p) & b.rooks_or_queens() & us).any()) as i32;
+    //         //     if p.is_in(pawn_atts) || p.is_in(pawn_duos)  {
+    //         //         match rank_index {
+    //         //             4 | 5 | 6 => self.passed_connected_r67 += 1,
+    //         //             _ => {}, // self.passed_connected_r345 += 1,
+    //         //         }
+    //         //     }
+    //         //     //     match rank_index {
+    //         //     //         // 4 | 5 | 6 => self.passed_connected_r67 += 1,
+    //         //     //         _ => self.passed_connected_r345 += 1,
+    //         //     //     }
+    //         //     // }
+    //         //     // if p.is_in(pawn_duos) {
+    //         //     //     match rank_index {
+    //         //     //         // 5 | 6 => self.passed_connected_r67 += 1,
+    //         //     //         _ => self.passed_connected_r345 += 1,
+    //         //     //     }
+    //         //     // }
+    //         //     // if !p.is_in(isolated_pawns_bb)
+    //         //     //     &&
+    //         //     //     (((bbd.neighbouring_files(p) & bbd.within_chebyshev_distance_inclusive(p, 3)) - p.as_bb()) & b.pawns() & us).is_empty() {
+    //         //     //     self.semi_isolated += 1;
+    //         //     // }
+    //         //     continue;
+    //         // }
+    //         // self.blockaded += blockaded as i32;
+    //         // let rammed = pawn_stop.intersects(them & b.pawns());
+    //         // self.space += (rammed as i32) * rank_index * (1 + p.is_in(FILE_D | FILE_E) as i32);
 
-            // space
-            // if (rammed || nearly_rammed) && p.is_in(pawn_duos | pawn_atts) {
-            //     space += rank_index + p.is_in(Bitboard::FILE_D | Bitboard::FILE_E) as i32;
-            // }
+    //         // space
+    //         // if (rammed || nearly_rammed) && p.is_in(pawn_duos | pawn_atts) {
+    //         //     space += rank_index + p.is_in(Bitboard::FILE_D | Bitboard::FILE_E) as i32;
+    //         // }
 
-            if p.is_in(pawn_atts) {
-                match rank_num {
-                    6 | 7 => {
-                        pawn_connected_r67 += 1;
-                        s.set_bits(Attr::PawnConnectedR67.into(), p.as_bb());
-                    }
-                    _ => {
-                        pawn_connected_r345 += 1;
-                        s.set_bits(Attr::PawnConnectedR345.into(), p.as_bb());
-                    }
-                }
-            }
-            if p.is_in(distant_neighbours) {
-                match rank_num {
-                    7 => pawn_distant_neighbours_r7 += 1,
-                    6 => pawn_distant_neighbours_r6 += 1,
-                    5 => pawn_distant_neighbours_r5 += 1,
-                    _ => {}
-                }
-            }
+    //         if p.is_in(pawn_atts) {
+    //             match rank_num {
+    //                 6 | 7 => {
+    //                     pawn_connected_r67 += 1;
+    //                     s.set_bits(Attr::PawnConnectedR67.into(), p.as_bb());
+    //                 }
+    //                 _ => {
+    //                     pawn_connected_r345 += 1;
+    //                     s.set_bits(Attr::PawnConnectedR345.into(), p.as_bb());
+    //                 }
+    //             }
+    //         }
+    //         if p.is_in(distant_neighbours) {
+    //             match rank_num {
+    //                 7 => pawn_distant_neighbours_r7 += 1,
+    //                 6 => pawn_distant_neighbours_r6 += 1,
+    //                 5 => pawn_distant_neighbours_r5 += 1,
+    //                 _ => {}
+    //             }
+    //         }
 
-            if p.is_in(pawn_duos) {
-                match rank_num {
-                    6 | 7 => pawn_duo_r67 += 1,
-                    _ => pawn_duo_r2345 += 1,
-                }
-            } else {
-                // half open backward pawns - cannot be defended by other pawns and cannot move fwd
-                if pawn_stop.intersects(enemy_pawn_atts)
-                    && bbd
-                        .pawn_attack_span(c.opposite(), p)
-                        .disjoint(b.pawns() & us)
-                {
-                    // we already know from duo-else-clause there is no pawn either side too
-                    if (bbd.pawn_front_span(c, p) & b.pawns() & them).is_empty() {
-                        //  &&
-                        //  (b.rooks_or_queens() & them).any() { //
-                        backward_half_open += 1;
-                        s.set_bits(Attr::BackwardHalfOpen.into(), p.as_bb());
-                    } else {
-                        backward += 1;
-                        s.set_bits(Attr::Backward.into(), p.as_bb());
-                    }
-                }
-            }
-        }
-        // self.doubled_pawns = bbd.doubled_pawns(us & b.pawns()).popcount();
-        // lots of rammed pawns and having a knight an advantage
-        // rammed_pawns = rammed_pawns * rammed_pawns * (b.knights() & us).any() as i32;
+    //         if p.is_in(pawn_duos) {
+    //             match rank_num {
+    //                 6 | 7 => pawn_duo_r67 += 1,
+    //                 _ => pawn_duo_r2345 += 1,
+    //             }
+    //         } else {
+    //             // half open backward pawns - cannot be defended by other pawns and cannot move fwd
+    //             if pawn_stop.intersects(enemy_pawn_atts)
+    //                 && bbd
+    //                     .pawn_attack_span(c.opposite(), p)
+    //                     .disjoint(b.pawns() & us)
+    //             {
+    //                 // we already know from duo-else-clause there is no pawn either side too
+    //                 if (bbd.pawn_front_span(c, p) & b.pawns() & them).is_empty() {
+    //                     //  &&
+    //                     //  (b.rooks_or_queens() & them).any() { //
+    //                     backward_half_open += 1;
+    //                     s.set_bits(Attr::BackwardHalfOpen.into(), p.as_bb());
+    //                 } else {
+    //                     backward += 1;
+    //                     s.set_bits(Attr::Backward.into(), p.as_bb());
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     // self.doubled_pawns = bbd.doubled_pawns(us & b.pawns()).popcount();
+    //     // lots of rammed pawns and having a knight an advantage
+    //     // rammed_pawns = rammed_pawns * rammed_pawns * (b.knights() & us).any() as i32;
 
-        let bishop_far_pawns = ((b.pawns() & Bitboard::FILE_A.or(Bitboard::FILE_B)).any()
-            && (b.pawns() & Bitboard::FILE_G.or(Bitboard::FILE_H)).any()
-            && b.rooks_or_queens().is_empty()) as i32
-            * (b.bishops() & us).popcount();
+    //     let bishop_far_pawns = ((b.pawns() & Bitboard::FILE_A.or(Bitboard::FILE_B)).any()
+    //         && (b.pawns() & Bitboard::FILE_G.or(Bitboard::FILE_H)).any()
+    //         && b.rooks_or_queens().is_empty()) as i32
+    //         * (b.bishops() & us).popcount();
 
-        let knight_closedness = closedness * closedness * (b.knights() & us).popcount();
-        let bishop_closedness = closedness * closedness * (b.bishops() & us).popcount();
-        let rook_closedness = closedness * closedness * (b.rooks() & us).popcount();
-        // space adjustment
-        // space = match b.pawns().popcount() {
-        //     10.. => space,
-        //     8 | 9 => space / 2,
-        //     _ => 0,
-        // };
+    //     let knight_closedness = closedness * closedness * (b.knights() & us).popcount();
+    //     let bishop_closedness = closedness * closedness * (b.bishops() & us).popcount();
+    //     let rook_closedness = closedness * closedness * (b.rooks() & us).popcount();
+    //     // space adjustment
+    //     // space = match b.pawns().popcount() {
+    //     //     10.. => space,
+    //     //     8 | 9 => space / 2,
+    //     //     _ => 0,
+    //     // };
 
-        s.accum(c, Attr::BishopFarPawns.as_feature(), bishop_far_pawns);
-        s.accum(
-            c,
-            Attr::BishopColorRammedPawns.as_feature(),
-            bishop_color_rammed_pawns,
-        );
-        s.accum(c, Attr::Closedness.as_feature(), closedness * closedness);
-        s.accum(c, Attr::KnightClosedness.as_feature(), knight_closedness);
-        s.accum(c, Attr::BishopClosedness.as_feature(), bishop_closedness);
-        s.accum(c, Attr::RookClosedness.as_feature(), rook_closedness);
-        s.accum(c, Attr::PawnDoubled.as_feature(), doubled_pawns);
-        s.accum(
-            c,
-            Attr::PawnDirectlyDoubled.as_feature(),
-            _pawn_directly_doubled,
-        );
-        s.accum(c, Attr::PawnWeak.as_feature(), weak);
-        s.accum(c, Attr::PawnIsolated.as_feature(), isolated_pawns);
-        s.accum(c, Attr::SemiIsolated.as_feature(), semi_isolated);
-        s.accum(
-            c,
-            Attr::PawnDistantNeighboursR7.as_feature(),
-            pawn_distant_neighbours_r7,
-        );
-        s.accum(
-            c,
-            Attr::PawnDistantNeighboursR6.as_feature(),
-            pawn_distant_neighbours_r6,
-        );
-        s.accum(
-            c,
-            Attr::PawnDistantNeighboursR5.as_feature(),
-            pawn_distant_neighbours_r5,
-        );
-        s.accum(c, Attr::PawnPassed.as_feature(), passed_pawns);
-        s.accum(c, Attr::PawnPassedR7.as_feature(), passed_pawns_on_r7);
-        s.accum(c, Attr::PawnPassedR6.as_feature(), passed_pawns_on_r6);
-        s.accum(c, Attr::PawnPassedR5.as_feature(), passed_pawns_on_r5);
-        s.accum(c, Attr::PawnPassedR4.as_feature(), passed_pawns_on_r4);
-        s.accum(c, Attr::PassersOnRim.as_feature(), passers_on_rim);
-        s.accum(
-            c,
-            Attr::CandidatePassedPawn.as_feature(),
-            candidate_passed_pawn,
-        );
-        s.accum(c, Attr::BlockadedOpponent.as_feature(), blockaded);
-        s.accum(c, Attr::BlockadedPassers.as_feature(), blockaded_passers);
-        s.accum(c, Attr::RooksBehindPasser.as_feature(), rooks_behind_passer);
-        s.accum(
-            c,
-            Attr::PawnIsolatedDoubled.as_feature(),
-            pawn_isolated_doubled,
-        );
-        // scorer.accum(c, Attr::RammedPawns.as_feature(), rammed_pawns);
-        s.accum(c, Attr::Space.as_feature(), space);
-        s.accum(c, Attr::PawnConnectedR67.as_feature(), pawn_connected_r67);
-        s.accum(c, Attr::PawnConnectedR345.as_feature(), pawn_connected_r345);
-        s.accum(
-            c,
-            Attr::PassedConnectedR67.as_feature(),
-            _passed_connected_r67,
-        );
-        s.accum(
-            c,
-            Attr::PassedConnectedR345.as_feature(),
-            _passed_connected_r345,
-        );
-        s.accum(c, Attr::PawnDuoR67.as_feature(), pawn_duo_r67);
-        s.accum(c, Attr::PawnDuoR2345.as_feature(), pawn_duo_r2345);
-        s.accum(c, Attr::PassedDuoR67.as_feature(), _passed_duo_r67);
-        s.accum(c, Attr::PassedDuoR2345.as_feature(), _passed_duo_r2345);
-        s.accum(c, Attr::BackwardHalfOpen.as_feature(), backward_half_open);
-        s.accum(c, Attr::Backward.as_feature(), backward);
-    }
+    //     s.accum(c, Attr::BishopFarPawns.as_feature(), bishop_far_pawns);
+    //     s.accum(
+    //         c,
+    //         Attr::BishopColorRammedPawns.as_feature(),
+    //         bishop_color_rammed_pawns,
+    //     );
+    //     s.accum(c, Attr::Closedness.as_feature(), closedness * closedness);
+    //     s.accum(c, Attr::KnightClosedness.as_feature(), knight_closedness);
+    //     s.accum(c, Attr::BishopClosedness.as_feature(), bishop_closedness);
+    //     s.accum(c, Attr::RookClosedness.as_feature(), rook_closedness);
+    //     s.accum(c, Attr::PawnDoubled.as_feature(), doubled_pawns);
+    //     s.accum(
+    //         c,
+    //         Attr::PawnDirectlyDoubled.as_feature(),
+    //         _pawn_directly_doubled,
+    //     );
+    //     s.accum(c, Attr::PawnWeak.as_feature(), weak);
+    //     s.accum(c, Attr::PawnIsolated.as_feature(), isolated_pawns);
+    //     s.accum(c, Attr::SemiIsolated.as_feature(), semi_isolated);
+    //     s.accum(
+    //         c,
+    //         Attr::PawnDistantNeighboursR7.as_feature(),
+    //         pawn_distant_neighbours_r7,
+    //     );
+    //     s.accum(
+    //         c,
+    //         Attr::PawnDistantNeighboursR6.as_feature(),
+    //         pawn_distant_neighbours_r6,
+    //     );
+    //     s.accum(
+    //         c,
+    //         Attr::PawnDistantNeighboursR5.as_feature(),
+    //         pawn_distant_neighbours_r5,
+    //     );
+    //     s.accum(c, Attr::PawnPassed.as_feature(), passed_pawns);
+    //     s.accum(c, Attr::PawnPassedR7.as_feature(), passed_pawns_on_r7);
+    //     s.accum(c, Attr::PawnPassedR6.as_feature(), passed_pawns_on_r6);
+    //     s.accum(c, Attr::PawnPassedR5.as_feature(), passed_pawns_on_r5);
+    //     s.accum(c, Attr::PawnPassedR4.as_feature(), passed_pawns_on_r4);
+    //     s.accum(c, Attr::PassersOnRim.as_feature(), passers_on_rim);
+    //     s.accum(
+    //         c,
+    //         Attr::CandidatePassedPawn.as_feature(),
+    //         candidate_passed_pawn,
+    //     );
+    //     s.accum(c, Attr::BlockadedOpponent.as_feature(), blockaded);
+    //     s.accum(c, Attr::BlockadedPassers.as_feature(), blockaded_passers);
+    //     s.accum(c, Attr::RooksBehindPasser.as_feature(), rooks_behind_passer);
+    //     s.accum(
+    //         c,
+    //         Attr::PawnIsolatedDoubled.as_feature(),
+    //         pawn_isolated_doubled,
+    //     );
+    //     // scorer.accum(c, Attr::RammedPawns.as_feature(), rammed_pawns);
+    //     s.accum(c, Attr::Space.as_feature(), space);
+    //     s.accum(c, Attr::PawnConnectedR67.as_feature(), pawn_connected_r67);
+    //     s.accum(c, Attr::PawnConnectedR345.as_feature(), pawn_connected_r345);
+    //     s.accum(
+    //         c,
+    //         Attr::PassedConnectedR67.as_feature(),
+    //         _passed_connected_r67,
+    //     );
+    //     s.accum(
+    //         c,
+    //         Attr::PassedConnectedR345.as_feature(),
+    //         _passed_connected_r345,
+    //     );
+    //     s.accum(c, Attr::PawnDuoR67.as_feature(), pawn_duo_r67);
+    //     s.accum(c, Attr::PawnDuoR2345.as_feature(), pawn_duo_r2345);
+    //     s.accum(c, Attr::PassedDuoR67.as_feature(), _passed_duo_r67);
+    //     s.accum(c, Attr::PassedDuoR2345.as_feature(), _passed_duo_r2345);
+    //     s.accum(c, Attr::BackwardHalfOpen.as_feature(), backward_half_open);
+    //     s.accum(c, Attr::Backward.as_feature(), backward);
+    // }
 
     #[inline]
     fn king_safety(&mut self, c: Color, s: &mut impl ScorerBase, b: &Board) {

@@ -323,7 +323,7 @@ impl Engine {
 mod tests {
     use super::*;
     use crate::catalog::*;
-    use crate::comms::uci::Uci;
+    use crate::comms::uci::UciServer;
     use crate::infra::black_box;
     use crate::infra::utils::Formatting;
     use std::time;
@@ -407,7 +407,7 @@ mod tests {
         //     binc: Duration::ZERO,
         //     movestogo: 20,
         // });
-        engine.algo.set_callback(Uci::uci_info);
+        engine.algo.set_callback(UciServer::uci_info);
         engine.algo.search();
         println!("{}", engine);
     }

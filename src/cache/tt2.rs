@@ -767,7 +767,7 @@ mod tests {
         let board = Catalog::starting_board();
         let moves = tt1.extract_pv_and_score(&board).0;
         info!("After extract");
-        assert_eq!(moves.uci(), "");
+        assert_eq!(moves.to_uci(), "");
         assert_eq!(tt1.hashfull_per_mille(), 0);
         manipulate(&mut tt1);
         assert_eq!(tt1.table.utilization(), 2);
@@ -845,7 +845,7 @@ mod tests {
         let mut algo = Algo::new();
         algo.tt.mb = 128;
         // use simple evaluation as we look at great depth
-        algo.set_callback(Uci::uci_info);
+        algo.set_callback(UciServer::uci_info);
         algo.set_timing_method(TimeControl::Depth(33));
         algo.new_game();
         for pos in Catalog::famous().iter() {

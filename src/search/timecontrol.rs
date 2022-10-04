@@ -1,7 +1,7 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
+use crate::infra::utils::{Displayable, Formatting};
 use crate::piece::{Color, Ply};
-use crate::infra::utils::Formatting;
 use std::fmt;
 use std::str::FromStr;
 use std::time::Duration;
@@ -79,6 +79,47 @@ impl Default for TimeControl {
 }
 
 impl TimeControl {
+    fn fmt_uci(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use TimeControl::*;
+        match self {
+            DefaultTime => write!(f, "Default")?,
+            Depth(ply) => write!(f, "depth {ply}")?,
+            SearchTime(dur) => write!(f, "movetime {ms}", ms = dur.as_millis())?,
+            NodeCount(nodes) => write!(f, "nodes {nodes}")?,
+            Infinite => write!(f, "infinite")?,
+            MateIn(depth) => write!(f, "mate {depth}")?,
+            Fischer(RemainingTime {
+                wtime,
+                btime,
+                winc,
+                binc,
+                moves_to_go,
+                our_color: _,
+            }) => {
+                write!(
+                    f,
+                    "wtime {wt} btime {bt}",
+                    wt = wtime.as_millis(),
+                    bt = btime.as_millis()
+                )?;
+                if !winc.is_zero() {
+                    write!(f, "winc {wi}", wi = winc.as_millis())?;
+                }
+                if !binc.is_zero() {
+                    write!(f, "binc {bi}", bi = binc.as_millis())?;
+                }
+                if *moves_to_go > 0 {
+                    write!(f, "movestogo {moves_to_go}")?;
+                }
+            }
+        };
+        Ok(())
+    }
+
+    pub fn to_uci(&self) -> String {
+        Displayable(|fmt| self.fmt_uci(fmt)).to_string()
+    }
+
     pub fn parse(tc: &str) -> Result<Self, String> {
         if tc == "inf" {
             Ok(TimeControl::Infinite)

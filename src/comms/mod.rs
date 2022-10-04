@@ -4,7 +4,7 @@ pub mod json_rpc;
 pub mod uci;
 
 use crate::comms::bench::Bench;
-use crate::comms::uci::Uci;
+use crate::comms::uci::UciServer;
 use crate::infra::version::Version;
 use crate::search::timecontrol::TimeControl;
 use clap::{Command, Arg};
@@ -87,7 +87,7 @@ pub fn main() -> Result<(), String> {
     //     ParsedConfig::set_global(config);
     // }
     if matches.subcommand_name() == Some("bench") {
-        let mut uci = Uci::new();
+        let mut uci = UciServer::new();
         uci.prelude.push("position startpos".to_string());
         uci.prelude.push("go depth 16".to_string());
         uci.prelude.push("bench".to_string());
@@ -112,7 +112,7 @@ pub fn main() -> Result<(), String> {
         };
         Bench::search(tc, threads);
     } else {
-        let mut uci = Uci::new();
+        let mut uci = UciServer::new();
         uci.strict_error_handling = matches.is_present("strict");
         if matches.is_present("uci") {
             uci.prelude.push("settings".to_string());

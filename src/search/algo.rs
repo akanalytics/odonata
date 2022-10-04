@@ -405,7 +405,7 @@ impl Algo {
 mod tests {
     use super::*;
     use crate::catalog::*;
-    use crate::comms::uci::Uci;
+    use crate::comms::uci::UciServer;
     use crate::eval::eval::*;
     use crate::piece::*;
     use anyhow::*;
@@ -419,6 +419,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_display_algo() {
         let mut algo = Algo::new();
         algo.set_timing_method(TimeControl::Depth(1));
@@ -462,7 +463,7 @@ mod tests {
         let mut search = Algo::new();
         search
             .set_timing_method(TimeControl::Depth(8))
-            .set_callback(Uci::uci_info);
+            .set_callback(UciServer::uci_info);
         search.set_position(pos);
         search.search();
         println!("{}", search);
@@ -528,7 +529,7 @@ mod tests {
         let mut search = Algo::new();
         search
             .set_timing_method(TimeControl::Depth(12))
-            .set_callback(Uci::uci_info);
+            .set_callback(UciServer::uci_info);
         search.set_position(pos);
         search.search();
         println!("{}", search);
@@ -549,17 +550,17 @@ mod tests {
             algo.set_position(p.clone()).search();
             let pv1 = algo.results_as_position().pv().unwrap();
             algo.tt.current_age -= 1;
-            println!("{:<40} - {}", pv1.uci(), algo.results_as_position());
+            println!("{:<40} - {}", pv1.to_uci(), algo.results_as_position());
 
             algo.tt.allow_truncated_pv = true;
             algo.set_position(p.clone()).search();
             let pv2 = algo.results_as_position().pv().unwrap();
-            println!("{:<40} - {}", pv2.uci(), algo.results_as_position());
+            println!("{:<40} - {}", pv2.to_uci(), algo.results_as_position());
 
             algo.tt.allow_truncated_pv = false;
             algo.set_position(p.clone()).search();
             let pv3 = algo.results_as_position().pv().unwrap();
-            println!("{:<40} - {}\n", pv3.uci(), algo.results_as_position());
+            println!("{:<40} - {}\n", pv3.to_uci(), algo.results_as_position());
 
             //assert_eq!(pv1, pv2, "{}", p );
         }

@@ -176,7 +176,7 @@ impl Repetition {
 mod tests {
     use super::*;
     use crate::catalog::*;
-    use crate::comms::uci::Uci;
+    use crate::comms::uci::UciServer;
     use crate::eval::eval::Attr;
     use crate::eval::weight::Weight;
     use crate::search::algo::*;
@@ -230,7 +230,7 @@ mod tests {
         let mut b = Catalog::starting_board();
         let mut algo = Algo::new();
         algo.set_timing_method(TimeControl::Depth(5));
-        algo.set_callback(Uci::uci_info);
+        algo.set_callback(UciServer::uci_info);
 
         let s = concat!(
             "e2e4 b8c6 b1c3 g8f6 d2d4 d7d5 e4e5 f6e4 c3e4 d5e4 f1b5 c8d7 b5c6 d7c6 g1e2 e7e6 e1g1 ",
@@ -263,7 +263,7 @@ mod tests {
         );
         let mut b = Catalog::starting_board();
         let mut eng = Engine::new();
-        eng.algo.set_callback(Uci::uci_info);
+        eng.algo.set_callback(UciServer::uci_info);
         eng.algo.repetition.new_game();
         let mvs = b.parse_uci_variation(s).unwrap();
         for mv in mvs.iter() {

@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::comms::uci::Uci;
+use crate::comms::uci::UciServer;
 use crate::infra::version::Version;
 use crate::search::algo::Algo;
 use std::io;
@@ -20,7 +20,7 @@ impl Console {
             let words: Vec<&str> = input.split_whitespace().collect();
             match words.first() {
                 Some(&"uci") => {
-                    let mut uci = Uci::new();
+                    let mut uci = UciServer::new();
                     uci.run();
                     break;
                 }
