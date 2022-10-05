@@ -852,7 +852,7 @@ mod tests {
             algo.new_game();
             algo.set_position(pos.clone()).search();
             assert_eq!(
-                algo.progress.bm().uci(),
+                algo.progress.bm().to_uci(),
                 pos.bm()?.uci(),
                 "{}\n{}",
                 pos,

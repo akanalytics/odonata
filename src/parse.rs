@@ -99,7 +99,7 @@ impl Parse {
         let mut matching_moves = MoveList::new();
         for lm in legal_moves.iter() {
             // allow UCI moves as well as SAN
-            if lm.uci() == s {
+            if lm.to_uci() == s {
                 matching_moves.clear();
                 matching_moves.push(*lm);
                 break;

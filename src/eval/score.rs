@@ -1,7 +1,10 @@
-use crate::piece::{Ply, MAX_PLY};
+use crate::infra::utils::win_probability_from_cp_and_k;
+use crate::{
+    infra::utils::Uci,
+    piece::{Ply, MAX_PLY},
+};
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use crate::infra::utils::win_probability_from_cp_and_k;
 
 // pub struct ScoreBound {
 //     score: Score,
@@ -45,6 +48,46 @@ impl fmt::Display for WhiteScore {
             write!(f, "B({})", self.0.ply_loss())
         } else {
             write!(f, "W({})", self.0.ply_win())
+        }
+    }
+}
+
+impl Uci for Score {
+    // * score
+    // 	* cp
+    // 		the score from the engine's point of view in centipawns.
+    // 	* mate
+    // 		mate in y moves, not plies.
+    // 		If the engine is getting mated use negativ values for y.
+    // 	* lowerbound
+    //       the score is just a lower bound.
+    // 	* upperbound
+    // 	   the score is just an upper bound.
+    fn fmt_uci(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // we assume we are now from engines's point of view
+        if self.cp == -Self::INF {
+            write!(f, "cp -9999")
+        } else if self.cp == i16::MAX {
+            write!(f, "cp 9999")
+        } else if self.is_numeric() {
+            write!(f, "cp {}", self.cp)
+        // } else if self.cp < 0 {
+        //     write!(f, "mate {}", self.mate_in().unwrap())
+        } else if self.is_mate() {
+            write!(f, "mate {}", self.mate_in().unwrap())
+        } else {
+            panic!("unable to format score {self:?}");
+        }
+    }
+
+    /// eg "cp 345" or mate 4
+    fn parse_uci(s: &str) -> anyhow::Result<Self> {
+        match s.split_once(" ") {
+            Some(("cp", text)) => Ok(Score::from_cp(text.parse::<i32>()?)),
+            Some(("lowerbound", text)) => Ok(Score::from_cp(text.parse::<i32>()?)),
+            Some(("upperbound", text)) => Ok(Score::from_cp(text.parse::<i32>()?)),
+            Some(("mate", text)) => Ok(Score::from_mate_in_moves(text.parse::<i32>()?)),
+            _ => anyhow::bail!("expected score to have cp or mate but found {s}"),
         }
     }
 }
@@ -128,6 +171,16 @@ impl Score {
     }
 
     #[inline]
+    /// ply  <---> moves
+    /// 
+    pub fn from_mate_in_moves(moves: i32) -> Score {
+        match moves {
+            x if x < 0 => Score::we_lose_in(-moves * 2 - 1),
+            _ => Score::we_win_in(moves * 2 - 1),
+        }
+    }
+
+    #[inline]
     pub const fn we_win_in(ply: Ply) -> Score {
         Score {
             cp: i16::MAX - 1 - ply as i16,
@@ -166,38 +219,13 @@ impl Score {
     // engine -> oppo -> engine -> opp  4 plys == mated in 2
     // engine -> oppo -> engine -> opp -> eng  5 plys == mated in 3
     #[inline]
-    pub fn mate_in(&self) -> Option<Ply> {
+    pub fn mate_in(&self) -> Option<i32> {
         if !self.is_mate() {
             None
         } else if self.cp < 0 {
-            Some((self.ply_loss() + 1) / 2)
+            Some(-(self.ply_loss() + 1) / 2)
         } else {
             Some((self.ply_win() + 1) / 2)
-        }
-    }
-
-    // * score
-    // 	* cp
-    // 		the score from the engine's point of view in centipawns.
-    // 	* mate
-    // 		mate in y moves, not plies.
-    // 		If the engine is getting mated use negativ values for y.
-    // 	* lowerbound
-    //       the score is just a lower bound.
-    // 	* upperbound
-    // 	   the score is just an upper bound.
-    pub fn uci(self) -> String {
-        // we assume we are now from engines's point of view
-        if self.cp == -Self::INF {
-            "cp -9999".to_string()
-        } else if self.cp == i16::MAX {
-            "cp 9999".to_string()
-        } else if self.is_numeric() {
-            format!("cp {}", self.cp)
-        } else if self.cp < 0 {
-            format!("mate {}", -self.mate_in().unwrap())
-        } else {
-            format!("mate {}", self.mate_in().unwrap())
         }
     }
 
@@ -205,8 +233,6 @@ impl Score {
     pub fn negate(self) -> Score {
         Score { cp: -self.cp }
     }
-
-
 
     #[inline]
     pub fn win_probability(self) -> f32 {
@@ -243,7 +269,9 @@ impl std::ops::Add for Score {
             self.is_numeric() || self.is_mate() && (o.as_i16() == 1 || o.as_i16() == -1),
             "cannot add scores {self} + {o}"
         );
-        return Score { cp: self.cp.saturating_add(o.cp) };
+        return Score {
+            cp: self.cp.saturating_add(o.cp),
+        };
     }
 }
 
@@ -272,7 +300,9 @@ impl std::ops::Sub for Score {
             !self.is_mate() && !o.is_mate(),
             "Score {self} - {o} subtraction with mate scores"
         );
-        Score { cp: self.cp.saturating_sub(o.cp) }
+        Score {
+            cp: self.cp.saturating_sub(o.cp),
+        }
     }
 }
 
@@ -367,6 +397,38 @@ mod tests {
         assert!(Score::from_cp(1000).win_probability() > 0.95);
         assert!(Score::from_cp(-1000).win_probability() < 0.05);
         assert!((-Score::INFINITY).win_probability() < 0.001);
+    }
+
+    #[test]
+    fn test_mate_score() {
+        assert_eq!(Score::we_win_in(1).ply_win(), 1);
+        assert_eq!(Score::we_win_in(2).ply_win(), 2);
+        assert_eq!(Score::we_win_in(3).ply_win(), 3);
+
+        assert_eq!(Score::we_lose_in(1).ply_loss(), 1);
+        assert_eq!(Score::we_lose_in(2).ply_loss(), 2);
+        assert_eq!(Score::we_lose_in(3).ply_loss(), 3);
+
+        assert_eq!(Score::from_mate_in_moves(1).mate_in(), Some(1));
+        assert_eq!(Score::from_mate_in_moves(2).mate_in(), Some(2));
+        assert_eq!(Score::from_mate_in_moves(3).mate_in(), Some(3));
+        assert_eq!(Score::from_mate_in_moves(-1).mate_in(), Some(-1));
+        assert_eq!(Score::from_mate_in_moves(-2).mate_in(), Some(-2));
+        assert_eq!(Score::from_mate_in_moves(-3).mate_in(), Some(-3));
+    }
+    #[test]
+    fn test_uci_score() -> anyhow::Result<()> {
+        assert_eq!(Score::from_cp(100).to_uci(), "cp 100");
+        assert_eq!(Score::from_cp(-1).to_uci(), "cp -1");
+        assert_eq!(Score::from_mate_in_moves(3).to_uci(), "mate 3");
+        assert_eq!(Score::from_mate_in_moves(5).to_uci(), "mate 5");
+        assert_eq!(Score::from_mate_in_moves(-3).to_uci(), "mate -3");
+        assert_eq!(Score::from_mate_in_moves(-5).to_uci(), "mate -5");
+        assert_eq!(Score::parse_uci("cp 100")?.to_uci(), "cp 100");
+        assert_eq!(Score::parse_uci("cp -1")?.to_uci(), "cp -1");
+        assert_eq!(Score::parse_uci("mate 3")?.to_uci(), "mate 3");
+        assert_eq!(Score::parse_uci("mate -3")?.to_uci(), "mate -3");
+        Ok(())
     }
 
     #[test]

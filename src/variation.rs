@@ -2,12 +2,12 @@ use serde::{Deserialize, Serialize};
 
 
 use crate::board::Board;
-use crate::mv::Move;
+use crate::mv::{Move, BareMove};
 use crate::piece::Ply;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
 
-#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Variation {
     moves: Vec<Move>,
 }
@@ -53,7 +53,7 @@ impl Variation {
     pub fn to_uci(&self) -> String {
         self.moves
             .iter()
-            .map(|mv| mv.uci())
+            .map(|mv| mv.to_uci())
             .collect::<Vec<String>>()
             .join(" ")
     }

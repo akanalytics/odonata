@@ -18,6 +18,7 @@ use crate::search::search_progress::{Info, SearchProgressMode};
 use crate::search::timecontrol::{RemainingTime, TimeControl};
 use crate::tags::Tag;
 use crate::variation::Variation;
+use crate::infra::utils::Uci;
 use std::collections::HashMap;
 use std::fmt;
 use std::io::{self, Write};
@@ -339,7 +340,7 @@ impl UciServer {
                 } else {
                     "???".to_string()
                 };
-                let rook_move = mv.rook_move().uci();
+                let rook_move = mv.rook_move().to_uci();
                 let is_ep = mv.is_ep_capture();
                 let is_castle = mv.is_castle();
                 Self::print(&format!("result:from {from} to {to} capture {capture} ep {ep} legal {legal} san {san} rook_move {rook_move} is_ep {is_ep} is_castle {is_castle}", 
@@ -796,9 +797,9 @@ impl UciServer {
             info!("---> Null  best move");
             Move::NULL_MOVE
         };
-        let mut output = format!("bestmove {}", bm.uci());
+        let mut output = format!("bestmove {}", bm.to_uci());
         if var.len() > 1 {
-            output = format!("{} ponder {}", output, var[1].uci());
+            output = format!("{} ponder {}", output, var[1].to_uci());
         }
         Self::print(&output);
     }
@@ -822,7 +823,7 @@ impl<'a> fmt::Display for UciInfo2<'a> {
             if let Some(nps) = self.0.nps {
                 write!(f, "nps {} ", nps)?;
             }
-            write!(f, "score {} ", self.0.score.uci())?;
+            write!(f, "score {} ", self.0.score.to_uci())?;
             if let Some(currmovenumber) = self.0.currmovenumber_from_1 {
                 write!(f, "currmovenumber {} ", currmovenumber)?;
             }

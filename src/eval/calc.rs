@@ -5,7 +5,6 @@ use crate::board::analysis::Analysis;
 use crate::board::Board;
 use crate::eval::endgame::EndGame;
 use crate::eval::eval::Feature;
-use crate::infra::component::FEATURE;
 use crate::infra::metric::Metrics;
 use crate::piece::Color::{self, *};
 use crate::piece::Piece;
@@ -16,7 +15,6 @@ use crate::Bitboard;
 use super::endgame::LikelyOutcome;
 use super::eval::{Attr, PawnStructure};
 use super::scorer::ScorerBase;
-use std::sync::atomic::Ordering;
 
 
 #[derive(Copy, Clone, Debug)]

@@ -51,7 +51,7 @@ impl Default for Aspiration {
 
 impl Algo {
     pub fn aspirated_search(&mut self, b: &mut Board, n: &mut Node) -> (Score, Event) {
-        let score = self.progress.best_score;
+        let score = self.results.score();
         if n.depth <= self.aspiration.min_depth || !self.aspiration.enabled || !score.is_numeric() {
             Metrics::incr_node(n, Event::AspirationNone);
             self.alphabeta_root_search(b, n)

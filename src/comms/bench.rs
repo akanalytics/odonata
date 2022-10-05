@@ -1,5 +1,6 @@
 use crate::catalog::*;
 use crate::infra::component::{Component, State};
+use crate::mv::Move;
 use crate::perft::Perft;
 use crate::search::engine::Engine;
 use crate::search::timecontrol::TimeControl;
@@ -106,8 +107,8 @@ impl Bench {
 
             engine.search();
             let elapsed = t.elapsed();
-            let bm = pos.board().to_san(&engine.algo.progress.bm());
-            let correct = if pos.bm().ok().unwrap().contains(&engine.algo.progress.bm()) {
+            let bm = &engine.algo.results.best_move().unwrap_or(Move::NULL_MOVE);
+            let correct = if pos.bm().ok().unwrap().contains(bm) {
                 score += 1;
                 '1'
             } else {
@@ -116,7 +117,7 @@ impl Bench {
             let depth = engine.algo.results_as_position().acd().unwrap();
             let sel_depth = engine.algo.results_as_position().tag(Tag::ACSD).value_uci();
             let nodes = engine.algo.results_as_position().acn().unwrap();
-            let cp = engine.algo.progress.best_score;
+            let cp = engine.algo.results.score();
             let nps = Formatting::f64(nodes as f64 / elapsed.as_secs_f64());
             let bf = engine.algo.results_as_position().branching_factor();
             let bf_string = Formatting::decimal(2, bf);

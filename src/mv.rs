@@ -4,7 +4,7 @@ use crate::bits::square::Square;
 use crate::board::Board;
 use crate::globals::constants::*;
 use crate::piece::{Color, Piece};
-use crate::infra::utils::StringUtils;
+use crate::infra::utils::{StringUtils, Uci};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::fmt::{self};
@@ -49,6 +49,16 @@ pub struct BareMove {
     pub from: Square,
     pub to: Square,
     pub promo: Option<Piece>,
+}
+
+impl Uci for BareMove {
+    fn fmt_uci(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        <BareMove as fmt::Display>::fmt(self, f)
+    }
+
+    fn parse_uci(s: &str) -> anyhow::Result<Self> {
+        s.parse()
+    }
 }
 
 impl BareMove {
@@ -446,14 +456,14 @@ impl Move {
         score
     }
 
-    pub fn uci(&self) -> String {
+    pub fn to_uci(&self) -> String {
         self.to_inner().to_string()
     }
 }
 
 impl fmt::Display for Move {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.uci())?;
+        write!(f, "{}", self.to_uci())?;
         if f.alternate() {
             write!(f, " m:{}", self.mover_piece())?;
 
@@ -479,6 +489,16 @@ mod tests {
     use super::*;
     use crate::{catalog::Catalog, perft::Perft};
     // use crate::movelist::MoveValidator;
+
+    #[test]
+    fn test_baremove() -> anyhow::Result<()> {
+        assert_eq!(BareMove::parse_uci("a1b3")?.to_uci(), "a1b3");
+        assert_eq!(BareMove::parse_uci("0000").is_err(), true);
+        assert_eq!(BareMove::parse_uci("XYZ").is_err(), true);
+        assert_eq!(BareMove::parse_uci("a1a7q")?.to_uci(), "a1a7q");
+        Ok(())
+    }
+
 
     #[test]
     fn test_move() {

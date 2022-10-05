@@ -106,7 +106,7 @@ impl fmt::Display for PvTable {
         for i in 0..self.size {
             write!(f, "{:>3}: ", i)?;
             for j in 0..self.size - i {
-                write!(f, "{:>6}", self.matrix[i][j].uci())?;
+                write!(f, "{:>6}", self.matrix[i][j].to_uci())?;
             }
             writeln!(f)?
         }

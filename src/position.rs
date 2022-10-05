@@ -103,10 +103,7 @@ impl Uci for Position {
         Ok(())
     }
 
-    fn parse_uci(s: &str) -> anyhow::Result<Self>
-    where
-        Self: Sized,
-    {
+    fn parse_uci(s: &str) -> anyhow::Result<Self> {
         let mut words = s.split_whitespace();
         let word = words.next();
         if word != Some("position") {

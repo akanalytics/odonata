@@ -26,10 +26,9 @@ where
     }
 }
 
-pub trait Uci {
-    fn fmt_uci(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result;
-    fn parse_uci(s: &str) -> anyhow::Result<Self> where Self: Sized;
-
+pub trait Uci: Sized {
+    fn fmt_uci(&self, f: &mut fmt::Formatter) -> fmt::Result;
+    fn parse_uci(s: &str) -> anyhow::Result<Self>;
     fn to_uci(&self) -> String {
         Displayable(|fmt| self.fmt_uci(fmt)).to_string()
     }

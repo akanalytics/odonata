@@ -324,7 +324,7 @@ impl MoveList {
 
     pub fn uci(&self) -> String {
         self.iter()
-            .map(|mv| mv.uci())
+            .map(|mv| mv.to_uci())
             .collect::<Vec<String>>()
             .join(" ")
     }
@@ -370,7 +370,7 @@ impl Board {
     pub fn parse_uci_move(&self, mv: &str) -> Result<Move> {
         let moves = self.legal_moves();
         for &m in moves.iter() {
-            if m.uci() == mv {
+            if m.to_uci() == mv {
                 return Ok(m);
             }
         }
