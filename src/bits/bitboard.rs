@@ -642,7 +642,7 @@ impl Bitboard {
     }
 
     #[inline]
-    // if bitboard comtains both blacka nd white whole board is returned
+    // if bitboard comtains both black and white whole board is returned
     pub fn squares_of_matching_color(self) -> Bitboard {
         Bitboard::WHITE_SQUARES.iff(self.intersects(Bitboard::WHITE_SQUARES))
             | Bitboard::BLACK_SQUARES.iff(self.intersects(Bitboard::BLACK_SQUARES))

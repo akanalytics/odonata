@@ -21,7 +21,6 @@ use std::collections::HashMap;
 use std::convert::{Into, TryFrom};
 
 use std::fmt;
-use std::iter::once;
 
 // http://jchecs.free.fr/pdf/EPDSpecification.pdf
 // BRATKO https://www.stmintz.com/ccc/index.php?id=20631
@@ -95,7 +94,7 @@ impl Uci for Position {
         if self.board() == &Catalog::starting_board() {
             write!(f, "position startpos")?;
         } else {
-            write!(f, "position {fen}", fen = self.board().to_fen())?;
+            write!(f, "position fen {fen}", fen = self.board().to_fen())?;
         }
         let var = self.supplied_variation();
         if !var.is_empty() {
@@ -116,11 +115,11 @@ impl Uci for Position {
         let fen1 = words.next();
         let board = if fen1 == Some("startpos") {
             Catalog::starting_board()
-        } else if let Some(fen1) = fen1 {
-            let fen = once(fen1).chain(words.by_ref().take(5)).join(" ");
+        } else if fen1 == Some("fen") {
+            let fen = words.by_ref().take(6).join(" ");
             Board::parse_fen(&fen)?
         } else {
-            bail!("expected fen/startpos after 'position' in '{s}'");
+            bail!("expected either 'fen' or 'startpos' after 'position' in '{s}'");
         };
         let moves = words.join(" ");
         let var = if let Some(var_text) = moves.strip_prefix("moves ") {
@@ -132,7 +131,6 @@ impl Uci for Position {
         };
         let mut pos = Position::from_board(board);
         pos.set(Tag::SuppliedVariation(var));
-        pos.board = pos.supplied_variation().apply_to(pos.board());
         Ok(pos)
     }
 }

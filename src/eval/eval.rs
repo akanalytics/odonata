@@ -126,6 +126,7 @@ pub enum Attr {
 
     Fianchetto,
     BishopOutposts,
+    BishopConnected,
     BishopColorPawns,
     BishopColorRammedPawns,
     BishopFarPawns,

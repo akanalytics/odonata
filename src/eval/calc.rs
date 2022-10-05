@@ -5,6 +5,7 @@ use crate::board::analysis::Analysis;
 use crate::board::Board;
 use crate::eval::endgame::EndGame;
 use crate::eval::eval::Feature;
+use crate::infra::component::FEATURE;
 use crate::infra::metric::Metrics;
 use crate::piece::Color::{self, *};
 use crate::piece::Piece;
@@ -15,6 +16,8 @@ use crate::Bitboard;
 use super::endgame::LikelyOutcome;
 use super::eval::{Attr, PawnStructure};
 use super::scorer::ScorerBase;
+use std::sync::atomic::Ordering;
+
 
 #[derive(Copy, Clone, Debug)]
 pub struct ColorPiece {
@@ -175,18 +178,12 @@ impl<'a> Calc<'a> {
         let t = Metrics::timing_start();
         self.material(scorer, b);
         if !self.endgame(scorer, b) {
-            
             // let pawn_cache = UnsharedTable::<PawnStructure>::default();
             // self.set_pawn_structure(&pawn_cache);
             self.position(scorer, b);
             self.pst(scorer, b);
             self.other(scorer, b);
-            // if FEATURE.load(Ordering::Relaxed) {
             self.pawns_both(scorer, b);
-            // } else {
-            //     self.pawns(White, scorer, b);
-            //     self.pawns(Black, scorer, b);
-            // }
             self.king_safety(White, scorer, b);
             self.king_safety(Black, scorer, b);
             self.mobility(White, scorer, b);
@@ -398,8 +395,24 @@ impl<'a> Calc<'a> {
         net(
             s,
             BishopColorRammedPawns,
-            bishop_color_rammed_pawns & w & Bitboard::CENTER_16_SQ.shift(Dir::S),
-            bishop_color_rammed_pawns & b & Bitboard::CENTER_16_SQ.shift(Dir::N),
+            bishop_color_rammed_pawns & w, // & Bitboard::CENTER_16_SQ.shift(Dir::S),
+            bishop_color_rammed_pawns & b, // & Bitboard::CENTER_16_SQ.shift(Dir::N),
+        );
+
+        let connected_bishop_w = bd.bishops() & w & (p.white_single_attacks | p.white_double_attacks);
+        // let connected_bishop_w = connected_bishop_w - (bd.bishops() & b).squares_of_matching_color();
+        // let connected_bishop_w = connected_bishop_w.iff((bd.knights() & b).is_empty());
+
+        let connected_bishop_b = bd.bishops() & b & (p.black_single_attacks | p.black_double_attacks);
+        // let connected_bishop_b = connected_bishop_b - (bd.bishops() & w).squares_of_matching_color();
+        // let connected_bishop_b = connected_bishop_b.iff((bd.knights() & w).is_empty());
+
+
+        net(
+            s,
+            Attr::BishopConnected,
+            connected_bishop_w,
+            connected_bishop_b,
         );
 
         // doubled not isolated
@@ -441,8 +454,8 @@ impl<'a> Calc<'a> {
         net(
             s,
             CandidatePassedPawn,
-            p.candidate_passed & w,
-            p.candidate_passed & b,
+            p.candidate_passed & w & Bitboard::home_half(Color::Black),
+            p.candidate_passed & b & Bitboard::home_half(Color::White),
         );
         let blockaded_opponent = p.blockaded_opponent(&bd);
         let blockaded_self = p.blockaded_self(&bd);

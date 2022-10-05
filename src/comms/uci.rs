@@ -14,7 +14,7 @@ use crate::piece::Ply;
 use crate::position::Position;
 use crate::search::engine::Engine;
 use crate::search::node::Node;
-use crate::search::search_progress::{SearchProgress, SearchProgressMode};
+use crate::search::search_progress::{Info, SearchProgressMode};
 use crate::search::timecontrol::{RemainingTime, TimeControl};
 use crate::tags::Tag;
 use crate::variation::Variation;
@@ -426,10 +426,10 @@ impl UciServer {
                     bail!("Fen or parts of fen are missing");
                 }
             } else {
-                bail!("Must specify fen or startpos after position command");
+                bail!("must specify fen or startpos after position command");
             }
         } else {
-            bail!("Must specify a fen position or startpos")
+            bail!("must specify a fen position or startpos")
         }
         Ok(())
     }
@@ -781,7 +781,7 @@ impl UciServer {
         Ok(())
     }
 
-    pub fn uci_info(sr: &SearchProgress) {
+    pub fn uci_info(sr: &Info) {
         if let SearchProgressMode::BestMove = sr.mode {
             Self::print_bm_and_ponder(&sr.best_pv);
         } else {
@@ -804,7 +804,7 @@ impl UciServer {
     }
 }
 
-struct UciInfo2<'a>(&'a SearchProgress);
+struct UciInfo2<'a>(&'a Info);
 
 impl<'a> fmt::Display for UciInfo2<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

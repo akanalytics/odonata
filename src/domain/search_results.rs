@@ -14,6 +14,10 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use tabled::builder::Builder;
 
+
+
+
+
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct SearchResults {
@@ -35,6 +39,8 @@ pub struct SearchResults {
 
     #[serde(skip)]
     pub tc: TimeControl,
+
+    
 }
 
 impl fmt::Display for SearchResults {

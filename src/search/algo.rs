@@ -26,7 +26,7 @@ use crate::search::node::Node;
 use crate::search::pvs::Pvs;
 use crate::search::razor::Razor;
 use crate::search::restrictions::Restrictions;
-use crate::search::search_progress::SearchProgress;
+use crate::search::search_progress::Info;
 use crate::search::taskcontrol::TaskControl;
 use crate::search::timecontrol::TimeControl;
 use crate::variation::Variation;
@@ -75,8 +75,8 @@ pub struct Algo {
     pub aspiration: Aspiration,
     pub clock: Clock,
 
-    pub progress: SearchProgress,
-    pub controller: TaskControl<SearchProgress>,
+    pub progress: Info,
+    pub controller: TaskControl<Info>,
     pub lmp: Lmp,
     pub qs: Qs,
     pub counter_move: CounterMove,
@@ -123,7 +123,7 @@ impl Algo {
 
     pub fn set_callback(
         &mut self,
-        callback: impl Fn(&SearchProgress) + Send + Sync + 'static,
+        callback: impl Fn(&Info) + Send + Sync + 'static,
     ) -> &mut Self {
         self.controller.register_callback(callback);
         self
@@ -302,17 +302,17 @@ impl Algo {
         if self.clock.cumul_nodes_this_thread() % 5_000_000 == 0
             && self.clock.cumul_nodes_this_thread() != 0
         {
-            let sp = SearchProgress::with_report_progress(self);
+            let sp = Info::with_report_progress(self);
             self.controller.invoke_callback(&sp);
         }
     }
 
     pub fn report_refutation(&self, ply: Ply) {
         if self.show_refutations && ply < 4 {
-            let sp = SearchProgress {
+            let sp = Info {
                 pv: self.pv_table.extract_pv_for(ply),
                 mode: SearchProgressMode::Refutation,
-                ..SearchProgress::default()
+                ..Info::default()
             };
 
             self.controller.invoke_callback(&sp);

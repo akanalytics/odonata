@@ -35,7 +35,7 @@ impl Default for SearchProgressMode {
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 #[rustfmt::skip]
-pub struct SearchProgress {
+pub struct Info {
     #[serde(skip)] pub take_move_from_part_ply: bool,
 
     
@@ -66,7 +66,7 @@ pub struct SearchProgress {
     // pub currline: Option<MoveList>,
 }
 
-impl Component for SearchProgress {
+impl Component for Info {
     fn new_game(&mut self) {
         self.new_position();
     }
@@ -82,16 +82,16 @@ impl Component for SearchProgress {
     }
 }
 
-impl fmt::Display for SearchProgress {
+impl fmt::Display for Info {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "{}", toml::to_string_pretty(self).unwrap())?;
         Ok(())
     }
 }
 
-impl SearchProgress {
+impl Info {
     pub fn with_report_progress(algo: &Algo) -> Self {
-        SearchProgress {
+        Info {
             mode: SearchProgressMode::NodeCounts,
             board: algo.board.clone(),
             nodes: Some(algo.clock.cumul_nodes_all_threads()),
@@ -144,8 +144,8 @@ impl SearchProgress {
         self.outcome = *outcome;
     }
 
-    pub fn old_with_best_move(sr: &SearchProgress) -> Self {
-        SearchProgress {
+    pub fn old_with_best_move(sr: &Info) -> Self {
+        Info {
             mode: SearchProgressMode::BestMove,
             best_score: sr.score,
             best_pv: sr.pv.clone(),
