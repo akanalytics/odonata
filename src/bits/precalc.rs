@@ -563,7 +563,7 @@ impl Pawns {
         // by more enemy pawns than own pawns.
         let black_double_attacks = bp.shift(Dir::SW) & bp.shift(Dir::SE);
         let black_single_attacks = black_attacks - black_double_attacks;
-        let white_double_attacks = bp.shift(Dir::NW) & bp.shift(Dir::NE);
+        let white_double_attacks = wp.shift(Dir::NW) & wp.shift(Dir::NE);
         let white_single_attacks = white_attacks - white_double_attacks;
         let white_controlled = (white_double_attacks & !black_double_attacks)
             | (white_single_attacks & !black_attacks);
