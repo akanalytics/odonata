@@ -350,7 +350,7 @@ impl Algo {
     }
 
     pub fn results_as_position(&self) -> Position {
-        self.results.to_position()
+        self.results.to_position(self.board.clone())
     }
 
     pub fn score(&self) -> Score {
@@ -405,7 +405,7 @@ impl Algo {
 mod tests {
     use super::*;
     use crate::catalog::*;
-    use crate::comms::uci::UciServer;
+    use crate::comms::uci_server::UciServer;
     use crate::eval::eval::*;
     use crate::piece::*;
     use anyhow::*;

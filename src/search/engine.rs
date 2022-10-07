@@ -322,7 +322,7 @@ impl Engine {
 mod tests {
     use super::*;
     use crate::catalog::*;
-    use crate::comms::uci::UciServer;
+    use crate::comms::uci_server::UciServer;
     use crate::infra::black_box;
     use crate::infra::utils::Formatting;
     use std::time;

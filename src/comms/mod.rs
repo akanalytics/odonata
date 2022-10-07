@@ -1,10 +1,10 @@
 pub mod bench;
 pub mod console;
 pub mod json_rpc;
-pub mod uci;
+pub mod uci_server;
 
 use crate::comms::bench::Bench;
-use crate::comms::uci::UciServer;
+use crate::comms::uci_server::UciServer;
 use crate::infra::version::Version;
 use crate::search::timecontrol::TimeControl;
 use clap::{Command, Arg};

@@ -250,6 +250,7 @@ impl Position {
     pub fn board(&self) -> &Board {
         &self.board
     }
+
     pub fn board_mut(&mut self) -> &mut Board {
         &mut self.board
     }

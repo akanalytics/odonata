@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::comms::uci::UciServer;
+use crate::comms::uci_server::UciServer;
 use crate::infra::version::Version;
 use crate::search::algo::Algo;
 use std::io;

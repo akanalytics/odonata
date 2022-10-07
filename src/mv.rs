@@ -3,8 +3,8 @@ use crate::bits::castling::CastlingRights;
 use crate::bits::square::Square;
 use crate::board::Board;
 use crate::globals::constants::*;
-use crate::piece::{Color, Piece};
 use crate::infra::utils::{StringUtils, Uci};
+use crate::piece::{Color, Piece};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::fmt::{self};
@@ -103,14 +103,16 @@ impl fmt::Display for BareMove {
 }
 
 impl Board {
-
     pub fn augment_move(&self, mv: BareMove) -> Move {
         if mv.is_null() {
             return Move::NULL_MOVE;
         }
         let from = mv.from;
         let to = mv.to;
-        let mover = self.piece(from).unwrap();
+        let mover = self.piece(from).expect(&format!(
+            "move {mv} no piece on {from} for board {fen}",
+            fen = self.to_fen()
+        ));
         let capture_piece = self.piece(to);
         if mover == Piece::King && CastlingRights::is_castling(from, to) {
             let rights = CastlingRights::from_king_move(to);
@@ -502,7 +504,6 @@ mod tests {
         assert_eq!(BareMove::parse_uci("a1a7q")?.to_uci(), "a1a7q");
         Ok(())
     }
-
 
     #[test]
     fn test_move() {

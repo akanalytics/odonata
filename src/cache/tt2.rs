@@ -714,7 +714,7 @@ impl TranspositionTable2 {
 mod tests {
     use super::*;
     use crate::catalog::*;
-    use crate::comms::uci::*;
+    use crate::comms::uci_server::*;
     use crate::globals::constants::*;
     use crate::piece::*;
     use crate::search::algo::*;

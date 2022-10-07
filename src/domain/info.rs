@@ -171,6 +171,7 @@ impl Uci for Info {
         for (key, value) in iter {
             info.set(&key, value.trim()).context(format!("setting info '{key}' to '{value}'"))?;
         }
+        info.nodes_thread = info.nodes;
         Ok(info)
     }
 }

@@ -176,7 +176,7 @@ impl Repetition {
 mod tests {
     use super::*;
     use crate::catalog::*;
-    use crate::comms::uci::UciServer;
+    use crate::comms::uci_server::UciServer;
     use crate::eval::eval::Attr;
     use crate::eval::weight::Weight;
     use crate::search::algo::*;

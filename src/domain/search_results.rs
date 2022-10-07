@@ -38,11 +38,15 @@ pub struct SearchResults {
 
     #[serde(skip)]
     pub tc: TimeControl,
+
+    #[serde(skip)]
+    pub infos: Vec<Info>,
 }
 
 impl fmt::Display for SearchResults {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "{}", toml::to_string_pretty(self).unwrap())?;
+        writeln!(f, "n_infos: {}", self.infos.len())?;
         Ok(())
     }
 }
@@ -114,8 +118,7 @@ impl Uci for SearchResults {
             if iter.peek().is_none() {
                 let (bm, pm) = parse_bestmove_uci(line)?;
                 return Ok(SearchResults::from_infos(bm, pm, infos));
-            }
-            else {
+            } else {
                 infos.push(Info::parse_uci(line)?);
             }
         }
@@ -125,7 +128,30 @@ impl Uci for SearchResults {
 
 impl SearchResults {
     pub fn from_infos(_bm: BareMove, _pm: Option<BareMove>, infos: Vec<Info>) -> Self {
+        fn calculate_nodes_for_iid(n: Ply, infos: &[Info]) -> anyhow::Result<u64> {
+            let info_n = infos
+                .iter()
+                .find_or_last(|inf| inf.depth == Some(n))
+                .ok_or(anyhow::anyhow!("no info for depth {n}"))?
+                .nodes_thread
+                .ok_or(anyhow::anyhow!(
+                    "found info for depth {n} but no node counts"
+                ))?;
+            Ok(info_n)
+        }
+
         if let Some(info) = infos.last() {
+            let bf = if let Some(depth) = info.depth {
+                if let Ok(nodes) = calculate_nodes_for_iid(depth, &infos) {
+                    calculate_branching_factor_by_nodes_and_depth(nodes, depth)
+                        .ok()
+                        .map(|bf| bf as f32)
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
             SearchResults {
                 depth: info.depth.unwrap_or_default(),
                 seldepth: info.seldepth.unwrap_or_default(),
@@ -134,12 +160,13 @@ impl SearchResults {
                 nodes_thread: info.nodes_thread.unwrap_or_default(),
                 nps: info.nps.unwrap_or_default(),
                 tbhits: info.tbhits.unwrap_or_default(),
-                bf: 0.,
+                bf: bf.unwrap_or_default(),
                 hashfull_per_mille: info.hashfull_per_mille.unwrap_or_default(),
                 outcome: Outcome::Unterminated,
-                multi_pv: vec![(Default::default(), info.score.unwrap_or_default())],
+                multi_pv: vec![(info.pv.clone().unwrap_or_default(), info.score.unwrap_or_default())],
                 tc: TimeControl::default(),
                 board: Board::default(),
+                infos,
             }
         } else {
             SearchResults::default()
@@ -164,11 +191,20 @@ impl SearchResults {
             hashfull_per_mille: algo.tt.hashfull_per_mille(),
             bf,
             multi_pv,
+            infos: vec![],
         }
     }
 
-    pub fn explain<'a>(&'a self, eval: &'a Eval, board: &'a Board) -> SearchResultsWithExplanation<'a> {
-        SearchResultsWithExplanation { sr: self, eval, board }
+    pub fn explain<'a>(
+        &'a self,
+        eval: &'a Eval,
+        board: &'a Board,
+    ) -> SearchResultsWithExplanation<'a> {
+        SearchResultsWithExplanation {
+            sr: self,
+            eval,
+            board,
+        }
     }
 
     /// outcome could be abandoned or win/draw reason
@@ -207,8 +243,8 @@ impl SearchResults {
             .collect_vec()
     }
 
-    pub fn to_position(&self) -> Position {
-        let mut pos = Position::from_board(self.board.clone());
+    pub fn to_position(&self, b: Board) -> Position {
+        let mut pos = Position::from_board(b);
         let var = Variation::from_inner(&self.pv(), pos.board());
         pos.set(Tag::Pv(var));
         if let Some(ref mv) = self.pv().first() {
@@ -270,6 +306,12 @@ mod tests {
         // engine.algo.set_callback(Uci::uci_info);
         engine.search();
 
-        println!("{}", engine.algo.results.explain(&engine.algo.eval, &engine.algo.board));
+        println!(
+            "{}",
+            engine
+                .algo
+                .results
+                .explain(&engine.algo.eval, &engine.algo.board)
+        );
     }
 }

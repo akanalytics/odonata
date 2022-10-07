@@ -18,7 +18,7 @@ use std::io::BufWriter;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use super::uci::UciServer;
+use super::uci_server::UciServer;
 
 fn to_rpc_error(err: impl Into<anyhow::Error>) -> jsonrpc_core::Error {
     jsonrpc_core::Error {

@@ -485,7 +485,7 @@ mod tests {
         let positions = Catalog::mate_in_2();
         for (i, pos) in positions.iter().enumerate() {
             let mut algo = Algo::new();
-            algo.set_callback(crate::comms::uci::UciServer::uci_info);
+            algo.set_callback(crate::comms::uci_server::UciServer::uci_info);
             // search.tt.enabled = false;
             algo.set_timing_method(TimeControl::Depth(7));
             algo.set_position(pos.clone()).search();
