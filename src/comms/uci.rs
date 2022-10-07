@@ -390,7 +390,7 @@ impl UciServer {
         let mut b = Board::new_empty();
         Self::parse_fen(arg, &mut b)?;
         let var = Self::parse_variation(arg, &b)?;
-        Self::print(&format!("result:{}", b.make_moves(&var).to_fen()));
+        Self::print(&format!("result:{}", b.make_moves_old(&var).to_fen()));
         Ok(())
     }
 
@@ -408,7 +408,7 @@ impl UciServer {
         let variation = Self::parse_variation(arg, &self.board)?;
         let mut pos = Position::from_board(self.board.clone());
         pos.set(Tag::SuppliedVariation(variation));
-        self.board = pos.supplied_variation().apply_to(pos.board());
+        self.board = pos.board().make_moves_old(pos.supplied_variation());
         self.engine.lock().unwrap().set_position(pos);
         Ok(())
     }
@@ -758,7 +758,7 @@ impl UciServer {
         Self::print("search");
         Self::print(&format!("{}", self.board));
         Self::print(&format!("{}", eng));
-        Self::print(&format!("{}", eng.algo.results.explain(&eng.algo.eval)));
+        Self::print(&format!("{}", eng.algo.results.explain(&eng.algo.eval, &self.board)));
         Ok(())
     }
 

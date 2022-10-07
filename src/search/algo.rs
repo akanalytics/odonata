@@ -139,7 +139,7 @@ impl Component for Algo {
             NewGame => self.new_game(),
             SetPosition => self.new_position(),
             StartSearch => {}
-            EndSearch => self.explainer.show_pv_eval(&self.results.explain(&self.eval)),
+            EndSearch => self.explainer.show_pv_eval(&self.results.explain(&self.eval, &self.board)),
             StartDepthIteration(_) => self.new_iter(),
             Shutdown => self.explainer.export_game(&self.game).unwrap(),
         }
@@ -325,7 +325,7 @@ impl Algo {
         self.repetition.capture_all_prior_positions(&pos);
         self.game.set_starting_pos(pos.clone());
         self.game.capture_missing_moves(pos.supplied_variation());
-        self.board = pos.supplied_variation().apply_to(pos.board());
+        self.board = pos.board().make_moves_old(pos.supplied_variation());
         self.tt.rewrite_pv(pos.board());
         self.position = pos;
         self
@@ -358,11 +358,11 @@ impl Algo {
     }
 
     pub fn best_move(&self) -> Move {
-        self.results.best_move().unwrap_or(Move::NULL_MOVE)
+        self.board.augment_move(self.results.best_move().unwrap_or_default())
     }
 
-    pub fn pv(&self) -> &Variation {
-        &self.results.pv()
+    pub fn pv(&self) -> Variation {
+        Variation::from_inner(&self.results.pv(), &self.board)
     }
 
     #[inline]

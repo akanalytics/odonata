@@ -3,18 +3,19 @@ use std::iter::{self, FromIterator};
 use crate::eval::eval::Eval;
 use crate::eval::score::Score;
 use crate::infra::utils::{calculate_branching_factor_by_nodes_and_depth, Uci};
-use crate::mv::{BareMove, Move};
+use crate::mv::BareMove;
 use crate::other::outcome::Outcome;
 use crate::piece::Ply;
 use crate::search::timecontrol::TimeControl;
 use crate::tags::Tag;
 use crate::variation::Variation;
 use crate::{board::Board, Algo, MoveList, Position};
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use tabled::builder::Builder;
 
-use super::info::Info;
+use super::info::{BareMoveVariation, Info};
 
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 #[serde(default, deny_unknown_fields)]
@@ -33,7 +34,7 @@ pub struct SearchResults {
     pub outcome: Outcome,
 
     #[serde(skip)]
-    pub multi_pv: Vec<(Variation, Score)>,
+    pub multi_pv: Vec<(BareMoveVariation, Score)>,
 
     #[serde(skip)]
     pub tc: TimeControl,
@@ -49,6 +50,7 @@ impl fmt::Display for SearchResults {
 pub struct SearchResultsWithExplanation<'a> {
     sr: &'a SearchResults,
     eval: &'a Eval,
+    board: &'a Board,
 }
 
 impl fmt::Display for SearchResultsWithExplanation<'_> {
@@ -57,7 +59,7 @@ impl fmt::Display for SearchResultsWithExplanation<'_> {
         let mut bu = Builder::new();
         bu.set_columns(["Score", "PV", "Explain"]);
         for pv in &self.sr.multi_pv {
-            let b = pv.0.apply_to(&self.sr.board);
+            let b = self.sr.board.make_moves(&pv.0);
             bu.add_record([
                 pv.1.to_string(),
                 pv.0.to_string(),
@@ -95,52 +97,24 @@ impl Uci for SearchResults {
     fn fmt_uci(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Ok(mv) = self.best_move() {
             write!(f, "bestmove {mv}", mv = mv.to_uci())?;
+            if let Some(ponder) = self.pv().second() {
+                write!(f, "ponder {}", ponder.to_uci())?;
+            }
         } else {
             write!(f, "bestmove 0000")?;
         }
 
-        if self.pv().len() > 1 {
-            write!(f, "ponder {}", self.pv()[1].to_uci())?;
-        }
         Ok(())
     }
 
     fn parse_uci(s: &str) -> anyhow::Result<Self> {
         let mut infos = vec![];
         let mut iter = s.lines().peekable();
-        // let (bestmove, ponder) = (None, None);
         while let Some(line) = iter.next() {
             if iter.peek().is_none() {
                 let (bm, pm) = parse_bestmove_uci(line)?;
                 return Ok(SearchResults::from_infos(bm, pm, infos));
             }
-            // let mut t = some_iter.tuples();
-            // for (prev, next) in t.by_ref() {
-            //     println!("{}--{}", prev, next);
-            // }
-            // for leftover in t.into_buffer() {
-            //     println!("{}", leftover);
-            // }
-            // // parse as last line
-            // let mut words = line.split_whitespace();
-            // if words.next() == Some("bestmove") {
-            //     bestmove = words.next();
-            //     if bestmove.is_none() {
-            //         anyhow::bail!("word #2 (bestmove) missing from '{line}'");
-            //     }
-            //     ponder = if words.next() == Some("ponder") {
-            //         let ponder = words.next();
-            //         if let Some(ponder) = ponder {
-            //             BareMove::parse_uci(ponder)?
-            //         } else {
-            //             anyhow::bail!("word #4 (ponder move) missing from '{line}'");
-            //         }
-            //     } else {
-            //         None
-            //     };
-            // } else {
-            //     anyhow::bail!("expected 'bestmove' but found '{line}'");
-            // }
             else {
                 infos.push(Info::parse_uci(line)?);
             }
@@ -163,7 +137,7 @@ impl SearchResults {
                 bf: 0.,
                 hashfull_per_mille: info.hashfull_per_mille.unwrap_or_default(),
                 outcome: Outcome::Unterminated,
-                multi_pv: vec![(Variation::new(), info.score.unwrap_or_default())],
+                multi_pv: vec![(Default::default(), info.score.unwrap_or_default())],
                 tc: TimeControl::default(),
                 board: Board::default(),
             }
@@ -172,7 +146,7 @@ impl SearchResults {
         }
     }
 
-    pub fn new(algo: &Algo, depth: Ply, multi_pv: Vec<(Variation, Score)>) -> Self {
+    pub fn new(algo: &Algo, depth: Ply, multi_pv: Vec<(BareMoveVariation, Score)>) -> Self {
         let nodes_thread_last_iter = algo.clock.elapsed_iter_this_thread().1;
         let bf = calculate_branching_factor_by_nodes_and_depth(nodes_thread_last_iter, depth)
             .unwrap_or_default() as f32;
@@ -193,14 +167,14 @@ impl SearchResults {
         }
     }
 
-    pub fn explain<'a>(&'a self, eval: &'a Eval) -> SearchResultsWithExplanation<'a> {
-        SearchResultsWithExplanation { sr: self, eval }
+    pub fn explain<'a>(&'a self, eval: &'a Eval, board: &'a Board) -> SearchResultsWithExplanation<'a> {
+        SearchResultsWithExplanation { sr: self, eval, board }
     }
 
     /// outcome could be abandoned or win/draw reason
-    pub fn best_move(&self) -> Result<Move, Outcome> {
-        if self.pv().len() > 0 {
-            Ok(self.pv()[0])
+    pub fn best_move(&self) -> Result<BareMove, Outcome> {
+        if let Some(mv) = self.pv().first() {
+            Ok(mv)
         } else {
             Err(self.outcome)
         }
@@ -210,11 +184,11 @@ impl SearchResults {
         self.outcome
     }
 
-    pub fn pv(&self) -> &Variation {
+    pub fn pv(&self) -> BareMoveVariation {
         if self.multi_pv.len() > 0 {
-            &self.multi_pv[0].0
+            self.multi_pv[0].0.clone()
         } else {
-            Variation::empty()
+            BareMoveVariation::new()
         }
     }
 
@@ -226,18 +200,21 @@ impl SearchResults {
         }
     }
 
-    pub fn multi_pv(&self) -> &[(Variation, Score)] {
-        &self.multi_pv
+    pub fn multi_pv(&self) -> Vec<(BareMoveVariation, Score)> {
+        self.multi_pv
+            .iter()
+            .map(|(var, sc)| (var.clone(), *sc))
+            .collect_vec()
     }
 
     pub fn to_position(&self) -> Position {
         let mut pos = Position::from_board(self.board.clone());
-        pos.set(Tag::Pv(self.pv().clone()));
-        if self.pv().len() > 0 {
-            pos.set(Tag::SuppliedMove(self.pv()[0]));
-            pos.set(Tag::BestMoves(MoveList::from_iter(iter::once(
-                self.pv()[0],
-            ))));
+        let var = Variation::from_inner(&self.pv(), pos.board());
+        pos.set(Tag::Pv(var));
+        if let Some(ref mv) = self.pv().first() {
+            let mv = pos.board().augment_move(*mv);
+            pos.set(Tag::SuppliedMove(mv));
+            pos.set(Tag::BestMoves(MoveList::from_iter(iter::once(mv))));
         }
         pos.set(Tag::CentipawnEvaluation(self.score().as_i16() as i32));
         pos.set(Tag::AnalysisCountDepth(self.depth));
@@ -293,6 +270,6 @@ mod tests {
         // engine.algo.set_callback(Uci::uci_info);
         engine.search();
 
-        println!("{}", engine.algo.results.explain(&engine.algo.eval));
+        println!("{}", engine.algo.results.explain(&engine.algo.eval, &engine.algo.board));
     }
 }

@@ -116,12 +116,13 @@ impl Algo {
                 self.controller.invoke_callback(&self.progress);
                 let exit = self.exit_iteration(ply, score);
 
-                multi_pv[i] = (pv.clone(), score);
+                multi_pv[i] = (pv.to_inner(), score);
 
                 if exit {
                     break 'outer;
                 }
-                if let Some(&mv) = multi_pv[i].0.first() {
+                if let Some(mv) = multi_pv[i].0.first() {
+                    let mv = self.board.augment_move(mv);
                     self.restrictions.exclude_moves.push(mv);
                 }
             }

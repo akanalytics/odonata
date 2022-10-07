@@ -28,7 +28,7 @@ use odonata::search::move_orderer::*;
 use odonata::search::node::Node;
 use odonata::search::timecontrol::TimeControl;
 use odonata::piece::*;
-use odonata::utils::*;
+use odonata::infra::utils::*;
 use odonata::variation::*;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::thread;

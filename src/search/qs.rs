@@ -331,7 +331,7 @@ mod tests {
             //     pos.board().to_san_variation(eng.algo.pv(), None),
             // );
             // forward score is from POV of mover at end of PV line
-            let qboard = eng.algo.pv().apply_to(pos.board());
+            let qboard = pos.board().make_moves_old(&eng.algo.pv());
             let mut static_eval = qboard.static_eval(&mut eng.algo.eval).cp().unwrap();
             if qboard.color_us() != pos.board().color_us() {
                 static_eval = -static_eval;

@@ -1,6 +1,7 @@
 use crate::bits::bitboard::Bitboard;
 use crate::board::Board;
 use crate::cache::hasher::Hasher;
+use crate::domain::info::BareMoveVariation;
 use crate::infra::black_box;
 use crate::infra::metric::Metrics;
 use crate::mv::Move;
@@ -64,10 +65,18 @@ impl Board {
     //     // self.turn = self.turn.opposite();
     // }
 
-    pub fn make_moves(&self, moves: &Variation) -> Board {
+    pub fn make_moves_old(&self, moves: &Variation) -> Board {
         let mut b = self.clone();
         for mv in moves.iter() {
             b = b.make_move(mv);
+        }
+        b
+    }
+
+    pub fn make_moves(&self, var: &BareMoveVariation) -> Board {
+        let mut b = self.clone();
+        for mv in var.moves() {
+            b = b.make_move(&b.augment_move(*mv));
         }
         b
     }

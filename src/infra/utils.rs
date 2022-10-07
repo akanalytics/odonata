@@ -27,7 +27,12 @@ where
 }
 
 pub trait Uci: Sized {
+    /// format does not include the object name
+    /// so position will be formatted without the leading "position" keyword
     fn fmt_uci(&self, f: &mut fmt::Formatter) -> fmt::Result;
+    /// parse will ignore the object name if supplied
+    /// eg "position fen K7/..." or
+    ///    "info depth 5 ..."
     fn parse_uci(s: &str) -> anyhow::Result<Self>;
     fn to_uci(&self) -> String {
         Displayable(|fmt| self.fmt_uci(fmt)).to_string()

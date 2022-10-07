@@ -316,7 +316,7 @@ impl Algo {
         }
 
         if self.move_orderer.prior_pv
-            && Self::order_from_prior_pv(movelist, &self.current_variation, self.pv())
+            && Self::order_from_prior_pv(movelist, &self.current_variation, &self.pv())
         {
             self.move_orderer.count_pv.add(ply, 1);
         }
@@ -788,13 +788,13 @@ mod tests {
     use super::*;
     use crate::catalog::Catalog;
     use crate::globals::constants::*;
+    use crate::infra::utils::*;
     use crate::movelist::*;
     use crate::piece::*;
     use crate::search::algo::*;
     use crate::search::engine::*;
     use crate::search::timecontrol::*;
     use crate::tags::*;
-    use crate::infra::utils::*;
     // use crate::search::timecontrol::*;
 
     #[test]

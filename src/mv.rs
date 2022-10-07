@@ -103,7 +103,11 @@ impl fmt::Display for BareMove {
 }
 
 impl Board {
+
     pub fn augment_move(&self, mv: BareMove) -> Move {
+        if mv.is_null() {
+            return Move::NULL_MOVE;
+        }
         let from = mv.from;
         let to = mv.to;
         let mover = self.piece(from).unwrap();

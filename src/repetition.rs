@@ -289,7 +289,7 @@ mod tests {
 
         let pos3 = Catalog::draws()[3].clone();
 
-        let board = pos3.supplied_variation().apply_to(pos3.board());
+        let board = pos3.board().make_moves_old(pos3.supplied_variation());
         engine.new_game();
         engine.set_position(pos3.clone());
         print!(

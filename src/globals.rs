@@ -177,12 +177,12 @@ mod tests {
         assert_eq!(size_of::<Position>(), 208, "Position");
         assert_eq!(size_of::<PreCalc>(), 76808, "PreCalc");
         assert_eq!(size_of::<Hasher>(), 6272, "Hasher");
-        assert_eq!(size_of::<Algo>(), 8416, "Algo");
+        assert_eq!(size_of::<Algo>(), 8440, "Algo");
         assert_eq!(size_of::<Clock>(), 64, "Clock");
         assert_eq!(size_of::<NullMovePruning>(), 32, "NullMovePruning");
         assert_eq!(size_of::<Futility>(), 48, "Futility");
         assert_eq!(size_of::<IterativeDeepening>(), 16, "IterativeDeepening");
-        assert_eq!(size_of::<Eval>(), 3408, "SimpleScorer");
+        assert_eq!(size_of::<Eval>(), 3432, "SimpleScorer");
         assert_eq!(size_of::<Pvs>(), 12, "Pvs");
         assert_eq!(size_of::<Extensions>(), 40, "Extensions");
         assert_eq!(size_of::<Lmr>(), 64, "Lmr");
@@ -192,7 +192,7 @@ mod tests {
         assert_eq!(size_of::<TranspositionTable2>(), 64, "TranspositionTable2");
         assert_eq!(size_of::<Killers>(), 32, "Killers");
         assert_eq!(size_of::<HistoryHeuristic>(), 56, "HistoryHeuristic");
-        assert_eq!(size_of::<Explainer>(), 440, "SearchExplainer");
+        assert_eq!(size_of::<Explainer>(), 472, "SearchExplainer");
         assert_eq!(size_of::<Restrictions>(), 1768, "Restrictions");
         assert_eq!(size_of::<Razor>(), 36, "Razor");
         assert_eq!(size_of::<Recognizer>(), 12, "Recognizer");

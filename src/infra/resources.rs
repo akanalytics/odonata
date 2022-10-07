@@ -13,6 +13,6 @@ mod tests {
         info!("{:?}", RESOURCE_DIR);
         let file = RESOURCE_DIR.get_file("config.toml").unwrap();
         let body = file.contents_utf8().unwrap();
-        assert!(body.contains("Training file"));
+        assert!(body.contains("enabled"));
     }
 }

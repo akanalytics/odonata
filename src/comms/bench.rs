@@ -9,6 +9,7 @@ use crate::tags::Tag;
 use crate::infra::utils::Formatting;
 // use crate::globals::counts;
 use std::time::{Duration, Instant};
+use itertools::Itertools;
 
 pub struct Bench;
 
@@ -107,8 +108,8 @@ impl Bench {
 
             engine.search();
             let elapsed = t.elapsed();
-            let bm = &engine.algo.results.best_move().unwrap_or(Move::NULL_MOVE);
-            let correct = if pos.bm().ok().unwrap().contains(bm) {
+            let bm = &engine.algo.results.best_move().unwrap_or_default();
+            let correct = if pos.bm().ok().unwrap().iter().map(Move::to_inner).contains(bm) {
                 score += 1;
                 '1'
             } else {

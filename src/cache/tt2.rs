@@ -14,7 +14,6 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::sync::Arc;
 
-
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct TtNode {
     pub score: TtScore,
@@ -342,9 +341,13 @@ impl Component for TranspositionTable2 {
         }
     }
 
-    fn new_game(&mut self) {}
+    fn new_game(&mut self) {
+        self.set_state(State::NewGame)
+    }
 
-    fn new_position(&mut self) {}
+    fn new_position(&mut self) {
+        self.set_state(State::SetPosition)
+    }
 }
 
 impl TranspositionTable2 {
@@ -804,7 +807,7 @@ mod tests {
         let entry456 = entry456();
         let entry456b = entry456b();
 
-        assert!(tt.capacity() > 200000);
+        assert_eq!(tt.capacity(), 524288);
         tt.delete(123);
         tt.delete(456);
         tt.delete(456);

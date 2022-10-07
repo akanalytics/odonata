@@ -1,10 +1,10 @@
-use crate::eval::score::Score;
-use crate::mv::Move;
+use crate::domain::info::BareMoveVariation;
+use crate::{eval::score::Score, mv::BareMove};
+use crate::domain::SearchResults;
 use crate::piece::Ply;
 use crate::position::Position;
 use crate::search::timecontrol::TimeControl;
 use crate::variation::Variation;
-use crate::domain::SearchResults;
 use anyhow::Result;
 use std::fmt;
 use std::io::Write;
@@ -58,7 +58,7 @@ impl fmt::Display for Game {
         writeln!(f, "#,best move,depth,seldepth,")?;
         for (i, mv) in self.search_results.iter().enumerate() {
             writeln!(f, "{i}")?;
-            writeln!(f, "{}", mv.best_move().unwrap_or(Move::NULL_MOVE))?;
+            writeln!(f, "{}", mv.best_move().unwrap_or_default())?;
         }
         Ok(())
     }
@@ -102,7 +102,7 @@ impl Game {
 
     pub fn export<W: Write>(&self, mut w: W) -> Result<()> {
         #[derive(Tabled)]
-        struct Row<'a> {
+        struct Row {
             id: usize,
             depth: Ply,
             seldepth: Ply,
@@ -111,12 +111,12 @@ impl Game {
             nps_k: u64,
             branching_factor: f32,
             hashfull: String,
-            mv: Move,
+            mv: BareMove,
             score_pov: Score,
             our_time_secs: f32,
             their_time_secs: f32,
             moves_to_go: u16,
-            pv: &'a Variation,
+            pv: BareMoveVariation,
         }
 
         if !self.search_results.is_empty() {
@@ -141,8 +141,8 @@ impl Game {
                         moves_to_go: 0,
                     };
                     if let TimeControl::Fischer(rt) = s.tc {
-                        row.our_time_secs  = rt.our_time_and_inc().0.as_secs_f32();
-                        row.their_time_secs  = rt.their_time_and_inc().0.as_secs_f32();
+                        row.our_time_secs = rt.our_time_and_inc().0.as_secs_f32();
+                        row.their_time_secs = rt.their_time_and_inc().0.as_secs_f32();
                         row.moves_to_go = rt.moves_to_go;
                     };
                     row

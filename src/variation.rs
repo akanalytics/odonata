@@ -1,4 +1,7 @@
+use itertools::Itertools;
+
 use crate::board::Board;
+use crate::domain::info::BareMoveVariation;
 use crate::mv::Move;
 use crate::piece::Ply;
 use std::fmt;
@@ -28,18 +31,31 @@ impl fmt::Debug for Variation {
 
 pub static EMPTY: Variation = Variation { moves: Vec::new() };
 
-
-
-
 impl Variation {
     #[inline]
     pub fn new() -> Self {
         Self::default()
     }
 
+    pub fn from_inner(bmv: &BareMoveVariation, b: &Board) -> Self {
+        let mut var = Self::new();
+        let mut b = b.clone();
+        for mv in bmv.moves() {
+            let mv = b.augment_move(*mv);
+            var.push(mv);
+            b = b.make_move(&mv);
+        }
+        var
+    }
+
+
     #[inline]
     pub fn empty() -> &'static Self {
         &EMPTY
+    }
+
+    pub fn to_inner(&self) -> BareMoveVariation {
+        BareMoveVariation(self.moves().map(Move::to_inner).collect_vec())
     }
 
     #[inline]
@@ -122,12 +138,9 @@ impl Variation {
         }
     }
 
+    #[deprecated]
     pub fn apply_to(&self, b: &Board) -> Board {
-        let mut board = b.clone();
-        for mv in self.iter() {
-            board = board.make_move(mv);
-        }
-        board
+        b.make_moves_old(&self)
     }
 }
 
@@ -161,12 +174,10 @@ impl fmt::Display for Variation {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
-    use test_log::test;
     use crate::catalog::Catalog;
+    use test_log::test;
 
     use super::*;
 
@@ -174,8 +185,10 @@ mod tests {
     fn test_variation() -> anyhow::Result<()> {
         let bd = Catalog::starting_board();
         assert_eq!(Variation::parse_uci("a2a3", &bd)?.to_uci(), "a2a3");
-        assert_eq!(Variation::parse_uci("a2a3 a7a6", &bd)?.to_uci(), "a2a3 a7a6");
+        assert_eq!(
+            Variation::parse_uci("a2a3 a7a6", &bd)?.to_uci(),
+            "a2a3 a7a6"
+        );
         Ok(())
     }
 }
-  

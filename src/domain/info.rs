@@ -19,7 +19,7 @@ impl Uci for BareMoveVariation {
         write!(
             f,
             "{}",
-            self.0.iter().map(|mv| mv.to_uci()).collect_vec().join(" ")
+            self.0.iter().map(BareMove::to_uci).join(" ")
         )?;
         Ok(())
     }
@@ -27,12 +27,41 @@ impl Uci for BareMoveVariation {
     fn parse_uci(s: &str) -> anyhow::Result<Self> {
         let mut variation = BareMoveVariation::default();
         for word in s.split_whitespace() {
-            let mv = BareMove::parse_uci(word)?;
-            variation.0.push(mv)
+            variation.0.push(BareMove::parse_uci(word)?)
         }
         Ok(variation)
     }
 }
+
+impl fmt::Display for BareMoveVariation {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.fmt_uci(f)
+    }
+}
+
+impl BareMoveVariation {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn first(&self) -> Option<BareMove> {
+        self.0.first().map(BareMove::to_owned)
+    }
+
+    pub fn second(&self) -> Option<BareMove> {
+        self.0.iter().skip(1).next().map(BareMove::to_owned)
+    }
+
+    pub fn moves(&self) -> impl Iterator<Item = &BareMove> {
+        self.0.iter()
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+
 
 #[derive(Clone, Default, Debug)]
 pub struct Info {
@@ -64,7 +93,7 @@ impl Info {
         match name {
             "depth" => self.depth = Some(value.parse()?),
             "seldepth" => self.seldepth = Some(value.parse()?),
-            "multipv" => self.multi_pv = Some(value.parse::<usize>()? - 1),
+            "multipv" => self.multi_pv = Some(value.parse::<usize>()?),
             "currmove" => self.currmove = Some(BareMove::parse_uci(value)?),
             "currmovenumber" => self.currmovenumber_from_1 = Some(value.parse()?),
             "score" => self.score = Some(Score::parse_uci(value)?),
@@ -74,7 +103,7 @@ impl Info {
             "tbhits" => self.tbhits = Some(value.parse::<u64>()?),
             "cpuload" => self.cpuload_per_mille = Some(value.parse::<u32>()?),
             "time" => self.time_millis = Some(value.parse::<u64>()?),
-            "pv" => self.pv = Some(BareMoveVariation::default()),
+            "pv" => self.pv = Some(BareMoveVariation::parse_uci(value)?),
             "refutation" => todo!(),
             "string" => self.string_text = Some(value.to_string()),
             _ => panic!("unable to set info field {name} to value {value}"),
@@ -91,7 +120,7 @@ impl fmt::Display for Info {
 
 impl Uci for Info {
     fn fmt_uci(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut v = vec!["info".to_string()];
+        let mut v = vec![];
         #[rustfmt::skip] {
         self.depth.iter().for_each(|x| v.push(format!("depth {x}")));
         self.seldepth.iter().for_each(|x| v.push(format!("seldepth {x}")));
@@ -180,7 +209,7 @@ mod tests {
 
         assert_eq!(
             Info::parse_uci("info depth 5 seldepth 6").unwrap().to_uci(),
-            "info depth 5 seldepth 6"
+            "depth 5 seldepth 6"
         );
     }
 }
