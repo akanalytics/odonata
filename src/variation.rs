@@ -1,8 +1,5 @@
-use serde::{Deserialize, Serialize};
-
-
 use crate::board::Board;
-use crate::mv::{Move, BareMove};
+use crate::mv::Move;
 use crate::piece::Ply;
 use std::fmt;
 use std::ops::{Deref, DerefMut};

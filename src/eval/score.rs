@@ -87,7 +87,7 @@ impl Uci for Score {
             Some(("lowerbound", text)) => Ok(Score::from_cp(text.parse::<i32>()?)),
             Some(("upperbound", text)) => Ok(Score::from_cp(text.parse::<i32>()?)),
             Some(("mate", text)) => Ok(Score::from_mate_in_moves(text.parse::<i32>()?)),
-            _ => anyhow::bail!("expected score to have cp or mate but found {s}"),
+            _ => anyhow::bail!("expected score to have cp or mate but found '{s}'"),
         }
     }
 }

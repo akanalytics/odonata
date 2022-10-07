@@ -249,6 +249,83 @@ impl fmt::Display for DurationNewType {
     }
 }
 
+// keyword iterator
+pub struct KeywordIter {
+    words: Vec<String>,
+    greedy_word: Option<String>,
+    text: String,
+}
+
+/// splits on words, with (matching_word, between) being returned
+/// optional greedy word consumes the rest of the string
+impl KeywordIter {
+    pub fn new(words: &[&str], greedy_word: Option<&str>, text: &str) -> Self {
+        Self {
+            // ensure words sorted in reverse length order: in cases one word
+            // a substring of another, we need to match longest word first
+            words: words
+                .iter()
+                .chain(greedy_word.iter())
+                .map(|s| s.to_string())
+                .sorted_by_key(String::len)
+                .rev()
+                .collect_vec(),
+            greedy_word: greedy_word.map(str::to_string),
+            text: text.to_owned(),
+        }
+    }
+}
+
+impl<'a> Iterator for KeywordIter {
+    type Item = (String, String);
+
+    fn next(&mut self) -> Option<(String, String)> {
+        if self.text.trim().is_empty() {
+            return None;
+        }
+        let text = self.text.clone();
+        let mut match_text = text.as_str();
+        let mut skip_text = text.as_str();
+        let mut match_word = "";
+
+        // now look for any of the other words
+        for word in &self.words {
+            if let Some((first, rest)) = text.trim_start().split_once(word) {
+                if first.len() < skip_text.len() {
+                    // found an earlier match
+                    skip_text = first;
+                    match_word = word;
+                    match_text = rest;
+                    // shorten the match_text if its curtailed by another keyword
+                    if self.greedy_word.as_deref() != Some(match_word) {
+                        for word in &self.words {
+                            if let Some((first2, _rest2)) = match_text.split_once(word) {
+                                if first2.len() < match_text.len() {
+                                    match_text = first2;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if !match_word.is_empty() {
+            // strip off <skip> + <word> + <match>
+            self.text = text
+                .trim_start()
+                .strip_prefix(skip_text)
+                .unwrap()
+                .strip_prefix(match_word)
+                .unwrap()
+                .strip_prefix(match_text)
+                .unwrap()
+                .to_string();
+            return Some((match_word.to_string(), match_text.to_string()));
+        }
+        return None;
+    }
+}
+
 //
 // https://users.rust-lang.org/t/how-to-get-a-substring-of-a-string/1351/9
 //
@@ -348,6 +425,47 @@ impl StringUtils for str {
 mod tests {
     use super::*;
     use test_log::test;
+
+    #[test]
+    fn test_keyword_iter() {
+        let text = "Mary had a little lambda";
+        let words = ["Mary", "James", "Bob"];
+        let greedy_word = Some("TakeRest");
+        println!("\n{text}");
+        let mut i = KeywordIter::new(&words, greedy_word, text);
+        assert_eq!(i.next(), Some(("Mary".into()," had a little lambda".into())));
+        assert_eq!(i.next(), None);
+
+        let text = "Mary had a little lambda TakeRest Mary had a little dog";
+        let words = ["Mary", "James", "Bob"];
+        let greedy_word = Some("TakeRest");
+        println!("\n{text}");
+        for (k, v) in KeywordIter::new(&words, greedy_word, text) {
+            println!("k = '{k}' v = '{v}'");
+        }
+
+        let text = "Mary likes Bob who likes James but TakeRest Mary had a little dog";
+        let words = ["Mary", "James", "Bob"];
+        let greedy_word = Some("TakeRest");
+        println!("\n{text}");
+        for (k, v) in KeywordIter::new(&words, greedy_word, text) {
+            println!("k = '{k}' v = '{v}'");
+        }
+        let text = "Marie likes Bill who likes Jim but TakeNothing Marie had a little dog";
+        let words = ["Mary", "James", "Bob"];
+        let greedy_word = Some("TakeRest");
+        println!("\n{text}");
+        for (k, v) in KeywordIter::new(&words, greedy_word, text) {
+            println!("k = '{k}' v = '{v}'");
+        }
+        let text = "Marie likes James who likes Jim but TakeNothing Marie had a little dog";
+        let words = ["Mary", "James", "Bob"];
+        let greedy_word = Some("TakeRest");
+        println!("\n{text}");
+        for (k, v) in KeywordIter::new(&words, greedy_word, text) {
+            println!("k = '{k}' v = '{v}'");
+        }
+    }
 
     #[test]
     fn test_split_off_first_word() {

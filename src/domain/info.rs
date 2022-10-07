@@ -1,9 +1,10 @@
+use anyhow::Context;
 use itertools::Itertools;
 use std::fmt;
 
 use crate::{
     eval::score::Score,
-    infra::utils::Uci,
+    infra::utils::{KeywordIter, Uci},
     mv::{BareMove, Move},
     piece::Ply,
     variation::Variation,
@@ -11,7 +12,7 @@ use crate::{
 };
 
 #[derive(Clone, Default, Debug)]
-struct BareMoveVariation(Vec<BareMove>);
+pub struct BareMoveVariation(pub Vec<BareMove>);
 
 impl Uci for BareMoveVariation {
     fn fmt_uci(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -35,23 +36,23 @@ impl Uci for BareMoveVariation {
 
 #[derive(Clone, Default, Debug)]
 pub struct Info {
-    depth: Option<Ply>,
-    seldepth: Option<Ply>,
-    time_millis: Option<u64>,
-    multi_pv: Option<usize>,
-    pv: Option<BareMoveVariation>,
-    nodes: Option<u64>,
-    nodes_thread: Option<u64>,
-    score: Option<Score>,
-    currmove: Option<BareMove>,
-    currmovenumber_from_1: Option<u32>,
-    hashfull_per_mille: Option<u32>,
-    nps: Option<u64>,
-    tbhits: Option<u64>,
-    cpuload_per_mille: Option<u32>,
-    string_text: Option<String>,
-    refutation: Option<(Move, Variation)>,
-    currline: Option<MoveList>,
+    pub depth: Option<Ply>,
+    pub seldepth: Option<Ply>,
+    pub time_millis: Option<u64>,
+    pub multi_pv: Option<usize>,
+    pub pv: Option<BareMoveVariation>,
+    pub nodes: Option<u64>,
+    pub nodes_thread: Option<u64>,
+    pub score: Option<Score>,
+    pub currmove: Option<BareMove>,
+    pub currmovenumber_from_1: Option<u32>,
+    pub hashfull_per_mille: Option<u32>,
+    pub nps: Option<u64>,
+    pub tbhits: Option<u64>,
+    pub cpuload_per_mille: Option<u32>,
+    pub string_text: Option<String>,
+    pub refutation: Option<(Move, Variation)>,
+    pub currline: Option<MoveList>,
 }
 
 impl Info {
@@ -65,17 +66,17 @@ impl Info {
             "seldepth" => self.seldepth = Some(value.parse()?),
             "multipv" => self.multi_pv = Some(value.parse::<usize>()? - 1),
             "currmove" => self.currmove = Some(BareMove::parse_uci(value)?),
-            "currmovenumber_from_1" => self.currmovenumber_from_1 = Some(value.parse()?),
+            "currmovenumber" => self.currmovenumber_from_1 = Some(value.parse()?),
             "score" => self.score = Some(Score::parse_uci(value)?),
             "nodes" => self.nodes = Some(value.parse()?),
             "nps" => self.nps = Some(value.parse()?),
-            "hashfull_per_mille" => self.hashfull_per_mille = Some(value.parse()?),
+            "hashfull" => self.hashfull_per_mille = Some(value.parse()?),
             "tbhits" => self.tbhits = Some(value.parse::<u64>()?),
-            "cpuload_per_mille" => self.cpuload_per_mille = Some(value.parse::<u32>()?),
+            "cpuload" => self.cpuload_per_mille = Some(value.parse::<u32>()?),
             "time" => self.time_millis = Some(value.parse::<u64>()?),
             "pv" => self.pv = Some(BareMoveVariation::default()),
             "refutation" => todo!(),
-            "text" => self.string_text = Some(value.to_string()),
+            "string" => self.string_text = Some(value.to_string()),
             _ => panic!("unable to set info field {name} to value {value}"),
         };
         Ok(())
@@ -113,20 +114,15 @@ impl Uci for Info {
     }
 
     fn parse_uci(s: &str) -> anyhow::Result<Self> {
-        let mut info = Info::new();
-        let mut s = s
+        let s = s
             .strip_prefix("info")
             .ok_or(anyhow::format_err!("no leading 'info' in '{s}'"))?
             .trim_start()
             .to_string();
 
-        if let Some((a, b)) = s.split_once("string") {
-            info.string_text = Some(b.trim().to_string());
-            s = a.to_string();
-        }
         let words = [
             "depth",
-            "seldepth",
+            "seldepth",  
             "multipv",
             "currmove",
             "currmovenumber",
@@ -139,34 +135,12 @@ impl Uci for Info {
             "time",
             "pv",
             "refutation",
-            "string",
         ];
 
-        'outer: loop {
-            for &word in &words {
-                match s.strip_prefix(word) {
-                    None => continue,
-                    Some(following) if word == "pv" => {
-                        info.pv = Some(BareMoveVariation::parse_uci(following)?);
-                        continue 'outer;
-                    }
-                    Some(following) => {
-                        match following.trim_start().split_once(" ") {
-                            Some((first, rest)) => {
-                                info.set(word, first)?;
-                                s = rest.to_string();
-                                continue 'outer;
-                            }
-                            None => {
-                                info.set(word, following.trim_start())?;
-                                // s = "".to_string();
-                                break 'outer;
-                            }
-                        }
-                    }
-                }
-            }
-            break 'outer;
+        let mut info = Info::new();
+        let iter = KeywordIter::new(&words, Some("string"), &s);
+        for (key, value) in iter {
+            info.set(&key, value.trim()).context(format!("setting info '{key}' to '{value}'"))?;
         }
         Ok(info)
     }
