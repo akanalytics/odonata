@@ -6,6 +6,7 @@ use crate::eval::eval::Eval;
 use crate::infra::component::{Component, State};
 use crate::infra::metric::METRICS_TOTAL;
 use crate::infra::utils::Formatting;
+use crate::infra::utils::Uci;
 use crate::infra::version::Version;
 use crate::movelist::MoveList;
 use crate::mv::Move;
@@ -18,7 +19,6 @@ use crate::search::search_progress::{Info, SearchProgressMode};
 use crate::search::timecontrol::{RemainingTime, TimeControl};
 use crate::tags::Tag;
 use crate::variation::Variation;
-use crate::infra::utils::Uci;
 use std::collections::HashMap;
 use std::fmt;
 use std::io::{self, Write};
@@ -642,7 +642,7 @@ impl UciServer {
 
                 let new: Engine = fig
                     .extract()
-                    .context(format!("error in config file {}", &eng.config_filename))?;
+                    .with_context(|| format!("error in config file {}", &eng.config_filename))?;
                 *eng = new;
             }
         } else {
@@ -758,7 +758,10 @@ impl UciServer {
         Self::print("search");
         Self::print(&format!("{}", self.board));
         Self::print(&format!("{}", eng));
-        Self::print(&format!("{}", eng.algo.results.explain(&eng.algo.eval, &self.board)));
+        Self::print(&format!(
+            "{}",
+            eng.algo.results.explain(&eng.algo.eval, &self.board)
+        ));
         Ok(())
     }
 

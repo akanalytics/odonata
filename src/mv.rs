@@ -109,10 +109,12 @@ impl Board {
         }
         let from = mv.from;
         let to = mv.to;
-        let mover = self.piece(from).expect(&format!(
-            "move {mv} no piece on {from} for board {fen}",
-            fen = self.to_fen()
-        ));
+        let mover = self.piece(from).unwrap_or_else(|| {
+            panic!(
+                "move {mv} no piece on {from} for board {fen}",
+                fen = self.to_fen()
+            )
+        });
         let capture_piece = self.piece(to);
         if mover == Piece::King && CastlingRights::is_castling(from, to) {
             let rights = CastlingRights::from_king_move(to);

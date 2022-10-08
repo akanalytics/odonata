@@ -1,10 +1,10 @@
 use crate::domain::info::BareMoveVariation;
-use crate::{eval::score::Score, mv::BareMove};
 use crate::domain::SearchResults;
 use crate::piece::Ply;
 use crate::position::Position;
 use crate::search::timecontrol::TimeControl;
 use crate::variation::Variation;
+use crate::{eval::score::Score, mv::BareMove};
 use anyhow::Result;
 use std::fmt;
 use std::io::Write;
@@ -17,13 +17,53 @@ use tabled::{Style, Table, Tabled};
 // }
 
 #[derive(Clone, Default)]
+pub struct GameMove {
+    mv: BareMove,
+    sr: SearchResults,
+    tc: TimeControl,
+    nag: String,
+}
+
+// https://tim-mann.org/Standard
+//
+// reduced export format
+// STR seven tag roster
+// {} or ; style comments
+// % = other software
+// 4.   white
+// 4... black (starting move or comment)
+// move suffix "!", "?", "!!", "!?", "?!", and "??"
+// Numeric Annotation Glyph $2
+
+
+// Tags
+//
+// WhiteType, BlackType human/program
+//
+// Termination
+// * "abandoned": abandoned game.
+// * "adjudication": result due to third party adjudication process.
+// * "death": losing player called to greater things, one hopes.
+// * "emergency": game concluded due to unforeseen circumstances.
+// * "normal": game terminated in a normal fashion.
+// * "rules infraction": administrative forfeit due to losing player's failure to observe either the Laws of Chess or the event regulations.
+// * "time forfeit": loss due to losing player's failure to meet time control requirements.
+// * "unterminated": game not terminated.
+//
+// PlyCount
+//
+
+// [%clk 1:05:23] 
+// [%emt 0:05:42]}
+//[ %egt 0:05:42]}
+
+#[derive(Clone, Default)]
 pub struct Game {
     pub game_id: u32,
     starting_pos: Position,
-    moves: Variation,
     // board: Board,
     // _tags: Tags,
-    search_results: Vec<SearchResults>,
+    game_moves: Vec<GameMove>,
     // event: String,
     // site: String,
     // date: String,
@@ -56,9 +96,9 @@ pub struct Game {
 impl fmt::Display for Game {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "#,best move,depth,seldepth,")?;
-        for (i, mv) in self.search_results.iter().enumerate() {
+        for (i, gm) in self.game_moves.iter().enumerate() {
             writeln!(f, "{i}")?;
-            writeln!(f, "{}", mv.best_move().unwrap_or_default())?;
+            writeln!(f, "{}", gm.sr.best_move().unwrap_or_default())?;
         }
         Ok(())
     }
@@ -90,8 +130,11 @@ impl Game {
     // }
 
     pub fn clear_moves(&mut self) {
-        self.search_results.clear();
-        self.moves.clear();
+        self.game_moves.clear();
+    }
+
+    fn variation(&self) -> BareMoveVariation {
+        BareMoveVariation::default()
     }
 
     pub fn set_starting_pos(&mut self, pos: Position) -> &mut Self {
@@ -119,28 +162,28 @@ impl Game {
             pv: BareMoveVariation,
         }
 
-        if !self.search_results.is_empty() {
+        if !self.game_moves.is_empty() {
             writeln!(
                 w,
                 "{}",
-                Table::new(self.search_results.iter().enumerate().map(|(i, s)| {
+                Table::new(self.game_moves.iter().enumerate().map(|(i, gm)| {
                     let mut row = Row {
                         id: i,
-                        depth: s.depth,
-                        seldepth: s.seldepth,
-                        time_millis: s.time_millis,
-                        nodes_k: s.nodes / 1000,
-                        nps_k: s.nps / 1000,
-                        branching_factor: s.bf,
-                        hashfull: format!("{}%", s.hashfull_per_mille / 10),
-                        mv: s.best_move().unwrap_or_default(),
-                        score_pov: s.score(),
-                        pv: s.pv(),
+                        depth: gm.sr.depth,
+                        seldepth: gm.sr.seldepth,
+                        time_millis: gm.sr.time_millis,
+                        nodes_k: gm.sr.nodes / 1000,
+                        nps_k: gm.sr.nps / 1000,
+                        branching_factor: gm.sr.bf,
+                        hashfull: format!("{}%", gm.sr.hashfull_per_mille / 10),
+                        mv: gm.sr.best_move().unwrap_or_default(),
+                        score_pov: gm.sr.score(),
+                        pv: gm.sr.pv(),
                         our_time_secs: 0.0,
                         their_time_secs: 0.0,
                         moves_to_go: 0,
                     };
-                    if let TimeControl::Fischer(rt) = s.tc {
+                    if let TimeControl::Fischer(rt) = gm.tc {
                         row.our_time_secs = rt.our_time_and_inc().0.as_secs_f32();
                         row.their_time_secs = rt.their_time_and_inc().0.as_secs_f32();
                         row.moves_to_go = rt.moves_to_go;
@@ -193,19 +236,29 @@ impl Game {
     // Ok(())
 
     pub fn capture_missing_moves(&mut self, var: &Variation) {
-        for (i, mv) in var.iter().enumerate() {
-            if i < self.moves.len() {
-                // we should have already captured this move
-                let existing_mv = self.moves[i];
-                debug_assert!(existing_mv == *mv, "record_variation: (exising move #{i}) {existing_mv} != {mv} (from variation {var})");
-            } else {
-                self.moves.push(*mv);
+        for (i, gm) in self.game_moves.iter().enumerate() {
+            if i < var.len() {
+                // we have already captured this move - check its correct
+                let existing_mv = gm.mv;
+                let new_mv = var[i].to_inner();
+                debug_assert!(existing_mv == new_mv, "record_variation: (exising move #{i}) {existing_mv} != {new_mv} (from variation {var})");
             }
+        }
+        for mv in var.moves().skip(self.game_moves.len()) {
+            self.game_moves.push(GameMove {
+                mv: mv.to_inner(),
+                ..GameMove::default()
+            });
         }
     }
 
-    pub fn record_search(&mut self, sr: SearchResults) {
-        self.search_results.push(sr);
+    pub fn record_search(&mut self, sr: SearchResults, tc: TimeControl) {
+        self.game_moves.push(GameMove {
+            mv: sr.best_move().unwrap_or_default(),
+            sr,
+            tc,
+            ..GameMove::default()
+        });
     }
 }
 

@@ -797,10 +797,10 @@ impl Board {
         };
         bb.fifty_clock = words[4]
             .parse()
-            .context(format!("Invalid halfmove clock '{}'", words[4]))?;
+            .with_context(|| format!("Invalid halfmove clock '{}'", words[4]))?;
         bb.fullmove_number = words[5]
             .parse()
-            .context(format!("Invalid fullmove count '{}'", words[5]))?;
+            .with_context(|| format!("Invalid fullmove count '{}'", words[5]))?;
         bb.calculate_internals();
         bb.validate()?;
         Ok(bb)

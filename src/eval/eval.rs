@@ -301,8 +301,8 @@ impl fmt::Display for WeightsVector {
     }
 }
 
-#[derive(Copy,Clone,Debug)]
-pub (super) struct PawnStructure;
+#[derive(Copy, Clone, Debug)]
+pub(super) struct PawnStructure;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -397,7 +397,11 @@ impl fmt::Display for Eval {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "cache size       : {}", self.cache_size)?;
         writeln!(f, "draw scaling     : {}", self.draw_scaling)?;
-        writeln!(f, "utilization (‰)  : {}", self.eval_cache.hashfull_per_mille())?;
+        writeln!(
+            f,
+            "utilization (‰)  : {}",
+            self.eval_cache.hashfull_per_mille()
+        )?;
         writeln!(f, "[material balance]\n{}", self.mb)?;
         writeln!(f, "[phaser]\n{}", self.phaser)?;
         writeln!(f, "phasing          : {}", self.phasing)?;
@@ -422,11 +426,13 @@ impl Eval {
         self.feature_weights.resize(Feature::len(), Weight::zero());
         for f in &Feature::all() {
             self.feature_weights[f.index()] = match f {
-                Feature::Discrete(_i) => *self.discrete.get(&f.name()).expect(&format!(
-                    "Missing discrete eval param {} in {:?}",
-                    f.name(),
-                    self.discrete
-                )),
+                Feature::Discrete(_i) => *self.discrete.get(&f.name()).unwrap_or_else(|| {
+                    panic!(
+                        "Missing discrete eval param {} in {:?}",
+                        f.name(),
+                        self.discrete
+                    )
+                }),
                 Feature::Pst(p, sq) => self.pst.pst(*p, *sq),
                 Feature::Piece(p) => self.mb.piece_weights[*p],
             }

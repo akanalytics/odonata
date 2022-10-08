@@ -21,7 +21,6 @@ use super::info::{BareMoveVariation, Info};
 #[serde(default, deny_unknown_fields)]
 pub struct SearchResults {
     #[serde(skip)]
-    pub board: Board,
     pub depth: Ply,
     pub seldepth: Ply,
     pub time_millis: u64,
@@ -35,9 +34,6 @@ pub struct SearchResults {
 
     #[serde(skip)]
     pub multi_pv: Vec<(BareMoveVariation, Score)>,
-
-    #[serde(skip)]
-    pub tc: TimeControl,
 
     #[serde(skip)]
     pub infos: Vec<Info>,
@@ -63,7 +59,7 @@ impl fmt::Display for SearchResultsWithExplanation<'_> {
         let mut bu = Builder::new();
         bu.set_columns(["Score", "PV", "Explain"]);
         for pv in &self.sr.multi_pv {
-            let b = self.sr.board.make_moves(&pv.0);
+            let b = self.board.make_moves(&pv.0);
             bu.add_record([
                 pv.1.to_string(),
                 pv.0.to_string(),
@@ -164,8 +160,6 @@ impl SearchResults {
                 hashfull_per_mille: info.hashfull_per_mille.unwrap_or_default(),
                 outcome: Outcome::Unterminated,
                 multi_pv: vec![(info.pv.clone().unwrap_or_default(), info.score.unwrap_or_default())],
-                tc: TimeControl::default(),
-                board: Board::default(),
                 infos,
             }
         } else {
@@ -178,8 +172,6 @@ impl SearchResults {
         let bf = calculate_branching_factor_by_nodes_and_depth(nodes_thread_last_iter, depth)
             .unwrap_or_default() as f32;
         SearchResults {
-            board: algo.board.clone(),
-            tc: *algo.mte.time_control(),
             outcome: Outcome::Unterminated,
             tbhits: 0,
             nodes: algo.clock.cumul_nodes_all_threads(),

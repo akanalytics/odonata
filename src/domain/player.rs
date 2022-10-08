@@ -25,15 +25,15 @@ impl FromStr for Player {
         let mut words = s.split_whitespace().fuse();
         let title = words
             .next()
-            .context("No title specified for opponent")?
+            .with_context(|| "No title specified for opponent")?
             .to_string();
         let elo = words
             .next()
-            .context("No elo specified for opponent")?
+            .with_context(|| "No elo specified for opponent")?
             .to_string();
         let player_type = match words
             .next()
-            .context("No player type specified for opponent")?
+            .with_context(|| "No player type specified for opponent")?
         {
             "human" => PlayerType::Human,
             "computer" => PlayerType::Computer,

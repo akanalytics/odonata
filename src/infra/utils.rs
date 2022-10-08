@@ -188,7 +188,8 @@ where
 pub fn read_file(filename: impl AsRef<Path> + Clone) -> Result<Vec<String>> {
     info!("Reading lines from {:?}", filename.as_ref().display());
     let t = Metrics::timing_start();
-    let file = File::open(filename.clone()).context(format!("{}", filename.as_ref().display()))?;
+    let file =
+        File::open(filename.clone()).with_context(|| format!("{}", filename.as_ref().display()))?;
     let lines = std::io::BufReader::new(file).lines();
     let vec = lines.collect::<Result<Vec<String>, _>>()?;
     Metrics::profile(t, Timing::TimingReadFile);
@@ -438,7 +439,10 @@ mod tests {
         let greedy_word = Some("TakeRest");
         println!("\n{text}");
         let mut i = KeywordIter::new(&words, greedy_word, text);
-        assert_eq!(i.next(), Some(("Mary".into()," had a little lambda".into())));
+        assert_eq!(
+            i.next(),
+            Some(("Mary".into(), " had a little lambda".into()))
+        );
         assert_eq!(i.next(), None);
 
         let text = "Mary had a little lambda TakeRest Mary had a little dog";

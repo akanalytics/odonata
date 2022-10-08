@@ -140,7 +140,7 @@ impl Algo {
         };
 
         // record final outcome of search
-        self.game.record_search(results.clone());
+        self.game.record_search(results.clone(), *self.mte.time_control());
         self.results = results;
 
         // report progress back to uci

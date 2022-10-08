@@ -209,7 +209,7 @@ impl Position {
         for item in iter {
             let s = item.as_ref();
             if !s.is_empty() {
-                vec.push(Self::parse_epd(&s.replace('\n', " ")).context(format!("in epd {}", s))?);
+                vec.push(Self::parse_epd(&s.replace('\n', " ")).with_context(|| format!("in epd {}", s))?);
             }
         }
         Ok(vec)
@@ -224,7 +224,7 @@ impl Position {
             .filter_map(|line: String| {
                 let s = line;
                 if !s.trim_start().starts_with('#') {
-                    Some(Position::parse_epd(&s).context(format!("in epd {}", s)))
+                    Some(Position::parse_epd(&s).with_context(|| format!("in epd {}", s)))
                 } else {
                     None
                 }
