@@ -58,6 +58,7 @@ csv = "1.1.6"
 chrono = { version = "0.4" }
 fslock = "0.2.1"
 perf-event = "0.4.7"
+indexmap = "1.9.1"
 
 
 
