@@ -6,7 +6,6 @@ use crate::infra::utils::{calculate_branching_factor_by_nodes_and_depth, Uci};
 use crate::mv::BareMove;
 use crate::other::outcome::Outcome;
 use crate::piece::Ply;
-use crate::search::timecontrol::TimeControl;
 use crate::tags::Tag;
 use crate::variation::Variation;
 use crate::{board::Board, Algo, MoveList, Position};

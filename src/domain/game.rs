@@ -1,28 +1,23 @@
+use crate::board::Board;
+use crate::catalog::Catalog;
 use crate::domain::info::BareMoveVariation;
 use crate::domain::SearchResults;
-use crate::piece::Ply;
-use crate::position::Position;
+use crate::infra::utils::{Uci, Formatting};
+use crate::movelist::strip_move_numbers;
+use crate::other::outcome::Outcome;
+use crate::piece::{Ply, ScoreWdl};
 use crate::search::timecontrol::TimeControl;
 use crate::variation::Variation;
+use crate::Color;
 use crate::{eval::score::Score, mv::BareMove};
-use anyhow::Result;
+use anyhow::{Context, Result};
+use indexmap::{indexmap, IndexMap};
+use once_cell::sync::Lazy;
+use regex::Regex;
+use std::collections::HashMap;
 use std::fmt;
 use std::io::Write;
 use tabled::{Style, Table, Tabled};
-
-// #[derive(Clone, Default)]
-// pub struct GameMove {
-//     pub tc: TimeControl,
-//     pub sr: SearchResults,
-// }
-
-#[derive(Clone, Default)]
-pub struct GameMove {
-    mv: BareMove,
-    sr: SearchResults,
-    tc: TimeControl,
-    nag: String,
-}
 
 // https://tim-mann.org/Standard
 //
@@ -34,7 +29,6 @@ pub struct GameMove {
 // 4... black (starting move or comment)
 // move suffix "!", "?", "!!", "!?", "?!", and "??"
 // Numeric Annotation Glyph $2
-
 
 // Tags
 //
@@ -53,50 +47,204 @@ pub struct GameMove {
 // PlyCount
 //
 
-// [%clk 1:05:23] 
+// [%clk 1:05:23]
 // [%emt 0:05:42]}
 //[ %egt 0:05:42]}
 
-#[derive(Clone, Default)]
-pub struct Game {
-    pub game_id: u32,
-    starting_pos: Position,
-    // board: Board,
-    // _tags: Tags,
-    game_moves: Vec<GameMove>,
-    // event: String,
-    // site: String,
-    // date: String,
-    // round: String,
-    // name_w: String,
-    // name_b: String,
-    // outcome: Outcome,
+#[derive(Clone, Debug)]
+pub struct GameHeader {
+    tag_pairs: IndexMap<String, String>,
 }
 
-// [Event "GRENKE Chess Classic 2019"]
-// [Site "Karlsruhe/Baden Baden GER"]
-// [Date "2019.04.20"]
-// [Round "1.2"]
-// [White "Svidler, Peter"]
-// [Black "Caruana, Fabiano"]
-// [Result "1/2-1/2"]
-// [WhiteTitle "GM"]
-// [BlackTitle "GM"]
-// [WhiteElo "2735"]
-// [BlackElo "2819"]
-// [ECO "B33"]
-// [Opening "Sicilian"]
-// [Variation "Pelikan (Lasker/Sveshnikov) variation"]
-// [WhiteFideId "4102142"]
-// [BlackFideId "2020009"]
-// [EventDate "2019.04.20"]
-// [WhiteACPL "252"]
-// [BlackACPL "141"]
+impl Default for GameHeader {
+    fn default() -> Self {
+        Self {
+            tag_pairs: indexmap! {
+                "Event".to_string() => "?".to_string(),
+                "Site".to_string() => "?".to_string(),
+                "Date".to_string() => "????.??.??".to_string(),
+                "Round".to_string() => "?".to_string(),
+                "White".to_string() => "?".to_string(),
+                "Black".to_string() => "?".to_string(),
+                "Result".to_string() => "*".to_string(),
+            },
+        }
+    }
+}
+
+impl GameHeader {
+    pub fn starting_pos(&self) -> anyhow::Result<Board> {
+        let bd = self.tag_pairs.get("FEN").map(|s| Board::parse_fen(&s));
+        let bd = bd
+            .transpose()
+            .with_context(|| "parsing FEN in game header")?;
+        Ok(bd.unwrap_or(Catalog::starting_board()))
+    }
+
+    pub fn player(&self, c: Color) -> &str {
+        &self.tag_pairs[c.chooser_wb("White", "Black")]
+    }
+}
+
+#[derive(Clone, Default, Debug)]
+pub struct GameMove {
+    mv: BareMove,
+    sr: SearchResults,
+    tc: TimeControl,
+    comment: String,
+}
+
+static REGEX_MOVE_AND_COMMENT: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r#"(?x)         # x flag to allow whitespace and comments
+    ((\d)+\.)?(\s)*(\.\.\s)?      # digits a '.' and then whitespace and optionally ".."
+    (?P<move>\S+)
+    ((\s)* \{  (?P<comment>[^\}]+)  \} \s*)?              # word(move) space {comment} space
+    "#,
+    )
+    .unwrap()
+});
+
+fn match_move_and_comment(s: &str) -> anyhow::Result<(&str, Option<&str>, &str)> {
+    let caps = REGEX_MOVE_AND_COMMENT
+        .captures(&s)
+        .ok_or_else(|| anyhow::anyhow!("Unable to parse '{}' as a move and comment", s))?;
+    let mv = caps
+        .name("move")
+        .with_context(|| format!("expected a move in '{s}'"))?
+        .as_str();
+    let comment = caps.name("comment").map(|m| m.as_str());
+    // 0th capture is entire group
+    let rest = &s[caps.get(0).unwrap().end()..];
+    Ok((mv, comment, rest))
+}
+
+fn fmt_moves_uci(moves: &[GameMove], bd: &Board, f: &mut fmt::Formatter) -> fmt::Result {
+    let mut bd = bd.clone();
+    for (i, gm) in moves.iter().enumerate() {
+        let mv = bd.augment_move(gm.mv);
+        if bd.color_us() == Color::White {
+            write!(f, "{fmvn}. ", fmvn = bd.fullmove_number())?;
+        }
+        if i == 0 && bd.color_us() == Color::Black {
+            write!(f, "..")?;
+        }
+        write!(f, "{san} ", san = bd.to_san(&mv))?;
+        if !gm.comment.is_empty() {
+            write!(f, "{{{comment}}} ", comment = gm.comment)?;
+        }
+        if bd.color_us() == Color::Black {
+            writeln!(f)?;
+        }
+        bd = bd.make_move(&mv);
+    }
+    Ok(())
+}
+
+fn parse_moves_uci(bd: &Board, s: &str) -> anyhow::Result<(Vec<GameMove>, Outcome)> {
+    let mut bd = bd.clone();
+    let mut vec = vec![];
+    for line in s.lines() {
+        let line = strip_move_numbers(line);
+        let mut line = line.as_str();
+        loop {
+            debug!("Game moves parsing line: '{line}'");
+            let (mv, comment, rest) = match_move_and_comment(&line)?;
+            if let Ok(outcome) = Outcome::try_from_pgn(mv) {
+                return Ok((vec, outcome));
+            }
+            let mv = bd.parse_san_move(mv)?;
+            bd = bd.make_move(&mv);
+            let gm = GameMove {
+                mv: mv.to_inner(),
+                sr: SearchResults::default(),
+                tc: TimeControl::default(),
+                comment: comment.unwrap_or_default().to_string(),
+            };
+            vec.push(gm);
+            line = rest.trim();
+            if line.is_empty() {
+                break;
+            }
+        }
+    }
+    Ok((vec, Outcome::Unterminated))
+}
+
+impl Uci for GameHeader {
+    fn fmt_uci(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.tag_pairs
+            .iter()
+            .try_for_each(|(k, v)| writeln!(f, "[{k} \"{v}\"]"))
+    }
+
+    // [Event "GRENKE Chess Classic 2019"]
+    // [Site "Karlsruhe/Baden Baden GER"]
+    // [Date "2019.04.20"]
+    // [Round "1.2"]
+    // [White "Svidler, Peter"]
+    // [Black "Caruana, Fabiano"]
+    // [Result "1/2-1/2"]
+    // [WhiteTitle "GM"]
+    // [BlackTitle "GM"]
+    // [WhiteElo "2735"]
+    // [BlackElo "2819"]
+    // [ECO "B33"]
+    // [Opening "Sicilian"]
+    // [Variation "Pelikan (Lasker/Sveshnikov) variation"]
+    // [WhiteFideId "4102142"]
+    // [BlackFideId "2020009"]
+    // [EventDate "2019.04.20"]
+    // [WhiteACPL "252"]
+    // [BlackACPL "141"]
+    // [GameDuration "00:00:23"]
+    // [GameEndTime "2022-10-08T18:49:37.228 BST"]
+    // [GameStartTime "2022-10-08T18:49:13.587 BST"]
+    // [PlyCount "133"]
+    // [TimeControl "75+0.6"]
+    fn parse_uci(s: &str) -> anyhow::Result<Self> {
+        let mut gh = GameHeader::new();
+        for line in s.lines() {
+            debug!("Parsing game header line '{line}'...");
+            let l = line
+                .trim_start()
+                .strip_prefix("[")
+                .ok_or(anyhow::anyhow!("Missing '[' in pgn tag pair"))?;
+            let (k, rest) = l
+                .split_once(" ")
+                .ok_or_else(|| anyhow::format_err!("No tag in line '{line}'"))?;
+            let (v, rest) = rest
+                .split_once("]")
+                .ok_or_else(|| anyhow::format_err!("No ']' in line '{line}'"))?;
+            let v = v.trim_matches('"').to_string();
+            if !rest.trim().is_empty() {
+                anyhow::bail!("Extraneous text found in '{line}'");
+            }
+            gh.tag_pairs.insert(k.to_string(), v);
+        }
+        Ok(gh)
+    }
+}
+
+impl GameHeader {
+    fn new() -> Self {
+        Self::default()
+    }
+}
+
+#[derive(Clone, Default, Debug)]
+pub struct Game {
+    pub game_id: u32,
+    header: GameHeader,
+    starting_pos: Board,
+    moves: Vec<GameMove>,
+    outcome: Outcome,
+}
 
 impl fmt::Display for Game {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "#,best move,depth,seldepth,")?;
-        for (i, gm) in self.game_moves.iter().enumerate() {
+        for (i, gm) in self.moves.iter().enumerate() {
             writeln!(f, "{i}")?;
             writeln!(f, "{}", gm.sr.best_move().unwrap_or_default())?;
         }
@@ -121,6 +269,88 @@ impl fmt::Display for Game {
 // }
 
 impl Game {
+    pub fn fmt_pgn(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.header().fmt_uci(f)?;
+        writeln!(f)?;
+        let board = self
+            .header()
+            .starting_pos()
+            .unwrap_or(Catalog::starting_board());
+        fmt_moves_uci(&self.moves, &board, f)?;
+        writeln!(f, " {outcome}", outcome = self.outcome.as_pgn())?;
+        writeln!(f)?;
+        Ok(())
+    }
+
+    pub fn parse_pgn(s: &str) -> PgnParser {
+        PgnParser {
+            lines: s.lines(),
+            n_line: 0,
+            err: Ok(()),
+        }
+    }
+}
+
+pub struct PgnParser<'a> {
+    lines: std::str::Lines<'a>,
+    n_line: i32,
+    err: Result<()>,
+}
+
+impl<'a> PgnParser<'a> {
+    fn next_unfused(&mut self) -> Result<Option<Game>> {
+        let mut header = vec![];
+        while let Some(line) = self.lines.next() {
+            if line.trim().is_empty() {
+                break;
+            }
+            debug!("Header: '{line}'");
+            header.push(line);
+        }
+        if header.is_empty() {
+            return Ok(None);
+        }
+
+        let mut body = vec![];
+        while let Some(line) = self.lines.next() {
+            if line.trim().is_empty() {
+                break;
+            }
+            debug!("Body: '{line}'");
+            body.push(line);
+        }
+        if body.is_empty() {
+            anyhow::bail!("Didnt find body");
+        }
+        let header = GameHeader::parse_uci(&header.join("\n"))?;
+        debug!("Parsed game header: {header:?}");
+
+        let starting_pos = header.starting_pos()?;
+        let body_text = body.join("\n");
+        let (moves, outcome) = parse_moves_uci(&starting_pos, &body_text)?;
+        let game = Game {
+            game_id: 0,
+            header,
+            starting_pos,
+            moves,
+            outcome,
+        };
+        Ok(Some(game))
+    }
+}
+
+impl<'a> Iterator for PgnParser<'a> {
+    type Item = Result<Game>;
+
+    fn next(&mut self) -> Option<Result<Game>> {
+        if self.err.is_err() {
+            return None;
+        }
+        self.next_unfused().transpose()
+    }
+}
+
+impl Game {
     pub fn new() -> Self {
         Self::default()
     }
@@ -130,16 +360,20 @@ impl Game {
     // }
 
     pub fn clear_moves(&mut self) {
-        self.game_moves.clear();
+        self.moves.clear();
+    }
+
+    pub fn header(&self) -> &GameHeader {
+        &self.header
     }
 
     fn variation(&self) -> BareMoveVariation {
         BareMoveVariation::default()
     }
 
-    pub fn set_starting_pos(&mut self, pos: Position) -> &mut Self {
+    pub fn set_starting_pos(&mut self, board: Board) -> &mut Self {
         // self.board = pos.supplied_variation().apply_to(pos.board());
-        self.starting_pos = pos;
+        self.starting_pos = board;
         self
     }
 
@@ -162,11 +396,11 @@ impl Game {
             pv: BareMoveVariation,
         }
 
-        if !self.game_moves.is_empty() {
+        if !self.moves.is_empty() {
             writeln!(
                 w,
                 "{}",
-                Table::new(self.game_moves.iter().enumerate().map(|(i, gm)| {
+                Table::new(self.moves.iter().enumerate().map(|(i, gm)| {
                     let mut row = Row {
                         id: i,
                         depth: gm.sr.depth,
@@ -196,47 +430,8 @@ impl Game {
         Ok(())
     }
 
-    // pub fn export<W: Write>(&self, mut w: W) -> Result<()> {
-    //     if !self.moves.is_empty() {
-    //         for (i, sr) in self.moves.iter().enumerate() {
-    //             write!(w, "{},", i)?;
-    //             write!(w, "{},", sr.depth)?;
-    //             write!(w, "{},", sr.seldepth)?;
-    //             write!(w, "{},", sr.time_millis)?;
-    //             write!(w, "{},", sr.nodes)?;
-    //             write!(w, "{},", sr.nps)?;
-    //             write!(w, "{},", sr.branching_factor)?;
-    //             write!(w, "{},", sr.hashfull_per_mille)?;
-    //             write!(w, "{},", sr.best_move().unwrap_or_default())?;
-    //             write!(w, "{},", sr.multi_pv().first().unwrap().1)?;
-    //             write!(w, "\"{}\",", sr.multi_pv().first().unwrap().0.uci())?;
-    //             match sr.tc {
-    //                 TimeControl::Fischer(ref tc) => {
-    //                     write!(w, "{}", tc.moves_to_go)?;
-    //                 }
-    //                 _ => {
-    //                     write!(w, "{}", "")?;
-    //                 }
-    //             };
-    //             writeln!(w)?;
-    //         }
-    //         w.flush()?;
-    //     }
-    //     Ok(())
-    // }
-
-    // if !self.moves.is_empty() {
-    //     writeln!(w, "{}", "depth,seldepth,nodes,time_millis")?;
-    //     for (i, sr) in self.moves.iter().enumerate() {
-    //         write!(w, "{},", sr.depth)?;
-    //         write!(w, "{},", sr.seldepth)?;
-    //         write!(w, "{},", sr.time_millis)?;
-    //     }
-    // }
-    // Ok(())
-
     pub fn capture_missing_moves(&mut self, var: &Variation) {
-        for (i, gm) in self.game_moves.iter().enumerate() {
+        for (i, gm) in self.moves.iter().enumerate() {
             if i < var.len() {
                 // we have already captured this move - check its correct
                 let existing_mv = gm.mv;
@@ -244,8 +439,8 @@ impl Game {
                 debug_assert!(existing_mv == new_mv, "record_variation: (exising move #{i}) {existing_mv} != {new_mv} (from variation {var})");
             }
         }
-        for mv in var.moves().skip(self.game_moves.len()) {
-            self.game_moves.push(GameMove {
+        for mv in var.moves().skip(self.moves.len()) {
+            self.moves.push(GameMove {
                 mv: mv.to_inner(),
                 ..GameMove::default()
             });
@@ -253,7 +448,7 @@ impl Game {
     }
 
     pub fn record_search(&mut self, sr: SearchResults, tc: TimeControl) {
-        self.game_moves.push(GameMove {
+        self.moves.push(GameMove {
             mv: sr.best_move().unwrap_or_default(),
             sr,
             tc,
@@ -262,14 +457,143 @@ impl Game {
     }
 }
 
+#[derive(Clone, Debug, Default)]
+pub struct GameStats {
+    players: HashMap<String, ScoreWdl>,
+}
+
+impl GameStats {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn add(&mut self, player: &str, wdl: &ScoreWdl) {
+        if let Some(score) = self.players.get_mut(player) {
+            *score += *wdl;
+        } else {
+            self.players.insert(player.to_string(), *wdl);
+        }
+    }
+
+    pub fn include(&mut self, g: &Game) {
+        self.add(g.header().player(Color::White), &g.outcome.as_wdl());
+        self.add(g.header().player(Color::Black), &-g.outcome.as_wdl());
+    }
+}
+
+impl fmt::Display for GameStats {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        #[derive(Tabled)]
+        struct Row<'a> {
+            id: usize,
+            player: &'a str,
+            played: i32,
+            won: i32,
+            drawn: i32,
+            lost: i32,
+            points: String,
+            elo: String,
+        }
+        writeln!(
+            f,
+            "{}",
+            Table::new(self.players.iter().enumerate().map(|(id, (player, wdl))| {
+                let row = Row {
+                    id,
+                    player,
+                    played: wdl.total(),
+                    won: wdl.w,
+                    drawn: wdl.d,
+                    lost: wdl.l,
+                    elo: Formatting::decimal(1, wdl.elo()),
+                    points: Formatting::decimal(1, wdl.points()),
+                };
+                row
+            }))
+            .with(Style::markdown())
+        )?;
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
-
-    use crate::domain::SearchResults;
+    use super::*;
+    use crate::{domain::SearchResults, infra::utils::Displayable};
+    use test_log::test;
 
     #[test]
     fn test_game() {
         let _sr = SearchResults::default();
         // println!("{}", Table::new(vec![sr]).to_string())
+    }
+
+    #[test]
+    fn parse_move_and_comment() {
+        let (mv, c, rest) = match_move_and_comment("a4").unwrap();
+        assert_eq!(mv, "a4");
+        assert_eq!(c, None);
+        assert_eq!(rest, "");
+
+        let (mv, c, rest) = match_move_and_comment("a5 {+0.37/14 4.4s}").unwrap();
+        assert_eq!(mv, "a5");
+        assert_eq!(c, Some("+0.37/14 4.4s"));
+        assert_eq!(rest, "");
+
+        let (mv, c, rest) = match_move_and_comment("a5  { my comment  } ").unwrap();
+        assert_eq!(mv, "a5");
+        assert_eq!(c, Some(" my comment  "));
+        assert_eq!(rest, "");
+
+        let (mv, c, rest) = match_move_and_comment("a5  { my comment  } blob").unwrap();
+        assert_eq!(mv, "a5");
+        assert_eq!(c, Some(" my comment  "));
+        assert_eq!(rest, "blob");
+    }
+
+    #[test]
+    fn parse_game_string() {
+        let s = r###"[Event "1_tc=75+0.6"]
+        [Site "?"]
+        [Date "2022.10.08"]
+        [Round "1"]
+        [White "0.6.23:"]
+        [Black "0.6.24:"]
+        [Result "1/2-1/2"]
+        [PlyCount "325"]
+        [TimeControl "75+0.6"]
+        
+        1. e4 {book} c5 {book} 2. Nf3 {book} d6 {book} 3. d4 {book} cxd4 {book}
+        4. Nxd4 {book} Nf6 {book} 5. Nc3 {book} a6 {book} 6. Bc4 {+0.37/14 4.4s} 
+
+        [Event "My event"]
+
+        1. e4 {book} c5 {book} 2. Nf3 {book} d6 {book} 3. d4 {book} cxd4 {book}
+
+        "###;
+        for game in Game::parse_pgn(s) {
+            // println!("{game:#?}");
+            match game {
+                Ok(game) => println!("{}", Displayable(|f| game.fmt_pgn(f))),
+                Err(e) => println!("{e}"),
+            }
+        }
+    }
+
+    #[test]
+    fn parse_game_file() {
+        let s =
+            std::fs::read_to_string("../odonata-extras/output/games/tourney-26283.pgn").unwrap();
+        let mut stats = GameStats::new();
+        for game in Game::parse_pgn(&s) {
+            match game {
+                Ok(game) => {
+                    // println!("{}", Displayable(|f| game.fmt_pgn(f)));
+                    stats.include(&game);
+                }
+                Err(e) => panic!("{e}"),
+            }
+        }
+        println!("{stats}");
     }
 }

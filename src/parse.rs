@@ -33,7 +33,8 @@ static REGEX_SAN: Lazy<Regex> = Lazy::new(|| {
     (\+|\#)?        # check or checkmate grp(7)
     \z
     |               # OR
-    ^O-O(-O)?\z     #   or castling king (or queens) side and eol
+    ^O-O(-O)?(?:[\+\#]?) # castling can cause check(mate)s too! not captured
+    \z     #   or castling king (or queens) side and eol
     |
     ^([a-h][1-8][a-h][1-8][nbrq])\z  # uci promo grp(9)
     "#,
@@ -68,6 +69,10 @@ impl Parse {
 
         // parse checkmates
         let _checkmate = s.contains('#');
+
+        // strip check(mate)s
+        let s = s.replace("#", "");
+        let s = s.replace("+", "");
 
         let legal_moves = board.legal_moves();
         // caps.get(0).unwrap().as_str();

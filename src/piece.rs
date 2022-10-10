@@ -339,6 +339,10 @@ impl fmt::Display for ScoreWdl {
     }
 }
 
+
+// Error calc from... 
+// http://www.open-aurec.com/wbforum/viewtopic.php?t=949
+
 impl ScoreWdl {
     pub fn new(w: i32, d: i32, l: i32) -> ScoreWdl {
         ScoreWdl { w, d, l }
@@ -346,6 +350,10 @@ impl ScoreWdl {
 
     pub fn total(&self) -> i32 {
         self.w + self.d + self.l
+    }
+
+    pub fn points(&self) -> f32 {
+        self.w as f32 + 0.5 * self.d as f32
     }
 
     pub fn elo(&self) -> f32 {
