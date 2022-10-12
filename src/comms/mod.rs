@@ -9,7 +9,7 @@ use crate::infra::version::Version;
 use crate::search::timecontrol::TimeControl;
 use clap::{Command, Arg};
 
-pub fn main() -> Result<(), String> {
+pub fn main() -> anyhow::Result<()> {
     let matches = Command::new(Version::NAME)
         .version(Version::VERSION)
         .about(&*Version::small_splash())
@@ -96,17 +96,17 @@ pub fn main() -> Result<(), String> {
     } else if matches.is_present("profile") {
         Bench::profile_me();
     } else if let Some(depth) = matches.value_of("perft") {
-        let depth = depth.parse::<u32>().map_err(|e| e.to_string())?;
+        let depth = depth.parse::<u32>()?;
         Bench::perft(depth);
     } else if let Some(depth) = matches.value_of("perft_cat") {
-        let depth = depth.parse::<u32>().map_err(|e| e.to_string())?;
+        let depth = depth.parse::<u32>()?;
         Bench::perft_cat(depth);
     } else if matches.occurrences_of("search") > 0 {
         let tc = matches.value_of("search").unwrap();
-        let tc = TimeControl::parse(tc).map_err(|e| e)?;
+        let tc = TimeControl::parse(tc)?;
         let str = matches.value_of("threads");
         let threads = if let Some(str) = str {
-            Some(str.parse::<u32>().map_err(|e| e.to_string())?)
+            Some(str.parse::<u32>()?)
         } else {
             None
         };

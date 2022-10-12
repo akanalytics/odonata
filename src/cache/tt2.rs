@@ -718,7 +718,7 @@ mod tests {
     use crate::globals::constants::*;
     use crate::piece::*;
     use crate::search::algo::*;
-    use crate::search::engine::Engine;
+    use crate::search::engine::AsyncEngine;
     use crate::search::timecontrol::*;
     use test_log::test;
 
@@ -853,7 +853,7 @@ mod tests {
         algo.new_game();
         for pos in Catalog::famous().iter() {
             algo.new_game();
-            algo.set_position(pos.clone()).search();
+            algo.set_position(pos.clone()).run_search();
             assert_eq!(
                 algo.progress.bm().to_uci(),
                 pos.bm()?.uci(),
@@ -876,7 +876,7 @@ mod tests {
             eprintln!("new game");
             algo.set_position(pos.clone());
             algo.set_timing_method(TimeControl::Depth(d));
-            algo.search();
+            algo.run_search();
             eprintln!("search done");
             //            let pv = algo.tt.extract_pv(&algo.bm(), pos.board());
             let pv = algo.tt.extract_pv_and_score(pos.board()).0;
@@ -904,14 +904,14 @@ mod tests {
 
     #[test]
     fn tt2_test_new_game() {
-        let mut eng = Engine::new();
+        let mut eng = AsyncEngine::new();
         eng.new_game();
         eng.set_position(Catalog::starting_position().clone());
         eng.algo.set_timing_method(TimeControl::Depth(6));
         eprintln!("Before 1\n{}", eng.algo);
         eng.search();
         eprintln!("After 1\n{}", eng.algo);
-        let mut eng = Engine::new();
+        let mut eng = AsyncEngine::new();
         eng.new_game();
         eng.set_position(Catalog::starting_position().clone());
         eng.algo.set_timing_method(TimeControl::Depth(6));

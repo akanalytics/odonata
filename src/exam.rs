@@ -1,14 +1,14 @@
 use crate::infra::component::Component;
 // use crate::mv::Move;
 use crate::position::Position;
-use crate::search::engine::Engine;
+use crate::search::engine::AsyncEngine;
 use crate::search::timecontrol::TimeControl;
 use std::fmt;
 
 #[derive(Default, Debug)]
 pub struct Exam {
     positions: Vec<Position>,
-    engine: Engine,
+    engine: AsyncEngine,
     name: String,
     score: u32,
     out_of: u32,
@@ -33,7 +33,7 @@ impl Exam {
     }
 
     pub fn take_exam(name: &str, positions: Vec<Position>) -> Exam {
-        let mut engine = Engine::new();
+        let mut engine = AsyncEngine::new();
         // algo.set_timing_method(TimeControl::Depth(5));
         engine
             .algo
@@ -103,7 +103,7 @@ mod tests {
     #[ignore]
     fn test_wac_259() {
         let pos = &Catalog::win_at_chess()[258]; // WAC.259 as start at #1
-        let mut engine = Engine::new();
+        let mut engine = AsyncEngine::new();
         engine.algo.set_timing_method(TimeControl::Depth(5));
         engine.algo.board = pos.board().clone();
         engine.search();

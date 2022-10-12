@@ -1,13 +1,15 @@
 use crate::cache::tt2::TranspositionTable2;
+use crate::domain::engine::Engine;
+use crate::domain::SearchResults;
 use crate::infra::component::{Component, State, FEATURE};
 use crate::infra::metric::Metrics;
 use crate::infra::resources::RESOURCE_DIR;
+use crate::infra::utils::Formatting;
 use crate::position::Position;
 use crate::search::algo::Algo;
 use crate::search::timecontrol::TimeControl;
 use crate::trace::stat::Stat;
 use crate::tune::Tuning;
-use crate::infra::utils::Formatting;
 use anyhow::{anyhow, Context, Result};
 use figment::providers::{Env, Format, Toml};
 use figment::value::{Dict, Map};
@@ -21,7 +23,7 @@ use std::{fmt, mem, panic};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
-pub struct Engine {
+pub struct AsyncEngine {
     pub shared_tt: bool,
     pub thread_count: u32,
     pub config_filename: String,
@@ -31,7 +33,6 @@ pub struct Engine {
     pub algo: Algo,
 
     pub tuner: Tuning,
-
 
     #[serde(skip)]
     pub engine_init_time: Duration,
@@ -45,9 +46,9 @@ pub struct Engine {
 
 const DEFAULT_CONFIG_FILE: &str = "config.toml";
 
-impl Default for Engine {
+impl Default for AsyncEngine {
     fn default() -> Self {
-        Engine {
+        AsyncEngine {
             config_filename: DEFAULT_CONFIG_FILE.to_string(),
             shared_tt: true,
             feature: false,
@@ -58,6 +59,19 @@ impl Default for Engine {
             thread_count: 1,
             threads: vec![],
         }
+    }
+}
+
+impl Engine for AsyncEngine {
+    fn search(&mut self, pos: Position, tc: TimeControl) -> anyhow::Result<SearchResults> {
+        self.algo.set_timing_method(tc);
+        self.set_position(pos);
+        self.search();
+        Ok(self.algo.results.clone())
+    }
+
+    fn set_option(&mut self, name: &str, value: &str) -> anyhow::Result<()> {
+        self.configment(name, value)
     }
 }
 
@@ -73,7 +87,7 @@ impl Default for Engine {
 //     }
 // }
 
-impl fmt::Display for Engine {
+impl fmt::Display for AsyncEngine {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "config filename  : {}", self.config_filename)?;
         writeln!(f, "threads          : {}", self.thread_count)?;
@@ -94,7 +108,7 @@ impl fmt::Display for Engine {
     }
 }
 
-impl Component for Engine {
+impl Component for AsyncEngine {
     fn set_state(&mut self, s: State) {
         use State::*;
         match s {
@@ -113,7 +127,7 @@ impl Component for Engine {
     fn new_position(&mut self) {}
 }
 
-impl Provider for Engine {
+impl Provider for AsyncEngine {
     fn metadata(&self) -> Metadata {
         Metadata::named("Engine default config")
     }
@@ -128,7 +142,7 @@ impl Provider for Engine {
     }
 }
 
-impl Engine {
+impl AsyncEngine {
     pub fn new() -> Self {
         // use backtrace::Backtrace;
         // panic::set_hook(Box::new(|panic_info| {
@@ -148,7 +162,7 @@ impl Engine {
         // let _engine = Self::default();
         // engine.configure(&ParsedConfig::global());
         // let mut engine: Engine = Engine::default();
-        let mut eng: Engine = Figment::new()
+        let mut eng: AsyncEngine = Figment::new()
             .merge(toml)
             //     .merge(Env::prefixed("odonata_var_").split("__"))
             .extract()
@@ -171,14 +185,14 @@ impl Engine {
         for (k, v) in map.iter() {
             fig = fig.merge(Toml::string(&format!("{} = {}", k, v)));
         }
-        let engine: Engine = fig.extract().context(format!("error in {:?}", map))?;
+        let engine: AsyncEngine = fig.extract().context(format!("error in {:?}", map))?;
         let mut tuner = Tuning::default();
         // mem::swap(&mut tuner.feature_matrix, &mut self.tuner.feature_matrix);
         mem::swap(&mut tuner.explains, &mut self.tuner.explains);
         // mem::swap(&mut tuner.models_and_outcomes, &mut self.tuner.models_and_outcomes);
         // mem::swap(&mut tuner.boards, &mut self.tuner.boards);
         // mem::swap(&mut tuner.model, &mut self.tuner.model);
-        *self = Engine {
+        *self = AsyncEngine {
             tuner: Tuning {
                 // boards: tuner.boards,
                 // models_and_outcomes: tuner.models_and_outcomes,
@@ -189,7 +203,7 @@ impl Engine {
             },
             ..engine
         };
-        FEATURE.store(engine.feature, Ordering::SeqCst);        
+        FEATURE.store(engine.feature, Ordering::SeqCst);
         // self.algo.eval.populate_feature_weights();
         Ok(())
     }
@@ -226,7 +240,6 @@ impl Engine {
 
             if i == 0 {
                 algo.controller.set_running();
-
             }
             if i >= 1 {
                 algo.max_depth += 8;
@@ -246,7 +259,7 @@ impl Engine {
             let cl = move || {
                 let result = panic::catch_unwind(|| {
                     Stat::set_this_thread_index(i as usize);
-                    algo.search();
+                    algo.run_search();
                     Metrics::flush_thread_local();
                     algo
                 });
@@ -282,10 +295,7 @@ impl Engine {
             debug!(
                 "thread {:>3} {:>5} {:>8} {:>10} {:>10} {:>10}   {:<48}",
                 i, // thread::current().name().unwrap(),
-                algo.results
-                    .best_move()
-                    .unwrap_or_default()
-                    .to_string(),
+                algo.results.best_move().unwrap_or_default().to_string(),
                 algo.score().to_string(),
                 algo.clock.cumul_nodes_this_thread(),
                 algo.clock.cumul_knps_this_thread(),
@@ -330,7 +340,7 @@ mod tests {
 
     #[test]
     fn engine_serde_test() {
-        let engine1 = Engine::new();
+        let engine1 = AsyncEngine::new();
         let text1 = toml::Value::try_from(&engine1).unwrap();
         println!("toml\n{:#?}", text1);
 
@@ -338,19 +348,18 @@ mod tests {
         let text1 = toml::to_string(&engine1).unwrap();
         eprintln!("toml\n{:?}", text1);
 
-
-        let engine2: Engine = toml::from_str(&text1).unwrap();
+        let engine2: AsyncEngine = toml::from_str(&text1).unwrap();
         let _text2 = toml::to_string(&engine2).unwrap();
         // assert_eq!(text1, text2);
 
-        let engine3 = Engine::new();
+        let engine3 = AsyncEngine::new();
         let text3 = toml::to_string(&engine3).unwrap();
         eprintln!("toml\n{}", text3);
     }
 
     #[test]
     fn engine_init_test() {
-        let mut engine = Engine::new();
+        let mut engine = AsyncEngine::new();
         assert_eq!(engine.algo.eval.quantum, 1);
         eprintln!("{}", toml::to_string(&engine).unwrap());
         engine.configment("eval.quantum", "1").unwrap();
@@ -365,7 +374,7 @@ mod tests {
     fn test_threading() {
         for &i in [1, 2, 3, 4, 8, 16, 32].iter() {
             for &shared in &[true] {
-                let mut eng = Engine::new();
+                let mut eng = AsyncEngine::new();
                 eng.algo.set_timing_method(TimeControl::Depth(7));
                 eng.algo.tt.enabled = true;
                 eng.shared_tt = shared;
@@ -389,12 +398,11 @@ mod tests {
     #[test]
     fn example_search() {
         let pos = Position::parse_epd(
-            "k7/8/8/4b3/8/4p3/8/K6N w - - 0 23"
-            // "2rqr2k/pp4bp/2np1pp1/5b2/2BP4/2N1B3/PP3PPP/2RQR1K1 w - - 10 17 acd:15;",
+            "k7/8/8/4b3/8/4p3/8/K6N w - - 0 23", // "2rqr2k/pp4bp/2np1pp1/5b2/2BP4/2N1B3/PP3PPP/2RQR1K1 w - - 10 17 acd:15;",
         )
         .unwrap();
-        
-        let mut engine = Engine::new();
+
+        let mut engine = AsyncEngine::new();
         engine.set_position(pos);
         engine.algo.set_timing_method(TimeControl::Depth(15));
         // use crate::Color;
@@ -407,7 +415,7 @@ mod tests {
         //     movestogo: 20,
         // });
         engine.algo.set_callback(UciServer::uci_info);
-        engine.algo.search();
+        engine.algo.run_search();
         println!("{}", engine);
     }
 
@@ -415,14 +423,14 @@ mod tests {
     #[test]
     fn profile_search() {
         let positions = Catalog::example_game();
-        let mut engine = Engine::new();
+        let mut engine = AsyncEngine::new();
         for _ in 0..1 {
             for pos in &positions {
                 engine.set_position(pos.clone());
                 engine
                     .algo
                     .set_timing_method(TimeControl::SearchTime(Duration::from_millis(30)));
-                engine.algo.search();
+                engine.algo.run_search();
                 let results = engine.algo.results_as_position();
                 black_box(results);
                 // println!("{}", results);

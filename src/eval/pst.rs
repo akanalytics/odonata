@@ -337,7 +337,7 @@ impl Pst {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::search::engine::Engine;
+    use crate::search::engine::AsyncEngine;
     use test_log::test;
 
     #[test]
@@ -354,13 +354,13 @@ mod tests {
     fn test_pst() {
         let pst = Pst::default();
         info!("{}", pst);
-        let eng = Engine::new();
+        let eng = AsyncEngine::new();
         info!("{}", eng.algo.eval.pst);
     }
 
     #[test]
     fn pst_config() {
-        let mut eng = Engine::default();
+        let mut eng = AsyncEngine::default();
         let _text = toml::to_string(&eng).unwrap();
         eng.configment("eval.pst.p.a2", "{ s=6.5, e=7.6 }").unwrap();
         eng.configment("eval.pst.p.a2.s", "6.5").unwrap();

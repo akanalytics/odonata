@@ -257,7 +257,7 @@ mod tests {
     use super::*;
     use crate::{
         catalog::*,
-        search::{engine::Engine, timecontrol::TimeControl},
+        search::{engine::AsyncEngine, timecontrol::TimeControl},
     };
     use test_log::test;
 
@@ -291,7 +291,7 @@ mod tests {
     #[test]
     fn test_explain_results() {
         let pos = Catalog::test_position();
-        let mut engine = Engine::new();
+        let mut engine = AsyncEngine::new();
         engine.set_position(pos);
         engine.algo.set_timing_method(TimeControl::Depth(8));
         // engine.algo.set_callback(Uci::uci_info);

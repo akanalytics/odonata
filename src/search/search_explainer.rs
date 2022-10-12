@@ -409,13 +409,13 @@ impl Algo {
 #[cfg(test)]
 mod tests {
 
-    use crate::search::{engine::Engine, timecontrol::TimeControl};
+    use crate::search::{engine::AsyncEngine, timecontrol::TimeControl};
     use crate::test_log::test;
     use crate::Position;
 
     #[test]
     fn test_search_explainer_tree() {
-        let mut eng = Engine::new();
+        let mut eng = AsyncEngine::new();
         eng.algo.explainer.explainer_enabled = true;
         eng.algo.explainer.max_additional_ply = 6;
         assert_eq!(eng.algo.explainer.vars.len(), 1);
@@ -431,7 +431,7 @@ mod tests {
         eng.set_position(pos);
         eng.algo.explainer.vars.clear();
         eng.algo.explainer.add_variation_to_explain(v1.clone());
-        eng.algo.search();
+        eng.algo.run_search();
         println!("{}", eng.algo.results_as_position());
     }
 }

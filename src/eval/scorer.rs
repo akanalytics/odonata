@@ -367,7 +367,7 @@ mod tests {
     use crate::catalog::Catalog;
     use crate::eval::calc::Calc;
     use crate::phaser::Phaser;
-    use crate::search::engine::Engine;
+    use crate::search::engine::AsyncEngine;
     use crate::test_log::test;
     // use crate::infra::utils::StringUtils;
 
@@ -375,7 +375,7 @@ mod tests {
     fn test_explain() {
         let positions = Catalog::bratko_kopec();
         let end_games = Catalog::end_games();
-        let mut eng = Engine::new();
+        let mut eng = AsyncEngine::new();
         let eval = &mut eng.algo.eval;
         eval.populate_feature_weights();
         let phaser = Phaser::default();

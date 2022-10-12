@@ -1,6 +1,7 @@
 use crate::board::Board;
 use crate::cache::tt2::TranspositionTable2;
 use crate::clock::Clock;
+use crate::domain::engine::Engine;
 use crate::domain::Game;
 use crate::eval::eval::Eval;
 use crate::eval::recognizer::Recognizer;
@@ -34,6 +35,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use super::counter_move::CounterMove;
+use super::engine::AsyncEngine;
 use super::lmp::Lmp;
 use super::mate_distance::MateDistance;
 use super::node::Event;
@@ -105,10 +107,27 @@ pub struct Algo {
     pub current_variation: Variation,
 }
 
+impl Engine for Algo {
+    fn search(&mut self, pos: Position, tc: TimeControl) -> anyhow::Result<SearchResults> {
+        self.set_timing_method(tc);
+        self.set_position(pos);
+        self.run_search();
+        Ok(self.results.clone())
+    }
+
+    fn set_option(&mut self, name: &str, value: &str) -> anyhow::Result<()> {
+        unimplemented!("Algo does not support set_option({name}, {value})");
+    }
+}
+
 /// builder methods
 impl Algo {
     pub fn new() -> Algo {
         Algo::default()
+    }
+
+    pub fn from_config() -> Algo {
+        AsyncEngine::new().algo
     }
 
     pub fn set_eval(&mut self, eval: Eval) -> &mut Self {
@@ -121,10 +140,7 @@ impl Algo {
         self
     }
 
-    pub fn set_callback(
-        &mut self,
-        callback: impl Fn(&Info) + Send + Sync + 'static,
-    ) -> &mut Self {
+    pub fn set_callback(&mut self, callback: impl Fn(&Info) + Send + Sync + 'static) -> &mut Self {
         self.controller.register_callback(callback);
         self
     }
@@ -139,7 +155,9 @@ impl Component for Algo {
             NewGame => self.new_game(),
             SetPosition => self.new_position(),
             StartSearch => {}
-            EndSearch => self.explainer.show_pv_eval(&self.results.explain(&self.eval, &self.board)),
+            EndSearch => self
+                .explainer
+                .show_pv_eval(&self.results.explain(&self.eval, &self.board)),
             StartDepthIteration(_) => self.new_iter(),
             Shutdown => self.explainer.export_game(&self.game).unwrap(),
         }
@@ -331,7 +349,7 @@ impl Algo {
         self
     }
 
-    pub fn search(&mut self) {
+    pub fn run_search(&mut self) {
         {
             // profile_method!(search);
             // hprof::profiler().disable();
@@ -358,7 +376,8 @@ impl Algo {
     }
 
     pub fn best_move(&self) -> Move {
-        self.board.augment_move(self.results.best_move().unwrap_or_default())
+        self.board
+            .augment_move(self.results.best_move().unwrap_or_default())
     }
 
     pub fn pv(&self) -> Variation {
@@ -403,13 +422,15 @@ impl Algo {
 
 #[cfg(test)]
 mod tests {
+
+    use test_log::test;
     use super::*;
     use crate::catalog::*;
     use crate::comms::uci_server::UciServer;
-    use crate::eval::eval::*;
+    use crate::infra::utils::Uci;
+    use crate::mv::BareMove;
     use crate::piece::*;
     use anyhow::*;
-    use test_log::test;
     use toml;
 
     #[test]
@@ -433,28 +454,23 @@ mod tests {
         let mut board = Catalog::starting_board();
         board.set_turn(Color::Black);
         let mut search = Algo::new();
-        search.set_timing_method(TimeControl::Depth(1));
         search.move_orderer.enabled = false;
-        search.set_position(Position::from_board(board));
-        search.search();
-        assert_eq!(search.best_move().to_uci(), "d7d5");
+        let sr = search.search(Position::from_board(board), TimeControl::Depth(1));
+        assert_eq!(sr.unwrap().best_move().unwrap().to_uci(), "d7d5");
     }
 
     #[test]
-    #[ignore]
     fn jons_chess_problem() {
         let pos =
             Position::parse_epd("2r2k2/5pp1/3p1b1p/2qPpP2/1p2B2P/pP3P2/2P1R3/2KRQ3 b - - 0 1")
                 .unwrap();
-        println!("{}", pos);
-        let mut search = Algo::new();
-        let eval = Eval::new();
-        search
-            .set_timing_method(TimeControl::Depth(9))
-            .set_eval(eval);
-        search.set_position(pos);
-        search.search();
-        println!("{}", search);
+        let mut search = Algo::from_config();
+        let sr = search.search(pos, TimeControl::Depth(12)).unwrap();
+        println!("{}", search.results_as_position());
+        assert_eq!(
+            sr.best_move().unwrap(),
+            BareMove::parse_uci("f6h4").unwrap()
+        )
     }
 
     #[test]
@@ -465,7 +481,7 @@ mod tests {
             .set_timing_method(TimeControl::Depth(8))
             .set_callback(UciServer::uci_info);
         search.set_position(pos);
-        search.search();
+        search.run_search();
         println!("{}", search);
     }
 
@@ -494,31 +510,31 @@ mod tests {
         search
             .set_position(pos06)
             .set_timing_method(TimeControl::Depth(3))
-            .search();
+            .run_search();
         search
             .set_position(pos07)
             .set_timing_method(TimeControl::Depth(3))
-            .search();
+            .run_search();
         search
             .set_position(pos08)
             .set_timing_method(TimeControl::Depth(3))
-            .search();
+            .run_search();
         search
             .set_position(pos09)
             .set_timing_method(TimeControl::Depth(3))
-            .search();
+            .run_search();
         search
             .set_position(pos10)
             .set_timing_method(TimeControl::Depth(3))
-            .search();
+            .run_search();
         search
             .set_position(pos11)
             .set_timing_method(TimeControl::Depth(3))
-            .search();
+            .run_search();
         search
             .set_position(pos12)
             .set_timing_method(TimeControl::Depth(3))
-            .search();
+            .run_search();
         println!("{}", search);
         Ok(())
     }
@@ -531,7 +547,7 @@ mod tests {
             .set_timing_method(TimeControl::Depth(12))
             .set_callback(UciServer::uci_info);
         search.set_position(pos);
-        search.search();
+        search.run_search();
         println!("{}", search);
     }
 
@@ -547,18 +563,18 @@ mod tests {
         for p in positions {
             algo.new_game();
             algo.tt.allow_truncated_pv = true;
-            algo.set_position(p.clone()).search();
+            algo.set_position(p.clone()).run_search();
             let pv1 = algo.results_as_position().pv().unwrap();
             algo.tt.current_age -= 1;
             println!("{:<40} - {}", pv1.to_uci(), algo.results_as_position());
 
             algo.tt.allow_truncated_pv = true;
-            algo.set_position(p.clone()).search();
+            algo.set_position(p.clone()).run_search();
             let pv2 = algo.results_as_position().pv().unwrap();
             println!("{:<40} - {}", pv2.to_uci(), algo.results_as_position());
 
             algo.tt.allow_truncated_pv = false;
-            algo.set_position(p.clone()).search();
+            algo.set_position(p.clone()).run_search();
             let pv3 = algo.results_as_position().pv().unwrap();
             println!("{:<40} - {}\n", pv3.to_uci(), algo.results_as_position());
 

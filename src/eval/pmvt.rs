@@ -105,7 +105,7 @@ impl Pmvt {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::search::engine::Engine;
+    use crate::search::engine::AsyncEngine;
     use test_log::test;
 
     #[test]
@@ -122,7 +122,7 @@ mod tests {
     fn test_pmvt() {
         let pmvt = Pmvt::default();
         info!("{}", pmvt);
-        let _eng = Engine::new();
+        let _eng = AsyncEngine::new();
         // info!("{}", eng.algo.eval.pmvt);
     }
 

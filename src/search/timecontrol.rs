@@ -65,9 +65,9 @@ impl fmt::Display for TimeControl {
 }
 
 impl FromStr for TimeControl {
-    type Err = String;
+    type Err = anyhow::Error;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> anyhow::Result<Self> {
         TimeControl::parse(s)
     }
 }
@@ -120,19 +120,19 @@ impl TimeControl {
         Displayable(|fmt| self.fmt_uci(fmt)).to_string()
     }
 
-    pub fn parse(tc: &str) -> Result<Self, String> {
+    pub fn parse(tc: &str) -> anyhow::Result<Self> {
         if tc == "inf" {
             Ok(TimeControl::Infinite)
         } else if tc.ends_with("def") {
             Ok(TimeControl::DefaultTime)
         } else if let Some(tc) = tc.strip_prefix("st=") {
-            let secs = tc.parse::<f64>().map_err(|e| e.to_string())?;
+            let secs = tc.parse::<f64>()?;
             Ok(TimeControl::SearchTime(Duration::from_secs_f64(secs)))
         } else if let Some(tc) = tc.strip_prefix("mate=") {
-            let depth = tc.parse::<u32>().map_err(|e| e.to_string())?;
+            let depth = tc.parse::<u32>()?;
             Ok(TimeControl::MateIn(depth))
         } else if let Some(tc) = tc.strip_prefix("tc=") {
-            let time = tc.parse::<u64>().map_err(|e| e.to_string())?;
+            let time = tc.parse::<u64>()?;
             let rt = RemainingTime {
                 wtime: Duration::from_secs(time),
                 btime: Duration::from_secs(time),
@@ -140,13 +140,21 @@ impl TimeControl {
             };
             Ok(TimeControl::Fischer(rt))
         } else if let Some(tc) = tc.strip_prefix("depth=") {
-            let depth = tc.parse::<i32>().map_err(|e| e.to_string())?;
+            let depth = tc.parse::<i32>()?;
             Ok(TimeControl::Depth(depth))
         } else if let Some(tc) = tc.strip_prefix("nodes=") {
-            let nodes = tc.parse::<u64>().map_err(|e| e.to_string())?;
+            let nodes = tc.parse::<u64>()?;
             Ok(TimeControl::NodeCount(nodes))
+        } else if tc == "40/960:40/960:40/960" {
+            let rt = RemainingTime {
+                wtime: Duration::from_secs(960),
+                btime: Duration::from_secs(960),
+                moves_to_go: 40,
+                ..RemainingTime::default()
+            };
+            Ok(TimeControl::Fischer(rt))
         } else {
-            Err(format!("Unable to parse time control {}", tc))
+            anyhow::bail!("Unable to parse time control {}", tc);
         }
     }
 
@@ -173,7 +181,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_time_control() -> Result<(), String> {
+    fn test_time_control() -> anyhow::Result<()> {
         assert_eq!(TimeControl::parse("depth=3".into())?, TimeControl::Depth(3));
         println!("{}", TimeControl::parse("depth=3".into())?);
 

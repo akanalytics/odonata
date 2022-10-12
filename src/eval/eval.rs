@@ -624,7 +624,7 @@ mod tests {
     use crate::catalog::Catalog;
     use crate::infra::black_box;
     use crate::infra::profiler::*;
-    use crate::search::engine::Engine;
+    use crate::search::engine::AsyncEngine;
     use crate::test_log::test;
     use crate::Position;
     use anyhow::Result;
@@ -664,7 +664,7 @@ mod tests {
     #[test]
     fn test_draw_scaling() {
         fn score_for(s: &str, draw_scaling: f32) -> ExplainScore {
-            let eng = Engine::new();
+            let eng = AsyncEngine::new();
             let phr = Phaser::default();
             let pos = Position::parse_epd(s).unwrap();
             let mut sc = ExplainScore::new(
@@ -719,7 +719,7 @@ mod tests {
 
     #[test]
     fn test_eval_indexing() {
-        let eng = Engine::new();
+        let eng = AsyncEngine::new();
         for i in Feature::all().iter() {
             let wt = eng.algo.eval.weight(i);
             println!("{} {:<20} = {}", i.index(), i.name(), wt);

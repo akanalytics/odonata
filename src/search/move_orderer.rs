@@ -967,7 +967,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_ordering_node_count() {
-        let mut engine = Engine::new();
+        let mut engine = AsyncEngine::new();
         engine.new_game();
         engine.algo.analyse_mode = false;
         run_one_game(&mut engine);
@@ -977,7 +977,7 @@ mod tests {
         run_one_game(&mut engine);
     }
 
-    fn run_one_game(engine: &mut Engine) {
+    fn run_one_game(engine: &mut AsyncEngine) {
         let positions = &Catalog::example_game();
         let mut nodes_cumul = 0;
         for pos in positions {

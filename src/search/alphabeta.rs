@@ -488,7 +488,7 @@ mod tests {
             algo.set_callback(crate::comms::uci_server::UciServer::uci_info);
             // search.tt.enabled = false;
             algo.set_timing_method(TimeControl::Depth(7));
-            algo.set_position(pos.clone()).search();
+            algo.set_position(pos.clone()).run_search();
             // println!("{}", search);
             assert_eq!(
                 algo.pv().to_string(),
@@ -513,7 +513,7 @@ mod tests {
             let mut search = Algo::new();
             search.set_timing_method(TimeControl::Depth(5));
             let expected_pv = pos.pv()?;
-            search.set_position(pos.clone()).search();
+            search.set_position(pos.clone()).run_search();
             println!("{}", search);
 
             assert_eq!(search.score().mate_in(), Some(3), "#{} {}", i, pos);
@@ -529,7 +529,7 @@ mod tests {
         for (i, pos) in positions.iter().enumerate() {
             let mut search = Algo::new();
             search.set_timing_method(TimeControl::Depth(7));
-            search.set_position(pos.clone()).search();
+            search.set_position(pos.clone()).run_search();
             // println!("{}", search);
             if pos.get("pv").is_ok() {
                 let expected_pv = pos.pv()?;

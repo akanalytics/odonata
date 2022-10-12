@@ -2,7 +2,7 @@ use crate::catalog::*;
 use crate::infra::component::{Component, State};
 use crate::mv::Move;
 use crate::perft::Perft;
-use crate::search::engine::Engine;
+use crate::search::engine::AsyncEngine;
 use crate::search::timecontrol::TimeControl;
 use crate::tags::Tag;
 // use env_logger;
@@ -17,7 +17,7 @@ pub struct Bench;
 
 impl Bench {
     pub fn profile_me() {
-        let _engine = Engine::new();
+        let _engine = AsyncEngine::new();
 
         // let eval = SimpleScorer::new();
         // let pos = Catalog::starting_position();
@@ -77,7 +77,7 @@ impl Bench {
     }
 
     pub fn search(tc: TimeControl, threads: Option<u32>) -> u128 {
-        let mut engine = Engine::new();
+        let mut engine = AsyncEngine::new();
         if let Some(threads) = threads {
             engine.thread_count = threads;
         }
@@ -176,12 +176,12 @@ mod tests {
     #[test]
     fn bench_search() {
         let pos = Catalog::test_position();
-        let mut eng = Engine::new();
+        let mut eng = AsyncEngine::new();
         eng.set_position(pos);
         eng.algo.set_timing_method(TimeControl::Depth(5));
         let mut prof = Profiler::new("bench_search".into());
         prof.benchmark(
-            || { eng.algo.search(); eng.algo.results }
+            || { eng.algo.run_search(); eng.algo.results }
         );
     }
 

@@ -169,7 +169,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_ext() {
-        let mut engine = Engine::new();
+        let mut engine = AsyncEngine::new();
 
         let positions = &Catalog::example_game()[118..119]; // [101..102];
         let mut node_count = 0;

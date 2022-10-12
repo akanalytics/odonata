@@ -2,7 +2,7 @@ use crate::board::Board;
 use crate::catalog::Catalog;
 use crate::domain::info::BareMoveVariation;
 use crate::domain::SearchResults;
-use crate::infra::utils::{Uci, Formatting};
+use crate::infra::utils::{Formatting, Uci};
 use crate::movelist::strip_move_numbers;
 use crate::other::outcome::Outcome;
 use crate::piece::{Ply, ScoreWdl};
@@ -12,12 +12,14 @@ use crate::Color;
 use crate::{eval::score::Score, mv::BareMove};
 use anyhow::{Context, Result};
 use indexmap::{indexmap, IndexMap};
+use itertools::Itertools;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::collections::HashMap;
 use std::fmt;
 use std::io::Write;
 use tabled::{Style, Table, Tabled};
+
 
 // https://tim-mann.org/Standard
 //
@@ -50,10 +52,14 @@ use tabled::{Style, Table, Tabled};
 // [%clk 1:05:23]
 // [%emt 0:05:42]}
 //[ %egt 0:05:42]}
+// [%eval 250,5] meaning white is +2.5 pawn up at depth 5
+// [%eval +0.25] means white is 0.25 pawn up
 
 #[derive(Clone, Debug)]
 pub struct GameHeader {
     tag_pairs: IndexMap<String, String>,
+    starting_pos: Board,
+    tc: TimeControl,
 }
 
 impl Default for GameHeader {
@@ -68,21 +74,91 @@ impl Default for GameHeader {
                 "Black".to_string() => "?".to_string(),
                 "Result".to_string() => "*".to_string(),
             },
+            starting_pos: Catalog::starting_board(),
+            tc: TimeControl::DefaultTime,
         }
     }
 }
 
 impl GameHeader {
-    pub fn starting_pos(&self) -> anyhow::Result<Board> {
-        let bd = self.tag_pairs.get("FEN").map(|s| Board::parse_fen(&s));
-        let bd = bd
-            .transpose()
-            .with_context(|| "parsing FEN in game header")?;
-        Ok(bd.unwrap_or(Catalog::starting_board()))
+    pub fn starting_pos(&self) -> &Board {
+        &self.starting_pos
+    }
+
+    pub fn time_control(&self) -> &TimeControl {
+        &self.tc
     }
 
     pub fn player(&self, c: Color) -> &str {
         &self.tag_pairs[c.chooser_wb("White", "Black")]
+    }
+}
+
+impl Uci for GameHeader {
+    fn fmt_uci(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.tag_pairs
+            .iter()
+            .try_for_each(|(k, v)| writeln!(f, "[{k} \"{v}\"]"))
+    }
+
+    // [Event "GRENKE Chess Classic 2019"]
+    // [Site "Karlsruhe/Baden Baden GER"]
+    // [Date "2019.04.20"]
+    // [Round "1.2"]
+    // [White "Svidler, Peter"]
+    // [Black "Caruana, Fabiano"]
+    // [Result "1/2-1/2"]
+    // [WhiteTitle "GM"]
+    // [BlackTitle "GM"]
+    // [WhiteElo "2735"]
+    // [BlackElo "2819"]
+    // [ECO "B33"]
+    // [Opening "Sicilian"]
+    // [Variation "Pelikan (Lasker/Sveshnikov) variation"]
+    // [WhiteFideId "4102142"]
+    // [BlackFideId "2020009"]
+    // [EventDate "2019.04.20"]
+    // [WhiteACPL "252"]
+    // [BlackACPL "141"]
+    // [GameDuration "00:00:23"]
+    // [GameEndTime "2022-10-08T18:49:37.228 BST"]
+    // [GameStartTime "2022-10-08T18:49:13.587 BST"]
+    // [PlyCount "133"]
+    // [TimeControl "75+0.6"]
+    fn parse_uci(s: &str) -> anyhow::Result<Self> {
+        let mut gh = GameHeader::new();
+        for line in s.lines() {
+            debug!("Parsing game header line '{line}'...");
+            let l = line
+                .trim_start()
+                .strip_prefix("[")
+                .ok_or(anyhow::anyhow!("Missing '[' in pgn tag pair line '{line}'"))?;
+            let (k, rest) = l
+                .split_once(" ")
+                .ok_or_else(|| anyhow::format_err!("No tag in line '{line}'"))?;
+            let (v, rest) = rest
+                .split_once("]")
+                .ok_or_else(|| anyhow::format_err!("No ']' in line '{line}'"))?;
+            let v = v.trim_matches('"').to_string();
+            if !rest.trim().is_empty() {
+                anyhow::bail!("Extraneous text found in '{line}'");
+            }
+            if k == "FEN" {
+                gh.starting_pos = Board::parse_fen(&v)?;
+            }
+            if k == "TimeControl" {
+                gh.tc = TimeControl::parse(&v)?;
+            }
+            gh.tag_pairs.insert(k.to_string(), v);
+        }
+
+        Ok(gh)
+    }
+}
+
+impl GameHeader {
+    fn new() -> Self {
+        Self::default()
     }
 }
 
@@ -171,73 +247,12 @@ fn parse_moves_uci(bd: &Board, s: &str) -> anyhow::Result<(Vec<GameMove>, Outcom
     Ok((vec, Outcome::Unterminated))
 }
 
-impl Uci for GameHeader {
-    fn fmt_uci(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.tag_pairs
-            .iter()
-            .try_for_each(|(k, v)| writeln!(f, "[{k} \"{v}\"]"))
-    }
-
-    // [Event "GRENKE Chess Classic 2019"]
-    // [Site "Karlsruhe/Baden Baden GER"]
-    // [Date "2019.04.20"]
-    // [Round "1.2"]
-    // [White "Svidler, Peter"]
-    // [Black "Caruana, Fabiano"]
-    // [Result "1/2-1/2"]
-    // [WhiteTitle "GM"]
-    // [BlackTitle "GM"]
-    // [WhiteElo "2735"]
-    // [BlackElo "2819"]
-    // [ECO "B33"]
-    // [Opening "Sicilian"]
-    // [Variation "Pelikan (Lasker/Sveshnikov) variation"]
-    // [WhiteFideId "4102142"]
-    // [BlackFideId "2020009"]
-    // [EventDate "2019.04.20"]
-    // [WhiteACPL "252"]
-    // [BlackACPL "141"]
-    // [GameDuration "00:00:23"]
-    // [GameEndTime "2022-10-08T18:49:37.228 BST"]
-    // [GameStartTime "2022-10-08T18:49:13.587 BST"]
-    // [PlyCount "133"]
-    // [TimeControl "75+0.6"]
-    fn parse_uci(s: &str) -> anyhow::Result<Self> {
-        let mut gh = GameHeader::new();
-        for line in s.lines() {
-            debug!("Parsing game header line '{line}'...");
-            let l = line
-                .trim_start()
-                .strip_prefix("[")
-                .ok_or(anyhow::anyhow!("Missing '[' in pgn tag pair"))?;
-            let (k, rest) = l
-                .split_once(" ")
-                .ok_or_else(|| anyhow::format_err!("No tag in line '{line}'"))?;
-            let (v, rest) = rest
-                .split_once("]")
-                .ok_or_else(|| anyhow::format_err!("No ']' in line '{line}'"))?;
-            let v = v.trim_matches('"').to_string();
-            if !rest.trim().is_empty() {
-                anyhow::bail!("Extraneous text found in '{line}'");
-            }
-            gh.tag_pairs.insert(k.to_string(), v);
-        }
-        Ok(gh)
-    }
-}
-
-impl GameHeader {
-    fn new() -> Self {
-        Self::default()
-    }
-}
-
 #[derive(Clone, Default, Debug)]
 pub struct Game {
     pub game_id: u32,
     header: GameHeader,
-    starting_pos: Board,
     moves: Vec<GameMove>,
+    comment: String,
     outcome: Outcome,
 }
 
@@ -272,19 +287,26 @@ impl Game {
     pub fn fmt_pgn(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.header().fmt_uci(f)?;
         writeln!(f)?;
-        let board = self
-            .header()
-            .starting_pos()
-            .unwrap_or(Catalog::starting_board());
-        fmt_moves_uci(&self.moves, &board, f)?;
+        if !self.comment.is_empty() {
+            writeln!(f, "{{{comment}}}", comment = self.comment)?;
+        }
+        fmt_moves_uci(&self.moves, &self.header.starting_pos(), f)?;
         writeln!(f, " {outcome}", outcome = self.outcome.as_pgn())?;
         writeln!(f)?;
         Ok(())
     }
 
+    fn strip_bom(s: &str) -> &str {
+        if s.starts_with("\u{feff}") {
+            &s[3..]
+        } else {
+            s
+        }
+    }
+
     pub fn parse_pgn(s: &str) -> PgnParser {
         PgnParser {
-            lines: s.lines(),
+            lines: Self::strip_bom(s).lines(),
             n_line: 0,
             err: Ok(()),
         }
@@ -301,23 +323,32 @@ impl<'a> PgnParser<'a> {
     fn next_unfused(&mut self) -> Result<Option<Game>> {
         let mut header = vec![];
         while let Some(line) = self.lines.next() {
-            if line.trim().is_empty() {
+            if line.trim().is_empty() && !header.is_empty() {
+                // blank line after finding some header
                 break;
             }
             debug!("Header: '{line}'");
-            header.push(line);
+            if !line.trim().is_empty() {
+                header.push(line);
+            }
         }
         if header.is_empty() {
             return Ok(None);
         }
 
         let mut body = vec![];
+        let mut comment = "";
         while let Some(line) = self.lines.next() {
             if line.trim().is_empty() {
                 break;
             }
-            debug!("Body: '{line}'");
-            body.push(line);
+            if body.is_empty() && line.starts_with("{") {
+                debug!("Comment: '{line}'");
+                comment = line.trim_start_matches('{').trim_end_matches('}');
+            } else {
+                debug!("Body: '{line}'");
+                body.push(line);
+            }
         }
         if body.is_empty() {
             anyhow::bail!("Didnt find body");
@@ -325,13 +356,13 @@ impl<'a> PgnParser<'a> {
         let header = GameHeader::parse_uci(&header.join("\n"))?;
         debug!("Parsed game header: {header:?}");
 
-        let starting_pos = header.starting_pos()?;
+        let starting_pos = header.starting_pos();
         let body_text = body.join("\n");
-        let (moves, outcome) = parse_moves_uci(&starting_pos, &body_text)?;
+        let (moves, outcome) = parse_moves_uci(starting_pos, &body_text)?;
         let game = Game {
             game_id: 0,
             header,
-            starting_pos,
+            comment: comment.to_string(),
             moves,
             outcome,
         };
@@ -351,12 +382,45 @@ impl<'a> Iterator for PgnParser<'a> {
 }
 
 impl Game {
+    // fn play(&mut self, eng: &mut dyn Engine ) -> anyhow::Result<SearchResults> {
+    //     let position = self.position_at(ply);
+    //     let sr = eng.search(position, game.time_control(ply));
+    //     game.ply += 1;
+    //     sr
+    // }
+}
+
+impl Game {
     pub fn new() -> Self {
         Self::default()
     }
 
-    // pub fn last_search_results(&self) -> SearchResults {
-    //     self.moves.last().unwrap_or_default()
+    // for non-fisher, its the (non-changing) time control from the game
+    // for fischer, we take the time control of {ply - 1} and subtract off
+    // the move time for {ply - 1}
+    // pub fn time_control(&self, ply: Ply) -> TimeControl {
+    //     let game_tc = self.header().time_control();
+    //     if let TimeControl::Fischer(game_rt) = game_tc {
+    //         if ply == 0 { TimeControl::Fischer(*game_rt) }
+    //         else {
+    //             let last = self.moves[ply as usize - 1];
+    //             if let TimeControl::Fischer(rt) = last.tc {  // kibitzer time
+    //                 let move_time = last.sr.time_millis; // kibitzer time
+    //                 let time_left = rt.less_move_millis(color, move_time);
+    //                 let moves_left = time_left.moves_to_go - 1;
+    //                 if moves_left == 0 {
+    //                     moves_to_go = game_rt.moves_to_go;
+    //                     set color time again;
+    //                 }
+
+    //                 *last
+    //             } else {
+    //                 panic!("Game is Fisher, last move isn't")
+    //             }
+    //         }
+    //     } else {
+    //         game_tc.clone()
+    //     }
     // }
 
     pub fn clear_moves(&mut self) {
@@ -373,7 +437,7 @@ impl Game {
 
     pub fn set_starting_pos(&mut self, board: Board) -> &mut Self {
         // self.board = pos.supplied_variation().apply_to(pos.board());
-        self.starting_pos = board;
+        self.header.starting_pos = board;
         self
     }
 
@@ -494,10 +558,13 @@ impl fmt::Display for GameStats {
             points: String,
             elo: String,
         }
+        let mut kv_vec = self.players.iter().collect_vec();
+        // @todo
+        kv_vec.sort_by_cached_key(|(_k,v)| -v.elo() as i64);
         writeln!(
             f,
             "{}",
-            Table::new(self.players.iter().enumerate().map(|(id, (player, wdl))| {
+            Table::new(kv_vec.iter().enumerate().map(|(id, (player, wdl))| {
                 let row = Row {
                     id,
                     player,
@@ -583,7 +650,8 @@ mod tests {
     #[test]
     fn parse_game_file() {
         let s =
-            std::fs::read_to_string("../odonata-extras/output/games/tourney-26283.pgn").unwrap();
+            // std::fs::read_to_string("../odonata-extras/output/games/tourney-26283.pgn").unwrap();
+            std::fs::read_to_string("../odonata-extras/pgn/96th Amateur D7 (ChessOK-Pre2022HQ.cgb).pgn").unwrap();
         let mut stats = GameStats::new();
         for game in Game::parse_pgn(&s) {
             match game {
