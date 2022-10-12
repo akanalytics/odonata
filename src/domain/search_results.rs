@@ -114,7 +114,11 @@ impl Uci for SearchResults {
                 let (bm, pm) = parse_bestmove_uci(line)?;
                 return Ok(SearchResults::from_infos(bm, pm, infos));
             } else {
-                infos.push(Info::parse_uci(line)?);
+                // @todo
+                let info = Info::parse_uci(line)?;
+                if info.depth.is_some() {
+                    infos.push(info);
+                }
             }
         }
         unreachable!()

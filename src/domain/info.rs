@@ -59,8 +59,8 @@ impl BareMoveVariation {
     // truncate the variation to length ply
     // so the result does not include the ply-th move in the variation
     // if len < ply just return all of the variation
-    pub fn take(&self, ply: Ply) -> Self {
-        BareMoveVariation(self.0.iter().take(ply as usize).cloned().collect_vec())
+    pub fn take(&self, ply: usize) -> Self {
+        BareMoveVariation(self.0.iter().take(ply).cloned().collect_vec())
     }
 
     pub fn len(&self) -> usize {

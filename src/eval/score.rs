@@ -3,6 +3,7 @@ use crate::{
     infra::utils::Uci,
     piece::{Ply, MAX_PLY},
 };
+use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -82,10 +83,12 @@ impl Uci for Score {
 
     /// eg "cp 345" or mate 4
     fn parse_uci(s: &str) -> anyhow::Result<Self> {
-        match s.split_once(" ") {
-            Some(("cp", text)) => Ok(Score::from_cp(text.parse::<i32>()?)),
-            Some(("lowerbound", text)) => Ok(Score::from_cp(text.parse::<i32>()?)),
-            Some(("upperbound", text)) => Ok(Score::from_cp(text.parse::<i32>()?)),
+        let t = s.replace("upperbound", "").trim().to_string();
+        let t = t.replace("lowerbound", "").trim().to_string();
+        match t.split_once(" ") {
+            Some(("cp", text)) => Ok(Score::from_cp(
+                text.parse::<i32>().with_context(|| text.to_string())?,
+            )),
             Some(("mate", text)) => Ok(Score::from_mate_in_moves(text.parse::<i32>()?)),
             _ => anyhow::bail!("expected score to have cp or mate but found '{s}'"),
         }
@@ -172,7 +175,7 @@ impl Score {
 
     #[inline]
     /// ply  <---> moves
-    /// 
+    ///
     pub fn from_mate_in_moves(moves: i32) -> Score {
         match moves {
             x if x < 0 => Score::we_lose_in(-moves * 2 - 1),

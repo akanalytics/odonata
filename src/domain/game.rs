@@ -19,6 +19,7 @@ use regex::Regex;
 use std::collections::HashMap;
 use std::fmt;
 use std::io::Write;
+use std::time::Duration;
 use tabled::{Style, Table, Tabled};
 
 // https://tim-mann.org/Standard
@@ -180,10 +181,11 @@ impl GameHeader {
 #[derive(Clone, Default, Debug)]
 pub struct GameMove {
     mv: BareMove,
-    sr: SearchResults,
-    tc: TimeControl,
-    comment: String,
+    emt: Duration,
+    sr: Option<SearchResults>,
+    comment: Option<String>,
 }
+
 
 static REGEX_MOVE_AND_COMMENT: Lazy<Regex> = Lazy::new(|| {
     Regex::new(
@@ -221,8 +223,8 @@ fn fmt_moves_uci(moves: &[GameMove], bd: &Board, f: &mut fmt::Formatter) -> fmt:
             write!(f, "..")?;
         }
         write!(f, "{san} ", san = bd.to_san(&mv))?;
-        if !gm.comment.is_empty() {
-            write!(f, "{{{comment}}} ", comment = gm.comment)?;
+        if let Some(comment) = &gm.comment {
+            write!(f, "{{{comment}}} ")?;
         }
         if bd.color_us() == Color::Black {
             writeln!(f)?;
@@ -248,9 +250,8 @@ fn parse_moves_uci(bd: &Board, s: &str) -> anyhow::Result<(Vec<GameMove>, Outcom
             bd = bd.make_move(&mv);
             let gm = GameMove {
                 mv: mv.to_inner(),
-                sr: SearchResults::default(),
-                tc: TimeControl::default(),
-                comment: comment.unwrap_or_default().to_string(),
+                comment: comment.map(|s| s.to_string()),
+                .. GameMove::default()
             };
             vec.push(gm);
             line = rest.trim();
@@ -276,7 +277,7 @@ impl fmt::Display for Game {
         writeln!(f, "#,best move,depth,seldepth,")?;
         for (i, gm) in self.moves.iter().enumerate() {
             writeln!(f, "{i}")?;
-            writeln!(f, "{}", gm.sr.best_move().unwrap_or_default())?;
+            writeln!(f, "{}", gm.mv)?;
         }
         Ok(())
     }
@@ -422,8 +423,11 @@ impl Game {
         var
     }
 
-
-    pub fn starting_pos_for(&self, ply: Ply) -> Position {
+    // 0 <= ply <= len
+    // ply = 0 is before first move
+    // ply = 1 before second move
+    // ply = len(game) = after last move
+    pub fn starting_pos_for(&self, ply: usize) -> Position {
         let board = self.header.starting_pos();
         let mut pos = Position::from_board(board.clone());
         let var = self.var().take(ply);
@@ -432,7 +436,7 @@ impl Game {
         pos
     }
 
-    pub fn board_for_ply(&self, ply: Ply) -> Board {
+    pub fn board_for_ply(&self, ply: usize) -> Board {
         let pos = self.starting_pos_for(ply);
         pos.board().make_moves_old(pos.supplied_variation())
     }
@@ -490,7 +494,7 @@ impl Game {
 
 
     pub fn export<W: Write>(&self, mut w: W) -> Result<()> {
-        #[derive(Tabled)]
+        #[derive(Tabled, Default)]
         struct Row {
             id: usize,
             depth: Ply,
@@ -515,25 +519,25 @@ impl Game {
                 Table::new(self.moves.iter().enumerate().map(|(i, gm)| {
                     let mut row = Row {
                         id: i,
-                        depth: gm.sr.depth,
-                        seldepth: gm.sr.seldepth,
-                        time_millis: gm.sr.time_millis,
-                        nodes_k: gm.sr.nodes / 1000,
-                        nps_k: gm.sr.nps / 1000,
-                        branching_factor: gm.sr.bf,
-                        hashfull: format!("{}%", gm.sr.hashfull_per_mille / 10),
-                        mv: gm.sr.best_move().unwrap_or_default(),
-                        score_pov: gm.sr.score(),
-                        pv: gm.sr.pv(),
-                        our_time_secs: 0.0,
-                        their_time_secs: 0.0,
-                        moves_to_go: 0,
+                        .. Row::default()
                     };
-                    if let TimeControl::Fischer(rt) = gm.tc {
-                        row.our_time_secs = rt.our_time_and_inc().0.as_secs_f32();
-                        row.their_time_secs = rt.their_time_and_inc().0.as_secs_f32();
-                        row.moves_to_go = rt.moves_to_go;
-                    };
+                    if let Some(sr) = &gm.sr {
+                        row.depth = sr.depth;
+                        row.seldepth = sr.seldepth;
+                        row.time_millis = sr.time_millis;
+                        row.nodes_k = sr.nodes / 1000;
+                        row.nps_k = sr.nps / 1000;
+                        row.branching_factor = sr.bf;
+                        row.hashfull = format!("{}%", sr.hashfull_per_mille / 10);
+                        row.mv = sr.best_move().unwrap_or_default();
+                        row.score_pov = sr.score();
+                        row.pv = sr.pv();
+                    }
+                    // if let TimeControl::Fischer(rt) = gm.tc {
+                    //     row.our_time_secs = rt.our_time_and_inc().0.as_secs_f32();
+                    //     row.their_time_secs = rt.their_time_and_inc().0.as_secs_f32();
+                    //     row.moves_to_go = rt.moves_to_go;
+                    // };
                     row
                 }))
                 .with(Style::markdown())
@@ -560,14 +564,32 @@ impl Game {
         }
     }
 
-    pub fn record_search(&mut self, sr: SearchResults, tc: TimeControl) {
-        self.moves.push(GameMove {
-            mv: sr.best_move().unwrap_or_default(),
-            sr,
-            tc,
-            ..GameMove::default()
-        });
+    pub fn len(&self) -> usize {
+        self.moves.len()
     }
+
+    pub fn make_move(&mut self, mv: BareMove) {
+        println!("Game move {ply} {mv}", ply = self.len());
+        self.moves.push(GameMove {
+            mv,
+            .. GameMove::default()
+        });
+        self.outcome = self.board_for_ply(self.moves.len()).outcome()
+    }
+
+    pub fn make_engine_move(&mut self, sr: SearchResults) {
+        self.make_move(sr.best_move().unwrap_or_default());
+        self.last_move_mut().sr = Some(sr);
+    }
+
+    pub fn last_move_mut(&mut self) -> &mut GameMove {
+        self.moves.last_mut().unwrap()
+    }
+
+    pub fn outcome(&self) -> &Outcome{
+        &self.outcome
+    }
+
 }
 
 #[derive(Clone, Debug, Default)]
@@ -643,12 +665,15 @@ mod tests {
         let _sr = SearchResults::default();
         let mut game = Game::with_time_control(TimeControl::Depth(5));
         assert_eq!(game.header().starting_pos().color_us(), Color::White);
-        assert_eq!(game.header().starting_pos().fullmove_number(), 0);
-        assert_eq!(game.board_for_ply(0).fullmove_number(), 0);
+        assert_eq!(game.header().starting_pos().fullmove_number(), 1);
+        assert_eq!(game.board_for_ply(0).fullmove_number(), 1);
         assert_eq!(game.time_control_for_ply(0), TimeControl::Depth(5));
 
-        // game.make_move(mv);
-        assert_eq!(game.board_for_ply(0).fullmove_number(), 0);
+        game.make_move(BareMove::parse_uci("a2a3").unwrap());
+        game.make_move(BareMove::parse_uci("h7h6").unwrap());
+        println!("{game}");
+        println!("{board}", board = game.board_for_ply(2));
+        assert_eq!(game.board_for_ply(2).fullmove_number(), 2);
 
     }
 
@@ -725,5 +750,6 @@ mod tests {
         Ok(())
 
     }
+ 
 }
 }
