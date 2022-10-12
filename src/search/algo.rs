@@ -341,7 +341,7 @@ impl Algo {
         self.set_state(State::SetPosition);
         self.explainer.set_board(pos.board().clone());
         self.repetition.capture_all_prior_positions(&pos);
-        self.game.set_starting_pos(pos.board().clone());
+        self.game.header_mut().set_starting_pos(pos.board().clone());
         self.game.capture_missing_moves(pos.supplied_variation());
         self.board = pos.board().make_moves_old(pos.supplied_variation());
         self.tt.rewrite_pv(pos.board());

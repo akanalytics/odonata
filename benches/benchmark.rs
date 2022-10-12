@@ -1165,7 +1165,7 @@ fn benchmark_thread(c: &mut Criterion) {
 
             black_box({
                 algo1.set_position(pos.clone());
-                algo1.search()
+                algo1.run_search()
             });
         });
     });
@@ -1186,7 +1186,7 @@ fn benchmark_thread(c: &mut Criterion) {
             });
             black_box({
                 algo2.set_position(pos.clone());
-                algo2.search()
+                algo2.run_search()
             });
             handle.join().unwrap();
         });
@@ -1267,7 +1267,7 @@ fn benchmark_search(c: &mut Criterion) {
             algo.new_game();
             black_box({
                 algo.set_position(pos.clone());
-                algo.search()
+                algo.run_search()
             });
         });
     });
@@ -1278,7 +1278,7 @@ fn benchmark_search(c: &mut Criterion) {
             algo.new_game();
             black_box({
                 algo.set_position(pos.clone());
-                algo.search()
+                algo.run_search()
             });
         });
     });
@@ -1292,7 +1292,7 @@ fn benchmark_search(c: &mut Criterion) {
             algo1.new_game();
             black_box({
                 algo1.set_position(pos.clone());
-                algo1.search()
+                algo1.run_search()
             });
             assert_eq!(algo1.pv_table.extract_pv().to_string(), "d5f6, g7f6, c4f7");
         });
@@ -1305,7 +1305,7 @@ fn benchmark_search(c: &mut Criterion) {
             algo2.new_game();
             black_box({
                 algo2.set_position(pos.clone());
-                algo2.search()
+                algo2.run_search()
             });
             assert_eq!(algo2.pv_table.extract_pv().to_string(), "d5f6, g7f6, c4f7");
         });
@@ -1431,7 +1431,7 @@ fn bench_shared_mem(c: &mut Criterion) {
 //             positions.iter().cycle_n(n).for_each(|p| {
 //                 let mut algo = Algo::new().set_timing_method(TimeControl::Depth(4));
 //                 algo.set_position(p.clone());
-//                 algo.search();
+//                 algo.run_search();
 //             });
 //             t.elapsed() / positions.len() as u32
 //         });
@@ -1443,7 +1443,7 @@ fn bench_shared_mem(c: &mut Criterion) {
 //     //             let mut algo = Algo::new().set_timing_method(TimeControl::Depth(4));
 //     //             //algo.eval.cache.enabled = false;
 //     //             algo.set_position(p.clone());
-//     //             algo.search();
+//     //             algo.run_search();
 //     //         });
 //     //         t.elapsed() / positions.len() as u32
 //     //     });

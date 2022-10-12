@@ -7,8 +7,9 @@ use crate::movelist::strip_move_numbers;
 use crate::other::outcome::Outcome;
 use crate::piece::{Ply, ScoreWdl};
 use crate::search::timecontrol::TimeControl;
+use crate::tags::Tag;
 use crate::variation::Variation;
-use crate::Color;
+use crate::{Color, Position};
 use crate::{eval::score::Score, mv::BareMove};
 use anyhow::{Context, Result};
 use indexmap::{indexmap, IndexMap};
@@ -19,7 +20,6 @@ use std::collections::HashMap;
 use std::fmt;
 use std::io::Write;
 use tabled::{Style, Table, Tabled};
-
 
 // https://tim-mann.org/Standard
 //
@@ -54,7 +54,11 @@ use tabled::{Style, Table, Tabled};
 //[ %egt 0:05:42]}
 // [%eval 250,5] meaning white is +2.5 pawn up at depth 5
 // [%eval +0.25] means white is 0.25 pawn up
-
+// [TimeControl "40/7200:3600"]
+// {[%clk 1:55:21]} <-- until next reset
+// {[%egt 1:25:42]} <-- elkapsed game time hh:mm::ss
+// {[%mct 17:10:42]} <-- mechanical clock time
+//
 #[derive(Clone, Debug)]
 pub struct GameHeader {
     tag_pairs: IndexMap<String, String>,
@@ -87,6 +91,16 @@ impl GameHeader {
 
     pub fn time_control(&self) -> &TimeControl {
         &self.tc
+    }
+
+    pub fn set_starting_pos(&mut self, board: Board){
+        self.tag_pairs.insert("FEN".to_string(), board.to_fen());
+        self.starting_pos = board;
+    }
+
+    pub fn set_time_control(&mut self, tc: TimeControl){
+        self.tag_pairs.insert("TimeControl".to_string(), tc.to_uci());
+        self.tc = tc;
     }
 
     pub fn player(&self, c: Color) -> &str {
@@ -125,6 +139,7 @@ impl Uci for GameHeader {
     // [GameStartTime "2022-10-08T18:49:13.587 BST"]
     // [PlyCount "133"]
     // [TimeControl "75+0.6"]
+
     fn parse_uci(s: &str) -> anyhow::Result<Self> {
         let mut gh = GameHeader::new();
         for line in s.lines() {
@@ -147,7 +162,7 @@ impl Uci for GameHeader {
                 gh.starting_pos = Board::parse_fen(&v)?;
             }
             if k == "TimeControl" {
-                gh.tc = TimeControl::parse(&v)?;
+                gh.tc = TimeControl::parse(&("pgn:".to_string() + &v))?;
             }
             gh.tag_pairs.insert(k.to_string(), v);
         }
@@ -395,33 +410,67 @@ impl Game {
         Self::default()
     }
 
-    // for non-fisher, its the (non-changing) time control from the game
-    // for fischer, we take the time control of {ply - 1} and subtract off
-    // the move time for {ply - 1}
-    // pub fn time_control(&self, ply: Ply) -> TimeControl {
-    //     let game_tc = self.header().time_control();
-    //     if let TimeControl::Fischer(game_rt) = game_tc {
-    //         if ply == 0 { TimeControl::Fischer(*game_rt) }
-    //         else {
-    //             let last = self.moves[ply as usize - 1];
-    //             if let TimeControl::Fischer(rt) = last.tc {  // kibitzer time
-    //                 let move_time = last.sr.time_millis; // kibitzer time
-    //                 let time_left = rt.less_move_millis(color, move_time);
-    //                 let moves_left = time_left.moves_to_go - 1;
-    //                 if moves_left == 0 {
-    //                     moves_to_go = game_rt.moves_to_go;
-    //                     set color time again;
-    //                 }
+    pub fn with_time_control(tc: TimeControl) -> Self {
+        let mut g = Game::new();
+        g.header_mut().set_time_control(tc);
+        g
+    }
 
-    //                 *last
-    //             } else {
-    //                 panic!("Game is Fisher, last move isn't")
-    //             }
-    //         }
-    //     } else {
-    //         game_tc.clone()
-    //     }
-    // }
+    pub fn var(&self) -> BareMoveVariation {
+        let mut var = BareMoveVariation::new();
+        self.moves.iter().for_each(|gm| var.push(gm.mv));
+        var
+    }
+
+
+    pub fn starting_pos_for(&self, ply: Ply) -> Position {
+        let board = self.header.starting_pos();
+        let mut pos = Position::from_board(board.clone());
+        let var = self.var().take(ply);
+        let var = Variation::from_inner(&var, board);
+        pos.set(Tag::SuppliedVariation(var));
+        pos
+    }
+
+    pub fn board_for_ply(&self, ply: Ply) -> Board {
+        let pos = self.starting_pos_for(ply);
+        pos.board().make_moves_old(pos.supplied_variation())
+    }
+
+
+        // let color = self.header.starting_pos().color_us();
+        // if ply % 2 == 0 {
+        //     color
+        // } else {
+        //     color.opposite()
+        // }
+
+
+    pub fn time_control_for_ply(&self, _ply: Ply) -> TimeControl {
+        self.header().time_control().clone()
+        // let game_tc = self.header().time_control();
+        // if let TimeControl::Fischer(game_rt) = game_tc {
+        //     if ply == 0 { TimeControl::Fischer(*game_rt) }
+        //     else {
+        //         let last = self.moves[ply as usize - 1];
+        //         if let TimeControl::Fischer(rt) = last.tc {  // kibitzer time
+        //             let move_time = last.sr.time_millis; // kibitzer time
+        //             let time_left = rt.less_move_millis(color, move_time);
+        //             let moves_left = time_left.moves_to_go - 1;
+        //             if moves_left == 0 {
+        //                 moves_to_go = game_rt.moves_to_go;
+        //                 set color time again;
+        //             }
+
+        //             *last
+        //         } else {
+        //             panic!("Game is Fisher, last move isn't")
+        //         }
+        //     }
+        // } else {
+        //     game_tc.clone()
+        // }
+    }
 
     pub fn clear_moves(&mut self) {
         self.moves.clear();
@@ -431,15 +480,14 @@ impl Game {
         &self.header
     }
 
+    pub fn header_mut(&mut self) -> &mut GameHeader {
+        &mut self.header
+    }
+
     fn variation(&self) -> BareMoveVariation {
         BareMoveVariation::default()
     }
 
-    pub fn set_starting_pos(&mut self, board: Board) -> &mut Self {
-        // self.board = pos.supplied_variation().apply_to(pos.board());
-        self.header.starting_pos = board;
-        self
-    }
 
     pub fn export<W: Write>(&self, mut w: W) -> Result<()> {
         #[derive(Tabled)]
@@ -500,7 +548,8 @@ impl Game {
                 // we have already captured this move - check its correct
                 let existing_mv = gm.mv;
                 let new_mv = var[i].to_inner();
-                debug_assert!(existing_mv == new_mv, "record_variation: (exising move #{i}) {existing_mv} != {new_mv} (from variation {var})");
+                debug_assert!(existing_mv == new_mv, 
+                    "record_variation: (exising move #{i}) {existing_mv} != {new_mv} (from variation {var})");
             }
         }
         for mv in var.moves().skip(self.moves.len()) {
@@ -560,7 +609,7 @@ impl fmt::Display for GameStats {
         }
         let mut kv_vec = self.players.iter().collect_vec();
         // @todo
-        kv_vec.sort_by_cached_key(|(_k,v)| -v.elo() as i64);
+        kv_vec.sort_by_cached_key(|(_k, v)| -v.elo() as i64);
         writeln!(
             f,
             "{}",
@@ -592,7 +641,15 @@ mod tests {
     #[test]
     fn test_game() {
         let _sr = SearchResults::default();
-        // println!("{}", Table::new(vec![sr]).to_string())
+        let mut game = Game::with_time_control(TimeControl::Depth(5));
+        assert_eq!(game.header().starting_pos().color_us(), Color::White);
+        assert_eq!(game.header().starting_pos().fullmove_number(), 0);
+        assert_eq!(game.board_for_ply(0).fullmove_number(), 0);
+        assert_eq!(game.time_control_for_ply(0), TimeControl::Depth(5));
+
+        // game.make_move(mv);
+        assert_eq!(game.board_for_ply(0).fullmove_number(), 0);
+
     }
 
     #[test]
@@ -648,20 +705,25 @@ mod tests {
     }
 
     #[test]
-    fn parse_game_file() {
-        let s =
-            // std::fs::read_to_string("../odonata-extras/output/games/tourney-26283.pgn").unwrap();
-            std::fs::read_to_string("../odonata-extras/pgn/96th Amateur D7 (ChessOK-Pre2022HQ.cgb).pgn").unwrap();
-        let mut stats = GameStats::new();
-        for game in Game::parse_pgn(&s) {
+    fn parse_game_file()  {
+        parse("../odonata-extras/output/games/tourney-26283.pgn").unwrap();
+        parse("../odonata-extras/pgn/96th Amateur D7 (ChessOK-Pre2022HQ.cgb).pgn").unwrap();
+
+        fn parse(filename: &str) -> anyhow::Result<()>{
+            let s = &std::fs::read_to_string(filename).unwrap();
+            let mut stats = GameStats::new();
+            for game in Game::parse_pgn(&s) {
             match game {
                 Ok(game) => {
                     // println!("{}", Displayable(|f| game.fmt_pgn(f)));
                     stats.include(&game);
                 }
-                Err(e) => panic!("{e}"),
+                Err(e) => return Err(e), // !("{e} in file {filename}"),
             }
         }
         println!("{stats}");
+        Ok(())
+
     }
+}
 }

@@ -1,3 +1,4 @@
+use anyhow::Context;
 use serde::{Deserialize, Serialize};
 
 use crate::infra::utils::{Displayable, Formatting};
@@ -121,41 +122,45 @@ impl TimeControl {
     }
 
     pub fn parse(tc: &str) -> anyhow::Result<Self> {
-        if tc == "inf" {
-            Ok(TimeControl::Infinite)
-        } else if tc.ends_with("def") {
-            Ok(TimeControl::DefaultTime)
-        } else if let Some(tc) = tc.strip_prefix("st=") {
-            let secs = tc.parse::<f64>()?;
-            Ok(TimeControl::SearchTime(Duration::from_secs_f64(secs)))
-        } else if let Some(tc) = tc.strip_prefix("mate=") {
-            let depth = tc.parse::<u32>()?;
-            Ok(TimeControl::MateIn(depth))
-        } else if let Some(tc) = tc.strip_prefix("tc=") {
-            let time = tc.parse::<u64>()?;
-            let rt = RemainingTime {
-                wtime: Duration::from_secs(time),
-                btime: Duration::from_secs(time),
-                ..RemainingTime::default()
-            };
-            Ok(TimeControl::Fischer(rt))
-        } else if let Some(tc) = tc.strip_prefix("depth=") {
-            let depth = tc.parse::<i32>()?;
-            Ok(TimeControl::Depth(depth))
-        } else if let Some(tc) = tc.strip_prefix("nodes=") {
-            let nodes = tc.parse::<u64>()?;
-            Ok(TimeControl::NodeCount(nodes))
-        } else if tc == "40/960:40/960:40/960" {
-            let rt = RemainingTime {
-                wtime: Duration::from_secs(960),
-                btime: Duration::from_secs(960),
-                moves_to_go: 40,
-                ..RemainingTime::default()
-            };
-            Ok(TimeControl::Fischer(rt))
-        } else {
-            anyhow::bail!("Unable to parse time control {}", tc);
+        fn parse_inner(tc: &str) -> anyhow::Result<TimeControl> {
+            if tc == "inf" {
+                Ok(TimeControl::Infinite)
+            } else if tc.ends_with("def") {
+                Ok(TimeControl::DefaultTime)
+            } else if let Some(tc) = tc.strip_prefix("st=") {
+                let secs = tc.parse::<f64>()?;
+                Ok(TimeControl::SearchTime(Duration::from_secs_f64(secs)))
+            } else if let Some(tc) = tc.strip_prefix("mate=") {
+                let depth = tc.parse::<u32>()?;
+                Ok(TimeControl::MateIn(depth))
+            } else if let Some(tc) = tc.strip_prefix("tc=") {
+                let time = tc.parse::<u64>()?;
+                let rt = RemainingTime {
+                    wtime: Duration::from_secs(time),
+                    btime: Duration::from_secs(time),
+                    ..RemainingTime::default()
+                };
+                Ok(TimeControl::Fischer(rt))
+            } else if let Some(tc) = tc.strip_prefix("depth=") {
+                let depth = tc.parse::<i32>()?;
+                Ok(TimeControl::Depth(depth))
+            } else if let Some(tc) = tc.strip_prefix("nodes=") {
+                let nodes = tc.parse::<u64>()?;
+                Ok(TimeControl::NodeCount(nodes))
+            } else if tc.starts_with("pgn:") {
+                let rt = RemainingTime {
+                    wtime: Duration::from_secs(960),
+                    btime: Duration::from_secs(960),
+                    moves_to_go: 40,
+                    ..RemainingTime::default()
+                };
+                Ok(TimeControl::Fischer(rt))
+            } else {
+                anyhow::bail!("Unable to parse time control {}", tc);
+            }
         }
+
+        parse_inner(tc).with_context(|| format!("parsing time control '{tc}'"))
     }
 
     pub fn from_remaining_time(d: Duration) -> Self {

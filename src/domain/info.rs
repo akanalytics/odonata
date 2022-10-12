@@ -11,16 +11,12 @@ use crate::{
     MoveList,
 };
 
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default, Debug, PartialEq)]
 pub struct BareMoveVariation(pub Vec<BareMove>);
 
 impl Uci for BareMoveVariation {
     fn fmt_uci(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            self.0.iter().map(BareMove::to_uci).join(" ")
-        )?;
+        write!(f, "{}", self.0.iter().map(BareMove::to_uci).join(" "))?;
         Ok(())
     }
 
@@ -56,12 +52,21 @@ impl BareMoveVariation {
         self.0.iter()
     }
 
+    pub fn push(&mut self, mv: BareMove) {
+        self.0.push(mv);
+    }
+
+    // truncate the variation to length ply
+    // so the result does not include the ply-th move in the variation
+    // if len < ply just return all of the variation
+    pub fn take(&self, ply: Ply) -> Self {
+        BareMoveVariation(self.0.iter().take(ply as usize).cloned().collect_vec())
+    }
+
     pub fn len(&self) -> usize {
         self.0.len()
     }
 }
-
-
 
 #[derive(Clone, Default, Debug)]
 pub struct Info {
@@ -151,7 +156,7 @@ impl Uci for Info {
 
         let words = [
             "depth",
-            "seldepth",  
+            "seldepth",
             "multipv",
             "currmove",
             "currmovenumber",
@@ -169,7 +174,8 @@ impl Uci for Info {
         let mut info = Info::new();
         let iter = KeywordIter::new(&words, Some("string"), &s);
         for (key, value) in iter {
-            info.set(&key, value.trim()).context(format!("setting info '{key}' to '{value}'"))?;
+            info.set(&key, value.trim())
+                .context(format!("setting info '{key}' to '{value}'"))?;
         }
         info.nodes_thread = info.nodes;
         Ok(info)
@@ -180,6 +186,16 @@ impl Uci for Info {
 mod tests {
     use super::*;
     use test_log::test;
+
+    #[test]
+    fn test_basic_variation() {
+        let var = BareMoveVariation::parse_uci("a2a3 h7h6 a3a4").unwrap();
+        assert_eq!(var.len(), 3);
+        assert_eq!(var.first(), Some(BareMove::parse_uci("a2a3").unwrap()));
+        assert_eq!(var.second(), Some(BareMove::parse_uci("h7h6").unwrap()));
+        assert_eq!(var.take(1), BareMoveVariation::parse_uci("a2a3").unwrap());
+        assert_eq!(var.take(1).second(), None);
+    }
 
     #[test]
     fn test_info_to_uci() -> anyhow::Result<()> {

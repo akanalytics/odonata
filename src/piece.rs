@@ -343,6 +343,8 @@ impl fmt::Display for ScoreWdl {
 // Error calc from... 
 // http://www.open-aurec.com/wbforum/viewtopic.php?t=949
 
+// https://www.chessprogramming.org/Match_Statistics
+
 impl ScoreWdl {
     pub fn new(w: i32, d: i32, l: i32) -> ScoreWdl {
         ScoreWdl { w, d, l }
