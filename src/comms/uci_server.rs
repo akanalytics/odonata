@@ -618,7 +618,7 @@ impl UciServer {
         } else if name == "UCI_AnalyseMode" {
             eng.configment("analyse_mode", value)?;
         } else if name == "UCI_Opponent" {
-            let player: Player = value.parse()?;
+            let player = Player::parse_uci(value)?;
             info!("UCI_Opponent {value} {player:?}");
         } else if name == "UCI_ShowRefutations" {
             eng.configment("show_refutations", value)?;

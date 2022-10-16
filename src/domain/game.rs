@@ -22,6 +22,8 @@ use std::io::Write;
 use std::time::Duration;
 use tabled::{Style, Table, Tabled};
 
+use super::Player;
+
 // https://tim-mann.org/Standard
 //
 // reduced export format
@@ -50,16 +52,32 @@ use tabled::{Style, Table, Tabled};
 // PlyCount
 //
 
-// [%clk 1:05:23]
-// [%emt 0:05:42]}
-//[ %egt 0:05:42]}
-// [%eval 250,5] meaning white is +2.5 pawn up at depth 5
-// [%eval +0.25] means white is 0.25 pawn up
-// [TimeControl "40/7200:3600"]
-// {[%clk 1:55:21]} <-- until next reset
-// {[%egt 1:25:42]} <-- elkapsed game time hh:mm::ss
-// {[%mct 17:10:42]} <-- mechanical clock time
-//
+
+
+// [Event "GRENKE Chess Classic 2019"]
+// [Site "Karlsruhe/Baden Baden GER"]
+// [Date "2019.04.20"]
+// [Round "1.2"]
+// [White "Svidler, Peter"]
+// [Black "Caruana, Fabiano"]
+// [Result "1/2-1/2"]
+// [WhiteTitle "GM"]
+// [BlackTitle "GM"]
+// [WhiteElo "2735"]
+// [BlackElo "2819"]
+// [ECO "B33"]
+// [Opening "Sicilian"]
+// [Variation "Pelikan (Lasker/Sveshnikov) variation"]
+// [WhiteFideId "4102142"]
+// [BlackFideId "2020009"]
+// [EventDate "2019.04.20"]
+// [WhiteACPL "252"]
+// [BlackACPL "141"]
+// [GameDuration "00:00:23"]
+// [GameEndTime "2022-10-08T18:49:37.228 BST"]
+// [GameStartTime "2022-10-08T18:49:13.587 BST"]
+// [PlyCount "133"]
+// [TimeControl "75+0.6"]
 #[derive(Clone, Debug)]
 pub struct GameHeader {
     tag_pairs: IndexMap<String, String>,
@@ -95,18 +113,30 @@ impl GameHeader {
     }
 
     pub fn set_starting_pos(&mut self, board: Board){
-        self.tag_pairs.insert("FEN".to_string(), board.to_fen());
+        self.set("FEN", board.to_fen());
         self.starting_pos = board;
     }
 
     pub fn set_time_control(&mut self, tc: TimeControl){
-        self.tag_pairs.insert("TimeControl".to_string(), tc.to_uci());
+        self.set("TimeControl", tc.to_uci());
         self.tc = tc;
     }
 
     pub fn player(&self, c: Color) -> &str {
         &self.tag_pairs[c.chooser_wb("White", "Black")]
     }
+
+    pub fn set_player(&mut self, c: Color, p: &Player) {
+        self.set(c.chooser_wb("White", "Black"), p.name.to_string());
+        if let Some(elo) = p.elo {
+            self.set(c.chooser_wb("WhiteElo", "BlackElo"), elo.to_string());
+        }
+    }
+
+    pub fn set(&mut self, key: &str, value: String) {
+        self.tag_pairs.insert(key.to_string(), value);
+    }
+
 }
 
 impl Uci for GameHeader {
@@ -116,30 +146,7 @@ impl Uci for GameHeader {
             .try_for_each(|(k, v)| writeln!(f, "[{k} \"{v}\"]"))
     }
 
-    // [Event "GRENKE Chess Classic 2019"]
-    // [Site "Karlsruhe/Baden Baden GER"]
-    // [Date "2019.04.20"]
-    // [Round "1.2"]
-    // [White "Svidler, Peter"]
-    // [Black "Caruana, Fabiano"]
-    // [Result "1/2-1/2"]
-    // [WhiteTitle "GM"]
-    // [BlackTitle "GM"]
-    // [WhiteElo "2735"]
-    // [BlackElo "2819"]
-    // [ECO "B33"]
-    // [Opening "Sicilian"]
-    // [Variation "Pelikan (Lasker/Sveshnikov) variation"]
-    // [WhiteFideId "4102142"]
-    // [BlackFideId "2020009"]
-    // [EventDate "2019.04.20"]
-    // [WhiteACPL "252"]
-    // [BlackACPL "141"]
-    // [GameDuration "00:00:23"]
-    // [GameEndTime "2022-10-08T18:49:37.228 BST"]
-    // [GameStartTime "2022-10-08T18:49:13.587 BST"]
-    // [PlyCount "133"]
-    // [TimeControl "75+0.6"]
+
 
     fn parse_uci(s: &str) -> anyhow::Result<Self> {
         let mut gh = GameHeader::new();
@@ -165,7 +172,7 @@ impl Uci for GameHeader {
             if k == "TimeControl" {
                 gh.tc = TimeControl::parse(&("pgn:".to_string() + &v))?;
             }
-            gh.tag_pairs.insert(k.to_string(), v);
+            gh.set(k, v);
         }
 
         Ok(gh)
@@ -178,6 +185,18 @@ impl GameHeader {
     }
 }
 
+
+
+// [%clk 1:05:23]
+// [%emt 0:05:42]}
+//[ %egt 0:05:42]}
+// [%eval 250,5] meaning white is +2.5 pawn up at depth 5
+// [%eval +0.25] means white is 0.25 pawn up
+// [TimeControl "40/7200:3600"]
+// {[%clk 1:55:21]} <-- until next reset
+// {[%egt 1:25:42]} <-- elkapsed game time hh:mm::ss
+// {[%mct 17:10:42]} <-- mechanical clock time
+//
 #[derive(Clone, Default, Debug)]
 pub struct GameMove {
     mv: BareMove,
@@ -568,18 +587,28 @@ impl Game {
         self.moves.len()
     }
 
+
+    pub fn set_outcome(&mut self, outcome: Outcome) {
+        self.outcome = outcome;
+        if outcome.is_game_over() {
+            self.header_mut().set("Result", outcome.as_pgn());
+        }
+    }
+
+    /// sets outcome too
     pub fn make_move(&mut self, mv: BareMove) {
         println!("Game move {ply} {mv}", ply = self.len());
         self.moves.push(GameMove {
             mv,
             .. GameMove::default()
         });
-        self.outcome = self.board_for_ply(self.moves.len()).outcome()
+        self.set_outcome(self.board_for_ply(self.moves.len()).outcome());
     }
 
+    /// captures engine search results
     pub fn make_engine_move(&mut self, sr: SearchResults) {
         self.make_move(sr.best_move().unwrap_or_default());
-        self.last_move_mut().sr = Some(sr);
+        self.last_move_mut().sr = Some(sr);        
     }
 
     pub fn last_move_mut(&mut self) -> &mut GameMove {
