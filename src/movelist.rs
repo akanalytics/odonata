@@ -474,9 +474,9 @@ impl Board {
             s.push('x');
         }
         s += mv.to().uci();
-        if mv.is_ep_capture() {
-            s += " e.p.";
-        }
+        // if mv.is_ep_capture() {
+        //     s += " e.p.";
+        // }
         if let Some(promo) = mv.promo() {
             s.push('=');
             s.push(promo.to_upper_char());

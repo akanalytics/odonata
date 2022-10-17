@@ -1,5 +1,4 @@
 use std::iter::{self, FromIterator};
-
 use crate::eval::eval::Eval;
 use crate::eval::score::Score;
 use crate::infra::utils::{calculate_branching_factor_by_nodes_and_depth, Uci};
@@ -155,6 +154,7 @@ impl SearchResults {
                 depth: info.depth.unwrap_or_default(),
                 seldepth: info.seldepth.unwrap_or_default(),
                 time_millis: info.time_millis.unwrap_or_default(),
+                // time_millis: elapsed_move_time.as_millis() as u64,
                 nodes: info.nodes.unwrap_or_default(),
                 nodes_thread: info.nodes_thread.unwrap_or_default(),
                 nps: info.nps.unwrap_or_default(),
@@ -162,7 +162,10 @@ impl SearchResults {
                 bf: bf.unwrap_or_default(),
                 hashfull_per_mille: info.hashfull_per_mille.unwrap_or_default(),
                 outcome: Outcome::Unterminated,
-                multi_pv: vec![(info.pv.clone().unwrap_or_default(), info.score.unwrap_or_default())],
+                multi_pv: vec![(
+                    info.pv.clone().unwrap_or_default(),
+                    info.score.unwrap_or_default(),
+                )],
                 infos,
             }
         } else {

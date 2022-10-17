@@ -7,7 +7,7 @@ use crate::comms::bench::Bench;
 use crate::comms::uci_server::UciServer;
 use crate::infra::version::Version;
 use crate::search::timecontrol::TimeControl;
-use clap::{Command, Arg};
+use clap::{Arg, Command};
 
 pub fn main() -> anyhow::Result<()> {
     let matches = Command::new(Version::NAME)
@@ -103,7 +103,7 @@ pub fn main() -> anyhow::Result<()> {
         Bench::perft_cat(depth);
     } else if matches.occurrences_of("search") > 0 {
         let tc = matches.value_of("search").unwrap();
-        let tc = TimeControl::parse(tc)?;
+        let tc = TimeControl::parse_option(tc)?;
         let str = matches.value_of("threads");
         let threads = if let Some(str) = str {
             Some(str.parse::<u32>()?)

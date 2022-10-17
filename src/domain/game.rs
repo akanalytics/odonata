@@ -23,6 +23,7 @@ use std::time::Duration;
 use tabled::{Style, Table, Tabled};
 
 use super::Player;
+use super::info::Info;
 
 // https://tim-mann.org/Standard
 //
@@ -78,6 +79,7 @@ use super::Player;
 // [GameStartTime "2022-10-08T18:49:13.587 BST"]
 // [PlyCount "133"]
 // [TimeControl "75+0.6"]
+// [TimeControl "40/960:40/960:40/960"]
 #[derive(Clone, Debug)]
 pub struct GameHeader {
     tag_pairs: IndexMap<String, String>,
@@ -118,7 +120,10 @@ impl GameHeader {
     }
 
     pub fn set_time_control(&mut self, tc: TimeControl){
-        self.set("TimeControl", tc.to_uci());
+        match tc { 
+            TimeControl::FischerMulti{ .. } => self.set("TimeControl", tc.to_string()),
+            _ => self.set("TimeControlOption",   tc.to_string()),
+        }
         self.tc = tc;
     }
 
@@ -170,7 +175,7 @@ impl Uci for GameHeader {
                 gh.starting_pos = Board::parse_fen(&v)?;
             }
             if k == "TimeControl" {
-                gh.tc = TimeControl::parse(&("pgn:".to_string() + &v))?;
+                gh.tc = TimeControl::parse_option(&("pgn:".to_string() + &v))?;
             }
             gh.set(k, v);
         }
@@ -186,7 +191,7 @@ impl GameHeader {
 }
 
 
-
+// pov {-16.50/18 0.11s, Black wins by adjudication}
 // [%clk 1:05:23]
 // [%emt 0:05:42]}
 //[ %egt 0:05:42]}
@@ -217,70 +222,116 @@ static REGEX_MOVE_AND_COMMENT: Lazy<Regex> = Lazy::new(|| {
     .unwrap()
 });
 
-fn match_move_and_comment(s: &str) -> anyhow::Result<(&str, Option<&str>, &str)> {
-    let caps = REGEX_MOVE_AND_COMMENT
-        .captures(&s)
-        .ok_or_else(|| anyhow::anyhow!("Unable to parse '{}' as a move and comment", s))?;
-    let mv = caps
-        .name("move")
-        .with_context(|| format!("expected a move in '{s}'"))?
-        .as_str();
-    let comment = caps.name("comment").map(|m| m.as_str());
-    // 0th capture is entire group
-    let rest = &s[caps.get(0).unwrap().end()..];
-    Ok((mv, comment, rest))
-}
+impl GameMove {
 
-fn fmt_moves_uci(moves: &[GameMove], bd: &Board, f: &mut fmt::Formatter) -> fmt::Result {
-    let mut bd = bd.clone();
-    for (i, gm) in moves.iter().enumerate() {
-        let mv = bd.augment_move(gm.mv);
-        if bd.color_us() == Color::White {
-            write!(f, "{fmvn}. ", fmvn = bd.fullmove_number())?;
-        }
-        if i == 0 && bd.color_us() == Color::Black {
-            write!(f, "..")?;
-        }
-        write!(f, "{san} ", san = bd.to_san(&mv))?;
-        if let Some(comment) = &gm.comment {
-            write!(f, "{{{comment}}} ")?;
-        }
-        if bd.color_us() == Color::Black {
-            writeln!(f)?;
-        }
-        bd = bd.make_move(&mv);
+
+    pub fn elapsed_move_time(&self) -> Duration {
+        self.emt
     }
-    Ok(())
-}
 
-fn parse_moves_uci(bd: &Board, s: &str) -> anyhow::Result<(Vec<GameMove>, Outcome)> {
-    let mut bd = bd.clone();
-    let mut vec = vec![];
-    for line in s.lines() {
-        let line = strip_move_numbers(line);
-        let mut line = line.as_str();
-        loop {
-            debug!("Game moves parsing line: '{line}'");
-            let (mv, comment, rest) = match_move_and_comment(&line)?;
-            if let Ok(outcome) = Outcome::try_from_pgn(mv) {
-                return Ok((vec, outcome));
+
+    pub fn info(&self) -> Info {
+        if let Some(ref sr) = self.sr {
+            if let Some(info) = sr.infos.last() {
+                return info.clone();
             }
-            let mv = bd.parse_san_move(mv)?;
+        }
+        Info::new()
+    }
+
+    fn format_comments(&self) -> String {
+        let mut s = String::new();
+        if false {
+            s += &format!("[%emt {emt}] ", emt = Formatting::hhmmss(self.elapsed_move_time()));
+            if let Some(d) = self.info().depth {
+                if let Some(score) = self.info().score {
+                    if let Some(eval) = score.to_pgn() {
+                        s += &format!("[%eval {eval},{d} ] ");
+                    }
+                }
+            }
+        } else {
+            if let Some(d) = self.info().depth {
+                if let Some(score) = self.info().score {
+                    if let Some(eval) = score.to_pgn() {
+                        s += &format!("{eval}/{d} ");
+                    }
+                }
+            }
+            s += &format!("{emt:.3}s", emt = self.elapsed_move_time().as_secs_f64());
+        }
+        s
+    }
+
+    fn match_move_and_comment(s: &str) -> anyhow::Result<(&str, Option<&str>, &str)> {
+        let caps = REGEX_MOVE_AND_COMMENT
+            .captures(&s)
+            .ok_or_else(|| anyhow::anyhow!("Unable to parse '{}' as a move and comment", s))?;
+        let mv = caps
+            .name("move")
+            .with_context(|| format!("expected a move in '{s}'"))?
+            .as_str();
+        let comment = caps.name("comment").map(|m| m.as_str());
+        // 0th capture is entire group
+        let rest = &s[caps.get(0).unwrap().end()..];
+        Ok((mv, comment, rest))
+    }
+
+    fn fmt_moves_pgn(moves: &[GameMove], bd: &Board, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut bd = bd.clone();
+        for (i, gm) in moves.iter().enumerate() {
+            let mv = bd.augment_move(gm.mv);
+            if bd.color_us() == Color::White {
+                write!(f, "{fmvn}. ", fmvn = bd.fullmove_number())?;
+            }
+            if i == 0 && bd.color_us() == Color::Black {
+                write!(f, "..")?;
+            }
+            write!(f, "{san} ", san = bd.to_san(&mv))?;
+            if let Some(comment) = &gm.comment {
+                write!(f, "{{{c}, {comment}}} ", c = gm.format_comments())?;
+
+            } else {
+                write!(f, "{{{c}}} ", c = gm.format_comments())?;
+            }
+            if bd.color_us() == Color::Black {
+                writeln!(f)?;
+            }
             bd = bd.make_move(&mv);
-            let gm = GameMove {
-                mv: mv.to_inner(),
-                comment: comment.map(|s| s.to_string()),
-                .. GameMove::default()
-            };
-            vec.push(gm);
-            line = rest.trim();
-            if line.is_empty() {
-                break;
+        }
+        Ok(())
+    }
+
+    fn parse_moves_pgn(bd: &Board, s: &str) -> anyhow::Result<(Vec<GameMove>, Outcome)> {
+        let mut bd = bd.clone();
+        let mut vec = vec![];
+        for line in s.lines() {
+            let line = strip_move_numbers(line);
+            let mut line = line.as_str();
+            loop {
+                debug!("Game moves parsing line: '{line}'");
+                let (mv, comment, rest) = Self::match_move_and_comment(&line)?;
+                if let Ok(outcome) = Outcome::try_from_pgn(mv) {
+                    return Ok((vec, outcome));
+                }
+                let mv = bd.parse_san_move(mv)?;
+                bd = bd.make_move(&mv);
+                let gm = GameMove {
+                    mv: mv.to_inner(),
+                    comment: comment.map(|s| s.to_string()),
+                    .. GameMove::default()
+                };
+                vec.push(gm);
+                line = rest.trim();
+                if line.is_empty() {
+                    break;
+                }
             }
         }
+        Ok((vec, Outcome::Unterminated))
     }
-    Ok((vec, Outcome::Unterminated))
 }
+
 
 #[derive(Clone, Default, Debug)]
 pub struct Game {
@@ -325,7 +376,7 @@ impl Game {
         if !self.comment.is_empty() {
             writeln!(f, "{{{comment}}}", comment = self.comment)?;
         }
-        fmt_moves_uci(&self.moves, &self.header.starting_pos(), f)?;
+        GameMove::fmt_moves_pgn(&self.moves, &self.header.starting_pos(), f)?;
         writeln!(f, " {outcome}", outcome = self.outcome.as_pgn())?;
         writeln!(f)?;
         Ok(())
@@ -393,7 +444,7 @@ impl<'a> PgnParser<'a> {
 
         let starting_pos = header.starting_pos();
         let body_text = body.join("\n");
-        let (moves, outcome) = parse_moves_uci(starting_pos, &body_text)?;
+        let (moves, outcome) = GameMove::parse_moves_pgn(starting_pos, &body_text)?;
         let game = Game {
             game_id: 0,
             header,
@@ -592,10 +643,12 @@ impl Game {
         self.outcome = outcome;
         if outcome.is_game_over() {
             self.header_mut().set("Result", outcome.as_pgn());
+            let ply = self.len().to_string();
+            self.header_mut().set("PlyCount", ply);
         }
     }
 
-    /// sets outcome too
+    /// sets outcome and result too
     pub fn make_move(&mut self, mv: BareMove) {
         println!("Game move {ply} {mv}", ply = self.len());
         self.moves.push(GameMove {
@@ -606,9 +659,12 @@ impl Game {
     }
 
     /// captures engine search results
-    pub fn make_engine_move(&mut self, sr: SearchResults) {
+    pub fn make_engine_move(&mut self, sr: SearchResults, elapsed: Duration) {
         self.make_move(sr.best_move().unwrap_or_default());
-        self.last_move_mut().sr = Some(sr);        
+        let mut gm = self.last_move_mut();
+        gm.sr = Some(sr);        
+        gm.emt = elapsed;
+
     }
 
     pub fn last_move_mut(&mut self) -> &mut GameMove {
@@ -708,22 +764,22 @@ mod tests {
 
     #[test]
     fn parse_move_and_comment() {
-        let (mv, c, rest) = match_move_and_comment("a4").unwrap();
+        let (mv, c, rest) = GameMove::match_move_and_comment("a4").unwrap();
         assert_eq!(mv, "a4");
         assert_eq!(c, None);
         assert_eq!(rest, "");
 
-        let (mv, c, rest) = match_move_and_comment("a5 {+0.37/14 4.4s}").unwrap();
+        let (mv, c, rest) = GameMove::match_move_and_comment("a5 {+0.37/14 4.4s}").unwrap();
         assert_eq!(mv, "a5");
         assert_eq!(c, Some("+0.37/14 4.4s"));
         assert_eq!(rest, "");
 
-        let (mv, c, rest) = match_move_and_comment("a5  { my comment  } ").unwrap();
+        let (mv, c, rest) = GameMove::match_move_and_comment("a5  { my comment  } ").unwrap();
         assert_eq!(mv, "a5");
         assert_eq!(c, Some(" my comment  "));
         assert_eq!(rest, "");
 
-        let (mv, c, rest) = match_move_and_comment("a5  { my comment  } blob").unwrap();
+        let (mv, c, rest) = GameMove::match_move_and_comment("a5  { my comment  } blob").unwrap();
         assert_eq!(mv, "a5");
         assert_eq!(c, Some(" my comment  "));
         assert_eq!(rest, "blob");

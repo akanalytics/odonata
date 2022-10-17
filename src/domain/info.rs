@@ -93,6 +93,7 @@ impl Info {
     pub fn new() -> Self {
         Self::default()
     }
+
     fn set(&mut self, name: &str, value: &str) -> anyhow::Result<()> {
         debug!("setting info.{name} = _{value}_");
         match name {

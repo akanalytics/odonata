@@ -179,7 +179,9 @@ impl MoveTimeEstimator {
             TimeControl::NodeCount(max_nodes) => clock.elapsed_search().1 >= max_nodes,
             TimeControl::Infinite => false,
             TimeControl::MateIn(_) => false,
-            TimeControl::Fischer { .. } => elapsed > self.allotted() && !self.pondering(),
+            TimeControl::UciFischer { .. } => elapsed > self.allotted() && !self.pondering(),
+            TimeControl::FischerMulti{..} => panic!("FischerMulti"),
+
         }
     }
 
@@ -202,7 +204,9 @@ impl MoveTimeEstimator {
             TimeControl::NodeCount(_max_nodes) => false,
             TimeControl::Infinite => false,
             TimeControl::MateIn(_) => false,
-            TimeControl::Fischer { .. } => true,
+            TimeControl::UciFischer { .. } => true,
+            TimeControl::FischerMulti{..} => panic!("FischerMulti"),
+
         }
     }
 
@@ -214,7 +218,7 @@ impl MoveTimeEstimator {
 
         match self.time_control {
             // on initial call capture the fischer increment
-            TimeControl::Fischer(rt) => {
+            TimeControl::UciFischer(rt) => {
                 if self.fischer_increment.is_none() {
                     self.fischer_increment = Some(Duration::max(rt.wtime, rt.btime))
                 }
@@ -248,7 +252,7 @@ impl MoveTimeEstimator {
 
     pub fn probable_timeout(&self, ply: Ply) -> bool {
         match self.time_control {
-            TimeControl::Fischer(rt) => {
+            TimeControl::UciFischer(rt) => {
                 let (_time, _inc) = rt
                     .our_color
                     .chooser_wb((rt.wtime, rt.winc), (rt.btime, rt.binc));
@@ -308,7 +312,8 @@ impl MoveTimeEstimator {
             TimeControl::NodeCount(_) => zero,
             TimeControl::Infinite => zero,
             TimeControl::MateIn(_) => zero,
-            TimeControl::Fischer(rt) => self.calc_from_remaining(&rt),
+            TimeControl::UciFischer(rt) => self.calc_from_remaining(&rt),
+            TimeControl::FischerMulti{..} => panic!("FischerMulti"),
         }
     }
 }

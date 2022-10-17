@@ -210,6 +210,14 @@ impl Formatting {
         }
     }
 
+    pub fn hhmmss(d: Duration) -> String {
+        let hours = d.as_secs() / (60 * 60) % 24;
+        let mins = d.as_secs() / 60;
+        let secs = d.as_secs_f32() - (60 * mins) as f32;
+        let mins = mins % 60;
+        format!("{hours:02}:{mins:02}:{secs:02.0}")
+    }
+
     pub fn f64(n: f64) -> String {
         format_num!(".4s", n)
     }
@@ -262,9 +270,9 @@ pub struct KeywordIter {
     text: String,
 }
 
-/// splits on words, with (matching_word, between) being returned
-/// optional greedy word consumes the rest of the string
 impl KeywordIter {
+    /// splits on words, with (matching_word, between) being returned
+    /// optional greedy word consumes the rest of the string
     pub fn new(words: &[&str], greedy_word: Option<&str>, text: &str) -> Self {
         Self {
             // ensure words sorted in reverse length order: in cases one word
@@ -566,6 +574,7 @@ mod tests {
 
     #[test]
     fn test_formatter() {
+        assert_eq!(Formatting::hhmmss(Duration::from_millis(12345678)).as_str(), "03:25:46");
         assert_eq!(Formatting::f64(12345567.0).as_str(), "12.35M");
         assert_eq!(Formatting::f64(0.0).as_str(), "0.000");
         assert_eq!(Formatting::f64(1234567890123.0).as_str(), "1.235T");

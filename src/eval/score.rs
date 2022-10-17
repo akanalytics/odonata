@@ -155,6 +155,22 @@ impl Score {
         }
     }
 
+    /// +1.35
+    /// -0.34
+    /// +M8
+    /// -M5
+    pub fn to_pgn(&self) -> Option<String> {
+        if let Some(cp) = self.cp() {
+            Some(format!("{eval:+0.2}", eval = cp as f32 / 100.0))
+        } else {
+            match self.mate_in() {
+                Some(x) if x >= 0 => Some(format!("+M{x}")),
+                Some(x) => Some(format!("-M{y}", y = x.abs())),
+                None => None,
+            }
+        }
+    }
+
     const MIN_NUMERIC: i16 = -Self::INF + 1 + MAX_PLY as i16;
     const MAX_NUMERIC: i16 = i16::MAX - 1 - MAX_PLY as i16;
 
@@ -431,6 +447,10 @@ mod tests {
         assert_eq!(Score::parse_uci("cp -1")?.to_uci(), "cp -1");
         assert_eq!(Score::parse_uci("mate 3")?.to_uci(), "mate 3");
         assert_eq!(Score::parse_uci("mate -3")?.to_uci(), "mate -3");
+        assert_eq!(Score::from_cp(100).to_pgn(), Some("+1.00".into()));
+        assert_eq!(Score::from_cp(0).to_pgn(), Some("+0.00".into()));
+        assert_eq!(Score::from_cp(-870).to_pgn(), Some("-8.70".into()));
+        assert_eq!(Score::from_mate_in_moves(5).to_pgn(), None);
         Ok(())
     }
 

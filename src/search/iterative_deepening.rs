@@ -7,6 +7,7 @@ use crate::search::node::Node;
 use crate::search::timecontrol::TimeControl;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::time::Duration;
 
 use super::node::Event;
 use crate::domain::SearchResults;
@@ -140,7 +141,8 @@ impl Algo {
         };
 
         // record final outcome of search
-        self.game.make_engine_move(results.clone()); // *self.mte.time_control());
+        self.game
+            .make_engine_move(results.clone(), Duration::from_millis(results.time_millis)); // *self.mte.time_control());
         self.results = results;
 
         // report progress back to uci

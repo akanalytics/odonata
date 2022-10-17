@@ -11,12 +11,11 @@ use crate::infra::version::Version;
 use crate::movelist::MoveList;
 use crate::mv::Move;
 use crate::perft::Perft;
-use crate::piece::Ply;
 use crate::position::Position;
 use crate::search::engine::AsyncEngine;
 use crate::search::node::Node;
 use crate::search::search_progress::{Info, SearchProgressMode};
-use crate::search::timecontrol::{RemainingTime, TimeControl};
+use crate::search::timecontrol::TimeControl;
 use crate::tags::Tag;
 use crate::variation::Variation;
 use std::collections::HashMap;
@@ -202,7 +201,7 @@ impl UciServer {
             "setoption" => self.uci_setoption(&input),
             "ucinewgame" => self.uci_newgame(),
             "position" => self.uci_position(&Args::parse(&input)),
-            "go" => self.uci_go(&Args::parse(&input)),
+            "go" => self.uci_go(&input),
             "stop" => self.uci_stop(),
             "quit" => self.uci_quit(),
             "ponderhit" => self.uci_ponder_hit(),
@@ -461,34 +460,13 @@ impl UciServer {
         Ok(movelist)
     }
 
-    fn uci_go(&mut self, args: &Args) -> Result<()> {
+    fn uci_go(&mut self, input: &str) -> Result<()> {
+        let args = Args::parse(input);
+       
         self.engine.lock().unwrap().search_stop();
         let ponder = args.contain("ponder");
-        info!("uci go args: {}", args.words.join(" "));
+        info!("uci go args: {input}");
 
-        //  search x ply only
-        let depth = args.int_after("depth");
-
-        // white/black has x msec left on the clock
-        let wtime = args.int_after("wtime");
-        let btime = args.int_after("btime");
-
-        // white & black increment per move in mseconds if x > 0 (fisher)
-        let winc = args.int_after("winc");
-        let binc = args.int_after("binc");
-
-        // there are x moves to the next time control, this will only be sent if x > 0,
-        // if you don't get this and get the wtime and btime it's sudden death
-        let movestogo = args.int_after("movestogo");
-        //search x nodes only
-        let nodes = args.int_after("nodes");
-        // search for a mate in x moves
-        let mate = args.int_after("mate");
-
-        // search for exactly x millis
-        let movetime = args.int_after("movetime");
-        // search until the "stop" command. Do not exit the search without being told so in this mode!
-        let infinite = args.contain("infinite");
 
         if self.debug {
             // debug mode we clear hash / history etc every search
@@ -496,32 +474,10 @@ impl UciServer {
             self.uci_newgame()?;
         }
 
-        let tc = if infinite {
-            TimeControl::Infinite
-        } else if let Some(depth) = depth {
-            TimeControl::Depth(depth as Ply)
-        } else if let Some(nodes) = nodes {
-            TimeControl::NodeCount(nodes as u64)
-        } else if let Some(movetime) = movetime {
-            TimeControl::SearchTime(Duration::from_millis(movetime as u64))
-        } else if let Some(mate) = mate {
-            TimeControl::MateIn(mate as u32)
-        } else if let Some(wtime) = wtime {
-            let btime = btime.unwrap_or(0) as u64;
-            let winc = winc.unwrap_or(0) as u64;
-            let binc = binc.unwrap_or(0) as u64;
-            let moves_to_go = movestogo.unwrap_or(0) as u16;
-            TimeControl::Fischer(RemainingTime {
-                our_color: self.board.color_us(),
-                wtime: Duration::from_millis(wtime as u64),
-                btime: Duration::from_millis(btime),
-                winc: Duration::from_millis(winc),
-                binc: Duration::from_millis(binc),
-                moves_to_go,
-            })
-        } else {
-            TimeControl::default()
-        };
+        let mut tc = TimeControl::parse_uci(input)?;
+        if let TimeControl::UciFischer(ref mut rt) = tc {
+            rt.our_color = self.board.color_us();
+        }
 
         self.engine.lock().unwrap().algo.set_timing_method(tc);
         self.engine
@@ -533,7 +489,7 @@ impl UciServer {
         // restrict search to this moves only
         // Example: After "position startpos" and "go infinite searchmoves e2e4 d2d4"
         // the engine should only search the two moves e2e4 and d2d4 in the initial position
-        let search_moves = Self::parse_movelist(args, &self.board)?;
+        let search_moves = Self::parse_movelist(&args, &self.board)?;
         self.engine.lock().unwrap().algo.restrictions.include_moves = search_moves;
         // self.log_debug_message("starting search with configuration ...");
         // self.log_debug_message(&format!("{}", self.engine.lock().unwrap().algo));

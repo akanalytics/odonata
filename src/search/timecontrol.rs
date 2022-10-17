@@ -1,7 +1,8 @@
 use anyhow::Context;
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::infra::utils::{Displayable, Formatting};
+use crate::infra::utils::{Formatting, KeywordIter, Uci};
 use crate::piece::{Color, Ply};
 use std::fmt;
 use std::str::FromStr;
@@ -32,7 +33,7 @@ impl RemainingTime {
 
 /// https://en.wikipedia.org/wiki/Time_control
 ///
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Serialize)]
 pub enum TimeControl {
     DefaultTime,          // depth "recommended" by EPD position or otherwise
     Depth(Ply),           // uci "depth"
@@ -40,28 +41,39 @@ pub enum TimeControl {
     NodeCount(u64),       // uci "nodes"
     Infinite,             // uci "infinite"
     MateIn(u32),          // uci "mate"
-    Fischer(RemainingTime),
+    UciFischer(RemainingTime),
+    FischerMulti { moves: i32, secs: f32, inc: f32 },
 }
 
 impl fmt::Display for TimeControl {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            TimeControl::DefaultTime => write!(f, "Default")?,
-            TimeControl::Depth(max_ply) => write!(f, "Depth({})", max_ply)?,
-            TimeControl::SearchTime(duration) => {
-                write!(f, "SearchTime({})", Formatting::duration(*duration))?
-            }
-            TimeControl::NodeCount(max_nodes) => {
-                write!(f, "NodeCount({})", Formatting::u128(*max_nodes as u128))?
-            }
-            TimeControl::Infinite => write!(f, "Infinite")?,
-            TimeControl::MateIn(depth) => write!(f, "MateIn({})", depth)?,
-            TimeControl::Fischer(rt) => {
-                let duration = rt.our_time_and_inc().0;
-                write!(f, "RemainingTime({})", Formatting::duration(duration))?;
-            }
-        }
-        Ok(())
+        self.fmt_option(f)
+        // match self {
+        //     TimeControl::DefaultTime => write!(f, "Default")?,
+        //     TimeControl::Depth(max_ply) => write!(f, "Depth({})", max_ply)?,
+        //     TimeControl::SearchTime(duration) => {
+        //         write!(f, "SearchTime({})", Formatting::duration(*duration))?
+        //     }
+        //     TimeControl::NodeCount(max_nodes) => {
+        //         write!(f, "NodeCount({})", Formatting::u128(*max_nodes as u128))?
+        //     }
+        //     TimeControl::Infinite => write!(f, "Infinite")?,
+        //     TimeControl::MateIn(depth) => write!(f, "MateIn({})", depth)?,
+        //     TimeControl::UciFischer(rt) => {
+        //         let duration = rt.our_time_and_inc().0;
+        //         write!(f, "RemainingTime({})", Formatting::duration(duration))?;
+        //     }
+        //     TimeControl::FischerMulti { moves, secs, inc } => {
+        //         write!(f, "Fischer({moves}",)?;
+        //         if secs > &0. {
+        //             write!(f, "/{s}", s = secs)?;
+        //         }
+        //         if inc > &0. {
+        //             write!(f, "+{i}", i = inc)?;
+        //         }
+        //     }
+        // }
+        // Ok(())
     }
 }
 
@@ -69,7 +81,7 @@ impl FromStr for TimeControl {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> anyhow::Result<Self> {
-        TimeControl::parse(s)
+        TimeControl::parse_option(s)
     }
 }
 
@@ -79,7 +91,7 @@ impl Default for TimeControl {
     }
 }
 
-impl TimeControl {
+impl Uci for TimeControl {
     fn fmt_uci(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use TimeControl::*;
         match self {
@@ -89,7 +101,7 @@ impl TimeControl {
             NodeCount(nodes) => write!(f, "nodes {nodes}")?,
             Infinite => write!(f, "infinite")?,
             MateIn(depth) => write!(f, "mate {depth}")?,
-            Fischer(RemainingTime {
+            UciFischer(RemainingTime {
                 wtime,
                 btime,
                 winc,
@@ -113,58 +125,139 @@ impl TimeControl {
                     write!(f, "movestogo {moves_to_go}")?;
                 }
             }
+            FischerMulti { .. } => panic!("Unable to format FischerMulti as a uci time control"),
+        }
+        Ok(())
+    }
+
+    fn parse_uci(s: &str) -> anyhow::Result<Self> {
+        let words = [
+            "depth",
+            "wtime",
+            "btime",
+            "winc",
+            "binc",
+            "movestogo",
+            "nodes",
+            "mate",
+            "movetime",
+            "infinite",
+        ];
+
+        let mut rt = RemainingTime::default();
+        let mut fischer = false;
+        let iter = KeywordIter::new(&words, None, &s);
+        for (key, value) in iter {
+            if ["wtime", "btime"].contains(&key.as_str()) {
+                fischer = true;
+            }
+            let v = value.trim().to_string();
+            match (key.as_str(), v) {
+                ("depth", t) => return Ok(TimeControl::Depth(t.parse().context(t)?)),
+                ("nodes", t) => return Ok(TimeControl::NodeCount(t.parse().context(t)?)),
+                ("mate", t) => return Ok(TimeControl::MateIn(t.parse().context(t)?)),
+                ("movetime", t) => {
+                    return Ok(TimeControl::from_move_time_millis(t.parse().context(t)?))
+                }
+                ("infinite", _) => return Ok(TimeControl::Infinite),
+                ("wtime", t) => rt.wtime = Duration::from_millis(t.parse().context(t)?),
+                ("btime", t) => rt.btime = Duration::from_millis(t.parse().context(t)?),
+                ("winc", t) => rt.winc = Duration::from_millis(t.parse().context(t)?),
+                ("binc", t) => rt.binc = Duration::from_millis(t.parse().context(t)?),
+                ("movestogo", t) => rt.moves_to_go = t.parse().context(t)?,
+                (k, _) => anyhow::bail!("Unknown item {k} in time control '{s}'"),
+            }
+        }
+        if fischer {
+            return Ok(TimeControl::UciFischer(rt));
+        }
+        Ok(TimeControl::default())
+    }
+}
+
+impl TimeControl {
+    pub fn fmt_option(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            TimeControl::Infinite => write!(f, "inf")?,
+            TimeControl::DefaultTime => write!(f, "def")?,
+            TimeControl::SearchTime(dur) => write!(f, "st={d}", d = dur.as_secs_f64())?,
+            TimeControl::MateIn(depth) => write!(f, "mate={depth}")?,
+            TimeControl::Depth(d) => write!(f, "depth={d}")?,
+            TimeControl::NodeCount(nodes) => write!(f, "nodes={nodes}")?,
+            TimeControl::UciFischer(rt) => {
+                let duration = rt.our_time_and_inc().0;
+                write!(f, "tc=(rt={dur})", dur = Formatting::duration(duration))?;
+            }
+            TimeControl::FischerMulti { moves, secs, inc } => {
+                write!(f, "{moves}",)?;
+                if secs > &0. {
+                    write!(f, "/{s}", s = secs)?;
+                }
+                if inc > &0. {
+                    write!(f, "+{i}", i = inc)?;
+                }
+            }
         };
         Ok(())
     }
 
-    pub fn to_uci(&self) -> String {
-        Displayable(|fmt| self.fmt_uci(fmt)).to_string()
-    }
-
-    pub fn parse(tc: &str) -> anyhow::Result<Self> {
-        fn parse_inner(tc: &str) -> anyhow::Result<TimeControl> {
-            if tc == "inf" {
-                Ok(TimeControl::Infinite)
-            } else if tc.ends_with("def") {
-                Ok(TimeControl::DefaultTime)
-            } else if let Some(tc) = tc.strip_prefix("st=") {
-                let secs = tc.parse::<f64>()?;
-                Ok(TimeControl::SearchTime(Duration::from_secs_f64(secs)))
-            } else if let Some(tc) = tc.strip_prefix("mate=") {
-                let depth = tc.parse::<u32>()?;
-                Ok(TimeControl::MateIn(depth))
-            } else if let Some(tc) = tc.strip_prefix("tc=") {
-                let time = tc.parse::<u64>()?;
-                let rt = RemainingTime {
-                    wtime: Duration::from_secs(time),
-                    btime: Duration::from_secs(time),
-                    ..RemainingTime::default()
-                };
-                Ok(TimeControl::Fischer(rt))
-            } else if let Some(tc) = tc.strip_prefix("depth=") {
-                let depth = tc.parse::<i32>()?;
-                Ok(TimeControl::Depth(depth))
-            } else if let Some(tc) = tc.strip_prefix("nodes=") {
-                let nodes = tc.parse::<u64>()?;
-                Ok(TimeControl::NodeCount(nodes))
-            } else if tc.starts_with("pgn:") {
-                let rt = RemainingTime {
-                    wtime: Duration::from_secs(960),
-                    btime: Duration::from_secs(960),
-                    moves_to_go: 40,
-                    ..RemainingTime::default()
-                };
-                Ok(TimeControl::Fischer(rt))
-            } else {
-                anyhow::bail!("Unable to parse time control {}", tc);
+    pub fn parse_pgn(s: &str) -> anyhow::Result<TimeControl> {
+        let tc = s.split(":").take(1).collect_vec().join("");
+        let moves;
+        let (mut secs, mut inc) = (0., 0.);
+        if tc.contains('/') && !tc.contains('+') {
+            match tc.split_once('/') {
+                Some((m, s)) => {
+                    moves = m.parse().context(m.to_string())?;
+                    secs = s.parse().context(s.to_string())?;
+                    return Ok(TimeControl::FischerMulti { moves, secs, inc });
+                }
+                _ => anyhow::bail!("failed to parse time control as moves/secs"),
             }
         }
+        if !tc.contains('/') && tc.contains('+') {
+            match tc.split_once('+') {
+                Some((m, i)) => {
+                    moves = m.parse().context(m.to_string())?;
+                    inc = i.parse().context(i.to_string())?;
+                    return Ok(TimeControl::FischerMulti { moves, secs, inc });
+                }
+                _ => anyhow::bail!("failed to parse time control '{s}' as moves+inc"),
+            }
+        }
+        anyhow::bail!("expected time control format moves/secs or moves+inc but found '{s}'");
+    }
 
-        parse_inner(tc).with_context(|| format!("parsing time control '{tc}'"))
+    fn parse_without_context(tc: &str) -> anyhow::Result<TimeControl> {
+        if tc == "inf" {
+            Ok(TimeControl::Infinite)
+        } else if tc.ends_with("def") {
+            Ok(TimeControl::DefaultTime)
+        } else if let Some(tc) = tc.strip_prefix("st=") {
+            let secs = tc.parse::<f64>()?;
+            Ok(TimeControl::SearchTime(Duration::from_secs_f64(secs)))
+        } else if let Some(tc) = tc.strip_prefix("mate=") {
+            let depth = tc.parse::<u32>()?;
+            Ok(TimeControl::MateIn(depth))
+        } else if let Some(tc) = tc.strip_prefix("tc=") {
+            Self::parse_pgn(tc)
+        } else if let Some(tc) = tc.strip_prefix("depth=") {
+            let depth = tc.parse::<i32>()?;
+            Ok(TimeControl::Depth(depth))
+        } else if let Some(tc) = tc.strip_prefix("nodes=") {
+            let nodes = tc.parse::<u64>()?;
+            Ok(TimeControl::NodeCount(nodes))
+        } else {
+            anyhow::bail!("Unable to parse time control {}", tc);
+        }
+    }
+
+    pub fn parse_option(tc: &str) -> anyhow::Result<Self> {
+        Self::parse_without_context(tc).with_context(|| format!("parsing time control '{tc}'"))
     }
 
     pub fn from_remaining_time(d: Duration) -> Self {
-        TimeControl::Fischer(RemainingTime {
+        TimeControl::UciFischer(RemainingTime {
             wtime: d,
             btime: d,
             ..Default::default()
@@ -187,32 +280,72 @@ mod tests {
 
     #[test]
     fn test_time_control() -> anyhow::Result<()> {
-        assert_eq!(TimeControl::parse("depth=3".into())?, TimeControl::Depth(3));
-        println!("{}", TimeControl::parse("depth=3".into())?);
+        assert_eq!(
+            TimeControl::parse_option("depth=3".into())?,
+            TimeControl::Depth(3)
+        );
+        println!("{}", TimeControl::parse_option("depth=3".into())?);
 
         // let tc = TimeControl::parse("nodes=1000".into())?;
         // assert!(toml::to_string_pretty(&tc).unwrap().len() > 0);
 
-        assert_eq!(TimeControl::parse("def".into())?, TimeControl::DefaultTime);
-        println!("{}", TimeControl::parse("def".into())?);
-
-        assert_eq!(TimeControl::parse("inf".into())?, TimeControl::Infinite);
-        println!("{}", TimeControl::parse("inf".into())?);
+        assert_eq!(
+            TimeControl::parse_option("def".into())?,
+            TimeControl::DefaultTime
+        );
+        println!("{}", TimeControl::parse_option("def".into())?);
 
         assert_eq!(
-            TimeControl::parse("nodes=1000".into())?,
+            TimeControl::parse_option("inf".into())?,
+            TimeControl::Infinite
+        );
+        println!("{}", TimeControl::parse_option("inf".into())?);
+
+        assert_eq!(
+            TimeControl::parse_option("nodes=1000".into())?,
             TimeControl::NodeCount(1000)
         );
-        println!("{}", TimeControl::parse("nodes=1000".into())?);
+        println!("{}", TimeControl::parse_option("nodes=1000".into())?);
 
         assert_eq!(
-            TimeControl::parse("st=10.980".into())?,
+            TimeControl::parse_option("st=10.980".into())?,
             TimeControl::SearchTime(Duration::from_millis(10980))
         );
-        println!("{}", TimeControl::parse("st=10.980".into())?);
+        println!("{}", TimeControl::parse_option("st=10.980".into())?);
 
-        assert_eq!(TimeControl::parse("mate=3".into())?, TimeControl::MateIn(3));
-        println!("{}", TimeControl::parse("mate=3".into())?);
+        assert_eq!(
+            TimeControl::parse_option("mate=3".into())?,
+            TimeControl::MateIn(3)
+        );
+        println!("{}", TimeControl::parse_option("mate=3".into())?);
+
+        assert_eq!(
+            TimeControl::parse_option("tc=5/60".into())?,
+            TimeControl::FischerMulti {
+                moves: 5,
+                secs: 60.,
+                inc: 0.
+            }
+        );
+
+        assert_eq!(
+            TimeControl::parse_option("tc=5+.1".into())?,
+            TimeControl::FischerMulti {
+                moves: 5,
+                secs: 0.,
+                inc: 0.1
+            }
+        );
+
+        assert_eq!(
+            TimeControl::parse_option("tc=40/960:40/960:40/960".into())?,
+            TimeControl::FischerMulti {
+                moves: 40,
+                secs: 960.,
+                inc: 0.
+            }
+        );
+
         Ok(())
     }
 }

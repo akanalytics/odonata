@@ -1,10 +1,13 @@
 #![cfg_attr(debug_assertions, allow(dead_code))]
-#![warn(clippy::all)]
-#![warn(clippy::correctness)]
-#![warn(clippy::style)]
-#![warn(clippy::complexity)]
-#![warn(clippy::perf)]
-
+#![warn(
+    clippy::all,
+    clippy::pedantic,
+    clippy::correctness,
+    clippy::style,
+    clippy::complexity,
+    clippy::cargo,
+    clippy::perf
+)]
 extern crate test_log;
 
 extern crate include_dir;
