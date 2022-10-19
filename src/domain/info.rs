@@ -8,7 +8,7 @@ use crate::{
     mv::{BareMove, Move},
     piece::Ply,
     variation::Variation,
-    MoveList,
+    MoveList, board::Board,
 };
 
 #[derive(Clone, Default, Debug, PartialEq)]
@@ -55,6 +55,11 @@ impl BareMoveVariation {
     pub fn push(&mut self, mv: BareMove) {
         self.0.push(mv);
     }
+
+    pub fn to_san(&self, b: &Board) -> String {
+        Variation::from_inner(self, b).to_san(b)
+    }
+
 
     // truncate the variation to length ply
     // so the result does not include the ply-th move in the variation

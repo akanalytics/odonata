@@ -125,7 +125,7 @@ impl Uci for SearchResults {
 }
 
 impl SearchResults {
-    pub fn from_infos(_bm: BareMove, _pm: Option<BareMove>, infos: Vec<Info>) -> Self {
+    pub fn from_infos(bm: BareMove, pm: Option<BareMove>, infos: Vec<Info>) -> Self {
         fn calculate_nodes_for_iid(n: Ply, infos: &[Info]) -> anyhow::Result<u64> {
             let info_n = infos
                 .iter()
@@ -169,7 +169,14 @@ impl SearchResults {
                 infos,
             }
         } else {
-            SearchResults::default()
+            let mut sr = SearchResults::default();
+            let mut var = BareMoveVariation::new();
+            var.push(bm);
+            if let Some(pm) = pm {
+                var.push(pm);
+            }
+            sr.multi_pv = vec![(var, Score::default())];
+            sr
         }
     }
 

@@ -71,6 +71,10 @@ impl BareMove {
     pub fn is_null(&self) -> bool {
         self.to == self.from
     }
+
+    pub fn to_san(&self, b: &Board) -> String {
+        b.to_san(&b.augment_move(*self))
+    }
 }
 
 impl FromStr for BareMove {

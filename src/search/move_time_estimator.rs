@@ -290,6 +290,7 @@ impl MoveTimeEstimator {
             } else {
                 remaining / self.moves_rem as u32
             };
+            // info!("MTE--> rt={rt:?}, remaining = {remaining:?} per_move = {pm} moves_rem = {moves_rem}", moves_rem = self.moves_rem, pm = Formatting::duration(per_move));
             // error!(
             //     "MTE {} {} {} {} mtg {moves_to_go} pma {} pmb {}",
             //     Formatting::duration(wtime),

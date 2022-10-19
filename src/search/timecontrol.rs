@@ -2,7 +2,7 @@ use anyhow::Context;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::infra::utils::{Formatting, KeywordIter, Uci};
+use crate::infra::utils::{KeywordIter, Uci};
 use crate::piece::{Color, Ply};
 use std::fmt;
 use std::str::FromStr;
@@ -111,18 +111,18 @@ impl Uci for TimeControl {
             }) => {
                 write!(
                     f,
-                    "wtime {wt} btime {bt}",
+                    "wtime {wt} btime {bt} ",
                     wt = wtime.as_millis(),
                     bt = btime.as_millis()
                 )?;
                 if !winc.is_zero() {
-                    write!(f, "winc {wi}", wi = winc.as_millis())?;
+                    write!(f, "winc {wi} ", wi = winc.as_millis())?;
                 }
                 if !binc.is_zero() {
-                    write!(f, "binc {bi}", bi = binc.as_millis())?;
+                    write!(f, "binc {bi} ", bi = binc.as_millis())?;
                 }
                 if *moves_to_go > 0 {
-                    write!(f, "movestogo {moves_to_go}")?;
+                    write!(f, "movestogo {moves_to_go} ")?;
                 }
             }
             FischerMulti { .. } => panic!("Unable to format FischerMulti as a uci time control"),
@@ -185,8 +185,8 @@ impl TimeControl {
             TimeControl::Depth(d) => write!(f, "depth={d}")?,
             TimeControl::NodeCount(nodes) => write!(f, "nodes={nodes}")?,
             TimeControl::UciFischer(rt) => {
-                let duration = rt.our_time_and_inc().0;
-                write!(f, "tc=(rt={dur})", dur = Formatting::duration(duration))?;
+                // let duration = rt.our_time_and_inc().0;
+                write!(f, "tc=(rt={rt:?})")?;
             }
             TimeControl::FischerMulti { moves, secs, inc } => {
                 write!(f, "{moves}",)?;

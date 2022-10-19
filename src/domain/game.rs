@@ -6,7 +6,7 @@ use crate::infra::utils::{Formatting, Uci};
 use crate::movelist::strip_move_numbers;
 use crate::other::outcome::Outcome;
 use crate::piece::{Ply, ScoreWdl};
-use crate::search::timecontrol::TimeControl;
+use crate::search::timecontrol::{TimeControl, RemainingTime};
 use crate::tags::Tag;
 use crate::variation::Variation;
 use crate::{Color, Position};
@@ -493,6 +493,10 @@ impl Game {
         var
     }
 
+    pub fn total_emt_for_ply(&self, ply: usize) -> Duration {
+        self.moves.iter().take(ply).rev().step_by(2).map(|gm| gm.elapsed_move_time()).sum()
+    }
+
     // 0 <= ply <= len
     // ply = 0 is before first move
     // ply = 1 before second move
@@ -520,8 +524,25 @@ impl Game {
         // }
 
 
-    pub fn time_control_for_ply(&self, _ply: Ply) -> TimeControl {
-        self.header().time_control().clone()
+    pub fn time_control_for_ply(&self, ply: usize) -> TimeControl {
+        match self.header().time_control() {
+            TimeControl::FischerMulti { moves, secs, inc } => {
+                let time = Duration::from_secs_f32(secs + ((ply/2) as i32/ moves) as f32 * secs + (ply/2) as f32 * inc);
+                let our_color = self.board_for_ply(ply).color_us();
+                let their_elapsed = self.total_emt_for_ply(ply);
+                let our_elapsed = self.total_emt_for_ply(ply.saturating_sub(1));
+                let rt = RemainingTime {
+                    our_color,
+                    wtime: time - our_color.chooser_wb(our_elapsed, their_elapsed),
+                    btime: time - our_color.chooser_wb(their_elapsed, our_elapsed),
+                    winc: Duration::from_secs_f32(*inc),
+                    binc: Duration::from_secs_f32(*inc),
+                    moves_to_go: (moves - (ply/2) as i32 % moves) as u16,
+                };
+                TimeControl::UciFischer(rt)
+            },
+            other => other.clone(),
+        }
         // let game_tc = self.header().time_control();
         // if let TimeControl::Fischer(game_rt) = game_tc {
         //     if ply == 0 { TimeControl::Fischer(*game_rt) }
@@ -566,7 +587,9 @@ impl Game {
     pub fn export<W: Write>(&self, mut w: W) -> Result<()> {
         #[derive(Tabled, Default)]
         struct Row {
-            id: usize,
+            fmvn: usize,
+            wb: Color,
+            ply: usize,
             depth: Ply,
             seldepth: Ply,
             time_millis: u64,
@@ -579,16 +602,19 @@ impl Game {
             our_time_secs: f32,
             their_time_secs: f32,
             moves_to_go: u16,
-            pv: BareMoveVariation,
+            pv: String,
         }
 
         if !self.moves.is_empty() {
             writeln!(
                 w,
                 "{}",
-                Table::new(self.moves.iter().enumerate().map(|(i, gm)| {
+                Table::new(self.moves.iter().enumerate().map(|(ply, gm)| {
+                    let b = self.board_for_ply(ply);
                     let mut row = Row {
-                        id: i,
+                        fmvn: b.fullmove_number() as usize,
+                        wb: b.color_us(),
+                        ply,
                         .. Row::default()
                     };
                     if let Some(sr) = &gm.sr {
@@ -601,7 +627,7 @@ impl Game {
                         row.hashfull = format!("{}%", sr.hashfull_per_mille / 10);
                         row.mv = sr.best_move().unwrap_or_default();
                         row.score_pov = sr.score();
-                        row.pv = sr.pv();
+                        row.pv = sr.pv().to_san(&b);
                     }
                     // if let TimeControl::Fischer(rt) = gm.tc {
                     //     row.our_time_secs = rt.our_time_and_inc().0.as_secs_f32();
@@ -650,7 +676,7 @@ impl Game {
 
     /// sets outcome and result too
     pub fn make_move(&mut self, mv: BareMove) {
-        println!("Game move {ply} {mv}", ply = self.len());
+        info!("Game move {ply} {mv}", ply = self.len());
         self.moves.push(GameMove {
             mv,
             .. GameMove::default()
@@ -760,6 +786,33 @@ mod tests {
         println!("{board}", board = game.board_for_ply(2));
         assert_eq!(game.board_for_ply(2).fullmove_number(), 2);
 
+    }
+
+    #[test]
+    fn test_tc_for_ply() {
+        let mut game = Game::with_time_control(TimeControl::FischerMulti{ moves: 2, secs: 10., inc: 0.});
+
+        let sr = SearchResults::parse_uci("bestmove a2a4").unwrap();
+        game.make_engine_move(sr, Duration::from_secs(1));
+        let sr = SearchResults::parse_uci("bestmove a7a5").unwrap();
+        game.make_engine_move(sr, Duration::from_secs(4));
+
+        let sr = SearchResults::parse_uci("bestmove h2h4").unwrap();
+        game.make_engine_move(sr, Duration::from_secs(2));
+        let sr = SearchResults::parse_uci("bestmove h7h5").unwrap();
+        game.make_engine_move(sr, Duration::from_secs(4));
+
+        let tc = game.time_control_for_ply(0);
+        println!("{}",tc);
+        assert_eq!(tc.to_string(), "tc=(rt=RemainingTime { our_color: White, wtime: 10s, btime: 10s, winc: 10s, binc: 10s, moves_to_go: 2 })");
+        println!("{}",game.time_control_for_ply(1));
+
+        println!("{}",game.time_control_for_ply(2));
+        println!("{}",game.time_control_for_ply(3));
+
+        let tc = game.time_control_for_ply(4);
+        println!("{}",tc);
+        assert_eq!(tc.to_string(), "tc=(rt=RemainingTime { our_color: White, wtime: 17s, btime: 12s, winc: 10s, binc: 10s, moves_to_go: 2 })");
     }
 
     #[test]
