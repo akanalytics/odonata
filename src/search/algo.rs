@@ -134,7 +134,7 @@ impl Engine for Algo {
 /// builder methods
 impl Algo {
     pub fn new() -> Algo {
-        Algo::default()
+        Algo::from_config()
     }
 
     pub fn from_config() -> Algo {

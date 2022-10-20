@@ -93,6 +93,7 @@ impl Algo {
             let t = Metrics::timing_start();
             // self.stats.new_iteration();
             multi_pv.resize_with(self.restrictions.multi_pv_count, Default::default);
+            let mut exit = false;
             for i in 0..self.restrictions.multi_pv_count {
                 let score = self
                     .aspirated_search(&mut self.board.clone(), &mut Node::root(ply))
@@ -114,13 +115,10 @@ impl Algo {
 
                 self.progress.snapshot_bests();
                 self.controller.invoke_callback(&self.progress);
-                let exit = self.exit_iteration(ply, score);
+                exit = self.exit_iteration(ply, score);
 
                 multi_pv[i] = (pv.to_inner(), score);
 
-                if exit {
-                    break 'outer;
-                }
                 if let Some(mv) = multi_pv[i].0.first() {
                     let mv = self.board.augment_move(mv);
                     self.restrictions.exclude_moves.push(mv);
@@ -128,6 +126,9 @@ impl Algo {
             }
             if let Some(t) = t {
                 Metrics::elapsed(ply, t.elapsed(), Event::DurationIterActual);
+            }
+            if exit {
+                break 'outer;
             }
             last_good_multi_pv = std::mem::take(&mut multi_pv);
             ply += self.ids.step_size
