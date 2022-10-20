@@ -1,9 +1,9 @@
 use crate::bits::bitboard::Bitboard;
 use crate::board::Board;
-use crate::movelist::MoveList;
+use crate::infra::utils::{Displayable, Formatting};
+use crate::movelist::{MoveList, ScoredMoveList};
 use crate::mv::Move;
 use crate::piece::Ply;
-use crate::infra::utils::Formatting;
 use crate::variation::Variation;
 use anyhow::{anyhow, Result};
 use once_cell::sync::Lazy;
@@ -35,6 +35,7 @@ pub enum Tag {
     None,
     AvoidMoves(MoveList),
     BestMoves(MoveList),
+    BestScoredMoves(ScoredMoveList),
     BranchingFactorPercent(u32), // 100x
     Pv(Variation),
     Id(String),
@@ -62,6 +63,7 @@ pub enum Tag {
 impl Tag {
     pub const AM: &'static str = "am";
     pub const BM: &'static str = "bm";
+    pub const BSM: &'static str = "Bsm"; // best scored moves "Bsm a4:+45 Nf6:-56;"
     pub const BF: &'static str = "Bf";
     pub const PV: &'static str = "pv";
     pub const ID: &'static str = "id";
@@ -91,6 +93,7 @@ impl Tag {
         Ok(match key {
             Self::AM => Tag::AvoidMoves(b.parse_san_movelist(v)?),
             Self::BM => Tag::BestMoves(b.parse_san_movelist(v)?),
+            Self::BSM => Tag::BestScoredMoves(ScoredMoveList::parse_san(v, b)?),
             Self::BF => Tag::BranchingFactorPercent((100.0 * v.parse::<f64>()?) as u32),
             Self::PV => Tag::Pv(b.parse_san_variation(v)?),
             Self::ID => Tag::Id(v.to_string()),
@@ -129,6 +132,7 @@ impl Tag {
             Tag::None => "".to_string(),
             Tag::AvoidMoves(_) => Self::AM.to_string(),
             Tag::BestMoves(_) => Self::BM.to_string(),
+            Tag::BestScoredMoves(_) => Self::BSM.to_string(),
             Tag::BranchingFactorPercent(_) => Self::BF.to_string(),
             Tag::Pv(_) => Self::PV.to_string(),
             Tag::Id(_) => Self::ID.to_string(),
@@ -136,15 +140,15 @@ impl Tag {
             Tag::AnalysisCountSelDepth(_) => Self::ACSD.to_string(),
             Tag::AnalysisCountNodes(_) => Self::ACN.to_string(),
             Tag::AnalysisCountSeconds(_) => Self::ACS.to_string(),
-            Tag::ChessClock(_) => "cc".to_string(),
+            Tag::ChessClock(_) => Self::CC.to_string(),
             Tag::CentipawnEvaluation(_) => Self::CE.to_string(),
             Tag::DirectMate(_) => Self::DM.to_string(),
-            Tag::FullMoveNumber(_) => "fmvn".to_string(),
-            Tag::HalfMoveClock(_) => "hmvc".to_string(),
-            Tag::PredictedMove(_) => "pm".to_string(),
-            Tag::RepititionCount(_) => "rc".to_string(),
-            Tag::Result(_) => "Res".to_string(),
-            Tag::NoOp(_) => "noop".to_string(),
+            Tag::FullMoveNumber(_) => Self::FMVN.to_string(),
+            Tag::HalfMoveClock(_) => Self::HMVC.to_string(),
+            Tag::PredictedMove(_) => Self::PM.to_string(),
+            Tag::RepititionCount(_) => Self::RC.to_string(),
+            Tag::Result(_) => Self::RES.to_string(),
+            Tag::NoOp(_) => Self::NOOP.to_string(),
             Tag::SuppliedMove(_) => Self::SM.to_string(),
             Tag::SuppliedVariation(_) => Self::SV.to_string(),
             Tag::Squares(_) => Self::SQ.to_string(),
@@ -160,6 +164,7 @@ impl Tag {
             Tag::None => "".to_string(),
             Tag::AvoidMoves(mvs) => mvs.uci(),
             Tag::BestMoves(mvs) => mvs.uci(),
+            Tag::BestScoredMoves(mvs) => format!("{:?}", mvs),
             Tag::BranchingFactorPercent(bf) => Formatting::decimal(2, *bf as f32 / 100.0),
             Tag::Pv(variation) => variation.to_uci(),
             Tag::Id(s) => format!("{}", s),
@@ -189,6 +194,7 @@ impl Tag {
         match &self {
             Tag::AvoidMoves(mvs) => b.to_san_movelist(mvs),
             Tag::BestMoves(mvs) => b.to_san_movelist(mvs),
+            Tag::BestScoredMoves(mvs) => mvs.to_san(b),
             Tag::Pv(variation) => b.to_san_variation(variation, None),
             Tag::PredictedMove(mv) => b.to_san(mv),
             Tag::SuppliedMove(mv) => b.to_san(mv),
@@ -292,6 +298,30 @@ impl Tags {
         Ok(tags)
     }
 
+    fn fmt_pgn(&self, f: &mut fmt::Formatter, b: &Board) -> fmt::Result {
+        let mut entries = self.tags.iter().collect::<Vec<_>>();
+        entries.sort_by(|x, y| x.0.cmp(y.0)); // sort by key
+        for (k, t) in entries {
+            let v = t.value(b);
+            if v.is_empty() {
+                write!(f, " {};", k)?;
+            } else if v.contains(char::is_whitespace) {
+                write!(f, " {} \"{}\";", k, v)?;
+            } else {
+                write!(f, " {} {};", k, v)?;
+            }
+        }
+        Ok(())
+    }
+
+    pub fn display_pgn<'a>(&'a self, b: &'a Board) -> impl fmt::Display + 'a {
+        Displayable(|f| self.fmt_pgn(f, b))
+    }
+
+    pub fn to_pgn(&self, b: &Board) -> String {
+        format!("{}", self.display_pgn(b))
+    }
+
     fn split_into_tags(s: &str) -> Vec<&str> {
         REGEX_SPLIT_TAGS
             .captures_iter(s)
@@ -316,6 +346,24 @@ impl Tags {
                     .as_str()
             })
             .collect()
+    }
+}
+
+impl fmt::Display for Tags {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut entries = self.tags.iter().collect::<Vec<_>>();
+        entries.sort_by(|x, y| x.0.cmp(y.0)); // sort by key
+        for (k, t) in entries {
+            let v = t.value_uci();
+            if v.is_empty() {
+                write!(f, " {};", k)?;
+            } else if v.contains(char::is_whitespace) {
+                write!(f, " {} \"{}\";", k, v)?;
+            } else {
+                write!(f, " {} {};", k, v)?;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -362,23 +410,6 @@ static REGEX_SPLIT_WORDS: Lazy<Regex> = Lazy::new(|| {
 //
 //  key1; key2; key3; key4 ABCD; key5 12345; key6 "ABC;DEF";
 //
-impl fmt::Display for Tags {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut entries = self.tags.iter().collect::<Vec<_>>();
-        entries.sort_by(|x, y| x.0.cmp(y.0)); // sort by key
-        for (k, t) in entries {
-            let v = t.value_uci();
-            if v.is_empty() {
-                write!(f, " {};", k)?;
-            } else if v.contains(char::is_whitespace) {
-                write!(f, " {} \"{}\";", k, v)?;
-            } else {
-                write!(f, " {} {};", k, v)?;
-            }
-        }
-        Ok(())
-    }
-}
 
 #[cfg(test)]
 mod tests {

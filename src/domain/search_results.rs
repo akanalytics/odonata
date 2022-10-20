@@ -2,6 +2,7 @@ use std::iter::{self, FromIterator};
 use crate::eval::eval::Eval;
 use crate::eval::score::Score;
 use crate::infra::utils::{calculate_branching_factor_by_nodes_and_depth, Uci};
+use crate::movelist::ScoredMoveList;
 use crate::mv::BareMove;
 use crate::other::outcome::Outcome;
 use crate::piece::Ply;
@@ -248,20 +249,50 @@ impl SearchResults {
             .collect_vec()
     }
 
-    pub fn to_position(&self, b: Board) -> Position {
+    pub fn scored_move_list(&self) -> ScoredMoveList {
+        let mut list = ScoredMoveList::new();
+        self.multi_pv
+            .iter()
+            .filter_map(|(var, sc)|
+                if let Some(mv) = var.first() {
+                    Some((mv, *sc))
+                } else {None }).for_each(|ms| list.push(ms ));
+            
+                list}
+
+    pub fn to_position(&self, b: Board, tags: &[&str]) -> Position {
         let mut pos = Position::from_board(b);
         let var = Variation::from_inner(&self.pv(), pos.board());
-        pos.set(Tag::Pv(var));
+        if tags.contains(&Tag::PV) {
+            pos.set(Tag::Pv(var));
+        }
         if let Some(ref mv) = self.pv().first() {
             let mv = pos.board().augment_move(*mv);
-            pos.set(Tag::SuppliedMove(mv));
-            pos.set(Tag::BestMoves(MoveList::from_iter(iter::once(mv))));
+            if tags.contains(&Tag::SM) {
+                pos.set(Tag::SuppliedMove(mv));
+            }
+            if tags.contains(&Tag::BM) {
+                pos.set(Tag::BestMoves(MoveList::from_iter(iter::once(mv))));
+            }
         }
-        pos.set(Tag::CentipawnEvaluation(self.score().as_i16() as i32));
-        pos.set(Tag::AnalysisCountDepth(self.depth));
-        pos.set(Tag::AnalysisCountSelDepth(self.seldepth));
-        pos.set(Tag::AnalysisCountNodes(self.nodes as u128));
-        pos.set(Tag::BranchingFactorPercent((100.0 * self.bf) as u32));
+        if tags.contains(&Tag::CE) {
+            pos.set(Tag::CentipawnEvaluation(self.score().as_i16() as i32));
+        }
+        if tags.contains(&Tag::ACD) {
+            pos.set(Tag::AnalysisCountDepth(self.depth));
+        }
+        if tags.contains(&Tag::ACSD) {
+            pos.set(Tag::AnalysisCountSelDepth(self.seldepth));
+        }
+        if tags.contains(&Tag::ACN) {
+            pos.set(Tag::AnalysisCountNodes(self.nodes as u128));
+        }
+        if tags.contains(&Tag::BF) {
+            pos.set(Tag::BranchingFactorPercent((100.0 * self.bf) as u32));
+        }
+        if tags.contains(&Tag::BSM) {
+            pos.set(Tag::BestScoredMoves(self.scored_move_list()));
+        }
         pos
     }
 }

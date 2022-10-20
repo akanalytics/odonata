@@ -177,7 +177,7 @@ mod tests {
         assert_eq!(size_of::<Position>(), 208, "Position");
         assert_eq!(size_of::<PreCalc>(), 76808, "PreCalc");
         assert_eq!(size_of::<Hasher>(), 6272, "Hasher");
-        assert_eq!(size_of::<Algo>(), 8440, "Algo");
+        assert_eq!(size_of::<Algo>(), 8328, "Algo");
         assert_eq!(size_of::<Clock>(), 64, "Clock");
         assert_eq!(size_of::<NullMovePruning>(), 32, "NullMovePruning");
         assert_eq!(size_of::<Futility>(), 48, "Futility");

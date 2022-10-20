@@ -110,7 +110,7 @@ impl fmt::Display for MoveTimeEstimator {
         writeln!(f, "pondering        : {}", self.pondering())?;
         // writeln!(f, "board            : {}", self.board.to_fen())?;
         writeln!(f, "move overhead ms : {}", self.move_overhead_ms)?;
-        writeln!(f, "minj ply for est : {}", self.min_ply_for_estimation)?;
+        writeln!(f, "min ply for est  : {}", self.min_ply_for_estimation)?;
         writeln!(f, "branching factor : {}", self.branching_factor)?;
         writeln!(f, "const moves rem. : {}", self.moves_rem)?;
         writeln!(f, "% of time adv    : {}", self.perc_of_time_adv)?;
@@ -121,7 +121,7 @@ impl fmt::Display for MoveTimeEstimator {
         )?;
         writeln!(
             f,
-            "time estimate    : {}",
+            "est move time    : {}",
             Formatting::duration(self.estimate_move_time)
         )?;
         writeln!(f, "deterministic    : {}", self.deterministic)?;

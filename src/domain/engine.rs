@@ -8,6 +8,7 @@ pub trait Engine: Display + Debug {
     // const OPTION_MULTIPV: &'static str = "MultiPV";
     // const OPTION_HASH: &'static str = "Hash";
 
+    fn start_game(&mut self)-> anyhow::Result<()>;
     fn search(&mut self, pos: Position, tc: TimeControl) -> anyhow::Result<SearchResults>;
     fn set_option(&mut self, name: &str, value: &str) -> anyhow::Result<()>;
 

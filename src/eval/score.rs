@@ -450,7 +450,8 @@ mod tests {
         assert_eq!(Score::from_cp(100).to_pgn(), Some("+1.00".into()));
         assert_eq!(Score::from_cp(0).to_pgn(), Some("+0.00".into()));
         assert_eq!(Score::from_cp(-870).to_pgn(), Some("-8.70".into()));
-        assert_eq!(Score::from_mate_in_moves(5).to_pgn(), None);
+        assert_eq!(Score::from_mate_in_moves(5).to_pgn(), Some("+M5".into()));
+        assert_eq!(Score::from_mate_in_moves(-3).to_pgn(), Some("-M3".into()));
         Ok(())
     }
 

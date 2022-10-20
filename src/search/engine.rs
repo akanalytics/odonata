@@ -4,7 +4,7 @@ use crate::domain::SearchResults;
 use crate::infra::component::{Component, State, FEATURE};
 use crate::infra::metric::Metrics;
 use crate::infra::resources::RESOURCE_DIR;
-use crate::infra::utils::Formatting;
+use crate::infra::utils::{Displayable, Formatting};
 use crate::position::Position;
 use crate::search::algo::Algo;
 use crate::search::timecontrol::TimeControl;
@@ -73,6 +73,11 @@ impl Engine for AsyncEngine {
     fn set_option(&mut self, name: &str, value: &str) -> anyhow::Result<()> {
         self.configment(name, value)
     }
+
+    fn start_game(&mut self) -> anyhow::Result<()> {
+        self.set_state(State::NewGame);
+        Ok(())
+    }
 }
 
 // impl Clone for Engine {
@@ -89,6 +94,12 @@ impl Engine for AsyncEngine {
 
 impl fmt::Display for AsyncEngine {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.config_filename)
+    }
+}
+
+impl AsyncEngine {
+    fn fmt_metrics(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "config filename  : {}", self.config_filename)?;
         writeln!(f, "threads          : {}", self.thread_count)?;
         writeln!(f, "shared tt        : {}", self.shared_tt)?;
@@ -104,7 +115,12 @@ impl fmt::Display for AsyncEngine {
             "search init time : {}",
             Formatting::duration(self.search_init_time)
         )?;
-        write!(f, "\n[algo]\n{}", self.algo)
+        write!(f, "\n[algo]\n{}", self.algo)?;
+        Ok(())
+    }
+
+    pub fn display_metrics(&self) -> impl fmt::Display + '_ {
+        Displayable(|f| self.fmt_metrics(f))
     }
 }
 

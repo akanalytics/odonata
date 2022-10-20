@@ -7,7 +7,6 @@ use crate::eval::eval::Eval;
 use crate::eval::recognizer::Recognizer;
 use crate::eval::score::Score;
 use crate::infra::component::{Component, State};
-use crate::infra::metric::Metrics;
 use crate::mv::Move;
 use crate::other::pvtable::PvTable;
 use crate::piece::Ply;
@@ -30,6 +29,7 @@ use crate::search::restrictions::Restrictions;
 use crate::search::search_progress::Info;
 use crate::search::taskcontrol::TaskControl;
 use crate::search::timecontrol::TimeControl;
+use crate::tags::Tag;
 use crate::variation::Variation;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -109,6 +109,7 @@ pub struct Algo {
 
 impl Engine for Algo {
     fn search(&mut self, pos: Position, tc: TimeControl) -> anyhow::Result<SearchResults> {
+        self.controller.set_running();
         self.set_timing_method(tc);
         self.set_position(pos);
         self.run_search();
@@ -116,7 +117,17 @@ impl Engine for Algo {
     }
 
     fn set_option(&mut self, name: &str, value: &str) -> anyhow::Result<()> {
-        unimplemented!("Algo does not support set_option({name}, {value})");
+        match name {
+            "MultiPV" => self.restrictions.multi_pv_count = value.parse()?,
+            "Hash" => self.tt.mb = value.parse()?,
+            _ => anyhow::bail!("Algo does not support set option '{name}'"),
+        }
+        Ok(())
+    }
+
+    fn start_game(&mut self) -> anyhow::Result<()> {
+        self.set_state(State::NewGame);
+        Ok(())
     }
 }
 
@@ -246,6 +257,10 @@ impl fmt::Debug for Algo {
 
 impl fmt::Display for Algo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if !f.alternate() {
+            write!(f, "Algo")?;
+            return Ok(());
+        }
         writeln!(f, "search position  : {}", self.position)?;
         writeln!(f, "starting board   : {}", self.board.to_fen())?;
         writeln!(f, "time control     : {}", self.mte.time_control())?;
@@ -297,19 +312,10 @@ impl fmt::Display for Algo {
 
         // writeln!(f, ".\n.\n[results]\n{}", self.progress)?;
         write!(f, "\n[results]\n{}", self.results)?;
-        writeln!(f, ".\n.\n[metrics]\n{}", Metrics::to_string())?;
+        // writeln!(f, ".\n.\n[metrics]\n{}", Metrics::to_string())?;
         Ok(())
     }
 }
-
-//#[derive(Debug, Default)]
-// struct AlgoThreadHandle(Option<thread::JoinHandle<Algo>>);
-
-// impl Clone for AlgoThreadHandle {
-//     fn clone(&self) -> Self {
-//         Self(None)
-//     }
-// }
 
 impl Algo {
     pub fn var(&self) -> &Variation {
@@ -351,6 +357,11 @@ impl Algo {
 
     pub fn run_search(&mut self) {
         {
+            // info!(
+            //     "****Searching {pos} with {tc:#}",
+            //     pos = self.position,
+            //     tc = self
+            // );
             // profile_method!(search);
             // hprof::profiler().disable();
             // let _g = hprof::enter("search");
@@ -368,7 +379,16 @@ impl Algo {
     }
 
     pub fn results_as_position(&self) -> Position {
-        self.results.to_position(self.board.clone())
+        const TAGS: [&str; 7] = [
+            Tag::SM,
+            Tag::BM,
+            Tag::CE,
+            Tag::ACD,
+            Tag::ACSD,
+            Tag::ACN,
+            Tag::BF,
+        ];
+        self.results.to_position(self.board.clone(), &TAGS)
     }
 
     pub fn score(&self) -> Score {
@@ -423,7 +443,6 @@ impl Algo {
 #[cfg(test)]
 mod tests {
 
-    use test_log::test;
     use super::*;
     use crate::catalog::*;
     use crate::comms::uci_server::UciServer;
@@ -431,6 +450,7 @@ mod tests {
     use crate::mv::BareMove;
     use crate::piece::*;
     use anyhow::*;
+    use test_log::test;
     use toml;
 
     #[test]

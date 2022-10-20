@@ -1,5 +1,7 @@
 use crate::board::Board;
-use crate::mv::Move;
+use crate::eval::score::Score;
+use crate::infra::utils::{Displayable, Uci};
+use crate::mv::{BareMove, Move};
 use crate::parse::Parse;
 use crate::piece::MAX_LEGAL_MOVES;
 use crate::piece::{Color, Piece};
@@ -7,6 +9,7 @@ use crate::tags::Tags;
 use crate::variation::Variation;
 use anyhow::{anyhow, Result};
 use arrayvec::ArrayVec;
+use itertools::Itertools;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::fmt;
@@ -174,30 +177,99 @@ use std::fmt;
 //     }
 // }
 
+#[derive(Default, Clone, Debug, PartialEq, Eq)]
+pub struct ScoredMoveList {
+    moves: Vec<(BareMove, Score)>,
+}
+
+impl ScoredMoveList {
+    pub fn new() -> Self {
+        Self::default()
+    }
+    pub fn push(&mut self, smv: (BareMove, Score)) {
+        self.moves.push(smv);
+    }
+
+    fn fmt_san(&self, f: &mut fmt::Formatter, b: &Board) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            self.moves
+                .iter()
+                .map(|(mv, s)| {
+                    format!(
+                        "{mv}:{score}",
+                        mv = mv.to_san(b),
+                        score = s.to_uci().trim_start_matches("cp ")
+                    )
+                })
+                .join(" ")
+        )?;
+        Ok(())
+    }
+
+    pub fn display_san<'a>(&'a self, b: &'a Board) -> impl fmt::Display + 'a {
+        Displayable(|f| self.fmt_san(f, b))
+    }
+
+    pub fn to_san(&self, b: &Board) -> String {
+        format!("{}", self.display_san(b))
+    }
+
+    pub fn parse_san(s: &str, b: &Board) -> anyhow::Result<Self> {
+        let mut moves = Self::new();
+        let s = s.replace(',', " ");
+        let s = strip_move_numbers(&s);
+        for smv in s.split_ascii_whitespace() {
+            if let Some((before, after)) = smv.split_once(":") {
+                let mv = b.parse_san_move(before)?.to_inner();
+                let score = Score::from_cp(after.parse::<i32>()?);
+                moves.push((mv, score));
+            } else {
+                anyhow::bail!("Unable to parse scored move '{smv}' in '{s}'");
+            }
+        }
+        Ok(moves)
+    }
+}
+
+#[cfg(test)]
+mod tests_smv {
+    use super::*;
+    use crate::catalog::Catalog;
+
+    #[test]
+    fn test_scoredmovelist() {
+        let b = Catalog::starting_board();
+        let moves = ScoredMoveList::parse_san("a3:+34 h3:-45 e2e4:90", &b).unwrap();
+        assert_eq!(moves.to_san(&b), "a3:34 h3:-45 e4:90");
+    }
+}
+
 // moves: ArrayVec<Move,128>,
 // moves: ArrayVec::new(),
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Default, Clone)]
 pub struct MoveList {
     moves: ArrayVec<Move, MAX_LEGAL_MOVES>,
 }
 
-impl Default for MoveList {
-    #[inline]
-    fn default() -> Self {
-        Self {
-            moves: ArrayVec::new(),
-        }
-    }
-}
+// impl Default for MoveList {
+//     #[inline]
+//     fn default() -> Self {
+//         Self {
+//             moves: ArrayVec::new(),
+//         }
+//     }
+// }
 
-impl Clone for MoveList {
-    #[inline]
-    fn clone(&self) -> Self {
-        MoveList {
-            moves: self.moves.clone(),
-        }
-    }
-}
+// impl Clone for MoveList {
+//     #[inline]
+//     fn clone(&self) -> Self {
+//         MoveList {
+//             moves: self.moves.clone(),
+//         }
+//     }
+// }
 // impl Clone for MoveList {
 //     #[inline]
 //     fn clone(&self) -> Self {

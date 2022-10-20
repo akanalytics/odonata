@@ -13,13 +13,13 @@ use crate::infra::metric::Metrics;
 use crate::piece::Ply;
 use crate::search::node::Timing;
 
-pub struct Displayable<T>(pub T)
+pub struct Displayable<F>(pub F)
 where
-    T: Fn(&mut fmt::Formatter) -> fmt::Result;
+    F: Fn(&mut fmt::Formatter) -> fmt::Result;
 
-impl<T> fmt::Display for Displayable<T>
+impl<F> fmt::Display for Displayable<F>
 where
-    T: Fn(&mut fmt::Formatter) -> fmt::Result,
+    F: Fn(&mut fmt::Formatter) -> fmt::Result,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0(f)

@@ -713,7 +713,7 @@ impl UciServer {
         eng.search_stop();
         Self::print("search");
         Self::print(&format!("{}", self.board));
-        Self::print(&format!("{}", eng));
+        Self::print(&format!("{}", eng.display_metrics()));
         Self::print(&format!(
             "{}",
             eng.algo.results.explain(&eng.algo.eval, &self.board)

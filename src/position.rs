@@ -209,7 +209,10 @@ impl Position {
         for item in iter {
             let s = item.as_ref();
             if !s.is_empty() {
-                vec.push(Self::parse_epd(&s.replace('\n', " ")).with_context(|| format!("in epd {}", s))?);
+                vec.push(
+                    Self::parse_epd(&s.replace('\n', " "))
+                        .with_context(|| format!("in epd {}", s))?,
+                );
             }
         }
         Ok(vec)
@@ -246,6 +249,14 @@ impl Position {
     pub const VERB_MATE_SEARCH: &'static str = "pfms";
     pub const VERB_OPERATION_PURGE: &'static str = "pfop";
     pub const VERB_TARGET_SEARCH: &'static str = "pfts";
+
+    pub fn to_pgn(&self) -> String {
+        format!(
+            "{fen}{tags}",
+            fen = self.board().to_fen(),
+            tags = self.tags.to_pgn(self.board())
+        )
+    }
 
     pub fn board(&self) -> &Board {
         &self.board
@@ -485,7 +496,7 @@ mod tests {
 
         // a7a6 on board of [starting pos + a2a3]
         let bd2 = pos.board.make_move(&pos.board().parse_uci_move("a2a3")?);
-        let s2 = "position fen ".to_string() +  &bd2.to_fen() + " moves a7a6";
+        let s2 = "position fen ".to_string() + &bd2.to_fen() + " moves a7a6";
         let pos2 = Position::parse_uci(&s2)?;
         assert_eq!(pos2.supplied_variation().to_uci(), "a7a6");
         Ok(())

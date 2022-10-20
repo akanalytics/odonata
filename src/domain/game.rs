@@ -18,7 +18,7 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use std::collections::HashMap;
 use std::fmt;
-use std::io::Write;
+use std::io::{Write, Read, BufReader, BufRead};
 use std::time::Duration;
 use tabled::{Style, Table, Tabled};
 
@@ -91,13 +91,13 @@ impl Default for GameHeader {
     fn default() -> Self {
         Self {
             tag_pairs: indexmap! {
-                "Event".to_string() => "?".to_string(),
-                "Site".to_string() => "?".to_string(),
-                "Date".to_string() => "????.??.??".to_string(),
-                "Round".to_string() => "?".to_string(),
-                "White".to_string() => "?".to_string(),
-                "Black".to_string() => "?".to_string(),
-                "Result".to_string() => "*".to_string(),
+                Self::EVENT.to_string() => "?".to_string(),
+                Self::SITE.to_string() => "?".to_string(),
+                Self::DATE.to_string() => "????.??.??".to_string(),
+                Self::ROUND.to_string() => "?".to_string(),
+                Self::WHITE.to_string() => "?".to_string(),
+                Self::BLACK.to_string() => "?".to_string(),
+                Self::RESULT.to_string() => "*".to_string(),
             },
             starting_pos: Catalog::starting_board(),
             tc: TimeControl::DefaultTime,
@@ -106,8 +106,25 @@ impl Default for GameHeader {
 }
 
 impl GameHeader {
+    pub const EVENT: &str  = "Event";
+    pub const SITE: &str  = "Site";
+    pub const DATE: &str  = "Date";
+    pub const ROUND: &str  = "Round";
+    pub const WHITE: &str  = "White";
+    pub const BLACK: &str  = "Black";
+    pub const RESULT: &str  = "Result";
+
     pub fn starting_pos(&self) -> &Board {
         &self.starting_pos
+    }
+
+    pub fn description(&self) -> String {
+        let event = self.get(Self::EVENT).unwrap_or_default();
+        let round = self.get(Self::ROUND).unwrap_or_default();
+        let white = self.get(Self::WHITE).unwrap_or_default();
+        let black = self.get(Self::BLACK).unwrap_or_default();
+        let result = self.get(Self::RESULT).unwrap_or_default();
+        format!("evt:'{event}' rnd:{round} '{white}' vs '{black}' {result}")
     }
 
     pub fn time_control(&self) -> &TimeControl {
@@ -142,6 +159,10 @@ impl GameHeader {
         self.tag_pairs.insert(key.to_string(), value);
     }
 
+    pub fn get(&self, key: &str) -> Option<&str> {
+        self.tag_pairs.get(key).map(|v| v.as_str())
+    }
+
 }
 
 impl Uci for GameHeader {
@@ -157,6 +178,7 @@ impl Uci for GameHeader {
         let mut gh = GameHeader::new();
         for line in s.lines() {
             debug!("Parsing game header line '{line}'...");
+            let line = Game::strip_bom(line);
             let l = line
                 .trim_start()
                 .strip_prefix("[")
@@ -175,7 +197,7 @@ impl Uci for GameHeader {
                 gh.starting_pos = Board::parse_fen(&v)?;
             }
             if k == "TimeControl" {
-                gh.tc = TimeControl::parse_option(&("pgn:".to_string() + &v))?;
+                gh.tc = TimeControl::parse_pgn(&v)?;
             }
             gh.set(k, v);
         }
@@ -383,32 +405,38 @@ impl Game {
     }
 
     fn strip_bom(s: &str) -> &str {
-        if s.starts_with("\u{feff}") {
-            &s[3..]
-        } else {
-            s
+        s.trim_start_matches("\u{feff}") 
+    }
+
+    pub fn parse_pgn<R: Read>(r: R) -> PgnParser<BufReader<R>> {
+        PgnParser {
+            lines: BufReader::new(r).lines(),
+            n_line: 0,
+            err: Ok(()),
         }
     }
 
-    pub fn parse_pgn(s: &str) -> PgnParser {
+    pub fn parse_pgn_string(s: &str) -> PgnParser<BufReader<&[u8]>> {
+        let s = Self::strip_bom(s);
         PgnParser {
-            lines: Self::strip_bom(s).lines(),
+            lines: BufReader::new(s.as_bytes()).lines(),
             n_line: 0,
             err: Ok(()),
         }
     }
 }
 
-pub struct PgnParser<'a> {
-    lines: std::str::Lines<'a>,
+pub struct PgnParser<B> {
+    lines: std::io::Lines<B>,
     n_line: i32,
     err: Result<()>,
 }
 
-impl<'a> PgnParser<'a> {
+impl<B: BufRead> PgnParser<B> {
     fn next_unfused(&mut self) -> Result<Option<Game>> {
         let mut header = vec![];
         while let Some(line) = self.lines.next() {
+            let line = line?;
             if line.trim().is_empty() && !header.is_empty() {
                 // blank line after finding some header
                 break;
@@ -423,14 +451,15 @@ impl<'a> PgnParser<'a> {
         }
 
         let mut body = vec![];
-        let mut comment = "";
+        let mut comment = String::new();
         while let Some(line) = self.lines.next() {
+            let line = line?;
             if line.trim().is_empty() {
                 break;
             }
             if body.is_empty() && line.starts_with("{") {
                 debug!("Comment: '{line}'");
-                comment = line.trim_start_matches('{').trim_end_matches('}');
+                comment = line.trim_start_matches('{').trim_end_matches('}').to_string();
             } else {
                 debug!("Body: '{line}'");
                 body.push(line);
@@ -448,7 +477,7 @@ impl<'a> PgnParser<'a> {
         let game = Game {
             game_id: 0,
             header,
-            comment: comment.to_string(),
+            comment,
             moves,
             outcome,
         };
@@ -456,7 +485,7 @@ impl<'a> PgnParser<'a> {
     }
 }
 
-impl<'a> Iterator for PgnParser<'a> {
+impl<R: BufRead> Iterator for PgnParser<R> {
     type Item = Result<Game>;
 
     fn next(&mut self) -> Option<Result<Game>> {
@@ -579,10 +608,6 @@ impl Game {
         &mut self.header
     }
 
-    fn variation(&self) -> BareMoveVariation {
-        BareMoveVariation::default()
-    }
-
 
     pub fn export<W: Write>(&self, mut w: W) -> Result<()> {
         #[derive(Tabled, Default)]
@@ -676,7 +701,7 @@ impl Game {
 
     /// sets outcome and result too
     pub fn make_move(&mut self, mv: BareMove) {
-        info!("Game move {ply} {mv}", ply = self.len());
+        debug!("Game move {ply} {mv}", ply = self.len());
         self.moves.push(GameMove {
             mv,
             .. GameMove::default()
@@ -804,7 +829,7 @@ mod tests {
 
         let tc = game.time_control_for_ply(0);
         println!("{}",tc);
-        assert_eq!(tc.to_string(), "tc=(rt=RemainingTime { our_color: White, wtime: 10s, btime: 10s, winc: 10s, binc: 10s, moves_to_go: 2 })");
+        assert_eq!(tc.to_string(), "tc=(rt=RemainingTime { our_color: White, wtime: 10s, btime: 10s, winc: 0ns, binc: 0ns, moves_to_go: 2 })");
         println!("{}",game.time_control_for_ply(1));
 
         println!("{}",game.time_control_for_ply(2));
@@ -812,7 +837,7 @@ mod tests {
 
         let tc = game.time_control_for_ply(4);
         println!("{}",tc);
-        assert_eq!(tc.to_string(), "tc=(rt=RemainingTime { our_color: White, wtime: 17s, btime: 12s, winc: 10s, binc: 10s, moves_to_go: 2 })");
+        assert_eq!(tc.to_string(), "tc=(rt=RemainingTime { our_color: White, wtime: 17s, btime: 12s, winc: 0ns, binc: 0ns, moves_to_go: 2 })");
     }
 
     #[test]
@@ -858,13 +883,19 @@ mod tests {
         1. e4 {book} c5 {book} 2. Nf3 {book} d6 {book} 3. d4 {book} cxd4 {book}
 
         "###;
-        for game in Game::parse_pgn(s) {
+        for game in Game::parse_pgn_string(s) {
             // println!("{game:#?}");
             match game {
                 Ok(game) => println!("{}", Displayable(|f| game.fmt_pgn(f))),
                 Err(e) => println!("{e}"),
             }
         }
+        let games = Game::parse_pgn_string(s).collect_vec();
+        assert_eq!(games.len(), 2);
+        assert_eq!(games.first().unwrap().as_ref().unwrap().len(), 11);
+        assert_eq!(games.first().unwrap().as_ref().unwrap().var().first(), 
+            Some(BareMove::parse_uci("e2e4").unwrap()));
+
     }
 
     #[test]
@@ -875,7 +906,7 @@ mod tests {
         fn parse(filename: &str) -> anyhow::Result<()>{
             let s = &std::fs::read_to_string(filename).unwrap();
             let mut stats = GameStats::new();
-            for game in Game::parse_pgn(&s) {
+            for game in Game::parse_pgn_string(&s) {
             match game {
                 Ok(game) => {
                     // println!("{}", Displayable(|f| game.fmt_pgn(f)));
