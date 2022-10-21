@@ -3,7 +3,7 @@ use crate::catalog::{Catalog, CatalogSuite};
 use crate::infra::version::built_info;
 use crate::infra::version::Version;
 use crate::position::Position;
-use crate::search::engine::AsyncEngine;
+use crate::search::engine::ThreadedSearch;
 use crate::tags::Tag;
 use crate::tune::Tuning;
 use crate::infra::utils::read_file;
@@ -34,7 +34,7 @@ pub struct JsonRpc {
 }
 
 impl JsonRpc {
-    pub fn new(engine: Arc<Mutex<AsyncEngine>>) -> JsonRpc {
+    pub fn new(engine: Arc<Mutex<ThreadedSearch>>) -> JsonRpc {
         let mut me = JsonRpc {
             io: <IoHandler>::new(),
         };
@@ -89,11 +89,11 @@ pub trait Rpc {
 #[derive(Clone, Debug)]
 struct RpcImpl {
     // pub tuning: Arc<Mutex<Tuning>>,
-    pub engine: Arc<Mutex<AsyncEngine>>,
+    pub engine: Arc<Mutex<ThreadedSearch>>,
 }
 
 impl RpcImpl {
-    pub fn new(engine: Arc<Mutex<AsyncEngine>>) -> Self {
+    pub fn new(engine: Arc<Mutex<ThreadedSearch>>) -> Self {
         RpcImpl {
             engine,
             // tuning: Arc::new(Mutex::new(Tuning::new())),
@@ -178,7 +178,7 @@ mod tests {
 
     #[test]
     fn test_json_rpc() {
-        let mut rpc = JsonRpc::new(Arc::new(Mutex::new(AsyncEngine::new())));
+        let mut rpc = JsonRpc::new(Arc::new(Mutex::new(ThreadedSearch::new())));
         let request1 = r#"{"jsonrpc": "2.0", "method": "version", "params": [], "id": 1}"#;
         let response = format!(
             r#"{{"jsonrpc":"2.0","result":"{} {} built on {}","id":1}}"#,
@@ -191,7 +191,7 @@ mod tests {
 
     #[test]
     fn position_download_test() -> anyhow::Result<()> {
-        let rpc = RpcImpl::new(Arc::new(Mutex::new(AsyncEngine::new())));
+        let rpc = RpcImpl::new(Arc::new(Mutex::new(ThreadedSearch::new())));
         rpc.position_upload("../odonata-extras/epd/quiet-labeled-small.epd".to_string())?;
         let lines = rpc.position_download_model("/tmp/test.csv".to_string())?;
         assert!(lines > 0);

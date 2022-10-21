@@ -35,7 +35,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use super::counter_move::CounterMove;
-use super::engine::AsyncEngine;
+use super::engine::ThreadedSearch;
 use super::lmp::Lmp;
 use super::mate_distance::MateDistance;
 use super::node::Event;
@@ -138,7 +138,7 @@ impl Algo {
     }
 
     pub fn from_config() -> Algo {
-        AsyncEngine::new().algo
+        ThreadedSearch::new().algo
     }
 
     pub fn set_eval(&mut self, eval: Eval) -> &mut Self {

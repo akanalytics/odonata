@@ -87,7 +87,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_pvs() {
-        let mut engine = AsyncEngine::new();
+        let mut engine = ThreadedSearch::new();
 
         let positions = &Catalog::example_game()[101..102];
         let mut node_count = 0;

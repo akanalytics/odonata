@@ -295,7 +295,7 @@ impl Algo {
 mod tests {
     use super::*;
     use crate::catalog::*;
-    use crate::search::engine::AsyncEngine;
+    use crate::search::engine::ThreadedSearch;
     use crate::search::timecontrol::*;
     use crate::test_log::test;
     use anyhow::Result;
@@ -310,7 +310,7 @@ mod tests {
         let catalog = Catalog::quiesce();
         // let pos = Position::find_by_id("pawn fork", &positions ).unwrap();
         for pos in catalog {
-            let mut eng = AsyncEngine::new();
+            let mut eng = ThreadedSearch::new();
 
             eng.set_position(pos.clone());
             eng.algo.set_timing_method(TimeControl::Depth(0));

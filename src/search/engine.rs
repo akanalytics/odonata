@@ -23,7 +23,7 @@ use std::{fmt, mem, panic};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
-pub struct AsyncEngine {
+pub struct ThreadedSearch {
     pub shared_tt: bool,
     pub thread_count: u32,
     pub config_filename: String,
@@ -46,9 +46,9 @@ pub struct AsyncEngine {
 
 const DEFAULT_CONFIG_FILE: &str = "config.toml";
 
-impl Default for AsyncEngine {
+impl Default for ThreadedSearch {
     fn default() -> Self {
-        AsyncEngine {
+        ThreadedSearch {
             config_filename: DEFAULT_CONFIG_FILE.to_string(),
             shared_tt: true,
             feature: false,
@@ -62,7 +62,7 @@ impl Default for AsyncEngine {
     }
 }
 
-impl Engine for AsyncEngine {
+impl Engine for ThreadedSearch {
     fn search(&mut self, pos: Position, tc: TimeControl) -> anyhow::Result<SearchResults> {
         self.algo.set_timing_method(tc);
         self.set_position(pos);
@@ -92,13 +92,13 @@ impl Engine for AsyncEngine {
 //     }
 // }
 
-impl fmt::Display for AsyncEngine {
+impl fmt::Display for ThreadedSearch {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.config_filename)
     }
 }
 
-impl AsyncEngine {
+impl ThreadedSearch {
     fn fmt_metrics(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "config filename  : {}", self.config_filename)?;
         writeln!(f, "threads          : {}", self.thread_count)?;
@@ -124,7 +124,7 @@ impl AsyncEngine {
     }
 }
 
-impl Component for AsyncEngine {
+impl Component for ThreadedSearch {
     fn set_state(&mut self, s: State) {
         use State::*;
         match s {
@@ -143,7 +143,7 @@ impl Component for AsyncEngine {
     fn new_position(&mut self) {}
 }
 
-impl Provider for AsyncEngine {
+impl Provider for ThreadedSearch {
     fn metadata(&self) -> Metadata {
         Metadata::named("Engine default config")
     }
@@ -158,7 +158,7 @@ impl Provider for AsyncEngine {
     }
 }
 
-impl AsyncEngine {
+impl ThreadedSearch {
     pub fn new() -> Self {
         // use backtrace::Backtrace;
         // panic::set_hook(Box::new(|panic_info| {
@@ -178,7 +178,7 @@ impl AsyncEngine {
         // let _engine = Self::default();
         // engine.configure(&ParsedConfig::global());
         // let mut engine: Engine = Engine::default();
-        let mut eng: AsyncEngine = Figment::new()
+        let mut eng: ThreadedSearch = Figment::new()
             .merge(toml)
             //     .merge(Env::prefixed("odonata_var_").split("__"))
             .extract()
@@ -201,14 +201,14 @@ impl AsyncEngine {
         for (k, v) in map.iter() {
             fig = fig.merge(Toml::string(&format!("{} = {}", k, v)));
         }
-        let engine: AsyncEngine = fig.extract().context(format!("error in {:?}", map))?;
+        let engine: ThreadedSearch = fig.extract().context(format!("error in {:?}", map))?;
         let mut tuner = Tuning::default();
         // mem::swap(&mut tuner.feature_matrix, &mut self.tuner.feature_matrix);
         mem::swap(&mut tuner.explains, &mut self.tuner.explains);
         // mem::swap(&mut tuner.models_and_outcomes, &mut self.tuner.models_and_outcomes);
         // mem::swap(&mut tuner.boards, &mut self.tuner.boards);
         // mem::swap(&mut tuner.model, &mut self.tuner.model);
-        *self = AsyncEngine {
+        *self = ThreadedSearch {
             tuner: Tuning {
                 // boards: tuner.boards,
                 // models_and_outcomes: tuner.models_and_outcomes,
@@ -356,7 +356,7 @@ mod tests {
 
     #[test]
     fn engine_serde_test() {
-        let engine1 = AsyncEngine::new();
+        let engine1 = ThreadedSearch::new();
         let text1 = toml::Value::try_from(&engine1).unwrap();
         println!("toml\n{:#?}", text1);
 
@@ -364,18 +364,18 @@ mod tests {
         let text1 = toml::to_string(&engine1).unwrap();
         eprintln!("toml\n{:?}", text1);
 
-        let engine2: AsyncEngine = toml::from_str(&text1).unwrap();
+        let engine2: ThreadedSearch = toml::from_str(&text1).unwrap();
         let _text2 = toml::to_string(&engine2).unwrap();
         // assert_eq!(text1, text2);
 
-        let engine3 = AsyncEngine::new();
+        let engine3 = ThreadedSearch::new();
         let text3 = toml::to_string(&engine3).unwrap();
         eprintln!("toml\n{}", text3);
     }
 
     #[test]
     fn engine_init_test() {
-        let mut engine = AsyncEngine::new();
+        let mut engine = ThreadedSearch::new();
         assert_eq!(engine.algo.eval.quantum, 1);
         eprintln!("{}", toml::to_string(&engine).unwrap());
         engine.configment("eval.quantum", "1").unwrap();
@@ -390,7 +390,7 @@ mod tests {
     fn test_threading() {
         for &i in [1, 2, 3, 4, 8, 16, 32].iter() {
             for &shared in &[true] {
-                let mut eng = AsyncEngine::new();
+                let mut eng = ThreadedSearch::new();
                 eng.algo.set_timing_method(TimeControl::Depth(7));
                 eng.algo.tt.enabled = true;
                 eng.shared_tt = shared;
@@ -418,7 +418,7 @@ mod tests {
         )
         .unwrap();
 
-        let mut engine = AsyncEngine::new();
+        let mut engine = ThreadedSearch::new();
         engine.set_position(pos);
         engine.algo.set_timing_method(TimeControl::Depth(15));
         // use crate::Color;
@@ -439,7 +439,7 @@ mod tests {
     #[test]
     fn profile_search() {
         let positions = Catalog::example_game();
-        let mut engine = AsyncEngine::new();
+        let mut engine = ThreadedSearch::new();
         for _ in 0..1 {
             for pos in &positions {
                 engine.set_position(pos.clone());

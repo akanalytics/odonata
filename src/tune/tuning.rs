@@ -10,7 +10,7 @@ use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
 use crate::other::outcome::Outcome;
 use crate::position::Position;
-use crate::search::engine::AsyncEngine;
+use crate::search::engine::ThreadedSearch;
 use crate::search::node::Timing;
 use crate::tags::Tag;
 use anyhow::Result;
@@ -176,7 +176,7 @@ impl Tuning {
         vec
     }
 
-    pub fn upload_positions(eng: &mut AsyncEngine, positions: Vec<Position>) -> Result<usize> {
+    pub fn upload_positions(eng: &mut ThreadedSearch, positions: Vec<Position>) -> Result<usize> {
         let t = Metrics::timing_start();
         let draws = AtomicU32::new(0);
         let likely = AtomicU32::new(0);
@@ -248,11 +248,11 @@ impl Tuning {
         panic!("Unable to find result comment c9 in {}", pos);
     }
 
-    pub fn write_training_data<W: Write>(eng: &mut AsyncEngine, writer: &mut W) -> Result<i32> {
+    pub fn write_training_data<W: Write>(eng: &mut ThreadedSearch, writer: &mut W) -> Result<i32> {
         ExplainScore::write_csv(eng.tuner.explains.iter(), writer)
     }
 
-    pub fn calculate_mean_square_error(&self, eng: &AsyncEngine) -> Result<f32> {
+    pub fn calculate_mean_square_error(&self, eng: &ThreadedSearch) -> Result<f32> {
         let eval = &eng.algo.eval;
         let logistic_steepness_k = self.logistic_steepness_k; // so that closure does not capture engine/tuner
                                                               // let mut scorer = ExplainScorer::new(String::new(), true);
@@ -422,7 +422,7 @@ mod tests {
 
     #[test]
     fn test_tuning_load() {
-        let mut eng = AsyncEngine::new();
+        let mut eng = ThreadedSearch::new();
         let file = "../odonata-extras/epd/quiet-labeled-small.epd";
         let _count = Tuning::upload_positions(
             &mut eng,
@@ -445,7 +445,7 @@ mod tests {
     #[test]
     fn test_tuning_mse() {
         info!("Starting...");
-        let mut eng = AsyncEngine::new();
+        let mut eng = ThreadedSearch::new();
         eng.tuner.multi_threading_min_positions = 10000000;
 
         eng.tuner.regression_type = RegressionType::CrossEntropy;
@@ -489,7 +489,7 @@ mod tests {
     #[test]
     fn test_tuning_csv() {
         info!("Starting...");
-        let mut eng = AsyncEngine::new();
+        let mut eng = ThreadedSearch::new();
         eng.tuner.method = Method::New;
         let file = "../odonata-extras/epd/quiet-labeled-small.epd";
         let _count = Tuning::upload_positions(
@@ -514,7 +514,7 @@ mod tests {
     #[test]
     fn bench_mse() {
 
-        let mut eng1 = AsyncEngine::new();
+        let mut eng1 = ThreadedSearch::new();
         eng1.tuner.multi_threading_min_positions = 3_000_000;
         eng1.tuner.method = Method::New;
         let file = "../odonata-extras/epd/quiet-labeled-small.epd";

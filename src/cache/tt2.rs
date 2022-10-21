@@ -718,7 +718,7 @@ mod tests {
     use crate::globals::constants::*;
     use crate::piece::*;
     use crate::search::algo::*;
-    use crate::search::engine::AsyncEngine;
+    use crate::search::engine::ThreadedSearch;
     use crate::search::timecontrol::*;
     use test_log::test;
 
@@ -904,14 +904,14 @@ mod tests {
 
     #[test]
     fn tt2_test_new_game() {
-        let mut eng = AsyncEngine::new();
+        let mut eng = ThreadedSearch::new();
         eng.new_game();
         eng.set_position(Catalog::starting_position().clone());
         eng.algo.set_timing_method(TimeControl::Depth(6));
         eprintln!("Before 1\n{}", eng.algo);
         eng.search();
         eprintln!("After 1\n{}", eng.algo);
-        let mut eng = AsyncEngine::new();
+        let mut eng = ThreadedSearch::new();
         eng.new_game();
         eng.set_position(Catalog::starting_position().clone());
         eng.algo.set_timing_method(TimeControl::Depth(6));

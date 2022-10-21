@@ -20,3 +20,10 @@ pub trait Engine: Display + Debug {
         self.set_option("Hash", &mb.to_string())
     }
 }
+
+
+pub struct EnginePool {
+    engines: Vec<Box<dyn Engine>>,
+    
+}
+

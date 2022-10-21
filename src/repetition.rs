@@ -262,7 +262,7 @@ mod tests {
             "d1c1 h6h5 c1c4 h3h1 b1b2 h1h4 c7e5 h4g4 c4c8 g8h7 c8c7 h7g8 c7c8"
         );
         let mut b = Catalog::starting_board();
-        let mut eng = AsyncEngine::new();
+        let mut eng = ThreadedSearch::new();
         eng.algo.set_callback(UciServer::uci_info);
         eng.algo.repetition.new_game();
         let mvs = b.parse_uci_variation(s).unwrap();
@@ -281,7 +281,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_rep_bug2() {
-        let mut engine = AsyncEngine::new();
+        let mut engine = ThreadedSearch::new();
         engine
             .algo
             .eval

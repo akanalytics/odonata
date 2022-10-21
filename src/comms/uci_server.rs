@@ -12,7 +12,7 @@ use crate::movelist::MoveList;
 use crate::mv::Move;
 use crate::perft::Perft;
 use crate::position::Position;
-use crate::search::engine::AsyncEngine;
+use crate::search::engine::ThreadedSearch;
 use crate::search::node::Node;
 use crate::search::search_progress::{Info, SearchProgressMode};
 use crate::search::timecontrol::TimeControl;
@@ -96,7 +96,7 @@ pub struct UciServer {
     pub strict_error_handling: bool,
     running: bool,
     board: Board,
-    engine: Arc<Mutex<AsyncEngine>>,
+    engine: Arc<Mutex<ThreadedSearch>>,
     debug: bool,
     json_rpc: JsonRpc,
 }
@@ -118,7 +118,7 @@ impl Default for UciServer {
 #[allow(clippy::useless_format)]
 impl UciServer {
     pub fn new() -> UciServer {
-        let engine = Arc::new(Mutex::new(AsyncEngine::new()));
+        let engine = Arc::new(Mutex::new(ThreadedSearch::new()));
         let uci = UciServer {
             board: Catalog::starting_board(),
             engine: Arc::clone(&engine),
@@ -499,7 +499,7 @@ impl UciServer {
         Ok(())
     }
 
-    pub fn uci_options(engine: &AsyncEngine) -> Vec<String> {
+    pub fn uci_options(engine: &ThreadedSearch) -> Vec<String> {
         let mut ops: Vec<String> = Vec::new();
 
         // ops.push(format!("option name UCI_EngineAbout type string default {} {}", Version::NAME, Version::HOMEPAGE));
@@ -596,7 +596,7 @@ impl UciServer {
                     .merge(&*eng)
                     .merge(Toml::file(&eng.config_filename));
 
-                let new: AsyncEngine = fig
+                let new: ThreadedSearch = fig
                     .extract()
                     .with_context(|| format!("error in config file {}", &eng.config_filename))?;
                 *eng = new;

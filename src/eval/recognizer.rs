@@ -215,14 +215,14 @@ impl Algo {
 mod tests {
     use crate::{
         eval::endgame::EndGame,
-        search::{engine::AsyncEngine, node::Node},
+        search::{engine::ThreadedSearch, node::Node},
         Position,
     };
     use test_log::test;
 
     #[test]
     fn test_recog_simple() {
-        let mut engine = AsyncEngine::new();
+        let mut engine = ThreadedSearch::new();
         let pos = Position::parse_epd("k7/1p6/3N4/8/8/8/1K6/B6N w - - 0 1").unwrap();
         let mut n = Node::root(4);
         n.ply = 1;
