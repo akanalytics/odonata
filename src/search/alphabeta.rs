@@ -531,7 +531,7 @@ mod tests {
             search.set_timing_method(TimeControl::Depth(7));
             search.set_position(pos.clone()).run_search();
             // println!("{}", search);
-            if pos.get("pv").is_ok() {
+            if pos.try_get("pv").is_ok() {
                 let expected_pv = pos.pv()?;
                 assert_eq!(
                     search.pv_table.extract_pv().to_string(),

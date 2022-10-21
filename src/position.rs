@@ -301,7 +301,7 @@ impl Position {
 
     // FIXME - other EPD tags
 
-    pub fn get(&self, key: &str) -> Result<&Tag> {
+    pub fn try_get(&self, key: &str) -> Result<&Tag> {
         Ok(self.tags.get(key))
     }
 

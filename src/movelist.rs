@@ -208,6 +208,11 @@ impl ScoredMoveList {
         Ok(())
     }
 
+
+    pub fn iter(&self) -> impl Iterator<Item=(BareMove, Score)> + '_ {
+        self.moves.iter().cloned()
+    }
+
     pub fn display_san<'a>(&'a self, b: &'a Board) -> impl fmt::Display + 'a {
         Displayable(|f| self.fmt_san(f, b))
     }

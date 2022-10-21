@@ -492,7 +492,7 @@ mod tests {
             let lm = lm.join(" ");
 
             let mut expected: Vec<String> = pos
-                .get("c1")
+                .try_get("c1")
                 .unwrap()
                 .value_uci()
                 .split_ascii_whitespace()
