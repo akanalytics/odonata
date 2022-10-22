@@ -66,7 +66,7 @@ impl Engine for ThreadedSearch {
     fn search(&mut self, pos: Position, tc: TimeControl) -> anyhow::Result<SearchResults> {
         self.algo.set_timing_method(tc);
         self.set_position(pos);
-        self.search();
+        self.search_sync();
         Ok(self.algo.results.clone())
     }
 
@@ -233,7 +233,7 @@ impl ThreadedSearch {
         self.algo.clock.restart_elapsed_search_clock();
     }
 
-    pub fn search(&mut self) {
+    pub fn search_sync(&mut self) {
         self.search_start();
         self.wait();
     }
@@ -399,7 +399,7 @@ mod tests {
                 let b = Catalog::test_position().board().clone();
                 let start = time::Instant::now();
                 eng.algo.board = b;
-                eng.search();
+                eng.search_sync();
                 println!(
                     "Time with {} threads (shared:{}): {}\n\n\n",
                     i,

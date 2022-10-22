@@ -5,7 +5,7 @@ use crate::domain::SearchResults;
 use crate::infra::utils::{Formatting, Uci};
 use crate::movelist::strip_move_numbers;
 use crate::other::outcome::Outcome;
-use crate::piece::{Ply, ScoreWdl};
+use crate::piece::{Ply};
 use crate::search::timecontrol::{TimeControl, RemainingTime};
 use crate::tags::Tag;
 use crate::variation::Variation;
@@ -13,10 +13,8 @@ use crate::{Color, Position};
 use crate::{eval::score::Score, mv::BareMove};
 use anyhow::{Context, Result};
 use indexmap::{indexmap, IndexMap};
-use itertools::Itertools;
 use once_cell::sync::Lazy;
 use regex::Regex;
-use std::collections::HashMap;
 use std::fmt;
 use std::io::{Write, Read, BufReader, BufRead};
 use std::time::Duration;
@@ -620,7 +618,7 @@ impl Game {
             time_millis: u64,
             nodes_k: u64,
             nps_k: u64,
-            branching_factor: f32,
+            branching_factor: f64,
             hashfull: String,
             mv: BareMove,
             score_pov: Score,
@@ -728,72 +726,11 @@ impl Game {
 
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct GameStats {
-    players: HashMap<String, ScoreWdl>,
-}
-
-impl GameStats {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn add(&mut self, player: &str, wdl: &ScoreWdl) {
-        if let Some(score) = self.players.get_mut(player) {
-            *score += *wdl;
-        } else {
-            self.players.insert(player.to_string(), *wdl);
-        }
-    }
-
-    pub fn include(&mut self, g: &Game) {
-        self.add(g.header().player(Color::White), &g.outcome.as_wdl());
-        self.add(g.header().player(Color::Black), &-g.outcome.as_wdl());
-    }
-}
-
-impl fmt::Display for GameStats {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        #[derive(Tabled)]
-        struct Row<'a> {
-            id: usize,
-            player: &'a str,
-            played: i32,
-            won: i32,
-            drawn: i32,
-            lost: i32,
-            points: String,
-            elo: String,
-        }
-        let mut kv_vec = self.players.iter().collect_vec();
-        // @todo
-        kv_vec.sort_by_cached_key(|(_k, v)| -v.elo() as i64);
-        writeln!(
-            f,
-            "{}",
-            Table::new(kv_vec.iter().enumerate().map(|(id, (player, wdl))| {
-                let row = Row {
-                    id,
-                    player,
-                    played: wdl.total(),
-                    won: wdl.w,
-                    drawn: wdl.d,
-                    lost: wdl.l,
-                    elo: Formatting::decimal(1, wdl.elo()),
-                    points: Formatting::decimal(1, wdl.points()),
-                };
-                row
-            }))
-            .with(Style::markdown())
-        )?;
-        Ok(())
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::{domain::SearchResults, infra::utils::Displayable};
+    use itertools::Itertools;
     use test_log::test;
 
     #[test]
@@ -898,27 +835,5 @@ mod tests {
 
     }
 
-    #[test]
-    fn parse_game_file()  {
-        parse("../odonata-extras/output/games/tourney-26283.pgn").unwrap();
-        parse("../odonata-extras/pgn/96th Amateur D7 (ChessOK-Pre2022HQ.cgb).pgn").unwrap();
-
-        fn parse(filename: &str) -> anyhow::Result<()>{
-            let s = &std::fs::read_to_string(filename).unwrap();
-            let mut stats = GameStats::new();
-            for game in Game::parse_pgn_string(&s) {
-            match game {
-                Ok(game) => {
-                    // println!("{}", Displayable(|f| game.fmt_pgn(f)));
-                    stats.include(&game);
-                }
-                Err(e) => return Err(e), // !("{e} in file {filename}"),
-            }
-        }
-        println!("{stats}");
-        Ok(())
-
-    }
  
-}
 }

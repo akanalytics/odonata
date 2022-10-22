@@ -30,19 +30,20 @@ use std::time::Duration;
 //     }
 // }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Tag {
     None,
     AvoidMoves(MoveList),
     BestMoves(MoveList),
     BestScoredMoves(ScoredMoveList),
-    BranchingFactorPercent(u32), // 100x
+    BranchingFactor(f64), // 100x
     Pv(Variation),
     Id(String),
     AnalysisCountDepth(Ply),
     AnalysisCountSelDepth(Ply),
     AnalysisCountNodes(u128),
     AnalysisCountSeconds(u32),
+    AnalysisCountMilliSeconds(u64),
     ChessClock(Duration),
     CentipawnEvaluation(i32),
     DirectMate(u32),
@@ -71,6 +72,7 @@ impl Tag {
     pub const ACSD: &'static str = "acsd";
     pub const ACN: &'static str = "acn";
     pub const ACS: &'static str = "acs";
+    pub const ACMS: &'static str = "Acms";
     pub const CC: &'static str = "cc";
     pub const CE: &'static str = "ce";
     pub const C9: &'static str = "c9";
@@ -94,13 +96,14 @@ impl Tag {
             Self::AM => Tag::AvoidMoves(b.parse_san_movelist(v)?),
             Self::BM => Tag::BestMoves(b.parse_san_movelist(v)?),
             Self::BSM => Tag::BestScoredMoves(ScoredMoveList::parse_san(v, b)?),
-            Self::BF => Tag::BranchingFactorPercent((100.0 * v.parse::<f64>()?) as u32),
+            Self::BF => Tag::BranchingFactor(v.parse::<f64>()?),
             Self::PV => Tag::Pv(b.parse_san_variation(v)?),
             Self::ID => Tag::Id(v.to_string()),
             Self::ACD => Tag::AnalysisCountDepth(v.parse::<Ply>()?),
             Self::ACSD => Tag::AnalysisCountSelDepth(v.parse::<Ply>()?),
             Self::ACN => Tag::AnalysisCountNodes(v.parse::<u128>()?),
             Self::ACS => Tag::AnalysisCountSeconds(v.parse::<u32>()?),
+            Self::ACMS => Tag::AnalysisCountMilliSeconds(v.parse::<u64>()?),
             Self::CC => Tag::ChessClock(Duration::new(0, 0)),
             Self::CE => Tag::CentipawnEvaluation(v.parse::<i32>()?),
             Self::DM => Tag::DirectMate(v.parse::<u32>()?),
@@ -133,13 +136,14 @@ impl Tag {
             Tag::AvoidMoves(_) => Self::AM.to_string(),
             Tag::BestMoves(_) => Self::BM.to_string(),
             Tag::BestScoredMoves(_) => Self::BSM.to_string(),
-            Tag::BranchingFactorPercent(_) => Self::BF.to_string(),
+            Tag::BranchingFactor(_) => Self::BF.to_string(),
             Tag::Pv(_) => Self::PV.to_string(),
             Tag::Id(_) => Self::ID.to_string(),
             Tag::AnalysisCountDepth(_) => Self::ACD.to_string(),
             Tag::AnalysisCountSelDepth(_) => Self::ACSD.to_string(),
             Tag::AnalysisCountNodes(_) => Self::ACN.to_string(),
             Tag::AnalysisCountSeconds(_) => Self::ACS.to_string(),
+            Tag::AnalysisCountMilliSeconds(_) => Self::ACMS.to_string(),
             Tag::ChessClock(_) => Self::CC.to_string(),
             Tag::CentipawnEvaluation(_) => Self::CE.to_string(),
             Tag::DirectMate(_) => Self::DM.to_string(),
@@ -165,13 +169,14 @@ impl Tag {
             Tag::AvoidMoves(mvs) => mvs.uci(),
             Tag::BestMoves(mvs) => mvs.uci(),
             Tag::BestScoredMoves(mvs) => format!("{:?}", mvs),
-            Tag::BranchingFactorPercent(bf) => Formatting::decimal(2, *bf as f32 / 100.0),
+            Tag::BranchingFactor(bf) => Formatting::decimal(2, *bf),
             Tag::Pv(variation) => variation.to_uci(),
             Tag::Id(s) => format!("{}", s),
             Tag::AnalysisCountDepth(n) => format!("{}", n),
             Tag::AnalysisCountSelDepth(n) => format!("{}", n),
             Tag::AnalysisCountNodes(n) => format!("{}", n),
             Tag::AnalysisCountSeconds(n) => format!("{}", n),
+            Tag::AnalysisCountMilliSeconds(n) => format!("{}", n),
             Tag::ChessClock(_duration) => format!("{}", "na"), // FIXME!
             Tag::CentipawnEvaluation(score) => score.to_string(),
             Tag::DirectMate(n) => format!("{}", n),
@@ -204,7 +209,7 @@ impl Tag {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Tags {
     tags: HashMap<String, Tag>,
 }

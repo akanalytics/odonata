@@ -54,7 +54,7 @@ impl Exam {
             exam.engine.new_game();
             exam.engine.new_position();
             exam.engine.algo.board = pos.board().clone();
-            exam.engine.search();
+            exam.engine.search_sync();
 
             let correct = pos
                 .bm()
@@ -106,7 +106,7 @@ mod tests {
         let mut engine = ThreadedSearch::new();
         engine.algo.set_timing_method(TimeControl::Depth(5));
         engine.algo.board = pos.board().clone();
-        engine.search();
+        engine.search_sync();
         println!("{}", engine.algo);
     }
 }

@@ -32,7 +32,7 @@ use std::fmt;
 // http://www.talkchess.com/forum3/viewtopic.php?t=69640&start=20
 
 // #[serde(into = "HashMap<String,String>")]
-#[derive(Clone, Default, Debug, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Default, Debug, Deserialize, PartialEq)]
 #[serde(try_from = "HashMap<String,String>")]
 pub struct Position {
     board: Board,
@@ -262,6 +262,12 @@ impl Position {
         &self.board
     }
 
+    /// consumes the supplied variation, and applies it to the board
+    pub fn make_moves(&mut self) {
+        self.board = self.board().make_moves_old(self.supplied_variation());
+        self.tags.remove(Tag::SV);
+    }
+
     pub fn board_mut(&mut self) -> &mut Board {
         &mut self.board
     }
@@ -326,8 +332,8 @@ impl Position {
     }
 
     pub fn branching_factor(&self) -> f64 {
-        if let Tag::BranchingFactorPercent(bf) = self.tag(Tag::BF) {
-            *bf as f64 / 100.0
+        if let Tag::BranchingFactor(bf) = self.tag(Tag::BF) {
+            *bf
         } else {
             0.0
         }

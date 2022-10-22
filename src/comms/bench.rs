@@ -106,7 +106,7 @@ impl Bench {
                 engine.algo.set_timing_method(tc);
             }
 
-            engine.search();
+            engine.search_sync();
             let elapsed = t.elapsed();
             let bm = &engine.algo.results.best_move().unwrap_or_default();
             let correct = if pos.bm().ok().unwrap().iter().map(Move::to_inner).contains(bm) {

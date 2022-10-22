@@ -99,7 +99,7 @@ mod tests {
                 .set_timing_method(TimeControl::Depth(suggested_depth - 1));
             engine.set_position(pos.clone());
 
-            engine.search();
+            engine.search_sync();
             let mut results = engine.algo.results_as_position().clone();
             let nodes = results.acn().unwrap();
             node_count += nodes;

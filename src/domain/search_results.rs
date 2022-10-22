@@ -1,4 +1,3 @@
-use std::iter::{self, FromIterator};
 use crate::eval::eval::Eval;
 use crate::eval::score::Score;
 use crate::infra::utils::{calculate_branching_factor_by_nodes_and_depth, Uci};
@@ -12,6 +11,7 @@ use crate::{board::Board, Algo, MoveList, Position};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::iter::{self, FromIterator};
 use tabled::builder::Builder;
 
 use super::info::{BareMoveVariation, Info};
@@ -27,7 +27,7 @@ pub struct SearchResults {
     pub nodes_thread: u64,
     pub nps: u64,
     pub tbhits: u64,
-    pub bf: f32,
+    pub bf: f64,
     pub hashfull_per_mille: u32,
     pub outcome: Outcome,
 
@@ -143,13 +143,13 @@ impl SearchResults {
             let bf = if let Some(depth) = info.depth {
                 if let Ok(nodes) = calculate_nodes_for_iid(depth, &infos) {
                     calculate_branching_factor_by_nodes_and_depth(nodes, depth)
-                        .ok()
-                        .map(|bf| bf as f32)
                 } else {
-                    None
+                    info!("info did not contain nodes needed for bf");
+                    Err(anyhow::anyhow!("info did not contain nodes needed for bf"))
                 }
             } else {
-                None
+                info!("info did not contain depth needed for bf");
+                Err(anyhow::anyhow!("info did not contain depth needed for bf"))
             };
             SearchResults {
                 depth: info.depth.unwrap_or_default(),
@@ -184,7 +184,7 @@ impl SearchResults {
     pub fn new(algo: &Algo, depth: Ply, multi_pv: Vec<(BareMoveVariation, Score)>) -> Self {
         let nodes_thread_last_iter = algo.clock.elapsed_iter_this_thread().1;
         let bf = calculate_branching_factor_by_nodes_and_depth(nodes_thread_last_iter, depth)
-            .unwrap_or_default() as f32;
+            .unwrap_or_default();
         SearchResults {
             outcome: Outcome::Unterminated,
             tbhits: 0,
@@ -253,15 +253,30 @@ impl SearchResults {
         let mut list = ScoredMoveList::new();
         self.multi_pv
             .iter()
-            .filter_map(|(var, sc)|
+            .filter_map(|(var, sc)| {
                 if let Some(mv) = var.first() {
                     Some((mv, *sc))
-                } else {None }).for_each(|ms| list.push(ms ));
-            
-                list}
+                } else {
+                    None
+                }
+            })
+            .for_each(|ms| list.push(ms));
 
-    pub fn to_position(&self, b: Board, tags: &[&str]) -> Position {
-        let mut pos = Position::from_board(b);
+        list
+    }
+
+    pub const TAGS: [&str; 8] = [
+        Tag::SM,
+        Tag::BM,
+        Tag::CE,
+        Tag::ACMS,
+        Tag::ACD,
+        Tag::ACSD,
+        Tag::ACN,
+        Tag::BF,
+    ];
+
+    pub fn to_position(&self, mut pos: Position, tags: &[&str]) -> Position {
         let var = Variation::from_inner(&self.pv(), pos.board());
         if tags.contains(&Tag::PV) {
             pos.set(Tag::Pv(var));
@@ -281,6 +296,12 @@ impl SearchResults {
         if tags.contains(&Tag::ACD) {
             pos.set(Tag::AnalysisCountDepth(self.depth));
         }
+        if tags.contains(&Tag::ACS) {
+            pos.set(Tag::AnalysisCountSeconds((self.time_millis / 1000) as u32));
+        }
+        if tags.contains(&Tag::ACMS) {
+            pos.set(Tag::AnalysisCountMilliSeconds(self.time_millis));
+        }
         if tags.contains(&Tag::ACSD) {
             pos.set(Tag::AnalysisCountSelDepth(self.seldepth));
         }
@@ -288,7 +309,7 @@ impl SearchResults {
             pos.set(Tag::AnalysisCountNodes(self.nodes as u128));
         }
         if tags.contains(&Tag::BF) {
-            pos.set(Tag::BranchingFactorPercent((100.0 * self.bf) as u32));
+            pos.set(Tag::BranchingFactor(self.bf));
         }
         if tags.contains(&Tag::BSM) {
             pos.set(Tag::BestScoredMoves(self.scored_move_list()));
@@ -340,7 +361,7 @@ mod tests {
         engine.set_position(pos);
         engine.algo.set_timing_method(TimeControl::Depth(8));
         // engine.algo.set_callback(Uci::uci_info);
-        engine.search();
+        engine.search_sync();
 
         println!(
             "{}",

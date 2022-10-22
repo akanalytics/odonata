@@ -909,14 +909,14 @@ mod tests {
         eng.set_position(Catalog::starting_position().clone());
         eng.algo.set_timing_method(TimeControl::Depth(6));
         eprintln!("Before 1\n{}", eng.algo);
-        eng.search();
+        eng.search_sync();
         eprintln!("After 1\n{}", eng.algo);
         let mut eng = ThreadedSearch::new();
         eng.new_game();
         eng.set_position(Catalog::starting_position().clone());
         eng.algo.set_timing_method(TimeControl::Depth(6));
         eprintln!("Before 2\n{}", eng.algo);
-        eng.search();
+        eng.search_sync();
         eprintln!("After 2{}", eng.algo);
     }
 }

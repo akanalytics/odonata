@@ -314,7 +314,7 @@ mod tests {
 
             eng.set_position(pos.clone());
             eng.algo.set_timing_method(TimeControl::Depth(0));
-            eng.search();
+            eng.search_sync();
             // debug!("{}", search);
             println!(
                 "search:  {:<20}  {}\nexpected:{:<20}  {}\n",

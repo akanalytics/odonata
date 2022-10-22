@@ -29,7 +29,6 @@ use crate::search::restrictions::Restrictions;
 use crate::search::search_progress::Info;
 use crate::search::taskcontrol::TaskControl;
 use crate::search::timecontrol::TimeControl;
-use crate::tags::Tag;
 use crate::variation::Variation;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -379,16 +378,7 @@ impl Algo {
     }
 
     pub fn results_as_position(&self) -> Position {
-        const TAGS: [&str; 7] = [
-            Tag::SM,
-            Tag::BM,
-            Tag::CE,
-            Tag::ACD,
-            Tag::ACSD,
-            Tag::ACN,
-            Tag::BF,
-        ];
-        self.results.to_position(self.board.clone(), &TAGS)
+        self.results.to_position(self.position.clone(), &SearchResults::TAGS)
     }
 
     pub fn score(&self) -> Score {

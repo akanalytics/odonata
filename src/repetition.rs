@@ -274,7 +274,7 @@ mod tests {
         // eng.algo.explainer.enabled = true;
         // eng.algo.explainer.add_variation_to_explain(Variation::new());
         eng.algo.set_timing_method(TimeControl::Depth(5));
-        eng.search();
+        eng.search_sync();
         println!("{}", eng.algo.results_as_position());
     }
 
@@ -301,7 +301,7 @@ mod tests {
             engine.algo.repetition.count(&board)
         );
         println!("rep = {:?}", engine.algo.repetition);
-        engine.search();
+        engine.search_sync();
         let res = engine.algo.results_as_position();
         println!("res3: {}", res);
 
@@ -321,7 +321,7 @@ mod tests {
             engine.algo.repetition.count(&board)
         );
         println!("rep = {:?}", engine.algo.repetition);
-        engine.search();
+        engine.search_sync();
         let res = engine.algo.results_as_position();
         println!("res2: {}", res);
 
@@ -341,7 +341,7 @@ mod tests {
             engine.algo.repetition.count(&board)
         );
         println!("rep = {:?}", engine.algo.repetition);
-        engine.search();
+        engine.search_sync();
         let res = engine.algo.results_as_position();
         println!("res1: {}", res);
     }
