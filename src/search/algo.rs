@@ -107,6 +107,10 @@ pub struct Algo {
 }
 
 impl Engine for Algo {
+    fn name(&self) -> String {
+        String::from("odonata-single-threaded")
+    }   
+
     fn new(_config: &str) -> anyhow::Result<Self> {
         Ok(Algo::new())
     }   

@@ -7,6 +7,9 @@ use super::SearchResults;
 pub trait Engine: Display + Debug {
     // const OPTION_MULTIPV: &'static str = "MultiPV";
     // const OPTION_HASH: &'static str = "Hash";
+
+    fn name(&self) -> String;
+
     fn new(config: &str) -> anyhow::Result<Self>
     where
         Self: Sized;

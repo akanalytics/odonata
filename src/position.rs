@@ -208,7 +208,12 @@ impl Position {
         let mut vec = Vec::<Position>::new();
         for item in iter {
             let s = item.as_ref();
-            if !s.is_empty() {
+            let multiline = s.contains("\n");
+            let comment = s.trim_start().starts_with("#");
+            if comment && !multiline {
+                continue;
+            }
+            if !s.is_empty()  {
                 vec.push(
                     Self::parse_epd(&s.replace('\n', " "))
                         .with_context(|| format!("in epd {}", s))?,

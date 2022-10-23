@@ -63,6 +63,10 @@ impl Default for ThreadedSearch {
 }
 
 impl Engine for ThreadedSearch {
+    fn name(&self) -> String {
+        String::from("odonata-multi-threaded")
+    }   
+
     fn new(_config: &str) -> anyhow::Result<Self> {
         Ok(Self::new())
     }   
