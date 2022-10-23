@@ -41,7 +41,14 @@ pub struct SearchResults {
 impl fmt::Display for SearchResults {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "{}", toml::to_string_pretty(self).unwrap())?;
+        for (bmv, sc) in &self.multi_pv {
+            writeln!(f, "[{sc}] {}", bmv.to_uci())?;
+        }
         writeln!(f, "n_infos: {}", self.infos.len())?;
+        for info in self.infos.iter().rev().take(6) {
+            writeln!(f, "{info}", info=info.to_uci())?;
+        }
+
         Ok(())
     }
 }
@@ -151,6 +158,18 @@ impl SearchResults {
                 info!("info did not contain depth needed for bf");
                 Err(anyhow::anyhow!("info did not contain depth needed for bf"))
             };
+            let max_depth = infos.iter().map(|i| i.depth.unwrap_or_default()).max();
+            let mut multi_pv = infos
+                .iter()
+                .filter(|i| i.depth == max_depth)
+                .map(|i| {
+                    (
+                        i.pv.clone().unwrap_or_default(),
+                        i.score.unwrap_or_default(),
+                    )
+                })
+                .collect_vec();
+                multi_pv.sort_by_key(|(_pv, sc)| sc.negate());
             SearchResults {
                 depth: info.depth.unwrap_or_default(),
                 seldepth: info.seldepth.unwrap_or_default(),
@@ -163,10 +182,7 @@ impl SearchResults {
                 bf: bf.unwrap_or_default(),
                 hashfull_per_mille: info.hashfull_per_mille.unwrap_or_default(),
                 outcome: Outcome::Unterminated,
-                multi_pv: vec![(
-                    info.pv.clone().unwrap_or_default(),
-                    info.score.unwrap_or_default(),
-                )],
+                multi_pv,
                 infos,
             }
         } else {
