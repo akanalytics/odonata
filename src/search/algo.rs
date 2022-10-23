@@ -107,6 +107,10 @@ pub struct Algo {
 }
 
 impl Engine for Algo {
+    fn new(_config: &str) -> anyhow::Result<Self> {
+        Ok(Algo::new())
+    }   
+
     fn search(&mut self, pos: Position, tc: TimeControl) -> anyhow::Result<SearchResults> {
         self.controller.set_running();
         self.set_timing_method(tc);

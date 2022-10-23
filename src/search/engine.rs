@@ -63,6 +63,10 @@ impl Default for ThreadedSearch {
 }
 
 impl Engine for ThreadedSearch {
+    fn new(_config: &str) -> anyhow::Result<Self> {
+        Ok(Self::new())
+    }   
+
     fn search(&mut self, pos: Position, tc: TimeControl) -> anyhow::Result<SearchResults> {
         self.algo.set_timing_method(tc);
         self.set_position(pos);
