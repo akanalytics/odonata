@@ -44,7 +44,7 @@ use std::str::FromStr;
 // pub type MoveTypes = BitFlags<MoveType>;
 //lean  / bare
 
-#[derive(Default, Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Default, Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub struct BareMove {
     pub from: Square,
     pub to: Square,

@@ -11,7 +11,7 @@ use crate::{
     MoveList, board::Board,
 };
 
-#[derive(Clone, Default, Debug, PartialEq)]
+#[derive(Clone, Default, Debug, PartialEq, Eq, Hash)]
 pub struct BareMoveVariation(pub Vec<BareMove>);
 
 impl Uci for BareMoveVariation {

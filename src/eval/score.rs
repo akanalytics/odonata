@@ -12,7 +12,7 @@ use std::fmt;
 //     bound: NodeType,
 // }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Score {
     cp: i16,

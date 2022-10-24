@@ -42,11 +42,11 @@ impl fmt::Display for SearchResults {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "{}", toml::to_string_pretty(self).unwrap())?;
         for (bmv, sc) in &self.multi_pv {
-            writeln!(f, "[{sc}] {}", bmv.to_uci())?;
+            writeln!(f, "[{sc}] pv:{}", bmv.to_uci())?;
         }
         writeln!(f, "n_infos: {}", self.infos.len())?;
         for info in self.infos.iter().rev().take(6) {
-            writeln!(f, "{info}", info=info.to_uci())?;
+            writeln!(f, "{info}", info = info.to_uci())?;
         }
 
         Ok(())
@@ -119,11 +119,21 @@ impl Uci for SearchResults {
         while let Some(line) = iter.next() {
             if iter.peek().is_none() {
                 let (bm, pm) = parse_bestmove_uci(line)?;
-                return Ok(SearchResults::from_infos(bm, pm, infos));
+                let sr = SearchResults::from_infos(bm, pm, infos);
+                assert!(
+                    // look for move occuing twice in multi-pv
+                    !sr.multi_pv
+                        .iter()
+                        .tuple_windows()
+                        .any(|(prev, next)| prev.0.first() == next.0.first()),
+                    "{sr} has duplicate move in multi_pv\n{s}"
+                );
+                return Ok(sr);
             } else {
                 // @todo
                 let info = Info::parse_uci(line)?;
-                if info.depth.is_some() {
+                // ignore "info depth 21 currmove g7g5 currmovenumber 18"
+                if info.depth.is_some() && info.pv.is_some() {
                     infos.push(info);
                 }
             }
@@ -133,6 +143,34 @@ impl Uci for SearchResults {
 }
 
 impl SearchResults {
+    fn extract_multi_pv(infos: &Vec<Info>) -> Vec<(BareMoveVariation, Score)> {
+        // step #1, find max multipv index
+        let max_index = infos.iter().map(|i| i.multi_pv.unwrap_or(1)).max();
+
+        // step #2, find max depth with this multipv index
+        let max_depth = infos
+            .iter()
+            .filter(|i| i.multi_pv.unwrap_or(1) == max_index.unwrap_or(1))
+            .map(|i| i.depth.unwrap_or_default())
+            .max();
+
+        let mut multi_pv = infos
+            .iter()
+            .rev() // look backwards
+            .filter(|i| i.depth == max_depth)
+            .map(|i| {
+                (
+                    i.pv.clone().unwrap_or_default(),
+                    i.score.unwrap_or_default(),
+                )
+            })
+            // we see duplicate moves with diferent hashfulls (and scores)
+            .unique_by(|(pv, _sc)| pv.first())   // so we remove duplicate moves
+            .collect_vec();
+        multi_pv.sort_by_key(|(_pv, sc)| sc.negate());
+        multi_pv
+    }
+
     pub fn from_infos(bm: BareMove, pm: Option<BareMove>, infos: Vec<Info>) -> Self {
         fn calculate_nodes_for_iid(n: Ply, infos: &[Info]) -> anyhow::Result<u64> {
             let info_n = infos
@@ -158,18 +196,8 @@ impl SearchResults {
                 info!("info did not contain depth needed for bf");
                 Err(anyhow::anyhow!("info did not contain depth needed for bf"))
             };
-            let max_depth = infos.iter().map(|i| i.depth.unwrap_or_default()).max();
-            let mut multi_pv = infos
-                .iter()
-                .filter(|i| i.depth == max_depth)
-                .map(|i| {
-                    (
-                        i.pv.clone().unwrap_or_default(),
-                        i.score.unwrap_or_default(),
-                    )
-                })
-                .collect_vec();
-                multi_pv.sort_by_key(|(_pv, sc)| sc.negate());
+
+            let multi_pv = Self::extract_multi_pv(&infos);
             SearchResults {
                 depth: info.depth.unwrap_or_default(),
                 seldepth: info.seldepth.unwrap_or_default(),
