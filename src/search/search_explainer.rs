@@ -155,7 +155,7 @@ impl Explainer {
         Ok(())
     }
 
-    pub fn game_writer(&self, _game_id: u32) -> Result<Box<dyn Write>> {
+    pub fn game_writer(&self, _game_id: usize) -> Result<Box<dyn Write>> {
         if !self.export_games {
             Ok(Box::new(io::sink()))
         } else {

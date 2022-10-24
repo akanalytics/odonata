@@ -1,8 +1,8 @@
 use crate::board::Board;
 use crate::catalog::Catalog;
 use crate::domain::info::BareMoveVariation;
-use crate::domain::SearchResults;
-use crate::infra::utils::{Formatting, Uci};
+use crate::domain::{SearchResults, PlayerType};
+use crate::infra::utils::{Formatting, Uci, Displayable};
 use crate::movelist::strip_move_numbers;
 use crate::other::outcome::Outcome;
 use crate::piece::{Ply};
@@ -17,10 +17,11 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use std::fmt;
 use std::io::{Write, Read, BufReader, BufRead};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tabled::{Style, Table, Tabled};
 
 use super::Player;
+use super::engine::Engine;
 use super::info::Info;
 
 // https://tim-mann.org/Standard
@@ -355,7 +356,7 @@ impl GameMove {
 
 #[derive(Clone, Default, Debug)]
 pub struct Game {
-    pub game_id: u32,
+    pub game_id: usize,
     header: GameHeader,
     moves: Vec<GameMove>,
     comment: String,
@@ -390,6 +391,11 @@ impl fmt::Display for Game {
 // }
 
 impl Game {
+    pub fn to_pgn(&self) -> String {
+        format!("{}", Displayable(|f| self.fmt_pgn(f)))
+    }
+
+
     pub fn fmt_pgn(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.header().fmt_uci(f)?;
         writeln!(f)?;
@@ -495,12 +501,45 @@ impl<R: BufRead> Iterator for PgnParser<R> {
 }
 
 impl Game {
-    // fn play(&mut self, eng: &mut dyn Engine ) -> anyhow::Result<SearchResults> {
-    //     let position = self.position_at(ply);
-    //     let sr = eng.search(position, game.time_control(ply));
-    //     game.ply += 1;
-    //     sr
-    // }
+    pub fn play(&mut self, white: &mut impl Engine, black: &mut impl Engine ) -> anyhow::Result<()> {
+        self.setup_match(white, black)?;
+        while !self.outcome().is_game_over() {
+            self.play_single_move(white, black)?;
+        }
+        Ok(())
+    }
+
+    pub fn setup_match(&mut self, white: &mut impl Engine, black: &mut impl Engine ) -> anyhow::Result<()> {
+        let player_white = Player {
+            name: white.name(),
+            player_type: PlayerType::Computer,
+            ..Player::default()
+        };
+
+        let player_black = Player {
+            name: black.name(),
+            player_type: PlayerType::Computer,
+            ..Player::default()
+        };
+
+        self.header_mut().set_player(Color::White, &player_white);
+        self.header_mut().set_player(Color::Black, &player_black);
+        Ok(())
+    }
+
+
+    pub fn play_single_move(&mut self, white: &mut impl Engine, black: &mut impl Engine ) -> anyhow::Result<()> {
+        let pos = self.starting_pos_for(self.len());
+        let tc = self.time_control_for_ply(self.len());
+        let move_time = Instant::now();
+        let sr = if self.board_for_ply(self.len()).color_us() == Color::White {
+            white.search(pos, tc)?
+        } else {
+            black.search(pos, tc)?
+        };
+        self.make_engine_move(sr, move_time.elapsed());
+        Ok(())
+    }
 }
 
 impl Game {
@@ -615,16 +654,16 @@ impl Game {
             ply: usize,
             depth: Ply,
             seldepth: Ply,
-            time_millis: u64,
+            ms: u64,
             nodes_k: u64,
             nps_k: u64,
-            branching_factor: f64,
+            bf: String,
             hashfull: String,
             mv: BareMove,
             score_pov: Score,
             our_time_secs: f32,
             their_time_secs: f32,
-            moves_to_go: u16,
+            mtg: u16,
             pv: String,
         }
 
@@ -643,10 +682,10 @@ impl Game {
                     if let Some(sr) = &gm.sr {
                         row.depth = sr.depth;
                         row.seldepth = sr.seldepth;
-                        row.time_millis = sr.time_millis;
+                        row.ms = sr.time_millis;
                         row.nodes_k = sr.nodes / 1000;
                         row.nps_k = sr.nps / 1000;
-                        row.branching_factor = sr.bf;
+                        row.bf = Formatting::decimal(2, sr.bf);
                         row.hashfull = format!("{}%", sr.hashfull_per_mille / 10);
                         row.mv = sr.best_move().unwrap_or_default();
                         row.score_pov = sr.score();
