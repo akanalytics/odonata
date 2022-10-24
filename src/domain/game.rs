@@ -501,7 +501,7 @@ impl<R: BufRead> Iterator for PgnParser<R> {
 }
 
 impl Game {
-    pub fn play(&mut self, white: &mut impl Engine, black: &mut impl Engine ) -> anyhow::Result<()> {
+    pub fn play(&mut self, white: &mut dyn Engine, black: &mut dyn Engine ) -> anyhow::Result<()> {
         self.setup_match(white, black)?;
         while !self.outcome().is_game_over() {
             self.play_single_move(white, black)?;
@@ -509,7 +509,8 @@ impl Game {
         Ok(())
     }
 
-    pub fn setup_match(&mut self, white: &mut impl Engine, black: &mut impl Engine ) -> anyhow::Result<()> {
+    /// outcome=*
+    pub fn setup_match(&mut self, white: &mut dyn Engine, black: &mut dyn Engine ) -> anyhow::Result<()> {
         let player_white = Player {
             name: white.name(),
             player_type: PlayerType::Computer,
@@ -524,11 +525,12 @@ impl Game {
 
         self.header_mut().set_player(Color::White, &player_white);
         self.header_mut().set_player(Color::Black, &player_black);
+        self.set_outcome(Outcome::Unterminated);
         Ok(())
     }
 
 
-    pub fn play_single_move(&mut self, white: &mut impl Engine, black: &mut impl Engine ) -> anyhow::Result<()> {
+    pub fn play_single_move(&mut self, white: &mut dyn Engine, black: &mut dyn Engine ) -> anyhow::Result<()> {
         let pos = self.starting_pos_for(self.len());
         let tc = self.time_control_for_ply(self.len());
         let move_time = Instant::now();
@@ -559,6 +561,12 @@ impl Game {
         var
     }
 
+    /// resets outcome
+    pub fn truncate(&mut self, len: usize) {
+        self.moves.truncate(len);
+        self.set_outcome(self.board_for_ply(self.moves.len()).outcome());
+    }
+
     pub fn total_emt_for_ply(&self, ply: usize) -> Duration {
         self.moves.iter().take(ply).rev().step_by(2).map(|gm| gm.elapsed_move_time()).sum()
     }
@@ -577,8 +585,10 @@ impl Game {
     }
 
     pub fn board_for_ply(&self, ply: usize) -> Board {
-        let pos = self.starting_pos_for(ply);
-        pos.board().make_moves_old(pos.supplied_variation())
+        let mut pos = self.starting_pos_for(ply);
+        debug!("pos make moves on {pgn}", pgn=pos.to_pgn());
+        pos.make_moves();
+        pos.board().clone()
     }
 
 
@@ -738,7 +748,10 @@ impl Game {
 
     /// sets outcome and result too
     pub fn make_move(&mut self, mv: BareMove) {
-        debug!("Game move {ply} {mv}", ply = self.len());
+        debug!("Make move game move {ply} {mv} on board {fen}", 
+            ply = self.len(), 
+            fen = self.board_for_ply(self.len()).to_fen());
+        
         self.moves.push(GameMove {
             mv,
             .. GameMove::default()
@@ -747,6 +760,7 @@ impl Game {
     }
 
     /// captures engine search results
+    /// and sets "elapsed move time" 
     pub fn make_engine_move(&mut self, sr: SearchResults, elapsed: Duration) {
         self.make_move(sr.best_move().unwrap_or_default());
         let mut gm = self.last_move_mut();
@@ -784,7 +798,7 @@ mod tests {
         game.make_move(BareMove::parse_uci("a2a3").unwrap());
         game.make_move(BareMove::parse_uci("h7h6").unwrap());
         println!("{game}");
-        println!("{board}", board = game.board_for_ply(2));
+        println!("board_for_ply(2) = {board}", board = game.board_for_ply(2));
         assert_eq!(game.board_for_ply(2).fullmove_number(), 2);
 
     }
