@@ -517,15 +517,17 @@ impl Board {
 
 impl fmt::Display for Board {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_char('\n')?;
-        let b = self.clone();
-        for &r in Bitboard::RANKS.iter().rev() {
-            f.write_str(&b.get(r))?;
-            f.write_char('\n')?;
-        }
-        write!(f, "\nfen: {} \n", self.to_fen())?;
-        // write!(fmt, "Moves: {}", self.moves)?;
+        write!(f, "{}", self.to_fen())?;
+
         if f.alternate() {
+            f.write_char('\n')?;
+            let b = self.clone();
+            for &r in Bitboard::RANKS.iter().rev() {
+                f.write_str(&b.get(r))?;
+                f.write_char('\n')?;
+            }
+            write!(f, "\nfen: {} \n", self.to_fen())?;
+            // write!(fmt, "Moves: {}", self.moves)?;
             writeln!(f, "Hash: {:x}", self.hash())?;
             writeln!(f, "Rep count: {:x}", self.repetition_count().total)?;
             writeln!(f, "White:\n{}\nBlack:\n{}\n", self.white(), self.black())?;

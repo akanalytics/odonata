@@ -3,7 +3,7 @@ pub mod console;
 pub mod json_rpc;
 pub mod uci_server;
 
-use crate::comms::bench::Bench;
+use crate::{comms::bench::Bench, trace::logger::Logger};
 use crate::comms::uci_server::UciServer;
 use crate::infra::version::Version;
 use crate::search::timecontrol::TimeControl;
@@ -78,7 +78,8 @@ pub fn main() -> anyhow::Result<()> {
         )
         .get_matches();
 
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
+
+    Logger::init();
 
     // logger::init_logging();
 

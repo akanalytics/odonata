@@ -65,13 +65,15 @@ impl Default for ThreadedSearch {
 impl Engine for ThreadedSearch {
     fn name(&self) -> String {
         String::from("odonata-multi-threaded")
-    }   
+    }
 
     fn new(_config: &str) -> anyhow::Result<Self> {
         Ok(Self::new())
-    }   
+    }
 
     fn search(&mut self, pos: Position, tc: TimeControl) -> anyhow::Result<SearchResults> {
+        info!("[000] -- search on {n}", n = self.name());
+        info!("[000] -- search on {b} {tc}", b = pos.board_after());
         self.algo.set_timing_method(tc);
         self.set_position(pos);
         self.search_sync();

@@ -2,7 +2,6 @@ use crate::board::Board;
 use crate::cache::tt2::TranspositionTable2;
 use crate::clock::Clock;
 use crate::domain::engine::Engine;
-use crate::domain::Game;
 use crate::eval::eval::Eval;
 use crate::eval::recognizer::Recognizer;
 use crate::eval::score::Score;
@@ -89,9 +88,6 @@ pub struct Algo {
     pub results: SearchResults,
 
     #[serde(skip)]
-    pub game: Game,
-
-    #[serde(skip)]
     pub board: Board,
     #[serde(skip)]
     pub max_depth: Ply,
@@ -109,13 +105,15 @@ pub struct Algo {
 impl Engine for Algo {
     fn name(&self) -> String {
         String::from("odonata-single-threaded")
-    }   
+    }
 
     fn new(_config: &str) -> anyhow::Result<Self> {
         Ok(Algo::new())
-    }   
+    }
 
     fn search(&mut self, pos: Position, tc: TimeControl) -> anyhow::Result<SearchResults> {
+        info!("[000] -- search on {n}", n = self.name());
+        info!("[000] -- search on {b} {tc}", b = pos.board_after());
         self.controller.set_running();
         self.set_timing_method(tc);
         self.set_position(pos);
@@ -177,7 +175,7 @@ impl Component for Algo {
                 .explainer
                 .show_pv_eval(&self.results.explain(&self.eval, &self.board)),
             StartDepthIteration(_) => self.new_iter(),
-            Shutdown => self.explainer.export_game(&self.game).unwrap(),
+            Shutdown => {},
         }
 
         self.ids.set_state(s);
@@ -213,9 +211,6 @@ impl Component for Algo {
     }
 
     fn new_game(&mut self) {
-        self.explainer.export_game(&self.game).unwrap();
-        self.game.clear_moves();
-        self.game.game_id = self.game.game_id + 1;
     }
 
     fn new_position(&mut self) {
@@ -354,8 +349,6 @@ impl Algo {
         self.set_state(State::SetPosition);
         self.explainer.set_board(pos.board().clone());
         self.repetition.capture_all_prior_positions(&pos);
-        self.game.header_mut().set_starting_pos(pos.board().clone());
-        // self.game.capture_missing_moves(pos.supplied_variation());
         self.board = pos.board().make_moves_old(pos.supplied_variation());
         self.tt.rewrite_pv(pos.board());
         self.position = pos;
@@ -386,7 +379,8 @@ impl Algo {
     }
 
     pub fn results_as_position(&self) -> Position {
-        self.results.to_position(self.position.clone(), &SearchResults::TAGS)
+        self.results
+            .to_position(self.position.clone(), &SearchResults::TAGS)
     }
 
     pub fn score(&self) -> Score {

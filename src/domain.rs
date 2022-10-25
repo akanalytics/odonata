@@ -1,4 +1,3 @@
-mod game;
 pub mod material;
 mod player;
 pub mod search_results;
@@ -7,6 +6,6 @@ pub mod info;
 pub mod engine;
 
 pub use crate::domain::{
-    game::Game, material::Material, player::Player, player::PlayerType,
+    material::Material, player::Player, player::PlayerType,
     search_results::SearchResults, tree::SearchTree, tree::TreeNode,
 };

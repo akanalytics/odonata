@@ -273,6 +273,11 @@ impl Position {
         self.tags.remove(Tag::SV);
     }
 
+    /// board after applying SV
+    pub fn board_after(&self) -> Board {
+        self.board().make_moves_old(self.supplied_variation()).clone()
+    }
+
     pub fn board_mut(&mut self) -> &mut Board {
         &mut self.board
     }

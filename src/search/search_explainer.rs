@@ -13,14 +13,13 @@ use crate::variation::Variation;
 use crate::infra::component::{Component, State};
 // use crate::{debug, logger::LogInit};
 use super::node::{Event, Node};
-use crate::domain::{SearchTree, TreeNode, Game, search_results::SearchResultsWithExplanation};
+use crate::domain::{SearchTree, TreeNode, search_results::SearchResultsWithExplanation};
 use crate::piece::MoveType;
 use anyhow::{Context, Result};
 use fmt::Debug;
-use fslock::LockFile;
 use serde::{Deserialize, Serialize};
-use std::{fmt, io};
-use std::fs::{File, OpenOptions};
+use std::{fmt};
+use std::fs::{File};
 use std::io::{BufWriter, Write};
 
 // static SEARCH_COUNTER: AtomicU32 = AtomicU32::new(0);
@@ -141,38 +140,6 @@ impl Explainer {
         println!("Search results\n{results}");
         }
     }    
-
-    pub fn export_game(&self, g: &Game) -> Result<()> {
-        if self.export_games {
-            let mut lock_file = LockFile::open(&format!("{}/game.lock", self.log_dir))?;
-            lock_file.lock()?;
-            let mut w = self.game_writer(g.game_id)?;
-            writeln!(w, "# begin")?;
-            g.export(&mut w)?;
-            writeln!(w, "# end")?;
-            lock_file.unlock()?;
-        }
-        Ok(())
-    }
-
-    pub fn game_writer(&self, _game_id: usize) -> Result<Box<dyn Write>> {
-        if !self.export_games {
-            Ok(Box::new(io::sink()))
-        } else {
-            // let filename = format!("{}/game-{:06}.csv", self.log_dir, game_id);
-            // let _dt = Local::now().format("%Y-%m-%d-%H-%M-%S.%.3f").to_string();
-            // let dt = "1"; //
-            let filename = format!("{}/games.txt", self.log_dir);
-            info!("Opening file {} for game export", filename);
-            let f = OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(&filename)
-                .with_context(|| format!("Failed to open file {}", &filename))?;
-            let writer = BufWriter::new(f);
-            Ok(Box::new(writer))
-        }
-    }
 
 
 

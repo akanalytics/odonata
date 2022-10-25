@@ -7,10 +7,10 @@
 // use tracing_subscriber::fmt::{format, layer};
 // use std::io;
 // use tracing_subscriber::{EnvFilter, FmtSubscriber}; // , reload::Handle};
-                                                    // use tracing::subscriber::Subscriber;
-                                                    //use tracing_subscriber::layer::Layer;
-                                                    // use tracing_subscriber::layer::Layered;
-                                                    //use tracing_subscriber::fmt::Formatter;
+// use tracing::subscriber::Subscriber;
+//use tracing_subscriber::layer::Layer;
+// use tracing_subscriber::layer::Layered;
+//use tracing_subscriber::fmt::Formatter;
 
 // the logging macros are a bit crufty. to use them in unit tests we check initialization on every use.
 // this means redefining the debug!/info!/warn! etc macros.
@@ -21,6 +21,18 @@
 // logging                 time:   [1.8780 ns 1.8884 ns 1.8994 ns]
 
 pub struct LogInit;
+
+pub struct Logger;
+
+impl Logger {
+    pub fn init() {
+        env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn"))
+            .format_module_path(false)
+            .format_target(false)
+            .format_timestamp(None)
+            .init();
+    }
+}
 
 // type ReloadHandle = Handle<EnvFilter, Formatter<format::DefaultFields,format::Format<format::Full>,fn() -> io::Stderr>>;
 
