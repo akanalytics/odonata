@@ -1,6 +1,7 @@
 use anyhow::Context;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use serde_with::DeserializeFromStr;
 
 use crate::infra::utils::{KeywordIter, Uci};
 use crate::piece::{Color, Ply};
@@ -33,7 +34,7 @@ impl RemainingTime {
 
 /// https://en.wikipedia.org/wiki/Time_control
 ///
-#[derive(Copy, Clone, Debug, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, DeserializeFromStr)]
 pub enum TimeControl {
     DefaultTime,          // depth "recommended" by EPD position or otherwise
     Depth(Ply),           // uci "depth"
