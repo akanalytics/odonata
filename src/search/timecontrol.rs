@@ -208,9 +208,13 @@ impl TimeControl {
         let (mut secs, mut inc) = (0., 0.);
         if tc.contains('/') && !tc.contains('+') {
             match tc.split_once('/') {
+                Some((s, _)) if tc.ends_with("/move") => {
+                    secs = s.parse::<f32>().context(format!("parsing secs in {s} from tc '{tc}'"))?;
+                    return Ok(TimeControl::SearchTime(Duration::from_secs_f32(secs)))
+                }
                 Some((m, s)) => {
-                    moves = m.parse().context(m.to_string())?;
-                    secs = s.parse().context(s.to_string())?;
+                    moves = m.parse().context(format!("{m} in tc '{tc}'"))?;
+                    secs = s.parse().context(format!("{s} in tc '{tc}'"))?;
                     return Ok(TimeControl::FischerMulti { moves, secs, inc });
                 }
                 _ => anyhow::bail!("failed to parse time control as moves/secs"),

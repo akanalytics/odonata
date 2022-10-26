@@ -1,5 +1,6 @@
 use std::io::Write;
 
+use crate::Color;
 use crate::eval::calc::Calc;
 use crate::eval::eval::Attr;
 use crate::eval::eval::Feature;
@@ -279,12 +280,7 @@ impl Tuning {
                 // Sigmoid::Exponential if w_score < -300.0 => 0.0,
                 Sigmoid::Exponential => sigmoid(w_score / 100.0),
             };
-            let win_prob_actual = match es.outcome {
-                Outcome::WinWhite => 1.0,
-                Outcome::WinBlack => 0.0,
-                Outcome::DrawRule50 => 0.5,
-                _ => unreachable!(),
-            };
+            let win_prob_actual = es.outcome.as_win_fraction();
             let cost = match regression_type {
                 RegressionType::LogisticOnOutcome => {
                     let diff = win_prob_estimate - win_prob_actual;
@@ -294,14 +290,14 @@ impl Tuning {
                 // J(x)  = Sum     yi * log(pi) + (1-yi)*log(1-pi)
                 // white win:  win_prob_est close to zero => penalize with large positive cost
                 RegressionType::CrossEntropy => match es.outcome {
-                    Outcome::WinWhite => -f32::ln(win_prob_estimate),
-                    Outcome::WinBlack => -f32::ln(1.0 - win_prob_estimate),
+                    Outcome::WinByCheckmate(Color::White) => -f32::ln(win_prob_estimate),
+                    Outcome::WinByCheckmate(Color::Black) => -f32::ln(1.0 - win_prob_estimate),
                     Outcome::DrawRule50 => 0.0,
                     _ => 0.0,
                 },
                 RegressionType::CumulativeLogisticLink => match es.outcome {
-                    Outcome::WinWhite => -f32::ln(win_prob_estimate),
-                    Outcome::WinBlack => -f32::ln(1.0 - win_prob_estimate),
+                    Outcome::WinByCheckmate(Color::White) => -f32::ln(win_prob_estimate),
+                    Outcome::WinByCheckmate(Color::Black) => -f32::ln(1.0 - win_prob_estimate),
                     Outcome::DrawRule50 => -f32::ln(1.0 - f32::abs(win_prob_estimate - 0.5)),
                     _ => 0.0,
                 },
