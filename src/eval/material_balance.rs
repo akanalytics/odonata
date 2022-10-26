@@ -2,7 +2,7 @@ use crate::domain::Material;
 use crate::eval::weight::Weight;
 use crate::infra::component::Component;
 use crate::mv::Move;
-use crate::piece::{Color, Piece, ScoreWdl};
+use crate::piece::{Color, Piece};
 use anyhow::{anyhow, bail, Result};
 use serde::{Deserialize, Serialize};
 use static_init::dynamic;
@@ -436,7 +436,7 @@ impl MaterialBalance {
         });
         for (mat, wdl) in sorted_raw_stats.iter() {
             let pawns = mat.count(Color::White, Piece::Pawn) + mat.count(Color::Black, Piece::Pawn);
-            if wdl.total() >= self.min_games && pawns <= self.max_pawns {
+            if wdl.0 + wdl.1 + wdl.2  >= self.min_games && pawns <= self.max_pawns {
                 // let mut cp;
                 // if wdl.w + wdl.d <= 5 {
                 //     // certain losing position
@@ -644,11 +644,11 @@ static DERIVED_SCORES: DerivedScoresVec = {
     m
 };
 
-// immutable raw stats
-type RawStatsVec = Vec<(Material, ScoreWdl)>;
+// immutable raw stats (W, D, L)
+type RawStatsVec = Vec<(Material, (i32, i32, i32))>;
 
 fn data(m: &mut RawStatsVec, s: &str, w: i32, d: i32, l: i32) {
-    m.push((Material::from_piece_str(s).unwrap(), ScoreWdl::new(w, d, l)));
+    m.push((Material::from_piece_str(s).unwrap(), (w, d, l)));
 }
 
 #[cfg(test)]

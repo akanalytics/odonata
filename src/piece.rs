@@ -326,88 +326,6 @@ impl Piece {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Default, PartialOrd, Ord, Hash)]
-pub struct ScoreWdl {
-    pub w: i32,
-    pub d: i32,
-    pub l: i32,
-}
-
-impl fmt::Display for ScoreWdl {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "W: {}  D: {}  L: {}", self.w, self.d, self.l)
-    }
-}
-
-
-// Error calc from... 
-// http://www.open-aurec.com/wbforum/viewtopic.php?t=949
-
-// https://www.chessprogramming.org/Match_Statistics
-
-impl ScoreWdl {
-    pub fn new(w: i32, d: i32, l: i32) -> ScoreWdl {
-        ScoreWdl { w, d, l }
-    }
-
-    pub fn total(&self) -> i32 {
-        self.w + self.d + self.l
-    }
-
-    pub fn points(&self) -> f32 {
-        self.w as f32 + 0.5 * self.d as f32
-    }
-
-    pub fn elo(&self) -> f32 {
-        let score = self.w as f32 + self.d as f32 / 2.0;
-        let total = self.w as f32 + self.d as f32 + self.l as f32;
-        let percentage = score / total;
-        -400.0 * f32::ln(1.0 / percentage - 1.0) / f32::ln(10.0)
-    }
-    // pub fn difference(s1: &ScoreWdl, s2: &ScoreWdl) -> ScoreWdl {
-    //     Self::new(s1.w - s2.w, s1.d + s2.d, s1.l-s2.l)
-    // }
-}
-
-impl std::ops::SubAssign for ScoreWdl {
-    fn sub_assign(&mut self, o: Self) {
-        self.l += o.w;
-        self.d += o.d;
-        self.w += o.l;
-    }
-}
-
-impl std::ops::Neg for ScoreWdl {
-    type Output = Self;
-    fn neg(self) -> Self {
-        let mut z = Self::default();
-        z -= self;
-        z
-    }
-}
-
-impl std::ops::AddAssign for ScoreWdl {
-    fn add_assign(&mut self, o: Self) {
-        *self -= -o;
-    }
-}
-
-impl std::ops::Add for ScoreWdl {
-    type Output = Self;
-    fn add(self, o: Self) -> Self {
-        let mut z = Self::default();
-        z += o;
-        z += self;
-        z
-    }
-}
-
-impl std::ops::Sub for ScoreWdl {
-    type Output = Self;
-    fn sub(self, o: Self) -> Self {
-        self + -o
-    }
-}
 
 #[enumflags2::bitflags]
 #[repr(u32)]
@@ -567,24 +485,6 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_score_wdl() {
-        let mut wdl138 = ScoreWdl::new(1, 3, 8);
-        let wdl567 = ScoreWdl::new(5, 6, 7);
-        assert_eq!(wdl138 + wdl567, ScoreWdl::new(6, 9, 15));
-        assert_eq!(wdl138 - wdl567, ScoreWdl::new(8, 9, 13));
-        wdl138 += ScoreWdl::new(100, 200, 300);
-        assert_eq!(wdl138, ScoreWdl::new(101, 203, 308));
-        wdl138 -= ScoreWdl::new(1, 3, 8);
-        assert_eq!(wdl138, ScoreWdl::new(109, 206, 309));
-        assert_eq!(-wdl138, ScoreWdl::new(309, 206, 109));
-
-        // checked by https://www.3dkingdoms.com/chess/elo.htm
-        assert_eq!(
-            format!("{:.02}", ScoreWdl::new(217, 77, 184).elo()),
-            "24.02"
-        );
-    }
 
     #[test]
     fn test_move_type() -> Result<(), String> {

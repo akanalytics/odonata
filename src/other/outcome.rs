@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::piece::{Color, ScoreWdl};
+use crate::piece::{Color};
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -99,16 +99,6 @@ impl Outcome {
         self != Self::Unterminated
     }
 
-    pub fn as_wdl(self) -> ScoreWdl {
-        if self.is_draw() {
-            return ScoreWdl::new(0, 1, 0);
-        } else if self.winning_color() == Some(Color::White) {
-            return ScoreWdl::new(1, 0, 0);
-        } else if self.winning_color() == Some(Color::Black) {
-            return ScoreWdl::new(0, 0, 1);
-        }
-        ScoreWdl::new(0, 0, 0)
-    }
 
     #[must_use]
     pub fn refine_from_pgn(
