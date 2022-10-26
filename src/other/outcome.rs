@@ -116,16 +116,16 @@ impl Outcome {
             WinOther(c) if s.contains("resign") => WinByResignation(*c),
 
             DrawOther if s.contains("stalemate") => DrawStalemate,
-            DrawOther if s.contains("50") || s.contains("fifty") => DrawRule50,
-            DrawOther if s.contains("75") => DrawRule75,
-            DrawOther if s.contains("agreement") => DrawByAgreement,
-            DrawOther if s.contains("adjudication") => DrawByAdjudication,
             DrawOther if s.contains("material") || s.contains("insufficient") => {
                 DrawInsufficientMaterial
             }
+            DrawOther if s.contains("agreement") => DrawByAgreement,
+            DrawOther if s.contains("adjudication") => DrawByAdjudication,
             DrawOther if s.contains("repetition") || s.contains("rep") || s.contains("3 fold") => {
                 DrawRepetition3
             }
+            DrawOther if s.contains(" 75") => DrawRule75,
+            DrawOther if s.contains(" 50") || s.contains("fifty") => DrawRule50,
             _ => *self,
         }
     }
