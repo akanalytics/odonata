@@ -84,7 +84,15 @@ impl Component for Info {
 
 impl fmt::Display for Info {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{}", toml::to_string_pretty(self).unwrap())?;
+        write!(
+            f,
+            "bm={bm} depth={d} seldepth={sd} ms={ms} nodes={nodes}",
+            d = self.depth,
+            sd = self.seldepth,
+            ms = self.time_millis.unwrap_or_default(),
+            nodes = self.nodes.unwrap_or_default(),
+            bm = self.pv.first().unwrap_or(&Move::NULL_MOVE),
+        )?;
         Ok(())
     }
 }

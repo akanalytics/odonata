@@ -53,6 +53,19 @@ impl fmt::Display for WhiteScore {
     }
 }
 
+impl Score {
+    pub fn parse_pgn(s: &str) -> anyhow::Result<Score> {
+        if let Ok(cp) = s.parse::<f32>() {
+            return Ok(Score::from_cp((cp * 100.0) as i32));
+        }
+        match s.split_once("M") {
+            Some(("+", s)) => Ok(Score::from_mate_in_moves(s.parse()?)),
+            Some(("-", s)) => Ok(Score::from_mate_in_moves(-s.parse()?)),
+            _ => anyhow::bail!("unable to parse pgn score '{s}'"),
+        }
+    }
+}
+
 impl Uci for Score {
     // * score
     // 	* cp
@@ -159,15 +172,22 @@ impl Score {
     /// -0.34
     /// +M8
     /// -M5
-    pub fn to_pgn(&self) -> Option<String> {
+    pub fn to_pgn(&self) -> String {
         if let Some(cp) = self.cp() {
-            Some(format!("{eval:+0.2}", eval = cp as f32 / 100.0))
-        } else {
-            match self.mate_in() {
-                Some(x) if x >= 0 => Some(format!("+M{x}")),
-                Some(x) => Some(format!("-M{y}", y = x.abs())),
-                None => None,
+            format!("{eval:+0.2}", eval = cp as f32 / 100.0)
+        } else if let Some(x) = self.mate_in() {
+            if x >= 0 {
+                format!("+M{x}")
+            } else {
+                format!("-M{y}", y = x.abs())
             }
+        } else if *self == Score::INFINITY {
+            "+inf".to_string()
+
+        } else if *self == -Score::INFINITY {
+            "-inf".to_string()
+        } else {
+            unreachable!("Formatting score {self:?} as pgn")
         }
     }
 
@@ -447,11 +467,23 @@ mod tests {
         assert_eq!(Score::parse_uci("cp -1")?.to_uci(), "cp -1");
         assert_eq!(Score::parse_uci("mate 3")?.to_uci(), "mate 3");
         assert_eq!(Score::parse_uci("mate -3")?.to_uci(), "mate -3");
-        assert_eq!(Score::from_cp(100).to_pgn(), Some("+1.00".into()));
-        assert_eq!(Score::from_cp(0).to_pgn(), Some("+0.00".into()));
-        assert_eq!(Score::from_cp(-870).to_pgn(), Some("-8.70".into()));
-        assert_eq!(Score::from_mate_in_moves(5).to_pgn(), Some("+M5".into()));
-        assert_eq!(Score::from_mate_in_moves(-3).to_pgn(), Some("-M3".into()));
+        Ok(())
+    }
+
+    #[test]
+    fn test_pgn_score() -> anyhow::Result<()> {
+        assert_eq!(Score::from_cp(100).to_pgn(), "+1.00".to_string());
+        assert_eq!(Score::from_cp(0).to_pgn(), "+0.00".to_string());
+        assert_eq!(Score::from_cp(-870).to_pgn(), "-8.70".to_string());
+        assert_eq!(Score::from_mate_in_moves(5).to_pgn(), "+M5".to_string());
+        assert_eq!(Score::from_mate_in_moves(-3).to_pgn(), "-M3".to_string());
+
+        assert_eq!(Score::parse_pgn("+1.00")?, Score::from_cp(100));
+        assert_eq!(Score::parse_pgn("+0.00")?, Score::from_cp(0));
+        assert_eq!(Score::parse_pgn("-8.70")?, Score::from_cp(-870));
+        assert_eq!(Score::parse_pgn("+M5")?, Score::from_mate_in_moves(5));
+        assert_eq!(Score::parse_pgn("-M3")?, Score::from_mate_in_moves(-3));
+
         Ok(())
     }
 

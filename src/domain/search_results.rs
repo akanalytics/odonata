@@ -40,15 +40,24 @@ pub struct SearchResults {
 
 impl fmt::Display for SearchResults {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{}", toml::to_string_pretty(self).unwrap())?;
-        for (bmv, sc) in &self.multi_pv {
-            writeln!(f, "[{sc}] pv:{}", bmv.to_uci())?;
+        write!(
+            f,
+            "bm={bm} depth={d} seldepth={sd} ms={ms} nodes={nodes}",
+            d = self.depth,
+            sd = self.seldepth,
+            ms = self.time_millis,
+            nodes = self.nodes,
+            bm = self.best_move().unwrap_or_default()
+        )?;
+        if f.alternate() {
+            for (bmv, sc) in &self.multi_pv {
+                writeln!(f, "[{sc}] pv:{}", bmv.to_uci())?;
+            }
+            writeln!(f, "n_infos: {}", self.infos.len())?;
+            for info in self.infos.iter().rev().take(6) {
+                writeln!(f, "{info}", info = info.to_uci())?;
+            }
         }
-        writeln!(f, "n_infos: {}", self.infos.len())?;
-        for info in self.infos.iter().rev().take(6) {
-            writeln!(f, "{info}", info = info.to_uci())?;
-        }
-
         Ok(())
     }
 }
@@ -133,9 +142,10 @@ impl Uci for SearchResults {
                 // @todo
                 let info = Info::parse_uci(line)?;
                 // ignore "info depth 21 currmove g7g5 currmovenumber 18"
-                if info.depth.is_some() && info.pv.is_some() {
-                    infos.push(info);
-                }
+                // info nodes 100000 nps 1020000 hashfull 50 time 97
+                // if info.depth.is_some() && info.pv.is_some() {
+                infos.push(info);
+                // }
             }
         }
         unreachable!()
@@ -165,16 +175,18 @@ impl SearchResults {
                 )
             })
             // we see duplicate moves with diferent hashfulls (and scores)
-            .unique_by(|(pv, _sc)| pv.first())   // so we remove duplicate moves
+            .unique_by(|(pv, _sc)| pv.first()) // so we remove duplicate moves
             .collect_vec();
         multi_pv.sort_by_key(|(_pv, sc)| sc.negate());
         multi_pv
     }
 
     pub fn from_infos(bm: BareMove, pm: Option<BareMove>, infos: Vec<Info>) -> Self {
+        // gets nodecount for nodes at last depth reported
         fn calculate_nodes_for_iid(n: Ply, infos: &[Info]) -> anyhow::Result<u64> {
             let info_n = infos
                 .iter()
+                .filter(|i| i.pv.is_some())
                 .find_or_last(|inf| inf.depth == Some(n))
                 .ok_or(anyhow::anyhow!("no info for depth {n}"))?
                 .nodes_thread
@@ -184,10 +196,26 @@ impl SearchResults {
             Ok(info_n)
         }
 
-        if let Some(info) = infos.last() {
-            let bf = if let Some(depth) = info.depth {
-                if let Ok(nodes) = calculate_nodes_for_iid(depth, &infos) {
-                    calculate_branching_factor_by_nodes_and_depth(nodes, depth)
+        if let Some(_info) = infos.last() {
+            let depth = infos
+                .iter()
+                .rev()
+                .filter(|i| i.pv.is_some())
+                .find_map(|i| i.depth);
+            let seldepth = infos.iter().rev().find_map(|i| i.seldepth);
+            let ms = infos.iter().rev().find_map(|i| i.time_millis);
+            let nodes = infos.iter().rev().find_map(|i| i.nodes);
+            let nodes_thread = infos.iter().rev().find_map(|i| i.nodes_thread);
+            let nps = infos.iter().rev().find_map(|i| i.nps);
+            let tbhits = infos.iter().rev().find_map(|i| i.tbhits);
+            let hashfull = infos.iter().rev().find_map(|i| i.hashfull_per_mille);
+
+            // not quite right depth is last pv depth, nodes is total including
+            // overcalculated nodes
+            let bf = if let Some(depth) = depth {
+                // if let Ok(nodes_thread) = calculate_nodes_for_iid(depth, &infos) {
+                if let Some(nodes_thread) = nodes_thread {
+                    calculate_branching_factor_by_nodes_and_depth(nodes_thread, depth)
                 } else {
                     info!("info did not contain nodes needed for bf");
                     Err(anyhow::anyhow!("info did not contain nodes needed for bf"))
@@ -199,16 +227,16 @@ impl SearchResults {
 
             let multi_pv = Self::extract_multi_pv(&infos);
             SearchResults {
-                depth: info.depth.unwrap_or_default(),
-                seldepth: info.seldepth.unwrap_or_default(),
-                time_millis: info.time_millis.unwrap_or_default(),
+                depth: depth.unwrap_or_default(),
+                seldepth: seldepth.unwrap_or_default(),
+                time_millis: ms.unwrap_or_default(),
                 // time_millis: elapsed_move_time.as_millis() as u64,
-                nodes: info.nodes.unwrap_or_default(),
-                nodes_thread: info.nodes_thread.unwrap_or_default(),
-                nps: info.nps.unwrap_or_default(),
-                tbhits: info.tbhits.unwrap_or_default(),
+                nodes: nodes.unwrap_or_default(),
+                nodes_thread: nodes_thread.unwrap_or_default(),
+                nps: nps.unwrap_or_default(),
+                tbhits: tbhits.unwrap_or_default(),
                 bf: bf.unwrap_or_default(),
-                hashfull_per_mille: info.hashfull_per_mille.unwrap_or_default(),
+                hashfull_per_mille: hashfull.unwrap_or_default(),
                 outcome: Outcome::Unterminated,
                 multi_pv,
                 infos,
@@ -226,8 +254,8 @@ impl SearchResults {
     }
 
     pub fn new(algo: &Algo, depth: Ply, multi_pv: Vec<(BareMoveVariation, Score)>) -> Self {
-        let nodes_thread_last_iter = algo.clock.elapsed_iter_this_thread().1;
-        let bf = calculate_branching_factor_by_nodes_and_depth(nodes_thread_last_iter, depth)
+        let nodes_thread_cumul = algo.clock.cumul_nodes_this_thread();
+        let bf = calculate_branching_factor_by_nodes_and_depth(nodes_thread_cumul, depth)
             .unwrap_or_default();
         SearchResults {
             outcome: Outcome::Unterminated,
@@ -365,6 +393,7 @@ impl SearchResults {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::infra::testing::*;
     use crate::{
         catalog::*,
         search::{engine::ThreadedSearch, timecontrol::TimeControl},
@@ -396,6 +425,31 @@ mod tests {
             parse_bestmove_uci("bestmove a1a2 ponder b2b3 extraneous").is_err(),
             true
         );
+    }
+
+    #[test]
+    fn test_search_results_parse_uci() -> anyhow::Result<()> {
+        let s = r#"info depth 10 seldepth 10 nodes 61329 nps 1039000 score mate 2 hashfull 40 time 58 pv g3g6 f7g6 e5g6
+info depth 11 seldepth 12 nodes 82712 nps 973000 score mate 2 hashfull 45 time 84 pv g3g6 f7g6 e5g6
+info nodes 100000 nps 1020000 hashfull 50 time 97
+bestmove g3g6 ponder f7g6
+"#;
+        let sr = SearchResults::parse_uci(s).unwrap();
+        assert_eq!(
+            "g3g6".parse::<BareMove>()?,
+            BareMove::parse_uci("g3g6").unwrap()
+        );
+        // assert_eq!("g3g6".parse::<BareMove>()?, "g3g6".try_into()?);
+        // assert_eq!(BareMove::parse_uci("g3g6")?, "g3g6".mv());
+        // assert_eq!(sr.best_move(), Ok("g3g6".try_into()?));
+        assert_eq!(sr.nodes, 100000);
+        assert_eq!(sr.best_move().unwrap(), "g3g6".mv());
+        assert_eq!(sr.pv(), "g3g6 f7g6 e5g6".var());
+        assert_eq!(sr.multi_pv(), vec![("g3g6 f7g6 e5g6".var(), "+M2".cp())]);
+        assert_eq!(sr.depth, 11);
+        assert_eq!(sr.bf, 1.);
+        info!("{}", "a3a4".mv());
+        Ok(())
     }
 
     #[test]

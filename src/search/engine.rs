@@ -72,11 +72,15 @@ impl Engine for ThreadedSearch {
     }
 
     fn search(&mut self, pos: Position, tc: TimeControl) -> anyhow::Result<SearchResults> {
-        info!("[000] -- search on {n}", n = self.name());
-        info!("[000] -- search on {b} {tc}", b = pos.board_after());
+        info!("[001] -- search on {n}", n = self.name());
+        info!("[001] -- search on {b} {tc}", b = pos.board_after());
+        self.algo.controller
+            .register_callback(|i| info!("[001] -- info {i}"));
+
         self.algo.set_timing_method(tc);
         self.set_position(pos);
         self.search_sync();
+        info!("[001] -- res {res}", res = self.algo.results);
         Ok(self.algo.results.clone())
     }
 

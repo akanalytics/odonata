@@ -62,10 +62,15 @@ pub fn sigmoid(centipawns: f32) -> f32 {
 
 // branching factor formulae:
 //
-//   N: Total number of nodes processed in this (lastest/highest depth) iteration
+//   N: Total number of nodes processed accross all iterations
 //   d: Depth
-//   b*: Effective branching factor.
-//   N = b* + (b*)^2 + ... + (b*)^d
+//   bf: Effective branching factor.
+//   Nodes iter d   = 1 + bf^1 + (bf)^2 + ... + (bf)^d 
+//   Nodes last d-1 = 1 + bf + (bf)^2 + ... + (bf)^(d-1)
+//   Nodes iter 1   = 1 + bf 
+//   Nodes iter 0   = 1 
+//   Total nodes    = (d+1) + (d) bf + (d-1) * fb^2 + .... + 1 * (bf)^d
+
 //
 // gp summation formula:
 //
@@ -79,7 +84,7 @@ pub fn calculate_branching_factor_by_nodes_and_depth(
     nodes: u64,
     depth: Ply,
 ) -> anyhow::Result<f64> {
-    let f = |r: f64| (1..=depth).map(|d: i32| r.powf(d as f64)).sum::<f64>() - nodes as f64;
+    let f = |bf: f64| (0..=depth).map(|d: i32| (depth+1-d) as f64 * bf.powi(d)).sum::<f64>() - nodes as f64;
     anyhow::ensure!(
         depth > 0 && nodes > 0,
         "Depth {depth} and nodes {nodes} must be > 0"

@@ -77,6 +77,15 @@ impl BareMove {
     }
 }
 
+// impl TryFrom<&str> for BareMove {
+//     type Error = anyhow::Error;
+
+//     fn try_from(s: &str) -> Result<Self, Self::Error> {
+//         Self::from_str(s)
+//     }
+
+// }
+
 impl FromStr for BareMove {
     type Err = anyhow::Error;
 

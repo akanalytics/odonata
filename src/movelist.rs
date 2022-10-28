@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::eval::score::Score;
-use crate::infra::utils::{Displayable, Uci};
+use crate::infra::utils::Displayable;
 use crate::mv::{BareMove, Move};
 use crate::parse::Parse;
 use crate::piece::MAX_LEGAL_MOVES;
@@ -196,20 +196,13 @@ impl ScoredMoveList {
             "{}",
             self.moves
                 .iter()
-                .map(|(mv, s)| {
-                    format!(
-                        "{mv}:{score}",
-                        mv = mv.to_san(b),
-                        score = s.to_uci().trim_start_matches("cp ")
-                    )
-                })
+                .map(|(mv, s)| { format!("{mv}:{score}", mv = mv.to_san(b), score = s.to_pgn()) })
                 .join(" ")
         )?;
         Ok(())
     }
 
-
-    pub fn iter(&self) -> impl Iterator<Item=(BareMove, Score)> + '_ {
+    pub fn iter(&self) -> impl Iterator<Item = (BareMove, Score)> + '_ {
         self.moves.iter().cloned()
     }
 
@@ -224,11 +217,10 @@ impl ScoredMoveList {
     pub fn parse_san(s: &str, b: &Board) -> anyhow::Result<Self> {
         let mut moves = Self::new();
         let s = s.replace(',', " ");
-        let s = strip_move_numbers(&s);
         for smv in s.split_ascii_whitespace() {
             if let Some((before, after)) = smv.split_once(":") {
                 let mv = b.parse_san_move(before)?.to_inner();
-                let score = Score::from_cp(after.parse::<i32>()?);
+                let score = Score::parse_pgn(after)?;
                 moves.push((mv, score));
             } else {
                 anyhow::bail!("Unable to parse scored move '{smv}' in '{s}'");
@@ -246,8 +238,11 @@ mod tests_smv {
     #[test]
     fn test_scoredmovelist() {
         let b = Catalog::starting_board();
-        let moves = ScoredMoveList::parse_san("a3:+34 h3:-45 e2e4:90", &b).unwrap();
-        assert_eq!(moves.to_san(&b), "a3:34 h3:-45 e4:90");
+        let moves = ScoredMoveList::parse_san("a3:+0.34 h3:+M5 e2e4:0.90", &b).unwrap();
+        assert_eq!(moves.iter().nth(0).unwrap().1.as_i16(), 34);
+        assert_eq!(moves.to_san(&b), "a3:+0.34 h3:+M5 e4:+0.90");
+        let moves = ScoredMoveList::parse_san("a3:+0.34 h3:-0.45 e2e4:0.90", &b).unwrap();
+        assert_eq!(moves.to_san(&b), "a3:+0.34 h3:-0.45 e4:+0.90");
     }
 }
 

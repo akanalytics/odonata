@@ -114,10 +114,13 @@ impl Engine for Algo {
     fn search(&mut self, pos: Position, tc: TimeControl) -> anyhow::Result<SearchResults> {
         info!("[000] -- search on {n}", n = self.name());
         info!("[000] -- search on {b} {tc}", b = pos.board_after());
+        self.controller
+            .register_callback(|i| info!("[000] -- info {i}"));
         self.controller.set_running();
         self.set_timing_method(tc);
         self.set_position(pos);
         self.run_search();
+        info!("[000] -- res {res}", res = self.results);
         Ok(self.results.clone())
     }
 
@@ -175,7 +178,7 @@ impl Component for Algo {
                 .explainer
                 .show_pv_eval(&self.results.explain(&self.eval, &self.board)),
             StartDepthIteration(_) => self.new_iter(),
-            Shutdown => {},
+            Shutdown => {}
         }
 
         self.ids.set_state(s);
@@ -210,8 +213,7 @@ impl Component for Algo {
         self.qs.set_state(s);
     }
 
-    fn new_game(&mut self) {
-    }
+    fn new_game(&mut self) {}
 
     fn new_position(&mut self) {
         self.clock_checks = 0;
