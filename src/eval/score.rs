@@ -168,6 +168,10 @@ impl Score {
         }
     }
 
+    pub fn in_window(&self, lower: Score, upper: Score) -> bool{
+        *self >= lower && *self <= upper
+    }
+
     /// +1.35
     /// -0.34
     /// +M8
@@ -183,7 +187,6 @@ impl Score {
             }
         } else if *self == Score::INFINITY {
             "+inf".to_string()
-
         } else if *self == -Score::INFINITY {
             "-inf".to_string()
         } else {

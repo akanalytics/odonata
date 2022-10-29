@@ -609,7 +609,7 @@ impl Board {
 static REGEX_MOVE_NUMBERS: Lazy<Regex> = Lazy::new(|| {
     Regex::new(
         r#"(?x)         # x flag to allow whitespace and comments
-    ((\d)+\.(\s)*(\.\.)\s*|(\d)+\.\s*)?      # digits a '.' and then whitespace and optionally ".."
+    ((\d)+\.(\s)+(\.\.)\s+|(\d)+\.\s+)?      # digits a '.' and then whitespace and optionally ".."
     "#,
     )
     .unwrap()
