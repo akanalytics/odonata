@@ -839,7 +839,7 @@ iir = 5.0
 # move_overhead_ms = 0
 # use_last_2_iters=false
 
-move_overhead_ms = 0
+move_overhead_ms = 1
 branching_factor = 5.01
 moves_rem = 12
 use_last_2_iters = false

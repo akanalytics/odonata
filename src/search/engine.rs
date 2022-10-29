@@ -80,7 +80,7 @@ impl Engine for ThreadedSearch {
         self.algo.set_timing_method(tc);
         self.set_position(pos);
         self.search_sync();
-        info!("[001] -- res {res}", res = self.algo.results);
+        info!("[001] -- results {res}", res = self.algo.results);
         Ok(self.algo.results.clone())
     }
 

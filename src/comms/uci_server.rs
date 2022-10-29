@@ -284,7 +284,7 @@ impl UciServer {
     }
 
     fn uci_uci(&mut self) -> Result<()> {
-        Self::print(&format!("id name {} v{}", Version::NAME, Version::VERSION));
+        Self::print(&format!("id name {} {}", Version::NAME, Version::VERSION));
         Self::print(&format!("id author {}", Version::AUTHORS));
         self.uci_show_options();
         Self::print("uciok");

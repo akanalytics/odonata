@@ -42,12 +42,13 @@ impl fmt::Display for SearchResults {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "bm={bm} depth={d} seldepth={sd} ms={ms} nodes={nodes}",
+            "bm={bm} sc={sc} depth={d} seldepth={sd} ms={ms} nodes={nodes}",
             d = self.depth,
             sd = self.seldepth,
             ms = self.time_millis,
             nodes = self.nodes,
-            bm = self.best_move().unwrap_or_default()
+            bm = self.best_move().unwrap_or_default(),
+            sc = self.score().unwrap_or_default(),
         )?;
         if f.alternate() {
             for (bmv, sc) in &self.multi_pv {
@@ -306,11 +307,11 @@ impl SearchResults {
         }
     }
 
-    pub fn score(&self) -> Score {
+    pub fn score(&self) -> Option<Score> {
         if self.multi_pv.len() > 0 {
-            self.multi_pv[0].1
+            Some(self.multi_pv[0].1)
         } else {
-            Score::default()
+            None
         }
     }
 
@@ -363,7 +364,7 @@ impl SearchResults {
             }
         }
         if tags.contains(&Tag::CE) {
-            pos.set(Tag::CentipawnEvaluation(self.score().as_i16() as i32));
+            pos.set(Tag::CentipawnEvaluation(self.score().unwrap_or_default().as_i16() as i32));
         }
         if tags.contains(&Tag::ACD) {
             pos.set(Tag::AnalysisCountDepth(self.depth));

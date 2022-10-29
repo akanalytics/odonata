@@ -120,7 +120,7 @@ impl Engine for Algo {
         self.set_timing_method(tc);
         self.set_position(pos);
         self.run_search();
-        info!("[000] -- res {res}", res = self.results);
+        info!("[000] -- results {res}", res = self.results);
         Ok(self.results.clone())
     }
 
@@ -170,6 +170,10 @@ impl Component for Algo {
 
     fn set_state(&mut self, s: State) {
         use State::*;
+
+        // clock first
+        self.clock.set_state(s);
+
         match s {
             NewGame => self.new_game(),
             SetPosition => self.new_position(),
@@ -204,7 +208,6 @@ impl Component for Algo {
         self.razor.set_state(s);
         self.recognizer.set_state(s);
         self.aspiration.set_state(s);
-        self.clock.set_state(s);
 
         self.progress.set_state(s);
         self.controller.set_state(s);
@@ -386,7 +389,7 @@ impl Algo {
     }
 
     pub fn score(&self) -> Score {
-        self.results.score()
+        self.results.score().unwrap_or_default()
     }
 
     pub fn best_move(&self) -> Move {

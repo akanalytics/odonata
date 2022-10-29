@@ -161,12 +161,13 @@ impl MoveTimeEstimator {
     pub fn is_time_up(&mut self, _ply: Ply, clock: &Clock, force_check: bool) -> bool {
         self.clock_checks += 1;
 
+        // if its not time sensive then always check (=> exact node counts for instance)
         // only do this every 128th call to avoid expensive time computation
         if self.time_sensitive() && !force_check && self.clock_checks % self.check_every != 0 {
             return false;
         }
 
-        let mut elapsed = clock.elapsed_search().0;
+        let mut elapsed = clock.elapsed_search().0 + Duration::from_millis(self.move_overhead_ms);
         // if in nodestime then convert nodes to time. nodestime is nodes per millisecond
         if self.nodestime > 0 {
             elapsed = Duration::from_millis(clock.elapsed_search().1 / self.nodestime);

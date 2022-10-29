@@ -118,7 +118,7 @@ impl Bench {
             let depth = engine.algo.results_as_position().acd().unwrap();
             let sel_depth = engine.algo.results_as_position().tag(Tag::ACSD).value_uci();
             let nodes = engine.algo.results_as_position().acn().unwrap();
-            let cp = engine.algo.results.score();
+            let cp = engine.algo.results.score().unwrap_or_default();
             let nps = Formatting::f64(nodes as f64 / elapsed.as_secs_f64());
             let bf = engine.algo.results_as_position().branching_factor();
             let bf_string = Formatting::decimal(2, bf);
