@@ -209,8 +209,10 @@ impl TimeControl {
         if tc.contains('/') && !tc.contains('+') {
             match tc.split_once('/') {
                 Some((s, _)) if tc.ends_with("/move") => {
-                    secs = s.parse::<f32>().context(format!("parsing secs in {s} from tc '{tc}'"))?;
-                    return Ok(TimeControl::SearchTime(Duration::from_secs_f32(secs)))
+                    secs = s
+                        .parse::<f32>()
+                        .context(format!("parsing secs in {s} from tc '{tc}'"))?;
+                    return Ok(TimeControl::SearchTime(Duration::from_secs_f32(secs)));
                 }
                 Some((m, s)) => {
                     moves = m.parse().context(format!("{m} in tc '{tc}'"))?;
@@ -234,13 +236,19 @@ impl TimeControl {
     }
 
     fn parse_without_context(tc: &str) -> anyhow::Result<TimeControl> {
+        let tc = tc.replace("_", "");
         if tc == "inf" {
             Ok(TimeControl::Infinite)
         } else if tc.ends_with("def") {
             Ok(TimeControl::DefaultTime)
         } else if let Some(tc) = tc.strip_prefix("st=") {
-            let secs = tc.parse::<f64>()?;
-            Ok(TimeControl::SearchTime(Duration::from_secs_f64(secs)))
+            if let Some(tc) = tc.strip_suffix("ms") {
+                let ms = tc.parse::<u64>()?;
+                Ok(TimeControl::SearchTime(Duration::from_millis(ms)))
+            } else {
+                let secs = tc.trim_end_matches("s").parse::<f64>()?;
+                Ok(TimeControl::SearchTime(Duration::from_secs_f64(secs)))
+            }
         } else if let Some(tc) = tc.strip_prefix("mate=") {
             let depth = tc.parse::<u32>()?;
             Ok(TimeControl::MateIn(depth))
@@ -285,48 +293,37 @@ mod tests {
 
     #[test]
     fn test_time_control() -> anyhow::Result<()> {
-        assert_eq!(
-            TimeControl::parse_option("depth=3".into())?,
-            TimeControl::Depth(3)
-        );
-        println!("{}", TimeControl::parse_option("depth=3".into())?);
+        type T = TimeControl;
 
-        // let tc = TimeControl::parse("nodes=1000".into())?;
+        assert_eq!(T::parse_option("depth=3")?, T::Depth(3));
+
+        // let tc = TC::parse("nodes=1000")?;
         // assert!(toml::to_string_pretty(&tc).unwrap().len() > 0);
 
+        assert_eq!(T::parse_option("def")?, T::DefaultTime);
+        assert_eq!(T::parse_option("inf")?, T::Infinite);
+        assert_eq!(T::parse_option("nodes=1000")?, T::NodeCount(1000));
+        assert_eq!(T::parse_option("nodes=10_000")?, T::NodeCount(10_000));
         assert_eq!(
-            TimeControl::parse_option("def".into())?,
-            TimeControl::DefaultTime
+            T::parse_option("st=10s")?,
+            T::SearchTime(Duration::from_secs(10))
         );
-        println!("{}", TimeControl::parse_option("def".into())?);
+        assert_eq!(
+            T::parse_option("st=11ms")?,
+            T::SearchTime(Duration::from_millis(11))
+        );
 
         assert_eq!(
-            TimeControl::parse_option("inf".into())?,
-            TimeControl::Infinite
+            T::parse_option("st=10.980")?,
+            T::SearchTime(Duration::from_millis(10980))
         );
-        println!("{}", TimeControl::parse_option("inf".into())?);
+
+        assert_eq!(T::parse_option("mate=3")?, T::MateIn(3));
+        println!("{}", T::parse_option("mate=3")?);
 
         assert_eq!(
-            TimeControl::parse_option("nodes=1000".into())?,
-            TimeControl::NodeCount(1000)
-        );
-        println!("{}", TimeControl::parse_option("nodes=1000".into())?);
-
-        assert_eq!(
-            TimeControl::parse_option("st=10.980".into())?,
-            TimeControl::SearchTime(Duration::from_millis(10980))
-        );
-        println!("{}", TimeControl::parse_option("st=10.980".into())?);
-
-        assert_eq!(
-            TimeControl::parse_option("mate=3".into())?,
-            TimeControl::MateIn(3)
-        );
-        println!("{}", TimeControl::parse_option("mate=3".into())?);
-
-        assert_eq!(
-            TimeControl::parse_option("tc=5/60".into())?,
-            TimeControl::FischerMulti {
+            T::parse_option("tc=5/60")?,
+            T::FischerMulti {
                 moves: 5,
                 secs: 60.,
                 inc: 0.
@@ -334,8 +331,8 @@ mod tests {
         );
 
         assert_eq!(
-            TimeControl::parse_option("tc=5+.1".into())?,
-            TimeControl::FischerMulti {
+            T::parse_option("tc=5+.1")?,
+            T::FischerMulti {
                 moves: 5,
                 secs: 0.,
                 inc: 0.1
@@ -343,8 +340,8 @@ mod tests {
         );
 
         assert_eq!(
-            TimeControl::parse_option("tc=40/960:40/960:40/960".into())?,
-            TimeControl::FischerMulti {
+            T::parse_option("tc=40/960:40/960:40/960")?,
+            T::FischerMulti {
                 moves: 40,
                 secs: 960.,
                 inc: 0.
