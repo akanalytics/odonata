@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::piece::{Color};
+use crate::piece::Color;
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -99,14 +99,14 @@ impl Outcome {
         self != Self::Unterminated
     }
 
-
     #[must_use]
     pub fn refine_from_pgn(
         &self,
         termination_header: Option<&str>,
         last_comment: Option<&str>,
     ) -> Outcome {
-        let s = termination_header.unwrap_or_default().to_string() + last_comment.unwrap_or_default();
+        let s =
+            termination_header.unwrap_or_default().to_string() + last_comment.unwrap_or_default();
         let s = s.to_lowercase();
         use Outcome::*;
         match self {
@@ -204,10 +204,19 @@ impl Board {
         //     return Some(Outcome::DrawRule75);
         // }
 
-        if self.repetition_count().total >= 5 {
+        if self.repetition_count().in_total >= 5 {
             return Some(Outcome::DrawRepetition5);
         }
-        if self.repetition_count().in_search >= 2 || self.repetition_count().total >= 2 {
+        // if self.repetition_count().in_search >= 2 || self.repetition_count().in_total >= 2 {
+        //     return Some(Outcome::DrawRepetition3);
+        // }
+
+        // either a repeat 3 times in the game OR
+        // were in search and theres a repeat (in addition to itself)
+        if self.repetition_count().in_game() >= 2
+            || (self.repetition_count().in_search >= 1
+                && self.repetition_count().in_game() + self.repetition_count().in_search >= 2)
+        {
             return Some(Outcome::DrawRepetition3);
         }
         if self.material().is_insufficient() {
@@ -264,7 +273,9 @@ mod tests {
             Outcome::DrawRepetition3
         );
         assert_eq!(
-            Outcome::try_from_pgn("1-0").unwrap().refine_from_pgn(None, Some("mate")),
+            Outcome::try_from_pgn("1-0")
+                .unwrap()
+                .refine_from_pgn(None, Some("mate")),
             Outcome::WinByCheckmate(Color::White)
         );
     }
