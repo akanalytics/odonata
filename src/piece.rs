@@ -439,8 +439,14 @@ impl MoveType {
 
 #[derive(Copy, Clone, PartialEq, Eq, Default, Debug)]
 pub struct Repeats {
-    pub total: u16,
+    pub in_total: u16,
     pub in_search: u16, // exclusive of root
+}
+
+impl Repeats {
+    pub fn in_game(&self) -> u16 {
+        self.in_total - self.in_search
+    }
 }
 
 #[cfg(test)]

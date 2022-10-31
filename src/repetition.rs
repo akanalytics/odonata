@@ -1,9 +1,9 @@
-
 use crate::board::Board;
 use crate::infra::component::Component;
+use crate::infra::utils::Displayable;
 use crate::mv::Move;
-use crate::position::Position;
 use crate::piece::{Hash, Piece, Repeats};
+use crate::position::Position;
 use crate::variation::Variation;
 // use crate::{debug, logger::LogInit};
 use serde::{Deserialize, Serialize};
@@ -138,38 +138,73 @@ impl Repetition {
         if !self.enabled {
             return Repeats::default();
         }
-        Repeats {
-            total: self
-                .prior_positions
-                .iter()
-                .rev()
-                .take_while(|&h| *h != 0)
-                //.skip(1)
-                .step_by(2)
-                .filter(|&h| *h == b.hash())
-                .count() as u16,
-            in_search: self.prior_positions[self.root_index..]
-                .iter()
-                .rev()
-                .take_while(|&h| *h != 0)
-                //.skip(1)
-                .step_by(2)
-                .filter(|&h| *h == b.hash())
-                .count() as u16,
-        }
-    }
-
-    pub fn is_repeated(&self, b: &Board) -> bool {
-        if !self.enabled {
-            return false;
-        }
-        self.prior_positions
+        // root index will be even or odd and match the board ply
+        let in_total = self
+            .prior_positions
             .iter()
             .rev()
             .take_while(|&h| *h != 0)
+            //.skip(1)
             .step_by(2)
-            .any(|&h| h == b.hash())
+            .filter(|&h| *h == b.hash())
+            .count() as u16;
+        let in_search = self
+            .prior_positions
+            .iter()
+            .skip(self.root_index)
+            .rev()
+            .take_while(|&h| *h != 0)
+            //.skip(1)
+            .step_by(2)
+            .filter(|&h| *h == b.hash())
+            .count() as u16;
+
+        let reps = Repeats {
+            in_search,
+            in_total,
+        };
+        debug_assert_eq!(
+            reps.in_total,
+            reps.in_game() + reps.in_search,
+            "{rep}",
+            rep = Displayable(|f| self.debug_display(f, &b))
+        );
+        reps
     }
+
+    fn debug_display(&self, f: &mut fmt::Formatter, b: &Board) -> fmt::Result {
+        writeln!(f, "colour           : {}", b.color_us())?;
+        writeln!(f, "enabled          : {}", self.enabled)?;
+        writeln!(f, "avoid_tt_on_rep  : {}", self.avoid_tt_on_repeats)?;
+        writeln!(f, "prior posn count : {}", self.prior_positions.len())?;
+        writeln!(f, "root index       : {}", self.root_index)?;
+        for (i, &hash) in self.prior_positions.iter().enumerate() {
+            if i == 0 && self.root_index == 0 {
+                writeln!(f, "------")?;
+            }
+            writeln!(
+                f,
+                "{i:>3} {mat}",
+                mat = if b.hash() == hash { "*" } else { "" }
+            )?;
+            if i + 1 == self.root_index {
+                writeln!(f, "------")?;
+            }
+        }
+        Ok(())
+    }
+
+    // pub fn is_repeated(&self, b: &Board) -> bool {
+    //     if !self.enabled {
+    //         return false;
+    //     }
+    //     self.prior_positions
+    //         .iter()
+    //         .rev()
+    //         .take_while(|&h| *h != 0)
+    //         .step_by(2)
+    //         .any(|&h| h == b.hash())
+    // }
 }
 
 #[cfg(test)]
@@ -203,9 +238,9 @@ mod tests {
         rep1.push_move(&knight_mv, &boards[4]);
         rep1.push_move(&knight_mv, &boards[5]);
         rep1.push_move(&knight_mv, &boards[6]);
-        assert_eq!(rep1.count(&boards[4]).total, 1);
-        assert_eq!(rep1.count(&boards[2]).total, 1);
-        assert_eq!(rep1.count(&boards[0]).total, 0); // pawn move reset the count
+        assert_eq!(rep1.count(&boards[4]).in_total, 1);
+        assert_eq!(rep1.count(&boards[2]).in_total, 1);
+        assert_eq!(rep1.count(&boards[0]).in_total, 0); // pawn move reset the count
 
         rep1.pop(); // 6
         rep1.pop(); // 5
@@ -217,12 +252,12 @@ mod tests {
         rep1.push_move(&knight_mv, &boards[4]);
         rep1.push_move(&knight_mv, &boards[5]);
         rep1.push_move(&knight_mv, &boards[6]);
-        assert_eq!(rep1.count(&boards[4]).total, 1);
-        assert_eq!(rep1.count(&boards[2]).total, 1);
-        assert_eq!(rep1.count(&boards[0]).total, 1); // no pawn move to reset the hmvc
+        assert_eq!(rep1.count(&boards[4]).in_total, 1);
+        assert_eq!(rep1.count(&boards[2]).in_total, 1);
+        assert_eq!(rep1.count(&boards[0]).in_total, 1); // no pawn move to reset the hmvc
         rep1.push_move(&knight_mv, &boards[6]);
         rep1.push_move(&knight_mv, &boards[4]);
-        assert_eq!(rep1.count(&boards[2]).total, 1);
+        assert_eq!(rep1.count(&boards[2]).in_total, 1);
     }
 
     #[test]
@@ -245,7 +280,7 @@ mod tests {
             algo.repetition.push_move(&mv, &b);
             println!(
                 "rep count = {} hash = {:x}",
-                algo.repetition.count(&b).total,
+                algo.repetition.count(&b).in_total,
                 b.hash()
             );
         }

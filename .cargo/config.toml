@@ -46,3 +46,6 @@ xx = "check"
 # # # rustflags = ["-C", "link-arg=-fuse-ld=/usr/local/bin/mold"]
 
 # rustflags = ["-C", "link-arg=-fuse-ld=/home/andy/code/odonata-extras/utils/mold_wrapper.sh"]
+
+# [target.x86_64-unknown-linux-gnu]
+# rustflags = ["-Ctarget-cpu=x86-64-v3"]

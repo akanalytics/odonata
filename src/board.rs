@@ -227,6 +227,8 @@ impl Board {
 }
 
 impl Board {
+
+
     #[inline]
     pub fn repetition_count(&self) -> Repeats {
         self.repetition_count.get()
@@ -529,7 +531,7 @@ impl fmt::Display for Board {
             write!(f, "\nfen: {} \n", self.to_fen())?;
             // write!(fmt, "Moves: {}", self.moves)?;
             writeln!(f, "Hash: {:x}", self.hash())?;
-            writeln!(f, "Rep count: {:x}", self.repetition_count().total)?;
+            writeln!(f, "Rep count: {:x}", self.repetition_count().in_game())?;
             writeln!(f, "White:\n{}\nBlack:\n{}\n", self.white(), self.black())?;
             for &p in Piece::ALL.iter() {
                 writeln!(

@@ -63,7 +63,7 @@ impl Algo {
 
             // FIXME! v33
             if entry.depth >= n.depth
-                && !(self.repetition.avoid_tt_on_repeats && b.repetition_count().total > 0)
+                && !(self.repetition.avoid_tt_on_repeats && b.repetition_count().in_total > 0)
             {
                 //if entry.draft >= draft  && (ply >= 1 || self.tt.allow_tt_at_root) && !(b.repetition_count().total > 0 && self.repetition.avoid_tt_on_repeats)
 
