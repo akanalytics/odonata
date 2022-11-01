@@ -1,9 +1,9 @@
 use crate::bits::bitboard::Bitboard;
 use crate::board::Board;
+use crate::infra::utils::StringUtils;
 use crate::movelist::MoveList;
 use crate::mv::Move;
 use crate::piece::Color;
-use crate::infra::utils::StringUtils;
 use once_cell::sync::Lazy;
 use regex::Regex;
 pub struct Parse;
@@ -172,6 +172,7 @@ impl Parse {
 mod tests {
 
     use super::*;
+    use crate::infra::testing::{Testing};
 
     use crate::catalog::Catalog;
 
@@ -227,6 +228,13 @@ mod tests {
         let mv = mv.unwrap();
         assert_eq!(mv.to_string(), uci);
         bd.clone().make_move(&mv)
+    }
+
+    #[test]
+    fn test_parse_san_variation() {
+        let b = Board::parse_fen("6k1/pp4p1/2p5/2bp4/8/P5Pb/1P3rrP/2BRRN1K b - - 0 1").unwrap();
+        let var = b.parse_san_variation("1... Rg1+ 2. Kxg1 Rxf1#").unwrap();
+        assert_eq!(var.to_inner(), "g2g1 h1g1 f2f1".var(), "{}", var.to_uci())
     }
 
     #[test]

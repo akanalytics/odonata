@@ -448,7 +448,8 @@ bestmove g3g6 ponder f7g6
         assert_eq!(sr.pv(), "g3g6 f7g6 e5g6".var());
         assert_eq!(sr.multi_pv(), vec![("g3g6 f7g6 e5g6".var(), "+M2".cp())]);
         assert_eq!(sr.depth, 11);
-        assert_eq!(sr.bf, 1.);
+        assert_eq!(sr.bf > 2.5, true);
+        assert_eq!(sr.bf < 3.0, true);
         info!("{}", "a3a4".mv());
         Ok(())
     }

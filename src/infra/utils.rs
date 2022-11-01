@@ -594,12 +594,12 @@ mod tests {
     #[test]
     fn test_calculate_branching_factor() {
         let bf = calculate_branching_factor_by_nodes_and_depth(14, 3).unwrap();
-        assert!((2.0 - bf).abs() < 0.001);
+        assert!((1.339 - bf).abs() < 0.001, "{bf}");
 
         let bf = calculate_branching_factor_by_nodes_and_depth(30, 4).unwrap();
-        assert!((2.0 - bf).abs() < 0.001);
+        assert!((1.51086 - bf).abs() < 0.001, "{bf}");
 
         let bf = calculate_branching_factor_by_nodes_and_depth(500_000_000, 30).unwrap();
-        assert!(bf > 0.001);
+        assert!((1.8512 - bf).abs() < 0.001, "{bf}");
     }
 }
