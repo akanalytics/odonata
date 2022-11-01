@@ -19,7 +19,7 @@ import atexit
 
 
 
-LOG_LEVEL = os.environ.get('RUST_LOG', 'WARNING').upper()
+LOG_LEVEL = os.environ.get('RUST_LOG', 'WARNING').upper().split("/",1)[0]
 if LOG_LEVEL=="TRACE":
     LOG_LEVEL="DEBUG"
 logging.basicConfig(level=LOG_LEVEL)
