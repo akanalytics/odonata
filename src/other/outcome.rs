@@ -213,7 +213,7 @@ impl Board {
 
         // either a repeat 3 times in the game OR
         // were in search and theres a repeat (in addition to itself)
-        if self.repetition_count().in_game() >= 2
+        if self.repetition_count().in_game() >= 3
             || (self.repetition_count().in_search >= 1
                 && self.repetition_count().in_game() + self.repetition_count().in_search >= 2)
         {

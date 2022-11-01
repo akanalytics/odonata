@@ -172,7 +172,7 @@ impl Repetition {
         reps
     }
 
-    fn debug_display(&self, f: &mut fmt::Formatter, b: &Board) -> fmt::Result {
+    pub fn debug_display(&self, f: &mut fmt::Formatter, b: &Board) -> fmt::Result {
         writeln!(f, "colour           : {}", b.color_us())?;
         writeln!(f, "enabled          : {}", self.enabled)?;
         writeln!(f, "avoid_tt_on_rep  : {}", self.avoid_tt_on_repeats)?;
@@ -188,7 +188,7 @@ impl Repetition {
                 mat = if b.hash() == hash { "*" } else { "" }
             )?;
             if i + 1 == self.root_index {
-                writeln!(f, "------")?;
+                writeln!(f, "------\n\n\n")?;
             }
         }
         Ok(())
