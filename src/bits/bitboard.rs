@@ -846,14 +846,14 @@ impl Bitboard {
     pub fn parse_rank(s: &str) -> Result<Bitboard> {
         match s.chars().next() {
             Some(ch) if ('1'..='8').contains(&ch) => Ok(Self::RANKS[ch as usize - b'1' as usize]),
-            _ => Err(anyhow!("Invalid rank '{}'", s)),
+            _ => Err(anyhow!("invalid rank '{}' parsing square", s)),
         }
     }
 
     pub fn parse_file(s: &str) -> Result<Bitboard> {
         match s.chars().next() {
             Some(ch) if ('a'..='h').contains(&ch) => Ok(Self::FILES[ch as usize - b'a' as usize]),
-            _ => Err(anyhow!("Invalid file '{}'", s)),
+            _ => Err(anyhow!("invalid file '{}' parsing square", s)),
         }
     }
 
@@ -869,7 +869,7 @@ impl Bitboard {
 
     pub fn parse_square(s: &str) -> Result<Square> {
         if s.len() != 2 {
-            return Err(anyhow!("Invalid square '{}'", s));
+            return Err(anyhow!("invalid square '{}'", s));
         }
         let chars: Vec<&str> = s.split("").collect(); // gives empty [0]
         let bb = Self::parse_file(chars[1])? & Self::parse_rank(chars[2])?;
