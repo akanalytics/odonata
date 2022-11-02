@@ -61,6 +61,11 @@ impl Parse {
         // strip whitespace
         s = s.replace(" ", "");
 
+        // https://chess.stackexchange.com/questions/14072/san-for-nullmove
+        if ["--", "@@@@", "<>", "null"].contains(&s.as_str()) {
+            return Ok(Move::NULL_MOVE);
+        }
+
         let caps = REGEX_SAN
             .captures(&s)
             .ok_or_else(|| anyhow!("Unable to parse '{}' as an algebraic move", s))?;
@@ -175,6 +180,15 @@ mod tests {
     use crate::infra::testing::{Testing};
 
     use crate::catalog::Catalog;
+
+    #[test]
+    fn test_parse_null_move() {
+        let bd = Catalog::starting_board();
+        assert_eq!(Parse::move_san("--", &bd).unwrap(), Move::NULL_MOVE);
+        assert_eq!(Parse::move_san("null", &bd).unwrap(), Move::NULL_MOVE);
+        assert_eq!(Parse::move_san("@@@@", &bd).unwrap(), Move::NULL_MOVE);
+        assert_eq!(Parse::move_san("<>", &bd).unwrap(), Move::NULL_MOVE);
+    }
 
     #[test]
     fn test_parse_move() {
