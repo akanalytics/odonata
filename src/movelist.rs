@@ -504,6 +504,10 @@ impl Board {
     }
 
     pub fn to_san(&self, mv: &Move) -> String {
+        if mv.is_null() {
+            return "--".to_string();
+        }
+
         if mv.is_castle() {
             if mv.castling_side().is_king_side() {
                 return String::from("O-O");
