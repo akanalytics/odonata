@@ -123,6 +123,8 @@ impl Uci for SearchResults {
         Ok(())
     }
 
+    // null best moves of "0000" permitted, but result in an empty multipv
+    // and hence a bestmove() of Err
     fn parse_uci(s: &str) -> anyhow::Result<Self> {
         let mut infos = vec![];
         let mut iter = s.lines().peekable();
@@ -226,7 +228,12 @@ impl SearchResults {
                 Err(anyhow::anyhow!("info did not contain depth needed for bf"))
             };
 
-            let multi_pv = Self::extract_multi_pv(&infos);
+            // null best move => no multipv set and score of zero
+            let multi_pv = if !bm.is_null() {
+                Self::extract_multi_pv(&infos)
+            } else {
+                vec![(BareMoveVariation::new(), Score::zero())]
+            };
             SearchResults {
                 depth: depth.unwrap_or_default(),
                 seldepth: seldepth.unwrap_or_default(),
@@ -245,11 +252,13 @@ impl SearchResults {
         } else {
             let mut sr = SearchResults::default();
             let mut var = BareMoveVariation::new();
-            var.push(bm);
+            if !bm.is_null() {
+                var.push(bm);
+            }
             if let Some(pm) = pm {
                 var.push(pm);
             }
-            sr.multi_pv = vec![(var, Score::default())];
+            sr.multi_pv = vec![(var, Score::zero())];
             sr
         }
     }
@@ -364,7 +373,9 @@ impl SearchResults {
             }
         }
         if tags.contains(&Tag::CE) {
-            pos.set(Tag::CentipawnEvaluation(self.score().unwrap_or_default().as_i16() as i32));
+            pos.set(Tag::CentipawnEvaluation(
+                self.score().unwrap_or_default().as_i16() as i32,
+            ));
         }
         if tags.contains(&Tag::ACD) {
             pos.set(Tag::AnalysisCountDepth(self.depth));
@@ -415,6 +426,11 @@ mod tests {
         assert_eq!(bm.to_uci(), "a1a2");
         assert_eq!(pm, None);
 
+        let (bm, pm) = parse_bestmove_uci("bestmove 0000").unwrap();
+        assert_eq!(bm.is_null(), true);
+        assert_eq!(bm.to_uci(), "0000");
+        assert_eq!(pm, None);
+
         let (bm, pm) = parse_bestmove_uci("bestmove   a1a2  ").unwrap();
         assert_eq!(bm.to_uci(), "a1a2");
         assert_eq!(pm, None);
@@ -451,6 +467,17 @@ bestmove g3g6 ponder f7g6
         assert_eq!(sr.bf > 2.5, true);
         assert_eq!(sr.bf < 3.0, true);
         info!("{}", "a3a4".mv());
+
+        let s = r#"info depth 10 seldepth 10 nodes 61329 nps 1039000 score mate 2 hashfull 40 time 58 pv g3g6 f7g6 e5g6
+info depth 11 seldepth 12 nodes 82712 nps 973000 score mate 2 hashfull 45 time 84 pv g3g6 f7g6 e5g6
+info nodes 100000 nps 1020000 hashfull 50 time 97
+bestmove 0000
+"#;
+        let sr = SearchResults::parse_uci(s).unwrap();
+        assert_eq!(sr.nodes, 100000);
+        assert_eq!(sr.best_move().is_err(), true);
+        assert_eq!(sr.pv(), "".var());
+
         Ok(())
     }
 
