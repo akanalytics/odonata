@@ -14,6 +14,7 @@ pub enum Outcome {
     WinOnTime(Color),
     WinByAdjudication(Color),
     WinByResignation(Color),
+    WinByRulesInfraction(Color),
 
     DrawByAdjudication,
     DrawByAgreement,
@@ -42,6 +43,7 @@ impl fmt::Display for Outcome {
             Self::WinOnTime(_) => "win on time",
             Self::WinByAdjudication(_) => "win by adjudication",
             Self::WinByResignation(_) => "win by resignation",
+            Self::WinByRulesInfraction(_) => "win by illegal move",
             Self::DrawByAgreement => "draw by agreement",
             Self::DrawByAdjudication => "draw by adjudication",
             Self::DrawStalemate => "draw stalemate",
@@ -68,6 +70,7 @@ impl Outcome {
                 | Self::WinOnTime(_)
                 | Self::WinByResignation(_)
                 | Self::WinByAdjudication(_)
+                | Self::WinByRulesInfraction(_)
         )
     }
 
@@ -78,6 +81,7 @@ impl Outcome {
             Self::WinOnTime(c) => Self::WinOnTime(c.opposite()),
             Self::WinByResignation(c) => Self::WinByResignation(c.opposite()),
             Self::WinByAdjudication(c) => Self::WinByAdjudication(c.opposite()),
+            Self::WinByRulesInfraction(c) => Self::WinByRulesInfraction(c.opposite()),
             _ => self,
         }
     }
@@ -90,6 +94,7 @@ impl Outcome {
             Self::WinOnTime(c) => Some(c),
             Self::WinByResignation(c) => Some(c),
             Self::WinByAdjudication(c) => Some(c),
+            Self::WinByRulesInfraction(c) => Some(c),
             _ => None,
         }
     }
@@ -114,6 +119,8 @@ impl Outcome {
             WinOther(c) if s.contains("time") => WinOnTime(*c),
             WinOther(c) if s.contains("adjudication") => WinByAdjudication(*c),
             WinOther(c) if s.contains("resign") => WinByResignation(*c),
+            WinOther(c) if s.contains("illegal move") => WinByRulesInfraction(*c),
+            WinOther(c) if s.contains("infraction") => WinByRulesInfraction(*c),
 
             DrawOther if s.contains("stalemate") => DrawStalemate,
             DrawOther if s.contains("material") || s.contains("insufficient") => {
