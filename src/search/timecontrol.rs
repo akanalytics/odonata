@@ -235,6 +235,15 @@ impl TimeControl {
         anyhow::bail!("expected time control format moves/secs or moves+inc but found '{s}'");
     }
 
+    pub fn max_move_time(&self) -> Option<Duration> {
+        match self {
+            Self::SearchTime(d) => Some(*d),
+            Self::UciFischer(rt) => Some(rt.our_time_and_inc().0),
+            _ => None,
+        }
+    }
+
+
     fn parse_without_context(tc: &str) -> anyhow::Result<TimeControl> {
         let tc = tc.replace("_", "");
         if tc == "inf" {
