@@ -1,10 +1,11 @@
 use crate::bits::bitboard::Bitboard;
 use crate::bits::precalc::PreCalc;
+use crate::bits::Square;
 use crate::board::rules::Rules;
 use crate::board::Board;
 use crate::infra::metric::*;
 use crate::movelist::MoveList;
-use crate::mv::Move;
+use crate::mv::{BareMove, Move};
 use crate::piece::Piece;
 use crate::search::node::{Counter, Timing};
 
@@ -25,7 +26,7 @@ impl Board {
     }
 
     pub fn is_pseudo_legal_move(&self, m: &Move) -> bool {
-        if !m.from().is_in(self.us()) {
+        if !self.is_pseudo_legal_baremove(&m.to_inner()) {
             return false;
         }
         if m.mover_piece() != self.piece_unchecked(m.from()) {
@@ -52,41 +53,50 @@ impl Board {
                 return false;
             }
         }
+        true
+    }
+
+    pub fn is_pseudo_legal_baremove(&self, m: &BareMove) -> bool {
+        if !m.from().is_in(self.us()) {
+            return false;
+        }
         if let Some(pp) = m.promo() {
             if !m.to().as_bb().intersects(Bitboard::RANKS_18) {
                 // TODO! exact promo rank for white/black
                 return false;
             }
-            if pp != Piece::Queen && pp != Piece::Rook && pp != Piece::Bishop && pp != Piece::Knight
-            {
+            if pp == Piece::King || pp == Piece::Pawn {
                 return false;
             }
         }
 
-        if m.mover_piece().is_line_piece()
+        if m.from().is_in(self.line_pieces() )
             && (PreCalc::default().strictly_between(m.from(), m.to()) & self.occupied()).any()
         {
             return false;
         }
-        if m.mover_piece() == Piece::Pawn
+        if m.from().is_in(self.pawns())
             && (PreCalc::default().strictly_between(m.from(), m.to()) & self.occupied()).any()
         {
             return false;
         }
         // check piece move
+        let mover = self.piece_unchecked(m.from());
         let precalc = PreCalc::default();
         let destinations = precalc.attacks(
             self.color_us(),
-            m.mover_piece(),
+            mover,
             self.us(),
             self.them(),
             m.from(),
         );
-        if !m.to().is_in(destinations | self.en_passant()) && !m.is_castle() {
+
+        if !m.to().is_in(destinations | self.en_passant()) && !m.is_castle(self) {
             return false;
         }
         true
     }
+
 
     pub fn is_legal_variation(&self, moves: &[Move]) -> bool {
         if let Some(&m) = moves.first() {
@@ -101,6 +111,19 @@ impl Board {
 
     // the move is pseudo legal
     pub fn is_legal_move(&self, mv: &Move) -> bool {
+        if !self.is_pseudo_legal_baremove(&mv.to_inner()) {}
+
+        if !self.is_legal_baremove(&mv.to_inner()) {
+            return false;
+        }
+        true
+    }
+
+    // assumes the move known is pseudo legal. We just check for putting king in check
+    pub fn is_legal_baremove(&self, mv: &BareMove) -> bool {
+        if mv.is_null() {
+            return false;
+        }
         // castling and kings moves already done above
         let mut us = self.us();
         let mut kings = self.kings() & us;
@@ -113,20 +136,27 @@ impl Board {
         let from_to_bits = mv.from().as_bb() | mv.to().as_bb();
         us ^= from_to_bits;
 
-        if mv.mover_piece() == Piece::King {
+        if mv.from.is_in(kings) {
             kings ^= from_to_bits;
         }
         let sq = kings.square();
 
-        if mv.is_capture() {
-            if mv.is_ep_capture() {
-                // ep capture is like capture but with capture piece on *ep* square not *dest*
-                them.remove(mv.ep().as_bb());
-            } else {
-                // regular capture
-                them.remove(mv.to().as_bb());
-            }
+        // regular capture
+        if mv.to().is_in(self.them()) {
+            them.remove(mv.to().as_bb());
+        } else if mv.from().is_in(self.pawns())
+            && !mv.to().is_in(self.them())
+            && mv.from().file_index() != mv.to().file_index()
+        {
+            // ep capture is like capture but with capture piece on *ep* square not *dest*
+            let sq = Square::from_xy(mv.to().file_index() as u32, mv.from().rank_index() as u32);
+            debug_assert!(
+                sq.is_in(self.them()),
+                "ep capture square not occupied {mv} {self}"
+            );
+            them.remove(sq.as_bb());
         }
+
         // in (rough) order of computation cost / likelyhood - this code from "attacked_by"
         // their pieces wont have moved, but they may have been taken
         // we rely on self.pieces & them NOT being affected by our move other than by capture
