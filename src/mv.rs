@@ -72,8 +72,27 @@ impl BareMove {
         self.to == self.from
     }
 
+    #[inline]
+    pub fn from(&self) -> Square {
+        self.from
+    }
+
+    #[inline]
+    pub fn to(&self) -> Square {
+        self.to
+    }
+
+    #[inline]
+    pub fn promo(&self) -> Option<Piece> {
+        self.promo
+    }
+
     pub fn to_san(&self, b: &Board) -> String {
         b.to_san(&b.augment_move(*self))
+    }
+
+    pub fn is_castle(&self, b: &Board) -> bool {
+        self.from.is_in(b.kings()) && CastlingRights::is_castling(self.from, self.to)
     }
 }
 
@@ -90,6 +109,9 @@ impl FromStr for BareMove {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self> {
+        if s.trim() == "0000" {
+            return Ok(Self::null());
+        }
         let from = Bitboard::parse_square(s.take_slice(0..2))?;
         let to = Bitboard::parse_square(s.take_slice(2..4))?;
         let promo = if let Some(ch) = s.take_char_at(4) {
