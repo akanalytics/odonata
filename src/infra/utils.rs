@@ -65,10 +65,10 @@ pub fn sigmoid(centipawns: f32) -> f32 {
 //   N: Total number of nodes processed accross all iterations
 //   d: Depth
 //   bf: Effective branching factor.
-//   Nodes iter d   = 1 + bf^1 + (bf)^2 + ... + (bf)^d 
+//   Nodes iter d   = 1 + bf^1 + (bf)^2 + ... + (bf)^d
 //   Nodes last d-1 = 1 + bf + (bf)^2 + ... + (bf)^(d-1)
-//   Nodes iter 1   = 1 + bf 
-//   Nodes iter 0   = 1 
+//   Nodes iter 1   = 1 + bf
+//   Nodes iter 0   = 1
 //   Total nodes    = (d+1) + (d) bf + (d-1) * fb^2 + .... + 1 * (bf)^d
 
 //
@@ -84,7 +84,12 @@ pub fn calculate_branching_factor_by_nodes_and_depth(
     nodes: u64,
     depth: Ply,
 ) -> anyhow::Result<f64> {
-    let f = |bf: f64| (0..=depth).map(|d: i32| (depth+1-d) as f64 * bf.powi(d)).sum::<f64>() - nodes as f64;
+    let f = |bf: f64| {
+        (0..=depth)
+            .map(|d: i32| (depth + 1 - d) as f64 * bf.powi(d))
+            .sum::<f64>()
+            - nodes as f64
+    };
     anyhow::ensure!(
         depth > 0 && nodes > 0,
         "Depth {depth} and nodes {nodes} must be > 0"
@@ -201,6 +206,70 @@ pub fn read_file(filename: impl AsRef<Path> + Clone) -> Result<Vec<String>> {
     Ok(vec)
 }
 
+pub trait DecimalFormatter {
+    fn dp(&self, decimal_places: i32) -> String;
+    fn sig_fig(&self, sig_fig: i32) -> String;
+}
+
+pub trait IntegerFormatter {
+    fn human(&self) -> String;
+}
+
+pub trait DurationFormatter {
+    fn hhmmss(&self) -> String;
+    fn human(&self) -> String;
+}
+
+impl<N> IntegerFormatter for N
+where
+    N: Into<u128> + Copy
+{
+    fn human(&self) -> String {
+        format_num!(",d", Into::<u128>::into(*self) as f64)
+    }
+}
+
+impl DurationFormatter for Duration
+{
+    fn hhmmss(&self) -> String {
+        let hours = self.as_secs() / (60 * 60) % 24;
+        let mins = self.as_secs() / 60;
+        let secs = self.as_secs_f32() - (60 * mins) as f32;
+        let mins = mins % 60;
+        format!("{hours:02}:{mins:02}:{secs:02.0}")
+    }
+
+    fn human(&self) -> String {
+        DurationNewType(*self).to_string()
+    }
+}
+
+impl<N> DecimalFormatter for N
+where
+    N: Into<f64> + Copy
+{
+    fn dp(&self, decimal_places: i32) -> String {
+        match decimal_places {
+            0 => format_num!(".0f", *self),
+            1 => format_num!(".1f", *self),
+            2 => format_num!(".2f", *self),
+            3 => format_num!(".3f", *self),
+            4 => format_num!(".4f", *self),
+            _ => format_num!(".8f", *self),
+        }
+    }
+    fn sig_fig(&self, sig_fig: i32) -> String {
+        match sig_fig {
+            0 => format_num!(".0s", *self),
+            1 => format_num!(".1s", *self),
+            2 => format_num!(".2s", *self),
+            3 => format_num!(".3s", *self),
+            4 => format_num!(".4s", *self),
+            _ => format_num!(".8s", *self),
+        }
+    }
+}
+
 pub struct Formatting;
 
 impl Formatting {
@@ -223,6 +292,7 @@ impl Formatting {
         format!("{hours:02}:{mins:02}:{secs:02.0}")
     }
 
+    // significant digits
     pub fn f64(n: f64) -> String {
         format_num!(".4s", n)
     }
@@ -579,7 +649,10 @@ mod tests {
 
     #[test]
     fn test_formatter() {
-        assert_eq!(Formatting::hhmmss(Duration::from_millis(12345678)).as_str(), "03:25:46");
+        assert_eq!(
+            Formatting::hhmmss(Duration::from_millis(12345678)).as_str(),
+            "03:25:46"
+        );
         assert_eq!(Formatting::f64(12345567.0).as_str(), "12.35M");
         assert_eq!(Formatting::f64(0.0).as_str(), "0.000");
         assert_eq!(Formatting::f64(1234567890123.0).as_str(), "1.235T");

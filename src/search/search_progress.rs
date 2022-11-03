@@ -106,7 +106,7 @@ impl Info {
             nodes_thread: Some(algo.clock.cumul_nodes_this_thread()),
             nps: Some(algo.clock.cumul_knps_all_threads() * 1000),
             hashfull_per_mille: Some(algo.tt.hashfull_per_mille()),
-            time_millis: Some(algo.clock.elapsed_search().0.as_millis() as u64),
+            time_millis: Some(algo.clock.elapsed_search().time.as_millis() as u64),
             ..Default::default()
         }
     }
@@ -204,7 +204,7 @@ impl Info {
         self.nps = Some(clock.cumul_knps_all_threads() * 1000);
         self.depth = ply;
         self.seldepth = pv_table.selective_depth();
-        self.time_millis = Some(clock.elapsed_search().0.as_millis() as u64);
+        self.time_millis = Some(clock.elapsed_search().time.as_millis() as u64);
         self.hashfull_per_mille = Some(tt.hashfull_per_mille());
         // self.branching_factor = Some(stats.branching_factor());
         if self.score.is_finite() {
@@ -245,7 +245,7 @@ impl Info {
         self.nodes = Some(clock.cumul_nodes_all_threads());
         self.nodes_thread = Some(clock.cumul_nodes_this_thread());
         self.nps = Some(clock.cumul_knps_all_threads() * 1000);
-        self.time_millis = Some(clock.elapsed_search().0.as_millis() as u64);
+        self.time_millis = Some(clock.elapsed_search().time.as_millis() as u64);
         // self.branching_factor = Some(counts.cumul(Event::PercentBranchingFactor) as f32 / 100.0);
 
         // check PV for validity

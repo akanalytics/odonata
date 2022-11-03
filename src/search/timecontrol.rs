@@ -40,6 +40,8 @@ pub enum TimeControl {
     Depth(Ply),           // uci "depth"
     SearchTime(Duration), // uci "movetime"
     NodeCount(u64),       // uci "nodes"
+    Cycles(u64),         
+    Instructions(u64),   
     Infinite,             // uci "infinite"
     MateIn(u32),          // uci "mate"
     UciFischer(RemainingTime),
@@ -100,6 +102,8 @@ impl Uci for TimeControl {
             Depth(ply) => write!(f, "depth {ply}")?,
             SearchTime(dur) => write!(f, "movetime {ms}", ms = dur.as_millis())?,
             NodeCount(nodes) => write!(f, "nodes {nodes}")?,
+            Cycles(n) => write!(f, "cycles {n}")?,
+            Instructions(n) => write!(f, "ins {n}")?,
             Infinite => write!(f, "infinite")?,
             MateIn(depth) => write!(f, "mate {depth}")?,
             UciFischer(RemainingTime {
@@ -140,6 +144,8 @@ impl Uci for TimeControl {
             "binc",
             "movestogo",
             "nodes",
+            "cycles",
+            "ins",
             "mate",
             "movetime",
             "infinite",
@@ -156,6 +162,8 @@ impl Uci for TimeControl {
             match (key.as_str(), v) {
                 ("depth", t) => return Ok(TimeControl::Depth(t.parse().context(t)?)),
                 ("nodes", t) => return Ok(TimeControl::NodeCount(t.parse().context(t)?)),
+                ("ins", t) => return Ok(TimeControl::Instructions(t.parse().context(t)?)),
+                ("cycles", t) => return Ok(TimeControl::Cycles(t.parse().context(t)?)),
                 ("mate", t) => return Ok(TimeControl::MateIn(t.parse().context(t)?)),
                 ("movetime", t) => {
                     return Ok(TimeControl::from_move_time_millis(t.parse().context(t)?))
@@ -185,6 +193,8 @@ impl TimeControl {
             TimeControl::MateIn(depth) => write!(f, "mate={depth}")?,
             TimeControl::Depth(d) => write!(f, "depth={d}")?,
             TimeControl::NodeCount(nodes) => write!(f, "nodes={nodes}")?,
+            TimeControl::Cycles(n) => write!(f, "cycles={n}")?,
+            TimeControl::Instructions(n) => write!(f, "ins={n}")?,
             TimeControl::UciFischer(rt) => {
                 // let duration = rt.our_time_and_inc().0;
                 write!(f, "tc=(rt={rt:?})")?;
@@ -269,6 +279,12 @@ impl TimeControl {
         } else if let Some(tc) = tc.strip_prefix("nodes=") {
             let nodes = tc.parse::<u64>()?;
             Ok(TimeControl::NodeCount(nodes))
+        } else if let Some(tc) = tc.strip_prefix("cycles=") {
+            let n = tc.parse::<u64>()?;
+            Ok(TimeControl::Cycles(n))
+        } else if let Some(tc) = tc.strip_prefix("ins=") {
+            let n = tc.parse::<u64>()?;
+            Ok(TimeControl::Instructions(n))
         } else {
             anyhow::bail!("Unable to parse time control {}", tc);
         }
@@ -312,6 +328,8 @@ mod tests {
         assert_eq!(T::parse_option("def")?, T::DefaultTime);
         assert_eq!(T::parse_option("inf")?, T::Infinite);
         assert_eq!(T::parse_option("nodes=1000")?, T::NodeCount(1000));
+        assert_eq!(T::parse_option("cycles=10")?, T::Cycles(10));
+        assert_eq!(T::parse_option("ins=100")?, T::Instructions(1000));
         assert_eq!(T::parse_option("nodes=10_000")?, T::NodeCount(10_000));
         assert_eq!(
             T::parse_option("st=10s")?,

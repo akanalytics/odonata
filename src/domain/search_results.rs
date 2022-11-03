@@ -275,7 +275,7 @@ impl SearchResults {
             nps: algo.clock.cumul_knps_all_threads() * 1000,
             depth,
             seldepth: algo.pv_table.selective_depth(),
-            time_millis: algo.clock.elapsed_search().0.as_millis() as u64,
+            time_millis: algo.clock.elapsed_search().time.as_millis() as u64,
             hashfull_per_mille: algo.tt.hashfull_per_mille(),
             bf,
             multi_pv,

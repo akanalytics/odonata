@@ -167,17 +167,19 @@ impl MoveTimeEstimator {
             return false;
         }
 
-        let mut elapsed = clock.elapsed_search().0 + Duration::from_millis(self.move_overhead_ms);
+        let mut elapsed = clock.elapsed_search().time + Duration::from_millis(self.move_overhead_ms);
         // if in nodestime then convert nodes to time. nodestime is nodes per millisecond
         if self.nodestime > 0 {
-            elapsed = Duration::from_millis(clock.elapsed_search().1 / self.nodestime);
+            elapsed = Duration::from_millis(clock.elapsed_search().nodes / self.nodestime);
         }
 
         match self.time_control {
             TimeControl::DefaultTime => false,
             TimeControl::Depth(_max_ply) => false, // ply > max_ply,  // dont cause an abort on last iteration
             TimeControl::SearchTime(duration) => 10 * elapsed > duration * 9 && !self.pondering(),
-            TimeControl::NodeCount(max_nodes) => clock.elapsed_search().1 >= max_nodes,
+            TimeControl::NodeCount(n) => clock.elapsed_search().nodes >= n,
+            TimeControl::Instructions(n) => clock.elapsed_search().instructions >= n,
+            TimeControl::Cycles(n) => clock.elapsed_search().cycles >= n,
             TimeControl::Infinite => false,
             TimeControl::MateIn(_) => false,
             TimeControl::UciFischer { .. } => elapsed > self.allotted() && !self.pondering(),
@@ -200,12 +202,14 @@ impl MoveTimeEstimator {
     pub fn time_sensitive(&self) -> bool {
         match self.time_control {
             TimeControl::DefaultTime => true,
-            TimeControl::Depth(_max_ply) => false,
             TimeControl::SearchTime(_duration) => true,
+            TimeControl::UciFischer { .. } => true,
+            TimeControl::Depth(_max_ply) => false,
             TimeControl::NodeCount(_max_nodes) => false,
+            TimeControl::Instructions(_) => false,
+            TimeControl::Cycles(_) => false,
             TimeControl::Infinite => false,
             TimeControl::MateIn(_) => false,
-            TimeControl::UciFischer { .. } => true,
             TimeControl::FischerMulti{..} => panic!("FischerMulti"),
 
         }
@@ -214,8 +218,8 @@ impl MoveTimeEstimator {
     pub fn estimate_iteration(&mut self, ply: Ply, clock: &Clock) {
         // debug_assert!(search_stats.depth() >= ply-1, "ensure we have enough stats");
         self.prior_elapsed_iter = self.elapsed_iter;
-        self.elapsed_iter = clock.elapsed_iter_this_thread().0;
-        self.elapsed_search = clock.elapsed_search().0;
+        self.elapsed_iter = clock.elapsed_iter_this_thread().time;
+        self.elapsed_search = clock.elapsed_search().time;
 
         match self.time_control {
             // on initial call capture the fischer increment
@@ -229,7 +233,7 @@ impl MoveTimeEstimator {
 
         // if in nodestime then convert nodes to time. nodestime is nodes per millisecond
         if self.nodestime > 0 {
-            let nodes = clock.elapsed_iter_this_thread().1;
+            let nodes = clock.elapsed_iter_this_thread().nodes;
             self.elapsed_search = Duration::from_millis(nodes / self.nodestime);
         }
 
@@ -312,6 +316,8 @@ impl MoveTimeEstimator {
             TimeControl::Depth(_) => zero,
             TimeControl::SearchTime(duration) => duration,
             TimeControl::NodeCount(_) => zero,
+            TimeControl::Cycles(_) => zero,
+            TimeControl::Instructions(_) => zero,
             TimeControl::Infinite => zero,
             TimeControl::MateIn(_) => zero,
             TimeControl::UciFischer(rt) => self.calc_from_remaining(&rt),

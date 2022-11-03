@@ -1,7 +1,8 @@
 use crate::infra::component::{Component, State};
-use crate::infra::utils::Formatting;
+use crate::infra::utils::{DurationFormatter};
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::ops::Sub;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -16,14 +17,43 @@ struct Aligned(AtomicU64);
 //     }
 // }
 
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Measure {
+    pub time: Duration,
+    pub nodes: u64,
+    pub instructions: u64,
+    pub cycles: u64,
+}
+
+impl Measure {
+    fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl Sub for Measure {
+    type Output = Measure;
+
+    fn sub(mut self, rhs: Measure) -> Self::Output {
+        self.time = self.time - rhs.time;
+        self.nodes = self.nodes - rhs.nodes;
+        self.instructions = self.instructions - rhs.instructions;
+        self.cycles = self.cycles - rhs.cycles;
+        self
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Clock {
     #[serde(skip)]
-    start_search: (Instant, u64),
+    start_search: Measure,
 
     #[serde(skip)]
-    start_iter: (Instant, u64),
+    start_iter: Measure,
+
+    #[serde(skip)]
+    timer: Instant,
 
     #[serde(skip)]
     thread_index: u32,
@@ -36,12 +66,11 @@ pub struct Clock {
 
 impl Default for Clock {
     fn default() -> Self {
-        let now = Instant::now();
         Clock {
-            start_search: (now, 0),
-            start_iter: (now, 0),
+            start_search: Measure::new(),
+            start_iter: Measure::new(),
+            timer: Instant::now(),
             thread_index: 0,
-            // leaf_nodes: Aligned(Default::default()),
             nodes: Arc::new({
                 let mut v = Vec::with_capacity(32);
                 v.extend(std::iter::repeat_with(|| Aligned(AtomicU64::default())).take(32));
@@ -68,7 +97,7 @@ impl Component for Clock {
     }
 
     fn new_iter(&mut self) {
-        self.start_iter = (Instant::now(), self.cumul_nodes_this_thread());
+        self.start_iter = self.elapsed();
     }
 
     fn set_thread_index(&mut self, thread_index: u32) {
@@ -82,59 +111,43 @@ impl Component for Clock {
 
 impl fmt::Display for Clock {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(
-            f,
-            "search time      : {}",
-            Formatting::duration(self.elapsed_search().0)
-        )?;
-        writeln!(
-            f,
-            "search nodes     : {}",
-            Formatting::u128(self.elapsed_search().1 as u128)
-        )?;
-        writeln!(
-            f,
-            "search knps      : {}",
-            Formatting::u128(self.cumul_knps_all_threads() as u128)
-        )?;
-        writeln!(
-            f,
-            "iter time        : {}",
-            Formatting::duration(self.elapsed_iter_this_thread().0)
-        )?;
-        writeln!(
-            f,
-            "iter nodes       : {}",
-            Formatting::u128(self.elapsed_iter_this_thread().1 as u128)
-        )?;
-        writeln!(
-            f,
-            "cumul nodes      : {}",
-            Formatting::u128(self.cumul_nodes_this_thread() as u128)
-        )?;
-        writeln!(
-            f,
-            "cumul nodes all  : {}",
-            Formatting::u128(self.cumul_nodes_all_threads() as u128)
-        )?;
-        // writeln!(f, "leaf nodes       : {}", Formatting::u128(self.cumul_leaf_nodes() as u128))?;
+        use crate::infra::utils::IntegerFormatter;
+
+        let s = self.elapsed_search().time.human();
+        writeln!(f, "search time      : {s}")?;
+
+        let s = self.elapsed_search().nodes.human();
+        writeln!(f, "search nodes     : {s}")?;
+
+        let s = self.cumul_knps_all_threads().human();
+        writeln!(f, "search knps      : {s}")?;
+
+        let s = self.elapsed_iter_this_thread().time.human();
+        writeln!(f, "iter time        : {s}")?;
+
+        let s = self.elapsed_iter_this_thread().nodes.human();
+        writeln!(f, "iter nodes       : {s}")?;
+
+        let s = self.cumul_nodes_this_thread();
+        writeln!(f, "cumul nodes      : {s}")?;
+
+        let s = self.cumul_nodes_all_threads();
+        writeln!(f, "cumul nodes all  : {s}")?;
         Ok(())
     }
 }
 
 impl Clock {
     pub fn restart_elapsed_search_clock(&mut self) {
-        self.start_search.0 = Instant::now();
-        self.start_search.1 = 0;
+        self.start_search = self.elapsed();
     }
-
 
     #[inline]
     /// cumulative accross all iterations
-    /// iter1: ply1_nodes 
-    /// iter2: (ply1_nodes) + ply1_nodes + ply2_nodes 
+    /// iter1: ply1_nodes
+    /// iter2: (ply1_nodes) + ply1_nodes + ply2_nodes
     /// iter3: (ply1_nodes) + (ply1_nodes + ply2_nodes) + (ply1_nodes + ply2_nodes + ply3_nodes)
-    /// 
+    ///
     pub fn cumul_nodes_this_thread(&self) -> u64 {
         self.nodes[self.thread_index as usize]
             .0
@@ -152,11 +165,11 @@ impl Clock {
     }
 
     pub fn cumul_knps_all_threads(&self) -> u64 {
-        self.cumul_nodes_all_threads() / (1 + self.elapsed_search().0.as_millis() as u64)
+        self.cumul_nodes_all_threads() / (1 + self.elapsed_search().time.as_millis() as u64)
     }
 
     pub fn cumul_knps_this_thread(&self) -> u64 {
-        self.cumul_nodes_this_thread() / (1 + self.elapsed_search().0.as_millis() as u64)
+        self.cumul_nodes_this_thread() / (1 + self.elapsed_search().time.as_millis() as u64)
     }
 
     // pub fn branching_factor(&self) -> f32 {
@@ -171,26 +184,25 @@ impl Clock {
             .fetch_add(1, Ordering::Relaxed);
     }
 
-    // #[inline]
-    // pub fn inc_leaf_nodes(&self) {
-    //     self.leaf_nodes.0.fetch_add(1, Ordering::Relaxed);
-    // }
+    #[inline]
+    pub fn elapsed(&self) -> Measure {
+        Measure {
+            time: self.timer.elapsed(),
+            nodes: self.cumul_nodes_this_thread(),
+            instructions: 0,
+            cycles: 0,
+        }
+    }
 
     #[inline]
-    // since start of search 
-    pub fn elapsed_search(&self) -> (Duration, u64) {
-        (
-            self.start_search.0.elapsed(),
-            self.cumul_nodes_this_thread() - self.start_search.1,
-        )
+    // since start of search
+    pub fn elapsed_search(&self) -> Measure {
+        self.elapsed() - self.start_search
     }
 
     #[inline]
     // since start of play
-    pub fn elapsed_iter_this_thread(&self) -> (Duration, u64) {
-        (
-            self.start_iter.0.elapsed(),
-            self.cumul_nodes_this_thread() - self.start_iter.1,
-        )
+    pub fn elapsed_iter_this_thread(&self) -> Measure {
+        self.elapsed() - self.start_iter
     }
 }

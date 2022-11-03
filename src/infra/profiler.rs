@@ -1,3 +1,5 @@
+use std::io::{Write, stdout};
+
 use crate::infra::utils::Formatting;
 use perf_event::{events::Hardware, Builder, Counter, Group};
 
@@ -63,10 +65,11 @@ impl Profiler {
         }
     }
 
-    pub fn benchmark<R>(&mut self, f: impl FnOnce() -> R) {
+    pub fn benchmark<R>(&mut self, f: impl FnOnce() -> R) -> R{
         self.start();
-        black_box(f());
+        let ret = black_box(f());
         self.stop();
+        ret
     }
 
     #[inline]
@@ -85,10 +88,10 @@ impl Profiler {
     }
 
     #[inline]
-    pub fn print(&mut self) {
+    pub fn write<W: Write>(&mut self, mut w: W) -> anyhow::Result<()> {
         let counts = self.group.read().unwrap();
         self.iters = std::cmp::max(1, self.iters);
-        println!(
+        writeln!(w,
             "PROFH: {:<25}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}",
             "name",
             "iters",
@@ -100,8 +103,8 @@ impl Profiler {
             "cache-refs",
             "cycles-per-ins",
             "cache-hit-%",
-        );
-        println!(
+        )?;
+        writeln!(w,
             "PROFD: {:<25}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15.2}\t{:>15.2}\n",
             self.name,
             self.iters,
@@ -117,13 +120,16 @@ impl Profiler {
             Formatting::u128((0u32).into()),
             Formatting::u128((0u32).into()),
             // 100.0 - (counts[&self.cache_misses] as f64 * 100.0 / counts[&self.cache_refs] as f64)
-        );
+        )?;
+        Ok(())
     }
 }
 
 impl Drop for Profiler {
     fn drop(&mut self) {
-        self.print()
+        if log::log_enabled!(log::Level::Info) {
+            let _ = self.write(stdout());
+        }
     }
 }
 
@@ -244,24 +250,24 @@ mod tests {
 
         let mut pr = Profiler::new("ThreadLocal".into());
         for _iter in 0..10003 {
-            pr.benchmark(|| {
+            let _count = pr.benchmark(|| {
                 let cell = COUNTER3.get_or(|| Cell::new(0));
                 let count = cell.get() + 1;
                 cell.set(count);
                 count
-            })
+            });
         }
         assert_eq!(COUNTER3.get_or(|| Cell::new(0)).get(), 10003);
 
         use crate::bits::Bitboard;
         let mut pr = Profiler::new("bitboard".into());
         for _iter in 0..10004 {
-            pr.benchmark(|| {
+            let _count = pr.benchmark(|| {
                 let bb = Bitboard::RANK_1;
                 let count1 = (bb & Bitboard::FILE_A).popcount();
                 let count2 = (black_box(Bitboard::RANK_3) & Bitboard::FILE_A).popcount();
                 count1 + count2
-            })
+            });
         }
     }
 }

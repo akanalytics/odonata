@@ -4,7 +4,7 @@ use crate::domain::SearchResults;
 use crate::infra::component::{Component, State, FEATURE};
 use crate::infra::metric::Metrics;
 use crate::infra::resources::RESOURCE_DIR;
-use crate::infra::utils::{Displayable, Formatting};
+use crate::infra::utils::{Displayable, Formatting, DurationFormatter};
 use crate::position::Position;
 use crate::search::algo::Algo;
 use crate::search::timecontrol::TimeControl;
@@ -329,7 +329,7 @@ impl ThreadedSearch {
                 algo.score().to_string(),
                 algo.clock.cumul_nodes_this_thread(),
                 algo.clock.cumul_knps_this_thread(),
-                Formatting::duration(algo.clock.elapsed_search().0),
+                algo.clock.elapsed_search().time.human(),
                 algo.pv().to_string(),
             );
             // knps += algo.search_stats.cumulative_knps();
