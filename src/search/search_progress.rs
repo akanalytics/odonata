@@ -185,7 +185,7 @@ impl Info {
     pub fn with_pv_change(
         &mut self,
         board: &Board,
-        clock: &Clock,
+        clock: &mut Clock,
         restrictions: &Restrictions,
         tt: &TranspositionTable2,
         pv_table: &PvTable,
@@ -200,6 +200,7 @@ impl Info {
         self.score = score;
         // self.best_score = stats.score();
         self.nodes = Some(clock.cumul_nodes_all_threads());
+        // self.nodes = Some(clock.elapsed_search().instructions);
         self.nodes_thread = Some(clock.cumul_nodes_this_thread());
         self.nps = Some(clock.cumul_knps_all_threads() * 1000);
         self.depth = ply;

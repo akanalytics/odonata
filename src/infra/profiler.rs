@@ -1,4 +1,4 @@
-use std::io::{Write, stdout};
+use std::io::{stdout, Write};
 
 use crate::infra::utils::Formatting;
 use perf_event::{events::Hardware, Builder, Counter, Group};
@@ -18,6 +18,7 @@ pub struct Profiler {
 }
 
 impl Profiler {
+
     #[inline]
     pub fn new(name: String) -> Profiler {
         let mut group = Group::new().unwrap();
@@ -65,7 +66,7 @@ impl Profiler {
         }
     }
 
-    pub fn benchmark<R>(&mut self, f: impl FnOnce() -> R) -> R{
+    pub fn benchmark<R>(&mut self, f: impl FnOnce() -> R) -> R {
         self.start();
         let ret = black_box(f());
         self.stop();
@@ -83,6 +84,14 @@ impl Profiler {
         self.iters += 1
     }
 
+    pub fn cycles(&mut self) -> u64 {
+        self.group.read().unwrap()[&self.cycles]
+    }
+
+    pub fn instructions(&mut self) -> u64 {
+        self.group.read().unwrap()[&self.ins]
+    }
+
     pub fn set_iters(&mut self, iters: u64) {
         self.iters = iters as u64
     }
@@ -91,7 +100,8 @@ impl Profiler {
     pub fn write<W: Write>(&mut self, mut w: W) -> anyhow::Result<()> {
         let counts = self.group.read().unwrap();
         self.iters = std::cmp::max(1, self.iters);
-        writeln!(w,
+        writeln!(
+            w,
             "PROFH: {:<25}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}",
             "name",
             "iters",
@@ -127,7 +137,7 @@ impl Profiler {
 
 impl Drop for Profiler {
     fn drop(&mut self) {
-        if log::log_enabled!(log::Level::Info) {
+        if log::log_enabled!(log::Level::Trace) {
             let _ = self.write(stdout());
         }
     }

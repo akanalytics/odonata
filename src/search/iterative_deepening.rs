@@ -98,14 +98,14 @@ impl Algo {
                 let score = self
                     .aspirated_search(&mut self.board.clone(), &mut Node::root(ply))
                     .0;
-                self.mte.estimate_iteration(ply + 1, &self.clock);
+                self.mte.estimate_iteration(ply + 1, &mut self.clock);
                 // self.stats
                 //     .record_time_estimate(ply + 1, &self.mte.estimate_move_time);
                 // self.ids.iterations.push(self.search_stats().clone());
                 let pv = self.pv_table.extract_pv();
                 self.progress.with_pv_change(
                     &self.board,
-                    &self.clock,
+                    &mut self.clock,
                     &self.restrictions,
                     &self.tt,
                     &self.pv_table,

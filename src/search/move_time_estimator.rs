@@ -2,9 +2,9 @@ use crate::board::Board;
 use crate::clock::Clock;
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
+use crate::infra::utils::Formatting;
 use crate::piece::Ply;
 use crate::search::timecontrol::TimeControl;
-use crate::infra::utils::Formatting;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::sync::atomic::{self, AtomicBool};
@@ -157,8 +157,18 @@ impl MoveTimeEstimator {
         &self.time_control
     }
 
+    fn elapsed_with_margin(&self, clock: &mut Clock) -> Duration {
+        let mut elapsed =
+            clock.elapsed_search().time + Duration::from_millis(self.move_overhead_ms);
+        // if in nodestime then convert nodes to time. nodestime is nodes per millisecond
+        if self.nodestime > 0 {
+            elapsed = Duration::from_millis(clock.elapsed_search().nodes / self.nodestime);
+        }
+        elapsed
+    }
+
     #[inline]
-    pub fn is_time_up(&mut self, _ply: Ply, clock: &Clock, force_check: bool) -> bool {
+    pub fn is_time_up(&mut self, _ply: Ply, c: &mut Clock, force_check: bool) -> bool {
         self.clock_checks += 1;
 
         // if its not time sensive then always check (=> exact node counts for instance)
@@ -167,24 +177,21 @@ impl MoveTimeEstimator {
             return false;
         }
 
-        let mut elapsed = clock.elapsed_search().time + Duration::from_millis(self.move_overhead_ms);
-        // if in nodestime then convert nodes to time. nodestime is nodes per millisecond
-        if self.nodestime > 0 {
-            elapsed = Duration::from_millis(clock.elapsed_search().nodes / self.nodestime);
-        }
-
         match self.time_control {
             TimeControl::DefaultTime => false,
             TimeControl::Depth(_max_ply) => false, // ply > max_ply,  // dont cause an abort on last iteration
-            TimeControl::SearchTime(duration) => 10 * elapsed > duration * 9 && !self.pondering(),
-            TimeControl::NodeCount(n) => clock.elapsed_search().nodes >= n,
-            TimeControl::Instructions(n) => clock.elapsed_search().instructions >= n,
-            TimeControl::Cycles(n) => clock.elapsed_search().cycles >= n,
+            TimeControl::SearchTime(duration) => {
+                10 * self.elapsed_with_margin(c) > duration * 9 && !self.pondering()
+            }
+            TimeControl::NodeCount(n) => c.elapsed_search().nodes >= n,
+            TimeControl::Instructions(n) => c.elapsed_search().instructions >= n,
+            TimeControl::Cycles(n) => c.elapsed_search().cycles >= n,
             TimeControl::Infinite => false,
             TimeControl::MateIn(_) => false,
-            TimeControl::UciFischer { .. } => elapsed > self.allotted() && !self.pondering(),
-            TimeControl::FischerMulti{..} => panic!("FischerMulti"),
-
+            TimeControl::UciFischer { .. } => {
+                self.elapsed_with_margin(c) > self.allotted() && !self.pondering()
+            }
+            TimeControl::FischerMulti { .. } => panic!("FischerMulti"),
         }
     }
 
@@ -206,16 +213,15 @@ impl MoveTimeEstimator {
             TimeControl::UciFischer { .. } => true,
             TimeControl::Depth(_max_ply) => false,
             TimeControl::NodeCount(_max_nodes) => false,
-            TimeControl::Instructions(_) => false,
-            TimeControl::Cycles(_) => false,
+            TimeControl::Instructions(_) => true,
+            TimeControl::Cycles(_) => true,
             TimeControl::Infinite => false,
             TimeControl::MateIn(_) => false,
-            TimeControl::FischerMulti{..} => panic!("FischerMulti"),
-
+            TimeControl::FischerMulti { .. } => panic!("FischerMulti"),
         }
     }
 
-    pub fn estimate_iteration(&mut self, ply: Ply, clock: &Clock) {
+    pub fn estimate_iteration(&mut self, ply: Ply, clock: &mut Clock) {
         // debug_assert!(search_stats.depth() >= ply-1, "ensure we have enough stats");
         self.prior_elapsed_iter = self.elapsed_iter;
         self.elapsed_iter = clock.elapsed_iter_this_thread().time;
@@ -321,7 +327,7 @@ impl MoveTimeEstimator {
             TimeControl::Infinite => zero,
             TimeControl::MateIn(_) => zero,
             TimeControl::UciFischer(rt) => self.calc_from_remaining(&rt),
-            TimeControl::FischerMulti{..} => panic!("FischerMulti"),
+            TimeControl::FischerMulti { .. } => panic!("FischerMulti"),
         }
     }
 }

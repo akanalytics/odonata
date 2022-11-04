@@ -1,10 +1,10 @@
 use crate::infra::component::{Component, State};
-use crate::infra::utils::{DurationFormatter};
+use crate::infra::utils::DurationFormatter;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Sub;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, };
 use std::time::{Duration, Instant};
 
 #[derive(Default, Debug)]
@@ -55,14 +55,28 @@ pub struct Clock {
     #[serde(skip)]
     timer: Instant,
 
+    // #[serde(skip)]
+    // profiler: RefCell<Profiler>,
+
     #[serde(skip)]
     thread_index: u32,
 
     #[serde(skip)]
     nodes: Arc<Vec<Aligned>>,
-    // #[serde(skip)]
-    // leaf_nodes: Aligned,
 }
+
+// impl Clone for Clock {
+//     fn clone(&self) -> Self {
+//         Self {
+//             start_search: self.start_search.clone(),
+//             start_iter: self.start_iter.clone(),
+//             timer: self.timer.clone(),
+//             // profiler: RefCell::new(Profiler::new("Clock".into())),
+//             thread_index: self.thread_index.clone(),
+//             nodes: self.nodes.clone(),
+//         }
+//     }
+// }
 
 impl Default for Clock {
     fn default() -> Self {
@@ -70,6 +84,7 @@ impl Default for Clock {
             start_search: Measure::new(),
             start_iter: Measure::new(),
             timer: Instant::now(),
+            // profiler: RefCell::new(Profiler::new("Clock".to_string())),
             thread_index: 0,
             nodes: Arc::new({
                 let mut v = Vec::with_capacity(32);
@@ -87,13 +102,13 @@ impl Component for Clock {
             NewGame => self.new_game(),
             SetPosition => self.new_position(),
             StartSearch => *self = Self::default(),
-            EndSearch => {}
+            EndSearch => {},
             StartDepthIteration(_) => self.new_iter(),
             Shutdown => {}
         }
     }
     fn new_game(&mut self) {
-        *self = Self::default()
+        *self = Clock::default()
     }
 
     fn new_iter(&mut self) {
@@ -105,9 +120,21 @@ impl Component for Clock {
     }
 
     fn new_position(&mut self) {
-        *self = Self::default()
+        *self = Clock::default()
     }
 }
+
+// impl fmt::Debug for Clock {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         f.debug_struct("Clock")
+//             .field("start_search", &self.start_search)
+//             .field("start_iter", &self.start_iter)
+//             .field("timer", &self.timer)
+//             .field("thread_index", &self.thread_index)
+//             .field("nodes", &self.nodes)
+//             .finish()
+//     }
+// }
 
 impl fmt::Display for Clock {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -186,12 +213,18 @@ impl Clock {
 
     #[inline]
     pub fn elapsed(&self) -> Measure {
-        Measure {
+        let m = Measure {
             time: self.timer.elapsed(),
             nodes: self.cumul_nodes_this_thread(),
             instructions: 0,
             cycles: 0,
-        }
+        };
+        // if true {
+        //     let mut prof = self.profiler.borrow_mut();
+        //     m.cycles = prof.cycles();
+        //     m.instructions = prof.instructions();
+        // }
+        m
     }
 
     #[inline]

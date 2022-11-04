@@ -82,6 +82,9 @@ pub struct Algo {
     pub counter_move: CounterMove,
 
     #[serde(skip)]
+    pub engine_name: String,
+
+    #[serde(skip)]
     pub position: Position,
 
     #[serde(skip)]
@@ -104,11 +107,13 @@ pub struct Algo {
 
 impl Engine for Algo {
     fn name(&self) -> String {
-        String::from("odonata-single-threaded")
+        self.engine_name.clone()
     }
 
     fn new(_config: &str) -> anyhow::Result<Self> {
-        Ok(Algo::new())
+        let mut a = Algo::new();
+        a.engine_name = String::from("odonata-single-threaded");
+        Ok(a)
     }
 
     fn search(&mut self, pos: Position, tc: TimeControl) -> anyhow::Result<SearchResults> {
@@ -128,6 +133,7 @@ impl Engine for Algo {
         match name {
             "MultiPV" => self.restrictions.multi_pv_count = value.parse()?,
             "Hash" => self.tt.mb = value.parse()?,
+            "Name" => self.engine_name = value.to_string(),
             _ => anyhow::bail!("Algo does not support set option '{name}'"),
         }
         Ok(())
@@ -414,7 +420,7 @@ impl Algo {
             return (true, Event::UserCancelled);
         }
 
-        let time_up = self.mte.is_time_up(ply, &self.clock, force_check);
+        let time_up = self.mte.is_time_up(ply, &mut self.clock, force_check);
         if time_up {
             // self.stats.completed = false;
             // self.stats.set_score(-Score::INFINITY, Event::SearchTimeUp);
