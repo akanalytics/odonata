@@ -28,7 +28,8 @@ once_cell = "1.7"
 regex = "1.4"
 rand = "0.8"
 rand_chacha = "0.3"
-env_logger = "0.9"
+# log4rs = "1.2.0"
+flexi_logger ={ version= "0.24.1", features = ["colors"] }
 log = { version = "0.4", features = ["release_max_level_debug"] }
 crossbeam-utils = "0.8.8" #{ git = "https://github.com/crossbeam-rs/crossbeam" }
 static_init = "1.0"
@@ -62,6 +63,8 @@ perf-event = "0.4.7"
 
 [dev-dependencies]
 criterion = "0.3"
+env_logger = "0.9"
+
 
 
 [build-dependencies]

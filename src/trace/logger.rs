@@ -20,19 +20,185 @@
 // Benchmarking logging: Warming up for 3.0000 sInitilaized logging
 // logging                 time:   [1.8780 ns 1.8884 ns 1.8994 ns]
 
+use std::{
+    ops::DerefMut,
+    sync::{Arc, Mutex},
+};
+
+use flexi_logger::{
+    writers::{FileLogWriter, LogWriter},
+    AdaptiveFormat, Duplicate, FileSpec, Logger, LoggerHandle,
+};
+use static_init::dynamic;
+
 pub struct LogInit;
 
-pub struct Logger;
+#[dynamic(lazy)]
+static mut LOG_HANDLE: Option<LoggerHandle> = None;
 
-impl Logger {
-    pub fn init() {
-        env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn"))
-            .format_module_path(false)
-            .format_target(false)
-            .format_timestamp(None)
-            .init();
+// inspired by https://github.com/emabee/flexi_logger/issues/124
+struct OptLogWriter {
+    log_file: Arc<Mutex<Option<Box<dyn LogWriter>>>>,
+}
+
+impl LogWriter for OptLogWriter {
+    fn write(
+        &self,
+        now: &mut flexi_logger::DeferredNow,
+        record: &flexi_logger::Record,
+    ) -> std::io::Result<()> {
+        if let Some(ref log_file) = self.log_file.lock().unwrap().deref_mut()  {
+            // let mut file = self
+            //     .file
+            //     .lock()
+            //     .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+            // flexi_logger::default_format(&mut *file, now, record)}
+            log_file.write(now, record)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn flush(&self) -> std::io::Result<()> {
+        if let Some(ref log_file) = self.log_file.lock().unwrap().deref_mut()  {
+            log_file.flush()
+        } else {
+            Ok(())
+        }
     }
 }
+
+use once_cell::sync::OnceCell;
+
+static LOGGING_SYSTEM: OnceCell<LoggingSystem> = OnceCell::new();
+
+pub struct LoggingSystem {
+    handle: LoggerHandle,
+    log_file: Arc<Mutex<Option<Box<dyn LogWriter>>>>,
+}
+
+impl LoggingSystem {
+    pub fn instance() -> anyhow::Result<&'static Self> {
+        LOGGING_SYSTEM
+            .get_or_try_init(|| -> anyhow::Result<LoggingSystem> { Ok(LoggingSystem::new()?) })
+    }
+
+    fn new() -> anyhow::Result<Self> {
+        let log_file = Arc::new(Mutex::new(None));
+        let writer = Box::new(OptLogWriter { log_file: Arc::clone(&log_file) });
+        // let file_spec = FileSpec::default();
+        // let l = Logger::try_with_env_or_str("info")?
+        //     .log_to_file(file_spec)
+        //     .build()?;
+
+        let handle = Logger::try_with_env_or_str("warn")?
+            .adaptive_format_for_stderr(AdaptiveFormat::Default)
+            .duplicate_to_stderr(Duplicate::All)
+            .log_to_writer(writer)
+            .start()?;
+        warn!("Logging enabled");
+        Ok(LoggingSystem {
+            handle,
+            log_file,
+        })
+    }
+
+    pub fn init() -> anyhow::Result<()> {
+        let _ = LoggingSystem::instance()?;
+        Ok(())
+    }
+
+    pub fn set_log_filename(&self, s: &str) -> anyhow::Result<()> {
+        let file_spec = FileSpec::default().basename(s);
+        let writer = Box::new(FileLogWriter::builder(file_spec).try_build()?);
+        *self.log_file.lock().unwrap() = Some(writer);
+        Ok(())
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use crate::trace::logger::LoggingSystem;
+
+
+    #[test]
+    fn test_logger() {
+        // log::set_max_level(log::LevelFilter::Info);
+        error!("error: Not logged");
+        LoggingSystem::init().unwrap();
+        trace!("trace: Hello world!");
+        debug!("debug: Hello world!");
+        info!("info: Hello world!");
+        warn!("warn: Hello world!");
+        error!("error: Hello world!");
+        log::set_max_level(log::LevelFilter::Trace);
+        debug!("debug: Debug enabled!");
+        LoggingSystem::instance().unwrap().set_log_filename("testing_logging").unwrap();
+        warn!("warn: Hello world logged to file!");
+
+        LoggingSystem::instance().unwrap().set_log_filename("testing_logging2").unwrap();
+        warn!("warn: Hello world logged to file2!");
+    }
+}
+
+
+
+// log4rs
+// let stderr = ConsoleAppender::builder().target(Target::Stderr).build();
+// use log4rs::{
+//     append::{
+//         console::{ConsoleAppender, Target},
+//         file::FileAppender,
+//     },
+//     config::{Appender, Root},
+//     filter::threshold::ThresholdFilter,
+//     Config,
+// };
+
+// // let logfile = FileAppender::builder()
+// //     // Pattern: https://docs.rs/log4rs/*/log4rs/encode/pattern/index.html
+// //     // .encoder(Box::new(PatternEncoder::new("{d} - {l} - {m}\n")))
+// //     .build(file_path)
+// //     .unwrap();
+
+// let config = Config::builder()
+//     // .appender(Appender::builder().build("logfile", Box::new(logfile)))
+//     .appender(
+//         Appender::builder()
+//             .filter(Box::new(ThresholdFilter::new(LevelFilter::Info)))
+//             .build("stderr", Box::new(stderr)),
+//     )
+//     .build(
+//         Root::builder()
+//             // .appender("logfile")
+//             .appender("stderr")
+//             .build(LevelFilter::Trace),
+//     )?;
+// let _handle = log4rs::init_config(config);
+// Ok(())
+
+// log4rs::init_config(config)?;
+// flexi_logger
+//     let handle = Logger::try_with_env_or_str("info")?
+//         .adaptive_format_for_stderr(AdaptiveFormat::Default)
+//         .start()?;
+//     *LOG_HANDLE.write() = Some(handle);
+//     Ok(())
+// }
+
+// pub fn log_to_file(filename: &str) -> anyhow::Result<()> {
+//     let new_spec = LogSpecification::builder();
+//     if let Some(lh) = *LOG_HANDLE.write() {
+//         lh.set_new_spec(new_spec);
+//     }
+//     Ok(())
+// }
+// env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn"))
+//     .format_module_path(false)
+//     .format_target(false)
+//     .format_timestamp(None)
+//     .init();
 
 // type ReloadHandle = Handle<EnvFilter, Formatter<format::DefaultFields,format::Format<format::Full>,fn() -> io::Stderr>>;
 
@@ -156,18 +322,3 @@ impl Logger {
 //     )
 // }
 
-#[cfg(test)]
-mod tests {
-
-    #[test]
-    fn test_logger() {
-        // log::set_max_level(log::LevelFilter::Info);
-        trace!("trace: Hellow world!");
-        debug!("debug: Hellow world!");
-        info!("info: Hellow world!");
-        // warn!("warn: Hellow world!");
-        // error!("error: Hellow world!");
-        // log::set_max_level(log::LevelFilter::Trace);
-        debug!("debug: Debug enabled!");
-    }
-}
