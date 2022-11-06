@@ -1,5 +1,7 @@
 use std::fmt::{Debug, Display};
 
+use indexmap::IndexMap;
+
 use crate::{search::timecontrol::TimeControl, Position};
 
 use super::SearchResults;
@@ -16,6 +18,7 @@ pub trait Engine: Display + Debug {
 
     fn start_game(&mut self) -> anyhow::Result<()>;
     fn search(&mut self, pos: Position, tc: TimeControl) -> anyhow::Result<SearchResults>;
+    fn options(&self) -> IndexMap<String, String>;
     fn set_option(&mut self, name: &str, value: &str) -> anyhow::Result<()>;
 
     fn set_multi_pv(&mut self, num: i32) -> anyhow::Result<()> {

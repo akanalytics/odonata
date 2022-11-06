@@ -536,7 +536,7 @@ mod tests {
     #[test]
     fn test_baremove() -> anyhow::Result<()> {
         assert_eq!(BareMove::parse_uci("a1b3")?.to_uci(), "a1b3");
-        assert_eq!(BareMove::parse_uci("0000").is_err(), true);
+        assert_eq!(BareMove::parse_uci("0000").is_err(), false);
         assert_eq!(BareMove::parse_uci("XYZ").is_err(), true);
         assert_eq!(BareMove::parse_uci("a1a7q")?.to_uci(), "a1a7q");
         Ok(())

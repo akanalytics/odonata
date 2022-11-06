@@ -153,6 +153,10 @@ impl MoveTimeEstimator {
         self.fischer_increment = None;
     }
 
+    pub fn set_nodestime(&mut self, nodestime: u64) {
+        self.nodestime = nodestime;
+    }
+
     pub fn time_control(&self) -> &TimeControl {
         &self.time_control
     }

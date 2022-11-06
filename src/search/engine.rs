@@ -14,6 +14,7 @@ use anyhow::{anyhow, Context, Result};
 use figment::providers::{Env, Format, Toml};
 use figment::value::{Dict, Map};
 use figment::{Error, Figment, Metadata, Profile, Provider};
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::atomic::Ordering;
@@ -72,20 +73,29 @@ impl Engine for ThreadedSearch {
     }
 
     fn search(&mut self, pos: Position, tc: TimeControl) -> anyhow::Result<SearchResults> {
-        info!("[001] -- search on {n}", n = self.name());
-        info!("[001] -- search on {b} {tc}", b = pos.board_after());
+        debug!(target: "eng","-> search on {n}", n = self.name());
+        debug!(target: "eng", "-> search on {b} {tc}", b = pos.board_after());
         self.algo.controller
-            .register_callback(|i| info!("[001] -- info {i}"));
+            .register_callback(|i| debug!(target: "eng", "<- info {i}"));
 
         self.algo.set_timing_method(tc);
         self.set_position(pos);
         self.search_sync();
-        info!("[001] -- results {res}", res = self.algo.results);
+        debug!(target: "eng", " <- results {res}", res = self.algo.results);
         Ok(self.algo.results.clone())
     }
 
+    fn options(&self) -> IndexMap<String,String> {
+        self.algo.options()
+    }
+    
     fn set_option(&mut self, name: &str, value: &str) -> anyhow::Result<()> {
-        self.configment(name, value)
+        debug!(target: "eng", "-> set option '{name}' = '{value}'");
+        if self.algo.options().contains_key(name) {
+            self.algo.set_option(name, value)
+        } else {
+            self.configment(name, value)
+        }
     }
 
     fn start_game(&mut self) -> anyhow::Result<()> {

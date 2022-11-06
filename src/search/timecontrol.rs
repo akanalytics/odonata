@@ -329,7 +329,7 @@ mod tests {
         assert_eq!(T::parse_option("inf")?, T::Infinite);
         assert_eq!(T::parse_option("nodes=1000")?, T::NodeCount(1000));
         assert_eq!(T::parse_option("cycles=10")?, T::Cycles(10));
-        assert_eq!(T::parse_option("ins=100")?, T::Instructions(1000));
+        assert_eq!(T::parse_option("ins=100")?, T::Instructions(100));
         assert_eq!(T::parse_option("nodes=10_000")?, T::NodeCount(10_000));
         assert_eq!(
             T::parse_option("st=10s")?,

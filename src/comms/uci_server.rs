@@ -2,6 +2,7 @@ use crate::board::Board;
 use crate::catalog::Catalog;
 use crate::comms::json_rpc::JsonRpc;
 use crate::domain::Player;
+use crate::domain::engine::Engine;
 use crate::eval::eval::Eval;
 use crate::infra::component::{Component, State};
 use crate::infra::metric::METRICS_TOTAL;
@@ -137,16 +138,20 @@ impl UciServer {
     }
 
     fn recv(receive: &str) {
-        info!("<< {}", receive);
+        info!(">> {receive}");
+        debug!(target: "uci", ">> {receive}");
     }
 
-    fn print_info_string(send: &str) {
-        info!(">> {}", send);
-        println!("info string {}", send.replace("\n", "\ninfo string "));
+    fn print_info_string(msg: &str) {
+        let send = format!("info string {}", msg.replace("\n", "\ninfo string "));
+        info!("<< {send}");
+        println!("{send}");
+        debug!(target: "uci", "<< {send}");
     }
 
     fn print(send: &str) {
-        info!(">> {}", send);
+        info!("<< {}", send);
+        debug!(target: "uci", "<< {send}");
         println!("{}", send);
     }
 
@@ -227,6 +232,7 @@ impl UciServer {
         };
         if let Err(s) = res {
             warn!("uci error '{:#}'", s);
+            warn!(target: "uci", "!! uci error '{s:#}'");
             Self::print_info_string(&format!("error '{:#}'", s));
             if self.strict_error_handling {
                 self.uci_quit().unwrap();
@@ -462,11 +468,10 @@ impl UciServer {
 
     fn uci_go(&mut self, input: &str) -> Result<()> {
         let args = Args::parse(input);
-       
+
         self.engine.lock().unwrap().search_stop();
         let ponder = args.contain("ponder");
         info!("uci go args: {input}");
-
 
         if self.debug {
             // debug mode we clear hash / history etc every search
@@ -562,17 +567,20 @@ impl UciServer {
         // if name == "Debug" {
         //     engine.configment("debug", value)?;
         // } else
+        if eng.options().contains_key(name) {
+            return eng.set_option(name, value);
+        }
         if name == "Threads" {
             eng.configment("thread_count", value)?;
-        } else if name == "MultiPV" {
-            eng.configment("restrictions.multi_pv_count", value)?;
-        } else if name == "nodestime" {
-            eng.configment("mte.nodestime", value)?;
-        } else if name == "Hash" {
-            eng.configment("tt.mb", value)?;
-            eng.algo.tt.set_state(State::NewGame);
-        } else if name == "UCI_AnalyseMode" {
-            eng.configment("analyse_mode", value)?;
+        // } else if name == "MultiPV" {
+        //     eng.configment("restrictions.multi_pv_count", value)?;
+        // } else if name == "nodestime" {
+        //     eng.configment("mte.nodestime", value)?;
+        // } else if name == "Hash" {
+        //     eng.configment("tt.mb", value)?;
+        //     eng.algo.tt.set_state(State::NewGame);
+        // } else if name == "UCI_AnalyseMode" {
+        //     eng.configment("analyse_mode", value)?;
         } else if name == "UCI_Opponent" {
             let player = Player::parse_uci(value)?;
             info!("UCI_Opponent {value} {player:?}");

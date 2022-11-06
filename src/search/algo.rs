@@ -28,7 +28,9 @@ use crate::search::restrictions::Restrictions;
 use crate::search::search_progress::Info;
 use crate::search::taskcontrol::TaskControl;
 use crate::search::timecontrol::TimeControl;
+use crate::trace::logger::LoggingSystem;
 use crate::variation::Variation;
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -117,25 +119,40 @@ impl Engine for Algo {
     }
 
     fn search(&mut self, pos: Position, tc: TimeControl) -> anyhow::Result<SearchResults> {
-        info!("[000] -- search on {n}", n = self.name());
-        info!("[000] -- search on {b} {tc}", b = pos.board_after());
-        self.controller
-            .register_callback(|i| info!("[000] -- info {i}"));
+        debug!(target: "eng","-> search on {n}", n = self.name());
+        debug!(target: "eng", "-> search on {b} {tc}", b = pos.board_after());
+        self.controller.register_callback(|i| info!("[000] -- info {i}"));
         self.controller.set_running();
         self.set_timing_method(tc);
         self.set_position(pos);
         self.run_search();
-        info!("[000] -- results {res}", res = self.results);
+        debug!(target: "eng", " <- results {res}", res = self.results);
         Ok(self.results.clone())
+    }
+
+    fn options(&self) -> IndexMap<String, String> {
+        let mut map = IndexMap::new();
+        map.insert("Hash".into(), String::new());
+        map.insert("MultiPV".into(), String::new());
+        map.insert("Debug Log File".into(), String::new());
+        map.insert("UCI_AnalyseMode".into(), String::new());
+        map.insert("nodestime".into(), String::new());
+        // map.insert("Name".into(), String::new());
+        map
     }
 
     fn set_option(&mut self, name: &str, value: &str) -> anyhow::Result<()> {
         match name {
+            "UCI_AnalyseMode" => self.analyse_mode = value.parse()?,
             "MultiPV" => self.restrictions.multi_pv_count = value.parse()?,
+            "nodestime" => self.mte.set_nodestime(value.parse()?),
             "Hash" => self.tt.mb = value.parse()?,
-            "Name" => self.engine_name = value.to_string(),
+            // "Name" => self.engine_name = value.to_string(),
+            "Debug Log File" => LoggingSystem::instance()?.set_log_filename(&value, &self.name())?,
             _ => anyhow::bail!("Algo does not support set option '{name}'"),
         }
+        debug!(target: "eng", "-> set option '{name}' = '{value}'");
+
         Ok(())
     }
 
@@ -336,8 +353,7 @@ impl Algo {
     }
 
     pub fn report_progress(&self) {
-        if self.clock.cumul_nodes_this_thread() % 5_000_000 == 0
-            && self.clock.cumul_nodes_this_thread() != 0
+        if self.clock.cumul_nodes_this_thread() % 5_000_000 == 0 && self.clock.cumul_nodes_this_thread() != 0
         {
             let sp = Info::with_report_progress(self);
             self.controller.invoke_callback(&sp);
@@ -483,17 +499,24 @@ mod tests {
     }
 
     #[test]
+    fn test_algo_as_engine() {
+        let board = Catalog::starting_board();
+        let mut eng = Algo::new();
+        assert_eq!(eng.options().contains_key("MultiPV"), true);
+        assert!(eng.set_option("UCI_AnalyseMode", "False").is_err());
+        assert!(eng.set_option("UCI_AnalyseMode", "true").is_ok());
+        assert!(eng.set_option("UCI_AnalyseMode", "false").is_ok());
+        let sr = eng.search(Position::from_board(board), TimeControl::Depth(1));
+        assert_eq!(sr.unwrap().best_move().unwrap().to_uci(), "d2d4");
+    }
+
+    #[test]
     fn jons_chess_problem() {
-        let pos =
-            Position::parse_epd("2r2k2/5pp1/3p1b1p/2qPpP2/1p2B2P/pP3P2/2P1R3/2KRQ3 b - - 0 1")
-                .unwrap();
+        let pos = Position::parse_epd("2r2k2/5pp1/3p1b1p/2qPpP2/1p2B2P/pP3P2/2P1R3/2KRQ3 b - - 0 1").unwrap();
         let mut search = Algo::from_config();
         let sr = search.search(pos, TimeControl::Depth(12)).unwrap();
         println!("{}", search.results_as_position());
-        assert_eq!(
-            sr.best_move().unwrap(),
-            BareMove::parse_uci("f6h4").unwrap()
-        )
+        assert_eq!(sr.best_move().unwrap(), BareMove::parse_uci("f6h4").unwrap())
     }
 
     #[test]
@@ -513,23 +536,14 @@ mod tests {
         // 11.Qd3       b3r1kr/ppppqppp/2nnp3/6b1/3PP1N1/2N5/PPP1BPPP/B2QR1KR w - - 1 11   acd 4; bm d1d3; ce 60; pv "d1d3 c6b4 d3d1";
         // 11... Nb4    b3r1kr/ppppqppp/2nnp3/6b1/3PP1N1/2NQ4/PPP1BPPP/B3R1KR b - - 2 11   acd 4; bm c6b4; ce 30; pv "c6b4 d3d1 b4c6";
         let mut search = Algo::new();
-        let pos06 =
-            Position::parse_epd("b1q1r1kr/ppppbppp/2nnp3/4N3/3P4/2N1P3/PPP2PPP/BQ2RBKR w - - 2 6")?;
-        let pos07 =
-            Position::parse_epd("b2qr1kr/ppppbppp/2nnp3/4N3/3P4/2NBP3/PPP2PPP/BQ2R1KR w - - 4 7")?;
-        let pos08 =
-            Position::parse_epd("b2qr1kr/pppp1ppp/2nnpb2/4N3/3P4/2NBP3/PPP2PPP/B2QR1KR w - - 6 8")?;
-        let pos09 =
-            Position::parse_epd("b2qr1kr/ppppbppp/2nnp3/8/3P2N1/2NBP3/PPP2PPP/B2QR1KR w - - 8 9")?;
-        let pos10 = Position::parse_epd(
-            "b2qr1kr/pppp1ppp/2nnp3/6b1/3P2N1/2N1P3/PPP1BPPP/B2QR1KR w - - 10 10",
-        )?;
-        let pos11 = Position::parse_epd(
-            "b3r1kr/ppppqppp/2nnp3/6b1/3PP1N1/2N5/PPP1BPPP/B2QR1KR w - - 1 11",
-        )?;
-        let pos12 = Position::parse_epd(
-            "b3r1kr/ppppqppp/3np3/6b1/1n1PP1N1/2NQ4/PPP1BPPP/B3R1KR w - - 3 12",
-        )?;
+        let pos06 = Position::parse_epd("b1q1r1kr/ppppbppp/2nnp3/4N3/3P4/2N1P3/PPP2PPP/BQ2RBKR w - - 2 6")?;
+        let pos07 = Position::parse_epd("b2qr1kr/ppppbppp/2nnp3/4N3/3P4/2NBP3/PPP2PPP/BQ2R1KR w - - 4 7")?;
+        let pos08 = Position::parse_epd("b2qr1kr/pppp1ppp/2nnpb2/4N3/3P4/2NBP3/PPP2PPP/B2QR1KR w - - 6 8")?;
+        let pos09 = Position::parse_epd("b2qr1kr/ppppbppp/2nnp3/8/3P2N1/2NBP3/PPP2PPP/B2QR1KR w - - 8 9")?;
+        let pos10 =
+            Position::parse_epd("b2qr1kr/pppp1ppp/2nnp3/6b1/3P2N1/2N1P3/PPP1BPPP/B2QR1KR w - - 10 10")?;
+        let pos11 = Position::parse_epd("b3r1kr/ppppqppp/2nnp3/6b1/3PP1N1/2N5/PPP1BPPP/B2QR1KR w - - 1 11")?;
+        let pos12 = Position::parse_epd("b3r1kr/ppppqppp/3np3/6b1/1n1PP1N1/2NQ4/PPP1BPPP/B3R1KR w - - 3 12")?;
         search
             .set_position(pos06)
             .set_timing_method(TimeControl::Depth(3))

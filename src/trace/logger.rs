@@ -21,13 +21,15 @@
 // logging                 time:   [1.8780 ns 1.8884 ns 1.8994 ns]
 
 use std::{
+    io::Write,
     ops::DerefMut,
     sync::{Arc, Mutex},
 };
 
 use flexi_logger::{
     writers::{FileLogWriter, LogWriter},
-    AdaptiveFormat, Duplicate, FileSpec, Logger, LoggerHandle,
+    AdaptiveFormat, DeferredNow, Duplicate, FileSpec, LevelFilter, LogSpecBuilder,
+    LogSpecification, Logger, LoggerHandle, Record,
 };
 use static_init::dynamic;
 
@@ -37,34 +39,23 @@ pub struct LogInit;
 static mut LOG_HANDLE: Option<LoggerHandle> = None;
 
 // inspired by https://github.com/emabee/flexi_logger/issues/124
-struct OptLogWriter {
+struct OptLogWriterDecorator {
     log_file: Arc<Mutex<Option<Box<dyn LogWriter>>>>,
 }
 
-impl LogWriter for OptLogWriter {
-    fn write(
-        &self,
-        now: &mut flexi_logger::DeferredNow,
-        record: &flexi_logger::Record,
-    ) -> std::io::Result<()> {
-        if let Some(ref log_file) = self.log_file.lock().unwrap().deref_mut()  {
-            // let mut file = self
-            //     .file
-            //     .lock()
-            //     .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
-            // flexi_logger::default_format(&mut *file, now, record)}
-            log_file.write(now, record)
-        } else {
-            Ok(())
+impl LogWriter for OptLogWriterDecorator {
+    fn write(&self, now: &mut DeferredNow, record: &Record) -> std::io::Result<()> {
+        if let Some(ref log_file) = self.log_file.lock().unwrap().deref_mut() {
+            log_file.write(now, record)?
         }
+        Ok(())
     }
 
     fn flush(&self) -> std::io::Result<()> {
-        if let Some(ref log_file) = self.log_file.lock().unwrap().deref_mut()  {
-            log_file.flush()
-        } else {
-            Ok(())
+        if let Some(ref log_file) = self.log_file.lock().unwrap().deref_mut() {
+            log_file.flush()?
         }
+        Ok(())
     }
 }
 
@@ -74,7 +65,12 @@ static LOGGING_SYSTEM: OnceCell<LoggingSystem> = OnceCell::new();
 
 pub struct LoggingSystem {
     handle: LoggerHandle,
+    log_spec: LogSpecification,
     log_file: Arc<Mutex<Option<Box<dyn LogWriter>>>>,
+}
+
+pub fn plain(w: &mut dyn Write, _: &mut DeferredNow, r: &Record) -> Result<(), std::io::Error> {
+    write!(w, "{}", r.args())
 }
 
 impl LoggingSystem {
@@ -85,21 +81,26 @@ impl LoggingSystem {
 
     fn new() -> anyhow::Result<Self> {
         let log_file = Arc::new(Mutex::new(None));
-        let writer = Box::new(OptLogWriter { log_file: Arc::clone(&log_file) });
+        let writer = Box::new(OptLogWriterDecorator {
+            log_file: Arc::clone(&log_file),
+        });
         // let file_spec = FileSpec::default();
         // let l = Logger::try_with_env_or_str("info")?
         //     .log_to_file(file_spec)
         //     .build()?;
 
-        let handle = Logger::try_with_env_or_str("warn")?
+        let log_spec = LogSpecification::env_or_parse("warn")?;
+        let handle = Logger::with(log_spec.clone())
+            .log_to_writer(writer)
             .adaptive_format_for_stderr(AdaptiveFormat::Default)
             .duplicate_to_stderr(Duplicate::All)
-            .log_to_writer(writer)
             .start()?;
         warn!("Logging enabled");
+        error!("inititial {log_spec:?}");
         Ok(LoggingSystem {
             handle,
             log_file,
+            log_spec,
         })
     }
 
@@ -108,41 +109,74 @@ impl LoggingSystem {
         Ok(())
     }
 
-    pub fn set_log_filename(&self, s: &str) -> anyhow::Result<()> {
-        let file_spec = FileSpec::default().basename(s);
-        let writer = Box::new(FileLogWriter::builder(file_spec).try_build()?);
+    pub fn set_log_filename(&self, s: &str, fallback: &str) -> anyhow::Result<()> {
+        if s.is_empty() {
+            info!("turning file logging off");
+            *self.log_file.lock().unwrap() = None;
+            return Ok(());
+        }
+
+        let file_spec = if s.ends_with(['/', '.']) {
+            info!("turning file logging on with directory '{s}' and basename '{fallback}'");
+            FileSpec::default()
+                .directory(s)
+                .basename("odonata")
+                .suppress_timestamp()
+        } else {
+            info!("turning file logging on with basename '{s}'");
+            FileSpec::default().basename(s).suppress_timestamp()
+        };
+        info!(
+            "using '{name}' for file logging",
+            name = file_spec.as_pathbuf(None).display()
+        );
+        let writer = Box::new(
+            FileLogWriter::builder(file_spec)
+                .format(plain)
+                .try_build()?,
+        );
         *self.log_file.lock().unwrap() = Some(writer);
+
+        // turn on uci logging
+        let mut builder = LogSpecBuilder::from_module_filters(self.log_spec.module_filters());
+        builder.module("uci", LevelFilter::Debug);
+        let spec = builder.build_with_textfilter(self.log_spec.text_filter().cloned());
+        error!("{spec:?}");
+        self.handle.set_new_spec(spec);
+
         Ok(())
     }
 }
-
 
 #[cfg(test)]
 mod tests {
     use crate::trace::logger::LoggingSystem;
 
-
     #[test]
-    fn test_logger() {
+    #[ignore = "sets global logger so needs to run on its own"]
+    fn test_logger() -> anyhow::Result<()> {
         // log::set_max_level(log::LevelFilter::Info);
         error!("error: Not logged");
-        LoggingSystem::init().unwrap();
-        trace!("trace: Hello world!");
-        debug!("debug: Hello world!");
-        info!("info: Hello world!");
+        LoggingSystem::init()?;
+        trace!("trace: Hello world! NOT logged");
+        debug!("debug: Hello world! NOT logged");
+        info!("info: Hello world! NOT logged");
         warn!("warn: Hello world!");
         error!("error: Hello world!");
-        log::set_max_level(log::LevelFilter::Trace);
+        debug!(target: "uci", "debug: on uci should NOT get logged");
+        // log::set_max_level(log::LevelFilter::Trace);
         debug!("debug: Debug enabled!");
-        LoggingSystem::instance().unwrap().set_log_filename("testing_logging").unwrap();
-        warn!("warn: Hello world logged to file!");
-
-        LoggingSystem::instance().unwrap().set_log_filename("testing_logging2").unwrap();
-        warn!("warn: Hello world logged to file2!");
+        LoggingSystem::instance()?.set_log_filename("/tmp/", "test_logging3")?;
+        warn!("warn: Hello world logged to file3!");
+        warn!(target: "ucimsg", "warn: ucimsg target!");
+        trace!(target: "ucimsg", "trace: ucimsg target!");
+        warn!(target: "", "warn: empty target!");
+        LoggingSystem::instance()?.set_log_filename("/tmp/", "odonata2")?;
+        warn!(target: "uci", "warn: on uci should get logged");
+        debug!(target: "uci", "debug: on uci should get logged");
+        Ok(())
     }
 }
-
-
 
 // log4rs
 // let stderr = ConsoleAppender::builder().target(Target::Stderr).build();
@@ -321,4 +355,3 @@ mod tests {
 //         };
 //     )
 // }
-

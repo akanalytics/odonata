@@ -869,7 +869,7 @@ impl Bitboard {
 
     pub fn parse_square(s: &str) -> Result<Square> {
         if s.len() != 2 {
-            return Err(anyhow!("invalid square '{}'", s));
+            return Err(anyhow!("invalid square '{}' parsing square", s));
         }
         let chars: Vec<&str> = s.split("").collect(); // gives empty [0]
         let bb = Self::parse_file(chars[1])? & Self::parse_rank(chars[2])?;
@@ -1145,31 +1145,31 @@ mod tests {
     fn test_parse_fail() {
         assert_eq!(
             Bitboard::parse_file("9").unwrap_err().to_string(),
-            "Invalid file '9'"
+            "invalid file '9' parsing square"
         );
         assert_eq!(
             Bitboard::parse_file("").unwrap_err().to_string(),
-            "Invalid file ''"
+            "invalid file '' parsing square"
         );
         assert_eq!(
             Bitboard::parse_rank("a").unwrap_err().to_string(),
-            "Invalid rank 'a'"
+            "invalid rank 'a' parsing square"
         );
         assert_eq!(
             Bitboard::parse_square("aa").unwrap_err().to_string(),
-            "Invalid rank 'a'"
+            "invalid rank 'a' parsing square"
         );
         assert_eq!(
             Bitboard::parse_square("11").unwrap_err().to_string(),
-            "Invalid file '1'"
+            "invalid file '1' parsing square"
         );
         assert_eq!(
             Bitboard::parse_square("").unwrap_err().to_string(),
-            "Invalid square ''"
+            "invalid square '' parsing square"
         );
         assert_eq!(
             Bitboard::parse_square("abc").unwrap_err().to_string(),
-            "Invalid square 'abc'"
+            "invalid square 'abc' parsing square"
         );
     }
 
