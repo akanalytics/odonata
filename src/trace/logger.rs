@@ -31,12 +31,8 @@ use flexi_logger::{
     AdaptiveFormat, DeferredNow, Duplicate, FileSpec, LevelFilter, LogSpecBuilder,
     LogSpecification, Logger, LoggerHandle, Record,
 };
-use static_init::dynamic;
 
-pub struct LogInit;
 
-#[dynamic(lazy)]
-static mut LOG_HANDLE: Option<LoggerHandle> = None;
 
 // inspired by https://github.com/emabee/flexi_logger/issues/124
 struct OptLogWriterDecorator {
@@ -95,8 +91,8 @@ impl LoggingSystem {
             .adaptive_format_for_stderr(AdaptiveFormat::Default)
             .duplicate_to_stderr(Duplicate::All)
             .start()?;
-        warn!("Logging enabled");
-        error!("inititial {log_spec:?}");
+        info!("Logging enabled");
+        debug!("inititial {log_spec:?}");
         Ok(LoggingSystem {
             handle,
             log_file,
@@ -141,7 +137,7 @@ impl LoggingSystem {
         let mut builder = LogSpecBuilder::from_module_filters(self.log_spec.module_filters());
         builder.module("uci", LevelFilter::Debug);
         let spec = builder.build_with_textfilter(self.log_spec.text_filter().cloned());
-        error!("{spec:?}");
+        debug!("file using new log spec: {spec:?}");
         self.handle.set_new_spec(spec);
 
         Ok(())

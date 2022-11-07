@@ -17,6 +17,10 @@
 # executables
 *.exe 
 
+
+# allows local editing of config files
+*.local.*
+
 # Added by cargo
 
 /target

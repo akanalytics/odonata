@@ -359,10 +359,10 @@ impl PreCalc {
     }
 
     #[inline]
-    // open(all_pawns) = open
-    // open(white_pawns) = open or white_half_open
-    // open(white) ^ open(all_pawns) = white_half_open
-    // (open(white) | open(black)) - open(all) = half open (any)
+    /// open(all_pawns) = open = pawn free files
+    /// open(white_pawns) = open or white_half_open = no white pawns
+    /// open(white_pawns) ^ open(all_pawns) = white_half_open = black pawn but no white pawn
+    /// (open(white) | open(black)) - open(all) = half open (any) = single pawn colour files
     pub fn open_files(&self, pawns: Bitboard) -> Bitboard {
         !pawns.fill_south().fill_north()
     }
@@ -444,7 +444,7 @@ pub struct Pawns {
     pub white: Bitboard,
     pub black: Bitboard,
     pub open_files: Bitboard,
-    pub half_open: Bitboard,
+    pub half_open: Bitboard,  // pawns of single color on file
     pub isolated: Bitboard,
     pub rammed: Bitboard,
     pub white_double_attacks: Bitboard,
@@ -516,6 +516,7 @@ pub struct Pawns {
 
 impl Pawns {
     #[inline]
+    /// white pawns and black pawns determine the Pawn-structure
     pub fn new(wp: Bitboard, bp: Bitboard) -> Pawns {
         let precalc = PreCalc::default();
         let pawns = wp | bp;
@@ -554,7 +555,7 @@ impl Pawns {
             precalc.pawn_side_distant_neighbours(wp) | precalc.pawn_side_distant_neighbours(bp);
 
         // backward pawns - cannot be defended by other pawns and cannot move fwd because of a pawn attack
-        // and sq in fron not defended (ie not a duo)
+        // and sq in front not defended (ie not a duo)
         let backward = (wp & black_outposts & black_attacks.shift(Dir::S)
             | bp & white_outposts & white_attacks.shift(Dir::N))
             - duos;
@@ -608,12 +609,14 @@ impl Pawns {
     }
 
     #[inline]
+    /// pawns with a an enemy piece in front
     pub fn blockaded_opponent(&self, bd: &Board) -> Bitboard {
         bd.black().shift(Dir::S) & self.white | bd.white().shift(Dir::N) & self.black
         // bd.occupied().shift(Dir::S) & self.white | bd.occupied().shift(Dir::N) & self.black
     }
 
     #[inline]
+    /// pawns with a piece of our own color in front
     pub fn blockaded_self(&self, bd: &Board) -> Bitboard {
         // bd.black().shift(Dir::S) & self.white | bd.white().shift(Dir::N) & self.black
         bd.white().shift(Dir::S) & self.white | bd.black().shift(Dir::N) & self.black

@@ -217,26 +217,31 @@ pub trait IntegerFormatter {
 
 pub trait DurationFormatter {
     fn hhmmss(&self) -> String;
+    fn hhmmss_ms(&self) -> String; // 01:34:45.123
     fn human(&self) -> String;
 }
 
 impl<N> IntegerFormatter for N
 where
-    N: Into<u128> + Copy
+    N: Into<u128> + Copy,
 {
     fn human(&self) -> String {
         format_num!(",d", Into::<u128>::into(*self) as f64)
     }
 }
 
-impl DurationFormatter for Duration
-{
+impl DurationFormatter for Duration {
     fn hhmmss(&self) -> String {
         let hours = self.as_secs() / (60 * 60) % 24;
         let mins = self.as_secs() / 60;
         let secs = self.as_secs_f32() - (60 * mins) as f32;
         let mins = mins % 60;
         format!("{hours:02}:{mins:02}:{secs:02.0}")
+    }
+
+    fn hhmmss_ms(&self) -> String {
+        let millis = self.subsec_millis();
+        format!("{hms}.{millis:03.0}", hms = self.hhmmss())
     }
 
     fn human(&self) -> String {
@@ -246,7 +251,7 @@ impl DurationFormatter for Duration
 
 impl<N> DecimalFormatter for N
 where
-    N: Into<f64> + Copy
+    N: Into<f64> + Copy,
 {
     fn dp(&self, decimal_places: i32) -> String {
         match decimal_places {
@@ -652,6 +657,10 @@ mod tests {
         assert_eq!(
             Formatting::hhmmss(Duration::from_millis(12345678)).as_str(),
             "03:25:46"
+        );
+        assert_eq!(
+            Duration::from_millis(12345678).hhmmss_ms().as_str(),
+            "03:25:46.678"
         );
         assert_eq!(Formatting::f64(12345567.0).as_str(), "12.35M");
         assert_eq!(Formatting::f64(0.0).as_str(), "0.000");

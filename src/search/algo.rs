@@ -119,14 +119,14 @@ impl Engine for Algo {
     }
 
     fn search(&mut self, pos: Position, tc: TimeControl) -> anyhow::Result<SearchResults> {
-        debug!(target: "eng","-> search on {n}", n = self.name());
-        debug!(target: "eng", "-> search on {b} {tc}", b = pos.board_after());
-        self.controller.register_callback(|i| info!("[000] -- info {i}"));
+        trace!(target: "eng","-> search on {n}", n = self.name());
+        trace!(target: "eng", "-> search on {b} {tc}", b = pos.board_after());
+        self.controller.register_callback(|i| trace!(target: "eng", "<- info {i}"));
         self.controller.set_running();
         self.set_timing_method(tc);
         self.set_position(pos);
         self.run_search();
-        debug!(target: "eng", " <- results {res}", res = self.results);
+        trace!(target: "eng", " <- results {res}", res = self.results);
         Ok(self.results.clone())
     }
 
@@ -134,7 +134,7 @@ impl Engine for Algo {
         let mut map = IndexMap::new();
         map.insert("Hash".into(), String::new());
         map.insert("MultiPV".into(), String::new());
-        map.insert("Debug Log File".into(), String::new());
+        map.insert("Debug_Log_File".into(), String::new());
         map.insert("UCI_AnalyseMode".into(), String::new());
         map.insert("nodestime".into(), String::new());
         // map.insert("Name".into(), String::new());
@@ -148,10 +148,10 @@ impl Engine for Algo {
             "nodestime" => self.mte.set_nodestime(value.parse()?),
             "Hash" => self.tt.mb = value.parse()?,
             // "Name" => self.engine_name = value.to_string(),
-            "Debug Log File" => LoggingSystem::instance()?.set_log_filename(&value, &self.name())?,
+            "Debug_Log_File" => LoggingSystem::instance()?.set_log_filename(&value, &self.name())?,
             _ => anyhow::bail!("Algo does not support set option '{name}'"),
         }
-        debug!(target: "eng", "-> set option '{name}' = '{value}'");
+        trace!(target: "eng", "-> set option '{name}' = '{value}'");
 
         Ok(())
     }

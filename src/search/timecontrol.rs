@@ -40,10 +40,10 @@ pub enum TimeControl {
     Depth(Ply),           // uci "depth"
     SearchTime(Duration), // uci "movetime"
     NodeCount(u64),       // uci "nodes"
-    Cycles(u64),         
-    Instructions(u64),   
-    Infinite,             // uci "infinite"
-    MateIn(u32),          // uci "mate"
+    Cycles(u64),
+    Instructions(u64),
+    Infinite,    // uci "infinite"
+    MateIn(u32), // uci "mate"
     UciFischer(RemainingTime),
     FischerMulti { moves: i32, secs: f32, inc: f32 },
 }
@@ -225,8 +225,8 @@ impl TimeControl {
                     return Ok(TimeControl::SearchTime(Duration::from_secs_f32(secs)));
                 }
                 Some((m, s)) => {
-                    moves = m.parse().context(format!("{m} in tc '{tc}'"))?;
-                    secs = s.parse().context(format!("{s} in tc '{tc}'"))?;
+                    moves = m.parse::<i32>().context(format!("{m} in tc '{tc}'"))?;
+                    secs = s.parse::<f32>().context(format!("{s} in tc '{tc}'"))?;
                     return Ok(TimeControl::FischerMulti { moves, secs, inc });
                 }
                 _ => anyhow::bail!("failed to parse time control as moves/secs"),
@@ -235,8 +235,8 @@ impl TimeControl {
         if !tc.contains('/') && tc.contains('+') {
             match tc.split_once('+') {
                 Some((m, i)) => {
-                    moves = m.parse().context(m.to_string())?;
-                    inc = i.parse().context(i.to_string())?;
+                    moves = m.parse::<i32>().context(m.to_string())?;
+                    inc = i.parse::<f32>().context(i.to_string())?;
                     return Ok(TimeControl::FischerMulti { moves, secs, inc });
                 }
                 _ => anyhow::bail!("failed to parse time control '{s}' as moves+inc"),
@@ -252,7 +252,6 @@ impl TimeControl {
             _ => None,
         }
     }
-
 
     fn parse_without_context(tc: &str) -> anyhow::Result<TimeControl> {
         let tc = tc.replace("_", "");

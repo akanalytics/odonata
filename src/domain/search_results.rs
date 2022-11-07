@@ -5,6 +5,7 @@ use crate::movelist::ScoredMoveList;
 use crate::mv::BareMove;
 use crate::other::outcome::Outcome;
 use crate::piece::Ply;
+use crate::search::timecontrol::TimeControl;
 use crate::tags::Tag;
 use crate::variation::Variation;
 use crate::{board::Board, Algo, MoveList, Position};
@@ -12,6 +13,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::iter::{self, FromIterator};
+use std::time::Duration;
 use tabled::builder::Builder;
 
 use super::info::{BareMoveVariation, Info};
@@ -30,6 +32,10 @@ pub struct SearchResults {
     pub bf: f64,
     pub hashfull_per_mille: u32,
     pub outcome: Outcome,
+
+    pub emt: Duration,
+    pub tc: Option<TimeControl>,
+    pub pos: Option<Position>,
 
     #[serde(skip)]
     pub multi_pv: Vec<(BareMoveVariation, Score)>,
@@ -248,6 +254,9 @@ impl SearchResults {
                 outcome: Outcome::Unterminated,
                 multi_pv,
                 infos,
+                emt: Duration::ZERO,
+                pos: None,
+                tc: None,
             }
         } else {
             let mut sr = SearchResults::default();
@@ -280,6 +289,9 @@ impl SearchResults {
             bf,
             multi_pv,
             infos: vec![],
+            emt: Duration::ZERO,
+            pos: Some(algo.position.clone()),
+            tc: Some(algo.mte.time_control().clone()),
         }
     }
 

@@ -16,7 +16,6 @@ use super::endgame::LikelyOutcome;
 use super::eval::{Attr, PawnStructure};
 use super::scorer::ScorerBase;
 
-
 #[derive(Copy, Clone, Debug)]
 pub struct ColorPiece {
     c: Color,
@@ -339,7 +338,8 @@ impl<'a> Calc<'a> {
         }
 
         use crate::eval::eval::Attr::*;
-        let w = bd.white();
+
+        let w = bd.white(); // white pieces (not just pawns)
         let b = bd.black();
         let p = Pawns::new(bd.pawns() & w, bd.pawns() & b);
 
@@ -397,14 +397,15 @@ impl<'a> Calc<'a> {
             bishop_color_rammed_pawns & b, // & Bitboard::CENTER_16_SQ.shift(Dir::N),
         );
 
-        let connected_bishop_w = bd.bishops() & w & (p.white_single_attacks | p.white_double_attacks);
+        let connected_bishop_w =
+            bd.bishops() & w & (p.white_single_attacks | p.white_double_attacks);
         // let connected_bishop_w = connected_bishop_w - (bd.bishops() & b).squares_of_matching_color();
         // let connected_bishop_w = connected_bishop_w.iff((bd.knights() & b).is_empty());
 
-        let connected_bishop_b = bd.bishops() & b & (p.black_single_attacks | p.black_double_attacks);
+        let connected_bishop_b =
+            bd.bishops() & b & (p.black_single_attacks | p.black_double_attacks);
         // let connected_bishop_b = connected_bishop_b - (bd.bishops() & w).squares_of_matching_color();
         // let connected_bishop_b = connected_bishop_b.iff((bd.knights() & w).is_empty());
-
 
         net(
             s,
@@ -433,6 +434,13 @@ impl<'a> Calc<'a> {
         // );
         net(s, Attr::PawnWeak, p.weak & w, p.weak & b);
         net(s, Attr::PawnIsolated, p.isolated & w, p.isolated & b);
+        // net(
+        //     s,
+        //     Attr::PawnIsolatedHalfOpen,
+        //     (p.isolated & w & p.half_open).iff((b.rooks() & b).any()),
+        //     (p.isolated & b & p.half_open).iff((b.rooks() & w).any()),
+        // );
+
         net(s, Attr::SemiIsolated, Bitboard::EMPTY, Bitboard::EMPTY);
         let dn = p.distant_neighbours;
         net(s, PawnDistantNeighboursR7, dn & RANK_7 & w, dn & BR_7 & b);

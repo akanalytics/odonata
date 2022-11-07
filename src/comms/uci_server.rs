@@ -522,6 +522,7 @@ impl UciServer {
             "option name Hash type spin default {} min 0 max 4000",
             engine.algo.tt.mb
         ));
+        ops.push("option name Debug_Log_File type string default \"\"".to_string());
         ops.push("option name UCI_AnalyseMode type check default false".to_string());
         ops.push("option name UCI_Opponent type string default \"\"".to_string());
         ops.push("option name Ponder type check default false".to_string());
