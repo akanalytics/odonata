@@ -65,7 +65,11 @@ impl Default for ThreadedSearch {
 
 impl Engine for ThreadedSearch {
     fn name(&self) -> String {
-        String::from("odonata-multi-threaded")
+        self.algo.name() + " (mt)"
+    }
+
+    fn set_name(&mut self, name: String){
+        self.algo.set_name(name);
     }
 
     fn new(_config: &str) -> anyhow::Result<Self> {

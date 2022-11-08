@@ -112,9 +112,13 @@ impl Engine for Algo {
         self.engine_name.clone()
     }
 
+    fn set_name(&mut self, name: String){
+        self.engine_name = name;
+    }
+
     fn new(_config: &str) -> anyhow::Result<Self> {
         let mut a = Algo::new();
-        a.engine_name = String::from("odonata-single-threaded");
+        a.engine_name = String::from("odonata");
         Ok(a)
     }
 

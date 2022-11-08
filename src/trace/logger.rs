@@ -21,18 +21,16 @@
 // logging                 time:   [1.8780 ns 1.8884 ns 1.8994 ns]
 
 use std::{
-    io::Write,
+    io::{Write, stderr},
     ops::DerefMut,
     sync::{Arc, Mutex},
 };
 
 use flexi_logger::{
     writers::{FileLogWriter, LogWriter},
-    AdaptiveFormat, DeferredNow, Duplicate, FileSpec, LevelFilter, LogSpecBuilder,
-    LogSpecification, Logger, LoggerHandle, Record,
+    AdaptiveFormat, DeferredNow, FileSpec, LevelFilter, LogSpecBuilder,
+    LogSpecification, Logger, LoggerHandle, Record, colored_default_format,
 };
-
-
 
 // inspired by https://github.com/emabee/flexi_logger/issues/124
 struct OptLogWriterDecorator {
@@ -43,6 +41,16 @@ impl LogWriter for OptLogWriterDecorator {
     fn write(&self, now: &mut DeferredNow, record: &Record) -> std::io::Result<()> {
         if let Some(ref log_file) = self.log_file.lock().unwrap().deref_mut() {
             log_file.write(now, record)?
+        } else {
+            colored_default_format(&mut stderr(), now, record)?;
+            writeln!(stderr())?;
+            stderr().flush()?;
+            // println!(
+            //     "{}:{} -- {}",
+            //     record.level(),
+            //     record.target(),
+            //     record.args()
+            // );
         }
         Ok(())
     }
@@ -89,7 +97,7 @@ impl LoggingSystem {
         let handle = Logger::with(log_spec.clone())
             .log_to_writer(writer)
             .adaptive_format_for_stderr(AdaptiveFormat::Default)
-            .duplicate_to_stderr(Duplicate::All)
+            // .duplicate_to_stderr(Duplicate::All)
             .start()?;
         info!("Logging enabled");
         debug!("inititial {log_spec:?}");
@@ -119,8 +127,13 @@ impl LoggingSystem {
                 .basename("odonata")
                 .suppress_timestamp()
         } else {
-            info!("turning file logging on with basename '{s}'");
-            FileSpec::default().basename(s).suppress_timestamp()
+            if let Some((name, suffix)) = s.split_once(".") {
+                info!("turning file logging on with basename '{name}' and suffix '{suffix}'");
+                FileSpec::default().basename(name).suffix(suffix).suppress_timestamp()
+            } else {
+                info!("turning file logging on with basename '{s}'");
+                FileSpec::default().basename(s).suppress_timestamp()
+            }
         };
         info!(
             "using '{name}' for file logging",
@@ -136,6 +149,7 @@ impl LoggingSystem {
         // turn on uci logging
         let mut builder = LogSpecBuilder::from_module_filters(self.log_spec.module_filters());
         builder.module("uci", LevelFilter::Debug);
+        builder.module("eng", LevelFilter::Debug);
         let spec = builder.build_with_textfilter(self.log_spec.text_filter().cloned());
         debug!("file using new log spec: {spec:?}");
         self.handle.set_new_spec(spec);
