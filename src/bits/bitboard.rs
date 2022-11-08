@@ -721,11 +721,26 @@ impl Bitboard {
         self.0.count_ones() as i32
     }
 
-    /// flip vertical - https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating
     /// named flip_vertical rather than swap_bytes to match square ^ 56
     #[inline]
     pub const fn flip_vertical(self) -> Self {
+        // flip vertical - https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating
         Bitboard(self.0.swap_bytes())
+    }
+
+    /// flip horizontal
+    #[inline]
+    pub const fn flip_horizontal(self) -> Self {
+        // https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating
+        // using algo mirrorHorizontal
+        let k1 = 0x5555_5555_5555_5555_u64;
+        let k2 = 0x3333_3333_3333_3333_u64;
+        let k4 = 0x0f0f_0f0f_0f0f_0f0f_u64;
+        let mut x = self.0;
+        x = ((x >> 1) & k1) | ((x & k1) << 1);
+        x = ((x >> 2) & k2) | ((x & k2) << 2);
+        x = ((x >> 4) & k4) | ((x & k4) << 4);
+        Bitboard(x)
     }
 
     //
@@ -1060,6 +1075,9 @@ mod tests {
             (Bitboard::FILE_A | Bitboard::RANK_1).flip_vertical(),
             (Bitboard::FILE_A | Bitboard::RANK_8)
         );
+        assert_eq!((Bitboard::FILE_A).flip_horizontal(), Bitboard::FILE_H);
+        assert_eq!((Bitboard::B6).flip_horizontal(), Bitboard::G6);
+        assert_eq!((Bitboard::RANK_1).flip_horizontal(), Bitboard::RANK_1);
         assert_eq!((1u64 << 63) >> 63, 1);
         assert_eq!(
             Bitboard::BLACK_SQUARES | Bitboard::WHITE_SQUARES,
