@@ -434,12 +434,12 @@ impl<'a> Calc<'a> {
         // );
         net(s, Attr::PawnWeak, p.weak & w, p.weak & b);
         net(s, Attr::PawnIsolated, p.isolated & w, p.isolated & b);
-        // net(
-        //     s,
-        //     Attr::PawnIsolatedHalfOpen,
-        //     (p.isolated & w & p.half_open).iff((b.rooks() & b).any()),
-        //     (p.isolated & b & p.half_open).iff((b.rooks() & w).any()),
-        // );
+        net(
+            s,
+            Attr::PawnIsolatedHalfOpen,
+            (p.isolated & w & p.half_open).iff(bd.rooks().any()),
+            (p.isolated & b & p.half_open).iff(bd.rooks().any()),
+        );
 
         net(s, Attr::SemiIsolated, Bitboard::EMPTY, Bitboard::EMPTY);
         let dn = p.distant_neighbours;
@@ -475,6 +475,17 @@ impl<'a> Calc<'a> {
             blockaded_opponent & p.passed & w,
             blockaded_opponent & p.passed & b,
         );
+        
+        // pawn forks or double attacks
+        let bnp = b - bd.pawns();
+        let wnp = w - bd.pawns();
+        let wf = (p.white.shift(Dir::N) & !bd.occupied() & bnp.shift(Dir::SW) & bnp.shift(Dir::SE)).iff(bd.color_us() == White).popcount();
+        let bf = (p.black.shift(Dir::S) & !bd.occupied() & wnp.shift(Dir::NW) & wnp.shift(Dir::NE)).iff(bd.color_us() == Black).popcount();
+
+        // let wf = ((p.white_single_attacks | p.white_double_attacks) & (b - bd.pawns())).two_or_more() as i32;
+        // let bf = ((p.black_single_attacks | p.black_double_attacks) & (w - bd.pawns())).two_or_more() as i32;
+        s.accumulate(PawnDoubleAttacks.as_feature(), wf, bf);
+
         let rbp = p.rooks_behind_passers(&bd);
         net(s, RooksBehindPasser, rbp & w, rbp & b);
         // scorer.accum(c, RammedPawns, rammed_pawns);
@@ -1227,6 +1238,20 @@ impl<'a> Calc<'a> {
         //
         // Bishop
         //
+        // bishop prison (white bishop on A7 trapped by pawns on B6 & C7)
+        const B_PAWNS_L: Bitboard = Bitboard::B6.or(Bitboard::C7);
+        const W_BISHOP_L: Bitboard = Bitboard::A7;
+        const B_PAWNS_R: Bitboard = B_PAWNS_L.flip_horizontal();
+        const W_BISHOP_R: Bitboard = W_BISHOP_L.flip_horizontal();
+
+        // https://www.chessprogramming.org/Trapped_Pieces
+        let l = (b.bishops() & us & c.chooser_wb(W_BISHOP_L, W_BISHOP_L.flip_vertical())).any()
+            && (b.pawns() & them).contains(c.chooser_wb(B_PAWNS_L, B_PAWNS_L.flip_vertical()));
+        let r = (b.bishops() & us & c.chooser_wb(W_BISHOP_R, W_BISHOP_R.flip_vertical())).any()
+            && (b.pawns() & them).contains(c.chooser_wb(B_PAWNS_R, B_PAWNS_R.flip_vertical()));
+        let bishop_pawn_trap = (l as i32) + (r as i32);
+        s.accum(c, Attr::BishopPawnTrap.as_feature(), bishop_pawn_trap);
+
         let bishop_color_pawns = |c: Color| {
             if (b.bishops() & b.color(c)).exactly_one() {
                 if Bitboard::WHITE_SQUARES.contains(b.bishops() & b.color(c)) {
