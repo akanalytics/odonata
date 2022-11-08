@@ -22,6 +22,7 @@ use super::info::{BareMoveVariation, Info};
 #[serde(default, deny_unknown_fields)]
 pub struct SearchResults {
     #[serde(skip)]
+    pub bm: BareMove,
     pub depth: Ply,
     pub seldepth: Ply,
     pub time_millis: u64,
@@ -241,6 +242,7 @@ impl SearchResults {
                 vec![(BareMoveVariation::new(), Score::zero())]
             };
             SearchResults {
+                bm,
                 depth: depth.unwrap_or_default(),
                 seldepth: seldepth.unwrap_or_default(),
                 time_millis: ms.unwrap_or_default(),
@@ -261,6 +263,7 @@ impl SearchResults {
         } else {
             let mut sr = SearchResults::default();
             let mut var = BareMoveVariation::new();
+            sr.bm = bm;
             if !bm.is_null() {
                 var.push(bm);
             }
@@ -277,6 +280,7 @@ impl SearchResults {
         let bf = calculate_branching_factor_by_nodes_and_depth(nodes_thread_cumul, depth)
             .unwrap_or_default();
         SearchResults {
+            bm: multi_pv.get(0).map(|var| var.0.first().unwrap_or_default() ).unwrap_or_default(),
             outcome: Outcome::Unterminated,
             tbhits: 0,
             nodes: algo.clock.cumul_nodes_all_threads(),
@@ -309,8 +313,8 @@ impl SearchResults {
 
     /// outcome could be abandoned or win/draw reason
     pub fn best_move(&self) -> Result<BareMove, Outcome> {
-        if let Some(mv) = self.pv().first() {
-            Ok(mv)
+        if !self.bm.is_null() {
+            Ok(self.bm)
         } else {
             Err(self.outcome)
         }
