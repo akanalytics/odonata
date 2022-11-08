@@ -57,7 +57,7 @@ impl See {
         while from.any() {
             let mut mover = board.piece_unchecked(from.first_square());
             // check for a pawn promo during capture
-            if mover == Piece::Pawn && to.intersects(Bitboard::RANKS_18) {
+            if self.promo && mover == Piece::Pawn && to.intersects(Bitboard::RANKS_18) {
                 mover = Piece::Queen;
                 gain[d] += MaterialBalance::CLASSICAL_WEIGHTS[Piece::Queen].s() as i32;
                 // TODO not quite right coz of pawn loss

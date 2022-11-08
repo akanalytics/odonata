@@ -12,6 +12,8 @@ pub trait Engine: Display + Debug {
 
     fn name(&self) -> String;
 
+    fn set_name(&mut self, name: String);
+
     fn new(config: &str) -> anyhow::Result<Self>
     where
         Self: Sized;

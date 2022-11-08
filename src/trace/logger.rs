@@ -21,15 +21,16 @@
 // logging                 time:   [1.8780 ns 1.8884 ns 1.8994 ns]
 
 use std::{
-    io::{Write, stderr},
+    io::{stderr, Write},
     ops::DerefMut,
     sync::{Arc, Mutex},
 };
 
 use flexi_logger::{
+    colored_default_format,
     writers::{FileLogWriter, LogWriter},
-    AdaptiveFormat, DeferredNow, FileSpec, LevelFilter, LogSpecBuilder,
-    LogSpecification, Logger, LoggerHandle, Record, colored_default_format,
+    AdaptiveFormat, DeferredNow, FileSpec, LevelFilter, LogSpecBuilder, LogSpecification, Logger,
+    LoggerHandle, Record,
 };
 
 // inspired by https://github.com/emabee/flexi_logger/issues/124
@@ -116,6 +117,10 @@ impl LoggingSystem {
     pub fn set_log_filename(&self, s: &str, fallback: &str) -> anyhow::Result<()> {
         if s.is_empty() {
             info!("turning file logging off");
+            let builder = LogSpecBuilder::from_module_filters(self.log_spec.module_filters());
+            let spec = builder.build_with_textfilter(self.log_spec.text_filter().cloned());
+            debug!("file using new log spec: {spec:?}");
+            self.handle.set_new_spec(spec);
             *self.log_file.lock().unwrap() = None;
             return Ok(());
         }
@@ -129,7 +134,10 @@ impl LoggingSystem {
         } else {
             if let Some((name, suffix)) = s.split_once(".") {
                 info!("turning file logging on with basename '{name}' and suffix '{suffix}'");
-                FileSpec::default().basename(name).suffix(suffix).suppress_timestamp()
+                FileSpec::default()
+                    .basename(name)
+                    .suffix(suffix)
+                    .suppress_timestamp()
             } else {
                 info!("turning file logging on with basename '{s}'");
                 FileSpec::default().basename(s).suppress_timestamp()

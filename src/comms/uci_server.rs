@@ -1,8 +1,8 @@
 use crate::board::Board;
 use crate::catalog::Catalog;
 use crate::comms::json_rpc::JsonRpc;
-use crate::domain::Player;
 use crate::domain::engine::Engine;
+use crate::domain::Player;
 use crate::eval::eval::Eval;
 use crate::infra::component::{Component, State};
 use crate::infra::metric::METRICS_TOTAL;
@@ -223,7 +223,6 @@ impl UciServer {
             "search" | "?" => self.uci_explain_last_search(),
             "board" | "b" => self.uci_board(),
             "eval" | "." => self.ext_uci_explain_eval(),
-            "settings" => self.ext_uci_show_config(),
             "bench" => self.ext_uci_bench(),
 
             _ if self.is_json_request(&input) => self.json_method(&input),
@@ -539,39 +538,43 @@ impl UciServer {
         ops
     }
 
-    fn uci_option_button(&mut self, name: &str) -> Result<()> {
-        let name = name.trim();
-        info!("Actioning (setoption) {}", name);
-        if name == "Explain_Eval" {
-            self.ext_uci_explain_eval()?;
-        } else if name == "Explain_Last_Search" {
-            self.uci_explain_last_search()?;
-        } else if name == "Explain_Quiesce" {
-            self.ext_uci_explain_eval()?;
-        } else if name == "Show_Config" {
-            self.ext_uci_show_config()?;
-        } else if name == "Clear Hash" {
-            Self::print("Clearing hash");
-            self.uci_newgame()?;
-        } else {
-            warn!("Unknown action '{}'", name);
-        }
-        Ok(())
-    }
+    // fn uci_option_button(&mut self, name: &str) -> Result<()> {
+    //     // let name = name.trim();
+    //     // info!("Actioning (setoption) {}", name);
+    //     if name == "Explain_Eval" {
+    //         self.ext_uci_explain_eval()?;
+    //     } else if name == "Explain_Last_Search" {
+    //         self.uci_explain_last_search()?;
+    //     } else if name == "Explain_Quiesce" {
+    //         self.ext_uci_explain_eval()?;
+    //     } else if name == "Show_Config" {
+    //         self.ext_uci_show_config()?;
+    //     } else if name == "Clear Hash" {
+    //         Self::print("Clearing hash");
+    //         self.uci_newgame()?;
+    //     } else {
+    //         warn!("Unknown action '{}'", name);
+    //     }
+    //     Ok(())
+    // }
 
     fn uci_option_name_value(&mut self, name: &str, value: &str) -> Result<()> {
         // if name == "Debug" {
         //     self.debug = value == "true";
         // }
-        let mut eng = self.engine.lock().unwrap();
         let value = if value == "\"\"" { "" } else { value };
         // if name == "Debug" {
         //     engine.configment("debug", value)?;
+
         // } else
-        if eng.options().contains_key(name) {
-            return eng.set_option(name, value);
+        {
+            let mut eng = self.engine.lock().unwrap();
+            if eng.options().contains_key(name) {
+                return eng.set_option(name, value);
+            }
         }
         if name == "Threads" {
+            let mut eng = self.engine.lock().unwrap();
             eng.configment("thread_count", value)?;
         // } else if name == "MultiPV" {
         //     eng.configment("restrictions.multi_pv_count", value)?;
@@ -586,10 +589,12 @@ impl UciServer {
             let player = Player::parse_uci(value)?;
             info!("UCI_Opponent {value} {player:?}");
         } else if name == "UCI_ShowRefutations" {
+            let mut eng = self.engine.lock().unwrap();
             eng.configment("show_refutations", value)?;
         } else if name == "Ponder" {
             // pondering determined by "go ponder", so no variable to track
         } else if name == "Config_File" {
+            let mut eng = self.engine.lock().unwrap();
             if !value.is_empty() && value != "config.toml" {
                 eng.config_filename = value.to_string();
                 use anyhow::Context;
@@ -610,9 +615,23 @@ impl UciServer {
                     .with_context(|| format!("error in config file {}", &eng.config_filename))?;
                 *eng = new;
             }
+        } else if name == "Explain_Eval" {
+            self.ext_uci_explain_eval()?;
+        } else if name == "Explain_Last_Search" {
+            self.uci_explain_last_search()?;
+        } else if name == "Explain_Quiesce" {
+            self.ext_uci_explain_eval()?;
+        } else if name == "Show_Config" {
+            self.ext_uci_show_config()?;
+        } else if name == "Clear Hash" {
+            Self::print("Clearing hash");
+            self.uci_newgame()?;
         } else {
+            warn!("Unknown action '{}'", name);
             bail!("Unknown option name '{}' value '{}'", name, value);
         }
+
+        let mut eng = self.engine.lock().unwrap();
         eng.algo.set_callback(Self::uci_info);
 
         // self.set_debug(self.debug); // set the info calback again
@@ -664,7 +683,7 @@ impl UciServer {
                 .unwrap()
                 .set_position(Position::from_board(self.board.clone()));
         } else {
-            self.uci_option_button(s)?;
+            self.uci_option_name_value(s.trim(), "")?;
         };
 
         Ok(())

@@ -359,8 +359,8 @@ mod tests {
         assert_eq!(
             T::parse_option("tc=5+.1")?,
             T::FischerMulti {
-                moves: 5,
-                secs: 0.,
+                moves: 0,
+                secs: 5.,
                 inc: 0.1
             }
         );
