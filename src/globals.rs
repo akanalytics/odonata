@@ -177,7 +177,7 @@ mod tests {
         assert_eq!(size_of::<Position>(), 208, "Position");
         assert_eq!(size_of::<PreCalc>(), 76808, "PreCalc");
         assert_eq!(size_of::<Hasher>(), 6272, "Hasher");
-        assert_eq!(size_of::<Algo>(), 8040, "Algo");
+        assert_eq!(size_of::<Algo>(), 8336, "Algo");
         assert_eq!(size_of::<Clock>(), 112, "Clock");
         assert_eq!(size_of::<NullMovePruning>(), 32, "NullMovePruning");
         assert_eq!(size_of::<Futility>(), 48, "Futility");
@@ -186,7 +186,7 @@ mod tests {
         assert_eq!(size_of::<Pvs>(), 12, "Pvs");
         assert_eq!(size_of::<Extensions>(), 40, "Extensions");
         assert_eq!(size_of::<Lmr>(), 64, "Lmr");
-        assert_eq!(size_of::<MoveTimeEstimator>(), 392, "MoveTimeEstimator");
+        assert_eq!(size_of::<MoveTimeEstimator>(), 384, "MoveTimeEstimator");
         assert_eq!(size_of::<MoveOrderer>(), 296, "MoveOrderer");
         assert_eq!(size_of::<Repetition>(), 40, "Repetition");
         assert_eq!(size_of::<TranspositionTable2>(), 64, "TranspositionTable2");

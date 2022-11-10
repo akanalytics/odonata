@@ -1,10 +1,9 @@
-use std::io::{stdout, Write};
 
-use crate::infra::utils::Formatting;
+#[cfg(test)]
 use perf_event::{events::Hardware, Builder, Counter, Group};
 
-use super::black_box;
 
+#[cfg(test)]
 pub struct Profiler {
     group: Group,
     name: String,
@@ -17,8 +16,8 @@ pub struct Profiler {
     cycles: Counter,
 }
 
+#[cfg(test)]
 impl Profiler {
-
     #[inline]
     pub fn new(name: String) -> Profiler {
         let mut group = Group::new().unwrap();
@@ -135,20 +134,21 @@ impl Profiler {
     }
 }
 
-impl Drop for Profiler {
-    fn drop(&mut self) {
-        if log::log_enabled!(log::Level::Trace) {
-            let _ = self.write(stdout());
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
 
-    use super::*;
+    #[cfg(test)]
+    impl Drop for Profiler {
+        fn drop(&mut self) {
+            if log::log_enabled!(log::Level::Trace) {
+                let _ = self.write(stdout());
+            }
+        }
+    }
+
+    use crate::infra::black_box;
     use crate::test_log::test;
-    use crate::{infra::black_box, trace::stat::Stat};
+    use crate::trace::stat::Stat;
 
     #[derive(Default)]
     struct Struct {
@@ -229,7 +229,10 @@ mod tests {
     }
 
     use std::cell::Cell;
+    use std::io::{stdout, Write};
     use thread_local::ThreadLocal;
+
+    use super::Profiler;
 
     thread_local! {
         static COUNTER1: Cell<u64> = Cell::new(0);

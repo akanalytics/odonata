@@ -193,18 +193,18 @@ impl SearchResults {
 
     pub fn from_infos(bm: BareMove, pm: Option<BareMove>, infos: Vec<Info>) -> Self {
         // gets nodecount for nodes at last depth reported
-        fn calculate_nodes_for_iid(n: Ply, infos: &[Info]) -> anyhow::Result<u64> {
-            let info_n = infos
-                .iter()
-                .filter(|i| i.pv.is_some())
-                .find_or_last(|inf| inf.depth == Some(n))
-                .ok_or(anyhow::anyhow!("no info for depth {n}"))?
-                .nodes_thread
-                .ok_or(anyhow::anyhow!(
-                    "found info for depth {n} but no node counts"
-                ))?;
-            Ok(info_n)
-        }
+        // fn calculate_nodes_for_iid(n: Ply, infos: &[Info]) -> anyhow::Result<u64> {
+        //     let info_n = infos
+        //         .iter()
+        //         .filter(|i| i.pv.is_some())
+        //         .find_or_last(|inf| inf.depth == Some(n))
+        //         .ok_or(anyhow::anyhow!("no info for depth {n}"))?
+        //         .nodes_thread
+        //         .ok_or(anyhow::anyhow!(
+        //             "found info for depth {n} but no node counts"
+        //         ))?;
+        //     Ok(info_n)
+        // }
 
         if let Some(_info) = infos.last() {
             let depth = infos

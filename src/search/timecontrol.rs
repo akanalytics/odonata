@@ -215,7 +215,8 @@ impl TimeControl {
     pub fn parse_pgn(s: &str) -> anyhow::Result<TimeControl> {
         let tc = s.split(":").take(1).collect_vec().join("");
         let moves;
-        let (mut secs, mut inc) = (0., 0.);
+        let mut inc = 0.;
+        let secs;
         if tc.contains('/') && !tc.contains('+') {
             match tc.split_once('/') {
                 Some((s, _)) if tc.ends_with("/move") => {
@@ -234,10 +235,10 @@ impl TimeControl {
         }
         if !tc.contains('/') && tc.contains('+') {
             match tc.split_once('+') {
-                Some((m, i)) => {
-                    moves = m.parse::<i32>().context(m.to_string())?;
+                Some((s, i)) => {
+                    secs = s.parse::<f32>().context(s.to_string())?;
                     inc = i.parse::<f32>().context(i.to_string())?;
-                    return Ok(TimeControl::FischerMulti { moves, secs, inc });
+                    return Ok(TimeControl::FischerMulti { moves: 0, secs, inc });
                 }
                 _ => anyhow::bail!("failed to parse time control '{s}' as moves+inc"),
             }

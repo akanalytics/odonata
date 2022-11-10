@@ -883,16 +883,6 @@ impl Args {
         self.words.iter().position(|x| x == s)
     }
 
-    /// if then n-th word is 's' then return the (n+1)th word  
-    pub fn string_after(&self, s: &str) -> Option<String> {
-        let i = self.words.iter().position(|x| x == s)?;
-        self.words.get(i + 1).cloned()
-    }
-
-    pub fn int_after(&self, s: &str) -> Option<i64> {
-        let s = self.string_after(s)?;
-        s.parse::<i64>().ok()
-    }
 }
 
 #[cfg(test)]
