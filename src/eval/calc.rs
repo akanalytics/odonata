@@ -443,6 +443,15 @@ impl<'a> Calc<'a> {
         //     (p.isolated & b & p.half_open).iff(bd.rooks().any()),
         // );
 
+        // TODO: SemiIsolated
+        // let _semi_isolated = if !p.is_in(isolated_pawns_bb)
+        //     && (((bbd.neighbouring_files(p) & bbd.within_chebyshev_distance_inclusive(p, 2))
+        //         - p.as_bb()
+        //         - p.file())
+        //         & b.pawns()
+        //         & us)
+        //         .is_empty()
+
         net(s, Attr::SemiIsolated, Bitboard::EMPTY, Bitboard::EMPTY);
         let dn = p.distant_neighbours;
         net(s, PawnDistantNeighboursR7, dn & RANK_7 & w, dn & BR_7 & b);
@@ -477,7 +486,7 @@ impl<'a> Calc<'a> {
             blockaded_opponent & p.passed & w,
             blockaded_opponent & p.passed & b,
         );
-        
+
         // TODO:PawnDoubleAttacks
         // pawn forks or double attacks
         // let bnp = b - bd.pawns();
@@ -492,7 +501,11 @@ impl<'a> Calc<'a> {
         let rbp = p.rooks_behind_passers(&bd);
         net(s, RooksBehindPasser, rbp & w, rbp & b);
         // scorer.accum(c, RammedPawns, rammed_pawns);
+
+        // TODO: PawnIsolatedDoubled
         net(s, PawnIsolatedDoubled, Bitboard::EMPTY, Bitboard::EMPTY);
+
+        // TODO: Space
         net(s, Space, Bitboard::EMPTY, Bitboard::EMPTY);
         net(
             s,
@@ -506,10 +519,15 @@ impl<'a> Calc<'a> {
             p.connected & R_345 & w,
             p.connected & BR_345 & b,
         );
+        // TODO: PassedConnectedR67 & PassedConnectedR345
+        //     if p.is_in(pawn_atts) || p.is_in(pawn_duos)  {
         net(s, PassedConnectedR67, Bitboard::EMPTY, Bitboard::EMPTY);
         net(s, PassedConnectedR345, Bitboard::EMPTY, Bitboard::EMPTY);
+
         net(s, PawnDuoR67, p.duos & R_67 & w, p.duos & BR_67 & b);
         net(s, PawnDuoR2345, p.duos & R_2345 & w, p.duos & BR_2345 & b);
+
+        // TODO:PassedDuoR67 & PassedDuoR2345
         net(s, PassedDuoR67, Bitboard::EMPTY, Bitboard::EMPTY);
         net(s, PassedDuoR2345, Bitboard::EMPTY, Bitboard::EMPTY);
         net(
@@ -1244,7 +1262,7 @@ impl<'a> Calc<'a> {
         // TODO:BishopPawnTrap
         // https://www.chessprogramming.org/Trapped_Pieces
         // bishop prison (white bishop on A7 trapped by pawns on B6 & C7)
-        // 
+        //
         // const B_PAWNS_L: Bitboard = Bitboard::B6.or(Bitboard::C7);
         // const W_BISHOP_L: Bitboard = Bitboard::A7;
         // const B_PAWNS_R: Bitboard = B_PAWNS_L.flip_horizontal();
