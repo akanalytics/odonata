@@ -78,6 +78,7 @@ pub enum Attr {
     PassedDuoR2345,
     BackwardHalfOpen,
     Backward,
+    PotentialOutpost,
 
     BishopPair,
     RookPair,
@@ -86,6 +87,11 @@ pub enum Attr {
 
     CenterAttacks,
     DoubleAttacks,
+    Controlled,
+    Defended,
+    Attacked,
+    
+    
     UndefendedSq,
     UndefendedPiece,
     DefendsOwn,
@@ -168,7 +174,7 @@ pub enum Attr {
     TropismD4,
     KingTrappedOnBackRank,
     RqOnOpenFilesNearKing,
-    CastlingRights,
+    CastlingRightsBonus,
     Uncastled,
     Checkers,
     PiecesNearKing,
@@ -304,8 +310,6 @@ impl fmt::Display for WeightsVector {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
-pub(super) struct PawnStructure;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -327,7 +331,7 @@ pub struct Eval {
     eval_cache: UnsharedTable<WhiteScore>,
 
     #[serde(skip)]
-    pawn_cache: UnsharedTable<PawnStructure>,
+    pawn_cache: UnsharedTable<()>,
 
     #[serde(skip)]
     node_counts: Vec<Cell<u64>>,

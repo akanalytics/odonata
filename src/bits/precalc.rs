@@ -439,7 +439,7 @@ impl PreCalc {
     // }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Pawns {
     pub white: Bitboard,
     pub black: Bitboard,

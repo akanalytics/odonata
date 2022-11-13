@@ -157,6 +157,7 @@ impl Tuning {
         s.interleave(e).collect_vec()
     }
 
+    /// [index, feature, weight] for a single fen
     pub fn sparse_feature_vec(&self, idx: usize) -> Vec<(usize, Feature, f32)> {
         let ex = &self.explains[idx];
         let s_w = Weight::from_f32(1., 0.).interpolate(ex.phase);

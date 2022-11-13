@@ -44,15 +44,15 @@ impl<'a> TotalScore<'a> {
     }
 }
 
-pub fn profile() {
-    let a = vec![Weight::default(); 100];
-    let mut ts = TotalScore::new(&a, 0.5, Phase::default());
-    let f = TotalScore::accumulate;
+// pub fn profile() {
+//     let a = vec![Weight::default(); 100];
+//     let mut ts = TotalScore::new(&a, 0.5, Phase::default());
+//     let f = TotalScore::accumulate;
 
-    f(&mut ts, Feature::Piece(Piece::Pawn), 3, 2);
+//     f(&mut ts, Feature::Piece(Piece::Pawn), 3, 2);
 
-    println!("{:?}", ts);
-}
+//     println!("{:?}", ts);
+// }
 
 impl<'a> ScorerBase for TotalScore<'a> {
     #[inline]

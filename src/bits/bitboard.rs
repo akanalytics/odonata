@@ -346,6 +346,8 @@ impl Bitboard {
         .or(Self::RANK_5)
         .or(Self::RANK_6)
         .or(Self::RANK_8);
+
+    pub const EDGE: Self = Self::RANK_1.or(Self::RANK_8.or(Self::FILE_A.or(Self::FILE_H)));
 }
 
 impl fmt::Binary for Bitboard {

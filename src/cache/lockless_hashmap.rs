@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::piece::Hash;
@@ -337,7 +338,8 @@ impl<T: Copy> UnsharedTable<T> {
 
     pub fn with_size(capacity: usize) -> Self {
         Self {
-            array: vec![Self::INIT; capacity],
+            // array: vec![Self::INIT; capacity],
+            array: (0..capacity).map(|_| Self::INIT).collect_vec(),
         }
     }
 
@@ -348,7 +350,7 @@ impl<T: Copy> UnsharedTable<T> {
     pub fn with_size_bytes(bytes: usize) -> Self {
         let capacity = bytes / std::mem::size_of_val(&Self::INIT);
         Self {
-            array: vec![Self::INIT; capacity],
+            array: (0..capacity).map(|_| Self::INIT).collect_vec(),
         }
     }
 
