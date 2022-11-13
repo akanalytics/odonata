@@ -1402,7 +1402,7 @@ impl<'a> Calc<'a> {
         s.accum(c, QueenOpenFile.as_feature(), queens_on_open_files);
         s.accum(c, QueenTrapped.as_feature(), queen_trapped);
 
-        let ki_atts = bb.king_attacks((b.kings() & us).square());
+        // let ki_atts = bb.king_attacks((b.kings() & us).square());
         // let our_attacks_bb = ni_atts | bi_atts | ro_atts | qu_atts | ope | opw | ki_atts;
 
         // let controlled = (our_attacks_bb - opp_attacks_bb) & Bitboard::CENTER_16_SQ;
