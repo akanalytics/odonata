@@ -1,7 +1,11 @@
+#[cfg(test)]
+use std::io::Write;
 
 #[cfg(test)]
 use perf_event::{events::Hardware, Builder, Counter, Group};
 
+#[cfg(test)]
+use super::{utils::IntegerFormatter, black_box};
 
 #[cfg(test)]
 pub struct Profiler {
@@ -118,16 +122,16 @@ impl Profiler {
             self.name,
             self.iters,
             // Formatting::u128((0u32).into()),
-            Formatting::u128((counts[&self.cycles] / self.iters).into()),
-            Formatting::u128((counts[&self.ins] / self.iters).into()),
-            Formatting::u128((counts[&self.branches] / self.iters).into()),
-            Formatting::u128((counts[&self.branch_misses] / self.iters).into()),
-            Formatting::u128((counts[&self.cache_misses] / self.iters).into()),
-            Formatting::u128((0u32).into()),
-            // Formatting::u128((counts[&self.cache_refs] / self.iters).into()),
+            (counts[&self.cycles] / self.iters).human(),
+            (counts[&self.ins] / self.iters).human(),
+            (counts[&self.branches] / self.iters).human(),
+            (counts[&self.branch_misses] / self.iters).human(),
+            (counts[&self.cache_misses] / self.iters).human(),
+            (0u32).human(),
+            // (counts[&self.cache_refs] / self.iters).human()),
             // (counts[&self.cycles] as f64 / counts[&self.ins] as f64),
-            Formatting::u128((0u32).into()),
-            Formatting::u128((0u32).into()),
+            (0u32).human(),
+            (0u32).human(),
             // 100.0 - (counts[&self.cache_misses] as f64 * 100.0 / counts[&self.cache_refs] as f64)
         )?;
         Ok(())
@@ -140,9 +144,9 @@ mod tests {
     #[cfg(test)]
     impl Drop for Profiler {
         fn drop(&mut self) {
-            if log::log_enabled!(log::Level::Trace) {
-                let _ = self.write(stdout());
-            }
+            // if log::log_enabled!(log::Level::Trace) {
+            let _ = self.write(stdout());
+            // }
         }
     }
 
@@ -229,7 +233,7 @@ mod tests {
     }
 
     use std::cell::Cell;
-    use std::io::{stdout, Write};
+    use std::io::{stdout};
     use thread_local::ThreadLocal;
 
     use super::Profiler;

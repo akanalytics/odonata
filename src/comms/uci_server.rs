@@ -892,20 +892,6 @@ mod tests {
     use std::thread;
     use test_log::test;
 
-    #[test]
-    fn test_args() {
-        let s = "go depth 3";
-        let args = Args::parse(s);
-        assert!(args.contain("depth"));
-        let s = args.string_after("depth");
-        assert_eq!(s, Some(String::from("3")));
-
-        let s = "option name reset";
-        let args = Args::parse(s);
-        assert!(args.contain("reset"));
-        let s = args.string_after("reset");
-        assert_eq!(s, None);
-    }
 
     #[test]
     fn test_uci() {

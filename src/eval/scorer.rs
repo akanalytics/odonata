@@ -8,7 +8,7 @@ use tabled::{
     Alignment, Modify, Padding, Style,
 };
 
-use crate::{other::outcome::Outcome, phaser::Phase, infra::utils::Formatting, Bitboard, Color, Piece, bits::precalc::Pawns, board::Board};
+use crate::{other::outcome::Outcome, phaser::Phase, infra::utils::Formatting, Bitboard, Color, bits::precalc::Pawns, board::Board};
 
 use super::{eval::Feature, eval::{WeightsVector}, weight::Weight};
 
