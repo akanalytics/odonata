@@ -566,7 +566,7 @@ fn aligned_vec(capacity: usize) -> Vec<HashEntry> {
 
 #[cfg(test)]
 mod tests {
-    use crate::eval::score::WhiteScore;
+    use crate::{eval::score::WhiteScore, infra::{profiler::Profiler}};
 
     use super::*;
     use std::mem::size_of;
@@ -578,5 +578,37 @@ mod tests {
             UnsharedTable::<WhiteScore>::with_size_bytes(300_000).capacity(),
             18750
         );
+    }
+
+    #[test]
+    fn bench_unshared_table() {
+        let mut prof_p = Profiler::new("unshared_table_probe".into());
+        let mut prof_s = Profiler::new("unshared_table_store".into());
+
+        let cache = UnsharedTable::with_size_bytes(100_000);
+
+        #[derive(Copy, Clone)]
+        struct Blob {
+            i: usize,
+        }
+
+        let n = cache.capacity();
+        for iter in 0..1000 {
+            let blob = Blob { i: 2 * iter };
+            prof_s.benchmark(|| {
+                cache.store(iter % n, iter as Hash, blob);
+            })
+        }
+
+        let mut total = 0;
+        for iter in 0..1000 {
+            prof_p.benchmark(|| {
+                let blob = cache.probe(iter % n, iter as Hash);
+                if let Some(blob) = blob {
+                    total += blob.i;
+                }
+            })
+        }
+        assert_eq!(total, 999_000);
     }
 }
