@@ -160,7 +160,7 @@ impl Bench {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::infra::profiler::Profiler;
+    use crate::{infra::{profiler::Profiler, black_box}, domain::engine::Engine};
     use test_log::test;
 
     #[test]
@@ -176,13 +176,13 @@ mod tests {
     #[test]
     fn bench_search() {
         let pos = Catalog::test_position();
-        let mut eng = ThreadedSearch::new();
-        eng.set_position(pos);
-        eng.algo.set_timing_method(TimeControl::Depth(5));
+        let eng = ThreadedSearch::new();
+        let mut eng = eng.algo;
+        let tc = TimeControl::Depth(5);
         let mut prof = Profiler::new("bench_search".into());
-        prof.benchmark(
-            || { eng.algo.run_search(); eng.algo.results }
-        );
+        let _ = black_box(prof.benchmark(
+            || { eng.search(pos, tc) }
+        ));
     }
 
 

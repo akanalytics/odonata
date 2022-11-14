@@ -1,8 +1,9 @@
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
+use crate::infra::utils::DecimalFormatter;
 use crate::piece::Hash;
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::fmt::Debug;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::{fmt, mem};
@@ -321,70 +322,102 @@ mod tests1 {
 }
 
 #[derive(Clone, Debug)]
-pub struct UnsharedTable<T: Copy> {
-    array: Vec<(Cell<Hash>, Cell<Option<T>>)>,
+pub struct UnsharedTable<T: Clone> {
+    array: RefCell<Vec<(Hash, Option<RefCell<T>>)>>,
+    pub hits: Cell<u64>,
+    pub misses: Cell<u64>,
+    pub collisions: Cell<u64>,
 }
 
-impl<T: Copy> Default for UnsharedTable<T> {
-    fn default() -> Self {
-        // const INIT: Cell<Option<T>> = Cell::new(None);
-        Self { array: vec![] }
+impl<T: Clone> fmt::Display for UnsharedTable<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "hitrate:{}% hits:{} misses:{} collisions:{} ",
+            self.cache_hits_percent().dp(2),
+            self.hits.get(),
+            self.misses.get(),
+            self.collisions.get()
+        )
     }
 }
 
-impl<T: Copy> UnsharedTable<T> {
+impl<T: Clone> Default for UnsharedTable<T> {
+    fn default() -> Self {
+        // const INIT: Cell<Option<T>> = Cell::new(None);
+        Self {
+            array: RefCell::new(vec![]),
+            hits: Cell::new(0),
+            misses: Cell::new(0),
+            collisions: Cell::new(0),
+        }
+    }
+}
+
+impl<T: Clone> UnsharedTable<T> {
     // work around for array initilization > 32
-    const INIT: (Cell<Hash>, Cell<Option<T>>) = (Cell::new(0), Cell::new(None));
+    const INIT: (Hash, Option<RefCell<T>>) = (0, None);
 
     pub fn with_size(capacity: usize) -> Self {
         Self {
             // array: vec![Self::INIT; capacity],
-            array: (0..capacity).map(|_| Self::INIT).collect_vec(),
+            array: RefCell::new((0..capacity).map(|_| Self::INIT).collect_vec()),
+            ..Self::default()
         }
     }
 
     pub fn capacity(&self) -> usize {
-        self.array.len()
+        self.array.borrow().len()
     }
 
     pub fn with_size_bytes(bytes: usize) -> Self {
         let capacity = bytes / std::mem::size_of_val(&Self::INIT);
-        Self {
-            array: (0..capacity).map(|_| Self::INIT).collect_vec(),
-        }
+        Self::with_size(capacity)
     }
 
     #[inline]
-    pub fn probe(&self, key: usize, hash: Hash) -> Option<T> {
-        if self.array[key].0.get() == hash {
-            self.array[key].1.get()
+    pub fn probe(&self, hash: Hash) -> Option<RefCell<T>> {
+        let key = hash as usize % self.capacity();
+        let array = self.array.borrow();
+        if array[key].0 == hash && array[key].1.as_ref().is_some() {
+            let refcell = array[key].1.as_ref().unwrap();
+            self.hits.set(self.hits.get() + 1);
+            Some(RefCell::clone(refcell))
         } else {
+            self.misses.set(self.misses.get() + 1);
             None
         }
     }
 
     #[inline]
-    pub fn store(&self, key: usize, hash: Hash, t: T) {
-        self.array[key].0.set(hash);
-        self.array[key].1.set(Some(t));
+    pub fn store(&self, hash: Hash, t: T) {
+        let key = hash as usize % self.capacity();
+        let mut array = self.array.borrow_mut();
+        array[key].0 = hash;
+        if array[key].1.is_some() {
+            self.collisions.set(self.collisions.get() + 1);
+        }
+        array[key].1 = Some(RefCell::new(t));
+    }
+
+    pub fn cache_hits_percent(&self) -> f32 {
+        let hits = self.hits.get() as f32;
+        let misses = self.misses.get() as f32;
+        100. * hits / (hits + misses).max(1.)
     }
 
     pub fn hashfull_per_mille(&self) -> u32 {
-        let count = self
-            .array
-            .iter()
-            .take(200)
-            .filter(|&c| c.1.get().is_some())
-            .count();
-        count as u32 * 1000 / std::cmp::min(self.array.len() as u32, 200)
+        let array = self.array.borrow();
+        let count = array.iter().take(200).filter(|&c| c.1.is_some()).count();
+        count as u32 * 1000 / std::cmp::min(array.len() as u32, 200)
     }
 
-    // pub fn clear(&self) {
-    //     self.array.iter().for_each(|c| {
-    //         c.1.set(None);
-    //         c.0.set(Hash::default())
-    //     });
-    // }
+    pub fn clear(&self) {
+        self.array.borrow_mut().iter_mut().for_each(|c| {
+            c.1 = None;
+            c.0 = Hash::default();
+        });
+    }
 }
 
 #[derive(Default, Debug)]
@@ -566,7 +599,7 @@ fn aligned_vec(capacity: usize) -> Vec<HashEntry> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{eval::score::WhiteScore, infra::{profiler::Profiler}};
+    use crate::{eval::score::WhiteScore, infra::profiler::Profiler};
 
     use super::*;
     use std::mem::size_of;
@@ -592,20 +625,19 @@ mod tests {
             i: usize,
         }
 
-        let n = cache.capacity();
         for iter in 0..1000 {
             let blob = Blob { i: 2 * iter };
             prof_s.benchmark(|| {
-                cache.store(iter % n, iter as Hash, blob);
+                cache.store(iter as Hash, blob);
             })
         }
 
         let mut total = 0;
         for iter in 0..1000 {
             prof_p.benchmark(|| {
-                let blob = cache.probe(iter % n, iter as Hash);
+                let blob = cache.probe(iter as Hash);
                 if let Some(blob) = blob {
-                    total += blob.i;
+                    total += blob.borrow().i;
                 }
             })
         }

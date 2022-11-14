@@ -1,8 +1,12 @@
+use std::cell::{RefCell};
+
 use crate::bits::bitboard::Dir;
 use crate::bits::precalc::Pawns;
 use crate::bits::{CastlingRights, PreCalc, Square};
 use crate::board::analysis::Analysis;
 use crate::board::Board;
+use crate::cache::hasher::Hasher;
+use crate::cache::lockless_hashmap::UnsharedTable;
 use crate::eval::endgame::EndGame;
 use crate::eval::eval::Feature;
 use crate::infra::metric::Metrics;
@@ -118,22 +122,32 @@ trait White {
 // }
 
 #[derive()]
-pub struct Calc<'a> {
+pub struct Calc<'a, 'b> {
     _analysis: Analysis<'a>,
-    pawn_structure: Pawns,
+    pawn_cache: Option<&'b UnsharedTable<Pawns>>,
+    pawns: RefCell<Pawns>,
     // a: &'a (),
 }
 
-impl<'a> Calc<'a> {
+impl<'a> Calc<'a, 'a> {
     #[inline]
     pub fn new(_b: &'a Board) -> Self {
         Self {
             // a: &(),
             // analysis: Analysis::of(b),
             _analysis: Default::default(),
-            pawn_structure: Pawns::default(),
+            pawn_cache: None,
+            pawns: RefCell::new(Pawns::default()),
         }
     }
+
+    pub fn with_cache(&mut self, pawn_cache: &'a UnsharedTable<Pawns>) -> &mut Self {
+        // a: &(),
+        // analysis: Analysis::of(b),
+        self.pawn_cache = Some(pawn_cache);
+        self
+    }
+
 }
 
 // impl Display for Calc {
@@ -170,7 +184,7 @@ impl<'a> Calc<'a> {
 //     }
 // }
 
-impl<'a> Calc<'a> {
+impl<'a> Calc<'a, 'a> {
     #[inline]
     pub fn score(&mut self, scorer: &mut impl ScorerBase, b: &Board) {
         let t = Metrics::timing_start();
@@ -178,7 +192,20 @@ impl<'a> Calc<'a> {
         if !self.endgame(scorer, b) {
             // let pawn_cache = UnsharedTable::<PawnStructure>::default();
             // self.set_pawn_structure(&pawn_cache);
-            self.pawn_structure = Pawns::new(b.pawns() & b.white(), b.pawns() & b.black());
+            let refcell = if let Some(cache) = self.pawn_cache {
+                let hash = Hasher::default().hash_pawns(b);
+                let mut ps = cache.probe(hash);
+                if ps.is_none() {
+                    let p = Pawns::new(b.pawns() & b.white(), b.pawns() & b.black());
+                    cache.store(hash, p.clone());
+                    ps = Some(RefCell::new(p));
+                }
+                ps.unwrap()
+            } else {
+                let p = Pawns::new(b.pawns() & b.white(), b.pawns() & b.black());
+                RefCell::new(p)
+            };
+            self.pawns = refcell;
             self.pawns_both(scorer, b);
             self.position(scorer, b);
             self.pst(scorer, b);
@@ -343,7 +370,7 @@ impl<'a> Calc<'a> {
 
         let w = bd.white(); // white pieces (not just pawns)
         let b = bd.black();
-        let p = &self.pawn_structure;
+        let p = &self.pawns.borrow();
         // Pawns::new(bd.pawns() & w, bd.pawns() & b);
 
         let is_far_pawns = (bd.pawns() & Bitboard::FILE_A.or(Bitboard::FILE_B)).any()
