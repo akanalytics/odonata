@@ -4,8 +4,8 @@ use crate::board::Board;
 use crate::globals::constants::*;
 use crate::infra::metric::*;
 use crate::mv::Move;
-use crate::search::node::{Counter};
 use crate::piece::{Color, Hash, Piece};
+use crate::search::node::Counter;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
 use static_init::dynamic;
@@ -39,14 +39,7 @@ impl fmt::Display for Hasher {
             for c in Color::ALL {
                 for p in Piece::ALL {
                     for sq in 0..64 {
-                        writeln!(
-                            f,
-                            "[{}][{}][{:2}] = {:x}",
-                            c,
-                            p,
-                            sq,
-                            self.squares[c][p][sq]
-                        )?;
+                        writeln!(f, "[{}][{}][{:2}] = {:x}", c, p, sq, self.squares[c][p][sq])?;
                     }
                 }
             }
@@ -142,6 +135,20 @@ impl Hasher {
     #[inline]
     fn get(&self, c: Color, p: Piece, sq: Square) -> Hash {
         self.squares[c][p][sq]
+    }
+
+    pub fn hash_pawns(&self, b: &Board) -> Hash {
+        Metrics::incr(Counter::CalcHashPawns);
+        let mut hash = 0; // b.color_us().chooser_wb(0, self.side);
+        for bb in b.pawns().iter() {
+            let sq = bb.first_square();
+            if b.color(Color::White).contains(bb) {
+                hash ^= self.get(Color::White, Piece::Pawn, sq);
+            } else {
+                hash ^= self.get(Color::Black, Piece::Pawn, sq);
+            }
+        }
+        hash
     }
 
     pub fn hash_board(&self, b: &Board) -> Hash {
@@ -255,7 +262,7 @@ impl Hasher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     use crate::catalog::Catalog;
 
     #[test]
@@ -268,7 +275,7 @@ mod tests {
 
     #[test]
     fn test_hasher_display_single() {
-            assert_eq!(format!("{:x}", Hasher::new(1).ep[7]), "fc31329afb42f9a7");
+        assert_eq!(format!("{:x}", Hasher::new(1).ep[7]), "fc31329afb42f9a7");
     }
 
     #[test]

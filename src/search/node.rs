@@ -70,6 +70,7 @@ pub enum Counter {
     MakeMove,
     MoveGen,
     CalcHashBoard,
+    CalcHashPawns,
     CalcHashMove,
     MatchedCounterMove,
     TtCollision,
