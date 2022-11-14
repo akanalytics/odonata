@@ -1,5 +1,3 @@
-use std::cell::{RefCell};
-
 use crate::bits::bitboard::Dir;
 use crate::bits::precalc::Pawns;
 use crate::bits::{CastlingRights, PreCalc, Square};
@@ -125,7 +123,7 @@ trait White {
 pub struct Calc<'a, 'b> {
     _analysis: Analysis<'a>,
     pawn_cache: Option<&'b UnsharedTable<Pawns>>,
-    pawns: Option<&'b RefCell<Pawns>>,
+    pawns: Option<Pawns>,
     // a: &'a (),
 }
 
@@ -192,20 +190,21 @@ impl<'a> Calc<'a, 'a> {
         if !self.endgame(scorer, b) {
             // let pawn_cache = UnsharedTable::<PawnStructure>::default();
             // self.set_pawn_structure(&pawn_cache);
-            let refcell = if let Some(cache) = self.pawn_cache {
+            let pawns = if let Some(cache) = self.pawn_cache {
                 let hash = Hasher::default().hash_pawns(b);
-                let mut ps = cache.probe(hash);
+                let ps = cache.probe(hash);
                 if ps.is_none() {
                     let p = Pawns::new(b.pawns() & b.white(), b.pawns() & b.black());
-                    ps = cache.store(hash, p.clone());
+                    cache.store(hash, p.clone());
+                    p
+                } else {
+                    ps.unwrap()
                 }
-                ps.unwrap()
             } else {
                 let p = Pawns::new(b.pawns() & b.white(), b.pawns() & b.black());
-                unreachable!();
-                // &RefCell::new(p)
+                p
             };
-            self.pawns = Some(refcell);
+            self.pawns = Some(pawns);
             self.pawns_both(scorer, b);
             self.position(scorer, b);
             self.pst(scorer, b);
@@ -370,8 +369,8 @@ impl<'a> Calc<'a, 'a> {
 
         let w = bd.white(); // white pieces (not just pawns)
         let b = bd.black();
-        let p = if let Some(refcell) = self.pawns {
-            refcell.borrow()
+        let p = if let Some(pawns) = self.pawns {
+            pawns
         } else {
             unreachable!();
             // RefCell::new(Pawns::new(bd.pawns() & w, bd.pawns() & b)).borrow()

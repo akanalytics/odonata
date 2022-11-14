@@ -148,7 +148,10 @@ impl Hasher {
                 hash ^= self.get(Color::Black, Piece::Pawn, sq);
             }
         }
-        hash
+        if hash == 0 {
+            hash = self.side;
+        }
+        hash 
     }
 
     pub fn hash_board(&self, b: &Board) -> Hash {

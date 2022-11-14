@@ -329,7 +329,7 @@ pub struct Eval {
     eval_cache: UnsharedTable<WhiteScore>,
 
     #[serde(skip)]
-    pawn_cache: UnsharedTable<Pawns>,
+    pub pawn_cache: UnsharedTable<Pawns>,
 
     #[serde(skip)]
     pub feature_weights: Vec<Weight>,
@@ -352,7 +352,7 @@ impl Default for Eval {
             quantum: 1,
             cache_size: DEFAULT_CACHE_SIZE,
             eval_cache: UnsharedTable::with_size(DEFAULT_CACHE_SIZE),
-            pawn_cache: UnsharedTable::with_size(1_000_000),
+            pawn_cache: UnsharedTable::with_size(10_000),
         };
         for f in Feature::all() {
             s.discrete.insert(f.name(), Weight::zero());
@@ -536,7 +536,7 @@ impl Eval {
                 },
                 Event::EvalCacheHit,
             );
-            *score.borrow()
+            score
         } else {
             Metrics::incr(Counter::EvalCacheMiss);
             Metrics::incr_node(
