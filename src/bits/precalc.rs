@@ -444,7 +444,7 @@ pub struct Pawns {
     pub white: Bitboard,
     pub black: Bitboard,
     pub open_files: Bitboard,
-    pub half_open: Bitboard,  // pawns of single color on file
+    pub half_open: Bitboard, // pawns of single color on file
     pub isolated: Bitboard,
     pub rammed: Bitboard,
     pub white_double_attacks: Bitboard,
@@ -541,8 +541,7 @@ impl Pawns {
         // cannot be defended and cannot advance 1 square to be defended
         // => other pawns attack spans so not overlap with stop sq, pawn itself, or rear span
         // we do count weak isolated pawns
-        let weak =
-            wp & black_outposts.shift(Dir::S) | bp & white_outposts.shift(Dir::N);
+        let weak = wp & black_outposts.shift(Dir::S) | bp & white_outposts.shift(Dir::N);
 
         // connected pawns = those that are currently pawn defended
         let connected = pawns & (wp & white_attacks | bp & black_attacks);
@@ -659,6 +658,8 @@ impl fmt::Display for Pawns {
 mod tests {
     use super::*;
     use crate::globals::constants::*;
+    use crate::infra::black_box;
+    use crate::infra::profiler::Profiler;
     use crate::{test_log::test, Position};
 
     #[test]
@@ -758,6 +759,29 @@ mod tests {
             - (Bitboard::RANK_8 | Bitboard::RANK_7);
         println!("{}\n{}", calced, expect);
         assert_eq!(calced, expect);
+    }
+
+    #[test]
+    fn bench_precalc_pawns() {
+        let mut prof_new = Profiler::new("precalc pawns".to_string());
+        let mut prof_clone = Profiler::new("precalc pawns clone".to_string());
+
+        let pawns_w = a2 | b3 | c2 | d7 | f5 | g4 | h4 | h5;
+        let pawns_b = a4 | b4 | d3 | g5;
+
+        for _ in 0..100 {
+            prof_new.benchmark(|| {
+                let pawns = Pawns::new(black_box(pawns_w), black_box(pawns_b));
+                black_box(pawns);
+            });
+        }
+
+        let pawns = black_box(Pawns::new(pawns_w, pawns_b));
+        for _ in 0..100 {
+            prof_clone.benchmark(|| {
+                black_box(pawns.clone());
+            });
+        }
     }
 
     #[test]
