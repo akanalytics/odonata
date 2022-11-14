@@ -323,13 +323,13 @@ mod tests1 {
 
 #[derive(Clone, Debug)]
 pub struct UnsharedTable<T: Clone> {
-    array: RefCell<Vec<(Hash, Option<RefCell<T>>)>>,
+    array: Vec<(Cell<Hash>, RefCell<T>)>,
     pub hits: Cell<u64>,
     pub misses: Cell<u64>,
     pub collisions: Cell<u64>,
 }
 
-impl<T: Clone> fmt::Display for UnsharedTable<T> {
+impl<T: Clone + Default> fmt::Display for UnsharedTable<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -346,7 +346,7 @@ impl<T: Clone> Default for UnsharedTable<T> {
     fn default() -> Self {
         // const INIT: Cell<Option<T>> = Cell::new(None);
         Self {
-            array: RefCell::new(vec![]),
+            array: vec![],
             hits: Cell::new(0),
             misses: Cell::new(0),
             collisions: Cell::new(0),
@@ -354,35 +354,37 @@ impl<T: Clone> Default for UnsharedTable<T> {
     }
 }
 
-impl<T: Clone> UnsharedTable<T> {
+impl<T: Clone + Default> UnsharedTable<T> {
     // work around for array initilization > 32
-    const INIT: (Hash, Option<RefCell<T>>) = (0, None);
+    // const INIT: (Cell<Hash>, RefCell<T>) = (Cell::new(0), RefCell::new(T::default()));
 
     pub fn with_size(capacity: usize) -> Self {
         Self {
             // array: vec![Self::INIT; capacity],
-            array: RefCell::new((0..capacity).map(|_| Self::INIT).collect_vec()),
+            array: (0..capacity)
+                .map(|_| (Cell::new(0), RefCell::new(T::default())))
+                .collect_vec(),
             ..Self::default()
         }
     }
 
     pub fn capacity(&self) -> usize {
-        self.array.borrow().len()
+        self.array.len()
     }
 
     pub fn with_size_bytes(bytes: usize) -> Self {
-        let capacity = bytes / std::mem::size_of_val(&Self::INIT);
+        let capacity = bytes / std::mem::size_of::<(Cell<Hash>, RefCell<T>)>();
         Self::with_size(capacity)
     }
 
     #[inline]
-    pub fn probe(&self, hash: Hash) -> Option<RefCell<T>> {
+    pub fn probe(&self, hash: Hash) -> Option<&RefCell<T>> {
         let key = hash as usize % self.capacity();
-        let array = self.array.borrow();
-        if array[key].0 == hash && array[key].1.as_ref().is_some() {
-            let refcell = array[key].1.as_ref().unwrap();
+        let array = &self.array;
+        if array[key].0.get() == hash {
+            let refcell = &array[key].1;
             self.hits.set(self.hits.get() + 1);
-            Some(RefCell::clone(refcell))
+            Some(refcell)
         } else {
             self.misses.set(self.misses.get() + 1);
             None
@@ -390,14 +392,15 @@ impl<T: Clone> UnsharedTable<T> {
     }
 
     #[inline]
-    pub fn store(&self, hash: Hash, t: T) {
+    pub fn store(&self, hash: Hash, t: T) -> Option<&RefCell<T>> {
         let key = hash as usize % self.capacity();
-        let mut array = self.array.borrow_mut();
-        array[key].0 = hash;
-        if array[key].1.is_some() {
+        let array = &self.array;
+        if array[key].0.get() != 0 {
             self.collisions.set(self.collisions.get() + 1);
         }
-        array[key].1 = Some(RefCell::new(t));
+        array[key].0.set(hash);
+        *array[key].1.borrow_mut() = t;
+        Some(&array[key].1)
     }
 
     pub fn cache_hits_percent(&self) -> f32 {
@@ -407,15 +410,15 @@ impl<T: Clone> UnsharedTable<T> {
     }
 
     pub fn hashfull_per_mille(&self) -> u32 {
-        let array = self.array.borrow();
-        let count = array.iter().take(200).filter(|&c| c.1.is_some()).count();
+        let array = &self.array;
+        let count = array.iter().take(200).filter(|&c| c.0.get() != 0).count();
         count as u32 * 1000 / std::cmp::min(array.len() as u32, 200)
     }
 
     pub fn clear(&self) {
-        self.array.borrow_mut().iter_mut().for_each(|c| {
-            c.1 = None;
-            c.0 = Hash::default();
+        self.array.iter().for_each(|c| {
+            c.0.set(Hash::default());
+            *c.1.borrow_mut() = T::default();
         });
     }
 }
@@ -620,7 +623,7 @@ mod tests {
 
         let cache = UnsharedTable::with_size_bytes(100_000);
 
-        #[derive(Copy, Clone)]
+        #[derive(Copy, Default, Clone)]
         struct Blob {
             i: usize,
         }

@@ -125,7 +125,7 @@ trait White {
 pub struct Calc<'a, 'b> {
     _analysis: Analysis<'a>,
     pawn_cache: Option<&'b UnsharedTable<Pawns>>,
-    pawns: RefCell<Pawns>,
+    pawns: Option<&'b RefCell<Pawns>>,
     // a: &'a (),
 }
 
@@ -137,7 +137,7 @@ impl<'a> Calc<'a, 'a> {
             // analysis: Analysis::of(b),
             _analysis: Default::default(),
             pawn_cache: None,
-            pawns: RefCell::new(Pawns::default()),
+            pawns: None,
         }
     }
 
@@ -197,15 +197,15 @@ impl<'a> Calc<'a, 'a> {
                 let mut ps = cache.probe(hash);
                 if ps.is_none() {
                     let p = Pawns::new(b.pawns() & b.white(), b.pawns() & b.black());
-                    cache.store(hash, p.clone());
-                    ps = Some(RefCell::new(p));
+                    ps = cache.store(hash, p.clone());
                 }
                 ps.unwrap()
             } else {
                 let p = Pawns::new(b.pawns() & b.white(), b.pawns() & b.black());
-                RefCell::new(p)
+                unreachable!();
+                // &RefCell::new(p)
             };
-            self.pawns = refcell;
+            self.pawns = Some(refcell);
             self.pawns_both(scorer, b);
             self.position(scorer, b);
             self.pst(scorer, b);
@@ -370,7 +370,12 @@ impl<'a> Calc<'a, 'a> {
 
         let w = bd.white(); // white pieces (not just pawns)
         let b = bd.black();
-        let p = &self.pawns.borrow();
+        let p = if let Some(refcell) = self.pawns {
+            refcell.borrow()
+        } else {
+            unreachable!();
+            // RefCell::new(Pawns::new(bd.pawns() & w, bd.pawns() & b)).borrow()
+        };
         // Pawns::new(bd.pawns() & w, bd.pawns() & b);
 
         let is_far_pawns = (bd.pawns() & Bitboard::FILE_A.or(Bitboard::FILE_B)).any()
