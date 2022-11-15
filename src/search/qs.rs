@@ -26,6 +26,7 @@ pub struct Qs {
     pub delta_prune_discovered_check: bool,
     pub delta_prune_gives_check: bool,
     pub delta_prune_near_promos: bool,
+    pub delta_prune_min_pieces: i32,
     pub see_prune_discovered_check: bool,
     pub see_prune_gives_check: bool,
     pub see_prune_near_promos: bool,
@@ -50,6 +51,7 @@ impl Default for Qs {
             see_prune_discovered_check: false,
             see_prune_gives_check: true,
             see_prune_near_promos: true,
+            delta_prune_min_pieces: 0,
             even_exchange_max_ply: 2,
             promos: false,
             promo_piece: Some(Piece::Queen),
@@ -82,6 +84,7 @@ impl Algo {
     // if the move results in a position which after quiesce, is potentially a mate,
     // we should not return a mate score, as only captures have been considered,
     // and a mate score might cut a genuine mate score elsewhere
+    // since we only consider captures, repeats aren't an issue
     pub fn qs(&mut self, mut n: Node, bd: &mut Board, lm: Option<Move>) -> Score {
         debug_assert!(n.alpha < n.beta, "{n}");
         debug_assert!(n.ply >= 0);
@@ -161,7 +164,7 @@ impl Algo {
             {
                 margin = 2 * margin;
             }
-            if pat.is_numeric() && pat + margin <= n.alpha {
+            if bd.occupied().popcount() >= self.qs.delta_prune_min_pieces && pat.is_numeric() && pat + margin <= n.alpha {
                 Metrics::incr_node(&n, Event::QsDeltaPruneNode);
                 return (pat + margin).clamp_score();
             }
@@ -217,6 +220,7 @@ impl Algo {
                 && (self.qs.delta_prune_discovered_check || !bd.maybe_gives_discovered_check(mv))
                 && (self.qs.delta_prune_gives_check || !bd.gives_check(&mv))
                 && (self.qs.delta_prune_near_promos || !mv.is_near_promo())
+                && bd.occupied().popcount() >= self.qs.delta_prune_min_pieces
                 && pat + bd.eval_move_material(&self.eval, &mv) + self.qs.delta_prune_move_margin
                     <= n.alpha
             {
@@ -229,6 +233,7 @@ impl Algo {
                 && (self.qs.see_prune_discovered_check || !bd.maybe_gives_discovered_check(mv))
                 && (self.qs.see_prune_gives_check || !bd.gives_check(&mv))
                 && (self.qs.see_prune_near_promos || !mv.is_near_promo())
+                && bd.occupied().popcount() >= self.qs.delta_prune_min_pieces
             {
                 let t = Metrics::timing_start();
                 let score = bd.eval_move_see(&self.eval, mv);
