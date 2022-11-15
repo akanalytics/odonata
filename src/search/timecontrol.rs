@@ -199,12 +199,14 @@ impl TimeControl {
                 // let duration = rt.our_time_and_inc().0;
                 write!(f, "tc=(rt={rt:?})")?;
             }
-            TimeControl::FischerMulti { moves, secs, inc } => {
-                write!(f, "{moves}",)?;
-                if secs > &0. {
-                    write!(f, "/{s}", s = secs)?;
+            &TimeControl::FischerMulti { moves, secs, inc } => {
+                if moves > 0 {
+                    write!(f, "{moves}/",)?;
                 }
-                if inc > &0. {
+                if secs > 0. {
+                    write!(f, "{s}", s = secs)?;
+                }
+                if inc > 0. {
                     write!(f, "+{i}", i = inc)?;
                 }
             }

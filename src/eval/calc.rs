@@ -3,8 +3,6 @@ use crate::bits::precalc::Pawns;
 use crate::bits::{CastlingRights, PreCalc, Square};
 use crate::board::analysis::Analysis;
 use crate::board::Board;
-use crate::cache::hasher::Hasher;
-use crate::cache::lockless_hashmap::UnsharedTable;
 use crate::eval::endgame::EndGame;
 use crate::eval::eval::Feature;
 use crate::infra::metric::Metrics;
@@ -120,32 +118,22 @@ trait White {
 // }
 
 #[derive()]
-pub struct Calc<'a, 'b> {
+pub struct Calc<'a> {
     _analysis: Analysis<'a>,
-    pawn_cache: Option<&'b UnsharedTable<Pawns>>,
-    pawns: Option<Pawns>,
+    pawn_structure: Pawns,
     // a: &'a (),
 }
 
-impl<'a> Calc<'a, 'a> {
+impl<'a> Calc<'a> {
     #[inline]
     pub fn new(_b: &'a Board) -> Self {
         Self {
             // a: &(),
             // analysis: Analysis::of(b),
             _analysis: Default::default(),
-            pawn_cache: None,
-            pawns: None,
+            pawn_structure: Pawns::default(),
         }
     }
-
-    pub fn with_cache(&mut self, pawn_cache: &'a UnsharedTable<Pawns>) -> &mut Self {
-        // a: &(),
-        // analysis: Analysis::of(b),
-        self.pawn_cache = Some(pawn_cache);
-        self
-    }
-
 }
 
 // impl Display for Calc {
@@ -182,7 +170,7 @@ impl<'a> Calc<'a, 'a> {
 //     }
 // }
 
-impl<'a> Calc<'a, 'a> {
+impl<'a> Calc<'a> {
     #[inline]
     pub fn score(&mut self, scorer: &mut impl ScorerBase, b: &Board) {
         let t = Metrics::timing_start();
@@ -190,21 +178,7 @@ impl<'a> Calc<'a, 'a> {
         if !self.endgame(scorer, b) {
             // let pawn_cache = UnsharedTable::<PawnStructure>::default();
             // self.set_pawn_structure(&pawn_cache);
-            let pawns = if let Some(cache) = self.pawn_cache {
-                let hash = Hasher::default().hash_pawns(b);
-                let ps = cache.probe(hash);
-                if ps.is_none() {
-                    let p = Pawns::new(b.pawns() & b.white(), b.pawns() & b.black());
-                    cache.store(hash, p.clone());
-                    p
-                } else {
-                    ps.unwrap()
-                }
-            } else {
-                let p = Pawns::new(b.pawns() & b.white(), b.pawns() & b.black());
-                p
-            };
-            self.pawns = Some(pawns);
+            self.pawn_structure = Pawns::new(b.pawns() & b.white(), b.pawns() & b.black());
             self.pawns_both(scorer, b);
             self.position(scorer, b);
             self.pst(scorer, b);
@@ -369,12 +343,7 @@ impl<'a> Calc<'a, 'a> {
 
         let w = bd.white(); // white pieces (not just pawns)
         let b = bd.black();
-        let p = if let Some(pawns) = self.pawns {
-            pawns
-        } else {
-            unreachable!();
-            // RefCell::new(Pawns::new(bd.pawns() & w, bd.pawns() & b)).borrow()
-        };
+        let p = &self.pawn_structure;
         // Pawns::new(bd.pawns() & w, bd.pawns() & b);
 
         let is_far_pawns = (bd.pawns() & Bitboard::FILE_A.or(Bitboard::FILE_B)).any()
@@ -1264,8 +1233,18 @@ impl<'a> Calc<'a, 'a> {
         // bishops
         //
         let mut bi_atts = Bitboard::empty();
+        // let mut relative_pins_by_bishop = 0;
+        // let mut discovered_atts_by_bishop = 0;
         for sq in (b.bishops() & us).squares() {
             let our_raw_attacks = bb.bishop_attacks(occ, sq);
+            // let our_non_pin_attacks = bb.bishop_attacks(occ - ni, sq);
+            // let our_discovered_attacks = bb.bishop_attacks(occ - us, sq);
+            // if ((our_non_pin_attacks - our_raw_attacks) & (q|r)).any() {
+            //     relative_pins_by_bishop += 1;
+            // }
+            // if ((our_discovered_attacks - our_raw_attacks) & (q|r)).any() {
+            //     discovered_atts_by_bishop += 1;
+            // }
 
             // empty squares + undefended + defended qrkb (but not defended pawns)
 
@@ -1306,6 +1285,9 @@ impl<'a> Calc<'a, 'a> {
             };
             s.accum(c, feat.as_feature(), 1);
         }
+        // s.accum(c, RelativePinsByBishop.as_feature(), relative_pins_by_bishop);
+        // s.accum(c, DiscoveredAttsByBishop.as_feature(), discovered_atts_by_bishop);
+
         let bishop_color_pawns = |c: Color| {
             if (b.bishops() & b.color(c)).exactly_one() {
                 if Bitboard::WHITE_SQUARES.contains(b.bishops() & b.color(c)) {
@@ -1330,8 +1312,14 @@ impl<'a> Calc<'a, 'a> {
         // rooks
         //
         let mut ro_atts = Bitboard::empty();
+        // let mut relative_pins_by_rook = 0;
         for sq in (b.rooks() & us).squares() {
             let our_raw_attacks = bb.rook_attacks(occ, sq);
+            // let our_xray_attacks = bb.rook_attacks(occ - ((b.bishops() | b.knights()) & us), sq);
+            // if ((our_xray_attacks - our_raw_attacks) & q).any() {
+            //     relative_pins_by_rook += 1;
+            // }
+
 
             let our_attacks = our_raw_attacks - (pa & (empty | their_p | bi | ni));
             ro_atts |= our_raw_attacks;
@@ -1366,6 +1354,9 @@ impl<'a> Calc<'a, 'a> {
             };
             s.accum(c, feat.as_feature(), 1);
         }
+        // s.accum(c, RelativePinsByRook.as_feature(), relative_pins_by_rook);
+
+
         let doubled_rooks = ((b.rooks() & us).two_or_more()
             && (b.rooks() & us).first_square().file_index()
                 == (b.rooks() & us).last_square().file_index()) as i32;

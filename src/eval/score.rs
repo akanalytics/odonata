@@ -14,6 +14,7 @@ use std::fmt;
 
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(transparent)]
+// from the point of view of the player: +ve = winning, -ve = losing
 pub struct Score {
     cp: i16,
 }

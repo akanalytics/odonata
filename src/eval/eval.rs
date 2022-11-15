@@ -1,4 +1,3 @@
-use crate::bits::precalc::Pawns;
 use crate::bits::square::Square;
 use crate::board::Board;
 use crate::cache::lockless_hashmap::UnsharedTable;
@@ -132,6 +131,8 @@ pub enum Attr {
     KnightTrapped,
 
     Fianchetto,
+    DiscoveredAttsByBishop,
+    RelativePinsByBishop,
     BishopOutposts,
     BishopConnected,
     BishopColorPawns,
@@ -141,6 +142,7 @@ pub enum Attr {
     BishopTrapped,
     BishopClosedness,
 
+    RelativePinsByRook,
     RookClosedness,
     DoubledRooks,
     ConnectedRooks,
@@ -329,9 +331,6 @@ pub struct Eval {
     eval_cache: UnsharedTable<WhiteScore>,
 
     #[serde(skip)]
-    pub pawn_cache: UnsharedTable<Pawns>,
-
-    #[serde(skip)]
     pub feature_weights: Vec<Weight>,
 }
 
@@ -352,7 +351,6 @@ impl Default for Eval {
             quantum: 1,
             cache_size: DEFAULT_CACHE_SIZE,
             eval_cache: UnsharedTable::with_size(DEFAULT_CACHE_SIZE),
-            pawn_cache: UnsharedTable::with_size(10_000),
         };
         for f in Feature::all() {
             s.discrete.insert(f.name(), Weight::zero());
@@ -372,7 +370,7 @@ impl Component for Eval {
                 self.mb.new_game();
                 self.phaser.new_game();
                 self.see.new_game();
-                self.pawn_cache.clear();
+                // self.pawn_cache.clear();
                 self.eval_cache.clear();
             }
             SetPosition => {
@@ -514,9 +512,7 @@ impl Eval {
     fn w_eval_no_cache(&self, b: &Board) -> WhiteScore {
         let ph = b.phase(&self.phaser);
         let mut scorer = TotalScore::new(&self.feature_weights, self.draw_scaling, ph);
-        Calc::new(&b)
-            .with_cache(&self.pawn_cache)
-            .score(&mut scorer, b);
+        Calc::new(&b).score(&mut scorer, b);
         WhiteScore(Score::from_cp(
             scorer.total().interpolate(ph) as i32 / self.quantum * self.quantum,
         ))
@@ -609,14 +605,10 @@ impl Board {
 mod tests {
     use super::*;
     use crate::catalog::Catalog;
-    use crate::domain::engine::Engine;
     use crate::infra::black_box;
     use crate::infra::profiler::*;
-    use crate::infra::utils::DecimalFormatter;
     use crate::search::engine::ThreadedSearch;
-    use crate::search::timecontrol::TimeControl;
     use crate::test_log::test;
-    use crate::Algo;
     use crate::Position;
     use anyhow::Result;
     use toml;
@@ -708,51 +700,45 @@ mod tests {
         println!("{}", explain);
     }
 
-    #[test]
-    fn test_pawn_cache() {
-        let mut eng = Algo::new();
-        let pos = Catalog::starting_position();
-        let tc = TimeControl::Depth(11);
-        eng.search(pos, tc).unwrap();
-        println!(
-            "hit_rate = {}%, cache_full = {}%% hits = {} misses = {} collisions = {}",
-            eng.eval.pawn_cache.cache_hits_percent().dp(3),
-            eng.eval.pawn_cache.hashfull_per_mille(),
-            eng.eval.pawn_cache.hits.get(),
-            eng.eval.pawn_cache.misses.get(),
-            eng.eval.pawn_cache.collisions.get(),
+    // #[test]
+    // fn test_pawn_cache() {
+    //     let mut eng = Algo::new();
+    //     let pos = Catalog::starting_position();
+    //     let tc = TimeControl::Depth(11);
+    //     eng.search(pos, tc).unwrap();
+    //     println!(
+    //         "hit_rate = {}%, cache_full = {}%% hits = {} misses = {} collisions = {}",
+    //         eng.eval.pawn_cache.cache_hits_percent().dp(3),
+    //         eng.eval.pawn_cache.hashfull_per_mille(),
+    //         eng.eval.pawn_cache.hits.get(),
+    //         eng.eval.pawn_cache.misses.get(),
+    //         eng.eval.pawn_cache.collisions.get(),
+    //     );
 
-        );
+    //     let pos = Catalog::starting_position();
+    //     let tc = TimeControl::Depth(11);
+    //     eng.search(pos, tc).unwrap();
+    //     println!(
+    //         "hit_rate = {}%, cache_full = {}%% hits = {} misses = {} collisions = {}",
+    //         eng.eval.pawn_cache.cache_hits_percent().dp(3),
+    //         eng.eval.pawn_cache.hashfull_per_mille(),
+    //         eng.eval.pawn_cache.hits.get(),
+    //         eng.eval.pawn_cache.misses.get(),
+    //         eng.eval.pawn_cache.collisions.get(),
+    //     );
 
-        let pos = Catalog::starting_position();
-        let tc = TimeControl::Depth(11);
-        eng.search(pos, tc).unwrap();
-        println!(
-            "hit_rate = {}%, cache_full = {}%% hits = {} misses = {} collisions = {}",
-            eng.eval.pawn_cache.cache_hits_percent().dp(3),
-            eng.eval.pawn_cache.hashfull_per_mille(),
-            eng.eval.pawn_cache.hits.get(),
-            eng.eval.pawn_cache.misses.get(),
-            eng.eval.pawn_cache.collisions.get(),
-
-
-        );
-
-
-        let pos = Catalog::starting_position();
-        let tc = TimeControl::Depth(11);
-        eng.search(pos, tc).unwrap();
-        println!(
-            "hit_rate = {}%, cache_full = {}%% hits = {} misses = {} collisions = {}",
-            eng.eval.pawn_cache.cache_hits_percent().dp(3),
-            eng.eval.pawn_cache.hashfull_per_mille(),
-            eng.eval.pawn_cache.hits.get(),
-            eng.eval.pawn_cache.misses.get(),
-            eng.eval.pawn_cache.collisions.get(),
-
-        );
-
-    }
+    //     let pos = Catalog::starting_position();
+    //     let tc = TimeControl::Depth(11);
+    //     eng.search(pos, tc).unwrap();
+    //     println!(
+    //         "hit_rate = {}%, cache_full = {}%% hits = {} misses = {} collisions = {}",
+    //         eng.eval.pawn_cache.cache_hits_percent().dp(3),
+    //         eng.eval.pawn_cache.hashfull_per_mille(),
+    //         eng.eval.pawn_cache.hits.get(),
+    //         eng.eval.pawn_cache.misses.get(),
+    //         eng.eval.pawn_cache.collisions.get(),
+    //     );
+    // }
 
     #[test]
     fn test_eval_indexing() {

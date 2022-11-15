@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::eval::score::Score;
+use crate::eval::score::{Score, ToScore};
 use crate::infra::utils::Displayable;
 use crate::mv::{BareMove, Move};
 use crate::parse::Parse;
@@ -227,6 +227,21 @@ impl ScoredMoveList {
             }
         }
         Ok(moves)
+    }
+
+    pub fn centipawn_loss(&self, actual: BareMove) -> Option<Score> {
+        let best_score = self.iter().nth(0).map(|(_mv, s)| s).unwrap_or_default();
+        let worst_score = self.iter().last().map(|(_mv, s)| s).unwrap_or_default();
+        let matching_score = self.iter().find(|&(mv, _s)| mv == actual).map(|(_mv, s)| s);
+        match matching_score {
+            Some(s) if s.is_numeric() && best_score.is_numeric() => Some(s - best_score),
+            // no match so return one less than worst-best
+            None if best_score.is_numeric() && worst_score.is_numeric() => {
+                Some(worst_score - best_score - 1.cp())
+            }
+            // one is a mate score, so no numerics to return
+            _ => None,
+        }
     }
 }
 
