@@ -6,20 +6,18 @@ use itertools::Itertools;
 
 use crate::infra::utils::Uci;
 
-
-
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
-pub enum PlayerType {
+pub enum PlayerKind {
     #[default]
-    Human,
     Computer,
+    Human,
 }
 
-impl fmt::Display for PlayerType {
+impl fmt::Display for PlayerKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
-            PlayerType::Human => "human",
-            PlayerType::Computer => "computer",
+            PlayerKind::Human => "human",
+            PlayerKind::Computer => "computer",
         })
     }
 }
@@ -29,20 +27,20 @@ pub struct Player {
     pub name: String,
     pub elo: Option<i32>,
     pub title: String,
-    pub player_type: PlayerType,
+    pub kind: PlayerKind,
 }
 
 impl Uci for Player {
     fn fmt_uci(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "{title} {elo} {type} {name}",
+            "{title} {elo} {kind} {name}",
             title = self.title,
             elo = self
                 .elo
                 .map(|e| e.to_string())
                 .unwrap_or("none".to_string()),
-                type = self.player_type,
+            kind = self.kind,
             name = self.name
         )
     }
@@ -62,12 +60,12 @@ impl Uci for Player {
             "none" => None,
             _ => Some(elo.parse().with_context(|| format!("Parsing elo {elo}"))?),
         };
-        let player_type = match words
+        let kind = match words
             .next()
             .with_context(|| "no player type specified for opponent")?
         {
-            "human" => PlayerType::Human,
-            "computer" => PlayerType::Computer,
+            "human" => PlayerKind::Human,
+            "computer" => PlayerKind::Computer,
             text => bail!("unexpected player type {text}"),
         };
         let name = words.join(" ");
@@ -75,7 +73,7 @@ impl Uci for Player {
             name,
             elo,
             title,
-            player_type,
+            kind,
         })
     }
 }

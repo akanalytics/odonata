@@ -206,6 +206,20 @@ pub fn read_file(filename: impl AsRef<Path> + Clone) -> Result<Vec<String>> {
     Ok(vec)
 }
 
+pub trait ToStringOr {
+    fn to_string_or(&self, s: &str) -> String;
+}
+
+impl<T: ToString> ToStringOr for Option<T> {
+    fn to_string_or(&self, s: &str) -> String {
+        match self {
+            Some(t) => t.to_string(),
+            None => s.to_string(),
+        }
+    }
+}
+
+
 pub trait DecimalFormatter {
     fn dp(&self, decimal_places: i32) -> String;
     fn sig_fig(&self, sig_fig: i32) -> String;
@@ -263,6 +277,9 @@ where
             _ => format_num!(".8f", *self),
         }
     }
+
+    /// 12345567.0 -> "12.35M"
+    /// 123456.0 -> "123.5k"
     fn sig_fig(&self, sig_fig: i32) -> String {
         match sig_fig {
             0 => format_num!(".0s", *self),
@@ -275,6 +292,7 @@ where
     }
 }
 
+/// https://docs.rs/format_num/0.1.0/format_num/
 pub struct Formatting;
 
 impl Formatting {
