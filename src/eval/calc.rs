@@ -1203,8 +1203,7 @@ impl<'a> Calc<'a> {
             // self.mv.push((p, our_attacks.popcount()));
             _move_squares += atts;
             let feat = match atts {
-                0 => KnightMoves1,
-                1 => KnightMoves2,
+                0 | 1 => KnightMoves2,
                 2 => KnightMoves3,
                 3 | 4 => KnightMoves4,
                 5 | 6 => KnightMoves5,
@@ -1275,8 +1274,7 @@ impl<'a> Calc<'a> {
             // self.mv.push((p, our_attacks.popcount()));
             _move_squares += atts;
             let feat = match atts {
-                0 => BishopMoves1,
-                1 => BishopMoves2,
+                0 | 1 => BishopMoves2,
                 2 | 3 => BishopMoves3,
                 4 | 5 | 6 => BishopMoves4,
                 7 | 8 | 9 => BishopMoves5,
@@ -1344,9 +1342,7 @@ impl<'a> Calc<'a> {
             // self.mv.push((p, our_attacks.popcount()));
             _move_squares += atts;
             let feat = match atts {
-                0 => RookMoves1,
-                1 => RookMoves2,
-                2 | 3 => RookMoves3,
+                0 | 1 | 2 | 3 => RookMoves3,
                 4 | 5 | 6 => RookMoves4,
                 7 | 8 | 9 => RookMoves5,
                 10 | 11 | 12 | 13 | 14 => RookMoves6,
@@ -1412,10 +1408,7 @@ impl<'a> Calc<'a> {
             // self.mv.push((p, our_attacks.popcount()));
             _move_squares += atts;
             let feat = match atts {
-                0 => QueenMoves1,
-                1 => QueenMoves2,
-                2 | 3 => QueenMoves3,
-                4 | 5 | 6 => QueenMoves4,
+                0..=6 => QueenMoves4,
                 7 | 8 | 9 | 10 | 11 => QueenMoves5,
                 _ => QueenMoves6,
             };
