@@ -3,6 +3,10 @@ pub mod console;
 pub mod json_rpc;
 pub mod uci_server;
 
+use std::backtrace::Backtrace;
+use std::panic;
+
+use crate::infra::utils::ToStringOr;
 use crate::{comms::bench::Bench, trace::logger::LoggingSystem};
 use crate::comms::uci_server::UciServer;
 use crate::infra::version::Version;
@@ -80,6 +84,17 @@ pub fn main() -> anyhow::Result<()> {
 
 
     LoggingSystem::init()?;
+
+    let orig_hook = panic::take_hook();
+    panic::set_hook(Box::new(move |panic_info| {
+        let backtrace = Backtrace::force_capture();
+        error!(
+            "Thread {name} panic {panic_info:?}\nbacktrace\n{backtrace}",
+            name = std::thread::current().name().to_string_or("unknown")
+        );
+        orig_hook(panic_info);
+        std::process::exit(1);
+    }));
 
     // logger::init_logging();
 

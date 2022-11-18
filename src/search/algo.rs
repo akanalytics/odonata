@@ -368,7 +368,7 @@ impl Algo {
     }
 
     pub fn report_progress(&self) {
-        if self.clock.cumul_nodes_this_thread() % 5_000_000 == 0
+        if self.clock.cumul_nodes_this_thread() % 1_000_000 == 0
             && self.clock.cumul_nodes_this_thread() != 0
         {
             let sp = Info::with_report_progress(self);

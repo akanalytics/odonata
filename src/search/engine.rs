@@ -8,9 +8,8 @@ use crate::infra::utils::{Displayable, Formatting, DurationFormatter};
 use crate::position::Position;
 use crate::search::algo::Algo;
 use crate::search::timecontrol::TimeControl;
-use crate::trace::stat::Stat;
 use crate::tune::Tuning;
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use figment::providers::{Env, Format, Toml};
 use figment::value::{Dict, Map};
 use figment::{Error, Figment, Metadata, Profile, Provider};
@@ -188,14 +187,6 @@ impl Provider for ThreadedSearch {
 
 impl ThreadedSearch {
     pub fn new() -> Self {
-        // use backtrace::Backtrace;
-        // panic::set_hook(Box::new(|panic_info| {
-        //     error!("panic occured: {:?}", panic_info.payload().downcast_ref::<String>().unwrap());
-        //     error!("{:?}", Backtrace::new());
-        //     std::process::exit(1);
-        //     // panic!("Panic!!!!")
-        // }));
-
         let toml = RESOURCE_DIR
             .get_file("config.toml")
             .unwrap()
@@ -301,19 +292,19 @@ impl ThreadedSearch {
                 algo.ids.start_ply = 2;
             }
             let cl = move || {
-                let result = panic::catch_unwind(|| {
-                    Stat::set_this_thread_index(i as usize);
+                // let result = panic::catch_unwind(|| {
+                //     Stat::set_this_thread_index(i as usize);
                     algo.run_search();
                     Metrics::flush_thread_local();
-                    algo
-                });
-                if let Err(ref error) = result {
-                    if let Some(e) = error.downcast_ref::<anyhow::Error>() {
-                        error!("Thread panic returned {:?}", e);
-                        error!("Backtrace {:?}", e.source());
-                    }
-                }
-                result.map_err(|e| anyhow!("Anyhow {:?}", e))
+                    Ok(algo)
+                // });
+                // if let Err(ref error) = result {
+                //     if let Some(e) = error.downcast_ref::<anyhow::Error>() {
+                //         error!("Thread panic returned {:?}", e);
+                //         error!("Backtrace {:?}", e.source());
+                //     }
+                // }
+                // result.map_err(|e| anyhow!("Anyhow {:?}", e))
             };
             self.threads.push(builder.spawn(cl).unwrap());
         }
