@@ -5,10 +5,60 @@ use std::io::Write;
 use perf_event::{events::Hardware, Builder, Counter, Group};
 
 #[cfg(test)]
-use super::{utils::IntegerFormatter, black_box};
+use super::{black_box, utils::IntegerFormatter};
+
+#[cfg(any(test, feature = "profiler"))]
+pub struct ProfProfiler<'a> {
+    guard: pprof::ProfilerGuard<'a>,
+    name: String,
+}
+
+#[cfg(any(test, feature = "profiler"))]
+impl<'a> ProfProfiler<'a> {
+    pub fn new(name: String) -> ProfProfiler<'a> {
+        let guard = pprof::ProfilerGuardBuilder::default()
+            .frequency(1_000_000)
+            .blocklist(&["libc", "libgcc", "pthread", "vdso"])
+            .build()
+            .unwrap();
+        ProfProfiler { guard, name }
+    }
+}
+
+#[cfg(any(test, feature = "profiler"))]
+impl<'a> ProfProfiler<'a> {
+    pub fn report(&mut self) -> anyhow::Result<()>{
+        fn proc() -> impl Fn(&mut pprof::Frames) {
+            move |frames| {
+                // let vec = &frames.frames;
+                frames.frames = frames
+                    .frames
+                    .clone()
+                    .into_iter()
+                    .unique_by(|vec| vec[0].name())
+                    .collect();
+            }
+        }
+        use itertools::Itertools;
+        if let Ok(report) = self.guard.report().frames_post_processor(proc()).build() {
+            use std::fs::File;
+            let file = File::create(format!("{name}_flamegraph_1.svg", name = self.name) )?;
+            let mut options = pprof::flamegraph::Options::default();
+            options.flame_chart = false;
+            report.flamegraph_with_options(file, &mut options)?;
+
+            let file = File::create(format!("{name}_flamegraph_2.svg", name = self.name) )?;
+            let mut options = pprof::flamegraph::Options::default();
+            options.reverse_stack_order = true;
+            report.flamegraph_with_options(file, &mut options)?;
+        };
+        Ok(())
+    }
+}
+
 
 #[cfg(test)]
-pub struct Profiler {
+pub struct PerfProfiler {
     group: Group,
     name: String,
     iters: u64,
@@ -21,9 +71,9 @@ pub struct Profiler {
 }
 
 #[cfg(test)]
-impl Profiler {
+impl PerfProfiler {
     #[inline]
-    pub fn new(name: String) -> Profiler {
+    pub fn new(name: String) -> PerfProfiler {
         let mut group = Group::new().unwrap();
         // REF_CPU_CYCLES not supported on ZEN3
         let cycles = Builder::new()
@@ -56,7 +106,7 @@ impl Profiler {
         // .kind(Hardware::CACHE_REFERENCES)
         // .build()
         // .unwrap();
-        Profiler {
+        PerfProfiler {
             name,
             group,
             ins,
@@ -142,7 +192,7 @@ impl Profiler {
 mod tests {
 
     #[cfg(test)]
-    impl Drop for Profiler {
+    impl Drop for PerfProfiler {
         fn drop(&mut self) {
             // if log::log_enabled!(log::Level::Trace) {
             let _ = self.write(stdout());
@@ -174,8 +224,8 @@ mod tests {
     #[test]
     fn bench_process() {
         use std::process::Command;
-        let mut prof1 = Profiler::new("out_of_process_ls_l".into());
-        let mut prof2 = Profiler::new("out_of_process_ls_r".into());
+        let mut prof1 = PerfProfiler::new("out_of_process_ls_l".into());
+        let mut prof2 = PerfProfiler::new("out_of_process_ls_r".into());
 
         prof1.benchmark(|| {
             let _output = Command::new("ls")
@@ -194,7 +244,7 @@ mod tests {
 
     #[test]
     fn bench_simple_struct() {
-        let mut prof1 = Profiler::new("struct_access".into());
+        let mut prof1 = PerfProfiler::new("struct_access".into());
 
         for _iter in 0..100 {
             let mut s = Struct::default();
@@ -216,7 +266,7 @@ mod tests {
 
     #[test]
     fn bench_simple_array() {
-        let mut prof2 = Profiler::new("array_access".into());
+        let mut prof2 = PerfProfiler::new("array_access".into());
         for _iter in 0..100 {
             let mut a = Array::default();
             prof2.benchmark(|| {
@@ -233,10 +283,10 @@ mod tests {
     }
 
     use std::cell::Cell;
-    use std::io::{stdout};
+    use std::io::stdout;
     use thread_local::ThreadLocal;
 
-    use super::Profiler;
+    use super::PerfProfiler;
 
     thread_local! {
         static COUNTER1: Cell<u64> = Cell::new(0);
@@ -249,14 +299,14 @@ mod tests {
     #[test]
     fn bench_thread_local() {
         // thread_local macro
-        let mut pr = Profiler::new("thread_local!".into());
+        let mut pr = PerfProfiler::new("thread_local!".into());
         for _iter in 0..10001 {
             pr.benchmark(|| COUNTER1.with(|c| c.set(c.get() + 1)));
         }
         assert_eq!(COUNTER1.with(|c| c.get()), 10001);
 
         // Stat struct
-        let mut pr = Profiler::new("thread-Stat".into());
+        let mut pr = PerfProfiler::new("thread-Stat".into());
         for _iter in 0..10002 {
             pr.benchmark(|| COUNTER2.increment())
         }
@@ -265,7 +315,7 @@ mod tests {
         #[allow(non_snake_case)]
         let COUNTER3 = ThreadLocal::new();
 
-        let mut pr = Profiler::new("ThreadLocal".into());
+        let mut pr = PerfProfiler::new("ThreadLocal".into());
         for _iter in 0..10003 {
             let _count = pr.benchmark(|| {
                 let cell = COUNTER3.get_or(|| Cell::new(0));
@@ -277,7 +327,7 @@ mod tests {
         assert_eq!(COUNTER3.get_or(|| Cell::new(0)).get(), 10003);
 
         use crate::bits::Bitboard;
-        let mut pr = Profiler::new("bitboard".into());
+        let mut pr = PerfProfiler::new("bitboard".into());
         for _iter in 0..10004 {
             let _count = pr.benchmark(|| {
                 let bb = Bitboard::RANK_1;

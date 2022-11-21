@@ -160,13 +160,13 @@ impl Bench {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{infra::{profiler::Profiler, black_box}, domain::engine::Engine};
+    use crate::{infra::{profiler::PerfProfiler, black_box}, domain::engine::Engine};
     use test_log::test;
 
     #[test]
     fn bench_bk() {
         let mut total_nodes= 0;
-        let mut prof = Profiler::new("bench_bratko".into());
+        let mut prof = PerfProfiler::new("bench_bratko".into());
         prof.benchmark(
             || total_nodes += Bench::search(TimeControl::NodeCount(100000), None)
         );
@@ -179,7 +179,7 @@ mod tests {
         let eng = ThreadedSearch::new();
         let mut eng = eng.algo;
         let tc = TimeControl::Depth(5);
-        let mut prof = Profiler::new("bench_search".into());
+        let mut prof = PerfProfiler::new("bench_search".into());
         let _ = black_box(prof.benchmark(
             || { eng.search(pos, tc) }
         ));

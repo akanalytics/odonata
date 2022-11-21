@@ -400,7 +400,7 @@ mod tests {
     use super::*;
     use crate::{
         catalog::Catalog,
-        infra::{black_box, profiler::Profiler},
+        infra::{black_box, profiler::PerfProfiler},
     };
     // // use crate::{debug, logger::LogInit};
 
@@ -536,22 +536,22 @@ mod tests {
     fn bench_material() {
         let board = Catalog::starting_board();
 
-        Profiler::new("material-ctor".into()).benchmark(
+        PerfProfiler::new("material-ctor".into()).benchmark(
             || Material::from_board(&board), //
         );
 
         let m = Material::from_board(&board);
-        Profiler::new("material-total".into()).benchmark(
+        PerfProfiler::new("material-total".into()).benchmark(
             || m.total_count(), //
         );
 
-        Profiler::new("material-insuff".into()).benchmark(
+        PerfProfiler::new("material-insuff".into()).benchmark(
             || m.is_insufficient(), //
         );
 
         {
-            let mut prof = Profiler::new("material-manip".into());
-            let mut prof2 = Profiler::new("material-count".into());
+            let mut prof = PerfProfiler::new("material-manip".into());
+            let mut prof2 = PerfProfiler::new("material-count".into());
             let board = Catalog::starting_board();
             let m = Material::from_board(&board);
             prof.start();

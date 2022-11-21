@@ -602,7 +602,7 @@ fn aligned_vec(capacity: usize) -> Vec<HashEntry> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{eval::score::WhiteScore, infra::profiler::Profiler};
+    use crate::{eval::score::WhiteScore, infra::profiler::PerfProfiler};
 
     use super::*;
     use std::mem::size_of;
@@ -618,8 +618,8 @@ mod tests {
 
     #[test]
     fn bench_unshared_table() {
-        let mut prof_p = Profiler::new("unshared_table_probe".into());
-        let mut prof_s = Profiler::new("unshared_table_store".into());
+        let mut prof_p = PerfProfiler::new("unshared_table_probe".into());
+        let mut prof_s = PerfProfiler::new("unshared_table_store".into());
 
         let cache = UnsharedTable::with_size_bytes(100_000);
 

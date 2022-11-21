@@ -320,7 +320,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::infra::{profiler::Profiler, black_box};
+    use crate::infra::{profiler::PerfProfiler, black_box};
 
     use super::*;
     use test_log::test;
@@ -335,10 +335,10 @@ mod tests {
     #[test]
     fn bench_weight() {
         let w = black_box(Weight::new(5.5, 6.6));
-        Profiler::new("weight::new".into()).benchmark(|| Weight::new(32.5, 56.9));
-        Profiler::new("weight::add".into()).benchmark(|| w + Weight::new(black_box(32.5), 56.9));
-        Profiler::new("weight::mul".into()).benchmark(|| 3_i32 * Weight::new(black_box(32.5), 56.9));
-        Profiler::new("weight::s/e".into()).benchmark(|| w.s() + w.e());
+        PerfProfiler::new("weight::new".into()).benchmark(|| Weight::new(32.5, 56.9));
+        PerfProfiler::new("weight::add".into()).benchmark(|| w + Weight::new(black_box(32.5), 56.9));
+        PerfProfiler::new("weight::mul".into()).benchmark(|| 3_i32 * Weight::new(black_box(32.5), 56.9));
+        PerfProfiler::new("weight::s/e".into()).benchmark(|| w.s() + w.e());
     }
 }
 

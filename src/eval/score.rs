@@ -537,7 +537,7 @@ mod tests {
     #[test]
     fn bench_exp() {
         // b^x = e^(x*log(b))
-        let mut p = Profiler::new("standard_exp".into());
+        let mut p = PerfProfiler::new("standard_exp".into());
         p.start();
         for cp in (-1000..1000).step_by(100) {
             black_box(win_probability_from_cp_and_k(cp as f32, 4.0));

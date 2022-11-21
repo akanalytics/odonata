@@ -753,7 +753,7 @@ mod tests {
     fn bench_eval() {
         let mut eval = Eval::default();
         eval.mb.enabled = false;
-        let mut prof = Profiler::new("bench_eval".into());
+        let mut prof = PerfProfiler::new("bench_eval".into());
         let node = Node::root(0);
         let mut total_score = 0;
         for pos in Catalog::win_at_chess() {

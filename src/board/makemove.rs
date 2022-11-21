@@ -413,7 +413,7 @@ mod tests {
     use super::*;
     use crate::catalog::*;
     use crate::globals::constants::*;
-    use crate::infra::profiler::Profiler;
+    use crate::infra::profiler::PerfProfiler;
     use anyhow::Result;
 
     #[test]
@@ -521,27 +521,27 @@ mod tests {
     fn profile_do_move() {
         let mut b = Catalog::starting_board();
         let mv = b.parse_san_move("e4").unwrap();
-        Profiler::new("do_move".to_string()).benchmark(|| {
+        PerfProfiler::new("do_move".to_string()).benchmark(|| {
             b.do_move(mv);
             b
         });
         let b = Catalog::starting_board();
-        Profiler::new("make_move".to_string()).benchmark(|| b.make_move(&mv));
+        PerfProfiler::new("make_move".to_string()).benchmark(|| b.make_move(&mv));
 
         let mut cells: [Cell<Bitboard>; 32] = <_>::default();
-        Profiler::new("cell_default".to_string()).benchmark(|| {
+        PerfProfiler::new("cell_default".to_string()).benchmark(|| {
             cells = <_>::default();
             cells.len()
         });
 
         let mut cells: [Cell<Option<Bitboard>>; 32] = <_>::default();
-        Profiler::new("cell_option".to_string()).benchmark(|| {
+        PerfProfiler::new("cell_option".to_string()).benchmark(|| {
             cells = <_>::default();
             cells.len()
         });
 
         let mut cells: [Cell<Bitboard>; 32] = <_>::default();
-        Profiler::new("cell_bitboard".to_string()).benchmark(|| {
+        PerfProfiler::new("cell_bitboard".to_string()).benchmark(|| {
             cells = [
                 Cell::<_>::new(Bitboard::niche()),
                 Cell::<_>::new(Bitboard::niche()),

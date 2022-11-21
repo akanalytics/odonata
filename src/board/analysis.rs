@@ -211,7 +211,7 @@ mod tests {
     use crate::bits::precalc::PreCalc;
     use crate::bits::square::Square;
     use crate::catalog::Catalog;
-    use crate::infra::profiler::Profiler;
+    use crate::infra::profiler::PerfProfiler;
     use test_log::test;
 
     #[test]
@@ -228,7 +228,7 @@ mod tests {
             .unwrap();
         let analysis = Analysis::of(&b);
         let bbd = PreCalc::default();
-        let mut prof = Profiler::new("king_attacks".into());
+        let mut prof = PerfProfiler::new("king_attacks".into());
         for _ in 0..100 {
             prof.benchmark(|| analysis.king_attacks(b.kings() & b.white()));
             // assert_eq!(
@@ -248,7 +248,7 @@ mod tests {
             .unwrap();
         let analysis = Analysis::of(&b);
         // let bbd = PreCalc::default();
-        let mut prof = Profiler::new("knight_attacks".into());
+        let mut prof = PerfProfiler::new("knight_attacks".into());
         for _ in 0..100 {
             prof.benchmark(|| analysis.knight_attacks(b.knights() & b.white()));
         }

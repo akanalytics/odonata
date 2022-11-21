@@ -659,7 +659,7 @@ mod tests {
     use super::*;
     use crate::globals::constants::*;
     use crate::infra::black_box;
-    use crate::infra::profiler::Profiler;
+    use crate::infra::profiler::PerfProfiler;
     use crate::{test_log::test, Position};
 
     #[test]
@@ -763,8 +763,8 @@ mod tests {
 
     #[test]
     fn bench_precalc_pawns() {
-        let mut prof_new = Profiler::new("precalc pawns".to_string());
-        let mut prof_clone = Profiler::new("precalc pawns clone".to_string());
+        let mut prof_new = PerfProfiler::new("precalc pawns".to_string());
+        let mut prof_clone = PerfProfiler::new("precalc pawns clone".to_string());
 
         let pawns_w = a2 | b3 | c2 | d7 | f5 | g4 | h4 | h5;
         let pawns_b = a4 | b4 | d3 | g5;

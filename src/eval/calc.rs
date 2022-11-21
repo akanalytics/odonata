@@ -1603,7 +1603,7 @@ mod tests {
         //     scorer1.total()
         // }
 
-        fn bench_new(b: &Board, phr: &Phaser, e: &Eval, pr: &mut Profiler) -> Weight {
+        fn bench_new(b: &Board, phr: &Phaser, e: &Eval, pr: &mut PerfProfiler) -> Weight {
             let mut scorer2 = TotalScore::new(&e.feature_weights, 1., b.phase(phr));
             // scorer2.csv = false;
             // let mut scorer2 = ModelScore::new();
@@ -1618,8 +1618,8 @@ mod tests {
             scorer2.total()
         }
 
-        let _prof_old = Profiler::new("old".into());
-        let mut prof_new = Profiler::new("new".into());
+        let _prof_old = PerfProfiler::new("old".into());
+        let mut prof_new = PerfProfiler::new("new".into());
         let positions = Catalog::example_game();
         let eval = Eval::new();
         let phr = Phaser::default();

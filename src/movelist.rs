@@ -229,8 +229,13 @@ impl ScoredMoveList {
         Ok(moves)
     }
 
+    pub fn best_score(&self) -> Option<Score> {
+        self.iter().nth(0).map(|(_mv, s)| s)
+    }
+
+
     pub fn centipawn_loss(&self, actual: BareMove) -> Option<Score> {
-        let best = self.iter().nth(0).map(|(_mv, s)| s).unwrap_or_default();
+        let best = self.best_score().unwrap_or_default();
         let worst = self.iter().last().map(|(_mv, s)| s).unwrap_or_default();
         let matching_score = self.iter().find(|&(mv, _s)| mv == actual).map(|(_mv, s)| s);
         match matching_score {

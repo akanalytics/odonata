@@ -522,7 +522,7 @@ impl EndGame {
 mod tests {
     use super::*;
     use crate::{
-        infra::{black_box, profiler::Profiler},
+        infra::{black_box, profiler::PerfProfiler},
     };
     use test_log::test;
 
@@ -611,9 +611,9 @@ mod tests {
 
     #[test]
     fn bench_endgame() {
-        let mut prof1 = Profiler::new("endgame-ctor".into());
-        let mut prof2 = Profiler::new("outcome-enum".into());
-        let mut prof3 = Profiler::new("material-insuff".into());
+        let mut prof1 = PerfProfiler::new("endgame-ctor".into());
+        let mut prof2 = PerfProfiler::new("outcome-enum".into());
+        let mut prof3 = PerfProfiler::new("material-insuff".into());
 
         let b1 = Board::parse_fen("k7/8/8/8/NN6/8/8/K7 w - - 0 1").unwrap();
         let b2 = Board::parse_fen("k7/8/3N4/8/8/8/8/K61 w - - 0 1").unwrap();

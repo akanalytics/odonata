@@ -817,7 +817,7 @@ mod tests {
     use crate::catalog::*;
     use crate::globals::constants::*;
     use crate::infra::black_box;
-    use crate::infra::profiler::Profiler;
+    use crate::infra::profiler::PerfProfiler;
 
     #[test]
     fn test_serde() {
@@ -1012,7 +1012,7 @@ mod tests {
         let bd =
             Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
 
-        let mut prof1 = Profiler::new("board.piece".into());
+        let mut prof1 = PerfProfiler::new("board.piece".into());
         for _ in 0..100 {
             for sq in bd.occupied().squares() {
                 prof1.benchmark(|| bd.piece(black_box(sq)));

@@ -406,7 +406,7 @@ mod tests {
     use super::*;
     use crate::eval::eval::Attr;
     use crate::infra::utils::{read_file, Formatting};
-    use crate::{eval::weight::Weight, infra::profiler::Profiler};
+    use crate::{eval::weight::Weight, infra::profiler::PerfProfiler};
     use anyhow::Context;
     use test_log::test;
 
@@ -520,7 +520,7 @@ mod tests {
             Position::parse_many_epd(read_file(file).unwrap()).unwrap(),
         )
         .unwrap();
-        let mut prof1 = Profiler::new("mse new".into());
+        let mut prof1 = PerfProfiler::new("mse new".into());
         prof1.start();
         let diffs1 = eng1.tuner.calculate_mean_square_error(&eng1).unwrap();
         prof1.stop();

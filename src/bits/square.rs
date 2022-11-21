@@ -444,7 +444,7 @@ mod tests {
 
     #[test]
     fn bench_square_uci() {
-        let mut p = Profiler::new("square_uci".into());
+        let mut p = PerfProfiler::new("square_uci".into());
         p.start();
         for sq in Bitboard::all().squares() {
             black_box(&sq.uci());

@@ -146,6 +146,7 @@ impl Stat {
 
     #[inline]
     pub fn increment(&self) {
+        #[cfg(not(feature = "remove_metrics"))]
         self.add(1);
     }
 
