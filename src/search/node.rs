@@ -24,8 +24,6 @@ impl Histograms {
     }
 }
 
-
-
 #[derive(
     Copy, Clone, Debug, PartialEq, Eq, Display, EnumCount, EnumMessage, EnumIter, AsRefStr,
 )]
@@ -95,7 +93,6 @@ impl Counter {
     }
 }
 
-
 #[derive(
     Copy, Clone, Debug, PartialEq, Eq, Display, EnumCount, EnumMessage, EnumIter, AsRefStr,
 )]
@@ -128,8 +125,6 @@ pub enum Event {
     NodeInteriorPv,
     MeanBranchingFactor,
     EffectiveBranchingFactor,
-
-
 
     #[strum(message = "Eval")]
     EvalSee,
@@ -174,7 +169,6 @@ pub enum Event {
     // MoveRemaining,
     // MoveUnsorted,
     // MoveEnd,
-
     DerivedRecog,
     DerivedPrunedInterior,
     PercentPrunedInterior,
@@ -307,8 +301,6 @@ pub enum Event {
     TtAll,
     TtPv,
 
-
-
     DurationIterEst,
     DurationIterAllotted,
     DurationIterActual,
@@ -328,7 +320,7 @@ pub enum Event {
     NodeQsCut,
     NodeQsPv,
     NodeQsAll,
-    NodeQsAllVeryLow,    
+    NodeQsAllVeryLow,
     NodeQsInCheck,
     QsEvalStatic,
     QsTtProbe,
@@ -340,7 +332,6 @@ pub enum Event {
     QsSeePruneMove,
     QsDeltaPruneMove,
     QsDeltaPruneNode,
-
 }
 
 impl Default for Event {
@@ -432,5 +423,4 @@ impl Node {
     pub fn is_qs(&self) -> bool {
         self.depth <= 0
     }
-
 }

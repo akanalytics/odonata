@@ -1,6 +1,6 @@
+use crate::infra::utils::Formatting;
 use crate::piece::Ply;
 use crate::piece::MAX_PLY;
-use crate::infra::utils::Formatting;
 use std::fmt;
 use std::sync::atomic::{AtomicI64, AtomicUsize, Ordering};
 

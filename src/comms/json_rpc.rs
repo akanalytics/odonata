@@ -1,12 +1,12 @@
 use crate::board::Board;
 use crate::catalog::{Catalog, CatalogSuite};
+use crate::infra::utils::read_file;
 use crate::infra::version::built_info;
 use crate::infra::version::Version;
 use crate::position::Position;
 use crate::search::engine::ThreadedSearch;
 use crate::tags::Tag;
 use crate::tune::Tuning;
-use crate::infra::utils::read_file;
 use anyhow::Context;
 use itertools::Itertools;
 // // use crate::{info, logger::LogInit};

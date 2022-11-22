@@ -177,7 +177,7 @@ impl Parse {
 mod tests {
 
     use super::*;
-    use crate::infra::testing::{Testing};
+    use crate::infra::testing::Testing;
 
     use crate::catalog::Catalog;
 

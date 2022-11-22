@@ -48,7 +48,6 @@ impl Variation {
         var
     }
 
-
     #[inline]
     pub fn empty() -> &'static Self {
         &EMPTY

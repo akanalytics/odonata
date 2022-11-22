@@ -1,7 +1,7 @@
 use crate::bits::square::Square;
 use crate::board::Board;
-use crate::trace::stat::{SliceStat, Stat};
 use crate::piece::Color;
+use crate::trace::stat::{SliceStat, Stat};
 use crate::{Bitboard, PreCalc};
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
@@ -136,7 +136,7 @@ impl EndGame {
 
             KMkm => Draw,
             KBBk => Draw,
-            Kkbb => Draw, 
+            Kkbb => Draw,
 
             KRk | KQk | KBNk | KBbk | KJJk | KJMk => WhiteWin,
             Kkr | Kkq | Kkbn | KkBb | Kkjj | Kkjm => WhiteLoss,
@@ -168,7 +168,6 @@ impl EndGame {
             KQkr => WhiteWin,
             KRkq => WhiteLoss,
             // KQkq => UnknownOutcome,
-
             KPPk => WhiteWin,
             Kkpp => WhiteLoss,
 
@@ -184,7 +183,7 @@ impl EndGame {
             // KNNkb => Draw,
             // KNknn => Draw,
             // KBknn => Draw,
-        
+
             // KBBkn => Draw,
             // KBBkb => Draw,
             // KNkbb => Draw,
@@ -356,7 +355,6 @@ impl EndGame {
             return Self::Kk;
         }
 
-
         let wp = (b.pawns() & b.white()).popcount();
         let bp = (b.pawns() & b.black()).popcount();
         let n_pawns = wp + bp;
@@ -366,7 +364,6 @@ impl EndGame {
         if bp == 3 && wp == 0 {
             return Self::Kkppp;
         }
-
 
         if n_pieces == 3 {
             if b.rooks().any() {
@@ -394,20 +391,20 @@ impl EndGame {
         if n_pieces >= 5 && (b.rooks_or_queens().any() || b.pawns().any()) {
             return Self::Unknown;
         }
-        if n_pieces == 5  {
+        if n_pieces == 5 {
             match (wn, wb, bn, bb) {
-            //     (2,0,1,0) => return EndGame::KNNkn,
-            //     (2,0,0,1) => return EndGame::KNNkb,
-            //     (1,0,2,0) => return EndGame::KNknn,
-            //     (0,1,2,0) => return EndGame::KBknn,
-            //     (1,1,1,0) => return EndGame::KBNkn,
-            //     (1,1,0,1) => return EndGame::KBNkb,
-            //     (1,0,1,1) => return EndGame::KNkbn,
-            //     (0,1,1,1) => return EndGame::KBkbn,
-            //     (0,2,1,0) => return EndGame::KBBkn,
-            //     (0,2,0,1) => return EndGame::KBBkb,
-            //     (1,0,0,2) => return EndGame::KNkbb,
-            //     (0,1,0,2) => return EndGame::KBkbb,
+                //     (2,0,1,0) => return EndGame::KNNkn,
+                //     (2,0,0,1) => return EndGame::KNNkb,
+                //     (1,0,2,0) => return EndGame::KNknn,
+                //     (0,1,2,0) => return EndGame::KBknn,
+                //     (1,1,1,0) => return EndGame::KBNkn,
+                //     (1,1,0,1) => return EndGame::KBNkb,
+                //     (1,0,1,1) => return EndGame::KNkbn,
+                //     (0,1,1,1) => return EndGame::KBkbn,
+                //     (0,2,1,0) => return EndGame::KBBkn,
+                //     (0,2,0,1) => return EndGame::KBBkb,
+                //     (1,0,0,2) => return EndGame::KNkbb,
+                //     (0,1,0,2) => return EndGame::KBkbb,
                 _ => return EndGame::Unknown,
             }
         }
@@ -521,9 +518,7 @@ impl EndGame {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        infra::{black_box, profiler::PerfProfiler},
-    };
+    use crate::infra::{black_box, profiler::PerfProfiler};
     use test_log::test;
 
     #[test]

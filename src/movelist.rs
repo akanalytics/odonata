@@ -233,7 +233,6 @@ impl ScoredMoveList {
         self.iter().nth(0).map(|(_mv, s)| s)
     }
 
-
     pub fn centipawn_loss(&self, actual: BareMove) -> Option<Score> {
         let best = self.best_score().unwrap_or_default();
         let worst = self.iter().last().map(|(_mv, s)| s).unwrap_or_default();
@@ -241,9 +240,7 @@ impl ScoredMoveList {
         match matching_score {
             Some(ms) if ms.is_numeric() && best.is_numeric() => Some(ms - best),
             // no match so return one less than worst-best
-            None if best.is_numeric() && worst.is_numeric() => {
-                Some(worst - best - 1.cp())
-            }
+            None if best.is_numeric() && worst.is_numeric() => Some(worst - best - 1.cp()),
             // one is a mate score, so no numerics to return
             _ => None,
         }

@@ -168,7 +168,6 @@ mod tests {
         assert_eq!(std::mem::size_of::<Hyperbola>(), 5632, "Hyperbola");
     }
 
-
     #[test]
     fn test_rook_attacks() {
         let hq = Hyperbola::default();

@@ -280,7 +280,10 @@ impl SearchResults {
         let bf = calculate_branching_factor_by_nodes_and_depth(nodes_thread_cumul, depth)
             .unwrap_or_default();
         SearchResults {
-            bm: multi_pv.get(0).map(|var| var.0.first().unwrap_or_default() ).unwrap_or_default(),
+            bm: multi_pv
+                .get(0)
+                .map(|var| var.0.first().unwrap_or_default())
+                .unwrap_or_default(),
             outcome: Outcome::Unterminated,
             tbhits: 0,
             nodes: algo.clock.cumul_nodes_all_threads(),

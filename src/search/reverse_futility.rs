@@ -94,7 +94,10 @@ impl Algo {
             return None;
         }
 
-        if self.rev_fut.min_pieces > 0 && n.depth >= self.rev_fut.min_pieces_depth && bd.occupied().popcount() < self.rev_fut.min_pieces {
+        if self.rev_fut.min_pieces > 0
+            && n.depth >= self.rev_fut.min_pieces_depth
+            && bd.occupied().popcount() < self.rev_fut.min_pieces
+        {
             Metrics::incr_node(&n, Event::RevFutDeclineMinPieces);
             return None;
         }
@@ -116,7 +119,7 @@ impl Algo {
             3 => self.rev_fut.margin3,
             d => self.rev_fut.margin3 + self.rev_fut.margin_ply * (d - 3),
         });
-        // if eval - margin >= n.beta 
+        // if eval - margin >= n.beta
         //     && EndGame::from_board(bd).likely_outcome(bd) != LikelyOutcome::UnknownOutcome
         // {
         //     return None;

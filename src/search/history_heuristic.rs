@@ -58,7 +58,6 @@ pub struct HistoryHeuristic {
     min_depth: Ply,
     max_ply: Ply,
 
-
     #[serde(skip)]
     history: Box<[[[[Tally; 64]; 64]; Piece::len()]; 2]>,
     // clear_every_move: bool,
@@ -172,11 +171,12 @@ impl HistoryHeuristic {
             return;
         }
         use AccumulateMethod::*;
-        let add = self.alpha * (match self.alpha_method {
-            Power => 2 << (n.depth / 4),
-            Squared => n.depth * n.depth,
-            Zero => 0,
-        }) as i64;
+        let add = self.alpha
+            * (match self.alpha_method {
+                Power => 2 << (n.depth / 4),
+                Squared => n.depth * n.depth,
+                Zero => 0,
+            }) as i64;
         if i64::checked_add(self.get_mut(b.color_us(), mv).good, add).is_none() {
             self.adjust_by_factor(2);
         }
@@ -199,11 +199,12 @@ impl HistoryHeuristic {
             return;
         }
         use AccumulateMethod::*;
-        let add = self.beta * (match self.alpha_method {
-            Power => 2 << (n.depth / 4),
-            Squared => n.depth * n.depth,
-            Zero => 0,
-        }) as i64;
+        let add = self.beta
+            * (match self.alpha_method {
+                Power => 2 << (n.depth / 4),
+                Squared => n.depth * n.depth,
+                Zero => 0,
+            }) as i64;
         if i64::checked_add(self.get_mut(b.color_us(), mv).good, add).is_none() {
             self.adjust_by_factor(2);
         }

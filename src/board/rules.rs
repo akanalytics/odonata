@@ -7,8 +7,8 @@ use crate::board::Board;
 use crate::infra::metric::Metrics;
 use crate::movelist::MoveList;
 use crate::mv::Move;
-use crate::search::node::{Timing};
 use crate::piece::Piece;
+use crate::search::node::Timing;
 
 pub struct Rules;
 
@@ -111,7 +111,6 @@ impl Rules {
             Self::castles(b, moves);
         }
         Metrics::profile(t, Timing::TimingMoveGen);
-
     }
 
     pub fn add_moves_en_passant(b: &Board, moves: &mut MoveList) {

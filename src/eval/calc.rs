@@ -1318,7 +1318,6 @@ impl<'a> Calc<'a> {
             //     relative_pins_by_rook += 1;
             // }
 
-
             let our_attacks = our_raw_attacks - (pa & (empty | their_p | bi | ni));
             ro_atts |= our_raw_attacks;
             //| (them & !their_attacks_bb) | (r | q));
@@ -1351,7 +1350,6 @@ impl<'a> Calc<'a> {
             s.accum(c, feat.as_feature(), 1);
         }
         // s.accum(c, RelativePinsByRook.as_feature(), relative_pins_by_rook);
-
 
         let doubled_rooks = ((b.rooks() & us).two_or_more()
             && (b.rooks() & us).first_square().file_index()

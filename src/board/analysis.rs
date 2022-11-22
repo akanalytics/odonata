@@ -93,8 +93,9 @@ impl<'a> Analysis<'a> {
             Piece::Bishop | Piece::Rook | Piece::Queen => self.attacks[sq],
             Piece::Knight => PreCalc::default().knight_attacks(sq),
             Piece::King => PreCalc::default().king_attacks(sq),
-            Piece::Pawn => PreCalc::default()
-                .pawn_attacks_from_sq(self.board.color_of_unchecked(sq), sq),
+            Piece::Pawn => {
+                PreCalc::default().pawn_attacks_from_sq(self.board.color_of_unchecked(sq), sq)
+            }
         }
     }
 

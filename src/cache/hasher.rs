@@ -151,7 +151,7 @@ impl Hasher {
         if hash == 0 {
             hash = self.side;
         }
-        hash 
+        hash
     }
 
     pub fn hash_board(&self, b: &Board) -> Hash {

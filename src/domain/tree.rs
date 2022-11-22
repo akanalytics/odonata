@@ -12,7 +12,6 @@ use crate::search::node::Node;
 use crate::variation::Variation;
 use petgraph::graph::NodeIndex;
 
-
 // copied/inspired by https://crates.io/crates/treeline (License MIT)
 // and
 // https://github.com/mitchmindtree/rose_tree-rs
@@ -30,7 +29,7 @@ impl Tree<TreeNode> {
     fn display_leaves(
         &self,
         f: &mut fmt::Formatter,
-        b: &Board, 
+        b: &Board,
         leaves: &[NodeIndex],
         spaces: Vec<bool>,
         var: &mut Variation,
@@ -53,7 +52,12 @@ impl Tree<TreeNode> {
             }
 
             let node = &self[leaf];
-            write!(f, "{}{}", node.mv, if node.is_best_move { "*" } else { " " })?;
+            write!(
+                f,
+                "{}{}",
+                node.mv,
+                if node.is_best_move { "*" } else { " " }
+            )?;
 
             for _ in spaces.len()..5 {
                 write!(f, "    ")?;
@@ -84,7 +88,6 @@ impl Tree<TreeNode> {
         write!(f, "")
     }
 
-
     // fn variation(&self, leaf: NodeIndex) -> Variation {
     //     let mut vec = Vec::new();
     //     while let Some(parent) = self.parent(leaf) {
@@ -97,14 +100,12 @@ impl Tree<TreeNode> {
     //     var
     // }
 
-
- 
     fn write(&self, f: &mut fmt::Formatter, b: &Board) -> fmt::Result {
         let root = self.root();
         writeln!(f, "{}", self.graph.node_weight(root).unwrap())?;
         let leaves = self.children(root).collect_vec();
         let mut var = Variation::new();
-        self.display_leaves(f, b, &leaves, Vec::new(), &mut var )
+        self.display_leaves(f, b, &leaves, Vec::new(), &mut var)
     }
 }
 
@@ -142,7 +143,9 @@ impl<N> Tree<N> {
     }
 
     fn _parent(&self, child: NodeIndex) -> Option<NodeIndex> {
-        self.graph.neighbors_directed(child, petgraph::Incoming).last()
+        self.graph
+            .neighbors_directed(child, petgraph::Incoming)
+            .last()
     }
 
     fn children(&self, parent: NodeIndex) -> impl Iterator<Item = NodeIndex> + '_ {
@@ -268,7 +271,7 @@ impl SearchTree {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{bits::square::Square, catalog::Catalog, test_log::test, eval::score::Score};
+    use crate::{bits::square::Square, catalog::Catalog, eval::score::Score, test_log::test};
 
     #[test]
     fn test_generic_tree() {

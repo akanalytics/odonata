@@ -128,8 +128,9 @@ mod tests {
     use crate::infra::metric::Metrics;
     use crate::movelist::*;
     use crate::mv::*;
-    use crate::position::*;
     use crate::other::pvtable::PvTable;
+    use crate::piece::*;
+    use crate::position::*;
     use crate::repetition::Repetition;
     use crate::search::aspiration::Aspiration;
     use crate::search::extensions::Extensions;
@@ -147,7 +148,6 @@ mod tests {
     use crate::search::restrictions::Restrictions;
     use crate::search::search_explainer::Explainer;
     use crate::tags::*;
-    use crate::piece::*;
     use crate::variation::*;
     use crate::Algo;
     use std::mem::size_of;
@@ -177,12 +177,12 @@ mod tests {
         assert_eq!(size_of::<Position>(), 208, "Position");
         assert_eq!(size_of::<PreCalc>(), 76808, "PreCalc");
         assert_eq!(size_of::<Hasher>(), 6272, "Hasher");
-        assert_eq!(size_of::<Algo>(), 8304, "Algo");
+        assert_eq!(size_of::<Algo>(), 8312, "Algo");
         assert_eq!(size_of::<Clock>(), 112, "Clock");
         assert_eq!(size_of::<NullMovePruning>(), 32, "NullMovePruning");
         assert_eq!(size_of::<Futility>(), 48, "Futility");
         assert_eq!(size_of::<IterativeDeepening>(), 16, "IterativeDeepening");
-        assert_eq!(size_of::<Eval>(), 3432, "SimpleScorer");
+        assert_eq!(size_of::<Eval>(), 3400, "SimpleScorer");
         assert_eq!(size_of::<Pvs>(), 12, "Pvs");
         assert_eq!(size_of::<Extensions>(), 40, "Extensions");
         assert_eq!(size_of::<Lmr>(), 64, "Lmr");

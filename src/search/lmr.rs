@@ -3,8 +3,8 @@ use crate::bound::NodeType;
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
 use crate::mv::Move;
-use crate::search::node::Node;
 use crate::piece::{MoveType, Ply};
+use crate::search::node::Node;
 use crate::Algo;
 use crate::Piece;
 use serde::{Deserialize, Serialize};
@@ -61,7 +61,7 @@ impl Default for Lmr {
             enabled: true,
             strat: 1,
             table_intercept: 0.6,
-            table_gradient: 0.4, 
+            table_gradient: 0.4,
             table_aspect: 1.2,
             first_move: false,
             fw_node: false,
@@ -70,7 +70,7 @@ impl Default for Lmr {
             beta_numeric: false,
             bad_captures: true,
             pawns: true,
-            max_pawn_rank: 6,  // dont allow promos
+            max_pawn_rank: 6, // dont allow promos
             killers: false,
             in_check: true,
             gives_check: false,
@@ -83,19 +83,22 @@ impl Default for Lmr {
             min_remaining_depth: 1,
             iir: 5.0,
             table: Box::new([[0.0; 64]; 64]),
-
         };
 
         me
     }
 }
 
-
 impl Component for Lmr {
     fn new_game(&mut self) {
         // initialize table
         // formula1 is known as stockfish style: http://www.talkchess.com/forum3/viewtopic.php?t=65273
-        let formula1 = |depth: Ply, mv: usize|  (self.table_intercept + f32::ln(depth as f32) * f32::ln(mv as f32 * self.table_aspect) * self.table_gradient);
+        let formula1 = |depth: Ply, mv: usize| {
+            self.table_intercept
+                + f32::ln(depth as f32)
+                    * f32::ln(mv as f32 * self.table_aspect)
+                    * self.table_gradient
+        };
         let formula2 = |depth: Ply, mv: usize|  if (depth-1)*(mv as i32 - 2) < 80 {  0 } else {1} as f32;
         for depth in 1..64 {
             for mv in 2..64 {
@@ -109,11 +112,6 @@ impl Component for Lmr {
     }
     fn new_position(&mut self) {}
 }
-
-
-
-
-
 
 // from CPW
 //
@@ -163,13 +161,12 @@ impl Algo {
             return 0;
         }
 
-
         if !self.lmr.fw_node && n.is_fw() {
             return 0;
         }
 
         if n.depth <= self.lmr.min_remaining_depth {
-            return 0
+            return 0;
         }
 
         Metrics::incr_node(n, Event::LmrConsider);
@@ -178,8 +175,6 @@ impl Algo {
             Metrics::incr_node(n, Event::LmrDeclineCapture);
             return 0;
         }
-
-
 
         let mut reduce = self.lmr.table[n.depth.min(63) as usize][mv_num.min(63) as usize];
 
@@ -206,7 +201,6 @@ impl Algo {
         // => lmr <= depth - 1 - min_remaining_depth
         let reduce = (reduce as i32).clamp(0, n.depth - 1 - self.lmr.min_remaining_depth);
 
-
         if !self.lmr.pawns && mv.mover_piece() == Piece::Pawn {
             return 0;
         }
@@ -222,9 +216,9 @@ impl Algo {
         if !self.lmr.extensions && ext > 0
             || !self.lmr.in_check && before.is_in_check(before.color_us())
             || !self.lmr.discoverer && before.maybe_gives_discovered_check(mv)
-            || 
+            ||
             // gives check a more precise and costly version of discoverers
-            !self.lmr.gives_check && after.is_in_check(after.color_us()) 
+            !self.lmr.gives_check && after.is_in_check(after.color_us())
         {
             return 0;
         }
@@ -242,10 +236,10 @@ impl Algo {
             3 => Metrics::incr_node(n, Event::LmrD3),
             4 => Metrics::incr_node(n, Event::LmrD4),
             5.. => Metrics::incr_node(n, Event::LmrDN),
-            _ => {},
+            _ => {}
         }
 
-    reduce
+        reduce
     }
 }
 

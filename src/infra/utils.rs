@@ -219,7 +219,6 @@ impl<T: ToString> ToStringOr for Option<T> {
     }
 }
 
-
 pub trait DecimalFormatter {
     fn dp(&self, decimal_places: i32) -> String;
     fn sig_fig(&self, sig_fig: i32) -> String;

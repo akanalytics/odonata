@@ -1,9 +1,9 @@
-use crate::{bits::bitboard::Bitboard, infra::resources::RESOURCE_DIR};
 use crate::bits::castling::CastlingRights;
 use crate::board::Board;
 use crate::globals::constants::*;
 use crate::position::Position;
 use crate::tags::Tag;
+use crate::{bits::bitboard::Bitboard, infra::resources::RESOURCE_DIR};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -461,19 +461,31 @@ rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 id DR.04; sv 1. d4 Nf6 
     }
 
     pub fn bratko_kopec() -> Vec<Position> {
-        let contents = RESOURCE_DIR.get_file("bk.epd").unwrap().contents_utf8().unwrap();
+        let contents = RESOURCE_DIR
+            .get_file("bk.epd")
+            .unwrap()
+            .contents_utf8()
+            .unwrap();
         let positions = Position::parse_many_epd(contents.lines()).unwrap();
         positions
     }
 
     pub fn iq() -> Vec<Position> {
-        let contents = RESOURCE_DIR.get_file("iq.epd").unwrap().contents_utf8().unwrap();
+        let contents = RESOURCE_DIR
+            .get_file("iq.epd")
+            .unwrap()
+            .contents_utf8()
+            .unwrap();
         let positions = Position::parse_many_epd(contents.lines()).unwrap();
         positions
     }
 
     pub fn win_at_chess() -> Vec<Position> {
-        let contents = RESOURCE_DIR.get_file("wac.epd").unwrap().contents_utf8().unwrap();
+        let contents = RESOURCE_DIR
+            .get_file("wac.epd")
+            .unwrap()
+            .contents_utf8()
+            .unwrap();
         let positions = Position::parse_many_epd(contents.lines()).unwrap();
         positions
     }

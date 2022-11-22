@@ -1,5 +1,8 @@
 #[cfg(test)]
-use std::io::Write;
+use std::cell::RefCell;
+
+#[cfg(test)]
+use std::fmt;
 
 #[cfg(test)]
 use perf_event::{events::Hardware, Builder, Counter, Group};
@@ -27,7 +30,7 @@ impl<'a> ProfProfiler<'a> {
 
 #[cfg(any(test, feature = "profiler"))]
 impl<'a> ProfProfiler<'a> {
-    pub fn report(&mut self) -> anyhow::Result<()>{
+    pub fn report(&mut self) -> anyhow::Result<()> {
         fn proc() -> impl Fn(&mut pprof::Frames) {
             move |frames| {
                 // let vec = &frames.frames;
@@ -42,12 +45,12 @@ impl<'a> ProfProfiler<'a> {
         use itertools::Itertools;
         if let Ok(report) = self.guard.report().frames_post_processor(proc()).build() {
             use std::fs::File;
-            let file = File::create(format!("{name}_flamegraph_1.svg", name = self.name) )?;
+            let file = File::create(format!("{name}_flamegraph_1.svg", name = self.name))?;
             let mut options = pprof::flamegraph::Options::default();
             options.flame_chart = false;
             report.flamegraph_with_options(file, &mut options)?;
 
-            let file = File::create(format!("{name}_flamegraph_2.svg", name = self.name) )?;
+            let file = File::create(format!("{name}_flamegraph_2.svg", name = self.name))?;
             let mut options = pprof::flamegraph::Options::default();
             options.reverse_stack_order = true;
             report.flamegraph_with_options(file, &mut options)?;
@@ -56,10 +59,9 @@ impl<'a> ProfProfiler<'a> {
     }
 }
 
-
 #[cfg(test)]
 pub struct PerfProfiler {
-    group: Group,
+    group: RefCell<Group>,
     name: String,
     iters: u64,
     ins: Counter,
@@ -108,7 +110,7 @@ impl PerfProfiler {
         // .unwrap();
         PerfProfiler {
             name,
-            group,
+            group: RefCell::new(group),
             ins,
             cycles,
             branches,
@@ -128,33 +130,35 @@ impl PerfProfiler {
 
     #[inline]
     pub fn start(&mut self) {
-        self.group.enable().unwrap();
+        self.group.borrow_mut().enable().unwrap();
     }
 
     #[inline]
     pub fn stop(&mut self) {
-        self.group.disable().unwrap();
+        self.group.borrow_mut().disable().unwrap();
         self.iters += 1
     }
 
     pub fn cycles(&mut self) -> u64 {
-        self.group.read().unwrap()[&self.cycles]
+        self.group.borrow_mut().read().unwrap()[&self.cycles]
     }
 
     pub fn instructions(&mut self) -> u64 {
-        self.group.read().unwrap()[&self.ins]
+        self.group.borrow_mut().read().unwrap()[&self.ins]
     }
 
     pub fn set_iters(&mut self, iters: u64) {
         self.iters = iters as u64
     }
+}
 
-    #[inline]
-    pub fn write<W: Write>(&mut self, mut w: W) -> anyhow::Result<()> {
-        let counts = self.group.read().unwrap();
-        self.iters = std::cmp::max(1, self.iters);
+#[cfg(test)]
+impl fmt::Display for PerfProfiler {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let iters = std::cmp::max(1, self.iters);
+        let counts = self.group.borrow_mut().read().unwrap();
         writeln!(
-            w,
+            f,
             "PROFH: {:<25}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}",
             "name",
             "iters",
@@ -167,18 +171,18 @@ impl PerfProfiler {
             "cycles-per-ins",
             "cache-hit-%",
         )?;
-        writeln!(w,
+        writeln!(f,
             "PROFD: {:<25}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15.2}\t{:>15.2}\n",
             self.name,
             self.iters,
             // Formatting::u128((0u32).into()),
-            (counts[&self.cycles] / self.iters).human(),
-            (counts[&self.ins] / self.iters).human(),
-            (counts[&self.branches] / self.iters).human(),
-            (counts[&self.branch_misses] / self.iters).human(),
-            (counts[&self.cache_misses] / self.iters).human(),
+            (counts[&self.cycles] / iters).human(),
+            (counts[&self.ins] / iters).human(),
+            (counts[&self.branches] / iters).human(),
+            (counts[&self.branch_misses] / iters).human(),
+            (counts[&self.cache_misses] / iters).human(),
             (0u32).human(),
-            // (counts[&self.cache_refs] / self.iters).human()),
+            // (counts[&self.cache_refs] / iters).human()),
             // (counts[&self.cycles] as f64 / counts[&self.ins] as f64),
             (0u32).human(),
             (0u32).human(),
@@ -195,7 +199,7 @@ mod tests {
     impl Drop for PerfProfiler {
         fn drop(&mut self) {
             // if log::log_enabled!(log::Level::Trace) {
-            let _ = self.write(stdout());
+            println!("{}", self);
             // }
         }
     }
@@ -283,7 +287,6 @@ mod tests {
     }
 
     use std::cell::Cell;
-    use std::io::stdout;
     use thread_local::ThreadLocal;
 
     use super::PerfProfiler;

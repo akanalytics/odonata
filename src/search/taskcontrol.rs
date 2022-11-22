@@ -1,14 +1,13 @@
 use crate::infra::component::{Component, State};
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::sync::atomic::{self, AtomicBool};
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::fmt;
 
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct TaskControl<TTaskProgress> {
-
     #[serde(skip)]
     pub progress_callback: Option<Arc<Mutex<dyn Fn(&TTaskProgress) + Send + Sync>>>,
 
@@ -52,10 +51,8 @@ where
         match s {
             NewGame => {}
             SetPosition => {}
-            StartSearch => {
-            }
-            EndSearch => {
-            }
+            StartSearch => {}
+            EndSearch => {}
             StartDepthIteration(_) => {}
             Shutdown => {}
         }
@@ -67,7 +64,6 @@ impl<TTaskProgress> TaskControl<TTaskProgress> {
     pub fn cancel(&mut self) {
         self.kill_switch.store(true, atomic::Ordering::SeqCst);
     }
-
 
     pub fn set_running(&mut self) {
         // self.has_been_cancelled = false;

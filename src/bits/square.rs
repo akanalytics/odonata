@@ -151,7 +151,6 @@ impl Square {
         (b'1' + y as u8) as char
     }
 
-
     pub fn uci(self) -> &'static str {
         // if self.is_null() {
         //     "-".to_string()
@@ -187,7 +186,6 @@ impl Square {
     pub const fn kq_side(self) -> Bitboard {
         self.as_bb().flood_kq_sides()
     }
-
 
     #[inline]
     pub fn diag(self) -> Bitboard {

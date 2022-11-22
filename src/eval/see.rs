@@ -1,5 +1,5 @@
-use crate::board::BoardCalcs;
 use crate::board::Board;
+use crate::board::BoardCalcs;
 use crate::eval::material_balance::MaterialBalance;
 use crate::infra::component::Component;
 use crate::mv::Move;
@@ -191,7 +191,7 @@ mod tests {
         e2.see.promo = false;
         let mv = b.parse_san_move("Pxb8=Q")?;
         let see = e2.see.eval_move_see(&b, mv);
-        assert_eq!(see, Piece::Rook.centipawns()); 
+        assert_eq!(see, Piece::Rook.centipawns());
 
         //
         // without promos, we just appear to be a rook up as promo'd

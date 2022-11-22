@@ -227,8 +227,6 @@ impl Board {
 }
 
 impl Board {
-
-
     #[inline]
     pub fn repetition_count(&self) -> Repeats {
         self.repetition_count.get()

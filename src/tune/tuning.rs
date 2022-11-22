@@ -1,19 +1,19 @@
 use std::io::Write;
 
-use crate::Color;
 use crate::eval::calc::Calc;
 use crate::eval::eval::Attr;
 use crate::eval::eval::Feature;
-use crate::infra::utils::{win_probability_from_cp_and_k, sigmoid};
 use crate::eval::scorer::ExplainScore;
 use crate::eval::weight::Weight;
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
+use crate::infra::utils::{sigmoid, win_probability_from_cp_and_k};
 use crate::other::outcome::Outcome;
 use crate::position::Position;
 use crate::search::engine::ThreadedSearch;
 use crate::search::node::Timing;
 use crate::tags::Tag;
+use crate::Color;
 use anyhow::Result;
 use bitflags::_core::sync::atomic::AtomicU32;
 use bitflags::_core::sync::atomic::Ordering;
@@ -465,8 +465,7 @@ mod tests {
         for n in (-120..120).step_by(1) {
             let value = n;
             eng.algo.eval.mb.enabled = false;
-            eng
-                .algo
+            eng.algo
                 .eval
                 .set_weight(Attr::PawnIsolated.into(), Weight::from_i32(0, value));
             iters += 1;
@@ -510,7 +509,6 @@ mod tests {
 
     #[test]
     fn bench_mse() {
-
         let mut eng1 = ThreadedSearch::new();
         eng1.tuner.multi_threading_min_positions = 3_000_000;
         eng1.tuner.method = Method::New;

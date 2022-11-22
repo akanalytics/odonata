@@ -159,10 +159,7 @@ impl Material {
 
     #[inline]
     pub fn total_count(&self) -> i32 {
-        Piece::ALL
-            .iter()
-            .map(|&p| self.count_piece(p))
-            .sum::<i32>()
+        Piece::ALL.iter().map(|&p| self.count_piece(p)).sum::<i32>()
     }
 
     pub fn total_count2(&self) -> i32 {

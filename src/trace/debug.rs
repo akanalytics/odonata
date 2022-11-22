@@ -1,8 +1,8 @@
 use crate::board::Board;
 use crate::eval::score::Score;
 use crate::mv::Move;
-use crate::search::node::Node;
 use crate::piece::{Color, Ply};
+use crate::search::node::Node;
 use std::fmt;
 
 #[derive(Clone, Debug)]

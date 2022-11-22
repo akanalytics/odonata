@@ -163,7 +163,10 @@ impl Algo {
             Metrics::incr_node(&n, Event::FutilityDeclineInCheck);
             return false;
         }
-        if self.futility.min_pieces > 0 && n.depth >= self.futility.min_pieces_depth && b.occupied().popcount() < self.futility.min_pieces {
+        if self.futility.min_pieces > 0
+            && n.depth >= self.futility.min_pieces_depth
+            && b.occupied().popcount() < self.futility.min_pieces
+        {
             Metrics::incr_node(&n, Event::FutilityDeclineMinPieces);
             return false;
         }

@@ -1,3 +1,3 @@
 pub mod tuning;
 
-pub use crate::tune::{tuning::Tuning};
+pub use crate::tune::tuning::Tuning;

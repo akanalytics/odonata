@@ -213,7 +213,7 @@ impl Position {
             if comment && !multiline {
                 continue;
             }
-            if !s.is_empty()  {
+            if !s.is_empty() {
                 vec.push(
                     Self::parse_epd(&s.replace('\n', " "))
                         .with_context(|| format!("in epd {}", s))?,
@@ -275,7 +275,9 @@ impl Position {
 
     /// board after applying SV
     pub fn board_after(&self) -> Board {
-        self.board().make_moves_old(self.supplied_variation()).clone()
+        self.board()
+            .make_moves_old(self.supplied_variation())
+            .clone()
     }
 
     pub fn board_mut(&mut self) -> &mut Board {

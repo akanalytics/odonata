@@ -8,9 +8,12 @@ use tabled::{
     Alignment, Modify, Padding, Style,
 };
 
-use crate::{other::outcome::Outcome, phaser::Phase, infra::utils::Formatting, Bitboard, Color, bits::precalc::Pawns, board::Board};
+use crate::{
+    bits::precalc::Pawns, board::Board, infra::utils::Formatting, other::outcome::Outcome,
+    phaser::Phase, Bitboard, Color,
+};
 
-use super::{eval::Feature, eval::{WeightsVector}, weight::Weight};
+use super::{eval::Feature, eval::WeightsVector, weight::Weight};
 
 pub trait ScorerBase {
     fn accumulate(&mut self, i: Feature, w_value: i32, b_value: i32);
@@ -73,7 +76,7 @@ impl<'a> ScorerBase for TotalScore<'a> {
 
     #[inline]
     fn apply_scaling(&mut self, scaling: f32) {
-        self.draw_scaling = scaling;   
+        self.draw_scaling = scaling;
     }
 }
 
@@ -141,7 +144,7 @@ impl ScorerBase for ExplainScore {
 
     #[inline]
     fn apply_scaling(&mut self, scaling: f32) {
-        self.draw_scaling = scaling;   
+        self.draw_scaling = scaling;
     }
 }
 
@@ -154,10 +157,8 @@ impl ExplainScore {
     }
 
     // (index, net feature)
-    pub fn values(&self) -> impl Iterator<Item=(Feature, usize,i32)> + '_ {
-        self.vec
-            .iter()
-            .map(|e| (e.0, e.3 as usize, (e.1 - e.2)) )
+    pub fn values(&self) -> impl Iterator<Item = (Feature, usize, i32)> + '_ {
+        self.vec.iter().map(|e| (e.0, e.3 as usize, (e.1 - e.2)))
     }
 
     pub fn value(&self, i: Feature) -> i32 {
@@ -196,14 +197,15 @@ impl ExplainScore {
     }
 
     pub fn total(&self) -> Weight {
-        self.draw_scaling * match self.weights {
-            None => self.vec.iter().map(|e| (e.1 - e.2)).sum::<i32>() * Weight::new(1.0, 1.0),
-            Some(ref wv) => self
-                .vec
-                .iter()
-                .map(|e| (e.1 - e.2) * wv.weights[e.0.index()])
-                .sum(),
-        } 
+        self.draw_scaling
+            * match self.weights {
+                None => self.vec.iter().map(|e| (e.1 - e.2)).sum::<i32>() * Weight::new(1.0, 1.0),
+                Some(ref wv) => self
+                    .vec
+                    .iter()
+                    .map(|e| (e.1 - e.2) * wv.weights[e.0.index()])
+                    .sum(),
+            }
     }
 
     pub fn write_csv<'a, W: Write>(
@@ -353,8 +355,6 @@ impl Display for ExplainScore {
             let b = Board::parse_fen(&self.fen).unwrap();
             let pawns = Pawns::new(b.pawns() & b.white(), b.pawns() & b.black());
             writeln!(f, "{pawns}")?;
-
-
         }
 
         Ok(())

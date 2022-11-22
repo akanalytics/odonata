@@ -4,13 +4,11 @@ use crate::{domain::info::BareMoveVariation, mv::BareMove};
 
 // pub use test_log::test;
 
-
 pub trait Testing {
     fn cp(&self) -> Score;
     fn mv(&self) -> BareMove;
     fn var(&self) -> BareMoveVariation;
 }
-
 
 impl From<&str> for BareMove {
     fn from(s: &str) -> Self {
@@ -23,7 +21,6 @@ impl From<&str> for BareMoveVariation {
         s.var()
     }
 }
-
 
 impl Testing for &str {
     fn cp(&self) -> Score {
@@ -41,9 +38,9 @@ impl Testing for &str {
 
 #[cfg(test)]
 mod tests {
-    use test_log::test;
-    use crate::bits::Square;
     use super::*;
+    use crate::bits::Square;
+    use test_log::test;
 
     #[test]
     fn test_testing() {

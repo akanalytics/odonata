@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::iter;
 
-use crate::phaser::Phase;
 use crate::infra::utils::Formatting;
+use crate::phaser::Phase;
 use serde::{Deserializer, Serializer};
 
 //

@@ -1,7 +1,7 @@
-use crate::PreCalc;
 use crate::bits::bitboard::Bitboard;
 use crate::bits::square::Square;
 use crate::piece::Color;
+use crate::PreCalc;
 use anyhow::{bail, Result};
 use std::fmt;
 use std::iter::*;
@@ -141,7 +141,6 @@ impl CastlingRights {
         Bitboard::A1
             .or(Bitboard::A8.or(Bitboard::H1.or(Bitboard::H8.or(Bitboard::E1.or(Bitboard::E8)))))
     }
-
 
     #[inline]
     pub fn is_castling(from: Square, to: Square) -> bool {

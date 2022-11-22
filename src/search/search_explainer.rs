@@ -13,13 +13,13 @@ use crate::variation::Variation;
 use crate::infra::component::{Component, State};
 // use crate::{debug, logger::LogInit};
 use super::node::{Event, Node};
-use crate::domain::{SearchTree, TreeNode, search_results::SearchResultsWithExplanation};
+use crate::domain::{search_results::SearchResultsWithExplanation, SearchTree, TreeNode};
 use crate::piece::MoveType;
 use anyhow::{Context, Result};
 use fmt::Debug;
 use serde::{Deserialize, Serialize};
-use std::{fmt};
-use std::fs::{File};
+use std::fmt;
+use std::fs::File;
 use std::io::{BufWriter, Write};
 
 // static SEARCH_COUNTER: AtomicU32 = AtomicU32::new(0);
@@ -34,7 +34,6 @@ pub struct Explainer {
     pub export_games: bool,
     pub log_dir: String,
     pub debug: bool,
-
 
     min_depth: Ply,
     max_additional_ply: Ply,
@@ -98,7 +97,7 @@ impl Default for Explainer {
             show_metrics_on_exit: false,
             export_games: false,
             log_dir: String::new(),
-            debug: false,            
+            debug: false,
             board: Default::default(),
             is_explaining: false,
             min_depth: 0,
@@ -137,11 +136,9 @@ impl Explainer {
 
     pub fn show_pv_eval(&self, results: &SearchResultsWithExplanation) {
         if self.show_pv_eval {
-        println!("Search results\n{results}");
+            println!("Search results\n{results}");
         }
-    }    
-
-
+    }
 
     fn write_explanation(&mut self) -> Result<()> {
         // if its been "started" write a file
@@ -218,7 +215,7 @@ impl Explainer {
         // OR
         // b. see if we are explaining the whole tree
         if self.why_not.is_none()
-            && 
+            &&
             // current variation is an extension of one of the tracked variations
             // OR 
             // current variation is the start of a tracked variation
@@ -229,7 +226,7 @@ impl Explainer {
                 .any(|v| {
                     var.starts_with(v) && var.len() <= v.len() + self.max_additional_ply as usize
                 })
-    || 
+            ||
                 self
                 .vars
                 .iter()

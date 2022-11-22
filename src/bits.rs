@@ -7,4 +7,6 @@ pub mod castling;
 pub mod precalc;
 pub mod square;
 
-pub use crate::bits::{bitboard::Bitboard, square::Square, precalc::PreCalc, castling::CastlingRights};
+pub use crate::bits::{
+    bitboard::Bitboard, castling::CastlingRights, precalc::PreCalc, square::Square,
+};

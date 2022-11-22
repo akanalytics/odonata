@@ -194,7 +194,11 @@ impl Component for MaterialBalance {
 impl fmt::Display for MaterialBalance {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "enabled          : {}", self.enabled)?;
-        writeln!(f, "piece_weights    : {}", toml::to_string(&self.piece_weights).unwrap())?;
+        writeln!(
+            f,
+            "piece_weights    : {}",
+            toml::to_string(&self.piece_weights).unwrap()
+        )?;
         writeln!(f, "filename         : {}", self.filename)?;
         writeln!(f, "consistency_rep  : {}", self.consistency_report)?;
         writeln!(f, "consistency_adj  : {}", self.consistency_adjust)?;
@@ -436,7 +440,7 @@ impl MaterialBalance {
         });
         for (mat, wdl) in sorted_raw_stats.iter() {
             let pawns = mat.count(Color::White, Piece::Pawn) + mat.count(Color::Black, Piece::Pawn);
-            if wdl.0 + wdl.1 + wdl.2  >= self.min_games && pawns <= self.max_pawns {
+            if wdl.0 + wdl.1 + wdl.2 >= self.min_games && pawns <= self.max_pawns {
                 // let mut cp;
                 // if wdl.w + wdl.d <= 5 {
                 //     // certain losing position

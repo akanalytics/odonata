@@ -57,5 +57,4 @@ impl Console {
         println!("{:<10} display (this) help", "help");
         println!();
     }
-
 }

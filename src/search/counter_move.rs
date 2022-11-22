@@ -6,7 +6,7 @@ use crate::Bitboard;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-use super::node::{Node, Counter};
+use super::node::{Counter, Node};
 
 #[derive(Clone, Copy, Debug, Default)]
 struct MoveTally {
@@ -113,7 +113,12 @@ impl CounterMove {
     /// The color is the player of the move being stored
     #[inline]
     pub fn store(&mut self, c: Color, parent: Move, mv: Move, n: &Node) {
-        if !self.enabled || mv.is_capture() || mv.is_castle() || n.depth < self.min_depth || n.ply > self.max_ply {
+        if !self.enabled
+            || mv.is_capture()
+            || mv.is_castle()
+            || n.depth < self.min_depth
+            || n.ply > self.max_ply
+        {
             return;
         }
 

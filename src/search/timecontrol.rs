@@ -240,7 +240,11 @@ impl TimeControl {
                 Some((s, i)) => {
                     secs = s.parse::<f32>().context(s.to_string())?;
                     inc = i.parse::<f32>().context(i.to_string())?;
-                    return Ok(TimeControl::FischerMulti { moves: 0, secs, inc });
+                    return Ok(TimeControl::FischerMulti {
+                        moves: 0,
+                        secs,
+                        inc,
+                    });
                 }
                 _ => anyhow::bail!("failed to parse time control '{s}' as moves+inc"),
             }

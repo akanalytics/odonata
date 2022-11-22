@@ -118,11 +118,10 @@ impl fmt::Display for PvTable {
 mod tests {
 
     use super::*;
-    use crate::{catalog::Catalog};
+    use crate::catalog::Catalog;
 
     #[test]
     fn test_pv_table() {
-
         let mut pvc = PvTable::default();
         let board = Catalog::starting_position().board().clone();
         let a2a3 = board.parse_uci_move("a2a3").unwrap();

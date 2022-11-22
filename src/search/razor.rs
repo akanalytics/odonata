@@ -129,7 +129,10 @@ impl Razor {
             Metrics::incr_node(n, Event::RazorDeclineMinOpponents);
             return false;
         }
-        if self.min_pieces > 0 && n.depth >= self.min_pieces_depth && bd.occupied().popcount() < self.min_pieces {
+        if self.min_pieces > 0
+            && n.depth >= self.min_pieces_depth
+            && bd.occupied().popcount() < self.min_pieces
+        {
             Metrics::incr_node(n, Event::RazorDeclineMinPieces);
             return false;
         }

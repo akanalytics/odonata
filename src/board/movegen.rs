@@ -70,7 +70,7 @@ impl Board {
             }
         }
 
-        if m.from().is_in(self.line_pieces() )
+        if m.from().is_in(self.line_pieces())
             && (PreCalc::default().strictly_between(m.from(), m.to()) & self.occupied()).any()
         {
             return false;
@@ -83,20 +83,14 @@ impl Board {
         // check piece move
         let mover = self.piece_unchecked(m.from());
         let precalc = PreCalc::default();
-        let destinations = precalc.attacks(
-            self.color_us(),
-            mover,
-            self.us(),
-            self.them(),
-            m.from(),
-        );
+        let destinations =
+            precalc.attacks(self.color_us(), mover, self.us(), self.them(), m.from());
 
         if !m.to().is_in(destinations | self.en_passant()) && !m.is_castle(self) {
             return false;
         }
         true
     }
-
 
     pub fn is_legal_variation(&self, moves: &[Move]) -> bool {
         if let Some(&m) = moves.first() {

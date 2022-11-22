@@ -11,8 +11,6 @@ pub struct ClassicalBitboard {
     knight_moves: [Bitboard; 64],
 }
 
-
-
 #[dynamic(lazy)]
 static STATIC_INSTANCE: Box<ClassicalBitboard> = ClassicalBitboard::new();
 
@@ -91,14 +89,15 @@ impl SlidingPieceAttacks for ClassicalBitboard {
 mod tests {
     use super::*;
     use crate::globals::constants::*;
-    
+
     #[test]
     fn test_size() {
-        assert_eq!(std::mem::size_of::<ClassicalBitboard>(), 5120, "ClassicalBitboard");
+        assert_eq!(
+            std::mem::size_of::<ClassicalBitboard>(),
+            5120,
+            "ClassicalBitboard"
+        );
     }
-    
-
-
 
     #[test]
     fn test_rays() {

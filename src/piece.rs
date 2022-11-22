@@ -326,7 +326,6 @@ impl Piece {
     }
 }
 
-
 #[enumflags2::bitflags]
 #[repr(u32)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq, EnumCount, Display, Serialize, Deserialize)]
@@ -490,7 +489,6 @@ mod tests {
             assert_eq!(Piece::from_index(i).index(), i);
         }
     }
-
 
     #[test]
     fn test_move_type() -> Result<(), String> {

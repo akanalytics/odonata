@@ -164,7 +164,10 @@ impl Algo {
             {
                 margin = 2 * margin;
             }
-            if bd.occupied().popcount() >= self.qs.delta_prune_min_pieces && pat.is_numeric() && pat + margin <= n.alpha {
+            if bd.occupied().popcount() >= self.qs.delta_prune_min_pieces
+                && pat.is_numeric()
+                && pat + margin <= n.alpha
+            {
                 Metrics::incr_node(&n, Event::QsDeltaPruneNode);
                 return (pat + margin).clamp_score();
             }
@@ -175,11 +178,8 @@ impl Algo {
         let moves = bd.legal_moves();
         let capture_only = |mv: &&Move| in_check || mv.is_capture();
         let incl_promo = |mv: &&Move| in_check || mv.is_capture() || mv.is_promo();
-        let some_promos = |mv: &&Move| {
-            in_check
-                || mv.is_capture()
-                || mv.promo() == self.qs.promo_piece
-        };
+        let some_promos =
+            |mv: &&Move| in_check || mv.is_capture() || mv.promo() == self.qs.promo_piece;
 
         Metrics::incr_node(&n, Event::NodeQsInterior);
 
@@ -201,11 +201,7 @@ impl Algo {
                 } else {
                     0
                 }
-                + if hm == *m {
-                    10000
-                } else {
-                    0
-                }
+                + if hm == *m { 10000 } else { 0 }
         });
         moves.reverse();
         Metrics::profile(t, Timing::TimingQsMoveSort);

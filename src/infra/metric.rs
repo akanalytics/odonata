@@ -1,8 +1,8 @@
 use crate::eval::endgame::EndGame;
+use crate::infra::utils::{Displayable, Formatting};
 use crate::mv::Move;
 use crate::piece::{MoveType, Ply};
 use crate::search::node::{Counter, Histograms, Node, Timing};
-use crate::infra::utils::{Formatting, Displayable};
 use hdrhist::HDRHist;
 use itertools::Itertools;
 use static_init::dynamic;
@@ -18,9 +18,6 @@ use tabled::{Alignment, Modify, Style, Table};
 
 pub use crate::search::node::Event;
 use strum::EnumMessage;
-
-
-
 
 #[derive(Clone)]
 struct Histogram(HDRHist);
@@ -166,8 +163,6 @@ impl Default for Metrics {
     }
 }
 
-
-
 impl Metrics {
     fn new() -> Self {
         Self::default()
@@ -204,8 +199,6 @@ impl Metrics {
             &*METRICS_LAST_ITER.read(),
         )
     }
-
-
 
     pub fn write_as_table(&self, f: &mut fmt::Formatter) -> fmt::Result {
         Self::write_profilers_as_table(f, &self.profilers)?;
@@ -433,8 +426,11 @@ impl fmt::Display for Metrics {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let style = Style::markdown().bottom('-');
 
-        
-        writeln!(f, "{d}", d = Displayable(|f| Self::write_counters_as_table(f, &self.counters)))?;
+        writeln!(
+            f,
+            "{d}",
+            d = Displayable(|f| Self::write_counters_as_table(f, &self.counters))
+        )?;
 
         //
         // Endgame
@@ -491,7 +487,11 @@ impl fmt::Display for Metrics {
         t.fmt(f)?;
         writeln!(f)?;
 
-        writeln!(f, "{d}", d = Displayable(|f| Self::write_profilers_as_table(f, &self.profilers)))?;
+        writeln!(
+            f,
+            "{d}",
+            d = Displayable(|f| Self::write_profilers_as_table(f, &self.profilers))
+        )?;
 
         //
         // ply/depth tables

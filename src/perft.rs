@@ -1,4 +1,3 @@
-
 use crate::board::Board;
 use crate::movelist::MoveList;
 use crate::mv::Move;
@@ -15,9 +14,8 @@ pub struct Perft {
     pub checkmates: u64,
 }
 
-
 impl Perft {
-    pub fn perft_fn(board: &mut Board, depth: u32, f: &mut dyn FnMut(&Board, Move) ) {
+    pub fn perft_fn(board: &mut Board, depth: u32, f: &mut dyn FnMut(&Board, Move)) {
         if depth == 0 {
             return;
         }
@@ -31,7 +29,6 @@ impl Perft {
             }
         }
     }
-
 
     pub fn perft(board: &mut Board, depth: u32) -> u64 {
         if depth == 0 {
@@ -147,8 +144,8 @@ mod tests {
                 if depth <= 4 {
                     let now = Instant::now();
                     let mut count = 0;
-                    let mut func = |_:&Board,_: Move| *&mut count += 1;
-                    Perft::perft_fn(&mut board, depth as u32, &mut func );
+                    let mut func = |_: &Board, _: Move| *&mut count += 1;
+                    Perft::perft_fn(&mut board, depth as u32, &mut func);
                     println!(
                         "perft({depth})={count} in {time} millis (expected {expected})",
                         depth = depth,

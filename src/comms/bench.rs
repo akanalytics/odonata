@@ -8,12 +8,10 @@ use crate::tags::Tag;
 // use env_logger;
 use crate::infra::utils::Formatting;
 // use crate::globals::counts;
-use std::time::{Duration, Instant};
 use itertools::Itertools;
+use std::time::{Duration, Instant};
 
 pub struct Bench;
-
-
 
 impl Bench {
     pub fn profile_me() {
@@ -109,7 +107,14 @@ impl Bench {
             engine.search_sync();
             let elapsed = t.elapsed();
             let bm = &engine.algo.results.best_move().unwrap_or_default();
-            let correct = if pos.bm().ok().unwrap().iter().map(Move::to_inner).contains(bm) {
+            let correct = if pos
+                .bm()
+                .ok()
+                .unwrap()
+                .iter()
+                .map(Move::to_inner)
+                .contains(bm)
+            {
                 score += 1;
                 '1'
             } else {
@@ -160,16 +165,17 @@ impl Bench {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{infra::{profiler::PerfProfiler, black_box}, domain::engine::Engine};
+    use crate::{
+        domain::engine::Engine,
+        infra::{black_box, profiler::PerfProfiler},
+    };
     use test_log::test;
 
     #[test]
     fn bench_bk() {
-        let mut total_nodes= 0;
+        let mut total_nodes = 0;
         let mut prof = PerfProfiler::new("bench_bratko".into());
-        prof.benchmark(
-            || total_nodes += Bench::search(TimeControl::NodeCount(100000), None)
-        );
+        prof.benchmark(|| total_nodes += Bench::search(TimeControl::NodeCount(100000), None));
         prof.set_iters((total_nodes / 1000) as u64);
     }
 
@@ -180,12 +186,6 @@ mod tests {
         let mut eng = eng.algo;
         let tc = TimeControl::Depth(5);
         let mut prof = PerfProfiler::new("bench_search".into());
-        let _ = black_box(prof.benchmark(
-            || { eng.search(pos, tc) }
-        ));
+        let _ = black_box(prof.benchmark(|| eng.search(pos, tc)));
     }
-
-
-
-
 }

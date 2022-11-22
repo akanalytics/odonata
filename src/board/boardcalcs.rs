@@ -41,7 +41,6 @@ impl BoardCalcs {
         (pinned, discoverers)
     }
 
-
     /// all attacks
     #[inline]
     pub fn all_attacks_on(board: &Board, us: Color, occ: Bitboard) -> Bitboard {
@@ -193,9 +192,11 @@ mod tests {
     fn test_discovered_check() {
         let positions = Catalog::discovered_check();
         for pos in positions {
-            let discoverers = BoardCalcs::pinned_and_discoverers(pos.board(), pos.board().color_us()).1;
+            let discoverers =
+                BoardCalcs::pinned_and_discoverers(pos.board(), pos.board().color_us()).1;
             assert_eq!(discoverers, pos.sq().unwrap(), "{}", pos.board());
-            let discoverers = BoardCalcs::pinned_and_discoverers(pos.board(), pos.board().color_us()).1;
+            let discoverers =
+                BoardCalcs::pinned_and_discoverers(pos.board(), pos.board().color_us()).1;
             assert_eq!(discoverers, pos.sq().unwrap(), "{}", pos.board());
         }
     }

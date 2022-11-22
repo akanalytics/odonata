@@ -6,11 +6,11 @@ pub mod uci_server;
 use std::backtrace::Backtrace;
 use std::panic;
 
-use crate::infra::utils::ToStringOr;
-use crate::{comms::bench::Bench, trace::logger::LoggingSystem};
 use crate::comms::uci_server::UciServer;
+use crate::infra::utils::ToStringOr;
 use crate::infra::version::Version;
 use crate::search::timecontrol::TimeControl;
+use crate::{comms::bench::Bench, trace::logger::LoggingSystem};
 use clap::{Arg, Command};
 
 pub fn main() -> anyhow::Result<()> {
@@ -81,7 +81,6 @@ pub fn main() -> anyhow::Result<()> {
                 .takes_value(true),
         )
         .get_matches();
-
 
     LoggingSystem::init()?;
 

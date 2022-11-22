@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Sub;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, };
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 #[derive(Default, Debug)]
@@ -57,7 +57,6 @@ pub struct Clock {
 
     // #[serde(skip)]
     // profiler: RefCell<Profiler>,
-
     #[serde(skip)]
     thread_index: u32,
 
@@ -102,7 +101,7 @@ impl Component for Clock {
             NewGame => self.new_game(),
             SetPosition => self.new_position(),
             StartSearch => *self = Self::default(),
-            EndSearch => {},
+            EndSearch => {}
             StartDepthIteration(_) => self.new_iter(),
             Shutdown => {}
         }

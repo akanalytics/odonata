@@ -169,7 +169,7 @@ impl Score {
         }
     }
 
-    pub fn in_window(&self, lower: Score, upper: Score) -> bool{
+    pub fn in_window(&self, lower: Score, upper: Score) -> bool {
         *self >= lower && *self <= upper
     }
 

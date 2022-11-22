@@ -4,7 +4,7 @@ use crate::domain::SearchResults;
 use crate::infra::component::{Component, State, FEATURE};
 use crate::infra::metric::Metrics;
 use crate::infra::resources::RESOURCE_DIR;
-use crate::infra::utils::{Displayable, Formatting, DurationFormatter};
+use crate::infra::utils::{Displayable, DurationFormatter, Formatting};
 use crate::position::Position;
 use crate::search::algo::Algo;
 use crate::search::timecontrol::TimeControl;
@@ -67,7 +67,7 @@ impl Engine for ThreadedSearch {
         self.algo.name() + " (mt)"
     }
 
-    fn set_name(&mut self, name: String){
+    fn set_name(&mut self, name: String) {
         self.algo.set_name(name);
     }
 
@@ -78,7 +78,8 @@ impl Engine for ThreadedSearch {
     fn search(&mut self, pos: Position, tc: TimeControl) -> anyhow::Result<SearchResults> {
         debug!(target: "eng","-> search on {n}", n = self.name());
         debug!(target: "eng", "-> search on {b} {tc}", b = pos.board_after());
-        self.algo.controller
+        self.algo
+            .controller
             .register_callback(|i| debug!(target: "eng", "<- info {i}"));
 
         self.algo.set_timing_method(tc);
@@ -88,10 +89,10 @@ impl Engine for ThreadedSearch {
         Ok(self.algo.results.clone())
     }
 
-    fn options(&self) -> IndexMap<String,String> {
+    fn options(&self) -> IndexMap<String, String> {
         self.algo.options()
     }
-    
+
     fn set_option(&mut self, name: &str, value: &str) -> anyhow::Result<()> {
         debug!(target: "eng", "-> set option '{name}' = '{value}'");
         if self.algo.options().contains_key(name) {
@@ -294,9 +295,9 @@ impl ThreadedSearch {
             let cl = move || {
                 // let result = panic::catch_unwind(|| {
                 //     Stat::set_this_thread_index(i as usize);
-                    algo.run_search();
-                    Metrics::flush_thread_local();
-                    Ok(algo)
+                algo.run_search();
+                Metrics::flush_thread_local();
+                Ok(algo)
                 // });
                 // if let Err(ref error) = result {
                 //     if let Some(e) = error.downcast_ref::<anyhow::Error>() {

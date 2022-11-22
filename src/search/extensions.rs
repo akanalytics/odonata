@@ -159,10 +159,10 @@ impl fmt::Display for Extensions {
 mod tests {
     use super::*;
     use crate::catalog::Catalog;
+    use crate::infra::utils::*;
     use crate::search::engine::*;
     use crate::search::timecontrol::*;
     use crate::tags::*;
-    use crate::infra::utils::*;
 
     // use crate::search::timecontrol::*;
 

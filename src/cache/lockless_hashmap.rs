@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::infra::utils::DecimalFormatter;
 use crate::piece::Hash;
-use std::cell::{Cell};
+use std::cell::Cell;
 use std::fmt::Debug;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::{fmt, mem};

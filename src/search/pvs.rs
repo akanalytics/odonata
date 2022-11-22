@@ -1,11 +1,10 @@
 use crate::bound::NodeType;
 use crate::infra::component::Component;
-use crate::search::node::Node;
 use crate::piece::Ply;
+use crate::search::node::Node;
 use crate::{board::Board, Algo};
 use serde::{Deserialize, Serialize};
 use std::fmt;
-
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -28,7 +27,7 @@ impl Default for Pvs {
         Pvs {
             enabled: true,
             min_depth: 2,
-            min_ply: 0, 
+            min_ply: 0,
         }
     }
 }
@@ -77,10 +76,10 @@ impl fmt::Display for Pvs {
 mod tests {
     use super::*;
     use crate::catalog::Catalog;
+    use crate::infra::utils::*;
     use crate::search::engine::*;
     use crate::search::timecontrol::*;
     use crate::tags::*;
-    use crate::infra::utils::*;
 
     // use crate::search::timecontrol::*;
 

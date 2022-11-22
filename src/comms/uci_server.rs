@@ -882,7 +882,6 @@ impl Args {
     pub fn index_of(&self, s: &str) -> Option<usize> {
         self.words.iter().position(|x| x == s)
     }
-
 }
 
 #[cfg(test)]
@@ -891,7 +890,6 @@ mod tests {
     use crate::piece::Piece;
     use std::thread;
     use test_log::test;
-
 
     #[test]
     fn test_uci() {

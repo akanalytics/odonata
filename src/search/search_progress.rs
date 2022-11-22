@@ -10,8 +10,8 @@ use crate::infra::component::Component;
 use crate::mv::Move;
 use crate::other::outcome::Outcome;
 use crate::other::pvtable::PvTable;
-use crate::tags::Tag;
 use crate::piece::Ply;
+use crate::tags::Tag;
 use crate::variation::Variation;
 use crate::{Algo, MoveList, Position};
 use serde::{Deserialize, Serialize};
@@ -161,7 +161,6 @@ impl Info {
         }
     }
 
-
     pub fn snapshot_bests(&mut self) {
         if self.score.is_finite() {
             // succesfully completed iter
@@ -219,21 +218,13 @@ impl Info {
             debug_assert!(
                 false,
                 "PV  {} is invalid on board {}\n{:?}",
-                self.pv,
-                board,
-                self.pv,
+                self.pv, board, self.pv,
             );
             self.pv.truncate(1);
         }
     }
 
-    pub fn update_with_pv_change(
-        &mut self,
-        clock: &Clock,
-        depth: Ply,
-        score: Score,
-        event: Event,
-    ) {
+    pub fn update_with_pv_change(&mut self, clock: &Clock, depth: Ply, score: Score, event: Event) {
         if event != Event::UserCancelled && event != Event::SearchTimeUp {
             self.mode = SearchProgressMode::PvChange;
         } else {

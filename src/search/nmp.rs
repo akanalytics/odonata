@@ -1,4 +1,3 @@
-
 use crate::board::Board;
 use crate::bound::NodeType;
 use crate::cache::tt2::{TtNode, TtScore};
@@ -12,7 +11,7 @@ use crate::search::node::{Event, Node};
 use crate::infra::component::Component;
 use crate::variation::Variation;
 // use crate::{debug, logger::LogInit};
-use crate::piece::{Ply};
+use crate::piece::Ply;
 use serde::{Deserialize, Serialize};
 use std::cmp::min;
 use std::fmt;
@@ -86,7 +85,7 @@ impl NullMovePruning {
             Metrics::incr_node(n, Event::NmpDeclineBetaNumeric);
             return false;
         }
-        if !eval.is_numeric()  {
+        if !eval.is_numeric() {
             Metrics::incr_node(n, Event::NmpDeclineEvalNumeric);
             return false;
         }

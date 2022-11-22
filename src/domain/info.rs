@@ -3,12 +3,13 @@ use itertools::Itertools;
 use std::fmt;
 
 use crate::{
+    board::Board,
     eval::score::Score,
     infra::utils::{KeywordIter, Uci},
     mv::{BareMove, Move},
     piece::Ply,
     variation::Variation,
-    MoveList, board::Board,
+    MoveList,
 };
 
 #[derive(Clone, Default, Debug, PartialEq, Eq, Hash)]
@@ -59,7 +60,6 @@ impl BareMoveVariation {
     pub fn to_san(&self, b: &Board) -> String {
         Variation::from_inner(self, b).to_san(b)
     }
-
 
     // truncate the variation to length ply
     // so the result does not include the ply-th move in the variation
