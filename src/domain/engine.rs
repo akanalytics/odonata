@@ -14,10 +14,6 @@ pub trait Engine: Display + Debug {
 
     fn set_name(&mut self, name: String);
 
-    fn new(config: &str) -> anyhow::Result<Self>
-    where
-        Self: Sized;
-
     fn start_game(&mut self) -> anyhow::Result<()>;
     fn search(&mut self, pos: Position, tc: TimeControl) -> anyhow::Result<SearchResults>;
     fn options(&self) -> IndexMap<String, String>;

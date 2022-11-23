@@ -1,3 +1,5 @@
+use crate::domain::info::Info;
+use crate::domain::info::InfoKind;
 use crate::eval::score::Score;
 use crate::infra::component::{Component, State};
 use crate::infra::metric::Metrics;
@@ -81,11 +83,14 @@ impl IterativeDeepening {
 }
 
 impl Algo {
+    // run_search -> search_iteratively -> aspirated_search -> root_search -> alpha_beta
+
     pub fn search_iteratively(&mut self) {
         self.ids.calc_range(&self.mte.time_control());
         let mut ply = self.ids.start_ply;
         let mut multi_pv = Vec::new();
         let mut last_good_multi_pv = Vec::new();
+        let mut score = Score::zero();
 
         'outer: loop {
             Metrics::flush_thread_local();
@@ -95,26 +100,48 @@ impl Algo {
             multi_pv.resize_with(self.restrictions.multi_pv_count, Default::default);
             let mut exit = false;
             for i in 0..self.restrictions.multi_pv_count {
-                let score = self
-                    .aspirated_search(&mut self.board.clone(), &mut Node::root(ply))
+                score = self
+                    .aspirated_search(&mut self.board.clone(), &mut Node::root(ply), score)
                     .0;
                 self.mte.estimate_iteration(ply + 1, &mut self.clock);
-                // self.stats
-                //     .record_time_estimate(ply + 1, &self.mte.estimate_move_time);
-                // self.ids.iterations.push(self.search_stats().clone());
                 let pv = self.pv_table.extract_pv();
-                self.progress.with_pv_change(
-                    &self.board,
-                    &mut self.clock,
-                    &self.restrictions,
-                    &self.tt,
-                    &self.pv_table,
-                    ply,
-                    score,
-                );
 
-                self.progress.snapshot_bests();
-                self.controller.invoke_callback(&self.progress);
+
+                let info = if score.is_finite() {
+                    Info {
+                        kind: InfoKind::Pv,
+                        nodes: Some(self.clock.cumul_nodes_all_threads()),
+                        // self.nodes = Some(clock.elapsed_search().instructions);
+                        nodes_thread: Some(self.clock.cumul_nodes_this_thread()),
+                        nps: Some(self.clock.cumul_knps_all_threads() * 1000),
+                        time_millis: Some(self.clock.elapsed_search().time.as_millis() as u64),
+                        hashfull_per_mille: Some(self.tt.hashfull_per_mille()),
+
+                        multi_pv: Some(self.restrictions.multi_pv_index() + 1),
+                        // self.multi_pv_index_of = restrictions.multi_pv_count;
+                        pv: Some(self.pv_table.extract_pv().to_inner()),
+                        // self.best_pv = stats.pv().clone();
+                        score: Some(score),
+                        // self.best_score = stats.score();
+                        depth: Some(ply),
+                        seldepth: Some(self.pv_table.selective_depth()),
+                        ..Info::default()
+                    }
+                } else {
+                    Info {
+                        kind: InfoKind::NodeCounts,
+                        nodes: Some(self.clock.cumul_nodes_all_threads()),
+                        // self.nodes = Some(clock.elapsed_search().instructions);
+                        nodes_thread: Some(self.clock.cumul_nodes_this_thread()),
+                        nps: Some(self.clock.cumul_knps_all_threads() * 1000),
+                        time_millis: Some(self.clock.elapsed_search().time.as_millis() as u64),
+                        hashfull_per_mille: Some(self.tt.hashfull_per_mille()),
+                        ..Info::default()
+                    }
+                };
+
+                // progress.snapshot_bests();
+                self.controller.invoke_callback(&info);
                 exit = self.exit_iteration(ply, score);
 
                 multi_pv[i] = (pv.to_inner(), score);
@@ -145,15 +172,18 @@ impl Algo {
         //     .make_engine_move(results.clone(), Duration::from_millis(results.time_millis)); // *self.mte.time_control());
         self.results = results;
 
-        // report progress back to uci
-        self.progress.with_best_move(&self.board.outcome());
-        self.controller.invoke_callback(&self.progress);
-        if self.max_depth > 0
-            && !self.progress.outcome.is_game_over()
-            && self.progress.bm().is_null()
-        {
-            error!("bm is null\n{}\n{:?}", self, self.progress);
-        }
+        let info = Info {
+            kind: InfoKind::BestMove,
+            pv: Some(self.results.pv()),
+            ..Info::default()
+        };
+        self.controller.invoke_callback(&info);
+        // if self.max_depth > 0
+        //     && !progress.outcome.is_game_over()
+        //     && progress.bm().is_null()
+        // {
+        //     error!("bm is null\n{}\n{:?}", self, progress);
+        // }
     }
 
     pub fn exit_iteration(&mut self, ply: Ply, _s: Score) -> bool {

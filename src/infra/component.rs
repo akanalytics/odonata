@@ -24,6 +24,7 @@ pub trait Component {
             Shutdown => {}
         }
     }
+
     fn new_game(&mut self);
     fn new_iter(&mut self) {}
     fn new_position(&mut self);

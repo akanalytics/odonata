@@ -296,7 +296,7 @@ impl SearchResults {
             bf,
             multi_pv,
             infos: vec![],
-            emt: Duration::ZERO,
+            emt: algo.clock.elapsed_search().time,
             pos: Some(algo.position.clone()),
             tc: Some(algo.mte.time_control().clone()),
         }

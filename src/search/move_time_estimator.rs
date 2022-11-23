@@ -67,6 +67,7 @@ impl Component for MoveTimeEstimator {
 
     fn new_position(&mut self) {
         self.clock_checks = 0;
+        self.prior_elapsed_iter = Duration::ZERO;
         self.board = Board::default();
     }
 }

@@ -73,12 +73,22 @@ impl BareMoveVariation {
     }
 }
 
+#[derive(Clone, Default, Debug, PartialEq, Eq)]
+pub enum InfoKind {
+    #[default]
+    Pv,
+    BestMove,
+    Refutation,
+    NodeCounts,
+}
+
 #[derive(Clone, Default, Debug)]
 pub struct Info {
+    pub kind: InfoKind,
     pub depth: Option<Ply>,
     pub seldepth: Option<Ply>,
     pub time_millis: Option<u64>,
-    pub multi_pv: Option<usize>,
+    pub multi_pv: Option<usize>,  // 1 offset, uci uses 1 offset
     pub pv: Option<BareMoveVariation>,
     pub nodes: Option<u64>,
     pub nodes_thread: Option<u64>,
@@ -123,11 +133,27 @@ impl Info {
     }
 }
 
+
 impl fmt::Display for Info {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{:#?}", self)
+        write!(
+            f,
+            "bm={bm} depth={d} seldepth={sd} ms={ms} nodes={nodes}",
+            d = self.depth.unwrap_or_default(),
+            sd = self.seldepth.unwrap_or_default(),
+            ms = self.time_millis.unwrap_or_default(),
+            nodes = self.nodes.unwrap_or_default(),
+            bm = self.pv.as_ref().unwrap_or(&BareMoveVariation::default()).first().unwrap_or(BareMove::null()),
+        )?;
+        Ok(())
     }
 }
+
+// impl fmt::Display for Info {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         writeln!(f, "{:#?}", self)
+//     }
+// }
 
 impl Uci for Info {
     fn fmt_uci(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -190,6 +216,8 @@ impl Uci for Info {
 
 #[cfg(test)]
 mod tests {
+    use crate::eval::score::ToScore;
+
     use super::*;
     use test_log::test;
 
@@ -216,7 +244,7 @@ mod tests {
     fn test_info_parse_uci() {
         let info = Info::parse_uci(concat!(
             "info depth 10 seldepth 12 multipv 2 ",
-            "score cp 12 nodes 27473 nps 1248772 tbhits 0 ",
+            "score cp 13 nodes 27473 nps 1248772 tbhits 0 ",
             "time 22 ",
             "pv e2e4 c7c5 g1f3 d7d6 ",
             "string Hello World"
@@ -224,6 +252,7 @@ mod tests {
         .unwrap();
         assert_eq!(info.depth, Some(10));
         assert_eq!(info.seldepth, Some(12));
+        assert_eq!(info.score, Some(13.cp()));
         assert_eq!(info.time_millis, Some(22));
         assert_eq!(info.multi_pv, Some(2));
         assert_eq!(info.string_text, Some("Hello World".into()));

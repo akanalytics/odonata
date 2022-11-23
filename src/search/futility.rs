@@ -93,47 +93,47 @@ pub struct FutilityMeasure {
 // 7 0.3.44:fes=MB         :     -11      6  2612.0    5422  48.2     ---  1904  1416  2102  26.1
 
 impl Algo {
-    #[inline]
-    pub fn standing_pat(&mut self, b: &Board, n: &mut Node, standing_pat: Score) -> Option<Score> {
-        if !n.is_qs() {
-            return None;
-        }
+    // #[inline]
+    // pub fn standing_pat(&mut self, b: &Board, n: &mut Node, standing_pat: Score) -> Option<Score> {
+    //     if !n.is_qs() {
+    //         return None;
+    //     }
 
-        if n.depth == 0 {
-            let outcome = b.outcome();
-            if outcome.is_game_over() {
-                if outcome.is_draw() {
-                    Metrics::incr_node(&n, Event::StandingPatSuccess);
-                    return Some(b.pov_score(self.eval.w_eval_draw(b, n)));
-                }
-                // depth 0: we have considered a full width move search to get here so a winning
-                // result is valid. Beyond depth 0 it is not.
-                if let Some(c) = outcome.winning_color() {
-                    if c == b.color_us() {
-                        Metrics::incr_node(&n, Event::StandingPatSuccess);
-                        return Some(Score::we_win_in(n.ply));
-                    } else {
-                        Metrics::incr_node(&n, Event::StandingPatSuccess);
-                        return Some(Score::we_lose_in(n.ply));
-                    }
-                }
-            }
-        }
-        if standing_pat >= n.beta && !b.is_in_check(b.color_us()) {
-            Metrics::incr_node(&n, Event::StandingPatSuccess);
-            return Some(standing_pat);
-        }
+    //     if n.depth == 0 {
+    //         let outcome = b.outcome();
+    //         if outcome.is_game_over() {
+    //             if outcome.is_draw() {
+    //                 Metrics::incr_node(&n, Event::StandingPatSuccess);
+    //                 return Some(b.pov_score(self.eval.w_eval_draw(b, n)));
+    //             }
+    //             // depth 0: we have considered a full width move search to get here so a winning
+    //             // result is valid. Beyond depth 0 it is not.
+    //             if let Some(c) = outcome.winning_color() {
+    //                 if c == b.color_us() {
+    //                     Metrics::incr_node(&n, Event::StandingPatSuccess);
+    //                     return Some(Score::we_win_in(n.ply));
+    //                 } else {
+    //                     Metrics::incr_node(&n, Event::StandingPatSuccess);
+    //                     return Some(Score::we_lose_in(n.ply));
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     if standing_pat >= n.beta && !b.is_in_check(b.color_us()) {
+    //         Metrics::incr_node(&n, Event::StandingPatSuccess);
+    //         return Some(standing_pat);
+    //     }
 
-        if standing_pat > n.alpha && !b.is_in_check(b.color_us()) {
-            n.alpha = standing_pat;
-        }
+    //     if standing_pat > n.alpha && !b.is_in_check(b.color_us()) {
+    //         n.alpha = standing_pat;
+    //     }
 
-        if self.qsearch_disabled {
-            Metrics::incr_node(&n, Event::StandingPatSuccess);
-            return Some(standing_pat);
-        }
-        None
-    }
+    //     if self.qsearch_disabled {
+    //         Metrics::incr_node(&n, Event::StandingPatSuccess);
+    //         return Some(standing_pat);
+    //     }
+    //     None
+    // }
 
     #[inline]
     pub fn can_futility_prune_at_node(&self, b: &Board, n: &Node) -> bool {

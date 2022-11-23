@@ -342,11 +342,13 @@ impl Component for TranspositionTable2 {
     }
 
     fn new_game(&mut self) {
-        self.set_state(State::NewGame)
+        unreachable!();
+        // self.set_state(State::NewGame)
     }
 
     fn new_position(&mut self) {
-        self.set_state(State::SetPosition)
+        unreachable!();
+        // self.set_state(State::SetPosition)
     }
 }
 
@@ -716,6 +718,7 @@ mod tests {
     use crate::catalog::*;
     use crate::comms::uci_server::*;
     use crate::globals::constants::*;
+    use crate::infra::utils::Uci;
     use crate::piece::*;
     use crate::search::algo::*;
     use crate::search::engine::ThreadedSearch;
@@ -855,7 +858,7 @@ mod tests {
             algo.new_game();
             algo.set_position(pos.clone()).run_search();
             assert_eq!(
-                algo.progress.bm().to_uci(),
+                algo.results.best_move().unwrap().to_uci(),
                 pos.bm()?.uci(),
                 "{}\n{}",
                 pos,

@@ -3,6 +3,7 @@ use crate::catalog::Catalog;
 use crate::comms::json_rpc::JsonRpc;
 use crate::domain::engine::Engine;
 use crate::domain::Player;
+use crate::domain::info::{Info, InfoKind, BareMoveVariation};
 use crate::eval::eval::Eval;
 use crate::infra::component::{Component, State};
 use crate::infra::metric::METRICS_TOTAL;
@@ -10,17 +11,15 @@ use crate::infra::utils::Formatting;
 use crate::infra::utils::Uci;
 use crate::infra::version::Version;
 use crate::movelist::MoveList;
-use crate::mv::Move;
+use crate::mv::{BareMove};
 use crate::perft::Perft;
 use crate::position::Position;
 use crate::search::engine::ThreadedSearch;
 use crate::search::node::Node;
-use crate::search::search_progress::{Info, SearchProgressMode};
 use crate::search::timecontrol::TimeControl;
 use crate::tags::Tag;
 use crate::variation::Variation;
 use std::collections::HashMap;
-use std::fmt;
 use std::io::{self, Write};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -770,98 +769,98 @@ impl UciServer {
         Ok(())
     }
 
-    pub fn uci_info(sr: &Info) {
-        if let SearchProgressMode::BestMove = sr.mode {
-            Self::print_bm_and_ponder(&sr.best_pv);
+    pub fn uci_info(info: &Info) {
+        if info.kind == InfoKind::BestMove {
+            Self::print_bm_and_ponder(info.pv.as_ref());
         } else {
-            Self::print(&format!("info {}", UciInfo2(sr)));
+            Self::print(&format!("info {}", info.to_uci()));
         }
     }
 
-    fn print_bm_and_ponder(var: &Variation) {
-        let bm = if var.len() > 0 {
-            var[0]
+    fn print_bm_and_ponder(var: Option<&BareMoveVariation>) {
+        let bm = if var.is_some() && var.unwrap().len() > 0 {
+            var.unwrap().first().unwrap()
         } else {
             info!("---> Null  best move");
-            Move::NULL_MOVE
+            BareMove::null()
         };
         let mut output = format!("bestmove {}", bm.to_uci());
-        if var.len() > 1 {
-            output = format!("{} ponder {}", output, var[1].to_uci());
+        if var.is_some() && var.unwrap().len() > 1 {
+            output = format!("{} ponder {}", output, var.unwrap().second().unwrap().to_uci());
         }
         Self::print(&output);
     }
 }
 
-struct UciInfo2<'a>(&'a Info);
+// struct UciInfo2<'a>(&'a Info);
 
-impl<'a> fmt::Display for UciInfo2<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let SearchProgressMode::Refutation = self.0.mode {
-            let strings: Vec<String> = self.0.best_pv.iter().map(Move::to_string).collect();
-            write!(f, "refutation {}", strings.join(" "))?;
-        }
-        if let SearchProgressMode::PvChange = self.0.mode {
-            write!(f, "depth {} ", self.0.depth)?;
-            write!(f, "seldepth {} ", self.0.seldepth)?;
+// impl<'a> fmt::Display for UciInfo2<'a> {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         if let SearchProgressMode::Refutation = self.0.mode {
+//             let strings: Vec<String> = self.0.best_pv().iter().map(Move::to_string).collect();
+//             write!(f, "refutation {}", strings.join(" "))?;
+//         }
+//         if let SearchProgressMode::PvChange = self.0.mode {
+//             write!(f, "depth {} ", self.0.depth)?;
+//             write!(f, "seldepth {} ", self.0.seldepth)?;
 
-            if let Some(nodes) = self.0.nodes {
-                write!(f, "nodes {} ", nodes)?;
-            }
-            if let Some(nps) = self.0.nps {
-                write!(f, "nps {} ", nps)?;
-            }
-            write!(f, "score {} ", self.0.score.to_uci())?;
-            if let Some(currmovenumber) = self.0.currmovenumber_from_1 {
-                write!(f, "currmovenumber {} ", currmovenumber)?;
-            }
-            if let Some(currmove) = self.0.currmove {
-                write!(f, "currmove {} ", currmove)?;
-            }
-            if let Some(hashfull) = self.0.hashfull_per_mille {
-                write!(f, "hashfull {} ", hashfull)?;
-            }
-            if let Some(tbhits) = self.0.tbhits {
-                write!(f, "tbhits {} ", tbhits)?;
-            }
-            if let Some(cpuload) = self.0.cpuload_per_mille {
-                write!(f, "cpuload {} ", cpuload)?;
-            }
-            if let Some(time_millis) = self.0.time_millis {
-                write!(f, "time {} ", time_millis)?;
-                if self.0.multi_pv_index_of > 1 {
-                    write!(f, "multipv {} ", self.0.multi_pv_index + 1)?;
-                }
-                let strings: Vec<String> = self.0.pv.iter().map(Move::to_string).collect();
-                write!(f, "pv {}", strings.join(" "))?;
-            }
-        }
-        if let SearchProgressMode::NodeCounts = self.0.mode {
-            // write!(f, "depth {} ", self.0.depth)?;
-            // write!(f, "seldepth {} ", self.0.seldepth)?;
+//             if let Some(nodes) = self.0.nodes {
+//                 write!(f, "nodes {} ", nodes)?;
+//             }
+//             if let Some(nps) = self.0.nps {
+//                 write!(f, "nps {} ", nps)?;
+//             }
+//             write!(f, "score {} ", self.0.score.to_uci())?;
+//             if let Some(currmovenumber) = self.0.currmovenumber_from_1 {
+//                 write!(f, "currmovenumber {} ", currmovenumber)?;
+//             }
+//             if let Some(currmove) = self.0.currmove {
+//                 write!(f, "currmove {} ", currmove)?;
+//             }
+//             if let Some(hashfull) = self.0.hashfull_per_mille {
+//                 write!(f, "hashfull {} ", hashfull)?;
+//             }
+//             if let Some(tbhits) = self.0.tbhits {
+//                 write!(f, "tbhits {} ", tbhits)?;
+//             }
+//             if let Some(cpuload) = self.0.cpuload_per_mille {
+//                 write!(f, "cpuload {} ", cpuload)?;
+//             }
+//             if let Some(time_millis) = self.0.time_millis {
+//                 write!(f, "time {} ", time_millis)?;
+//                 if self.0.multi_pv_index_of > 1 {
+//                     write!(f, "multipv {} ", self.0.multi_pv_index + 1)?;
+//                 }
+//                 let strings: Vec<String> = self.0.pv.iter().map(Move::to_string).collect();
+//                 write!(f, "pv {}", strings.join(" "))?;
+//             }
+//         }
+//         if let SearchProgressMode::NodeCounts = self.0.mode {
+//             // write!(f, "depth {} ", self.0.depth)?;
+//             // write!(f, "seldepth {} ", self.0.seldepth)?;
 
-            if let Some(nodes) = self.0.nodes {
-                write!(f, "nodes {} ", nodes)?;
-            }
-            if let Some(nps) = self.0.nps {
-                write!(f, "nps {} ", nps)?;
-            }
-            if let Some(hashfull) = self.0.hashfull_per_mille {
-                write!(f, "hashfull {} ", hashfull)?;
-            }
-            if let Some(tbhits) = self.0.tbhits {
-                write!(f, "tbhits {} ", tbhits)?;
-            }
-            if let Some(cpuload) = self.0.cpuload_per_mille {
-                write!(f, "cpuload {} ", cpuload)?;
-            }
-            if let Some(time_millis) = self.0.time_millis {
-                write!(f, "time {} ", time_millis)?;
-            }
-        }
-        Ok(())
-    }
-}
+//             if let Some(nodes) = self.0.nodes {
+//                 write!(f, "nodes {} ", nodes)?;
+//             }
+//             if let Some(nps) = self.0.nps {
+//                 write!(f, "nps {} ", nps)?;
+//             }
+//             if let Some(hashfull) = self.0.hashfull_per_mille {
+//                 write!(f, "hashfull {} ", hashfull)?;
+//             }
+//             if let Some(tbhits) = self.0.tbhits {
+//                 write!(f, "tbhits {} ", tbhits)?;
+//             }
+//             if let Some(cpuload) = self.0.cpuload_per_mille {
+//                 write!(f, "cpuload {} ", cpuload)?;
+//             }
+//             if let Some(time_millis) = self.0.time_millis {
+//                 write!(f, "time {} ", time_millis)?;
+//             }
+//         }
+//         Ok(())
+//     }
+// }
 
 struct Args {
     pub words: Vec<String>,

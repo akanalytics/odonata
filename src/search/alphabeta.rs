@@ -53,13 +53,11 @@ impl Algo {
                 || category == Event::UserCancelled
                 || category == Event::SearchTimeUp
         );
-        let (pv, _score) = if self.tt.use_tt_for_pv {
+        let (_pv, _score) = if self.tt.use_tt_for_pv {
             self.tt.extract_pv_and_score(board)
         } else {
             (self.pv_table.extract_pv(), Some(Score::default()))
         };
-        self.progress.set_pv(category, &pv);
-        self.progress.score = score;
         if n.alpha == -Score::INFINITY
             && n.beta == Score::INFINITY
             && category != Event::SearchTimeUp

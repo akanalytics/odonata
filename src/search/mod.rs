@@ -21,7 +21,6 @@ pub mod razor;
 pub mod restrictions;
 pub mod reverse_futility;
 pub mod search_explainer;
-pub mod search_progress;
 pub mod stack;
 pub mod taskcontrol;
 pub mod timecontrol;

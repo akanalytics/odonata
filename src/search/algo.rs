@@ -2,6 +2,7 @@ use crate::board::Board;
 use crate::cache::tt2::TranspositionTable2;
 use crate::clock::Clock;
 use crate::domain::engine::Engine;
+use crate::domain::info::{Info, InfoKind};
 use crate::eval::eval::Eval;
 use crate::eval::recognizer::Recognizer;
 use crate::eval::score::Score;
@@ -25,7 +26,6 @@ use crate::search::node::Node;
 use crate::search::pvs::Pvs;
 use crate::search::razor::Razor;
 use crate::search::restrictions::Restrictions;
-use crate::search::search_progress::Info;
 use crate::search::taskcontrol::TaskControl;
 use crate::search::timecontrol::TimeControl;
 use crate::trace::logger::LoggingSystem;
@@ -42,15 +42,12 @@ use super::node::Event;
 use super::qs::Qs;
 use super::reverse_futility::ReverseFutility;
 use super::search_explainer::Explainer;
-use super::search_progress::SearchProgressMode;
 use crate::domain::SearchResults;
 
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Algo {
-    pub show_refutations: bool,
     pub analyse_mode: bool, // tries to find full PV etc
-    pub qsearch_disabled: bool,
 
     pub ids: IterativeDeepening,
     pub eval: Eval,
@@ -77,7 +74,6 @@ pub struct Algo {
     pub aspiration: Aspiration,
     pub clock: Clock,
 
-    pub progress: Info,
     pub controller: TaskControl<Info>,
     pub lmp: Lmp,
     pub qs: Qs,
@@ -116,22 +112,16 @@ impl Engine for Algo {
         self.engine_name = name;
     }
 
-    fn new(_config: &str) -> anyhow::Result<Self> {
-        let mut a = Algo::new();
-        a.engine_name = String::from("odonata");
-        Ok(a)
-    }
-
     fn search(&mut self, pos: Position, tc: TimeControl) -> anyhow::Result<SearchResults> {
-        trace!(target: "eng","-> search on {n}", n = self.name());
-        trace!(target: "eng", "-> search on {b} {tc}", b = pos.board_after());
+        info!(target: "eng","-> search on {n}", n = self.name());
+        info!(target: "eng", "-> search on {b} {tc}", b = pos.board_after());
         self.controller
-            .register_callback(|i| trace!(target: "eng", "<- info {i}"));
+            .register_callback(|i| info!(target: "eng", "<- info {i}"));
         self.controller.set_running();
         self.set_timing_method(tc);
         self.set_position(pos);
         self.run_search();
-        trace!(target: "eng", " <- results {res}", res = self.results);
+        info!(target: "eng", " <- results {res}", res = self.results);
         Ok(self.results.clone())
     }
 
@@ -176,7 +166,9 @@ impl Algo {
     }
 
     pub fn from_config() -> Algo {
-        ThreadedSearch::new().algo
+        let mut algo = ThreadedSearch::new().algo;
+        algo.engine_name = String::from("odonata");
+        algo
     }
 
     pub fn set_eval(&mut self, eval: Eval) -> &mut Self {
@@ -247,7 +239,6 @@ impl Component for Algo {
         self.recognizer.set_state(s);
         self.aspiration.set_state(s);
 
-        self.progress.set_state(s);
         self.controller.set_state(s);
         self.lmp.set_state(s);
         self.counter_move.set_state(s);
@@ -295,7 +286,6 @@ impl fmt::Debug for Algo {
             .field("counter_move", &self.counter_move)
             .field("qs", &self.qs)
             .field("clock", &self.clock)
-            .field("results", &self.progress)
             .finish()
     }
 }
@@ -323,7 +313,6 @@ impl fmt::Display for Algo {
         // writeln!(f, "bm               : {}", self.results.bm())?;
         writeln!(f, "score            : {}", self.score())?;
         writeln!(f, "analyse mode     : {}", self.analyse_mode)?;
-        writeln!(f, "qsearch          : {}", self.qsearch_disabled)?;
         writeln!(f, "depth            : {}", self.max_depth)?;
         writeln!(f, "results          : {}", self.results_as_position())?;
         writeln!(f, ".\n.\n[controller]\n{}", self.controller)?;
@@ -355,7 +344,6 @@ impl fmt::Display for Algo {
         writeln!(f, ".\n.\n[counter_move]\n{:}", self.counter_move)?;
         writeln!(f, ".\n.\n[qs]\n{:}", self.qs)?;
 
-        // writeln!(f, ".\n.\n[results]\n{}", self.progress)?;
         write!(f, "\n[results]\n{}", self.results)?;
         // writeln!(f, ".\n.\n[metrics]\n{}", Metrics::to_string())?;
         Ok(())
@@ -371,16 +359,25 @@ impl Algo {
         if self.clock.cumul_nodes_this_thread() % 1_000_000 == 0
             && self.clock.cumul_nodes_this_thread() != 0
         {
-            let sp = Info::with_report_progress(self);
-            self.controller.invoke_callback(&sp);
+            let info = Info {
+                kind: InfoKind::NodeCounts,
+                nodes: Some(self.clock.cumul_nodes_all_threads()),
+                nodes_thread: Some(self.clock.cumul_nodes_this_thread()),
+                nps: Some(self.clock.cumul_knps_all_threads() * 1000),
+                hashfull_per_mille: Some(self.tt.hashfull_per_mille()),
+                time_millis: Some(self.clock.elapsed_search().time.as_millis() as u64),
+                ..Default::default()
+            };
+
+            self.controller.invoke_callback(&info);
         }
     }
 
     pub fn report_refutation(&self, ply: Ply) {
-        if self.show_refutations && ply < 4 {
+        if self.controller.show_refutations && ply < 4 {
             let sp = Info {
-                pv: self.pv_table.extract_pv_for(ply),
-                mode: SearchProgressMode::Refutation,
+                kind: InfoKind::Refutation,
+                pv: Some(self.pv_table.extract_pv_for(ply).to_inner()),
                 ..Info::default()
             };
 
@@ -400,25 +397,10 @@ impl Algo {
 
     pub fn run_search(&mut self) {
         {
-            // info!(
-            //     "****Searching {pos} with {tc:#}",
-            //     pos = self.position,
-            //     tc = self
-            // );
-            // profile_method!(search);
-            // hprof::profiler().disable();
-            // let _g = hprof::enter("search");
-
             self.set_state(State::StartSearch);
             self.search_iteratively();
             self.set_state(State::EndSearch);
         }
-        // if firestorm::enabled() {
-        //     firestorm::save("./flames/")
-        //         .map_err(|e| e.to_string())
-        //         .unwrap();
-        // }
-        // hprof::profiler().print_timing();
     }
 
     pub fn results_as_position(&self) -> Position {

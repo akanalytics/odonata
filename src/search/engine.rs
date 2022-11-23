@@ -71,10 +71,6 @@ impl Engine for ThreadedSearch {
         self.algo.set_name(name);
     }
 
-    fn new(_config: &str) -> anyhow::Result<Self> {
-        Ok(Self::new())
-    }
-
     fn search(&mut self, pos: Position, tc: TimeControl) -> anyhow::Result<SearchResults> {
         debug!(target: "eng","-> search on {n}", n = self.name());
         debug!(target: "eng", "-> search on {b} {tc}", b = pos.board_after());

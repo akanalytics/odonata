@@ -8,6 +8,8 @@ use std::sync::Mutex;
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct TaskControl<TTaskProgress> {
+    pub show_refutations: bool,
+
     #[serde(skip)]
     pub progress_callback: Option<Arc<Mutex<dyn Fn(&TTaskProgress) + Send + Sync>>>,
 
