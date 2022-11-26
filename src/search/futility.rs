@@ -38,6 +38,8 @@ pub struct Futility {
     margin1: i32,
     margin2: i32,
     margin3: i32,
+    margin4: i32,
+    margin_ply: i32,
     move_types_forbidden: MoveTypes,
 }
 
@@ -72,6 +74,8 @@ impl Default for Futility {
             margin1: 100,
             margin2: 250,
             margin3: 1500,
+            margin4: 1850,
+            margin_ply: 100,
             move_types_forbidden: MoveTypes::EMPTY, // MoveType::Hash | MoveType::Killer, // HK
         }
     }
@@ -142,7 +146,7 @@ impl Algo {
             // node.alpha + Score::from_cp(1) == node.beta // not in PVS
             return false;
         }
-        if n.depth > self.max_depth {
+        if n.depth > self.futility.max_depth {
             // dont prune too far away from leaf nodes
             Metrics::incr_node(&n, Event::FutilityDeclineMaxDepth);
             return false;
@@ -258,7 +262,8 @@ impl Algo {
             1 => self.futility.margin1,
             2 => self.futility.margin2,
             3 => self.futility.margin3,
-            _ => self.futility.margin1 + self.futility.margin2 + self.futility.margin3,
+            4 => self.futility.margin4,
+            d => self.futility.margin4 + self.futility.margin_ply * (d - 4),
         });
 
         // not a capture or promo => gain = 0

@@ -8,6 +8,7 @@ use crate::variation::Variation;
 use anyhow::{anyhow, Result};
 use once_cell::sync::Lazy;
 use regex::Regex;
+use serde::Deserialize;
 use serde::{ser::SerializeMap, Serialize, Serializer};
 use std::collections::HashMap;
 use std::fmt;
@@ -29,6 +30,103 @@ use std::time::Duration;
 //         Ok(())
 //     }
 // }
+
+
+
+
+#[derive(Default, Debug, Serialize, Deserialize)]
+pub struct TagUnion {
+    avoid_moves: Option<Box<MoveList>>,
+    best_moves: Option<Box<MoveList>>,
+    best_scored_moves: Option<ScoredMoveList>,
+    branching_factor: Option<f64>, 
+    pv: Option<Variation>,
+    id: Option<String>,
+    analysis_count_depth: Option<Ply>,
+    analysis_count_sel_depth: Option<Ply>,
+    analysis_count_nodes: Option<u128>,
+    analysis_count_seconds: Option<u32>,
+    analysis_count_milli_seconds: Option<u64>,
+    chess_clock: Option<Duration>,
+    centipawn_evaluation: Option<i32>,
+    direct_mate: Option<u32>,
+    full_move_number: Option<u32>,
+    half_move_clock: Option<u32>,
+    predicted_move: Option<Move>,
+    repitition_count: Option<u32>,
+    result: Option<String>,
+    no_op: Option<String>,
+    supplied_move: Option<Move>,
+    supplied_variation: Option<Variation>,
+    squares: Option<Bitboard>,
+    timestamp: Option<(String, String)>,
+    perft: Option<(u8, u128)>,
+    comment: Option<(u8, String)>,
+}
+
+
+impl TagUnion {
+    pub fn parse_tag(_kind: &str, _value: &str) -> anyhow::Result<TagUnion> {
+
+        Ok(TagUnion::default())
+    } 
+}
+
+
+
+
+
+
+
+#[cfg(test)]
+mod tests2 {
+    use serde_json::Map;
+    use serde_json::value::Value;
+
+    use super::*;
+
+
+    #[test]
+    fn tags_x() {
+        let mut tags = TagUnion::default();
+        tags.result = Some("Hello Word".to_owned());
+        let value = serde_json::to_value(tags).unwrap();
+        dbg!(std::mem::size_of_val(&value));
+        dbg!(&value);
+        if let Value::Object(map) = &value {
+            dbg!(map);
+        }
+
+        let mut map = Map::new();
+        map.insert("result".to_owned(), Value::String("Hello World2".to_owned()));
+
+        let tags2: TagUnion = serde_json::from_value(Value::Object(map)).unwrap();
+        dbg!(tags2);
+
+
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Tag {
@@ -420,6 +518,7 @@ static REGEX_SPLIT_WORDS: Lazy<Regex> = Lazy::new(|| {
 mod tests {
     use super::*;
 
+
     #[test]
     fn test_split_into_tags() {
         let vec = Tags::split_into_tags(r#"cat"meo;w";"mouse";"toad;;;;;;" ;zebra;"#);
@@ -475,6 +574,16 @@ mod tests {
 
     #[test]
     fn test_tags() {
+        dbg!(std::mem::size_of::<TagUnion>());
+        dbg!(std::mem::size_of::<MoveList>());
+        dbg!(std::mem::size_of::<Variation>());
+        dbg!(std::mem::size_of::<Duration>());
+        dbg!(std::mem::size_of::<u128>());
+        dbg!(std::mem::size_of::<ScoredMoveList>());
+        dbg!(std::mem::size_of::<Option<Box<ScoredMoveList>>>());
+        dbg!(std::mem::size_of::<Vec<bool>>());
+        dbg!(std::mem::size_of::<Option<Vec<bool>>>());
+
         let mut tags = Tags::new();
         tags.remove(Tag::BM);
         assert_eq!(tags.get(Tag::BM), &Tag::None);

@@ -27,7 +27,7 @@ impl Algo {
         let depth = n.depth;
         self.max_depth = depth;
         // self.stats.depth = depth;
-        self.pv_table = PvTable::new(MAX_PLY as usize);
+        self.pv_table = PvTable::new(board.clone(), MAX_PLY as usize);
         debug_assert!(self.current_variation.len() == 0);
 
         let (score, category) = match self.alphabeta(

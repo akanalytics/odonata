@@ -138,12 +138,13 @@ impl fmt::Display for Info {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "bm={bm} depth={d} seldepth={sd} ms={ms} nodes={nodes}",
+            "bm={bm} depth={d} seldepth={sd} ms={ms} nodes={nodes} pv={pv}",
             d = self.depth.unwrap_or_default(),
             sd = self.seldepth.unwrap_or_default(),
             ms = self.time_millis.unwrap_or_default(),
             nodes = self.nodes.unwrap_or_default(),
             bm = self.pv.as_ref().unwrap_or(&BareMoveVariation::default()).first().unwrap_or(BareMove::null()),
+            pv = self.pv.as_ref().unwrap_or(&BareMoveVariation::default()),
         )?;
         Ok(())
     }

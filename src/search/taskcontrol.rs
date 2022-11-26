@@ -1,6 +1,6 @@
 use crate::infra::component::{Component, State};
 use serde::{Deserialize, Serialize};
-use std::fmt;
+use std::fmt::{self, Display};
 use std::sync::atomic::{self, AtomicBool};
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -40,7 +40,7 @@ impl<TTaskProgress> fmt::Display for TaskControl<TTaskProgress> {
 
 impl<TTaskProgress> Component for TaskControl<TTaskProgress>
 where
-    TTaskProgress: Default,
+    TTaskProgress: Default + Display,
 {
     fn new_iter(&mut self) {}
 
@@ -61,7 +61,10 @@ where
     }
 }
 
-impl<TTaskProgress> TaskControl<TTaskProgress> {
+impl<TTaskProgress> TaskControl<TTaskProgress>
+where
+    TTaskProgress: Default + Display,
+{
     #[inline]
     pub fn cancel(&mut self) {
         self.kill_switch.store(true, atomic::Ordering::SeqCst);
@@ -81,6 +84,7 @@ impl<TTaskProgress> TaskControl<TTaskProgress> {
     }
 
     pub fn invoke_callback(&self, data: &TTaskProgress) {
+        trace!("callback with {data}");
         if let Some(callback) = &self.progress_callback {
             let callback = callback.lock().unwrap();
             callback(data);

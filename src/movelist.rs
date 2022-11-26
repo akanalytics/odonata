@@ -12,6 +12,7 @@ use arrayvec::ArrayVec;
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use regex::Regex;
+use serde::{Serialize, Deserialize};
 use std::fmt;
 
 // // moves: ArrayVec<Move,128>,
@@ -177,7 +178,7 @@ use std::fmt;
 //     }
 // }
 
-#[derive(Default, Clone, Debug, PartialEq, Eq)]
+#[derive(Default, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ScoredMoveList {
     moves: Vec<(BareMove, Score)>,
 }
@@ -233,6 +234,10 @@ impl ScoredMoveList {
         self.iter().nth(0).map(|(_mv, s)| s)
     }
 
+    pub fn best_move(&self) -> Option<BareMove> {
+        self.iter().nth(0).map(|(mv, _s)| mv)
+    }
+
     pub fn centipawn_loss(&self, actual: BareMove) -> Option<Score> {
         let best = self.best_score().unwrap_or_default();
         let worst = self.iter().last().map(|(_mv, s)| s).unwrap_or_default();
@@ -265,7 +270,7 @@ mod tests_smv {
 
 // moves: ArrayVec<Move,128>,
 // moves: ArrayVec::new(),
-#[derive(Debug, PartialEq, Eq, Default, Clone)]
+#[derive(Debug, PartialEq, Eq, Default, Clone, Serialize, Deserialize)]
 pub struct MoveList {
     moves: ArrayVec<Move, MAX_LEGAL_MOVES>,
 }

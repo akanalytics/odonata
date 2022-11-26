@@ -25,6 +25,7 @@ pub struct ReverseFutility {
     margin1: i32,
     margin2: i32,
     margin3: i32,
+    margin4: i32,
     margin_ply: i32,
 }
 
@@ -53,6 +54,7 @@ impl Default for ReverseFutility {
             margin1: 100,
             margin2: 200,
             margin3: 300,
+            margin4: 2000,
             margin_ply: 100,
         }
     }
@@ -66,7 +68,7 @@ impl Algo {
         }
 
         Metrics::incr_node(n, Event::RevFutConsider);
-        if n.depth > self.max_depth {
+        if n.depth > self.rev_fut.max_depth {
             // dont prune too far away from leaf nodes
             Metrics::incr_node(&n, Event::RevFutDeclineMaxDepth);
             return None;
@@ -117,7 +119,8 @@ impl Algo {
             1 => self.rev_fut.margin1,
             2 => self.rev_fut.margin2,
             3 => self.rev_fut.margin3,
-            d => self.rev_fut.margin3 + self.rev_fut.margin_ply * (d - 3),
+            4 => self.rev_fut.margin4,
+            d => self.rev_fut.margin4 + self.rev_fut.margin_ply * (d - 4),
         });
         // if eval - margin >= n.beta
         //     && EndGame::from_board(bd).likely_outcome(bd) != LikelyOutcome::UnknownOutcome

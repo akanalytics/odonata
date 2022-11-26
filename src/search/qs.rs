@@ -121,7 +121,9 @@ impl Algo {
                 Metrics::incr_node(&n, Event::QsTtHit);
                 match tt.nt {
                     NodeType::ExactPv => {
-                        return score;
+                        if self.tt.allow_truncated_pv { 
+                            return score;
+                        }
                     }
                     NodeType::UpperAll => {
                         if score <= n.alpha {
@@ -266,7 +268,7 @@ impl Algo {
             }
             if s > n.alpha {
                 Self::trace(n, s, mv, "mv raises alpha");
-                // self.record_move(n.ply, &mv);
+                //self.record_move(n.ply, &mv);
                 n.alpha = s;
             } else {
                 Self::trace(n, s, mv, "mv doesn't raise alpha");
@@ -288,14 +290,14 @@ impl Algo {
     #[inline]
     #[allow(unused_variables)]
     fn trace(n: Node, eval: Score, mv: Move, comment: &str) {
-        // warn!("{:<25}  {:<6}  {mv:<5}  {comment}", n.to_string(), eval.to_string());
+        trace!("{:<25}  {:<6}  {mv:<5}  {comment}", n.to_string(), eval.to_string());
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::catalog::*;
+    use crate::{catalog::*, Position};
     use crate::search::engine::ThreadedSearch;
     use crate::search::timecontrol::*;
     use crate::test_log::test;
@@ -304,6 +306,16 @@ mod tests {
     #[test]
     fn qsearch_serde_test() {
         info!("toml\n{}", toml::to_string(&Qs::default()).unwrap());
+    }
+
+    #[test]
+    fn test_qs_with_promo() {
+        let pos = Position::parse_epd("8/1p4PR/1k6/3pNK2/5P2/r7/2p2n2/8 w - - 0 74").unwrap();
+        let mut eng = ThreadedSearch::new();
+        eng.set_position(pos.clone());
+        eng.algo.set_timing_method(TimeControl::Depth(1));
+        eng.search_sync();
+        println!("{}",eng.algo.results);
     }
 
     #[test]

@@ -194,7 +194,7 @@ pub enum Event {
     #[strum(message = "Prune node: Null Move")]
     NmpConsider,
     NmpDeclineDepth,
-    NmpDeclineBetaNumeric,
+    NmpDeclineMateBound,
     NmpDeclineEvalNumeric,
     NmpDeclineEvalMargin,
     NmpDeclineMaterial,
@@ -375,7 +375,7 @@ impl fmt::Display for Node {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "{} D:{} a:{} b:{}",
+            "P:{} D:{} a:{} b:{}",
             self.ply, self.depth, self.alpha, self.beta
         )
     }

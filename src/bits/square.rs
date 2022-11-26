@@ -1,9 +1,11 @@
+use serde::{Deserialize, Serialize};
+
 use crate::bits::bitboard::{Bitboard, Dir, Squares};
 use crate::piece::Color;
 use std::cmp;
 use std::fmt;
 
-#[derive(Copy, Hash, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
+#[derive(Copy, Hash, Clone, Debug, PartialOrd, Ord, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Square(u16);
 
 impl Default for Square {

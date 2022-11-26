@@ -701,6 +701,8 @@ margin = -10000
 min_depth = 2
 depth_reduction_strat = 100
 store_tt = true
+prune_alpha_mate = false
+prune_beta_mate = false
 a = 2.7
 b = 0.198
 c = 0.00017
@@ -732,7 +734,7 @@ prune_fw_node = true
 prune_alpha_mate = false
 prune_beta_mate = true
 max_pawn_rank = 5
-max_depth = 2
+max_depth = 20
 max_depth_captures = 2
 prune_remaining = false
 min_pieces = 0
@@ -741,6 +743,8 @@ margin_qs = 0
 margin1 = 100
 margin2 = 250
 margin3 = 1500
+margin4 = 1850
+margin_ply = 150
 move_types_forbidden = 0
 
 [mate_dist]
@@ -757,13 +761,14 @@ prune_fw_node = false
 prune_alpha_mate = true
 prune_beta_mate = true
 prune_eval_mate = false
-max_depth = 3
+max_depth = 20
 min_pieces = 0
 min_pieces_depth = 1
 margin1 = 90
 margin2 = 180
 margin3 = 300
-margin_ply = 100
+margin4 = 400
+margin_ply = 150
 
 [ext]
 enabled = true

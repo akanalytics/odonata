@@ -32,6 +32,8 @@ pub struct NullMovePruning {
     pub min_depth: Ply,
     pub store_tt: bool,
     pub depth_reduction_strat: i64,
+    prune_alpha_mate: bool,
+    prune_beta_mate: bool,
     pub a: f32,
     pub b: f32,
     pub c: f32,
@@ -55,6 +57,8 @@ impl Default for NullMovePruning {
             min_depth: 2, // 1 means we still prune at frontier (depth=1)
             store_tt: true,
             depth_reduction_strat: 100,
+            prune_alpha_mate: false,
+            prune_beta_mate: false,
             a: 2.7,
             b: 0.198,
             c: 0.00017,
@@ -81,8 +85,9 @@ impl NullMovePruning {
             Metrics::incr_node(n, Event::NmpDeclineDepth);
             return false;
         }
-        if !n.beta.is_numeric() {
-            Metrics::incr_node(n, Event::NmpDeclineBetaNumeric);
+        if (!self.prune_alpha_mate && n.alpha.is_mate())
+            || (!self.prune_beta_mate && n.beta.is_mate()) {
+            Metrics::incr_node(n, Event::NmpDeclineMateBound);
             return false;
         }
         if !eval.is_numeric() {

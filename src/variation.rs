@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use serde::{Deserialize, Serialize};
 
 use crate::board::Board;
 use crate::domain::info::BareMoveVariation;
@@ -7,7 +8,7 @@ use crate::piece::Ply;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Variation {
     moves: Vec<Move>,
 }
@@ -137,6 +138,7 @@ impl Variation {
         }
     }
 
+    /// use board.make_moves()
     #[deprecated]
     pub fn apply_to(&self, b: &Board) -> Board {
         b.make_moves_old(&self)

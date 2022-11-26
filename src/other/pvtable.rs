@@ -1,3 +1,4 @@
+use crate::board::Board;
 use crate::mv::Move;
 use crate::variation::Variation;
 
@@ -6,13 +7,14 @@ use std::fmt;
 
 #[derive(Debug, Clone)]
 pub struct PvTable {
+    board: Board,
     matrix: Vec<Vec<Move>>,
     size: usize,
 }
 
 impl Default for PvTable {
     fn default() -> Self {
-        PvTable::new(MAX_PLY as usize)
+        PvTable::new(Board::default(), MAX_PLY as usize)
     }
 }
 
@@ -42,8 +44,9 @@ impl Default for PvTable {
 // ... pvs get copied up, extracted from matrix[0]
 // ... set ply sets m[ply][0]
 impl PvTable {
-    pub fn new(max_ply: usize) -> PvTable {
+    pub fn new(board: Board, max_ply: usize) -> PvTable {
         let mut pvc = PvTable {
+            board,
             matrix: vec![Vec::new(); max_ply],
             size: 0,
         };
@@ -54,6 +57,10 @@ impl PvTable {
         pvc
     }
     pub fn set(&mut self, ply: Ply, m: &Move, terminal_move: bool) {
+        debug_assert!({
+            let pv = self.extract_pv_for(ply);
+            self.board.make_moves(&pv.to_inner()).is_legal_move(m)
+        });
         let p = ply as usize;
         self.matrix[p][0] = *m;
         if terminal_move {

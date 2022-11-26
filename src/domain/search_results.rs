@@ -49,13 +49,14 @@ impl fmt::Display for SearchResults {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "bm={bm} sc={sc} depth={d} seldepth={sd} ms={ms} nodes={nodes}",
+            "bm={bm} sc={sc} depth={d} seldepth={sd} ms={ms} nodes={nodes} pv={pv}",
             d = self.depth,
             sd = self.seldepth,
             ms = self.time_millis,
             nodes = self.nodes,
             bm = self.best_move().unwrap_or_default(),
             sc = self.score().unwrap_or_default(),
+            pv = self.pv(),
         )?;
         if f.alternate() {
             for (bmv, sc) in &self.multi_pv {

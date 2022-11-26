@@ -261,7 +261,6 @@ impl fmt::Debug for Algo {
             // .field("pv_table", &self.pv_table.extract_pv().)
             .field("board", &self.board)
             .field("analyse_mode", &self.analyse_mode)
-            //.field("pv", &self.pv)
             .field("depth", &self.max_depth)
             .field("ids", &self.ids)
             .field("eval", &self.eval)
