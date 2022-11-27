@@ -11,8 +11,8 @@
 **/*.no_checkin
 
 # chess files
-*.epd
-*.pgn
+# *.epd
+# *.pgn
 
 # executables
 *.exe 
@@ -29,11 +29,14 @@ junk/**
 .vscode/*
 
 # profiling output
-perf.data*
-perf*.data
+# profiling output
+**/perf.*.data*
+**/perf.data
+**/*flamegraph*.svg
+flame.svg
+cachegrind.out.*
 firefox.perf
 *.folded
-flamegraph*.svg
 flame.svg
 cachegrind.out.*
 /flames
