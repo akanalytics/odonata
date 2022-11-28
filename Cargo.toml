@@ -1,18 +1,16 @@
 [package]
-name = "odonata"
-version = "0.6.36"
-license = "GPL-3.0+"
-homepage = "https://github.com/akanalytics/odonata"
 authors = [
-    "andy watkins <andy@webcalculator.com>",
-    "mark raistrick <mark.raistrick@gmail.com>",
+  "andy watkins <andy@webcalculator.com>",
+  "mark raistrick <mark.raistrick@gmail.com>",
 ]
+description = "A simple UCI compliant chess engine"
 edition = "2021"
-description = """
-A simple UCI compliant chess engine
-"""
+homepage = "https://github.com/akanalytics/odonata"
 keywords = ["chess"]
+license = "GPL-3.0+"
+name = "odonata"
 repository = "https://github.com/akanalytics/odonata"
+version = "0.6.37"
 
 # for built dependency
 build = "build.rs"
@@ -20,124 +18,113 @@ build = "build.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-test-log = "0.2"
-clap = "3.1.18"
+arrayvec = {version = "0.7", features = ["serde"]}
 bitflags = "1.2"
-arrayvec = { version ="0.7", features = ["serde"] }
+clap = "3.1.18"
 once_cell = "1.7"
-regex = "1.4"
 rand = "0.8"
 rand_chacha = "0.3"
+regex = "1.4"
+test-log = "0.2"
 # log4rs = "1.2.0"
-flexi_logger ={ version= "0.24.1", features = ["colors"] }
-log = { version = "0.4", features = ["release_max_level_debug"] }
-crossbeam-utils = "0.8.8" #{ git = "https://github.com/crossbeam-rs/crossbeam" }
-static_init = "1.0"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-serde_with = "1.9"
+anyhow = {version = "1.0", features = ["backtrace"]}
+backtrace = "0.3.64"
+chrono = {version = "0.4"}
+crossbeam-utils = "0.8.8"
+csv = "1.1.6"
+enumflags2 = {version = "0.7", features = ["serde"]}
+figment = {version = "0.10.6", features = ["env", "toml", "test"]}
+flexi_logger = {version = "0.24.1", features = ["colors"]}
+format_num = "0.1"
+hdrhist = "0.5.0"
+include_dir = "0.7.2"
+indexmap = "1.9.1"
+itertools = "0.10"
 jsonrpc-core = "17.1"
 jsonrpc-derive = "17.1"
+log = {version = "0.4", features = ["release_max_level_debug"]}
+num-traits = "0.2"
+perf-event = {version = "0.4.7", optional = true}
+petgraph = "0.6.0"
+pprof = {version = "0.11.0", features = ["flamegraph"], optional = true}
+rayon = "1.5"
+serde = {version = "1.0", features = ["derive"]}
+serde_json = "1.0"
+serde_with = "1.9"
+static_init = "1.0"
 strum = "0.24"
 strum_macros = "0.24"
-format_num = "0.1"
-itertools = "0.10"
-rayon = "1.5"
-num-traits = "0.2"
-include_dir = "0.7.2"
-enumflags2 = { version = "0.7", features = ["serde"] }
-anyhow = { version = "1.0", features = ["backtrace"] }
-figment = { version = "0.10.6", features = ["env", "toml", "test"] }
-toml = "0.5.8"
-petgraph = "0.6.0"
-backtrace = "0.3.64"
-thread_local = "1.1.4"
 tabled = "0.8.0"
-# tabled = { git = "https://github.com/zhiburt/tabled", branch = "master" }
-hdrhist = "0.5.0"
-csv = "1.1.6"
-chrono = { version = "0.4" }
-indexmap = "1.9.1"
-pprof = { version = "0.11.0", features = ["flamegraph"], optional=true }
-
-
-
+thread_local = "1.1.4"
+toml = "0.5.8"
 
 [dev-dependencies]
-criterion = "0.3"
+criterion = "0.4"
 env_logger = "0.9"
-perf-event = "0.4.7"
-pprof = { version = "0.11.0", features = ["flamegraph"] }
-
-
-
+perf-event = {version = "0.4.7"}
+pprof = {version = "0.11.0", features = ["flamegraph"]}
 
 [build-dependencies]
-built = { version = "0.5", features = ["chrono", "semver"] }
+built = {version = "0.5", features = ["chrono", "semver", "git2"
+]}
 include_dir = "0.6"
 
-
 [[bench]]
-name = "benchmark"
+test = false
 harness = false
-
+name = "benchmark"
 
 [profile.bench]
 debug = true
-opt-level = 3
-incremental = true
-codegen-units = 256
 # lto = true
 
 [profile.dev]
-opt-level = 3
-incremental = true
-debug = true  # allow profiling of the  main executable 
-split-debuginfo = "unpacked"
-codegen-units = 256
+codegen-units = 256 
+debug = true # allow profiling of the  main executable 
+incremental = true 
+opt-level = 3 
+split-debuginfo = "unpacked" 
 
 [profile.test]
-opt-level = 2
-incremental = true
-debug = true  # allow profiling of the  main executable 
-codegen-units = 256
-split-debuginfo = "off"  # for hotspot profiler disassembly
+codegen-units = 256 
+debug = true # allow profiling of the  main executable 
+incremental = true 
+opt-level = 2 
+split-debuginfo = "off" # for hotspot profiler disassembly
 
 [profile.release]
-opt-level = 3
-incremental = false
-codegen-units = 256
-debug = true  # allow profiling of the  main executable 
-split-debuginfo = "unpacked"
+codegen-units = 256 
+debug = true # allow profiling of the  main executable 
+incremental = false 
+opt-level = 3 
+split-debuginfo = "unpacked" 
 
 [profile.tournament]
 #panic = "abort"
+# codegen-units = 1
+# debug = false
+# incremental = true
 inherits = "release"
-opt-level = 3
-incremental = true
-codegen-units = 1
-debug = false
-split-debuginfo = "unpacked"
+# opt-level = 3
+# split-debuginfo = "unpacked"
 
-[profile.stable]
-inherits = "tournament"
-split-debuginfo = "unpacked"
 
 [lib]
 # bug in criterion<->cargo interaction https://bheisler.github.io/criterion.rs/book/faq.html
 bench = false
+test = true
 
 [[bin]]
-name = "odonata"
 bench = false
+name = "odonata"
+test = false
 
 [features]
-profiler = ["pprof"]
+fast = ["remove_logging", "unchecked_indexing", "remove_metrics"]
+profiler = ["pprof", "perf-event"]
+remove_logging = []
 remove_metrics = []
 unchecked_indexing = []
-remove_logging = []
-fast = ["remove_logging", "unchecked_indexing", "remove_metrics"]
-
 
 # RUSTFLAGS="-C target-cpu=native" cargo bench
 

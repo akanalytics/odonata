@@ -118,6 +118,10 @@ impl Board {
         if mv.is_null() {
             return false;
         }
+        if !mv.from().is_in(self.us()) {
+            return false;
+        }
+
         // castling and kings moves already done above
         let mut us = self.us();
         let mut kings = self.kings() & us;

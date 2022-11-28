@@ -27,7 +27,7 @@ impl Algo {
         let depth = n.depth;
         self.max_depth = depth;
         // self.stats.depth = depth;
-        self.pv_table = PvTable::new(board.clone(), MAX_PLY as usize);
+        self.pv_table = PvTable::new(MAX_PLY as usize);
         debug_assert!(self.current_variation.len() == 0);
 
         let (score, category) = match self.alphabeta(
@@ -153,6 +153,8 @@ impl Algo {
             let t = Metrics::timing_start();
             // QS starts from ply=0
             let s = self.qs(Node { ply: 0, ..n }, b, Some(last_move));
+            debug!("pv table from qs\n{tab}\n{n}", tab=self.pv_table);
+            // self.pv_table.propagate_from(n.ply);
             Metrics::profile(t, Timing::TimingQs);
             return Ok((s, Event::NodeLeafQs));
         }
@@ -390,6 +392,7 @@ impl Algo {
                 );
                 self.history.raised_alpha(&n, b, &mv);
                 self.record_move(ply, &mv);
+                trace!("pv table \n{tab}\n{n}", tab=self.pv_table);
             } else {
                 self.history.duff(&n, b, &mv);
             }

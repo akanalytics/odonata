@@ -68,7 +68,7 @@ impl Algo {
         }
 
         Metrics::incr_node(n, Event::RevFutConsider);
-        if n.depth > self.rev_fut.max_depth {
+        if n.depth > self.max_depth {
             // dont prune too far away from leaf nodes
             Metrics::incr_node(&n, Event::RevFutDeclineMaxDepth);
             return None;

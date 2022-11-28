@@ -149,9 +149,9 @@ impl UciServer {
     }
 
     fn print(send: &str) {
+        println!("{}", send);
         info!("<< {}", send);
         debug!(target: "uci", "<< {send}");
-        println!("{}", send);
     }
 
     pub fn banner() {
@@ -1016,12 +1016,12 @@ mod tests {
         uci.prelude.push("debug on".to_string());
         uci.prelude.push("position startpos moves d2d4".to_string());
         uci.prelude.push("go wtime 1000 btime 1000".to_string());
-        uci.prelude.push("sleep 1100".to_string());
+        uci.prelude.push("sleep 100".to_string());
         uci.prelude.push("ucinewgame".to_string());
         uci.prelude.push("position startpos moves d2d4".to_string());
         uci.prelude
-            .push("go wtime 20160 btime 20160 winc 160 binc 160 nodes 3000".to_string());
-        uci.prelude.push("sleep 500".to_string());
+            .push("go wtime 10160 btime 10160 winc 160 binc 160 nodes 3000".to_string());
+        uci.prelude.push("sleep 200".to_string());
         uci.prelude.push("quit".to_string());
         uci.run();
         // println!("pvtable:\n{}", uci.algo.pv);
@@ -1033,10 +1033,10 @@ mod tests {
         let mut uci = UciServer::new();
         // uci.prelude.push("debug on".to_string());
         uci.prelude.push("position startpos".to_string());
-        uci.prelude.push("go ponder movetime 1000".to_string());
-        uci.prelude.push("sleep 300".to_string());
+        uci.prelude.push("go ponder movetime 400".to_string());
+        uci.prelude.push("sleep 100".to_string());
         uci.prelude.push("ponderhit".to_string());
-        uci.prelude.push("sleep 1100".to_string());
+        uci.prelude.push("sleep 300".to_string());
         uci.prelude.push("quit".to_string());
         uci.run();
         println!("\n{}", uci.engine.lock().unwrap().algo);

@@ -83,12 +83,12 @@ impl See {
                 break;
             }
             d += 1;
-            gain[d] = MaterialBalance::CLASSICAL_WEIGHTS[mover].s() as i32 - gain[d - 1]; // what you are taking less what opp has
-                                                                                          // eprintln!("{}\n{}: mover: {} from: {:?} for spec gain {:?}\n{}",board.to_fen(), d, mover, from, gain, attackers);
-                                                                                          // if cmp::max(-gain[d-1], gain[d]) < 0 {
-                                                                                          //     break; // safely prune as from here on its zero
-                                                                                          // }
-
+            gain[d] = MaterialBalance::CLASSICAL_WEIGHTS[mover].s() as i32 - gain[d - 1];
+            // what you are taking less what opp has
+            // println!("{}\n{}: mover: {} from: {:?} for spec gain {:?}\n{}",board.to_fen(), d, mover, from, gain, attackers);
+            // if cmp::max(-gain[d-1], gain[d]) < 0 {
+            //     break; // safely prune as from here on its zero
+            // }
             if d > 38 {
                 // warn!("{} {}", mv, board.to_fen());
                 break;

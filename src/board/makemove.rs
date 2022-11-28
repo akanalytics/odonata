@@ -76,6 +76,14 @@ impl Board {
     pub fn make_moves(&self, var: &BareMoveVariation) -> Board {
         let mut b = self.clone();
         for mv in var.moves() {
+            debug_assert!(
+                b.validate().is_ok(),
+                "Invalid board before move {mv} from {var} on board {b} (base board {self:#})"
+            );
+            debug_assert!(
+                b.is_legal_baremove(mv) && b.is_legal_move(&b.augment_move(*mv)),
+                "Move {mv} from {var} on board {b} (base board {self:#}) is invalid"
+            );
             b = b.make_move(&b.augment_move(*mv));
         }
         b
@@ -85,6 +93,10 @@ impl Board {
         Metrics::incr(Counter::MakeMove);
         let t = Metrics::timing_start();
         // either we're moving to an empty square or its a capture
+        debug_assert!(
+            self.validate().is_ok(),
+            "Invalid board before move {m} (board {self:#})"
+        );
         debug_assert!(
             m.is_null()
                 || ((self.white() | self.black()) & m.to().as_bb()).is_empty()
@@ -96,6 +108,15 @@ impl Board {
             self.black()
         );
 
+        debug_assert!(
+            m.is_null() || m.from().is_in(self.us()),
+            "from:sq not our color move {m} on board {self}"
+        );
+
+        debug_assert!(
+            m.is_null() || self.is_legal_move(m),
+            "Move {m} on board {self:#} is invalid"
+        );
         let mut b = Board {
             en_passant: Bitboard::EMPTY,
             turn: self.turn.opposite(),
@@ -188,10 +209,7 @@ impl Board {
 
         debug_assert!(
             b.hash == Hasher::default().hash_board(&b),
-            "\n{}.make_move({}) = \n{} inconsistent incremental hash {:x} (should be {:x})",
-            self,
-            m,
-            b,
+            "\n{self}.make_move({m}) = {b};\ninconsistent incremental hash {:x} (should be {:x})\n{self:#}\n{m:?}",
             b.hash,
             Hasher::default().hash_board(&b),
         );
@@ -518,7 +536,7 @@ mod tests {
     }
 
     #[test]
-    fn profile_do_move() {
+    fn bench_do_move() {
         let mut b = Catalog::starting_board();
         let mv = b.parse_san_move("e4").unwrap();
         PerfProfiler::new("do_move".to_string()).benchmark(|| {

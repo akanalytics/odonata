@@ -31,15 +31,12 @@ use std::time::Duration;
 //     }
 // }
 
-
-
-
 #[derive(Default, Debug, Serialize, Deserialize)]
 pub struct TagUnion {
     avoid_moves: Option<Box<MoveList>>,
     best_moves: Option<Box<MoveList>>,
     best_scored_moves: Option<ScoredMoveList>,
-    branching_factor: Option<f64>, 
+    branching_factor: Option<f64>,
     pv: Option<Variation>,
     id: Option<String>,
     analysis_count_depth: Option<Ply>,
@@ -64,28 +61,20 @@ pub struct TagUnion {
     comment: Option<(u8, String)>,
 }
 
-
 impl TagUnion {
     pub fn parse_tag(_kind: &str, _value: &str) -> anyhow::Result<TagUnion> {
-
         Ok(TagUnion::default())
-    } 
+    }
 }
-
-
-
-
-
-
 
 #[cfg(test)]
 mod tests2 {
-    use serde_json::Map;
     use serde_json::value::Value;
+    use serde_json::Map;
 
     use super::*;
 
-
+    #[ignore]
     #[test]
     fn tags_x() {
         let mut tags = TagUnion::default();
@@ -98,35 +87,15 @@ mod tests2 {
         }
 
         let mut map = Map::new();
-        map.insert("result".to_owned(), Value::String("Hello World2".to_owned()));
+        map.insert(
+            "result".to_owned(),
+            Value::String("Hello World2".to_owned()),
+        );
 
         let tags2: TagUnion = serde_json::from_value(Value::Object(map)).unwrap();
         dbg!(tags2);
-
-
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Tag {
@@ -518,7 +487,6 @@ static REGEX_SPLIT_WORDS: Lazy<Regex> = Lazy::new(|| {
 mod tests {
     use super::*;
 
-
     #[test]
     fn test_split_into_tags() {
         let vec = Tags::split_into_tags(r#"cat"meo;w";"mouse";"toad;;;;;;" ;zebra;"#);
@@ -574,15 +542,24 @@ mod tests {
 
     #[test]
     fn test_tags() {
-        dbg!(std::mem::size_of::<TagUnion>());
-        dbg!(std::mem::size_of::<MoveList>());
-        dbg!(std::mem::size_of::<Variation>());
-        dbg!(std::mem::size_of::<Duration>());
-        dbg!(std::mem::size_of::<u128>());
-        dbg!(std::mem::size_of::<ScoredMoveList>());
-        dbg!(std::mem::size_of::<Option<Box<ScoredMoveList>>>());
-        dbg!(std::mem::size_of::<Vec<bool>>());
-        dbg!(std::mem::size_of::<Option<Vec<bool>>>());
+        use std::mem::size_of;
+        println!("{} {}", size_of::<TagUnion>(), "<TagUnion>()");
+        println!("{} {}", size_of::<MoveList>(), "<MoveList>()");
+        println!("{} {}", size_of::<Variation>(), "<Variation>()");
+        println!("{} {}", size_of::<Duration>(), "<Duration>()");
+        println!("{} {}", size_of::<u128>(), "<u128>()");
+        println!("{} {}", size_of::<ScoredMoveList>(), "<ScoredMoveList>()");
+        println!("{} {}", size_of::<Vec<bool>>(), "<Vec<bool>>()");
+        println!(
+            "{} {}",
+            size_of::<Option<Vec<bool>>>(),
+            "<Option<Vec<bool>>>()"
+        );
+        println!(
+            "{} {}",
+            size_of::<Option<Box<ScoredMoveList>>>(),
+            "<Option<Box<ScoredMoveList>>>()"
+        );
 
         let mut tags = Tags::new();
         tags.remove(Tag::BM);

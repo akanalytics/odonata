@@ -378,7 +378,7 @@ mod tests {
 
         toml::to_string(&engine1.algo.qs).unwrap();
         let text1 = toml::to_string(&engine1).unwrap();
-        eprintln!("toml\n{:?}", text1);
+        println!("toml\n{:?}", text1);
 
         let engine2: ThreadedSearch = toml::from_str(&text1).unwrap();
         let _text2 = toml::to_string(&engine2).unwrap();
@@ -386,16 +386,16 @@ mod tests {
 
         let engine3 = ThreadedSearch::new();
         let text3 = toml::to_string(&engine3).unwrap();
-        eprintln!("toml\n{}", text3);
+        println!("toml\n{}", text3);
     }
 
     #[test]
     fn engine_init_test() {
         let mut engine = ThreadedSearch::new();
         assert_eq!(engine.algo.eval.quantum, 1);
-        eprintln!("{}", toml::to_string(&engine).unwrap());
+        println!("{}", toml::to_string(&engine).unwrap());
         engine.configment("eval.quantum", "1").unwrap();
-        eprintln!("{}", engine);
+        println!("{}", engine);
         assert_eq!(engine.algo.eval.quantum, 1);
         engine.configment("eval.quantum", "2").unwrap();
         assert_eq!(engine.algo.eval.quantum, 2);

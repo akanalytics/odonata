@@ -1,13 +1,10 @@
-#[cfg(test)]
-use std::cell::RefCell;
-
-#[cfg(test)]
+#[cfg(any(test, feature = "profiler"))]
 use std::fmt;
 
-#[cfg(test)]
+#[cfg(any(test, feature = "profiler"))]
 use perf_event::{events::Hardware, Builder, Counter, Group};
 
-#[cfg(test)]
+#[cfg(any(test, feature = "profiler"))]
 use super::{black_box, utils::IntegerFormatter};
 
 #[cfg(any(test, feature = "profiler"))]
@@ -59,9 +56,9 @@ impl<'a> ProfProfiler<'a> {
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "profiler"))]
 pub struct PerfProfiler {
-    group: RefCell<Group>,
+    group: Group,
     name: String,
     iters: u64,
     ins: Counter,
@@ -72,7 +69,14 @@ pub struct PerfProfiler {
     cycles: Counter,
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "profiler"))]
+impl fmt::Display for PerfProfiler {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.name)
+    }
+}
+
+#[cfg(any(test, feature = "profiler"))]
 impl PerfProfiler {
     #[inline]
     pub fn new(name: String) -> PerfProfiler {
@@ -110,7 +114,7 @@ impl PerfProfiler {
         // .unwrap();
         PerfProfiler {
             name,
-            group: RefCell::new(group),
+            group,
             ins,
             cycles,
             branches,
@@ -130,35 +134,44 @@ impl PerfProfiler {
 
     #[inline]
     pub fn start(&mut self) {
-        self.group.borrow_mut().enable().unwrap();
+        self.group.enable().unwrap();
     }
 
     #[inline]
     pub fn stop(&mut self) {
-        self.group.borrow_mut().disable().unwrap();
+        self.group.disable().unwrap();
         self.iters += 1
     }
 
     pub fn cycles(&mut self) -> u64 {
-        self.group.borrow_mut().read().unwrap()[&self.cycles]
+        self.group.read().unwrap()[&self.cycles]
     }
 
     pub fn instructions(&mut self) -> u64 {
-        self.group.borrow_mut().read().unwrap()[&self.ins]
+        self.group.read().unwrap()[&self.ins]
     }
 
     pub fn set_iters(&mut self, iters: u64) {
         self.iters = iters as u64
     }
-}
 
-#[cfg(test)]
-impl fmt::Display for PerfProfiler {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let iters = std::cmp::max(1, self.iters);
-        let counts = self.group.borrow_mut().read().unwrap();
+    pub fn assert_counts(&mut self, expected: u64) {
+        let low = (expected as f64 * 0.95) as u64;
+        let high = (expected as f64 * 1.05) as u64;
+        let ins = self.instructions() / self.iters;
+        assert!(
+            ins >= low && ins <= high,
+            "Profiler for {name} failed with {low} < {ins} < {high}",
+            name = self.name
+        );
+    }
+
+    #[inline]
+    pub fn write<W: std::io::Write>(&mut self, mut w: W) -> anyhow::Result<()> {
+        let counts = self.group.read().unwrap();
+        self.iters = std::cmp::max(1, self.iters);
         writeln!(
-            f,
+            w,
             "PROFH: {:<25}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}",
             "name",
             "iters",
@@ -171,23 +184,23 @@ impl fmt::Display for PerfProfiler {
             "cycles-per-ins",
             "cache-hit-%",
         )?;
-        writeln!(f,
-            "PROFD: {:<25}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15.2}\t{:>15.2}\n",
-            self.name,
-            self.iters,
-            // Formatting::u128((0u32).into()),
-            (counts[&self.cycles] / iters).human(),
-            (counts[&self.ins] / iters).human(),
-            (counts[&self.branches] / iters).human(),
-            (counts[&self.branch_misses] / iters).human(),
-            (counts[&self.cache_misses] / iters).human(),
-            (0u32).human(),
-            // (counts[&self.cache_refs] / iters).human()),
-            // (counts[&self.cycles] as f64 / counts[&self.ins] as f64),
-            (0u32).human(),
-            (0u32).human(),
-            // 100.0 - (counts[&self.cache_misses] as f64 * 100.0 / counts[&self.cache_refs] as f64)
-        )?;
+        writeln!(w,
+        "PROFD: {:<25}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15}\t{:>15.2}\t{:>15.2}\n",
+        self.name,
+        self.iters,
+        // Formatting::u128((0u32).into()),
+        (counts[&self.cycles] / self.iters).human(),
+        (counts[&self.ins] / self.iters).human(),
+        (counts[&self.branches] / self.iters).human(),
+        (counts[&self.branch_misses] / self.iters).human(),
+        (counts[&self.cache_misses] / self.iters).human(),
+        (0u32).human(),
+        // (counts[&self.cache_refs] / self.iters).human()),
+        // (counts[&self.cycles] as f64 / counts[&self.ins] as f64),
+        (0u32).human(),
+        (0u32).human(),
+        // 100.0 - (counts[&self.cache_misses] as f64 * 100.0 / counts[&self.cache_refs] as f64)
+    )?;
         Ok(())
     }
 }
@@ -199,7 +212,11 @@ mod tests {
     impl Drop for PerfProfiler {
         fn drop(&mut self) {
             // if log::log_enabled!(log::Level::Trace) {
-            println!("{}", self);
+            let mut buf = Vec::new();
+            self.write(&mut buf).unwrap();
+            let s = String::from_utf8(buf).unwrap();
+            println!("{s}");
+            // let _ = self.write(std::io::stdout());
             // }
         }
     }
@@ -247,7 +264,7 @@ mod tests {
     }
 
     #[test]
-    fn bench_simple_struct() {
+    fn bench_struct_access() {
         let mut prof1 = PerfProfiler::new("struct_access".into());
 
         for _iter in 0..100 {
@@ -269,11 +286,13 @@ mod tests {
     }
 
     #[test]
-    fn bench_simple_array() {
+    fn bench_array_access() {
         let mut prof2 = PerfProfiler::new("array_access".into());
         for _iter in 0..100 {
             let mut a = Array::default();
-            prof2.benchmark(|| {
+            prof2.benchmark(
+                #[inline]
+                || {
                 a.a[0] = black_box(0);
                 a.a[1] = black_box(1);
                 a.a[2] = black_box(2);

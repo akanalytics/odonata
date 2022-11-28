@@ -207,7 +207,7 @@ impl<'a> Analysis<'a> {
 // }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
     use crate::bits::precalc::PreCalc;
     use crate::bits::square::Square;
@@ -224,7 +224,7 @@ mod tests {
     }
 
     #[test]
-    fn benchmark_king_attacks() {
+    fn bench_king_attacks() {
         let b = Board::parse_fen("rnbqkbnr/pppp1ppp/4p3/3N4/8/8/PPPPPPPP/R1BQKBNR b KQkq - 1 2")
             .unwrap();
         let analysis = Analysis::of(&b);

@@ -102,6 +102,7 @@ impl Algo {
         }
 
         if !self.qs.enabled {
+            // self.record_move(n.ply, &Move::NULL_MOVE);
             return bd.static_eval(&self.eval);
         }
 
@@ -121,7 +122,8 @@ impl Algo {
                 Metrics::incr_node(&n, Event::QsTtHit);
                 match tt.nt {
                     NodeType::ExactPv => {
-                        if self.tt.allow_truncated_pv { 
+                        if self.tt.allow_truncated_pv {
+                            // self.record_truncated_move(n.ply, &tt.validate_move(bd));
                             return score;
                         }
                     }
@@ -155,7 +157,8 @@ impl Algo {
                 return pat.clamp_score();
             }
             if pat > n.alpha {
-                Self::trace(n, pat, Move::NULL_MOVE, "alpha raised");
+                Self::trace(n, pat, Move::NULL_MOVE, "alpha raised static eval");
+                //self.record_truncated_move(n.ply, &Move::NULL_MOVE);
                 n.alpha = pat;
             }
             // coarse delta prune - where margin bigger than any possible move
@@ -245,6 +248,7 @@ impl Algo {
 
             unpruned_move += 1;
             let mut child = bd.make_move(&mv);
+            // self.current_variation.push(mv);
             let s = -self.qs(
                 Node {
                     ply: n.ply + 1,
@@ -255,6 +259,7 @@ impl Algo {
                 &mut child,
                 Some(mv),
             );
+            // self.current_variation.pop();
             // bd.undo_move(&mv);
             if bs.is_none() || s > bs.unwrap() {
                 bs = Some(s);
@@ -267,8 +272,8 @@ impl Algo {
                 return s.clamp_score();
             }
             if s > n.alpha {
-                Self::trace(n, s, mv, "mv raises alpha");
-                //self.record_move(n.ply, &mv);
+                Self::trace(n, s, mv, "*mv raises alpha");
+                // self.record_move(n.ply, &mv);
                 n.alpha = s;
             } else {
                 Self::trace(n, s, mv, "mv doesn't raise alpha");
@@ -290,17 +295,24 @@ impl Algo {
     #[inline]
     #[allow(unused_variables)]
     fn trace(n: Node, eval: Score, mv: Move, comment: &str) {
-        trace!("{:<25}  {:<6}  {mv:<5}  {comment}", n.to_string(), eval.to_string());
+        trace!(
+            "{indent} {mv:<5} {n:<25}  {eval:<6} {comment}",
+            indent = " ".repeat(n.ply as usize),
+            mv = mv.to_string(),
+            n = n.to_string(),
+            eval = eval.to_string(),
+            // var = self.current_variation.to_uci()
+        );
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{catalog::*, Position};
     use crate::search::engine::ThreadedSearch;
     use crate::search::timecontrol::*;
     use crate::test_log::test;
+    use crate::{catalog::*, Position};
     use anyhow::Result;
 
     #[test]
@@ -315,7 +327,7 @@ mod tests {
         eng.set_position(pos.clone());
         eng.algo.set_timing_method(TimeControl::Depth(1));
         eng.search_sync();
-        println!("{}",eng.algo.results);
+        println!("{}", eng.algo.results);
     }
 
     #[test]

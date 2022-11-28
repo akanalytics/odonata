@@ -113,9 +113,9 @@ mod tests {
         let pmvt = Pmvt::default();
         let text = toml::to_string(&pmvt).unwrap();
         info!("toml\n{}", text);
-        eprintln!("toml\n{}", text);
+        println!("toml\n{}", text);
         let pmvt2: Pmvt = toml::from_str(&text).unwrap();
-        eprintln!("from toml\n{}", pmvt2);
+        println!("from toml\n{}", pmvt2);
     }
 
     #[test]
@@ -134,7 +134,7 @@ mod tests {
         // eng.configment("eval.pmvt.p.a2.s", "6.5").unwrap();
         // eng.configment("eval.pmvt.p.a2.e", "7.5").unwrap();
         // let _text = toml::to_string(&eng).unwrap();
-        // eprintln!("toml\n{}", text);
+        // println!("toml\n{}", text);
         // let lookup = c1.weight("eval.pmvt.p.a2", &Weight::from_i32(1, 1));
         // assert_eq!(eng.algo.eval.pmvt.pmvt(Piece::Pawn, Square::A2).s(), Weight::from_f32(6.5,7.5).s());
         // assert_eq!(eng.algo.eval.pmvt.pmvt(Piece::Pawn, Square::A2).e(), Weight::from_f32(6.5,7.5).e());

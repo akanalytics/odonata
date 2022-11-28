@@ -130,8 +130,8 @@ pub fn main() -> anyhow::Result<()> {
         let mut uci = UciServer::new();
         uci.strict_error_handling = matches.is_present("strict");
         if matches.is_present("uci") {
-            uci.prelude.push("settings".to_string());
             uci.prelude.push("uci".to_string());
+            uci.prelude.push("setoption name Show_Config".to_string());
             uci.prelude.push("quit".to_string());
         }
         uci.run();

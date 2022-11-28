@@ -345,9 +345,9 @@ mod tests {
         let pst = Pst::default();
         let text = toml::to_string(&pst).unwrap();
         info!("toml\n{}", text);
-        eprintln!("toml\n{}", text);
+        println!("toml\n{}", text);
         let pst2: Pst = toml::from_str(&text).unwrap();
-        eprintln!("from toml\n{}", pst2);
+        println!("from toml\n{}", pst2);
     }
 
     #[test]
@@ -366,7 +366,7 @@ mod tests {
         eng.configment("eval.pst.p.a2.s", "6.5").unwrap();
         eng.configment("eval.pst.p.a2.e", "7.5").unwrap();
         let _text = toml::to_string(&eng).unwrap();
-        // eprintln!("toml\n{}", text);
+        // println!("toml\n{}", text);
         // let lookup = c1.weight("eval.pst.p.a2", &Weight::from_i32(1, 1));
         assert_eq!(
             eng.algo.eval.pst.pst(Piece::Pawn, Square::A2).s(),

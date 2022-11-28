@@ -244,8 +244,8 @@ mod tests {
     //     engine.algo.set_timing_method(TimeControl::Depth(3));
     //     engine.algo.recognizer.enabled = true;
     //     engine.search();
-    //     eprintln!("{}", engine.algo.results_as_position());
-    //     eprintln!("{}", pos);
+    //     println!("{}", engine.algo.results_as_position());
+    //     println!("{}", pos);
     //     assert_eq!(engine.algo.results_as_position().bm().unwrap(), pos.bm().unwrap());
     // }
 }

@@ -189,6 +189,7 @@ impl Algo {
     pub fn show_config(&self) -> anyhow::Result<()> {
         info!(target: "eng", "# show configuration:");
         let text = toml::to_string(self)?;
+        println!("{text}");
         info!(target: "eng", "# start configuration:\n{text}");
         info!(target: "eng", "# end of configuration");
         Ok(())

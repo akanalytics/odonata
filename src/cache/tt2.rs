@@ -767,7 +767,7 @@ mod tests {
     #[test]
     fn test_tt() {
         let mut tt1 = TranspositionTable2::default();
-        tt1.new_game();
+        tt1.set_state(State::NewGame);
         info!("display\n{tt1}\ndebug\n{tt1:?}");
         info!("After new game");
         let board = Catalog::starting_board();
@@ -777,7 +777,7 @@ mod tests {
         assert_eq!(tt1.hashfull_per_mille(), 0);
         manipulate(&mut tt1);
         assert_eq!(tt1.table.utilization(), 2);
-        tt1.new_game();
+        tt1.set_state(State::NewGame);
         assert!(tt1.probe_by_hash(123).is_none());
 
         // triggers failed ownership panic
@@ -793,7 +793,7 @@ mod tests {
         assert_eq!(tt1.table.utilization(), 0);
         manipulate(&mut tt1);
         assert_eq!(tt1.table.utilization(), 2);
-        tt1.new_game();
+        tt1.set_state(State::NewGame);
         assert!(tt1.probe_by_hash(123).is_none());
 
         let mut tt3 = tt1.clone();
@@ -874,13 +874,13 @@ mod tests {
         let mut algo = Algo::new();
         let d = 2;
         for pos in Catalog::bratko_kopec() {
-            eprintln!("{}", pos);
+            println!("{}", pos);
             algo.new_game();
-            eprintln!("new game");
+            println!("new game");
             algo.set_position(pos.clone());
             algo.set_timing_method(TimeControl::Depth(d));
             algo.run_search();
-            eprintln!("search done");
+            println!("search done");
             //            let pv = algo.tt.extract_pv(&algo.bm(), pos.board());
             let pv = algo.tt.extract_pv_and_score(pos.board()).0;
 
@@ -911,15 +911,15 @@ mod tests {
         eng.new_game();
         eng.set_position(Catalog::starting_position().clone());
         eng.algo.set_timing_method(TimeControl::Depth(6));
-        eprintln!("Before 1\n{}", eng.algo);
+        println!("Before 1\n{}", eng.algo);
         eng.search_sync();
-        eprintln!("After 1\n{}", eng.algo);
+        println!("After 1\n{}", eng.algo);
         let mut eng = ThreadedSearch::new();
         eng.new_game();
         eng.set_position(Catalog::starting_position().clone());
         eng.algo.set_timing_method(TimeControl::Depth(6));
-        eprintln!("Before 2\n{}", eng.algo);
+        println!("Before 2\n{}", eng.algo);
         eng.search_sync();
-        eprintln!("After 2{}", eng.algo);
+        println!("After 2{}", eng.algo);
     }
 }

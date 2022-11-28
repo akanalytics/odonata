@@ -146,7 +146,7 @@ impl Algo {
             // node.alpha + Score::from_cp(1) == node.beta // not in PVS
             return false;
         }
-        if n.depth > self.futility.max_depth {
+        if n.depth > self.max_depth {
             // dont prune too far away from leaf nodes
             Metrics::incr_node(&n, Event::FutilityDeclineMaxDepth);
             return false;

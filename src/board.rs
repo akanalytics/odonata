@@ -680,7 +680,7 @@ impl Board {
             let p = self.piece(sq);
             let ch = match p {
                 // avoid calling unchecked that can recursively call to_fen
-                Some(p) => p.to_char(self.color_of(sq).unwrap()),
+                Some(p) => p.to_char(self.color_of(sq).unwrap_or_default()),
                 None => '.',
             };
             res.push(ch);
@@ -726,14 +726,21 @@ impl Board {
                 self.black()
             );
         }
-        let mut bb = Bitboard::all();
+        
+        let mut bb = Bitboard::empty();
         for &p in Piece::ALL.iter() {
-            bb &= self.pieces(p);
+            let pieces = self.pieces(p);
+            if pieces.intersects(bb) {
+                bail!("Piece bitboard for {p} intersects other pieces {self:#}");
+            }
+            if !self.occupied().contains(pieces) {
+                bail!("Piece bitboard for {p} not contained in black/white {self:#}");
+            }
+            bb |= pieces;
         }
-        if !bb.is_empty() {
-            bail!("Piece bitboards are not disjoint");
+        if bb != self.occupied() {
+            bail!("Piece bitboards and occupied squares do not match {self:#}");
         }
-
         // if self.fullmove_counter() < self.fifty_halfmove_clock() * 2 {
         //     bail!("Fullmove number (fmvn: {}) < twice half move clock (hmvc: {})", self.fullmove_counter(), self.fifty_halfmove_clock() );
         // }

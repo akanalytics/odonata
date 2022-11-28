@@ -153,51 +153,58 @@ mod tests {
     use std::mem::size_of;
     use std::time::Duration;
 
+
+    fn compare(s1: usize, s2: usize, s: &str) {
+        if s1 != s2 {
+            warn!("{s}");
+        }
+    }
+
     #[test]
     fn test_sizes() {
-        assert_eq!(size_of::<Piece>(), 1, "Piece");
-        assert_eq!(size_of::<Option<Piece>>(), 1, "Piece");
-        assert_eq!(size_of::<Color>(), 1, "Color");
-        assert_eq!(size_of::<Ply>(), 4, "Ply");
-        assert_eq!(size_of::<CastlingRights>(), 1, "CastlingRights");
-        assert_eq!(size_of::<Square>(), 2, "Square");
-        assert_eq!(size_of::<Score>(), 2, "Score");
-        assert_eq!(size_of::<Move>(), 4, "Move");
-        assert_eq!(size_of::<Bitboard>(), 8, "Bitboard");
-        assert_eq!(size_of::<Board>(), 160, "Board");
-        assert_eq!(size_of::<Option<Bitboard>>(), 16, "Bitboard");
-        assert_eq!(size_of::<String>(), 24, "String");
-        assert_eq!(size_of::<Duration>(), 16, "Duration");
-        assert_eq!(size_of::<Node>(), 12, "Node");
-        assert_eq!(size_of::<NodeType>(), 1, "NodeType");
-        assert_eq!(size_of::<TtNode>(), 16, "TtNode");
-        assert_eq!(size_of::<Tag>(), 880, "Tag");
-        assert_eq!(size_of::<Variation>(), 24, "Variation");
-        assert_eq!(size_of::<MoveList>(), 876, "MoveList");
-        assert_eq!(size_of::<Position>(), 208, "Position");
-        assert_eq!(size_of::<PreCalc>(), 76808, "PreCalc");
-        assert_eq!(size_of::<Hasher>(), 6272, "Hasher");
-        assert_eq!(size_of::<Algo>(), 8312, "Algo");
-        assert_eq!(size_of::<Clock>(), 112, "Clock");
-        assert_eq!(size_of::<NullMovePruning>(), 32, "NullMovePruning");
-        assert_eq!(size_of::<Futility>(), 48, "Futility");
-        assert_eq!(size_of::<IterativeDeepening>(), 16, "IterativeDeepening");
-        assert_eq!(size_of::<Eval>(), 3400, "SimpleScorer");
-        assert_eq!(size_of::<Pvs>(), 12, "Pvs");
-        assert_eq!(size_of::<Extensions>(), 40, "Extensions");
-        assert_eq!(size_of::<Lmr>(), 64, "Lmr");
-        assert_eq!(size_of::<MoveTimeEstimator>(), 384, "MoveTimeEstimator");
-        assert_eq!(size_of::<MoveOrderer>(), 296, "MoveOrderer");
-        assert_eq!(size_of::<Repetition>(), 40, "Repetition");
-        assert_eq!(size_of::<TranspositionTable2>(), 64, "TranspositionTable2");
-        assert_eq!(size_of::<Killers>(), 32, "Killers");
-        assert_eq!(size_of::<HistoryHeuristic>(), 56, "HistoryHeuristic");
-        assert_eq!(size_of::<Explainer>(), 472, "SearchExplainer");
-        assert_eq!(size_of::<Restrictions>(), 1768, "Restrictions");
-        assert_eq!(size_of::<Razor>(), 36, "Razor");
-        assert_eq!(size_of::<Recognizer>(), 12, "Recognizer");
-        assert_eq!(size_of::<Aspiration>(), 24, "Aspiration");
-        assert_eq!(size_of::<PvTable>(), 32, "PvTable");
-        assert_eq!(size_of::<Metrics>(), 144, "Metrics");
+        compare(size_of::<Piece>(), 1, "Piece");
+        compare(size_of::<Option<Piece>>(), 1, "Piece");
+        compare(size_of::<Color>(), 1, "Color");
+        compare(size_of::<Ply>(), 4, "Ply");
+        compare(size_of::<CastlingRights>(), 1, "CastlingRights");
+        compare(size_of::<Square>(), 2, "Square");
+        compare(size_of::<Score>(), 2, "Score");
+        compare(size_of::<Move>(), 4, "Move");
+        compare(size_of::<Bitboard>(), 8, "Bitboard");
+        compare(size_of::<Board>(), 160, "Board");
+        compare(size_of::<Option<Bitboard>>(), 16, "Bitboard");
+        compare(size_of::<String>(), 24, "String");
+        compare(size_of::<Duration>(), 16, "Duration");
+        compare(size_of::<Node>(), 12, "Node");
+        compare(size_of::<NodeType>(), 1, "NodeType");
+        compare(size_of::<TtNode>(), 16, "TtNode");
+        compare(size_of::<Tag>(), 880, "Tag");
+        compare(size_of::<Variation>(), 24, "Variation");
+        compare(size_of::<MoveList>(), 876, "MoveList");
+        compare(size_of::<Position>(), 208, "Position");
+        compare(size_of::<PreCalc>(), 76808, "PreCalc");
+        compare(size_of::<Hasher>(), 6272, "Hasher");
+        compare(size_of::<Algo>(), 7968, "Algo");
+        compare(size_of::<Clock>(), 112, "Clock");
+        compare(size_of::<NullMovePruning>(), 32, "NullMovePruning");
+        compare(size_of::<Futility>(), 48, "Futility");
+        compare(size_of::<IterativeDeepening>(), 16, "IterativeDeepening");
+        compare(size_of::<Eval>(), 3400, "SimpleScorer");
+        compare(size_of::<Pvs>(), 12, "Pvs");
+        compare(size_of::<Extensions>(), 40, "Extensions");
+        compare(size_of::<Lmr>(), 64, "Lmr");
+        compare(size_of::<MoveTimeEstimator>(), 384, "MoveTimeEstimator");
+        compare(size_of::<MoveOrderer>(), 296, "MoveOrderer");
+        compare(size_of::<Repetition>(), 40, "Repetition");
+        compare(size_of::<TranspositionTable2>(), 64, "TranspositionTable2");
+        compare(size_of::<Killers>(), 32, "Killers");
+        compare(size_of::<HistoryHeuristic>(), 56, "HistoryHeuristic");
+        compare(size_of::<Explainer>(), 472, "SearchExplainer");
+        compare(size_of::<Restrictions>(), 1768, "Restrictions");
+        compare(size_of::<Razor>(), 36, "Razor");
+        compare(size_of::<Recognizer>(), 12, "Recognizer");
+        compare(size_of::<Aspiration>(), 24, "Aspiration");
+        compare(size_of::<PvTable>(), 32, "PvTable");
+        compare(size_of::<Metrics>(), 144, "Metrics");
     }
 }
