@@ -1,64 +1,22 @@
 [alias]
-benchmark = "t bench_ --features=fast --no-capture"
+benchmark = "t --cargo-profile=tournament --features=fast "
+benchmark_all = "t --cargo-profile=tournament --features=fast --no-capture bench_"
 t = "nextest run"
+
 
 # RUSTFLAGS="-C target-cpu=x86-64-v3" cargo t bench_   --no-capture 2>&1  | grep PROFD | sort
 
 
-[build]
+# [build]
 # target = "x86_64-unknown-linux-musl"
-rustflags = ["-C","target-cpu=x86-64-v3"]
+# rustflags = ["-C","target-cpu=x86-64-v3"]
 #rustflags = ["-C","target-cpu=generic"]
 
-
-# test-threading = t test_threading --release -- --ignored --nocapture
-
-
-#perf perf record -e task-clock,cycles,instructions,cache-references,cache-misses --call-graph dwarf -F 99 --output=perf.data  ./target/release/odonata --perft 5
-#linux-perf-run = "perf record -e task-clock,cycles,instructions,cache-references,cache-misses --call-graph dwarf -F 99  ./target/release/odonata --perft 5"
-# chown andy.andy ./tmp/perf.data
-
-#fg5 = "cargo flamegraph --bench benchmark perft5 --bench"
-#cmd1 ="cargo bench hyperbola -- --profile-time 3"
-
-#testall="cargo t --release -- --ignored --nocapture"
-
-# [build]
-# rustflags = ["-C target-cpu=native"]
-
-#[target.x86_64-pc-windows-msvc]
-#rustflags = ["-Ctarget-feature=+crt-static"]
-
-#[target.i686-pc-windows-msvc]
-#rustflags = ["-Ctarget-feature=+crt-static"]
-
-#[target.i586-pc-windows-msvc]
-#rustflags = ["-Ctarget-feature=+crt-static"]
-# rustflags = ["-C target-cpu=native"]
-
-# [build]
-#rustflags = ["-Ctarget-cpu=native", "-C", "linker=clang", "-C", "link-arg=-fuse-ld=/usr/local/bin/mold"] #, "-C", "features=fast"]
-
-#rustflags = ["-Ctarget-cpu=native", "-C", "linker=clang", "-C", "link-arg=-fuse-ld=/usr/local/bin/mold", "-Z", "print-link-args"] #, "-C", "features=fast"]
-# [target.x86_64-unknown-linux-gnu]
-# linker = "clang"
-# rustflags = ["-C", "link-arg=-fuse-ld=/usr/local/bin/mold"]
-
-# [target.x86_64-unknown-linux-musl]
-# linker = "clang"
-# rustflags = ["-C", "link-arg=-fuse-ld=/usr/local/bin/mold", "-Z", "print-link-args"]
+[target.x86_64-unknown-linux-musl]
+rustflags = ["-C","target-cpu=x86-64-v3"]
 
 
-# export RUSTFLAGS="-Clinker=clang -Clink-arg=-fuse-ld=/usr/local/bin/mold -Zprint-link-args"
+[target.x86_64-unknown-linux-gnu]
+rustflags = ["-C","target-cpu=x86-64-v3"]
 
-# [target.x86_64-unknown-linux-gnu]
-# linker = "clang" 
-# # # rustflags = ["-C", "link-arg=-fuse-ld=/usr/local/bin/mold"]
 
-# rustflags = ["-C", "link-arg=-fuse-ld=/home/andy/code/odonata-extras/utils/mold_wrapper.sh"]
-
-# [target.x86_64-unknown-linux-gnu]
-# rustflags = ["-Ctarget-cpu=x86-64-v3"]
-
-# [build]
-# rustflags = "-C target-cpu=native"
