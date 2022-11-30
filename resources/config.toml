@@ -744,7 +744,11 @@ margin1 = 100
 margin2 = 250
 margin3 = 1500
 margin4 = 1850
-margin_ply = 150
+# futility.margin3 = 864, margin4 = 669
+# rev_futmargin3 = 595, margin4 = 541
+# elo + 21, iters=24,441 
+
+margin_ply = 100
 move_types_forbidden = 0
 
 [mate_dist]
@@ -768,7 +772,7 @@ margin1 = 90
 margin2 = 180
 margin3 = 300
 margin4 = 400
-margin_ply = 150
+margin_ply = 100
 
 [ext]
 enabled = true
