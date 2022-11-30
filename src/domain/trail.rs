@@ -4,6 +4,7 @@ use itertools::Itertools;
 
 use crate::{
     board::Board,
+    bound::NodeType,
     eval::score::Score,
     infra::utils::Displayable,
     mv::Move,
@@ -192,6 +193,7 @@ struct NodeDetails {
     pub n: Node,
     pub e: Event, // <- bit flags ?
     pub sc: Score,
+    pub nt: NodeType,
 }
 
 #[derive(Clone, Debug)]
@@ -219,18 +221,20 @@ impl ChessTree {
         }
     }
 
-    pub fn merge(&mut self, var: &Variation, n: &Node, e: Event, sc: Score) {
+    pub fn merge(&mut self, var: &Variation, n: &Node, e: Event, sc: Score, nt: NodeType) {
         // enable with RUST_LOG=tree=info
+
+
         if self.enabled() {
             if var.len() <= self.starts_with.len() + self.max_ply as usize {
-                if let Some(tn) = self.tree.find_by_var(var) {
+                if let Some(tn) = self.tree.find_by_var(&var.take(n.ply as usize)) {
                     let nd = &mut self.arena[tn.index];
                     nd.sc = sc;
                     nd.n = *n;
                     nd.e = e;
                 } else {
                     self.tree.add(var, self.arena.len());
-                    self.arena.push(NodeDetails { n: *n, e, sc });
+                    self.arena.push(NodeDetails { n: *n, e, sc, nt });
                 }
             }
         }
@@ -242,12 +246,26 @@ fn displayable2<'a>(ct: &'a ChessTree) -> impl Fn(&mut fmt::Formatter) -> fmt::R
         let var = ct.tree.variation_of(tn.id);
         if let Some(stem) = &var.stem() {
             let san = ct.board.make_moves_old(stem).to_san(&tn.mv);
+            let uci = tn.mv.to_uci();
             let nd = &ct.arena[tn.index];
             let a = nd.n.alpha;
             let b = nd.n.beta;
             let sc = nd.sc;
+            let nt = nd.n.node_type(sc);
+            let p = nd.n.ply;
+            let d = nd.n.depth;
+            let nt = match nt {
+                NodeType::ExactPv => '=',
+                NodeType::LowerCut => '<',
+                NodeType::UpperAll => '>',
+                NodeType::Unused => ' ',
+            };
+            let qs = match d <= 0 {
+                true => '*',
+                false => ' ',
+            };
             if f.alternate() {
-                write!(f, "{san}   {sc} [{a} {b}] {e}", e = nd.e)?;
+                write!(f, "{nt} {san}   {sc} [{a} {b}] {e} ({uci}) P{p}D{d} {qs}", e = nd.e)?;
             } else {
                 write!(f, "{san}")?;
             }
@@ -264,6 +282,7 @@ fn displayable2<'a>(ct: &'a ChessTree) -> impl Fn(&mut fmt::Formatter) -> fmt::R
 
 impl fmt::Display for ChessTree {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "\n{:L>}", self.board)?;
         // write!(f, "{}", Displayable(displayable(&self.tree, &self.board)))?;
         write!(f, "{:#}", Displayable(displayable2(&self)))?;
         Ok(())
@@ -342,15 +361,29 @@ impl Trail {
         self.path.truncate(ply);
         self.path.push(mv);
         self.seldepth = self.seldepth.max(self.path.len() as Ply);
-        self.chess_tree
-            .merge(&self.path, n, Event::MoveOther, Score::zero())
+        let n = Node {
+            ply: n.ply + 1,
+            depth: n.depth - 1,
+            alpha: -n.beta,
+            beta: -n.alpha,
+        };
+
+        self.chess_tree.merge(
+            &self.path,
+            &n,
+            Event::MoveOther,
+            Score::INFINITY,
+            NodeType::Unused,
+        )
     }
 
     /// set pv to here (current pv)
-    pub fn terminal(&mut self, n: &Node, _sc: Score, _e: Event) {
+    pub fn terminal(&mut self, n: &Node, sc: Score, e: Event) {
         let ply = n.ply as usize;
         self.pv_for_ply[ply] = self.path.skip(ply);
-        trace!("set_pv:\n{self}")
+        trace!("set_pv:\n{self}");
+        self.chess_tree
+            .merge(&self.path, n, e, sc, NodeType::ExactPv);
     }
 
     /// mv at ply was good
@@ -359,14 +392,22 @@ impl Trail {
     ///
     /// pv[ply] = cv[0..ply] (not stored) + cv[ply] + pv[ply+1]
     ///
-    pub fn alpha_raised(&mut self, n: &Node, s: Score, _mv: Move, e: Event) {
+    /// a move is an edge between nodes
+    /// the first set of moves are at ply=0 so the var[0] takes you from ply0 to ply1
+    /// the score of a "move" is really the score of the best position from that node, 
+    /// so is at move "from-ply"
+    /// when we are processing a node, we are looking at candidate moves FROM THAT NODE
+    /// 
+    pub fn alpha_raised(&mut self, n: &Node, s: Score, mv: Move, e: Event) {
         let ply = n.ply as usize;
         debug_assert!(
             ply < self.path.len(),
             "update_pv: ply {ply} must < len(cv={})",
             self.path.display_san(self.root())
         );
+
         let mut var = self.path.skip(ply).take(1);
+        debug_assert_eq!(var.last(), Some(&mv), "last moves don't match"); 
         var.extend(&self.pv_for_ply[ply + 1]);
         debug_assert!(
             self.pv_for_ply[ply]
@@ -376,15 +417,27 @@ impl Trail {
         );
         self.pv_for_ply[ply] = var;
         trace!("update_pv:\n{self}");
-        self.chess_tree.merge(&self.path, n, e, s)
+        self.chess_tree
+            .merge(&self.path, n, e, s, NodeType::UpperAll)
     }
 
-    pub fn ignore_move(&mut self, _n: &Node, _sc: Score, _mv: Move, _e: Event) {}
+    pub fn ignore_move(&mut self, n: &Node, sc: Score, mv: Move, _e: Event) {
+        debug_assert_eq!(n.node_type(sc), NodeType::UpperAll, "node type {n} sc {sc}");
+        let ply = n.ply as usize;
+        let var = self.path.skip(ply).take(1);
+        debug_assert_eq!(var.last(), Some(&mv), "last moves don't match"); 
+        // self.chess_tree
+        //     .merge(&self.path, n, e, sc, NodeType::Unused);
+    }
 
-    pub fn prune_node(&mut self, _n: &Node, _sc: Score, _e: Event) {}
+    pub fn prune_node(&mut self, n: &Node, sc: Score, e: Event) {
+        self.chess_tree
+            .merge(&self.path, n, e, sc, NodeType::LowerCut);
+    }
 
     /// low or high - look at bounds
-    pub fn fail(&mut self, n: &Node, sc: Score, _mv: Move, _e: Event) {
+    pub fn fail(&mut self, n: &Node, sc: Score, _mv: Move, e: Event) {
+        debug_assert!(n.node_type(sc) != NodeType::ExactPv, "node type {}", n.node_type(sc));
         debug_assert!({
             let ply = n.ply as usize;
             let var = self.path.take(ply + 1); // up to and including
@@ -397,6 +450,8 @@ impl Trail {
             self.refutation_scores.push(sc);
             true
         });
+        self.chess_tree
+            .merge(&self.path, n, e, sc, NodeType::LowerCut);
     }
 }
 
