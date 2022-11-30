@@ -2,6 +2,7 @@ use crate::bits::bitboard::Bitboard;
 use crate::bits::castling::CastlingRights;
 use crate::bits::square::Square;
 use crate::cache::hasher::Hasher;
+use crate::catalog::Catalog;
 use crate::domain::Material;
 use crate::mv::Move;
 use crate::piece::{Color, Hash, Piece, Ply, Repeats};
@@ -86,6 +87,10 @@ impl Board {
     #[inline]
     pub fn new_empty() -> Board {
         Default::default()
+    }
+
+    pub fn starting_pos() -> Self {
+        Catalog::starting_board()
     }
 
     #[inline]
@@ -224,6 +229,7 @@ impl Board {
         }
         self.calculate_internals();
     }
+
 }
 
 impl Board {
@@ -517,7 +523,12 @@ impl Board {
 
 impl fmt::Display for Board {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.to_fen())?;
+        if f.fill() == 'L' {
+            let url = format!("https://lichess.org/editor/{}", self.to_fen()).replace(" ", "_");
+            write!(f, "{url}")?;
+        } else {
+            write!(f, "{}", self.to_fen())?;
+        }
 
         if f.alternate() {
             f.write_char('\n')?;
@@ -726,7 +737,7 @@ impl Board {
                 self.black()
             );
         }
-        
+
         let mut bb = Bitboard::empty();
         for &p in Piece::ALL.iter() {
             let pieces = self.pieces(p);
@@ -885,6 +896,8 @@ mod tests {
             let b = Board::parse_fen(fen).unwrap().as_board();
             assert_eq!(fen, b.to_fen());
             println!("{:#}", b);
+            println!("{}", b);
+            println!("{:L>}", b);
         }
     }
 
