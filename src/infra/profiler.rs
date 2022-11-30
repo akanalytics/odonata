@@ -1,19 +1,18 @@
-#[cfg(any(test, feature = "profiler"))]
 use std::fmt;
 
-#[cfg(any(test, feature = "profiler"))]
+use std::path::Path;
+
+use std::path::PathBuf;
+
 use perf_event::{events::Hardware, Builder, Counter, Group};
 
-#[cfg(any(test, feature = "profiler"))]
 use super::{black_box, utils::IntegerFormatter};
 
-#[cfg(any(test, feature = "profiler"))]
 pub struct ProfProfiler<'a> {
     guard: pprof::ProfilerGuard<'a>,
     name: String,
 }
 
-#[cfg(any(test, feature = "profiler"))]
 impl<'a> ProfProfiler<'a> {
     pub fn new(name: String) -> ProfProfiler<'a> {
         let guard = pprof::ProfilerGuardBuilder::default()
@@ -23,11 +22,8 @@ impl<'a> ProfProfiler<'a> {
             .unwrap();
         ProfProfiler { guard, name }
     }
-}
 
-#[cfg(any(test, feature = "profiler"))]
-impl<'a> ProfProfiler<'a> {
-    pub fn report(&mut self) -> anyhow::Result<()> {
+    pub fn report(&mut self) -> anyhow::Result<(PathBuf, PathBuf)> {
         fn proc() -> impl Fn(&mut pprof::Frames) {
             move |frames| {
                 // let vec = &frames.frames;
@@ -40,23 +36,28 @@ impl<'a> ProfProfiler<'a> {
             }
         }
         use itertools::Itertools;
-        if let Ok(report) = self.guard.report().frames_post_processor(proc()).build() {
-            use std::fs::File;
-            let file = File::create(format!("{name}_flamegraph_1.svg", name = self.name))?;
-            let mut options = pprof::flamegraph::Options::default();
-            options.flame_chart = false;
-            report.flamegraph_with_options(file, &mut options)?;
-
-            let file = File::create(format!("{name}_flamegraph_2.svg", name = self.name))?;
-            let mut options = pprof::flamegraph::Options::default();
-            options.reverse_stack_order = true;
-            report.flamegraph_with_options(file, &mut options)?;
+        let Ok(report) = self.guard.report().frames_post_processor(proc()).build() else {
+            anyhow::bail!("Unable to build flamegraph report");
         };
-        Ok(())
+
+        use std::fs::File;
+        let path = format!("{name}_flamegraph_1.svg", name = self.name);
+        let path1 = Path::new(&path);
+        let file = File::create(path1)?;
+        let mut options = pprof::flamegraph::Options::default();
+        options.flame_chart = false;
+        report.flamegraph_with_options(file, &mut options)?;
+
+        let path = format!("{name}_flamegraph_2.svg", name = self.name);
+        let path2 = Path::new(&path);
+        let file = File::create(path2)?;
+        let mut options = pprof::flamegraph::Options::default();
+        options.reverse_stack_order = true;
+        report.flamegraph_with_options(file, &mut options)?;
+        Ok((path1.to_path_buf(), path2.to_path_buf()))
     }
 }
 
-#[cfg(any(test, feature = "profiler"))]
 pub struct PerfProfiler {
     group: Group,
     name: String,
@@ -69,14 +70,12 @@ pub struct PerfProfiler {
     cycles: Counter,
 }
 
-#[cfg(any(test, feature = "profiler"))]
 impl fmt::Display for PerfProfiler {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.name)
     }
 }
 
-#[cfg(any(test, feature = "profiler"))]
 impl PerfProfiler {
     #[inline]
     pub fn new(name: String) -> PerfProfiler {
@@ -293,15 +292,16 @@ mod tests {
             prof2.benchmark(
                 #[inline]
                 || {
-                a.a[0] = black_box(0);
-                a.a[1] = black_box(1);
-                a.a[2] = black_box(2);
-                a.a[3] = black_box(3);
-                a.a[4] = black_box(4);
-                a.a[5] = black_box(5);
-                a.a[6] = black_box(6);
-                a.a[7] = black_box(7);
-            })
+                    a.a[0] = black_box(0);
+                    a.a[1] = black_box(1);
+                    a.a[2] = black_box(2);
+                    a.a[3] = black_box(3);
+                    a.a[4] = black_box(4);
+                    a.a[5] = black_box(5);
+                    a.a[6] = black_box(6);
+                    a.a[7] = black_box(7);
+                },
+            )
         }
     }
 
