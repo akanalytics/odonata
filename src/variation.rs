@@ -63,6 +63,11 @@ impl Variation {
         self.moves.iter()
     }
 
+    #[inline]
+    pub fn validate(&self, bd: &Board) -> anyhow::Result<()> {
+        bd.validate_moves(&self.moves().cloned().collect_vec())
+    }
+
     pub fn to_uci(&self) -> String {
         self.moves
             .iter()
@@ -92,15 +97,43 @@ impl Variation {
         }
     }
 
+    pub fn starts_with(&self, var: &Variation) -> bool {
+        self.len() >= var.len() && &self.take(var.len()) == var
+    }
+
+    /// variation tail
+    pub fn skip(&self, ply: usize) -> Variation {
+        Variation {
+            moves: self.moves[ply..].to_vec(),
+        }
+    }
+
+    /// variation head
+    pub fn take(&self, ply: usize) -> Variation {
+        let len = self.len();
+        debug_assert!(ply <= len, "failed: ply={ply} <= len({self})={len}");
+        Variation {
+            moves: self.moves[..ply].to_vec(),
+        }
+    }
+
+    pub fn extend(&mut self, var: &Variation) {
+        self.moves.extend(var.moves.iter())
+    }
+
+    pub fn extend_from_slice(&mut self, moves: &[Move]) {
+        self.moves.extend(moves.iter())
+    }
+
+    /// can panic
     pub fn to_san(&self, b: &Board) -> String {
         let mut b2 = b.clone();
         let mut s = Vec::new();
         for mv in &self.moves {
-            if !b2.is_pseudo_legal_and_legal_move(*mv) {
+            if !mv.is_null() && !b2.is_pseudo_legal_and_legal_move(*mv) {
                 panic!(
-                    "Move {mv} in {} is not legal for board {}",
-                    self,
-                    b.to_fen()
+                    "{uci}: {mv} is not legal for board {b}",
+                    uci = self.to_uci(),
                 );
             }
             s.push(b2.to_san(mv));
@@ -109,10 +142,37 @@ impl Variation {
         s.join(" ")
     }
 
+    pub fn display_san(&self, b: &Board) -> String {
+        let mut b2 = b.clone();
+        let mut s = vec![];
+        let mut errors = false;
+        for mv in &self.moves {
+            if !mv.is_null() && !b2.is_pseudo_legal_and_legal_move(*mv) {
+                errors = true;
+            }
+            match errors {
+                false => {
+                    s.push(format!("{}", b2.to_san(&mv)));
+                    b2 = b2.make_move(mv);
+                }
+                true => s.push(format!("[{}]", mv.to_uci())),
+            }
+        }
+        s.join(" ")
+    }
+
     pub fn append(&self, mv: Move) -> Variation {
         let mut var = self.clone();
         var.push(mv);
         var
+    }
+
+    pub fn push(&mut self, mv: Move) {
+        self.moves.push(mv);
+    }
+
+    pub fn push_front(&mut self, mv: Move) {
+        self.moves.insert(0, mv);
     }
 
     #[inline]

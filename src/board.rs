@@ -830,7 +830,6 @@ impl Board {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::catalog::*;
     use crate::globals::constants::*;
     use crate::infra::black_box;
     use crate::infra::profiler::PerfProfiler;

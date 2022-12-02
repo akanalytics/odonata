@@ -1,5 +1,6 @@
 use crate::domain::info::Info;
 use crate::domain::info::InfoKind;
+use crate::domain::Trail;
 use crate::eval::score::Score;
 use crate::infra::component::{Component, State};
 use crate::infra::metric::Metrics;
@@ -100,12 +101,17 @@ impl Algo {
             multi_pv.resize_with(self.restrictions.multi_pv_count, Default::default);
             let mut exit = false;
             for i in 0..self.restrictions.multi_pv_count {
+                let mut trail = Trail::new(self.board.clone());
                 score = self
-                    .aspirated_search(&mut self.board.clone(), &mut Node::root(ply), score)
+                    .aspirated_search(
+                        &mut trail,
+                        &mut self.board.clone(),
+                        &mut Node::root(ply),
+                        score,
+                    )
                     .0;
                 self.mte.estimate_iteration(ply + 1, &mut self.clock);
-                let pv = self.pv_table.extract_pv();
-
+                let pv = trail.pv();
 
                 let info = if score.is_finite() {
                     Info {
@@ -119,12 +125,12 @@ impl Algo {
 
                         multi_pv: Some(self.restrictions.multi_pv_index() + 1),
                         // self.multi_pv_index_of = restrictions.multi_pv_count;
-                        pv: Some(self.pv_table.extract_pv().to_inner()),
+                        pv: Some(pv.to_inner()),
                         // self.best_pv = stats.pv().clone();
                         score: Some(score),
                         // self.best_score = stats.score();
                         depth: Some(ply),
-                        seldepth: Some(self.pv_table.selective_depth()),
+                        seldepth: Some(trail.selective_depth()),
                         ..Info::default()
                     }
                 } else {
@@ -149,6 +155,10 @@ impl Algo {
                 if let Some(mv) = multi_pv[i].0.first() {
                     let mv = self.board.augment_move(mv);
                     self.restrictions.exclude_moves.push(mv);
+                }
+                if trail.chess_tree.enabled() {
+                    // info!(target:"tree", "chess tree\n{:#?}", trail.chess_tree);
+                    trace!(target:"tree","chess tree\n{:#}", trail.chess_tree);
                 }
             }
             if let Some(t) = t {

@@ -2,6 +2,7 @@ use super::endgame::{EndGame, LikelyOutcome};
 use super::score::Score;
 use crate::board::Board;
 use crate::bound::NodeType;
+use crate::domain::Trail;
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
 use crate::mv::Move;
@@ -45,7 +46,7 @@ impl fmt::Display for Recognizer {
 
 impl Algo {
     #[inline]
-    pub fn lookup(&mut self, b: &mut Board, n: &mut Node) -> (Option<Score>, Option<Move>) {
+    pub fn lookup(&mut self, trail: &mut Trail, b: &mut Board, n: &mut Node) -> (Option<Score>, Option<Move>) {
         if n.ply == 0 {
             return (None, None);
         }
@@ -81,6 +82,7 @@ impl Algo {
                             // self.stats.inc_node_cut(n.ply, MoveType::Hash, -1);
                             // self.stats.inc_leaf_tt_nodes(n.ply);
                             self.report_refutation(n.ply);
+                            trail.prune_node(n, score, Event::TtPv);
                             return (Some(score), None);
                         }
                         if score <= n.alpha {
@@ -88,14 +90,19 @@ impl Algo {
                             Metrics::incr_node(&n, Event::NodeInteriorAll);
                             // self.stats.inc_node_all(n.ply);
                             // self.stats.inc_leaf_tt_nodes(n.ply);
+                            trail.prune_node(n, score, Event::TtPv);
                             return (Some(score), None);
                         }
 
                         if self.tt.allow_truncated_pv
-                            && self.mte.time_sensitive()
+                            // && self.mte.time_sensitive()
                             && score > n.alpha
                         {
-                            self.record_truncated_move(n.ply, &entry.validate_move(b));
+                            let mv = entry.validate_move(b);
+                            self.record_truncated_move(n.ply, &mv );
+                            // trail.push_move(n, mv);
+                            trail.terminal(n, score, Event::TtPv);
+                            // trail.pop_move(n, mv);
                             // self.stats.inc_leaf_tt_nodes(n.ply);
                             Metrics::incr_node(&n, Event::TtPv);
                             return (Some(score), None);
@@ -113,6 +120,7 @@ impl Algo {
                             self.report_refutation(n.ply);
                             Metrics::incr_node(&n, Event::TtCut);
                             Metrics::incr_node(&n, Event::NodeInteriorCut);
+                            trail.prune_node(n, score, Event::TtCut);
                             return (Some(score), None);
                         }
                         // if self.tt.allow_truncated_pv && entry.score > n.alpha {
@@ -134,6 +142,7 @@ impl Algo {
                             // self.stats.inc_leaf_tt_nodes(n.ply);
                             Metrics::incr_node(&n, Event::TtAll);
                             Metrics::incr_node(&n, Event::NodeInteriorAll);
+                            trail.prune_node(n, score, Event::TtAll);
                             return (Some(score), None);
                         }
                     }

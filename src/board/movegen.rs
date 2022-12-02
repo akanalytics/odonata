@@ -1,3 +1,6 @@
+use anyhow::anyhow;
+use itertools::Itertools;
+
 use crate::bits::bitboard::Bitboard;
 use crate::bits::precalc::PreCalc;
 use crate::bits::Square;
@@ -25,7 +28,17 @@ impl Board {
         ret
     }
 
-    pub fn is_pseudo_legal_move(&self, m: &Move) -> bool {
+    pub fn validate_pseudo_legal_and_legal_move(&self, m: Move) -> Result<(), &'static str> {
+        if !self.is_pseudo_legal_move(&m) {
+            return Err("Move is not pseudo-legal");
+        }
+        if !self.is_legal_move(&m) {
+            return Err("Move is not legal");
+        }
+        Ok(())
+    }
+
+        pub fn is_pseudo_legal_move(&self, m: &Move) -> bool {
         if !self.is_pseudo_legal_baremove(&m.to_inner()) {
             return false;
         }
@@ -92,15 +105,18 @@ impl Board {
         true
     }
 
-    pub fn is_legal_variation(&self, moves: &[Move]) -> bool {
-        if let Some(&m) = moves.first() {
-            if !m.is_null() && !self.is_pseudo_legal_and_legal_move(m) {
-                return false;
+    pub fn validate_moves(&self, moves: &[Move]) -> anyhow::Result<()> {
+        let mut bd = self.clone();
+        for mv in moves.iter() {
+            if !mv.is_null() && !bd.is_pseudo_legal_and_legal_move(*mv) {
+                return Err(anyhow!(
+                    "var: {var} on {self}: move {mv:?} is not valid for board {bd}",
+                    var = moves.iter().join(" ")
+                ));
             }
-            self.make_move(&m).is_legal_variation(&moves[1..])
-        } else {
-            true
+            bd = bd.make_move(&mv);
         }
+        Ok(())
     }
 
     // the move is pseudo legal
@@ -457,8 +473,8 @@ mod tests {
         let b = Catalog::starting_board();
         let bd2 = Catalog::test_position();
         let mvs = b.parse_uci_variation("a2a3 e7e6 b2b4")?;
-        assert_eq!(b.is_legal_variation(&mvs), true);
-        assert_eq!(bd2.board().is_legal_variation(&mvs), false);
+        assert_eq!(b.validate_moves(&mvs).is_ok(), true);
+        assert_eq!(bd2.board().validate_moves(&mvs).is_ok(), false);
         Ok(())
     }
 
@@ -502,7 +518,7 @@ mod tests {
                 .unwrap();
         let var = b.parse_uci_variation("d3d1 b4c6 e2c4").unwrap();
         assert_eq!(var.len(), 3);
-        assert!(b.is_legal_variation(&var));
+        assert!(b.validate_moves(&var).is_ok());
     }
 
     #[test]

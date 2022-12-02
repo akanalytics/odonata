@@ -1,6 +1,7 @@
 use crate::board::Board;
 use crate::bound::NodeType;
 use crate::cache::tt2::{TtNode, TtScore};
+use crate::domain::Trail;
 use crate::eval::score::{Score, ToScore};
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
@@ -144,6 +145,7 @@ impl Algo {
     #[inline]
     pub fn razor_node(
         &mut self,
+        trail: &mut Trail,
         last_move: Move,
         b: &mut Board,
         eval: Score,
@@ -176,13 +178,14 @@ impl Algo {
         if eval <= n.alpha - margin {
             if n.depth <= 2 {
                 // drop straight into qsearch
-                let (score, _event) = self.alphabeta(b, n.ply, 0, n.alpha, n.beta, last_move)?;
+                let (score, _event) = self.alphabeta(trail, b, n.ply, 0, n.alpha, n.beta, last_move)?;
                 Metrics::incr_node(n, Event::RazorSuccess);
                 Metrics::incr_node(n, event);
                 return Ok(Some(score));
             } else {
                 // pvs search around {alpha - margin}
                 let (score, _event) = self.alphabeta(
+                    trail, 
                     b,
                     n.ply,
                     0,

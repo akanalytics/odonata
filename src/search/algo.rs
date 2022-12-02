@@ -42,7 +42,7 @@ use super::node::Event;
 use super::qs::Qs;
 use super::reverse_futility::ReverseFutility;
 use super::search_explainer::Explainer;
-use crate::domain::SearchResults;
+use crate::domain::{SearchResults};
 
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]

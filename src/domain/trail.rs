@@ -224,7 +224,6 @@ impl ChessTree {
     pub fn merge(&mut self, var: &Variation, n: &Node, e: Event, sc: Score, nt: NodeType) {
         // enable with RUST_LOG=tree=info
 
-
         if self.enabled() {
             if var.len() <= self.starts_with.len() + self.max_ply as usize {
                 if let Some(tn) = self.tree.find_by_var(&var.take(n.ply as usize)) {
@@ -265,7 +264,11 @@ fn displayable2<'a>(ct: &'a ChessTree) -> impl Fn(&mut fmt::Formatter) -> fmt::R
                 false => ' ',
             };
             if f.alternate() {
-                write!(f, "{nt} {san}   {sc} [{a} {b}] {e} ({uci}) P{p}D{d} {qs}", e = nd.e)?;
+                write!(
+                    f,
+                    "{nt} {san}   {sc} [{a} {b}] {e} ({uci}) P{p}D{d} {qs}",
+                    e = nd.e
+                )?;
             } else {
                 write!(f, "{san}")?;
             }
@@ -302,6 +305,13 @@ pub struct Trail {
     pub chess_tree: ChessTree,
 }
 
+/// PV[i] has len >= i. as the cv to ply i is len i.
+/// PV[i] has len = i when setting terminal/leaf node (such as eval/stalemate)
+/// PV[1] on raised alpha: set to cv(len 1) + mv + pv[2].skip(2) (first 2 will have been cv to get to i=2)
+/// PV[i] = CV + MV + PV[i+1].skip(i+1)
+/// sp PV[i] now len >= i+1 (as not a terminal/leaf so has been extended)
+///
+/// when we push at ply 0, we become ply1, and we can clear pv[1]
 impl Trail {
     pub fn new(root: Board) -> Self {
         Self {
@@ -339,14 +349,15 @@ impl Trail {
     }
 
     pub fn pv(&self) -> &Variation {
-        debug_assert!(self.pv_for_ply[0].validate(self.root()).is_ok(), "{self}");
+        debug_assert!(self.pv_for_ply[0].validate(self.root()).is_ok(), "{self:#}");
         &self.pv_for_ply[0]
     }
 
     /// move goes from ply to ply+1
     /// null moves allowed
-    pub fn push(&mut self, n: &Node, mv: Move) {
+    pub fn push_move(&mut self, n: &Node, mv: Move) {
         let ply = n.ply;
+        debug_assert_eq!(self.path.len(), ply as usize, "push move\n{self:#}");
         debug_assert!(
             mv.is_null()
                 || self
@@ -358,8 +369,9 @@ impl Trail {
         );
         let ply = ply as usize;
         // self.boards[ply + 1] = self.boards[ply].make_move(&mv);
-        self.path.truncate(ply);
+        // self.path.truncate(ply);
         self.path.push(mv);
+        self.pv_for_ply[ply + 1].clear();
         self.seldepth = self.seldepth.max(self.path.len() as Ply);
         let n = Node {
             ply: n.ply + 1,
@@ -371,16 +383,22 @@ impl Trail {
         self.chess_tree.merge(
             &self.path,
             &n,
-            Event::MoveOther,
+            Event::MovePush,
             Score::INFINITY,
             NodeType::Unused,
         )
     }
 
+    pub fn pop_move(&mut self, n: &Node, mv: Move) {
+        debug_assert_eq!(self.path.last(), Some(&mv));
+        self.path.pop();
+        debug_assert_eq!(n.ply as usize, self.path.len());
+    }
+
     /// set pv to here (current pv)
     pub fn terminal(&mut self, n: &Node, sc: Score, e: Event) {
         let ply = n.ply as usize;
-        self.pv_for_ply[ply] = self.path.skip(ply);
+        self.pv_for_ply[ply] = self.path.clone();
         trace!("set_pv:\n{self}");
         self.chess_tree
             .merge(&self.path, n, e, sc, NodeType::ExactPv);
@@ -390,66 +408,93 @@ impl Trail {
     ///
     /// best pv for this ply
     ///
-    /// pv[ply] = cv[0..ply] (not stored) + cv[ply] + pv[ply+1]
+    /// PV[i] = CV + MV + PV[i+1].skip(i+1) )
+    ///
+    /// PV[i+1].skip(i+1) could be empty is its the first raise of that ply
     ///
     /// a move is an edge between nodes
     /// the first set of moves are at ply=0 so the var[0] takes you from ply0 to ply1
-    /// the score of a "move" is really the score of the best position from that node, 
+    /// the score of a "move" is really the score of the best position from that node,
     /// so is at move "from-ply"
     /// when we are processing a node, we are looking at candidate moves FROM THAT NODE
-    /// 
+    ///
     pub fn alpha_raised(&mut self, n: &Node, s: Score, mv: Move, e: Event) {
         let ply = n.ply as usize;
-        debug_assert!(
-            ply < self.path.len(),
-            "update_pv: ply {ply} must < len(cv={})",
-            self.path.display_san(self.root())
-        );
+        // debug_assert_eq!(
+        //     ply,
+        //     self.path.len(),
+        //     "update_pv: ply {ply} must == len(cv={})",
+        //     self.path.display_san(self.root())
+        // );
 
-        let mut var = self.path.skip(ply).take(1);
-        debug_assert_eq!(var.last(), Some(&mv), "last moves don't match"); 
-        var.extend(&self.pv_for_ply[ply + 1]);
+        let root = self.root();
+        let path = &self.path;
+        let mut var = path.clone();
+        var.push(mv);
+        // // debug_assert_eq!(var.last(), Some(&mv), "last moves don't match");
+        let pv_above = &self.pv_for_ply[ply + 1];
+        let extend = if !pv_above.is_empty() {
+            self.pv_for_ply[ply + 1].skip(ply + 1)
+        } else {
+            Variation::new()
+        };
+        var.extend(&extend);
         debug_assert!(
-            self.pv_for_ply[ply]
-                .validate(&self.board(ply as i32))
-                .is_ok(),
-            "update_pv: ply {ply} has invalid cv[0..ply] + pv\n{self}"
+            var.len() <= self.selective_depth() as usize,
+            "seldepth {sd} var : {var} {self:#}",
+            sd = self.selective_depth()
+        );
+        debug_assert!(
+            var.validate(root).is_ok(),
+            "update_pv: new pv at ply {ply}: {var} = cv ({path}) + mv ({mv}) + pv[{ply}+1][{ply}+1:] ({extend}) is invalid\nevent {e}\n{self:#}"
         );
         self.pv_for_ply[ply] = var;
         trace!("update_pv:\n{self}");
-        self.chess_tree
-            .merge(&self.path, n, e, s, NodeType::UpperAll)
+        self.chess_tree.merge(&path, n, e, s, NodeType::UpperAll)
     }
 
-    pub fn ignore_move(&mut self, n: &Node, sc: Score, mv: Move, _e: Event) {
+    pub fn ignore_move(&mut self, n: &Node, sc: Score, _mv: Move, _e: Event) {
         debug_assert_eq!(n.node_type(sc), NodeType::UpperAll, "node type {n} sc {sc}");
-        let ply = n.ply as usize;
-        let var = self.path.skip(ply).take(1);
-        debug_assert_eq!(var.last(), Some(&mv), "last moves don't match"); 
+        // let ply = n.ply as usize;
+        // let var = self.path.skip(ply).take(1);
+        // debug_assert_eq!(var.last(), Some(&mv), "last moves don't match");
         // self.chess_tree
         //     .merge(&self.path, n, e, sc, NodeType::Unused);
     }
 
+    /// we dont actually make the move - we futility prune it first
+    pub fn prune_move(&mut self, n: &Node, sc: Score, mv: Move, e: Event) {
+        self.push_move(n, mv); // the move wont have been made
+        self.chess_tree
+            .merge(&self.path, n, e, sc, NodeType::UpperAll);
+        self.pop_move(n, mv);
+    }
     pub fn prune_node(&mut self, n: &Node, sc: Score, e: Event) {
+        debug_assert_eq!(self.path.len(), n.ply as usize, "{self:#}");
         self.chess_tree
             .merge(&self.path, n, e, sc, NodeType::LowerCut);
     }
 
     /// low or high - look at bounds
     pub fn fail(&mut self, n: &Node, sc: Score, _mv: Move, e: Event) {
-        debug_assert!(n.node_type(sc) != NodeType::ExactPv, "node type {}", n.node_type(sc));
-        debug_assert!({
-            let ply = n.ply as usize;
-            let var = self.path.take(ply + 1); // up to and including
-            debug_assert_eq!(
-                var.validate(self.root()).map_err(|e| e.to_string()),
-                Ok(()),
-                "refuted(ply:{ply})\n{self}"
-            );
-            self.refutations.push(var);
-            self.refutation_scores.push(sc);
-            true
-        });
+        // WORKS BUT SLOW
+        // debug_assert!(
+        //     n.node_type(sc) != NodeType::ExactPv,
+        //     "node type {}",
+        //     n.node_type(sc)
+        // );
+        // debug_assert!({
+        //     let ply = n.ply as usize;
+        //     let var = self.path.take(ply + 1); // up to and including
+        //     debug_assert_eq!(
+        //         var.validate(self.root()).map_err(|e| e.to_string()),
+        //         Ok(()),
+        //         "refuted(ply:{ply})\n{self}"
+        //     );
+        //     self.refutations.push(var);
+        //     self.refutation_scores.push(sc);
+        //     true
+        // });
         self.chess_tree
             .merge(&self.path, n, e, sc, NodeType::LowerCut);
     }
@@ -457,48 +502,58 @@ impl Trail {
 
 impl fmt::Display for Trail {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "root {board}", board = self.root())?;
+        let root = self.root();
         let pv = &self.pv_for_ply[0];
-        writeln!(f, "CV    {var}", var = self.path.display_san(self.root()))?;
-        writeln!(f, "PV    {var}", var = pv.display_san(self.root()))?;
+        let path = &self.path;
+        writeln!(f, "seld  {}", self.selective_depth())?;
+        writeln!(f, "root  {root}")?;
+        writeln!(f, "CV    {var} ({path})", var = path.display_san(root))?;
+        writeln!(f, "PV    {var} ({pv})", var = pv.display_san(root))?;
 
         for (ply, pvp) in self.pv_for_ply.iter().enumerate() {
-            if !pvp.is_empty() && ply <= self.path.len() {
-                let pv_stem = self.path.take(ply); // <-- safe as tested above
-
-                // let board_at_ply = self.root().make_moves_old(&pv_stem);
-                write!(f, "PV{ply:>2}  ")?;
-                write!(f, "{pv_stem}.", pv_stem = pv_stem.display_san(&self.root()))?;
-                if pv_stem.validate(&self.root()).is_ok()
-                    && pvp.validate(&self.root().make_moves_old(&pv_stem)).is_ok()
-                {
-                    writeln!(
-                        f,
-                        "{pvp}",
-                        pvp = pvp.display_san(&self.root().make_moves_old(&pv_stem))
-                    )?;
-                } else {
-                    writeln!(f, "[{pvp}]", pvp = pvp.to_uci())?;
-                }
-                // let board_at_ply = self.root().make_moves_old(&pv_stem);
-
-                // pv_stem.extend(pvp);
-                // writeln!(f,
-                //     "| {pv_stem}"
-                //     pv_stem = pv_stem.display_san(&self.root()))?;
-
-                // // var = pvp.display_san(&board_at_ply)
-                // )?;
+            if !pvp.is_empty() {
+                writeln!(f, "PV{ply:>2}  {san} ({pvp})", san = pvp.display_san(root))?;
             }
+            // if !pvp.is_empty() && ply <= self.path.len() {
+            //     let pv_stem = self.path.take(ply); // <-- safe as tested above
+
+            //     // let board_at_ply = self.root().make_moves_old(&pv_stem);
+            //     write!(f, "PV{ply:>2}  ")?;
+            //     write!(f, "{pv_stem}.", pv_stem = pv_stem.display_san(&self.root()))?;
+            //     if pv_stem.validate(&self.root()).is_ok()
+            //         && pvp.validate(&self.root().make_moves_old(&pv_stem)).is_ok()
+            //     {
+            //         writeln!(
+            //             f,
+            //             "{pvp}",
+            //             pvp = pvp.display_san(&self.root().make_moves_old(&pv_stem))
+            //         )?;
+            //     } else {
+            //         writeln!(f, "[{pvp}]", pvp = pvp.to_uci())?;
+            //     }
+            //     // let board_at_ply = self.root().make_moves_old(&pv_stem);
+
+            //     // pv_stem.extend(pvp);
+            //     // writeln!(f,
+            //     //     "| {pv_stem}"
+            //     //     pv_stem = pv_stem.display_san(&self.root()))?;
+
+            //     // // var = pvp.display_san(&board_at_ply)
+            //     // )?;
+            // }
         }
         for (i, refut) in self.refutations.iter().enumerate() {
             if !refut.is_empty() {
-                match refut.validate(self.root()) {
-                    Ok(_) => writeln!(f, " R{i:>2}  {var}", var = refut.display_san(self.root())),
+                match refut.validate(root) {
+                    Ok(_) => writeln!(f, " R{i:>2}  {var}", var = refut.display_san(root)),
                     Err(e) => writeln!(f, " R{i:>2} {e}"),
                 }?;
             }
         }
+        if f.alternate() {
+            writeln!(f, "{:#}", self.chess_tree)?;
+        }
+        writeln!(f)?;
         Ok(())
     }
 }
@@ -520,8 +575,8 @@ mod tests {
         let board = Catalog::starting_board();
         let mut t = Trail::new(board.clone());
         println!("{t}");
-        t.push(&Node::root(0), board.parse_san_move("e4").unwrap());
-        t.push(
+        t.push_move(&Node::root(0), board.parse_san_move("e4").unwrap());
+        t.push_move(
             &Node::root(1),
             *board.parse_san_variation("e4 e5").unwrap().last().unwrap(),
         );

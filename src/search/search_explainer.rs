@@ -186,7 +186,7 @@ impl Explainer {
             return None;
         }
 
-        debug_assert!(self.board.is_legal_variation(&var));
+        debug_assert!(self.board.validate_moves(&var).is_ok());
 
         // a. see if we are explaining why one variation not taken
         if let Some(ref why_not) = self.why_not {

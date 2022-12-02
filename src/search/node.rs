@@ -1,3 +1,4 @@
+use crate::bound::NodeType;
 use crate::eval::score::Score;
 // use crate::board::Board;
 
@@ -102,6 +103,9 @@ pub enum Event {
     SearchTimeUp,
     SearchComplete,
     UserCancelled,
+
+    MovePush,
+
 
     HashProbe,
     HashHit,
@@ -236,6 +240,8 @@ pub enum Event {
     FutilityDeclineFwWindow,
     FutilityDeclineMinPieces,
     FutilityFail,
+    FutilitySuccess,
+    FutilitySuccessRemaining,
     FutilityD0,
     FutilityD1,
     FutilityD2,
@@ -305,6 +311,10 @@ pub enum Event {
     DurationIterAllotted,
     DurationIterActual,
 
+    AlphaRaised,
+    MoveScoreLow,
+    MoveScoreHigh,
+
     Clock,
     NodeTypeQuiesce,
     NodeTypeZw,
@@ -325,13 +335,17 @@ pub enum Event {
     QsEvalStatic,
     QsTtProbe,
     QsTtHit,
+    QsAlphaRaised,
+    QsMoveScoreLow,
     QsStandingPatPrune,
+    QsStandingPatAlphaRaised,
     QsMoveCount,
     QsMoveCountAtPvNode,
     QsMoveCountAtCutNode,
     QsSeePruneMove,
     QsDeltaPruneMove,
     QsDeltaPruneNode,
+    QsInsufficientMaterial,
 }
 
 impl Default for Event {
@@ -422,5 +436,15 @@ impl Node {
     #[inline]
     pub fn is_qs(&self) -> bool {
         self.depth <= 0
+    }
+
+    pub fn node_type(&self, score: Score) -> NodeType {
+        if score <= self.alpha {
+            NodeType::UpperAll
+        } else if score >= self.beta {
+            NodeType::LowerCut 
+        } else {
+            NodeType::ExactPv  // alpha < score < beta
+        }
     }
 }

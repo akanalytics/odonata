@@ -1,6 +1,7 @@
 use crate::board::Board;
 use crate::bound::NodeType;
 use crate::cache::tt2::{TtNode, TtScore};
+use crate::domain::Trail;
 use crate::eval::score::Score;
 use crate::infra::metric::Metrics;
 use crate::mv::Move;
@@ -15,9 +16,15 @@ use super::node::Event;
 pub struct AlphaBeta;
 
 impl Algo {
-    pub fn alphabeta_root_search(&mut self, board: &mut Board, n: &mut Node) -> (Score, Event) {
+    pub fn alphabeta_root_search(
+        &mut self,
+        trail: &mut Trail,
+        board: &mut Board,
+        n: &mut Node,
+    ) -> (Score, Event) {
         self.clock_checks = 0;
         self.pv_table = PvTable::default();
+        *trail = Trail::new(board.clone());
         self.current_variation = Variation::new();
         self.max_depth = 0;
 
@@ -31,6 +38,7 @@ impl Algo {
         debug_assert!(self.current_variation.len() == 0);
 
         let (score, category) = match self.alphabeta(
+            trail,
             board,
             n.ply,
             self.max_depth,
@@ -56,8 +64,9 @@ impl Algo {
         let (_pv, _score) = if self.tt.use_tt_for_pv {
             self.tt.extract_pv_and_score(board)
         } else {
-            (self.pv_table.extract_pv(), Some(Score::default()))
+            (trail.pv().clone(), Some(Score::default()))
         };
+        // assert!(trail.pv().starts_with(&pv), "Board {board:L>} {pv} (table) != {tpv} (trail) \n\n{trail:#}", tpv= trail.pv());
         if n.alpha == -Score::INFINITY
             && n.beta == Score::INFINITY
             && category != Event::SearchTimeUp
@@ -111,6 +120,7 @@ impl Algo {
 
     pub fn alphabeta(
         &mut self,
+        trail: &mut Trail,
         b: &mut Board,
         ply: Ply,
         depth: Ply,
@@ -152,8 +162,9 @@ impl Algo {
             Metrics::incr_node(&n, Event::NodeLeafQs);
             let t = Metrics::timing_start();
             // QS starts from ply=0
-            let s = self.qs(Node { ply: 0, ..n }, b, Some(last_move));
-            debug!("pv table from qs\n{tab}\n{n}", tab=self.pv_table);
+            // let mut trail = Trail::new(b.clone());
+            let s = self.qs(n, trail, b, Some(last_move));
+            debug!("pv table from qs\n{tab}\n{n}", tab = self.pv_table);
             // self.pv_table.propagate_from(n.ply);
             Metrics::profile(t, Timing::TimingQs);
             return Ok((s, Event::NodeLeafQs));
@@ -173,7 +184,7 @@ impl Algo {
         }
 
         let mut tt_mv = Move::NULL_MOVE;
-        match self.lookup(b, &mut n) {
+        match self.lookup(trail, b, &mut n) {
             (Some(ab), None) => {
                 debug_assert!(ab.is_finite(), "lookup returned {}", ab);
                 return Ok((ab, Event::HashHit));
@@ -194,12 +205,15 @@ impl Algo {
         let eval = self.static_eval(b, &n);
 
         if let Some(s) = self.reverse_fut(b, eval, &n, 0) {
+            trail.prune_node(&n, s, Event::RevFutSuccess);
             return Ok((s, Event::RevFutSuccess));
         }
-        if let Some(alphabeta) = self.razor_node(last_move, b, eval, &n)? {
-            return Ok((alphabeta, Event::RazorSuccess));
+        if let Some(s) = self.razor_node(trail, last_move, b, eval, &n)? {
+            trail.prune_node(&n, s, Event::RazorSuccess);
+            return Ok((s, Event::RazorSuccess));
         }
-        if let Some(s) = self.nmp_node(b, &n, eval)? {
+        if let Some(s) = self.nmp_node(trail, b, &n, eval)? {
+            trail.prune_node(&n, s, Event::NmpSuccess);
             return Ok((s, Event::NmpSuccess));
         }
 
@@ -222,13 +236,18 @@ impl Algo {
             }
 
             if bm.is_some() {
-                if let Some(_est) =
+                if let Some(est) =
                     self.can_futility_prune_move(mv, count, mt, b, &child_board, eval, &n, ext)
                 {
+                    // dont actually want to make move - but want to record it
                     if self.can_prune_remaining_moves(b, mt, &n) {
+                        trail.prune_move(&n, est, mv, Event::FutilitySuccessRemaining);
                         break;
+                    } else {
+                        trail.prune_move(&n, est, mv, Event::FutilitySuccessRemaining);
+                    // dont actually want to make move - but want to record it
+                        continue;
                     }
-                    continue;
                 }
                 if self.can_lmp_move(b, count, is_quiet, quiets, &n, mv) {
                     continue;
@@ -237,6 +256,7 @@ impl Algo {
 
             self.repetition.push_move(&mv, &child_board);
             self.current_variation.push(mv);
+            trail.push_move(&n, mv);
             // self.explainer.start(&n, &self.current_variation);
             child_board.set_repetition_count(self.repetition.count(&child_board));
 
@@ -249,6 +269,7 @@ impl Algo {
             if n.is_fw() && !self.pvs_permitted(nt, b, &n, count) {
                 Metrics::incr_node(&n, Event::SearchFwFd);
                 (s, ev) = self.alphabeta(
+                    trail,
                     &mut child_board,
                     ply + 1,
                     depth + ext - 1,
@@ -292,6 +313,7 @@ impl Algo {
                     } else {
                         Metrics::incr_node(&n, Event::SearchZwRd);
                         (s, ev) = self.alphabeta(
+                            trail,
                             &mut child_board,
                             ply + 1,
                             depth + ext - lmr - 1,
@@ -304,6 +326,7 @@ impl Algo {
                 } else {
                     Metrics::incr_node(&n, Event::SearchZwFd);
                     (s, ev) = self.alphabeta(
+                        trail,
                         &mut child_board,
                         ply + 1,
                         depth + ext - 1,
@@ -331,6 +354,7 @@ impl Algo {
                 if s > n.alpha && !(lmr == 0) {
                     Metrics::incr_node(&n, Event::ReSearchZwFd);
                     (s, ev) = self.alphabeta(
+                        trail,
                         &mut child_board,
                         ply + 1,
                         depth + ext - 1,
@@ -345,6 +369,7 @@ impl Algo {
                 if s > n.alpha && !(lmr == 0 && n.is_zw()) {
                     Metrics::incr_node(&n, Event::ReSearchFwFd);
                     (s, ev) = self.alphabeta(
+                        trail,
                         &mut child_board,
                         ply + 1,
                         depth + ext - 1,
@@ -373,6 +398,7 @@ impl Algo {
 
             // b.undo_move(&mv);
             self.current_variation.pop();
+            trail.pop_move(&n, mv);
             self.repetition.pop();
             self.explain_move(&b, mv, s, cat, &n, count, ext, lmr);
 
@@ -381,23 +407,8 @@ impl Algo {
                 category = cat;
                 bm = Some(mv);
             }
-            if s > n.alpha {
-                n.alpha = s;
-                nt = NodeType::ExactPv;
-                debug_assert!(
-                    b.is_pseudo_legal_move(&bm.unwrap()),
-                    "bm {} on board {}",
-                    bm.unwrap(),
-                    b
-                );
-                self.history.raised_alpha(&n, b, &mv);
-                self.record_move(ply, &mv);
-                trace!("pv table \n{tab}\n{n}", tab=self.pv_table);
-            } else {
-                self.history.duff(&n, b, &mv);
-            }
-
-            if n.alpha >= n.beta {
+            if s >= n.beta {
+                trail.fail(&n, s, mv, Event::MoveScoreHigh);
                 nt = NodeType::LowerCut;
                 // self.stats.inc_node_cut(ply, move_type, (count - 1) as i32);
                 self.killers.store(ply, &mv);
@@ -408,21 +419,37 @@ impl Algo {
                 self.report_refutation(n.ply);
                 break;
             }
+            if s > n.alpha {
+                self.record_move(ply, &mv);
+                trace!("alpha raised at ply {ply} with move {mv} score {s} beats {alpha}, pv table \n{tab}\n{n}", alpha=n.alpha, tab=self.pv_table);
+                n.alpha = s;
+                trail.alpha_raised(&n, s, mv, Event::AlphaRaised);
+                nt = NodeType::ExactPv;
+                debug_assert!(
+                    b.is_pseudo_legal_move(&bm.unwrap()),
+                    "bm {} on board {}",
+                    bm.unwrap(),
+                    b
+                );
+                self.history.raised_alpha(&n, b, &mv);
+            } else {
+                trail.ignore_move(&n, s, mv, Event::MoveScoreLow);
+                self.history.duff(&n, b, &mv);
+            }
+
         }
 
         if count == 0 {
             if n.is_qs() {
                 Metrics::incr_node(&n, Event::NodeLeafQuietEval);
-                return Ok((
-                    b.eval_with_outcome(&self.eval, &n),
-                    Event::NodeLeafQuietEval,
-                ));
+                let sc = b.eval_with_outcome(&self.eval, &n);
+                trail.terminal(&n, sc, Event::NodeLeafQuietEval);
+                return Ok((sc, Event::NodeLeafQuietEval));
             } else {
                 Metrics::incr_node(&n, Event::NodeLeafStalemate);
-                return Ok((
-                    b.eval_with_outcome(&self.eval, &n),
-                    Event::NodeLeafStalemate,
-                ));
+                let sc = b.eval_with_outcome(&self.eval, &n);
+                trail.terminal(&n, sc, Event::NodeLeafStalemate);
+                return Ok((sc, Event::NodeLeafStalemate));
             }
         }
         if nt == NodeType::UpperAll {

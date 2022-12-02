@@ -1,10 +1,10 @@
 use crate::board::Board;
 use crate::bound::NodeType;
 use crate::cache::tt2::{TtNode, TtScore};
+use crate::domain::Trail;
 use crate::eval::score::{Score, ToScore};
 use crate::infra::metric::Metrics;
 use crate::mv::Move;
-use crate::other::pvtable::PvTable;
 use crate::search::algo::Algo;
 use crate::search::node::{Event, Node};
 // use crate::eval::score::Score;
@@ -70,7 +70,7 @@ impl Default for NullMovePruning {
 // works for moves that are just "too good to be true"
 impl NullMovePruning {
     #[inline]
-    pub fn allow(&self, b: &Board, n: &Node, eval: Score, pv_table: &PvTable) -> bool {
+    pub fn allow(&self, trail: &mut Trail,b: &Board, n: &Node, eval: Score, ) -> bool {
         if !self.enabled {
             return false;
         }
@@ -111,7 +111,7 @@ impl NullMovePruning {
             Metrics::incr_node(n, Event::NmpDeclineInCheck);
             return false;
         }
-        let var = pv_table.extract_pv_for(n.ply);
+        let var = trail.path().take(n.ply as usize);
         if self.recursive && !self.successive && Self::last_move_is_null_move(&var) {
             Metrics::incr_node(n, Event::NmpDeclineSuccessive);
             return false;
@@ -168,8 +168,8 @@ impl NullMovePruning {
 
 impl Algo {
     #[inline]
-    pub fn nmp_node(&mut self, b: &Board, n: &Node, eval: Score) -> Result<Option<Score>, Event> {
-        if !self.nmp.allow(b, n, eval, &self.pv_table) {
+    pub fn nmp_node(&mut self, trail: &mut Trail, b: &Board, n: &Node, eval: Score) -> Result<Option<Score>, Event> {
+        if !self.nmp.allow(trail, b, n, eval) {
             return Ok(None);
         }
 
@@ -177,13 +177,16 @@ impl Algo {
         let mv = Move::NULL_MOVE;
         let mut child_board = b.make_move(&mv);
         self.current_variation.push(mv);
+        trail.push_move(n, mv);
         // self.explainer.start(n, &self.current_variation);
         Metrics::incr_node(n, Event::NmpAttempt);
         let reduced_depth = std::cmp::max(n.depth - r - 1, 0);
 
         // we increment ply so that history tables etc work correctly
+
         let child_score = -self
             .alphabeta(
+                trail,
                 &mut child_board,
                 n.ply + 1,
                 reduced_depth,
@@ -194,6 +197,7 @@ impl Algo {
             .0;
         // b.undo_move(&mv);
         self.current_variation.pop();
+        trail.pop_move(n, mv);
         // self.explainer.start(n, &self.current_variation);
         if child_score >= n.beta {
             // self.stats.inc_node_cut(n.ply, MoveType::Null, -1);

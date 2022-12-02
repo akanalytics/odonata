@@ -110,7 +110,8 @@ impl Board {
 
         debug_assert!(
             m.is_null() || m.from().is_in(self.us()),
-            "from:sq not our color move {m} on board {self}"
+            "from:{from} not our color, move {m} on board {self:L>}",
+            from = m.from()
         );
 
         debug_assert!(

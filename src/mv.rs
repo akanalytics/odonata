@@ -196,6 +196,7 @@ pub struct Move {
 impl fmt::Debug for Move {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Move")
+            .field("uci", &self.to_uci())
             .field("from", &self.from())
             .field("to", &self.to())
             .field("mover", &self.mover_piece())
