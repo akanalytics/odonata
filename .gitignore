@@ -30,8 +30,10 @@ junk/**
 
 # profiling output
 # profiling output
+**/perf.txt
 **/perf.*.data*
 **/perf.data
+**/perf.data.*
 **/*flamegraph*.svg
 flame.svg
 cachegrind.out.*

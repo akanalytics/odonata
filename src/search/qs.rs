@@ -365,7 +365,7 @@ mod tests {
         invoke(&Catalog::quiesce()[0].board().to_fen(), 2);
         
         invoke("8/1p4PR/1k6/3pNK2/5P2/r7/2p2n2/8 w - - 0 74", 1);
-        invoke(&Catalog::bratko_kopec()[4].board().to_fen(), 11);
+        invoke(&Catalog::bratko_kopec()[4].board().to_fen(), 7);
         invoke("rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2NB1N2/PP3PPP/R1BQK2R b KQ - 2 6", 1);
     }
 

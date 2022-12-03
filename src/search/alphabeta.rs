@@ -5,8 +5,7 @@ use crate::domain::Trail;
 use crate::eval::score::Score;
 use crate::infra::metric::Metrics;
 use crate::mv::Move;
-use crate::other::pvtable::PvTable;
-use crate::piece::{Ply, MAX_PLY};
+use crate::piece::{Ply};
 use crate::search::algo::Algo;
 use crate::search::node::{Counter, Node, Timing};
 use crate::variation::Variation;
@@ -23,7 +22,6 @@ impl Algo {
         n: &mut Node,
     ) -> (Score, Event) {
         self.clock_checks = 0;
-        self.pv_table = PvTable::default();
         *trail = Trail::new(board.clone());
         self.current_variation = Variation::new();
         self.max_depth = 0;
@@ -34,7 +32,6 @@ impl Algo {
         let depth = n.depth;
         self.max_depth = depth;
         // self.stats.depth = depth;
-        self.pv_table = PvTable::new(MAX_PLY as usize);
         debug_assert!(self.current_variation.len() == 0);
 
         let (score, category) = match self.alphabeta(
@@ -131,7 +128,6 @@ impl Algo {
         debug_assert!(alpha < beta);
         debug_assert!(ply >= 0);
 
-        self.clear_move(ply);
         self.report_progress();
 
         let mut n = Node {
@@ -161,11 +157,7 @@ impl Algo {
         if n.is_qs() {
             Metrics::incr_node(&n, Event::NodeLeafQs);
             let t = Metrics::timing_start();
-            // QS starts from ply=0
-            // let mut trail = Trail::new(b.clone());
             let s = self.qs(n, trail, b, Some(last_move));
-            debug!("pv table from qs\n{tab}\n{n}", tab = self.pv_table);
-            // self.pv_table.propagate_from(n.ply);
             Metrics::profile(t, Timing::TimingQs);
             return Ok((s, Event::NodeLeafQs));
         }
@@ -245,7 +237,7 @@ impl Algo {
                         break;
                     } else {
                         trail.prune_move(&n, est, mv, Event::FutilitySuccessRemaining);
-                    // dont actually want to make move - but want to record it
+                        // dont actually want to make move - but want to record it
                         continue;
                     }
                 }
@@ -420,8 +412,6 @@ impl Algo {
                 break;
             }
             if s > n.alpha {
-                self.record_move(ply, &mv);
-                trace!("alpha raised at ply {ply} with move {mv} score {s} beats {alpha}, pv table \n{tab}\n{n}", alpha=n.alpha, tab=self.pv_table);
                 n.alpha = s;
                 trail.alpha_raised(&n, s, mv, Event::AlphaRaised);
                 nt = NodeType::ExactPv;
@@ -436,7 +426,6 @@ impl Algo {
                 trail.ignore_move(&n, s, mv, Event::MoveScoreLow);
                 self.history.duff(&n, b, &mv);
             }
-
         }
 
         if count == 0 {
@@ -487,16 +476,16 @@ impl Algo {
             nt,
             b,
         );
-        self.explain_node(
-            &b,
-            bm.unwrap_or_default(),
-            nt,
-            score,
-            eval,
-            &n,
-            cat,
-            &self.pv_table.extract_pv_for(ply),
-        );
+        // self.explain_node(
+        //     &b,
+        //     bm.unwrap_or_default(),
+        //     nt,
+        //     score,
+        //     eval,
+        //     &n,
+        //     cat,
+        //     &self.pv_table.extract_pv_for(ply),
+        // );
         Ok((score, category))
     }
 }
@@ -505,6 +494,7 @@ impl Algo {
 mod tests {
     use super::*;
     use crate::catalog::*;
+    use crate::domain::engine::Engine;
     use crate::search::timecontrol::*;
     use anyhow::Result;
 
@@ -534,43 +524,38 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_mate_in_3() -> Result<()> {
         let positions = Catalog::mate_in_3();
         for (i, pos) in positions.iter().enumerate() {
             let mut search = Algo::new();
-            search.set_timing_method(TimeControl::Depth(5));
             let expected_pv = pos.pv()?;
-            search.set_position(pos.clone()).run_search();
+            let res = search.search(pos.clone(), TimeControl::Depth(5)).unwrap();
             println!("{}", search);
 
-            assert_eq!(search.score().mate_in(), Some(3), "#{} {}", i, pos);
-            assert_eq!(search.pv_table.extract_pv(), expected_pv, "#{} {}", i, pos);
+            assert_eq!(res.score().unwrap().mate_in(), Some(3), "#{} {}", i, pos);
+            assert_eq!(res.pv(), expected_pv.to_inner(), "#{} {}", i, pos);
         }
         Ok(())
     }
 
     #[test]
-    #[ignore]
     fn test_mate_in_4() -> Result<()> {
         let positions = Catalog::mate_in_4();
         for (i, pos) in positions.iter().enumerate() {
             let mut search = Algo::new();
-            search.set_timing_method(TimeControl::Depth(7));
-            search.set_position(pos.clone()).run_search();
+            let res = search.search(pos.clone(), TimeControl::Depth(9)).unwrap();
             // println!("{}", search);
             if pos.try_get("pv").is_ok() {
                 let expected_pv = pos.pv()?;
                 assert_eq!(
-                    search.pv_table.extract_pv().to_string(),
+                    res.pv().to_string(),
                     expected_pv.to_string(),
                     "#{} {}",
                     i,
                     pos
                 );
             }
-            println!("#{i} gives mate in {}", search.score().mate_in().unwrap());
-            assert_eq!(search.score().mate_in(), Some(4), "#{} {}", i, pos);
+            assert_eq!(res.score().unwrap().mate_in(), Some(4), "res={res}\npos={pos}");
         }
         Ok(())
     }

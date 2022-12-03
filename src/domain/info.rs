@@ -82,7 +82,7 @@ pub enum InfoKind {
     NodeCounts,
 }
 
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default, Debug, PartialEq)]
 pub struct Info {
     pub kind: InfoKind,
     pub depth: Option<Ply>,

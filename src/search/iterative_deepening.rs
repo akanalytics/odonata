@@ -90,8 +90,9 @@ impl Algo {
         self.ids.calc_range(&self.mte.time_control());
         let mut ply = self.ids.start_ply;
         let mut multi_pv = Vec::new();
-        let mut last_good_multi_pv = Vec::new();
+        let mut last_good_multi_pv = Vec::new();        
         let mut score = Score::zero();
+        let mut sel_depth = None;
 
         'outer: loop {
             Metrics::flush_thread_local();
@@ -114,6 +115,7 @@ impl Algo {
                 let pv = trail.pv();
 
                 let info = if score.is_finite() {
+                    sel_depth = Some(trail.selective_depth());
                     Info {
                         kind: InfoKind::Pv,
                         nodes: Some(self.clock.cumul_nodes_all_threads()),
@@ -172,9 +174,9 @@ impl Algo {
         }
 
         let results = if self.time_up_or_cancelled(ply, false).0 {
-            SearchResults::new(self, ply - self.ids.step_size, last_good_multi_pv)
+            SearchResults::new(self, ply - self.ids.step_size, last_good_multi_pv, sel_depth)
         } else {
-            SearchResults::new(self, ply, multi_pv)
+            SearchResults::new(self, ply, multi_pv, sel_depth)
         };
 
         // record final outcome of search

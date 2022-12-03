@@ -546,9 +546,9 @@ rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 id DR.04; sv 1. d4 Nf6 
         [
             // http://wtharvey.com/m8n3.txt
             Position::parse_epd(
-                "r3k2r/ppp2Npp/1b5n/4p2b/2B1P2q/BQP2P2/P5PP/RN5K w kq - 1 1 
-                dm 3; 
-                pv 1. Bb5+ c6 2. Qe6+ Qe7 3. Qxe7#; 
+                "r3k2r/ppp2Npp/1b5n/4p2b/2B1P2q/BQP2P2/P5PP/RN5K w kq - 1 1 \
+                dm 3; \
+                pv 1. Bb5+ c6 2. Qe6+ Qe7 3. Qxe7#; \
                 c0 \"William Evans vs Alexander MacDonnell, London, 1826\"",
             )
             .unwrap(),
@@ -556,9 +556,7 @@ rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 id DR.04; sv 1. d4 Nf6 
     }
 
     pub fn mate_in_4() -> Vec<Position> {
-        let str = r#"
-2k5/7Q/8/8/8/3K4/8/8 w - - 3 1 id 'KQ vs k'; dm 4;             
-"#;
+        let str = r#"2k5/7Q/8/8/8/3K4/8/8 w - - 3 1 id 'KQ vs k'; dm 4;"#;
         let positions = Position::parse_many_epd(str.lines()).unwrap();
         positions
     }

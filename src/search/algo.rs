@@ -8,7 +8,6 @@ use crate::eval::recognizer::Recognizer;
 use crate::eval::score::Score;
 use crate::infra::component::{Component, State};
 use crate::mv::Move;
-use crate::other::pvtable::PvTable;
 use crate::piece::Ply;
 use crate::position::Position;
 use crate::repetition::Repetition;
@@ -92,9 +91,6 @@ pub struct Algo {
     pub board: Board,
     #[serde(skip)]
     pub max_depth: Ply,
-
-    #[serde(skip)]
-    pub pv_table: PvTable,
 
     #[serde(skip)]
     pub clock_checks: u64,
@@ -250,7 +246,6 @@ impl Component for Algo {
 
     fn new_position(&mut self) {
         self.clock_checks = 0;
-        self.pv_table = PvTable::default();
         self.current_variation = Variation::new();
         self.max_depth = 0;
     }
@@ -333,7 +328,6 @@ impl fmt::Display for Algo {
         writeln!(f, ".\n.\n[killers]\n{}", self.killers)?;
         writeln!(f, ".\n.\n[history]\n{}", self.history)?;
         writeln!(f, ".\n.\n[iterative deepening]\n{}", self.ids)?;
-        writeln!(f, ".\n.\n[pvtable]\n{}", self.pv_table)?;
         writeln!(f, ".\n.\n[explainer]\n{}", self.explainer)?;
 
         writeln!(f, ".\n.\n[restrictions]\n{}", self.restrictions)?;
@@ -375,13 +369,13 @@ impl Algo {
 
     pub fn report_refutation(&self, ply: Ply) {
         if self.controller.show_refutations && ply < 4 {
-            let sp = Info {
-                kind: InfoKind::Refutation,
-                pv: Some(self.pv_table.extract_pv_for(ply).to_inner()),
-                ..Info::default()
-            };
+            // let sp = Info {
+            //     kind: InfoKind::Refutation,
+            //     pv: Some(self.pv_table.extract_pv_for(ply).to_inner()),
+            //     ..Info::default()
+            // };
 
-            self.controller.invoke_callback(&sp);
+            // self.controller.invoke_callback(&sp);
         }
     }
 
@@ -443,18 +437,18 @@ impl Algo {
         (time_up, Event::SearchTimeUp)
     }
 
-    pub fn clear_move(&mut self, ply: Ply) {
-        self.pv_table.set(ply, &Move::NULL_MOVE, true);
-    }
+    // pub fn clear_move(&mut self, ply: Ply) {
+    //     self.pv_table.set(ply, &Move::NULL_MOVE, true);
+    // }
 
-    pub fn record_move(&mut self, ply: Ply, mv: &Move) {
-        self.pv_table.set(ply, mv, false);
-        self.pv_table.propagate_from(ply + 1);
-    }
+    // pub fn record_move(&mut self, ply: Ply, mv: &Move) {
+    //     self.pv_table.set(ply, mv, false);
+    //     self.pv_table.propagate_from(ply + 1);
+    // }
 
-    pub fn record_truncated_move(&mut self, ply: Ply, mv: &Move) {
-        self.pv_table.set(ply, mv, true);
-    }
+    // pub fn record_truncated_move(&mut self, ply: Ply, mv: &Move) {
+    //     self.pv_table.set(ply, mv, true);
+    // }
 }
 
 #[cfg(test)]

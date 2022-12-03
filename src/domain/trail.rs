@@ -575,9 +575,9 @@ mod tests {
         let board = Catalog::starting_board();
         let mut t = Trail::new(board.clone());
         println!("{t}");
-        t.push_move(&Node::root(0), board.parse_san_move("e4").unwrap());
-        t.push_move(
-            &Node::root(1),
+        let n = Node::root(0);
+        t.push_move(&n, board.parse_san_move("e4").unwrap());
+        t.push_move(&n.new_child(),
             *board.parse_san_variation("e4 e5").unwrap().last().unwrap(),
         );
         println!("e4 e5\n{t}");

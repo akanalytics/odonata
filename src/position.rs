@@ -320,7 +320,12 @@ impl Position {
     // FIXME - other EPD tags
 
     pub fn try_get(&self, key: &str) -> Result<&Tag> {
-        Ok(self.tags.get(key))
+        let tag = self.tags.get(key);
+        if *tag == Tag::None {
+            bail!("no pv tag in EPD {self}");
+        } else {
+            Ok(tag)
+        }
     }
 
     pub fn tag(&self, key: &str) -> &Tag {

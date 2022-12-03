@@ -98,8 +98,7 @@ impl Algo {
                             // && self.mte.time_sensitive()
                             && score > n.alpha
                         {
-                            let mv = entry.validate_move(b);
-                            self.record_truncated_move(n.ply, &mv );
+                            // let _mv = entry.validate_move(b);
                             // trail.push_move(n, mv);
                             trail.terminal(n, score, Event::TtPv);
                             // trail.pop_move(n, mv);

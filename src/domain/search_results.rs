@@ -18,7 +18,7 @@ use tabled::builder::Builder;
 
 use super::info::{BareMoveVariation, Info};
 
-#[derive(Clone, Default, Debug, Deserialize, Serialize)]
+#[derive(Clone, Default, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct SearchResults {
     #[serde(skip)]
@@ -44,6 +44,7 @@ pub struct SearchResults {
     #[serde(skip)]
     pub infos: Vec<Info>,
 }
+
 
 impl fmt::Display for SearchResults {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -164,6 +165,15 @@ impl Uci for SearchResults {
 }
 
 impl SearchResults {
+    pub fn diff( sr1: &Self, sr2: &Self ) -> Result<(), String>{
+        let mut sr1 = sr1.clone();
+        sr1.emt = sr2.emt;  // emt will be different
+        if &sr1 != sr2 {
+            return Err(String::from("differences!"));
+        }
+        Ok(())
+    }
+
     fn extract_multi_pv(infos: &Vec<Info>) -> Vec<(BareMoveVariation, Score)> {
         // step #1, find max multipv index
         let max_index = infos.iter().map(|i| i.multi_pv.unwrap_or(1)).max();
@@ -276,7 +286,7 @@ impl SearchResults {
         }
     }
 
-    pub fn new(algo: &Algo, depth: Ply, multi_pv: Vec<(BareMoveVariation, Score)>) -> Self {
+    pub fn new(algo: &Algo, depth: Ply, multi_pv: Vec<(BareMoveVariation, Score)>, seldepth: Option<Ply>) -> Self {
         let nodes_thread_cumul = algo.clock.cumul_nodes_this_thread();
         let bf = calculate_branching_factor_by_nodes_and_depth(nodes_thread_cumul, depth)
             .unwrap_or_default();
@@ -291,7 +301,7 @@ impl SearchResults {
             nodes_thread: algo.clock.cumul_nodes_this_thread(),
             nps: algo.clock.cumul_knps_all_threads() * 1000,
             depth,
-            seldepth: algo.pv_table.selective_depth(),
+            seldepth: seldepth.unwrap_or_default(),
             time_millis: algo.clock.elapsed_search().time.as_millis() as u64,
             hashfull_per_mille: algo.tt.hashfull_per_mille(),
             bf,
