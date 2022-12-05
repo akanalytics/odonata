@@ -240,7 +240,7 @@ impl Algo {
         }
 
         // position wise, passed pawn promos make a huge impact so exclude them
-        if mv.mover_piece() == Piece::Pawn
+        if mv.mover_piece(before) == Piece::Pawn
             && mv.from().rank_number_as_white(before.color_us())
                 > self.futility.max_pawn_rank as usize
         {

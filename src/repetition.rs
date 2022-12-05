@@ -94,14 +94,14 @@ impl Repetition {
         self.prior_positions.len()
     }
 
-    pub fn push_move(&mut self, mv: &Move, post_move: &Board) {
+    pub fn push_move(&mut self, mv: &Move, pre_move: &Board) {
         if !self.enabled {
             return;
         }
-        if mv.is_capture() || mv.mover_piece() == Piece::Pawn {
+        if mv.is_capture() || mv.mover_piece(pre_move) == Piece::Pawn {
             self.prior_positions.push(0);
         }
-        self.prior_positions.push(post_move.hash());
+        self.prior_positions.push(pre_move.make_move(mv).hash());
     }
 
     // uses supplied variation
@@ -118,7 +118,7 @@ impl Repetition {
         let mut b = pre.clone();
         self.prior_positions.push(b.hash());
         for mv in moves.iter() {
-            if mv.is_capture() || mv.mover_piece() == Piece::Pawn {
+            if mv.is_capture() || mv.mover_piece(pre) == Piece::Pawn {
                 self.prior_positions.push(0);
             }
             b = b.make_move(mv);

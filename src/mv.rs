@@ -199,7 +199,6 @@ impl fmt::Debug for Move {
             .field("uci", &self.to_uci())
             .field("from", &self.from())
             .field("to", &self.to())
-            .field("mover", &self.mover_piece())
             .field("captured", &self.capture_piece())
             .field("castling", &self.castling_side())
             .field("ep", &self.ep())
@@ -334,13 +333,13 @@ impl Move {
     }
 
     #[inline]
-    pub fn is_near_promo(&self) -> bool {
+    pub fn is_near_promo(&self, bd: &Board) -> bool {
         let c = if self.from() < self.to() {
             Color::White
         } else {
             Color::Black
         };
-        self.mover_piece() == Piece::Pawn && self.to().rank_number_as_white(c) == 7
+        self.mover_piece(bd) == Piece::Pawn && self.to().rank_number_as_white(c) == 7
     }
 
     // #[inline]
@@ -365,8 +364,8 @@ impl Move {
     }
 
     #[inline]
-    pub const fn mover_piece(&self) -> Piece {
-        Piece::from_index((self.bits >> Self::OFFSET_MOVER) as usize & 7)
+    pub fn mover_piece(&self, bd: &Board) -> Piece {
+        bd.piece_unchecked(self.from())
     }
 
     #[inline]
@@ -489,10 +488,10 @@ impl Move {
     }
 
     #[inline]
-    pub fn mvv_lva_score(&self) -> i32 {
+    pub fn mvv_lva_score(&self, bd: &Board) -> i32 {
         let mut score = 0;
         if let Some(cap) = self.capture_piece() {
-            score += cap.centipawns() * 10 - self.mover_piece().centipawns() / 10;
+            score += cap.centipawns() * 10 - self.mover_piece(bd).centipawns() / 10;
         }
         if let Some(promo) = self.promo() {
             score += promo.centipawns() * 10 - Piece::Pawn.centipawns() / 10;
@@ -509,8 +508,6 @@ impl fmt::Display for Move {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.to_uci())?;
         if f.alternate() {
-            write!(f, " m:{}", self.mover_piece())?;
-
             if !self.ep().is_null() {
                 write!(f, " ep:{}", self.ep().uci())?;
             }
@@ -531,7 +528,7 @@ impl fmt::Display for Move {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{catalog::Catalog, perft::Perft};
+    use crate::{catalog::Catalog, perft::Perft, Position};
     // use crate::movelist::MoveValidator;
 
     #[test]
@@ -565,7 +562,7 @@ mod tests {
         println!("{:#} {:b}", move_a1b2, move_a1b2.bits);
         assert_eq!(move_a1b2.from(), a1.square());
         assert_eq!(move_a1b2.to(), b2.square());
-        assert_eq!(move_a1b2.mover_piece(), Piece::Bishop);
+        // assert_eq!(move_a1b2.mover_piece(), Piece::Bishop);
         assert_eq!(move_a1b2.is_promo(), false);
         assert_eq!(move_a1b2.ep(), Square::null());
         assert_eq!(move_a1b2.castling_side(), CastlingRights::NONE);
@@ -606,38 +603,52 @@ mod tests {
 
     #[test]
     fn test_mvv_lva() {
-        let pxq = Move::new_capture(Piece::Pawn, Square::A1, Square::A2, Piece::Queen);
-        let pxr = Move::new_capture(Piece::Pawn, Square::A1, Square::A2, Piece::Rook);
-        let pxb = Move::new_capture(Piece::Pawn, Square::A1, Square::A2, Piece::Bishop);
-        let pxn = Move::new_capture(Piece::Pawn, Square::A1, Square::A2, Piece::Knight);
-        let pxp = Move::new_capture(Piece::Pawn, Square::A1, Square::A2, Piece::Pawn);
-        let qxp = Move::new_capture(Piece::Queen, Square::A1, Square::A2, Piece::Pawn);
-        let qxn = Move::new_capture(Piece::Queen, Square::A1, Square::A2, Piece::Knight);
-        let qxb = Move::new_capture(Piece::Queen, Square::A1, Square::A2, Piece::Bishop);
-        let qxr = Move::new_capture(Piece::Queen, Square::A1, Square::A2, Piece::Rook);
-        let qxq = Move::new_capture(Piece::Queen, Square::A1, Square::A2, Piece::Queen);
+        let pos = Position::parse_epd(
+            r"
+            k.....qb
+            .....PnQ
+            .....P..
+            q.r.....
+            .P..pb.r
+            ...P..P.
+            ......p.
+            K......Q w - - 1 1",
+        )
+        .unwrap();
+        let bd = pos.board();
 
-        let pxq_q = Move::new_promo_capture(Square::A1, Square::A2, Piece::Queen, Piece::Queen);
+        let pxq = bd.parse_san_move("Pxa5").unwrap();
+        let pxr = bd.parse_san_move("Pxc5").unwrap(); 
+        let pxb = bd.parse_san_move("Pxf4").unwrap(); 
+        let pxn = bd.parse_san_move("Pxg7").unwrap(); 
+        let pxp = bd.parse_san_move("Pxe4").unwrap(); 
+        let qxp = bd.parse_san_move("Qxg2").unwrap(); 
+        let qxn = bd.parse_san_move("Qxg7").unwrap(); 
+        let qxb = bd.parse_san_move("Qxh8").unwrap(); 
+        let qxr = bd.parse_san_move("Qxh4").unwrap(); 
+        let qxq = bd.parse_san_move("Qxg8").unwrap(); 
 
-        let p_q = Move::new_promo(Square::A1, Square::A2, Piece::Queen);
+        let pxq_q = bd.parse_san_move("Pxg8=Q").unwrap();
+
+        let p_q = bd.parse_san_move("f8=Q").unwrap();
 
         assert_eq!(qxr.capture_piece(), Some(Piece::Rook));
-        assert_eq!(qxr.mover_piece(), Piece::Queen);
+        assert_eq!(qxr.mover_piece(&bd), Piece::Queen);
 
-        assert_eq!(pxq.mvv_lva_score(), 8990);
-        assert_eq!(pxr.mvv_lva_score(), 4990);
-        assert_eq!(pxb.mvv_lva_score(), 3240);
-        assert_eq!(pxn.mvv_lva_score(), 3240);
-        assert_eq!(pxp.mvv_lva_score(), 990);
+        assert_eq!(pxq.mvv_lva_score(&bd), 8990);
+        assert_eq!(pxr.mvv_lva_score(&bd), 4990);
+        assert_eq!(pxb.mvv_lva_score(&bd), 3240);
+        assert_eq!(pxn.mvv_lva_score(&bd), 3240);
+        assert_eq!(pxp.mvv_lva_score(&bd), 990);
 
-        assert_eq!(qxp.mvv_lva_score(), 910);
-        assert_eq!(qxn.mvv_lva_score(), 3160);
-        assert_eq!(qxb.mvv_lva_score(), 3160);
-        assert_eq!(qxr.mvv_lva_score(), 4910);
-        assert_eq!(qxq.mvv_lva_score(), 8910);
+        assert_eq!(qxp.mvv_lva_score(&bd), 910);
+        assert_eq!(qxn.mvv_lva_score(&bd), 3160);
+        assert_eq!(qxb.mvv_lva_score(&bd), 3160);
+        assert_eq!(qxr.mvv_lva_score(&bd), 4910);
+        assert_eq!(qxq.mvv_lva_score(&bd), 8910);
 
-        assert_eq!(pxq_q.mvv_lva_score(), 17980);
-        assert_eq!(p_q.mvv_lva_score(), 8990);
+        assert_eq!(pxq_q.mvv_lva_score(&bd), 17980);
+        assert_eq!(p_q.mvv_lva_score(&bd), 8990);
     }
 
     #[test]

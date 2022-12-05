@@ -121,7 +121,7 @@ impl Board {
         let mut b = Board {
             en_passant: Bitboard::EMPTY,
             turn: self.turn.opposite(),
-            ply: self.ply + 1,
+            ply: self.ply,
             fullmove_number: self.fullmove_number + self.turn.chooser_wb(0, 1),
             fifty_clock: self.fifty_clock + 1,
             repetition_count: Cell::new(Repeats::default()),
@@ -149,6 +149,21 @@ impl Board {
         };
 
         // board.moves.push(*m);
+        if m.is_null() {
+            let move_hash = Hasher::default().hash_move(m, self);
+            b.hash = self.hash ^ move_hash;
+    
+            Metrics::profile(t, Timing::TimingMakeMove);
+    
+            debug_assert!(
+                b.hash == Hasher::default().hash_board(&b),
+                "\n{self}.make_move({m}) = {b};\ninconsistent incremental hash {:x} (should be {:x})\n{self:#}\n{m:?}",
+                b.hash,
+                Hasher::default().hash_board(&b),
+            );
+    
+            return b;
+        }
 
         if let Some(c) = m.capture_piece() {
             b.fifty_clock = 0;
@@ -170,10 +185,10 @@ impl Board {
         // clear one bit and set another for the move using xor
         if !m.is_null() {
             // let from_to_bits = m.from().as_bb() | m.to().as_bb();
-            b.move_piece(m.from().as_bb(), m.to().as_bb(), m.mover_piece(), self.turn);
+            b.move_piece(m.from().as_bb(), m.to().as_bb(), m.mover_piece(self), self.turn);
         }
 
-        if m.mover_piece() == Piece::Pawn {
+        if m.mover_piece(self) == Piece::Pawn {
             b.fifty_clock = 0;
             if m.is_pawn_double_push() {
                 b.en_passant = m.ep().as_bb();
@@ -282,7 +297,7 @@ impl Board {
         let mut b = self;
         let move_hash = Hasher::default().hash_move(&m, b);
         b.hash = b.hash ^ move_hash;
-
+        let mover = m.mover_piece(b);
         // now hash calculated - we can adjust these
         b.turn = b.turn.opposite();
         b.en_passant = Bitboard::EMPTY;
@@ -310,12 +325,12 @@ impl Board {
             b.move_piece(
                 m.from().as_bb(),
                 m.to().as_bb(),
-                m.mover_piece(),
+                mover,
                 b.turn.opposite(),
             );
         }
 
-        if m.mover_piece() == Piece::Pawn {
+        if mover == Piece::Pawn {
             b.fifty_clock = 0;
             if m.is_pawn_double_push() {
                 b.en_passant = m.ep().as_bb();
@@ -384,12 +399,12 @@ impl Board {
                 b.move_piece(
                     m.to().as_bb(),
                     m.from().as_bb(),
-                    m.mover_piece(),
+                    m.mover_piece(b),
                     b.turn.opposite(),
                 );
             }
 
-            if m.mover_piece() == Piece::Pawn {
+            if m.mover_piece(b) == Piece::Pawn {
                 b.fifty_clock = 0;
                 if m.is_pawn_double_push() {
                     b.en_passant = m.ep().as_bb();

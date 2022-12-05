@@ -110,7 +110,7 @@ impl Algo {
 
         if self.ext.near_promo_enabled
             && n.depth <= self.ext.near_promo_max_depth
-            && mv.mover_piece() == Piece::Pawn
+            && mv.mover_piece(before) == Piece::Pawn
             && mv.to().is_in(Bitboard::RANK_7 | Bitboard::RANK_2)
         {
             ext += 1;

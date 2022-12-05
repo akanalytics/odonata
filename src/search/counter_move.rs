@@ -28,17 +28,17 @@ pub struct CounterMove {
     max_ply: Ply,
 
     #[serde(skip)]
-    counter_moves: Box<[[[MoveTally; 64]; Piece::len()]; 2]>,
+    counter_moves: Box<[[[MoveTally; 64]; 64]; 2]>,
 }
 
 impl Component for CounterMove {
     fn new_game(&mut self) {
-        self.counter_moves = Box::new([[[MoveTally::default(); 64]; Piece::len()]; 2]);
+        self.counter_moves = Box::new([[[MoveTally::default(); 64]; 64]; 2]);
     }
 
     fn new_position(&mut self) {
         if self.clear_every_move {
-            self.counter_moves = Box::new([[[MoveTally::default(); 64]; Piece::len()]; 2]);
+            self.counter_moves = Box::new([[[MoveTally::default(); 64]; 64]; 2]);
         }
         self.adjust_by_factor(self.age_factor);
     }
@@ -52,7 +52,7 @@ impl Default for CounterMove {
             age_factor: 4,
             min_depth: 4,
             max_ply: 5,
-            counter_moves: Box::new([[[MoveTally::default(); 64]; Piece::len()]; 2]),
+            counter_moves: Box::new([[[MoveTally::default(); 64]; 64]; 2]),
         }
     }
 }
@@ -93,7 +93,7 @@ impl CounterMove {
         if !self.enabled || n.depth < self.min_depth || n.ply > self.max_ply {
             return 0;
         }
-        let mt = &self.counter_moves[c][parent.mover_piece()][parent.to()];
+        let mt = &self.counter_moves[c][parent.from()][parent.to()];
         let total = mt.count1 + mt.count2 + mt.count3 + 1;
         if mt.mv1 == child {
             Metrics::incr(Counter::MatchedCounterMove);
@@ -122,7 +122,7 @@ impl CounterMove {
             return;
         }
 
-        let mut mt = &mut self.counter_moves[c][parent.mover_piece()][parent.to()];
+        let mut mt = &mut self.counter_moves[c][parent.from()][parent.to()];
         if mt.mv1 == mv {
             mt.count1 += (n.depth * n.depth) as i64;
             return;

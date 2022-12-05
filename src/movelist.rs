@@ -539,15 +539,15 @@ impl Board {
         }
 
         let mut s = String::new();
-        if mv.mover_piece() != Piece::Pawn {
-            s += &mv.mover_piece().to_upper_char().to_string();
+        if mv.mover_piece(self) != Piece::Pawn {
+            s += &mv.mover_piece(self).to_upper_char().to_string();
         }
         // ambiguity resolution
         let mut pieces = 0;
         let mut file_pieces = 0;
         let mut rank_pieces = 0;
         for lm in self.legal_moves().iter() {
-            if lm.to() == mv.to() && lm.mover_piece() == mv.mover_piece() {
+            if lm.to() == mv.to() && lm.mover_piece(self) == mv.mover_piece(self) {
                 pieces += 1;
                 if lm.from().file_char() == mv.from().file_char() {
                     file_pieces += 1;
@@ -557,7 +557,7 @@ impl Board {
                 }
             }
         }
-        if pieces > 1 || (mv.mover_piece() == Piece::Pawn && mv.is_capture()) {
+        if pieces > 1 || (mv.mover_piece(self) == Piece::Pawn && mv.is_capture()) {
             // need to resolve ambiguity
             if file_pieces == 1 {
                 s.push(mv.from().file_char());

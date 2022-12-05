@@ -235,7 +235,7 @@ impl Algo {
         };
 
         moves.sort_by_cached_key(|m| {
-            Move::mvv_lva_score(m)
+            Move::mvv_lva_score(m, bd)
                 + if let Some(lm) = lm {
                     if m.to() == lm.to() {
                         self.qs.recapture_score
@@ -259,7 +259,7 @@ impl Algo {
                 && self.qs.delta_prune
                 && (self.qs.delta_prune_discovered_check || !bd.maybe_gives_discovered_check(mv))
                 && (self.qs.delta_prune_gives_check || !bd.gives_check(&mv))
-                && (self.qs.delta_prune_near_promos || !mv.is_near_promo())
+                && (self.qs.delta_prune_near_promos || !mv.is_near_promo(&bd))
                 && bd.occupied().popcount() >= self.qs.delta_prune_min_pieces
                 && pat + bd.eval_move_material(&self.eval, &mv) + self.qs.delta_prune_move_margin
                     <= n.alpha
@@ -272,7 +272,7 @@ impl Algo {
                 && mv.is_capture()
                 && (self.qs.see_prune_discovered_check || !bd.maybe_gives_discovered_check(mv))
                 && (self.qs.see_prune_gives_check || !bd.gives_check(&mv))
-                && (self.qs.see_prune_near_promos || !mv.is_near_promo())
+                && (self.qs.see_prune_near_promos || !mv.is_near_promo(&bd))
                 && bd.occupied().popcount() >= self.qs.delta_prune_min_pieces
             {
                 let t = Metrics::timing_start();

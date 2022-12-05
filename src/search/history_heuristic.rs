@@ -130,15 +130,15 @@ impl HistoryHeuristic {
     }
 
     #[inline]
-    pub fn history_heuristic_bonus(&self, c: Color, mv: &Move, _n: &Node) -> i32 {
+    pub fn history_heuristic_bonus(&self, c: Color, mv: &Move, _n: &Node, bd: &Board) -> i32 {
         if !self.enabled {
             return 0;
         }
         use HistoryBoard::*;
         let tally = match self.board {
-            PieceTo => self.history[c][mv.mover_piece()][0][mv.to()],
+            PieceTo => self.history[c][mv.mover_piece(bd)][0][mv.to()],
             FromTo => self.history[c][0][mv.from()][mv.to()],
-            PieceFromTo => self.history[c][mv.mover_piece()][mv.from()][mv.to()],
+            PieceFromTo => self.history[c][mv.mover_piece(bd)][mv.from()][mv.to()],
         };
         use ScoreMethod::*;
         (match self.score_method {
@@ -153,15 +153,15 @@ impl HistoryHeuristic {
     }
 
     #[inline]
-    fn get_mut(&mut self, c: Color, mv: &Move) -> &mut Tally {
+    fn get_mut(&mut self, c: Color, mv: &Move, bd: &Board) -> &mut Tally {
         if !self.enabled {
             return &mut self.history[c][0][0][0];
         }
         use HistoryBoard::*;
         match self.board {
-            PieceTo => &mut self.history[c][mv.mover_piece()][0][mv.to()],
+            PieceTo => &mut self.history[c][mv.mover_piece(bd)][0][mv.to()],
             FromTo => &mut self.history[c][0][mv.from()][mv.to()],
-            PieceFromTo => &mut self.history[c][mv.mover_piece()][mv.from()][mv.to()],
+            PieceFromTo => &mut self.history[c][mv.mover_piece(bd)][mv.from()][mv.to()],
         }
     }
 
@@ -177,10 +177,10 @@ impl HistoryHeuristic {
                 Squared => n.depth * n.depth,
                 Zero => 0,
             }) as i64;
-        if i64::checked_add(self.get_mut(b.color_us(), mv).good, add).is_none() {
+        if i64::checked_add(self.get_mut(b.color_us(), mv, b).good, add).is_none() {
             self.adjust_by_factor(2);
         }
-        self.get_mut(b.color_us(), mv).good += add
+        self.get_mut(b.color_us(), mv, b).good += add
     }
 
     #[inline]
@@ -205,10 +205,10 @@ impl HistoryHeuristic {
                 Squared => n.depth * n.depth,
                 Zero => 0,
             }) as i64;
-        if i64::checked_add(self.get_mut(b.color_us(), mv).good, add).is_none() {
+        if i64::checked_add(self.get_mut(b.color_us(), mv, b).good, add).is_none() {
             self.adjust_by_factor(2);
         }
-        self.get_mut(b.color_us(), mv).good += add
+        self.get_mut(b.color_us(), mv, b).good += add
     }
 
     #[inline]
@@ -222,10 +222,10 @@ impl HistoryHeuristic {
             Squared => n.depth * n.depth / self.malus_factor as i32,
             Zero => 0,
         }) as i64;
-        if i64::checked_add(self.get_mut(b.color_us(), mv).bad, add).is_none() {
+        if i64::checked_add(self.get_mut(b.color_us(), mv, b).bad, add).is_none() {
             self.adjust_by_factor(2);
         }
-        self.get_mut(b.color_us(), mv).bad += add
+        self.get_mut(b.color_us(), mv, b).bad += add
     }
 }
 
@@ -247,20 +247,24 @@ mod tests {
 
     #[test]
     fn hh_test() {
+        let bd = Board::starting_pos();
         let mut hh = HistoryHeuristic::default();
         hh.get_mut(
             Color::White,
-            &Move::new_quiet(Piece::Pawn, Square::A1, Square::H8),
+            &Move::new_quiet(Piece::Pawn, Square::A2, Square::A3),
+            &bd,
         );
         hh.get_mut(
             Color::White,
-            &Move::new_quiet(Piece::Pawn, Square::A1, Square::H8),
+            &Move::new_quiet(Piece::Pawn, Square::A2, Square::A3),
+            &bd,
         )
         .good = 1;
         assert_eq!(
             hh.get_mut(
                 Color::White,
-                &Move::new_quiet(Piece::Pawn, Square::A1, Square::H8)
+                &Move::new_quiet(Piece::Pawn, Square::A2, Square::A3),
+                &bd
             )
             .good,
             1

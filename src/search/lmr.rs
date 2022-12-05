@@ -190,7 +190,7 @@ impl Algo {
             _ => 0.0,
         };
 
-        if mv.mover_piece() == Piece::Pawn
+        if mv.mover_piece(before) == Piece::Pawn
             && mv.from().rank_number_as_white(before.color_us()) > self.lmr.max_pawn_rank as usize
         {
             Metrics::incr_node(n, Event::LmrDeclinePawnRank);
@@ -201,7 +201,7 @@ impl Algo {
         // => lmr <= depth - 1 - min_remaining_depth
         let reduce = (reduce as i32).clamp(0, n.depth - 1 - self.lmr.min_remaining_depth);
 
-        if !self.lmr.pawns && mv.mover_piece() == Piece::Pawn {
+        if !self.lmr.pawns && mv.mover_piece(before) == Piece::Pawn {
             return 0;
         }
         if !self.lmr.killers && stage == MoveType::Killer

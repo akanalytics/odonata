@@ -1,3 +1,4 @@
+use crate::board::Board;
 use crate::eval::endgame::EndGame;
 use crate::infra::utils::{Displayable, Formatting};
 use crate::mv::Move;
@@ -295,7 +296,7 @@ impl Metrics {
 
     #[allow(unused_variables)]
     #[inline]
-    pub fn classify_move(n: &Node, mv: Move, mt: MoveType) {
+    pub fn classify_move(n: &Node, mv: Move, mt: MoveType, bd: &Board) {
         #[cfg(not(feature = "remove_metrics"))]
         {
             let ev = match mt {
@@ -324,7 +325,7 @@ impl Metrics {
         #[cfg(not(feature = "remove_metrics"))]
         {
             use crate::Piece;
-            match mv.mover_piece() {
+            match mv.mover_piece(bd) {
                 Piece::Pawn => Self::incr_node(n, Event::MovePawn),
                 Piece::Knight => Self::incr_node(n, Event::MoveKnight),
                 Piece::Bishop => Self::incr_node(n, Event::MoveBishop),

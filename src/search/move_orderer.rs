@@ -244,13 +244,13 @@ impl MoveOrderer {
         // b. castling +1200,
         // c. move is a counter-move to opponent's move +1200
         //
-        if mv.mover_piece() == Piece::Knight {
+        if mv.mover_piece(b) == Piece::Knight {
             score += self.knight_pseudo_mobility
                 * (PreCalc::default().knight_attacks(mv.to()).popcount()
                     - PreCalc::default().knight_attacks(mv.from()).popcount())
                     as f32
         }
-        if mv.mover_piece() == Piece::Bishop {
+        if mv.mover_piece(b) == Piece::Bishop {
             score += self.bishop_pseudo_mobility
                 * (PreCalc::default()
                     .bishop_attacks(Bitboard::EMPTY, mv.to())
@@ -259,7 +259,7 @@ impl MoveOrderer {
                         .bishop_attacks(Bitboard::EMPTY, mv.from())
                         .popcount()) as f32
         }
-        if mv.mover_piece() == Piece::Queen {
+        if mv.mover_piece(b) == Piece::Queen {
             score += self.queen_pseudo_mobility
                 * (PreCalc::default()
                     .bishop_attacks(Bitboard::EMPTY, mv.to())
@@ -268,13 +268,13 @@ impl MoveOrderer {
                         .bishop_attacks(Bitboard::EMPTY, mv.from())
                         .popcount()) as f32
         }
-        // if mv.mover_piece() == Piece::Pawn {
+        // if mv.mover_piece(b) == Piece::Pawn {
         //     score += 0;
         // }
-        // score += mv.mover_piece().centipawns();
+        // score += mv.mover_piece(b).centipawns();
         score += self.rank_index_sort_bonus * mv.to().rank_number_as_white(c) as f32;
 
-        score += self.hh_sort_factor * algo.history.history_heuristic_bonus(c, &mv, n) as f32;
+        score += self.hh_sort_factor * algo.history.history_heuristic_bonus(c, &mv, n, b) as f32;
 
         let cm = algo.counter_move.counter_move_unchecked(c, parent, mv, n);
         if cm > 0 {
@@ -293,7 +293,7 @@ impl MoveOrderer {
             * algo
                 .eval
                 .pst
-                .w_eval_square(c, mv.mover_piece(), mv.to())
+                .w_eval_square(c, mv.mover_piece(b), mv.to())
                 .interpolate(phase);
         // score -= algo.eval.w_eval_square(c, mv.mover_piece(), mv.from()).interpolate(phase);
         -score as i32
@@ -301,14 +301,14 @@ impl MoveOrderer {
 }
 
 impl Algo {
-    pub fn order_moves(&mut self, ply: Ply, movelist: &mut MoveList, tt_mv: &Option<Move>) {
+    pub fn order_moves(&mut self, ply: Ply, movelist: &mut MoveList, tt_mv: &Option<Move>, bd: &Board) {
         if !self.move_orderer.enabled {
             return;
         }
 
         if self.move_orderer.mvv_lva {
             // movelist.sort_unstable_by_key(|m| -m.mvv_lva_score() );
-            movelist.sort_unstable_by_key(Move::mvv_lva_score);
+            movelist.sort_unstable_by_key(|mv| mv.mvv_lva_score(bd));
             movelist.reverse();
             // if self.move_orderer.thread == 1 && movelist.len() >= 2 {
             //     movelist.swap(0, 1);
@@ -429,7 +429,7 @@ impl OrderedMoveList {
             // we dont sort killers
             // || move_type == 'b' as b is sorted by reverse anyway due to push and they are bad captures
             {
-                Self::sort_one_capture_move(self.index, &mut self.moves, self.last);
+                Self::sort_one_capture_move(self.index, &mut self.moves, self.last, b);
             }
             if move_type == MoveType::GoodCaptureUpfrontSorted || move_type == MoveType::GoodCapture
             {
@@ -467,12 +467,12 @@ impl OrderedMoveList {
     }
 
     #[inline]
-    fn sort_one_capture_move(i: usize, moves: &mut MoveList, last: Move) {
+    fn sort_one_capture_move(i: usize, moves: &mut MoveList, last: Move, bd: &Board) {
         if let Some(j) = moves
             .iter()
             .enumerate()
             .skip(i)
-            .max_by_key(|(_n, &mv)| mv.mvv_lva_score() - if mv.to() == last.to() { 0 } else { 0 })
+            .max_by_key(|(_n, &mv)| mv.mvv_lva_score(bd) - if mv.to() == last.to() { 0 } else { 0 })
             .map(|(n, _mv)| n)
         {
             moves.swap(i, j);
@@ -480,11 +480,11 @@ impl OrderedMoveList {
     }
 
     #[inline]
-    fn _sort_one_move_handcrafted(i: usize, moves: &mut MoveList) {
+    fn _sort_one_move_handcrafted(i: usize, moves: &mut MoveList, bd: &Board) {
         let mut j = 0;
         let mut max = 0;
         moves.iter().enumerate().skip(i).for_each(|(n, &mv)| {
-            let s = mv.mvv_lva_score();
+            let s = mv.mvv_lva_score(bd);
             if s > max {
                 j = n;
                 max = s;
@@ -516,7 +516,7 @@ impl OrderedMoveList {
             }
             MoveType::Evasion => {
                 all_moves.iter().for_each(|&m| moves.push(m));
-                algo.order_moves(self.n.ply, moves, &None);
+                algo.order_moves(self.n.ply, moves, &None, b);
             }
             MoveType::GoodCaptureUpfrontSorted => {
                 all_moves
@@ -524,7 +524,7 @@ impl OrderedMoveList {
                     .filter(|&m| Move::is_capture(m))
                     .for_each(|&m| moves.push(m));
                 moves.sort_by_cached_key(|m| {
-                    Move::mvv_lva_score(m) + if m.to() == last.to() { 0 } else { 0 }
+                    Move::mvv_lva_score(m, b) + if m.to() == last.to() { 0 } else { 0 }
                 });
                 moves.reverse();
                 if algo.move_orderer.thread == 1 && moves.len() >= 2 {
@@ -648,7 +648,7 @@ impl OrderedMoveList {
                     .iter()
                     .filter(|m| Move::is_capture(m))
                     .for_each(|&m| moves.push(m));
-                moves.sort_unstable_by_key(Move::mvv_lva_score);
+                moves.sort_unstable_by_key(|mv| mv.mvv_lva_score(b));
                 moves.reverse();
                 if algo.move_orderer.thread == 1 && moves.len() >= 2 {
                     moves.swap(0, 1);
@@ -867,7 +867,7 @@ mod tests {
         let board = Catalog::perft_kiwipete().0;
         let mut moves = board.legal_moves();
         moves.sort(); // alphabetical first
-        Algo::new().order_moves(0, &mut moves, &None);
+        Algo::new().order_moves(0, &mut moves, &None, &board);
         println!("{:#}", moves);
         assert_eq!(moves[0].to_uci(), "e2a6"); // b x b
         assert_eq!(moves[1].to_uci(), "f3f6"); // q x n
@@ -878,7 +878,7 @@ mod tests {
         let positions = Catalog::move_ordering();
         for (i, pos) in positions.iter().enumerate() {
             let mut moves = pos.board().legal_moves();
-            Algo::new().order_moves(0, &mut moves, &None);
+            Algo::new().order_moves(0, &mut moves, &None, &board);
             println!("{}\n{:#}", pos, moves);
             if i == 0 {
                 assert_eq!(moves[0].to_uci(), "b7a8q"); // p x r = Q)

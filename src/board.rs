@@ -229,7 +229,6 @@ impl Board {
         }
         self.calculate_internals();
     }
-
 }
 
 impl Board {
@@ -551,6 +550,11 @@ impl fmt::Display for Board {
                     self.pieces(p)
                 )?;
             }
+            writeln!(
+                f,
+                "En passant:\n{}\n",
+                self.en_passant
+            )?;
             writeln!(
                 f,
                 "Pinned on white king:\n{}\n",
@@ -1027,13 +1031,25 @@ mod tests {
     #[test]
     fn bench_board() {
         let bd =
-            Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+            Board::parse_fen("rnbqkbnr/pppppppp/8/8/8/4P3/PPPP1PPP/RNBQKBNR w KQkq - 0 1").unwrap();
 
         let mut prof1 = PerfProfiler::new("board.piece".into());
-        for _ in 0..100 {
-            for sq in bd.occupied().squares() {
-                prof1.benchmark(|| bd.piece(black_box(sq)));
-            }
+        for sq in bd.occupied().squares() {
+            prof1.benchmark(|| bd.piece(black_box(sq)));
         }
+
+        // piece.at 64, mv.piece_field 61
+        let e1e2 = bd.parse_san_move("Ke2").unwrap();
+        let e3e4 = bd.parse_san_move("e4").unwrap();
+        let c1c3 = bd.parse_san_move("Nc3").unwrap();
+        let mut prof2 = PerfProfiler::new("mv.mover".into());
+        prof2.benchmark(|| black_box(e3e4.mover_piece(&bd)));
+        prof2.benchmark(|| black_box(c1c3.mover_piece(&bd)));
+        prof2.benchmark(|| black_box(e1e2.mover_piece(&bd)));
+        for &mv in bd.legal_moves().iter() {
+            prof2.benchmark(|| black_box(mv.mover_piece(&bd)));
+        }
+        let mut prof3 = PerfProfiler::new("empty".into());
+        prof3.benchmark(|| black_box(()));
     }
 }

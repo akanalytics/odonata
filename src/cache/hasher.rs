@@ -185,12 +185,16 @@ impl Hasher {
     pub fn hash_move(&self, m: &Move, pre_move: &Board) -> Hash {
         Metrics::incr(Counter::CalcHashMove);
         let mut hash = self.side;
-        // either we're moving to an empty square or its a capture
-        let us = pre_move.color_us();
-        let them = pre_move.color_them();
         if !pre_move.en_passant().is_empty() {
             hash ^= self.ep[pre_move.en_passant().first_square().file_index()];
         }
+        if m.is_null() {
+            return hash;
+        }
+
+        // either we're moving to an empty square or its a capture
+        let us = pre_move.color_us();
+        let them = pre_move.color_them();
 
         if let Some(c) = m.capture_piece() {
             if m.is_ep_capture() {
@@ -203,11 +207,11 @@ impl Hasher {
         }
 
         if !m.is_null() {
-            hash ^= self.squares[us][m.mover_piece()][m.from()];
-            hash ^= self.squares[us][m.mover_piece()][m.to()];
+            hash ^= self.squares[us][m.mover_piece(pre_move)][m.from()];
+            hash ^= self.squares[us][m.mover_piece(pre_move)][m.to()];
         }
 
-        if m.mover_piece() == Piece::Pawn && m.is_pawn_double_push() {
+        if m.mover_piece(pre_move) == Piece::Pawn && m.is_pawn_double_push() {
             debug_assert!(
                 !m.ep().is_null(),
                 "e/p square must be set for pawn double push {:?}",
@@ -266,7 +270,7 @@ impl Hasher {
 mod tests {
     use super::*;
 
-    use crate::catalog::Catalog;
+    use crate::{catalog::Catalog, Bitboard};
 
     #[test]
     #[ignore]
@@ -324,7 +328,8 @@ mod tests {
     fn test_hash_move() {
         let hasher = Hasher::new(1);
         let bd1 = Catalog::starting_board();
-        let moves = bd1.legal_moves();
+        let mut moves = bd1.legal_moves();
+        moves.push(Move::NULL_MOVE);
         let hash_bd1 = hasher.hash_board(&bd1);
         for mv in moves.iter() {
             let hash_mv = hasher.hash_move(mv, &bd1);
@@ -332,6 +337,22 @@ mod tests {
             // println!("Move: {} => {}", mv, hash_mv);
             assert_eq!(hash_bd1 ^ hash_mv, hash_bd2);
         }
+        let mut bd1_plus_nulls = bd1.clone();
+        bd1_plus_nulls.set_fifty_halfmove_clock(0 + 2);
+        bd1_plus_nulls.set_en_passant(Bitboard::empty());
+        bd1_plus_nulls.set_fullmove_number(1 + 1);
+        let bd2 = bd1.make_move(&Move::NULL_MOVE).make_move(&Move::NULL_MOVE);
+        assert_eq!(bd2, bd1_plus_nulls, "double null move {bd2:#} {bd1_plus_nulls:#}");
+
+        let bd1 = bd1.make_move(&bd1.parse_san_move("e4").unwrap());
+        assert_eq!(bd1.fifty_halfmove_clock(), 0);  // coz pawn move
+        let mut bd1_plus_nulls = bd1.clone();
+        bd1_plus_nulls.set_fifty_halfmove_clock(0 + 2);
+        bd1_plus_nulls.set_en_passant(Bitboard::empty());
+        bd1_plus_nulls.set_fullmove_number(1 + 1);
+        let bd2 = bd1.make_move(&Move::NULL_MOVE).make_move(&Move::NULL_MOVE);
+        assert_eq!(bd2, bd1_plus_nulls, "e4 + double null move {bd2:#} {bd1_plus_nulls:#}");
+
     }
 
     #[test]

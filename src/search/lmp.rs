@@ -94,7 +94,7 @@ impl Algo {
             return false;
         }
 
-        if !self.lmp.pawns && mv.mover_piece() == Piece::Pawn {
+        if !self.lmp.pawns && mv.mover_piece(before) == Piece::Pawn {
             return false;
         }
 
@@ -103,7 +103,7 @@ impl Algo {
         {
             return false;
         }
-        if mv.mover_piece() == Piece::Pawn
+        if mv.mover_piece(before) == Piece::Pawn
             && mv.from().rank_number_as_white(before.color_us()) > self.lmp.max_pawn_rank as usize
         {
             return false;

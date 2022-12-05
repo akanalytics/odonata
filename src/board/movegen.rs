@@ -42,7 +42,7 @@ impl Board {
         if !self.is_pseudo_legal_baremove(&m.to_inner()) {
             return false;
         }
-        if m.mover_piece() != self.piece_unchecked(m.from()) {
+        if m.mover_piece(self) != self.piece_unchecked(m.from()) {
             return false;
         }
         if !m.is_capture() {
@@ -490,7 +490,7 @@ mod tests {
             true
         );
         assert_eq!(
-            b.is_pseudo_legal_move(&Move::new_quiet(Piece::Bishop, a2sq, a3sq)),
+            b.is_pseudo_legal_move(&Move::new_quiet(Piece::Pawn, a2sq, a6sq)),
             false
         );
         assert_eq!(
