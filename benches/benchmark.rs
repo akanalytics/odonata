@@ -22,7 +22,6 @@ use odonata::infra::component::*;
 use odonata::infra::utils::*;
 use odonata::movelist::*;
 use odonata::mv::*;
-use odonata::other::pvtable::PvTable;
 use odonata::perft::Perft;
 use odonata::phaser::Phaser;
 use odonata::piece::*;

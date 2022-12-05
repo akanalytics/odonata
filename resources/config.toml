@@ -744,6 +744,7 @@ margin1 = 100
 margin2 = 250
 margin3 = 1500
 margin4 = 1850
+
 # futility.margin3 = 864, margin4 = 669
 # rev_futmargin3 = 595, margin4 = 541
 # elo + 21, iters=24,441 
@@ -983,7 +984,7 @@ even_exchange_max_ply = 2
 max_ply = 16
 delta_prune = true
 delta_prune_move_margin = 200
-delta_prune_node_margin = 2000
+delta_prune_node_margin = 0
 checks_max_ply = 2
 recapture_score = 0
 probe_tt = true

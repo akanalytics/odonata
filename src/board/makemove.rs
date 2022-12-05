@@ -542,7 +542,7 @@ mod tests {
         let mv = b.parse_san_move("e4").unwrap();
         PerfProfiler::new("do_move".to_string()).benchmark(|| {
             b.do_move(mv);
-            b
+            ()
         });
         let b = Catalog::starting_board();
         PerfProfiler::new("make_move".to_string()).benchmark(|| b.make_move(&mv));

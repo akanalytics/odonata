@@ -186,6 +186,6 @@ mod tests {
         let mut eng = eng.algo;
         let tc = TimeControl::Depth(5);
         let mut prof = PerfProfiler::new("bench_search".into());
-        let _ = black_box(prof.benchmark(|| eng.search(pos, tc)));
+        let _ = black_box(prof.benchmark(|| eng.search(pos.clone(), tc)));
     }
 }

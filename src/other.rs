@@ -13,7 +13,6 @@ pub mod outcome;
 // pub mod phaser;
 // pub mod position;
 // pub mod prelude;
-pub mod pvtable;
 // pub mod repitition;
 // pub mod tags;
 // pub mod tuning;

@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use format_num::*;
-use itertools::Itertools;
+use itertools::{EitherOrBoth, Itertools};
 use std::collections::HashMap;
 use std::fmt;
 use std::fs::File;
@@ -23,6 +23,47 @@ where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0(f)
+    }
+}
+
+/// compares two things and reports differences or perhaps just the first
+///  difference in a human readable form
+pub trait Differ<T> {
+    fn diff(a: &T, b: &T) -> Option<String>;
+}
+
+// impl<T: Differ<T> + fmt::Display> Differ<&T> for &T {
+//     fn diff(a: &T, b: &T) -> Option<String> {
+//         T::diff(a,b)
+//     }
+// }
+
+
+impl<T: fmt::Display> Differ<T> for u32 {
+    fn diff(a: &T, b: &T) -> Option<String> {
+        if a.to_string() != b.to_string() {
+            Some(format!("{a} != {b}"))
+        } else {
+            None
+        }
+    }
+}
+
+/// impl for Vec
+impl<T: Differ<T> + fmt::Display> Differ<Vec<T>> for Vec<T> {
+    fn diff(a: &Vec<T>, b: &Vec<T>) -> Option<String> {
+        for either in Itertools::zip_longest(a.iter(), b.iter()) {
+            match either {
+                EitherOrBoth::Both(x, y) => {
+                    if let Some(diff) = T::diff(x, y) {
+                        return Some(diff);
+                    }
+                }
+                EitherOrBoth::Left(x) => return Some(x.to_string() + "(Left)"),
+                EitherOrBoth::Right(x) => return Some(x.to_string() + "(Right)"),
+            }
+        }
+        None
     }
 }
 

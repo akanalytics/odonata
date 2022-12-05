@@ -1,29 +1,46 @@
-use std::fmt;
-
-use std::path::Path;
-
-use std::path::PathBuf;
-
 use perf_event::{events::Hardware, Builder, Counter, Group};
+use std::fmt;
 
 use super::{black_box, utils::IntegerFormatter};
 
-pub struct ProfProfiler<'a> {
-    guard: pprof::ProfilerGuard<'a>,
+pub struct Flamegraph<'a> {
+    guard: Option<pprof::ProfilerGuard<'a>>,
     name: String,
 }
 
-impl<'a> ProfProfiler<'a> {
-    pub fn new(name: String) -> ProfProfiler<'a> {
-        let guard = pprof::ProfilerGuardBuilder::default()
-            .frequency(1_000_000)
-            .blocklist(&["libc", "libgcc", "pthread", "vdso"])
-            .build()
-            .unwrap();
-        ProfProfiler { guard, name }
+impl fmt::Debug for Flamegraph<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ProfProfiler")
+            .field("name", &self.name)
+            .field("guard", &self.guard.is_some())
+            .finish()
+    }
+}
+
+/// enable with RUST_LOG=flamegraph=trace
+impl<'a> Flamegraph<'a> {
+    pub fn new(name: String) -> Flamegraph<'a> {
+        let mut prof = Flamegraph { guard: None, name };
+        if log_enabled!(target: "flamegraph", log::Level::Trace) {
+            prof.enable();
+        }
+        prof
     }
 
-    pub fn report(&mut self) -> anyhow::Result<(PathBuf, PathBuf)> {
+    pub fn enable(&mut self) {
+        if self.guard.is_none() {
+            self.guard = Some(
+                pprof::ProfilerGuardBuilder::default()
+                    .frequency(1_000_000)
+                    .blocklist(&["libc", "libgcc", "pthread", "vdso"])
+                    .build()
+                    .unwrap(),
+            );
+        }
+    }
+
+    /// returns the filenames created
+    pub fn report(&mut self) -> anyhow::Result<Vec<String>> {
         fn proc() -> impl Fn(&mut pprof::Frames) {
             move |frames| {
                 // let vec = &frames.frames;
@@ -36,29 +53,32 @@ impl<'a> ProfProfiler<'a> {
             }
         }
         use itertools::Itertools;
-        let Ok(report) = self.guard.report().frames_post_processor(proc()).build() else {
+        let Some(guard) = &self.guard else {
+            return Ok(vec![]);
+        };
+        let Ok(report) = guard.report().frames_post_processor(proc()).build() else {
             anyhow::bail!("Unable to build flamegraph report");
         };
 
         use std::fs::File;
-        let path = format!("{name}_flamegraph_1.svg", name = self.name);
-        let path1 = Path::new(&path);
-        let file = File::create(path1)?;
+        let name1 = format!("flamegraph_1_{name}.svg", name = self.name);
+        let file = File::create(&name1)?;
         let mut options = pprof::flamegraph::Options::default();
         options.flame_chart = false;
         report.flamegraph_with_options(file, &mut options)?;
 
-        let path = format!("{name}_flamegraph_2.svg", name = self.name);
-        let path2 = Path::new(&path);
-        let file = File::create(path2)?;
+        let name2 = format!("flamegraph_2_{name}.svg", name = self.name);
+        let file = File::create(&name2)?;
         let mut options = pprof::flamegraph::Options::default();
         options.reverse_stack_order = true;
         report.flamegraph_with_options(file, &mut options)?;
-        Ok((path1.to_path_buf(), path2.to_path_buf()))
+        Ok(vec![name1, name2])
     }
 }
 
-pub struct PerfProfiler {
+pub struct PerfProfiler<'a> {
+    flamegraph: Flamegraph<'a>,
+    benchmark_iters: usize,
     group: Group,
     name: String,
     iters: u64,
@@ -70,15 +90,25 @@ pub struct PerfProfiler {
     cycles: Counter,
 }
 
-impl fmt::Display for PerfProfiler {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl fmt::Display for PerfProfiler<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.name)
     }
 }
 
-impl PerfProfiler {
+impl PerfProfiler<'_> {
     #[inline]
-    pub fn new(name: String) -> PerfProfiler {
+    pub fn new(name: String) -> Self {
+        let mut flamegraph = Flamegraph {
+            guard: None,
+            name: name.clone(),
+        };
+        let benchmark_iters = if let Ok(s) = std::env::var("RUST_BENCH") {
+            flamegraph.enable();
+            s.parse().expect("RUST_BENCH not an integer")
+        } else {
+            1
+        };
         let mut group = Group::new().unwrap();
         // REF_CPU_CYCLES not supported on ZEN3
         let cycles = Builder::new()
@@ -111,7 +141,9 @@ impl PerfProfiler {
         // .kind(Hardware::CACHE_REFERENCES)
         // .build()
         // .unwrap();
-        PerfProfiler {
+        Self {
+            flamegraph,
+            benchmark_iters,
             name,
             group,
             ins,
@@ -124,8 +156,11 @@ impl PerfProfiler {
         }
     }
 
-    pub fn benchmark<R>(&mut self, f: impl FnOnce() -> R) -> R {
+    pub fn benchmark<R>(&mut self, mut f: impl FnMut() -> R) -> R {
         self.start();
+        for _ in 1..self.benchmark_iters {
+            let _ret = black_box(f());
+        }
         let ret = black_box(f());
         self.stop();
         ret
@@ -208,8 +243,12 @@ impl PerfProfiler {
 mod tests {
 
     #[cfg(test)]
-    impl Drop for PerfProfiler {
+    impl Drop for PerfProfiler<'_> {
         fn drop(&mut self) {
+            let files = self.flamegraph.report().unwrap_or_default(); // silent fail in drop
+            if files.len() > 0 {
+                println!("flamegraphs: {}", files.iter().format(", "));
+            }
             // if log::log_enabled!(log::Level::Trace) {
             let mut buf = Vec::new();
             self.write(&mut buf).unwrap();
@@ -305,6 +344,7 @@ mod tests {
         }
     }
 
+    use itertools::Itertools;
     use std::cell::Cell;
     use thread_local::ThreadLocal;
 
@@ -332,7 +372,9 @@ mod tests {
         for _iter in 0..10002 {
             pr.benchmark(|| COUNTER2.increment())
         }
-        assert_eq!(COUNTER2.get(), 10002);
+
+        // metrics are removed during features=fast profiling!
+        // assert_eq!(COUNTER2.get(), 10002);
 
         #[allow(non_snake_case)]
         let COUNTER3 = ThreadLocal::new();

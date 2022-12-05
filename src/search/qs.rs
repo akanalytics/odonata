@@ -1,3 +1,4 @@
+use crate::bits::Square;
 use crate::board::Board;
 use crate::bound::NodeType;
 use crate::domain::Trail;
@@ -96,8 +97,19 @@ impl Algo {
         debug_assert!(n.alpha < n.beta, "{n}");
         debug_assert!(n.ply >= 0);
         debug_assert!(n.depth <= 0);
-        Self::trace(n, trail, Score::zero(), lm.unwrap_or_default(), "qs started");
-
+        Self::trace(
+            n,
+            trail,
+            Score::zero(),
+            lm.unwrap_or_default(),
+            "qs started",
+        );
+        // if n.beta.is_mate() && n.beta < 0.cp()  {
+        //     let s = n.beta; // bd.static_eval(&self.eval);
+        //     trail.prune_node(&n, s, Event::QsEvalStatic);
+        //     return s;
+        //     // || n.beta.is_mate() && n.beta > 0.cp()
+        // }
         let orig_alpha = n.alpha;
 
         Metrics::incr_node(&n, Event::NodeQs);
@@ -106,21 +118,21 @@ impl Algo {
         }
 
         if EndGame::is_insufficient_material(&bd) {
-            trail.terminal(&n,Score::DRAW, Event::QsInsufficientMaterial);
+            trail.terminal(&n, Score::DRAW, Event::QsInsufficientMaterial);
             return Score::DRAW;
         }
-
-        if !self.qs.enabled {
-            // self.record_move(n.ply, &Move::NULL_MOVE);
-            return bd.static_eval(&self.eval);
-        }
-
-        let in_check = bd.is_in_check(bd.color_us());
 
         Metrics::incr_node(&n, Event::QsEvalStatic);
         let t = Metrics::timing_start();
         let mut pat = bd.static_eval(&self.eval);
         Metrics::profile(t, Timing::TimingQsEval);
+
+        if !self.qs.enabled {
+            trail.terminal(&n, pat, Event::QsEvalStatic);
+            return pat;
+        }
+
+        let in_check = bd.is_in_check(bd.color_us());
 
         let mut hm = Move::NULL_MOVE;
         if self.qs.probe_tt {
@@ -132,10 +144,8 @@ impl Algo {
                 match tt.nt {
                     NodeType::ExactPv => {
                         if self.tt.allow_truncated_pv {
-                            let _mv = tt.validate_move(&bd);
-                            // trail.push(n.ply, mv);
+                            // let mv = tt.validate_move(&bd); 
                             trail.terminal(&n, s, Event::TtPv);
-                            // trail.alpha_raised(n.ply);
                             return s;
                         }
                     }
@@ -144,14 +154,14 @@ impl Algo {
                             trail.prune_node(&n, s, Event::TtAll);
                             return s;
                         };
-                        pat = pat.min(s)
+                        pat = Score::min(pat, s);
                     }
                     NodeType::LowerCut => {
                         if s >= n.beta {
                             trail.prune_node(&n, s, Event::TtCut);
                             return s;
                         };
-                        pat = pat.max(s);
+                        pat = Score::max(pat, s);
                     }
                     NodeType::Unused => unreachable!(),
                 }
@@ -160,10 +170,6 @@ impl Algo {
                 }
             }
         }
-        // let pat = pat.unwrap_or_else(|| {
-        //     pat
-        // });
-
         if !in_check {
             if pat >= n.beta {
                 Metrics::incr_node(&n, Event::QsStandingPatPrune);
@@ -172,25 +178,41 @@ impl Algo {
             }
             // TODO: zugawang check
             // you cant stand pat unless theres already a move/pv (alpha=finite)
-            if pat > n.alpha && n.alpha.is_finite() && n.ply >= 1{
-                Self::trace(n, trail, pat, Move::NULL_MOVE, "alpha raised by static eval");
+            if pat > n.alpha && n.alpha.is_finite() && n.ply >= 1 {
+                Self::trace(
+                    n,
+                    trail,
+                    pat,
+                    Move::NULL_MOVE,
+                    "alpha raised by static eval",
+                );
                 n.alpha = pat;
                 trail.terminal(&n, pat, Event::QsStandingPatAlphaRaised);
             }
             // coarse delta prune - where margin bigger than any possible move
-            let mut margin = self.qs.delta_prune_node_margin;
+            // b.most_valuable_piece_except_king(b.them());
+            let mut p = bd.most_valuable_piece_except_king(bd.occupied()).unwrap_or((Piece::Queen, Square::A1)).0;
+            if p !=Piece::Queen {
+                p = Piece::Rook;
+            }
+            let ph = bd.phase(&self.eval.phaser);
+            let pawn = self.eval.mb.piece_weights[Piece::Pawn].interpolate(ph);
+            let mvp = self.eval.mb.piece_weights[p].interpolate(ph) + pawn;
+
+            let mut margin = self.qs.delta_prune_node_margin + Score::from_f32(mvp);
             if (bd.pawns() & bd.white() & Bitboard::RANK_7
                 | bd.pawns() & bd.black() & Bitboard::RANK_2)
                 .any()
             {
-                margin = 2 * margin;
+                let queen = self.eval.mb.piece_weights[Piece::Queen].interpolate(ph);
+                margin = margin + Score::from_f32(queen);
             }
             if bd.occupied().popcount() >= self.qs.delta_prune_min_pieces
                 && pat.is_numeric()
                 && pat + margin <= n.alpha
             {
                 Metrics::incr_node(&n, Event::QsDeltaPruneNode);
-                trail.terminal(&n, pat + margin, Event::QsDeltaPruneNode);
+                trail.prune_node(&n, pat + margin, Event::QsDeltaPruneNode);
                 return (pat + margin).clamp_score();
             }
         } else {
@@ -273,11 +295,7 @@ impl Algo {
                 alpha: -n.beta,
                 beta: -n.alpha,
             };
-            let s = -self.qs(qsn,
-                trail,
-                &mut child,
-                Some(mv),
-            );
+            let s = -self.qs(qsn, trail, &mut child, Some(mv));
             trail.pop_move(&n, mv);
             // self.current_variation.pop();
             // bd.undo_move(&mv);
@@ -333,13 +351,13 @@ impl Algo {
 
 #[cfg(test)]
 mod tests {
-    use crate::test_log::test;
     use super::*;
     use crate::domain::engine::Engine;
     use crate::domain::ChessTree;
-    use crate::infra::profiler::PerfProfiler;
+    use crate::infra::profiler::{PerfProfiler};
     use crate::search::engine::ThreadedSearch;
     use crate::search::timecontrol::*;
+    use crate::test_log::test;
     use crate::{catalog::*, Position};
     use anyhow::Result;
 
@@ -350,11 +368,11 @@ mod tests {
 
     #[test]
     fn bugs_qs() {
-        fn invoke(s: &str, depth: Ply ) {
+        fn invoke(s: &str, depth: Ply) {
             let pos = Position::parse_epd(s).unwrap();
             let mut eng = ThreadedSearch::new();
-            let res = eng.search(pos.clone(),TimeControl::Depth(depth)).unwrap();
-            println!("{}", res);    
+            let res = eng.search(pos.clone(), TimeControl::Depth(depth)).unwrap();
+            println!("{}", res);
         }
         dbg!(log_enabled!(log::Level::Info));
         dbg!(log_enabled!(log::Level::Trace));
@@ -363,16 +381,21 @@ mod tests {
         dbg!(log_enabled!(target: "tree", log::Level::Trace));
         dbg!(ChessTree::new(Board::default()).enabled());
         invoke(&Catalog::quiesce()[0].board().to_fen(), 2);
-        
+
         invoke("8/1p4PR/1k6/3pNK2/5P2/r7/2p2n2/8 w - - 0 74", 1);
         invoke(&Catalog::bratko_kopec()[4].board().to_fen(), 7);
-        invoke("rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2NB1N2/PP3PPP/R1BQK2R b KQ - 2 6", 1);
+        invoke(
+            "rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2NB1N2/PP3PPP/R1BQK2R b KQ - 2 6",
+            1,
+        );
     }
 
     #[test]
     fn bench_qs() {
         // PROFD: qs  13 cyc=37,091  ins=29,170 br=2,676  304  978
+
         let catalog = Catalog::quiesce();
+        // let mut flame = ProfProfiler::new("qs".to_string());
         let mut prof = PerfProfiler::new("qs".to_string());
         for pos in catalog {
             let mut trail = Trail::new(pos.board().clone());
@@ -380,7 +403,7 @@ mod tests {
             let node = Node::root(0);
             let mut board = pos.board().clone();
             let _score = prof.benchmark(|| eng.qs(node, &mut trail, &mut board, None));
-            println!("{pos}\n{trail}\n");
+            trace!("{pos}\n{trail}\n");
         }
     }
 

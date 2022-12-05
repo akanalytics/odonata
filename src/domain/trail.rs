@@ -455,11 +455,6 @@ impl Trail {
 
     pub fn ignore_move(&mut self, n: &Node, sc: Score, _mv: Move, _e: Event) {
         debug_assert_eq!(n.node_type(sc), NodeType::UpperAll, "node type {n} sc {sc}");
-        // let ply = n.ply as usize;
-        // let var = self.path.skip(ply).take(1);
-        // debug_assert_eq!(var.last(), Some(&mv), "last moves don't match");
-        // self.chess_tree
-        //     .merge(&self.path, n, e, sc, NodeType::Unused);
     }
 
     /// we dont actually make the move - we futility prune it first

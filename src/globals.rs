@@ -128,7 +128,6 @@ mod tests {
     use crate::infra::metric::Metrics;
     use crate::movelist::*;
     use crate::mv::*;
-    use crate::other::pvtable::PvTable;
     use crate::piece::*;
     use crate::position::*;
     use crate::repetition::Repetition;
@@ -204,7 +203,6 @@ mod tests {
         compare(size_of::<Razor>(), 36, "Razor");
         compare(size_of::<Recognizer>(), 12, "Recognizer");
         compare(size_of::<Aspiration>(), 24, "Aspiration");
-        compare(size_of::<PvTable>(), 32, "PvTable");
         compare(size_of::<Metrics>(), 144, "Metrics");
     }
 }

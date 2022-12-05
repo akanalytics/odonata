@@ -1,6 +1,6 @@
 use crate::eval::eval::Eval;
 use crate::eval::score::Score;
-use crate::infra::utils::{calculate_branching_factor_by_nodes_and_depth, Uci};
+use crate::infra::utils::{calculate_branching_factor_by_nodes_and_depth, Uci, Differ};
 use crate::movelist::ScoredMoveList;
 use crate::mv::BareMove;
 use crate::other::outcome::Outcome;
@@ -164,16 +164,19 @@ impl Uci for SearchResults {
     }
 }
 
-impl SearchResults {
-    pub fn diff( sr1: &Self, sr2: &Self ) -> Result<(), String>{
+impl Differ<SearchResults> for SearchResults {
+    fn diff( sr1: &Self, sr2: &Self ) -> Option<String>{
         let mut sr1 = sr1.clone();
         sr1.emt = sr2.emt;  // emt will be different
         if &sr1 != sr2 {
-            return Err(String::from("differences!"));
+            return Some(String::from("differences!"));
         }
-        Ok(())
+        None
     }
+}
 
+
+impl SearchResults {
     fn extract_multi_pv(infos: &Vec<Info>) -> Vec<(BareMoveVariation, Score)> {
         // step #1, find max multipv index
         let max_index = infos.iter().map(|i| i.multi_pv.unwrap_or(1)).max();
