@@ -243,7 +243,7 @@ impl Move {
     pub const fn new_quiet(mover: Piece, from: Square, to: Square) -> Move {
         let mut bits = (from.index() as u32 & 63) << Self::OFFSET_FROM;
         bits += (to.index() as u32 & 63) << Self::OFFSET_TO;
-        bits += (mover.index() as u32) << Self::OFFSET_MOVER;
+        // bits += (mover.index() as u32) << Self::OFFSET_MOVER;
         bits += (Square::null().index() as u32 & 127) << Self::OFFSET_EP;
         bits += 7 << Self::OFFSET_CAPTURE;
         Move { bits }

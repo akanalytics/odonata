@@ -53,6 +53,9 @@ impl Board {
                 return false;
             }
         }
+        if !m.ep().is_null() && m.mover_piece(self) != Piece::Pawn {
+            return false;
+        } 
         if let Some(c) = m.capture_piece() {
             if !m.is_ep_capture() {
                 if !m.to().is_in(self.them()) {
