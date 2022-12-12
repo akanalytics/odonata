@@ -115,14 +115,10 @@ impl Repetition {
             return;
         }
 
-        let mut b = pre.clone();
-        self.prior_positions.push(b.hash());
+        let mut board = pre.clone();
         for mv in moves.iter() {
-            if mv.is_capture() || mv.mover_piece(pre) == Piece::Pawn {
-                self.prior_positions.push(0);
-            }
-            b = b.make_move(mv);
-            self.prior_positions.push(b.hash());
+            self.push_move(mv, &board);
+            board = board.make_move(mv);
         }
     }
 
@@ -276,8 +272,8 @@ mod tests {
         algo.repetition.new_game();
         let mvs = b.parse_uci_variation(s).unwrap();
         for mv in mvs.iter() {
-            b = b.make_move(&mv);
             algo.repetition.push_move(&mv, &b);
+            b = b.make_move(&mv);
             println!(
                 "rep count = {} hash = {:x}",
                 algo.repetition.count(&b).in_total,
@@ -302,8 +298,8 @@ mod tests {
         eng.algo.repetition.new_game();
         let mvs = b.parse_uci_variation(s).unwrap();
         for mv in mvs.iter() {
-            b = b.make_move(&mv);
             eng.algo.repetition.push_move(&mv, &b);
+            b = b.make_move(&mv);
         }
         eng.algo.set_position(Position::from_board(b));
         // eng.algo.explainer.enabled = true;

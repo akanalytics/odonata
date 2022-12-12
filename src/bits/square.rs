@@ -92,6 +92,7 @@ impl Square {
 
     #[inline]
     pub const fn from_xy(x: u32, y: u32) -> Square {
+        debug_assert!(x <=7 && y <= 7, "Square::from_xy");
         Square::from_u32((y << 3) | x)
     }
 

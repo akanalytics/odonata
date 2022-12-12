@@ -1,7 +1,7 @@
-use crate::bits::bitboard::Bitboard;
+use crate::bits::bitboard::{Bitboard, Dir};
 use crate::bits::castling::CastlingRights;
 use crate::bits::square::Square;
-use crate::board::Board;
+use crate::board::{Board, BoardCalcs};
 use crate::globals::constants::*;
 use crate::infra::utils::{StringUtils, Uci};
 use crate::piece::{Color, Piece};
@@ -138,6 +138,39 @@ impl fmt::Display for BareMove {
 }
 
 impl Board {
+    pub fn is_castling_move_legal(&self, mv: BareMove) -> bool {
+        let c = self.color_us();
+        let right = CastlingRights::from_king_move(mv.to());
+        let king = mv.from();
+        if CastlingRights::is_king_side(&right) {
+            if self.castling().contains(right)
+                && !CastlingRights::king_side_move_squares(c).intersects(self.occupied())
+            {
+                let rook_to = king.shift(Dir::E);
+                let king_to = rook_to.shift(Dir::E);
+                let king_moves = king.as_bb() | rook_to.as_bb() | king_to.as_bb();
+                if BoardCalcs::attacked_by(king_moves, self.occupied(), self).disjoint(self.them())
+                {
+                    return true;
+                }
+            }
+        }
+        if CastlingRights::is_queen_side(&right) {
+            if self.castling().contains(right)
+                && !CastlingRights::queen_side_move_squares(c).intersects(self.occupied())
+            {
+                let rook_to = king.shift(Dir::W);
+                let king_to = rook_to.shift(Dir::W);
+                let king_moves = king.as_bb() | rook_to.as_bb() | king_to.as_bb();
+                if BoardCalcs::attacked_by(king_moves, self.occupied(), self).disjoint(self.them())
+                {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
     pub fn augment_move(&self, mv: BareMove) -> Move {
         if mv.is_null() {
             return Move::NULL_MOVE;
@@ -187,10 +220,14 @@ impl Board {
     }
 }
 
+
+type UMOVE = u16;
+
+
 // FIXME: public methods
 #[derive(Default, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Move {
-    bits: u32,
+    bits: UMOVE,
 }
 
 impl fmt::Debug for Move {
@@ -199,9 +236,20 @@ impl fmt::Debug for Move {
             .field("uci", &self.to_uci())
             .field("from", &self.from())
             .field("to", &self.to())
-            .field("captured", &self.capture_piece())
-            .field("castling", &self.castling_side())
-            .field("ep", &self.ep())
+            .field("is_capture", &self.is_capture())
+            // .field("castling", &self.castling_side())
+            .field("promo", &self.promo())
+            // .field("ep", &self.ep())
+            .field(
+                "bits",
+                &format!("{:064b}", self.bits)
+                    .chars()
+                    .collect::<Vec<char>>()
+                    .chunks(8)
+                    .map(|c| c.iter().collect::<String>())
+                    .collect::<Vec<String>>()
+                    .join(" "),
+            )
             .finish()
     }
 }
@@ -224,11 +272,20 @@ impl fmt::Debug for Move {
 impl Move {
     const OFFSET_FROM: i32 = 0;
     const OFFSET_TO: i32 = 6;
-    const OFFSET_EP: i32 = 12; // 7 bits
-    const OFFSET_MOVER: i32 = 19;
-    const OFFSET_CAPTURE: i32 = 22;
-    const OFFSET_PROMO: i32 = 25;
-    const OFFSET_CASTLE: i32 = 28;
+    const OFFSET_IS_CAPTURE: i32 = 12; // 7 bits
+                                       // const OFFSET_MOVER: i32 = 19;
+                                       // const OFFSET_CAPTURE: i32 = 22;
+    const OFFSET_PROMO: i32 = 13;
+    // const OFFSET_CASTLE: i32 = 28;
+
+    // from = 6 bits
+    // to = 6 bits
+    // flags = 3 bits
+    //   nothing special
+    //   promo QRBK
+    //   double push
+    //   ep capture
+    //   castle
 
     #[inline]
     pub const fn to_inner(&self) -> BareMove {
@@ -240,31 +297,32 @@ impl Move {
     }
 
     #[inline]
-    pub const fn new_quiet(mover: Piece, from: Square, to: Square) -> Move {
-        let mut bits = (from.index() as u32 & 63) << Self::OFFSET_FROM;
-        bits += (to.index() as u32 & 63) << Self::OFFSET_TO;
+    pub const fn new_quiet(_mover: Piece, from: Square, to: Square) -> Move {
+        let mut bits = (from.index() as UMOVE & 63) << Self::OFFSET_FROM;
+        bits += (to.index() as UMOVE & 63) << Self::OFFSET_TO;
         // bits += (mover.index() as u32) << Self::OFFSET_MOVER;
-        bits += (Square::null().index() as u32 & 127) << Self::OFFSET_EP;
-        bits += 7 << Self::OFFSET_CAPTURE;
+        // bits += (Square::null().index() as u32 & 127) << Self::OFFSET_EP;
+        // bits += 7 << Self::OFFSET_CAPTURE;
         Move { bits }
     }
 
-    pub fn set_capture(&mut self, capture: Piece) {
-        self.bits &= !(7 << Self::OFFSET_CAPTURE);
-        self.bits += (capture.index() as u32) << Self::OFFSET_CAPTURE;
+    pub fn set_capture(&mut self, _capture: Piece) {
+        self.bits |= 1 << Self::OFFSET_IS_CAPTURE;
+        // self.bits &= !(7 << Self::OFFSET_CAPTURE);
+        // self.bits += (capture.index() as u32) << Self::OFFSET_CAPTURE;
     }
 
     pub fn set_promo(&mut self, promo: Piece) {
-        self.bits += (promo.index() as u32) << Self::OFFSET_PROMO;
+        self.bits += (promo.index() as UMOVE) << Self::OFFSET_PROMO;
     }
 
-    pub fn set_en_passant(&mut self, ep_sq: Square) {
-        self.bits &= !(127 << Self::OFFSET_EP);
-        self.bits += (ep_sq.index() as u32 & 127) << Self::OFFSET_EP;
+    pub fn set_en_passant(&mut self, _ep_sq: Square) {
+        // self.bits &= !(127 << Self::OFFSET_EP);
+        // self.bits += (ep_sq.index() as u32 & 127) << Self::OFFSET_EP;
     }
 
-    pub fn set_castling_side(&mut self, castle_side: CastlingRights) {
-        self.bits += (castle_side.bits() as u32) << Self::OFFSET_CASTLE;
+    pub fn set_castling_side(&mut self, _castle_side: CastlingRights) {
+        // self.bits += (castle_side.bits() as u32) << Self::OFFSET_CASTLE;
     }
 
     // #[inline]
@@ -308,16 +366,20 @@ impl Move {
 
     #[inline]
     pub const fn ep(&self) -> Square {
-        Square::from_u32(((self.bits >> Self::OFFSET_EP) & 127) as u32)
+        Square::from_u32((self.from().index() + self.to().index()) as u32 / 2)
     }
 
     #[inline]
-    pub fn capture_square(&self) -> Square {
-        if self.is_ep_capture() {
-            self.ep()
+    pub fn capture_square(&self, b: &Board) -> Square {
+        if self.is_ep_capture(b) {
+            Square::from_xy(
+                self.to().file_index() as u32,
+                self.from().rank_index() as u32,
+            )
         } else if self.is_capture() {
             self.to()
         } else {
+            debug_assert!(false, "capture square {self} on board {b}");
             Square::null()
         }
     }
@@ -356,10 +418,15 @@ impl Move {
     }
 
     #[inline]
-    pub const fn capture_piece(&self) -> Option<Piece> {
-        match (self.bits >> Self::OFFSET_CAPTURE) & 7 {
-            7 => None,
-            p => Some(Piece::from_index(p as usize)),
+    pub fn capture_piece(&self, b: &Board) -> Option<Piece> {
+        if !self.is_capture() {
+            None
+        } else {
+            // match (self.bits >> Self::OFFSET_CAPTURE) & 7 {
+            //     7 => None,
+            //     p => Some(Piece::from_index(p as usize)),
+            // }
+            b.piece(self.capture_square(b))
         }
     }
 
@@ -370,32 +437,41 @@ impl Move {
 
     #[inline]
     pub fn is_capture(&self) -> bool {
-        self.capture_piece().is_some()
+        self.bits & (1 << Self::OFFSET_IS_CAPTURE) > 0
+        // self.capture_piece(b).is_some()
     }
 
     #[inline]
-    pub const fn is_castle(&self) -> bool {
-        !self.castling_side().is_empty()
+    pub fn is_castle(&self, b: &Board) -> bool {
+        !self.castling_side(b).is_empty()
     }
 
     #[inline]
-    pub const fn castling_side(&self) -> CastlingRights {
-        CastlingRights::from_bits_truncate((self.bits >> Self::OFFSET_CASTLE) as u8)
+    pub fn castling_side(&self, b: &Board) -> CastlingRights {
+        // CastlingRights::from_bits_truncate((self.bits >> Self::OFFSET_CASTLE) as u8)
+        if self.mover_piece(b) == Piece::King && CastlingRights::is_castling(self.from(), self.to())
+        {
+            CastlingRights::from_king_move(self.to())
+        } else {
+            CastlingRights::NONE
+        }
     }
 
     #[inline]
-    pub fn is_ep_capture(&self) -> bool {
-        !self.ep().is_null() && self.is_capture()
+    pub fn is_ep_capture(&self, b: &Board) -> bool {
+        self.mover_piece(b) == Piece::Pawn && self.to().is_in(b.en_passant())
     }
 
     #[inline]
-    pub fn is_pawn_double_push(&self) -> bool {
-        !self.ep().is_null() && !self.is_capture()
+    pub fn is_pawn_double_push(&self, b: &Board) -> bool {
+        self.mover_piece(b) == Piece::Pawn
+            && (self.to().index() == self.from().index() + 16
+                || self.to().index() + 16 == self.from().index())
     }
 
     #[inline]
-    pub fn rook_move(&self) -> Move {
-        if self.is_castle() {
+    pub fn rook_move(&self, b: &Board) -> Move {
+        if self.is_castle(b) {
             let (from, to) = self.rook_move_from_to();
             Move::new_quiet(Piece::Rook, from, to)
         } else {
@@ -489,8 +565,9 @@ impl Move {
 
     #[inline]
     pub fn mvv_lva_score(&self, bd: &Board) -> i32 {
+        debug_assert!(bd.is_legal_move(self), "{self} is illegal for board {bd}");
         let mut score = 0;
-        if let Some(cap) = self.capture_piece() {
+        if let Some(cap) = self.capture_piece(bd) {
             score += cap.centipawns() * 10 - self.mover_piece(bd).centipawns() / 10;
         }
         if let Some(promo) = self.promo() {
@@ -511,15 +588,15 @@ impl fmt::Display for Move {
             if !self.ep().is_null() {
                 write!(f, " ep:{}", self.ep().uci())?;
             }
-            if let Some(c) = self.capture_piece() {
-                write!(f, " c:{}", c)?;
-            }
-            if self.is_castle() {
-                write!(f, " cs:{}", self.castling_side())?;
-            }
-            if self.is_ep_capture() {
-                write!(f, " e/p cap")?;
-            }
+            // if let Some(c) = self.capture_piece() {
+            //     write!(f, " c:{}", c)?;
+            // }
+            // if self.is_castle() {
+            //     write!(f, " cs:{}", self.castling_side())?;
+            // }
+            // if self.is_ep_capture() {
+            //     write!(f, " e/p cap")?;
+            // }
         }
         Ok(())
     }
@@ -549,23 +626,35 @@ mod tests {
         println!("{:#} {:b}", move_castle, move_castle.bits);
         assert_eq!(move_castle.from(), Square::A1);
         assert_eq!(move_castle.to(), Square::B2);
-        assert_eq!(move_castle.ep(), Square::null());
-        assert_eq!(move_castle.capture_piece(), None);
+        
+        // ep cant be called on castling move
+        // assert_eq!(move_castle.ep(), Square::null());
+        // assert_eq!(move_castle.capture_piece(), None);
         assert_eq!(move_castle.promo(), None);
         assert_eq!(move_castle.is_promo(), false);
         assert_eq!(move_castle.is_capture(), false);
         assert_eq!(move_castle.is_null(), false);
-        assert_eq!(move_castle.castling_side(), CastlingRights::WHITE_QUEEN);
+        // assert_eq!(move_castle.castling_side(), CastlingRights::WHITE_QUEEN);
 
         let move_a1b2 = Move::new_quiet(Piece::Bishop, a1.square(), b2.square());
 
         println!("{:#} {:b}", move_a1b2, move_a1b2.bits);
+        assert_eq!(move_a1b2.is_capture(), false);
         assert_eq!(move_a1b2.from(), a1.square());
         assert_eq!(move_a1b2.to(), b2.square());
         // assert_eq!(move_a1b2.mover_piece(), Piece::Bishop);
         assert_eq!(move_a1b2.is_promo(), false);
-        assert_eq!(move_a1b2.ep(), Square::null());
-        assert_eq!(move_a1b2.castling_side(), CastlingRights::NONE);
+        
+
+        
+        let capture_a1b2 = Move::new_capture(Piece::Bishop, a1.square(), b2.square(), Piece::Knight);
+        assert_eq!(capture_a1b2.is_capture(), true);
+
+
+
+        // ep cant be called on castling move
+        // assert_eq!(move_a1b2.ep(), Square::null());
+        // assert_eq!(move_a1b2.castling_side(), CastlingRights::NONE);
 
         let promo_a7a8 = Move::new_promo(a7.square(), a8.square(), Piece::Queen);
 
@@ -612,27 +701,27 @@ mod tests {
             .P..pb.r
             ...P..P.
             ......p.
-            K......Q w - - 1 1",
+            .K.....Q w - - 1 1",
         )
         .unwrap();
         let bd = pos.board();
 
         let pxq = bd.parse_san_move("Pxa5").unwrap();
-        let pxr = bd.parse_san_move("Pxc5").unwrap(); 
-        let pxb = bd.parse_san_move("Pxf4").unwrap(); 
-        let pxn = bd.parse_san_move("Pxg7").unwrap(); 
-        let pxp = bd.parse_san_move("Pxe4").unwrap(); 
-        let qxp = bd.parse_san_move("Qxg2").unwrap(); 
-        let qxn = bd.parse_san_move("Qxg7").unwrap(); 
-        let qxb = bd.parse_san_move("Qxh8").unwrap(); 
-        let qxr = bd.parse_san_move("Qxh4").unwrap(); 
-        let qxq = bd.parse_san_move("Qxg8").unwrap(); 
+        let pxr = bd.parse_san_move("Pxc5").unwrap();
+        let pxb = bd.parse_san_move("Pxf4").unwrap();
+        let pxn = bd.parse_san_move("Pxg7").unwrap();
+        let pxp = bd.parse_san_move("Pxe4").unwrap();
+        let qxp = bd.parse_san_move("Qxg2").unwrap();
+        let qxn = bd.parse_san_move("Qxg7").unwrap();
+        let qxb = bd.parse_san_move("Qxh8").unwrap();
+        let qxr = bd.parse_san_move("Q1xh4").unwrap();
+        let qxq = bd.parse_san_move("Qxg8").unwrap();
 
         let pxq_q = bd.parse_san_move("Pxg8=Q").unwrap();
 
         let p_q = bd.parse_san_move("f8=Q").unwrap();
 
-        assert_eq!(qxr.capture_piece(), Some(Piece::Rook));
+        assert_eq!(qxr.capture_piece(&bd), Some(Piece::Rook));
         assert_eq!(qxr.mover_piece(&bd), Piece::Queen);
 
         assert_eq!(pxq.mvv_lva_score(&bd), 8990);

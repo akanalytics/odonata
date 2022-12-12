@@ -334,7 +334,7 @@ impl UciServer {
             if let Some(mv) = var.first() {
                 let from = mv.from().uci();
                 let to = mv.to().uci();
-                let capture = mv.capture_square().uci();
+                let capture = mv.capture_square(&b).uci();
                 let ep = mv.ep().uci();
                 // pseudo_legal=b.is_pseudo_legal_move(&mv);
                 let legal = b.is_legal_move(mv);
@@ -343,9 +343,9 @@ impl UciServer {
                 } else {
                     "???".to_string()
                 };
-                let rook_move = mv.rook_move().to_uci();
-                let is_ep = mv.is_ep_capture();
-                let is_castle = mv.is_castle();
+                let rook_move = mv.rook_move(&b).to_uci();
+                let is_ep = mv.is_ep_capture(&b);
+                let is_castle = mv.is_castle(&b);
                 Self::print(&format!("result:from {from} to {to} capture {capture} ep {ep} legal {legal} san {san} rook_move {rook_move} is_ep {is_ep} is_castle {is_castle}", 
                     from = from,
                     to = to,

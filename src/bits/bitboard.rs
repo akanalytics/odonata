@@ -534,6 +534,7 @@ impl Bitboard {
 
     #[inline]
     pub const fn from_sq(index: u16) -> Bitboard {
+        debug_assert!(index < 64);
         let bit = 1 << index;
         Bitboard(bit)
     }

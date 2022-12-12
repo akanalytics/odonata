@@ -76,10 +76,10 @@ impl Algo {
         before: &Board,
         after: &Board,
         mv: Move,
-        mt: MoveType,
+        _mt: MoveType,
         mv_num: u32,
         n: &Node,
-        last: Move,
+        _last: Move,
     ) -> Ply {
         let mut ext = 0;
         if !self.ext.enabled || n.is_qs() {
@@ -116,21 +116,22 @@ impl Algo {
             ext += 1;
         }
 
-        if self.ext.recapture_enabled {
-            if let Some(cap) = mv.capture_piece() {
-                if let Some(last_cap) = last.capture_piece() {
-                    if (!self.ext.recapture_same_square || mv.to() == last.to())
-                        && (!self.ext.recapture_only_pv_node || n.is_fw())
-                        && n.depth <= self.ext.recapture_max_depth
-                        && (MoveType::GoodCapture | MoveType::GoodCaptureUpfrontSorted).contains(mt)
-                        && cap.centipawns() < last_cap.centipawns()
-                    // proxy for last = GoodCapture
-                    {
-                        ext += 1;
-                    }
-                }
-            }
-        }
+        // TODO!
+        // if self.ext.recapture_enabled {
+        //     if let Some(cap) = mv.capture_piece(before) {
+        //         if let Some(last_cap) = last.capture_piece() {
+        //             if (!self.ext.recapture_same_square || mv.to() == last.to())
+        //                 && (!self.ext.recapture_only_pv_node || n.is_fw())
+        //                 && n.depth <= self.ext.recapture_max_depth
+        //                 && (MoveType::GoodCapture | MoveType::GoodCaptureUpfrontSorted).contains(mt)
+        //                 && cap.centipawns() < last_cap.centipawns()
+        //             // proxy for last = GoodCapture
+        //             {
+        //                 ext += 1;
+        //             }
+        //         }
+        //     }
+        // }
 
         // (before.them() & before.pawns() & before.color_them().chooser_wb(Bitboard::RANK_6, Bitboard::RANK_3)).any()
         // && n.ply % 2 == 0

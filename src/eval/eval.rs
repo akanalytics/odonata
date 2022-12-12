@@ -550,8 +550,8 @@ impl Eval {
 
     /// the value of the capture or promotion (or both for promo capture)
     #[inline]
-    pub fn eval_move_material(&self, mv: &Move) -> Weight {
-        self.mb.eval_move_material(mv)
+    pub fn eval_move_material(&self, mv: &Move, b: &Board) -> Weight {
+        self.mb.eval_move_material(mv, b)
     }
 }
 
@@ -582,7 +582,7 @@ impl Board {
     pub fn eval_move_material(&self, eval: &Eval, mv: &Move) -> Score {
         // FIXME! far too slow (-7 ELO)
         Score::from_cp(
-            eval.eval_move_material(mv)
+            eval.eval_move_material(mv, self)
                 .interpolate(self.phase(&eval.phaser)) as i32,
         )
     }

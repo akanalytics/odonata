@@ -165,11 +165,11 @@ impl Board {
             return b;
         }
 
-        if let Some(c) = m.capture_piece() {
+        if let Some(c) = m.capture_piece(self) {
             b.fifty_clock = 0;
-            if m.is_ep_capture() {
+            if m.is_ep_capture(self) {
                 // ep capture is like capture but with capture piece on *ep* square not *dest*
-                b.remove_piece(m.ep().as_bb(), c, b.turn);
+                b.remove_piece(m.capture_square(self).as_bb(), c, b.turn);
             } else {
                 // regular capture
                 debug_assert!(
@@ -190,7 +190,7 @@ impl Board {
 
         if m.mover_piece(self) == Piece::Pawn {
             b.fifty_clock = 0;
-            if m.is_pawn_double_push() {
+            if m.is_pawn_double_push(self) {
                 b.en_passant = m.ep().as_bb();
             }
         }
@@ -202,7 +202,7 @@ impl Board {
         }
 
         // castling *moves*
-        if m.is_castle() {
+        if m.is_castle(self) {
             // rules say no reset of fifty clock
             // king move already handled, castling rights handled below, just the rook move
 
@@ -302,11 +302,33 @@ impl Board {
         b.turn = b.turn.opposite();
         b.en_passant = Bitboard::EMPTY;
 
-        if let Some(c) = m.capture_piece() {
+        if mover == Piece::Pawn {
             b.fifty_clock = 0;
-            if m.is_ep_capture() {
+            if m.is_pawn_double_push(b) {
+                b.en_passant = m.ep().as_bb();
+            }
+        }
+
+        // castling *moves*
+        if m.is_castle(b) {
+            // rules say no reset of fifty clock
+            // king move already handled, castling rights handled below, just the rook move
+
+            let (rook_from, rook_to) = m.rook_move_from_to();
+            // let rook_from_to = rook_from.as_bb() ^ rook_to.as_bb();
+            b.move_piece(
+                rook_from.as_bb(),
+                rook_to.as_bb(),
+                Piece::Rook,
+                b.turn.opposite(),
+            )
+        }
+
+        if let Some(c) = m.capture_piece(b) {
+            b.fifty_clock = 0;
+            if m.is_ep_capture(b) {
                 // ep capture is like capture but with capture piece on *ep* square not *dest*
-                b.remove_piece(m.ep().as_bb(), c, b.turn);
+                b.remove_piece(m.capture_square(b).as_bb(), c, b.turn);
             } else {
                 // regular capture
                 debug_assert!(
@@ -330,12 +352,6 @@ impl Board {
             );
         }
 
-        if mover == Piece::Pawn {
-            b.fifty_clock = 0;
-            if m.is_pawn_double_push() {
-                b.en_passant = m.ep().as_bb();
-            }
-        }
 
         if let Some(promo) = m.promo() {
             // fifty clock handled by pawn move above;
@@ -343,20 +359,6 @@ impl Board {
             // pawn has already moved
         }
 
-        // castling *moves*
-        if m.is_castle() {
-            // rules say no reset of fifty clock
-            // king move already handled, castling rights handled below, just the rook move
-
-            let (rook_from, rook_to) = m.rook_move_from_to();
-            // let rook_from_to = rook_from.as_bb() ^ rook_to.as_bb();
-            b.move_piece(
-                rook_from.as_bb(),
-                rook_to.as_bb(),
-                Piece::Rook,
-                b.turn.opposite(),
-            )
-        }
 
         // castling *rights*
         //  if a piece moves TO (=capture) or FROM the rook squares - appropriate castling rights are lost
@@ -376,11 +378,11 @@ impl Board {
             b.turn = b.turn.opposite();
             b.en_passant = Bitboard::EMPTY;
 
-            if let Some(c) = m.capture_piece() {
+            if let Some(c) = m.capture_piece(b) {
                 b.fifty_clock = 0;
-                if m.is_ep_capture() {
+                if m.is_ep_capture(b) {
                     // ep capture is like capture but with capture piece on *ep* square not *dest*
-                    b.remove_piece(m.ep().as_bb(), c, b.turn);
+                    b.remove_piece(m.capture_square(b).as_bb(), c, b.turn);
                 } else {
                     // regular capture
                     debug_assert!(
@@ -406,7 +408,7 @@ impl Board {
 
             if m.mover_piece(b) == Piece::Pawn {
                 b.fifty_clock = 0;
-                if m.is_pawn_double_push() {
+                if m.is_pawn_double_push(b) {
                     b.en_passant = m.ep().as_bb();
                 }
             }
@@ -418,7 +420,7 @@ impl Board {
             }
 
             // castling *moves*
-            if m.is_castle() {
+            if m.is_castle(b) {
                 // rules say no reset of fifty clock
                 // king move already handled, castling rights handled below, just the rook move
 

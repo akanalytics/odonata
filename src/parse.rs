@@ -140,23 +140,19 @@ impl Parse {
                 }
             }
             // lm is castle but s isnt
-            if lm.is_castle() && lm.castling_side().is_king_side() && s != "O-O"
-                || lm.is_castle() && lm.castling_side().is_queen_side() && s != "O-O-O"
+            if lm.is_castle(board) && lm.castling_side(board).is_king_side() && s != "O-O"
+                || lm.is_castle(board) && lm.castling_side(board).is_queen_side() && s != "O-O-O"
             {
                 continue;
             }
             // s is castle but lm isnt
-            if (s == "O-O" || s == "O-O-O") && !lm.is_castle() {
+            if (s == "O-O" || s == "O-O-O") && !lm.is_castle(board) {
                 continue;
             }
             matching_moves.push(*lm);
         }
         if matching_moves.is_empty() {
-            bail!(
-                "Move {} is invalid - not a legal move for board {}",
-                orig,
-                board.to_fen()
-            );
+            bail!("Move {orig} is invalid - not a legal move for board {board}",);
         }
         if matching_moves.len() > 1 {
             bail!(

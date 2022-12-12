@@ -196,10 +196,10 @@ impl Hasher {
         let us = pre_move.color_us();
         let them = pre_move.color_them();
 
-        if let Some(c) = m.capture_piece() {
-            if m.is_ep_capture() {
+        if let Some(c) = m.capture_piece(pre_move) {
+            if m.is_ep_capture(pre_move) {
                 // ep capture is like capture but with capture piece on *ep* square not *dest*
-                hash ^= self.squares[them][c][m.ep()];
+                hash ^= self.squares[them][c][m.capture_square(pre_move)];
             } else {
                 // regular capture
                 hash ^= self.squares[them][c][m.to()];
@@ -211,12 +211,12 @@ impl Hasher {
             hash ^= self.squares[us][m.mover_piece(pre_move)][m.to()];
         }
 
-        if m.mover_piece(pre_move) == Piece::Pawn && m.is_pawn_double_push() {
-            debug_assert!(
-                !m.ep().is_null(),
-                "e/p square must be set for pawn double push {:?}",
-                m
-            );
+        if m.mover_piece(pre_move) == Piece::Pawn && m.is_pawn_double_push(pre_move) {
+            // debug_assert!(
+            //     !m.ep().is_null(),
+            //     "e/p square must be set for pawn double push {:?}",
+            //     m
+            // );
             hash ^= self.ep[m.ep().file_index()];
         }
         if let Some(promo) = m.promo() {
@@ -225,7 +225,7 @@ impl Hasher {
         }
 
         // castling *moves*
-        if m.is_castle() {
+        if m.is_castle(pre_move) {
             let (rook_from, rook_to) = m.rook_move_from_to();
             hash ^= self.get(us, Piece::Rook, rook_from);
             hash ^= self.get(us, Piece::Rook, rook_to);

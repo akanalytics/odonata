@@ -219,7 +219,7 @@ impl MoveOrderer {
                 score += self.promo_knight_sort_bonus;
             }
         }
-        if mv.is_castle() {
+        if mv.is_castle(b) {
             score += self.castle_sort_bonus;
         }
 
@@ -878,7 +878,7 @@ mod tests {
         let positions = Catalog::move_ordering();
         for (i, pos) in positions.iter().enumerate() {
             let mut moves = pos.board().legal_moves();
-            Algo::new().order_moves(0, &mut moves, &None, &board);
+            Algo::new().order_moves(0, &mut moves, &None, pos.board());
             println!("{}\n{:#}", pos, moves);
             if i == 0 {
                 assert_eq!(moves[0].to_uci(), "b7a8q"); // p x r = Q)

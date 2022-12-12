@@ -1,5 +1,4 @@
 use crate::board::Board;
-use crate::mv::Move;
 use crate::piece::{Color, Piece};
 use anyhow::Result;
 use itertools::Itertools;
@@ -379,15 +378,15 @@ impl Material {
         Self::default()
     }
 
-    pub fn make_move(&mut self, c: Color, m: &Move) {
-        if let Some(promo) = m.promo() {
-            self.set_count(c, Piece::Pawn, self.count(c, Piece::Pawn) - 1);
-            self.set_count(c, promo, self.count(c, promo) + 1);
-        }
-        if let Some(cap) = m.capture_piece() {
-            self.set_count(c.opposite(), cap, self.count(c.opposite(), cap) - 1);
-        }
-    }
+    // pub fn make_move(&mut self, c: Color, m: &Move, b: &Board) {
+    //     if let Some(promo) = m.promo() {
+    //         self.set_count(c, Piece::Pawn, self.count(c, Piece::Pawn) - 1);
+    //         self.set_count(c, promo, self.count(c, promo) + 1);
+    //     }
+    //     if let Some(cap) = m.capture_piece(b) {
+    //         self.set_count(c.opposite(), cap, self.count(c.opposite(), cap) - 1);
+    //     }
+    // }
 }
 
 #[cfg(test)]

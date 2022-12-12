@@ -1,3 +1,4 @@
+use crate::board::Board;
 use crate::domain::Material;
 use crate::eval::weight::Weight;
 use crate::infra::component::Component;
@@ -275,9 +276,9 @@ impl MaterialBalance {
     // }
 
     #[inline]
-    pub fn eval_move_material(&self, mv: &Move) -> Weight {
+    pub fn eval_move_material(&self, mv: &Move, b: &Board) -> Weight {
         let mut score = Weight::zero();
-        if let Some(cap) = mv.capture_piece() {
+        if let Some(cap) = mv.capture_piece(b) {
             score += self.piece_weights[cap];
         }
         if let Some(promo) = mv.promo() {

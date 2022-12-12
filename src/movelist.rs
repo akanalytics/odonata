@@ -12,7 +12,7 @@ use arrayvec::ArrayVec;
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use regex::Regex;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 // // moves: ArrayVec<Move,128>,
@@ -468,11 +468,7 @@ impl Board {
                 return Ok(m);
             }
         }
-        Err(anyhow!(
-            "Move {} is not legal for board {}",
-            mv,
-            self.to_fen()
-        ))
+        Err(anyhow!("Move {mv} is not legal for board {self}",))
     }
 
     pub fn parse_uci_movelist(&self, s: &str) -> Result<MoveList> {
@@ -530,8 +526,8 @@ impl Board {
             return "--".to_string();
         }
 
-        if mv.is_castle() {
-            if mv.castling_side().is_king_side() {
+        if mv.is_castle(self) {
+            if mv.castling_side(self).is_king_side() {
                 return String::from("O-O");
             } else {
                 return String::from("O-O-O");

@@ -299,6 +299,15 @@ impl Board {
     }
 
     #[inline]
+    pub fn en_passant_square(&self) -> Option<Square> {
+        if self.en_passant().is_empty() {
+            None
+        } else {
+            Some(self.en_passant.first_square())
+        }
+    }
+
+    #[inline]
     pub fn fifty_halfmove_clock(&self) -> i32 {
         self.fifty_clock.into()
     }

@@ -74,19 +74,17 @@ impl Killers {
                 debug_assert!(b.validate().is_ok(), "board:{} is not valid", b);
                 debug_assert!(
                     b.legal_moves().iter().any(|mv| mv == m),
-                    "board:{:#} mv: {} {:?} is not in board.legal_moves",
-                    b,
-                    m,
-                    m
+                    "board:{b:#} mv: {m} {m:?} is not in board.legal_moves {lm:#?}",
+                    lm = b.legal_moves()
                 );
                 moves.push(*m);
             }
         }
     }
 
-    pub fn store(&mut self, y: Ply, m: &Move) {
+    pub fn store(&mut self, y: Ply, m: &Move, b: &Board) {
         // killers are quiet
-        if !self.enabled || m.is_castle() || m.is_capture() {
+        if !self.enabled || m.is_castle(b) || m.is_capture() {
             return;
         }
         // dont store duplicates

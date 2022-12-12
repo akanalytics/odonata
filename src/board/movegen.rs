@@ -3,7 +3,7 @@ use itertools::Itertools;
 
 use crate::bits::bitboard::Bitboard;
 use crate::bits::precalc::PreCalc;
-use crate::bits::Square;
+use crate::bits::{Square};
 use crate::board::rules::Rules;
 use crate::board::Board;
 use crate::infra::metric::*;
@@ -38,26 +38,40 @@ impl Board {
         Ok(())
     }
 
-        pub fn is_pseudo_legal_move(&self, m: &Move) -> bool {
+    pub fn is_pseudo_legal_move(&self, m: &Move) -> bool {
         if !self.is_pseudo_legal_baremove(&m.to_inner()) {
             return false;
         }
-        if m.mover_piece(self) != self.piece_unchecked(m.from()) {
-            return false;
-        }
-        if !m.is_capture() {
+        // if m.mover_piece(self) != self.piece_unchecked(m.from()) {
+        //     return false;
+        // }
+        if m.is_capture() {
+            debug_assert!(!m.capture_square(self).is_null(), "Move {m} on board {self} has null capture square");
+            if !m.capture_square(self).is_in(self.them()) {
+                return false;
+            }
+        } else {
             if m.to().is_in(self.occupied()) {
                 return false;
             }
-            if m.is_capture() {
+            // if its not a capture, it can't be an e/p capture
+            if m.is_ep_capture(self) {
                 return false;
             }
         }
-        if !m.ep().is_null() && m.mover_piece(self) != Piece::Pawn {
-            return false;
-        } 
-        if let Some(c) = m.capture_piece() {
-            if !m.is_ep_capture() {
+        // else {
+        //     let cap = m.capture_square(self);
+        //     if cap.is_null() {
+        //         return false;
+        //     }
+        //     if !cap.is_in(self.them()) {
+        //         return false;
+        //     }
+        // if !m.ep().is_null() && m.mover_piece(self) != Piece::Pawn {
+        //     return false;
+        // }
+        if let Some(c) = m.capture_piece(self) {
+            if !m.is_ep_capture(self) {
                 if !m.to().is_in(self.them()) {
                     return false;
                 }
@@ -65,18 +79,26 @@ impl Board {
                     // FIXME! allow capture of another type of piece?
                     return false;
                 }
-            } else if !m.ep().is_in(self.them() & self.pawns()) {
-                return false;
             }
+            // } else if !m.ep().is_in(self.them() & self.pawns()) {
+            //     return false;
+            // }
         }
         true
     }
 
     pub fn is_pseudo_legal_baremove(&self, m: &BareMove) -> bool {
-        if !m.from().is_in(self.us()) {
+        let precalc = PreCalc::default();
+
+        let mover = self.piece(m.from());
+        // check piece move
+        let Some(mover) = mover  else {
             return false;
-        }
+        };
         if let Some(pp) = m.promo() {
+            if mover != Piece::Pawn {
+                return false;
+            }
             if !m.to().as_bb().intersects(Bitboard::RANKS_18) {
                 // TODO! exact promo rank for white/black
                 return false;
@@ -86,25 +108,50 @@ impl Board {
             }
         }
 
-        if m.from().is_in(self.line_pieces())
-            && (PreCalc::default().strictly_between(m.from(), m.to()) & self.occupied()).any()
-        {
-            return false;
+        if m.from().is_in(self.line_pieces()) {
+            if precalc.between(m.from(), m.to()).is_empty() {
+                // to/from dont share a diagonal or orthogonal
+                return false;
+            }
+            if precalc
+                .strictly_between(m.from(), m.to())
+                .intersects(self.occupied())
+            {
+                return false;
+            }
         }
-        if m.from().is_in(self.pawns())
-            && (PreCalc::default().strictly_between(m.from(), m.to()) & self.occupied()).any()
-        {
-            return false;
+        if m.from().is_in(self.pawns()) {
+            if (precalc.strictly_between(m.from(), m.to()) & self.occupied()).any() {
+                return false;
+            }
+            if m.to().is_in(self.en_passant())
+                && m.to()
+                    .is_in(precalc.pawn_attacks_from_sq(self.color_us(), m.from()))
+            {
+                return true;
+            }
+            if m.to().is_in(Bitboard::RANKS_18) && m.promo().is_none() {
+                return false;
+            }
         }
-        // check piece move
-        let mover = self.piece_unchecked(m.from());
-        let precalc = PreCalc::default();
+
+        if m.is_castle(self) && self.is_castling_move_legal(*m) {
+            return true;
+        }
+
         let destinations =
             precalc.attacks(self.color_us(), mover, self.us(), self.them(), m.from());
-
-        if !m.to().is_in(destinations | self.en_passant()) && !m.is_castle(self) {
+        if !m.to().is_in(destinations) {
+            // println!("Returning false for {m} on board {self}");
             return false;
         }
+        // println!("Returning true for {m} on board {self}");
+        // println!(
+        //     " in fn: dests = {d} e = {e}, cast = {c}",
+        //     d = m.to().is_in(destinations),
+        //     e = m.to().is_in(destinations | self.en_passant()),
+        //     c = m.is_castle(self)
+        // );
         true
     }
 
@@ -233,6 +280,30 @@ mod tests {
 
     fn _init() {
         // env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    }
+
+    #[test]
+    fn test_is_pseudo_legal_move() {
+        let bd = Board::parse_fen("8/k7/8/8/4Q3/8/8/1K6 w - - 9 4").unwrap();
+        let mv = Move::new_quiet(Piece::King, Square::B1, Square::H1);
+        assert_eq!(bd.is_pseudo_legal_move(&mv), false, "{mv} is legal");
+
+        let bd = Board::parse_fen("5rk1/6p1/Qp1q3p/3pr2P/Pp2p1P1/1Pp1P3/2P2P2/3RR1K1 b - g3 0 4")
+            .unwrap();
+        let mv = Move::new_quiet(Piece::Pawn, Square::E4, Square::G3);
+        let precalc = PreCalc::default();
+        let mover = mv.mover_piece(&bd);
+        let destinations = precalc.attacks(bd.color_us(), mover, bd.us(), bd.them(), mv.from());
+
+        if !mv.to().is_in(destinations | bd.en_passant()) && !mv.to_inner().is_castle(&bd) {
+            println!("bad attack");
+        }
+        println!(
+            "bad attack cast={c} dest={d}",
+            c = mv.to_inner().is_castle(&bd),
+            d = mv.to().is_in(destinations)
+        );
+        assert_eq!(bd.is_pseudo_legal_move(&mv), false, "{mv} is legal");
     }
 
     #[test]
@@ -504,10 +575,11 @@ mod tests {
             b.is_pseudo_legal_move(&Move::new_quiet(Piece::Pawn, a7sq, a6sq)),
             false
         );
-        assert_eq!(
-            b.is_pseudo_legal_move(&Move::new_capture(Piece::Pawn, a2sq, a3sq, Piece::Pawn)),
-            false
-        );
+        // as capture piece no longer stored
+        // assert_eq!(
+        //     b.is_pseudo_legal_move(&Move::new_capture(Piece::Pawn, a2sq, a3sq, Piece::Pawn)),
+        //     false
+        // );
         for mv in b.legal_moves().iter() {
             assert!(b.is_legal_move(mv));
             assert!(b.is_pseudo_legal_move(mv));

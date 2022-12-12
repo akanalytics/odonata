@@ -403,11 +403,11 @@ impl Algo {
                 trail.fail(&n, s, mv, Event::MoveScoreHigh);
                 nt = NodeType::LowerCut;
                 // self.stats.inc_node_cut(ply, move_type, (count - 1) as i32);
-                self.killers.store(ply, &mv);
+                self.killers.store(ply, &mv, b);
                 // self.history.beta_cutoff(&n, b, &mv);
                 self.history
                     .beta_variation(&n, b, &self.current_variation, mv);
-                self.counter_move.store(b.color_us(), last_move, mv, &n);
+                self.counter_move.store(b.color_us(), last_move, mv, &n, b);
                 self.report_refutation(n.ply);
                 break;
             }

@@ -1,10 +1,10 @@
 use crate::bits::bitboard::Bitboard;
 use crate::bits::square::Square;
 use crate::piece::Color;
-use crate::PreCalc;
 use anyhow::{bail, Result};
 use std::fmt;
 use std::iter::*;
+
 
 bitflags! {
     pub struct CastlingRights: u8 {
@@ -144,7 +144,8 @@ impl CastlingRights {
 
     #[inline]
     pub fn is_castling(from: Square, to: Square) -> bool {
-        PreCalc::default().chebyshev_distance(from, to) > 1
+        from == Square::E1 && (to == Square::C1 || to == Square::G1)
+            || from == Square::E8 && (to == Square::C8 || to == Square::G8)
     }
 
     #[inline]
@@ -154,9 +155,8 @@ impl CastlingRights {
             Square::C1 => CastlingRights::WHITE_QUEEN,
             Square::G8 => CastlingRights::BLACK_KING,
             Square::C8 => CastlingRights::BLACK_QUEEN,
-            _ => {
-                unreachable!("king move-to for castling");
-            }
+            _ => CastlingRights::NONE,
+            
         }
     }
 

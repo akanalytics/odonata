@@ -54,7 +54,7 @@ impl Perft {
         let mut moves = MoveList::new();
         board.legal_moves_into(&mut moves);
         if depth == 1 {
-            self.count_types(&moves);
+            self.count_types(&moves, board);
             moves.len() as u64
         } else {
             let mut count = 0u64;
@@ -66,15 +66,15 @@ impl Perft {
     }
 
     #[inline]
-    fn count_types(&mut self, moves: &MoveList) {
+    fn count_types(&mut self, moves: &MoveList, board: &Board) {
         for mv in moves.iter() {
             if mv.is_capture() {
                 self.captures += 1
             }
-            if mv.is_ep_capture() {
+            if mv.is_ep_capture(board) {
                 self.en_passant += 1
             }
-            if mv.is_castle() {
+            if mv.is_castle(board) {
                 self.castles += 1;
             }
             if mv.is_promo() {

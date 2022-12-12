@@ -40,7 +40,7 @@ impl See {
         debug_assert!(!mv.is_null());
         debug_assert!(mv.is_capture());
         debug_assert!(board.us().contains(mv.from().as_bb()));
-        debug_assert!(board.them().contains(mv.capture_square().as_bb()));
+        debug_assert!(board.them().contains(mv.capture_square(board).as_bb()));
 
         let bb = PreCalc::default();
         let mut gain: [i32; 40] = [0; 40];
@@ -53,7 +53,7 @@ impl See {
         let mut attackers_xray = BoardCalcs::attacked_by(to, Bitboard::EMPTY, board); // will include the current 'mv' attacker
         attackers_xray -= board.non_line_pieces() | attackers_bw;
 
-        gain[0] = MaterialBalance::CLASSICAL_WEIGHTS[mv.capture_piece().unwrap()].s() as i32;
+        gain[0] = MaterialBalance::CLASSICAL_WEIGHTS[mv.capture_piece(board).unwrap()].s() as i32;
         while from.any() {
             let mut mover = board.piece_unchecked(from.first_square());
             // check for a pawn promo during capture

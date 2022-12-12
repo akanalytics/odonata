@@ -1,3 +1,4 @@
+use crate::board::Board;
 use crate::infra::component::Component;
 use crate::infra::metric::Metrics;
 use crate::mv::Move;
@@ -112,10 +113,10 @@ impl CounterMove {
 
     /// The color is the player of the move being stored
     #[inline]
-    pub fn store(&mut self, c: Color, parent: Move, mv: Move, n: &Node) {
+    pub fn store(&mut self, c: Color, parent: Move, mv: Move, n: &Node, b: &Board) {
         if !self.enabled
             || mv.is_capture()
-            || mv.is_castle()
+            || mv.is_castle(b)
             || n.depth < self.min_depth
             || n.ply > self.max_ply
         {
