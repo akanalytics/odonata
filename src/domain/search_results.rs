@@ -1,14 +1,17 @@
 use crate::eval::eval::Eval;
 use crate::eval::score::Score;
-use crate::infra::utils::{calculate_branching_factor_by_nodes_and_depth, Uci, Differ};
+use crate::infra::utils::{
+    calculate_branching_factor_by_nodes_and_depth, Differ, Displayable, Uci,
+};
 use crate::movelist::ScoredMoveList;
-use crate::mv::BareMove;
+use crate::mv::{BareMove, Move};
 use crate::other::outcome::Outcome;
 use crate::piece::Ply;
 use crate::search::timecontrol::TimeControl;
 use crate::tags::Tag;
 use crate::variation::Variation;
 use crate::{board::Board, Algo, MoveList, Position};
+use anyhow::Context;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -44,7 +47,6 @@ pub struct SearchResults {
     #[serde(skip)]
     pub infos: Vec<Info>,
 }
-
 
 impl fmt::Display for SearchResults {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -96,7 +98,7 @@ impl fmt::Display for SearchResultsWithExplanation<'_> {
     }
 }
 
-fn parse_bestmove_uci(s: &str) -> anyhow::Result<(BareMove, Option<BareMove>)> {
+fn parse_bestmove_uci(s: &str, b: &Board) -> anyhow::Result<(Move, Option<Move>)> {
     let mut words = s.split_whitespace().fuse();
     let (bm, pm) = match (
         words.next(),
@@ -110,15 +112,18 @@ fn parse_bestmove_uci(s: &str) -> anyhow::Result<(BareMove, Option<BareMove>)> {
         (_, _, _, _, Some(_)) => anyhow::bail!("too many words in '{s}'"),
         _ => anyhow::bail!("expected: bestmove bm [ponder pm] but found '{s}'"),
     };
-    let bm = BareMove::parse_uci(bm)?;
+    let bm = Move::parse_uci(bm, b).with_context(|| format!("parsing best move from '{s}'"))?;
     let pm = match pm {
-        Some(pm) => Some(BareMove::parse_uci(pm)?),
+        Some(pm) => Some(
+            Move::parse_uci(pm, &b.make_move(&bm))
+                .with_context(|| format!("parsing ponder move from '{s}'"))?,
+        ),
         None => None,
     };
     Ok((bm, pm))
 }
 
-impl Uci for SearchResults {
+impl SearchResults {
     fn fmt_uci(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Ok(mv) = self.best_move() {
             write!(f, "bestmove {mv}", mv = mv.to_uci())?;
@@ -132,15 +137,17 @@ impl Uci for SearchResults {
         Ok(())
     }
 
-    // null best moves of "0000" permitted, but result in an empty multipv
-    // and hence a bestmove() of Err
-    fn parse_uci(s: &str) -> anyhow::Result<Self> {
+    pub fn to_uci(&self) -> String {
+        Displayable(|fmt| self.fmt_uci(fmt)).to_string()
+    }
+
+    pub fn parse_uci(s: &str, b: &Board) -> anyhow::Result<Self> {
         let mut infos = vec![];
         let mut iter = s.lines().peekable();
         while let Some(line) = iter.next() {
             if iter.peek().is_none() {
-                let (bm, pm) = parse_bestmove_uci(line)?;
-                let sr = SearchResults::from_infos(bm, pm, infos);
+                let (bm, pm) = parse_bestmove_uci(line, b)?;
+                let sr = SearchResults::from_infos(bm.to_inner(), pm.map(|m| m.to_inner()), infos);
                 assert!(
                     // look for move occuing twice in multi-pv
                     !sr.multi_pv
@@ -164,17 +171,62 @@ impl Uci for SearchResults {
     }
 }
 
+// impl Uci for SearchResults {
+//     fn fmt_uci(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         if let Ok(mv) = self.best_move() {
+//             write!(f, "bestmove {mv}", mv = mv.to_uci())?;
+//             if let Some(ponder) = self.pv().second() {
+//                 write!(f, "ponder {}", ponder.to_uci())?;
+//             }
+//         } else {
+//             write!(f, "bestmove 0000")?;
+//         }
+
+//         Ok(())
+//     }
+
+//     // null best moves of "0000" permitted, but result in an empty multipv
+//     // and hence a bestmove() of Err
+//     fn parse_uci(s: &str) -> anyhow::Result<Self> {
+//         let mut infos = vec![];
+//         let mut iter = s.lines().peekable();
+//         while let Some(line) = iter.next() {
+//             if iter.peek().is_none() {
+//                 let (bm, pm) = parse_bestmove_uci(line)?;
+//                 let sr = SearchResults::from_infos(bm, pm, infos);
+//                 assert!(
+//                     // look for move occuing twice in multi-pv
+//                     !sr.multi_pv
+//                         .iter()
+//                         .tuple_windows()
+//                         .any(|(prev, next)| prev.0.first() == next.0.first()),
+//                     "{sr} has duplicate move in multi_pv\n{s}"
+//                 );
+//                 return Ok(sr);
+//             } else {
+//                 // @todo
+//                 let info = Info::parse_uci(line)?;
+//                 // ignore "info depth 21 currmove g7g5 currmovenumber 18"
+//                 // info nodes 100000 nps 1020000 hashfull 50 time 97
+//                 // if info.depth.is_some() && info.pv.is_some() {
+//                 infos.push(info);
+//                 // }
+//             }
+//         }
+//         unreachable!()
+//     }
+// }
+
 impl Differ<SearchResults> for SearchResults {
-    fn diff( sr1: &Self, sr2: &Self ) -> Option<String>{
+    fn diff(sr1: &Self, sr2: &Self) -> Option<String> {
         let mut sr1 = sr1.clone();
-        sr1.emt = sr2.emt;  // emt will be different
+        sr1.emt = sr2.emt; // emt will be different
         if &sr1 != sr2 {
             return Some(String::from("differences!"));
         }
         None
     }
 }
-
 
 impl SearchResults {
     fn extract_multi_pv(infos: &Vec<Info>) -> Vec<(BareMoveVariation, Score)> {
@@ -289,7 +341,12 @@ impl SearchResults {
         }
     }
 
-    pub fn new(algo: &Algo, depth: Ply, multi_pv: Vec<(BareMoveVariation, Score)>, seldepth: Option<Ply>) -> Self {
+    pub fn new(
+        algo: &Algo,
+        depth: Ply,
+        multi_pv: Vec<(BareMoveVariation, Score)>,
+        seldepth: Option<Ply>,
+    ) -> Self {
         let nodes_thread_cumul = algo.clock.cumul_nodes_this_thread();
         let bf = calculate_branching_factor_by_nodes_and_depth(nodes_thread_cumul, depth)
             .unwrap_or_default();
@@ -447,66 +504,75 @@ mod tests {
 
     #[test]
     fn test_uci_searchresults() {
-        let (bm, pm) = parse_bestmove_uci("bestmove a1a2 ponder b2b3").unwrap();
-        assert_eq!(bm.to_uci(), "a1a2");
-        assert_eq!(pm.unwrap().to_uci(), "b2b3");
+        let b = Board::starting_pos();
+        let (bm, pm) = parse_bestmove_uci("bestmove a2a3 ponder b7b6", &b).unwrap();
+        assert_eq!(bm.to_uci(), "a2a3");
+        assert_eq!(pm.unwrap().to_uci(), "b7b6");
 
-        let (bm, pm) = parse_bestmove_uci("bestmove a1a2").unwrap();
-        assert_eq!(bm.to_uci(), "a1a2");
+        let (bm, pm) = parse_bestmove_uci("bestmove a2a3", &b).unwrap();
+        assert_eq!(bm.to_uci(), "a2a3");
         assert_eq!(pm, None);
 
-        let (bm, pm) = parse_bestmove_uci("bestmove a1a2  ").unwrap();
-        assert_eq!(bm.to_uci(), "a1a2");
+        let (bm, pm) = parse_bestmove_uci("bestmove a2a3  ", &b).unwrap();
+        assert_eq!(bm.to_uci(), "a2a3");
         assert_eq!(pm, None);
 
-        let (bm, pm) = parse_bestmove_uci("bestmove 0000").unwrap();
+        let (bm, pm) = parse_bestmove_uci("bestmove 0000", &b).unwrap();
         assert_eq!(bm.is_null(), true);
         assert_eq!(bm.to_uci(), "0000");
         assert_eq!(pm, None);
 
-        let (bm, pm) = parse_bestmove_uci("bestmove   a1a2  ").unwrap();
-        assert_eq!(bm.to_uci(), "a1a2");
+        let (bm, pm) = parse_bestmove_uci("bestmove   a2a3  ", &b).unwrap();
+        assert_eq!(bm.to_uci(), "a2a3");
         assert_eq!(pm, None);
 
-        assert_eq!(parse_bestmove_uci("bestmove a1a2 ponder").is_err(), true);
-        assert_eq!(parse_bestmove_uci("bestmove").is_err(), true);
-        assert_eq!(parse_bestmove_uci("xyz").is_err(), true);
         assert_eq!(
-            parse_bestmove_uci("bestmove a1a2 ponder b2b3 extraneous").is_err(),
+            parse_bestmove_uci("bestmove a7a6 ponder", &b).is_err(),
+            true
+        );
+        assert_eq!(
+            parse_bestmove_uci("bestmove a2a3 ponder", &b).is_err(),
+            true
+        );
+        assert_eq!(parse_bestmove_uci("bestmove", &b).is_err(), true);
+        assert_eq!(parse_bestmove_uci("xyz", &b).is_err(), true);
+        assert_eq!(
+            parse_bestmove_uci("bestmove a2a3 ponder b7b6 extraneous", &b).is_err(),
             true
         );
     }
 
     #[test]
     fn test_search_results_parse_uci() -> anyhow::Result<()> {
-        let s = r#"info depth 10 seldepth 10 nodes 61329 nps 1039000 score mate 2 hashfull 40 time 58 pv g3g6 f7g6 e5g6
-info depth 11 seldepth 12 nodes 82712 nps 973000 score mate 2 hashfull 45 time 84 pv g3g6 f7g6 e5g6
+        let s = r#"info depth 10 seldepth 10 nodes 61329 nps 1039000 score mate 2 hashfull 40 time 58 pv h2h4 e7e5 b2b3
+info depth 11 seldepth 12 nodes 82712 nps 973000 score mate 2 hashfull 45 time 84 pv e2e4 e7e5 a2a3
 info nodes 100000 nps 1020000 hashfull 50 time 97
-bestmove g3g6 ponder f7g6
+bestmove g2g4 ponder e7e5
 "#;
-        let sr = SearchResults::parse_uci(s).unwrap();
-        assert_eq!(
-            "g3g6".parse::<BareMove>()?,
-            BareMove::parse_uci("g3g6").unwrap()
-        );
+        let b = Board::starting_pos();
+        let sr = SearchResults::parse_uci(s, &b).unwrap();
+        // assert_eq!(
+        //     "g2-g4".parse::<Move>()?,
+        //     Move::parse_uci("g2g4", b).unwrap()
+        // );
         // assert_eq!("g3g6".parse::<BareMove>()?, "g3g6".try_into()?);
         // assert_eq!(BareMove::parse_uci("g3g6")?, "g3g6".mv());
         // assert_eq!(sr.best_move(), Ok("g3g6".try_into()?));
         assert_eq!(sr.nodes, 100000);
-        assert_eq!(sr.best_move().unwrap(), "g3g6".mv());
-        assert_eq!(sr.pv(), "g3g6 f7g6 e5g6".var());
-        assert_eq!(sr.multi_pv(), vec![("g3g6 f7g6 e5g6".var(), "+M2".cp())]);
+        assert_eq!(sr.best_move().unwrap(), "g2g4".mv());
+        assert_eq!(sr.pv(), "e2e4 e7e5 a2a3".var());
+        assert_eq!(sr.multi_pv(), vec![("e2e4 e7e5 a2a3".var(), "+M2".cp())]);
         assert_eq!(sr.depth, 11);
         assert_eq!(sr.bf > 2.5, true);
         assert_eq!(sr.bf < 3.0, true);
         info!("{}", "a3a4".mv());
 
-        let s = r#"info depth 10 seldepth 10 nodes 61329 nps 1039000 score mate 2 hashfull 40 time 58 pv g3g6 f7g6 e5g6
-info depth 11 seldepth 12 nodes 82712 nps 973000 score mate 2 hashfull 45 time 84 pv g3g6 f7g6 e5g6
+        let s = r#"info depth 10 seldepth 10 nodes 61329 nps 1039000 score mate 2 hashfull 40 time 58 pv h2h4 e7e5 b2b3
+info depth 11 seldepth 12 nodes 82712 nps 973000 score mate 2 hashfull 45 time 84 pv e2e4 e7e5 a2a3
 info nodes 100000 nps 1020000 hashfull 50 time 97
 bestmove 0000
 "#;
-        let sr = SearchResults::parse_uci(s).unwrap();
+        let sr = SearchResults::parse_uci(s, &b).unwrap();
         assert_eq!(sr.nodes, 100000);
         assert_eq!(sr.best_move().is_err(), true);
         assert_eq!(sr.pv(), "".var());

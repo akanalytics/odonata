@@ -718,7 +718,6 @@ mod tests {
     use crate::catalog::*;
     use crate::comms::uci_server::*;
     use crate::globals::constants::*;
-    use crate::infra::utils::Uci;
     use crate::piece::*;
     use crate::search::algo::*;
     use crate::search::engine::ThreadedSearch;

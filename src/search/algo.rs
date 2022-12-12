@@ -457,7 +457,6 @@ mod tests {
     use super::*;
     use crate::catalog::*;
     use crate::comms::uci_server::UciServer;
-    use crate::infra::utils::Uci;
     use crate::mv::BareMove;
     use crate::piece::*;
     use anyhow::*;

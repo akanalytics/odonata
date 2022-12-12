@@ -3,9 +3,10 @@ use crate::bits::castling::CastlingRights;
 use crate::bits::square::Square;
 use crate::board::{Board, BoardCalcs};
 use crate::globals::constants::*;
-use crate::infra::utils::{StringUtils, Uci};
+use crate::infra::utils::{Displayable, StringUtils};
 use crate::piece::{Color, Piece};
 use anyhow::Result;
+use anyhow::{anyhow, bail};
 use serde::{Deserialize, Serialize};
 use std::fmt::{self};
 use std::str::FromStr;
@@ -51,20 +52,22 @@ pub struct BareMove {
     pub promo: Option<Piece>,
 }
 
-impl Uci for BareMove {
-    fn fmt_uci(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        <BareMove as fmt::Display>::fmt(self, f)
-    }
-
-    fn parse_uci(s: &str) -> anyhow::Result<Self> {
-        s.parse()
-    }
-}
-
 impl BareMove {
     #[inline]
     pub fn null() -> Self {
         Default::default()
+    }
+
+    pub fn fmt_uci(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        <BareMove as fmt::Display>::fmt(self, f)
+    }
+
+    pub fn parse_uci(s: &str) -> anyhow::Result<Self> {
+        s.parse()
+    }
+
+    pub fn to_uci(&self) -> String {
+        Displayable(|fmt| self.fmt_uci(fmt)).to_string()
     }
 
     #[inline]
@@ -220,9 +223,7 @@ impl Board {
     }
 }
 
-
 type UMOVE = u16;
-
 
 // FIXME: public methods
 #[derive(Default, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -287,12 +288,74 @@ impl Move {
     //   ep capture
     //   castle
 
+    fn fmt_uci(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.is_null() {
+            write!(f, "0000")
+        } else {
+            write!(f, "{}{}", self.from().uci(), self.to().uci())?;
+            if let Some(p) = self.promo() {
+                write!(f, "{}", p.to_char(Color::Black))?
+            }
+            Ok(())
+        }
+    }
+
     #[inline]
     pub const fn to_inner(&self) -> BareMove {
         BareMove {
             from: self.from(),
             to: self.to(),
             promo: self.promo(),
+        }
+    }
+
+    // /// Ng1-f3 Nb8-c6
+    // /// Bb5xNc6 d7xBc6
+    // /// d2-d3 Bf8-b4+
+    // /// 0-0 Bb4xNc3
+    // pub fn parse_lan(mut s: &str) -> Result<Self> {
+    //     if s == "0000" {
+    //         return Ok(Move::new_null());
+    //     }
+    //     let gives_check = if let Some(t) = s.strip_suffix("+") {
+    //         s = t;
+    //         true
+    //     } else {
+    //         false
+    //     };
+    //     let mover = if let Some(t) = s.strip_prefix(['P', 'N', 'B', 'R', 'Q', 'K']) {
+    //         s = t;
+    //         Piece::from_char(s.chars().next().unwrap())?
+    //     } else {
+    //         Piece::Pawn
+    //     };
+
+    //     Err("")
+    // }
+
+    pub fn parse_uci(s: &str, b: &Board) -> Result<Self> {
+        if s.trim() == "0000" {
+            return Ok(Self::new_null());
+        }
+        let from = Bitboard::parse_square(s.take_slice(0..2))?;
+        let to = Bitboard::parse_square(s.take_slice(2..4))?;
+        if let Some(ch) = s.take_char_at(4) {
+            let promo = Piece::from_char(ch)?;
+            if from.rank_number_as_white(b.color_us()) != 7 {
+                bail!("move {s} from {from} sq is not rank 2/7 for board {b}");
+            }
+            if to.rank_number_as_white(b.color_us()) != 8 {
+                bail!("move {s} from {from} sq is not rank 1/8 for board {b}");
+            }
+            Ok(Self::new_promo(from, to, promo))
+        } else {
+            let mover = b
+                .piece(from)
+                .ok_or(anyhow!("move {s} no piece on {from} for board {b}"))?;
+            if !from.is_in(b.us()) {
+                bail!("move {s} has wrong color mover for board {b}");
+            }
+            Ok(Self::new_quiet(mover, from, to))
         }
     }
 
@@ -352,6 +415,10 @@ impl Move {
     #[inline]
     pub fn new_null() -> Move {
         Move::NULL_MOVE
+    }
+
+    pub fn to_san(&self, b: &Board) -> String {
+        b.to_san(self)
     }
 
     #[inline]
@@ -609,11 +676,26 @@ mod tests {
     // use crate::movelist::MoveValidator;
 
     #[test]
-    fn test_baremove() -> anyhow::Result<()> {
-        assert_eq!(BareMove::parse_uci("a1b3")?.to_uci(), "a1b3");
-        assert_eq!(BareMove::parse_uci("0000").is_err(), false);
-        assert_eq!(BareMove::parse_uci("XYZ").is_err(), true);
-        assert_eq!(BareMove::parse_uci("a1a7q")?.to_uci(), "a1a7q");
+    fn test_parse_uci() -> anyhow::Result<()> {
+        let b = Board::starting_pos();
+        assert_eq!(Move::parse_uci("a2a3", &b)?.to_uci(), "a2a3");
+        assert_eq!(Move::parse_uci("0000", &b).is_err(), false);
+        assert_eq!(Move::parse_uci("XYZ", &b).is_err(), true);
+        let b = Position::parse_epd(
+            r"
+            ........
+            P.......
+            ........
+            R.K.....
+            ........
+            ........
+            ........
+            .....n.k w KQkq - 1 1",
+        )
+        .unwrap()
+        .board()
+        .clone();
+        assert_eq!(Move::parse_uci("a7a8q", &b)?.to_uci(), "a7a8q");
         Ok(())
     }
 
@@ -626,7 +708,7 @@ mod tests {
         println!("{:#} {:b}", move_castle, move_castle.bits);
         assert_eq!(move_castle.from(), Square::A1);
         assert_eq!(move_castle.to(), Square::B2);
-        
+
         // ep cant be called on castling move
         // assert_eq!(move_castle.ep(), Square::null());
         // assert_eq!(move_castle.capture_piece(), None);
@@ -644,13 +726,10 @@ mod tests {
         assert_eq!(move_a1b2.to(), b2.square());
         // assert_eq!(move_a1b2.mover_piece(), Piece::Bishop);
         assert_eq!(move_a1b2.is_promo(), false);
-        
 
-        
-        let capture_a1b2 = Move::new_capture(Piece::Bishop, a1.square(), b2.square(), Piece::Knight);
+        let capture_a1b2 =
+            Move::new_capture(Piece::Bishop, a1.square(), b2.square(), Piece::Knight);
         assert_eq!(capture_a1b2.is_capture(), true);
-
-
 
         // ep cant be called on castling move
         // assert_eq!(move_a1b2.ep(), Square::null());
