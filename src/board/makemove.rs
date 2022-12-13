@@ -64,9 +64,9 @@ impl Board {
     //     // self.turn = self.turn.opposite();
     // }
 
-    pub fn make_moves_old(&self, moves: &Variation) -> Board {
+    pub fn make_moves_old(&self, var: &Variation) -> Board {
         let mut b = self.clone();
-        for mv in moves.iter() {
+        for mv in var.moves() {
             b = b.make_move(mv);
         }
         b
@@ -88,7 +88,7 @@ impl Board {
         b
     }
 
-    pub fn make_move(&self, m: &Move) -> Board {
+    pub fn make_move(&self, m: Move) -> Board {
         Metrics::incr(Counter::MakeMove);
         let t = Metrics::timing_start();
         // either we're moving to an empty square or its a capture
@@ -149,7 +149,7 @@ impl Board {
 
         // board.moves.push(*m);
         if m.is_null() {
-            let move_hash = Hasher::default().hash_move(*m, self);
+            let move_hash = Hasher::default().hash_move(m, self);
             b.hash = self.hash ^ move_hash;
     
             Metrics::profile(t, Timing::TimingMakeMove);
@@ -217,7 +217,7 @@ impl Board {
         b.castling -= m.castling_rights_lost();
         // b.castling ^= m.castling_side();
 
-        let move_hash = Hasher::default().hash_move(*m, self);
+        let move_hash = Hasher::default().hash_move(m, self);
         b.hash = self.hash ^ move_hash;
 
         Metrics::profile(t, Timing::TimingMakeMove);
@@ -458,20 +458,20 @@ mod tests {
         let mov = board.parse_uci_move("e2e4")?;
         assert_eq!(board.total_halfmoves(), 0);
 
-        let board = board.make_move(&mov);
+        let board = board.make_move(mov);
         assert_eq!(
             board.to_fen(),
             "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"
         );
         assert_eq!(board.total_halfmoves(), 1);
 
-        let board = board.make_move(&board.parse_uci_move("a7a6").unwrap());
+        let board = board.make_move(board.parse_uci_move("a7a6").unwrap());
         assert_eq!(board.total_halfmoves(), 2);
 
-        let board = board.make_move(&board.parse_uci_move("e4e5").unwrap());
+        let board = board.make_move(board.parse_uci_move("e4e5").unwrap());
         assert_eq!(board.total_halfmoves(), 3);
 
-        let board = board.make_move(&board.parse_uci_move("a6a5").unwrap());
+        let board = board.make_move(board.parse_uci_move("a6a5").unwrap());
         assert_eq!(board.total_halfmoves(), 4);
         Ok(())
     }
@@ -481,7 +481,7 @@ mod tests {
         let board1 = Catalog::perft_cpw_number3().0.clone();
         // double push - ep sq should be set
         let mov1 = board1.parse_uci_move("e2e4")?;
-        let board2 = board1.make_move(&mov1);
+        let board2 = board1.make_move(mov1);
         assert_eq!(board2.to_fen(), "8/2p5/3p4/KP5r/1R2Pp1k/8/6P1/8 b - e3 0 1");
         // ep capture is not valid as leaves king in check
         assert!(board2.parse_uci_move("f4e3").is_err());
@@ -494,7 +494,7 @@ mod tests {
         let mut board = Board::parse_fen("8/P7/8/8/8/8/7k/K7 w - - 0 0 id 'promos #1'")
             .unwrap()
             .as_board();
-        board = board.make_move(&board.parse_uci_move("a7a8q").unwrap());
+        board = board.make_move(board.parse_uci_move("a7a8q").unwrap());
         assert_eq!(board.get(a8), "Q");
         assert_eq!(board.get(a7), ".");
     }
@@ -509,7 +509,7 @@ mod tests {
 
         // rook takes rook, so both sides lose queens side castling grights
         let mv = board.parse_uci_move("a1a8").unwrap();
-        let board = board.make_move(&mv);
+        let board = board.make_move(mv);
         assert_eq!(board.castling().to_string(), "Kk");
     }
 
@@ -523,10 +523,10 @@ mod tests {
         assert_eq!(board.total_halfmoves(), 0);
         assert_eq!(board.legal_moves().len(), 16 + 5 + 2 + 2); // 16P, 5R, 2K, OO, OOO
 
-        let board = board.make_move(&board.parse_uci_move("e1g1").unwrap());
+        let board = board.make_move(board.parse_uci_move("e1g1").unwrap());
         assert_eq!(board.total_halfmoves(), 1);
 
-        let board = board.make_move(&board.parse_uci_move("e8g8").unwrap());
+        let board = board.make_move(board.parse_uci_move("e8g8").unwrap());
         assert_eq!(
             board.to_fen(),
             "r4rk1/pppppppp/8/8/8/8/PPPPPPPP/R4RK1 w - - 2 2"
@@ -535,8 +535,8 @@ mod tests {
 
         // castle queens side
         let board = Board::parse_fen(epd).unwrap().as_board();
-        let board = board.make_move(&board.parse_uci_move("e1c1").unwrap());
-        let board = board.make_move(&board.parse_uci_move("e8c8").unwrap());
+        let board = board.make_move(board.parse_uci_move("e1c1").unwrap());
+        let board = board.make_move(board.parse_uci_move("e8c8").unwrap());
         assert_eq!(
             board.to_fen(),
             "2kr3r/pppppppp/8/8/8/8/PPPPPPPP/2KR3R w - - 2 2"
@@ -544,8 +544,8 @@ mod tests {
 
         // rook moves queens side for w and then b, losing q-side castling rights
         let board = Board::parse_fen(epd).unwrap().as_board();
-        let board = board.make_move(&board.parse_uci_move("a1b1").unwrap());
-        let board = board.make_move(&board.parse_uci_move("a8b8").unwrap());
+        let board = board.make_move(board.parse_uci_move("a1b1").unwrap());
+        let board = board.make_move(board.parse_uci_move("a8b8").unwrap());
         assert_eq!(
             board.to_fen(),
             "1r2k2r/pppppppp/8/8/8/8/PPPPPPPP/1R2K2R w Kk - 2 2"
@@ -561,7 +561,7 @@ mod tests {
             ()
         });
         let b = Catalog::starting_board();
-        PerfProfiler::new("make_move".to_string()).benchmark(|| b.make_move(&mv));
+        PerfProfiler::new("make_move".to_string()).benchmark(|| b.make_move(mv));
 
         let mut cells: [Cell<Bitboard>; 32] = <_>::default();
         PerfProfiler::new("cell_default".to_string()).benchmark(|| {

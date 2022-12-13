@@ -518,7 +518,7 @@ mod tests {
         assert_eq!(pos.supplied_variation(), Variation::empty());
 
         // a7a6 on board of [starting pos + a2a3]
-        let bd2 = pos.board.make_move(&pos.board().parse_uci_move("a2a3")?);
+        let bd2 = pos.board.make_move(pos.board().parse_uci_move("a2a3")?);
         let s2 = "position fen ".to_string() + &bd2.to_fen() + " moves a7a6";
         let pos2 = Position::parse_uci(&s2)?;
         assert_eq!(pos2.supplied_variation().to_uci(), "a7a6");

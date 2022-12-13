@@ -175,7 +175,7 @@ impl Algo {
 
         let r = self.nmp.depth_reduction(eval, b, n);
         let mv = Move::NULL_MOVE;
-        let mut child_board = b.make_move(&mv);
+        let mut child_board = b.make_move(mv);
         self.current_variation.push(mv);
         trail.push_move(n, mv);
         // self.explainer.start(n, &self.current_variation);

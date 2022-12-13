@@ -258,10 +258,10 @@ impl Algo {
                 && pat.is_numeric()
                 && self.qs.delta_prune
                 && (self.qs.delta_prune_discovered_check || !bd.maybe_gives_discovered_check(mv))
-                && (self.qs.delta_prune_gives_check || !bd.gives_check(&mv))
+                && (self.qs.delta_prune_gives_check || !bd.gives_check(mv))
                 && (self.qs.delta_prune_near_promos || !mv.is_near_promo(&bd))
                 && bd.occupied().popcount() >= self.qs.delta_prune_min_pieces
-                && pat + bd.eval_move_material(&self.eval, &mv) + self.qs.delta_prune_move_margin
+                && pat + bd.eval_move_material(&self.eval, mv) + self.qs.delta_prune_move_margin
                     <= n.alpha
             {
                 Metrics::incr_node(&n, Event::QsDeltaPruneMove);
@@ -271,7 +271,7 @@ impl Algo {
             if !in_check
                 && mv.is_capture()
                 && (self.qs.see_prune_discovered_check || !bd.maybe_gives_discovered_check(mv))
-                && (self.qs.see_prune_gives_check || !bd.gives_check(&mv))
+                && (self.qs.see_prune_gives_check || !bd.gives_check(mv))
                 && (self.qs.see_prune_near_promos || !mv.is_near_promo(&bd))
                 && bd.occupied().popcount() >= self.qs.delta_prune_min_pieces
             {
@@ -286,7 +286,7 @@ impl Algo {
             }
 
             unpruned_move += 1;
-            let mut child = bd.make_move(&mv);
+            let mut child = bd.make_move(mv);
             trail.push_move(&n, mv.clone());
             // self.current_variation.push(mv);
             let qsn = Node {

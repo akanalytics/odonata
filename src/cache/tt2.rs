@@ -672,7 +672,7 @@ impl TranspositionTable2 {
                 if entry.nt == NodeType::ExactPv {
                     let mv = entry.validate_move(&board);
                     if !mv.is_null() {
-                        board = board.make_move(&mv);
+                        board = board.make_move(mv);
                         var.push(mv);
                         if score.is_none() {
                             score = Some(entry.score.0); // score at root is same as WrtRoot

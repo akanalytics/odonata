@@ -220,7 +220,7 @@ impl Algo {
             }
             Metrics::incr_node(&n, Event::MoveCount);
             Metrics::classify_move(&n, mv, mt, b);
-            let mut child_board = b.make_move(&mv);
+            let mut child_board = b.make_move(mv);
             let ext = self.extend(b, &child_board, mv, mt, count, &n, last_move);
             let is_quiet = self.is_quiet(b, mv, mt, &child_board, &n, ext);
             if is_quiet {
@@ -246,7 +246,7 @@ impl Algo {
                 }
             }
 
-            self.repetition.push_move(&mv, &b);
+            self.repetition.push_move(mv, &b);
             self.current_variation.push(mv);
             trail.push_move(&n, mv);
             // self.explainer.start(&n, &self.current_variation);
@@ -416,7 +416,7 @@ impl Algo {
                 trail.alpha_raised(&n, s, mv, Event::AlphaRaised);
                 nt = NodeType::ExactPv;
                 debug_assert!(
-                    b.is_pseudo_legal_move(&bm.unwrap()),
+                    b.is_pseudo_legal_move(bm.unwrap()),
                     "bm {} on board {}",
                     bm.unwrap(),
                     b

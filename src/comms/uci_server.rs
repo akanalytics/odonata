@@ -337,9 +337,9 @@ impl UciServer {
                 let capture = mv.capture_square(&b).uci();
                 let ep = mv.ep().uci();
                 // pseudo_legal=b.is_pseudo_legal_move(&mv);
-                let legal = b.is_legal_move(&mv);
+                let legal = b.is_legal_move(mv);
                 let san = if legal {
-                    b.to_san(&mv)
+                    b.to_san(mv)
                 } else {
                     "???".to_string()
                 };
@@ -445,7 +445,7 @@ impl UciServer {
         if let Some(index) = index {
             for mv in args.words[(index + 1)..].iter() {
                 let mv = b.parse_uci_move(mv)?;
-                b = b.make_move(&mv);
+                b = b.make_move(mv);
                 variation.push(mv)
             }
         }

@@ -160,7 +160,7 @@ impl Algo {
             return false;
         }
 
-        if bd.maybe_gives_discovered_check(mv) || bd.gives_check(&mv) {
+        if bd.maybe_gives_discovered_check(mv) || bd.gives_check(mv) {
             Metrics::incr_node(n, Event::LmpDeclineGivesCheck);
             return false;
         }

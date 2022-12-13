@@ -268,8 +268,8 @@ impl Tag {
             Tag::BestMoves(mvs) => b.to_san_movelist(mvs),
             Tag::BestScoredMoves(mvs) => mvs.to_san(b),
             Tag::Pv(variation) => b.to_san_variation(variation, None),
-            Tag::PredictedMove(mv) => b.to_san(mv),
-            Tag::SuppliedMove(mv) => b.to_san(mv),
+            Tag::PredictedMove(mv) => b.to_san(*mv),
+            Tag::SuppliedMove(mv) => b.to_san(*mv),
             Tag::SuppliedVariation(variation) => b.to_san_variation(variation, None),
             _ => self.value_uci(),
         }

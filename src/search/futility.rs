@@ -267,7 +267,7 @@ impl Algo {
         });
 
         // not a capture or promo => gain = 0
-        let gain = before.eval_move_material(&self.eval, &mv);
+        let gain = before.eval_move_material(&self.eval, mv);
 
         // if est_score <= n.alpha
         //     && EndGame::from_board(after).likely_outcome(after) != LikelyOutcome::UnknownOutcome

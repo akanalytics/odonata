@@ -331,8 +331,8 @@ mod tests {
         let mut moves = bd1.legal_moves();
         moves.push(Move::NULL_MOVE);
         let hash_bd1 = hasher.hash_board(&bd1);
-        for mv in moves.iter() {
-            let hash_mv = hasher.hash_move(*mv, &bd1);
+        for &mv in moves.iter() {
+            let hash_mv = hasher.hash_move(mv, &bd1);
             let hash_bd2 = hasher.hash_board(&bd1.make_move(mv));
             // println!("Move: {} => {}", mv, hash_mv);
             assert_eq!(hash_bd1 ^ hash_mv, hash_bd2);
@@ -341,16 +341,16 @@ mod tests {
         bd1_plus_nulls.set_fifty_halfmove_clock(0 + 2);
         bd1_plus_nulls.set_en_passant(Bitboard::empty());
         bd1_plus_nulls.set_fullmove_number(1 + 1);
-        let bd2 = bd1.make_move(&Move::NULL_MOVE).make_move(&Move::NULL_MOVE);
+        let bd2 = bd1.make_move(Move::NULL_MOVE).make_move(Move::NULL_MOVE);
         assert_eq!(bd2, bd1_plus_nulls, "double null move {bd2:#} {bd1_plus_nulls:#}");
 
-        let bd1 = bd1.make_move(&bd1.parse_san_move("e4").unwrap());
+        let bd1 = bd1.make_move(bd1.parse_san_move("e4").unwrap());
         assert_eq!(bd1.fifty_halfmove_clock(), 0);  // coz pawn move
         let mut bd1_plus_nulls = bd1.clone();
         bd1_plus_nulls.set_fifty_halfmove_clock(0 + 2);
         bd1_plus_nulls.set_en_passant(Bitboard::empty());
         bd1_plus_nulls.set_fullmove_number(1 + 1);
-        let bd2 = bd1.make_move(&Move::NULL_MOVE).make_move(&Move::NULL_MOVE);
+        let bd2 = bd1.make_move(Move::NULL_MOVE).make_move(Move::NULL_MOVE);
         assert_eq!(bd2, bd1_plus_nulls, "e4 + double null move {bd2:#} {bd1_plus_nulls:#}");
 
     }
@@ -381,9 +381,9 @@ mod tests {
             let hash_bd1 = hasher.hash_board(&b);
             let mut count = 0u64;
             // println!("-->");
-            for m in moves.iter() {
+            for &m in moves.iter() {
                 let bd2 = b.make_move(m);
-                let hash_mv = hasher.hash_move(*m, b);
+                let hash_mv = hasher.hash_move(m, b);
                 let hash_bd2 = hasher.hash_board(&bd2);
                 // println!("Move: {:#} = {}", m, hash_mv);
                 assert_eq!(

@@ -236,7 +236,7 @@ impl SearchTree {
     /// empty variation finds root, not found is None
     fn find(&self, var: &Variation) -> Option<NodeIndex> {
         let mut node = self.tree.root();
-        'outer: for &mv in var.moves() {
+        'outer: for mv in var.moves() {
             for child in self.tree.children(node) {
                 if self.tree[child].mv == mv {
                     node = child;

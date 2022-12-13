@@ -22,9 +22,9 @@ impl Perft {
         let mut moves = MoveList::new();
         board.legal_moves_into(&mut moves);
         if depth == 1 {
-            moves.iter().for_each(|mv| f(board, *mv));
+            moves.iter().for_each(|&mv| f(board, mv));
         } else {
-            for m in moves.iter() {
+            for &m in moves.iter() {
                 Self::perft_fn(&mut board.make_move(m), depth - 1, f);
             }
         }
@@ -40,7 +40,7 @@ impl Perft {
             moves.len() as u64
         } else {
             let mut count = 0u64;
-            for m in moves.iter() {
+            for &m in moves.iter() {
                 count += Self::perft(&mut board.make_move(m), depth - 1);
             }
             count
@@ -58,7 +58,7 @@ impl Perft {
             moves.len() as u64
         } else {
             let mut count = 0u64;
-            for m in moves.iter() {
+            for &m in moves.iter() {
                 count += self.perft_cat(&mut board.make_move(m), depth - 1);
             }
             count

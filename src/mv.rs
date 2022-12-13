@@ -91,7 +91,7 @@ impl BareMove {
     }
 
     pub fn to_san(&self, b: &Board) -> String {
-        b.to_san(&b.augment_move(*self))
+        b.to_san(b.augment_move(*self))
     }
 
     pub fn is_castle(&self, b: &Board) -> bool {
@@ -425,7 +425,7 @@ impl Move {
     }
 
     pub fn to_san(&self, b: &Board) -> String {
-        b.to_san(self)
+        b.to_san(*self)
     }
 
     #[inline]
@@ -639,7 +639,7 @@ impl Move {
 
     #[inline]
     pub fn mvv_lva_score(&self, bd: &Board) -> i32 {
-        debug_assert!(bd.is_legal_move(self), "{self} is illegal for board {bd}");
+        debug_assert!(bd.is_legal_move(*self), "{self} is illegal for board {bd}");
         let mut score = 0;
         if let Some(cap) = self.capture_piece(bd) {
             score += cap.centipawns() * 10 - self.mover_piece(bd).centipawns() / 10;
@@ -831,37 +831,37 @@ mod tests {
         let mut board = Catalog::starting_board();
         let a2a3 = board.parse_uci_move("a2a3").unwrap();
         let b1c3 = board.parse_uci_move("b1c3").unwrap();
-        assert_eq!(board.to_san(&a2a3), "a3");
-        assert_eq!(board.to_san(&b1c3), "Nc3");
+        assert_eq!(board.to_san(a2a3), "a3");
+        assert_eq!(board.to_san(b1c3), "Nc3");
 
         let board = board.set(d3, "p").unwrap();
         let board = board.set(f3, "p").unwrap();
 
         let c2d3 = board.parse_uci_move("c2d3").unwrap();
-        assert_eq!(board.to_san(&c2d3), "cxd3");
+        assert_eq!(board.to_san(c2d3), "cxd3");
 
         let e2d3 = board.parse_uci_move("e2d3").unwrap();
-        assert_eq!(board.to_san(&e2d3), "exd3");
+        assert_eq!(board.to_san(e2d3), "exd3");
 
         let g1f3 = board.parse_uci_move("g1f3").unwrap();
-        assert_eq!(board.to_san(&g1f3), "Nxf3");
+        assert_eq!(board.to_san(g1f3), "Nxf3");
 
         // knight ambiguity
         let board = board.set(g5, "N").unwrap();
         let g1f3 = board.parse_uci_move("g1f3").unwrap();
-        assert_eq!(board.to_san(&g1f3), "N1xf3");
+        assert_eq!(board.to_san(g1f3), "N1xf3");
 
         // two knights same rank and file as g5
         let board = board.set(e5, "N").unwrap();
         let g1f3 = board.parse_uci_move("g5f3").unwrap();
-        assert_eq!(board.to_san(&g1f3), "Ng5xf3");
+        assert_eq!(board.to_san(g1f3), "Ng5xf3");
 
         // remove some minor pieces to allow castling
         let board = board.set(Bitboard::RANK_8, "r...k..r").unwrap();
         board.set_turn(Color::Black);
         let castle_k = board.parse_uci_move("e8g8").unwrap();
-        assert_eq!(board.to_san(&castle_k), "O-O");
+        assert_eq!(board.to_san(castle_k), "O-O");
         let castle_q = board.parse_uci_move("e8c8").unwrap();
-        assert_eq!(board.to_san(&castle_q), "O-O-O");
+        assert_eq!(board.to_san(castle_q), "O-O-O");
     }
 }

@@ -23,22 +23,22 @@ use crate::search::node::{Counter, Timing};
 impl Board {
     pub fn is_pseudo_legal_and_legal_move(&self, m: Move) -> bool {
         let t = Metrics::timing_start();
-        let ret = self.is_pseudo_legal_move(&m) && self.is_legal_move(&m);
+        let ret = self.is_pseudo_legal_move(m) && self.is_legal_move(m);
         Metrics::profile(t, Timing::TimingPseudoLegalAndLegal);
         ret
     }
 
     pub fn validate_pseudo_legal_and_legal_move(&self, m: Move) -> Result<(), &'static str> {
-        if !self.is_pseudo_legal_move(&m) {
+        if !self.is_pseudo_legal_move(m) {
             return Err("Move is not pseudo-legal");
         }
-        if !self.is_legal_move(&m) {
+        if !self.is_legal_move(m) {
             return Err("Move is not legal");
         }
         Ok(())
     }
 
-    pub fn is_pseudo_legal_move(&self, m: &Move) -> bool {
+    pub fn is_pseudo_legal_move(&self, m: Move) -> bool {
         if !self.is_pseudo_legal_baremove(&m.to_inner()) {
             return false;
         }
@@ -157,20 +157,20 @@ impl Board {
 
     pub fn validate_moves(&self, moves: &[Move]) -> anyhow::Result<()> {
         let mut bd = self.clone();
-        for mv in moves.iter() {
-            if !mv.is_null() && !bd.is_pseudo_legal_and_legal_move(*mv) {
+        for &mv in moves.iter() {
+            if !mv.is_null() && !bd.is_pseudo_legal_and_legal_move(mv) {
                 return Err(anyhow!(
                     "var: {var} on {self}: move {mv:?} is not valid for board {bd}",
                     var = moves.iter().join(" ")
                 ));
             }
-            bd = bd.make_move(&mv);
+            bd = bd.make_move(mv);
         }
         Ok(())
     }
 
     // the move is pseudo legal
-    pub fn is_legal_move(&self, mv: &Move) -> bool {
+    pub fn is_legal_move(&self, mv: Move) -> bool {
         if !self.is_pseudo_legal_baremove(&mv.to_inner()) {}
 
         if !self.is_legal_baremove(&mv.to_inner()) {
@@ -286,7 +286,7 @@ mod tests {
     fn test_is_pseudo_legal_move() {
         let bd = Board::parse_fen("8/k7/8/8/4Q3/8/8/1K6 w - - 9 4").unwrap();
         let mv = Move::new_quiet(Piece::King, Square::B1, Square::H1);
-        assert_eq!(bd.is_pseudo_legal_move(&mv), false, "{mv} is legal");
+        assert_eq!(bd.is_pseudo_legal_move(mv), false, "{mv} is legal");
 
         let bd = Board::parse_fen("5rk1/6p1/Qp1q3p/3pr2P/Pp2p1P1/1Pp1P3/2P2P2/3RR1K1 b - g3 0 4")
             .unwrap();
@@ -303,7 +303,7 @@ mod tests {
             c = mv.to_inner().is_castle(&bd),
             d = mv.to().is_in(destinations)
         );
-        assert_eq!(bd.is_pseudo_legal_move(&mv), false, "{mv} is legal");
+        assert_eq!(bd.is_pseudo_legal_move(mv), false, "{mv} is legal");
     }
 
     #[test]
@@ -524,7 +524,7 @@ mod tests {
             board
         );
         let mov_h1g2 = board.parse_uci_move("h1g2")?;
-        assert_eq!(board.is_legal_move(&mov_h1g2), true);
+        assert_eq!(board.is_legal_move(mov_h1g2), true);
         // println!("{}", Metrics::to_string());
 
         for b in Catalog::stalemates().iter() {
@@ -538,7 +538,7 @@ mod tests {
 
         let board = Catalog::starting_board();
         let mv = board.parse_uci_move("e2e3").unwrap();
-        assert!(board.is_legal_move(&mv), "{:?}", mv);
+        assert!(board.is_legal_move(mv), "{:?}", mv);
         Ok(())
     }
 
@@ -560,19 +560,19 @@ mod tests {
         let a6sq = a6.square();
         let a7sq = a7.square();
         assert_eq!(
-            b.is_pseudo_legal_move(&Move::new_quiet(Piece::Pawn, a2sq, a3sq)),
+            b.is_pseudo_legal_move(Move::new_quiet(Piece::Pawn, a2sq, a3sq)),
             true
         );
         assert_eq!(
-            b.is_pseudo_legal_move(&Move::new_quiet(Piece::Pawn, a2sq, a6sq)),
+            b.is_pseudo_legal_move(Move::new_quiet(Piece::Pawn, a2sq, a6sq)),
             false
         );
         assert_eq!(
-            b.is_pseudo_legal_move(&Move::new_quiet(Piece::Pawn, a7sq, a6sq)),
+            b.is_pseudo_legal_move(Move::new_quiet(Piece::Pawn, a7sq, a6sq)),
             false
         );
         assert_eq!(
-            b.is_pseudo_legal_move(&Move::new_quiet(Piece::Pawn, a7sq, a6sq)),
+            b.is_pseudo_legal_move(Move::new_quiet(Piece::Pawn, a7sq, a6sq)),
             false
         );
         // as capture piece no longer stored
@@ -580,7 +580,7 @@ mod tests {
         //     b.is_pseudo_legal_move(&Move::new_capture(Piece::Pawn, a2sq, a3sq, Piece::Pawn)),
         //     false
         // );
-        for mv in b.legal_moves().iter() {
+        for &mv in b.legal_moves().iter() {
             assert!(b.is_legal_move(mv));
             assert!(b.is_pseudo_legal_move(mv));
         }

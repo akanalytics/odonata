@@ -54,11 +54,11 @@ impl Variation {
     }
 
     pub fn first(&self) -> Option<Move> {
-        self.moves.first().map(Move::to_owned)
+        self.moves.first().cloned()
     }
 
     pub fn second(&self) -> Option<Move> {
-        self.moves().skip(1).next().map(Move::to_owned)
+        self.moves().skip(1).next()
     }
 
     // pub fn to_inner(&self) -> BareMoveVariation {
@@ -66,8 +66,8 @@ impl Variation {
     // }
 
     #[inline]
-    pub fn moves(&self) -> impl Iterator<Item = &Move> {
-        self.moves.iter()
+    pub fn moves(&self) -> impl Iterator<Item = Move> +'_ {
+        self.moves.iter().cloned()
     }
 
     pub fn len(&self) -> usize {
@@ -76,7 +76,7 @@ impl Variation {
 
     #[inline]
     pub fn validate(&self, bd: &Board) -> anyhow::Result<()> {
-        bd.validate_moves(&self.moves().cloned().collect_vec())
+        bd.validate_moves(&self.moves().collect_vec())
     }
 
     // truncate the variation to length ply
@@ -84,7 +84,7 @@ impl Variation {
     // if len < ply just return all of the variation
     pub fn take(&self, ply: usize) -> Self {
         Variation {
-            moves: self.moves().take(ply).cloned().collect_vec(),
+            moves: self.moves().take(ply).collect_vec(),
         }
     }
 
@@ -100,7 +100,7 @@ impl Variation {
         let mut b = bd.clone();
         for word in s.split_whitespace() {
             let mv = b.parse_uci_move(word)?;
-            b = b.make_move(&mv);
+            b = b.make_move(mv);
             variation.push(mv)
         }
         Ok(variation)
@@ -148,8 +148,8 @@ impl Variation {
     pub fn to_san(&self, b: &Board) -> String {
         let mut b2 = b.clone();
         let mut s = Vec::new();
-        for mv in &self.moves {
-            if !mv.is_null() && !b2.is_pseudo_legal_and_legal_move(*mv) {
+        for mv in self.moves() {
+            if !mv.is_null() && !b2.is_pseudo_legal_and_legal_move(mv) {
                 panic!(
                     "{uci}: {mv} is not legal for board {b}",
                     uci = self.to_uci(),
@@ -165,13 +165,13 @@ impl Variation {
         let mut b2 = b.clone();
         let mut s = vec![];
         let mut errors = false;
-        for mv in &self.moves {
-            if !mv.is_null() && !b2.is_pseudo_legal_and_legal_move(*mv) {
+        for mv in self.moves() {
+            if !mv.is_null() && !b2.is_pseudo_legal_and_legal_move(mv) {
                 errors = true;
             }
             match errors {
                 false => {
-                    s.push(format!("{}", b2.to_san(&mv)));
+                    s.push(format!("{}", b2.to_san(mv)));
                     b2 = b2.make_move(mv);
                 }
                 true => s.push(format!("[{}]", mv.to_uci())),
@@ -195,11 +195,11 @@ impl Variation {
     }
 
     #[inline]
-    pub fn set_last_move(&mut self, ply: Ply, mv: &Move) {
+    pub fn set_last_move(&mut self, ply: Ply, mv: Move) {
         let ply = ply as usize;
         // root node is ply 0, so len==ply, so ply 1 gets stored in 0th element
         if self.moves.len() == ply && ply > 0 {
-            self.moves[ply - 1] = *mv;
+            self.moves[ply - 1] = mv;
         } else if ply < self.moves.len() {
             self.moves.truncate(ply);
         } else {
@@ -211,7 +211,7 @@ impl Variation {
             );
             let len = ply - self.moves.len();
             for _ in 0..len {
-                self.moves.push(*mv);
+                self.moves.push(mv);
             }
             //self.moves.resize_with(ply, || *mv);
         }

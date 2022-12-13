@@ -489,7 +489,7 @@ impl Board {
         for mv in s.split_ascii_whitespace() {
             let mv = board.parse_uci_move(mv)?;
             moves.push(mv);
-            board = board.make_move(&mv);
+            board = board.make_move(mv);
         }
         Ok(moves)
     }
@@ -516,12 +516,12 @@ impl Board {
         for mv in s.split_ascii_whitespace() {
             let mv = board.parse_san_move(mv)?;
             moves.push(mv);
-            board = board.make_move(&mv);
+            board = board.make_move(mv);
         }
         Ok(moves)
     }
 
-    pub fn to_san(&self, mv: &Move) -> String {
+    pub fn to_san(&self, mv: Move) -> String {
         if mv.is_null() {
             return "--".to_string();
         }
@@ -583,7 +583,7 @@ impl Board {
 
     pub fn to_san_movelist(&self, moves: &MoveList) -> String {
         let mut v = Vec::new();
-        for mv in moves.iter() {
+        for &mv in moves.iter() {
             debug_assert!(
                 self.is_legal_move(mv),
                 "mv {} is illegal for board {}",
@@ -595,10 +595,10 @@ impl Board {
         v.join(" ")
     }
 
-    pub fn to_san_variation(&self, moves: &Variation, _vec_tags: Option<&Vec<Tags>>) -> String {
+    pub fn to_san_variation(&self, var: &Variation, _vec_tags: Option<&Vec<Tags>>) -> String {
         let mut s = String::new();
         let mut board = self.clone();
-        for (i, mv) in moves.iter().enumerate() {
+        for (i, mv) in var.moves().enumerate() {
             debug_assert!(
                 board.is_legal_move(mv),
                 "mv {} is illegal for board {}",
@@ -665,20 +665,20 @@ mod tests {
         assert_eq!(moves.to_string(), "a1b2, a7a8q");
 
         let mut moves = Variation::new();
-        moves.set_last_move(1, &move_a1b2);
+        moves.set_last_move(1, move_a1b2);
         assert_eq!(moves.to_string(), "a1b2");
-        moves.set_last_move(1, &promo_a7a8);
+        moves.set_last_move(1, promo_a7a8);
         assert_eq!(moves.to_string(), "a7a8q");
 
-        moves.set_last_move(0, &promo_a7a8);
+        moves.set_last_move(0, promo_a7a8);
         assert_eq!(moves.to_string(), "");
 
-        moves.set_last_move(1, &move_a1b2);
-        moves.set_last_move(2, &promo_a7a8);
+        moves.set_last_move(1, move_a1b2);
+        moves.set_last_move(2, promo_a7a8);
         assert_eq!(moves.to_string(), "a1b2, a7a8q");
 
-        moves.set_last_move(0, &promo_a7a8);
-        moves.set_last_move(2, &move_a1b2);
+        moves.set_last_move(0, promo_a7a8);
+        moves.set_last_move(2, move_a1b2);
         assert_eq!(moves.to_string(), "a1b2, a1b2");
 
         let s = strip_move_numbers("1. .. c4c5 2. c6c7 3.");
@@ -702,7 +702,7 @@ mod tests {
         assert_eq!(list.to_string(), "a2a3, h7h6, b2b3, h6h5");
 
         let mv = board.parse_uci_move("a2a3")?;
-        let board2 = board.make_move(&mv);
+        let board2 = board.make_move(mv);
         let list = board2.parse_uci_variation("1. .. h7h6 2. b2b3 h6h5")?;
 
         assert_eq!(list.to_string(), "h7h6, b2b3, h6h5");
@@ -746,7 +746,7 @@ mod tests {
                 .unwrap();
         println!("{}", board.legal_moves());
         let mv = board.parse_uci_move("g1f3")?;
-        assert_eq!(board.to_san(&mv), "Ngf3");
+        assert_eq!(board.to_san(mv), "Ngf3");
         Ok(())
     }
 }

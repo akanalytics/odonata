@@ -152,7 +152,7 @@ impl Rules {
                 // }
                 // special case: will removing the capture piece AND moving the pawn result in check
                 let m = Move::new_ep_capture(fr, to.square(), capture_sq.square());
-                if b.is_legal_move(&m) {
+                if b.is_legal_move(m) {
                     moves.push(m);
                 }
             }

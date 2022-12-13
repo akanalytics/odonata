@@ -21,7 +21,7 @@ impl Board {
 }
 
 impl Debug {
-    fn append_move(&mut self, mv: &Move) -> &mut Debug {
+    fn append_move(&mut self, mv: Move) -> &mut Debug {
         self.items.push(self.board.to_san(mv));
         self
     }
@@ -67,10 +67,10 @@ impl fmt::Display for Debug {
     }
 }
 
-impl std::ops::Add<&Move> for Debug {
+impl std::ops::Add<Move> for Debug {
     type Output = Debug;
 
-    fn add(mut self, other: &Move) -> Debug {
+    fn add(mut self, other: Move) -> Debug {
         self.append_move(other).clone()
     }
 }
@@ -126,7 +126,7 @@ mod tests {
         let moves = b.legal_moves();
         println!(
             "{}",
-            b.debug() + &moves[0] + 3 + Color::White + Node::root(0) + Score::from_cp(100) + "test"
+            b.debug() + moves[0] + 3 + Color::White + Node::root(0) + Score::from_cp(100) + "test"
         );
     }
 }

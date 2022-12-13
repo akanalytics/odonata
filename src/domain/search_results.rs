@@ -113,7 +113,7 @@ fn parse_bestmove_uci(s: &str, b: &Board) -> anyhow::Result<(Move, Option<Move>)
     let bm = Move::parse_uci(bm, b).with_context(|| format!("parsing best move from '{s}'"))?;
     let pm = match pm {
         Some(pm) => Some(
-            Move::parse_uci(pm, &b.make_move(&bm))
+            Move::parse_uci(pm, &b.make_move(bm))
                 .with_context(|| format!("parsing ponder move from '{s}'"))?,
         ),
         None => None,

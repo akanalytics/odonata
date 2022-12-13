@@ -234,7 +234,7 @@ mod tests {
         );
         let mv = mv.unwrap();
         assert_eq!(mv.to_string(), uci);
-        bd.clone().make_move(&mv)
+        bd.clone().make_move(mv)
     }
 
     #[test]

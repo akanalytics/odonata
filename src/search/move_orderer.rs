@@ -227,7 +227,7 @@ impl MoveOrderer {
         //     score += self.discovered_check_sort_bonus;
         // }
 
-        if b.make_move(&mv).is_in_check(c.opposite()) {
+        if b.make_move(mv).is_in_check(c.opposite()) {
             score += self.discovered_check_sort_bonus;
         }
 

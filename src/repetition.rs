@@ -94,7 +94,7 @@ impl Repetition {
         self.prior_positions.len()
     }
 
-    pub fn push_move(&mut self, mv: &Move, pre_move: &Board) {
+    pub fn push_move(&mut self, mv: Move, pre_move: &Board) {
         if !self.enabled {
             return;
         }
@@ -116,7 +116,7 @@ impl Repetition {
         }
 
         let mut board = pre.clone();
-        for mv in moves.iter() {
+        for &mv in moves.iter() {
             self.push_move(mv, &board);
             board = board.make_move(mv);
         }
@@ -227,33 +227,33 @@ mod tests {
         let b = Catalog::starting_board();
         let knight_mv = b.parse_uci_move("b1c3").unwrap();
         let pawn_mv = b.parse_uci_move("a2a3").unwrap();
-        rep1.push_move(&knight_mv, &boards[0]);
-        rep1.push_move(&knight_mv, &boards[1]);
-        rep1.push_move(&pawn_mv, &boards[2]);
-        rep1.push_move(&knight_mv, &boards[3]);
-        rep1.push_move(&knight_mv, &boards[4]);
-        rep1.push_move(&knight_mv, &boards[5]);
-        rep1.push_move(&knight_mv, &boards[6]);
-        assert_eq!(rep1.count(&boards[4].make_move(&knight_mv)).in_total, 1);
-        assert_eq!(rep1.count(&boards[2].make_move(&pawn_mv)).in_total, 1);
-        assert_eq!(rep1.count(&boards[0].make_move(&knight_mv)).in_total, 0); // pawn move reset the count
+        rep1.push_move(knight_mv, &boards[0]);
+        rep1.push_move(knight_mv, &boards[1]);
+        rep1.push_move(pawn_mv, &boards[2]);
+        rep1.push_move(knight_mv, &boards[3]);
+        rep1.push_move(knight_mv, &boards[4]);
+        rep1.push_move(knight_mv, &boards[5]);
+        rep1.push_move(knight_mv, &boards[6]);
+        assert_eq!(rep1.count(&boards[4].make_move(knight_mv)).in_total, 1);
+        assert_eq!(rep1.count(&boards[2].make_move(pawn_mv)).in_total, 1);
+        assert_eq!(rep1.count(&boards[0].make_move(knight_mv)).in_total, 0); // pawn move reset the count
 
         rep1.pop(); // 6
         rep1.pop(); // 5
         rep1.pop(); // 4
         rep1.pop(); // 3
         rep1.pop(); // 2 the pawn move
-        rep1.push_move(&knight_mv, &boards[2]);
-        rep1.push_move(&knight_mv, &boards[3]);
-        rep1.push_move(&knight_mv, &boards[4]);
-        rep1.push_move(&knight_mv, &boards[5]);
-        rep1.push_move(&knight_mv, &boards[6]);
-        assert_eq!(rep1.count(&boards[4].make_move(&knight_mv)).in_total, 1);
-        assert_eq!(rep1.count(&boards[2].make_move(&knight_mv)).in_total, 1);
-        assert_eq!(rep1.count(&boards[0].make_move(&knight_mv)).in_total, 1); // no pawn move to reset the hmvc
-        rep1.push_move(&knight_mv, &boards[6]);
-        rep1.push_move(&knight_mv, &boards[4]);
-        assert_eq!(rep1.count(&boards[2].make_move(&knight_mv)).in_total, 1);
+        rep1.push_move(knight_mv, &boards[2]);
+        rep1.push_move(knight_mv, &boards[3]);
+        rep1.push_move(knight_mv, &boards[4]);
+        rep1.push_move(knight_mv, &boards[5]);
+        rep1.push_move(knight_mv, &boards[6]);
+        assert_eq!(rep1.count(&boards[4].make_move(knight_mv)).in_total, 1);
+        assert_eq!(rep1.count(&boards[2].make_move(knight_mv)).in_total, 1);
+        assert_eq!(rep1.count(&boards[0].make_move(knight_mv)).in_total, 1); // no pawn move to reset the hmvc
+        rep1.push_move(knight_mv, &boards[6]);
+        rep1.push_move(knight_mv, &boards[4]);
+        assert_eq!(rep1.count(&boards[2].make_move(knight_mv)).in_total, 1);
     }
 
     #[test]
@@ -271,9 +271,9 @@ mod tests {
         );
         algo.repetition.new_game();
         let mvs = b.parse_uci_variation(s).unwrap();
-        for mv in mvs.iter() {
-            algo.repetition.push_move(&mv, &b);
-            b = b.make_move(&mv);
+        for &mv in mvs.iter() {
+            algo.repetition.push_move(mv, &b);
+            b = b.make_move(mv);
             println!(
                 "rep count = {} hash = {:x}",
                 algo.repetition.count(&b).in_total,
@@ -297,9 +297,9 @@ mod tests {
         eng.algo.set_callback(UciServer::uci_info);
         eng.algo.repetition.new_game();
         let mvs = b.parse_uci_variation(s).unwrap();
-        for mv in mvs.iter() {
-            eng.algo.repetition.push_move(&mv, &b);
-            b = b.make_move(&mv);
+        for &mv in mvs.iter() {
+            eng.algo.repetition.push_move(mv, &b);
+            b = b.make_move(mv);
         }
         eng.algo.set_position(Position::from_board(b));
         // eng.algo.explainer.enabled = true;

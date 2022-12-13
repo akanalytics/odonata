@@ -92,7 +92,7 @@ impl Tree {
             let children = self.children_of(tn.id);
             tn = children
                 .iter()
-                .filter(|&&tn| tn.mv == *mv)
+                .filter(|&&tn| tn.mv == mv)
                 .exactly_one()
                 .ok()?;
         }
@@ -175,7 +175,7 @@ fn displayable<'a>(t: &'a Tree, bd: &'a Board) -> impl Fn(&mut fmt::Formatter) -
     fn format_data(tree: &Tree, bd: &Board, tn: &TreeNode, f: &mut fmt::Formatter) -> fmt::Result {
         let var = tree.variation_of(tn.id);
         if let Some(stem) = &var.stem() {
-            let san = bd.make_moves_old(stem).to_san(&tn.mv);
+            let san = bd.make_moves_old(stem).to_san(tn.mv);
             write!(f, "{san}")?;
         }
         Ok(())
@@ -244,7 +244,7 @@ fn displayable2<'a>(ct: &'a ChessTree) -> impl Fn(&mut fmt::Formatter) -> fmt::R
     fn format_data2(ct: &ChessTree, tn: &TreeNode, f: &mut fmt::Formatter) -> fmt::Result {
         let var = ct.tree.variation_of(tn.id);
         if let Some(stem) = &var.stem() {
-            let san = ct.board.make_moves_old(stem).to_san(&tn.mv);
+            let san = ct.board.make_moves_old(stem).to_san(tn.mv);
             let uci = tn.mv.to_uci();
             let nd = &ct.arena[tn.index];
             let a = nd.n.alpha;
