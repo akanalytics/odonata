@@ -234,9 +234,9 @@ mod tests {
         rep1.push_move(&knight_mv, &boards[4]);
         rep1.push_move(&knight_mv, &boards[5]);
         rep1.push_move(&knight_mv, &boards[6]);
-        assert_eq!(rep1.count(&boards[4]).in_total, 1);
-        assert_eq!(rep1.count(&boards[2]).in_total, 1);
-        assert_eq!(rep1.count(&boards[0]).in_total, 0); // pawn move reset the count
+        assert_eq!(rep1.count(&boards[4].make_move(&knight_mv)).in_total, 1);
+        assert_eq!(rep1.count(&boards[2].make_move(&pawn_mv)).in_total, 1);
+        assert_eq!(rep1.count(&boards[0].make_move(&knight_mv)).in_total, 0); // pawn move reset the count
 
         rep1.pop(); // 6
         rep1.pop(); // 5
@@ -248,12 +248,12 @@ mod tests {
         rep1.push_move(&knight_mv, &boards[4]);
         rep1.push_move(&knight_mv, &boards[5]);
         rep1.push_move(&knight_mv, &boards[6]);
-        assert_eq!(rep1.count(&boards[4]).in_total, 1);
-        assert_eq!(rep1.count(&boards[2]).in_total, 1);
-        assert_eq!(rep1.count(&boards[0]).in_total, 1); // no pawn move to reset the hmvc
+        assert_eq!(rep1.count(&boards[4].make_move(&knight_mv)).in_total, 1);
+        assert_eq!(rep1.count(&boards[2].make_move(&knight_mv)).in_total, 1);
+        assert_eq!(rep1.count(&boards[0].make_move(&knight_mv)).in_total, 1); // no pawn move to reset the hmvc
         rep1.push_move(&knight_mv, &boards[6]);
         rep1.push_move(&knight_mv, &boards[4]);
-        assert_eq!(rep1.count(&boards[2]).in_total, 1);
+        assert_eq!(rep1.count(&boards[2].make_move(&knight_mv)).in_total, 1);
     }
 
     #[test]
