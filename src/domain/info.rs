@@ -1,77 +1,76 @@
 use anyhow::Context;
-use itertools::Itertools;
 use std::fmt;
 
 use crate::{
     board::Board,
     eval::score::Score,
     infra::utils::{Displayable, KeywordIter, Uci},
-    mv::{BareMove, Move},
+    mv::Move,
     piece::Ply,
     variation::Variation,
     MoveList,
 };
 
-#[derive(Clone, Default, Debug, PartialEq, Eq, Hash)]
-pub struct BareMoveVariation(pub Vec<BareMove>);
+// #[derive(Clone, Default, Debug, PartialEq, Eq, Hash)]
+// pub struct BareMoveVariation(pub Vec<BareMove>);
 
-impl Uci for BareMoveVariation {
-    fn fmt_uci(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0.iter().map(BareMove::to_uci).join(" "))?;
-        Ok(())
-    }
+// impl Uci for BareMoveVariation {
+//     fn fmt_uci(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         write!(f, "{}", self.0.iter().map(BareMove::to_uci).join(" "))?;
+//         Ok(())
+//     }
 
-    fn parse_uci(s: &str) -> anyhow::Result<Self> {
-        let mut variation = BareMoveVariation::default();
-        for word in s.split_whitespace() {
-            variation.0.push(BareMove::parse_uci(word)?)
-        }
-        Ok(variation)
-    }
-}
+//     fn parse_uci(s: &str) -> anyhow::Result<Self> {
+//         let mut variation = BareMoveVariation::default();
+//         for word in s.split_whitespace() {
+//             variation.0.push(BareMove::parse_uci(word)?)
+//         }
+//         Ok(variation)
+//     }
+// }
 
-impl fmt::Display for BareMoveVariation {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        self.fmt_uci(f)
-    }
-}
+// impl fmt::Display for BareMoveVariation {
+//     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+//         self.fmt_uci(f)
+//     }
+// }
 
-impl BareMoveVariation {
-    pub fn new() -> Self {
-        Self::default()
-    }
+// impl BareMoveVariation {
+//     pub fn new() -> Self {
+//         Self::default()
+//     }
 
-    pub fn first(&self) -> Option<BareMove> {
-        self.0.first().map(BareMove::to_owned)
-    }
+//     pub fn first(&self) -> Option<BareMove> {
+//         self.0.first().map(BareMove::to_owned)
+//     }
 
-    pub fn second(&self) -> Option<BareMove> {
-        self.0.iter().skip(1).next().map(BareMove::to_owned)
-    }
+//     pub fn second(&self) -> Option<BareMove> {
+//         self.0.iter().skip(1).next().map(BareMove::to_owned)
+//     }
 
-    pub fn moves(&self) -> impl Iterator<Item = &BareMove> {
-        self.0.iter()
-    }
+//     pub fn moves(&self) -> impl Iterator<Item = &BareMove> {
+//         self.0.iter()
+//     }
 
-    pub fn push(&mut self, mv: BareMove) {
-        self.0.push(mv);
-    }
+//     pub fn push(&mut self, mv: BareMove) {
+//         self.0.push(mv);
+//     }
 
-    pub fn to_san(&self, b: &Board) -> String {
-        Variation::from_inner(self, b).to_san(b)
-    }
+//     pub fn to_san(&self, b: &Board) -> String {
+//         Variation::from_inner(self, b).to_san(b)
+//     }
 
-    // truncate the variation to length ply
-    // so the result does not include the ply-th move in the variation
-    // if len < ply just return all of the variation
-    pub fn take(&self, ply: usize) -> Self {
-        BareMoveVariation(self.0.iter().take(ply).cloned().collect_vec())
-    }
+//     // truncate the variation to length ply
+//     // so the result does not include the ply-th move in the variation
+//     // if len < ply just return all of the variation
+//     pub fn take(&self, ply: usize) -> Self {
+//         BareMoveVariation(self.0.iter().take(ply).cloned().collect_vec())
+//     }
 
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-}
+//     pub fn len(&self) -> usize {
+//         self.0.len()
+//     }
+// }
 
 #[derive(Clone, Default, Debug, PartialEq, Eq)]
 pub enum InfoKind {
@@ -225,18 +224,18 @@ impl Info {
 
 #[cfg(test)]
 mod tests {
-    use crate::eval::score::ToScore;
-
     use super::*;
+    use crate::eval::score::ToScore;
     use test_log::test;
 
     #[test]
     fn test_basic_variation() {
-        let var = BareMoveVariation::parse_uci("a2a3 h7h6 a3a4").unwrap();
+        let b = Board::starting_pos();
+        let var = b.var("a2a3 h7h6 a3a4");
         assert_eq!(var.len(), 3);
-        assert_eq!(var.first(), Some(BareMove::parse_uci("a2a3").unwrap()));
-        assert_eq!(var.second(), Some(BareMove::parse_uci("h7h6").unwrap()));
-        assert_eq!(var.take(1), BareMoveVariation::parse_uci("a2a3").unwrap());
+        assert_eq!(var.first().unwrap().to_uci(), "a2a3");
+        assert_eq!(var.second().unwrap().to_uci(), "h7h6");
+        assert_eq!(var.take(1).to_uci(), "a2a3");
         assert_eq!(var.take(1).second(), None);
     }
 
@@ -273,7 +272,9 @@ mod tests {
         assert_eq!(info.cpuload_per_mille, None);
 
         assert_eq!(
-            Info::parse_uci("info depth 5 seldepth 6", &b).unwrap().to_uci(),
+            Info::parse_uci("info depth 5 seldepth 6", &b)
+                .unwrap()
+                .to_uci(),
             "depth 5 seldepth 6",
         );
     }

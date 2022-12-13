@@ -1,7 +1,6 @@
 use crate::bits::bitboard::Bitboard;
 use crate::board::Board;
 use crate::cache::hasher::Hasher;
-use crate::domain::info::BareMoveVariation;
 use crate::infra::black_box;
 use crate::infra::metric::Metrics;
 use crate::mv::Move;
@@ -73,7 +72,7 @@ impl Board {
         b
     }
 
-    pub fn make_moves(&self, var: &BareMoveVariation) -> Board {
+    pub fn make_moves(&self, var: &Variation) -> Board {
         let mut b = self.clone();
         for mv in var.moves() {
             debug_assert!(
@@ -81,10 +80,10 @@ impl Board {
                 "Invalid board before move {mv} from {var} on board {b} (base board {self:#})"
             );
             debug_assert!(
-                b.is_legal_baremove(mv) && b.is_legal_move(&b.augment_move(*mv)),
+                b.is_legal_move(mv),
                 "Move {mv} from {var} on board {b} (base board {self:#}) is invalid"
             );
-            b = b.make_move(&b.augment_move(*mv));
+            b = b.make_move(mv);
         }
         b
     }

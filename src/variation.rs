@@ -2,7 +2,6 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::board::Board;
-use crate::domain::info::BareMoveVariation;
 use crate::mv::Move;
 use crate::piece::Ply;
 use std::fmt;
@@ -38,16 +37,16 @@ impl Variation {
         Self::default()
     }
 
-    pub fn from_inner(bmv: &BareMoveVariation, b: &Board) -> Self {
-        let mut var = Self::new();
-        let mut b = b.clone();
-        for mv in bmv.moves() {
-            let mv = b.augment_move(*mv);
-            var.push(mv);
-            b = b.make_move(&mv);
-        }
-        var
-    }
+    // pub fn from_inner(bmv: &BareMoveVariation, b: &Board) -> Self {
+    //     let mut var = Self::new();
+    //     let mut b = b.clone();
+    //     for mv in bmv.moves() {
+    //         let mv = b.augment_move(*mv);
+    //         var.push(mv);
+    //         b = b.make_move(&mv);
+    //     }
+    //     var
+    // }
 
     #[inline]
     pub fn empty() -> &'static Self {
@@ -62,9 +61,9 @@ impl Variation {
         self.moves().skip(1).next().map(Move::to_owned)
     }
 
-    pub fn to_inner(&self) -> BareMoveVariation {
-        BareMoveVariation(self.moves().map(Move::to_inner).collect_vec())
-    }
+    // pub fn to_inner(&self) -> BareMoveVariation {
+    //     BareMoveVariation(self.moves().map(Move::to_inner).collect_vec())
+    // }
 
     #[inline]
     pub fn moves(&self) -> impl Iterator<Item = &Move> {
