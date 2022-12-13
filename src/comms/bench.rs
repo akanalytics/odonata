@@ -1,6 +1,5 @@
 use crate::catalog::*;
 use crate::infra::component::{Component, State};
-use crate::mv::Move;
 use crate::perft::Perft;
 use crate::search::engine::ThreadedSearch;
 use crate::search::timecontrol::TimeControl;
@@ -112,7 +111,6 @@ impl Bench {
                 .ok()
                 .unwrap()
                 .iter()
-                .map(Move::to_inner)
                 .contains(bm)
             {
                 score += 1;

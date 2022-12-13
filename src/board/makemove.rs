@@ -150,7 +150,7 @@ impl Board {
 
         // board.moves.push(*m);
         if m.is_null() {
-            let move_hash = Hasher::default().hash_move(m, self);
+            let move_hash = Hasher::default().hash_move(*m, self);
             b.hash = self.hash ^ move_hash;
     
             Metrics::profile(t, Timing::TimingMakeMove);
@@ -218,7 +218,7 @@ impl Board {
         b.castling -= m.castling_rights_lost();
         // b.castling ^= m.castling_side();
 
-        let move_hash = Hasher::default().hash_move(m, self);
+        let move_hash = Hasher::default().hash_move(*m, self);
         b.hash = self.hash ^ move_hash;
 
         Metrics::profile(t, Timing::TimingMakeMove);
@@ -295,7 +295,7 @@ impl Board {
     #[inline]
     pub fn do_move(&mut self, m: Move) {
         let mut b = self;
-        let move_hash = Hasher::default().hash_move(&m, b);
+        let move_hash = Hasher::default().hash_move(m, b);
         b.hash = b.hash ^ move_hash;
         let mover = m.mover_piece(b);
         // now hash calculated - we can adjust these
@@ -371,7 +371,7 @@ impl Board {
     pub fn undo_move(&mut self, m: Move) {
         if true {
             let mut b = self;
-            let move_hash = Hasher::default().hash_move(&m, b);
+            let move_hash = Hasher::default().hash_move(m, b);
             b.hash = b.hash ^ move_hash;
 
             // now hash calculated - we can adjust these

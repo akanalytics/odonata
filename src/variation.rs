@@ -54,6 +54,14 @@ impl Variation {
         &EMPTY
     }
 
+    pub fn first(&self) -> Option<Move> {
+        self.moves.first().map(Move::to_owned)
+    }
+
+    pub fn second(&self) -> Option<Move> {
+        self.moves().skip(1).next().map(Move::to_owned)
+    }
+
     pub fn to_inner(&self) -> BareMoveVariation {
         BareMoveVariation(self.moves().map(Move::to_inner).collect_vec())
     }
@@ -63,14 +71,26 @@ impl Variation {
         self.moves.iter()
     }
 
+    pub fn len(&self) -> usize {
+        self.moves.len()
+    }
+
     #[inline]
     pub fn validate(&self, bd: &Board) -> anyhow::Result<()> {
         bd.validate_moves(&self.moves().cloned().collect_vec())
     }
 
+    // truncate the variation to length ply
+    // so the result does not include the ply-th move in the variation
+    // if len < ply just return all of the variation
+    pub fn take(&self, ply: usize) -> Self {
+        Variation {
+            moves: self.moves().take(ply).cloned().collect_vec(),
+        }
+    }
+
     pub fn to_uci(&self) -> String {
-        self.moves
-            .iter()
+        self.moves()
             .map(|mv| mv.to_uci())
             .collect::<Vec<String>>()
             .join(" ")
@@ -108,14 +128,14 @@ impl Variation {
         }
     }
 
-    /// variation head
-    pub fn take(&self, ply: usize) -> Variation {
-        let len = self.len();
-        debug_assert!(ply <= len, "failed: ply={ply} <= len({self})={len}");
-        Variation {
-            moves: self.moves[..ply].to_vec(),
-        }
-    }
+    // /// variation head
+    // pub fn take(&self, ply: usize) -> Variation {
+    //     let len = self.len();
+    //     debug_assert!(ply <= len, "failed: ply={ply} <= len({self})={len}");
+    //     Variation {
+    //         moves: self.moves[..ply].to_vec(),
+    //     }
+    // }
 
     pub fn extend(&mut self, var: &Variation) {
         self.moves.extend(var.moves.iter())

@@ -127,7 +127,7 @@ impl Algo {
 
                         multi_pv: Some(self.restrictions.multi_pv_index() + 1),
                         // self.multi_pv_index_of = restrictions.multi_pv_count;
-                        pv: Some(pv.to_inner()),
+                        pv: Some(pv.clone()),
                         // self.best_pv = stats.pv().clone();
                         score: Some(score),
                         // self.best_score = stats.score();
@@ -152,10 +152,9 @@ impl Algo {
                 self.controller.invoke_callback(&info);
                 exit = self.exit_iteration(ply, score);
 
-                multi_pv[i] = (pv.to_inner(), score);
+                multi_pv[i] = (pv.clone(), score);
 
                 if let Some(mv) = multi_pv[i].0.first() {
-                    let mv = self.board.augment_move(mv);
                     self.restrictions.exclude_moves.push(mv);
                 }
                 if trail.chess_tree.enabled() {

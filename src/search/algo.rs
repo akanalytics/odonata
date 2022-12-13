@@ -407,12 +407,11 @@ impl Algo {
     }
 
     pub fn best_move(&self) -> Move {
-        self.board
-            .augment_move(self.results.best_move().unwrap_or_default())
+        self.results.best_move().unwrap_or_default()
     }
 
     pub fn pv(&self) -> Variation {
-        Variation::from_inner(&self.results.pv(), &self.board)
+        self.results.pv().clone()
     }
 
     #[inline]
@@ -457,7 +456,6 @@ mod tests {
     use super::*;
     use crate::catalog::*;
     use crate::comms::uci_server::UciServer;
-    use crate::mv::BareMove;
     use crate::piece::*;
     use anyhow::*;
     use test_log::test;
@@ -507,11 +505,11 @@ mod tests {
             Position::parse_epd("2r2k2/5pp1/3p1b1p/2qPpP2/1p2B2P/pP3P2/2P1R3/2KRQ3 b - - 0 1")
                 .unwrap();
         let mut search = Algo::from_config();
-        let sr = search.search(pos, TimeControl::Depth(12)).unwrap();
+        let sr = search.search(pos.clone(), TimeControl::Depth(12)).unwrap();
         println!("{}", search.results_as_position());
         assert_eq!(
             sr.best_move().unwrap(),
-            BareMove::parse_uci("f6h4").unwrap()
+            Move::parse_uci("f6h4", pos.board()).unwrap()
         )
     }
 

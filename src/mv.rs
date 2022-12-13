@@ -226,7 +226,7 @@ impl Board {
 type UMOVE = u16;
 
 // FIXME: public methods
-#[derive(Default, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Move {
     bits: UMOVE,
 }
@@ -340,23 +340,26 @@ impl Move {
         let from = Bitboard::parse_square(s.take_slice(0..2))?;
         let to = Bitboard::parse_square(s.take_slice(2..4))?;
         if let Some(ch) = s.take_char_at(4) {
-            let promo = Piece::from_char(ch)?;
+            let _promo = Piece::from_char(ch)?;
             if from.rank_number_as_white(b.color_us()) != 7 {
                 bail!("move {s} from {from} sq is not rank 2/7 for board {b}");
             }
             if to.rank_number_as_white(b.color_us()) != 8 {
                 bail!("move {s} from {from} sq is not rank 1/8 for board {b}");
             }
-            Ok(Self::new_promo(from, to, promo))
         } else {
-            let mover = b
+            let _mover = b
                 .piece(from)
-                .ok_or(anyhow!("move {s} no piece on {from} for board {b}"))?;
+                .ok_or_else(|| anyhow!("move {s} no piece on {from} for board {b}"))?;
             if !from.is_in(b.us()) {
                 bail!("move {s} has wrong color mover for board {b}");
             }
-            Ok(Self::new_quiet(mover, from, to))
         }
+        b.legal_moves()
+            .iter()
+            .find(|mv| mv.to_uci() == s)
+            .ok_or_else(|| anyhow!("move {s} is not a legal move for board {b}"))
+            .cloned()
     }
 
     #[inline]
@@ -369,21 +372,25 @@ impl Move {
         Move { bits }
     }
 
+    #[inline]
     pub fn set_capture(&mut self, _capture: Piece) {
         self.bits |= 1 << Self::OFFSET_IS_CAPTURE;
         // self.bits &= !(7 << Self::OFFSET_CAPTURE);
         // self.bits += (capture.index() as u32) << Self::OFFSET_CAPTURE;
     }
 
+    #[inline]
     pub fn set_promo(&mut self, promo: Piece) {
         self.bits += (promo.index() as UMOVE) << Self::OFFSET_PROMO;
     }
 
+    #[inline]
     pub fn set_en_passant(&mut self, _ep_sq: Square) {
         // self.bits &= !(127 << Self::OFFSET_EP);
         // self.bits += (ep_sq.index() as u32 & 127) << Self::OFFSET_EP;
     }
 
+    #[inline]
     pub fn set_castling_side(&mut self, _castle_side: CastlingRights) {
         // self.bits += (castle_side.bits() as u32) << Self::OFFSET_CASTLE;
     }

@@ -533,7 +533,7 @@ mod tests {
             println!("{}", search);
 
             assert_eq!(res.score().unwrap().mate_in(), Some(3), "#{} {}", i, pos);
-            assert_eq!(res.pv(), expected_pv.to_inner(), "#{} {}", i, pos);
+            assert_eq!(res.pv(), expected_pv, "#{} {}", i, pos);
         }
         Ok(())
     }

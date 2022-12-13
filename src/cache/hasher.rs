@@ -182,7 +182,7 @@ impl Hasher {
         hash
     }
 
-    pub fn hash_move(&self, m: &Move, pre_move: &Board) -> Hash {
+    pub fn hash_move(&self, m: Move, pre_move: &Board) -> Hash {
         Metrics::incr(Counter::CalcHashMove);
         let mut hash = self.side;
         if !pre_move.en_passant().is_empty() {
@@ -196,13 +196,13 @@ impl Hasher {
         let us = pre_move.color_us();
         let them = pre_move.color_them();
 
-        if let Some(c) = m.capture_piece(pre_move) {
+        if let Some(cap) = m.capture_piece(pre_move) {
             if m.is_ep_capture(pre_move) {
                 // ep capture is like capture but with capture piece on *ep* square not *dest*
-                hash ^= self.squares[them][c][m.capture_square(pre_move)];
+                hash ^= self.squares[them][cap][m.capture_square(pre_move)];
             } else {
                 // regular capture
-                hash ^= self.squares[them][c][m.to()];
+                hash ^= self.squares[them][cap][m.to()];
             }
         }
 
@@ -332,7 +332,7 @@ mod tests {
         moves.push(Move::NULL_MOVE);
         let hash_bd1 = hasher.hash_board(&bd1);
         for mv in moves.iter() {
-            let hash_mv = hasher.hash_move(mv, &bd1);
+            let hash_mv = hasher.hash_move(*mv, &bd1);
             let hash_bd2 = hasher.hash_board(&bd1.make_move(mv));
             // println!("Move: {} => {}", mv, hash_mv);
             assert_eq!(hash_bd1 ^ hash_mv, hash_bd2);
@@ -383,7 +383,7 @@ mod tests {
             // println!("-->");
             for m in moves.iter() {
                 let bd2 = b.make_move(m);
-                let hash_mv = hasher.hash_move(m, b);
+                let hash_mv = hasher.hash_move(*m, b);
                 let hash_bd2 = hasher.hash_board(&bd2);
                 // println!("Move: {:#} = {}", m, hash_mv);
                 assert_eq!(

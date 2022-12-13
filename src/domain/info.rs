@@ -5,7 +5,7 @@ use std::fmt;
 use crate::{
     board::Board,
     eval::score::Score,
-    infra::utils::{KeywordIter, Uci},
+    infra::utils::{Displayable, KeywordIter, Uci},
     mv::{BareMove, Move},
     piece::Ply,
     variation::Variation,
@@ -88,12 +88,12 @@ pub struct Info {
     pub depth: Option<Ply>,
     pub seldepth: Option<Ply>,
     pub time_millis: Option<u64>,
-    pub multi_pv: Option<usize>,  // 1 offset, uci uses 1 offset
-    pub pv: Option<BareMoveVariation>,
+    pub multi_pv: Option<usize>, // 1 offset, uci uses 1 offset
+    pub pv: Option<Variation>,
     pub nodes: Option<u64>,
     pub nodes_thread: Option<u64>,
     pub score: Option<Score>,
-    pub currmove: Option<BareMove>,
+    pub currmove: Option<Move>,
     pub currmovenumber_from_1: Option<u32>,
     pub hashfull_per_mille: Option<u32>,
     pub nps: Option<u64>,
@@ -109,13 +109,13 @@ impl Info {
         Self::default()
     }
 
-    fn set(&mut self, name: &str, value: &str) -> anyhow::Result<()> {
+    fn set(&mut self, name: &str, value: &str, b: &Board) -> anyhow::Result<()> {
         debug!("setting info.{name} = _{value}_");
         match name {
             "depth" => self.depth = Some(value.parse()?),
             "seldepth" => self.seldepth = Some(value.parse()?),
             "multipv" => self.multi_pv = Some(value.parse::<usize>()?),
-            "currmove" => self.currmove = Some(BareMove::parse_uci(value)?),
+            "currmove" => self.currmove = Some(Move::parse_uci(value, b)?),
             "currmovenumber" => self.currmovenumber_from_1 = Some(value.parse()?),
             "score" => self.score = Some(Score::parse_uci(value)?),
             "nodes" => self.nodes = Some(value.parse()?),
@@ -124,7 +124,7 @@ impl Info {
             "tbhits" => self.tbhits = Some(value.parse::<u64>()?),
             "cpuload" => self.cpuload_per_mille = Some(value.parse::<u32>()?),
             "time" => self.time_millis = Some(value.parse::<u64>()?),
-            "pv" => self.pv = Some(BareMoveVariation::parse_uci(value)?),
+            "pv" => self.pv = Some(Variation::parse_uci(value, b)?),
             "refutation" => todo!(),
             "string" => self.string_text = Some(value.to_string()),
             _ => panic!("unable to set info field {name} to value {value}"),
@@ -132,7 +132,6 @@ impl Info {
         Ok(())
     }
 }
-
 
 impl fmt::Display for Info {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -143,8 +142,13 @@ impl fmt::Display for Info {
             sd = self.seldepth.unwrap_or_default(),
             ms = self.time_millis.unwrap_or_default(),
             nodes = self.nodes.unwrap_or_default(),
-            bm = self.pv.as_ref().unwrap_or(&BareMoveVariation::default()).first().unwrap_or(BareMove::null()),
-            pv = self.pv.as_ref().unwrap_or(&BareMoveVariation::default()),
+            bm = self
+                .pv
+                .as_ref()
+                .unwrap_or(&Variation::default())
+                .first()
+                .unwrap_or(Move::new_null()),
+            pv = self.pv.as_ref().unwrap_or(&Variation::default()),
         )?;
         Ok(())
     }
@@ -156,7 +160,11 @@ impl fmt::Display for Info {
 //     }
 // }
 
-impl Uci for Info {
+impl Info {
+    pub fn to_uci(&self) -> String {
+        Displayable(|fmt| self.fmt_uci(fmt)).to_string()
+    }
+
     fn fmt_uci(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut v = vec![];
         #[rustfmt::skip] {
@@ -180,10 +188,10 @@ impl Uci for Info {
         Ok(())
     }
 
-    fn parse_uci(s: &str) -> anyhow::Result<Self> {
+    pub fn parse_uci(s: &str, b: &Board) -> anyhow::Result<Self> {
         let s = s
             .strip_prefix("info")
-            .ok_or(anyhow::format_err!("no leading 'info' in '{s}'"))?
+            .ok_or_else(|| anyhow::format_err!("no leading 'info' in '{s}'"))?
             .trim_start()
             .to_string();
 
@@ -207,8 +215,8 @@ impl Uci for Info {
         let mut info = Info::new();
         let iter = KeywordIter::new(&words, Some("string"), &s);
         for (key, value) in iter {
-            info.set(&key, value.trim())
-                .context(format!("setting info '{key}' to '{value}'"))?;
+            info.set(&key, value.trim(), b)
+                .with_context(|| format!("setting info '{key}' to '{value}'"))?;
         }
         info.nodes_thread = info.nodes;
         Ok(info)
@@ -243,13 +251,17 @@ mod tests {
     }
     #[test]
     fn test_info_parse_uci() {
-        let info = Info::parse_uci(concat!(
-            "info depth 10 seldepth 12 multipv 2 ",
-            "score cp 13 nodes 27473 nps 1248772 tbhits 0 ",
-            "time 22 ",
-            "pv e2e4 c7c5 g1f3 d7d6 ",
-            "string Hello World"
-        ))
+        let b = Board::starting_pos();
+        let info = Info::parse_uci(
+            concat!(
+                "info depth 10 seldepth 12 multipv 2 ",
+                "score cp 13 nodes 27473 nps 1248772 tbhits 0 ",
+                "time 22 ",
+                "pv e2e4 c7c5 g1f3 d7d6 ",
+                "string Hello World"
+            ),
+            &b,
+        )
         .unwrap();
         assert_eq!(info.depth, Some(10));
         assert_eq!(info.seldepth, Some(12));
@@ -261,8 +273,8 @@ mod tests {
         assert_eq!(info.cpuload_per_mille, None);
 
         assert_eq!(
-            Info::parse_uci("info depth 5 seldepth 6").unwrap().to_uci(),
-            "depth 5 seldepth 6"
+            Info::parse_uci("info depth 5 seldepth 6", &b).unwrap().to_uci(),
+            "depth 5 seldepth 6",
         );
     }
 }

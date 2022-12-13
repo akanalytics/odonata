@@ -1,10 +1,8 @@
 use crate::eval::eval::Eval;
 use crate::eval::score::Score;
-use crate::infra::utils::{
-    calculate_branching_factor_by_nodes_and_depth, Differ, Displayable, Uci,
-};
+use crate::infra::utils::{calculate_branching_factor_by_nodes_and_depth, Differ, Displayable};
 use crate::movelist::ScoredMoveList;
-use crate::mv::{BareMove, Move};
+use crate::mv::Move;
 use crate::other::outcome::Outcome;
 use crate::piece::Ply;
 use crate::search::timecontrol::TimeControl;
@@ -19,13 +17,13 @@ use std::iter::{self, FromIterator};
 use std::time::Duration;
 use tabled::builder::Builder;
 
-use super::info::{BareMoveVariation, Info};
+use super::info::Info;
 
 #[derive(Clone, Default, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct SearchResults {
     #[serde(skip)]
-    pub bm: BareMove,
+    pub bm: Move,
     pub depth: Ply,
     pub seldepth: Ply,
     pub time_millis: u64,
@@ -42,7 +40,7 @@ pub struct SearchResults {
     pub pos: Option<Position>,
 
     #[serde(skip)]
-    pub multi_pv: Vec<(BareMoveVariation, Score)>,
+    pub multi_pv: Vec<(Variation, Score)>,
 
     #[serde(skip)]
     pub infos: Vec<Info>,
@@ -86,7 +84,7 @@ impl fmt::Display for SearchResultsWithExplanation<'_> {
         let mut bu = Builder::new();
         bu.set_columns(["Score", "PV", "Explain"]);
         for pv in &self.sr.multi_pv {
-            let b = self.board.make_moves(&pv.0);
+            let b = self.board.make_moves_old(&pv.0);
             bu.add_record([
                 pv.1.to_string(),
                 pv.0.to_string(),
@@ -147,7 +145,7 @@ impl SearchResults {
         while let Some(line) = iter.next() {
             if iter.peek().is_none() {
                 let (bm, pm) = parse_bestmove_uci(line, b)?;
-                let sr = SearchResults::from_infos(bm.to_inner(), pm.map(|m| m.to_inner()), infos);
+                let sr = SearchResults::from_infos(bm, pm, infos);
                 assert!(
                     // look for move occuing twice in multi-pv
                     !sr.multi_pv
@@ -159,7 +157,7 @@ impl SearchResults {
                 return Ok(sr);
             } else {
                 // @todo
-                let info = Info::parse_uci(line)?;
+                let info = Info::parse_uci(line, b)?;
                 // ignore "info depth 21 currmove g7g5 currmovenumber 18"
                 // info nodes 100000 nps 1020000 hashfull 50 time 97
                 // if info.depth.is_some() && info.pv.is_some() {
@@ -229,7 +227,7 @@ impl Differ<SearchResults> for SearchResults {
 }
 
 impl SearchResults {
-    fn extract_multi_pv(infos: &Vec<Info>) -> Vec<(BareMoveVariation, Score)> {
+    fn extract_multi_pv(infos: &Vec<Info>) -> Vec<(Variation, Score)> {
         // step #1, find max multipv index
         let max_index = infos.iter().map(|i| i.multi_pv.unwrap_or(1)).max();
 
@@ -257,7 +255,7 @@ impl SearchResults {
         multi_pv
     }
 
-    pub fn from_infos(bm: BareMove, pm: Option<BareMove>, infos: Vec<Info>) -> Self {
+    pub fn from_infos(bm: Move, pm: Option<Move>, infos: Vec<Info>) -> Self {
         // gets nodecount for nodes at last depth reported
         // fn calculate_nodes_for_iid(n: Ply, infos: &[Info]) -> anyhow::Result<u64> {
         //     let info_n = infos
@@ -305,7 +303,7 @@ impl SearchResults {
             let multi_pv = if !bm.is_null() {
                 Self::extract_multi_pv(&infos)
             } else {
-                vec![(BareMoveVariation::new(), Score::zero())]
+                vec![(Variation::new(), Score::zero())]
             };
             SearchResults {
                 bm,
@@ -328,7 +326,7 @@ impl SearchResults {
             }
         } else {
             let mut sr = SearchResults::default();
-            let mut var = BareMoveVariation::new();
+            let mut var = Variation::new();
             sr.bm = bm;
             if !bm.is_null() {
                 var.push(bm);
@@ -344,7 +342,7 @@ impl SearchResults {
     pub fn new(
         algo: &Algo,
         depth: Ply,
-        multi_pv: Vec<(BareMoveVariation, Score)>,
+        multi_pv: Vec<(Variation, Score)>,
         seldepth: Option<Ply>,
     ) -> Self {
         let nodes_thread_cumul = algo.clock.cumul_nodes_this_thread();
@@ -386,7 +384,7 @@ impl SearchResults {
     }
 
     /// outcome could be abandoned or win/draw reason
-    pub fn best_move(&self) -> Result<BareMove, Outcome> {
+    pub fn best_move(&self) -> Result<Move, Outcome> {
         if !self.bm.is_null() {
             Ok(self.bm)
         } else {
@@ -398,11 +396,11 @@ impl SearchResults {
         self.outcome
     }
 
-    pub fn pv(&self) -> BareMoveVariation {
+    pub fn pv(&self) -> Variation {
         if self.multi_pv.len() > 0 {
             self.multi_pv[0].0.clone()
         } else {
-            BareMoveVariation::new()
+            Variation::new()
         }
     }
 
@@ -414,7 +412,7 @@ impl SearchResults {
         }
     }
 
-    pub fn multi_pv(&self) -> Vec<(BareMoveVariation, Score)> {
+    pub fn multi_pv(&self) -> Vec<(Variation, Score)> {
         self.multi_pv
             .iter()
             .map(|(var, sc)| (var.clone(), *sc))
@@ -449,12 +447,11 @@ impl SearchResults {
     ];
 
     pub fn to_position(&self, mut pos: Position, tags: &[&str]) -> Position {
-        let var = Variation::from_inner(&self.pv(), pos.board());
+        let var = self.pv();
         if tags.contains(&Tag::PV) {
             pos.set(Tag::Pv(var));
         }
-        if let Some(ref mv) = self.pv().first() {
-            let mv = pos.board().augment_move(*mv);
+        if let Some(mv) = self.pv().first() {
             if tags.contains(&Tag::SM) {
                 pos.set(Tag::SuppliedMove(mv));
             }
@@ -559,13 +556,17 @@ bestmove g2g4 ponder e7e5
         // assert_eq!(BareMove::parse_uci("g3g6")?, "g3g6".mv());
         // assert_eq!(sr.best_move(), Ok("g3g6".try_into()?));
         assert_eq!(sr.nodes, 100000);
-        assert_eq!(sr.best_move().unwrap(), "g2g4".mv());
-        assert_eq!(sr.pv(), "e2e4 e7e5 a2a3".var());
-        assert_eq!(sr.multi_pv(), vec![("e2e4 e7e5 a2a3".var(), "+M2".cp())]);
+        // "g2g4"[b]  
+        assert_eq!(
+            sr.best_move().unwrap(),
+            Move::parse_uci("g2g4", &b).unwrap()
+        );
+        assert_eq!(sr.pv(), b.var("e2e4 e7e5 a2a3"));
+        assert_eq!(sr.multi_pv(), vec![(b.var("e2e4 e7e5 a2a3"), "+M2".cp())]);
         assert_eq!(sr.depth, 11);
         assert_eq!(sr.bf > 2.5, true);
         assert_eq!(sr.bf < 3.0, true);
-        info!("{}", "a3a4".mv());
+        info!("{}", b.mv("a3a4"));
 
         let s = r#"info depth 10 seldepth 10 nodes 61329 nps 1039000 score mate 2 hashfull 40 time 58 pv h2h4 e7e5 b2b3
 info depth 11 seldepth 12 nodes 82712 nps 973000 score mate 2 hashfull 45 time 84 pv e2e4 e7e5 a2a3
@@ -575,7 +576,7 @@ bestmove 0000
         let sr = SearchResults::parse_uci(s, &b).unwrap();
         assert_eq!(sr.nodes, 100000);
         assert_eq!(sr.best_move().is_err(), true);
-        assert_eq!(sr.pv(), "".var());
+        assert_eq!(sr.pv(), Variation::new());
 
         Ok(())
     }

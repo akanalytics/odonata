@@ -171,10 +171,7 @@ impl Parse {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
-    use crate::infra::testing::Testing;
-
     use crate::catalog::Catalog;
 
     #[test]
@@ -244,7 +241,7 @@ mod tests {
     fn test_parse_san_variation() {
         let b = Board::parse_fen("6k1/pp4p1/2p5/2bp4/8/P5Pb/1P3rrP/2BRRN1K b - - 0 1").unwrap();
         let var = b.parse_san_variation("1... Rg1+ 2. Kxg1 Rxf1#").unwrap();
-        assert_eq!(var.to_inner(), "g2g1 h1g1 f2f1".var(), "{}", var.to_uci())
+        assert_eq!(var.to_uci(), "g2g1 h1g1 f2f1")
     }
 
     #[test]

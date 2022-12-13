@@ -1,7 +1,7 @@
 use crate::board::Board;
 use crate::eval::score::{Score, ToScore};
 use crate::infra::utils::Displayable;
-use crate::mv::{BareMove, Move};
+use crate::mv::Move;
 use crate::parse::Parse;
 use crate::piece::MAX_LEGAL_MOVES;
 use crate::piece::{Color, Piece};
@@ -180,14 +180,14 @@ use std::fmt;
 
 #[derive(Default, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ScoredMoveList {
-    moves: Vec<(BareMove, Score)>,
+    moves: Vec<(Move, Score)>,
 }
 
 impl ScoredMoveList {
     pub fn new() -> Self {
         Self::default()
     }
-    pub fn push(&mut self, smv: (BareMove, Score)) {
+    pub fn push(&mut self, smv: (Move, Score)) {
         self.moves.push(smv);
     }
 
@@ -203,7 +203,7 @@ impl ScoredMoveList {
         Ok(())
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (BareMove, Score)> + '_ {
+    pub fn iter(&self) -> impl Iterator<Item = (Move, Score)> + '_ {
         self.moves.iter().cloned()
     }
 
@@ -220,7 +220,7 @@ impl ScoredMoveList {
         let s = s.replace(',', " ");
         for smv in s.split_ascii_whitespace() {
             if let Some((before, after)) = smv.split_once(":") {
-                let mv = b.parse_san_move(before)?.to_inner();
+                let mv = b.parse_san_move(before)?;
                 let score = Score::parse_pgn(after)?;
                 moves.push((mv, score));
             } else {
@@ -234,11 +234,11 @@ impl ScoredMoveList {
         self.iter().nth(0).map(|(_mv, s)| s)
     }
 
-    pub fn best_move(&self) -> Option<BareMove> {
+    pub fn best_move(&self) -> Option<Move> {
         self.iter().nth(0).map(|(mv, _s)| mv)
     }
 
-    pub fn centipawn_loss(&self, actual: BareMove) -> Option<Score> {
+    pub fn centipawn_loss(&self, actual: Move) -> Option<Score> {
         let best = self.best_score().unwrap_or_default();
         let worst = self.iter().last().map(|(_mv, s)| s).unwrap_or_default();
         let matching_score = self.iter().find(|&(mv, _s)| mv == actual).map(|(_mv, s)| s);

@@ -2,8 +2,8 @@ use crate::board::Board;
 use crate::catalog::Catalog;
 use crate::comms::json_rpc::JsonRpc;
 use crate::domain::engine::Engine;
+use crate::domain::info::{Info, InfoKind};
 use crate::domain::Player;
-use crate::domain::info::{Info, InfoKind, BareMoveVariation};
 use crate::eval::eval::Eval;
 use crate::infra::component::{Component, State};
 use crate::infra::metric::METRICS_TOTAL;
@@ -11,7 +11,7 @@ use crate::infra::utils::Formatting;
 use crate::infra::utils::Uci;
 use crate::infra::version::Version;
 use crate::movelist::MoveList;
-use crate::mv::{BareMove};
+use crate::mv::Move;
 use crate::perft::Perft;
 use crate::position::Position;
 use crate::search::engine::ThreadedSearch;
@@ -337,9 +337,9 @@ impl UciServer {
                 let capture = mv.capture_square(&b).uci();
                 let ep = mv.ep().uci();
                 // pseudo_legal=b.is_pseudo_legal_move(&mv);
-                let legal = b.is_legal_move(mv);
+                let legal = b.is_legal_move(&mv);
                 let san = if legal {
-                    b.to_san(mv)
+                    b.to_san(&mv)
                 } else {
                     "???".to_string()
                 };
@@ -777,16 +777,20 @@ impl UciServer {
         }
     }
 
-    fn print_bm_and_ponder(var: Option<&BareMoveVariation>) {
+    fn print_bm_and_ponder(var: Option<&Variation>) {
         let bm = if var.is_some() && var.unwrap().len() > 0 {
             var.unwrap().first().unwrap()
         } else {
             info!("---> Null  best move");
-            BareMove::null()
+            Move::new_null()
         };
         let mut output = format!("bestmove {}", bm.to_uci());
         if var.is_some() && var.unwrap().len() > 1 {
-            output = format!("{} ponder {}", output, var.unwrap().second().unwrap().to_uci());
+            output = format!(
+                "{} ponder {}",
+                output,
+                var.unwrap().second().unwrap().to_uci()
+            );
         }
         Self::print(&output);
     }

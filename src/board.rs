@@ -1047,6 +1047,13 @@ mod tests {
             prof1.benchmark(|| bd.piece(black_box(sq)));
         }
 
+        let mut prof3 = PerfProfiler::new("fast.board.is_pawn".into());
+        let mut prof4 = PerfProfiler::new("board.is_pawn".into());
+        for sq in bd.pawns().squares() {
+            prof3.benchmark(|| black_box(sq).is_in(black_box(&bd).pawns()));
+            prof4.benchmark(|| black_box(&bd).piece(black_box(sq)).unwrap() == Piece::Pawn);
+        }
+
         // piece.at 64, mv.piece_field 61
         let e1e2 = bd.parse_san_move("Ke2").unwrap();
         let e3e4 = bd.parse_san_move("e4").unwrap();
