@@ -26,6 +26,22 @@ where
     }
 }
 
+// /// things that can be used to lookup in an array
+// pub trait Indexer<'t, T> {
+//     fn index(self) -> usize;
+
+//     fn indexing(&self, array: &'t [T]) -> &'t T {
+//         #[cfg(feature = "unchecked_indexing")]
+//         unsafe {
+//             array.get_unchecked(self.index())
+//         }
+
+//         #[cfg(not(feature = "unchecked_indexing"))]
+//         &array[(self.index())]
+//     }
+// }
+
+
 /// compares two things and reports differences or perhaps just the first
 ///  difference in a human readable form
 pub trait Differ<T> {

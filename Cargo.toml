@@ -99,15 +99,6 @@ incremental = false
 opt-level = 3 
 split-debuginfo = "unpacked" 
 
-[profile.tournament]
-#panic = "abort"
-# codegen-units = 1
-# debug = false
-# incremental = true
-inherits = "release"
-# opt-level = 3
-# split-debuginfo = "unpacked"
-
 
 [lib]
 # bug in criterion<->cargo interaction https://bheisler.github.io/criterion.rs/book/faq.html

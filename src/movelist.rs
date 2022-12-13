@@ -350,11 +350,11 @@ impl MoveList {
     #[inline]
     pub fn push(&mut self, mv: Move) {
         debug_assert!(self.len() < MAX_LEGAL_MOVES);
-        #[cfg(feature = "unchecked_indexing")]
+        #[cfg(not(all(not(feature = "remove_metrics"), debug_assertions)))]
         unsafe {
             self.moves.push_unchecked(mv);
         }
-        #[cfg(not(feature = "unchecked_indexing"))]
+        #[cfg(all(not(feature = "remove_metrics"), debug_assertions))]
         {
             self.moves.push(mv);
         }

@@ -1,6 +1,8 @@
 [alias]
-benchmark = "t --cargo-profile=tournament --features=fast "
-benchmark_all = "t --cargo-profile=tournament --features=fast --no-capture bench_"
+# benchmark = "t --cargo-profile=release --features=fast "
+# benchmark_all = "t --cargo-profile=tournament --features=fast --no-capture bench_"
+# benchmark = "t --cargo-profile=release --features=fast "
+# benchmark_all = "t --cargo-profile=tournament --features=fast --no-capture bench_"
 t = "nextest run"
 
 

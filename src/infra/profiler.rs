@@ -1,11 +1,11 @@
 use perf_event::{events::Hardware, Builder, Counter, Group};
-use std::fmt;
+use std::{fmt, sync::Mutex};
 
 use super::{black_box, utils::IntegerFormatter};
 
 pub struct Flamegraph<'a> {
     guard: Option<pprof::ProfilerGuard<'a>>,
-    name: String,
+    name: Option<String>,
 }
 
 impl fmt::Debug for Flamegraph<'_> {
@@ -20,14 +20,14 @@ impl fmt::Debug for Flamegraph<'_> {
 /// enable with RUST_LOG=flamegraph=trace
 impl<'a> Flamegraph<'a> {
     pub fn new(name: String) -> Flamegraph<'a> {
-        let mut prof = Flamegraph { guard: None, name };
+        let mut prof = Flamegraph { guard: None, name: None };
         if log_enabled!(target: "flamegraph", log::Level::Trace) {
-            prof.enable();
+            prof.enable(name);
         }
         prof
     }
 
-    pub fn enable(&mut self) {
+    pub fn enable(&mut self, name: String ) {
         if self.guard.is_none() {
             self.guard = Some(
                 pprof::ProfilerGuardBuilder::default()
@@ -36,6 +36,7 @@ impl<'a> Flamegraph<'a> {
                     .build()
                     .unwrap(),
             );
+            self.name = Some(name);
         }
     }
 
@@ -60,14 +61,17 @@ impl<'a> Flamegraph<'a> {
             anyhow::bail!("Unable to build flamegraph report");
         };
 
+        let Some(name) = &self.name else {
+            panic!("name not set on flamegraph profiler");
+        };
         use std::fs::File;
-        let name1 = format!("flamegraph_1_{name}.svg", name = self.name);
+        let name1 = format!("flamegraph_{name}_1.svg");
         let file = File::create(&name1)?;
         let mut options = pprof::flamegraph::Options::default();
         options.flame_chart = false;
         report.flamegraph_with_options(file, &mut options)?;
 
-        let name2 = format!("flamegraph_2_{name}.svg", name = self.name);
+        let name2 = format!("flamegraph_{name}_2.svg");
         let file = File::create(&name2)?;
         let mut options = pprof::flamegraph::Options::default();
         options.reverse_stack_order = true;
@@ -76,8 +80,12 @@ impl<'a> Flamegraph<'a> {
     }
 }
 
-pub struct PerfProfiler<'a> {
-    flamegraph: Flamegraph<'a>,
+static FLAMEGRAPH: Mutex<Flamegraph> = Mutex::new(Flamegraph {
+    guard: None,
+    name: None,
+});
+
+pub struct PerfProfiler {
     benchmark_iters: usize,
     group: Group,
     name: String,
@@ -90,24 +98,22 @@ pub struct PerfProfiler<'a> {
     cycles: Counter,
 }
 
-impl fmt::Display for PerfProfiler<'_> {
+impl fmt::Display for PerfProfiler {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.name)
     }
 }
 
-impl PerfProfiler<'_> {
+impl PerfProfiler {
     #[inline]
     pub fn new(name: String) -> Self {
-        let mut flamegraph = Flamegraph {
-            guard: None,
-            name: name.clone(),
-        };
         let benchmark_iters = if let Ok(s) = std::env::var("RUST_BENCH") {
-            flamegraph.enable();
             s.parse().expect("RUST_BENCH not an integer")
         } else {
             1
+        };
+        if let Ok(_s) = std::env::var("RUST_FLAME") {
+            FLAMEGRAPH.lock().unwrap().enable(name.clone());
         };
         let mut group = Group::new().unwrap();
         // REF_CPU_CYCLES not supported on ZEN3
@@ -142,7 +148,6 @@ impl PerfProfiler<'_> {
         // .build()
         // .unwrap();
         Self {
-            flamegraph,
             benchmark_iters,
             name,
             group,
@@ -243,9 +248,11 @@ impl PerfProfiler<'_> {
 mod tests {
 
     #[cfg(test)]
-    impl Drop for PerfProfiler<'_> {
+    impl Drop for PerfProfiler {
         fn drop(&mut self) {
-            let files = self.flamegraph.report().unwrap_or_default(); // silent fail in drop
+            let mut flamer = FLAMEGRAPH.lock().unwrap();
+            let files = flamer.report().unwrap_or_default(); // silent fail in drop
+            flamer.guard = None;
             if files.len() > 0 {
                 println!("flamegraphs: {}", files.iter().format(", "));
             }
@@ -260,6 +267,7 @@ mod tests {
     }
 
     use crate::infra::black_box;
+    use crate::infra::profiler::FLAMEGRAPH;
     use crate::test_log::test;
     use crate::trace::stat::Stat;
 

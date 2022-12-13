@@ -189,7 +189,7 @@ impl TimeControl {
         match self {
             TimeControl::Infinite => write!(f, "inf")?,
             TimeControl::DefaultTime => write!(f, "def")?,
-            TimeControl::SearchTime(dur) => write!(f, "st={d}", d = dur.as_secs_f64())?,
+            TimeControl::SearchTime(dur) => write!(f, "st={d:.3}", d = dur.as_secs_f64())?,
             TimeControl::MateIn(depth) => write!(f, "mate={depth}")?,
             TimeControl::Depth(d) => write!(f, "depth={d}")?,
             TimeControl::NodeCount(nodes) => write!(f, "nodes={nodes}")?,
@@ -204,14 +204,51 @@ impl TimeControl {
                     write!(f, "{moves}/",)?;
                 }
                 if secs > 0. {
-                    write!(f, "{s}", s = secs)?;
+                    write!(f, "{s:.3}", s = secs)?;
                 }
                 if inc > 0. {
-                    write!(f, "+{i}", i = inc)?;
+                    write!(f, "+{i:.3}", i = inc)?;
                 }
             }
         };
         Ok(())
+    }
+
+    pub fn mul_f32(&self, scaling: f32) -> TimeControl{
+        use TimeControl::*;
+
+        let tc = match &self {
+            DefaultTime => DefaultTime,
+            Depth(ply) => Depth(*ply),
+            // SearchTime(dur) => SearchTime(Duration::from_secs_f32(dur.as_secs_f32() * scaling)),
+            SearchTime(dur) => SearchTime(dur.mul_f32(scaling)),
+            NodeCount(nodes) => NodeCount(*nodes),
+            Cycles(n) => Cycles((*n as f32 * scaling) as u64),
+            Instructions(n) => Instructions((*n as f32 * scaling) as u64),
+            Infinite => Infinite,
+            MateIn(depth) => MateIn(*depth),
+            UciFischer(RemainingTime {
+                wtime,
+                btime,
+                winc,
+                binc,
+                moves_to_go,
+                our_color: color,
+            }) => UciFischer(RemainingTime {
+                wtime: wtime.mul_f32(scaling),
+                btime: btime.mul_f32(scaling),
+                winc: winc.mul_f32(scaling),
+                binc: binc.mul_f32(scaling),
+                moves_to_go: *moves_to_go,
+                our_color: *color,
+            }),
+            FischerMulti { moves, secs, inc } => FischerMulti {
+                moves: *moves,
+                secs: secs * scaling,
+                inc: inc * scaling,
+            },
+        };
+        tc
     }
 
     pub fn parse_pgn(s: &str) -> anyhow::Result<TimeControl> {

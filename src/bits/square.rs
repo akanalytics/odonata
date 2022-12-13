@@ -292,12 +292,12 @@ impl<T> std::ops::Index<Square> for [T] {
     type Output = T;
     #[inline]
     fn index(&self, i: Square) -> &Self::Output {
-        #[cfg(feature = "unchecked_indexing")]
+        #[cfg(not(all(not(feature = "unchecked_indexing"), debug_assertions)))]
         unsafe {
             &self.get_unchecked(i.index())
         }
 
-        #[cfg(not(feature = "unchecked_indexing"))]
+        #[cfg(all(not(feature = "unchecked_indexing"), debug_assertions))]
         &self[(i.index())]
     }
 }

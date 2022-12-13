@@ -267,6 +267,7 @@ impl Metrics {
     }
 
     pub fn flush_thread_local() {
+        #[cfg(all(not(feature = "remove_metrics"), debug_assertions))]
         METRICS_THREAD.with(|tm| {
             METRICS_TOTAL.write().include(&*tm.borrow());
             *METRICS_LAST_ITER.write() = std::mem::take(&mut tm.borrow_mut());
@@ -276,28 +277,28 @@ impl Metrics {
     #[allow(unused_variables)]
     #[inline]
     pub fn add_value(v: u64, h: Histograms) {
-        #[cfg(not(feature = "remove_metrics"))]
+        #[cfg(all(not(feature = "remove_metrics"), debug_assertions))]
         METRICS_THREAD.with(|s| s.borrow_mut().histograms[h as usize].add_value(v));
     }
 
     #[allow(unused_variables)]
     #[inline]
     pub fn inc_endgame(eg: EndGame) {
-        #[cfg(not(feature = "remove_metrics"))]
+        #[cfg(all(not(feature = "remove_metrics"), debug_assertions))]
         METRICS_THREAD.with(|s| s.borrow_mut().endgame[eg as usize] += 1);
     }
 
     #[allow(unused_variables)]
     #[inline]
     pub fn incr(e: Counter) {
-        #[cfg(not(feature = "remove_metrics"))]
+        #[cfg(all(not(feature = "remove_metrics"), debug_assertions))]
         METRICS_THREAD.with(|s| s.borrow_mut().counters[e.index()] += 1);
     }
 
     #[allow(unused_variables)]
     #[inline]
     pub fn classify_move(n: &Node, mv: Move, mt: MoveType, bd: &Board) {
-        #[cfg(not(feature = "remove_metrics"))]
+        #[cfg(all(not(feature = "remove_metrics"), debug_assertions))]
         {
             let ev = match mt {
                 MoveType::GoodCapture => Event::MoveGoodCapture,
@@ -322,7 +323,7 @@ impl Metrics {
                 Self::incr_node(n, Event::MoveCapture)
             }
         }
-        #[cfg(not(feature = "remove_metrics"))]
+        #[cfg(all(not(feature = "remove_metrics"), debug_assertions))]
         {
             use crate::Piece;
             match mv.mover_piece(bd) {
@@ -339,21 +340,21 @@ impl Metrics {
     #[allow(unused_variables)]
     #[inline]
     pub fn incr_node(n: &Node, e: Event) {
-        #[cfg(not(feature = "remove_metrics"))]
+        #[cfg(all(not(feature = "remove_metrics"), debug_assertions))]
         METRICS_THREAD.with(|s| s.borrow_mut().nodes[e.index()].add(n, 1));
     }
 
     #[allow(unused_variables)]
     #[inline]
     pub fn add_node(n: &Node, e: Event, i: u64) {
-        #[cfg(not(feature = "remove_metrics"))]
+        #[cfg(all(not(feature = "remove_metrics"), debug_assertions))]
         METRICS_THREAD.with(|s| s.borrow_mut().nodes[e.index()].add(n, i));
     }
 
     #[allow(unused_variables)]
     #[inline]
     pub fn profile(start: Option<Instant>, e: Timing) {
-        #[cfg(not(feature = "remove_metrics"))]
+        #[cfg(all(not(feature = "remove_metrics"), debug_assertions))]
         METRICS_THREAD
             .with(|s| s.borrow_mut().profilers[e as usize].record(start.unwrap().elapsed()));
     }
@@ -361,7 +362,7 @@ impl Metrics {
     #[allow(unused_variables)]
     #[inline]
     pub fn elapsed(ply: Ply, dur: Duration, e: Event) {
-        #[cfg(not(feature = "remove_metrics"))]
+        #[cfg(all(not(feature = "remove_metrics"), debug_assertions))]
         METRICS_THREAD.with(|s| s.borrow_mut().durations[e.index()].set(ply, dur));
     }
 
@@ -372,10 +373,10 @@ impl Metrics {
         // no metrics   36,113,825,832
         // no metrics   35,733,319,464 but "instant=" #[dynamic] static EPOCH: Instant = Instant::now();
         // no metrics   35,683,293,565 but with option instant
-        if cfg!(feature = "remove_metrics") {
-            None
-        } else {
+        if cfg!(all(not(feature = "remove_metrics"), debug_assertions)) {
             Some(Instant::now())
+        } else {
+            None
         }
     }
 }

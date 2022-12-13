@@ -125,7 +125,7 @@ impl Stat {
     #[allow(unused_variables)]
     #[inline]
     pub fn add(&self, add: i64) {
-        // #[cfg(not(feature="remove_metrics"))]
+        #[cfg(all(not(feature = "remove_metrics"), debug_assertions))]
         THREAD_INDEX.with(|f| {
             self.counter[f.load(Ordering::Relaxed)]
                 .0
@@ -136,7 +136,7 @@ impl Stat {
     #[allow(unused_variables)]
     #[inline]
     pub fn clear(&self) {
-        // #[cfg(not(feature="remove_metrics"))]
+        #[cfg(all(not(feature = "remove_metrics"), debug_assertions))]
         THREAD_INDEX.with(|f| {
             self.counter[f.load(Ordering::Relaxed)]
                 .0
@@ -146,7 +146,7 @@ impl Stat {
 
     #[inline]
     pub fn increment(&self) {
-        #[cfg(not(feature = "remove_metrics"))]
+        #[cfg(all(not(feature = "remove_metrics"), debug_assertions))]
         self.add(1);
     }
 

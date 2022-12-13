@@ -182,7 +182,7 @@ mod tests {
         let pos = Catalog::test_position();
         let eng = ThreadedSearch::new();
         let mut eng = eng.algo;
-        let tc = TimeControl::Depth(5);
+        let tc = TimeControl::Depth(8);
         let mut prof = PerfProfiler::new("bench_search".into());
         let _ = black_box(prof.benchmark(|| eng.search(pos.clone(), tc)));
     }

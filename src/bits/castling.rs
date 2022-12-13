@@ -5,7 +5,6 @@ use anyhow::{bail, Result};
 use std::fmt;
 use std::iter::*;
 
-
 bitflags! {
     pub struct CastlingRights: u8 {
         const NONE = 0;
@@ -28,12 +27,12 @@ impl<T> std::ops::Index<CastlingRights> for [T] {
     type Output = T;
     #[inline]
     fn index(&self, i: CastlingRights) -> &Self::Output {
-        #[cfg(feature = "unchecked_indexing")]
+        #[cfg(not(all(not(feature = "unchecked_indexing"), debug_assertions)))]
         unsafe {
             &self.get_unchecked(i.index())
         }
 
-        #[cfg(not(feature = "unchecked_indexing"))]
+        #[cfg(all(not(feature = "unchecked_indexing"), debug_assertions))]
         &self[(i.index())]
     }
 }
@@ -156,7 +155,6 @@ impl CastlingRights {
             Square::G8 => CastlingRights::BLACK_KING,
             Square::C8 => CastlingRights::BLACK_QUEEN,
             _ => CastlingRights::NONE,
-            
         }
     }
 

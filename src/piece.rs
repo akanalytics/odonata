@@ -60,16 +60,17 @@ pub enum Color {
     Black = 1,
 } // numbering as per CPW
 
+
 impl<T> std::ops::Index<Color> for [T] {
     type Output = T;
     #[inline]
     fn index(&self, i: Color) -> &Self::Output {
-        #[cfg(feature = "unchecked_indexing")]
+        #[cfg(not(all(not(feature = "unchecked_indexing"), debug_assertions)))]
         unsafe {
             &self.get_unchecked(i.index())
         }
 
-        #[cfg(not(feature = "unchecked_indexing"))]
+        #[cfg(all(not(feature = "unchecked_indexing"), debug_assertions))]
         &self[(i.index())]
     }
 }
@@ -194,12 +195,12 @@ impl<T> std::ops::Index<Piece> for [T] {
     type Output = T;
     #[inline]
     fn index(&self, i: Piece) -> &Self::Output {
-        #[cfg(feature = "unchecked_indexing")]
+        #[cfg(not(all(not(feature = "unchecked_indexing"), debug_assertions)))]
         unsafe {
             &self.get_unchecked(i.index())
         }
 
-        #[cfg(not(feature = "unchecked_indexing"))]
+        #[cfg(all(not(feature = "unchecked_indexing"), debug_assertions))]
         &self[(i.index())]
     }
 }

@@ -608,7 +608,7 @@ mod tests {
     fn bench_endgame() {
         let mut prof1 = PerfProfiler::new("endgame-ctor".into());
         let mut prof2 = PerfProfiler::new("outcome-enum".into());
-        let mut prof3 = PerfProfiler::new("material-insuff".into());
+        let mut prof3 = PerfProfiler::new("material-insuff2".into());
 
         let b1 = Board::parse_fen("k7/8/8/8/NN6/8/8/K7 w - - 0 1").unwrap();
         let b2 = Board::parse_fen("k7/8/3N4/8/8/8/8/K61 w - - 0 1").unwrap();
