@@ -125,12 +125,12 @@ impl NullMovePruning {
 
     #[inline]
     pub fn contains_null_move(var: &Variation) -> bool {
-        var.iter().any(|mv| mv.is_null())
+        var.moves().any(|mv| mv.is_null())
     }
 
     #[inline]
     pub fn last_move_is_null_move(var: &Variation) -> bool {
-        var.last() == Some(&Move::NULL_MOVE)
+        var.last() == Some(Move::NULL_MOVE)
     }
 
     #[inline]

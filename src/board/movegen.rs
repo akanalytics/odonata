@@ -547,8 +547,8 @@ mod tests {
         let b = Catalog::starting_board();
         let bd2 = Catalog::test_position();
         let mvs = b.parse_uci_variation("a2a3 e7e6 b2b4")?;
-        assert_eq!(b.validate_moves(&mvs).is_ok(), true);
-        assert_eq!(bd2.board().validate_moves(&mvs).is_ok(), false);
+        assert_eq!(b.validate_moves(&mvs.moves().collect_vec()).is_ok(), true);
+        assert_eq!(bd2.board().validate_moves(&mvs.moves().collect_vec()).is_ok(), false);
         Ok(())
     }
 
@@ -593,7 +593,7 @@ mod tests {
                 .unwrap();
         let var = b.parse_uci_variation("d3d1 b4c6 e2c4").unwrap();
         assert_eq!(var.len(), 3);
-        assert!(b.validate_moves(&var).is_ok());
+        assert!(b.validate_moves(&var.moves().collect_vec()).is_ok());
     }
 
     #[test]

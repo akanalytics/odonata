@@ -68,7 +68,7 @@ impl Tree {
     }
 
     fn add(&mut self, var: &Variation, index: usize) {
-        let mv = *var.last().expect("variation empty - cannot add root node");
+        let mv = var.last().expect("variation empty - cannot add root node");
         assert!(self.find_by_var(&var).is_none(), "duplicate: {var}");
         let parent = self
             .find_by_var(&var.stem().unwrap())
@@ -390,7 +390,7 @@ impl Trail {
     }
 
     pub fn pop_move(&mut self, n: &Node, mv: Move) {
-        debug_assert_eq!(self.path.last(), Some(&mv));
+        debug_assert_eq!(self.path.last(), Some(mv));
         self.path.pop();
         debug_assert_eq!(n.ply as usize, self.path.len());
     }
@@ -573,7 +573,7 @@ mod tests {
         let n = Node::root(0);
         t.push_move(&n, board.parse_san_move("e4").unwrap());
         t.push_move(&n.new_child(),
-            *board.parse_san_variation("e4 e5").unwrap().last().unwrap(),
+            board.parse_san_variation("e4 e5").unwrap().last().unwrap(),
         );
         println!("e4 e5\n{t}");
     }

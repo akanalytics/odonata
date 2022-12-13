@@ -153,7 +153,7 @@ impl HistoryHeuristic {
     }
 
     #[inline]
-    fn get_mut(&mut self, c: Color, mv: &Move, bd: &Board) -> &mut Tally {
+    fn get_mut(&mut self, c: Color, mv: Move, bd: &Board) -> &mut Tally {
         if !self.enabled {
             return &mut self.history[c][0][0][0];
         }
@@ -166,7 +166,7 @@ impl HistoryHeuristic {
     }
 
     #[inline]
-    pub fn raised_alpha(&mut self, n: &Node, b: &Board, mv: &Move) {
+    pub fn raised_alpha(&mut self, n: &Node, b: &Board, mv: Move) {
         if !self.enabled || mv.is_capture() || n.depth < self.min_depth || n.ply > self.max_ply {
             return;
         }
@@ -185,16 +185,16 @@ impl HistoryHeuristic {
 
     #[inline]
     pub fn beta_variation(&mut self, n: &Node, b: &Board, var: &Variation, mv: Move) {
-        self.beta_cutoff(n, b, &mv);
+        self.beta_cutoff(n, b, mv);
         if self.variation {
-            for m in var.iter().rev().skip(1).step_by(2).take(3) {
+            for m in var.moves().rev().skip(1).step_by(2).take(3) {
                 self.beta_cutoff(n, b, m);
             }
         }
     }
 
     #[inline]
-    pub fn beta_cutoff(&mut self, n: &Node, b: &Board, mv: &Move) {
+    pub fn beta_cutoff(&mut self, n: &Node, b: &Board, mv: Move) {
         if !self.enabled || mv.is_capture() || n.depth < self.min_depth || n.ply > self.max_ply {
             return;
         }
@@ -212,7 +212,7 @@ impl HistoryHeuristic {
     }
 
     #[inline]
-    pub fn duff(&mut self, n: &Node, b: &Board, mv: &Move) {
+    pub fn duff(&mut self, n: &Node, b: &Board, mv: Move) {
         if !self.enabled || mv.is_capture() || n.depth < self.min_depth || n.ply > self.max_ply {
             return;
         }
@@ -251,19 +251,19 @@ mod tests {
         let mut hh = HistoryHeuristic::default();
         hh.get_mut(
             Color::White,
-            &Move::new_quiet(Piece::Pawn, Square::A2, Square::A3),
+            Move::new_quiet(Piece::Pawn, Square::A2, Square::A3),
             &bd,
         );
         hh.get_mut(
             Color::White,
-            &Move::new_quiet(Piece::Pawn, Square::A2, Square::A3),
+            Move::new_quiet(Piece::Pawn, Square::A2, Square::A3),
             &bd,
         )
         .good = 1;
         assert_eq!(
             hh.get_mut(
                 Color::White,
-                &Move::new_quiet(Piece::Pawn, Square::A2, Square::A3),
+                Move::new_quiet(Piece::Pawn, Square::A2, Square::A3),
                 &bd
             )
             .good,

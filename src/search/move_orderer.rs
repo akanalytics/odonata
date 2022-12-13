@@ -351,8 +351,8 @@ impl Algo {
         }
 
         if pv.starts_with(var) {
-            let best = pv[var.len()];
-            let j = moves.iter().position(|mv| mv == &best);
+            let best = pv.moves().nth(var.len());
+            let j = moves.iter().position(|&mv| Some(mv) == best);
             if let Some(j) = j {
                 if j != 0 {
                     moves.swap(0, j);

@@ -116,7 +116,7 @@ impl Repetition {
         }
 
         let mut board = pre.clone();
-        for &mv in moves.iter() {
+        for mv in moves.moves() {
             self.push_move(mv, &board);
             board = board.make_move(mv);
         }
@@ -271,7 +271,7 @@ mod tests {
         );
         algo.repetition.new_game();
         let mvs = b.parse_uci_variation(s).unwrap();
-        for &mv in mvs.iter() {
+        for mv in mvs.moves() {
             algo.repetition.push_move(mv, &b);
             b = b.make_move(mv);
             println!(
@@ -296,8 +296,8 @@ mod tests {
         let mut eng = ThreadedSearch::new();
         eng.algo.set_callback(UciServer::uci_info);
         eng.algo.repetition.new_game();
-        let mvs = b.parse_uci_variation(s).unwrap();
-        for &mv in mvs.iter() {
+        let var = b.parse_uci_variation(s).unwrap();
+        for mv in var.moves() {
             eng.algo.repetition.push_move(mv, &b);
             b = b.make_move(mv);
         }
@@ -339,7 +339,7 @@ mod tests {
         let mut pos2 = pos3.clone();
         let mut var2 = pos3.supplied_variation().clone();
         let len = var2.len();
-        var2.truncate(len - 4);
+        var2 = var2.take(len - 4);
         pos2.set(Tag::SuppliedVariation(var2));
         engine.new_game();
         engine.set_position(pos2.clone());
@@ -359,7 +359,7 @@ mod tests {
         let mut pos1 = pos3.clone();
         let mut var1 = pos3.supplied_variation().clone();
         let len = var1.len();
-        var1.truncate(len - 8);
+        var1 = var1.take(len - 8);
         pos1.set(Tag::SuppliedVariation(var1));
         engine.new_game();
         engine.set_position(pos1.clone());

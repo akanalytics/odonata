@@ -17,6 +17,7 @@ use crate::domain::{search_results::SearchResultsWithExplanation, SearchTree, Tr
 use crate::piece::MoveType;
 use anyhow::{Context, Result};
 use fmt::Debug;
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fs::File;
@@ -186,7 +187,7 @@ impl Explainer {
             return None;
         }
 
-        debug_assert!(self.board.validate_moves(&var).is_ok());
+        debug_assert!(self.board.validate_moves(&var.moves().collect_vec()).is_ok());
 
         // a. see if we are explaining why one variation not taken
         if let Some(ref why_not) = self.why_not {

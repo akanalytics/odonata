@@ -421,10 +421,10 @@ impl Algo {
                     bm.unwrap(),
                     b
                 );
-                self.history.raised_alpha(&n, b, &mv);
+                self.history.raised_alpha(&n, b, mv);
             } else {
                 trail.ignore_move(&n, s, mv, Event::MoveScoreLow);
-                self.history.duff(&n, b, &mv);
+                self.history.duff(&n, b, mv);
             }
         }
 

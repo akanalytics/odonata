@@ -5,7 +5,6 @@ use crate::board::Board;
 use crate::mv::Move;
 use crate::piece::Ply;
 use std::fmt;
-use std::ops::{Deref, DerefMut};
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Variation {
@@ -61,17 +60,29 @@ impl Variation {
         self.moves().skip(1).next()
     }
 
+    pub fn last(&self) -> Option<Move> {
+        self.moves.last().cloned()
+    }
+
+    pub fn clear(&mut self) {
+        self.moves.clear();
+    }
+
     // pub fn to_inner(&self) -> BareMoveVariation {
     //     BareMoveVariation(self.moves().map(Move::to_inner).collect_vec())
     // }
 
     #[inline]
-    pub fn moves(&self) -> impl Iterator<Item = Move> +'_ {
+    pub fn moves(&self) -> impl DoubleEndedIterator<Item = Move> + '_ {
         self.moves.iter().cloned()
     }
 
     pub fn len(&self) -> usize {
         self.moves.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     #[inline]
@@ -190,6 +201,10 @@ impl Variation {
         self.moves.push(mv);
     }
 
+    pub fn pop(&mut self) -> Option<Move> {
+        self.moves.pop()
+    }
+
     pub fn push_front(&mut self, mv: Move) {
         self.moves.insert(0, mv);
     }
@@ -224,30 +239,30 @@ impl Variation {
     }
 }
 
-impl Deref for Variation {
-    type Target = Vec<Move>;
+// impl Deref for Variation {
+//     type Target = Vec<Move>;
 
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.moves
-    }
-}
+//     #[inline]
+//     fn deref(&self) -> &Self::Target {
+//         &self.moves
+//     }
+// }
 
-impl DerefMut for Variation {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.moves
-    }
-}
+// impl DerefMut for Variation {
+//     #[inline]
+//     fn deref_mut(&mut self) -> &mut Self::Target {
+//         &mut self.moves
+//     }
+// }
 
 impl fmt::Display for Variation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if f.alternate() {
-            for mv in self.iter() {
+            for mv in self.moves() {
                 writeln!(f, "{:#}", mv)?;
             }
         } else {
-            let strings: Vec<String> = self.moves.iter().map(Move::to_string).collect();
+            let strings = self.moves().map(|m| m.to_string()).collect_vec();
             f.write_str(&strings.join(", "))?
         }
         Ok(())

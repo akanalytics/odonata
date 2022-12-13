@@ -390,7 +390,7 @@ impl TranspositionTable2 {
 
     pub fn fmt_extract_pv_and_score(&self, f: &mut fmt::Formatter, b: &Board) -> fmt::Result {
         let (var, _) = self.extract_pv_and_score(b);
-        for mv in var.iter() {
+        for mv in var.moves() {
             writeln!(f, "{:#}", mv)?
         }
         Ok(())
