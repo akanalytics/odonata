@@ -41,11 +41,10 @@ where
 //     }
 // }
 
-
 /// compares two things and reports differences or perhaps just the first
 ///  difference in a human readable form
-pub trait Differ<T> {
-    fn diff(a: &T, b: &T) -> Option<String>;
+pub trait Differ {
+    fn diff(a: &Self, b: &Self) -> Result<(), String>;
 }
 
 // impl<T: Differ<T> + fmt::Display> Differ<&T> for &T {
@@ -54,32 +53,29 @@ pub trait Differ<T> {
 //     }
 // }
 
-
-impl<T: fmt::Display> Differ<T> for u32 {
-    fn diff(a: &T, b: &T) -> Option<String> {
-        if a.to_string() != b.to_string() {
-            Some(format!("{a} != {b}"))
+impl Differ for u32 {
+    fn diff(a: &Self, b: &Self) -> Result<(), String> {
+        if a.to_string() == b.to_string() {
+            Ok(())
         } else {
-            None
+            Err(format!("{a} != {b}"))
         }
     }
 }
 
 /// impl for Vec
-impl<T: Differ<T> + fmt::Display> Differ<Vec<T>> for Vec<T> {
-    fn diff(a: &Vec<T>, b: &Vec<T>) -> Option<String> {
+impl<T: Differ + fmt::Display> Differ for Vec<T> {
+    fn diff(a: &Vec<T>, b: &Vec<T>) -> Result<(), String> {
         for either in Itertools::zip_longest(a.iter(), b.iter()) {
             match either {
                 EitherOrBoth::Both(x, y) => {
-                    if let Some(diff) = T::diff(x, y) {
-                        return Some(diff);
-                    }
+                    T::diff(x, y).map_err(|s| format!("{s} in items <{x}>,<{y}>"))?
                 }
-                EitherOrBoth::Left(x) => return Some(x.to_string() + "(Left)"),
-                EitherOrBoth::Right(x) => return Some(x.to_string() + "(Right)"),
+                EitherOrBoth::Left(x) => return Err(x.to_string() + "(Left)"),
+                EitherOrBoth::Right(y) => return Err(y.to_string() + "(Right)"),
             }
         }
-        None
+        Ok(())
     }
 }
 

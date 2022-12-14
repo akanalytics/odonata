@@ -4,7 +4,7 @@ use std::fmt;
 use crate::{
     board::Board,
     eval::score::Score,
-    infra::utils::{Displayable, KeywordIter, Uci},
+    infra::utils::{Displayable, KeywordIter, Uci, Differ},
     mv::Move,
     piece::Ply,
     variation::Variation,
@@ -102,6 +102,33 @@ pub struct Info {
     pub refutation: Option<(Move, Variation)>,
     pub currline: Option<MoveList>,
 }
+
+impl Differ for Info {
+    fn diff(i: &Self, j: &Self) -> Result<(), String> {
+        let diff = match () {
+            _ if i.kind != j.kind => "kind",
+            _ if i.depth != j.depth => "depth",
+            _ if i.seldepth != j.seldepth => "seldepth",
+            // no time millis
+            _ if i.multi_pv != j.multi_pv => "multi_pv",
+            _ if i.pv != j.pv => "pv",
+            _ if i.nodes != j.nodes => "nodes",
+            _ if i.nodes_thread != j.nodes_thread => "nodes_thread",
+            _ if i.score != j.score => "score",
+            _ if i.currmove != j.currmove => "currmove",
+            // nps varies
+            // hashfull varies
+            // cpu load varies
+            _ if i.tbhits != j.tbhits => "tbhits",
+            _ if i.string_text != j.string_text => "string_text",
+            _ if i.refutation != j.refutation => "refutation",
+            _ if i.currline != j.currline => "currline",
+            _ => return Ok(()),
+        };
+        Err(diff.to_owned())
+    }
+}
+
 
 impl Info {
     pub fn new() -> Self {

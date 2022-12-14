@@ -172,6 +172,7 @@ impl Variation {
         s.join(" ")
     }
 
+    /// wont panic
     pub fn display_san(&self, b: &Board) -> String {
         let mut b2 = b.clone();
         let mut s = vec![];

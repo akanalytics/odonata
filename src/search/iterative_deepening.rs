@@ -89,20 +89,22 @@ impl Algo {
     pub fn search_iteratively(&mut self) {
         self.ids.calc_range(&self.mte.time_control());
         let mut ply = self.ids.start_ply;
-        let mut multi_pv = Vec::new();
-        let mut last_good_multi_pv = Vec::new();        
+        // let mut last_good_multi_pv = Vec::new();
         let mut score = Score::zero();
         let mut sel_depth = None;
+        let mut last_results = SearchResults::new();
 
         'outer: loop {
             Metrics::flush_thread_local();
             self.set_state(State::StartDepthIteration(ply));
             let t = Metrics::timing_start();
             // self.stats.new_iteration();
+            let mut multi_pv = Vec::new();
             multi_pv.resize_with(self.restrictions.multi_pv_count, Default::default);
-            let mut exit = false;
+            // let mut exit = false;
+            let mut trail = Trail::new(self.board.clone());
             for i in 0..self.restrictions.multi_pv_count {
-                let mut trail = Trail::new(self.board.clone());
+                trail = Trail::new(self.board.clone());
                 score = self
                     .aspirated_search(
                         &mut trail,
@@ -150,7 +152,7 @@ impl Algo {
 
                 // progress.snapshot_bests();
                 self.controller.invoke_callback(&info);
-                exit = self.exit_iteration(ply, score);
+                // exit = self.exit_iteration(ply, score);
 
                 multi_pv[i] = (pv.clone(), score);
 
@@ -165,23 +167,20 @@ impl Algo {
             if let Some(t) = t {
                 Metrics::elapsed(ply, t.elapsed(), Event::DurationIterActual);
             }
-            if exit {
+            if self.time_up_or_cancelled(ply, false).0 {
                 break 'outer;
             }
-            last_good_multi_pv = std::mem::take(&mut multi_pv);
+            last_results = SearchResults::from_multi_pv(self, ply, multi_pv, sel_depth, trail.chess_tree);
+            if self.mte.probable_timeout(ply) || ply >= self.ids.end_ply || ply >= MAX_PLY / 2 {
+                break 'outer;
+            }
             ply += self.ids.step_size
         }
-
-        let results = if self.time_up_or_cancelled(ply, false).0 {
-            SearchResults::new(self, ply - self.ids.step_size, last_good_multi_pv, sel_depth)
-        } else {
-            SearchResults::new(self, ply, multi_pv, sel_depth)
-        };
 
         // record final outcome of search
         // self.game
         //     .make_engine_move(results.clone(), Duration::from_millis(results.time_millis)); // *self.mte.time_control());
-        self.results = results;
+        self.results = last_results;
 
         let info = Info {
             kind: InfoKind::BestMove,
@@ -197,12 +196,12 @@ impl Algo {
         // }
     }
 
-    pub fn exit_iteration(&mut self, ply: Ply, _s: Score) -> bool {
-        self.time_up_or_cancelled(ply, false).0
-            || self.mte.probable_timeout(ply)
-            || ply >= self.ids.end_ply
-            || ply >= MAX_PLY / 2
-        // || (self.restrictions.exclude_moves.is_empty() && s.is_mate())
-        // pv.empty = draw
-    }
+    // pub fn exit_iteration(&mut self, ply: Ply, _s: Score) -> bool {
+    //     self.time_up_or_cancelled(ply, false).0
+    //         || self.mte.probable_timeout(ply)
+    //         || ply >= self.ids.end_ply
+    //         || ply >= MAX_PLY / 2
+    //     // || (self.restrictions.exclude_moves.is_empty() && s.is_mate())
+    //     // pv.empty = draw
+    // }
 }

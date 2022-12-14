@@ -1,5 +1,6 @@
 use crate::eval::eval::Eval;
 use crate::eval::score::Score;
+use crate::infra::metric::Metrics;
 use crate::infra::utils::{calculate_branching_factor_by_nodes_and_depth, Differ, Displayable};
 use crate::movelist::ScoredMoveList;
 use crate::mv::Move;
@@ -11,18 +12,16 @@ use crate::variation::Variation;
 use crate::{board::Board, Algo, MoveList, Position};
 use anyhow::Context;
 use itertools::Itertools;
-use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::iter::{self, FromIterator};
 use std::time::Duration;
 use tabled::builder::Builder;
 
 use super::info::Info;
+use super::ChessTree;
 
-#[derive(Clone, Default, Debug, PartialEq, Deserialize, Serialize)]
-#[serde(default, deny_unknown_fields)]
+#[derive(Clone, Default, Debug)]
 pub struct SearchResults {
-    #[serde(skip)]
     pub bm: Move,
     pub depth: Ply,
     pub seldepth: Ply,
@@ -34,16 +33,13 @@ pub struct SearchResults {
     pub bf: f64,
     pub hashfull_per_mille: u32,
     pub outcome: Outcome,
-
     pub emt: Duration,
     pub tc: Option<TimeControl>,
     pub pos: Option<Position>,
-
-    #[serde(skip)]
     pub multi_pv: Vec<(Variation, Score)>,
-
-    #[serde(skip)]
     pub infos: Vec<Info>,
+    pub tree: Option<ChessTree>,
+    pub metrics: Option<Metrics>,
 }
 
 impl fmt::Display for SearchResults {
@@ -215,18 +211,34 @@ impl SearchResults {
 //     }
 // }
 
-impl Differ<SearchResults> for SearchResults {
-    fn diff(sr1: &Self, sr2: &Self) -> Option<String> {
-        let mut sr1 = sr1.clone();
-        sr1.emt = sr2.emt; // emt will be different
-        if &sr1 != sr2 {
-            return Some(String::from("differences!"));
-        }
-        None
+impl Differ for SearchResults {
+    fn diff(i: &Self, j: &Self) -> Result<(), String> {
+        Vec::<Info>::diff(&i.infos, &j.infos)?;
+        let diff = match () {
+            _ if i.bm != j.bm => "bm",
+            _ if i.depth != j.depth => "depth",
+            _ if i.seldepth != j.seldepth => "seldepth",
+            // no time millis
+            _ if i.nodes != j.nodes => "nodes",
+            _ if i.nodes_thread != j.nodes_thread => "nodes_thread",
+            _ if i.nodes != j.nodes => "nodes",
+            _ if i.nodes_thread != j.nodes_thread => "nodes_thread",
+            _ if i.tc != j.tc => "tc",
+            _ if i.multi_pv != j.multi_pv => "multi_pv",
+            // nps varies
+            // hashfull varies
+            // cpu load varies
+            _ => return Ok(()),
+        };
+        Err(diff.to_owned())
     }
 }
 
 impl SearchResults {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     fn extract_multi_pv(infos: &Vec<Info>) -> Vec<(Variation, Score)> {
         // step #1, find max multipv index
         let max_index = infos.iter().map(|i| i.multi_pv.unwrap_or(1)).max();
@@ -323,6 +335,8 @@ impl SearchResults {
                 emt: Duration::ZERO,
                 pos: None,
                 tc: None,
+                tree: None,
+                metrics: None,
             }
         } else {
             let mut sr = SearchResults::default();
@@ -339,11 +353,12 @@ impl SearchResults {
         }
     }
 
-    pub fn new(
+    pub fn from_multi_pv(
         algo: &Algo,
         depth: Ply,
         multi_pv: Vec<(Variation, Score)>,
         seldepth: Option<Ply>,
+        tree: ChessTree,
     ) -> Self {
         let nodes_thread_cumul = algo.clock.cumul_nodes_this_thread();
         let bf = calculate_branching_factor_by_nodes_and_depth(nodes_thread_cumul, depth)
@@ -368,6 +383,8 @@ impl SearchResults {
             emt: algo.clock.elapsed_search().time,
             pos: Some(algo.position.clone()),
             tc: Some(algo.mte.time_control().clone()),
+            tree: Some(tree),
+            metrics: None,
         }
     }
 
@@ -402,6 +419,10 @@ impl SearchResults {
         } else {
             Variation::new()
         }
+    }
+
+    pub fn tree(&self) -> Option<&ChessTree> {
+        self.tree.as_ref()
     }
 
     pub fn score(&self) -> Option<Score> {
@@ -500,7 +521,7 @@ mod tests {
     use test_log::test;
 
     #[test]
-    fn test_uci_searchresults() {
+    fn test_uci_bestmove() {
         let b = Board::starting_pos();
         let (bm, pm) = parse_bestmove_uci("bestmove a2a3 ponder b7b6", &b).unwrap();
         assert_eq!(bm.to_uci(), "a2a3");
@@ -540,7 +561,7 @@ mod tests {
     }
 
     #[test]
-    fn test_search_results_parse_uci() -> anyhow::Result<()> {
+    fn test_search_results() -> anyhow::Result<()> {
         let s = r#"info depth 10 seldepth 10 nodes 61329 nps 1039000 score mate 2 hashfull 40 time 58 pv h2h4 e7e5 b2b3
 info depth 11 seldepth 12 nodes 82712 nps 973000 score mate 2 hashfull 45 time 84 pv e2e4 e7e5 a2a3
 info nodes 100000 nps 1020000 hashfull 50 time 97
@@ -556,7 +577,7 @@ bestmove g2g4 ponder e7e5
         // assert_eq!(BareMove::parse_uci("g3g6")?, "g3g6".mv());
         // assert_eq!(sr.best_move(), Ok("g3g6".try_into()?));
         assert_eq!(sr.nodes, 100000);
-        // "g2g4"[b]  
+        // "g2g4"[b]
         assert_eq!(
             sr.best_move().unwrap(),
             Move::parse_uci("g2g4", &b).unwrap()
@@ -577,6 +598,13 @@ bestmove 0000
         assert_eq!(sr.nodes, 100000);
         assert_eq!(sr.best_move().is_err(), true);
         assert_eq!(sr.pv(), Variation::new());
+
+        let mut sr2 = sr.clone();
+        assert_eq!(SearchResults::diff(&sr, &sr2), Ok(()));
+
+        sr2.infos[0].depth = Some(5);
+        let diff = SearchResults::diff(&sr, &sr2).unwrap_err();
+        assert_eq!(diff.starts_with("depth"), true);
 
         Ok(())
     }

@@ -35,7 +35,7 @@ impl fmt::Debug for TreeNode {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct NodeId(i32);
 
-#[derive(Clone)]
+#[derive(Clone, Default, PartialEq)]
 struct Tree {
     nodes: Vec<TreeNode>,
 }
@@ -188,7 +188,7 @@ fn displayable<'a>(t: &'a Tree, bd: &'a Board) -> impl Fn(&mut fmt::Formatter) -
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 struct NodeDetails {
     pub n: Node,
     pub e: Event, // <- bit flags ?
@@ -196,7 +196,7 @@ struct NodeDetails {
     pub nt: NodeType,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct ChessTree {
     starts_with: Variation,
     board: Board,
@@ -509,33 +509,6 @@ impl fmt::Display for Trail {
             if !pvp.is_empty() {
                 writeln!(f, "PV{ply:>2}  {san} ({pvp})", san = pvp.display_san(root))?;
             }
-            // if !pvp.is_empty() && ply <= self.path.len() {
-            //     let pv_stem = self.path.take(ply); // <-- safe as tested above
-
-            //     // let board_at_ply = self.root().make_moves_old(&pv_stem);
-            //     write!(f, "PV{ply:>2}  ")?;
-            //     write!(f, "{pv_stem}.", pv_stem = pv_stem.display_san(&self.root()))?;
-            //     if pv_stem.validate(&self.root()).is_ok()
-            //         && pvp.validate(&self.root().make_moves_old(&pv_stem)).is_ok()
-            //     {
-            //         writeln!(
-            //             f,
-            //             "{pvp}",
-            //             pvp = pvp.display_san(&self.root().make_moves_old(&pv_stem))
-            //         )?;
-            //     } else {
-            //         writeln!(f, "[{pvp}]", pvp = pvp.to_uci())?;
-            //     }
-            //     // let board_at_ply = self.root().make_moves_old(&pv_stem);
-
-            //     // pv_stem.extend(pvp);
-            //     // writeln!(f,
-            //     //     "| {pv_stem}"
-            //     //     pv_stem = pv_stem.display_san(&self.root()))?;
-
-            //     // // var = pvp.display_san(&board_at_ply)
-            //     // )?;
-            // }
         }
         for (i, refut) in self.refutations.iter().enumerate() {
             if !refut.is_empty() {
@@ -559,10 +532,10 @@ mod tests {
     use crate::{
         board::Board,
         catalog::Catalog,
-        domain::trail::{displayable, NodeId, ROOT},
+        domain::{trail::{displayable, NodeId, ROOT}, engine::Engine},
         infra::utils::Displayable,
-        search::node::Node,
-        variation::Variation,
+        search::{node::Node, timecontrol::TimeControl},
+        variation::Variation, Algo,
     };
 
     #[test]
@@ -577,6 +550,17 @@ mod tests {
         );
         println!("e4 e5\n{t}");
     }
+
+
+    #[test]
+    fn display_tree() {
+        let pos = Catalog::starting_position();
+        let mut eng = Algo::new();
+        let sr = eng.search(pos, TimeControl::Depth(6)).unwrap();
+        let _tree = sr.tree();
+        
+    }
+
 
     #[test]
     fn tree_basics() -> anyhow::Result<()> {
